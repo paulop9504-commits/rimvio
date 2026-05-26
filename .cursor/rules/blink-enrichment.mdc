@@ -1,0 +1,97 @@
+---
+description: Blink Enrichment 헌법 — 링크를 행동으로 바꾸는 3층 파이프라인 & enricher 법률
+globs: lib/enrichers/**,lib/share/**,app/api/scrape/**,app/share/**,components/action-card.tsx,types/database.ts
+alwaysApply: false
+---
+
+# Blink Enrichment 헌법 👀
+
+> **공유 한 번 = 내일 할 일이 카드로 떨어진다.**
+> Blink는 링크 저장소가 아니다. **링크를 실행 가능한 행동으로 변환하는 OS**다.
+
+## North Star (사람들이 열광하는 순간)
+
+유저가 YouTube·카톡·쇼핑몰 링크를 공유하면 **3초 안에** 이런 카드가 떠야 한다:
+
+- 🎬 영상 제목 + 채널 + 「영상 보기」
+- 📅 설명란 일정 3개 → 각각 「알림 설정」
+- 💬 카카오 알림방 / 🛒 타임딜 / 🎁 쿠폰 → **원탭 액션 버튼**
+
+**벽 of text 금지.** raw HTML·설명 전문을 카드에 노출하지 않는다.
+**읽게 하지 말고, 누르게 한다.**
+
+---
+
+## 헌법 (절대 불변)
+
+1. **3층 파이프라인** — 모든 URL은 반드시 이 순서:
+   `Generic → Domain → Intent`
+2. **단일 출력 포맷** — enricher 결과는 항상 `facts[]` + `actions[]`로 정규화
+3. **UI는 actions만 본다** — enricher 내부·raw_meta는 UI에 노출 금지
+4. **1–2 Tap Rule** — 카드의 모든 가치는 Action Bridge 버튼에 담긴다
+5. **Fallback은 우아하게** — enricher 없으면 Generic + URL 추출; AI는 enricher 없을 때만
+6. **Optimistic First** — 공유 즉시 카드, 백그라운드 enrich; shimmer/spinner 금지
+
+---
+
+## 법률 (도메인별 enricher)
+
+```
+lib/enrichers/
+  generic.ts      ← Layer 1: title, image, domain, description
+  registry.ts     ← domain → enricher 매칭
+  youtube.ts      ← Layer 2: 조회수, 채널, 설명란 일정·URL
+  commerce.ts     ← 할인율, 마감, 쿠폰
+  kakao.ts        ← 오픈채팅·플친
+```
+
+새 사이트 = **enricher 파일 1개 + registry 등록**. 카드 UI·DB 스키마는 건드리지 않는다.
+
+### Fact 스키마 (정규화된 “알고 싶은 정보”)
+
+```ts
+type Fact = {
+  kind: "date" | "price" | "stat" | "link" | "person" | "text";
+  label: string;   // "여수유탑 오픈"
+  value: string;   // "5/15 (금)"
+  href?: string;
+  priority: number; // 카드 노출 순서
+};
+```
+
+### Action 생성 규칙
+
+- `href` 있는 Fact → `kind: "open"` 액션
+- 날짜 Fact → `kind: "remind"` + `payload: { at }`
+- 할인/쿠폰 → `kind: "open"` + 라벨에 🔥 이모지 OK (1개까지)
+- **최대 5개 액션** — 넘으면 priority 낮은 것 숨김
+
+---
+
+## 롤아웃 (ROI 순)
+
+| Phase | 목표 | 체감 |
+|-------|------|------|
+| **1** | Generic + 본문 URL 추출 → actions | “링크 3개가 버튼으로!” |
+| **2** | YouTube enricher | “▶️ 영상 바로 재생!” |
+| **3** | Top commerce (yo-go 등) | “타임딜 원탭!” |
+| **4** | AI fallback (facts + actions JSON) | “어떤 링크든 뭔가 된다” |
+
+**Phase 1만으로도 80% 체감.** Phase 2가 바이럴 포인트.
+
+---
+
+## 구현 체크리스트
+
+- [x] `EnrichedLink { title, description, actions[], source_type, enricher_id }`
+- [x] `lib/enrichers/youtube.ts` + registry routing
+- [x] `/api/scrape` → registry → genericEnricher (+ optional `persist` POST)
+- [ ] `/api/enrich` dedicated route (optional split from scrape)
+- [ ] Action Card — facts를 subtitle/badge로 (Phase 2)
+
+## 금지
+
+- ❌ 사이트마다 다른 카드 컴포넌트
+- ❌ 설명란 전문을 카드 body에 렌더
+- ❌ enricher 없이 AI만으로 전부 처리 (비용·지연·환각)
+- ❌ spinner (shimmer만)
