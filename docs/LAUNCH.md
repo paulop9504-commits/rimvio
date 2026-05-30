@@ -1,4 +1,4 @@
-# Blink 출시 체크리스트
+# Glango 출시 체크리스트
 
 > **경로:** `c:\Users\userguest\Desktop\new-project`  
 > **한 줄:** PWA Share Target → `/now` → 액션 버튼 → Feed
@@ -28,7 +28,7 @@ npm run verify:release
 cd c:\Users\userguest\Desktop\new-project
 git init
 git add .
-git commit -m "Blink v0.1 — launch snapshot"
+git commit -m "Glango v0.1 — launch snapshot"
 ```
 
 GitHub 새 repo 생성 후:
@@ -77,7 +77,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 ### PWA Share Target (Android)
 
 - HTTPS 배포 필수
-- 홈 화면에 추가 → 다른 앱에서 **공유 → Blink**
+- 홈 화면에 추가 → 다른 앱에서 **공유 → Glango**
 - `manifest.ts` share_target → `/share` → `/now`
 
 ---

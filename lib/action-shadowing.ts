@@ -1,3 +1,4 @@
+import { resolveAutoTranslatedOpenHref } from "@/lib/links/auto-translate-open";
 import type { LinkActionItem } from "@/types/database";
 
 type ShadowRouter = {
@@ -115,7 +116,7 @@ export function isExternalHref(href: string) {
 /** Hand off to the system browser / native app immediately. */
 export function launchExternalUrl(href: string) {
   triggerActionHaptic();
-  window.location.assign(href);
+  window.location.assign(resolveAutoTranslatedOpenHref(href));
 }
 
 export function shadowAction(

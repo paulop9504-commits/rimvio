@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { createElement, useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -29,6 +29,7 @@ import {
   shadowAction,
 } from "@/lib/action-shadowing";
 import type { EnrichedLink, EnricherContext } from "@/lib/enrichers/types";
+import { getDisplayTitle } from "@/lib/feed/sanitize-link-title";
 import { toActionKey } from "@/lib/intent/action-key";
 import { trackActionBinEvent } from "@/lib/intent/track-client";
 import type { LinkActionItem } from "@/types/database";
@@ -145,6 +146,12 @@ export function NowActionFocus({
   const secondary = enriched.actions.slice(1, 4);
   const PrimaryIcon = primary ? iconForAction(primary) : ExternalLink;
   const isYouTube = isYouTubeEnriched(enriched);
+  const displayTitle = getDisplayTitle({
+    title: enriched.title,
+    original_url: enriched.url,
+    domain: enriched.domain,
+    source_type: enriched.source_type,
+  });
   const [isExiting, setIsExiting] = useState(false);
   const [didPrimary, setDidPrimary] = useState(false);
 
@@ -222,10 +229,12 @@ export function NowActionFocus({
     >
       <HeroThumbnail enriched={enriched} />
 
-      <h2 className="mt-7 max-w-[20rem] text-[1.65rem] font-semibold leading-tight tracking-tight">
-        {enriched.title}
-      </h2>
-      <p className="mt-2 text-sm text-muted-foreground">
+      {displayTitle ? (
+        <h2 className="mt-7 max-w-[20rem] text-[1.65rem] font-semibold leading-tight tracking-tight">
+          {displayTitle}
+        </h2>
+      ) : null}
+      <p className={cn("text-sm text-muted-foreground", displayTitle ? "mt-2" : "mt-7")}>
         {isYouTube ? "YouTube" : enriched.domain}
       </p>
 
@@ -262,13 +271,13 @@ export function NowActionFocus({
               isYouTube ? "from-red-100/25" : "from-white/30"
             )}
           />
-          <PrimaryIcon
-            className={cn(
+          {createElement(PrimaryIcon, {
+            className: cn(
               "relative size-9 shrink-0",
               isYouTube && "text-red-600/90"
-            )}
-            strokeWidth={2.25}
-          />
+            ),
+            strokeWidth: 2.25,
+          })}
           <span className="relative">{primary?.label ?? "원본 열기"}</span>
         </button>
 
@@ -298,7 +307,10 @@ export function NowActionFocus({
                     "disabled:pointer-events-none disabled:opacity-50"
                   )}
                 >
-                  <Icon className="size-4 shrink-0" strokeWidth={2} />
+                  {createElement(Icon, {
+                    className: "size-4 shrink-0",
+                    strokeWidth: 2,
+                  })}
                   {action.label}
                 </button>
               );
@@ -316,7 +328,7 @@ export function NowActionFocus({
             "disabled:pointer-events-none disabled:opacity-50"
           )}
         >
-          그냥 Feed에 두기 (Done)
+          그냥 내 링크에 둘게요
         </button>
       </div>
     </motion.div>

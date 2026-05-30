@@ -8,6 +8,7 @@ import {
   withDomainFallback,
 } from "@/lib/enrichers/fetch-page-metadata";
 import { parseGitHubCopyLabel } from "@/lib/resolvers/deep-links";
+import { openOriginalLabel } from "@/lib/copy/human-ko";
 import type { EnrichedLink, Enricher, EnricherContext } from "@/lib/enrichers/types";
 import type { LinkActionItem } from "@/types/database";
 
@@ -74,7 +75,7 @@ function buildGitHubActions(url: string, pathname: string, title: string | null)
 
   secondary.push(
     createOpenAction({
-      label: "원본 열기",
+      label: openOriginalLabel(),
       href: url,
       icon: "external-link",
       copyText,

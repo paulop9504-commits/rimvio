@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { HorizontalScrollRail } from "@/components/horizontal-scroll-rail";
 import {
   getDomainGradient,
   getDomainInitial,
@@ -26,6 +27,7 @@ import {
   shadowPrimaryLink,
   triggerActionHaptic,
 } from "@/lib/action-shadowing";
+import { getDisplayTitleForLink } from "@/lib/feed/sanitize-link-title";
 import type { LinkActionItem, LinkRow } from "@/types/database";
 import { cn } from "@/lib/utils";
 
@@ -131,6 +133,7 @@ function ActionBridgeButton({
 
 export function ActionCard({ link, index = 0 }: ActionCardProps) {
   const router = useRouter();
+  const displayTitle = getDisplayTitleForLink(link);
   const primaryHref = link.actions[0]?.href ?? link.original_url;
 
   const shadowLinkAction = (
@@ -220,15 +223,20 @@ export function ActionCard({ link, index = 0 }: ActionCardProps) {
 
             <div className="min-w-0 flex-1 pt-0.5">
               <div className="flex items-start justify-between gap-2">
-                <h2 className="line-clamp-2 text-[17px] font-semibold leading-snug tracking-tight text-foreground">
-                  {link.title}
-                </h2>
+                {displayTitle ? (
+                  <h2 className="line-clamp-2 text-[17px] font-semibold leading-snug tracking-tight text-foreground">
+                    {displayTitle}
+                  </h2>
+                ) : null}
                 <ArrowUpRight
-                  className="mt-0.5 size-4 shrink-0 text-muted-foreground/60"
+                  className={cn(
+                    "size-4 shrink-0 text-muted-foreground/60",
+                    displayTitle ? "mt-0.5" : "mt-0"
+                  )}
                   strokeWidth={2}
                 />
               </div>
-              <p className="mt-1 truncate text-sm text-muted-foreground">
+              <p className={cn("truncate text-sm text-muted-foreground", displayTitle && "mt-1")}>
                 {link.domain}
               </p>
             </div>
@@ -237,7 +245,12 @@ export function ActionCard({ link, index = 0 }: ActionCardProps) {
 
         {link.actions.length > 0 ? (
           <CardFooter className="border-0 px-4 pb-4 pt-0">
-            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <HorizontalScrollRail
+              className="-mx-1 px-1"
+              fadeFrom="var(--card)"
+              hintLabel="더 보기"
+              scrollClassName="gap-2 pb-0.5"
+            >
               {link.actions.map((action) => (
                 <ActionBridgeButton
                   key={action.id}
@@ -246,7 +259,7 @@ export function ActionCard({ link, index = 0 }: ActionCardProps) {
                   onShadow={shadowLinkAction}
                 />
               ))}
-            </div>
+            </HorizontalScrollRail>
           </CardFooter>
         ) : null}
       </Card>

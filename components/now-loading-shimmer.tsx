@@ -16,7 +16,7 @@ export function NowLoadingShimmer() {
             "animate-[shimmer_1.8s_ease-in-out_infinite]"
           )}
         >
-          👀 블링크가 다음 행동을 찾는 중...
+          👀 글랑고가 다음 행동을 찾는 중...
         </p>
       </div>
     </div>

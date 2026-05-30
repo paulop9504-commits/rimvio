@@ -1,9 +1,10 @@
+import { GLANGO } from "@/lib/brand/glango";
 import { normalizeInputUrl } from "@/lib/enrichers/fetch-page-metadata";
 import { normalizeYouTubeUrl } from "@/lib/enrichers/youtube-url";
 import type { LinkActionItem } from "@/types/database";
 
 const PLACE_URL_PATTERN =
-  /map\.kakao|place\.map|map\.naver|naver\.me|google\.com\/maps|maps\.google|\/place\/|\/maps\//i;
+  /map\.kakao|place\.map|map\.naver|naver\.me|google\.com\/maps|maps\.google|\/place\/|\/maps\/|dorojuso\.kr|juso\.go\.kr/i;
 
 export function isPlaceRelatedUrl(url: string) {
   return PLACE_URL_PATTERN.test(url);
@@ -29,7 +30,7 @@ export function buildKakaoMapSearchWebHref(query: string) {
 
 export function buildNaverMapSearchHref(query: string) {
   const q = encodeURIComponent(query.trim());
-  return `nmap://search?query=${q}&appname=Blink`;
+  return `nmap://search?query=${q}&appname=${encodeURIComponent(GLANGO.name)}`;
 }
 
 export function buildNaverMapSearchWebHref(query: string) {
@@ -71,14 +72,17 @@ export function buildKakaoMapSearchAction(
 }
 
 export function buildNaverMapSearchAction(query: string): LinkActionItem {
+  const place = query.trim();
   return {
     id: crypto.randomUUID(),
     kind: "open",
-    label: `📍 네이버지도 · ${query.trim().slice(0, 10)}`,
-    href: buildNaverMapSearchHref(query),
+    label: `📍 네이버지도 · ${place.slice(0, 12)}`,
+    href: buildNaverMapSearchHref(place),
     payload: {
       icon: "map",
-      copyText: query.trim(),
+      copyText: place,
+      contextBoost: "installed-app",
+      fallbackHref: buildNaverMapSearchWebHref(place),
     },
   };
 }
@@ -116,6 +120,15 @@ export function buildYouTubeAppHref(rawUrl: string): string | null {
 }
 
 export function buildGoogleMapsNavigateHref(sourceUrl: string) {
+  return buildGoogleMapsDirectionHref(sourceUrl, "driving");
+}
+
+export type GoogleMapsTravelMode = "driving" | "walking" | "transit" | "bicycling";
+
+export function buildGoogleMapsDirectionHref(
+  sourceUrl: string,
+  travelMode: GoogleMapsTravelMode = "driving"
+) {
   try {
     const parsed = new URL(sourceUrl);
     const destination = `${parsed.pathname}${parsed.search}`;
@@ -124,13 +137,69 @@ export function buildGoogleMapsNavigateHref(sourceUrl: string) {
       const params = new URLSearchParams(parsed.search);
       const query = params.get("q") ?? params.get("query") ?? destination;
 
-      return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(query)}`;
+      return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(query)}&travelmode=${travelMode}`;
     }
 
-    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(sourceUrl)}`;
+    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(sourceUrl)}&travelmode=${travelMode}`;
   } catch {
-    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(sourceUrl)}`;
+    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(sourceUrl)}&travelmode=${travelMode}`;
   }
+}
+
+export function buildGoogleMapsSearchHref(query: string) {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query.trim())}`;
+}
+
+export function buildGoogleEarthHref(
+  query: string,
+  coords?: { lat: number; lng: number } | null
+) {
+  const place = query.trim();
+  if (coords) {
+    return `https://earth.google.com/web/@${coords.lat},${coords.lng},800a,500d,35y,0h,0t,0r`;
+  }
+
+  return `https://earth.google.com/web/search/${encodeURIComponent(place)}`;
+}
+
+export function buildGoogleMapsOpenAction(
+  sourceUrl: string,
+  placeName?: string | null
+): LinkActionItem {
+  const place = placeName?.trim() || null;
+  const href = /google\.com\/maps|maps\.google/i.test(sourceUrl)
+    ? sourceUrl
+    : place
+      ? buildGoogleMapsSearchHref(place)
+      : sourceUrl;
+
+  return {
+    id: crypto.randomUUID(),
+    kind: "open",
+    label: place ? `Google 지도 · ${place.slice(0, 16)}` : "Google 지도에서 열기",
+    href,
+    payload: {
+      icon: "map",
+      ...(place ? { copyText: place } : {}),
+    },
+  };
+}
+
+export function buildGoogleEarthAction(
+  query: string,
+  coords?: { lat: number; lng: number } | null
+): LinkActionItem {
+  const place = query.trim();
+  return {
+    id: crypto.randomUUID(),
+    kind: "open",
+    label: "Google Earth에서 보기",
+    href: buildGoogleEarthHref(place, coords),
+    payload: {
+      icon: "map",
+      copyText: place,
+    },
+  };
 }
 
 export function parseGitHubCopyLabel(pathname: string): string | null {

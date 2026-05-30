@@ -1,134 +1,165 @@
 "use client";
 
-import Image from "next/image";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { FeedShareSheet } from "@/components/feed-share-sheet";
+import { ScheduleMediumSheet } from "@/components/schedule-medium-sheet";
+import { FeedHeroArt } from "@/components/feed-hero-art";
+import { FeedCompactAmbient } from "@/components/feed-compact-ambient";
+import { FeedCompactVisual } from "@/components/feed-compact-visual";
+import { FeedActionAlarm } from "@/components/feed-action-alarm";
+import { FeedStoryStack } from "@/components/feed-story-stack";
+import { FeedInsightCard } from "@/components/feed-insight-card";
+import { useNavSectorPicker } from "@/hooks/use-nav-sector-picker";
 import {
-  Bell,
-  Bookmark,
-  Copy,
-  ExternalLink,
-  RefreshCw,
-  Share2,
-  Sparkles,
-  type LucideIcon,
-} from "lucide-react";
-import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+  shouldShowMarketPrice,
+  useMarketPrice,
+} from "@/hooks/use-market-price";
+import { useTrueCostReceipt, shouldShowTrueCostReceipt } from "@/hooks/use-true-cost-receipt";
+import { shouldShowTimeReceipt, useTimeReceipt } from "@/hooks/use-time-receipt";
+import { useStudyReceipt } from "@/hooks/use-study-receipt";
 import {
-  getDomainGradient,
-  getDomainInitial,
-} from "@/lib/utils/domain-gradient";
-import { runAndTrackLinkAction, analyticsFromLink } from "@/lib/analytics/track-client";
-import {
-  shadowAction,
-  triggerActionHaptic,
-} from "@/lib/action-shadowing";
-import type { LinkActionItem, LinkRow } from "@/types/database";
+  usePersonalizedFeedActions,
+} from "@/hooks/use-personalized-feed-actions";
+import { isScheduleAction } from "@/lib/actions/is-schedule-action";
+import { runFeedLinkAction } from "@/lib/feed/run-feed-link-action";
+import { useCopy, useAppLocale } from "@/hooks/use-copy";
+import type { Copy } from "@/lib/i18n/types";
+import { shadowAction } from "@/lib/action-shadowing";
 import { isPinnedLinkUrl } from "@/lib/local-links/pinned-link";
+import { resolveOpenLoopHint, resolveOpenLoopLevel } from "@/lib/behavior/zeigarnik";
+import {
+  resolveFeedCardInsight,
+  resolveFeedCardSecondaries,
+  resolveFeedCardSignal,
+} from "@/lib/feed/resolve-feed-card-panel";
+import { resolveFeedStoryLayout } from "@/lib/feed/resolve-feed-story-layout";
+import { FEED_MAX_SECONDARY } from "@/lib/feed/feed-panel-limits";
+import { resolveReceiptPeekKind } from "@/lib/feed/resolve-receipt-peek";
+import {
+  isYouTubeDomain,
+  isYouTubeThumbnail,
+} from "@/lib/feed/feed-visual";
+import {
+  cleanFeedActionLabel,
+  getFeedCategoryLabel,
+} from "@/lib/feed/feed-display";
+import { getDisplayTitleForLink } from "@/lib/feed/sanitize-link-title";
+import {
+  locateResultToFeedPanel,
+  runLocateFeedAction,
+  LOCATE_LOADING_SIGNAL,
+} from "@/lib/locate/locate-chip-actions";
+import type { LocateActionResult } from "@/lib/locate/types";
+import { isScreenshotLink } from "@/lib/share/ingest-screenshot";
+import { enrichLinkWithDomainActions } from "@/lib/actions/enrich-link-domain-actions";
+import { filterFeedDisplayActions } from "@/lib/feed/feed-action-filter";
+import { projectFeedMapActions } from "@/lib/feed/project-feed-map-actions";
+import {
+  isMapLaunchAction,
+  mapPrimaryLabel,
+  resolveMapLaunchContext,
+} from "@/lib/resolvers/map-app-launch";
+import { dropMismatchedOpenActions } from "@/lib/feed/action-title-guard";
+import { toDomainFamily } from "@/lib/personalization/action-family";
+import { toContextBin } from "@/lib/intent/context-bin";
+import { trackReceiptDefer } from "@/lib/personalization/track-user-action";
+import { isSampleFeedLink } from "@/lib/onboarding/sample-feed";
+import { mergeFeedPanelWithRemote } from "@/lib/feed/merge-context-remote-panel";
+import { runRemoteAction } from "@/lib/remote/run-remote-action";
+import type { ContextRemoteState } from "@/lib/remote/resolve-context-remote";
+import type { LinkActionItem, LinkRow } from "@/types/database";
+import type { ScheduleMedium } from "@/lib/preferences/schedule-medium";
 import { cn } from "@/lib/utils";
-
-const actionIcons: Record<LinkActionItem["kind"], LucideIcon> = {
-  open: ExternalLink,
-  save: Bookmark,
-  share: Share2,
-  remind: Bell,
-  copy: Copy,
-  custom: Sparkles,
-};
+import { FEED_CATEGORY_RAIL_OFFSET } from "@/components/feed-category-pills";
+import { normalizeEnricherContext } from "@/lib/enrichers/context";
+import { IOS } from "@/lib/ui/ios-surface";
 
 type ActionShortsSlideProps = {
   link: LinkRow;
   index: number;
   total: number;
+  peerLinks?: LinkRow[];
+  showCategorySpace?: boolean;
+  contextRemote?: ContextRemoteState | null;
+  onOpenLink?: (link: LinkRow) => void;
+  actionIndex: number;
+  shareOpen: boolean;
+  onShareOpenChange: (open: boolean) => void;
+  isActive?: boolean;
+  locateResult?: LocateActionResult | null;
+  locateLoading?: boolean;
 };
 
-function HeroVisual({ link }: { link: LinkRow }) {
-  const gradient = getDomainGradient(link.domain);
-  const initial = getDomainInitial(link.domain);
-  const isYouTube = link.domain.includes("youtube");
-
-  if (link.thumbnail_url) {
-    return (
-      <div className="relative aspect-[4/5] w-full overflow-hidden rounded-3xl shadow-lg ring-1 ring-black/5">
-        <Image
-          src={link.thumbnail_url}
-          alt=""
-          fill
-          className="object-cover"
-          sizes="(max-width: 448px) 100vw, 448px"
-          unoptimized
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className={cn(
-        "relative flex aspect-[4/5] w-full items-center justify-center overflow-hidden rounded-3xl bg-gradient-to-br shadow-lg ring-1",
-        gradient,
-        isYouTube ? "ring-red-500/20" : "ring-black/5"
-      )}
-    >
-      <span className="text-7xl font-semibold text-white/95">{initial}</span>
-      <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-    </div>
-  );
+async function runAction(
+  action: LinkActionItem,
+  link: LinkRow,
+  copy: Copy,
+  scheduleMedium?: ScheduleMedium
+) {
+  await runFeedLinkAction(action, link, copy, scheduleMedium);
 }
 
-async function runAction(action: LinkActionItem, link: LinkRow) {
-  const { copiedText } = await runAndTrackLinkAction(
-    action,
-    analyticsFromLink(link, "feed")
-  );
-  if (copiedText) {
-    toast.success(`"${copiedText}" 복사됨 — 붙여넣기 하세요`);
-  }
-}
-
-function SlideActionRail({
-  hasMultipleActions,
-  onShare,
-  onNextAction,
+function FeedSlideMeta({
+  index,
+  total,
+  isPinned,
+  loopLevel,
+  loopHint,
+  categoryLabel,
+  overlay = false,
+  isSample = false,
 }: {
-  hasMultipleActions: boolean;
-  onShare: () => void;
-  onNextAction: () => void;
+  index: number;
+  total: number;
+  isPinned: boolean;
+  loopLevel: number;
+  loopHint: string | null;
+  categoryLabel: string | null;
+  overlay?: boolean;
+  isSample?: boolean;
 }) {
-  return (
-    <div className="absolute right-1 top-[38%] z-20 flex -translate-y-1/2 flex-col items-center gap-4">
-      <button
-        type="button"
-        aria-label="링크 공유"
-        onClick={onShare}
-        className="flex flex-col items-center gap-1 text-foreground/90 transition-transform active:scale-95"
-      >
-        <span className="flex size-11 items-center justify-center rounded-full bg-background/70 shadow-sm ring-1 ring-border/40 backdrop-blur-md">
-          <Share2 className="size-5" strokeWidth={2.25} />
-        </span>
-        <span className="text-[10px] font-medium">공유</span>
-      </button>
+  const pill = overlay
+    ? "bg-black/35 text-white ring-1 ring-white/20 backdrop-blur-md"
+    : "bg-[#f2f2f7] text-muted-foreground";
 
-      {hasMultipleActions ? (
-        <button
-          type="button"
-          aria-label="다음 행동"
-          onClick={onNextAction}
-          className="flex flex-col items-center gap-1 text-foreground/90 transition-transform active:scale-95"
-        >
-          <span className="flex size-11 items-center justify-center rounded-full bg-background/70 shadow-sm ring-1 ring-border/40 backdrop-blur-md">
-            <RefreshCw className="size-5" strokeWidth={2.25} />
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span
+        className={cn(
+          "rounded-full px-2.5 py-0.5 text-[10px] font-semibold tabular-nums",
+          overlay ? "bg-black/35 text-white/90 backdrop-blur-md" : "text-muted-foreground"
+        )}
+      >
+        {index + 1} / {total}
+      </span>
+      <div className="flex items-center gap-1.5">
+        {isSample ? (
+          <span
+            className={cn(
+              "rounded-full px-2.5 py-0.5 text-[10px] font-semibold",
+              overlay ? "bg-white/20 text-white/90" : "bg-[#eef0f4] text-muted-foreground"
+            )}
+          >
+            예시
           </span>
-          <span className="text-[10px] font-medium leading-tight text-center">
-            다음
-            <br />
-            행동
+        ) : null}
+        {isPinned ? (
+          <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-semibold", pill, !overlay && "bg-[#007AFF]/10 text-[#007AFF]")}>
+            방금 공유
           </span>
-        </button>
-      ) : null}
+        ) : null}
+        {loopLevel >= 2 && loopHint ? (
+          <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-semibold", overlay ? "bg-[#FF9500]/35 text-white" : "bg-[#FF9500]/10 text-[#FF9500]")}>
+            미완료
+          </span>
+        ) : null}
+        {categoryLabel && total > 1 ? (
+          <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-semibold", pill)}>
+            {categoryLabel}
+          </span>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -137,28 +168,185 @@ export function ActionShortsSlide({
   link,
   index,
   total,
+  showCategorySpace = false,
+  contextRemote = null,
+  actionIndex,
+  shareOpen,
+  onShareOpenChange,
+  isActive = false,
+  locateResult = null,
+  locateLoading = false,
 }: ActionShortsSlideProps) {
   const router = useRouter();
-  const actions = useMemo(
-    () =>
+  const copy = useCopy();
+  const locale = useAppLocale();
+  const [schedulePick, setSchedulePick] = useState<{
+    action: LinkActionItem;
+    label: string;
+  } | null>(null);
+  const { requestNavSector, shouldOpenNavSector, navSectorSheet } = useNavSectorPicker({
+    copy,
+    resolveLink: () => link,
+  });
+  const storyLayout = resolveFeedStoryLayout(link);
+  const isCover = storyLayout === "capture-cover";
+  const showCompactAmbient = !isCover;
+  const showYouTubeCompact =
+    showCompactAmbient &&
+    Boolean(link.thumbnail_url?.trim()) &&
+    isYouTubeDomain(link.domain, link.original_url) &&
+    isYouTubeThumbnail(link.thumbnail_url!);
+
+  const actions = useMemo(() => {
+    const base =
       link.actions.length > 0
         ? link.actions
         : [
             {
               id: "fallback-open",
-              label: "원본 열기",
+              label: copy.actions.openLink,
               kind: "open" as const,
               href: link.original_url,
             },
-          ],
-    [link.actions, link.original_url]
-  );
+          ];
 
-  const [actionIndex, setActionIndex] = useState(0);
-  const focused = actions[actionIndex % actions.length];
-  const secondary = actions.filter((_, i) => i !== actionIndex % actions.length).slice(0, 3);
-  const FocusIcon = actionIcons[focused.kind] ?? ExternalLink;
+    return dropMismatchedOpenActions(
+      filterFeedDisplayActions(
+        projectFeedMapActions(link, base)
+      ),
+      link.title
+    );
+  }, [link.actions, link.original_url, link.title, copy.actions.openLink]);
+
+  const { focused } = usePersonalizedFeedActions(link, actionIndex, isActive);
+  const showMarketPrice = shouldShowMarketPrice(link);
+  const { snapshot: marketPrice, loading: marketPriceLoading } = useMarketPrice(
+    link,
+    isActive && showMarketPrice && (isCover || showCompactAmbient)
+  );
+  const showTrueCost = shouldShowTrueCostReceipt(link);
+  const trueCostReceipt = useTrueCostReceipt(
+    link,
+    isActive && (isCover || showCompactAmbient),
+    marketPrice?.listingPrice ?? null
+  );
+  const showInsightTrueCost = showTrueCost && Boolean(trueCostReceipt?.available);
+  const showTimeReceipt = shouldShowTimeReceipt(link);
+  const insightKind = resolveFeedCardInsight(link);
+  const showInsightStudy = insightKind === "study";
+  const { receipt: timeReceipt, loading: timeReceiptLoading } = useTimeReceipt(
+    link,
+    isActive &&
+      showTimeReceipt &&
+      (isCover || showCompactAmbient) &&
+      !showInsightStudy
+  );
+  const studyReceipt = useStudyReceipt(
+    link,
+    isActive && (isCover || showCompactAmbient)
+  );
+  const showInsightTime = insightKind === "time" && showTimeReceipt;
+  const showInsightMarket = insightKind === "market" && showMarketPrice;
+  const showInsightTrueCostStacked = showInsightTrueCost;
+
+  const secondary = resolveFeedCardSecondaries(actions, focused);
+  const cardSignal = resolveFeedCardSignal(link, focused);
+  const cardTitle = getDisplayTitleForLink(link);
+  const mergedPanel = mergeFeedPanelWithRemote({
+    remote: contextRemote,
+    isActive,
+    cardSignal,
+    focused,
+    secondary,
+  });
+  const panelSignal = mergedPanel.signalLine;
+  const panelSecondary = mergedPanel.secondary;
+
+  const mapLaunchContext = useMemo(() => {
+    if (!isMapLaunchAction(focused, link)) {
+      return null;
+    }
+
+    return resolveMapLaunchContext(link, focused);
+  }, [focused, link]);
+
+  const dispatchLinkAction = (action: LinkActionItem) => {
+    if (isScheduleAction(action)) {
+      setSchedulePick({
+        action,
+        label: cleanFeedActionLabel(action.label, locale),
+      });
+      return;
+    }
+
+    if (isMapLaunchAction(action, link) || shouldOpenNavSector(action)) {
+      requestNavSector(action, link, cardTitle ?? undefined);
+      return;
+    }
+
+    void runAction(action, link, copy);
+  };
+
+  const runSecondaryAction = (action: LinkActionItem) => {
+    if (mergedPanel.remoteActionIds.has(action.id || action.label)) {
+      void runRemoteAction(action, link);
+      return;
+    }
+    dispatchLinkAction(action);
+  };
   const isPinned = isPinnedLinkUrl(link.original_url);
+  const categoryLabel = getFeedCategoryLabel(link.category);
+  const primaryLabel = mapLaunchContext
+    ? mapPrimaryLabel(mapLaunchContext)
+    : cleanFeedActionLabel(focused.label, locale);
+  const loopHint = resolveOpenLoopHint(link);
+  const loopLevel = resolveOpenLoopLevel(link);
+  const showLocatePanel =
+    index === 0 && isScreenshotLink(link) && (locateLoading || Boolean(locateResult));
+  const locatePanel = locateResult ? locateResultToFeedPanel(locateResult) : null;
+  const isYouTube = link.domain.includes("youtube");
+  const contextBin = toContextBin(
+    normalizeEnricherContext({ hour: new Date().getHours() })
+  );
+  const domainFamily = toDomainFamily(link.domain, link.category);
+  const panelVariant = isCover ? "overlay" : "stack";
+
+  const hasAmbientInsight =
+    showCompactAmbient &&
+    ((showInsightStudy && studyReceipt?.available) ||
+      (showInsightTime && timeReceipt?.available) ||
+      (showInsightMarket && marketPrice?.available) ||
+      showInsightTrueCostStacked);
+
+  const receiptPeekKind = resolveReceiptPeekKind({
+    link,
+    signalLine: panelSignal,
+    hasAmbientInsight,
+    timeAvailable: Boolean(timeReceipt?.available),
+    marketAvailable: Boolean(marketPrice?.available),
+    trueCostAvailable: Boolean(trueCostReceipt?.available),
+    studyAvailable: Boolean(studyReceipt?.available),
+  });
+  const panelPeekKind =
+    isCover &&
+    ((showInsightStudy && studyReceipt?.available) ||
+      showInsightMarket ||
+      showInsightTrueCostStacked)
+      ? null
+      : receiptPeekKind;
+
+  const handleReceiptDefer = (timing: {
+    dwell_time_ms: number;
+    time_to_action_ms: number;
+  }) => {
+    trackReceiptDefer({
+      link,
+      domainFamily,
+      contextBin,
+      dwell_time_ms: timing.dwell_time_ms,
+      time_to_action_ms: timing.time_to_action_ms,
+    });
+  };
 
   const handleFocusedAction = () => {
     if (typeof navigator !== "undefined" && navigator.vibrate) {
@@ -170,105 +358,212 @@ export function ActionShortsSlide({
       fallbackHref: link.original_url,
       intent: "touch",
     });
-    runAction(focused, link);
+    dispatchLinkAction(focused);
   };
 
-  const handleShare = async () => {
-    triggerActionHaptic();
-
-    if (typeof navigator !== "undefined" && navigator.share) {
-      try {
-        await navigator.share({
-          title: link.title,
-          url: link.original_url,
-        });
-        return;
-      } catch {
-        // User cancelled or share failed.
+  const actionPanel = showLocatePanel ? (
+    <FeedActionAlarm
+      link={link}
+      isActive={isActive}
+      peekKind={null}
+      variant={panelVariant}
+      signalLine={
+        locateLoading
+          ? LOCATE_LOADING_SIGNAL
+          : locatePanel?.signalLine ?? panelSignal
       }
-    }
+      title={locatePanel?.title ?? cardTitle}
+      primaryLabel={locatePanel?.primary.label ?? primaryLabel}
+      onPrimary={() => {
+        if (locatePanel?.primary) {
+          void runLocateFeedAction(locatePanel.primary, link);
+          return;
+        }
+        handleFocusedAction();
+      }}
+      secondary={(locatePanel?.secondary ?? panelSecondary).slice(
+        0,
+        FEED_MAX_SECONDARY
+      )}
+      onSecondary={(action) => {
+        if (locatePanel?.secondary?.some((item) => item.id === action.id)) {
+          void runLocateFeedAction(action, link);
+          return;
+        }
+        runSecondaryAction(action);
+      }}
+      locale={locale}
+      loading={locateLoading}
+      showPrimary={Boolean(locatePanel?.primary ?? true)}
+      primaryVariant={isYouTube ? "youtube" : "default"}
+    />
+  ) : (
+    <FeedActionAlarm
+      link={link}
+      isActive={isActive}
+      peekKind={panelPeekKind}
+      peekResetKey={`${link.id}-${actionIndex}`}
+      variant={panelVariant}
+      signalLine={panelSignal}
+      title={cardTitle}
+      primaryLabel={primaryLabel}
+      onPrimary={handleFocusedAction}
+      secondary={panelSecondary}
+      onSecondary={runSecondaryAction}
+      locale={locale}
+      primaryVariant={isYouTube ? "youtube" : "default"}
+      timeReceipt={timeReceipt}
+      marketSnapshot={marketPrice}
+      trueCostReceipt={trueCostReceipt}
+      studyReceipt={studyReceipt}
+    />
+  );
 
-    await navigator.clipboard.writeText(link.original_url);
-    toast.success("링크 복사됨");
-  };
-
-  const handleNextAction = () => {
-    triggerActionHaptic();
-    setActionIndex((current) => (current + 1) % actions.length);
-  };
+  const insightBlock =
+    isCover &&
+    !showLocatePanel &&
+    (showInsightMarket || showInsightTrueCostStacked || showInsightTime || showInsightStudy) ? (
+      <div className="space-y-2 rounded-2xl bg-black/40 p-2 ring-1 ring-white/15 backdrop-blur-md">
+        {showInsightStudy ? (
+          <FeedInsightCard
+            kind="study"
+            link={link}
+            overlay
+            compact
+            studyReceipt={studyReceipt}
+          />
+        ) : null}
+        {showInsightMarket || showInsightTrueCostStacked ? (
+          <FeedInsightCard
+            kind="commerce"
+            link={link}
+            overlay
+            compact
+            marketSnapshot={marketPrice}
+            trueCostReceipt={trueCostReceipt}
+            marketLoading={marketPriceLoading}
+            active={isActive}
+            onReceiptDefer={handleReceiptDefer}
+          />
+        ) : null}
+        {showInsightTime ? (
+          <FeedInsightCard
+            kind="time"
+            link={link}
+            overlay
+            timeReceipt={timeReceipt}
+            timeLoading={timeReceiptLoading}
+          />
+        ) : null}
+      </div>
+    ) : null;
 
   return (
-    <section className="relative flex h-full min-h-full w-full shrink-0 snap-start snap-always flex-col justify-between px-5 py-3 pt-10">
-      <SlideActionRail
-        hasMultipleActions={actions.length > 1}
-        onShare={handleShare}
-        onNextAction={handleNextAction}
+    <>
+      <section
+        className={cn(
+          "relative flex h-full min-h-full w-full shrink-0 snap-start snap-always flex-col",
+          IOS.bg,
+          "px-[var(--space-phi)] pt-[var(--space-u)] pb-[var(--space-u)]",
+          showCategorySpace ? FEED_CATEGORY_RAIL_OFFSET : undefined
+        )}
+      >
+        <FeedStoryStack
+          layout={storyLayout}
+          meta={
+            <FeedSlideMeta
+              index={index}
+              total={total}
+              isPinned={isPinned}
+              loopLevel={loopLevel}
+              loopHint={loopHint}
+              categoryLabel={categoryLabel}
+              overlay={isCover}
+              isSample={isSampleFeedLink(link)}
+            />
+          }
+          ambient={
+            showCompactAmbient ? (
+              <FeedCompactAmbient
+                link={link}
+                primaryActionLabel={primaryLabel}
+                showStudy={showInsightStudy}
+                studyReceipt={studyReceipt}
+                showTime={showInsightTime}
+                timeReceipt={timeReceipt}
+                timeLoading={timeReceiptLoading}
+                showMarket={showInsightMarket}
+                marketSnapshot={marketPrice}
+                marketLoading={marketPriceLoading}
+                showTrueCost={showInsightTrueCostStacked}
+                trueCostReceipt={trueCostReceipt}
+                active={isActive}
+                onReceiptDefer={handleReceiptDefer}
+              />
+            ) : undefined
+          }
+          visual={
+            isCover ? (
+              <FeedHeroArt
+                link={link}
+                layout="cover"
+                className="size-full"
+              />
+            ) : showYouTubeCompact ? (
+              <FeedCompactVisual link={link} />
+            ) : null
+          }
+          actions={actionPanel}
+          insight={insightBlock}
+          className="min-h-0 flex-1"
+        />
+      </section>
+
+      {navSectorSheet}
+
+      <ScheduleMediumSheet
+        open={Boolean(schedulePick)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSchedulePick(null);
+          }
+        }}
+        actionLabel={schedulePick?.label}
+        onSelect={(medium) => {
+          if (!schedulePick) {
+            return;
+          }
+          void runAction(schedulePick.action, link, copy, medium);
+          setSchedulePick(null);
+        }}
       />
 
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>
-          {index + 1} / {total}
-        </span>
-        {link.category || isPinned ? (
-          <div className="flex items-center gap-1.5">
-            {isPinned ? (
-              <Badge
-                variant="secondary"
-                className="rounded-full border-0 bg-primary/10 text-primary"
-              >
-                👀 방금 공유
-              </Badge>
-            ) : null}
-            {link.category ? (
-              <Badge variant="secondary" className="rounded-full border-0">
-                {link.category}
-              </Badge>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
+      <FeedShareSheet
+        link={link}
+        open={shareOpen}
+        onOpenChange={onShareOpenChange}
+      />
+    </>
+  );
+}
 
-      <div className="flex flex-1 flex-col justify-center gap-5 py-4 pr-10">
-        <HeroVisual link={link} />
+export function getLinkActions(link: LinkRow): LinkActionItem[] {
+  const base =
+    link.actions.length > 0
+      ? link.actions
+      : ([
+          {
+            id: "fallback-open",
+            label: "원본 열기",
+            kind: "open" as const,
+            href: link.original_url,
+          },
+        ] satisfies LinkActionItem[]);
 
-        <div>
-          <h2 className="line-clamp-2 text-2xl font-semibold leading-tight tracking-tight">
-            {link.title}
-          </h2>
-          <p className="mt-1.5 text-sm text-muted-foreground">{link.domain}</p>
-        </div>
-
-        <Button
-          className={cn(
-            "h-14 w-full rounded-full text-base font-semibold shadow-sm",
-            link.domain.includes("youtube") &&
-              "border-red-500/20 bg-red-500/10 hover:bg-red-500/15"
-          )}
-          onClick={handleFocusedAction}
-        >
-          <FocusIcon className="mr-2 size-5" strokeWidth={2.25} />
-          {focused.label}
-        </Button>
-
-        {secondary.length > 0 ? (
-          <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
-            {secondary.map((action) => {
-              const Icon = actionIcons[action.kind];
-              return (
-                <button
-                  key={action.id}
-                  type="button"
-                  onClick={() => runAction(action, link)}
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border/60 bg-background/60 px-4 py-2.5 text-sm font-medium backdrop-blur-md"
-                >
-                  <Icon className="size-4" strokeWidth={2} />
-                  {action.label}
-                </button>
-              );
-            })}
-          </div>
-        ) : null}
-      </div>
-    </section>
+  return dropMismatchedOpenActions(
+    filterFeedDisplayActions(
+      projectFeedMapActions(link, enrichLinkWithDomainActions(link, base))
+    ),
+    link.title
   );
 }

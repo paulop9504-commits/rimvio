@@ -85,8 +85,8 @@ const CASES = [
     url: "https://www.coupang.com/vp/products/123456",
     expect: {
       enricher: "commerce-v1",
-      actionIncludes: ["쿠팡", "쿠팡 앱"],
-      copyTextMinLen: 2,
+      actionIncludes: ["쿠팡"],
+      copyTextIncludes: "쿠팡 상품",
     },
   },
   {
@@ -103,6 +103,63 @@ const CASES = [
     expect: {
       enricher: "transport-v1",
       actionIncludes: ["기차", "카카오T"],
+    },
+  },
+  {
+    name: "Baemin → delivery app",
+    url: "https://www.baemin.com/",
+    expect: {
+      enricher: "delivery-v1",
+      actionIncludes: ["배민", "배민 앱"],
+    },
+  },
+  {
+    name: "Coupang Eats → not commerce",
+    url: "https://www.coupang.com/eats/store/12345/gyochon-chicken",
+    expect: {
+      enricher: "delivery-v1",
+      actionIncludes: ["쿠팡이츠"],
+      copyTextIncludes: "gyochon",
+    },
+  },
+  {
+    name: "Klook → activity ticket",
+    url: "https://www.klook.com/ko/activity/12345-universal/",
+    expect: {
+      enricher: "transport-v1",
+      actionIncludes: ["액티비티", "Klook"],
+    },
+  },
+  {
+    name: "Trip.com → flight travel",
+    url: "https://kr.trip.com/flights/",
+    expect: {
+      enricher: "transport-v1",
+      actionIncludes: ["항공", "Trip"],
+    },
+  },
+  {
+    name: "Netflix → OTT app",
+    url: "https://www.netflix.com/browse",
+    expect: {
+      enricher: "ott-v1",
+      actionIncludes: ["Netflix", "Netflix 앱"],
+    },
+  },
+  {
+    name: "Melon ticket → ticket app",
+    url: "https://ticket.melon.com/",
+    expect: {
+      enricher: "ticket-v1",
+      actionIncludes: ["멜론", "멜론 앱"],
+    },
+  },
+  {
+    name: "Naver blog → naver app",
+    url: "https://blog.naver.com/",
+    expect: {
+      enricher: "naver-v1",
+      actionIncludes: ["블로그", "네이버"],
     },
   },
 ];

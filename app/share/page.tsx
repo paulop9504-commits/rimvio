@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { parseSharePayload } from "@/lib/share/parse-share-payload";
 import { startAnalyticsFlow, trackFunnel } from "@/lib/analytics/track-client";
 import { normalizeInputUrl } from "@/lib/enrichers/fetch-page-metadata";
+import { isIOS } from "@/lib/platform/device";
 
 const SHARE_TOAST_ID = "share-bridge";
 
@@ -44,11 +45,17 @@ function ShareBridge() {
     }
 
     if (!parsed.url) {
-      failAndGoHome("공유된 링크를 찾지 못했어요.");
+      if (isIOS()) {
+        toast.dismiss(SHARE_TOAST_ID);
+        router.replace("/?paste=1");
+        return;
+      }
+
+      failAndGoHome("공유된 링크를 찾지 못했어요.", "받은함에서 붙여넣어 주세요.");
       return;
     }
 
-    toast("👀 블링크가 다음 행동을 찾는 중...", { id: SHARE_TOAST_ID });
+    toast("👀 잠깐, 할 일 찾는 중…", { id: SHARE_TOAST_ID });
 
     startAnalyticsFlow();
 

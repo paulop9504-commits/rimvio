@@ -55,19 +55,14 @@ export function normalizeLinkCategory(
 
 export type InboxFilterValue = "all" | LinkCategory;
 
-/** Feed top chips — Shorts-style subset (전체 + 3 categories). */
-export type FeedCategoryFilter = "all" | "media" | "shopping" | "travel";
+/** Feed top chips — primary scope filter. */
+export type FeedCategoryFilter = "all";
 
 export const FEED_CATEGORY_PILLS: Array<{
   value: FeedCategoryFilter;
   label: string;
   emoji?: string;
-}> = [
-  { value: "all", label: "전체" },
-  { value: "media", label: LINK_CATEGORY_LABELS.media, emoji: "🎬" },
-  { value: "shopping", label: LINK_CATEGORY_LABELS.shopping, emoji: "🛒" },
-  { value: "travel", label: LINK_CATEGORY_LABELS.travel, emoji: "✈️" },
-];
+}> = [{ value: "all", label: "전체" }];
 
 export const CATEGORY_PILLS: Array<{
   value: InboxFilterValue;

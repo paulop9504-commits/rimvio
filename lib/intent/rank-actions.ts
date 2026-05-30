@@ -1,4 +1,6 @@
 import { rankActionsByContext } from "@/lib/enrichers/rank-actions";
+import type { ActionClickAggregate } from "@/lib/analytics/rank-boost";
+import { rankActionsWithAnalyticsBoost } from "@/lib/analytics/rank-boost";
 import type { EnricherContext } from "@/lib/enrichers/types";
 import { toActionKey } from "@/lib/intent/action-key";
 import {
@@ -36,7 +38,8 @@ export function rankActionsByIntent(
   context: EnricherContext,
   stats: ActionBinStat[],
   sourceUrl: string,
-  options?: RankActionsByIntentOptions
+  options?: RankActionsByIntentOptions,
+  analyticsStats?: ActionClickAggregate | null
 ): LinkActionItem[] {
   if (actions.length <= 1) {
     return actions;
@@ -44,26 +47,45 @@ export function rankActionsByIntent(
 
   const statMap = buildStatMap(stats);
 
+  let ranked: LinkActionItem[];
+
   if (statMap.size === 0) {
-    return rankActionsByContext(actions, context, sourceUrl);
+    ranked = rankActionsByContext(actions, context, sourceUrl);
+  } else {
+    const ruleRanked = rankActionsByContext(actions, context, sourceUrl);
+
+    const scored = ruleRanked.map((action, index) => ({
+      action,
+      score: intentBoost(statMap.get(toActionKey(action))) - index * 0.01,
+    }));
+
+    scored.sort((left, right) => right.score - left.score);
+    ranked = scored.map((entry) => entry.action);
   }
 
-  const ruleRanked = rankActionsByContext(actions, context, sourceUrl);
-
-  const scored = ruleRanked.map((action, index) => ({
-    action,
-    score: intentBoost(statMap.get(toActionKey(action))) - index * 0.01,
-  }));
-
-  scored.sort((left, right) => right.score - left.score);
-  const ranked = scored.map((entry) => entry.action);
+  if (analyticsStats) {
+    ranked = rankActionsWithAnalyticsBoost(
+      ranked,
+      context,
+      sourceUrl,
+      analyticsStats,
+      { pinTopAction: false }
+    );
+  }
 
   if (!options?.pinTopAction) {
     return ranked;
   }
 
   const [pinned, ...rest] = actions;
-  const restRanked = rankActionsByIntent(rest, context, stats, sourceUrl);
+  const restRanked = rankActionsByIntent(
+    rest,
+    context,
+    stats,
+    sourceUrl,
+    undefined,
+    analyticsStats
+  );
 
   return [pinned, ...restRanked];
 }

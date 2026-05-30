@@ -12,14 +12,21 @@ import { extractUrlsFromText } from "@/lib/enrichers/extract-urls";
 import {
   buildCommerceAppHref,
   commerceAppLabel,
-  parseHintFromUrlPath,
 } from "@/lib/resolvers/transport-commerce-deep-links";
 import {
+  parseCommerceHintFromUrl,
+  isWeakTitleHint,
   commercePrimaryLabel,
-  isCommerceDomain,
-  parseTitleFromUrl,
+  parseBestTitleFromUrl,
+  resolveBestTitle,
 } from "@/lib/enrichers/url-intelligence";
+import { appendPriceToTitle } from "@/lib/commerce/append-price-to-title";
+import {
+  isSecondhandDomain,
+  normalizeSecondhandTitle,
+} from "@/lib/commerce/commerce-cleaner";
 import type { EnrichedLink, Enricher, EnricherContext } from "@/lib/enrichers/types";
+import { openOriginalLabel } from "@/lib/copy/human-ko";
 import type { LinkActionItem } from "@/types/database";
 
 export { isCommerceDomain } from "@/lib/enrichers/url-intelligence";
@@ -95,7 +102,7 @@ function buildCommerceActions(
 
   secondary.push(
     createOpenAction({
-      label: "원본 열기",
+      label: openOriginalLabel(),
       href: url,
       icon: "external-link",
       copyText,
@@ -117,18 +124,26 @@ export const commerceEnricher: Enricher = {
   ): Promise<EnrichedLink> {
     const parsed = normalizeInputUrl(rawUrl);
     const metadata = await fetchPageMetadata(parsed.href);
-    const urlHint =
-      parseHintFromUrlPath(parsed.href) ?? parseTitleFromUrl(parsed.href);
+    const commerceHint = parseCommerceHintFromUrl(parsed.href, parsed.hostname);
+    const titleCandidate = resolveBestTitle({
+      metadataTitle: metadata.title,
+      rawUrl: parsed.href,
+      domain: parsed.hostname,
+    });
     const normalized = withDomainFallback(metadata, {
-      title: metadata.title ?? urlHint,
+      title: titleCandidate ?? commerceHint,
       image: metadata.image,
       description: metadata.description,
     });
 
-    const title =
-      normalized.fallback.titleFromDomain && urlHint
-        ? urlHint
-        : normalized.title;
+    const domain = normalized.domain;
+    const rawTitle = titleCandidate ?? commerceHint ?? normalized.title;
+    const normalizedTitle =
+      rawTitle && isSecondhandDomain(domain)
+        ? normalizeSecondhandTitle(rawTitle)
+        : rawTitle;
+    const title = appendPriceToTitle(normalizedTitle, metadata.priceWon);
+    const urlHint = commerceHint ?? parseBestTitleFromUrl(parsed.href, parsed.hostname);
 
     const actions = buildCommerceActions(
       normalized.url,
@@ -141,7 +156,7 @@ export const commerceEnricher: Enricher = {
     return {
       url: normalized.url,
       domain: normalized.domain,
-      title,
+      title: title ?? normalized.domain,
       image: normalized.image,
       description: normalized.description,
       actions,
@@ -149,7 +164,11 @@ export const commerceEnricher: Enricher = {
       source_type: "commerce",
       fallback: {
         ...normalized.fallback,
-        titleFromDomain: !Boolean(metadata.title?.trim() || urlHint?.trim()),
+        titleFromDomain: !Boolean(
+          (metadata.title?.trim() && !isWeakTitleHint(metadata.title)) ||
+            commerceHint?.trim() ||
+            titleCandidate?.trim()
+        ),
       },
     };
   },

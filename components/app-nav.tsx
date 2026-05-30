@@ -1,47 +1,276 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useMemo } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { Send, Settings } from "lucide-react";
+import { GlangoFeedMark } from "@/lib/brand/glango-feed-mark";
+import { useCopy } from "@/hooks/use-copy";
+import { useRoomGuest } from "@/hooks/use-room-guest";
+import { GRID } from "@/lib/ui/responsive-grid";
 import { cn } from "@/lib/utils";
-import { shareDemoHref } from "@/lib/share/share-demo";
 
 type AppNavProps = {
   immersive?: boolean;
+  /** side = desktop rail; inline = compact pages; fixed = immersive feed bottom bar */
+  placement?: "side" | "inline" | "fixed";
 };
 
-function isShareSurface(pathname: string) {
-  return pathname === "/" || pathname.startsWith("/now") || pathname.startsWith("/share");
-}
+type NavTab = {
+  href: string;
+  label: string;
+  isActive: (pathname: string, filter: string | null) => boolean;
+  icon: "feed" | "send" | "settings";
+};
 
-function isInboxSurface(pathname: string) {
-  return pathname.startsWith("/inbox");
-}
-
-export function AppNav({ immersive = false }: AppNavProps) {
-  const pathname = usePathname() ?? "/";
-  const shareActive = isShareSurface(pathname);
-  const inboxActive = isInboxSurface(pathname);
-
-  const baseClass = immersive
-    ? "fixed inset-x-0 bottom-[max(0.5rem,env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-md justify-center gap-6 text-[11px]"
-    : "mt-8 flex justify-center gap-6 border-t border-border/40 pt-4 text-xs";
-
-  const linkClass = (active: boolean) =>
-    cn(
-      "transition-colors",
-      active
-        ? "font-semibold text-foreground"
-        : "text-muted-foreground hover:text-foreground"
-    );
-
+function IgFeedIcon({
+  active,
+  variant,
+  drawn,
+}: {
+  active: boolean;
+  variant: ReturnType<typeof useRoomGuest>["avatarVariant"];
+  drawn: boolean;
+}) {
   return (
-    <nav className={baseClass} aria-label="Primary">
-      <Link href={shareDemoHref()} className={linkClass(shareActive)}>
-        공유
-      </Link>
-      <Link href="/inbox" className={linkClass(inboxActive)}>
-        Inbox
-      </Link>
+    <GlangoFeedMark
+      filled={active}
+      variant={drawn ? variant : null}
+      className="size-[1.95rem]"
+    />
+  );
+}
+
+function IgSendIcon({ active }: { active: boolean }) {
+  return (
+    <Send
+      className={cn("size-[1.625rem]", active ? "text-foreground" : "text-foreground/85")}
+      strokeWidth={1.85}
+    />
+  );
+}
+
+function IgSettingsIcon({ active }: { active: boolean }) {
+  return (
+    <Settings
+      className={cn("size-[1.625rem]", active ? "text-foreground" : "text-foreground/85")}
+      strokeWidth={active ? 2.2 : 1.85}
+    />
+  );
+}
+
+function NavTabIcon({
+  icon,
+  active,
+  guest,
+}: {
+  icon: NavTab["icon"];
+  active: boolean;
+  guest: ReturnType<typeof useRoomGuest>;
+}) {
+  switch (icon) {
+    case "feed":
+      return (
+        <IgFeedIcon
+          active={active}
+          variant={guest.avatarVariant}
+          drawn={guest.avatarDrawn}
+        />
+      );
+    case "send":
+      return <IgSendIcon active={active} />;
+    case "settings":
+      return <IgSettingsIcon active={active} />;
+  }
+}
+
+function NavLinks({
+  tabs,
+  pathname,
+  filter,
+  guest,
+  linkClassName,
+}: {
+  tabs: NavTab[];
+  pathname: string;
+  filter: string | null;
+  guest: ReturnType<typeof useRoomGuest>;
+  linkClassName?: string;
+}) {
+  return (
+    <>
+      {tabs.map((tab) => {
+        const active = tab.isActive(pathname, filter);
+
+        return (
+          <Link
+            key={tab.href}
+            href={tab.href}
+            aria-label={tab.label}
+            aria-current={active ? "page" : undefined}
+            className={cn(
+              "flex items-center justify-center transition-opacity active:opacity-60",
+              linkClassName
+            )}
+          >
+            <NavTabIcon icon={tab.icon} active={active} guest={guest} />
+          </Link>
+        );
+      })}
+    </>
+  );
+}
+
+function SideNavRail({
+  tabs,
+  pathname,
+  filter,
+  guest,
+}: {
+  tabs: NavTab[];
+  pathname: string;
+  filter: string | null;
+  guest: ReturnType<typeof useRoomGuest>;
+}) {
+  return (
+    <nav className={cn(GRID.navSide, "hidden lg:flex")} aria-label="Primary">
+      <div className="flex flex-col items-center gap-[var(--space-phi2)]">
+        <NavLinks
+          tabs={tabs}
+          pathname={pathname}
+          filter={filter}
+          guest={guest}
+          linkClassName="size-11 rounded-2xl hover:bg-foreground/[0.04]"
+        />
+      </div>
     </nav>
   );
+}
+
+function InlineNavBar({
+  tabs,
+  pathname,
+  filter,
+  guest,
+}: {
+  tabs: NavTab[];
+  pathname: string;
+  filter: string | null;
+  guest: ReturnType<typeof useRoomGuest>;
+}) {
+  return (
+    <nav
+      className={cn(
+        "mt-[var(--space-phi2)] flex justify-between border-t border-neutral-200/90 px-[var(--space-phi2)] pt-[var(--space-u)] lg:hidden"
+      )}
+      aria-label="Primary"
+    >
+      <NavLinks
+        tabs={tabs}
+        pathname={pathname}
+        filter={filter}
+        guest={guest}
+        linkClassName="size-10"
+      />
+    </nav>
+  );
+}
+
+function FixedBottomNavBar({
+  tabs,
+  pathname,
+  filter,
+  guest,
+}: {
+  tabs: NavTab[];
+  pathname: string;
+  filter: string | null;
+  guest: ReturnType<typeof useRoomGuest>;
+}) {
+  return (
+    <nav
+      className={cn(
+        GRID.navBottomFrame,
+        "lg:hidden",
+        "border-t border-neutral-200/90 bg-background",
+        "pb-[max(0.25rem,env(safe-area-inset-bottom))]"
+      )}
+      aria-label="Primary"
+      data-testid="glango-bottom-nav"
+    >
+      <div className="flex h-[3.05rem] items-center justify-between px-[var(--space-phi2)]">
+        <NavLinks
+          tabs={tabs}
+          pathname={pathname}
+          filter={filter}
+          guest={guest}
+          linkClassName="size-11"
+        />
+      </div>
+    </nav>
+  );
+}
+
+export function AppNav({ immersive = false, placement }: AppNavProps) {
+  const pathname = usePathname() ?? "/";
+  const searchParams = useSearchParams();
+  const filter = searchParams.get("filter");
+  const copy = useCopy();
+  const guest = useRoomGuest();
+
+  const tabs = useMemo<NavTab[]>(
+    () => [
+      {
+        href: "/",
+        label: copy.nav.feed,
+        isActive: (p) => p === "/",
+        icon: "feed",
+      },
+      {
+        href: "/r",
+        label: copy.nav.room,
+        isActive: (p) => p.startsWith("/r"),
+        icon: "send",
+      },
+      {
+        href: "/welcome",
+        label: copy.nav.settings,
+        isActive: (p) => p.startsWith("/welcome") || p.startsWith("/privacy"),
+        icon: "settings",
+      },
+    ],
+    [copy]
+  );
+
+  const resolvedPlacement = placement ?? (immersive ? "fixed" : "inline");
+
+  switch (resolvedPlacement) {
+    case "side":
+      return (
+        <SideNavRail
+          tabs={tabs}
+          pathname={pathname}
+          filter={filter}
+          guest={guest}
+        />
+      );
+    case "fixed":
+      return (
+        <FixedBottomNavBar
+          tabs={tabs}
+          pathname={pathname}
+          filter={filter}
+          guest={guest}
+        />
+      );
+    case "inline":
+      return (
+        <InlineNavBar
+          tabs={tabs}
+          pathname={pathname}
+          filter={filter}
+          guest={guest}
+        />
+      );
+  }
 }

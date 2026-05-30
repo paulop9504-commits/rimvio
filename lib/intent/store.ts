@@ -31,7 +31,7 @@ export async function fetchBinStats(
     return [];
   }
 
-  let merged = new Map<string, ActionBinStat>();
+  const merged = new Map<string, ActionBinStat>();
 
   for (const row of (globalRows ?? []) as BinRow[]) {
     merged.set(row.action_key, row);

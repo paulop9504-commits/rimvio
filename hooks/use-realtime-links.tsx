@@ -15,7 +15,28 @@ import type {
   RealtimePostgresChangesPayload,
 } from "@supabase/supabase-js";
 import { toast } from "sonner";
-import { readLocalLinks } from "@/lib/local-links/store";
+import { readLocalLinks, readDismissedLinkIds, importLocalLinks } from "@/lib/local-links/store";
+import { seedDemoLinks, LOCAL_LINKS_UPDATED } from "@/lib/demo/seed";
+import { experimentLabLinks } from "@/lib/demo/experiment-lab-links";
+import {
+  ensureExperimentLabFeed,
+  isExperimentLabMode,
+} from "@/lib/demo/reset-experiment-lab";
+import {
+  dismissSampleFeed,
+  dismissSampleFeedIfRealLinkAdded,
+  isSampleFeedLink,
+  resetFeedStorageForSamples,
+  resolveSampleFeedLinks,
+  SKIP_DEMO_SEED_ONCE_KEY,
+} from "@/lib/onboarding/sample-feed";
+import {
+  COMPLETION_UPDATED,
+  isLinkOpen,
+} from "@/lib/behavior/completion";
+import { restoreDismissedLink } from "@/lib/links/dismiss-link";
+import { funFeedLinks } from "@/lib/demo/fun-feed-links";
+import { normalizeLinkReadAloudActions } from "@/lib/actions/read-aloud-action";
 import {
   normalizeLinkUrl,
   readPinnedUrl,
@@ -33,10 +54,12 @@ const LINKS_CHANNEL = "links-feed";
 type RealtimePayload = RealtimePostgresChangesPayload<LinkRow>;
 
 function sortLinks(links: LinkRow[]) {
-  return [...links].sort(
-    (a, b) =>
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  );
+  return [...links]
+    .map(normalizeLinkReadAloudActions)
+    .sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
 }
 
 function prioritizePinnedLinks(links: LinkRow[]) {
@@ -61,6 +84,23 @@ function prioritizePinnedLinks(links: LinkRow[]) {
 
 function isOptimisticId(id: string) {
   return id.startsWith("optimistic-");
+}
+
+function resolveEmptyFeedFallback(dismissed: Set<string>): LinkRow[] {
+  const samples = resolveSampleFeedLinks().filter((link) => !dismissed.has(link.id));
+  if (samples.length > 0) {
+    return samples;
+  }
+
+  if (isExperimentLabMode()) {
+    return experimentLabLinks.filter((link) => !dismissed.has(link.id));
+  }
+
+  if (process.env.NODE_ENV === "development") {
+    return funFeedLinks.filter((link) => !dismissed.has(link.id));
+  }
+
+  return [];
 }
 
 function applyRealtimeChange(
@@ -109,6 +149,9 @@ type RealtimeLinksContextValue = {
   archivedLinks: LinkRow[];
   addOptimisticLink: (link: LinkRow) => void;
   removeOptimisticLink: (id: string) => void;
+  dismissLink: (link: LinkRow) => void;
+  restoreLink: (link: LinkRow) => void;
+  importFeedLinks: (raw: string) => number;
 };
 
 const RealtimeLinksContext = createContext<RealtimeLinksContextValue | null>(
@@ -117,11 +160,13 @@ const RealtimeLinksContext = createContext<RealtimeLinksContextValue | null>(
 
 type RealtimeLinksProviderProps = {
   initialLinks: LinkRow[];
+  userId?: string | null;
   children: ReactNode;
 };
 
 export function RealtimeLinksProvider({
   initialLinks,
+  userId = null,
   children,
 }: RealtimeLinksProviderProps) {
   const [links, setLinks] = useState(initialLinks);
@@ -140,22 +185,70 @@ export function RealtimeLinksProvider({
   }, [initialLinks]);
 
   useEffect(() => {
-    const localLinks = readLocalLinks();
-    if (!localLinks.length) {
-      return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("resetFeed") === "1") {
+      resetFeedStorageForSamples();
+      params.delete("resetFeed");
+      const next = params.toString() ? `/?${params.toString()}` : "/";
+      window.history.replaceState(null, "", next);
     }
 
-    setLinks((current) => {
-      const localUrls = new Set(localLinks.map((link) => link.original_url));
-      const withoutDuplicates = current.filter(
-        (link) => !localUrls.has(link.original_url)
-      );
+    const bootstrapDemoFeed = () => {
+      if (process.env.NODE_ENV !== "development") {
+        return;
+      }
 
-      return sortLinks([...localLinks, ...withoutDuplicates]);
-    });
+      if (sessionStorage.getItem(SKIP_DEMO_SEED_ONCE_KEY) === "1") {
+        sessionStorage.removeItem(SKIP_DEMO_SEED_ONCE_KEY);
+        return;
+      }
+
+      if (isExperimentLabMode()) {
+        ensureExperimentLabFeed();
+      } else {
+        seedDemoLinks();
+      }
+    };
+
+    const mergeLocalLinks = () => {
+      const localLinks = readLocalLinks();
+      const dismissed = readDismissedLinkIds();
+
+      if (localLinks.some((link) => !isSampleFeedLink(link))) {
+        dismissSampleFeed();
+      }
+
+      setLinks((current) => {
+        const next = current.filter((link) => !dismissed.has(link.id));
+
+        if (!localLinks.length) {
+          const fallback = resolveEmptyFeedFallback(dismissed);
+          return next.length > 0 ? next : fallback;
+        }
+
+        const localUrls = new Set(localLinks.map((link) => link.original_url));
+        const withoutDuplicates = next.filter(
+          (link) => !localUrls.has(link.original_url)
+        );
+
+        const mergedLocal = localLinks.filter((link) => !dismissed.has(link.id));
+
+        return sortLinks([...mergedLocal, ...withoutDuplicates]);
+      });
+    };
+
+    bootstrapDemoFeed();
+    mergeLocalLinks();
+    window.addEventListener(LOCAL_LINKS_UPDATED, mergeLocalLinks);
+    window.addEventListener(COMPLETION_UPDATED, mergeLocalLinks);
+    return () => {
+      window.removeEventListener(LOCAL_LINKS_UPDATED, mergeLocalLinks);
+      window.removeEventListener(COMPLETION_UPDATED, mergeLocalLinks);
+    };
   }, []);
 
   const addOptimisticLink = useCallback((link: LinkRow) => {
+    dismissSampleFeedIfRealLinkAdded(link);
     optimisticIdsRef.current.add(link.id);
     setLinks((current) =>
       sortLinks([link, ...current.filter((item) => item.id !== link.id)])
@@ -167,6 +260,38 @@ export function RealtimeLinksProvider({
     setLinks((current) => current.filter((link) => link.id !== id));
   }, []);
 
+  const dismissLink = useCallback((link: LinkRow) => {
+    optimisticIdsRef.current.delete(link.id);
+    setLinks((current) => current.filter((item) => item.id !== link.id));
+  }, []);
+
+  const restoreLink = useCallback((link: LinkRow) => {
+    setLinks((current) =>
+      sortLinks([link, ...current.filter((item) => item.id !== link.id)])
+    );
+    void restoreDismissedLink(link);
+  }, []);
+
+  const importFeedLinks = useCallback((raw: string) => {
+    const imported = importLocalLinks(raw);
+    const dismissed = readDismissedLinkIds();
+
+    setLinks((current) => {
+      const importedUrls = new Set(imported.map((link) => link.original_url));
+      const rest = current.filter(
+        (link) =>
+          !importedUrls.has(link.original_url) && !dismissed.has(link.id)
+      );
+
+      return sortLinks([
+        ...imported.filter((link) => !dismissed.has(link.id)),
+        ...rest,
+      ]);
+    });
+
+    return imported.length;
+  }, []);
+
   useEffect(() => {
     if (!supabase) {
       return;
@@ -175,12 +300,24 @@ export function RealtimeLinksProvider({
     let channel: RealtimeChannel;
 
     const subscribe = () => {
+      const changeConfig: {
+        event: "*";
+        schema: "public";
+        table: string;
+        filter?: string;
+      } = {
+        event: "*",
+        schema: "public",
+        table: LINKS_TABLE,
+      };
+
+      if (userId) {
+        changeConfig.filter = `user_id=eq.${userId}`;
+      }
+
       channel = supabase
-        .channel(LINKS_CHANNEL)
-        .on(
-          "postgres_changes",
-          { event: "*", schema: "public", table: LINKS_TABLE },
-          (payload) => {
+        .channel(userId ? `${LINKS_CHANNEL}:${userId}` : LINKS_CHANNEL)
+        .on("postgres_changes", changeConfig, (payload) => {
             const typedPayload = payload as RealtimePayload;
 
             setLinks((current) =>
@@ -192,7 +329,8 @@ export function RealtimeLinksProvider({
             );
 
             if (typedPayload.eventType === "INSERT" && typedPayload.new) {
-              toast("New link saved", {
+              dismissSampleFeedIfRealLinkAdded(typedPayload.new);
+              toast("하나 더 쌓였어요", {
                 description: typedPayload.new.title,
               });
             }
@@ -208,10 +346,16 @@ export function RealtimeLinksProvider({
         void supabase.removeChannel(channel);
       }
     };
-  }, [supabase]);
+  }, [supabase, userId]);
 
   const activeLinks = useMemo(
-    () => prioritizePinnedLinks(filterActiveLinks(links, now)),
+    () =>
+      prioritizePinnedLinks(
+        filterActiveLinks(
+          links.filter(isLinkOpen),
+          now
+        )
+      ),
     [links, now]
   );
 
@@ -227,8 +371,20 @@ export function RealtimeLinksProvider({
       archivedLinks,
       addOptimisticLink,
       removeOptimisticLink,
+      dismissLink,
+      restoreLink,
+      importFeedLinks,
     }),
-    [links, activeLinks, archivedLinks, addOptimisticLink, removeOptimisticLink]
+    [
+      links,
+      activeLinks,
+      archivedLinks,
+      addOptimisticLink,
+      removeOptimisticLink,
+      dismissLink,
+      restoreLink,
+      importFeedLinks,
+    ]
   );
 
   return (

@@ -1,4 +1,4 @@
-export type AnalyticsSurface = "now" | "feed" | "inbox" | "stack";
+export type AnalyticsSurface = "now" | "feed" | "inbox" | "stack" | "room";
 
 export type FunnelStep =
   | "share"

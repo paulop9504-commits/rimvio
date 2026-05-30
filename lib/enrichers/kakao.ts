@@ -7,6 +7,7 @@ import {
   normalizeInputUrl,
   withDomainFallback,
 } from "@/lib/enrichers/fetch-page-metadata";
+import { openOriginalLabel } from "@/lib/copy/human-ko";
 import type { EnrichedLink, Enricher, EnricherContext } from "@/lib/enrichers/types";
 import type { LinkActionItem } from "@/types/database";
 
@@ -49,7 +50,7 @@ function buildKakaoActions(url: string, title: string | null) {
 
   actions.push(
     createOpenAction({
-      label: "원본 열기",
+      label: openOriginalLabel(),
       href: url,
       icon: "external-link",
       copyText,

@@ -1,0 +1,88 @@
+export type ConfirmationIntent = "CONFIRM" | "EXECUTE" | "WITTY";
+
+export type WittyButtonWire = {
+  label: string;
+  action: string;
+};
+
+export type ConfirmDataCategory = "PLACE" | "TIME" | "CONTACT" | "OTHER";
+
+export type ConfirmDataWire = {
+  subject: string;
+  category: ConfirmDataCategory;
+};
+
+export type BatchPendingItem = {
+  type: string;
+  summary?: string;
+  extracted_data?: Partial<ConfirmationExtractedData> & {
+    schedule_note?: string | null;
+  };
+};
+
+export type FlushItemStatus = "success" | "failed" | "skipped";
+
+export type FlushItemResult = {
+  type: string;
+  label: string;
+  status: FlushItemStatus;
+  error?: string;
+};
+
+export type TransactionalFlushReport = {
+  succeeded: FlushItemResult[];
+  failed: FlushItemResult[];
+  summary: string;
+  hasPartialFailure: boolean;
+};
+
+export type ConfirmInterruptWire = {
+  user_message: string;
+  awaiting_choice: boolean;
+};
+
+export type ConfirmationExtractedData = {
+  address: string | null;
+  phone: string | null;
+  datetime: string | null;
+  place_name: string | null;
+  url: string | null;
+};
+
+export type OrchestratorConfirmationWire = {
+  meta: {
+    intent: ConfirmationIntent;
+  };
+  thought?: string;
+  /** Warm Glango persona line — shown in chat bubble */
+  persona_message?: string;
+  /** Short data-card prompt (not persona) */
+  confirm_message?: string;
+  confirm_data?: ConfirmDataWire;
+  extracted_data?: ConfirmationExtractedData;
+  batch_pending?: BatchPendingItem[];
+  interrupt?: ConfirmInterruptWire;
+  /** Context-aware button labels — replaces generic 네/아니오 when present */
+  witty_buttons?: WittyButtonWire[];
+};
+
+export type LocationSuggestion = {
+  id: string;
+  label: string;
+  place_name: string;
+  address: string;
+  branch?: string;
+};
+
+export type CorrectionLogEntry = {
+  id: string;
+  user_input: string;
+  ai_inferred_location: string | null;
+  ai_inferred_place_name: string | null;
+  user_corrected_location: string | null;
+  user_corrected_place_name: string | null;
+  outcome: "accepted" | "corrected" | "rejected";
+  createdAt: string;
+};
+
+export const CONFIRMATION_CONFIDENCE_THRESHOLD = 0.92;

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { normalizeEnricherContext } from "@/lib/enrichers/context";
 import { recordActionBinEvent } from "@/lib/intent/store";
 import type { ActionBinEvent } from "@/lib/intent/types";
+import { getAuthUserId } from "@/lib/auth/session";
 import { tryCreateClient } from "@/lib/supabase/server";
 
 type IntentEventBody = {
@@ -39,11 +40,13 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const userId = await getAuthUserId();
+
     await recordActionBinEvent(supabase, {
       context: normalizeEnricherContext(body.context),
       actionKey: body.actionKey,
       event: body.event,
-      userId: null,
+      userId,
     });
 
     return NextResponse.json({ ok: true, persisted: true });

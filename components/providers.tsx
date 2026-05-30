@@ -1,28 +1,43 @@
 "use client";
 
+import "@/lib/demo/experiment-lab-init";
+import { Suspense } from "react";
 import { ThemeProvider } from "next-themes";
+import { AuthProvider } from "@/hooks/use-auth";
+import { AutoLocaleBootstrap } from "@/components/auto-locale-bootstrap";
 import { DevDemoSeed } from "@/components/dev-demo-seed";
+import { ExperimentLabBootstrap } from "@/components/experiment-lab-bootstrap";
+import { IosShareBanner } from "@/components/ios-share-banner";
+import { LocaleProvider } from "@/lib/i18n/locale-context";
+import type { AppLocale } from "@/lib/i18n/types";
+import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
+import { ReminderPoller } from "@/components/reminder-poller";
+import { ServiceWorkerBootstrap } from "@/components/service-worker-bootstrap";
 import { Toaster } from "@/components/ui/sonner";
 
 type ProvidersProps = {
   children: React.ReactNode;
+  initialLocale: AppLocale;
 };
 
-export function Providers({ children }: ProvidersProps) {
+export function Providers({ children, initialLocale }: ProvidersProps) {
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-      <DevDemoSeed />
-      {children}
-      <Toaster
-        position="top-center"
-        richColors
-        closeButton
-        toastOptions={{
-          classNames: {
-            toast: "rounded-2xl shadow-sm border-0",
-          },
-        }}
-      />
+      <LocaleProvider initialLocale={initialLocale}>
+        <AuthProvider>
+          <AutoLocaleBootstrap />
+          <Suspense fallback={null}>
+            <ExperimentLabBootstrap />
+          </Suspense>
+          <DevDemoSeed />
+          <IosShareBanner />
+          {children}
+          <ReminderPoller />
+          <ServiceWorkerBootstrap />
+          <PwaInstallPrompt />
+        </AuthProvider>
+      </LocaleProvider>
+      <Toaster />
     </ThemeProvider>
   );
 }

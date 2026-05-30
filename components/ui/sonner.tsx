@@ -1,45 +1,52 @@
-"use client"
+"use client";
 
-import {
-  CircleCheck,
-  Info,
-  LoaderCircle,
-  OctagonX,
-  TriangleAlert,
-} from "lucide-react"
-import { useTheme } from "next-themes"
-import { Toaster as Sonner } from "sonner"
+import { Toaster as Sonner } from "sonner";
 
-type ToasterProps = React.ComponentProps<typeof Sonner>
+type ToasterProps = React.ComponentProps<typeof Sonner>;
 
+/** TDS Toast defaults: 3s (5s when action — callers may override) */
+const TOAST_DURATION_MS = 3000;
+
+/** TDS 하단 Toast — placement locked in globals.css (--toast-shift-*) */
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
-
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme="light"
       className="toaster group"
+      position="bottom-center"
+      duration={TOAST_DURATION_MS}
+      expand={false}
+      visibleToasts={2}
+      gap={6}
+      closeButton={false}
+      richColors={false}
+      offset={{
+        bottom: "var(--toast-bottom-offset-inline)",
+      }}
+      mobileOffset={{
+        bottom: "var(--toast-bottom-offset-inline)",
+      }}
       icons={{
-        success: <CircleCheck className="h-4 w-4" />,
-        info: <Info className="h-4 w-4" />,
-        warning: <TriangleAlert className="h-4 w-4" />,
-        error: <OctagonX className="h-4 w-4" />,
-        loading: <LoaderCircle className="h-4 w-4 animate-spin" />,
+        success: null,
+        info: null,
+        warning: null,
+        error: null,
+        loading: null,
       }}
       toastOptions={{
+        duration: TOAST_DURATION_MS,
+        unstyled: true,
         classNames: {
-          toast:
-            "group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg",
-          description: "group-[.toast]:text-muted-foreground",
-          actionButton:
-            "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",
-          cancelButton:
-            "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground",
+          toast: "glango-toast",
+          title: "glango-toast-title",
+          description: "glango-toast-description",
+          actionButton: "glango-toast-action",
+          cancelButton: "glango-toast-cancel",
         },
       }}
       {...props}
     />
-  )
-}
+  );
+};
 
-export { Toaster }
+export { Toaster };

@@ -3,9 +3,12 @@ import { ActionShorts } from "@/components/action-shorts";
 import { ActionCardSkeleton } from "@/components/action-card-skeleton";
 import { AppShell } from "@/components/app-shell";
 
-export default function Home() {
+import { getServerCopy } from "@/lib/i18n/server-locale";
+
+export default async function Home() {
+  const copy = await getServerCopy();
   return (
-    <AppShell title="Feed" subtitle="공유한 링크 · 스와이프" immersive>
+    <AppShell title={copy.feed.title} subtitle={copy.feed.subtitle} immersive hideBranding>
       <Suspense fallback={<ActionCardSkeleton />}>
         <ActionShorts />
       </Suspense>

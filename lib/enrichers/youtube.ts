@@ -201,7 +201,7 @@ export const youtubeEnricher: Enricher = {
     const description = scrapedDescription ?? metadata.description;
 
     const normalized = withDomainFallback(
-      { url: normalizedUrl, domain: "youtube.com", title, image, description },
+      { url: normalizedUrl, domain: "youtube.com", title, image, description, phone: metadata.phone },
       { title, image, description }
     );
 

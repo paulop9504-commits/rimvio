@@ -1,13 +1,8 @@
-import { NextResponse, type NextRequest } from "next/server";
-import { isSupabaseConfigured } from "@/lib/supabase/client";
-import { updateSession } from "@/lib/supabase/middleware";
+import { runEdgePipeline } from "@/lib/server/edge-pipeline";
+import type { NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
-  if (!isSupabaseConfigured()) {
-    return NextResponse.next();
-  }
-
-  return updateSession(request);
+  return runEdgePipeline(request);
 }
 
 export const config = {

@@ -1,23 +1,42 @@
 import * as cheerio from "cheerio";
+import { cleanPageTitle } from "@/lib/enrichers/clean-page-title";
+import { extractPhoneFromHtml, extractPhoneFromText } from "@/lib/enrichers/extract-phone";
+import {
+  concatBytes,
+  decodeHtmlBytes,
+  parseCharsetFromContentType,
+} from "@/lib/enrichers/html-encoding";
 import { buildDomainFallback } from "@/lib/utils/domain-gradient";
 import type { PageMetadata } from "@/lib/enrichers/types";
 
-const FETCH_TIMEOUT_MS = 8_000;
-const MAX_HEAD_BYTES = 192 * 1024;
+const FETCH_TIMEOUT_MS = 12_000;
+const MAX_HTML_BYTES = 512 * 1024;
 
 const META_KEYS = {
-  title: ["og:title", "twitter:title"],
-  image: ["og:image", "twitter:image", "twitter:image:src"],
+  title: ["og:title", "twitter:title", "title"],
+  image: ["og:image", "twitter:image", "twitter:image:src", "image"],
   description: ["og:description", "twitter:description", "description"],
 } as const;
 
 function decodeHtmlEntities(value: string) {
-  return value
+  const named = value
     .replace(/&amp;/gi, "&")
     .replace(/&quot;/gi, '"')
     .replace(/&#39;/gi, "'")
+    .replace(/&apos;/gi, "'")
     .replace(/&lt;/gi, "<")
     .replace(/&gt;/gi, ">")
+    .replace(/&nbsp;/gi, " ")
+    .trim();
+
+  return named
+    .replace(/&#x([0-9a-f]+);/gi, (_match, hex: string) =>
+      String.fromCodePoint(Number.parseInt(hex, 16))
+    )
+    .replace(/&#(\d+);/g, (_match, code: string) =>
+      String.fromCodePoint(Number(code))
+    )
+    .replace(/\s+/g, " ")
     .trim();
 }
 
@@ -51,6 +70,80 @@ function extractTitleTag(html: string) {
   return match?.[1] ? decodeHtmlEntities(match[1]) : null;
 }
 
+function extractItempropContent(html: string, itemprop: string) {
+  const escaped = itemprop.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const patterns = [
+    new RegExp(
+      `<[^>]*itemprop=["']${escaped}["'][^>]*content=["']([^"']+)["']`,
+      "i"
+    ),
+    new RegExp(
+      `<[^>]*itemprop=["']${escaped}["'][^>]*>([^<]{2,200})<`,
+      "i"
+    ),
+  ];
+
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    if (match?.[1]) {
+      return decodeHtmlEntities(match[1]);
+    }
+  }
+
+  return null;
+}
+
+function extractFirstHeading(html: string) {
+  const match = html.match(/<h1[^>]*>([\s\S]{2,200}?)<\/h1>/i);
+  if (!match?.[1]) {
+    return null;
+  }
+
+  const stripped = match[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  return stripped ? decodeHtmlEntities(stripped) : null;
+}
+
+function collectJsonLdNodes(value: unknown): Record<string, unknown>[] {
+  const nodes: Record<string, unknown>[] = [];
+
+  const walk = (input: unknown) => {
+    if (!input) {
+      return;
+    }
+
+    if (Array.isArray(input)) {
+      input.forEach(walk);
+      return;
+    }
+
+    if (typeof input !== "object") {
+      return;
+    }
+
+    const record = input as Record<string, unknown>;
+    if (record["@graph"]) {
+      walk(record["@graph"]);
+      return;
+    }
+
+    nodes.push(record);
+  };
+
+  walk(value);
+  return nodes;
+}
+
+function pickJsonLdField(record: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return null;
+}
+
 function readMeta($: cheerio.CheerioAPI, names: string[]): string | null {
   for (const name of names) {
     const value =
@@ -59,6 +152,74 @@ function readMeta($: cheerio.CheerioAPI, names: string[]): string | null {
 
     if (value?.trim()) {
       return decodeHtmlEntities(value);
+    }
+  }
+
+  return null;
+}
+
+function extractSiteName(html: string, $: cheerio.CheerioAPI) {
+  return (
+    extractMetaContent(html, ["og:site_name", "application-name"]) ??
+    readMeta($, ["og:site_name", "application-name"])
+  );
+}
+
+function extractCanonicalUrl(html: string, $: cheerio.CheerioAPI, baseUrl: string) {
+  const href =
+    $('link[rel="canonical"]').attr("href") ??
+    extractMetaContent(html, ["og:url"]) ??
+    readMeta($, ["og:url"]);
+
+  return resolveUrl(baseUrl, href);
+}
+
+function extractIconImage(html: string, $: cheerio.CheerioAPI, baseUrl: string) {
+  const candidates = [
+    readMeta($, ["og:image", "twitter:image", "twitter:image:src", "image"]),
+    $('link[rel="apple-touch-icon"]').attr("href"),
+    $('link[rel="apple-touch-icon-precomposed"]').attr("href"),
+    $('link[rel="icon"][sizes="192x192"]').attr("href"),
+    $('link[rel="icon"]').attr("href"),
+    $('link[rel="shortcut icon"]').attr("href"),
+  ];
+
+  for (const candidate of candidates) {
+    const resolved = resolveUrl(baseUrl, candidate);
+    if (resolved) {
+      return resolved;
+    }
+  }
+
+  return null;
+}
+
+function extractBodyHeading(html: string, $: cheerio.CheerioAPI) {
+  const articleTitle =
+    $("article h1").first().text().trim() ||
+    $('[role="main"] h1').first().text().trim() ||
+    $("main h1").first().text().trim() ||
+    extractFirstHeading(html);
+
+  return articleTitle ? decodeHtmlEntities(articleTitle) : null;
+}
+
+function extractJsonLdPrice(value: unknown): number | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const rawPrice = record.price ?? record.lowPrice ?? record.highPrice;
+
+  if (typeof rawPrice === "number" && Number.isFinite(rawPrice) && rawPrice > 0) {
+    return Math.round(rawPrice);
+  }
+
+  if (typeof rawPrice === "string") {
+    const parsed = Number.parseInt(rawPrice.replace(/[^\d]/g, ""), 10);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
     }
   }
 
@@ -78,26 +239,36 @@ function extractJsonLdMetadata(headHtml: string) {
 
     try {
       const parsed = JSON.parse(raw) as unknown;
-      const nodes = Array.isArray(parsed) ? parsed : [parsed];
+      const nodes = collectJsonLdNodes(parsed);
 
-      for (const node of nodes) {
-        if (!node || typeof node !== "object") {
-          continue;
-        }
+      for (const record of nodes) {
+        const typeValue = record["@type"];
+        const types = Array.isArray(typeValue)
+          ? typeValue.map(String)
+          : typeValue
+            ? [String(typeValue)]
+            : [];
 
-        const record = node as Record<string, unknown>;
+        const isContentType = types.some((type) =>
+          /Product|Article|NewsArticle|WebPage|VideoObject|Place|Event|Offer/i.test(type)
+        );
+
         const title =
-          typeof record.name === "string"
-            ? record.name
-            : typeof record.headline === "string"
-              ? record.headline
-              : null;
-        const description =
-          typeof record.description === "string" ? record.description : null;
+          pickJsonLdField(record, ["name", "headline", "alternateName"]) ??
+          (isContentType
+            ? pickJsonLdField(record, ["name", "headline"])
+            : null);
+        const description = pickJsonLdField(record, ["description"]);
         const image = extractJsonLdImage(record.image);
+        const offers = record.offers;
+        const priceWon =
+          extractJsonLdPrice(offers) ??
+          (Array.isArray(offers)
+            ? offers.map(extractJsonLdPrice).find((price) => price !== null) ?? null
+            : null);
 
-        if (title || description || image) {
-          return { title, description, image };
+        if (title || description || image || priceWon) {
+          return { title, description, image, priceWon };
         }
       }
     } catch {
@@ -133,37 +304,49 @@ function extractJsonLdImage(value: unknown): string | null {
   return null;
 }
 
-function parseHeadMetadata(headHtml: string) {
+function parsePageMetadata(html: string, baseUrl: string) {
   const regexTitle =
-    extractMetaContent(headHtml, META_KEYS.title) ?? extractTitleTag(headHtml);
+    extractMetaContent(html, META_KEYS.title) ?? extractTitleTag(html);
 
-  const regexImage = extractMetaContent(headHtml, META_KEYS.image);
-  const regexDescription = extractMetaContent(headHtml, META_KEYS.description);
+  const regexImage = extractMetaContent(html, META_KEYS.image);
+  const regexDescription = extractMetaContent(html, META_KEYS.description);
 
-  if (regexTitle && regexImage && regexDescription) {
-    return {
-      title: regexTitle,
-      image: regexImage,
-      description: regexDescription,
-    };
-  }
+  const $ = cheerio.load(html, { scriptingEnabled: false });
+  const jsonLd = extractJsonLdMetadata(html);
+  const siteName = extractSiteName(html, $);
+  const canonicalUrl = extractCanonicalUrl(html, $, baseUrl);
 
-  const $ = cheerio.load(headHtml, { scriptingEnabled: false });
-  const jsonLd = extractJsonLdMetadata(headHtml);
+  const rawTitle =
+    regexTitle ??
+    readMeta($, [...META_KEYS.title]) ??
+    extractItempropContent(html, "name") ??
+    jsonLd?.title ??
+    extractBodyHeading(html, $) ??
+    $("title").first().text().trim() ??
+    null;
+
+  const rawImage =
+    regexImage ??
+    readMeta($, [...META_KEYS.image]) ??
+    extractItempropContent(html, "image") ??
+    jsonLd?.image ??
+    extractIconImage(html, $, baseUrl) ??
+    null;
+
+  const description =
+    regexDescription ??
+    readMeta($, [...META_KEYS.description]) ??
+    extractItempropContent(html, "description") ??
+    jsonLd?.description ??
+    null;
 
   return {
-    title:
-      regexTitle ??
-      readMeta($, [...META_KEYS.title]) ??
-      jsonLd?.title ??
-      $("title").first().text().trim() ??
-      null,
-    image: regexImage ?? readMeta($, [...META_KEYS.image]) ?? jsonLd?.image ?? null,
-    description:
-      regexDescription ??
-      readMeta($, [...META_KEYS.description]) ??
-      jsonLd?.description ??
-      null,
+    title: cleanPageTitle(rawTitle, siteName) ?? rawTitle,
+    image: resolveUrl(canonicalUrl ?? baseUrl, rawImage),
+    description,
+    priceWon: jsonLd?.priceWon ?? null,
+    siteName,
+    canonicalUrl,
   };
 }
 
@@ -194,19 +377,22 @@ export function normalizeInputUrl(raw: string) {
   return parsed;
 }
 
-async function readHeadSnippet(
+async function readHtmlSnippet(
   response: Response,
   outerSignal: AbortSignal
 ): Promise<string> {
+  const declaredCharset = parseCharsetFromContentType(
+    response.headers.get("content-type")
+  );
+
   if (!response.body) {
-    const text = await response.text();
-    const headEnd = text.search(/<\/head>/i);
-    return headEnd === -1 ? text.slice(0, MAX_HEAD_BYTES) : text.slice(0, headEnd + 7);
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    const slice = bytes.slice(0, MAX_HTML_BYTES);
+    return decodeHtmlBytes(slice, declaredCharset);
   }
 
   const reader = response.body.getReader();
-  const decoder = new TextDecoder("utf-8", { fatal: false });
-  let html = "";
+  const chunks: Uint8Array[] = [];
   let bytesRead = 0;
 
   try {
@@ -217,28 +403,22 @@ async function readHeadSnippet(
       }
 
       bytesRead += value.byteLength;
-      html += decoder.decode(value, { stream: true });
+      chunks.push(value);
 
-      const headEnd = html.search(/<\/head>/i);
-      if (headEnd !== -1) {
-        html = html.slice(0, headEnd + 7);
-        await reader.cancel();
-        break;
-      }
-
-      if (bytesRead >= MAX_HEAD_BYTES) {
-        html = html.slice(0, MAX_HEAD_BYTES);
+      if (bytesRead >= MAX_HTML_BYTES) {
         await reader.cancel();
         break;
       }
     }
   } catch {
-    // Use buffered head HTML.
-  } finally {
-    html += decoder.decode();
+    // Use buffered bytes.
   }
 
-  return html;
+  if (chunks.length === 0) {
+    return "";
+  }
+
+  return decodeHtmlBytes(concatBytes(chunks), declaredCharset);
 }
 
 export async function fetchPageMetadata(rawUrl: string): Promise<PageMetadata> {
@@ -253,7 +433,7 @@ export async function fetchPageMetadata(rawUrl: string): Promise<PageMetadata> {
         Accept: "text/html;q=0.9,application/xhtml+xml;q=0.8",
         "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.5",
         "User-Agent":
-          "Mozilla/5.0 (compatible; BlinkEnricher/1.0; +https://blink.app)",
+          "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36",
       },
       redirect: "follow",
       signal: timeoutSignal,
@@ -261,21 +441,37 @@ export async function fetchPageMetadata(rawUrl: string): Promise<PageMetadata> {
     });
 
     if (!response.ok) {
-      return { url, domain, title: null, image: null, description: null };
+      return { url, domain, title: null, image: null, description: null, phone: null, priceWon: null };
     }
 
-    const headHtml = await readHeadSnippet(response, timeoutSignal);
-    const metadata = parseHeadMetadata(headHtml);
+    const html = await readHtmlSnippet(response, timeoutSignal);
+    const metadata = parsePageMetadata(html, url);
+    const phone =
+      extractPhoneFromHtml(html) ??
+      extractPhoneFromText(metadata.description) ??
+      extractPhoneFromText(metadata.title);
 
+    const resolvedUrl = metadata.canonicalUrl ?? url;
+
+    return {
+      url: resolvedUrl,
+      domain,
+      title: metadata.title,
+      image: metadata.image,
+      description: metadata.description,
+      phone,
+      priceWon: metadata.priceWon ?? null,
+    };
+  } catch {
     return {
       url,
       domain,
-      title: metadata.title,
-      image: resolveUrl(url, metadata.image),
-      description: metadata.description,
+      title: null,
+      image: null,
+      description: null,
+      phone: null,
+      priceWon: null,
     };
-  } catch {
-    return { url, domain, title: null, image: null, description: null };
   }
 }
 

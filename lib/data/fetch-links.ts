@@ -1,27 +1,36 @@
-import { linkRowToActionCard } from "@/lib/mappers/link-row";
-import type { LinkAction } from "@/lib/types/link-action";
+import { getAuthUserId } from "@/lib/auth/session";
 import { filterActiveLinks } from "@/lib/utils/link-archive";
-import { mockLinks, type LinkRow } from "@/types/database";
+import { funFeedLinks } from "@/lib/demo/fun-feed-links";
+import type { LinkRow } from "@/types/database";
 import { tryCreateClient } from "@/lib/supabase/server";
 
 export async function fetchLinks(): Promise<LinkRow[]> {
   const supabase = await tryCreateClient();
   if (!supabase) {
-    return mockLinks;
+    return process.env.NODE_ENV === "development" ? funFeedLinks : [];
   }
 
-  const { data, error } = await supabase
-    .from("links")
-    .select("*")
-    .order("created_at", { ascending: false });
+  const userId = await getAuthUserId();
+
+  let query = supabase.from("links").select("*");
+
+  if (userId) {
+    query = query.eq("user_id", userId);
+  }
+
+  const { data, error } = await query.order("created_at", { ascending: false });
 
   if (error) {
     console.error("[fetchLinks]", error.message);
-    return mockLinks;
+    return process.env.NODE_ENV === "development" ? funFeedLinks : [];
   }
 
   if (!data?.length) {
-    return mockLinks;
+    if (process.env.NODE_ENV === "development") {
+      return funFeedLinks;
+    }
+
+    return [];
   }
 
   return data;

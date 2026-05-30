@@ -15,6 +15,19 @@ export type LinkActionItem = {
   payload?: Record<string, Json>;
 };
 
+export type FeedVisualMode = "brand" | "poster" | "thumb";
+
+export type LinkStatus = "open" | "done";
+
+export type LinkCommentKind =
+  | "text"
+  | "done"
+  | "coupon"
+  | "note"
+  | "price_snap"
+  | "price_ok"
+  | "price_high";
+
 export type LinkRow = {
   id: string;
   user_id: string | null;
@@ -24,8 +37,29 @@ export type LinkRow = {
   domain: string;
   category: string | null;
   actions: LinkActionItem[];
+  visual_mode?: FeedVisualMode | null;
+  source_type?: string | null;
+  share_slug?: string | null;
+  link_status?: LinkStatus | null;
+  room_id?: string | null;
   created_at: string;
   expires_at: string | null;
+};
+
+export type RoomRow = {
+  id: string;
+  slug: string;
+  name: string;
+  created_at: string;
+};
+
+export type LinkCommentRow = {
+  id: string;
+  link_id: string;
+  kind: LinkCommentKind;
+  message: string;
+  author_label: string;
+  created_at: string;
 };
 
 export type UserActionBinRow = {
@@ -51,6 +85,62 @@ export type AnalyticsEventRow = {
   created_at: string;
 };
 
+export type UserActionEventRow = {
+  id: string;
+  user_id: string | null;
+  session_id: string;
+  link_id: string | null;
+  context_bin: string;
+  action_key: string;
+  action_family: string;
+  domain: string | null;
+  domain_family: string;
+  link_category: string | null;
+  route_mode: string | null;
+  event: "impression" | "click" | "skip" | "dismiss" | "defer" | "yield";
+  metadata: Json;
+  ts: string;
+};
+
+export type UserLinkStateRow = {
+  id: string;
+  user_id: string | null;
+  session_id: string;
+  link_id: string;
+  domain_family: string;
+  link_category: string | null;
+  lifecycle_state: "saved" | "opened" | "compared" | "decided" | "done" | "undone";
+  first_saved_at: string;
+  last_opened_at: string | null;
+  last_action_family: string | null;
+  last_action_at: string | null;
+  reopen_count: number;
+  updated_at: string;
+};
+
+export type UserRecentActionProfileRow = {
+  id: string;
+  user_id: string | null;
+  session_id: string | null;
+  recent_clicks: Json;
+  family_counts: Json;
+  domain_affinity: Json;
+  click_total: number;
+  updated_at: string;
+};
+
+export type PlaceLocateCacheRow = {
+  id: string;
+  place_name_key: string;
+  place_name: string;
+  formatted_address: string | null;
+  lat: number;
+  lng: number;
+  google_place_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -65,6 +155,11 @@ export type Database = {
           domain: string;
           category?: string | null;
           actions?: LinkActionItem[];
+          visual_mode?: FeedVisualMode | null;
+          source_type?: string | null;
+          share_slug?: string | null;
+          link_status?: LinkStatus | null;
+          room_id?: string | null;
           created_at?: string;
           expires_at?: string | null;
         };
@@ -77,6 +172,11 @@ export type Database = {
           domain?: string;
           category?: string | null;
           actions?: LinkActionItem[];
+          visual_mode?: FeedVisualMode | null;
+          source_type?: string | null;
+          share_slug?: string | null;
+          link_status?: LinkStatus | null;
+          room_id?: string | null;
           created_at?: string;
           expires_at?: string | null;
         };
@@ -132,6 +232,50 @@ export type Database = {
         };
         Relationships: [];
       };
+      user_action_events: {
+        Row: UserActionEventRow;
+        Insert: Partial<UserActionEventRow> & Pick<UserActionEventRow, "session_id" | "context_bin" | "action_key" | "action_family" | "domain_family" | "event">;
+        Update: Partial<UserActionEventRow>;
+        Relationships: [];
+      };
+      user_link_states: {
+        Row: UserLinkStateRow;
+        Insert: Partial<UserLinkStateRow> & Pick<UserLinkStateRow, "session_id" | "link_id" | "domain_family">;
+        Update: Partial<UserLinkStateRow>;
+        Relationships: [];
+      };
+      user_recent_action_profile: {
+        Row: UserRecentActionProfileRow;
+        Insert: Partial<UserRecentActionProfileRow>;
+        Update: Partial<UserRecentActionProfileRow>;
+        Relationships: [];
+      };
+      place_locate_cache: {
+        Row: PlaceLocateCacheRow;
+        Insert: {
+          id?: string;
+          place_name_key: string;
+          place_name: string;
+          formatted_address?: string | null;
+          lat: number;
+          lng: number;
+          google_place_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          place_name_key?: string;
+          place_name?: string;
+          formatted_address?: string | null;
+          lat?: number;
+          lng?: number;
+          google_place_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -143,6 +287,56 @@ export type Database = {
           p_user_id?: string | null;
         };
         Returns: undefined;
+      };
+      record_personalization_click: {
+        Args: {
+          p_session_id: string;
+          p_user_id?: string;
+          p_link_id?: string;
+          p_context_bin?: string;
+          p_action_key?: string;
+          p_action_family?: string;
+          p_domain?: string;
+          p_domain_family?: string;
+          p_link_category?: string;
+          p_route_mode?: string;
+          p_metadata?: Json;
+        };
+        Returns: Json;
+      };
+      record_user_action_event: {
+        Args: {
+          p_session_id: string;
+          p_user_id?: string;
+          p_link_id?: string;
+          p_context_bin?: string;
+          p_action_key?: string;
+          p_action_family?: string;
+          p_domain?: string;
+          p_domain_family?: string;
+          p_link_category?: string;
+          p_route_mode?: string;
+          p_event?: string;
+          p_metadata?: Json;
+        };
+        Returns: Json;
+      };
+      record_link_reopen: {
+        Args: {
+          p_session_id: string;
+          p_link_id: string;
+          p_user_id?: string;
+          p_domain_family?: string;
+          p_link_category?: string;
+        };
+        Returns: Json;
+      };
+      merge_guest_personalization: {
+        Args: {
+          p_session_id: string;
+          p_user_id: string;
+        };
+        Returns: Json;
       };
     };
     Enums: Record<string, never>;

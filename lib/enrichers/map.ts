@@ -6,12 +6,15 @@ import {
   withDomainFallback,
 } from "@/lib/enrichers/fetch-page-metadata";
 import {
+  buildGoogleEarthAction,
   buildGoogleMapsNavigateHref,
   buildKakaoMapSearchAction,
   buildNaverMapSearchAction,
 } from "@/lib/resolvers/deep-links";
+import { isDomesticMapPlace, parseGoogleMapCoords } from "@/lib/resolvers/place-map-region";
 import { KAKAO_T_APP_OPEN } from "@/lib/resolvers/kakao-taxi-deep-links";
 import { parseMapTitleFromUrl } from "@/lib/enrichers/url-intelligence";
+import { openOriginalLabel } from "@/lib/copy/human-ko";
 import type { EnrichedLink, Enricher, EnricherContext } from "@/lib/enrichers/types";
 import type { LinkActionItem } from "@/types/database";
 
@@ -64,9 +67,20 @@ function buildMapActions(
   const preferNavigate =
     isCommuteHour(context.hour) || context.locationCategory === "commute";
   const place = placeName?.trim() || null;
+  const domestic =
+    !place ||
+    isDomesticMapPlace({
+      sourceUrl: url,
+      title: place,
+      placeName: place,
+    });
 
   const primary = createOpenAction({
-    label: preferNavigate ? "🚗 길찾기" : "📍 지도 열기",
+    label: preferNavigate
+      ? "🚗 길찾기"
+      : domestic
+        ? "📍 지도 열기"
+        : "Google 지도에서 열기",
     href: preferNavigate ? buildGoogleMapsNavigateHref(url) : url,
     icon: "map",
     copyText: place,
@@ -75,7 +89,7 @@ function buildMapActions(
 
   const secondary: LinkActionItem[] = [];
 
-  if (place) {
+  if (place && domestic) {
     secondary.push(
       createOpenAction({
         label: `🚕 카카오T · ${place.slice(0, 12)}`,
@@ -85,6 +99,10 @@ function buildMapActions(
       }),
       buildKakaoMapSearchAction(place),
       buildNaverMapSearchAction(place)
+    );
+  } else if (place && !domestic) {
+    secondary.push(
+      buildGoogleEarthAction(place, parseGoogleMapCoords(url))
     );
   }
 
@@ -101,7 +119,7 @@ function buildMapActions(
 
   secondary.push(
     createOpenAction({
-      label: "원본 열기",
+      label: openOriginalLabel(),
       href: url,
       icon: "external-link",
       copyText: place,
@@ -130,10 +148,16 @@ export const mapEnricher: Enricher = {
     const title =
       normalized.fallback.titleFromDomain && urlTitle
         ? urlTitle
-        : normalized.title;
-    const hasRealTitle = Boolean(metadata.title?.trim() || urlTitle?.trim());
+        : normalized.title ?? urlTitle;
+    const hasRealTitle = Boolean(
+      metadata.title?.trim() || urlTitle?.trim()
+    );
 
-    const actions = buildMapActions(normalized.url, context, title);
+    const actions = buildMapActions(
+      normalized.url,
+      context,
+      title ?? urlTitle
+    );
     const domain = mapDomainLabel(parsed.hostname);
 
     return {

@@ -4,7 +4,7 @@ import { readActionCopyText, runLinkAction } from "@/lib/actions/execute-link-ac
 import { appendAnalyticsEvent } from "@/lib/analytics/store";
 import type { EnrichedLink } from "@/lib/enrichers/types";
 import type { LinkActionItem, LinkRow } from "@/types/database";
-import type { AnalyticsSurface, BlinkAnalyticsEventInput, FunnelStep } from "@/lib/analytics/types";
+import type { AnalyticsSurface, FunnelStep } from "@/lib/analytics/types";
 export {
   endAnalyticsFlow,
   readAnalyticsFlowId,

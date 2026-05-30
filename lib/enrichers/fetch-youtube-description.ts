@@ -1,3 +1,4 @@
+import { GLANGO } from "@/lib/brand/glango";
 import { normalizeYouTubeUrl } from "@/lib/enrichers/youtube-url";
 
 const FETCH_TIMEOUT_MS = 6_000;
@@ -15,7 +16,7 @@ export async function fetchYouTubeDescription(
         Accept: "text/html",
         "Accept-Language": "ko-KR,ko;q=0.9,en;q=0.5",
         "User-Agent":
-          "Mozilla/5.0 (compatible; BlinkEnricher/1.0; +https://blink.app)",
+          `Mozilla/5.0 (compatible; GlangoEnricher/1.0; +https://${GLANGO.domain})`,
       },
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       cache: "no-store",

@@ -1,4 +1,11 @@
-import type { EnricherContext, LocationCategory } from "@/lib/enrichers/types";
+import { LINK_CATEGORIES } from "@/lib/categories/types";
+import type {
+  CategoryWeights,
+  EnricherContext,
+  LocationCategory,
+  SuiteWeights,
+} from "@/lib/enrichers/types";
+import { ALL_SMART_SUITES } from "@/lib/actions/smart-suite-types";
 
 
 
@@ -88,15 +95,74 @@ export function normalizeEnricherContext(
 
 
 
-  return { hour, installedApps, locationCategory };
+  const categoryWeights = normalizeCategoryWeights(partial?.categoryWeights);
+  const suiteWeights = normalizeSuiteWeights(partial?.suiteWeights);
 
+  return {
+    hour,
+    installedApps,
+    locationCategory,
+    ...(categoryWeights ? { categoryWeights } : {}),
+    ...(suiteWeights ? { suiteWeights } : {}),
+    ...(partial?.pinnedSuites ? { pinnedSuites: partial.pinnedSuites } : {}),
+    ...(partial?.routing ? { routing: partial.routing } : {}),
+    ...(partial?.preloadedPageMetadata
+      ? { preloadedPageMetadata: partial.preloadedPageMetadata }
+      : {}),
+  };
+}
+
+function normalizeCategoryWeights(
+  partial?: CategoryWeights | null
+): CategoryWeights | undefined {
+  if (!partial || typeof partial !== "object") {
+    return undefined;
+  }
+
+  const weights: CategoryWeights = {};
+  let hasValue = false;
+
+  for (const category of LINK_CATEGORIES) {
+    const raw = partial[category];
+    if (typeof raw !== "number" || Number.isNaN(raw) || raw <= 0) {
+      continue;
+    }
+
+    weights[category] = Math.min(1, raw);
+    hasValue = true;
+  }
+
+  return hasValue ? weights : undefined;
+}
+
+function normalizeSuiteWeights(
+  partial?: SuiteWeights | null
+): SuiteWeights | undefined {
+  if (!partial || typeof partial !== "object") {
+    return undefined;
+  }
+
+  const weights: SuiteWeights = {};
+  let hasValue = false;
+
+  for (const suite of ALL_SMART_SUITES) {
+    const raw = partial[suite];
+    if (typeof raw !== "number" || Number.isNaN(raw) || raw <= 0) {
+      continue;
+    }
+
+    weights[suite] = Math.min(1, raw);
+    hasValue = true;
+  }
+
+  return hasValue ? weights : undefined;
 }
 
 
 
 export function isCommuteHour(hour: number) {
 
-  return hour >= 7 && hour < 9;
+  return hour >= 7 && hour < 10;
 
 }
 

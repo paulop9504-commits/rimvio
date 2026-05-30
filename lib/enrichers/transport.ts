@@ -11,14 +11,13 @@ import {
 import {
   buildTransportAppHref,
   detectTransportKind,
-  isTransportDomain,
-  isTransportUrl,
   parseHintFromUrlPath,
   transportAppLabel,
   transportPrimaryLabel,
 } from "@/lib/resolvers/transport-commerce-deep-links";
 import { parseMapTitleFromUrl, parseTitleFromUrl } from "@/lib/enrichers/url-intelligence";
 import { KAKAO_T_APP_OPEN } from "@/lib/resolvers/kakao-taxi-deep-links";
+import { openOriginalLabel } from "@/lib/copy/human-ko";
 import type { EnrichedLink, Enricher, EnricherContext } from "@/lib/enrichers/types";
 import type { LinkActionItem } from "@/types/database";
 
@@ -58,7 +57,7 @@ function buildTransportActions(
   if (appHref) {
     secondary.push(
       createOpenAction({
-        label: transportAppLabel(kind),
+        label: transportAppLabel(kind, domain),
         href: appHref,
         icon: "transit",
         copyText,
@@ -88,7 +87,7 @@ function buildTransportActions(
 
   secondary.push(
     createOpenAction({
-      label: "원본 열기",
+      label: openOriginalLabel(),
       href: url,
       icon: "external-link",
       copyText,

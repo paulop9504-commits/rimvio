@@ -1,36 +1,70 @@
 import type { LinkRow } from "@/types/database";
-import { demoSampleLinks } from "@/lib/demo/sample-links";
+import { funFeedLinks } from "@/lib/demo/fun-feed-links";
+import {
+  ensureExperimentLabFeed,
+  EXPERIMENT_LAB_FLAG,
+  isExperimentLabMode,
+} from "@/lib/demo/reset-experiment-lab";
+import { readLocalLinks, writeLocalLinks, clearDismissedLinkIds } from "@/lib/local-links/store";
 
-const STORAGE_KEY = "blink-local-links";
-const DEMO_FLAG = "blink-demo-seeded";
+const DEMO_FLAG = "blink-fun-feed-v3";
+const FUN_FEED_MARKER = "fun-google-portal";
 
-export function seedDemoLinks(force = false) {
+function needsFunSeed() {
+  if (isExperimentLabMode()) {
+    return false;
+  }
+
+  const existing = readLocalLinks();
+
+  if (existing.length === 0) {
+    return true;
+  }
+
+  if (localStorage.getItem(DEMO_FLAG) === "1") {
+    return !existing.some((link) => link.id === FUN_FEED_MARKER);
+  }
+
+  return true;
+}
+
+export const LOCAL_LINKS_UPDATED = "glango-local-links-updated";
+
+function notifyLocalLinksUpdated() {
   if (typeof window === "undefined") {
-    return demoSampleLinks;
+    return;
   }
 
-  if (!force && sessionStorage.getItem(DEMO_FLAG) === "1") {
-    return readDemoLinks();
+  window.dispatchEvent(new Event(LOCAL_LINKS_UPDATED));
+}
+
+export function seedDemoLinks(force = false): LinkRow[] {
+  if (typeof window === "undefined") {
+    return funFeedLinks;
   }
 
-  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(demoSampleLinks));
-  sessionStorage.setItem(DEMO_FLAG, "1");
-  return demoSampleLinks;
+  if (isExperimentLabMode()) {
+    return ensureExperimentLabFeed(force);
+  }
+
+  if (!force && !needsFunSeed()) {
+    const existing = readLocalLinks();
+    return existing.length > 0 ? existing : funFeedLinks;
+  }
+
+  writeLocalLinks(funFeedLinks);
+  clearDismissedLinkIds();
+  localStorage.setItem(DEMO_FLAG, "1");
+  notifyLocalLinksUpdated();
+  return funFeedLinks;
 }
 
 export function readDemoLinks(): LinkRow[] {
-  try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return [];
-    }
-    return JSON.parse(raw) as LinkRow[];
-  } catch {
-    return [];
-  }
+  return readLocalLinks();
 }
 
 export function clearDemoLinks() {
-  sessionStorage.removeItem(STORAGE_KEY);
-  sessionStorage.removeItem(DEMO_FLAG);
+  localStorage.removeItem(DEMO_FLAG);
+  localStorage.removeItem(EXPERIMENT_LAB_FLAG);
+  writeLocalLinks([]);
 }

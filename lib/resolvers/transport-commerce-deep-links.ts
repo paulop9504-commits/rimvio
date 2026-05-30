@@ -1,47 +1,9 @@
 import { normalizeInputUrl } from "@/lib/enrichers/fetch-page-metadata";
-
-function decodeSegment(value: string) {
-  try {
-    return decodeURIComponent(value.replace(/\+/g, " ")).trim();
-  } catch {
-    return value.replace(/\+/g, " ").trim();
-  }
-}
-
-function humanizeSlug(value: string) {
-  const decoded = decodeSegment(value);
-  const cleaned = decoded
-    .replace(/\.(html?|php|aspx)$/i, "")
-    .replace(/[-_]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  if (cleaned.length < 2 || cleaned.length > 100) {
-    return null;
-  }
-
-  if (/^[a-f0-9-]{20,}$/i.test(cleaned)) {
-    return null;
-  }
-
-  return /[a-zA-Z가-힣0-9]/.test(cleaned) ? cleaned : null;
-}
+import { parseBestTitleFromUrl } from "@/lib/enrichers/url-intelligence";
 
 /** Best-effort product/place hint from URL path when og title is weak. */
 export function parseHintFromUrlPath(rawUrl: string): string | null {
-  try {
-    const parsed = normalizeInputUrl(rawUrl);
-    const segments = parsed.pathname.split("/").filter(Boolean);
-    const last = segments[segments.length - 1];
-
-    if (last) {
-      return humanizeSlug(last);
-    }
-  } catch {
-    // Ignore invalid URLs.
-  }
-
-  return null;
+  return parseBestTitleFromUrl(rawUrl);
 }
 
 export function buildCommerceAppHref(rawUrl: string, domain: string): string | null {
@@ -82,6 +44,30 @@ export function buildCommerceAppHref(rawUrl: string, domain: string): string | n
     if (normalized.includes("zigzag")) {
       return `zigzag://open?url=${encodeURIComponent(url)}`;
     }
+
+    if (normalized.includes("kurly") || normalized.includes("marketkurly")) {
+      return `kurly://open?url=${encodeURIComponent(url)}`;
+    }
+
+    if (normalized.includes("auction")) {
+      return `auction://open?url=${encodeURIComponent(url)}`;
+    }
+
+    if (normalized.includes("ssg") || normalized.includes("emart")) {
+      return `ssg://open?url=${encodeURIComponent(url)}`;
+    }
+
+    if (normalized.includes("lotte")) {
+      return `lottemall://open?url=${encodeURIComponent(url)}`;
+    }
+
+    if (normalized.includes("tmon")) {
+      return `tmon://open?url=${encodeURIComponent(url)}`;
+    }
+
+    if (normalized.includes("oliveyoung")) {
+      return `oliveyoung://open?url=${encodeURIComponent(url)}`;
+    }
   } catch {
     return null;
   }
@@ -117,12 +103,22 @@ export function commerceAppLabel(domain: string): string {
   return "📱 쇼핑 앱으로";
 }
 
-export type TransportKind = "stay" | "train" | "transit" | "navigation" | "mobility";
+export type TransportKind =
+  | "stay"
+  | "train"
+  | "transit"
+  | "navigation"
+  | "flight"
+  | "activity"
+  | "mobility";
 
 export function detectTransportKind(rawUrl: string, domain: string): TransportKind {
   const target = `${domain} ${rawUrl}`.toLowerCase();
 
   if (/yanolja|goodchoice|yeogi|airbnb|booking\.com|agoda|hotels\.com|hotel/i.test(target)) {
+    if (/flight|air|항공|aviation/i.test(target) && !/hotel|stay|숙소/i.test(target)) {
+      return "flight";
+    }
     return "stay";
   }
 
@@ -138,6 +134,21 @@ export function detectTransportKind(rawUrl: string, domain: string): TransportKi
     return "transit";
   }
 
+  if (/klook/i.test(target)) {
+    return "activity";
+  }
+
+  if (
+    /trip\.com|skyscanner|expedia|koreanair|asiana|jejuair|twayair|jinair|airbusan|fly/i.test(
+      target
+    )
+  ) {
+    if (/hotel|stay|resort/i.test(target)) {
+      return "stay";
+    }
+    return "flight";
+  }
+
   return "mobility";
 }
 
@@ -151,6 +162,10 @@ export function transportPrimaryLabel(kind: TransportKind) {
       return "🚌 대중교통 열기";
     case "navigation":
       return "🚗 T맵 길찾기";
+    case "flight":
+      return "✈️ 항공·여행 열기";
+    case "activity":
+      return "🎫 티켓·액티비티 열기";
     default:
       return "🚉 교통 열기";
   }
@@ -172,6 +187,9 @@ export function buildTransportAppHref(
       }
       return `tmap://openurl?url=${encodedUrl}`;
     case "train":
+      if (/korail|letskorail|srail/i.test(domain)) {
+        return `korailtalk://open?url=${encodedUrl}`;
+      }
       return null;
     case "stay":
       if (/yanolja/i.test(domain)) {
@@ -183,12 +201,33 @@ export function buildTransportAppHref(
         return `kakaomap://search?q=${encodeURIComponent(query)}`;
       }
       return null;
+    case "flight":
+      if (/trip/i.test(domain)) {
+        return `trip://deeplink?url=${encodedUrl}`;
+      }
+      if (/klook/i.test(domain)) {
+        return `klook://webview?url=${encodedUrl}`;
+      }
+      if (/skyscanner/i.test(domain)) {
+        return `skyscanner://webview?url=${encodedUrl}`;
+      }
+      return null;
+    case "activity":
+      if (/klook/i.test(domain)) {
+        return `klook://webview?url=${encodedUrl}`;
+      }
+      if (/trip/i.test(domain)) {
+        return `trip://deeplink?url=${encodedUrl}`;
+      }
+      return null;
     default:
       return null;
   }
 }
 
-export function transportAppLabel(kind: TransportKind) {
+export function transportAppLabel(kind: TransportKind, domain = "") {
+  const normalized = domain.toLowerCase();
+
   switch (kind) {
     case "navigation":
       return "📱 T맵 앱으로";
@@ -196,6 +235,25 @@ export function transportAppLabel(kind: TransportKind) {
       return "📱 야놀자 앱으로";
     case "transit":
       return "🗺 카카오맵 검색";
+    case "flight":
+      if (/trip/i.test(normalized)) {
+        return "📱 Trip.com 앱으로";
+      }
+      if (/klook/i.test(normalized)) {
+        return "📱 Klook 앱으로";
+      }
+      if (/skyscanner/i.test(normalized)) {
+        return "📱 Skyscanner 앱으로";
+      }
+      return "📱 여행 앱으로";
+    case "activity":
+      if (/klook/i.test(normalized)) {
+        return "📱 Klook 앱으로";
+      }
+      if (/trip/i.test(normalized)) {
+        return "📱 Trip.com 앱으로";
+      }
+      return "📱 액티비티 앱으로";
     default:
       return "📱 교통 앱으로";
   }
@@ -218,7 +276,15 @@ const TRANSPORT_HOST_SUFFIXES = [
   "airbus.koreaairports.co.kr",
   "klook.com",
   "trip.com",
+  "kr.trip.com",
+  "skyscanner.co.kr",
+  "skyscanner.com",
+  "expedia.co.kr",
   "kakaomobility.com",
+  "airbnb.com",
+  "booking.com",
+  "agoda.com",
+  "hotels.com",
 ];
 
 export function isTransportDomain(domain: string) {

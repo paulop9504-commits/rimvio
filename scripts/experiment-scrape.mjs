@@ -90,6 +90,51 @@ const CASES = [
     url: "https://www.musinsa.com/products/123456",
     expect: { enricher: "commerce-v1", actionIncludes: "무신사" },
   },
+  {
+    name: "Baemin delivery",
+    url: "https://www.baemin.com/",
+    expect: { enricher: "delivery-v1", actionIncludes: "배민" },
+  },
+  {
+    name: "Coupang Eats delivery",
+    url: "https://www.coupang.com/eats/store/12345/gyochon-chicken",
+    expect: { enricher: "delivery-v1", actionIncludes: "쿠팡이츠", titleIncludes: "gyochon" },
+  },
+  {
+    name: "Klook activity",
+    url: "https://www.klook.com/ko/activity/12345/",
+    expect: { enricher: "transport-v1", actionIncludes: "액티비티" },
+  },
+  {
+    name: "Trip.com flight",
+    url: "https://kr.trip.com/flights/",
+    expect: { enricher: "transport-v1", actionIncludes: "항공" },
+  },
+  {
+    name: "Netflix OTT",
+    url: "https://www.netflix.com/browse",
+    expect: { enricher: "ott-v1", actionIncludes: "Netflix" },
+  },
+  {
+    name: "TVING OTT",
+    url: "https://www.tving.com/",
+    expect: { enricher: "ott-v1", actionIncludes: "TVING" },
+  },
+  {
+    name: "Melon ticket",
+    url: "https://ticket.melon.com/",
+    expect: { enricher: "ticket-v1", actionIncludes: "멜론" },
+  },
+  {
+    name: "Interpark ticket path",
+    url: "https://ticket.interpark.com/",
+    expect: { enricher: "ticket-v1", actionIncludes: "인터파크" },
+  },
+  {
+    name: "Naver blog",
+    url: "https://blog.naver.com/",
+    expect: { enricher: "naver-v1", actionIncludes: "블로그" },
+  },
 ];
 
 const DEFAULT_CONTEXT = {
