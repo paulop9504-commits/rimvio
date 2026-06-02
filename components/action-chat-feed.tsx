@@ -8,7 +8,6 @@ import {
 } from "@/components/action-chat/action-date-picker-sheet";
 import { OcrReviewDatePickerSheet } from "@/components/action-chat/ocr-review-date-picker-sheet";
 import { ResourcePoolSheet } from "@/components/action-chat/resource-pool-sheet";
-import { FixedContainerBar } from "@/components/action-chat/fixed-container-bar";
 import { ActiveActionsSheet } from "@/components/action-chat/active-actions-sheet";
 import { CalendarBoard } from "@/components/action-chat/calendar-board";
 import { ActionChatInputBar } from "@/components/action-chat/input-bar";
@@ -269,14 +268,6 @@ export function ActionChatFeed({
               </Link>
             </div>
           </div>
-          <FixedContainerBar
-            activeActionCount={badgeCount}
-            resourcePoolCount={resourcePoolCount}
-            onSelectSlot={() => undefined}
-            onOpenCalendar={() => setActiveActionsOpen(true)}
-            onOpenResourcePool={() => setResourcePoolOpen(true)}
-            className="mt-2 rounded-xl border border-white/[0.06] bg-transparent px-0 py-0"
-          />
         </header>
 
         {activeLink ? (
