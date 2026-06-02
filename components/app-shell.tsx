@@ -3,6 +3,7 @@ import { Suspense, type ReactNode } from "react";
 import { AppNav } from "@/components/app-nav";
 import { GlangoLogo } from "@/components/glango-logo";
 import { GLANGO } from "@/lib/brand/glango";
+import { glangoHeaderChromeClass } from "@/lib/brand/glango-neon-theme";
 import { GOLDEN } from "@/lib/ui/golden-layout";
 import { GRID } from "@/lib/ui/responsive-grid";
 import { cn } from "@/lib/utils";
@@ -14,7 +15,7 @@ type AppShellProps = {
   hideTitle?: boolean;
   immersive?: boolean;
   compact?: boolean;
-  /** iOS grouped list gray surface (#f2f2f7) — inbox, room, welcome */
+  /** Grouped list surface — neon OS base layer */
   iosSurface?: boolean;
   /** Action Chat — feed renders its own header */
   hideBranding?: boolean;
@@ -42,7 +43,7 @@ export function AppShell({
           className={cn(
             GRID.column,
             "flex h-dvh flex-col overflow-hidden",
-            iosSurface ? "bg-[#f2f2f7]" : "bg-background"
+            iosSurface ? "bg-glango-base" : "bg-glango-base"
           )}
         >
           <header
@@ -53,10 +54,14 @@ export function AppShell({
                 ? "absolute inset-x-0 top-0 z-30 bg-gradient-to-b from-background/90 to-transparent px-[var(--space-phi)] pb-[var(--space-u)] pt-[max(0.75rem,env(safe-area-inset-top))]"
                 : compact
                   ? cn(
-                      "sticky top-0 z-10 px-[var(--space-phi)] pb-[var(--space-u)] pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl",
-                      iosSurface ? "bg-[#f2f2f7]/90" : "bg-background/85"
+                      glangoHeaderChromeClass,
+                      "sticky top-0 z-10 px-[var(--space-phi)] pb-[var(--space-u)] pt-[max(0.75rem,env(safe-area-inset-top))]",
+                      iosSurface ? "bg-glango-base/90" : "bg-glango-base/85",
                     )
-                  : "sticky top-0 z-10 bg-background/80 px-[var(--space-phi)] pb-[var(--space-phi)] pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-xl"
+                  : cn(
+                      glangoHeaderChromeClass,
+                      "sticky top-0 z-10 bg-glango-base/80 px-[var(--space-phi)] pb-[var(--space-phi)] pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-2xl",
+                    )
             }
           >
             <Link
@@ -99,7 +104,7 @@ export function AppShell({
           <main
             className={
               immersive
-                ? "relative flex min-h-0 flex-1 flex-col"
+                ? "relative flex min-h-0 flex-1 flex-col pb-[max(3.05rem,calc(env(safe-area-inset-bottom)+2.5rem))] lg:pb-0"
                 : compact
                   ? "flex min-h-0 flex-1 flex-col overflow-hidden"
                   : "flex-1 px-[var(--space-phi)] pb-[max(var(--space-phi2),env(safe-area-inset-bottom))]"

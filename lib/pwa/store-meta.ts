@@ -3,9 +3,9 @@ import { GLANGO } from "@/lib/brand/glango";
 /** App Store / Play Store / OG listing copy — single source of truth. */
 export const STORE_META = {
   shortDescription:
-    "카톡·브라우저 링크를 지금 할 일로 정리하고, 함께 볼 링크는 한 방에서.",
+    "Your Life, Operable. 말·링크·사진 → Action Dock으로 바로 실행.",
   longDescription:
-    "Glango(글랑고)는 카카오톡·브라우저에서 받은 링크를 바로 '지금 할 일'로 정리해 주는 링크 companion 앱입니다. 스와이프로 정리하고, 함께하기 방에서 링크를 공유하세요. 처음 시작할 때 나만의 글랑고 색을 뽑을 수 있어요.",
+    "Glango(글랑고)는 Human Intent를 위한 Action OS입니다. 대화가 아니라 실행 — 말·링크·사진·일정을 Action Dock과 Custom Trigger로 operable하게 만듭니다. 카톡·브라우저 공유는 ingress 중 하나이며, NAVIGATE·REGISTER_ACTION·correction까지 이어지는 개인 automation 레이어입니다.",
   keywords: [
     "링크",
     "할일",
@@ -28,13 +28,13 @@ export const STORE_META = {
       path: "/store/feed-mobile.png",
       width: 390,
       height: 844,
-      label: "나의 링크 — 스와이프 피드",
+      label: "실행 — Action Dock 피드",
     },
     welcome: {
       path: "/store/welcome-mobile.png",
       width: 390,
       height: 844,
-      label: "시작하기 — 글랑고 색 뽑기",
+      label: "시작하기 — Your Life, Operable.",
     },
   },
 } as const;

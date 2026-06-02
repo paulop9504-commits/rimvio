@@ -22,6 +22,24 @@ import {
 
 } from "@/lib/action-chat/orchestrator-types";
 
+import {
+  globalBrainActionableToMasterWire,
+  parseGlobalBrainActionableWire,
+} from "@/lib/global-brain/global-brain-actionable-output";
+import { dockUpdateToMasterWire } from "@/lib/action-os/dock-update-to-master-wire";
+import { actionIntentToMasterWire } from "@/lib/action-dispatcher/action-intent-to-master-wire";
+import { parseActionIntentWire } from "@/lib/action-dispatcher/parse-action-intent-wire";
+import {
+  parseDockUpdateWire,
+  parseRegisterActionWire,
+} from "@/lib/action-os/parse-action-os-wire";
+import { commitRegisterAction } from "@/lib/action-os/custom-trigger-store";
+import { REGISTER_ACTION_CONFIRM_MESSAGE } from "@/lib/action-os/types";
+import {
+  actionArchitectToMasterWire,
+  parseActionArchitectWire,
+} from "@/lib/action-registry/parse-action-architect";
+
 
 
 const ICON_MAP: Record<string, string> = {
@@ -83,6 +101,22 @@ export function wireActionsToLinkItems(
     .map((action, index) => {
       const label = action.label?.trim() || "열기";
       const url = action.url.trim();
+
+      if (/^glango:\/\/global-brain\//i.test(url)) {
+        const code = decodeURIComponent(
+          url.replace(/^glango:\/\/global-brain\//i, "").split("?")[0] ?? ""
+        );
+        return {
+          id: `global-brain-${index}`,
+          label,
+          kind: "custom" as const,
+          payload: {
+            globalBrainActionCode: code,
+            globalBrainActionPrompt: label,
+            orchestratorIndex: index,
+          },
+        };
+      }
 
       if (isTelHref(url)) {
         const phone = url.replace(/^tel(?:prompt)?:/i, "");
@@ -397,6 +431,36 @@ export function parseMasterOrchestratorJson(raw: string): MasterOrchestratorWire
   try {
 
     const parsed = JSON.parse(raw) as Record<string, unknown>;
+
+    const register = parseRegisterActionWire(parsed);
+    if (register) {
+      commitRegisterAction(register);
+      return {
+        summary: REGISTER_ACTION_CONFIRM_MESSAGE,
+        actions: [],
+        metadata: { intent: "ACTION", trust_level_adjustment: "NONE" },
+      };
+    }
+
+    const intent = parseActionIntentWire(parsed);
+    if (intent) {
+      return actionIntentToMasterWire(intent);
+    }
+
+    const dock = parseDockUpdateWire(parsed);
+    if (dock) {
+      return dockUpdateToMasterWire(dock);
+    }
+
+    const globalBrain = parseGlobalBrainActionableWire(parsed);
+    if (globalBrain) {
+      return globalBrainActionableToMasterWire(globalBrain);
+    }
+
+    const architect = parseActionArchitectWire(parsed);
+    if (architect) {
+      return actionArchitectToMasterWire(architect);
+    }
 
     if (!parsed || typeof parsed.summary !== "string") {
 

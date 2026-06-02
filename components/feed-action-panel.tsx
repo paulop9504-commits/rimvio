@@ -49,7 +49,7 @@ export function FeedActionPanel({
     <div
       className={cn(
         isCard &&
-          "overflow-hidden rounded-[20px] border border-black/[0.05] bg-[#FAFAFC] ring-1 ring-black/[0.03]",
+          "overflow-hidden rounded-[20px] border border-border bg-[#FAFAFC] ring-1 ring-black/[0.03]",
         !isCard && !isOverlay && "space-y-2.5",
         isOverlay && "space-y-2.5",
         className
@@ -84,8 +84,8 @@ export function FeedActionPanel({
               "mx-auto flex w-[var(--golden-major)] max-w-full items-center justify-center gap-2",
               "rounded-[var(--space-phi)] px-[var(--space-phi2)] py-[var(--space-phi)] text-[14px] font-medium",
               isOverlay
-                ? "bg-white/15 text-white backdrop-blur-md"
-                : "bg-[#007AFF]/10 text-[#007AFF]"
+                ? "bg-glango-surface/15 text-white backdrop-blur-md"
+                : "bg-glango-neon-purple/10 text-glango-neon-cyan"
             )}
           >
             <Loader2 className="size-4 animate-spin" />
@@ -122,7 +122,7 @@ export function FeedActionPanel({
                 className={cn(
                   "shrink-0",
                   isOverlay &&
-                    "!border-white/25 !bg-white/18 !text-white !shadow-[0_4px_12px_rgba(0,0,0,0.12)]"
+                    "!border-white/25 !bg-glango-surface/18 !text-white !shadow-[0_4px_12px_rgba(0,0,0,0.12)]"
                 )}
               >
                 {cleanFeedActionLabel(action.label, locale)}

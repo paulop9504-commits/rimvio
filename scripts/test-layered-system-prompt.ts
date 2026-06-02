@@ -83,7 +83,7 @@ const systemPrompt = buildLayeredMasterOrchestratorSystemPrompt({
 assert.match(systemPrompt, /# \[SYSTEM_PROMPT\]/);
 assert.match(systemPrompt, /Master Orchestrator/);
 assert.match(systemPrompt, /Current Date: 2026-05-29/);
-assert.match(systemPrompt, /Action-Agent OS/);
+assert.match(systemPrompt, /Personal Operating System|Vitality/i);
 
 assert.equal(
   deriveRelevantContext({

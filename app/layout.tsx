@@ -31,6 +31,7 @@ export const metadata: Metadata = {
     icon: [
       { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/icons/icon-1024.png", sizes: "1024x1024", type: "image/png" },
       { url: "/glango-icon.svg", type: "image/svg+xml" },
     ],
     apple: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
@@ -76,7 +77,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
-  themeColor: "#8B5CF6",
+  themeColor: "#1c1c1c",
 };
 
 export default async function RootLayout({

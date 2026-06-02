@@ -30,7 +30,7 @@ export function PwaInstallNudge() {
       className={cn(
         "pointer-events-auto fixed inset-x-4 z-40 mx-auto max-w-md",
         "bottom-[calc(max(3.25rem,calc(env(safe-area-inset-bottom)+2.85rem))+0.5rem)]",
-        "rounded-2xl border border-black/[0.06] bg-white/95 p-4 shadow-lg backdrop-blur-xl"
+        "rounded-2xl border border-border bg-glango-surface/95 p-4 shadow-lg backdrop-blur-xl"
       )}
     >
       <p className="text-sm font-semibold">홈 화면에 추가해 두면 더 빨라요</p>
@@ -40,7 +40,7 @@ export function PwaInstallNudge() {
       <div className="mt-3 flex gap-2">
         <button
           type="button"
-          className="flex-1 rounded-xl bg-[#007AFF] px-3 py-2 text-sm font-semibold text-white"
+          className="flex-1 rounded-xl bg-glango-neon-purple px-3 py-2 text-sm font-semibold text-white"
           onClick={() => {
             markPwaInstallNudgeShown();
             setVisible(false);

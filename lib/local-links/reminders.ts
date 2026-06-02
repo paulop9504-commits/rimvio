@@ -3,6 +3,11 @@ import {
   pushRemindersToServiceWorker,
 } from "@/lib/pwa/reminder-bridge";
 import { ingestInternalReminder } from "@/lib/notification-shadow/ingest-adapters";
+import {
+  archiveLinkReminderEvent,
+  ingestLinkReminderEvent,
+  migrateLinkRemindersToEventCandidates,
+} from "@/lib/events/link-reminder-ingest";
 
 export type LinkReminder = {
   id: string;
@@ -99,6 +104,7 @@ export function scheduleLinkReminderAt(input: {
   writeJson(next);
   void pushRemindersToServiceWorker(next);
   ingestInternalReminder(reminder);
+  ingestLinkReminderEvent(reminder);
   return reminder;
 }
 
@@ -126,14 +132,17 @@ export function scheduleLinkReminder(input: {
   writeJson(next);
   void pushRemindersToServiceWorker(next);
   ingestInternalReminder(reminder);
+  ingestLinkReminderEvent(reminder);
   return reminder;
 }
 
 export function readLinkReminders() {
-  return readJson().sort(
+  const items = readJson().sort(
     (left, right) =>
       new Date(left.fireAt).getTime() - new Date(right.fireAt).getTime()
   );
+  migrateLinkRemindersToEventCandidates(items);
+  return items;
 }
 
 export function readLinkReminderForLink(linkId: string) {
@@ -149,6 +158,10 @@ export function clearReminderByLinkId(linkId: string) {
 }
 
 export function clearReminder(id: string) {
+  const removed = readJson().find((item) => item.id === id);
+  if (removed) {
+    archiveLinkReminderEvent(removed.linkId);
+  }
   const next = readJson().filter((item) => item.id !== id);
   writeJson(next);
   void pushRemindersToServiceWorker(next);

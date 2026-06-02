@@ -77,6 +77,34 @@ export function computeActionCountdown(
   };
 }
 
+export function computeStudyCountUpElapsed(
+  startedAtIso: string,
+  nowMs = Date.now(),
+): { clock: string; headline: string; minutes: number } | null {
+  const started = parseActionTargetDatetime(startedAtIso);
+  if (!started) {
+    return null;
+  }
+
+  const elapsedMs = Math.max(0, nowMs - started.getTime());
+  const totalSeconds = Math.floor(elapsedMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  const clock =
+    minutes >= 60
+      ? `${Math.floor(minutes / 60)}:${pad(minutes % 60)}:${pad(seconds)}`
+      : `${minutes}:${pad(seconds)}`;
+
+  const headline =
+    minutes <= 0
+      ? `${seconds}초 경과`
+      : minutes < 60
+        ? `${minutes}분 ${seconds}초 경과`
+        : `${Math.floor(minutes / 60)}시간 ${minutes % 60}분 경과`;
+
+  return { clock, headline, minutes };
+}
+
 export function formatActionTargetClock(targetIso: string): string {
   const target = parseActionTargetDatetime(targetIso);
   if (!target) {

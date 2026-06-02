@@ -1,6 +1,6 @@
 export type KnowledgeContainerId = "calendar" | "data";
 
-export type KnowledgeEntityType = "phone" | "text" | "contact" | "note" | "schedule";
+export type KnowledgeEntityType = "phone" | "text" | "contact" | "note" | "schedule" | "place";
 
 export type KnowledgeEntity = {
   id: string;
@@ -10,8 +10,10 @@ export type KnowledgeEntity = {
   value: string;
   searchText: string;
   sourceMessage?: string;
-  /** Resource pool reference — passive link bookmark */
+  /** Link reference when filed from shared URL */
   sourceLinkId?: string;
+  /** Topic container from Data Architect (e.g. news_briefing) */
+  topicContainerId?: string;
   /** Action stream trigger — only set when promoted to schedule */
   scheduledAt?: string;
   createdAt: string;

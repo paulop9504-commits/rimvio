@@ -1,0 +1,60 @@
+---
+description: Glango product & engineering guidelines (Action OS, PWA, orchestrator)
+alwaysApply: true
+---
+
+# Glango product guidelines
+
+**Glango** — personal Action OS. Apple UX simplicity + deterministic orchestrator first, LLM fallback second.
+
+> Not Silent Ghost. See `.cursor/rules/glango-isolation.mdc`.
+
+## Stack
+
+- Next.js App Router, TypeScript
+- Tailwind CSS, shadcn/ui, framer-motion
+- Supabase (@supabase/ssr) for DB/Auth (optional)
+- iOS-first PWA (Share Target API)
+
+## Core guidelines
+
+1. **Apple-level simplicity** — No heavy borders. Padding + `shadow-sm`. Mockups: `.cursor/rules/apple-mobile-ui-prompt.mdc` + `lib/design/apple-mobile-web-ui-prompt.ts`.
+2. **1–2 tap rule** — Action Cards, not plain lists. Prefetch next action before tap.
+3. **Optimistic UI & shimmer** — No spinners. Shimmer skeletons while loading.
+4. **Operable > conversational** — Orchestrator gates before LLM; routing bugs are not prompt bugs.
+5. **PWA first** — Safe-area insets, standalone display, Share Target.
+
+## Enrichment
+
+Link parsing: **`.cursor/rules/glango-enrichment.mdc`**
+
+## Surface layers
+
+Product UX: **`.cursor/rules/glango-jobs-layers.mdc`**
+
+- `/` Feed (Shorts) · `/stack` one-card focus · `/now` Share landing · `/inbox` deep feed
+- Share → `/now` → Done (do not dump into scroll feed)
+
+## UI vocabulary
+
+- Action Card, Prefetch, Shimmer — allowed
+- User copy: Glango / 글랑고 — not Blink, not Silent Ghost
+- Avoid internal infra terms in user-facing copy
+
+## File conventions
+
+- `components/action-card.tsx` — primary interaction surface
+- `lib/enrichers/` — domain enrichers + registry
+- `lib/action-chat/orchestrator/` — chat routing pipeline
+- `lib/supabase/` — client, server, middleware
+- `app/share/` — Share Target bridge
+
+## Action OS spine (current focus)
+
+**`.cursor/rules/action-os-spine.mdc`** + **`docs/ACTION_OS_SPINE.md`**
+
+Only the Context → @ Registry → Proactive prep → Archive ranking loop. Frozen backlog items stay out until the vertical slice ships.
+
+## Tests
+
+After substantive Glango changes: `npm test` **in this repo** (not Silent Ghost).

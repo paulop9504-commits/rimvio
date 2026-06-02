@@ -11,11 +11,11 @@ export function ThoughtBubble({ text, className }: ThoughtBubbleProps) {
   return (
     <div
       className={cn(
-        "rounded-xl border border-[#E8ECF1] bg-gradient-to-br from-[#F8FAFC] to-[#F3F6FA] px-3 py-2.5",
+        "thought-bubble glango-point-surface rounded-xl bg-glango-surface-muted px-3 py-2.5",
         className
       )}
     >
-      <p className="text-[12px] leading-relaxed text-[#64748B]">
+      <p className="text-[12px] leading-relaxed text-white/75">
         <span aria-hidden className="mr-1">
           💡
         </span>

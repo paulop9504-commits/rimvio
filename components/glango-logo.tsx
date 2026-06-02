@@ -1,13 +1,17 @@
 import { GLANGO } from "@/lib/brand/glango";
 import { GlangoBrandMark } from "@/lib/brand/glango-brand-mark";
+import {
+  glangoLogoFrameClass,
+  glangoNeonWordmarkClass,
+} from "@/lib/brand/glango-neon-theme";
 import { cn } from "@/lib/utils";
 
 const SIZE = {
-  xs: 20,
-  sm: 28,
-  md: 36,
-  lg: 52,
-  xl: 72,
+  xs: 22,
+  sm: 32,
+  md: 40,
+  lg: 58,
+  xl: 80,
 } as const;
 
 type GlangoLogoProps = {
@@ -17,6 +21,8 @@ type GlangoLogoProps = {
   showWordmark?: boolean;
   wordmarkClassName?: string;
   showKo?: boolean;
+  /** `white` = white on dark chrome; `light` = black on white chrome. */
+  appearance?: "dark" | "white" | "light";
 };
 
 function GlangoWordmark({
@@ -28,13 +34,7 @@ function GlangoWordmark({
 }) {
   return (
     <span className={cn("inline-flex flex-col leading-none", className)}>
-      <span
-        className={cn(
-          "bg-gradient-to-r from-violet-600 via-fuchsia-500 to-indigo-500",
-          "bg-clip-text text-sm font-bold tracking-tight text-transparent",
-          "drop-shadow-sm"
-        )}
-      >
+      <span className={cn("text-sm font-bold tracking-tight", glangoNeonWordmarkClass)}>
         {GLANGO.name}
       </span>
       {showKo ? (
@@ -53,6 +53,7 @@ export function GlangoLogo({
   showWordmark = false,
   wordmarkClassName,
   showKo = false,
+  appearance = "dark",
 }: GlangoLogoProps) {
   const pixels = SIZE[size];
 
@@ -60,12 +61,11 @@ export function GlangoLogo({
     <span
       className={cn(
         "inline-flex items-center justify-center",
-        framed &&
-          "rounded-2xl bg-white p-1.5 shadow-sm ring-1 ring-black/[0.06]",
+        framed && glangoLogoFrameClass,
         className
       )}
     >
-      <GlangoBrandMark size={pixels} crisp={pixels <= 32} />
+      <GlangoBrandMark size={pixels} crisp={pixels <= 32} appearance={appearance} />
     </span>
   );
 

@@ -93,17 +93,22 @@ export async function saveKnowledgeEntity(input: {
   value: string;
   sourceMessage?: string;
   sourceLinkId?: string;
+  topicContainerId?: string;
   scheduledAt?: string;
+  id?: string;
 }): Promise<KnowledgeEntity> {
   const entity: KnowledgeEntity = {
-    id: `ke-${crypto.randomUUID()}`,
+    id: input.id ?? `ke-${crypto.randomUUID()}`,
     containerId: input.containerId,
     type: input.type,
     label: input.label.trim(),
     value: input.value.trim(),
-    searchText: normalizeSearchText(`${input.label} ${input.value} ${input.sourceMessage ?? ""}`),
+    searchText: normalizeSearchText(
+      `${input.label} ${input.value} ${input.sourceMessage ?? ""} ${input.topicContainerId ?? ""}`
+    ),
     sourceMessage: input.sourceMessage?.trim(),
     sourceLinkId: input.sourceLinkId,
+    topicContainerId: input.topicContainerId,
     scheduledAt: input.scheduledAt,
     createdAt: new Date().toISOString(),
   };

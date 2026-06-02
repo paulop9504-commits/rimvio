@@ -1,5 +1,6 @@
 import {
   computeActionCountdown,
+  computeStudyCountUpElapsed,
   formatActionTargetClock,
 } from "@/lib/action-chat/action-countdown";
 import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
@@ -9,7 +10,9 @@ export type ActiveActionKind =
   | "scheduled_nav"
   | "link_reminder"
   | "revealed_actions"
-  | "pending_confirm";
+  | "pending_confirm"
+  | "projected_event"
+  | "study_focus";
 
 export type ActiveActionEntry = {
   id: string;
@@ -47,6 +50,27 @@ function fromChatMessages(messages: ActionChatMessage[]): ActiveActionEntry[] {
 
   for (const message of messages) {
     if (message.role !== "assistant" || message.loading) {
+      continue;
+    }
+
+    const focusSession = (
+      message.metadata as { study_focus_session?: { startedAt?: string; label?: string } } | undefined
+    )?.study_focus_session;
+    if (focusSession?.startedAt) {
+      const elapsed = computeStudyCountUpElapsed(focusSession.startedAt);
+      entries.push({
+        id: `${message.id}:study-focus`,
+        messageId: message.id,
+        linkId: null,
+        reminderId: null,
+        kind: "study_focus",
+        title: focusSession.label ?? "공부 · 집중",
+        subtitle: `${formatActionTargetClock(focusSession.startedAt)} 시작`,
+        fireAt: focusSession.startedAt,
+        placeName: null,
+        actionCount: 0,
+        countdownLabel: elapsed?.headline ?? null,
+      });
       continue;
     }
 

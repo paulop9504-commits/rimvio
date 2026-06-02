@@ -1,0 +1,15 @@
+{
+  "folders": [
+    {
+      "name": "Glango",
+      "path": "."
+    }
+  ],
+  "settings": {
+    "typescript.tsdk": "node_modules/typescript/lib",
+    "editor.formatOnSave": true
+  },
+  "extensions": {
+    "recommendations": []
+  }
+}

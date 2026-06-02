@@ -14,6 +14,7 @@ import { SettingsAvatarOddsPanel } from "@/components/settings-avatar-odds-panel
 import { SettingsTastePanel } from "@/components/settings-taste-panel";
 import { SettingsScheduleMediumPanel } from "@/components/settings-schedule-medium-panel";
 import { SettingsTrustLevelPanel } from "@/components/settings-trust-level-panel";
+import { SettingsIntegrationsPanel } from "@/components/settings-integrations-panel";
 import { GlangoAvatarDrawPanel } from "@/components/glango-avatar-draw-panel";
 import { WelcomeAvatarBootstrap } from "@/components/welcome-avatar-bootstrap";
 import { useCopy } from "@/hooks/use-copy";
@@ -36,7 +37,7 @@ function Step({
       <span
         className={cn(
           "flex size-7 shrink-0 items-center justify-center rounded-full",
-          "bg-[#007AFF] text-xs font-bold text-white"
+          "bg-glango-neon-purple text-xs font-bold text-white"
         )}
       >
         {n}
@@ -102,6 +103,9 @@ export function WelcomeGuide() {
         <h2 className="text-lg font-semibold tracking-tight">
           {copy.welcome.headline}
         </h2>
+        <p className="mt-1 text-sm font-medium tracking-tight text-[#4A90E2]">
+          {copy.welcome.northStar}
+        </p>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
           {copy.welcome.body}
           <strong className="font-medium text-foreground">
@@ -110,7 +114,7 @@ export function WelcomeGuide() {
           {copy.welcome.bodyEnd}
         </p>
         {standalone ? (
-          <p className="mt-3 text-xs font-medium text-[#007AFF]">
+          <p className="mt-3 text-xs font-medium text-glango-neon-cyan">
             ✓ {copy.welcome.pwaOk}
           </p>
         ) : null}
@@ -151,7 +155,7 @@ export function WelcomeGuide() {
               {copy.welcome.iosStep2Body}
             </Step>
             <Step n={3} title={copy.inbox.title}>
-              <Link href="/welcome?paste=1" className="font-medium text-[#007AFF]">
+              <Link href="/welcome?paste=1" className="font-medium text-glango-neon-cyan">
                 {copy.inbox.paste}
               </Link>
               {copy.welcome.iosStep3Body}
@@ -163,7 +167,7 @@ export function WelcomeGuide() {
       {platform === "other" ? (
         <IosSection title={copy.welcome.desktopSection}>
           <div className="mt-2 text-xs leading-relaxed text-muted-foreground">
-            <Link href="/welcome?paste=1" className="text-[#007AFF]">
+            <Link href="/welcome?paste=1" className="text-glango-neon-cyan">
               {copy.inbox.paste}
             </Link>
             {copy.welcome.desktopEnd}
@@ -182,6 +186,8 @@ export function WelcomeGuide() {
       <SettingsScheduleMediumPanel />
 
       <SettingsTrustLevelPanel />
+
+      <SettingsIntegrationsPanel />
 
       <ActionBuilderPanel className="mx-4" />
 
@@ -202,7 +208,7 @@ export function WelcomeGuide() {
         </p>
         <Link
           href="/privacy"
-          className="mt-3 inline-block text-xs font-medium text-[#007AFF]"
+          className="mt-3 inline-block text-xs font-medium text-glango-neon-cyan"
         >
           {copy.welcome.privacyLink} →
         </Link>

@@ -54,4 +54,22 @@ const actions = buildActionsFromConfirmationData({
 });
 assert.ok(actions.length >= 1, "confirmed data should produce navigation actions");
 
+const flightCheck = assessPlaceConfirmationNeed({
+  message: "항공권 확인해줘",
+  referenceDate: "2026-05-29",
+});
+assert.equal(flightCheck, null, "task command should not trigger place confirm");
+
+const checklist = assessPlaceConfirmationNeed({
+  message: "짐 체크리스트 만들어줘",
+  referenceDate: "2026-05-29",
+});
+assert.equal(checklist, null, "checklist command should not trigger place confirm");
+
+const stationStill = assessPlaceConfirmationNeed({
+  message: "수서역 길찾기",
+  referenceDate: "2026-05-29",
+});
+assert.ok(stationStill?.needsConfirm, "real place navigation should still confirm");
+
 console.log("test-confirmation-logic: ok");

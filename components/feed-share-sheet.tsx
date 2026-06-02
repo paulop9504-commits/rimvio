@@ -276,7 +276,7 @@ export function FeedShareSheet({ link, open, onOpenChange }: FeedShareSheetProps
                   onClick={handleAddToRoom}
                   className={cn(
                     sheetActionClass,
-                    "bg-[#007AFF]/12 text-[#007AFF] ring-1 ring-[#007AFF]/22"
+                    "bg-glango-neon-purple/12 text-glango-neon-cyan ring-1 ring-[#007AFF]/22"
                   )}
                 >
                   <Users className="size-[1.15rem]" strokeWidth={2.25} />

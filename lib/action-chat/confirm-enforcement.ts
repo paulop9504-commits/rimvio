@@ -1,6 +1,16 @@
 import { tryBatchConfirmPriority } from "@/lib/action-chat/batch-confirm-priority";
 import { tryPlaceConfirmation } from "@/lib/action-chat/confirmation-logic";
-import type { OrchestratorResult } from "@/lib/action-chat/orchestrator-types";
+import {
+  hasMisplacedPlaceConfirm,
+  stripMisplacedPlaceConfirm,
+} from "@/lib/action-chat/reconcile-recommendation-result";
+import { enrichPlaceDiscoveryMessage } from "@/lib/context-resolver/discovery/enrich-place-discovery-message";
+import { isPlaceRecommendationQuery } from "@/lib/context-resolver/discovery/parse-find-place-intent";
+import { isNonLocationActionCommand } from "@/lib/action-chat/is-non-location-action";
+import type {
+  OrchestrateHistoryTurn,
+  OrchestratorResult,
+} from "@/lib/action-chat/orchestrator-types";
 import type { ExistingScheduleInput } from "@/lib/schedule/day-schedule";
 
 const MISSING_IN_THOUGHT = /Missing\s*:/i;
@@ -21,6 +31,7 @@ export function isFalseCompletionSummary(summary: string): boolean {
  */
 export function enforceConfirmationTrigger(input: {
   message: string;
+  history?: readonly OrchestrateHistoryTurn[];
   result: OrchestratorResult;
   referenceDate?: string;
   existingSchedule?: ExistingScheduleInput;
@@ -31,11 +42,23 @@ export function enforceConfirmationTrigger(input: {
   const missingDetected = hasMissingInThought(thought);
   const falseComplete = isFalseCompletionSummary(result.summary);
 
+  const discoveryMessage = enrichPlaceDiscoveryMessage(message, input.history);
+  if (isPlaceRecommendationQuery(discoveryMessage)) {
+    if (hasConfirmWire || hasMisplacedPlaceConfirm(result)) {
+      return stripMisplacedPlaceConfirm(result);
+    }
+    return result;
+  }
+
   if (hasConfirmWire) {
     return result;
   }
 
   if (!missingDetected && !falseComplete) {
+    return result;
+  }
+
+  if (isNonLocationActionCommand(message)) {
     return result;
   }
 
@@ -56,6 +79,7 @@ export function enforceConfirmationTrigger(input: {
   const placeConfirm = tryPlaceConfirmation({
     message,
     referenceDate: input.referenceDate,
+    history: input.history,
   });
 
   if (placeConfirm?.confirmation?.meta.intent === "CONFIRM") {

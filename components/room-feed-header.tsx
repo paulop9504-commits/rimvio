@@ -41,7 +41,7 @@ export function RoomFeedHeader({
   return (
     <div
       className={cn(
-        "shrink-0 rounded-2xl bg-white/90 px-3 py-2 ring-1 ring-black/[0.05] backdrop-blur-sm",
+        "shrink-0 rounded-2xl bg-glango-surface/90 px-3 py-2 ring-1 ring-black/[0.05] backdrop-blur-sm",
         className
       )}
     >
@@ -71,7 +71,7 @@ export function RoomFeedHeader({
           <button
             type="button"
             onClick={onInvite}
-            className="rounded-full bg-[#007AFF] px-2.5 py-1 text-[11px] font-semibold text-white active:scale-[0.98]"
+            className="rounded-full bg-glango-neon-purple px-2.5 py-1 text-[11px] font-semibold text-white active:scale-[0.98]"
           >
             초대
           </button>

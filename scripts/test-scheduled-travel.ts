@@ -20,8 +20,8 @@ const result = tryScheduledTravelAction({
 assert.ok(result);
 assert.equal(result!.scheduledDelivery?.status, "pending");
 assert.equal(result!.actions.length, 0);
-assert.match(result!.summary, /캘린더/);
-assert.match(result!.summary, /길찾기/);
+assert.match(result!.summary, /저장했어요/);
+assert.match(result!.summary, /교통·날씨/);
 assert.equal(result!.scheduleExtract?.place_name, "수서역");
 
 const navActions = buildScheduledPlaceNavActions(result!.scheduleExtract!);

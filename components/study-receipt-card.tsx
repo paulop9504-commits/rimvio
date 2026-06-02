@@ -31,7 +31,7 @@ export function StudyReceiptCard({
   if (loading && !receipt) {
     return (
       <div className="rounded-2xl bg-[#f5f0ff] px-3 py-2.5 text-center text-[11px] text-muted-foreground ring-1 ring-[#7C3AED]/10">
-        시험 포스트잇 정리 중…
+        ?�험 ?�스?�잇 ?�리 중�?
       </div>
     );
   }
@@ -50,7 +50,7 @@ export function StudyReceiptCard({
       <div className="mb-2 flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[#7C3AED]/80">
-            시험 포스트잇
+            ?�험 ?�스?�잇
           </p>
           <p className="mt-0.5 text-[12px] font-semibold leading-snug text-foreground">
             {receipt.headline}
@@ -63,14 +63,14 @@ export function StudyReceiptCard({
         ) : null}
       </div>
 
-      <div className="space-y-1.5 rounded-xl bg-white/85 px-2.5 py-2 ring-1 ring-black/[0.04]">
+      <div className="space-y-1.5 rounded-xl bg-glango-surface/85 px-2.5 py-2 ring-1 ring-glango-neon-purple/12">
         {receipt.lines.map((line, index) => (
           <div
             key={`${line.kind}-${index}`}
             className={cn(
               "flex items-start gap-3 text-[11px]",
               line.kind === "context" ? "flex-col" : "justify-between",
-              line.kind === "exam" && "border-t border-dashed border-black/[0.08] pt-1.5"
+              line.kind === "exam" && "border-t border-dashed border-border pt-1.5"
             )}
           >
             <span className="shrink-0 text-muted-foreground">

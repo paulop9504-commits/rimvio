@@ -1,5 +1,4 @@
 #!/usr/bin/env npx tsx
-
 import assert from "node:assert/strict";
 import { orchestrateByRules } from "../lib/action-chat/rule-orchestrator";
 import {
@@ -21,15 +20,27 @@ const followUp = resolveIntentRoute({
   history: [...diningHistory, { role: "user", content: "그럼 다른 날은?" }],
   linkTitle: "쿠우쿠우 도안점",
 });
-assert.equal(followUp.intent_type, "FOLLOW_UP");
+assert.equal(followUp.intent_type, "CONTINUE");
 assert.equal(followUp.requires_context_switch, false);
+assert.equal(followUp.micro_intent, "CONTINUE");
 
 const priceFollowUp = resolveIntentRoute({
   message: "가격은 얼마야?",
   history: [...diningHistory, { role: "user", content: "가격은 얼마야?" }],
   linkTitle: "쿠우쿠우 도안점",
 });
-assert.equal(priceFollowUp.intent_type, "FOLLOW_UP");
+assert.equal(priceFollowUp.micro_intent, "DIRECT_QUERY");
+assert.equal(priceFollowUp.intent_type, "NEW_TASK");
+
+const thanks = resolveIntentRoute({
+  message: "고마워",
+  history: [...diningHistory, { role: "user", content: "고마워" }],
+  linkTitle: "쿠우쿠우 도안점",
+});
+assert.equal(thanks.micro_intent, "CLOSE");
+assert.equal(thanks.intent_type, "CONTINUE");
+assert.equal(thanks.continuity, "HOLD");
+assert.equal(thanks.requires_context_switch, false);
 
 const newTask = resolveIntentRoute({
   message: "대전 월드컵 경기장 일정 잡아줘",
@@ -85,5 +96,15 @@ const withMeta = applyIntentRouteToResult(
 );
 assert.equal(withMeta.meta?.intent_type, "NEW_TASK");
 assert.equal(withMeta.meta?.requires_context_switch, true);
+
+const continueAfterQuestion = resolveIntentRoute({
+  message: "응",
+  history: [
+    ...diningHistory,
+    { role: "assistant", content: "예약 도와드릴까요?" },
+    { role: "user", content: "응" },
+  ],
+});
+assert.equal(continueAfterQuestion.micro_intent, "ACK");
 
 console.log("test-intent-router: ok");

@@ -1,4 +1,6 @@
+import { isAiIntentUtterance } from "@/lib/action-chat/classify-ai-intent-utterance";
 import { isConversationalOnlyMessage } from "@/lib/action-chat/conversation-turns";
+import type { IntentRoute } from "@/lib/action-chat/intent-router-core";
 import type { WittyButtonWire } from "@/lib/action-chat/confirmation-types";
 
 export type OrchestratorMode = "action" | "conversation";
@@ -7,7 +9,6 @@ export type ResponseTone = "WITTY" | "DEFAULT";
 
 export type IntentRouterDecision = {
   mode: OrchestratorMode;
-  /** Router "thought" — logged / debuggable, not shown to user raw */
   reason: string;
   tone: ResponseTone;
 };
@@ -21,7 +22,15 @@ export type WittyConversationWire = {
 const WITTY_CUE =
   /(?:몇\s*살|나이\s*(?:가\s*)?(?:몇|어떻)|(?:니|너|네)\s*이름|누구(?:야|니|세요)|이름\s*(?:이\s*)?뭐|심심|놀자|놀아|바보|멍청|재미\s*없|ㅋㅋ|ㅎㅎ|장난)/i;
 
-/** Sentiment / playfulness detector for humor mode injection */
+const ACTION_VERB =
+  /(?:가야|갈\s*거|할\s*거|만날|볼\s*거|저장|등록|예약|일정|약속|길찾|네비|지도|맛집|쇼핑|검색|찾아|알려|열어|추천|캡처|티켓|주소|연락|전화|일정\s*잡)/i;
+
+const ACTION_ENTITY =
+  /https?:\/\/|010[-\s]?\d{4}[-\s]?\d{4}|갤러리아|스타벅스|둔산|역삼|맛집|카페/i;
+
+const SCHEDULE_CUE =
+  /(?:내일|모레|오늘\s*(?:오전|오후)?\s*\d{1,2}\s*시|\d{1,2}:\d{2}|일정|약속|미팅|회의)/i;
+
 export function detectTone(message: string): ResponseTone {
   const trimmed = message.trim();
   if (!trimmed) {
@@ -36,31 +45,23 @@ export function buildToneInstructionLine(tone: ResponseTone): string {
     : "효율적이고 간결하게 대응하라.";
 }
 
-/** Small talk — never action mode even if date words appear */
-const CHITCHAT =
-  /(?:날씨|기분|좋다|좋네|그치|ㅋㅋ|ㅎㅎ|힘들|우울|심심|뭐\s*해|잘\s*지내|고마워|감사|안녕|ㅎㅇ|하이|hello|how\s*are)/i;
-
-const ACTION_VERB =
-  /(?:가야|갈\s*거|할\s*거|만날|볼\s*거|저장|등록|예약|일정|약속|길찾|네비|지도|맛집|쇼핑|검색|찾아|알려|열어|추천|캡처|티켓|주소|연락|전화|일정\s*잡)/i;
-
-const ACTION_ENTITY =
-  /https?:\/\/|010[-\s]?\d{4}[-\s]?\d{4}|갤러리아|스타벅스|둔산|역삼|맛집|카페/i;
-
-const SCHEDULE_CUE =
-  /(?:내일|모레|오늘\s*(?:오전|오후)?\s*\d{1,2}\s*시|\d{1,2}:\d{2}|일정|약속|미팅|회의)/i;
-
-function isChitchatOnly(message: string) {
-  if (!CHITCHAT.test(message)) {
-    return false;
-  }
-  return !ACTION_VERB.test(message) && !ACTION_ENTITY.test(message) && !SCHEDULE_CUE.test(message);
+function hasHardActionSignal(message: string): boolean {
+  return (
+    ACTION_VERB.test(message) ||
+    ACTION_ENTITY.test(message) ||
+    SCHEDULE_CUE.test(message) ||
+    /https?:\/\//.test(message) ||
+    /010[-\s]?\d{4}[-\s]?\d{4}/.test(message)
+  );
 }
 
 /**
- * Intent Router — classifies action vs conversation before OpenAI call.
- * Rule-based (~instant); no extra LLM round-trip.
+ * Derived mode — Kernel execution_mode is authoritative when present.
  */
-export function classifyIntentRouter(message: string): IntentRouterDecision {
+export function deriveOrchestratorMode(
+  message: string,
+  route: IntentRoute
+): IntentRouterDecision {
   const trimmed = message.trim();
   const tone = detectTone(trimmed);
 
@@ -68,26 +69,112 @@ export function classifyIntentRouter(message: string): IntentRouterDecision {
     return { mode: "conversation", reason: "빈 입력 → 대화 모드", tone };
   }
 
+  if (route.execution_mode) {
+    return {
+      mode: route.execution_mode,
+      reason: `kernel execution_mode=${route.execution_mode}`,
+      tone,
+    };
+  }
+
+  if (route.micro_intent === "CLOSE") {
+    return {
+      mode: "conversation",
+      reason: "micro_intent=CLOSE → 짧은 마무리, 추가 질문 금지",
+      tone,
+    };
+  }
+
+  if (route.micro_intent === "PASSIVE_STATE") {
+    return {
+      mode: "conversation",
+      reason: "micro_intent=PASSIVE_STATE → 상태 유지, turn pressure 없음",
+      tone,
+    };
+  }
+
+  if (route.micro_intent === "ACK") {
+    return {
+      mode: "conversation",
+      reason: "micro_intent=ACK → 수신 확인, 추가 질문 금지",
+      tone,
+    };
+  }
+
+  if (route.micro_intent === "DIRECT_QUERY") {
+    return {
+      mode: "action",
+      reason: "micro_intent=DIRECT_QUERY → 즉시 fetch/검색",
+      tone,
+    };
+  }
+
+  if (route.micro_intent === "CONTINUE" && route.stability_score >= 0.5 && !hasHardActionSignal(trimmed)) {
+    return {
+      mode: "conversation",
+      reason: "micro_intent=CONTINUE + 안정 맥락 → 대화 모드",
+      tone,
+    };
+  }
+
   if (isConversationalOnlyMessage(trimmed)) {
     return { mode: "conversation", reason: "인사·잡담·감정 표현 → 대화 모드", tone };
   }
 
-  if (isChitchatOnly(trimmed)) {
-    return { mode: "conversation", reason: "행동 없는 일상 대화(날씨·감탄 등) → 대화 모드", tone };
+  if (isAiIntentUtterance(trimmed)) {
+    return { mode: "conversation", reason: "AI intent 질문 → 대화 모드", tone };
   }
 
-  const hasAction =
-    ACTION_VERB.test(trimmed) ||
-    ACTION_ENTITY.test(trimmed) ||
-    SCHEDULE_CUE.test(trimmed) ||
-    /https?:\/\//.test(trimmed) ||
-    /010[-\s]?\d{4}[-\s]?\d{4}/.test(trimmed);
-
-  if (hasAction) {
-    return { mode: "action", reason: "저장·일정·장소·실행 의도 감지 → JSON 액션 모드", tone };
+  if (
+    route.intent_type === "CONTINUE" &&
+    route.stability_score >= 0.45 &&
+    (route.turn_pressure ?? 0.5) >= 0.35 &&
+    !hasHardActionSignal(trimmed)
+  ) {
+    return {
+      mode: "conversation",
+      reason: "CONTINUE + stability → 대화 모드",
+      tone,
+    };
   }
 
-  return { mode: "conversation", reason: "명확한 작업 신호 없음 → 대화 모드", tone };
+  if (hasHardActionSignal(trimmed)) {
+    return {
+      mode: "action",
+      reason: "실행/일정/장소 신호 → JSON 액션 모드",
+      tone,
+    };
+  }
+
+  if (route.intent_type === "NEW_TASK" && route.requires_context_switch && route.stability_score < 0.4) {
+    return {
+      mode: "conversation",
+      reason: "NEW_TASK 전환 구간 — 먼저 대화로 정렬",
+      tone,
+    };
+  }
+
+  return { mode: "conversation", reason: "기본 대화 모드", tone };
+}
+
+/** @deprecated use deriveOrchestratorMode(message, route) */
+export function classifyIntentRouter(
+  message: string,
+  options?: { intentRoute?: IntentRoute }
+): IntentRouterDecision {
+  if (options?.intentRoute) {
+    return deriveOrchestratorMode(message, options.intentRoute);
+  }
+
+  const trimmed = message.trim();
+  const tone = detectTone(trimmed);
+  if (!trimmed) {
+    return { mode: "conversation", reason: "빈 입력 → 대화 모드", tone };
+  }
+  if (hasHardActionSignal(trimmed)) {
+    return { mode: "action", reason: "실행 신호 → JSON 액션 모드", tone };
+  }
+  return { mode: "conversation", reason: "route 없음 — 대화 모드", tone };
 }
 
 function normalizeWittyButtons(raw: unknown): WittyButtonWire[] | undefined {
@@ -135,9 +222,8 @@ export function parseWittyConversationJson(raw: string): WittyConversationWire |
   }
 }
 
-/** @deprecated use classifyIntentRouter */
 export function detectActionIntent(message: string): boolean {
-  return classifyIntentRouter(message).mode === "action";
+  return hasHardActionSignal(message);
 }
 
 export function resolveOrchestratorMode(message: string): OrchestratorMode {
@@ -160,7 +246,7 @@ export function parseConversationalAssistantText(raw: string): string {
         return parsed.text.trim();
       }
     } catch {
-      // fall through — treat as plain text
+      // fall through
     }
   }
 

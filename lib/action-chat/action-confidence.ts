@@ -151,29 +151,28 @@ export function applyDisclosureToOrchestratorResult(
   };
 }
 
-const CONFIRM_PATTERN =
-  /^(?:응|네|ㅇㅇ|ㅇ|예|좋아|그래|보여(?:줘|주세요)?|켜(?:줘|주세요)?|해(?:줘|주세요)?|ok|okay|yes|yep|sure)(?:[!?.~ㅋㅎ\s]*)?$/iu;
-
-const ALTERNATE_PATTERN =
-  /^(?:아니(?:요|오)?|다른(?:\s*거)?|또\s*다른|다시(?:\s*찾)?)(?:[\s,.!?~]*(?:보여(?:줘|주세요)?|해(?:줘|주세요)?|액션|거|띄워(?:줘|주세요)?|찾아(?:줘|주세요)?))?/iu;
+import {
+  isActionUiConfirm,
+  isCommitRejectMessage,
+} from "@/lib/action-chat/commit-speech";
 
 export function isUserConfirmingActions(message: string) {
   const normalized = message.trim().replace(/\s+/g, " ");
   if (isUserRequestingAlternate(normalized)) {
     return false;
   }
-  if (CONFIRM_PATTERN.test(normalized)) {
-    return true;
-  }
-  return /^(?:네|응|예|좋아|그래)\s+(?:보여(?:줘|주세요)?|켜(?:줘|주세요)?|해(?:줘|주세요)?)/iu.test(
-    normalized
-  );
+  return isActionUiConfirm(normalized);
 }
 
 export function isUserRequestingAlternate(message: string) {
   const normalized = message.trim().replace(/\s+/g, " ");
+  if (isCommitRejectMessage(normalized)) {
+    return true;
+  }
   return (
-    ALTERNATE_PATTERN.test(normalized) ||
+    /^(?:아니(?:요|오)?|다른(?:\s*거)?|또\s*다른|다시(?:\s*찾)?)(?:[\s,.!?~]*(?:보여(?:줘|주세요)?|해(?:줘|주세요)?|액션|거|띄워(?:줘|주세요)?|찾아(?:줘|주세요)?))?/iu.test(
+      normalized
+    ) ||
     /다른\s*거\s*보여(?:줘|주세요)?/iu.test(normalized) ||
     /아니요?\s*,?\s*다른/iu.test(normalized)
   );

@@ -58,14 +58,14 @@ export function SettingsProfilePanel({ className }: { className?: string }) {
       </p>
 
       {!avatarDrawn ? (
-        <p className="mt-4 rounded-2xl bg-[#f2f2f7] px-3 py-3 text-xs leading-relaxed text-muted-foreground">
+        <p className="mt-4 rounded-2xl bg-glango-surface-muted px-3 py-3 text-xs leading-relaxed text-muted-foreground">
           {copy.settings.drawPendingProfile}
         </p>
       ) : (
         <div className="mt-4 flex items-center gap-3">
           <span
             className={cn(
-              "flex size-16 shrink-0 items-center justify-center rounded-2xl bg-white p-1 shadow-sm ring-1 ring-black/[0.06]",
+              "flex size-16 shrink-0 items-center justify-center rounded-2xl bg-glango-surface p-1 shadow-sm ring-1 ring-glango-neon-purple/15",
               rare && "ring-2 ring-violet-400/60"
             )}
             aria-hidden
@@ -77,10 +77,10 @@ export function SettingsProfilePanel({ className }: { className?: string }) {
               {copy.settings.profileAvatarLabel}
             </p>
             <p className="mt-0.5 text-sm font-semibold">
-              {avatarVariant ? `${labelForAvatarVariant(avatarVariant)} 글랑고` : ""}
+              {avatarVariant ? `${labelForAvatarVariant(avatarVariant)} 글?�고` : ""}
             </p>
             {rare ? (
-              <p className="mt-1 text-[11px] font-medium text-violet-600">
+              <p className="mt-1 text-[11px] font-medium text-glango-neon-purple">
                 {copy.settings.profileRarePurple}
               </p>
             ) : (
@@ -109,7 +109,7 @@ export function SettingsProfilePanel({ className }: { className?: string }) {
           maxLength={20}
           placeholder={copy.settings.profileNamePlaceholder}
           className={cn(
-            "mt-1 h-11 w-full rounded-2xl border-0 bg-[#f2f2f7] px-4 text-sm outline-none",
+            "mt-1 h-11 w-full rounded-2xl border-0 bg-glango-surface-muted px-4 text-sm outline-none",
             "focus:ring-2 focus:ring-[#007AFF]/30"
           )}
         />

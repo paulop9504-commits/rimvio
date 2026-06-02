@@ -4,7 +4,11 @@
 >
 > **프로젝트 경로:** `c:\Users\userguest\Desktop\new-project`
 >
-> **제품명:** Glango 👀 (구 Silent Ghost)
+> **Git:** [glango](https://github.com/paulop9504-dotcom/glango.git) — **Silent Ghost(`ghostsilence-programmer`)와 별개 repo·런타임·규칙**
+>
+> **Cursor:** Glango 작업 시 **`glango.code-workspace`** 로 이 폴더만 열 것 ([WORKSPACE.md](./WORKSPACE.md))
+>
+> **제품명:** Glango 👀
 >
 > **제품 정의서:** [GLANGO_PRODUCT.md](./GLANGO_PRODUCT.md)
 >
@@ -12,7 +16,7 @@
 >
 > **실기기 QA:** [PHONE_QA.md](./PHONE_QA.md) · **상표:** [GLANGO_KIPRIS.md](./GLANGO_KIPRIS.md)
 >
-> **한 줄 정의:** 북마크 앱이 아니라, **공유된 URL을 실행 가능한 행동(actions)으로 변환하는 Link-to-Action OS**
+> **한 줄 정의:** **Your Life, Operable.** — Human Intent를 Action Dock으로 실행하는 **개인 Action OS** (링크 공유는 ingress)
 
 ---
 
@@ -20,9 +24,10 @@
 
 | 원칙 | 설명 |
 |------|------|
+| **Operable > Conversational** | 대화가 아니라 실행. Dock·Trigger·Dispatcher가 core |
 | **One thing at a time** | 한 화면에 하나의 행동에 집중. 벽 of text 금지 |
 | **1–2 Tap Rule** | Primary action은 풀-width 히어로 버튼. 읽게 하지 말고 누르게 |
-| **Share → Now → Done** | 공유 후 inbox/피드로 바로 던지지 않음. `/now`에서 Top 1 행동 먼저 |
+| **Intent → Dock → Execute** | 말·링크·사진 → Action OS pipeline → deep link |
 | **Optimistic First** | spinner 금지. shimmer skeleton만 사용 |
 | **Jobs-style UX** | 설명 30초, 행동 1탭. 마찰 최소화 |
 
@@ -54,7 +59,7 @@ npx tsc --noEmit   # 타입 체크
 
 ## 3. 레이어 아키텍처 (L0 ~ L5)
 
-`.cursor/rules/blink-jobs-layers.mdc`, `.cursor/rules/blink-enrichment.mdc` 참조.
+`.cursor/rules/glango-jobs-layers.mdc`, `.cursor/rules/glango-enrichment.mdc` 참조.
 
 ```
 L0 Experience   — 철학 (1탭, no scroll guilt)
@@ -79,10 +84,7 @@ L5 Intelligence — 미래 AI intent (v1은 rule + bin stats)
 | `/archive` | `ArchiveFeedList` | 만료·완료 링크 |
 | `/demo` | `DemoLauncher` | 샘플 링크 6개 시드 |
 
-**⚠️ 규칙 파일과 실제 구현 차이:**
-- `.cursor/rules/silent-ghost-mvp.mdc` / `blink-jobs-layers.mdc`는 `/` = Stack으로 적혀 있음
-- **현재 구현:** `/` = Shorts Feed, Stack은 `/stack`으로 분리됨
-- 새 작업 시 **실제 코드(`app/page.tsx`)를 기준**으로 할 것
+**규칙 vs 구현:** `.cursor/rules/glango-jobs-layers.mdc`는 **현재 코드 기준** (`/` = Feed, `/stack` = Stack).
 
 ---
 
@@ -311,9 +313,10 @@ display: "standalone"
 
 | 파일 | 내용 |
 |------|------|
-| `.cursor/rules/silent-ghost-mvp.mdc` | MVP 가이드 (always apply) |
-| `.cursor/rules/blink-enrichment.mdc` | Enrichment 헌법 |
-| `.cursor/rules/blink-jobs-layers.mdc` | L0~L5 레이어 (일부 `/` 설명 outdated) |
+| `.cursor/rules/glango-isolation.mdc` | **Silent Ghost와 분리** (always apply) |
+| `.cursor/rules/glango-product.mdc` | 제품·엔지니어링 가이드 (always apply) |
+| `.cursor/rules/glango-enrichment.mdc` | Enrichment 헌법 |
+| `.cursor/rules/glango-jobs-layers.mdc` | L0~L5 레이어 |
 
 ---
 
@@ -362,7 +365,7 @@ display: "standalone"
 - 코드: **최소 diff**, over-engineering 금지
 - git commit: **사용자 요청 시에만**
 - 테스트: substantive 변경 후 `npm test` (현재 테스트 적음)
-- 제품 진화: Silent Ghost → **Glango** 👀
+- 제품명: **Glango** (2026 리브랜드; SG 코드베이스와 무관)
 
 ---
 

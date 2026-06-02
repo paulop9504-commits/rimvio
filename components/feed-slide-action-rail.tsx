@@ -10,7 +10,7 @@ type FeedSlideActionRailProps = {
   onNextAction: () => void;
 };
 
-/** iOS-style floating action chips — icon only */
+/** iOS-style floating action chips ??icon only */
 export function FeedSlideActionRail({
   hasMultipleActions,
   hidden = false,
@@ -19,8 +19,8 @@ export function FeedSlideActionRail({
 }: FeedSlideActionRailProps) {
   const chipClass = cn(
     "flex size-10 items-center justify-center rounded-full",
-    "bg-white/88 text-foreground/85 shadow-[0_4px_16px_-6px_rgba(0,0,0,0.18)]",
-    "ring-1 ring-black/[0.06] backdrop-blur-xl",
+    "bg-glango-surface/88 text-foreground/85 shadow-[0_4px_16px_-6px_rgba(0,0,0,0.18)]",
+    "ring-1 ring-glango-neon-purple/15 backdrop-blur-xl",
     "transition-transform active:scale-95"
   );
 
@@ -40,7 +40,7 @@ export function FeedSlideActionRail({
         {hasMultipleActions ? (
           <button
             type="button"
-            aria-label="다음 행동"
+            aria-label="?�음 ?�동"
             onClick={onNextAction}
             className={chipClass}
           >

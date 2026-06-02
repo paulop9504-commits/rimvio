@@ -11,6 +11,8 @@ const message = "3분뒤 수서역 가야됨";
 
 assert.equal(resolveNavigationPlaceName(message), "수서역");
 
+assert.equal(resolveNavigationPlaceName("대전 치킨 맛집 추천"), null);
+
 const entity = extractPlaceEntities(message);
 assert.equal(entity.name, "수서역");
 

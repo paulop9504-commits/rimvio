@@ -1,4 +1,6 @@
-import type { LinkReminder } from "@/lib/local-links/reminders";
+import { readLinkReminders } from "@/lib/local-links/reminders";
+import type { EventCandidate } from "@/lib/events/event-candidate";
+import { listEventCandidates } from "@/lib/events/event-store";
 
 export type DayScheduleTask = {
   time: string;
@@ -15,8 +17,46 @@ export function formatDateKey(date = new Date()) {
   return date.toISOString().slice(0, 10);
 }
 
+function eventToDayScheduleTask(event: EventCandidate): DayScheduleTask | null {
+  const iso = event.datetime?.trim();
+  if (!iso) {
+    return null;
+  }
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) {
+    return null;
+  }
+  return {
+    time: padTime(at.getHours(), at.getMinutes()),
+    task: event.title,
+  };
+}
+
+/** Schedule read SSOT — scheduled EventCandidates (includes link-reminder ingest). */
+export function eventCandidatesToDaySchedule(
+  events: readonly EventCandidate[],
+  dateKey = formatDateKey(),
+): ExistingScheduleInput {
+  return events
+    .filter(
+      (event) =>
+        event.datetime?.slice(0, 10) === dateKey &&
+        event.lifecycle === "scheduled",
+    )
+    .map(eventToDayScheduleTask)
+    .filter((task): task is DayScheduleTask => task !== null)
+    .sort((left, right) => left.time.localeCompare(right.time));
+}
+
+export function readExistingScheduleFromEventCandidates(
+  dateKey = formatDateKey(),
+): ExistingScheduleInput {
+  return eventCandidatesToDaySchedule(listEventCandidates(), dateKey);
+}
+
+/** @deprecated Prefer readExistingSchedule — reminder-only projection. */
 export function remindersToDaySchedule(
-  reminders: LinkReminder[],
+  reminders: import("@/lib/local-links/reminders").LinkReminder[],
   dateKey = formatDateKey()
 ): ExistingScheduleInput {
   return reminders
@@ -29,6 +69,12 @@ export function remindersToDaySchedule(
       };
     })
     .sort((a, b) => a.time.localeCompare(b.time));
+}
+
+/** Orchestrator schedule read — EventCandidate SSOT with reminder migrate. */
+export function readExistingSchedule(dateKey = formatDateKey()): ExistingScheduleInput {
+  readLinkReminders();
+  return readExistingScheduleFromEventCandidates(dateKey);
 }
 
 function parseTimeMinutes(time: string) {

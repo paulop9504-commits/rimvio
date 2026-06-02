@@ -62,22 +62,22 @@ export function ConfirmActionCard({
       ) : null}
 
       {showDataPrompt ? (
-        <p className="text-[12px] font-medium text-[#9CA3AF]">{dataPrompt}</p>
+        <p className="text-[12px] font-medium text-muted-foreground">{dataPrompt}</p>
       ) : null}
 
       {extracted?.address || extracted?.place_name ? (
-        <div className="rounded-xl border border-[#E8ECF1] bg-[#F9FAFB] px-3 py-2.5">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
+        <div className="rounded-xl bg-glango-surface px-3 py-2.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             확인할 위치
           </p>
           {extracted.place_name ? (
-            <p className="mt-1 text-[14px] font-medium text-[#1F2937]">{extracted.place_name}</p>
+            <p className="mt-1 text-[14px] font-medium text-foreground">{extracted.place_name}</p>
           ) : null}
           {extracted.address ? (
-            <p className="text-[12px] text-[#6B7280]">{extracted.address}</p>
+            <p className="text-[12px] text-muted-foreground">{extracted.address}</p>
           ) : null}
           {extracted.datetime ? (
-            <p className="mt-1 text-[12px] text-[#6B7280]">
+            <p className="mt-1 text-[12px] text-muted-foreground">
               일정: {extracted.datetime.replace("T", " ")}
             </p>
           ) : null}
@@ -85,13 +85,13 @@ export function ConfirmActionCard({
       ) : null}
 
       {batchPending && batchPending.length > 0 ? (
-        <div className="rounded-xl border border-dashed border-[#E5E7EB] px-3 py-2">
-          <p className="text-[11px] font-medium text-[#9CA3AF]">확인 후 이어서 처리</p>
+        <div className="rounded-xl border border-dashed border-white/10 px-3 py-2">
+          <p className="text-[11px] font-medium text-muted-foreground">확인 후 이어서 처리</p>
           <ul className="mt-1 space-y-1">
             {batchPending.map((item) => (
               <li
                 key={`${item.type}-${item.summary ?? item.type}`}
-                className="text-[12px] text-[#6B7280]"
+                className="text-[12px] text-muted-foreground"
               >
                 · {item.summary ?? item.type}
               </li>

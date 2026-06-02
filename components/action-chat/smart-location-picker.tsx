@@ -8,6 +8,11 @@ import {
 } from "@/lib/corrections/location-suggestions";
 import type { ConfirmationExtractedData, LocationSuggestion } from "@/lib/action-chat/confirmation-types";
 import { isSystemQuery } from "@/lib/action-chat/confirm-input-guard";
+import {
+  glangoEdgeCardClass,
+  glangoIconBtnClass,
+  glangoListPickBtnClass,
+} from "@/lib/brand/glango-neon-theme";
 import { cn } from "@/lib/utils";
 
 type SmartLocationPickerProps = {
@@ -49,22 +54,23 @@ export function SmartLocationPicker({
   return (
     <div
       className={cn(
-        "smart-location-picker rounded-2xl border border-[#4A90E2]/20 bg-white/95 p-3 shadow-[0_8px_32px_rgba(74,144,226,0.12)]",
+        "smart-location-picker p-3",
+        glangoEdgeCardClass("lg", "cyan"),
         className
       )}
     >
       <div className="mb-2 flex items-center gap-2">
-        <div className="flex size-8 items-center justify-center rounded-xl bg-[#4A90E2]/10 text-[#4A90E2]">
+        <span className={glangoIconBtnClass("cyan", "sm")}>
           <MapPin className="size-4" />
-        </div>
+        </span>
         <div>
-          <p className="text-[13px] font-semibold text-[#1F2937]">Smart Location Picker</p>
-          <p className="text-[11px] text-[#6B7280]">탭 한 번으로 위치를 보정하세요</p>
+          <p className="text-[13px] font-semibold text-foreground">Smart Location Picker</p>
+          <p className="text-[11px] text-muted-foreground">탭 한 번으로 위치를 보정하세요</p>
         </div>
       </div>
 
       <label className="relative mb-2 block">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#9CA3AF]" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <input
           value={query}
           onChange={(event) => {
@@ -75,7 +81,7 @@ export function SmartLocationPicker({
             setQuery(next);
           }}
           placeholder="장소 검색"
-          className="w-full rounded-xl border border-black/8 bg-[#F9FAFB] py-2.5 pl-9 pr-3 text-[13px] outline-none focus:border-[#4A90E2]/35"
+          className="w-full rounded-xl bg-glango-surface-raised py-2.5 pl-9 pr-3 text-[13px] text-foreground outline-none shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] placeholder:text-muted-foreground focus:shadow-[inset_0_0_0_1px_rgba(50,215,255,0.35)]"
         />
       </label>
 
@@ -85,15 +91,15 @@ export function SmartLocationPicker({
             <button
               type="button"
               onClick={() => onSelect(item)}
-              className="flex w-full flex-col rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-[#4A90E2]/8"
+              className={glangoListPickBtnClass()}
             >
-              <span className="text-[13px] font-semibold text-[#1F2937]">{item.label}</span>
-              <span className="text-[11px] text-[#6B7280]">{item.address}</span>
+              <span className="text-[13px] font-semibold text-foreground">{item.label}</span>
+              <span className="text-[11px] text-muted-foreground">{item.address}</span>
             </button>
           </li>
         ))}
         {suggestions.length === 0 ? (
-          <li className="px-2 py-3 text-center text-[12px] text-[#9CA3AF]">
+          <li className="px-2 py-3 text-center text-[12px] text-muted-foreground">
             주변 후보가 없습니다. 검색어를 바꿔 보세요.
           </li>
         ) : null}

@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { glangoHeaderChromeClass, glangoIconBtnClass } from "@/lib/brand/glango-neon-theme";
 import { cn } from "@/lib/utils";
 
 type ChatWorkspaceChromeProps = {
@@ -22,23 +23,26 @@ export function ChatWorkspaceChrome({
   className,
 }: ChatWorkspaceChromeProps) {
   return (
-    <div className={cn("shrink-0 border-b border-black/[0.04] bg-[#F9FAFB]", className)}>
+    <div className={cn(glangoHeaderChromeClass, "shrink-0", className)}>
       {header}
 
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={expanded}
-        className="flex w-full items-center gap-2 px-4 py-2.5 text-left transition-colors hover:bg-black/[0.02]"
+        className="flex w-full items-center gap-2 px-4 py-2.5 text-left transition-colors hover:bg-white/[0.03]"
       >
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-white text-[#6B7280] shadow-sm">
+        <span
+          aria-hidden
+          className={cn(glangoIconBtnClass("secondary", "sm"), "pointer-events-none")}
+        >
           {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-semibold text-[#1F2937]">
+          <p className="text-[13px] font-semibold text-foreground">
             {expanded ? "맥락·컨테이너 접기" : "맥락·컨테이너 펼치기"}
           </p>
-          <p className="truncate text-[11px] text-[#9CA3AF]">
+          <p className="truncate text-[11px] text-muted-foreground">
             {expanded
               ? "캘린더 · 데이터 · 맥락 탭"
               : subtitle ?? "Snap · 일정 · 리소스 풀"}

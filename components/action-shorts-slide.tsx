@@ -121,7 +121,7 @@ function FeedSlideMeta({
 }) {
   const pill = overlay
     ? "bg-black/35 text-white ring-1 ring-white/20 backdrop-blur-md"
-    : "bg-[#f2f2f7] text-muted-foreground";
+    : "bg-glango-surface-muted text-muted-foreground";
 
   return (
     <div className="flex items-center justify-between gap-2">
@@ -138,21 +138,20 @@ function FeedSlideMeta({
           <span
             className={cn(
               "rounded-full px-2.5 py-0.5 text-[10px] font-semibold",
-              overlay ? "bg-white/20 text-white/90" : "bg-[#eef0f4] text-muted-foreground"
+              overlay ? "bg-glango-surface/20 text-white/90" : "bg-[#eef0f4] text-muted-foreground"
             )}
           >
-            예시
+            ?�시
           </span>
         ) : null}
         {isPinned ? (
-          <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-semibold", pill, !overlay && "bg-[#007AFF]/10 text-[#007AFF]")}>
+          <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-semibold", pill, !overlay && "bg-glango-neon-purple/10 text-glango-neon-cyan")}>
             방금 공유
           </span>
         ) : null}
         {loopLevel >= 2 && loopHint ? (
           <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-semibold", overlay ? "bg-[#FF9500]/35 text-white" : "bg-[#FF9500]/10 text-[#FF9500]")}>
-            미완료
-          </span>
+            미완�?          </span>
         ) : null}
         {categoryLabel && total > 1 ? (
           <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-semibold", pill)}>
@@ -554,7 +553,7 @@ export function getLinkActions(link: LinkRow): LinkActionItem[] {
       : ([
           {
             id: "fallback-open",
-            label: "원본 열기",
+            label: "?�본 ?�기",
             kind: "open" as const,
             href: link.original_url,
           },

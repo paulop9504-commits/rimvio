@@ -1,6 +1,13 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
+import {
+  hasMentionInlinePayload,
+  MentionInlineMessage,
+} from "@/components/action-chat/mention-inline-message";
+import { ChatThinkingBubble } from "@/components/action-chat/chat-thinking-bubble";
+import type { FocusHeldActionWire } from "@/lib/action-chat/mention-focus/inline-chat-focus";
+import type { UnifiedCalendarOverlayRow } from "@/lib/calendar/calendar-view-types";
 import { ConfirmActionCard } from "@/components/action-chat/confirm-action-card";
 import { ConfirmInterruptCard } from "@/components/action-chat/confirm-interrupt-card";
 import { FlushResultStrip } from "@/components/action-chat/flush-result-strip";
@@ -31,7 +38,30 @@ import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
 import type { LinkActionItem, LinkRow } from "@/types/database";
 import type { AppLocale } from "@/lib/i18n/types";
 import type { Copy } from "@/lib/i18n/types";
+import {
+  resolveChatBubbleFocusTone,
+  resolveFocusedTurnMessageIds,
+  useChatAmbientFocusOptional,
+} from "@/components/action-chat/chat-ambient-focus";
 import { cn } from "@/lib/utils";
+import { resolveChatBubbleGroup } from "@/lib/ui/chat-bubble-group";
+import type { ChatBubbleGroup } from "@/lib/ui/chat-bubble-group";
+
+function shouldShowCompactThinkingBubble(message: ActionChatMessage): boolean {
+  if (!message.loading || hasMentionInlinePayload(message)) {
+    return false;
+  }
+
+  return (
+    !message.actions?.length &&
+    !message.entityQuickPick &&
+    !message.cafeDiscovery &&
+    !message.transportLive &&
+    message.confirmation?.meta?.intent !== "CONFIRM" &&
+    message.confirmation?.meta?.intent !== "WITTY" &&
+    message.scheduledDelivery?.status !== "pending"
+  );
+}
 
 type ActionChatMessageListProps = {
   messages: ActionChatMessage[];
@@ -45,6 +75,23 @@ type ActionChatMessageListProps = {
   onWittyAction?: (messageId: string, action: string) => void;
   onResumeConfirmInterrupt?: (messageId: string) => void;
   onCancelConfirmInterrupt?: (messageId: string) => void;
+  onInlineTimerComplete?: (messageId: string) => void;
+  onInlineFocusConfirm?: (messageId: string) => void;
+  onInlineFocusCancel?: (messageId: string) => void;
+  onInlineFocusComplete?: (messageId: string) => void;
+  calendarOverlayRows?: UnifiedCalendarOverlayRow[];
+  calendarContextByMessageId?: Record<string, string>;
+  onOpenCalendarSheet?: () => void;
+  onCalendarSpawnPrompt?: (uri: string) => void;
+  onNavigateSpawnPrompt?: (uri: string) => void;
+  onScheduleOrganizePrompt?: (prompt: string) => void;
+  onTransferSpawnPrompt?: (uri: string) => void;
+  onFocusHeldInAppAction?: (
+    messageId: string,
+    shadowId: string,
+    action: FocusHeldActionWire,
+  ) => void;
+  onOpenCapture?: () => void;
   className?: string;
 };
 
@@ -58,10 +105,25 @@ function AssistantOfferMessage({
   onWittyAction,
   onResumeConfirmInterrupt,
   onCancelConfirmInterrupt,
+  onInlineTimerComplete,
+  onInlineFocusConfirm,
+  onInlineFocusCancel,
+  onInlineFocusComplete,
+  calendarOverlayRows,
+  calendarContextByMessageId,
+  onOpenCalendarSheet,
+  onCalendarSpawnPrompt,
+  onNavigateSpawnPrompt,
+  onScheduleOrganizePrompt,
+  onTransferSpawnPrompt,
+  onFocusHeldInAppAction,
+  onOpenCapture,
   onAction,
+  bubbleGroup = "single",
 }: {
   message: ActionChatMessage;
   locale: AppLocale;
+  bubbleGroup?: ChatBubbleGroup;
   onRevealActions?: (messageId: string) => void;
   onRevealAlternateActions?: (messageId: string) => void;
   onConfirmPlace?: (messageId: string) => void;
@@ -69,6 +131,23 @@ function AssistantOfferMessage({
   onWittyAction?: (messageId: string, action: string) => void;
   onResumeConfirmInterrupt?: (messageId: string) => void;
   onCancelConfirmInterrupt?: (messageId: string) => void;
+  onInlineTimerComplete?: (messageId: string) => void;
+  onInlineFocusConfirm?: (messageId: string) => void;
+  onInlineFocusCancel?: (messageId: string) => void;
+  onInlineFocusComplete?: (messageId: string) => void;
+  calendarOverlayRows?: UnifiedCalendarOverlayRow[];
+  calendarContextByMessageId?: Record<string, string>;
+  onOpenCalendarSheet?: () => void;
+  onCalendarSpawnPrompt?: (uri: string) => void;
+  onNavigateSpawnPrompt?: (uri: string) => void;
+  onScheduleOrganizePrompt?: (prompt: string) => void;
+  onTransferSpawnPrompt?: (uri: string) => void;
+  onFocusHeldInAppAction?: (
+    messageId: string,
+    shadowId: string,
+    action: FocusHeldActionWire,
+  ) => void;
+  onOpenCapture?: () => void;
   onAction: (action: LinkActionItem) => void;
 }) {
   useActionTrust();
@@ -78,6 +157,8 @@ function AssistantOfferMessage({
   const userRevealed = message.actionsRevealed ?? false;
   const presentation = resolveContainerPresentation(message);
   const isContainer = isActionContainerMessage(message);
+  const placeOptions = message.cafeDiscovery?.options ?? [];
+  const isPlaceDiscovery = placeOptions.length > 0;
 
   const thoughtText = message.thought ?? message.confirmation?.thought;
   const actionTargetIso = resolveActionDatetimeIso({
@@ -94,15 +175,41 @@ function AssistantOfferMessage({
 
   const ux = resolveActionOfferUx({
     confidence,
-    actionsRevealed: userRevealed,
-    hasActions: Boolean(primary),
+    actionsRevealed: isPlaceDiscovery ? true : userRevealed,
+    hasActions: Boolean(primary) || isPlaceDiscovery,
     loading: message.loading,
   });
+  const showActionGrid = isPlaceDiscovery || ux.showActionGrid;
+
+  if (hasMentionInlinePayload(message)) {
+    return (
+      <MentionInlineMessage
+        message={message}
+        calendarOverlayRows={calendarOverlayRows}
+        calendarContextByMessageId={calendarContextByMessageId}
+        onInlineTimerComplete={onInlineTimerComplete}
+        onInlineFocusConfirm={onInlineFocusConfirm}
+        onInlineFocusCancel={onInlineFocusCancel}
+        onInlineFocusComplete={onInlineFocusComplete}
+        onOpenCalendarSheet={onOpenCalendarSheet}
+        onCalendarSpawnPrompt={onCalendarSpawnPrompt}
+        onNavigateSpawnPrompt={onNavigateSpawnPrompt}
+        onScheduleOrganizePrompt={onScheduleOrganizePrompt}
+        onTransferSpawnPrompt={onTransferSpawnPrompt}
+        onFocusHeldInAppAction={onFocusHeldInAppAction}
+        onOpenCapture={onOpenCapture}
+      />
+    );
+  }
+
+  if (shouldShowCompactThinkingBubble(message)) {
+    return <ChatThinkingBubble group={bubbleGroup} />;
+  }
 
   if (isScheduledPending) {
     return (
       <div className="space-y-2">
-        <AiChatBubble>{message.text}</AiChatBubble>
+        <AiChatBubble group={bubbleGroup}>{message.text}</AiChatBubble>
         {thoughtText ? (
           <div className="px-5">
             <ThoughtBubble text={thoughtText} />
@@ -133,11 +240,11 @@ function AssistantOfferMessage({
 
     return (
       <div className="space-y-2">
-        <AiChatBubble>
+        <AiChatBubble group={bubbleGroup}>
           {message.loading ? (
-            <span className="inline-flex items-center gap-2">
-              <Loader2 className="size-4 animate-spin text-[#4A90E2]" />
-              {personaMessage}
+            <span className="chat-bubble--thinking inline-flex items-center gap-1.5">
+              <Loader2 className="size-3 shrink-0 animate-spin text-glango-neon-cyan" />
+              [생각중...]
             </span>
           ) : (
             personaMessage
@@ -192,11 +299,11 @@ function AssistantOfferMessage({
 
   if (!isContainer) {
     return (
-      <AiChatBubble>
+      <AiChatBubble group={bubbleGroup}>
         {message.loading ? (
-          <span className="inline-flex items-center gap-2">
-            <Loader2 className="size-4 animate-spin text-[#4A90E2]" />
-            {message.text}
+          <span className="chat-bubble--thinking inline-flex items-center gap-1.5">
+            <Loader2 className="size-3 shrink-0 animate-spin text-glango-neon-cyan" />
+            [생각중...]
           </span>
         ) : (
           <div className="space-y-2">
@@ -208,6 +315,38 @@ function AssistantOfferMessage({
     );
   }
 
+  const metaContent =
+    thoughtText ||
+    message.confirmation?.interrupt?.awaiting_choice ||
+    ux.showConfirmPrompt ||
+    ux.offerAutoRun ||
+    message.flushReport ? (
+      <div className="space-y-2">
+        {thoughtText ? <ThoughtBubble text={thoughtText} /> : null}
+        {message.confirmation?.interrupt?.awaiting_choice ? (
+          <ConfirmInterruptCard
+            userMessage={message.confirmation.interrupt.user_message}
+            onResume={() => onResumeConfirmInterrupt?.(message.id)}
+            onCancel={() => onCancelConfirmInterrupt?.(message.id)}
+          />
+        ) : null}
+        {ux.showConfirmPrompt ? (
+          <ConfirmRevealButtons
+            onConfirm={() => onRevealActions?.(message.id)}
+            onAlternate={() => onRevealAlternateActions?.(message.id)}
+            showAlternate={(message.actions?.length ?? 0) > 1}
+          />
+        ) : null}
+        {ux.offerAutoRun ? (
+          <p className="text-[11px] font-medium text-glango-neon-cyan/80">
+            자동 실행 준비됨 · 1순위 버튼을 탭하세요
+          </p>
+        ) : null}
+        <OrchestratorMetaStrip message={message} />
+        {message.flushReport ? <FlushResultStrip report={message.flushReport} /> : null}
+      </div>
+    ) : null;
+
   return (
     <ContainerEnter>
       <ContainerCard
@@ -216,37 +355,11 @@ function AssistantOfferMessage({
         body={presentation.body}
         chips={presentation.chips}
         loading={message.loading}
-        meta={
-          <div className="space-y-2">
-            {thoughtText ? <ThoughtBubble text={thoughtText} /> : null}
-            {message.confirmation?.interrupt?.awaiting_choice ? (
-              <ConfirmInterruptCard
-                userMessage={message.confirmation.interrupt.user_message}
-                onResume={() => onResumeConfirmInterrupt?.(message.id)}
-                onCancel={() => onCancelConfirmInterrupt?.(message.id)}
-              />
-            ) : null}
-            {ux.showConfirmPrompt ? (
-              <ConfirmRevealButtons
-                onConfirm={() => onRevealActions?.(message.id)}
-                onAlternate={() => onRevealAlternateActions?.(message.id)}
-                showAlternate={(message.actions?.length ?? 0) > 1}
-              />
-            ) : null}
-            {ux.offerAutoRun ? (
-              <p className="text-[11px] font-medium text-[#4A90E2]/80">
-                자동 실행 준비됨 · 1순위 버튼을 탭하세요
-              </p>
-            ) : null}
-            <OrchestratorMetaStrip message={message} />
-            {message.flushReport ? (
-              <FlushResultStrip report={message.flushReport} />
-            ) : null}
-          </div>
-        }
+        compact={isPlaceDiscovery}
+        meta={metaContent}
         footer={
           !message.loading ? (
-            <div className="space-y-2">
+            <div className="relative z-10 space-y-1.5">
               {message.transportLive ? (
                 <TransportLiveCardView
                   card={message.transportLive}
@@ -261,7 +374,7 @@ function AssistantOfferMessage({
               ) : null}
 
               {primary && !message.transportLive ? (
-                <RevealedActionGrid open={ux.showActionGrid}>
+                <RevealedActionGrid open={showActionGrid}>
                   <ActionChatGrid
                     primary={primary}
                     primaryLabel={cleanFeedActionLabel(primary.label, locale)}
@@ -277,7 +390,7 @@ function AssistantOfferMessage({
             </div>
           ) : (
             <div className="flex items-center gap-2 px-1 py-1 text-[13px] text-[#6B7280]">
-              <Loader2 className="size-4 animate-spin text-[#4A90E2]" />
+              <Loader2 className="size-4 animate-spin text-glango-neon-cyan" />
               {message.text}
             </div>
           )
@@ -299,12 +412,28 @@ export function ActionChatMessageList({
   onWittyAction,
   onResumeConfirmInterrupt,
   onCancelConfirmInterrupt,
+  onInlineTimerComplete,
+  onInlineFocusConfirm,
+  onInlineFocusCancel,
+  onInlineFocusComplete,
+  calendarOverlayRows,
+  calendarContextByMessageId,
+  onOpenCalendarSheet,
+  onCalendarSpawnPrompt,
+  onNavigateSpawnPrompt,
+  onScheduleOrganizePrompt,
+  onTransferSpawnPrompt,
+  onFocusHeldInAppAction,
+  onOpenCapture,
   className,
 }: ActionChatMessageListProps) {
   const { requestNavSector, shouldOpenNavSector, navSectorSheet } = useNavSectorPicker({
     copy,
     resolveLink: () => chatActionLink(activeLink),
   });
+  const ambient = useChatAmbientFocusOptional();
+  const composerLive = ambient?.composerLive ?? false;
+  const focusedTurnIds = resolveFocusedTurnMessageIds(messages);
 
   const handleAction = (action: LinkActionItem) => {
     if (shouldOpenNavSector(action)) {
@@ -312,7 +441,9 @@ export function ActionChatMessageList({
       return;
     }
 
-    void runFeedLinkAction(action, chatActionLink(activeLink), copy);
+    void runFeedLinkAction(action, chatActionLink(activeLink), copy).catch(() => {
+      // runFeedLinkAction surfaces its own toasts when possible
+    });
   };
 
   if (messages.length === 0) {
@@ -321,21 +452,43 @@ export function ActionChatMessageList({
 
   return (
     <>
-      <div className={cn("space-y-5 px-4 pb-6 pt-2", className)}>
-        {messages.map((message) => {
+      <div className={cn("px-4 pb-2 pt-2", className)}>
+        {messages.map((message, index) => {
+          const bubbleGroup = resolveChatBubbleGroup(messages, index);
+          const focusTone = resolveChatBubbleFocusTone(
+            message.id,
+            focusedTurnIds,
+            composerLive,
+          );
+
           if (message.role === "user") {
             return (
-              <div key={message.id} data-message-id={message.id}>
-                <UserChatBubble>{message.text}</UserChatBubble>
+              <div
+                key={message.id}
+                data-message-id={message.id}
+                className="chat-message-focus"
+                data-bubble-focus={focusTone}
+                data-bubble-group={bubbleGroup}
+                data-bubble-role="user"
+              >
+                <UserChatBubble group={bubbleGroup}>{message.text}</UserChatBubble>
               </div>
             );
           }
 
           return (
-            <div key={message.id} data-message-id={message.id}>
+            <div
+              key={message.id}
+              data-message-id={message.id}
+              className="chat-message-focus"
+              data-bubble-focus={focusTone}
+              data-bubble-group={bubbleGroup}
+              data-bubble-role="assistant"
+            >
               <AssistantOfferMessage
                 message={message}
                 locale={locale}
+                bubbleGroup={bubbleGroup}
                 onRevealActions={onRevealActions}
                 onRevealAlternateActions={onRevealAlternateActions}
                 onConfirmPlace={onConfirmPlace}
@@ -343,6 +496,19 @@ export function ActionChatMessageList({
                 onWittyAction={onWittyAction}
                 onResumeConfirmInterrupt={onResumeConfirmInterrupt}
                 onCancelConfirmInterrupt={onCancelConfirmInterrupt}
+                onInlineTimerComplete={onInlineTimerComplete}
+                onInlineFocusConfirm={onInlineFocusConfirm}
+                onInlineFocusCancel={onInlineFocusCancel}
+                onInlineFocusComplete={onInlineFocusComplete}
+                calendarOverlayRows={calendarOverlayRows}
+                calendarContextByMessageId={calendarContextByMessageId}
+                onOpenCalendarSheet={onOpenCalendarSheet}
+                onCalendarSpawnPrompt={onCalendarSpawnPrompt}
+                onNavigateSpawnPrompt={onNavigateSpawnPrompt}
+                onScheduleOrganizePrompt={onScheduleOrganizePrompt}
+                onTransferSpawnPrompt={onTransferSpawnPrompt}
+                onFocusHeldInAppAction={onFocusHeldInAppAction}
+                onOpenCapture={onOpenCapture}
                 onAction={handleAction}
               />
             </div>

@@ -21,7 +21,7 @@ export function TimeReceiptCard({
   if (loading && !receipt) {
     return (
       <div className="rounded-2xl bg-[#f5f4ff] px-3 py-2.5 text-center text-[11px] text-muted-foreground ring-1 ring-[#5856D6]/10">
-        시간 영수증 계산 중…
+        ?�간 ?�수�?계산 중�?
       </div>
     );
   }
@@ -35,7 +35,7 @@ export function TimeReceiptCard({
       <div className="mb-2 flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[#5856D6]/80">
-            시간 영수증
+            ?�간 ?�수�?
           </p>
           <p className="mt-0.5 text-[12px] font-semibold leading-snug text-foreground">
             {receipt.headline}
@@ -46,13 +46,13 @@ export function TimeReceiptCard({
         </span>
       </div>
 
-      <div className="space-y-1.5 rounded-xl bg-white/80 px-2.5 py-2 ring-1 ring-black/[0.04]">
+      <div className="space-y-1.5 rounded-xl bg-glango-surface/80 px-2.5 py-2 ring-1 ring-glango-neon-purple/12">
         {receipt.lines.map((line) => (
           <div
             key={line.kind}
             className={cn(
               "flex items-center justify-between gap-3 text-[11px]",
-              line.kind === "total" && "border-t border-dashed border-black/[0.08] pt-1.5"
+              line.kind === "total" && "border-t border-dashed border-border pt-1.5"
             )}
           >
             <span className="min-w-0 truncate text-muted-foreground">

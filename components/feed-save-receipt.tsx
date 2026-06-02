@@ -4,7 +4,7 @@ import { buildSaveReceipt } from "@/lib/feed/build-save-receipt";
 import type { LinkRow } from "@/types/database";
 import { cn } from "@/lib/utils";
 
-/** Thermal save receipt — fills compact cards when no live insight yet. */
+/** Thermal save receipt ??fills compact cards when no live insight yet. */
 export function FeedSaveReceipt({
   link,
   primaryActionLabel,
@@ -20,7 +20,7 @@ export function FeedSaveReceipt({
     <div
       className={cn(
         "rounded-2xl bg-[#fffdf8] px-3.5 py-3",
-        "shadow-[0_10px_28px_-18px_rgba(0,0,0,0.28)] ring-1 ring-black/[0.06]",
+        "shadow-[0_10px_28px_-18px_rgba(0,0,0,0.28)] ring-1 ring-glango-neon-purple/15",
         className
       )}
     >
@@ -29,7 +29,7 @@ export function FeedSaveReceipt({
           GLANGO
         </p>
         <p className="mt-1 text-[10px] tracking-[0.18em] text-muted-foreground">
-          ──────────────
+          ?�?�?�?�?�?�?�?�?�?�?�?�?�?�
         </p>
       </div>
 
@@ -47,12 +47,12 @@ export function FeedSaveReceipt({
         ))}
       </div>
 
-      <p className="mt-2.5 border-t border-dashed border-black/[0.08] pt-2 text-center text-[11px] font-semibold leading-snug text-foreground">
+      <p className="mt-2.5 border-t border-dashed border-border pt-2 text-center text-[11px] font-semibold leading-snug text-foreground">
         {receipt.title}
       </p>
 
       <p className="mt-2 text-center text-[10px] tracking-[0.14em] text-muted-foreground">
-        ──────────────
+        ?�?�?�?�?�?�?�?�?�?�?�?�?�?�
       </p>
       <p className="mt-1.5 text-center text-[10px] font-medium text-muted-foreground">
         {receipt.footer}

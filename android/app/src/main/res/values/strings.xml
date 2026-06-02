@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Glango</string>
+    <string name="title_activity_main">Glango</string>
+    <string name="package_name">com.glango.app</string>
+    <string name="custom_url_scheme">com.glango.app</string>
+    <string name="notification_listener_label">Glango 알림 관리</string>
+</resources>

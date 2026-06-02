@@ -65,7 +65,7 @@ Classify the image into exactly one category, then generate the query per its ru
 
 **6. Category: URL & Web Link — type: "content_summary"**
 - Visual/data cues: captured URL, thumbnail, webpage headline in screenshot.
-- Goal: user wants to save, summarize, or share (Silent Ghost) the link content.
+- Goal: user wants to save, summarize, or share the link content in Glango.
 - Query rule: do NOT use raw URL as search_query. Extract core value from thumbnail + title (e.g. YouTube capture → search_query: "해당 영상 제목 요약", content_title: video title, target_url: URL if visible).
 
 **7. Category: Poster & Business Card — type: "poster_contact"**

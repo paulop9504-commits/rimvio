@@ -1,4 +1,9 @@
 import type { CorrectionLogEntry } from "@/lib/action-chat/confirmation-types";
+import { mergeCorrectionLogEntries } from "@/lib/corrections/merge-correction-logs";
+import {
+  fetchPlaceCorrectionsFromServer,
+  syncPlaceCorrectionToServer,
+} from "@/lib/corrections/sync-place-corrections-client";
 
 const DB_NAME = "glango-corrections";
 const DB_VERSION = 1;
@@ -76,34 +81,52 @@ export async function appendCorrectionLog(
   if (typeof indexedDB === "undefined") {
     memoryStore = [row, ...memoryStore].slice(0, 500);
     emitUpdated();
+    void syncPlaceCorrectionToServer(row);
     return row;
   }
 
   try {
     await withStore("readwrite", (store) => store.put(row));
     emitUpdated();
+    void syncPlaceCorrectionToServer(row);
     return row;
   } catch {
     memoryStore = [row, ...memoryStore].slice(0, 500);
     emitUpdated();
+    void syncPlaceCorrectionToServer(row);
     return row;
   }
 }
 
-export async function listCorrectionLogs(limit = 20) {
-  if (typeof indexedDB === "undefined") {
-    return memoryStore.slice(0, limit);
+export async function listCorrectionLogs(
+  limit = 20,
+  options?: { mergeRemote?: boolean }
+) {
+  const local =
+    typeof indexedDB === "undefined"
+      ? memoryStore.slice(0, limit)
+      : await (async () => {
+          try {
+            const all = await withStore("readonly", (store) => store.getAll());
+            return all
+              .sort(
+                (a, b) =>
+                  new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+              )
+              .slice(0, limit);
+          } catch {
+            return memoryStore.slice(0, limit);
+          }
+        })();
+
+  if (options?.mergeRemote !== true || typeof window === "undefined") {
+    return local;
   }
 
-  try {
-    const all = await withStore("readonly", (store) => store.getAll());
-    return all
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      )
-      .slice(0, limit);
-  } catch {
-    return memoryStore.slice(0, limit);
-  }
+  const remote = await fetchPlaceCorrectionsFromServer(limit);
+  return mergeCorrectionLogEntries(local, remote).slice(0, limit);
+}
+
+export function listCorrectionLogsSync(limit = 20): CorrectionLogEntry[] {
+  return memoryStore.slice(0, limit);
 }

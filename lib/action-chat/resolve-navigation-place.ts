@@ -1,4 +1,8 @@
 import { stripUiNoise } from "@/lib/action-chat/clean-entity-text";
+import { isAiIntentUtterance } from "@/lib/action-chat/classify-ai-intent-utterance";
+import { isNonLocationActionCommand } from "@/lib/action-chat/is-non-location-action";
+import { isPlaceRecommendationQuery } from "@/lib/context-resolver/discovery/parse-find-place-intent";
+import { isVitalityStateUtterance } from "@/lib/vitality-state/classify-vitality-state-intent";
 
 const STATION_RE = /([가-힣A-Za-z0-9]{2,12}역)/;
 const AIRPORT_RE = /([가-힣A-Za-z0-9]{2,12}공항)/;
@@ -15,10 +19,16 @@ const TRAVEL_SUFFIX =
 const BRAND_PLACE =
   /(?:갤러리아|스타벅스|맥도날드|쿠우쿠우|이마트|홈플러스|코스트코|올리브영|cgv|메가박스)/i;
 
+const PLACE_SEARCH_COMMAND =
+  /(?:맛집|식당|레스토랑|음식점|카페).*(?:검색|찾기|찾아)|(?:검색|찾기|찾아).*(?:맛집|식당|레스토랑)|^맛집\s*(?:검색|찾기)/iu;
+
 const DISTRICT_HINT =
   /(?:둔산|역삼|강남|타임월드|센터시티|도안|월드컵)(?!동|로|역|구|시)/i;
 
 const TRAVEL_NOISE = /(?:분\s*(?:뒤|후)|가야|갈\s*거|출발|이동|만나|볼\s*거)/;
+
+const CONVERSATIONAL_NOT_PLACE =
+  /(?:사도\s*돼|해도\s*돼|괜찮(?:아|을)|어때|어떡(?:해|하지)|뭐(?:야|지|할)|[?？])/iu;
 
 export function looksLikeNoisyPlaceLabel(value: string | null | undefined): boolean {
   if (!value?.trim()) {
@@ -48,6 +58,26 @@ function pickTransitLabel(message: string): string | null {
 export function resolveNavigationPlaceName(message: string): string | null {
   const trimmed = stripUiNoise(message.trim());
   if (!trimmed) {
+    return null;
+  }
+
+  if (isVitalityStateUtterance(trimmed)) {
+    return null;
+  }
+
+  if (isNonLocationActionCommand(trimmed)) {
+    return null;
+  }
+
+  if (isAiIntentUtterance(trimmed) || CONVERSATIONAL_NOT_PLACE.test(trimmed)) {
+    return null;
+  }
+
+  if (isPlaceRecommendationQuery(trimmed)) {
+    return null;
+  }
+
+  if (PLACE_SEARCH_COMMAND.test(trimmed)) {
     return null;
   }
 
@@ -87,7 +117,13 @@ export function resolveNavigationPlaceName(message: string): string | null {
     return coreDistrict[0];
   }
 
-  if (core.length >= 2 && core.length <= 16 && !TRAVEL_NOISE.test(core)) {
+  if (
+    core.length >= 2 &&
+    core.length <= 16 &&
+    !CONVERSATIONAL_NOT_PLACE.test(core) &&
+    !TRAVEL_NOISE.test(core) &&
+    !PLACE_SEARCH_COMMAND.test(core)
+  ) {
     return core;
   }
 

@@ -13,7 +13,7 @@ function publicFileExists(relativePath: string) {
 }
 
 function manifestIcons(): MetadataRoute.Manifest["icons"] {
-  const pngSizes = [192, 512] as const;
+  const pngSizes = [192, 512, 1024] as const;
   const icons: NonNullable<MetadataRoute.Manifest["icons"]> = [];
 
   for (const size of pngSizes) {
@@ -79,8 +79,8 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: "/",
     display: "standalone",
     display_override: ["standalone", "minimal-ui"],
-    background_color: "#ffffff",
-    theme_color: "#8B5CF6",
+    background_color: "#1c1c1c",
+    theme_color: "#1c1c1c",
     orientation: "portrait",
     categories: ["productivity", "utilities"],
     icons: manifestIcons(),

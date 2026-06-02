@@ -47,7 +47,7 @@ function InboxPasteHeader({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-          className="inbox-golden-input w-full min-w-0 shrink-0 overflow-hidden bg-[#f2f2f7]"
+          className="inbox-golden-input w-full min-w-0 shrink-0 overflow-hidden bg-glango-surface-muted"
         >
           <p className="mb-2 px-0.5 text-[13px] font-semibold tracking-tight text-foreground">
             {copy.inbox.paste}
@@ -254,7 +254,7 @@ function ActionFeedListInner() {
                   <button
                     type="button"
                     onClick={selectAllFiltered}
-                    className="text-xs font-medium text-[#007AFF]"
+                    className="text-xs font-medium text-glango-neon-cyan"
                   >
                     {copy.inbox.selectAll}
                   </button>
@@ -276,13 +276,12 @@ function ActionFeedListInner() {
                   <button
                     type="button"
                     onClick={() => setSelectMode(true)}
-                    className="text-xs font-medium text-[#007AFF]"
+                    className="text-xs font-medium text-glango-neon-cyan"
                   >
                     {copy.inbox.select}
                   </button>
                   <span className="text-xs tabular-nums text-muted-foreground">
-                    {filteredLinks.length}개
-                  </span>
+                    {filteredLinks.length}�?                  </span>
                 </div>
               </>
             )}
@@ -297,7 +296,7 @@ function ActionFeedListInner() {
             <InboxCoachingStrip links={activeLinks.filter(isLinkOpen)} />
           </div>
           {selectMode && selectedLinks.length === 0 ? (
-            <p className="mt-2 rounded-xl bg-[#007AFF]/8 px-3 py-2 text-center text-xs text-[#007AFF]">
+            <p className="mt-2 rounded-xl bg-glango-neon-purple/8 px-3 py-2 text-center text-xs text-glango-neon-cyan">
               {copy.inbox.selectPrompt}
             </p>
           ) : null}
@@ -307,8 +306,8 @@ function ActionFeedListInner() {
               onClick={() => void sendLinks(filteredLinks)}
               className={cn(
                 "mt-[var(--space-u)] flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-2.5",
-                "bg-[#007AFF]/10 text-sm font-medium text-[#007AFF]",
-                "transition-colors active:bg-[#007AFF]/15"
+                "bg-glango-neon-purple/10 text-sm font-medium text-glango-neon-cyan",
+                "transition-colors active:bg-glango-neon-purple/15"
               )}
             >
               <Send className="size-4" strokeWidth={2} />
@@ -348,7 +347,7 @@ function ActionFeedListInner() {
                     exit={{ opacity: 0 }}
                     className={
                       index < filteredLinks.length - 1
-                        ? "border-b border-black/[0.06]"
+                        ? "border-b border-border"
                         : undefined
                     }
                   >
@@ -375,7 +374,7 @@ function ActionFeedListInner() {
       {selectMode && selectedLinks.length > 0 ? (
         <div
           className={cn(
-            "shrink-0 border-t border-black/[0.06] bg-background/95 px-[var(--space-phi)] py-3 backdrop-blur-md",
+            "shrink-0 border-t border-border bg-background/95 px-[var(--space-phi)] py-3 backdrop-blur-md",
             "pb-[max(0.75rem,env(safe-area-inset-bottom))]"
           )}
         >
@@ -383,7 +382,7 @@ function ActionFeedListInner() {
             <button
               type="button"
               onClick={() => openSelectedLinks(selectedLinks)}
-              className="flex items-center justify-center gap-2 rounded-full border border-black/10 bg-background py-3 text-sm font-semibold active:bg-muted/40"
+              className="flex items-center justify-center gap-2 rounded-full border border-border bg-background py-3 text-sm font-semibold active:bg-muted/40"
             >
               <ExternalLink className="size-4" />
               {copy.inbox.openSelected}
@@ -391,7 +390,7 @@ function ActionFeedListInner() {
             <button
               type="button"
               onClick={() => moveSelectedToFeed(selectedLinks)}
-              className="flex items-center justify-center gap-2 rounded-full border border-black/10 bg-background py-3 text-sm font-semibold active:bg-muted/40"
+              className="flex items-center justify-center gap-2 rounded-full border border-border bg-background py-3 text-sm font-semibold active:bg-muted/40"
             >
               <Sparkles className="size-4" />
               {copy.inbox.moveToFeed}
@@ -399,7 +398,7 @@ function ActionFeedListInner() {
             <button
               type="button"
               onClick={() => void sendLinks(selectedLinks)}
-              className="flex items-center justify-center gap-2 rounded-full bg-[#007AFF] py-3 text-sm font-semibold text-white active:opacity-90"
+              className="flex items-center justify-center gap-2 rounded-full bg-glango-neon-purple py-3 text-sm font-semibold text-white active:opacity-90"
             >
               <Send className="size-4" />
               {copy.inbox.sendBulk(selectedLinks.length)}
@@ -407,7 +406,7 @@ function ActionFeedListInner() {
             <button
               type="button"
               onClick={() => openRoomPicker(selectedLinks)}
-              className="flex items-center justify-center gap-2 rounded-full border border-black/10 bg-background py-3 text-sm font-semibold active:bg-muted/40"
+              className="flex items-center justify-center gap-2 rounded-full border border-border bg-background py-3 text-sm font-semibold active:bg-muted/40"
             >
               <Users className="size-4" />
               {copy.inbox.sendToRoom}

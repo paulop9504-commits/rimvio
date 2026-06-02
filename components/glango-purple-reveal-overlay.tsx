@@ -67,7 +67,7 @@ export function GlangoPurpleRevealOverlay({
           {copy.settings.drawPurpleRevealEyebrow}
         </p>
 
-        <div className="relative mt-4 flex size-36 items-center justify-center rounded-[2rem] bg-white shadow-2xl ring-4 ring-violet-300/50 animate-glango-draw-pop">
+        <div className="relative mt-4 flex size-36 items-center justify-center rounded-[2rem] bg-glango-surface shadow-2xl ring-4 ring-violet-300/50 animate-glango-draw-pop">
           <span
             className="pointer-events-none absolute -inset-3 rounded-[2.4rem] bg-gradient-to-br from-violet-400/30 via-fuchsia-300/20 to-amber-200/20 animate-ping"
             aria-hidden
@@ -88,7 +88,7 @@ export function GlangoPurpleRevealOverlay({
         <button
           type="button"
           onClick={onClose}
-          className="relative mt-8 rounded-full bg-white px-5 py-2.5 text-sm font-bold text-violet-700 shadow-lg active:scale-[0.98]"
+          className="relative mt-8 rounded-full bg-glango-surface px-5 py-2.5 text-sm font-bold text-violet-700 shadow-lg active:scale-[0.98]"
         >
           {copy.settings.drawPurpleRevealDismiss}
         </button>

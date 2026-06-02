@@ -47,6 +47,7 @@ export type ConfirmationExtractedData = {
   datetime: string | null;
   place_name: string | null;
   url: string | null;
+  schedule_note?: string | null;
 };
 
 export type OrchestratorConfirmationWire = {
@@ -64,6 +65,10 @@ export type OrchestratorConfirmationWire = {
   interrupt?: ConfirmInterruptWire;
   /** Context-aware button labels — replaces generic 네/아니오 when present */
   witty_buttons?: WittyButtonWire[];
+  /** Live search results — inline chips on first turn */
+  location_suggestions?: LocationSuggestion[];
+  /** quick_pick | inline_pick | classic */
+  location_ux?: LocationConfirmUxWire;
 };
 
 export type LocationSuggestion = {
@@ -72,6 +77,21 @@ export type LocationSuggestion = {
   place_name: string;
   address: string;
   branch?: string;
+  /** Learned from correction log — prior user choice */
+  is_prior?: boolean;
+};
+
+export type LocationConfirmUxMode =
+  | "quick_pick"
+  | "inline_pick"
+  | "prior_pick"
+  | "classic";
+
+export type LocationConfirmUxWire = {
+  mode: LocationConfirmUxMode;
+  prompt: string;
+  recommended_id?: string;
+  suggestions: LocationSuggestion[];
 };
 
 export type CorrectionLogEntry = {

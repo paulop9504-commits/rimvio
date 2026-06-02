@@ -34,6 +34,28 @@ export function writeActionChatMessages(
   sessionStorage.setItem(storageKey(scopeId), JSON.stringify(messages.slice(-40)));
 }
 
+/** UI reset — messages live only in sessionStorage; memory stays in localStorage. */
+export function clearActionChatMessages(scopeId: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  sessionStorage.removeItem(storageKey(scopeId));
+}
+
+/** Wipe every in-session chat scope (e.g. 새 대화). Archive current scope first. */
+export function clearAllActionChatMessageScopes() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  for (let index = sessionStorage.length - 1; index >= 0; index -= 1) {
+    const key = sessionStorage.key(index);
+    if (key?.startsWith(`${STORAGE_PREFIX}.`)) {
+      sessionStorage.removeItem(key);
+    }
+  }
+}
+
 export function actionChatScopeId(linkId?: string | null) {
   return linkId?.trim() || "free";
 }

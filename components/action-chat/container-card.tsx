@@ -13,6 +13,7 @@ type ContainerCardProps = {
   meta?: ReactNode;
   footer?: ReactNode;
   className?: string;
+  compact?: boolean;
 };
 
 export function ContainerCard({
@@ -24,11 +25,18 @@ export function ContainerCard({
   meta,
   footer,
   className,
+  compact = false,
 }: ContainerCardProps) {
   const showBody = Boolean(body?.trim()) && body!.trim() !== title.trim();
 
   return (
-    <article className={cn("glango-container-card", className)}>
+    <article
+      className={cn(
+        "glango-container-card glango-point-surface",
+        compact && "glango-container-card--compact",
+        className,
+      )}
+    >
       <header className="glango-container-card__header">
         <span className="glango-container-card__icon" aria-hidden>
           <Icon className="size-[18px]" strokeWidth={2.1} />
@@ -36,7 +44,7 @@ export function ContainerCard({
         <div className="min-w-0 flex-1">
           <h3 className="glango-container-card__title">{title}</h3>
           {loading ? (
-            <p className="glango-container-card__subtitle">정리하는 중…</p>
+            <p className="glango-container-card__subtitle text-white/55">생각중…</p>
           ) : chips.length > 0 ? (
             <div className="glango-container-card__chips">
               {chips.map((chip) => (

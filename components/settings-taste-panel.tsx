@@ -56,8 +56,8 @@ export function SettingsTastePanel({ className }: { className?: string }) {
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold transition-colors active:scale-[0.98]",
                 active
-                  ? "bg-[#007AFF] text-white shadow-sm"
-                  : "bg-[#f2f2f7] text-foreground ring-1 ring-black/[0.05]"
+                  ? "bg-glango-neon-purple text-white shadow-sm"
+                  : "bg-glango-surface-muted text-foreground ring-1 ring-black/[0.05]"
               )}
             >
               <span aria-hidden>{option.emoji}</span>

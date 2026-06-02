@@ -8,7 +8,7 @@ import {
 } from "@/lib/feed/feed-visual";
 import type { LinkRow } from "@/types/database";
 
-/** Compact feed visual — chip for portal links, thumbnail for YouTube. */
+/** Compact feed visual ??chip for portal links, thumbnail for YouTube. */
 export function FeedCompactVisual({ link }: { link: LinkRow }) {
   const thumb = link.thumbnail_url?.trim();
   const showYouTube =
@@ -18,7 +18,7 @@ export function FeedCompactVisual({ link }: { link: LinkRow }) {
 
   if (showYouTube) {
     return (
-      <div className="aspect-video w-full overflow-hidden rounded-[22px] ring-1 ring-black/[0.04]">
+      <div className="aspect-video w-full overflow-hidden rounded-[22px] ring-1 ring-glango-neon-purple/12">
         <FeedHeroArt link={link} className="size-full" />
       </div>
     );

@@ -96,6 +96,15 @@ function buildFlushSummary(succeeded: FlushItemResult[], failed: FlushItemResult
     if (succeeded.length === 0) {
       return "";
     }
+    const allSchedule = succeeded.every(
+      (item) => item.type === "DATETIME" || item.type === "SCHEDULE"
+    );
+    if (allSchedule && succeeded.length >= 2) {
+      return `총 ${succeeded.length}개의 일정이 모두 등록되었습니다.`;
+    }
+    if (allSchedule && succeeded.length === 1) {
+      return "일정을 등록했어요.";
+    }
     return `모든 후속 작업 ${succeeded.length}건을 처리했어요.`;
   }
 

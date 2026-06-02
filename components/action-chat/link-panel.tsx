@@ -167,15 +167,15 @@ export function ActionChatLinkPanel({
       <div className="space-y-5 px-4 pb-4">
         {(isCapture && thumb) || link.original_url ? (
           <div className="flex justify-end">
-            <div className="max-w-[78%] space-y-2">
+            <div className="max-w-[min(68%,17rem)] space-y-2">
               {isCapture && thumb ? (
-                <div className="overflow-hidden rounded-[16px] rounded-br-[4px] border border-black/[0.05] bg-white shadow-sm">
+                <div className="overflow-hidden rounded-[16px] rounded-br-[4px] border border-border bg-glango-surface shadow-sm">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={thumb} alt="" className="max-h-44 w-full object-cover" />
                 </div>
               ) : null}
               {!isCapture || link.original_url.includes("http") ? (
-                <div className="chat-bubble chat-bubble--user text-[14px]">
+                <div className="chat-bubble chat-bubble--user chat-bubble--user-single text-[14px]">
                   {link.original_url.replace(/^https?:\/\//, "").slice(0, 64)}
                 </div>
               ) : null}

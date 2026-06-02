@@ -1,10 +1,16 @@
-# Glango 👀 — Link-to-Action PWA
+# Glango 👀 — Your Life, Operable.
 
-공유 URL → 3초 안에 실행 가능한 행동(지도, YouTube, 쇼핑, 교통…)으로 변환.
+**Action OS** for everyday intent — say it, share it, snap it → **Action Dock** executes.
+
+North Star: *Your Life, Operable.* (당신의 모든 일상을 OS로 만듭니다.)
+
+링크 공유는 **ingress** 중 하나입니다. 제품 정체성은 **실행(Operate)** 입니다.
 
 브랜드 가이드: [docs/GLANGO_BRAND.md](./docs/GLANGO_BRAND.md)
 
 ## 빠른 시작
+
+**Cursor:** Glango만 작업할 때는 [`glango.code-workspace`](./glango.code-workspace) 로 열기 ([docs/WORKSPACE.md](./docs/WORKSPACE.md)). Silent Ghost repo와 분리.
 
 ```bash
 cd new-project
@@ -28,7 +34,8 @@ npm run backup               # Desktop에 zip 백업
 | [docs/PHONE_QA.md](./docs/PHONE_QA.md) | **실기기 QA** · iPhone/Android 체크리스트 |
 | [docs/GLANGO_KIPRIS.md](./docs/GLANGO_KIPRIS.md) | KIPRIS 상표 검색 메모 |
 | [docs/GLANGO_HANDOFF.md](./docs/GLANGO_HANDOFF.md) | AI/개발 핸드오프 |
-| [docs/GLANGO_PRODUCT.md](./docs/GLANGO_PRODUCT.md) | 제품 정의 |
+| [docs/WORKSPACE.md](./docs/WORKSPACE.md) | **Cursor workspace (SG와 분리)** |
+| [docs/GLANGO_PRODUCT.md](./docs/GLANGO_PRODUCT.md) | **Action OS 제품 정의** |
 | [docs/GLANGO_ARCHITECTURE.md](./docs/GLANGO_ARCHITECTURE.md) | 아키텍처 |
 
 ## Vercel 배포
@@ -41,7 +48,7 @@ npm run backup               # Desktop에 zip 백업
 ## Supabase (선택)
 
 `supabase/migrations/` 001→004 순서로 SQL Editor 실행.  
-없으면 링크·analytics는 로컬 + API no-op.
+없으면 로컬 + API no-op.
 
 ## 실험 스크립트
 
@@ -51,4 +58,4 @@ npm run experiment:actions     # copy + deep link
 npm run experiment:analytics   # Tier 1 집계
 ```
 
-Demo: `/demo` · Share 테스트: `/share?url=...`
+Demo: `/demo` · Share ingress: `/share?url=...`

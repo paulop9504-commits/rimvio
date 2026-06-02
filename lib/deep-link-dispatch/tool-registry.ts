@@ -15,11 +15,11 @@ export const DEEP_LINK_TOOLS: DeepLinkToolDefinition[] = [
     triggers: [/카카오\s*내비|카카오내비|길\s*찾|내비\s*켜|navigation|navigate/i],
     params: [{ key: "destination", label: "목적지" }],
     build(ctx) {
-      const dest =
+      const destRaw =
         ctx.params.destination?.trim() ||
         ctx.message.match(/(?:까지|으로|로\s*가|길\s*찾)\s*(.+?)(?:\s*$|\.)/i)?.[1]?.trim();
-      if (dest) {
-        return buildKakaoMapSearchHref(dest);
+      if (destRaw) {
+        return buildKakaoMapSearchHref(destRaw);
       }
       if (ctx.params.x && ctx.params.y) {
         return `kakaonavi://navigate?x=${enc(ctx.params.x)}&y=${enc(ctx.params.y)}`;

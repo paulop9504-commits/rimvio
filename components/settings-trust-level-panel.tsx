@@ -61,13 +61,13 @@ export function SettingsTrustLevelPanel({ className }: { className?: string }) {
             {copy.settings.trustHint}
           </p>
         </div>
-        <span className="shrink-0 rounded-full bg-[#7B61FF]/10 px-2.5 py-1 text-[10px] font-semibold text-[#7B61FF]">
+        <span className="shrink-0 rounded-full bg-glango-neon-purple/10 px-2.5 py-1 text-[10px] font-semibold text-glango-neon-purple">
           {copy.settings.trustBadge}
         </span>
       </div>
 
       <div className="mt-3 rounded-xl bg-[#F7F6FF] px-3 py-2.5 text-[11px] leading-relaxed text-[#374151]">
-        <p className="font-semibold text-[#7B61FF]">
+        <p className="font-semibold text-glango-neon-purple">
           {copy.settings.trustStageActive(stageLabel(stage))}
         </p>
         <p className="mt-1 text-muted-foreground">
@@ -92,14 +92,14 @@ export function SettingsTrustLevelPanel({ className }: { className?: string }) {
               className={cn(
                 "flex w-full items-start gap-3 rounded-2xl px-3.5 py-3 text-left transition-all active:scale-[0.99]",
                 active
-                  ? "bg-[#7B61FF]/8 ring-2 ring-[#7B61FF]/35 shadow-sm"
-                  : "bg-[#f2f2f7] ring-1 ring-black/[0.04] hover:bg-[#ececf0]"
+                  ? "bg-glango-neon-purple/8 ring-2 ring-[#7B61FF]/35 shadow-sm"
+                  : "bg-glango-surface-muted ring-1 ring-glango-neon-purple/12 hover:bg-glango-surface-raised"
               )}
             >
               <span
                 className={cn(
                   "mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-xl text-lg",
-                  active ? "bg-[#7B61FF] text-white" : "bg-white text-foreground"
+                  active ? "bg-glango-neon-purple text-white" : "bg-glango-surface text-foreground"
                 )}
                 aria-hidden
               >
@@ -130,7 +130,7 @@ export function SettingsTrustLevelPanel({ className }: { className?: string }) {
         })}
       </div>
 
-      <p className="mt-3 rounded-xl bg-[#f2f2f7] px-3 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
+      <p className="mt-3 rounded-xl bg-glango-surface-muted px-3 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
         {copy.settings.trustActive(labelForTrustLevelMode(selected))}
       </p>
     </section>

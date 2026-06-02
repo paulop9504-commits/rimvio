@@ -121,15 +121,15 @@ export function ContainerChainStrip({ className }: ContainerChainStripProps) {
     <section className={cn("container-chain-strip px-4 pb-2", className)}>
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#9CA3AF]">
-          컨테이너
+          컨테?�너
         </p>
         {activeChains.length > 0 ? (
           <button
             type="button"
             onClick={clearChain}
-            className="text-[10px] font-medium text-[#9CA3AF] underline-offset-2 hover:text-[#6B7280] hover:underline"
+            className="text-[10px] font-medium text-[#9CA3AF] underline-offset-2 hover:text-muted-foreground hover:underline"
           >
-            연결 해제
+            ?�결 ?�제
           </button>
         ) : null}
       </div>
@@ -153,7 +153,7 @@ export function ContainerChainStrip({ className }: ContainerChainStripProps) {
                 <p className="truncate text-[13px] font-semibold text-[#1F2937]">
                   [{hybridLabel}]
                 </p>
-                <p className="mt-0.5 text-[11px] leading-snug text-[#6B7280]">
+                <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
                   activeChains = {JSON.stringify(activeChains)}
                 </p>
               </div>
@@ -167,14 +167,14 @@ export function ContainerChainStrip({ className }: ContainerChainStripProps) {
                 return (
                 <span
                   key={key}
-                  className="inline-flex items-center gap-1 rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-medium text-[#374151]"
+                  className="inline-flex items-center gap-1 rounded-full bg-glango-surface/80 px-2 py-0.5 text-[10px] font-medium text-[#374151]"
                 >
                   {label}
                   <button
                     type="button"
-                    aria-label={`${label} 연결 해제`}
+                    aria-label={`${label} ?�결 ?�제`}
                     onClick={() => removeFromChain(key)}
-                    className="text-[#9CA3AF] hover:text-[#6B7280]"
+                    className="text-[#9CA3AF] hover:text-muted-foreground"
                   >
                     <X className="size-3" />
                   </button>
@@ -232,7 +232,7 @@ export function ContainerChainStrip({ className }: ContainerChainStripProps) {
       </div>
 
       <p className="mt-1 text-[10px] text-[#9CA3AF]">
-        꾹 눌러 끌어다 놓으면 Snap · 탭하면 단일 선택
+        �??�러 ?�어???�으�?Snap · ??���??�일 ?�택
       </p>
     </section>
   );

@@ -4,9 +4,20 @@ export const ACTION_ORIENTED_PROMPT_BLOCK = `# [ACTION-ORIENTED EXECUTION]
 - 연락처·전화번호·중요한 짧은 텍스트(80자 이하)는 **묻지 말고** 즉시 Knowledge Container(data)에 저장하라. JSON에 \`knowledge_saved\` 배열을 포함하라.
 - 사용자가 "아까 저장한", "그 번호", "그 연락처" 등으로 물으면 knowledge recall을 우선하고, 저장된 entity value를 summary에 바로 답하라.`;
 
-export type ActionUiTriggerWire = {
-  type: "DATE_PICKER";
-  draft_task?: string;
+export type ActionUiTriggerWire =
+  | {
+      type: "DATE_PICKER";
+      draft_task?: string;
+    }
+  | OcrReviewDatePickerWire;
+
+export type OcrReviewDatePickerWire = {
+  type: "OCR_REVIEW_DATE_PICKER";
+  rows: Array<{
+    candidateId: string;
+    title: string;
+    time: string | null;
+  }>;
 };
 
 export type KnowledgeSavedWire = {

@@ -1,5 +1,13 @@
 import { ingestNotification } from "@/lib/notification-shadow/route-notification";
+import {
+  applyFocusSessionRouteOverride,
+  registerFocusHeldShadow,
+} from "@/lib/action-chat/mention-focus/focus-notification-gate";
 import type { ShadowProcessedRecord } from "@/lib/notification-shadow/types";
+import {
+  ingestNotificationEvent,
+  migrateShadowRecordsToEventCandidates,
+} from "@/lib/events/notification-ingest";
 
 const STORAGE_KEY = "glango.shadow-store.v1";
 export const SHADOW_STORE_UPDATED = "glango-shadow-store-updated";
@@ -50,12 +58,20 @@ export function resetShadowStoreForTests(records: ShadowProcessedRecord[] = []) 
 }
 
 export function appendShadowRecord(record: ShadowProcessedRecord) {
-  if (!record.shadow_record.store) {
-    return record;
+  const routed = applyFocusSessionRouteOverride(record);
+  let committed = routed;
+  if (routed.shadow_record.store && routed.route !== "drop") {
+    const event = ingestNotificationEvent(routed.raw, routed.id);
+    committed = { ...routed, ecId: event.id };
   }
-  const next = pruneExpired([record, ...readStore()]).slice(0, 500);
+
+  if (!committed.shadow_record.store) {
+    return committed;
+  }
+  registerFocusHeldShadow(committed);
+  const next = pruneExpired([committed, ...readStore()]).slice(0, 500);
   writeStore(next);
-  return record;
+  return committed;
 }
 
 export function ingestAndStore(
@@ -70,6 +86,7 @@ export function listShadowRecords(filter?: {
   minScore?: number;
 }): ShadowProcessedRecord[] {
   let records = pruneExpired(readStore());
+  migrateShadowRecordsToEventCandidates(records);
   if (filter?.route) {
     records = records.filter((record) => record.route === filter.route);
   }

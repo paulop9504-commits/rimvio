@@ -3,9 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Navigation, X } from "lucide-react";
-import { GlangoActionButton } from "@/components/ui/glango-action-button";
+import { X } from "lucide-react";
 import { useCopy } from "@/hooks/use-copy";
+import {
+  resolveMainActionBrandStyle,
+} from "@/lib/brand/action-brand-style";
+import { GoogleBrandText, isGoogleBrandText } from "@/lib/brand/google-brand-text";
+import { glangoIconBtnClass } from "@/lib/brand/glango-neon-theme";
 import {
   buildNavSectorOptions,
   hideNavSectorProvider,
@@ -13,7 +17,6 @@ import {
   navSectorUsageCount,
   type NavSectorDestination,
   type NavSectorOption,
-  type NavSectorProvider,
 } from "@/lib/navigation/nav-sector";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +27,83 @@ type NavSectorSheetProps = {
   placeLabel?: string | null;
   onSelect: (option: NavSectorOption) => void;
 };
+
+type NavSectorOptionRowProps = {
+  option: NavSectorOption;
+  isTopPick: boolean;
+  frequentBadge: string;
+  hideLabel: string;
+  onSelect: () => void;
+  onHide: () => void;
+};
+
+function NavSectorOptionRow({
+  option,
+  isTopPick,
+  frequentBadge,
+  hideLabel,
+  onSelect,
+  onHide,
+}: NavSectorOptionRowProps) {
+  const brand = resolveMainActionBrandStyle({
+    id: option.id,
+    label: option.label,
+    href: option.href,
+  });
+  const googleLabel = isGoogleBrandText({
+    id: option.id,
+    label: option.label,
+    href: option.href,
+  });
+
+  return (
+    <div className="flex items-stretch gap-2">
+      <button
+        type="button"
+        className="glango-action-shell-btn flex min-w-0 flex-1 items-center rounded-2xl border bg-transparent px-3 py-2.5 text-left transition-colors hover:bg-white/[0.06] active:scale-[0.99]"
+        style={{
+          borderColor: brand.borderColor,
+          backgroundColor: brand.fillColor,
+        }}
+        onClick={onSelect}
+      >
+        <span className="min-w-0 flex-1">
+          {googleLabel ? (
+            <GoogleBrandText
+              text={option.label}
+              className="block text-[15px] font-semibold leading-tight tracking-[-0.01em]"
+            />
+          ) : (
+            <span
+              className="block truncate text-[15px] font-semibold leading-tight tracking-[-0.01em]"
+              style={{ color: brand.textColor }}
+            >
+              {option.label}
+            </span>
+          )}
+          <span className="mt-0.5 block truncate text-[11px] leading-snug text-white/55">
+            {option.hint}
+          </span>
+        </span>
+
+        {isTopPick ? (
+          <span className="shrink-0 rounded-full border border-white/35 px-2 py-0.5 text-[10px] font-semibold text-white/70">
+            {frequentBadge}
+          </span>
+        ) : null}
+      </button>
+
+      <button
+        type="button"
+        aria-label={`${option.label} ${hideLabel}`}
+        className="glango-action-shell-chip shrink-0 self-center rounded-full border border-white/85 bg-transparent px-3 py-2 text-[11px] font-semibold text-white/75 transition-colors hover:bg-white/[0.06] active:scale-[0.98]"
+        onClick={onHide}
+      >
+        {hideLabel}
+      </button>
+    </div>
+  );
+}
 
 export function NavSectorSheet({
   open,
@@ -76,7 +156,7 @@ export function NavSectorSheet({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[80] bg-black/40 backdrop-blur-[2px]"
+            className="fixed inset-0 z-[80] bg-black/55 backdrop-blur-[3px]"
             onClick={() => onOpenChange(false)}
           />
 
@@ -89,22 +169,22 @@ export function NavSectorSheet({
             exit={{ opacity: 0, y: 16 }}
             transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             className={cn(
-              "fixed inset-x-0 bottom-0 z-[81] mx-auto max-w-lg",
-              "rounded-t-[28px] bg-[#FAFAFC] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3",
-              "shadow-[0_-18px_48px_-24px_rgba(0,0,0,0.35)] ring-1 ring-black/[0.06]"
+              "nav-sector-sheet fixed inset-x-0 bottom-0 z-[81] mx-auto max-w-lg",
+              "rounded-t-[28px] border border-white/[0.08] bg-glango-surface px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3",
+              "shadow-[0_-18px_48px_-24px_rgba(0,0,0,0.55)]",
             )}
           >
-            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-black/10" />
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/20" />
 
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <h2
                   id="nav-sector-sheet-title"
-                  className="text-[15px] font-semibold tracking-tight"
+                  className="text-[15px] font-semibold tracking-tight text-white"
                 >
                   {copy.settings.navSectorTitle}
                 </h2>
-                <p className="mt-1 text-[12px] leading-snug text-muted-foreground">
+                <p className="mt-1 text-[12px] leading-snug text-white/55">
                   {copy.settings.navSectorHint(place.slice(0, 28))}
                 </p>
               </div>
@@ -112,73 +192,41 @@ export function NavSectorSheet({
                 type="button"
                 aria-label="닫기"
                 onClick={() => onOpenChange(false)}
-                className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#f2f2f7] text-muted-foreground"
+                className={glangoIconBtnClass("secondary", "sm")}
               >
                 <X className="size-4" />
               </button>
             </div>
 
             <div className="mt-4 max-h-[52vh] space-y-2 overflow-y-auto">
-              {options.map((option, index) => {
+              {options.map((option) => {
                 const usage = navSectorUsageCount(option.id);
                 const isTopPick = usage > 0 && usage === topUsage;
 
                 return (
-                  <div key={option.id} className="flex items-stretch gap-2">
-                    <GlangoActionButton
-                      type="button"
-                      variant={isTopPick ? "primary" : "secondary"}
-                      layout="tile"
-                      fullWidth
-                      className={cn(
-                        "min-w-0 flex-1",
-                        isTopPick && index === 0 && usage > 0 && "ring-2 ring-[#4A90E2]/30"
-                      )}
-                      onClick={() => {
-                        onSelect(option);
-                        onOpenChange(false);
-                      }}
-                      iconSlot={
-                        index === 0 && usage > 0 ? (
-                          <Navigation className="size-5" strokeWidth={2.5} />
-                        ) : (
-                          <span className="text-lg leading-none">{option.emoji}</span>
-                        )
-                      }
-                      hint={option.hint}
-                      trailing={
-                        isTopPick ? (
-                          <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold">
-                            {copy.settings.navSectorFrequentBadge}
-                          </span>
-                        ) : undefined
-                      }
-                    >
-                      {option.label}
-                    </GlangoActionButton>
-
-                    <GlangoActionButton
-                      type="button"
-                      variant="ghost"
-                      layout="pill"
-                      aria-label={`${option.label} 숨기기`}
-                      onClick={() => hideNavSectorProvider(option.id as NavSectorProvider)}
-                      className="shrink-0 self-center px-2.5 py-2 text-[10px]"
-                    >
-                      {copy.settings.navSectorHide}
-                    </GlangoActionButton>
-                  </div>
+                  <NavSectorOptionRow
+                    key={option.id}
+                    option={option}
+                    isTopPick={isTopPick}
+                    frequentBadge={copy.settings.navSectorFrequentBadge}
+                    hideLabel={copy.settings.navSectorHide}
+                    onSelect={() => {
+                      onSelect(option);
+                      onOpenChange(false);
+                    }}
+                    onHide={() => hideNavSectorProvider(option.id)}
+                  />
                 );
               })}
             </div>
 
-            <p className="mt-3 text-center text-[11px] leading-relaxed text-muted-foreground">
+            <p className="mt-3 text-center text-[11px] leading-relaxed text-white/45">
               {copy.settings.navSectorFootnote}
             </p>
           </motion.div>
         </>
       ) : null}
     </AnimatePresence>,
-    document.body
+    document.body,
   );
 }

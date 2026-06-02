@@ -2,6 +2,7 @@
 
 import type { LucideIcon } from "lucide-react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { NavAuxBrandStyle } from "@/lib/brand/action-brand-style";
 import { cn } from "@/lib/utils";
 
 export type GlangoActionButtonVariant = "primary" | "secondary" | "ghost";
@@ -12,6 +13,8 @@ type GlangoActionButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   layout?: GlangoActionButtonLayout;
   icon?: LucideIcon;
   iconSlot?: ReactNode;
+  /** Brand-colored icon shell (secondary / AUX). */
+  iconBrand?: NavAuxBrandStyle;
   hint?: string | null;
   trailing?: ReactNode;
   fullWidth?: boolean;
@@ -22,6 +25,7 @@ export function GlangoActionButton({
   layout = "default",
   icon: Icon,
   iconSlot,
+  iconBrand,
   hint,
   trailing,
   fullWidth = false,
@@ -54,7 +58,18 @@ export function GlangoActionButton({
           {iconSlot}
         </span>
       ) : Icon ? (
-        <span className="glango-action-button__icon" aria-hidden>
+        <span
+          className={cn(
+            "glango-action-button__icon",
+            iconBrand && "glango-action-button__icon--brand",
+          )}
+          style={
+            iconBrand
+              ? { color: iconBrand.iconColor, backgroundColor: iconBrand.iconBg }
+              : undefined
+          }
+          aria-hidden
+        >
           <Icon className="size-[18px]" strokeWidth={2.15} />
         </span>
       ) : null}

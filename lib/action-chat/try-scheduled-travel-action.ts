@@ -48,7 +48,7 @@ export function tryScheduledTravelAction(input: {
   };
 
   return {
-    summary: formatScheduledDeliverySummary({ placeLabel, fireAt: datetime }),
+    summary: formatScheduledDeliverySummary({ placeLabel, fireAt: datetime, jit: true }),
     actions: [],
     source: "rules",
     confidence: 0.92,

@@ -29,7 +29,7 @@ export function HomeCountryPicker({
         compact ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-3"
       )}
       role="listbox"
-      aria-label="내 나라 선택"
+      aria-label="???�라 ?�택"
     >
       {options.map((option) => {
         const selected = option.code === value;
@@ -44,10 +44,10 @@ export function HomeCountryPicker({
             onClick={() => onChange(option.code)}
             className={cn(
               "rounded-2xl px-3 py-3 text-left transition-colors",
-              "ring-1 ring-black/[0.06]",
+              "ring-1 ring-glango-neon-purple/15",
               selected
-                ? "bg-[#007AFF] text-white ring-[#007AFF]"
-                : "bg-white active:bg-[#f2f2f7]",
+                ? "bg-glango-neon-purple text-white ring-[#007AFF]"
+                : "bg-glango-surface active:bg-glango-surface-muted",
               compact ? "py-2.5" : "py-3"
             )}
           >
@@ -55,12 +55,12 @@ export function HomeCountryPicker({
               {option.labelKo}
             </span>
             {isSuggested ? (
-              <span className="mt-1 block text-[10px] font-medium text-[#007AFF]">
+              <span className="mt-1 block text-[10px] font-medium text-glango-neon-cyan">
                 추천
               </span>
             ) : selected ? (
               <span className="mt-1 block text-[10px] font-medium text-white/80">
-                선택됨
+                ?�택??
               </span>
             ) : null}
           </button>
@@ -73,7 +73,7 @@ export function HomeCountryPicker({
 export function HomeCountrySummary({ code }: { code: CountryCode }) {
   return (
     <p className="text-sm text-muted-foreground">
-      현재:{" "}
+      ?�재:{" "}
       <strong className="font-medium text-foreground">
         {getCountryLabelKo(code)}
       </strong>

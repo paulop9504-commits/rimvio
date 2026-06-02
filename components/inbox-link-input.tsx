@@ -187,7 +187,7 @@ export function InboxLinkInput({
         )}
       >
         <span
-          className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-[#007AFF]/10 text-[#007AFF]"
+          className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-glango-neon-purple/10 text-glango-neon-cyan"
           aria-hidden
         >
           <Link2 className="size-[1.125rem]" strokeWidth={2.1} />
@@ -236,7 +236,7 @@ export function InboxLinkInput({
             onClick={() => void handlePaste()}
             className={cn(
               "inline-flex size-9 items-center justify-center rounded-full",
-              "bg-[#f2f2f7] text-muted-foreground transition-colors",
+              "bg-glango-surface-muted text-muted-foreground transition-colors",
               "active:bg-[#e8e8ed] disabled:opacity-40"
             )}
             aria-label={copy.inbox.paste}
@@ -248,8 +248,8 @@ export function InboxLinkInput({
             disabled={busy || !value.trim()}
             className={cn(
               "inline-flex size-9 items-center justify-center rounded-full",
-              "bg-[#007AFF] text-white shadow-[0_2px_8px_-2px_rgba(0,122,255,0.55)]",
-              "transition-all disabled:pointer-events-none disabled:bg-[#007AFF]/25 disabled:shadow-none",
+              "bg-glango-neon-purple text-white shadow-[0_2px_8px_-2px_rgba(0,122,255,0.55)]",
+              "transition-all disabled:pointer-events-none disabled:bg-glango-neon-purple/25 disabled:shadow-none",
               "active:scale-[0.96]"
             )}
             aria-label={copy.actions.openLink}

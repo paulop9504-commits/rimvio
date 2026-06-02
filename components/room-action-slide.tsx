@@ -147,9 +147,9 @@ export function RoomActionSlide({
       <div
         className={cn(
           GOLDEN.card,
-          "flex min-h-0 flex-1 flex-col overflow-hidden rounded-[28px] bg-white",
+          "flex min-h-0 flex-1 flex-col overflow-hidden rounded-[28px] bg-glango-surface",
           "p-[var(--space-phi)]",
-          "shadow-[0_2px_24px_-8px_rgba(0,0,0,0.08)] ring-1 ring-black/[0.04]"
+          "shadow-[0_2px_24px_-8px_rgba(0,0,0,0.08)] ring-1 ring-glango-neon-purple/12"
         )}
       >
         <div className={GOLDEN.meta}>
@@ -162,7 +162,7 @@ export function RoomActionSlide({
                 "rounded-full px-2.5 py-0.5 text-[10px] font-semibold",
                 isDone
                   ? "bg-emerald-500/12 text-emerald-700"
-                  : "bg-[#f2f2f7] text-muted-foreground"
+                  : "bg-glango-surface-muted text-muted-foreground"
               )}
             >
               {isDone ? copy.room.statusDone : copy.room.statusOpen}

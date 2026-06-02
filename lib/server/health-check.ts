@@ -1,4 +1,5 @@
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { isNaverSearchConfigured } from "@/lib/naver/config";
 import { mkdir, writeFile, unlink } from "node:fs/promises";
 import path from "node:path";
 
@@ -8,6 +9,7 @@ export type HealthReport = {
   ok: boolean;
   ts: number;
   supabase: { configured: boolean; reachable: boolean };
+  naver: { configured: boolean };
   storage: { writable: boolean };
   version: string;
 };
@@ -61,6 +63,9 @@ export async function collectHealthReport(): Promise<HealthReport> {
     supabase: {
       configured: supabaseConfigured,
       reachable: supabaseReachable,
+    },
+    naver: {
+      configured: isNaverSearchConfigured(),
     },
     storage: {
       writable: storageWritable,

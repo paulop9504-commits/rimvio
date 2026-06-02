@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Send, Settings } from "lucide-react";
+import { Send, Settings, Users } from "lucide-react";
 import { GlangoFeedMark } from "@/lib/brand/glango-feed-mark";
 import { useCopy } from "@/hooks/use-copy";
 import { useRoomGuest } from "@/hooks/use-room-guest";
+import { glangoNavBarClass } from "@/lib/brand/glango-neon-theme";
 import { GRID } from "@/lib/ui/responsive-grid";
 import { cn } from "@/lib/utils";
 
@@ -20,7 +21,7 @@ type NavTab = {
   href: string;
   label: string;
   isActive: (pathname: string, filter: string | null) => boolean;
-  icon: "feed" | "send" | "settings";
+  icon: "feed" | "peers" | "send" | "settings";
 };
 
 function IgFeedIcon({
@@ -36,7 +37,6 @@ function IgFeedIcon({
     <GlangoFeedMark
       filled={active}
       variant={drawn ? variant : null}
-      className="size-[1.95rem]"
     />
   );
 }
@@ -75,6 +75,16 @@ function NavTabIcon({
           active={active}
           variant={guest.avatarVariant}
           drawn={guest.avatarDrawn}
+        />
+      );
+    case "peers":
+      return (
+        <Users
+          className={cn(
+            "size-[1.625rem]",
+            active ? "text-foreground" : "text-foreground/85"
+          )}
+          strokeWidth={active ? 2.2 : 1.85}
         />
       );
     case "send":
@@ -161,7 +171,7 @@ function InlineNavBar({
   return (
     <nav
       className={cn(
-        "mt-[var(--space-phi2)] flex justify-between border-t border-neutral-200/90 px-[var(--space-phi2)] pt-[var(--space-u)] lg:hidden"
+        "mt-[var(--space-phi2)] flex justify-between glango-nav-bar px-[var(--space-phi2)] pt-[var(--space-u)] lg:hidden"
       )}
       aria-label="Primary"
     >
@@ -192,7 +202,7 @@ function FixedBottomNavBar({
       className={cn(
         GRID.navBottomFrame,
         "lg:hidden",
-        "border-t border-neutral-200/90 bg-background",
+        glangoNavBarClass,
         "pb-[max(0.25rem,env(safe-area-inset-bottom))]"
       )}
       aria-label="Primary"
@@ -227,10 +237,10 @@ export function AppNav({ immersive = false, placement }: AppNavProps) {
         icon: "feed",
       },
       {
-        href: "/r",
-        label: copy.nav.room,
-        isActive: (p) => p.startsWith("/r"),
-        icon: "send",
+        href: "/peers",
+        label: copy.nav.peers,
+        isActive: (p) => p.startsWith("/peers"),
+        icon: "peers",
       },
       {
         href: "/welcome",

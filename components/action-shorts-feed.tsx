@@ -55,7 +55,7 @@ export function ActionShortsFeed() {
   const { activeLinks, archivedLinks, dismissLink, restoreLink } = useRealtimeLinks();
   const searchParams = useSearchParams();
   const pendingDismissRef = useRef<PendingDismiss | null>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const [pendingDismiss, setPendingDismiss] = useState<PendingDismiss | null>(
     null
   );
@@ -77,7 +77,7 @@ export function ActionShortsFeed() {
   );
   const linksLengthRef = useRef(links.length);
 
-  const activeLink = links[activeIndex] ?? null;
+  const activeLink = activeIndex >= 0 ? links[activeIndex] ?? null : null;
   const {
     loading: locateLoading,
     result: locateResult,
@@ -93,6 +93,10 @@ export function ActionShortsFeed() {
 
   const scrollToIndex = useCallback(
     (index: number) => {
+      if (index < 0) {
+        setActiveIndex(-1);
+        return;
+      }
       setActiveIndex(Math.min(Math.max(index, 0), Math.max(links.length - 1, 0)));
     },
     [links.length]
@@ -359,7 +363,7 @@ export function ActionShortsFeed() {
             <button
               type="button"
               onClick={() => openLinkAdd({ requestClipboard: true })}
-              className="rounded-[14px] bg-[#007AFF] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-transform active:scale-[0.98]"
+              className="rounded-[14px] bg-glango-neon-purple px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-transform active:scale-[0.98]"
             >
               {copy.feed.capturePill}
             </button>
@@ -424,7 +428,7 @@ export function ActionShortsFeed() {
         <ActionChatFeed
           links={links}
           activeIndex={activeIndex}
-          onSelectIndex={(index) => setActiveIndex(index)}
+          onSelectIndex={scrollToIndex}
           contextRemote={feedRemote}
           locateResult={locateResult}
           locateLoading={locateLoading}

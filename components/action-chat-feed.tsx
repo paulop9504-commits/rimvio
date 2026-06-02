@@ -2,42 +2,43 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Search, Settings2 } from "lucide-react";
-import { ChatWorkspaceChrome } from "@/components/action-chat/chat-workspace-chrome";
-import { ActionChatContextTabs } from "@/components/action-chat/context-tabs";
+import { Calendar, Settings2 } from "lucide-react";
 import {
   ActionDatePickerSheet,
 } from "@/components/action-chat/action-date-picker-sheet";
+import { OcrReviewDatePickerSheet } from "@/components/action-chat/ocr-review-date-picker-sheet";
 import { ActiveActionsSheet } from "@/components/action-chat/active-actions-sheet";
-import { ResourcePoolSheet } from "@/components/action-chat/resource-pool-sheet";
-import {
-  FixedContainerBar,
-  type FixedContainerSlot,
-} from "@/components/action-chat/fixed-container-bar";
+import { CalendarBoard } from "@/components/action-chat/calendar-board";
 import { ActionChatInputBar } from "@/components/action-chat/input-bar";
+import {
+  ChatAmbientFocusProvider,
+  ChatAmbientShell,
+} from "@/components/action-chat/chat-ambient-focus";
+import { ContextNowStrip } from "@/components/action-chat/context-now-strip";
 import { ActionChatLinkPanel } from "@/components/action-chat/link-panel";
 import { ActionChatMessageList } from "@/components/action-chat/message-list";
+import { ExecutionTimeline } from "@/components/threadline/execution-timeline";
+import { TodayThread } from "@/components/threadline/today-thread";
+import { threadlineHeaderStatus } from "@/lib/threadline";
 import { GlangoLogo } from "@/components/glango-logo";
 import { OnboardingMagicPanel } from "@/components/onboarding-magic-panel";
 import { useActionChat } from "@/hooks/use-action-chat";
+import { usePredictiveDock } from "@/hooks/use-predictive-dock";
+import { markOpportunityConsumed } from "@/lib/predictive-dock/action-opportunity-session";
+import { recordDockActionUsage } from "@/lib/action-registry/record-dock-usage";
+import { wireEventCompleted } from "@/lib/events/event-lifecycle-hooks";
+import { normalizeAnchorId } from "@/lib/events/normalize-anchor-id";
+import { executeDockActionWire } from "@/lib/action-os/execute-dock-action-wire";
+import { readClientMasterOrchestratorContext } from "@/lib/action-chat/client-master-context";
 import { useLinkReminderMap } from "@/hooks/use-link-reminders";
-import { useResourcePool } from "@/hooks/use-resource-pool";
-import { collectActionStream } from "@/lib/action-chat/active-actions-registry";
+import { useActionCalendar } from "@/hooks/use-action-calendar";
 import {
   buildFireAtFromDateTime,
   demoteLinkFromActionStream,
   promoteLinkToActionStream,
-  saveLinkToResourcePool,
 } from "@/lib/dual-mode/link-lifecycle";
-import {
-  FIXED_CALENDAR_CONTAINER_ID,
-  FIXED_DATA_CONTAINER_ID,
-} from "@/lib/knowledge/knowledge-entity-types";
 import { useLinkContextChain } from "@/hooks/use-link-context-chain";
-import { useContainerChain } from "@/hooks/use-container-chain";
-import { ContainerChainStrip } from "@/components/action-chat/container-chain-strip";
 import { useCopy, useAppLocale } from "@/hooks/use-copy";
-import { getDisplayTitleForLink } from "@/lib/feed/sanitize-link-title";
 import { shouldShowColdStartMagic } from "@/lib/onboarding/cold-start-magic";
 import type { LocateActionResult } from "@/lib/locate/types";
 import type { ContextRemoteState } from "@/lib/remote/resolve-context-remote";
@@ -72,34 +73,28 @@ export function ActionChatFeed({
 }: ActionChatFeedProps) {
   const copy = useCopy();
   const locale = useAppLocale();
-  const activeLink = links[activeIndex] ?? null;
+  const activeLink = activeIndex >= 0 ? links[activeIndex] ?? null : null;
   const {
     chainedLinks,
-    hybridLabel: linkHybridLabel,
-    isHybrid: isLinkHybrid,
-    snapTo,
     selectLink,
-    removeFromChain,
     clearChain,
   } = useLinkContextChain(links);
-  const { hybridLabel: containerHybridLabel, isHybrid: isContainerHybrid } =
-    useContainerChain();
-  const hybridLabel = isContainerHybrid
-    ? containerHybridLabel
-    : isLinkHybrid
-      ? linkHybridLabel
-      : "";
-  const isHybrid = isContainerHybrid || isLinkHybrid;
-  const chainedLinkIds = new Set(chainedLinks.map((link) => link.id));
   const threadRef = useRef<HTMLDivElement>(null);
   const {
     messages,
     sending,
     sendMessage,
+    sendComposerPayload,
+    submitHitRunFeedback,
     revealMessageActions,
     revealAlternateMessageActions,
     datePickerRequest,
+    threadlineCards,
+    deferredCards,
+    handleThreadlineResolveChip,
+    restoreThreadlineDeferred,
     confirmDatePicker,
+    confirmOcrReviewDates,
     dismissDatePicker,
     confirmPlace,
     correctPlace,
@@ -108,76 +103,62 @@ export function ActionChatFeed({
     handleWittyAction,
     cancelScheduledAction,
     triggerScheduledActionNow,
+    executeTimeChoice,
+    handleStudyAuxAction,
+    togglePackingItem,
+    startFreshConversation,
+    completeInlineTimer,
+    confirmInlineFocus,
+    cancelInlineFocus,
+    completeInlineFocus,
+    handleFocusHeldInAppAction,
   } = useActionChat(activeLink, chainedLinks);
   const reminderMap = useLinkReminderMap();
   const linkIds = useMemo(() => links.map((link) => link.id), [links]);
-  const actionStream = useMemo(
-    () => collectActionStream(messages, { linkIds }),
-    [messages, linkIds, reminderMap]
-  );
-  const scheduledLinkIds = new Set(reminderMap.keys());
-  const { items: poolItems, refresh: refreshResourcePool } = useResourcePool();
+  const {
+    badgeCount,
+    prepSurface,
+    nextAction,
+    ...calendarForSheet
+  } = useActionCalendar({
+    messages,
+    linkIds,
+    refreshKey: reminderMap,
+  });
+  const masterContext = useMemo(() => readClientMasterOrchestratorContext(), [messages]);
+  const threadlineNeedsTap =
+    threadlineHeaderStatus(threadlineCards) === "needs_one_tap";
+  const { visible: dockActions } = usePredictiveDock({
+    messages,
+    schedule: masterContext.existingSchedule,
+    referenceDate: masterContext.currentDate,
+  });
+  const actionContextByMessageId = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const message of messages) {
+      if (message.role === "assistant" && message.text.trim()) {
+        map[message.id] = message.text.trim();
+      }
+    }
+    return map;
+  }, [messages]);
   const [activeActionsOpen, setActiveActionsOpen] = useState(false);
-  const [resourcePoolOpen, setResourcePoolOpen] = useState(false);
   const [schedulingLink, setSchedulingLink] = useState<LinkRow | null>(null);
-  const [containerHoverSlot, setContainerHoverSlot] = useState<FixedContainerSlot | null>(
-    null
-  );
-  const [activeContainerSlot, setActiveContainerSlot] = useState<FixedContainerSlot | null>(
-    null
-  );
   const userMessageCount = messages.filter((message) => message.role === "user").length;
   const [coldStartVisible, setColdStartVisible] = useState(false);
-  const [workspaceExpanded, setWorkspaceExpanded] = useState(false);
+  const prevMessageCountRef = useRef(messages.length);
 
-  const workspaceSubtitle = isHybrid
-    ? `[${hybridLabel}]`
-    : activeLink
-      ? (getDisplayTitleForLink(activeLink) ?? activeLink.title)
-      : undefined;
+  const handleStartFreshConversation = useCallback(() => {
+    onSelectIndex(-1);
+    clearChain();
+    startFreshConversation();
+  }, [clearChain, onSelectIndex, startFreshConversation]);
 
   const openLinkById = (linkId: string) => {
     const index = links.findIndex((link) => link.id === linkId);
     if (index >= 0) {
       selectLink(linkId);
       onSelectIndex(index);
-    }
-  };
-
-  const handleSnapToContainer = async (slot: FixedContainerSlot, linkId: string) => {
-    const link = links.find((entry) => entry.id === linkId);
-    if (!link) {
-      return;
-    }
-
-    snapTo(linkId, links[activeIndex]?.id ?? linkId);
-    setActiveContainerSlot(slot);
-
-    if (slot === FIXED_DATA_CONTAINER_ID) {
-      await saveLinkToResourcePool(link);
-      await refreshResourcePool();
-      toast("리소스 풀에 저장했어요", { description: link.title });
-      return;
-    }
-
-    if (slot === FIXED_CALENDAR_CONTAINER_ID) {
-      if (reminderMap.has(linkId)) {
-        toast("이미 액션 스트림에 있어요", { description: link.title });
-        setActiveContainerSlot(FIXED_CALENDAR_CONTAINER_ID);
-        setActiveActionsOpen(true);
-        return;
-      }
-      setSchedulingLink(link);
-    }
-  };
-
-  const handleDemoteToPool = async (linkId: string) => {
-    const link = links.find((entry) => entry.id === linkId);
-    demoteLinkFromActionStream(linkId);
-    if (link) {
-      await saveLinkToResourcePool(link);
-      await refreshResourcePool();
-      toast("리소스 풀로 옮겼어요", { description: "알람을 껐어요" });
     }
   };
 
@@ -190,7 +171,6 @@ export function ActionChatFeed({
           description: `${date} ${time} · ${link.title}`,
         });
         setSchedulingLink(null);
-        setActiveContainerSlot(FIXED_CALENDAR_CONTAINER_ID);
         setActiveActionsOpen(true);
       } catch (error) {
         const message =
@@ -202,6 +182,13 @@ export function ActionChatFeed({
     },
     []
   );
+
+  useEffect(() => {
+    if (prevMessageCountRef.current > 0 && messages.length === 0) {
+      onSelectIndex(-1);
+    }
+    prevMessageCountRef.current = messages.length;
+  }, [messages.length, onSelectIndex]);
 
   useEffect(() => {
     setColdStartVisible(
@@ -223,114 +210,80 @@ export function ActionChatFeed({
   return (
     <>
       <div
+        data-action-chat-root
         className={cn(
           "action-shell flex h-full min-h-0 flex-1 flex-col overflow-hidden",
           className
         )}
       >
-        <ChatWorkspaceChrome
-          expanded={workspaceExpanded}
-          onToggle={() => setWorkspaceExpanded((value) => !value)}
-          subtitle={
-            workspaceSubtitle ??
-            (actionStream.length > 0
-              ? `액션 ${actionStream.length} · 리소스 ${poolItems.length}`
-              : undefined)
-          }
-          header={
-            <header className="flex items-center justify-between px-5 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
-              <GlangoLogo className="h-6" />
-              <div className="flex items-center gap-1">
+        <header className="shrink-0 border-b border-white/10 bg-glango-base/80 px-5 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-md">
+          <div className="flex items-center justify-between">
+            <GlangoLogo size="sm" className="h-7" appearance="white" />
+            <div className="flex items-center gap-1">
+              {messages.length > 0 || activeLink ? (
                 <button
                   type="button"
-                  aria-label="검색"
-                  className="flex size-9 items-center justify-center rounded-full text-[#6B7280] transition-colors hover:bg-black/[0.04]"
+                  onClick={handleStartFreshConversation}
+                  className="rounded-full border border-white/85 bg-transparent px-3 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-white/[0.06]"
                 >
-                  <Search className="size-5" />
+                  새 대화
                 </button>
-                <Link
-                  href="/welcome"
-                  aria-label="설정"
-                  className="flex size-9 items-center justify-center rounded-full text-[#6B7280] transition-colors hover:bg-black/[0.04]"
-                >
-                  <Settings2 className="size-5" />
-                </Link>
-              </div>
-            </header>
-          }
-        >
-          {activeLink ? (
-            <div className="max-h-[140px] shrink-0 overflow-hidden border-b border-black/[0.04]">
-              <ActionChatLinkPanel
-                key={activeLink.id}
-                link={activeLink}
-                isActive
-                contextRemote={activeIndex === 0 ? contextRemote : null}
-                locateResult={activeIndex === 0 ? locateResult : null}
-                locateLoading={activeIndex === 0 ? locateLoading : false}
-              />
+              ) : null}
+              <button
+                type="button"
+                aria-label="캘린더"
+                onClick={() => setActiveActionsOpen(true)}
+                className="relative flex size-9 items-center justify-center rounded-full bg-transparent text-white transition-opacity hover:opacity-80 active:scale-95"
+              >
+                <Calendar className="size-5" strokeWidth={2.1} />
+                {badgeCount > 0 ? (
+                  <span className="absolute -right-1 -top-1 flex size-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-glango-base px-0.5 text-[10px] font-extrabold tabular-nums leading-none text-glango-neon-amber shadow-[0_0_8px_rgba(255,214,10,0.35)]">
+                    {badgeCount > 9 ? "9+" : badgeCount}
+                  </span>
+                ) : null}
+              </button>
+              <Link
+                href="/welcome"
+                aria-label="설정"
+                className="flex size-9 items-center justify-center rounded-full bg-transparent text-white transition-opacity hover:opacity-80 active:scale-95"
+              >
+                <Settings2 className="size-5" strokeWidth={2.1} />
+              </Link>
             </div>
-          ) : null}
+          </div>
+        </header>
 
-          <FixedContainerBar
-            activeSlot={activeContainerSlot}
-            hoverSlot={containerHoverSlot}
-            activeActionCount={actionStream.length}
-            resourceCount={poolItems.length}
-            onSelectSlot={setActiveContainerSlot}
-            onOpenCalendar={() => setActiveActionsOpen(true)}
-            onOpenData={() => setResourcePoolOpen(true)}
-            onHoverSlot={setContainerHoverSlot}
-            className="border-b-0"
-          />
+        {activeLink ? (
+          <div className="max-h-[min(40dvh,220px)] shrink-0 overflow-hidden border-b border-white/[0.06] bg-glango-surface-muted">
+            <p className="px-5 pt-2 text-[10px] font-semibold uppercase tracking-wide text-white/45">
+              현재 맥락
+            </p>
+            <ActionChatLinkPanel
+              key={activeLink.id}
+              link={activeLink}
+              isActive
+              contextRemote={activeIndex === 0 ? contextRemote : null}
+              locateResult={activeIndex === 0 ? locateResult : null}
+              locateLoading={activeIndex === 0 ? locateLoading : false}
+            />
+          </div>
+        ) : null}
 
-          <ContainerChainStrip />
-
-          <ActionChatContextTabs
-            links={links}
-            activeIndex={activeIndex}
-            onSelect={onSelectIndex}
-            chainedLinkIds={chainedLinkIds}
-            hybridLabel={hybridLabel}
-            isHybrid={isHybrid}
-            chainedLinks={chainedLinks}
-            onSnap={snapTo}
-            onSelectLink={selectLink}
-            onRemoveFromChain={removeFromChain}
-            onClearChain={clearChain}
-            containerHoverSlot={containerHoverSlot}
-            scheduledLinkIds={scheduledLinkIds}
-            onScheduleLink={(linkId) => {
-              if (reminderMap.has(linkId)) {
-                setActiveContainerSlot(FIXED_CALENDAR_CONTAINER_ID);
-                setActiveActionsOpen(true);
-                return;
-              }
-              const link = links.find((entry) => entry.id === linkId);
-              if (link) {
-                setSchedulingLink(link);
-              }
-            }}
-            onSnapToContainer={(slot, linkId) => {
-              void handleSnapToContainer(slot, linkId);
-            }}
-          />
-        </ChatWorkspaceChrome>
-
-        <section
+        <ChatAmbientFocusProvider>
+        <ChatAmbientShell
           aria-label="채팅"
           className="flex min-h-0 flex-1 flex-col overflow-hidden"
         >
           <div
             ref={threadRef}
-            className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="relative z-[2] min-h-0 flex-1 overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
-            {!activeLink ? (
-              <div className="px-5 pb-3 pt-4">
-                <p className="text-[15px] leading-relaxed text-[#6B7280]">
-                  사진·링크를 보내거나 아래에 말을 걸어 보세요.
-                </p>
-              </div>
+            {!activeLink && messages.length === 0 && !coldStartVisible ? (
+              <ContextNowStrip
+                nextAction={nextAction}
+                onOpenCalendar={() => setActiveActionsOpen(true)}
+                onSuggest={(text) => void sendMessage(text)}
+              />
             ) : null}
 
             {coldStartVisible ? (
@@ -340,17 +293,36 @@ export function ActionChatFeed({
               />
             ) : null}
 
-            {messages.length === 0 && !coldStartVisible ? (
-              <div className="px-5 py-6">
-                <p className="text-[14px] leading-relaxed text-[#9CA3AF]">
-                  {activeLink
-                    ? "무엇을 도와드릴까요? 아래 입력창에 말을 걸어 보세요."
-                    : "링크를 추가하거나 사진을 보내 보세요."}
+            {prepSurface.visible ? (
+              <div className="border-b border-black/[0.04] bg-glango-surface/80 px-3 py-4">
+                <CalendarBoard
+                  variant="compact"
+                  overlayRows={prepSurface.rows}
+                  compactTitle={prepSurface.title}
+                  onExpand={() => setActiveActionsOpen(true)}
+                  onSpawnPrompt={(uri) => void sendMessage(uri)}
+                />
+              </div>
+            ) : null}
+
+            {messages.length === 0 && !coldStartVisible && activeLink ? (
+              <div className="px-5 py-4">
+                <p className="text-[14px] leading-relaxed text-white/55">
+                  {copy.action.emptyNoSelection}
                 </p>
               </div>
             ) : null}
 
-            <ActionChatMessageList
+            <ExecutionTimeline>
+              <TodayThread
+                cards={threadlineCards}
+                deferredCards={deferredCards}
+                onResolveChip={handleThreadlineResolveChip}
+                onRestoreDeferred={restoreThreadlineDeferred}
+              />
+
+              <div data-timeline-segment="chat" className="pt-1">
+                <ActionChatMessageList
               messages={messages}
               activeLink={activeLink}
               locale={locale}
@@ -367,36 +339,83 @@ export function ActionChatFeed({
                   void sendMessage(followUp);
                 }
               }}
-            />
+              onInlineTimerComplete={completeInlineTimer}
+              onInlineFocusConfirm={confirmInlineFocus}
+              onInlineFocusCancel={cancelInlineFocus}
+              onInlineFocusComplete={completeInlineFocus}
+              calendarOverlayRows={calendarForSheet.overlayRows}
+              calendarContextByMessageId={actionContextByMessageId}
+              onOpenCalendarSheet={() => setActiveActionsOpen(true)}
+              onCalendarSpawnPrompt={(uri) => void sendMessage(uri)}
+              onNavigateSpawnPrompt={(uri) => void sendMessage(uri)}
+              onScheduleOrganizePrompt={(prompt) => void sendMessage(prompt)}
+              onTransferSpawnPrompt={(uri) => void sendMessage(uri)}
+              onFocusHeldInAppAction={handleFocusHeldInAppAction}
+              onOpenCapture={onOpenCapture}
+                />
+              </div>
+            </ExecutionTimeline>
           </div>
 
           <ActionChatInputBar
+            placeholder={
+              threadlineNeedsTap ? "오늘에 추가…" : "무엇을 도와드릴까요?"
+            }
             sending={sending}
             disabled={sending}
             onOpenCapture={onOpenCapture}
             onOpenLinkPaste={onOpenLinkPaste}
             onQuickCapture={onQuickCapture}
-            onSendMessage={(text) => void sendMessage(text)}
-            className="z-10 shrink-0 border-t border-black/[0.04] bg-[#F9FAFB]/95 backdrop-blur-md"
+            onSendComposer={(payload) => {
+              if (sendComposerPayload(payload)) {
+                return;
+              }
+              void sendMessage(payload.text, {
+                attachments: payload.attachments,
+                chatAxis: payload.chatAxis,
+              });
+            }}
+            className="relative z-[2] shrink-0"
           />
-        </section>
+        </ChatAmbientShell>
+        </ChatAmbientFocusProvider>
       </div>
 
-      <ActionDatePickerSheet
-        open={Boolean(datePickerRequest)}
+      <OcrReviewDatePickerSheet
+        open={datePickerRequest?.type === "OCR_REVIEW_DATE_PICKER"}
         onOpenChange={(open) => {
           if (!open) {
             dismissDatePicker();
           }
         }}
-        draftTask={datePickerRequest?.draft_task ?? "일정"}
+        request={
+          datePickerRequest?.type === "OCR_REVIEW_DATE_PICKER"
+            ? datePickerRequest
+            : null
+        }
+        onConfirm={(patches) => void confirmOcrReviewDates(patches)}
+      />
+
+      <ActionDatePickerSheet
+        open={datePickerRequest?.type === "DATE_PICKER"}
+        onOpenChange={(open) => {
+          if (!open) {
+            dismissDatePicker();
+          }
+        }}
+        draftTask={
+          datePickerRequest?.type === "DATE_PICKER"
+            ? (datePickerRequest.draft_task ?? "일정")
+            : "일정"
+        }
         onConfirm={(value) => void confirmDatePicker(value)}
       />
 
       <ActiveActionsSheet
         open={activeActionsOpen}
         onOpenChange={setActiveActionsOpen}
-        actions={actionStream}
+        calendar={calendarForSheet}
+        contextByMessageId={actionContextByMessageId}
         onCancelScheduled={cancelScheduledAction}
         onFireScheduledNow={triggerScheduledActionNow}
         onScrollToMessage={(messageId) => {
@@ -406,14 +425,14 @@ export function ActionChatFeed({
           node?.scrollIntoView({ behavior: "smooth", block: "center" });
         }}
         onCancelLinkReminder={demoteLinkFromActionStream}
-        onDemoteToPool={(linkId) => void handleDemoteToPool(linkId)}
         onOpenLink={openLinkById}
-      />
-
-      <ResourcePoolSheet
-        open={resourcePoolOpen}
-        onOpenChange={setResourcePoolOpen}
-        onOpenLink={openLinkById}
+        onAddSchedule={() => {
+          threadRef.current
+            ?.closest("[data-action-chat-root]")
+            ?.querySelector("textarea")
+            ?.focus();
+          toast.message("채팅에서 일정을 말해 보세요");
+        }}
       />
 
       <ActionDatePickerSheet

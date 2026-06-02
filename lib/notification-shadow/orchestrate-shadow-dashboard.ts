@@ -25,11 +25,16 @@ function futureActionToLinkItem(action: FutureActionWire): LinkActionItem | null
   );
 }
 
+/** Phase 1 · Tier 5 — explicit dashboard query only (deterministic early return). */
 export function orchestrateShadowDashboard(message: string): OrchestratorResult | null {
   if (!isShadowDashboardQuery(message)) {
     return null;
   }
 
+  return buildShadowDashboardResult();
+}
+
+export function buildShadowDashboardResult(): OrchestratorResult {
   const dashboard = compileShadowDashboard();
   const summary = formatShadowDashboardText(dashboard).slice(0, 800);
   const actions: LinkActionItem[] = [];

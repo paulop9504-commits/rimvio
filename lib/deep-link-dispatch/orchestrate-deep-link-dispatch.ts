@@ -4,6 +4,7 @@ import { dispatcherOutputToLinkActions } from "@/lib/deep-link-dispatch/dispatch
 import { resolveDeepLinkDispatch } from "@/lib/deep-link-dispatch/resolve-dispatch";
 import { DEEP_LINK_TOOLS } from "@/lib/deep-link-dispatch/tool-registry";
 import { extractDeepLinkParams } from "@/lib/deep-link-dispatch/extract-params";
+import { orchestrateKoreanServiceRouter } from "@/lib/korean-service-router/orchestrate-korean-service-router";
 
 function trimSummary(text: string) {
   return text.replace(/\s+/g, " ").trim().slice(0, 40);
@@ -118,7 +119,9 @@ export function tryDeepLinkDispatchOrchestration(input: {
   message: string;
 }): OrchestratorResult | null {
   return (
-    orchestratePastedDeepLink(input) ?? orchestrateDeepLinkDispatch(input)
+    orchestratePastedDeepLink(input) ??
+    orchestrateDeepLinkDispatch(input) ??
+    orchestrateKoreanServiceRouter(input)
   );
 }
 

@@ -227,10 +227,10 @@ export function RoomPickerSheet({
                         onClick={() => void handlePickRoom(room.slug)}
                         className={cn(
                           "flex items-center gap-3 rounded-2xl px-4 py-3 text-left",
-                          "bg-[#007AFF]/8 ring-1 ring-[#007AFF]/18 transition-colors hover:bg-[#007AFF]/12"
+                          "bg-glango-neon-purple/8 ring-1 ring-[#007AFF]/18 transition-colors hover:bg-glango-neon-purple/12"
                         )}
                       >
-                        <span className="flex size-10 items-center justify-center rounded-xl bg-[#007AFF]/12 text-[#007AFF]">
+                        <span className="flex size-10 items-center justify-center rounded-xl bg-glango-neon-purple/12 text-glango-neon-cyan">
                           <Users className="size-5" strokeWidth={2.25} />
                         </span>
                         <span className="min-w-0 flex-1">

@@ -12,7 +12,23 @@ import {
   X,
 } from "lucide-react";
 import { useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useChatAmbientFocusOptional } from "@/components/action-chat/chat-ambient-focus";
+import {
+  glangoComposerFieldClass,
+  glangoIconBtnClass,
+  glangoMenuGridClass,
+  glangoMenuTileBtnClass,
+  glangoNavBarClass,
+} from "@/lib/brand/glango-neon-theme";
+import type { ChatAxis } from "@/lib/action-chat/chat-three-axis";
+import type { ComposerAttachment } from "@/lib/action-chat/composer-attachments";
 import { cn } from "@/lib/utils";
+
+type ComposerPayload = {
+  text: string;
+  attachments?: ComposerAttachment[];
+  chatAxis?: ChatAxis;
+};
 
 type ActionChatInputBarProps = {
   placeholder?: string;
@@ -23,6 +39,7 @@ type ActionChatInputBarProps = {
   onOpenLinkPaste?: () => void;
   onQuickCapture?: (file: File) => void;
   onSendMessage?: (text: string) => void;
+  onSendComposer?: (payload: ComposerPayload) => void;
   className?: string;
 };
 
@@ -35,6 +52,7 @@ export function ActionChatInputBar({
   onOpenLinkPaste,
   onQuickCapture,
   onSendMessage,
+  onSendComposer,
   className,
 }: ActionChatInputBarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -42,6 +60,11 @@ export function ActionChatInputBar({
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const ambient = useChatAmbientFocusOptional();
+
+  const syncComposerDraft = (value: string) => {
+    ambient?.setComposerDraft(value.trim().length > 0);
+  };
 
   const handleFile = (file: File | null | undefined) => {
     if (!file || !onQuickCapture) {
@@ -51,13 +74,22 @@ export function ActionChatInputBar({
     setMenuOpen(false);
   };
 
+  const dispatchSend = (value: string) => {
+    if (onSendComposer) {
+      onSendComposer({ text: value });
+      return;
+    }
+    onSendMessage?.(value);
+  };
+
   const submit = () => {
     const value = text.trim();
     if (!value || disabled || sending) {
       return;
     }
-    onSendMessage?.(value);
+    dispatchSend(value);
     setText("");
+    syncComposerDraft("");
     inputRef.current?.focus();
   };
 
@@ -77,21 +109,22 @@ export function ActionChatInputBar({
     <form
       onSubmit={handleSubmit}
       className={cn(
-        "border-t border-black/[0.04] bg-white/90 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl",
-        className
+        glangoNavBarClass,
+        "glango-composer-bar px-4 pb-1 pt-2",
+        className,
       )}
     >
       {menuOpen ? (
-        <div className="mb-2 grid grid-cols-4 gap-2 rounded-[16px] border border-black/[0.04] bg-[#F9FAFB] p-2.5">
+        <div className={glangoMenuGridClass}>
           <button
             type="button"
             onClick={() => {
               cameraRef.current?.click();
               onOpenCapture?.();
             }}
-            className="flex flex-col items-center gap-1 rounded-xl bg-white px-2 py-2.5 text-[11px] font-medium text-[#374151]"
+            className={glangoMenuTileBtnClass("cyan")}
           >
-            <Camera className="size-5 text-[#4A90E2]" />
+            <Camera className="size-5 text-glango-neon-cyan" />
             사진 촬영
           </button>
           <button
@@ -100,9 +133,9 @@ export function ActionChatInputBar({
               galleryRef.current?.click();
               onOpenGallery?.();
             }}
-            className="flex flex-col items-center gap-1 rounded-xl bg-white px-2 py-2.5 text-[11px] font-medium text-[#374151]"
+            className={glangoMenuTileBtnClass("purple")}
           >
-            <ImageIcon className="size-5 text-[#4A90E2]" />
+            <ImageIcon className="size-5 text-glango-neon-purple" />
             앨범 선택
           </button>
           <button
@@ -111,17 +144,17 @@ export function ActionChatInputBar({
               setMenuOpen(false);
               onOpenLinkPaste?.();
             }}
-            className="flex flex-col items-center gap-1 rounded-xl bg-white px-2 py-2.5 text-[11px] font-medium text-[#374151]"
+            className={glangoMenuTileBtnClass("magenta")}
           >
-            <Link2 className="size-5 text-[#4A90E2]" />
+            <Link2 className="size-5 text-glango-neon-magenta" />
             링크 붙여넣기
           </button>
           <button
             type="button"
             onClick={() => setMenuOpen(false)}
-            className="flex flex-col items-center gap-1 rounded-xl bg-white px-2 py-2.5 text-[11px] font-medium text-[#374151]"
+            className={glangoMenuTileBtnClass("green")}
           >
-            <FileUp className="size-5 text-[#4A90E2]" />
+            <FileUp className="size-5 text-glango-neon-green" />
             파일 첨부
           </button>
         </div>
@@ -132,24 +165,32 @@ export function ActionChatInputBar({
           type="button"
           aria-label={menuOpen ? "메뉴 닫기" : "입력 메뉴"}
           onClick={() => setMenuOpen((open) => !open)}
-          className={cn(
-            "flex size-10 shrink-0 items-center justify-center rounded-full text-white transition-transform active:scale-95",
-            menuOpen ? "bg-[#9CA3AF]" : "bg-[#4A90E2]"
-          )}
+          className={glangoIconBtnClass(menuOpen ? "secondary" : "primary")}
         >
           {menuOpen ? <X className="size-5" /> : <Plus className="size-5" />}
         </button>
 
-        <div className="flex min-h-10 flex-1 items-end rounded-[14px] border border-black/[0.06] bg-[#F3F4F6] px-3 py-2">
+        <div
+          className={cn(
+            glangoComposerFieldClass,
+            ambient?.composerLive && "glango-composer-field--live",
+          )}
+        >
           <textarea
             ref={inputRef}
             value={text}
             rows={1}
             disabled={disabled || sending}
-            onChange={(event) => setText(event.target.value)}
+            onChange={(event) => {
+              const next = event.target.value;
+              setText(next);
+              syncComposerDraft(next);
+            }}
+            onFocus={() => ambient?.setComposerFocused(true)}
+            onBlur={() => ambient?.setComposerFocused(false)}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
-            className="max-h-24 min-h-[1.25rem] w-full resize-none bg-transparent text-[15px] leading-snug text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none"
+            className="max-h-24 min-h-[1.25rem] w-full resize-none bg-transparent text-[15px] leading-snug text-white placeholder:text-white/75 focus:outline-none"
           />
         </div>
 
@@ -158,7 +199,7 @@ export function ActionChatInputBar({
             type="submit"
             disabled={disabled || sending}
             aria-label="보내기"
-            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#4A90E2] text-white shadow-[0_4px_12px_rgba(74,144,226,0.28)] disabled:opacity-60"
+            className={glangoIconBtnClass("primary")}
           >
             {sending ? (
               <Loader2 className="size-5 animate-spin" />
@@ -170,7 +211,7 @@ export function ActionChatInputBar({
           <button
             type="button"
             aria-label="음성 입력"
-            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#F1F2F6] text-[#6B7280]"
+            className={glangoIconBtnClass("ghost")}
           >
             <Mic className="size-5" />
           </button>

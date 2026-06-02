@@ -37,14 +37,14 @@ export function RoomsHubClient() {
     const { room, error } = createRoom(newRoomName);
 
     if (error || !room) {
-      toast.error(error ?? "방을 만들지 못했어요.");
+      toast.error(error ?? "방을 만들지 못했?�요.");
       return;
     }
 
     setNewRoomName("");
     setCreating(false);
     refresh();
-    toast.success(`「${room.name}」 방이 만들어졌어요`);
+    toast.success(`??{room.name}??방이 만들?�졌?�요`);
   };
 
   const openInvite = (room: RoomRow) => {
@@ -56,7 +56,7 @@ export function RoomsHubClient() {
     <>
       <div className="flex flex-1 flex-col gap-4 pb-2">
         <p className="text-sm text-muted-foreground">
-          {copy.room.hubSubtitle} · 피드에서 ← 밀면 바로 추가
+          {copy.room.hubSubtitle} · ?�드?�서 ??밀�?바로 추�?
         </p>
 
         <div className={GRID.roomHubGrid}>
@@ -79,19 +79,19 @@ export function RoomsHubClient() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold tracking-tight">{room.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {openCount}개 아직 해볼 차례
+                      {openCount}�??�직 ?�볼 차�?
                     </p>
                   </div>
                 </div>
-                <div className="flex gap-2 border-t border-black/[0.06] px-3 py-3">
+                <div className="flex gap-2 border-t border-border px-3 py-3">
                   <Link
                     href={`/r/${room.slug}`}
                     className={cn(
                       "flex flex-1 items-center justify-center rounded-[14px] py-2.5 text-sm font-semibold text-white",
-                      "bg-[#007AFF] active:scale-[0.98]"
+                      "bg-glango-neon-purple active:scale-[0.98]"
                     )}
                   >
-                    열기
+                    ?�기
                   </Link>
                   <button
                     type="button"
@@ -101,7 +101,7 @@ export function RoomsHubClient() {
                       IOS.secondaryBtn
                     )}
                   >
-                    초대
+                    초�?
                   </button>
                 </div>
               </div>
@@ -114,9 +114,9 @@ export function RoomsHubClient() {
             <input
               value={newRoomName}
               onChange={(event) => setNewRoomName(event.target.value)}
-              placeholder="방 이름 (예: 주말 여행)"
+              placeholder="�??�름 (?? 주말 ?�행)"
               className={cn(
-                "h-11 w-full rounded-2xl border-0 bg-[#f2f2f7] px-4 text-sm outline-none",
+                "h-11 w-full rounded-2xl border-0 bg-glango-surface-muted px-4 text-sm outline-none",
                 "focus:ring-2 focus:ring-[#007AFF]/30"
               )}
               maxLength={24}
@@ -128,8 +128,7 @@ export function RoomsHubClient() {
                 disabled={!newRoomName.trim()}
                 className={cn("flex-1", IOS.primaryBtn, "h-11 text-sm")}
               >
-                만들기
-              </button>
+                만들�?              </button>
               <button
                 type="button"
                 onClick={() => setCreating(false)}
@@ -145,13 +144,12 @@ export function RoomsHubClient() {
             onClick={() => setCreating(true)}
             className={cn(
               "flex items-center justify-center gap-2 py-4 text-sm font-medium text-muted-foreground",
-              "rounded-2xl border border-dashed border-black/10 bg-white/50",
-              "transition-colors hover:text-foreground active:bg-white"
+              "rounded-2xl border border-dashed border-border bg-glango-surface/50",
+              "transition-colors hover:text-foreground active:bg-glango-surface"
             )}
           >
             <Plus className="size-4" />
-            내 방 만들기
-          </button>
+            ??�?만들�?          </button>
         ) : (
           <p className={cn("px-4 py-3 text-center text-xs text-muted-foreground", IOS.cardSm)}>
             <Users className="mb-1 inline size-3.5" /> {copy.room.roomLimitHint}

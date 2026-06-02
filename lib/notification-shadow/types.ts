@@ -56,6 +56,10 @@ export type NotificationEventInput = {
   /** internal only — skip LLM, pre-known metadata */
   internal_kind?: "link_reminder" | "scheduled_nav" | "price_alert" | "calendar";
   fire_at?: string | null;
+  /** Canonical link to ec-link-{linkId} when internal reminder. */
+  link_id?: string | null;
+  /** Chat scheduled action → ec-chat-{messageId}. */
+  message_id?: string | null;
 };
 
 export type ShadowProcessedRecord = {
@@ -80,6 +84,8 @@ export type ShadowProcessedRecord = {
     store: boolean;
     expires_in_hours: number;
   };
+  /** EventCandidate SSOT id — set on append when ingested. */
+  ecId?: string;
   raw: NotificationEventInput;
 };
 
@@ -97,3 +103,64 @@ export const ROUTE_THRESHOLDS = {
 
 export const CONTAINER_BOOST_MATCH = 20;
 export const ACTIONABLE_BOOST = 8;
+
+// --- EventCandidate decision stack (Behavior Engine output) ---
+
+export type NotificationTiming = "immediate" | "delayed" | "batch";
+
+/** Safe notification execution decision — does not alter behavior policy. */
+export type NotificationExecutionDecision = {
+  ecId: string;
+  send_notification: boolean;
+  timing: NotificationTiming;
+  should_block_duplicate: boolean;
+  suppress_final: boolean;
+  reason: string;
+};
+
+export type NotificationHistoryEntry = {
+  ecId: string;
+  sentAt: string;
+};
+
+export type NotificationShadowContext = {
+  now?: Date;
+  /** ec-ids notified recently — used for deduplication only */
+  recentNotifications?: readonly NotificationHistoryEntry[];
+  dockVisible?: boolean;
+  dockFocusedEcId?: string | null;
+  recentInteractionEcIds?: readonly string[];
+  /** Default 45 minutes (within 30–60 min spec window) */
+  cooldownMs?: number;
+};
+
+export type NotificationShadowResult = NotificationExecutionDecision[] | "NO_ACTION";
+
+export const DEFAULT_NOTIFICATION_COOLDOWN_MS = 45 * 60 * 1000;
+
+const EC_PREFIX = /^ec-/u;
+
+export function isValidNotificationEcId(ecId: string): boolean {
+  return EC_PREFIX.test(ecId.trim());
+}
+
+export function wasNotifiedWithinCooldown(
+  ecId: string,
+  context: NotificationShadowContext
+): boolean {
+  const cooldownMs = context.cooldownMs ?? DEFAULT_NOTIFICATION_COOLDOWN_MS;
+  const nowMs = context.now?.getTime() ?? Date.now();
+  const entry = (context.recentNotifications ?? []).find((item) => item.ecId === ecId);
+  if (!entry) {
+    return false;
+  }
+  const sentMs = new Date(entry.sentAt).getTime();
+  if (Number.isNaN(sentMs)) {
+    return false;
+  }
+  return nowMs - sentMs < cooldownMs;
+}
+
+export function suppressReasonDefault(): string {
+  return "default silence";
+}

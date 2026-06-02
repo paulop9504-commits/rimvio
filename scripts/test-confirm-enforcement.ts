@@ -52,6 +52,49 @@ const placeOnly = tryPlaceConfirmation({
 });
 assert.ok(placeOnly?.confirmation);
 
+const chickenRecConfirm = enforceConfirmationTrigger({
+  message: "대전 치킨 맛집 추천",
+  result: {
+    summary: "대전 치킨 맛집 추천 확인",
+    actions: [],
+    source: "openai",
+    pendingConfirm: true,
+    thought: "Found: 대전 치킨 맛집 추천. Missing: 정확한 지점.",
+    confirmation: {
+      meta: { intent: "CONFIRM" },
+      persona_message: "어느 지점이에요?",
+      confirm_message: "어느 지점이에요?",
+      extracted_data: {
+        place_name: "대전 치킨 맛집 추천",
+        address: null,
+        phone: null,
+        datetime: null,
+        url: null,
+      },
+      location_ux: {
+        mode: "inline_pick",
+        prompt: "대전 치킨 맛집 추천 — 어느 지점일까요?",
+        suggestions: [
+          {
+            id: "bad-1",
+            label: "테라스키친",
+            place_name: "테라스키친",
+            address: "대전 중구",
+          },
+        ],
+      },
+    },
+  },
+});
+assert.equal(chickenRecConfirm.confirmation, undefined);
+assert.equal(chickenRecConfirm.pendingConfirm, false);
+
+const chickenBatch = tryBatchConfirmPriority({
+  message: "대전 치킨 맛집 추천",
+  referenceDate: "2026-05-29",
+});
+assert.equal(chickenBatch, null);
+
 const systemReply = respondToConfirmSystemQuery(
   [
     {

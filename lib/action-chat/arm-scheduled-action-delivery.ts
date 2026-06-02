@@ -5,6 +5,16 @@ import {
   upsertPendingScheduledAction,
   readPendingScheduledActions,
 } from "@/lib/action-chat/chat-scheduled-actions-store";
+import {
+  archiveChatScheduledEvent,
+  ingestChatScheduledEvent,
+  migratePendingChatScheduledToEventCandidates,
+} from "@/lib/events/chat-scheduled-ingest";
+import {
+  armJITScheduledActionDelivery,
+  disarmJITScheduledActionDelivery,
+} from "@/lib/action-chat/jit-scheduled-travel";
+import { shouldUseJITEventDelivery } from "@/lib/context-resolver/event-from-schedule";
 
 const activeTimers = new Map<string, number>();
 
@@ -13,6 +23,7 @@ function timerKey(scopeId: string, messageId: string) {
 }
 
 export function disarmScheduledActionDelivery(scopeId: string, messageId: string) {
+  disarmJITScheduledActionDelivery(scopeId, messageId);
   const key = timerKey(scopeId, messageId);
   const existing = activeTimers.get(key);
   if (existing) {
@@ -22,7 +33,15 @@ export function disarmScheduledActionDelivery(scopeId: string, messageId: string
   removePendingScheduledAction(scopeId, messageId);
 }
 
-export function armScheduledActionDelivery(input: {
+export function cancelChatScheduledEventDelivery(
+  scopeId: string,
+  messageId: string,
+) {
+  disarmScheduledActionDelivery(scopeId, messageId);
+  archiveChatScheduledEvent(messageId);
+}
+
+function armLegacyScheduledActionDelivery(input: {
   scopeId: string;
   messageId: string;
   extracted: ConfirmationExtractedData;
@@ -36,8 +55,6 @@ export function armScheduledActionDelivery(input: {
 
   const delay = target.getTime() - Date.now();
   const key = timerKey(input.scopeId, input.messageId);
-
-  disarmScheduledActionDelivery(input.scopeId, input.messageId);
 
   upsertPendingScheduledAction({
     scopeId: input.scopeId,
@@ -60,11 +77,37 @@ export function armScheduledActionDelivery(input: {
   activeTimers.set(key, timer);
 }
 
+export function armScheduledActionDelivery(input: {
+  scopeId: string;
+  messageId: string;
+  extracted: ConfirmationExtractedData;
+  onFire: () => void;
+}) {
+  disarmScheduledActionDelivery(input.scopeId, input.messageId);
+
+  ingestChatScheduledEvent({
+    messageId: input.messageId,
+    extracted: input.extracted,
+    scopeId: input.scopeId,
+  });
+
+  if (shouldUseJITEventDelivery(input.extracted)) {
+    const armed = armJITScheduledActionDelivery(input);
+    if (armed) {
+      return;
+    }
+  }
+
+  armLegacyScheduledActionDelivery(input);
+}
+
 export function restoreScheduledActionDeliveries(input: {
   scopeId: string;
   onFire: (messageId: string, extracted: ConfirmationExtractedData) => void;
 }) {
-  for (const record of readPendingScheduledActions(input.scopeId)) {
+  const pending = readPendingScheduledActions(input.scopeId);
+  migratePendingChatScheduledToEventCandidates(pending);
+  for (const record of pending) {
     armScheduledActionDelivery({
       scopeId: input.scopeId,
       messageId: record.messageId,

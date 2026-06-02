@@ -11,6 +11,24 @@ import type { CanonicalContainerKey } from "@/lib/containers/container-types";
 import type { ContainerAllowedAction } from "@/lib/containers/container-types";
 import type { ActiveContainerChain } from "@/lib/containers/container-chain";
 import { readContextContainers } from "@/lib/containers/context-containers";
+import { serializeUserGoalsForApi } from "@/lib/goal-roadmap/goal-roadmap-store";
+import { serializeActivitySourcesForRetrieval } from "@/lib/schedule-intelligence/serialize-activity-sources";
+import { serializeConversationMemoriesForApi } from "@/lib/conversation-memory/conversation-memory-store";
+import {
+  listRecentUserStatus,
+  readUserStatus,
+  serializeUserStatusForApi,
+} from "@/lib/global-brain/user-status-store";
+import {
+  serializePreferencesForApi,
+} from "@/lib/preference/preference-store";
+import {
+  serializeNexusContactsForApi,
+} from "@/lib/nexus-db/contact-store";
+import { serializePromotedTemplatesForApi } from "@/lib/action-registry/action-registry-store";
+import { serializeTemplateInstancesForApi } from "@/lib/action-template/template-instance-store";
+import { serializeCustomTriggersForApi } from "@/lib/action-os/custom-trigger-store";
+import { listActionEventRecords } from "@/lib/action-event-registry/action-event-store";
 import { readLinkReminders } from "@/lib/local-links/reminders";
 import {
   buildMasterContextInjection,
@@ -19,7 +37,7 @@ import {
 } from "@/lib/action-chat/master-orchestrator-context";
 import {
   formatDateKey,
-  remindersToDaySchedule,
+  readExistingSchedule,
 } from "@/lib/schedule/day-schedule";
 import {
   readActionTrustMode,
@@ -45,7 +63,7 @@ export function readClientMasterOrchestratorContext(): MasterOrchestratorContext
   return defaultMasterOrchestratorContext({
     currentDate,
     trustLevel,
-    existingSchedule: remindersToDaySchedule(readLinkReminders(), currentDate),
+    existingSchedule: readExistingSchedule(currentDate),
     activeContainers: readContextContainers(),
     activeChain: readActiveChainsAsLegacyChain(),
     activeChains: readActiveChains(),
@@ -62,10 +80,34 @@ export function serializeMasterContextForApi(context?: MasterOrchestratorContext
   const activeChains = resolved.activeChains ?? readActiveChains();
   const activeChainsWire = buildActiveChainsWireFromKeys(activeChains);
 
+  const allReminders = readLinkReminders().map((item) => ({
+    id: item.id,
+    title: item.title,
+    fireAt: item.fireAt,
+    url: item.url,
+  }));
+
   return {
     currentDate: resolved.currentDate,
     trustLevel: resolved.trustLevel,
     existingSchedule: resolved.existingSchedule,
+    allReminders,
+    userGoals: serializeUserGoalsForApi(),
+    activitySources: serializeActivitySourcesForRetrieval(),
+    conversationMemories: serializeConversationMemoriesForApi(),
+    userStatus: serializeUserStatusForApi(),
+    recentUserStatus: listRecentUserStatus(5).map((item) => ({
+      flag: item.flag,
+      label: item.label,
+      vitality: item.vitality,
+      updatedAt: item.updatedAt,
+    })),
+    preferences: serializePreferencesForApi(),
+    nexusContacts: serializeNexusContactsForApi(),
+    actionEventRecords: listActionEventRecords(),
+    promotedActionTemplates: serializePromotedTemplatesForApi(),
+    templateInstances: serializeTemplateInstancesForApi(),
+    customTriggers: serializeCustomTriggersForApi(),
     activeContainers: resolved.activeContainers.map((item) => ({
       id: item.id,
       title: item.title,
@@ -92,6 +134,35 @@ export type MasterContextApiPayload = ReturnType<typeof serializeMasterContextFo
   activeChains?: CanonicalContainerKey[];
   activeChain?: ActiveContainerChain | null;
   activeChainsWire?: ActiveChainWire[];
+  locationMemory?: import("@/lib/location-memory/types").LocationMemoryWire | null;
+  priorPlaceChoice?: import("@/lib/corrections/prior-place-choice").PriorPlaceChoiceWire | null;
+  placePreferences?: import("@/lib/corrections/place-preference-knowledge").PlacePreferenceWire[];
+  allReminders?: Array<{ id: string; title: string; fireAt: string; url?: string }>;
+  userGoals?: import("@/lib/goal-roadmap/types").UserGoalWire[];
+  activitySources?: import("@/lib/schedule-intelligence/types").ScheduleActivityWire[];
+  conversationMemories?: import("@/lib/conversation-memory/types").ConversationMemoryWire[];
+  userStatus?: import("@/lib/global-brain/types").UserStatusWire | null;
+  recentUserStatus?: Array<{
+    flag: import("@/lib/global-brain/types").UserStatusFlag;
+    label: string;
+    vitality: import("@/lib/vitality/types").VitalityTag;
+    updatedAt: string;
+  }>;
+  preferences?: Array<{ key: string; value: string; label: string }>;
+  nexusContacts?: Array<{ name: string; lastContactAt: string | null; importance?: number }>;
+  actionEventRecords?: import("@/lib/action-event-registry/types").ActionEventRecord[];
+  actionEvents?: import("@/lib/action-event-registry/types").ActionEventWire[];
+  promotedActionTemplates?: Array<{
+    id: string;
+    context_key: string;
+    category: string;
+    scenario: string;
+    usage_count: number;
+    main_action: import("@/lib/action-registry/types").ActionRegistryEntry["main_action"];
+    shadow_actions: import("@/lib/action-registry/types").ActionRegistryEntry["shadow_actions"];
+  }>;
+  /** When false (default), specialist container action gate is off for general chat. */
+  containerGateEnabled?: boolean;
   activeContainers?: Array<{
     id: string;
     title: string;

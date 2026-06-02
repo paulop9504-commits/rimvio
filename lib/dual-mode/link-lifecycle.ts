@@ -1,39 +1,13 @@
-import { saveKnowledgeEntity, getRecentKnowledgeEntities } from "@/lib/knowledge/knowledge-entity-db";
-import {
-  FIXED_CALENDAR_CONTAINER_ID,
-  FIXED_DATA_CONTAINER_ID,
-} from "@/lib/knowledge/knowledge-entity-types";
+import type { LinkRow } from "@/types/database";
+import { saveKnowledgeEntity } from "@/lib/knowledge/knowledge-entity-db";
+import { FIXED_CALENDAR_CONTAINER_ID } from "@/lib/knowledge/knowledge-entity-types";
 import {
   clearReminderByLinkId,
   requestReminderPermission,
   scheduleLinkReminderAt,
 } from "@/lib/local-links/reminders";
-import type { LinkRow } from "@/types/database";
 
-/** Passive — bookmark link into Resource Pool (no alarm). */
-export async function saveLinkToResourcePool(link: LinkRow) {
-  const existing = await getRecentKnowledgeEntities({
-    containerId: FIXED_DATA_CONTAINER_ID,
-    limit: 100,
-  });
-  const prior = existing.find(
-    (entity) => entity.sourceLinkId === link.id && !entity.scheduledAt
-  );
-  if (prior) {
-    return prior;
-  }
-
-  return saveKnowledgeEntity({
-    containerId: FIXED_DATA_CONTAINER_ID,
-    type: "note",
-    label: link.title?.trim() || "저장한 링크",
-    value: link.original_url,
-    sourceLinkId: link.id,
-    sourceMessage: link.domain,
-  });
-}
-
-/** Active — promote link from pool to Action Stream with trigger time. */
+/** Active — schedule link reminder on Action Stream. */
 export async function promoteLinkToActionStream(link: LinkRow, fireAtIso: string) {
   const fireAt = new Date(fireAtIso);
   if (Number.isNaN(fireAt.getTime())) {
@@ -63,7 +37,7 @@ export async function promoteLinkToActionStream(link: LinkRow, fireAtIso: string
   });
 }
 
-/** Demote — stop alarm, keep link in feed (passive again). */
+/** Stop link reminder — link stays in feed. */
 export function demoteLinkFromActionStream(linkId: string) {
   clearReminderByLinkId(linkId);
 }

@@ -9,6 +9,14 @@ import { buildMasterContextInjection } from "@/lib/action-chat/master-orchestrat
 import type { OrchestratorMode } from "@/lib/action-chat/mode-switching";
 import { buildToneInstructionLine, detectTone } from "@/lib/action-chat/mode-switching";
 import { generateChainedSystemPrompt } from "@/lib/containers/context-generator";
+import { buildConversationCoachBlock } from "@/lib/action-chat/conversation-coach";
+import { buildConversationCraftPromptBlock } from "@/lib/action-chat/conversation-craft/build-craft-prompt-block";
+import { buildAdaptivePersonaPromptBlock } from "@/lib/action-chat/adaptive-persona/build-adaptive-persona-prompt";
+import { buildFallbackRecoveryPromptBlock } from "@/lib/action-chat/fallback-recovery/apply-fallback-recovery";
+import { resolveAdaptiveBehaviorContext } from "@/lib/action-chat/adaptive-behavior/resolve-adaptive-behavior";
+import { resolvePersonaContext } from "@/lib/action-chat/adaptive-persona/resolve-persona-mode";
+import { buildTikiTakaConversationBlock } from "@/lib/action-chat/tiki-taka-dialogue-prompt";
+import { buildCoreOperatingLawPromptBlock } from "@/lib/action-chat/core-operating-law";
 
 export type LayeredGlobalMemory = {
   user_preferences: string;
@@ -153,11 +161,19 @@ export function buildLayeredMasterOrchestratorSystemPrompt(input: {
   linkTitle?: string | null;
   userPreferencesOverride?: string | null;
   mode?: OrchestratorMode;
+  /** JIT context block — injected dynamically, not baked into static prompt files */
+  dynamicContextBlock?: string | null;
 }): string {
   const mode = input.mode ?? "action";
   const tone = detectTone(input.message);
   const layered = buildLayeredSystemPromptPayload(input);
   const runtimeContext = buildMasterContextInjection(input.context);
+  const personaContext =
+    mode === "conversation"
+      ? resolvePersonaContext({
+          adaptive: resolveAdaptiveBehaviorContext({ message: input.message }),
+        })
+      : undefined;
   const taskPrompt =
     mode === "conversation"
       ? buildConversationalSystemPrompt({
@@ -170,6 +186,8 @@ export function buildLayeredMasterOrchestratorSystemPrompt(input: {
         });
 
   const basePrompt = [
+    buildCoreOperatingLawPromptBlock(),
+    "",
     `# [RUNTIME_CONTEXT]`,
     runtimeContext,
     `- Current Date: ${input.context.currentDate}`,
@@ -177,10 +195,19 @@ export function buildLayeredMasterOrchestratorSystemPrompt(input: {
     `- Response Tone: ${tone}`,
     `- ${buildToneInstructionLine(tone)}`,
     "",
+    buildConversationCoachBlock(input.route),
+    "",
+    mode === "conversation" ? `${buildAdaptivePersonaPromptBlock(personaContext)}\n` : "",
+    mode === "conversation" ? `${buildFallbackRecoveryPromptBlock()}\n` : "",
+    mode === "conversation" ? `${buildConversationCraftPromptBlock()}\n` : "",
+    mode === "conversation" ? `${buildTikiTakaConversationBlock()}\n` : "",
+    input.dynamicContextBlock?.trim() ? `${input.dynamicContextBlock.trim()}\n` : "",
     formatLayeredSystemPromptBlock(layered),
     "",
     taskPrompt,
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   const activeChains = input.context.activeChains ?? [];
   if (activeChains.length === 0) {

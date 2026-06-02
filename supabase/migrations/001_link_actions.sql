@@ -1,4 +1,4 @@
--- Silent Ghost: link_actions + Realtime
+-- Glango: link_actions + Realtime
 create extension if not exists "pgcrypto";
 
 create table if not exists public.link_actions (

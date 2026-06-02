@@ -1,4 +1,5 @@
 import { parseKoreanMoneyToNumber } from "@/lib/actions/match-user-defined-action";
+import { resolveSearchQuery } from "@/lib/search-intent/resolve-search-intent";
 import type { DeepLinkToolDefinition } from "@/lib/deep-link-dispatch/types";
 
 function extractPhone(message: string): string | null {
@@ -18,18 +19,20 @@ function extractBank(message: string): string | null {
 }
 
 function extractDestination(message: string): string | null {
-  const patterns = [
-    /(?:까지|으로|로\s*가(?:줘|야)?)\s*(.+?)(?:\s*$|\.|,)/i,
-    /(?:길\s*찾|내비)\s*(?:해\s*)?(.+?)(?:\s*$|\.|,)/i,
-    /(.+?)(?:\s*까지\s*가)/i,
-  ];
-  for (const pattern of patterns) {
-    const match = message.match(pattern);
-    if (match?.[1]?.trim()) {
-      return match[1].trim().slice(0, 80);
-    }
+  const navMatch = message.match(
+    /(?:까지|으로|로\s*가(?:줘|야)?|길\s*찾|내비)\s*(.+?)(?:\s*$|[.!,?])/iu
+  );
+  const trailingMatch = message.match(/(.+?)(?:\s*까지\s*가)/iu);
+  const raw =
+    navMatch?.[1]?.trim() ||
+    trailingMatch?.[1]?.trim() ||
+    null;
+
+  if (!raw) {
+    return null;
   }
-  return null;
+
+  return resolveSearchQuery({ text: raw.slice(0, 120) });
 }
 
 function extractPageId(message: string): string | null {

@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 /**
- * System Prompt diagnosis — mirrors the 3-step checklist from Action-Agent OS spec.
+ * System Prompt diagnosis — mirrors the 3-step checklist from Glango Personal OS spec.
  * Usage: npx tsx scripts/test-system-prompt-diagnosis.ts
  */
 
@@ -37,7 +37,9 @@ assert.match(systemPrompt, /\[Current_Date\]/, "Runtime context block required")
 assert.match(systemPrompt, /schedule\.tasks/, "Sequence/calendar rules present");
 assert.match(systemPrompt, /container/, "Container rules present");
 assert.match(systemPrompt, /ONLY valid JSON|strict JSON/i, "JSON-only discipline present");
-assert.match(systemPrompt, /Action-Agent OS|Action Mode/i, "Core role present");
+assert.match(systemPrompt, /Engine Handoff|Vitality/i, "Engine handoff + vitality present");
+assert.match(systemPrompt, /Discovery.*추천/i, "Discovery confirm guard present");
+assert.match(systemPrompt, /Action Mode/i, "Action mode discipline present");
 
 // Dynamic injection: greeting should NOT load data_cleaner / confirmation
 const greetFeatures = resolveOrchestratorFeatures({

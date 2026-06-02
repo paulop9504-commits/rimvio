@@ -12,6 +12,11 @@ import {
   saveKnowledgeEntity,
   searchKnowledgeEntities,
 } from "@/lib/knowledge/knowledge-entity-db";
+import {
+  recallPlacePreferencesFromWire,
+  type PlacePreferenceWire,
+} from "@/lib/corrections/place-preference-knowledge";
+import { isEntityFacetMessage } from "@/lib/context-resolver/discovery/parse-entity-facet-intent";
 
 const VERB_INTENT =
   /(?:갈게|할게|가겠|하겠|만날게|만나|약속|미팅|회의|볼게|놀러|참석|출발)/i;
@@ -97,9 +102,40 @@ export async function autoSaveKnowledgeFromMessage(
   return saved;
 }
 
-export async function tryKnowledgeRecall(message: string): Promise<OrchestratorResult | null> {
-  if (!RECALL_HINT.test(message)) {
+export async function tryKnowledgeRecall(
+  message: string,
+  options?: { placePreferences?: PlacePreferenceWire[] }
+): Promise<OrchestratorResult | null> {
+  if (isEntityFacetMessage(message)) {
     return null;
+  }
+
+  const placePrefs = recallPlacePreferencesFromWire({
+    message,
+    preferences: options?.placePreferences ?? [],
+  });
+
+  const recallHint = RECALL_HINT.test(message) || placePrefs.length > 0;
+  if (!recallHint) {
+    return null;
+  }
+
+  if (placePrefs.length > 0 && !/(?:번호|연락처|전화)/u.test(message)) {
+    const top = placePrefs[0]!;
+    return {
+      summary: trimSummary(`단골 장소 · ${top.label}: ${top.value}`),
+      actions: [],
+      source: "conversation",
+      confidence: 1,
+      disclosure: "none",
+      knowledgeSaved: placePrefs.map((pref) => ({
+        id: pref.id,
+        label: pref.label,
+        value: pref.value,
+        type: "place",
+        containerId: FIXED_DATA_CONTAINER_ID,
+      })),
+    };
   }
 
   const query = message

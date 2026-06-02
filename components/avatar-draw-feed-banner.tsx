@@ -31,7 +31,7 @@ export function AvatarDrawFeedBanner({ className }: { className?: string }) {
         className
       )}
     >
-      <div className="flex items-center gap-3 rounded-2xl bg-white/95 p-3 shadow-lg ring-1 ring-black/[0.06] backdrop-blur-md">
+      <div className="flex items-center gap-3 rounded-2xl bg-glango-surface/95 p-3 shadow-lg ring-1 ring-glango-neon-purple/15 backdrop-blur-md">
         <GlangoAvatarMark pixels={40} crisp className="shrink-0 opacity-80" />
         <div className="min-w-0 flex-1">
           <p className="text-xs font-semibold">{copy.settings.drawFeedBannerTitle}</p>
@@ -41,7 +41,7 @@ export function AvatarDrawFeedBanner({ className }: { className?: string }) {
         </div>
         <Link
           href="/welcome?draw=1"
-          className="shrink-0 rounded-full bg-[#007AFF] px-3 py-2 text-[11px] font-bold text-white"
+          className="shrink-0 rounded-full bg-glango-neon-purple px-3 py-2 text-[11px] font-bold text-white"
         >
           {copy.settings.drawFeedBannerCta}
         </Link>

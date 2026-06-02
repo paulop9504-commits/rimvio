@@ -6,6 +6,7 @@ import {
   MapPin,
   MessageCircle,
   Sparkles,
+  UtensilsCrossed,
 } from "lucide-react";
 import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
 
@@ -67,6 +68,10 @@ function splitTitleBody(text: string) {
 }
 
 function resolveIcon(message: ActionChatMessage): LucideIcon {
+  if (message.cafeDiscovery) {
+    return UtensilsCrossed;
+  }
+
   if (message.transportLive) {
     return Bus;
   }
@@ -130,6 +135,27 @@ function buildChips(message: ActionChatMessage) {
 }
 
 export function resolveContainerPresentation(message: ActionChatMessage): ContainerPresentation {
+  if (message.entityQuickPick) {
+    return {
+      icon: Sparkles,
+      title: "글랑고 제안",
+      body: message.entityQuickPick.lead,
+      chips: message.entityQuickPick.options.map((option) => option.label),
+    };
+  }
+
+  if (message.cafeDiscovery) {
+    return {
+      icon: UtensilsCrossed,
+      title: message.cafeDiscovery.summary,
+      body: "",
+      chips: message.cafeDiscovery.options
+        .map((option) => option.name)
+        .filter(Boolean)
+        .slice(0, 5),
+    };
+  }
+
   const entityTitle = readEntityTitle(message);
   const split = splitTitleBody(message.text);
   const transportTitle = message.transportLive
@@ -198,7 +224,9 @@ export function isActionContainerMessage(message: ActionChatMessage) {
   }
 
   return Boolean(
-    message.actions?.length ||
+    message.entityQuickPick ||
+      message.cafeDiscovery ||
+      message.actions?.length ||
       message.transportLive ||
       message.schedule?.tasks?.length ||
       message.container?.should_save ||

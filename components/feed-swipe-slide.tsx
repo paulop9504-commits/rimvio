@@ -153,7 +153,7 @@ export function FeedSwipeSlide({
   };
 
   return (
-    <div className="relative h-full overflow-hidden bg-[#f2f2f7]">
+    <div className="relative h-full overflow-hidden bg-glango-surface-muted">
       <FeedSlideActionRail
         hasMultipleActions={rotation.length > 1}
         hidden={shareOpen}
@@ -166,11 +166,11 @@ export function FeedSwipeSlide({
         style={{ opacity: roomOpacity, scale: roomScale }}
         className={cn(
           "pointer-events-none absolute inset-0 z-0 flex items-center justify-end gap-2",
-          "bg-[#007AFF] px-8 text-white"
+          "bg-glango-neon-purple px-8 text-white"
         )}
       >
         <Users className="size-5" strokeWidth={2} />
-        <span className="text-sm font-semibold">함께하기</span>
+        <span className="text-sm font-semibold">?�께?�기</span>
       </motion.div>
 
       <motion.div
@@ -182,7 +182,7 @@ export function FeedSwipeSlide({
         )}
       >
         <Trash2 className="size-5" strokeWidth={2} />
-        <span className="text-sm font-semibold">삭제</span>
+        <span className="text-sm font-semibold">??��</span>
       </motion.div>
 
       <motion.div
@@ -192,7 +192,7 @@ export function FeedSwipeSlide({
         dragConstraints={{ left: -160, right: 160 }}
         dragElastic={{ left: 0.28, right: 0.28 }}
         onDragEnd={handleDragEnd}
-        className="relative z-10 h-full w-full bg-[#f2f2f7]"
+        className="relative z-10 h-full w-full bg-glango-surface-muted"
       >
         <ActionShortsSlide
           link={link}

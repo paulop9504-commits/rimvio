@@ -13,6 +13,7 @@ import type { AppLocale } from "@/lib/i18n/types";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { ReminderPoller } from "@/components/reminder-poller";
 import { ServiceWorkerBootstrap } from "@/components/service-worker-bootstrap";
+import { NativeBridgeBoot } from "@/components/native-bridge-boot";
 import { Toaster } from "@/components/ui/sonner";
 
 type ProvidersProps = {
@@ -34,6 +35,7 @@ export function Providers({ children, initialLocale }: ProvidersProps) {
           {children}
           <ReminderPoller />
           <ServiceWorkerBootstrap />
+          <NativeBridgeBoot />
           <PwaInstallPrompt />
         </AuthProvider>
       </LocaleProvider>

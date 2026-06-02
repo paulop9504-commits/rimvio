@@ -1,6 +1,10 @@
 import { GLANGO } from "@/lib/brand/glango";
 import { normalizeInputUrl } from "@/lib/enrichers/fetch-page-metadata";
 import { normalizeYouTubeUrl } from "@/lib/enrichers/youtube-url";
+import {
+  resolveSearchIntentFromDeeplink,
+  resolveSearchQuery,
+} from "@/lib/search-intent/resolve-search-intent";
 import type { LinkActionItem } from "@/types/database";
 
 const PLACE_URL_PATTERN =
@@ -19,22 +23,26 @@ export function buildKakaoMapHref(sourceUrl: string) {
 }
 
 export function buildKakaoMapSearchHref(query: string) {
-  const q = encodeURIComponent(query.trim());
+  const resolved = resolveSearchQuery({ text: query });
+  const q = encodeURIComponent(resolved.trim());
   return `kakaomap://search?q=${q}`;
 }
 
 export function buildKakaoMapSearchWebHref(query: string) {
-  const q = encodeURIComponent(query.trim());
+  const resolved = resolveSearchQuery({ text: query });
+  const q = encodeURIComponent(resolved.trim());
   return `http://m.map.kakao.com/scheme/search?q=${q}`;
 }
 
 export function buildNaverMapSearchHref(query: string) {
-  const q = encodeURIComponent(query.trim());
+  const resolved = resolveSearchQuery({ text: query });
+  const q = encodeURIComponent(resolved.trim());
   return `nmap://search?query=${q}&appname=${encodeURIComponent(GLANGO.name)}`;
 }
 
 export function buildNaverMapSearchWebHref(query: string) {
-  const q = encodeURIComponent(query.trim());
+  const resolved = resolveSearchQuery({ text: query });
+  const q = encodeURIComponent(resolved.trim());
   return `https://map.naver.com/p/search/${q}`;
 }
 
@@ -147,7 +155,13 @@ export function buildGoogleMapsDirectionHref(
 }
 
 export function buildGoogleMapsSearchHref(query: string) {
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query.trim())}`;
+  const resolved = resolveSearchQuery({ text: query });
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(resolved.trim())}`;
+}
+
+/** Expand deeplink search seed → ranked query (intent resolver, not URL parser). */
+export function resolveMapSearchQueryFromHref(href: string, context?: string) {
+  return resolveSearchIntentFromDeeplink(href, context);
 }
 
 export function buildGoogleEarthHref(

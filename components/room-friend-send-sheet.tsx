@@ -284,7 +284,7 @@ export function RoomFriendSendSheet({
                   onClick={() => void handleSendByUrl()}
                   className={cn(
                     "flex min-h-[3.25rem] w-full items-center justify-center gap-2 rounded-2xl",
-                    "bg-[#007AFF]/12 text-sm font-semibold text-[#007AFF] ring-1 ring-[#007AFF]/22",
+                    "bg-glango-neon-purple/12 text-sm font-semibold text-glango-neon-cyan ring-1 ring-[#007AFF]/22",
                     "transition-transform active:scale-[0.98] disabled:opacity-45"
                   )}
                 >

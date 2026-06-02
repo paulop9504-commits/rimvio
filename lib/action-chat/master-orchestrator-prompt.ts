@@ -1,5 +1,6 @@
 import { buildGlangoSystemPrompt } from "@/lib/action-chat/glango-persona";
 import { buildCoreSystemPromptBlock } from "@/lib/action-chat/core-system-prompt";
+import { buildCoreOperatingLawPromptBlock } from "@/lib/action-chat/core-operating-law";
 import {
   buildFeaturePromptBlocks,
   resolveOrchestratorFeatures,
@@ -19,12 +20,13 @@ const MASTER_ORCHESTRATOR_TASK_LINES = [
   "   - **GLOBAL_MEMORY**: long-term user facts (preferences, recurring schedules, projects) — always aware, never force into unrelated answers.",
   "   - **ACTIVE_TASK**: current task only — answer and act within this scope.",
   '   - NEW_TASK + context switch: ACTIVE_TASK.relevant_context is "None"; ignore prior chat topics.',
-  "   - FOLLOW_UP: keep ACTIVE_TASK and prior chat aligned.",
+  "   - CONTINUE: keep ACTIVE_TASK and prior chat aligned.",
   "   - Smart chiming: mention GLOBAL_MEMORY only when it truly affects ACTIVE_TASK (e.g. weather vs stadium schedule).",
   "",
   "# Operational modes",
   "- **ACTION**: map, shop, open link, search, navigate — up to 4 deep-link actions.",
   "- **SCHEDULE**: date/time found → populate schedule.tasks; check conflicts.",
+  "- **TIME_DECISION (before Missing/place)**: Relative (~뒤/~후) → countdown/timer first. Absolute (1시, 13:00) → verify past/future vs current time; ask calendar vs timer before saving.",
   "- **CONTAINER_MGMT**: travel/work/study theme → match [Active_Containers]; CREATE or UPDATE.",
   '- **TRANSPORT_LIVE**: transit query ("버스 언제 와?") → return card_type TRANSPORT_LIVE with next arrival only (not full timetable).',
   "",
@@ -57,7 +59,7 @@ const MASTER_ORCHESTRATOR_TASK_LINES = [
   '  "summary": "15 chars max Korean status line",',
   '  "confidence_score": 0.0,',
   '  "meta": {',
-  '    "intent_type": "NEW_TASK | FOLLOW_UP",',
+  '    "intent_type": "NEW_TASK | CONTINUE",',
   '    "requires_context_switch": false',
   "  },",
   '  "metadata": {',
@@ -114,6 +116,6 @@ export function buildMasterOrchestratorSystemPrompt(input?: {
   const taskBlock = buildFeaturePromptBlocks(features, MASTER_ORCHESTRATOR_TASK);
 
   return buildGlangoSystemPrompt(
-    `${buildCoreSystemPromptBlock()}\n\n${taskBlock}`
+    `${buildCoreOperatingLawPromptBlock()}\n\n${buildCoreSystemPromptBlock()}\n\n${taskBlock}`
   );
 }

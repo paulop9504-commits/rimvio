@@ -368,7 +368,7 @@ export function commerceVerdictAccentClass(accent: CommerceVerdictAccent) {
     case "rose":
       return "text-rose-600";
     case "blue":
-      return "text-[#007AFF]";
+      return "text-glango-neon-cyan";
     case "amber":
       return "text-amber-700";
     default:
@@ -381,7 +381,7 @@ export function commerceVerdictBarClass(accent: CommerceVerdictAccent) {
     case "rose":
       return "bg-rose-500";
     case "blue":
-      return "bg-[#007AFF]";
+      return "bg-glango-neon-purple";
     case "amber":
       return "bg-amber-500";
     default:

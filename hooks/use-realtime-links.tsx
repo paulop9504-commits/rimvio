@@ -171,8 +171,14 @@ export function RealtimeLinksProvider({
 }: RealtimeLinksProviderProps) {
   const [links, setLinks] = useState(initialLinks);
   const [now, setNow] = useState(() => Date.now());
+  /** Avoid SSR/client mismatch from sessionStorage pin reorder during hydration. */
+  const [pinOrderReady, setPinOrderReady] = useState(false);
   const optimisticIdsRef = useRef<Set<string>>(new Set());
   const supabase = useMemo(() => tryCreateClient(), []);
+
+  useEffect(() => {
+    setPinOrderReady(true);
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 60_000);
@@ -349,14 +355,14 @@ export function RealtimeLinksProvider({
   }, [supabase, userId]);
 
   const activeLinks = useMemo(
-    () =>
-      prioritizePinnedLinks(
-        filterActiveLinks(
-          links.filter(isLinkOpen),
-          now
-        )
-      ),
-    [links, now]
+    () => {
+      const filtered = filterActiveLinks(links.filter(isLinkOpen), now);
+      if (!pinOrderReady) {
+        return filtered;
+      }
+      return prioritizePinnedLinks(filtered);
+    },
+    [links, now, pinOrderReady]
   );
 
   const archivedLinks = useMemo(

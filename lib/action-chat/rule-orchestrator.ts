@@ -7,6 +7,7 @@ import {
   buildNaverMapSearchWebHref,
 
 } from "@/lib/resolvers/deep-links";
+import { resolveSearchQuery } from "@/lib/search-intent/resolve-search-intent";
 
 import {
 
@@ -26,11 +27,18 @@ import { extractExplicitUrls } from "@/lib/screenshot/explicit-urls";
 
 import {
   estimateRuleOrchestratorConfidence,
+  isUserConfirmingActions,
 } from "@/lib/action-chat/action-confidence";
+import { hasPendingEventReview } from "@/lib/event-kernel/review/infer-approval-action";
 import { buildDomainActions } from "@/lib/actions/build-domain-actions";
 import { resolveDomainKey } from "@/lib/actions/domain-context";
+import { orchestrateTripInteraction } from "@/lib/trip-controller/orchestrate-trip-interaction";
+import { interceptActionOsFromMessage } from "@/lib/action-os/intercept-action-os";
 import { tryBatchConfirmPriority } from "@/lib/action-chat/batch-confirm-priority";
 import { tryPlaceConfirmation } from "@/lib/action-chat/confirmation-logic";
+import { buildEntityFacetResult } from "@/lib/context-resolver/discovery/orchestrate-entity-facet";
+import { orchestrateEntityQuickPick } from "@/lib/context-resolver/discovery/orchestrate-entity-quick-pick";
+import { isBareBrandUtterance } from "@/lib/context-resolver/discovery/orchestrate-entity-quick-pick";
 import { tryEntityArchitect } from "@/lib/action-chat/entity-action-architect";
 import type { IntentRoute } from "@/lib/action-chat/intent-router";
 
@@ -51,6 +59,7 @@ import { parseScheduleTasksFromMessage } from "@/lib/schedule/day-schedule";
 import { orchestrateTransportLive } from "@/lib/action-chat/orchestrate-transport-live";
 import { orchestrateUserDefinedAction } from "@/lib/action-chat/orchestrate-user-defined-action";
 import { tryDeepLinkDispatchOrchestration } from "@/lib/deep-link-dispatch/orchestrate-deep-link-dispatch";
+import { orchestrateAiIntent } from "@/lib/action-chat/orchestrate-ai-intent";
 import { orchestrateShadowDashboard } from "@/lib/notification-shadow/orchestrate-shadow-dashboard";
 import type { UserDefinedAction } from "@/lib/actions/user-defined-action-types";
 
@@ -116,6 +125,8 @@ export function orchestrateByRules(input: {
 
   message: string;
 
+  history?: import("@/lib/action-chat/orchestrator-types").OrchestrateHistoryTurn[];
+
   linkTitle?: string | null;
 
   linkUrl?: string | null;
@@ -129,6 +140,19 @@ export function orchestrateByRules(input: {
 }): OrchestratorResult {
 
   const message = input.message.trim();
+
+  if (isUserConfirmingActions(message) && !hasPendingEventReview()) {
+    return {
+      summary: "네, 알겠어요. 확인 카드가 있다면 **네, 맞습니다**를 눌러 주세요.",
+      actions: [],
+      source: "rules",
+      confidence: 1,
+      disclosure: "none",
+      actionsRevealed: false,
+      pendingConfirm: false,
+      metadata: { intent: "SCHEDULE", trust_level_adjustment: "NONE" },
+    };
+  }
 
   const lower = message.toLowerCase();
   const contextSwitch = input.intentRoute?.requires_context_switch ?? false;
@@ -153,9 +177,37 @@ export function orchestrateByRules(input: {
     return shadowDashboard;
   }
 
+  const aiIntent = orchestrateAiIntent(message);
+  if (aiIntent) {
+    return aiIntent;
+  }
+
   const transportLive = orchestrateTransportLive({ message });
   if (transportLive) {
     return transportLive;
+  }
+
+  const tripInteraction = orchestrateTripInteraction({
+    message,
+    referenceDate: input.masterContext?.currentDate,
+  });
+  if (tripInteraction) {
+    return tripInteraction;
+  }
+
+  const registerAction = interceptActionOsFromMessage(message);
+  if (registerAction) {
+    return registerAction;
+  }
+
+  const entityQuickPick = orchestrateEntityQuickPick(message);
+  if (entityQuickPick) {
+    return entityQuickPick;
+  }
+
+  const entityFacet = buildEntityFacetResult(message);
+  if (entityFacet) {
+    return entityFacet;
   }
 
   const batchConfirm = tryBatchConfirmPriority({
@@ -170,6 +222,7 @@ export function orchestrateByRules(input: {
   const placeConfirm = tryPlaceConfirmation({
     message,
     referenceDate: input.masterContext?.currentDate,
+    history: input.history,
   });
   if (placeConfirm) {
     return placeConfirm;
@@ -228,11 +281,13 @@ export function orchestrateByRules(input: {
 
 
 
-  const placeQuery =
-
-    effectiveLinkTitle?.trim() ||
-
-    message.replace(/https?:\/\/\S+/g, "").trim().slice(0, 80);
+  const placeQuery = resolveSearchQuery({
+    text:
+      message.replace(/https?:\/\/\S+/g, "").trim().slice(0, 120) ||
+      effectiveLinkTitle?.trim() ||
+      "",
+    context: effectiveLinkTitle?.trim(),
+  });
 
 
 
@@ -346,7 +401,7 @@ export function orchestrateByRules(input: {
 
 
 
-  if (actions.length === 0) {
+  if (actions.length === 0 && !isBareBrandUtterance(message)) {
 
     actions.push(
 

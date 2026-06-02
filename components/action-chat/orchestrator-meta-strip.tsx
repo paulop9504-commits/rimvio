@@ -32,9 +32,9 @@ export function OrchestratorMetaStrip({ message, className }: OrchestratorMetaSt
         <div className="flex items-start gap-2 rounded-xl bg-[#FFF7ED] px-3 py-2 ring-1 ring-[#FDBA74]/40">
           <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[#EA580C]" />
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold text-[#C2410C]">일정 충돌</p>
+            <p className="text-[11px] font-semibold text-[#C2410C]">?�정 충돌</p>
             <p className="text-[11px] leading-snug text-[#9A3412]/90">
-              {schedule.message || "기존 일정과 겹쳐요."}
+              {schedule.message || "기존 ?�정�?겹쳐??"}
             </p>
           </div>
         </div>
@@ -42,9 +42,9 @@ export function OrchestratorMetaStrip({ message, className }: OrchestratorMetaSt
 
       {schedule && schedule.tasks.length > 0 && !schedule.is_conflict ? (
         <div className="rounded-xl bg-[#F7F6FF] px-3 py-2 ring-1 ring-[#7B61FF]/12">
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#7B61FF]">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-glango-neon-purple">
             <CalendarClock className="size-3.5" />
-            오늘 일정
+            ?�늘 ?�정
           </div>
           <ul className="mt-1 space-y-0.5">
             {schedule.tasks.slice(0, 3).map((task) => (
@@ -52,7 +52,7 @@ export function OrchestratorMetaStrip({ message, className }: OrchestratorMetaSt
                 key={`${task.time}-${task.task}`}
                 className="flex justify-between gap-2 text-[11px] text-[#374151]"
               >
-                <span className="tabular-nums text-[#6B7280]">{task.time}</span>
+                <span className="tabular-nums text-muted-foreground">{task.time}</span>
                 <span className="min-w-0 truncate text-right">{task.task}</span>
               </li>
             ))}
@@ -61,12 +61,12 @@ export function OrchestratorMetaStrip({ message, className }: OrchestratorMetaSt
       ) : null}
 
       {showContainer ? (
-        <div className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 ring-1 ring-black/[0.05]">
-          <FolderPlus className="size-4 shrink-0 text-[#7B61FF]" />
+        <div className="flex items-center gap-2 rounded-xl bg-glango-surface px-3 py-2 ring-1 ring-black/[0.05]">
+          <FolderPlus className="size-4 shrink-0 text-glango-neon-purple" />
           <p className="text-[11px] leading-snug text-[#374151]">
             {container!.action === "UPDATE"
-              ? `「${container!.title}」 컨테이너에 이어서 저장할게요.`
-              : `「${container!.title}」 컨테이너를 새로 만들까요?`}
+              ? `??{container!.title}??컨테?�너???�어???�?�할게요.`
+              : `??{container!.title}??컨테?�너�??�로 만들까요?`}
           </p>
         </div>
       ) : null}

@@ -119,7 +119,7 @@ export function RevealedActionGrid({ open, children }: RevealedActionGridProps) 
           transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
           className="overflow-hidden"
         >
-          <div className="pt-2">{children}</div>
+          <div className="pt-1">{children}</div>
         </motion.div>
       ) : null}
     </AnimatePresence>

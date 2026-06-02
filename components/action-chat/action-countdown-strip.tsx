@@ -7,6 +7,7 @@ import {
   formatActionTargetClock,
   type ActionCountdownSnapshot,
 } from "@/lib/action-chat/action-countdown";
+import { glangoEdgeCardClass } from "@/lib/brand/glango-neon-theme";
 import { cn } from "@/lib/utils";
 
 type ActionCountdownStripProps = {
@@ -51,14 +52,13 @@ export function ActionCountdownStrip({
   }
 
   const targetClock = formatActionTargetClock(targetIso);
+  const urgent = snapshot.isImminent || snapshot.isPast;
 
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5",
-        snapshot.isImminent || snapshot.isPast
-          ? "border-[#F59E0B]/35 bg-[#FFFBEB]"
-          : "border-[#4A90E2]/20 bg-[#F0F7FF]",
+        glangoEdgeCardClass("sm", urgent ? "amber" : "cyan"),
+        "flex items-center justify-between gap-3 px-3 py-2.5",
         className
       )}
     >
@@ -66,18 +66,18 @@ export function ActionCountdownStrip({
         <div
           className={cn(
             "flex size-8 shrink-0 items-center justify-center rounded-lg",
-            snapshot.isImminent || snapshot.isPast
-              ? "bg-[#F59E0B]/15 text-[#D97706]"
-              : "bg-[#4A90E2]/12 text-[#4A90E2]"
+            urgent
+              ? "bg-glango-neon-amber/15 text-glango-neon-amber"
+              : "bg-glango-neon-cyan/12 text-glango-neon-cyan"
           )}
         >
           <Timer className="size-4" />
         </div>
         <div className="min-w-0">
-          <p className="text-[11px] font-medium text-[#6B7280]">
+          <p className="text-[11px] font-medium text-muted-foreground">
             {phaseCopy(phase, snapshot)}
           </p>
-          <p className="truncate text-[12px] text-[#9CA3AF]">{targetClock} 목표</p>
+          <p className="truncate text-[12px] text-muted-foreground">{targetClock} 목표</p>
         </div>
       </div>
 
@@ -85,12 +85,12 @@ export function ActionCountdownStrip({
         <p
           className={cn(
             "font-mono text-[18px] font-bold tabular-nums leading-none",
-            snapshot.isImminent || snapshot.isPast ? "text-[#D97706]" : "text-[#1F2937]"
+            urgent ? "text-glango-neon-amber" : "text-foreground"
           )}
         >
           {snapshot.isPast ? "00:00" : snapshot.clock}
         </p>
-        <p className="mt-0.5 text-[11px] font-medium text-[#6B7280]">{snapshot.headline}</p>
+        <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">{snapshot.headline}</p>
       </div>
     </div>
   );

@@ -69,7 +69,7 @@ export function FeedLinkAddBanner({
           <button
             type="button"
             onClick={onAddLink}
-            className="shrink-0 rounded-full bg-[#007AFF] px-3 py-1.5 text-xs font-semibold text-white active:scale-[0.98]"
+            className="shrink-0 rounded-full bg-glango-neon-purple px-3 py-1.5 text-xs font-semibold text-white active:scale-[0.98]"
           >
             {copy.feed.capturePill}
           </button>

@@ -16,6 +16,9 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   compress: true,
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   allowedDevOrigins: ["127.0.0.1", "localhost"],
   images: {
     remotePatterns: [

@@ -35,6 +35,13 @@
 - UI 워드마크: **Glango** — bold, tight tracking, gradient clip
 - 한국어 애칭: **글랑고** — caption 크기, muted
 
+## 모바일 UI 목업 (Apple-style)
+
+Feed·마케팅용 **iOS형 모바일 웹 스크린샷** 프롬프트:
+
+- 가이드: [`APPLE_MOBILE_WEB_UI_PROMPT.md`](./APPLE_MOBILE_WEB_UI_PROMPT.md)
+- 코드: `lib/design/apple-mobile-web-ui-prompt.ts` — `buildAppleMobileWebCardPrompt`, 프리셋 `glangoAction`
+
 ## 사용 규칙
 
 - ✅ 눈 마크 + **Glango** 워드마크 조합
@@ -53,7 +60,8 @@
 
 - 영문: **Glango**
 - 한국어 UI: **글랑고** (필요 시 Glango · 글랑고)
-- 슬로건: *링크 받으면, 한눈에 할 일*
+- 슬로건 (North Star): **Your Life, Operable.** / *당신의 모든 일상을 OS로 만듭니다*
+- Ingress 카피: *링크·사진 공유로도 시작할 수 있어요*
 
 ## 코드
 

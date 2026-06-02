@@ -78,10 +78,10 @@ function ContextTabCard({
       }}
       transition={{ type: "spring", stiffness: 420, damping: 28 }}
       className={cn(
-        "context-tab-card relative flex min-w-[8.5rem] max-w-[9.5rem] shrink-0 touch-none select-none flex-col gap-1.5 rounded-2xl border p-2 text-left transition-colors",
+        "context-tab-card relative flex min-w-[8.5rem] max-w-[9.5rem] shrink-0 touch-none select-none flex-col gap-1.5 rounded-2xl p-2 text-left transition-colors",
         active || inChain
-          ? "border-[#7B61FF]/35 bg-white shadow-[0_6px_20px_-10px_rgba(123,97,255,0.45)]"
-          : "border-transparent bg-white/70 opacity-85",
+          ? "glango-edge-card glango-edge-card--sm bg-glango-surface shadow-[0_0_20px_rgba(191,90,242,0.15)]"
+          : "bg-glango-surface-muted opacity-85 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]",
         dragging && "context-tab-card--dragging",
         isHoverTarget && "context-tab-card--snap-target"
       )}
@@ -94,16 +94,16 @@ function ContextTabCard({
           onSchedule?.();
         }}
         className={cn(
-          "absolute right-1.5 top-1.5 flex size-6 items-center justify-center rounded-full border bg-white/95 shadow-sm",
+          "absolute right-1.5 top-1.5 glango-icon-btn glango-icon-btn--sm",
           isScheduled
-            ? "border-[#10B981]/40 text-[#10B981]"
-            : "border-black/[0.06] text-[#9CA3AF] hover:text-[#10B981]"
+            ? "glango-icon-btn--green"
+            : "glango-icon-btn--ghost"
         )}
       >
         <Clock className="size-3.5" />
       </button>
       <div className="flex items-center gap-2">
-        <div className="size-9 shrink-0 overflow-hidden rounded-xl bg-[#F1F2F6]">
+        <div className="size-9 shrink-0 overflow-hidden rounded-xl bg-glango-surface-raised">
           {thumb ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={thumb} alt="" className="size-full object-cover" />
@@ -117,7 +117,7 @@ function ContextTabCard({
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[12px] font-semibold text-[#1F2937]">{title}</p>
+          <p className="truncate text-[12px] font-semibold text-foreground">{title}</p>
           <p className="text-[10px] text-[#9CA3AF]">
             {formatLinkContextTime(link.created_at)}
           </p>

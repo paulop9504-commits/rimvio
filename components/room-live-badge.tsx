@@ -41,7 +41,7 @@ function GlangoAvatarChip({
       ) : null}
       <span
         className={cn(
-          "flex size-7 items-center justify-center overflow-hidden rounded-full bg-white ring-2 ring-background",
+          "flex size-7 items-center justify-center overflow-hidden rounded-full bg-glango-surface ring-2 ring-background",
           isLeader && "ring-amber-300/80"
         )}
       >

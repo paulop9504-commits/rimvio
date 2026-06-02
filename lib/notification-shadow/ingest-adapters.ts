@@ -19,6 +19,7 @@ export function linkReminderToNotificationEvent(
     active_container: activeContainer ?? null,
     internal_kind: "link_reminder",
     fire_at: reminder.fireAt,
+    link_id: reminder.linkId,
   };
 }
 
@@ -42,6 +43,8 @@ export function activeActionToNotificationEvent(
     active_container: activeContainer ?? null,
     internal_kind: kind,
     fire_at: entry.fireAt,
+    link_id: entry.linkId,
+    message_id: entry.messageId,
   };
 }
 

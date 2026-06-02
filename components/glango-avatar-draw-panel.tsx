@@ -124,7 +124,7 @@ export function GlangoAvatarDrawPanel({ className }: { className?: string }) {
         )}
       >
         <div className="relative">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-violet-600/90">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-glango-neon-purple/90">
             {copy.settings.drawEyebrow}
           </p>
           <h2 className="mt-1 text-base font-semibold tracking-tight">
@@ -137,7 +137,7 @@ export function GlangoAvatarDrawPanel({ className }: { className?: string }) {
           <div className="mt-5 flex flex-col items-center">
             <div
               className={cn(
-                "relative flex size-28 items-center justify-center rounded-[1.75rem] bg-white shadow-md ring-1 ring-black/[0.06]",
+                "relative flex size-28 items-center justify-center rounded-[1.75rem] bg-glango-surface shadow-md ring-1 ring-glango-neon-purple/15",
                 phase === "rolling" && "animate-glango-draw-heartbeat"
               )}
             >
@@ -164,7 +164,7 @@ export function GlangoAvatarDrawPanel({ className }: { className?: string }) {
             <p
               className={cn(
                 "mt-3 min-h-[1.25rem] text-center text-xs font-semibold transition-opacity",
-                phase === "rolling" ? "text-violet-600 animate-pulse" : "text-muted-foreground"
+                phase === "rolling" ? "text-glango-neon-purple animate-pulse" : "text-muted-foreground"
               )}
             >
               {phase === "rolling"

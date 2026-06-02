@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { tryBatchConfirmPriority } from "../lib/action-chat/batch-confirm-priority";
 import {
   classifyIntentRouter,
+  deriveOrchestratorMode,
   detectActionIntent,
   parseConversationalAssistantText,
   resolveOrchestratorMode,
@@ -15,13 +16,15 @@ import { parseMasterOrchestratorJson } from "../lib/action-chat/wire-to-actions"
 
 // Mode switching
 // Intent Router examples (Step 1)
-const actionExample = classifyIntentRouter("오늘 둔산동 갤러리아 가야 함");
+const actionRoute = resolveIntentRoute({ message: "쿠우쿠우 가격", history: [] });
+const actionExample = deriveOrchestratorMode("쿠우쿠우 가격", actionRoute);
 assert.equal(actionExample.mode, "action");
-assert.match(actionExample.reason, /JSON|액션/);
+assert.match(actionExample.reason, /action|JSON|액션|실행|kernel/);
 
-const chatExample = classifyIntentRouter("와, 오늘 날씨 진짜 좋다 그치?");
+const chatRoute = resolveIntentRoute({ message: "와, 오늘 날씨 진짜 좋다 그치?", history: [] });
+const chatExample = deriveOrchestratorMode("와, 오늘 날씨 진짜 좋다 그치?", chatRoute);
 assert.equal(chatExample.mode, "conversation");
-assert.match(chatExample.reason, /대화/);
+assert.match(chatExample.reason, /conversation|대화|kernel/);
 
 assert.equal(resolveOrchestratorMode("ㅎㅇ"), "conversation");
 assert.equal(resolveOrchestratorMode("둔산동 갤러리아 내일 5시"), "action");

@@ -2,32 +2,138 @@
 
 
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { fetchWithTimeout, FetchTimeoutError } from "@/lib/http/fetch-with-timeout";
 
 import { isUserConfirmingActions, isUserRequestingAlternate } from "@/lib/action-chat/action-confidence";
+import { findPendingConfirmation } from "@/lib/action-chat/resolve-affirmative-confirm";
 import { applyAlternateActionOffer } from "@/lib/action-chat/rotate-action-offer";
 
 import {
   readClientMasterOrchestratorContext,
   serializeMasterContextForApi,
 } from "@/lib/action-chat/client-master-context";
+import { applyUserStatusPatchFromApi } from "@/lib/global-brain/user-status-store";
+import { applyPreferencePatchFromApi } from "@/lib/preference/preference-store";
+import { touchNexusContact } from "@/lib/nexus-db/contact-store";
+import { applyEventCandidateUpsertFromApi } from "@/lib/events/emit-event-candidate";
+import { applyOcrCalendarCommitToClient } from "@/lib/event-kernel/review/sync-ocr-commit-to-client";
+import { resolveAssistantDisplaySummary } from "@/lib/action-chat/resolve-assistant-display-summary";
+import {
+  ingestConfirmationSignal,
+  ingestScheduleSignal,
+} from "@/lib/events/event-ingest-pipeline";
+import { handlePackingItemToggle } from "@/lib/trip-controller/orchestrate-trip-interaction";
 import { GLANGO_CONVERSATION_LINES } from "@/lib/action-chat/glango-persona";
-import type { ActionUiTriggerWire } from "@/lib/action-chat/action-oriented-prompt";
+import { resolveClientRecoveryText } from "@/lib/action-chat/fallback-recovery/apply-fallback-recovery";
+import { submitLiveTurn } from "@/lib/self-learning/submit-live-turn-client";
+import type {
+  ActionUiTriggerWire,
+  OcrReviewDatePickerWire,
+} from "@/lib/action-chat/action-oriented-prompt";
+import { classifyApprovalSpeechAct } from "@/lib/event-kernel/review/classify-approval-speech-act";
+import { OCR_REVIEW_DATES_PREFIX } from "@/lib/event-kernel/review/pending-event-candidate-dates";
+import {
+  applyReviewExecutionClientIngress,
+  orchestratorFromReviewProcess,
+  proofFromReviewProcess,
+  uiEmitFromReviewProcess,
+} from "@/lib/event-os/apply-review-execution-response";
+import {
+  applyProofOnlyToClient,
+  applyUiEmitToClient,
+} from "@/lib/event-os/runtime/apply-ui-emit-to-client";
+import type { ProofUIRenderModel } from "@/lib/event-os/ui-binding";
+import { useThreadline } from "@/hooks/use-threadline";
+import type { ResolveChipPayload } from "@/lib/threadline";
+import { getReviewState } from "@/lib/event-kernel/review/review-state";
+import type { ReviewExecutionInput } from "@/lib/event-os/review-execution-types";
+import { submitReviewExecution } from "@/lib/event-os/review-execution-client";
+import { buildPeerComposerContextBlock } from "@/lib/context/build-peer-composer-context";
+import { isCommandOsInput } from "@/lib/command-os/parse-command-input";
+import { formatMentionComposerBlock, parseActionMention } from "@/lib/event-kernel/action-contracts/parse-action-mention";
+import {
+  isMentionCalendarInput,
+  tryBuildMentionCalendarTurn,
+} from "@/lib/action-chat/mention-calendar/commit-mention-calendar-turn";
+import {
+  isMentionNavigateInput,
+  tryBuildMentionNavigateTurn,
+} from "@/lib/action-chat/mention-navigate/commit-mention-navigate-turn";
+import {
+  isMentionReminderInput,
+  tryBuildMentionReminderTurn,
+} from "@/lib/action-chat/mention-reminder/commit-mention-reminder-turn";
+import {
+  isMentionScheduleOrganizeInput,
+  tryBuildMentionScheduleOrganizeTurn,
+} from "@/lib/action-chat/mention-schedule-organize/commit-mention-schedule-organize-turn";
+import {
+  isMentionTransferInput,
+  tryBuildMentionTransferTurn,
+} from "@/lib/action-chat/mention-transfer/commit-mention-transfer-turn";
+import {
+  isMentionParkingInput,
+  tryBuildMentionParkingTurn,
+  tryCommitParkingPhotoTurn,
+} from "@/lib/action-chat/mention-parking/commit-mention-parking-turn";
+import { isParkingPhotoCapturePending, consumeParkingPhotoCapture } from "@/lib/local-parking/parking-photo-session";
+import {
+  isMentionTimerInput,
+  tryBuildMentionTimerTurn,
+} from "@/lib/action-chat/mention-timer/commit-mention-timer-turn";
+import {
+  isMentionFocusInput,
+  tryBuildMentionFocusTurn,
+} from "@/lib/action-chat/mention-focus/commit-mention-focus-turn";
+import {
+  applyFocusCancelToMessages,
+  applyFocusCompleteToMessages,
+  applyFocusConfirmToMessages,
+  applyFocusHeldInAppActionToMessages,
+} from "@/lib/action-chat/mention-focus/apply-focus-message-update";
+import type { FocusHeldActionWire } from "@/lib/action-chat/mention-focus/build-focus-held-panel";
+import { openSpawnAction } from "@/lib/action-spawn/open-spawn-action";
+import {
+  ensureNotificationAccessForFocus,
+  openNotificationAccessSettings,
+} from "@/lib/native-bridge/native-notification-bridge";
+import {
+  findPendingFocusConfirmMessage,
+  isFocusCancelSpeech,
+  isFocusConfirmSpeech,
+} from "@/lib/action-chat/mention-focus/focus-confirm-speech";
+import { submitCommandCompile } from "@/lib/command-os/command-os-client";
 import { saveKnowledgeEntity } from "@/lib/knowledge/knowledge-entity-db";
 import { FIXED_CALENDAR_CONTAINER_ID } from "@/lib/knowledge/knowledge-entity-types";
 import { toast } from "sonner";
+import {
+  appendStudyQaFollowUpIfNeeded,
+  executeStudyAuxClient,
+  readAutoExecuteStudyAux,
+  tryConsumeLectureUrlRegistration,
+} from "@/lib/contextual-aux/study/execute-study-aux-client";
+import {
+  isAwaitingLectureUrl,
+  isStudyQaModeActive,
+} from "@/lib/contextual-aux/study/study-aux-session";
+import { resolveStudyAuxFromLabel } from "@/lib/contextual-aux/study/resolve-study-action-label";
+import type { StudyAuxKind } from "@/lib/contextual-aux/study/types";
 
 import {
 
   actionChatScopeId,
+
+  clearAllActionChatMessageScopes,
 
   readActionChatMessages,
 
   writeActionChatMessages,
 
 } from "@/lib/action-chat/chat-store";
+import { archiveAndClearChatSession } from "@/lib/conversation-memory/archive-session";
+import { clearActiveChains } from "@/lib/containers/active-chains-state";
 
 import { buildActionsFromConfirmationData } from "@/lib/action-chat/build-confirmation-actions";
 import { buildActionsFromBatchPending } from "@/lib/action-chat/build-batch-pending-actions";
@@ -48,31 +154,70 @@ import type {
   OrchestratorConfirmationWire,
   TransactionalFlushReport,
 } from "@/lib/action-chat/confirmation-types";
-import { appendCorrectionLog } from "@/lib/corrections/correction-log";
+import {
+  appendCorrectionLog,
+  listCorrectionLogs,
+} from "@/lib/corrections/correction-log";
+import { resolvePriorPlaceChoice } from "@/lib/corrections/prior-place-choice";
+import {
+  buildPlacePreferencesWire,
+  savePlacePreferenceToKnowledge,
+} from "@/lib/corrections/place-preference-knowledge";
+import { buildLocationMemoryWire } from "@/lib/location-memory/format-life-zone-context";
+import {
+  appendSearchActivity,
+  listSearchActivities,
+} from "@/lib/location-memory/search-activity-log";
+import {
+  inferSearchActivityKind,
+  shouldLogSearchActivity,
+} from "@/lib/location-memory/log-search-activity";
 import {
   armScheduledActionDelivery,
+  cancelChatScheduledEventDelivery,
   disarmScheduledActionDelivery,
   restoreScheduledActionDeliveries,
 } from "@/lib/action-chat/arm-scheduled-action-delivery";
+import { completeChatScheduledEvent } from "@/lib/events/chat-scheduled-ingest";
 import {
   buildScheduledPlaceNavActions,
   formatScheduledDeliverySummary,
   formatScheduledFireSummary,
+  formatJITScheduledFireSummary,
   saveScheduledTravelToCalendar,
   shouldDeferActionsForSchedule,
 } from "@/lib/action-chat/scheduled-action-delivery";
+import { compileJITTravelFire } from "@/lib/context-resolver/compile-travel-action";
+import { shouldUseJITEventDelivery } from "@/lib/context-resolver/event-from-schedule";
+import type { TimeChoiceExecuteInput } from "@/lib/time-decision/time-choice-execute-input";
+import { parseActionTargetDatetime } from "@/lib/action-chat/action-countdown";
+import type { CompiledTravelAction } from "@/lib/context-resolver/types";
 import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
 import { evaluateProactiveTransportNudge } from "@/lib/transport/proactive-transport-nudge";
 import { buildTransportLiveOrchestratorPayload } from "@/lib/transport/transport-live-service";
 
+import type { ComposerAttachment } from "@/lib/action-chat/composer-attachments";
+import type { ChatAxis } from "@/lib/action-chat/chat-three-axis";
+import { readStoredChatAxis } from "@/lib/action-chat/chat-three-axis";
+import { parseMentionAxisInput } from "@/lib/action-chat/mention-axis/parse-mention-axis";
+import { resolveMentionAxisSendContext } from "@/lib/action-chat/mention-axis/resolve-mention-axis-send";
+import { parseTikiChoiceOptions } from "@/lib/action-chat/parse-tiki-choice-options";
+import type { HitRunFeedbackVerdict } from "@/lib/action-chat/hit-run-feedback/types";
+import {
+  readVitalityMemory,
+  writeVitalityMemory,
+} from "@/lib/action-chat/adaptive-behavior/ux-guards/vitality-memory-client";
+import type { VitalityStateKind } from "@/lib/vitality-state/vitality-state-types";
+import {
+  buildComposerOrchestrateMessage,
+  resolveComposerAttachments,
+  revokeComposerAttachmentUrls,
+} from "@/lib/action-chat/composer-attachments";
+import { ingestPastedLinks } from "@/lib/share/inbox-paste";
 import type { LinkRow } from "@/types/database";
 import { buildLinkedLinksWire } from "@/lib/feed/link-context-chain";
 
-
-
 const ORCHESTRATE_TIMEOUT_MS = 18_000;
-
-
 
 function findPriorUserInput(
   messages: ActionChatMessage[],
@@ -147,6 +292,36 @@ function applyPlaceConfirmation(
   });
 }
 
+function applyJITScheduledFire(
+  messages: ActionChatMessage[],
+  messageId: string,
+  extracted: ConfirmationExtractedData,
+  compiled: CompiledTravelAction
+): ActionChatMessage[] {
+  const placeLabel = extracted.place_name ?? extracted.address ?? "목적지";
+
+  return messages.map((message) =>
+    message.id === messageId
+      ? {
+          ...message,
+          text: formatJITScheduledFireSummary({
+            placeLabel,
+            summary: compiled.summary,
+          }),
+          actions: compiled.actions,
+          actionsRevealed: true,
+          pendingConfirm: false,
+          scheduledDelivery: {
+            fire_at: compiled.show_at,
+            status: "fired",
+          },
+          scheduleExtract: extracted,
+          confirmation: undefined,
+        }
+      : message
+  );
+}
+
 function applyScheduledFire(
   messages: ActionChatMessage[],
   messageId: string,
@@ -172,6 +347,19 @@ function applyScheduledFire(
         }
       : message
   );
+}
+
+function historyContentFromMessage(message: ActionChatMessage): string {
+  if (message.role === "assistant") {
+    const confirmText =
+      message.confirmation?.persona_message?.trim() ??
+      message.confirmation?.confirm_message?.trim();
+    if (confirmText) {
+      return confirmText;
+    }
+  }
+
+  return message.text.trim();
 }
 
 function createMessage(
@@ -285,10 +473,128 @@ export function useActionChat(
 
   const [sending, setSending] = useState(false);
 
+  const lastActivityRef = useRef(Date.now());
+  const SESSION_IDLE_MS = 5 * 60 * 1000;
+
   const [datePickerRequest, setDatePickerRequest] = useState<ActionUiTriggerWire | null>(
     null
   );
 
+  const REVIEW_EXECUTION_SCOPE = "default";
+  const [reviewGatePhase, setReviewGatePhase] = useState<
+    "awaiting_date" | "awaiting_confirm" | null
+  >(null);
+  const reviewGatePhaseRef = useRef<"awaiting_date" | "awaiting_confirm" | null>(
+    null
+  );
+
+  const threadlineResolveRef = useRef<
+    (payload: ResolveChipPayload) => void | Promise<void>
+  >(async () => {});
+
+  const sendMessageRef = useRef<
+    (text: string, options?: { attachments?: ComposerAttachment[]; chatAxis?: ChatAxis }) => Promise<void>
+  >(async () => {});
+
+  const eventOsLastProofRef = useRef<
+    import("@/lib/event-os/causal-proof-types").CausalProof | null
+  >(null);
+
+  const {
+    threadlineCards,
+    deferredCards,
+    ingestProof,
+    seedFromOcrTrigger,
+    handleResolveChip: handleThreadlineResolveChip,
+    restoreDeferred,
+    resetThreadline,
+  } = useThreadline({
+    sending,
+    gatePhase: reviewGatePhase,
+    onResolvePayload: (payload) => threadlineResolveRef.current(payload),
+  });
+
+  const [eventOsProofRender, setEventOsProofRender] =
+    useState<ProofUIRenderModel | null>(null);
+  const [eventOsLastProof, setEventOsLastProof] = useState<
+    import("@/lib/event-os/causal-proof-types").CausalProof | null
+  >(null);
+
+  const syncReviewGatePhase = useCallback(
+    (phase: "awaiting_date" | "awaiting_confirm" | null) => {
+      reviewGatePhaseRef.current = phase;
+      setReviewGatePhase(phase);
+    },
+    []
+  );
+
+  const syncThreadlineFromOrchestrator = useCallback(
+    (payload: OrchestratorResultWire | null | undefined) => {
+      if (payload?.uiTrigger?.type === "OCR_REVIEW_DATE_PICKER") {
+        seedFromOcrTrigger(payload.uiTrigger, "awaiting_date");
+        return;
+      }
+      const route = payload?.meta?.execution_route;
+      if (route === "EVENT_REVIEW_DATE_CONFIRM") {
+        const rows: OcrReviewDatePickerWire["rows"] =
+          eventOsLastProofRef.current?.stateAfter.pendingCandidates.map(
+            (row) => ({
+              candidateId: row.id,
+              title: row.title,
+              time: row.time,
+            })
+          ) ?? [];
+        if (rows.length > 0) {
+          seedFromOcrTrigger(
+            { type: "OCR_REVIEW_DATE_PICKER", rows },
+            "awaiting_confirm"
+          );
+        }
+      }
+    },
+    [seedFromOcrTrigger]
+  );
+
+  const proofRenderHandlers = useRef({
+    setDatePickerRequest,
+    setReviewGatePhase: syncReviewGatePhase,
+    onProofRenderApplied: (
+      render: ProofUIRenderModel,
+      proof: import("@/lib/event-os/causal-proof-types").CausalProof
+    ) => {
+      setEventOsProofRender(render);
+      setEventOsLastProof(proof);
+      eventOsLastProofRef.current = proof;
+      ingestProof(proof);
+    },
+  });
+
+  useEffect(() => {
+    proofRenderHandlers.current.setDatePickerRequest = setDatePickerRequest;
+    proofRenderHandlers.current.setReviewGatePhase = syncReviewGatePhase;
+    proofRenderHandlers.current.onProofRenderApplied = (render, proof) => {
+      setEventOsProofRender(render);
+      setEventOsLastProof(proof);
+      eventOsLastProofRef.current = proof;
+      ingestProof(proof);
+    };
+  }, [ingestProof, syncReviewGatePhase]);
+
+  const applyProofDrivenUi = useCallback(
+    (
+      proof: import("@/lib/event-os/causal-proof-types").CausalProof,
+      uiEmit: import("@/lib/event-os/runtime/event-os-runtime-types").UiEmitFromProof | null,
+      orchestrator: import("@/lib/action-chat/orchestrator-types").OrchestratorResult | null
+    ) => {
+      const handlers = proofRenderHandlers.current;
+      if (uiEmit) {
+        applyUiEmitToClient(proof, uiEmit, handlers);
+        return;
+      }
+      applyProofOnlyToClient(proof, handlers, orchestrator);
+    },
+    []
+  );
 
 
   useEffect(() => {
@@ -313,11 +619,146 @@ export function useActionChat(
 
   );
 
+  const sendComposerPayload = useCallback(
+    (payload: { text: string; attachments?: ComposerAttachment[]; chatAxis?: ChatAxis }) => {
+      if ((payload.attachments?.length ?? 0) > 0) {
+        return false;
+      }
+      const timerTurn = tryBuildMentionTimerTurn({
+        text: payload.text,
+        chatAxis: payload.chatAxis,
+      });
+      if (timerTurn) {
+        persist([...readActionChatMessages(scopeId), ...timerTurn]);
+        return true;
+      }
+      const calendarTurn = tryBuildMentionCalendarTurn({
+        text: payload.text,
+        chatAxis: payload.chatAxis,
+      });
+      if (calendarTurn) {
+        persist([...readActionChatMessages(scopeId), ...calendarTurn]);
+        return true;
+      }
+      const masterContext = readClientMasterOrchestratorContext();
+      const reminderTurn = tryBuildMentionReminderTurn({
+        text: payload.text,
+        chatAxis: payload.chatAxis,
+        activeLink: activeLink
+          ? {
+              id: activeLink.id,
+              title: activeLink.title,
+              original_url: activeLink.original_url,
+            }
+          : null,
+        referenceDate: masterContext.currentDate,
+      });
+      if (reminderTurn) {
+        persist([...readActionChatMessages(scopeId), ...reminderTurn]);
+        return true;
+      }
+      const navigateTurn = tryBuildMentionNavigateTurn({
+        text: payload.text,
+        chatAxis: payload.chatAxis,
+      });
+      if (navigateTurn) {
+        persist([...readActionChatMessages(scopeId), ...navigateTurn]);
+        return true;
+      }
+      const organizeTurn = tryBuildMentionScheduleOrganizeTurn({
+        text: payload.text,
+        chatAxis: payload.chatAxis,
+      });
+      if (organizeTurn) {
+        persist([...readActionChatMessages(scopeId), ...organizeTurn]);
+        return true;
+      }
+      const transferTurn = tryBuildMentionTransferTurn({
+        text: payload.text,
+        chatAxis: payload.chatAxis,
+      });
+      if (transferTurn) {
+        persist([...readActionChatMessages(scopeId), ...transferTurn]);
+        return true;
+      }
+      const parkingTurn = tryBuildMentionParkingTurn({
+        text: payload.text,
+        chatAxis: payload.chatAxis,
+      });
+      if (parkingTurn) {
+        persist([...readActionChatMessages(scopeId), ...parkingTurn]);
+        return true;
+      }
+      const focusTurn = tryBuildMentionFocusTurn({
+        text: payload.text,
+        chatAxis: payload.chatAxis,
+      });
+      if (focusTurn) {
+        persist([...readActionChatMessages(scopeId), ...focusTurn]);
+        return true;
+      }
+      return false;
+    },
+    [activeLink, persist, scopeId],
+  );
+
+  const startFreshConversation = useCallback(() => {
+    const result = archiveAndClearChatSession(scopeId);
+    clearAllActionChatMessageScopes();
+    clearActiveChains();
+    setMessages([]);
+    resetThreadline();
+    syncReviewGatePhase(null);
+    setDatePickerRequest(null);
+    lastActivityRef.current = Date.now();
+    if (result.archived && result.topic) {
+      toast(`기억에 저장했어요 · ${result.topic}`);
+    }
+  }, [resetThreadline, scopeId, syncReviewGatePhase]);
+
+  useEffect(() => {
+    if (messages.length < 2) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      if (Date.now() - lastActivityRef.current < SESSION_IDLE_MS) {
+        return;
+      }
+      if (sending) {
+        return;
+      }
+      startFreshConversation();
+    }, 30_000);
+
+    return () => window.clearInterval(timer);
+  }, [messages.length, sending, startFreshConversation]);
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      lastActivityRef.current = Date.now();
+    }
+  }, [messages.length]);
+
+
+
   const fireScheduledAction = useCallback(
-    (messageId: string, extracted: ConfirmationExtractedData) => {
+    async (messageId: string, extracted: ConfirmationExtractedData) => {
+      completeChatScheduledEvent(messageId);
+      const placeLabel = extracted.place_name ?? extracted.address ?? "목적지";
+
+      if (shouldUseJITEventDelivery(extracted)) {
+        const compiled = await compileJITTravelFire(extracted);
+        if (compiled) {
+          const current = readActionChatMessages(scopeId);
+          persist(applyJITScheduledFire(current, messageId, extracted, compiled));
+          toast(compiled.summary);
+          return;
+        }
+      }
+
       const current = readActionChatMessages(scopeId);
       persist(applyScheduledFire(current, messageId, extracted));
-      const placeLabel = extracted.place_name ?? extracted.address ?? "목적지";
       toast(`${placeLabel} 길찾기를 꺼냈어요`);
     },
     [persist, scopeId]
@@ -340,7 +781,11 @@ export function useActionChat(
         return;
       }
 
-      const summary = formatScheduledDeliverySummary({ placeLabel, fireAt });
+      const summary = formatScheduledDeliverySummary({
+        placeLabel,
+        fireAt,
+        jit: shouldUseJITEventDelivery(input.extracted),
+      });
       const current = readActionChatMessages(scopeId);
 
       persist(
@@ -370,9 +815,89 @@ export function useActionChat(
     [fireScheduledAction, persist, scopeId]
   );
 
+  const executeTimeChoice = useCallback(
+    async (input: TimeChoiceExecuteInput) => {
+      if (sending) {
+        return;
+      }
+
+      const extracted: ConfirmationExtractedData = {
+        datetime: input.datetime,
+        place_name: input.task !== "일정" ? input.task : null,
+        address: null,
+        phone: null,
+        url: null,
+      };
+
+      const userMessage = createMessage("user", input.prompt);
+      const assistantMessage = createMessage("assistant", GLANGO_CONVERSATION_LINES.loading);
+      const current = readActionChatMessages(scopeId);
+      persist([...current, userMessage, assistantMessage]);
+      setSending(true);
+
+      try {
+        const runTimer = input.mode === "countdown" || input.mode === "both";
+
+        if (runTimer) {
+          await activateScheduledDelivery({
+            messageId: assistantMessage.id,
+            extracted,
+            sourceMessage: input.prompt,
+          });
+          return;
+        }
+
+        await saveScheduledTravelToCalendar({
+          extracted,
+          sourceMessage: input.prompt,
+        });
+
+        const target = parseActionTargetDatetime(input.datetime);
+        const clock = target
+          ? target.toLocaleTimeString("ko-KR", {
+              hour: "numeric",
+              minute: "2-digit",
+              hour12: false,
+            })
+          : input.datetime.replace("T", " ").slice(0, 16);
+
+        const summary = `${clock} ${input.task} 일정을 저장했어요.`;
+        persist(
+          readActionChatMessages(scopeId).map((message) =>
+            message.id === assistantMessage.id
+              ? {
+                  ...message,
+                  text: summary,
+                  loading: false,
+                  scheduleExtract: extracted,
+                }
+              : message
+          )
+        );
+        toast("일정을 저장했어요");
+      } catch (error) {
+        console.error("[action-chat] time choice execute failed", error);
+        persist(
+          readActionChatMessages(scopeId).map((message) =>
+            message.id === assistantMessage.id
+              ? {
+                  ...message,
+                  text: resolveClientRecoveryText(input.prompt),
+                  loading: false,
+                }
+              : message
+          )
+        );
+      } finally {
+        setSending(false);
+      }
+    },
+    [activateScheduledDelivery, persist, scopeId, sending]
+  );
+
   const cancelScheduledAction = useCallback(
     (messageId: string) => {
-      disarmScheduledActionDelivery(scopeId, messageId);
+      cancelChatScheduledEventDelivery(scopeId, messageId);
       const current = readActionChatMessages(scopeId);
       persist(
         current.map((message) =>
@@ -634,6 +1159,15 @@ export function useActionChat(
         return;
       }
 
+      const sourceMessage = findPriorUserInput(current, messageId) ?? "";
+      ingestConfirmationSignal({
+        sourceMessage,
+        sourceMessageId: messageId,
+        datetime: extracted.datetime,
+        place: extracted.place_name ?? extracted.address ?? null,
+        title: extracted.place_name ?? extracted.schedule_note ?? null,
+      });
+
       if (shouldDeferActionsForSchedule(extracted)) {
         await activateScheduledDelivery({
           messageId,
@@ -647,7 +1181,7 @@ export function useActionChat(
           user_corrected_location: extracted.address,
           user_corrected_place_name: extracted.place_name,
           outcome: "accepted",
-        });
+        }).then((row) => void savePlacePreferenceToKnowledge(row));
         return;
       }
 
@@ -655,11 +1189,24 @@ export function useActionChat(
         target.confirmation?.batch_pending
       );
 
+      const hadScheduleFlush = flushReport.succeeded.some(
+        (item) => item.type === "DATETIME" || item.type === "SCHEDULE"
+      );
+      if (hadScheduleFlush) {
+        ingestScheduleSignal({
+          sourceMessage,
+          sourceMessageId: messageId,
+          datetime: extracted.datetime,
+          place: extracted.place_name ?? extracted.address ?? null,
+          title: extracted.place_name ?? extracted.schedule_note ?? null,
+        });
+      }
+
       const placeLabel = extracted.place_name ?? extracted.address ?? "선택한 장소";
       const summary =
         flushReport.failed.length > 0
           ? flushReport.summary
-          : `${placeLabel}로 진행할게요.`;
+          : flushReport.summary || `${placeLabel}로 진행할게요.`;
 
       const next = applyPlaceConfirmation(
         clearConfirmInterrupt(current, messageId),
@@ -686,6 +1233,12 @@ export function useActionChat(
         user_corrected_location: extracted.address,
         user_corrected_place_name: extracted.place_name,
         outcome: "accepted",
+      }).then((row) => void savePlacePreferenceToKnowledge(row));
+      void appendSearchActivity({
+        query: extracted.place_name ?? extracted.address ?? "선택한 장소",
+        kind: "place_pick",
+        place_label: extracted.place_name,
+        address: extracted.address,
       });
     },
     [activateScheduledDelivery, persist, scopeId]
@@ -706,6 +1259,15 @@ export function useActionChat(
         address: suggestion.address,
       };
 
+      const sourceMessage = findPriorUserInput(current, messageId) ?? "";
+      ingestConfirmationSignal({
+        sourceMessage,
+        sourceMessageId: messageId,
+        datetime: extracted.datetime,
+        place: extracted.place_name ?? extracted.address ?? null,
+        title: extracted.place_name ?? extracted.schedule_note ?? null,
+      });
+
       if (shouldDeferActionsForSchedule(extracted)) {
         await activateScheduledDelivery({
           messageId,
@@ -718,6 +1280,20 @@ export function useActionChat(
       const flushReport = await flushBatchPendingTransactionally(
         target.confirmation?.batch_pending
       );
+
+      if (
+        flushReport.succeeded.some(
+          (item) => item.type === "DATETIME" || item.type === "SCHEDULE"
+        )
+      ) {
+        ingestScheduleSignal({
+          sourceMessage,
+          sourceMessageId: messageId,
+          datetime: extracted.datetime,
+          place: extracted.place_name ?? extracted.address ?? null,
+          title: extracted.place_name ?? extracted.schedule_note ?? null,
+        });
+      }
 
       const next = applyPlaceConfirmation(
         clearConfirmInterrupt(current, messageId),
@@ -741,6 +1317,12 @@ export function useActionChat(
         user_corrected_location: suggestion.address,
         user_corrected_place_name: suggestion.place_name,
         outcome: "corrected",
+      }).then((row) => void savePlacePreferenceToKnowledge(row));
+      void appendSearchActivity({
+        query: suggestion.label,
+        kind: "place_pick",
+        place_label: suggestion.place_name,
+        address: suggestion.address,
       });
     },
     [activateScheduledDelivery, persist, scopeId]
@@ -807,23 +1389,570 @@ export function useActionChat(
     [persist, scopeId]
   );
 
+  const applyReviewGateFromOrchestrator = useCallback(
+    (payload: OrchestratorResultWire | null | undefined) => {
+      const route = payload?.meta?.execution_route;
+      if (
+        route === "EVENT_REVIEW_DATE_PICKER" ||
+        payload?.uiTrigger?.type === "OCR_REVIEW_DATE_PICKER"
+      ) {
+        syncReviewGatePhase("awaiting_date");
+        syncThreadlineFromOrchestrator(payload);
+        return;
+      }
+      if (route === "EVENT_REVIEW_DATE_CONFIRM") {
+        syncReviewGatePhase("awaiting_confirm");
+        syncThreadlineFromOrchestrator(payload);
+        return;
+      }
+      if (route === "CALENDAR_COMMIT" || route === "REVIEW_REJECT") {
+        syncReviewGatePhase(null);
+      }
+    },
+    [syncReviewGatePhase, syncThreadlineFromOrchestrator]
+  );
+
+  const runReviewExecutionAndPersist = useCallback(
+    async (input: ReviewExecutionInput, userText: string) => {
+      setSending(true);
+      const current = readActionChatMessages(scopeId);
+      const userMessage = createMessage("user", userText);
+      const loadingId = `loading-${Date.now()}`;
+      persist([
+        ...current,
+        userMessage,
+        createMessage("assistant", "…", { id: loadingId }),
+      ]);
+
+      try {
+        const result = await submitReviewExecution({
+          ...input,
+          scopeId: REVIEW_EXECUTION_SCOPE,
+        });
+        const payload =
+          orchestratorFromReviewProcess(result) ?? result.orchestrator ?? null;
+        const proof = proofFromReviewProcess(result);
+        const uiEmit = uiEmitFromReviewProcess(result);
+
+        if (proof) {
+          applyProofDrivenUi(proof, uiEmit, payload);
+        } else {
+          applyReviewGateFromOrchestrator(payload);
+          if (payload?.uiTrigger?.type === "OCR_REVIEW_DATE_PICKER") {
+            setDatePickerRequest(payload.uiTrigger);
+          } else if (payload?.uiTrigger?.type === "DATE_PICKER") {
+            setDatePickerRequest(payload.uiTrigger);
+          }
+        }
+
+        applyReviewExecutionClientIngress(payload);
+
+        const assistantMessage = createMessage(
+          "assistant",
+          payload?.summary || resolveClientRecoveryText(trimmed),
+          {
+            actions: payload?.actions ?? [],
+            confidence: payload?.confidence,
+            disclosure: payload?.disclosure,
+            actionsRevealed: payload?.actionsRevealed ?? false,
+            pendingConfirm: payload?.pendingConfirm ?? false,
+            metadata: payload?.metadata,
+            meta: payload?.meta,
+            uiTrigger: payload?.uiTrigger,
+          }
+        );
+
+        persist([
+          ...readActionChatMessages(scopeId).filter(
+            (message) => message.id !== loadingId
+          ),
+          assistantMessage,
+        ]);
+        return true;
+      } catch (error) {
+        console.error("[action-chat] review execution failed", error);
+        persist([
+          ...readActionChatMessages(scopeId).filter(
+            (message) => message.id !== loadingId
+          ),
+          createMessage("assistant", resolveClientRecoveryText(trimmed)),
+        ]);
+        return false;
+      } finally {
+        setSending(false);
+      }
+    },
+    [applyProofDrivenUi, applyReviewGateFromOrchestrator, persist, scopeId]
+  );
+
+  const buildStudyAuxDeps = useCallback(
+    () => ({
+      readMessages: () => readActionChatMessages(scopeId),
+      persist,
+      setDatePickerRequest,
+      sendMessage: (prompt: string) => sendMessageRef.current(prompt),
+      toastSuccess: (message: string, description?: string) => {
+        toast.success(message, description ? { description } : undefined);
+      },
+    }),
+    [persist, scopeId],
+  );
+
+  const handleStudyAuxAction = useCallback(
+    async (kind: StudyAuxKind) => {
+      await executeStudyAuxClient(kind, buildStudyAuxDeps());
+    },
+    [buildStudyAuxDeps],
+  );
+
   const sendMessage = useCallback(
 
-    async (text: string) => {
+    async (
+      text: string,
+      options?: { attachments?: ComposerAttachment[]; chatAxis?: ChatAxis }
+    ) => {
 
       const trimmed = text.trim();
+      const pendingAttachments = options?.attachments ?? [];
 
-      if (!trimmed || sending) {
+      if ((!trimmed && pendingAttachments.length === 0) || sending) {
 
         return;
 
       }
 
+      let messageChatAxis: ChatAxis = options?.chatAxis ?? readStoredChatAxis();
+      let axisOrchestrateOverride: string | null = null;
 
+      const currentBeforeSend = readActionChatMessages(scopeId);
+      const pendingFocusConfirm = findPendingFocusConfirmMessage(currentBeforeSend);
+      if (pendingFocusConfirm && pendingAttachments.length === 0 && trimmed) {
+        if (isFocusConfirmSpeech(trimmed)) {
+          const hasAccess = await ensureNotificationAccessForFocus(() => {
+            toast.message("알림 맡기기", "설정에서 Glango 알림 접근을 켜주세요");
+          });
+          persist(
+            applyFocusConfirmToMessages(
+              [
+                ...currentBeforeSend,
+                createMessage("user", trimmed, { chatAxis: messageChatAxis }),
+              ],
+              pendingFocusConfirm.id,
+            ),
+          );
+          toast.message(
+            "집중 모드 시작",
+            hasAccess
+              ? "카카오톡·이메일 알림을 모아둘게요"
+              : "알림 권한을 켜면 카톡·이메일도 모아둘 수 있어요",
+          );
+          return;
+        }
+        if (isFocusCancelSpeech(trimmed)) {
+          persist(
+            applyFocusCancelToMessages(
+              [
+                ...currentBeforeSend,
+                createMessage("user", trimmed, { chatAxis: messageChatAxis }),
+              ],
+              pendingFocusConfirm.id,
+            ),
+          );
+          return;
+        }
+      }
+
+      if (pendingAttachments.length > 0 && isParkingPhotoCapturePending()) {
+        consumeParkingPhotoCapture();
+        const photoTurn = await tryCommitParkingPhotoTurn({
+          attachments: pendingAttachments,
+          chatAxis: messageChatAxis,
+        });
+        if (photoTurn) {
+          persist([...readActionChatMessages(scopeId), ...photoTurn]);
+          return;
+        }
+      }
+
+      if (pendingAttachments.length === 0) {
+        const timerTurn = tryBuildMentionTimerTurn({
+          text: trimmed,
+          chatAxis: messageChatAxis,
+        });
+        if (timerTurn) {
+          persist([...readActionChatMessages(scopeId), ...timerTurn]);
+          return;
+        }
+        const calendarTurn = tryBuildMentionCalendarTurn({
+          text: trimmed,
+          chatAxis: messageChatAxis,
+        });
+        if (calendarTurn) {
+          persist([...readActionChatMessages(scopeId), ...calendarTurn]);
+          return;
+        }
+        const earlyMasterContext = readClientMasterOrchestratorContext();
+        const reminderTurn = tryBuildMentionReminderTurn({
+          text: trimmed,
+          chatAxis: messageChatAxis,
+          activeLink: activeLink
+            ? {
+                id: activeLink.id,
+                title: activeLink.title,
+                original_url: activeLink.original_url,
+              }
+            : null,
+          referenceDate: earlyMasterContext.currentDate,
+        });
+        if (reminderTurn) {
+          persist([...readActionChatMessages(scopeId), ...reminderTurn]);
+          return;
+        }
+        const navigateTurn = tryBuildMentionNavigateTurn({
+          text: trimmed,
+          chatAxis: messageChatAxis,
+        });
+        if (navigateTurn) {
+          persist([...readActionChatMessages(scopeId), ...navigateTurn]);
+          return;
+        }
+        const organizeTurn = tryBuildMentionScheduleOrganizeTurn({
+          text: trimmed,
+          chatAxis: messageChatAxis,
+        });
+        if (organizeTurn) {
+          persist([...readActionChatMessages(scopeId), ...organizeTurn]);
+          return;
+        }
+        const transferTurn = tryBuildMentionTransferTurn({
+          text: trimmed,
+          chatAxis: messageChatAxis,
+        });
+        if (transferTurn) {
+          persist([...readActionChatMessages(scopeId), ...transferTurn]);
+          return;
+        }
+        const parkingTurn = tryBuildMentionParkingTurn({
+          text: trimmed,
+          chatAxis: messageChatAxis,
+        });
+        if (parkingTurn) {
+          persist([...readActionChatMessages(scopeId), ...parkingTurn]);
+          return;
+        }
+
+        const focusTurn = tryBuildMentionFocusTurn({
+          text: trimmed,
+          chatAxis: messageChatAxis,
+        });
+        if (focusTurn) {
+          persist([...readActionChatMessages(scopeId), ...focusTurn]);
+          return;
+        }
+
+        const axisContext = resolveMentionAxisSendContext(trimmed, messageChatAxis);
+        messageChatAxis = axisContext.chatAxis;
+        axisOrchestrateOverride = axisContext.orchestrateMessageOverride;
+        if (axisContext.hintTurn) {
+          persist([...readActionChatMessages(scopeId), ...axisContext.hintTurn]);
+          return;
+        }
+      }
+
+      if (
+        isAwaitingLectureUrl() &&
+        pendingAttachments.length === 0 &&
+        trimmed &&
+        tryConsumeLectureUrlRegistration(trimmed, buildStudyAuxDeps())
+      ) {
+        return;
+      }
+
+      const studyLabelKind = resolveStudyAuxFromLabel(trimmed);
+      if (studyLabelKind && pendingAttachments.length === 0) {
+        const current = readActionChatMessages(scopeId);
+        persist([
+          ...current,
+          createMessage("user", trimmed, { chatAxis: messageChatAxis }),
+        ]);
+        void handleStudyAuxAction(studyLabelKind);
+        return;
+      }
+
+      const studyQaTurn = isStudyQaModeActive();
+
+      if (isCommandOsInput(trimmed)) {
+        setSending(true);
+        const current = readActionChatMessages(scopeId);
+        const userMessage = createMessage("user", trimmed);
+        const loadingId = `loading-${Date.now()}`;
+        persist([
+          ...current,
+          userMessage,
+          createMessage("assistant", "…", { id: loadingId }),
+        ]);
+        try {
+          const compiled = await submitCommandCompile(trimmed);
+          const payload = compiled.orchestrator ?? null;
+          const proof = compiled.proof ?? compiled.runtime?.processed[0]?.proof ?? null;
+          const uiEmit = compiled.uiEmit;
+
+          if (proof) {
+            applyProofDrivenUi(proof, uiEmit ?? null, payload);
+          }
+          applyReviewExecutionClientIngress(payload);
+
+          persist([
+            ...readActionChatMessages(scopeId).filter(
+              (message) => message.id !== loadingId
+            ),
+            createMessage(
+              "assistant",
+              payload?.summary ??
+                compiled.candidate.normalizedQuery,
+              {
+                actions: payload?.actions ?? [],
+                confidence: payload?.confidence,
+                metadata: {
+                  ...payload?.metadata,
+                  command_os_candidate: compiled.candidate,
+                },
+                meta: payload?.meta,
+                uiTrigger: payload?.uiTrigger,
+              }
+            ),
+          ]);
+        } catch (error) {
+          console.error("[action-chat] command compile failed", error);
+          persist([
+            ...readActionChatMessages(scopeId).filter(
+              (message) => message.id !== loadingId
+            ),
+            createMessage("assistant", resolveClientRecoveryText(trimmed)),
+          ]);
+        } finally {
+          setSending(false);
+        }
+        return;
+      }
+
+      if (trimmed.startsWith(OCR_REVIEW_DATES_PREFIX)) {
+        await runReviewExecutionAndPersist(
+          {
+            scopeId: REVIEW_EXECUTION_SCOPE,
+            type: "date",
+            payload: {
+              patches: JSON.parse(
+                trimmed.slice(OCR_REVIEW_DATES_PREFIX.length)
+              ).patches,
+            },
+          },
+          "날짜 선택"
+        );
+        return;
+      }
+
+      const approvalAct = classifyApprovalSpeechAct(trimmed);
+      if (
+        approvalAct === "APPROVE" &&
+        reviewGatePhaseRef.current &&
+        pendingAttachments.length === 0
+      ) {
+        const stepType =
+          reviewGatePhaseRef.current === "awaiting_confirm" ? "confirm" : "approve";
+        const handled = await runReviewExecutionAndPersist(
+          {
+            scopeId: REVIEW_EXECUTION_SCOPE,
+            type: stepType,
+            payload: {
+              message: trimmed,
+              syncClient: stepType === "confirm",
+            },
+          },
+          trimmed
+        );
+        if (handled) {
+          return;
+        }
+      }
+
+      const routedText = axisOrchestrateOverride ?? trimmed;
+      let orchestrateMessage = routedText;
+      let composerContext: string | undefined;
+      let composerAttachments = undefined as
+        | ActionChatMessage["composerAttachments"]
+        | undefined;
+
+      if (pendingAttachments.length > 0) {
+        try {
+          const resolved = await resolveComposerAttachments(pendingAttachments);
+          composerContext = resolved.contextBlock || undefined;
+          composerAttachments = resolved.displayAttachments;
+          orchestrateMessage = buildComposerOrchestrateMessage({
+            text: routedText,
+            contextBlock: resolved.contextBlock,
+          });
+          if (resolved.linkUrls.length > 0) {
+            void ingestPastedLinks(resolved.linkUrls.join("\n"));
+          }
+          revokeComposerAttachmentUrls(pendingAttachments);
+        } catch (attachmentError) {
+          console.error("[action-chat] attachment resolve failed", attachmentError);
+          orchestrateMessage = routedText;
+        }
+      }
+
+      const peerContext = buildPeerComposerContextBlock(routedText);
+      if (peerContext.block) {
+        composerContext = [composerContext, peerContext.block]
+          .filter(Boolean)
+          .join("\n\n");
+      }
+      if (peerContext.blockedTokens.length > 0) {
+        const notPinned = peerContext.blockedTokens.filter(
+          (b) => b.reason === "not_pinned"
+        );
+        if (notPinned.length > 0) {
+          toast.message(
+            `고정된 친한 친구 5명에게만 @연결할 수 있어요 (${notPinned.map((b) => `@${b.token}`).join(", ")})`
+          );
+        }
+      }
+
+      const actionMention = parseMentionAxisInput(trimmed)
+        ? null
+        : parseActionMention(trimmed);
+      if (
+        actionMention &&
+        actionMention.feature.featureId !== "timer" &&
+        actionMention.feature.featureId !== "reminder" &&
+        actionMention.feature.featureId !== "navigate" &&
+        actionMention.feature.featureId !== "schedule" &&
+        actionMention.feature.featureId !== "transfer" &&
+        actionMention.feature.featureId !== "parking" &&
+        actionMention.feature.featureId !== "focus"
+      ) {
+        composerContext = [composerContext, formatMentionComposerBlock(actionMention)]
+          .filter(Boolean)
+          .join("\n\n");
+      }
+
+      if (isMentionTimerInput(trimmed) && pendingAttachments.length === 0) {
+        const timerTurn = tryBuildMentionTimerTurn({
+          text: trimmed,
+          chatAxis: messageChatAxis,
+        });
+        if (timerTurn) {
+          persist([...readActionChatMessages(scopeId), ...timerTurn]);
+          return;
+        }
+      }
+
+      if (isMentionCalendarInput(trimmed) && pendingAttachments.length === 0) {
+        const calendarTurn = tryBuildMentionCalendarTurn({
+          text: trimmed,
+          chatAxis: messageChatAxis,
+        });
+        if (calendarTurn) {
+          persist([...readActionChatMessages(scopeId), ...calendarTurn]);
+          return;
+        }
+      }
+
+      if (isMentionReminderInput(trimmed) && pendingAttachments.length === 0) {
+        const masterContext = readClientMasterOrchestratorContext();
+        const reminderTurn = tryBuildMentionReminderTurn({
+          text: trimmed,
+          chatAxis: messageChatAxis,
+          activeLink: activeLink
+            ? {
+                id: activeLink.id,
+                title: activeLink.title,
+                original_url: activeLink.original_url,
+              }
+            : null,
+          referenceDate: masterContext.currentDate,
+        });
+        if (reminderTurn) {
+          persist([...readActionChatMessages(scopeId), ...reminderTurn]);
+          return;
+        }
+      }
+
+      if (isMentionNavigateInput(trimmed) && pendingAttachments.length === 0) {
+        const navigateTurn = tryBuildMentionNavigateTurn({
+          text: trimmed,
+          chatAxis: messageChatAxis,
+        });
+        if (navigateTurn) {
+          persist([...readActionChatMessages(scopeId), ...navigateTurn]);
+          return;
+        }
+      }
+
+      if (isMentionScheduleOrganizeInput(trimmed) && pendingAttachments.length === 0) {
+        const organizeTurn = tryBuildMentionScheduleOrganizeTurn({
+          text: trimmed,
+          chatAxis: messageChatAxis,
+        });
+        if (organizeTurn) {
+          persist([...readActionChatMessages(scopeId), ...organizeTurn]);
+          return;
+        }
+      }
+
+      if (isMentionTransferInput(trimmed) && pendingAttachments.length === 0) {
+        const transferTurn = tryBuildMentionTransferTurn({
+          text: trimmed,
+          chatAxis: messageChatAxis,
+        });
+        if (transferTurn) {
+          persist([...readActionChatMessages(scopeId), ...transferTurn]);
+          return;
+        }
+      }
+
+      if (isMentionParkingInput(trimmed) && pendingAttachments.length === 0) {
+        const parkingTurn = tryBuildMentionParkingTurn({
+          text: trimmed,
+          chatAxis: messageChatAxis,
+        });
+        if (parkingTurn) {
+          persist([...readActionChatMessages(scopeId), ...parkingTurn]);
+          return;
+        }
+      }
+
+      if (isMentionFocusInput(trimmed) && pendingAttachments.length === 0) {
+        const focusTurn = tryBuildMentionFocusTurn({
+          text: trimmed,
+          chatAxis: messageChatAxis,
+        });
+        if (focusTurn) {
+          persist([...readActionChatMessages(scopeId), ...focusTurn]);
+          return;
+        }
+      }
+
+      lastActivityRef.current = Date.now();
+
+      if (!activeLink) {
+        clearActiveChains();
+      }
 
       const current = readActionChatMessages(scopeId);
 
-      const userMessage = createMessage("user", trimmed);
+      const userMessage = createMessage("user", trimmed || "첨부 자료", {
+        composerAttachments,
+        chatAxis: messageChatAxis,
+      });
+
+      submitLiveTurn({
+        stage: "input",
+        userMessage: trimmed || "첨부 자료",
+        messageId: userMessage.id,
+        chatAxis: messageChatAxis,
+      });
 
       const pendingPlaceConfirm = findPendingPlaceConfirm(current);
       if (pendingPlaceConfirm) {
@@ -876,6 +2005,12 @@ export function useActionChat(
       }
 
       if (isUserConfirmingActions(trimmed)) {
+        const pendingScheduleConfirm = findPendingConfirmation(current);
+        if (pendingScheduleConfirm) {
+          persist([...current, userMessage]);
+          void confirmPlace(pendingScheduleConfirm.id);
+          return;
+        }
 
         const pending = [...current]
 
@@ -971,7 +2106,7 @@ export function useActionChat(
 
       setSending(true);
 
-
+      const turnStartedAt = Date.now();
 
       try {
 
@@ -985,11 +2120,44 @@ export function useActionChat(
 
             role: message.role,
 
-            content: message.text,
+            content: historyContentFromMessage(message),
 
-          }));
+          }))
+
+          .filter((turn) => turn.content.length > 0);
 
 
+
+        const recentActivities = await listSearchActivities(10);
+        let locationMemory = null as ReturnType<typeof buildLocationMemoryWire> | null;
+        let placePreferences: Awaited<ReturnType<typeof buildPlacePreferencesWire>> = [];
+        let priorPlaceChoice = null as ReturnType<typeof resolvePriorPlaceChoice> | null;
+
+        try {
+          locationMemory = buildLocationMemoryWire({ recentActivities });
+          const correctionLogs = await listCorrectionLogs(30, { mergeRemote: true });
+          placePreferences = await buildPlacePreferencesWire(12);
+          priorPlaceChoice = resolvePriorPlaceChoice({
+            message: trimmed,
+            logs: correctionLogs,
+          });
+        } catch (prepError) {
+          console.error("[action-chat] context prep failed", prepError);
+        }
+
+        let linkedLinks: ReturnType<typeof buildLinkedLinksWire> = [];
+        try {
+          linkedLinks = buildLinkedLinksWire(chainedLinks);
+        } catch (linkWireError) {
+          console.error("[action-chat] linkedLinks wire failed", linkWireError);
+        }
+
+        if (shouldLogSearchActivity(orchestrateMessage)) {
+          void appendSearchActivity({
+            query: orchestrateMessage,
+            kind: inferSearchActivityKind(orchestrateMessage),
+          }).catch(() => undefined);
+        }
 
         const response = await fetchWithTimeout("/api/chat/orchestrate", {
 
@@ -999,7 +2167,9 @@ export function useActionChat(
 
           body: JSON.stringify({
 
-            message: trimmed,
+            message: orchestrateMessage,
+
+            composerContext: composerContext ?? null,
 
             history,
 
@@ -1009,9 +2179,26 @@ export function useActionChat(
 
             linkCategory: activeLink?.category ?? null,
 
-            linkedLinks: buildLinkedLinksWire(chainedLinks),
+            linkedLinks,
 
-            masterContext: serializeMasterContextForApi(),
+            masterContext: {
+              ...serializeMasterContextForApi(),
+              containerGateEnabled: false,
+              ...(activeLink
+                ? {}
+                : {
+                    activeChains: [],
+                    activeChain: null,
+                    activeChainsWire: [],
+                  }),
+              locationMemory,
+              priorPlaceChoice,
+              placePreferences,
+            },
+
+            chatAxis: messageChatAxis ?? null,
+
+            vitalityMemory: readVitalityMemory(),
 
           }),
 
@@ -1024,14 +2211,36 @@ export function useActionChat(
 
 
         if (!response.ok) {
-
+          const errorBody = await response.text().catch(() => "");
+          console.error("[action-chat] orchestrate HTTP", response.status, errorBody);
           throw new Error("orchestrate_failed");
-
         }
 
 
 
         const payload = (await response.json()) as OrchestratorResultWire;
+
+        if (payload.globalBrain?.userStatusPatch !== undefined) {
+          applyUserStatusPatchFromApi(payload.globalBrain.userStatusPatch);
+        }
+        if (payload.globalBrain?.preferencePatch) {
+          applyPreferencePatchFromApi(payload.globalBrain.preferencePatch);
+        }
+        if (payload.globalBrain?.nexusContactTouch?.name) {
+          touchNexusContact(payload.globalBrain.nexusContactTouch.name);
+        }
+        if (payload.eventCandidateUpserts?.length) {
+          applyOcrCalendarCommitToClient({
+            eventCandidateUpserts: payload.eventCandidateUpserts,
+            calendarEvents: payload.metadata?.calendar_events as
+              | import("@/lib/event-kernel/review/execute-approve-pending-events").CalendarEvent[]
+              | undefined,
+          });
+        } else if (payload.eventCandidateUpsert) {
+          applyEventCandidateUpsertFromApi(payload.eventCandidateUpsert, {
+            sourceMessageId: userMessage.id,
+          });
+        }
 
         const batchItems =
           payload.batchResults?.filter((item) => (item.actions?.length ?? 0) > 0) ?? [];
@@ -1057,11 +2266,34 @@ export function useActionChat(
           return;
         }
 
+        if (payload.cafeDiscovery?.summary) {
+          void appendSearchActivity({
+            query: trimmed,
+            kind: "discovery",
+          });
+        }
+
+        if (payload.confirmation?.location_suggestions?.length) {
+          void appendSearchActivity({
+            query: payload.confirmation.confirm_data?.subject ?? trimmed,
+            kind: "place_confirm",
+          });
+        }
+
+        const displaySummary = resolveAssistantDisplaySummary(payload);
+        const tikiChoices = parseTikiChoiceOptions(displaySummary);
+
+        const vitalityStates = (payload.metadata as { vitality_states?: VitalityStateKind[] } | undefined)
+          ?.vitality_states;
+        if (vitalityStates?.length) {
+          writeVitalityMemory(vitalityStates);
+        }
+
         const assistantMessage = createMessage(
 
           "assistant",
 
-          payload.summary || GLANGO_CONVERSATION_LINES.greeting,
+          displaySummary,
 
           {
 
@@ -1079,6 +2311,10 @@ export function useActionChat(
 
             meta: payload.meta,
 
+            chatAxis: messageChatAxis,
+
+            tikiChoices: tikiChoices.length >= 2 ? tikiChoices : undefined,
+
             schedule: payload.schedule,
 
             container: payload.container,
@@ -1091,18 +2327,49 @@ export function useActionChat(
 
             confirmation: payload.confirmation,
 
-            thought: payload.thought,
+            thought: undefined,
 
             scheduledDelivery: payload.scheduledDelivery,
 
             scheduleExtract: payload.scheduleExtract,
 
+            cafeDiscovery: payload.cafeDiscovery,
+
+            guardrail: payload.guardrail,
+
+            policy: payload.policy,
+
+            experienceChoice: payload.experienceChoice,
+
+            entityQuickPick: payload.entityQuickPick,
+
+            scheduleAdvisory: payload.scheduleAdvisory,
+
+            morningBriefing: payload.morningBriefing,
+
+            dataArchitect: payload.dataArchitect,
+
+            presentation: payload.presentation,
+
+            flightStatusCard: payload.flightStatusCard,
+
+            packingChecklist: payload.packingChecklist,
+
+            actionOsDock: payload.actionOsDock,
+
           }
 
         );
 
-        if (payload.uiTrigger?.type === "DATE_PICKER") {
+        if (
+          payload.uiTrigger?.type === "DATE_PICKER" ||
+          payload.uiTrigger?.type === "OCR_REVIEW_DATE_PICKER"
+        ) {
           setDatePickerRequest(payload.uiTrigger);
+        }
+        applyReviewGateFromOrchestrator(payload);
+        if (payload.uiTrigger?.type === "OCR_REVIEW_DATE_PICKER") {
+          syncThreadlineFromOrchestrator(payload);
         }
 
         if (payload.knowledgeSaved?.length) {
@@ -1116,6 +2383,30 @@ export function useActionChat(
           assistantMessage,
         ]);
 
+        const autoAux = readAutoExecuteStudyAux(
+          payload.metadata as Record<string, unknown> | undefined,
+        );
+        if (autoAux) {
+          void executeStudyAuxClient(autoAux, buildStudyAuxDeps());
+        } else if (studyQaTurn) {
+          appendStudyQaFollowUpIfNeeded(buildStudyAuxDeps());
+        }
+
+        submitLiveTurn({
+          stage: "output",
+          userMessage: trimmed,
+          messageId: assistantMessage.id,
+          assistantSummary: displaySummary,
+          chatAxis: messageChatAxis,
+          metadata: (payload.metadata ?? undefined) as Record<string, unknown> | undefined,
+          vitality: vitalityStates,
+          latencyMs: Date.now() - turnStartedAt,
+          history: history.map((turn) => ({
+            role: turn.role,
+            content: turn.content,
+          })),
+        });
+
         if (
           payload.scheduledDelivery?.status === "pending" &&
           payload.scheduleExtract?.datetime
@@ -1125,11 +2416,23 @@ export function useActionChat(
             extracted: payload.scheduleExtract,
             sourceMessage: trimmed,
           });
+        } else if (
+          payload.timeChoiceExecution?.mode === "calendar" &&
+          payload.scheduleExtract?.datetime
+        ) {
+          void saveScheduledTravelToCalendar({
+            extracted: payload.scheduleExtract,
+            sourceMessage: trimmed,
+          }).then(() => {
+            toast("일정을 저장했어요");
+          });
         }
 
         return;
 
       } catch (error) {
+
+        console.error("[action-chat] send failed", error);
 
         const fallbackText =
 
@@ -1137,7 +2440,7 @@ export function useActionChat(
 
             ? GLANGO_CONVERSATION_LINES.timeout
 
-            : GLANGO_CONVERSATION_LINES.fallback;
+            : resolveClientRecoveryText(trimmed);
 
 
 
@@ -1157,15 +2460,223 @@ export function useActionChat(
 
     },
 
-    [activateScheduledDelivery, activeLink, chainedLinks, confirmPlace, persist, scopeId, sending]
+    [
+      activateScheduledDelivery,
+      activeLink,
+      applyReviewGateFromOrchestrator,
+      buildStudyAuxDeps,
+      handleStudyAuxAction,
+      chainedLinks,
+      confirmPlace,
+      persist,
+      runReviewExecutionAndPersist,
+      scopeId,
+      sending,
+    ]
 
   );
+
+  useEffect(() => {
+    sendMessageRef.current = sendMessage;
+  }, [sendMessage]);
 
 
 
   const dismissDatePicker = useCallback(() => {
     setDatePickerRequest(null);
   }, []);
+
+  const completeInlineTimer = useCallback(
+    (messageId: string) => {
+      const current = readActionChatMessages(scopeId);
+      let updated = false;
+      const next = current.map((message) => {
+        if (message.id !== messageId || !message.inlineChatTimer) {
+          return message;
+        }
+        if (message.inlineChatTimer.status === "done") {
+          return message;
+        }
+        updated = true;
+        return {
+          ...message,
+          inlineChatTimer: {
+            ...message.inlineChatTimer,
+            status: "done" as const,
+          },
+        };
+      });
+      if (updated) {
+        persist(next);
+        toast.message("타이머 끝");
+      }
+    },
+    [persist, scopeId],
+  );
+
+  const confirmInlineFocus = useCallback(
+    async (messageId: string) => {
+      const hasAccess = await ensureNotificationAccessForFocus(() => {
+        toast.message("알림 맡기기", "설정에서 Glango 알림 접근을 켜주세요");
+      });
+      const current = readActionChatMessages(scopeId);
+      persist(applyFocusConfirmToMessages(current, messageId));
+      toast.message(
+        "집중 모드 시작",
+        hasAccess
+          ? "카카오톡·이메일 알림을 모아둘게요"
+          : "알림 권한을 켜면 카톡·이메일도 모아둘 수 있어요",
+      );
+    },
+    [persist, scopeId],
+  );
+
+  const cancelInlineFocus = useCallback(
+    (messageId: string) => {
+      const current = readActionChatMessages(scopeId);
+      persist(applyFocusCancelToMessages(current, messageId));
+    },
+    [persist, scopeId],
+  );
+
+  const completeInlineFocus = useCallback(
+    (messageId: string) => {
+      const current = readActionChatMessages(scopeId);
+      const target = current.find((message) => message.id === messageId);
+      if (!target?.inlineChatFocus || target.inlineChatFocus.phase !== "running") {
+        return;
+      }
+      persist(applyFocusCompleteToMessages(current, messageId));
+      toast.message("집중 끝", "모아둔 알림을 여기서 처리하세요");
+    },
+    [persist, scopeId],
+  );
+
+  const handleFocusHeldInAppAction = useCallback(
+    (messageId: string, shadowId: string, action: FocusHeldActionWire) => {
+      if (action.kind === "open_embedded") {
+        return;
+      }
+
+      if (action.kind === "confirm") {
+        const current = readActionChatMessages(scopeId);
+        persist(applyFocusHeldInAppActionToMessages(current, messageId, shadowId));
+        return;
+      }
+
+      if (action.kind === "reply_draft" && action.target) {
+        const current = readActionChatMessages(scopeId);
+        persist(applyFocusHeldInAppActionToMessages(current, messageId, shadowId));
+        void sendMessage(action.target);
+        return;
+      }
+
+      if (action.kind === "open_external" && action.target) {
+        openSpawnAction({
+          deeplink: action.target,
+          onPrompt: (uri) => {
+            void sendMessage(uri);
+          },
+        });
+      }
+    },
+    [persist, scopeId, sendMessage],
+  );
+
+  const submitHitRunFeedback = useCallback(
+    async (messageId: string, verdict: HitRunFeedbackVerdict) => {
+      const current = readActionChatMessages(scopeId);
+      const index = current.findIndex((message) => message.id === messageId);
+      if (index < 0) {
+        return;
+      }
+
+      const assistant = current[index];
+      if (assistant.role !== "assistant" || assistant.loading) {
+        return;
+      }
+
+      let userMessage = "";
+      let chatAxis = assistant.chatAxis;
+      for (let cursor = index - 1; cursor >= 0; cursor -= 1) {
+        const prior = current[cursor];
+        if (prior.role === "user") {
+          userMessage = prior.text;
+          chatAxis = chatAxis ?? prior.chatAxis;
+          break;
+        }
+      }
+
+      persist(
+        current.map((message) =>
+          message.id === messageId
+            ? { ...message, hitRunFeedback: verdict }
+            : message
+        )
+      );
+
+      try {
+        await fetch("/api/chat/hit-run-feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            verdict,
+            messageId,
+            userMessage,
+            assistantSummary: assistant.text,
+            chatAxis: chatAxis ?? null,
+            metadata: assistant.metadata ?? {},
+          }),
+        });
+      } catch (error) {
+        console.error("[action-chat] hit-run feedback failed", error);
+      }
+    },
+    [persist, scopeId]
+  );
+
+  const togglePackingItem = useCallback(
+    (tripId: string, itemId: string) => {
+      const result = handlePackingItemToggle({ tripId, itemId });
+      if (!result?.packingChecklist) {
+        return;
+      }
+
+      const current = readActionChatMessages(scopeId);
+      const hasChecklistMessage = current.some(
+        (message) => message.packingChecklist?.tripId === tripId
+      );
+
+      if (hasChecklistMessage) {
+        persist(
+          current.map((message) =>
+            message.packingChecklist?.tripId === tripId
+              ? {
+                  ...message,
+                  text: result.summary,
+                  packingChecklist: result.packingChecklist,
+                  actions: result.actions ?? [],
+                  actionsRevealed: result.actionsRevealed ?? false,
+                }
+              : message
+          )
+        );
+        return;
+      }
+
+      persist([
+        ...current,
+        createMessage("assistant", result.summary, {
+          packingChecklist: result.packingChecklist,
+          actions: result.actions ?? [],
+          actionsRevealed: result.actionsRevealed ?? false,
+          presentation: result.presentation,
+          metadata: result.metadata,
+        }),
+      ]);
+    },
+    [persist, scopeId]
+  );
 
   const confirmDatePicker = useCallback(
     async (input: { date: string; time: string; task: string }) => {
@@ -1183,7 +2694,83 @@ export function useActionChat(
     [sendMessage]
   );
 
+  const confirmOcrReviewDates = useCallback(
+    async (patches: Array<{ candidateId: string; date: string }>) => {
+      setDatePickerRequest(null);
+      await runReviewExecutionAndPersist(
+        {
+          scopeId: REVIEW_EXECUTION_SCOPE,
+          type: "date",
+          payload: { patches },
+        },
+        "날짜 선택"
+      );
+    },
+    [runReviewExecutionAndPersist]
+  );
 
+  useEffect(() => {
+    eventOsLastProofRef.current = eventOsLastProof;
+  }, [eventOsLastProof]);
+
+  useEffect(() => {
+    threadlineResolveRef.current = async (payload) => {
+      switch (payload.kind) {
+        case "ocr_date":
+          await confirmOcrReviewDates(payload.patches);
+          break;
+        case "ocr_confirm":
+          await runReviewExecutionAndPersist(
+            {
+              scopeId: REVIEW_EXECUTION_SCOPE,
+              type: "confirm",
+              payload: {
+                message: payload.message,
+                syncClient: true,
+              },
+            },
+            payload.message
+          );
+          break;
+        case "ocr_approve":
+          await runReviewExecutionAndPersist(
+            {
+              scopeId: REVIEW_EXECUTION_SCOPE,
+              type: "approve",
+              payload: { message: payload.message },
+            },
+            payload.message
+          );
+          break;
+        case "open_date_picker": {
+          const proof = eventOsLastProofRef.current;
+          const pending = proof?.stateAfter.pendingCandidates ?? [];
+          if (pending.length > 0) {
+            setDatePickerRequest({
+              type: "OCR_REVIEW_DATE_PICKER",
+              rows: pending.map((row) => ({
+                candidateId: row.id,
+                title: row.title,
+                time: row.time,
+              })),
+            });
+            syncReviewGatePhase("awaiting_date");
+          }
+          break;
+        }
+        case "defer":
+          setDatePickerRequest(null);
+          syncReviewGatePhase(null);
+          break;
+        default:
+          break;
+      }
+    };
+  }, [
+    confirmOcrReviewDates,
+    runReviewExecutionAndPersist,
+    syncReviewGatePhase,
+  ]);
 
   return {
 
@@ -1193,15 +2780,45 @@ export function useActionChat(
 
     sendMessage,
 
+    sendComposerPayload,
+
+    submitHitRunFeedback,
+
+    completeInlineTimer,
+
+    confirmInlineFocus,
+
+    cancelInlineFocus,
+
+    completeInlineFocus,
+
+    handleFocusHeldInAppAction,
+
     revealMessageActions,
 
     revealAlternateMessageActions,
 
     datePickerRequest,
 
+    eventOsProofRender,
+
+    eventOsLastProof,
+
+    threadlineCards,
+
+    deferredCards,
+
+    handleThreadlineResolveChip,
+
+    restoreThreadlineDeferred: restoreDeferred,
+
     confirmDatePicker,
 
+    confirmOcrReviewDates,
+
     dismissDatePicker,
+
+    togglePackingItem,
 
     confirmPlace,
 
@@ -1216,6 +2833,12 @@ export function useActionChat(
     cancelScheduledAction,
 
     triggerScheduledActionNow,
+
+    executeTimeChoice,
+
+    handleStudyAuxAction,
+
+    startFreshConversation,
 
   };
 
@@ -1258,6 +2881,41 @@ type OrchestratorResultWire = {
   scheduledDelivery?: ActionChatMessage["scheduledDelivery"];
 
   scheduleExtract?: ActionChatMessage["scheduleExtract"];
+
+  cafeDiscovery?: ActionChatMessage["cafeDiscovery"];
+
+  guardrail?: ActionChatMessage["guardrail"];
+
+  policy?: ActionChatMessage["policy"];
+
+  experienceChoice?: ActionChatMessage["experienceChoice"];
+
+  entityQuickPick?: ActionChatMessage["entityQuickPick"];
+
+  scheduleAdvisory?: ActionChatMessage["scheduleAdvisory"];
+
+  morningBriefing?: ActionChatMessage["morningBriefing"];
+
+  presentation?: ActionChatMessage["presentation"];
+
+  flightStatusCard?: ActionChatMessage["flightStatusCard"];
+
+  packingChecklist?: ActionChatMessage["packingChecklist"];
+
+  actionOsDock?: ActionChatMessage["actionOsDock"];
+
+  dataArchitect?: ActionChatMessage["dataArchitect"];
+
+  globalBrain?: {
+    userStatusPatch?: import("@/lib/global-brain/types").UserStatusWire | null;
+    preferencePatch?: { key: string; value: string; label: string } | null;
+    nexusContactTouch?: { name: string } | null;
+    actionEventUpsert?: import("@/lib/global-brain/types").GlobalBrainWire["actionEventUpsert"];
+  };
+
+  eventCandidateUpsert?: import("@/lib/events/event-candidate").EventCandidateWire;
+
+  eventCandidateUpserts?: import("@/lib/events/event-candidate").EventCandidateWire[];
 
   batchResults?: Array<{
     type: string;

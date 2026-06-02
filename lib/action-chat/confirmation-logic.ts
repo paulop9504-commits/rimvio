@@ -12,7 +12,19 @@ import type {
 import { parseRelativeDateTimeFromText } from "@/lib/action-chat/action-agent-normalize";
 import { buildConfirmMessageBundle } from "@/lib/action-chat/confirm-message-generator";
 import { readNavAddress } from "@/lib/action-chat/normalize-address";
-import type { OrchestratorResult } from "@/lib/action-chat/orchestrator-types";
+import { isVitalityStateUtterance } from "@/lib/vitality-state/classify-vitality-state-intent";
+import { isNonLocationActionCommand } from "@/lib/action-chat/is-non-location-action";
+import { enrichPlaceDiscoveryMessage } from "@/lib/context-resolver/discovery/enrich-place-discovery-message";
+import { looksLikePlaceSearchCommand } from "@/lib/context-resolver/discovery/enrich-place-discovery-message";
+import { isEntityFacetMessage } from "@/lib/context-resolver/discovery/parse-entity-facet-intent";
+import {
+  isPlaceRecommendationQuery,
+  parseFindPlaceIntent,
+} from "@/lib/context-resolver/discovery/parse-find-place-intent";
+import type {
+  OrchestrateHistoryTurn,
+  OrchestratorResult,
+} from "@/lib/action-chat/orchestrator-types";
 
 const PLACE_NAME_ONLY =
   /(?:갤러리아|스타벅스|맥도날드|쿠우쿠우|이마트|홈플러스|코스트코|올리브영|cgv|메가박스)/i;
@@ -69,6 +81,7 @@ export function buildExtractedDataFromText(
 export function assessPlaceConfirmationNeed(input: {
   message: string;
   referenceDate?: string;
+  history?: readonly OrchestrateHistoryTurn[];
 }): {
   needsConfirm: boolean;
   confidence: number;
@@ -79,6 +92,32 @@ export function assessPlaceConfirmationNeed(input: {
 } | null {
   const message = stripUiNoise(input.message.trim());
   if (!message || message.length > 120) {
+    return null;
+  }
+
+  if (isVitalityStateUtterance(message)) {
+    return null;
+  }
+
+  if (isNonLocationActionCommand(message)) {
+    return null;
+  }
+
+  if (isEntityFacetMessage(message)) {
+    return null;
+  }
+
+  const discoveryQuery = enrichPlaceDiscoveryMessage(message, input.history);
+
+  if (isPlaceRecommendationQuery(message) || isPlaceRecommendationQuery(discoveryQuery)) {
+    return null;
+  }
+
+  if (parseFindPlaceIntent(discoveryQuery)) {
+    return null;
+  }
+
+  if (looksLikePlaceSearchCommand(message)) {
     return null;
   }
 
@@ -182,6 +221,8 @@ export function buildConfirmationOrchestratorResult(input: {
   thought?: string;
   confirm_data?: OrchestratorConfirmationWire["confirm_data"];
   batch_pending?: OrchestratorConfirmationWire["batch_pending"];
+  location_suggestions?: OrchestratorConfirmationWire["location_suggestions"];
+  location_ux?: OrchestratorConfirmationWire["location_ux"];
 }): OrchestratorResult {
   const dataPrompt = input.data_prompt ?? input.confirm_message ?? "아래 정보로 진행할까요?";
   const confirmation: OrchestratorConfirmationWire = {
@@ -192,6 +233,8 @@ export function buildConfirmationOrchestratorResult(input: {
     thought: input.thought,
     confirm_data: input.confirm_data,
     batch_pending: input.batch_pending,
+    location_suggestions: input.location_suggestions,
+    location_ux: input.location_ux,
   };
 
   return {
@@ -214,6 +257,7 @@ export function buildConfirmationOrchestratorResult(input: {
 export function tryPlaceConfirmation(input: {
   message: string;
   referenceDate?: string;
+  history?: readonly OrchestrateHistoryTurn[];
 }): OrchestratorResult | null {
   const assessment = assessPlaceConfirmationNeed(input);
   if (!assessment?.needsConfirm) {

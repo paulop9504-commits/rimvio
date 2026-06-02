@@ -16,8 +16,9 @@ import type {
 } from "@/lib/action-chat/orchestrator-types";
 import type { ExistingScheduleInput } from "@/lib/schedule/day-schedule";
 
-function trimSummary(text: string) {
-  return text.replace(/\s+/g, " ").trim().slice(0, 80);
+function trimSummary(text: string, source?: OrchestratorResult["source"]) {
+  const maxLen = source === "conversation" ? 120 : 100;
+  return text.replace(/\s+/g, " ").trim().slice(0, maxLen);
 }
 
 function mergeScheduleConflict(input: {
@@ -91,10 +92,10 @@ export function normalizeMasterOrchestratorWire(input: {
     existingSchedule: input.existingSchedule ?? [],
   });
 
-  let summary = trimSummary(merged.summary || "바로 실행할게요");
+  let summary = trimSummary(merged.summary || "바로 실행할게요", input.source);
 
   if (merged.schedule?.is_conflict && merged.schedule.message) {
-    summary = trimSummary(`${summary} ${merged.schedule.message}`);
+    summary = trimSummary(`${summary} ${merged.schedule.message}`, input.source);
   }
 
   if (merged.container?.should_save && merged.container.title && merged.container.action !== "NONE") {
@@ -103,7 +104,7 @@ export function normalizeMasterOrchestratorWire(input: {
         ? `${merged.container.title} 컨테이너에 넣을까요?`
         : `${merged.container.title} 컨테이너를 만들까요?`;
     if (!summary.includes("컨테이너")) {
-      summary = trimSummary(`${summary} ${hint}`);
+      summary = trimSummary(`${summary} ${hint}`, input.source);
     }
   }
 
@@ -152,7 +153,6 @@ export function normalizeMasterOrchestratorWire(input: {
       disclosure: "none",
       actionsRevealed: false,
       pendingConfirm: false,
-      thought: merged.thought,
       metadata: merged.metadata,
       schedule: merged.schedule,
       container: merged.container,
@@ -163,6 +163,8 @@ export function normalizeMasterOrchestratorWire(input: {
   const wired = validateLinkActions(
     appendContainerAction(wireActionsToLinkItems(merged.actions), merged)
   );
+
+  const actionOsDock = merged.actionOsDock;
 
   return applyDisclosureToOrchestratorResult(
     {
@@ -175,6 +177,8 @@ export function normalizeMasterOrchestratorWire(input: {
       schedule: merged.schedule,
       container: merged.container,
       confirmation: merged.confirmation,
+      actionOsDock,
+      actionsRevealed: Boolean(actionOsDock),
     },
     confidence
   );

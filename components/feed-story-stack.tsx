@@ -7,14 +7,14 @@ type FeedStoryStackProps = {
   layout: "capture-cover" | "compact";
   visual: ReactNode;
   meta?: ReactNode;
-  /** Compact only — receipt / poster zone above actions */
+  /** Compact only ??receipt / poster zone above actions */
   ambient?: ReactNode;
   actions: ReactNode;
   insight?: ReactNode;
   className?: string;
 };
 
-/** Instagram-style stack — visual + floating actions + optional receipt. No card chrome. */
+/** Instagram-style stack ??visual + floating actions + optional receipt. No card chrome. */
 export function FeedStoryStack({
   layout,
   visual,
@@ -29,7 +29,7 @@ export function FeedStoryStack({
       <div
         className={cn(
           "relative min-h-0 flex-1 overflow-hidden rounded-[28px]",
-          "ring-1 ring-black/[0.06] shadow-[0_8px_32px_-16px_rgba(0,0,0,0.22)]",
+          "ring-1 ring-glango-neon-purple/15 shadow-[0_8px_32px_-16px_rgba(0,0,0,0.22)]",
           className
         )}
       >

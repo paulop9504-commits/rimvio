@@ -1,5 +1,4 @@
-import { classifyIntentRouter } from "@/lib/action-chat/mode-switching";
-import { isConversationalOnlyMessage } from "@/lib/action-chat/conversation-turns";
+import { findPendingConfirmation } from "@/lib/action-chat/resolve-affirmative-confirm";
 import { buildExtractedDataFromText } from "@/lib/action-chat/confirmation-logic";
 import { normalizeExtractedPlaceData } from "@/lib/action-chat/resolve-navigation-place";
 import type { ConfirmationExtractedData } from "@/lib/action-chat/confirmation-types";
@@ -9,6 +8,10 @@ import {
   looksLikePlaceInput,
 } from "@/lib/action-chat/confirm-input-guard";
 import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
+import {
+  classifyCommitSpeech,
+  isCommitRejectMessage,
+} from "@/lib/action-chat/commit-speech";
 
 export type ConfirmInterruptKind =
   | "continue_confirm"
@@ -17,27 +20,13 @@ export type ConfirmInterruptKind =
   | "location_correction"
   | "off_topic";
 
-const CONTINUE_CONFIRM =
-  /^(?:네|맞(?:아|아요|습니다|음)?|계속|응|ㅇㅇ|yes|ok|확인)(?:[!?.~ㅋㅎ\s]*)?$/iu;
-
 const CANCEL_TASK =
   /^(?:취소|그만|나중|안\s*할|하지\s*마|stop|cancel|다른\s*질문)(?:[!?.~ㅋㅎ\s]*)?$/iu;
 
 export function findPendingPlaceConfirm(
   messages: ActionChatMessage[]
 ): ActionChatMessage | null {
-  return (
-    [...messages]
-      .reverse()
-      .find(
-        (message) =>
-          message.role === "assistant" &&
-          message.pendingConfirm &&
-          message.confirmation?.meta?.intent === "CONFIRM" &&
-          !message.actionsRevealed &&
-          (message.actions?.length ?? 0) === 0
-      ) ?? null
-  );
+  return findPendingConfirmation(messages);
 }
 
 export function classifyConfirmInterrupt(userMessage: string): ConfirmInterruptKind {
@@ -46,11 +35,11 @@ export function classifyConfirmInterrupt(userMessage: string): ConfirmInterruptK
     return "off_topic";
   }
 
-  if (CANCEL_TASK.test(trimmed)) {
+  if (CANCEL_TASK.test(trimmed) || isCommitRejectMessage(trimmed)) {
     return "cancel_task";
   }
 
-  if (CONTINUE_CONFIRM.test(trimmed)) {
+  if (classifyCommitSpeech(trimmed).act === "APPROVE") {
     return "continue_confirm";
   }
 
@@ -60,13 +49,6 @@ export function classifyConfirmInterrupt(userMessage: string): ConfirmInterruptK
 
   if (looksLikePlaceInput(trimmed)) {
     return "location_correction";
-  }
-
-  if (
-    isConversationalOnlyMessage(trimmed) ||
-    classifyIntentRouter(trimmed).mode === "conversation"
-  ) {
-    return "off_topic";
   }
 
   return "off_topic";

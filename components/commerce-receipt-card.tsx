@@ -36,7 +36,7 @@ function lineValueClass(line: UnifiedCommerceLine) {
 
   if (line.tone === "accent") {
 
-    return "font-semibold text-[#007AFF]";
+    return "font-semibold text-glango-neon-cyan";
 
   }
 
@@ -82,7 +82,7 @@ type CommerceReceiptCardProps = {
 
 
 
-/** 시세 + 진짜 영수증(감가) — 한 장의 중고 영수증. */
+/** ?�세 + 진짜 ?�수�?감�?) ?????�의 중고 ?�수�? */
 
 export function CommerceReceiptCard({
 
@@ -156,7 +156,7 @@ export function CommerceReceiptCard({
 
       <div className="rounded-2xl bg-[#fffdf8] px-3 py-2.5 text-center text-[11px] text-muted-foreground ring-1 ring-amber-500/10">
 
-        중고 영수증 계산 중…
+        중고 ?�수�?계산 중�?
 
       </div>
 
@@ -214,7 +214,7 @@ export function CommerceReceiptCard({
 
             <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-800/80">
 
-              중고 영수증
+              중고 ?�수�?
 
             </p>
 
@@ -260,7 +260,7 @@ export function CommerceReceiptCard({
 
       {receipt.lines.length > 0 ? (
 
-        <div className="space-y-1.5 rounded-xl bg-white/80 px-2.5 py-2 ring-1 ring-black/[0.04]">
+        <div className="space-y-1.5 rounded-xl bg-glango-surface/80 px-2.5 py-2 ring-1 ring-glango-neon-purple/12">
 
           {receipt.lines.map((line, index) => (
 
@@ -272,7 +272,7 @@ export function CommerceReceiptCard({
 
                 "flex items-center justify-between gap-3 text-[11px]",
 
-                line.dividerBefore && "border-t border-dashed border-black/[0.08] pt-1.5"
+                line.dividerBefore && "border-t border-dashed border-border pt-1.5"
 
               )}
 
@@ -326,11 +326,11 @@ export function CommerceReceiptCard({
 
           }}
 
-          className="mt-2.5 flex h-9 w-full items-center justify-center rounded-xl bg-[#f2f2f7] text-[12px] font-semibold text-muted-foreground transition active:scale-[0.98]"
+          className="mt-2.5 flex h-9 w-full items-center justify-center rounded-xl bg-glango-surface-muted text-[12px] font-semibold text-muted-foreground transition active:scale-[0.98]"
 
         >
 
-          나중에 볼게
+          ?�중??볼게
 
         </button>
 

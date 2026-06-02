@@ -155,9 +155,9 @@ export function InboxLinkRow({
         onMouseLeave={clearLongPress}
         className={cn(
           "flex min-w-0 flex-1 items-center gap-[var(--space-u)] text-left",
-          "transition-colors hover:bg-[#f2f2f7]/80 active:bg-[#f2f2f7]",
+          "transition-colors hover:bg-glango-surface-muted/80 active:bg-glango-surface-muted",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#007AFF]/30 focus-visible:ring-inset",
-          selectable && selected && "bg-[#007AFF]/[0.06]"
+          selectable && selected && "bg-glango-neon-purple/[0.06]"
         )}
       >
         {selectable ? (
@@ -165,7 +165,7 @@ export function InboxLinkRow({
             className={cn(
               "flex size-[var(--inbox-thumb)] shrink-0 items-center justify-center rounded-full border-2 transition-colors",
               selected
-                ? "border-[#007AFF] bg-[#007AFF] text-white"
+                ? "border-[#007AFF] bg-glango-neon-purple text-white"
                 : "border-black/15 bg-background text-transparent"
             )}
             aria-hidden
@@ -195,7 +195,7 @@ export function InboxLinkRow({
 
         {!selectable ? (
           <ExternalLink
-            className="mr-1 size-4 shrink-0 text-[#007AFF]/70 opacity-80"
+            className="mr-1 size-4 shrink-0 text-glango-neon-cyan/70 opacity-80"
             strokeWidth={2}
             aria-hidden
           />

@@ -6,7 +6,9 @@
 >
 > **제품명:** Glango 👀
 >
-> **태그라인:** Link-to-Action Operating Layer — *공유 한 번, 다음 행동 한 탭*
+> **태그라인:** **Your Life, Operable.** — *말·링크·사진 → Action Dock*
+>
+> **North Star:** Human Intent를 operable하게 만드는 개인 Action OS
 
 ---
 
@@ -14,24 +16,35 @@
 
 ### 한 줄 정의
 
-**Glango는 북마크 앱이 아니다.** 사용자가 어디서든 링크를 공유하면, Glango가 그 링크를 **지금 당장 누를 수 있는 행동 버튼**으로 바꿔 주는 OS 레이어다.
+**Glango는 챗봇이 아니다.** 사용자의 말·링크·사진·일정을 **지금 실행 가능한 Action Dock**으로 바꿔 주는 **개인 Action OS**다.
+
+### Ingress (어떻게 들어오나)
+
+| 채널 | 역할 |
+|------|------|
+| **말하기** | Primary — intent → Dock → execute |
+| **링크 공유** | Share Target ingress — URL → actions[] |
+| **사진·캡처** | OCR/vision → place·commerce actions |
+| **Custom Trigger** | REGISTER_ACTION — 학습된 NL → 자동 실행 |
+
+링크는 **시작점**이지 정체성이 아니다.
 
 ### Glango가 **아닌** 것
 
 | ❌ 아님 | ✅ Glango |
 |---------|----------|
-| Pocket / Raindrop (링크 모음) | 링크 → **행동** 변환 |
-| Notion inbox (읽을 거리 쌓기) | **1–2탭**으로 실행 |
-| AI 요약 앱 (긴 글 읽게 함) | **벽 of text 금지**, 버튼만 |
-| 브라우저 확장 | **모바일 Share Target** 중심 PWA |
+| ChatGPT wrapper (대화) | **Operate** — 실행 버튼·Dock |
+| Pocket / Raindrop (모음) | intent → **Action** |
+| 북마크 앱 | **OS 레이어** — 조율·correction·trigger |
+| 단일 기능 앱 | Apex·Haven·Nexus·Sentinel 축 |
 
 ### 핵심 가치
 
 ```
-공유 → 3초 → "다음에 뭘 하면 되지?"가 버튼으로 보임
+Intent → Action Dock → Execute (1–2탭)
 ```
 
-사용자는 링크를 "나중에 볼 목록"에 넣는 게 아니라, **다음 행동을 즉시 실행하거나, Stack에 넘겨** 나중에 Feed에서 다시 만난다.
+대화는 수단. **Operable**이 목적.
 
 ---
 
@@ -363,15 +376,13 @@ day | night | commute  ×  default | kakaomap
 
 ---
 
-## 13. 제품 진화 히스토리
+## 13. 제품 진화 히스토리 (브랜드만 — 코드베이스 분리)
 
 ```
-Silent Ghost  →  Glango 👀
-(개발 codename)   (consumer brand)
-
-Stack 홈  →  Shorts Feed 홈
-/inbox hidden  →  /stack 으로 Stack UX 이동
+(codename Blink / early SG era)  →  Glango 👀 (별도 repo: glango.git)
 ```
+
+**코드:** `ghostsilence-programmer`와 **import·공유 없음**. [WORKSPACE.md](./WORKSPACE.md)
 
 **현재 홈:** `/` = Feed (Shorts-style)
 **Stack UX:** `/stack` (legacy, demo용 유지)

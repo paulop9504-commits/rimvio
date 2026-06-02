@@ -1,33 +1,45 @@
 import { cn } from "@/lib/utils";
+import {
+  glangoEdgeCardClass,
+  glangoNeonCardClass,
+  glangoNeonCardSmClass,
+  GLANGO_NEON,
+} from "@/lib/brand/glango-neon-theme";
 
-/** Shared iOS grouped-list surface tokens (matches feed cards). */
+/** Shared grouped-list surfaces — black fill + prismatic neon edges. */
 export const IOS = {
-  bg: "bg-[#f2f2f7]",
-  card: cn(
-    "rounded-[28px] bg-white",
-    "shadow-[0_2px_24px_-8px_rgba(0,0,0,0.08)] ring-1 ring-black/[0.04]"
-  ),
-  cardSm: cn(
-    "rounded-2xl bg-white",
-    "shadow-[0_1px_12px_-4px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]"
-  ),
+  bg: "bg-glango-base",
+  card: glangoNeonCardClass,
+  cardSm: glangoNeonCardSmClass,
+  cardCyan: glangoEdgeCardClass("sm", "cyan"),
+  cardMagenta: glangoEdgeCardClass("sm", "magenta"),
+  cardGreen: glangoEdgeCardClass("sm", "green"),
   sectionLabel:
     "text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground/80",
   primaryBtn: cn(
     "flex h-[50px] w-full items-center justify-center rounded-[14px]",
-    "bg-[#007AFF] text-[17px] font-semibold text-white",
-    "transition-transform active:scale-[0.98] hover:bg-[#0077ED]"
+    "bg-glango-neon-purple text-[17px] font-semibold text-white",
+    "shadow-[0_0_0_1px_rgba(191,90,242,0.5),0_8px_32px_-4px_rgba(157,78,221,0.55)]",
+    "transition-transform active:scale-[0.98] hover:brightness-110",
   ),
   secondaryBtn: cn(
     "inline-flex items-center justify-center rounded-[14px]",
-    "bg-[#f2f2f7] text-[15px] font-medium text-foreground",
-    "ring-1 ring-black/[0.04] transition-transform active:scale-[0.98]"
+    "bg-glango-surface-muted text-[15px] font-medium text-foreground",
+    "shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]",
+    "transition-transform active:scale-[0.98]",
   ),
-  pillActive: "bg-[#007AFF] text-white",
-  pillIdle: "bg-[#f2f2f7] text-foreground ring-1 ring-black/[0.04]",
+  pillActive:
+    "bg-glango-neon-purple text-white shadow-[0_0_20px_rgba(191,90,242,0.45),inset_0_0_0_1px_rgba(255,255,255,0.12)]",
+  pillIdle:
+    "bg-glango-surface-muted text-foreground shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]",
   input: cn(
-    "rounded-2xl bg-white px-4 py-3",
-    "ring-1 ring-black/[0.06] shadow-[0_1px_8px_-4px_rgba(0,0,0,0.06)]",
-    "focus-within:ring-[#007AFF]/35"
+    "rounded-2xl bg-glango-surface-raised px-4 py-3 text-foreground",
+    "shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]",
+    "focus-within:shadow-[inset_0_0_0_1px_rgba(50,215,255,0.45),0_0_24px_rgba(50,215,255,0.12)]",
   ),
+} as const;
+
+export const IOS_HEX = {
+  bg: GLANGO_NEON.base,
+  card: GLANGO_NEON.surface,
 } as const;

@@ -2,7 +2,9 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { Loader2, MapPin, X } from "lucide-react";
+import { MainActionButton } from "@/components/action-chat/main-action-button";
 import { runLinkActionForLink } from "@/lib/actions/run-link-action-for-link";
+import { resolveMainActionBrandStyle } from "@/lib/brand/action-brand-style";
 import type { LocateActionResult } from "@/lib/locate/types";
 import type { LinkRow } from "@/types/database";
 import { cn } from "@/lib/utils";
@@ -96,18 +98,20 @@ export function LocateActionChip({
 
                 {result && !loading ? (
                   <>
-                    <button
-                      type="button"
+                    <MainActionButton
+                      label={result.primary_action.label}
+                      brand={resolveMainActionBrandStyle({
+                        label: result.primary_action.label,
+                        href: result.primary_action.href,
+                      })}
+                      className="mt-2 py-3.5 text-[15px]"
                       onClick={() =>
                         void runLocateHref(
                           result.primary_action.href,
                           result.primary_action.copyText
                         )
                       }
-                      className="mt-2 flex w-full items-center justify-center rounded-[16px] bg-[#007AFF] px-4 py-3.5 text-[15px] font-semibold text-white shadow-[0_10px_24px_-14px_rgba(0,122,255,0.85)] transition-transform active:scale-[0.98]"
-                    >
-                      {result.primary_action.label}
-                    </button>
+                    />
 
                     <div className="mt-2 flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                       {result.secondary_actions.map((action) => (

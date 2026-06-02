@@ -6,7 +6,7 @@ import {
   type GlangoAvatarVariantId,
 } from "@/lib/brand/glango-avatar-colors";
 
-export const GLANGO_LOGO_SRC = "/glango-mark.svg";
+export { GLANGO_LOGO_SRC } from "@/lib/brand/glango-logo-src";
 
 const DEFAULT_COLORS = getAvatarColors("purple");
 export const PENDING_AVATAR_COLORS: GlangoAvatarColors = {

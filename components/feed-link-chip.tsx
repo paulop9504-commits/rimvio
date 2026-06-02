@@ -7,7 +7,7 @@ import { LinkBrandMark } from "@/components/feed-hero-art";
 import type { LinkRow } from "@/types/database";
 import { cn } from "@/lib/utils";
 
-/** Minimal link identity — no empty hero frame. */
+/** Minimal link identity ??no empty hero frame. */
 export function FeedLinkChip({
   link,
   className,
@@ -24,7 +24,7 @@ export function FeedLinkChip({
     <div
       className={cn(
         "flex items-center gap-3 rounded-2xl bg-[#eef0f4]/90 px-3 py-2.5",
-        "ring-1 ring-black/[0.04]",
+        "ring-1 ring-glango-neon-purple/12",
         className
       )}
     >

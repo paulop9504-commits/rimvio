@@ -17,31 +17,34 @@ function detectRequestedActions(message: string): ContainerAllowedAction[] {
   if (/시세|가격|price|얼마|호가|check_price/i.test(lower)) {
     requested.add("CHECK_PRICE");
   }
-  if (/알람|알림|alarm|리마인드/i.test(message)) {
+  if (/(?:알람|알림)\s*(?:줘|설|해|걸)|alarm|리마인드/i.test(message)) {
     requested.add("SET_ALARM");
   }
-  if (/뉴스|헤드라인|headline|브리핑|기사/i.test(message)) {
+  if (/(?:뉴스|헤드라인|headline|브리핑|기사)\s*(?:줘|보|알)/i.test(message)) {
     requested.add("FETCH_NEWS");
   }
-  if (/요약|summarize|정리/i.test(message)) {
+  if (/(?:요약|summarize|정리)\s*(?:해|줘)/i.test(message)) {
     requested.add("SUMMARIZE");
   }
-  if (/일정|약속|미팅|회의|캘린더|schedule/i.test(message)) {
+  if (/(?:일정|약속|미팅|회의)\s*(?:잡|추|넣|등록)|캘린더\s*(?:에|에\s*넣)/i.test(message)) {
     requested.add("ADD_SCHEDULE");
   }
-  if (/일정\s*확인|스케줄\s*봐|schedule/i.test(message)) {
+  if (/일정\s*확인|스케줄\s*봐|check_schedule/i.test(message)) {
     requested.add("CHECK_SCHEDULE");
   }
-  if (/버스|지하철|교통|막히|출발|transit|실시간/i.test(message)) {
+  if (/(?:버스|지하철|교통|막히|출발|transit|실시간)\s*(?:알|확|봐|체)/i.test(message)) {
     requested.add("CHECK_TRANSIT");
   }
-  if (/길\s*찾|네비|가\s*줘|navigate|route/i.test(message)) {
+  if (/(?:길\s*찾|네비|navigate|route)\s*(?:줘|해)|(?:가\s*줘|가자)/i.test(message)) {
     requested.add("NAVIGATE");
   }
-  if (/전화|연락|call|tel/i.test(message)) {
+  if (/(?:전화(?:해|걸|해줘|좀)|연락(?:해|해줘)|call\s)/i.test(message)) {
     requested.add("CALL");
   }
-  if (/링크|열어|open|http/i.test(lower)) {
+  if (
+    /(?:링크\s*(?:열|보|줘)|열어\s*줘|open\s)/i.test(message) ||
+    (message.trim().length < 120 && /https?:\/\//i.test(message))
+  ) {
     requested.add("OPEN_LINK");
   }
 
@@ -50,6 +53,23 @@ function detectRequestedActions(message: string): ContainerAllowedAction[] {
   }
 
   return [...requested];
+}
+
+/** Pasted place listings (address, hours, phone label) — not specialist commands. */
+function isInformationalPaste(message: string) {
+  const trimmed = message.trim();
+  if (trimmed.length < 60) {
+    return false;
+  }
+
+  const markers = [
+    /전화번호/u,
+    /영업시간/u,
+    /(?:도로명|지번|주소)/u,
+    /(?:출구|번길|대로)/u,
+  ];
+  const hits = markers.filter((pattern) => pattern.test(trimmed)).length;
+  return hits >= 2;
 }
 
 function isAllowed(
@@ -74,6 +94,10 @@ export function tryContainerActionGate(input: {
   activeChains?: string[] | null;
   legacyChainIds?: string[] | null;
 }): OrchestratorResult | null {
+  if (isInformationalPaste(input.message)) {
+    return null;
+  }
+
   const keys = normalizeActiveChains([
     ...(input.activeChains ?? []),
     ...(input.legacyChainIds ?? []),

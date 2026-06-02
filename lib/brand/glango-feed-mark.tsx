@@ -1,8 +1,8 @@
 import { GlangoBrandMark } from "@/lib/brand/glango-brand-mark";
+import { GLANGO_NAV_LOGO_HEIGHT_PX } from "@/lib/brand/glango-logo-src";
 import type { GlangoAvatarVariantId } from "@/lib/brand/glango-avatar-colors";
-import { cn } from "@/lib/utils";
 
-/** Feed tab icon — same vector logo as GlangoLogo, tinted to the user's Glango color. */
+/** Feed tab icon — transparent brand mark sized for nav rail. */
 export function GlangoFeedMark({
   className,
   filled = true,
@@ -17,10 +17,12 @@ export function GlangoFeedMark({
   return (
     <GlangoBrandMark
       crisp
+      size={GLANGO_NAV_LOGO_HEIGHT_PX}
+      sizeAxis="height"
       dimmed={!filled}
       variant={variant}
       testId={testId}
-      className={cn("size-[1.95rem]", className)}
+      className={className}
     />
   );
 }

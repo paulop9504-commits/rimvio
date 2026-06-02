@@ -3,6 +3,7 @@
 import { ActionAppIcon } from "@/components/ui/action-app-icon";
 import { GlangoActionButton } from "@/components/ui/glango-action-button";
 import { cleanFeedActionLabel } from "@/lib/feed/feed-display";
+import { resolveActionBrandAccent } from "@/lib/brand/action-brand-style";
 import { resolveActionAppIconTheme } from "@/lib/feed/action-app-icon-theme";
 import { resolveActionGridIcon } from "@/lib/feed/action-grid-icon";
 import type { AppLocale } from "@/lib/i18n/types";
@@ -38,6 +39,15 @@ function ActionTile({
   disabled?: boolean;
 }) {
   const Icon = resolveActionGridIcon(action);
+  const iconBrand =
+    variant === "secondary"
+      ? resolveActionBrandAccent({
+          id: action.id,
+          label: action.label,
+          href: action.href,
+          type: action.kind,
+        })
+      : undefined;
 
   return (
     <GlangoActionButton
@@ -47,6 +57,7 @@ function ActionTile({
       disabled={disabled}
       onClick={onClick}
       icon={Icon}
+      iconBrand={iconBrand}
       hint={hint}
     >
       {label}
@@ -129,18 +140,29 @@ export function ActionChatGrid({
           variant="primary"
           disabled={loading}
         />
-        {secondaries.map((slot, index) => (
-          <GlangoActionButton
-            key={slot.action.id || `${slot.label}-${index}`}
-            type="button"
-            variant="secondary"
-            layout="pill"
-            onClick={() => onAction(slot.action)}
-            className="shrink-0"
-          >
-            {slot.label}
-          </GlangoActionButton>
-        ))}
+        {secondaries.map((slot, index) => {
+          const Icon = resolveActionGridIcon(slot.action);
+          const iconBrand = resolveActionBrandAccent({
+            id: slot.action.id,
+            label: slot.action.label,
+            href: slot.action.href,
+            type: slot.action.kind,
+          });
+          return (
+            <GlangoActionButton
+              key={slot.action.id || `${slot.label}-${index}`}
+              type="button"
+              variant="secondary"
+              layout="pill"
+              icon={Icon}
+              iconBrand={iconBrand}
+              onClick={() => onAction(slot.action)}
+              className="shrink-0"
+            >
+              {slot.label}
+            </GlangoActionButton>
+          );
+        })}
       </div>
     );
   }
