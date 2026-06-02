@@ -1575,12 +1575,12 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 .chat-bubble {
   box-sizing: border-box;
   display: inline-block;
-  max-width: min(68%, 17rem);
+  max-width: min(72%, 15.5rem);
   width: max-content;
-  padding: var(--chat-bubble-pad, 18px);
+  padding: var(--chat-bubble-pad-y, 9px) var(--chat-bubble-pad-x, 13px);
   font-size: 15px;
-  line-height: 1.5;
-  letter-spacing: -0.01em;
+  line-height: 1.43;
+  letter-spacing: -0.02em;
   text-align: start;
   white-space: pre-wrap;
   word-break: keep-all;
@@ -1589,9 +1589,10 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 
 .chat-bubble--user,
 .chat-bubble--ai {
-  --chat-bubble-r: 18px;
-  --chat-bubble-r-tight: 4px;
-  --chat-bubble-pad: 18px;
+  --chat-bubble-r: 14px;
+  --chat-bubble-r-tight: 5px;
+  --chat-bubble-pad-y: 9px;
+  --chat-bubble-pad-x: 13px;
 }
 
 /* User — tail on the right (iMessage-style, no nub) */
@@ -1629,17 +1630,10 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 }
 
 .chat-bubble--user {
-  font-weight: 500;
-  color: #1c1c1c;
-  background: linear-gradient(
-    145deg,
-    #ffe566 0%,
-    var(--glango-neon-amber) 42%,
-    var(--glango-neon-orange) 100%
-  );
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 159, 10, 0.22),
-    0 4px 14px rgba(0, 0, 0, 0.2);
+  font-weight: 400;
+  color: #1a1a1a;
+  background: #fee500;
+  box-shadow: none;
 }
 
 .chat-bubble--ai {
@@ -1655,7 +1649,8 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 .chat-bubble:has(.chat-bubble--thinking) {
   max-width: none;
   width: max-content;
-  --chat-bubble-pad: 14px;
+  --chat-bubble-pad-y: 8px;
+  --chat-bubble-pad-x: 11px;
 }
 
 .chat-bubble--thinking {
@@ -2028,7 +2023,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   position: relative;
   z-index: 2;
   pointer-events: auto;
-  margin-top: 1.25rem;
+  margin-top: 0.75rem;
   transition:
     opacity  0.55s ease,
     filter 0.55s ease,
@@ -2041,7 +2036,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 
 .chat-message-focus[data-bubble-group="middle"],
 .chat-message-focus[data-bubble-group="last"] {
-  margin-top: 0.125rem;
+  margin-top: 0.25rem;
 }
 
 .chat-message-focus[data-bubble-focus="rest"] {

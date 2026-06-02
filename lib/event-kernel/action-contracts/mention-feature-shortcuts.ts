@@ -1,5 +1,6 @@
 import { listMentionFeatures } from "@/lib/event-kernel/action-contracts/mention-feature-registry";
 import { AXIS_MENTION_SHORTCUTS } from "@/lib/action-chat/mention-axis/axis-mention-shortcuts";
+import { MENTION_ACTION_ICONS } from "@/lib/action-chat/mention-actions/mention-action-inline-features";
 
 export type FeatureMentionShortcut = {
   id: string;
@@ -15,28 +16,7 @@ const FEATURE_SHORTCUTS: FeatureMentionShortcut[] = listMentionFeatures().map(
     label: feature.displayName,
     template: `@${feature.aliases[0]} `,
     token: feature.aliases[0]!,
-    icon:
-      feature.featureId === "navigate"
-        ? "🧭"
-        : feature.featureId === "weather"
-          ? "🌤"
-          : feature.featureId === "meal"
-            ? "🍽"
-            : feature.featureId === "price"
-              ? "💰"
-              : feature.featureId === "reminder"
-                ? "🔔"
-                : feature.featureId === "timer"
-                  ? "⏱"
-                  : feature.featureId === "transfer"
-                    ? "💸"
-                    : feature.featureId === "parking"
-                      ? "🅿️"
-                      : feature.featureId === "focus"
-                        ? "🎯"
-                        : feature.featureId === "schedule"
-                        ? "📋"
-                        : "📅",
+    icon: MENTION_ACTION_ICONS[feature.featureId] ?? "📅",
   }),
 );
 
@@ -45,7 +25,7 @@ export const FEATURE_MENTION_SHORTCUTS: FeatureMentionShortcut[] = [
   ...FEATURE_SHORTCUTS,
 ];
 
-const MAX_VISIBLE = 6;
+const MAX_VISIBLE = 8;
 
 export function suggestFeatureMentionShortcuts(input: string): FeatureMentionShortcut[] {
   const trimmed = input.trim();

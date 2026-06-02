@@ -290,6 +290,9 @@ export type ActionChatMessage = {
   /** @집중 — focus timer + notification absorb (no orchestrator). */
   inlineChatFocus?: import("@/lib/action-chat/mention-focus/inline-chat-focus").InlineChatFocusWire;
 
+  /** Generic @ action chip — taxi, paste, delivery, etc. */
+  inlineChatAction?: import("@/lib/action-chat/mention-actions/inline-chat-action").InlineChatActionWire;
+
 };
 
 

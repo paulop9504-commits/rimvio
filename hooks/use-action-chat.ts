@@ -53,40 +53,15 @@ import { submitReviewExecution } from "@/lib/event-os/review-execution-client";
 import { buildPeerComposerContextBlock } from "@/lib/context/build-peer-composer-context";
 import { isCommandOsInput } from "@/lib/command-os/parse-command-input";
 import { formatMentionComposerBlock, parseActionMention } from "@/lib/event-kernel/action-contracts/parse-action-mention";
+import { tryDispatchLocalMentionTurn } from "@/lib/action-chat/dispatch-local-mention-turn";
+import { isLocalInlineMentionFeature } from "@/lib/action-chat/mention-actions/mention-action-inline-features";
 import {
-  isMentionCalendarInput,
-  tryBuildMentionCalendarTurn,
-} from "@/lib/action-chat/mention-calendar/commit-mention-calendar-turn";
-import {
-  isMentionNavigateInput,
-  tryBuildMentionNavigateTurn,
-} from "@/lib/action-chat/mention-navigate/commit-mention-navigate-turn";
-import {
-  isMentionReminderInput,
-  tryBuildMentionReminderTurn,
-} from "@/lib/action-chat/mention-reminder/commit-mention-reminder-turn";
-import {
-  isMentionScheduleOrganizeInput,
-  tryBuildMentionScheduleOrganizeTurn,
-} from "@/lib/action-chat/mention-schedule-organize/commit-mention-schedule-organize-turn";
-import {
-  isMentionTransferInput,
-  tryBuildMentionTransferTurn,
-} from "@/lib/action-chat/mention-transfer/commit-mention-transfer-turn";
-import {
-  isMentionParkingInput,
-  tryBuildMentionParkingTurn,
   tryCommitParkingPhotoTurn,
 } from "@/lib/action-chat/mention-parking/commit-mention-parking-turn";
-import { isParkingPhotoCapturePending, consumeParkingPhotoCapture } from "@/lib/local-parking/parking-photo-session";
 import {
-  isMentionTimerInput,
-  tryBuildMentionTimerTurn,
-} from "@/lib/action-chat/mention-timer/commit-mention-timer-turn";
-import {
-  isMentionFocusInput,
-  tryBuildMentionFocusTurn,
-} from "@/lib/action-chat/mention-focus/commit-mention-focus-turn";
+  consumeParkingPhotoCapture,
+  isParkingPhotoCapturePending,
+} from "@/lib/local-parking/parking-photo-session";
 import {
   applyFocusCancelToMessages,
   applyFocusCompleteToMessages,
@@ -624,24 +599,8 @@ export function useActionChat(
       if ((payload.attachments?.length ?? 0) > 0) {
         return false;
       }
-      const timerTurn = tryBuildMentionTimerTurn({
-        text: payload.text,
-        chatAxis: payload.chatAxis,
-      });
-      if (timerTurn) {
-        persist([...readActionChatMessages(scopeId), ...timerTurn]);
-        return true;
-      }
-      const calendarTurn = tryBuildMentionCalendarTurn({
-        text: payload.text,
-        chatAxis: payload.chatAxis,
-      });
-      if (calendarTurn) {
-        persist([...readActionChatMessages(scopeId), ...calendarTurn]);
-        return true;
-      }
       const masterContext = readClientMasterOrchestratorContext();
-      const reminderTurn = tryBuildMentionReminderTurn({
+      const localTurn = tryDispatchLocalMentionTurn({
         text: payload.text,
         chatAxis: payload.chatAxis,
         activeLink: activeLink
@@ -653,48 +612,8 @@ export function useActionChat(
           : null,
         referenceDate: masterContext.currentDate,
       });
-      if (reminderTurn) {
-        persist([...readActionChatMessages(scopeId), ...reminderTurn]);
-        return true;
-      }
-      const navigateTurn = tryBuildMentionNavigateTurn({
-        text: payload.text,
-        chatAxis: payload.chatAxis,
-      });
-      if (navigateTurn) {
-        persist([...readActionChatMessages(scopeId), ...navigateTurn]);
-        return true;
-      }
-      const organizeTurn = tryBuildMentionScheduleOrganizeTurn({
-        text: payload.text,
-        chatAxis: payload.chatAxis,
-      });
-      if (organizeTurn) {
-        persist([...readActionChatMessages(scopeId), ...organizeTurn]);
-        return true;
-      }
-      const transferTurn = tryBuildMentionTransferTurn({
-        text: payload.text,
-        chatAxis: payload.chatAxis,
-      });
-      if (transferTurn) {
-        persist([...readActionChatMessages(scopeId), ...transferTurn]);
-        return true;
-      }
-      const parkingTurn = tryBuildMentionParkingTurn({
-        text: payload.text,
-        chatAxis: payload.chatAxis,
-      });
-      if (parkingTurn) {
-        persist([...readActionChatMessages(scopeId), ...parkingTurn]);
-        return true;
-      }
-      const focusTurn = tryBuildMentionFocusTurn({
-        text: payload.text,
-        chatAxis: payload.chatAxis,
-      });
-      if (focusTurn) {
-        persist([...readActionChatMessages(scopeId), ...focusTurn]);
+      if (localTurn) {
+        persist([...readActionChatMessages(scopeId), ...localTurn]);
         return true;
       }
       return false;
@@ -1575,24 +1494,8 @@ export function useActionChat(
       }
 
       if (pendingAttachments.length === 0) {
-        const timerTurn = tryBuildMentionTimerTurn({
-          text: trimmed,
-          chatAxis: messageChatAxis,
-        });
-        if (timerTurn) {
-          persist([...readActionChatMessages(scopeId), ...timerTurn]);
-          return;
-        }
-        const calendarTurn = tryBuildMentionCalendarTurn({
-          text: trimmed,
-          chatAxis: messageChatAxis,
-        });
-        if (calendarTurn) {
-          persist([...readActionChatMessages(scopeId), ...calendarTurn]);
-          return;
-        }
         const earlyMasterContext = readClientMasterOrchestratorContext();
-        const reminderTurn = tryBuildMentionReminderTurn({
+        const earlyLocalTurn = tryDispatchLocalMentionTurn({
           text: trimmed,
           chatAxis: messageChatAxis,
           activeLink: activeLink
@@ -1604,49 +1507,8 @@ export function useActionChat(
             : null,
           referenceDate: earlyMasterContext.currentDate,
         });
-        if (reminderTurn) {
-          persist([...readActionChatMessages(scopeId), ...reminderTurn]);
-          return;
-        }
-        const navigateTurn = tryBuildMentionNavigateTurn({
-          text: trimmed,
-          chatAxis: messageChatAxis,
-        });
-        if (navigateTurn) {
-          persist([...readActionChatMessages(scopeId), ...navigateTurn]);
-          return;
-        }
-        const organizeTurn = tryBuildMentionScheduleOrganizeTurn({
-          text: trimmed,
-          chatAxis: messageChatAxis,
-        });
-        if (organizeTurn) {
-          persist([...readActionChatMessages(scopeId), ...organizeTurn]);
-          return;
-        }
-        const transferTurn = tryBuildMentionTransferTurn({
-          text: trimmed,
-          chatAxis: messageChatAxis,
-        });
-        if (transferTurn) {
-          persist([...readActionChatMessages(scopeId), ...transferTurn]);
-          return;
-        }
-        const parkingTurn = tryBuildMentionParkingTurn({
-          text: trimmed,
-          chatAxis: messageChatAxis,
-        });
-        if (parkingTurn) {
-          persist([...readActionChatMessages(scopeId), ...parkingTurn]);
-          return;
-        }
-
-        const focusTurn = tryBuildMentionFocusTurn({
-          text: trimmed,
-          chatAxis: messageChatAxis,
-        });
-        if (focusTurn) {
-          persist([...readActionChatMessages(scopeId), ...focusTurn]);
+        if (earlyLocalTurn) {
+          persist([...readActionChatMessages(scopeId), ...earlyLocalTurn]);
           return;
         }
 
@@ -1824,44 +1686,16 @@ export function useActionChat(
         : parseActionMention(trimmed);
       if (
         actionMention &&
-        actionMention.feature.featureId !== "timer" &&
-        actionMention.feature.featureId !== "reminder" &&
-        actionMention.feature.featureId !== "navigate" &&
-        actionMention.feature.featureId !== "schedule" &&
-        actionMention.feature.featureId !== "transfer" &&
-        actionMention.feature.featureId !== "parking" &&
-        actionMention.feature.featureId !== "focus"
+        !isLocalInlineMentionFeature(actionMention.feature.featureId)
       ) {
         composerContext = [composerContext, formatMentionComposerBlock(actionMention)]
           .filter(Boolean)
           .join("\n\n");
       }
 
-      if (isMentionTimerInput(trimmed) && pendingAttachments.length === 0) {
-        const timerTurn = tryBuildMentionTimerTurn({
-          text: trimmed,
-          chatAxis: messageChatAxis,
-        });
-        if (timerTurn) {
-          persist([...readActionChatMessages(scopeId), ...timerTurn]);
-          return;
-        }
-      }
-
-      if (isMentionCalendarInput(trimmed) && pendingAttachments.length === 0) {
-        const calendarTurn = tryBuildMentionCalendarTurn({
-          text: trimmed,
-          chatAxis: messageChatAxis,
-        });
-        if (calendarTurn) {
-          persist([...readActionChatMessages(scopeId), ...calendarTurn]);
-          return;
-        }
-      }
-
-      if (isMentionReminderInput(trimmed) && pendingAttachments.length === 0) {
+      if (pendingAttachments.length === 0) {
         const masterContext = readClientMasterOrchestratorContext();
-        const reminderTurn = tryBuildMentionReminderTurn({
+        const localTurn = tryDispatchLocalMentionTurn({
           text: trimmed,
           chatAxis: messageChatAxis,
           activeLink: activeLink
@@ -1873,63 +1707,8 @@ export function useActionChat(
             : null,
           referenceDate: masterContext.currentDate,
         });
-        if (reminderTurn) {
-          persist([...readActionChatMessages(scopeId), ...reminderTurn]);
-          return;
-        }
-      }
-
-      if (isMentionNavigateInput(trimmed) && pendingAttachments.length === 0) {
-        const navigateTurn = tryBuildMentionNavigateTurn({
-          text: trimmed,
-          chatAxis: messageChatAxis,
-        });
-        if (navigateTurn) {
-          persist([...readActionChatMessages(scopeId), ...navigateTurn]);
-          return;
-        }
-      }
-
-      if (isMentionScheduleOrganizeInput(trimmed) && pendingAttachments.length === 0) {
-        const organizeTurn = tryBuildMentionScheduleOrganizeTurn({
-          text: trimmed,
-          chatAxis: messageChatAxis,
-        });
-        if (organizeTurn) {
-          persist([...readActionChatMessages(scopeId), ...organizeTurn]);
-          return;
-        }
-      }
-
-      if (isMentionTransferInput(trimmed) && pendingAttachments.length === 0) {
-        const transferTurn = tryBuildMentionTransferTurn({
-          text: trimmed,
-          chatAxis: messageChatAxis,
-        });
-        if (transferTurn) {
-          persist([...readActionChatMessages(scopeId), ...transferTurn]);
-          return;
-        }
-      }
-
-      if (isMentionParkingInput(trimmed) && pendingAttachments.length === 0) {
-        const parkingTurn = tryBuildMentionParkingTurn({
-          text: trimmed,
-          chatAxis: messageChatAxis,
-        });
-        if (parkingTurn) {
-          persist([...readActionChatMessages(scopeId), ...parkingTurn]);
-          return;
-        }
-      }
-
-      if (isMentionFocusInput(trimmed) && pendingAttachments.length === 0) {
-        const focusTurn = tryBuildMentionFocusTurn({
-          text: trimmed,
-          chatAxis: messageChatAxis,
-        });
-        if (focusTurn) {
-          persist([...readActionChatMessages(scopeId), ...focusTurn]);
+        if (localTurn) {
+          persist([...readActionChatMessages(scopeId), ...localTurn]);
           return;
         }
       }

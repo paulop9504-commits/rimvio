@@ -1,5 +1,6 @@
 "use client";
 
+import { InlineChatActionChip } from "@/components/action-chat/inline-chat-action-chip";
 import { InlineChatCalendarChip } from "@/components/action-chat/inline-chat-calendar-chip";
 import { InlineChatFocusChip } from "@/components/action-chat/inline-chat-focus-chip";
 import { InlineChatNavigateChip } from "@/components/action-chat/inline-chat-navigate-chip";
@@ -21,7 +22,8 @@ export function hasMentionInlinePayload(message: ActionChatMessage): boolean {
       message.inlineChatNavigate ||
       message.inlineChatScheduleOrganize ||
       message.inlineChatTransfer ||
-      message.inlineChatParking,
+      message.inlineChatParking ||
+      message.inlineChatAction,
   );
 }
 
@@ -38,6 +40,7 @@ export type MentionInlineMessageProps = {
   onNavigateSpawnPrompt?: (uri: string) => void;
   onScheduleOrganizePrompt?: (prompt: string) => void;
   onTransferSpawnPrompt?: (uri: string) => void;
+  onActionSpawnPrompt?: (uri: string) => void;
   onFocusHeldInAppAction?: (
     messageId: string,
     shadowId: string,
@@ -59,10 +62,21 @@ export function MentionInlineMessage({
   onNavigateSpawnPrompt,
   onScheduleOrganizePrompt,
   onTransferSpawnPrompt,
+  onActionSpawnPrompt,
   onFocusHeldInAppAction,
   onOpenCapture,
 }: MentionInlineMessageProps) {
   const messageId = message.id;
+
+  if (message.inlineChatAction) {
+    return (
+      <InlineChatActionChip
+        action={message.inlineChatAction}
+        onSpawnPrompt={onActionSpawnPrompt ?? onNavigateSpawnPrompt}
+        onOpenCapture={onOpenCapture}
+      />
+    );
+  }
 
   if (message.inlineChatFocus) {
     return (
