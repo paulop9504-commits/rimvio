@@ -16,7 +16,7 @@ import type { InlineChatActionWire } from "@/lib/action-chat/mention-actions/inl
 import { buildKakaoMapSearchHref } from "@/lib/resolvers/deep-links";
 import { cn } from "@/lib/utils";
 
-const MEMO_STORAGE_KEY = "glango:memos";
+import { addResourcePoolItem } from "@/lib/resource-pool/resource-pool-store";
 const URL_PATTERN = /^https?:\/\//iu;
 const PHONE_PATTERN = /(?:\+?\d[\d\s-]{7,}\d)/u;
 
@@ -43,17 +43,15 @@ function routeClipboardText(text: string): string | null {
 }
 
 function saveMemo(text: string): void {
-  if (typeof window === "undefined" || !text.trim()) {
+  if (!text.trim()) {
     return;
   }
-  try {
-    const raw = window.localStorage.getItem(MEMO_STORAGE_KEY);
-    const list = raw ? (JSON.parse(raw) as string[]) : [];
-    list.unshift(`${new Date().toISOString().slice(0, 16).replace("T", " ")} · ${text.trim()}`);
-    window.localStorage.setItem(MEMO_STORAGE_KEY, JSON.stringify(list.slice(0, 50)));
-  } catch {
-    // ignore
-  }
+  addResourcePoolItem({
+    repoId: "memos",
+    kind: "memo",
+    title: text.trim().slice(0, 48),
+    body: text.trim(),
+  });
 }
 
 export function InlineChatActionChip({
@@ -79,7 +77,7 @@ export function InlineChatActionChip({
     if (action.mainActionKind === "internal") {
       if (action.featureId === "memo" && action.query) {
         saveMemo(action.query);
-        setClipboardHint("메모를 저장했어요.");
+        setClipboardHint("리소스풀에 저장했어요.");
       }
       return;
     }

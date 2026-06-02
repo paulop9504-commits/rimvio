@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Calendar, Settings2 } from "lucide-react";
+import { Calendar, FolderGit2, Settings2 } from "lucide-react";
 import {
   ActionDatePickerSheet,
 } from "@/components/action-chat/action-date-picker-sheet";
 import { OcrReviewDatePickerSheet } from "@/components/action-chat/ocr-review-date-picker-sheet";
+import { ResourcePoolSheet } from "@/components/action-chat/resource-pool-sheet";
+import { FixedContainerBar } from "@/components/action-chat/fixed-container-bar";
 import { ActiveActionsSheet } from "@/components/action-chat/active-actions-sheet";
 import { CalendarBoard } from "@/components/action-chat/calendar-board";
 import { ActionChatInputBar } from "@/components/action-chat/input-bar";
@@ -31,7 +33,7 @@ import { normalizeAnchorId } from "@/lib/events/normalize-anchor-id";
 import { executeDockActionWire } from "@/lib/action-os/execute-dock-action-wire";
 import { readClientMasterOrchestratorContext } from "@/lib/action-chat/client-master-context";
 import { useLinkReminderMap } from "@/hooks/use-link-reminders";
-import { useActionCalendar } from "@/hooks/use-action-calendar";
+import { useResourcePool } from "@/hooks/use-resource-pool";
 import {
   buildFireAtFromDateTime,
   demoteLinkFromActionStream,
@@ -143,6 +145,8 @@ export function ActionChatFeed({
     return map;
   }, [messages]);
   const [activeActionsOpen, setActiveActionsOpen] = useState(false);
+  const [resourcePoolOpen, setResourcePoolOpen] = useState(false);
+  const { totalCount: resourcePoolCount } = useResourcePool();
   const [schedulingLink, setSchedulingLink] = useState<LinkRow | null>(null);
   const userMessageCount = messages.filter((message) => message.role === "user").length;
   const [coldStartVisible, setColdStartVisible] = useState(false);
@@ -231,6 +235,19 @@ export function ActionChatFeed({
               ) : null}
               <button
                 type="button"
+                aria-label="리소스풀"
+                onClick={() => setResourcePoolOpen(true)}
+                className="relative flex size-9 items-center justify-center rounded-full bg-transparent text-white transition-opacity hover:opacity-80 active:scale-95"
+              >
+                <FolderGit2 className="size-5" strokeWidth={2.1} />
+                {resourcePoolCount > 0 ? (
+                  <span className="absolute -right-1 -top-1 flex size-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-glango-base px-0.5 text-[10px] font-extrabold tabular-nums leading-none text-[#D8B4FE] shadow-[0_0_8px_rgba(191,90,242,0.35)]">
+                    {resourcePoolCount > 9 ? "9+" : resourcePoolCount}
+                  </span>
+                ) : null}
+              </button>
+              <button
+                type="button"
                 aria-label="캘린더"
                 onClick={() => setActiveActionsOpen(true)}
                 className="relative flex size-9 items-center justify-center rounded-full bg-transparent text-white transition-opacity hover:opacity-80 active:scale-95"
@@ -251,6 +268,14 @@ export function ActionChatFeed({
               </Link>
             </div>
           </div>
+          <FixedContainerBar
+            activeActionCount={badgeCount}
+            resourcePoolCount={resourcePoolCount}
+            onSelectSlot={() => undefined}
+            onOpenCalendar={() => setActiveActionsOpen(true)}
+            onOpenResourcePool={() => setResourcePoolOpen(true)}
+            className="mt-2 rounded-xl border border-white/[0.06] bg-transparent px-0 py-0"
+          />
         </header>
 
         {activeLink ? (
@@ -409,6 +434,14 @@ export function ActionChatFeed({
             : "일정"
         }
         onConfirm={(value) => void confirmDatePicker(value)}
+      />
+
+      <ResourcePoolSheet
+        open={resourcePoolOpen}
+        onOpenChange={setResourcePoolOpen}
+        links={links}
+        onOpenLink={openLinkById}
+        onOpenCapture={onOpenCapture}
       />
 
       <ActiveActionsSheet
