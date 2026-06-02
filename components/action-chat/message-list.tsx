@@ -452,7 +452,7 @@ export function ActionChatMessageList({
 
   return (
     <>
-      <div className={cn("px-4 pb-2 pt-2", className)}>
+      <div className={cn("px-4 pb-4 pt-2", className)}>
         {messages.map((message, index) => {
           const bubbleGroup = resolveChatBubbleGroup(messages, index);
           const focusTone = resolveChatBubbleFocusTone(

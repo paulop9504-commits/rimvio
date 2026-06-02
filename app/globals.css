@@ -187,6 +187,15 @@
   --shell-max-laptop: 42rem;
   --shell-max-desktop: 48rem;
   --nav-rail-width: 5rem;
+  /* Feed bottom chrome — composer dock + fixed tab bar (mobile) */
+  --glango-bottom-nav-height: 3.05rem;
+  --glango-composer-bar-height: 4.5rem;
+  --glango-bottom-nav-offset: calc(
+    var(--glango-bottom-nav-height) + env(safe-area-inset-bottom, 0px)
+  );
+  --glango-feed-scroll-pad: calc(
+    var(--glango-composer-bar-height) + var(--glango-bottom-nav-offset) + 0.75rem
+  );
   /* Toast placement — locked */
   --toast-shift-left: 3.5cm;
   --toast-shift-up: 1cm;
@@ -790,6 +799,52 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+/* Mobile feed — composer fixed above bottom tab bar */
+.glango-feed-composer-dock {
+  position: relative;
+  z-index: 45;
+}
+
+@media (max-width: 1023px) {
+  .glango-feed-composer-dock {
+    position: fixed;
+    inset-inline: 0;
+    bottom: var(--glango-bottom-nav-offset);
+    z-index: 45;
+    margin-inline: auto;
+    width: 100%;
+    max-width: var(--shell-max-phone);
+  }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  .glango-feed-composer-dock {
+    max-width: var(--shell-max-phablet);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .glango-feed-composer-dock {
+    max-width: var(--shell-max-tablet);
+  }
+}
+
+.glango-feed-scroll-inset {
+  padding-bottom: var(--glango-feed-scroll-pad);
+}
+
+@media (min-width: 1024px) {
+  .glango-feed-scroll-inset {
+    padding-bottom: 0.75rem;
+  }
+
+  .glango-feed-composer-dock {
+    position: relative;
+    inset: auto;
+    max-width: none;
+  }
 }
 
 @media (min-width: 1024px) {

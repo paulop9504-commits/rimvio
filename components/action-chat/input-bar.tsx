@@ -110,7 +110,7 @@ export function ActionChatInputBar({
       onSubmit={handleSubmit}
       className={cn(
         glangoNavBarClass,
-        "glango-composer-bar px-4 pb-1 pt-2",
+        "glango-composer-bar px-4 pb-2 pt-2",
         className,
       )}
     >

@@ -293,7 +293,7 @@ export function ActionChatFeed({
         >
           <div
             ref={threadRef}
-            className="relative z-[2] min-h-0 flex-1 overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="relative z-[2] min-h-0 flex-1 overflow-y-auto overscroll-y-contain glango-feed-scroll-inset [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {!activeLink && messages.length === 0 && !coldStartVisible ? (
               <ContextNowStrip
@@ -392,7 +392,7 @@ export function ActionChatFeed({
                 chatAxis: payload.chatAxis,
               });
             }}
-            className="relative z-[2] shrink-0"
+            className="glango-feed-composer-dock shrink-0 lg:relative lg:z-[2]"
           />
         </ChatAmbientShell>
         </ChatAmbientFocusProvider>
