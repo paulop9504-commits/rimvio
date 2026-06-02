@@ -93,19 +93,22 @@ export function buildGoogleSheetsEmbedUrl(input: {
       `https://docs.google.com/spreadsheets/d/${input.spreadsheetId}/preview`,
     );
     url.searchParams.set("rm", "minimal");
+    url.searchParams.set("single", "true");
+    url.searchParams.set("widget", "true");
+    url.searchParams.set("headers", "false");
     if (gid) {
       url.searchParams.set("gid", gid);
     }
     return url.toString();
   }
 
+  // htmlembed loads more reliably inside third-party iframes than /edit?rm=embedded
   const url = new URL(
-    `https://docs.google.com/spreadsheets/d/${input.spreadsheetId}/edit`,
+    `https://docs.google.com/spreadsheets/d/${input.spreadsheetId}/htmlembed`,
   );
-  url.searchParams.set("rm", "embedded");
   url.searchParams.set("widget", "true");
   url.searchParams.set("headers", "false");
-  url.searchParams.set("usp", "sharing");
+  url.searchParams.set("chrome", "false");
   if (gid) {
     url.searchParams.set("gid", gid);
   }
@@ -114,7 +117,7 @@ export function buildGoogleSheetsEmbedUrl(input: {
 
 export function resolveGoogleSheetsEmbed(
   raw: string,
-  mode: GoogleSheetsEmbedMode = "edit",
+  mode: GoogleSheetsEmbedMode = "preview",
 ): { embedUrl: string; parsed: ParsedGoogleSheetsUrl } | null {
   const parsed = parseGoogleSheetsUrl(raw);
   if (!parsed) {

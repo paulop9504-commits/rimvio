@@ -22,14 +22,17 @@ type GoogleSheetsEmbedSheetProps = {
   target: GoogleSheetsEmbedTarget | null;
 };
 
+const LOAD_HINT_MS = 7000;
+
 export function GoogleSheetsEmbedSheet({
   open,
   onOpenChange,
   target,
 }: GoogleSheetsEmbedSheetProps) {
   const [mounted, setMounted] = useState(false);
-  const [mode, setMode] = useState<GoogleSheetsEmbedMode>("edit");
+  const [mode, setMode] = useState<GoogleSheetsEmbedMode>("preview");
   const [frameLoading, setFrameLoading] = useState(true);
+  const [showLoadHint, setShowLoadHint] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -37,10 +40,19 @@ export function GoogleSheetsEmbedSheet({
 
   useEffect(() => {
     if (open) {
-      setMode("edit");
+      setMode("preview");
       setFrameLoading(true);
+      setShowLoadHint(false);
     }
   }, [open, target?.url]);
+
+  useEffect(() => {
+    if (!open || !frameLoading) {
+      return;
+    }
+    const timer = window.setTimeout(() => setShowLoadHint(true), LOAD_HINT_MS);
+    return () => window.clearTimeout(timer);
+  }, [open, frameLoading, mode, target?.url]);
 
   const resolved = useMemo(() => {
     if (!target?.url) {
@@ -72,13 +84,13 @@ export function GoogleSheetsEmbedSheet({
           <motion.div
             role="dialog"
             aria-label={title}
-            className="fixed inset-x-0 bottom-0 z-[91] mx-auto flex max-h-[min(92vh,900px)] w-full max-w-3xl flex-col overflow-hidden rounded-t-[24px] border border-white/10 bg-[#1F2937] shadow-[0_-12px_40px_rgba(0,0,0,0.4)]"
+            className="fixed inset-x-0 bottom-0 z-[91] mx-auto flex h-[min(88vh,820px)] w-full max-w-3xl flex-col overflow-hidden rounded-t-[24px] border border-white/10 bg-[#1F2937] shadow-[0_-12px_40px_rgba(0,0,0,0.4)]"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", stiffness: 420, damping: 34 }}
           >
-            <div className="flex items-center justify-between gap-3 border-b border-white/[0.06] px-4 py-3">
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/[0.06] px-4 py-3">
               <div className="flex min-w-0 items-center gap-2.5">
                 <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#30D158]/15 text-[#86EFAC]">
                   <Sheet className="size-4" />
@@ -94,19 +106,11 @@ export function GoogleSheetsEmbedSheet({
                 <div className="mr-1 flex rounded-lg border border-white/10 p-0.5">
                   <button
                     type="button"
-                    onClick={() => setMode("edit")}
-                    className={cn(
-                      "rounded-md px-2 py-1 text-[10px] font-semibold transition",
-                      mode === "edit"
-                        ? "bg-[#32D7FF]/20 text-[#7DD3FC]"
-                        : "text-[#9CA3AF] hover:text-[#E5E7EB]",
-                    )}
-                  >
-                    편집
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMode("preview")}
+                    onClick={() => {
+                      setFrameLoading(true);
+                      setShowLoadHint(false);
+                      setMode("preview");
+                    }}
                     className={cn(
                       "rounded-md px-2 py-1 text-[10px] font-semibold transition",
                       mode === "preview"
@@ -115,6 +119,22 @@ export function GoogleSheetsEmbedSheet({
                     )}
                   >
                     보기
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFrameLoading(true);
+                      setShowLoadHint(false);
+                      setMode("edit");
+                    }}
+                    className={cn(
+                      "rounded-md px-2 py-1 text-[10px] font-semibold transition",
+                      mode === "edit"
+                        ? "bg-[#32D7FF]/20 text-[#7DD3FC]"
+                        : "text-[#9CA3AF] hover:text-[#E5E7EB]",
+                    )}
+                  >
+                    편집
                   </button>
                 </div>
                 <a
@@ -137,10 +157,31 @@ export function GoogleSheetsEmbedSheet({
               </div>
             </div>
 
-            <div className="relative min-h-0 flex-1 bg-[#111827]">
+            <div className="shrink-0 border-b border-white/[0.06] bg-[#111827] px-4 py-2.5">
+              <a
+                href={openUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#32D7FF]/35 bg-[#32D7FF]/10 px-3 py-2.5 text-[12px] font-semibold text-[#7DD3FC] transition hover:bg-[#32D7FF]/18"
+              >
+                <ExternalLink className="size-4 shrink-0" />
+                Google Sheets에서 열기 (편집·로그인)
+              </a>
+            </div>
+
+            <div className="relative min-h-0 flex-1 bg-white">
               {frameLoading ? (
-                <div className="absolute inset-0 z-[1] flex items-center justify-center bg-[#111827]">
+                <div className="absolute inset-0 z-[2] flex flex-col items-center justify-center gap-3 bg-[#111827]">
                   <Loader2 className="size-6 animate-spin text-glango-neon-cyan" />
+                  <p className="text-[11px] text-[#9CA3AF]">시트 불러오는 중…</p>
+                </div>
+              ) : null}
+              {showLoadHint ? (
+                <div className="absolute inset-x-4 top-4 z-[3] rounded-xl border border-[#FFD60A]/35 bg-[#1F2937]/95 px-3 py-2.5 text-center shadow-lg backdrop-blur-sm">
+                  <p className="text-[11px] leading-relaxed text-[#E5E7EB]">
+                    화면이 비어 있으면 시트 공유를 「링크가 있는 모든 사용자 · 뷰어」 이상으로
+                    바꾸거나 위 버튼으로 Google에서 열어 주세요.
+                  </p>
                 </div>
               ) : null}
               <iframe
@@ -148,14 +189,16 @@ export function GoogleSheetsEmbedSheet({
                 title={title}
                 src={resolved.embedUrl}
                 className="absolute inset-0 h-full w-full border-0 bg-white"
-                allow="clipboard-read; clipboard-write"
+                allow="clipboard-read; clipboard-write; fullscreen"
                 referrerPolicy="no-referrer-when-downgrade"
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-popups-to-escape-sandbox"
                 onLoad={() => setFrameLoading(false)}
               />
             </div>
 
-            <p className="border-t border-white/[0.06] px-4 py-2 text-[10px] leading-relaxed text-[#6B7280]">
-              시트가 안 보이면 Google 로그인·공유 권한을 확인하거나 새 탭에서 열어 주세요.
+            <p className="shrink-0 border-t border-white/[0.06] px-4 py-2 text-[10px] leading-relaxed text-[#6B7280]">
+              iframe 임베드는 Google 공유 설정에 따라 비어 보일 수 있어요 · 편집은 새 탭이 가장
+              확실합니다.
             </p>
           </motion.div>
         </>

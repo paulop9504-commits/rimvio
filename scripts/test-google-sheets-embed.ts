@@ -17,16 +17,10 @@ assert.equal(parsed!.spreadsheetId, "1abcDEF123ghiJKL456");
 assert.equal(parsed!.gid, "987654321");
 
 const edit = resolveGoogleSheetsEmbed(sample, "edit");
-assert.ok(edit?.embedUrl.includes("/edit"));
-assert.ok(edit?.embedUrl.includes("rm=embedded"));
-assert.ok(edit?.embedUrl.includes("gid=987654321"));
+assert.ok(edit?.embedUrl.includes("/htmlembed"));
 
-const preview = buildGoogleSheetsEmbedUrl({
-  spreadsheetId: "abc",
-  gid: "1",
-  mode: "preview",
-});
-assert.ok(preview.includes("/preview"));
+const preview = resolveGoogleSheetsEmbed(sample, "preview");
+assert.ok(preview?.embedUrl.includes("/preview"));
 
 assert.equal(isGoogleSheetsUrl("https://example.com"), false);
 
