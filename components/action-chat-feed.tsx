@@ -33,6 +33,7 @@ import { normalizeAnchorId } from "@/lib/events/normalize-anchor-id";
 import { executeDockActionWire } from "@/lib/action-os/execute-dock-action-wire";
 import { readClientMasterOrchestratorContext } from "@/lib/action-chat/client-master-context";
 import { useLinkReminderMap } from "@/hooks/use-link-reminders";
+import { useActionCalendar } from "@/hooks/use-action-calendar";
 import { useResourcePool } from "@/hooks/use-resource-pool";
 import {
   buildFireAtFromDateTime,
