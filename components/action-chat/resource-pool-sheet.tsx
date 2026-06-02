@@ -23,6 +23,7 @@ import {
 } from "@/lib/resource-pool/resource-pool-store";
 import type { ResourcePoolItem, ResourcePoolItemKind } from "@/lib/resource-pool/resource-pool-types";
 import type { LinkRow } from "@/types/database";
+import { isGoogleSheetsUrl } from "@/lib/integrations/google-sheets-embed";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -31,6 +32,7 @@ type ResourcePoolSheetProps = {
   onOpenChange: (open: boolean) => void;
   links?: LinkRow[];
   onOpenLink?: (linkId: string) => void;
+  onOpenGoogleSheet?: (url: string, title?: string) => void;
   onOpenCapture?: () => void;
 };
 
@@ -108,6 +110,11 @@ function ItemRow({
             <span className="truncate text-[13px] font-semibold text-[#F3F4F6]">
               {item.title}
             </span>
+            {item.url && isGoogleSheetsUrl(item.url) ? (
+              <span className="shrink-0 rounded-md bg-[#30D158]/15 px-1.5 py-0.5 text-[9px] font-semibold text-[#86EFAC]">
+                시트
+              </span>
+            ) : null}
           </div>
           <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-[#9CA3AF]">
             {item.body || item.url}
@@ -153,6 +160,7 @@ export function ResourcePoolSheet({
   onOpenChange,
   links = [],
   onOpenLink,
+  onOpenGoogleSheet,
   onOpenCapture,
 }: ResourcePoolSheetProps) {
   const [mounted, setMounted] = useState(false);
@@ -188,6 +196,11 @@ export function ResourcePoolSheet({
   }, [repos, items, totalCount]);
 
   const handleOpenItem = (item: ResourcePoolItem) => {
+    const itemUrl = item.url?.trim();
+    if (itemUrl && isGoogleSheetsUrl(itemUrl)) {
+      onOpenGoogleSheet?.(itemUrl, item.title);
+      return;
+    }
     if (item.sourceLinkId && onOpenLink) {
       onOpenLink(item.sourceLinkId);
       onOpenChange(false);
@@ -216,10 +229,14 @@ export function ResourcePoolSheet({
       body: composerBody.trim() || title,
       url: composerKind === "link" ? composerBody.trim() || composerTitle.trim() : undefined,
     });
+    const savedUrl = composerKind === "link" ? composerBody.trim() || composerTitle.trim() : "";
     setComposerTitle("");
     setComposerBody("");
     setComposerOpen(false);
     toast("리소스풀에 저장했어요");
+    if (savedUrl && isGoogleSheetsUrl(savedUrl)) {
+      onOpenGoogleSheet?.(savedUrl, title);
+    }
   };
 
   const handleCreateRepo = () => {
@@ -368,96 +385,8 @@ export function ResourcePoolSheet({
               ))}
             </div>
 
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
-              <div className="mb-2 flex flex-wrap items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setComposerKind("memo");
-                    setComposerOpen(true);
-                  }}
-                  className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2.5 py-1.5 text-[11px] font-semibold text-[#E5E7EB] hover:bg-white/5"
-                >
-                  <Plus className="size-3.5" />
-                  메모
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setComposerKind("link");
-                    setComposerOpen(true);
-                  }}
-                  className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2.5 py-1.5 text-[11px] font-semibold text-[#E5E7EB] hover:bg-white/5"
-                >
-                  <Plus className="size-3.5" />
-                  링크
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onOpenCapture?.();
-                    onOpenChange(false);
-                  }}
-                  className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2.5 py-1.5 text-[11px] font-semibold text-[#E5E7EB] hover:bg-white/5"
-                >
-                  <Image className="size-3.5" />
-                  사진
-                </button>
-                <div className="ml-auto flex items-center gap-1">
-                  <input
-                    value={newRepoName}
-                    onChange={(event) => setNewRepoName(event.target.value)}
-                    placeholder="새 저장소"
-                    className="w-24 rounded-lg border border-white/10 bg-[#111827] px-2 py-1.5 text-[11px] text-[#F3F4F6] placeholder:text-[#6B7280] focus:outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleCreateRepo}
-                    className="rounded-lg bg-[#BF5AF2] px-2.5 py-1.5 text-[11px] font-semibold text-white"
-                  >
-                    Repo
-                  </button>
-                </div>
-              </div>
-
-              {composerOpen ? (
-                <div className="mb-3 rounded-xl border border-white/10 bg-[#111827] p-3">
-                  <p className="mb-2 text-[11px] font-semibold text-[#9CA3AF]">
-                    {KIND_META[composerKind].label} 추가 · {activeRepoId}
-                  </p>
-                  <input
-                    value={composerTitle}
-                    onChange={(event) => setComposerTitle(event.target.value)}
-                    placeholder="제목"
-                    className="mb-2 w-full rounded-lg border border-white/10 bg-[#1F2937] px-3 py-2 text-[13px] text-[#F3F4F6] focus:outline-none"
-                  />
-                  <textarea
-                    value={composerBody}
-                    onChange={(event) => setComposerBody(event.target.value)}
-                    placeholder={composerKind === "link" ? "https://..." : "내용"}
-                    rows={3}
-                    className="mb-2 w-full resize-none rounded-lg border border-white/10 bg-[#1F2937] px-3 py-2 text-[13px] text-[#F3F4F6] focus:outline-none"
-                  />
-                  <div className="flex justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setComposerOpen(false)}
-                      className="rounded-lg px-3 py-1.5 text-[11px] font-semibold text-[#9CA3AF]"
-                    >
-                      취소
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleAddItem}
-                      className="rounded-lg bg-glango-neon-green px-3 py-1.5 text-[11px] font-semibold text-black"
-                    >
-                      저장
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-
-              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-y-contain px-4 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {items.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-white/10 px-4 py-8 text-center">
                     <p className="text-[13px] font-medium text-[#D1D5DB]">비어 있어요</p>
@@ -478,22 +407,140 @@ export function ResourcePoolSheet({
                     />
                   ))
                 )}
+
+                {!repos.find((repo) => repo.id === activeRepoId)?.system ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (removeRepo(activeRepoId)) {
+                        setActiveRepoId("inbox");
+                        toast("저장소를 삭제했어요");
+                      }
+                    }}
+                    className="pb-2 text-[10px] font-semibold text-[#FCA5A5]"
+                  >
+                    이 저장소 삭제
+                  </button>
+                ) : null}
               </div>
 
-              {!repos.find((repo) => repo.id === activeRepoId)?.system ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (removeRepo(activeRepoId)) {
-                      setActiveRepoId("inbox");
-                      toast("저장소를 삭제했어요");
-                    }
-                  }}
-                  className="mt-2 text-[10px] font-semibold text-[#FCA5A5]"
-                >
-                  이 저장소 삭제
-                </button>
-              ) : null}
+              <div className="shrink-0 border-t border-white/[0.08] bg-[#1F2937] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
+                {composerOpen ? (
+                  <div className="mb-3 rounded-xl border border-[#BF5AF2]/35 bg-[#111827] p-3 shadow-[0_-4px_24px_rgba(0,0,0,0.25)]">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <p className="text-[11px] font-semibold text-[#E9D5FF]">
+                        {KIND_META[composerKind].label} 추가 · {activeRepoId}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setComposerOpen(false)}
+                        className="flex size-7 items-center justify-center rounded-full text-[#9CA3AF] hover:bg-white/5"
+                        aria-label="입력 닫기"
+                      >
+                        <X className="size-3.5" />
+                      </button>
+                    </div>
+                    <input
+                      value={composerTitle}
+                      onChange={(event) => setComposerTitle(event.target.value)}
+                      placeholder="제목"
+                      className="mb-2 w-full rounded-lg border border-white/10 bg-[#1F2937] px-3 py-2 text-[13px] text-[#F3F4F6] focus:border-[#BF5AF2]/40 focus:outline-none"
+                    />
+                    <textarea
+                      value={composerBody}
+                      onChange={(event) => setComposerBody(event.target.value)}
+                      placeholder={composerKind === "link" ? "https://..." : "내용"}
+                      rows={2}
+                      className="mb-2 w-full resize-none rounded-lg border border-white/10 bg-[#1F2937] px-3 py-2 text-[13px] text-[#F3F4F6] focus:border-[#BF5AF2]/40 focus:outline-none"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setComposerOpen(false)}
+                        className="rounded-lg px-3 py-1.5 text-[11px] font-semibold text-[#9CA3AF]"
+                      >
+                        취소
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleAddItem}
+                        className="rounded-lg bg-glango-neon-green px-3 py-1.5 text-[11px] font-semibold text-black"
+                      >
+                        저장
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (composerOpen && composerKind === "memo") {
+                        setComposerOpen(false);
+                        return;
+                      }
+                      setComposerKind("memo");
+                      setComposerOpen(true);
+                    }}
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-lg border px-2.5 py-2 text-[11px] font-semibold transition",
+                      composerOpen && composerKind === "memo"
+                        ? "border-[#30D158]/50 bg-[#30D158]/12 text-[#86EFAC]"
+                        : "border-white/10 text-[#E5E7EB] hover:bg-white/5",
+                    )}
+                  >
+                    <Plus className="size-3.5" />
+                    메모
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (composerOpen && composerKind === "link") {
+                        setComposerOpen(false);
+                        return;
+                      }
+                      setComposerKind("link");
+                      setComposerOpen(true);
+                    }}
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-lg border px-2.5 py-2 text-[11px] font-semibold transition",
+                      composerOpen && composerKind === "link"
+                        ? "border-[#32D7FF]/50 bg-[#32D7FF]/12 text-[#7DD3FC]"
+                        : "border-white/10 text-[#E5E7EB] hover:bg-white/5",
+                    )}
+                  >
+                    <Plus className="size-3.5" />
+                    링크
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onOpenCapture?.();
+                      onOpenChange(false);
+                    }}
+                    className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2.5 py-2 text-[11px] font-semibold text-[#E5E7EB] hover:bg-white/5"
+                  >
+                    <Image className="size-3.5" />
+                    사진
+                  </button>
+                  <div className="ml-auto flex min-w-0 items-center gap-1">
+                    <input
+                      value={newRepoName}
+                      onChange={(event) => setNewRepoName(event.target.value)}
+                      placeholder="새 저장소"
+                      className="w-[5.5rem] min-w-0 rounded-lg border border-white/10 bg-[#111827] px-2 py-2 text-[11px] text-[#F3F4F6] placeholder:text-[#6B7280] focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleCreateRepo}
+                      className="shrink-0 rounded-lg border border-[#BF5AF2]/35 bg-[#BF5AF2]/20 px-2.5 py-2 text-[11px] font-semibold text-[#E9D5FF] transition hover:bg-[#BF5AF2]/30"
+                    >
+                      Repo
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </motion.div>
         </>

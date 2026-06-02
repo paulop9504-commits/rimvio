@@ -50,7 +50,7 @@ export function isMentionActionInput(text: string): boolean {
 }
 
 function persistLastAction(wire: InlineChatActionWire): void {
-  if (wire.featureId === "now" || wire.featureId === "retry") {
+  if (wire.featureId === "now" || wire.featureId === "retry" || wire.featureId === "manual") {
     return;
   }
   recordLastMentionAction(wire);
@@ -89,11 +89,22 @@ export function tryBuildMentionActionTurn(input: {
     return null;
   }
 
-  if (!parsed.query && feature.confirmCopy) {
+  if (!parsed.query && feature.confirmCopy && feature.featureId !== "manual") {
     return [
       userMessage,
       createChatMessage("assistant", feature.confirmCopy),
     ];
+  }
+
+  if (feature.featureId === "manual") {
+    const catalog = wire.manualCatalog ?? [];
+    const total = catalog.reduce((sum, group) => sum + group.rows.length, 0);
+    if (total === 0) {
+      return [
+        userMessage,
+        createChatMessage("assistant", `"${parsed.query}"에 맞는 호출어가 없어요. @설명서 만 입력하면 전체 목록이 나와요.`),
+      ];
+    }
   }
 
   persistLastAction(wire);

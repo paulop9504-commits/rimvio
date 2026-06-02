@@ -8,6 +8,11 @@ import {
 } from "@/components/action-chat/action-date-picker-sheet";
 import { OcrReviewDatePickerSheet } from "@/components/action-chat/ocr-review-date-picker-sheet";
 import { ResourcePoolSheet } from "@/components/action-chat/resource-pool-sheet";
+import {
+  GoogleSheetsEmbedSheet,
+  type GoogleSheetsEmbedTarget,
+} from "@/components/action-chat/google-sheets-embed-sheet";
+import { subscribeOpenGoogleSheet } from "@/lib/integrations/google-sheets-open-event";
 import { ActiveActionsSheet } from "@/components/action-chat/active-actions-sheet";
 import { CalendarBoard } from "@/components/action-chat/calendar-board";
 import { ActionChatInputBar } from "@/components/action-chat/input-bar";
@@ -146,6 +151,22 @@ export function ActionChatFeed({
   }, [messages]);
   const [activeActionsOpen, setActiveActionsOpen] = useState(false);
   const [resourcePoolOpen, setResourcePoolOpen] = useState(false);
+  const [googleSheetOpen, setGoogleSheetOpen] = useState(false);
+  const [googleSheetTarget, setGoogleSheetTarget] = useState<GoogleSheetsEmbedTarget | null>(
+    null,
+  );
+
+  const openGoogleSheet = useCallback((url: string, title?: string) => {
+    setGoogleSheetTarget({ url, title });
+    setGoogleSheetOpen(true);
+    setResourcePoolOpen(false);
+  }, []);
+
+  useEffect(() => {
+    return subscribeOpenGoogleSheet(({ url, title }) => {
+      openGoogleSheet(url, title);
+    });
+  }, [openGoogleSheet]);
   const { totalCount: resourcePoolCount } = useResourcePool();
   const [schedulingLink, setSchedulingLink] = useState<LinkRow | null>(null);
   const userMessageCount = messages.filter((message) => message.role === "user").length;
@@ -433,7 +454,14 @@ export function ActionChatFeed({
         onOpenChange={setResourcePoolOpen}
         links={links}
         onOpenLink={openLinkById}
+        onOpenGoogleSheet={openGoogleSheet}
         onOpenCapture={onOpenCapture}
+      />
+
+      <GoogleSheetsEmbedSheet
+        open={googleSheetOpen}
+        onOpenChange={setGoogleSheetOpen}
+        target={googleSheetTarget}
       />
 
       <ActiveActionsSheet

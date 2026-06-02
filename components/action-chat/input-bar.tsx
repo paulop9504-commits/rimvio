@@ -20,6 +20,7 @@ import {
   glangoMenuTileBtnClass,
   glangoNavBarClass,
 } from "@/lib/brand/glango-neon-theme";
+import { ComposerMentionField } from "@/components/action-chat/composer-mention-field";
 import type { ChatAxis } from "@/lib/action-chat/chat-three-axis";
 import type { ComposerAttachment } from "@/lib/action-chat/composer-attachments";
 import { cn } from "@/lib/utils";
@@ -176,21 +177,18 @@ export function ActionChatInputBar({
             ambient?.composerLive && "glango-composer-field--live",
           )}
         >
-          <textarea
-            ref={inputRef}
+          <ComposerMentionField
+            inputRef={inputRef}
             value={text}
-            rows={1}
             disabled={disabled || sending}
-            onChange={(event) => {
-              const next = event.target.value;
+            placeholder={placeholder}
+            onChange={(next) => {
               setText(next);
               syncComposerDraft(next);
             }}
             onFocus={() => ambient?.setComposerFocused(true)}
             onBlur={() => ambient?.setComposerFocused(false)}
             onKeyDown={handleKeyDown}
-            placeholder={placeholder}
-            className="max-h-24 min-h-[1.25rem] w-full resize-none bg-transparent text-[15px] leading-snug text-white placeholder:text-white/75 focus:outline-none"
           />
         </div>
 

@@ -221,8 +221,8 @@ export const copy = {
     importFailHint: `${GLANGO.name}에서 만든 백업 파일인지 확인해 주세요`,
   },
   settings: {
-    profileTitle: "함께하기 프로필",
-    profileHint: "색 뽑기로 정해진 나만의 글랑고 · 홈 아이콘과 연동",
+    profileNameSectionTitle: "표시 이름",
+    profileNameSectionHint: "함께하기·피드에서 보이는 이름이에요",
     profileNameLabel: "이름",
     profileNamePlaceholder: "예: 링크 모으는 민지",
     profileAvatarLabel: "내 글랑고",
@@ -276,10 +276,10 @@ export const copy = {
     scheduleSheetHint: (actionLabel: string) =>
       `${actionLabel} · 이번 카드만 선택`,
     scheduleSheetFootnote: "설정에서 기본값을 바꿀 수 있어요",
-    trustTitle: "내 글랑고 레벨",
+    trustTitle: "실행 확인 수준",
     trustHint: "익숙해질수록 확인은 줄고 실행은 빨라져요 · 언제든 바꿀 수 있어요",
     trustBadge: "적응형",
-    trustSaved: "글랑고 레벨을 저장했습니다",
+    trustSaved: "실행 확인 수준을 저장했습니다",
     trustStageActive: (stage: string) => `지금 단계: ${stage}`,
     trustScoreLine: (score: number) => `성공 경험 ${score}회`,
     trustNextMilestone: (remaining: number, label: string) =>
@@ -353,6 +353,30 @@ export const copy = {
     desktopMid: "에 링크를 붙여넣거나",
     desktopEnd: "로 Action OS를 체험해 보세요",
     tryDemo: "체험하기",
+  },
+  manual: {
+    eyebrow: "사용 설명서",
+    title: "글랑고는 이렇게 씁니다",
+    summary:
+      "챗봇이 아니라 실행 OS예요. 말·링크·사진을 보내면 바로 할 수 있는 버튼(칩)이 뜨고, @로 원하는 앱 기능을 바로 불러옵니다.",
+    step1Title: "1. 말하거나 붙여넣기",
+    step1Body:
+      "실행 화면 아래 입력창에 일정·주소·링크·사진을 보내세요. 유튜브·카톡에서 공유해도 됩니다.",
+    step2Title: "2. @ 로 앱 기능 호출",
+    step2Body:
+      "채팅에 @네비, @타이머, @송금처럼 입력하면 해당 기능 칩이 대화 안에 붙습니다. @ = 앱 단축키라고 생각하면 돼요.",
+    step3Title: "3. 칩을 눌러 실행",
+    step3Body:
+      "뜬 칩을 탭하면 카카오맵·토스·배민 등 연결된 앱으로 바로 이어집니다. 확인 없이 빠르게 실행할 수도 있어요.",
+    mentionsTitle: "자주 쓰는 @ 예시",
+    mentionsHint: "입력창에 @ 를 치면 더 많은 기능이 나와요",
+    mentionsMore: "전체 목록은 채팅에 @설명서 입력 · @날씨, @환율, @QR, @번역 등 20개 이상",
+    calendarTitle: "캘린더",
+    calendarBody: "일정을 말하거나 링크에 시간을 정하면 타임라인에 쌓여요. 헤더 📅 아이콘으로 확인합니다.",
+    poolTitle: "리소스풀",
+    poolBody: "메모·링크·사진을 저장소에 모아둡니다. @메모 로 저장하거나 헤더 📁 아이콘으로 열어요.",
+    tagline: "대화가 아니라 실행 — 말한 것을 바로 행동으로 바꿉니다.",
+    tryCta: "실행 화면에서 바로 써보기",
   },
   action: {
     emptyPrompt: "무엇을 도와드릴까요?",

@@ -219,8 +219,8 @@ export const copyEn: Copy = {
     importFailHint: `Make sure this is a backup file from ${GLANGO.name}`,
   },
   settings: {
-    profileTitle: "Together profile",
-    profileHint: "Your Glango color from the one-time draw · synced to home icon",
+    profileNameSectionTitle: "Display name",
+    profileNameSectionHint: "Shown in Together and the feed",
     profileNameLabel: "Name",
     profileNamePlaceholder: "e.g. Link collector Minji",
     profileAvatarLabel: "My Glango",
@@ -274,10 +274,10 @@ export const copyEn: Copy = {
     scheduleSheetHint: (actionLabel: string) =>
       `${actionLabel} · choose for this card only`,
     scheduleSheetFootnote: "Change your default anytime in Settings",
-    trustTitle: "My Glango level",
+    trustTitle: "Action confirmation level",
     trustHint: "As trust builds, confirmations fade and actions get faster · change anytime",
     trustBadge: "Adaptive",
-    trustSaved: "Glango level saved",
+    trustSaved: "Confirmation level saved",
     trustStageActive: (stage: string) => `Current stage: ${stage}`,
     trustScoreLine: (score: number) => `${score} successful actions`,
     trustNextMilestone: (remaining: number, label: string) =>
@@ -351,6 +351,30 @@ export const copyEn: Copy = {
     desktopMid: " — paste a link, or try ",
     desktopEnd: " to experience the Action OS",
     tryDemo: "Try the demo",
+  },
+  manual: {
+    eyebrow: "User guide",
+    title: "How to use Glango",
+    summary:
+      "Not a chatbot — an action OS. Send text, links, or photos and get tappable chips; use @ to summon app features inline.",
+    step1Title: "1. Say it or paste it",
+    step1Body:
+      "Use the composer on the feed for schedules, addresses, links, or photos. Share from YouTube, KakaoTalk, etc.",
+    step2Title: "2. Call features with @",
+    step2Body:
+      "Type @nav, @timer, @pay and similar — a chip appears in the thread. Think of @ as an app shortcut key.",
+    step3Title: "3. Tap chips to run",
+    step3Body:
+      "Tap a chip to jump into Kakao Map, Toss, Baemin, and more. You can dial down confirmations as you get comfortable.",
+    mentionsTitle: "Common @ examples",
+    mentionsHint: "Type @ in the composer to see more",
+    mentionsMore: "Type @설명서 in chat for the full list · also @weather, @fx, @qr, @translate, and 20+ more",
+    calendarTitle: "Calendar",
+    calendarBody: "Schedules and timed links stack on your timeline. Open via the 📅 header icon.",
+    poolTitle: "Resource pool",
+    poolBody: "Collect memos, links, and photos. Save with @memo or open from the 📁 header icon.",
+    tagline: "Not conversation — operation. Turn what you say into action.",
+    tryCta: "Try it on the feed",
   },
   action: {
     emptyPrompt: "Say something, or send a link or photo.",

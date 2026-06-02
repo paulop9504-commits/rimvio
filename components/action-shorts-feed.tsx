@@ -14,8 +14,6 @@ import { FeedLinkAddSheet } from "@/components/feed-link-add-sheet";
 import { sanitizeLinkTitle } from "@/lib/feed/sanitize-link-title";
 import { toastNextLinkSuggestion } from "@/lib/links/next-link-toast";
 import { FeedGestureCoach } from "@/components/feed-gesture-coach";
-import { AvatarDrawFeedBanner } from "@/components/avatar-draw-feed-banner";
-import { AvatarOnboardingGate } from "@/components/avatar-onboarding-gate";
 import { runContainerMaintenance } from "@/lib/containers/context-containers";
 import { PwaInstallNudge } from "@/components/pwa-install-nudge";
 import { GlangoLogo } from "@/components/glango-logo";
@@ -398,8 +396,6 @@ export function ActionShortsFeed() {
 
   return (
     <div className={cn("relative flex min-h-0 flex-1 flex-col overflow-hidden", GRID.feedStage, FEED_VIEWPORT_CLASS)}>
-      <AvatarOnboardingGate />
-      <AvatarDrawFeedBanner />
 
       <input
         ref={quickCameraRef}

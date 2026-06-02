@@ -1,0 +1,104 @@
+"use client";
+
+import {
+  useMemo,
+  useRef,
+  type KeyboardEvent,
+  type RefObject,
+} from "react";
+import { segmentComposerMentions } from "@/lib/action-chat/composer-mention-highlight";
+import { cn } from "@/lib/utils";
+
+type ComposerMentionFieldProps = {
+  value: string;
+  placeholder?: string;
+  disabled?: boolean;
+  inputRef?: RefObject<HTMLTextAreaElement | null>;
+  onChange: (value: string) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  onKeyDown?: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
+  className?: string;
+  fieldClassName?: string;
+};
+
+function MentionMirror({ value }: { value: string }) {
+  const segments = useMemo(() => segmentComposerMentions(value), [value]);
+
+  if (!value) {
+    return null;
+  }
+
+  return (
+    <>
+      {segments.map((segment, index) => {
+        if (segment.kind === "mention-valid") {
+          return (
+            <span key={`${index}-${segment.text}`} className="glango-composer-mention-valid">
+              {segment.text}
+            </span>
+          );
+        }
+        return <span key={`${index}-${segment.text}`}>{segment.text}</span>;
+      })}
+    </>
+  );
+}
+
+export function ComposerMentionField({
+  value,
+  placeholder,
+  disabled = false,
+  inputRef,
+  onChange,
+  onFocus,
+  onBlur,
+  onKeyDown,
+  className,
+  fieldClassName,
+}: ComposerMentionFieldProps) {
+  const mirrorRef = useRef<HTMLDivElement>(null);
+  const localRef = useRef<HTMLTextAreaElement>(null);
+  const textareaRef = inputRef ?? localRef;
+
+  const syncScroll = () => {
+    const textarea = textareaRef.current;
+    const mirror = mirrorRef.current;
+    if (!textarea || !mirror) {
+      return;
+    }
+    mirror.scrollTop = textarea.scrollTop;
+    mirror.scrollLeft = textarea.scrollLeft;
+  };
+
+  return (
+    <div className={cn("glango-composer-mention-wrap relative min-w-0 flex-1", className)}>
+      <div
+        ref={mirrorRef}
+        aria-hidden
+        className="glango-composer-mention-mirror glango-composer-mention-layer pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap"
+      >
+        <MentionMirror value={value} />
+      </div>
+      <textarea
+        ref={textareaRef}
+        value={value}
+        rows={1}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.value)}
+        onFocus={onFocus}
+        onBlur={onBlur}
+        onKeyDown={onKeyDown}
+        onScroll={syncScroll}
+        placeholder={placeholder}
+        spellCheck={false}
+        autoComplete="off"
+        autoCorrect="off"
+        className={cn(
+          "glango-composer-textarea--mirror glango-composer-mention-layer max-h-24 min-h-[1.25rem] w-full resize-none border-0 bg-transparent p-0 focus:outline-none",
+          fieldClassName,
+        )}
+      />
+    </div>
+  );
+}

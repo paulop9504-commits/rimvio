@@ -119,6 +119,15 @@ export function InlineChatActionChip({
     deeplink: action.mainDeeplink ?? "",
   });
 
+  const isManualCatalog = Boolean(action.manualCatalog?.length);
+
+  const insertMention = useCallback(
+    (example: string) => {
+      onSpawnPrompt?.(example.endsWith(" ") ? example : `${example} `);
+    },
+    [onSpawnPrompt],
+  );
+
   return (
     <div
       className={cn(glangoInlineChipClass("sm"), className)}
@@ -141,13 +150,54 @@ export function InlineChatActionChip({
             ))}
           </ul>
         ) : null}
-        <MainActionButton
-          label={action.mainLabel}
-          brand={mainBrand}
-          compact
-          onClick={() => void handleMain()}
-        />
-        {action.auxActions.length > 0 ? (
+
+        {isManualCatalog ? (
+          <div className="max-h-64 space-y-3 overflow-y-auto overscroll-contain pr-0.5">
+            {action.manualCatalog!.map((group) => (
+              <div key={group.categoryLabel}>
+                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-glango-neon-cyan/80">
+                  {group.categoryLabel}
+                </p>
+                <ul className="space-y-1">
+                  {group.rows.map((row) => (
+                    <li key={`${group.categoryLabel}-${row.token}`}>
+                      <button
+                        type="button"
+                        onClick={() => insertMention(row.example)}
+                        className="flex w-full items-start gap-2 rounded-xl bg-white/[0.04] px-2.5 py-2 text-left transition-colors hover:bg-white/[0.08] active:scale-[0.99]"
+                      >
+                        <span className="mt-0.5 text-sm" aria-hidden>
+                          {row.icon}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="flex flex-wrap items-baseline gap-1.5">
+                            <span className="text-[13px] font-semibold text-glango-neon-cyan">
+                              @{row.token}
+                            </span>
+                            <span className="text-[12px] text-white/75">{row.displayName}</span>
+                          </span>
+                          <span className="mt-0.5 block truncate text-[11px] text-white/45">
+                            {row.example}
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        {!isManualCatalog && action.mainLabel ? (
+          <MainActionButton
+            label={action.mainLabel}
+            brand={mainBrand}
+            compact
+            onClick={() => void handleMain()}
+          />
+        ) : null}
+        {!isManualCatalog && action.auxActions.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
             {action.auxActions.map((aux) => (
               <AuxActionButton

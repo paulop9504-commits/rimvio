@@ -1254,6 +1254,51 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   color: rgba(255, 255, 255, 0.75);
 }
 
+.glango-composer-mention-wrap {
+  min-height: 1.25rem;
+}
+
+/* Mirror + textarea must share identical metrics — no font-weight drift on spans. */
+.glango-composer-mention-layer {
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.375;
+  letter-spacing: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.glango-composer-mention-mirror {
+  z-index: 0;
+  padding: 0;
+  color: #ffffff;
+}
+
+.glango-composer-mention-valid {
+  color: var(--glango-neon-cyan);
+}
+
+.glango-composer-textarea--mirror {
+  position: relative;
+  z-index: 1;
+  color: transparent;
+  caret-color: #ffffff;
+  -webkit-text-fill-color: transparent;
+  background: transparent;
+}
+
+.glango-composer-textarea--mirror::placeholder {
+  color: rgba(255, 255, 255, 0.75);
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.75);
+}
+
+.glango-composer-textarea--mirror::selection {
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  background: rgba(50, 215, 255, 0.28);
+}
+
 .glango-menu-grid {
   background: var(--glango-surface-muted);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);

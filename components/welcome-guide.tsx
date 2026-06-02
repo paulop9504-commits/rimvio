@@ -5,18 +5,10 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AuthPanel } from "@/components/auth-panel";
 import { GlangoLogo } from "@/components/glango-logo";
-import { ContainerCleanupPanel } from "@/components/container-cleanup-panel";
-import { ActionBuilderPanel } from "@/components/action-builder-panel";
-import { FeedSyncPanel } from "@/components/feed-sync-panel";
 import { InboxLinkInput } from "@/components/inbox-link-input";
+import { GlangoAppManualPanel } from "@/components/glango-app-manual-panel";
 import { SettingsProfilePanel } from "@/components/settings-profile-panel";
-import { SettingsAvatarOddsPanel } from "@/components/settings-avatar-odds-panel";
-import { SettingsTastePanel } from "@/components/settings-taste-panel";
-import { SettingsScheduleMediumPanel } from "@/components/settings-schedule-medium-panel";
-import { SettingsTrustLevelPanel } from "@/components/settings-trust-level-panel";
 import { SettingsIntegrationsPanel } from "@/components/settings-integrations-panel";
-import { GlangoAvatarDrawPanel } from "@/components/glango-avatar-draw-panel";
-import { WelcomeAvatarBootstrap } from "@/components/welcome-avatar-bootstrap";
 import { useCopy } from "@/hooks/use-copy";
 import { GLANGO } from "@/lib/brand/glango";
 import { IOS } from "@/lib/ui/ios-surface";
@@ -84,20 +76,10 @@ export function WelcomeGuide() {
     }
 
     setStandalone(isStandalonePwa());
-
-    if (searchParams.get("draw") === "1") {
-      window.requestAnimationFrame(() => {
-        document.getElementById("glango-draw")?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-      });
-    }
   }, [searchParams]);
 
   return (
     <div className="flex flex-col gap-[var(--space-phi)] pb-[var(--space-phi2)]">
-      <WelcomeAvatarBootstrap />
       <section className={cn("px-[var(--space-phi)] py-[var(--space-phi2)]", IOS.card)}>
         <GlangoLogo size="lg" framed className="mb-3" showWordmark showKo />
         <h2 className="text-lg font-semibold tracking-tight">
@@ -119,6 +101,8 @@ export function WelcomeGuide() {
           </p>
         ) : null}
       </section>
+
+      <GlangoAppManualPanel className="mx-4" />
 
       {showPaste ? (
         <section className={cn("p-4", IOS.cardSm)}>
@@ -175,30 +159,12 @@ export function WelcomeGuide() {
         </IosSection>
       ) : null}
 
-      <GlangoAvatarDrawPanel />
-
-      <SettingsProfilePanel />
-
-      <SettingsAvatarOddsPanel />
-
-      <SettingsTastePanel />
-
-      <SettingsScheduleMediumPanel />
-
-      <SettingsTrustLevelPanel />
+      <SettingsProfilePanel className="mx-4" />
 
       <SettingsIntegrationsPanel />
 
-      <ActionBuilderPanel className="mx-4" />
-
-      <ContainerCleanupPanel />
-
       <div className={cn("p-4", IOS.cardSm)}>
         <AuthPanel nextPath="/welcome" />
-      </div>
-
-      <div className={cn("p-4", IOS.cardSm)}>
-        <FeedSyncPanel />
       </div>
 
       <section className={cn("p-4", IOS.cardSm)}>

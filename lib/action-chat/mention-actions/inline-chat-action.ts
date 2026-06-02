@@ -9,6 +9,18 @@ export type InlineChatActionAuxWire = {
   payload?: string;
 };
 
+export type InlineChatManualCatalogRow = {
+  token: string;
+  displayName: string;
+  icon: string;
+  example: string;
+};
+
+export type InlineChatManualCatalogGroup = {
+  categoryLabel: string;
+  rows: InlineChatManualCatalogRow[];
+};
+
 export type InlineChatActionWire = {
   featureId: string;
   displayName: string;
@@ -19,11 +31,13 @@ export type InlineChatActionWire = {
   mainDeeplink?: string;
   mainActionKind?: "deeplink" | "clipboard" | "capture" | "internal";
   auxActions: InlineChatActionAuxWire[];
+  manualCatalog?: InlineChatManualCatalogGroup[];
 };
 
 export function buildInlineChatActionWire(
   input: Omit<InlineChatActionWire, "auxActions"> & {
     auxActions?: InlineChatActionAuxWire[];
+    manualCatalog?: InlineChatManualCatalogGroup[];
   },
 ): InlineChatActionWire {
   return {
@@ -36,5 +50,6 @@ export function buildInlineChatActionWire(
     mainDeeplink: input.mainDeeplink?.trim(),
     mainActionKind: input.mainActionKind ?? "deeplink",
     auxActions: input.auxActions ?? [],
+    manualCatalog: input.manualCatalog,
   };
 }

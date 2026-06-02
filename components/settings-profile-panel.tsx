@@ -2,12 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import {
-  GlangoAvatarMark,
-  labelForAvatarVariant,
-} from "@/lib/brand/glango-smiley-mark";
-import { isRarePurpleVariant } from "@/lib/brand/glango-avatar-colors";
-import type { GlangoAvatarVariantId } from "@/lib/brand/glango-avatar-colors";
 import { useCopy } from "@/hooks/use-copy";
 import { IOS } from "@/lib/ui/ios-surface";
 import {
@@ -17,17 +11,13 @@ import {
 } from "@/lib/rooms/guest-session";
 import { cn } from "@/lib/utils";
 
+/** Display name only — no avatar / gacha UI. */
 export function SettingsProfilePanel({ className }: { className?: string }) {
   const copy = useCopy();
   const [label, setLabel] = useState("");
-  const [avatarVariant, setAvatarVariant] = useState<GlangoAvatarVariantId | null>(null);
-  const [avatarDrawn, setAvatarDrawn] = useState(false);
 
   const sync = useCallback(() => {
-    const guest = getRoomGuest();
-    setLabel(guest.label);
-    setAvatarVariant(guest.avatarVariant);
-    setAvatarDrawn(guest.avatarDrawn);
+    setLabel(getRoomGuest().label);
   }, []);
 
   useEffect(() => {
@@ -43,55 +33,16 @@ export function SettingsProfilePanel({ className }: { className?: string }) {
       sync();
       return;
     }
-
     updateRoomGuest({ label: trimmed });
     toast.success(copy.settings.profileSaved);
   };
 
-  const rare = avatarVariant ? isRarePurpleVariant(avatarVariant) : false;
-
   return (
     <section className={cn("p-4", IOS.cardSm, className)}>
-      <h2 className="text-sm font-semibold">{copy.settings.profileTitle}</h2>
+      <h2 className="text-sm font-semibold">{copy.settings.profileNameSectionTitle}</h2>
       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-        {copy.settings.profileHint}
+        {copy.settings.profileNameSectionHint}
       </p>
-
-      {!avatarDrawn ? (
-        <p className="mt-4 rounded-2xl bg-glango-surface-muted px-3 py-3 text-xs leading-relaxed text-muted-foreground">
-          {copy.settings.drawPendingProfile}
-        </p>
-      ) : (
-        <div className="mt-4 flex items-center gap-3">
-          <span
-            className={cn(
-              "flex size-16 shrink-0 items-center justify-center rounded-2xl bg-glango-surface p-1 shadow-sm ring-1 ring-glango-neon-purple/15",
-              rare && "ring-2 ring-violet-400/60"
-            )}
-            aria-hidden
-          >
-            <GlangoAvatarMark variant={avatarVariant} pixels={52} crisp />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-medium text-muted-foreground">
-              {copy.settings.profileAvatarLabel}
-            </p>
-            <p className="mt-0.5 text-sm font-semibold">
-              {avatarVariant ? `${labelForAvatarVariant(avatarVariant)} 글?�고` : ""}
-            </p>
-            {rare ? (
-              <p className="mt-1 text-[11px] font-medium text-glango-neon-purple">
-                {copy.settings.profileRarePurple}
-              </p>
-            ) : (
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                {copy.settings.profileAvatarFixed}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-
       <div className="mt-4">
         <label htmlFor="settings-profile-name" className="text-[11px] font-medium text-muted-foreground">
           {copy.settings.profileNameLabel}
@@ -110,7 +61,7 @@ export function SettingsProfilePanel({ className }: { className?: string }) {
           placeholder={copy.settings.profileNamePlaceholder}
           className={cn(
             "mt-1 h-11 w-full rounded-2xl border-0 bg-glango-surface-muted px-4 text-sm outline-none",
-            "focus:ring-2 focus:ring-[#007AFF]/30"
+            "focus:ring-2 focus:ring-[#007AFF]/30",
           )}
         />
       </div>

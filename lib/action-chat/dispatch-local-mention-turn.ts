@@ -12,6 +12,10 @@ import {
   tryBuildMentionNavigateTurn,
 } from "@/lib/action-chat/mention-navigate/commit-mention-navigate-turn";
 import {
+  isMentionLinksheetInput,
+  tryBuildMentionLinksheetTurn,
+} from "@/lib/action-chat/mention-linksheet/commit-mention-linksheet-turn";
+import {
   isMentionActionInput,
   tryBuildMentionActionTurn,
 } from "@/lib/action-chat/mention-actions/commit-mention-action-turn";
@@ -95,6 +99,11 @@ export function tryDispatchLocalMentionTurn(
     return focusTurn;
   }
 
+  const linksheetTurn = tryBuildMentionLinksheetTurn({ text, chatAxis });
+  if (linksheetTurn) {
+    return linksheetTurn;
+  }
+
   if (isMentionActionInput(text)) {
     const actionTurn = tryBuildMentionActionTurn({
       text,
@@ -119,6 +128,7 @@ export function isLocalMentionInput(text: string): boolean {
     isMentionTransferInput(text) ||
     isMentionParkingInput(text) ||
     isMentionFocusInput(text) ||
+    isMentionLinksheetInput(text) ||
     isMentionActionInput(text)
   );
 }

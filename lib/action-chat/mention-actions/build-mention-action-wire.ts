@@ -13,7 +13,7 @@ import {
   formatMentionReminderWhen,
   parseMentionReminderFireAt,
 } from "@/lib/action-chat/mention-reminder/parse-mention-reminder-query";
-import { resolvePluginDeeplink } from "@/lib/action-spawn/resolve-plugin-deeplink";
+import { buildMentionManualCatalog } from "@/lib/action-chat/mention-manual/build-mention-manual-catalog";
 import type { MentionFeature } from "@/lib/event-kernel/action-contracts/mention-feature-registry";
 import {
   buildKakaoMapSearchHref,
@@ -656,6 +656,23 @@ export function buildMentionActionWire(input: {
         summaryLines: [`${minutes}분 방해금지`],
         mainLabel: "집중 모드",
         mainDeeplink: `glango://mention/focus?duration=${duration}`,
+      });
+    }
+
+    case "manual": {
+      const catalog = buildMentionManualCatalog(q);
+      const total = catalog.reduce((sum, group) => sum + group.rows.length, 0);
+      return buildInlineChatActionWire({
+        featureId: feature.featureId,
+        displayName: feature.displayName,
+        icon,
+        query: q,
+        summaryLines: q
+          ? [`"${q}" 검색 · ${total}개`]
+          : ["@ = 앱 단축키 · 눌러서 바로 입력창에 넣기"],
+        mainLabel: "",
+        mainActionKind: "internal",
+        manualCatalog: catalog,
       });
     }
 

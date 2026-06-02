@@ -310,6 +310,22 @@ const REGISTRY: readonly MentionFeature[] = [
     category: "custom",
     confirmCopy: "몇 분 방해금지할까요? 예: @방해금지 1시간",
   },
+  {
+    featureId: "linksheet",
+    displayName: "링크시트",
+    aliases: ["링크시트", "linksheet", "시트링크"],
+    sourceRef: "mention:linksheet",
+    category: "custom",
+    confirmCopy:
+      "Google Sheets URL을 적어 주세요. 예: @링크시트 https://docs.google.com/spreadsheets/d/…",
+  },
+  {
+    featureId: "manual",
+    displayName: "호출어 설명서",
+    aliases: ["설명서", "manual", "help", "도움말", "명령어"],
+    sourceRef: "mention:manual",
+    category: "custom",
+  },
 ];
 
 const byAlias = new Map<string, MentionFeature>(
