@@ -5,13 +5,13 @@ import {
   syncPlaceCorrectionToServer,
 } from "@/lib/corrections/sync-place-corrections-client";
 
-const DB_NAME = "glango-corrections";
+const DB_NAME = "rimvio-corrections";
 const DB_VERSION = 1;
 const STORE = "correction_log";
 
 let memoryStore: CorrectionLogEntry[] = [];
 
-export const CORRECTION_LOG_UPDATED = "glango-correction-log-updated";
+export const CORRECTION_LOG_UPDATED = "rimvio-correction-log-updated";
 
 function emitUpdated() {
   if (typeof window !== "undefined") {

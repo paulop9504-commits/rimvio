@@ -126,9 +126,9 @@ export const ACTION_INTENT_REGISTRY: Record<string, ActionIntentDefinition> = {
     buildUrl(params) {
       const flight = pickParam(params, "flight_no");
       if (flight) {
-        return `glango://trip/flight?flight=${enc(flight)}`;
+        return `rimvio://trip/flight?flight=${enc(flight)}`;
       }
-      return "glango://trip/flight";
+      return "rimvio://trip/flight";
     },
   },
   PACKING_CHECKLIST: {
@@ -136,8 +136,8 @@ export const ACTION_INTENT_REGISTRY: Record<string, ActionIntentDefinition> = {
     label: "짐 체크리스트",
     description: "Open trip packing checklist",
     params: ["trip_id"],
-    fallback_url: "glango://trip/packing",
-    buildUrl: () => "glango://trip/packing",
+    fallback_url: "rimvio://trip/packing",
+    buildUrl: () => "rimvio://trip/packing",
   },
   WEB_SEARCH: {
     id: "WEB_SEARCH",

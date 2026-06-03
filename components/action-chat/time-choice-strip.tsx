@@ -46,7 +46,7 @@ export function TimeChoiceStrip({
                 prompt: option.prompt,
               })
             }
-            className="rounded-full border border-amber-200 bg-glango-surface px-3.5 py-2 text-sm font-medium text-amber-950 transition-colors hover:bg-amber-100"
+            className="rounded-full border border-amber-200 bg-rimvio-surface px-3.5 py-2 text-sm font-medium text-amber-950 transition-colors hover:bg-amber-100"
           >
             {option.label}
           </button>

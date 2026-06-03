@@ -1,4 +1,4 @@
-/** Glango Universal Action Buttons — always 4 pillars regardless of domain. */
+/** Rimvio Universal Action Buttons — always 4 pillars regardless of domain. */
 
 export type UniversalPillar = "go" | "save" | "deep_dive" | "connect";
 

@@ -1,8 +1,8 @@
 import { parseStoredLocale } from "@/lib/i18n/detect-locale";
 import type { AppLocale } from "@/lib/i18n/types";
-export const LOCALE_COOKIE = "glango.locale";
-export const LOCALE_STORAGE_KEY = "glango.locale.v1";
-export const LOCALE_UPDATED = "glango-locale-updated";
+export const LOCALE_COOKIE = "rimvio.locale";
+export const LOCALE_STORAGE_KEY = "rimvio.locale.v1";
+export const LOCALE_UPDATED = "rimvio-locale-updated";
 
 export function readStoredLocale(): AppLocale | null {
   if (typeof window === "undefined") {

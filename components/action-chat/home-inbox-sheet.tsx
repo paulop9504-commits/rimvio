@@ -78,7 +78,7 @@ export function HomeInboxSheet({
             <motion.div
               role="dialog"
               aria-label="분류 대기"
-              className="fixed inset-x-0 bottom-0 z-[81] mx-auto flex max-h-[min(70vh,520px)] max-w-lg flex-col rounded-t-[24px] border border-border bg-glango-surface shadow-[0_-12px_40px_rgba(0,0,0,0.45)]"
+              className="fixed inset-x-0 bottom-0 z-[81] mx-auto flex max-h-[min(70vh,520px)] max-w-lg flex-col rounded-t-[24px] border border-border bg-rimvio-surface shadow-[0_-12px_40px_rgba(0,0,0,0.45)]"
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
@@ -93,7 +93,7 @@ export function HomeInboxSheet({
                 <button
                   type="button"
                   onClick={() => onOpenChange(false)}
-                  className="flex size-9 items-center justify-center rounded-full bg-glango-surface-muted"
+                  className="flex size-9 items-center justify-center rounded-full bg-rimvio-surface-muted"
                 >
                   <X className="size-5" />
                 </button>
@@ -109,7 +109,7 @@ export function HomeInboxSheet({
                       <button
                         type="button"
                         onClick={() => setClassifyTarget(item)}
-                        className="mb-2 w-full rounded-2xl border border-border bg-glango-surface-muted p-3 text-left transition-colors hover:border-glango-neon-purple/30 hover:bg-glango-surface"
+                        className="mb-2 w-full rounded-2xl border border-border bg-rimvio-surface-muted p-3 text-left transition-colors hover:border-rimvio-neon-purple/30 hover:bg-rimvio-surface"
                       >
                         <p className="text-[14px] font-medium text-foreground">{item.preview}</p>
                         <p className="mt-1 text-[11px] text-muted-foreground">

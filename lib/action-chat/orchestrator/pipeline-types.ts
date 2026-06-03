@@ -1,6 +1,6 @@
 import type { OrchestratorResult } from "@/lib/action-chat/orchestrator-types";
 
-/** Glango Orchestrator v2 — Phase × Tier */
+/** Rimvio Orchestrator v2 — Phase × Tier */
 export type OrchestratorPhase = 1 | 2 | 3;
 
 export type OrchestratorTierId =

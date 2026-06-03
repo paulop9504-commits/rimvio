@@ -26,7 +26,7 @@ export function looksLikeTravelIntent(input: {
 
   if (
     input.source_type === "screenshot" &&
-    /glango\.app\/capture|\/capture\//i.test(input.sourceUrl ?? "")
+    /rimvio\.app\/capture|\/capture\//i.test(input.sourceUrl ?? "")
   ) {
     return TRAVEL_INTENT_PATTERN.test(input.title ?? "");
   }

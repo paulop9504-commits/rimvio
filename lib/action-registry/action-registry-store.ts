@@ -3,7 +3,7 @@ import type {
   ActionTemplateStatus,
 } from "@/lib/action-registry/types";
 
-const STORAGE_KEY = "glango-action-registry.v1";
+const STORAGE_KEY = "rimvio-action-registry.v1";
 const PROMOTION_THRESHOLD = 3;
 
 let memoryStore: ActionRegistryEntry[] = [];

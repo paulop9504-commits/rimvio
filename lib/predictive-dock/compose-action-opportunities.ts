@@ -49,7 +49,7 @@ function withResolvedState(
   };
 }
 
-/** Score · filter · cap — Glango Action Opportunity composer. */
+/** Score · filter · cap — Rimvio Action Opportunity composer. */
 export function finalizeActionOpportunities(
   input: FinalizeOpportunitiesInput
 ): PredictiveDockWire {

@@ -10,28 +10,28 @@ const PLUGIN_DEEPLINKS: Record<string, string | ((ctx: DeeplinkContext) => strin
     return `https://map.kakao.com/link/search/${dest}`;
   },
   tel: () => "tel:",
-  "ticket.view": () => "glango://ticket/view",
-  "parking.register": () => "glango://parking/register",
-  "zoom.join": () => "glango://zoom/join",
-  "file.open": (ctx) => ctx.file_url ?? "glango://file/deck",
-  "card.qr": () => "glango://card/qr",
+  "ticket.view": () => "rimvio://ticket/view",
+  "parking.register": () => "rimvio://parking/register",
+  "zoom.join": () => "rimvio://zoom/join",
+  "file.open": (ctx) => ctx.file_url ?? "rimvio://file/deck",
+  "card.qr": () => "rimvio://card/qr",
   "order.pickup": (ctx) => {
     const item = encodeURIComponent(ctx.label ?? "샐러드");
-    return `glango://order/pickup?item=${item}`;
+    return `rimvio://order/pickup?item=${item}`;
   },
-  "gym.barcode": () => "glango://gym/barcode",
-  "calendar.view": () => "glango://calendar/today",
-  "roaming.esim": () => "glango://roaming/esim",
-  "finance.fx": () => "glango://finance/fx",
-  "passport.check": () => "glango://passport/check",
-  "transit.ic_card": () => "glango://transit/ic-card",
+  "gym.barcode": () => "rimvio://gym/barcode",
+  "calendar.view": () => "rimvio://calendar/today",
+  "roaming.esim": () => "rimvio://roaming/esim",
+  "finance.fx": () => "rimvio://finance/fx",
+  "passport.check": () => "rimvio://passport/check",
+  "transit.ic_card": () => "rimvio://transit/ic-card",
   "search.web": (ctx) => {
     const q = encodeURIComponent(ctx.label ?? "travel prep");
     return `https://www.google.com/search?q=${q}`;
   },
   "chat.followup": (ctx) => {
     const q = encodeURIComponent(ctx.label ?? "help me prepare");
-    return `glango://chat/followup?q=${q}`;
+    return `rimvio://chat/followup?q=${q}`;
   },
 };
 
@@ -51,7 +51,7 @@ export function resolvePluginDeeplink(
 
   const entry = PLUGIN_DEEPLINKS[plugin.trim()];
   if (!entry) {
-    return `glango://${plugin.replace(/\./g, "/")}`;
+    return `rimvio://${plugin.replace(/\./g, "/")}`;
   }
 
   return typeof entry === "function" ? entry(context) : entry;

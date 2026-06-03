@@ -25,7 +25,7 @@ import {
   ingestScheduleSignal,
 } from "@/lib/events/event-ingest-pipeline";
 import { handlePackingItemToggle } from "@/lib/trip-controller/orchestrate-trip-interaction";
-import { GLANGO_CONVERSATION_LINES } from "@/lib/action-chat/glango-persona";
+import { RIMVIO_CONVERSATION_LINES } from "@/lib/action-chat/rimvio-persona";
 import { resolveClientRecoveryText } from "@/lib/action-chat/fallback-recovery/apply-fallback-recovery";
 import { submitLiveTurn } from "@/lib/self-learning/submit-live-turn-client";
 import type {
@@ -749,7 +749,7 @@ export function useActionChat(
       };
 
       const userMessage = createMessage("user", input.prompt);
-      const assistantMessage = createMessage("assistant", GLANGO_CONVERSATION_LINES.loading);
+      const assistantMessage = createMessage("assistant", RIMVIO_CONVERSATION_LINES.loading);
       const current = readActionChatMessages(scopeId);
       persist([...current, userMessage, assistantMessage]);
       setSending(true);
@@ -953,9 +953,9 @@ export function useActionChat(
 
 
 
-    window.addEventListener("glango:transport-live-refresh", onRefresh);
+    window.addEventListener("rimvio:transport-live-refresh", onRefresh);
 
-    return () => window.removeEventListener("glango:transport-live-refresh", onRefresh);
+    return () => window.removeEventListener("rimvio:transport-live-refresh", onRefresh);
 
   }, [persist, scopeId]);
 
@@ -979,7 +979,7 @@ export function useActionChat(
 
 
 
-    const flagKey = `glango:transport-nudge:${nudge.scheduleTime}:${nudge.scheduleTask}`;
+    const flagKey = `rimvio:transport-nudge:${nudge.scheduleTime}:${nudge.scheduleTask}`;
 
     if (typeof window !== "undefined" && sessionStorage.getItem(flagKey)) {
 
@@ -1448,7 +1448,7 @@ export function useActionChat(
       if (pendingFocusConfirm && pendingAttachments.length === 0 && trimmed) {
         if (isFocusConfirmSpeech(trimmed)) {
           const hasAccess = await ensureNotificationAccessForFocus(() => {
-            toast.message("알림 맡기기", "설정에서 Glango 알림 접근을 켜주세요");
+            toast.message("알림 맡기기", "설정에서 Rimvio 알림 접근을 켜주세요");
           });
           persist(
             applyFocusConfirmToMessages(
@@ -1869,7 +1869,7 @@ export function useActionChat(
 
       const loadingId = crypto.randomUUID();
 
-      const loadingMessage = createMessage("assistant", GLANGO_CONVERSATION_LINES.loading, {
+      const loadingMessage = createMessage("assistant", RIMVIO_CONVERSATION_LINES.loading, {
 
         id: loadingId,
 
@@ -2217,7 +2217,7 @@ export function useActionChat(
 
           error instanceof FetchTimeoutError
 
-            ? GLANGO_CONVERSATION_LINES.timeout
+            ? RIMVIO_CONVERSATION_LINES.timeout
 
             : resolveClientRecoveryText(trimmed);
 
@@ -2296,7 +2296,7 @@ export function useActionChat(
   const confirmInlineFocus = useCallback(
     async (messageId: string) => {
       const hasAccess = await ensureNotificationAccessForFocus(() => {
-        toast.message("알림 맡기기", "설정에서 Glango 알림 접근을 켜주세요");
+        toast.message("알림 맡기기", "설정에서 Rimvio 알림 접근을 켜주세요");
       });
       const current = readActionChatMessages(scopeId);
       persist(applyFocusConfirmToMessages(current, messageId));

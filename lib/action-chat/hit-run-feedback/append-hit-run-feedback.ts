@@ -8,7 +8,7 @@ import type {
 const DEFAULT_LOG = join(process.cwd(), ".cursor", "hit-run-feedback.jsonl");
 
 export function getHitRunFeedbackLogPath(): string {
-  return process.env.GLANGO_HIT_RUN_FEEDBACK_LOG ?? DEFAULT_LOG;
+  return process.env.RIMVIO_HIT_RUN_FEEDBACK_LOG ?? DEFAULT_LOG;
 }
 
 function pickRouting(metadata?: Record<string, unknown>) {

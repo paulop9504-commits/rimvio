@@ -5,7 +5,7 @@ import {
   shoppingLossPreventionMetric,
   studyLossPreventionMetric,
 } from "../lib/routing/l0-value-metric";
-import { routeGlangoL0 } from "../lib/routing/glango-l0-orchestrator";
+import { routeRimvioL0 } from "../lib/routing/rimvio-l0-orchestrator";
 
 assert.match(
   studyLossPreventionMetric(
@@ -34,7 +34,7 @@ assert.match(
   /손실\(감가\) 예상/
 );
 
-const ipad = routeGlangoL0({
+const ipad = routeRimvioL0({
   kind: "link",
   url: "https://web.joongna.com/product/123",
   domain: "web.joongna.com",

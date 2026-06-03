@@ -135,7 +135,7 @@ export function buildTrueCostReceipt(input: {
     {
       kind: "net_hold",
       icon: "💡",
-      label: `Glango ${holdMonths}개월 순보유비용`,
+      label: `Rimvio ${holdMonths}개월 순보유비용`,
       amount: netHoldCost,
       signed: "neutral",
     },

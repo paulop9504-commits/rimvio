@@ -1,6 +1,6 @@
 import { notifyLinkActionResult } from "@/lib/actions/notify-link-action-result";
 import { runLinkActionForLink } from "@/lib/actions/run-link-action-for-link";
-import { executeDeepLinkDispatchAction } from "@/lib/deep-link-dispatch/execute-glango-action";
+import { executeDeepLinkDispatchAction } from "@/lib/deep-link-dispatch/execute-rimvio-action";
 import { trackActionClick, analyticsFromLink } from "@/lib/analytics/track-client";
 import { upsertContextContainer, touchContextContainer } from "@/lib/containers/context-containers";
 import { normalizeEnricherContext } from "@/lib/enrichers/context";
@@ -23,7 +23,7 @@ export async function runFeedLinkAction(
 ) {
   if (action.payload?.transportLiveRefresh === true) {
     window.dispatchEvent(
-      new CustomEvent("glango:transport-live-refresh", {
+      new CustomEvent("rimvio:transport-live-refresh", {
         detail: {
           stopId: action.payload.stopId,
           routeId: action.payload.routeId,
@@ -34,11 +34,11 @@ export async function runFeedLinkAction(
     return;
   }
 
-  if (action.href?.startsWith("glango://container/")) {
+  if (action.href?.startsWith("rimvio://container/")) {
     const title =
       typeof action.payload?.containerTitle === "string"
         ? action.payload.containerTitle
-        : decodeURIComponent(action.href.replace("glango://container/", ""));
+        : decodeURIComponent(action.href.replace("rimvio://container/", ""));
     upsertContextContainer({ title });
     touchContextContainer(title);
     toast.success(`「${title}」 컨테이너에 저장했어요`);
@@ -50,7 +50,7 @@ export async function runFeedLinkAction(
     executeDeepLinkDispatchAction(action);
     recordActionTrustSuccess();
     markFirstActionSuccess();
-    window.dispatchEvent(new CustomEvent("glango:first-action"));
+    window.dispatchEvent(new CustomEvent("rimvio:first-action"));
     return;
   }
 
@@ -80,7 +80,7 @@ export async function runFeedLinkAction(
 
   markFirstActionSuccess();
   recordActionTrustSuccess();
-  window.dispatchEvent(new CustomEvent("glango:first-action"));
+  window.dispatchEvent(new CustomEvent("rimvio:first-action"));
 
   notifyLinkActionResult(result, action, copy);
 }

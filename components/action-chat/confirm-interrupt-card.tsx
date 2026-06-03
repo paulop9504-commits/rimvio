@@ -1,6 +1,6 @@
 "use client";
 
-import { GlangoActionButton } from "@/components/ui/glango-action-button";
+import { RimvioActionButton } from "@/components/ui/rimvio-action-button";
 
 type ConfirmInterruptCardProps = {
   userMessage: string;
@@ -20,12 +20,12 @@ export function ConfirmInterruptCard({
       </p>
       <p className="text-[11px] text-amber-800/70">입력: “{userMessage.slice(0, 48)}”</p>
       <div className="grid grid-cols-2 gap-2">
-        <GlangoActionButton variant="primary" onClick={onResume}>
+        <RimvioActionButton variant="primary" onClick={onResume}>
           작업 마무리
-        </GlangoActionButton>
-        <GlangoActionButton variant="secondary" onClick={onCancel}>
+        </RimvioActionButton>
+        <RimvioActionButton variant="secondary" onClick={onCancel}>
           다른 질문에 답하기
-        </GlangoActionButton>
+        </RimvioActionButton>
       </div>
     </div>
   );

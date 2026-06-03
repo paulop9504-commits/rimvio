@@ -47,8 +47,8 @@ export function PackingChecklistStrip({
               className={cn(
                 "flex w-full items-center gap-2 rounded-xl border px-3 py-2 text-left text-sm transition-colors",
                 item.checked
-                  ? "border-emerald-300 bg-glango-surface text-emerald-900 line-through opacity-80"
-                  : "border-emerald-100 bg-glango-surface/80 text-emerald-950 hover:bg-glango-surface"
+                  ? "border-emerald-300 bg-rimvio-surface text-emerald-900 line-through opacity-80"
+                  : "border-emerald-100 bg-rimvio-surface/80 text-emerald-950 hover:bg-rimvio-surface"
               )}
             >
               <span className="font-mono text-[13px]">{item.checked ? "[v]" : "[ ]"}</span>

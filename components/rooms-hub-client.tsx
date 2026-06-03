@@ -88,7 +88,7 @@ export function RoomsHubClient() {
                     href={`/r/${room.slug}`}
                     className={cn(
                       "flex flex-1 items-center justify-center rounded-[14px] py-2.5 text-sm font-semibold text-white",
-                      "bg-glango-neon-purple active:scale-[0.98]"
+                      "bg-rimvio-neon-purple active:scale-[0.98]"
                     )}
                   >
                     ?�기
@@ -116,7 +116,7 @@ export function RoomsHubClient() {
               onChange={(event) => setNewRoomName(event.target.value)}
               placeholder="�??�름 (?? 주말 ?�행)"
               className={cn(
-                "h-11 w-full rounded-2xl border-0 bg-glango-surface-muted px-4 text-sm outline-none",
+                "h-11 w-full rounded-2xl border-0 bg-rimvio-surface-muted px-4 text-sm outline-none",
                 "focus:ring-2 focus:ring-[#007AFF]/30"
               )}
               maxLength={24}
@@ -144,8 +144,8 @@ export function RoomsHubClient() {
             onClick={() => setCreating(true)}
             className={cn(
               "flex items-center justify-center gap-2 py-4 text-sm font-medium text-muted-foreground",
-              "rounded-2xl border border-dashed border-border bg-glango-surface/50",
-              "transition-colors hover:text-foreground active:bg-glango-surface"
+              "rounded-2xl border border-dashed border-border bg-rimvio-surface/50",
+              "transition-colors hover:text-foreground active:bg-rimvio-surface"
             )}
           >
             <Plus className="size-4" />

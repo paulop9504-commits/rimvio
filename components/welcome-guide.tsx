@@ -3,64 +3,72 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { ChevronRight } from "lucide-react";
 import { AuthPanel } from "@/components/auth-panel";
-import { GlangoLogo } from "@/components/glango-logo";
+import { AuthSetupPanel } from "@/components/auth-setup-panel";
+import { useAuth } from "@/hooks/use-auth";
+import { RimvioLogo } from "@/components/rimvio-logo";
 import { InboxLinkInput } from "@/components/inbox-link-input";
-import { GlangoAppManualPanel } from "@/components/glango-app-manual-panel";
 import { SettingsProfilePanel } from "@/components/settings-profile-panel";
 import { SettingsIntegrationsPanel } from "@/components/settings-integrations-panel";
+import { SettingsSection } from "@/components/settings/settings-section";
 import { useCopy } from "@/hooks/use-copy";
-import { GLANGO } from "@/lib/brand/glango";
+import { RIMVIO } from "@/lib/brand/rimvio";
 import { IOS } from "@/lib/ui/ios-surface";
 import { isAndroid, isIOS, isStandalonePwa } from "@/lib/platform/device";
 import { cn } from "@/lib/utils";
 
-function Step({
-  n,
-  title,
-  children,
+function InstallSteps({
+  platform,
 }: {
-  n: number;
-  title: string;
-  children: React.ReactNode;
+  platform: "ios" | "android";
 }) {
-  return (
-    <li className="flex gap-3">
-      <span
-        className={cn(
-          "flex size-7 shrink-0 items-center justify-center rounded-full",
-          "bg-glango-neon-purple text-xs font-bold text-white"
-        )}
-      >
-        {n}
-      </span>
-      <div className="min-w-0 pt-0.5">
-        <p className="text-sm font-semibold">{title}</p>
-        <div className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          {children}
-        </div>
-      </div>
-    </li>
-  );
-}
+  const copy = useCopy();
 
-function IosSection({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
+  const steps =
+    platform === "android"
+      ? [
+          { title: copy.welcome.androidStep1Title, body: copy.welcome.androidStep1Body },
+          {
+            title: copy.welcome.androidStep2Title,
+            body: copy.welcome.androidStep2Body(RIMVIO.name),
+          },
+          { title: copy.welcome.androidStep3Title, body: copy.welcome.androidStep3Body },
+        ]
+      : [
+          { title: copy.welcome.iosStep1Title, body: copy.welcome.iosStep1Body },
+          { title: copy.welcome.iosStep2Title, body: copy.welcome.iosStep2Body },
+          {
+            title: copy.inbox.title,
+            body: `${copy.inbox.paste}${copy.welcome.iosStep3Body}`,
+          },
+        ];
+
   return (
-    <section className={cn("p-4", IOS.cardSm)}>
-      <h2 className="text-sm font-semibold">{title}</h2>
-      {children}
-    </section>
+    <ol className="space-y-2">
+      {steps.map((step, index) => (
+        <li
+          key={step.title}
+          className="flex gap-3 rounded-xl bg-rimvio-surface-muted/60 px-3 py-2.5"
+        >
+          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-white/[0.08] text-[11px] font-semibold tabular-nums text-muted-foreground">
+            {index + 1}
+          </span>
+          <div className="min-w-0">
+            <p className="text-[13px] font-medium text-foreground">{step.title}</p>
+            <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
+              {step.body}
+            </p>
+          </div>
+        </li>
+      ))}
+    </ol>
   );
 }
 
 export function WelcomeGuide() {
   const copy = useCopy();
+  const { configured: authConfigured } = useAuth();
   const searchParams = useSearchParams();
   const showPaste = searchParams.get("paste") === "1";
   const [platform, setPlatform] = useState<"ios" | "android" | "other">("other");
@@ -74,122 +82,72 @@ export function WelcomeGuide() {
     } else {
       setPlatform("other");
     }
-
     setStandalone(isStandalonePwa());
   }, [searchParams]);
 
   return (
-    <div className="flex flex-col gap-[var(--space-phi)] pb-[var(--space-phi2)]">
-      <section className={cn("px-[var(--space-phi)] py-[var(--space-phi2)]", IOS.card)}>
-        <GlangoLogo size="lg" framed className="mb-3" showWordmark showKo />
-        <h2 className="text-lg font-semibold tracking-tight">
-          {copy.welcome.headline}
-        </h2>
-        <p className="mt-1 text-sm font-medium tracking-tight text-[#4A90E2]">
-          {copy.welcome.northStar}
-        </p>
-        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          {copy.welcome.body}
-          <strong className="font-medium text-foreground">
-            {copy.welcome.bodyStrong}
-          </strong>
-          {copy.welcome.bodyEnd}
-        </p>
-        {standalone ? (
-          <p className="mt-3 text-xs font-medium text-glango-neon-cyan">
-            ✓ {copy.welcome.pwaOk}
-          </p>
-        ) : null}
-      </section>
+    <div className="mx-auto flex max-w-lg flex-col gap-4 px-4 pb-8 pt-2">
+      <header className="flex items-center gap-3 border-b border-white/[0.06] pb-4">
+        <RimvioLogo size="sm" appearance="white" />
+        <div className="min-w-0">
+          <h1 className="text-xl font-semibold tracking-tight">{copy.nav.settings}</h1>
+          <p className="mt-0.5 text-[13px] text-muted-foreground">{RIMVIO.lockup}</p>
+        </div>
+      </header>
 
-      <GlangoAppManualPanel className="mx-4" />
+      <SettingsProfilePanel variant="embedded" />
 
       {showPaste ? (
-        <section className={cn("p-4", IOS.cardSm)}>
-          <h2 className="text-sm font-semibold">{copy.inbox.paste}</h2>
-          <div className="mt-3">
-            <InboxLinkInput />
-          </div>
-        </section>
+        <SettingsSection title={copy.inbox.paste} description={copy.inbox.pasteSubhint}>
+          <InboxLinkInput />
+        </SettingsSection>
       ) : null}
 
-      {platform === "android" ? (
-        <IosSection title={copy.welcome.androidSection}>
-          <ol className="mt-3 space-y-4">
-            <Step n={1} title={copy.welcome.androidStep1Title}>
-              {copy.welcome.androidStep1Body}
-            </Step>
-            <Step n={2} title={copy.welcome.androidStep2Title}>
-              {copy.welcome.androidStep2Body(GLANGO.name)}
-            </Step>
-            <Step n={3} title={copy.welcome.androidStep3Title}>
-              {copy.welcome.androidStep3Body}
-            </Step>
-          </ol>
-        </IosSection>
-      ) : null}
-
-      {platform === "ios" ? (
-        <IosSection title={copy.welcome.iosSection}>
-          <ol className="mt-3 space-y-4">
-            <Step n={1} title={copy.welcome.iosStep1Title}>
-              {copy.welcome.iosStep1Body}
-            </Step>
-            <Step n={2} title={copy.welcome.iosStep2Title}>
-              {copy.welcome.iosStep2Body}
-            </Step>
-            <Step n={3} title={copy.inbox.title}>
-              <Link href="/welcome?paste=1" className="font-medium text-glango-neon-cyan">
-                {copy.inbox.paste}
-              </Link>
-              {copy.welcome.iosStep3Body}
-            </Step>
-          </ol>
-        </IosSection>
-      ) : null}
-
-      {platform === "other" ? (
-        <IosSection title={copy.welcome.desktopSection}>
-          <div className="mt-2 text-xs leading-relaxed text-muted-foreground">
-            <Link href="/welcome?paste=1" className="text-glango-neon-cyan">
+      {platform !== "other" ? (
+        <SettingsSection
+          title={platform === "ios" ? copy.welcome.iosSection : copy.welcome.androidSection}
+          description={standalone ? copy.welcome.pwaOk : undefined}
+        >
+          <InstallSteps platform={platform} />
+        </SettingsSection>
+      ) : (
+        <SettingsSection title={copy.welcome.desktopSection}>
+          <p className="text-[13px] leading-relaxed text-muted-foreground">
+            <Link href="/welcome?paste=1" className="font-medium text-foreground underline-offset-2 hover:underline">
               {copy.inbox.paste}
             </Link>
             {copy.welcome.desktopEnd}
-          </div>
-        </IosSection>
-      ) : null}
+          </p>
+        </SettingsSection>
+      )}
 
-      <SettingsProfilePanel className="mx-4" />
+      {authConfigured ? (
+        <SettingsSection title={copy.auth.googleLogin}>
+          <AuthPanel nextPath="/welcome" variant="embedded" />
+        </SettingsSection>
+      ) : (
+        <AuthSetupPanel variant="embedded" />
+      )}
 
-      <SettingsIntegrationsPanel />
+      <SettingsIntegrationsPanel variant="embedded" />
 
-      <div className={cn("p-4", IOS.cardSm)}>
-        <AuthPanel nextPath="/welcome" />
-      </div>
-
-      <section className={cn("p-4", IOS.cardSm)}>
-        <h2 className="text-sm font-semibold">{copy.welcome.privacyTitle}</h2>
-        <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-          {copy.welcome.privacyBody} {copy.welcome.privacyLoginNote}
-        </p>
+      <SettingsSection title={copy.welcome.privacyTitle}>
         <Link
           href="/privacy"
-          className="mt-3 inline-block text-xs font-medium text-glango-neon-cyan"
+          className="flex items-center justify-between gap-2 rounded-xl bg-rimvio-surface-muted/50 px-3 py-2.5 text-[14px] font-medium text-foreground transition-colors hover:bg-white/[0.04]"
         >
-          {copy.welcome.privacyLink} →
+          {copy.welcome.privacyLink}
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
         </Link>
-      </section>
+      </SettingsSection>
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 pt-1">
         <Link href="/" className={cn("flex-1 text-center", IOS.primaryBtn)}>
           {copy.welcome.openFeed}
         </Link>
         <Link
           href="/welcome?paste=1"
-          className={cn(
-            "flex-1 py-3 text-center text-[15px] font-semibold",
-            IOS.secondaryBtn
-          )}
+          className={cn("flex-1 py-3 text-center text-[15px] font-semibold", IOS.secondaryBtn)}
         >
           {copy.welcome.addLink}
         </Link>

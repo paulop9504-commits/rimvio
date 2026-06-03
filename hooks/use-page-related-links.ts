@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { RelatedLinkPreview } from "@/lib/links/discover-related-links";
 import type { LinkRow } from "@/types/database";
 
-const SESSION_PREFIX = "glango:related:";
+const SESSION_PREFIX = "rimvio:related:";
 
 function cacheKey(link: LinkRow) {
   return `${SESSION_PREFIX}${link.original_url}`;

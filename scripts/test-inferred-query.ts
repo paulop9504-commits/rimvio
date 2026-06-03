@@ -141,19 +141,19 @@ assert.equal(urlInferred.content_title, "Never Gonna Give You Up");
 
 const posterInferred = resolveInferredCaptureIntent({
   intent: detectCaptureIntent({
-    text: "티켓 Glango Launch Party 2026/05/30 COEX Hall A",
+    text: "티켓 Rimvio Launch Party 2026/05/30 COEX Hall A",
   })!,
   captureVision: {
     type: "poster_contact",
-    search_query: "Glango Launch Party 5/30 COEX",
-    place_name_or_product: "Glango Launch Party",
+    search_query: "Rimvio Launch Party 5/30 COEX",
+    place_name_or_product: "Rimvio Launch Party",
     confidence_score: 0.84,
     reasoning_path: "포스터에서 행사명+일시+장소 추출",
     is_ocr_relied: false,
   },
 });
 
-assert.match(posterInferred.search_query, /Glango Launch Party/);
+assert.match(posterInferred.search_query, /Rimvio Launch Party/);
 assert.equal(posterInferred.is_ocr_relied, false);
 
 const weakVisionInferred = resolveInferredCaptureIntent({

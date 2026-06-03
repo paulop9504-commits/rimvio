@@ -1,6 +1,6 @@
 import * as React from "react"
 
-import { glangoNeonCardClass } from "@/lib/brand/glango-neon-theme";
+import { rimvioNeonCardClass } from "@/lib/brand/rimvio-neon-theme";
 import { cn } from "@/lib/utils"
 
 const Card = React.forwardRef<
@@ -10,7 +10,7 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      glangoNeonCardClass,
+      rimvioNeonCardClass,
       "text-card-foreground shadow-[0_12px_48px_-16px_rgba(0,0,0,0.85)]",
       className
     )}

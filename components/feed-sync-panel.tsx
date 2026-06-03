@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { useRealtimeLinksOptional } from "@/hooks/use-realtime-links";
-import { GLANGO } from "@/lib/brand/glango";
+import { RIMVIO } from "@/lib/brand/rimvio";
 import { copy } from "@/lib/copy/human-ko";
 import {
   exportLocalLinksJson,
@@ -24,14 +24,14 @@ export function FeedSyncPanel({ className }: FeedSyncPanelProps) {
   const handleExport = async () => {
     const source = realtime?.links ?? readLocalLinks();
     const json = exportLocalLinksJson(source);
-    const filename = `glango-feed-${new Date().toISOString().slice(0, 10)}.json`;
+    const filename = `rimvio-feed-${new Date().toISOString().slice(0, 10)}.json`;
 
     try {
       if (typeof navigator !== "undefined" && navigator.share) {
         const file = new File([json], filename, { type: "application/json" });
         if (navigator.canShare?.({ files: [file] })) {
           await navigator.share({
-            title: `${GLANGO.name} 내 링크 백업`,
+            title: `${RIMVIO.name} 내 링크 백업`,
             files: [file],
           });
           toast.success(copy.sync.exportShared);

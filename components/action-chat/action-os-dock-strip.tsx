@@ -31,7 +31,7 @@ export function ActionOsDockStrip({
           key={`${action.label}-${action.execution.uri}`}
           type="button"
           onClick={() => onAction(action)}
-          className="rounded-full border border-[#4A90E2]/25 bg-glango-surface px-3.5 py-2 text-sm font-medium text-[#1a1a1a] shadow-sm transition-colors hover:bg-[#F0F7FF]"
+          className="rounded-full border border-[#4A90E2]/25 bg-rimvio-surface px-3.5 py-2 text-sm font-medium text-[#1a1a1a] shadow-sm transition-colors hover:bg-[#F0F7FF]"
         >
           {action.label}
         </button>

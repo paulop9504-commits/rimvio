@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 /**
- * Strip near-black plate from glango-logo-source.png → transparent UI mark.
+ * Strip near-black plate from rimvio-logo-source.png → transparent UI mark.
  * Usage: npm run brand:transparent-logo
  */
 
@@ -9,9 +9,9 @@ import path from "node:path";
 import { chromium } from "@playwright/test";
 
 const ROOT = process.cwd();
-const SOURCE = path.join(ROOT, "public", "brand", "glango-logo-source.png");
-const OUT = path.join(ROOT, "public", "brand", "glango-logo-transparent.png");
-const OUT_WHITE = path.join(ROOT, "public", "brand", "glango-logo-white.png");
+const SOURCE = path.join(ROOT, "public", "brand", "rimvio-logo-source.png");
+const OUT = path.join(ROOT, "public", "brand", "rimvio-logo-transparent.png");
+const OUT_WHITE = path.join(ROOT, "public", "brand", "rimvio-logo-white.png");
 
 /** Pixels at or below this luminance become transparent (keeps anti-alias fringe). */
 const BLACK_THRESHOLD = 28;
@@ -99,8 +99,8 @@ async function main() {
   fs.writeFileSync(OUT_WHITE, Buffer.from(pngBuffer.white));
   const kb = Math.round(fs.statSync(OUT).size / 1024);
   const whiteKb = Math.round(fs.statSync(OUT_WHITE).size / 1024);
-  console.log(`✓ public/brand/glango-logo-transparent.png (${kb} KB)`);
-  console.log(`✓ public/brand/glango-logo-white.png (${whiteKb} KB)`);
+  console.log(`✓ public/brand/rimvio-logo-transparent.png (${kb} KB)`);
+  console.log(`✓ public/brand/rimvio-logo-white.png (${whiteKb} KB)`);
 }
 
 main().catch((error) => {

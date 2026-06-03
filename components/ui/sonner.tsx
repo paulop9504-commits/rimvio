@@ -37,11 +37,11 @@ const Toaster = ({ ...props }: ToasterProps) => {
         duration: TOAST_DURATION_MS,
         unstyled: true,
         classNames: {
-          toast: "glango-toast",
-          title: "glango-toast-title",
-          description: "glango-toast-description",
-          actionButton: "glango-toast-action",
-          cancelButton: "glango-toast-cancel",
+          toast: "rimvio-toast",
+          title: "rimvio-toast-title",
+          description: "rimvio-toast-description",
+          actionButton: "rimvio-toast-action",
+          cancelButton: "rimvio-toast-cancel",
         },
       }}
       {...props}

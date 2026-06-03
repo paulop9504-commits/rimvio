@@ -3,7 +3,7 @@ import type { SaveTrajectoryEntry } from "@/lib/intent/kernel-types";
 export const BURST_WINDOW_MS = 10 * 60 * 1000;
 export const BURST_THRESHOLD = 5;
 
-const ACTIVE_BURST_KEY = "glango:trajectory-burst-session";
+const ACTIVE_BURST_KEY = "rimvio:trajectory-burst-session";
 
 type ActiveBurstState = {
   burst_session_id: string;

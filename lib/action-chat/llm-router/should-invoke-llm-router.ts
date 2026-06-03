@@ -11,7 +11,7 @@ export function isLlmRouterEnabled(): boolean {
   if (!isOpenAiConfigured()) {
     return false;
   }
-  const flag = process.env.GLANGO_LLM_ROUTER?.trim().toLowerCase();
+  const flag = process.env.RIMVIO_LLM_ROUTER?.trim().toLowerCase();
   if (flag === "0" || flag === "false" || flag === "off") {
     return false;
   }

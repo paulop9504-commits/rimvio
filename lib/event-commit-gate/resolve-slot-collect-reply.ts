@@ -284,7 +284,7 @@ export function orchestrateSlotCollectContinuation(input: {
           id: "nav-resume",
           kind: "open",
           label: `${trimmed} 길찾기`,
-          href: `glango://navigate?place=${encodeURIComponent(trimmed)}`,
+          href: `rimvio://navigate?place=${encodeURIComponent(trimmed)}`,
           payload: { place: trimmed },
         },
       ],

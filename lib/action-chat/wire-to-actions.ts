@@ -102,9 +102,9 @@ export function wireActionsToLinkItems(
       const label = action.label?.trim() || "열기";
       const url = action.url.trim();
 
-      if (/^glango:\/\/global-brain\//i.test(url)) {
+      if (/^rimvio:\/\/global-brain\//i.test(url)) {
         const code = decodeURIComponent(
-          url.replace(/^glango:\/\/global-brain\//i, "").split("?")[0] ?? ""
+          url.replace(/^rimvio:\/\/global-brain\//i, "").split("?")[0] ?? ""
         );
         return {
           id: `global-brain-${index}`,

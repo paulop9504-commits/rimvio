@@ -8,7 +8,7 @@ export type SessionIntentState = {
   updatedAt: string;
 };
 
-const STORAGE_KEY = "glango-session-intent.v1";
+const STORAGE_KEY = "rimvio-session-intent.v1";
 const DEFAULT_SCOPE = "default";
 
 let memoryByScope = new Map<string, SessionIntentState>();

@@ -56,8 +56,8 @@ export function usePredictiveDock(input: {
       return;
     }
     const onConsumed = () => setConsumedRevision((value) => value + 1);
-    window.addEventListener("glango:opportunity-consumed", onConsumed);
-    return () => window.removeEventListener("glango:opportunity-consumed", onConsumed);
+    window.addEventListener("rimvio:opportunity-consumed", onConsumed);
+    return () => window.removeEventListener("rimvio:opportunity-consumed", onConsumed);
   }, [clientReady]);
 
   const lastUserMessage = useMemo(() => {

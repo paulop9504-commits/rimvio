@@ -29,7 +29,7 @@ export function ComposerAttachmentStrip({
       {attachments.map((item) => (
         <div
           key={item.id}
-          className="group relative shrink-0 overflow-hidden rounded-xl border border-border bg-glango-surface shadow-sm"
+          className="group relative shrink-0 overflow-hidden rounded-xl border border-border bg-rimvio-surface shadow-sm"
         >
           {item.kind === "image" && item.previewUrl ? (
             <img

@@ -16,8 +16,8 @@ export type FocusSessionRecord = {
   heldShadowIds: string[];
 };
 
-export const FOCUS_SESSION_STORAGE_KEY = "glango.focus-session.v1";
-export const FOCUS_SESSION_UPDATED = "glango-focus-session-updated";
+export const FOCUS_SESSION_STORAGE_KEY = "rimvio.focus-session.v1";
+export const FOCUS_SESSION_UPDATED = "rimvio-focus-session-updated";
 
 let memorySession: FocusSessionRecord | null = null;
 

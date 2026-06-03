@@ -1,7 +1,7 @@
 import type { BehaviorProfile, BehaviorSignal } from "@/lib/notification-shadow/types";
 import { findShadowRecord } from "@/lib/notification-shadow/shadow-store";
 
-const BEHAVIOR_KEY = "glango.shadow-behavior.v1";
+const BEHAVIOR_KEY = "rimvio.shadow-behavior.v1";
 
 let memoryProfile: BehaviorProfile = {};
 

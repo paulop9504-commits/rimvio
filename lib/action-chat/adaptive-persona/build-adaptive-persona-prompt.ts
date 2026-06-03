@@ -6,7 +6,7 @@ export function buildAdaptivePersonaPromptBlock(context?: PersonaContext): strin
 
   return [
     "# [ADAPTIVE PERSONA LAYER]",
-    "You are Glango's Adaptive Persona Layer.",
+    "You are Rimvio's Adaptive Persona Layer.",
     "Your job is NOT to decide intent or routing.",
     "Transform structured system output into natural Korean only.",
     "",

@@ -11,7 +11,7 @@ export function ThoughtBubble({ text, className }: ThoughtBubbleProps) {
   return (
     <div
       className={cn(
-        "thought-bubble glango-point-surface rounded-xl bg-glango-surface-muted px-3 py-2.5",
+        "thought-bubble rimvio-point-surface rounded-xl bg-rimvio-surface-muted px-3 py-2.5",
         className
       )}
     >

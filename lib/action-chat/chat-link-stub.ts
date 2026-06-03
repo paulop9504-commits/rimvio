@@ -3,10 +3,10 @@ import type { LinkRow } from "@/types/database";
 export const CHAT_LINK_STUB: LinkRow = {
   id: "action-chat",
   user_id: null,
-  original_url: "https://glango.app/chat",
-  title: "Glango Chat",
+  original_url: "https://rimvio.app/chat",
+  title: "Rimvio Chat",
   thumbnail_url: null,
-  domain: "glango.app",
+  domain: "rimvio.app",
   category: "uncategorized",
   actions: [],
   visual_mode: "brand",

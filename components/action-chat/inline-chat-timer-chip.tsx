@@ -5,7 +5,7 @@ import {
   formatInlineTimerClock,
   type InlineChatTimerWire,
 } from "@/lib/action-chat/mention-timer/inline-chat-timer";
-import { glangoEdgeCardClass } from "@/lib/brand/glango-neon-theme";
+import { rimvioEdgeCardClass } from "@/lib/brand/rimvio-neon-theme";
 import { cn } from "@/lib/utils";
 
 type InlineChatTimerChipProps = {
@@ -70,8 +70,8 @@ export function InlineChatTimerChip({
       onClick={togglePause}
       disabled={done}
       className={cn(
-        glangoEdgeCardClass("sm", done || running ? "green" : "magenta"),
-        "inline-chat-timer-chip inline-flex min-w-[7.25rem] w-fit flex-col gap-1.5 bg-glango-surface-raised px-4 py-2.5 text-left text-white",
+        rimvioEdgeCardClass("sm", done || running ? "green" : "magenta"),
+        "inline-chat-timer-chip inline-flex min-w-[7.25rem] w-fit flex-col gap-1.5 bg-rimvio-surface-raised px-4 py-2.5 text-left text-white",
         running && "inline-chat-timer-chip--running",
         done && "inline-chat-timer-chip--done",
         paused && !done && "inline-chat-timer-chip--paused",
@@ -93,8 +93,8 @@ export function InlineChatTimerChip({
           className={cn(
             "size-2 shrink-0 rounded-full shadow-[0_0_8px_currentColor]",
             done || running
-              ? "bg-glango-neon-green text-glango-neon-green"
-              : "bg-glango-neon-magenta text-glango-neon-magenta",
+              ? "bg-rimvio-neon-green text-rimvio-neon-green"
+              : "bg-rimvio-neon-magenta text-rimvio-neon-magenta",
           )}
           aria-hidden
         />

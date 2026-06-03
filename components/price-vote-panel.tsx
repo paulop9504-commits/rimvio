@@ -55,7 +55,7 @@ export function PriceVotePanel({
             type="button"
             disabled={disabled}
             onClick={handleSnapshot}
-            className="flex flex-col items-center gap-1 rounded-xl bg-glango-surface/80 py-2 ring-1 ring-orange-500/15 active:scale-[0.98]"
+            className="flex flex-col items-center gap-1 rounded-xl bg-rimvio-surface/80 py-2 ring-1 ring-orange-500/15 active:scale-[0.98]"
           >
             <span className="text-base leading-none">📸</span>
             <span className="text-[10px] font-medium text-foreground/85">
@@ -72,7 +72,7 @@ export function PriceVotePanel({
               "flex flex-col items-center gap-1 rounded-xl py-2 ring-1 active:scale-[0.98]",
               okCount > 0
                 ? "bg-emerald-500/12 ring-emerald-500/25"
-                : "bg-glango-surface/80 ring-orange-500/15"
+                : "bg-rimvio-surface/80 ring-orange-500/15"
             )}
           >
             <ThumbsUp className="size-3.5" />
@@ -91,7 +91,7 @@ export function PriceVotePanel({
               "flex flex-col items-center gap-1 rounded-xl py-2 ring-1 active:scale-[0.98]",
               highCount > 0
                 ? "bg-rose-500/12 ring-rose-500/25"
-                : "bg-glango-surface/80 ring-orange-500/15"
+                : "bg-rimvio-surface/80 ring-orange-500/15"
             )}
           >
             <ThumbsDown className="size-3.5" />

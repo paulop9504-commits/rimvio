@@ -13,8 +13,8 @@ async function main() {
   await page.waitForTimeout(1500);
 
   const state = await page.evaluate(() => ({
-    v1: localStorage.getItem("glango.sample-feed.v1"),
-    v2: localStorage.getItem("glango.sample-feed.v2"),
+    v1: localStorage.getItem("rimvio.sample-feed.v1"),
+    v2: localStorage.getItem("rimvio.sample-feed.v2"),
     links: localStorage.getItem("blink-local-links"),
     dismissed: localStorage.getItem("blink-dismissed-link-ids"),
     url: window.location.href,

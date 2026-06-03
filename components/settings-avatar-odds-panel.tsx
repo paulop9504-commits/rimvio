@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { GlangoAvatarMark } from "@/lib/brand/glango-smiley-mark";
+import { RimvioAvatarMark } from "@/lib/brand/rimvio-smiley-mark";
 import {
   listAvatarOddsDisplay,
   oddsHumanLine,
   getAvatarVariant,
-  type GlangoAvatarVariantId,
-} from "@/lib/brand/glango-avatar-colors";
+  type RimvioAvatarVariantId,
+} from "@/lib/brand/rimvio-avatar-colors";
 import { useCopy } from "@/hooks/use-copy";
 import { IOS } from "@/lib/ui/ios-surface";
 import { getRoomGuest, ROOM_GUEST_UPDATED } from "@/lib/rooms/guest-session";
@@ -20,7 +20,7 @@ type SettingsAvatarOddsPanelProps = {
 export function SettingsAvatarOddsPanel({ className }: SettingsAvatarOddsPanelProps) {
   const copy = useCopy();
   const odds = listAvatarOddsDisplay();
-  const [activeVariant, setActiveVariant] = useState<GlangoAvatarVariantId | null>(null);
+  const [activeVariant, setActiveVariant] = useState<RimvioAvatarVariantId | null>(null);
   const [avatarDrawn, setAvatarDrawn] = useState(false);
 
   const sync = useCallback(() => {
@@ -66,13 +66,13 @@ export function SettingsAvatarOddsPanel({ className }: SettingsAvatarOddsPanelPr
                 "rounded-2xl px-3 py-2.5 ring-1 transition-colors",
                 row.isUltraRare
                   ? "bg-gradient-to-r from-violet-500/10 via-fuchsia-500/10 to-violet-500/5 ring-violet-400/35"
-                  : "bg-glango-surface-muted/80 ring-glango-neon-purple/12",
+                  : "bg-rimvio-surface-muted/80 ring-rimvio-neon-purple/12",
                 active && "ring-2 ring-[#007AFF]/50"
               )}
             >
               <div className="flex items-center gap-2.5">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-glango-surface p-0.5 shadow-sm">
-                  <GlangoAvatarMark variant={row.id} pixels={30} crisp />
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-rimvio-surface p-0.5 shadow-sm">
+                  <RimvioAvatarMark variant={row.id} pixels={30} crisp />
                 </span>
 
                 <div className="min-w-0 flex-1">
@@ -81,7 +81,7 @@ export function SettingsAvatarOddsPanel({ className }: SettingsAvatarOddsPanelPr
                       {row.tierEmoji} {row.labelKo} 글?�고
                     </span>
                     {active ? (
-                      <span className="rounded-full bg-glango-neon-purple px-1.5 py-0.5 text-[9px] font-bold text-white">
+                      <span className="rounded-full bg-rimvio-neon-purple px-1.5 py-0.5 text-[9px] font-bold text-white">
                         {copy.settings.oddsMine}
                       </span>
                     ) : null}

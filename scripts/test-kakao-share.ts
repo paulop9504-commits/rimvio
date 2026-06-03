@@ -10,7 +10,7 @@ const text = buildKakaoShareText({
   domain: "musinsa.com",
 });
 
-assert.match(text, /글랑고/);
+assert.match(text, /림비오/);
 assert.match(text, /무신사 후드/);
 assert.match(text, /musinsa\.com/);
 

@@ -38,7 +38,7 @@ function readEntityTitle(message: ActionChatMessage) {
 function splitTitleBody(text: string) {
   const trimmed = text.trim();
   if (!trimmed) {
-    return { title: "글랑고 제안", body: "" };
+    return { title: "림비오 제안", body: "" };
   }
 
   const firstLine = trimmed.split("\n")[0]?.trim() ?? trimmed;
@@ -64,7 +64,7 @@ function splitTitleBody(text: string) {
     return { title: firstLine.replace(/\s*정보$/, "").trim() || firstLine, body: "" };
   }
 
-  return { title: "글랑고 제안", body: trimmed };
+  return { title: "림비오 제안", body: trimmed };
 }
 
 function resolveIcon(message: ActionChatMessage): LucideIcon {
@@ -138,7 +138,7 @@ export function resolveContainerPresentation(message: ActionChatMessage): Contai
   if (message.entityQuickPick) {
     return {
       icon: Sparkles,
-      title: "글랑고 제안",
+      title: "림비오 제안",
       body: message.entityQuickPick.lead,
       chips: message.entityQuickPick.options.map((option) => option.label),
     };

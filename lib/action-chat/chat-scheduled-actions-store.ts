@@ -7,7 +7,7 @@ export type PendingScheduledActionRecord = {
   extracted: ConfirmationExtractedData;
 };
 
-const STORAGE_KEY = "glango.scheduled-action-deliveries";
+const STORAGE_KEY = "rimvio.scheduled-action-deliveries";
 
 function readAll(): PendingScheduledActionRecord[] {
   if (typeof window === "undefined") {

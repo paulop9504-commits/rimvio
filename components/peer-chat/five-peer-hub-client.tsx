@@ -139,7 +139,7 @@ export function FivePeerHubClient() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="이름 (예: 지훈)"
-            className="h-11 w-full rounded-2xl border-0 bg-glango-surface-muted px-4 text-sm text-white outline-none placeholder:text-white/45 focus:ring-2 focus:ring-glango-neon-cyan/40"
+            className="h-11 w-full rounded-2xl border-0 bg-rimvio-surface-muted px-4 text-sm text-white outline-none placeholder:text-white/45 focus:ring-2 focus:ring-rimvio-neon-cyan/40"
             autoFocus
             onKeyDown={(e) => {
               if (e.key === "Enter") {
@@ -150,14 +150,14 @@ export function FivePeerHubClient() {
           <div className="flex gap-2">
             <button
               type="button"
-              className="flex-1 rounded-[14px] py-2.5 text-sm font-semibold text-glango-neon-cyan"
+              className="flex-1 rounded-[14px] py-2.5 text-sm font-semibold text-rimvio-neon-cyan"
               onClick={closeDialog}
             >
               취소
             </button>
             <button
               type="button"
-              className="glango-accent-submit-btn flex flex-1 items-center justify-center rounded-[14px] py-2.5 text-sm font-semibold text-white active:scale-[0.98]"
+              className="rimvio-accent-submit-btn flex flex-1 items-center justify-center rounded-[14px] py-2.5 text-sm font-semibold text-white active:scale-[0.98]"
               onClick={submit}
             >
               {mode === "contact_only" ? "추가하고 열기" : "저장하고 열기"}

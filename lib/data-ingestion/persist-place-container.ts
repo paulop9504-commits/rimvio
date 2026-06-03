@@ -11,7 +11,7 @@ import type {
   PlaceIngestionSchema,
 } from "@/lib/data-ingestion/types";
 
-const PLACE_STORE_KEY = "glango.place-containers.v1";
+const PLACE_STORE_KEY = "rimvio.place-containers.v1";
 
 let memoryPlaceStore: PlaceContainerRecord[] = [];
 

@@ -29,7 +29,7 @@ export function FeedStoryStack({
       <div
         className={cn(
           "relative min-h-0 flex-1 overflow-hidden rounded-[28px]",
-          "ring-1 ring-glango-neon-purple/15 shadow-[0_8px_32px_-16px_rgba(0,0,0,0.22)]",
+          "ring-1 ring-rimvio-neon-purple/15 shadow-[0_8px_32px_-16px_rgba(0,0,0,0.22)]",
           className
         )}
       >

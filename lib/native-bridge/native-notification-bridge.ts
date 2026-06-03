@@ -1,6 +1,6 @@
 import { ingestExternalNotification } from "@/lib/notification-shadow/ingest-adapters";
-import type { NativeNotificationPayload } from "@/lib/native-bridge/glango-native-bridge.types";
-import { GlangoNativeBridge, isAndroidShell } from "@/lib/native-bridge/glango-native-bridge";
+import type { NativeNotificationPayload } from "@/lib/native-bridge/rimvio-native-bridge.types";
+import { RimvioNativeBridge, isAndroidShell } from "@/lib/native-bridge/rimvio-native-bridge";
 
 /** Map Android package id → readable app label for shadow ingest. */
 function resolveSourceAppLabel(sourceApp: string): string {
@@ -42,7 +42,7 @@ export async function bootNativeNotificationBridge() {
     return;
   }
 
-  await GlangoNativeBridge.addListener("notificationPosted", (payload) => {
+  await RimvioNativeBridge.addListener("notificationPosted", (payload) => {
     ingestNativeNotificationPayload(payload);
   });
 }
@@ -51,7 +51,7 @@ export async function readNotificationAccessEnabled(): Promise<boolean> {
   if (!isAndroidShell()) {
     return false;
   }
-  const result = await GlangoNativeBridge.isNotificationAccessEnabled();
+  const result = await RimvioNativeBridge.isNotificationAccessEnabled();
   return result.enabled;
 }
 
@@ -60,7 +60,7 @@ export async function openNotificationAccessSettings() {
   if (!isAndroidShell()) {
     return;
   }
-  await GlangoNativeBridge.openNotificationAccessSettings();
+  await RimvioNativeBridge.openNotificationAccessSettings();
 }
 
 export async function ensureNotificationAccessForFocus(

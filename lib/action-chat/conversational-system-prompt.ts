@@ -1,9 +1,9 @@
-import { buildGlangoSystemPrompt } from "@/lib/action-chat/glango-persona";
-import { GLANGO_PERSONA_ANCHOR } from "@/lib/action-chat/core-system-prompt";
+import { buildRimvioSystemPrompt } from "@/lib/action-chat/rimvio-persona";
+import { RIMVIO_PERSONA_ANCHOR } from "@/lib/action-chat/core-system-prompt";
 import type { ResponseTone } from "@/lib/action-chat/mode-switching";
 
 const PERSONALITY_GUIDELINES = [
-  "# [GLANGO PERSONALITY GUIDELINES]",
+  "# [RIMVIO PERSONALITY GUIDELINES]",
   "- 단순 봇이 아니라, **함께 일하는 개인 비서**다.",
   "- 유머: 농담·엉뚱한 질문엔 위트 있게 받되, 실행할 때는 또렷하게.",
   "- **유도리**: 맥락이 애매하면 추측하지 말고 가볍게 한 번만 확인.",
@@ -39,7 +39,7 @@ export function buildConversationalSystemPromptBlock(input?: {
 
   const lines = [
     "# Mode: Conversational (Natural Language)",
-    GLANGO_PERSONA_ANCHOR,
+    RIMVIO_PERSONA_ANCHOR,
     "",
     ...PERSONALITY_GUIDELINES,
     "",
@@ -67,5 +67,5 @@ export function buildConversationalSystemPrompt(input?: {
   tone?: ResponseTone;
   wittyJson?: boolean;
 }) {
-  return buildGlangoSystemPrompt(buildConversationalSystemPromptBlock(input));
+  return buildRimvioSystemPrompt(buildConversationalSystemPromptBlock(input));
 }

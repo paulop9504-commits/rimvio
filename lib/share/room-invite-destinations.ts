@@ -1,4 +1,4 @@
-import { GLANGO } from "@/lib/brand/glango";
+import { RIMVIO } from "@/lib/brand/rimvio";
 import { buildRoomInviteText } from "@/lib/share/beam-share-text";
 import { buildRoomUrl } from "@/lib/share/beam-url";
 import { openHrefWithFallback } from "@/lib/actions/open-with-fallback";
@@ -111,7 +111,7 @@ export async function runRoomInviteDestination(
       title: room.name,
       original_url: buildRoomUrl(room.slug),
       category: null,
-      domain: GLANGO.domain,
+      domain: RIMVIO.domain,
     });
 
     if (appHref || webHref) {

@@ -1,6 +1,6 @@
 import type { PredictiveActionType } from "@/lib/predictive-dock/types";
 
-/** Glango Action Opportunity lifecycle — not raw buttons. */
+/** Rimvio Action Opportunity lifecycle — not raw buttons. */
 export type ActionOpportunityState = "ACTIVE" | "WARM" | "HIDDEN" | "EXPIRED";
 
 /** Conversation intent domain — drives Rule 1 (relevance). */
@@ -43,7 +43,7 @@ export type ActionOpportunityScoreBreakdown = {
   composite: number;
 };
 
-export const ACTION_OPPORTUNITY_PROTOCOL = `# Glango Action Opportunity (보조버튼)
+export const ACTION_OPPORTUNITY_PROTOCOL = `# Rimvio Action Opportunity (보조버튼)
 
 보조버튼 = Main Action이 아닌 **Action Opportunity**.
 "지금은 안 눌러도 되지만 곧 필요할 가능성이 높은 행동".

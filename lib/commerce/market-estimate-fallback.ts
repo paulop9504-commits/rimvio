@@ -35,7 +35,7 @@ export function estimateMedianFromTrueCost(input: {
   return {
     median,
     source: "true_cost_model",
-    detail: "Glango 감가 모델 기반 추정 시세",
+    detail: "Rimvio 감가 모델 기반 추정 시세",
   };
 }
 

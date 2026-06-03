@@ -381,7 +381,7 @@ export function extractCaptureOcrFromLink(
 export function shouldShowStudyReceipt(
   link: Pick<LinkRow, "title" | "actions" | "category" | "source_type" | "original_url">
 ): boolean {
-  if (link.source_type !== "screenshot" && !/glango\.app\/capture\//i.test(link.original_url)) {
+  if (link.source_type !== "screenshot" && !/rimvio\.app\/capture\//i.test(link.original_url)) {
     return false;
   }
 

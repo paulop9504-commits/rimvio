@@ -25,7 +25,7 @@ export type UserGoalWire = Pick<
   | "vitalityHint"
 >;
 
-const STORAGE_KEY = "glango-user-goals";
+const STORAGE_KEY = "rimvio-user-goals";
 let memoryGoals: UserGoal[] = [];
 
 export function resetUserGoalsForTests(items: UserGoal[] = []) {

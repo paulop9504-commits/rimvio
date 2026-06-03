@@ -4,7 +4,7 @@ export type ChatAxis = "decision" | "meal" | "schedule";
 
 export const CHAT_AXIS_ORDER: ChatAxis[] = ["decision", "meal", "schedule"];
 
-export const CHAT_AXIS_STORAGE_KEY = "glango.chat.axis.v1";
+export const CHAT_AXIS_STORAGE_KEY = "rimvio.chat.axis.v1";
 
 export type ChatAxisConfig = {
   id: ChatAxis;

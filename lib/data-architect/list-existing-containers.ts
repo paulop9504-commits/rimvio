@@ -3,7 +3,7 @@ import { CANONICAL_CONTAINER_REGISTRY } from "@/lib/containers/container-types";
 import type { PlaceContainerRecord } from "@/lib/data-ingestion/types";
 import type { ArchitectContainerRef } from "@/lib/data-architect/types";
 
-const PLACE_STORE_KEY = "glango.place-containers.v1";
+const PLACE_STORE_KEY = "rimvio.place-containers.v1";
 let memoryPlaceStore: PlaceContainerRecord[] = [];
 let memoryContextStore: ArchitectContainerRef[] = [];
 
@@ -28,7 +28,7 @@ function readContextStoreFromBrowser(): ArchitectContainerRef[] {
     return [...memoryContextStore];
   }
   try {
-    const raw = localStorage.getItem("glango.context-containers.v2");
+    const raw = localStorage.getItem("rimvio.context-containers.v2");
     if (!raw) {
       return [];
     }

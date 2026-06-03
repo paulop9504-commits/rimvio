@@ -125,7 +125,7 @@ function CalendarEmpty({ compact }: { compact?: boolean }) {
   return (
     <div
       className={cn(
-        "rounded-2xl border border-dashed border-white/10 bg-glango-surface/[0.03] px-4 py-8 text-center",
+        "rounded-2xl border border-dashed border-white/10 bg-rimvio-surface/[0.03] px-4 py-8 text-center",
         compact && "py-5"
       )}
     >
@@ -590,7 +590,7 @@ function ViewSwitcher({
                     "flex w-full items-center px-3 py-2.5 text-[13px] font-medium transition-colors",
                     selected
                       ? "bg-[#4285F4] text-foreground"
-                      : "text-[#F3F4F6] hover:bg-glango-surface/[0.06]"
+                      : "text-[#F3F4F6] hover:bg-rimvio-surface/[0.06]"
                   )}
                 >
                   {CALENDAR_VIEW_LABELS[mode]}
@@ -730,7 +730,7 @@ export function CalendarBoard({
               <button
                 type="button"
                 onClick={() => shiftAnchor(-1)}
-                className="rounded-full p-1.5 text-[#9CA3AF] hover:bg-glango-surface/5"
+                className="rounded-full p-1.5 text-[#9CA3AF] hover:bg-rimvio-surface/5"
                 aria-label="이전"
               >
                 <ChevronLeft className="size-4" />
@@ -745,7 +745,7 @@ export function CalendarBoard({
               <button
                 type="button"
                 onClick={() => shiftAnchor(1)}
-                className="rounded-full p-1.5 text-[#9CA3AF] hover:bg-glango-surface/5"
+                className="rounded-full p-1.5 text-[#9CA3AF] hover:bg-rimvio-surface/5"
                 aria-label="다음"
               >
                 <ChevronRight className="size-4" />
@@ -777,7 +777,7 @@ export function CalendarBoard({
                   "rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors",
                   switcherOpen
                     ? "bg-[#4285F4]/20 text-[#93C5FD]"
-                    : "text-[#93C5FD] hover:bg-glango-surface/5"
+                    : "text-[#93C5FD] hover:bg-rimvio-surface/5"
                 )}
               >
                 {CALENDAR_VIEW_LABELS[view]}
@@ -904,7 +904,7 @@ export function CalendarBoard({
                 setSelectedRow(null);
                 setSelectedAction(null);
               }}
-              className="shrink-0 rounded-full p-1 text-[#9CA3AF] hover:bg-glango-surface/5"
+              className="shrink-0 rounded-full p-1 text-[#9CA3AF] hover:bg-rimvio-surface/5"
             >
               <X className="size-4" />
             </button>

@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import {
-  registerGlangoServiceWorker,
+  registerRimvioServiceWorker,
   subscribeWebPush,
 } from "@/lib/pwa/service-worker";
 import { isStandalonePwa } from "@/lib/platform/device";
@@ -11,7 +11,7 @@ import { isStandalonePwa } from "@/lib/platform/device";
 export function ServiceWorkerBootstrap() {
   useEffect(() => {
     void (async () => {
-      const registration = await registerGlangoServiceWorker();
+      const registration = await registerRimvioServiceWorker();
       if (!registration) {
         return;
       }

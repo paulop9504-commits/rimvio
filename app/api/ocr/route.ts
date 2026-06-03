@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { annotateImageBuffer } from "@/lib/vision/google-vision";
 import { buildL0MarketContextForListing } from "@/lib/commerce/l0-market-context";
-import { buildGlangoL0FromOcr } from "@/lib/routing/glango-l0-orchestrator";
+import { buildRimvioL0FromOcr } from "@/lib/routing/rimvio-l0-orchestrator";
 import { resolveScreenshotIntent } from "@/lib/screenshot/resolve-screenshot-intent";
 import { logApi } from "@/lib/server/logger";
 import { readRequestId } from "@/lib/server/request-context";
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       vision: base.vision,
     });
 
-    const draftL0 = buildGlangoL0FromOcr({
+    const draftL0 = buildRimvioL0FromOcr({
       text: base.text,
       vision: base.vision ?? null,
       intentKind: intent?.kind ?? null,
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
         ? await buildL0MarketContextForListing({ title: base.text })
         : null;
 
-    const l0 = buildGlangoL0FromOcr({
+    const l0 = buildRimvioL0FromOcr({
       text: base.text,
       vision: base.vision ?? null,
       intentKind: intent?.kind ?? null,

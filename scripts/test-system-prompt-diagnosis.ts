@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 /**
- * System Prompt diagnosis — mirrors the 3-step checklist from Glango Personal OS spec.
+ * System Prompt diagnosis — mirrors the 3-step checklist from Rimvio Personal OS spec.
  * Usage: npx tsx scripts/test-system-prompt-diagnosis.ts
  */
 

@@ -5,8 +5,8 @@ import {
   type ContainerAllowedAction,
 } from "@/lib/containers/container-types";
 
-export const CONTEXT_CONTAINERS_KEY = "glango.context-containers.v2";
-export const CONTEXT_CONTAINERS_UPDATED = "glango-context-containers-updated";
+export const CONTEXT_CONTAINERS_KEY = "rimvio.context-containers.v2";
+export const CONTEXT_CONTAINERS_UPDATED = "rimvio-context-containers-updated";
 export const STALE_CONTAINER_DAYS = 30;
 
 export type ContextContainer = {
@@ -67,7 +67,7 @@ function readLegacyV1(): ContextContainer[] {
   }
 
   try {
-    const raw = localStorage.getItem("glango.context-containers.v1");
+    const raw = localStorage.getItem("rimvio.context-containers.v1");
     if (!raw) {
       return [];
     }
@@ -111,7 +111,7 @@ function readRaw(): ContextContainer[] {
       const legacy = readLegacyV1();
       if (legacy.length > 0) {
         writeContextContainers(legacy);
-        localStorage.removeItem("glango.context-containers.v1");
+        localStorage.removeItem("rimvio.context-containers.v1");
         return legacy;
       }
 

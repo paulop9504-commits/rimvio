@@ -29,15 +29,15 @@ export function ActionAppIcon({
   return (
     <button
       type={type}
-      className={cn("glango-action-app-icon group", className)}
+      className={cn("rimvio-action-app-icon group", className)}
       {...props}
     >
       <span className="relative">
         <span
           className={cn(
-            "glango-action-app-icon__squircle flex items-center justify-center",
+            "rimvio-action-app-icon__squircle flex items-center justify-center",
             iconBox,
-            theme.emphasis && "glango-action-app-icon__squircle--emphasis"
+            theme.emphasis && "rimvio-action-app-icon__squircle--emphasis"
           )}
           style={{ background: theme.background }}
         >
@@ -53,12 +53,12 @@ export function ActionAppIcon({
           )}
         </span>
         {badge != null && badge !== "" ? (
-          <span className="glango-action-app-icon__badge" aria-hidden>
+          <span className="rimvio-action-app-icon__badge" aria-hidden>
             {badge}
           </span>
         ) : null}
       </span>
-      <span className="glango-action-app-icon__label">{label}</span>
+      <span className="rimvio-action-app-icon__label">{label}</span>
     </button>
   );
 }

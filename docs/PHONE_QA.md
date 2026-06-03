@@ -1,8 +1,8 @@
-# Glango 실기기 QA 체크리스트
+# Rimvio 실기기 QA 체크리스트
 
 > **대상:** iPhone Safari PWA · Android Chrome (홈 화면 추가)  
 > **마지막 갱신:** 2026-05-25  
-> **앱:** [glango.app](https://glango.app) 또는 Vercel preview URL
+> **앱:** [rimvio.app](https://rimvio.app) 또는 Vercel preview URL
 
 ## 사전 준비
 
@@ -24,7 +24,7 @@
 | 5 | 보조 pill 가로 스크롤 | ☐ | ☐ | |
 | 6 | 비슷한 링크 **옆으로** 스와이프 (세로 스와이프와 충돌 없음) | ☐ | ☐ | |
 | 7 | **← 밀어 삭제** + 3초 undo 바 | ☐ | ☐ | |
-| 8 | 첫 실행 **제스처 가이드** 3단 (↑↓ / ← / ↔) | ☐ | ☐ | localStorage `glango.gesture-coach.v1` |
+| 8 | 첫 실행 **제스처 가이드** 3단 (↑↓ / ← / ↔) | ☐ | ☐ | localStorage `rimvio.gesture-coach.v1` |
 | 9 | 하단 IG 스타일 4탭 네비 (홈·방·받은함·프로필) | ☐ | ☐ | |
 | 10 | safe-area (노치·홈 인디케이터) 여백 | ☐ | ☐ | |
 
@@ -66,8 +66,8 @@
 
 | # | 확인 | iPhone | Android | 메모 |
 |---|------|--------|---------|------|
-| 1 | `glango-icon.svg` 홈 화면 아이콘 (스마일 마크) | ☐ | ☐ | 재설치 필요할 수 있음 |
-| 2 | Share Target — 다른 앱 → Glango 공유 | ☐ | ☐ | Android 우선 |
+| 1 | `rimvio-icon.svg` 홈 화면 아이콘 (스마일 마크) | ☐ | ☐ | 재설치 필요할 수 있음 |
+| 2 | Share Target — 다른 앱 → Rimvio 공유 | ☐ | ☐ | Android 우선 |
 | 3 | 오프라인/느린망 — localStorage fallback | ☐ | ☐ | |
 
 ---
@@ -76,7 +76,7 @@
 
 - iOS Safari: Share Target API 미지원 → **붙여넣기** 워크플로 (`/inbox?paste=1`)
 - 제스처 가이드는 **피드에 링크 1개 이상**일 때만 표시
-- 가이드 재확인: DevTools → Application → localStorage → `glango.gesture-coach.v1` 삭제
+- 가이드 재확인: DevTools → Application → localStorage → `rimvio.gesture-coach.v1` 삭제
 
 ---
 

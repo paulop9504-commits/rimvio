@@ -25,7 +25,7 @@ export function HomeTodaySection({
         <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
           TODAY
         </p>
-        <p className="rounded-2xl border border-dashed border-border bg-glango-surface/60 px-4 py-5 text-[13px] text-muted-foreground">
+        <p className="rounded-2xl border border-dashed border-border bg-rimvio-surface/60 px-4 py-5 text-[13px] text-muted-foreground">
           {copy.action.todayEmpty}
         </p>
       </section>
@@ -48,8 +48,8 @@ export function HomeTodaySection({
               className={cn(
                 "flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition-colors",
                 active
-                  ? "border-[#4A90E2]/35 bg-glango-surface shadow-[0_4px_16px_-8px_rgba(74,144,226,0.45)]"
-                  : "border-border bg-glango-surface/80 hover:bg-glango-surface"
+                  ? "border-[#4A90E2]/35 bg-rimvio-surface shadow-[0_4px_16px_-8px_rgba(74,144,226,0.45)]"
+                  : "border-border bg-rimvio-surface/80 hover:bg-rimvio-surface"
               )}
             >
               <span

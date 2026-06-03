@@ -34,7 +34,7 @@ function MentionMirror({ value }: { value: string }) {
       {segments.map((segment, index) => {
         if (segment.kind === "mention-valid") {
           return (
-            <span key={`${index}-${segment.text}`} className="glango-composer-mention-valid">
+            <span key={`${index}-${segment.text}`} className="rimvio-composer-mention-valid">
               {segment.text}
             </span>
           );
@@ -72,11 +72,11 @@ export function ComposerMentionField({
   };
 
   return (
-    <div className={cn("glango-composer-mention-wrap relative min-w-0 flex-1", className)}>
+    <div className={cn("rimvio-composer-mention-wrap relative min-w-0 flex-1", className)}>
       <div
         ref={mirrorRef}
         aria-hidden
-        className="glango-composer-mention-mirror glango-composer-mention-layer pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap"
+        className="rimvio-composer-mention-mirror rimvio-composer-mention-layer pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap"
       >
         <MentionMirror value={value} />
       </div>
@@ -95,7 +95,7 @@ export function ComposerMentionField({
         autoComplete="off"
         autoCorrect="off"
         className={cn(
-          "glango-composer-textarea--mirror glango-composer-mention-layer max-h-24 min-h-[1.25rem] w-full resize-none border-0 bg-transparent p-0 focus:outline-none",
+          "rimvio-composer-textarea--mirror rimvio-composer-mention-layer max-h-24 min-h-[1.25rem] w-full resize-none border-0 bg-transparent p-0 focus:outline-none",
           fieldClassName,
         )}
       />

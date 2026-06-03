@@ -1,7 +1,7 @@
 "use client";
 
 import { ActionAppIcon } from "@/components/ui/action-app-icon";
-import { GlangoActionButton } from "@/components/ui/glango-action-button";
+import { RimvioActionButton } from "@/components/ui/rimvio-action-button";
 import { cleanFeedActionLabel } from "@/lib/feed/feed-display";
 import { resolveActionBrandAccent } from "@/lib/brand/action-brand-style";
 import { resolveActionAppIconTheme } from "@/lib/feed/action-app-icon-theme";
@@ -50,7 +50,7 @@ function ActionTile({
       : undefined;
 
   return (
-    <GlangoActionButton
+    <RimvioActionButton
       variant={variant}
       layout="tile"
       fullWidth
@@ -61,7 +61,7 @@ function ActionTile({
       hint={hint}
     >
       {label}
-    </GlangoActionButton>
+    </RimvioActionButton>
   );
 }
 
@@ -100,7 +100,7 @@ export function ActionChatGrid({
     const primaryTheme = resolveActionAppIconTheme(primary, 0, { primary: true });
 
     return (
-      <div className={cn("glango-action-app-icon-grid glango-action-app-icon-grid--scroll", className)}>
+      <div className={cn("rimvio-action-app-icon-grid rimvio-action-app-icon-grid--scroll", className)}>
         <ActionAppIcon
           label={loading ? "찾는 중…" : primaryLabel}
           icon={primaryIcon}
@@ -108,7 +108,7 @@ export function ActionChatGrid({
           size="lg"
           disabled={loading}
           onClick={onPrimary}
-          className="glango-action-app-icon--lg shrink-0"
+          className="rimvio-action-app-icon--lg shrink-0"
           badge={primaryEmphasis ? "1" : null}
         />
         {secondaries.map((slot, index) => {
@@ -131,7 +131,7 @@ export function ActionChatGrid({
 
   if (layout === "horizontal") {
     return (
-      <div className={cn("glango-container-card__action-row", className)}>
+      <div className={cn("rimvio-container-card__action-row", className)}>
         <ActionTile
           label={loading ? "찾는 중…" : primaryLabel}
           hint={loading ? null : primaryHint}
@@ -149,7 +149,7 @@ export function ActionChatGrid({
             type: slot.action.kind,
           });
           return (
-            <GlangoActionButton
+            <RimvioActionButton
               key={slot.action.id || `${slot.label}-${index}`}
               type="button"
               variant="secondary"
@@ -160,7 +160,7 @@ export function ActionChatGrid({
               className="shrink-0"
             >
               {slot.label}
-            </GlangoActionButton>
+            </RimvioActionButton>
           );
         })}
       </div>

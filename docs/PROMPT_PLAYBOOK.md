@@ -1,10 +1,10 @@
-# Glango routing playbook — audit checklist
+# Rimvio routing playbook — audit checklist
 
 > **실행:** `npm run test:playbook`  
 > **구어 변형 루프 (40케이스):** `npm run test:playbook:loop`  
 > **진단:** `npx tsx scripts/trace-routing-gates.ts`
 
-Glango only — not Silent Ghost. Open `glango.code-workspace`.
+Rimvio only — not Silent Ghost. Open `rimvio.code-workspace`.
 
 ---
 
@@ -37,7 +37,7 @@ review/ocr → vitality → entity quick pick → ★ LLM router (ambiguous) →
 | DECISION (결정) | A vs B, 추천해줘, 위험해? | 판단·정리 톤 |
 | CREATION (창작) | 이메일 써줘, 요약해줘 | 대화 모드, entity 카드 금지 |
 | COUNSELING (상담) | 스트레스, 인간관계 문제 | vitality 또는 공감 톤 |
-| CURIOSITY (메타) | 너는 어떻게 작동해?, GPT 차이 | Glango 소개·설명 |
+| CURIOSITY (메타) | 너는 어떻게 작동해?, GPT 차이 | Rimvio 소개·설명 |
 
 ```bash
 npm run test:ai-intent
@@ -63,7 +63,7 @@ npm run test:llm-router
 
 - 모듈: `lib/action-chat/llm-router/*`
 - 파이프라인: entity 다음 · `shouldInvokeLlmRouter` → `routeWithLlm` → rule validate → execute
-- 비활성: `OPENAI_API_KEY` 없음 또는 `GLANGO_LLM_ROUTER=false`
+- 비활성: `OPENAI_API_KEY` 없음 또는 `RIMVIO_LLM_ROUTER=false`
 - MEAL executor → meal gate defer · CONVERSATION → `user_reply` 즉시 반환
 
 ---
@@ -141,7 +141,7 @@ Philosophy: **애매하면 INFO로 도망 금지 — 반드시 결정**
 **판정 로직:** `lib/testing/evaluate-playbook-category.ts`
 
 수정 PR마다 해당 bank에 **새 구어 1–2개** 추가 권장.
-| 12 | SG 경계 | ✅ | `glango-isolation.mdc`, SG import 0건 |
+| 12 | SG 경계 | ✅ | `rimvio-isolation.mdc`, SG import 0건 |
 
 ---
 
@@ -159,7 +159,7 @@ Philosophy: **애매하면 INFO로 도망 금지 — 반드시 결정**
 ## 버그 리포트 프롬프트 (복붙)
 
 ```
-Glango orchestrator 라우팅 버그. LLM 프롬프트 튜닝 말고 gate 순서부터.
+Rimvio orchestrator 라우팅 버그. LLM 프롬프트 튜닝 말고 gate 순서부터.
 
 입력: [ ]
 실제: [ ]

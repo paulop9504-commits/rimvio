@@ -46,7 +46,7 @@ export function TimeReceiptCard({
         </span>
       </div>
 
-      <div className="space-y-1.5 rounded-xl bg-glango-surface/80 px-2.5 py-2 ring-1 ring-glango-neon-purple/12">
+      <div className="space-y-1.5 rounded-xl bg-rimvio-surface/80 px-2.5 py-2 ring-1 ring-rimvio-neon-purple/12">
         {receipt.lines.map((line) => (
           <div
             key={line.kind}

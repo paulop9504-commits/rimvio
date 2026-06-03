@@ -4,7 +4,7 @@ import { updateLocalLink } from "@/lib/local-links/store";
 import type { LifeBurner } from "@/lib/behavior/burners";
 import type { LinkRow } from "@/types/database";
 
-export const COMPLETION_UPDATED = "glango-completion-updated";
+export const COMPLETION_UPDATED = "rimvio-completion-updated";
 
 const COMPLETION_LOG_KEY = "blink-completion-log";
 

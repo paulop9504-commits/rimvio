@@ -7,14 +7,14 @@ import {
   isForbiddenFallbackText,
 } from "../lib/action-chat/fallback-recovery/infer-fallback-recovery";
 import { applyFallbackRecovery } from "../lib/action-chat/fallback-recovery/apply-fallback-recovery";
-import { GLANGO_CONVERSATION_LINES } from "../lib/action-chat/glango-persona";
+import { RIMVIO_CONVERSATION_LINES } from "../lib/action-chat/rimvio-persona";
 import { runOrchestratorPipeline } from "../lib/action-chat/orchestrator/run-orchestrator-pipeline";
 import { BUSY_SCHEDULE_FIXTURE } from "../lib/testing/hardcore-red-team/adversarial-sets";
 
 assert.ok(isForbiddenFallbackText("잠시 문제가 있어요"));
 assert.ok(isForbiddenFallbackText("다시 말씀해 주세요"));
 assert.ok(isForbiddenFallbackText(""));
-assert.ok(isForbiddenFallbackText(GLANGO_CONVERSATION_LINES.fallback));
+assert.ok(isForbiddenFallbackText(RIMVIO_CONVERSATION_LINES.fallback));
 
 const doctor = buildFallbackRecoveryReply("의사가 되고싶어");
 assert.match(doctor, /의사/u);
@@ -35,7 +35,7 @@ assert.ok(inference.candidates.includes("career_planning"));
 
 const recovered = applyFallbackRecovery(
   {
-    summary: GLANGO_CONVERSATION_LINES.fallback,
+    summary: RIMVIO_CONVERSATION_LINES.fallback,
     actions: [],
     source: "rules",
     confidence: 0.2,

@@ -30,7 +30,7 @@ const registerJson = JSON.stringify({
   trigger_pattern: "회의실 입장",
   action_schema: {
     type: "DEEP_LINK",
-    uri: "glango://meeting/join",
+    uri: "rimvio://meeting/join",
     label: "회의 참여",
   },
 } satisfies RegisterActionWire);
@@ -72,7 +72,7 @@ const dockJson = JSON.stringify({
   shadow_actions: [
     {
       label: "항공권 확인",
-      execution: { type: "DEEP_LINK", uri: "glango://flight/check" },
+      execution: { type: "DEEP_LINK", uri: "rimvio://flight/check" },
       lifecycle: "ACTIVE",
     },
   ],

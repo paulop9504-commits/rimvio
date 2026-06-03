@@ -76,7 +76,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           redirectTo: getAuthCallbackUrl(nextPath),
           queryParams: {
             access_type: "offline",
-            prompt: "consent",
+            prompt: "select_account",
           },
         },
       });

@@ -38,7 +38,7 @@ export function ScheduleAdvisoryStrip({
               aria-hidden
               className="absolute -left-[23px] top-2 size-3 rounded-full border-2 border-white bg-[#4A90E2]"
             />
-            <div className="rounded-xl border border-border bg-glango-surface p-3">
+            <div className="rounded-xl border border-border bg-rimvio-surface p-3">
               <div className="flex items-start justify-between gap-2">
                 <p className="text-[14px] font-bold text-foreground">{event.title}</p>
                 <span

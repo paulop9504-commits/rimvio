@@ -1,6 +1,6 @@
 import type { InlineChatActionWire } from "@/lib/action-chat/mention-actions/inline-chat-action";
 
-const STORAGE_KEY = "glango:last-mention-action";
+const STORAGE_KEY = "rimvio:last-mention-action";
 
 export type StoredMentionAction = {
   featureId: string;

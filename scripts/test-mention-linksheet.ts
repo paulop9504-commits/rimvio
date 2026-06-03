@@ -19,7 +19,8 @@ assert.equal(parsed!.query, sampleUrl);
 const missing = tryBuildMentionLinksheetTurn({ text: "@링크시트" });
 assert.ok(missing);
 assert.equal(missing!.length, 2);
-assert.match(missing![1]!.text, /URL/u);
+assert.equal(missing![1]!.inlineChatAction?.featureId, "linksheet");
+assert.equal(missing![1]!.inlineChatAction?.linksheetUrlPrompt, true);
 
 const turn = tryBuildMentionLinksheetTurn({ text: `@링크시트 ${sampleUrl}` });
 assert.ok(turn);

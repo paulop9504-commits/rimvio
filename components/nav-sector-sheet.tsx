@@ -9,7 +9,7 @@ import {
   resolveMainActionBrandStyle,
 } from "@/lib/brand/action-brand-style";
 import { GoogleBrandText, isGoogleBrandText } from "@/lib/brand/google-brand-text";
-import { glangoIconBtnClass } from "@/lib/brand/glango-neon-theme";
+import { rimvioIconBtnClass } from "@/lib/brand/rimvio-neon-theme";
 import {
   buildNavSectorOptions,
   hideNavSectorProvider,
@@ -60,7 +60,7 @@ function NavSectorOptionRow({
     <div className="flex items-stretch gap-2">
       <button
         type="button"
-        className="glango-action-shell-btn flex min-w-0 flex-1 items-center rounded-2xl border bg-transparent px-3 py-2.5 text-left transition-colors hover:bg-white/[0.06] active:scale-[0.99]"
+        className="rimvio-action-shell-btn flex min-w-0 flex-1 items-center rounded-2xl border bg-transparent px-3 py-2.5 text-left transition-colors hover:bg-white/[0.06] active:scale-[0.99]"
         style={{
           borderColor: brand.borderColor,
           backgroundColor: brand.fillColor,
@@ -96,7 +96,7 @@ function NavSectorOptionRow({
       <button
         type="button"
         aria-label={`${option.label} ${hideLabel}`}
-        className="glango-action-shell-chip shrink-0 self-center rounded-full border border-white/85 bg-transparent px-3 py-2 text-[11px] font-semibold text-white/75 transition-colors hover:bg-white/[0.06] active:scale-[0.98]"
+        className="rimvio-action-shell-chip shrink-0 self-center rounded-full border border-white/85 bg-transparent px-3 py-2 text-[11px] font-semibold text-white/75 transition-colors hover:bg-white/[0.06] active:scale-[0.98]"
         onClick={onHide}
       >
         {hideLabel}
@@ -170,7 +170,7 @@ export function NavSectorSheet({
             transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             className={cn(
               "nav-sector-sheet fixed inset-x-0 bottom-0 z-[81] mx-auto max-w-lg",
-              "rounded-t-[28px] border border-white/[0.08] bg-glango-surface px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3",
+              "rounded-t-[28px] border border-white/[0.08] bg-rimvio-surface px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3",
               "shadow-[0_-18px_48px_-24px_rgba(0,0,0,0.55)]",
             )}
           >
@@ -192,7 +192,7 @@ export function NavSectorSheet({
                 type="button"
                 aria-label="닫기"
                 onClick={() => onOpenChange(false)}
-                className={glangoIconBtnClass("secondary", "sm")}
+                className={rimvioIconBtnClass("secondary", "sm")}
               >
                 <X className="size-4" />
               </button>

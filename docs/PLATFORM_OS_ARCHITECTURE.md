@@ -98,7 +98,7 @@ flowchart TB
 
 ```
 internal.<domain>          # 우리 플랫폼 일정·피드·알림
-platform.<product>         # Glango 제품 surface (commerce, travel)
+platform.<product>         # Rimvio 제품 surface (commerce, travel)
 partner.<vendorId>         # 계약 B2B (은행 PSP, 카드사)
 external.<connectorId>     # 사용자 연결 OAuth 앱 (Notion, Slack, …)
 ```
@@ -375,7 +375,7 @@ type CausalProofFinancial = {
 | **Threadline** | 일상 결정 (일정, 리마인더) | v1 SHIP |
 | **Banking strip** | L3 금액·2단 confirm | fork only, 동일 ≤3 칩 규칙 |
 | **Partner embed** | `partner.*` UI 위임 | OS가 surface 소유, iframe은 렌더만 |
-| **Feed actions** | Glango 링크/장소 | L0–L1, compose auto 허용 |
+| **Feed actions** | Rimvio 링크/장소 | L0–L1, compose auto 허용 |
 
 모든 shell은 `projectSurfaceTo*`로만 카드/칩 생성.
 

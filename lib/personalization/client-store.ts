@@ -12,10 +12,10 @@ import type {
 } from "@/lib/personalization/types";
 import { nextLifecycleState } from "@/lib/personalization/action-family";
 
-const PROFILE_KEY = "glango:recent-action-profile";
-const LINK_STATES_KEY = "glango:link-lifecycle-states";
-const PRIMARY_LOCK_KEY = "glango:primary-action-locks";
-const MERGE_FLAG_KEY = "glango:personalization-merge-done";
+const PROFILE_KEY = "rimvio:recent-action-profile";
+const LINK_STATES_KEY = "rimvio:link-lifecycle-states";
+const PRIMARY_LOCK_KEY = "rimvio:primary-action-locks";
+const MERGE_FLAG_KEY = "rimvio:personalization-merge-done";
 
 export type PrimaryActionLock = {
   actionId: string;
@@ -88,7 +88,7 @@ function writePrimaryActionLock(linkId: string, lock: PrimaryActionLock) {
   writeJson(PRIMARY_LOCK_KEY, locks);
 
   if (typeof window !== "undefined") {
-    window.dispatchEvent(new CustomEvent("glango:primary-lock"));
+    window.dispatchEvent(new CustomEvent("rimvio:primary-lock"));
   }
 }
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 /**
- * Glango OS stress tests — redundancy sanitizer, multi-intent, resilience.
+ * Rimvio OS stress tests — redundancy sanitizer, multi-intent, resilience.
  * Run: npm run test:stress
  */
 import assert from "node:assert/strict";

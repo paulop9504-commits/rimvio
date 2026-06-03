@@ -47,7 +47,7 @@ export function ContextRemoteStrip({
           )}
         >
           <FeedActionPanel
-            className="pointer-events-auto border-white/60 bg-glango-surface/95 shadow-[0_16px_40px_-24px_rgba(15,23,42,0.45)] backdrop-blur-xl"
+            className="pointer-events-auto border-white/60 bg-rimvio-surface/95 shadow-[0_16px_40px_-24px_rgba(15,23,42,0.45)] backdrop-blur-xl"
             signalLine={remote.signalLine}
             showPrimary={Boolean(remote.primary)}
             primaryLabel={

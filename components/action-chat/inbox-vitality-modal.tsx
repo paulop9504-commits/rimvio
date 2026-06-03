@@ -46,7 +46,7 @@ export function InboxVitalityModal({
           <motion.div
             role="dialog"
             aria-label="Vitality 분류"
-            className="fixed inset-x-4 top-[18%] z-[91] mx-auto max-w-md rounded-3xl border border-black/5 bg-glango-surface p-5 shadow-2xl"
+            className="fixed inset-x-4 top-[18%] z-[91] mx-auto max-w-md rounded-3xl border border-black/5 bg-rimvio-surface p-5 shadow-2xl"
             initial={{ opacity: 0, y: 12, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.98 }}

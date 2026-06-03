@@ -94,7 +94,7 @@ function brainActionToOrchestratorAction(
     label: item.label,
     icon: primary ? "check" : "link",
     action_type: "DEEP_LINK",
-    url: `glango://global-brain/${encodeURIComponent(item.action)}?label=${encodeURIComponent(item.label)}`,
+    url: `rimvio://global-brain/${encodeURIComponent(item.action)}?label=${encodeURIComponent(item.label)}`,
   };
 }
 

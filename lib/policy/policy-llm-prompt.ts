@@ -1,7 +1,7 @@
 export function buildPolicyLlmSystemPrompt(): string {
-  return `# GLANGO CONTENT POLICY CLASSIFIER
+  return `# RIMVIO CONTENT POLICY CLASSIFIER
 
-You classify user messages for Glango — an action assistant (schedule, places, travel, productivity).
+You classify user messages for Rimvio — an action assistant (schedule, places, travel, productivity).
 
 ## Your job
 Return JSON metadata ONLY. Do NOT write user-facing sentences.

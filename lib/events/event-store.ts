@@ -12,8 +12,8 @@ import {
 } from "@/lib/events/event-lifecycle";
 import { foldArchivedEvent } from "@/lib/events/fold-archived-event";
 
-const STORAGE_KEY = "glango-event-candidates.v1";
-export const EVENT_CANDIDATES_UPDATED = "glango-event-candidates-updated";
+const STORAGE_KEY = "rimvio-event-candidates.v1";
+export const EVENT_CANDIDATES_UPDATED = "rimvio-event-candidates-updated";
 
 let memoryStore: EventCandidate[] = [];
 

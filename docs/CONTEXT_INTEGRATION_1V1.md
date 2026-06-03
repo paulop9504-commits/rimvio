@@ -3,7 +3,7 @@
 **Status:** DESIGN → **Cloud v1 LAUNCH scope** (Pinned 5 + Context Rail)  
 **Scope:** **1:1 대화만** (그룹채팅·화자 분리·정산 N인 — **배제**)  
 **Deployment:** **클라우드 출시** — Pinned full log·`@친구`·Context Rail **v1 포함** (플러그인 마켓·퀀트·HFT는 이후)  
-**Related:** [PLATFORM_OS_ARCHITECTURE.md](./PLATFORM_OS_ARCHITECTURE.md) · [GLANGO_ARCHITECTURE.md](./GLANGO_ARCHITECTURE.md) · `lib/event-kernel/memory/`
+**Related:** [PLATFORM_OS_ARCHITECTURE.md](./PLATFORM_OS_ARCHITECTURE.md) · [RIMVIO_ARCHITECTURE.md](./RIMVIO_ARCHITECTURE.md) · `lib/event-kernel/memory/`
 
 ---
 
@@ -119,7 +119,7 @@ type SituationSnapshot = {
 | L2 | `contradictions.length > 0` | 이전 “제주” vs 지금 “부산” |
 | L3 | `salience` 중간대 + plugin 후보 0 | 애매한 짧은 답 |
 | L4 | deictic recall 실패 (`그거`, `아까`) | memory anchor 없음 |
-| L5 | unknown domain + partial scrape | Glango L5 fallback |
+| L5 | unknown domain + partial scrape | Rimvio L5 fallback |
 
 **끄는 조건:** 규칙·메모리만으로 `openSlots` 해소 + plugin ≥1 + salience ≥ threshold → **LLM 호출 없음**.
 
@@ -134,7 +134,7 @@ type ContextLlmFallbackOutput = {
 };
 ```
 
-**금지:** `primaryAction`, `recommendedIcon`, 금액·수취인 invent, title/URL hallucination (Glango §2).
+**금지:** `primaryAction`, `recommendedIcon`, 금액·수취인 invent, title/URL hallucination (Rimvio §2).
 
 ### 6.3 LLM 이후
 

@@ -55,9 +55,9 @@ function matchWittyBundle(message: string): WittyConversationBundle | null {
     return {
       thought: "이름을 묻는 가벼운 대화. 친구처럼 자연스럽게 소개하고 대화를 이어가자.",
       persona_message:
-        "글랑고예요! 당신 일상을 같이 챙기는 지능형 친구—이름보다 우리가 쌓는 기억이 더 중요하죠. 😊",
+        "림비오예요! 당신 일상을 같이 챙기는 지능형 친구—이름보다 우리가 쌓는 기억이 더 중요하죠. 😊",
       witty_buttons: [
-        { label: "반가워, 글랑고!", action: "compliment" },
+        { label: "반가워, 림비오!", action: "compliment" },
         { label: "그럼 뭐 잘해?", action: "feed_knowledge" },
       ],
     };

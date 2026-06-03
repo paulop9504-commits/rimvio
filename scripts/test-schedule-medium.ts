@@ -31,7 +31,7 @@ function test(name: string, fn: () => void) {
 
 test("schedule medium options include three channels", () => {
   assert.equal(SCHEDULE_MEDIUM_OPTIONS.length, 3);
-  assert.ok(SCHEDULE_MEDIUM_OPTIONS.some((item) => item.id === "glango"));
+  assert.ok(SCHEDULE_MEDIUM_OPTIONS.some((item) => item.id === "rimvio"));
   assert.ok(SCHEDULE_MEDIUM_OPTIONS.some((item) => item.id === "google_calendar"));
   assert.ok(SCHEDULE_MEDIUM_OPTIONS.some((item) => item.id === "copy"));
 });
@@ -39,8 +39,8 @@ test("schedule medium options include three channels", () => {
 test("writeScheduleMedium returns selected medium", () => {
   assert.equal(writeScheduleMedium("copy"), "copy");
   assert.equal(writeScheduleMedium("google_calendar"), "google_calendar");
-  assert.equal(writeScheduleMedium("glango"), "glango");
-  assert.equal(readScheduleMedium(), "glango");
+  assert.equal(writeScheduleMedium("rimvio"), "rimvio");
+  assert.equal(readScheduleMedium(), "rimvio");
 });
 
 test("isScheduleAction detects remind and todo actions", () => {

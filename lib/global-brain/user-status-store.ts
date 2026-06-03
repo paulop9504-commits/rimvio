@@ -1,7 +1,7 @@
 import type { UserStatusRecord, UserStatusWire } from "@/lib/global-brain/types";
 
-const STORAGE_KEY = "glango-user-status.v1";
-const HISTORY_KEY = "glango-user-status-history.v1";
+const STORAGE_KEY = "rimvio-user-status.v1";
+const HISTORY_KEY = "rimvio-user-status-history.v1";
 const DEFAULT_TTL_HOURS = 36;
 
 let statusRecord: UserStatusRecord | null = null;

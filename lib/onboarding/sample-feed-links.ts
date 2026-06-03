@@ -89,7 +89,7 @@ function baseSampleLink(input: {
       ...action,
       payload: {
         ...(action.payload ?? {}),
-        glangoSample: true,
+        rimvioSample: true,
         ...(index === 0 ? { sampleCard: input.id } : {}),
       },
     })),
@@ -167,9 +167,9 @@ function captureLink(input: {
 }): LinkRow {
   return baseSampleLink({
     id: input.id,
-    url: `https://glango.app/capture/${input.captureId}`,
+    url: `https://rimvio.app/capture/${input.captureId}`,
     title: input.title,
-    domain: "glango.app",
+    domain: "rimvio.app",
     category: input.category,
     thumbnail_url: input.thumbnail_url,
     source_type: "screenshot",
@@ -214,7 +214,7 @@ function studyLink(input: {
   });
 }
 
-/** Curated onboarding deck — every major Glango surface in one swipe tour. */
+/** Curated onboarding deck — every major Rimvio surface in one swipe tour. */
 export function buildSampleFeedLinks(): LinkRow[] {
   return [
     // 🛍 Commerce + true-cost / EST verdict
@@ -252,8 +252,8 @@ export function buildSampleFeedLinks(): LinkRow[] {
       ageHours: 1.05,
       extraActions: buildMarketCompareActions(
         {
-          sourceUrl: "https://glango.app/capture/sample-galaxy-ultra",
-          domain: "glango.app",
+          sourceUrl: "https://rimvio.app/capture/sample-galaxy-ultra",
+          domain: "rimvio.app",
           title: "갤럭시 S24 Ultra 256GB 720,000원",
           appLocale: "ko",
         },

@@ -1,11 +1,11 @@
 import type { ChatAxis } from "@/lib/action-chat/chat-three-axis";
 import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
 import { normalizeAtMentionInput } from "@/lib/command-os/parse-command-input";
-import { emitOpenGoogleSheet } from "@/lib/integrations/google-sheets-open-event";
+import { isGoogleSheetsUrl } from "@/lib/integrations/google-sheets-embed";
 import {
-  isGoogleSheetsUrl,
-} from "@/lib/integrations/google-sheets-embed";
-import { addResourcePoolItem } from "@/lib/resource-pool/resource-pool-store";
+  buildLinksheetUrlPromptWire,
+  commitLinksheetUrl,
+} from "@/lib/action-chat/mention-linksheet/linksheet-url-actions";
 import {
   resolveMentionFeature,
 } from "@/lib/event-kernel/action-contracts/mention-feature-registry";
@@ -76,10 +76,13 @@ export function tryBuildMentionLinksheetTurn(input: {
   if (!sheetUrl) {
     return [
       userMessage,
-      createChatMessage(
-        "assistant",
-        "Google Sheets URL을 붙여 주세요. 예: @링크시트 https://docs.google.com/spreadsheets/d/…",
-      ),
+      createChatMessage("assistant", "", {
+        inlineChatAction: buildLinksheetUrlPromptWire(),
+        metadata: {
+          mention_feature: "linksheet",
+          sourceRef: "mention:linksheet",
+        },
+      }),
     ];
   }
 
@@ -89,20 +92,22 @@ export function tryBuildMentionLinksheetTurn(input: {
       createChatMessage(
         "assistant",
         "Google Sheets 링크만 가능해요. docs.google.com/spreadsheets/… 형식인지 확인해 주세요.",
+        {
+          inlineChatAction: buildLinksheetUrlPromptWire(),
+        },
       ),
     ];
   }
 
-  const title = "Google Sheets";
-  addResourcePoolItem({
-    repoId: "links",
-    kind: "link",
-    title,
-    body: sheetUrl,
-    url: sheetUrl,
-  });
-
-  emitOpenGoogleSheet({ url: sheetUrl, title });
+  const committed = commitLinksheetUrl(sheetUrl);
+  if (!committed.ok) {
+    return [
+      userMessage,
+      createChatMessage("assistant", committed.message, {
+        inlineChatAction: buildLinksheetUrlPromptWire(),
+      }),
+    ];
+  }
 
   return [
     userMessage,
@@ -120,11 +125,5 @@ export function saveLinksheetToPool(url: string, title = "Google Sheets"): void 
   if (!isGoogleSheetsUrl(url)) {
     return;
   }
-  addResourcePoolItem({
-    repoId: "links",
-    kind: "link",
-    title,
-    body: url,
-    url,
-  });
+  commitLinksheetUrl(url);
 }

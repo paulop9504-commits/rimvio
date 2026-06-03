@@ -71,7 +71,7 @@ function notifyLinksUpdated() {
 }
 
 function buildCaptureUrl(id: string) {
-  return `https://glango.app/capture/${id}`;
+  return `https://rimvio.app/capture/${id}`;
 }
 
 async function saveScreenshotIntent(input: {
@@ -254,7 +254,7 @@ export async function ingestScreenshot(
 }
 
 export function isScreenshotLink(link: LinkRow) {
-  return link.source_type === "screenshot" || /glango\.app\/capture\//i.test(link.original_url);
+  return link.source_type === "screenshot" || /rimvio\.app\/capture\//i.test(link.original_url);
 }
 
 export function isScreenshotCaptureError(

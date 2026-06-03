@@ -55,7 +55,7 @@ export type OrchestratorConfirmationWire = {
     intent: ConfirmationIntent;
   };
   thought?: string;
-  /** Warm Glango persona line — shown in chat bubble */
+  /** Warm Rimvio persona line — shown in chat bubble */
   persona_message?: string;
   /** Short data-card prompt (not persona) */
   confirm_message?: string;

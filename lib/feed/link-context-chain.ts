@@ -1,8 +1,8 @@
 import { getDisplayTitleForLink } from "@/lib/feed/sanitize-link-title";
 import type { LinkRow } from "@/types/database";
 
-export const LINK_CONTEXT_CHAIN_KEY = "glango.link-context-chain.v1";
-export const LINK_CONTEXT_CHAIN_UPDATED = "glango-link-context-chain-updated";
+export const LINK_CONTEXT_CHAIN_KEY = "rimvio.link-context-chain.v1";
+export const LINK_CONTEXT_CHAIN_UPDATED = "rimvio-link-context-chain-updated";
 
 export type LinkContextChain = {
   linkIds: string[];

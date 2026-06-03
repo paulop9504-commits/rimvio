@@ -80,7 +80,7 @@ export function resolveDeepLinkWebFallback(href: string, copyText?: string | nul
     return null;
   }
 
-  if (lower.startsWith("glango://")) {
+  if (lower.startsWith("rimvio://")) {
     return null;
   }
 

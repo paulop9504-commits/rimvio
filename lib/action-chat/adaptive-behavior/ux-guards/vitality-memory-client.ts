@@ -1,7 +1,7 @@
 import type { VitalityMemoryWire } from "@/lib/action-chat/adaptive-behavior/ux-guards/vitality-state-decay";
 import type { VitalityStateKind } from "@/lib/vitality-state/vitality-state-types";
 
-export const VITALITY_MEMORY_STORAGE_KEY = "glango.vitality.memory.v1";
+export const VITALITY_MEMORY_STORAGE_KEY = "rimvio.vitality.memory.v1";
 
 export function readVitalityMemory(): VitalityMemoryWire | null {
   if (typeof window === "undefined") {

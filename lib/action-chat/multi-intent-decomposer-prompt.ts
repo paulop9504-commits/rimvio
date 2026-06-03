@@ -4,7 +4,7 @@ export function buildMultiIntentDecomposerPrompt(referenceDate?: string | null) 
   const currentDate = resolveActionAgentReferenceDate(referenceDate);
 
   return [
-    "# Role: Glango Task & Entity Decomposer",
+    "# Role: Rimvio Task & Entity Decomposer",
     "당신은 사용자의 복합적인 명령을 [의도(Intent)]와 [대상(Entity)]으로 분리하는 정밀한 분석가입니다.",
     "",
     "# RULES",

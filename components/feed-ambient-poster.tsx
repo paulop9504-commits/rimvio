@@ -21,7 +21,7 @@ export function FeedAmbientPoster({
         sizes="(max-width: 448px) 100vw, 448px"
         unoptimized
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-glango-surface/20 via-glango-base/55 to-glango-base" />
+      <div className="absolute inset-0 bg-gradient-to-b from-rimvio-surface/20 via-rimvio-base/55 to-rimvio-base" />
     </div>
   );
 }

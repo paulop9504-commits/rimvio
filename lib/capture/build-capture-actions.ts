@@ -169,11 +169,11 @@ export function buildCaptureActions(
           ]
         : [];
 
-      const syntheticUrl = `https://glango.app/capture/product?q=${encodeQuery(query)}`;
+      const syntheticUrl = `https://rimvio.app/capture/product?q=${encodeQuery(query)}`;
       const market = buildMarketCompareActions(
         {
           sourceUrl: syntheticUrl,
-          domain: "glango.app",
+          domain: "rimvio.app",
           title: query,
           appLocale: "ko",
           linkCategory: "shopping",

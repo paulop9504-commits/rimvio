@@ -23,7 +23,7 @@ export type EventCandidateLifecycle =
   | "completed"
   | "archived";
 
-/** Canonical reality layer — Glango SSOT for detected life events. */
+/** Canonical reality layer — Rimvio SSOT for detected life events. */
 export type EventCandidate = {
   id: string;
   title: string;

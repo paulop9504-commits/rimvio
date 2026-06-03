@@ -20,13 +20,13 @@ export function FeedSaveReceipt({
     <div
       className={cn(
         "rounded-2xl bg-[#fffdf8] px-3.5 py-3",
-        "shadow-[0_10px_28px_-18px_rgba(0,0,0,0.28)] ring-1 ring-glango-neon-purple/15",
+        "shadow-[0_10px_28px_-18px_rgba(0,0,0,0.28)] ring-1 ring-rimvio-neon-purple/15",
         className
       )}
     >
       <div className="text-center">
         <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-foreground/55">
-          GLANGO
+          RIMVIO
         </p>
         <p className="mt-1 text-[10px] tracking-[0.18em] text-muted-foreground">
           ?�?�?�?�?�?�?�?�?�?�?�?�?�?�

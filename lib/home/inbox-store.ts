@@ -12,8 +12,8 @@ export type InboxItem = {
   resolved_at?: string | null;
 };
 
-const INBOX_KEY = "glango.home-inbox.v1";
-export const HOME_INBOX_UPDATED = "glango:home-inbox-updated";
+const INBOX_KEY = "rimvio.home-inbox.v1";
+export const HOME_INBOX_UPDATED = "rimvio:home-inbox-updated";
 
 let memoryInbox: InboxItem[] = [];
 

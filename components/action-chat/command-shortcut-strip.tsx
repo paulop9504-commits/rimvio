@@ -32,7 +32,7 @@ export function CommandShortcutStrip({
           key={item.id}
           type="button"
           onClick={() => onSelect(item)}
-          className="flex shrink-0 items-center gap-1.5 rounded-full border border-indigo-100/90 bg-glango-surface px-3 py-1.5 text-[12px] font-medium text-slate-700 shadow-sm transition-transform active:scale-95"
+          className="flex shrink-0 items-center gap-1.5 rounded-full border border-indigo-100/90 bg-rimvio-surface px-3 py-1.5 text-[12px] font-medium text-slate-700 shadow-sm transition-transform active:scale-95"
         >
           <span aria-hidden className="text-[14px] leading-none">
             {item.icon}

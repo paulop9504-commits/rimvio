@@ -40,7 +40,7 @@ export function PeerThreadLensBar({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center gap-2 border-b border-border bg-glango-surface/95 px-3 py-2",
+        "flex flex-wrap items-center gap-2 border-b border-border bg-rimvio-surface/95 px-3 py-2",
         className
       )}
       role="toolbar"

@@ -1,7 +1,7 @@
 import type { SmartSuite } from "@/lib/actions/smart-suite-types";
 
-export const SUITE_TASTE_STORAGE_KEY = "glango.suite-taste.v1";
-export const SUITE_TASTE_UPDATED = "glango-suite-taste-updated";
+export const SUITE_TASTE_STORAGE_KEY = "rimvio.suite-taste.v1";
+export const SUITE_TASTE_UPDATED = "rimvio-suite-taste-updated";
 export const MAX_SUITE_TASTE = 2;
 
 export const SUITE_TASTE_OPTIONS = [

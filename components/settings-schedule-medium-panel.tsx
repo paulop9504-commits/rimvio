@@ -17,14 +17,14 @@ import { cn } from "@/lib/utils";
 import { Bell, Calendar, ClipboardCopy, Check } from "lucide-react";
 
 const ICONS = {
-  glango: Bell,
+  rimvio: Bell,
   google_calendar: Calendar,
   copy: ClipboardCopy,
 } as const;
 
 export function SettingsScheduleMediumPanel({ className }: { className?: string }) {
   const copy = useCopy();
-  const [selected, setSelected] = useState<ScheduleMedium>("glango");
+  const [selected, setSelected] = useState<ScheduleMedium>("rimvio");
   const [standalone, setStandalone] = useState(false);
 
   const sync = useCallback(() => {
@@ -54,7 +54,7 @@ export function SettingsScheduleMediumPanel({ className }: { className?: string 
             {copy.settings.scheduleHint}
           </p>
         </div>
-        <span className="shrink-0 rounded-full bg-glango-neon-purple/10 px-2.5 py-1 text-[10px] font-semibold text-glango-neon-cyan">
+        <span className="shrink-0 rounded-full bg-rimvio-neon-purple/10 px-2.5 py-1 text-[10px] font-semibold text-rimvio-neon-cyan">
           {copy.settings.scheduleBadge}
         </span>
       </div>
@@ -64,7 +64,7 @@ export function SettingsScheduleMediumPanel({ className }: { className?: string 
           const active = selected === option.id;
           const Icon = ICONS[option.id];
           const showPwaHint =
-            option.id === "glango" && !standalone && active;
+            option.id === "rimvio" && !standalone && active;
 
           return (
             <button
@@ -75,14 +75,14 @@ export function SettingsScheduleMediumPanel({ className }: { className?: string 
               className={cn(
                 "flex w-full items-start gap-3 rounded-2xl px-3.5 py-3 text-left transition-all active:scale-[0.99]",
                 active
-                  ? "bg-glango-neon-purple/8 ring-2 ring-[#007AFF]/35 shadow-sm"
-                  : "bg-glango-surface-muted ring-1 ring-glango-neon-purple/12 hover:bg-glango-surface-raised"
+                  ? "bg-rimvio-neon-purple/8 ring-2 ring-[#007AFF]/35 shadow-sm"
+                  : "bg-rimvio-surface-muted ring-1 ring-rimvio-neon-purple/12 hover:bg-rimvio-surface-raised"
               )}
             >
               <span
                 className={cn(
                   "mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-xl text-lg",
-                  active ? "bg-glango-neon-purple text-white" : "bg-glango-surface text-foreground"
+                  active ? "bg-rimvio-neon-purple text-white" : "bg-rimvio-surface text-foreground"
                 )}
                 aria-hidden
               >
@@ -118,7 +118,7 @@ export function SettingsScheduleMediumPanel({ className }: { className?: string 
         })}
       </div>
 
-      <p className="mt-3 rounded-xl bg-glango-surface-muted px-3 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
+      <p className="mt-3 rounded-xl bg-rimvio-surface-muted px-3 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
         {copy.settings.scheduleActive(labelForScheduleMedium(selected))}
       </p>
     </section>

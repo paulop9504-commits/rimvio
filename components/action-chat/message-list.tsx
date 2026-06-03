@@ -243,7 +243,7 @@ function AssistantOfferMessage({
         <AiChatBubble group={bubbleGroup}>
           {message.loading ? (
             <span className="chat-bubble--thinking inline-flex items-center gap-1.5">
-              <Loader2 className="size-3 shrink-0 animate-spin text-glango-neon-cyan" />
+              <Loader2 className="size-3 shrink-0 animate-spin text-rimvio-neon-cyan" />
               [생각중...]
             </span>
           ) : (
@@ -302,7 +302,7 @@ function AssistantOfferMessage({
       <AiChatBubble group={bubbleGroup}>
         {message.loading ? (
           <span className="chat-bubble--thinking inline-flex items-center gap-1.5">
-            <Loader2 className="size-3 shrink-0 animate-spin text-glango-neon-cyan" />
+            <Loader2 className="size-3 shrink-0 animate-spin text-rimvio-neon-cyan" />
             [생각중...]
           </span>
         ) : (
@@ -338,7 +338,7 @@ function AssistantOfferMessage({
           />
         ) : null}
         {ux.offerAutoRun ? (
-          <p className="text-[11px] font-medium text-glango-neon-cyan/80">
+          <p className="text-[11px] font-medium text-rimvio-neon-cyan/80">
             자동 실행 준비됨 · 1순위 버튼을 탭하세요
           </p>
         ) : null}
@@ -390,7 +390,7 @@ function AssistantOfferMessage({
             </div>
           ) : (
             <div className="flex items-center gap-2 px-1 py-1 text-[13px] text-[#6B7280]">
-              <Loader2 className="size-4 animate-spin text-glango-neon-cyan" />
+              <Loader2 className="size-4 animate-spin text-rimvio-neon-cyan" />
               {message.text}
             </div>
           )

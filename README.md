@@ -1,4 +1,4 @@
-# Glango 👀 — Your Life, Operable.
+# Rimvio 👀 — Your Life, Operable.
 
 **Action OS** for everyday intent — say it, share it, snap it → **Action Dock** executes.
 
@@ -6,11 +6,11 @@ North Star: *Your Life, Operable.* (당신의 모든 일상을 OS로 만듭니�
 
 링크 공유는 **ingress** 중 하나입니다. 제품 정체성은 **실행(Operate)** 입니다.
 
-브랜드 가이드: [docs/GLANGO_BRAND.md](./docs/GLANGO_BRAND.md)
+브랜드 가이드: [docs/RIMVIO_BRAND.md](./docs/RIMVIO_BRAND.md)
 
 ## 빠른 시작
 
-**Cursor:** Glango만 작업할 때는 [`glango.code-workspace`](./glango.code-workspace) 로 열기 ([docs/WORKSPACE.md](./docs/WORKSPACE.md)). Silent Ghost repo와 분리.
+**Cursor:** Rimvio만 작업할 때는 [`rimvio.code-workspace`](./rimvio.code-workspace) 로 열기 ([docs/WORKSPACE.md](./docs/WORKSPACE.md)). Silent Ghost repo와 분리.
 
 ```bash
 cd new-project
@@ -32,11 +32,11 @@ npm run backup               # Desktop에 zip 백업
 |------|------|
 | [docs/LAUNCH.md](./docs/LAUNCH.md) | **출시 체크리스트** · Vercel · Supabase |
 | [docs/PHONE_QA.md](./docs/PHONE_QA.md) | **실기기 QA** · iPhone/Android 체크리스트 |
-| [docs/GLANGO_KIPRIS.md](./docs/GLANGO_KIPRIS.md) | KIPRIS 상표 검색 메모 |
-| [docs/GLANGO_HANDOFF.md](./docs/GLANGO_HANDOFF.md) | AI/개발 핸드오프 |
+| [docs/RIMVIO_KIPRIS.md](./docs/RIMVIO_KIPRIS.md) | KIPRIS 상표 검색 메모 |
+| [docs/RIMVIO_HANDOFF.md](./docs/RIMVIO_HANDOFF.md) | AI/개발 핸드오프 |
 | [docs/WORKSPACE.md](./docs/WORKSPACE.md) | **Cursor workspace (SG와 분리)** |
-| [docs/GLANGO_PRODUCT.md](./docs/GLANGO_PRODUCT.md) | **Action OS 제품 정의** |
-| [docs/GLANGO_ARCHITECTURE.md](./docs/GLANGO_ARCHITECTURE.md) | 아키텍처 |
+| [docs/RIMVIO_PRODUCT.md](./docs/RIMVIO_PRODUCT.md) | **Action OS 제품 정의** |
+| [docs/RIMVIO_ARCHITECTURE.md](./docs/RIMVIO_ARCHITECTURE.md) | 아키텍처 |
 
 ## Vercel 배포
 

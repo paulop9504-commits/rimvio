@@ -44,7 +44,7 @@ export function applyOcrCalendarCommitToClient(input: {
     scheduleLinkReminderAt({
       linkId: `ocr-event-${row.candidateId}`,
       title: row.title,
-      url: "glango://calendar/ocr-review",
+      url: "rimvio://calendar/ocr-review",
       fireAt: row.start,
     });
     syncedReminders += 1;

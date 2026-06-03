@@ -68,7 +68,7 @@ function commitApprovedCandidate(
   const reminder = scheduleLinkReminderAt({
     linkId: `ocr-event-${candidate.id}`,
     title: candidate.title,
-    url: "glango://calendar/ocr-review",
+    url: "rimvio://calendar/ocr-review",
     fireAt: candidate.start,
   });
 

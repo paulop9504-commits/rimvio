@@ -9,7 +9,7 @@ import { runRegressionGate } from "../lib/self-learning/anti-drift-gate";
 
 const dir = mkdtempSync(join(tmpdir(), "live-turn-"));
 const logPath = join(dir, "live-turns.jsonl");
-process.env.GLANGO_LIVE_TURN_LOG = logPath;
+process.env.RIMVIO_LIVE_TURN_LOG = logPath;
 
 const input = appendLiveTurn({
   stage: "input",

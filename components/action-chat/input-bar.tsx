@@ -14,12 +14,12 @@ import {
 import { useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useChatAmbientFocusOptional } from "@/components/action-chat/chat-ambient-focus";
 import {
-  glangoComposerFieldClass,
-  glangoIconBtnClass,
-  glangoMenuGridClass,
-  glangoMenuTileBtnClass,
-  glangoNavBarClass,
-} from "@/lib/brand/glango-neon-theme";
+  rimvioComposerFieldClass,
+  rimvioIconBtnClass,
+  rimvioMenuGridClass,
+  rimvioMenuTileBtnClass,
+  rimvioNavBarClass,
+} from "@/lib/brand/rimvio-neon-theme";
 import { ComposerMentionField } from "@/components/action-chat/composer-mention-field";
 import type { ChatAxis } from "@/lib/action-chat/chat-three-axis";
 import type { ComposerAttachment } from "@/lib/action-chat/composer-attachments";
@@ -110,22 +110,22 @@ export function ActionChatInputBar({
     <form
       onSubmit={handleSubmit}
       className={cn(
-        glangoNavBarClass,
-        "glango-composer-bar px-4 pb-2 pt-2",
+        rimvioNavBarClass,
+        "rimvio-composer-bar px-4 pb-2 pt-2",
         className,
       )}
     >
       {menuOpen ? (
-        <div className={glangoMenuGridClass}>
+        <div className={rimvioMenuGridClass}>
           <button
             type="button"
             onClick={() => {
               cameraRef.current?.click();
               onOpenCapture?.();
             }}
-            className={glangoMenuTileBtnClass("cyan")}
+            className={rimvioMenuTileBtnClass("cyan")}
           >
-            <Camera className="size-5 text-glango-neon-cyan" />
+            <Camera className="size-5 text-rimvio-neon-cyan" />
             사진 촬영
           </button>
           <button
@@ -134,9 +134,9 @@ export function ActionChatInputBar({
               galleryRef.current?.click();
               onOpenGallery?.();
             }}
-            className={glangoMenuTileBtnClass("purple")}
+            className={rimvioMenuTileBtnClass("purple")}
           >
-            <ImageIcon className="size-5 text-glango-neon-purple" />
+            <ImageIcon className="size-5 text-rimvio-neon-purple" />
             앨범 선택
           </button>
           <button
@@ -145,17 +145,17 @@ export function ActionChatInputBar({
               setMenuOpen(false);
               onOpenLinkPaste?.();
             }}
-            className={glangoMenuTileBtnClass("magenta")}
+            className={rimvioMenuTileBtnClass("magenta")}
           >
-            <Link2 className="size-5 text-glango-neon-magenta" />
+            <Link2 className="size-5 text-rimvio-neon-magenta" />
             링크 붙여넣기
           </button>
           <button
             type="button"
             onClick={() => setMenuOpen(false)}
-            className={glangoMenuTileBtnClass("green")}
+            className={rimvioMenuTileBtnClass("green")}
           >
-            <FileUp className="size-5 text-glango-neon-green" />
+            <FileUp className="size-5 text-rimvio-neon-green" />
             파일 첨부
           </button>
         </div>
@@ -166,15 +166,15 @@ export function ActionChatInputBar({
           type="button"
           aria-label={menuOpen ? "메뉴 닫기" : "입력 메뉴"}
           onClick={() => setMenuOpen((open) => !open)}
-          className={glangoIconBtnClass(menuOpen ? "secondary" : "primary")}
+          className={rimvioIconBtnClass(menuOpen ? "secondary" : "primary")}
         >
           {menuOpen ? <X className="size-5" /> : <Plus className="size-5" />}
         </button>
 
         <div
           className={cn(
-            glangoComposerFieldClass,
-            ambient?.composerLive && "glango-composer-field--live",
+            rimvioComposerFieldClass,
+            ambient?.composerLive && "rimvio-composer-field--live",
           )}
         >
           <ComposerMentionField
@@ -197,7 +197,7 @@ export function ActionChatInputBar({
             type="submit"
             disabled={disabled || sending}
             aria-label="보내기"
-            className={glangoIconBtnClass("primary")}
+            className={rimvioIconBtnClass("primary")}
           >
             {sending ? (
               <Loader2 className="size-5 animate-spin" />
@@ -209,7 +209,7 @@ export function ActionChatInputBar({
           <button
             type="button"
             aria-label="음성 입력"
-            className={glangoIconBtnClass("ghost")}
+            className={rimvioIconBtnClass("ghost")}
           >
             <Mic className="size-5" />
           </button>

@@ -3,10 +3,10 @@
 import { Calendar, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import {
-  glangoChipBtnClass,
-  glangoInlineChipClass,
-  glangoStripLinkBtnClass,
-} from "@/lib/brand/glango-neon-theme";
+  rimvioChipBtnClass,
+  rimvioInlineChipClass,
+  rimvioStripLinkBtnClass,
+} from "@/lib/brand/rimvio-neon-theme";
 import { ACTION_SHELL, SUGGESTION_CHIPS } from "@/lib/ui/action-chat-theme";
 import type { ActiveActionEntry } from "@/lib/action-chat/active-actions-registry";
 import { cn } from "@/lib/utils";
@@ -33,21 +33,21 @@ export function ContextNowStrip({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: ACTION_SHELL.enterDuration, ease: ACTION_SHELL.enterEase }}
         className={cn(
-          glangoInlineChipClass("md"),
-          "glango-point-surface max-w-none shadow-[0_8px_32px_rgba(0,0,0,0.38)]",
+          rimvioInlineChipClass("md"),
+          "rimvio-point-surface max-w-none shadow-[0_8px_32px_rgba(0,0,0,0.38)]",
         )}
       >
         <div className="flex items-start gap-2.5 px-3.5 py-2.5">
-          <div className="glango-strip-icon-btn" aria-hidden>
+          <div className="rimvio-strip-icon-btn" aria-hidden>
             {nextLabel ? (
-              <Calendar className="size-4 text-glango-neon-amber" strokeWidth={2.1} />
+              <Calendar className="size-4 text-rimvio-neon-amber" strokeWidth={2.1} />
             ) : (
-              <Sparkles className="size-4 text-glango-neon-cyan" strokeWidth={2.1} />
+              <Sparkles className="size-4 text-rimvio-neon-cyan" strokeWidth={2.1} />
             )}
           </div>
 
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-glango-neon-cyan/75">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-rimvio-neon-cyan/75">
               {nextLabel ? "다음 일정" : "오늘"}
             </p>
             <p className="mt-0.5 text-[15px] font-semibold leading-snug text-white">
@@ -64,7 +64,7 @@ export function ContextNowStrip({
             <button
               type="button"
               onClick={onOpenCalendar}
-              className={glangoStripLinkBtnClass}
+              className={rimvioStripLinkBtnClass}
             >
               전체
             </button>
@@ -79,8 +79,8 @@ export function ContextNowStrip({
                 type="button"
                 onClick={() => onSuggest(chip)}
                 className={cn(
-                  glangoChipBtnClass(),
-                  "glango-suggest-chip shrink-0 text-[13px]",
+                  rimvioChipBtnClass(),
+                  "rimvio-suggest-chip shrink-0 text-[13px]",
                 )}
               >
                 {chip}

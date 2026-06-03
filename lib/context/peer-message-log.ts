@@ -1,6 +1,6 @@
 import type { PeerMessage, PeerMessageLog } from "@/lib/context/peer-message-types";
 
-const LOG_PREFIX = "glango.peer-thread.messages.v1";
+const LOG_PREFIX = "rimvio.peer-thread.messages.v1";
 const MAX_MESSAGES = 200;
 
 function logKey(peerThreadId: string) {

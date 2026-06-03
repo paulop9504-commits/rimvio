@@ -1,7 +1,7 @@
 import { isIOS } from "@/lib/platform/device";
 
-export const MAP_APP_STORAGE_KEY = "glango.map-app.v1";
-export const MAP_APP_UPDATED = "glango-map-app-updated";
+export const MAP_APP_STORAGE_KEY = "rimvio.map-app.v1";
+export const MAP_APP_UPDATED = "rimvio-map-app-updated";
 
 export type MapApp = "apple" | "google" | "naver" | "kakao";
 

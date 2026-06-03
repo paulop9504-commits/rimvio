@@ -26,7 +26,7 @@ export function DeltaReviewSheet({
       role="dialog"
       aria-label="무엇이 바뀌었는지"
     >
-      <div className="w-full max-w-md rounded-2xl bg-glango-surface p-4 shadow-xl">
+      <div className="w-full max-w-md rounded-2xl bg-rimvio-surface p-4 shadow-xl">
         <h2 className="text-[15px] font-semibold text-slate-900">{title}</h2>
         <p className="mt-1 text-[12px] text-slate-500">확인만 할 수 있어요. 일정은 바뀌지 않아요.</p>
         <ul className="mt-3 space-y-2">

@@ -1,4 +1,4 @@
-import { GLANGO_CONVERSATION_LINES } from "@/lib/action-chat/glango-persona";
+import { RIMVIO_CONVERSATION_LINES } from "@/lib/action-chat/rimvio-persona";
 
 import type {
 
@@ -58,7 +58,7 @@ export function isForbiddenFallbackText(text: string | null | undefined): boolea
 
   }
 
-  if (trimmed === GLANGO_CONVERSATION_LINES.fallback) {
+  if (trimmed === RIMVIO_CONVERSATION_LINES.fallback) {
 
     return true;
 
@@ -135,7 +135,7 @@ export function isGenericRecoveryEligible(
 
   if (
 
-    trimmed === GLANGO_CONVERSATION_LINES.greeting ||
+    trimmed === RIMVIO_CONVERSATION_LINES.greeting ||
 
     trimmed === "안녕하세요. 무엇을 도와드릴까요?"
 

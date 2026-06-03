@@ -5,8 +5,8 @@ import { isCommerceDomain } from "@/lib/enrichers/url-intelligence";
 import { isMapUrl } from "@/lib/enrichers/map";
 import { isYouTubeDomain } from "@/lib/enrichers/youtube-url";
 
-/** Glango briefing lenses — injected before the AI task, not sent raw. */
-export const GLANGO_BRIEFING_LENSES = [
+/** Rimvio briefing lenses — injected before the AI task, not sent raw. */
+export const RIMVIO_BRIEFING_LENSES = [
   "인지적 과부하 해소",
   "압도적인 시간 압축",
   "개인의 능력 확장",
@@ -117,7 +117,7 @@ export function describeLinkBrief(input: AiPromptContextInput): string {
 }
 
 export function formatBriefingLensTags() {
-  return GLANGO_BRIEFING_LENSES.join(", ");
+  return RIMVIO_BRIEFING_LENSES.join(", ");
 }
 
 export function formatEnrichedTitle(title: string | null | undefined, domain: string) {
@@ -131,7 +131,7 @@ export type ContextualSummaryPromptOptions = {
 
 /**
  * Build a two-layer prompt:
- * 1) Link brief + Glango briefing lenses (context)
+ * 1) Link brief + Rimvio briefing lenses (context)
  * 2) Concrete AI task + enriched title + URL
  */
 export function buildContextualSummaryPrompt(
@@ -163,13 +163,13 @@ export function buildContextualSummaryPrompt(
           ];
 
   const lines = [
-    "당신은 Glango Action Hub의 AI 브리핑 어시스턴트입니다.",
+    "당신은 Rimvio Action Hub의 AI 브리핑 어시스턴트입니다.",
     "",
     "## 1. 링크 설명 (사전 분석)",
     linkBrief,
     "",
-    "## 2. 브리핑 맥락 (Glango 렌즈)",
-    ...GLANGO_BRIEFING_LENSES.map((lens) => `- ${lens}: 이 링크를 이 관점에서 압축·해석해 주세요.`),
+    "## 2. 브리핑 맥락 (Rimvio 렌즈)",
+    ...RIMVIO_BRIEFING_LENSES.map((lens) => `- ${lens}: 이 링크를 이 관점에서 압축·해석해 주세요.`),
     "",
     `추정 사용자 의도: ${intent}`,
     "",

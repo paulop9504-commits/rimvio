@@ -1,4 +1,4 @@
-/** Glango Action OS wire types — strict LLM JSON schema. */
+/** Rimvio Action OS wire types — strict LLM JSON schema. */
 export type RegisterActionWire = {
   action: "REGISTER_ACTION";
   trigger_pattern: string;

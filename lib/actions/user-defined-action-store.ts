@@ -3,8 +3,8 @@ import type {
   UserDefinedActionParam,
 } from "@/lib/actions/user-defined-action-types";
 
-export const USER_DEFINED_ACTIONS_KEY = "glango.user-defined-actions.v1";
-export const USER_DEFINED_ACTIONS_UPDATED = "glango-user-defined-actions-updated";
+export const USER_DEFINED_ACTIONS_KEY = "rimvio.user-defined-actions.v1";
+export const USER_DEFINED_ACTIONS_UPDATED = "rimvio-user-defined-actions-updated";
 
 const SEED_ACTION: UserDefinedAction = {
   id: "uda-btc-short",

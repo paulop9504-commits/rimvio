@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
-import { GLANGO } from "@/lib/brand/glango";
+import { RIMVIO } from "@/lib/brand/rimvio";
 import { isAndroid, isIOS, isStandalonePwa } from "@/lib/platform/device";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
-const DISMISS_KEY = "glango-mobile-browser-banner-dismissed";
+const DISMISS_KEY = "rimvio-mobile-browser-banner-dismissed";
 
 export function IosShareBanner() {
   const [visible, setVisible] = useState(false);

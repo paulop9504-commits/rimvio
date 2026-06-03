@@ -177,7 +177,7 @@ function isStudyQaModeActiveSafe(): boolean {
   if (typeof window === "undefined") {
     return false;
   }
-  return sessionStorage.getItem("glango.study-qa-mode.v1") === "1";
+  return sessionStorage.getItem("rimvio.study-qa-mode.v1") === "1";
 }
 
 export function readAutoExecuteStudyAux(

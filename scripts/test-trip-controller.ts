@@ -65,7 +65,7 @@ const cardDay = buildFlightStatusCard({
 assert.equal(cardDay?.main_action.type, "TICKET_QR");
 
 const packingResult = orchestrateTripInteraction({
-  message: "glango://trip/packing",
+  message: "rimvio://trip/packing",
   referenceDate,
 });
 assert.ok(packingResult?.packingChecklist);

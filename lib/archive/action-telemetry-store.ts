@@ -1,6 +1,6 @@
 import type { ActionTelemetryEvent, ActionTelemetryKind } from "@/lib/archive/types";
 
-const STORAGE_KEY = "glango.action-telemetry.v1";
+const STORAGE_KEY = "rimvio.action-telemetry.v1";
 const SHOWN_DEDUPE_MS = 24 * 60 * 60 * 1000;
 
 let memoryStore: ActionTelemetryEvent[] = [];

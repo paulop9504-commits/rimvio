@@ -1,10 +1,10 @@
-import { GLANGO } from "@/lib/brand/glango";
+import { RIMVIO } from "@/lib/brand/rimvio";
 import type { ShareLinkInput } from "@/lib/share/share-destinations";
 import { buildBeamShareText } from "@/lib/share/beam-share-text";
 
 export function buildKakaoShareText(link: ShareLinkInput) {
   const body = link.share_slug ? buildBeamShareText(link) : `${link.title}\n${link.original_url}`;
-  return `${GLANGO.nameKo}에서 공유 👀\n${body}`;
+  return `${RIMVIO.nameKo}에서 공유 👀\n${body}`;
 }
 
 export function canUseNativeShareForKakao() {
@@ -73,7 +73,7 @@ export async function loadKakaoSdk(): Promise<typeof window.Kakao | null> {
 
   await new Promise<void>((resolve, reject) => {
     const existing = document.querySelector<HTMLScriptElement>(
-      'script[data-glango-kakao-sdk="1"]'
+      'script[data-rimvio-kakao-sdk="1"]'
     );
 
     if (existing) {
@@ -87,7 +87,7 @@ export async function loadKakaoSdk(): Promise<typeof window.Kakao | null> {
     const script = document.createElement("script");
     script.src = "https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js";
     script.async = true;
-    script.dataset.glangoKakaoSdk = "1";
+    script.dataset.rimvioKakaoSdk = "1";
     script.crossOrigin = "anonymous";
     script.onload = () => resolve();
     script.onerror = () => reject(new Error("kakao_sdk_load_failed"));

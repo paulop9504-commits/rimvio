@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { FROZEN_SHARE_TARGET } from "@/lib/share/share-target-config";
 import { copy } from "@/lib/copy/human-ko";
-import { GLANGO } from "@/lib/brand/glango";
+import { RIMVIO } from "@/lib/brand/rimvio";
 import { STORE_META } from "@/lib/pwa/store-meta";
 
 const SHARE_TARGET = FROZEN_SHARE_TARGET;
@@ -37,13 +37,13 @@ function manifestIcons(): MetadataRoute.Manifest["icons"] {
   if (icons.length === 0) {
     icons.push(
       {
-        src: "/glango-icon.svg",
+        src: "/rimvio-icon.svg",
         sizes: "512x512",
         type: "image/svg+xml",
         purpose: "any",
       },
       {
-        src: "/glango-icon.svg",
+        src: "/rimvio-icon.svg",
         sizes: "512x512",
         type: "image/svg+xml",
         purpose: "maskable",
@@ -70,8 +70,8 @@ export default function manifest(): MetadataRoute.Manifest {
 
   return {
     id: "/",
-    name: `${GLANGO.name} · ${GLANGO.nameKo}`,
-    short_name: GLANGO.name,
+    name: `${RIMVIO.name} · ${RIMVIO.nameKo}`,
+    short_name: RIMVIO.name,
     description: STORE_META.shortDescription,
     lang: "ko-KR",
     dir: "ltr",

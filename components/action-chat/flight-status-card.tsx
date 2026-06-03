@@ -50,7 +50,7 @@ export function FlightStatusCardView({
               key={action.label}
               type="button"
               onClick={() => onShadowAction?.(action)}
-              className="rounded-full border border-indigo-200 bg-glango-surface px-3 py-1.5 text-xs font-medium text-indigo-800 hover:bg-indigo-50"
+              className="rounded-full border border-indigo-200 bg-rimvio-surface px-3 py-1.5 text-xs font-medium text-indigo-800 hover:bg-indigo-50"
             >
               {action.label}
             </button>

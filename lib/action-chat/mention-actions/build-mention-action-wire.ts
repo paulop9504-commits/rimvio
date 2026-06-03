@@ -457,7 +457,7 @@ export function buildMentionActionWire(input: {
         query: q,
         summaryLines: [`${interval}시간마다 물 마시기 알림`],
         mainLabel: "물 마시기 알림",
-        mainDeeplink: `glango://reminder/create?title=${encodeSearch("물 마시기")}&intervalHours=${interval}`,
+        mainDeeplink: `rimvio://reminder/create?title=${encodeSearch("물 마시기")}&intervalHours=${interval}`,
       });
     }
 
@@ -471,7 +471,7 @@ export function buildMentionActionWire(input: {
         query: q,
         summaryLines: [`${minutes}분 운동`],
         mainLabel: `${minutes}분 타이머`,
-        mainDeeplink: `glango://mention/timer?duration=${duration}`,
+        mainDeeplink: `rimvio://mention/timer?duration=${duration}`,
       });
     }
 
@@ -485,7 +485,7 @@ export function buildMentionActionWire(input: {
         query: q,
         summaryLines: when ? [`점심 알림 ${when}`] : ["12:30 점심 알림"],
         mainLabel: "점심 알림",
-        mainDeeplink: `glango://reminder/create?title=${encodeSearch("점심")}&query=${encodeSearch(q || "12시 30분")}`,
+        mainDeeplink: `rimvio://reminder/create?title=${encodeSearch("점심")}&query=${encodeSearch(q || "12시 30분")}`,
       });
     }
 
@@ -512,7 +512,7 @@ export function buildMentionActionWire(input: {
             ? [q]
             : ["할 일을 적어 주세요."],
         mainLabel: "할 일 알림",
-        mainDeeplink: `glango://reminder/create?title=${encodeSearch(q || "할 일")}`,
+        mainDeeplink: `rimvio://reminder/create?title=${encodeSearch(q || "할 일")}`,
       });
 
     case "receipt":
@@ -538,7 +538,7 @@ export function buildMentionActionWire(input: {
             ? [q]
             : ["만료일과 내용을 적어 주세요."],
         mainLabel: "쿠폰 알림",
-        mainDeeplink: `glango://reminder/create?title=${encodeSearch(`쿠폰 ${q}`)}`,
+        mainDeeplink: `rimvio://reminder/create?title=${encodeSearch(`쿠폰 ${q}`)}`,
       });
 
     case "umbrella": {
@@ -609,7 +609,7 @@ export function buildMentionActionWire(input: {
         query: q,
         summaryLines: ["가장 최근 액션이 없어요."],
         mainLabel: "오늘 일정",
-        mainDeeplink: "glango://calendar/today",
+        mainDeeplink: "rimvio://calendar/today",
       });
 
     case "retry":
@@ -621,7 +621,7 @@ export function buildMentionActionWire(input: {
           query: q,
           summaryLines: ["다시 실행할 직전 액션이 없어요."],
           mainLabel: "액션 목록",
-          mainDeeplink: "glango://actions",
+          mainDeeplink: "rimvio://actions",
         });
       }
       return buildInlineChatActionWire({
@@ -655,7 +655,7 @@ export function buildMentionActionWire(input: {
         query: q,
         summaryLines: [`${minutes}분 방해금지`],
         mainLabel: "집중 모드",
-        mainDeeplink: `glango://mention/focus?duration=${duration}`,
+        mainDeeplink: `rimvio://mention/focus?duration=${duration}`,
       });
     }
 

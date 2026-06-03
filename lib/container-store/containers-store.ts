@@ -2,7 +2,7 @@ import { CANONICAL_CONTAINER_REGISTRY } from "@/lib/containers/container-types";
 import type { ContainerKnowledgeItem, ContainerRecord } from "@/lib/container-store/types";
 import { DEFAULT_VITALITY_TAG, normalizeVitalityTag } from "@/lib/vitality/types";
 
-const STORE_KEY = "glango.containers.v1";
+const STORE_KEY = "rimvio.containers.v1";
 
 let memoryStore: ContainerRecord[] = [];
 

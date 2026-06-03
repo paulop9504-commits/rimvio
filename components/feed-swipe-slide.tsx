@@ -153,7 +153,7 @@ export function FeedSwipeSlide({
   };
 
   return (
-    <div className="relative h-full overflow-hidden bg-glango-surface-muted">
+    <div className="relative h-full overflow-hidden bg-rimvio-surface-muted">
       <FeedSlideActionRail
         hasMultipleActions={rotation.length > 1}
         hidden={shareOpen}
@@ -166,7 +166,7 @@ export function FeedSwipeSlide({
         style={{ opacity: roomOpacity, scale: roomScale }}
         className={cn(
           "pointer-events-none absolute inset-0 z-0 flex items-center justify-end gap-2",
-          "bg-glango-neon-purple px-8 text-white"
+          "bg-rimvio-neon-purple px-8 text-white"
         )}
       >
         <Users className="size-5" strokeWidth={2} />
@@ -192,7 +192,7 @@ export function FeedSwipeSlide({
         dragConstraints={{ left: -160, right: 160 }}
         dragElastic={{ left: 0.28, right: 0.28 }}
         onDragEnd={handleDragEnd}
-        className="relative z-10 h-full w-full bg-glango-surface-muted"
+        className="relative z-10 h-full w-full bg-rimvio-surface-muted"
       >
         <ActionShortsSlide
           link={link}

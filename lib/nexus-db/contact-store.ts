@@ -8,7 +8,7 @@ export type NexusContact = {
   updatedAt: string;
 };
 
-const STORAGE_KEY = "glango-nexus-contacts.v1";
+const STORAGE_KEY = "rimvio-nexus-contacts.v1";
 let memoryStore: NexusContact[] = [];
 
 function readJson(): NexusContact[] {

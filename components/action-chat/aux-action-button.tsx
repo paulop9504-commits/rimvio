@@ -28,7 +28,7 @@ export function AuxActionButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "glango-action-shell-chip inline-flex items-center gap-2 rounded-full border border-white/85 bg-transparent font-semibold text-white transition-colors hover:bg-white/[0.06]",
+        "rimvio-action-shell-chip inline-flex items-center gap-2 rounded-full border border-white/85 bg-transparent font-semibold text-white transition-colors hover:bg-white/[0.06]",
         tapTarget
           ? "min-h-10 px-3.5 py-2 text-[13px] tracking-[-0.01em]"
           : "min-h-7 gap-1.5 px-2.5 py-1 text-[11px]",

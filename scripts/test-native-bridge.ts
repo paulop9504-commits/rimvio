@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
-import { GlangoNativeBridgeWeb } from "@/lib/native-bridge/glango-native-bridge.web";
+import { RimvioNativeBridgeWeb } from "@/lib/native-bridge/rimvio-native-bridge.web";
 
 async function main() {
-  const web = new GlangoNativeBridgeWeb();
+  const web = new RimvioNativeBridgeWeb();
 
   const access = await web.isNotificationAccessEnabled();
   assert.equal(access.enabled, false);

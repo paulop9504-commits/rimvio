@@ -21,7 +21,7 @@ export function HomeInboxStrip({ count, onOpen, className }: HomeInboxStripProps
         onClick={onOpen}
         className="flex w-full items-center gap-3 rounded-2xl border border-amber-200/80 bg-amber-50/90 px-3 py-2.5 text-left transition-colors hover:bg-amber-50"
       >
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-glango-surface text-amber-600 shadow-sm">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-rimvio-surface text-amber-600 shadow-sm">
           <Inbox className="size-4" />
         </span>
         <div className="min-w-0 flex-1">

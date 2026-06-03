@@ -10,11 +10,11 @@ import {
   type CanonicalContainerKey,
 } from "@/lib/containers/container-types";
 
-export const ACTIVE_CHAINS_STORAGE_KEY = "glango.active-chains.v1";
-export const ACTIVE_CHAINS_UPDATED = "glango-active-chains-updated";
+export const ACTIVE_CHAINS_STORAGE_KEY = "rimvio.active-chains.v1";
+export const ACTIVE_CHAINS_UPDATED = "rimvio-active-chains-updated";
 
 /** Legacy chain storage — migrated on read */
-const LEGACY_CHAIN_KEY = "glango.container-chain.v1";
+const LEGACY_CHAIN_KEY = "rimvio.container-chain.v1";
 
 export function readActiveChains(): CanonicalContainerKey[] {
   if (typeof window === "undefined") {

@@ -111,8 +111,8 @@ export function usePersonalizedFeedActions(
       setPrimaryLockVersion((value) => value + 1);
     };
 
-    window.addEventListener("glango:primary-lock", onPrimaryLock);
-    return () => window.removeEventListener("glango:primary-lock", onPrimaryLock);
+    window.addEventListener("rimvio:primary-lock", onPrimaryLock);
+    return () => window.removeEventListener("rimvio:primary-lock", onPrimaryLock);
   }, []);
 
   useEffect(() => {

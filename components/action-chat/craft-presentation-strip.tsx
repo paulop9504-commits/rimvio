@@ -35,7 +35,7 @@ export function CraftPresentationStrip({
             <button
               key={item.vitality}
               type="button"
-              className="rounded-full border border-slate-200 bg-glango-surface px-3 py-1.5 text-[13px] shadow-sm transition hover:border-[#4A90E2]"
+              className="rounded-full border border-slate-200 bg-rimvio-surface px-3 py-1.5 text-[13px] shadow-sm transition hover:border-[#4A90E2]"
               onClick={() => onPrompt(item.prompt)}
             >
               <span className="mr-1">{item.emoji}</span>
@@ -68,7 +68,7 @@ export function CraftPresentationStrip({
               {index > 0 ? " · " : null}
               <button
                 type="button"
-                className="mx-0.5 rounded-md bg-glango-surface px-1.5 py-0.5 font-medium text-[#4A90E2] underline-offset-2 hover:underline"
+                className="mx-0.5 rounded-md bg-rimvio-surface px-1.5 py-0.5 font-medium text-[#4A90E2] underline-offset-2 hover:underline"
                 onClick={() => {
                   const alt = slot.alternatives[(index + 1) % slot.alternatives.length] ?? slot.value;
                   onPrompt(`${slot.label} ${alt}로 다시 추천해줘`);
@@ -82,7 +82,7 @@ export function CraftPresentationStrip({
       ) : null}
 
       {polarSlider ? (
-        <div className="rounded-xl border border-slate-200 bg-glango-surface px-3 py-2">
+        <div className="rounded-xl border border-slate-200 bg-rimvio-surface px-3 py-2">
           <div className="mb-1 flex justify-between text-[11px] text-slate-500">
             <span>{polarSlider.left}</span>
             <span>{polarSlider.right}</span>

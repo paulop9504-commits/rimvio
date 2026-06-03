@@ -1,4 +1,4 @@
-/** Short public id for Glango Beam URLs. */
+/** Short public id for Rimvio Beam URLs. */
 export function createShareSlug(length = 10) {
   const bytes = new Uint8Array(length);
   crypto.getRandomValues(bytes);

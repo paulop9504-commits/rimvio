@@ -88,7 +88,7 @@ async function testHttpCapture(buffer: Buffer, mimeType: string) {
 }
 
 async function main() {
-  console.log("=== Glango live smoke (OpenAI + pipeline) ===\n");
+  console.log("=== Rimvio live smoke (OpenAI + pipeline) ===\n");
 
   const keys = envKeyStatus([
     "OPENAI_API_KEY",

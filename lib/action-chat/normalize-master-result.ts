@@ -74,7 +74,7 @@ function appendContainerAction(
     ...actions,
     createOpenAction({
       label,
-      href: `glango://container/${encodeURIComponent(container.title)}`,
+      href: `rimvio://container/${encodeURIComponent(container.title)}`,
       icon: "link",
       copyText: container.title,
       payload: { containerAction: container.action, containerTitle: container.title },

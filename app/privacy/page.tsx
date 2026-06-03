@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
-import { GLANGO } from "@/lib/brand/glango";
+import { RIMVIO } from "@/lib/brand/rimvio";
 
 export default function PrivacyPage() {
   return (
     <AppShell title="개인정보" compact>
       <article className="space-y-5 pb-10 text-sm leading-relaxed text-muted-foreground">
         <p className="text-foreground">
-          {GLANGO.lockup}(👀)는 <strong className="font-medium">로그인 없이</strong>도
+          {RIMVIO.lockup}(👀)는 <strong className="font-medium">로그인 없이</strong>도
           쓸 수 있어요. 받은 링크를 &quot;지금 할 일&quot; 버튼으로 바꿔
           주는 앱이에요.
         </p>

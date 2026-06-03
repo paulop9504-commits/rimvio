@@ -1,16 +1,16 @@
 #!/usr/bin/env npx tsx
 /**
- * Generate brand assets from public/brand/glango-logo-source.png
+ * Generate brand assets from public/brand/rimvio-logo-source.png
  * Usage: npm run store:icons
  */
 
 import fs from "node:fs";
 import path from "node:path";
 import { chromium } from "@playwright/test";
-import { GLANGO_LOGO_ICON_BG } from "../lib/brand/glango-logo-src";
+import { RIMVIO_LOGO_ICON_BG } from "../lib/brand/rimvio-logo-src";
 
 const ROOT = process.cwd();
-const SOURCE = path.join(ROOT, "public", "brand", "glango-logo-source.png");
+const SOURCE = path.join(ROOT, "public", "brand", "rimvio-logo-source.png");
 const OUT_DIR = path.join(ROOT, "public", "icons");
 const PUBLIC_DIR = path.join(ROOT, "public");
 
@@ -36,7 +36,7 @@ function iconHtml(size: number, dataUrl: string, logoScale = 0.82) {
     margin: 0;
     width: ${size}px;
     height: ${size}px;
-    background: ${GLANGO_LOGO_ICON_BG};
+    background: ${RIMVIO_LOGO_ICON_BG};
     display: flex;
     align-items: center;
     justify-content: center;
@@ -148,31 +148,7 @@ async function main() {
 
   await browser.close();
 
-  writeEmbeddedSvg("0 0 685 783", 685, 783, 0, 0, path.join(PUBLIC_DIR, "glango-mark.svg"));
-  console.log("✓ glango-mark.svg");
-
-  const padX = 56;
-  const padY = 28;
-  const logoW = 512 - padX * 2;
-  const logoH = Math.round(logoW / (685 / 783));
-  writeEmbeddedSvg(
-    "0 0 512 512",
-    logoW,
-    logoH,
-    padX,
-    padY,
-    path.join(PUBLIC_DIR, "glango-icon.svg"),
-    GLANGO_LOGO_ICON_BG,
-  );
-  console.log("✓ glango-icon.svg");
-
-  fs.copyFileSync(
-    path.join(PUBLIC_DIR, "glango-icon.svg"),
-    path.join(PUBLIC_DIR, "glango-feed-mark.svg"),
-  );
-  console.log("✓ glango-feed-mark.svg");
-
-  console.log("\nBrand assets written.");
+  console.log("\nPNG icons written. Vector SVG marks: npm run brand:svgs");
 }
 
 main().catch((error) => {

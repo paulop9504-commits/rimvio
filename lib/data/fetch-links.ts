@@ -1,36 +1,40 @@
 import { getAuthUserId } from "@/lib/auth/session";
+import { isAuthRequired } from "@/lib/auth/policy";
 import { filterActiveLinks } from "@/lib/utils/link-archive";
 import { funFeedLinks } from "@/lib/demo/fun-feed-links";
 import type { LinkRow } from "@/types/database";
 import { tryCreateClient } from "@/lib/supabase/server";
 
 export async function fetchLinks(): Promise<LinkRow[]> {
-  const supabase = await tryCreateClient();
-  if (!supabase) {
-    return process.env.NODE_ENV === "development" ? funFeedLinks : [];
+  const strictAuth = isAuthRequired();
+  const userId = await getAuthUserId();
+
+  if (strictAuth && !userId) {
+    return [];
   }
 
-  const userId = await getAuthUserId();
+  const supabase = await tryCreateClient();
+  if (!supabase) {
+    return strictAuth || process.env.NODE_ENV !== "development" ? [] : funFeedLinks;
+  }
 
   let query = supabase.from("links").select("*");
 
   if (userId) {
     query = query.eq("user_id", userId);
+  } else if (strictAuth) {
+    return [];
   }
 
   const { data, error } = await query.order("created_at", { ascending: false });
 
   if (error) {
     console.error("[fetchLinks]", error.message);
-    return process.env.NODE_ENV === "development" ? funFeedLinks : [];
+    return strictAuth || process.env.NODE_ENV !== "development" ? [] : funFeedLinks;
   }
 
   if (!data?.length) {
-    if (process.env.NODE_ENV === "development") {
-      return funFeedLinks;
-    }
-
-    return [];
+    return strictAuth || process.env.NODE_ENV !== "development" ? [] : funFeedLinks;
   }
 
   return data;

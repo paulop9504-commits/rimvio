@@ -36,7 +36,7 @@ const RULE_STUB: Record<AiIntentCategory, string | null> = {
 
   CURIOSITY:
 
-    "저는 Glango예요. 질문에 맞춰 설명·실행·정리를 도와드리는 AI 도우미입니다. 궁금한 점을 말씀해 주세요.",
+    "저는 Rimvio예요. 질문에 맞춰 설명·실행·정리를 도와드리는 AI 도우미입니다. 궁금한 점을 말씀해 주세요.",
 
 };
 

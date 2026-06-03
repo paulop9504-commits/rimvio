@@ -6,7 +6,7 @@ import { dispatchActionById } from "@/lib/action-dispatcher/dispatch-action";
 import { upsertLearningTemplate } from "@/lib/action-registry/action-registry-store";
 import type { CustomTriggerRecord, RegisterActionWire } from "@/lib/action-os/types";
 
-const STORAGE_KEY = "glango-custom-triggers.v1";
+const STORAGE_KEY = "rimvio-custom-triggers.v1";
 
 let memoryStore: CustomTriggerRecord[] = [];
 

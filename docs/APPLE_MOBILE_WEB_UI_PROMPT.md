@@ -1,6 +1,6 @@
 # Apple-style 모바일 웹 UI 디자인 프롬프트
 
-Glango·마케팅·디자인 레퍼런스용 **모바일 웹 스크린샷** 생성 가이드.  
+Rimvio·마케팅·디자인 레퍼런스용 **모바일 웹 스크린샷** 생성 가이드.  
 코드: `lib/design/apple-mobile-web-ui-prompt.ts`
 
 ---
@@ -17,7 +17,7 @@ Glango·마케팅·디자인 레퍼런스용 **모바일 웹 스크린샷** 생�
 | 요소 | 내용 |
 |------|------|
 | 상태 바 | iOS 표준 (시간 15:19, 신호, Wi-Fi, 배터리 85%) |
-| 헤더 | 한국어 태그라인 (Apple 예: *Apple 경험. Apple 제품 및 서비스로…* / Glango: *Glango 경험. 링크 한 번으로…*) |
+| 헤더 | 한국어 태그라인 (Apple 예: *Apple 경험. Apple 제품 및 서비스로…* / Rimvio: *Rimvio 경험. 링크 한 번으로…*) |
 | 아바타 | 카드 **우하단** — `image_0.png`와 동일한 미소 남성 프로필 |
 | 하단 내비 | 왼쪽 `<` 원형 버튼 · 중앙 URL 바 · 오른쪽 `…` 원형 버튼 |
 
@@ -55,7 +55,7 @@ TypeScript:
 import { buildPresetAppleMobileWebPrompt } from "@/lib/design/apple-mobile-web-ui-prompt";
 
 buildPresetAppleMobileWebPrompt("creativity"); // brand: "apple" (default)
-buildPresetAppleMobileWebPrompt("glangoAction", { brand: "glango" });
+buildPresetAppleMobileWebPrompt("rimvioAction", { brand: "rimvio" });
 ```
 
 ---
@@ -77,8 +77,8 @@ buildAppleMobileWebCardPrompt({
   titleGradientWord: "가깝게",
   body: "메시지와 영상이 한 흐름으로 이어집니다.",
   graphic: "iPhone showing a video call with soft bokeh and floating bubbles.",
-  urlBar: "glango.app",
-}, { brand: "glango" });
+  urlBar: "rimvio.app",
+}, { brand: "rimvio" });
 ```
 
 ---
@@ -91,7 +91,7 @@ buildAppleMobileWebCardPrompt({
 | `connectivity` | 연결성 | 영상 통화·메시지 |
 | `productivity` | 생산성 | Mac + iPhone 작업 |
 | `entertainment` | 엔터테인먼트 | AirPods·공간 음향 |
-| `glangoAction` | 실행 | Glango Feed / Action Card |
+| `rimvioAction` | 실행 | Rimvio Feed / Action Card |
 | `foodPhoto` | 맛집 | 음식 사진이 카드 하단 그래픽 |
 
 ---
@@ -125,4 +125,4 @@ buildFoodPhotoCardUiPrompt({
 
 - **디자인 Smart Suite** — Action Card 「📱 모바일 UI 목업」
 - **Cursor** — `.cursor/rules/apple-mobile-ui-prompt.mdc`
-- **브랜드** — `docs/GLANGO_BRAND.md` (시각 레퍼런스 링크)
+- **브랜드** — `docs/RIMVIO_BRAND.md` (시각 레퍼런스 링크)

@@ -8,7 +8,7 @@ function deriveKey(): Buffer {
   const material =
     process.env.INTEGRATIONS_ENCRYPTION_KEY?.trim() ??
     (process.env.NODE_ENV === "development"
-      ? "glango-dev-integrations-key-change-me"
+      ? "rimvio-dev-integrations-key-change-me"
       : "");
 
   if (!material) {

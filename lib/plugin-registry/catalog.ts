@@ -14,7 +14,7 @@ export const PLUGIN_REGISTRY: PluginRegistryEntry[] = [
   { id: "calendar.view", label: "Open calendar", domains: ["work", "generic"], executable: true },
   { id: "tel", label: "Phone call", domains: ["work", "generic"], executable: true },
   { id: "search.web", label: "Web search fallback", domains: ["generic"], executable: true },
-  { id: "chat.followup", label: "Ask Glango follow-up", domains: ["generic"], executable: true },
+  { id: "chat.followup", label: "Ask Rimvio follow-up", domains: ["generic"], executable: true },
 ];
 
 export const FALLBACK_PLUGIN_ID = "search.web";

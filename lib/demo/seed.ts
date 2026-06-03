@@ -28,7 +28,7 @@ function needsFunSeed() {
   return true;
 }
 
-export const LOCAL_LINKS_UPDATED = "glango-local-links-updated";
+export const LOCAL_LINKS_UPDATED = "rimvio-local-links-updated";
 
 function notifyLocalLinksUpdated() {
   if (typeof window === "undefined") {

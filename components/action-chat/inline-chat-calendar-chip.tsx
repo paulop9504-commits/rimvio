@@ -5,11 +5,11 @@ import { CalendarBoard } from "@/components/action-chat/calendar-board";
 import type { InlineChatCalendarWire } from "@/lib/action-chat/mention-calendar/inline-chat-calendar";
 import type { UnifiedCalendarOverlayRow } from "@/lib/calendar/calendar-view-types";
 import {
-  glangoInlineChipClass,
-  glangoInlineChipHeaderClass,
-  glangoInlineChipMetaClass,
-  glangoInlineChipTitleClass,
-} from "@/lib/brand/glango-neon-theme";
+  rimvioInlineChipClass,
+  rimvioInlineChipHeaderClass,
+  rimvioInlineChipMetaClass,
+  rimvioInlineChipTitleClass,
+} from "@/lib/brand/rimvio-neon-theme";
 import { cn } from "@/lib/utils";
 
 type InlineChatCalendarChipProps = {
@@ -31,14 +31,14 @@ export function InlineChatCalendarChip({
 }: InlineChatCalendarChipProps) {
   return (
     <div
-      className={cn(glangoInlineChipClass("lg"), className)}
+      className={cn(rimvioInlineChipClass("lg"), className)}
       aria-label="캘린더"
     >
-      <div className={glangoInlineChipHeaderClass}>
-        <Calendar className="size-4 shrink-0 text-glango-neon-amber" aria-hidden />
-        <span className={glangoInlineChipTitleClass}>캘린더</span>
+      <div className={rimvioInlineChipHeaderClass}>
+        <Calendar className="size-4 shrink-0 text-rimvio-neon-amber" aria-hidden />
+        <span className={rimvioInlineChipTitleClass}>캘린더</span>
         {calendar.query ? (
-          <span className={glangoInlineChipMetaClass}>{calendar.query}</span>
+          <span className={rimvioInlineChipMetaClass}>{calendar.query}</span>
         ) : null}
       </div>
       <CalendarBoard

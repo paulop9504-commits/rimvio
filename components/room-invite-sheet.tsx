@@ -61,7 +61,7 @@ function RoomPreviewChip({ room }: { room: RoomRow }) {
       </div>
 
       <div className="flex items-center gap-2 rounded-2xl bg-violet-500/5 px-3 py-2 ring-1 ring-violet-500/15">
-        <Sparkles className="size-4 shrink-0 text-glango-neon-purple" />
+        <Sparkles className="size-4 shrink-0 text-rimvio-neon-purple" />
         <p className="truncate text-[11px] font-medium text-violet-700 dark:text-violet-300">
           {roomUrl}
         </p>

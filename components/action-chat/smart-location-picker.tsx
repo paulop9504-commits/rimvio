@@ -9,10 +9,10 @@ import {
 import type { ConfirmationExtractedData, LocationSuggestion } from "@/lib/action-chat/confirmation-types";
 import { isSystemQuery } from "@/lib/action-chat/confirm-input-guard";
 import {
-  glangoEdgeCardClass,
-  glangoIconBtnClass,
-  glangoListPickBtnClass,
-} from "@/lib/brand/glango-neon-theme";
+  rimvioEdgeCardClass,
+  rimvioIconBtnClass,
+  rimvioListPickBtnClass,
+} from "@/lib/brand/rimvio-neon-theme";
 import { cn } from "@/lib/utils";
 
 type SmartLocationPickerProps = {
@@ -55,12 +55,12 @@ export function SmartLocationPicker({
     <div
       className={cn(
         "smart-location-picker p-3",
-        glangoEdgeCardClass("lg", "cyan"),
+        rimvioEdgeCardClass("lg", "cyan"),
         className
       )}
     >
       <div className="mb-2 flex items-center gap-2">
-        <span className={glangoIconBtnClass("cyan", "sm")}>
+        <span className={rimvioIconBtnClass("cyan", "sm")}>
           <MapPin className="size-4" />
         </span>
         <div>
@@ -81,7 +81,7 @@ export function SmartLocationPicker({
             setQuery(next);
           }}
           placeholder="장소 검색"
-          className="w-full rounded-xl bg-glango-surface-raised py-2.5 pl-9 pr-3 text-[13px] text-foreground outline-none shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] placeholder:text-muted-foreground focus:shadow-[inset_0_0_0_1px_rgba(50,215,255,0.35)]"
+          className="w-full rounded-xl bg-rimvio-surface-raised py-2.5 pl-9 pr-3 text-[13px] text-foreground outline-none shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] placeholder:text-muted-foreground focus:shadow-[inset_0_0_0_1px_rgba(50,215,255,0.35)]"
         />
       </label>
 
@@ -91,7 +91,7 @@ export function SmartLocationPicker({
             <button
               type="button"
               onClick={() => onSelect(item)}
-              className={glangoListPickBtnClass()}
+              className={rimvioListPickBtnClass()}
             >
               <span className="text-[13px] font-semibold text-foreground">{item.label}</span>
               <span className="text-[11px] text-muted-foreground">{item.address}</span>

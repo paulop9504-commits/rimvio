@@ -6,7 +6,7 @@ export function buildVitalityStateLlmSystemPrompt(): string {
     (entry) => `- **${entry.kind}** (${entry.vitality}): ${entry.description}`
   ).join("\n");
 
-  return `# GLANGO VITALITY STATE CLASSIFIER
+  return `# RIMVIO VITALITY STATE CLASSIFIER
 
 You classify whether a user message expresses an **inner state or feeling** that needs empathetic action — NOT a place name, NOT a navigation request, NOT a factual question.
 

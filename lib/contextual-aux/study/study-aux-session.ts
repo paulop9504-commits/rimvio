@@ -1,8 +1,8 @@
 import type { StudyAuxKind } from "@/lib/contextual-aux/study/types";
 
-const QA_MODE_KEY = "glango.study-qa-mode.v1";
-const LECTURE_AWAIT_KEY = "glango.study-lecture-await.v1";
-const LECTURE_URL_KEY = "glango.study-lecture-url.v1";
+const QA_MODE_KEY = "rimvio.study-qa-mode.v1";
+const LECTURE_AWAIT_KEY = "rimvio.study-lecture-await.v1";
+const LECTURE_URL_KEY = "rimvio.study-lecture-url.v1";
 
 export function setStudyQaMode(active: boolean) {
   if (typeof window === "undefined") {

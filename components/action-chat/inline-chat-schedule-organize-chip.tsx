@@ -10,12 +10,12 @@ import {
 import type { InlineChatScheduleOrganizeWire } from "@/lib/action-chat/mention-schedule-organize/inline-chat-schedule-organize";
 import type { UnifiedCalendarOverlayRow } from "@/lib/calendar/calendar-view-types";
 import {
-  glangoInlineChipBodyClass,
-  glangoInlineChipClass,
-  glangoInlineChipHeaderClass,
-  glangoInlineChipMetaClass,
-  glangoInlineChipTitleClass,
-} from "@/lib/brand/glango-neon-theme";
+  rimvioInlineChipBodyClass,
+  rimvioInlineChipClass,
+  rimvioInlineChipHeaderClass,
+  rimvioInlineChipMetaClass,
+  rimvioInlineChipTitleClass,
+} from "@/lib/brand/rimvio-neon-theme";
 import { cn } from "@/lib/utils";
 
 type InlineChatScheduleOrganizeChipProps = {
@@ -44,31 +44,31 @@ export function InlineChatScheduleOrganizeChip({
 
   return (
     <div
-      className={cn(glangoInlineChipClass("md"), className)}
+      className={cn(rimvioInlineChipClass("md"), className)}
       aria-label="일정정리"
     >
-      <div className={glangoInlineChipHeaderClass}>
-        <ListChecks className="size-4 shrink-0 text-glango-neon-purple" aria-hidden />
-        <span className={glangoInlineChipTitleClass}>일정정리</span>
-        <span className={glangoInlineChipMetaClass}>{snapshot.scopeLabel}</span>
+      <div className={rimvioInlineChipHeaderClass}>
+        <ListChecks className="size-4 shrink-0 text-rimvio-neon-purple" aria-hidden />
+        <span className={rimvioInlineChipTitleClass}>일정정리</span>
+        <span className={rimvioInlineChipMetaClass}>{snapshot.scopeLabel}</span>
       </div>
 
-      <div className={cn(glangoInlineChipBodyClass, "space-y-2")}>
-        <p className="glango-inline-chip__text-muted">{snapshot.summaryLine}</p>
+      <div className={cn(rimvioInlineChipBodyClass, "space-y-2")}>
+        <p className="rimvio-inline-chip__text-muted">{snapshot.summaryLine}</p>
 
         {snapshot.items.length > 0 ? (
           <ul className="space-y-1">
             {snapshot.items.map((item) => (
-              <li key={item.id} className="glango-inline-chip__row">
-                <span className="glango-inline-chip__row-time">{item.timeLabel}</span>
-                <span className="glango-inline-chip__row-title">{item.title}</span>
+              <li key={item.id} className="rimvio-inline-chip__row">
+                <span className="rimvio-inline-chip__row-time">{item.timeLabel}</span>
+                <span className="rimvio-inline-chip__row-title">{item.title}</span>
               </li>
             ))}
           </ul>
         ) : null}
 
         {snapshot.conflictCount > 0 ? (
-          <p className="text-[11px] font-medium text-glango-neon-amber">
+          <p className="text-[11px] font-medium text-rimvio-neon-amber">
             겹침 {snapshot.conflictCount}건 — 기존 일정은 유지한 채 조정할 수 있어요
           </p>
         ) : null}

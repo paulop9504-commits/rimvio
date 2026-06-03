@@ -15,6 +15,6 @@ When generating **mobile web UI screenshots**, marketing mockups, or feed hero a
 3. **Fixed chrome:** iOS status bar, header tagline, card bottom-right avatar, bottom URL nav (`<` · URL · `…`).
 4. **Card:** white background, large rounded corners — category (grey small) → title (bold KO) → body (fine KO) → topic graphic.
 5. Optional title gradient on one word (blue → green).
-6. Glango product mockups: `{ brand: "glango" }`, `urlBar: "glango.app"`, preset `glangoAction`.
+6. Rimvio product mockups: `{ brand: "rimvio" }`, `urlBar: "rimvio.app"`, preset `rimvioAction`.
 
 Do not invent new layout patterns; only change category, title, body, and graphic per card.

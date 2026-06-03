@@ -116,7 +116,7 @@ export function CommerceVerdictHeader({
               "text-rose-600",
             presentation.kind !== "pending" &&
               presentation.heroMetric.signed === "-" &&
-              "text-glango-neon-cyan"
+              "text-rimvio-neon-cyan"
           )}
         >
           {reducedMotion || presentation.kind === "pending"

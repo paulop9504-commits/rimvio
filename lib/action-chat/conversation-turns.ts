@@ -1,9 +1,9 @@
 import type { OrchestratorResult } from "@/lib/action-chat/orchestrator-types";
 import {
-  GLANGO_CONVERSATION_LINES,
+  RIMVIO_CONVERSATION_LINES,
   isEmotionalConcern,
   isSadanAnalysisRequest,
-} from "@/lib/action-chat/glango-persona";
+} from "@/lib/action-chat/rimvio-persona";
 
 const PURE_GREETING =
   /^(?:ㅎㅇ|하이|헬로|hello|hi|hey|안녕(?:하세요|히|하세용|하십니까)?|반가(?:워|워요|습니다)|good\s*(?:morning|evening|night)|굿모닝|굿밤|뭐해|잘\s*지내)(?:[!?.~ㅋㅎ\s]*)?$/iu;
@@ -87,7 +87,7 @@ export function orchestrateConversation(input: {
 
   if (isEmotionalConcern(trimmed) && !PURE_GREETING.test(trimmed)) {
     return {
-      summary: GLANGO_CONVERSATION_LINES.tired,
+      summary: RIMVIO_CONVERSATION_LINES.tired,
       actions: [],
       source: "conversation",
     };
@@ -95,7 +95,7 @@ export function orchestrateConversation(input: {
 
   if (PURE_THANKS.test(trimmed)) {
     return {
-      summary: GLANGO_CONVERSATION_LINES.thanks,
+      summary: RIMVIO_CONVERSATION_LINES.thanks,
       actions: [],
       source: "conversation",
     };
@@ -103,7 +103,7 @@ export function orchestrateConversation(input: {
 
   if (PURE_BYE.test(trimmed)) {
     return {
-      summary: GLANGO_CONVERSATION_LINES.bye,
+      summary: RIMVIO_CONVERSATION_LINES.bye,
       actions: [],
       source: "conversation",
     };
@@ -111,7 +111,7 @@ export function orchestrateConversation(input: {
 
   if (HELP_OR_CAPABILITIES.test(trimmed)) {
     return {
-      summary: GLANGO_CONVERSATION_LINES.help,
+      summary: RIMVIO_CONVERSATION_LINES.help,
       actions: [],
       source: "conversation",
     };
@@ -119,14 +119,14 @@ export function orchestrateConversation(input: {
 
   if (placeHint) {
     return {
-      summary: GLANGO_CONVERSATION_LINES.greetingWithContext(placeHint),
+      summary: RIMVIO_CONVERSATION_LINES.greetingWithContext(placeHint),
       actions: [],
       source: "conversation",
     };
   }
 
   return {
-    summary: GLANGO_CONVERSATION_LINES.greeting,
+    summary: RIMVIO_CONVERSATION_LINES.greeting,
     actions: [],
     source: "conversation",
   };

@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/welcome?auth=missing_code`);
   }
 
-  const next = request.nextUrl.searchParams.get("next") ?? "/";
+  const next = request.nextUrl.searchParams.get("next") ?? "/feed";
 
   const supabase = await createClient();
   const { error } = await supabase.auth.exchangeCodeForSession(code);

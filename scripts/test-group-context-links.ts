@@ -25,8 +25,8 @@ const photo = link({
   id: "p1",
   title: "결제 영수증",
   source_type: "screenshot",
-  original_url: "https://glango.app/capture/abc",
-  domain: "glango.app",
+  original_url: "https://rimvio.app/capture/abc",
+  domain: "rimvio.app",
 });
 assert.equal(classifyContextLink(photo), "photo");
 

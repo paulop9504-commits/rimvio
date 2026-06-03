@@ -2,7 +2,7 @@ import { executeScheduledLinkReminder } from "@/lib/actions/schedule-link-execut
 import { runLinkAction, type RunLinkActionResult } from "@/lib/actions/execute-link-action";
 import { BLINK_ACTION_IDS } from "@/lib/actions/blink-feature-actions";
 import { isReadAloudAction } from "@/lib/actions/read-aloud-action";
-import { GLANGO } from "@/lib/brand/glango";
+import { RIMVIO } from "@/lib/brand/rimvio";
 import { buildExchangeRateHref } from "@/lib/actions/search-urls";
 import { getDisplayTitleForLink, sanitizeLinkTitle } from "@/lib/feed/sanitize-link-title";
 import { getAppLocale } from "@/lib/i18n/locale-store";
@@ -189,7 +189,7 @@ export async function runLinkActionForLink(
     const title = readPayloadString(payload, "title") ?? displayTitle;
     const template = [
       "안녕하세요,",
-      `${GLANGO.nameKo}에서 링크 보고 견적 문의드립니다.`,
+      `${RIMVIO.nameKo}에서 링크 보고 견적 문의드립니다.`,
       "",
       title,
       link.original_url,
@@ -271,7 +271,7 @@ export async function runLinkActionForLink(
       "VERSION:3.0",
       `FN:${title}`,
       `URL:${link.original_url}`,
-      `NOTE:${GLANGO.nameKo}에서 저장`,
+      `NOTE:${RIMVIO.nameKo}에서 저장`,
       "END:VCARD",
     ].join("\n");
     return { copiedText: await copyText(vcard) };

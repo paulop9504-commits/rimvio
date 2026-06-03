@@ -83,7 +83,7 @@ export class OrchestratorTrace {
 }
 
 export function isOrchestratorTraceEnabled() {
-  return process.env.GLANGO_ORCHESTRATOR_TRACE === "1";
+  return process.env.RIMVIO_ORCHESTRATOR_TRACE === "1";
 }
 
 export function emitOrchestratorTrace(lines: string[]) {

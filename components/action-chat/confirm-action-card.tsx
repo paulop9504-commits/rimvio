@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { GlangoActionButton } from "@/components/ui/glango-action-button";
+import { RimvioActionButton } from "@/components/ui/rimvio-action-button";
 import { SmartLocationPicker } from "@/components/action-chat/smart-location-picker";
 import { ActionCountdownStrip } from "@/components/action-chat/action-countdown-strip";
 import { resolveActionDatetimeIso } from "@/lib/action-chat/action-countdown";
@@ -66,7 +66,7 @@ export function ConfirmActionCard({
       ) : null}
 
       {extracted?.address || extracted?.place_name ? (
-        <div className="rounded-xl bg-glango-surface px-3 py-2.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]">
+        <div className="rounded-xl bg-rimvio-surface px-3 py-2.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             확인할 위치
           </p>
@@ -108,21 +108,21 @@ export function ConfirmActionCard({
             }
           >
             {wittyButtons!.map((button, index) => (
-              <GlangoActionButton
+              <RimvioActionButton
                 key={`${button.action}-${button.label}`}
                 variant={index === 0 ? "primary" : "secondary"}
                 onClick={() => handleWittyClick(button.action)}
               >
                 {button.label}
-              </GlangoActionButton>
+              </RimvioActionButton>
             ))}
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2">
-            <GlangoActionButton variant="primary" onClick={onAccept}>
+            <RimvioActionButton variant="primary" onClick={onAccept}>
               네, 맞습니다
-            </GlangoActionButton>
-            <GlangoActionButton
+            </RimvioActionButton>
+            <RimvioActionButton
               variant="secondary"
               onClick={() => {
                 setPickerOpen(true);
@@ -130,7 +130,7 @@ export function ConfirmActionCard({
               }}
             >
               아니요, 다른 곳
-            </GlangoActionButton>
+            </RimvioActionButton>
           </div>
         )
       ) : null}

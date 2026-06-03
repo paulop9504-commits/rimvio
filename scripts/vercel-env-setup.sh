@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Register Glango API keys on Vercel (Production + Preview + Development).
+# Register Rimvio API keys on Vercel (Production + Preview + Development).
 # Usage: bash scripts/vercel-env-setup.sh
 # Requires: vercel CLI logged in, project linked in new-project/
 
@@ -28,7 +28,7 @@ add_env() {
   done
 }
 
-echo "=== Glango Vercel env setup ==="
+echo "=== Rimvio Vercel env setup ==="
 echo "Project: $(npx vercel project ls 2>/dev/null | head -1 || echo 'run from linked new-project')"
 echo
 

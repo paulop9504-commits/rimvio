@@ -1,18 +1,19 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { MainActionButton } from "@/components/action-chat/main-action-button";
 import { AuxActionButton } from "@/components/action-chat/aux-action-button";
 import { openSpawnAction } from "@/lib/action-spawn/open-spawn-action";
 import { resolveMainActionBrandStyle } from "@/lib/brand/action-brand-style";
 import {
-  glangoInlineChipBodyClass,
-  glangoInlineChipClass,
-  glangoInlineChipHeaderClass,
-  glangoInlineChipMetaClass,
-  glangoInlineChipTitleClass,
-} from "@/lib/brand/glango-neon-theme";
+  rimvioInlineChipBodyClass,
+  rimvioInlineChipClass,
+  rimvioInlineChipHeaderClass,
+  rimvioInlineChipMetaClass,
+  rimvioInlineChipTitleClass,
+} from "@/lib/brand/rimvio-neon-theme";
 import type { InlineChatActionWire } from "@/lib/action-chat/mention-actions/inline-chat-action";
+import { commitLinksheetUrl } from "@/lib/action-chat/mention-linksheet/linksheet-url-actions";
 import { buildKakaoMapSearchHref } from "@/lib/resolvers/deep-links";
 import { cn } from "@/lib/utils";
 
@@ -61,6 +62,49 @@ export function InlineChatActionChip({
   className,
 }: InlineChatActionChipProps) {
   const [clipboardHint, setClipboardHint] = useState<string | null>(null);
+  const [linksheetUrl, setLinksheetUrl] = useState("");
+  const [linksheetFeedback, setLinksheetFeedback] = useState<string | null>(null);
+  const linksheetInputRef = useRef<HTMLInputElement>(null);
+
+  const isLinksheetUrlPrompt = Boolean(
+    action.linksheetUrlPrompt || (action.featureId === "linksheet" && !action.query.trim()),
+  );
+
+  useEffect(() => {
+    if (!isLinksheetUrlPrompt) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      linksheetInputRef.current?.focus();
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [isLinksheetUrlPrompt]);
+
+  const submitLinksheetUrl = useCallback(() => {
+    const result = commitLinksheetUrl(linksheetUrl);
+    if (!result.ok) {
+      setLinksheetFeedback(result.message);
+      linksheetInputRef.current?.focus();
+      return;
+    }
+    setLinksheetFeedback("리소스풀 links에 저장했고 시트를 열었어요.");
+  }, [linksheetUrl]);
+
+  const pasteLinksheetUrl = useCallback(async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      const trimmed = text.trim();
+      if (!trimmed) {
+        setLinksheetFeedback("클립보드가 비어 있어요.");
+        return;
+      }
+      setLinksheetUrl(trimmed);
+      setLinksheetFeedback(null);
+      linksheetInputRef.current?.focus();
+    } catch {
+      setLinksheetFeedback("클립보드 접근이 필요해요.");
+    }
+  }, []);
 
   const openDeeplink = useCallback(
     (deeplink: string) => {
@@ -75,6 +119,17 @@ export function InlineChatActionChip({
       return;
     }
     if (action.mainActionKind === "internal") {
+      if (action.featureId === "linksheet") {
+        if (isLinksheetUrlPrompt) {
+          submitLinksheetUrl();
+          return;
+        }
+        if (action.query) {
+          const result = commitLinksheetUrl(action.query);
+          setClipboardHint(result.ok ? "시트를 열었어요." : result.message);
+        }
+        return;
+      }
       if (action.featureId === "memo" && action.query) {
         saveMemo(action.query);
         setClipboardHint("리소스풀에 저장했어요.");
@@ -99,7 +154,7 @@ export function InlineChatActionChip({
     if (action.mainDeeplink) {
       openDeeplink(action.mainDeeplink);
     }
-  }, [action, onOpenCapture, openDeeplink]);
+  }, [action, isLinksheetUrlPrompt, onOpenCapture, openDeeplink, submitLinksheetUrl]);
 
   const handleAux = useCallback(
     (auxId: string) => {
@@ -130,19 +185,19 @@ export function InlineChatActionChip({
 
   return (
     <div
-      className={cn(glangoInlineChipClass("sm"), className)}
+      className={cn(rimvioInlineChipClass("sm"), className)}
       aria-label={action.displayName}
     >
-      <div className={glangoInlineChipHeaderClass}>
+      <div className={rimvioInlineChipHeaderClass}>
         <span className="text-base" aria-hidden>
           {action.icon}
         </span>
-        <span className={glangoInlineChipTitleClass}>{action.displayName}</span>
+        <span className={rimvioInlineChipTitleClass}>{action.displayName}</span>
         {action.query ? (
-          <span className={glangoInlineChipMetaClass}>{action.query}</span>
+          <span className={rimvioInlineChipMetaClass}>{action.query}</span>
         ) : null}
       </div>
-      <div className={cn(glangoInlineChipBodyClass, "space-y-2")}>
+      <div className={cn(rimvioInlineChipBodyClass, "space-y-2")}>
         {action.summaryLines.length > 0 ? (
           <ul className="space-y-0.5 text-[12px] text-white/68">
             {action.summaryLines.map((line) => (
@@ -155,7 +210,7 @@ export function InlineChatActionChip({
           <div className="max-h-64 space-y-3 overflow-y-auto overscroll-contain pr-0.5">
             {action.manualCatalog!.map((group) => (
               <div key={group.categoryLabel}>
-                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-glango-neon-cyan/80">
+                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-rimvio-neon-cyan/80">
                   {group.categoryLabel}
                 </p>
                 <ul className="space-y-1">
@@ -171,7 +226,7 @@ export function InlineChatActionChip({
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="flex flex-wrap items-baseline gap-1.5">
-                            <span className="text-[13px] font-semibold text-glango-neon-cyan">
+                            <span className="text-[13px] font-semibold text-rimvio-neon-cyan">
                               @{row.token}
                             </span>
                             <span className="text-[12px] text-white/75">{row.displayName}</span>
@@ -189,7 +244,52 @@ export function InlineChatActionChip({
           </div>
         ) : null}
 
-        {!isManualCatalog && action.mainLabel ? (
+        {isLinksheetUrlPrompt ? (
+          <div className="space-y-2">
+            <input
+              ref={linksheetInputRef}
+              type="url"
+              inputMode="url"
+              enterKeyHint="go"
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              value={linksheetUrl}
+              onChange={(event) => {
+                setLinksheetUrl(event.target.value);
+                setLinksheetFeedback(null);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  submitLinksheetUrl();
+                }
+              }}
+              placeholder="https://docs.google.com/spreadsheets/d/…"
+              className="w-full rounded-xl border border-white/12 bg-black/25 px-3 py-2.5 text-[13px] text-white placeholder:text-white/35 focus:border-rimvio-neon-cyan/50 focus:outline-none"
+            />
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => void pasteLinksheetUrl()}
+                className="rounded-lg border border-white/10 px-2.5 py-1.5 text-[11px] font-medium text-white/70 hover:bg-white/5"
+              >
+                붙여넣기
+              </button>
+              <MainActionButton
+                label={action.mainLabel || "열기"}
+                brand={mainBrand}
+                compact
+                onClick={() => submitLinksheetUrl()}
+              />
+            </div>
+            {linksheetFeedback ? (
+              <p className="text-[11px] text-white/50">{linksheetFeedback}</p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {!isManualCatalog && !isLinksheetUrlPrompt && action.mainLabel ? (
           <MainActionButton
             label={action.mainLabel}
             brand={mainBrand}
@@ -197,7 +297,7 @@ export function InlineChatActionChip({
             onClick={() => void handleMain()}
           />
         ) : null}
-        {!isManualCatalog && action.auxActions.length > 0 ? (
+        {!isManualCatalog && !isLinksheetUrlPrompt && action.auxActions.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
             {action.auxActions.map((aux) => (
               <AuxActionButton

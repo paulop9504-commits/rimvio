@@ -68,7 +68,7 @@ function overlayToLinkActions(  overlays: ReturnType<typeof llmCandidatesToOverl
     const href =
       item.deeplink ??
       resolvePluginDeeplink(item.plugin, { label: item.label }) ??
-      "glango://chat/followup";
+      "rimvio://chat/followup";
 
     return createOpenAction({
       label: item.label,

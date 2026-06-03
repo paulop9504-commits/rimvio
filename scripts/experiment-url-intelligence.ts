@@ -1058,7 +1058,7 @@ const cases = [
     expect: true,
   },
   {
-    name: "Glango feature actions include direct share + remind",
+    name: "Rimvio feature actions include direct share + remind",
     fn: () => {
       const labels = buildBlinkFeatureActions().map((action) => action.label);
       return labels.some((label) => label.includes("친구에게")) &&

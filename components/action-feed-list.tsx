@@ -10,7 +10,7 @@ import { InboxFilter } from "@/components/inbox-filter";
 import { InboxLinkInput } from "@/components/inbox-link-input";
 import { InboxCoachingStrip } from "@/components/inbox-coaching-strip";
 import { InboxLinkRow } from "@/components/inbox-link-row";
-import { GlangoLogo } from "@/components/glango-logo";
+import { RimvioLogo } from "@/components/rimvio-logo";
 import { RoomPickerSheet } from "@/components/room-picker-sheet";
 import { useRealtimeLinks } from "@/hooks/use-realtime-links";
 import { useCopy } from "@/hooks/use-copy";
@@ -47,7 +47,7 @@ function InboxPasteHeader({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-          className="inbox-golden-input w-full min-w-0 shrink-0 overflow-hidden bg-glango-surface-muted"
+          className="inbox-golden-input w-full min-w-0 shrink-0 overflow-hidden bg-rimvio-surface-muted"
         >
           <p className="mb-2 px-0.5 text-[13px] font-semibold tracking-tight text-foreground">
             {copy.inbox.paste}
@@ -254,7 +254,7 @@ function ActionFeedListInner() {
                   <button
                     type="button"
                     onClick={selectAllFiltered}
-                    className="text-xs font-medium text-glango-neon-cyan"
+                    className="text-xs font-medium text-rimvio-neon-cyan"
                   >
                     {copy.inbox.selectAll}
                   </button>
@@ -276,7 +276,7 @@ function ActionFeedListInner() {
                   <button
                     type="button"
                     onClick={() => setSelectMode(true)}
-                    className="text-xs font-medium text-glango-neon-cyan"
+                    className="text-xs font-medium text-rimvio-neon-cyan"
                   >
                     {copy.inbox.select}
                   </button>
@@ -296,7 +296,7 @@ function ActionFeedListInner() {
             <InboxCoachingStrip links={activeLinks.filter(isLinkOpen)} />
           </div>
           {selectMode && selectedLinks.length === 0 ? (
-            <p className="mt-2 rounded-xl bg-glango-neon-purple/8 px-3 py-2 text-center text-xs text-glango-neon-cyan">
+            <p className="mt-2 rounded-xl bg-rimvio-neon-purple/8 px-3 py-2 text-center text-xs text-rimvio-neon-cyan">
               {copy.inbox.selectPrompt}
             </p>
           ) : null}
@@ -306,8 +306,8 @@ function ActionFeedListInner() {
               onClick={() => void sendLinks(filteredLinks)}
               className={cn(
                 "mt-[var(--space-u)] flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-2.5",
-                "bg-glango-neon-purple/10 text-sm font-medium text-glango-neon-cyan",
-                "transition-colors active:bg-glango-neon-purple/15"
+                "bg-rimvio-neon-purple/10 text-sm font-medium text-rimvio-neon-cyan",
+                "transition-colors active:bg-rimvio-neon-purple/15"
               )}
             >
               <Send className="size-4" strokeWidth={2} />
@@ -398,7 +398,7 @@ function ActionFeedListInner() {
             <button
               type="button"
               onClick={() => void sendLinks(selectedLinks)}
-              className="flex items-center justify-center gap-2 rounded-full bg-glango-neon-purple py-3 text-sm font-semibold text-white active:opacity-90"
+              className="flex items-center justify-center gap-2 rounded-full bg-rimvio-neon-purple py-3 text-sm font-semibold text-white active:opacity-90"
             >
               <Send className="size-4" />
               {copy.inbox.sendBulk(selectedLinks.length)}
@@ -434,7 +434,7 @@ function InboxEmptyState({ archivedCount }: { archivedCount: number }) {
 
   return (
     <div className="inbox-golden-empty">
-      <GlangoLogo size="lg" framed className="mb-1" />
+      <RimvioLogo size="lg" framed className="mb-1" />
       <p className="mt-[var(--space-phi)] text-sm font-medium">
         {copy.inbox.emptyTitle}
       </p>

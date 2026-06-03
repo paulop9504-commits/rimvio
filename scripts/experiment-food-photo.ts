@@ -41,7 +41,7 @@ const keyStatus = envKeyStatus([
   "GOOGLE_CLOUD_VISION_API_KEY",
 ]);
 
-console.log("=== Glango food photo experiment ===");
+console.log("=== Rimvio food photo experiment ===");
 console.log(`mode: ${geminiOnly ? "gemini-only (no Vision API)" : "vision + gemini"}`);
 console.log(`image: ${imagePath} (${(buffer.byteLength / 1024).toFixed(1)} KB)`);
 console.log("env keys:", keyStatus);

@@ -169,7 +169,7 @@ export function ActionChatLinkPanel({
           <div className="flex justify-end">
             <div className="max-w-[min(68%,17rem)] space-y-2">
               {isCapture && thumb ? (
-                <div className="overflow-hidden rounded-[16px] rounded-br-[4px] border border-border bg-glango-surface shadow-sm">
+                <div className="overflow-hidden rounded-[16px] rounded-br-[4px] border border-border bg-rimvio-surface shadow-sm">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={thumb} alt="" className="max-h-44 w-full object-cover" />
                 </div>

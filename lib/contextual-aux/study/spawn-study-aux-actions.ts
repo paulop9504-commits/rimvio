@@ -68,7 +68,7 @@ const SITUATION_SPAWN: Record<StudySituation, StudyAuxKind[]> = {
 function toLinkAction(item: StudyAuxSpawnItem): LinkActionItem {
   return createOpenAction({
     label: item.label,
-    href: `glango://study/aux/${item.kind}`,
+    href: `rimvio://study/aux/${item.kind}`,
     icon: item.icon,
     payload: {
       study_aux: item.kind,

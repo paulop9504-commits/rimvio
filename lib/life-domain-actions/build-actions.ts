@@ -10,7 +10,7 @@ import type { LinkActionItem } from "@/types/database";
 function toLinkAction(domain: LifeDomainKey, def: LifeDomainActionDef): LinkActionItem {
   const href =
     resolvePluginDeeplink(def.plugin, { label: def.label }) ??
-    `glango://chat/followup?q=${encodeURIComponent(def.label)}`;
+    `rimvio://chat/followup?q=${encodeURIComponent(def.label)}`;
 
   return createOpenAction({
     label: def.label,

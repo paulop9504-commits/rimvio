@@ -1,6 +1,6 @@
 import type { PeerContact, PeerContactBook } from "@/lib/context/peer-contact-types";
 
-const CONTACTS_KEY = "glango.peer-contacts.v1";
+const CONTACTS_KEY = "rimvio.peer-contacts.v1";
 
 /** Soft cap — prevents runaway localStorage; not a product limit. */
 export const PEER_CONTACT_SOFT_CAP = 500;

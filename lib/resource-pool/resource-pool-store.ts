@@ -5,9 +5,9 @@ import type {
   ResourcePoolSnapshot,
 } from "@/lib/resource-pool/resource-pool-types";
 
-const STORAGE_KEY = "glango.resource-pool.v1";
-const LEGACY_MEMO_KEY = "glango:memos";
-export const RESOURCE_POOL_UPDATED = "glango-resource-pool-updated";
+const STORAGE_KEY = "rimvio.resource-pool.v1";
+const LEGACY_MEMO_KEY = "rimvio:memos";
+export const RESOURCE_POOL_UPDATED = "rimvio-resource-pool-updated";
 
 const SYSTEM_REPOS: Omit<ResourcePoolRepo, "createdAt" | "updatedAt">[] = [
   {

@@ -36,7 +36,7 @@ function lineValueClass(line: UnifiedCommerceLine) {
 
   if (line.tone === "accent") {
 
-    return "font-semibold text-glango-neon-cyan";
+    return "font-semibold text-rimvio-neon-cyan";
 
   }
 
@@ -260,7 +260,7 @@ export function CommerceReceiptCard({
 
       {receipt.lines.length > 0 ? (
 
-        <div className="space-y-1.5 rounded-xl bg-glango-surface/80 px-2.5 py-2 ring-1 ring-glango-neon-purple/12">
+        <div className="space-y-1.5 rounded-xl bg-rimvio-surface/80 px-2.5 py-2 ring-1 ring-rimvio-neon-purple/12">
 
           {receipt.lines.map((line, index) => (
 
@@ -326,7 +326,7 @@ export function CommerceReceiptCard({
 
           }}
 
-          className="mt-2.5 flex h-9 w-full items-center justify-center rounded-xl bg-glango-surface-muted text-[12px] font-semibold text-muted-foreground transition active:scale-[0.98]"
+          className="mt-2.5 flex h-9 w-full items-center justify-center rounded-xl bg-rimvio-surface-muted text-[12px] font-semibold text-muted-foreground transition active:scale-[0.98]"
 
         >
 

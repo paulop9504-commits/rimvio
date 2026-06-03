@@ -28,5 +28,5 @@ export function appendHardcoreBatchSummary(
 }
 
 export function getHardcoreLogPath(): string {
-  return process.env.GLANGO_HARDCORE_LOG ?? DEFAULT_LOG;
+  return process.env.RIMVIO_HARDCORE_LOG ?? DEFAULT_LOG;
 }

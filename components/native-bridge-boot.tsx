@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { bootNativeNotificationBridge } from "@/lib/native-bridge/native-notification-bridge";
-import { isNativeShell } from "@/lib/native-bridge/glango-native-bridge";
+import { isNativeShell } from "@/lib/native-bridge/rimvio-native-bridge";
 import { Capacitor } from "@capacitor/core";
 import { StatusBar, Style } from "@capacitor/status-bar";
 import { SplashScreen } from "@capacitor/splash-screen";

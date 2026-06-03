@@ -4,6 +4,7 @@ import "@/lib/demo/experiment-lab-init";
 import { Suspense } from "react";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/hooks/use-auth";
+import { isAuthRequired } from "@/lib/auth/policy";
 import { AutoLocaleBootstrap } from "@/components/auto-locale-bootstrap";
 import { DevDemoSeed } from "@/components/dev-demo-seed";
 import { ExperimentLabBootstrap } from "@/components/experiment-lab-bootstrap";
@@ -30,7 +31,7 @@ export function Providers({ children, initialLocale }: ProvidersProps) {
           <Suspense fallback={null}>
             <ExperimentLabBootstrap />
           </Suspense>
-          <DevDemoSeed />
+          {!isAuthRequired() ? <DevDemoSeed /> : null}
           <IosShareBanner />
           {children}
           <ReminderPoller />

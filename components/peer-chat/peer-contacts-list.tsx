@@ -61,16 +61,16 @@ export function PeerContactsList({
         type="button"
         onClick={onAddClick}
         className={cn(
-          "relative z-10 flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-white/20 bg-glango-surface py-3 text-sm font-medium text-white active:scale-[0.98]",
+          "relative z-10 flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-white/20 bg-rimvio-surface py-3 text-sm font-medium text-white active:scale-[0.98]",
           IOS.cardSm,
         )}
       >
-        <UserPlus className="size-4 text-glango-neon-cyan" aria-hidden />
+        <UserPlus className="size-4 text-rimvio-neon-cyan" aria-hidden />
         친구 추가 (허브 없이)
       </button>
 
       {contacts.length === 0 ? (
-        <p className="rounded-2xl bg-glango-surface-muted px-4 py-6 text-center text-xs text-white/65">
+        <p className="rounded-2xl bg-rimvio-surface-muted px-4 py-6 text-center text-xs text-white/65">
           아직 친구가 없어요. 위에서 추가하거나 AI 허브 슬롯에 연결해 보세요
         </p>
       ) : (
@@ -82,12 +82,12 @@ export function PeerContactsList({
             const href = `/peers/${encodeURIComponent(contact.peerThreadId)}`;
 
             return (
-              <li key={contact.peerThreadId} className="flex items-center gap-2 bg-glango-surface">
+              <li key={contact.peerThreadId} className="flex items-center gap-2 bg-rimvio-surface">
                 <Link
                   href={href}
-                  className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 active:bg-glango-surface-muted"
+                  className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 active:bg-rimvio-surface-muted"
                 >
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-glango-surface-muted text-sm font-semibold text-white">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-rimvio-surface-muted text-sm font-semibold text-white">
                     {contact.displayName.trim().charAt(0) || "?"}
                   </span>
                   <div className="min-w-0 flex-1">
@@ -100,7 +100,7 @@ export function PeerContactsList({
                 <button
                   type="button"
                   onClick={() => handlePinToggle(contact, !pinned)}
-                  className="mr-3 flex size-9 shrink-0 items-center justify-center rounded-full text-glango-neon-cyan active:bg-glango-neon-purple/10"
+                  className="mr-3 flex size-9 shrink-0 items-center justify-center rounded-full text-rimvio-neon-cyan active:bg-rimvio-neon-purple/10"
                   aria-label={pinned ? "AI 허브 해제" : "AI 허브에 꽂기"}
                 >
                   {pinned ? (

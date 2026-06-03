@@ -62,7 +62,7 @@ export function OcrReviewDatePickerSheet({
           <motion.div
             role="dialog"
             aria-label="?�정 ?�짜 ?�택"
-            className="fixed inset-x-0 bottom-0 z-[81] mx-auto max-h-[85vh] max-w-lg overflow-y-auto rounded-t-[24px] border border-black/5 bg-glango-surface px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 shadow-[0_-12px_40px_rgba(0,0,0,0.12)]"
+            className="fixed inset-x-0 bottom-0 z-[81] mx-auto max-h-[85vh] max-w-lg overflow-y-auto rounded-t-[24px] border border-black/5 bg-rimvio-surface px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 shadow-[0_-12px_40px_rgba(0,0,0,0.12)]"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
@@ -115,7 +115,7 @@ export function OcrReviewDatePickerSheet({
                         [row.candidateId]: event.target.value,
                       }))
                     }
-                    className="shrink-0 rounded-lg border border-black/8 bg-glango-surface px-2 py-1.5 text-[13px] outline-none focus:border-[#10B981]/40"
+                    className="shrink-0 rounded-lg border border-black/8 bg-rimvio-surface px-2 py-1.5 text-[13px] outline-none focus:border-[#10B981]/40"
                   />
                 </li>
               ))}
@@ -133,7 +133,7 @@ export function OcrReviewDatePickerSheet({
                 onOpenChange(false);
               }}
               className={cn(
-                "glango-action-button glango-action-button--primary mt-4 w-full",
+                "rimvio-action-button rimvio-action-button--primary mt-4 w-full",
                 !allSelected && "opacity-50"
               )}
             >

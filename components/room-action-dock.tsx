@@ -61,7 +61,7 @@ function DockIconButton({
       className={cn(
         "flex flex-col items-center gap-1 rounded-2xl px-1 py-2 transition-colors",
         "disabled:opacity-35",
-        active ? "bg-glango-neon-purple/10" : "active:bg-glango-surface-muted"
+        active ? "bg-rimvio-neon-purple/10" : "active:bg-rimvio-surface-muted"
       )}
     >
       <span className="relative">
@@ -69,14 +69,14 @@ function DockIconButton({
           className={cn(
             "flex size-11 items-center justify-center rounded-2xl",
             active
-              ? "bg-glango-neon-purple/12 text-glango-neon-cyan"
-              : "bg-glango-surface-muted text-foreground/85 ring-1 ring-glango-neon-purple/12"
+              ? "bg-rimvio-neon-purple/12 text-rimvio-neon-cyan"
+              : "bg-rimvio-surface-muted text-foreground/85 ring-1 ring-rimvio-neon-purple/12"
           )}
         >
           <Icon className="size-[1.125rem]" strokeWidth={2} />
         </span>
         {badge && badge > 0 ? (
-          <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-glango-neon-purple text-[9px] font-bold text-white">
+          <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-rimvio-neon-purple text-[9px] font-bold text-white">
             {badge > 9 ? "9+" : badge}
           </span>
         ) : null}
@@ -149,14 +149,14 @@ export function RoomActionDock({
             isDone && "opacity-45",
             isYouTube
               ? "bg-[#ff0033] hover:bg-[#e6002e]"
-              : "bg-glango-neon-purple hover:bg-[#0077ED]"
+              : "bg-rimvio-neon-purple hover:bg-[#0077ED]"
           )}
         >
           {primaryLabel}
         </button>
 
         {phaseHint ? (
-          <p className="text-center text-[12px] text-glango-neon-cyan/85">{phaseHint}</p>
+          <p className="text-center text-[12px] text-rimvio-neon-cyan/85">{phaseHint}</p>
         ) : null}
 
         <div className="grid grid-cols-4 gap-1">

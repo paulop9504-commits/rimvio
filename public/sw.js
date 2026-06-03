@@ -1,6 +1,6 @@
-/* Glango service worker — push + background reminders (prep for production push). */
+/* Rimvio service worker — push + background reminders (prep for production push). */
 
-const REMINDER_CACHE = "glango-reminders-v1";
+const REMINDER_CACHE = "rimvio-reminders-v1";
 const REMINDER_JSON_KEY = "/reminders.json";
 const CHECK_MS = 30_000;
 
@@ -44,8 +44,8 @@ async function writeReminders(reminders) {
   );
 }
 
-async function showGlangoNotification(reminder) {
-  const title = "Glango · 나중에 다시";
+async function showRimvioNotification(reminder) {
+  const title = "Rimvio · 나중에 다시";
   const body = reminder.title || "저장한 링크";
   const url = reminder.url || "/";
 
@@ -77,7 +77,7 @@ async function checkDueReminders() {
   await writeReminders(remaining);
 
   for (const reminder of due) {
-    await showGlangoNotification(reminder);
+    await showRimvioNotification(reminder);
   }
 }
 
@@ -116,7 +116,7 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     (async () => {
       let payload = {
-        title: "Glango",
+        title: "Rimvio",
         body: "저장한 링크를 다시 확인해 보세요",
         url: "/",
       };

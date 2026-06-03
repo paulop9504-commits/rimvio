@@ -8,10 +8,10 @@ import type { LinkRow } from "../types/database";
 const baseLink = (overrides: Partial<LinkRow>): LinkRow => ({
   id: "test",
   user_id: null,
-  original_url: "https://glango.app/capture/x",
+  original_url: "https://rimvio.app/capture/x",
   title: "테스트",
   thumbnail_url: null,
-  domain: "glango.app",
+  domain: "rimvio.app",
   category: "uncategorized",
   actions: [],
   visual_mode: "thumb",

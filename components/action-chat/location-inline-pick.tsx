@@ -4,7 +4,7 @@
 
 import type { LocationSuggestion } from "@/lib/action-chat/confirmation-types";
 
-import { glangoListPickBtnClass } from "@/lib/brand/glango-neon-theme";
+import { rimvioListPickBtnClass } from "@/lib/brand/rimvio-neon-theme";
 
 import { cn } from "@/lib/utils";
 
@@ -84,7 +84,7 @@ export function LocationInlinePick({
 
                 onClick={() => onSelect(item)}
 
-                className={glangoListPickBtnClass(isRecommended)}
+                className={rimvioListPickBtnClass(isRecommended)}
 
               >
 
@@ -122,7 +122,7 @@ export function LocationInlinePick({
 
           onClick={onSearchMore}
 
-          className="text-[12px] font-medium text-muted-foreground underline-offset-2 hover:text-glango-neon-cyan hover:underline"
+          className="text-[12px] font-medium text-muted-foreground underline-offset-2 hover:text-rimvio-neon-cyan hover:underline"
 
         >
 

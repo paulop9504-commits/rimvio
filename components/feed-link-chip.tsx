@@ -24,7 +24,7 @@ export function FeedLinkChip({
     <div
       className={cn(
         "flex items-center gap-3 rounded-2xl bg-[#eef0f4]/90 px-3 py-2.5",
-        "ring-1 ring-glango-neon-purple/12",
+        "ring-1 ring-rimvio-neon-purple/12",
         className
       )}
     >

@@ -68,7 +68,7 @@ async function main() {
   assert.ok(result!.actions.length >= 3);
 
   assert.match(buildMorningPartnerSystemPrompt(), /CARE & ACT/u);
-  assert.match(buildMorningJarvisSystemPrompt(), /GLANGO x JARVIS/u);
+  assert.match(buildMorningJarvisSystemPrompt(), /RIMVIO x JARVIS/u);
   assert.match(buildMorningJarvisSystemPrompt(), /준비했습니다/u);
 
   console.log("test-morning-orchestrator: ok");

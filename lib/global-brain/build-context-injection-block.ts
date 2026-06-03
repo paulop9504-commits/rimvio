@@ -6,8 +6,8 @@ import { TIME_NORMALIZATION_PROTOCOL } from "@/lib/time/normalize-time";
 import { BATCH_PROCESSING_RULE } from "@/lib/schedule/batch-processing-protocol";
 import { PREDICTIVE_DOCK_PROTOCOL } from "@/lib/predictive-dock/predictive-dock-protocol";
 import { ACTION_ARCHITECT_PROTOCOL } from "@/lib/action-registry/action-architect-protocol";
-import { GLANGO_ACTION_OS_PROTOCOL } from "@/lib/action-os/glango-action-os-protocol";
-import { buildActionDispatcherContextBlock } from "@/lib/action-dispatcher/glango-action-dispatcher-protocol";
+import { RIMVIO_ACTION_OS_PROTOCOL } from "@/lib/action-os/rimvio-action-os-protocol";
+import { buildActionDispatcherContextBlock } from "@/lib/action-dispatcher/rimvio-action-dispatcher-protocol";
 import { buildAvailableTemplatesMarkdown } from "@/lib/action-registry/match-template";
 import type { ActionRegistryEntry } from "@/lib/action-registry/types";
 
@@ -78,7 +78,7 @@ export function buildGlobalBrainContextBlock(input: {
     "",
     ACTION_ARCHITECT_PROTOCOL,
     "",
-    GLANGO_ACTION_OS_PROTOCOL,
+    RIMVIO_ACTION_OS_PROTOCOL,
     "",
     buildActionDispatcherContextBlock(),
     "",

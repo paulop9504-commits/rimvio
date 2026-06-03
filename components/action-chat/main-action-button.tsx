@@ -56,7 +56,7 @@ export function MainActionButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "glango-action-shell-btn flex w-full items-center justify-center gap-2 border bg-transparent font-semibold leading-none transition-colors hover:bg-[var(--main-action-hover-bg)] active:scale-[0.99]",
+        "rimvio-action-shell-btn flex w-full items-center justify-center gap-2 border bg-transparent font-semibold leading-none transition-colors hover:bg-[var(--main-action-hover-bg)] active:scale-[0.99]",
         roundedClass,
         compact
           ? tapTarget

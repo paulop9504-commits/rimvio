@@ -74,7 +74,7 @@ function LinkThumbnail({ link }: { link: LinkRow }) {
       <span className="text-2xl font-semibold tracking-tight text-white/95">
         {initial}
       </span>
-      <div className="pointer-events-none absolute inset-0 bg-glango-surface/10" />
+      <div className="pointer-events-none absolute inset-0 bg-rimvio-surface/10" />
     </div>
   );
 }

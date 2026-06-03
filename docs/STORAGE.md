@@ -1,6 +1,6 @@
 # Storage modes (MVP)
 
-Glango currently uses **hybrid storage** for demo/local MVP:
+Rimvio currently uses **hybrid storage** for demo/local MVP:
 
 | Data | Primary (demo) | Production target |
 |------|----------------|-------------------|

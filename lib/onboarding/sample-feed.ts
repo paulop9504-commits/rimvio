@@ -10,7 +10,7 @@ import {
 } from "@/lib/onboarding/sample-feed-links";
 import type { LinkRow } from "@/types/database";
 
-const SAMPLE_FEED_KEY = "glango.sample-feed.v2";
+const SAMPLE_FEED_KEY = "rimvio.sample-feed.v2";
 
 type SampleFeedState = {
   dismissed: boolean;
@@ -81,10 +81,10 @@ export function resetSampleFeedForDev() {
   }
 
   localStorage.removeItem(SAMPLE_FEED_KEY);
-  localStorage.removeItem("glango.sample-feed.v1");
+  localStorage.removeItem("rimvio.sample-feed.v1");
 }
 
-export const SKIP_DEMO_SEED_ONCE_KEY = "glango.skip-demo-seed-once";
+export const SKIP_DEMO_SEED_ONCE_KEY = "rimvio.skip-demo-seed-once";
 
 /** Wipe local feed + sample dismiss flags so the 14-card deck reinjects. */
 export function resetFeedStorageForSamples() {
@@ -92,7 +92,7 @@ export function resetFeedStorageForSamples() {
     return;
   }
 
-  localStorage.removeItem("glango.sample-feed.v1");
+  localStorage.removeItem("rimvio.sample-feed.v1");
   localStorage.removeItem(SAMPLE_FEED_KEY);
   writeLocalLinks([]);
   clearDismissedLinkIds();
@@ -100,7 +100,7 @@ export function resetFeedStorageForSamples() {
   sessionStorage.setItem(SKIP_DEMO_SEED_ONCE_KEY, "1");
 
   if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event("glango-local-links-updated"));
+    window.dispatchEvent(new Event("rimvio-local-links-updated"));
   }
 }
 

@@ -42,7 +42,7 @@ export function OrchestratorMetaStrip({ message, className }: OrchestratorMetaSt
 
       {schedule && schedule.tasks.length > 0 && !schedule.is_conflict ? (
         <div className="rounded-xl bg-[#F7F6FF] px-3 py-2 ring-1 ring-[#7B61FF]/12">
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-glango-neon-purple">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-rimvio-neon-purple">
             <CalendarClock className="size-3.5" />
             ?�늘 ?�정
           </div>
@@ -61,8 +61,8 @@ export function OrchestratorMetaStrip({ message, className }: OrchestratorMetaSt
       ) : null}
 
       {showContainer ? (
-        <div className="flex items-center gap-2 rounded-xl bg-glango-surface px-3 py-2 ring-1 ring-black/[0.05]">
-          <FolderPlus className="size-4 shrink-0 text-glango-neon-purple" />
+        <div className="flex items-center gap-2 rounded-xl bg-rimvio-surface px-3 py-2 ring-1 ring-black/[0.05]">
+          <FolderPlus className="size-4 shrink-0 text-rimvio-neon-purple" />
           <p className="text-[11px] leading-snug text-[#374151]">
             {container!.action === "UPDATE"
               ? `??{container!.title}??컨테?�너???�어???�?�할게요.`

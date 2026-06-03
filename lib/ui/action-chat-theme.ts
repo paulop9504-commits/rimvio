@@ -1,4 +1,4 @@
-/** Glango shell — warm, calm, iOS-adjacent */
+/** Rimvio shell — warm, calm, iOS-adjacent */
 export const ACTION_SHELL = {
   bg: "#F5F3FF",
   bgGradient: "linear-gradient(180deg, #F5F3FF 0%, #FAFAFE 48%, #FFFFFF 100%)",

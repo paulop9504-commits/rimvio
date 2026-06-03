@@ -37,8 +37,8 @@ export function ChatAxisStrip({
             className={cn(
               "flex min-w-0 flex-1 flex-col items-start rounded-xl border px-2.5 py-1.5 text-left transition-colors",
               active
-                ? "border-indigo-300 bg-glango-surface shadow-sm"
-                : "border-transparent bg-glango-surface/60 text-slate-500 hover:bg-glango-surface/90",
+                ? "border-indigo-300 bg-rimvio-surface shadow-sm"
+                : "border-transparent bg-rimvio-surface/60 text-slate-500 hover:bg-rimvio-surface/90",
               disabled && "pointer-events-none opacity-60"
             )}
           >

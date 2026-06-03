@@ -16,7 +16,7 @@ import { toastNextLinkSuggestion } from "@/lib/links/next-link-toast";
 import { FeedGestureCoach } from "@/components/feed-gesture-coach";
 import { runContainerMaintenance } from "@/lib/containers/context-containers";
 import { PwaInstallNudge } from "@/components/pwa-install-nudge";
-import { GlangoLogo } from "@/components/glango-logo";
+import { RimvioLogo } from "@/components/rimvio-logo";
 import { useCopy } from "@/hooks/use-copy";
 import { addLinkToRoom } from "@/lib/rooms/client";
 import { readPinnedUrl } from "@/lib/local-links/pinned-link";
@@ -352,7 +352,7 @@ export function ActionShortsFeed() {
     return (
       <>
         <div className="flex h-[calc(100dvh-8rem)] flex-col items-center justify-center text-center">
-          <GlangoLogo size="xl" framed className="mb-5" />
+          <RimvioLogo size="xl" framed className="mb-5" />
           <p className="text-lg font-medium">비었어요</p>
           <p className="mt-2 max-w-[18rem] text-sm text-muted-foreground">
             {copy.feed.emptyShareHint}
@@ -361,7 +361,7 @@ export function ActionShortsFeed() {
             <button
               type="button"
               onClick={() => openLinkAdd({ requestClipboard: true })}
-              className="rounded-[14px] bg-glango-neon-purple px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-transform active:scale-[0.98]"
+              className="rounded-[14px] bg-rimvio-neon-purple px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-transform active:scale-[0.98]"
             >
               {copy.feed.capturePill}
             </button>

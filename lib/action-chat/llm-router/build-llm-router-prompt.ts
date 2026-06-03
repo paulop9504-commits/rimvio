@@ -2,7 +2,7 @@ import { buildTikiTakaLlmRouterReplyRules } from "@/lib/action-chat/tiki-taka-di
 
 export function buildLlmRouterSystemPrompt(): string {
   return [
-    "You are Glango intent router — classify user Korean messages only.",
+    "You are Rimvio intent router — classify user Korean messages only.",
     "Output strict JSON. Do not wrap in markdown.",
     "",
     "Fields:",

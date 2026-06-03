@@ -20,10 +20,10 @@ type LocateActionChipProps = {
 const LOCATE_LINK_STUB = {
   id: "locate-action",
   user_id: null,
-  original_url: "https://glango.app/locate",
+  original_url: "https://rimvio.app/locate",
   title: "Locate",
   thumbnail_url: null,
-  domain: "glango.app",
+  domain: "rimvio.app",
   category: "travel",
   actions: [],
   visual_mode: "brand",

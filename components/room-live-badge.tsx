@@ -1,8 +1,8 @@
 "use client";
 
 import { Crown } from "lucide-react";
-import { GlangoAvatarMark } from "@/lib/brand/glango-smiley-mark";
-import type { GlangoAvatarVariantId } from "@/lib/brand/glango-avatar-colors";
+import { RimvioAvatarMark } from "@/lib/brand/rimvio-smiley-mark";
+import type { RimvioAvatarVariantId } from "@/lib/brand/rimvio-avatar-colors";
 import type { RoomGuest } from "@/lib/rooms/guest-session";
 import type { RoomPresencePeer } from "@/lib/rooms/types";
 import { copy } from "@/lib/copy/human-ko";
@@ -16,12 +16,12 @@ type RoomLiveBadgeProps = {
   compact?: boolean;
 };
 
-function GlangoAvatarChip({
+function RimvioAvatarChip({
   variant,
   isLeader,
   title,
 }: {
-  variant: GlangoAvatarVariantId | null;
+  variant: RimvioAvatarVariantId | null;
   isLeader?: boolean;
   title: string;
 }) {
@@ -41,11 +41,11 @@ function GlangoAvatarChip({
       ) : null}
       <span
         className={cn(
-          "flex size-7 items-center justify-center overflow-hidden rounded-full bg-glango-surface ring-2 ring-background",
+          "flex size-7 items-center justify-center overflow-hidden rounded-full bg-rimvio-surface ring-2 ring-background",
           isLeader && "ring-amber-300/80"
         )}
       >
-        <GlangoAvatarMark variant={variant ?? undefined} pixels={26} crisp />
+        <RimvioAvatarMark variant={variant ?? undefined} pixels={26} crisp />
       </span>
     </span>
   );
@@ -119,7 +119,7 @@ export function RoomLiveBadge({
       </span>
 
       <div className="flex items-center -space-x-1">
-        <GlangoAvatarChip
+        <RimvioAvatarChip
           variant={guest.avatarVariant}
           isLeader={selfIsLeader}
           title={`${guest.label} (나)`}

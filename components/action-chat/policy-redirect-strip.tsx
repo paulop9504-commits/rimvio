@@ -36,7 +36,7 @@ export function PolicyRedirectStrip({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-slate-200/90 bg-glango-surface p-4 shadow-sm",
+        "rounded-2xl border border-slate-200/90 bg-rimvio-surface p-4 shadow-sm",
         className
       )}
     >

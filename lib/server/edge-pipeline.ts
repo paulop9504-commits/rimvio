@@ -17,6 +17,7 @@ import {
   REQUEST_ID_HEADER,
 } from "@/lib/server/request-context";
 import { applySecurityHeaders } from "@/lib/server/security-headers";
+import { enforceAuthRequired } from "@/lib/auth/middleware-enforce";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { updateSession } from "@/lib/supabase/middleware";
 import { LOCALE_COOKIE } from "@/lib/i18n/locale-store";
@@ -76,9 +77,14 @@ export async function runEdgePipeline(request: NextRequest) {
     return response;
   }
 
-  const response = isSupabaseConfigured()
+  let response = isSupabaseConfigured()
     ? await updateSession(request)
     : NextResponse.next({ request });
+
+  const authBlock = await enforceAuthRequired(request, response);
+  if (authBlock) {
+    response = authBlock;
+  }
 
   if (!request.cookies.get(LOCALE_COOKIE)) {
     response.cookies.set(LOCALE_COOKIE, "ko", {

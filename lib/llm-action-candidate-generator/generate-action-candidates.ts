@@ -135,7 +135,7 @@ export async function generateActionCandidates(
 
 export function isLlmActionCandidatesEnabled(): boolean {
   if (typeof process !== "undefined") {
-    const flag = process.env.GLANGO_LLM_ACTION_CANDIDATES?.trim().toLowerCase();
+    const flag = process.env.RIMVIO_LLM_ACTION_CANDIDATES?.trim().toLowerCase();
     if (flag === "0" || flag === "false") {
       return false;
     }

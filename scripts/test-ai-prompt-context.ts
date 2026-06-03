@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 /**
- * Contextual AI prompt builder — link brief + Glango lenses before task.
+ * Contextual AI prompt builder — link brief + Rimvio lenses before task.
  * Usage: npm run test:ai-prompt
  */
 
@@ -9,7 +9,7 @@ import {
   buildContextualSummaryPrompt,
   describeLinkBrief,
   formatEnrichedTitle,
-  GLANGO_BRIEFING_LENSES,
+  RIMVIO_BRIEFING_LENSES,
 } from "../lib/actions/ai-prompt-context";
 
 let passed = 0;
@@ -37,9 +37,9 @@ test("naver home gets portal link brief", () => {
   assert.match(brief, /포털|허브|네이버/i);
 });
 
-test("enriched title includes Glango lenses", () => {
+test("enriched title includes Rimvio lenses", () => {
   const title = formatEnrichedTitle("네이버", "www.naver.com");
-  for (const lens of GLANGO_BRIEFING_LENSES) {
+  for (const lens of RIMVIO_BRIEFING_LENSES) {
     assert.ok(title.includes(lens), `missing lens: ${lens}`);
   }
 });

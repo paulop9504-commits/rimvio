@@ -46,7 +46,7 @@ export function ContainerCleanupPanel({ className }: ContainerCleanupPanelProps)
           {suggestions.map((container) => (
             <li
               key={container.id}
-              className="flex items-center justify-between gap-2 rounded-xl bg-glango-surface px-3 py-2 ring-1 ring-glango-neon-purple/12"
+              className="flex items-center justify-between gap-2 rounded-xl bg-rimvio-surface px-3 py-2 ring-1 ring-rimvio-neon-purple/12"
             >
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-[#1F2937]">
@@ -67,7 +67,7 @@ export function ContainerCleanupPanel({ className }: ContainerCleanupPanelProps)
                 </button>
                 <button
                   type="button"
-                  className="rounded-lg bg-glango-neon-purple px-2.5 py-1.5 text-[11px] font-semibold text-white"
+                  className="rounded-lg bg-rimvio-neon-purple px-2.5 py-1.5 text-[11px] font-semibold text-white"
                   onClick={() => {
                     deleteContextContainer(container.id);
                     setSuggestions((prev) => prev.filter((item) => item.id !== container.id));

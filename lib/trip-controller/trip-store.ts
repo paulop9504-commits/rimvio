@@ -18,7 +18,7 @@ import type {
   TripRecord,
 } from "@/lib/trip-controller/types";
 
-const STORAGE_KEY = "glango-trips.v1";
+const STORAGE_KEY = "rimvio-trips.v1";
 
 let memoryStore: TripRecord[] = [];
 

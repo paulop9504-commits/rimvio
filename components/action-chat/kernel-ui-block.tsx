@@ -32,7 +32,7 @@ export function KernelUiBlock({
     return (
       <AiChatBubble className={className}>
         <span className="inline-flex items-center gap-2 text-white/72">
-          <Loader2 className="size-4 animate-spin text-glango-neon-cyan" />
+          <Loader2 className="size-4 animate-spin text-rimvio-neon-cyan" />
           {model.coreMessage || "…"}
         </span>
       </AiChatBubble>
@@ -42,7 +42,7 @@ export function KernelUiBlock({
   if (model.kind === "clarify") {
     return (
       <div className={cn("space-y-2.5", className)}>
-        <p className="px-1 text-[13px] font-medium text-glango-neon-cyan/80">
+        <p className="px-1 text-[13px] font-medium text-rimvio-neon-cyan/80">
           {model.sectionLabel}
         </p>
         <AiChatBubble>
@@ -55,7 +55,7 @@ export function KernelUiBlock({
   if (model.kind === "options") {
     return (
       <div className={cn("space-y-3", className)}>
-        <p className="px-1 text-[13px] font-medium text-glango-neon-cyan/80">
+        <p className="px-1 text-[13px] font-medium text-rimvio-neon-cyan/80">
           {model.sectionLabel}
         </p>
         <div className="flex flex-col gap-2.5">
@@ -67,7 +67,7 @@ export function KernelUiBlock({
                 type="button"
                 disabled={!linkAction}
                 onClick={() => linkAction && onAction?.(linkAction)}
-                className="rounded-2xl bg-glango-surface px-4 py-3.5 text-left text-[14px] font-medium leading-snug text-white/88 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] transition hover:bg-glango-surface-raised active:scale-[0.99] disabled:opacity-60"
+                className="rounded-2xl bg-rimvio-surface px-4 py-3.5 text-left text-[14px] font-medium leading-snug text-white/88 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] transition hover:bg-rimvio-surface-raised active:scale-[0.99] disabled:opacity-60"
               >
                 {card.label}
               </button>
@@ -91,7 +91,7 @@ export function KernelUiBlock({
       {model.actionCards.length > 0 ? (
         <div className="space-y-2">
           {model.nextActionLabel ? (
-            <p className="px-1 text-[13px] font-medium text-glango-neon-cyan/80">
+            <p className="px-1 text-[13px] font-medium text-rimvio-neon-cyan/80">
               {model.nextActionLabel}
             </p>
           ) : null}
@@ -104,7 +104,7 @@ export function KernelUiBlock({
                   type="button"
                   disabled={!linkAction}
                   onClick={() => linkAction && onAction?.(linkAction)}
-                  className="glango-suggest-chip rounded-full px-3.5 py-2 text-[13px] transition active:scale-[0.98] disabled:opacity-60"
+                  className="rimvio-suggest-chip rounded-full px-3.5 py-2 text-[13px] transition active:scale-[0.98] disabled:opacity-60"
                 >
                   {card.label}
                 </button>

@@ -7,12 +7,12 @@ import { AuxActionButton } from "@/components/action-chat/aux-action-button";
 import { openSpawnAction } from "@/lib/action-spawn/open-spawn-action";
 import { resolveMainActionBrandStyle } from "@/lib/brand/action-brand-style";
 import {
-  glangoInlineChipBodyClass,
-  glangoInlineChipClass,
-  glangoInlineChipHeaderClass,
-  glangoInlineChipMetaClass,
-  glangoInlineChipTitleClass,
-} from "@/lib/brand/glango-neon-theme";
+  rimvioInlineChipBodyClass,
+  rimvioInlineChipClass,
+  rimvioInlineChipHeaderClass,
+  rimvioInlineChipMetaClass,
+  rimvioInlineChipTitleClass,
+} from "@/lib/brand/rimvio-neon-theme";
 import {
   resolveTransferAuxDeeplink,
   type InlineChatTransferWire,
@@ -56,17 +56,17 @@ export function InlineChatTransferChip({
   return (
     <>
       <div
-        className={cn(glangoInlineChipClass("sm"), className)}
+        className={cn(rimvioInlineChipClass("sm"), className)}
         aria-label="송금"
       >
-        <div className={glangoInlineChipHeaderClass}>
-          <Banknote className="size-4 shrink-0 text-glango-neon-green" aria-hidden />
-          <span className={glangoInlineChipTitleClass}>송금</span>
+        <div className={rimvioInlineChipHeaderClass}>
+          <Banknote className="size-4 shrink-0 text-rimvio-neon-green" aria-hidden />
+          <span className={rimvioInlineChipTitleClass}>송금</span>
           {transfer.query ? (
-            <span className={glangoInlineChipMetaClass}>{transfer.query}</span>
+            <span className={rimvioInlineChipMetaClass}>{transfer.query}</span>
           ) : null}
         </div>
-        <div className={cn(glangoInlineChipBodyClass, "space-y-2")}>
+        <div className={cn(rimvioInlineChipBodyClass, "space-y-2")}>
           <MainActionButton
             label={transfer.mainLabel}
             brand={mainBrand}
@@ -98,11 +98,11 @@ export function InlineChatTransferChip({
           onClick={() => setDutchOpen(false)}
         >
           <div
-            className={cn(glangoInlineChipClass("sm"), "max-w-sm p-4 shadow-xl")}
+            className={cn(rimvioInlineChipClass("sm"), "max-w-sm p-4 shadow-xl")}
             onClick={(event) => event.stopPropagation()}
           >
             <div className="mb-3 flex items-center justify-between">
-              <h3 className={glangoInlineChipTitleClass}>더치페이 정산</h3>
+              <h3 className={rimvioInlineChipTitleClass}>더치페이 정산</h3>
               <button
                 type="button"
                 onClick={() => setDutchOpen(false)}
@@ -116,7 +116,7 @@ export function InlineChatTransferChip({
               <ul className="space-y-2 text-[13px] text-white/78">
                 <li>{transfer.dutchSummary.totalLabel}</li>
                 <li>{transfer.dutchSummary.headcountLabel}</li>
-                <li className="font-semibold text-glango-neon-green">
+                <li className="font-semibold text-rimvio-neon-green">
                   {transfer.dutchSummary.perPersonLabel}
                 </li>
                 {transfer.dutchSummary.memo ? (
@@ -124,7 +124,7 @@ export function InlineChatTransferChip({
                 ) : null}
               </ul>
             ) : (
-              <p className="glango-inline-chip__text">
+              <p className="rimvio-inline-chip__text">
                 금액을 함께 적어 주세요.
                 <br />
                 예: @송금 45000원 4명 저녁

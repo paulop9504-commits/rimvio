@@ -27,7 +27,7 @@ export function DeferredRecoveryStrip({
           <span className="truncate text-[13px] text-slate-700">{card.title}</span>
           <button
             type="button"
-            className="shrink-0 rounded-full bg-glango-surface px-2.5 py-1 text-[12px] font-semibold text-indigo-700 shadow-sm ring-1 ring-indigo-100"
+            className="shrink-0 rounded-full bg-rimvio-surface px-2.5 py-1 text-[12px] font-semibold text-indigo-700 shadow-sm ring-1 ring-indigo-100"
             onClick={() => onRestore(card.id)}
           >
             다시 이어하기

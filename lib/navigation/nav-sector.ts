@@ -14,8 +14,8 @@ import {
 import { toActionFamily } from "@/lib/personalization/action-family";
 import type { LinkActionItem, LinkRow } from "@/types/database";
 
-export const NAV_SECTOR_STORAGE_KEY = "glango.nav-sector.v1";
-export const NAV_SECTOR_UPDATED = "glango-nav-sector-updated";
+export const NAV_SECTOR_STORAGE_KEY = "rimvio.nav-sector.v1";
+export const NAV_SECTOR_UPDATED = "rimvio-nav-sector-updated";
 
 export type NavSectorProvider =
   | "tmap"

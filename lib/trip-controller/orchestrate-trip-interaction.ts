@@ -14,7 +14,7 @@ import type { PresentationWire } from "@/lib/presentation/presentation-mode";
 
 const PACKING_RE = /(?:짐\s*체크|체크리스트|packing)/iu;
 const FLIGHT_RE = /(?:항공권|탑승권|체크인|boarding|flight)/iu;
-const TRIP_URI = /^glango:\/\/trip\/(packing|flight|taxi)$/i;
+const TRIP_URI = /^rimvio:\/\/trip\/(packing|flight|taxi)$/i;
 
 export function isTripControllerMessage(message: string): boolean {
   const trimmed = message.trim();
@@ -109,7 +109,7 @@ export function orchestrateTripInteraction(input: {
           label: `${trip.airportLabel} 택시 호출`,
           icon: "taxi",
           action_type: "DEEP_LINK",
-          url: `https://taxi.glango.local/?dest=${encodeURIComponent(trip.airportLabel)}`,
+          url: `https://taxi.rimvio.local/?dest=${encodeURIComponent(trip.airportLabel)}`,
         },
       ],
       source: "rules",
@@ -168,7 +168,7 @@ export function handlePackingItemToggle(input: {
             label: `${trip.airportLabel} 택시 호출`,
             icon: "taxi",
             action_type: "DEEP_LINK",
-            url: `glango://trip/taxi`,
+            url: `rimvio://trip/taxi`,
           },
         ]
       : [],

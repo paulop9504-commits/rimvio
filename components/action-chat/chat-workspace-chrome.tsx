@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { glangoHeaderChromeClass, glangoIconBtnClass } from "@/lib/brand/glango-neon-theme";
+import { rimvioHeaderChromeClass, rimvioIconBtnClass } from "@/lib/brand/rimvio-neon-theme";
 import { cn } from "@/lib/utils";
 
 type ChatWorkspaceChromeProps = {
@@ -23,7 +23,7 @@ export function ChatWorkspaceChrome({
   className,
 }: ChatWorkspaceChromeProps) {
   return (
-    <div className={cn(glangoHeaderChromeClass, "shrink-0", className)}>
+    <div className={cn(rimvioHeaderChromeClass, "shrink-0", className)}>
       {header}
 
       <button
@@ -34,7 +34,7 @@ export function ChatWorkspaceChrome({
       >
         <span
           aria-hidden
-          className={cn(glangoIconBtnClass("secondary", "sm"), "pointer-events-none")}
+          className={cn(rimvioIconBtnClass("secondary", "sm"), "pointer-events-none")}
         >
           {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
         </span>

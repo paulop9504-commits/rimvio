@@ -24,7 +24,7 @@ export function InlineChatNavigateChip({
   return (
     <div
       className={cn(
-        "inline-chat-navigate-chip inline-block w-max max-w-[min(100%,320px)] overflow-hidden rounded-2xl border border-white/[0.08] bg-glango-surface px-3 py-2.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04),0_4px_16px_rgba(0,0,0,0.28)]",
+        "inline-chat-navigate-chip inline-block w-max max-w-[min(100%,320px)] overflow-hidden rounded-2xl border border-white/[0.08] bg-rimvio-surface px-3 py-2.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04),0_4px_16px_rgba(0,0,0,0.28)]",
         className,
       )}
       aria-label={`길찾기 ${navigate.destination}`}

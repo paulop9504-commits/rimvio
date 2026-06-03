@@ -19,8 +19,8 @@ export function FeedSlideActionRail({
 }: FeedSlideActionRailProps) {
   const chipClass = cn(
     "flex size-10 items-center justify-center rounded-full",
-    "bg-glango-surface/88 text-foreground/85 shadow-[0_4px_16px_-6px_rgba(0,0,0,0.18)]",
-    "ring-1 ring-glango-neon-purple/15 backdrop-blur-xl",
+    "bg-rimvio-surface/88 text-foreground/85 shadow-[0_4px_16px_-6px_rgba(0,0,0,0.18)]",
+    "ring-1 ring-rimvio-neon-purple/15 backdrop-blur-xl",
     "transition-transform active:scale-95"
   );
 

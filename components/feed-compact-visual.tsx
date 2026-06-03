@@ -18,7 +18,7 @@ export function FeedCompactVisual({ link }: { link: LinkRow }) {
 
   if (showYouTube) {
     return (
-      <div className="aspect-video w-full overflow-hidden rounded-[22px] ring-1 ring-glango-neon-purple/12">
+      <div className="aspect-video w-full overflow-hidden rounded-[22px] ring-1 ring-rimvio-neon-purple/12">
         <FeedHeroArt link={link} className="size-full" />
       </div>
     );

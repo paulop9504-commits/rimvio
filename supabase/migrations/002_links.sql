@@ -1,4 +1,4 @@
--- Glango: links table (core data model)
+-- Rimvio: links table (core data model)
 create extension if not exists "pgcrypto";
 
 create table if not exists public.links (

@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
 import { AppNav } from "@/components/app-nav";
-import { GlangoLogo } from "@/components/glango-logo";
-import { GLANGO } from "@/lib/brand/glango";
-import { glangoHeaderChromeClass } from "@/lib/brand/glango-neon-theme";
+import { RimvioLogo } from "@/components/rimvio-logo";
+import { RIMVIO } from "@/lib/brand/rimvio";
+import { rimvioHeaderChromeClass } from "@/lib/brand/rimvio-neon-theme";
 import { GOLDEN } from "@/lib/ui/golden-layout";
 import { GRID } from "@/lib/ui/responsive-grid";
 import { cn } from "@/lib/utils";
@@ -43,7 +43,7 @@ export function AppShell({
           className={cn(
             GRID.column,
             "flex h-dvh flex-col overflow-hidden",
-            iosSurface ? "bg-glango-base" : "bg-glango-base"
+            iosSurface ? "bg-rimvio-base" : "bg-rimvio-base"
           )}
         >
           <header
@@ -54,13 +54,13 @@ export function AppShell({
                 ? "absolute inset-x-0 top-0 z-30 bg-gradient-to-b from-background/90 to-transparent px-[var(--space-phi)] pb-[var(--space-u)] pt-[max(0.75rem,env(safe-area-inset-top))]"
                 : compact
                   ? cn(
-                      glangoHeaderChromeClass,
+                      rimvioHeaderChromeClass,
                       "sticky top-0 z-10 px-[var(--space-phi)] pb-[var(--space-u)] pt-[max(0.75rem,env(safe-area-inset-top))]",
-                      iosSurface ? "bg-glango-base/90" : "bg-glango-base/85",
+                      iosSurface ? "bg-rimvio-base/90" : "bg-rimvio-base/85",
                     )
                   : cn(
-                      glangoHeaderChromeClass,
-                      "sticky top-0 z-10 bg-glango-base/80 px-[var(--space-phi)] pb-[var(--space-phi)] pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-2xl",
+                      rimvioHeaderChromeClass,
+                      "sticky top-0 z-10 bg-rimvio-base/80 px-[var(--space-phi)] pb-[var(--space-phi)] pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-2xl",
                     )
             }
           >
@@ -71,9 +71,9 @@ export function AppShell({
                 immersive &&
                   "rounded-full bg-background/55 px-2 py-1 backdrop-blur-md ring-1 ring-border/30"
               )}
-              aria-label={`${GLANGO.name} 홈`}
+              aria-label={`${RIMVIO.name} 홈`}
             >
-              <GlangoLogo
+              <RimvioLogo
                 size={immersive ? "xs" : "sm"}
                 framed={!immersive}
                 showWordmark
@@ -104,7 +104,7 @@ export function AppShell({
           <main
             className={
               immersive
-                ? "relative flex min-h-0 flex-1 flex-col pb-[var(--glango-bottom-nav-offset)] lg:pb-0"
+                ? "relative flex min-h-0 flex-1 flex-col pb-[var(--rimvio-bottom-nav-offset)] lg:pb-0"
                 : compact
                   ? "flex min-h-0 flex-1 flex-col overflow-hidden"
                   : "flex-1 px-[var(--space-phi)] pb-[max(var(--space-phi2),env(safe-area-inset-bottom))]"

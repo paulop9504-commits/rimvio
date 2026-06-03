@@ -39,8 +39,8 @@ export function HomeRecentRow({ links, activeIndex, onSelect, className }: HomeR
               className={cn(
                 "max-w-[8rem] shrink-0 truncate rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors",
                 active
-                  ? "bg-glango-neon-purple text-white"
-                  : "bg-glango-surface-muted text-muted-foreground hover:bg-glango-surface-raised",
+                  ? "bg-rimvio-neon-purple text-white"
+                  : "bg-rimvio-surface-muted text-muted-foreground hover:bg-rimvio-surface-raised",
               )}
             >
               {title.slice(0, 18)}

@@ -26,7 +26,7 @@ import { ActionChatMessageList } from "@/components/action-chat/message-list";
 import { ExecutionTimeline } from "@/components/threadline/execution-timeline";
 import { TodayThread } from "@/components/threadline/today-thread";
 import { threadlineHeaderStatus } from "@/lib/threadline";
-import { GlangoLogo } from "@/components/glango-logo";
+import { RimvioLogo } from "@/components/rimvio-logo";
 import { OnboardingMagicPanel } from "@/components/onboarding-magic-panel";
 import { useActionChat } from "@/hooks/use-action-chat";
 import { usePredictiveDock } from "@/hooks/use-predictive-dock";
@@ -168,6 +168,10 @@ export function ActionChatFeed({
     });
   }, [openGoogleSheet]);
   const { totalCount: resourcePoolCount } = useResourcePool();
+  const [uiHydrated, setUiHydrated] = useState(false);
+  useEffect(() => {
+    setUiHydrated(true);
+  }, []);
   const [schedulingLink, setSchedulingLink] = useState<LinkRow | null>(null);
   const userMessageCount = messages.filter((message) => message.role === "user").length;
   const [coldStartVisible, setColdStartVisible] = useState(false);
@@ -241,9 +245,9 @@ export function ActionChatFeed({
           className
         )}
       >
-        <header className="shrink-0 border-b border-white/10 bg-glango-base/80 px-5 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-md">
+        <header className="shrink-0 border-b border-white/10 bg-rimvio-base/80 px-5 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-md">
           <div className="flex items-center justify-between">
-            <GlangoLogo size="sm" className="h-7" appearance="white" />
+            <RimvioLogo size="sm" className="h-7" appearance="white" />
             <div className="flex items-center gap-1">
               {messages.length > 0 || activeLink ? (
                 <button
@@ -261,8 +265,8 @@ export function ActionChatFeed({
                 className="relative flex size-9 items-center justify-center rounded-full bg-transparent text-white transition-opacity hover:opacity-80 active:scale-95"
               >
                 <FolderGit2 className="size-5" strokeWidth={2.1} />
-                {resourcePoolCount > 0 ? (
-                  <span className="absolute -right-1 -top-1 flex size-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-glango-base px-0.5 text-[10px] font-extrabold tabular-nums leading-none text-[#D8B4FE] shadow-[0_0_8px_rgba(191,90,242,0.35)]">
+                {uiHydrated && resourcePoolCount > 0 ? (
+                  <span className="absolute -right-1 -top-1 flex size-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-rimvio-base px-0.5 text-[10px] font-extrabold tabular-nums leading-none text-[#D8B4FE] shadow-[0_0_8px_rgba(191,90,242,0.35)]">
                     {resourcePoolCount > 9 ? "9+" : resourcePoolCount}
                   </span>
                 ) : null}
@@ -274,8 +278,8 @@ export function ActionChatFeed({
                 className="relative flex size-9 items-center justify-center rounded-full bg-transparent text-white transition-opacity hover:opacity-80 active:scale-95"
               >
                 <Calendar className="size-5" strokeWidth={2.1} />
-                {badgeCount > 0 ? (
-                  <span className="absolute -right-1 -top-1 flex size-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-glango-base px-0.5 text-[10px] font-extrabold tabular-nums leading-none text-glango-neon-amber shadow-[0_0_8px_rgba(255,214,10,0.35)]">
+                {uiHydrated && badgeCount > 0 ? (
+                  <span className="absolute -right-1 -top-1 flex size-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-rimvio-base px-0.5 text-[10px] font-extrabold tabular-nums leading-none text-rimvio-neon-amber shadow-[0_0_8px_rgba(255,214,10,0.35)]">
                     {badgeCount > 9 ? "9+" : badgeCount}
                   </span>
                 ) : null}
@@ -292,7 +296,7 @@ export function ActionChatFeed({
         </header>
 
         {activeLink ? (
-          <div className="max-h-[min(40dvh,220px)] shrink-0 overflow-hidden border-b border-white/[0.06] bg-glango-surface-muted">
+          <div className="max-h-[min(40dvh,220px)] shrink-0 overflow-hidden border-b border-white/[0.06] bg-rimvio-surface-muted">
             <p className="px-5 pt-2 text-[10px] font-semibold uppercase tracking-wide text-white/45">
               현재 맥락
             </p>
@@ -314,7 +318,7 @@ export function ActionChatFeed({
         >
           <div
             ref={threadRef}
-            className="relative z-[2] min-h-0 flex-1 overflow-y-auto overscroll-y-contain glango-feed-scroll-inset [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="relative z-[2] min-h-0 flex-1 overflow-y-auto overscroll-y-contain rimvio-feed-scroll-inset [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {!activeLink && messages.length === 0 && !coldStartVisible ? (
               <ContextNowStrip
@@ -325,14 +329,16 @@ export function ActionChatFeed({
             ) : null}
 
             {coldStartVisible ? (
-              <OnboardingMagicPanel
-                onSendSeed={(text) => void sendMessage(text)}
-                onDismiss={() => setColdStartVisible(false)}
-              />
+              <div className="flex justify-center px-3 pt-2">
+                <OnboardingMagicPanel
+                  onSendSeed={(text) => void sendMessage(text)}
+                  onDismiss={() => setColdStartVisible(false)}
+                />
+              </div>
             ) : null}
 
             {prepSurface.visible ? (
-              <div className="border-b border-black/[0.04] bg-glango-surface/80 px-3 py-4">
+              <div className="border-b border-black/[0.04] bg-rimvio-surface/80 px-3 py-4">
                 <CalendarBoard
                   variant="compact"
                   overlayRows={prepSurface.rows}
@@ -413,7 +419,7 @@ export function ActionChatFeed({
                 chatAxis: payload.chatAxis,
               });
             }}
-            className="glango-feed-composer-dock shrink-0 lg:relative lg:z-[2]"
+            className="rimvio-feed-composer-dock shrink-0 lg:relative lg:z-[2]"
           />
         </ChatAmbientShell>
         </ChatAmbientFocusProvider>

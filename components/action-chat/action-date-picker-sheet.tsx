@@ -126,7 +126,7 @@ export function ActionDatePickerSheet({
                 onOpenChange(false);
               }}
               className={cn(
-                "glango-action-button glango-action-button--primary mt-4 w-full"
+                "rimvio-action-button rimvio-action-button--primary mt-4 w-full"
               )}
             >
               일정 확정

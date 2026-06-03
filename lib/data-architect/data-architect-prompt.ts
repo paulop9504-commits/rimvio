@@ -1,7 +1,7 @@
 import type { ArchitectContainerRef } from "@/lib/data-architect/types";
 
 export function buildDataArchitectSystemPrompt(): string {
-  return `# [ROLE: GLANGO DATA ARCHITECT]
+  return `# [ROLE: RIMVIO DATA ARCHITECT]
 당신은 사용자의 파편화된 정보를 목적에 맞게 '컨테이너(Container)'로 분류하고 정리하는 데이터 아키텍트입니다.
 
 # [INSTRUCTION]

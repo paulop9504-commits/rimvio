@@ -185,7 +185,7 @@ export function FeedCategoryPills({
                     <div
                       className={cn(
                         "flex size-12 items-center justify-center rounded-full",
-                        "bg-background ring-1 ring-glango-neon-purple/12",
+                        "bg-background ring-1 ring-rimvio-neon-purple/12",
                         active && "ring-0"
                       )}
                     >
@@ -231,7 +231,7 @@ export function FeedCategoryPills({
                 <div
                   className={cn(
                     "flex size-12 items-center justify-center rounded-full",
-                    "bg-background ring-1 ring-glango-neon-purple/12"
+                    "bg-background ring-1 ring-rimvio-neon-purple/12"
                   )}
                 >
                   <Plus
@@ -268,27 +268,27 @@ export function FeedCategoryPills({
                     <div
                       className={cn(
                         "flex size-12 items-center justify-center rounded-full",
-                        "bg-background ring-1 ring-glango-neon-purple/12"
+                        "bg-background ring-1 ring-rimvio-neon-purple/12"
                       )}
                     >
                       {remoteLoading ? (
                         <Loader2
-                          className="size-[1.2rem] animate-spin text-glango-neon-cyan"
+                          className="size-[1.2rem] animate-spin text-rimvio-neon-cyan"
                           strokeWidth={2.2}
                         />
                       ) : (
                         <Zap
-                          className="size-[1.2rem] text-glango-neon-cyan"
+                          className="size-[1.2rem] text-rimvio-neon-cyan"
                           strokeWidth={2.2}
                           fill="currentColor"
                         />
                       )}
                     </div>
                     {remote.expanded && remote.primary && !remoteLoading ? (
-                      <span className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full border-2 border-background bg-glango-neon-purple" />
+                      <span className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full border-2 border-background bg-rimvio-neon-purple" />
                     ) : null}
                   </div>
-                  <span className="max-w-full truncate text-[11px] font-semibold leading-none tracking-tight text-glango-neon-cyan">
+                  <span className="max-w-full truncate text-[11px] font-semibold leading-none tracking-tight text-rimvio-neon-cyan">
                     {copy.feed.remotePill}
                   </span>
                 </button>
@@ -310,8 +310,8 @@ export function FeedCategoryPills({
                         transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
                         className={cn(
                           "absolute left-0 top-[calc(100%+0.35rem)] z-50 w-[min(18rem,calc(100vw-2rem))]",
-                          "overflow-hidden rounded-[18px] border border-white/70 bg-glango-surface/95 p-2",
-                          "shadow-[0_16px_40px_-24px_rgba(15,23,42,0.45)] backdrop-blur-xl ring-1 ring-glango-neon-purple/12"
+                          "overflow-hidden rounded-[18px] border border-white/70 bg-rimvio-surface/95 p-2",
+                          "shadow-[0_16px_40px_-24px_rgba(15,23,42,0.45)] backdrop-blur-xl ring-1 ring-rimvio-neon-purple/12"
                         )}
                       >
                         {remote.signalLine ? (
@@ -327,7 +327,7 @@ export function FeedCategoryPills({
                               onClick={() => handleRemoteActionPick(action)}
                               className={cn(
                                 "flex w-full items-center rounded-[12px] px-3 py-2.5 text-left text-[13px] font-medium",
-                                "text-foreground transition-colors hover:bg-glango-surface-muted active:scale-[0.99]"
+                                "text-foreground transition-colors hover:bg-rimvio-surface-muted active:scale-[0.99]"
                               )}
                             >
                               {cleanFeedActionLabel(action.label, locale)}

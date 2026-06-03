@@ -43,8 +43,8 @@ assert.equal(resolveFeedStoryLayout(naverPortal), "compact");
 
 const screenshot: typeof travelPhoto = {
   thumbnail_url: "https://cdn.example.com/capture.jpg",
-  domain: "glango.app",
-  original_url: "https://glango.app/capture/abc",
+  domain: "rimvio.app",
+  original_url: "https://rimvio.app/capture/abc",
   source_type: "screenshot",
   category: "travel",
 };

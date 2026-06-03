@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 const CalendarRow = memo(function CalendarRow({ item }: { item: CalendarUiItem }) {
   return (
     <li
-      className="rounded-lg border border-white/10 bg-glango-surface/5 px-3 py-2"
+      className="rounded-lg border border-white/10 bg-rimvio-surface/5 px-3 py-2"
       data-surface="CALENDAR"
       data-item-id={item.id}
     >
@@ -28,7 +28,7 @@ const CalendarRow = memo(function CalendarRow({ item }: { item: CalendarUiItem }
 const DockRow = memo(function DockRow({ item }: { item: DockUiItem }) {
   return (
     <li
-      className="rounded-lg border border-white/10 bg-glango-surface/5 px-3 py-2"
+      className="rounded-lg border border-white/10 bg-rimvio-surface/5 px-3 py-2"
       data-surface="DOCK"
       data-item-id={item.id}
     >
@@ -41,7 +41,7 @@ const DockRow = memo(function DockRow({ item }: { item: DockUiItem }) {
 const TimelineRow = memo(function TimelineRow({ item }: { item: TimelineUiItem }) {
   return (
     <li
-      className="rounded-lg border border-white/10 bg-glango-surface/5 px-3 py-2"
+      className="rounded-lg border border-white/10 bg-rimvio-surface/5 px-3 py-2"
       data-surface="TIMELINE"
       data-item-id={item.id}
     >
@@ -56,7 +56,7 @@ const TimelineRow = memo(function TimelineRow({ item }: { item: TimelineUiItem }
 const NarrationRow = memo(function NarrationRow({ item }: { item: NarrationUiItem }) {
   return (
     <li
-      className="rounded-lg border border-white/10 bg-glango-surface/5 px-3 py-2"
+      className="rounded-lg border border-white/10 bg-rimvio-surface/5 px-3 py-2"
       data-surface="NARRATION"
       data-item-id={item.id}
     >

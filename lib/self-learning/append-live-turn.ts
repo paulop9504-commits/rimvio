@@ -2,10 +2,10 @@ import { appendFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { LiveTurnLogEntry, LiveTurnRequest } from "@/lib/self-learning/live-turn-types";
 
-const DEFAULT_LOG = join(process.cwd(), ".cursor", "glango-live-turns.jsonl");
+const DEFAULT_LOG = join(process.cwd(), ".cursor", "rimvio-live-turns.jsonl");
 
 export function getLiveTurnLogPath(): string {
-  return process.env.GLANGO_LIVE_TURN_LOG ?? DEFAULT_LOG;
+  return process.env.RIMVIO_LIVE_TURN_LOG ?? DEFAULT_LOG;
 }
 
 export function pickRoutingFromMetadata(

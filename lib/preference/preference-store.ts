@@ -5,7 +5,7 @@ export type PreferenceEntry = {
   updatedAt: string;
 };
 
-const STORAGE_KEY = "glango-preference-store.v1";
+const STORAGE_KEY = "rimvio-preference-store.v1";
 let memoryStore: PreferenceEntry[] = [];
 
 function readJson(): PreferenceEntry[] {

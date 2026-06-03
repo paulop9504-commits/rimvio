@@ -1,8 +1,8 @@
 import {
-  isGlangoAvatarVariant,
-  rollGlangoAvatarVariant,
-  type GlangoAvatarVariantId,
-} from "@/lib/brand/glango-avatar-colors";
+  isRimvioAvatarVariant,
+  rollRimvioAvatarVariant,
+  type RimvioAvatarVariantId,
+} from "@/lib/brand/rimvio-avatar-colors";
 import { markAvatarDrawOnboardingComplete } from "@/lib/onboarding/avatar-onboarding";
 import {
   buildDrawnGuestRecord,
@@ -17,7 +17,7 @@ export type RoomGuest = RoomGuestRecord;
 export { PENDING_AVATAR_ACCENT };
 
 const GUEST_KEY = "blink-room-guest";
-export const ROOM_GUEST_UPDATED = "glango-room-guest-updated";
+export const ROOM_GUEST_UPDATED = "rimvio-room-guest-updated";
 
 const GUEST_NAMES = [
   "오늘 바쁜 민지",
@@ -30,7 +30,7 @@ const GUEST_NAMES = [
 
 export const SSR_PENDING_GUEST: RoomGuest = buildPendingGuestRecord({
   id: "guest-ssr",
-  label: "글랑고",
+  label: "림비오",
 });
 
 function pickGuest(): RoomGuest {
@@ -79,7 +79,7 @@ export function updateRoomGuest(
 }
 
 /** One-time override (e.g. ?avatar=purple) — keeps label/id, swaps color only. */
-export function assignAvatarVariant(variant: GlangoAvatarVariantId): RoomGuest {
+export function assignAvatarVariant(variant: RimvioAvatarVariantId): RoomGuest {
   const current = getRoomGuest();
   const next = buildDrawnGuestRecord({
     id: current.id,
@@ -92,7 +92,7 @@ export function assignAvatarVariant(variant: GlangoAvatarVariantId): RoomGuest {
 }
 
 /** Weighted roll + persist — call after draw animation lands. */
-export function completeAvatarDraw(variant: GlangoAvatarVariantId): RoomGuest {
+export function completeAvatarDraw(variant: RimvioAvatarVariantId): RoomGuest {
   const current = getRoomGuest();
   if (current.avatarDrawn) {
     return current;
@@ -109,7 +109,7 @@ export function completeAvatarDraw(variant: GlangoAvatarVariantId): RoomGuest {
 }
 
 export function rollAndCompleteAvatarDraw(): RoomGuest {
-  return completeAvatarDraw(rollGlangoAvatarVariant());
+  return completeAvatarDraw(rollRimvioAvatarVariant());
 }
 
 export function resetGuestForAvatarDraw(): RoomGuest {
@@ -162,10 +162,10 @@ export function getRoomGuest(): RoomGuest {
       const legacyNeedsPersist =
         parsed.avatarDrawn === undefined ||
         (guest.avatarDrawn &&
-          (!parsed.avatarVariant || !isGlangoAvatarVariant(parsed.avatarVariant))) ||
+          (!parsed.avatarVariant || !isRimvioAvatarVariant(parsed.avatarVariant))) ||
         (!guest.avatarDrawn &&
           parsed.avatarVariant &&
-          isGlangoAvatarVariant(parsed.avatarVariant));
+          isRimvioAvatarVariant(parsed.avatarVariant));
 
       if (legacyNeedsPersist) {
         saveRoomGuest(guest);

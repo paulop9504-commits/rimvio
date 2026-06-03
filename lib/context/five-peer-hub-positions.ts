@@ -4,7 +4,7 @@ import {
 } from "@/lib/context/five-peer-hub-layout";
 import type { PinnedSlotIndex } from "@/lib/context/peer-thread-types";
 
-const POSITIONS_KEY = "glango-five-peer-hub-positions";
+const POSITIONS_KEY = "rimvio-five-peer-hub-positions";
 
 export type HubNodePoint = { x: number; y: number };
 

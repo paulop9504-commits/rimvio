@@ -12,7 +12,7 @@ export function linkReminderToNotificationEvent(
 ): NotificationEventInput {
   return {
     source: "internal",
-    source_app: "glango",
+    source_app: "rimvio",
     title: reminder.title,
     content: `${reminder.title} · ${reminder.url}`,
     timestamp: reminder.createdAt,
@@ -36,7 +36,7 @@ export function activeActionToNotificationEvent(
 
   return {
     source: "internal",
-    source_app: "glango",
+    source_app: "rimvio",
     title: entry.title,
     content: entry.subtitle,
     timestamp: new Date().toISOString(),

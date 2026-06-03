@@ -4,10 +4,10 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Send, Settings, Users } from "lucide-react";
-import { GlangoFeedMark } from "@/lib/brand/glango-feed-mark";
+import { RimvioFeedMark } from "@/lib/brand/rimvio-feed-mark";
 import { useCopy } from "@/hooks/use-copy";
 import { useRoomGuest } from "@/hooks/use-room-guest";
-import { glangoNavBarClass } from "@/lib/brand/glango-neon-theme";
+import { rimvioNavBarClass } from "@/lib/brand/rimvio-neon-theme";
 import { GRID } from "@/lib/ui/responsive-grid";
 import { cn } from "@/lib/utils";
 
@@ -34,7 +34,7 @@ function IgFeedIcon({
   drawn: boolean;
 }) {
   return (
-    <GlangoFeedMark
+    <RimvioFeedMark
       filled={active}
       variant={drawn ? variant : null}
     />
@@ -171,7 +171,7 @@ function InlineNavBar({
   return (
     <nav
       className={cn(
-        "mt-[var(--space-phi2)] flex justify-between glango-nav-bar px-[var(--space-phi2)] pt-[var(--space-u)] lg:hidden"
+        "mt-[var(--space-phi2)] flex justify-between rimvio-nav-bar px-[var(--space-phi2)] pt-[var(--space-u)] lg:hidden"
       )}
       aria-label="Primary"
     >
@@ -202,11 +202,11 @@ function FixedBottomNavBar({
       className={cn(
         GRID.navBottomFrame,
         "lg:hidden",
-        glangoNavBarClass,
+        rimvioNavBarClass,
         "pb-[max(0.25rem,env(safe-area-inset-bottom))]"
       )}
       aria-label="Primary"
-      data-testid="glango-bottom-nav"
+      data-testid="rimvio-bottom-nav"
     >
       <div className="flex h-[3.05rem] items-center justify-between px-[var(--space-phi2)]">
         <NavLinks
@@ -231,9 +231,10 @@ export function AppNav({ immersive = false, placement }: AppNavProps) {
   const tabs = useMemo<NavTab[]>(
     () => [
       {
-        href: "/",
+        href: "/feed",
         label: copy.nav.feed,
-        isActive: (p) => p === "/",
+        isActive: (p) =>
+          p === "/" || p === "/feed" || p.startsWith("/feed/") || p.startsWith("/chat"),
         icon: "feed",
       },
       {

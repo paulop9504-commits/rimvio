@@ -7,6 +7,7 @@ import { buildFivePeerHubNodes, FIVE_PEER_HUB_LINE_COLORS } from "@/lib/context/
 import {
   clampHubPoint,
   clampHubPositionsToBounds,
+  defaultHubNodePositions,
   readHubNodePositions,
   resolveHubDragBounds,
   writeHubNodePositions,
@@ -54,10 +55,16 @@ export function FivePeerHub({
 }: FivePeerHubProps) {
   const nodes = buildFivePeerHubNodes(roster.slots);
   const containerRef = useRef<HTMLDivElement>(null);
-  const positionsRef = useRef<HubNodePositions>(readHubNodePositions());
+  const positionsRef = useRef<HubNodePositions>(defaultHubNodePositions());
   const dragRef = useRef<DragSession | null>(null);
   const suppressClickRef = useRef(false);
-  const [positions, setPositions] = useState<HubNodePositions>(() => positionsRef.current);
+  const [positions, setPositions] = useState<HubNodePositions>(defaultHubNodePositions);
+
+  useEffect(() => {
+    const stored = readHubNodePositions();
+    positionsRef.current = stored;
+    setPositions(stored);
+  }, []);
 
   const commitPositions = useCallback((next: HubNodePositions) => {
     positionsRef.current = next;
@@ -262,7 +269,7 @@ export function FivePeerHub({
             className="relative flex size-[5.25rem] items-center justify-center rounded-full bg-gradient-to-br from-indigo-400 via-violet-400 to-fuchsia-400 p-[3px] shadow-[0_8px_24px_rgba(99,102,241,0.18)]"
             aria-hidden
           >
-            <div className="flex size-full items-center justify-center rounded-full bg-glango-surface text-xl font-semibold text-white shadow-inner">
+            <div className="flex size-full items-center justify-center rounded-full bg-rimvio-surface text-xl font-semibold text-white shadow-inner">
               {centerInitial}
             </div>
           </div>
@@ -295,7 +302,7 @@ export function FivePeerHub({
               aria-label={node.slot.displayName}
             >
               <span
-                className="flex size-[3.75rem] items-center justify-center rounded-full border-2 bg-glango-surface text-base font-semibold text-white shadow-[0_4px_14px_rgba(0,0,0,0.08)]"
+                className="flex size-[3.75rem] items-center justify-center rounded-full border-2 bg-rimvio-surface text-base font-semibold text-white shadow-[0_4px_14px_rgba(0,0,0,0.08)]"
                 style={{
                   borderColor: color,
                   boxShadow: `0 4px 14px rgba(0,0,0,0.08), 0 0 0 1px ${color}33`,
@@ -323,7 +330,7 @@ export function FivePeerHub({
               aria-label={`${node.slot.displayName} · ${node.purgeLabel}`}
             >
               <span
-                className="flex size-[3.75rem] items-center justify-center rounded-full border-2 border-dashed bg-glango-surface/90 text-base font-semibold text-white/55"
+                className="flex size-[3.75rem] items-center justify-center rounded-full border-2 border-dashed bg-rimvio-surface/90 text-base font-semibold text-white/55"
                 style={{ borderColor: color }}
               >
                 {initial}
@@ -348,9 +355,9 @@ export function FivePeerHub({
               style={style}
               aria-label={`${node.slotIndex + 1}번 AI 허브 · 친구 연결`}
             >
-              <span className="relative flex size-[3.75rem] items-center justify-center rounded-full border-2 border-white/15 bg-glango-surface shadow-sm">
+              <span className="relative flex size-[3.75rem] items-center justify-center rounded-full border-2 border-white/15 bg-rimvio-surface shadow-sm">
                 <Plus className="size-5 text-white/55" strokeWidth={2} aria-hidden />
-                <span className="absolute -bottom-0.5 rounded-full bg-glango-surface-muted px-1.5 py-px text-[8px] font-semibold uppercase tracking-wide text-white/55">
+                <span className="absolute -bottom-0.5 rounded-full bg-rimvio-surface-muted px-1.5 py-px text-[8px] font-semibold uppercase tracking-wide text-white/55">
                   {node.roomLabel}
                 </span>
               </span>

@@ -4,10 +4,10 @@ import type {
   KnowledgeEntityType,
 } from "@/lib/knowledge/knowledge-entity-types";
 
-const DB_NAME = "glango-knowledge";
+const DB_NAME = "rimvio-knowledge";
 const DB_VERSION = 1;
 const STORE = "entities";
-export const KNOWLEDGE_ENTITY_UPDATED = "glango-knowledge-entity-updated";
+export const KNOWLEDGE_ENTITY_UPDATED = "rimvio-knowledge-entity-updated";
 
 let memoryStore: KnowledgeEntity[] = [];
 

@@ -4,7 +4,7 @@ import {
   processCaptureImageBuffer,
 } from "@/lib/capture/process-capture-image";
 import { buildL0MarketContextForListing } from "@/lib/commerce/l0-market-context";
-import { buildGlangoL0FromOcr } from "@/lib/routing/glango-l0-orchestrator";
+import { buildRimvioL0FromOcr } from "@/lib/routing/rimvio-l0-orchestrator";
 import { logApi } from "@/lib/server/logger";
 import { readRequestId } from "@/lib/server/request-context";
 
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       mimeType: image.type,
     });
 
-    const draftL0 = buildGlangoL0FromOcr({
+    const draftL0 = buildRimvioL0FromOcr({
       text: result.ocr.text,
       vision: result.ocr.vision ?? null,
       intentKind: result.ocr.intent?.kind ?? null,
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
         ? await buildL0MarketContextForListing({ title: result.ocr.text })
         : null;
 
-    const l0 = buildGlangoL0FromOcr({
+    const l0 = buildRimvioL0FromOcr({
       text: result.ocr.text,
       vision: result.ocr.vision ?? null,
       intentKind: result.ocr.intent?.kind ?? null,

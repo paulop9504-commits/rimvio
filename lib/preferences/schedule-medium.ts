@@ -1,10 +1,10 @@
 import { isIOS, isStandalonePwa } from "@/lib/platform/device";
 
-export const SCHEDULE_MEDIUM_STORAGE_KEY = "glango.schedule-medium.v1";
-export const SCHEDULE_MEDIUM_UPDATED = "glango-schedule-medium-updated";
+export const SCHEDULE_MEDIUM_STORAGE_KEY = "rimvio.schedule-medium.v1";
+export const SCHEDULE_MEDIUM_UPDATED = "rimvio-schedule-medium-updated";
 
 /** Where deferred link execution is routed when user taps remind / schedule actions. */
-export type ScheduleMedium = "glango" | "google_calendar" | "copy";
+export type ScheduleMedium = "rimvio" | "google_calendar" | "copy";
 
 export type ScheduleMediumOption = {
   id: ScheduleMedium;
@@ -16,8 +16,8 @@ export type ScheduleMediumOption = {
 
 export const SCHEDULE_MEDIUM_OPTIONS: ScheduleMediumOption[] = [
   {
-    id: "glango",
-    label: "Glango 알림",
+    id: "rimvio",
+    label: "Rimvio 알림",
     emoji: "🔔",
     hint: "정해진 시간에 이 기기로 알림 · PWA 설치 시 가장 편해요",
     badge: "추천",
@@ -46,19 +46,19 @@ function isScheduleMedium(value: string): value is ScheduleMedium {
 
 export function defaultScheduleMedium(): ScheduleMedium {
   if (typeof window === "undefined") {
-    return "glango";
+    return "rimvio";
   }
 
   if (isIOS() && !isStandalonePwa()) {
     return "google_calendar";
   }
 
-  return "glango";
+  return "rimvio";
 }
 
 export function readScheduleMedium(): ScheduleMedium {
   if (typeof window === "undefined") {
-    return "glango";
+    return "rimvio";
   }
 
   try {

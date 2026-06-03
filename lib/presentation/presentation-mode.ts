@@ -1,5 +1,5 @@
 /**
- * Glango presentation orchestrator — 정보 유형 → 표현 방식.
+ * Rimvio presentation orchestrator — 정보 유형 → 표현 방식.
  * Not every result is a card with images.
  */
 

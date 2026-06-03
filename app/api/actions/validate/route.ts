@@ -24,7 +24,7 @@ async function probeHref(href: string) {
       redirect: "follow",
       signal: controller.signal,
       headers: {
-        "User-Agent": "GlangoActionValidator/1.0",
+        "User-Agent": "RimvioActionValidator/1.0",
       },
     });
 
@@ -40,7 +40,7 @@ async function probeHref(href: string) {
         redirect: "follow",
         signal: controller.signal,
         headers: {
-          "User-Agent": "GlangoActionValidator/1.0",
+          "User-Agent": "RimvioActionValidator/1.0",
         },
       });
       return {

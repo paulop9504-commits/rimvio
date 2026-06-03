@@ -1,6 +1,6 @@
 import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
 
-const STORAGE_PREFIX = "glango.action-chat.v1";
+const STORAGE_PREFIX = "rimvio.action-chat.v1";
 
 function storageKey(scopeId: string) {
   return `${STORAGE_PREFIX}.${scopeId}`;

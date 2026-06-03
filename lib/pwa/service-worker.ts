@@ -6,7 +6,7 @@ export function isServiceWorkerSupported() {
   return typeof window !== "undefined" && "serviceWorker" in navigator;
 }
 
-export async function registerGlangoServiceWorker() {
+export async function registerRimvioServiceWorker() {
   if (!isServiceWorkerSupported()) {
     return null;
   }
@@ -123,7 +123,7 @@ export async function showServiceWorkerNotification(reminder: LinkReminder) {
     return false;
   }
 
-  await registration.showNotification("Glango · 나중에 다시", {
+  await registration.showNotification("Rimvio · 나중에 다시", {
     body: reminder.title,
     tag: reminder.id,
     icon: "/icons/icon-192.png",

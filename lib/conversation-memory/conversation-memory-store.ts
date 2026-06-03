@@ -3,7 +3,7 @@ import type {
   ConversationMemoryWire,
 } from "@/lib/conversation-memory/types";
 
-const STORAGE_KEY = "glango-conversation-memory.v1";
+const STORAGE_KEY = "rimvio-conversation-memory.v1";
 let memoryRecords: ConversationMemoryRecord[] = [];
 
 export function resetConversationMemoryForTests(

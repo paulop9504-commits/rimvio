@@ -1,4 +1,4 @@
-/** Open spawn action deeplink — web URL, tel, or glango:// prompt. */
+/** Open spawn action deeplink — web URL, tel, or rimvio:// prompt. */
 export function openSpawnAction(input: {
   deeplink: string;
   onPrompt?: (uri: string) => void;
@@ -8,7 +8,7 @@ export function openSpawnAction(input: {
     return;
   }
 
-  if (uri.startsWith("glango://")) {
+  if (uri.startsWith("rimvio://")) {
     input.onPrompt?.(uri);
     return;
   }

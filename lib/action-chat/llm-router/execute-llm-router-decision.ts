@@ -1,5 +1,5 @@
 import type { AiIntentCategory } from "@/lib/action-chat/classify-ai-intent-utterance";
-import { GLANGO_CONVERSATION_LINES } from "@/lib/action-chat/glango-persona";
+import { RIMVIO_CONVERSATION_LINES } from "@/lib/action-chat/rimvio-persona";
 import type { OrchestratorResult } from "@/lib/action-chat/orchestrator-types";
 import type {
   LlmRouterDecision,
@@ -12,9 +12,9 @@ const RULE_STUB: Record<AiIntentCategory, string> = {
   HOW_TO: "원하시는 작업을 조금만 구체적으로 말씀해 주시면 단계별로 안내해 드릴게요.",
   DECISION: "선택지나 상황을 알려주시면 장단점을 정리해 드릴게요.",
   CREATION: "어떤 톤과 분량으로 쓸지 알려주시면 바로 초안을 만들어 드릴게요.",
-  COUNSELING: GLANGO_CONVERSATION_LINES.tired,
+  COUNSELING: RIMVIO_CONVERSATION_LINES.tired,
   CURIOSITY:
-    "저는 Glango예요. 질문에 맞춰 설명·실행·정리를 도와드리는 AI 도우미입니다. 궁금한 점을 말씀해 주세요.",
+    "저는 Rimvio예요. 질문에 맞춰 설명·실행·정리를 도와드리는 AI 도우미입니다. 궁금한 점을 말씀해 주세요.",
 };
 
 function isAiIntentCategory(

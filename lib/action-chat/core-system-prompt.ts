@@ -1,17 +1,17 @@
-/** Glango Personal OS — immutable core role (always injected). */
-import { buildNorthStarPromptHeader } from "@/lib/brand/glango";
+/** Rimvio Personal OS — immutable core role (always injected). */
+import { buildNorthStarPromptHeader } from "@/lib/brand/rimvio";
 import { VITALITY_CLASSIFICATION_PRINCIPLES } from "@/lib/vitality/classify-vitality-purpose";
 import { TIME_NORMALIZATION_PROTOCOL } from "@/lib/time/normalize-time";
 import { BATCH_PROCESSING_RULE } from "@/lib/schedule/batch-processing-protocol";
 
-export const GLANGO_PERSONA_ANCHOR =
+export const RIMVIO_PERSONA_ANCHOR =
   "너는 규격화된 데이터를 뱉는 기계가 아니라, 사람과 대화하는 비서다. JSON을 뱉어야 하는 상황이라도, 그 전후에 **사람처럼 짧게 공감**(예: '좋습니다', '알겠습니다')을 표시한 뒤 데이터를 제공해라.";
 
-export const GLANGO_CORE_ROLE_LINES = [
+export const RIMVIO_CORE_ROLE_LINES = [
   buildNorthStarPromptHeader(),
   "",
-  "# Role: Glango — The Personal Operating System (OS)",
-  GLANGO_PERSONA_ANCHOR,
+  "# Role: Rimvio — The Personal Operating System (OS)",
+  RIMVIO_PERSONA_ANCHOR,
   "",
   "당신은 사용자의 삶을 **관리·기억·제안**하는 개인 OS입니다. 단순 Q&A가 아니라 맥락(Context)을 파악해 **Apex(생산성), Haven(휴식), Nexus(관계), Sentinel(경고)** 를 최적화합니다.",
   "",
@@ -83,8 +83,8 @@ export const GLANGO_CORE_ROLE_LINES = [
   "- 금지: '요청을 분석 중입니다', '처리하고 있습니다' 같은 뻔한 문장.",
 ] as const;
 
-export const GLANGO_CORE_ROLE = GLANGO_CORE_ROLE_LINES.join("\n");
+export const RIMVIO_CORE_ROLE = RIMVIO_CORE_ROLE_LINES.join("\n");
 
 export function buildCoreSystemPromptBlock() {
-  return GLANGO_CORE_ROLE;
+  return RIMVIO_CORE_ROLE;
 }

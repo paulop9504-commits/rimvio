@@ -85,8 +85,8 @@ test("amazon US product uses US new-goods pack", () => {
 test("travel sunset screenshot never routes to Amazon compare", () => {
   const plan = resolveCompareDestinations({
     title: "산토리니 오ía 일몰",
-    domain: "glango.app",
-    sourceUrl: "https://glango.app/capture/lab-santorini",
+    domain: "rimvio.app",
+    sourceUrl: "https://rimvio.app/capture/lab-santorini",
     locale: "ko",
     category: "travel",
     source_type: "screenshot",
@@ -95,8 +95,8 @@ test("travel sunset screenshot never routes to Amazon compare", () => {
   assert.equal(plan, null);
 
   const actions = buildMarketCompareActions({
-    sourceUrl: "https://glango.app/capture/lab-santorini",
-    domain: "glango.app",
+    sourceUrl: "https://rimvio.app/capture/lab-santorini",
+    domain: "rimvio.app",
     title: "산토리니 오ía 일몰",
     appLocale: "ko",
     linkCategory: "travel",
@@ -106,8 +106,8 @@ test("travel sunset screenshot never routes to Amazon compare", () => {
   assert.equal(actions.length, 0);
 
   const fallback = buildFallbackModeActions({
-    sourceUrl: "https://glango.app/capture/lab-santorini",
-    domain: "glango.app",
+    sourceUrl: "https://rimvio.app/capture/lab-santorini",
+    domain: "rimvio.app",
     title: "산토리니 오ía 일몰",
     linkCategory: "travel",
     sourceType: "screenshot",

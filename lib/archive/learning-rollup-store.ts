@@ -4,7 +4,7 @@ export type LearningRollupEntry = LearningSignal & {
   updatedAt: string;
 };
 
-const STORAGE_KEY = "glango.learning-rollup.v1";
+const STORAGE_KEY = "rimvio.learning-rollup.v1";
 
 let memoryStore: LearningRollupEntry[] = [];
 

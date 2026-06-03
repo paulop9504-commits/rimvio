@@ -600,15 +600,15 @@ function buildHealthActions(ctx: ExtensionContext): LinkActionItem[] {
 function buildDesignActions(ctx: ExtensionContext): LinkActionItem[] {
   const q = query(ctx) ?? ctx.domain;
   const licensePrompt = `다음 디자인/이미지 링크의 상업적 이용 가능 여부와 출처 표기 조건을 ⭕ 사용 가능 / ⚠️ 저작권 주의 중 하나로 판단해 3줄로 설명해줘.\n${ctx.sourceUrl}`;
-  const mobileUiMockupPrompt = buildPresetAppleMobileWebPrompt("glangoAction", {
-    brand: "glango",
+  const mobileUiMockupPrompt = buildPresetAppleMobileWebPrompt("rimvioAction", {
+    brand: "rimvio",
   });
 
   return [
     createOpenAction({
       label: "📱 모바일 UI 목업",
       href: buildChatGptPromptHref(
-        `${mobileUiMockupPrompt}\n\n위 프롬프트로 Glango 피드 카드 목업 이미지를 생성해줘. 레퍼런스: ${ctx.sourceUrl}`
+        `${mobileUiMockupPrompt}\n\n위 프롬프트로 Rimvio 피드 카드 목업 이미지를 생성해줘. 레퍼런스: ${ctx.sourceUrl}`
       ),
       icon: "sparkles",
       copyText: mobileUiMockupPrompt,

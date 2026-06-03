@@ -1,7 +1,7 @@
 import type { PeerThreadSettings } from "@/lib/context/peer-thread-types";
 
-const SETTINGS_PREFIX = "glango.peer-thread.settings.v1";
-const LOG_PREFIX = "glango.peer-thread.messages.v1";
+const SETTINGS_PREFIX = "rimvio.peer-thread.settings.v1";
+const LOG_PREFIX = "rimvio.peer-thread.messages.v1";
 
 function settingsKey(peerThreadId: string) {
   return `${SETTINGS_PREFIX}.${peerThreadId}`;

@@ -41,7 +41,7 @@ export function PlaceFoodPhotoGallery({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="z-[100] max-h-[92vh] max-w-md gap-0 overflow-hidden rounded-[28px] border border-border bg-[#F5F5F7] p-0 shadow-2xl">
-        <DialogHeader className="border-b border-border bg-glango-surface px-5 py-4 text-left">
+        <DialogHeader className="border-b border-border bg-rimvio-surface px-5 py-4 text-left">
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
             맛집
           </p>
@@ -60,7 +60,7 @@ export function PlaceFoodPhotoGallery({
             <figure
               key={`${placeName}-${index}-${url}`}
               id={index === safeStart ? `place-gallery-start` : undefined}
-              className="overflow-hidden rounded-[20px] border border-border bg-glango-surface shadow-sm"
+              className="overflow-hidden rounded-[20px] border border-border bg-rimvio-surface shadow-sm"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img

@@ -1,4 +1,4 @@
-import { GLANGO } from "@/lib/brand/glango";
+import { RIMVIO } from "@/lib/brand/rimvio";
 import { normalizeInputUrl } from "@/lib/enrichers/fetch-page-metadata";
 import { normalizeYouTubeUrl } from "@/lib/enrichers/youtube-url";
 import {
@@ -37,7 +37,7 @@ export function buildKakaoMapSearchWebHref(query: string) {
 export function buildNaverMapSearchHref(query: string) {
   const resolved = resolveSearchQuery({ text: query });
   const q = encodeURIComponent(resolved.trim());
-  return `nmap://search?query=${q}&appname=${encodeURIComponent(GLANGO.name)}`;
+  return `nmap://search?query=${q}&appname=${encodeURIComponent(RIMVIO.name)}`;
 }
 
 export function buildNaverMapSearchWebHref(query: string) {

@@ -7,19 +7,19 @@ import {
 } from "@/lib/local-links/store";
 import type { LinkRow } from "@/types/database";
 
-export const EXPERIMENT_LAB_FLAG = "glango-experiment-lab-v3";
-export const EXPERIMENT_LAB_VERSION_KEY = "glango-experiment-lab-version";
+export const EXPERIMENT_LAB_FLAG = "rimvio-experiment-lab-v3";
+export const EXPERIMENT_LAB_VERSION_KEY = "rimvio-experiment-lab-version";
 /** Bump when feed content/count changes so dev clients auto-refresh stale localStorage. */
 export const EXPERIMENT_LAB_VERSION = "v3-46-2";
 
 const PREFIX_KEYS = [
   "blink-local-links",
   "blink-dismissed-link-ids",
-  "glango:save-trajectory",
-  "glango:trajectory-burst-session",
-  "glango:recent-action-profile",
-  "glango:link-lifecycle-states",
-  "glango:primary-action-locks",
+  "rimvio:save-trajectory",
+  "rimvio:trajectory-burst-session",
+  "rimvio:recent-action-profile",
+  "rimvio:link-lifecycle-states",
+  "rimvio:primary-action-locks",
   "blink-analytics-events",
   "blink-pinned-url",
   "blink-completion-log",
@@ -47,7 +47,7 @@ export function clearExperimentLabState() {
       continue;
     }
 
-    if (key.startsWith("glango:related:") || key.startsWith("glango:personalization-merge-done:")) {
+    if (key.startsWith("rimvio:related:") || key.startsWith("rimvio:personalization-merge-done:")) {
       localStorage.removeItem(key);
     }
   }

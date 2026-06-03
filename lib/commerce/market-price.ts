@@ -142,7 +142,7 @@ function buildDetail(input: {
       : input.sources.includes("naver_shop_web")
         ? "네이버쇼핑 검색"
         : input.sources.includes("true_cost_model")
-          ? "Glango 감가 추정"
+          ? "Rimvio 감가 추정"
           : input.sources.includes("estimate_band")
             ? "보수적 추정"
             : "외부 검색";

@@ -167,7 +167,7 @@ const writeTrace = [
     function: "upsertEventCandidate",
     file: "lib/events/event-store.ts",
     calls: "writePayload",
-    sideEffect: "glango-event-candidates.v1 / memoryStore",
+    sideEffect: "rimvio-event-candidates.v1 / memoryStore",
   },
   {
     function: "scheduleLinkReminderAt",

@@ -49,7 +49,7 @@ export function buildPeerComposerContextBlock(
   };
 }
 
-export const PENDING_PEER_MENTION_KEY = "glango.pending-peer-mention.v1";
+export const PENDING_PEER_MENTION_KEY = "rimvio.pending-peer-mention.v1";
 
 export function queuePeerMentionForAiChat(displayName: string) {
   if (typeof window === "undefined") {

@@ -117,7 +117,7 @@ export function actionArchitectToMasterWire(wire: ActionArchitectWire): MasterOr
     label: item.label,
     icon: index === 0 ? "check" : "link",
     action_type: "DEEP_LINK" as const,
-    url: `glango://global-brain/${encodeURIComponent(item.type)}?label=${encodeURIComponent(item.label)}&template=${encodeURIComponent(wire.template_id ?? "")}`,
+    url: `rimvio://global-brain/${encodeURIComponent(item.type)}?label=${encodeURIComponent(item.label)}&template=${encodeURIComponent(wire.template_id ?? "")}`,
   }));
 
   return {

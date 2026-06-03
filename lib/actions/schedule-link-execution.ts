@@ -1,5 +1,5 @@
 import { buildGoogleCalendarTemplateHref } from "@/lib/actions/search-urls";
-import { GLANGO } from "@/lib/brand/glango";
+import { RIMVIO } from "@/lib/brand/rimvio";
 import {
   formatReminderDelayLabel,
   requestReminderPermission,
@@ -79,7 +79,7 @@ function buildCopyScheduleTemplate(input: ScheduleLinkInput, fireAt: Date) {
   });
 
   return [
-    `⏰ ${GLANGO.nameKo} 실행 예약`,
+    `⏰ ${RIMVIO.nameKo} 실행 예약`,
     `제목: ${input.title}`,
     `예정: ${whenLabel}`,
     input.url,
@@ -109,7 +109,7 @@ export async function executeScheduledLinkReminder(
   if (medium === "google_calendar") {
     const href = buildGoogleCalendarTimedHref({
       title: `🔗 ${input.title}`,
-      details: `${GLANGO.nameKo}에서 예약\n${input.url}`,
+      details: `${RIMVIO.nameKo}에서 예약\n${input.url}`,
       start: fireAt,
     });
 

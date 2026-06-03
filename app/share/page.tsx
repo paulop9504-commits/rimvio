@@ -55,7 +55,7 @@ function ShareBridge() {
       return;
     }
 
-    toast("👀 잠깐, 할 일 찾는 중…", { id: SHARE_TOAST_ID });
+    toast("👀 림비오가 다음 행동을 찾는 중…", { id: SHARE_TOAST_ID });
 
     startAnalyticsFlow();
 

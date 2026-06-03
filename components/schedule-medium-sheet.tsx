@@ -15,7 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const ICONS = {
-  glango: Bell,
+  rimvio: Bell,
   google_calendar: Calendar,
   copy: ClipboardCopy,
 } as const;
@@ -34,7 +34,7 @@ export function ScheduleMediumSheet({
   onSelect,
 }: ScheduleMediumSheetProps) {
   const copy = useCopy();
-  const [defaultMedium, setDefaultMedium] = useState<ScheduleMedium>("glango");
+  const [defaultMedium, setDefaultMedium] = useState<ScheduleMedium>("rimvio");
   const [standalone, setStandalone] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -84,7 +84,7 @@ export function ScheduleMediumSheet({
             className={cn(
               "fixed inset-x-0 bottom-0 z-[81] mx-auto max-w-lg",
               "rounded-t-[28px] bg-[#FAFAFC] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3",
-              "shadow-[0_-18px_48px_-24px_rgba(0,0,0,0.35)] ring-1 ring-glango-neon-purple/15"
+              "shadow-[0_-18px_48px_-24px_rgba(0,0,0,0.35)] ring-1 ring-rimvio-neon-purple/15"
             )}
           >
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-black/10" />
@@ -105,7 +105,7 @@ export function ScheduleMediumSheet({
                 type="button"
                 aria-label="?�기"
                 onClick={() => onOpenChange(false)}
-                className="flex size-8 shrink-0 items-center justify-center rounded-full bg-glango-surface-muted text-muted-foreground"
+                className="flex size-8 shrink-0 items-center justify-center rounded-full bg-rimvio-surface-muted text-muted-foreground"
               >
                 <X className="size-4" />
               </button>
@@ -116,7 +116,7 @@ export function ScheduleMediumSheet({
                 const Icon = ICONS[option.id];
                 const isDefault = defaultMedium === option.id;
                 const showPwaHint =
-                  option.id === "glango" && !standalone && isDefault;
+                  option.id === "rimvio" && !standalone && isDefault;
 
                 return (
                   <button
@@ -129,16 +129,16 @@ export function ScheduleMediumSheet({
                     className={cn(
                       "flex w-full items-start gap-3 rounded-2xl px-3.5 py-3 text-left transition-all active:scale-[0.99]",
                       isDefault
-                        ? "bg-glango-neon-purple/8 ring-2 ring-[#007AFF]/30"
-                        : "bg-glango-surface ring-1 ring-glango-neon-purple/15"
+                        ? "bg-rimvio-neon-purple/8 ring-2 ring-[#007AFF]/30"
+                        : "bg-rimvio-surface ring-1 ring-rimvio-neon-purple/15"
                     )}
                   >
                     <span
                       className={cn(
                         "mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-xl",
                         isDefault
-                          ? "bg-glango-neon-purple text-white"
-                          : "bg-glango-surface-muted text-foreground"
+                          ? "bg-rimvio-neon-purple text-white"
+                          : "bg-rimvio-surface-muted text-foreground"
                       )}
                       aria-hidden
                     >
@@ -155,7 +155,7 @@ export function ScheduleMediumSheet({
                           {option.emoji} {option.label}
                         </span>
                         {isDefault ? (
-                          <span className="rounded-full bg-glango-neon-purple/10 px-2 py-0.5 text-[10px] font-semibold text-glango-neon-cyan">
+                          <span className="rounded-full bg-rimvio-neon-purple/10 px-2 py-0.5 text-[10px] font-semibold text-rimvio-neon-cyan">
                             {copy.settings.scheduleBadge}
                           </span>
                         ) : null}

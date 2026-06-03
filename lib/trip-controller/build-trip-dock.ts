@@ -46,7 +46,7 @@ export function buildTripDock(trip: TripEvaluated): PredictiveDockWire {
     label: "짐 체크리스트",
     score: 82,
     state: "WARM",
-    prompt: "glango://trip/packing",
+    prompt: "rimvio://trip/packing",
     tripAction: "packing",
     templateId: "AIRPORT_TRAVEL_01",
     strategyApplied: "MANUAL_CORE",
@@ -58,7 +58,7 @@ export function buildTripDock(trip: TripEvaluated): PredictiveDockWire {
     label: "탑승권",
     score: 86,
     state: "WARM",
-    prompt: "glango://trip/flight",
+    prompt: "rimvio://trip/flight",
     tripAction: "flight",
   });
 
@@ -68,7 +68,7 @@ export function buildTripDock(trip: TripEvaluated): PredictiveDockWire {
     label: "택시 호출",
     score: promoteTaxi ? 99 : 88,
     state: promoteTaxi ? "ACTIVE" : "WARM",
-    prompt: "glango://trip/taxi",
+    prompt: "rimvio://trip/taxi",
     tripAction: "taxi",
   });
 
@@ -87,7 +87,7 @@ export function buildTripDock(trip: TripEvaluated): PredictiveDockWire {
     label: "체크인",
     score: 84,
     state: "WARM",
-    prompt: "glango://trip/flight",
+    prompt: "rimvio://trip/flight",
     tripAction: "flight",
   });
 
@@ -112,7 +112,7 @@ export function buildTripDock(trip: TripEvaluated): PredictiveDockWire {
         label: "탑승권 보기",
         score: 99,
         state: "ACTIVE",
-        prompt: "glango://trip/flight",
+        prompt: "rimvio://trip/flight",
         tripAction: "flight",
       });
       const gate = chip({

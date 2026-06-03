@@ -1,4 +1,4 @@
-import { buildGlangoSystemPrompt } from "@/lib/action-chat/glango-persona";
+import { buildRimvioSystemPrompt } from "@/lib/action-chat/rimvio-persona";
 import { buildCoreSystemPromptBlock } from "@/lib/action-chat/core-system-prompt";
 import { buildCoreOperatingLawPromptBlock } from "@/lib/action-chat/core-operating-law";
 import {
@@ -9,7 +9,7 @@ import {
 // Plain string lines — never use backticks inside prompt copy (parser breaks on nested `).
 const MASTER_ORCHESTRATOR_TASK_LINES = [
   "# Role",
-  "You are Glango OS Master Orchestrator. Analyze every user input and convert it into executable Actions and persistent Context.",
+  "You are Rimvio OS Master Orchestrator. Analyze every user input and convert it into executable Actions and persistent Context.",
   "",
   "# Core Principles (absolute)",
   "1. **Action First**: Behavior (buttons) before raw info. Hide link/photo details in summary — surface actions.",
@@ -115,7 +115,7 @@ export function buildMasterOrchestratorSystemPrompt(input?: {
   });
   const taskBlock = buildFeaturePromptBlocks(features, MASTER_ORCHESTRATOR_TASK);
 
-  return buildGlangoSystemPrompt(
+  return buildRimvioSystemPrompt(
     `${buildCoreOperatingLawPromptBlock()}\n\n${buildCoreSystemPromptBlock()}\n\n${taskBlock}`
   );
 }

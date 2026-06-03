@@ -133,7 +133,7 @@ async function main() {
   }
 
   if (!isLlmRouterEnabled()) {
-    console.error("\nRouter disabled (GLANGO_LLM_ROUTER=false). Remove flag to experiment.");
+    console.error("\nRouter disabled (RIMVIO_LLM_ROUTER=false). Remove flag to experiment.");
     process.exit(1);
   }
 

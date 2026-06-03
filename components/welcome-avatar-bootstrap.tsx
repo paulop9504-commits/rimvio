@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { isGlangoAvatarVariant } from "@/lib/brand/glango-avatar-colors";
+import { isRimvioAvatarVariant } from "@/lib/brand/rimvio-avatar-colors";
 import { useCopy } from "@/hooks/use-copy";
 import {
   assignAvatarVariant,
@@ -40,7 +40,7 @@ export function WelcomeAvatarBootstrap() {
     }
 
     const avatar = searchParams.get("avatar");
-    if (!avatar || !isGlangoAvatarVariant(avatar)) {
+    if (!avatar || !isRimvioAvatarVariant(avatar)) {
       return;
     }
 

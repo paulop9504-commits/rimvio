@@ -13,7 +13,7 @@ export const STANDARD_TEMPLATES: ActionTemplateSchema[] = [
         type: "CHECKLIST",
         label: "짐 체크리스트",
         id: "packing_list",
-        prompt: "glango://trip/packing",
+        prompt: "rimvio://trip/packing",
       },
       {
         type: "LINK",

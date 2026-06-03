@@ -15,7 +15,7 @@ export function ChatThinkingBubble({
   return (
     <AiChatBubble group={group}>
       <span className="chat-bubble--thinking inline-flex items-center gap-1.5">
-        <Loader2 className="size-3 shrink-0 animate-spin text-glango-neon-cyan" aria-hidden />
+        <Loader2 className="size-3 shrink-0 animate-spin text-rimvio-neon-cyan" aria-hidden />
         [생각중...]
       </span>
     </AiChatBubble>

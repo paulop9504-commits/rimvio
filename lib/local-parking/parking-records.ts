@@ -7,8 +7,8 @@ export type ParkingRecord = {
 };
 
 export const PARKING_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
-export const PARKING_RECORDS_UPDATED = "glango-parking-records-updated";
-const STORAGE_KEY = "glango-parking-records";
+export const PARKING_RECORDS_UPDATED = "rimvio-parking-records-updated";
+const STORAGE_KEY = "rimvio-parking-records";
 
 let memoryRecords: ParkingRecord[] = [];
 

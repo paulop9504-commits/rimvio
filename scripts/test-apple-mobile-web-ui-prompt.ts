@@ -15,9 +15,9 @@ assert.match(creativity, /blue-to-green gradient/);
 assert.match(creativity, /image_0\.png/);
 assert.match(creativity, /apple\.com/);
 
-const glango = buildPresetAppleMobileWebPrompt("glangoAction", { brand: "glango" });
-assert.match(glango, /glango\.app/);
-assert.match(glango, /링크가 행동/);
+const rimvio = buildPresetAppleMobileWebPrompt("rimvioAction", { brand: "rimvio" });
+assert.match(rimvio, /rimvio\.app/);
+assert.match(rimvio, /링크가 행동/);
 
 const custom = buildAppleMobileWebCardPrompt({
   category: "연결성",

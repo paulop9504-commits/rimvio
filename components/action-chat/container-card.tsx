@@ -32,23 +32,23 @@ export function ContainerCard({
   return (
     <article
       className={cn(
-        "glango-container-card glango-point-surface",
-        compact && "glango-container-card--compact",
+        "rimvio-container-card rimvio-point-surface",
+        compact && "rimvio-container-card--compact",
         className,
       )}
     >
-      <header className="glango-container-card__header">
-        <span className="glango-container-card__icon" aria-hidden>
+      <header className="rimvio-container-card__header">
+        <span className="rimvio-container-card__icon" aria-hidden>
           <Icon className="size-[18px]" strokeWidth={2.1} />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="glango-container-card__title">{title}</h3>
+          <h3 className="rimvio-container-card__title">{title}</h3>
           {loading ? (
-            <p className="glango-container-card__subtitle text-white/55">생각중…</p>
+            <p className="rimvio-container-card__subtitle text-white/55">생각중…</p>
           ) : chips.length > 0 ? (
-            <div className="glango-container-card__chips">
+            <div className="rimvio-container-card__chips">
               {chips.map((chip) => (
-                <span key={chip} className="glango-container-card__chip">
+                <span key={chip} className="rimvio-container-card__chip">
                   {chip}
                 </span>
               ))}
@@ -58,14 +58,14 @@ export function ContainerCard({
       </header>
 
       {showBody ? (
-        <div className="glango-container-card__body">
-          <p className="glango-container-card__body-text">{body}</p>
+        <div className="rimvio-container-card__body">
+          <p className="rimvio-container-card__body-text">{body}</p>
         </div>
       ) : null}
 
-      {meta ? <div className="glango-container-card__meta">{meta}</div> : null}
+      {meta ? <div className="rimvio-container-card__meta">{meta}</div> : null}
 
-      {footer ? <footer className="glango-container-card__footer">{footer}</footer> : null}
+      {footer ? <footer className="rimvio-container-card__footer">{footer}</footer> : null}
     </article>
   );
 }

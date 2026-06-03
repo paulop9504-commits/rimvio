@@ -29,8 +29,8 @@ assert.equal(shopping[0]?.label, UNIVERSAL_PILLAR_LABEL.deep_dive);
 const link: LinkRow = {
   id: "test-food",
   title: "스타벅스 강남점",
-  original_url: "https://glango.app/capture/test",
-  domain: "glango.app",
+  original_url: "https://rimvio.app/capture/test",
+  domain: "rimvio.app",
   category: "food",
   source_type: "screenshot",
   actions: [],

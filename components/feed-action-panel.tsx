@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { GlangoActionButton } from "@/components/ui/glango-action-button";
+import { RimvioActionButton } from "@/components/ui/rimvio-action-button";
 import { cleanFeedActionLabel } from "@/lib/feed/feed-display";
 import type { AppLocale } from "@/lib/i18n/types";
 import type { LinkActionItem } from "@/types/database";
@@ -84,15 +84,15 @@ export function FeedActionPanel({
               "mx-auto flex w-[var(--golden-major)] max-w-full items-center justify-center gap-2",
               "rounded-[var(--space-phi)] px-[var(--space-phi2)] py-[var(--space-phi)] text-[14px] font-medium",
               isOverlay
-                ? "bg-glango-surface/15 text-white backdrop-blur-md"
-                : "bg-glango-neon-purple/10 text-glango-neon-cyan"
+                ? "bg-rimvio-surface/15 text-white backdrop-blur-md"
+                : "bg-rimvio-neon-purple/10 text-rimvio-neon-cyan"
             )}
           >
             <Loader2 className="size-4 animate-spin" />
             찾는 중…
           </div>
         ) : showPrimary ? (
-          <GlangoActionButton
+          <RimvioActionButton
             type="button"
             onClick={onPrimary}
             fullWidth
@@ -103,7 +103,7 @@ export function FeedActionPanel({
             )}
           >
             {primaryLabel}
-          </GlangoActionButton>
+          </RimvioActionButton>
         ) : null}
 
         {secondary.length > 0 && onSecondary ? (
@@ -113,7 +113,7 @@ export function FeedActionPanel({
             scrollClassName="gap-2 pb-0.5"
           >
             {secondary.map((action) => (
-              <GlangoActionButton
+              <RimvioActionButton
                 key={action.id}
                 type="button"
                 variant="secondary"
@@ -122,11 +122,11 @@ export function FeedActionPanel({
                 className={cn(
                   "shrink-0",
                   isOverlay &&
-                    "!border-white/25 !bg-glango-surface/18 !text-white !shadow-[0_4px_12px_rgba(0,0,0,0.12)]"
+                    "!border-white/25 !bg-rimvio-surface/18 !text-white !shadow-[0_4px_12px_rgba(0,0,0,0.12)]"
                 )}
               >
                 {cleanFeedActionLabel(action.label, locale)}
-              </GlangoActionButton>
+              </RimvioActionButton>
             ))}
           </HorizontalScrollRail>
         ) : null}

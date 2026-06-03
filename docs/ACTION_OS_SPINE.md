@@ -47,7 +47,7 @@ Push back until spine vertical slice ships:
 | **Screen ambient / vision context** | No Astra-style screen reading |
 | **New ingest path (5th axis)** | Four context axes are enough — no new `sourceRef` families |
 | **Domain LLM action candidate expansion** | Freeze until `@` registry maps `featureId` → contract |
-| **Silent Ghost / Figma bridge** | Separate repo — see `glango-isolation.mdc` |
+| **Silent Ghost / Figma bridge** | Separate repo — see `rimvio-isolation.mdc` |
 
 ---
 
@@ -59,7 +59,7 @@ Push back until spine vertical slice ships:
 4. **Ranking reads rollup on MAIN resolve only** — `lib/archive/learning-rollup-store` is the ranking input; do not duplicate stats elsewhere.
 5. **Registry before LLM expansion** — no new `generateActionCandidatesSync` domains until `@` registry lists the feature.
 6. **Archive write path only for fold** — UI does not read archive for live suggestions; live = EventCandidate + rollup scores.
-7. **Separate repos stay separate** — no Ghost/Figma patterns imported into Glango.
+7. **Separate repos stay separate** — no Ghost/Figma patterns imported into Rimvio.
 
 ---
 

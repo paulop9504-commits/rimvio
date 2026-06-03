@@ -1,7 +1,7 @@
 import { resolveSessionIdForSave } from "@/lib/intent/burst-session";
 import type { SaveTrajectoryEntry } from "@/lib/intent/kernel-types";
 
-const TRAJECTORY_KEY = "glango:save-trajectory";
+const TRAJECTORY_KEY = "rimvio:save-trajectory";
 const MAX_ENTRIES = 50;
 
 function readJson<T>(fallback: T): T {

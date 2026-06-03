@@ -17,7 +17,7 @@ assert.match(law, /Intent-first/u);
 assert.match(law, /Commit signals/u);
 assert.match(law, /Context restore/u);
 assert.match(law, /Vitality override/u);
-assert.match(law, /Glango golden rule/u);
+assert.match(law, /Rimvio golden rule/u);
 assert.doesNotMatch(law, /A\/B\/C overload.*A\/B\/C overload/u);
 
 const fallback = buildFallbackRecoveryPromptBlock();
@@ -42,6 +42,6 @@ assert.ok(conv.indexOf("[CORE OPERATING LAW]") < conv.indexOf("[FALLBACK RECOVER
 assert.ok(conv.indexOf("[CORE OPERATING LAW]") < conv.indexOf("[ADAPTIVE PERSONA"));
 
 const action = buildMasterOrchestratorSystemPrompt({ message: "배고파" });
-assert.ok(action.indexOf("[CORE OPERATING LAW]") < action.indexOf("Role: Glango"));
+assert.ok(action.indexOf("[CORE OPERATING LAW]") < action.indexOf("Role: Rimvio"));
 
 console.log("test-core-operating-law: ok");

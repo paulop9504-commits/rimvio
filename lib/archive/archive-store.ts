@@ -1,6 +1,6 @@
 import type { ArchivedEvent } from "@/lib/archive/types";
 
-const STORAGE_KEY = "glango.event-archive.v1";
+const STORAGE_KEY = "rimvio.event-archive.v1";
 
 let memoryStore: ArchivedEvent[] = [];
 

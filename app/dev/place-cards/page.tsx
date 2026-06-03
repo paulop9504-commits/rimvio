@@ -52,7 +52,7 @@ export default function PlaceCardsDevPage() {
   const hasCards = Boolean(wire?.options?.length);
 
   return (
-    <div className="mx-auto min-h-[100dvh] max-w-md bg-glango-base px-4 pb-10 pt-[max(1rem,env(safe-area-inset-top))] font-sans">
+    <div className="mx-auto min-h-[100dvh] max-w-md bg-rimvio-base px-4 pb-10 pt-[max(1rem,env(safe-area-inset-top))] font-sans">
       <header className="mb-5">
         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           Dev · Place cards
@@ -62,12 +62,12 @@ export default function PlaceCardsDevPage() {
         </h1>
         <p className="mt-2 text-[13px] text-muted-foreground">
           프로젝트: <strong className="text-foreground">new-project</strong> · 터미널에서{" "}
-          <code className="rounded bg-glango-surface px-1.5 py-0.5 text-[12px]">npm run dev</code> 실행 후
+          <code className="rounded bg-rimvio-surface px-1.5 py-0.5 text-[12px]">npm run dev</code> 실행 후
           열기
         </p>
         <a
           href="/dev/place-cards?q=쿠우쿠우%20맛집%20추천"
-          className="mt-2 inline-block text-[14px] font-medium text-glango-neon-cyan underline"
+          className="mt-2 inline-block text-[14px] font-medium text-rimvio-neon-cyan underline"
         >
           http://localhost:3000/dev/place-cards
         </a>
@@ -84,13 +84,13 @@ export default function PlaceCardsDevPage() {
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           placeholder="예: 쿠우쿠우, 강남역 스테이크"
-          className="min-h-11 flex-1 rounded-2xl border border-border bg-glango-surface px-4 text-[15px] text-foreground shadow-sm outline-none focus:border-glango-neon-cyan/40"
+          className="min-h-11 flex-1 rounded-2xl border border-border bg-rimvio-surface px-4 text-[15px] text-foreground shadow-sm outline-none focus:border-rimvio-neon-cyan/40"
         />
         <button
           type="submit"
           disabled={loading}
           className={cn(
-            "shrink-0 rounded-2xl bg-glango-neon-purple px-4 text-[14px] font-semibold text-white shadow-sm transition active:scale-[0.98]",
+            "shrink-0 rounded-2xl bg-rimvio-neon-purple px-4 text-[14px] font-semibold text-white shadow-sm transition active:scale-[0.98]",
             loading && "opacity-60",
           )}
         >
@@ -100,8 +100,8 @@ export default function PlaceCardsDevPage() {
 
       {loading ? (
         <div className="space-y-4">
-          <div className="h-5 w-2/3 animate-pulse rounded-lg bg-glango-surface-muted" />
-          <div className="aspect-[4/3] animate-pulse rounded-[28px] bg-glango-surface" />
+          <div className="h-5 w-2/3 animate-pulse rounded-lg bg-rimvio-surface-muted" />
+          <div className="aspect-[4/3] animate-pulse rounded-[28px] bg-rimvio-surface" />
         </div>
       ) : null}
 
@@ -116,7 +116,7 @@ export default function PlaceCardsDevPage() {
           {hasCards && wire ? (
             <div className="flex flex-col items-start gap-3">
               <div
-                className="max-w-[85%] rounded-[18px] rounded-tl-[6px] bg-glango-surface px-4 py-3 text-[15px] leading-[1.45] text-foreground shadow-sm ring-1 ring-glango-neon-purple/15"
+                className="max-w-[85%] rounded-[18px] rounded-tl-[6px] bg-rimvio-surface px-4 py-3 text-[15px] leading-[1.45] text-foreground shadow-sm ring-1 ring-rimvio-neon-purple/15"
                 aria-hidden
               >
                 {payload.summary ?? "주변에서 찾아봤어요"}
@@ -124,7 +124,7 @@ export default function PlaceCardsDevPage() {
               <PlaceDiscoveryCards wire={wire} />
             </div>
           ) : (
-            <p className="rounded-2xl border border-border bg-glango-surface px-4 py-6 text-center text-[13px] text-muted-foreground">
+            <p className="rounded-2xl border border-border bg-rimvio-surface px-4 py-6 text-center text-[13px] text-muted-foreground">
               카드가 없어요. 검색어: <strong>{query}</strong>
             </p>
           )}

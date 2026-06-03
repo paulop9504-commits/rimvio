@@ -78,7 +78,7 @@ export function tryBuildMentionReminderTurn(input: {
   );
 
   const linkId = input.activeLink?.id ?? `mention-${crypto.randomUUID().slice(0, 8)}`;
-  const url = input.activeLink?.original_url ?? "glango://chat/reminder";
+  const url = input.activeLink?.original_url ?? "rimvio://chat/reminder";
   const title =
     parsedTitle ||
     input.activeLink?.title?.trim() ||

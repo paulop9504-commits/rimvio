@@ -60,7 +60,7 @@ export function FixedContainerBar({
   return (
     <div
       className={cn(
-        "fixed-container-bar shrink-0 border-b border-white/[0.06] bg-glango-surface-muted/80 px-4 py-2 backdrop-blur-md",
+        "fixed-container-bar shrink-0 border-b border-white/[0.06] bg-rimvio-surface-muted/80 px-4 py-2 backdrop-blur-md",
         className,
       )}
     >
@@ -94,8 +94,8 @@ export function FixedContainerBar({
               className={cn(
                 "fixed-container-bar__slot flex items-center gap-2 rounded-2xl border p-2 text-left transition-colors",
                 active
-                  ? "border-[color-mix(in_srgb,var(--slot-accent)_40%,transparent)] bg-glango-surface shadow-[0_8px_24px_-8px_color-mix(in_srgb,var(--slot-accent)_30%,transparent)]"
-                  : "border-white/10 bg-glango-surface/90",
+                  ? "border-[color-mix(in_srgb,var(--slot-accent)_40%,transparent)] bg-rimvio-surface shadow-[0_8px_24px_-8px_color-mix(in_srgb,var(--slot-accent)_30%,transparent)]"
+                  : "border-white/10 bg-rimvio-surface/90",
                 hover && "fixed-container-bar__slot--snap-target",
               )}
               style={{ ["--slot-accent" as string]: slot.accent }}

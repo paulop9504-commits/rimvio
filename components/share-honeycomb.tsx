@@ -39,7 +39,7 @@ export function ShareHeroButton({ destination, onSelect }: ShareHeroButtonProps)
       />
       <span
         aria-hidden
-        className="pointer-events-none absolute -right-8 -top-8 size-32 rounded-full bg-glango-surface/20 blur-2xl"
+        className="pointer-events-none absolute -right-8 -top-8 size-32 rounded-full bg-rimvio-surface/20 blur-2xl"
       />
 
       <span className="relative flex items-center gap-3.5 rounded-[1.32rem] bg-background/92 px-4 py-4 backdrop-blur-md">

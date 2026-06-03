@@ -19,8 +19,8 @@ import type {
   PinnedPeerRoster,
 } from "@/lib/context/peer-thread-types";
 
-const SETTINGS_PREFIX = "glango.peer-thread.settings.v1";
-const ROSTER_KEY = "glango.peer-thread.pinned-roster.v1";
+const SETTINGS_PREFIX = "rimvio.peer-thread.settings.v1";
+const ROSTER_KEY = "rimvio.peer-thread.pinned-roster.v1";
 
 function settingsKey(peerThreadId: string) {
   return `${SETTINGS_PREFIX}.${peerThreadId}`;

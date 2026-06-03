@@ -1,4 +1,4 @@
--- Glango: personalization events, link lifecycle, recent-click profile (MVP)
+-- Rimvio: personalization events, link lifecycle, recent-click profile (MVP)
 -- Race-safe profile updates via advisory locks + single RPC entrypoint.
 
 -- ---------------------------------------------------------------------------

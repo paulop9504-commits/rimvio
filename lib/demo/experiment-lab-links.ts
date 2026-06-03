@@ -155,9 +155,9 @@ function travelShot(input: {
 }) {
   return baseLink({
     id: input.id,
-    url: `https://glango.app/capture/${input.captureId}`,
+    url: `https://rimvio.app/capture/${input.captureId}`,
     title: input.title,
-    domain: "glango.app",
+    domain: "rimvio.app",
     category: "travel",
     thumbnail_url: input.thumbnail_url,
     source_type: "screenshot",
@@ -224,16 +224,16 @@ function productShot(input: {
 }) {
   return baseLink({
     id: input.id,
-    url: `https://glango.app/capture/${input.captureId}`,
+    url: `https://rimvio.app/capture/${input.captureId}`,
     title: input.title,
-    domain: "glango.app",
+    domain: "rimvio.app",
     category: "shopping",
     thumbnail_url: input.thumbnail_url,
     source_type: "screenshot",
     actions: labCompareActions(
       {
-        sourceUrl: `https://glango.app/capture/${input.captureId}`,
-        domain: "glango.app",
+        sourceUrl: `https://rimvio.app/capture/${input.captureId}`,
+        domain: "rimvio.app",
         title: input.title,
         appLocale: "ko",
       },

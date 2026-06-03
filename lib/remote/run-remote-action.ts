@@ -8,10 +8,10 @@ function stubLinkForRemote(action: LinkActionItem): LinkRow {
   return {
     id: "context-remote",
     user_id: null,
-    original_url: "https://glango.app/",
+    original_url: "https://rimvio.app/",
     title: action.label,
     thumbnail_url: null,
-    domain: "glango.app",
+    domain: "rimvio.app",
     category: "uncategorized",
     actions: [],
     visual_mode: "brand",

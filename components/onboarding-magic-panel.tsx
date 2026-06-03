@@ -7,8 +7,10 @@ import {
   markColdStartComplete,
   markColdStartSeedSent,
 } from "@/lib/onboarding/cold-start-magic";
-import { ACTION_CHAT } from "@/lib/ui/action-chat-theme";
 import { cn } from "@/lib/utils";
+
+const SCHEDULE_HINT = "내일 12:30 · 강남역";
+const DINING_HINT = "강남역 떡반집";
 
 type OnboardingMagicPanelProps = {
   onSendSeed: (message: string) => void;
@@ -16,71 +18,66 @@ type OnboardingMagicPanelProps = {
   className?: string;
 };
 
-export function OnboardingMagicPanel({ onSendSeed, onDismiss, className }: OnboardingMagicPanelProps) {
+export function OnboardingMagicPanel({
+  onSendSeed,
+  onDismiss,
+  className,
+}: OnboardingMagicPanelProps) {
   return (
     <section
       className={cn(
-        "mx-4 mb-3 overflow-hidden rounded-2xl border border-[#E9E5FF] bg-white shadow-[0_12px_32px_-24px_rgba(123,97,255,0.65)]",
-        className
+        "mx-auto mb-2 w-[min(100%,17.5rem)] overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.97] shadow-[0_8px_24px_-16px_rgba(0,0,0,0.45)]",
+        className,
       )}
     >
-      <div
-        className="px-4 py-3"
-        style={{ background: `linear-gradient(135deg, ${ACTION_CHAT.accentSoft}, #fff)` }}
-      >
-        <div className="flex items-center gap-2">
-          <Sparkles className="size-4 text-[#7B61FF]" />
-          <p className="text-sm font-semibold text-[#1F2937]">30초 온보딩</p>
+      <div className="flex items-start gap-2 px-3 py-2">
+        <Sparkles className="mt-0.5 size-3.5 shrink-0 text-[#7B61FF]" aria-hidden />
+        <div className="min-w-0">
+          <p className="text-[12px] font-semibold leading-tight text-[#1F2937]">
+            30초 온보딩
+          </p>
+          <p className="mt-0.5 text-[10px] leading-snug text-[#6B7280]">
+            일정·맛집 하나만 던져보세요
+          </p>
         </div>
-        <p className="mt-1 text-xs leading-relaxed text-[#6B7280]">
-          일정 1개와 맛집 1개만 던져보세요. 비서가 바로 세팅해 드릴게요.
-        </p>
       </div>
 
-      <div className="grid gap-2 p-3">
+      <div className="grid grid-cols-2 gap-1.5 px-2 pb-2">
         <button
           type="button"
-          className="flex items-center gap-3 rounded-xl bg-[#F7F6FF] px-3 py-3 text-left transition active:scale-[0.99]"
+          className="flex min-w-0 flex-col gap-1 rounded-lg bg-[#F7F6FF] px-2 py-2 text-left transition active:scale-[0.98]"
           onClick={() => {
             markColdStartSeedSent("schedule");
             onSendSeed(COLD_START_SCHEDULE_SEED);
           }}
         >
-          <span className="flex size-9 items-center justify-center rounded-xl bg-white text-[#7B61FF]">
-            <CalendarDays className="size-4" />
+          <span className="flex items-center gap-1 text-[#7B61FF]">
+            <CalendarDays className="size-3.5 shrink-0" aria-hidden />
+            <span className="text-[11px] font-semibold text-[#1F2937]">일정</span>
           </span>
-          <span className="min-w-0">
-            <span className="block text-sm font-semibold text-[#1F2937]">일정 1개</span>
-            <span className="block truncate text-xs text-[#6B7280]">
-              {COLD_START_SCHEDULE_SEED}
-            </span>
-          </span>
+          <span className="truncate text-[10px] text-[#6B7280]">{SCHEDULE_HINT}</span>
         </button>
 
         <button
           type="button"
-          className="flex items-center gap-3 rounded-xl bg-[#F7F6FF] px-3 py-3 text-left transition active:scale-[0.99]"
+          className="flex min-w-0 flex-col gap-1 rounded-lg bg-[#F7F6FF] px-2 py-2 text-left transition active:scale-[0.98]"
           onClick={() => {
             markColdStartSeedSent("dining");
             onSendSeed(COLD_START_DINING_SEED);
           }}
         >
-          <span className="flex size-9 items-center justify-center rounded-xl bg-white text-[#7B61FF]">
-            <UtensilsCrossed className="size-4" />
+          <span className="flex items-center gap-1 text-[#7B61FF]">
+            <UtensilsCrossed className="size-3.5 shrink-0" aria-hidden />
+            <span className="text-[11px] font-semibold text-[#1F2937]">맛집</span>
           </span>
-          <span className="min-w-0">
-            <span className="block text-sm font-semibold text-[#1F2937]">맛집 1개</span>
-            <span className="block truncate text-xs text-[#6B7280]">
-              {COLD_START_DINING_SEED}
-            </span>
-          </span>
+          <span className="truncate text-[10px] text-[#6B7280]">{DINING_HINT}</span>
         </button>
       </div>
 
-      <div className="border-t border-[#F3F4F6] px-3 py-2">
+      <div className="border-t border-[#F3F4F6] px-2 py-1">
         <button
           type="button"
-          className="w-full py-1 text-[11px] font-medium text-[#9CA3AF]"
+          className="w-full py-0.5 text-[10px] font-medium text-[#9CA3AF]"
           onClick={() => {
             markColdStartComplete();
             onDismiss?.();

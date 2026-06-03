@@ -2,8 +2,8 @@
 
 import type { ConversationIntentDomain } from "@/lib/predictive-dock/action-opportunity-types";
 
-const CONSUMED_KEY = "glango-opportunity-consumed.v1";
-const INTENT_KEY = "glango-opportunity-intent.v1";
+const CONSUMED_KEY = "rimvio-opportunity-consumed.v1";
+const INTENT_KEY = "rimvio-opportunity-intent.v1";
 
 function readJson<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") {
@@ -49,7 +49,7 @@ export function markOpportunityConsumed(id: string) {
   current.add(id);
   writeJson(CONSUMED_KEY, [...current].slice(-24));
   if (typeof window !== "undefined") {
-    window.dispatchEvent(new CustomEvent("glango:opportunity-consumed", { detail: { id } }));
+    window.dispatchEvent(new CustomEvent("rimvio:opportunity-consumed", { detail: { id } }));
   }
 }
 

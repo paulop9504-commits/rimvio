@@ -9,8 +9,8 @@ import {
   migrateShadowRecordsToEventCandidates,
 } from "@/lib/events/notification-ingest";
 
-const STORAGE_KEY = "glango.shadow-store.v1";
-export const SHADOW_STORE_UPDATED = "glango-shadow-store-updated";
+const STORAGE_KEY = "rimvio.shadow-store.v1";
+export const SHADOW_STORE_UPDATED = "rimvio-shadow-store-updated";
 
 let memoryStore: ShadowProcessedRecord[] = [];
 

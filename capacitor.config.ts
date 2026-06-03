@@ -3,8 +3,8 @@ import type { CapacitorConfig } from "@capacitor/cli";
 const serverUrl = process.env.CAPACITOR_SERVER_URL?.trim();
 
 const config: CapacitorConfig = {
-  appId: "com.glango.app",
-  appName: "Glango",
+  appId: "com.rimvio.app",
+  appName: "Rimvio",
   webDir: "public",
   server: serverUrl
     ? {

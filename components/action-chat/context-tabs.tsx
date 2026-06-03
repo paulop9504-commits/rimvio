@@ -80,8 +80,8 @@ function ContextTabCard({
       className={cn(
         "context-tab-card relative flex min-w-[8.5rem] max-w-[9.5rem] shrink-0 touch-none select-none flex-col gap-1.5 rounded-2xl p-2 text-left transition-colors",
         active || inChain
-          ? "glango-edge-card glango-edge-card--sm bg-glango-surface shadow-[0_0_20px_rgba(191,90,242,0.15)]"
-          : "bg-glango-surface-muted opacity-85 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]",
+          ? "rimvio-edge-card rimvio-edge-card--sm bg-rimvio-surface shadow-[0_0_20px_rgba(191,90,242,0.15)]"
+          : "bg-rimvio-surface-muted opacity-85 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]",
         dragging && "context-tab-card--dragging",
         isHoverTarget && "context-tab-card--snap-target"
       )}
@@ -94,16 +94,16 @@ function ContextTabCard({
           onSchedule?.();
         }}
         className={cn(
-          "absolute right-1.5 top-1.5 glango-icon-btn glango-icon-btn--sm",
+          "absolute right-1.5 top-1.5 rimvio-icon-btn rimvio-icon-btn--sm",
           isScheduled
-            ? "glango-icon-btn--green"
-            : "glango-icon-btn--ghost"
+            ? "rimvio-icon-btn--green"
+            : "rimvio-icon-btn--ghost"
         )}
       >
         <Clock className="size-3.5" />
       </button>
       <div className="flex items-center gap-2">
-        <div className="size-9 shrink-0 overflow-hidden rounded-xl bg-glango-surface-raised">
+        <div className="size-9 shrink-0 overflow-hidden rounded-xl bg-rimvio-surface-raised">
           {thumb ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={thumb} alt="" className="size-full object-cover" />

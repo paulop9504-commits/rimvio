@@ -45,7 +45,7 @@ assert.equal(findEventCandidate(linkEcId)!.metadata?.sourceRef, LINK_REMINDER_SO
 const shadowFromReminder = appendShadowRecord(
   ingestNotification({
     source: "internal",
-    source_app: "glango",
+    source_app: "rimvio",
     title: "Zoom 미팅 링크",
     content: "Zoom 미팅 링크 · https://zoom.us/j/123",
     timestamp: new Date().toISOString(),

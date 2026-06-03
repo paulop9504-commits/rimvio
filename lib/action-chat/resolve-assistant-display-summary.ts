@@ -1,5 +1,5 @@
 import type { OrchestratorResult } from "@/lib/action-chat/orchestrator-types";
-import { GLANGO_CONVERSATION_LINES } from "@/lib/action-chat/glango-persona";
+import { RIMVIO_CONVERSATION_LINES } from "@/lib/action-chat/rimvio-persona";
 import { sanitizePersonaSurface } from "@/lib/action-chat/adaptive-persona/apply-adaptive-persona";
 import { buildFallbackRecoveryReply } from "@/lib/action-chat/fallback-recovery/build-fallback-recovery-reply";
 import { isGenericRecoveryEligible } from "@/lib/action-chat/fallback-recovery/infer-fallback-recovery";
@@ -36,5 +36,5 @@ export function resolveAssistantDisplaySummary(
   }
   return userMessage?.trim()
     ? buildFallbackRecoveryReply(userMessage)
-    : GLANGO_CONVERSATION_LINES.greeting;
+    : RIMVIO_CONVERSATION_LINES.greeting;
 }

@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles } from "lucide-react";
-import { GlangoActionButton } from "@/components/ui/glango-action-button";
+import { RimvioActionButton } from "@/components/ui/rimvio-action-button";
 import { cn } from "@/lib/utils";
 
 type MagicActionTriggerProps = {
@@ -48,7 +48,7 @@ type ConfirmRevealButtonProps = {
 
 export function ConfirmRevealButton({ onClick, className }: ConfirmRevealButtonProps) {
   return (
-    <GlangoActionButton
+    <RimvioActionButton
       type="button"
       variant="primary"
       layout="pill"
@@ -56,7 +56,7 @@ export function ConfirmRevealButton({ onClick, className }: ConfirmRevealButtonP
       className={className}
     >
       네, 보여주세요
-    </GlangoActionButton>
+    </RimvioActionButton>
   );
 }
 
@@ -67,7 +67,7 @@ type AlternateRevealButtonProps = {
 
 export function AlternateRevealButton({ onClick, className }: AlternateRevealButtonProps) {
   return (
-    <GlangoActionButton
+    <RimvioActionButton
       type="button"
       variant="secondary"
       layout="pill"
@@ -75,7 +75,7 @@ export function AlternateRevealButton({ onClick, className }: AlternateRevealBut
       className={className}
     >
       아니요, 다른 거 보여주세요
-    </GlangoActionButton>
+    </RimvioActionButton>
   );
 }
 

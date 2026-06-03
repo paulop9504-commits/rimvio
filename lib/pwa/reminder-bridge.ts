@@ -23,7 +23,7 @@ export async function notifyReminder(reminder: LinkReminder) {
     return false;
   }
 
-  const notification = new Notification("Glango · 나중에 다시", {
+  const notification = new Notification("Rimvio · 나중에 다시", {
     body: reminder.title,
     tag: reminder.id,
     data: { url: reminder.url },

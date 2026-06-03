@@ -111,7 +111,7 @@ export function ProjectHubSheet({
           <motion.div
             role="dialog"
             aria-label={`${container.title} ?�브`}
-            className="fixed inset-x-0 bottom-0 z-[81] mx-auto flex max-h-[min(88vh,720px)] max-w-lg flex-col rounded-t-[24px] border border-black/5 bg-glango-surface shadow-[0_-12px_40px_rgba(0,0,0,0.12)]"
+            className="fixed inset-x-0 bottom-0 z-[81] mx-auto flex max-h-[min(88vh,720px)] max-w-lg flex-col rounded-t-[24px] border border-black/5 bg-rimvio-surface shadow-[0_-12px_40px_rgba(0,0,0,0.12)]"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}

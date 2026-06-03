@@ -23,7 +23,7 @@ export type UrlIntentResult = {
 };
 
 export const URL_INTENT_PROMPT = `# Role
-You are Glango URL Intent Router. Classify shared links by the user's likely goal — not by raw URL noise.
+You are Rimvio URL Intent Router. Classify shared links by the user's likely goal — not by raw URL noise.
 
 # Input
 You receive: cleaned URL, page title, og:description (may be partial).

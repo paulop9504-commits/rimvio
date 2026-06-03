@@ -39,7 +39,7 @@ const convPrompt = buildLayeredMasterOrchestratorSystemPrompt({
 });
 assert.match(convPrompt, /Conversational \(Natural Language\)/);
 assert.match(convPrompt, /규격화된 데이터를 뱉는 기계가 아니라/);
-assert.match(convPrompt, /GLANGO PERSONALITY GUIDELINES/);
+assert.match(convPrompt, /RIMVIO PERSONALITY GUIDELINES/);
 assert.match(convPrompt, /thought 과정을/);
 assert.doesNotMatch(convPrompt, /Output \(strict JSON only\)/);
 

@@ -19,7 +19,7 @@ export type LinkReminder = {
 };
 
 const STORAGE_KEY = "blink-reminders";
-export const LINK_REMINDERS_UPDATED = "glango-link-reminders-updated";
+export const LINK_REMINDERS_UPDATED = "rimvio-link-reminders-updated";
 const DEFAULT_DELAY_MINUTES = 120;
 
 let memoryReminders: LinkReminder[] = [];

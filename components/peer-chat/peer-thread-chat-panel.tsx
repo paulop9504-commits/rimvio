@@ -90,8 +90,8 @@ export function PeerThreadChatPanel({
                   className={cn(
                     "max-w-[85%] rounded-2xl px-3.5 py-2 text-sm leading-snug",
                     message.author === "me"
-                      ? "rounded-br-md bg-glango-neon-purple text-white"
-                      : "rounded-bl-md bg-glango-surface-raised text-foreground",
+                      ? "rounded-br-md bg-rimvio-neon-purple text-white"
+                      : "rounded-bl-md bg-rimvio-surface-raised text-foreground",
                   )}
                 >
                   {message.body}
@@ -103,12 +103,12 @@ export function PeerThreadChatPanel({
         <div ref={bottomRef} />
       </div>
 
-      <div className="border-t border-border bg-glango-surface/95 px-3 py-2">
+      <div className="border-t border-border bg-rimvio-surface/95 px-3 py-2">
         {!readOnly && showAiMentionLink ? (
           <Link
             href="/"
             onClick={openAiWithMention}
-            className="mb-2 flex w-full items-center justify-center gap-1.5 rounded-full border border-glango-neon-purple/20 bg-glango-neon-purple/10 py-2 text-[11px] font-medium text-glango-neon-purple active:scale-[0.98]"
+            className="mb-2 flex w-full items-center justify-center gap-1.5 rounded-full border border-rimvio-neon-purple/20 bg-rimvio-neon-purple/10 py-2 text-[11px] font-medium text-rimvio-neon-purple active:scale-[0.98]"
           >
             <Sparkles className="size-3.5" aria-hidden />
             AI 실행에서 @{displayName} 맥락으로 물어보기
@@ -129,12 +129,12 @@ export function PeerThreadChatPanel({
                   ? "메시지 입력"
                   : "친구 목록에 추가하면 대화가 저장돼요"
             }
-            className="max-h-28 min-h-[2.5rem] flex-1 resize-none rounded-2xl bg-glango-surface-muted px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-glango-neon-cyan/30"
+            className="max-h-28 min-h-[2.5rem] flex-1 resize-none rounded-2xl bg-rimvio-surface-muted px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-rimvio-neon-cyan/30"
           />
           <button
             type="submit"
             disabled={!canSend || !text.trim()}
-            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-glango-neon-purple text-white disabled:opacity-40"
+            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-rimvio-neon-purple text-white disabled:opacity-40"
             aria-label="보내기"
           >
             <SendHorizontal className="size-4" aria-hidden />

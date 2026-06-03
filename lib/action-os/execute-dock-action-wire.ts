@@ -18,7 +18,7 @@ export function executeDockActionWire(
     window.open(uri, "_blank", "noopener,noreferrer");
     return;
   }
-  if (uri.startsWith("glango://")) {
+  if (uri.startsWith("rimvio://")) {
     handlers.sendPrompt(uri);
     return;
   }

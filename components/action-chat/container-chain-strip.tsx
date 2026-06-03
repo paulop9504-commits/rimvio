@@ -167,7 +167,7 @@ export function ContainerChainStrip({ className }: ContainerChainStripProps) {
                 return (
                 <span
                   key={key}
-                  className="inline-flex items-center gap-1 rounded-full bg-glango-surface/80 px-2 py-0.5 text-[10px] font-medium text-[#374151]"
+                  className="inline-flex items-center gap-1 rounded-full bg-rimvio-surface/80 px-2 py-0.5 text-[10px] font-medium text-[#374151]"
                 >
                   {label}
                   <button

@@ -1,6 +1,6 @@
 import type { TemplateInstance } from "@/lib/action-template/types";
 
-const STORAGE_KEY = "glango-template-instances.v1";
+const STORAGE_KEY = "rimvio-template-instances.v1";
 
 let memoryStore: TemplateInstance[] = [];
 

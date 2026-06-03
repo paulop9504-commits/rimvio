@@ -1,9 +1,9 @@
 import type { CaptureIntent } from "@/lib/capture/capture-intent-types";
 import type { CaptureVisionResult } from "@/lib/capture/inferred-intent-types";
 
-export const CAPTURE_INTENT_UPDATED = "glango:capture-intent-updated";
+export const CAPTURE_INTENT_UPDATED = "rimvio:capture-intent-updated";
 
-const STORAGE_KEY = "glango:capture-intent";
+const STORAGE_KEY = "rimvio:capture-intent";
 const STALE_MS = 5 * 60 * 1000;
 
 type StoredCaptureSession = {

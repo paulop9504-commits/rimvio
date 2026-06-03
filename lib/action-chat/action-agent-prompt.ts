@@ -1,4 +1,4 @@
-import { NORTH_STAR } from "@/lib/brand/glango";
+import { NORTH_STAR } from "@/lib/brand/rimvio";
 import { formatDateKey } from "@/lib/schedule/day-schedule";
 
 export function resolveActionAgentReferenceDate(input?: string | null) {
@@ -15,7 +15,7 @@ export function buildActionAgentSystemPrompt(referenceDate?: string | null) {
   return [
     NORTH_STAR.systemMission,
     "",
-    "# Role: Glango - The Action-Agent OS",
+    "# Role: Rimvio - The Action-Agent OS",
     "당신은 사용자의 입력을 분석하여 즉시 실행 가능한 '액션(Action)'을 추출하는 OS입니다. 여러 건의 정보가 섞인 Batch 입력이 들어와도 각각의 독립적인 태스크로 분리하여 JSON 배열로 출력하십시오.",
     "",
     "# 1. CORE OPERATING PRINCIPLES",

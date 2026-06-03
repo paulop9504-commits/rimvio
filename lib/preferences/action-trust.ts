@@ -1,7 +1,7 @@
 /** Adaptive automation — trust staircase (신뢰의 계단). */
 
-export const ACTION_TRUST_STORAGE_KEY = "glango.action-trust.v1";
-export const ACTION_TRUST_UPDATED = "glango-action-trust-updated";
+export const ACTION_TRUST_STORAGE_KEY = "rimvio.action-trust.v1";
+export const ACTION_TRUST_UPDATED = "rimvio-action-trust-updated";
 
 /** Success count thresholds for auto mode stage transitions. */
 export const TRUST_STAGE_PARTNER_AT = 20;

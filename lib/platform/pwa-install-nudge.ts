@@ -1,5 +1,5 @@
-const FIRST_ACTION_KEY = "glango-first-action-done";
-const NUDGE_SHOWN_KEY = "glango-pwa-nudge-shown";
+const FIRST_ACTION_KEY = "rimvio-first-action-done";
+const NUDGE_SHOWN_KEY = "rimvio-pwa-nudge-shown";
 
 export function markFirstActionSuccess() {
   if (typeof window === "undefined") {

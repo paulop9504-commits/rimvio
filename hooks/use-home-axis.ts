@@ -7,8 +7,8 @@ import {
 } from "@/lib/home/derive-today-axis";
 import { countPendingInboxItems, HOME_INBOX_UPDATED } from "@/lib/home/inbox-store";
 
-const CONTAINER_EVENTS_KEY = "glango.container-events.v1";
-const CONTAINERS_KEY = "glango.containers.v1";
+const CONTAINER_EVENTS_KEY = "rimvio.container-events.v1";
+const CONTAINERS_KEY = "rimvio.containers.v1";
 
 export function useHomeAxis() {
   const [todayCards, setTodayCards] = useState<TodayAxisCard[]>([]);
@@ -26,7 +26,7 @@ export function useHomeAxis() {
       if (
         event.key === CONTAINER_EVENTS_KEY ||
         event.key === CONTAINERS_KEY ||
-        event.key === "glango.home-inbox.v1"
+        event.key === "rimvio.home-inbox.v1"
       ) {
         refresh();
       }

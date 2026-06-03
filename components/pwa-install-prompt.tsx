@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Download } from "lucide-react";
-import { GLANGO } from "@/lib/brand/glango";
+import { RIMVIO } from "@/lib/brand/rimvio";
 import { isStandalonePwa } from "@/lib/platform/device";
 import { cn } from "@/lib/utils";
 
@@ -43,7 +43,7 @@ export function PwaInstallPrompt() {
           👀
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">{GLANGO.name} 설치</p>
+          <p className="text-sm font-semibold">{RIMVIO.name} 설치</p>
           <p className="text-xs text-muted-foreground">공유 메뉴에서 바로 열기</p>
         </div>
         <button

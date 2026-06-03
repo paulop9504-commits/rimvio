@@ -30,8 +30,8 @@ export function TikiChoiceChips({
           disabled={disabled}
           onClick={() => onSelect(formatTikiChoiceReply(choice))}
           className={cn(
-            "flex w-full items-start gap-2 rounded-xl border border-indigo-100 bg-glango-surface/90 px-3 py-2 text-left text-[13px] leading-snug text-slate-700 transition-colors",
-            "hover:border-indigo-200 hover:bg-glango-surface",
+            "flex w-full items-start gap-2 rounded-xl border border-indigo-100 bg-rimvio-surface/90 px-3 py-2 text-left text-[13px] leading-snug text-slate-700 transition-colors",
+            "hover:border-indigo-200 hover:bg-rimvio-surface",
             disabled && "pointer-events-none opacity-60"
           )}
         >

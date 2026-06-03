@@ -1,4 +1,4 @@
-/** Glango commit / approval speech tiers — intent 확정 → 등록 → 실행 승인 */
+/** Rimvio commit / approval speech tiers — intent 확정 → 등록 → 실행 승인 */
 
 export type CommitSpeechTier =
   | "hard_commit"

@@ -7,7 +7,6 @@ import { ExternalLink, Loader2, Sheet, X } from "lucide-react";
 import {
   buildGoogleSheetsOpenUrl,
   resolveGoogleSheetsEmbed,
-  type GoogleSheetsEmbedMode,
 } from "@/lib/integrations/google-sheets-embed";
 import { cn } from "@/lib/utils";
 
@@ -30,7 +29,6 @@ export function GoogleSheetsEmbedSheet({
   target,
 }: GoogleSheetsEmbedSheetProps) {
   const [mounted, setMounted] = useState(false);
-  const [mode, setMode] = useState<GoogleSheetsEmbedMode>("preview");
   const [frameLoading, setFrameLoading] = useState(true);
   const [showLoadHint, setShowLoadHint] = useState(false);
 
@@ -40,7 +38,6 @@ export function GoogleSheetsEmbedSheet({
 
   useEffect(() => {
     if (open) {
-      setMode("preview");
       setFrameLoading(true);
       setShowLoadHint(false);
     }
@@ -52,21 +49,30 @@ export function GoogleSheetsEmbedSheet({
     }
     const timer = window.setTimeout(() => setShowLoadHint(true), LOAD_HINT_MS);
     return () => window.clearTimeout(timer);
-  }, [open, frameLoading, mode, target?.url]);
+  }, [open, frameLoading, target?.url]);
 
   const resolved = useMemo(() => {
     if (!target?.url) {
       return null;
     }
-    return resolveGoogleSheetsEmbed(target.url, mode);
-  }, [target?.url, mode]);
+    // Logged-in Google sessions break out of iframe on /htmlembed — preview only in-app.
+    return resolveGoogleSheetsEmbed(target.url, "preview");
+  }, [target?.url]);
+
+  const openUrl = target?.url ? buildGoogleSheetsOpenUrl(target.url) : "";
+
+  const openInGoogleSheets = () => {
+    if (!openUrl) {
+      return;
+    }
+    window.open(openUrl, "_blank", "noopener,noreferrer");
+  };
 
   if (!mounted) {
     return null;
   }
 
   const title = target?.title?.trim() || "Google Sheets";
-  const openUrl = target?.url ? buildGoogleSheetsOpenUrl(target.url) : "";
 
   return createPortal(
     <AnimatePresence>
@@ -97,42 +103,23 @@ export function GoogleSheetsEmbedSheet({
                 </div>
                 <div className="min-w-0">
                   <p className="truncate text-[15px] font-semibold text-[#F3F4F6]">{title}</p>
-                  <p className="truncate text-[11px] text-[#9CA3AF]">
-                    Google Sheets · {mode === "edit" ? "편집" : "미리보기"}
-                  </p>
+                  <p className="truncate text-[11px] text-[#9CA3AF]">Google Sheets · 앱에서 미리보기</p>
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-1">
                 <div className="mr-1 flex rounded-lg border border-white/10 p-0.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFrameLoading(true);
-                      setShowLoadHint(false);
-                      setMode("preview");
-                    }}
+                  <span
                     className={cn(
-                      "rounded-md px-2 py-1 text-[10px] font-semibold transition",
-                      mode === "preview"
-                        ? "bg-[#32D7FF]/20 text-[#7DD3FC]"
-                        : "text-[#9CA3AF] hover:text-[#E5E7EB]",
+                      "rounded-md px-2 py-1 text-[10px] font-semibold",
+                      "bg-[#32D7FF]/20 text-[#7DD3FC]",
                     )}
                   >
                     보기
-                  </button>
+                  </span>
                   <button
                     type="button"
-                    onClick={() => {
-                      setFrameLoading(true);
-                      setShowLoadHint(false);
-                      setMode("edit");
-                    }}
-                    className={cn(
-                      "rounded-md px-2 py-1 text-[10px] font-semibold transition",
-                      mode === "edit"
-                        ? "bg-[#32D7FF]/20 text-[#7DD3FC]"
-                        : "text-[#9CA3AF] hover:text-[#E5E7EB]",
-                    )}
+                    onClick={openInGoogleSheets}
+                    className="rounded-md px-2 py-1 text-[10px] font-semibold text-[#9CA3AF] transition hover:bg-white/5 hover:text-[#E5E7EB]"
                   >
                     편집
                   </button>
@@ -158,21 +145,20 @@ export function GoogleSheetsEmbedSheet({
             </div>
 
             <div className="shrink-0 border-b border-white/[0.06] bg-[#111827] px-4 py-2.5">
-              <a
-                href={openUrl}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
+                onClick={openInGoogleSheets}
                 className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#32D7FF]/35 bg-[#32D7FF]/10 px-3 py-2.5 text-[12px] font-semibold text-[#7DD3FC] transition hover:bg-[#32D7FF]/18"
               >
                 <ExternalLink className="size-4 shrink-0" />
-                Google Sheets에서 열기 (편집·로그인)
-              </a>
+                Google Sheets에서 편집하기
+              </button>
             </div>
 
             <div className="relative min-h-0 flex-1 bg-white">
               {frameLoading ? (
                 <div className="absolute inset-0 z-[2] flex flex-col items-center justify-center gap-3 bg-[#111827]">
-                  <Loader2 className="size-6 animate-spin text-glango-neon-cyan" />
+                  <Loader2 className="size-6 animate-spin text-rimvio-neon-cyan" />
                   <p className="text-[11px] text-[#9CA3AF]">시트 불러오는 중…</p>
                 </div>
               ) : null}
@@ -191,14 +177,12 @@ export function GoogleSheetsEmbedSheet({
                 className="absolute inset-0 h-full w-full border-0 bg-white"
                 allow="clipboard-read; clipboard-write; fullscreen"
                 referrerPolicy="no-referrer-when-downgrade"
-                sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-popups-to-escape-sandbox"
                 onLoad={() => setFrameLoading(false)}
               />
             </div>
 
             <p className="shrink-0 border-t border-white/[0.06] px-4 py-2 text-[10px] leading-relaxed text-[#6B7280]">
-              iframe 임베드는 Google 공유 설정에 따라 비어 보일 수 있어요 · 편집은 새 탭이 가장
-              확실합니다.
+              앱 안에서는 미리보기만 가능해요 · 편집은 Google Sheets(새 탭·앱)에서 열려요.
             </p>
           </motion.div>
         </>

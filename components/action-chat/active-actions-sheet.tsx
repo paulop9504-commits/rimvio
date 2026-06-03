@@ -71,7 +71,7 @@ function ActionButtons({
               onScrollToMessage(entry.messageId!);
               onClose();
             }}
-            className="rounded-lg bg-glango-surface/10 px-3 py-1.5 text-[12px] font-semibold text-[#E5E7EB] hover:bg-glango-surface/15"
+            className="rounded-lg bg-rimvio-surface/10 px-3 py-1.5 text-[12px] font-semibold text-[#E5E7EB] hover:bg-rimvio-surface/15"
           >
             일정 수정
           </button>
@@ -112,7 +112,7 @@ function ActionButtons({
       ) : null}
 
       {entry.kind === "study_focus" && !entry.messageId ? (
-        <span className="rounded-lg bg-glango-surface/10 px-3 py-1.5 text-[12px] font-semibold text-[#93C5FD]">
+        <span className="rounded-lg bg-rimvio-surface/10 px-3 py-1.5 text-[12px] font-semibold text-[#93C5FD]">
           {entry.countdownLabel ?? "집중 진행 중"}
         </span>
       ) : null}
@@ -138,7 +138,7 @@ function ActionButtons({
               onOpenLink?.(entry.linkId!);
               onClose();
             }}
-            className="inline-flex items-center gap-1 rounded-lg bg-glango-surface/10 px-3 py-1.5 text-[12px] font-semibold text-[#E5E7EB] hover:bg-glango-surface/15"
+            className="inline-flex items-center gap-1 rounded-lg bg-rimvio-surface/10 px-3 py-1.5 text-[12px] font-semibold text-[#E5E7EB] hover:bg-rimvio-surface/15"
           >
             <Link2 className="size-3.5" />
             링크 열기
@@ -220,7 +220,7 @@ export function ActiveActionsSheet({
               <button
                 type="button"
                 onClick={() => onOpenChange(false)}
-                className="flex size-8 items-center justify-center rounded-full text-[#9CA3AF] hover:bg-glango-surface/5"
+                className="flex size-8 items-center justify-center rounded-full text-[#9CA3AF] hover:bg-rimvio-surface/5"
               >
                 <X className="size-4" />
               </button>

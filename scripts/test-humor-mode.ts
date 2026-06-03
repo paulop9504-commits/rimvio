@@ -18,7 +18,7 @@ assert.equal(detectTone("둔산동 갤러리아 내일 5시"), "DEFAULT");
 assert.match(buildToneInstructionLine("WITTY"), /유머/);
 
 const personalityBlock = buildConversationalSystemPromptBlock();
-assert.match(personalityBlock, /GLANGO PERSONALITY GUIDELINES/);
+assert.match(personalityBlock, /RIMVIO PERSONALITY GUIDELINES/);
 assert.match(personalityBlock, /지능형 친구/);
 assert.match(personalityBlock, /지식을 먹고 자란다/);
 

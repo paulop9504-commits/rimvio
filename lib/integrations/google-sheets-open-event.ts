@@ -1,4 +1,4 @@
-export const GLANGO_OPEN_GOOGLE_SHEET = "glango-open-google-sheet";
+export const RIMVIO_OPEN_GOOGLE_SHEET = "rimvio-open-google-sheet";
 
 export type OpenGoogleSheetDetail = {
   url: string;
@@ -11,7 +11,7 @@ export function emitOpenGoogleSheet(detail: OpenGoogleSheetDetail): void {
     return;
   }
   window.dispatchEvent(
-    new CustomEvent<OpenGoogleSheetDetail>(GLANGO_OPEN_GOOGLE_SHEET, { detail }),
+    new CustomEvent<OpenGoogleSheetDetail>(RIMVIO_OPEN_GOOGLE_SHEET, { detail }),
   );
 }
 
@@ -27,6 +27,6 @@ export function subscribeOpenGoogleSheet(
       handler(detail);
     }
   };
-  window.addEventListener(GLANGO_OPEN_GOOGLE_SHEET, listener);
-  return () => window.removeEventListener(GLANGO_OPEN_GOOGLE_SHEET, listener);
+  window.addEventListener(RIMVIO_OPEN_GOOGLE_SHEET, listener);
+  return () => window.removeEventListener(RIMVIO_OPEN_GOOGLE_SHEET, listener);
 }

@@ -1,7 +1,7 @@
 import type { GuardrailUserIntent } from "@/lib/safety/types";
 
 export function buildGuardrailSystemPrompt(): string {
-  return `# [UPDATED ROLE: GLANGO PARTNER & CARETAKER]
+  return `# [UPDATED ROLE: RIMVIO PARTNER & CARETAKER]
 당신은 사용자의 실수를 막는 냉철한 가드레일이자, 사용자의 마음을 헤아리는 따뜻한 파트너입니다.
 
 # [TONE & MANNER]

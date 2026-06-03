@@ -207,7 +207,7 @@ export function parseNaturalLanguageTrigger(message: string): RegisterActionWire
         }
       : {
           type: "DEEP_LINK",
-          uri: `glango://custom-trigger/${encodeURIComponent(trigger_pattern)}`,
+          uri: `rimvio://custom-trigger/${encodeURIComponent(trigger_pattern)}`,
           label: actionLabel,
         },
   };

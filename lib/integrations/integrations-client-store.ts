@@ -10,8 +10,8 @@ import type {
   IntegrationStatus,
 } from "@/lib/integrations/types";
 
-export const INTEGRATIONS_STORAGE_KEY = "glango.integrations.v1";
-export const INTEGRATIONS_UPDATED = "glango-integrations-updated";
+export const INTEGRATIONS_STORAGE_KEY = "rimvio.integrations.v1";
+export const INTEGRATIONS_UPDATED = "rimvio-integrations-updated";
 
 type StoredIntegration = {
   provider: IntegrationProviderId;

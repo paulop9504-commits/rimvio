@@ -34,7 +34,7 @@ export function ExperienceChoiceStrip({
             key={option.label}
             type="button"
             onClick={() => onSelectOption(option.prompt)}
-            className="rounded-full border border-sky-200 bg-glango-surface px-3.5 py-2 text-sm font-medium text-sky-900 transition-colors hover:bg-sky-100"
+            className="rounded-full border border-sky-200 bg-rimvio-surface px-3.5 py-2 text-sm font-medium text-sky-900 transition-colors hover:bg-sky-100"
           >
             {option.label}
           </button>

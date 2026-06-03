@@ -44,7 +44,7 @@ export async function runBulkSystemShare(links: LinkRow[]) {
         title:
           prepared.length === 1
             ? prepared[0].title
-            : `Glango 링크 ${prepared.length}개`,
+            : `Rimvio 링크 ${prepared.length}개`,
         text,
       });
       return { shared: true, copiedText: null as string | null };

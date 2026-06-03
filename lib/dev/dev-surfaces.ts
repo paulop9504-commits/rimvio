@@ -1,4 +1,4 @@
-const DEV_COOKIE = "glango-dev";
+const DEV_COOKIE = "rimvio-dev";
 
 const DEV_ONLY_PREFIXES = ["/demo", "/stack", "/metrics", "/actions/"];
 

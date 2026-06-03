@@ -28,7 +28,7 @@ export function DecisionCard({
 
   return (
     <article
-      className="flex gap-3 rounded-2xl border border-border bg-glango-surface px-3 py-3 shadow-sm"
+      className="flex gap-3 rounded-2xl border border-border bg-rimvio-surface px-3 py-3 shadow-sm"
       data-card-state={card.state}
       aria-label={card.title}
     >
@@ -71,7 +71,7 @@ export function DecisionCard({
                     ? "bg-indigo-600 text-white hover:bg-indigo-700"
                     : chip.role === "escape"
                       ? "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                      : "border border-indigo-200 bg-glango-surface text-indigo-700 hover:bg-indigo-50"
+                      : "border border-indigo-200 bg-rimvio-surface text-indigo-700 hover:bg-indigo-50"
                 )}
               >
                 {chip.label}

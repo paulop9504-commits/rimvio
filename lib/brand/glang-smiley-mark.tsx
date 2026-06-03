@@ -1,2 +1,2 @@
 /** @deprecated */
-export * from "./glango-smiley-mark";
+export * from "./rimvio-smiley-mark";

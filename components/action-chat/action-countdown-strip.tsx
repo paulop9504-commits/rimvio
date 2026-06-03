@@ -7,7 +7,7 @@ import {
   formatActionTargetClock,
   type ActionCountdownSnapshot,
 } from "@/lib/action-chat/action-countdown";
-import { glangoEdgeCardClass } from "@/lib/brand/glango-neon-theme";
+import { rimvioEdgeCardClass } from "@/lib/brand/rimvio-neon-theme";
 import { cn } from "@/lib/utils";
 
 type ActionCountdownStripProps = {
@@ -57,7 +57,7 @@ export function ActionCountdownStrip({
   return (
     <div
       className={cn(
-        glangoEdgeCardClass("sm", urgent ? "amber" : "cyan"),
+        rimvioEdgeCardClass("sm", urgent ? "amber" : "cyan"),
         "flex items-center justify-between gap-3 px-3 py-2.5",
         className
       )}
@@ -67,8 +67,8 @@ export function ActionCountdownStrip({
           className={cn(
             "flex size-8 shrink-0 items-center justify-center rounded-lg",
             urgent
-              ? "bg-glango-neon-amber/15 text-glango-neon-amber"
-              : "bg-glango-neon-cyan/12 text-glango-neon-cyan"
+              ? "bg-rimvio-neon-amber/15 text-rimvio-neon-amber"
+              : "bg-rimvio-neon-cyan/12 text-rimvio-neon-cyan"
           )}
         >
           <Timer className="size-4" />
@@ -85,7 +85,7 @@ export function ActionCountdownStrip({
         <p
           className={cn(
             "font-mono text-[18px] font-bold tabular-nums leading-none",
-            urgent ? "text-glango-neon-amber" : "text-foreground"
+            urgent ? "text-rimvio-neon-amber" : "text-foreground"
           )}
         >
           {snapshot.isPast ? "00:00" : snapshot.clock}

@@ -2,7 +2,7 @@ import { createHmac, randomBytes } from "node:crypto";
 import { resolveAppOrigin } from "@/lib/auth/redirect-url";
 import type { IntegrationProviderId } from "@/lib/integrations/types";
 
-const COOKIE_NAME = "glango_oauth_state";
+const COOKIE_NAME = "rimvio_oauth_state";
 const MAX_AGE_SEC = 600;
 
 export type OAuthStatePayload = {
@@ -18,7 +18,7 @@ function stateSecret(): string {
   return (
     process.env.INTEGRATIONS_ENCRYPTION_KEY?.trim() ??
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ??
-    "glango-oauth-state-dev"
+    "rimvio-oauth-state-dev"
   );
 }
 

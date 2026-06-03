@@ -2413,7 +2413,7 @@
         "id": "cf360cb0-69e5-4eb8-a726-54377c903c92",
         "kind": "open",
         "label": "📍 네이버지도 · 카카오맵",
-        "href": "nmap://search?query=%EC%B9%B4%EC%B9%B4%EC%98%A4%EB%A7%B5&appname=Glango",
+        "href": "nmap://search?query=%EC%B9%B4%EC%B9%B4%EC%98%A4%EB%A7%B5&appname=Rimvio",
         "payload": {
           "icon": "map",
           "copyText": "카카오맵"

@@ -59,7 +59,7 @@ type UniversalBlueprint = {
 };
 
 function containerSaveHref(title: string) {
-  return `glango://container/${encodeURIComponent(title.trim() || "글랑고")}`;
+  return `rimvio://container/${encodeURIComponent(title.trim() || "림비오")}`;
 }
 
 function blueprintForDomain(input: BuildUniversalActionsInput): UniversalBlueprint | null {
@@ -197,7 +197,7 @@ function blueprintForDomain(input: BuildUniversalActionsInput): UniversalBluepri
             copyText: text,
           },
           connect: {
-            href: `mailto:?subject=${encodeURIComponent("글랑고 정리")}&body=${encodeURIComponent(text.slice(0, 500))}`,
+            href: `mailto:?subject=${encodeURIComponent("림비오 정리")}&body=${encodeURIComponent(text.slice(0, 500))}`,
             hint: "메일·공유",
             icon: "share",
             copyText: text,

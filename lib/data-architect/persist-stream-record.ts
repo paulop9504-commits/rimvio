@@ -1,4 +1,4 @@
-const STREAM_STORE_KEY = "glango.container-stream.v1";
+const STREAM_STORE_KEY = "rimvio.container-stream.v1";
 
 let memoryStreamStore: StreamRecord[] = [];
 

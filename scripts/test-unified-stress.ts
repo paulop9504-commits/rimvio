@@ -65,8 +65,8 @@ async function main() {
     console.error(
       "Note: FAIL cases document routing/abstraction gaps — see Weakness Map above."
     );
-    if (process.env.GLANGO_UNIFIED_STRESS_REPORT_ONLY === "1") {
-      console.log("GLANGO_UNIFIED_STRESS_REPORT_ONLY=1 — exiting 0 (report mode)");
+    if (process.env.RIMVIO_UNIFIED_STRESS_REPORT_ONLY === "1") {
+      console.log("RIMVIO_UNIFIED_STRESS_REPORT_ONLY=1 — exiting 0 (report mode)");
       return;
     }
     process.exit(1);

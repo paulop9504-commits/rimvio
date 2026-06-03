@@ -124,7 +124,7 @@ export function RoomFeedClient({ slug }: { slug: string }) {
             </p>
             <Link
               href="/"
-              className="mt-2 rounded-[14px] bg-glango-neon-purple px-5 py-2.5 text-sm font-semibold text-white active:scale-[0.98]"
+              className="mt-2 rounded-[14px] bg-rimvio-neon-purple px-5 py-2.5 text-sm font-semibold text-white active:scale-[0.98]"
             >
               {copy.welcome.openFeed}
             </Link>

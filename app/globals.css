@@ -46,69 +46,69 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
-  --color-glango-canvas: var(--glango-canvas);
-  --color-glango-base: var(--glango-base);
-  --color-glango-surface: var(--glango-surface);
-  --color-glango-surface-muted: var(--glango-surface-muted);
-  --color-glango-surface-raised: var(--glango-surface-raised);
-  --color-glango-neon-purple: var(--glango-neon-purple);
-  --color-glango-neon-cyan: var(--glango-neon-cyan);
-  --color-glango-neon-magenta: var(--glango-neon-magenta);
-  --color-glango-neon-amber: var(--glango-neon-amber);
-  --color-glango-neon-green: var(--glango-neon-green);
+  --color-rimvio-canvas: var(--rimvio-canvas);
+  --color-rimvio-base: var(--rimvio-base);
+  --color-rimvio-surface: var(--rimvio-surface);
+  --color-rimvio-surface-muted: var(--rimvio-surface-muted);
+  --color-rimvio-surface-raised: var(--rimvio-surface-raised);
+  --color-rimvio-neon-purple: var(--rimvio-neon-purple);
+  --color-rimvio-neon-cyan: var(--rimvio-neon-cyan);
+  --color-rimvio-neon-magenta: var(--rimvio-neon-magenta);
+  --color-rimvio-neon-amber: var(--rimvio-neon-amber);
+  --color-rimvio-neon-green: var(--rimvio-neon-green);
   --animate-shimmer: shimmer 1.8s ease-in-out infinite;
   --animate-magic-pulse: magic-pulse 2.4s ease-in-out infinite;
 }
 
 :root {
   /* Dark gray canvas + prismatic neon edges */
-  --glango-canvas: #1c1c1c;
-  --glango-base: #1c1c1c;
-  --glango-surface: #262626;
-  --glango-surface-muted: #161616;
-  --glango-surface-raised: #303030;
-  --glango-neon-purple: #bf5af2;
-  --glango-neon-purple-deep: #9d4edd;
-  --glango-neon-cyan: #32d7ff;
-  --glango-neon-magenta: #ff375f;
-  --glango-neon-amber: #ffd60a;
-  --glango-neon-orange: #ff9f0a;
-  --glango-neon-green: #30d158;
-  --glango-neon-amber-fill: rgba(255, 214, 10, 0.12);
-  --glango-neon-amber-border: rgba(255, 214, 10, 0.38);
-  --glango-neon-amber-glow: rgba(255, 214, 10, 0.22);
-  --glango-neon-amber-glow-strong: rgba(255, 214, 10, 0.38);
+  --rimvio-canvas: #1c1c1c;
+  --rimvio-base: #1c1c1c;
+  --rimvio-surface: #262626;
+  --rimvio-surface-muted: #161616;
+  --rimvio-surface-raised: #303030;
+  --rimvio-neon-purple: #bf5af2;
+  --rimvio-neon-purple-deep: #9d4edd;
+  --rimvio-neon-cyan: #32d7ff;
+  --rimvio-neon-magenta: #ff375f;
+  --rimvio-neon-amber: #ffd60a;
+  --rimvio-neon-orange: #ff9f0a;
+  --rimvio-neon-green: #30d158;
+  --rimvio-neon-amber-fill: rgba(255, 214, 10, 0.12);
+  --rimvio-neon-amber-border: rgba(255, 214, 10, 0.38);
+  --rimvio-neon-amber-glow: rgba(255, 214, 10, 0.22);
+  --rimvio-neon-amber-glow-strong: rgba(255, 214, 10, 0.38);
   --chat-bubble-user-warm-border: rgba(255, 159, 10, 0.32);
-  --glango-neon-border: rgba(191, 90, 242, 0.28);
-  --glango-neon-glow: rgba(191, 90, 242, 0.35);
-  --glango-edge-default: linear-gradient(
+  --rimvio-neon-border: rgba(191, 90, 242, 0.28);
+  --rimvio-neon-glow: rgba(191, 90, 242, 0.35);
+  --rimvio-edge-default: linear-gradient(
     135deg,
     rgba(191, 90, 242, 0.72) 0%,
     rgba(50, 215, 255, 0.52) 32%,
     rgba(255, 55, 95, 0.58) 66%,
     rgba(48, 209, 88, 0.32) 100%
   );
-  --glango-edge-cyan: linear-gradient(
+  --rimvio-edge-cyan: linear-gradient(
     135deg,
     rgba(50, 215, 255, 0.75),
     rgba(191, 90, 242, 0.35)
   );
-  --glango-edge-magenta: linear-gradient(
+  --rimvio-edge-magenta: linear-gradient(
     135deg,
     rgba(255, 55, 95, 0.7),
     rgba(191, 90, 242, 0.4)
   );
-  --glango-edge-amber: linear-gradient(
+  --rimvio-edge-amber: linear-gradient(
     135deg,
     rgba(255, 214, 10, 0.65),
     rgba(255, 55, 95, 0.35)
   );
-  --glango-edge-green: linear-gradient(
+  --rimvio-edge-green: linear-gradient(
     135deg,
     rgba(48, 209, 88, 0.65),
     rgba(50, 215, 255, 0.35)
   );
-  --glango-edge-nav: linear-gradient(
+  --rimvio-edge-nav: linear-gradient(
     90deg,
     transparent 0%,
     rgba(191, 90, 242, 0.55) 22%,
@@ -117,7 +117,7 @@
     transparent 100%
   );
   /* Seamless neon flow — duplicated tile + GPU translate (no background-position jump) */
-  --glango-neon-flow-double: linear-gradient(
+  --rimvio-neon-flow-double: linear-gradient(
     90deg,
     #bf5af2 0%,
     #b07cff 6.25%,
@@ -137,8 +137,8 @@
     #b07cff 93.75%,
     #bf5af2 100%
   );
-  --glango-neon-flow-duration: 48s;
-  --glango-neon-flow-duration-live: 36s;
+  --rimvio-neon-flow-duration: 48s;
+  --rimvio-neon-flow-duration-live: 36s;
 
   --background: #1c1c1c;
   --foreground: #f5f5f7;
@@ -174,11 +174,11 @@
   --inbox-major: 61.8%;
   --golden-major: 61.8%;
   --golden-minor: 38.2%;
-  --glango-accent: #bf5af2;
-  --glango-accent-soft: #303030;
-  --glango-button-blue: #9d4edd;
-  --glango-button-blue-pressed: #7b2cbf;
-  --glango-button-easing: cubic-bezier(0.4, 0, 0.2, 1);
+  --rimvio-accent: #bf5af2;
+  --rimvio-accent-soft: #303030;
+  --rimvio-button-blue: #9d4edd;
+  --rimvio-button-blue-pressed: #7b2cbf;
+  --rimvio-button-easing: cubic-bezier(0.4, 0, 0.2, 1);
   --inbox-thumb: var(--space-phi3);
   /* Responsive shell widths */
   --shell-max-phone: 28rem;
@@ -188,13 +188,13 @@
   --shell-max-desktop: 48rem;
   --nav-rail-width: 5rem;
   /* Feed bottom chrome — composer dock + fixed tab bar (mobile) */
-  --glango-bottom-nav-height: 3.05rem;
-  --glango-composer-bar-height: 4.5rem;
-  --glango-bottom-nav-offset: calc(
-    var(--glango-bottom-nav-height) + env(safe-area-inset-bottom, 0px)
+  --rimvio-bottom-nav-height: 3.05rem;
+  --rimvio-composer-bar-height: 4.5rem;
+  --rimvio-bottom-nav-offset: calc(
+    var(--rimvio-bottom-nav-height) + env(safe-area-inset-bottom, 0px)
   );
-  --glango-feed-scroll-pad: calc(
-    var(--glango-composer-bar-height) + var(--glango-bottom-nav-offset) + 0.75rem
+  --rimvio-feed-scroll-pad: calc(
+    var(--rimvio-composer-bar-height) + var(--rimvio-bottom-nav-offset) + 0.75rem
   );
   /* Toast placement — locked */
   --toast-shift-left: 3.5cm;
@@ -271,19 +271,19 @@
 
 /* ── Neon edge system (gradient border, black fill) ── */
 
-.glango-edge-card {
+.rimvio-edge-card {
   position: relative;
   isolation: isolate;
-  background: var(--glango-surface);
+  background: var(--rimvio-surface);
 }
 
-.glango-edge-card::before {
+.rimvio-edge-card::before {
   content: "";
   position: absolute;
   inset: 0;
   padding: 1px;
   border-radius: inherit;
-  background: var(--glango-edge-default);
+  background: var(--rimvio-edge-default);
   -webkit-mask:
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
@@ -295,18 +295,18 @@
   pointer-events: none;
 }
 
-.glango-edge-card--lg {
+.rimvio-edge-card--lg {
   border-radius: 1.75rem;
 }
 
-.glango-edge-card--sm {
+.rimvio-edge-card--sm {
   border-radius: 1rem;
 }
 
-.glango-edge-card--logo {
+.rimvio-edge-card--logo {
   isolation: auto;
   background: transparent;
-  --glango-edge-default: linear-gradient(
+  --rimvio-edge-default: linear-gradient(
     145deg,
     rgba(50, 215, 255, 0.65),
     rgba(191, 90, 242, 0.75),
@@ -314,72 +314,72 @@
   );
 }
 
-.glango-edge-card--cyan::before {
-  background: var(--glango-edge-cyan);
+.rimvio-edge-card--cyan::before {
+  background: var(--rimvio-edge-cyan);
 }
 
-.glango-edge-card--magenta::before {
-  background: var(--glango-edge-magenta);
+.rimvio-edge-card--magenta::before {
+  background: var(--rimvio-edge-magenta);
 }
 
-.glango-edge-card--amber::before {
-  background: var(--glango-edge-amber);
+.rimvio-edge-card--amber::before {
+  background: var(--rimvio-edge-amber);
 }
 
-.glango-edge-card--green::before {
-  background: var(--glango-edge-green);
+.rimvio-edge-card--green::before {
+  background: var(--rimvio-edge-green);
 }
 
 /* @타이머 inline chip — running=soft green glow, paused=soft red glow */
-.inline-chat-timer-chip.glango-edge-card::before {
+.inline-chat-timer-chip.rimvio-edge-card::before {
   padding: 2.5px;
   animation: none;
   transition: background 0.3s ease;
 }
 
-.inline-chat-timer-chip--running.glango-edge-card {
+.inline-chat-timer-chip--running.rimvio-edge-card {
   box-shadow: 0 0 14px rgba(48, 209, 88, 0.18);
 }
 
-.inline-chat-timer-chip--running.glango-edge-card::before {
-  background: var(--glango-edge-green);
+.inline-chat-timer-chip--running.rimvio-edge-card::before {
+  background: var(--rimvio-edge-green);
 }
 
-.inline-chat-timer-chip--paused.glango-edge-card {
+.inline-chat-timer-chip--paused.rimvio-edge-card {
   box-shadow: 0 0 14px rgba(255, 55, 95, 0.2);
 }
 
-.inline-chat-timer-chip--paused.glango-edge-card::before {
-  background: var(--glango-edge-magenta);
+.inline-chat-timer-chip--paused.rimvio-edge-card::before {
+  background: var(--rimvio-edge-magenta);
 }
 
-.inline-chat-timer-chip--done.glango-edge-card {
+.inline-chat-timer-chip--done.rimvio-edge-card {
   box-shadow: 0 0 10px rgba(48, 209, 88, 0.12);
 }
 
-.inline-chat-timer-chip--done.glango-edge-card::before {
-  background: var(--glango-edge-green);
+.inline-chat-timer-chip--done.rimvio-edge-card::before {
+  background: var(--rimvio-edge-green);
 }
 
-.glango-header-chrome {
+.rimvio-header-chrome {
   position: relative;
 }
 
-.glango-header-chrome::after {
+.rimvio-header-chrome::after {
   content: "";
   position: absolute;
   inset-inline: 0;
   bottom: 0;
   height: 1px;
-  background: var(--glango-edge-nav);
+  background: var(--rimvio-edge-nav);
   opacity: 0.85;
 }
 
-.glango-nav-bar {
+.rimvio-nav-bar {
   position: relative;
 }
 
-.glango-nav-bar::before {
+.rimvio-nav-bar::before {
   content: "";
   position: absolute;
   z-index: 1;
@@ -388,27 +388,27 @@
   width: 200%;
   height: 1.25px;
   opacity: 0.92;
-  background-image: var(--glango-neon-flow-double);
+  background-image: var(--rimvio-neon-flow-double);
   background-size: 100% 100%;
   will-change: transform;
   transform: translate3d(0, 0, 0);
-  animation: glango-neon-marquee var(--glango-neon-flow-duration) linear infinite;
+  animation: rimvio-neon-marquee var(--rimvio-neon-flow-duration) linear infinite;
   box-shadow:
     0 0 6px rgba(191, 90, 242, 0.38),
     0 0 10.5px rgba(50, 215, 255, 0.24);
 }
 
-.chat-ambient-shell--composer-live .glango-nav-bar::before {
+.chat-ambient-shell--composer-live .rimvio-nav-bar::before {
   height: 2px;
   opacity: 1;
-  animation: glango-neon-marquee var(--glango-neon-flow-duration-live) linear infinite;
+  animation: rimvio-neon-marquee var(--rimvio-neon-flow-duration-live) linear infinite;
   box-shadow:
     0 0 8px rgba(191, 90, 242, 0.55),
     0 0 15px rgba(50, 215, 255, 0.42),
     0 0 22px rgba(255, 55, 95, 0.24);
 }
 
-@keyframes glango-neon-marquee {
+@keyframes rimvio-neon-marquee {
   from {
     transform: translate3d(0, 0, 0);
   }
@@ -419,11 +419,11 @@
 }
 
 /* Brand mark — transparent PNG; no blend hack needed */
-.glango-brand-mark__img {
+.rimvio-brand-mark__img {
   image-rendering: auto;
 }
 
-.glango-brand-mark__img--on-light {
+.rimvio-brand-mark__img--on-light {
   filter: brightness(0);
 }
 
@@ -482,7 +482,7 @@
   min-width: 0;
   padding-top: var(--space-u);
   padding-bottom: calc(var(--space-u) * 1.25);
-  background: var(--glango-base);
+  background: var(--rimvio-base);
   box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.04);
 }
 
@@ -802,16 +802,16 @@
 }
 
 /* Mobile feed — composer fixed above bottom tab bar */
-.glango-feed-composer-dock {
+.rimvio-feed-composer-dock {
   position: relative;
   z-index: 45;
 }
 
 @media (max-width: 1023px) {
-  .glango-feed-composer-dock {
+  .rimvio-feed-composer-dock {
     position: fixed;
     inset-inline: 0;
-    bottom: var(--glango-bottom-nav-offset);
+    bottom: var(--rimvio-bottom-nav-offset);
     z-index: 45;
     margin-inline: auto;
     width: 100%;
@@ -820,27 +820,27 @@
 }
 
 @media (min-width: 640px) and (max-width: 1023px) {
-  .glango-feed-composer-dock {
+  .rimvio-feed-composer-dock {
     max-width: var(--shell-max-phablet);
   }
 }
 
 @media (min-width: 768px) and (max-width: 1023px) {
-  .glango-feed-composer-dock {
+  .rimvio-feed-composer-dock {
     max-width: var(--shell-max-tablet);
   }
 }
 
-.glango-feed-scroll-inset {
-  padding-bottom: var(--glango-feed-scroll-pad);
+.rimvio-feed-scroll-inset {
+  padding-bottom: var(--rimvio-feed-scroll-pad);
 }
 
 @media (min-width: 1024px) {
-  .glango-feed-scroll-inset {
+  .rimvio-feed-scroll-inset {
     padding-bottom: 0.75rem;
   }
 
-  .glango-feed-composer-dock {
+  .rimvio-feed-composer-dock {
     position: relative;
     inset: auto;
     max-width: none;
@@ -930,7 +930,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   }
 }
 
-[data-sonner-toast].glango-toast {
+[data-sonner-toast].rimvio-toast {
   width: auto;
   max-width: min(300px, calc(100vw - 1.75rem));
   display: flex;
@@ -950,17 +950,17 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
     height 200ms ease !important;
 }
 
-[data-sonner-toast].glango-toast [data-icon],
-[data-sonner-toast].glango-toast [data-close-button] {
+[data-sonner-toast].rimvio-toast [data-icon],
+[data-sonner-toast].rimvio-toast [data-close-button] {
   display: none !important;
 }
 
-[data-sonner-toast].glango-toast [data-content] {
+[data-sonner-toast].rimvio-toast [data-content] {
   flex: 1;
   min-width: 0;
 }
 
-[data-sonner-toast] .glango-toast-title {
+[data-sonner-toast] .rimvio-toast-title {
   margin: 0;
   font-size: 0.875rem;
   font-weight: 600;
@@ -973,7 +973,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   overflow: hidden;
 }
 
-[data-sonner-toast] .glango-toast-description {
+[data-sonner-toast] .rimvio-toast-description {
   margin: 0.0625rem 0 0;
   font-size: 0.75rem;
   font-weight: 400;
@@ -987,7 +987,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 }
 
 /* TDS bottom Toast.Button — 우측 텍스트 액션 */
-[data-sonner-toast] .glango-toast-action {
+[data-sonner-toast] .rimvio-toast-action {
   flex-shrink: 0;
   margin: 0;
   padding: 0;
@@ -1003,11 +1003,11 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   transition: opacity 120ms ease;
 }
 
-[data-sonner-toast] .glango-toast-action:hover {
+[data-sonner-toast] .rimvio-toast-action:hover {
   opacity: 0.82;
 }
 
-[data-sonner-toast] .glango-toast-cancel {
+[data-sonner-toast] .rimvio-toast-cancel {
   flex-shrink: 0;
   margin: 0;
   padding: 0;
@@ -1018,15 +1018,15 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   color: rgba(255, 255, 255, 0.78);
 }
 
-[data-sonner-toast].glango-toast[data-mounted="true"] {
-  animation: glango-toast-in 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+[data-sonner-toast].rimvio-toast[data-mounted="true"] {
+  animation: rimvio-toast-in 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-[data-sonner-toast].glango-toast[data-removed="true"] {
-  animation: glango-toast-out 160ms cubic-bezier(0.4, 0, 0.9, 0.6) both;
+[data-sonner-toast].rimvio-toast[data-removed="true"] {
+  animation: rimvio-toast-out 160ms cubic-bezier(0.4, 0, 0.9, 0.6) both;
 }
 
-@keyframes glango-toast-in {
+@keyframes rimvio-toast-in {
   from {
     opacity: 0;
     transform: translateY(10px);
@@ -1038,7 +1038,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   }
 }
 
-@keyframes glango-draw-heartbeat {
+@keyframes rimvio-draw-heartbeat {
   0%,
   100% {
     transform: scale(1);
@@ -1065,7 +1065,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   }
 }
 
-@keyframes glango-draw-spin {
+@keyframes rimvio-draw-spin {
   0% {
     transform: rotate(-4deg) scale(1);
   }
@@ -1079,7 +1079,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   }
 }
 
-@keyframes glango-draw-glow {
+@keyframes rimvio-draw-glow {
   0%,
   100% {
     opacity: 0.35;
@@ -1092,7 +1092,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   }
 }
 
-@keyframes glango-draw-pop {
+@keyframes rimvio-draw-pop {
   0% {
     transform: scale(0.82);
     opacity: 0.5;
@@ -1109,23 +1109,23 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   }
 }
 
-@utility animate-glango-draw-heartbeat {
-  animation: glango-draw-heartbeat 0.85s ease-in-out infinite;
+@utility animate-rimvio-draw-heartbeat {
+  animation: rimvio-draw-heartbeat 0.85s ease-in-out infinite;
 }
 
-@utility animate-glango-draw-spin {
-  animation: glango-draw-spin 0.35s ease-in-out infinite;
+@utility animate-rimvio-draw-spin {
+  animation: rimvio-draw-spin 0.35s ease-in-out infinite;
 }
 
-@utility animate-glango-draw-glow {
-  animation: glango-draw-glow 1.1s ease-in-out infinite;
+@utility animate-rimvio-draw-glow {
+  animation: rimvio-draw-glow 1.1s ease-in-out infinite;
 }
 
-@utility animate-glango-draw-pop {
-  animation: glango-draw-pop 520ms cubic-bezier(0.22, 1.12, 0.36, 1) both;
+@utility animate-rimvio-draw-pop {
+  animation: rimvio-draw-pop 520ms cubic-bezier(0.22, 1.12, 0.36, 1) both;
 }
 
-@keyframes glango-purple-reveal-in {
+@keyframes rimvio-purple-reveal-in {
   0% {
     opacity: 0;
     transform: translateY(24px) scale(0.92);
@@ -1137,11 +1137,11 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   }
 }
 
-@utility animate-glango-purple-reveal-in {
-  animation: glango-purple-reveal-in 520ms cubic-bezier(0.22, 1.12, 0.36, 1) both;
+@utility animate-rimvio-purple-reveal-in {
+  animation: rimvio-purple-reveal-in 520ms cubic-bezier(0.22, 1.12, 0.36, 1) both;
 }
 
-@keyframes glango-toast-out {
+@keyframes rimvio-toast-out {
   from {
     opacity: 1;
     transform: translateY(0);
@@ -1153,9 +1153,9 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   }
 }
 
-/* ── Glango icon buttons (composer + chrome) ── */
+/* ── Rimvio icon buttons (composer + chrome) ── */
 
-.glango-icon-btn {
+.rimvio-icon-btn {
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
@@ -1170,27 +1170,27 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   touch-action: manipulation;
   user-select: none;
   transition:
-    transform 0.2s var(--glango-button-easing),
-    box-shadow 0.2s var(--glango-button-easing),
-    background-color 0.2s var(--glango-button-easing),
-    opacity 0.2s var(--glango-button-easing);
+    transform 0.2s var(--rimvio-button-easing),
+    box-shadow 0.2s var(--rimvio-button-easing),
+    background-color 0.2s var(--rimvio-button-easing),
+    opacity 0.2s var(--rimvio-button-easing);
 }
 
-.glango-icon-btn--sm {
+.rimvio-icon-btn--sm {
   width: 2rem;
   height: 2rem;
 }
 
-.glango-icon-btn:disabled {
+.rimvio-icon-btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
 
-.glango-icon-btn:not(:disabled):active {
+.rimvio-icon-btn:not(:disabled):active {
   transform: scale(0.95);
 }
 
-.glango-icon-btn--primary {
+.rimvio-icon-btn--primary {
   background: transparent;
   color: #ffffff;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.85);
@@ -1198,48 +1198,48 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 }
 
 @media (hover: hover) {
-  .glango-icon-btn--primary:not(:disabled):hover {
+  .rimvio-icon-btn--primary:not(:disabled):hover {
     background: rgba(255, 255, 255, 0.06);
   }
 }
 
-.glango-icon-btn--secondary {
-  background: var(--glango-surface-raised);
-  color: var(--glango-text-muted);
+.rimvio-icon-btn--secondary {
+  background: var(--rimvio-surface-raised);
+  color: var(--rimvio-text-muted);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
-.glango-icon-btn--ghost {
-  background: var(--glango-surface-muted);
-  color: var(--glango-text-muted);
+.rimvio-icon-btn--ghost {
+  background: var(--rimvio-surface-muted);
+  color: var(--rimvio-text-muted);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
-.glango-icon-btn--cyan {
+.rimvio-icon-btn--cyan {
   background: rgba(50, 215, 255, 0.12);
-  color: var(--glango-neon-cyan);
+  color: var(--rimvio-neon-cyan);
   box-shadow:
     0 0 16px rgba(50, 215, 255, 0.2),
     inset 0 0 0 1px rgba(50, 215, 255, 0.35);
 }
 
-.glango-icon-btn--magenta {
+.rimvio-icon-btn--magenta {
   background: rgba(255, 55, 95, 0.12);
-  color: var(--glango-neon-magenta);
+  color: var(--rimvio-neon-magenta);
   box-shadow:
     0 0 16px rgba(255, 55, 95, 0.2),
     inset 0 0 0 1px rgba(255, 55, 95, 0.35);
 }
 
-.glango-icon-btn--green {
+.rimvio-icon-btn--green {
   background: rgba(48, 209, 88, 0.12);
-  color: var(--glango-neon-green);
+  color: var(--rimvio-neon-green);
   box-shadow:
     0 0 16px rgba(48, 209, 88, 0.2),
     inset 0 0 0 1px rgba(48, 209, 88, 0.35);
 }
 
-.glango-composer-field {
+.rimvio-composer-field {
   display: flex;
   min-height: 2.5rem;
   flex: 1;
@@ -1250,16 +1250,16 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
 
-.glango-composer-field textarea::placeholder {
+.rimvio-composer-field textarea::placeholder {
   color: rgba(255, 255, 255, 0.75);
 }
 
-.glango-composer-mention-wrap {
+.rimvio-composer-mention-wrap {
   min-height: 1.25rem;
 }
 
 /* Mirror + textarea must share identical metrics — no font-weight drift on spans. */
-.glango-composer-mention-layer {
+.rimvio-composer-mention-layer {
   font-family: inherit;
   font-size: 15px;
   font-weight: 400;
@@ -1269,112 +1269,123 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   overflow-wrap: anywhere;
 }
 
-.glango-composer-mention-mirror {
+.rimvio-composer-mention-mirror {
   z-index: 0;
   padding: 0;
   color: #ffffff;
 }
 
-.glango-composer-mention-valid {
-  color: var(--glango-neon-cyan);
+.rimvio-composer-mention-valid {
+  color: var(--rimvio-neon-cyan);
 }
 
-.glango-composer-textarea--mirror {
+.rimvio-composer-textarea--mirror {
   position: relative;
   z-index: 1;
-  color: transparent;
+  /* Near-transparent (not fully transparent) — iOS Safari skips keyboard with -webkit-text-fill-color: transparent */
+  color: rgba(255, 255, 255, 0.02);
   caret-color: #ffffff;
-  -webkit-text-fill-color: transparent;
   background: transparent;
 }
 
-.glango-composer-textarea--mirror::placeholder {
+@supports (-webkit-touch-callout: none) {
+  .rimvio-composer-textarea--mirror {
+    -webkit-text-fill-color: rgba(255, 255, 255, 0.02);
+  }
+}
+
+.rimvio-composer-textarea--mirror::placeholder {
   color: rgba(255, 255, 255, 0.75);
   -webkit-text-fill-color: rgba(255, 255, 255, 0.75);
 }
 
-.glango-composer-textarea--mirror::selection {
-  color: transparent;
-  -webkit-text-fill-color: transparent;
+.rimvio-composer-textarea--mirror::selection {
+  color: rgba(255, 255, 255, 0.02);
   background: rgba(50, 215, 255, 0.28);
 }
 
-.glango-menu-grid {
-  background: var(--glango-surface-muted);
+@supports (-webkit-touch-callout: none) {
+  .rimvio-composer-textarea--mirror::selection {
+    -webkit-text-fill-color: rgba(255, 255, 255, 0.02);
+  }
+}
+
+.rimvio-menu-grid {
+  background: var(--rimvio-surface-muted);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
-.glango-menu-tile {
+.rimvio-menu-tile {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.25rem;
   border: none;
   border-radius: 12px;
-  background: var(--glango-surface);
+  background: var(--rimvio-surface);
   padding: 0.625rem 0.5rem;
   font-size: 11px;
   font-weight: 500;
-  color: var(--glango-text);
+  color: var(--rimvio-text);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition:
-    transform 0.2s var(--glango-button-easing),
-    box-shadow 0.2s var(--glango-button-easing);
+    transform 0.2s var(--rimvio-button-easing),
+    box-shadow 0.2s var(--rimvio-button-easing);
 }
 
-.glango-menu-tile:active {
+.rimvio-menu-tile:active {
   transform: scale(0.97);
 }
 
-.glango-menu-tile--cyan {
+.rimvio-menu-tile--cyan {
   box-shadow: inset 0 0 0 1px rgba(50, 215, 255, 0.22);
 }
 
-.glango-menu-tile--purple {
+.rimvio-menu-tile--purple {
   box-shadow: inset 0 0 0 1px rgba(191, 90, 242, 0.22);
 }
 
-.glango-menu-tile--magenta {
+.rimvio-menu-tile--magenta {
   box-shadow: inset 0 0 0 1px rgba(255, 55, 95, 0.22);
 }
 
-.glango-menu-tile--green {
+.rimvio-menu-tile--green {
   box-shadow: inset 0 0 0 1px rgba(48, 209, 88, 0.22);
 }
 
-.glango-chip-btn {
+.rimvio-chip-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border: none;
   border-radius: 9999px;
-  background: var(--glango-surface);
+  background: var(--rimvio-surface);
   padding: 0.375rem 0.75rem;
   font-size: 12px;
   font-weight: 600;
-  color: var(--glango-text-muted);
+  color: var(--rimvio-text-muted);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition:
-    transform 0.2s var(--glango-button-easing),
-    box-shadow 0.2s var(--glango-button-easing),
-    color 0.2s var(--glango-button-easing);
+    transform 0.2s var(--rimvio-button-easing),
+    box-shadow 0.2s var(--rimvio-button-easing),
+    color 0.2s var(--rimvio-button-easing);
 }
 
-.glango-chip-btn--active {
-  color: var(--glango-text);
+.rimvio-chip-btn--active {
+  color: var(--rimvio-text);
   box-shadow:
     inset 0 0 0 1px rgba(191, 90, 242, 0.45),
     0 0 16px rgba(191, 90, 242, 0.18);
 }
 
-.glango-suggest-chip {
+.rimvio-suggest-chip {
   position: relative;
   overflow: hidden;
   border-radius: 9999px;
-  background: var(--glango-surface-raised);
+  background: var(--rimvio-surface-raised);
   padding: 0.25rem 0.625rem;
   font-weight: 500;
   color: #e8e8ed;
@@ -1382,49 +1393,49 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 }
 
 @media (hover: hover) {
-  .glango-suggest-chip:hover {
+  .rimvio-suggest-chip:hover {
     background: rgba(255, 255, 255, 0.06);
     color: rgba(255, 255, 255, 0.95);
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 1);
   }
 }
 
-.glango-suggest-chip:active {
+.rimvio-suggest-chip:active {
   transform: scale(0.98);
 }
 
-.glango-list-pick-btn {
+.rimvio-list-pick-btn {
   display: flex;
   width: 100%;
   flex-direction: column;
   border: none;
   border-radius: 12px;
-  background: var(--glango-surface);
+  background: var(--rimvio-surface);
   padding: 0.625rem 0.75rem;
   text-align: left;
-  color: var(--glango-text);
+  color: var(--rimvio-text);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
   cursor: pointer;
   transition:
-    transform 0.2s var(--glango-button-easing),
-    box-shadow 0.2s var(--glango-button-easing),
-    background-color 0.2s var(--glango-button-easing);
+    transform 0.2s var(--rimvio-button-easing),
+    box-shadow 0.2s var(--rimvio-button-easing),
+    background-color 0.2s var(--rimvio-button-easing);
 }
 
-.glango-list-pick-btn:active {
+.rimvio-list-pick-btn:active {
   transform: scale(0.99);
 }
 
-.glango-list-pick-btn--recommended {
+.rimvio-list-pick-btn--recommended {
   background: rgba(191, 90, 242, 0.08);
   box-shadow:
     inset 0 0 0 1px rgba(191, 90, 242, 0.35),
     0 0 20px rgba(191, 90, 242, 0.1);
 }
 
-/* ── Glango Master Button (black canvas tactile) ── */
+/* ── Rimvio Master Button (black canvas tactile) ── */
 
-.glango-action-button {
+.rimvio-action-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1432,7 +1443,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   padding: 16px 28px;
   min-width: 160px;
   border-radius: 14px;
-  background-color: var(--glango-surface-raised);
+  background-color: var(--rimvio-surface-raised);
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: #ffffff;
   font-family:
@@ -1450,10 +1461,10 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
     inset 3px 0 0 0 rgba(191, 90, 242, 0.82),
     0 4px 18px rgba(0, 0, 0, 0.28);
   transition:
-    transform 0.2s var(--glango-button-easing),
-    background-color 0.2s var(--glango-button-easing),
-    box-shadow 0.2s var(--glango-button-easing),
-    opacity 0.2s var(--glango-button-easing);
+    transform 0.2s var(--rimvio-button-easing),
+    background-color 0.2s var(--rimvio-button-easing),
+    box-shadow 0.2s var(--rimvio-button-easing),
+    opacity 0.2s var(--rimvio-button-easing);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
@@ -1462,15 +1473,15 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   z-index: 1;
 }
 
-.glango-action-button:disabled {
+.rimvio-action-button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
   transform: none;
 }
 
 @media (hover: hover) {
-  .glango-action-button:not(:disabled):hover {
-    background-color: var(--glango-surface);
+  .rimvio-action-button:not(:disabled):hover {
+    background-color: var(--rimvio-surface);
     transform: translateY(1px) scale(0.98);
     box-shadow:
       inset 3px 0 0 0 rgba(50, 215, 255, 0.75),
@@ -1478,17 +1489,17 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   }
 }
 
-.glango-action-button:not(:disabled):active {
-  background-color: var(--glango-surface-muted);
+.rimvio-action-button:not(:disabled):active {
+  background-color: var(--rimvio-surface-muted);
   transform: translateY(1px) scale(0.98);
   box-shadow:
     inset 3px 0 0 0 rgba(191, 90, 242, 0.65),
     0 1px 8px rgba(0, 0, 0, 0.28);
 }
 
-.glango-action-button--secondary {
+.rimvio-action-button--secondary {
   min-width: 0;
-  background: var(--glango-surface-raised);
+  background: var(--rimvio-surface-raised);
   backdrop-filter: blur(12px) saturate(160%);
   -webkit-backdrop-filter: blur(12px) saturate(160%);
   color: #ffffff;
@@ -1499,40 +1510,40 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 }
 
 @media (hover: hover) {
-  .glango-action-button--secondary:not(:disabled):hover {
-    background: var(--glango-surface);
-    color: var(--glango-text);
+  .rimvio-action-button--secondary:not(:disabled):hover {
+    background: var(--rimvio-surface);
+    color: var(--rimvio-text);
     box-shadow:
       inset 0 0 0 1px rgba(50, 215, 255, 0.18),
       0 0 24px rgba(50, 215, 255, 0.1);
   }
 }
 
-.glango-action-button--secondary:not(:disabled):active {
-  background: var(--glango-surface-muted);
+.rimvio-action-button--secondary:not(:disabled):active {
+  background: var(--rimvio-surface-muted);
 }
 
-.glango-action-button--ghost {
+.rimvio-action-button--ghost {
   min-width: 0;
   padding: 10px 16px;
   background: transparent;
-  color: var(--glango-neon-cyan);
+  color: var(--rimvio-neon-cyan);
   border: 1px solid rgba(50, 215, 255, 0.28);
   box-shadow: none;
 }
 
 @media (hover: hover) {
-  .glango-action-button--ghost:not(:disabled):hover {
+  .rimvio-action-button--ghost:not(:disabled):hover {
     background: rgba(50, 215, 255, 0.08);
     box-shadow: 0 0 16px rgba(50, 215, 255, 0.12);
   }
 }
 
-.glango-action-button--ghost:not(:disabled):active {
+.rimvio-action-button--ghost:not(:disabled):active {
   background: rgba(50, 215, 255, 0.14);
 }
 
-.glango-action-button--tile {
+.rimvio-action-button--tile {
   width: 100%;
   min-width: 0;
   justify-content: flex-start;
@@ -1542,13 +1553,13 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   font-size: 14px;
 }
 
-.glango-action-button--pill,
-.glango-action-button--ghost,
-.glango-action-button--compact {
+.rimvio-action-button--pill,
+.rimvio-action-button--ghost,
+.rimvio-action-button--compact {
   min-width: 0;
 }
 
-.glango-action-button--pill {
+.rimvio-action-button--pill {
   min-width: 0;
   padding: 10px 16px;
   border-radius: 999px;
@@ -1556,7 +1567,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   font-weight: 600;
 }
 
-.glango-action-button--compact {
+.rimvio-action-button--compact {
   min-width: 0;
   flex-direction: column;
   gap: 6px;
@@ -1564,33 +1575,33 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   border-radius: 12px;
   font-size: 10px;
   font-weight: 600;
-  background: var(--glango-surface);
+  background: var(--rimvio-surface);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  color: var(--glango-text);
+  color: var(--rimvio-text);
   border: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
-.glango-action-button--compact .glango-action-button__icon {
+.rimvio-action-button--compact .rimvio-action-button__icon {
   width: 2rem;
   height: 2rem;
   border-radius: 10px;
   background: rgba(191, 90, 242, 0.12);
-  color: var(--glango-neon-purple);
+  color: var(--rimvio-neon-purple);
 }
 
-.glango-action-button--compact .glango-action-button__content {
+.rimvio-action-button--compact .rimvio-action-button__content {
   align-items: center;
   text-align: center;
 }
 
-.glango-action-button--compact .glango-action-button__label {
+.rimvio-action-button--compact .rimvio-action-button__label {
   font-size: 10px;
   line-height: 1.2;
 }
 
-.glango-action-button__icon {
+.rimvio-action-button__icon {
   display: flex;
   flex-shrink: 0;
   align-items: center;
@@ -1599,20 +1610,20 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   height: 2.25rem;
   border-radius: 12px;
   background: rgba(191, 90, 242, 0.14);
-  color: var(--glango-neon-purple);
-  transition: transform 0.2s var(--glango-button-easing);
+  color: var(--rimvio-neon-purple);
+  transition: transform 0.2s var(--rimvio-button-easing);
 }
 
-.glango-action-button--secondary .glango-action-button__icon {
+.rimvio-action-button--secondary .rimvio-action-button__icon {
   background: rgba(50, 215, 255, 0.12);
-  color: var(--glango-neon-cyan);
+  color: var(--rimvio-neon-cyan);
 }
 
-.glango-action-button:not(:disabled):active .glango-action-button__icon {
+.rimvio-action-button:not(:disabled):active .rimvio-action-button__icon {
   transform: scale(0.95);
 }
 
-.glango-action-button__content {
+.rimvio-action-button__content {
   display: flex;
   min-width: 0;
   flex: 1;
@@ -1620,7 +1631,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   gap: 2px;
 }
 
-.glango-action-button__label {
+.rimvio-action-button__label {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1628,7 +1639,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   color: #ffffff;
 }
 
-.glango-action-button__hint {
+.rimvio-action-button__hint {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1639,14 +1650,14 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   color: rgba(255, 255, 255, 0.62);
 }
 
-.glango-action-button__trailing {
+.rimvio-action-button__trailing {
   flex-shrink: 0;
   opacity: 0.7;
-  transition: transform 0.2s var(--glango-button-easing);
+  transition: transform 0.2s var(--rimvio-button-easing);
 }
 
 @media (hover: hover) {
-  .glango-action-button:not(:disabled):hover .glango-action-button__trailing {
+  .rimvio-action-button:not(:disabled):hover .rimvio-action-button__trailing {
     transform: translateX(2px);
   }
 }
@@ -1659,7 +1670,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  background: var(--glango-base);
+  background: var(--rimvio-base);
   color: #f5f5f7;
   font-family:
     -apple-system,
@@ -1764,29 +1775,29 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 
 /* ── Inline chat chips (unified dark OS) ── */
 
-.glango-inline-chip {
+.rimvio-inline-chip {
   width: 100%;
   overflow: hidden;
   border-radius: 1rem;
-  background: var(--glango-surface);
+  background: var(--rimvio-surface);
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.08),
     0 8px 32px rgba(0, 0, 0, 0.38);
 }
 
-.glango-inline-chip--sm {
+.rimvio-inline-chip--sm {
   max-width: min(100%, 320px);
 }
 
-.glango-inline-chip--md {
+.rimvio-inline-chip--md {
   max-width: min(100%, 360px);
 }
 
-.glango-inline-chip--lg {
+.rimvio-inline-chip--lg {
   max-width: min(100%, 420px);
 }
 
-.glango-inline-chip--inline {
+.rimvio-inline-chip--inline {
   display: inline-flex;
   width: auto;
   max-width: min(100%, 280px);
@@ -1795,7 +1806,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   padding: 0.625rem 0.75rem;
 }
 
-.glango-inline-chip__header {
+.rimvio-inline-chip__header {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -1803,17 +1814,17 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   padding: 0.5rem 0.75rem;
 }
 
-.glango-inline-chip__body {
+.rimvio-inline-chip__body {
   padding: 0.625rem 0.75rem;
 }
 
-.glango-inline-chip__title {
+.rimvio-inline-chip__title {
   font-size: 13px;
   font-weight: 600;
   color: #ffffff;
 }
 
-.glango-inline-chip__meta {
+.rimvio-inline-chip__meta {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1821,27 +1832,27 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   color: rgba(255, 255, 255, 0.55);
 }
 
-.glango-inline-chip__lead {
+.rimvio-inline-chip__lead {
   font-size: 13px;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.92);
 }
 
-.glango-inline-chip__text {
+.rimvio-inline-chip__text {
   font-size: 12px;
   line-height: 1.5;
   color: rgba(255, 255, 255, 0.75);
 }
 
-.glango-inline-chip__text-muted {
+.rimvio-inline-chip__text-muted {
   font-size: 11px;
   line-height: 1.45;
   color: rgba(255, 255, 255, 0.55);
 }
 
-.glango-inline-chip__panel {
+.rimvio-inline-chip__panel {
   border-radius: 0.75rem;
-  background: var(--glango-surface-muted);
+  background: var(--rimvio-surface-muted);
   padding: 0.5rem 0.625rem;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
   font-size: 12px;
@@ -1849,24 +1860,24 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   color: rgba(255, 255, 255, 0.78);
 }
 
-.glango-inline-chip__row {
+.rimvio-inline-chip__row {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   border-radius: 0.75rem;
-  background: var(--glango-surface-muted);
+  background: var(--rimvio-surface-muted);
   padding: 0.375rem 0.5rem;
   font-size: 12px;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
-.glango-inline-chip__row-time {
+.rimvio-inline-chip__row-time {
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
   color: rgba(255, 255, 255, 0.55);
 }
 
-.glango-inline-chip__row-title {
+.rimvio-inline-chip__row-title {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1875,7 +1886,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   color: rgba(255, 255, 255, 0.92);
 }
 
-.glango-inline-chip__pill {
+.rimvio-inline-chip__pill {
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
@@ -1884,10 +1895,10 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   padding: 0.25rem 0.625rem;
   font-size: 11px;
   font-weight: 600;
-  color: var(--glango-neon-purple);
+  color: var(--rimvio-neon-purple);
 }
 
-.glango-inline-chip__notice {
+.rimvio-inline-chip__notice {
   width: 100%;
   border-radius: 0.75rem;
   border: none;
@@ -1896,11 +1907,11 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   text-align: left;
   font-size: 12px;
   font-weight: 600;
-  color: var(--glango-neon-amber);
+  color: var(--rimvio-neon-amber);
   box-shadow: inset 0 0 0 1px rgba(255, 214, 10, 0.28);
 }
 
-.glango-inline-chip__ghost-btn {
+.rimvio-inline-chip__ghost-btn {
   border-radius: 0.75rem;
   border: none;
   background: transparent;
@@ -1909,30 +1920,30 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   font-weight: 600;
   color: rgba(255, 255, 255, 0.72);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
-  transition: background-color 0.2s var(--glango-button-easing);
+  transition: background-color 0.2s var(--rimvio-button-easing);
 }
 
-.glango-inline-chip__ghost-btn:hover {
+.rimvio-inline-chip__ghost-btn:hover {
   background: rgba(255, 255, 255, 0.04);
 }
 
-.glango-inline-chip__status {
+.rimvio-inline-chip__status {
   border-radius: 1rem;
-  background: var(--glango-surface-muted);
+  background: var(--rimvio-surface-muted);
   padding: 0.625rem 0.75rem;
   font-size: 12px;
   color: rgba(255, 255, 255, 0.55);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
-.glango-inline-chip__status--done {
+.rimvio-inline-chip__status--done {
   background: rgba(48, 209, 88, 0.08);
   box-shadow: inset 0 0 0 1px rgba(48, 209, 88, 0.22);
 }
 
-.glango-inline-chip__resolved {
+.rimvio-inline-chip__resolved {
   border-radius: 0.75rem;
-  background: var(--glango-surface-muted);
+  background: var(--rimvio-surface-muted);
   padding: 0.5rem 0.75rem;
   font-size: 11px;
   color: rgba(255, 255, 255, 0.38);
@@ -1940,24 +1951,24 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
-.glango-inline-chip-card {
+.rimvio-inline-chip-card {
   overflow: hidden;
   border-radius: 0.75rem;
-  background: var(--glango-surface-raised);
+  background: var(--rimvio-surface-raised);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
-.glango-inline-chip-card__header {
+.rimvio-inline-chip-card__header {
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   padding: 0.5rem 0.75rem;
 }
 
-.glango-inline-chip-card__embed {
+.rimvio-inline-chip-card__embed {
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  background: var(--glango-surface-muted);
+  background: var(--rimvio-surface-muted);
 }
 
-.glango-inline-chip-card__badge {
+.rimvio-inline-chip-card__badge {
   flex-shrink: 0;
   border-radius: 9999px;
   background: rgba(255, 255, 255, 0.08);
@@ -1967,7 +1978,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   color: rgba(255, 255, 255, 0.55);
 }
 
-.glango-strip-link-btn {
+.rimvio-strip-link-btn {
   flex-shrink: 0;
   border: none;
   border-radius: 9999px;
@@ -1976,14 +1987,14 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   font-size: 12px;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.72);
-  transition: color 0.2s var(--glango-button-easing);
+  transition: color 0.2s var(--rimvio-button-easing);
 }
 
-.glango-strip-link-btn:hover {
-  color: var(--glango-neon-cyan);
+.rimvio-strip-link-btn:hover {
+  color: var(--rimvio-neon-cyan);
 }
 
-.glango-strip-icon-btn {
+.rimvio-strip-icon-btn {
   display: flex;
   width: 2.25rem;
   height: 2.25rem;
@@ -2043,7 +2054,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   pointer-events: none;
   opacity: calc(0.96 * var(--chat-ambient-strength));
   transition: opacity 0.65s ease;
-  background-image: var(--glango-neon-flow-double);
+  background-image: var(--rimvio-neon-flow-double);
   background-size: 100% 100%;
   will-change: transform;
   transform: translate3d(0, 0, 0);
@@ -2052,7 +2063,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
     0 0 19.5px rgba(50, 215, 255, 0.52),
     0 0 30px rgba(255, 55, 95, 0.34),
     0 -3px 21px rgba(191, 90, 242, 0.2);
-  animation: glango-neon-marquee var(--glango-neon-flow-duration-live) linear infinite;
+  animation: rimvio-neon-marquee var(--rimvio-neon-flow-duration-live) linear infinite;
 }
 
 .chat-ambient-vignette {
@@ -2069,7 +2080,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   );
 }
 
-@keyframes glango-ambient-wave-glow {
+@keyframes rimvio-ambient-wave-glow {
   0%,
   100% {
     filter: brightness(1);
@@ -2090,7 +2101,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   }
 }
 
-@keyframes glango-container-breathe {
+@keyframes rimvio-container-breathe {
   0%,
   100% {
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.65);
@@ -2104,11 +2115,11 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   }
 }
 
-.glango-composer-field--live {
+.rimvio-composer-field--live {
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.85);
 }
 
-@keyframes glango-composer-breathe {
+@keyframes rimvio-composer-breathe {
   0%,
   100% {
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.65);
@@ -2145,7 +2156,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   transform: scale(0.992);
 }
 
-@keyframes glango-thought-breathe {
+@keyframes rimvio-thought-breathe {
   0%,
   100% {
     box-shadow:
@@ -2161,19 +2172,19 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 }
 
 .chat-message-focus[data-bubble-focus="live"] .thought-bubble {
-  animation: glango-thought-breathe 4.2s ease-in-out infinite;
+  animation: rimvio-thought-breathe 4.2s ease-in-out infinite;
 }
 
-.chat-message-focus[data-bubble-focus="live"] .glango-container-card,
+.chat-message-focus[data-bubble-focus="live"] .rimvio-container-card,
 .chat-message-focus[data-bubble-focus="live"] .container-card {
-  animation: glango-container-breathe 4s ease-in-out infinite;
+  animation: rimvio-container-breathe 4s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .chat-ambient-wave,
-  .glango-nav-bar::before,
-  .glango-composer-field--live,
-  .chat-message-focus[data-bubble-focus="live"] .glango-container-card,
+  .rimvio-nav-bar::before,
+  .rimvio-composer-field--live,
+  .chat-message-focus[data-bubble-focus="live"] .rimvio-container-card,
   .chat-message-focus[data-bubble-focus="live"] .container-card,
   .chat-message-focus[data-bubble-focus="live"] .thought-bubble {
     animation: none !important;
@@ -2185,11 +2196,11 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   }
 }
 
-.glango-container-card,
+.rimvio-container-card,
 .container-card {
   position: relative;
   isolation: isolate;
-  background: var(--glango-surface);
+  background: var(--rimvio-surface);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-radius: 16px;
@@ -2199,50 +2210,50 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.65);
 }
 
-.glango-container-card--compact {
+.rimvio-container-card--compact {
   padding: 10px 12px;
   border-radius: 14px;
 }
 
-.glango-container-card--compact .glango-container-card__header,
-.glango-container-card--compact .container-card__header {
+.rimvio-container-card--compact .rimvio-container-card__header,
+.rimvio-container-card--compact .container-card__header {
   gap: 10px;
   padding-bottom: 0;
 }
 
-.glango-container-card--compact .glango-container-card__icon,
-.glango-container-card--compact .container-card__icon {
+.rimvio-container-card--compact .rimvio-container-card__icon,
+.rimvio-container-card--compact .container-card__icon {
   width: 2rem;
   height: 2rem;
   border-radius: 12px;
 }
 
-.glango-container-card--compact .glango-container-card__icon .size-\[18px\],
-.glango-container-card--compact .container-card__icon .size-\[18px\] {
+.rimvio-container-card--compact .rimvio-container-card__icon .size-\[18px\],
+.rimvio-container-card--compact .container-card__icon .size-\[18px\] {
   width: 16px;
   height: 16px;
 }
 
-.glango-container-card--compact .glango-container-card__title,
-.glango-container-card--compact .container-card__title {
+.rimvio-container-card--compact .rimvio-container-card__title,
+.rimvio-container-card--compact .container-card__title {
   font-size: 14px;
   line-height: 1.35;
 }
 
-.glango-container-card--compact .glango-container-card__chips,
-.glango-container-card--compact .container-card__chips {
+.rimvio-container-card--compact .rimvio-container-card__chips,
+.rimvio-container-card--compact .container-card__chips {
   margin-top: 6px;
   gap: 4px;
 }
 
-.glango-container-card--compact .glango-container-card__chip,
-.glango-container-card--compact .container-card__chip {
+.rimvio-container-card--compact .rimvio-container-card__chip,
+.rimvio-container-card--compact .container-card__chip {
   padding: 2px 8px;
   font-size: 10px;
 }
 
-.glango-container-card--compact .glango-container-card__footer,
-.glango-container-card--compact .container-card__footer {
+.rimvio-container-card--compact .rimvio-container-card__footer,
+.rimvio-container-card--compact .container-card__footer {
   margin-top: 0;
   margin-inline: -12px;
   margin-bottom: -10px;
@@ -2251,7 +2262,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.glango-container-card::before,
+.rimvio-container-card::before,
 .container-card::before {
   content: "";
   position: absolute;
@@ -2264,7 +2275,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   pointer-events: none;
 }
 
-.glango-point-surface::before {
+.rimvio-point-surface::before {
   content: "";
   position: absolute;
   left: 0;
@@ -2276,12 +2287,12 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   pointer-events: none;
 }
 
-.glango-container-card.glango-point-surface::before,
-.container-card.glango-point-surface::before {
+.rimvio-container-card.rimvio-point-surface::before,
+.container-card.rimvio-point-surface::before {
   background: rgba(255, 255, 255, 0.28);
 }
 
-.glango-point-accent.glango-edge-card::before {
+.rimvio-point-accent.rimvio-edge-card::before {
   inset: auto;
   left: 0;
   top: 12px;
@@ -2296,18 +2307,18 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   animation: none;
 }
 
-.glango-point-surface {
+.rimvio-point-surface {
   position: relative;
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.glango-accent-submit-btn {
-  background: var(--glango-surface-raised);
+.rimvio-accent-submit-btn {
+  background: var(--rimvio-surface-raised);
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: inset 3px 0 0 0 rgba(191, 90, 242, 0.82);
 }
 
-.glango-container-card__header,
+.rimvio-container-card__header,
 .container-card__header {
   display: flex;
   align-items: flex-start;
@@ -2315,7 +2326,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   padding-bottom: 8px;
 }
 
-.glango-container-card__icon,
+.rimvio-container-card__icon,
 .container-card__icon {
   display: flex;
   flex-shrink: 0;
@@ -2329,7 +2340,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
 
-.glango-container-card__title,
+.rimvio-container-card__title,
 .container-card__title {
   font-size: 16px;
   font-weight: 700;
@@ -2338,7 +2349,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   color: #ffffff;
 }
 
-.glango-container-card__subtitle,
+.rimvio-container-card__subtitle,
 .container-card__subtitle {
   margin-top: 2px;
   font-size: 12px;
@@ -2346,7 +2357,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   color: rgba(255, 255, 255, 0.55);
 }
 
-.glango-container-card__chips,
+.rimvio-container-card__chips,
 .container-card__chips {
   display: flex;
   flex-wrap: wrap;
@@ -2354,7 +2365,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   margin-top: 8px;
 }
 
-.glango-container-card__chip,
+.rimvio-container-card__chip,
 .container-card__chip {
   display: inline-flex;
   max-width: 100%;
@@ -2370,12 +2381,12 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.glango-container-card__body,
+.rimvio-container-card__body,
 .container-card__body {
   padding-bottom: 12px;
 }
 
-.glango-container-card__body-text,
+.rimvio-container-card__body-text,
 .container-card__body-text {
   font-size: 14px;
   line-height: 1.55;
@@ -2383,12 +2394,12 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   color: rgba(255, 255, 255, 0.72);
 }
 
-.glango-container-card__meta,
+.rimvio-container-card__meta,
 .container-card__meta {
   padding-bottom: 12px;
 }
 
-.glango-container-card__footer,
+.rimvio-container-card__footer,
 .container-card__footer {
   margin-top: 2px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
@@ -2398,7 +2409,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   padding: 8px 16px 12px;
 }
 
-.glango-container-card__action-row,
+.rimvio-container-card__action-row,
 .container-card__action-row {
   display: flex;
   gap: 8px;
@@ -2407,34 +2418,34 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   scrollbar-width: none;
 }
 
-.glango-container-card__action-row::-webkit-scrollbar,
+.rimvio-container-card__action-row::-webkit-scrollbar,
 .container-card__action-row::-webkit-scrollbar {
   display: none;
 }
 
-.glango-container-card__action-row .glango-action-button,
-.container-card__action-row .glango-action-button {
+.rimvio-container-card__action-row .rimvio-action-button,
+.container-card__action-row .rimvio-action-button {
   flex-shrink: 0;
 }
 
-.glango-container-card__action-row .glango-action-button--tile,
-.container-card__action-row .glango-action-button--tile {
+.rimvio-container-card__action-row .rimvio-action-button--tile,
+.container-card__action-row .rimvio-action-button--tile {
   min-width: 132px;
   max-width: 200px;
   padding: 8px 10px;
   font-size: 13px;
 }
 
-.glango-container-card__action-row .glango-action-button--pill,
-.container-card__action-row .glango-action-button--pill {
+.rimvio-container-card__action-row .rimvio-action-button--pill,
+.container-card__action-row .rimvio-action-button--pill {
   padding: 7px 12px;
   font-size: 12px;
 }
 
-.glango-container-card__action-row .glango-action-button,
-.glango-container-card__action-row .glango-action-button--secondary,
-.container-card__action-row .glango-action-button,
-.container-card__action-row .glango-action-button--secondary {
+.rimvio-container-card__action-row .rimvio-action-button,
+.rimvio-container-card__action-row .rimvio-action-button--secondary,
+.container-card__action-row .rimvio-action-button,
+.container-card__action-row .rimvio-action-button--secondary {
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.85);
   color: #ffffff;
@@ -2444,10 +2455,10 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 }
 
 @media (hover: hover) {
-  .glango-container-card__action-row .glango-action-button:not(:disabled):hover,
-  .glango-container-card__action-row .glango-action-button--secondary:not(:disabled):hover,
-  .container-card__action-row .glango-action-button:not(:disabled):hover,
-  .container-card__action-row .glango-action-button--secondary:not(:disabled):hover {
+  .rimvio-container-card__action-row .rimvio-action-button:not(:disabled):hover,
+  .rimvio-container-card__action-row .rimvio-action-button--secondary:not(:disabled):hover,
+  .container-card__action-row .rimvio-action-button:not(:disabled):hover,
+  .container-card__action-row .rimvio-action-button--secondary:not(:disabled):hover {
     background: rgba(255, 255, 255, 0.06);
     color: #ffffff;
     box-shadow: none;
@@ -2455,40 +2466,40 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   }
 }
 
-.glango-container-card__action-row .glango-action-button:not(:disabled):active,
-.glango-container-card__action-row .glango-action-button--secondary:not(:disabled):active,
-.container-card__action-row .glango-action-button:not(:disabled):active,
-.container-card__action-row .glango-action-button--secondary:not(:disabled):active {
+.rimvio-container-card__action-row .rimvio-action-button:not(:disabled):active,
+.rimvio-container-card__action-row .rimvio-action-button--secondary:not(:disabled):active,
+.container-card__action-row .rimvio-action-button:not(:disabled):active,
+.container-card__action-row .rimvio-action-button--secondary:not(:disabled):active {
   background: rgba(255, 255, 255, 0.08);
   box-shadow: none;
   transform: scale(0.99);
 }
 
-.glango-container-card__action-row .glango-action-button__icon:not(.glango-action-button__icon--brand),
-.glango-container-card__action-row .glango-action-button--secondary .glango-action-button__icon:not(.glango-action-button__icon--brand),
-.container-card__action-row .glango-action-button__icon:not(.glango-action-button__icon--brand),
-.container-card__action-row .glango-action-button--secondary .glango-action-button__icon:not(.glango-action-button__icon--brand) {
+.rimvio-container-card__action-row .rimvio-action-button__icon:not(.rimvio-action-button__icon--brand),
+.rimvio-container-card__action-row .rimvio-action-button--secondary .rimvio-action-button__icon:not(.rimvio-action-button__icon--brand),
+.container-card__action-row .rimvio-action-button__icon:not(.rimvio-action-button__icon--brand),
+.container-card__action-row .rimvio-action-button--secondary .rimvio-action-button__icon:not(.rimvio-action-button__icon--brand) {
   background: rgba(255, 255, 255, 0.08);
   color: #ffffff;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
-.glango-container-card__action-row .glango-action-button__icon--brand,
-.container-card__action-row .glango-action-button__icon--brand {
+.rimvio-container-card__action-row .rimvio-action-button__icon--brand,
+.container-card__action-row .rimvio-action-button__icon--brand {
   width: 1.5rem;
   height: 1.5rem;
   border-radius: 999px;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
-.glango-container-card__action-row .glango-action-button__label,
-.container-card__action-row .glango-action-button__label {
+.rimvio-container-card__action-row .rimvio-action-button__label,
+.container-card__action-row .rimvio-action-button__label {
   color: #ffffff;
 }
 
 /* ── iOS-style Action App Icons ── */
 
-.glango-action-app-icon {
+.rimvio-action-app-icon {
   display: flex;
   width: 4.75rem;
   flex-direction: column;
@@ -2503,21 +2514,21 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.glango-action-app-icon:active {
+.rimvio-action-app-icon:active {
   transform: scale(0.92);
 }
 
 @media (hover: hover) {
-  .glango-action-app-icon:hover {
+  .rimvio-action-app-icon:hover {
     transform: scale(1.04);
   }
 
-  .glango-action-app-icon:active {
+  .rimvio-action-app-icon:active {
     transform: scale(0.92);
   }
 }
 
-.glango-action-app-icon__squircle {
+.rimvio-action-app-icon__squircle {
   border-radius: 22.37%;
   box-shadow:
     0 1px 2px rgba(0, 0, 0, 0.08),
@@ -2527,20 +2538,20 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
     transform 0.18s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.glango-action-app-icon__squircle--emphasis {
+.rimvio-action-app-icon__squircle--emphasis {
   box-shadow:
     0 0 0 2px rgba(255, 255, 255, 0.75),
     0 2px 4px rgba(0, 0, 0, 0.1),
     0 10px 24px rgba(74, 144, 226, 0.28);
 }
 
-.glango-action-app-icon:active .glango-action-app-icon__squircle {
+.rimvio-action-app-icon:active .rimvio-action-app-icon__squircle {
   box-shadow:
     0 1px 2px rgba(0, 0, 0, 0.06),
     0 3px 8px rgba(0, 0, 0, 0.08);
 }
 
-.glango-action-app-icon__label {
+.rimvio-action-app-icon__label {
   display: -webkit-box;
   max-width: 100%;
   overflow: hidden;
@@ -2560,7 +2571,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   color: #374151;
 }
 
-.glango-action-app-icon__badge {
+.rimvio-action-app-icon__badge {
   position: absolute;
   top: -4px;
   right: -4px;
@@ -2579,7 +2590,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   box-shadow: 0 1px 4px rgba(255, 59, 48, 0.45);
 }
 
-.glango-action-app-icon-grid {
+.rimvio-action-app-icon-grid {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-start;
@@ -2587,18 +2598,18 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   padding: 2px 0;
 }
 
-.glango-action-app-icon-grid--scroll {
+.rimvio-action-app-icon-grid--scroll {
   flex-wrap: nowrap;
   overflow-x: auto;
   scrollbar-width: none;
   padding-bottom: 4px;
 }
 
-.glango-action-app-icon-grid--scroll::-webkit-scrollbar {
+.rimvio-action-app-icon-grid--scroll::-webkit-scrollbar {
   display: none;
 }
 
-.glango-action-app-icon--lg {
+.rimvio-action-app-icon--lg {
   width: 5.5rem;
 }
 

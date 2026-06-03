@@ -6,7 +6,7 @@ function entry(tier: CommitSpeechTier, phrase: string): CommitPhraseEntry {
 }
 
 /**
- * Canonical Glango approval phrase bank — 7 tiers.
+ * Canonical Rimvio approval phrase bank — 7 tiers.
  * Drop-in for OCR review, confirm cards, schedule register, action reveal.
  */
 export const COMMIT_PHRASE_BANK: readonly CommitPhraseEntry[] = [

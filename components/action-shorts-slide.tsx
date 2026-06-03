@@ -121,7 +121,7 @@ function FeedSlideMeta({
 }) {
   const pill = overlay
     ? "bg-black/35 text-white ring-1 ring-white/20 backdrop-blur-md"
-    : "bg-glango-surface-muted text-muted-foreground";
+    : "bg-rimvio-surface-muted text-muted-foreground";
 
   return (
     <div className="flex items-center justify-between gap-2">
@@ -138,14 +138,14 @@ function FeedSlideMeta({
           <span
             className={cn(
               "rounded-full px-2.5 py-0.5 text-[10px] font-semibold",
-              overlay ? "bg-glango-surface/20 text-white/90" : "bg-[#eef0f4] text-muted-foreground"
+              overlay ? "bg-rimvio-surface/20 text-white/90" : "bg-[#eef0f4] text-muted-foreground"
             )}
           >
             ?�시
           </span>
         ) : null}
         {isPinned ? (
-          <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-semibold", pill, !overlay && "bg-glango-neon-purple/10 text-glango-neon-cyan")}>
+          <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-semibold", pill, !overlay && "bg-rimvio-neon-purple/10 text-rimvio-neon-cyan")}>
             방금 공유
           </span>
         ) : null}

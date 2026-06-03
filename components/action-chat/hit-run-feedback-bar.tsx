@@ -34,7 +34,7 @@ export function HitRunFeedbackBar({
         className={cn(
           "inline-flex size-7 items-center justify-center rounded-lg transition-colors",
           value === "up"
-            ? "bg-glango-neon-green/15 text-glango-neon-green"
+            ? "bg-rimvio-neon-green/15 text-rimvio-neon-green"
             : "text-white/45 hover:bg-white/[0.04] hover:text-white/72",
         )}
       >
@@ -49,7 +49,7 @@ export function HitRunFeedbackBar({
         className={cn(
           "inline-flex size-7 items-center justify-center rounded-lg transition-colors",
           value === "down"
-            ? "bg-glango-neon-magenta/15 text-glango-neon-magenta"
+            ? "bg-rimvio-neon-magenta/15 text-rimvio-neon-magenta"
             : "text-white/45 hover:bg-white/[0.04] hover:text-white/72",
         )}
       >

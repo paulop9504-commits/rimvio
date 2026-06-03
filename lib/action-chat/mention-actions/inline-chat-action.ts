@@ -32,12 +32,15 @@ export type InlineChatActionWire = {
   mainActionKind?: "deeplink" | "clipboard" | "capture" | "internal";
   auxActions: InlineChatActionAuxWire[];
   manualCatalog?: InlineChatManualCatalogGroup[];
+  /** Show URL field + keyboard-friendly prompt (linksheet). */
+  linksheetUrlPrompt?: boolean;
 };
 
 export function buildInlineChatActionWire(
   input: Omit<InlineChatActionWire, "auxActions"> & {
     auxActions?: InlineChatActionAuxWire[];
     manualCatalog?: InlineChatManualCatalogGroup[];
+    linksheetUrlPrompt?: boolean;
   },
 ): InlineChatActionWire {
   return {
@@ -51,5 +54,6 @@ export function buildInlineChatActionWire(
     mainActionKind: input.mainActionKind ?? "deeplink",
     auxActions: input.auxActions ?? [],
     manualCatalog: input.manualCatalog,
+    linksheetUrlPrompt: input.linksheetUrlPrompt,
   };
 }

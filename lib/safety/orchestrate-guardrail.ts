@@ -99,7 +99,7 @@ async function callGuardrailLlm(
 }
 
 /**
- * Glango Guardrail Pipeline — rule-based risk scoring before LLM/action execution.
+ * Rimvio Guardrail Pipeline — rule-based risk scoring before LLM/action execution.
  * Returns NEGOTIATE_WITH_EMPATHY result when score >= 80; otherwise null (pass-through).
  */
 export async function orchestrateGuardrail(input: {

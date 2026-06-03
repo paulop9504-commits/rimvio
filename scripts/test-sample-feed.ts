@@ -39,7 +39,7 @@ assert.equal(uniqueIds.size, links.length, "sample ids must be unique");
 
 for (const link of links) {
   assert.equal(isSampleFeedLink(link), true);
-  assert.equal(link.actions[0]?.payload?.glangoSample, true);
+  assert.equal(link.actions[0]?.payload?.rimvioSample, true);
 }
 
 const commerce = links.find((l) => l.id === "sample-commerce-iphone")!;

@@ -29,7 +29,7 @@ const samples: Array<{ label: string; text: string; kind: string }> = [
   },
   {
     label: "business card",
-    text: "홍길동 Team Lead\n010-1234-5678\nhong@company.co.kr\n(주)글랑고",
+    text: "홍길동 Team Lead\n010-1234-5678\nhong@company.co.kr\n(주)림비오",
     kind: "business_card",
   },
   {
@@ -104,10 +104,10 @@ const burstRemote = resolveContextRemote({
   link: {
     id: "x",
     user_id: null,
-    original_url: "https://glango.app/capture/x",
+    original_url: "https://rimvio.app/capture/x",
     title: "연속 촬영",
     thumbnail_url: null,
-    domain: "glango.app",
+    domain: "rimvio.app",
     category: "shopping",
     actions: [],
     visual_mode: "thumb",

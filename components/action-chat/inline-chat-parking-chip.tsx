@@ -8,12 +8,12 @@ import {
   UNIFIED_ACTION_HOVER_BG,
 } from "@/lib/brand/action-brand-style";
 import {
-  glangoInlineChipBodyClass,
-  glangoInlineChipClass,
-  glangoInlineChipHeaderClass,
-  glangoInlineChipMetaClass,
-  glangoInlineChipTitleClass,
-} from "@/lib/brand/glango-neon-theme";
+  rimvioInlineChipBodyClass,
+  rimvioInlineChipClass,
+  rimvioInlineChipHeaderClass,
+  rimvioInlineChipMetaClass,
+  rimvioInlineChipTitleClass,
+} from "@/lib/brand/rimvio-neon-theme";
 import type { InlineChatParkingWire } from "@/lib/action-chat/mention-parking/inline-chat-parking";
 import { cn } from "@/lib/utils";
 
@@ -32,20 +32,20 @@ export function InlineChatParkingChip({
 
   return (
     <div
-      className={cn(glangoInlineChipClass("sm"), className)}
+      className={cn(rimvioInlineChipClass("sm"), className)}
       aria-label="주차"
     >
-      <div className={glangoInlineChipHeaderClass}>
-        <MapPin className="size-4 shrink-0 text-glango-neon-cyan" aria-hidden />
-        <span className={glangoInlineChipTitleClass}>주차</span>
-        <span className={glangoInlineChipMetaClass}>{parking.retentionLabel}</span>
+      <div className={rimvioInlineChipHeaderClass}>
+        <MapPin className="size-4 shrink-0 text-rimvio-neon-cyan" aria-hidden />
+        <span className={rimvioInlineChipTitleClass}>주차</span>
+        <span className={rimvioInlineChipMetaClass}>{parking.retentionLabel}</span>
       </div>
 
-      <div className={cn(glangoInlineChipBodyClass, "space-y-2")}>
-        <p className="glango-inline-chip__lead">{parking.summaryLine}</p>
+      <div className={cn(rimvioInlineChipBodyClass, "space-y-2")}>
+        <p className="rimvio-inline-chip__lead">{parking.summaryLine}</p>
 
         {parking.location ? (
-          <p className="glango-inline-chip__panel">{parking.location}</p>
+          <p className="rimvio-inline-chip__panel">{parking.location}</p>
         ) : null}
 
         {parking.photoPreviewUrl ? (
@@ -61,7 +61,7 @@ export function InlineChatParkingChip({
           <MainActionButton
             label="사진"
             brand={{
-              textColor: "var(--glango-neon-cyan)",
+              textColor: "var(--rimvio-neon-cyan)",
               borderColor: UNIFIED_ACTION_BORDER,
               fillColor: UNIFIED_ACTION_FILL,
               hoverBg: UNIFIED_ACTION_HOVER_BG,
@@ -71,7 +71,7 @@ export function InlineChatParkingChip({
             onClick={onOpenCapture}
           />
         ) : (
-          <p className="glango-inline-chip__text-muted">
+          <p className="rimvio-inline-chip__text-muted">
             중요 정보는 30일간 저장됩니다.
           </p>
         )}

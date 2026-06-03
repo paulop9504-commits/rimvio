@@ -15,7 +15,7 @@ export function buildContainerSystemPromptBlock(input: {
 }
 
 const CONTAINER_ISOLATION_BASE = `# [CONCEPT: CONTAINER]
-- '컨테이너'는 글랑고(Glango)의 유일한 메모리 및 행동 실행 단위입니다.
+- '컨테이너'는 림비오(Rimvio)의 유일한 메모리 및 행동 실행 단위입니다.
 - **Isolation Principle**: activeChains에 없는 외부 문맥을 컨테이너 내부로 가져오지 마십시오.
 - **Memory Scope**: activeChains에 포함된 container_id 관련 데이터만 조회(Retrieve)하십시오.`;
 

@@ -1,5 +1,5 @@
 /**
- * Glango Context Resolver — 3-layer separation
+ * Rimvio Context Resolver — 3-layer separation
  *
  * Layer 1: PersistentEvent (Container) — static what/when/where
  * Layer 2: resolveDynamicContext() — JIT weather/traffic/location/calendar

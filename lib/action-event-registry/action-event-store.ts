@@ -17,7 +17,7 @@ import {
   upsertEventCandidate,
 } from "@/lib/events/event-store";
 
-const LEGACY_STORAGE_KEY = "glango-action-events.v1";
+const LEGACY_STORAGE_KEY = "rimvio-action-events.v1";
 
 function migrateLegacyStoreOnce() {
   if (typeof window === "undefined") {

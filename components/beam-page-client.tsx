@@ -13,7 +13,7 @@ import {
   saveBeamToPocket,
 } from "@/lib/beam/save-beam-to-pocket";
 import { copy } from "@/lib/copy/human-ko";
-import { GLANGO } from "@/lib/brand/glango";
+import { RIMVIO } from "@/lib/brand/rimvio";
 import { cn } from "@/lib/utils";
 
 export function BeamPageClient({ slug }: { slug: string }) {
@@ -100,7 +100,7 @@ export function BeamPageClient({ slug }: { slug: string }) {
           시간이 지났거나, 아직 저장이 안 됐을 수도 있어요.
         </p>
         <Button asChild variant="outline" className="rounded-full">
-          <Link href="/">{GLANGO.homeLabel}</Link>
+          <Link href="/">{RIMVIO.homeLabel}</Link>
         </Button>
       </div>
     );
@@ -165,7 +165,7 @@ export function BeamPageClient({ slug }: { slug: string }) {
         </div>
 
         <Button asChild variant="ghost" className="rounded-full text-muted-foreground">
-          <Link href="/welcome">{GLANGO.name} 설치하기</Link>
+          <Link href="/welcome">{RIMVIO.name} 설치하기</Link>
         </Button>
       </div>
     </div>

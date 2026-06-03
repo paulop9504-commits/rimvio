@@ -6,10 +6,10 @@
 
 import assert from "node:assert/strict";
 import {
-  GLANGO_AVATAR_VARIANTS,
+  RIMVIO_AVATAR_VARIANTS,
   listAvatarOddsDisplay,
-  rollGlangoAvatarVariant,
-} from "../lib/brand/glango-avatar-colors";
+  rollRimvioAvatarVariant,
+} from "../lib/brand/rimvio-avatar-colors";
 import {
   buildDrawnGuestRecord,
   buildPendingGuestRecord,
@@ -38,20 +38,20 @@ const cases: Case[] = [
   {
     name: "roll boundaries: red at 0%",
     fn: () => {
-      assert.equal(rollGlangoAvatarVariant(0), "red");
-      assert.equal(rollGlangoAvatarVariant(0.349), "red");
+      assert.equal(rollRimvioAvatarVariant(0), "red");
+      assert.equal(rollRimvioAvatarVariant(0.349), "red");
     },
   },
   {
     name: "roll boundaries: orange at 35%",
     fn: () => {
-      assert.equal(rollGlangoAvatarVariant(0.35), "orange");
+      assert.equal(rollRimvioAvatarVariant(0.35), "orange");
     },
   },
   {
     name: "roll boundaries: purple at 99%+",
     fn: () => {
-      assert.equal(rollGlangoAvatarVariant(0.999), "purple");
+      assert.equal(rollRimvioAvatarVariant(0.999), "purple");
     },
   },
   {
@@ -67,7 +67,7 @@ const cases: Case[] = [
       );
       assert.equal(guest.avatarDrawn, true);
       assert.equal(guest.avatarVariant, "blue");
-      assert.equal(guest.color, GLANGO_AVATAR_VARIANTS.blue.accent);
+      assert.equal(guest.color, RIMVIO_AVATAR_VARIANTS.blue.accent);
     },
   },
   {
@@ -110,7 +110,7 @@ const cases: Case[] = [
         avatarVariant: "green",
       });
       assert.equal(guest.avatarDrawn, true);
-      assert.equal(guest.color, GLANGO_AVATAR_VARIANTS.green.accent);
+      assert.equal(guest.color, RIMVIO_AVATAR_VARIANTS.green.accent);
     },
   },
 ];

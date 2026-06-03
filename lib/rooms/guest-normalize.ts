@@ -1,16 +1,16 @@
 /** Pure guest normalization — testable without localStorage. */
 import {
   getAvatarAccent,
-  isGlangoAvatarVariant,
-  type GlangoAvatarVariantId,
-} from "@/lib/brand/glango-avatar-colors";
+  isRimvioAvatarVariant,
+  type RimvioAvatarVariantId,
+} from "@/lib/brand/rimvio-avatar-colors";
 
 export const PENDING_AVATAR_ACCENT = "#A1A1AA";
 
 export type RoomGuestRecord = {
   id: string;
   label: string;
-  avatarVariant: GlangoAvatarVariantId | null;
+  avatarVariant: RimvioAvatarVariantId | null;
   avatarDrawn: boolean;
   color: string;
 };
@@ -27,7 +27,7 @@ export type LegacyRoomGuestRecord = {
 export function buildDrawnGuestRecord(input: {
   id: string;
   label: string;
-  avatarVariant: GlangoAvatarVariantId;
+  avatarVariant: RimvioAvatarVariantId;
 }): RoomGuestRecord {
   return {
     id: input.id,
@@ -51,18 +51,26 @@ export function buildPendingGuestRecord(input: {
   };
 }
 
+function migrateGuestLabel(label: string): string {
+  const trimmed = label.trim();
+  if (/글랑고|Glango/i.test(trimmed)) {
+    return trimmed.replace(/글랑고/g, "림비오").replace(/Glango/gi, "Rimvio");
+  }
+  return trimmed;
+}
+
 export function normalizeGuestRecord(
   raw: LegacyRoomGuestRecord,
   fallback: RoomGuestRecord
 ): RoomGuestRecord {
   const id = raw.id?.trim() || fallback.id;
-  const label = raw.label?.trim() || fallback.label;
+  const label = migrateGuestLabel(raw.label?.trim() || fallback.label);
 
   if (raw.avatarDrawn === false) {
     return buildPendingGuestRecord({ id, label });
   }
 
-  if (raw.avatarVariant && isGlangoAvatarVariant(raw.avatarVariant)) {
+  if (raw.avatarVariant && isRimvioAvatarVariant(raw.avatarVariant)) {
     return buildDrawnGuestRecord({
       id,
       label,

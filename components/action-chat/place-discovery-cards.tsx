@@ -225,8 +225,8 @@ function PlaceFoodPhotoEvidence({
                     className={cn(
                       "rounded-full transition-all",
                       i === index
-                        ? "size-2 bg-glango-surface shadow-sm"
-                        : "size-1.5 bg-glango-surface/45"
+                        ? "size-2 bg-rimvio-surface shadow-sm"
+                        : "size-1.5 bg-rimvio-surface/45"
                     )}
                   />
                 </button>

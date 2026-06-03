@@ -19,8 +19,8 @@ import {
 import { buildActiveChainsWireFromKeys } from "@/lib/containers/context-generator";
 import type { ContextContainer } from "@/lib/containers/context-containers";
 
-export const ACTIVE_CHAIN_KEY = "glango.container-chain.v1";
-export const ACTIVE_CHAIN_UPDATED = "glango-active-chains-updated";
+export const ACTIVE_CHAIN_KEY = "rimvio.container-chain.v1";
+export const ACTIVE_CHAIN_UPDATED = "rimvio-active-chains-updated";
 
 export type ActiveContainerChain = {
   containerIds: string[];

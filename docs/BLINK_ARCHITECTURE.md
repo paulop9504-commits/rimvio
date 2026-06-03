@@ -1,3 +1,3 @@
 # Blink 문서 (구버전)
 
-> **Glango으로 이전됨** → [GLANGO_ARCHITECTURE.md](./GLANGO_ARCHITECTURE.md)
+> **Rimvio으로 이전됨** → [RIMVIO_ARCHITECTURE.md](./RIMVIO_ARCHITECTURE.md)

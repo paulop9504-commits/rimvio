@@ -3,7 +3,7 @@ import type { EventKernelMemoryState } from "@/lib/event-kernel/memory/types";
 import { emptyKernelMemoryState } from "@/lib/event-kernel/memory/types";
 import type { EventKernelState } from "@/lib/event-kernel/types";
 
-const STORAGE_KEY = "glango-kernel-memory.v1";
+const STORAGE_KEY = "rimvio-kernel-memory.v1";
 const DEFAULT_SCOPE = "default";
 
 let memoryByScope = new Map<string, EventKernelMemoryState>();

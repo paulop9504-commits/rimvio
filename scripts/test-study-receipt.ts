@@ -64,10 +64,10 @@ assert.match(decodeURIComponent(prompt), /\? 출제 각:/);
 const link = {
   id: "study-1",
   user_id: null,
-  original_url: "https://glango.app/capture/study-1",
+  original_url: "https://rimvio.app/capture/study-1",
   title: "Physics of the Soul",
   thumbnail_url: "https://example.com/book.jpg",
-  domain: "glango.app",
+  domain: "rimvio.app",
   category: "research",
   actions: [
     {

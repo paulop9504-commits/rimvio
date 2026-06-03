@@ -40,7 +40,7 @@ export function EntityQuickPickStrip({
               type="button"
               onClick={() => onSelectOption(option.prompt)}
               className={cn(
-                "rounded-full border border-[#E3D9CC] bg-glango-surface px-4 py-2.5",
+                "rounded-full border border-[#E3D9CC] bg-rimvio-surface px-4 py-2.5",
                 "text-[14px] font-semibold text-[#44403C]",
                 "transition active:scale-[0.98] hover:border-[#E85D04]/50 hover:bg-[#FFF4ED] hover:text-[#1C1917]"
               )}

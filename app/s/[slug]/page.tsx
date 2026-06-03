@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { BeamPageClient } from "@/components/beam-page-client";
 import { resolveBeamSnapshot } from "@/lib/beam/resolve-beam";
-import { GLANGO } from "@/lib/brand/glango";
+import { RIMVIO } from "@/lib/brand/rimvio";
 
 type BeamPageProps = {
   params: Promise<{ slug: string }>;
@@ -13,14 +13,14 @@ export async function generateMetadata({ params }: BeamPageProps): Promise<Metad
 
   if (!snapshot) {
     return {
-      title: `링크를 찾을 수 없어요 · ${GLANGO.name}`,
+      title: `링크를 찾을 수 없어요 · ${RIMVIO.name}`,
     };
   }
 
-  const title = snapshot.title?.trim() || GLANGO.name;
+  const title = snapshot.title?.trim() || RIMVIO.name;
   const description =
     snapshot.primary_action_label?.trim() ||
-    `${GLANGO.name}에서 바로 실행할 수 있는 링크`;
+    `${RIMVIO.name}에서 바로 실행할 수 있는 링크`;
 
   return {
     title,
@@ -29,7 +29,7 @@ export async function generateMetadata({ params }: BeamPageProps): Promise<Metad
       title,
       description,
       type: "website",
-      siteName: GLANGO.name,
+      siteName: RIMVIO.name,
       ...(snapshot.thumbnail_url
         ? { images: [{ url: snapshot.thumbnail_url, alt: title }] }
         : {}),

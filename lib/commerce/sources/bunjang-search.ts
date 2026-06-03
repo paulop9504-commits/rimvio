@@ -73,7 +73,7 @@ export async function fetchBunjangListings(
       headers: {
         Accept: "application/json",
         "User-Agent":
-          "Mozilla/5.0 (compatible; Glango/1.0; +https://glango.app)",
+          "Mozilla/5.0 (compatible; Rimvio/1.0; +https://rimvio.app)",
       },
       cache: "no-store",
       signal: AbortSignal.timeout(8_000),

@@ -45,7 +45,7 @@ export function InboxCoachingStrip({ links }: InboxCoachingStripProps) {
   }
 
   return (
-    <div className="rounded-2xl bg-glango-surface-muted/80 px-4 py-3 ring-1 ring-glango-neon-purple/12">
+    <div className="rounded-2xl bg-rimvio-surface-muted/80 px-4 py-3 ring-1 ring-rimvio-neon-purple/12">
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-medium text-foreground">
           {copy.inbox.openLinksCount(openCount)}
@@ -69,7 +69,7 @@ export function InboxCoachingStrip({ links }: InboxCoachingStripProps) {
               key={burner}
               className={cn(
                 "h-full min-w-[4px] transition-all",
-                burner === "work" && "bg-glango-neon-purple",
+                burner === "work" && "bg-rimvio-neon-purple",
                 burner === "health" && "bg-[#34C759]",
                 burner === "friends" && "bg-[#FF9500]",
                 burner === "growth" && "bg-[#AF52DE]"

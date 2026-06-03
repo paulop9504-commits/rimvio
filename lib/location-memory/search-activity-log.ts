@@ -1,13 +1,13 @@
 import { extractRegionLabel } from "@/lib/location-memory/extract-region-label";
 import type { SearchActivityEntry, SearchActivityKind } from "@/lib/location-memory/types";
 
-const DB_NAME = "glango-location-memory";
+const DB_NAME = "rimvio-location-memory";
 const DB_VERSION = 1;
 const STORE = "search_activity";
 
 let memoryStore: SearchActivityEntry[] = [];
 
-export const SEARCH_ACTIVITY_UPDATED = "glango-search-activity-updated";
+export const SEARCH_ACTIVITY_UPDATED = "rimvio-search-activity-updated";
 
 function emitUpdated() {
   if (typeof window !== "undefined") {

@@ -44,10 +44,10 @@ export function HomeCountryPicker({
             onClick={() => onChange(option.code)}
             className={cn(
               "rounded-2xl px-3 py-3 text-left transition-colors",
-              "ring-1 ring-glango-neon-purple/15",
+              "ring-1 ring-rimvio-neon-purple/15",
               selected
-                ? "bg-glango-neon-purple text-white ring-[#007AFF]"
-                : "bg-glango-surface active:bg-glango-surface-muted",
+                ? "bg-rimvio-neon-purple text-white ring-[#007AFF]"
+                : "bg-rimvio-surface active:bg-rimvio-surface-muted",
               compact ? "py-2.5" : "py-3"
             )}
           >
@@ -55,7 +55,7 @@ export function HomeCountryPicker({
               {option.labelKo}
             </span>
             {isSuggested ? (
-              <span className="mt-1 block text-[10px] font-medium text-glango-neon-cyan">
+              <span className="mt-1 block text-[10px] font-medium text-rimvio-neon-cyan">
                 추천
               </span>
             ) : selected ? (

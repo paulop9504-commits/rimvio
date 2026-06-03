@@ -42,7 +42,7 @@ export function PeerThreadRoomClient({ peerThreadId }: PeerThreadRoomClientProps
         <p className="text-sm text-muted-foreground">
           이 친구는 목록에 없어요. ROOM 허브에서 친구를 추가해 주세요
         </p>
-        <Link href="/peers" className="text-sm font-semibold text-glango-neon-cyan">
+        <Link href="/peers" className="text-sm font-semibold text-rimvio-neon-cyan">
           ROOM 으로
         </Link>
       </div>
@@ -56,10 +56,10 @@ export function PeerThreadRoomClient({ peerThreadId }: PeerThreadRoomClientProps
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex items-center gap-2 border-b border-border bg-glango-surface/95 px-3 py-2">
+      <div className="flex items-center gap-2 border-b border-border bg-rimvio-surface/95 px-3 py-2">
         <Link
           href="/peers"
-          className="flex size-9 items-center justify-center rounded-full active:bg-glango-surface-muted"
+          className="flex size-9 items-center justify-center rounded-full active:bg-rimvio-surface-muted"
           aria-label="ROOM 으로"
         >
           <ChevronLeft className="size-5" aria-hidden />
@@ -84,7 +84,7 @@ export function PeerThreadRoomClient({ peerThreadId }: PeerThreadRoomClientProps
       ) : null}
 
       {unpinnedContact ? (
-        <p className="bg-glango-surface-muted px-3 py-2 text-[11px] text-muted-foreground">
+        <p className="bg-rimvio-surface-muted px-3 py-2 text-[11px] text-muted-foreground">
           AI @import·렌즈는 AI 허브(5명)에 꽂인 친구만 가능해요
         </p>
       ) : null}

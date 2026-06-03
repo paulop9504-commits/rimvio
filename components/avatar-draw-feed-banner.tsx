@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { GlangoAvatarMark } from "@/lib/brand/glango-smiley-mark";
+import { RimvioAvatarMark } from "@/lib/brand/rimvio-smiley-mark";
 import { useCopy } from "@/hooks/use-copy";
 import { useRoomGuest } from "@/hooks/use-room-guest";
 import {
@@ -31,8 +31,8 @@ export function AvatarDrawFeedBanner({ className }: { className?: string }) {
         className
       )}
     >
-      <div className="flex items-center gap-3 rounded-2xl bg-glango-surface/95 p-3 shadow-lg ring-1 ring-glango-neon-purple/15 backdrop-blur-md">
-        <GlangoAvatarMark pixels={40} crisp className="shrink-0 opacity-80" />
+      <div className="flex items-center gap-3 rounded-2xl bg-rimvio-surface/95 p-3 shadow-lg ring-1 ring-rimvio-neon-purple/15 backdrop-blur-md">
+        <RimvioAvatarMark pixels={40} crisp className="shrink-0 opacity-80" />
         <div className="min-w-0 flex-1">
           <p className="text-xs font-semibold">{copy.settings.drawFeedBannerTitle}</p>
           <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
@@ -41,7 +41,7 @@ export function AvatarDrawFeedBanner({ className }: { className?: string }) {
         </div>
         <Link
           href="/welcome?draw=1"
-          className="shrink-0 rounded-full bg-glango-neon-purple px-3 py-2 text-[11px] font-bold text-white"
+          className="shrink-0 rounded-full bg-rimvio-neon-purple px-3 py-2 text-[11px] font-bold text-white"
         >
           {copy.settings.drawFeedBannerCta}
         </Link>

@@ -3,9 +3,9 @@ import {
   type CountryCode,
 } from "@/lib/links/spark-locale";
 
-const STORAGE_KEY = "glango.home-country.v1";
+const STORAGE_KEY = "rimvio.home-country.v1";
 
-export const HOME_COUNTRY_UPDATED = "glango-home-country-updated";
+export const HOME_COUNTRY_UPDATED = "rimvio-home-country-updated";
 
 const BROWSER_LOCALE_MAP: Array<{ prefix: string; code: CountryCode }> = [
   { prefix: "ko", code: "KR" },

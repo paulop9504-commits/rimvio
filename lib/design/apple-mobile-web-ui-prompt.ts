@@ -46,11 +46,11 @@ export const APPLE_MOBILE_WEB_UI_FIXED = {
   defaultReferences: ["image_0.png", "image_1.png", "image_2.png", "image_3.png", "image_4.png"],
 } as const;
 
-export const GLANGO_MOBILE_WEB_UI_FIXED = {
+export const RIMVIO_MOBILE_WEB_UI_FIXED = {
   ...APPLE_MOBILE_WEB_UI_FIXED,
   defaultHeaderTagline:
-    "Glango 경험. 링크 한 번으로 일상이 바로 실행되는 순간을 만나보세요.",
-  defaultUrlBar: "glango.app",
+    "Rimvio 경험. 링크 한 번으로 일상이 바로 실행되는 순간을 만나보세요.",
+  defaultUrlBar: "rimvio.app",
 } as const;
 
 const GRAPHIC_HINTS: Record<Exclude<AppleMobileWebCardGraphic, "custom">, string> = {
@@ -77,10 +77,10 @@ function gradientClause(word: string | undefined): string {
  */
 export function buildAppleMobileWebCardPrompt(
   input: AppleMobileWebCardInput,
-  options?: { brand?: "apple" | "glango" }
+  options?: { brand?: "apple" | "rimvio" }
 ): string {
   const brand = options?.brand ?? "apple";
-  const fixed = brand === "glango" ? GLANGO_MOBILE_WEB_UI_FIXED : APPLE_MOBILE_WEB_UI_FIXED;
+  const fixed = brand === "rimvio" ? RIMVIO_MOBILE_WEB_UI_FIXED : APPLE_MOBILE_WEB_UI_FIXED;
   const urlBar = input.urlBar ?? fixed.defaultUrlBar;
   const header = input.headerTagline ?? fixed.defaultHeaderTagline;
   const graphicKind = input.graphicKind ?? "custom";
@@ -143,7 +143,7 @@ export const APPLE_MOBILE_WEB_CARD_PRESETS = {
       "AirPods with spatial audio waves and floating musical notes around a relaxed listener.",
     graphicKind: "lifestyle_use" as const,
   },
-  glangoAction: {
+  rimvioAction: {
     category: "실행",
     title: "링크가 행동이 됩니다.",
     titleGradientWord: "행동",
@@ -185,21 +185,21 @@ export function buildFoodPhotoCardUiPrompt(input: FoodPhotoCardUiInput): string 
       : "대표 메뉴를 크게, 부가 정보는 작게.");
 
   return [
-    "Mobile app UI card (Glango place discovery), NOT a browser screenshot.",
+    "Mobile app UI card (Rimvio place discovery), NOT a browser screenshot.",
     "White rounded card (~24px radius) on #F5F5F7 background, generous padding.",
     `Top: grey category "${category}".`,
     `Bold Korean title "${title}".`,
     `Fine grey body: "${body}".`,
     `Hero: square or 4:3 food photo inset inside the card with rounded corners — premium menu photography, object-cover crop.`,
     "Optional: soft pagination dots below photo if multiple images.",
-    "No iOS status bar, no apple.com nav, no stock avatar — keep Glango minimal.",
+    "No iOS status bar, no apple.com nav, no stock avatar — keep Rimvio minimal.",
     "Typography: SF/Apple SD Gothic Neo style, #1D1D1F title, #6B7280 secondary.",
   ].join(" ");
 }
 
 export function buildPresetAppleMobileWebPrompt(
   preset: keyof typeof APPLE_MOBILE_WEB_CARD_PRESETS,
-  options?: { brand?: "apple" | "glango" }
+  options?: { brand?: "apple" | "rimvio" }
 ): string {
   return buildAppleMobileWebCardPrompt(APPLE_MOBILE_WEB_CARD_PRESETS[preset], options);
 }

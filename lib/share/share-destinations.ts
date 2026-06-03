@@ -5,7 +5,7 @@ import {
 } from "@/lib/categories/types";
 import type { CategoryWeights } from "@/lib/enrichers/types";
 import type { LinkRow } from "@/types/database";
-import { glangoBeamUrl } from "@/lib/brand/glango";
+import { rimvioBeamUrl } from "@/lib/brand/rimvio";
 import { buildBeamShareText } from "@/lib/share/beam-share-text";
 
 export type ShareDestinationId =
@@ -213,7 +213,7 @@ export const SHARE_DESTINATIONS: ShareDestinationDef[] = [
       );
       const url = encodeURIComponent(
         link.share_slug
-          ? glangoBeamUrl(link.share_slug)
+          ? rimvioBeamUrl(link.share_slug)
           : link.original_url
       );
       return {

@@ -88,10 +88,10 @@ function ItemRow({
           type="button"
           aria-label={item.starred ? "즐겨찾기 해제" : "즐겨찾기"}
           onClick={() => onToggleStar(item.id, !item.starred)}
-          className="mt-0.5 shrink-0 text-white/35 transition hover:text-glango-neon-amber"
+          className="mt-0.5 shrink-0 text-white/35 transition hover:text-rimvio-neon-amber"
         >
           <Star
-            className={cn("size-4", item.starred && "fill-glango-neon-amber text-glango-neon-amber")}
+            className={cn("size-4", item.starred && "fill-rimvio-neon-amber text-rimvio-neon-amber")}
           />
         </button>
         <button
@@ -255,7 +255,7 @@ export function ResourcePoolSheet({
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `glango-resource-pool-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.download = `rimvio-resource-pool-${new Date().toISOString().slice(0, 10)}.json`;
     anchor.click();
     URL.revokeObjectURL(url);
     toast("백업 파일을 내려받았어요");
@@ -464,7 +464,7 @@ export function ResourcePoolSheet({
                       <button
                         type="button"
                         onClick={handleAddItem}
-                        className="rounded-lg bg-glango-neon-green px-3 py-1.5 text-[11px] font-semibold text-black"
+                        className="rounded-lg bg-rimvio-neon-green px-3 py-1.5 text-[11px] font-semibold text-black"
                       >
                         저장
                       </button>

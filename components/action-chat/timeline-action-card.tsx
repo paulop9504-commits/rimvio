@@ -48,7 +48,7 @@ export function TimelineActionCard({
           className="absolute -left-[17px] top-6 size-3 rounded-full border-2 border-white bg-[#4A90E2] shadow-sm"
         />
 
-        <div className="rounded-2xl border border-border bg-glango-surface p-4 shadow-[0_2px_12px_-6px_rgba(0,0,0,0.08)]">
+        <div className="rounded-2xl border border-border bg-rimvio-surface p-4 shadow-[0_2px_12px_-6px_rgba(0,0,0,0.08)]">
           <div className="mb-2 flex items-start justify-between gap-2">
             <h3 className="text-[15px] font-bold leading-snug text-foreground">
               {presentation.title}

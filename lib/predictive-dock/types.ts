@@ -38,7 +38,7 @@ export type PredictiveDockAction = {
   strategyApplied?: import("@/lib/action-registry/types").ActionStrategyTier;
   contextKey?: string;
   tripAction?: "packing" | "flight" | "taxi";
-  /** Glango Action Opportunity lifecycle — scored after raw dock projection. */
+  /** Rimvio Action Opportunity lifecycle — scored after raw dock projection. */
   opportunityState?: ActionOpportunityState;
   /** Intent domain this opportunity belongs to — drives Rule 1 relevance. */
   intentDomain?: ConversationIntentDomain;

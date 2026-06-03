@@ -1,5 +1,5 @@
-const AVATAR_ONBOARDING_KEY = "glango.avatar-onboarding.v1";
-const DRAW_REDIRECT_SESSION_KEY = "glango.draw-redirected";
+const AVATAR_ONBOARDING_KEY = "rimvio.avatar-onboarding.v1";
+const DRAW_REDIRECT_SESSION_KEY = "rimvio.draw-redirected";
 
 export type AvatarOnboardingState = {
   /** User finished the one-time color draw. */

@@ -1,7 +1,7 @@
 "use client";
 
 import { Calendar, MapPin, RefreshCw } from "lucide-react";
-import { GlangoActionButton } from "@/components/ui/glango-action-button";
+import { RimvioActionButton } from "@/components/ui/rimvio-action-button";
 import { cn } from "@/lib/utils";
 import type { LinkActionItem } from "@/types/database";
 import type { TransportLiveCard } from "@/lib/transport/transport-live-types";
@@ -52,11 +52,11 @@ export function TransportLiveCardView({
         <p className="mt-0.5 text-[11px] text-[#9CA3AF]">도착 예정 {data.arrival_time}</p>
       </div>
 
-      <div className={cn("glango-container-card__action-row", embedded ? "px-0" : "grid grid-cols-3 gap-1.5 p-2")}>
+      <div className={cn("rimvio-container-card__action-row", embedded ? "px-0" : "grid grid-cols-3 gap-1.5 p-2")}>
         {actions.map((action) => {
           const Icon = actionIcon(action.label);
           return (
-            <GlangoActionButton
+            <RimvioActionButton
               key={action.id}
               type="button"
               variant={embedded ? "secondary" : "secondary"}
@@ -66,7 +66,7 @@ export function TransportLiveCardView({
               className="shrink-0"
             >
               {action.label.replace(/\s+/g, "\u00a0")}
-            </GlangoActionButton>
+            </RimvioActionButton>
           );
         })}
       </div>

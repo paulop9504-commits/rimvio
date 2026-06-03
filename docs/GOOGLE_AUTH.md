@@ -1,6 +1,25 @@
 # Google 로그인 (Supabase Auth)
 
-Glango는 **Supabase Auth + Google OAuth**로 로그인합니다. 로그인 없이도 앱은 그대로 동작하고, 로그인하면 Feed가 `user_id`에 묶입니다.
+Rimvio는 **Supabase Auth + Google OAuth**로 로그인합니다. 로그인 없이도 앱은 그대로 동작하고, 로그인하면 Feed가 `user_id`에 묶입니다.
+
+**빠른 점검:** 프로젝트 루트에서 `npm run auth:check`  
+**앱 내 가이드:** `/docs/google-auth` · 설정 탭(`/welcome`)
+
+## 인증 필수 모드 (`AUTH_REQUIRED=true`)
+
+`.env.local`에 아래를 넣으면 **로그인한 사용자만** 페이지·API를 쓸 수 있습니다.
+
+```env
+AUTH_REQUIRED=true
+NEXT_PUBLIC_AUTH_REQUIRED=true
+```
+
+예외(로그인 없이 접근 가능):
+
+- 페이지: `/welcome`, `/auth/callback`, `/docs/google-auth`, `/privacy`
+- API: `/api/health`, `/api/auth/*`
+
+그 외 경로는 미로그인 시 `/welcome?login=1`로 보내고, API는 `401`을 반환합니다.
 
 ## 1. Supabase에서 Google 켜기
 
@@ -22,7 +41,7 @@ Glango는 **Supabase Auth + Google OAuth**로 로그인합니다. 로그인 없�
 
 4. Client ID / Secret을 Supabase Google provider에 붙여넣기
 
-## 3. Glango 앱 URL
+## 3. Rimvio 앱 URL
 
 `.env.local`:
 
@@ -32,7 +51,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-배포 시 `NEXT_PUBLIC_APP_URL`을 실제 도메인으로 바꿉니다 (예: `https://glango.app`).
+배포 시 `NEXT_PUBLIC_APP_URL`을 실제 도메인으로 바꿉니다 (예: `https://rimvio.app`).
 
 Supabase **Authentication** → **URL Configuration**:
 

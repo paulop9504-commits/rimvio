@@ -1,6 +1,6 @@
 import type { ContainerEvent, ContainerEventType } from "@/lib/container-store/types";
 
-const EVENTS_KEY = "glango.container-events.v1";
+const EVENTS_KEY = "rimvio.container-events.v1";
 
 let memoryEvents: ContainerEvent[] = [];
 

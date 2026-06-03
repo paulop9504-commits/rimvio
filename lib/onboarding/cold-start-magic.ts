@@ -1,4 +1,4 @@
-const COLD_START_KEY = "glango.cold-start-magic.v1";
+const COLD_START_KEY = "rimvio.cold-start-magic.v1";
 
 export type ColdStartMagicState = {
   completed: boolean;

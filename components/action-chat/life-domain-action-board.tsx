@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { GlangoActionButton } from "@/components/ui/glango-action-button";
+import { RimvioActionButton } from "@/components/ui/rimvio-action-button";
 import { buildLifeDomainActions } from "@/lib/life-domain-actions/build-actions";
 import {
   LIFE_DOMAIN_CATALOG,
@@ -40,14 +40,14 @@ export function LifeDomainActionBoard({
   );
 
   const handleAction = async (action: LinkActionItem) => {
-    if (action.href?.startsWith("glango://chat/followup")) {
-      const url = new URL(action.href.replace("glango://", "https://glango.local/"));
+    if (action.href?.startsWith("rimvio://chat/followup")) {
+      const url = new URL(action.href.replace("rimvio://", "https://rimvio.local/"));
       const prompt = url.searchParams.get("q") ?? action.label;
       onSendPrompt?.(prompt);
       return;
     }
 
-    if (action.href?.startsWith("glango://")) {
+    if (action.href?.startsWith("rimvio://")) {
       onSendPrompt?.(action.label);
       return;
     }
@@ -58,7 +58,7 @@ export function LifeDomainActionBoard({
   return (
     <section
       className={cn(
-        "overflow-hidden rounded-2xl border border-[#E8ECF4] bg-glango-surface shadow-[0_10px_28px_-22px_rgba(15,23,42,0.35)]",
+        "overflow-hidden rounded-2xl border border-[#E8ECF4] bg-rimvio-surface shadow-[0_10px_28px_-22px_rgba(15,23,42,0.35)]",
         className,
       )}
     >
@@ -81,7 +81,7 @@ export function LifeDomainActionBoard({
                 "shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors",
                 selected
                   ? "border-[#4A90E2] bg-[#EFF6FF] text-[#2563EB]"
-                  : "border-slate-200 bg-glango-surface text-slate-600 hover:border-slate-300",
+                  : "border-slate-200 bg-rimvio-surface text-slate-600 hover:border-slate-300",
               )}
             >
               <span className="mr-1">{domain.emoji}</span>
@@ -96,7 +96,7 @@ export function LifeDomainActionBoard({
 
         <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
           {mainActions.map((action) => (
-            <GlangoActionButton
+            <RimvioActionButton
               key={action.id}
               type="button"
               variant="primary"
@@ -110,13 +110,13 @@ export function LifeDomainActionBoard({
               }
             >
               {action.label}
-            </GlangoActionButton>
+            </RimvioActionButton>
           ))}
         </div>
 
         <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
           {auxActions.map((action) => (
-            <GlangoActionButton
+            <RimvioActionButton
               key={action.id}
               type="button"
               variant="secondary"
@@ -130,7 +130,7 @@ export function LifeDomainActionBoard({
               }
             >
               {action.label}
-            </GlangoActionButton>
+            </RimvioActionButton>
           ))}
         </div>
       </div>
