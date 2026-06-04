@@ -11,8 +11,12 @@ import {
   SendHorizontal,
   X,
 } from "lucide-react";
-import { useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useChatAmbientFocusOptional } from "@/components/action-chat/chat-ambient-focus";
+import { PeerTalkContactBubbles } from "@/components/action-chat/peer-talk-contact-bubbles";
+import type { PeerContact } from "@/lib/context/peer-contact-types";
+import { parseActivePeerTalkComposer } from "@/lib/peer-chat/active-peer-talk-composer";
+import { filterPeerContactsForTalk } from "@/lib/peer-chat/filter-talk-contacts";
 import {
   rimvioComposerFieldClass,
   rimvioIconBtnClass,
@@ -41,6 +45,8 @@ type ActionChatInputBarProps = {
   onQuickCapture?: (file: File) => void;
   onSendMessage?: (text: string) => void;
   onSendComposer?: (payload: ComposerPayload) => void;
+  /** @톡 버블 탭 — 친구 선택 후 톡 시작 */
+  onPeerTalkPick?: (contact: PeerContact) => void;
   className?: string;
 };
 
@@ -54,6 +60,7 @@ export function ActionChatInputBar({
   onQuickCapture,
   onSendMessage,
   onSendComposer,
+  onPeerTalkPick,
   className,
 }: ActionChatInputBarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -62,6 +69,16 @@ export function ActionChatInputBar({
   const galleryRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const ambient = useChatAmbientFocusOptional();
+
+  const peerTalkComposer = useMemo(
+    () => parseActivePeerTalkComposer(text),
+    [text],
+  );
+  const peerTalkCandidates = useMemo(
+    () =>
+      peerTalkComposer ? filterPeerContactsForTalk(peerTalkComposer.query) : [],
+    [peerTalkComposer],
+  );
 
   const syncComposerDraft = (value: string) => {
     ambient?.setComposerDraft(value.trim().length > 0);
@@ -115,6 +132,27 @@ export function ActionChatInputBar({
         className,
       )}
     >
+      {peerTalkComposer ? (
+        <div className="mb-1 border-b border-white/[0.06] pb-1">
+          {peerTalkCandidates.length > 0 ? (
+            <PeerTalkContactBubbles
+              contacts={peerTalkCandidates}
+              onPick={(contact) => {
+                onPeerTalkPick?.(contact);
+                setText("");
+                syncComposerDraft("");
+              }}
+            />
+          ) : (
+            <p className="px-1 py-2 text-center text-[11px] text-white/40">
+              {peerTalkComposer.query.trim()
+                ? `"${peerTalkComposer.query.trim()}" 맞는 친구가 없어요`
+                : "친구가 없어요 · @친추로 추가"}
+            </p>
+          )}
+        </div>
+      ) : null}
+
       {menuOpen ? (
         <div className={rimvioMenuGridClass}>
           <button

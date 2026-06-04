@@ -415,6 +415,9 @@ export function ActionChatFeed({
             onOpenCapture={onOpenCapture}
             onOpenLinkPaste={onOpenLinkPaste}
             onQuickCapture={onQuickCapture}
+            onPeerTalkPick={(contact) => {
+              void sendMessage(`@톡 ${contact.displayName}`);
+            }}
             onSendComposer={(payload) => {
               if (sendComposerPayload(payload)) {
                 return;

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { MainActionButton } from "@/components/action-chat/main-action-button";
 import { FeedInlineDmPanel } from "@/components/action-chat/feed-inline-dm-panel";
+import { PeerTalkContactBubbles } from "@/components/action-chat/peer-talk-contact-bubbles";
 import { PeerProfileAvatar } from "@/components/peer-chat/peer-profile-avatar";
 import { useDmPeerProfile } from "@/hooks/use-dm-peer-profile";
 import type { PeerContact } from "@/lib/context/peer-contact-types";
@@ -18,49 +19,6 @@ type InlineChatPeerTalkProps = {
   query: string;
   className?: string;
 };
-
-function TalkContactRow({
-  contact,
-  selected,
-  onSelect,
-}: {
-  contact: PeerContact;
-  selected: boolean;
-  onSelect: () => void;
-}) {
-  const phoneDm = isRegisteredPeerDmThread(contact.peerThreadId);
-  const { profile } = useDmPeerProfile(contact.peerThreadId, phoneDm);
-  const displayName = profile?.displayName?.trim() || contact.displayName;
-
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={cn(
-        "flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-colors active:scale-[0.99]",
-        selected
-          ? "bg-[#FEE500]/15 ring-1 ring-[#FEE500]/40"
-          : "bg-white/[0.04] hover:bg-white/[0.08]",
-      )}
-    >
-      <PeerProfileAvatar
-        displayName={displayName}
-        avatarUrl={profile?.avatarUrl}
-        size="sm"
-      />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[13px] font-medium text-white">
-          {displayName}
-        </span>
-        {profile?.rimvioId ? (
-          <span className="block truncate text-[11px] text-white/45">
-            @{profile.rimvioId}
-          </span>
-        ) : null}
-      </span>
-    </button>
-  );
-}
 
 function TalkProfileConfirm({
   contact,
@@ -185,22 +143,18 @@ export function InlineChatPeerTalk({ query, className }: InlineChatPeerTalkProps
   }
 
   return (
-    <div className={cn("space-y-2", className)}>
-      <p className="text-[11px] text-white/45">친구를 선택하세요</p>
-      <ul className="max-h-40 space-y-1 overflow-y-auto overscroll-contain">
-        {candidates.map((contact) => (
-          <li key={contact.peerThreadId}>
-            <TalkContactRow
-              contact={contact}
-              selected={picked?.peerThreadId === contact.peerThreadId}
-              onSelect={() => setPicked(contact)}
-            />
-          </li>
-        ))}
-      </ul>
+    <div className={cn("space-y-3", className)}>
+      <PeerTalkContactBubbles
+        contacts={candidates}
+        onPick={(contact) => setPicked(contact)}
+      />
       {picked ? (
         <TalkProfileConfirm contact={picked} onStart={startChat} />
-      ) : null}
+      ) : (
+        <p className="text-center text-[11px] text-white/40">
+          버블을 눌러 주세요
+        </p>
+      )}
     </div>
   );
 }
