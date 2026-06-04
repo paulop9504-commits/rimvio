@@ -1,46 +1,128 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import {
-  FivePeerHub,
-} from "@/components/peer-chat/five-peer-hub";
-import { PeerContactsList } from "@/components/peer-chat/peer-contacts-list";
+import { FivePeerHub } from "@/components/peer-chat/five-peer-hub";
 import { readPeerContacts } from "@/lib/context/peer-contact-store";
 import type { PeerContact } from "@/lib/context/peer-contact-types";
 import { IOS } from "@/lib/ui/ios-surface";
 import { countConnectedPeers } from "@/lib/context/pinned-peer-roster";
 import {
-  addPeerContactOnly,
   assignPeerToHubAndPin,
   readPinnedRoster,
   syncPinnedRoster,
 } from "@/lib/context/peer-thread-settings-store";
 import type { PinnedSlotIndex } from "@/lib/context/peer-thread-types";
+import { PeerProfileSetup } from "@/components/peer-chat/peer-profile-setup";
+import {
+  addPeerByPhoneRemote,
+  fetchMyAccountProfile,
+  fetchSocialLayer,
+  pinFriendRemote,
+  syncDmThreadsRemote,
+  syncMyProfileFromAuth,
+} from "@/lib/peer-chat/peer-chat-client";
+import { addPeerContact } from "@/lib/context/peer-contact-store";
+import {
+  applySocialLayerToLocalRoster,
+  listArchivePeers,
+  peerMetaByThreadId,
+} from "@/lib/social/sync-social-layer";
+import {
+  deriveArchiveBagState,
+  totalArchiveUnread,
+} from "@/lib/social/archive-bag-state";
+import type { SocialBubblePeer } from "@/lib/social/bubble-state";
+import { useAuth } from "@/hooks/use-auth";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { useRoomGuest } from "@/hooks/use-room-guest";
 import { cn } from "@/lib/utils";
-
-type AssignMode = "pin_slot" | "contact_only";
 
 export function FivePeerHubClient() {
   const guest = useRoomGuest();
   const router = useRouter();
+  const { user, configured } = useAuth();
+  const usePhoneChat = Boolean(configured && user && isSupabaseConfigured());
   const [roster, setRoster] = useState(() => readPinnedRoster());
   const [contacts, setContacts] = useState<PeerContact[]>(() => readPeerContacts());
+  const [pinnedPeers, setPinnedPeers] = useState<SocialBubblePeer[]>([]);
+  const [archivePeers, setArchivePeers] = useState<SocialBubblePeer[]>([]);
   const [assignSlot, setAssignSlot] = useState<PinnedSlotIndex | null>(null);
-  const [addContactOpen, setAddContactOpen] = useState(false);
   const [name, setName] = useState("");
-  const [mode, setMode] = useState<AssignMode>("pin_slot");
+  const [phone, setPhone] = useState("");
+  const [myPhone, setMyPhone] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [centerAvatarUrl, setCenterAvatarUrl] = useState<string | null>(null);
+
+  const peerMetaMap = useMemo(
+    () => peerMetaByThreadId(pinnedPeers),
+    [pinnedPeers],
+  );
+
+  const archiveList = useMemo(
+    () => listArchivePeers(pinnedPeers, archivePeers),
+    [pinnedPeers, archivePeers],
+  );
+
+  const archiveBagProps = useMemo(
+    () => ({
+      href: "/peers/archive",
+      count: archiveList.length,
+      unreadTotal: totalArchiveUnread(archiveList),
+      bubbleState: deriveArchiveBagState(archiveList),
+      previewPeers: archiveList,
+    }),
+    [archiveList],
+  );
 
   const refresh = useCallback(() => {
     setRoster(syncPinnedRoster());
     setContacts(readPeerContacts());
   }, []);
 
+  const loadSocialLayer = useCallback(async () => {
+    if (!usePhoneChat) {
+      return;
+    }
+    try {
+      const layer = await fetchSocialLayer();
+      setPinnedPeers(layer.pinned);
+      setArchivePeers(layer.archive);
+      applySocialLayerToLocalRoster(layer);
+      refresh();
+    } catch {
+      // local roster fallback
+    }
+  }, [usePhoneChat, refresh]);
+
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    if (!usePhoneChat) {
+      return;
+    }
+    void syncMyProfileFromAuth().catch(() => {});
+    void fetchMyAccountProfile()
+      .then((p) => setCenterAvatarUrl(p.avatarUrl ?? null))
+      .catch(() => {});
+    void syncDmThreadsRemote()
+      .then((threads) => {
+        for (const thread of threads) {
+          addPeerContact({
+            peerThreadId: thread.threadId,
+            displayName: thread.displayName,
+          });
+        }
+        refresh();
+      })
+      .catch(() => {});
+    void loadSocialLayer();
+    const timer = window.setInterval(() => void loadSocialLayer(), 30_000);
+    return () => window.clearInterval(timer);
+  }, [usePhoneChat, refresh, loadSocialLayer]);
 
   const centerLabel = guest.label.startsWith("나")
     ? guest.label
@@ -48,72 +130,117 @@ export function FivePeerHubClient() {
   const centerInitial = guest.label.trim().charAt(0) || "나";
 
   const openPinAssign = (slotIndex: PinnedSlotIndex) => {
-    setMode("pin_slot");
     setAssignSlot(slotIndex);
-    setAddContactOpen(false);
     setName("");
-  };
-
-  const openContactAdd = () => {
-    setMode("contact_only");
-    setAddContactOpen(true);
-    setAssignSlot(null);
-    setName("");
+    setPhone("");
   };
 
   const closeDialog = () => {
     setAssignSlot(null);
-    setAddContactOpen(false);
     setName("");
+    setPhone("");
+    setMyPhone("");
+  };
+
+  const addRegisteredFriend = async (
+    contact: string,
+    displayLabel?: string,
+  ) => {
+    setSubmitting(true);
+    try {
+      const result = await addPeerByPhoneRemote({
+        contact,
+        displayName: displayLabel || undefined,
+        myPhone: myPhone.trim() || undefined,
+      });
+      addPeerContact({
+        peerThreadId: result.threadId,
+        displayName: result.displayName,
+      });
+      closeDialog();
+      await loadSocialLayer();
+      return result;
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "친구 추가에 실패했어요";
+      toast.error(message);
+      return null;
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const submit = () => {
     const trimmed = name.trim();
-    if (!trimmed) {
-      toast.error("이름을 입력해 주세요");
-      return;
-    }
+    const phoneTrimmed = phone.trim();
 
-    if (mode === "contact_only") {
-      const result = addPeerContactOnly({ displayName: trimmed });
-      if (!result.ok) {
-        toast.error("친구를 추가하지 못했어요");
+    if (usePhoneChat) {
+      if (!phoneTrimmed) {
+        toast.error("친구 Rimvio ID · 번호 · 이메일을 입력해 주세요");
         return;
       }
-      closeDialog();
-      refresh();
-      toast.success(`${trimmed}를 친구로 추가했어요`);
-      router.push(`/peers/${encodeURIComponent(result.settings.peerThreadId)}`);
+      void addRegisteredFriend(phoneTrimmed, trimmed || undefined).then(
+        async (result) => {
+          if (!result) {
+            return;
+          }
+          const otherUserId =
+            "otherUserId" in result
+              ? (result as { otherUserId?: string }).otherUserId
+              : undefined;
+
+          if (assignSlot !== null && otherUserId) {
+            try {
+              await pinFriendRemote({
+                friendId: otherUserId,
+                pinSlot: assignSlot,
+              });
+            } catch (error) {
+              toast.error(
+                error instanceof Error ? error.message : "고정에 실패했어요",
+              );
+              return;
+            }
+            assignPeerToHubAndPin({
+              slotIndex: assignSlot,
+              displayName: result.displayName,
+              peerThreadId: result.threadId,
+            });
+            await loadSocialLayer();
+            toast.success(
+              `${result.displayName}를 항상 보이는 관계 ${assignSlot + 1}번에 고정했어요`,
+            );
+            router.push(`/peers/${encodeURIComponent(result.threadId)}`);
+            return;
+          }
+
+          toast.success(`${result.displayName}를 구슬 주머니에 넣었어요`);
+          router.push(`/peers/archive`);
+        },
+      );
       return;
     }
 
-    if (assignSlot === null) {
-      return;
-    }
-
-    const { settings } = assignPeerToHubAndPin({
-      slotIndex: assignSlot,
-      displayName: trimmed,
-    });
-    closeDialog();
-    refresh();
-    toast.success(`${trimmed}를 AI 허브 ${assignSlot + 1}번에 꽂았어요`);
-    router.push(`/peers/${encodeURIComponent(settings.peerThreadId)}`);
+    toast.error("로그인 후 Rimvio 친구만 추가할 수 있어요");
   };
 
-  const dialogOpen = assignSlot !== null || addContactOpen;
-  const dialogTitle =
-    mode === "contact_only"
-      ? "친구 추가"
-      : `${(assignSlot ?? 0) + 1}번 AI 허브에 연결`;
+  const dialogOpen = assignSlot !== null;
+  const dialogTitle = `${(assignSlot ?? 0) + 1}번 버블에 고정`;
 
   return (
     <div className="flex flex-col gap-4 pb-6">
-      <div className="relative h-[min(calc(100dvh-11.5rem),42rem)] w-full shrink-0">
+      <p className="px-1 text-center text-[12px] text-white/55">
+        친한 5명 · 아래 구슬 주머니 = 나머지 친구 전부
+      </p>
+
+      <div className="relative h-[min(calc(100dvh-13rem),40rem)] w-full shrink-0">
         <FivePeerHub
           roster={roster}
           centerLabel={centerLabel}
           centerInitial={centerInitial}
+          centerAvatarUrl={centerAvatarUrl}
+          peerMetaByThread={peerMetaMap}
+          archiveBag={usePhoneChat ? archiveBagProps : undefined}
           onAssignSlot={(idx) => openPinAssign(idx as PinnedSlotIndex)}
           className="absolute inset-0"
         />
@@ -126,55 +253,60 @@ export function FivePeerHubClient() {
           aria-label={dialogTitle}
         >
           <p className="text-sm font-semibold text-white">{dialogTitle}</p>
-          {mode === "pin_slot" ? (
-            <p className="text-[11px] text-white/65">
-              AI 허브 · full log · @import · 렌즈 가능 (최대 5명)
-            </p>
-          ) : (
-            <p className="text-[11px] text-white/65">
-              허브 없이 추가 · 로컬 저장만 (나중에 AI 허브 가능)
-            </p>
-          )}
+          <p className="text-[11px] text-white/65">
+            친한 5 · 메시지 영구 보관 · 나머지는 구슬 주머니
+          </p>
+          <input
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="rimvio_id · 010-… · email@gmail.com"
+            inputMode="text"
+            className="h-11 w-full rounded-2xl border-0 bg-rimvio-surface-muted px-4 text-sm text-white outline-none placeholder:text-white/45 focus:ring-2 focus:ring-rimvio-neon-cyan/40"
+            autoFocus
+          />
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="이름 (예: 지훈)"
-            className="h-11 w-full rounded-2xl border-0 bg-rimvio-surface-muted px-4 text-sm text-white outline-none placeholder:text-white/45 focus:ring-2 focus:ring-rimvio-neon-cyan/40"
-            autoFocus
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                submit();
-              }
-            }}
+            placeholder="이름 (선택)"
+            className="h-11 w-full rounded-2xl border-0 bg-rimvio-surface-muted px-4 text-sm text-white outline-none placeholder:text-white/45"
           />
           <div className="flex gap-2">
             <button
               type="button"
               className="flex-1 rounded-[14px] py-2.5 text-sm font-semibold text-rimvio-neon-cyan"
               onClick={closeDialog}
+              disabled={submitting}
             >
               취소
             </button>
             <button
               type="button"
-              className="rimvio-accent-submit-btn flex flex-1 items-center justify-center rounded-[14px] py-2.5 text-sm font-semibold text-white active:scale-[0.98]"
+              disabled={submitting}
+              className="rimvio-accent-submit-btn flex flex-1 items-center justify-center rounded-[14px] py-2.5 text-sm font-semibold text-white active:scale-[0.98] disabled:opacity-50"
               onClick={submit}
             >
-              {mode === "contact_only" ? "추가하고 열기" : "저장하고 열기"}
+              {submitting ? "연결 중…" : "고정하기"}
             </button>
           </div>
         </div>
       ) : null}
 
-      <p className="shrink-0 text-center text-[11px] text-white/60">
-        AI 허브 {countConnectedPeers(roster)}/5 · 친구 {contacts.length}명
-      </p>
+      {usePhoneChat ? (
+        <PeerProfileSetup
+          className="mx-1"
+          onRegistered={() => {
+            refresh();
+            void fetchMyAccountProfile()
+              .then((p) => setCenterAvatarUrl(p.avatarUrl ?? null))
+              .catch(() => {});
+          }}
+        />
+      ) : null}
 
-      <PeerContactsList
-        contacts={contacts}
-        onRefresh={refresh}
-        onAddClick={openContactAdd}
-      />
+      <p className="shrink-0 text-center text-[11px] text-white/60">
+        친한 {countConnectedPeers(roster)}/5
+        {usePhoneChat ? ` · 주머니 ${archiveList.length}명` : ""}
+      </p>
     </div>
   );
 }

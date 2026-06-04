@@ -673,6 +673,23 @@
   max-width: var(--shell-max-phone);
 }
 
+/* 1:1 대화 — 카톡처럼 전체 너비·높이 */
+.app-shell-column--chat {
+  max-width: 100%;
+}
+
+@media (min-width: 480px) {
+  .app-shell-column--chat {
+    max-width: 30rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .app-shell-column--chat {
+    max-width: 32rem;
+  }
+}
+
 @media (min-width: 640px) {
   .app-shell-column {
     max-width: var(--shell-max-phablet);
@@ -2712,6 +2729,74 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 
 .context-tab-card--dragging {
   box-shadow: 0 8px 20px rgba(74, 144, 226, 0.22);
+}
+
+/* —— Rimvio 1:1 DM chat —— */
+.rimvio-dm-chat-bg {
+  background:
+    radial-gradient(ellipse 90% 55% at 50% -15%, rgba(50, 215, 255, 0.1), transparent 55%),
+    radial-gradient(ellipse 50% 45% at 100% 80%, rgba(191, 90, 242, 0.08), transparent 50%),
+    radial-gradient(ellipse 40% 35% at 0% 60%, rgba(255, 55, 95, 0.04), transparent 45%);
+}
+
+.rimvio-dm-live-pill {
+  border-radius: 9999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--rimvio-neon-cyan);
+  background: rgba(50, 215, 255, 0.12);
+  border: 1px solid rgba(50, 215, 255, 0.35);
+  box-shadow: 0 0 12px rgba(50, 215, 255, 0.2);
+}
+
+.rimvio-dm-live-pill svg {
+  animation: rimvio-dm-pulse 2s ease-in-out infinite;
+}
+
+@keyframes rimvio-dm-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.rimvio-dm-composer {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(
+    180deg,
+    rgba(18, 18, 22, 0.72) 0%,
+    rgba(12, 12, 16, 0.96) 100%
+  );
+  backdrop-filter: blur(12px);
+}
+
+.rimvio-dm-send-btn {
+  background: linear-gradient(
+    135deg,
+    var(--rimvio-neon-purple) 0%,
+    var(--rimvio-neon-purple-deep) 55%,
+    #7b2cbf 100%
+  );
+  box-shadow: 0 4px 18px rgba(191, 90, 242, 0.45);
+}
+
+.rimvio-dm-send-btn:not(:disabled):active {
+  transform: scale(0.96);
+}
+
+.rimvio-dm-header-glass {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(
+    180deg,
+    rgba(22, 22, 28, 0.92) 0%,
+    rgba(16, 16, 20, 0.88) 100%
+  );
+  backdrop-filter: blur(10px);
 }
 
 .context-tab-card--snap-target {

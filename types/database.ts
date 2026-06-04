@@ -141,6 +141,38 @@ export type PlaceLocateCacheRow = {
   updated_at: string;
 };
 
+export type PeerThreadRow = {
+  id: string;
+  owner_user_id: string;
+  display_name: string;
+  invite_code: string;
+  created_at: string;
+};
+
+export type PeerThreadMemberRow = {
+  thread_id: string;
+  user_id: string;
+  joined_at: string;
+};
+
+export type PeerMessageRow = {
+  id: string;
+  thread_id: string;
+  sender_user_id: string;
+  body: string;
+  created_at: string;
+};
+
+export type UserProfileRow = {
+  user_id: string;
+  phone_e164: string | null;
+  email_lower: string | null;
+  rimvio_id: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+  updated_at: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -276,9 +308,179 @@ export type Database = {
         };
         Relationships: [];
       };
+      peer_threads: {
+        Row: PeerThreadRow;
+        Insert: {
+          id: string;
+          owner_user_id: string;
+          display_name?: string;
+          invite_code?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          owner_user_id?: string;
+          display_name?: string;
+          invite_code?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      peer_thread_members: {
+        Row: PeerThreadMemberRow;
+        Insert: {
+          thread_id: string;
+          user_id: string;
+          joined_at?: string;
+        };
+        Update: {
+          thread_id?: string;
+          user_id?: string;
+          joined_at?: string;
+        };
+        Relationships: [];
+      };
+      peer_messages: {
+        Row: PeerMessageRow;
+        Insert: {
+          id?: string;
+          thread_id: string;
+          sender_user_id: string;
+          body: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          thread_id?: string;
+          sender_user_id?: string;
+          body?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      friend_connections: {
+        Row: {
+          user_id: string;
+          friend_id: string;
+          thread_id: string;
+          is_pinned: boolean;
+          pin_slot: number | null;
+          interaction_score: number;
+          last_interaction_at: string;
+          last_read_at: string;
+          last_inbound_at: string | null;
+          unread_count: number;
+          messages_purge_after: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Record<string, unknown>;
+        Update: Record<string, unknown>;
+        Relationships: [];
+      };
+      relationship_slots: {
+        Row: {
+          id: string;
+          user_id: string;
+          room_id: string;
+          friend_id: string;
+          last_message: string | null;
+          last_activity_at: string;
+          unread_count: number;
+          is_pinned: boolean;
+          archived_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Record<string, unknown>;
+        Update: Record<string, unknown>;
+        Relationships: [];
+      };
+      user_profiles: {
+        Row: UserProfileRow;
+        Insert: {
+          user_id: string;
+          phone_e164?: string | null;
+          email_lower?: string | null;
+          rimvio_id?: string | null;
+          display_name?: string | null;
+          avatar_url?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          phone_e164?: string | null;
+          email_lower?: string | null;
+          rimvio_id?: string | null;
+          display_name?: string | null;
+          avatar_url?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
+      lookup_user_id_by_phone: {
+        Args: { p_phone_e164: string };
+        Returns: string | null;
+      };
+      lookup_user_id_by_email: {
+        Args: { p_email_lower: string };
+        Returns: string | null;
+      };
+      lookup_user_id_by_rimvio_id: {
+        Args: { p_rimvio_id: string };
+        Returns: string | null;
+      };
+      rimvio_user_is_member: {
+        Args: { p_user_id: string };
+        Returns: boolean;
+      };
+      rimvio_ensure_user_profile: {
+        Args: { p_user_id: string };
+        Returns: boolean;
+      };
+      get_peer_public_profile: {
+        Args: { p_target_user_id: string };
+        Returns: Json;
+      };
+      get_friend_add_preview_profile: {
+        Args: { p_target_user_id: string };
+        Returns: Json;
+      };
+      ensure_dm_thread_partner_member: {
+        Args: { p_thread_id: string; p_partner_user_id: string };
+        Returns: undefined;
+      };
+      ensure_reciprocal_friend_connection: {
+        Args: {
+          p_friend_id: string;
+          p_thread_id: string;
+          p_bump_interaction?: boolean;
+        };
+        Returns: undefined;
+      };
+      complete_dm_friend_add: {
+        Args: {
+          p_other_user_id: string;
+          p_friend_display_name?: string | null;
+        };
+        Returns: Json;
+      };
+      is_peer_thread_member: {
+        Args: { p_thread_id: string; p_user_id?: string };
+        Returns: boolean;
+      };
+      match_users_by_phones: {
+        Args: { p_phones: string[] };
+        Returns: Array<{
+          user_id: string;
+          phone_e164: string;
+          display_name: string | null;
+          rimvio_id: string | null;
+        }>;
+      };
       record_action_bin_event: {
         Args: {
           p_context_bin: string;

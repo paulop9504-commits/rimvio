@@ -50,7 +50,12 @@ export function isMentionActionInput(text: string): boolean {
 }
 
 function persistLastAction(wire: InlineChatActionWire): void {
-  if (wire.featureId === "now" || wire.featureId === "retry" || wire.featureId === "manual") {
+  if (
+    wire.featureId === "now" ||
+    wire.featureId === "retry" ||
+    wire.featureId === "manual" ||
+    wire.featureId === "friend_add"
+  ) {
     return;
   }
   recordLastMentionAction(wire);

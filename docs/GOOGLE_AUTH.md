@@ -58,7 +58,9 @@ Supabase **Authentication** → **URL Configuration**:
 | 항목 | 값 |
 |------|-----|
 | Site URL | `NEXT_PUBLIC_APP_URL`과 동일 |
-| Redirect URLs | `http://localhost:3000/auth/callback`, `https://your-domain/auth/callback` |
+| Redirect URLs | `http://localhost:3000/auth/callback`, `https://your-domain/auth/callback` (또는 `https://your-domain/**`) |
+
+> `redirectTo`에 `?next=` 쿼리를 붙이지 않습니다. 로그인 후 경로는 쿠키로 전달됩니다. Redirect URLs는 **경로만** 등록하면 됩니다.
 
 ## 4. 앱에서 사용
 

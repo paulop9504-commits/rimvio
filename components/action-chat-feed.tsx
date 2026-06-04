@@ -8,6 +8,8 @@ import {
 } from "@/components/action-chat/action-date-picker-sheet";
 import { OcrReviewDatePickerSheet } from "@/components/action-chat/ocr-review-date-picker-sheet";
 import { ResourcePoolSheet } from "@/components/action-chat/resource-pool-sheet";
+import { RelationshipFeedFolder } from "@/components/feed/relationship-feed-folder";
+import { RimvioManualFeedBanner } from "@/components/rimvio-manual-feed-banner";
 import {
   GoogleSheetsEmbedSheet,
   type GoogleSheetsEmbedTarget,
@@ -258,6 +260,7 @@ export function ActionChatFeed({
                   새 대화
                 </button>
               ) : null}
+              <RelationshipFeedFolder />
               <button
                 type="button"
                 aria-label="리소스풀"
@@ -294,6 +297,8 @@ export function ActionChatFeed({
             </div>
           </div>
         </header>
+
+        <RimvioManualFeedBanner className="mx-4 mb-2 mt-1 shrink-0" />
 
         {activeLink ? (
           <div className="max-h-[min(40dvh,220px)] shrink-0 overflow-hidden border-b border-white/[0.06] bg-rimvio-surface-muted">

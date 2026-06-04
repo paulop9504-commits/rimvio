@@ -4,8 +4,8 @@ import { FivePeerHubClient } from "@/components/peer-chat/five-peer-hub-client";
 export default function FivePeerHubPage() {
   return (
     <AppShell
-      title="친한 친구"
-      subtitle="친구 무제한 · AI 핀 5"
+      title="관계 버블"
+      subtitle="항상 보이는 5명 · 나머지는 아카이브"
       compact
       iosSurface
     >

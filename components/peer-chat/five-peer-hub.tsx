@@ -3,7 +3,15 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { buildFivePeerHubNodes, FIVE_PEER_HUB_LINE_COLORS } from "@/lib/context/five-peer-hub-layout";
+import { FriendArchiveBagBubble } from "@/components/peer-chat/friend-archive-bag-bubble";
+import {
+  ARCHIVE_BAG_STROKE,
+  buildFivePeerHubNodes,
+  FIVE_PEER_HUB_LINE_COLORS,
+  PINNED_CONNECTION_STROKE,
+} from "@/lib/context/five-peer-hub-layout";
+import { BUBBLE_RING_CLASS } from "@/lib/social/bubble-state";
+import type { BubbleState, SocialBubblePeer } from "@/lib/social/bubble-state";
 import {
   clampHubPoint,
   clampHubPositionsToBounds,
@@ -21,6 +29,15 @@ type FivePeerHubProps = {
   roster: PinnedPeerRoster;
   centerLabel: string;
   centerInitial: string;
+  centerAvatarUrl?: string | null;
+  peerMetaByThread?: Map<string, SocialBubblePeer>;
+  archiveBag?: {
+    href: string;
+    count: number;
+    unreadTotal: number;
+    bubbleState: BubbleState;
+    previewPeers: SocialBubblePeer[];
+  };
   onAssignSlot: (slotIndex: number) => void;
   className?: string;
 };
@@ -50,6 +67,9 @@ export function FivePeerHub({
   roster,
   centerLabel,
   centerInitial,
+  centerAvatarUrl,
+  peerMetaByThread,
+  archiveBag,
   onAssignSlot,
   className,
 }: FivePeerHubProps) {
@@ -230,14 +250,14 @@ export function FivePeerHub({
       ref={containerRef}
       className={cn("relative h-full w-full select-none overflow-hidden", className)}
       role="navigation"
-      aria-label="AI 허브 5"
+      aria-label="관계 버블 · 친한 5 + 구슬 주머니"
     >
       <svg className="pointer-events-none absolute inset-0 size-full" viewBox="0 0 100 100" aria-hidden>
         {nodes.map((node, index) => {
           const slotIndex = (node.kind === "vacant" ? node.slotIndex : node.slot.slotIndex) as PinnedSlotIndex;
           const peerPoint = nodePosition(positions, slotIndex);
-          const color = FIVE_PEER_HUB_LINE_COLORS[index];
-          const active = node.kind === "connected" || node.kind === "purge_pending";
+          const active = node.kind === "connected";
+          const stroke = active ? PINNED_CONNECTION_STROKE : FIVE_PEER_HUB_LINE_COLORS[index];
 
           return (
             <line
@@ -246,13 +266,26 @@ export function FivePeerHub({
               y1={positions.center.y}
               x2={peerPoint.x}
               y2={peerPoint.y}
-              stroke={color}
-              strokeWidth={active ? "0.55" : "0.45"}
+              stroke={stroke}
+              strokeWidth={active ? "0.6" : "0.4"}
               strokeLinecap="round"
-              opacity={active ? 0.7 : 0.45}
+              opacity={active ? 0.85 : 0.4}
             />
           );
         })}
+        {archiveBag ? (
+          <line
+            x1={positions.center.x}
+            y1={positions.center.y}
+            x2={positions.archiveBag.x}
+            y2={positions.archiveBag.y}
+            stroke={ARCHIVE_BAG_STROKE}
+            strokeWidth="0.55"
+            strokeLinecap="round"
+            strokeDasharray="1.2 0.8"
+            opacity={0.75}
+          />
+        ) : null}
       </svg>
 
       <div
@@ -269,8 +302,17 @@ export function FivePeerHub({
             className="relative flex size-[5.25rem] items-center justify-center rounded-full bg-gradient-to-br from-indigo-400 via-violet-400 to-fuchsia-400 p-[3px] shadow-[0_8px_24px_rgba(99,102,241,0.18)]"
             aria-hidden
           >
-            <div className="flex size-full items-center justify-center rounded-full bg-rimvio-surface text-xl font-semibold text-white shadow-inner">
-              {centerInitial}
+            <div className="flex size-full items-center justify-center overflow-hidden rounded-full bg-rimvio-surface text-xl font-semibold text-white shadow-inner">
+              {centerAvatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={centerAvatarUrl}
+                  alt=""
+                  className="size-full object-cover"
+                />
+              ) : (
+                centerInitial
+              )}
             </div>
           </div>
           <p className="mt-2 max-w-[7rem] truncate text-center text-xs font-medium text-white">
@@ -291,7 +333,9 @@ export function FivePeerHub({
 
         if (node.kind === "connected" && node.slot.peerThreadId) {
           const href = `/peers/${encodeURIComponent(node.slot.peerThreadId)}`;
-          const initial = node.slot.displayName?.trim().charAt(0) || "?";
+          const meta = peerMetaByThread?.get(node.slot.peerThreadId);
+          const bubbleState: BubbleState = meta?.bubbleState ?? "idle";
+          const displayName = meta?.displayName ?? node.slot.displayName ?? "친구";
 
           return (
             <Link
@@ -299,44 +343,27 @@ export function FivePeerHub({
               href={href}
               {...dragSurfaceProps(slotIndex, "flex flex-col items-center gap-1 active:scale-95")}
               style={style}
-              aria-label={node.slot.displayName}
+              aria-label={displayName}
             >
               <span
-                className="flex size-[3.75rem] items-center justify-center rounded-full border-2 bg-rimvio-surface text-base font-semibold text-white shadow-[0_4px_14px_rgba(0,0,0,0.08)]"
-                style={{
-                  borderColor: color,
-                  boxShadow: `0 4px 14px rgba(0,0,0,0.08), 0 0 0 1px ${color}33`,
-                }}
+                className={cn(
+                  "flex size-[3.75rem] items-center justify-center overflow-hidden rounded-full border-2 bg-rimvio-surface text-base font-semibold text-white",
+                  BUBBLE_RING_CLASS[bubbleState],
+                )}
               >
-                {initial}
+                {meta?.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={meta.avatarUrl}
+                    alt=""
+                    className="size-full object-cover"
+                  />
+                ) : (
+                  displayName.trim().charAt(0) || "?"
+                )}
               </span>
               <span className="max-w-[5.5rem] truncate text-center text-[10px] font-medium text-white/75">
-                {node.slot.displayName}
-              </span>
-            </Link>
-          );
-        }
-
-        if (node.kind === "purge_pending" && node.slot.peerThreadId) {
-          const href = `/peers/${encodeURIComponent(node.slot.peerThreadId)}`;
-          const initial = node.slot.displayName?.trim().charAt(0) || "?";
-
-          return (
-            <Link
-              key={`purge-${node.slot.peerThreadId}`}
-              href={href}
-              {...dragSurfaceProps(slotIndex, "flex flex-col items-center gap-1 opacity-75 active:scale-95")}
-              style={style}
-              aria-label={`${node.slot.displayName} · ${node.purgeLabel}`}
-            >
-              <span
-                className="flex size-[3.75rem] items-center justify-center rounded-full border-2 border-dashed bg-rimvio-surface/90 text-base font-semibold text-white/55"
-                style={{ borderColor: color }}
-              >
-                {initial}
-              </span>
-              <span className="max-w-[5.5rem] truncate text-center text-[10px] text-amber-300/85">
-                {node.purgeLabel}
+                {displayName}
               </span>
             </Link>
           );
@@ -367,6 +394,25 @@ export function FivePeerHub({
 
         return null;
       })}
+
+      {archiveBag ? (
+        <div
+          className="absolute z-20"
+          style={{
+            left: `${positions.archiveBag.x}%`,
+            top: `${positions.archiveBag.y}%`,
+            transform: "translate(-50%, -50%)",
+          }}
+        >
+          <FriendArchiveBagBubble
+            href={archiveBag.href}
+            count={archiveBag.count}
+            unreadTotal={archiveBag.unreadTotal}
+            bubbleState={archiveBag.bubbleState}
+            previewPeers={archiveBag.previewPeers}
+          />
+        </div>
+      ) : null}
 
       <p className="sr-only">
         AI 허브 5명 · 허브 해제 시 며칠 뒤 대화만 삭제되고 친구 목록은 유지돼요. 프로필을 드래그해

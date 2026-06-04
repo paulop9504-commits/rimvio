@@ -19,6 +19,10 @@ type AppShellProps = {
   iosSurface?: boolean;
   /** Action Chat — feed renders its own header */
   hideBranding?: boolean;
+  /** compact: shell body 좌우·하단 패딩 제거 (대화방 등) */
+  fullBleed?: boolean;
+  /** compact: 하단 탭 숨김 (대화방 전체 화면) */
+  hideBottomNav?: boolean;
   children: ReactNode;
 };
 
@@ -30,6 +34,8 @@ export function AppShell({
   compact = false,
   iosSurface = false,
   hideBranding = false,
+  fullBleed = false,
+  hideBottomNav = false,
   children,
 }: AppShellProps) {
   return (
@@ -43,7 +49,8 @@ export function AppShell({
           className={cn(
             GRID.column,
             "flex h-dvh flex-col overflow-hidden",
-            iosSurface ? "bg-rimvio-base" : "bg-rimvio-base"
+            fullBleed && "app-shell-column--chat",
+            iosSurface ? "bg-rimvio-base" : "bg-rimvio-base",
           )}
         >
           <header
@@ -115,20 +122,23 @@ export function AppShell({
                 <div
                   className={cn(
                     GOLDEN.shellBody,
-                    "min-h-0 flex-1 overflow-y-auto overscroll-y-contain",
-                    "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-                    "px-[var(--space-phi)] pb-[var(--space-phi)]"
+                    "min-h-0 flex-1 overscroll-y-contain",
+                    fullBleed
+                      ? "flex flex-col overflow-hidden"
+                      : "overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-[var(--space-phi)] pb-[var(--space-phi)]",
                   )}
                 >
                   {children}
                 </div>
-                <Suspense
-                  fallback={
-                    <div className="h-[3.05rem] shrink-0 lg:hidden" aria-hidden />
-                  }
-                >
-                  <AppNav placement="inline" />
-                </Suspense>
+                {!hideBottomNav ? (
+                  <Suspense
+                    fallback={
+                      <div className="h-[3.05rem] shrink-0 lg:hidden" aria-hidden />
+                    }
+                  >
+                    <AppNav placement="inline" />
+                  </Suspense>
+                ) : null}
               </>
             ) : (
               <>

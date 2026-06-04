@@ -10,7 +10,15 @@ export default async function PeerThreadPage({ params }: PageProps) {
   const decoded = decodeURIComponent(peerThreadId);
 
   return (
-    <AppShell title="1:1" compact iosSurface hideTitle>
+    <AppShell
+      title="대화"
+      compact
+      iosSurface
+      hideTitle
+      hideBranding
+      fullBleed
+      hideBottomNav
+    >
       <PeerThreadRoomClient peerThreadId={decoded} />
     </AppShell>
   );

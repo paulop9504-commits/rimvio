@@ -1,6 +1,8 @@
-/** 1:1 peer room message — local log only (cloud sync later). */
+/** Unified 1:1 / room chat message (human + AI layers). */
 
-export type PeerMessageAuthor = "me" | "peer";
+import type { AiMessagePayload, RoomMessageType } from "@/lib/chat-room/types";
+
+export type PeerMessageAuthor = "me" | "peer" | "ai";
 
 export type PeerMessage = {
   id: string;
@@ -8,6 +10,10 @@ export type PeerMessage = {
   author: PeerMessageAuthor;
   body: string;
   sentAt: string;
+  messageType: RoomMessageType;
+  aiPayload?: AiMessagePayload | null;
+  /** DM ai_private: only me. Group ai_shared: everyone. */
+  visibleToMeOnly?: boolean;
 };
 
 export type PeerMessageLog = {

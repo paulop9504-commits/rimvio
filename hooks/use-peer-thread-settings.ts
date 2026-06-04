@@ -58,11 +58,15 @@ export function usePeerThreadSettings(options: UsePeerThreadSettingsOptions) {
   );
 
   const setPinned = useCallback(
-    (pinned: boolean) => {
+    (
+      pinned: boolean,
+      preferredSlotIndex?: import("@/lib/context/peer-thread-types").PinnedSlotIndex,
+    ): SetPeerThreadPinnedResult => {
       const result = setPeerThreadPinned({
         peerThreadId: options.peerThreadId,
         displayName: options.displayName,
         pinned,
+        preferredSlotIndex,
       });
       setSettings(result.settings);
       setRoster(result.roster);
@@ -71,8 +75,9 @@ export function usePeerThreadSettings(options: UsePeerThreadSettingsOptions) {
       } else {
         setPinError(result.reason);
       }
+      return result;
     },
-    [options.peerThreadId, options.displayName]
+    [options.peerThreadId, options.displayName],
   );
 
   return {

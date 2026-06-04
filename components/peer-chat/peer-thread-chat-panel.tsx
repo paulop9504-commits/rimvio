@@ -1,11 +1,22 @@
 "use client";
 
-import Link from "next/link";
-import { SendHorizontal, Sparkles } from "lucide-react";
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { queuePeerMentionForAiChat } from "@/lib/context/build-peer-composer-context";
+import { ArrowUp, Loader2 } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+} from "react";
 import { usePeerThreadChat } from "@/hooks/use-peer-thread-chat";
 import type { PeerThreadPolicyInput } from "@/lib/context/peer-thread-types";
+import { PeerChatBubble } from "@/components/peer-chat/peer-chat-bubble";
+import { PeerInviteBanner } from "@/components/peer-chat/peer-invite-banner";
+import { isDmThreadId } from "@/lib/peer-chat/dm-thread";
+import { DM_CHAT } from "@/lib/peer-chat/dm-chat-density";
+import { shouldShowPeerMessageTime } from "@/lib/peer-chat/message-time-visibility";
+import { normalizePeerSyncError } from "@/lib/peer-chat/normalize-peer-sync-error";
 import { cn } from "@/lib/utils";
 
 type PeerThreadChatPanelProps = {
@@ -14,137 +25,203 @@ type PeerThreadChatPanelProps = {
   aiLensEnabled: boolean;
   readOnly?: boolean;
   showAiMentionLink?: boolean;
+  peerAvatarUrl?: string | null;
+  /** 카톡보다 단순한 1:1 DM UI */
+  simpleDm?: boolean;
 };
 
 export function PeerThreadChatPanel({
   displayName,
   policyInput,
-  aiLensEnabled,
   readOnly = false,
-  showAiMentionLink = true,
+  simpleDm = false,
 }: PeerThreadChatPanelProps) {
-  const { messages, canSend, send } = usePeerThreadChat(policyInput);
+  const threadId = policyInput.settings.peerThreadId;
+  const phoneDm = isDmThreadId(threadId);
+  const simple = simpleDm || phoneDm;
+  const { messages, canSend, send, inviteUrl, inviteCode, syncError, aiBusy } =
+    usePeerThreadChat(policyInput);
   const [text, setText] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const focusComposer = useCallback(() => {
+    requestAnimationFrame(() => {
+      const el = inputRef.current;
+      if (!el || readOnly || !canSend || aiBusy) {
+        return;
+      }
+      el.focus({ preventScroll: true });
+    });
+  }, [readOnly, canSend, aiBusy]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length]);
+  }, [messages.length, aiBusy]);
 
-  const submit = () => {
-    if (!text.trim() || !canSend || readOnly) {
+  useEffect(() => {
+    if (canSend && !readOnly) {
+      focusComposer();
+    }
+  }, [canSend, readOnly, focusComposer]);
+
+  const resizeComposer = useCallback(() => {
+    const el = inputRef.current;
+    if (!el) {
       return;
     }
-    send(text, "me");
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, simple ? 96 : 128)}px`;
+  }, []);
+
+  useEffect(() => {
+    resizeComposer();
+  }, [text, resizeComposer]);
+
+  const submit = useCallback(async () => {
+    const body = text.trim();
+    if (!body || !canSend || readOnly || aiBusy) {
+      return;
+    }
     setText("");
-  };
+    resizeComposer();
+    focusComposer();
+    await send(body, "me");
+    focusComposer();
+  }, [text, canSend, readOnly, aiBusy, send, focusComposer, resizeComposer]);
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    submit();
+    void submit();
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
-      submit();
+      void submit();
     }
   };
 
-  const openAiWithMention = () => {
-    queuePeerMentionForAiChat(displayName);
-  };
-
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+    <div
+      className={cn(
+        "flex min-h-0 flex-1 flex-col",
+        simple ? "bg-[#0f0f0f]" : "rimvio-dm-chat-bg",
+      )}
+    >
+      {!readOnly && !phoneDm ? (
+        <PeerInviteBanner inviteUrl={inviteUrl} inviteCode={inviteCode} />
+      ) : null}
+
+      {syncError ? (
+        <p className="px-3 py-1.5 text-center text-[11px] text-amber-200/90">
+          {normalizePeerSyncError(syncError)}
+        </p>
+      ) : null}
+
+      <div
+        className={cn(
+          "min-h-0 flex-1 overflow-y-auto",
+          simple ? DM_CHAT.listPad : "px-4 py-4",
+        )}
+      >
         {messages.length === 0 ? (
-          <p className="py-8 text-center text-xs text-muted-foreground">
-            {readOnly ? (
-              "AI 허브 해제 후 여기로 가려해요"
-            ) : showAiMentionLink ? (
-              <>
-                {displayName}와 나눈 말을 여기에
-                <br />
-                AI 실행 창에서 @{displayName} 로 이어갈 수 있어요
-              </>
-            ) : (
-              <>
-                {displayName}와 대화해요
-                <br />
-                AI @import는 AI 허브에 꽂인 친구만 사용할 수 있어요
-              </>
+          <p
+            className={cn(
+              "text-center text-white/35",
+              simple ? "py-8 text-sm" : "py-16 text-base",
             )}
+          >
+            {simple ? "메시지를 입력하세요" : `${displayName}와 대화해요`}
           </p>
         ) : (
-          <ul className="flex flex-col gap-2">
-            {messages.map((message) => (
-              <li
+          <ul className={cn("flex flex-col", simple ? DM_CHAT.listGap : "gap-3")}>
+            {messages.map((message, index) => (
+              <PeerChatBubble
                 key={message.id}
-                className={cn(
-                  "flex",
-                  message.author === "me" ? "justify-end" : "justify-start",
-                )}
-              >
-                <div
+                message={message}
+                simple={simple}
+                showTime={shouldShowPeerMessageTime(messages, index)}
+              />
+            ))}
+            {aiBusy ? (
+              <li className="flex justify-end">
+                <span
                   className={cn(
-                    "max-w-[85%] rounded-2xl px-3.5 py-2 text-sm leading-snug",
-                    message.author === "me"
-                      ? "rounded-br-md bg-rimvio-neon-purple text-white"
-                      : "rounded-bl-md bg-rimvio-surface-raised text-foreground",
+                    "rounded-full bg-[#2c2c2e] text-white/50",
+                    simple ? "px-2 py-0.5 text-[12px]" : "px-3 py-2 text-[13px]",
                   )}
                 >
-                  {message.body}
-                </div>
+                  …
+                </span>
               </li>
-            ))}
+            ) : null}
           </ul>
         )}
         <div ref={bottomRef} />
       </div>
 
-      <div className="border-t border-border bg-rimvio-surface/95 px-3 py-2">
-        {!readOnly && showAiMentionLink ? (
-          <Link
-            href="/"
-            onClick={openAiWithMention}
-            className="mb-2 flex w-full items-center justify-center gap-1.5 rounded-full border border-rimvio-neon-purple/20 bg-rimvio-neon-purple/10 py-2 text-[11px] font-medium text-rimvio-neon-purple active:scale-[0.98]"
-          >
-            <Sparkles className="size-3.5" aria-hidden />
-            AI 실행에서 @{displayName} 맥락으로 물어보기
-          </Link>
-        ) : null}
-
-        <form onSubmit={handleSubmit} className="flex items-end gap-2">
+      <div
+        className={cn(
+          "shrink-0 border-t",
+          simple
+            ? "border-white/[0.08] bg-[#0f0f0f] px-2 pt-1 pb-[max(0.375rem,env(safe-area-inset-bottom))]"
+            : "rimvio-dm-composer px-3 pb-3 pt-2",
+        )}
+      >
+        <form
+          onSubmit={handleSubmit}
+          className={cn("flex items-end", simple ? "gap-1.5" : "gap-2.5")}
+        >
           <textarea
+            ref={inputRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
             rows={1}
-            disabled={!canSend || readOnly}
-            placeholder={
-              readOnly
-                ? "AI 허브 해제 후 메시지를 보낼 수 있어요"
-                : canSend
-                  ? "메시지 입력"
-                  : "친구 목록에 추가하면 대화가 저장돼요"
-            }
-            className="max-h-28 min-h-[2.5rem] flex-1 resize-none rounded-2xl bg-rimvio-surface-muted px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-rimvio-neon-cyan/30"
+            enterKeyHint="send"
+            autoComplete="off"
+            autoCorrect="on"
+            disabled={!canSend || readOnly || aiBusy}
+            placeholder={readOnly ? "읽기 전용" : "메시지"}
+            className={cn(
+              "flex-1 resize-none overflow-y-auto outline-none",
+              simple
+                ? cn(
+                    DM_CHAT.composerMinH,
+                    DM_CHAT.composerText,
+                    DM_CHAT.composerPad,
+                    "max-h-24 rounded-2xl bg-[#1c1c1e] text-[#f5f5f5] placeholder:text-white/30",
+                  )
+                : "max-h-32 min-h-[48px] rounded-xl bg-rimvio-surface-muted px-4 py-3 text-base",
+            )}
           />
           <button
-            type="submit"
-            disabled={!canSend || !text.trim()}
-            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-rimvio-neon-purple text-white disabled:opacity-40"
+            type="button"
+            disabled={!canSend || !text.trim() || aiBusy}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => void submit()}
+            className={cn(
+              "mb-px flex shrink-0 items-center justify-center rounded-full disabled:opacity-30",
+              simple
+                ? cn(DM_CHAT.sendSize, "bg-[#FEE500] text-[#191919]")
+                : "rimvio-dm-send-btn size-11 text-white",
+            )}
             aria-label="보내기"
           >
-            <SendHorizontal className="size-4" aria-hidden />
+            {aiBusy ? (
+              <Loader2
+                className={cn(simple ? "size-4" : "size-5", "animate-spin")}
+                aria-hidden
+              />
+            ) : (
+              <ArrowUp
+                className={cn(simple ? "size-4 stroke-[2.5]" : "size-6 stroke-[2.5]")}
+                aria-hidden
+              />
+            )}
           </button>
         </form>
-        {aiLensEnabled ? (
-          <p className="mt-1.5 text-[10px] text-muted-foreground">
-            AI 렌즈 ON · 맥락·Rail 분석 대기
-          </p>
-        ) : null}
       </div>
     </div>
   );

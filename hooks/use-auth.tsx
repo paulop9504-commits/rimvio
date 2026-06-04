@@ -10,7 +10,10 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { getAuthCallbackUrl } from "@/lib/auth/redirect-url";
+import {
+  AUTH_NEXT_COOKIE,
+  getAuthCallbackUrl,
+} from "@/lib/auth/redirect-url";
 import { isSupabaseConfigured, tryCreateClient } from "@/lib/supabase/client";
 
 type AuthContextValue = {
@@ -65,15 +68,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [supabase]);
 
   const signInWithGoogle = useCallback(
-    async (nextPath = "/") => {
+    async (nextPath = "/feed") => {
       if (!supabase) {
         throw new Error("Supabase is not configured.");
+      }
+
+      const next = nextPath.startsWith("/") ? nextPath : `/${nextPath}`;
+      if (typeof document !== "undefined") {
+        const secure = window.location.protocol === "https:";
+        document.cookie = `${AUTH_NEXT_COOKIE}=${encodeURIComponent(next)}; path=/; max-age=600; SameSite=Lax${secure ? "; Secure" : ""}`;
       }
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: getAuthCallbackUrl(nextPath),
+          redirectTo: getAuthCallbackUrl(),
           queryParams: {
             access_type: "offline",
             prompt: "select_account",

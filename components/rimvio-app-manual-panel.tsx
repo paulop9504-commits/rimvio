@@ -25,6 +25,7 @@ const MENTION_EXAMPLES = [
   { token: "@택배", desc: "송장 추적" },
   { token: "@출근", desc: "출근 길·일정" },
   { token: "@메모", desc: "리소스풀에 저장" },
+  { token: "@친추", desc: "전번·이메일·ID로 친구 찾기 → 확인 후 추가" },
 ] as const;
 
 export function RimvioAppManualPanel({ className }: { className?: string }) {
@@ -126,7 +127,7 @@ export function RimvioAppManualPanel({ className }: { className?: string }) {
       </div>
 
       <Link
-        href="/"
+        href="/feed"
         className={cn("block w-full text-center", IOS.primaryBtn)}
       >
         {copy.manual.tryCta}

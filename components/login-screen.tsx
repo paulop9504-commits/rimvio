@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { AuthSetupPanel } from "@/components/auth-setup-panel";
@@ -15,6 +15,27 @@ export function LoginScreen() {
   const searchParams = useSearchParams();
   const { configured, signInWithGoogle } = useAuth();
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    const authError = searchParams.get("auth");
+    if (!authError) {
+      return;
+    }
+
+    const messages: Record<string, { title: string; description: string }> = {
+      error: {
+        title: copy.auth.loginFail,
+        description: copy.auth.loginFailHint,
+      },
+      missing_code: {
+        title: copy.auth.loginFail,
+        description: `${typeof window !== "undefined" ? window.location.origin : ""}/auth/callback — Supabase Redirect URLs에 등록했는지 확인하세요.`,
+      },
+    };
+
+    const msg = messages[authError] ?? messages.error;
+    toast.error(msg.title, { description: msg.description });
+  }, [searchParams, copy.auth.loginFail, copy.auth.loginFailHint]);
 
   const nextPath =
     searchParams.get("next") ??

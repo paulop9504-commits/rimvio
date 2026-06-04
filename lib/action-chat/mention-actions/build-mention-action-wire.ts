@@ -14,6 +14,7 @@ import {
   parseMentionReminderFireAt,
 } from "@/lib/action-chat/mention-reminder/parse-mention-reminder-query";
 import { buildMentionManualCatalog } from "@/lib/action-chat/mention-manual/build-mention-manual-catalog";
+import { normalizeFriendContactQuery } from "@/lib/peer-chat/normalize-friend-contact";
 import type { MentionFeature } from "@/lib/event-kernel/action-contracts/mention-feature-registry";
 import {
   buildKakaoMapSearchHref,
@@ -673,6 +674,22 @@ export function buildMentionActionWire(input: {
         mainLabel: "",
         mainActionKind: "internal",
         manualCatalog: catalog,
+      });
+    }
+
+    case "friend_add": {
+      const contact = normalizeFriendContactQuery(q);
+      return buildInlineChatActionWire({
+        featureId: feature.featureId,
+        displayName: feature.displayName,
+        icon,
+        query: contact,
+        summaryLines: contact
+          ? ["프로필 확인 후 친구 추가"]
+          : [],
+        mainLabel: "",
+        mainActionKind: "internal",
+        friendAddContact: contact,
       });
     }
 

@@ -150,6 +150,7 @@ export function setPeerThreadPinned(input: {
   peerThreadId: string;
   displayName: string;
   pinned: boolean;
+  preferredSlotIndex?: PinnedSlotIndex;
 }): SetPeerThreadPinnedResult {
   const current = getOrCreatePeerThreadSettings(input);
   let roster = readPinnedRoster();
@@ -168,6 +169,7 @@ export function setPeerThreadPinned(input: {
       roster,
       peerThreadId: input.peerThreadId,
       displayName: input.displayName,
+      preferredSlotIndex: input.preferredSlotIndex,
     });
     if (pin.ok === false && pin.reason === "no_vacant_slot") {
       return {

@@ -34,6 +34,8 @@ export type InlineChatActionWire = {
   manualCatalog?: InlineChatManualCatalogGroup[];
   /** Show URL field + keyboard-friendly prompt (linksheet). */
   linksheetUrlPrompt?: boolean;
+  /** @친추 — lookup + confirm add friend */
+  friendAddContact?: string;
 };
 
 export function buildInlineChatActionWire(
@@ -41,6 +43,7 @@ export function buildInlineChatActionWire(
     auxActions?: InlineChatActionAuxWire[];
     manualCatalog?: InlineChatManualCatalogGroup[];
     linksheetUrlPrompt?: boolean;
+    friendAddContact?: string;
   },
 ): InlineChatActionWire {
   return {
@@ -55,5 +58,6 @@ export function buildInlineChatActionWire(
     auxActions: input.auxActions ?? [],
     manualCatalog: input.manualCatalog,
     linksheetUrlPrompt: input.linksheetUrlPrompt,
+    friendAddContact: input.friendAddContact,
   };
 }

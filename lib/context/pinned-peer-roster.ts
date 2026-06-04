@@ -211,26 +211,17 @@ export function pinPeerToRoster(input: {
   return connectPeerToHub(input);
 }
 
-/** User removes pin — ROOM stays; peer data purged after retention days. */
+/** User removes pin — hub slot frees immediately; archive handles 7d retention. */
 export function unpinPeerFromHub(
   roster: PinnedPeerRoster,
   peerThreadId: string,
-  now?: string
+  _now?: string
 ): PinnedPeerRoster {
-  const at = now ?? new Date().toISOString();
   const slots = roster.slots.map((slot) => {
     if (slot.peerThreadId !== peerThreadId) {
       return slot;
     }
-    return {
-      slotIndex: slot.slotIndex,
-      connection: "purge_pending" as HubRoomConnection,
-      peerThreadId: slot.peerThreadId,
-      displayName: slot.displayName,
-      pinnedAt: slot.pinnedAt,
-      unpinnedAt: at,
-      purgeAfter: purgeAfterIso(at),
-    };
+    return vacantSlot(slot.slotIndex);
   });
   return { slots };
 }

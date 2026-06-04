@@ -326,6 +326,15 @@ const REGISTRY: readonly MentionFeature[] = [
     sourceRef: "mention:manual",
     category: "custom",
   },
+  {
+    featureId: "friend_add",
+    displayName: "친추",
+    aliases: ["친추", "친구추가", "친구", "friend", "addfriend"],
+    sourceRef: "mention:friend_add",
+    category: "custom",
+    confirmCopy:
+      "전화번호, 이메일, Rimvio ID 중 하나를 적어 주세요. 예: @친추 rimvio_jihun · @친추 010-1234-5678",
+  },
 ];
 
 const byAlias = new Map<string, MentionFeature>(

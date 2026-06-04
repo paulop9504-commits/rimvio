@@ -1,8 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { Pin, PinOff, UserPlus } from "lucide-react";
 import { toast } from "sonner";
+import { PeerProfileAvatar } from "@/components/peer-chat/peer-profile-avatar";
+import { PeerPublicProfileSheet } from "@/components/peer-chat/peer-public-profile-sheet";
+import { useDmPeerProfile } from "@/hooks/use-dm-peer-profile";
+import { isRegisteredPeerDmThread } from "@/lib/peer-chat/peer-chat-client";
 import { findConnectedPeerSlot } from "@/lib/context/pinned-peer-roster";
 import { readPeerContacts } from "@/lib/context/peer-contact-store";
 import {
@@ -11,6 +16,7 @@ import {
   syncPinnedRoster,
 } from "@/lib/context/peer-thread-settings-store";
 import type { PeerContact } from "@/lib/context/peer-contact-types";
+import { PeerContactSyncButton } from "@/components/peer-chat/peer-contact-sync-button";
 import { IOS } from "@/lib/ui/ios-surface";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +26,78 @@ type PeerContactsListProps = {
   onAddClick: () => void;
   className?: string;
 };
+
+function PeerContactRow({
+  contact,
+  pinned,
+  onPinToggle,
+}: {
+  contact: PeerContact;
+  pinned: boolean;
+  onPinToggle: (pinned: boolean) => void;
+}) {
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const phoneDm = isRegisteredPeerDmThread(contact.peerThreadId);
+  const { profile, loading } = useDmPeerProfile(contact.peerThreadId, phoneDm);
+  const displayName =
+    profile?.displayName?.trim() || contact.displayName;
+  const href = `/peers/${encodeURIComponent(contact.peerThreadId)}`;
+
+  return (
+    <li className="flex items-center gap-2 bg-rimvio-surface">
+      <div className="pl-4">
+        {phoneDm ? (
+          <button
+            type="button"
+            onClick={() => setSheetOpen(true)}
+            className="shrink-0 rounded-full active:opacity-80"
+            aria-label={`${displayName} 프로필`}
+          >
+            <PeerProfileAvatar
+              displayName={displayName}
+              avatarUrl={profile?.avatarUrl}
+              size="sm"
+            />
+          </button>
+        ) : (
+          <PeerProfileAvatar displayName={displayName} size="sm" />
+        )}
+      </div>
+      <Link
+        href={href}
+        className="flex min-w-0 flex-1 flex-col justify-center py-3 pr-2 active:bg-rimvio-surface-muted"
+      >
+        <p className="truncate font-medium text-white">{displayName}</p>
+        <p className="truncate text-[11px] text-white/60">
+          {profile?.rimvioId
+            ? `@${profile.rimvioId}`
+            : pinned
+              ? "AI 허브 · @import 가능"
+              : "1:1 대화"}
+        </p>
+      </Link>
+      <button
+        type="button"
+        onClick={() => onPinToggle(!pinned)}
+        className="mr-3 flex size-9 shrink-0 items-center justify-center rounded-full text-rimvio-neon-cyan active:bg-rimvio-neon-purple/10"
+        aria-label={pinned ? "AI 허브 해제" : "AI 허브에 꽂기"}
+      >
+        {pinned ? (
+          <PinOff className="size-4" aria-hidden />
+        ) : (
+          <Pin className="size-4" aria-hidden />
+        )}
+      </button>
+      <PeerPublicProfileSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        profile={profile}
+        fallbackName={displayName}
+        loading={loading}
+      />
+    </li>
+  );
+}
 
 export function PeerContactsList({
   contacts,
@@ -57,6 +135,8 @@ export function PeerContactsList({
         </span>
       </div>
 
+      <PeerContactSyncButton onSynced={onRefresh} />
+
       <button
         type="button"
         onClick={onAddClick}
@@ -66,7 +146,7 @@ export function PeerContactsList({
         )}
       >
         <UserPlus className="size-4 text-rimvio-neon-cyan" aria-hidden />
-        친구 추가 (허브 없이)
+        친구 추가 (ID·번호·이메일)
       </button>
 
       {contacts.length === 0 ? (
@@ -79,37 +159,14 @@ export function PeerContactsList({
             const pinned = Boolean(
               findConnectedPeerSlot(roster, contact.peerThreadId),
             );
-            const href = `/peers/${encodeURIComponent(contact.peerThreadId)}`;
 
             return (
-              <li key={contact.peerThreadId} className="flex items-center gap-2 bg-rimvio-surface">
-                <Link
-                  href={href}
-                  className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 active:bg-rimvio-surface-muted"
-                >
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-rimvio-surface-muted text-sm font-semibold text-white">
-                    {contact.displayName.trim().charAt(0) || "?"}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-white">{contact.displayName}</p>
-                    <p className="text-[11px] text-white/60">
-                      {pinned ? "AI 허브 · @import 가능" : "로컬 저장만"}
-                    </p>
-                  </div>
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => handlePinToggle(contact, !pinned)}
-                  className="mr-3 flex size-9 shrink-0 items-center justify-center rounded-full text-rimvio-neon-cyan active:bg-rimvio-neon-purple/10"
-                  aria-label={pinned ? "AI 허브 해제" : "AI 허브에 꽂기"}
-                >
-                  {pinned ? (
-                    <PinOff className="size-4" aria-hidden />
-                  ) : (
-                    <Pin className="size-4" aria-hidden />
-                  )}
-                </button>
-              </li>
+              <PeerContactRow
+                key={contact.peerThreadId}
+                contact={contact}
+                pinned={pinned}
+                onPinToggle={(next) => handlePinToggle(contact, next)}
+              />
             );
           })}
         </ul>

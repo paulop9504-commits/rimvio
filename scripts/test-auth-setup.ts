@@ -12,8 +12,8 @@ assert.ok(missing.includes("NEXT_PUBLIC_SUPABASE_ANON_KEY"));
 
 process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
 assert.equal(
-  getAuthCallbackUrl("/welcome"),
-  "http://localhost:3000/auth/callback?next=%2Fwelcome",
+  getAuthCallbackUrl(),
+  "http://localhost:3000/auth/callback",
 );
 assert.equal(getAuthCallbackPath("/"), "/auth/callback?next=%2F");
 

@@ -1,0 +1,174 @@
+"use client";
+
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ChevronLeft, UserPlus } from "lucide-react";
+import { toast } from "sonner";
+import { ArchiveMarbleStack } from "@/components/peer-chat/archive-marble-stack";
+import { IOS } from "@/lib/ui/ios-surface";
+import {
+  addPeerByPhoneRemote,
+  fetchSocialLayer,
+  syncMyProfileFromAuth,
+} from "@/lib/peer-chat/peer-chat-client";
+import { addPeerContact } from "@/lib/context/peer-contact-store";
+import {
+  applySocialLayerToLocalRoster,
+  listArchivePeers,
+} from "@/lib/social/sync-social-layer";
+import type { SocialBubblePeer } from "@/lib/social/bubble-state";
+import { useAuth } from "@/hooks/use-auth";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { cn } from "@/lib/utils";
+
+export function FriendArchivePageClient() {
+  const { user, configured } = useAuth();
+  const usePhoneChat = Boolean(configured && user && isSupabaseConfigured());
+  const [pinnedPeers, setPinnedPeers] = useState<SocialBubblePeer[]>([]);
+  const [archivePeers, setArchivePeers] = useState<SocialBubblePeer[]>([]);
+  const [addOpen, setAddOpen] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [name, setName] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const archiveList = useMemo(
+    () => listArchivePeers(pinnedPeers, archivePeers),
+    [pinnedPeers, archivePeers],
+  );
+
+  const load = useCallback(async () => {
+    if (!usePhoneChat) {
+      return;
+    }
+    const layer = await fetchSocialLayer();
+    setPinnedPeers(layer.pinned);
+    setArchivePeers(layer.archive);
+    applySocialLayerToLocalRoster(layer);
+  }, [usePhoneChat]);
+
+  useEffect(() => {
+    if (!usePhoneChat) {
+      return;
+    }
+    void syncMyProfileFromAuth().catch(() => {});
+    void load().catch(() => {});
+  }, [usePhoneChat, load]);
+
+  const submitAdd = () => {
+    const phoneTrimmed = phone.trim();
+    if (!phoneTrimmed) {
+      toast.error("친구 Rimvio ID · 번호 · 이메일을 입력해 주세요");
+      return;
+    }
+    setSubmitting(true);
+    void addPeerByPhoneRemote({
+      contact: phoneTrimmed,
+      displayName: name.trim() || undefined,
+    })
+      .then(async (result) => {
+        addPeerContact({
+          peerThreadId: result.threadId,
+          displayName: result.displayName,
+        });
+        setAddOpen(false);
+        setPhone("");
+        setName("");
+        await load();
+        toast.success(`${result.displayName} 구슬이 쌓였어요`);
+      })
+      .catch((error) => {
+        toast.error(
+          error instanceof Error ? error.message : "추가에 실패했어요",
+        );
+      })
+      .finally(() => setSubmitting(false));
+  };
+
+  const empty = archiveList.length === 0;
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col pb-8">
+      <header className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
+        <Link
+          href="/peers"
+          className="flex size-9 items-center justify-center rounded-full active:bg-rimvio-surface-muted"
+          aria-label="관계 버블로"
+        >
+          <ChevronLeft className="size-5" aria-hidden />
+        </Link>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-base font-semibold text-white">구슬 주머니</h1>
+          {!empty ? (
+            <p className="text-[11px] text-muted-foreground">
+              구슬 {archiveList.length}개 · 탭하면 대화
+            </p>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          onClick={() => setAddOpen(true)}
+          className="flex size-9 items-center justify-center rounded-full text-rimvio-neon-cyan active:bg-rimvio-surface-muted"
+          aria-label="구슬 넣기"
+        >
+          <UserPlus className="size-5" aria-hidden />
+        </button>
+      </header>
+
+      <ArchiveMarbleStack peers={archiveList} className="flex-1 px-4 pt-6" />
+
+      {empty ? (
+        <button
+          type="button"
+          onClick={() => setAddOpen(true)}
+          className={cn(
+            "mx-4 mb-4 flex items-center justify-center gap-2 rounded-2xl border border-dashed border-white/20 bg-rimvio-surface py-3 text-sm font-medium text-white active:scale-[0.98]",
+            IOS.cardSm,
+          )}
+        >
+          <UserPlus className="size-4 text-rimvio-neon-cyan" aria-hidden />
+          첫 구슬 넣기
+        </button>
+      ) : null}
+
+      {addOpen ? (
+        <div
+          className={cn("mx-4 space-y-3 p-4", IOS.cardSm)}
+          role="dialog"
+          aria-label="친구 추가"
+        >
+          <p className="text-sm font-semibold text-white">주머니에 구슬 넣기</p>
+          <input
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="rimvio_id · 010-… · email"
+            className="h-11 w-full rounded-2xl bg-rimvio-surface-muted px-4 text-sm text-white outline-none"
+            autoFocus
+          />
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="이름 (선택)"
+            className="h-11 w-full rounded-2xl bg-rimvio-surface-muted px-4 text-sm text-white outline-none"
+          />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="flex-1 py-2.5 text-sm font-semibold text-rimvio-neon-cyan"
+              onClick={() => setAddOpen(false)}
+            >
+              취소
+            </button>
+            <button
+              type="button"
+              disabled={submitting}
+              className="rimvio-accent-submit-btn flex-1 rounded-xl py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+              onClick={submitAdd}
+            >
+              {submitting ? "넣는 중…" : "넣기"}
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}

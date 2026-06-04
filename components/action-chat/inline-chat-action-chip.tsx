@@ -13,6 +13,7 @@ import {
   rimvioInlineChipTitleClass,
 } from "@/lib/brand/rimvio-neon-theme";
 import type { InlineChatActionWire } from "@/lib/action-chat/mention-actions/inline-chat-action";
+import { InlineChatFriendAdd } from "@/components/action-chat/inline-chat-friend-add";
 import { commitLinksheetUrl } from "@/lib/action-chat/mention-linksheet/linksheet-url-actions";
 import { buildKakaoMapSearchHref } from "@/lib/resolvers/deep-links";
 import { cn } from "@/lib/utils";
@@ -175,6 +176,7 @@ export function InlineChatActionChip({
   });
 
   const isManualCatalog = Boolean(action.manualCatalog?.length);
+  const isFriendAdd = Boolean(action.friendAddContact?.trim());
 
   const insertMention = useCallback(
     (example: string) => {
@@ -204,6 +206,10 @@ export function InlineChatActionChip({
               <li key={line}>{line}</li>
             ))}
           </ul>
+        ) : null}
+
+        {isFriendAdd ? (
+          <InlineChatFriendAdd contact={action.friendAddContact!.trim()} />
         ) : null}
 
         {isManualCatalog ? (
@@ -289,7 +295,7 @@ export function InlineChatActionChip({
           </div>
         ) : null}
 
-        {!isManualCatalog && !isLinksheetUrlPrompt && action.mainLabel ? (
+        {!isManualCatalog && !isLinksheetUrlPrompt && !isFriendAdd && action.mainLabel ? (
           <MainActionButton
             label={action.mainLabel}
             brand={mainBrand}
@@ -297,7 +303,7 @@ export function InlineChatActionChip({
             onClick={() => void handleMain()}
           />
         ) : null}
-        {!isManualCatalog && !isLinksheetUrlPrompt && action.auxActions.length > 0 ? (
+        {!isManualCatalog && !isLinksheetUrlPrompt && !isFriendAdd && action.auxActions.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
             {action.auxActions.map((aux) => (
               <AuxActionButton

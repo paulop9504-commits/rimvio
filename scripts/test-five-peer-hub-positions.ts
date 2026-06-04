@@ -8,8 +8,10 @@ import {
 
 const defaults = defaultHubNodePositions();
 assert.equal(defaults.center.x, 50);
-assert.equal(defaults.center.y, 50);
+assert.equal(defaults.center.y, 46);
 assert.equal(Object.keys(defaults.slots).length, 5);
+assert.ok(defaults.archiveBag.y > defaults.center.y);
+assert.ok(defaults.archiveBag.x > 0);
 
 const clamped = clampHubPoint({ x: 0, y: 100 }, { minX: 4, maxX: 96, minY: 4, maxY: 96 });
 assert.equal(clamped.x, 4);

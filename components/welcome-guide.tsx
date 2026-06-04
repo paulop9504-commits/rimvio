@@ -10,8 +10,11 @@ import { useAuth } from "@/hooks/use-auth";
 import { RimvioLogo } from "@/components/rimvio-logo";
 import { InboxLinkInput } from "@/components/inbox-link-input";
 import { SettingsProfilePanel } from "@/components/settings-profile-panel";
+import { RimvioAccountProfilePanel } from "@/components/rimvio-account-profile-panel";
 import { SettingsIntegrationsPanel } from "@/components/settings-integrations-panel";
+import { RimvioAppManualPanel } from "@/components/rimvio-app-manual-panel";
 import { SettingsSection } from "@/components/settings/settings-section";
+import { markManualGuideOpened } from "@/lib/onboarding/app-manual-onboarding";
 import { useCopy } from "@/hooks/use-copy";
 import { RIMVIO } from "@/lib/brand/rimvio";
 import { IOS } from "@/lib/ui/ios-surface";
@@ -68,9 +71,10 @@ function InstallSteps({
 
 export function WelcomeGuide() {
   const copy = useCopy();
-  const { configured: authConfigured } = useAuth();
+  const { configured: authConfigured, user } = useAuth();
   const searchParams = useSearchParams();
   const showPaste = searchParams.get("paste") === "1";
+  const showManual = searchParams.get("manual") === "1";
   const [platform, setPlatform] = useState<"ios" | "android" | "other">("other");
   const [standalone, setStandalone] = useState(false);
 
@@ -85,17 +89,40 @@ export function WelcomeGuide() {
     setStandalone(isStandalonePwa());
   }, [searchParams]);
 
+  useEffect(() => {
+    if (showManual) {
+      markManualGuideOpened();
+      requestAnimationFrame(() => {
+        document.getElementById("rimvio-manual")?.scrollIntoView({ behavior: "smooth" });
+      });
+    }
+  }, [showManual]);
+
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-4 px-4 pb-8 pt-2">
       <header className="flex items-center gap-3 border-b border-white/[0.06] pb-4">
         <RimvioLogo size="sm" appearance="white" />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h1 className="text-xl font-semibold tracking-tight">{copy.nav.settings}</h1>
           <p className="mt-0.5 text-[13px] text-muted-foreground">{RIMVIO.lockup}</p>
         </div>
+        <Link
+          href="/welcome?manual=1"
+          className="shrink-0 rounded-full border border-rimvio-neon-cyan/35 bg-rimvio-neon-cyan/10 px-3 py-1.5 text-[12px] font-semibold text-rimvio-neon-cyan active:scale-[0.98]"
+        >
+          {copy.manual.settingsLink}
+        </Link>
       </header>
 
       <SettingsProfilePanel variant="embedded" />
+
+      <div id="rimvio-manual">
+        <RimvioAppManualPanel />
+      </div>
+
+      {authConfigured && user ? (
+        <RimvioAccountProfilePanel variant="embedded" />
+      ) : null}
 
       {showPaste ? (
         <SettingsSection title={copy.inbox.paste} description={copy.inbox.pasteSubhint}>

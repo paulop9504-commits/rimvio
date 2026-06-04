@@ -4,6 +4,7 @@ import "@/lib/demo/experiment-lab-init";
 import { Suspense } from "react";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/hooks/use-auth";
+import { RimvioAuthProfileBootstrap } from "@/components/rimvio-auth-profile-bootstrap";
 import { isAuthRequired } from "@/lib/auth/policy";
 import { AutoLocaleBootstrap } from "@/components/auto-locale-bootstrap";
 import { DevDemoSeed } from "@/components/dev-demo-seed";
@@ -27,6 +28,7 @@ export function Providers({ children, initialLocale }: ProvidersProps) {
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
       <LocaleProvider initialLocale={initialLocale}>
         <AuthProvider>
+          <RimvioAuthProfileBootstrap />
           <AutoLocaleBootstrap />
           <Suspense fallback={null}>
             <ExperimentLabBootstrap />

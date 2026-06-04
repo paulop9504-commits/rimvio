@@ -50,7 +50,7 @@ if (missing.length > 0) {
 
 console.log("✓ Supabase env 키 존재");
 console.log(`  APP_URL: ${appUrl}`);
-console.log(`  콜백: ${getAuthCallbackUrl("/welcome")}`);
+console.log(`  OAuth redirectTo: ${getAuthCallbackUrl()}`);
 
 if (googleRedirect) {
   console.log(`\nGoogle Cloud → Authorized redirect URIs 에 추가:\n  ${googleRedirect}`);

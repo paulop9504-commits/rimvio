@@ -8,6 +8,8 @@ type PeerChatThreadShellProps = {
   displayName: string;
   children?: React.ReactNode;
   className?: string;
+  /** 1:1 DM — 렌즈·고정 바 숨김 */
+  hideLensBar?: boolean;
 };
 
 /** 친구 ROOM — 연결(고정)된 경우에만 렌즈·고정핀. AI 실행 창에는 사용하지 않음. */
@@ -16,6 +18,7 @@ export function PeerChatThreadShell({
   displayName,
   children,
   className,
+  hideLensBar = false,
 }: PeerChatThreadShellProps) {
   const {
     settings,
@@ -30,7 +33,7 @@ export function PeerChatThreadShell({
 
   return (
     <div className={className ?? "flex min-h-0 flex-1 flex-col"}>
-      {connected ? (
+      {connected && !hideLensBar ? (
         <PeerThreadLensBar
           displayName={displayName}
           aiLensEnabled={settings.aiLensEnabled}
@@ -45,7 +48,7 @@ export function PeerChatThreadShell({
           연결 가능한 ROOM이 가득 찼어요. 다른 ROOM 고정을 해제한 뒤 시도해 주세요.
         </p>
       ) : null}
-      <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
     </div>
   );
 }

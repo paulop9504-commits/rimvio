@@ -14,6 +14,8 @@ import { FeedLinkAddSheet } from "@/components/feed-link-add-sheet";
 import { sanitizeLinkTitle } from "@/lib/feed/sanitize-link-title";
 import { toastNextLinkSuggestion } from "@/lib/links/next-link-toast";
 import { FeedGestureCoach } from "@/components/feed-gesture-coach";
+import { RimvioManualFeedBanner } from "@/components/rimvio-manual-feed-banner";
+import { RimvioManualIntroSheet } from "@/components/rimvio-manual-intro-sheet";
 import { runContainerMaintenance } from "@/lib/containers/context-containers";
 import { PwaInstallNudge } from "@/components/pwa-install-nudge";
 import { RimvioLogo } from "@/components/rimvio-logo";
@@ -382,6 +384,7 @@ export function ActionShortsFeed() {
           ) : null}
         </div>
 
+        <RimvioManualIntroSheet />
         <FeedLinkAddSheet
           open={linkAddOpen}
           onOpenChange={setLinkAddOpen}
@@ -452,6 +455,7 @@ export function ActionShortsFeed() {
         ) : null}
       </AnimatePresence>
 
+      <RimvioManualIntroSheet />
       <FeedGestureCoach />
 
       <PwaInstallNudge />

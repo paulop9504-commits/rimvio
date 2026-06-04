@@ -1,4 +1,5 @@
 import {
+  ARCHIVE_BAG_ANGLE_DEG,
   FIVE_PEER_HUB_ANGLES_DEG,
   hubPolarPercent,
 } from "@/lib/context/five-peer-hub-layout";
@@ -11,6 +12,7 @@ export type HubNodePoint = { x: number; y: number };
 export type HubNodePositions = {
   center: HubNodePoint;
   slots: Record<PinnedSlotIndex, HubNodePoint>;
+  archiveBag: HubNodePoint;
 };
 
 function defaultSlotPositions(): Record<PinnedSlotIndex, HubNodePoint> {
@@ -22,10 +24,16 @@ function defaultSlotPositions(): Record<PinnedSlotIndex, HubNodePoint> {
   return slots;
 }
 
+export function defaultArchiveBagPosition(): HubNodePoint {
+  const { leftPct, topPct } = hubPolarPercent(ARCHIVE_BAG_ANGLE_DEG);
+  return { x: leftPct, y: Math.min(topPct + 6, 88) };
+}
+
 export function defaultHubNodePositions(): HubNodePositions {
   return {
-    center: { x: 50, y: 50 },
+    center: { x: 50, y: 46 },
     slots: defaultSlotPositions(),
+    archiveBag: defaultArchiveBagPosition(),
   };
 }
 
@@ -62,7 +70,11 @@ function normalizePositions(raw: unknown): HubNodePositions {
     }
   }
 
-  return { center, slots };
+  const archiveBag = isValidPoint(parsed.archiveBag)
+    ? parsed.archiveBag
+    : defaults.archiveBag;
+
+  return { center, slots, archiveBag };
 }
 
 export type HubDragBounds = {
@@ -135,6 +147,10 @@ export function clampHubPositionsToBounds(
       3: clampHubPoint(positions.slots[3], resolveHubDragBounds(containerWidthPx, containerHeightPx, "peer")),
       4: clampHubPoint(positions.slots[4], resolveHubDragBounds(containerWidthPx, containerHeightPx, "peer")),
     },
+    archiveBag: clampHubPoint(
+      positions.archiveBag ?? defaultArchiveBagPosition(),
+      resolveHubDragBounds(containerWidthPx, containerHeightPx, "peer"),
+    ),
   };
 }
 

@@ -1,8 +1,14 @@
 import type { HubRoomSlot, PinnedSlotIndex } from "@/lib/context/peer-thread-types";
-import { purgePendingLabel } from "@/lib/context/pinned-peer-roster";
 
-/** Evenly spaced around center — top slot first (12 o'clock). */
+/** Evenly spaced around center — top arc (친한 5). */
 export const FIVE_PEER_HUB_ANGLES_DEG = [270, 342, 54, 126, 198] as const;
+
+/** 구슬 주머니 — ME 아래 별도 방 */
+export const ARCHIVE_BAG_ANGLE_DEG = 90;
+
+export const PINNED_CONNECTION_STROKE = "#f87171";
+
+export const ARCHIVE_BAG_STROKE = "#94a3b8";
 
 export const FIVE_PEER_HUB_LINE_COLORS = [
   "#34D399",
@@ -54,10 +60,10 @@ export function buildFivePeerHubNodes(
     }
     if (slot.connection === "purge_pending") {
       return {
-        kind: "purge_pending",
-        slot,
+        kind: "vacant",
+        slotIndex,
         angleDeg,
-        purgeLabel: purgePendingLabel(slot) ?? "삭제 예정",
+        roomLabel: `ROOM ${slotIndex + 1}`,
       };
     }
     return { kind: "connected", slot, angleDeg };

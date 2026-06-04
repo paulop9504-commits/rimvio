@@ -31,6 +31,7 @@ export const MENTION_ACTION_INLINE_FEATURE_IDS = new Set([
   "capture",
   "dnd",
   "manual",
+  "friend_add",
 ]);
 
 const DEDICATED_LOCAL_INLINE_FEATURE_IDS = new Set([
@@ -95,4 +96,5 @@ export const MENTION_ACTION_ICONS: Record<string, string> = {
   linksheet: "📊",
   manual: "📖",
   calendar: "📅",
+  friend_add: "👋",
 };

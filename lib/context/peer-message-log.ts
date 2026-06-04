@@ -63,6 +63,7 @@ export function appendPeerMessage(input: {
     author: input.author,
     body: trimmed,
     sentAt: input.now ?? new Date().toISOString(),
+    messageType: "human",
   };
   writePeerMessageLog({
     peerThreadId: input.peerThreadId,
