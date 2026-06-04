@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   mapPeerMessageRow,
   mergePeerMessages,
+  mergePeerMessagesBatch,
   sortPeerMessages,
 } from "../lib/peer-chat/message-mapper";
 
@@ -47,5 +48,18 @@ const merged = mergePeerMessages(sorted, {
   messageType: "human",
 });
 assert.equal(merged.length, 2);
+
+const batched = mergePeerMessagesBatch(sorted, [
+  {
+    id: "3",
+    peerThreadId: "peer-a",
+    author: "me",
+    body: "c",
+    sentAt: "2026-01-02T00:00:03.000Z",
+    messageType: "human",
+  },
+]);
+assert.equal(batched.length, 3);
+assert.equal(batched[2]?.id, "3");
 
 console.log("test-peer-chat-mapper: ok");

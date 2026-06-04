@@ -49,6 +49,18 @@ export function writePeerMessageLog(log: PeerMessageLog) {
   );
 }
 
+/** 서버 동기화 후 다음 입장 시 즉시 표시 */
+export function replacePeerMessageLog(
+  peerThreadId: string,
+  messages: PeerMessage[],
+) {
+  writePeerMessageLog({
+    peerThreadId,
+    messages,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
 export function appendPeerMessage(input: {
   peerThreadId: string;
   author: PeerMessage["author"];

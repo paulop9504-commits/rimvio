@@ -6,15 +6,23 @@ import type {
   RealtimePostgresChangesPayload,
 } from "@supabase/supabase-js";
 import { useAuth } from "@/hooks/use-auth";
-import { appendPeerMessage, readPeerMessageLog } from "@/lib/context/peer-message-log";
+import {
+  appendPeerMessage,
+  readPeerMessageLog,
+  replacePeerMessageLog,
+} from "@/lib/context/peer-message-log";
 import type { PeerMessage, PeerMessageAuthor } from "@/lib/context/peer-message-types";
 import { shouldPersistPeerMessageLog } from "@/lib/context/peer-thread-policy";
 import type { PeerThreadPolicyInput } from "@/lib/context/peer-thread-types";
 import {
   mapPeerMessageRow,
   mergePeerMessages,
+  mergePeerMessagesBatch,
   sortPeerMessages,
 } from "@/lib/peer-chat/message-mapper";
+import {
+  takePrefetchedMessages,
+} from "@/lib/peer-chat/message-prefetch-cache";
 import { parseOutgoingMessage } from "@/lib/chat-room/parse-ai-invoke";
 import {
   buildPeerInviteUrl,
@@ -34,6 +42,20 @@ import { tryCreateClient } from "@/lib/supabase/client";
 
 const PEER_MESSAGES_TABLE = "peer_messages";
 
+function initialMessages(
+  threadId: string,
+  canPersist: boolean,
+): PeerMessage[] {
+  const prefetched = takePrefetchedMessages(threadId);
+  if (prefetched?.length) {
+    return sortPeerMessages(prefetched);
+  }
+  if (!canPersist) {
+    return [];
+  }
+  return readPeerMessageLog(threadId).messages;
+}
+
 export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
   const { user, configured } = useAuth();
   const supabase = useMemo(
@@ -45,16 +67,15 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
   const canPersist = shouldPersistPeerMessageLog(policy);
   const useCloud = Boolean(configured && user && canPersist);
 
-  const [messages, setMessages] = useState<PeerMessage[]>(() => {
-    if (!canPersist) {
-      return [];
-    }
-    return readPeerMessageLog(threadId).messages;
-  });
+  const [messages, setMessages] = useState<PeerMessage[]>(() =>
+    initialMessages(threadId, canPersist),
+  );
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [cloudReady, setCloudReady] = useState(false);
+  const [messagesHydrating, setMessagesHydrating] = useState(useCloud);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [aiBusy, setAiBusy] = useState(false);
+  const hydrateGen = useRef(0);
 
   const refreshLocal = useCallback(() => {
     if (!canPersist) {
@@ -65,34 +86,52 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
   }, [canPersist, threadId]);
 
   useEffect(() => {
+    setMessages(initialMessages(threadId, canPersist));
+    setCloudReady(false);
+    setMessagesHydrating(useCloud);
+    hydrateGen.current += 1;
+  }, [threadId, canPersist, useCloud]);
+
+  useEffect(() => {
     if (!useCloud) {
       setCloudReady(false);
+      setMessagesHydrating(false);
       setInviteCode(null);
       refreshLocal();
       return;
     }
 
+    const generation = ++hydrateGen.current;
     let cancelled = false;
 
     void (async () => {
       try {
         setSyncError(null);
-        const ensured = await ensurePeerThreadRemote({
-          threadId,
-          displayName,
-        });
-        if (cancelled) {
+        setMessagesHydrating(true);
+
+        const [ensured, remote] = await Promise.all([
+          ensurePeerThreadRemote({ threadId, displayName }),
+          fetchPeerMessages(threadId).catch(async () => {
+            await ensurePeerThreadRemote({ threadId, displayName });
+            return fetchPeerMessages(threadId);
+          }),
+        ]);
+
+        if (cancelled || generation !== hydrateGen.current) {
           return;
         }
+
         setInviteCode(ensured.inviteCode);
-        const remote = await fetchPeerMessages(threadId);
-        if (cancelled) {
-          return;
-        }
-        setMessages(sortPeerMessages(remote));
+        setMessages((current) => {
+          const merged = mergePeerMessagesBatch(current, remote);
+          if (canPersist && merged.length > 0) {
+            replacePeerMessageLog(threadId, merged);
+          }
+          return merged;
+        });
         setCloudReady(true);
       } catch (error) {
-        if (!cancelled) {
+        if (!cancelled && generation === hydrateGen.current) {
           setSyncError(
             normalizePeerSyncError(
               error instanceof Error ? error.message : undefined,
@@ -100,13 +139,17 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
           );
           refreshLocal();
         }
+      } finally {
+        if (!cancelled && generation === hydrateGen.current) {
+          setMessagesHydrating(false);
+        }
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [useCloud, threadId, displayName, refreshLocal]);
+  }, [useCloud, threadId, displayName, refreshLocal, canPersist]);
 
   useEffect(() => {
     if (!useCloud || !supabase || !cloudReady) {
@@ -133,7 +176,13 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
               return;
             }
             const mapped = mapPeerMessageRow(row, user?.id);
-            setMessages((current) => mergePeerMessages(current, mapped));
+            setMessages((current) => {
+              const merged = mergePeerMessages(current, mapped);
+              if (canPersist) {
+                replacePeerMessageLog(threadId, merged);
+              }
+              return merged;
+            });
             if (
               isRegisteredPeerDmThread(threadId) &&
               mapped.author !== "me"
@@ -154,7 +203,7 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
         void supabase.removeChannel(channel);
       }
     };
-  }, [useCloud, supabase, cloudReady, threadId, user?.id]);
+  }, [useCloud, supabase, cloudReady, threadId, user?.id, canPersist]);
 
   const sendHuman = useCallback(
     async (body: string) => {
@@ -169,7 +218,13 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
           displayName,
           body: trimmed,
         });
-        setMessages((current) => mergePeerMessages(current, message));
+        setMessages((current) => {
+          const merged = mergePeerMessages(current, message);
+          if (canPersist) {
+            replacePeerMessageLog(threadId, merged);
+          }
+          return merged;
+        });
         if (isRegisteredPeerDmThread(threadId)) {
           void syncFeedSlotFromRoomRemote(threadId)
             .then(() => emitFeedSlotsRefresh())
@@ -186,7 +241,7 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
       setMessages((current) => [...current, message]);
       return message;
     },
-    [useCloud, cloudReady, threadId, displayName],
+    [useCloud, cloudReady, threadId, displayName, canPersist],
   );
 
   const invokeAi = useCallback(
@@ -201,13 +256,19 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
           displayName,
           prompt,
         });
-        setMessages((current) => mergePeerMessages(current, message));
+        setMessages((current) => {
+          const merged = mergePeerMessages(current, message);
+          if (canPersist) {
+            replacePeerMessageLog(threadId, merged);
+          }
+          return merged;
+        });
         return message;
       } finally {
         setAiBusy(false);
       }
     },
-    [useCloud, cloudReady, threadId, displayName],
+    [useCloud, cloudReady, threadId, displayName, canPersist],
   );
 
   const send = useCallback(
@@ -261,5 +322,6 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
     syncError,
     refreshInvite,
     aiBusy,
+    messagesHydrating,
   };
 }

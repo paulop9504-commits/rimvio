@@ -11,6 +11,7 @@ import {
 } from "react";
 import { usePeerThreadChat } from "@/hooks/use-peer-thread-chat";
 import type { PeerThreadPolicyInput } from "@/lib/context/peer-thread-types";
+import { DmChatMessageSkeleton } from "@/components/peer-chat/dm-chat-message-skeleton";
 import { PeerChatBubble } from "@/components/peer-chat/peer-chat-bubble";
 import { PeerInviteBanner } from "@/components/peer-chat/peer-invite-banner";
 import { isDmThreadId } from "@/lib/peer-chat/dm-thread";
@@ -39,11 +40,21 @@ export function PeerThreadChatPanel({
   const threadId = policyInput.settings.peerThreadId;
   const phoneDm = isDmThreadId(threadId);
   const simple = simpleDm || phoneDm;
-  const { messages, canSend, send, inviteUrl, inviteCode, syncError, aiBusy } =
-    usePeerThreadChat(policyInput);
+  const {
+    messages,
+    canSend,
+    send,
+    inviteUrl,
+    inviteCode,
+    syncError,
+    aiBusy,
+    messagesHydrating,
+  } = usePeerThreadChat(policyInput);
   const [text, setText] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const scrollBehaviorRef = useRef<ScrollBehavior>("auto");
+  const [messagesVisible, setMessagesVisible] = useState(false);
 
   const focusComposer = useCallback(() => {
     requestAnimationFrame(() => {
@@ -56,8 +67,28 @@ export function PeerThreadChatPanel({
   }, [readOnly, canSend, aiBusy]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length, aiBusy]);
+    scrollBehaviorRef.current = "auto";
+    setMessagesVisible(messages.length > 0);
+  }, [threadId]);
+
+  useEffect(() => {
+    if (messagesHydrating && messages.length === 0) {
+      return;
+    }
+    if (messages.length > 0 && !messagesHydrating && !messagesVisible) {
+      requestAnimationFrame(() => setMessagesVisible(true));
+    }
+    if (messages.length > 0) {
+      bottomRef.current?.scrollIntoView({
+        behavior: scrollBehaviorRef.current,
+      });
+      scrollBehaviorRef.current = "smooth";
+    }
+  }, [messages.length, aiBusy, messagesHydrating, threadId, messagesVisible]);
+
+  const showSkeleton = messagesHydrating && messages.length === 0;
+  const showEmptyHint =
+    !messagesHydrating && messages.length === 0 && !showSkeleton;
 
   useEffect(() => {
     if (canSend && !readOnly) {
@@ -125,7 +156,9 @@ export function PeerThreadChatPanel({
           simple ? DM_CHAT.listPad : "px-4 py-4",
         )}
       >
-        {messages.length === 0 ? (
+        {showSkeleton ? (
+          <DmChatMessageSkeleton />
+        ) : showEmptyHint ? (
           <p
             className={cn(
               "text-center text-white/35",
@@ -135,7 +168,18 @@ export function PeerThreadChatPanel({
             {simple ? "메시지를 입력하세요" : `${displayName}와 대화해요`}
           </p>
         ) : (
-          <ul className={cn("flex flex-col", simple ? DM_CHAT.listGap : "gap-3")}>
+          <ul
+            className={cn(
+              "flex flex-col",
+              simple ? DM_CHAT.listGap : "gap-3",
+              messagesHydrating
+                ? "opacity-100"
+                : cn(
+                    "transition-opacity duration-200",
+                    messagesVisible ? "opacity-100" : "opacity-0",
+                  ),
+            )}
+          >
             {messages.map((message, index) => (
               <PeerChatBubble
                 key={message.id}

@@ -51,3 +51,14 @@ export function mergePeerMessages(
   }
   return sortPeerMessages([...current, incoming]);
 }
+
+export function mergePeerMessagesBatch(
+  current: PeerMessage[],
+  incoming: PeerMessage[],
+): PeerMessage[] {
+  const byId = new Map(current.map((m) => [m.id, m]));
+  for (const message of incoming) {
+    byId.set(message.id, message);
+  }
+  return sortPeerMessages([...byId.values()]);
+}

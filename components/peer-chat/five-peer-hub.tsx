@@ -23,6 +23,7 @@ import {
   type HubNodePositions,
 } from "@/lib/context/five-peer-hub-positions";
 import type { PinnedPeerRoster, PinnedSlotIndex } from "@/lib/context/peer-thread-types";
+import { prefetchPeerMessages } from "@/lib/peer-chat/message-prefetch-cache";
 import { cn } from "@/lib/utils";
 
 type FivePeerHubProps = {
@@ -341,6 +342,8 @@ export function FivePeerHub({
             <Link
               key={node.slot.peerThreadId}
               href={href}
+              onMouseEnter={() => prefetchPeerMessages(node.slot.peerThreadId!)}
+              onTouchStart={() => prefetchPeerMessages(node.slot.peerThreadId!)}
               {...dragSurfaceProps(slotIndex, "flex flex-col items-center gap-1 active:scale-95")}
               style={style}
               aria-label={displayName}

@@ -8,6 +8,7 @@ import { PeerProfileAvatar } from "@/components/peer-chat/peer-profile-avatar";
 import { PeerPublicProfileSheet } from "@/components/peer-chat/peer-public-profile-sheet";
 import { useDmPeerProfile } from "@/hooks/use-dm-peer-profile";
 import { isRegisteredPeerDmThread } from "@/lib/peer-chat/peer-chat-client";
+import { prefetchPeerMessages } from "@/lib/peer-chat/message-prefetch-cache";
 import { findConnectedPeerSlot } from "@/lib/context/pinned-peer-roster";
 import { readPeerContacts } from "@/lib/context/peer-contact-store";
 import {
@@ -65,6 +66,8 @@ function PeerContactRow({
       </div>
       <Link
         href={href}
+        onMouseEnter={() => prefetchPeerMessages(contact.peerThreadId)}
+        onTouchStart={() => prefetchPeerMessages(contact.peerThreadId)}
         className="flex min-w-0 flex-1 flex-col justify-center py-3 pr-2 active:bg-rimvio-surface-muted"
       >
         <p className="truncate font-medium text-white">{displayName}</p>
