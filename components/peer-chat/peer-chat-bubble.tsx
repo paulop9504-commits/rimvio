@@ -42,7 +42,7 @@ export function PeerChatBubble({
 
   if (message.messageType === "ai_private" || message.messageType === "ai_shared") {
     return (
-      <Tag className="flex justify-end">
+      <Tag className="flex w-full max-w-full justify-end">
         <div
           className={cn(
             "flex max-w-[94%] items-end",
@@ -57,7 +57,7 @@ export function PeerChatBubble({
   }
 
   return (
-    <Tag className={cn("flex", isMe ? "justify-end" : "justify-start")}>
+    <Tag className={cn("flex w-full max-w-full", isMe ? "justify-end" : "justify-start")}>
       <div
         className={cn(
           "flex max-w-[94%] items-end",

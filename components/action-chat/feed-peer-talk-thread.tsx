@@ -60,17 +60,19 @@ function FeedPeerTalkRow({
     composerLive,
   );
 
+  const bubbleRole = slice.author === "me" ? "user" : "assistant";
+
   return (
     <div
       key={rowKey}
-      data-message-id={messageId}
+      data-message-id={`${messageId}:${slice.id}`}
       data-feed-peer-talk-row={slice.id}
-      className="chat-message-focus"
+      className="chat-message-focus w-full max-w-full"
       data-bubble-focus={focusTone}
       data-bubble-group={group}
-      data-bubble-role="assistant"
+      data-bubble-role={bubbleRole}
     >
-      <div className={cn("flex flex-col", DM_CHAT.listGap)}>
+      <div className={cn("flex w-full max-w-full flex-col", DM_CHAT.listGap)}>
         <PeerChatBubble
           message={slice}
           simple
@@ -102,7 +104,7 @@ export function FeedPeerTalkFeedRows({
     return (
       <div
         data-message-id={messageId}
-        className="chat-message-focus py-1"
+        className="chat-message-focus w-full py-1"
         data-bubble-role="assistant"
       >
         <DmChatMessageSkeleton />
@@ -114,7 +116,7 @@ export function FeedPeerTalkFeedRows({
     return (
       <div
         data-message-id={messageId}
-        className="chat-message-focus py-3 text-center text-[11px] text-white/45"
+        className="chat-message-focus w-full py-3 text-center text-[11px] text-white/45"
         data-bubble-role="assistant"
       >
         - {thread.promptLine} -
@@ -143,9 +145,8 @@ export function FeedPeerTalkFeedRows({
       ))}
       <div
         data-message-id={messageId}
-        className="chat-message-focus py-2 text-center text-[11px] text-white/45"
+        className="chat-message-focus w-full py-2 text-center text-[11px] text-white/45"
         data-bubble-role="assistant"
-        aria-hidden={messages[messageIndex] ? undefined : true}
       >
         - {thread.promptLine} -
       </div>

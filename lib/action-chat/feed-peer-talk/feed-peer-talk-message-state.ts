@@ -106,3 +106,45 @@ export function appendFeedPeerTalkMessage(
     };
   });
 }
+
+export function replaceFeedPeerTalkPendingMessage(
+  messages: ActionChatMessage[],
+  peerThreadId: string,
+  pendingId: string,
+  sent: PeerMessage,
+): ActionChatMessage[] {
+  return messages.map((message) => {
+    const thread = message.feedPeerTalkThread;
+    if (!thread || thread.peerThreadId !== peerThreadId) {
+      return message;
+    }
+    const withoutPending = thread.messages.filter((m) => m.id !== pendingId);
+    return {
+      ...message,
+      feedPeerTalkThread: {
+        ...thread,
+        messages: mergePeerMessages(withoutPending, sent),
+      },
+    };
+  });
+}
+
+export function removeFeedPeerTalkMessageById(
+  messages: ActionChatMessage[],
+  peerThreadId: string,
+  messageId: string,
+): ActionChatMessage[] {
+  return messages.map((message) => {
+    const thread = message.feedPeerTalkThread;
+    if (!thread || thread.peerThreadId !== peerThreadId) {
+      return message;
+    }
+    return {
+      ...message,
+      feedPeerTalkThread: {
+        ...thread,
+        messages: thread.messages.filter((m) => m.id !== messageId),
+      },
+    };
+  });
+}

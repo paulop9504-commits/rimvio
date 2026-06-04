@@ -43,7 +43,9 @@ type ActionChatInputBarProps = {
   onOpenLinkPaste?: () => void;
   onQuickCapture?: (file: File) => void;
   onSendMessage?: (text: string) => void;
-  onSendComposer?: (payload: ComposerPayload) => void;
+  onSendComposer?: (
+    payload: ComposerPayload,
+  ) => void | boolean | Promise<void | boolean>;
   /** @톡 버블 탭 — 친구 선택 후 톡 시작 */
   onPeerTalkPick?: (contact: PeerContact) => void;
   className?: string;
@@ -84,23 +86,27 @@ export function ActionChatInputBar({
     setMenuOpen(false);
   };
 
-  const dispatchSend = (value: string) => {
-    if (onSendComposer) {
-      onSendComposer({ text: value });
-      return;
-    }
-    onSendMessage?.(value);
-  };
-
-  const submit = () => {
+  const submit = async () => {
     const value = text.trim();
     if (!value || disabled || sending) {
       return;
     }
-    dispatchSend(value);
-    setText("");
-    syncComposerDraft("");
-    inputRef.current?.focus();
+
+    let shouldClear = true;
+    if (onSendComposer) {
+      const result = await onSendComposer({ text: value });
+      if (result === false) {
+        shouldClear = false;
+      }
+    } else {
+      onSendMessage?.(value);
+    }
+
+    if (shouldClear) {
+      setText("");
+      syncComposerDraft("");
+      inputRef.current?.focus();
+    }
   };
 
   const handleSubmit = (event: FormEvent) => {

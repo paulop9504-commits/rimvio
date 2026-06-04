@@ -428,7 +428,7 @@ export function ActionChatFeed({
             onPeerTalkPick={(contact) => {
               void startFeedPeerTalk(contact);
             }}
-            onSendComposer={(payload) => {
+            onSendComposer={async (payload) => {
               const hasAttachments = (payload.attachments?.length ?? 0) > 0;
               if (
                 feedPeerTalkSession &&
@@ -436,16 +436,21 @@ export function ActionChatFeed({
                 payload.text.trim() &&
                 !payload.text.trim().startsWith("@")
               ) {
-                void sendFeedPeerTalk(payload.text);
-                return;
+                try {
+                  await sendFeedPeerTalk(payload.text);
+                  return true;
+                } catch {
+                  return false;
+                }
               }
               if (sendComposerPayload(payload)) {
-                return;
+                return true;
               }
               void sendMessage(payload.text, {
                 attachments: payload.attachments,
                 chatAxis: payload.chatAxis,
               });
+              return true;
             }}
             className="rimvio-feed-composer-dock shrink-0 lg:relative lg:z-[2]"
           />

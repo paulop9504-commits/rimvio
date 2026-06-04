@@ -114,8 +114,10 @@ import {
   startFeedPeerTalkInFeed,
   sendFeedPeerTalkInFeed,
 } from "@/lib/action-chat/feed-peer-talk/feed-peer-talk-actions";
+import { resolveFeedPeerTalkSessionFromMessages } from "@/lib/action-chat/feed-peer-talk/restore-feed-peer-talk-session";
 import {
   getFeedPeerTalkSession,
+  setFeedPeerTalkSession,
   subscribeFeedPeerTalkSession,
 } from "@/lib/action-chat/feed-peer-talk/feed-peer-talk-session";
 import type { PeerContact } from "@/lib/context/peer-contact-types";
@@ -583,9 +585,12 @@ export function useActionChat(
 
 
   useEffect(() => {
-
-    setMessages(readActionChatMessages(scopeId));
-
+    const stored = readActionChatMessages(scopeId);
+    setMessages(stored);
+    const restored = resolveFeedPeerTalkSessionFromMessages(stored);
+    if (restored) {
+      setFeedPeerTalkSession(restored);
+    }
   }, [scopeId]);
 
 
@@ -621,9 +626,12 @@ export function useActionChat(
   );
 
   const sendFeedPeerTalk = useCallback(
-    (text: string) => {
+    async (text: string) => {
       lastActivityRef.current = Date.now();
-      return sendFeedPeerTalkInFeed(feedPeerTalkDeps(), text);
+      const ok = await sendFeedPeerTalkInFeed(feedPeerTalkDeps(), text);
+      if (!ok) {
+        throw new Error("대화를 다시 시작해 주세요 (@톡)");
+      }
     },
     [feedPeerTalkDeps],
   );
@@ -1488,11 +1496,15 @@ export function useActionChat(
         trimmed &&
         !trimmed.startsWith("@")
       ) {
-        const sent = await sendFeedPeerTalkInFeed(
-          { readMessages: () => readActionChatMessages(scopeId), persist },
-          trimmed,
-        );
-        if (sent) {
+        try {
+          const sent = await sendFeedPeerTalkInFeed(
+            { readMessages: () => readActionChatMessages(scopeId), persist },
+            trimmed,
+          );
+          if (sent) {
+            return;
+          }
+        } catch {
           return;
         }
       }

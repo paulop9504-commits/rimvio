@@ -4,9 +4,13 @@ import {
   appendFeedPeerTalkMessage,
   buildFeedPeerTalkPromptLine,
   patchFeedPeerTalkThread,
+  removeFeedPeerTalkMessageById,
+  replaceFeedPeerTalkPendingMessage,
   replaceLastPeerTalkChipWithThread,
   sliceFeedPeerTalkHistory,
 } from "@/lib/action-chat/feed-peer-talk/feed-peer-talk-message-state";
+import type { PeerMessage } from "@/lib/context/peer-message-types";
+import { toast } from "sonner";
 import {
   clearFeedPeerTalkSession,
   getFeedPeerTalkSession,
@@ -90,25 +94,58 @@ export async function sendFeedPeerTalkInFeed(
     return false;
   }
 
-  const sent = await sendPeerMessageRemote({
-    threadId: session.peerThreadId,
-    displayName: session.displayName,
+  const pendingId = `pending-${Date.now()}`;
+  const optimistic: PeerMessage = {
+    id: pendingId,
+    peerThreadId: session.peerThreadId,
+    author: "me",
     body: trimmed,
-  });
+    sentAt: new Date().toISOString(),
+    messageType: "human",
+  };
 
   deps.persist(
     appendFeedPeerTalkMessage(
       deps.readMessages(),
       session.peerThreadId,
-      sent,
+      optimistic,
     ),
   );
 
-  void syncFeedSlotFromRoomRemote(session.peerThreadId)
-    .then(() => emitFeedSlotsRefresh())
-    .catch(() => emitFeedSlotsRefresh());
+  try {
+    const sent = await sendPeerMessageRemote({
+      threadId: session.peerThreadId,
+      displayName: session.displayName,
+      body: trimmed,
+    });
 
-  return true;
+    deps.persist(
+      replaceFeedPeerTalkPendingMessage(
+        deps.readMessages(),
+        session.peerThreadId,
+        pendingId,
+        sent,
+      ),
+    );
+
+    void syncFeedSlotFromRoomRemote(session.peerThreadId)
+      .then(() => emitFeedSlotsRefresh())
+      .catch(() => emitFeedSlotsRefresh());
+
+    return true;
+  } catch (error) {
+    deps.persist(
+      removeFeedPeerTalkMessageById(
+        deps.readMessages(),
+        session.peerThreadId,
+        pendingId,
+      ),
+    );
+    const message =
+      error instanceof Error ? error.message : "메시지를 보내지 못했어요";
+    toast.error(message);
+    throw error instanceof Error ? error : new Error(message);
+  }
 }
 
 export function resetFeedPeerTalkSession(): void {
