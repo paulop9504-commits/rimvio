@@ -7,7 +7,7 @@ export function resolveFeedPeerTalkSessionFromMessages(
 ): FeedPeerTalkSession | null {
   for (let i = messages.length - 1; i >= 0; i--) {
     const thread = messages[i]?.feedPeerTalkThread;
-    if (thread?.peerThreadId) {
+    if (thread?.peerThreadId && !thread.closed) {
       return {
         peerThreadId: thread.peerThreadId,
         displayName: thread.displayName.trim() || "친구",

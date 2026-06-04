@@ -39,6 +39,11 @@ import {
   isMentionTransferInput,
   tryBuildMentionTransferTurn,
 } from "@/lib/action-chat/mention-transfer/commit-mention-transfer-turn";
+import {
+  isEndPeerTalkMentionInput,
+  tryBuildMentionEndPeerTalkTurn,
+  type EndPeerTalkTurnDeps,
+} from "@/lib/action-chat/mention-peer-talk-end/commit-mention-end-peer-talk-turn";
 import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
 
 export type LocalMentionTurnInput = {
@@ -46,6 +51,7 @@ export type LocalMentionTurnInput = {
   chatAxis?: ChatAxis;
   activeLink?: { id: string; title: string; original_url: string } | null;
   referenceDate?: string;
+  endPeerTalkDeps?: EndPeerTalkTurnDeps;
 };
 
 /** Single dispatch for all local @ mention turns (no orchestrator). */
@@ -53,6 +59,16 @@ export function tryDispatchLocalMentionTurn(
   input: LocalMentionTurnInput,
 ): ActionChatMessage[] | null {
   const { text, chatAxis } = input;
+
+  if (input.endPeerTalkDeps) {
+    const endTalkTurn = tryBuildMentionEndPeerTalkTurn(
+      { text, chatAxis },
+      input.endPeerTalkDeps,
+    );
+    if (endTalkTurn) {
+      return endTalkTurn;
+    }
+  }
 
   const timerTurn = tryBuildMentionTimerTurn({ text, chatAxis });
   if (timerTurn) {
@@ -120,6 +136,7 @@ export function tryDispatchLocalMentionTurn(
 
 export function isLocalMentionInput(text: string): boolean {
   return (
+    isEndPeerTalkMentionInput(text) ||
     isMentionTimerInput(text) ||
     isMentionCalendarInput(text) ||
     isMentionReminderInput(text) ||

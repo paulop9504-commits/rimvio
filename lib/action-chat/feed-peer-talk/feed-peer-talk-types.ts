@@ -11,6 +11,8 @@ export type FeedPeerTalkThreadWire = {
   historyEndIndex: number;
   promptLine: string;
   hydrating?: boolean;
+  /** @대화끝 후 — 히스토리만 남기고 composer 는 AI 피드 */
+  closed?: boolean;
 };
 
 export type FeedPeerTalkSession = {

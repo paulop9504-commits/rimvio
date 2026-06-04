@@ -659,6 +659,7 @@ export function useActionChat(
             }
           : null,
         referenceDate: masterContext.currentDate,
+        endPeerTalkDeps: feedPeerTalkDeps(),
       });
       if (localTurn) {
         persist([...readActionChatMessages(scopeId), ...localTurn]);
@@ -666,7 +667,7 @@ export function useActionChat(
       }
       return false;
     },
-    [activeLink, persist, scopeId],
+    [activeLink, feedPeerTalkDeps, persist, scopeId],
   );
 
   const startFreshConversation = useCallback(() => {
@@ -1575,6 +1576,7 @@ export function useActionChat(
               }
             : null,
           referenceDate: earlyMasterContext.currentDate,
+          endPeerTalkDeps: feedPeerTalkDeps(),
         });
         if (earlyLocalTurn) {
           persist([...readActionChatMessages(scopeId), ...earlyLocalTurn]);
@@ -1775,6 +1777,7 @@ export function useActionChat(
               }
             : null,
           referenceDate: masterContext.currentDate,
+          endPeerTalkDeps: feedPeerTalkDeps(),
         });
         if (localTurn) {
           persist([...readActionChatMessages(scopeId), ...localTurn]);

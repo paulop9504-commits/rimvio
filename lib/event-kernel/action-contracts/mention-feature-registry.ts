@@ -344,6 +344,22 @@ const REGISTRY: readonly MentionFeature[] = [
     confirmCopy:
       "친구 이름이나 Rimvio ID를 적어 주세요. 예: @톡 monica · 이름 없이 @톡 만 쓰면 목록에서 고를 수 있어요.",
   },
+  {
+    featureId: "end_peer_talk",
+    displayName: "대화끝",
+    aliases: [
+      "대화끝",
+      "톡끝",
+      "톡종료",
+      "대화종료",
+      "피드복귀",
+      "talkend",
+      "endtalk",
+    ],
+    sourceRef: "mention:end_peer_talk",
+    category: "custom",
+    confirmCopy: "피드 톡을 끝내고 AI 피드로 돌아가요. 예: @대화끝",
+  },
 ];
 
 const byAlias = new Map<string, MentionFeature>(
