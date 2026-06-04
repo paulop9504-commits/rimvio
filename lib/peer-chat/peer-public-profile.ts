@@ -13,7 +13,7 @@ export type PeerPublicProfile = {
   emailLower: string | null;
 };
 
-function parsePublicProfileRow(raw: unknown): PeerPublicProfile | null {
+export function parsePublicProfileRow(raw: unknown): PeerPublicProfile | null {
   if (!raw || typeof raw !== "object") {
     return null;
   }
