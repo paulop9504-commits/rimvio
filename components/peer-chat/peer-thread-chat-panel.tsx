@@ -138,8 +138,7 @@ export function PeerThreadChatPanel({
     setText("");
     resizeComposer();
     focusComposer();
-    await send(body, "me");
-    focusComposer();
+    void send(body, "me").then(() => focusComposer());
   }, [text, canSend, readOnly, composerBusy, send, focusComposer, resizeComposer]);
 
   const handleImageFile = useCallback(

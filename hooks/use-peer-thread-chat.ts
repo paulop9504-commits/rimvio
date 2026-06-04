@@ -21,6 +21,13 @@ import {
   sortPeerMessages,
 } from "@/lib/peer-chat/message-mapper";
 import {
+  createOptimisticPeerMessage,
+  mergeRealtimePeerMessage,
+  removeOptimisticPeerMessage,
+  replaceOptimisticPeerMessage,
+} from "@/lib/peer-chat/optimistic-peer-message";
+import { PEER_MESSAGE_IMAGE_PLACEHOLDER } from "@/lib/peer-chat/peer-chat-image-constants";
+import {
   takePrefetchedMessages,
 } from "@/lib/peer-chat/message-prefetch-cache";
 import { parseOutgoingMessage } from "@/lib/chat-room/parse-ai-invoke";
@@ -179,7 +186,7 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
             }
             const mapped = mapPeerMessageRow(row, user?.id);
             setMessages((current) => {
-              const merged = mergePeerMessages(current, mapped);
+              const merged = mergeRealtimePeerMessage(current, mapped);
               if (canPersist) {
                 replacePeerMessageLog(threadId, merged);
               }
@@ -215,24 +222,47 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
       }
 
       if (useCloud && cloudReady) {
-        const message = await sendPeerMessageRemote({
-          threadId,
-          displayName,
+        const pending = createOptimisticPeerMessage({
+          peerThreadId: threadId,
           body: trimmed,
         });
         setMessages((current) => {
-          const merged = mergePeerMessages(current, message);
+          const merged = sortPeerMessages([...current, pending]);
           if (canPersist) {
             replacePeerMessageLog(threadId, merged);
           }
           return merged;
         });
-        if (isRegisteredPeerDmThread(threadId)) {
-          void syncFeedSlotFromRoomRemote(threadId)
-            .then(() => emitFeedSlotsRefresh())
-            .catch(() => emitFeedSlotsRefresh());
+
+        try {
+          const message = await sendPeerMessageRemote({
+            threadId,
+            displayName,
+            body: trimmed,
+          });
+          setMessages((current) => {
+            const merged = replaceOptimisticPeerMessage(
+              current,
+              pending.id,
+              message,
+            );
+            if (canPersist) {
+              replacePeerMessageLog(threadId, merged);
+            }
+            return merged;
+          });
+          if (isRegisteredPeerDmThread(threadId)) {
+            void syncFeedSlotFromRoomRemote(threadId)
+              .then(() => emitFeedSlotsRefresh())
+              .catch(() => emitFeedSlotsRefresh());
+          }
+          return message;
+        } catch (error) {
+          setMessages((current) =>
+            removeOptimisticPeerMessage(current, pending.id),
+          );
+          throw error;
         }
-        return message;
       }
 
       const message = appendPeerMessage({
@@ -280,6 +310,20 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
         return null;
       }
       setImageBusy(true);
+      const previewUrl = URL.createObjectURL(file);
+      const pending = createOptimisticPeerMessage({
+        peerThreadId: threadId,
+        body: caption?.trim() || PEER_MESSAGE_IMAGE_PLACEHOLDER,
+        imageUrl: previewUrl,
+      });
+      setMessages((current) => {
+        const merged = sortPeerMessages([...current, pending]);
+        if (canPersist) {
+          replacePeerMessageLog(threadId, merged);
+        }
+        return merged;
+      });
+
       try {
         setSyncError(null);
         const message = await sendPeerImageRemote({
@@ -289,7 +333,11 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
           caption,
         });
         setMessages((current) => {
-          const merged = mergePeerMessages(current, message);
+          const merged = replaceOptimisticPeerMessage(
+            current,
+            pending.id,
+            message,
+          );
           if (canPersist) {
             replacePeerMessageLog(threadId, merged);
           }
@@ -302,11 +350,15 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
         }
         return message;
       } catch (error) {
+        setMessages((current) =>
+          removeOptimisticPeerMessage(current, pending.id),
+        );
         setSyncError(
           error instanceof Error ? error.message : "사진 전송에 실패했어요",
         );
         return null;
       } finally {
+        URL.revokeObjectURL(previewUrl);
         setImageBusy(false);
       }
     },

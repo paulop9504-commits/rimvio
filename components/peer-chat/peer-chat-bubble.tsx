@@ -7,6 +7,7 @@ import { formatPeerMessageTime } from "@/lib/peer-chat/format-message-time";
 import { PeerAiInlineCard } from "@/components/peer-chat/peer-ai-inline-card";
 import type { DeepLinkBubbleCandidate } from "@/lib/peer-chat/ai-lens/types";
 import { PEER_MESSAGE_IMAGE_PLACEHOLDER } from "@/lib/peer-chat/peer-chat-image-constants";
+import { isPendingPeerMessageId } from "@/lib/peer-chat/optimistic-peer-message";
 import { cn } from "@/lib/utils";
 
 type PeerChatBubbleProps = {
@@ -46,6 +47,7 @@ export function PeerChatBubble({
     showTime && message.sentAt ? formatPeerMessageTime(message.sentAt) : "";
 
   const isMe = message.author === "me";
+  const isPending = isPendingPeerMessageId(message.id);
 
   const Tag = as;
 
@@ -95,6 +97,7 @@ export function PeerChatBubble({
           <div
             className={cn(
               "min-w-0 overflow-hidden",
+              isPending && isMe && "opacity-85",
               simple ? DM_CHAT.bubbleRadius : "rounded-2xl",
               isMe ? DM_CHAT.bubbleMeCorner : DM_CHAT.bubblePeerCorner,
             )}
@@ -159,6 +162,7 @@ export function PeerChatBubble({
         <div
           className={cn(
             "min-w-0",
+            isPending && isMe && "opacity-85",
             simple
               ? cn(
                   DM_CHAT.bubblePx,
