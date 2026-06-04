@@ -1,4 +1,9 @@
 import type { OrchestratorResult } from "@/lib/action-chat/orchestrator-types";
+import { applyMealGoalPolicyToPayload } from "@/lib/goal-engine/apply-meal-goal-policy";
+import type {
+  GoalPriorityHint,
+  GoalSnapshot,
+} from "@/lib/goal-engine/types";
 import {
   formatExplanationBlock,
   formatRecommendationSummary,
@@ -19,6 +24,9 @@ export function orchestrateContextualMealRecommendation(input: {
   message: string;
   history?: Array<{ role?: string; content?: string }>;
   clock?: Date;
+  /** Hook D — pipeline-authored snapshot; do not rebuild here. */
+  goalSnapshot?: GoalSnapshot | null;
+  goalPriorityHint?: GoalPriorityHint | null;
 }): ContextualMealOrchestratorPayload | null {
   const trimmed = input.message.trim();
   if (!trimmed) {
@@ -76,5 +84,16 @@ export function orchestrateContextualMealRecommendation(input: {
     },
   };
 
-  return { recommendation, orchestrator };
+  const payload: ContextualMealOrchestratorPayload = { recommendation, orchestrator };
+
+  if (input.goalSnapshot?.primaryFocus && input.goalSnapshot.primaryFocus !== "none") {
+    return applyMealGoalPolicyToPayload(
+      payload,
+      input.goalSnapshot,
+      input.goalPriorityHint,
+      input.clock,
+    );
+  }
+
+  return payload;
 }

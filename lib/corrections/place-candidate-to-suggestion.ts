@@ -34,5 +34,8 @@ export function placeCandidateToLocationSuggestion(
     place_name: brandHint?.trim() || candidate.name.split(/\s+/)[0] || candidate.name,
     address,
     branch,
+    lat: candidate.lat,
+    lng: candidate.lng,
+    maps_url: candidate.maps_url?.trim() || undefined,
   };
 }

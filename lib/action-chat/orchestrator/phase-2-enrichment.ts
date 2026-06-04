@@ -29,6 +29,7 @@ export async function runPhase2Enrichment(
     masterContext: ctx.input.masterContext,
     route: ctx.route,
     context: ctx.context,
+    goalSnapshot: ctx.goalSnapshot,
   });
   ctx.brain = brain;
   refreshFinalize(ctx);

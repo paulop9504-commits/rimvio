@@ -1,7 +1,9 @@
-import { composeTimelineProjection } from "@/lib/timeline-projection/compose-timeline-projection";
+/**
+ * Timeline layer — display-only. No Event SSOT writes.
+ * @see docs/TIMELINE_PROJECTION.md
+ */
+import { readSurface } from "@/lib/life-read-model";
 import type { TimelineProjectionContext, TimelineProjectionResult } from "@/lib/timeline-projection/types";
-import { listContainerRoutesFromStore } from "@/lib/container-rework/list-container-routes";
-import { findEventCandidate } from "@/lib/events/event-store";
 import type { BehaviorEngineContext } from "@/lib/behavior-engine/types";
 import type { NotificationShadowContext } from "@/lib/notification-shadow/types";
 import type { OpportunityEngineContext } from "@/lib/opportunity-engine/types";
@@ -16,8 +18,11 @@ export type {
 } from "@/lib/timeline-projection/types";
 
 export { composeTimelineProjection } from "@/lib/timeline-projection/compose-timeline-projection";
+export { projectTimelineDisplayFromRoutes } from "@/lib/timeline-projection/project-display-from-routes";
 
-/** Full decision stack → time-ordered timeline projection (read-only). */
+/**
+ * Decision read (once) → timeline display. Does not write SSOT or schedule.
+ */
 export function listTimelineProjectionFromStore(input: {
   opportunityContext?: OpportunityEngineContext;
   behaviorContext?: BehaviorEngineContext;
@@ -25,28 +30,14 @@ export function listTimelineProjectionFromStore(input: {
   timelineContext?: TimelineProjectionContext;
 } = {}): TimelineProjectionResult {
   const now = input.timelineContext?.now ?? input.opportunityContext?.now ?? new Date();
-
-  const routes = listContainerRoutesFromStore({
-    opportunityContext: { ...input.opportunityContext, now },
+  return readSurface({
+    opportunityContext: input.opportunityContext,
     behaviorContext: input.behaviorContext,
     notificationContext: input.notificationContext,
-    ui: {
-      focusedEcId:
-        input.timelineContext?.focusedEcId ??
-        input.behaviorContext?.focusedEcId ??
-        input.opportunityContext?.focusedEcId ??
-        input.notificationContext?.dockFocusedEcId,
+    timelineContext: {
+      focusedEcId: input.timelineContext?.focusedEcId,
+      recentEcIds: input.timelineContext?.recentEcIds,
+      now,
     },
-  });
-
-  if (routes === "NO_ACTION") {
-    return [];
-  }
-
-  return composeTimelineProjection(routes, findEventCandidate, {
-    focusedEcId: input.timelineContext?.focusedEcId,
-    recentEcIds:
-      input.timelineContext?.recentEcIds ?? input.behaviorContext?.recentEcIds,
-    now,
-  });
+  }).timeline;
 }

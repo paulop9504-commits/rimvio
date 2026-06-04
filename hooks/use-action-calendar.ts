@@ -7,10 +7,7 @@ import {
   collectActionStream,
   type ActiveActionEntry,
 } from "@/lib/action-chat/active-actions-registry";
-import {
-  buildActionCalendar,
-  type ActionCalendarSnapshot,
-} from "@/lib/calendar/build-action-calendar";
+import type { ActionCalendarSnapshot } from "@/lib/calendar/build-action-calendar";
 import type { UnifiedCalendarOverlayRow } from "@/lib/calendar/calendar-view-types";
 import {
   buildPrepSurface,
@@ -20,7 +17,8 @@ import {
   type SchedulePrepSurface,
 } from "@/lib/calendar/prep-surface-llm";
 import type { LlmActionCandidateWire } from "@/lib/llm-action-candidate-generator";
-import { useEventOsCalendars } from "@/hooks/use-event-os-calendars";
+import { useSurfaceEngine } from "@/hooks/use-surface-engine";
+import { buildCalendarSnapshotFromSurfaces } from "@/lib/surface-engine/adapters/surface-to-calendar";
 import {
   getRecentKnowledgeEntities,
   KNOWLEDGE_ENTITY_UPDATED,
@@ -129,27 +127,19 @@ export function useActionCalendar(input: UseActionCalendarInput): ActionCalendar
     return () => window.clearInterval(id);
   }, []);
 
-  const { eventChips, actionChips: projectionActionChips, now } =
-    useEventOsCalendars(anchor);
+  const { calendar } = useSurfaceEngine({ context: { now: anchor } });
+  const now = anchor;
 
   const snapshot = useMemo(
     () =>
-      buildActionCalendar({
-        eventChips,
-        projectionActionChips,
+      buildCalendarSnapshotFromSurfaces({
+        calendarSurfaces: calendar,
         streamActions: actionStream,
         knowledgeEntities,
         anchor,
         now,
       }),
-    [
-      eventChips,
-      projectionActionChips,
-      actionStream,
-      knowledgeEntities,
-      anchor,
-      now,
-    ],
+    [calendar, actionStream, knowledgeEntities, anchor, now],
   );
 
   const overlayRows = snapshot.overlayRows;

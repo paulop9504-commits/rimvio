@@ -3,6 +3,7 @@ import type {
   GraphVersion,
   GraphVersioningResult,
 } from "@/lib/event-os/graph-versioning/graph-versioning-types";
+import { validateExecutionGraphEdges } from "@/lib/event-kernel/schema-lock/edge-schema";
 
 export function validateGraphVersioning(
   result: GraphVersioningResult
@@ -31,6 +32,10 @@ export function validateGraphVersioning(
 
   if (result.graph.nodes.length === 0) {
     failures.push("graph_nodes_empty");
+  }
+
+  for (const issue of validateExecutionGraphEdges(result.graph.edges)) {
+    failures.push(`schema_lock_edge:${issue.code}`);
   }
 
   const head = result.graph.nodes[result.graph.nodes.length - 1];

@@ -70,6 +70,12 @@ export type OrchestratorMetadataWire = {
   /** Sensitive action gate — HIGH requires authentication before execution. */
   security_level?: "LOW" | "MEDIUM" | "HIGH";
 
+  /** GOAL Engine — primary focus for this turn (constitution layer). */
+  goal_primary_focus?: import("@/lib/goal-engine/types").GoalFocusKind;
+
+  /** GOAL Engine — snapshot revision id (1 turn = 1 build). */
+  goal_snapshot_revision?: string;
+
 };
 
 export type IntentRouteMeta = {
@@ -198,6 +204,9 @@ export type ActionChatMessage = {
 
   metadata?: OrchestratorMetadataWire;
 
+  /** GOAL Engine snapshot for this turn — server wire (read_only); single build per turn. */
+  goalSnapshot?: import("@/lib/goal-engine/serialize-goal-snapshot-wire").GoalSnapshotWire;
+
   meta?: IntentRouteMeta;
 
   schedule?: OrchestratorScheduleWire;
@@ -317,6 +326,9 @@ export type OrchestratorResult = {
   pendingConfirm?: boolean;
 
   metadata?: OrchestratorMetadataWire;
+
+  /** GOAL Engine snapshot for this turn — server wire (read_only); single build per turn. */
+  goalSnapshot?: import("@/lib/goal-engine/serialize-goal-snapshot-wire").GoalSnapshotWire;
 
   meta?: IntentRouteMeta;
 

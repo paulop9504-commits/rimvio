@@ -7,7 +7,7 @@ import {
 import {
   loadPendingEventCandidates,
 } from "@/lib/event-kernel/review/pending-event-candidate-store";
-import { listEventCandidatesByLifecycle } from "@/lib/events/event-store";
+import { readLifeProjections } from "@/lib/life-read-model";
 import type { EventOsStateSnapshot } from "@/lib/event-os/causal-trace-types";
 
 export function snapshotEventOsState(
@@ -27,7 +27,9 @@ export function snapshotEventOsState(
       date: row.date,
       time: row.time,
     })),
-    scheduledEventCount: listEventCandidatesByLifecycle("scheduled").length,
+    scheduledEventCount: readLifeProjections().events.filter(
+      (event) => event.lifecycle === "scheduled",
+    ).length,
     actionProjectionEntryCount: projection.entries.length,
     actionProjectionRevision: getActionProjectionRevision(),
   };

@@ -5,6 +5,8 @@ alwaysApply: true
 
 # Rimvio product guidelines
 
+**Canonical doctrine:** `docs/RIMVIO_CONSTITUTION.md` (Action-Centric Life OS, truth/projection/surface law, PR review law).
+
 **Rimvio** — personal Action OS. Apple UX simplicity + deterministic orchestrator first, LLM fallback second.
 
 > Not Silent Ghost. See `.cursor/rules/rimvio-isolation.mdc`.

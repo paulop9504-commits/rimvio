@@ -5,7 +5,7 @@ import type { EventCandidate } from "@/lib/events/event-candidate";
 
 /**
  * Canonical SSOT write for approved OCR rows.
- * Authoritative path: ingestScheduleSignal → upsertEventCandidate (event-store.ts).
+ * Authoritative path: ingestScheduleSignal → commit-truth.
  */
 export function commitOcrCandidateToEventStore(
   candidate: PendingEventCandidate

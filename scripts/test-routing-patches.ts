@@ -1,6 +1,10 @@
 #!/usr/bin/env npx tsx
 import assert from "node:assert/strict";
 import { runOrchestratorPipeline } from "../lib/action-chat/orchestrator/run-orchestrator-pipeline";
+import {
+  commitSessionIntent,
+  resetSessionIntentStoreForTests,
+} from "../lib/action-os/session-intent-state";
 import { shouldForceDecisionRoute } from "../lib/action-chat/routing-patches/decision-priority-override";
 import { isContextDriftInput, resolveContextDrift } from "../lib/action-chat/routing-patches/context-drift-resolver";
 import { isGlobalReplanInput } from "../lib/action-chat/routing-patches/scheduling-global-replan";
@@ -75,6 +79,29 @@ async function main() {
     masterContext: mc,
   });
   assert.ok(driftWithHistory.summary?.length);
+
+  resetSessionIntentStoreForTests("routing-correction");
+  commitSessionIntent(
+    {
+      action_id: "NAVIGATE",
+      params: { dest: "떡반집" },
+      fallback_url: "https://map.naver.com",
+    },
+    "routing-correction"
+  );
+  const corrected = await runOrchestratorPipeline({
+    message: "아니야 대전역으로",
+    sessionScopeId: "routing-correction",
+    masterContext: mc,
+  });
+  assert.match(
+    corrected.actions[0]?.href ?? corrected.actions[0]?.url ?? "",
+    /%EB%8C%80%EC%A0%84|대전/i
+  );
+  assert.ok(
+    corrected.orchestratorTrace?.some((line) => line.includes("Correction")),
+    "nav correction must beat frustration escape"
+  );
 
   console.log("test-routing-patches: ok");
 }

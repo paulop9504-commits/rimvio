@@ -1,3 +1,4 @@
+/** Goal Roadmap owns user goals, progress, and alignment scoring — GOAL Engine reads only (§5). */
 import type { GoalAlignmentWire, ScheduleIntelligenceContext } from "@/lib/schedule-intelligence/types";
 import type { ScheduleQueryAnalysis } from "@/lib/schedule-intelligence/types";
 import {

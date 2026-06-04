@@ -4,11 +4,11 @@ import type {
   EventCandidateCategory,
   EventCandidateUpsertInput,
 } from "@/lib/events/event-candidate";
+import { findEventCandidate } from "@/lib/events/event-store";
 import {
-  findEventCandidate,
-  transitionEventLifecycle,
-  upsertEventCandidate,
-} from "@/lib/events/event-store";
+  commitEventLifecycle,
+  commitEventUpsert,
+} from "@/lib/source-of-truth/commit-truth";
 
 export const LINK_REMINDER_SOURCE_REF = "link-reminder";
 
@@ -54,9 +54,9 @@ export function linkReminderToEventCandidateUpsert(
   };
 }
 
-/** Write path — LinkReminder → EventCandidate SSOT. */
+/** Ingest adapter — LinkReminder → commit-truth. */
 export function ingestLinkReminderEvent(reminder: LinkReminder): EventCandidate {
-  return upsertEventCandidate(linkReminderToEventCandidateUpsert(reminder));
+  return commitEventUpsert(linkReminderToEventCandidateUpsert(reminder));
 }
 
 /** Demote/clear path — archive linked EventCandidate (no physical delete). */
@@ -69,7 +69,7 @@ export function archiveLinkReminderEvent(linkId: string): EventCandidate | null 
   if (existing.lifecycle === "archived") {
     return existing;
   }
-  return transitionEventLifecycle(eventId, "archived");
+  return commitEventLifecycle(eventId, "archived");
 }
 
 export function isLinkReminderEvent(event: EventCandidate): boolean {

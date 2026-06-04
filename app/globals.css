@@ -737,6 +737,31 @@
   max-width: var(--shell-max-phone);
 }
 
+/*
+ * Immersive feed: reserve space so the composer sits above the fixed tab bar.
+ * (Composer z-index inside overflow:hidden cannot win vs this sibling.)
+ */
+@media (max-width: 1023px) {
+  body:has(.app-nav-bottom-frame) .app-shell-viewport.h-dvh {
+    padding-bottom: var(--rimvio-bottom-nav-offset);
+    box-sizing: border-box;
+  }
+
+  /*
+   * Let taps reach the composer in the band under the tab chrome;
+   * tab links/buttons stay interactive.
+   */
+  .app-nav-bottom-frame {
+    pointer-events: none;
+  }
+
+  .app-nav-bottom-frame a,
+  .app-nav-bottom-frame button,
+  .app-nav-bottom-frame [role="button"] {
+    pointer-events: auto;
+  }
+}
+
 @media (min-width: 640px) {
   .app-nav-bottom-frame {
     max-width: var(--shell-max-phablet);
@@ -822,24 +847,60 @@
 /* Mobile feed — composer fixed above bottom tab bar */
 .rimvio-feed-composer-dock {
   position: relative;
-  z-index: 45;
+  z-index: 50;
 }
 
 @media (max-width: 1023px) {
+  /*
+   * Sticky in flex column (not fixed) — fixed + overflow:hidden ancestors
+   * break composer tap/focus on iOS/Android WebViews.
+   */
   .rimvio-feed-composer-dock {
-    position: fixed;
-    inset-inline: 0;
+    position: sticky;
     bottom: 0;
-    z-index: 45;
+    z-index: 60;
+    isolation: isolate;
+    flex-shrink: 0;
     margin-inline: auto;
     width: 100%;
     max-width: var(--shell-max-phone);
-    padding-bottom: var(--rimvio-bottom-nav-offset);
-    pointer-events: none;
+    /* Shell already pads for tab bar — only safe-area here */
+    padding-bottom: max(0.25rem, env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(
+      to top,
+      var(--rimvio-base) 72%,
+      color-mix(in oklch, var(--rimvio-base) 88%, transparent) 100%
+    );
   }
 
   .rimvio-feed-composer-dock .rimvio-composer-bar {
+    position: relative;
+    z-index: 2;
     pointer-events: auto;
+    touch-action: manipulation;
+  }
+
+  .rimvio-feed-composer-dock .rimvio-composer-field,
+  .rimvio-feed-composer-dock .rimvio-composer-mention-wrap {
+    position: relative;
+    z-index: 2;
+    pointer-events: auto;
+    touch-action: manipulation;
+  }
+
+  .rimvio-feed-composer-dock .rimvio-composer-mention-mirror {
+    pointer-events: none !important;
+    z-index: 0;
+  }
+
+  .rimvio-feed-composer-dock .rimvio-composer-textarea--mirror {
+    position: relative;
+    z-index: 3;
+    pointer-events: auto;
+    touch-action: manipulation;
+    user-select: text;
+    -webkit-user-select: text;
+    cursor: text;
   }
 }
 
@@ -864,6 +925,13 @@
   padding-bottom: var(--rimvio-feed-scroll-pad);
   scroll-behavior: auto;
   overscroll-behavior-y: contain;
+}
+
+@media (max-width: 1023px) {
+  /* Composer is a flex sibling (not overlay) — less bottom pad needed */
+  .rimvio-feed-scroll-inset {
+    padding-bottom: var(--space-phi);
+  }
 }
 
 @media (min-width: 1024px) {
@@ -2226,7 +2294,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 /* Phone/tablet: marquee wave repaints the whole feed column on Android */
 @media (max-width: 1023px) {
   .chat-ambient-shell {
-    contain: layout style;
+    /* Do not use contain:* here — breaks composer focus on mobile */
     transition: none;
   }
 

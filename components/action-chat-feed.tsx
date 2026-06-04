@@ -18,6 +18,7 @@ import { subscribeOpenGoogleSheet } from "@/lib/integrations/google-sheets-open-
 import { ActiveActionsSheet } from "@/components/action-chat/active-actions-sheet";
 import { CalendarBoard } from "@/components/action-chat/calendar-board";
 import { ActionChatInputBar } from "@/components/action-chat/input-bar";
+import { isFeedPeerTalkSendActive } from "@/lib/action-chat/feed-peer-talk/is-feed-peer-talk-send-active";
 import {
   ChatAmbientFocusProvider,
   ChatAmbientShell,
@@ -33,6 +34,9 @@ import { RimvioProductContextStrip } from "@/components/rimvio-product-context-s
 import { OnboardingMagicPanel } from "@/components/onboarding-magic-panel";
 import { useActionChat } from "@/hooks/use-action-chat";
 import { usePredictiveDock } from "@/hooks/use-predictive-dock";
+import { useSurfaceEngine } from "@/hooks/use-surface-engine";
+import { useCapabilityDispatch } from "@/hooks/use-capability-dispatch";
+import { SurfaceFeedStrip } from "@/components/surface/surface-feed-strip";
 import { markOpportunityConsumed } from "@/lib/predictive-dock/action-opportunity-session";
 import { recordDockActionUsage } from "@/lib/action-registry/record-dock-usage";
 import { wireEventCompleted } from "@/lib/events/event-lifecycle-hooks";
@@ -151,6 +155,13 @@ export function ActionChatFeed({
     refreshKey: reminderMap,
   });
   const masterContext = useMemo(() => readClientMasterOrchestratorContext(), [messages]);
+  const { feed: feedSurfaces } = useSurfaceEngine({
+    dateKey: masterContext.currentDate,
+    context: { now: new Date() },
+  });
+  const { dispatch: dispatchCapability } = useCapabilityDispatch({
+    sendPrompt: (text) => void sendMessage(text),
+  });
   const threadlineNeedsTap =
     threadlineHeaderStatus(threadlineCards) === "needs_one_tap";
   const { visible: dockActions } = usePredictiveDock({
@@ -281,6 +292,11 @@ export function ActionChatFeed({
     scrollThreadToBottom(node, feedThreadScrollBehavior());
   }, [messages.length, activeIndex, activeLink?.id]);
 
+  const feedPeerTalkSendActive = isFeedPeerTalkSendActive(
+    feedPeerTalkSession,
+    messages,
+  );
+
   return (
     <>
       <div
@@ -375,12 +391,12 @@ export function ActionChatFeed({
         <ChatAmbientFocusProvider>
         <ChatAmbientShell
           aria-label="채팅"
-          suppressDecor={Boolean(feedPeerTalkSession)}
+          suppressDecor={feedPeerTalkSendActive}
           className="flex min-h-0 flex-1 flex-col overflow-hidden"
         >
           <div
             ref={threadRef}
-            className="relative z-[2] min-h-0 flex-1 overflow-y-auto overscroll-y-contain rimvio-feed-scroll-inset [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="relative z-[1] min-h-0 flex-1 overflow-y-auto overscroll-y-contain rimvio-feed-scroll-inset touch-pan-y [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             <div className="feed-hero-slot shrink-0">
               {coldStartVisible ? (
@@ -398,6 +414,22 @@ export function ActionChatFeed({
                 />
               ) : null}
             </div>
+
+            {feedSurfaces.length > 0 ? (
+              <SurfaceFeedStrip
+                surfaces={feedSurfaces}
+                onDispatchCapability={(surface, _actionId, capabilityId) => {
+                  dispatchCapability({
+                    capabilityId,
+                    inputs: {
+                      title: surface.title,
+                      destination: surface.resources.find((r) => r.kind === "location")?.label,
+                      place: surface.resources.find((r) => r.kind === "location")?.label,
+                    },
+                  });
+                }}
+              />
+            ) : null}
 
             {prepSurface.visible ? (
               <div className="border-b border-black/[0.04] bg-rimvio-surface/80 px-3 py-4">
@@ -490,48 +522,48 @@ export function ActionChatFeed({
             </div>
           ) : null}
 
-          <ActionChatInputBar
-            placeholder={
-              feedPeerTalkSession
-                ? `${feedPeerTalkSession.displayName}에게 메시지`
-                : threadlineNeedsTap
-                  ? "오늘에 추가…"
-                  : "무엇을 도와드릴까요?"
-            }
-            sending={sending}
-            disabled={sending}
-            onOpenCapture={onOpenCapture}
-            onOpenLinkPaste={onOpenLinkPaste}
-            onQuickCapture={onQuickCapture}
-            onPeerTalkPick={(contact) => {
-              void startFeedPeerTalk(contact);
-            }}
-            onSendComposer={async (payload) => {
-              const hasAttachments = (payload.attachments?.length ?? 0) > 0;
-              if (
-                feedPeerTalkSession &&
-                !hasAttachments &&
-                payload.text.trim() &&
-                !payload.text.trim().startsWith("@")
-              ) {
-                try {
-                  await sendFeedPeerTalk(payload.text);
-                  return true;
-                } catch {
-                  /* fall through — AI feed orchestrate */
+          <div
+            className="rimvio-feed-composer-dock pointer-events-auto shrink-0 touch-manipulation lg:relative lg:z-[2]"
+            data-feed-composer-dock
+          >
+            <ActionChatInputBar
+              placeholder={
+                feedPeerTalkSendActive && feedPeerTalkSession
+                  ? `${feedPeerTalkSession.displayName}에게 메시지`
+                  : threadlineNeedsTap
+                    ? "오늘에 추가…"
+                    : "무엇을 도와드릴까요?"
+              }
+              sending={sending}
+              disabled={sending}
+              onOpenCapture={onOpenCapture}
+              onOpenLinkPaste={onOpenLinkPaste}
+              onQuickCapture={onQuickCapture}
+              onPeerTalkPick={(contact) => {
+                void startFeedPeerTalk(contact);
+              }}
+              onSendComposer={async (payload) => {
+                const hasAttachments = (payload.attachments?.length ?? 0) > 0;
+                if (
+                  feedPeerTalkSendActive &&
+                  !hasAttachments &&
+                  payload.text.trim() &&
+                  !payload.text.trim().startsWith("@")
+                ) {
+                  const sent = await sendFeedPeerTalk(payload.text);
+                  return sent;
                 }
-              }
-              if (sendComposerPayload(payload)) {
+                if (sendComposerPayload(payload)) {
+                  return true;
+                }
+                void sendMessage(payload.text, {
+                  attachments: payload.attachments,
+                  chatAxis: payload.chatAxis,
+                });
                 return true;
-              }
-              void sendMessage(payload.text, {
-                attachments: payload.attachments,
-                chatAxis: payload.chatAxis,
-              });
-              return true;
-            }}
-            className="rimvio-feed-composer-dock shrink-0 lg:relative lg:z-[2]"
-          />
+              }}
+            />
+          </div>
         </ChatAmbientShell>
         </ChatAmbientFocusProvider>
       </div>

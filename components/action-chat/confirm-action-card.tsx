@@ -2,12 +2,16 @@
 
 import { useState } from "react";
 import { RimvioActionButton } from "@/components/ui/rimvio-action-button";
+import { AreaDisambiguationPicker } from "@/components/action-chat/area-disambiguation-picker";
+import { LocationInlinePick } from "@/components/action-chat/location-inline-pick";
 import { SmartLocationPicker } from "@/components/action-chat/smart-location-picker";
 import { ActionCountdownStrip } from "@/components/action-chat/action-countdown-strip";
 import { resolveActionDatetimeIso } from "@/lib/action-chat/action-countdown";
 import type {
+  AreaDisambiguationWire,
   BatchPendingItem,
   ConfirmationExtractedData,
+  LocationConfirmUxWire,
   LocationSuggestion,
   WittyButtonWire,
 } from "@/lib/action-chat/confirmation-types";
@@ -21,9 +25,14 @@ type ConfirmActionCardProps = {
   extracted?: ConfirmationExtractedData | null;
   batchPending?: BatchPendingItem[];
   wittyButtons?: WittyButtonWire[];
+  locationUx?: LocationConfirmUxWire | null;
+  areaDisambiguation?: AreaDisambiguationWire | null;
+  locationSuggestions?: LocationSuggestion[];
+  chatScopeId?: string;
   onAccept: () => void;
   onReject: () => void;
   onSelectLocation: (suggestion: LocationSuggestion) => void;
+  onSelectArea?: (suggestion: LocationSuggestion) => void;
   onWittyAction?: (action: string) => void;
 };
 
@@ -32,14 +41,24 @@ export function ConfirmActionCard({
   extracted,
   batchPending,
   wittyButtons,
+  locationUx,
+  areaDisambiguation,
+  locationSuggestions,
+  chatScopeId = "default",
   onAccept,
   onReject,
   onSelectLocation,
+  onSelectArea,
   onWittyAction,
 }: ConfirmActionCardProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const hasWittyButtons = Boolean(wittyButtons?.length);
-  const showDataPrompt = Boolean(dataPrompt?.trim()) && !hasWittyButtons;
+  const isAreaPick = locationUx?.mode === "area_disambiguation" && Boolean(areaDisambiguation);
+  const hasInlineLocation =
+    !isAreaPick &&
+    Boolean(locationUx && locationUx.mode !== "classic" && locationUx.suggestions.length > 0);
+  const showDataPrompt =
+    Boolean(dataPrompt?.trim()) && !hasWittyButtons && !isAreaPick && !hasInlineLocation;
   const actionTargetIso = resolveActionDatetimeIso({ extracted, batchPending });
 
   const handleWittyClick = (action: string) => {
@@ -100,7 +119,26 @@ export function ConfirmActionCard({
         </div>
       ) : null}
 
-      {!pickerOpen ? (
+      {isAreaPick && areaDisambiguation ? (
+        <AreaDisambiguationPicker
+          wire={areaDisambiguation}
+          initialSuggestions={locationSuggestions ?? locationUx?.suggestions}
+          scopeId={chatScopeId}
+          onSelect={(suggestion) => onSelectArea?.(suggestion) ?? onSelectLocation(suggestion)}
+        />
+      ) : null}
+
+      {hasInlineLocation && locationUx ? (
+        <LocationInlinePick
+          prompt={locationUx.prompt}
+          suggestions={locationUx.suggestions}
+          recommendedId={locationUx.recommended_id}
+          onSelect={onSelectLocation}
+          onSearchMore={() => setPickerOpen(true)}
+        />
+      ) : null}
+
+      {!pickerOpen && !isAreaPick && !hasInlineLocation ? (
         hasWittyButtons ? (
           <div
             className={

@@ -33,7 +33,7 @@ if (!actions24h.some((row) => row.label === "준비물 확인")) {
   fail("T-24h_actions");
 }
 
-const now2h = new Date(future.getTime() - 3 * 60 * 60 * 1000);
+const now2h = new Date(future.getTime() - 2 * 60 * 60 * 1000);
 const actions2h = computeContextualEventActions({
   ecId: "ec-hospital",
   title: "병원",
@@ -73,8 +73,11 @@ const composeSource = readFileSync(
   join(process.cwd(), "lib/action-projection/compose-action-projection.ts"),
   "utf8"
 );
-if (composeSource.includes("event-store")) {
-  fail("action_projection_must_not_read_event_store_directly");
+if (!composeSource.includes("projectTimelineDisplayFromRoutes")) {
+  fail("action_projection_must_use_timeline_display_path");
+}
+if (composeSource.includes("listTimelineProjectionFromStore")) {
+  fail("action_projection_must_not_use_timeline_list_api");
 }
 
 const cachedA = getActionProjection(now2h);

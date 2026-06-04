@@ -1,4 +1,5 @@
-import { listEventCandidates } from "@/lib/events/event-store";
+import { readLifeProjections } from "@/lib/life-read-model/read-life-projections";
+import type { EventCandidate } from "@/lib/events/event-candidate";
 import {
   rankEventOpportunities,
   type OpportunityScoreBreakdown,
@@ -28,14 +29,18 @@ export {
  * Does NOT create, mutate, or infer events.
  */
 export function listRankedEventOpportunities(
-  context: OpportunityEngineContext = {}
+  context: OpportunityEngineContext = {},
+  events?: readonly EventCandidate[],
 ): EventOpportunitySignal[] {
-  return rankEventOpportunities(listEventCandidates(), context);
+  const list = events ?? readLifeProjections().events;
+  return rankEventOpportunities(list, context);
 }
 
 /** Detailed breakdown for inspection / tests. */
 export function listEvaluatedEventOpportunities(
-  context: OpportunityEngineContext = {}
+  context: OpportunityEngineContext = {},
+  events?: readonly EventCandidate[],
 ): OpportunityScoreBreakdown[] {
-  return evaluateEventOpportunities(listEventCandidates(), context);
+  const list = events ?? readLifeProjections().events;
+  return evaluateEventOpportunities(list, context);
 }

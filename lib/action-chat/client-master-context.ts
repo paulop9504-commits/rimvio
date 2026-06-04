@@ -29,16 +29,17 @@ import { serializePromotedTemplatesForApi } from "@/lib/action-registry/action-r
 import { serializeTemplateInstancesForApi } from "@/lib/action-template/template-instance-store";
 import { serializeCustomTriggersForApi } from "@/lib/action-os/custom-trigger-store";
 import { listActionEventRecords } from "@/lib/action-event-registry/action-event-store";
-import { readLinkReminders } from "@/lib/local-links/reminders";
 import {
   buildMasterContextInjection,
   defaultMasterOrchestratorContext,
   type MasterOrchestratorContext,
 } from "@/lib/action-chat/master-orchestrator-context";
+import { formatDateKey } from "@/lib/schedule/day-schedule";
+import { serializeTruthForMasterContext } from "@/lib/source-of-truth/serialize-for-api";
 import {
-  formatDateKey,
-  readExistingSchedule,
-} from "@/lib/schedule/day-schedule";
+  resolveAllRemindersFromTruth,
+  resolveMasterContextFromTruth,
+} from "@/lib/source-of-truth/resolve-master-context";
 import {
   readActionTrustMode,
   readActionTrustSuccessScore,
@@ -52,6 +53,7 @@ import {
 } from "@/lib/preferences/map-app";
 import { serializeUserDefinedActionsForApi } from "@/lib/actions/user-defined-action-store";
 import type { UserDefinedAction } from "@/lib/actions/user-defined-action-types";
+import { readLastGoalSnapshotRevision } from "@/lib/goal-engine/goal-snapshot-session";
 
 export function readClientMasterOrchestratorContext(): MasterOrchestratorContext {
   const currentDate = formatDateKey();
@@ -60,18 +62,31 @@ export function readClientMasterOrchestratorContext(): MasterOrchestratorContext
     successScore: readActionTrustSuccessScore(),
   });
 
+  const truth = serializeTruthForMasterContext(currentDate);
+
   return defaultMasterOrchestratorContext({
     currentDate,
     trustLevel,
-    existingSchedule: readExistingSchedule(currentDate),
+    existingSchedule: truth.existingSchedule,
     activeContainers: readContextContainers(),
     activeChain: readActiveChainsAsLegacyChain(),
     activeChains: readActiveChains(),
   });
 }
 
-export function serializeMasterContextForApi(context?: MasterOrchestratorContext) {
+/**
+ * §6 — Client master payload. Never calls `buildGoalSnapshot`.
+ * Optional `goalSnapshotRevision` echoes last server turn for change detection only.
+ */
+export function serializeMasterContextForApi(
+  context?: MasterOrchestratorContext,
+  options?: { chatScopeId?: string },
+) {
   const resolved = context ?? readClientMasterOrchestratorContext();
+  const goalSnapshotRevision =
+    options?.chatScopeId && typeof window !== "undefined"
+      ? readLastGoalSnapshotRevision(options.chatScopeId) ?? undefined
+      : undefined;
   const userPreferences =
     typeof window !== "undefined"
       ? `지도 앱 선호: ${labelForMapApp(readMapApp())}`
@@ -79,19 +94,14 @@ export function serializeMasterContextForApi(context?: MasterOrchestratorContext
 
   const activeChains = resolved.activeChains ?? readActiveChains();
   const activeChainsWire = buildActiveChainsWireFromKeys(activeChains);
-
-  const allReminders = readLinkReminders().map((item) => ({
-    id: item.id,
-    title: item.title,
-    fireAt: item.fireAt,
-    url: item.url,
-  }));
+  const truth = serializeTruthForMasterContext(resolved.currentDate);
 
   return {
     currentDate: resolved.currentDate,
     trustLevel: resolved.trustLevel,
-    existingSchedule: resolved.existingSchedule,
-    allReminders,
+    eventCandidates: truth.eventCandidates,
+    existingSchedule: truth.existingSchedule,
+    allReminders: truth.allReminders,
     userGoals: serializeUserGoalsForApi(),
     activitySources: serializeActivitySourcesForRetrieval(),
     conversationMemories: serializeConversationMemoriesForApi(),
@@ -125,6 +135,7 @@ export function serializeMasterContextForApi(context?: MasterOrchestratorContext
     userDefinedActions: serializeUserDefinedActionsForApi(),
     mapApp: typeof window !== "undefined" ? readMapApp(true) : defaultMapApp(true),
     injection: buildMasterContextInjection(resolved),
+    ...(goalSnapshotRevision ? { goalSnapshotRevision } : {}),
   };
 }
 
@@ -139,6 +150,10 @@ export type MasterContextApiPayload = ReturnType<typeof serializeMasterContextFo
   placePreferences?: import("@/lib/corrections/place-preference-knowledge").PlacePreferenceWire[];
   allReminders?: Array<{ id: string; title: string; fireAt: string; url?: string }>;
   userGoals?: import("@/lib/goal-roadmap/types").UserGoalWire[];
+  /** Event SSOT mirror — authoritative for schedule/reminders on server. */
+  eventCandidates?: import("@/lib/events/event-candidate").EventCandidateWire[];
+  /** Last server GoalSnapshot revision — read-only echo; not used to rebuild snapshot. */
+  goalSnapshotRevision?: string;
   activitySources?: import("@/lib/schedule-intelligence/types").ScheduleActivityWire[];
   conversationMemories?: import("@/lib/conversation-memory/types").ConversationMemoryWire[];
   userStatus?: import("@/lib/global-brain/types").UserStatusWire | null;
@@ -177,33 +192,12 @@ export type MasterContextApiPayload = ReturnType<typeof serializeMasterContextFo
 export function masterContextFromApiPayload(
   payload?: Partial<MasterContextApiPayload> | null
 ): MasterOrchestratorContext {
-  if (!payload) {
-    return defaultMasterOrchestratorContext();
-  }
+  return resolveMasterContextFromTruth(payload);
+}
 
-  return defaultMasterOrchestratorContext({
-    currentDate: payload.currentDate,
-    trustLevel: payload.trustLevel,
-    existingSchedule: payload.existingSchedule ?? [],
-    activeChains: payload.activeChains
-      ? normalizeActiveChains(payload.activeChains)
-      : [],
-    activeChain: payload.activeChain ?? null,
-    activeContainers: (payload.activeContainers ?? []).map((item) => {
-      const now = new Date().toISOString();
-      return {
-        id: item.id,
-        title: item.title,
-        topic: item.topic ?? undefined,
-        persona: item.persona ?? undefined,
-        allowedActions: item.allowedActions ?? undefined,
-        accent: item.accent ?? undefined,
-        itemCount: item.itemCount,
-        createdAt: now,
-        updatedAt: now,
-        lastOpenedAt: now,
-        archivedAt: null,
-      };
-    }),
-  });
+/** Event SSOT–derived reminders for orchestrator input (server-safe). */
+export function allRemindersFromApiPayload(
+  payload?: Partial<MasterContextApiPayload> | null,
+) {
+  return resolveAllRemindersFromTruth(payload);
 }

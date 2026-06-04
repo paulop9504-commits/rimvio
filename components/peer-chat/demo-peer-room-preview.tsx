@@ -53,7 +53,13 @@ export function DemoPeerRoomPreview({ className }: DemoPeerRoomPreviewProps) {
             key={message.id}
             message={message}
             simple
-            showTime={false}
+            showTime={index === DEMO_PEER_MESSAGES.length - 1}
+            showPeerProfileHeader={index === 0}
+            peerProfile={{
+              displayName: "민수",
+              avatarUrl: null,
+              rimvioId: "demo_minsu",
+            }}
             lensCandidates={
               message.id === anchorMessageId ? candidates : []
             }

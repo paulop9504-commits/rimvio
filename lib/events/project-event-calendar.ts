@@ -1,7 +1,7 @@
 import { parseActionTargetDatetime } from "@/lib/action-chat/action-countdown";
 import type { CalendarChipTone, CalendarEventChip } from "@/lib/calendar/calendar-view-types";
 import type { EventCandidate } from "@/lib/events/event-candidate";
-import { listEventCandidatesByLifecycle } from "@/lib/events/event-store";
+import { readLifeProjections } from "@/lib/life-read-model";
 
 export type EventCalendarRow = {
   eventId: string;
@@ -33,7 +33,8 @@ function toneForCategory(category: EventCandidate["category"]): CalendarChipTone
 
 /** Event Calendar — read-only projection from Event SSOT (scheduled lifecycle). */
 export function listEventCalendarRows(): EventCalendarRow[] {
-  return listEventCandidatesByLifecycle("scheduled")
+  return readLifeProjections()
+    .events.filter((event) => event.lifecycle === "scheduled")
     .map((event) => {
       const iso = event.datetime?.trim();
       if (!iso) {

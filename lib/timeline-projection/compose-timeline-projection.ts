@@ -308,8 +308,9 @@ function projectionsEqual(left: TimelineProjectionResult, right: TimelineProject
 }
 
 /**
- * Project Container Rework routes into a time-ordered timeline view.
- * Does NOT score, route, or mutate events.
+ * Project Container Rework routes into a time-ordered timeline view (display only).
+ * Does NOT score, route, mutate events, or write schedule/SSOT.
+ * @see docs/TIMELINE_PROJECTION.md
  */
 export function composeTimelineProjection(
   routes: readonly ContainerRoute[],

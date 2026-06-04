@@ -2,26 +2,16 @@ import { parseAbsoluteTimeFromText } from "@/lib/time-decision/parse-absolute-ti
 import { extractTaskLabelFromMessage } from "@/lib/time-decision/extract-task-label";
 import { resolveTemporalExpression } from "@/lib/time/temporal-resolver";
 import { initialLifecycle, scoreEventConfidence } from "@/lib/events/event-lifecycle";
+import type {
+  LockedEventCategory,
+  LockedEventLifecycle,
+  LockedEventSource,
+} from "@/lib/event-kernel/schema-lock/event-schema";
 
-export type EventCandidateCategory =
-  | "schedule"
-  | "travel"
-  | "finance"
-  | "food"
-  | "work"
-  | "social"
-  | "custom";
-
-export type EventCandidateSource = "message" | "notification" | "system";
-
-export type EventCandidateLifecycle =
-  | "mentioned"
-  | "candidate"
-  | "confirmed"
-  | "scheduled"
-  | "active"
-  | "completed"
-  | "archived";
+/** Schema-locked — see `lib/event-kernel/schema-lock/event-schema.ts`. */
+export type EventCandidateCategory = LockedEventCategory;
+export type EventCandidateSource = LockedEventSource;
+export type EventCandidateLifecycle = LockedEventLifecycle;
 
 /** Canonical reality layer — Rimvio SSOT for detected life events. */
 export type EventCandidate = {
@@ -45,7 +35,7 @@ export type EventCandidateDraft = Omit<
   "id" | "lifecycleUpdatedAt" | "createdAt" | "updatedAt"
 >;
 
-/** API wire — client persists via upsertEventCandidate. */
+/** API wire — client persists via commitEventWireFromApi (`lib/source-of-truth/commit-truth`). */
 export type EventCandidateWire = {
   id: string;
   title: string;

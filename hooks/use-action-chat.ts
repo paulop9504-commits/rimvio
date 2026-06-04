@@ -118,6 +118,11 @@ import {
 } from "@/lib/action-chat/feed-peer-talk/feed-peer-talk-actions";
 import { resolveFeedPeerTalkSessionFromMessages } from "@/lib/action-chat/feed-peer-talk/restore-feed-peer-talk-session";
 import {
+  isFeedPeerTalkSendActive,
+  syncFeedPeerTalkSessionWithMessages,
+} from "@/lib/action-chat/feed-peer-talk/is-feed-peer-talk-send-active";
+import {
+  clearFeedPeerTalkSession,
   getFeedPeerTalkSession,
   setFeedPeerTalkSession,
   subscribeFeedPeerTalkSession,
@@ -205,8 +210,9 @@ import {
 import { ingestPastedLinks } from "@/lib/share/inbox-paste";
 import type { LinkRow } from "@/types/database";
 import { buildLinkedLinksWire } from "@/lib/feed/link-context-chain";
-
-const ORCHESTRATE_TIMEOUT_MS = 18_000;
+import { parseTurnIntent } from "@/lib/action-chat/turn/parse-turn-intent";
+import { executeOrchestrateTurn } from "@/lib/action-chat/turn/execute-orchestrate-turn";
+import { resolveClientTurnRoute } from "@/lib/action-chat/turn/resolve-client-turn-route";
 
 function findPriorUserInput(
   messages: ActionChatMessage[],
@@ -336,19 +342,6 @@ function applyScheduledFire(
         }
       : message
   );
-}
-
-function historyContentFromMessage(message: ActionChatMessage): string {
-  if (message.role === "assistant") {
-    const confirmText =
-      message.confirmation?.persona_message?.trim() ??
-      message.confirmation?.confirm_message?.trim();
-    if (confirmText) {
-      return confirmText;
-    }
-  }
-
-  return message.text.trim();
 }
 
 function createMessage(
@@ -590,8 +583,10 @@ export function useActionChat(
     const stored = readActionChatMessages(scopeId);
     setMessages(stored);
     const restored = resolveFeedPeerTalkSessionFromMessages(stored);
-    if (restored) {
+    if (restored && isFeedPeerTalkSendActive(restored, stored)) {
       setFeedPeerTalkSession(restored);
+    } else {
+      clearFeedPeerTalkSession();
     }
   }, [scopeId]);
 
@@ -628,12 +623,17 @@ export function useActionChat(
   );
 
   const sendFeedPeerTalk = useCallback(
-    async (text: string) => {
+    async (text: string, options?: { quietOnError?: boolean }) => {
       lastActivityRef.current = Date.now();
-      const ok = await sendFeedPeerTalkInFeed(feedPeerTalkDeps(), text);
-      if (!ok) {
+      const ok = await sendFeedPeerTalkInFeed(
+        feedPeerTalkDeps(),
+        text,
+        options,
+      );
+      if (!ok && !options?.quietOnError) {
         throw new Error("대화를 다시 시작해 주세요 (@톡)");
       }
+      return ok;
     },
     [feedPeerTalkDeps],
   );
@@ -1483,44 +1483,48 @@ export function useActionChat(
       options?: { attachments?: ComposerAttachment[]; chatAxis?: ChatAxis }
     ) => {
 
-      const trimmed = text.trim();
-      const pendingAttachments = options?.attachments ?? [];
+      const turnIntent = parseTurnIntent(text, options, readStoredChatAxis);
+      const { trimmed, pendingAttachments } = turnIntent;
 
-      if ((!trimmed && pendingAttachments.length === 0) || sending) {
+      const currentBeforeSend = readActionChatMessages(scopeId);
+      syncFeedPeerTalkSessionWithMessages(currentBeforeSend);
 
-        return;
-
-      }
-
-      const activeFeedPeerTalk = getFeedPeerTalkSession();
+      const peerTalkSession = getFeedPeerTalkSession();
       const routeToFeedPeerTalk =
-        activeFeedPeerTalk &&
+        isFeedPeerTalkSendActive(peerTalkSession, currentBeforeSend) &&
         pendingAttachments.length === 0 &&
         trimmed &&
         !trimmed.startsWith("@");
-      if (routeToFeedPeerTalk) {
-        try {
-          const sent = await sendFeedPeerTalkInFeed(
-            { readMessages: () => readActionChatMessages(scopeId), persist },
-            trimmed,
-          );
-          if (sent) {
-            return;
-          }
-        } catch (peerError) {
-          console.error(
-            "[action-chat] feed peer talk failed — falling back to orchestrate",
-            peerError,
-          );
-        }
+
+      const clientRoute = resolveClientTurnRoute({
+        sending,
+        turnIntent,
+        pendingAttachments,
+        messages: currentBeforeSend,
+        routeToFeedPeerTalk: Boolean(routeToFeedPeerTalk && peerTalkSession),
+        reviewGatePhase: reviewGatePhaseRef.current,
+      });
+
+      if (clientRoute.kind === "noop") {
+        return;
       }
 
-      let messageChatAxis: ChatAxis = options?.chatAxis ?? readStoredChatAxis();
-      let axisOrchestrateOverride: string | null = null;
+      let messageChatAxis: ChatAxis = turnIntent.chatAxis;
+      let axisOrchestrateOverride: string | null = turnIntent.axisOrchestrateOverride;
 
-      const currentBeforeSend = readActionChatMessages(scopeId);
+      if (clientRoute.kind === "peer_talk" && peerTalkSession) {
+        const sent = await sendFeedPeerTalkInFeed(
+          { readMessages: () => readActionChatMessages(scopeId), persist },
+          trimmed,
+        );
+        if (sent) {
+          return;
+        }
+        // DM 실패 시 AI 오케스트레이터로 넘기지 않음 (톡 안 간 채 피드만 도는 현상 방지)
+        return;
+      }
       const pendingFocusConfirm = findPendingFocusConfirmMessage(currentBeforeSend);
-      if (pendingFocusConfirm && pendingAttachments.length === 0 && trimmed) {
+      if (clientRoute.kind === "focus_confirm" && pendingFocusConfirm) {
         if (isFocusConfirmSpeech(trimmed)) {
           const hasAccess = await ensureNotificationAccessForFocus(() => {
             toast.message("알림 맡기기", "설정에서 Rimvio 알림 접근을 켜주세요");
@@ -1542,6 +1546,8 @@ export function useActionChat(
           );
           return;
         }
+      }
+      if (clientRoute.kind === "focus_cancel" && pendingFocusConfirm) {
         if (isFocusCancelSpeech(trimmed)) {
           persist(
             applyFocusCancelToMessages(
@@ -1556,7 +1562,7 @@ export function useActionChat(
         }
       }
 
-      if (pendingAttachments.length > 0 && isParkingPhotoCapturePending()) {
+      if (clientRoute.kind === "parking_photo" && pendingAttachments.length > 0) {
         consumeParkingPhotoCapture();
         const photoTurn = await tryCommitParkingPhotoTurn({
           attachments: pendingAttachments,
@@ -1598,16 +1604,14 @@ export function useActionChat(
       }
 
       if (
-        isAwaitingLectureUrl() &&
-        pendingAttachments.length === 0 &&
-        trimmed &&
+        clientRoute.kind === "lecture_url" &&
         tryConsumeLectureUrlRegistration(trimmed, buildStudyAuxDeps())
       ) {
         return;
       }
 
       const studyLabelKind = resolveStudyAuxFromLabel(trimmed);
-      if (studyLabelKind && pendingAttachments.length === 0) {
+      if (clientRoute.kind === "study_label" && studyLabelKind) {
         const current = readActionChatMessages(scopeId);
         persist([
           ...current,
@@ -1619,7 +1623,7 @@ export function useActionChat(
 
       const studyQaTurn = isStudyQaModeActive();
 
-      if (isCommandOsInput(trimmed)) {
+      if (clientRoute.kind === "command_os") {
         setSending(true);
         const current = readActionChatMessages(scopeId);
         const userMessage = createMessage("user", trimmed);
@@ -1674,7 +1678,7 @@ export function useActionChat(
         return;
       }
 
-      if (trimmed.startsWith(OCR_REVIEW_DATES_PREFIX)) {
+      if (clientRoute.kind === "ocr_review_dates") {
         await runReviewExecutionAndPersist(
           {
             scopeId: REVIEW_EXECUTION_SCOPE,
@@ -1690,12 +1694,15 @@ export function useActionChat(
         return;
       }
 
-      const approvalAct = classifyApprovalSpeechAct(trimmed);
-      if (
-        approvalAct === "APPROVE" &&
-        reviewGatePhaseRef.current &&
-        pendingAttachments.length === 0
-      ) {
+      if (clientRoute.kind === "review_approval") {
+        const approvalAct = classifyApprovalSpeechAct(trimmed);
+        if (approvalAct !== "APPROVE") {
+          return;
+        }
+        if (
+          reviewGatePhaseRef.current &&
+          pendingAttachments.length === 0
+        ) {
         const stepType =
           reviewGatePhaseRef.current === "awaiting_confirm" ? "confirm" : "approve";
         const handled = await runReviewExecutionAndPersist(
@@ -1711,6 +1718,7 @@ export function useActionChat(
         );
         if (handled) {
           return;
+        }
         }
       }
 
@@ -1965,329 +1973,32 @@ export function useActionChat(
       const turnStartedAt = Date.now();
 
       try {
-
-        const history = base
-
-          .filter((message) => !message.loading)
-
-          .slice(-8)
-
-          .map((message) => ({
-
-            role: message.role,
-
-            content: historyContentFromMessage(message),
-
-          }))
-
-          .filter((turn) => turn.content.length > 0);
-
-
-
-        const recentActivities = await listSearchActivities(10);
-        let locationMemory = null as ReturnType<typeof buildLocationMemoryWire> | null;
-        let placePreferences: Awaited<ReturnType<typeof buildPlacePreferencesWire>> = [];
-        let priorPlaceChoice = null as ReturnType<typeof resolvePriorPlaceChoice> | null;
-
-        try {
-          locationMemory = buildLocationMemoryWire({ recentActivities });
-          const correctionLogs = await listCorrectionLogs(30, { mergeRemote: true });
-          placePreferences = await buildPlacePreferencesWire(12);
-          priorPlaceChoice = resolvePriorPlaceChoice({
-            message: trimmed,
-            logs: correctionLogs,
-          });
-        } catch (prepError) {
-          console.error("[action-chat] context prep failed", prepError);
-        }
-
-        let linkedLinks: ReturnType<typeof buildLinkedLinksWire> = [];
-        try {
-          linkedLinks = buildLinkedLinksWire(chainedLinks);
-        } catch (linkWireError) {
-          console.error("[action-chat] linkedLinks wire failed", linkWireError);
-        }
-
-        if (shouldLogSearchActivity(orchestrateMessage)) {
-          void appendSearchActivity({
-            query: orchestrateMessage,
-            kind: inferSearchActivityKind(orchestrateMessage),
-          }).catch(() => undefined);
-        }
-
-        const response = await fetchWithTimeout("/api/chat/orchestrate", {
-
-          method: "POST",
-
-          headers: { "Content-Type": "application/json" },
-
-          body: JSON.stringify({
-
-            message: orchestrateMessage,
-
-            composerContext: composerContext ?? null,
-
-            history,
-
-            linkTitle: activeLink?.title ?? null,
-
-            linkUrl: activeLink?.original_url ?? null,
-
-            linkCategory: activeLink?.category ?? null,
-
-            linkedLinks,
-
-            masterContext: {
-              ...serializeMasterContextForApi(undefined, { chatScopeId: scopeId }),
-              containerGateEnabled: false,
-              ...(activeLink
-                ? {}
-                : {
-                    activeChains: [],
-                    activeChain: null,
-                    activeChainsWire: [],
-                  }),
-              locationMemory,
-              priorPlaceChoice,
-              placePreferences,
-            },
-
-            chatAxis: messageChatAxis ?? null,
-
-            vitalityMemory: readVitalityMemory(),
-
-          }),
-
-          timeoutMs: ORCHESTRATE_TIMEOUT_MS,
-
-          timeoutLabel: "chat_orchestrate",
-
-        });
-
-
-
-        if (!response.ok) {
-          const errorBody = await response.text().catch(() => "");
-          console.error("[action-chat] orchestrate HTTP", response.status, errorBody);
-          throw new Error("orchestrate_failed");
-        }
-
-
-
-        const payload = (await response.json()) as OrchestratorResultWire;
-
-        if (payload.globalBrain?.userStatusPatch !== undefined) {
-          applyUserStatusPatchFromApi(payload.globalBrain.userStatusPatch);
-        }
-        if (payload.globalBrain?.preferencePatch) {
-          applyPreferencePatchFromApi(payload.globalBrain.preferencePatch);
-        }
-        if (payload.globalBrain?.nexusContactTouch?.name) {
-          touchNexusContact(payload.globalBrain.nexusContactTouch.name);
-        }
-        if (payload.eventCandidateUpserts?.length) {
-          applyOcrCalendarCommitToClient({
-            eventCandidateUpserts: payload.eventCandidateUpserts,
-            calendarEvents: payload.metadata?.calendar_events as
-              | import("@/lib/event-kernel/review/execute-approve-pending-events").CalendarEvent[]
-              | undefined,
-          });
-        } else if (payload.eventCandidateUpsert) {
-          applyEventCandidateUpsertFromApi(payload.eventCandidateUpsert, {
-            sourceMessageId: userMessage.id,
-          });
-        }
-
-        const batchItems =
-          payload.batchResults?.filter((item) => (item.actions?.length ?? 0) > 0) ?? [];
-        if (batchItems.length >= 2) {
-          const assistantMessages = batchItems.map((item) =>
-            createMessage("assistant", item.summary, {
-              actions: item.actions ?? [],
-              confidence: payload.confidence ?? 0.9,
-              disclosure: payload.disclosure ?? "high",
-              actionsRevealed: true,
-              pendingConfirm: false,
-              metadata: payload.metadata ?? {
-                intent: "ACTION",
-                trust_level_adjustment: "NONE",
-              },
-            })
-          );
-
-          persist([
-            ...base.filter((message) => message.id !== loadingId),
-            ...assistantMessages,
-          ]);
-          return;
-        }
-
-        if (payload.cafeDiscovery?.summary) {
-          void appendSearchActivity({
-            query: trimmed,
-            kind: "discovery",
-          });
-        }
-
-        if (payload.confirmation?.location_suggestions?.length) {
-          void appendSearchActivity({
-            query: payload.confirmation.confirm_data?.subject ?? trimmed,
-            kind: "place_confirm",
-          });
-        }
-
-        const displaySummary = resolveAssistantDisplaySummary(payload);
-        const tikiChoices = parseTikiChoiceOptions(displaySummary);
-
-        const vitalityStates = (payload.metadata as { vitality_states?: VitalityStateKind[] } | undefined)
-          ?.vitality_states;
-        if (vitalityStates?.length) {
-          writeVitalityMemory(vitalityStates);
-        }
-
-        publishGoalSnapshotFromTurn(scopeId, payload.goalSnapshot);
-
-        const assistantMessage = createMessage(
-
-          "assistant",
-
-          displaySummary,
-
+        await executeOrchestrateTurn(
           {
-
-            actions: payload.actions ?? [],
-
-            confidence: payload.confidence,
-
-            disclosure: payload.disclosure,
-
-            actionsRevealed: payload.actionsRevealed ?? false,
-
-            pendingConfirm: payload.pendingConfirm ?? false,
-
-            metadata: payload.metadata,
-
-            meta: payload.meta,
-
-            chatAxis: messageChatAxis,
-
-            tikiChoices: tikiChoices.length >= 2 ? tikiChoices : undefined,
-
-            schedule: payload.schedule,
-
-            container: payload.container,
-
-            transportLive: payload.transportLive,
-
-            uiTrigger: payload.uiTrigger,
-
-            knowledgeSaved: payload.knowledgeSaved,
-
-            confirmation: payload.confirmation,
-
-            thought: undefined,
-
-            scheduledDelivery: payload.scheduledDelivery,
-
-            scheduleExtract: payload.scheduleExtract,
-
-            cafeDiscovery: payload.cafeDiscovery,
-
-            guardrail: payload.guardrail,
-
-            policy: payload.policy,
-
-            experienceChoice: payload.experienceChoice,
-
-            entityQuickPick: payload.entityQuickPick,
-
-            scheduleAdvisory: payload.scheduleAdvisory,
-
-            morningBriefing: payload.morningBriefing,
-
-            dataArchitect: payload.dataArchitect,
-
-            presentation: payload.presentation,
-
-            flightStatusCard: payload.flightStatusCard,
-
-            packingChecklist: payload.packingChecklist,
-
-            actionOsDock: payload.actionOsDock,
-
-          }
-
+            scopeId,
+            trimmed,
+            orchestrateMessage,
+            composerContext,
+            messageChatAxis,
+            base,
+            loadingId,
+            userMessage,
+            activeLink,
+            chainedLinks,
+            studyQaTurn,
+            turnStartedAt,
+          },
+          {
+            persist,
+            createMessage,
+            applyReviewGateFromOrchestrator,
+            syncThreadlineFromOrchestrator,
+            setDatePickerRequest,
+            activateScheduledDelivery,
+            buildStudyAuxDeps,
+          },
         );
-
-        if (
-          payload.uiTrigger?.type === "DATE_PICKER" ||
-          payload.uiTrigger?.type === "OCR_REVIEW_DATE_PICKER"
-        ) {
-          setDatePickerRequest(payload.uiTrigger);
-        }
-        applyReviewGateFromOrchestrator(payload);
-        if (payload.uiTrigger?.type === "OCR_REVIEW_DATE_PICKER") {
-          syncThreadlineFromOrchestrator(payload);
-        }
-
-        if (payload.knowledgeSaved?.length) {
-          toast("Knowledge Container에 저장했어요", {
-            description: payload.knowledgeSaved[0]?.value,
-          });
-        }
-
-        persist([
-          ...base.filter((message) => message.id !== loadingId),
-          assistantMessage,
-        ]);
-
-        const autoAux = readAutoExecuteStudyAux(
-          payload.metadata as Record<string, unknown> | undefined,
-        );
-        if (autoAux) {
-          void executeStudyAuxClient(autoAux, buildStudyAuxDeps());
-        } else if (studyQaTurn) {
-          appendStudyQaFollowUpIfNeeded(buildStudyAuxDeps());
-        }
-
-        submitLiveTurn({
-          stage: "output",
-          userMessage: trimmed,
-          messageId: assistantMessage.id,
-          assistantSummary: displaySummary,
-          chatAxis: messageChatAxis,
-          metadata: (payload.metadata ?? undefined) as Record<string, unknown> | undefined,
-          vitality: vitalityStates,
-          latencyMs: Date.now() - turnStartedAt,
-          history: history.map((turn) => ({
-            role: turn.role,
-            content: turn.content,
-          })),
-        });
-
-        if (
-          payload.scheduledDelivery?.status === "pending" &&
-          payload.scheduleExtract?.datetime
-        ) {
-          void activateScheduledDelivery({
-            messageId: assistantMessage.id,
-            extracted: payload.scheduleExtract,
-            sourceMessage: trimmed,
-          });
-        } else if (
-          payload.timeChoiceExecution?.mode === "calendar" &&
-          payload.scheduleExtract?.datetime
-        ) {
-          void saveScheduledTravelToCalendar({
-            extracted: payload.scheduleExtract,
-            sourceMessage: trimmed,
-          }).then(() => {
-            toast("일정을 저장했어요");
-          });
-        }
-
         return;
-
       } catch (error) {
 
         console.error("[action-chat] send failed", error);
@@ -2330,6 +2041,7 @@ export function useActionChat(
       runReviewExecutionAndPersist,
       scopeId,
       sending,
+      syncThreadlineFromOrchestrator,
     ]
 
   );

@@ -4,21 +4,15 @@ import type {
   EventCandidateLifecycle,
 } from "@/lib/events/event-candidate";
 import { isArchiveFoldComplete } from "@/lib/events/fold-archived-event";
+import { LOCKED_LIFECYCLE_ORDER } from "@/lib/event-kernel/schema-lock/mutation-rules";
 
 export const ACTIVE_WINDOW_MS = 60 * 60 * 1000;
 export const ARCHIVE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 /** Live store retention for archived rows after immutable fold. */
 export const LIVE_ARCHIVED_PRUNE_MS = 48 * 60 * 60 * 1000;
 
-export const LIFECYCLE_ORDER: EventCandidateLifecycle[] = [
-  "mentioned",
-  "candidate",
-  "confirmed",
-  "scheduled",
-  "active",
-  "completed",
-  "archived",
-];
+/** Monotonic order — locked in schema-lock (do not reorder). */
+export const LIFECYCLE_ORDER: EventCandidateLifecycle[] = [...LOCKED_LIFECYCLE_ORDER];
 
 export function initialLifecycle(): EventCandidateLifecycle {
   return "mentioned";

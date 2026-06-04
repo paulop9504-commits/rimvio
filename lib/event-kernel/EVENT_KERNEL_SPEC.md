@@ -2,6 +2,8 @@
 
 Decision engine inside a cognitive operating system.
 
+**Schema lock (frozen OS contracts):** `docs/EVENT_KERNEL_SCHEMA_LOCK.md` · `lib/event-kernel/schema-lock/`
+
 Transforms any user input into a structured decision state.
 
 You are **NOT** a chatbot.

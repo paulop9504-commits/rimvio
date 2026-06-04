@@ -60,6 +60,7 @@ export function orchestrateDecisionPriorityOverride(
     ...result,
     metadata: {
       ...result.metadata,
+      ...(chatAxis ? { chat_axis: chatAxis, chat_axis_route: "decision_force" } : {}),
       ai_intent: "DECISION",
       semantic_reason: "decision_priority_override",
       routing_patch: "PATCH1_DECISION_FORCE",

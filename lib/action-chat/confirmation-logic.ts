@@ -223,6 +223,7 @@ export function buildConfirmationOrchestratorResult(input: {
   batch_pending?: OrchestratorConfirmationWire["batch_pending"];
   location_suggestions?: OrchestratorConfirmationWire["location_suggestions"];
   location_ux?: OrchestratorConfirmationWire["location_ux"];
+  area_disambiguation?: OrchestratorConfirmationWire["area_disambiguation"];
 }): OrchestratorResult {
   const dataPrompt = input.data_prompt ?? input.confirm_message ?? "아래 정보로 진행할까요?";
   const confirmation: OrchestratorConfirmationWire = {
@@ -235,6 +236,7 @@ export function buildConfirmationOrchestratorResult(input: {
     batch_pending: input.batch_pending,
     location_suggestions: input.location_suggestions,
     location_ux: input.location_ux,
+    area_disambiguation: input.area_disambiguation,
   };
 
   return {

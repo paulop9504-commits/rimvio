@@ -74,6 +74,8 @@ type ActionChatMessageListProps = {
   onRevealAlternateActions?: (messageId: string) => void;
   onConfirmPlace?: (messageId: string) => void;
   onCorrectPlace?: (messageId: string, suggestion: import("@/lib/action-chat/confirmation-types").LocationSuggestion) => void;
+  onSelectArea?: (messageId: string, suggestion: import("@/lib/action-chat/confirmation-types").LocationSuggestion) => void;
+  chatScopeId?: string;
   onWittyAction?: (messageId: string, action: string) => void;
   onResumeConfirmInterrupt?: (messageId: string) => void;
   onCancelConfirmInterrupt?: (messageId: string) => void;
@@ -105,6 +107,8 @@ function AssistantOfferMessage({
   onRevealAlternateActions,
   onConfirmPlace,
   onCorrectPlace,
+  onSelectArea,
+  chatScopeId,
   onWittyAction,
   onResumeConfirmInterrupt,
   onCancelConfirmInterrupt,
@@ -132,6 +136,8 @@ function AssistantOfferMessage({
   onRevealAlternateActions?: (messageId: string) => void;
   onConfirmPlace?: (messageId: string) => void;
   onCorrectPlace?: (messageId: string, suggestion: import("@/lib/action-chat/confirmation-types").LocationSuggestion) => void;
+  onSelectArea?: (messageId: string, suggestion: import("@/lib/action-chat/confirmation-types").LocationSuggestion) => void;
+  chatScopeId?: string;
   onWittyAction?: (messageId: string, action: string) => void;
   onResumeConfirmInterrupt?: (messageId: string) => void;
   onCancelConfirmInterrupt?: (messageId: string) => void;
@@ -284,11 +290,16 @@ function AssistantOfferMessage({
                   extracted={message.confirmation?.extracted_data}
                   batchPending={message.confirmation?.batch_pending}
                   wittyButtons={message.confirmation?.witty_buttons}
+                  locationUx={message.confirmation?.location_ux}
+                  areaDisambiguation={message.confirmation?.area_disambiguation}
+                  locationSuggestions={message.confirmation?.location_suggestions}
+                  chatScopeId={chatScopeId}
                   onAccept={() => onConfirmPlace?.(message.id)}
                   onReject={() => undefined}
                   onSelectLocation={(suggestion) =>
                     onCorrectPlace?.(message.id, suggestion)
                   }
+                  onSelectArea={(suggestion) => onSelectArea?.(message.id, suggestion)}
                   onWittyAction={(action) => onWittyAction?.(message.id, action)}
                 />
                 {message.flushReport ? (
@@ -415,6 +426,8 @@ export function ActionChatMessageList({
   onRevealAlternateActions,
   onConfirmPlace,
   onCorrectPlace,
+  onSelectArea,
+  chatScopeId,
   onWittyAction,
   onResumeConfirmInterrupt,
   onCancelConfirmInterrupt,
@@ -515,6 +528,8 @@ export function ActionChatMessageList({
                 onRevealAlternateActions={onRevealAlternateActions}
                 onConfirmPlace={onConfirmPlace}
                 onCorrectPlace={onCorrectPlace}
+                onSelectArea={onSelectArea}
+                chatScopeId={chatScopeId}
                 onWittyAction={onWittyAction}
                 onResumeConfirmInterrupt={onResumeConfirmInterrupt}
                 onCancelConfirmInterrupt={onCancelConfirmInterrupt}

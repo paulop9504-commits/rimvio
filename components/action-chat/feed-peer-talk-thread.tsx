@@ -3,10 +3,15 @@
 import { FeedPeerTalkRoomBanner } from "@/components/peer-chat/feed-peer-talk-room-banner";
 import { PeerChatBubble } from "@/components/peer-chat/peer-chat-bubble";
 import { DmChatMessageSkeleton } from "@/components/peer-chat/dm-chat-message-skeleton";
+import { useDmPeerProfile } from "@/hooks/use-dm-peer-profile";
 import type { FeedPeerTalkThreadWire } from "@/lib/action-chat/feed-peer-talk/feed-peer-talk-types";
 import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
 import { DM_CHAT } from "@/lib/peer-chat/dm-chat-density";
-import { shouldShowPeerMessageTime } from "@/lib/peer-chat/message-time-visibility";
+import {
+  shouldShowPeerMessageTime,
+  shouldShowPeerProfileHeader,
+} from "@/lib/peer-chat/message-time-visibility";
+import { isRegisteredPeerDmThread } from "@/lib/peer-chat/peer-chat-client";
 import { resolveChatBubbleFocusTone } from "@/components/action-chat/chat-ambient-focus";
 import type { ChatBubbleGroup } from "@/lib/ui/chat-bubble-group";
 import { cn } from "@/lib/utils";
@@ -42,6 +47,7 @@ function FeedPeerTalkRow({
   rowIndex,
   focusedTurnIds,
   composerLive,
+  peerProfile,
 }: {
   messageId: string;
   rowKey: string;
@@ -53,6 +59,11 @@ function FeedPeerTalkRow({
   rowIndex: number;
   focusedTurnIds: Set<string>;
   composerLive: boolean;
+  peerProfile: {
+    displayName: string;
+    avatarUrl: string | null;
+    rimvioId: string | null;
+  };
 }) {
   const group = peerRowGroup(parentBubbleGroup, rowIndex);
   const focusTone = resolveChatBubbleFocusTone(
@@ -79,6 +90,11 @@ function FeedPeerTalkRow({
           simple
           as="div"
           showTime={shouldShowPeerMessageTime(allPeerMessages, peerIndex)}
+          showPeerProfileHeader={shouldShowPeerProfileHeader(
+            allPeerMessages,
+            peerIndex,
+          )}
+          peerProfile={peerProfile}
         />
       </div>
     </div>
@@ -127,6 +143,15 @@ export function FeedPeerTalkFeedRows({
 
   let rowIndex = 0;
 
+  const phoneDm = isRegisteredPeerDmThread(thread.peerThreadId);
+  const { profile } = useDmPeerProfile(thread.peerThreadId, phoneDm);
+  const peerProfile = {
+    displayName:
+      profile?.displayName?.trim() || thread.displayName.trim() || "친구",
+    avatarUrl: profile?.avatarUrl ?? null,
+    rimvioId: profile?.rimvioId ?? null,
+  };
+
   return (
     <>
       <div data-message-id={messageId} className="chat-message-focus w-full px-0.5 pb-1">
@@ -148,6 +173,7 @@ export function FeedPeerTalkFeedRows({
           rowIndex={rowIndex++}
           focusedTurnIds={focusedTurnIds}
           composerLive={composerLive}
+          peerProfile={peerProfile}
         />
       ))}
       <div
@@ -173,6 +199,7 @@ export function FeedPeerTalkFeedRows({
           rowIndex={rowIndex++}
           focusedTurnIds={focusedTurnIds}
           composerLive={composerLive}
+          peerProfile={peerProfile}
         />
       ))}
     </>

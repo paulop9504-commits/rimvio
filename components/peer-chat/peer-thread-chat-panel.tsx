@@ -16,7 +16,12 @@ import { PeerChatBubble } from "@/components/peer-chat/peer-chat-bubble";
 import { PeerInviteBanner } from "@/components/peer-chat/peer-invite-banner";
 import { isDmThreadId } from "@/lib/peer-chat/dm-thread";
 import { DM_CHAT } from "@/lib/peer-chat/dm-chat-density";
-import { shouldShowPeerMessageTime } from "@/lib/peer-chat/message-time-visibility";
+import {
+  shouldShowPeerMessageTime,
+  shouldShowPeerProfileHeader,
+} from "@/lib/peer-chat/message-time-visibility";
+import { useDmPeerProfile } from "@/hooks/use-dm-peer-profile";
+import { isRegisteredPeerDmThread } from "@/lib/peer-chat/peer-chat-client";
 import { normalizePeerSyncError } from "@/lib/peer-chat/normalize-peer-sync-error";
 import { shouldAnalyzePeerAiLens } from "@/lib/context/peer-thread-policy";
 import { executeDeepLinkBubbleCandidate } from "@/lib/peer-chat/ai-lens/execute-lens-bubble";
@@ -43,11 +48,24 @@ export function PeerThreadChatPanel({
   aiLensEnabled,
   readOnly = false,
   simpleDm = false,
+  peerAvatarUrl = null,
 }: PeerThreadChatPanelProps) {
   const threadId = policyInput.settings.peerThreadId;
   const phoneDm = isDmThreadId(threadId);
   const simple = simpleDm || phoneDm;
   const lensActive = shouldAnalyzePeerAiLens(policyInput);
+  const { profile: peerProfileRemote } = useDmPeerProfile(
+    threadId,
+    phoneDm && isRegisteredPeerDmThread(threadId),
+  );
+  const peerProfile = {
+    displayName:
+      peerProfileRemote?.displayName?.trim() ||
+      displayName.trim() ||
+      "친구",
+    avatarUrl: peerProfileRemote?.avatarUrl ?? peerAvatarUrl ?? null,
+    rimvioId: peerProfileRemote?.rimvioId ?? null,
+  };
   const {
     messages,
     canSend,
@@ -245,6 +263,11 @@ export function PeerThreadChatPanel({
                 message={message}
                 simple={simple}
                 showTime={shouldShowPeerMessageTime(messages, index)}
+                showPeerProfileHeader={shouldShowPeerProfileHeader(
+                  messages,
+                  index,
+                )}
+                peerProfile={peerProfile}
                 lensCandidates={
                   message.id === anchorMessageId ? lensCandidates : []
                 }

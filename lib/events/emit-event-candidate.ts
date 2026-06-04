@@ -4,7 +4,7 @@ import {
   type EventCandidateDraft,
   type EventCandidateWire,
 } from "@/lib/events/event-candidate";
-import { upsertEventCandidate } from "@/lib/events/event-store";
+import { commitEventWireFromApi } from "@/lib/source-of-truth/commit-truth";
 
 export function toEventCandidateWire(record: EventCandidate): EventCandidateWire {
   return {
@@ -56,31 +56,10 @@ export function detectAndEmitEventCandidate(input: {
   return emitEventCandidate(draft);
 }
 
+/** @deprecated Use commitEventWireFromApi from `@/lib/source-of-truth`. */
 export function applyEventCandidateUpsertFromApi(
   patch: EventCandidateWire | null | undefined,
-  enrich?: { sourceMessageId?: string | null }
+  enrich?: { sourceMessageId?: string | null },
 ) {
-  if (!patch?.title?.trim()) {
-    return null;
-  }
-
-  const metadata = { ...patch.metadata };
-  const sourceMessageId = enrich?.sourceMessageId?.trim();
-  if (sourceMessageId) {
-    metadata.sourceMessageId = sourceMessageId;
-  }
-
-  return upsertEventCandidate({
-    id: patch.id,
-    title: patch.title,
-    category: patch.category,
-    source: patch.source,
-    lifecycle: patch.lifecycle,
-    datetime: patch.datetime,
-    place: patch.place,
-    containerId: patch.container_id,
-    confidence: patch.confidence,
-    metadata,
-    lifecycleUpdatedAt: patch.lifecycle_updated_at,
-  });
+  return commitEventWireFromApi(patch, enrich);
 }

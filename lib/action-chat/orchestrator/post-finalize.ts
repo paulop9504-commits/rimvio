@@ -17,6 +17,8 @@ import type { GlobalBrainMiddlewareResult } from "@/lib/global-brain/run-global-
 import type { EventCandidateWire } from "@/lib/events/event-candidate";
 import type { OrchestratorTrace } from "@/lib/action-chat/orchestrator/orchestrator-trace";
 import { runArchitectDispatcher } from "@/lib/action-chat/orchestrator/run-architect-dispatcher";
+import { stampGoalEngineMetadata } from "@/lib/goal-engine/stamp-goal-metadata";
+import type { GoalSnapshot } from "@/lib/goal-engine/types";
 
 export type PostFinalizeInput = {
   message: string;
@@ -28,6 +30,7 @@ export type PostFinalizeInput = {
   brain: GlobalBrainMiddlewareResult | null;
   eventCandidate: EventCandidateWire | null;
   trace: OrchestratorTrace;
+  goalSnapshot?: GoalSnapshot | null;
 };
 
 function attachGlobalBrain(
@@ -78,9 +81,10 @@ function finalizeWire(
   result: OrchestratorResult,
   input: PostFinalizeInput
 ): OrchestratorResult {
+  const wired = stampGoalEngineMetadata(result, input.goalSnapshot ?? null);
   return applyIntentRouteToResult(
     withTrace(
-      attachEventCandidate(attachGlobalBrain(result, input.brain), input.eventCandidate),
+      attachEventCandidate(attachGlobalBrain(wired, input.brain), input.eventCandidate),
       input.trace
     ),
     input.route

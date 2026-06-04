@@ -1,6 +1,14 @@
 import type { OrchestrateHistoryTurn, OrchestratorResult } from "@/lib/action-chat/orchestrator-types";
+import type { GoalPriorityHint, GoalSnapshot } from "@/lib/goal-engine/types";
 import { orchestrateContextualMealRecommendation } from "@/lib/event-os/contextual-recommendation/orchestrate-contextual-meal";
+import {
+  extractKoreanAreaFromText,
+  isKoreanAreaToken,
+} from "@/lib/event-commit-gate/parse-korean-area";
+import { buildAreaDisambiguationOrchestratorResult } from "@/lib/event-commit-gate/build-area-disambiguation-result";
+import { resolveKoreanAreaPhrase } from "@/lib/event-commit-gate/resolve-korean-area-phrase";
 import type { CommitSlotName, EventIntentKind } from "@/lib/event-commit-gate/types";
+import type { LocationMemoryWire } from "@/lib/location-memory/types";
 
 export type PendingSlotCollect = {
   intent: EventIntentKind;
@@ -20,6 +28,11 @@ const SLOT_QUESTION_MARKERS: Array<{
   },
   {
     pattern: /어느\s*동네/iu,
+    intent: "meal",
+    primaryMissing: "location",
+  },
+  {
+    pattern: /전국에 같은 이름/iu,
     intent: "meal",
     primaryMissing: "location",
   },
@@ -121,7 +134,10 @@ export function isSlotCollectReply(
   }
 
   if (pending.intent === "meal" && pending.primaryMissing === "location") {
-    return trimmed.length >= 2 && trimmed.length <= 16;
+    if (/[가-힣]{2,8}구\s+[가-힣]{2,12}동/u.test(trimmed)) {
+      return true;
+    }
+    return isKoreanAreaToken(trimmed) || (trimmed.length >= 2 && trimmed.length <= 24);
   }
 
   return false;
@@ -145,10 +161,22 @@ function findMealSeedFromHistory(
   return null;
 }
 
-export function orchestrateSlotCollectContinuation(input: {
+function recentSearchQueries(
+  locationMemory?: LocationMemoryWire | null,
+): string[] {
+  return (locationMemory?.recentActivities ?? [])
+    .map((row) => row.query)
+    .filter(Boolean)
+    .slice(-5);
+}
+
+export async function orchestrateSlotCollectContinuation(input: {
   message: string;
   history?: OrchestrateHistoryTurn[];
-}): OrchestratorResult | null {
+  locationMemory?: LocationMemoryWire | null;
+  goalSnapshot?: GoalSnapshot | null;
+  goalPriorityHint?: GoalPriorityHint | null;
+}): Promise<OrchestratorResult | null> {
   const pending = findPendingSlotCollect(input.history);
   if (!pending) {
     return null;
@@ -199,6 +227,8 @@ export function orchestrateSlotCollectContinuation(input: {
       const meal = orchestrateContextualMealRecommendation({
         message: merged,
         history: input.history,
+        goalSnapshot: input.goalSnapshot,
+        goalPriorityHint: input.goalPriorityHint,
       });
       if (meal) {
         return {
@@ -218,6 +248,8 @@ export function orchestrateSlotCollectContinuation(input: {
     const meal = orchestrateContextualMealRecommendation({
       message: merged,
       history: input.history,
+      goalSnapshot: input.goalSnapshot,
+      goalPriorityHint: input.goalPriorityHint,
     });
     if (!meal) {
       return {
@@ -256,24 +288,79 @@ export function orchestrateSlotCollectContinuation(input: {
   }
 
   if (pending.intent === "meal" && pending.primaryMissing === "location") {
+    const resolved = resolveKoreanAreaPhrase({
+      message: trimmed,
+      lifeZoneLabel: input.locationMemory?.lifeZone?.label ?? null,
+      recentSearchQueries: recentSearchQueries(input.locationMemory),
+    });
+
+    if (resolved.needsBroaderContext) {
+      const disambiguation = await buildAreaDisambiguationOrchestratorResult({
+        areaToken: resolved.area,
+        seedMessage: pending.seedMessage,
+      });
+      return {
+        ...disambiguation,
+        metadata: {
+          ...disambiguation.metadata,
+          semantic_reason: "commit_gate_area_disambiguation",
+          event_intent: "meal",
+          missing_slots: ["location"],
+          primary_missing: "location",
+          meal_target_axis: "region",
+          location_needs_disambiguation: true,
+          slot_reply_seed: pending.seedMessage,
+        },
+      };
+    }
+
     const mealSeed = findMealSeedFromHistory(input.history) ?? pending.seedMessage;
-    const merged = `${mealSeed} ${trimmed} 근처`;
+    const merged = `${mealSeed} ${resolved.searchQuery} 맛집 추천`;
     const meal = orchestrateContextualMealRecommendation({
       message: merged,
       history: input.history,
+      goalSnapshot: input.goalSnapshot,
+      goalPriorityHint: input.goalPriorityHint,
     });
     if (meal) {
       return {
         ...meal.orchestrator,
-        summary: `**${trimmed}** 근처로 골라봤어요.\n\n${meal.orchestrator.summary}`,
+        summary: `**${resolved.searchQuery}** 쪽으로 골라봤어요.\n\n${meal.orchestrator.summary}`,
         metadata: {
           ...meal.orchestrator.metadata,
           semantic_reason: "commit_gate_slot_filled",
           event_intent: "meal",
           meal_target_axis: "region",
+          filled_slots: { location: resolved.searchQuery },
         },
       };
     }
+
+    return {
+      summary: `**${resolved.searchQuery}** 근처로 볼게요. 가볍게 한 끼·든든한 한 끼 중 뭐가 끌리세요?`,
+      actions: [
+        {
+          id: "meal-area-map",
+          kind: "open",
+          label: `${resolved.searchQuery} 맛집 지도`,
+          href: `rimvio://navigate?place=${encodeURIComponent(`${resolved.searchQuery} 맛집`)}`,
+          payload: { place: `${resolved.searchQuery} 맛집` },
+        },
+      ],
+      source: "rules",
+      confidence: 0.84,
+      disclosure: "medium",
+      actionsRevealed: true,
+      pendingConfirm: false,
+      metadata: {
+        intent: "ACTION",
+        trust_level_adjustment: "NONE",
+        semantic_reason: "commit_gate_slot_filled",
+        event_intent: "meal",
+        meal_target_axis: "region",
+        filled_slots: { location: resolved.searchQuery },
+      },
+    };
   }
 
   if (pending.intent === "navigate" && pending.primaryMissing === "location") {

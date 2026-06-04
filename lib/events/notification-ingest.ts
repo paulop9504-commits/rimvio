@@ -12,8 +12,8 @@ import {
 import {
   findEventCandidate,
   listEventCandidates,
-  upsertEventCandidate,
 } from "@/lib/events/event-store";
+import { commitEventUpsert } from "@/lib/source-of-truth/commit-truth";
 import type { NotificationEventInput } from "@/lib/notification-shadow/types";
 import { ruleClassifyNotification } from "@/lib/notification-shadow/rule-classify";
 
@@ -110,7 +110,7 @@ export function ingestNotificationEvent(
   const existing = findEventCandidate(ecId);
 
   if (existing && isLinkReminderEvent(existing)) {
-    return upsertEventCandidate({
+    return commitEventUpsert({
       id: existing.id,
       title: existing.title,
       category: existing.category,
@@ -128,7 +128,7 @@ export function ingestNotificationEvent(
 
   if (existing) {
     const incoming = notificationToEventCandidateUpsert(input, shadowId, ecId);
-    return upsertEventCandidate({
+    return commitEventUpsert({
       ...incoming,
       lifecycle:
         existing.lifecycle === "scheduled" || existing.lifecycle === "active"
@@ -141,7 +141,7 @@ export function ingestNotificationEvent(
     });
   }
 
-  return upsertEventCandidate(notificationToEventCandidateUpsert(input, shadowId, ecId));
+  return commitEventUpsert(notificationToEventCandidateUpsert(input, shadowId, ecId));
 }
 
 export function isNotificationShadowEvent(event: EventCandidate): boolean {

@@ -1,29 +1,31 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  computePredictiveDock,
-  visibleDockActions,
-} from "@/lib/predictive-dock/compute-predictive-dock";
+import { visibleDockActions } from "@/lib/predictive-dock/compute-predictive-dock";
 import {
   listConsumedOpportunityIds,
   syncOpportunityIntentEpoch,
 } from "@/lib/predictive-dock/action-opportunity-session";
 import { resolveConversationIntent } from "@/lib/predictive-dock/resolve-conversation-intent";
 import { readActiveChains } from "@/lib/containers/active-chains-state";
+import { readLastGoalSnapshot } from "@/lib/goal-engine/goal-snapshot-session";
 import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
 import type { DayScheduleTask } from "@/lib/schedule/day-schedule";
 import type { PredictiveDockWire } from "@/lib/predictive-dock/types";
 import { syncEventLifecycle } from "@/lib/events/event-lifecycle-runner";
-import { EVENT_CANDIDATES_UPDATED } from "@/lib/events/event-store";
+import { useSurfaceEngine } from "@/hooks/use-surface-engine";
+import {
+  applyGoalBlendToDockWire,
+  surfacesToPredictiveDockWire,
+} from "@/lib/surface-engine/adapters/surface-to-dock-wire";
 
 export function usePredictiveDock(input: {
   messages: ActionChatMessage[];
   schedule: DayScheduleTask[];
   referenceDate: string;
+  chatScopeId?: string;
 }) {
   const [clientReady, setClientReady] = useState(false);
-  const [tick, setTick] = useState(0);
   const [consumedRevision, setConsumedRevision] = useState(0);
 
   useEffect(() => {
@@ -34,20 +36,8 @@ export function usePredictiveDock(input: {
     if (!clientReady) {
       return;
     }
-    const onEventsUpdated = () => setTick((value) => value + 1);
-    window.addEventListener(EVENT_CANDIDATES_UPDATED, onEventsUpdated);
-    return () => window.removeEventListener(EVENT_CANDIDATES_UPDATED, onEventsUpdated);
-  }, [clientReady]);
-
-  useEffect(() => {
-    if (!clientReady) {
-      return;
-    }
     syncEventLifecycle();
-    const timer = window.setInterval(() => {
-      syncEventLifecycle();
-      setTick((value) => value + 1);
-    }, 30_000);
+    const timer = window.setInterval(() => syncEventLifecycle(), 30_000);
     return () => window.clearInterval(timer);
   }, [clientReady]);
 
@@ -71,7 +61,7 @@ export function usePredictiveDock(input: {
 
   const activeChains = useMemo(
     () => (clientReady ? readActiveChains() : []),
-    [clientReady, input.messages, tick]
+    [clientReady, input.messages],
   );
 
   const intent = useMemo(
@@ -81,7 +71,7 @@ export function usePredictiveDock(input: {
         messages: input.messages,
         activeChains,
       }),
-    [lastUserMessage, input.messages, activeChains]
+    [lastUserMessage, input.messages, activeChains],
   );
 
   useEffect(() => {
@@ -93,36 +83,35 @@ export function usePredictiveDock(input: {
 
   const consumedOpportunityIds = useMemo(
     () => (clientReady ? listConsumedOpportunityIds() : []),
-    [clientReady, intent, consumedRevision]
+    [clientReady, intent, consumedRevision],
   );
+
+  const goalSnapshot = useMemo(() => {
+    if (!clientReady || !input.chatScopeId) {
+      return null;
+    }
+    return readLastGoalSnapshot(input.chatScopeId);
+  }, [clientReady, input.chatScopeId, input.messages]);
+
+  const { feed } = useSurfaceEngine({
+    dateKey: input.referenceDate,
+    context: {
+      dismissedSurfaceIds: consumedOpportunityIds,
+      now: new Date(),
+    },
+  });
 
   const wire: PredictiveDockWire = useMemo(() => {
     if (!clientReady) {
       return { main_action: null, shadow_actions: [] };
     }
-    return computePredictiveDock({
-      messages: input.messages,
-      schedule: input.schedule,
-      referenceDate: input.referenceDate,
-      lastUserMessage,
-      now: new Date(),
-      activeChains,
-      consumedOpportunityIds,
-    });
-  }, [
-    clientReady,
-    input.messages,
-    input.schedule,
-    input.referenceDate,
-    lastUserMessage,
-    activeChains,
-    consumedOpportunityIds,
-    tick,
-  ]);
+    const base = surfacesToPredictiveDockWire(feed);
+    return applyGoalBlendToDockWire(base, goalSnapshot);
+  }, [clientReady, feed, goalSnapshot]);
 
   const visible = useMemo(
     () => (clientReady ? visibleDockActions(wire) : []),
-    [clientReady, wire]
+    [clientReady, wire],
   );
 
   return { wire, visible, intent };

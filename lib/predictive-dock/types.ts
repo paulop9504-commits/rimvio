@@ -50,6 +50,10 @@ export type PredictiveDockAction = {
   secondary_reason?: "next_step" | "risk" | "convenience";
   /** Deterministic MAIN ranking hint (Korean). */
   rankingWhy?: string;
+  /** Hook C — top ranked action after goal blend (UI badge optional). */
+  goalAligned?: boolean;
+  /** Hook C — scoreActionAlignment output for this row (telemetry / dev). */
+  goal_alignment_score?: number;
 };
 
 export type PredictiveDockWire = {

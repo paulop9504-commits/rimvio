@@ -14,6 +14,7 @@ import { OrchestratorTrace } from "@/lib/action-chat/orchestrator/orchestrator-t
 import { postFinalizeOrchestratorResult } from "@/lib/action-chat/orchestrator/post-finalize";
 
 import type { ChatAxis } from "@/lib/action-chat/chat-three-axis";
+import type { GoalPriorityHint, GoalSnapshot } from "@/lib/goal-engine/types";
 
 export type OrchestratorPipelineInput = {
   message: string;
@@ -33,6 +34,9 @@ export type OrchestratorPipelineInput = {
   sessionScopeId?: string;
   chatAxis?: ChatAxis;
   vitalityMemory?: import("@/lib/action-chat/adaptive-behavior/ux-guards/vitality-state-decay").VitalityMemoryWire | null;
+  /** Set once in run-orchestrator-pipeline — do not rebuild in tiers/dock. */
+  goalSnapshot?: GoalSnapshot | null;
+  goalPriorityHint?: GoalPriorityHint | null;
 };
 
 export type ScopedPipelineInput = OrchestratorPipelineInput & {
@@ -44,6 +48,9 @@ export type ScopedPipelineInput = OrchestratorPipelineInput & {
 
 export type OrchestratorPipelineContext = {
   input: OrchestratorPipelineInput;
+  /** 1 turn = 1 build — do not reconstruct in tiers/dock. */
+  goalSnapshot: GoalSnapshot | null;
+  goalPriorityHint: GoalPriorityHint | null;
   message: string;
   route: IntentRoute;
   kernel: EventKernelState;
@@ -70,6 +77,7 @@ export function attachFinalize(ctx: {
   brain: GlobalBrainMiddlewareResult | null;
   eventCandidate: EventCandidateWire | null;
   trace: OrchestratorTrace;
+  goalSnapshot?: import("@/lib/goal-engine/types").GoalSnapshot | null;
 }) {
   return (result: OrchestratorResult) =>
     postFinalizeOrchestratorResult(result, {
@@ -100,6 +108,8 @@ export function createPipelineShell(input: {
 }): OrchestratorPipelineContext {
   const shell: OrchestratorPipelineContext = {
     ...input,
+    goalSnapshot: input.input.goalSnapshot ?? null,
+    goalPriorityHint: input.input.goalPriorityHint ?? null,
     brain: null,
     eventCandidate: null,
     enrichment: { ...EMPTY_ENRICHMENT },
@@ -115,6 +125,7 @@ export function createPipelineShell(input: {
     brain: shell.brain,
     eventCandidate: shell.eventCandidate,
     trace: shell.trace,
+    goalSnapshot: shell.input.goalSnapshot ?? null,
   });
   return shell;
 }
@@ -130,5 +141,6 @@ export function refreshFinalize(ctx: OrchestratorPipelineContext) {
     brain: ctx.brain,
     eventCandidate: ctx.eventCandidate,
     trace: ctx.trace,
+    goalSnapshot: ctx.input.goalSnapshot ?? null,
   });
 }

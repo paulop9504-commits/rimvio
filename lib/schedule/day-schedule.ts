@@ -1,6 +1,10 @@
-import { readLinkReminders } from "@/lib/local-links/reminders";
+/**
+ * Schedule layer — projection only. No Event SSOT writes.
+ * Writes: `lib/source-of-truth/commit-truth.ts` via ingest adapters only.
+ */
 import type { EventCandidate } from "@/lib/events/event-candidate";
-import { listEventCandidates } from "@/lib/events/event-store";
+import { readLifeProjections } from "@/lib/life-read-model";
+import { projectScheduleFromTruth } from "@/lib/source-of-truth/project-truth";
 
 export type DayScheduleTask = {
   time: string;
@@ -50,8 +54,9 @@ export function eventCandidatesToDaySchedule(
 
 export function readExistingScheduleFromEventCandidates(
   dateKey = formatDateKey(),
+  events: readonly EventCandidate[] = readLifeProjections({ dateKey }).events,
 ): ExistingScheduleInput {
-  return eventCandidatesToDaySchedule(listEventCandidates(), dateKey);
+  return eventCandidatesToDaySchedule(events, dateKey);
 }
 
 /** @deprecated Prefer readExistingSchedule — reminder-only projection. */
@@ -71,10 +76,9 @@ export function remindersToDaySchedule(
     .sort((a, b) => a.time.localeCompare(b.time));
 }
 
-/** Orchestrator schedule read — EventCandidate SSOT with reminder migrate. */
+/** Orchestrator schedule read — pure projection from Event SSOT (no ingest side effects). */
 export function readExistingSchedule(dateKey = formatDateKey()): ExistingScheduleInput {
-  readLinkReminders();
-  return readExistingScheduleFromEventCandidates(dateKey);
+  return readLifeProjections({ dateKey }).existingSchedule;
 }
 
 function parseTimeMinutes(time: string) {

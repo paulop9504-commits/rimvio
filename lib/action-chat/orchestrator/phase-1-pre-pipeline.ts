@@ -12,19 +12,29 @@ import { TIER_2_CORRECTION_RUNNERS } from "@/lib/action-chat/orchestrator/tiers/
 import { TIER_3_WORKFLOW_RUNNERS } from "@/lib/action-chat/orchestrator/tiers/tier-3-workflow";
 import { TIER_4_REGISTRY_RUNNERS } from "@/lib/action-chat/orchestrator/tiers/tier-4-registry";
 import { TIER_5_DETERMINISTIC_RUNNERS } from "@/lib/action-chat/orchestrator/tiers/tier-5-deterministic";
+import { orchestrateShadowDashboard } from "@/lib/notification-shadow/orchestrate-shadow-dashboard";
 
-const PRE_EVENT_DETECTION_RUNNERS = [
+/** Linear tier tree (phase 1) — order is the decision tree. */
+const PRE_EVENT_TIER_TREE = [
   ...TIER_0_KILL_SWITCH_RUNNERS,
   ...TIER_1_SECURITY_RUNNERS,
   ...TIER_2_CORRECTION_RUNNERS,
 ];
 
-const POST_EVENT_WORKFLOW_RUNNERS = [
+const POST_EVENT_WORKFLOW_TREE = [
   ...TIER_3_WORKFLOW_RUNNERS,
   ...TIER_4_REGISTRY_RUNNERS,
 ];
 
-const POST_EVENT_DETERMINISTIC_RUNNERS = [...TIER_5_DETERMINISTIC_RUNNERS];
+const POST_EVENT_DETERMINISTIC_TREE = [...TIER_5_DETERMINISTIC_RUNNERS];
+
+/** Dashboard query must win over PlaceConfirm (tier 3) — same runner as tier 5 list. */
+const SHADOW_DASHBOARD_RUNNER: Phase1TierRunner = {
+  tier: 5,
+  label: "Deterministic",
+  detail: "ShadowDashboardQuery",
+  run: (ctx) => orchestrateShadowDashboard(ctx.message),
+};
 
 function resolvePhase1EarlyReturn(
   ctx: OrchestratorPipelineContext,
@@ -74,11 +84,11 @@ async function runTierGroup(
   return null;
 }
 
-/** PHASE 1 — PRE-PIPELINE: Tier 0–2 → EventDetection → Tier 3–5 */
+/** Standard path step A — tier tree: 0–2 → event detect → 3–4 → 5 (if kernel allows). */
 export async function runPhase1PrePipeline(
   ctx: OrchestratorPipelineContext
 ): Promise<Phase1Outcome> {
-  const preHit = await runTierGroup(ctx, PRE_EVENT_DETECTION_RUNNERS);
+  const preHit = await runTierGroup(ctx, PRE_EVENT_TIER_TREE);
 
   runEventDetection(ctx);
   refreshFinalize(ctx);
@@ -88,14 +98,20 @@ export async function runPhase1PrePipeline(
     return resolvePhase1EarlyReturn(ctx, preHit.runner, preHit.hit);
   }
 
-  const postHit = await runTierGroup(ctx, POST_EVENT_WORKFLOW_RUNNERS);
+  const shadowHit = await runPhase1Tier(ctx, SHADOW_DASHBOARD_RUNNER);
+  if (shadowHit) {
+    ctx.trace.terminal("EARLY_RETURN");
+    return resolvePhase1EarlyReturn(ctx, SHADOW_DASHBOARD_RUNNER, shadowHit);
+  }
+
+  const postHit = await runTierGroup(ctx, POST_EVENT_WORKFLOW_TREE);
   if (postHit) {
     ctx.trace.terminal("EARLY_RETURN");
     return resolvePhase1EarlyReturn(ctx, postHit.runner, postHit.hit);
   }
 
   if (kernelAllowsPhase1Deterministic(ctx.kernel)) {
-    const tier5Hit = await runTierGroup(ctx, POST_EVENT_DETERMINISTIC_RUNNERS);
+    const tier5Hit = await runTierGroup(ctx, POST_EVENT_DETERMINISTIC_TREE);
     if (tier5Hit) {
       ctx.trace.terminal("EARLY_RETURN");
       return resolvePhase1EarlyReturn(ctx, tier5Hit.runner, tier5Hit.hit);

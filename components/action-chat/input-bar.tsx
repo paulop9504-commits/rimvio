@@ -212,6 +212,11 @@ export function ActionChatInputBar({
             rimvioComposerFieldClass,
             ambient?.composerLive && "rimvio-composer-field--live",
           )}
+          onPointerDown={(event) => {
+            if (event.target === event.currentTarget && !disabled && !sending) {
+              inputRef.current?.focus({ preventScroll: true });
+            }
+          }}
         >
           <ComposerMentionField
             inputRef={inputRef}

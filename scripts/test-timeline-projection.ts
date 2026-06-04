@@ -133,7 +133,9 @@ const noTime = composeTimelineProjection(
 );
 assert.deepEqual(noTime, []);
 
-const ts = now.toISOString();
+const pipelineNow = new Date();
+const pipelineStart = new Date(pipelineNow.getTime() + 60 * 60 * 1000);
+const pipelineTs = pipelineNow.toISOString();
 resetEventCandidatesForTests([
   {
     id: "ec-pipeline",
@@ -141,22 +143,24 @@ resetEventCandidatesForTests([
     category: "schedule",
     source: "message",
     lifecycle: "active",
-    datetime: "2026-06-01T17:00:00",
+    datetime: pipelineStart.toISOString(),
     confidence: 0.9,
     metadata: {},
-    lifecycleUpdatedAt: ts,
-    createdAt: ts,
-    updatedAt: ts,
+    lifecycleUpdatedAt: pipelineTs,
+    createdAt: pipelineTs,
+    updatedAt: pipelineTs,
   } satisfies EventCandidate,
 ]);
 
 const pipeline = listTimelineProjectionFromStore({
-  opportunityContext: { now, maxResults: 3 },
-  notificationContext: { now },
+  opportunityContext: { now: pipelineNow, maxResults: 3 },
+  notificationContext: { now: pipelineNow },
+  timelineContext: { now: pipelineNow },
 });
 assert.ok(Array.isArray(pipeline));
 assert.ok(pipeline.length >= 1);
 assert.equal(pipeline[0]!.section, "Today");
+assert.equal(pipeline[0]!.items[0]!.ecId, "ec-pipeline");
 
 resetEventCandidatesForTests([]);
 console.log("test-timeline-projection: ok");

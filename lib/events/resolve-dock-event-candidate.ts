@@ -1,5 +1,5 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
-import { findEventCandidate } from "@/lib/events/event-store";
+import { readLifeProjections } from "@/lib/life-read-model";
 import {
   normalizeAnchorId,
   type NormalizeAnchorInput,
@@ -13,7 +13,7 @@ export function resolveDockEventCandidate(
   if (!ecId) {
     return null;
   }
-  return findEventCandidate(ecId);
+  return readLifeProjections().events.find((event) => event.id === ecId) ?? null;
 }
 
 export { normalizeAnchorId };

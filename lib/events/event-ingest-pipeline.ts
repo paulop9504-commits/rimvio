@@ -3,9 +3,11 @@ import {
   findEventBySourceMessage,
   findEventCandidate,
   findEventCandidateByMessageId,
-  transitionEventLifecycle,
-  upsertEventCandidate,
 } from "@/lib/events/event-store";
+import {
+  commitEventLifecycle,
+  commitEventUpsert,
+} from "@/lib/source-of-truth/commit-truth";
 import { normalizeAnchorId } from "@/lib/events/normalize-anchor-id";
 
 /** Upstream input signal — message layer is NOT source of truth. */
@@ -75,7 +77,7 @@ function upsertFromSignal(
   existing?: EventCandidate | null
 ): EventCandidate {
   if (existing) {
-    return upsertEventCandidate({
+    return commitEventUpsert({
       id: existing.id,
       title: existing.title,
       category: existing.category,
@@ -89,7 +91,7 @@ function upsertFromSignal(
     });
   }
 
-  return upsertEventCandidate({
+  return commitEventUpsert({
     title: titleFromSignal(signal),
     category: signal.category ?? "schedule",
     source: "message",
@@ -121,7 +123,7 @@ export function ingestScheduleSignal(signal: EventIngestSignal): EventCandidate 
     existing ??
     upsertFromSignal({ ...signal, title: titleFromSignal(signal) }, "mentioned", null);
 
-  return upsertEventCandidate({
+  return commitEventUpsert({
     id: base.id,
     title: base.title,
     category: base.category,
@@ -144,7 +146,7 @@ const COMPLETION_ACTION_TYPES = new Set([
   "TICKET_QR",
 ]);
 
-/** ec-id → transitionEventLifecycle (completed) */
+/** ec-id → commitEventLifecycle (completed) */
 export function ingestCompletionSignal(input: {
   eventId?: string | null;
   anchorId?: string | null;
@@ -164,5 +166,5 @@ export function ingestCompletionSignal(input: {
     return null;
   }
 
-  return transitionEventLifecycle(ecId, "completed");
+  return commitEventLifecycle(ecId, "completed");
 }

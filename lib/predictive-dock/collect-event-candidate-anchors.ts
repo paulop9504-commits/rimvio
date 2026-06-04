@@ -1,5 +1,5 @@
 import type { EventCandidateLifecycle } from "@/lib/events/event-candidate";
-import { listEventCandidates } from "@/lib/events/event-store";
+import { readLifeProjections } from "@/lib/life-read-model";
 import type { ScheduleAnchor } from "@/lib/predictive-dock/types";
 
 /** Dock-visible lifecycles — excludes archived and unused candidate. */
@@ -13,7 +13,7 @@ const DOCK_VISIBLE_LIFECYCLES = new Set<EventCandidateLifecycle>([
 
 /** EventCandidate store → dock timeline anchors (SSOT read path). */
 export function collectEventCandidateAnchors(): ScheduleAnchor[] {
-  return listEventCandidates()
+  return readLifeProjections().events
     .filter((event) => DOCK_VISIBLE_LIFECYCLES.has(event.lifecycle))
     .filter((event) => Boolean(event.datetime?.trim()))
     .map((event) => ({

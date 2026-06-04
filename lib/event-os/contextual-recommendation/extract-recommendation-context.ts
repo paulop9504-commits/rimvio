@@ -12,7 +12,7 @@ import type {
 } from "@/lib/event-os/contextual-recommendation/recommendation-types";
 
 const FOOD_RECOMMEND_SIGNAL =
-  /(?:뭐\s*먹|무엇을\s*먹|메뉴|추천|골라|정해|저녁|점심|아침|야식|식사|끼니|먹을까|먹지)/u;
+  /(?:뭐\s*먹|무엇을\s*먹|메뉴|추천|골라|정해|저녁|점심|아침|야식|식사|끼니|먹을까|먹지|배고|맛집|식당|카페|한끼|먹고\s*싶|근처)/u;
 
 const LAST_MEAL_PATTERNS = [
   /어제\s+(.+?)\s+(?:먹|드셨|먹었)/u,

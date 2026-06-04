@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { buildGlobalBrainSnapshot, detectEventHorizon } from "../lib/global-brain/detect-event-horizon";
 import { buildGlobalBrainContextBlock } from "../lib/global-brain/build-context-injection-block";
+import { buildGoalSnapshot } from "../lib/goal-engine/build-goal-snapshot";
 import { mapVitalityMatchToUserStatus } from "../lib/global-brain/map-vitality-to-status";
 import { upsertUserStatus, readUserStatus, resetUserStatusForTests } from "../lib/global-brain/user-status-store";
 import { resolveVitalityStateFromKind } from "../lib/vitality-state/vitality-state-registry";
@@ -31,6 +32,30 @@ assert.ok(snapshot.eventHorizon.some((item) => item.kind === "tired_heavy_schedu
 
 const block = buildGlobalBrainContextBlock({ snapshot, shouldEnrich: true });
 assert.ok(block.includes("GLOBAL_BRAIN_SNAPSHOT"));
+assert.ok(!block.includes('"goal_snapshot"'));
+
+const certGoalSnapshot = buildGoalSnapshot({
+  referenceDate: "2026-05-29",
+  existingSchedule: [],
+  userGoals: [
+    {
+      id: "g-cert",
+      kind: "certification",
+      label: "정보처리기사",
+      createdAt: "2026-01-01",
+      updatedAt: "2026-01-01",
+    },
+  ],
+  reminders: [],
+});
+const blockWithGoal = buildGlobalBrainContextBlock({
+  snapshot,
+  shouldEnrich: true,
+  goalSnapshot: certGoalSnapshot,
+});
+assert.ok(blockWithGoal.includes('"goal_snapshot"'));
+assert.ok(blockWithGoal.includes('"primaryFocus": "certification"'));
+assert.ok(blockWithGoal.includes('"read_only": true'));
 assert.ok(block.includes("[CURRENT SNAPSHOT]"));
 assert.ok(block.includes("Global Brain") || block.includes("GLOBAL_BRAIN"));
 

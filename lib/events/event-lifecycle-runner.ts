@@ -5,10 +5,8 @@ import {
   shouldPromoteToActive,
   shouldPromoteToArchived,
 } from "@/lib/events/event-lifecycle";
-import {
-  listEventCandidates,
-  transitionEventLifecycle,
-} from "@/lib/events/event-store";
+import { listEventCandidates } from "@/lib/events/event-store";
+import { commitEventLifecycle } from "@/lib/source-of-truth/commit-truth";
 
 export type SyncEventLifecycleOptions = {
   now?: Date;
@@ -25,13 +23,13 @@ export function syncEventLifecycle(options: SyncEventLifecycleOptions = {}): Eve
 
   for (const event of listEventCandidates()) {
     if (shouldPromoteToActive(event, nowMs, activeWindowMs)) {
-      transitionEventLifecycle(event.id, "active");
+      commitEventLifecycle(event.id, "active");
     }
   }
 
   for (const event of listEventCandidates()) {
     if (shouldPromoteToArchived(event, nowMs, archiveWindowMs)) {
-      transitionEventLifecycle(event.id, "archived");
+      commitEventLifecycle(event.id, "archived");
     }
   }
 

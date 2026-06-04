@@ -69,6 +69,14 @@ export type OrchestratorConfirmationWire = {
   location_suggestions?: LocationSuggestion[];
   /** quick_pick | inline_pick | classic */
   location_ux?: LocationConfirmUxWire;
+  /** 동명 중복 — 지오코딩 후보 + 지도 핀 */
+  area_disambiguation?: AreaDisambiguationWire;
+};
+
+export type AreaDisambiguationWire = {
+  /** 사용자가 말한 동·역 토큰 (예: 대치동) */
+  area_token: string;
+  prompt: string;
 };
 
 export type LocationSuggestion = {
@@ -79,12 +87,18 @@ export type LocationSuggestion = {
   branch?: string;
   /** Learned from correction log — prior user choice */
   is_prior?: boolean;
+  lat?: number;
+  lng?: number;
+  maps_url?: string;
+  /** GPS 기준 거리 (km) — 「내 주변」 정렬용 */
+  distance_km?: number;
 };
 
 export type LocationConfirmUxMode =
   | "quick_pick"
   | "inline_pick"
   | "prior_pick"
+  | "area_disambiguation"
   | "classic";
 
 export type LocationConfirmUxWire = {

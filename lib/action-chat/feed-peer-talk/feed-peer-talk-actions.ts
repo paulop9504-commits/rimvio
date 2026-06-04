@@ -145,6 +145,7 @@ export async function startFeedPeerTalkInFeed(
 export async function sendFeedPeerTalkInFeed(
   deps: FeedPeerTalkDeps,
   text: string,
+  options?: { quietOnError?: boolean },
 ): Promise<boolean> {
   const session = getFeedPeerTalkSession();
   const trimmed = text.trim();
@@ -206,8 +207,10 @@ export async function sendFeedPeerTalkInFeed(
     );
     const message =
       error instanceof Error ? error.message : "메시지를 보내지 못했어요";
-    toast.error(message);
-    throw error instanceof Error ? error : new Error(message);
+    if (!options?.quietOnError) {
+      toast.error(message);
+    }
+    return false;
   }
 }
 

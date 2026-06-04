@@ -9,6 +9,8 @@ import { parseVitalityMemoryWire } from "@/lib/action-chat/adaptive-behavior/ux-
 
 export const runtime = "nodejs";
 
+/** §6 — Must call `orchestrateUserMessage` → `runOrchestratorPipeline` only (no `buildGoalSnapshot` here). */
+
 export async function POST(request: Request) {
   let body:
     | {

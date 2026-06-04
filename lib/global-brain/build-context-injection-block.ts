@@ -1,4 +1,6 @@
 import type { GlobalBrainSnapshot } from "@/lib/global-brain/types";
+import type { GoalSnapshot } from "@/lib/goal-engine/types";
+import { projectGoalSnapshotForContext } from "@/lib/goal-engine/project-goal-snapshot-for-context";
 import { GLOBAL_BRAIN_PROTOCOL } from "@/lib/global-brain/global-brain-protocol";
 import { buildCurrentSnapshotMarkdown } from "@/lib/global-brain/build-snapshot-markdown";
 import { TEMPORAL_PARSING_PROTOCOL } from "@/lib/time/temporal-parsing-protocol";
@@ -15,6 +17,8 @@ export function buildGlobalBrainContextBlock(input: {
   snapshot: GlobalBrainSnapshot;
   shouldEnrich: boolean;
   promotedTemplates?: ActionRegistryEntry[];
+  /** §5 — pipeline-authored GoalSnapshot; read-only for LLM (never write back). */
+  goalSnapshot?: GoalSnapshot | null;
 }): string {
   if (!input.shouldEnrich) {
     const minimalMarkdown = buildCurrentSnapshotMarkdown(input.snapshot);
@@ -68,6 +72,11 @@ export function buildGlobalBrainContextBlock(input: {
     nexus_contacts: input.snapshot.nexusContacts,
     schedule_list_batch: input.snapshot.scheduleListBatch,
     action_events: input.snapshot.actionEvents,
+    ...(input.goalSnapshot && input.goalSnapshot.primaryFocus !== "none"
+      ? {
+          goal_snapshot: projectGoalSnapshotForContext(input.goalSnapshot),
+        }
+      : {}),
   };
 
   const snapshotMarkdown = buildCurrentSnapshotMarkdown(input.snapshot);

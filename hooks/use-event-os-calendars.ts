@@ -1,48 +1,42 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { getActionProjection } from "@/lib/action-projection/action-projection-cache";
-import { projectActionCalendarChips } from "@/lib/action-projection/project-action-calendar";
+import { useMemo } from "react";
 import type { CalendarEventChip } from "@/lib/calendar/calendar-view-types";
-import { EVENT_CANDIDATES_UPDATED } from "@/lib/events/event-store";
+import { useSurfaceEngine } from "@/hooks/use-surface-engine";
 import {
-  listEventCalendarRows,
-  projectEventCalendarChips,
-} from "@/lib/events/project-event-calendar";
+  surfacesToEventChips,
+  surfacesToOverlayRows,
+} from "@/lib/surface-engine/adapters/surface-to-calendar";
+import { projectActionCalendarChips } from "@/lib/action-projection/project-action-calendar";
 
 /**
- * Subscribes to Event SSOT + recomputes Action Projection on SSOT/time changes.
- * @internal Action Calendar only — use `useActionCalendar`, not this hook directly.
+ * Calendar read path — Surface Engine CALENDAR channel only.
+ * @internal use {@link useActionCalendar} in UI.
  */
 export function useEventOsCalendars(anchor = new Date()) {
-  const [ssotTick, setSsotTick] = useState(0);
-  const [now, setNow] = useState(() => new Date());
+  const { calendar, result } = useSurfaceEngine({
+    context: { now: anchor },
+  });
 
-  useEffect(() => {
-    const onStoreUpdate = () => setSsotTick((value) => value + 1);
-    window.addEventListener(EVENT_CANDIDATES_UPDATED, onStoreUpdate);
-    return () => window.removeEventListener(EVENT_CANDIDATES_UPDATED, onStoreUpdate);
-  }, []);
-
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(new Date()), 60_000);
-    return () => window.clearInterval(id);
-  }, []);
-
-  const eventChips = useMemo(() => {
-    void ssotTick;
-    return projectEventCalendarChips(listEventCalendarRows(), anchor);
-  }, [ssotTick, anchor]);
+  const eventChips = useMemo(
+    () => surfacesToEventChips(calendar, anchor),
+    [calendar, anchor],
+  );
 
   const actionChips = useMemo(() => {
-    void ssotTick;
-    const projection = getActionProjection(now);
-    return projectActionCalendarChips(projection.entries, anchor);
-  }, [ssotTick, now, anchor]);
+    const rows = surfacesToOverlayRows(calendar, anchor, anchor);
+    const entries = rows.map((row) => ({
+      ecId: row.event.eventId ?? row.id,
+      title: row.event.title,
+      startAt: new Date(row.event.startMs).toISOString(),
+      actions: row.overlayActions.map((action) => ({
+        id: action.id,
+        label: action.label,
+        phase: "T-2h" as const,
+      })),
+    }));
+    return projectActionCalendarChips(entries, anchor);
+  }, [calendar, anchor]);
 
-  return { eventChips, actionChips, now };
+  return { eventChips, actionChips, now: anchor, surfaces: calendar, computedAt: result.computedAt };
 }
-
-export type EventOsCalendarSelection = {
-  chip: CalendarEventChip;
-};

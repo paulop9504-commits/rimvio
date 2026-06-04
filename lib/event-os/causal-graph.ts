@@ -1,6 +1,10 @@
 import type { CausalGraphEdge, CausalGraphNode } from "@/lib/event-os/causal-trace-types";
+import {
+  LOCKED_CAUSAL_GRAPH_VERSION,
+  LOCKED_CAUSAL_TRACE_EDGES,
+} from "@/lib/event-kernel/schema-lock/edge-schema";
 
-export const CAUSAL_GRAPH_VERSION = "v1" as const;
+export const CAUSAL_GRAPH_VERSION = LOCKED_CAUSAL_GRAPH_VERSION;
 
 export function baseRelationGraph(): {
   version: typeof CAUSAL_GRAPH_VERSION;
@@ -18,13 +22,7 @@ export function baseRelationGraph(): {
       "Action_Projection",
       "UI_Layer",
     ],
-    edges: [
-      { from: "UI_Button", to: "Candidate_State", label: "user intent" },
-      { from: "Candidate_State", to: "Validation_Layer", label: "validate" },
-      { from: "Validation_Layer", to: "Event_SSOT", label: "commit gate" },
-      { from: "Event_SSOT", to: "Timeline", label: "derive" },
-      { from: "Timeline", to: "Action_Projection", label: "project" },
-      { from: "Action_Projection", to: "UI_Layer", label: "overlay render" },
-    ],
+    edges: [...LOCKED_CAUSAL_TRACE_EDGES],
   };
 }
+

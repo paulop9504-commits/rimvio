@@ -2,7 +2,7 @@ import { applyMainAuxToOverlayActions } from "@/lib/action-decision/apply-tier-t
 import { computeContextualEventActions } from "@/lib/action-projection/compute-contextual-event-actions";
 import { resolveLifecycleSpawnPhase } from "@/lib/action-spawn/resolve-lifecycle-phase";
 import { buildArchiveContextKey } from "@/lib/archive/build-archived-event";
-import { findEventCandidate } from "@/lib/events/event-store";
+import { readLifeProjections } from "@/lib/life-read-model";
 import {
   generateActionCandidatesSync,
   isLlmCandidateDomainEnabled,
@@ -51,7 +51,8 @@ function rankingContextKeyForEcId(ecId: string, explicit?: string): string | und
   if (explicit?.trim()) {
     return explicit.trim();
   }
-  const event = findEventCandidate(ecId);
+  const event =
+    readLifeProjections().events.find((candidate) => candidate.id === ecId) ?? null;
   return event ? buildArchiveContextKey(event) : undefined;
 }
 

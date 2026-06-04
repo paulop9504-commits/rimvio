@@ -71,8 +71,21 @@ export function ComposerMentionField({
     mirror.scrollLeft = textarea.scrollLeft;
   };
 
+  const focusTextarea = () => {
+    if (!disabled) {
+      textareaRef.current?.focus({ preventScroll: true });
+    }
+  };
+
   return (
-    <div className={cn("rimvio-composer-mention-wrap relative min-w-0 flex-1", className)}>
+    <div
+      className={cn("rimvio-composer-mention-wrap relative min-w-0 flex-1", className)}
+      onPointerDown={(event) => {
+        if (event.target === event.currentTarget) {
+          focusTextarea();
+        }
+      }}
+    >
       <div
         ref={mirrorRef}
         aria-hidden
@@ -90,12 +103,15 @@ export function ComposerMentionField({
         onBlur={onBlur}
         onKeyDown={onKeyDown}
         onScroll={syncScroll}
+        onPointerDown={(event) => event.stopPropagation()}
+        inputMode="text"
+        enterKeyHint="send"
         placeholder={placeholder}
         spellCheck={false}
         autoComplete="off"
         autoCorrect="off"
         className={cn(
-          "rimvio-composer-textarea--mirror rimvio-composer-mention-layer max-h-24 min-h-[1.25rem] w-full resize-none border-0 bg-transparent p-0 focus:outline-none",
+          "rimvio-composer-textarea--mirror rimvio-composer-mention-layer max-h-24 min-h-[1.25rem] w-full resize-none border-0 bg-transparent p-0 focus:outline-none touch-manipulation",
           fieldClassName,
         )}
       />

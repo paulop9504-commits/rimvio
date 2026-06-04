@@ -1,3 +1,7 @@
+/**
+ * Event Candidate persistence — internal storage only.
+ * Application writes must go through `lib/source-of-truth/commit-truth.ts`.
+ */
 import type {
   EventCandidate,
   EventCandidateLifecycle,
@@ -11,6 +15,7 @@ import {
   pruneExpiredEvents,
 } from "@/lib/events/event-lifecycle";
 import { foldArchivedEvent } from "@/lib/events/fold-archived-event";
+import { assertAllowedLifecycleMutation } from "@/lib/event-kernel/schema-lock/mutation-rules";
 
 const STORAGE_KEY = "rimvio-event-candidates.v1";
 export const EVENT_CANDIDATES_UPDATED = "rimvio-event-candidates-updated";
@@ -195,8 +200,13 @@ export function transitionEventLifecycle(
     return null;
   }
 
-  const advanced = advanceEventLifecycle(items[index]!, next);
-  if (advanced.lifecycle === items[index]!.lifecycle) {
+  const current = items[index]!;
+  if (current.lifecycle !== next) {
+    assertAllowedLifecycleMutation(current.lifecycle, next);
+  }
+
+  const advanced = advanceEventLifecycle(current, next);
+  if (advanced.lifecycle === current.lifecycle) {
     return advanced;
   }
 

@@ -1,7 +1,9 @@
 import type { CausalProof, CausalProofStep } from "@/lib/event-os/causal-proof-types";
 import type { EventOsStateSnapshot, UiDiff } from "@/lib/event-os/causal-trace-types";
+import type { LockedExecutionEdgeRelation } from "@/lib/event-kernel/schema-lock/edge-schema";
 
-export type CausalEdgeRelation = "CAUSES" | "BLOCKS" | "TRIGGERS";
+/** Schema-locked — see `lib/event-kernel/schema-lock/edge-schema.ts`. */
+export type CausalEdgeRelation = LockedExecutionEdgeRelation;
 
 export type ExecutionNodeType = CausalProofStep;
 

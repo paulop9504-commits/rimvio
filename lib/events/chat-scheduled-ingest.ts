@@ -3,11 +3,11 @@ import type {
   EventCandidate,
   EventCandidateCategory,
 } from "@/lib/events/event-candidate";
+import { findEventCandidate } from "@/lib/events/event-store";
 import {
-  findEventCandidate,
-  transitionEventLifecycle,
-  upsertEventCandidate,
-} from "@/lib/events/event-store";
+  commitEventLifecycle,
+  commitEventUpsert,
+} from "@/lib/source-of-truth/commit-truth";
 
 export const CHAT_SCHEDULED_SOURCE_REF = "chat-scheduled";
 
@@ -49,7 +49,7 @@ export function ingestChatScheduledEvent(input: {
     input.extracted.address?.trim() ||
     undefined;
 
-  return upsertEventCandidate({
+  return commitEventUpsert({
     id: eventIdForChatScheduled(input.messageId),
     title,
     category: categoryForScheduledTitle(title),
@@ -80,7 +80,7 @@ export function archiveChatScheduledEvent(messageId: string): EventCandidate | n
   if (existing.lifecycle === "archived") {
     return existing;
   }
-  return transitionEventLifecycle(eventId, "archived");
+  return commitEventLifecycle(eventId, "archived");
 }
 
 export function completeChatScheduledEvent(messageId: string): EventCandidate | null {
@@ -92,7 +92,7 @@ export function completeChatScheduledEvent(messageId: string): EventCandidate | 
   if (existing.lifecycle === "completed" || existing.lifecycle === "archived") {
     return existing;
   }
-  return transitionEventLifecycle(eventId, "completed");
+  return commitEventLifecycle(eventId, "completed");
 }
 
 export function isChatScheduledEvent(event: EventCandidate): boolean {

@@ -16,6 +16,7 @@ import type { OrchestratorResult } from "@/lib/action-chat/orchestrator-types";
 import type { ExistingScheduleInput } from "@/lib/schedule/day-schedule";
 import { processActionAgentBatch } from "@/lib/action-chat/action-agent-batch";
 import { isScheduleListBatchCandidate } from "@/lib/schedule/parse-schedule-list-batch";
+import { isShadowDashboardQuery } from "@/lib/notification-shadow/compile-dashboard";
 
 /**
  * Missing place → Naver search → low-friction pick UX (first turn).
@@ -29,6 +30,10 @@ export async function orchestratePlaceConfirm(input: {
 }): Promise<OrchestratorResult | null> {
   const message = input.message.trim();
   if (!message) {
+    return null;
+  }
+
+  if (isShadowDashboardQuery(message)) {
     return null;
   }
 

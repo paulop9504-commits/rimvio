@@ -17,7 +17,8 @@ import type { PeerContact } from "@/lib/context/peer-contact-types";
 import { InlineChatFriendAdd } from "@/components/action-chat/inline-chat-friend-add";
 import { InlineChatPeerTalk } from "@/components/action-chat/inline-chat-peer-talk";
 import { commitLinksheetUrl } from "@/lib/action-chat/mention-linksheet/linksheet-url-actions";
-import { buildKakaoMapSearchHref } from "@/lib/resolvers/deep-links";
+import { dispatchCapability } from "@/lib/capability-registry";
+import { runExecutionJob } from "@/lib/execution";
 import { cn } from "@/lib/utils";
 
 import { addResourcePoolItem } from "@/lib/resource-pool/resource-pool-store";
@@ -44,7 +45,15 @@ function routeClipboardText(text: string): string | null {
   if (phone) {
     return `tel:${phone}`;
   }
-  return buildKakaoMapSearchHref(trimmed);
+  const routed = dispatchCapability({
+    capabilityId: "NAVIGATE",
+    inputs: { destination: trimmed },
+  });
+  if (!routed.ok) {
+    return null;
+  }
+  const finished = runExecutionJob(routed.executionId);
+  return finished?.result?.uri ?? finished?.payload.uri ?? null;
 }
 
 function saveMemo(text: string): void {

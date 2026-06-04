@@ -13,11 +13,9 @@ type PredictiveActionDockProps = {
   className?: string;
 };
 
-function partitionDockActions(actions: PredictiveDockAction[]) {
-  const main =
-    actions.find((action) => action.action_tier === "MAIN") ??
-    actions.find((action) => action.state === "ACTIVE") ??
-    null;
+/** Engine assigns `action_tier` — UI only partitions for layout. */
+function layoutDockActions(actions: PredictiveDockAction[]) {
+  const main = actions.find((action) => action.action_tier === "MAIN") ?? null;
   const aux = actions.filter((action) => action.id !== main?.id);
   return { main, aux };
 }
@@ -32,7 +30,7 @@ export function PredictiveActionDock({
     return null;
   }
 
-  const { main, aux } = partitionDockActions(actions);
+  const { main, aux } = layoutDockActions(actions);
 
   return (
     <div className={cn("space-y-2 px-1 pb-2 pt-1", className)} aria-label="Action Opportunity">

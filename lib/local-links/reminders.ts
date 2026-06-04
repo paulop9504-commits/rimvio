@@ -6,7 +6,6 @@ import { ingestInternalReminder } from "@/lib/notification-shadow/ingest-adapter
 import {
   archiveLinkReminderEvent,
   ingestLinkReminderEvent,
-  migrateLinkRemindersToEventCandidates,
 } from "@/lib/events/link-reminder-ingest";
 
 export type LinkReminder = {
@@ -136,13 +135,17 @@ export function scheduleLinkReminder(input: {
   return reminder;
 }
 
-export function readLinkReminders() {
-  const items = readJson().sort(
+/** Read-only — no Event SSOT writes. Use syncLinkRemindersToEventStore before truth serialize. */
+export function readLinkRemindersList(): LinkReminder[] {
+  return readJson().sort(
     (left, right) =>
-      new Date(left.fireAt).getTime() - new Date(right.fireAt).getTime()
+      new Date(left.fireAt).getTime() - new Date(right.fireAt).getTime(),
   );
-  migrateLinkRemindersToEventCandidates(items);
-  return items;
+}
+
+/** @deprecated Prefer readLinkRemindersList — migration moved to syncLinkRemindersToEventStore. */
+export function readLinkReminders(): LinkReminder[] {
+  return readLinkRemindersList();
 }
 
 export function readLinkReminderForLink(linkId: string) {
