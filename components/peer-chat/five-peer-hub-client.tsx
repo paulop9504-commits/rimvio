@@ -17,9 +17,10 @@ import {
 } from "@/lib/context/peer-thread-settings-store";
 import type { PinnedSlotIndex } from "@/lib/context/peer-thread-types";
 import { PeerProfileSetup } from "@/components/peer-chat/peer-profile-setup";
-import { RimvioGoogleSignInCard } from "@/components/rimvio-google-sign-in-card";
 import { RimvioProductContextStrip } from "@/components/rimvio-product-context-strip";
 import { PeerHubEmptyState } from "@/components/peer-chat/peer-hub-empty-state";
+import { DemoPeerRoomPreview } from "@/components/peer-chat/demo-peer-room-preview";
+import { GuestPeersLanding } from "@/components/peer-chat/guest-peers-landing";
 import { useCopy } from "@/hooks/use-copy";
 import {
   markLensFirstCoachShown,
@@ -288,23 +289,26 @@ export function FivePeerHubClient() {
   const dialogOpen = assignSlot !== null;
   const dialogTitle = `${(assignSlot ?? 0) + 1}번 버블에 고정`;
 
+  if (!usePhoneChat) {
+    return <GuestPeersLanding configured={configured} />;
+  }
+
   return (
     <div className="flex flex-col gap-4 pb-6">
-      {!usePhoneChat && configured ? (
-        <RimvioGoogleSignInCard className="mx-1" nextPath="/onboarding" />
-      ) : (
-        <RimvioProductContextStrip
-          variant="peers"
-          className="mx-1"
-          showFeedLink={false}
-        />
-      )}
+      <RimvioProductContextStrip
+        variant="peers"
+        className="mx-1"
+        showFeedLink={false}
+      />
 
-      {usePhoneChat && connectedCount === 0 && !dialogOpen ? (
-        <PeerHubEmptyState
-          className="mx-1"
-          onAddFriend={() => openPinAssign(0 as PinnedSlotIndex)}
-        />
+      {connectedCount === 0 && !dialogOpen ? (
+        <>
+          <PeerHubEmptyState
+            className="mx-1"
+            onAddFriend={() => openPinAssign(0 as PinnedSlotIndex)}
+          />
+          <DemoPeerRoomPreview className="mx-1" />
+        </>
       ) : (
         <p className="px-1 text-center text-[12px] text-white/55">
           {copy.peers.hubHint}

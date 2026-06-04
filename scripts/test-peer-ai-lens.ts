@@ -4,6 +4,8 @@ import type { PeerMessage } from "../lib/context/peer-message-types";
 import { analyzePeerThreadForLens } from "../lib/peer-chat/ai-lens/rank-lens-bubbles";
 import { parseLensDateFromText } from "../lib/peer-chat/ai-lens/parse-lens-date";
 import { resetLensUserHistoryForTests } from "../lib/peer-chat/ai-lens/lens-user-history";
+import { executeDeepLinkBubbleCandidate } from "../lib/peer-chat/ai-lens/execute-lens-bubble";
+import type { DeepLinkBubbleCandidate } from "../lib/peer-chat/ai-lens/types";
 
 function msg(
   id: string,
@@ -76,5 +78,51 @@ assert.ok(
     nav.score >= ranked.candidates[ranked.candidates.length - 1]!.score,
   "navigate should rank high with history",
 );
+
+/** Week 3 golden: 이번주 금요일 7시 CGV */
+const goldenCgv = analyzePeerThreadForLens(
+  [msg("1", "peer", "이번주 금요일 7시에 CGV 보자")],
+  refWed,
+);
+const goldenMovie = goldenCgv.candidates.find(
+  (c) => c.actionType === "movie_schedule" || c.actionType === "schedule",
+);
+assert.ok(goldenMovie, "CGV Friday 7pm should yield schedule candidate");
+const goldenDt = goldenMovie!.payload?.datetime ?? "";
+assert.ok(goldenDt.length > 0, "schedule datetime required");
+assert.equal(
+  parseLensDateFromText("이번주 금요일", refWed)?.dateKey,
+  "2026-06-05",
+);
+const goldenWhen = new Date(goldenDt);
+assert.equal(goldenWhen.getDate(), 5, "Friday June 5 (local)");
+assert.equal(goldenWhen.getHours(), 7, "7시 without 오후 → 07:00 local");
+
+/** Week 3 golden: 둔산동 멕시카나 → map picker only on execute */
+const goldenNavAnalysis = analyzePeerThreadForLens([
+  msg("1", "peer", "둔산동 멕시카나 갈래?"),
+]);
+const goldenNavCand = goldenNavAnalysis.candidates.find(
+  (c) => c.actionType === "navigate",
+);
+assert.ok(goldenNavCand);
+const navExecute = executeDeepLinkBubbleCandidate(
+  goldenNavCand as DeepLinkBubbleCandidate,
+);
+assert.equal(navExecute.ok, true);
+assert.equal(navExecute.openMapPicker?.place, goldenNavCand!.payload?.place);
+assert.ok(navExecute.openMapPicker?.place?.includes("멕시카나"));
+assert.equal(navExecute.openMapPicker !== undefined, true);
+
+/** Week 3 golden: 송금 — no auto transfer */
+const goldenTransfer = analyzePeerThreadForLens([
+  msg("1", "peer", "3만원 송금해줘"),
+]);
+assert.ok(goldenTransfer.candidates.some((c) => c.actionType === "transfer"));
+const transferExecute = executeDeepLinkBubbleCandidate(
+  goldenTransfer.candidates.find((c) => c.actionType === "transfer")!,
+);
+assert.equal(transferExecute.ok, true);
+assert.ok(transferExecute.message.includes("자동 송금 안 함"));
 
 console.log("test-peer-ai-lens: ok");

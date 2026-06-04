@@ -43,6 +43,11 @@ export const copyEn: Copy = {
     emptyBody:
       "Tap an empty bubble (+) to pin a friend. Long-press their profile to turn on AI Lens.",
     emptyAddCta: "Add friend to slot 1",
+    demoTitle: "Sample chat (read-only)",
+    demoHint: "Add friends to use real DMs and AI Lens",
+    demoLensTap: "Add a friend, then tap to run actions",
+    guestSignInHint:
+      "Sign in with Google to use friend bubbles and AI Lens",
   },
   feed: {
     title: "Operate",

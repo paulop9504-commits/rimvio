@@ -44,6 +44,11 @@ export const copy = {
     emptyBody:
       "빈 버블(+)을 눌러 친구를 고정하면 대화에서 실행 버튼이 붙어요. AI 렌즈는 프로필을 길게 눌러 켜요.",
     emptyAddCta: "1번 버블에 친구 추가",
+    demoTitle: "예시 대화 (읽기 전용)",
+    demoHint: "친구를 추가하면 실제 DM·AI 렌즈를 쓸 수 있어요",
+    demoLensTap: "친구 추가 후 탭해서 실행하세요",
+    guestSignInHint:
+      "Google로 시작하면 친구 버블·AI 렌즈를 쓸 수 있어요",
   },
   feed: {
     title: "실행",
