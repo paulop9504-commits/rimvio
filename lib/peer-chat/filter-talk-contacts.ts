@@ -1,24 +1,26 @@
 import type { PeerContact } from "@/lib/context/peer-contact-types";
-import { readPeerContacts } from "@/lib/context/peer-contact-store";
+import { contactMatchesTalkQuery } from "@/lib/peer-chat/match-talk-contact-query";
+import { listPeersForTalk } from "@/lib/peer-chat/list-peers-for-talk";
 
 const MAX_RESULTS = 16;
 
-/** @톡 친구 선택 — 로컬 연락처만 (이미 추가된 친구). */
+/** @톡 친구 선택 — 연락처 + ROOM 고정, 프로필·ROOM 이름 모두 검색 */
 export function filterPeerContactsForTalk(query: string): PeerContact[] {
-  const contacts = readPeerContacts();
+  const contacts = listPeersForTalk();
   const q = query.trim().toLowerCase();
   if (!q) {
     return contacts.slice(0, MAX_RESULTS);
   }
-  const filtered = contacts.filter((c) => {
-    const name = c.displayName.trim().toLowerCase();
-    const id = c.peerThreadId.toLowerCase();
-    return name.includes(q) || id.includes(q);
-  });
+  const filtered = contacts.filter((c) => contactMatchesTalkQuery(c, q));
 
   filtered.sort((a, b) => {
     const an = a.displayName.trim().toLowerCase();
     const bn = b.displayName.trim().toLowerCase();
+    const aRim = a.rimvioId?.toLowerCase().startsWith(q) ? 0 : 1;
+    const bRim = b.rimvioId?.toLowerCase().startsWith(q) ? 0 : 1;
+    if (aRim !== bRim) {
+      return aRim - bRim;
+    }
     const aStarts = an.startsWith(q) ? 0 : 1;
     const bStarts = bn.startsWith(q) ? 0 : 1;
     if (aStarts !== bStarts) {

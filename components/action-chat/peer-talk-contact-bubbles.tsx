@@ -5,7 +5,10 @@ import { useDmPeerProfile } from "@/hooks/use-dm-peer-profile";
 import type { PeerContact } from "@/lib/context/peer-contact-types";
 import { isRegisteredPeerDmThread } from "@/lib/peer-chat/peer-chat-client";
 import { prefetchPeerMessages } from "@/lib/peer-chat/message-prefetch-cache";
+import { setTalkProfileCache } from "@/lib/peer-chat/peer-talk-profile-cache";
+import { addPeerContact } from "@/lib/context/peer-contact-store";
 import { cn } from "@/lib/utils";
+import { useEffect } from "react";
 
 type PeerTalkContactBubblesProps = {
   contacts: PeerContact[];
@@ -22,7 +25,30 @@ function PeerTalkBubble({
 }) {
   const phoneDm = isRegisteredPeerDmThread(contact.peerThreadId);
   const { profile } = useDmPeerProfile(contact.peerThreadId, phoneDm);
-  const displayName = profile?.displayName?.trim() || contact.displayName;
+  const displayName =
+    profile?.displayName?.trim() ||
+    contact.profileDisplayName?.trim() ||
+    contact.displayName;
+
+  useEffect(() => {
+    if (!profile) {
+      return;
+    }
+    const profileName = profile.displayName?.trim() || null;
+    setTalkProfileCache(contact.peerThreadId, {
+      displayName: profileName,
+      rimvioId: profile.rimvioId ?? null,
+      emailLower: profile.emailLower ?? null,
+    });
+    addPeerContact({
+      peerThreadId: contact.peerThreadId,
+      displayName: profileName || contact.displayName,
+      profileDisplayName: profileName,
+      roomDisplayName: contact.roomDisplayName,
+      rimvioId: profile.rimvioId ?? contact.rimvioId,
+      emailLower: profile.emailLower ?? contact.emailLower,
+    });
+  }, [profile, contact]);
 
   return (
     <button

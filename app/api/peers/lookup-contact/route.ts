@@ -50,6 +50,7 @@ export async function POST(request: NextRequest) {
         displayName: lookup.displayName,
         rimvioId: lookup.rimvioId,
         avatarUrl: lookup.avatarUrl,
+        emailLower: lookup.emailLower,
         matchedBy: lookup.matchedBy,
       },
       contact: rawContact,

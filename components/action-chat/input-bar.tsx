@@ -11,12 +11,11 @@ import {
   SendHorizontal,
   X,
 } from "lucide-react";
-import { useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useChatAmbientFocusOptional } from "@/components/action-chat/chat-ambient-focus";
 import { PeerTalkContactBubbles } from "@/components/action-chat/peer-talk-contact-bubbles";
 import type { PeerContact } from "@/lib/context/peer-contact-types";
-import { parseActivePeerTalkComposer } from "@/lib/peer-chat/active-peer-talk-composer";
-import { filterPeerContactsForTalk } from "@/lib/peer-chat/filter-talk-contacts";
+import { usePeerTalkCandidates } from "@/hooks/use-peer-talk-candidates";
 import {
   rimvioComposerFieldClass,
   rimvioIconBtnClass,
@@ -70,15 +69,8 @@ export function ActionChatInputBar({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const ambient = useChatAmbientFocusOptional();
 
-  const peerTalkComposer = useMemo(
-    () => parseActivePeerTalkComposer(text),
-    [text],
-  );
-  const peerTalkCandidates = useMemo(
-    () =>
-      peerTalkComposer ? filterPeerContactsForTalk(peerTalkComposer.query) : [],
-    [peerTalkComposer],
-  );
+  const { active: peerTalkComposer, candidates: peerTalkCandidates } =
+    usePeerTalkCandidates(text);
 
   const syncComposerDraft = (value: string) => {
     ambient?.setComposerDraft(value.trim().length > 0);

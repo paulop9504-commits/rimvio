@@ -34,6 +34,7 @@ export type PeerPublicProfile = {
   displayName: string | null;
   rimvioId: string | null;
   avatarUrl: string | null;
+  emailLower: string | null;
 };
 
 export async function fetchRelationshipFeedSlots(): Promise<{
@@ -330,6 +331,7 @@ export async function lookupFriendContactRemote(contact: string): Promise<{
     displayName: string;
     rimvioId: string | null;
     avatarUrl: string | null;
+    emailLower: string | null;
     matchedBy: string;
   };
   contact: string;
@@ -352,6 +354,8 @@ export async function addPeerByPhoneRemote(input: {
   threadId: string;
   displayName: string;
   otherUserId?: string;
+  rimvioId?: string | null;
+  emailLower?: string | null;
   realtime: boolean;
 }> {
   const contact = input.contact ?? input.phone ?? "";

@@ -105,6 +105,8 @@ export async function POST(request: NextRequest) {
       threadId: added.threadId,
       displayName: added.displayName,
       otherUserId: added.otherUserId,
+      rimvioId: lookup.rimvioId,
+      emailLower: lookup.emailLower,
       realtime: true,
       matchedBy,
     });

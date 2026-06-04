@@ -71,6 +71,7 @@ export type FriendContactLookup = {
   displayName: string;
   rimvioId: string | null;
   avatarUrl: string | null;
+  emailLower: string | null;
   matchedBy: FriendContactMatchedBy;
 };
 
@@ -195,6 +196,7 @@ export async function lookupRegisteredFriendContact(
     displayName,
     rimvioId: preview.rimvioId,
     avatarUrl: preview.avatarUrl,
+    emailLower: preview.emailLower,
     matchedBy,
   };
 }

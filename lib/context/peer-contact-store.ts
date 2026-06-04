@@ -84,6 +84,10 @@ export type AddPeerContactResult =
 export function addPeerContact(input: {
   displayName: string;
   peerThreadId?: string;
+  rimvioId?: string | null;
+  emailLower?: string | null;
+  profileDisplayName?: string | null;
+  roomDisplayName?: string | null;
 }): AddPeerContactResult {
   const displayName = input.displayName.trim();
   if (!displayName) {
@@ -99,6 +103,11 @@ export function addPeerContact(input: {
     const updated: PeerContact = {
       ...existing,
       displayName,
+      rimvioId: input.rimvioId ?? existing.rimvioId,
+      emailLower: input.emailLower ?? existing.emailLower,
+      profileDisplayName:
+        input.profileDisplayName ?? existing.profileDisplayName,
+      roomDisplayName: input.roomDisplayName ?? existing.roomDisplayName,
       updatedAt: now,
     };
     writeBook({
@@ -113,6 +122,10 @@ export function addPeerContact(input: {
   const contact: PeerContact = {
     peerThreadId: input.peerThreadId ?? newPeerThreadId(displayName),
     displayName,
+    rimvioId: input.rimvioId ?? null,
+    emailLower: input.emailLower ?? null,
+    profileDisplayName: input.profileDisplayName ?? null,
+    roomDisplayName: input.roomDisplayName ?? null,
     createdAt: now,
     updatedAt: now,
   };

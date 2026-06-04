@@ -23,6 +23,7 @@ type FriendPreview = {
   displayName: string;
   rimvioId: string | null;
   avatarUrl: string | null;
+  emailLower?: string | null;
   matchedBy: string;
 };
 
@@ -82,6 +83,8 @@ export function InlineChatFriendAdd({ contact, className }: InlineChatFriendAddP
         addPeerContact({
           peerThreadId: result.threadId,
           displayName: result.displayName,
+          rimvioId: preview.rimvioId ?? result.rimvioId,
+          emailLower: preview.emailLower ?? result.emailLower,
         });
         emitFeedSlotsRefresh();
         toast.success(`${result.displayName}님을 친구로 추가했어요`);

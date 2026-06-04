@@ -10,6 +10,7 @@ export type PeerPublicProfile = {
   displayName: string | null;
   rimvioId: string | null;
   avatarUrl: string | null;
+  emailLower: string | null;
 };
 
 function parsePublicProfileRow(raw: unknown): PeerPublicProfile | null {
@@ -27,6 +28,8 @@ function parsePublicProfileRow(raw: unknown): PeerPublicProfile | null {
       typeof row.display_name === "string" ? row.display_name : null,
     rimvioId: typeof row.rimvio_id === "string" ? row.rimvio_id : null,
     avatarUrl: typeof row.avatar_url === "string" ? row.avatar_url : null,
+    emailLower:
+      typeof row.email_lower === "string" ? row.email_lower : null,
   };
 }
 
