@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { MainActionButton } from "@/components/action-chat/main-action-button";
-import { FeedInlineDmPanel } from "@/components/action-chat/feed-inline-dm-panel";
 import { PeerTalkContactBubbles } from "@/components/action-chat/peer-talk-contact-bubbles";
 import { PeerProfileAvatar } from "@/components/peer-chat/peer-profile-avatar";
 import { useDmPeerProfile } from "@/hooks/use-dm-peer-profile";
@@ -18,14 +17,17 @@ import { cn } from "@/lib/utils";
 type InlineChatPeerTalkProps = {
   query: string;
   className?: string;
+  onStartConversation?: (contact: PeerContact) => void;
 };
 
 function TalkProfileConfirm({
   contact,
   onStart,
+  starting,
 }: {
   contact: PeerContact;
   onStart: () => void;
+  starting?: boolean;
 }) {
   const phoneDm = isRegisteredPeerDmThread(contact.peerThreadId);
   const { profile, loading } = useDmPeerProfile(contact.peerThreadId, phoneDm);
@@ -57,10 +59,10 @@ function TalkProfileConfirm({
         </div>
       </div>
       <p className="text-[11px] text-white/45">
-        피드에서 보낸 메시지는 ROOM 대화에도 그대로 보여요.
+        이전 대화가 피드에 보이고, 아래 입력창으로 이어서 보낼 수 있어요.
       </p>
       <MainActionButton
-        label="대화 시작하기"
+        label={starting ? "불러오는 중…" : "대화 시작하기"}
         brand={brand}
         compact
         onClick={onStart}
@@ -69,23 +71,28 @@ function TalkProfileConfirm({
   );
 }
 
-export function InlineChatPeerTalk({ query, className }: InlineChatPeerTalkProps) {
+export function InlineChatPeerTalk({
+  query,
+  className,
+  onStartConversation,
+}: InlineChatPeerTalkProps) {
   const { user, configured } = useAuth();
   const canUse = Boolean(configured && user && isSupabaseConfigured());
   const candidates = useMemo(() => filterPeerContactsForTalk(query), [query]);
   const [picked, setPicked] = useState<PeerContact | null>(() =>
     candidates.length === 1 ? candidates[0]! : null,
   );
-  const [chatting, setChatting] = useState(false);
+  const [starting, setStarting] = useState(false);
 
   const active = picked ?? (candidates.length === 1 ? candidates[0]! : null);
 
   const startChat = () => {
-    if (!active) {
+    if (!active || starting) {
       return;
     }
     prefetchPeerMessages(active.peerThreadId);
-    setChatting(true);
+    setStarting(true);
+    onStartConversation?.(active);
   };
 
   if (!canUse) {
@@ -93,16 +100,6 @@ export function InlineChatPeerTalk({ query, className }: InlineChatPeerTalkProps
       <p className={cn("text-[12px] text-amber-200/90", className)}>
         @톡은 로그인 후에 쓸 수 있어요.
       </p>
-    );
-  }
-
-  if (chatting && active) {
-    return (
-      <FeedInlineDmPanel
-        peerThreadId={active.peerThreadId}
-        displayName={active.displayName}
-        className={className}
-      />
     );
   }
 
@@ -125,14 +122,18 @@ export function InlineChatPeerTalk({ query, className }: InlineChatPeerTalkProps
   if (active && (query.trim() || candidates.length === 1)) {
     return (
       <div className={className}>
-        <TalkProfileConfirm contact={active} onStart={startChat} />
+        <TalkProfileConfirm
+          contact={active}
+          onStart={startChat}
+          starting={starting}
+        />
         {candidates.length > 1 ? (
           <button
             type="button"
             className="mt-2 text-[11px] text-white/45 underline-offset-2 hover:underline"
             onClick={() => {
               setPicked(null);
-              setChatting(false);
+              setStarting(false);
             }}
           >
             다른 친구 고르기
@@ -149,7 +150,11 @@ export function InlineChatPeerTalk({ query, className }: InlineChatPeerTalkProps
         onPick={(contact) => setPicked(contact)}
       />
       {picked ? (
-        <TalkProfileConfirm contact={picked} onStart={startChat} />
+        <TalkProfileConfirm
+          contact={picked}
+          onStart={startChat}
+          starting={starting}
+        />
       ) : (
         <p className="text-center text-[11px] text-white/40">
           버블을 눌러 주세요

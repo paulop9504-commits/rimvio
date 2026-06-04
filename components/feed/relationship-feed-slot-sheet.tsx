@@ -93,9 +93,16 @@ export function RelationshipFeedSlotSheet({
                       />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <p className="truncate font-semibold text-white">
-                            {slot.displayName}
-                          </p>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-semibold text-white">
+                              {slot.displayName}
+                            </p>
+                            {slot.rimvioId ? (
+                              <p className="truncate text-[11px] text-[#FEE500]/85">
+                                @{slot.rimvioId}
+                              </p>
+                            ) : null}
+                          </div>
                           {slot.isPinned ? (
                             <Pin
                               className="size-3 shrink-0 text-amber-400/90"

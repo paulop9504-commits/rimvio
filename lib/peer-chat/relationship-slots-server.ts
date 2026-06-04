@@ -4,6 +4,7 @@ import {
   isDmThreadId,
 } from "@/lib/peer-chat/server-peer-chat";
 import type { RelationshipFeedSlot } from "@/lib/social/relationship-slot-types";
+import { loadFriendProfilesMap } from "@/lib/peer-chat/load-friend-profiles-map";
 import type { Database } from "@/types/database";
 
 export const FEED_SLOT_RETENTION_DAYS = 7;
@@ -139,45 +140,6 @@ export async function pinFeedSlot(
     })
     .eq("user_id", input.userId)
     .eq("room_id", input.roomId);
-}
-
-async function loadProfileMap(
-  supabase: SupabaseClient<Database>,
-  userIds: string[],
-): Promise<
-  Map<
-    string,
-    {
-      display_name: string | null;
-      rimvio_id: string | null;
-      avatar_url: string | null;
-    }
-  >
-> {
-  if (userIds.length === 0) {
-    return new Map();
-  }
-  const { data } = await supabase
-    .from("user_profiles")
-    .select("user_id, display_name, rimvio_id, avatar_url")
-    .in("user_id", userIds);
-
-  const map = new Map<
-    string,
-    {
-      display_name: string | null;
-      rimvio_id: string | null;
-      avatar_url: string | null;
-    }
-  >();
-  for (const row of data ?? []) {
-    map.set(row.user_id as string, {
-      display_name: row.display_name as string | null,
-      rimvio_id: row.rimvio_id as string | null,
-      avatar_url: row.avatar_url as string | null,
-    });
-  }
-  return map;
 }
 
 function rowToFeedSlot(
@@ -326,7 +288,7 @@ export async function listRelationshipFeedSlots(
 
   const rows = (data ?? []) as RelationshipSlotRow[];
   const friendIds = rows.map((r) => r.friend_id);
-  const profiles = await loadProfileMap(supabase, friendIds);
+  const profiles = await loadFriendProfilesMap(supabase, friendIds);
 
   return rows.map((row) =>
     rowToFeedSlot(row, profiles.get(row.friend_id) ?? null),

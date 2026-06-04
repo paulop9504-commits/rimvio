@@ -116,6 +116,9 @@ export function ActionChatFeed({
     handleStudyAuxAction,
     togglePackingItem,
     startFreshConversation,
+    feedPeerTalkSession,
+    startFeedPeerTalk,
+    sendFeedPeerTalk,
     completeInlineTimer,
     confirmInlineFocus,
     cancelInlineFocus,
@@ -401,6 +404,9 @@ export function ActionChatFeed({
               onTransferSpawnPrompt={(uri) => void sendMessage(uri)}
               onFocusHeldInAppAction={handleFocusHeldInAppAction}
               onOpenCapture={onOpenCapture}
+              onFeedPeerTalkStart={(contact) => {
+                void startFeedPeerTalk(contact);
+              }}
                 />
               </div>
             </ExecutionTimeline>
@@ -408,7 +414,11 @@ export function ActionChatFeed({
 
           <ActionChatInputBar
             placeholder={
-              threadlineNeedsTap ? "오늘에 추가…" : "무엇을 도와드릴까요?"
+              feedPeerTalkSession
+                ? `${feedPeerTalkSession.displayName}에게 메시지`
+                : threadlineNeedsTap
+                  ? "오늘에 추가…"
+                  : "무엇을 도와드릴까요?"
             }
             sending={sending}
             disabled={sending}
@@ -416,9 +426,19 @@ export function ActionChatFeed({
             onOpenLinkPaste={onOpenLinkPaste}
             onQuickCapture={onQuickCapture}
             onPeerTalkPick={(contact) => {
-              void sendMessage(`@톡 ${contact.displayName}`);
+              void startFeedPeerTalk(contact);
             }}
             onSendComposer={(payload) => {
+              const hasAttachments = (payload.attachments?.length ?? 0) > 0;
+              if (
+                feedPeerTalkSession &&
+                !hasAttachments &&
+                payload.text.trim() &&
+                !payload.text.trim().startsWith("@")
+              ) {
+                void sendFeedPeerTalk(payload.text);
+                return;
+              }
               if (sendComposerPayload(payload)) {
                 return;
               }

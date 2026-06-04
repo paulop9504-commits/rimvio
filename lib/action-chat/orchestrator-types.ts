@@ -293,6 +293,9 @@ export type ActionChatMessage = {
   /** Generic @ action chip — taxi, paste, delivery, etc. */
   inlineChatAction?: import("@/lib/action-chat/mention-actions/inline-chat-action").InlineChatActionWire;
 
+  /** @톡 — 피드 인라인 대화 스레드(히스토리 + 구분선, 하단 composer 로 전송) */
+  feedPeerTalkThread?: import("@/lib/action-chat/feed-peer-talk/feed-peer-talk-types").FeedPeerTalkThreadWire;
+
 };
 
 

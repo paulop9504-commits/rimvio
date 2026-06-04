@@ -5,6 +5,8 @@ import {
   hasMentionInlinePayload,
   MentionInlineMessage,
 } from "@/components/action-chat/mention-inline-message";
+import { FeedPeerTalkThread } from "@/components/action-chat/feed-peer-talk-thread";
+import type { PeerContact } from "@/lib/context/peer-contact-types";
 import { ChatThinkingBubble } from "@/components/action-chat/chat-thinking-bubble";
 import type { FocusHeldActionWire } from "@/lib/action-chat/mention-focus/inline-chat-focus";
 import type { UnifiedCalendarOverlayRow } from "@/lib/calendar/calendar-view-types";
@@ -92,6 +94,7 @@ type ActionChatMessageListProps = {
     action: FocusHeldActionWire,
   ) => void;
   onOpenCapture?: () => void;
+  onFeedPeerTalkStart?: (contact: PeerContact) => void;
   className?: string;
 };
 
@@ -118,6 +121,7 @@ function AssistantOfferMessage({
   onTransferSpawnPrompt,
   onFocusHeldInAppAction,
   onOpenCapture,
+  onFeedPeerTalkStart,
   onAction,
   bubbleGroup = "single",
 }: {
@@ -148,6 +152,7 @@ function AssistantOfferMessage({
     action: FocusHeldActionWire,
   ) => void;
   onOpenCapture?: () => void;
+  onFeedPeerTalkStart?: (contact: PeerContact) => void;
   onAction: (action: LinkActionItem) => void;
 }) {
   useActionTrust();
@@ -181,6 +186,10 @@ function AssistantOfferMessage({
   });
   const showActionGrid = isPlaceDiscovery || ux.showActionGrid;
 
+  if (message.feedPeerTalkThread) {
+    return <FeedPeerTalkThread thread={message.feedPeerTalkThread} />;
+  }
+
   if (hasMentionInlinePayload(message)) {
     return (
       <MentionInlineMessage
@@ -198,6 +207,7 @@ function AssistantOfferMessage({
         onTransferSpawnPrompt={onTransferSpawnPrompt}
         onFocusHeldInAppAction={onFocusHeldInAppAction}
         onOpenCapture={onOpenCapture}
+        onFeedPeerTalkStart={onFeedPeerTalkStart}
       />
     );
   }
@@ -425,6 +435,7 @@ export function ActionChatMessageList({
   onTransferSpawnPrompt,
   onFocusHeldInAppAction,
   onOpenCapture,
+  onFeedPeerTalkStart,
   className,
 }: ActionChatMessageListProps) {
   const { requestNavSector, shouldOpenNavSector, navSectorSheet } = useNavSectorPicker({
@@ -509,6 +520,7 @@ export function ActionChatMessageList({
                 onTransferSpawnPrompt={onTransferSpawnPrompt}
                 onFocusHeldInAppAction={onFocusHeldInAppAction}
                 onOpenCapture={onOpenCapture}
+                onFeedPeerTalkStart={onFeedPeerTalkStart}
                 onAction={handleAction}
               />
             </div>

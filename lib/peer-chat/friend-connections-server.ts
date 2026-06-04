@@ -10,6 +10,7 @@ import {
   type SocialBubblePeer,
 } from "@/lib/social/bubble-state";
 import { purgeAfterIso, isPurgeDue } from "@/lib/context/hub-room-retention";
+import { loadFriendProfilesMap } from "@/lib/peer-chat/load-friend-profiles-map";
 import type { Database } from "@/types/database";
 
 export const ARCHIVE_RETENTION_DAYS = 7;
@@ -237,37 +238,6 @@ export async function unpinFriend(
   return data as FriendConnectionRow;
 }
 
-async function loadProfileMap(
-  supabase: SupabaseClient<Database>,
-  userIds: string[],
-): Promise<
-  Map<
-    string,
-    { display_name: string | null; rimvio_id: string | null; avatar_url: string | null }
-  >
-> {
-  if (userIds.length === 0) {
-    return new Map();
-  }
-  const { data } = await supabase
-    .from("user_profiles")
-    .select("user_id, display_name, rimvio_id, avatar_url")
-    .in("user_id", userIds);
-
-  const map = new Map<
-    string,
-    { display_name: string | null; rimvio_id: string | null; avatar_url: string | null }
-  >();
-  for (const row of data ?? []) {
-    map.set(row.user_id as string, {
-      display_name: row.display_name as string | null,
-      rimvio_id: row.rimvio_id as string | null,
-      avatar_url: row.avatar_url as string | null,
-    });
-  }
-  return map;
-}
-
 function rowToSocialPeer(
   row: FriendConnectionRow,
   profile: {
@@ -315,7 +285,7 @@ export async function listSocialLayer(
 
   const rows = (data ?? []) as FriendConnectionRow[];
   const friendIds = rows.map((r) => r.friend_id);
-  const profiles = await loadProfileMap(supabase, friendIds);
+  const profiles = await loadFriendProfilesMap(supabase, friendIds);
 
   const pinned = rows
     .filter((r) => r.is_pinned)

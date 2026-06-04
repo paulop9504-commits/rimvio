@@ -11,6 +11,7 @@ import { InlineChatTimerChip } from "@/components/action-chat/inline-chat-timer-
 import { InlineChatTransferChip } from "@/components/action-chat/inline-chat-transfer-chip";
 import type { FocusHeldActionWire } from "@/lib/action-chat/mention-focus/inline-chat-focus";
 import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
+import type { PeerContact } from "@/lib/context/peer-contact-types";
 import type { UnifiedCalendarOverlayRow } from "@/lib/calendar/calendar-view-types";
 
 export function hasMentionInlinePayload(message: ActionChatMessage): boolean {
@@ -47,6 +48,7 @@ export type MentionInlineMessageProps = {
     action: FocusHeldActionWire,
   ) => void;
   onOpenCapture?: () => void;
+  onFeedPeerTalkStart?: (contact: PeerContact) => void;
 };
 
 export function MentionInlineMessage({
@@ -65,6 +67,7 @@ export function MentionInlineMessage({
   onActionSpawnPrompt,
   onFocusHeldInAppAction,
   onOpenCapture,
+  onFeedPeerTalkStart,
 }: MentionInlineMessageProps) {
   const messageId = message.id;
 
@@ -74,6 +77,7 @@ export function MentionInlineMessage({
         action={message.inlineChatAction}
         onSpawnPrompt={onActionSpawnPrompt ?? onNavigateSpawnPrompt}
         onOpenCapture={onOpenCapture}
+        onFeedPeerTalkStart={onFeedPeerTalkStart}
       />
     );
   }

@@ -13,6 +13,7 @@ import {
   rimvioInlineChipTitleClass,
 } from "@/lib/brand/rimvio-neon-theme";
 import type { InlineChatActionWire } from "@/lib/action-chat/mention-actions/inline-chat-action";
+import type { PeerContact } from "@/lib/context/peer-contact-types";
 import { InlineChatFriendAdd } from "@/components/action-chat/inline-chat-friend-add";
 import { InlineChatPeerTalk } from "@/components/action-chat/inline-chat-peer-talk";
 import { commitLinksheetUrl } from "@/lib/action-chat/mention-linksheet/linksheet-url-actions";
@@ -27,6 +28,7 @@ type InlineChatActionChipProps = {
   action: InlineChatActionWire;
   onSpawnPrompt?: (uri: string) => void;
   onOpenCapture?: () => void;
+  onFeedPeerTalkStart?: (contact: PeerContact) => void;
   className?: string;
 };
 
@@ -61,6 +63,7 @@ export function InlineChatActionChip({
   action,
   onSpawnPrompt,
   onOpenCapture,
+  onFeedPeerTalkStart,
   className,
 }: InlineChatActionChipProps) {
   const [clipboardHint, setClipboardHint] = useState<string | null>(null);
@@ -215,7 +218,10 @@ export function InlineChatActionChip({
         ) : null}
 
         {isPeerTalk ? (
-          <InlineChatPeerTalk query={action.peerTalkQuery ?? action.query} />
+          <InlineChatPeerTalk
+            query={action.peerTalkQuery ?? action.query}
+            onStartConversation={onFeedPeerTalkStart}
+          />
         ) : null}
 
         {isManualCatalog ? (

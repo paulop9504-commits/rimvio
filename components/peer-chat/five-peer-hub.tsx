@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FriendArchiveBagBubble } from "@/components/peer-chat/friend-archive-bag-bubble";
+import { PeerProfileAvatar } from "@/components/peer-chat/peer-profile-avatar";
 import {
   ARCHIVE_BAG_STROKE,
   buildFivePeerHubNodes,
@@ -336,7 +337,12 @@ export function FivePeerHub({
           const href = `/peers/${encodeURIComponent(node.slot.peerThreadId)}`;
           const meta = peerMetaByThread?.get(node.slot.peerThreadId);
           const bubbleState: BubbleState = meta?.bubbleState ?? "idle";
-          const displayName = meta?.displayName ?? node.slot.displayName ?? "친구";
+          const displayName =
+            meta?.displayName?.trim() ||
+            node.slot.displayName?.trim() ||
+            meta?.rimvioId ||
+            "친구";
+          const rimvioId = meta?.rimvioId ?? null;
 
           return (
             <Link
@@ -348,25 +354,24 @@ export function FivePeerHub({
               style={style}
               aria-label={displayName}
             >
-              <span
+              <PeerProfileAvatar
+                displayName={displayName}
+                avatarUrl={meta?.avatarUrl}
+                size="md"
                 className={cn(
-                  "flex size-[3.75rem] items-center justify-center overflow-hidden rounded-full border-2 bg-rimvio-surface text-base font-semibold text-white",
+                  "!size-[3.75rem] !text-lg border-2 bg-rimvio-surface",
                   BUBBLE_RING_CLASS[bubbleState],
                 )}
-              >
-                {meta?.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={meta.avatarUrl}
-                    alt=""
-                    className="size-full object-cover"
-                  />
-                ) : (
-                  displayName.trim().charAt(0) || "?"
-                )}
-              </span>
-              <span className="max-w-[5.5rem] truncate text-center text-[10px] font-medium text-white/75">
-                {displayName}
+              />
+              <span className="flex max-w-[5.5rem] flex-col items-center leading-tight">
+                <span className="w-full truncate text-center text-[10px] font-medium text-white/90">
+                  {displayName}
+                </span>
+                {rimvioId ? (
+                  <span className="w-full truncate text-center text-[9px] text-[#FEE500]/85">
+                    @{rimvioId}
+                  </span>
+                ) : null}
               </span>
             </Link>
           );

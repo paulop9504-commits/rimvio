@@ -2,7 +2,7 @@
 
 
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { fetchWithTimeout, FetchTimeoutError } from "@/lib/http/fetch-with-timeout";
 
@@ -109,6 +109,16 @@ import {
 } from "@/lib/action-chat/chat-store";
 import { archiveAndClearChatSession } from "@/lib/conversation-memory/archive-session";
 import { clearActiveChains } from "@/lib/containers/active-chains-state";
+import {
+  resetFeedPeerTalkSession,
+  startFeedPeerTalkInFeed,
+  sendFeedPeerTalkInFeed,
+} from "@/lib/action-chat/feed-peer-talk/feed-peer-talk-actions";
+import {
+  getFeedPeerTalkSession,
+  subscribeFeedPeerTalkSession,
+} from "@/lib/action-chat/feed-peer-talk/feed-peer-talk-session";
+import type { PeerContact } from "@/lib/context/peer-contact-types";
 
 import { buildActionsFromConfirmationData } from "@/lib/action-chat/build-confirmation-actions";
 import { buildActionsFromBatchPending } from "@/lib/action-chat/build-batch-pending-actions";
@@ -594,6 +604,36 @@ export function useActionChat(
 
   );
 
+  const feedPeerTalkDeps = useCallback(
+    () => ({
+      readMessages: () => readActionChatMessages(scopeId),
+      persist,
+    }),
+    [persist, scopeId],
+  );
+
+  const startFeedPeerTalk = useCallback(
+    (contact: PeerContact) => {
+      lastActivityRef.current = Date.now();
+      return startFeedPeerTalkInFeed(feedPeerTalkDeps(), contact);
+    },
+    [feedPeerTalkDeps],
+  );
+
+  const sendFeedPeerTalk = useCallback(
+    (text: string) => {
+      lastActivityRef.current = Date.now();
+      return sendFeedPeerTalkInFeed(feedPeerTalkDeps(), text);
+    },
+    [feedPeerTalkDeps],
+  );
+
+  const feedPeerTalkSession = useSyncExternalStore(
+    subscribeFeedPeerTalkSession,
+    getFeedPeerTalkSession,
+    () => null,
+  );
+
   const sendComposerPayload = useCallback(
     (payload: { text: string; attachments?: ComposerAttachment[]; chatAxis?: ChatAxis }) => {
       if ((payload.attachments?.length ?? 0) > 0) {
@@ -625,6 +665,7 @@ export function useActionChat(
     const result = archiveAndClearChatSession(scopeId);
     clearAllActionChatMessageScopes();
     clearActiveChains();
+    resetFeedPeerTalkSession();
     setMessages([]);
     resetThreadline();
     syncReviewGatePhase(null);
@@ -1438,6 +1479,22 @@ export function useActionChat(
 
         return;
 
+      }
+
+      const activeFeedPeerTalk = getFeedPeerTalkSession();
+      if (
+        activeFeedPeerTalk &&
+        pendingAttachments.length === 0 &&
+        trimmed &&
+        !trimmed.startsWith("@")
+      ) {
+        const sent = await sendFeedPeerTalkInFeed(
+          { readMessages: () => readActionChatMessages(scopeId), persist },
+          trimmed,
+        );
+        if (sent) {
+          return;
+        }
       }
 
       let messageChatAxis: ChatAxis = options?.chatAxis ?? readStoredChatAxis();
@@ -2618,6 +2675,12 @@ export function useActionChat(
     handleStudyAuxAction,
 
     startFreshConversation,
+
+    feedPeerTalkSession,
+
+    startFeedPeerTalk,
+
+    sendFeedPeerTalk,
 
   };
 
