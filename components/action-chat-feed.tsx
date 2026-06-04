@@ -29,6 +29,7 @@ import { ExecutionTimeline } from "@/components/threadline/execution-timeline";
 import { TodayThread } from "@/components/threadline/today-thread";
 import { threadlineHeaderStatus } from "@/lib/threadline";
 import { RimvioLogo } from "@/components/rimvio-logo";
+import { RimvioProductContextStrip } from "@/components/rimvio-product-context-strip";
 import { OnboardingMagicPanel } from "@/components/onboarding-magic-panel";
 import { useActionChat } from "@/hooks/use-action-chat";
 import { usePredictiveDock } from "@/hooks/use-predictive-dock";
@@ -265,15 +266,15 @@ export function ActionChatFeed({
           className
         )}
       >
-        <header className="shrink-0 border-b border-white/10 bg-rimvio-base/80 px-5 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-md">
-          <div className="flex items-center justify-between">
-            <RimvioLogo size="sm" className="h-7" appearance="white" />
-            <div className="flex items-center gap-1">
+        <header className="shrink-0 border-b border-white/10 bg-rimvio-base/80 px-3 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-md sm:px-5">
+          <div className="flex min-h-9 items-center justify-between gap-2">
+            <RimvioLogo size="sm" className="h-7 shrink-0" appearance="white" />
+            <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
               {messages.length > 0 || activeLink ? (
                 <button
                   type="button"
                   onClick={handleStartFreshConversation}
-                  className="rounded-full border border-white/85 bg-transparent px-3 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-white/[0.06]"
+                  className="hidden rounded-full border border-white/85 bg-transparent px-2.5 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-white/[0.06] min-[400px]:inline sm:px-3 sm:text-[12px]"
                 >
                   새 대화
                 </button>
@@ -283,11 +284,11 @@ export function ActionChatFeed({
                 type="button"
                 aria-label="리소스풀"
                 onClick={() => setResourcePoolOpen(true)}
-                className="relative flex size-9 items-center justify-center rounded-full bg-transparent text-white transition-opacity hover:opacity-80 active:scale-95"
+                className="relative flex size-8 items-center justify-center rounded-full bg-transparent text-white transition-opacity hover:opacity-80 active:scale-95 sm:size-9"
               >
-                <FolderGit2 className="size-5" strokeWidth={2.1} />
+                <FolderGit2 className="size-[1.15rem] sm:size-5" strokeWidth={2.1} />
                 {uiHydrated && resourcePoolCount > 0 ? (
-                  <span className="absolute -right-1 -top-1 flex size-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-rimvio-base px-0.5 text-[10px] font-extrabold tabular-nums leading-none text-[#D8B4FE] shadow-[0_0_8px_rgba(191,90,242,0.35)]">
+                  <span className="absolute -right-0.5 -top-0.5 flex size-4 min-w-4 items-center justify-center rounded-full bg-rimvio-base px-0.5 text-[9px] font-extrabold tabular-nums leading-none text-[#D8B4FE] shadow-[0_0_8px_rgba(191,90,242,0.35)] sm:-right-1 sm:-top-1 sm:size-[1.125rem] sm:min-w-[1.125rem] sm:text-[10px]">
                     {resourcePoolCount > 9 ? "9+" : resourcePoolCount}
                   </span>
                 ) : null}
@@ -296,11 +297,11 @@ export function ActionChatFeed({
                 type="button"
                 aria-label="캘린더"
                 onClick={() => setActiveActionsOpen(true)}
-                className="relative flex size-9 items-center justify-center rounded-full bg-transparent text-white transition-opacity hover:opacity-80 active:scale-95"
+                className="relative flex size-8 items-center justify-center rounded-full bg-transparent text-white transition-opacity hover:opacity-80 active:scale-95 sm:size-9"
               >
-                <Calendar className="size-5" strokeWidth={2.1} />
+                <Calendar className="size-[1.15rem] sm:size-5" strokeWidth={2.1} />
                 {uiHydrated && badgeCount > 0 ? (
-                  <span className="absolute -right-1 -top-1 flex size-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-rimvio-base px-0.5 text-[10px] font-extrabold tabular-nums leading-none text-rimvio-neon-amber shadow-[0_0_8px_rgba(255,214,10,0.35)]">
+                  <span className="absolute -right-0.5 -top-0.5 flex size-4 min-w-4 items-center justify-center rounded-full bg-rimvio-base px-0.5 text-[9px] font-extrabold tabular-nums leading-none text-rimvio-neon-amber shadow-[0_0_8px_rgba(255,214,10,0.35)] sm:-right-1 sm:-top-1 sm:size-[1.125rem] sm:min-w-[1.125rem] sm:text-[10px]">
                     {badgeCount > 9 ? "9+" : badgeCount}
                   </span>
                 ) : null}
@@ -308,12 +309,17 @@ export function ActionChatFeed({
               <Link
                 href="/welcome"
                 aria-label="설정"
-                className="flex size-9 items-center justify-center rounded-full bg-transparent text-white transition-opacity hover:opacity-80 active:scale-95"
+                className="flex size-8 items-center justify-center rounded-full bg-transparent text-white transition-opacity hover:opacity-80 active:scale-95 sm:size-9"
               >
-                <Settings2 className="size-5" strokeWidth={2.1} />
+                <Settings2 className="size-[1.15rem] sm:size-5" strokeWidth={2.1} />
               </Link>
             </div>
           </div>
+          <RimvioProductContextStrip
+            variant="feed"
+            layout="header"
+            className="mt-1.5 border-t border-white/[0.06] pt-1.5"
+          />
         </header>
 
         <RimvioManualFeedBanner className="mx-4 mb-2 mt-1 shrink-0" />
