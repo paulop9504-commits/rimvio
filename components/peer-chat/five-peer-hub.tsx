@@ -33,6 +33,9 @@ type FivePeerHubProps = {
   centerInitial: string;
   centerAvatarUrl?: string | null;
   peerMetaByThread?: Map<string, SocialBubblePeer>;
+  /** Per-friend AI 렌즈 toggle (long-press profile on hub). */
+  lensEnabledByThreadId?: ReadonlyMap<string, boolean>;
+  onTogglePeerLens?: (peerThreadId: string) => void;
   archiveBag?: {
     href: string;
     count: number;
@@ -65,12 +68,16 @@ function nodePosition(positions: HubNodePositions, slotIndex: PinnedSlotIndex): 
   return positions.slots[slotIndex];
 }
 
+const LENS_LINE_BLUR_ID = "rimvio-hub-lens-line-blur";
+
 export function FivePeerHub({
   roster,
   centerLabel,
   centerInitial,
   centerAvatarUrl,
   peerMetaByThread,
+  lensEnabledByThreadId,
+  onTogglePeerLens,
   archiveBag,
   onAssignSlot,
   className,
@@ -80,6 +87,7 @@ export function FivePeerHub({
   const positionsRef = useRef<HubNodePositions>(defaultHubNodePositions());
   const dragRef = useRef<DragSession | null>(null);
   const suppressClickRef = useRef(false);
+  const longPressTimerRef = useRef<number | null>(null);
   const [positions, setPositions] = useState<HubNodePositions>(defaultHubNodePositions);
 
   useEffect(() => {
@@ -171,20 +179,38 @@ export function FivePeerHub({
     [commitPositions],
   );
 
+  const clearLongPress = useCallback(() => {
+    if (longPressTimerRef.current != null) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }, []);
+
   const beginDrag = useCallback(
-    (target: DragTarget) => (event: React.PointerEvent<HTMLElement>) => {
-      event.preventDefault();
-      suppressClickRef.current = false;
-      dragRef.current = {
-        target,
-        pointerId: event.pointerId,
-        startX: event.clientX,
-        startY: event.clientY,
-        moved: false,
-      };
-      event.currentTarget.setPointerCapture(event.pointerId);
-    },
-    [],
+    (target: DragTarget, peerThreadId?: string) =>
+      (event: React.PointerEvent<HTMLElement>) => {
+        event.preventDefault();
+        suppressClickRef.current = false;
+        clearLongPress();
+        dragRef.current = {
+          target,
+          pointerId: event.pointerId,
+          startX: event.clientX,
+          startY: event.clientY,
+          moved: false,
+        };
+        if (peerThreadId && onTogglePeerLens) {
+          longPressTimerRef.current = window.setTimeout(() => {
+            if (dragRef.current && !dragRef.current.moved) {
+              suppressClickRef.current = true;
+              onTogglePeerLens(peerThreadId);
+            }
+            clearLongPress();
+          }, 520);
+        }
+        event.currentTarget.setPointerCapture(event.pointerId);
+      },
+    [clearLongPress, onTogglePeerLens],
   );
 
   const moveDrag = useCallback(
@@ -198,6 +224,7 @@ export function FivePeerHub({
       if (distance > 6) {
         session.moved = true;
         suppressClickRef.current = true;
+        clearLongPress();
       }
 
       if (!session.moved) {
@@ -206,7 +233,7 @@ export function FivePeerHub({
 
       updateDraggedPoint(clientToPoint(event.clientX, event.clientY));
     },
-    [clientToPoint, updateDraggedPoint],
+    [clientToPoint, updateDraggedPoint, clearLongPress],
   );
 
   const endDrag = useCallback((event: React.PointerEvent<HTMLElement>) => {
@@ -220,14 +247,16 @@ export function FivePeerHub({
     }
 
     dragRef.current = null;
-  }, []);
+    clearLongPress();
+  }, [clearLongPress]);
 
   const dragSurfaceProps = (
     target: DragTarget,
     extraClass?: string,
     onTap?: () => void,
+    peerThreadId?: string,
   ) => ({
-    onPointerDown: beginDrag(target),
+    onPointerDown: beginDrag(target, peerThreadId),
     onPointerMove: moveDrag,
     onPointerUp: endDrag,
     onPointerCancel: endDrag,
@@ -259,24 +288,47 @@ export function FivePeerHub({
       aria-label="관계 버블 · 친한 5 + 구슬 주머니"
     >
       <svg className="pointer-events-none absolute inset-0 size-full" viewBox="0 0 100 100" aria-hidden>
+        <defs>
+          <filter id={LENS_LINE_BLUR_ID} x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="0.45" />
+          </filter>
+        </defs>
         {nodes.map((node, index) => {
           const slotIndex = (node.kind === "vacant" ? node.slotIndex : node.slot.slotIndex) as PinnedSlotIndex;
           const peerPoint = nodePosition(positions, slotIndex);
           const active = node.kind === "connected";
           const stroke = active ? PINNED_CONNECTION_STROKE : FIVE_PEER_HUB_LINE_COLORS[index];
+          const threadId =
+            node.kind === "connected" ? node.slot.peerThreadId : null;
+          const lensOn =
+            Boolean(threadId) && lensEnabledByThreadId?.get(threadId!) === true;
 
           return (
-            <line
-              key={`line-${lineKey(node)}`}
-              x1={positions.center.x}
-              y1={positions.center.y}
-              x2={peerPoint.x}
-              y2={peerPoint.y}
-              stroke={stroke}
-              strokeWidth={active ? "0.6" : "0.4"}
-              strokeLinecap="round"
-              opacity={active ? 0.85 : 0.4}
-            />
+            <g key={`line-${lineKey(node)}`}>
+              {lensOn ? (
+                <line
+                  x1={positions.center.x}
+                  y1={positions.center.y}
+                  x2={peerPoint.x}
+                  y2={peerPoint.y}
+                  stroke={stroke}
+                  strokeWidth="0.95"
+                  strokeLinecap="round"
+                  opacity={0.35}
+                  filter={`url(#${LENS_LINE_BLUR_ID})`}
+                />
+              ) : null}
+              <line
+                x1={positions.center.x}
+                y1={positions.center.y}
+                x2={peerPoint.x}
+                y2={peerPoint.y}
+                stroke={stroke}
+                strokeWidth={active ? "0.6" : "0.4"}
+                strokeLinecap="round"
+                opacity={lensOn ? 0.92 : active ? 0.85 : 0.4}
+              />
+            </g>
           );
         })}
         {archiveBag ? (
@@ -356,9 +408,18 @@ export function FivePeerHub({
               href={href}
               onMouseEnter={() => prefetchPeerMessages(node.slot.peerThreadId!)}
               onTouchStart={() => prefetchPeerMessages(node.slot.peerThreadId!)}
-              {...dragSurfaceProps(slotIndex, "flex flex-col items-center gap-1 active:scale-95")}
+              {...dragSurfaceProps(
+                slotIndex,
+                "flex flex-col items-center gap-1 active:scale-95",
+                undefined,
+                node.slot.peerThreadId!,
+              )}
               style={style}
-              aria-label={displayName}
+              aria-label={
+                lensEnabledByThreadId?.get(node.slot.peerThreadId!)
+                  ? `${displayName} · AI 렌즈 켜짐`
+                  : displayName
+              }
             >
               <PeerProfileAvatar
                 displayName={displayName}
@@ -367,6 +428,8 @@ export function FivePeerHub({
                 className={cn(
                   "!size-[3.75rem] !text-lg border-2 bg-rimvio-surface",
                   BUBBLE_RING_CLASS[bubbleState],
+                  lensEnabledByThreadId?.get(node.slot.peerThreadId!) &&
+                    "ring-2 ring-cyan-400/45 shadow-[0_0_14px_rgba(34,211,238,0.22)]",
                 )}
               />
               <span className="flex max-w-[5.5rem] flex-col items-center leading-tight">
@@ -429,7 +492,7 @@ export function FivePeerHub({
       ) : null}
 
       <p className="sr-only">
-        AI 허브 5명 · 허브 해제 시 며칠 뒤 대화만 삭제되고 친구 목록은 유지돼요. 프로필을 드래그해
+        AI 허브 5명 · 친구 프로필을 길게 누르면 AI 렌즈를 켜거나 끌 수 있어요. 프로필을 드래그해
         배치할 수 있어요.
       </p>
     </div>

@@ -1,6 +1,6 @@
 import type { CalendarOverlayAction } from "@/lib/calendar/calendar-view-types";
 import type { ActionDecisionCandidate } from "@/lib/action-decision/types";
-import { splitMainAuxActions } from "@/lib/action-decision/split-main-aux-actions";
+import { splitMainAuxActionsWithExplain } from "@/lib/action-decision/split-main-aux-actions";
 import { resolvePluginDeeplink } from "@/lib/action-spawn/resolve-plugin-deeplink";
 import { shouldHideAuxForPhase } from "@/lib/action-spawn/resolve-lifecycle-phase";
 import { generateSecondaryActions } from "@/lib/secondary-action-generator/generate-secondary-actions";
@@ -50,7 +50,7 @@ export function applyMainAuxToOverlayActions(input: {
     return [];
   }
 
-  const split = splitMainAuxActions({
+  const split = splitMainAuxActionsWithExplain({
     candidates: input.actions.map(overlayActionToCandidate),
     minutes_until_event: input.minutes_until_event,
     ranking_context_key: input.ranking_context_key,
@@ -73,6 +73,7 @@ export function applyMainAuxToOverlayActions(input: {
       ...main,
       action_tier: "MAIN",
       plugin: mainWire.plugin,
+      ranking_why: split.primary_why_line,
       deeplink: resolvePluginDeeplink(mainWire.plugin, {
         label: mainWire.label,
         destination: input.event?.location ?? null,

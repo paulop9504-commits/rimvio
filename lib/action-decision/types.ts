@@ -23,6 +23,8 @@ export type ActionDecisionScores = {
   state_change_weight: number;
   external_execution_weight: number;
   user_history_weight: number;
+  /** Archive rollup boost applied in composite (prep surface / dock). */
+  rollup_score_delta: number;
   composite_score: number;
 };
 

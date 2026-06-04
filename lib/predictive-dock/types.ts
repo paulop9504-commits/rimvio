@@ -48,6 +48,8 @@ export type PredictiveDockAction = {
   plugin?: string | null;
   /** Secondary generator reason. */
   secondary_reason?: "next_step" | "risk" | "convenience";
+  /** Deterministic MAIN ranking hint (Korean). */
+  rankingWhy?: string;
 };
 
 export type PredictiveDockWire = {

@@ -50,6 +50,13 @@ export function shouldRunAiLens(input: PeerThreadPolicyInput): boolean {
   return input.settings.aiLensEnabled;
 }
 
+/**
+ * DM Room — bubble suggestions only when this friend’s AI 렌즈 is ON (per-thread toggle).
+ */
+export function shouldAnalyzePeerAiLens(input: PeerThreadPolicyInput): boolean {
+  return input.settings.aiLensEnabled;
+}
+
 /** Any known friend can persist chat locally; AI import only when pinned. */
 export function shouldPersistPeerMessageLog(input: PeerThreadPolicyInput): boolean {
   if (FIVE_PEER_ROOMS_PRODUCT) {

@@ -62,7 +62,11 @@ export function FeedSwipeSlide({
   const deleteOpacity = useTransform(x, [0, 24, DISMISS_OFFSET], [0, 0.45, 1]);
   const deleteScale = useTransform(x, [0, DISMISS_OFFSET], [0.92, 1]);
   const rotation = useMemo(
-    () => buildFeedActionRotation(getLinkActions(link), link.original_url),
+    () =>
+      buildFeedActionRotation(getLinkActions(link), link.original_url, {
+        domain: link.domain,
+        category: link.category,
+      }),
     [link]
   );
 

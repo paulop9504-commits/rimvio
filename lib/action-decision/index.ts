@@ -28,6 +28,7 @@ export {
   scoreActionDecision,
   scoreAllActionDecisions,
   splitMainAuxActions,
+  splitMainAuxActionsWithExplain,
 } from "@/lib/action-decision/split-main-aux-actions";
 
 export {

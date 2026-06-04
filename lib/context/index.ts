@@ -65,6 +65,7 @@ export {
   isPinnedFullStorage,
   peerStorageMode,
   shouldRunAiLens,
+  shouldAnalyzePeerAiLens,
   shouldPersistPeerMessageLog,
   shouldRunEphemeralExtract,
   shouldShowContextRail,

@@ -8,6 +8,7 @@ import {
   inferUserHistoryWeight,
   resolveActionPlugin,
 } from "@/lib/action-decision/infer-action-signals";
+import { buildDockRankingWhyFromScored } from "@/lib/action-decision/build-dock-ranking-explain";
 import {
   ACTION_DECISION_WEIGHTS,
   MAX_AUX_ACTIONS,
@@ -67,9 +68,40 @@ export function scoreActionDecision(input: {
     state_change_weight,
     external_execution_weight,
     user_history_weight,
+    rollup_score_delta,
     composite_score,
     tier,
     can_be_main: canBeMainAction(input.candidate),
+  };
+}
+
+export type MainAuxSplitWithExplain = MainAuxSplitOutput & {
+  primary_why_line: string | null;
+};
+
+/** MAIN/AUX split + one-line Korean explain for dock UI. */
+export function splitMainAuxActionsWithExplain(input: {
+  candidates: readonly ActionDecisionCandidate[];
+  minutes_until_event?: number | null;
+  ranking_context_key?: string;
+}): MainAuxSplitWithExplain {
+  const scored = input.candidates.map((candidate) =>
+    scoreActionDecision({
+      candidate,
+      minutes_until_event: input.minutes_until_event,
+      ranking_context_key: input.ranking_context_key,
+    }),
+  );
+  const split = splitMainAuxActions(input);
+  const primaryScored = split.primary_action
+    ? scored.find((entry) => entry.id === split.primary_action!.action_id)
+    : null;
+
+  return {
+    ...split,
+    primary_why_line: primaryScored
+      ? buildDockRankingWhyFromScored(primaryScored)
+      : null,
   };
 }
 

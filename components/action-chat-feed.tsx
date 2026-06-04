@@ -52,6 +52,9 @@ import { shouldShowColdStartMagic } from "@/lib/onboarding/cold-start-magic";
 import type { LocateActionResult } from "@/lib/locate/types";
 import type { ContextRemoteState } from "@/lib/remote/resolve-context-remote";
 import type { LinkRow } from "@/types/database";
+import { ActionDockWhyLine } from "@/components/action-dock/action-dock-why-line";
+import { PredictiveActionDock } from "@/components/action-chat/predictive-action-dock";
+import { buildUserExplainabilityKoLine } from "@/lib/event-os/ui-binding/build-user-explainability-ko";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -124,6 +127,8 @@ export function ActionChatFeed({
     cancelInlineFocus,
     completeInlineFocus,
     handleFocusHeldInAppAction,
+    eventOsProofRender,
+    eventOsLastProof,
   } = useActionChat(activeLink, chainedLinks);
   const reminderMap = useLinkReminderMap();
   const linkIds = useMemo(() => links.map((link) => link.id), [links]);
@@ -145,6 +150,16 @@ export function ActionChatFeed({
     schedule: masterContext.existingSchedule,
     referenceDate: masterContext.currentDate,
   });
+
+  const causalWhyLine = useMemo(() => {
+    if (!eventOsProofRender || !eventOsLastProof) {
+      return null;
+    }
+    return buildUserExplainabilityKoLine(
+      eventOsLastProof,
+      eventOsProofRender.explainability,
+    );
+  }, [eventOsLastProof, eventOsProofRender]);
   const actionContextByMessageId = useMemo(() => {
     const map: Record<string, string> = {};
     for (const message of messages) {
@@ -411,6 +426,28 @@ export function ActionChatFeed({
               </div>
             </ExecutionTimeline>
           </div>
+
+          {dockActions.length > 0 ? (
+            <div className="shrink-0 px-3 pb-1">
+              <PredictiveActionDock
+                actions={dockActions}
+                onSelect={(action) => {
+                  markOpportunityConsumed(action.id);
+                  recordDockActionUsage({ action });
+                  window.dispatchEvent(
+                    new CustomEvent("rimvio:opportunity-consumed"),
+                  );
+                  void sendMessage(action.prompt);
+                }}
+              />
+            </div>
+          ) : null}
+
+          {causalWhyLine ? (
+            <div className="shrink-0 px-5 pb-1">
+              <ActionDockWhyLine line={causalWhyLine} variant="overlay" />
+            </div>
+          ) : null}
 
           <ActionChatInputBar
             placeholder={

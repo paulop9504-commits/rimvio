@@ -9,6 +9,7 @@ import {
   recordOverlayActionTelemetry,
   recordOverlayActionsShown,
 } from "@/lib/archive/record-action-telemetry";
+import { ActionDockWhyLine } from "@/components/action-dock/action-dock-why-line";
 import { cn } from "@/lib/utils";
 import type {
   CalendarEventChip,
@@ -144,20 +145,28 @@ export function OverlayEventChip({
       ) : null}
 
       {mainAction ? (
-        <MainActionButton
-          label={mainAction.label}
-          brand={resolveMainActionBrandStyle({
-            id: mainAction.id,
-            label: mainAction.label,
-            deeplink: mainAction.deeplink,
-            plugin: mainAction.plugin,
-          })}
-          compact
-          onClick={(clickEvent) => {
-            clickEvent.stopPropagation();
-            handleAction(mainAction);
-          }}
-        />
+        <div className="space-y-1">
+          <MainActionButton
+            label={mainAction.label}
+            brand={resolveMainActionBrandStyle({
+              id: mainAction.id,
+              label: mainAction.label,
+              deeplink: mainAction.deeplink,
+              plugin: mainAction.plugin,
+            })}
+            compact
+            onClick={(clickEvent) => {
+              clickEvent.stopPropagation();
+              handleAction(mainAction);
+            }}
+          />
+          {mainAction.ranking_why ? (
+            <ActionDockWhyLine
+              line={mainAction.ranking_why}
+              className="px-0.5 text-left"
+            />
+          ) : null}
+        </div>
       ) : null}
 
       {auxActions.length > 0 ? (

@@ -1,6 +1,7 @@
 "use client";
 
 import type { DockActionWire } from "@/lib/action-os/types";
+import { ActionDockWhyLine } from "@/components/action-dock/action-dock-why-line";
 import { cn } from "@/lib/utils";
 
 type ActionOsDockStripProps = {
@@ -18,7 +19,8 @@ export function ActionOsDockStrip({
   className,
 }: ActionOsDockStripProps) {
   return (
-    <div className={cn("flex flex-wrap gap-2", className)}>
+    <div className={cn("space-y-1.5", className)}>
+      <div className="flex flex-wrap gap-2">
       <button
         type="button"
         onClick={() => onAction(main_action)}
@@ -36,6 +38,10 @@ export function ActionOsDockStrip({
           {action.label}
         </button>
       ))}
+      </div>
+      {main_action.rankingWhy ? (
+        <ActionDockWhyLine line={main_action.rankingWhy} className="text-left" />
+      ) : null}
     </div>
   );
 }

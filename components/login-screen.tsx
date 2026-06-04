@@ -63,6 +63,9 @@ export function LoginScreen() {
         <p className="mt-4 text-[14px] leading-relaxed text-muted-foreground">
           {copy.auth.loginPrompt}
         </p>
+        <p className="mt-2 text-[12px] leading-relaxed text-white/45">
+          {copy.profileSetup.loginSub}
+        </p>
 
         <div className="mt-8">
           <GoogleSignInButton
@@ -70,7 +73,11 @@ export function LoginScreen() {
             busy={busy}
             onClick={() => {
               setBusy(true);
-              void signInWithGoogle(nextPath)
+              const target =
+                nextPath === "/feed" || nextPath === "/"
+                  ? "/onboarding"
+                  : nextPath;
+              void signInWithGoogle(target)
                 .catch(() => {
                   toast.error(copy.auth.loginFail, {
                     description: copy.auth.loginFailHint,

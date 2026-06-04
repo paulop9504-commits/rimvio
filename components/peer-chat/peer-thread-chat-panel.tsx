@@ -18,7 +18,13 @@ import { isDmThreadId } from "@/lib/peer-chat/dm-thread";
 import { DM_CHAT } from "@/lib/peer-chat/dm-chat-density";
 import { shouldShowPeerMessageTime } from "@/lib/peer-chat/message-time-visibility";
 import { normalizePeerSyncError } from "@/lib/peer-chat/normalize-peer-sync-error";
+import { shouldAnalyzePeerAiLens } from "@/lib/context/peer-thread-policy";
+import { executeDeepLinkBubbleCandidate } from "@/lib/peer-chat/ai-lens/execute-lens-bubble";
+import type { DeepLinkBubbleCandidate } from "@/lib/peer-chat/ai-lens/types";
+import { LensMapPickerSheet } from "@/components/peer-chat/lens-map-picker-sheet";
+import { usePeerAiLens } from "@/hooks/use-peer-ai-lens";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 type PeerThreadChatPanelProps = {
   displayName: string;
@@ -34,12 +40,14 @@ type PeerThreadChatPanelProps = {
 export function PeerThreadChatPanel({
   displayName,
   policyInput,
+  aiLensEnabled,
   readOnly = false,
   simpleDm = false,
 }: PeerThreadChatPanelProps) {
   const threadId = policyInput.settings.peerThreadId;
   const phoneDm = isDmThreadId(threadId);
   const simple = simpleDm || phoneDm;
+  const lensActive = shouldAnalyzePeerAiLens(policyInput);
   const {
     messages,
     canSend,
@@ -50,11 +58,19 @@ export function PeerThreadChatPanel({
     aiBusy,
     messagesHydrating,
   } = usePeerThreadChat(policyInput);
+  const { anchorMessageId, candidates: lensCandidates } = usePeerAiLens({
+    messages,
+    enabled: lensActive && !readOnly,
+  });
   const [text, setText] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const scrollBehaviorRef = useRef<ScrollBehavior>("auto");
   const [messagesVisible, setMessagesVisible] = useState(false);
+  const [mapPicker, setMapPicker] = useState<{
+    open: boolean;
+    place: string | null;
+  }>({ open: false, place: null });
 
   const focusComposer = useCallback(() => {
     requestAnimationFrame(() => {
@@ -133,6 +149,21 @@ export function PeerThreadChatPanel({
     }
   };
 
+  const handleLensSelect = (candidate: DeepLinkBubbleCandidate) => {
+    const result = executeDeepLinkBubbleCandidate(candidate, {
+      sourceMessageId: anchorMessageId ?? undefined,
+      peerDisplayName: displayName,
+    });
+    if (result.openMapPicker?.place) {
+      setMapPicker({ open: true, place: result.openMapPicker.place });
+    }
+    if (result.ok) {
+      toast.success(result.message);
+    } else {
+      toast.error(result.message);
+    }
+  };
+
   return (
     <div
       className={cn(
@@ -186,6 +217,11 @@ export function PeerThreadChatPanel({
                 message={message}
                 simple={simple}
                 showTime={shouldShowPeerMessageTime(messages, index)}
+                lensCandidates={
+                  message.id === anchorMessageId ? lensCandidates : []
+                }
+                onLensSelect={handleLensSelect}
+                lensDisabled={aiBusy}
               />
             ))}
             {aiBusy ? (
@@ -267,6 +303,14 @@ export function PeerThreadChatPanel({
           </button>
         </form>
       </div>
+
+      <LensMapPickerSheet
+        open={mapPicker.open}
+        place={mapPicker.place}
+        onOpenChange={(open) =>
+          setMapPicker((prev) => ({ ...prev, open, place: open ? prev.place : null }))
+        }
+      />
     </div>
   );
 }

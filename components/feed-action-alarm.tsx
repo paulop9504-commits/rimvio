@@ -34,6 +34,7 @@ type FeedActionAlarmProps = {
   marketSnapshot?: MarketPriceSnapshot | null;
   trueCostReceipt?: TrueCostReceipt | null;
   studyReceipt?: StudyReceipt | null;
+  rankingWhy?: string | null;
 };
 
 /** Action alarm + optional receipt peek (auto show/hide). */
@@ -58,6 +59,7 @@ export function FeedActionAlarm({
   marketSnapshot = null,
   trueCostReceipt = null,
   studyReceipt = null,
+  rankingWhy = null,
 }: FeedActionAlarmProps) {
   const peekEnabled = Boolean(peekKind);
   const { visible: peekVisible, dismiss: dismissPeek } = useReceiptPeekCycle(
@@ -110,6 +112,7 @@ export function FeedActionAlarm({
         primaryVariant={primaryVariant}
         showPrimary={showPrimary}
         loading={loading}
+        rankingWhy={rankingWhy}
       />
     </div>
   );

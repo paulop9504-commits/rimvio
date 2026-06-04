@@ -20,6 +20,8 @@ export type FinalizeOpportunitiesInput = {
   activeChains?: readonly CanonicalContainerKey[];
   consumedOpportunityIds?: readonly string[];
   minutesUntilAnchor?: number | null;
+  /** Archive rollup context — e.g. `event.travel.mention:navigate`. */
+  ranking_context_key?: string;
 };
 
 function flattenWire(wire: PredictiveDockWire): PredictiveDockAction[] {
@@ -83,6 +85,7 @@ export function finalizeActionOpportunities(
   return applyMainAuxToDockWire({
     actions: scored.map((entry) => entry.action),
     minutes_until_event: input.minutesUntilAnchor ?? null,
+    ranking_context_key: input.ranking_context_key,
   });
 }
 

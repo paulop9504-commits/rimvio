@@ -1,8 +1,8 @@
-import { pickFoggPrimaryAction } from "@/lib/behavior/fogg";
 import { openOriginalLabel } from "@/lib/copy/human-ko";
 import { isOpenOriginalAction } from "@/lib/feed/feed-display";
 import { filterFeedDisplayActions } from "@/lib/feed/feed-action-filter";
-import type { LinkActionItem } from "@/types/database";
+import { rankFeedLinkActionsForDock } from "@/lib/feed/rank-feed-link-actions";
+import type { LinkActionItem, LinkRow } from "@/types/database";
 
 function normalizeHref(href?: string | null) {
   return href?.replace(/\/$/, "") ?? "";
@@ -43,10 +43,11 @@ function buildOriginalFallback(originalUrl: string): LinkActionItem {
   };
 }
 
-/** Feed refresh rail: smart default first, original URL on first press, then the rest. */
+/** Feed refresh rail: learned MAIN first, original URL on first press, then the rest. */
 export function buildFeedActionRotation(
   actions: LinkActionItem[],
-  originalUrl: string
+  originalUrl: string,
+  linkMeta?: Pick<LinkRow, "domain" | "category">,
 ): LinkActionItem[] {
   const displayActions = filterFeedDisplayActions(actions);
 
@@ -54,7 +55,13 @@ export function buildFeedActionRotation(
     return [buildOriginalFallback(originalUrl)];
   }
 
-  const primary = pickFoggPrimaryAction(displayActions) ?? displayActions[0];
+  const primary =
+    linkMeta &&
+    rankFeedLinkActionsForDock({
+      actions: displayActions,
+      link: { ...linkMeta, original_url: originalUrl },
+    })[0]?.action;
+  const resolvedPrimary = primary ?? displayActions[0];
   const original =
     findOriginalUrlAction(actions, originalUrl) ?? buildOriginalFallback(originalUrl);
 
@@ -69,8 +76,8 @@ export function buildFeedActionRotation(
     rotation.push(action);
   };
 
-  pushUnique(primary);
-  if (primary.id !== original.id) {
+  pushUnique(resolvedPrimary);
+  if (resolvedPrimary.id !== original.id) {
     pushUnique(original);
   }
   for (const action of displayActions) {
@@ -83,8 +90,9 @@ export function buildFeedActionRotation(
 export function resolveFeedFocusedAction(
   actions: LinkActionItem[],
   originalUrl: string,
-  actionIndex: number
+  actionIndex: number,
+  linkMeta?: Pick<LinkRow, "domain" | "category">,
 ): LinkActionItem {
-  const rotation = buildFeedActionRotation(actions, originalUrl);
+  const rotation = buildFeedActionRotation(actions, originalUrl, linkMeta);
   return rotation[actionIndex % rotation.length];
 }

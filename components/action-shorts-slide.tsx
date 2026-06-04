@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FeedShareSheet } from "@/components/feed-share-sheet";
 import { ScheduleMediumSheet } from "@/components/schedule-medium-sheet";
@@ -23,6 +23,9 @@ import {
 } from "@/hooks/use-personalized-feed-actions";
 import { isScheduleAction } from "@/lib/actions/is-schedule-action";
 import { runFeedLinkAction } from "@/lib/feed/run-feed-link-action";
+import { buildFeedPrimaryRankingWhy } from "@/lib/feed/rank-feed-link-actions";
+import { recordFeedLinkActionTelemetry } from "@/lib/archive/record-feed-link-telemetry";
+import { buildLinkRankingContextKey } from "@/lib/feed/build-link-ranking-context-key";
 import { useCopy, useAppLocale } from "@/hooks/use-copy";
 import type { Copy } from "@/lib/i18n/types";
 import { shadowAction } from "@/lib/action-shadowing";
@@ -298,6 +301,38 @@ export function ActionShortsSlide({
   const primaryLabel = mapLaunchContext
     ? mapPrimaryLabel(mapLaunchContext)
     : cleanFeedActionLabel(focused.label, locale);
+
+  const rankingWhy = useMemo(
+    () =>
+      buildFeedPrimaryRankingWhy({
+        actions,
+        primary: focused,
+        link,
+      }),
+    [actions, focused, link],
+  );
+
+  const rankingContextKey = useMemo(
+    () =>
+      buildLinkRankingContextKey({
+        domain: link.domain,
+        category: link.category,
+      }),
+    [link.category, link.domain],
+  );
+
+  useEffect(() => {
+    if (!isActive) {
+      return;
+    }
+    recordFeedLinkActionTelemetry({
+      link,
+      action: focused,
+      kind: "shown",
+      contextKey: rankingContextKey,
+      tier: "MAIN",
+    });
+  }, [focused.id, isActive, link.id, rankingContextKey]);
   const loopHint = resolveOpenLoopHint(link);
   const loopLevel = resolveOpenLoopLevel(link);
   const showLocatePanel =
@@ -395,6 +430,7 @@ export function ActionShortsSlide({
       loading={locateLoading}
       showPrimary={Boolean(locatePanel?.primary ?? true)}
       primaryVariant={isYouTube ? "youtube" : "default"}
+      rankingWhy={rankingWhy}
     />
   ) : (
     <FeedActionAlarm
@@ -411,6 +447,7 @@ export function ActionShortsSlide({
       onSecondary={runSecondaryAction}
       locale={locale}
       primaryVariant={isYouTube ? "youtube" : "default"}
+      rankingWhy={rankingWhy}
       timeReceipt={timeReceipt}
       marketSnapshot={marketPrice}
       trueCostReceipt={trueCostReceipt}

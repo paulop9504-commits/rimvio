@@ -50,3 +50,8 @@ export {
   recordOverlayActionTelemetry,
   recordOverlayActionsShown,
 } from "@/lib/archive/record-action-telemetry";
+export {
+  feedLinkTelemetryEventId,
+  foldFeedLinkLearning,
+  recordFeedLinkActionTelemetry,
+} from "@/lib/archive/record-feed-link-telemetry";

@@ -47,6 +47,8 @@ export type CalendarOverlayAction = {
   /** Secondary generator reason. */
   secondary_reason?: "next_step" | "risk" | "convenience";
   deeplink?: string | null;
+  /** Prep surface — why this action is MAIN. */
+  ranking_why?: string | null;
 };
 
 /** Unified render row: Event base + attached actions (composition only). */

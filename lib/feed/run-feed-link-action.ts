@@ -9,6 +9,11 @@ import { toActionFamily, toDomainFamily } from "@/lib/personalization/action-fam
 import { recordLocalPersonalizationClick } from "@/lib/personalization/client-store";
 import { trackPersonalizationClick } from "@/hooks/use-personalized-feed-actions";
 import { toContextBin } from "@/lib/intent/context-bin";
+import {
+  foldFeedLinkLearning,
+  recordFeedLinkActionTelemetry,
+} from "@/lib/archive/record-feed-link-telemetry";
+import { buildLinkRankingContextKey } from "@/lib/feed/build-link-ranking-context-key";
 import { markFirstActionSuccess } from "@/lib/platform/pwa-install-nudge";
 import { recordActionTrustSuccess } from "@/lib/preferences/action-trust";
 import type { ScheduleMedium } from "@/lib/preferences/schedule-medium";
@@ -56,9 +61,21 @@ export async function runFeedLinkAction(
 
   const actionFamily = toActionFamily(action);
   const domainFamily = toDomainFamily(link.domain, link.category);
+  const rankingContextKey = buildLinkRankingContextKey({
+    domain: link.domain,
+    category: link.category,
+  });
   const contextBin = toContextBin(
     normalizeEnricherContext({ hour: new Date().getHours() })
   );
+
+  recordFeedLinkActionTelemetry({
+    link,
+    action,
+    kind: "clicked",
+    contextKey: rankingContextKey,
+    tier: "MAIN",
+  });
 
   recordLocalPersonalizationClick({
     linkId: link.id,
@@ -81,6 +98,15 @@ export async function runFeedLinkAction(
   markFirstActionSuccess();
   recordActionTrustSuccess();
   window.dispatchEvent(new CustomEvent("rimvio:first-action"));
+
+  recordFeedLinkActionTelemetry({
+    link,
+    action,
+    kind: "executed",
+    contextKey: rankingContextKey,
+    tier: "MAIN",
+  });
+  foldFeedLinkLearning({ linkId: link.id, contextKey: rankingContextKey });
 
   notifyLinkActionResult(result, action, copy);
 }

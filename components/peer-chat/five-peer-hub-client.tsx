@@ -10,11 +10,14 @@ import { IOS } from "@/lib/ui/ios-surface";
 import { countConnectedPeers } from "@/lib/context/pinned-peer-roster";
 import {
   assignPeerToHubAndPin,
+  readPeerThreadSettings,
   readPinnedRoster,
+  setPeerThreadAiLens,
   syncPinnedRoster,
 } from "@/lib/context/peer-thread-settings-store";
 import type { PinnedSlotIndex } from "@/lib/context/peer-thread-types";
 import { PeerProfileSetup } from "@/components/peer-chat/peer-profile-setup";
+import { RimvioGoogleSignInCard } from "@/components/rimvio-google-sign-in-card";
 import {
   addPeerByPhoneRemote,
   fetchMyAccountProfile,
@@ -60,6 +63,8 @@ export function FivePeerHubClient() {
     [pinnedPeers],
   );
 
+  const [lensRevision, setLensRevision] = useState(0);
+
   const archiveList = useMemo(
     () => listArchivePeers(pinnedPeers, archivePeers),
     [pinnedPeers, archivePeers],
@@ -80,6 +85,44 @@ export function FivePeerHubClient() {
     setRoster(syncPinnedRoster());
     setContacts(readPeerContacts());
   }, []);
+
+  const lensEnabledByThreadId = useMemo(() => {
+    const map = new Map<string, boolean>();
+    for (const slot of roster.slots) {
+      if (slot.peerThreadId && slot.connection === "connected") {
+        const threadSettings = readPeerThreadSettings(slot.peerThreadId);
+        map.set(slot.peerThreadId, Boolean(threadSettings?.aiLensEnabled));
+      }
+    }
+    return map;
+  }, [roster, lensRevision]);
+
+  const handleTogglePeerLens = useCallback(
+    (peerThreadId: string) => {
+      const slot = roster.slots.find((s) => s.peerThreadId === peerThreadId);
+      const meta = peerMetaMap.get(peerThreadId);
+      const displayName =
+        meta?.displayName?.trim() ||
+        slot?.displayName?.trim() ||
+        meta?.rimvioId ||
+        "친구";
+      const current = readPeerThreadSettings(peerThreadId)?.aiLensEnabled ?? false;
+      const next = !current;
+      setPeerThreadAiLens({
+        peerThreadId,
+        displayName,
+        enabled: next,
+      });
+      setLensRevision((n) => n + 1);
+      refresh();
+      toast.success(
+        next
+          ? `${displayName} · AI 렌즈 켜짐`
+          : `${displayName} · AI 렌즈 꺼짐`,
+      );
+    },
+    [roster, peerMetaMap, refresh],
+  );
 
   const loadSocialLayer = useCallback(async () => {
     if (!usePhoneChat) {
@@ -229,6 +272,10 @@ export function FivePeerHubClient() {
 
   return (
     <div className="flex flex-col gap-4 pb-6">
+      {!usePhoneChat && configured ? (
+        <RimvioGoogleSignInCard className="mx-1" nextPath="/onboarding" />
+      ) : null}
+
       <p className="px-1 text-center text-[12px] text-white/55">
         친한 5명 · 아래 구슬 주머니 = 나머지 친구 전부
       </p>
@@ -240,6 +287,8 @@ export function FivePeerHubClient() {
           centerInitial={centerInitial}
           centerAvatarUrl={centerAvatarUrl}
           peerMetaByThread={peerMetaMap}
+          lensEnabledByThreadId={lensEnabledByThreadId}
+          onTogglePeerLens={handleTogglePeerLens}
           archiveBag={usePhoneChat ? archiveBagProps : undefined}
           onAssignSlot={(idx) => openPinAssign(idx as PinnedSlotIndex)}
           className="absolute inset-0"

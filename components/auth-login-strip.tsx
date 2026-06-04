@@ -24,7 +24,7 @@ export function AuthLoginStrip() {
         busy={busy}
         onClick={() => {
           setBusy(true);
-          void signInWithGoogle("/")
+          void signInWithGoogle("/onboarding")
             .catch(() => {
               toast.error(copy.auth.loginFail, {
                 description: copy.auth.loginFailHint,

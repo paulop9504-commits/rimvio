@@ -1,9 +1,11 @@
 "use client";
 
 import type { PeerMessage } from "@/lib/context/peer-message-types";
+import { DeepLinkBubbleRow } from "@/components/peer-chat/deep-link-bubble-row";
 import { DM_CHAT } from "@/lib/peer-chat/dm-chat-density";
 import { formatPeerMessageTime } from "@/lib/peer-chat/format-message-time";
 import { PeerAiInlineCard } from "@/components/peer-chat/peer-ai-inline-card";
+import type { DeepLinkBubbleCandidate } from "@/lib/peer-chat/ai-lens/types";
 import { cn } from "@/lib/utils";
 
 type PeerChatBubbleProps = {
@@ -12,6 +14,9 @@ type PeerChatBubbleProps = {
   showTime?: boolean;
   /** 피드 타임라인 — ul/li 대신 div */
   as?: "li" | "div";
+  lensCandidates?: readonly DeepLinkBubbleCandidate[];
+  onLensSelect?: (candidate: DeepLinkBubbleCandidate) => void;
+  lensDisabled?: boolean;
 };
 
 function MessageTime({ time, compact }: { time: string; compact?: boolean }) {
@@ -32,6 +37,9 @@ export function PeerChatBubble({
   simple = false,
   showTime = true,
   as = "li",
+  lensCandidates = [],
+  onLensSelect,
+  lensDisabled = false,
 }: PeerChatBubbleProps) {
   const time =
     showTime && message.sentAt ? formatPeerMessageTime(message.sentAt) : "";
@@ -56,8 +64,18 @@ export function PeerChatBubble({
     );
   }
 
+  const showLens =
+    !isMe &&
+    lensCandidates.length > 0 &&
+    typeof onLensSelect === "function";
+
   return (
-    <Tag className={cn("flex w-full max-w-full", isMe ? "justify-end" : "justify-start")}>
+    <Tag
+      className={cn(
+        "flex w-full max-w-full flex-col",
+        isMe ? "items-end" : "items-start",
+      )}
+    >
       <div
         className={cn(
           "flex max-w-[94%] items-end",
@@ -89,6 +107,14 @@ export function PeerChatBubble({
           <p className="whitespace-pre-wrap break-words">{message.body}</p>
         </div>
       </div>
+      {showLens ? (
+        <DeepLinkBubbleRow
+          candidates={lensCandidates}
+          onSelect={onLensSelect}
+          disabled={lensDisabled}
+          className={cn("mt-1 max-w-[94%]", simple ? "pl-0" : "pl-1")}
+        />
+      ) : null}
     </Tag>
   );
 }

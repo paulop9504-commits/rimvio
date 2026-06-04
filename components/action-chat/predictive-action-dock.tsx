@@ -4,6 +4,7 @@ import { AuxSeedButton } from "@/components/action-chat/aux-seed-button";
 import { MainActionButton } from "@/components/action-chat/main-action-button";
 import { resolveMainActionBrandStyle } from "@/lib/brand/action-brand-style";
 import type { PredictiveDockAction } from "@/lib/predictive-dock/types";
+import { ActionDockWhyLine } from "@/components/action-dock/action-dock-why-line";
 import { cn } from "@/lib/utils";
 
 type PredictiveActionDockProps = {
@@ -36,18 +37,23 @@ export function PredictiveActionDock({
   return (
     <div className={cn("space-y-2 px-1 pb-2 pt-1", className)} aria-label="Action Opportunity">
       {main ? (
-        <MainActionButton
-          label={main.label}
-          brand={resolveMainActionBrandStyle({
-            id: main.id,
-            label: main.label,
-            plugin: main.plugin,
-            type: main.type,
-          })}
-          rounded="2xl"
-          icon={<span className="text-[18px]">{main.icon}</span>}
-          onClick={() => onSelect(main)}
-        />
+        <div className="space-y-1">
+          <MainActionButton
+            label={main.label}
+            brand={resolveMainActionBrandStyle({
+              id: main.id,
+              label: main.label,
+              plugin: main.plugin,
+              type: main.type,
+            })}
+            rounded="2xl"
+            icon={<span className="text-[18px]">{main.icon}</span>}
+            onClick={() => onSelect(main)}
+          />
+          {main.rankingWhy ? (
+            <ActionDockWhyLine line={main.rankingWhy} className="px-1" />
+          ) : null}
+        </div>
       ) : null}
 
       {aux.length > 0 ? (

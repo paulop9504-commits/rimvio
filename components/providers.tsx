@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/hooks/use-auth";
 import { RimvioAuthProfileBootstrap } from "@/components/rimvio-auth-profile-bootstrap";
+import { RimvioProfileSetupGate } from "@/components/rimvio-profile-setup-gate";
 import { isAuthRequired } from "@/lib/auth/policy";
 import { AutoLocaleBootstrap } from "@/components/auto-locale-bootstrap";
 import { DevDemoSeed } from "@/components/dev-demo-seed";
@@ -35,7 +36,7 @@ export function Providers({ children, initialLocale }: ProvidersProps) {
           </Suspense>
           {!isAuthRequired() ? <DevDemoSeed /> : null}
           <IosShareBanner />
-          {children}
+          <RimvioProfileSetupGate>{children}</RimvioProfileSetupGate>
           <ReminderPoller />
           <ServiceWorkerBootstrap />
           <NativeBridgeBoot />

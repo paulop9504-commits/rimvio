@@ -7,6 +7,7 @@ import type { AppLocale } from "@/lib/i18n/types";
 import type { LinkActionItem } from "@/types/database";
 import { cn } from "@/lib/utils";
 import { HorizontalScrollRail } from "@/components/horizontal-scroll-rail";
+import { ActionDockWhyLine } from "@/components/action-dock/action-dock-why-line";
 
 type FeedActionPanelProps = {
   signalLine?: string | null;
@@ -22,6 +23,8 @@ type FeedActionPanelProps = {
   className?: string;
   /** stack = no card chrome · overlay = on photo (glass pills) */
   variant?: "card" | "stack" | "overlay";
+  /** Deterministic MAIN ranking hint (causal / rollup). */
+  rankingWhy?: string | null;
 };
 
 export function FeedActionPanel({
@@ -37,6 +40,7 @@ export function FeedActionPanel({
   loading = false,
   className,
   variant = "stack",
+  rankingWhy = null,
 }: FeedActionPanelProps) {
   const showTitle =
     Boolean(title?.trim()) &&
@@ -92,18 +96,27 @@ export function FeedActionPanel({
             찾는 중…
           </div>
         ) : showPrimary ? (
-          <RimvioActionButton
-            type="button"
-            onClick={onPrimary}
-            fullWidth
-            className={cn(
-              "mx-auto w-[var(--golden-major)] max-w-full",
-              primaryVariant === "youtube" &&
-                "!border-[#ff0033]/20 !bg-[#ff0033] hover:!bg-[#e6002e] active:!bg-[#e6002e]"
-            )}
-          >
-            {primaryLabel}
-          </RimvioActionButton>
+          <>
+            <RimvioActionButton
+              type="button"
+              onClick={onPrimary}
+              fullWidth
+              className={cn(
+                "mx-auto w-[var(--golden-major)] max-w-full",
+                primaryVariant === "youtube" &&
+                  "!border-[#ff0033]/20 !bg-[#ff0033] hover:!bg-[#e6002e] active:!bg-[#e6002e]"
+              )}
+            >
+              {primaryLabel}
+            </RimvioActionButton>
+            {rankingWhy ? (
+              <ActionDockWhyLine
+                line={rankingWhy}
+                variant={isOverlay ? "overlay" : "default"}
+                className="mt-1.5 px-1"
+              />
+            ) : null}
+          </>
         ) : null}
 
         {secondary.length > 0 && onSecondary ? (

@@ -1,7 +1,7 @@
 import {
   predictiveDockActionToCandidate,
 } from "@/lib/action-decision/adapt-predictive-dock";
-import { splitMainAuxActions } from "@/lib/action-decision/split-main-aux-actions";
+import { splitMainAuxActionsWithExplain } from "@/lib/action-decision/split-main-aux-actions";
 import { generateSecondaryActions } from "@/lib/secondary-action-generator/generate-secondary-actions";
 import type { EventContextInput } from "@/lib/secondary-action-generator/types";
 import type {
@@ -18,14 +18,16 @@ export function applyMainAuxToDockWire(input: {
     preferred_plugins?: readonly string[];
     dismissed_labels?: readonly string[];
   };
+  ranking_context_key?: string;
 }): PredictiveDockWire {
   if (input.actions.length === 0) {
     return { main_action: null, shadow_actions: [] };
   }
 
-  const split = splitMainAuxActions({
+  const split = splitMainAuxActionsWithExplain({
     candidates: input.actions.map(predictiveDockActionToCandidate),
     minutes_until_event: input.minutes_until_event,
+    ranking_context_key: input.ranking_context_key,
   });
 
   const byId = new Map(input.actions.map((action) => [action.id, action]));
@@ -50,6 +52,7 @@ export function applyMainAuxToDockWire(input: {
     state: "ACTIVE",
     action_tier: "MAIN",
     plugin: split.primary_action.plugin,
+    rankingWhy: split.primary_why_line ?? undefined,
   };
 
   const generated = generateSecondaryActions({

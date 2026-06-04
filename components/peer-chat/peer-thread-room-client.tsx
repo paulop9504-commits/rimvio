@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { useLongPress } from "@/lib/hooks/use-long-press";
+import { usePeerThreadSettings } from "@/hooks/use-peer-thread-settings";
 import { PeerPublicProfileSheet } from "@/components/peer-chat/peer-public-profile-sheet";
 import { useDmPeerProfile } from "@/hooks/use-dm-peer-profile";
 import {
@@ -15,10 +18,8 @@ import { UNPIN_PEER_RETENTION_DAYS } from "@/lib/context/hub-room-retention";
 import { getPeerContactById } from "@/lib/context/peer-contact-store";
 import { purgePendingLabel } from "@/lib/context/pinned-peer-roster";
 import { findSlotByPeerId } from "@/lib/context/pinned-peer-roster";
-import {
-  getOrCreatePeerThreadSettings,
-  readPinnedRoster,
-} from "@/lib/context/peer-thread-settings-store";
+import { readPinnedRoster } from "@/lib/context/peer-thread-settings-store";
+import { cn } from "@/lib/utils";
 import { PeerChatThreadShell } from "@/components/peer-chat/peer-chat-thread-shell";
 import { PeerThreadChatPanel } from "@/components/peer-chat/peer-thread-chat-panel";
 import { PeerThreadHubPinBar } from "@/components/peer-chat/peer-thread-hub-pin-bar";
@@ -54,16 +55,29 @@ export function PeerThreadRoomClient({ peerThreadId }: PeerThreadRoomClientProps
     hubSlot?.displayName ||
     "친구";
 
+  const { settings, setAiLens } = usePeerThreadSettings({
+    peerThreadId,
+    displayName,
+  });
+
   const policyInput = useMemo(
     () => ({
-      settings: getOrCreatePeerThreadSettings({
-        peerThreadId,
-        displayName,
-      }),
+      settings,
       roster,
     }),
-    [peerThreadId, displayName, roster],
+    [settings, roster],
   );
+
+  const headerLongPress = useLongPress({
+    onLongPress: () => {
+      const next = !settings.aiLensEnabled;
+      setAiLens(next);
+      toast.success(
+        next ? "AI 렌즈 켜짐 · 말풍선 제안" : "AI 렌즈 꺼짐",
+      );
+    },
+    onTap: phoneDm ? () => setProfileOpen(true) : undefined,
+  });
 
   if (!contact && !hubSlot) {
     return (
@@ -97,16 +111,43 @@ export function PeerThreadRoomClient({ peerThreadId }: PeerThreadRoomClientProps
         {phoneDm ? (
           <button
             type="button"
-            onClick={() => setProfileOpen(true)}
-            className="min-w-0 flex-1 truncate py-1 text-left text-[16px] font-medium text-white"
-            aria-label={`${displayName} 프로필`}
+            {...headerLongPress}
+            className={cn(
+              "relative min-w-0 flex-1 truncate py-1 text-left text-[16px] font-medium text-white",
+              settings.aiLensEnabled &&
+                "after:absolute after:-bottom-0.5 after:left-0 after:h-px after:w-full after:bg-cyan-400/50 after:blur-[2px]",
+            )}
+            aria-label={
+              settings.aiLensEnabled
+                ? `${displayName} · AI 렌즈 켜짐 (길게 눌러 끄기)`
+                : `${displayName} · 길게 눌러 AI 렌즈`
+            }
           >
             {displayName}
+            {settings.aiLensEnabled ? (
+              <span className="ml-1.5 inline-block size-1.5 translate-y-[-1px] rounded-full bg-cyan-400/80 align-middle" />
+            ) : null}
           </button>
         ) : (
-          <div className="min-w-0 flex-1 truncate py-1 text-[16px] font-medium text-white">
+          <button
+            type="button"
+            {...headerLongPress}
+            className={cn(
+              "relative min-w-0 flex-1 truncate py-1 text-left text-[16px] font-medium text-white",
+              settings.aiLensEnabled &&
+                "after:absolute after:-bottom-0.5 after:left-0 after:h-px after:w-full after:bg-cyan-400/50 after:blur-[2px]",
+            )}
+            aria-label={
+              settings.aiLensEnabled
+                ? `${displayName} · AI 렌즈 켜짐`
+                : `${displayName} · 길게 눌러 AI 렌즈`
+            }
+          >
             {displayName}
-          </div>
+            {settings.aiLensEnabled ? (
+              <span className="ml-1.5 inline-block size-1.5 translate-y-[-1px] rounded-full bg-cyan-400/80 align-middle" />
+            ) : null}
+          </button>
         )}
         <PeerThreadHubPinBar
           peerThreadId={peerThreadId}
@@ -145,7 +186,7 @@ export function PeerThreadRoomClient({ peerThreadId }: PeerThreadRoomClientProps
         <PeerThreadChatPanel
           displayName={displayName}
           policyInput={policyInput}
-          aiLensEnabled={policyInput.settings.aiLensEnabled}
+          aiLensEnabled={settings.aiLensEnabled}
           readOnly={hubSlot?.connection === "purge_pending"}
           showAiMentionLink={pinned}
           peerAvatarUrl={profile?.avatarUrl}

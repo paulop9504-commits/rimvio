@@ -24,6 +24,7 @@ import {
 
 import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
 
+import { parseActionMention } from "@/lib/event-kernel/action-contracts/parse-action-mention";
 import { finalizeActionOpportunities, visibleActionOpportunities } from "@/lib/predictive-dock/compose-action-opportunities";
 
 import {
@@ -934,6 +935,10 @@ export function computePredictiveDock(input: {
 
 
 
+  const mention = input.lastUserMessage
+    ? parseActionMention(input.lastUserMessage)
+    : null;
+
   return finalizeActionOpportunities({
 
     wire: raw,
@@ -945,6 +950,8 @@ export function computePredictiveDock(input: {
     consumedOpportunityIds: input.consumedOpportunityIds,
 
     minutesUntilAnchor: nearestEventCandidateAnchorMinutes(nowMs),
+
+    ranking_context_key: mention?.contextKey,
 
   });
 

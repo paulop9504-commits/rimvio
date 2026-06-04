@@ -46,8 +46,8 @@ export async function GET(request: NextRequest) {
     return authErrorRedirect(origin, "missing_code");
   }
 
-  const safeNext = resolvePostLoginPath(request);
-  let response = NextResponse.redirect(new URL(safeNext, origin));
+  const requestedNext = resolvePostLoginPath(request);
+  let response = NextResponse.redirect(new URL(requestedNext, origin));
 
   const supabase = createClientForRoute(request, response);
   const { error } = await supabase.auth.exchangeCodeForSession(code);
@@ -61,9 +61,11 @@ export async function GET(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  let postLoginPath = requestedNext;
+
   if (user?.id) {
     try {
-      await syncUserProfileFromAuth(supabase, {
+      const profile = await syncUserProfileFromAuth(supabase, {
         userId: user.id,
         email: user.email,
         displayName:
@@ -72,9 +74,19 @@ export async function GET(request: NextRequest) {
           user.email?.split("@")[0] ||
           null,
       });
+      const needsSetup =
+        !profile?.rimvio_id?.trim() || !profile?.display_name?.trim();
+      if (needsSetup) {
+        postLoginPath = "/onboarding";
+      }
     } catch (profileError) {
       console.error("[auth/callback] profile sync", profileError);
+      postLoginPath = "/onboarding";
     }
+  }
+
+  if (postLoginPath !== requestedNext) {
+    response = NextResponse.redirect(new URL(postLoginPath, origin));
   }
 
   response.cookies.delete(AUTH_NEXT_COOKIE);
