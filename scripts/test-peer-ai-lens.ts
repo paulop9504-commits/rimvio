@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import type { PeerMessage } from "../lib/context/peer-message-types";
 import { analyzePeerThreadForLens } from "../lib/peer-chat/ai-lens/rank-lens-bubbles";
 import { parseLensDateFromText } from "../lib/peer-chat/ai-lens/parse-lens-date";
+import { parseLensTimeFromText } from "../lib/peer-chat/ai-lens/parse-lens-time";
 import { resetLensUserHistoryForTests } from "../lib/peer-chat/ai-lens/lens-user-history";
 import { executeDeepLinkBubbleCandidate } from "../lib/peer-chat/ai-lens/execute-lens-bubble";
 import type { DeepLinkBubbleCandidate } from "../lib/peer-chat/ai-lens/types";
@@ -28,10 +29,21 @@ resetLensUserHistoryForTests([
   { actionType: "schedule", shown: 10, clicked: 1 },
 ]);
 
+assert.equal(parseLensTimeFromText("7시에 치킨집에서 보자"), "19:00");
+assert.equal(parseLensTimeFromText("오후 7시 CGV"), "19:00");
+assert.equal(parseLensTimeFromText("7시 출근"), "07:00");
+assert.equal(parseLensTimeFromText("아침 7시 커피"), "07:00");
+
 const ex1 = analyzePeerThreadForLens([
   msg("1", "peer", "7시에 치킨집에서 보자"),
 ]);
 assert.ok(ex1.candidates.some((c) => c.label.includes("일정")));
+const ex1Schedule = ex1.candidates.find(
+  (c) => c.actionType === "schedule" || c.actionType === "movie_schedule",
+);
+if (ex1Schedule?.payload?.datetime) {
+  assert.equal(new Date(ex1Schedule.payload.datetime).getHours(), 19);
+}
 assert.equal(ex1.candidates.length <= 3, true);
 
 const ex2 = analyzePeerThreadForLens([
@@ -96,7 +108,7 @@ assert.equal(
 );
 const goldenWhen = new Date(goldenDt);
 assert.equal(goldenWhen.getDate(), 5, "Friday June 5 (local)");
-assert.equal(goldenWhen.getHours(), 7, "7시 without 오후 → 07:00 local");
+assert.equal(goldenWhen.getHours(), 19, "7시 + CGV 약속 → 19:00 local");
 
 /** Week 3 golden: 둔산동 멕시카나 → map picker only on execute */
 const goldenNavAnalysis = analyzePeerThreadForLens([

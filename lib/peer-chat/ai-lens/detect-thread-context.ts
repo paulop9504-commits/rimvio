@@ -1,10 +1,9 @@
 import type { PeerMessage } from "@/lib/context/peer-message-types";
 import { parseLensDateFromText } from "@/lib/peer-chat/ai-lens/parse-lens-date";
+import { parseLensTimeFromText } from "@/lib/peer-chat/ai-lens/parse-lens-time";
 import type { LensIntentKind, LensThreadContext } from "@/lib/peer-chat/ai-lens/types";
 
 const URL_RE = /https?:\/\/[^\s]+/gi;
-const TIME_RE =
-  /(?:오전|오후|am|pm)?\s*(\d{1,2})\s*시(?:\s*(\d{1,2})\s*분)?|(\d{1,2}):(\d{2})/giu;
 const MEETING_RE =
   /(?:보자|만나|약속|일정|모이|갈래|가자|예약|미팅|회의|식사|밥|점심|저녁|브런치)/iu;
 const PLACE_RE =
@@ -28,28 +27,6 @@ function emptyContext(): LensThreadContext {
     lastPeerBody: null,
     anchorMessageId: null,
   };
-}
-
-function parseTimeFromText(text: string): string | null {
-  const normalized = text.replace(/\s+/g, " ");
-  const match = /(?:오후|pm)\s*(\d{1,2})\s*시|(?:오전|am)\s*(\d{1,2})\s*시|(\d{1,2})\s*시(?:\s*(\d{1,2})\s*분)?|(\d{1,2}):(\d{2})/iu.exec(
-    normalized,
-  );
-  if (!match) {
-    return null;
-  }
-  let hour = Number(match[1] ?? match[2] ?? match[3] ?? match[5]);
-  const minute = Number(match[4] ?? match[6] ?? 0);
-  if (/(?:오후|pm)/iu.test(normalized) && hour < 12) {
-    hour += 12;
-  }
-  if (/(?:오전|am)/iu.test(normalized) && hour === 12) {
-    hour = 0;
-  }
-  if (hour >= 0 && hour <= 23) {
-    return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-  }
-  return null;
 }
 
 function extractPlaceCandidate(text: string): string | null {
@@ -107,7 +84,7 @@ function applyMessageToContext(
     next.dateLabel = parsedDate.label;
   }
 
-  const time = parseTimeFromText(body);
+  const time = parseLensTimeFromText(body);
   if (time) {
     next.intents.add("time");
     next.timeText = time;
