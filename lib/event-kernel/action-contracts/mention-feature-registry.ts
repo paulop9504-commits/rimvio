@@ -342,7 +342,7 @@ const REGISTRY: readonly MentionFeature[] = [
     sourceRef: "mention:peer_talk",
     category: "custom",
     confirmCopy:
-      "친구 이름이나 Rimvio ID를 적어 주세요. 예: @톡 monica · 이름 없이 @톡 만 쓰면 목록에서 고를 수 있어요.",
+      "친구 이름이나 Rimvio ID를 적어 주세요. 다른 친구를 고르면 이전 피드 톡은 자동으로 마쳐요. @대화끝 으로 AI 피드로 돌아갈 수 있어요.",
   },
   {
     featureId: "end_peer_talk",

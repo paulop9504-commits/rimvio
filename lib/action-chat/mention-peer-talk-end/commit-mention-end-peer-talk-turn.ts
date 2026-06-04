@@ -50,10 +50,14 @@ export function tryBuildMentionEndPeerTalkTurn(
     chatAxis: input.chatAxis,
   });
 
-  const hadSession = Boolean(getFeedPeerTalkSession());
+  const hadSurface = deps.readMessages().some(
+    (message) =>
+      message.feedPeerTalkThread ||
+      Boolean(getFeedPeerTalkSession()),
+  );
   const result = endFeedPeerTalkInFeed(deps);
 
-  if (!result.ended && !hadSession) {
+  if (!result.ended && !hadSurface) {
     return [
       userMessage,
       createChatMessage(

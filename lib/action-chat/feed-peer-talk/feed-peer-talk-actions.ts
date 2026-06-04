@@ -17,6 +17,10 @@ import {
   setFeedPeerTalkSession,
 } from "@/lib/action-chat/feed-peer-talk/feed-peer-talk-session";
 import type { FeedPeerTalkThreadWire } from "@/lib/action-chat/feed-peer-talk/feed-peer-talk-types";
+import {
+  buildSwitchFeedPeerTalkToast,
+  wipeFeedPeerTalkSurfaceIfNeeded,
+} from "@/lib/action-chat/feed-peer-talk/end-feed-peer-talk";
 import { emitFeedSlotsRefresh } from "@/lib/feed/feed-slots-events";
 import { fetchPeerMessages, sendPeerMessageRemote, syncFeedSlotFromRoomRemote } from "@/lib/peer-chat/peer-chat-client";
 import { prefetchPeerMessages, takePrefetchedMessages } from "@/lib/peer-chat/message-prefetch-cache";
@@ -41,6 +45,14 @@ export async function startFeedPeerTalkInFeed(
 ): Promise<void> {
   const displayName = contact.displayName.trim() || "친구";
   const peerThreadId = contact.peerThreadId;
+
+  const { previousDisplayName } = wipeFeedPeerTalkSurfaceIfNeeded(
+    deps,
+    peerThreadId,
+  );
+  if (previousDisplayName) {
+    toast.message(buildSwitchFeedPeerTalkToast(previousDisplayName, displayName));
+  }
 
   setFeedPeerTalkSession({ peerThreadId, displayName });
   prefetchPeerMessages(peerThreadId);
