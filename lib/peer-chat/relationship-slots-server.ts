@@ -61,56 +61,42 @@ export async function touchRelationshipSlotsOnMessage(
     return;
   }
 
-  const { data: members, error: memberError } = await supabase
-    .from("peer_thread_members")
-    .select("user_id")
-    .eq("thread_id", input.threadId);
-
-  if (memberError) {
-    throw memberError;
+  const friendId = extractOtherUserIdFromDmThread(
+    input.threadId,
+    input.senderUserId,
+  );
+  if (!friendId) {
+    return;
   }
 
+  // RLS allows insert/update only when auth.uid() = user_id — touch sender feed slot only.
   const now = input.createdAt ?? new Date().toISOString();
   const lastMessage = previewMessage(input.body);
 
-  for (const member of members ?? []) {
-    const userId = member.user_id as string;
-    const friendId = extractOtherUserIdFromDmThread(input.threadId, userId);
-    if (!friendId) {
-      continue;
-    }
+  const { data: existing } = await supabase
+    .from("relationship_slots")
+    .select("unread_count, is_pinned, archived_at")
+    .eq("user_id", input.senderUserId)
+    .eq("room_id", input.threadId)
+    .maybeSingle();
 
-    const isSender = userId === input.senderUserId;
+  const { error } = await supabase.from("relationship_slots").upsert(
+    {
+      user_id: input.senderUserId,
+      room_id: input.threadId,
+      friend_id: friendId,
+      last_message: lastMessage || null,
+      last_activity_at: now,
+      unread_count: existing?.unread_count ?? 0,
+      is_pinned: existing?.is_pinned ?? false,
+      archived_at: null,
+      updated_at: now,
+    },
+    { onConflict: "user_id,room_id" },
+  );
 
-    const { data: existing } = await supabase
-      .from("relationship_slots")
-      .select("unread_count, is_pinned, archived_at")
-      .eq("user_id", userId)
-      .eq("room_id", input.threadId)
-      .maybeSingle();
-
-    const unread = isSender
-      ? (existing?.unread_count ?? 0)
-      : (existing?.unread_count ?? 0) + 1;
-
-    const { error } = await supabase.from("relationship_slots").upsert(
-      {
-        user_id: userId,
-        room_id: input.threadId,
-        friend_id: friendId,
-        last_message: lastMessage || null,
-        last_activity_at: now,
-        unread_count: unread,
-        is_pinned: existing?.is_pinned ?? false,
-        archived_at: isSender ? (existing?.archived_at ?? null) : null,
-        updated_at: now,
-      },
-      { onConflict: "user_id,room_id" },
-    );
-
-    if (error) {
-      throw error;
-    }
+  if (error) {
+    throw error;
   }
 }
 

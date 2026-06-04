@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireAuthUser } from "@/lib/auth/api-auth";
 import { mapPeerMessageRow } from "@/lib/peer-chat/message-mapper";
+import { friendContactErrorMessage } from "@/lib/peer-chat/friend-contact-errors";
 import {
   recordInboundMessage,
   markThreadRead,
@@ -99,24 +100,34 @@ export async function POST(request: NextRequest, context: RouteContext) {
       body: text,
     });
 
-    await recordInboundMessage(supabase, {
-      threadId: decoded,
-      senderUserId: userId,
-    });
+    try {
+      await recordInboundMessage(supabase, {
+        threadId: decoded,
+        senderUserId: userId,
+      });
+    } catch (sideEffectError) {
+      console.error("[peer-messages] recordInboundMessage", sideEffectError);
+    }
 
-    await touchRelationshipSlotsOnMessage(supabase, {
-      threadId: decoded,
-      senderUserId: userId,
-      body: text,
-      createdAt: row.created_at,
-    });
+    try {
+      await touchRelationshipSlotsOnMessage(supabase, {
+        threadId: decoded,
+        senderUserId: userId,
+        body: text,
+        createdAt: row.created_at,
+      });
+    } catch (sideEffectError) {
+      console.error("[peer-messages] touchRelationshipSlotsOnMessage", sideEffectError);
+    }
 
     return NextResponse.json({
       feedSlotSynced: true,
       message: mapPeerMessageRow(row, userId),
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to send message.";
+    const raw =
+      error instanceof Error ? error.message : "Failed to send message.";
+    const message = friendContactErrorMessage(raw);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

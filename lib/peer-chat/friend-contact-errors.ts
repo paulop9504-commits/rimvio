@@ -12,6 +12,9 @@ const FRIEND_ERROR_KO: Record<string, string> = {
     "친구 추가에 실패했어요. 잠시 후 다시 시도해 주세요.",
   "Caller must join the DM thread first.": "대화방을 먼저 만들지 못했어요. 다시 시도해 주세요.",
   "Both users must be members of the DM thread.": "대화방 연결을 마치지 못했어요. 다시 시도해 주세요.",
+  "Failed to send message.": "메시지 전송에 실패했어요. 잠시 후 다시 시도해 주세요.",
+  "Empty message.": "메시지를 입력해 주세요.",
+  "body required.": "메시지를 입력해 주세요.",
 };
 
 /** Postgres NOT NULL / constraint messages → short Korean for UI. */
@@ -24,6 +27,12 @@ export function friendContactErrorMessage(
   const lower = codeOrMessage.toLowerCase();
   if (lower.includes("interaction_score") && lower.includes("null")) {
     return "친구 목록 데이터를 고쳤어요. 친구 추가를 한 번 더 눌러 주세요.";
+  }
+  if (lower.includes("row-level security") || lower.includes("rls")) {
+    return "대화방 권한 문제예요. @친추로 친구를 다시 연결한 뒤 보내 주세요.";
+  }
+  if (codeOrMessage.startsWith("not_registered:")) {
+    return codeOrMessage.slice("not_registered:".length);
   }
   return FRIEND_ERROR_KO[codeOrMessage] ?? codeOrMessage;
 }
