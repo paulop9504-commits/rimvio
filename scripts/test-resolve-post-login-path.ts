@@ -26,4 +26,11 @@ assert.equal(
   "/peers/archive",
 );
 
+import { buildSwitchFeedPeerTalkToast } from "../lib/action-chat/feed-peer-talk/end-feed-peer-talk";
+
+assert.match(
+  buildSwitchFeedPeerTalkToast("이미형", "지훈"),
+  /ROOM/,
+);
+
 console.log("test-resolve-post-login-path: ok");

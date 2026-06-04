@@ -15,6 +15,7 @@ import {
 } from "@/lib/peer-chat/peer-chat-client";
 import { emitFeedSlotsRefresh } from "@/lib/feed/feed-slots-events";
 import { useAuth } from "@/hooks/use-auth";
+import { notifyPeerRoomFromFeed } from "@/lib/peer-chat/navigate-peer-room-from-feed";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { cn } from "@/lib/utils";
 
@@ -88,6 +89,7 @@ export function InlineChatFriendAdd({ contact, className }: InlineChatFriendAddP
         });
         emitFeedSlotsRefresh();
         toast.success(`${result.displayName}님을 친구로 추가했어요`);
+        notifyPeerRoomFromFeed(result.displayName);
         router.push(`/peers/${encodeURIComponent(result.threadId)}`);
       })
       .catch((err) => {

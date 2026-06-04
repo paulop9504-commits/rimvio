@@ -104,7 +104,7 @@ export function WelcomeGuide() {
         <RimvioLogo size="sm" appearance="white" />
         <div className="min-w-0 flex-1">
           <h1 className="text-xl font-semibold tracking-tight">{copy.nav.settings}</h1>
-          <p className="mt-0.5 text-[13px] text-muted-foreground">{RIMVIO.lockup}</p>
+          <p className="mt-0.5 text-[13px] text-muted-foreground">{copy.product.oneLiner}</p>
         </div>
         <Link
           href="/welcome?manual=1"
@@ -113,6 +113,23 @@ export function WelcomeGuide() {
           {copy.manual.settingsLink}
         </Link>
       </header>
+
+      <SettingsSection
+        title={copy.product.howToUseTitle}
+        description={copy.product.howToUseSub}
+      >
+        <Link
+          href="/welcome?manual=1"
+          className={cn(
+            "flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-[15px] font-semibold",
+            IOS.primaryBtn,
+          )}
+          onClick={() => markManualGuideOpened()}
+        >
+          {copy.product.howToUseCta}
+          <ChevronRight className="size-4" aria-hidden />
+        </Link>
+      </SettingsSection>
 
       <SettingsProfilePanel variant="embedded" />
 
@@ -168,13 +185,19 @@ export function WelcomeGuide() {
         </Link>
       </SettingsSection>
 
-      <div className="flex gap-2 pt-1">
-        <Link href="/" className={cn("flex-1 text-center", IOS.primaryBtn)}>
-          {copy.welcome.openFeed}
+      <div className="flex flex-wrap gap-2 pt-1">
+        <Link href="/peers" className={cn("min-w-[45%] flex-1 text-center", IOS.primaryBtn)}>
+          {copy.nav.peers}
+        </Link>
+        <Link href="/feed" className={cn("min-w-[45%] flex-1 text-center", IOS.secondaryBtn)}>
+          {copy.nav.feed}
         </Link>
         <Link
           href="/welcome?paste=1"
-          className={cn("flex-1 py-3 text-center text-[15px] font-semibold", IOS.secondaryBtn)}
+          className={cn(
+            "w-full py-3 text-center text-[15px] font-semibold",
+            IOS.secondaryBtn,
+          )}
         >
           {copy.welcome.addLink}
         </Link>

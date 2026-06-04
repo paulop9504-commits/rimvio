@@ -17,6 +17,14 @@ export const copy = {
     feedContext: "공유한 링크를 실행 카드로",
     peersContext:
       "대화에서 실행 버튼이 붙어요 · 프로필 길게 누르면 AI 렌즈",
+    feedPeerTalkRoomHint: "실행·AI 렌즈는 친구 ROOM에서",
+    feedPeerTalkRoomLink: "ROOM 열기",
+    feedPeerTalkStartedToast: "피드에서 대화 중 · 실행은 친구 ROOM에서",
+    howToUseTitle: "Rimvio 쓰는 법",
+    howToUseSub: "1분이면 @톡 · 실행 · 친구 버블이 정리돼요",
+    howToUseCta: "사용 설명서 보기",
+    lensCoachOn: "AI 렌즈 켜짐",
+    lensCoachSub: "상대 말에 실행 버튼이 붙어요 · 탭할 때만 실행",
   },
   nav: {
     feed: "실행",
@@ -32,6 +40,10 @@ export const copy = {
       "대화에서 실행 버튼이 붙어요 · 프로필 길게 누르면 AI 렌즈",
     hubHint: "친한 5명 · 아래 구슬 주머니 = 나머지 친구 전부",
     emptyFeedLink: "링크만 쓰려면 실행 탭",
+    emptyTitle: "친한 친구를 연결해 보세요",
+    emptyBody:
+      "빈 버블(+)을 눌러 친구를 고정하면 대화에서 실행 버튼이 붙어요. AI 렌즈는 프로필을 길게 눌러 켜요.",
+    emptyAddCta: "1번 버블에 친구 추가",
   },
   feed: {
     title: "실행",
@@ -480,7 +492,7 @@ export const copy = {
     skipIntroCta: "바로 써볼게요",
     feedBannerText: "아직 설명서를 안 읽으셨어요.",
     dismissBanner: "배너 닫기",
-    settingsLink: "사용 설명서",
+    settingsLink: "Rimvio 쓰는 법",
   },
   action: {
     emptyPrompt: "무엇을 도와드릴까요?",

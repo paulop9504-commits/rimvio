@@ -16,6 +16,14 @@ export const copyEn: Copy = {
     feedContext: "Turn shared links into action cards",
     peersContext:
       "Actions from chat · long-press a profile for AI Lens",
+    feedPeerTalkRoomHint: "Lens & actions live in Friends ROOM",
+    feedPeerTalkRoomLink: "Open ROOM",
+    feedPeerTalkStartedToast: "Chatting in feed · run actions in Friends ROOM",
+    howToUseTitle: "How to use Rimvio",
+    howToUseSub: "1 min: @talk, actions, and the friends hub",
+    howToUseCta: "Open guide",
+    lensCoachOn: "AI Lens on",
+    lensCoachSub: "Action buttons on their messages · tap to run",
   },
   nav: {
     feed: "Operate",
@@ -31,6 +39,10 @@ export const copyEn: Copy = {
       "Actions from chat · long-press a profile for AI Lens",
     hubHint: "Close 5 on the hub · everyone else in the archive bag",
     emptyFeedLink: "Links only? Open Operate tab",
+    emptyTitle: "Connect your close friends",
+    emptyBody:
+      "Tap an empty bubble (+) to pin a friend. Long-press their profile to turn on AI Lens.",
+    emptyAddCta: "Add friend to slot 1",
   },
   feed: {
     title: "Operate",
@@ -478,7 +490,7 @@ export const copyEn: Copy = {
     skipIntroCta: "Skip for now",
     feedBannerText: "You haven't opened the user guide yet.",
     dismissBanner: "Dismiss banner",
-    settingsLink: "User guide",
+    settingsLink: "How to use Rimvio",
   },
   action: {
     emptyPrompt: "Say something, or send a link or photo.",

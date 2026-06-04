@@ -22,6 +22,7 @@ import {
   wipeFeedPeerTalkSurfaceIfNeeded,
 } from "@/lib/action-chat/feed-peer-talk/end-feed-peer-talk";
 import { emitFeedSlotsRefresh } from "@/lib/feed/feed-slots-events";
+import { notifyFeedPeerTalkStarted } from "@/lib/peer-chat/navigate-peer-room-from-feed";
 import { fetchPeerMessages, sendPeerMessageRemote, syncFeedSlotFromRoomRemote } from "@/lib/peer-chat/peer-chat-client";
 import { prefetchPeerMessages, takePrefetchedMessages } from "@/lib/peer-chat/message-prefetch-cache";
 
@@ -85,6 +86,7 @@ export async function startFeedPeerTalkInFeed(
     deps.persist(
       patchFeedPeerTalkThread(deps.readMessages(), threadMessageId, wire),
     );
+    notifyFeedPeerTalkStarted(displayName);
   } catch {
     deps.persist(
       patchFeedPeerTalkThread(deps.readMessages(), threadMessageId, {

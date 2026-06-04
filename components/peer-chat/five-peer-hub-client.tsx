@@ -19,7 +19,12 @@ import type { PinnedSlotIndex } from "@/lib/context/peer-thread-types";
 import { PeerProfileSetup } from "@/components/peer-chat/peer-profile-setup";
 import { RimvioGoogleSignInCard } from "@/components/rimvio-google-sign-in-card";
 import { RimvioProductContextStrip } from "@/components/rimvio-product-context-strip";
+import { PeerHubEmptyState } from "@/components/peer-chat/peer-hub-empty-state";
 import { useCopy } from "@/hooks/use-copy";
+import {
+  markLensFirstCoachShown,
+  shouldShowLensFirstCoach,
+} from "@/lib/onboarding/lens-first-coach";
 import {
   addPeerByPhoneRemote,
   fetchMyAccountProfile,
@@ -118,14 +123,24 @@ export function FivePeerHubClient() {
       });
       setLensRevision((n) => n + 1);
       refresh();
-      toast.success(
-        next
-          ? `${displayName} · AI 렌즈 켜짐`
-          : `${displayName} · AI 렌즈 꺼짐`,
-      );
+      if (next && shouldShowLensFirstCoach()) {
+        markLensFirstCoachShown();
+        toast.success(copy.product.lensCoachOn, {
+          description: copy.product.lensCoachSub,
+          duration: 5500,
+        });
+      } else {
+        toast.success(
+          next
+            ? `${displayName} · AI 렌즈 켜짐`
+            : `${displayName} · AI 렌즈 꺼짐`,
+        );
+      }
     },
-    [roster, peerMetaMap, refresh],
+    [roster, peerMetaMap, refresh, copy.product.lensCoachOn, copy.product.lensCoachSub],
   );
+
+  const connectedCount = countConnectedPeers(roster);
 
   const loadSocialLayer = useCallback(async () => {
     if (!usePhoneChat) {
@@ -281,13 +296,20 @@ export function FivePeerHubClient() {
         <RimvioProductContextStrip
           variant="peers"
           className="mx-1"
-          showFeedLink={usePhoneChat && countConnectedPeers(roster) === 0}
+          showFeedLink={false}
         />
       )}
 
-      <p className="px-1 text-center text-[12px] text-white/55">
-        {copy.peers.hubHint}
-      </p>
+      {usePhoneChat && connectedCount === 0 && !dialogOpen ? (
+        <PeerHubEmptyState
+          className="mx-1"
+          onAddFriend={() => openPinAssign(0 as PinnedSlotIndex)}
+        />
+      ) : (
+        <p className="px-1 text-center text-[12px] text-white/55">
+          {copy.peers.hubHint}
+        </p>
+      )}
 
       <div className="relative min-h-[min(72dvh,28rem)] h-[min(calc(100dvh-11rem),42rem)] w-full shrink-0">
         <FivePeerHub
@@ -362,7 +384,7 @@ export function FivePeerHubClient() {
       ) : null}
 
       <p className="shrink-0 text-center text-[11px] text-white/60">
-        친한 {countConnectedPeers(roster)}/5
+        친한 {connectedCount}/5
         {usePhoneChat ? ` · 주머니 ${archiveList.length}명` : ""}
       </p>
     </div>

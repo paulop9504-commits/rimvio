@@ -1,5 +1,6 @@
 "use client";
 
+import { FeedPeerTalkRoomBanner } from "@/components/peer-chat/feed-peer-talk-room-banner";
 import { PeerChatBubble } from "@/components/peer-chat/peer-chat-bubble";
 import { DmChatMessageSkeleton } from "@/components/peer-chat/dm-chat-message-skeleton";
 import type { FeedPeerTalkThreadWire } from "@/lib/action-chat/feed-peer-talk/feed-peer-talk-types";
@@ -128,6 +129,12 @@ export function FeedPeerTalkFeedRows({
 
   return (
     <>
+      <div data-message-id={messageId} className="chat-message-focus w-full px-0.5 pb-1">
+        <FeedPeerTalkRoomBanner
+          peerThreadId={thread.peerThreadId}
+          displayName={thread.displayName}
+        />
+      </div>
       {prior.map((slice, i) => (
         <FeedPeerTalkRow
           key={`${messageId}-prior-${slice.id}`}

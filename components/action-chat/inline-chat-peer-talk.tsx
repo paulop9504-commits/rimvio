@@ -11,6 +11,7 @@ import { isRegisteredPeerDmThread } from "@/lib/peer-chat/peer-chat-client";
 import { prefetchPeerMessages } from "@/lib/peer-chat/message-prefetch-cache";
 import { resolveMainActionBrandStyle } from "@/lib/brand/action-brand-style";
 import { useAuth } from "@/hooks/use-auth";
+import { useCopy } from "@/hooks/use-copy";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +30,7 @@ function TalkProfileConfirm({
   onStart: () => void;
   starting?: boolean;
 }) {
+  const copy = useCopy();
   const phoneDm = isRegisteredPeerDmThread(contact.peerThreadId);
   const { profile, loading } = useDmPeerProfile(contact.peerThreadId, phoneDm);
   const displayName = profile?.displayName?.trim() || contact.displayName;
@@ -59,7 +61,8 @@ function TalkProfileConfirm({
         </div>
       </div>
       <p className="text-[11px] text-white/45">
-        이전 대화가 피드에 보이고, 아래 입력창으로 이어서 보낼 수 있어요.
+        {copy.product.feedPeerTalkRoomHint} · {copy.product.feedPeerTalkRoomLink}로 AI
+        렌즈를 켜 보세요.
       </p>
       <MainActionButton
         label={starting ? "불러오는 중…" : "대화 시작하기"}

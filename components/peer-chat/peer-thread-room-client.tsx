@@ -5,7 +5,12 @@ import { ChevronLeft } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useLongPress } from "@/lib/hooks/use-long-press";
+import { useCopy } from "@/hooks/use-copy";
 import { usePeerThreadSettings } from "@/hooks/use-peer-thread-settings";
+import {
+  markLensFirstCoachShown,
+  shouldShowLensFirstCoach,
+} from "@/lib/onboarding/lens-first-coach";
 import { PeerPublicProfileSheet } from "@/components/peer-chat/peer-public-profile-sheet";
 import { useDmPeerProfile } from "@/hooks/use-dm-peer-profile";
 import {
@@ -29,6 +34,7 @@ type PeerThreadRoomClientProps = {
 };
 
 export function PeerThreadRoomClient({ peerThreadId }: PeerThreadRoomClientProps) {
+  const copy = useCopy();
   const [profileOpen, setProfileOpen] = useState(false);
   const roster = useMemo(() => readPinnedRoster(), []);
   const contact = useMemo(() => getPeerContactById(peerThreadId), [peerThreadId]);
@@ -72,9 +78,17 @@ export function PeerThreadRoomClient({ peerThreadId }: PeerThreadRoomClientProps
     onLongPress: () => {
       const next = !settings.aiLensEnabled;
       setAiLens(next);
-      toast.success(
-        next ? "AI 렌즈 켜짐 · 말풍선 제안" : "AI 렌즈 꺼짐",
-      );
+      if (next && shouldShowLensFirstCoach()) {
+        markLensFirstCoachShown();
+        toast.success(copy.product.lensCoachOn, {
+          description: copy.product.lensCoachSub,
+          duration: 5500,
+        });
+      } else {
+        toast.success(
+          next ? "AI 렌즈 켜짐 · 말풍선 제안" : "AI 렌즈 꺼짐",
+        );
+      }
     },
     onTap: phoneDm ? () => setProfileOpen(true) : undefined,
   });

@@ -105,5 +105,5 @@ export function buildSwitchFeedPeerTalkToast(
   previousName: string,
   nextName: string,
 ): string {
-  return `${previousName}님과의 피드 톡을 마치고 ${nextName}님과 대화를 시작해요`;
+  return `${previousName}님 피드 톡을 마치고 ${nextName}님과 이어요 · 실행은 친구 ROOM에서`;
 }
