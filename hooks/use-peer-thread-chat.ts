@@ -31,6 +31,7 @@ import {
   fetchPeerThreadMeta,
   invokePeerRoomAi,
   isRegisteredPeerDmThread,
+  sendPeerImageRemote,
   sendPeerMessageRemote,
   syncFeedSlotFromRoomRemote,
 } from "@/lib/peer-chat/peer-chat-client";
@@ -75,6 +76,7 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
   const [messagesHydrating, setMessagesHydrating] = useState(useCloud);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [aiBusy, setAiBusy] = useState(false);
+  const [imageBusy, setImageBusy] = useState(false);
   const hydrateGen = useRef(0);
 
   const refreshLocal = useCallback(() => {
@@ -271,6 +273,46 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
     [useCloud, cloudReady, threadId, displayName, canPersist],
   );
 
+  const sendImage = useCallback(
+    async (file: File, caption?: string) => {
+      if (!useCloud || !cloudReady) {
+        setSyncError("로그인 후 사진을 보낼 수 있어요");
+        return null;
+      }
+      setImageBusy(true);
+      try {
+        setSyncError(null);
+        const message = await sendPeerImageRemote({
+          threadId,
+          displayName,
+          file,
+          caption,
+        });
+        setMessages((current) => {
+          const merged = mergePeerMessages(current, message);
+          if (canPersist) {
+            replacePeerMessageLog(threadId, merged);
+          }
+          return merged;
+        });
+        if (isRegisteredPeerDmThread(threadId)) {
+          void syncFeedSlotFromRoomRemote(threadId)
+            .then(() => emitFeedSlotsRefresh())
+            .catch(() => emitFeedSlotsRefresh());
+        }
+        return message;
+      } catch (error) {
+        setSyncError(
+          error instanceof Error ? error.message : "사진 전송에 실패했어요",
+        );
+        return null;
+      } finally {
+        setImageBusy(false);
+      }
+    },
+    [useCloud, cloudReady, threadId, displayName, canPersist],
+  );
+
   const send = useCallback(
     async (body: string, author: PeerMessageAuthor = "me") => {
       const trimmed = body.trim();
@@ -315,6 +357,8 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
     messages,
     canSend: canPersist,
     send,
+    sendImage,
+    canSendImage: useCloud && cloudReady,
     refresh: refreshLocal,
     realtime: useCloud && cloudReady,
     inviteCode,
@@ -322,6 +366,7 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
     syncError,
     refreshInvite,
     aiBusy,
+    imageBusy,
     messagesHydrating,
   };
 }

@@ -8,6 +8,7 @@ export type PeerMessageRow = {
   body: string;
   message_type: RoomMessageType;
   ai_payload: AiMessagePayload | null;
+  image_url: string | null;
   created_at: string;
 };
 export type PeerThreadRow = {

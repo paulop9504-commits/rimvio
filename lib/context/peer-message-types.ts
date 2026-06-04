@@ -12,6 +12,8 @@ export type PeerMessage = {
   sentAt: string;
   messageType: RoomMessageType;
   aiPayload?: AiMessagePayload | null;
+  /** Public storage URL when message is a photo. */
+  imageUrl?: string | null;
   /** DM ai_private: only me. Group ai_shared: everyone. */
   visibleToMeOnly?: boolean;
 };

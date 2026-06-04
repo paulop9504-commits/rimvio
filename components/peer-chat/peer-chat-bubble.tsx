@@ -6,6 +6,7 @@ import { DM_CHAT } from "@/lib/peer-chat/dm-chat-density";
 import { formatPeerMessageTime } from "@/lib/peer-chat/format-message-time";
 import { PeerAiInlineCard } from "@/components/peer-chat/peer-ai-inline-card";
 import type { DeepLinkBubbleCandidate } from "@/lib/peer-chat/ai-lens/types";
+import { PEER_MESSAGE_IMAGE_PLACEHOLDER } from "@/lib/peer-chat/peer-chat-image-constants";
 import { cn } from "@/lib/utils";
 
 type PeerChatBubbleProps = {
@@ -68,6 +69,78 @@ export function PeerChatBubble({
     !isMe &&
     lensCandidates.length > 0 &&
     typeof onLensSelect === "function";
+
+  const imageUrl = message.imageUrl?.trim() || null;
+  const caption =
+    message.body.trim() &&
+    message.body.trim() !== PEER_MESSAGE_IMAGE_PLACEHOLDER
+      ? message.body
+      : null;
+
+  if (imageUrl) {
+    return (
+      <Tag
+        className={cn(
+          "flex w-full max-w-full flex-col",
+          isMe ? "items-end" : "items-start",
+        )}
+      >
+        <div
+          className={cn(
+            "flex max-w-[94%] items-end",
+            simple ? DM_CHAT.rowGap : "gap-1.5",
+          )}
+        >
+          {time ? <MessageTime time={time} compact={simple} /> : null}
+          <div
+            className={cn(
+              "min-w-0 overflow-hidden",
+              simple ? DM_CHAT.bubbleRadius : "rounded-2xl",
+              isMe ? DM_CHAT.bubbleMeCorner : DM_CHAT.bubblePeerCorner,
+            )}
+          >
+            <a
+              href={imageUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={imageUrl}
+                alt={caption ?? "사진"}
+                className="max-h-[min(52dvh,20rem)] w-full max-w-[min(72vw,15rem)] object-cover sm:max-w-[16rem]"
+              />
+            </a>
+            {caption ? (
+              <p
+                className={cn(
+                  "whitespace-pre-wrap break-words px-2.5 py-1.5",
+                  simple
+                    ? cn(DM_CHAT.bubbleText, isMe ? "text-[#191919]" : "text-[#f5f5f5]")
+                    : cn(
+                        "text-[15px]",
+                        isMe ? "text-white" : "text-foreground",
+                      ),
+                  isMe && simple ? "bg-[#FEE500]" : !simple && isMe ? "bg-rimvio-neon-purple" : simple ? "bg-[#2c2c2e]" : "bg-rimvio-surface-raised",
+                )}
+              >
+                {caption}
+              </p>
+            ) : null}
+          </div>
+        </div>
+        {showLens ? (
+          <DeepLinkBubbleRow
+            candidates={lensCandidates}
+            onSelect={onLensSelect}
+            disabled={lensDisabled}
+            className={cn("mt-1 max-w-[94%]", simple ? "pl-0" : "pl-1")}
+          />
+        ) : null}
+      </Tag>
+    );
+  }
 
   return (
     <Tag

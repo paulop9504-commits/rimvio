@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUp, Loader2 } from "lucide-react";
+import { ArrowUp, ImagePlus, Loader2 } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -56,6 +56,9 @@ export function PeerThreadChatPanel({
     inviteCode,
     syncError,
     aiBusy,
+    imageBusy,
+    sendImage,
+    canSendImage,
     messagesHydrating,
   } = usePeerThreadChat(policyInput);
   const { anchorMessageId, candidates: lensCandidates } = usePeerAiLens({
@@ -65,6 +68,8 @@ export function PeerThreadChatPanel({
   const [text, setText] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const composerBusy = aiBusy || imageBusy;
   const scrollBehaviorRef = useRef<ScrollBehavior>("auto");
   const [messagesVisible, setMessagesVisible] = useState(false);
   const [mapPicker, setMapPicker] = useState<{
@@ -75,12 +80,12 @@ export function PeerThreadChatPanel({
   const focusComposer = useCallback(() => {
     requestAnimationFrame(() => {
       const el = inputRef.current;
-      if (!el || readOnly || !canSend || aiBusy) {
+      if (!el || readOnly || !canSend || composerBusy) {
         return;
       }
       el.focus({ preventScroll: true });
     });
-  }, [readOnly, canSend, aiBusy]);
+  }, [readOnly, canSend, composerBusy]);
 
   useEffect(() => {
     scrollBehaviorRef.current = "auto";
@@ -127,7 +132,7 @@ export function PeerThreadChatPanel({
 
   const submit = useCallback(async () => {
     const body = text.trim();
-    if (!body || !canSend || readOnly || aiBusy) {
+    if (!body || !canSend || readOnly || composerBusy) {
       return;
     }
     setText("");
@@ -135,7 +140,31 @@ export function PeerThreadChatPanel({
     focusComposer();
     await send(body, "me");
     focusComposer();
-  }, [text, canSend, readOnly, aiBusy, send, focusComposer, resizeComposer]);
+  }, [text, canSend, readOnly, composerBusy, send, focusComposer, resizeComposer]);
+
+  const handleImageFile = useCallback(
+    async (file: File | null) => {
+      if (!file || !canSendImage || readOnly || composerBusy) {
+        return;
+      }
+      const caption = text.trim();
+      setText("");
+      resizeComposer();
+      const sent = await sendImage(file, caption || undefined);
+      if (sent) {
+        focusComposer();
+      }
+    },
+    [
+      canSendImage,
+      readOnly,
+      composerBusy,
+      text,
+      sendImage,
+      resizeComposer,
+      focusComposer,
+    ],
+  );
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -253,6 +282,43 @@ export function PeerThreadChatPanel({
           onSubmit={handleSubmit}
           className={cn("flex items-end", simple ? "gap-1.5" : "gap-2.5")}
         >
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0] ?? null;
+              event.target.value = "";
+              void handleImageFile(file);
+            }}
+          />
+          {canSendImage && !readOnly ? (
+            <button
+              type="button"
+              aria-label="사진 보내기"
+              disabled={composerBusy}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => imageInputRef.current?.click()}
+              className={cn(
+                "mb-px flex shrink-0 items-center justify-center rounded-full text-white/70 transition-colors hover:text-white disabled:opacity-30",
+                simple ? DM_CHAT.sendSize : "size-11",
+              )}
+            >
+              {imageBusy ? (
+                <Loader2
+                  className={cn(simple ? "size-4" : "size-5", "animate-spin")}
+                  aria-hidden
+                />
+              ) : (
+                <ImagePlus
+                  className={cn(simple ? "size-5" : "size-6")}
+                  strokeWidth={2}
+                  aria-hidden
+                />
+              )}
+            </button>
+          ) : null}
           <textarea
             ref={inputRef}
             value={text}
@@ -262,7 +328,7 @@ export function PeerThreadChatPanel({
             enterKeyHint="send"
             autoComplete="off"
             autoCorrect="on"
-            disabled={!canSend || readOnly || aiBusy}
+            disabled={!canSend || readOnly || composerBusy}
             placeholder={readOnly ? "읽기 전용" : "메시지"}
             className={cn(
               "flex-1 resize-none overflow-y-auto outline-none",
@@ -278,7 +344,7 @@ export function PeerThreadChatPanel({
           />
           <button
             type="button"
-            disabled={!canSend || !text.trim() || aiBusy}
+            disabled={!canSend || !text.trim() || composerBusy}
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => void submit()}
             className={cn(

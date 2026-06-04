@@ -30,6 +30,7 @@ export function mapPeerMessageRow(
     sentAt: row.created_at,
     messageType,
     aiPayload,
+    imageUrl: (row as { image_url?: string | null }).image_url ?? null,
     visibleToMeOnly:
       messageType === "ai_private" &&
       Boolean(currentUserId && row.sender_user_id === currentUserId),

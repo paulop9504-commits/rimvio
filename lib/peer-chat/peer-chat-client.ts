@@ -186,6 +186,30 @@ export async function invokePeerRoomAi(input: {
   return data.message;
 }
 
+export async function sendPeerImageRemote(input: {
+  threadId: string;
+  displayName: string;
+  file: File;
+  caption?: string;
+}): Promise<PeerMessage> {
+  const form = new FormData();
+  form.append("file", input.file);
+  form.append("displayName", input.displayName);
+  if (input.caption?.trim()) {
+    form.append("caption", input.caption.trim());
+  }
+  const response = await fetch(
+    `${resolveAppOrigin()}/api/peers/threads/${encodeURIComponent(input.threadId)}/messages/image`,
+    {
+      method: "POST",
+      credentials: "include",
+      body: form,
+    },
+  );
+  const data = await parseJson<{ message: PeerMessage }>(response);
+  return data.message;
+}
+
 export async function sendPeerMessageRemote(input: {
   threadId: string;
   displayName: string;

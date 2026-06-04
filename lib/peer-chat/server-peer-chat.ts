@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { ensureDmThreadPartnerMember } from "@/lib/peer-chat/dm-friend-add-server";
 import { normalizeEmail } from "@/lib/peer-chat/email";
 import { ensureRimvioUserProfile } from "@/lib/peer-chat/ensure-user-profile";
+import { PEER_MESSAGE_IMAGE_PLACEHOLDER } from "@/lib/peer-chat/peer-chat-image-constants";
 import type { PeerMessageRow, PeerThreadRow } from "@/lib/peer-chat/types";
 import type { Database } from "@/types/database";
 
@@ -548,24 +549,30 @@ export async function listPeerMessages(
 export async function insertPeerMessage(
   supabase: SupabaseClient<Database>,
   input: {
+    id?: string;
     threadId: string;
     senderUserId: string;
     body: string;
+    imageUrl?: string | null;
     messageType?: import("@/lib/chat-room/types").RoomMessageType;
     aiPayload?: import("@/lib/chat-room/types").AiMessagePayload | null;
   },
 ): Promise<PeerMessageRow> {
   const trimmed = input.body.trim();
-  if (!trimmed) {
+  const imageUrl = input.imageUrl?.trim() || null;
+  const body = trimmed || (imageUrl ? PEER_MESSAGE_IMAGE_PLACEHOLDER : "");
+  if (!body && !imageUrl) {
     throw new Error("Empty message.");
   }
 
   const { data, error } = await supabase
     .from("peer_messages")
     .insert({
+      ...(input.id ? { id: input.id } : {}),
       thread_id: input.threadId,
       sender_user_id: input.senderUserId,
-      body: trimmed,
+      body,
+      image_url: imageUrl,
       message_type: input.messageType ?? "human",
       ai_payload: input.aiPayload ?? null,
     })
