@@ -1,0 +1,206 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { MainActionButton } from "@/components/action-chat/main-action-button";
+import { FeedInlineDmPanel } from "@/components/action-chat/feed-inline-dm-panel";
+import { PeerProfileAvatar } from "@/components/peer-chat/peer-profile-avatar";
+import { useDmPeerProfile } from "@/hooks/use-dm-peer-profile";
+import type { PeerContact } from "@/lib/context/peer-contact-types";
+import { filterPeerContactsForTalk } from "@/lib/peer-chat/filter-talk-contacts";
+import { isRegisteredPeerDmThread } from "@/lib/peer-chat/peer-chat-client";
+import { prefetchPeerMessages } from "@/lib/peer-chat/message-prefetch-cache";
+import { resolveMainActionBrandStyle } from "@/lib/brand/action-brand-style";
+import { useAuth } from "@/hooks/use-auth";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { cn } from "@/lib/utils";
+
+type InlineChatPeerTalkProps = {
+  query: string;
+  className?: string;
+};
+
+function TalkContactRow({
+  contact,
+  selected,
+  onSelect,
+}: {
+  contact: PeerContact;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const phoneDm = isRegisteredPeerDmThread(contact.peerThreadId);
+  const { profile } = useDmPeerProfile(contact.peerThreadId, phoneDm);
+  const displayName = profile?.displayName?.trim() || contact.displayName;
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        "flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-colors active:scale-[0.99]",
+        selected
+          ? "bg-[#FEE500]/15 ring-1 ring-[#FEE500]/40"
+          : "bg-white/[0.04] hover:bg-white/[0.08]",
+      )}
+    >
+      <PeerProfileAvatar
+        displayName={displayName}
+        avatarUrl={profile?.avatarUrl}
+        size="sm"
+      />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[13px] font-medium text-white">
+          {displayName}
+        </span>
+        {profile?.rimvioId ? (
+          <span className="block truncate text-[11px] text-white/45">
+            @{profile.rimvioId}
+          </span>
+        ) : null}
+      </span>
+    </button>
+  );
+}
+
+function TalkProfileConfirm({
+  contact,
+  onStart,
+}: {
+  contact: PeerContact;
+  onStart: () => void;
+}) {
+  const phoneDm = isRegisteredPeerDmThread(contact.peerThreadId);
+  const { profile, loading } = useDmPeerProfile(contact.peerThreadId, phoneDm);
+  const displayName = profile?.displayName?.trim() || contact.displayName;
+  const brand = resolveMainActionBrandStyle({
+    label: "대화 시작하기",
+    deeplink: "",
+  });
+
+  if (loading) {
+    return <p className="text-[12px] text-white/55">프로필 불러오는 중…</p>;
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-3">
+        <PeerProfileAvatar
+          displayName={displayName}
+          avatarUrl={profile?.avatarUrl}
+          size="md"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-white">{displayName}</p>
+          {profile?.rimvioId ? (
+            <p className="truncate text-[12px] text-[#FEE500]/90">
+              @{profile.rimvioId}
+            </p>
+          ) : null}
+        </div>
+      </div>
+      <p className="text-[11px] text-white/45">
+        피드에서 보낸 메시지는 ROOM 대화에도 그대로 보여요.
+      </p>
+      <MainActionButton
+        label="대화 시작하기"
+        brand={brand}
+        compact
+        onClick={onStart}
+      />
+    </div>
+  );
+}
+
+export function InlineChatPeerTalk({ query, className }: InlineChatPeerTalkProps) {
+  const { user, configured } = useAuth();
+  const canUse = Boolean(configured && user && isSupabaseConfigured());
+  const candidates = useMemo(() => filterPeerContactsForTalk(query), [query]);
+  const [picked, setPicked] = useState<PeerContact | null>(() =>
+    candidates.length === 1 ? candidates[0]! : null,
+  );
+  const [chatting, setChatting] = useState(false);
+
+  const active = picked ?? (candidates.length === 1 ? candidates[0]! : null);
+
+  const startChat = () => {
+    if (!active) {
+      return;
+    }
+    prefetchPeerMessages(active.peerThreadId);
+    setChatting(true);
+  };
+
+  if (!canUse) {
+    return (
+      <p className={cn("text-[12px] text-amber-200/90", className)}>
+        @톡은 로그인 후에 쓸 수 있어요.
+      </p>
+    );
+  }
+
+  if (chatting && active) {
+    return (
+      <FeedInlineDmPanel
+        peerThreadId={active.peerThreadId}
+        displayName={active.displayName}
+        className={className}
+      />
+    );
+  }
+
+  if (candidates.length === 0) {
+    return (
+      <div className={cn("space-y-2", className)}>
+        <p className="text-[12px] text-white/55">
+          {query.trim()
+            ? `"${query.trim()}" 친구를 찾지 못했어요.`
+            : "아직 친구가 없어요."}
+        </p>
+        <p className="text-[11px] text-white/40">
+          먼저 <span className="text-rimvio-neon-cyan">@친추</span>로 친구를 추가해
+          주세요.
+        </p>
+      </div>
+    );
+  }
+
+  if (active && (query.trim() || candidates.length === 1)) {
+    return (
+      <div className={className}>
+        <TalkProfileConfirm contact={active} onStart={startChat} />
+        {candidates.length > 1 ? (
+          <button
+            type="button"
+            className="mt-2 text-[11px] text-white/45 underline-offset-2 hover:underline"
+            onClick={() => {
+              setPicked(null);
+              setChatting(false);
+            }}
+          >
+            다른 친구 고르기
+          </button>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn("space-y-2", className)}>
+      <p className="text-[11px] text-white/45">친구를 선택하세요</p>
+      <ul className="max-h-40 space-y-1 overflow-y-auto overscroll-contain">
+        {candidates.map((contact) => (
+          <li key={contact.peerThreadId}>
+            <TalkContactRow
+              contact={contact}
+              selected={picked?.peerThreadId === contact.peerThreadId}
+              onSelect={() => setPicked(contact)}
+            />
+          </li>
+        ))}
+      </ul>
+      {picked ? (
+        <TalkProfileConfirm contact={picked} onStart={startChat} />
+      ) : null}
+    </div>
+  );
+}

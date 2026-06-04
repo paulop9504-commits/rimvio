@@ -26,6 +26,7 @@ const MENTION_EXAMPLES = [
   { token: "@출근", desc: "출근 길·일정" },
   { token: "@메모", desc: "리소스풀에 저장" },
   { token: "@친추", desc: "전번·이메일·ID로 친구 찾기 → 확인 후 추가" },
+  { token: "@톡", desc: "친구 선택 → 피드에서 바로 톡 (ROOM과 같은 대화)" },
 ] as const;
 
 export function RimvioAppManualPanel({ className }: { className?: string }) {

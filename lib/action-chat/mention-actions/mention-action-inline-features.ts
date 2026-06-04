@@ -32,6 +32,7 @@ export const MENTION_ACTION_INLINE_FEATURE_IDS = new Set([
   "dnd",
   "manual",
   "friend_add",
+  "peer_talk",
 ]);
 
 const DEDICATED_LOCAL_INLINE_FEATURE_IDS = new Set([
@@ -97,4 +98,5 @@ export const MENTION_ACTION_ICONS: Record<string, string> = {
   manual: "📖",
   calendar: "📅",
   friend_add: "👋",
+  peer_talk: "💬",
 };

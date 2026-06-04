@@ -693,6 +693,22 @@ export function buildMentionActionWire(input: {
       });
     }
 
+    case "peer_talk": {
+      const talkQuery = q.trim();
+      return buildInlineChatActionWire({
+        featureId: feature.featureId,
+        displayName: feature.displayName,
+        icon,
+        query: talkQuery,
+        summaryLines: talkQuery
+          ? ["프로필 확인 후 피드에서 바로 톡"]
+          : ["친구 선택 · ROOM과 같은 대화"],
+        mainLabel: "",
+        mainActionKind: "internal",
+        peerTalkQuery: talkQuery,
+      });
+    }
+
     default:
       return null;
   }

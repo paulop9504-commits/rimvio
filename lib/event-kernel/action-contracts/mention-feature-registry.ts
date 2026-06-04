@@ -335,6 +335,15 @@ const REGISTRY: readonly MentionFeature[] = [
     confirmCopy:
       "전화번호, 이메일, Rimvio ID 중 하나를 적어 주세요. 예: @친추 rimvio_jihun · @친추 010-1234-5678",
   },
+  {
+    featureId: "peer_talk",
+    displayName: "톡",
+    aliases: ["톡", "talk", "dm", "메신저", "쪽지", "대화"],
+    sourceRef: "mention:peer_talk",
+    category: "custom",
+    confirmCopy:
+      "친구 이름이나 Rimvio ID를 적어 주세요. 예: @톡 monica · 이름 없이 @톡 만 쓰면 목록에서 고를 수 있어요.",
+  },
 ];
 
 const byAlias = new Map<string, MentionFeature>(

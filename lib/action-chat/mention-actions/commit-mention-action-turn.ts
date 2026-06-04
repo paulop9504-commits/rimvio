@@ -54,7 +54,8 @@ function persistLastAction(wire: InlineChatActionWire): void {
     wire.featureId === "now" ||
     wire.featureId === "retry" ||
     wire.featureId === "manual" ||
-    wire.featureId === "friend_add"
+    wire.featureId === "friend_add" ||
+    wire.featureId === "peer_talk"
   ) {
     return;
   }

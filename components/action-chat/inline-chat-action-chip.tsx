@@ -14,6 +14,7 @@ import {
 } from "@/lib/brand/rimvio-neon-theme";
 import type { InlineChatActionWire } from "@/lib/action-chat/mention-actions/inline-chat-action";
 import { InlineChatFriendAdd } from "@/components/action-chat/inline-chat-friend-add";
+import { InlineChatPeerTalk } from "@/components/action-chat/inline-chat-peer-talk";
 import { commitLinksheetUrl } from "@/lib/action-chat/mention-linksheet/linksheet-url-actions";
 import { buildKakaoMapSearchHref } from "@/lib/resolvers/deep-links";
 import { cn } from "@/lib/utils";
@@ -177,6 +178,7 @@ export function InlineChatActionChip({
 
   const isManualCatalog = Boolean(action.manualCatalog?.length);
   const isFriendAdd = Boolean(action.friendAddContact?.trim());
+  const isPeerTalk = action.featureId === "peer_talk";
 
   const insertMention = useCallback(
     (example: string) => {
@@ -210,6 +212,10 @@ export function InlineChatActionChip({
 
         {isFriendAdd ? (
           <InlineChatFriendAdd contact={action.friendAddContact!.trim()} />
+        ) : null}
+
+        {isPeerTalk ? (
+          <InlineChatPeerTalk query={action.peerTalkQuery ?? action.query} />
         ) : null}
 
         {isManualCatalog ? (
@@ -295,7 +301,7 @@ export function InlineChatActionChip({
           </div>
         ) : null}
 
-        {!isManualCatalog && !isLinksheetUrlPrompt && !isFriendAdd && action.mainLabel ? (
+        {!isManualCatalog && !isLinksheetUrlPrompt && !isFriendAdd && !isPeerTalk && action.mainLabel ? (
           <MainActionButton
             label={action.mainLabel}
             brand={mainBrand}
@@ -303,7 +309,7 @@ export function InlineChatActionChip({
             onClick={() => void handleMain()}
           />
         ) : null}
-        {!isManualCatalog && !isLinksheetUrlPrompt && !isFriendAdd && action.auxActions.length > 0 ? (
+        {!isManualCatalog && !isLinksheetUrlPrompt && !isFriendAdd && !isPeerTalk && action.auxActions.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
             {action.auxActions.map((aux) => (
               <AuxActionButton
