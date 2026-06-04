@@ -111,7 +111,7 @@ export function AppShell({
           <main
             className={
               immersive
-                ? "relative flex min-h-0 flex-1 flex-col pb-[var(--rimvio-bottom-nav-offset)] lg:pb-0"
+                ? "relative flex min-h-0 flex-1 flex-col pb-0"
                 : compact
                   ? "flex min-h-0 flex-1 flex-col overflow-hidden"
                   : "flex-1 px-[var(--space-phi)] pb-[max(var(--space-phi2),env(safe-area-inset-bottom))]"

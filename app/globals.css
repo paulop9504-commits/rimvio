@@ -191,10 +191,11 @@
   --rimvio-bottom-nav-height: 3.05rem;
   --rimvio-composer-bar-height: 4.5rem;
   --rimvio-bottom-nav-offset: calc(
-    var(--rimvio-bottom-nav-height) + env(safe-area-inset-bottom, 0px)
+    var(--rimvio-bottom-nav-height) +
+      max(0.25rem, env(safe-area-inset-bottom, 0px))
   );
   --rimvio-feed-scroll-pad: calc(
-    var(--rimvio-composer-bar-height) + var(--rimvio-bottom-nav-offset) + 0.75rem
+    var(--rimvio-composer-bar-height) + var(--rimvio-bottom-nav-offset) + 0.25rem
   );
   /* Toast placement — locked */
   --toast-shift-left: 3.5cm;
@@ -828,11 +829,17 @@
   .rimvio-feed-composer-dock {
     position: fixed;
     inset-inline: 0;
-    bottom: var(--rimvio-bottom-nav-offset);
+    bottom: 0;
     z-index: 45;
     margin-inline: auto;
     width: 100%;
     max-width: var(--shell-max-phone);
+    padding-bottom: var(--rimvio-bottom-nav-offset);
+    pointer-events: none;
+  }
+
+  .rimvio-feed-composer-dock .rimvio-composer-bar {
+    pointer-events: auto;
   }
 }
 

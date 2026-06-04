@@ -126,7 +126,7 @@ export function ActionChatInputBar({
       onSubmit={handleSubmit}
       className={cn(
         rimvioNavBarClass,
-        "rimvio-composer-bar px-4 pb-2 pt-2",
+        "rimvio-composer-bar px-4 pb-1.5 pt-2",
         className,
       )}
     >

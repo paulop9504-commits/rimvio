@@ -107,6 +107,8 @@ import {
   writeActionChatMessages,
 
 } from "@/lib/action-chat/chat-store";
+import { recordRecentAreaPick } from "@/lib/location-memory/recent-area-picks";
+import { publishGoalSnapshotFromTurn } from "@/lib/goal-engine/goal-snapshot-session";
 import { archiveAndClearChatSession } from "@/lib/conversation-memory/archive-session";
 import { clearActiveChains } from "@/lib/containers/active-chains-state";
 import {
@@ -1491,12 +1493,12 @@ export function useActionChat(
       }
 
       const activeFeedPeerTalk = getFeedPeerTalkSession();
-      if (
+      const routeToFeedPeerTalk =
         activeFeedPeerTalk &&
         pendingAttachments.length === 0 &&
         trimmed &&
-        !trimmed.startsWith("@")
-      ) {
+        !trimmed.startsWith("@");
+      if (routeToFeedPeerTalk) {
         try {
           const sent = await sendFeedPeerTalkInFeed(
             { readMessages: () => readActionChatMessages(scopeId), persist },
@@ -1505,8 +1507,11 @@ export function useActionChat(
           if (sent) {
             return;
           }
-        } catch {
-          return;
+        } catch (peerError) {
+          console.error(
+            "[action-chat] feed peer talk failed — falling back to orchestrate",
+            peerError,
+          );
         }
       }
 
@@ -2033,7 +2038,7 @@ export function useActionChat(
             linkedLinks,
 
             masterContext: {
-              ...serializeMasterContextForApi(),
+              ...serializeMasterContextForApi(undefined, { chatScopeId: scopeId }),
               containerGateEnabled: false,
               ...(activeLink
                 ? {}
@@ -2139,6 +2144,8 @@ export function useActionChat(
         if (vitalityStates?.length) {
           writeVitalityMemory(vitalityStates);
         }
+
+        publishGoalSnapshotFromTurn(scopeId, payload.goalSnapshot);
 
         const assistantMessage = createMessage(
 
@@ -2331,7 +2338,20 @@ export function useActionChat(
     sendMessageRef.current = sendMessage;
   }, [sendMessage]);
 
-
+  const selectArea = useCallback(
+    (_messageId: string, suggestion: LocationSuggestion) => {
+      const searchQuery = suggestion.place_name.trim() || suggestion.label.trim();
+      if (!searchQuery) {
+        return;
+      }
+      recordRecentAreaPick(scopeId, {
+        label: suggestion.label.trim() || searchQuery,
+        search_query: searchQuery,
+      });
+      void sendMessage(searchQuery);
+    },
+    [scopeId, sendMessage],
+  );
 
   const dismissDatePicker = useCallback(() => {
     setDatePickerRequest(null);
@@ -2675,6 +2695,10 @@ export function useActionChat(
 
     correctPlace,
 
+    selectArea,
+
+    chatScopeId: scopeId,
+
     resumeConfirmInterrupt,
 
     dismissConfirmForInterrupt,
@@ -2718,6 +2742,8 @@ type OrchestratorResultWire = {
   pendingConfirm?: boolean;
 
   metadata?: ActionChatMessage["metadata"];
+
+  goalSnapshot?: ActionChatMessage["goalSnapshot"];
 
   meta?: ActionChatMessage["meta"];
 

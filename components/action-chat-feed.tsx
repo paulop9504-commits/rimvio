@@ -116,6 +116,8 @@ export function ActionChatFeed({
     dismissDatePicker,
     confirmPlace,
     correctPlace,
+    selectArea,
+    chatScopeId,
     resumeConfirmInterrupt,
     dismissConfirmForInterrupt,
     handleWittyAction,
@@ -155,6 +157,7 @@ export function ActionChatFeed({
     messages,
     schedule: masterContext.existingSchedule,
     referenceDate: masterContext.currentDate,
+    chatScopeId,
   });
 
   const causalWhyLine = useMemo(() => {
@@ -434,6 +437,8 @@ export function ActionChatFeed({
               onRevealAlternateActions={revealAlternateMessageActions}
               onConfirmPlace={confirmPlace}
               onCorrectPlace={correctPlace}
+              onSelectArea={selectArea}
+              chatScopeId={chatScopeId}
               onWittyAction={handleWittyAction}
               onResumeConfirmInterrupt={resumeConfirmInterrupt}
               onCancelConfirmInterrupt={(messageId) => {
@@ -513,7 +518,7 @@ export function ActionChatFeed({
                   await sendFeedPeerTalk(payload.text);
                   return true;
                 } catch {
-                  return false;
+                  /* fall through — AI feed orchestrate */
                 }
               }
               if (sendComposerPayload(payload)) {

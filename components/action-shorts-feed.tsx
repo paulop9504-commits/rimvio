@@ -45,9 +45,8 @@ type PendingDismiss = {
 /** Full slide height — categories overlay on card 1; desktop omits bottom nav inset. */
 const FEED_VIEWPORT_CLASS = GRID.feedViewport;
 
-/** IG-style bottom tab bar */
-export const FEED_BOTTOM_NAV_OFFSET =
-  "max(3.25rem,calc(env(safe-area-inset-bottom)+2.85rem))";
+/** Align overlays (undo toast, etc.) with fixed tab bar — matches globals.css */
+export const FEED_BOTTOM_NAV_OFFSET = "var(--rimvio-bottom-nav-offset)";
 
 export function ActionShortsFeed() {
   const copy = useCopy();
