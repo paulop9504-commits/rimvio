@@ -44,11 +44,22 @@ export function useRelationshipFeedSlots(enabled = true) {
     const onFeedRefresh = () => {
       void refresh();
     };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        void refresh();
+      }
+    };
     window.addEventListener("focus", onFocus);
     window.addEventListener(FEED_SLOTS_REFRESH_EVENT, onFeedRefresh);
+    document.addEventListener("visibilitychange", onVisible);
+    const poll = window.setInterval(() => {
+      void refresh();
+    }, 20_000);
     return () => {
       window.removeEventListener("focus", onFocus);
       window.removeEventListener(FEED_SLOTS_REFRESH_EVENT, onFeedRefresh);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.clearInterval(poll);
     };
   }, [useRemote, refresh]);
 
