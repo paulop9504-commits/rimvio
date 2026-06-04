@@ -10,6 +10,8 @@ type PeerChatBubbleProps = {
   message: PeerMessage;
   simple?: boolean;
   showTime?: boolean;
+  /** 피드 타임라인 — ul/li 대신 div */
+  as?: "li" | "div";
 };
 
 function MessageTime({ time, compact }: { time: string; compact?: boolean }) {
@@ -29,15 +31,18 @@ export function PeerChatBubble({
   message,
   simple = false,
   showTime = true,
+  as = "li",
 }: PeerChatBubbleProps) {
   const time =
     showTime && message.sentAt ? formatPeerMessageTime(message.sentAt) : "";
 
   const isMe = message.author === "me";
 
+  const Tag = as;
+
   if (message.messageType === "ai_private" || message.messageType === "ai_shared") {
     return (
-      <li className="flex justify-end">
+      <Tag className="flex justify-end">
         <div
           className={cn(
             "flex max-w-[94%] items-end",
@@ -47,12 +52,12 @@ export function PeerChatBubble({
           {time ? <MessageTime time={time} compact={simple} /> : null}
           <PeerAiInlineCard message={message} simple={simple} />
         </div>
-      </li>
+      </Tag>
     );
   }
 
   return (
-    <li className={cn("flex", isMe ? "justify-end" : "justify-start")}>
+    <Tag className={cn("flex", isMe ? "justify-end" : "justify-start")}>
       <div
         className={cn(
           "flex max-w-[94%] items-end",
@@ -84,6 +89,6 @@ export function PeerChatBubble({
           <p className="whitespace-pre-wrap break-words">{message.body}</p>
         </div>
       </div>
-    </li>
+    </Tag>
   );
 }

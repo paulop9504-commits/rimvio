@@ -5,7 +5,7 @@ import {
   hasMentionInlinePayload,
   MentionInlineMessage,
 } from "@/components/action-chat/mention-inline-message";
-import { FeedPeerTalkThread } from "@/components/action-chat/feed-peer-talk-thread";
+import { FeedPeerTalkFeedRows } from "@/components/action-chat/feed-peer-talk-thread";
 import type { PeerContact } from "@/lib/context/peer-contact-types";
 import { ChatThinkingBubble } from "@/components/action-chat/chat-thinking-bubble";
 import type { FocusHeldActionWire } from "@/lib/action-chat/mention-focus/inline-chat-focus";
@@ -185,10 +185,6 @@ function AssistantOfferMessage({
     loading: message.loading,
   });
   const showActionGrid = isPlaceDiscovery || ux.showActionGrid;
-
-  if (message.feedPeerTalkThread) {
-    return <FeedPeerTalkThread thread={message.feedPeerTalkThread} />;
-  }
 
   if (hasMentionInlinePayload(message)) {
     return (
@@ -484,6 +480,21 @@ export function ActionChatMessageList({
               >
                 <UserChatBubble group={bubbleGroup}>{message.text}</UserChatBubble>
               </div>
+            );
+          }
+
+          if (message.feedPeerTalkThread) {
+            return (
+              <FeedPeerTalkFeedRows
+                key={message.id}
+                messageId={message.id}
+                thread={message.feedPeerTalkThread}
+                parentBubbleGroup={bubbleGroup}
+                messages={messages}
+                messageIndex={index}
+                focusedTurnIds={focusedTurnIds}
+                composerLive={composerLive}
+              />
             );
           }
 
