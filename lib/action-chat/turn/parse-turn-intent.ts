@@ -1,5 +1,6 @@
 import type { ComposerAttachment } from "@/lib/action-chat/composer-attachments";
 import type { ChatAxis } from "@/lib/action-chat/chat-three-axis";
+import { routeRimvioCommand } from "@/lib/command-router";
 
 export type ParsedTurnIntent = {
   trimmed: string;
@@ -16,7 +17,7 @@ export function parseTurnIntent(
   options: { attachments?: ComposerAttachment[]; chatAxis?: ChatAxis } | undefined,
   readStoredChatAxis: () => ChatAxis,
 ): ParsedTurnIntent {
-  const trimmed = text.trim();
+  const trimmed = routeRimvioCommand(text.trim());
   const pendingAttachments = options?.attachments ?? [];
   const chatAxis = options?.chatAxis ?? readStoredChatAxis();
 

@@ -7,6 +7,8 @@ import type {
 } from "@/lib/execution/execution-contract";
 import { appendExecutionHistory } from "@/lib/execution/execution-history";
 import { ingestExecutionOutcome } from "@/lib/learning/learning-engine";
+import { commitSurfaceMemoryFromExecution } from "@/lib/memory/surface-memory-commit";
+import { wireLoopFromCapabilityExecution } from "@/lib/loop-wiring/loop-wiring-engine";
 import { assertTransition } from "@/lib/execution/execution-lifecycle";
 import {
   getQueuedExecution,
@@ -133,6 +135,11 @@ export function markExecutionComplete(
   updateQueuedExecution(record);
   appendExecutionHistory(record);
   ingestExecutionOutcome(record);
+  commitSurfaceMemoryFromExecution(record);
+  wireLoopFromCapabilityExecution({
+    capabilityId: record.capabilityId,
+    executedAt: record.completedAt,
+  });
   removeQueuedExecution(executionId);
   return record;
 }
@@ -154,6 +161,10 @@ export function markExecutionFailed(
   updateQueuedExecution(record);
   appendExecutionHistory(record);
   ingestExecutionOutcome(record);
+  wireLoopFromCapabilityExecution({
+    capabilityId: record.capabilityId,
+    executedAt: record.completedAt,
+  });
   return record;
 }
 

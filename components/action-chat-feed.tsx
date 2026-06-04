@@ -34,9 +34,12 @@ import { RimvioProductContextStrip } from "@/components/rimvio-product-context-s
 import { OnboardingMagicPanel } from "@/components/onboarding-magic-panel";
 import { useActionChat } from "@/hooks/use-action-chat";
 import { usePredictiveDock } from "@/hooks/use-predictive-dock";
-import { useSurfaceEngine } from "@/hooks/use-surface-engine";
+import { useSurfaceComposition } from "@/hooks/use-surface-composition";
+import { useSurfaceMemory } from "@/hooks/use-surface-memory";
 import { useCapabilityDispatch } from "@/hooks/use-capability-dispatch";
-import { SurfaceFeedStrip } from "@/components/surface/surface-feed-strip";
+import { buildSurfaceActionKey } from "@/lib/memory";
+import { shouldRenderLatentSuggestionLayers } from "@/lib/surface-composition";
+import { SurfaceCompositionRuntime } from "@/components/surface-composition/surface-composition-runtime";
 import { markOpportunityConsumed } from "@/lib/predictive-dock/action-opportunity-session";
 import { recordDockActionUsage } from "@/lib/action-registry/record-dock-usage";
 import { wireEventCompleted } from "@/lib/events/event-lifecycle-hooks";
@@ -155,9 +158,14 @@ export function ActionChatFeed({
     refreshKey: reminderMap,
   });
   const masterContext = useMemo(() => readClientMasterOrchestratorContext(), [messages]);
-  const { feed: feedSurfaces } = useSurfaceEngine({
+  const surfaceMemory = useSurfaceMemory();
+  const { frame: surfaceFrame } = useSurfaceComposition({
     dateKey: masterContext.currentDate,
-    context: { now: new Date() },
+    context: {
+      now: new Date(),
+      completedActionIds: surfaceMemory.completedActionIds,
+      dismissedSurfaceIds: surfaceMemory.dismissedSurfaceIds,
+    },
   });
   const { dispatch: dispatchCapability } = useCapabilityDispatch({
     sendPrompt: (text) => void sendMessage(text),
@@ -220,6 +228,10 @@ export function ActionChatFeed({
   );
   const [coldStartDismissed, setColdStartDismissed] = useState(false);
   const coldStartVisible = showColdStartMagic && !coldStartDismissed;
+  const showLatentSuggestionLayers = useMemo(
+    () => shouldRenderLatentSuggestionLayers(surfaceFrame),
+    [surfaceFrame],
+  );
   const prevMessageCountRef = useRef(messages.length);
   const threadScrollStateRef = useRef({
     messageLen: messages.length,
@@ -406,7 +418,7 @@ export function ActionChatFeed({
                     onDismiss={() => setColdStartDismissed(true)}
                   />
                 </div>
-              ) : !activeLink && messages.length === 0 ? (
+              ) : !activeLink && messages.length === 0 && showLatentSuggestionLayers ? (
                 <ContextNowStrip
                   nextAction={nextAction}
                   onOpenCalendar={() => setActiveActionsOpen(true)}
@@ -415,23 +427,30 @@ export function ActionChatFeed({
               ) : null}
             </div>
 
-            {feedSurfaces.length > 0 ? (
-              <SurfaceFeedStrip
-                surfaces={feedSurfaces}
-                onDispatchCapability={(surface, _actionId, capabilityId) => {
+            {surfaceFrame.layout.primary || surfaceFrame.layout.secondary.length > 0 ? (
+              <SurfaceCompositionRuntime
+                frame={surfaceFrame}
+                onDispatchCapability={(node, _actionId, capabilityId) => {
                   dispatchCapability({
                     capabilityId,
                     inputs: {
-                      title: surface.title,
-                      destination: surface.resources.find((r) => r.kind === "location")?.label,
-                      place: surface.resources.find((r) => r.kind === "location")?.label,
+                      title: node.title,
+                      destination: node.resources.find((r) => r.kind === "location")?.label,
+                      place: node.resources.find((r) => r.kind === "location")?.label,
+                    },
+                    metadata: {
+                      surfaceId: node.id,
+                      actionKey: buildSurfaceActionKey(node.id, capabilityId),
                     },
                   });
+                  if (capabilityId === "DISMISS_SURFACE") {
+                    markOpportunityConsumed(node.id);
+                  }
                 }}
               />
             ) : null}
 
-            {prepSurface.visible ? (
+            {prepSurface.visible && showLatentSuggestionLayers ? (
               <div className="border-b border-black/[0.04] bg-rimvio-surface/80 px-3 py-4">
                 <CalendarBoard
                   variant="compact"
@@ -500,7 +519,7 @@ export function ActionChatFeed({
             </ExecutionTimeline>
           </div>
 
-          {dockActions.length > 0 ? (
+          {dockActions.length > 0 && showLatentSuggestionLayers ? (
             <div className="shrink-0 px-3 pb-1">
               <PredictiveActionDock
                 actions={dockActions}

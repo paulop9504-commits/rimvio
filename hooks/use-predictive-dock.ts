@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { visibleDockActions } from "@/lib/predictive-dock/compute-predictive-dock";
+import { readSurfaceMemoryContext } from "@/lib/memory";
 import {
   listConsumedOpportunityIds,
   syncOpportunityIntentEpoch,
@@ -81,10 +82,18 @@ export function usePredictiveDock(input: {
     syncOpportunityIntentEpoch(intent);
   }, [clientReady, intent]);
 
-  const consumedOpportunityIds = useMemo(
-    () => (clientReady ? listConsumedOpportunityIds() : []),
-    [clientReady, intent, consumedRevision],
-  );
+  const consumedOpportunityIds = useMemo(() => {
+    if (!clientReady) {
+      return [];
+    }
+    const memory = readSurfaceMemoryContext();
+    return [
+      ...new Set([
+        ...listConsumedOpportunityIds(),
+        ...memory.dismissedSurfaceIds,
+      ]),
+    ];
+  }, [clientReady, intent, consumedRevision]);
 
   const goalSnapshot = useMemo(() => {
     if (!clientReady || !input.chatScopeId) {
@@ -93,10 +102,16 @@ export function usePredictiveDock(input: {
     return readLastGoalSnapshot(input.chatScopeId);
   }, [clientReady, input.chatScopeId, input.messages]);
 
+  const surfaceMemory = useMemo(
+    () => (clientReady ? readSurfaceMemoryContext() : { completedActionIds: [], dismissedSurfaceIds: [] }),
+    [clientReady, intent, consumedRevision],
+  );
+
   const { feed } = useSurfaceEngine({
     dateKey: input.referenceDate,
     context: {
       dismissedSurfaceIds: consumedOpportunityIds,
+      completedActionIds: surfaceMemory.completedActionIds,
       now: new Date(),
     },
   });

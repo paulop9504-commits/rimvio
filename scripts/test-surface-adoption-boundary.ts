@@ -27,7 +27,8 @@ const FORBIDDEN_IN_UI = [
 const REQUIRED_HOOK = "use-surface-engine.ts";
 const REQUIRED_COMPONENTS = [
   "components/surface/surface-card.tsx",
-  "components/surface/surface-feed-strip.tsx",
+  "components/surface-composition/surface-composition-runtime.tsx",
+  "hooks/use-surface-composition.ts",
 ];
 
 function walkTsFiles(dir: string, out: string[]): void {
@@ -77,8 +78,11 @@ const feedSource = fs.readFileSync(
   path.join(REPO, "components/action-chat-feed.tsx"),
   "utf8",
 );
-assert.ok(feedSource.includes("useSurfaceEngine"), "feed must use useSurfaceEngine");
-assert.ok(feedSource.includes("SurfaceFeedStrip"), "feed must render SurfaceFeedStrip");
+assert.ok(
+  feedSource.includes("useSurfaceComposition") ||
+    feedSource.includes("SurfaceCompositionRuntime"),
+  "feed must use surface composition runtime",
+);
 
 const dockHook = fs.readFileSync(path.join(REPO, "hooks/use-predictive-dock.ts"), "utf8");
 assert.ok(

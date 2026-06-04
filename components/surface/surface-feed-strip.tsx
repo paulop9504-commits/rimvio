@@ -2,11 +2,14 @@
 
 import type { RankedSurface } from "@/lib/surface-engine/surface-contract";
 import type { CapabilityId } from "@/lib/capability-registry";
-import { SurfaceCard } from "@/components/surface/surface-card";
-import { cn } from "@/lib/utils";
+import { SurfaceCompositionRuntime } from "@/components/surface-composition/surface-composition-runtime";
+import { composeSurfaceFrame } from "@/lib/surface-composition";
+import { useMemo } from "react";
 
 export type SurfaceFeedStripProps = {
   surfaces: readonly RankedSurface[];
+  uxState?: import("@/lib/surface-engine/surface-contract").SurfaceUxState;
+  computedAt?: string;
   onDispatchCapability: (
     surface: RankedSurface,
     actionId: string,
@@ -15,37 +18,41 @@ export type SurfaceFeedStripProps = {
   className?: string;
 };
 
-/** FEED channel — render surfaces only. */
+/**
+ * @deprecated Prefer `SurfaceCompositionRuntime` + `useSurfaceComposition`.
+ * Thin adapter for legacy call sites.
+ */
 export function SurfaceFeedStrip({
   surfaces,
+  uxState = "active",
+  computedAt,
   onDispatchCapability,
   className,
 }: SurfaceFeedStripProps) {
-  if (surfaces.length === 0) {
+  const frame = useMemo(
+    () =>
+      composeSurfaceFrame(
+        {
+          contractVersion: 1,
+          computedAt: computedAt ?? new Date().toISOString(),
+          surfaces,
+          routes: { FEED: surfaces, CHAT: [], CALENDAR: [] },
+          uxState,
+        },
+        surfaces,
+      ),
+    [surfaces, uxState, computedAt],
+  );
+
+  if (!frame.layout.primary && frame.layout.secondary.length === 0) {
     return null;
   }
 
   return (
-    <div className={cn("space-y-3 px-3 py-2", className)} aria-label="Situation surfaces">
-      {surfaces.map((surface) => (
-        <SurfaceCard
-          key={surface.id}
-          surface={surface}
-          onPrimary={() =>
-            onDispatchCapability(
-              surface,
-              surface.primaryAction.id,
-              surface.primaryAction.capabilityId,
-            )
-          }
-          onSecondary={(actionId) => {
-            const action = surface.secondaryActions.find((row) => row.id === actionId);
-            if (action) {
-              onDispatchCapability(surface, action.id, action.capabilityId);
-            }
-          }}
-        />
-      ))}
-    </div>
+    <SurfaceCompositionRuntime
+      frame={frame}
+      onDispatchCapability={onDispatchCapability}
+      className={className}
+    />
   );
 }

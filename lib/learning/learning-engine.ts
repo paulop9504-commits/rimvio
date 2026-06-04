@@ -24,6 +24,7 @@ import type {
   ReplayOptions,
   WeightUpdateInput,
 } from "@/lib/learning/learning-types";
+import { readStabilityControlFlags } from "@/lib/stability/stability-state-store";
 
 const REINFORCE = {
   executeSuccess: 0.12,
@@ -177,6 +178,10 @@ export function ingestObservation(input: IngestObservationInput): LearningObserv
 
 /** Bridge: Execution Plane terminal record → observation (write path only). */
 export function ingestExecutionOutcome(record: ExecutionRecord): LearningObservation | null {
+  if (readStabilityControlFlags().learningPaused) {
+    return null;
+  }
+
   const resultStatus = resultStatusFromExecution(record.status);
   if (!resultStatus) {
     return null;

@@ -94,7 +94,12 @@ export function interactionScore(
   surfaceId: string,
   eventId: string,
   context: SurfaceBuildContext,
+  primaryCapabilityId?: CapabilityId,
 ): number {
+  if (context.dismissedSurfaceIds?.includes(surfaceId)) {
+    return -200;
+  }
+
   let score = 0;
   if (context.focusedSurfaceId === surfaceId) {
     score += 24;
@@ -102,9 +107,24 @@ export function interactionScore(
   if (context.recentEventIds?.includes(eventId)) {
     score += 10;
   }
-  if (context.dismissedSurfaceIds?.includes(surfaceId)) {
-    score -= 80;
+
+  if (primaryCapabilityId) {
+    const primaryKey = `${surfaceId}:${primaryCapabilityId}`;
+    if (context.completedActionIds?.includes(primaryKey)) {
+      score -= 72;
+    }
   }
+
+  if (context.completedActionIds?.length) {
+    const prefix = `${surfaceId}:`;
+    const completedOnSurface = context.completedActionIds.filter((id) =>
+      id.startsWith(prefix),
+    ).length;
+    if (completedOnSurface > 0) {
+      score -= Math.min(24, completedOnSurface * 8);
+    }
+  }
+
   return score;
 }
 
@@ -140,7 +160,12 @@ export function computeRawPriorityScore(input: {
     proximityUrgencyScore(hours, input.now) +
     lifecycleUrgencyWeight(input.event.lifecycle) +
     recencyScore(input.event.updatedAt, input.now) +
-    interactionScore(input.surfaceId, input.event.id, input.context) +
+    interactionScore(
+      input.surfaceId,
+      input.event.id,
+      input.context,
+      input.primaryCapabilityId,
+    ) +
     Math.round(input.event.confidence * 8) +
     learningBoost;
 

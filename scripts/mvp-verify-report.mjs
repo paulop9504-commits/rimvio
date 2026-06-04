@@ -21,10 +21,16 @@ const CORE_STEPS = [
   { id: "life-read-allowlist", command: "npx", args: ["tsx", "scripts/test-life-read-store-allowlist.ts"] },
   { id: "surface-engine", command: "npx", args: ["tsx", "scripts/test-surface-engine.ts"] },
   { id: "surface-ux-stability", command: "npx", args: ["tsx", "scripts/test-surface-ux-stability.ts"] },
+  { id: "surface-composition", command: "npx", args: ["tsx", "scripts/test-surface-composition.ts"] },
   { id: "surface-adoption", command: "npx", args: ["tsx", "scripts/test-surface-adoption-boundary.ts"] },
   { id: "capability-registry", command: "npx", args: ["tsx", "scripts/test-capability-registry.ts"] },
   { id: "execution-plane", command: "npx", args: ["tsx", "scripts/test-execution-plane.ts"] },
   { id: "learning-layer", command: "npx", args: ["tsx", "scripts/test-learning-layer.ts"] },
+  { id: "loop-wiring", command: "npx", args: ["tsx", "scripts/test-loop-wiring.ts"] },
+  { id: "realtime-behavioral-os", command: "npx", args: ["tsx", "scripts/test-realtime.ts"] },
+  { id: "system-stability", command: "npx", args: ["tsx", "scripts/test-stability.ts"] },
+  { id: "platform-layer", command: "npx", args: ["tsx", "scripts/test-platform.ts"] },
+  { id: "marketplace-layer", command: "npx", args: ["tsx", "scripts/test-marketplace.ts"] },
   { id: "timeline-read-only", command: "npx", args: ["tsx", "scripts/test-timeline-read-only-boundary.ts"] },
 ];
 
