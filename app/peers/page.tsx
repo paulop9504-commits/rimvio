@@ -1,11 +1,13 @@
 import { AppShell } from "@/components/app-shell";
 import { FivePeerHubClient } from "@/components/peer-chat/five-peer-hub-client";
+import { getServerCopy } from "@/lib/i18n/server-locale";
 
-export default function FivePeerHubPage() {
+export default async function FivePeerHubPage() {
+  const copy = await getServerCopy();
   return (
     <AppShell
-      title="관계 버블"
-      subtitle="항상 보이는 5명 · 나머지는 아카이브"
+      title={copy.peers.title}
+      subtitle={copy.peers.subtitle}
       compact
       iosSurface
     >

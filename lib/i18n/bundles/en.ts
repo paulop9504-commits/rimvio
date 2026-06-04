@@ -9,17 +9,32 @@ export const copyEn: Copy = {
     tagline: RIMVIO.northStarKo,
     northStar: RIMVIO.northStar,
   },
+  product: {
+    oneLiner: "Say it, share it — run it with one tap",
+    oneLinerSub:
+      "Pick actions from chats and links only. No auto-run · Human decides",
+    feedContext: "Turn shared links into action cards",
+    peersContext:
+      "Actions from chat · long-press a profile for AI Lens",
+  },
   nav: {
     feed: "Operate",
     inbox: "Inbox",
     room: "Together",
-    peers: "Close 5",
+    peers: "Friends",
     settings: "Settings",
     start: "Get Started",
   },
+  peers: {
+    title: "Friends",
+    subtitle:
+      "Actions from chat · long-press a profile for AI Lens",
+    hubHint: "Close 5 on the hub · everyone else in the archive bag",
+    emptyFeedLink: "Links only? Open Operate tab",
+  },
   feed: {
     title: "Operate",
-    subtitle: "Say it · share · snap → Action Dock",
+    subtitle: "Turn shared links into action cards",
     newLinkSaved: "Saved",
     undoDelete: "Removed",
     undo: "Undo",
@@ -188,8 +203,8 @@ export const copyEn: Copy = {
       "My Links for yourself, Together for sharing — each in its place",
   },
   auth: {
-    loginTagline: "Connect your thoughts to action — your Action OS",
-    loginPrompt: "Sign in to use Rimvio.",
+    loginTagline: "Say it, share it — run it with one tap",
+    loginPrompt: "Sign in with Google, then pick actions from friends and links.",
     googleLogin: "Get Started with Google",
     googleContinue: "Continue with Google",
     loggedInAs: (name: string) =>
@@ -223,9 +238,14 @@ export const copyEn: Copy = {
     loginSub: "One tap with Google · then pick a Rimvio ID so friends can find you",
     googleCardTitle: "Start in seconds with Google",
     googleCardBody:
-      "After sign-in, set your name and Rimvio ID — then ROOM and friend add work right away",
+      "After sign-in, set your name and Rimvio ID — Friends and Operate tabs work right away",
     googleCardFoot: "Human decides · actions run only when you tap",
     loading: "Loading profile…",
+    introTitle: "Rimvio is your Action OS",
+    introBody:
+      "Not a chatbot — turn plans, places, and payments from chat and links into buttons.",
+    introTapHint: "No auto-run · you tap to execute",
+    introCta: "Set up profile",
     welcomeTitle: "Google connected",
     welcomeBody:
       "Choose your display name and @ID. Friends can find you by ID, email, or phone",

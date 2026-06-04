@@ -21,9 +21,10 @@ import {
 import { validateRimvioId } from "@/lib/peer-chat/rimvio-id";
 import { cn } from "@/lib/utils";
 
-type Step = "welcome" | "name" | "rimvioId" | "phone" | "done";
+type Step = "intro" | "welcome" | "name" | "rimvioId" | "phone" | "done";
 
-const STEPS: Step[] = ["welcome", "name", "rimvioId", "phone", "done"];
+const STEPS: Step[] = ["intro", "welcome", "name", "rimvioId", "phone", "done"];
+const PROGRESS_STEPS: Step[] = ["intro", "welcome", "name", "rimvioId", "phone"];
 
 const inputClass =
   "h-12 w-full rounded-xl border-0 bg-rimvio-surface-muted px-4 text-[15px] text-foreground outline-none focus:ring-2 focus:ring-rimvio-neon-cyan/35";
@@ -43,7 +44,7 @@ export function RimvioProfileSetupWizard() {
     user?.email?.split("@")[0] ||
     "";
 
-  const [step, setStep] = useState<Step>("welcome");
+  const [step, setStep] = useState<Step>("intro");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [displayName, setDisplayName] = useState("");
@@ -62,7 +63,9 @@ export function RimvioProfileSetupWizard() {
     [user?.email, email, displayName, googleName],
   );
 
-  const stepIndex = STEPS.indexOf(step);
+  const stepIndex = PROGRESS_STEPS.indexOf(
+    step === "done" ? "phone" : (step as (typeof PROGRESS_STEPS)[number]),
+  );
 
   const load = useCallback(async () => {
     await syncMyProfileFromAuth().catch(() => {});
@@ -81,6 +84,8 @@ export function RimvioProfileSetupWizard() {
       setStep("done");
     } else if (profile.displayName?.trim()) {
       setStep("rimvioId");
+    } else {
+      setStep("intro");
     }
   }, [googleName, user?.email]);
 
@@ -162,7 +167,7 @@ export function RimvioProfileSetupWizard() {
       <RimvioLogo size="sm" appearance="white" className="mx-auto" />
 
       <div className="mt-6 flex items-center justify-center gap-1.5" aria-hidden>
-        {STEPS.slice(0, 4).map((s, i) => (
+        {PROGRESS_STEPS.map((s, i) => (
           <span
             key={s}
             className={cn(
@@ -172,6 +177,40 @@ export function RimvioProfileSetupWizard() {
           />
         ))}
       </div>
+
+      {step === "intro" ? (
+        <div className="mt-8 text-center">
+          <h1 className="text-[20px] font-semibold text-white">{ps.introTitle}</h1>
+          <p className="mt-3 text-[14px] leading-relaxed text-white/65">
+            {ps.introBody}
+          </p>
+          <div
+            className="mx-auto mt-6 flex max-w-[16rem] flex-wrap justify-center gap-2"
+            aria-hidden
+          >
+            {["📅 일정", "🗺 길찾기", "💸 송금"].map((chip) => (
+              <span
+                key={chip}
+                className="rounded-full border border-rimvio-neon-cyan/35 bg-rimvio-neon-cyan/10 px-3 py-1.5 text-[12px] font-medium text-rimvio-neon-cyan"
+              >
+                {chip}
+              </span>
+            ))}
+          </div>
+          <p className="mt-4 text-[11px] text-white/45">{ps.introTapHint}</p>
+          <p className="mt-2 text-[12px] font-medium text-white/55">
+            {copy.product.oneLiner}
+          </p>
+          <button
+            type="button"
+            className="rimvio-accent-submit-btn mt-8 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-[15px] font-semibold text-white"
+            onClick={() => setStep("welcome")}
+          >
+            {ps.introCta}
+            <ChevronRight className="size-5" aria-hidden />
+          </button>
+        </div>
+      ) : null}
 
       {step === "welcome" ? (
         <div className="mt-8 text-center">

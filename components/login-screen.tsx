@@ -39,7 +39,7 @@ export function LoginScreen() {
 
   const nextPath =
     searchParams.get("next") ??
-    (pathname && pathname !== "/auth/callback" ? pathname : "/feed");
+    (pathname && pathname !== "/auth/callback" ? pathname : "/onboarding");
 
   if (!configured) {
     return (
@@ -64,7 +64,7 @@ export function LoginScreen() {
           {copy.auth.loginPrompt}
         </p>
         <p className="mt-2 text-[12px] leading-relaxed text-white/45">
-          {copy.profileSetup.loginSub}
+          {copy.product.oneLinerSub}
         </p>
 
         <div className="mt-8">
@@ -74,7 +74,9 @@ export function LoginScreen() {
             onClick={() => {
               setBusy(true);
               const target =
-                nextPath === "/feed" || nextPath === "/"
+                nextPath === "/feed" ||
+                nextPath === "/" ||
+                nextPath === "/peers"
                   ? "/onboarding"
                   : nextPath;
               void signInWithGoogle(target)

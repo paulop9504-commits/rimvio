@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-/** Canonical feed entry — protected as /feed via route alias. */
+/** 기본 홈 — 친구(ROOM) 우선. 실행(피드)은 하단 탭. */
 export default function Home() {
-  redirect("/feed");
+  redirect("/peers");
 }

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { AUTH_NEXT_COOKIE, resolveAppOrigin } from "@/lib/auth/redirect-url";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { resolvePostLoginPathAfterAuth } from "@/lib/onboarding/resolve-post-login-path";
 import { syncUserProfileFromAuth } from "@/lib/peer-chat/server-peer-chat";
 import { createClientForRoute } from "@/lib/supabase/route-handler";
 
@@ -12,7 +13,7 @@ function authErrorRedirect(origin: string, code: string) {
 
 function resolvePostLoginPath(
   request: NextRequest,
-  fallback = "/feed",
+  fallback = "/peers",
 ) {
   const fromQuery = request.nextUrl.searchParams.get("next");
   if (fromQuery?.startsWith("/")) {
@@ -61,7 +62,7 @@ export async function GET(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  let postLoginPath = requestedNext;
+  let needsSetup = false;
 
   if (user?.id) {
     try {
@@ -74,16 +75,18 @@ export async function GET(request: NextRequest) {
           user.email?.split("@")[0] ||
           null,
       });
-      const needsSetup =
+      needsSetup =
         !profile?.rimvio_id?.trim() || !profile?.display_name?.trim();
-      if (needsSetup) {
-        postLoginPath = "/onboarding";
-      }
     } catch (profileError) {
       console.error("[auth/callback] profile sync", profileError);
-      postLoginPath = "/onboarding";
+      needsSetup = true;
     }
   }
+
+  const postLoginPath = resolvePostLoginPathAfterAuth({
+    requestedNext: requestedNext,
+    needsProfileSetup: needsSetup,
+  });
 
   if (postLoginPath !== requestedNext) {
     response = NextResponse.redirect(new URL(postLoginPath, origin));

@@ -68,7 +68,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [supabase]);
 
   const signInWithGoogle = useCallback(
-    async (nextPath = "/feed") => {
+    async (nextPath = "/onboarding") => {
       if (!supabase) {
         throw new Error("Supabase is not configured.");
       }

@@ -43,7 +43,7 @@ export function RimvioGoogleSignInCard({
       )}
       aria-label={ps.googleCardTitle}
     >
-      <p className="text-[15px] font-semibold text-white">{ps.googleCardTitle}</p>
+      <p className="text-[15px] font-semibold text-white">{copy.product.oneLiner}</p>
       <p className="mt-1.5 text-[12px] leading-relaxed text-white/60">
         {ps.googleCardBody}
       </p>

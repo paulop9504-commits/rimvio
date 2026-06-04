@@ -18,6 +18,8 @@ import {
 import type { PinnedSlotIndex } from "@/lib/context/peer-thread-types";
 import { PeerProfileSetup } from "@/components/peer-chat/peer-profile-setup";
 import { RimvioGoogleSignInCard } from "@/components/rimvio-google-sign-in-card";
+import { RimvioProductContextStrip } from "@/components/rimvio-product-context-strip";
+import { useCopy } from "@/hooks/use-copy";
 import {
   addPeerByPhoneRemote,
   fetchMyAccountProfile,
@@ -43,6 +45,7 @@ import { useRoomGuest } from "@/hooks/use-room-guest";
 import { cn } from "@/lib/utils";
 
 export function FivePeerHubClient() {
+  const copy = useCopy();
   const guest = useRoomGuest();
   const router = useRouter();
   const { user, configured } = useAuth();
@@ -274,10 +277,16 @@ export function FivePeerHubClient() {
     <div className="flex flex-col gap-4 pb-6">
       {!usePhoneChat && configured ? (
         <RimvioGoogleSignInCard className="mx-1" nextPath="/onboarding" />
-      ) : null}
+      ) : (
+        <RimvioProductContextStrip
+          variant="peers"
+          className="mx-1"
+          showFeedLink={usePhoneChat && countConnectedPeers(roster) === 0}
+        />
+      )}
 
       <p className="px-1 text-center text-[12px] text-white/55">
-        친한 5명 · 아래 구슬 주머니 = 나머지 친구 전부
+        {copy.peers.hubHint}
       </p>
 
       <div className="relative min-h-[min(72dvh,28rem)] h-[min(calc(100dvh-11rem),42rem)] w-full shrink-0">

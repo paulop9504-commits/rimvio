@@ -10,17 +10,32 @@ export const copy = {
     tagline: RIMVIO.northStarKo,
     northStar: RIMVIO.northStar,
   },
+  product: {
+    oneLiner: "말하고, 공유하고 — 실행은 탭 한 번",
+    oneLinerSub:
+      "친구 대화와 링크에서 실행만 골라요. 자동 실행 없음 · Human decides",
+    feedContext: "공유한 링크를 실행 카드로",
+    peersContext:
+      "대화에서 실행 버튼이 붙어요 · 프로필 길게 누르면 AI 렌즈",
+  },
   nav: {
     feed: "실행",
     inbox: "인박스",
     room: "함께하기",
-    peers: "친한 친구",
+    peers: "친구",
     settings: "설정",
     start: "시작하기",
   },
+  peers: {
+    title: "친구",
+    subtitle:
+      "대화에서 실행 버튼이 붙어요 · 프로필 길게 누르면 AI 렌즈",
+    hubHint: "친한 5명 · 아래 구슬 주머니 = 나머지 친구 전부",
+    emptyFeedLink: "링크만 쓰려면 실행 탭",
+  },
   feed: {
     title: "실행",
-    subtitle: "말·링크·사진 → Action Dock",
+    subtitle: "공유한 링크를 실행 카드로",
     newLinkSaved: "저장되었습니다",
     undoDelete: "삭제되었습니다",
     undo: "되돌리기",
@@ -190,8 +205,8 @@ export const copy = {
       "혼자 실행할 입력은 실행 화면, 함께 볼 것은 함께하기 — 편하게 나눠 두었습니다",
   },
   auth: {
-    loginTagline: "당신의 생각을 행동으로 연결하는 Action OS",
-    loginPrompt: "Rimvio를 사용하려면 로그인하세요.",
+    loginTagline: "말하고, 공유하고 — 실행은 탭 한 번",
+    loginPrompt: "Google로 시작한 뒤, 친구·링크에서 실행만 골라요.",
     googleLogin: "Google로 시작하기",
     googleContinue: "Google로 계속하기",
     loggedInAs: (name: string) =>
@@ -225,9 +240,14 @@ export const copy = {
     loginSub: "Google 한 번이면 끝 · 이어서 Rimvio ID만 정하면 친구가 나를 찾을 수 있어요",
     googleCardTitle: "Google로 3초 만에 시작",
     googleCardBody:
-      "로그인 후 이름·Rimvio ID만 정하면 ROOM·친구 추가를 바로 쓸 수 있어요",
+      "로그인 후 이름·Rimvio ID만 정하면 친구·실행 탭을 바로 쓸 수 있어요",
     googleCardFoot: "Human decides · 실행은 항상 내가 탭할 때만",
     loading: "프로필 불러오는 중…",
+    introTitle: "Rimvio는 실행 OS예요",
+    introBody:
+      "챗봇이 아니라, 대화와 링크에서 나온 약속·장소·송금을 버튼으로 바꿔 줘요.",
+    introTapHint: "자동 실행 없음 · 탭할 때만 실행",
+    introCta: "프로필 만들기",
     welcomeTitle: "Google 연결 완료",
     welcomeBody:
       "이제 Rimvio에서 쓸 이름과 @아이디만 정하면 돼요. 친구는 ID·이메일·번호로 찾을 수 있어요",
