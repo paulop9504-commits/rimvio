@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { ensureDmThreadPartnerMember } from "@/lib/peer-chat/dm-friend-add-server";
+import {
+  ensureDmThreadPartnerMember,
+} from "@/lib/peer-chat/dm-friend-add-server";
 import { normalizeEmail } from "@/lib/peer-chat/email";
 import { ensureRimvioUserProfile } from "@/lib/peer-chat/ensure-user-profile";
 import { PEER_MESSAGE_IMAGE_PLACEHOLDER } from "@/lib/peer-chat/peer-chat-image-constants";
@@ -439,7 +441,7 @@ export async function ensurePeerThread(
   }
 
   if (existing) {
-    await ensureMember(supabase, input.threadId, input.userId);
+    await ensureDmThreadMembership(supabase, input.threadId, input.userId);
     return { thread: existing as PeerThreadRow, created: false };
   }
 
@@ -479,12 +481,66 @@ export async function ensurePeerThread(
     .single();
 
   if (insertError) {
+    const code =
+      typeof insertError === "object" &&
+      insertError !== null &&
+      "code" in insertError
+        ? String((insertError as { code?: string }).code)
+        : "";
+    if (code === "23505") {
+      const { data: raced } = await supabase
+        .from("peer_threads")
+        .select("*")
+        .eq("id", input.threadId)
+        .maybeSingle();
+      if (raced) {
+        await ensureDmThreadMembership(supabase, input.threadId, input.userId);
+        return { thread: raced as PeerThreadRow, created: false };
+      }
+    }
     throw insertError;
   }
 
-  await ensureMember(supabase, input.threadId, input.userId);
+  await ensureDmThreadMembership(supabase, input.threadId, input.userId);
 
   return { thread: created as PeerThreadRow, created: true };
+}
+
+/** Caller + DM partner both in peer_thread_members (required for stable send/read). */
+async function ensureDmThreadMembership(
+  supabase: SupabaseClient<Database>,
+  threadId: string,
+  userId: string,
+) {
+  await ensureMember(supabase, threadId, userId);
+  if (!isDmThreadId(threadId)) {
+    return;
+  }
+  const partnerUserId = extractOtherUserIdFromDmThread(threadId, userId);
+  if (!partnerUserId) {
+    return;
+  }
+  try {
+    await ensureDmThreadPartnerMember(supabase, {
+      threadId,
+      partnerUserId,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (message.includes("Caller must join the DM thread first")) {
+      await ensureMember(supabase, threadId, userId);
+      try {
+        await ensureDmThreadPartnerMember(supabase, {
+          threadId,
+          partnerUserId,
+        });
+      } catch {
+        /* partner row is best-effort; caller membership is enough to send */
+      }
+      return;
+    }
+    console.warn("[peer-chat] ensureDmThreadPartnerMember skipped", message);
+  }
 }
 
 async function ensureMember(

@@ -7,6 +7,7 @@ import {
 } from "@/lib/peer-chat/friend-connections-server";
 import { touchRelationshipSlotsOnMessage } from "@/lib/peer-chat/relationship-slots-server";
 import { uploadPeerChatImage } from "@/lib/peer-chat/peer-chat-image-server";
+import { resolvePeerThreadIdForSend } from "@/lib/peer-chat/resolve-canonical-peer-thread";
 import {
   ensurePeerThread,
   insertPeerMessage,
@@ -62,15 +63,21 @@ export async function POST(request: NextRequest, context: RouteContext) {
         ? String(form.get("displayName")).trim() || "친구"
         : "친구";
 
-    await ensurePeerThread(supabase, {
+    const threadId = await resolvePeerThreadIdForSend(supabase, {
+      userId,
       threadId: decoded,
+      displayName,
+    });
+
+    await ensurePeerThread(supabase, {
+      threadId,
       displayName,
       userId,
     });
 
     const { messageId, imageUrl } = await uploadPeerChatImage(supabase, {
       userId,
-      threadId: decoded,
+      threadId,
       supabaseUrl,
       bytes,
       contentType: file.type || "image/jpeg",
@@ -78,7 +85,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     const row = await insertPeerMessage(supabase, {
       id: messageId,
-      threadId: decoded,
+      threadId,
       senderUserId: userId,
       body: caption,
       imageUrl,
@@ -86,7 +93,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     try {
       await recordInboundMessage(supabase, {
-        threadId: decoded,
+        threadId,
         senderUserId: userId,
       });
     } catch (sideEffectError) {
@@ -95,7 +102,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     try {
       await touchRelationshipSlotsOnMessage(supabase, {
-        threadId: decoded,
+        threadId,
         senderUserId: userId,
         body: caption || "사진",
         createdAt: row.created_at,

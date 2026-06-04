@@ -1,13 +1,12 @@
 "use client";
 
 import { Calendar, Sparkles } from "lucide-react";
-import { motion } from "framer-motion";
 import {
   rimvioChipBtnClass,
   rimvioInlineChipClass,
   rimvioStripLinkBtnClass,
 } from "@/lib/brand/rimvio-neon-theme";
-import { ACTION_SHELL, SUGGESTION_CHIPS } from "@/lib/ui/action-chat-theme";
+import { SUGGESTION_CHIPS } from "@/lib/ui/action-chat-theme";
 import type { ActiveActionEntry } from "@/lib/action-chat/active-actions-registry";
 import { cn } from "@/lib/utils";
 
@@ -28,10 +27,7 @@ export function ContextNowStrip({
 
   return (
     <div className={cn("px-4 pb-2.5 pt-2", className)}>
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: ACTION_SHELL.enterDuration, ease: ACTION_SHELL.enterEase }}
+      <div
         className={cn(
           rimvioInlineChipClass("md"),
           "rimvio-point-surface max-w-none shadow-[0_8px_32px_rgba(0,0,0,0.38)]",
@@ -88,7 +84,7 @@ export function ContextNowStrip({
             ))}
           </div>
         ) : null}
-      </motion.div>
+      </div>
     </div>
   );
 }

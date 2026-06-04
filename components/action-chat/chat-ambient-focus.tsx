@@ -62,6 +62,8 @@ export function useChatAmbientFocusOptional() {
 type ChatAmbientShellProps = {
   children: ReactNode;
   className?: string;
+  /** Hide bottom neon layers (feed @톡 / DM — reduces jitter on mobile). */
+  suppressDecor?: boolean;
   "aria-label"?: string;
 };
 
@@ -69,10 +71,11 @@ type ChatAmbientShellProps = {
 export function ChatAmbientShell({
   children,
   className,
+  suppressDecor = false,
   "aria-label": ariaLabel,
 }: ChatAmbientShellProps) {
   const ctx = useChatAmbientFocusOptional();
-  const live = ctx?.composerLive ?? false;
+  const live = !suppressDecor && (ctx?.composerLive ?? false);
 
   return (
     <section
@@ -80,13 +83,19 @@ export function ChatAmbientShell({
       className={cn(
         "chat-ambient-shell relative flex min-h-0 flex-1 flex-col overflow-hidden",
         live && "chat-ambient-shell--composer-live",
+        suppressDecor && "chat-ambient-shell--plain",
         className,
       )}
       data-composer-live={live ? "true" : "false"}
+      data-feed-peer-talk={suppressDecor ? "true" : undefined}
     >
-      <div className="chat-ambient-composer-glow" aria-hidden />
-      <div className="chat-ambient-wave" aria-hidden />
-      <div className="chat-ambient-vignette" aria-hidden />
+      {suppressDecor ? null : (
+        <>
+          <div className="chat-ambient-composer-glow" aria-hidden />
+          <div className="chat-ambient-wave" aria-hidden />
+          <div className="chat-ambient-vignette" aria-hidden />
+        </>
+      )}
       {children}
     </section>
   );

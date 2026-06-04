@@ -11,11 +11,7 @@ import {
 } from "@/lib/action-chat/feed-peer-talk/feed-peer-talk-message-state";
 import type { PeerMessage } from "@/lib/context/peer-message-types";
 import { toast } from "sonner";
-import {
-  clearFeedPeerTalkSession,
-  getFeedPeerTalkSession,
-  setFeedPeerTalkSession,
-} from "@/lib/action-chat/feed-peer-talk/feed-peer-talk-session";
+import { clearFeedPeerTalkSession } from "@/lib/action-chat/feed-peer-talk/feed-peer-talk-session";
 import type { FeedPeerTalkThreadWire } from "@/lib/action-chat/feed-peer-talk/feed-peer-talk-types";
 import {
   buildSwitchFeedPeerTalkToast,
@@ -23,13 +19,50 @@ import {
 } from "@/lib/action-chat/feed-peer-talk/end-feed-peer-talk";
 import { emitFeedSlotsRefresh } from "@/lib/feed/feed-slots-events";
 import { notifyFeedPeerTalkStarted } from "@/lib/peer-chat/navigate-peer-room-from-feed";
-import { fetchPeerMessages, sendPeerMessageRemote, syncFeedSlotFromRoomRemote } from "@/lib/peer-chat/peer-chat-client";
+import {
+  fetchPeerMessages,
+  fetchSocialLayer,
+  sendPeerMessageRemote,
+  syncFeedSlotFromRoomRemote,
+} from "@/lib/peer-chat/peer-chat-client";
+import { addPeerContact } from "@/lib/context/peer-contact-store";
+import { resolveCanonicalPeerThreadFromSocialLayer } from "@/lib/peer-chat/resolve-canonical-peer-thread";
+import {
+  getFeedPeerTalkSession,
+  setFeedPeerTalkSession,
+} from "@/lib/action-chat/feed-peer-talk/feed-peer-talk-session";
 import { prefetchPeerMessages, takePrefetchedMessages } from "@/lib/peer-chat/message-prefetch-cache";
 
 type FeedPeerTalkDeps = {
   readMessages: () => ActionChatMessage[];
   persist: (next: ActionChatMessage[]) => void;
 };
+
+async function resolveFeedPeerTalkThreadId(input: {
+  peerThreadId: string;
+  displayName: string;
+}): Promise<string> {
+  try {
+    const layer = await fetchSocialLayer();
+    const canonical = resolveCanonicalPeerThreadFromSocialLayer(
+      {
+        peerThreadId: input.peerThreadId,
+        displayName: input.displayName,
+        rimvioId: null,
+      },
+      layer,
+    );
+    if (canonical !== input.peerThreadId) {
+      setFeedPeerTalkSession({
+        peerThreadId: canonical,
+        displayName: input.displayName,
+      });
+    }
+    return canonical;
+  } catch {
+    return input.peerThreadId;
+  }
+}
 
 async function loadPeerHistory(threadId: string): Promise<ReturnType<typeof sliceFeedPeerTalkHistory>> {
   const prefetched = takePrefetchedMessages(threadId);
@@ -45,7 +78,10 @@ export async function startFeedPeerTalkInFeed(
   contact: PeerContact,
 ): Promise<void> {
   const displayName = contact.displayName.trim() || "친구";
-  const peerThreadId = contact.peerThreadId;
+  const peerThreadId = await resolveFeedPeerTalkThreadId({
+    peerThreadId: contact.peerThreadId,
+    displayName,
+  });
 
   const { previousDisplayName } = wipeFeedPeerTalkSurfaceIfNeeded(
     deps,
@@ -56,6 +92,14 @@ export async function startFeedPeerTalkInFeed(
   }
 
   setFeedPeerTalkSession({ peerThreadId, displayName });
+  if (peerThreadId !== contact.peerThreadId) {
+    addPeerContact({
+      displayName,
+      peerThreadId,
+      rimvioId: contact.rimvioId ?? null,
+      emailLower: contact.emailLower ?? null,
+    });
+  }
   prefetchPeerMessages(peerThreadId);
 
   const hydratingWire: FeedPeerTalkThreadWire = {
@@ -108,10 +152,15 @@ export async function sendFeedPeerTalkInFeed(
     return false;
   }
 
+  const threadId = await resolveFeedPeerTalkThreadId({
+    peerThreadId: session.peerThreadId,
+    displayName: session.displayName,
+  });
+
   const pendingId = `pending-${Date.now()}`;
   const optimistic: PeerMessage = {
     id: pendingId,
-    peerThreadId: session.peerThreadId,
+    peerThreadId: threadId,
     author: "me",
     body: trimmed,
     sentAt: new Date().toISOString(),
@@ -121,14 +170,14 @@ export async function sendFeedPeerTalkInFeed(
   deps.persist(
     appendFeedPeerTalkMessage(
       deps.readMessages(),
-      session.peerThreadId,
+      threadId,
       optimistic,
     ),
   );
 
   try {
     const sent = await sendPeerMessageRemote({
-      threadId: session.peerThreadId,
+      threadId,
       displayName: session.displayName,
       body: trimmed,
     });
@@ -136,13 +185,13 @@ export async function sendFeedPeerTalkInFeed(
     deps.persist(
       replaceFeedPeerTalkPendingMessage(
         deps.readMessages(),
-        session.peerThreadId,
+        threadId,
         pendingId,
         sent,
       ),
     );
 
-    void syncFeedSlotFromRoomRemote(session.peerThreadId)
+    void syncFeedSlotFromRoomRemote(threadId)
       .then(() => emitFeedSlotsRefresh())
       .catch(() => emitFeedSlotsRefresh());
 
@@ -151,7 +200,7 @@ export async function sendFeedPeerTalkInFeed(
     deps.persist(
       removeFeedPeerTalkMessageById(
         deps.readMessages(),
-        session.peerThreadId,
+        threadId,
         pendingId,
       ),
     );

@@ -10,6 +10,7 @@ import {
   markFeedSlotRead,
   touchRelationshipSlotsOnMessage,
 } from "@/lib/peer-chat/relationship-slots-server";
+import { resolvePeerThreadIdForSend } from "@/lib/peer-chat/resolve-canonical-peer-thread";
 import {
   ensurePeerThread,
   insertPeerMessage,
@@ -88,21 +89,27 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     const supabase = await createClient();
-    await ensurePeerThread(supabase, {
+    const threadId = await resolvePeerThreadIdForSend(supabase, {
+      userId,
       threadId: decoded,
+      displayName: body.displayName,
+    });
+
+    await ensurePeerThread(supabase, {
+      threadId,
       displayName: body.displayName?.trim() || "친구",
       userId,
     });
 
     const row = await insertPeerMessage(supabase, {
-      threadId: decoded,
+      threadId,
       senderUserId: userId,
       body: text,
     });
 
     try {
       await recordInboundMessage(supabase, {
-        threadId: decoded,
+        threadId,
         senderUserId: userId,
       });
     } catch (sideEffectError) {
@@ -111,7 +118,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     try {
       await touchRelationshipSlotsOnMessage(supabase, {
-        threadId: decoded,
+        threadId,
         senderUserId: userId,
         body: text,
         createdAt: row.created_at,

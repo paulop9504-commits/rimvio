@@ -48,7 +48,7 @@ export function AppShell({
         <div
           className={cn(
             GRID.column,
-            "flex h-dvh flex-col overflow-hidden",
+            "app-shell-viewport flex h-dvh flex-col overflow-hidden",
             fullBleed && "app-shell-column--chat",
             iosSurface ? "bg-rimvio-base" : "bg-rimvio-base",
           )}

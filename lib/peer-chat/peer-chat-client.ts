@@ -215,20 +215,36 @@ export async function sendPeerMessageRemote(input: {
   displayName: string;
   body: string;
 }): Promise<PeerMessage> {
-  const response = await fetch(
-    `${resolveAppOrigin()}/api/peers/threads/${encodeURIComponent(input.threadId)}/messages`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({
-        body: input.body,
+  const post = async () => {
+    const response = await fetch(
+      `${resolveAppOrigin()}/api/peers/threads/${encodeURIComponent(input.threadId)}/messages`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          body: input.body,
+          displayName: input.displayName,
+        }),
+      },
+    );
+    const data = await parseJson<{ message: PeerMessage }>(response);
+    return data.message;
+  };
+
+  try {
+    return await post();
+  } catch (firstError) {
+    try {
+      await ensurePeerThreadRemote({
+        threadId: input.threadId,
         displayName: input.displayName,
-      }),
-    },
-  );
-  const data = await parseJson<{ message: PeerMessage }>(response);
-  return data.message;
+      });
+      return await post();
+    } catch {
+      throw firstError;
+    }
+  }
 }
 
 export async function joinPeerThreadByInviteRemote(inviteCode: string): Promise<{

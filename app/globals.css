@@ -848,8 +848,15 @@
   }
 }
 
+/* Feed cold-start / context hero — reserve height to avoid layout jump */
+.feed-hero-slot {
+  min-height: 9.75rem;
+}
+
 .rimvio-feed-scroll-inset {
   padding-bottom: var(--rimvio-feed-scroll-pad);
+  scroll-behavior: auto;
+  overscroll-behavior-y: contain;
 }
 
 @media (min-width: 1024px) {
@@ -2024,9 +2031,21 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 
 /* ── Chat ambient focus (composer + 1:1 bubble breath) ── */
 
+/* Mobile: svh is stabler than dvh when the URL bar / keyboard resizes */
+@media (max-width: 1023px) {
+  .app-shell-viewport.h-dvh {
+    height: 100svh;
+    max-height: 100svh;
+  }
+}
+
 .chat-ambient-shell {
   --chat-ambient-strength: 0;
   transition: --chat-ambient-strength 0.65s ease;
+}
+
+.chat-ambient-shell--plain {
+  transition: none;
 }
 
 .chat-ambient-shell--composer-live {
@@ -2195,6 +2214,26 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 .chat-message-focus[data-bubble-focus="live"] .rimvio-container-card,
 .chat-message-focus[data-bubble-focus="live"] .container-card {
   animation: rimvio-container-breathe 4s ease-in-out infinite;
+}
+
+/* Phone/tablet: marquee wave repaints the whole feed column on Android */
+@media (max-width: 1023px) {
+  .chat-ambient-shell {
+    contain: layout style;
+    transition: none;
+  }
+
+  .chat-ambient-composer-glow,
+  .chat-ambient-vignette,
+  .chat-ambient-wave {
+    transition: opacity 0.2s ease;
+  }
+
+  .chat-ambient-wave {
+    width: 100%;
+    animation: none !important;
+    will-change: auto;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

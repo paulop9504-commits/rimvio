@@ -49,6 +49,11 @@ import {
 } from "@/lib/dual-mode/link-lifecycle";
 import { useLinkContextChain } from "@/hooks/use-link-context-chain";
 import { useCopy, useAppLocale } from "@/hooks/use-copy";
+import {
+  feedThreadScrollBehavior,
+  isThreadNearBottom,
+  scrollThreadToBottom,
+} from "@/lib/feed/feed-thread-scroll";
 import { shouldShowColdStartMagic } from "@/lib/onboarding/cold-start-magic";
 import type { LocateActionResult } from "@/lib/locate/types";
 import type { ContextRemoteState } from "@/lib/remote/resolve-context-remote";
@@ -189,14 +194,23 @@ export function ActionChatFeed({
     });
   }, [openGoogleSheet]);
   const { totalCount: resourcePoolCount } = useResourcePool();
-  const [uiHydrated, setUiHydrated] = useState(false);
-  useEffect(() => {
-    setUiHydrated(true);
-  }, []);
   const [schedulingLink, setSchedulingLink] = useState<LinkRow | null>(null);
   const userMessageCount = messages.filter((message) => message.role === "user").length;
-  const [coldStartVisible, setColdStartVisible] = useState(false);
+  const showColdStartMagic = useMemo(
+    () =>
+      shouldShowColdStartMagic({
+        linkCount: links.length,
+        userMessageCount,
+      }),
+    [links.length, userMessageCount],
+  );
+  const [coldStartDismissed, setColdStartDismissed] = useState(false);
+  const coldStartVisible = showColdStartMagic && !coldStartDismissed;
   const prevMessageCountRef = useRef(messages.length);
+  const threadScrollStateRef = useRef({
+    messageLen: messages.length,
+    activeLinkId: activeLink?.id ?? null,
+  });
 
   const handleStartFreshConversation = useCallback(() => {
     onSelectIndex(-1);
@@ -241,20 +255,27 @@ export function ActionChatFeed({
   }, [messages.length, onSelectIndex]);
 
   useEffect(() => {
-    setColdStartVisible(
-      shouldShowColdStartMagic({
-        linkCount: links.length,
-        userMessageCount,
-      })
-    );
-  }, [links.length, userMessageCount]);
-
-  useEffect(() => {
     const node = threadRef.current;
-    if (!node) {
+    if (!node || messages.length === 0) {
       return;
     }
-    node.scrollTo({ top: node.scrollHeight, behavior: "smooth" });
+
+    const prev = threadScrollStateRef.current;
+    const messageGrew = messages.length > prev.messageLen;
+    const linkChanged = (activeLink?.id ?? null) !== prev.activeLinkId;
+    threadScrollStateRef.current = {
+      messageLen: messages.length,
+      activeLinkId: activeLink?.id ?? null,
+    };
+
+    if (!messageGrew && !linkChanged) {
+      return;
+    }
+    if (messageGrew && !isThreadNearBottom(node)) {
+      return;
+    }
+
+    scrollThreadToBottom(node, feedThreadScrollBehavior());
   }, [messages.length, activeIndex, activeLink?.id]);
 
   return (
@@ -287,11 +308,15 @@ export function ActionChatFeed({
                 className="relative flex size-8 items-center justify-center rounded-full bg-transparent text-white transition-opacity hover:opacity-80 active:scale-95 sm:size-9"
               >
                 <FolderGit2 className="size-[1.15rem] sm:size-5" strokeWidth={2.1} />
-                {uiHydrated && resourcePoolCount > 0 ? (
-                  <span className="absolute -right-0.5 -top-0.5 flex size-4 min-w-4 items-center justify-center rounded-full bg-rimvio-base px-0.5 text-[9px] font-extrabold tabular-nums leading-none text-[#D8B4FE] shadow-[0_0_8px_rgba(191,90,242,0.35)] sm:-right-1 sm:-top-1 sm:size-[1.125rem] sm:min-w-[1.125rem] sm:text-[10px]">
-                    {resourcePoolCount > 9 ? "9+" : resourcePoolCount}
-                  </span>
-                ) : null}
+                <span
+                  className={cn(
+                    "absolute -right-0.5 -top-0.5 flex size-4 min-w-4 items-center justify-center rounded-full bg-rimvio-base px-0.5 text-[9px] font-extrabold tabular-nums leading-none text-[#D8B4FE] shadow-[0_0_8px_rgba(191,90,242,0.35)] sm:-right-1 sm:-top-1 sm:size-[1.125rem] sm:min-w-[1.125rem] sm:text-[10px]",
+                    resourcePoolCount <= 0 && "pointer-events-none opacity-0",
+                  )}
+                  aria-hidden={resourcePoolCount <= 0}
+                >
+                  {resourcePoolCount > 9 ? "9+" : resourcePoolCount || "1"}
+                </span>
               </button>
               <button
                 type="button"
@@ -300,11 +325,15 @@ export function ActionChatFeed({
                 className="relative flex size-8 items-center justify-center rounded-full bg-transparent text-white transition-opacity hover:opacity-80 active:scale-95 sm:size-9"
               >
                 <Calendar className="size-[1.15rem] sm:size-5" strokeWidth={2.1} />
-                {uiHydrated && badgeCount > 0 ? (
-                  <span className="absolute -right-0.5 -top-0.5 flex size-4 min-w-4 items-center justify-center rounded-full bg-rimvio-base px-0.5 text-[9px] font-extrabold tabular-nums leading-none text-rimvio-neon-amber shadow-[0_0_8px_rgba(255,214,10,0.35)] sm:-right-1 sm:-top-1 sm:size-[1.125rem] sm:min-w-[1.125rem] sm:text-[10px]">
-                    {badgeCount > 9 ? "9+" : badgeCount}
-                  </span>
-                ) : null}
+                <span
+                  className={cn(
+                    "absolute -right-0.5 -top-0.5 flex size-4 min-w-4 items-center justify-center rounded-full bg-rimvio-base px-0.5 text-[9px] font-extrabold tabular-nums leading-none text-rimvio-neon-amber shadow-[0_0_8px_rgba(255,214,10,0.35)] sm:-right-1 sm:-top-1 sm:size-[1.125rem] sm:min-w-[1.125rem] sm:text-[10px]",
+                    badgeCount <= 0 && "pointer-events-none opacity-0",
+                  )}
+                  aria-hidden={badgeCount <= 0}
+                >
+                  {badgeCount > 9 ? "9+" : badgeCount || "1"}
+                </span>
               </button>
               <Link
                 href="/welcome"
@@ -343,28 +372,29 @@ export function ActionChatFeed({
         <ChatAmbientFocusProvider>
         <ChatAmbientShell
           aria-label="채팅"
+          suppressDecor={Boolean(feedPeerTalkSession)}
           className="flex min-h-0 flex-1 flex-col overflow-hidden"
         >
           <div
             ref={threadRef}
             className="relative z-[2] min-h-0 flex-1 overflow-y-auto overscroll-y-contain rimvio-feed-scroll-inset [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
-            {!activeLink && messages.length === 0 && !coldStartVisible ? (
-              <ContextNowStrip
-                nextAction={nextAction}
-                onOpenCalendar={() => setActiveActionsOpen(true)}
-                onSuggest={(text) => void sendMessage(text)}
-              />
-            ) : null}
-
-            {coldStartVisible ? (
-              <div className="flex justify-center px-3 pt-2">
-                <OnboardingMagicPanel
-                  onSendSeed={(text) => void sendMessage(text)}
-                  onDismiss={() => setColdStartVisible(false)}
+            <div className="feed-hero-slot shrink-0">
+              {coldStartVisible ? (
+                <div className="flex justify-center px-3 pt-2">
+                  <OnboardingMagicPanel
+                    onSendSeed={(text) => void sendMessage(text)}
+                    onDismiss={() => setColdStartDismissed(true)}
+                  />
+                </div>
+              ) : !activeLink && messages.length === 0 ? (
+                <ContextNowStrip
+                  nextAction={nextAction}
+                  onOpenCalendar={() => setActiveActionsOpen(true)}
+                  onSuggest={(text) => void sendMessage(text)}
                 />
-              </div>
-            ) : null}
+              ) : null}
+            </div>
 
             {prepSurface.visible ? (
               <div className="border-b border-black/[0.04] bg-rimvio-surface/80 px-3 py-4">

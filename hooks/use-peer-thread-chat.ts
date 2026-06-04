@@ -36,12 +36,14 @@ import {
   ensurePeerThreadRemote,
   fetchPeerMessages,
   fetchPeerThreadMeta,
+  fetchSocialLayer,
   invokePeerRoomAi,
   isRegisteredPeerDmThread,
   sendPeerImageRemote,
   sendPeerMessageRemote,
   syncFeedSlotFromRoomRemote,
 } from "@/lib/peer-chat/peer-chat-client";
+import { resolveCanonicalPeerThreadFromSocialLayer } from "@/lib/peer-chat/resolve-canonical-peer-thread";
 import { emitFeedSlotsRefresh } from "@/lib/feed/feed-slots-events";
 import type { PeerMessageRow } from "@/lib/peer-chat/types";
 import { normalizePeerSyncError } from "@/lib/peer-chat/normalize-peer-sync-error";
@@ -214,6 +216,25 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
     };
   }, [useCloud, supabase, cloudReady, threadId, user?.id, canPersist]);
 
+  const resolveSendThreadId = useCallback(async () => {
+    if (isRegisteredPeerDmThread(threadId)) {
+      return threadId;
+    }
+    try {
+      const layer = await fetchSocialLayer();
+      return resolveCanonicalPeerThreadFromSocialLayer(
+        {
+          peerThreadId: threadId,
+          displayName,
+          rimvioId: null,
+        },
+        layer,
+      );
+    } catch {
+      return threadId;
+    }
+  }, [threadId, displayName]);
+
   const sendHuman = useCallback(
     async (body: string) => {
       const trimmed = body.trim();
@@ -222,21 +243,22 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
       }
 
       if (useCloud && cloudReady) {
+        const sendThreadId = await resolveSendThreadId();
         const pending = createOptimisticPeerMessage({
-          peerThreadId: threadId,
+          peerThreadId: sendThreadId,
           body: trimmed,
         });
         setMessages((current) => {
           const merged = sortPeerMessages([...current, pending]);
           if (canPersist) {
-            replacePeerMessageLog(threadId, merged);
+            replacePeerMessageLog(sendThreadId, merged);
           }
           return merged;
         });
 
         try {
           const message = await sendPeerMessageRemote({
-            threadId,
+            threadId: sendThreadId,
             displayName,
             body: trimmed,
           });
@@ -247,12 +269,12 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
               message,
             );
             if (canPersist) {
-              replacePeerMessageLog(threadId, merged);
+              replacePeerMessageLog(sendThreadId, merged);
             }
             return merged;
           });
-          if (isRegisteredPeerDmThread(threadId)) {
-            void syncFeedSlotFromRoomRemote(threadId)
+          if (isRegisteredPeerDmThread(sendThreadId)) {
+            void syncFeedSlotFromRoomRemote(sendThreadId)
               .then(() => emitFeedSlotsRefresh())
               .catch(() => emitFeedSlotsRefresh());
           }
@@ -273,7 +295,7 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
       setMessages((current) => [...current, message]);
       return message;
     },
-    [useCloud, cloudReady, threadId, displayName, canPersist],
+    [useCloud, cloudReady, threadId, displayName, canPersist, resolveSendThreadId],
   );
 
   const invokeAi = useCallback(

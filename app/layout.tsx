@@ -78,6 +78,8 @@ export const viewport: Viewport = {
   userScalable: false,
   viewportFit: "cover",
   themeColor: "#1c1c1c",
+  /** Android: avoid dvh thrash when the keyboard opens (composer stays in layout). */
+  interactiveWidget: "resizes-content",
 };
 
 export default async function RootLayout({

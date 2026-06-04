@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { BookOpen, X } from "lucide-react";
 import { useCopy } from "@/hooks/use-copy";
 import {
@@ -12,11 +12,12 @@ import { cn } from "@/lib/utils";
 
 export function RimvioManualFeedBanner({ className }: { className?: string }) {
   const copy = useCopy();
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    setVisible(shouldShowManualFeedBanner());
-  }, []);
+  const [visible, setVisible] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    return shouldShowManualFeedBanner();
+  });
 
   if (!visible) {
     return null;
