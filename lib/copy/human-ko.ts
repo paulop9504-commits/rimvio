@@ -25,6 +25,15 @@ export const copy = {
     howToUseCta: "사용 설명서 보기",
     lensCoachOn: "AI 렌즈 켜짐",
     lensCoachSub: "상대 말에 실행 버튼이 붙어요 · 탭할 때만 실행",
+    storyEyebrow: "Rimvio 한 장 요약",
+    story1Title: "친구 대화 → 실행 버튼",
+    story1Body:
+      "AI 렌즈가 상대 말에 일정·길찾기를 붙여요. 자동 실행 없음 · 탭할 때만.",
+    story2Title: "친구 · 실행 — 같은 OS",
+    story2Body:
+      "친구 탭은 대화에서, 실행 탭은 링크·@명령에서. 다른 앱이 아니에요.",
+    story3Title: "링크는 Shorts처럼",
+    story3Body: "공유한 URL이 Action Dock 카드로 바뀝니다.",
   },
   nav: {
     feed: "실행",

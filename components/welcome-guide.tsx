@@ -13,6 +13,7 @@ import { SettingsProfilePanel } from "@/components/settings-profile-panel";
 import { RimvioAccountProfilePanel } from "@/components/rimvio-account-profile-panel";
 import { SettingsIntegrationsPanel } from "@/components/settings-integrations-panel";
 import { RimvioAppManualPanel } from "@/components/rimvio-app-manual-panel";
+import { RimvioProductStoryScreens } from "@/components/rimvio-product-story-screens";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { markManualGuideOpened } from "@/lib/onboarding/app-manual-onboarding";
 import { useCopy } from "@/hooks/use-copy";
@@ -116,8 +117,9 @@ export function WelcomeGuide() {
 
       <SettingsSection
         title={copy.product.howToUseTitle}
-        description={copy.product.howToUseSub}
+        description={copy.product.oneLiner}
       >
+        <RimvioProductStoryScreens className="mb-3" />
         <Link
           href="/welcome?manual=1"
           className={cn(

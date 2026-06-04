@@ -2,7 +2,7 @@
 
 > **대상:** PM, 디자이너, 마케팅, 다음 AI 에이전트
 >
-> **관련 문서:** [RIMVIO_HANDOFF.md](./RIMVIO_HANDOFF.md) — 기술/코드 핸드오프
+> **관련 문서:** [RIMVIO_HANDOFF.md](./RIMVIO_HANDOFF.md) — 기술/코드 핸드오프 · [RIMVIO_KPI.md](./RIMVIO_KPI.md) — 4주 포커스 지표
 >
 > **제품명:** Rimvio 👀
 >
@@ -45,6 +45,26 @@ Intent → Action Dock → Execute (1–2탭)
 ```
 
 대화는 수단. **Operable**이 목적.
+
+### Feed vs ROOM — 입구 두 개, 앱은 하나
+
+**Feed(실행 탭)**와 **ROOM(친구 탭)**은 서로 다른 제품이 아니다. 같은 Action OS의 **두 ingress**다.
+
+| 입구 | UI 탭 | 사용자가 말하는 상황 | Rimvio가 하는 일 |
+|------|--------|----------------------|------------------|
+| **ROOM** | 친구 (`/peers`) | 친구와 약속·장소·송금·영화 | 1:1 DM → **AI Lens** 말풍선 → 일정·지도·송금 (**탭할 때만** 실행) |
+| **Feed** | 실행 (`/feed`) | 혼자 링크·사진·@명령 | Shorts형 피드 → **Action Dock** → Top 1 실행 |
+
+**카피 SSOT (한 문장):** `말하고, 공유하고 — 실행은 탭 한 번`  
+→ `lib/copy/human-ko.ts` · 온보딩 · 스토어 · `/welcome` 설명서에 동일 문구 유지.
+
+**랜딩·스토어 3스크린 순서 (외부 메시지):**
+
+1. 대화 + 실행 말풍선 (Lens)  
+2. 친구 · 실행 탭 = 같은 OS  
+3. 링크 → 실행 카드 (Shorts)
+
+**4주 동안 확장하지 않음:** 3인 그룹방, Lens on 내 메시지, Enricher 10도메인 동시 확장 — [RIMVIO_KPI.md](./RIMVIO_KPI.md) 참고.
 
 ---
 

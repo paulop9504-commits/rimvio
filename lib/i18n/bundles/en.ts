@@ -24,6 +24,15 @@ export const copyEn: Copy = {
     howToUseCta: "Open guide",
     lensCoachOn: "AI Lens on",
     lensCoachSub: "Action buttons on their messages · tap to run",
+    storyEyebrow: "Rimvio in three screens",
+    story1Title: "Chat → action buttons",
+    story1Body:
+      "AI Lens adds schedule & navigate on their messages. Tap to run — never auto.",
+    story2Title: "Friends & Operate — one OS",
+    story2Body:
+      "Friends tab for chat actions; Operate tab for links and @commands. Same app.",
+    story3Title: "Links like Shorts",
+    story3Body: "Shared URLs become Action Dock cards.",
   },
   nav: {
     feed: "Operate",

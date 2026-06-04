@@ -3,9 +3,9 @@ import { RIMVIO } from "@/lib/brand/rimvio";
 /** App Store / Play Store / OG listing copy — single source of truth. */
 export const STORE_META = {
   shortDescription:
-    "Your Life, Operable. 말·링크·사진 → Action Dock으로 바로 실행.",
+    "말하고, 공유하고 — 실행은 탭 한 번. 친구 대화·링크에서 실행만 골라요.",
   longDescription:
-    "Rimvio(림비오)는 Human Intent를 위한 Action OS입니다. 대화가 아니라 실행 — 말·링크·사진·일정을 Action Dock과 Custom Trigger로 operable하게 만듭니다. 카톡·브라우저 공유는 ingress 중 하나이며, NAVIGATE·REGISTER_ACTION·correction까지 이어지는 개인 automation 레이어입니다.",
+    "Rimvio(림비오)는 챗봇·북마크 앱이 아닌 Action OS입니다. 친구 대화(ROOM)에서는 AI Lens가 일정·길찾기 말풍선을 제안하고, 실행 탭(Feed)에서는 공유 링크가 Action Dock 카드로 바뀝니다. 자동 실행 없음 — Human decides, tap to run. 카톡·브라우저 공유는 ingress 중 하나입니다.",
   keywords: [
     "링크",
     "할일",
@@ -24,17 +24,26 @@ export const STORE_META = {
     p512: "/icons/icon-512.png",
   },
   screenshots: {
+    /** 스토어 1장: 대화 + Lens 말풍선 */
+    peers: {
+      path: "/store/peers-mobile.png",
+      width: 390,
+      height: 844,
+      label: "친구 — 대화에서 실행 버튼",
+    },
+    /** 스토어 2장: 링크 Shorts → Dock */
     feed: {
       path: "/store/feed-mobile.png",
       width: 390,
       height: 844,
-      label: "실행 — Action Dock 피드",
+      label: "실행 — 링크를 실행 카드로",
     },
+    /** 스토어 3장: 온보딩·한 문장 */
     welcome: {
       path: "/store/welcome-mobile.png",
       width: 390,
       height: 844,
-      label: "시작하기 — Your Life, Operable.",
+      label: "말하고, 공유하고 — 실행은 탭 한 번",
     },
   },
 } as const;

@@ -26,13 +26,19 @@ async function capture() {
   });
   const page = await context.newPage();
 
-  await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
+  await page.goto(`${BASE}/peers`, { waitUntil: "networkidle" });
+  await page.screenshot({
+    path: path.join(OUT_DIR, "peers-mobile.png"),
+    fullPage: false,
+  });
+
+  await page.goto(`${BASE}/feed`, { waitUntil: "networkidle" });
   await page.screenshot({
     path: path.join(OUT_DIR, "feed-mobile.png"),
     fullPage: false,
   });
 
-  await page.goto(`${BASE}/welcome?draw=1`, { waitUntil: "networkidle" });
+  await page.goto(`${BASE}/welcome?manual=1`, { waitUntil: "networkidle" });
   await page.screenshot({
     path: path.join(OUT_DIR, "welcome-mobile.png"),
     fullPage: false,

@@ -56,6 +56,7 @@ function manifestIcons(): MetadataRoute.Manifest["icons"] {
 
 export default function manifest(): MetadataRoute.Manifest {
   const screenshots = [
+    STORE_META.screenshots.peers,
     STORE_META.screenshots.feed,
     STORE_META.screenshots.welcome,
   ]
