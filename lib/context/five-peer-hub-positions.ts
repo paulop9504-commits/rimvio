@@ -7,6 +7,16 @@ import type { PinnedSlotIndex } from "@/lib/context/peer-thread-types";
 
 const POSITIONS_KEY = "rimvio-five-peer-hub-positions";
 
+function positionsStorageKey(): string {
+  if (typeof window === "undefined") {
+    return POSITIONS_KEY;
+  }
+  const portrait =
+    window.matchMedia?.("(orientation: portrait)").matches ??
+    window.innerHeight >= window.innerWidth;
+  return portrait ? `${POSITIONS_KEY}:portrait` : `${POSITIONS_KEY}:landscape`;
+}
+
 export type HubNodePoint = { x: number; y: number };
 
 export type HubNodePositions = {
@@ -96,7 +106,10 @@ export function clampHubPoint(point: HubNodePoint, bounds?: HubDragBounds): HubN
   };
 }
 
-/** Edge padding (%) — nodes stay inside a centered square playfield on tall/wide cells. */
+/**
+ * Edge padding (%) — use the full hub rectangle (especially on tall phones).
+ * Older “centered square” inset made portrait drag feel stuck (~35% vertical range).
+ */
 export function resolveHubDragBounds(
   containerWidthPx: number,
   containerHeightPx: number,
@@ -104,30 +117,24 @@ export function resolveHubDragBounds(
 ): HubDragBounds {
   const width = Math.max(containerWidthPx, 1);
   const height = Math.max(containerHeightPx, 1);
-  const playSize = Math.min(width, height);
+  const aspect = height / width;
 
-  const halfHeightPx = target === "center" ? 58 : 44;
-  const halfWidthPx = target === "center" ? 44 : 32;
+  const halfHeightPx = target === "center" ? 50 : 36;
+  const halfWidthPx = target === "center" ? 38 : 26;
 
-  const padX = (halfWidthPx / width) * 100;
-  const padY = (halfHeightPx / playSize) * 100;
+  let padX = (halfWidthPx / width) * 100;
+  let padY = (halfHeightPx / height) * 100;
 
-  let minX = padX;
-  let maxX = 100 - padX;
-  let minY = padY;
-  let maxY = 100 - padY;
+  const minPad = aspect > 1.15 ? 6 : 8;
+  padX = Math.min(14, Math.max(minPad, padX));
+  padY = Math.min(12, Math.max(minPad, padY));
 
-  if (height > width) {
-    const verticalInset = (((height - width) / height) * 100) / 2;
-    minY = verticalInset + padY;
-    maxY = 100 - verticalInset - padY;
-  } else if (width > height) {
-    const horizontalInset = (((width - height) / width) * 100) / 2;
-    minX = horizontalInset + padX;
-    maxX = 100 - horizontalInset - padX;
-  }
-
-  return { minX, maxX, minY, maxY };
+  return {
+    minX: padX,
+    maxX: 100 - padX,
+    minY: padY,
+    maxY: 100 - padY,
+  };
 }
 
 export function clampHubPositionsToBounds(
@@ -160,7 +167,9 @@ export function readHubNodePositions(): HubNodePositions {
   }
 
   try {
-    const raw = localStorage.getItem(POSITIONS_KEY);
+    const raw =
+      localStorage.getItem(positionsStorageKey()) ??
+      localStorage.getItem(POSITIONS_KEY);
     if (!raw) {
       return defaultHubNodePositions();
     }
@@ -175,5 +184,6 @@ export function writeHubNodePositions(positions: HubNodePositions): void {
     return;
   }
 
-  localStorage.setItem(POSITIONS_KEY, JSON.stringify(positions));
+  const key = positionsStorageKey();
+  localStorage.setItem(key, JSON.stringify(positions));
 }

@@ -241,7 +241,7 @@ export function FivePeerHub({
       onTap?.();
     },
     className: cn(
-      "touch-none cursor-grab active:cursor-grabbing",
+      "cursor-grab touch-none active:cursor-grabbing",
       target === "center" ? "absolute z-30" : "absolute z-20",
       extraClass,
     ),
@@ -250,7 +250,11 @@ export function FivePeerHub({
   return (
     <div
       ref={containerRef}
-      className={cn("relative h-full w-full select-none overflow-hidden", className)}
+      className={cn(
+        "relative h-full w-full select-none overflow-hidden touch-none",
+        className,
+      )}
+      style={{ touchAction: "none" }}
       role="navigation"
       aria-label="관계 버블 · 친한 5 + 구슬 주머니"
     >
@@ -296,6 +300,7 @@ export function FivePeerHub({
           left: `${positions.center.x}%`,
           top: `${positions.center.y}%`,
           transform: "translate(-50%, -50%)",
+          touchAction: "none",
         }}
         aria-label={centerLabel}
       >
@@ -331,6 +336,7 @@ export function FivePeerHub({
           left: `${point.x}%`,
           top: `${point.y}%`,
           transform: "translate(-50%, -50%)",
+          touchAction: "none" as const,
         };
 
         if (node.kind === "connected" && node.slot.peerThreadId) {

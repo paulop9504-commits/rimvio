@@ -17,11 +17,14 @@ const clamped = clampHubPoint({ x: 0, y: 100 }, { minX: 4, maxX: 96, minY: 4, ma
 assert.equal(clamped.x, 4);
 assert.equal(clamped.y, 96);
 
-const bounds = resolveHubDragBounds(360, 640, "peer");
-assert.ok(bounds.minX > 0);
-assert.ok(bounds.maxX < 100);
-assert.ok(bounds.minY > 18);
-assert.ok(bounds.maxY < 82);
+const phonePortrait = resolveHubDragBounds(360, 640, "peer");
+assert.ok(phonePortrait.minX > 0 && phonePortrait.maxX < 100);
+assert.ok(phonePortrait.minY <= 10, "portrait should allow wide vertical drag");
+assert.ok(phonePortrait.maxY >= 88, "portrait should allow wide vertical drag");
+
+const desktopWide = resolveHubDragBounds(900, 520, "center");
+assert.ok(desktopWide.maxX - desktopWide.minX > 80);
+assert.ok(desktopWide.maxY - desktopWide.minY > 75);
 
 const reread = defaultHubNodePositions();
 assert.ok(reread.slots[2]!.x > 0);

@@ -233,7 +233,7 @@ export function FivePeerHubClient() {
         친한 5명 · 아래 구슬 주머니 = 나머지 친구 전부
       </p>
 
-      <div className="relative h-[min(calc(100dvh-13rem),40rem)] w-full shrink-0">
+      <div className="relative min-h-[min(72dvh,28rem)] h-[min(calc(100dvh-11rem),42rem)] w-full shrink-0">
         <FivePeerHub
           roster={roster}
           centerLabel={centerLabel}
