@@ -112,17 +112,11 @@ function matchNavigation(text: string): RoutedCommand | null {
 }
 
 function matchDailyAction(text: string): RoutedCommand | null {
-  if (/점심|런치|밥\s*뭐|먹을까|식사\s*추천/u.test(text)) {
+  if (/맛집|식당|먹을\s*데|점심|런치|밥\s*뭐|먹을까|식사/u.test(text)) {
     const query = text
-      .replace(/점심|런치|밥|뭐|먹|지|추천|할까|어디|뭐\s*먹/gu, "")
+      .replace(/맛집|식당|점심|런치|밥|뭐|먹|지|추천|할까|어디|식사/gu, "")
       .trim();
-    return formatLine("점심", query);
-  }
-  if (/출근|출근길|아침\s*루틴/u.test(text)) {
-    return formatLine("출근");
-  }
-  if (/퇴근|퇴근길|퇴근\s*루틴/u.test(text)) {
-    return formatLine("퇴근");
+    return formatLine("식사", query);
   }
   if (/일정\s*정리|스케줄\s*정리/u.test(text)) {
     return formatLine("일정정리", text);
@@ -138,36 +132,17 @@ function matchDailyAction(text: string): RoutedCommand | null {
 
 function matchContextCommand(text: string): RoutedCommand | null {
   const rules: Array<{ test: RegExp; command: string; strip?: RegExp }> = [
-    { test: /날씨|비\s*와|비\s*오|우산/u, command: "날씨" },
-    { test: /번역/u, command: "번역" },
-    { test: /타이머/u, command: "타이머" },
     { test: /송금|이체|보내줘.*돈/u, command: "송금" },
     { test: /더치|n빵|더치페이/u, command: "더치" },
     { test: /영수증/u, command: "영수증" },
-    { test: /쿠폰/u, command: "쿠폰" },
-    { test: /팁/u, command: "팁" },
-    { test: /환율/u, command: "환율" },
-    { test: /가격|얼마|비싸/u, command: "가격" },
     { test: /배달|배민|요기/u, command: "배달" },
     { test: /픽업/u, command: "픽업" },
-    { test: /맛집|식당|먹을\s*데|식사/u, command: "식사" },
-    { test: /메모|기록해/u, command: "메모" },
-    { test: /물\s*마|수분|하이드레/u, command: "물" },
-    { test: /방해금지|dnd|Do Not Disturb/iu, command: "방해금지" },
-    { test: /복붙|클립보드|붙여넣/u, command: "복붙" },
-    { test: /우산/u, command: "우산" },
-    { test: /운동|헬스|런닝/u, command: "운동" },
-    { test: /전화|통화/u, command: "전화" },
     { test: /주차/u, command: "주차" },
-    { test: /집중|포커스|focus/iu, command: "집중" },
     { test: /친구\s*추가|친추/u, command: "친추" },
-    { test: /캡처|스크린샷|화면\s*캡/u, command: "캡처" },
-    { test: /택배|송장|배송\s*조회/u, command: "택배" },
     { test: /링크시트|스프레드시트/u, command: "링크시트" },
     { test: /링크|url|http/u, command: "링크" },
-    { test: /다시|재실행|retry/iu, command: "다시" },
     { test: /대화끝|톡끝|피드\s*복귀/u, command: "대화끝" },
-    { test: /^지금$/u, command: "지금" },
+    { test: /설명서|도움말|명령어/u, command: "설명서" },
   ];
 
   for (const rule of rules) {

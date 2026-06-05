@@ -8,6 +8,7 @@ import type {
 import { appendExecutionHistory } from "@/lib/execution/execution-history";
 import { ingestExecutionOutcome } from "@/lib/learning/learning-engine";
 import { commitSurfaceMemoryFromExecution } from "@/lib/memory/surface-memory-commit";
+import { applySynapticFromExecution } from "@/lib/synaptic/synapse-engine";
 import { wireLoopFromCapabilityExecution } from "@/lib/loop-wiring/loop-wiring-engine";
 import { assertTransition } from "@/lib/execution/execution-lifecycle";
 import {
@@ -136,6 +137,7 @@ export function markExecutionComplete(
   appendExecutionHistory(record);
   ingestExecutionOutcome(record);
   commitSurfaceMemoryFromExecution(record);
+  applySynapticFromExecution(record);
   wireLoopFromCapabilityExecution({
     capabilityId: record.capabilityId,
     executedAt: record.completedAt,

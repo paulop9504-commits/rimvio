@@ -24,6 +24,15 @@ export { resolveSurfaces, buildSurfacesFromLife } from "@/lib/surface-engine";
 
 export { ingestExecutionOutcome } from "@/lib/learning";
 
+export {
+  expandSynapse,
+  strengthenSynapse,
+  weakenSynapse,
+  pruneSynapse,
+  getSynapticPriorityBoost,
+  readSynapseSnapshot,
+} from "@/lib/synaptic";
+
 export { processStableRealtimeTick, readStabilityControlFlags } from "@/lib/stability";
 
 export { dispatchCapability } from "@/lib/capability-registry";

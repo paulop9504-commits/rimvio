@@ -74,11 +74,6 @@ import {
   ensureNotificationAccessForFocus,
   openNotificationAccessSettings,
 } from "@/lib/native-bridge/native-notification-bridge";
-import {
-  findPendingFocusConfirmMessage,
-  isFocusCancelSpeech,
-  isFocusConfirmSpeech,
-} from "@/lib/action-chat/mention-focus/focus-confirm-speech";
 import { submitCommandCompile } from "@/lib/command-os/command-os-client";
 import { saveKnowledgeEntity } from "@/lib/knowledge/knowledge-entity-db";
 import { FIXED_CALENDAR_CONTAINER_ID } from "@/lib/knowledge/knowledge-entity-types";
@@ -446,10 +441,14 @@ function revealAlternateAssistantMessage(
 
 export function useActionChat(
   activeLink: LinkRow | null,
-  chainedLinks: LinkRow[] = []
+  chainedLinks: LinkRow[] = [],
+  options?: { scopeKind?: import("@/lib/action-chat/chat-store").ActionChatScopeKind },
 ) {
 
-  const scopeId = actionChatScopeId(activeLink?.id);
+  const scopeId = actionChatScopeId(
+    activeLink?.id,
+    options?.scopeKind ?? (activeLink ? "link" : "free"),
+  );
 
   const [messages, setMessages] = useState<ActionChatMessage[]>([]);
 
@@ -1523,45 +1522,6 @@ export function useActionChat(
         // DM 실패 시 AI 오케스트레이터로 넘기지 않음 (톡 안 간 채 피드만 도는 현상 방지)
         return;
       }
-      const pendingFocusConfirm = findPendingFocusConfirmMessage(currentBeforeSend);
-      if (clientRoute.kind === "focus_confirm" && pendingFocusConfirm) {
-        if (isFocusConfirmSpeech(trimmed)) {
-          const hasAccess = await ensureNotificationAccessForFocus(() => {
-            toast.message("알림 맡기기", "설정에서 Rimvio 알림 접근을 켜주세요");
-          });
-          persist(
-            applyFocusConfirmToMessages(
-              [
-                ...currentBeforeSend,
-                createMessage("user", trimmed, { chatAxis: messageChatAxis }),
-              ],
-              pendingFocusConfirm.id,
-            ),
-          );
-          toast.message(
-            "집중 모드 시작",
-            hasAccess
-              ? "카카오톡·이메일 알림을 모아둘게요"
-              : "알림 권한을 켜면 카톡·이메일도 모아둘 수 있어요",
-          );
-          return;
-        }
-      }
-      if (clientRoute.kind === "focus_cancel" && pendingFocusConfirm) {
-        if (isFocusCancelSpeech(trimmed)) {
-          persist(
-            applyFocusCancelToMessages(
-              [
-                ...currentBeforeSend,
-                createMessage("user", trimmed, { chatAxis: messageChatAxis }),
-              ],
-              pendingFocusConfirm.id,
-            ),
-          );
-          return;
-        }
-      }
-
       if (clientRoute.kind === "parking_photo" && pendingAttachments.length > 0) {
         consumeParkingPhotoCapture();
         const photoTurn = await tryCommitParkingPhotoTurn({

@@ -1,6 +1,7 @@
 import type { CapabilityId } from "@/lib/capability-registry/capability-types";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { getCapabilityLearningBoost } from "@/lib/learning/surface-weight-adapter";
+import { getSynapticPriorityBoost } from "@/lib/synaptic/synapse-surface-adapter";
 import type { SurfaceBuildContext, SurfacePriorityBand } from "@/lib/surface-engine/surface-contract";
 
 const MS_PER_HOUR = 60 * 60 * 1000;
@@ -156,6 +157,10 @@ export function computeRawPriorityScore(input: {
         channel: input.context.activeChannel,
       })
     : 0;
+  const synapticBoost =
+    input.primaryCapabilityId != null
+      ? getSynapticPriorityBoost(input.surfaceId, input.primaryCapabilityId)
+      : 0;
   const score =
     proximityUrgencyScore(hours, input.now) +
     lifecycleUrgencyWeight(input.event.lifecycle) +
@@ -167,7 +172,8 @@ export function computeRawPriorityScore(input: {
       input.primaryCapabilityId,
     ) +
     Math.round(input.event.confidence * 8) +
-    learningBoost;
+    learningBoost +
+    synapticBoost;
 
   return {
     score: Math.max(0, Math.round(score)),

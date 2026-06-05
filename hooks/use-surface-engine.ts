@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { EVENT_CANDIDATES_UPDATED } from "@/lib/life-read-model/candidates-updated";
+import { SYNAPSE_UPDATED_EVENT } from "@/lib/synaptic/synapse-engine";
+import { SURFACE_IGNORE_OBSERVED_EVENT } from "@/lib/surface-composition/surface-ux-events";
 import {
   resolveSurfaces,
   selectSurfacesForChannel,
@@ -23,7 +25,13 @@ export function useSurfaceEngine(input: UseSurfaceEngineInput = {}) {
   useEffect(() => {
     const onUpdate = () => setTick((value) => value + 1);
     window.addEventListener(EVENT_CANDIDATES_UPDATED, onUpdate);
-    return () => window.removeEventListener(EVENT_CANDIDATES_UPDATED, onUpdate);
+    window.addEventListener(SYNAPSE_UPDATED_EVENT, onUpdate);
+    window.addEventListener(SURFACE_IGNORE_OBSERVED_EVENT, onUpdate);
+    return () => {
+      window.removeEventListener(EVENT_CANDIDATES_UPDATED, onUpdate);
+      window.removeEventListener(SYNAPSE_UPDATED_EVENT, onUpdate);
+      window.removeEventListener(SURFACE_IGNORE_OBSERVED_EVENT, onUpdate);
+    };
   }, []);
 
   const result = useMemo(() => {

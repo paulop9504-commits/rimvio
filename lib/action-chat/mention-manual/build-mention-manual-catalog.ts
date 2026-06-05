@@ -27,16 +27,13 @@ const EXTRA_MANUAL_FEATURES: readonly MentionFeature[] = [
 
 const DEFAULT_EXAMPLES: Partial<Record<string, string>> = {
   navigate: "@네비 강남역",
-  meal: "@밥 강남 맛집",
+  meal: "@식사 강남 맛집",
   schedule: "@일정정리",
   parking: "@주차_",
-  commute: "@출근",
-  leave: "@퇴근",
-  now: "@지금",
-  retry: "@다시",
+  reminder: "@알림 30분 뒤",
   linksheet: "@링크시트 https://docs.google.com/spreadsheets/d/…",
   receipt: "@영수증",
-  umbrella: "@우산 서울",
+  peer_talk: "@톡 친구이름",
 };
 
 function pickPrimaryAlias(feature: MentionFeature): string {

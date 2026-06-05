@@ -36,12 +36,20 @@ export const copy = {
     story3Body: "공유한 URL이 Action Dock 카드로 바뀝니다.",
   },
   nav: {
-    feed: "실행",
+    feed: "피드",
+    search: "검색",
     inbox: "인박스",
     room: "함께하기",
     peers: "친구",
     settings: "설정",
     start: "시작하기",
+  },
+  search: {
+    title: "검색",
+    subtitle: "AI와 대화 · 간단한 액션",
+    emptyHint: "무엇이든 물어보세요",
+    emptySubhint: "일정, 길찾기, 친구와 이어지는 작업도 여기서",
+    placeholder: "무엇을 도와드릴까요?",
   },
   peers: {
     title: "친구",
@@ -60,8 +68,9 @@ export const copy = {
       "Google로 시작하면 친구 버블·AI 렌즈를 쓸 수 있어요",
   },
   feed: {
-    title: "실행",
-    subtitle: "공유한 링크를 실행 카드로",
+    title: "피드",
+    subtitle: "오늘 할 일 한 가지",
+    askAi: "AI에게 더 물어보기",
     newLinkSaved: "저장되었습니다",
     undoDelete: "삭제되었습니다",
     undo: "되돌리기",

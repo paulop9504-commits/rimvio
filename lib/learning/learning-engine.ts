@@ -25,6 +25,7 @@ import type {
   WeightUpdateInput,
 } from "@/lib/learning/learning-types";
 import { readStabilityControlFlags } from "@/lib/stability/stability-state-store";
+import { applySynapticFromLearningObservation } from "@/lib/synaptic/synapse-engine";
 
 const REINFORCE = {
   executeSuccess: 0.12,
@@ -173,6 +174,12 @@ export function ingestObservation(input: IngestObservationInput): LearningObserv
   };
   appendObservation(observation);
   processObservation(observation);
+  applySynapticFromLearningObservation({
+    surfaceId: observation.surfaceId,
+    capabilityId: observation.capabilityId,
+    actionType: observation.actionType,
+    resultStatus: observation.resultStatus,
+  });
   return observation;
 }
 

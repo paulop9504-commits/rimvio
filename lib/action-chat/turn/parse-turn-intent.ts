@@ -17,7 +17,8 @@ export function parseTurnIntent(
   options: { attachments?: ComposerAttachment[]; chatAxis?: ChatAxis } | undefined,
   readStoredChatAxis: () => ChatAxis,
 ): ParsedTurnIntent {
-  const trimmed = routeRimvioCommand(text.trim());
+  const raw = text.trim();
+  const trimmed = raw.length > 0 ? routeRimvioCommand(raw) : "";
   const pendingAttachments = options?.attachments ?? [];
   const chatAxis = options?.chatAxis ?? readStoredChatAxis();
 

@@ -24,12 +24,19 @@ import { buildFocusConfirmWire, buildRunningFocusWire } from "../lib/action-chat
 import { ingestNotification } from "../lib/notification-shadow/route-notification";
 import { resetShadowStoreForTests } from "../lib/notification-shadow/shadow-store";
 import { isFocusConfirmSpeech } from "../lib/action-chat/mention-focus/focus-confirm-speech";
+import { tryDispatchLocalMentionTurn } from "../lib/action-chat/dispatch-local-mention-turn";
 
 assert.equal(parseMentionTimerDuration("1시간"), 60 * 60 * 1000);
 
 const turn = tryBuildMentionFocusTurn({ text: "@집중 1시간" });
 assert.ok(turn);
 assert.equal(turn![1]!.inlineChatFocus?.phase, "awaiting_confirm");
+
+assert.equal(
+  tryDispatchLocalMentionTurn({ text: "@집중 1시간" }),
+  null,
+  "slim protocol: focus @ not dispatched — NL orchestrator only",
+);
 
 const confirmed = applyFocusConfirmToMessages(turn!, turn![1]!.id);
 assert.equal(confirmed[1]!.inlineChatFocus?.phase, "running");

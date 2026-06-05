@@ -1,4 +1,6 @@
 import type { RankedSurface, SurfaceUxState } from "@/lib/surface-engine/surface-contract";
+import { isFallbackSurface } from "@/lib/surface-engine/surface-ux-state";
+import { expandSynapse } from "@/lib/synaptic/synapse-engine";
 
 export type SurfaceTransitionKind =
   | "ACTIVE_SELECTED"
@@ -116,6 +118,11 @@ export function collapseSurfaceDecisionStream(
         uxState: context.uxState,
         primaryCapabilityId: activeSurface.primaryAction.capabilityId,
       });
+      expandSynapse({
+        surfaceId: activeSurface.id,
+        capabilityId: activeSurface.primaryAction.capabilityId,
+        reason: "active_surface_selected",
+      });
     }
   } else if (previousActiveId) {
     logCollapse("SURFACE_TRANSITION_EVENT", transition);
@@ -139,14 +146,17 @@ export function collapseSurfaceDecisionStream(
   };
 }
 
-/** True when the composition layer should be the only visible decision stream. */
+/** True when a real (non-fallback) primary should drive the feed decision stream. */
 export function hasActiveDecisionStream(input: {
   primary: { id: string; visibility?: string } | null;
 }): boolean {
   if (!input.primary) {
     return false;
   }
-  return input.primary.visibility !== "hidden";
+  if (input.primary.visibility === "hidden") {
+    return false;
+  }
+  return !isFallbackSurface(input.primary);
 }
 
 /** Latent layers (prep, dock) may render only when no active decision surface. */

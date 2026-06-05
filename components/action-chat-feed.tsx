@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Calendar, FolderGit2, Settings2 } from "lucide-react";
 import {
@@ -16,14 +17,12 @@ import {
 } from "@/components/action-chat/google-sheets-embed-sheet";
 import { subscribeOpenGoogleSheet } from "@/lib/integrations/google-sheets-open-event";
 import { ActiveActionsSheet } from "@/components/action-chat/active-actions-sheet";
-import { CalendarBoard } from "@/components/action-chat/calendar-board";
 import { ActionChatInputBar } from "@/components/action-chat/input-bar";
 import { isFeedPeerTalkSendActive } from "@/lib/action-chat/feed-peer-talk/is-feed-peer-talk-send-active";
 import {
   ChatAmbientFocusProvider,
   ChatAmbientShell,
 } from "@/components/action-chat/chat-ambient-focus";
-import { ContextNowStrip } from "@/components/action-chat/context-now-strip";
 import { ActionChatLinkPanel } from "@/components/action-chat/link-panel";
 import { ActionChatMessageList } from "@/components/action-chat/message-list";
 import { ExecutionTimeline } from "@/components/threadline/execution-timeline";
@@ -31,15 +30,30 @@ import { TodayThread } from "@/components/threadline/today-thread";
 import { threadlineHeaderStatus } from "@/lib/threadline";
 import { RimvioLogo } from "@/components/rimvio-logo";
 import { RimvioProductContextStrip } from "@/components/rimvio-product-context-strip";
-import { OnboardingMagicPanel } from "@/components/onboarding-magic-panel";
 import { useActionChat } from "@/hooks/use-action-chat";
 import { usePredictiveDock } from "@/hooks/use-predictive-dock";
-import { useSurfaceComposition } from "@/hooks/use-surface-composition";
+import { useRealtimeSurfaceComposition } from "@/hooks/use-realtime-surface-composition";
+import { useSurfaceIgnoreObserver } from "@/hooks/use-surface-ignore-observer";
 import { useSurfaceMemory } from "@/hooks/use-surface-memory";
+import { useSynapticSnapshot } from "@/hooks/use-synaptic-snapshot";
+import { SurfaceStabilityStrip } from "@/components/surface-composition/surface-stability-strip";
+import { deriveLoopContextKo } from "@/lib/surface-composition/loop-why-copy";
+import { useSurfaceTransientHint } from "@/hooks/use-surface-transient-hint";
 import { useCapabilityDispatch } from "@/hooks/use-capability-dispatch";
 import { buildSurfaceActionKey } from "@/lib/memory";
-import { shouldRenderLatentSuggestionLayers } from "@/lib/surface-composition";
-import { SurfaceCompositionRuntime } from "@/components/surface-composition/surface-composition-runtime";
+import {
+  deriveSurfaceWhyLineKo,
+  hasActiveDecisionStream,
+} from "@/lib/surface-composition";
+import {
+  derivePrimaryErrorMessage,
+  derivePrimarySuccessMessage,
+} from "@/lib/surface-composition/surface-success-copy";
+import { useSurfaceActionFeedback } from "@/hooks/use-surface-action-feedback";
+import {
+  SurfaceCompositionRuntime,
+  type SurfaceCompositionRuntimeProps,
+} from "@/components/surface-composition/surface-composition-runtime";
 import { markOpportunityConsumed } from "@/lib/predictive-dock/action-opportunity-session";
 import { recordDockActionUsage } from "@/lib/action-registry/record-dock-usage";
 import { wireEventCompleted } from "@/lib/events/event-lifecycle-hooks";
@@ -61,9 +75,9 @@ import {
   isThreadNearBottom,
   scrollThreadToBottom,
 } from "@/lib/feed/feed-thread-scroll";
-import { shouldShowColdStartMagic } from "@/lib/onboarding/cold-start-magic";
 import type { LocateActionResult } from "@/lib/locate/types";
 import type { ContextRemoteState } from "@/lib/remote/resolve-context-remote";
+import type { ActionChatScopeKind } from "@/lib/action-chat/chat-store";
 import type { LinkRow } from "@/types/database";
 import { ActionDockWhyLine } from "@/components/action-dock/action-dock-why-line";
 import { PredictiveActionDock } from "@/components/action-chat/predictive-action-dock";
@@ -71,7 +85,12 @@ import { buildUserExplainabilityKoLine } from "@/lib/event-os/ui-binding/build-u
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
+export type ActionChatFeedVariant = "slot" | "conversation";
+
 type ActionChatFeedProps = {
+  /** slot = 피드 HQ 카드만 · conversation = 검색 탭 AI 허브 */
+  variant?: ActionChatFeedVariant;
+  scopeKind?: ActionChatScopeKind;
   links: LinkRow[];
   activeIndex: number;
   onSelectIndex: (index: number) => void;
@@ -85,6 +104,8 @@ type ActionChatFeedProps = {
 };
 
 export function ActionChatFeed({
+  variant = "slot",
+  scopeKind,
   links,
   activeIndex,
   onSelectIndex,
@@ -98,6 +119,9 @@ export function ActionChatFeed({
 }: ActionChatFeedProps) {
   const copy = useCopy();
   const locale = useAppLocale();
+  const router = useRouter();
+  const isSlot = variant === "slot";
+  const isConversation = variant === "conversation";
   const activeLink = activeIndex >= 0 ? links[activeIndex] ?? null : null;
   const {
     chainedLinks,
@@ -144,7 +168,11 @@ export function ActionChatFeed({
     handleFocusHeldInAppAction,
     eventOsProofRender,
     eventOsLastProof,
-  } = useActionChat(activeLink, chainedLinks);
+  } = useActionChat(activeLink, chainedLinks, {
+    scopeKind:
+      scopeKind ??
+      (isConversation ? "search" : activeLink ? "link" : "free"),
+  });
   const reminderMap = useLinkReminderMap();
   const linkIds = useMemo(() => links.map((link) => link.id), [links]);
   const {
@@ -159,7 +187,8 @@ export function ActionChatFeed({
   });
   const masterContext = useMemo(() => readClientMasterOrchestratorContext(), [messages]);
   const surfaceMemory = useSurfaceMemory();
-  const { frame: surfaceFrame } = useSurfaceComposition({
+  const synaptic = useSynapticSnapshot();
+  const surfaceState = useRealtimeSurfaceComposition({
     dateKey: masterContext.currentDate,
     context: {
       now: new Date(),
@@ -167,9 +196,15 @@ export function ActionChatFeed({
       dismissedSurfaceIds: surfaceMemory.dismissedSurfaceIds,
     },
   });
-  const { dispatch: dispatchCapability } = useCapabilityDispatch({
+  const surfaceFrame = surfaceState.frame;
+  const { dispatchAndRecord } = useCapabilityDispatch({
     sendPrompt: (text) => void sendMessage(text),
   });
+  const surfaceFeedback = useSurfaceActionFeedback();
+  const { hint: surfaceTransientHint, clearHint: clearSurfaceTransientHint } =
+    useSurfaceTransientHint();
+  const [surfaceActionGeneration, setSurfaceActionGeneration] = useState(0);
+  const showAdaptiveLayers = !surfaceState.learningPaused;
   const threadlineNeedsTap =
     threadlineHeaderStatus(threadlineCards) === "needs_one_tap";
   const { visible: dockActions } = usePredictiveDock({
@@ -217,20 +252,88 @@ export function ActionChatFeed({
   }, [openGoogleSheet]);
   const { totalCount: resourcePoolCount } = useResourcePool();
   const [schedulingLink, setSchedulingLink] = useState<LinkRow | null>(null);
-  const userMessageCount = messages.filter((message) => message.role === "user").length;
-  const showColdStartMagic = useMemo(
-    () =>
-      shouldShowColdStartMagic({
-        linkCount: links.length,
-        userMessageCount,
-      }),
-    [links.length, userMessageCount],
-  );
-  const [coldStartDismissed, setColdStartDismissed] = useState(false);
-  const coldStartVisible = showColdStartMagic && !coldStartDismissed;
-  const showLatentSuggestionLayers = useMemo(
-    () => shouldRenderLatentSuggestionLayers(surfaceFrame),
+  const hasActiveDecision = useMemo(
+    () => hasActiveDecisionStream(surfaceFrame.layout),
     [surfaceFrame],
+  );
+  const surfacePrimaryUx = useMemo(() => {
+    if (surfaceTransientHint) {
+      return {
+        whyLine: surfaceTransientHint,
+        getFeedback: surfaceFeedback.getFeedback,
+      };
+    }
+    const baseWhy = deriveSurfaceWhyLineKo({
+      node: surfaceFrame.layout.primary,
+      frame: surfaceFrame,
+    });
+    const loopWhy =
+      showAdaptiveLayers && surfaceState.dominantLoop
+        ? deriveLoopContextKo(surfaceState.dominantLoop)
+        : null;
+    const whyLine =
+      baseWhy && loopWhy ? `${loopWhy} · ${baseWhy}` : loopWhy ?? baseWhy;
+    return {
+      whyLine,
+      getFeedback: surfaceFeedback.getFeedback,
+    };
+  }, [
+    surfaceFrame,
+    surfaceState.dominantLoop,
+    surfaceFeedback.getFeedback,
+    surfaceTransientHint,
+    showAdaptiveLayers,
+  ]);
+
+  useSurfaceIgnoreObserver({
+    surfaceId: surfaceFrame.layout.primary?.id ?? null,
+    capabilityId: surfaceFrame.layout.primary?.primaryAction.capabilityId ?? null,
+    priorityBand: surfaceFrame.layout.primary?.priority.band,
+    enabled: hasActiveDecision,
+    resetToken: surfaceActionGeneration,
+    onIgnored: () => {
+      toast.message("나중에 다시 꺼낼게요 — 지금은 쉬어가도 돼요", { duration: 3200 });
+    },
+  });
+  const handleSurfaceDispatch = useCallback(
+    (
+      node: Parameters<SurfaceCompositionRuntimeProps["onDispatchCapability"]>[0],
+      _actionId: string,
+      capabilityId: Parameters<SurfaceCompositionRuntimeProps["onDispatchCapability"]>[2],
+    ) => {
+      const actionKey = buildSurfaceActionKey(node.id, capabilityId);
+      surfaceFeedback.markLoading(actionKey);
+      const { result, record } = dispatchAndRecord({
+        capabilityId,
+        inputs: {
+          title: node.title,
+          destination: node.resources.find((r) => r.kind === "location")?.label,
+          place: node.resources.find((r) => r.kind === "location")?.label,
+        },
+        metadata: {
+          surfaceId: node.id,
+          actionKey,
+        },
+      });
+      if (!result.ok) {
+        surfaceFeedback.markError(actionKey, derivePrimaryErrorMessage(capabilityId));
+        return;
+      }
+      if (record?.status === "completed") {
+        surfaceFeedback.markSuccess(
+          actionKey,
+          derivePrimarySuccessMessage(capabilityId, node),
+        );
+      } else if (record?.status === "failed") {
+        surfaceFeedback.markError(actionKey, derivePrimaryErrorMessage(capabilityId));
+      }
+      if (capabilityId === "DISMISS_SURFACE") {
+        markOpportunityConsumed(node.id);
+      }
+      setSurfaceActionGeneration((value) => value + 1);
+      clearSurfaceTransientHint();
+    },
+    [clearSurfaceTransientHint, dispatchAndRecord, surfaceFeedback],
   );
   const prevMessageCountRef = useRef(messages.length);
   const threadScrollStateRef = useRef({
@@ -313,8 +416,10 @@ export function ActionChatFeed({
     <>
       <div
         data-action-chat-root
+        data-action-chat-variant={variant}
         className={cn(
           "action-shell flex h-full min-h-0 flex-1 flex-col overflow-hidden",
+          isSlot && "action-shell--slot",
           className
         )}
       >
@@ -322,7 +427,7 @@ export function ActionChatFeed({
           <div className="flex min-h-9 items-center justify-between gap-2">
             <RimvioLogo size="sm" className="h-7 shrink-0" appearance="white" />
             <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
-              {messages.length > 0 || activeLink ? (
+              {isConversation && (messages.length > 0 || activeLink) ? (
                 <button
                   type="button"
                   onClick={handleStartFreshConversation}
@@ -331,24 +436,26 @@ export function ActionChatFeed({
                   새 대화
                 </button>
               ) : null}
-              <RelationshipFeedFolder />
-              <button
-                type="button"
-                aria-label="리소스풀"
-                onClick={() => setResourcePoolOpen(true)}
-                className="relative flex size-8 items-center justify-center rounded-full bg-transparent text-white transition-opacity hover:opacity-80 active:scale-95 sm:size-9"
-              >
-                <FolderGit2 className="size-[1.15rem] sm:size-5" strokeWidth={2.1} />
-                <span
-                  className={cn(
-                    "absolute -right-0.5 -top-0.5 flex size-4 min-w-4 items-center justify-center rounded-full bg-rimvio-base px-0.5 text-[9px] font-extrabold tabular-nums leading-none text-[#D8B4FE] shadow-[0_0_8px_rgba(191,90,242,0.35)] sm:-right-1 sm:-top-1 sm:size-[1.125rem] sm:min-w-[1.125rem] sm:text-[10px]",
-                    resourcePoolCount <= 0 && "pointer-events-none opacity-0",
-                  )}
-                  aria-hidden={resourcePoolCount <= 0}
+              {isSlot ? <RelationshipFeedFolder /> : null}
+              {isConversation ? (
+                <button
+                  type="button"
+                  aria-label="리소스풀"
+                  onClick={() => setResourcePoolOpen(true)}
+                  className="relative flex size-8 items-center justify-center rounded-full bg-transparent text-white transition-opacity hover:opacity-80 active:scale-95 sm:size-9"
                 >
-                  {resourcePoolCount > 9 ? "9+" : resourcePoolCount || "1"}
-                </span>
-              </button>
+                  <FolderGit2 className="size-[1.15rem] sm:size-5" strokeWidth={2.1} />
+                  <span
+                    className={cn(
+                      "absolute -right-0.5 -top-0.5 flex size-4 min-w-4 items-center justify-center rounded-full bg-rimvio-base px-0.5 text-[9px] font-extrabold tabular-nums leading-none text-[#D8B4FE] shadow-[0_0_8px_rgba(191,90,242,0.35)] sm:-right-1 sm:-top-1 sm:size-[1.125rem] sm:min-w-[1.125rem] sm:text-[10px]",
+                      resourcePoolCount <= 0 && "pointer-events-none opacity-0",
+                    )}
+                    aria-hidden={resourcePoolCount <= 0}
+                  >
+                    {resourcePoolCount > 9 ? "9+" : resourcePoolCount || "1"}
+                  </span>
+                </button>
+              ) : null}
               <button
                 type="button"
                 aria-label="캘린더"
@@ -366,6 +473,7 @@ export function ActionChatFeed({
                   {badgeCount > 9 ? "9+" : badgeCount || "1"}
                 </span>
               </button>
+              {isSlot ? (
               <Link
                 href="/welcome"
                 aria-label="설정"
@@ -373,18 +481,21 @@ export function ActionChatFeed({
               >
                 <Settings2 className="size-[1.15rem] sm:size-5" strokeWidth={2.1} />
               </Link>
+              ) : null}
             </div>
           </div>
+          {isSlot ? (
           <RimvioProductContextStrip
             variant="feed"
             layout="header"
             className="mt-1.5 border-t border-white/[0.06] pt-1.5"
           />
+          ) : null}
         </header>
 
-        <RimvioManualFeedBanner className="mx-4 mb-2 mt-1 shrink-0" />
+        {isSlot ? <RimvioManualFeedBanner className="mx-4 mb-2 mt-1 shrink-0" /> : null}
 
-        {activeLink ? (
+        {isConversation && activeLink ? (
           <div className="max-h-[min(40dvh,220px)] shrink-0 overflow-hidden border-b border-white/[0.06] bg-rimvio-surface-muted">
             <p className="px-5 pt-2 text-[10px] font-semibold uppercase tracking-wide text-white/45">
               현재 맥락
@@ -410,73 +521,62 @@ export function ActionChatFeed({
             ref={threadRef}
             className="relative z-[1] min-h-0 flex-1 overflow-y-auto overscroll-y-contain rimvio-feed-scroll-inset touch-pan-y [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
-            <div className="feed-hero-slot shrink-0">
-              {coldStartVisible ? (
-                <div className="flex justify-center px-3 pt-2">
-                  <OnboardingMagicPanel
-                    onSendSeed={(text) => void sendMessage(text)}
-                    onDismiss={() => setColdStartDismissed(true)}
-                  />
-                </div>
-              ) : !activeLink && messages.length === 0 && showLatentSuggestionLayers ? (
-                <ContextNowStrip
-                  nextAction={nextAction}
-                  onOpenCalendar={() => setActiveActionsOpen(true)}
-                  onSuggest={(text) => void sendMessage(text)}
+            {isSlot ? (
+              <div className="flex min-h-[min(52dvh,420px)] flex-col justify-center py-4">
+                <SurfaceStabilityStrip
+                  learningPaused={surfaceState.learningPaused}
+                  systemLoadLevel={surfaceState.systemLoadLevel}
                 />
+                {hasActiveDecision ? (
+                  <SurfaceCompositionRuntime
+                    frame={surfaceFrame}
+                    primaryUx={surfacePrimaryUx}
+                    onDispatchCapability={handleSurfaceDispatch}
+                    className="pt-2"
+                  />
+                ) : (
+                  <div className="px-6 py-10 text-center">
+                    <p className="text-[15px] font-medium text-white/80">{copy.feed.title}</p>
+                    <p className="mt-2 text-[13px] leading-relaxed text-white/45">
+                      {copy.feed.subtitle}
+                    </p>
+                  </div>
+                )}
+                <div className="mt-4 flex justify-center px-4">
+                  <button
+                    type="button"
+                    onClick={() => router.push("/search")}
+                    className="rounded-full border border-white/20 bg-white/[0.06] px-5 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-white/[0.1]"
+                  >
+                    {copy.feed.askAi}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {isConversation ? (
+            <div className="feed-hero-slot shrink-0">
+              {messages.length === 0 ? (
+                <div className="flex flex-col items-center px-6 pb-6 pt-[min(18dvh,8rem)] text-center">
+                  <p className="text-[17px] font-semibold text-white/90">{copy.search.emptyHint}</p>
+                  <p className="mt-2 max-w-[16rem] text-[13px] leading-relaxed text-white/45">
+                    {copy.search.emptySubhint}
+                  </p>
+                </div>
               ) : null}
             </div>
-
-            {surfaceFrame.layout.primary || surfaceFrame.layout.secondary.length > 0 ? (
-              <SurfaceCompositionRuntime
-                frame={surfaceFrame}
-                onDispatchCapability={(node, _actionId, capabilityId) => {
-                  dispatchCapability({
-                    capabilityId,
-                    inputs: {
-                      title: node.title,
-                      destination: node.resources.find((r) => r.kind === "location")?.label,
-                      place: node.resources.find((r) => r.kind === "location")?.label,
-                    },
-                    metadata: {
-                      surfaceId: node.id,
-                      actionKey: buildSurfaceActionKey(node.id, capabilityId),
-                    },
-                  });
-                  if (capabilityId === "DISMISS_SURFACE") {
-                    markOpportunityConsumed(node.id);
-                  }
-                }}
-              />
             ) : null}
 
-            {prepSurface.visible && showLatentSuggestionLayers ? (
-              <div className="border-b border-black/[0.04] bg-rimvio-surface/80 px-3 py-4">
-                <CalendarBoard
-                  variant="compact"
-                  overlayRows={prepSurface.rows}
-                  compactTitle={prepSurface.title}
-                  onExpand={() => setActiveActionsOpen(true)}
-                  onSpawnPrompt={(uri) => void sendMessage(uri)}
-                />
-              </div>
-            ) : null}
-
-            {messages.length === 0 && !coldStartVisible && activeLink ? (
-              <div className="px-5 py-4">
-                <p className="text-[14px] leading-relaxed text-white/55">
-                  {copy.action.emptyNoSelection}
-                </p>
-              </div>
-            ) : null}
-
+            {isConversation ? (
             <ExecutionTimeline>
+              {threadlineCards.length > 0 ? (
               <TodayThread
                 cards={threadlineCards}
                 deferredCards={deferredCards}
                 onResolveChip={handleThreadlineResolveChip}
                 onRestoreDeferred={restoreThreadlineDeferred}
               />
+              ) : null}
 
               <div data-timeline-segment="chat" className="pt-1">
                 <ActionChatMessageList
@@ -517,9 +617,10 @@ export function ActionChatFeed({
                 />
               </div>
             </ExecutionTimeline>
+            ) : null}
           </div>
 
-          {dockActions.length > 0 && showLatentSuggestionLayers ? (
+          {isConversation && dockActions.length > 0 ? (
             <div className="shrink-0 px-3 pb-1">
               <PredictiveActionDock
                 actions={dockActions}
@@ -535,12 +636,13 @@ export function ActionChatFeed({
             </div>
           ) : null}
 
-          {causalWhyLine ? (
+          {isConversation && causalWhyLine ? (
             <div className="shrink-0 px-5 pb-1">
               <ActionDockWhyLine line={causalWhyLine} variant="overlay" />
             </div>
           ) : null}
 
+          {isConversation ? (
           <div
             className="rimvio-feed-composer-dock pointer-events-auto shrink-0 touch-manipulation lg:relative lg:z-[2]"
             data-feed-composer-dock
@@ -551,7 +653,7 @@ export function ActionChatFeed({
                   ? `${feedPeerTalkSession.displayName}에게 메시지`
                   : threadlineNeedsTap
                     ? "오늘에 추가…"
-                    : "무엇을 도와드릴까요?"
+                    : copy.search.placeholder
               }
               sending={sending}
               disabled={sending}
@@ -583,6 +685,7 @@ export function ActionChatFeed({
               }}
             />
           </div>
+          ) : null}
         </ChatAmbientShell>
         </ChatAmbientFocusProvider>
       </div>

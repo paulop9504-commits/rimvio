@@ -56,6 +56,17 @@ export function clearAllActionChatMessageScopes() {
   }
 }
 
-export function actionChatScopeId(linkId?: string | null) {
+export type ActionChatScopeKind = "link" | "free" | "search";
+
+export function actionChatScopeId(
+  linkId?: string | null,
+  scopeKind: ActionChatScopeKind = "link",
+): string {
+  if (scopeKind === "search") {
+    return "rimvio:search";
+  }
+  if (scopeKind === "free") {
+    return "free";
+  }
   return linkId?.trim() || "free";
 }

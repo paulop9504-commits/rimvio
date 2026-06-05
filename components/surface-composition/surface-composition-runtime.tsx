@@ -10,6 +10,8 @@ import type {
   SurfaceNode,
 } from "@/lib/surface-composition/surface-node-contract";
 import type { SurfaceAction } from "@/lib/surface-engine/surface-contract";
+import { SurfacePrimaryUxProvider } from "@/components/surface-composition/surface-primary-ux-context";
+import type { SurfacePrimaryUxValue } from "@/components/surface-composition/surface-primary-ux-context";
 import { cn } from "@/lib/utils";
 
 export type SurfaceCompositionRuntimeProps = {
@@ -19,6 +21,8 @@ export type SurfaceCompositionRuntimeProps = {
     actionId: string,
     capabilityId: CapabilityId,
   ) => void;
+  /** Why-line + per-action feedback for primary MFE. */
+  primaryUx?: SurfacePrimaryUxValue;
   /** Action execution dock — capability-driven, composed externally. */
   actionDockSlot?: ReactNode;
   className?: string;
@@ -38,6 +42,7 @@ function toDispatch(
 export const SurfaceCompositionRuntime = memo(function SurfaceCompositionRuntime({
   frame,
   onDispatchCapability,
+  primaryUx,
   actionDockSlot,
   className,
 }: SurfaceCompositionRuntimeProps) {
@@ -48,7 +53,7 @@ export const SurfaceCompositionRuntime = memo(function SurfaceCompositionRuntime
     return null;
   }
 
-  return (
+  const body = (
     <section
       className={cn("space-y-3", className)}
       aria-label="Execution surfaces"
@@ -75,4 +80,10 @@ export const SurfaceCompositionRuntime = memo(function SurfaceCompositionRuntime
       ) : null}
     </section>
   );
+
+  if (!primaryUx) {
+    return body;
+  }
+
+  return <SurfacePrimaryUxProvider value={primaryUx}>{body}</SurfacePrimaryUxProvider>;
 });

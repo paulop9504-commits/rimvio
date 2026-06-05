@@ -4,10 +4,6 @@ import {
   tryBuildMentionCalendarTurn,
 } from "@/lib/action-chat/mention-calendar/commit-mention-calendar-turn";
 import {
-  isMentionFocusInput,
-  tryBuildMentionFocusTurn,
-} from "@/lib/action-chat/mention-focus/commit-mention-focus-turn";
-import {
   isMentionNavigateInput,
   tryBuildMentionNavigateTurn,
 } from "@/lib/action-chat/mention-navigate/commit-mention-navigate-turn";
@@ -32,10 +28,6 @@ import {
   tryBuildMentionScheduleOrganizeTurn,
 } from "@/lib/action-chat/mention-schedule-organize/commit-mention-schedule-organize-turn";
 import {
-  isMentionTimerInput,
-  tryBuildMentionTimerTurn,
-} from "@/lib/action-chat/mention-timer/commit-mention-timer-turn";
-import {
   isMentionTransferInput,
   tryBuildMentionTransferTurn,
 } from "@/lib/action-chat/mention-transfer/commit-mention-transfer-turn";
@@ -54,7 +46,7 @@ export type LocalMentionTurnInput = {
   endPeerTalkDeps?: EndPeerTalkTurnDeps;
 };
 
-/** Single dispatch for all local @ mention turns (no orchestrator). */
+/** Slim local @ turns — timer/focus/utility @ removed (orchestrator handles NL). */
 export function tryDispatchLocalMentionTurn(
   input: LocalMentionTurnInput,
 ): ActionChatMessage[] | null {
@@ -68,11 +60,6 @@ export function tryDispatchLocalMentionTurn(
     if (endTalkTurn) {
       return endTalkTurn;
     }
-  }
-
-  const timerTurn = tryBuildMentionTimerTurn({ text, chatAxis });
-  if (timerTurn) {
-    return timerTurn;
   }
 
   const calendarTurn = tryBuildMentionCalendarTurn({ text, chatAxis });
@@ -110,11 +97,6 @@ export function tryDispatchLocalMentionTurn(
     return parkingTurn;
   }
 
-  const focusTurn = tryBuildMentionFocusTurn({ text, chatAxis });
-  if (focusTurn) {
-    return focusTurn;
-  }
-
   const linksheetTurn = tryBuildMentionLinksheetTurn({ text, chatAxis });
   if (linksheetTurn) {
     return linksheetTurn;
@@ -137,14 +119,12 @@ export function tryDispatchLocalMentionTurn(
 export function isLocalMentionInput(text: string): boolean {
   return (
     isEndPeerTalkMentionInput(text) ||
-    isMentionTimerInput(text) ||
     isMentionCalendarInput(text) ||
     isMentionReminderInput(text) ||
     isMentionNavigateInput(text) ||
     isMentionScheduleOrganizeInput(text) ||
     isMentionTransferInput(text) ||
     isMentionParkingInput(text) ||
-    isMentionFocusInput(text) ||
     isMentionLinksheetInput(text) ||
     isMentionActionInput(text)
   );

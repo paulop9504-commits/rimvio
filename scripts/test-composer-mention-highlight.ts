@@ -19,7 +19,8 @@ assert.equal(segmentComposerMentions("hello@world.com")[0]?.text, "hello@world.c
 
 assert.deepEqual(kinds("@타"), ["plain"]);
 assert.deepEqual(kinds("@타이"), ["plain"]);
-assert.deepEqual(kinds("@타이머 5분"), ["mention-valid", "plain"]);
+assert.deepEqual(kinds("@타이머 5분"), ["plain", "plain"]);
+assert.deepEqual(kinds("@알림 5분"), ["mention-valid", "plain"]);
 
 assert.deepEqual(kinds("go @송금 3만"), ["plain", "plain", "mention-valid", "plain"]);
 assert.deepEqual(texts("go @송금 3만"), ["go", " ", "@송금", " 3만"]);

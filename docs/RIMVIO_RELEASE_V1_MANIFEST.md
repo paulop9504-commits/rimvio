@@ -115,6 +115,13 @@ Breaking changes require `RIMVIO_CORE_API_VERSION` bump + new git tag.
 
 ---
 
+## Product loop (canonical)
+
+See **`docs/RIMVIO_CANONICAL_LOOP.md`** — five layers (SENSE → REMEMBER → DECIDE → ACT → LEARN), tangled paths resolved, B2C/B2B2C/Wearable on one circuit.  
+IO names: **`docs/RIMVIO_INSIDE_OUT_MAP.md`**. Code: `lib/inside-out/`.
+
+---
+
 ## Known limitations
 
 | ID | Severity | Description |

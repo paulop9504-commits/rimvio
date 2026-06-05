@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Send, Settings, Users } from "lucide-react";
+import { Search, Settings, Users } from "lucide-react";
 import { RimvioFeedMark } from "@/lib/brand/rimvio-feed-mark";
 import { useCopy } from "@/hooks/use-copy";
 import { useRoomGuest } from "@/hooks/use-room-guest";
@@ -21,7 +21,7 @@ type NavTab = {
   href: string;
   label: string;
   isActive: (pathname: string, filter: string | null) => boolean;
-  icon: "feed" | "peers" | "send" | "settings";
+  icon: "feed" | "search" | "peers" | "settings";
 };
 
 function IgFeedIcon({
@@ -41,11 +41,11 @@ function IgFeedIcon({
   );
 }
 
-function IgSendIcon({ active }: { active: boolean }) {
+function IgSearchIcon({ active }: { active: boolean }) {
   return (
-    <Send
+    <Search
       className={cn("size-[1.625rem]", active ? "text-foreground" : "text-foreground/85")}
-      strokeWidth={1.85}
+      strokeWidth={active ? 2.2 : 1.85}
     />
   );
 }
@@ -87,8 +87,8 @@ function NavTabIcon({
           strokeWidth={active ? 2.2 : 1.85}
         />
       );
-    case "send":
-      return <IgSendIcon active={active} />;
+    case "search":
+      return <IgSearchIcon active={active} />;
     case "settings":
       return <IgSettingsIcon active={active} />;
   }
@@ -171,7 +171,7 @@ function InlineNavBar({
   return (
     <nav
       className={cn(
-        "mt-[var(--space-phi2)] flex justify-between rimvio-nav-bar px-[var(--space-phi2)] pt-[var(--space-u)] lg:hidden"
+        "mt-[var(--space-phi2)] grid grid-cols-4 rimvio-nav-bar px-[var(--space-phi2)] pt-[var(--space-u)] lg:hidden"
       )}
       aria-label="Primary"
     >
@@ -208,7 +208,7 @@ function FixedBottomNavBar({
       aria-label="Primary"
       data-testid="rimvio-bottom-nav"
     >
-      <div className="flex h-[3.05rem] items-center justify-between px-[var(--space-phi2)]">
+      <div className="grid h-[3.05rem] grid-cols-4 items-center px-[var(--space-phi2)]">
         <NavLinks
           tabs={tabs}
           pathname={pathname}
@@ -234,8 +234,14 @@ export function AppNav({ immersive = false, placement }: AppNavProps) {
         href: "/feed",
         label: copy.nav.feed,
         isActive: (p) =>
-          p === "/" || p === "/feed" || p.startsWith("/feed/") || p.startsWith("/chat"),
+          p === "/" || p === "/feed" || p.startsWith("/feed/"),
         icon: "feed",
+      },
+      {
+        href: "/search",
+        label: copy.nav.search,
+        isActive: (p) => p === "/search" || p.startsWith("/search/"),
+        icon: "search",
       },
       {
         href: "/peers",

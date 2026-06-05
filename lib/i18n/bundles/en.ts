@@ -35,12 +35,20 @@ export const copyEn: Copy = {
     story3Body: "Shared URLs become Action Dock cards.",
   },
   nav: {
-    feed: "Operate",
+    feed: "Feed",
+    search: "Search",
     inbox: "Inbox",
     room: "Together",
     peers: "Friends",
     settings: "Settings",
     start: "Get Started",
+  },
+  search: {
+    title: "Search",
+    subtitle: "Talk to AI · quick actions",
+    emptyHint: "Ask anything",
+    emptySubhint: "Schedule, directions, and cross-space tasks live here",
+    placeholder: "What can I help with?",
   },
   peers: {
     title: "Friends",
@@ -59,8 +67,9 @@ export const copyEn: Copy = {
       "Sign in with Google to use friend bubbles and AI Lens",
   },
   feed: {
-    title: "Operate",
-    subtitle: "Turn shared links into action cards",
+    title: "Feed",
+    subtitle: "One thing to do today",
+    askAi: "Ask AI more",
     newLinkSaved: "Saved",
     undoDelete: "Removed",
     undo: "Undo",

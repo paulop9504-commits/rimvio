@@ -12,6 +12,7 @@ import type {
   SurfaceType,
   SurfaceVisibility,
 } from "@/lib/surface-engine/surface-contract";
+import { deriveUserCoreActionLabel } from "@/lib/inside-out/user-core-action-label";
 import {
   computeRawPriorityScore,
   hoursUntilEvent,
@@ -216,6 +217,17 @@ export function selectPrimaryAction(
   };
 }
 
+function withUserCoreLabel(
+  action: SurfaceAction,
+  event: EventCandidate,
+): SurfaceAction {
+  const label = deriveUserCoreActionLabel(event);
+  if (!label) {
+    return action;
+  }
+  return { ...action, label };
+}
+
 function buildSecondaryActions(
   event: EventCandidate,
   surfaceId: string,
@@ -265,6 +277,20 @@ function buildDescription(event: EventCandidate, type: SurfaceType): string {
 }
 
 function buildNarration(event: EventCandidate, type: SurfaceType): SurfaceNarration | null {
+  const channel =
+    event.metadata && typeof event.metadata === "object"
+      ? event.metadata.channel
+      : undefined;
+  if (channel === "peer_talk") {
+    const peer =
+      typeof event.metadata?.peerDisplayName === "string"
+        ? event.metadata.peerDisplayName
+        : "친구";
+    return {
+      summary: `${peer}와 나눈 대화에서 남긴 일이에요`,
+      reason: "peer_talk_marble",
+    };
+  }
   if (type === "travel") {
     return { summary: "여행 준비 순서대로 진행하면 돼요", reason: "travel_sequence" };
   }
@@ -298,7 +324,10 @@ function buildSurfaceFromEvent(
   const now = context.now ?? new Date();
   const surfaceId = surfaceIdForEvent(event.id);
   const type = inferSurfaceType(event);
-  const primaryAction = selectPrimaryAction(event, surfaceId, type, context);
+  const primaryAction = withUserCoreLabel(
+    selectPrimaryAction(event, surfaceId, type, context),
+    event,
+  );
   const priorityParts = computeRawPriorityScore({
     event,
     surfaceId,

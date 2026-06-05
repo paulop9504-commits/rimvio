@@ -32,3 +32,15 @@ export {
   type SurfaceTransitionEvent,
   type SurfaceTransitionKind,
 } from "@/lib/surface-composition/surface-collapse-controller";
+
+export { deriveSurfaceWhyLineKo } from "@/lib/surface-composition/surface-why-copy";
+export { deriveLoopContextKo } from "@/lib/surface-composition/loop-why-copy";
+export {
+  SURFACE_IGNORE_OBSERVED_EVENT,
+  type SurfaceIgnoreObservedDetail,
+} from "@/lib/surface-composition/surface-ux-events";
+export { commitSurfaceIgnoreObservation } from "@/lib/surface-composition/surface-ignore-bridge";
+export {
+  derivePrimarySuccessMessage,
+  derivePrimaryErrorMessage,
+} from "@/lib/surface-composition/surface-success-copy";

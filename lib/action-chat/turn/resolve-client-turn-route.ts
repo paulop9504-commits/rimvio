@@ -7,11 +7,6 @@ import { isAwaitingLectureUrl } from "@/lib/contextual-aux/study/study-aux-sessi
 import { resolveStudyAuxFromLabel } from "@/lib/contextual-aux/study/resolve-study-action-label";
 import { classifyApprovalSpeechAct } from "@/lib/event-kernel/review/classify-approval-speech-act";
 import { OCR_REVIEW_DATES_PREFIX } from "@/lib/event-kernel/review/pending-event-candidate-dates";
-import {
-  findPendingFocusConfirmMessage,
-  isFocusCancelSpeech,
-  isFocusConfirmSpeech,
-} from "@/lib/action-chat/mention-focus/focus-confirm-speech";
 import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
 
 export { OCR_REVIEW_DATES_PREFIX };
@@ -36,16 +31,6 @@ export function resolveClientTurnRoute(input: ClientTurnRouteResolveInput): Clie
 
   if (input.routeToFeedPeerTalk && pendingAttachments.length === 0 && trimmed) {
     return { kind: "peer_talk" };
-  }
-
-  const pendingFocusConfirm = findPendingFocusConfirmMessage(messages);
-  if (pendingFocusConfirm && pendingAttachments.length === 0 && trimmed) {
-    if (isFocusConfirmSpeech(trimmed)) {
-      return { kind: "focus_confirm" };
-    }
-    if (isFocusCancelSpeech(trimmed)) {
-      return { kind: "focus_cancel" };
-    }
   }
 
   if (pendingAttachments.length > 0 && isParkingPhotoCapturePending()) {

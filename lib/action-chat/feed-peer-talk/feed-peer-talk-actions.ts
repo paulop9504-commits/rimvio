@@ -32,6 +32,7 @@ import {
   setFeedPeerTalkSession,
 } from "@/lib/action-chat/feed-peer-talk/feed-peer-talk-session";
 import { prefetchPeerMessages, takePrefetchedMessages } from "@/lib/peer-chat/message-prefetch-cache";
+import { ingestPeerTalkMarble } from "@/lib/inside-out/marble-ingest";
 
 type FeedPeerTalkDeps = {
   readMessages: () => ActionChatMessage[];
@@ -191,6 +192,20 @@ export async function sendFeedPeerTalkInFeed(
         sent,
       ),
     );
+
+    const marble = ingestPeerTalkMarble({
+      body: trimmed,
+      peerThreadId: threadId,
+      messageId: sent.id,
+      displayName: session.displayName,
+    });
+    if (marble && typeof console !== "undefined") {
+      console.debug("[Rimvio IO] MARBLE_INGEST_PEER_TALK", {
+        eventId: marble.id,
+        title: marble.title,
+        category: marble.category,
+      });
+    }
 
     void syncFeedSlotFromRoomRemote(threadId)
       .then(() => emitFeedSlotsRefresh())

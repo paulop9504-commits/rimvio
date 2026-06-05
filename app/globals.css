@@ -1782,6 +1782,11 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
     sans-serif;
 }
 
+/* 피드 슬롯 탭 — composer 없음 */
+.action-shell--slot .rimvio-feed-scroll-inset {
+  padding-bottom: max(var(--space-phi), env(safe-area-inset-bottom));
+}
+
 .chat-bubble {
   box-sizing: border-box;
   display: inline-block;

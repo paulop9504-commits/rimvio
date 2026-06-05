@@ -79,7 +79,8 @@ const feedSource = fs.readFileSync(
   "utf8",
 );
 assert.ok(
-  feedSource.includes("useSurfaceComposition") ||
+  (feedSource.includes("useSurfaceComposition") ||
+    feedSource.includes("useRealtimeSurfaceComposition")) ||
     feedSource.includes("SurfaceCompositionRuntime"),
   "feed must use surface composition runtime",
 );

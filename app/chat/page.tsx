@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-/** 실시간 1:1 채팅은 ROOM(/peers)에서 진행합니다. */
+/** 레거시 /chat → 검색(AI 허브) */
 export default function ChatPage() {
-  redirect("/peers");
+  redirect("/search");
 }

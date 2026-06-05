@@ -10,8 +10,6 @@ export type { ClientTurnRouteResolveInput };
 export type ClientTurnRoute =
   | { kind: "noop"; reason: "empty" | "sending" }
   | { kind: "peer_talk" }
-  | { kind: "focus_confirm" }
-  | { kind: "focus_cancel" }
   | { kind: "parking_photo" }
   | { kind: "local_mention_early" }
   | { kind: "mention_axis_hint" }

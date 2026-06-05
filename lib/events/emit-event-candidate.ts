@@ -4,7 +4,7 @@ import {
   type EventCandidateDraft,
   type EventCandidateWire,
 } from "@/lib/events/event-candidate";
-import { commitEventWireFromApi } from "@/lib/source-of-truth/commit-truth";
+import { ingestMarbleWire } from "@/lib/inside-out/marble-ingest";
 
 export function toEventCandidateWire(record: EventCandidate): EventCandidateWire {
   return {
@@ -56,10 +56,13 @@ export function detectAndEmitEventCandidate(input: {
   return emitEventCandidate(draft);
 }
 
-/** @deprecated Use commitEventWireFromApi from `@/lib/source-of-truth`. */
+/** Orchestrator/OCR apply — canonical SENSE path via `commitMarbleWire`. */
 export function applyEventCandidateUpsertFromApi(
   patch: EventCandidateWire | null | undefined,
   enrich?: { sourceMessageId?: string | null },
 ) {
-  return commitEventWireFromApi(patch, enrich);
+  return ingestMarbleWire(patch, {
+    channel: "orchestrator",
+    sourceMessageId: enrich?.sourceMessageId ?? null,
+  });
 }
