@@ -50,10 +50,8 @@ import {
   derivePrimarySuccessMessage,
 } from "@/lib/surface-composition/surface-success-copy";
 import { useSurfaceActionFeedback } from "@/hooks/use-surface-action-feedback";
-import {
-  SurfaceCompositionRuntime,
-  type SurfaceCompositionRuntimeProps,
-} from "@/components/surface-composition/surface-composition-runtime";
+import { FeedSlotStage } from "@/components/feed/feed-slot-stage";
+import type { SurfaceCompositionRuntimeProps } from "@/components/surface-composition/surface-composition-runtime";
 import { markOpportunityConsumed } from "@/lib/predictive-dock/action-opportunity-session";
 import { recordDockActionUsage } from "@/lib/action-registry/record-dock-usage";
 import { wireEventCompleted } from "@/lib/events/event-lifecycle-hooks";
@@ -522,35 +520,29 @@ export function ActionChatFeed({
             className="relative z-[1] min-h-0 flex-1 overflow-y-auto overscroll-y-contain rimvio-feed-scroll-inset touch-pan-y [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {isSlot ? (
-              <div className="flex min-h-[min(52dvh,420px)] flex-col justify-center py-4">
+              <div className="flex min-h-0 flex-1 flex-col">
                 <SurfaceStabilityStrip
                   learningPaused={surfaceState.learningPaused}
                   systemLoadLevel={surfaceState.systemLoadLevel}
                 />
                 {hasActiveDecision ? (
-                  <SurfaceCompositionRuntime
+                  <FeedSlotStage
                     frame={surfaceFrame}
                     primaryUx={surfacePrimaryUx}
                     onDispatchCapability={handleSurfaceDispatch}
-                    className="pt-2"
+                    onAskAi={() => router.push("/search")}
+                    askAiLabel={copy.feed.askAi}
+                    className="min-h-[min(78dvh,720px)]"
                   />
                 ) : (
-                  <div className="px-6 py-10 text-center">
-                    <p className="text-[15px] font-medium text-white/80">{copy.feed.title}</p>
-                    <p className="mt-2 text-[13px] leading-relaxed text-white/45">
-                      {copy.feed.subtitle}
-                    </p>
-                  </div>
+                  <FeedSlotStage
+                    frame={surfaceFrame}
+                    onDispatchCapability={handleSurfaceDispatch}
+                    onAskAi={() => router.push("/search")}
+                    askAiLabel={copy.feed.askAi}
+                    className="min-h-[min(78dvh,720px)]"
+                  />
                 )}
-                <div className="mt-4 flex justify-center px-4">
-                  <button
-                    type="button"
-                    onClick={() => router.push("/search")}
-                    className="rounded-full border border-white/20 bg-white/[0.06] px-5 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-white/[0.1]"
-                  >
-                    {copy.feed.askAi}
-                  </button>
-                </div>
               </div>
             ) : null}
 

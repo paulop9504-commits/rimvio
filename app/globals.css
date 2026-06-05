@@ -1784,7 +1784,12 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 
 /* 피드 슬롯 탭 — composer 없음 */
 .action-shell--slot .rimvio-feed-scroll-inset {
-  padding-bottom: max(var(--space-phi), env(safe-area-inset-bottom));
+  padding-bottom: 0;
+  overflow: hidden;
+}
+
+.action-shell--slot [data-feed-slot-stage] {
+  min-height: min(78dvh, 720px);
 }
 
 .chat-bubble {
