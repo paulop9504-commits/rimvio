@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireAuthUser } from "@/lib/auth/api-auth";
+import { isGroupThreadId } from "@/lib/peer-chat/group-thread";
 import { joinPeerThreadByInvite } from "@/lib/peer-chat/server-peer-chat";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
@@ -31,10 +32,15 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
     const thread = await joinPeerThreadByInvite(supabase, { inviteCode, userId });
 
+    const roomKind =
+      thread.room_kind ??
+      (isGroupThreadId(thread.id) ? "group" : "dm");
+
     return NextResponse.json({
       threadId: thread.id,
       displayName: thread.display_name,
       inviteCode: thread.invite_code,
+      roomKind,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to join thread.";

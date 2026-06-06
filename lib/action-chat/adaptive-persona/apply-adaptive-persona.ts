@@ -1,10 +1,13 @@
-import type { OrchestratorResult } from "@/lib/action-chat/orchestrator-types";
-import type { AdaptiveBehaviorContext } from "@/lib/action-chat/adaptive-behavior/types";
 import {
-  resolvePersonaContext,
-  type PersonaResultHint,
-} from "@/lib/action-chat/adaptive-persona/resolve-persona-mode";
-import type { PersonaToneMode } from "@/lib/action-chat/adaptive-persona/types";
+  mergeOrchestratorMetadata,
+  type OrchestratorResult,
+} from "@/lib/action-chat/orchestrator-types";
+import type { AdaptiveBehaviorContext } from "@/lib/action-chat/adaptive-behavior/types";
+import { resolvePersonaContext } from "@/lib/action-chat/adaptive-persona/resolve-persona-mode";
+import type {
+  PersonaResultHint,
+  PersonaToneMode,
+} from "@/lib/action-chat/adaptive-persona/types";
 
 const INTERNAL_LABEL_LEAK =
   /\b(?:L[0-4]|routing(?:_patch)?|vitality(?:_states)?|abstraction(?:_level)?|PATCH\d|UX_[A-Z_]+|CRAFT_[A-Z_]+|semantic_reason|intent_router)\b/giu;
@@ -119,21 +122,19 @@ export function applyAdaptivePersona(
   if (!summary) {
     return {
       ...result,
-      metadata: {
-        ...result.metadata,
+      metadata: mergeOrchestratorMetadata(result.metadata, {
         persona_tone: persona.mode,
         persona_stage: persona.stage,
-      },
+      }),
     };
   }
 
   return {
     ...result,
     summary: transformSummaryWithPersona(summary, persona.mode),
-    metadata: {
-      ...result.metadata,
+    metadata: mergeOrchestratorMetadata(result.metadata, {
       persona_tone: persona.mode,
       persona_stage: persona.stage,
-    },
+    }),
   };
 }

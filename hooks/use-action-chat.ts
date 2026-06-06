@@ -182,7 +182,10 @@ import { shouldUseJITEventDelivery } from "@/lib/context-resolver/event-from-sch
 import type { TimeChoiceExecuteInput } from "@/lib/time-decision/time-choice-execute-input";
 import { parseActionTargetDatetime } from "@/lib/action-chat/action-countdown";
 import type { CompiledTravelAction } from "@/lib/context-resolver/types";
-import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
+import {
+  mergeOrchestratorMetadata,
+  type ActionChatMessage,
+} from "@/lib/action-chat/orchestrator-types";
 import { evaluateProactiveTransportNudge } from "@/lib/transport/proactive-transport-nudge";
 import { buildTransportLiveOrchestratorPayload } from "@/lib/transport/transport-live-service";
 
@@ -780,10 +783,12 @@ export function useActionChat(
         scopeId,
         messageId: input.messageId,
         extracted: input.extracted,
+        peerThreadId: feedPeerTalkSession?.peerThreadId ?? null,
+        peerDisplayName: feedPeerTalkSession?.displayName ?? null,
         onFire: () => fireScheduledAction(input.messageId, input.extracted),
       });
     },
-    [fireScheduledAction, persist, scopeId]
+    [feedPeerTalkSession, fireScheduledAction, persist, scopeId]
   );
 
   const executeTimeChoice = useCallback(
@@ -1420,7 +1425,7 @@ export function useActionChat(
 
         const assistantMessage = createMessage(
           "assistant",
-          payload?.summary || resolveClientRecoveryText(trimmed),
+          payload?.summary || resolveClientRecoveryText(userText),
           {
             actions: payload?.actions ?? [],
             confidence: payload?.confidence,
@@ -1446,7 +1451,7 @@ export function useActionChat(
           ...readActionChatMessages(scopeId).filter(
             (message) => message.id !== loadingId
           ),
-          createMessage("assistant", resolveClientRecoveryText(trimmed)),
+          createMessage("assistant", resolveClientRecoveryText(userText)),
         ]);
         return false;
       } finally {
@@ -1632,10 +1637,9 @@ export function useActionChat(
               {
                 actions: payload?.actions ?? [],
                 confidence: payload?.confidence,
-                metadata: {
-                  ...payload?.metadata,
+                metadata: mergeOrchestratorMetadata(payload?.metadata, {
                   command_os_candidate: compiled.candidate,
-                },
+                }),
                 meta: payload?.meta,
                 uiTrigger: payload?.uiTrigger,
               }
@@ -2077,16 +2081,17 @@ export function useActionChat(
   const confirmInlineFocus = useCallback(
     async (messageId: string) => {
       const hasAccess = await ensureNotificationAccessForFocus(() => {
-        toast.message("알림 맡기기", "설정에서 Rimvio 알림 접근을 켜주세요");
+        toast.message("알림 맡기기", {
+          description: "설정에서 Rimvio 알림 접근을 켜주세요",
+        });
       });
       const current = readActionChatMessages(scopeId);
       persist(applyFocusConfirmToMessages(current, messageId));
-      toast.message(
-        "집중 모드 시작",
-        hasAccess
+      toast.message("집중 모드 시작", {
+        description: hasAccess
           ? "카카오톡·이메일 알림을 모아둘게요"
           : "알림 권한을 켜면 카톡·이메일도 모아둘 수 있어요",
-      );
+      });
     },
     [persist, scopeId],
   );
@@ -2107,7 +2112,9 @@ export function useActionChat(
         return;
       }
       persist(applyFocusCompleteToMessages(current, messageId));
-      toast.message("집중 끝", "모아둔 알림을 여기서 처리하세요");
+      toast.message("집중 끝", {
+        description: "모아둔 알림을 여기서 처리하세요",
+      });
     },
     [persist, scopeId],
   );

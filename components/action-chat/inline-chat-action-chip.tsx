@@ -15,6 +15,7 @@ import {
 import type { InlineChatActionWire } from "@/lib/action-chat/mention-actions/inline-chat-action";
 import type { PeerContact } from "@/lib/context/peer-contact-types";
 import { InlineChatFriendAdd } from "@/components/action-chat/inline-chat-friend-add";
+import { InlineChatGroupTalk } from "@/components/action-chat/inline-chat-group-talk";
 import { InlineChatPeerTalk } from "@/components/action-chat/inline-chat-peer-talk";
 import { commitLinksheetUrl } from "@/lib/action-chat/mention-linksheet/linksheet-url-actions";
 import { dispatchCapability } from "@/lib/capability-registry";
@@ -191,6 +192,7 @@ export function InlineChatActionChip({
   const isManualCatalog = Boolean(action.manualCatalog?.length);
   const isFriendAdd = Boolean(action.friendAddContact?.trim());
   const isPeerTalk = action.featureId === "peer_talk";
+  const isGroupTalk = action.featureId === "group_talk";
 
   const insertMention = useCallback(
     (example: string) => {
@@ -229,6 +231,13 @@ export function InlineChatActionChip({
         {isPeerTalk ? (
           <InlineChatPeerTalk
             query={action.peerTalkQuery ?? action.query}
+            onStartConversation={onFeedPeerTalkStart}
+          />
+        ) : null}
+
+        {isGroupTalk ? (
+          <InlineChatGroupTalk
+            query={action.groupTalkQuery ?? action.query}
             onStartConversation={onFeedPeerTalkStart}
           />
         ) : null}

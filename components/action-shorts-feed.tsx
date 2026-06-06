@@ -1,12 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { useRealtimeLinks } from "@/hooks/use-realtime-links";
-import { ActionChatFeed } from "@/components/action-chat-feed";
+import { FeedSlotShell } from "@/components/feed/feed-slot-shell";
 import { FeedUndoBar, FEED_UNDO_MS } from "@/components/feed-undo-bar";
 import { useContextRemote } from "@/hooks/use-context-remote";
 import { useLocateFromImage } from "@/hooks/use-locate-from-image";
@@ -18,7 +17,6 @@ import { RimvioManualFeedBanner } from "@/components/rimvio-manual-feed-banner";
 import { RimvioManualIntroSheet } from "@/components/rimvio-manual-intro-sheet";
 import { runContainerMaintenance } from "@/lib/containers/context-containers";
 import { PwaInstallNudge } from "@/components/pwa-install-nudge";
-import { RimvioLogo } from "@/components/rimvio-logo";
 import { useCopy } from "@/hooks/use-copy";
 import { addLinkToRoom } from "@/lib/rooms/client";
 import { readPinnedUrl } from "@/lib/local-links/pinned-link";
@@ -51,7 +49,7 @@ export const FEED_BOTTOM_NAV_OFFSET = "var(--rimvio-bottom-nav-offset)";
 export function ActionShortsFeed() {
   const copy = useCopy();
   const router = useRouter();
-  const { activeLinks, archivedLinks, dismissLink, restoreLink } = useRealtimeLinks();
+  const { activeLinks, dismissLink, restoreLink } = useRealtimeLinks();
   const searchParams = useSearchParams();
   const pendingDismissRef = useRef<PendingDismiss | null>(null);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -349,53 +347,6 @@ export function ActionShortsFeed() {
     ]
   );
 
-  if (activeLinks.length === 0 && archivedLinks.length === 0) {
-    return (
-      <>
-        <div className="flex h-[calc(100dvh-8rem)] flex-col items-center justify-center text-center">
-          <RimvioLogo size="xl" framed className="mb-5" />
-          <p className="text-lg font-medium">비었어요</p>
-          <p className="mt-2 max-w-[18rem] text-sm text-muted-foreground">
-            {copy.feed.emptyShareHint}
-          </p>
-          <div className="mt-6 flex flex-col items-center gap-2">
-            <button
-              type="button"
-              onClick={() => openLinkAdd({ requestClipboard: true })}
-              className="rounded-[14px] bg-rimvio-neon-purple px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-transform active:scale-[0.98]"
-            >
-              {copy.feed.capturePill}
-            </button>
-            <Link
-              href="/welcome"
-              className="text-xs text-muted-foreground underline-offset-4 hover:underline"
-            >
-              시작하기 →
-            </Link>
-          </div>
-          {archivedLinks.length > 0 ? (
-            <Link
-              href="/archive"
-              className="mt-3 text-xs text-muted-foreground underline-offset-4 hover:underline"
-            >
-              👀 보관함 {archivedLinks.length}개
-            </Link>
-          ) : null}
-        </div>
-
-        <RimvioManualIntroSheet />
-        <FeedLinkAddSheet
-          open={linkAddOpen}
-          onOpenChange={setLinkAddOpen}
-          onSaved={handleLinkSaved}
-          onPaymentDetected={handlePaymentDetected}
-          onLocateImage={handleLocateImage}
-          requestClipboard={linkAddClipboard}
-        />
-      </>
-    );
-  }
-
   return (
     <div className={cn("relative flex min-h-0 flex-1 flex-col overflow-hidden", GRID.feedStage, FEED_VIEWPORT_CLASS)}>
 
@@ -412,30 +363,10 @@ export function ActionShortsFeed() {
         }}
       />
 
-      {links.length === 0 ? (
-        <ActionChatFeed
-          links={[]}
-          activeIndex={0}
-          onSelectIndex={() => {}}
-          onOpenLinkPaste={() => openLinkAdd({ requestClipboard: true })}
-          onOpenCapture={() => quickCameraRef.current?.click()}
-          onQuickCapture={(file) => void handleQuickCaptureFile(file)}
-          className="min-h-0 flex-1"
-        />
-      ) : (
-        <ActionChatFeed
-          links={links}
-          activeIndex={activeIndex}
-          onSelectIndex={scrollToIndex}
-          contextRemote={feedRemote}
-          locateResult={locateResult}
-          locateLoading={locateLoading}
-          onOpenLinkPaste={() => openLinkAdd({ requestClipboard: true })}
-          onOpenCapture={() => quickCameraRef.current?.click()}
-          onQuickCapture={(file) => void handleQuickCaptureFile(file)}
-          className="min-h-0 flex-1"
-        />
-      )}
+      <FeedSlotShell
+        onOpenLinkPaste={() => openLinkAdd({ requestClipboard: true })}
+        className="min-h-0 flex-1"
+      />
 
       <AnimatePresence>
         {pendingDismiss ? (

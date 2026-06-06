@@ -761,12 +761,15 @@
   z-index: 9999;
   margin-inline: auto;
   width: 100%;
+  min-height: var(--rimvio-bottom-nav-offset);
   max-width: var(--shell-max-phone);
   overflow: visible;
   pointer-events: auto;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   isolation: isolate;
+  background: color-mix(in oklch, var(--rimvio-base) 94%, transparent);
+  backdrop-filter: blur(10px);
 }
 
 .rimvio-bottom-nav-shell.rimvio-nav-bar {
@@ -784,7 +787,6 @@
     overflow-x: hidden;
   }
 
-  .app-nav-bottom-frame a,
   .app-nav-bottom-frame button,
   .app-nav-bottom-frame [role="button"],
   .rimvio-bottom-nav-tab {

@@ -4,7 +4,7 @@ export type GlobeFeedLinkParams = {
   mediaId?: string | null;
 };
 
-/** Feed slot → globe tab deep link. */
+/** Feed slot → in-feed spatial recall sheet. */
 export function buildGlobeFeedHref(params: GlobeFeedLinkParams): string {
   const search = new URLSearchParams();
   const clusterId = params.clusterId?.trim();
@@ -12,17 +12,17 @@ export function buildGlobeFeedHref(params: GlobeFeedLinkParams): string {
   const mediaId = params.mediaId?.trim();
 
   if (clusterId) {
-    search.set("cluster", clusterId);
+    search.set("recallCluster", clusterId);
   }
   if (eventId) {
-    search.set("event", eventId);
+    search.set("recallEvent", eventId);
   }
   if (mediaId) {
-    search.set("media", mediaId);
+    search.set("recallMedia", mediaId);
   }
 
   const query = search.toString();
-  return query ? `/globe?${query}` : "/globe";
+  return query ? `/feed?${query}` : "/feed";
 }
 
 export function parseGlobeFeedLink(

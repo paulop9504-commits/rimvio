@@ -2,7 +2,10 @@ import { orchestrateAiIntent } from "@/lib/action-chat/orchestrate-ai-intent";
 import type { ChatAxis } from "@/lib/action-chat/chat-three-axis";
 import type { AdaptiveBehaviorContext } from "@/lib/action-chat/adaptive-behavior/types";
 import { isMealAxisAmbiguousPhrase } from "@/lib/action-chat/chat-three-axis";
-import type { OrchestratorResult } from "@/lib/action-chat/orchestrator-types";
+import {
+  mergeOrchestratorMetadata,
+  type OrchestratorResult,
+} from "@/lib/action-chat/orchestrator-types";
 import { isVitalityGateLexiconMatch } from "@/lib/vitality-state/vitality-state-gate-lexicon";
 
 /** Hard override — never route to FOOD/meal from these alone. */
@@ -58,12 +61,11 @@ export function orchestrateDecisionPriorityOverride(
 
   return {
     ...result,
-    metadata: {
-      ...result.metadata,
+    metadata: mergeOrchestratorMetadata(result.metadata, {
       ...(chatAxis ? { chat_axis: chatAxis, chat_axis_route: "decision_force" } : {}),
       ai_intent: "DECISION",
       semantic_reason: "decision_priority_override",
       routing_patch: "PATCH1_DECISION_FORCE",
-    },
+    }),
   };
 }

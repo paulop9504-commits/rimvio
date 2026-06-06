@@ -7,6 +7,8 @@ import {
 import type { ExperienceVolume } from "@/lib/experience-graph/experience-volume-types";
 import { resolvePlaceCoordinates } from "@/lib/experience-graph/resolve-place-coordinates";
 import type { SpatialMediaItem } from "@/lib/experience-graph/spatial-media-types";
+import { readMediaContextMemorySnapshot } from "@/lib/location-ping/media-context-store";
+import { projectUploadedSpatialMedia } from "@/lib/location-ping/project-uploaded-spatial-media";
 
 function parseMs(iso: string): number | null {
   const ms = Date.parse(iso);
@@ -139,7 +141,12 @@ export function projectVolumeSpatialMedia(volume: ExperienceVolume): SpatialMedi
     );
   }
 
-  return items.sort(
+  const uploaded = projectUploadedSpatialMedia(
+    readMediaContextMemorySnapshot(),
+    volume,
+  );
+
+  return [...uploaded, ...items].sort(
     (a, b) => parseMs(a.capturedAtIso)! - parseMs(b.capturedAtIso)!,
   );
 }

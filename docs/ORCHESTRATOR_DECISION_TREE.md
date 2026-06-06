@@ -15,18 +15,30 @@ buildOrchestratorPipelineBase(input)
 
 First matching branch wins (fixed order). Replaces ~30 copy-pasted `if → shell → return` blocks.
 
-Examples (in order):
+### Probe modules (extracted)
+
+Security/session probes live in `routing/probes/` and run first via `runPrePipelineProbes()`:
+
+- `killSwitchProbe`, `piiSecurityProbe`, `contentPolicyProbe`, `sessionCorrectionProbe`
+
+### Monolith (intentional — not yet split)
+
+All other early-return branches remain in `resolve-orchestrator-decision.ts` until individually extracted. **Do not duplicate ordering** when adding probes — append to `PRE_PIPELINE_PROBE_ORDER` only for tier 0–2 security/session gates.
+
+Examples (in order, after probes):
 
 | Node | Former |
 |------|--------|
 | EventReviewDateResolution | OCR date review |
-| EventCommitGate | Slot/commit clarify |
+| OcrScheduleExtract | Composer attachment |
+| **VitalityState** | Bare hunger/tired utterances — **before** commit gate |
+| EventCommitGate | Slot/commit clarify (skips vitality utterances) |
 | FallbackRecovery | Career/education recovery |
 | ContextDrift* | PATCH2 drift |
-| VitalityState / Meal / Place | Fast discovery |
+| Meal / Place | Fast discovery |
 | EventKernelOS | Terminal kernel OS |
 
-Trace: `trace.hit(0, tier, label, detail)` unchanged for observability.
+Trace: pre-pipeline uses **phase 0** — `trace.hit(0, tier, label, detail)`. Terminal may be `EARLY_RETURN` or `KERNEL_OS`.
 
 ## 2. Standard tree (`run-orchestrator-standard-pipeline.ts`)
 
@@ -55,6 +67,8 @@ PRE_EVENT_TIER_TREE (0–2) → event detection → POST_EVENT_WORKFLOW_TREE (3�
 | File | Role |
 |------|------|
 | `orchestrator-pipeline-base.ts` | Base context, early/standard finalize |
-| `resolve-orchestrator-decision.ts` | Pre-pipeline decision tree |
+| `resolve-orchestrator-decision.ts` | Pre-pipeline decision tree (monolith + probe entry) |
+| `routing/run-pre-pipeline-probes.ts` | Ordered tier 0–2 probe runner |
+| `routing/probes/` | Extracted security/session probes |
 | `run-orchestrator-standard-pipeline.ts` | Standard path tree |
 | `run-orchestrator-pipeline.ts` | Thin entry (~25 lines) |

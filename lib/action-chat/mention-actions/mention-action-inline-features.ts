@@ -48,6 +48,7 @@ export const MENTION_ACTION_ICONS: Record<string, string> = {
   calendar: "📅",
   friend_add: "👋",
   peer_talk: "💬",
+  group_talk: "👥",
   todo: "✅",
   end_peer_talk: "↩️",
 };

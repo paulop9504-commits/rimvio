@@ -1,4 +1,7 @@
-import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
+import {
+  mentionOrchestratorMetadata,
+  type ActionChatMessage,
+} from "@/lib/action-chat/orchestrator-types";
 import type { ChatAxis } from "@/lib/action-chat/chat-three-axis";
 import {
   readStoredChatAxis,
@@ -56,11 +59,11 @@ export function resolveMentionAxisSendContext(
         userMessage,
         createChatMessage("assistant", axisHintCopy(parsed.chatAxis), {
           chatAxis: parsed.chatAxis,
-          metadata: {
+          metadata: mentionOrchestratorMetadata({
             mention_feature: "chat_axis",
             chat_axis: parsed.chatAxis,
             sourceRef: `mention:axis:${parsed.chatAxis}`,
-          },
+          }),
         }),
       ],
     };

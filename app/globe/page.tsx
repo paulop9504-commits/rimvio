@@ -1,19 +1,28 @@
-import { AppShell } from "@/components/app-shell";
-import { RimvioGlobeHub } from "@/components/experience/rimvio-globe-hub";
-import { getServerCopy } from "@/lib/i18n/server-locale";
+import { redirect } from "next/navigation";
 
-export default async function GlobePage() {
-  const copy = await getServerCopy();
+type GlobePageProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
 
-  return (
-    <AppShell
-      title={copy.globe.title}
-      subtitle={copy.globe.subtitle}
-      immersive
-      hideBranding
-      fullBleed
-    >
-      <RimvioGlobeHub />
-    </AppShell>
-  );
+/** Legacy /globe → feed recall deep link (no standalone tab). */
+export default async function GlobePage({ searchParams }: GlobePageProps) {
+  const params = await searchParams;
+  const next = new URLSearchParams();
+
+  const event = params.event;
+  const cluster = params.cluster;
+  const media = params.media;
+
+  if (typeof event === "string" && event.trim()) {
+    next.set("recallEvent", event.trim());
+  }
+  if (typeof cluster === "string" && cluster.trim()) {
+    next.set("recallCluster", cluster.trim());
+  }
+  if (typeof media === "string" && media.trim()) {
+    next.set("recallMedia", media.trim());
+  }
+
+  const query = next.toString();
+  redirect(query ? `/feed?${query}` : "/feed");
 }

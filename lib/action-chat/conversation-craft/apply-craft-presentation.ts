@@ -1,4 +1,7 @@
-import type { OrchestratorResult } from "@/lib/action-chat/orchestrator-types";
+import {
+  mergeOrchestratorMetadata,
+  type OrchestratorResult,
+} from "@/lib/action-chat/orchestrator-types";
 import type { AdaptiveBehaviorContext } from "@/lib/action-chat/adaptive-behavior/types";
 import type { ConversationCraftFlags } from "@/lib/action-chat/conversation-craft/types";
 
@@ -39,12 +42,11 @@ export function applyCraftPresentation(
 
   return {
     ...result,
-    metadata: {
-      ...result.metadata,
+    metadata: mergeOrchestratorMetadata(result.metadata, {
       ...craftMetadataFields(craft, {
         ...(result.metadata as Record<string, unknown> | undefined),
         suppress_chips: suppressChips,
       }),
-    },
+    }),
   };
 }

@@ -2,6 +2,7 @@
 
 import { memo, useCallback, useMemo, useState } from "react";
 import { ChevronRight } from "lucide-react";
+import { FeedSlotCardBoundary } from "@/components/feed/feed-slot-card-boundary";
 import { FeedTodaySlotCard } from "@/components/feed/feed-today-slot-card";
 import {
   FeedSlotPeerDetailSheet,
@@ -20,6 +21,7 @@ import type { PlanWeatherFeedSnapshot } from "@/hooks/use-feed-plan-weather";
 import type { ExperienceVolume } from "@/lib/experience-graph/experience-volume-types";
 import type { TrafficContext } from "@/lib/context-resolver/types";
 import type { EventCandidate } from "@/lib/events/event-candidate";
+import type { GpsPing } from "@/lib/location-ping/types";
 import type { SurfaceType } from "@/lib/surface-engine/surface-contract";
 import { cn } from "@/lib/utils";
 
@@ -39,7 +41,11 @@ export type FeedTodaySlotsPanelProps = {
   onPillPress: (slot: FeedTodaySlot, pill: FeedSlotPill) => void;
   onSpawnPrompt?: (uri: string) => void;
   onOpenPeerChat?: (peer: FeedSlotPeerContext) => void;
+  onSlotOpen?: (slot: FeedTodaySlot) => void;
+  onVerifyCapture?: (eventId: string) => void;
+  gpsPings?: readonly GpsPing[];
   onViewAll?: () => void;
+  recallEventId?: string | null;
   className?: string;
 };
 
@@ -55,7 +61,11 @@ export const FeedTodaySlotsPanel = memo(function FeedTodaySlotsPanel({
   onPillPress,
   onSpawnPrompt,
   onOpenPeerChat,
+  onSlotOpen,
+  onVerifyCapture,
+  gpsPings = [],
   onViewAll,
+  recallEventId,
   className,
 }: FeedTodaySlotsPanelProps) {
   const copy = useCopy();
@@ -154,18 +164,23 @@ export const FeedTodaySlotsPanel = memo(function FeedTodaySlotsPanel({
                 >
                   {group.slots.map((slot) => (
                     <li key={slot.id}>
-                <FeedTodaySlotCard
-                  slot={slot}
-                  peerLookup={peerLookup}
-                  eventsById={eventsById}
-                  trafficByDestination={trafficByDestination}
-                  weatherByTarget={weatherByTarget}
-                  volumesByEventId={volumesByEventId}
-                  onPillPress={onPillPress}
-                  onSpawnPrompt={onSpawnPrompt}
-                  onPeerPress={onPeerPress}
-                  onOpenDetail={onViewAll}
-                />
+                      <FeedSlotCardBoundary slotId={slot.id}>
+                        <FeedTodaySlotCard
+                          slot={slot}
+                          peerLookup={peerLookup}
+                          eventsById={eventsById}
+                          trafficByDestination={trafficByDestination}
+                          weatherByTarget={weatherByTarget}
+                          volumesByEventId={volumesByEventId}
+                          onPillPress={onPillPress}
+                          onSpawnPrompt={onSpawnPrompt}
+                          onPeerPress={onPeerPress}
+                          onOpenDetail={onSlotOpen ?? (onViewAll ? () => onViewAll() : undefined)}
+                          onVerifyCapture={onVerifyCapture}
+                          gpsPings={gpsPings}
+                          recallEventId={recallEventId}
+                        />
+                      </FeedSlotCardBoundary>
                     </li>
                   ))}
                 </ul>

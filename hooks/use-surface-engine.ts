@@ -36,18 +36,26 @@ export function useSurfaceEngine(input: UseSurfaceEngineInput = {}) {
 
   const result = useMemo(() => {
     void tick;
-    return resolveSurfaces({
-      ...input,
-      context: {
-        now: new Date(),
-        ...input.context,
-      },
-      timelineContext: {
-        now: input.context?.now ?? new Date(),
-        focusedEcId: input.timelineContext?.focusedEcId,
-        recentEcIds: input.timelineContext?.recentEcIds,
-      },
-    });
+    try {
+      return resolveSurfaces({
+        ...input,
+        context: {
+          now: new Date(),
+          ...input.context,
+        },
+        timelineContext: {
+          now: input.context?.now ?? new Date(),
+          focusedEcId: input.timelineContext?.focusedEcId,
+          recentEcIds: input.timelineContext?.recentEcIds,
+        },
+      });
+    } catch (error) {
+      console.error("[useSurfaceEngine] resolveSurfaces failed", error);
+      return resolveSurfaces({
+        context: { now: new Date() },
+        dateKey: input.dateKey,
+      });
+    }
   }, [
     tick,
     input.dateKey,

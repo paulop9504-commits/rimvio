@@ -1,4 +1,7 @@
-import type { OrchestratorResult } from "@/lib/action-chat/orchestrator-types";
+import {
+  mergeOrchestratorMetadata,
+  type OrchestratorResult,
+} from "@/lib/action-chat/orchestrator-types";
 import { enrichPlaceDiscoveryMessage } from "@/lib/context-resolver/discovery/enrich-place-discovery-message";
 import { orchestrateEntityFacet } from "@/lib/context-resolver/discovery/orchestrate-entity-facet";
 import { orchestrateEntityQuickPick } from "@/lib/context-resolver/discovery/orchestrate-entity-quick-pick";
@@ -42,10 +45,8 @@ import {
   orchestrateImpossibleConstraintRoute,
   orchestrateProactiveAssumptionRoute,
 } from "@/lib/action-chat/adaptive-behavior/ux-guards/orchestrate-ux-guards";
-import {
-  inferFallbackRecovery,
-  type FallbackRecoveryCandidate,
-} from "@/lib/action-chat/fallback-recovery/infer-fallback-recovery";
+import { inferFallbackRecovery } from "@/lib/action-chat/fallback-recovery/infer-fallback-recovery";
+import type { FallbackRecoveryCandidate } from "@/lib/action-chat/fallback-recovery/types";
 import { orchestrateFallbackRecovery } from "@/lib/action-chat/fallback-recovery/apply-fallback-recovery";
 import {
   orchestrateContextualPivotRoute,
@@ -134,17 +135,6 @@ export async function resolveOrchestratorEarlyDecision(
     };
   }
 
-  const eventReviewApproval = orchestrateViaReviewExecutionQueue({ message: base.message });
-  if (eventReviewApproval) {
-    return {
-      tier: 4 as const,
-      label: "EventReviewApproval",
-      detail: "pending_event_review",
-      terminal: "EARLY_RETURN",
-      partial: eventReviewApproval,
-    };
-  }
-
   const ocrSchedule = orchestrateOcrScheduleCandidates({
     composerContext: base.input.composerContext,
     referenceDate: base.context.currentDate,
@@ -157,6 +147,24 @@ export async function resolveOrchestratorEarlyDecision(
       terminal: "EARLY_RETURN",
       partial: ocrSchedule,
     };
+  }
+
+  if (!shouldSkipVitalityForRecovery(base.message) && isVitalityStateUtterance(base.message)) {
+    const vitality = await orchestrateVitalityStateIntent({
+      message: base.message,
+      existingSchedule: base.context.existingSchedule,
+      referenceDate: base.context.currentDate,
+    });
+    if (vitality) {
+      return {
+        tier: 5 as const,
+        label: "VitalityState",
+        detail: base.message.trim(),
+        terminal: "EARLY_RETURN",
+        partial: vitality,
+        applyPresentation: true,
+      };
+    }
   }
 
   const commitGateEarly = orchestrateEventCommitGate({
@@ -361,15 +369,17 @@ export async function resolveOrchestratorEarlyDecision(
         terminal: "EARLY_RETURN",
         partial: {
           ...buildContextDriftClarifyResult({ kind: "clarify", summary: clarifySummary }),
-          metadata: adaptiveMetadataFields(base.adaptive, {
-            intent: "CONVERSATION",
-            trust_level_adjustment: "NONE",
-            ai_intent: "DECISION",
-            semantic_reason: base.adaptive.simplifyMode
-              ? "context_drift_simplify"
-              : "context_drift_clarify",
-            routing_patch: "PATCH2_CONTEXT_DRIFT",
-          }) as OrchestratorResult["metadata"],
+          metadata: mergeOrchestratorMetadata(undefined, {
+            ...adaptiveMetadataFields(base.adaptive, {
+              intent: "CONVERSATION",
+              trust_level_adjustment: "NONE",
+              ai_intent: "DECISION",
+              semantic_reason: base.adaptive.simplifyMode
+                ? "context_drift_simplify"
+                : "context_drift_clarify",
+              routing_patch: "PATCH2_CONTEXT_DRIFT",
+            }),
+          }),
         },
       };
     }
@@ -386,11 +396,10 @@ export async function resolveOrchestratorEarlyDecision(
           partial: {
             ...discovery,
             summary: `아까 주제 기준으로 비슷하게 골라봤어요.\n\n${discovery.summary ?? ""}`.trim(),
-            metadata: {
-              ...discovery.metadata,
+            metadata: mergeOrchestratorMetadata(discovery.metadata, {
               routing_patch: "PATCH2_CONTEXT_DRIFT",
               prior_intent: drift.priorIntent,
-            },
+            }),
           },
           applyPresentation: true,
         };
@@ -406,32 +415,13 @@ export async function resolveOrchestratorEarlyDecision(
           terminal: "EARLY_RETURN",
           partial: {
             ...aiFollowUp,
-            metadata: {
-              ...aiFollowUp.metadata,
+            metadata: mergeOrchestratorMetadata(aiFollowUp.metadata, {
               routing_patch: "PATCH2_CONTEXT_DRIFT",
               prior_intent: drift.priorIntent,
-            },
+            }),
           },
         };
       }
-    }
-  }
-
-  if (!shouldSkipVitalityForRecovery(base.message) && isVitalityStateUtterance(base.message)) {
-    const vitality = await orchestrateVitalityStateIntent({
-      message: base.message,
-      existingSchedule: base.context.existingSchedule,
-      referenceDate: base.context.currentDate,
-    });
-    if (vitality) {
-    return {
-      tier: 5 as const,
-      label: "VitalityState",
-      detail: base.message.trim(),
-      terminal: "EARLY_RETURN",
-      partial: vitality,
-      applyPresentation: true,
-    };
     }
   }
 
@@ -483,7 +473,7 @@ export async function resolveOrchestratorEarlyDecision(
       detail: expanded.label,
       terminal: "EARLY_RETURN",
       partial: {
-        discovery,
+        ...discovery,
         summary: `${expanded.label} 기준으로 골라봤어요.\n\n${discovery.summary ?? ""}`.trim(),
       },
     };
@@ -543,15 +533,15 @@ export async function resolveOrchestratorEarlyDecision(
       history: base.input.history,
     });
     if (contextualMeal) {
-      const merged = discovery?.cafeDiscovery?.options?.length
+      const merged: OrchestratorResult = discovery?.cafeDiscovery?.options?.length
         ? {
             ...contextualMeal.orchestrator,
             ...discovery,
             summary: `${contextualMeal.orchestrator.summary}\n\n${discovery.summary ?? ""}`.trim(),
-            metadata: {
-              ...contextualMeal.orchestrator.metadata,
-              ...discovery.metadata,
-            },
+            metadata: mergeOrchestratorMetadata(
+              contextualMeal.orchestrator.metadata,
+              discovery.metadata ?? {},
+            ),
           }
         : contextualMeal.orchestrator;
       return {
@@ -584,7 +574,7 @@ export async function resolveOrchestratorEarlyDecision(
         {
         id: "meal-search",
         label: "맛집 검색",
-        kind: "search",
+        kind: "custom",
         payload: { query },
         },
         ],

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PeerContact } from "@/lib/context/peer-contact-types";
 import type { SocialBubblePeer } from "@/lib/social/bubble-state";
+import { isGroupThreadId } from "@/lib/peer-chat/group-thread";
 import {
   extractOtherUserIdFromDmThread,
   isDmThreadId,
@@ -58,6 +59,10 @@ export async function resolvePeerThreadIdForSend(
 ): Promise<string> {
   const threadId = input.threadId.trim();
   if (!threadId) {
+    return threadId;
+  }
+
+  if (isGroupThreadId(threadId)) {
     return threadId;
   }
 

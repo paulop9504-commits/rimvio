@@ -1,5 +1,8 @@
 import type { ChatAxis } from "@/lib/action-chat/chat-three-axis";
-import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
+import {
+  mentionOrchestratorMetadata,
+  type ActionChatMessage,
+} from "@/lib/action-chat/orchestrator-types";
 import {
   buildFocusConfirmWire,
   type InlineChatFocusWire,
@@ -82,10 +85,10 @@ export function tryBuildMentionFocusTurn(input: {
     userMessage,
     createChatMessage("assistant", focusConfirmCopy(focusWire), {
       inlineChatFocus: focusWire,
-      metadata: {
+      metadata: mentionOrchestratorMetadata({
         mention_feature: "focus",
         sourceRef: "mention:focus",
-      },
+      }),
     }),
   ];
 }

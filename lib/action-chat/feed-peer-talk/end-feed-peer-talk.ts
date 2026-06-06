@@ -1,3 +1,4 @@
+import { isFeedTalkInlineFeature } from "@/lib/action-chat/feed-peer-talk/feed-talk-inline-features";
 import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
 import {
   clearFeedPeerTalkSession,
@@ -11,6 +12,7 @@ export type EndFeedPeerTalkResult = {
 };
 
 const PEER_TALK_USER_MENTION = /^@톡(?:\s|$)/iu;
+const GROUP_TALK_USER_MENTION = /^@(?:단톡|그룹|group)(?:\s|$)/iu;
 
 /** 피드 톡 UI·@톡 칩·DM 말풍선 블록을 피드 타임라인에서 제거 */
 export function stripFeedPeerTalkSurfaceFromMessages(
@@ -22,11 +24,15 @@ export function stripFeedPeerTalkSurfaceFromMessages(
     }
     if (
       message.role === "assistant" &&
-      message.inlineChatAction?.featureId === "peer_talk"
+      isFeedTalkInlineFeature(message.inlineChatAction?.featureId ?? "")
     ) {
       return false;
     }
-    if (message.role === "user" && PEER_TALK_USER_MENTION.test(message.text.trim())) {
+    if (
+      message.role === "user" &&
+      (PEER_TALK_USER_MENTION.test(message.text.trim()) ||
+        GROUP_TALK_USER_MENTION.test(message.text.trim()))
+    ) {
       return false;
     }
     return true;
@@ -38,7 +44,7 @@ function hasFeedPeerTalkSurface(messages: ActionChatMessage[]): boolean {
     (message) =>
       message.feedPeerTalkThread ||
       (message.role === "assistant" &&
-        message.inlineChatAction?.featureId === "peer_talk"),
+        isFeedTalkInlineFeature(message.inlineChatAction?.featureId ?? "")),
   );
 }
 

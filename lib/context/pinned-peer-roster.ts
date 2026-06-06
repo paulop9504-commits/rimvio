@@ -3,6 +3,7 @@ import {
   isPurgeDue,
   purgeAfterIso,
 } from "@/lib/context/hub-room-retention";
+import { resolveHubRoomKind } from "@/lib/peer-chat/resolve-hub-room-kind";
 import { purgePeerThreadData } from "@/lib/context/purge-peer-thread-data";
 import {
   PINNED_PEER_SLOTS,
@@ -49,6 +50,7 @@ function migrateLegacySlot(raw: HubRoomSlot): HubRoomSlot {
       connection: "connected",
       peerThreadId: legacy.peerThreadId,
       displayName: legacy.displayName,
+      roomKind: resolveHubRoomKind(legacy.peerThreadId),
       pinnedAt: legacy.pinnedAt ?? new Date().toISOString(),
     };
   }
@@ -163,6 +165,7 @@ export function connectPeerToHub(input: {
         ? {
             ...s,
             displayName: input.displayName.trim(),
+            roomKind: resolveHubRoomKind(input.peerThreadId),
             pinnedAt: now,
           }
         : s
@@ -190,6 +193,7 @@ export function connectPeerToHub(input: {
     connection: "connected",
     peerThreadId: input.peerThreadId,
     displayName: input.displayName.trim(),
+    roomKind: resolveHubRoomKind(input.peerThreadId),
     pinnedAt: now,
     unpinnedAt: undefined,
     purgeAfter: undefined,

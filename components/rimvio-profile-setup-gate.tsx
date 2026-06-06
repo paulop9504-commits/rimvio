@@ -23,11 +23,11 @@ export function RimvioProfileSetupGate({ children }: RimvioProfileSetupGateProps
   const pathname = usePathname();
   const router = useRouter();
   const { user, loading, configured } = useAuth();
-  const [checking, setChecking] = useState(true);
+  const [checking, setChecking] = useState(false);
 
   useEffect(() => {
     if (!configured || !isSupabaseConfigured() || loading) {
-      setChecking(loading && configured);
+      setChecking(false);
       return;
     }
 
@@ -47,6 +47,13 @@ export function RimvioProfileSetupGate({ children }: RimvioProfileSetupGateProps
     }
 
     let cancelled = false;
+    setChecking(true);
+
+    const timeout = window.setTimeout(() => {
+      if (!cancelled) {
+        setChecking(false);
+      }
+    }, 8_000);
 
     void (async () => {
       try {
@@ -61,16 +68,21 @@ export function RimvioProfileSetupGate({ children }: RimvioProfileSetupGateProps
           setChecking(false);
           return;
         }
+        setChecking(false);
         router.replace("/onboarding");
       } catch {
         if (!cancelled) {
           setChecking(false);
         }
+      } finally {
+        window.clearTimeout(timeout);
       }
     })();
 
     return () => {
       cancelled = true;
+      window.clearTimeout(timeout);
+      setChecking(false);
     };
   }, [configured, loading, user, pathname, router]);
 

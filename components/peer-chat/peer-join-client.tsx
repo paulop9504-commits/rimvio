@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { joinPeerThreadByInviteRemote } from "@/lib/peer-chat/peer-chat-client";
+import { upsertGroupThreadCache } from "@/lib/peer-chat/group-threads-cache";
 import { addPeerContact } from "@/lib/context/peer-contact-store";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -22,11 +23,19 @@ export function PeerJoinClient() {
     setBusy(true);
     void joinPeerThreadByInviteRemote(code)
       .then((result) => {
-        addPeerContact({
-          peerThreadId: result.threadId,
-          displayName: result.displayName,
-        });
-        toast.success(`${result.displayName} 대화방에 들어왔어요`);
+        const label = result.displayName?.trim() || "단톡";
+        if (result.roomKind === "group") {
+          upsertGroupThreadCache({
+            peerThreadId: result.threadId,
+            displayName: label,
+          });
+        } else {
+          addPeerContact({
+            peerThreadId: result.threadId,
+            displayName: label,
+          });
+        }
+        toast.success(`${label} 대화방에 들어왔어요`);
         router.replace(`/peers/${encodeURIComponent(result.threadId)}`);
       })
       .catch((error) => {

@@ -11,6 +11,8 @@ import {
 } from "@/lib/social/bubble-state";
 import { purgeAfterIso, isPurgeDue } from "@/lib/context/hub-room-retention";
 import { loadFriendProfilesMap } from "@/lib/peer-chat/load-friend-profiles-map";
+import { isGroupThreadId } from "@/lib/peer-chat/group-thread";
+import { markGroupThreadMemberRead } from "@/lib/peer-chat/group-read-receipt";
 import { touchPeerReadReceiptForSender } from "@/lib/peer-chat/peer-read-receipt";
 import type { Database } from "@/types/database";
 
@@ -133,6 +135,14 @@ export async function markThreadRead(
   supabase: SupabaseClient<Database>,
   input: { userId: string; threadId: string },
 ) {
+  if (isGroupThreadId(input.threadId)) {
+    await markGroupThreadMemberRead(supabase, {
+      threadId: input.threadId,
+      userId: input.userId,
+    });
+    return;
+  }
+
   const now = new Date().toISOString();
   await supabase
     .from("friend_connections")

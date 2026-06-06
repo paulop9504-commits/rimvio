@@ -5,9 +5,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { FriendArchiveChatList } from "@/components/peer-chat/friend-archive-chat-list";
+import { FriendAddContactFlow } from "@/components/peer-chat/friend-add-contact-flow";
 import { IOS } from "@/lib/ui/ios-surface";
 import {
-  addPeerByPhoneRemote,
   fetchRelationshipFeedSlots,
   fetchSocialLayer,
   syncMyProfileFromAuth,
@@ -31,9 +31,7 @@ export function FriendArchivePageClient() {
   const [archivePeers, setArchivePeers] = useState<SocialBubblePeer[]>([]);
   const [feedSlots, setFeedSlots] = useState<RelationshipFeedSlot[]>([]);
   const [addOpen, setAddOpen] = useState(false);
-  const [phone, setPhone] = useState("");
-  const [name, setName] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [contact, setContact] = useState("");
 
   const archiveList = useMemo(
     () => listArchivePeers(pinnedPeers, archivePeers),
@@ -68,36 +66,6 @@ export function FriendArchivePageClient() {
     const timer = window.setInterval(() => void load().catch(() => {}), 12_000);
     return () => window.clearInterval(timer);
   }, [usePhoneChat, load]);
-
-  const submitAdd = () => {
-    const phoneTrimmed = phone.trim();
-    if (!phoneTrimmed) {
-      toast.error("친구 Rimvio ID · 번호 · 이메일을 입력해 주세요");
-      return;
-    }
-    setSubmitting(true);
-    void addPeerByPhoneRemote({
-      contact: phoneTrimmed,
-      displayName: name.trim() || undefined,
-    })
-      .then(async (result) => {
-        addPeerContact({
-          peerThreadId: result.threadId,
-          displayName: result.displayName,
-        });
-        setAddOpen(false);
-        setPhone("");
-        setName("");
-        await load();
-        toast.success(`${result.displayName} 구슬이 쌓였어요`);
-      })
-      .catch((error) => {
-        toast.error(
-          error instanceof Error ? error.message : "추가에 실패했어요",
-        );
-      })
-      .finally(() => setSubmitting(false));
-  };
 
   const empty = archiveList.length === 0;
 
@@ -153,35 +121,40 @@ export function FriendArchivePageClient() {
         >
           <p className="text-sm font-semibold text-white">주머니에 구슬 넣기</p>
           <input
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            value={contact}
+            onChange={(e) => setContact(e.target.value)}
             placeholder="rimvio_id · 010-… · email"
             className="h-11 w-full rounded-2xl bg-rimvio-surface-muted px-4 text-sm text-white outline-none"
             autoFocus
           />
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="이름 (선택)"
-            className="h-11 w-full rounded-2xl bg-rimvio-surface-muted px-4 text-sm text-white outline-none"
+          <FriendAddContactFlow
+            contact={contact}
+            confirmLabel="구슬 넣기"
+            helperText="맞는 사람이면 구슬 넣기를 눌러 주세요."
+            onAdded={async (result) => {
+              addPeerContact({
+                peerThreadId: result.threadId,
+                displayName: result.displayName,
+                rimvioId: result.rimvioId,
+                emailLower: result.emailLower,
+              });
+              setAddOpen(false);
+              setContact("");
+              await load();
+              toast.success(`${result.displayName} 구슬이 쌓였어요`);
+            }}
+            onError={(message) => toast.error(message)}
           />
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className="flex-1 py-2.5 text-sm font-semibold text-rimvio-neon-cyan"
-              onClick={() => setAddOpen(false)}
-            >
-              취소
-            </button>
-            <button
-              type="button"
-              disabled={submitting}
-              className="rimvio-accent-submit-btn flex-1 rounded-xl py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-              onClick={submitAdd}
-            >
-              {submitting ? "넣는 중…" : "넣기"}
-            </button>
-          </div>
+          <button
+            type="button"
+            className="w-full py-2 text-sm font-semibold text-rimvio-neon-cyan"
+            onClick={() => {
+              setAddOpen(false);
+              setContact("");
+            }}
+          >
+            취소
+          </button>
         </div>
       ) : null}
     </div>

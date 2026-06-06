@@ -27,8 +27,13 @@ import {
   shouldShowLensFirstCoach,
 } from "@/lib/onboarding/lens-first-coach";
 import { FriendArchiveChatSheet } from "@/components/peer-chat/friend-archive-chat-sheet";
+import { FriendAddContactFlow } from "@/components/peer-chat/friend-add-contact-flow";
+import { GroupCreateSheet } from "@/components/peer-chat/group-create-sheet";
 import {
-  addPeerByPhoneRemote,
+  GroupThreadList,
+  type GroupThreadListItem,
+} from "@/components/peer-chat/group-thread-list";
+import {
   fetchMyAccountProfile,
   fetchRelationshipFeedSlots,
   fetchSocialLayer,
@@ -66,11 +71,10 @@ export function FivePeerHubClient() {
   const [archivePeers, setArchivePeers] = useState<SocialBubblePeer[]>([]);
   const [feedSlots, setFeedSlots] = useState<RelationshipFeedSlot[]>([]);
   const [archiveSheetOpen, setArchiveSheetOpen] = useState(false);
+  const [groupSheetOpen, setGroupSheetOpen] = useState(false);
+  const [groupThreads, setGroupThreads] = useState<GroupThreadListItem[]>([]);
   const [assignSlot, setAssignSlot] = useState<PinnedSlotIndex | null>(null);
-  const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [myPhone, setMyPhone] = useState("");
-  const [submitting, setSubmitting] = useState(false);
   const [centerAvatarUrl, setCenterAvatarUrl] = useState<string | null>(null);
 
   const peerMetaMap = useMemo(
@@ -186,12 +190,21 @@ export function FivePeerHubClient() {
       .catch(() => {});
     void syncDmThreadsRemote()
       .then((threads) => {
+        const groups: GroupThreadListItem[] = [];
         for (const thread of threads) {
+          if (thread.roomKind === "group") {
+            groups.push({
+              threadId: thread.threadId,
+              displayName: thread.displayName,
+            });
+            continue;
+          }
           addPeerContact({
             peerThreadId: thread.threadId,
             displayName: thread.displayName,
           });
         }
+        setGroupThreads(groups);
         refresh();
       })
       .catch(() => {});
@@ -216,97 +229,61 @@ export function FivePeerHubClient() {
 
   const openPinAssign = (slotIndex: PinnedSlotIndex) => {
     setAssignSlot(slotIndex);
-    setName("");
     setPhone("");
   };
 
   const closeDialog = () => {
     setAssignSlot(null);
-    setName("");
     setPhone("");
-    setMyPhone("");
   };
 
-  const addRegisteredFriend = async (
-    contact: string,
-    displayLabel?: string,
-  ) => {
-    setSubmitting(true);
-    try {
-      const result = await addPeerByPhoneRemote({
-        contact,
-        displayName: displayLabel || undefined,
-        myPhone: myPhone.trim() || undefined,
-      });
-      addPeerContact({
-        peerThreadId: result.threadId,
-        displayName: result.displayName,
-      });
-      closeDialog();
-      await loadSocialLayer();
-      return result;
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "친구 추가에 실패했어요";
-      toast.error(message);
-      return null;
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  const handleFriendAdded = async (result: {
+    threadId: string;
+    displayName: string;
+    otherUserId?: string;
+    rimvioId?: string | null;
+    emailLower?: string | null;
+  }) => {
+    addPeerContact({
+      peerThreadId: result.threadId,
+      displayName: result.displayName,
+      rimvioId: result.rimvioId,
+      emailLower: result.emailLower,
+    });
 
-  const submit = () => {
-    const trimmed = name.trim();
-    const phoneTrimmed = phone.trim();
+    const slot = assignSlot;
+    const otherUserId = result.otherUserId;
 
-    if (usePhoneChat) {
-      if (!phoneTrimmed) {
-        toast.error("친구 Rimvio ID · 번호 · 이메일을 입력해 주세요");
+    if (slot !== null && otherUserId) {
+      try {
+        await pinFriendRemote({
+          friendId: otherUserId,
+          pinSlot: slot,
+        });
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "고정에 실패했어요",
+        );
         return;
       }
-      void addRegisteredFriend(phoneTrimmed, trimmed || undefined).then(
-        async (result) => {
-          if (!result) {
-            return;
-          }
-          const otherUserId =
-            "otherUserId" in result
-              ? (result as { otherUserId?: string }).otherUserId
-              : undefined;
-
-          if (assignSlot !== null && otherUserId) {
-            try {
-              await pinFriendRemote({
-                friendId: otherUserId,
-                pinSlot: assignSlot,
-              });
-            } catch (error) {
-              toast.error(
-                error instanceof Error ? error.message : "고정에 실패했어요",
-              );
-              return;
-            }
-            assignPeerToHubAndPin({
-              slotIndex: assignSlot,
-              displayName: result.displayName,
-              peerThreadId: result.threadId,
-            });
-            await loadSocialLayer();
-            toast.success(
-              `${result.displayName}를 항상 보이는 관계 ${assignSlot + 1}번에 고정했어요`,
-            );
-            router.push(`/peers/${encodeURIComponent(result.threadId)}`);
-            return;
-          }
-
-          toast.success(`${result.displayName}를 구슬 주머니에 넣었어요`);
-          router.push(`/peers/archive`);
-        },
+      assignPeerToHubAndPin({
+        slotIndex: slot,
+        displayName: result.displayName,
+        peerThreadId: result.threadId,
+      });
+      await loadSocialLayer();
+      closeDialog();
+      toast.success(
+        `${result.displayName}를 항상 보이는 관계 ${slot + 1}번에 고정했어요`,
       );
+      router.push(`/peers/${encodeURIComponent(result.threadId)}`);
       return;
     }
 
-    toast.error("로그인 후 Rimvio 친구만 추가할 수 있어요");
+    closeDialog();
+    await loadSocialLayer();
+    toast.success(`${result.displayName}를 구슬 주머니에 넣었어요`);
+    router.push(`/peers/archive`);
   };
 
   const dialogOpen = assignSlot !== null;
@@ -337,6 +314,11 @@ export function FivePeerHubClient() {
           {copy.peers.hubHint}
         </p>
       )}
+
+      <GroupThreadList
+        groups={groupThreads}
+        onCreate={() => setGroupSheetOpen(true)}
+      />
 
       <div className="relative min-h-[min(72dvh,28rem)] h-[min(calc(100dvh-11rem),42rem)] w-full shrink-0">
         <FivePeerHub
@@ -372,30 +354,20 @@ export function FivePeerHubClient() {
             className="h-11 w-full rounded-2xl border-0 bg-rimvio-surface-muted px-4 text-sm text-white outline-none placeholder:text-white/45 focus:ring-2 focus:ring-rimvio-neon-cyan/40"
             autoFocus
           />
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="이름 (선택)"
-            className="h-11 w-full rounded-2xl border-0 bg-rimvio-surface-muted px-4 text-sm text-white outline-none placeholder:text-white/45"
+          <FriendAddContactFlow
+            contact={phone}
+            confirmLabel="고정하기"
+            helperText="프로필 확인 후 고정하기를 눌러 주세요."
+            onAdded={handleFriendAdded}
+            onError={(message) => toast.error(message)}
           />
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className="flex-1 rounded-[14px] py-2.5 text-sm font-semibold text-rimvio-neon-cyan"
-              onClick={closeDialog}
-              disabled={submitting}
-            >
-              취소
-            </button>
-            <button
-              type="button"
-              disabled={submitting}
-              className="rimvio-accent-submit-btn flex flex-1 items-center justify-center rounded-[14px] py-2.5 text-sm font-semibold text-white active:scale-[0.98] disabled:opacity-50"
-              onClick={submit}
-            >
-              {submitting ? "연결 중…" : "고정하기"}
-            </button>
-          </div>
+          <button
+            type="button"
+            className="w-full rounded-[14px] py-2.5 text-sm font-semibold text-rimvio-neon-cyan"
+            onClick={closeDialog}
+          >
+            취소
+          </button>
         </div>
       ) : null}
 
@@ -420,6 +392,19 @@ export function FivePeerHubClient() {
         open={archiveSheetOpen}
         onOpenChange={setArchiveSheetOpen}
         rows={archiveChatRows}
+      />
+
+      <GroupCreateSheet
+        open={groupSheetOpen}
+        onOpenChange={setGroupSheetOpen}
+        onCreated={({ threadId, displayName }) => {
+          setGroupThreads((prev) => [
+            { threadId, displayName },
+            ...prev.filter((row) => row.threadId !== threadId),
+          ]);
+          toast.success(`${displayName} 단톡을 만들었어요`);
+          router.push(`/peers/${encodeURIComponent(threadId)}`);
+        }}
       />
     </div>
   );

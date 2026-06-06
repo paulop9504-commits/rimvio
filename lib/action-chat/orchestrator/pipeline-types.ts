@@ -1,7 +1,7 @@
 import type { OrchestratorResult } from "@/lib/action-chat/orchestrator-types";
 
-/** Rimvio Orchestrator v2 — Phase × Tier */
-export type OrchestratorPhase = 1 | 2 | 3;
+/** Rimvio Orchestrator v2 — Phase × Tier (0 = pre-pipeline early tree). */
+export type OrchestratorPhase = 0 | 1 | 2 | 3;
 
 export type OrchestratorTierId =
   | 0
@@ -25,6 +25,8 @@ export type OrchestratorTierLabel =
   | "Workflow"
   | "Registry"
   | "Deterministic"
+  | "EventDetection"
+  | "EventKernel"
   | "Shadow"
   | "Container"
   | "GlobalBrain"

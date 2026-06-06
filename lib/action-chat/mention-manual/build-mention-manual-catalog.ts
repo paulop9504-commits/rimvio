@@ -34,6 +34,7 @@ const DEFAULT_EXAMPLES: Partial<Record<string, string>> = {
   linksheet: "@링크시트 https://docs.google.com/spreadsheets/d/…",
   receipt: "@영수증",
   peer_talk: "@톡 친구이름",
+  group_talk: "@단톡 방이름",
 };
 
 function pickPrimaryAlias(feature: MentionFeature): string {

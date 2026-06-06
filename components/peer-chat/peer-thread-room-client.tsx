@@ -14,10 +14,12 @@ import {
 import { PeerPublicProfileSheet } from "@/components/peer-chat/peer-public-profile-sheet";
 import { useDmPeerProfile } from "@/hooks/use-dm-peer-profile";
 import {
+  fetchPeerThreadMeta,
   isRegisteredPeerDmThread,
   markPeerThreadReadRemote,
   syncFeedSlotFromRoomRemote,
 } from "@/lib/peer-chat/peer-chat-client";
+import { isGroupThreadId } from "@/lib/peer-chat/group-thread";
 import { emitFeedSlotsRefresh } from "@/lib/feed/feed-slots-events";
 import { UNPIN_PEER_RETENTION_DAYS } from "@/lib/context/hub-room-retention";
 import { getPeerContactById } from "@/lib/context/peer-contact-store";
@@ -28,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { AiLensToggle } from "@/components/peer-chat/ai-lens-toggle";
 import { PeerChatThreadShell } from "@/components/peer-chat/peer-chat-thread-shell";
 import { PeerThreadChatPanel } from "@/components/peer-chat/peer-thread-chat-panel";
+import { GroupInfoSheet } from "@/components/peer-chat/group-info-sheet";
 import { PeerThreadHubPinBar } from "@/components/peer-chat/peer-thread-hub-pin-bar";
 
 type PeerThreadRoomClientProps = {
@@ -37,14 +40,34 @@ type PeerThreadRoomClientProps = {
 export function PeerThreadRoomClient({ peerThreadId }: PeerThreadRoomClientProps) {
   const copy = useCopy();
   const [profileOpen, setProfileOpen] = useState(false);
+  const [groupInfoOpen, setGroupInfoOpen] = useState(false);
+  const [groupMetaName, setGroupMetaName] = useState<string | null>(null);
+  const [groupInviteCode, setGroupInviteCode] = useState<string | null>(null);
   const roster = useMemo(() => readPinnedRoster(), []);
   const contact = useMemo(() => getPeerContactById(peerThreadId), [peerThreadId]);
   const hubSlot = findSlotByPeerId(roster, peerThreadId);
+  const isGroup = isGroupThreadId(peerThreadId);
   const phoneDm = isRegisteredPeerDmThread(peerThreadId);
   const { profile, loading: profileLoading, reload: reloadProfile } =
-    useDmPeerProfile(peerThreadId, phoneDm);
+    useDmPeerProfile(peerThreadId, phoneDm && !isGroup);
 
   useEffect(() => {
+    if (!isGroup) {
+      return;
+    }
+    void fetchPeerThreadMeta(peerThreadId)
+      .then((meta) => {
+        setGroupMetaName(meta.displayName?.trim() || null);
+        setGroupInviteCode(meta.inviteCode?.trim() || null);
+      })
+      .catch(() => {});
+  }, [isGroup, peerThreadId]);
+
+  useEffect(() => {
+    if (isGroup) {
+      void markPeerThreadReadRemote(peerThreadId).catch(() => {});
+      return;
+    }
     if (!phoneDm) {
       return;
     }
@@ -54,13 +77,14 @@ export function PeerThreadRoomClient({ peerThreadId }: PeerThreadRoomClientProps
     void syncFeedSlotFromRoomRemote(peerThreadId)
       .then(() => emitFeedSlotsRefresh())
       .catch(() => {});
-  }, [phoneDm, peerThreadId, reloadProfile]);
+  }, [phoneDm, isGroup, peerThreadId, reloadProfile]);
 
-  const displayName =
-    profile?.displayName?.trim() ||
-    contact?.displayName ||
-    hubSlot?.displayName ||
-    "친구";
+  const displayName = isGroup
+    ? groupMetaName || "단톡"
+    : profile?.displayName?.trim() ||
+      contact?.displayName ||
+      hubSlot?.displayName ||
+      "친구";
 
   const { settings, setAiLens } = usePeerThreadSettings({
     peerThreadId,
@@ -88,10 +112,14 @@ export function PeerThreadRoomClient({ peerThreadId }: PeerThreadRoomClientProps
 
   const headerLongPress = useLongPress({
     onLongPress: () => toggleAiLens(!settings.aiLensEnabled),
-    onTap: phoneDm ? () => setProfileOpen(true) : undefined,
+    onTap: phoneDm
+      ? () => setProfileOpen(true)
+      : isGroup
+        ? () => setGroupInfoOpen(true)
+        : undefined,
   });
 
-  if (!contact && !hubSlot) {
+  if (!isGroup && !contact && !hubSlot) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
         <p className="text-sm text-muted-foreground">
@@ -108,7 +136,7 @@ export function PeerThreadRoomClient({ peerThreadId }: PeerThreadRoomClientProps
   const connected = hubSlot?.connection === "connected";
   const pinned = connected;
   const unpinnedContact = Boolean(contact) && !pinned;
-  const showHubNotices = !phoneDm;
+  const showHubNotices = !phoneDm && !isGroup;
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col bg-[#0f0f0f]">
@@ -151,8 +179,8 @@ export function PeerThreadRoomClient({ peerThreadId }: PeerThreadRoomClientProps
             )}
             aria-label={
               settings.aiLensEnabled
-                ? `${displayName} · AI 렌즈 켜짐`
-                : `${displayName} · 길게 눌러 AI 렌즈`
+                ? `${displayName} · 단톡 정보 (탭) · AI 렌즈 켜짐`
+                : `${displayName} · 단톡 정보 (탭) · 길게 눌러 AI 렌즈`
             }
           >
             {displayName}
@@ -170,7 +198,8 @@ export function PeerThreadRoomClient({ peerThreadId }: PeerThreadRoomClientProps
         <PeerThreadHubPinBar
           peerThreadId={peerThreadId}
           displayName={displayName}
-          friendUserId={phoneDm ? profile?.userId : null}
+          friendUserId={phoneDm && !isGroup ? profile?.userId : null}
+          roomKind={isGroup ? "group" : "dm"}
           variant="header"
         />
       </header>
@@ -182,6 +211,19 @@ export function PeerThreadRoomClient({ peerThreadId }: PeerThreadRoomClientProps
         fallbackName={displayName}
         loading={profileLoading}
       />
+
+      {isGroup ? (
+        <GroupInfoSheet
+          open={groupInfoOpen}
+          onOpenChange={setGroupInfoOpen}
+          threadId={peerThreadId}
+          displayName={displayName}
+          inviteCode={groupInviteCode}
+          onRenamed={(nextName) => {
+            setGroupMetaName(nextName);
+          }}
+        />
+      ) : null}
 
       {showHubNotices && hubSlot?.connection === "purge_pending" ? (
         <p className="bg-amber-950/40 px-3 py-2 text-[11px] text-amber-200">
@@ -196,19 +238,25 @@ export function PeerThreadRoomClient({ peerThreadId }: PeerThreadRoomClientProps
         </p>
       ) : null}
 
+      {isGroup && !pinned ? (
+        <p className="px-3 py-1.5 text-[11px] text-white/40">
+          ROOM 1–5번에 고정하면 단톡 AI 렌즈·@import를 쓸 수 있어요
+        </p>
+      ) : null}
+
       <PeerChatThreadShell
         peerThreadId={peerThreadId}
         displayName={displayName}
-        hideLensBar={phoneDm}
+        hideLensBar={phoneDm || isGroup}
       >
         <PeerThreadChatPanel
           displayName={displayName}
           policyInput={policyInput}
           aiLensEnabled={settings.aiLensEnabled}
-          readOnly={hubSlot?.connection === "purge_pending"}
-          showAiMentionLink={pinned}
-          peerAvatarUrl={profile?.avatarUrl}
-          simpleDm={phoneDm}
+          readOnly={!isGroup && hubSlot?.connection === "purge_pending"}
+          showAiMentionLink={isGroup || pinned}
+          peerAvatarUrl={isGroup ? null : profile?.avatarUrl}
+          simpleDm={phoneDm && !isGroup}
         />
       </PeerChatThreadShell>
     </div>

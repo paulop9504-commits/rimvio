@@ -1,7 +1,10 @@
 import { normalizeActionAgentAddress } from "@/lib/action-chat/action-agent-normalize";
 import { resolveNavigationPlaceName } from "@/lib/action-chat/resolve-navigation-place";
 import type { ChatAxis } from "@/lib/action-chat/chat-three-axis";
-import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
+import {
+  mentionOrchestratorMetadata,
+  type ActionChatMessage,
+} from "@/lib/action-chat/orchestrator-types";
 import {
   buildInlineChatNavigateWire,
 } from "@/lib/action-chat/mention-navigate/inline-chat-navigate";
@@ -129,10 +132,10 @@ export function tryBuildMentionNavigateTurn(input: {
     userMessage,
     createChatMessage("assistant", "", {
       inlineChatNavigate: buildMentionNavigateWire(destination),
-      metadata: {
+      metadata: mentionOrchestratorMetadata({
         mention_feature: "navigate",
         sourceRef: "mention:navigate",
-      },
+      }),
     }),
   ];
 }

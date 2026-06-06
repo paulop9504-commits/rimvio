@@ -13,7 +13,9 @@ export type PresentationMode =
   | "ENTITY_QUICK_PICK"
   | "TIME_CHOICE"
   | "FLIGHT_CARD"
-  | "PACKING_CHECKLIST";
+  | "PACKING_CHECKLIST"
+  /** Conversational reply — no card chrome; maps to ACTION in derive. */
+  | "conversation";
 
 export type VisualKind = "place" | "hotel" | "travel" | "commerce";
 
@@ -51,6 +53,7 @@ const MODES: PresentationMode[] = [
   "TIME_CHOICE",
   "FLIGHT_CARD",
   "PACKING_CHECKLIST",
+  "conversation",
 ];
 
 export function isPresentationMode(value: string): value is PresentationMode {
@@ -119,6 +122,9 @@ export function derivePresentationWire(source: PresentationSource): Presentation
 
 export function resolvePresentationWire(source: PresentationSource): PresentationWire {
   if (source.presentation?.mode && isPresentationMode(source.presentation.mode)) {
+    if (source.presentation.mode === "conversation") {
+      return { mode: "ACTION" };
+    }
     return source.presentation;
   }
   return derivePresentationWire(source);

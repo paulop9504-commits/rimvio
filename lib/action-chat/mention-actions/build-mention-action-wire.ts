@@ -313,6 +313,22 @@ export function buildMentionActionWire(input: {
       });
     }
 
+    case "group_talk": {
+      const groupQuery = q.trim();
+      return buildInlineChatActionWire({
+        featureId: feature.featureId,
+        displayName: feature.displayName,
+        icon,
+        query: groupQuery,
+        summaryLines: groupQuery
+          ? ["단톡 확인 후 피드에서 바로 대화"]
+          : ["단톡 선택 · ROOM과 같은 메시지"],
+        mainLabel: "",
+        mainActionKind: "internal",
+        groupTalkQuery: groupQuery,
+      });
+    }
+
     default:
       return null;
   }

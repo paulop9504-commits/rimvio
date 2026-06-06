@@ -75,9 +75,9 @@ export const FeedExperienceAxisStrip = memo(function FeedExperienceAxisStrip({
       {onOpenPlayer ? (
         <span
           className="ml-auto shrink-0 rounded-full border border-sky-300/35 bg-sky-500/15 px-2 py-0.5 text-[10px] font-bold text-sky-100/95"
-          data-feed-open-globe
+          data-feed-open-globe-recall
         >
-          🌐 지구본
+          그때 거기
         </span>
       ) : null}
     </>

@@ -13,6 +13,8 @@ import {
   touchRelationshipSlotsOnMessage,
 } from "@/lib/peer-chat/relationship-slots-server";
 import { resolvePeerThreadIdForSend } from "@/lib/peer-chat/resolve-canonical-peer-thread";
+import { listGroupReadCursors } from "@/lib/peer-chat/group-read-receipt";
+import { isGroupThreadId } from "@/lib/peer-chat/group-thread";
 import { readPeerLastReadAt } from "@/lib/peer-chat/peer-read-receipt";
 import {
   ensurePeerThread,
@@ -60,8 +62,14 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       userId,
       threadId: resolvedThreadId,
     });
+    const groupReadCursors = isGroupThreadId(resolvedThreadId)
+      ? await listGroupReadCursors(supabase, {
+          threadId: resolvedThreadId,
+          callerUserId: userId,
+        })
+      : [];
 
-    return NextResponse.json({ messages, peerLastReadAt });
+    return NextResponse.json({ messages, peerLastReadAt, groupReadCursors });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to load messages.";
     return NextResponse.json({ error: message }, { status: 500 });

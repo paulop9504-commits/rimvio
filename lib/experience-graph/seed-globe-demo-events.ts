@@ -97,13 +97,19 @@ function buildDemoDrafts(now = new Date()): EventCandidate[] {
   ];
 }
 
-/** Dev globe tab — seeds multi-place demo volumes. */
+/** Globe tab demo — seeds multi-place volumes when the user has none yet. */
 export function ensureGlobeDemoEvents(now = new Date()): EventCandidate[] {
-  if (typeof window === "undefined" || process.env.NODE_ENV === "production") {
+  if (typeof window === "undefined") {
     return [];
   }
 
   const existing = listEventCandidates();
+  const hasUserEvents = existing.some(
+    (item) => !Object.values(GLOBE_DEMO_EVENT_IDS).includes(item.id as (typeof GLOBE_DEMO_EVENT_IDS)[keyof typeof GLOBE_DEMO_EVENT_IDS]),
+  );
+  if (hasUserEvents) {
+    return [];
+  }
   const drafts = buildDemoDrafts(now);
   const seeded: EventCandidate[] = [];
 

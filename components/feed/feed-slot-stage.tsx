@@ -18,16 +18,21 @@ import type { FeedSlotPeerDetailCopy } from "@/components/feed/feed-slot-peer-de
 import { buildFeedSlotPeerLookup } from "@/lib/feed/build-feed-slot-peer-lookup";
 import { buildFeedTodaySlots } from "@/lib/feed/resolve-feed-today-slots";
 import { dispatchFeedSlotPill } from "@/lib/feed/dispatch-feed-slot-pill";
+import { resolveFeedSlotOpenTarget } from "@/lib/feed/resolve-feed-slot-open-target";
 import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
 import type { FeedSlotPill } from "@/lib/feed/feed-slot-pill-types";
 import type { FeedSlotPeerContext } from "@/lib/feed/feed-slot-peer-context-types";
 import type { FeedTodaySlot } from "@/lib/feed/feed-today-slot-types";
+import type { PeerContact } from "@/lib/context/peer-contact-types";
 import type { RelationshipFeedSlot } from "@/lib/social/relationship-slot-types";
 import type { UnifiedCalendarOverlayRow } from "@/lib/calendar/calendar-view-types";
 import type {
   SurfaceCompositionFrame,
   SurfaceNode,
 } from "@/lib/surface-composition/surface-node-contract";
+import { toast } from "sonner";
+import { useFeedGpsPings } from "@/hooks/use-feed-gps-pings";
+import { verifyFeedCaptureEvent } from "@/lib/feed/verify-feed-capture";
 import { cn } from "@/lib/utils";
 
 export type FeedSlotStageProps = {
@@ -46,6 +51,10 @@ export type FeedSlotStageProps = {
   relationshipSlots?: readonly RelationshipFeedSlot[];
   peerDetailCopy: FeedSlotPeerDetailCopy;
   onOpenPeerChat?: (peer: FeedSlotPeerContext) => void;
+  onScrollToFeedMessage?: (messageId: string) => void;
+  groupRooms?: readonly { peerThreadId: string; displayName: string }[];
+  peerContacts?: readonly PeerContact[];
+  recallEventId?: string | null;
   className?: string;
 };
 
@@ -56,8 +65,8 @@ function asDispatchNode(slot: FeedTodaySlot & { kind: "surface" }): SurfaceNode 
     layoutSlot: "secondary",
     mfeId: "GenericSurfaceMF",
     capabilityBindings: {
-      primary: surface.primaryAction.capabilityId,
-      secondary: surface.secondaryActions.map((row) => row.capabilityId),
+      primary: surface.primaryAction?.capabilityId ?? "CALENDAR",
+      secondary: surface.secondaryActions?.map((row) => row.capabilityId) ?? [],
     },
     uiComponents: [],
   };
@@ -75,10 +84,15 @@ export const FeedSlotStage = memo(function FeedSlotStage({
   relationshipSlots = [],
   peerDetailCopy,
   onOpenPeerChat,
+  onScrollToFeedMessage,
+  groupRooms = [],
+  peerContacts,
+  recallEventId,
   className,
 }: FeedSlotStageProps) {
   const primary = frame.layout.primary;
   const latent = frame.graph.latentSurfaces;
+  const gpsPings = useFeedGpsPings();
 
   const [eventRevision, setEventRevision] = useState(0);
   useEffect(() => {
@@ -126,9 +140,46 @@ export const FeedSlotStage = memo(function FeedSlotStage({
       buildFeedSlotPeerLookup({
         messages,
         relationshipSlots,
+        groupRooms,
+        contacts: peerContacts,
       }),
-    [messages, relationshipSlots],
+    [messages, relationshipSlots, groupRooms, peerContacts],
   );
+
+  const onSlotOpen = useCallback(
+    (slot: FeedTodaySlot) => {
+      const target = resolveFeedSlotOpenTarget(slot, peerLookup, eventsById);
+      if (target.kind === "peer_room") {
+        onOpenPeerChat?.({
+          peerThreadId: target.peerThreadId,
+          displayName: target.displayName ?? "친구",
+          avatarUrl: null,
+          rimvioId: null,
+          emailLower: null,
+          source: "feed_talk",
+        });
+        return;
+      }
+      if (target.kind === "feed_message" && onScrollToFeedMessage) {
+        onScrollToFeedMessage(target.messageId);
+        return;
+      }
+      onOpenCalendar?.();
+    },
+    [peerLookup, eventsById, onOpenPeerChat, onScrollToFeedMessage, onOpenCalendar],
+  );
+
+  const onVerifyCapture = useCallback((eventId: string) => {
+    const result = verifyFeedCaptureEvent(eventId);
+    if (!result.ok || !result.event) {
+      toast.error("확정하지 못했어요");
+      return;
+    }
+    if (result.alreadyVerified) {
+      return;
+    }
+    toast.success(`${result.event.title} 확정했어요`);
+  }, []);
 
   const onPillPress = useCallback(
     (slot: FeedTodaySlot, pill: FeedSlotPill) => {
@@ -171,7 +222,11 @@ export const FeedSlotStage = memo(function FeedSlotStage({
         onPillPress={onPillPress}
         onSpawnPrompt={onSpawnPrompt}
         onOpenPeerChat={onOpenPeerChat}
+        onSlotOpen={onSlotOpen}
+        onVerifyCapture={onVerifyCapture}
+        gpsPings={gpsPings}
         onViewAll={onOpenCalendar}
+        recallEventId={recallEventId}
         className="min-h-0 flex-1"
       />
     </div>

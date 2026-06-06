@@ -1,5 +1,8 @@
-import type { OrchestrateHistoryTurn } from "@/lib/action-chat/orchestrator-types";
-import type { OrchestratorResult } from "@/lib/action-chat/orchestrator-types";
+import {
+  mergeOrchestratorMetadata,
+  type OrchestrateHistoryTurn,
+  type OrchestratorResult,
+} from "@/lib/action-chat/orchestrator-types";
 import type { ChatAxis } from "@/lib/action-chat/chat-three-axis";
 import {
   isMealAxisQuery,
@@ -21,11 +24,10 @@ function withAxisMeta(
 ): OrchestratorResult {
   return {
     ...result,
-    metadata: {
-      ...result.metadata,
+    metadata: mergeOrchestratorMetadata(result.metadata, {
       chat_axis: chatAxis,
       chat_axis_route: route,
-    },
+    }),
   };
 }
 
@@ -109,7 +111,7 @@ export async function tryChatAxisEarlyRoute(input: {
             {
               id: "meal-axis-search",
               label: "맛집 검색",
-              kind: "search",
+              kind: "custom",
               payload: { query },
             },
           ],

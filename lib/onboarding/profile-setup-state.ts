@@ -58,6 +58,9 @@ export const PROFILE_SETUP_BYPASS_PREFIXES = [
   "/onboarding",
   "/auth/callback",
   "/welcome",
+  "/feed",
+  "/globe",
+  "/search",
 ] as const;
 
 export function isProfileSetupBypassPath(pathname: string): boolean {

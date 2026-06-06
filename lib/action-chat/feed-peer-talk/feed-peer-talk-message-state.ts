@@ -1,4 +1,6 @@
+import { isFeedTalkInlineFeature } from "@/lib/action-chat/feed-peer-talk/feed-talk-inline-features";
 import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
+import { isGroupThreadId } from "@/lib/peer-chat/group-thread";
 import type { FeedPeerTalkThreadWire } from "@/lib/action-chat/feed-peer-talk/feed-peer-talk-types";
 import type { PeerMessage } from "@/lib/context/peer-message-types";
 import { mergePeerMessages, sortPeerMessages } from "@/lib/peer-chat/message-mapper";
@@ -8,7 +10,13 @@ export function sliceFeedPeerTalkHistory(messages: PeerMessage[]): PeerMessage[]
   return sortPeerMessages(messages).slice(-FEED_PEER_TALK_HISTORY_LINES);
 }
 
-export function buildFeedPeerTalkPromptLine(displayName: string): string {
+export function buildFeedPeerTalkPromptLine(
+  displayName: string,
+  peerThreadId?: string,
+): string {
+  if (peerThreadId && isGroupThreadId(peerThreadId)) {
+    return `${displayName} 단톡 · 메시지를 보내 보세요`;
+  }
   return `${displayName}님과 대화를 시작하세요`;
 }
 
@@ -19,7 +27,7 @@ function stripPeerTalkInlineChips(
     (message) =>
       !(
         message.role === "assistant" &&
-        message.inlineChatAction?.featureId === "peer_talk"
+        isFeedTalkInlineFeature(message.inlineChatAction?.featureId ?? "")
       ),
   );
 }
@@ -34,7 +42,7 @@ export function replaceLastPeerTalkChipWithThread(
     const message = messages[i];
     if (
       message?.role === "assistant" &&
-      message.inlineChatAction?.featureId === "peer_talk"
+      isFeedTalkInlineFeature(message.inlineChatAction?.featureId ?? "")
     ) {
       threadMessageId = message.id;
       break;

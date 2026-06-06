@@ -70,17 +70,23 @@ function demoNeedsRefresh(existing: EventCandidate, now: Date): boolean {
   return minutesUntil < 45 || minutesUntil > 150;
 }
 
-/**
- * Dev-only feed fixture — keeps one plan-backed slot in the today queue for UX QA.
- */
+/** Feed tab demo — seeds one plan-backed slot when the user has no real events yet. */
 export function ensureFeedPlanDemoEvent(now = new Date()): EventCandidate | null {
-  if (typeof window === "undefined" || process.env.NODE_ENV === "production") {
+  if (typeof window === "undefined") {
     return null;
   }
 
-  const existing = listEventCandidates().find((item) => item.id === FEED_PLAN_DEMO_EVENT_ID);
-  if (existing && !demoNeedsRefresh(existing, now)) {
-    return existing;
+  const existing = listEventCandidates();
+  const hasUserEvents = existing.some(
+    (item) => item.id !== FEED_PLAN_DEMO_EVENT_ID && !item.metadata?.feedDemo,
+  );
+  if (hasUserEvents) {
+    return null;
+  }
+
+  const demo = existing.find((item) => item.id === FEED_PLAN_DEMO_EVENT_ID);
+  if (demo && !demoNeedsRefresh(demo, now)) {
+    return demo;
   }
 
   const draft = buildFeedPlanDemoDraft(now);

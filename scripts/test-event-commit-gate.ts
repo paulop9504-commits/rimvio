@@ -34,11 +34,36 @@ const navigate = orchestrateEventCommitGate({ message: "길찾기" });
 assert.ok(navigate);
 assert.equal(navigate!.metadata?.semantic_reason, "commit_gate_slot_collect");
 
-const meal = orchestrateEventCommitGate({ message: "배고파" });
-assert.ok(meal);
-assert.equal(meal!.metadata?.event_intent, "meal");
+assert.equal(
+  orchestrateEventCommitGate({ message: "배고파" }),
+  null,
+  "vitality utterances bypass commit gate slot collect",
+);
 
 async function main() {
+  const hunger = await runOrchestratorPipeline({
+    message: "배고파",
+    masterContext: {
+      currentDate: "2026-06-02",
+      trustLevel: "L1",
+      existingSchedule: [],
+      allReminders: [],
+      userGoals: [],
+      activitySources: [],
+      conversationMemories: [],
+      activeContainers: [],
+      activeChains: [],
+      activeChain: null,
+      userDefinedActions: [],
+      mapApp: "kakao",
+    },
+  });
+  assert.notEqual(hunger.metadata?.semantic_reason, "commit_gate_slot_collect");
+  assert.ok(
+    hunger.experienceChoice || hunger.cafeDiscovery || /배고|맛집|먹/i.test(hunger.summary ?? ""),
+    "배고파 pipeline must route to vitality/meal, not commit gate",
+  );
+
   const pipeline = await runOrchestratorPipeline({
     message: "20시간뒤에 다낭 여행",
     masterContext: {

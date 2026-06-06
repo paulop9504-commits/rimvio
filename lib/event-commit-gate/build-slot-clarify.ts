@@ -1,5 +1,8 @@
 import { buildExtractedDataFromText, buildConfirmationOrchestratorResult } from "@/lib/action-chat/confirmation-logic";
-import type { OrchestratorResult } from "@/lib/action-chat/orchestrator-types";
+import {
+  mergeOrchestratorMetadata,
+  type OrchestratorResult,
+} from "@/lib/action-chat/orchestrator-types";
 import { eventIntentKindLabel } from "@/lib/event-commit-gate/parse-event-intent";
 import type {
   ClarifyMode,
@@ -104,15 +107,14 @@ export function buildSlotClarifyResult(input: {
     return {
       ...clarify,
       scheduleExtract: buildScheduleExtract(intent, message, referenceDate),
-      metadata: {
-        ...clarify.metadata,
+      metadata: mergeOrchestratorMetadata(clarify.metadata, {
         intent: "SCHEDULE",
         semantic_reason: "commit_gate_clarify",
         event_intent: intent.intent,
         missing_slots: intent.missing_slots,
         primary_missing: slot,
         clarify_mode: mode,
-      },
+      }),
     };
   }
 
@@ -124,7 +126,7 @@ export function buildSlotClarifyResult(input: {
     disclosure: "medium",
     actionsRevealed: false,
     pendingConfirm: false,
-    metadata: {
+    metadata: mergeOrchestratorMetadata(undefined, {
       intent: "ACTION",
       trust_level_adjustment: "NONE",
       semantic_reason: "commit_gate_slot_collect",
@@ -132,7 +134,7 @@ export function buildSlotClarifyResult(input: {
       missing_slots: intent.missing_slots,
       primary_missing: slot,
       clarify_mode: mode,
-    },
+    }),
     thought: `commit_gate_missing_${slot}`,
   };
 }

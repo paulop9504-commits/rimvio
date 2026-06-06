@@ -1,5 +1,5 @@
-import type { FallbackRecoveryCandidate } from "@/lib/action-chat/fallback-recovery/infer-fallback-recovery";
 import { inferFallbackRecovery } from "@/lib/action-chat/fallback-recovery/infer-fallback-recovery";
+import type { FallbackRecoveryCandidate } from "@/lib/action-chat/fallback-recovery/types";
 
 export const MEAL_OR_VITALITY = /(?:먹|맛집|배고|카페|피곤|힘들|지쳤|쉬고)/iu;
 

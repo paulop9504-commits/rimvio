@@ -3,7 +3,8 @@ export type SearchActivityKind =
   | "place_confirm"
   | "place_pick"
   | "discovery"
-  | "navigation";
+  | "navigation"
+  | "media_upload";
 
 export type SearchActivityEntry = {
   id: string;

@@ -29,6 +29,7 @@ export const SLIM_INLINE_ACTION_FEATURE_IDS = [
   "manual",
   "friend_add",
   "peer_talk",
+  "group_talk",
   "todo",
 ] as const;
 

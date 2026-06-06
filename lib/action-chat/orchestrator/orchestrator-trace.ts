@@ -1,43 +1,45 @@
 import type { OrchestratorPhase, OrchestratorTierId, OrchestratorTierLabel } from "@/lib/action-chat/orchestrator/pipeline-types";
 
+export type TraceLabel = OrchestratorTierLabel | (string & {});
+
 export type TraceEvent =
-  | { kind: "pass"; phase: OrchestratorPhase; tier: OrchestratorTierId; label: OrchestratorTierLabel }
+  | { kind: "pass"; phase: OrchestratorPhase; tier: OrchestratorTierId; label: TraceLabel }
   | {
       kind: "hit";
       phase: OrchestratorPhase;
       tier: OrchestratorTierId;
-      label: OrchestratorTierLabel;
+      label: TraceLabel;
       detail?: string;
     }
-  | { kind: "inject"; phase: 2; tier: OrchestratorTierId; label: OrchestratorTierLabel; detail?: string }
-  | { kind: "fast_path"; tier: OrchestratorTierId; label: OrchestratorTierLabel; detail?: string }
-  | { kind: "terminal"; mode: "EARLY_RETURN" | "FINAL_RETURN" };
+  | { kind: "inject"; phase: 2; tier: OrchestratorTierId; label: TraceLabel; detail?: string }
+  | { kind: "fast_path"; tier: OrchestratorTierId; label: TraceLabel; detail?: string }
+  | { kind: "terminal"; mode: "EARLY_RETURN" | "FINAL_RETURN" | "KERNEL_OS" };
 
 export class OrchestratorTrace {
   private readonly events: TraceEvent[] = [];
 
-  pass(phase: OrchestratorPhase, tier: OrchestratorTierId, label: OrchestratorTierLabel) {
+  pass(phase: OrchestratorPhase, tier: OrchestratorTierId, label: TraceLabel) {
     this.events.push({ kind: "pass", phase, tier, label });
   }
 
   hit(
     phase: OrchestratorPhase,
     tier: OrchestratorTierId,
-    label: OrchestratorTierLabel,
+    label: TraceLabel,
     detail?: string
   ) {
     this.events.push({ kind: "hit", phase, tier, label, detail });
   }
 
-  inject(tier: OrchestratorTierId, label: OrchestratorTierLabel, detail?: string) {
+  inject(tier: OrchestratorTierId, label: TraceLabel, detail?: string) {
     this.events.push({ kind: "inject", phase: 2, tier, label, detail });
   }
 
-  fastPath(tier: OrchestratorTierId, label: OrchestratorTierLabel, detail?: string) {
+  fastPath(tier: OrchestratorTierId, label: TraceLabel, detail?: string) {
     this.events.push({ kind: "fast_path", tier, label, detail });
   }
 
-  terminal(mode: "EARLY_RETURN" | "FINAL_RETURN") {
+  terminal(mode: "EARLY_RETURN" | "FINAL_RETURN" | "KERNEL_OS") {
     this.events.push({ kind: "terminal", mode });
   }
 

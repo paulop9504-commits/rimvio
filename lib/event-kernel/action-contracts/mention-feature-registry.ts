@@ -151,7 +151,8 @@ const REGISTRY: readonly MentionFeature[] = [
     aliases: ["친추", "친구추가", "친구", "friend", "addfriend"],
     sourceRef: "mention:friend_add",
     category: "custom",
-    confirmCopy: "전화번호, 이메일, Rimvio ID 중 하나를 적어 주세요.",
+    confirmCopy:
+      "전화번호, 이메일, Rimvio ID 중 하나를 적어 주세요. 예: @친추 sypark · @친추 010-1234-5678 · @친추 friend@gmail.com",
   },
   {
     featureId: "peer_talk",
@@ -160,6 +161,14 @@ const REGISTRY: readonly MentionFeature[] = [
     sourceRef: "mention:peer_talk",
     category: "custom",
     confirmCopy: "친구 이름이나 Rimvio ID를 적어 주세요. @대화끝 으로 AI 피드로 돌아갈 수 있어요.",
+  },
+  {
+    featureId: "group_talk",
+    displayName: "단톡",
+    aliases: ["단톡", "그룹", "group", "groupchat", "그룹톡"],
+    sourceRef: "mention:group_talk",
+    category: "custom",
+    confirmCopy: "단톡 방 이름을 적어 주세요. /peers 에서 만든 방이에요.",
   },
   {
     featureId: "end_peer_talk",

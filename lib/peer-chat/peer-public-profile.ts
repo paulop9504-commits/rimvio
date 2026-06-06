@@ -48,7 +48,7 @@ export async function fetchPeerPublicProfileByUserId(
   return parsePublicProfileRow(data);
 }
 
-export async function assertCallerIsDmThreadMember(
+export async function assertCallerIsThreadMember(
   supabase: SupabaseClient<Database>,
   threadId: string,
   callerUserId: string,
@@ -66,6 +66,14 @@ export async function assertCallerIsDmThreadMember(
   if (!data) {
     throw new Error("forbidden:이 대화방에 참여 중이 아니에요.");
   }
+}
+
+export async function assertCallerIsDmThreadMember(
+  supabase: SupabaseClient<Database>,
+  threadId: string,
+  callerUserId: string,
+): Promise<void> {
+  await assertCallerIsThreadMember(supabase, threadId, callerUserId);
 }
 
 export async function readDmPeerPublicProfile(

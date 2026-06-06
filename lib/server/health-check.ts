@@ -36,9 +36,18 @@ async function probeSupabase() {
     return false;
   }
 
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!anonKey) {
+    return false;
+  }
+
   try {
     const response = await fetch(`${url.replace(/\/$/, "")}/auth/v1/health`, {
       method: "GET",
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${anonKey}`,
+      },
       signal: AbortSignal.timeout(4_000),
       cache: "no-store",
     });
@@ -55,7 +64,9 @@ export async function collectHealthReport(): Promise<HealthReport> {
   ]);
 
   const supabaseConfigured = isSupabaseConfigured();
-  const ok = storageWritable && (!supabaseConfigured || supabaseReachable);
+  const onVercel = Boolean(process.env.VERCEL);
+  const storageOk = onVercel || storageWritable;
+  const ok = storageOk && (!supabaseConfigured || supabaseReachable);
 
   return {
     ok,

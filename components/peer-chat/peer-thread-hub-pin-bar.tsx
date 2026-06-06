@@ -5,6 +5,7 @@ import { Pin } from "lucide-react";
 import { toast } from "sonner";
 import { usePeerThreadSettings } from "@/hooks/use-peer-thread-settings";
 import { findSlotByPeerId, hubSlotAt } from "@/lib/context/pinned-peer-roster";
+import type { RoomKind } from "@/lib/chat-room/types";
 import {
   PINNED_PEER_SLOTS,
   type PinnedSlotIndex,
@@ -20,6 +21,7 @@ type PeerThreadHubPinBarProps = {
   displayName: string;
   /** Rimvio 계정 DM이면 서버 friend_connections 고정 */
   friendUserId?: string | null;
+  roomKind?: RoomKind;
   /** 헤더 오른쪽(이름 옆) vs 예전 전체 너비 바 */
   variant?: "header" | "bar";
 };
@@ -28,8 +30,11 @@ export function PeerThreadHubPinBar({
   peerThreadId,
   displayName,
   friendUserId,
+  roomKind = "dm",
   variant = "header",
 }: PeerThreadHubPinBarProps) {
+  const isGroup = roomKind === "group";
+  const slotLabel = isGroup ? "단톡" : "친구";
   const { roster, setPinned, pinError } = usePeerThreadSettings({
     peerThreadId,
     displayName,
@@ -66,7 +71,7 @@ export function PeerThreadHubPinBar({
         occupant.peerThreadId &&
         occupant.peerThreadId !== peerThreadId
       ) {
-        toast.error(`${index + 1}번은 다른 친구가 쓰고 있어요`);
+        toast.error(`${index + 1}번은 다른 ROOM이 쓰고 있어요`);
         return;
       }
       setBusy(true);
@@ -74,14 +79,18 @@ export function PeerThreadHubPinBar({
         const result = setPinned(true, index);
         if (!result.ok) {
           if (result.reason === "roster_full") {
-            toast.error("ROOM 고정 5명이 가득 찼어요");
+            toast.error("ROOM 고정 5슬롯이 가득 찼어요");
           }
           return;
         }
         if (friendUserId) {
           await syncServerPin(friendUserId, index, true);
         }
-        toast.success(`${displayName} · ${index + 1}번에 고정했어요`);
+        toast.success(
+          isGroup
+            ? `${displayName} 단톡 · ${index + 1}번`
+            : `${displayName} · ${index + 1}번에 고정했어요`,
+        );
       } catch (error) {
         toast.error(
           error instanceof Error ? error.message : "고정에 실패했어요",
@@ -90,7 +99,7 @@ export function PeerThreadHubPinBar({
         setBusy(false);
       }
     },
-    [roster, peerThreadId, displayName, friendUserId, setPinned, syncServerPin],
+    [roster, peerThreadId, displayName, friendUserId, isGroup, setPinned, syncServerPin],
   );
 
   const unpin = useCallback(async () => {
@@ -136,7 +145,9 @@ export function PeerThreadHubPinBar({
             disabled={busy || taken}
             onClick={() => void pinToSlot(idx)}
             title={
-              taken ? `${idx + 1}번 · 사용 중` : `${idx + 1}번에 고정`
+              taken
+                ? `${idx + 1}번 · 사용 중`
+                : `${idx + 1}번에 ${slotLabel} 고정`
             }
             className={cn(
               "flex items-center justify-center rounded-full font-medium transition-colors",

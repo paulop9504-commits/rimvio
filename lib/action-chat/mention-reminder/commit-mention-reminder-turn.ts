@@ -1,5 +1,8 @@
 import type { ChatAxis } from "@/lib/action-chat/chat-three-axis";
-import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
+import {
+  mentionOrchestratorMetadata,
+  type ActionChatMessage,
+} from "@/lib/action-chat/orchestrator-types";
 import {
   buildInlineChatReminderWire,
 } from "@/lib/action-chat/mention-reminder/inline-chat-reminder";
@@ -108,10 +111,10 @@ export function tryBuildMentionReminderTurn(input: {
         fireAt: reminder.fireAt,
         whenLabel: formatMentionReminderWhen(reminder.fireAt),
       }),
-      metadata: {
+      metadata: mentionOrchestratorMetadata({
         mention_feature: "reminder",
         sourceRef: "mention:reminder",
-      },
+      }),
     }),
   ];
 }

@@ -1,4 +1,4 @@
-import type { AiMessagePayload } from "@/lib/chat-room/types";
+import type { AiMessagePayload, AiMode, RoomKind } from "@/lib/chat-room/types";
 import type { RoomMessageType } from "@/lib/chat-room/types";
 
 export type PeerMessageRow = {
@@ -16,7 +16,17 @@ export type PeerThreadRow = {
   owner_user_id: string;
   display_name: string;
   invite_code: string;
+  room_kind?: RoomKind;
+  ai_mode?: AiMode;
   created_at: string;
+};
+
+export type ListedPeerThread = {
+  threadId: string;
+  displayName: string;
+  roomKind: RoomKind;
+  /** DM only — the other participant. */
+  otherUserId: string | null;
 };
 
 export type PeerThreadEnsureResult = {

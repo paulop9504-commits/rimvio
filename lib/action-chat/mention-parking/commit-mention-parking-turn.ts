@@ -1,5 +1,8 @@
 import type { ChatAxis } from "@/lib/action-chat/chat-three-axis";
-import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
+import {
+  mentionOrchestratorMetadata,
+  type ActionChatMessage,
+} from "@/lib/action-chat/orchestrator-types";
 import {
   buildInlineChatParkingWire,
 } from "@/lib/action-chat/mention-parking/inline-chat-parking";
@@ -117,10 +120,10 @@ export function tryBuildMentionParkingTurn(input: {
           retentionLabel: formatParkingRetentionLabel(expiresAt),
           summaryLine: "사진을 찍어주세요",
         }),
-        metadata: {
+        metadata: mentionOrchestratorMetadata({
           mention_feature: "parking",
           sourceRef: "mention:parking",
-        },
+        }),
       }),
     ];
   }
@@ -136,10 +139,10 @@ export function tryBuildMentionParkingTurn(input: {
         "saved",
         "기록되었습니다",
       ),
-      metadata: {
+      metadata: mentionOrchestratorMetadata({
         mention_feature: "parking",
         sourceRef: "mention:parking",
-      },
+      }),
     }),
   ];
 }
@@ -180,10 +183,10 @@ export async function tryCommitParkingPhotoTurn(input: {
         "saved",
         "사진과 함께 기록되었습니다",
       ),
-      metadata: {
+      metadata: mentionOrchestratorMetadata({
         mention_feature: "parking",
         sourceRef: "mention:parking",
-      },
+      }),
     }),
   ];
 }

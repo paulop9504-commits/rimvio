@@ -38,6 +38,8 @@ export type InlineChatActionWire = {
   friendAddContact?: string;
   /** @톡 — 피드 인라인 DM (같은 room 스레드) */
   peerTalkQuery?: string;
+  /** @단톡 — 피드 인라인 group ROOM */
+  groupTalkQuery?: string;
 };
 
 export function buildInlineChatActionWire(
@@ -47,6 +49,7 @@ export function buildInlineChatActionWire(
     linksheetUrlPrompt?: boolean;
     friendAddContact?: string;
     peerTalkQuery?: string;
+    groupTalkQuery?: string;
   },
 ): InlineChatActionWire {
   return {
@@ -63,5 +66,6 @@ export function buildInlineChatActionWire(
     linksheetUrlPrompt: input.linksheetUrlPrompt,
     friendAddContact: input.friendAddContact,
     peerTalkQuery: input.peerTalkQuery,
+    groupTalkQuery: input.groupTalkQuery,
   };
 }

@@ -15,11 +15,13 @@ import { DmChatMessageSkeleton } from "@/components/peer-chat/dm-chat-message-sk
 import { PeerChatBubble } from "@/components/peer-chat/peer-chat-bubble";
 import { PeerInviteBanner } from "@/components/peer-chat/peer-invite-banner";
 import { isDmThreadId } from "@/lib/peer-chat/dm-thread";
+import { isGroupThreadId } from "@/lib/peer-chat/group-thread";
 import { DM_CHAT } from "@/lib/peer-chat/dm-chat-density";
 import {
   shouldShowPeerMessageTime,
   shouldShowPeerProfileHeader,
 } from "@/lib/peer-chat/message-time-visibility";
+import { groupReadCountForMessage } from "@/lib/peer-chat/group-read-receipt";
 import { shouldShowPeerSentCheck } from "@/lib/peer-chat/peer-read-receipt";
 import { useDmPeerProfile } from "@/hooks/use-dm-peer-profile";
 import { isRegisteredPeerDmThread } from "@/lib/peer-chat/peer-chat-client";
@@ -53,6 +55,7 @@ export function PeerThreadChatPanel({
 }: PeerThreadChatPanelProps) {
   const threadId = policyInput.settings.peerThreadId;
   const phoneDm = isDmThreadId(threadId);
+  const isGroup = isGroupThreadId(threadId);
   const simple = simpleDm || phoneDm;
   const lensActive = shouldAnalyzePeerAiLens(policyInput);
   const { profile: peerProfileRemote } = useDmPeerProfile(
@@ -80,6 +83,7 @@ export function PeerThreadChatPanel({
     canSendImage,
     messagesHydrating,
     peerLastReadAt,
+    groupReadCursors,
   } = usePeerThreadChat(policyInput);
   const { anchorMessageId, candidates: lensCandidates } = usePeerAiLens({
     messages,
@@ -212,7 +216,7 @@ export function PeerThreadChatPanel({
         simple ? "bg-[#0f0f0f]" : "rimvio-dm-chat-bg",
       )}
     >
-      {!readOnly && !phoneDm ? (
+      {!readOnly && !phoneDm && !isGroup ? (
         <PeerInviteBanner inviteUrl={inviteUrl} inviteCode={inviteCode} />
       ) : null}
 
@@ -271,6 +275,11 @@ export function PeerThreadChatPanel({
                 showSentCheck={
                   phoneDm &&
                   shouldShowPeerSentCheck(messages, index, peerLastReadAt)
+                }
+                groupReadCount={
+                  isGroup
+                    ? groupReadCountForMessage(messages, index, groupReadCursors)
+                    : 0
                 }
               />
             ))}

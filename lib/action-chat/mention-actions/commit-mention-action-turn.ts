@@ -6,7 +6,10 @@ import {
   readLastMentionAction,
   recordLastMentionAction,
 } from "@/lib/action-chat/mention-actions/last-mention-action-store";
-import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
+import {
+  mentionOrchestratorMetadata,
+  type ActionChatMessage,
+} from "@/lib/action-chat/orchestrator-types";
 import { normalizeAtMentionInput } from "@/lib/command-os/parse-command-input";
 import {
   getMentionFeature,
@@ -53,7 +56,8 @@ function persistLastAction(wire: InlineChatActionWire): void {
   if (
     wire.featureId === "manual" ||
     wire.featureId === "friend_add" ||
-    wire.featureId === "peer_talk"
+    wire.featureId === "peer_talk" ||
+    wire.featureId === "group_talk"
   ) {
     return;
   }
@@ -117,10 +121,10 @@ export function tryBuildMentionActionTurn(input: {
     userMessage,
     createChatMessage("assistant", "", {
       inlineChatAction: wire,
-      metadata: {
+      metadata: mentionOrchestratorMetadata({
         mention_feature: feature.featureId,
         sourceRef: feature.sourceRef,
-      },
+      }),
     }),
   ];
 }

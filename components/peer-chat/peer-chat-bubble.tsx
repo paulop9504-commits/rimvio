@@ -21,6 +21,8 @@ type PeerChatBubbleProps = {
   showTime?: boolean;
   /** 내 메시지 — 상대가 아직 안 읽었을 때만 (카톡식) */
   showSentCheck?: boolean;
+  /** 단톡 — 읽은 인원 수 (카톡 단톡식) */
+  groupReadCount?: number;
   showPeerProfileHeader?: boolean;
   peerProfile?: PeerMessageRowProfile | null;
   as?: "li" | "div";
@@ -47,6 +49,7 @@ export function PeerChatBubble({
   simple = false,
   showTime = true,
   showSentCheck = false,
+  groupReadCount = 0,
   showPeerProfileHeader = false,
   peerProfile = null,
   as = "li",
@@ -186,9 +189,20 @@ export function PeerChatBubble({
             simple ? DM_CHAT.rowGap : "gap-1.5",
           )}
         >
-          {time || showSentCheck ? (
+          {time || showSentCheck || groupReadCount > 0 ? (
             <div className="flex shrink-0 flex-col items-end gap-0.5 self-end">
               {time ? <MessageTime time={time} compact={simple} /> : null}
+              {groupReadCount > 0 ? (
+                <span
+                  className={cn(
+                    "leading-none tabular-nums",
+                    simple ? "text-[10px] text-white/40" : "text-[10px] text-white/45",
+                  )}
+                  aria-label={`${groupReadCount}명이 읽음`}
+                >
+                  {groupReadCount}
+                </span>
+              ) : null}
               {showSentCheck ? (
                 <Check
                   className={cn(

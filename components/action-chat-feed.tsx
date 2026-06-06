@@ -102,6 +102,10 @@ type ActionChatFeedProps = {
   onOpenLinkPaste: () => void;
   onOpenCapture?: () => void;
   onQuickCapture?: (file: File) => void;
+  /** 검색 탭 — 텍스트·링크·메모를 Feed Event에 귀속 */
+  onSearchMemoIngest?: (text: string) => Promise<boolean>;
+  searchIngesting?: boolean;
+  searchIngressHint?: string;
   className?: string;
 };
 
@@ -117,6 +121,9 @@ export function ActionChatFeed({
   onOpenLinkPaste,
   onOpenCapture,
   onQuickCapture,
+  onSearchMemoIngest,
+  searchIngesting = false,
+  searchIngressHint,
   className,
 }: ActionChatFeedProps) {
   const copy = useCopy();
@@ -295,8 +302,8 @@ export function ActionChatFeed({
 
   useSurfaceIgnoreObserver({
     surfaceId: surfaceFrame.layout.primary?.id ?? null,
-    capabilityId: surfaceFrame.layout.primary?.primaryAction.capabilityId ?? null,
-    priorityBand: surfaceFrame.layout.primary?.priority.band,
+    capabilityId: surfaceFrame.layout.primary?.primaryAction?.capabilityId ?? null,
+    priorityBand: surfaceFrame.layout.primary?.priority?.band,
     enabled: hasActiveDecision,
     resetToken: surfaceActionGeneration,
     onIgnored: () => {
@@ -540,6 +547,18 @@ export function ActionChatFeed({
                   notifyPeerRoomFromFeed(peer.displayName);
                   router.push(peerRoomPath(peer.peerThreadId));
                 }}
+                onScrollToFeedMessage={(messageId) => {
+                  const node = threadRef.current?.querySelector(
+                    `[data-message-id="${messageId}"]`,
+                  );
+                  if (node) {
+                    node.scrollIntoView({ behavior: "smooth", block: "center" });
+                    toast.message("대화에서 일정을 찾았어요", { duration: 2800 });
+                    return;
+                  }
+                  setActiveActionsOpen(true);
+                  toast.message("캘린더에서 일정을 확인해 주세요", { duration: 2800 });
+                }}
                 className="min-h-0 flex-1 overflow-hidden"
               />
             </div>
@@ -643,7 +662,7 @@ export function ActionChatFeed({
 
           {isSlot || isConversation ? (
           <div
-            className="rimvio-feed-composer-dock pointer-events-auto shrink-0 touch-manipulation lg:relative lg:z-[2]"
+            className="rimvio-feed-composer-dock shrink-0 touch-manipulation lg:relative lg:z-[2] lg:pointer-events-auto"
             data-feed-composer-dock
           >
             <ActionChatInputBar
@@ -654,10 +673,10 @@ export function ActionChatFeed({
                   ? `${feedPeerTalkSession.displayName}에게 메시지`
                   : threadlineNeedsTap
                     ? "오늘에 추가…"
-                    : copy.search.placeholder
+                    : searchIngressHint ?? copy.search.placeholder
               }
-              sending={sending}
-              disabled={sending}
+              sending={sending || searchIngesting}
+              disabled={sending || searchIngesting}
               onOpenCapture={onOpenCapture}
               onOpenLinkPaste={onOpenLinkPaste}
               onQuickCapture={onQuickCapture}
@@ -666,6 +685,15 @@ export function ActionChatFeed({
               }}
               onSendComposer={async (payload) => {
                 const hasAttachments = (payload.attachments?.length ?? 0) > 0;
+                if (
+                  !isSlot &&
+                  scopeKind === "search" &&
+                  onSearchMemoIngest &&
+                  payload.text.trim() &&
+                  !payload.text.trim().startsWith("@")
+                ) {
+                  return onSearchMemoIngest(payload.text);
+                }
                 if (
                   !isSlot &&
                   feedPeerTalkSendActive &&

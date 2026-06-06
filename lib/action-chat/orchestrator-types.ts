@@ -12,7 +12,11 @@ import type { KnowledgeContainerId } from "@/lib/knowledge/knowledge-entity-type
 
 
 
-export type OrchestratorIntent = "ACTION" | "SCHEDULE" | "CONTAINER_MGMT";
+export type OrchestratorIntent =
+  | "ACTION"
+  | "SCHEDULE"
+  | "CONTAINER_MGMT"
+  | "CONVERSATION";
 
 export type TrustLevelAdjustment = "NONE" | "INCREASE" | "DECREASE";
 
@@ -76,13 +80,102 @@ export type OrchestratorMetadataWire = {
   /** GOAL Engine — snapshot revision id (1 turn = 1 build). */
   goal_snapshot_revision?: string;
 
+  /** Routing telemetry — why this branch fired. */
+  semantic_reason?: string;
+
+  /** Named routing patch id (PATCH1, UX_*, CRAFT_*, etc.). */
+  routing_patch?: string;
+
+  /** AI-intent classifier bucket (DECISION, COUNSELING, …). */
+  ai_intent?: string;
+
+  /** Client 3-axis tab scope stamped on pipeline exit. */
+  chat_axis?: import("@/lib/action-chat/chat-three-axis").ChatAxis;
+
+  /** Axis-specific sub-route (meal_discovery, …). */
+  chat_axis_route?: string;
+
+  /** @ mention feature id when turn bypasses orchestrator. */
+  mention_feature?: string;
+
+  /** Event commit gate — parsed intent kind. */
+  event_intent?: string;
+
+  missing_slots?: string[];
+
+  primary_missing?: string;
+
+  clarify_mode?: string;
+
+  prior_intent?: string;
+
+  study_situation?: string;
+
+  persona_tone?: string;
+
+  fallback_recovery?: boolean;
+
+  frustration_escape?: boolean;
+
+  progressive_disclosure?: boolean;
+
+  command_os_candidate?: unknown;
+
+  calendar_events?: unknown;
+
+  /** Action contract sourceRef (@ mention, axis, …). */
+  sourceRef?: string;
+
+  persona_stage?: string;
+
+  recovery_primary?: string;
+
+  hidden_option_count?: number;
+
+  llm_router?: Record<string, unknown>;
+
+} & Record<string, unknown>;
+
+/** Partial merge helper — spread patches onto required intent fields. */
+export const MINIMAL_ORCHESTRATOR_METADATA: OrchestratorMetadataWire = {
+  intent: "ACTION",
+  trust_level_adjustment: "NONE",
 };
+
+export function mergeOrchestratorMetadata(
+  base: OrchestratorMetadataWire | undefined,
+  patch: Partial<OrchestratorMetadataWire> & Record<string, unknown>,
+): OrchestratorMetadataWire {
+  return {
+    intent: patch.intent ?? base?.intent ?? "ACTION",
+    trust_level_adjustment:
+      patch.trust_level_adjustment ?? base?.trust_level_adjustment ?? "NONE",
+    ...base,
+    ...patch,
+  };
+}
+
+/** @ mention / axis inline turns — always ACTION + NONE baseline. */
+export function mentionOrchestratorMetadata(
+  patch: Partial<OrchestratorMetadataWire> & Record<string, unknown>,
+): OrchestratorMetadataWire {
+  return mergeOrchestratorMetadata(MINIMAL_ORCHESTRATOR_METADATA, patch);
+}
+
+export type ExecutionRoute =
+  | "EVENT_REVIEW_DATE_PICKER"
+  | "EVENT_REVIEW_DATE_CONFIRM"
+  | "CALENDAR_COMMIT"
+  | "REVIEW_REJECT"
+  | "CONTEXTUAL_MEAL_RECOMMENDATION"
+  | "COMMAND_ACTION_QUERY"
+  | string;
 
 export type IntentRouteMeta = {
 
-  intent_type: "NEW_TASK" | "CONTINUE";
+  intent_type?: "NEW_TASK" | "CONTINUE";
 
-  requires_context_switch: boolean;
+  requires_context_switch?: boolean;
 
   current_topic?: string | null;
 
@@ -114,6 +207,9 @@ export type IntentRouteMeta = {
   kernel_search_plan?: import("@/lib/event-kernel/search-planner/types").EventKernelSearchPlan;
 
   execution_mode?: "action" | "conversation";
+
+  /** Event OS / review execution client ingress route. */
+  execution_route?: ExecutionRoute;
 
 };
 

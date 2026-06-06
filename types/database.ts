@@ -153,6 +153,7 @@ export type PeerThreadMemberRow = {
   thread_id: string;
   user_id: string;
   joined_at: string;
+  last_read_at: string | null;
 };
 
 export type PeerMessageRow = {
@@ -472,6 +473,10 @@ export type Database = {
       is_peer_thread_member: {
         Args: { p_thread_id: string; p_user_id?: string };
         Returns: boolean;
+      };
+      rimvio_rename_group_thread: {
+        Args: { p_thread_id: string; p_display_name: string };
+        Returns: string;
       };
       match_users_by_phones: {
         Args: { p_phones: string[] };

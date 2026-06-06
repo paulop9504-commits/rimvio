@@ -82,6 +82,8 @@ export function armScheduledActionDelivery(input: {
   messageId: string;
   extracted: ConfirmationExtractedData;
   onFire: () => void;
+  peerThreadId?: string | null;
+  peerDisplayName?: string | null;
 }) {
   disarmScheduledActionDelivery(input.scopeId, input.messageId);
 
@@ -89,6 +91,8 @@ export function armScheduledActionDelivery(input: {
     messageId: input.messageId,
     extracted: input.extracted,
     scopeId: input.scopeId,
+    peerThreadId: input.peerThreadId,
+    peerDisplayName: input.peerDisplayName,
   });
 
   if (shouldUseJITEventDelivery(input.extracted)) {

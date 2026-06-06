@@ -13,9 +13,12 @@ import {
 } from "lucide-react";
 import { useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useChatAmbientFocusOptional } from "@/components/action-chat/chat-ambient-focus";
+import { GroupTalkBubbles } from "@/components/action-chat/group-talk-bubbles";
 import { PeerTalkContactBubbles } from "@/components/action-chat/peer-talk-contact-bubbles";
 import type { PeerContact } from "@/lib/context/peer-contact-types";
+import { useGroupTalkCandidates } from "@/hooks/use-group-talk-candidates";
 import { usePeerTalkCandidates } from "@/hooks/use-peer-talk-candidates";
+import { groupTargetAsPeerContact } from "@/lib/peer-chat/group-target-as-contact";
 import {
   rimvioComposerFieldClass,
   rimvioIconBtnClass,
@@ -73,6 +76,8 @@ export function ActionChatInputBar({
 
   const { active: peerTalkComposer, candidates: peerTalkCandidates } =
     usePeerTalkCandidates(text);
+  const { active: groupTalkComposer, candidates: groupTalkCandidates } =
+    useGroupTalkCandidates(text);
 
   const syncComposerDraft = (value: string) => {
     ambient?.setComposerDraft(value.trim().length > 0);
@@ -130,7 +135,26 @@ export function ActionChatInputBar({
         className,
       )}
     >
-      {peerTalkComposer ? (
+      {groupTalkComposer ? (
+        <div className="mb-1 border-b border-white/[0.06] pb-1">
+          {groupTalkCandidates.length > 0 ? (
+            <GroupTalkBubbles
+              groups={groupTalkCandidates}
+              onPick={(group) => {
+                onPeerTalkPick?.(groupTargetAsPeerContact(group));
+                setText("");
+                syncComposerDraft("");
+              }}
+            />
+          ) : (
+            <p className="px-1 py-2 text-center text-[11px] text-white/40">
+              {groupTalkComposer.query.trim()
+                ? `"${groupTalkComposer.query.trim()}" 맞는 단톡이 없어요`
+                : "단톡이 없어요 · /peers 에서 만들기"}
+            </p>
+          )}
+        </div>
+      ) : peerTalkComposer ? (
         <div className="mb-1 border-b border-white/[0.06] pb-1">
           {peerTalkCandidates.length > 0 ? (
             <PeerTalkContactBubbles

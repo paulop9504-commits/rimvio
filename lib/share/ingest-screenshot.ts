@@ -76,10 +76,12 @@ function buildCaptureUrl(id: string) {
 
 async function saveScreenshotIntent(input: {
   file: File;
+  originalFile?: File;
   intent: ScreenshotIntent;
   ocr: OcrResult;
   captureVision?: CaptureVisionResult | null;
   inferredCaptureIntent?: InferredCaptureIntent;
+  captureId?: string;
 }): Promise<InboxPasteResult> {
   if (input.intent.kind === "url" && input.intent.urls?.length) {
     return ingestPastedLinks(input.intent.urls.join("\n"));
@@ -87,8 +89,21 @@ async function saveScreenshotIntent(input: {
 
   setCaptureIntent(input.intent, input.captureVision);
 
-  const id = crypto.randomUUID();
+  const id = input.captureId ?? crypto.randomUUID();
   const dataUrl = await prepareCaptureThumbnailDataUrl(input.file);
+
+  try {
+    const { attachMediaSpacetime } = await import(
+      "@/lib/location-ping/attach-media-spacetime"
+    );
+    await attachMediaSpacetime({
+      file: input.originalFile ?? input.file,
+      origin: "feed_capture",
+      originRef: id,
+    });
+  } catch {
+    // Capture save should not fail when GPS is unavailable.
+  }
   const actionOptions = {
     captureVision: input.captureVision,
     vision: input.ocr.vision,
@@ -172,6 +187,7 @@ export async function commitConfirmedScreenshot(
 
   const result = await saveScreenshotIntent({
     file: payload.file,
+    originalFile: payload.file,
     intent: payload.intent,
     ocr: payload.ocr,
     captureVision,
@@ -187,6 +203,7 @@ export async function ingestScreenshot(
 ): Promise<InboxPasteResult> {
   onProgress?.({ phase: "ocr", progress: 0, status: "reading" });
 
+  const captureId = crypto.randomUUID();
   const prepared = await prepareCaptureImageForUpload(file);
 
   const processed = await processCaptureFromImage(prepared, (event) => {
@@ -209,6 +226,8 @@ export async function ingestScreenshot(
     onProgress?.({ phase: "save", progress: 90 });
     const result = await saveScreenshotIntent({
       file: prepared,
+      originalFile: file,
+      captureId,
       intent,
       ocr,
       captureVision: pipeline.captureVision ?? captureVision,
@@ -245,6 +264,8 @@ export async function ingestScreenshot(
   onProgress?.({ phase: "save", progress: 90 });
   const result = await saveScreenshotIntent({
     file: prepared,
+    originalFile: file,
+    captureId,
     intent,
     ocr,
     captureVision,

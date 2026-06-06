@@ -90,10 +90,13 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
   const [aiBusy, setAiBusy] = useState(false);
   const [imageBusy, setImageBusy] = useState(false);
   const hydrateGen = useRef(0);
-  const { peerLastReadAt, setPeerLastReadAt, refreshPeerRead } = usePeerReadReceipt(
-    threadId,
-    useCloud && cloudReady,
-  );
+  const {
+    peerLastReadAt,
+    setPeerLastReadAt,
+    groupReadCursors,
+    setGroupReadCursors,
+    refreshPeerRead,
+  } = usePeerReadReceipt(threadId, useCloud && cloudReady);
 
   const refreshLocal = useCallback(() => {
     if (!canPersist) {
@@ -145,6 +148,7 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
         }
 
         setPeerLastReadAt(remotePayload.peerLastReadAt);
+        setGroupReadCursors(remotePayload.groupReadCursors ?? []);
         setMessages((current) => {
           const merged = mergePeerMessagesBatch(current, remote);
           if (canPersist && merged.length > 0) {
@@ -172,7 +176,15 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
     return () => {
       cancelled = true;
     };
-  }, [useCloud, threadId, displayName, refreshLocal, canPersist, setPeerLastReadAt]);
+  }, [
+    useCloud,
+    threadId,
+    displayName,
+    refreshLocal,
+    canPersist,
+    setPeerLastReadAt,
+    setGroupReadCursors,
+  ]);
 
   const realtimeThreadId = cloudThreadId ?? threadId;
 
@@ -195,7 +207,7 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
     } catch {
       // Polling is best-effort when realtime drops or hydrate is slow.
     }
-  }, [useCloud, threadId, canPersist, setPeerLastReadAt]);
+  }, [useCloud, threadId, canPersist, setPeerLastReadAt, setGroupReadCursors]);
 
   useEffect(() => {
     if (!useCloud) {
@@ -421,12 +433,25 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
 
       try {
         setSyncError(null);
+        const { attachMediaSpacetime, serializeMediaSpacetimeForUpload } =
+          await import("@/lib/location-ping/attach-media-spacetime");
+        const spacetime = await attachMediaSpacetime({
+          file,
+          origin: "peer_chat",
+        });
         const message = await sendPeerImageRemote({
           threadId: sendThreadId,
           displayName,
           file,
           caption,
+          spacetimeJson: serializeMediaSpacetimeForUpload(spacetime),
         });
+        await import("@/lib/location-ping/media-context-store").then(({ saveMediaSpacetimeContext }) =>
+          saveMediaSpacetimeContext({
+            ...spacetime,
+            originRef: message.id,
+          }),
+        );
         setCloudThreadId((current) => current ?? sendThreadId);
         setCloudReady(true);
         setMessages((current) => {
@@ -518,6 +543,7 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
     imageBusy,
     messagesHydrating,
     peerLastReadAt,
+    groupReadCursors,
     refreshPeerRead,
   };
 }

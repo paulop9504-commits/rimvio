@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAuthUser } from "@/lib/auth/api-auth";
-import { listDmThreadsForUser } from "@/lib/peer-chat/server-peer-chat";
+import { listPeerThreadsForUser } from "@/lib/peer-chat/server-peer-chat";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
 export async function GET() {
@@ -20,7 +20,7 @@ export async function GET() {
 
   try {
     const supabase = await createClient();
-    const threads = await listDmThreadsForUser(supabase, userId);
+    const threads = await listPeerThreadsForUser(supabase, userId);
     return NextResponse.json({ threads });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to list threads.";

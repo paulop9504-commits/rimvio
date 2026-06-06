@@ -1,5 +1,8 @@
 import type { ChatAxis } from "@/lib/action-chat/chat-three-axis";
-import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
+import {
+  mentionOrchestratorMetadata,
+  type ActionChatMessage,
+} from "@/lib/action-chat/orchestrator-types";
 import {
   buildInlineChatTransferWire,
   toDutchPaySummaryWire,
@@ -74,10 +77,10 @@ export function tryBuildMentionTransferTurn(input: {
           ? toDutchPaySummaryWire(transfer.dutchSummary)
           : null,
       }),
-      metadata: {
+      metadata: mentionOrchestratorMetadata({
         mention_feature: "transfer",
         sourceRef: "mention:transfer",
-      },
+      }),
     }),
   ];
 }

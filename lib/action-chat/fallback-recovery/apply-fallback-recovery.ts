@@ -1,4 +1,7 @@
-import type { OrchestratorResult } from "@/lib/action-chat/orchestrator-types";
+import {
+  mergeOrchestratorMetadata,
+  type OrchestratorResult,
+} from "@/lib/action-chat/orchestrator-types";
 import type { AdaptiveBehaviorContext } from "@/lib/action-chat/adaptive-behavior/types";
 import { buildFallbackRecoveryReply } from "@/lib/action-chat/fallback-recovery/build-fallback-recovery-reply";
 import {
@@ -71,10 +74,9 @@ export function applyFallbackRecovery(
       return {
         ...result,
         summary: buildFallbackRecoveryReply(message),
-        metadata: {
-          ...result.metadata,
+        metadata: mergeOrchestratorMetadata(result.metadata, {
           fallback_recovery: true,
-        },
+        }),
       };
     }
     return result;
@@ -91,13 +93,12 @@ export function applyFallbackRecovery(
     summary: buildFallbackRecoveryReply(message),
     source: result.source === "rules" ? "conversation" : result.source,
     confidence: Math.max(result.confidence ?? 0, 0.62),
-    metadata: {
-      ...result.metadata,
+    metadata: mergeOrchestratorMetadata(result.metadata, {
       fallback_recovery: true,
       recovery_primary: inference.primary,
       recovery_candidates: inference.candidates,
       recovery_flags: flags,
-    },
+    }),
   };
 }
 

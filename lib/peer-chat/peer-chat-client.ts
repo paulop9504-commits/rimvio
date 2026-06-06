@@ -1,5 +1,6 @@
 import type { PeerMessage } from "@/lib/context/peer-message-types";
 import { resolveAppOrigin } from "@/lib/auth/redirect-url";
+import { fetchWithTimeout } from "@/lib/http/fetch-with-timeout";
 
 import { friendContactErrorMessage } from "@/lib/peer-chat/friend-contact-errors";
 import { resolveCanonicalPeerThreadFromSocialLayer } from "@/lib/peer-chat/resolve-canonical-peer-thread";
@@ -145,10 +146,31 @@ export async function ensurePeerThreadRemote(input: {
   return parseJson(response);
 }
 
+export async function createGroupThreadRemote(input: {
+  displayName: string;
+  memberThreadIds: string[];
+}): Promise<{
+  threadId: string;
+  inviteCode: string;
+  displayName: string;
+  roomKind: "group";
+  created: boolean;
+}> {
+  const response = await fetch(`${resolveAppOrigin()}/api/peers/threads/group`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(input),
+  });
+  return parseJson(response);
+}
+
 export async function fetchPeerThreadMeta(threadId: string): Promise<{
   threadId: string;
   inviteCode: string;
   displayName: string;
+  roomKind?: "dm" | "group";
+  aiMode?: "private" | "shared";
 }> {
   const response = await fetch(
     `${resolveAppOrigin()}/api/peers/threads/${encodeURIComponent(threadId)}`,
@@ -157,9 +179,15 @@ export async function fetchPeerThreadMeta(threadId: string): Promise<{
   return parseJson(response);
 }
 
+export type GroupReadCursor = {
+  userId: string;
+  lastReadAt: string | null;
+};
+
 export type PeerMessagesPayload = {
   messages: PeerMessage[];
   peerLastReadAt: string | null;
+  groupReadCursors: GroupReadCursor[];
 };
 
 export async function fetchPeerMessages(
@@ -172,15 +200,53 @@ export async function fetchPeerMessages(
   return parseJson<PeerMessagesPayload>(response);
 }
 
+export type PeerReadStatePayload = {
+  peerLastReadAt: string | null;
+  groupReadCursors: GroupReadCursor[];
+};
+
 export async function fetchPeerReadState(
   threadId: string,
-): Promise<string | null> {
+): Promise<PeerReadStatePayload> {
   const response = await fetch(
     `${resolveAppOrigin()}/api/peers/threads/${encodeURIComponent(threadId)}/read-state`,
     { credentials: "include" },
   );
-  const data = await parseJson<{ peerLastReadAt: string | null }>(response);
-  return data.peerLastReadAt ?? null;
+  const data = await parseJson<{
+    peerLastReadAt: string | null;
+    groupReadCursors?: GroupReadCursor[];
+  }>(response);
+  return {
+    peerLastReadAt: data.peerLastReadAt ?? null,
+    groupReadCursors: data.groupReadCursors ?? [],
+  };
+}
+
+export async function renameGroupThreadRemote(input: {
+  threadId: string;
+  displayName: string;
+}): Promise<{ threadId: string; displayName: string; roomKind: "group" }> {
+  const response = await fetch(
+    `${resolveAppOrigin()}/api/peers/threads/${encodeURIComponent(input.threadId)}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ displayName: input.displayName }),
+    },
+  );
+  return parseJson(response);
+}
+
+export async function leaveGroupThreadRemote(threadId: string): Promise<{ ok: boolean }> {
+  const response = await fetch(
+    `${resolveAppOrigin()}/api/peers/threads/${encodeURIComponent(threadId)}/leave`,
+    {
+      method: "POST",
+      credentials: "include",
+    },
+  );
+  return parseJson(response);
 }
 
 export async function invokePeerRoomAi(input: {
@@ -209,12 +275,16 @@ export async function sendPeerImageRemote(input: {
   displayName: string;
   file: File;
   caption?: string;
+  spacetimeJson?: string;
 }): Promise<PeerMessage> {
   const form = new FormData();
   form.append("file", input.file);
   form.append("displayName", input.displayName);
   if (input.caption?.trim()) {
     form.append("caption", input.caption.trim());
+  }
+  if (input.spacetimeJson?.trim()) {
+    form.append("spacetime", input.spacetimeJson.trim());
   }
   const response = await fetch(
     `${resolveAppOrigin()}/api/peers/threads/${encodeURIComponent(input.threadId)}/messages/image`,
@@ -289,9 +359,50 @@ export async function sendPeerMessageRemote(input: {
   }
 }
 
+export type PeerThreadMemberPublic = {
+  userId: string;
+  displayName: string | null;
+  rimvioId: string | null;
+  avatarUrl: string | null;
+  emailLower: string | null;
+  isSelf: boolean;
+};
+
+export async function fetchPeerThreadMembers(
+  threadId: string,
+): Promise<PeerThreadMemberPublic[]> {
+  const response = await fetch(
+    `${resolveAppOrigin()}/api/peers/threads/${encodeURIComponent(threadId)}/members`,
+    { credentials: "include" },
+  );
+  const data = await parseJson<{ members: PeerThreadMemberPublic[] }>(response);
+  return data.members;
+}
+
+export async function addGroupMembersRemote(input: {
+  threadId: string;
+  memberThreadIds: string[];
+}): Promise<{
+  addedUserIds: string[];
+  members: PeerThreadMemberPublic[];
+}> {
+  const response = await fetch(
+    `${resolveAppOrigin()}/api/peers/threads/${encodeURIComponent(input.threadId)}/members`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ memberThreadIds: input.memberThreadIds }),
+    },
+  );
+  return parseJson(response);
+}
+
 export async function joinPeerThreadByInviteRemote(inviteCode: string): Promise<{
   threadId: string;
   displayName: string;
+  inviteCode: string;
+  roomKind: "dm" | "group";
 }> {
   const response = await fetch(`${resolveAppOrigin()}/api/peers/join`, {
     method: "POST",
@@ -354,8 +465,10 @@ export type MyAccountProfile = {
 };
 
 export async function fetchMyAccountProfile(): Promise<MyAccountProfile> {
-  const response = await fetch(`${resolveAppOrigin()}/api/peers/profile`, {
+  const response = await fetchWithTimeout(`${resolveAppOrigin()}/api/peers/profile`, {
     credentials: "include",
+    timeoutMs: 8_000,
+    timeoutLabel: "profile",
   });
   return parseJson(response);
 }
@@ -472,13 +585,22 @@ export async function syncContactsFromDevice(
 }
 
 export async function syncDmThreadsRemote(): Promise<
-  Array<{ threadId: string; displayName: string }>
+  Array<{ threadId: string; displayName: string; roomKind?: "dm" | "group" }>
 > {
   const response = await fetch(`${resolveAppOrigin()}/api/peers/threads`, {
     credentials: "include",
   });
-  const data = await parseJson<{ threads: Array<{ threadId: string; displayName: string }> }>(
-    response,
+  const data = await parseJson<{
+    threads: Array<{ threadId: string; displayName: string; roomKind?: "dm" | "group" }>;
+  }>(response);
+  const { writeGroupThreadsCache } = await import("@/lib/peer-chat/group-threads-cache");
+  writeGroupThreadsCache(
+    data.threads
+      .filter((row) => row.roomKind === "group")
+      .map((row) => ({
+        peerThreadId: row.threadId,
+        displayName: row.displayName,
+      })),
   );
   return data.threads;
 }

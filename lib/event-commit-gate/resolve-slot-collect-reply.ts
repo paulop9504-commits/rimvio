@@ -1,4 +1,8 @@
-import type { OrchestrateHistoryTurn, OrchestratorResult } from "@/lib/action-chat/orchestrator-types";
+import {
+  mergeOrchestratorMetadata,
+  type OrchestrateHistoryTurn,
+  type OrchestratorResult,
+} from "@/lib/action-chat/orchestrator-types";
 import type { GoalPriorityHint, GoalSnapshot } from "@/lib/goal-engine/types";
 import { orchestrateContextualMealRecommendation } from "@/lib/event-os/contextual-recommendation/orchestrate-contextual-meal";
 import {
@@ -211,7 +215,7 @@ export async function orchestrateSlotCollectContinuation(input: {
           disclosure: "medium",
           actionsRevealed: false,
           pendingConfirm: false,
-          metadata: {
+          metadata: mergeOrchestratorMetadata(undefined, {
             intent: "ACTION",
             trust_level_adjustment: "NONE",
             semantic_reason: "commit_gate_slot_collect",
@@ -220,7 +224,7 @@ export async function orchestrateSlotCollectContinuation(input: {
             primary_missing: "location",
             meal_target_axis: axis,
             slot_reply_seed: pending.seedMessage,
-          },
+          }),
         };
       }
 
@@ -234,12 +238,11 @@ export async function orchestrateSlotCollectContinuation(input: {
         return {
           ...meal.orchestrator,
           summary: `**${areaMatch[1]}** 근처로 골라봤어요.\n\n${meal.orchestrator.summary}`,
-          metadata: {
-            ...meal.orchestrator.metadata,
+          metadata: mergeOrchestratorMetadata(meal.orchestrator.metadata, {
             semantic_reason: "commit_gate_slot_filled",
             event_intent: "meal",
             meal_target_axis: axis,
-          },
+          }),
         };
       }
     }
@@ -263,13 +266,13 @@ export async function orchestrateSlotCollectContinuation(input: {
         disclosure: "medium",
         actionsRevealed: false,
         pendingConfirm: false,
-        metadata: {
+        metadata: mergeOrchestratorMetadata(undefined, {
           intent: "ACTION",
           trust_level_adjustment: "NONE",
           semantic_reason: "commit_gate_slot_filled",
           event_intent: "meal",
           meal_target_axis: axis,
-        },
+        }),
       };
     }
 
@@ -278,12 +281,11 @@ export async function orchestrateSlotCollectContinuation(input: {
     return {
       ...meal.orchestrator,
       summary: `**${axisLabel}** 기준으로 골라봤어요.\n\n${meal.orchestrator.summary}`,
-      metadata: {
-        ...meal.orchestrator.metadata,
+      metadata: mergeOrchestratorMetadata(meal.orchestrator.metadata, {
         semantic_reason: "commit_gate_slot_filled",
         event_intent: "meal",
         meal_target_axis: axis,
-      },
+      }),
     };
   }
 
@@ -301,8 +303,7 @@ export async function orchestrateSlotCollectContinuation(input: {
       });
       return {
         ...disambiguation,
-        metadata: {
-          ...disambiguation.metadata,
+        metadata: mergeOrchestratorMetadata(disambiguation.metadata, {
           semantic_reason: "commit_gate_area_disambiguation",
           event_intent: "meal",
           missing_slots: ["location"],
@@ -310,7 +311,7 @@ export async function orchestrateSlotCollectContinuation(input: {
           meal_target_axis: "region",
           location_needs_disambiguation: true,
           slot_reply_seed: pending.seedMessage,
-        },
+        }),
       };
     }
 
@@ -326,13 +327,12 @@ export async function orchestrateSlotCollectContinuation(input: {
       return {
         ...meal.orchestrator,
         summary: `**${resolved.searchQuery}** 쪽으로 골라봤어요.\n\n${meal.orchestrator.summary}`,
-        metadata: {
-          ...meal.orchestrator.metadata,
+        metadata: mergeOrchestratorMetadata(meal.orchestrator.metadata, {
           semantic_reason: "commit_gate_slot_filled",
           event_intent: "meal",
           meal_target_axis: "region",
           filled_slots: { location: resolved.searchQuery },
-        },
+        }),
       };
     }
 
@@ -352,14 +352,14 @@ export async function orchestrateSlotCollectContinuation(input: {
       disclosure: "medium",
       actionsRevealed: true,
       pendingConfirm: false,
-      metadata: {
+      metadata: mergeOrchestratorMetadata(undefined, {
         intent: "ACTION",
         trust_level_adjustment: "NONE",
         semantic_reason: "commit_gate_slot_filled",
         event_intent: "meal",
         meal_target_axis: "region",
         filled_slots: { location: resolved.searchQuery },
-      },
+      }),
     };
   }
 
@@ -380,12 +380,12 @@ export async function orchestrateSlotCollectContinuation(input: {
       disclosure: "high",
       actionsRevealed: true,
       pendingConfirm: false,
-      metadata: {
+      metadata: mergeOrchestratorMetadata(undefined, {
         intent: "ACTION",
         trust_level_adjustment: "NONE",
         semantic_reason: "commit_gate_slot_filled",
         event_intent: "navigate",
-      },
+      }),
     };
   }
 

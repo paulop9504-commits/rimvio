@@ -1,4 +1,7 @@
-import type { OrchestratorResult } from "@/lib/action-chat/orchestrator-types";
+import {
+  mergeOrchestratorMetadata,
+  type OrchestratorResult,
+} from "@/lib/action-chat/orchestrator-types";
 import type { LinkActionItem } from "@/types/database";
 
 /** Show top-1 place; defer the rest behind one chip. */
@@ -38,10 +41,9 @@ export function applyProgressiveDisclosure(
           options: [primary, ...rest],
         }
       : undefined,
-    metadata: {
-      ...result.metadata,
+    metadata: mergeOrchestratorMetadata(result.metadata, {
       progressive_disclosure: true,
       hidden_option_count: hiddenCount,
-    },
+    }),
   };
 }

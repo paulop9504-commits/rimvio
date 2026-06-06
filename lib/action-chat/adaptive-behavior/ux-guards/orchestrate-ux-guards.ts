@@ -1,4 +1,7 @@
-import type { OrchestratorResult } from "@/lib/action-chat/orchestrator-types";
+import {
+  mergeOrchestratorMetadata,
+  type OrchestratorResult,
+} from "@/lib/action-chat/orchestrator-types";
 import {
   detectFrustrationEscape,
   FRUSTRATION_ESCAPE_SUMMARY,
@@ -154,8 +157,7 @@ export function applyUxGuardPresentation(
   const precision = adaptive.ux.precisionAffordance;
   next = {
     ...next,
-    metadata: {
-      ...next.metadata,
+    metadata: mergeOrchestratorMetadata(next.metadata, {
       ...adaptiveMetadataFields(adaptive, {
         precision_affordance: precision,
         suppress_chips:
@@ -163,7 +165,7 @@ export function applyUxGuardPresentation(
           adaptive.ux.activeListening ||
           adaptive.simplifyMode,
       }),
-    },
+    }),
   };
 
   if (precision === "minimal") {

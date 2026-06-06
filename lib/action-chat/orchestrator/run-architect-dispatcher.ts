@@ -6,7 +6,10 @@ import type { DockActionWire, DockUpdateWire } from "@/lib/action-os/types";
 import { normalizeMasterOrchestratorWire } from "@/lib/action-chat/normalize-master-result";
 import { extractActionIntentFromResult } from "@/lib/action-chat/orchestrator/extract-action-intent-from-result";
 import type { OrchestratorTrace } from "@/lib/action-chat/orchestrator/orchestrator-trace";
-import type { OrchestratorResult } from "@/lib/action-chat/orchestrator-types";
+import {
+  mergeOrchestratorMetadata,
+  type OrchestratorResult,
+} from "@/lib/action-chat/orchestrator-types";
 import type { ExistingScheduleInput } from "@/lib/schedule/day-schedule";
 
 export type ArchitectDispatcherInput = {
@@ -87,7 +90,7 @@ function mergeDispatchedResult(
     knowledgeSaved: original.knowledgeSaved,
     guardrail: original.guardrail,
     policy: original.policy,
-    metadata: { ...(dispatched.metadata ?? {}), ...(original.metadata ?? {}) },
+    metadata: mergeOrchestratorMetadata(dispatched.metadata, original.metadata ?? {}),
     orchestratorTrace: original.orchestratorTrace,
   };
 }

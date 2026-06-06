@@ -6,6 +6,14 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   {
+    files: ["components/feed/**/*.{ts,tsx}"],
+    rules: {
+      "react/jsx-no-undef": "error",
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "warn",
+    },
+  },
+  {
     rules: {
       // Sync-from-storage / prop-reset patterns are intentional in this codebase.
       "react-hooks/set-state-in-effect": "warn",

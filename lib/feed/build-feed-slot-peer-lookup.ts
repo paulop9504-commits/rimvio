@@ -29,6 +29,8 @@ export function buildFeedSlotPeerLookup(input: {
   messages: readonly ActionChatMessage[];
   relationshipSlots: readonly RelationshipFeedSlot[];
   contacts?: ReturnType<typeof readPeerContacts>;
+  /** 단톡 ROOM — standalone /feed 에서 messageId 역추적 보강 */
+  groupRooms?: readonly { peerThreadId: string; displayName: string }[];
 }): FeedSlotPeerLookup {
   const map = new Map<string, FeedSlotPeerLookupRow>();
 
@@ -38,6 +40,14 @@ export function buildFeedSlotPeerLookup(input: {
       displayName: slot.displayName,
       avatarUrl: slot.avatarUrl,
       rimvioId: slot.rimvioId,
+    });
+  }
+
+  for (const room of input.groupRooms ?? []) {
+    mergePeerRow(map, {
+      peerThreadId: room.peerThreadId,
+      displayName: room.displayName,
+      avatarUrl: null,
     });
   }
 

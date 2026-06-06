@@ -6,6 +6,7 @@ import {
 } from "@/lib/event-commit-gate/resolve-commit-gate";
 import type { OrchestratorResult } from "@/lib/action-chat/orchestrator-types";
 import type { EventCommitGateResult } from "@/lib/event-commit-gate/types";
+import { isVitalityStateUtterance } from "@/lib/vitality-state/classify-vitality-state-intent";
 
 export type OrchestrateEventCommitGateInput = {
   message: string;
@@ -32,6 +33,11 @@ export function evaluateEventCommitGate(
 export function orchestrateEventCommitGate(
   input: OrchestrateEventCommitGateInput,
 ): OrchestratorResult | null {
+  // Bare vitality utterances (e.g. 배고파) → VitalityState fast path, not slot collect.
+  if (isVitalityStateUtterance(input.message)) {
+    return null;
+  }
+
   const gate = evaluateEventCommitGate(input);
   if (!gate || !shouldBlockDirectExecution(gate)) {
     return null;

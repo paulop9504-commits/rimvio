@@ -39,7 +39,10 @@ import type { MasterOrchestratorContext } from "@/lib/action-chat/master-orchest
 import type { IntentRoute } from "@/lib/action-chat/intent-router";
 import type { EventKernelState } from "@/lib/event-kernel/types";
 import type { ConversationEventState } from "@/lib/action-chat/conversation-event-state";
-import type { OrchestratorResult } from "@/lib/action-chat/orchestrator-types";
+import {
+  mergeOrchestratorMetadata,
+  type OrchestratorResult,
+} from "@/lib/action-chat/orchestrator-types";
 import type { ChatAxis } from "@/lib/action-chat/chat-three-axis";
 import type { EventKernelMemoryOutput } from "@/lib/event-kernel/memory/types";
 import type { EventKernelSearchPlan } from "@/lib/event-kernel/search-planner/types";
@@ -110,10 +113,7 @@ export function stampPipelineChatAxis(
   }
   return {
     ...result,
-    metadata: {
-      ...result.metadata,
-      chat_axis: chatAxis,
-    },
+    metadata: mergeOrchestratorMetadata(result.metadata, { chat_axis: chatAxis }),
   };
 }
 

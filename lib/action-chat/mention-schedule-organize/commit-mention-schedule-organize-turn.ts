@@ -1,5 +1,8 @@
 import type { ChatAxis } from "@/lib/action-chat/chat-three-axis";
-import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
+import {
+  mentionOrchestratorMetadata,
+  type ActionChatMessage,
+} from "@/lib/action-chat/orchestrator-types";
 import {
   buildInlineChatScheduleOrganizeWire,
 } from "@/lib/action-chat/mention-schedule-organize/inline-chat-schedule-organize";
@@ -54,10 +57,10 @@ export function tryBuildMentionScheduleOrganizeTurn(input: {
     userMessage,
     createChatMessage("assistant", "", {
       inlineChatScheduleOrganize: buildInlineChatScheduleOrganizeWire(parsed.query),
-      metadata: {
+      metadata: mentionOrchestratorMetadata({
         mention_feature: "schedule",
         sourceRef: "mention:schedule",
-      },
+      }),
     }),
   ];
 }

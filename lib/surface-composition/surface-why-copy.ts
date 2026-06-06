@@ -39,10 +39,12 @@ export function deriveSurfaceWhyLineKo(input: {
     return node.narration.summary.trim();
   }
 
-  const band = node.priority.band;
-  const bandLine = BAND_KO[band];
-  if (bandLine) {
-    return bandLine;
+  const band = node.priority?.band;
+  if (band) {
+    const bandLine = BAND_KO[band];
+    if (bandLine) {
+      return bandLine;
+    }
   }
 
   if (frame && frame.collapse.latentSurfaceIds.length > 0) {

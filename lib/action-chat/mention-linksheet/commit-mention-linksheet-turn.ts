@@ -1,5 +1,8 @@
 import type { ChatAxis } from "@/lib/action-chat/chat-three-axis";
-import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
+import {
+  mentionOrchestratorMetadata,
+  type ActionChatMessage,
+} from "@/lib/action-chat/orchestrator-types";
 import { normalizeAtMentionInput } from "@/lib/command-os/parse-command-input";
 import { isGoogleSheetsUrl } from "@/lib/integrations/google-sheets-embed";
 import {
@@ -78,10 +81,10 @@ export function tryBuildMentionLinksheetTurn(input: {
       userMessage,
       createChatMessage("assistant", "", {
         inlineChatAction: buildLinksheetUrlPromptWire(),
-        metadata: {
+        metadata: mentionOrchestratorMetadata({
           mention_feature: "linksheet",
           sourceRef: "mention:linksheet",
-        },
+        }),
       }),
     ];
   }
@@ -112,11 +115,11 @@ export function tryBuildMentionLinksheetTurn(input: {
   return [
     userMessage,
     createChatMessage("assistant", "리소스풀 links에 저장했고 시트를 열었어요.", {
-      metadata: {
+      metadata: mentionOrchestratorMetadata({
         mention_feature: "linksheet",
         sourceRef: "mention:linksheet",
         sheet_url: sheetUrl,
-      },
+      }),
     }),
   ];
 }

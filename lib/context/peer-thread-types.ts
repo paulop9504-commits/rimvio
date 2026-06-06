@@ -1,3 +1,5 @@
+import type { RoomKind } from "@/lib/chat-room/types";
+
 /**
  * Peer contacts (unlimited) + AI pin hub (5 slots).
  * @see docs/PEER_SOCIAL_POLICY.md
@@ -26,6 +28,8 @@ export type HubRoomSlot = {
   connection: HubRoomConnection;
   peerThreadId?: string;
   displayName?: string;
+  /** dm · group — 단톡도 5슬롯 예산 공유 */
+  roomKind?: RoomKind;
   pinnedAt?: string;
   /** Set when user removes pin — data purged after retention window. */
   unpinnedAt?: string;

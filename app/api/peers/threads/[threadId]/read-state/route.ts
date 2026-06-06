@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireAuthUser } from "@/lib/auth/api-auth";
+import { listGroupReadCursors } from "@/lib/peer-chat/group-read-receipt";
+import { isGroupThreadId } from "@/lib/peer-chat/group-thread";
 import { readPeerLastReadAt } from "@/lib/peer-chat/peer-read-receipt";
 import { resolvePeerThreadIdForSend } from "@/lib/peer-chat/resolve-canonical-peer-thread";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
@@ -36,8 +38,14 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       userId,
       threadId: resolvedThreadId,
     });
+    const groupReadCursors = isGroupThreadId(resolvedThreadId)
+      ? await listGroupReadCursors(supabase, {
+          threadId: resolvedThreadId,
+          callerUserId: userId,
+        })
+      : [];
 
-    return NextResponse.json({ peerLastReadAt });
+    return NextResponse.json({ peerLastReadAt, groupReadCursors });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to load read state.";

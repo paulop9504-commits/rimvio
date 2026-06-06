@@ -28,6 +28,7 @@ import {
 } from "@/lib/peer-chat/peer-chat-client";
 import { addPeerContact } from "@/lib/context/peer-contact-store";
 import { setPeerThreadAiLens } from "@/lib/context/peer-thread-settings-store";
+import { isGroupThreadId } from "@/lib/peer-chat/group-thread";
 import { resolveCanonicalPeerThreadFromSocialLayer } from "@/lib/peer-chat/resolve-canonical-peer-thread";
 import {
   getFeedPeerTalkSession,
@@ -46,6 +47,9 @@ async function resolveFeedPeerTalkThreadId(input: {
   peerThreadId: string;
   displayName: string;
 }): Promise<string> {
+  if (isGroupThreadId(input.peerThreadId)) {
+    return input.peerThreadId;
+  }
   try {
     const layer = await fetchSocialLayer();
     const canonical = resolveCanonicalPeerThreadFromSocialLayer(
@@ -121,7 +125,7 @@ export async function startFeedPeerTalkInFeed(
     displayName,
     messages: [],
     historyEndIndex: -1,
-    promptLine: buildFeedPeerTalkPromptLine(displayName),
+    promptLine: buildFeedPeerTalkPromptLine(displayName, peerThreadId),
     hydrating: true,
   };
 
@@ -138,7 +142,7 @@ export async function startFeedPeerTalkInFeed(
       displayName,
       messages: history.messages,
       historyEndIndex: Math.max(0, history.messages.length - 1),
-      promptLine: buildFeedPeerTalkPromptLine(displayName),
+      promptLine: buildFeedPeerTalkPromptLine(displayName, peerThreadId),
       peerLastReadAt: history.peerLastReadAt,
       hydrating: false,
     };

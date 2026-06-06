@@ -88,8 +88,9 @@ export async function GET(request: NextRequest) {
     needsProfileSetup: needsSetup,
   });
 
+  // Keep the same NextResponse so Supabase session cookies are not dropped.
   if (postLoginPath !== requestedNext) {
-    response = NextResponse.redirect(new URL(postLoginPath, origin));
+    response.headers.set("Location", new URL(postLoginPath, origin).toString());
   }
 
   response.cookies.delete(AUTH_NEXT_COOKIE);

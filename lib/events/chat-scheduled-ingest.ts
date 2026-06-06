@@ -33,6 +33,8 @@ export function ingestChatScheduledEvent(input: {
   extracted: ConfirmationExtractedData;
   sourceMessage?: string;
   scopeId?: string;
+  peerThreadId?: string | null;
+  peerDisplayName?: string | null;
 }): EventCandidate | null {
   const datetime = input.extracted.datetime?.trim();
   if (!datetime) {
@@ -63,6 +65,8 @@ export function ingestChatScheduledEvent(input: {
       sourceMessageId: input.messageId,
       messageId: input.messageId,
       scopeId: input.scopeId ?? null,
+      peerThreadId: input.peerThreadId?.trim() || null,
+      peerDisplayName: input.peerDisplayName?.trim() || null,
       sourceMessage: input.sourceMessage?.trim() || title,
       scheduleNote: input.extracted.schedule_note ?? null,
       url: input.extracted.url ?? null,

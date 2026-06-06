@@ -1,5 +1,8 @@
 import type { ChatAxis } from "@/lib/action-chat/chat-three-axis";
-import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
+import {
+  mentionOrchestratorMetadata,
+  type ActionChatMessage,
+} from "@/lib/action-chat/orchestrator-types";
 import {
   buildInlineChatCalendarWire,
   type InlineChatCalendarWire,
@@ -56,10 +59,10 @@ export function tryBuildMentionCalendarTurn(input: {
     userMessage,
     createChatMessage("assistant", "", {
       inlineChatCalendar: wire,
-      metadata: {
+      metadata: mentionOrchestratorMetadata({
         mention_feature: "calendar",
         sourceRef: "mention:calendar",
-      },
+      }),
     }),
   ];
 }

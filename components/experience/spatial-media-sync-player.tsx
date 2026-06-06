@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useMemo } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { SpacetimePingCard } from "@/components/experience/spacetime-ping-card";
 import { SpatialGlobeStage } from "@/components/experience/spatial-globe-stage";
 import {
@@ -9,6 +9,7 @@ import {
 } from "@/hooks/use-spatial-context-sync";
 import type { ExperienceVolume } from "@/lib/experience-graph/experience-volume-types";
 import { projectVolumeSpatialMedia } from "@/lib/experience-graph/project-volume-spatial-media";
+import { MEDIA_SPACETIME_UPDATED } from "@/lib/location-ping/media-context-store";
 import type { SpatialMediaKind, SpatialMediaItem } from "@/lib/experience-graph/spatial-media-types";
 import { cn } from "@/lib/utils";
 
@@ -56,9 +57,17 @@ export const SpatialMediaSyncPlayer = memo(function SpatialMediaSyncPlayer({
   hideGlobe = false,
   className,
 }: SpatialMediaSyncPlayerProps) {
+  const [uploadedMediaTick, setUploadedMediaTick] = useState(0);
+
+  useEffect(() => {
+    const onUpdated = () => setUploadedMediaTick((tick) => tick + 1);
+    window.addEventListener(MEDIA_SPACETIME_UPDATED, onUpdated);
+    return () => window.removeEventListener(MEDIA_SPACETIME_UPDATED, onUpdated);
+  }, []);
+
   const items = useMemo(
     () => itemsProp ?? (volume ? projectVolumeSpatialMedia(volume) : []),
-    [itemsProp, volume],
+    [itemsProp, volume, uploadedMediaTick],
   );
   const internalSync = useSpatialContextSync(items);
   const sync = syncProp ?? internalSync;

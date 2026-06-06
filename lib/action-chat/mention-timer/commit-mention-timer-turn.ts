@@ -1,5 +1,8 @@
 import type { ChatAxis } from "@/lib/action-chat/chat-three-axis";
-import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
+import {
+  mentionOrchestratorMetadata,
+  type ActionChatMessage,
+} from "@/lib/action-chat/orchestrator-types";
 import {
   buildInlineChatTimerWire,
   parseMentionTimerDuration,
@@ -63,10 +66,10 @@ export function tryBuildMentionTimerTurn(input: {
     userMessage,
     createChatMessage("assistant", "", {
       inlineChatTimer: buildInlineChatTimerWire(durationMs),
-      metadata: {
+      metadata: mentionOrchestratorMetadata({
         mention_feature: "timer",
         sourceRef: feature?.sourceRef ?? "mention:timer",
-      },
+      }),
     }),
   ];
 }

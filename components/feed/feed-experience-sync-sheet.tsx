@@ -32,7 +32,7 @@ export const FeedExperienceSyncSheet = memo(function FeedExperienceSyncSheet({
       data-feed-experience-sync-sheet
       role="dialog"
       aria-modal="true"
-      aria-label="공간·시간·환경 동기화 플레이어"
+      aria-label="이 맥락의 공간·시간 기억"
       onClick={onClose}
     >
       <div
@@ -41,7 +41,7 @@ export const FeedExperienceSyncSheet = memo(function FeedExperienceSyncSheet({
       >
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[11px] font-medium text-white/40">공간 · 시간 · 환경</p>
+            <p className="text-[11px] font-medium text-white/40">이 맥락의 기억</p>
             <h2 className="truncate text-[16px] font-semibold text-white">{volume.title}</h2>
           </div>
           <button
@@ -54,7 +54,7 @@ export const FeedExperienceSyncSheet = memo(function FeedExperienceSyncSheet({
         </div>
 
         <p className="mb-3 text-[12px] leading-snug text-white/50">
-          사진·영상·글을 누르면 지구본 위치와 시간·날씨 맥락이 함께 이동합니다.
+          그때 어디에 있었는지, 어떻게 움직였는지 — 사진·영상·글과 함께 떠올려 보세요.
         </p>
 
         <SpatialMediaSyncPlayer volume={volume} />

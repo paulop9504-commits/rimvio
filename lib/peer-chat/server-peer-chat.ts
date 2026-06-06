@@ -10,7 +10,17 @@ import {
   isMissingPeerMessageImageColumnError,
   PEER_MESSAGE_LIST_COLUMNS,
 } from "@/lib/peer-chat/peer-message-columns";
-import type { PeerMessageRow, PeerThreadRow } from "@/lib/peer-chat/types";
+import { aiModeForRoomKind } from "@/lib/chat-room/types";
+import {
+  buildGroupThreadId,
+  isGroupThreadId,
+} from "@/lib/peer-chat/group-thread";
+import {
+  assertCallerIsThreadMember,
+  fetchPeerPublicProfileByUserId,
+  type PeerPublicProfile,
+} from "@/lib/peer-chat/peer-public-profile";
+import type { ListedPeerThread, PeerMessageRow, PeerThreadRow } from "@/lib/peer-chat/types";
 import type { Database } from "@/types/database";
 
 const MESSAGE_LIMIT = 200;
@@ -394,6 +404,20 @@ export async function listDmThreadsForUser(
     otherUserId: string | null;
   }>
 > {
+  const threads = await listPeerThreadsForUser(supabase, userId);
+  return threads
+    .filter((row) => row.roomKind === "dm")
+    .map((row) => ({
+      threadId: row.threadId,
+      displayName: row.displayName,
+      otherUserId: row.otherUserId,
+    }));
+}
+
+export async function listPeerThreadsForUser(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+): Promise<ListedPeerThread[]> {
   const { data: memberships, error: memberError } = await supabase
     .from("peer_thread_members")
     .select("thread_id")
@@ -405,7 +429,7 @@ export async function listDmThreadsForUser(
 
   const threadIds = (memberships ?? [])
     .map((row) => row.thread_id as string)
-    .filter((id) => isDmThreadId(id));
+    .filter((id) => isDmThreadId(id) || isGroupThreadId(id));
 
   if (threadIds.length === 0) {
     return [];
@@ -413,18 +437,147 @@ export async function listDmThreadsForUser(
 
   const { data: threads, error: threadError } = await supabase
     .from("peer_threads")
-    .select("id, display_name, owner_user_id")
+    .select("id, display_name, room_kind")
     .in("id", threadIds);
 
   if (threadError) {
     throw threadError;
   }
 
-  return (threads ?? []).map((thread) => ({
-    threadId: thread.id as string,
-    displayName: (thread.display_name as string) || "친구",
-    otherUserId: extractOtherUserIdFromDmThread(thread.id as string, userId),
-  }));
+  return (threads ?? []).map((thread) => {
+    const id = thread.id as string;
+    const roomKind =
+      (thread.room_kind as ListedPeerThread["roomKind"] | null) ??
+      (isGroupThreadId(id) ? "group" : "dm");
+    return {
+      threadId: id,
+      displayName: (thread.display_name as string) || (roomKind === "group" ? "단톡" : "친구"),
+      roomKind,
+      otherUserId: roomKind === "dm" ? extractOtherUserIdFromDmThread(id, userId) : null,
+    };
+  });
+}
+
+export async function ensureGroupPeerThread(
+  supabase: SupabaseClient<Database>,
+  input: {
+    displayName: string;
+    ownerUserId: string;
+    memberUserIds: readonly string[];
+    threadId?: string;
+  },
+): Promise<{ thread: PeerThreadRow; threadId: string; created: boolean }> {
+  const displayName = input.displayName.trim() || "단톡";
+  const ownerUserId = input.ownerUserId.trim();
+  const threadId = input.threadId?.trim() || buildGroupThreadId();
+
+  if (!isGroupThreadId(threadId)) {
+    throw new Error("invalid_group:단톡 방 ID가 올바르지 않아요.");
+  }
+
+  const memberSet = new Set<string>([ownerUserId]);
+  for (const raw of input.memberUserIds) {
+    const id = raw.trim();
+    if (id && id !== ownerUserId) {
+      memberSet.add(id);
+    }
+  }
+
+  if (memberSet.size < 2) {
+    throw new Error("members_required:단톡은 친구 1명 이상을 선택해 주세요.");
+  }
+
+  for (const memberId of memberSet) {
+    const ok = await ensureRimvioUserProfile(supabase, memberId);
+    if (!ok) {
+      throw new Error(
+        "not_registered:가입한 Rimvio 사용자만 단톡에 초대할 수 있어요.",
+      );
+    }
+  }
+
+  const { data: existing, error: readError } = await supabase
+    .from("peer_threads")
+    .select("*")
+    .eq("id", threadId)
+    .maybeSingle();
+
+  if (readError) {
+    throw readError;
+  }
+
+  if (existing) {
+    for (const memberId of memberSet) {
+      await ensureMember(supabase, threadId, memberId);
+    }
+    return { thread: existing as PeerThreadRow, threadId, created: false };
+  }
+
+  const { data: created, error: insertError } = await supabase
+    .from("peer_threads")
+    .insert({
+      id: threadId,
+      owner_user_id: ownerUserId,
+      display_name: displayName,
+      room_kind: "group",
+      ai_mode: aiModeForRoomKind("group"),
+    })
+    .select("*")
+    .single();
+
+  if (insertError) {
+    const code =
+      typeof insertError === "object" &&
+      insertError !== null &&
+      "code" in insertError
+        ? String((insertError as { code?: string }).code)
+        : "";
+    if (code === "23505") {
+      const { data: raced } = await supabase
+        .from("peer_threads")
+        .select("*")
+        .eq("id", threadId)
+        .maybeSingle();
+      if (raced) {
+        for (const memberId of memberSet) {
+          await ensureMember(supabase, threadId, memberId);
+        }
+        return { thread: raced as PeerThreadRow, threadId, created: false };
+      }
+    }
+    throw insertError;
+  }
+
+  for (const memberId of memberSet) {
+    await ensureMember(supabase, threadId, memberId);
+  }
+
+  return { thread: created as PeerThreadRow, threadId, created: true };
+}
+
+/** Resolve friend DM thread ids → member user ids for group creation. */
+export function resolveGroupMemberUserIds(input: {
+  callerUserId: string;
+  memberThreadIds: readonly string[];
+}): string[] {
+  const resolved = new Set<string>();
+  for (const raw of input.memberThreadIds) {
+    const threadId = raw.trim();
+    if (!threadId) {
+      continue;
+    }
+    if (isDmThreadId(threadId)) {
+      const otherUserId = extractOtherUserIdFromDmThread(threadId, input.callerUserId);
+      if (otherUserId) {
+        resolved.add(otherUserId);
+      }
+      continue;
+    }
+    if (isGroupThreadId(threadId)) {
+      throw new Error("invalid_member:단톡 방은 멤버로 추가할 수 없어요. 1:1 친구를 선택해 주세요.");
+    }
+  }
+  return [...resolved];
 }
 
 export async function ensurePeerThread(
@@ -448,6 +601,12 @@ export async function ensurePeerThread(
   if (existing) {
     await ensureDmThreadMembership(supabase, input.threadId, input.userId);
     return { thread: existing as PeerThreadRow, created: false };
+  }
+
+  if (isGroupThreadId(input.threadId)) {
+    throw new Error(
+      "group_create_only:단톡은 친구 ROOM에서 새로 만들 수 있어요.",
+    );
   }
 
   if (!isDmThreadId(input.threadId)) {
@@ -566,6 +725,106 @@ async function ensureMember(
   }
 }
 
+export type PeerThreadMemberPublic = PeerPublicProfile & { isSelf: boolean };
+
+export async function listPeerThreadMembers(
+  supabase: SupabaseClient<Database>,
+  input: { threadId: string; callerUserId: string },
+): Promise<PeerThreadMemberPublic[]> {
+  await assertCallerIsThreadMember(
+    supabase,
+    input.threadId,
+    input.callerUserId,
+  );
+
+  const { data: memberships, error } = await supabase
+    .from("peer_thread_members")
+    .select("user_id")
+    .eq("thread_id", input.threadId);
+
+  if (error) {
+    throw error;
+  }
+
+  const userIds = (memberships ?? [])
+    .map((row) => row.user_id as string)
+    .filter(Boolean);
+
+  const profiles = await Promise.all(
+    userIds.map(async (userId) => {
+      const profile = await fetchPeerPublicProfileByUserId(supabase, userId);
+      return {
+        userId,
+        displayName: profile?.displayName ?? null,
+        rimvioId: profile?.rimvioId ?? null,
+        avatarUrl: profile?.avatarUrl ?? null,
+        emailLower: profile?.emailLower ?? null,
+        isSelf: userId === input.callerUserId,
+      } satisfies PeerThreadMemberPublic;
+    }),
+  );
+
+  return profiles.sort((a, b) => {
+    if (a.isSelf !== b.isSelf) {
+      return a.isSelf ? -1 : 1;
+    }
+    const nameA = a.displayName?.trim() || a.rimvioId || a.userId;
+    const nameB = b.displayName?.trim() || b.rimvioId || b.userId;
+    return nameA.localeCompare(nameB, "ko");
+  });
+}
+
+export async function addMembersToGroupThread(
+  supabase: SupabaseClient<Database>,
+  input: {
+    threadId: string;
+    callerUserId: string;
+    memberUserIds: readonly string[];
+  },
+): Promise<{ addedUserIds: string[] }> {
+  if (!isGroupThreadId(input.threadId)) {
+    throw new Error("not_group:단톡 방에서만 멤버를 추가할 수 있어요.");
+  }
+
+  await assertCallerIsThreadMember(
+    supabase,
+    input.threadId,
+    input.callerUserId,
+  );
+
+  const { data: memberships, error: memberError } = await supabase
+    .from("peer_thread_members")
+    .select("user_id")
+    .eq("thread_id", input.threadId);
+
+  if (memberError) {
+    throw memberError;
+  }
+
+  const existing = new Set(
+    (memberships ?? []).map((row) => row.user_id as string),
+  );
+
+  const addedUserIds: string[] = [];
+  for (const raw of input.memberUserIds) {
+    const memberId = raw.trim();
+    if (!memberId || existing.has(memberId) || memberId === input.callerUserId) {
+      continue;
+    }
+    const ok = await ensureRimvioUserProfile(supabase, memberId);
+    if (!ok) {
+      throw new Error(
+        "not_registered:가입한 Rimvio 사용자만 단톡에 초대할 수 있어요.",
+      );
+    }
+    await ensureMember(supabase, input.threadId, memberId);
+    existing.add(memberId);
+    addedUserIds.push(memberId);
+  }
+
+  return { addedUserIds };
+}
+
 export async function joinPeerThreadByInvite(
   supabase: SupabaseClient<Database>,
   input: { inviteCode: string; userId: string },
@@ -652,6 +911,51 @@ export async function insertPeerMessage(
     ...(data as PeerMessageRow),
     image_url: imageUrl,
   };
+}
+
+export async function renameGroupThread(
+  supabase: SupabaseClient<Database>,
+  input: { threadId: string; displayName: string },
+): Promise<string> {
+  if (!isGroupThreadId(input.threadId)) {
+    throw new Error("not_group:단톡 방만 이름을 바꿀 수 있어요.");
+  }
+
+  const { data, error } = await supabase.rpc("rimvio_rename_group_thread", {
+    p_thread_id: input.threadId,
+    p_display_name: input.displayName,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return String(data ?? input.displayName.trim());
+}
+
+export async function leaveGroupThread(
+  supabase: SupabaseClient<Database>,
+  input: { threadId: string; userId: string },
+): Promise<void> {
+  if (!isGroupThreadId(input.threadId)) {
+    throw new Error("not_group:단톡 방에서만 나갈 수 있어요.");
+  }
+
+  await assertCallerIsThreadMember(
+    supabase,
+    input.threadId,
+    input.userId,
+  );
+
+  const { error } = await supabase
+    .from("peer_thread_members")
+    .delete()
+    .eq("thread_id", input.threadId)
+    .eq("user_id", input.userId);
+
+  if (error) {
+    throw error;
+  }
 }
 
 export async function readPeerThread(

@@ -117,7 +117,7 @@ export async function runPhase1PrePipeline(
       return resolvePhase1EarlyReturn(ctx, tier5Hit.runner, tier5Hit.hit);
     }
   } else {
-    ctx.trace.pass(1, 5, "DeterministicTier", "kernel_blocked");
+    ctx.trace.pass(1, 5, "Deterministic");
   }
 
   return { phase: 1, earlyReturn: null };

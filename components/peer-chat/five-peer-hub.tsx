@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Users } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FriendArchiveBagBubble } from "@/components/peer-chat/friend-archive-bag-bubble";
 import { PeerProfileAvatar } from "@/components/peer-chat/peer-profile-avatar";
@@ -24,6 +24,7 @@ import {
   type HubNodePositions,
 } from "@/lib/context/five-peer-hub-positions";
 import type { PinnedPeerRoster, PinnedSlotIndex } from "@/lib/context/peer-thread-types";
+import { isGroupThreadId } from "@/lib/peer-chat/group-thread";
 import { prefetchPeerMessages } from "@/lib/peer-chat/message-prefetch-cache";
 import { cn } from "@/lib/utils";
 
@@ -396,13 +397,17 @@ export function FivePeerHub({
         if (node.kind === "connected" && node.slot.peerThreadId) {
           const href = `/peers/${encodeURIComponent(node.slot.peerThreadId)}`;
           const meta = peerMetaByThread?.get(node.slot.peerThreadId);
+          const isGroup =
+            node.slot.roomKind === "group" ||
+            isGroupThreadId(node.slot.peerThreadId);
           const bubbleState: BubbleState = meta?.bubbleState ?? "idle";
           const displayName =
             meta?.displayName?.trim() ||
             node.slot.displayName?.trim() ||
             meta?.rimvioId ||
-            "친구";
+            (isGroup ? "단톡" : "친구");
           const rimvioId = meta?.rimvioId ?? null;
+          const lensOn = lensEnabledByThreadId?.get(node.slot.peerThreadId!);
 
           return (
             <Link
@@ -418,27 +423,42 @@ export function FivePeerHub({
               )}
               style={style}
               aria-label={
-                lensEnabledByThreadId?.get(node.slot.peerThreadId!)
-                  ? `${displayName} · AI 렌즈 켜짐`
-                  : displayName
+                lensOn ? `${displayName} · AI 렌즈 켜짐` : displayName
               }
             >
-              <PeerProfileAvatar
-                displayName={displayName}
-                avatarUrl={meta?.avatarUrl}
-                size="md"
-                className={cn(
-                  "!size-[3.75rem] !text-lg border-2 bg-rimvio-surface",
-                  BUBBLE_RING_CLASS[bubbleState],
-                  lensEnabledByThreadId?.get(node.slot.peerThreadId!) &&
-                    "ring-2 ring-cyan-400/45 shadow-[0_0_14px_rgba(34,211,238,0.22)]",
-                )}
-              />
+              {isGroup ? (
+                <span
+                  className={cn(
+                    "flex size-[3.75rem] items-center justify-center rounded-full border-2 bg-rimvio-surface text-white/80",
+                    BUBBLE_RING_CLASS[bubbleState],
+                    lensOn &&
+                      "ring-2 ring-cyan-400/45 shadow-[0_0_14px_rgba(34,211,238,0.22)]",
+                  )}
+                >
+                  <Users className="size-6" aria-hidden />
+                </span>
+              ) : (
+                <PeerProfileAvatar
+                  displayName={displayName}
+                  avatarUrl={meta?.avatarUrl}
+                  size="md"
+                  className={cn(
+                    "!size-[3.75rem] !text-lg border-2 bg-rimvio-surface",
+                    BUBBLE_RING_CLASS[bubbleState],
+                    lensOn &&
+                      "ring-2 ring-cyan-400/45 shadow-[0_0_14px_rgba(34,211,238,0.22)]",
+                  )}
+                />
+              )}
               <span className="flex max-w-[5.5rem] flex-col items-center leading-tight">
                 <span className="w-full truncate text-center text-[10px] font-medium text-white/90">
                   {displayName}
                 </span>
-                {rimvioId ? (
+                {isGroup ? (
+                  <span className="w-full truncate text-center text-[9px] text-white/45">
+                    단톡
+                  </span>
+                ) : rimvioId ? (
                   <span className="w-full truncate text-center text-[9px] text-[#FEE500]/85">
                     @{rimvioId}
                   </span>
@@ -459,7 +479,7 @@ export function FivePeerHub({
                 () => onAssignSlot(node.slotIndex),
               )}
               style={style}
-              aria-label={`${node.slotIndex + 1}번 AI 허브 · 친구 연결`}
+              aria-label={`${node.slotIndex + 1}번 AI 허브 · 친구 또는 단톡`}
             >
               <span className="relative flex size-[3.75rem] items-center justify-center rounded-full border-2 border-white/15 bg-rimvio-surface shadow-sm">
                 <Plus className="size-5 text-white/55" strokeWidth={2} aria-hidden />

@@ -51,10 +51,11 @@ export const copy = {
   },
   search: {
     title: "검색",
-    subtitle: "AI와 대화 · 간단한 액션",
-    emptyHint: "무엇이든 물어보세요",
-    emptySubhint: "일정, 길찾기, 친구와 이어지는 작업도 여기서",
-    placeholder: "무엇을 도와드릴까요?",
+    subtitle: "사진·링크·메모 → Feed에 자동으로 붙기",
+    emptyHint: "여행·만남 일정을 잡아두면 더 정확해요",
+    emptySubhint: "사진·링크·메모를 올리면 오늘 Feed 슬롯에 모여요",
+    placeholder: "사진·링크·메모 올리기",
+    ingressHint: "사진·링크·메모 올리기 (일정에 자동 연결)",
   },
   peers: {
     title: "친구",
