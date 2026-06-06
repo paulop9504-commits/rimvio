@@ -3,6 +3,12 @@ import { computeContextualEventActions } from "@/lib/action-projection/compute-c
 import { resolveLifecycleSpawnPhase } from "@/lib/action-spawn/resolve-lifecycle-phase";
 import { buildArchiveContextKey } from "@/lib/archive/build-archived-event";
 import { readLifeProjections } from "@/lib/life-read-model";
+import { readPlanContextFromEvent } from "@/lib/plan-context/plan-context-metadata";
+import {
+  filterCandidatesForPlanGate,
+  inferPlanMode,
+  resolvePlanSignalGate,
+} from "@/lib/plan-context/resolve-plan-signal-gate";
 import {
   generateActionCandidatesSync,
   isLlmCandidateDomainEnabled,
@@ -84,14 +90,23 @@ export function buildTieredEventOverlayActions(
     now,
   );
 
+  const planEvent =
+    readLifeProjections().events.find((candidate) => candidate.id === input.ecId) ?? null;
+  const planContext = planEvent ? readPlanContextFromEvent(planEvent) : null;
+  const planMode = inferPlanMode(planContext);
+
   const creativeSync = generateActionCandidatesSync(input.ecId, {
     title: input.title,
     location: placeHint,
     minutes_until_event: minutesUntil,
     spawn_phase: spawn.phase,
+    planMode,
   });
 
-  const creativePool = [...creativeSync.candidates, ...(input.llmCandidates ?? [])];
+  const gate = resolvePlanSignalGate(planContext);
+  const gatedSync = filterCandidatesForPlanGate(creativeSync.candidates, gate);
+  const gatedLlm = filterCandidatesForPlanGate(input.llmCandidates ?? [], gate);
+  const creativePool = [...gatedSync, ...gatedLlm];
   const hasCreativePool =
     isLlmCandidateDomainEnabled(creativeSync.domain) && creativePool.length > 0;
 

@@ -10,7 +10,10 @@ import type {
   CalendarViewMode,
   UnifiedCalendarOverlayRow,
 } from "@/lib/calendar/calendar-view-types";
-import { CALENDAR_VIEW_LABELS } from "@/lib/calendar/calendar-view-types";
+import {
+  CALENDAR_VIEW_LABELS,
+  CALENDAR_VIEW_SHORT_LABELS,
+} from "@/lib/calendar/calendar-view-types";
 import {
   groupOverlayRowsByDay,
   type UnifiedCalendarDayBucket,
@@ -121,16 +124,31 @@ function padTime(hour: number, minute: number): string {
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
+function CalendarEmptyHint({ compact }: { compact?: boolean }) {
+  return (
+    <p
+      className={cn(
+        "mx-auto max-w-[18rem] text-center text-[12px] leading-5 text-[#9CA3AF]",
+        compact ? "mb-2" : "mb-3 shrink-0 px-2",
+      )}
+    >
+      아직 등록된 일정이 없어요. 일정을 말하거나 + 버튼으로 추가하면 여기에 쌓여요.
+    </p>
+  );
+}
+
 function CalendarEmpty({ compact }: { compact?: boolean }) {
   return (
     <div
       className={cn(
         "rounded-2xl border border-dashed border-white/10 bg-rimvio-surface/[0.03] px-4 py-8 text-center",
-        compact && "py-5"
+        compact && "py-5",
       )}
     >
-      <p className="text-[14px] font-medium text-[#E5E7EB]">아직 등록된 일정이 없어요</p>
-      <p className="mt-1 text-[12px] leading-relaxed text-[#9CA3AF]">
+      <p className="text-[14px] font-medium leading-snug text-[#E5E7EB]">
+        아직 등록된 일정이 없어요
+      </p>
+      <p className="mx-auto mt-2 max-w-[16rem] text-[12px] leading-5 text-[#9CA3AF]">
         공유 타이머·예약 실행·일정 말하면 그 시간에 쌓이는 실행이 여기 쌓여요
       </p>
     </div>
@@ -492,15 +510,15 @@ function MonthGridView({
   const weekdayHeaders = ["일", "월", "화", "수", "목", "금", "토"];
 
   return (
-    <div>
-      <div className="mb-2 grid grid-cols-7 gap-1 text-center text-[10px] font-medium text-[#9CA3AF]">
+    <div className="min-h-0 flex-1">
+      <div className="mb-1.5 grid grid-cols-7 border-b border-white/[0.06] pb-1.5 text-center text-[10px] font-semibold text-[#9CA3AF]">
         {weekdayHeaders.map((label) => (
           <span key={label}>{label}</span>
         ))}
       </div>
-      <div className="space-y-1">
+      <div className="space-y-0.5">
         {weeks.map((week, weekIndex) => (
-          <div key={weekIndex} className="grid grid-cols-7 gap-1">
+          <div key={weekIndex} className="grid grid-cols-7 gap-px rounded-lg bg-white/[0.04] p-px">
             {week.map((bucket) => {
               const inMonth = bucket.date.getMonth() === anchor.getMonth();
               return (
@@ -509,9 +527,9 @@ function MonthGridView({
                   type="button"
                   onClick={() => onDaySelect(bucket.date)}
                   className={cn(
-                    "min-h-[72px] rounded-lg border border-transparent p-1 text-left transition-colors hover:border-white/10",
-                    !inMonth && "opacity-40",
-                    bucket.isToday && "bg-[#4285F4]/15"
+                    "min-h-[4.25rem] bg-[#1F2937] p-1 text-left transition-colors hover:bg-[#273244]",
+                    !inMonth && "opacity-35",
+                    bucket.isToday && "ring-1 ring-inset ring-[#4285F4]/60 bg-[#4285F4]/10"
                   )}
                 >
                   <span
@@ -620,13 +638,13 @@ export type CalendarBoardProps = {
 };
 
 export function CalendarBoard({
-  overlayRows,
+  overlayRows = [],
   contextByMessageId,
   renderStreamAction,
   variant = "full",
   compactTitle = "다가오는 일정",
   className,
-  defaultView = "list",
+  defaultView = "month",
   onExpand,
   onAddSchedule,
   onSpawnPrompt,
@@ -780,7 +798,7 @@ export function CalendarBoard({
                     : "text-[#93C5FD] hover:bg-rimvio-surface/5"
                 )}
               >
-                {CALENDAR_VIEW_LABELS[view]}
+                {CALENDAR_VIEW_SHORT_LABELS[view]}
               </button>
               <ViewSwitcher
                 view={view}
@@ -795,14 +813,14 @@ export function CalendarBoard({
 
       <div
         className={cn(
-          !compact && "flex min-h-0 flex-1 flex-col",
+          !compact && "flex min-h-0 flex-1 flex-col px-3",
           !compact &&
-            (isTimeGridView ? "overflow-hidden pb-4" : "overflow-y-auto pb-20")
+            (isTimeGridView
+              ? "overflow-hidden pb-[max(5rem,env(safe-area-inset-bottom))]"
+              : "overflow-y-auto pb-[max(5.5rem,env(safe-area-inset-bottom))]"),
         )}
       >
-        {overlayRows.length === 0 ? (
-          <CalendarEmpty compact={compact} />
-        ) : view === "list" || compact ? (
+        {view === "list" || compact ? (
           <ListAgendaOverlayView
             buckets={buckets}
             compact={compact}
@@ -825,32 +843,38 @@ export function CalendarBoard({
             }}
           />
         ) : view === "month" ? (
-          <MonthGridView
-            anchor={anchor}
-            overlayRows={overlayRows}
-            onDaySelect={handleDayFromMonth}
-          />
+          <>
+            {overlayRows.length === 0 ? <CalendarEmptyHint /> : null}
+            <MonthGridView
+              anchor={anchor}
+              overlayRows={overlayRows}
+              onDaySelect={handleDayFromMonth}
+            />
+          </>
         ) : (
-          <TimeGridView
-            buckets={buckets}
-            onSpawnPrompt={onSpawnPrompt}
-            onEventSelect={(event) => {
-              const row = overlayRows.find((item) => item.event.id === event.id);
-              if (row) {
-                setSelectedAction(null);
-                setSelectedRow(row);
-              }
-            }}
-            onActionSelect={(action) => {
-              const row = overlayRows.find((item) =>
-                item.overlayActions.some((overlay) => overlay.id === action.id)
-              );
-              if (row) {
-                setSelectedRow(row);
-                setSelectedAction(action);
-              }
-            }}
-          />
+          <>
+            {overlayRows.length === 0 ? <CalendarEmptyHint /> : null}
+            <TimeGridView
+              buckets={buckets}
+              onSpawnPrompt={onSpawnPrompt}
+              onEventSelect={(event) => {
+                const row = overlayRows.find((item) => item.event.id === event.id);
+                if (row) {
+                  setSelectedAction(null);
+                  setSelectedRow(row);
+                }
+              }}
+              onActionSelect={(action) => {
+                const row = overlayRows.find((item) =>
+                  item.overlayActions.some((overlay) => overlay.id === action.id)
+                );
+                if (row) {
+                  setSelectedRow(row);
+                  setSelectedAction(action);
+                }
+              }}
+            />
+          </>
         )}
       </div>
 
@@ -859,10 +883,10 @@ export function CalendarBoard({
           <button
             type="button"
             onClick={() => onAddSchedule?.()}
-            className="absolute bottom-4 right-4 z-20 flex size-14 items-center justify-center rounded-2xl bg-[#93C5FD] text-foreground shadow-lg transition-transform hover:scale-105"
+            className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-20 flex size-12 items-center justify-center rounded-2xl bg-[#4285F4] text-white shadow-[0_4px_20px_rgba(66,133,244,0.45)] transition-transform hover:scale-105 active:scale-95"
             aria-label="일정 추가"
           >
-            <Plus className="size-7 stroke-[2.5]" />
+            <Plus className="size-6 stroke-[2.5]" />
           </button>
         </>
       ) : null}

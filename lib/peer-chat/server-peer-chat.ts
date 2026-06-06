@@ -5,6 +5,11 @@ import {
 import { normalizeEmail } from "@/lib/peer-chat/email";
 import { ensureRimvioUserProfile } from "@/lib/peer-chat/ensure-user-profile";
 import { PEER_MESSAGE_IMAGE_PLACEHOLDER } from "@/lib/peer-chat/peer-chat-image-constants";
+import {
+  buildPeerMessageInsertRow,
+  isMissingPeerMessageImageColumnError,
+  PEER_MESSAGE_LIST_COLUMNS,
+} from "@/lib/peer-chat/peer-message-columns";
 import type { PeerMessageRow, PeerThreadRow } from "@/lib/peer-chat/types";
 import type { Database } from "@/types/database";
 
@@ -590,7 +595,7 @@ export async function listPeerMessages(
 ): Promise<PeerMessageRow[]> {
   const { data, error } = await supabase
     .from("peer_messages")
-    .select("*")
+    .select(PEER_MESSAGE_LIST_COLUMNS)
     .eq("thread_id", threadId)
     .order("created_at", { ascending: true })
     .limit(MESSAGE_LIMIT);
@@ -614,32 +619,39 @@ export async function insertPeerMessage(
     aiPayload?: import("@/lib/chat-room/types").AiMessagePayload | null;
   },
 ): Promise<PeerMessageRow> {
-  const trimmed = input.body.trim();
   const imageUrl = input.imageUrl?.trim() || null;
-  const body = trimmed || (imageUrl ? PEER_MESSAGE_IMAGE_PLACEHOLDER : "");
+  const insertRow = buildPeerMessageInsertRow(input);
+  const body = String(insertRow.body ?? "");
   if (!body && !imageUrl) {
     throw new Error("Empty message.");
   }
 
   const { data, error } = await supabase
     .from("peer_messages")
-    .insert({
-      ...(input.id ? { id: input.id } : {}),
-      thread_id: input.threadId,
-      sender_user_id: input.senderUserId,
-      body,
-      image_url: imageUrl,
-      message_type: input.messageType ?? "human",
-      ai_payload: input.aiPayload ?? null,
-    })
-    .select("*")
+    .insert(insertRow)
+    .select(PEER_MESSAGE_LIST_COLUMNS)
     .single();
 
   if (error) {
+    const message =
+      typeof error === "object" &&
+      error !== null &&
+      "message" in error &&
+      typeof (error as { message?: string }).message === "string"
+        ? (error as { message: string }).message
+        : "";
+    if (imageUrl && isMissingPeerMessageImageColumnError(message)) {
+      throw new Error(
+        "peer_image_column_missing:사진 DM은 DB 업데이트(031) 후에 보낼 수 있어요. 지금은 텍스트만 가능해요.",
+      );
+    }
     throw error;
   }
 
-  return data as PeerMessageRow;
+  return {
+    ...(data as PeerMessageRow),
+    image_url: imageUrl,
+  };
 }
 
 export async function readPeerThread(

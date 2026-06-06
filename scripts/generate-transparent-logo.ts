@@ -13,8 +13,8 @@ const SOURCE = path.join(ROOT, "public", "brand", "rimvio-logo-source.png");
 const OUT = path.join(ROOT, "public", "brand", "rimvio-logo-transparent.png");
 const OUT_WHITE = path.join(ROOT, "public", "brand", "rimvio-logo-white.png");
 
-/** Pixels at or below this luminance become transparent (keeps anti-alias fringe). */
-const BLACK_THRESHOLD = 28;
+/** Pixels at or below this luminance become transparent (keeps neon glow fringe). */
+const BLACK_THRESHOLD = 24;
 
 function readDataUrl(filePath: string) {
   const png = fs.readFileSync(filePath);

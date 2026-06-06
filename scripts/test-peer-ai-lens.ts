@@ -110,7 +110,7 @@ const goldenWhen = new Date(goldenDt);
 assert.equal(goldenWhen.getDate(), 5, "Friday June 5 (local)");
 assert.equal(goldenWhen.getHours(), 19, "7시 + CGV 약속 → 19:00 local");
 
-/** Week 3 golden: 둔산동 멕시카나 → map picker only on execute */
+/** Week 3 golden: 둔산동 멕시카나 → direct map open on execute */
 const goldenNavAnalysis = analyzePeerThreadForLens([
   msg("1", "peer", "둔산동 멕시카나 갈래?"),
 ]);
@@ -122,9 +122,8 @@ const navExecute = executeDeepLinkBubbleCandidate(
   goldenNavCand as DeepLinkBubbleCandidate,
 );
 assert.equal(navExecute.ok, true);
-assert.equal(navExecute.openMapPicker?.place, goldenNavCand!.payload?.place);
-assert.ok(navExecute.openMapPicker?.place?.includes("멕시카나"));
-assert.equal(navExecute.openMapPicker !== undefined, true);
+assert.ok(navExecute.message.includes("길찾기"));
+assert.equal(navExecute.openMapPicker, undefined);
 
 /** Week 3 golden: 송금 — no auto transfer */
 const goldenTransfer = analyzePeerThreadForLens([

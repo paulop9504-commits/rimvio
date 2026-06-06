@@ -25,6 +25,7 @@ import { purgePendingLabel } from "@/lib/context/pinned-peer-roster";
 import { findSlotByPeerId } from "@/lib/context/pinned-peer-roster";
 import { readPinnedRoster } from "@/lib/context/peer-thread-settings-store";
 import { cn } from "@/lib/utils";
+import { AiLensToggle } from "@/components/peer-chat/ai-lens-toggle";
 import { PeerChatThreadShell } from "@/components/peer-chat/peer-chat-thread-shell";
 import { PeerThreadChatPanel } from "@/components/peer-chat/peer-thread-chat-panel";
 import { PeerThreadHubPinBar } from "@/components/peer-chat/peer-thread-hub-pin-bar";
@@ -74,22 +75,19 @@ export function PeerThreadRoomClient({ peerThreadId }: PeerThreadRoomClientProps
     [settings, roster],
   );
 
+  const toggleAiLens = (next: boolean) => {
+    setAiLens(next);
+    if (next && shouldShowLensFirstCoach()) {
+      markLensFirstCoachShown();
+      toast.success(copy.product.lensCoachOn, {
+        description: copy.product.lensCoachSub,
+        duration: 5500,
+      });
+    }
+  };
+
   const headerLongPress = useLongPress({
-    onLongPress: () => {
-      const next = !settings.aiLensEnabled;
-      setAiLens(next);
-      if (next && shouldShowLensFirstCoach()) {
-        markLensFirstCoachShown();
-        toast.success(copy.product.lensCoachOn, {
-          description: copy.product.lensCoachSub,
-          duration: 5500,
-        });
-      } else {
-        toast.success(
-          next ? "AI 렌즈 켜짐 · 말풍선 제안" : "AI 렌즈 꺼짐",
-        );
-      }
-    },
+    onLongPress: () => toggleAiLens(!settings.aiLensEnabled),
     onTap: phoneDm ? () => setProfileOpen(true) : undefined,
   });
 
@@ -163,6 +161,12 @@ export function PeerThreadRoomClient({ peerThreadId }: PeerThreadRoomClientProps
             ) : null}
           </button>
         )}
+        <AiLensToggle
+          enabled={settings.aiLensEnabled}
+          onChange={toggleAiLens}
+          size="sm"
+          className="mr-1"
+        />
         <PeerThreadHubPinBar
           peerThreadId={peerThreadId}
           displayName={displayName}

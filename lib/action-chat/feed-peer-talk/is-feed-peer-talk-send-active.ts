@@ -1,21 +1,24 @@
 import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
 import type { FeedPeerTalkSession } from "@/lib/action-chat/feed-peer-talk/feed-peer-talk-types";
+import { findOpenFeedPeerTalkThread } from "@/lib/action-chat/feed-peer-talk/restore-feed-peer-talk-session";
 import {
   getFeedPeerTalkSession,
   clearFeedPeerTalkSession,
+  setFeedPeerTalkSession,
 } from "@/lib/action-chat/feed-peer-talk/feed-peer-talk-session";
 
-/** True only when an open (non-closed) inline @톡 thread is on screen — not session memory alone. */
+/** True when an open (non-closed) inline @톡 thread is on screen. */
 export function isFeedPeerTalkSendActive(
   session: FeedPeerTalkSession | null,
   messages: ActionChatMessage[],
 ): boolean {
-  if (!session?.peerThreadId) {
+  const resolved = session ?? findOpenFeedPeerTalkThread(messages);
+  if (!resolved?.peerThreadId) {
     return false;
   }
   return messages.some(
     (message) =>
-      message.feedPeerTalkThread?.peerThreadId === session.peerThreadId &&
+      message.feedPeerTalkThread?.peerThreadId === resolved.peerThreadId &&
       !message.feedPeerTalkThread.closed,
   );
 }
@@ -24,7 +27,14 @@ export function isFeedPeerTalkSendActive(
 export function syncFeedPeerTalkSessionWithMessages(
   messages: ActionChatMessage[],
 ): void {
-  const session = getFeedPeerTalkSession();
+  let session = getFeedPeerTalkSession();
+  if (!session) {
+    const restored = findOpenFeedPeerTalkThread(messages);
+    if (restored) {
+      setFeedPeerTalkSession(restored);
+      session = restored;
+    }
+  }
   if (!session) {
     return;
   }

@@ -1,5 +1,6 @@
 "use client";
 
+import { Check } from "lucide-react";
 import type { PeerMessage } from "@/lib/context/peer-message-types";
 import { DeepLinkBubbleRow } from "@/components/peer-chat/deep-link-bubble-row";
 import {
@@ -18,6 +19,8 @@ type PeerChatBubbleProps = {
   message: PeerMessage;
   simple?: boolean;
   showTime?: boolean;
+  /** 내 메시지 — 상대가 아직 안 읽었을 때만 (카톡식) */
+  showSentCheck?: boolean;
   showPeerProfileHeader?: boolean;
   peerProfile?: PeerMessageRowProfile | null;
   as?: "li" | "div";
@@ -43,6 +46,7 @@ export function PeerChatBubble({
   message,
   simple = false,
   showTime = true,
+  showSentCheck = false,
   showPeerProfileHeader = false,
   peerProfile = null,
   as = "li",
@@ -90,9 +94,7 @@ export function PeerChatBubble({
   }
 
   const showLens =
-    !isMe &&
-    lensCandidates.length > 0 &&
-    typeof onLensSelect === "function";
+    lensCandidates.length > 0 && typeof onLensSelect === "function";
 
   const imageUrl = message.imageUrl?.trim() || null;
   const caption =
@@ -184,7 +186,20 @@ export function PeerChatBubble({
             simple ? DM_CHAT.rowGap : "gap-1.5",
           )}
         >
-          {time ? <MessageTime time={time} compact={simple} /> : null}
+          {time || showSentCheck ? (
+            <div className="flex shrink-0 flex-col items-end gap-0.5 self-end">
+              {time ? <MessageTime time={time} compact={simple} /> : null}
+              {showSentCheck ? (
+                <Check
+                  className={cn(
+                    "size-3 stroke-[2.5]",
+                    simple ? "text-white/35" : "text-white/40",
+                  )}
+                  aria-label="전달됨"
+                />
+              ) : null}
+            </div>
+          ) : null}
           {bubbleBody}
         </div>
         {showLens ? (

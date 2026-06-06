@@ -20,16 +20,17 @@ import {
   shouldShowPeerMessageTime,
   shouldShowPeerProfileHeader,
 } from "@/lib/peer-chat/message-time-visibility";
+import { shouldShowPeerSentCheck } from "@/lib/peer-chat/peer-read-receipt";
 import { useDmPeerProfile } from "@/hooks/use-dm-peer-profile";
 import { isRegisteredPeerDmThread } from "@/lib/peer-chat/peer-chat-client";
 import { normalizePeerSyncError } from "@/lib/peer-chat/normalize-peer-sync-error";
 import { shouldAnalyzePeerAiLens } from "@/lib/context/peer-thread-policy";
-import { executeDeepLinkBubbleCandidate } from "@/lib/peer-chat/ai-lens/execute-lens-bubble";
 import type { DeepLinkBubbleCandidate } from "@/lib/peer-chat/ai-lens/types";
 import { LensMapPickerSheet } from "@/components/peer-chat/lens-map-picker-sheet";
+import { LensScheduleConfirmSheet } from "@/components/peer-chat/lens-schedule-confirm-sheet";
 import { usePeerAiLens } from "@/hooks/use-peer-ai-lens";
+import { useLensBubbleActions } from "@/hooks/use-lens-bubble-actions";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
 
 type PeerThreadChatPanelProps = {
   displayName: string;
@@ -78,6 +79,7 @@ export function PeerThreadChatPanel({
     sendImage,
     canSendImage,
     messagesHydrating,
+    peerLastReadAt,
   } = usePeerThreadChat(policyInput);
   const { anchorMessageId, candidates: lensCandidates } = usePeerAiLens({
     messages,
@@ -90,10 +92,14 @@ export function PeerThreadChatPanel({
   const composerBusy = aiBusy || imageBusy;
   const scrollBehaviorRef = useRef<ScrollBehavior>("auto");
   const [messagesVisible, setMessagesVisible] = useState(false);
-  const [mapPicker, setMapPicker] = useState<{
-    open: boolean;
-    place: string | null;
-  }>({ open: false, place: null });
+  const {
+    handleLensSelect,
+    mapPicker,
+    setMapPicker,
+    scheduleConfirm,
+    setScheduleConfirm,
+    handleScheduleSaved,
+  } = useLensBubbleActions(displayName);
 
   const focusComposer = useCallback(() => {
     requestAnimationFrame(() => {
@@ -195,19 +201,8 @@ export function PeerThreadChatPanel({
     }
   };
 
-  const handleLensSelect = (candidate: DeepLinkBubbleCandidate) => {
-    const result = executeDeepLinkBubbleCandidate(candidate, {
-      sourceMessageId: anchorMessageId ?? undefined,
-      peerDisplayName: displayName,
-    });
-    if (result.openMapPicker?.place) {
-      setMapPicker({ open: true, place: result.openMapPicker.place });
-    }
-    if (result.ok) {
-      toast.success(result.message);
-    } else {
-      toast.error(result.message);
-    }
+  const onLensSelect = (candidate: DeepLinkBubbleCandidate) => {
+    handleLensSelect(candidate, anchorMessageId ?? undefined);
   };
 
   return (
@@ -271,8 +266,12 @@ export function PeerThreadChatPanel({
                 lensCandidates={
                   message.id === anchorMessageId ? lensCandidates : []
                 }
-                onLensSelect={handleLensSelect}
+                onLensSelect={onLensSelect}
                 lensDisabled={aiBusy}
+                showSentCheck={
+                  phoneDm &&
+                  shouldShowPeerSentCheck(messages, index, peerLastReadAt)
+                }
               />
             ))}
             {aiBusy ? (
@@ -398,6 +397,17 @@ export function PeerThreadChatPanel({
         onOpenChange={(open) =>
           setMapPicker((prev) => ({ ...prev, open, place: open ? prev.place : null }))
         }
+      />
+      <LensScheduleConfirmSheet
+        open={scheduleConfirm.open}
+        draft={scheduleConfirm.draft}
+        onOpenChange={(open) =>
+          setScheduleConfirm((prev) => ({
+            open,
+            draft: open ? prev.draft : null,
+          }))
+        }
+        onSaved={handleScheduleSaved}
       />
     </div>
   );

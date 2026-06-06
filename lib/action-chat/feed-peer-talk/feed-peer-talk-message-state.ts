@@ -68,6 +68,35 @@ export function replaceLastPeerTalkChipWithThread(
   };
 }
 
+/** Align inline @톡 wire id with canonical cloud DM thread id. */
+export function migrateFeedPeerTalkThreadId(
+  messages: ActionChatMessage[],
+  fromPeerThreadId: string,
+  toPeerThreadId: string,
+): ActionChatMessage[] {
+  if (!fromPeerThreadId || fromPeerThreadId === toPeerThreadId) {
+    return messages;
+  }
+  return messages.map((message) => {
+    const thread = message.feedPeerTalkThread;
+    if (!thread || thread.peerThreadId !== fromPeerThreadId) {
+      return message;
+    }
+    return {
+      ...message,
+      feedPeerTalkThread: {
+        ...thread,
+        peerThreadId: toPeerThreadId,
+        messages: thread.messages.map((row) =>
+          row.peerThreadId === fromPeerThreadId
+            ? { ...row, peerThreadId: toPeerThreadId }
+            : row,
+        ),
+      },
+    };
+  });
+}
+
 export function patchFeedPeerTalkThread(
   messages: ActionChatMessage[],
   threadMessageId: string,

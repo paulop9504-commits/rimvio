@@ -2,6 +2,7 @@ import { rankPredictiveDockByGoal } from "@/lib/goal-engine/rank-dock-by-goal";
 import type { GoalSnapshot } from "@/lib/goal-engine/types";
 import type { CapabilityId } from "@/lib/capability-registry/capability-types";
 import type { RankedSurface, SurfaceAction } from "@/lib/surface-engine/surface-contract";
+import { isFallbackSurface } from "@/lib/surface-engine/surface-ux-state";
 import type {
   PredictiveActionType,
   PredictiveDockAction,
@@ -51,7 +52,9 @@ export function surfacesToPredictiveDockWire(
   surfaces: readonly RankedSurface[],
 ): PredictiveDockWire {
   const visible = surfaces.filter(
-    (surface) => surface.visibility === "prominent" || surface.visibility === "normal",
+    (surface) =>
+      !isFallbackSurface(surface) &&
+      (surface.visibility === "prominent" || surface.visibility === "normal"),
   );
   if (visible.length === 0) {
     return { main_action: null, shadow_actions: [] };

@@ -2,6 +2,7 @@ import type { PeerMessage } from "@/lib/context/peer-message-types";
 import { resolveAppOrigin } from "@/lib/auth/redirect-url";
 
 import { friendContactErrorMessage } from "@/lib/peer-chat/friend-contact-errors";
+import { resolveCanonicalPeerThreadFromSocialLayer } from "@/lib/peer-chat/resolve-canonical-peer-thread";
 
 async function parseJson<T>(response: Response): Promise<T> {
   const data = (await response.json()) as T & {
@@ -156,13 +157,30 @@ export async function fetchPeerThreadMeta(threadId: string): Promise<{
   return parseJson(response);
 }
 
-export async function fetchPeerMessages(threadId: string): Promise<PeerMessage[]> {
+export type PeerMessagesPayload = {
+  messages: PeerMessage[];
+  peerLastReadAt: string | null;
+};
+
+export async function fetchPeerMessages(
+  threadId: string,
+): Promise<PeerMessagesPayload> {
   const response = await fetch(
     `${resolveAppOrigin()}/api/peers/threads/${encodeURIComponent(threadId)}/messages`,
     { credentials: "include" },
   );
-  const data = await parseJson<{ messages: PeerMessage[] }>(response);
-  return data.messages;
+  return parseJson<PeerMessagesPayload>(response);
+}
+
+export async function fetchPeerReadState(
+  threadId: string,
+): Promise<string | null> {
+  const response = await fetch(
+    `${resolveAppOrigin()}/api/peers/threads/${encodeURIComponent(threadId)}/read-state`,
+    { credentials: "include" },
+  );
+  const data = await parseJson<{ peerLastReadAt: string | null }>(response);
+  return data.peerLastReadAt ?? null;
 }
 
 export async function invokePeerRoomAi(input: {
@@ -210,14 +228,38 @@ export async function sendPeerImageRemote(input: {
   return data.message;
 }
 
+async function resolveClientSendThreadId(input: {
+  threadId: string;
+  displayName: string;
+}): Promise<string> {
+  if (isRegisteredPeerDmThread(input.threadId)) {
+    return input.threadId;
+  }
+  try {
+    const layer = await fetchSocialLayer();
+    return resolveCanonicalPeerThreadFromSocialLayer(
+      {
+        peerThreadId: input.threadId,
+        displayName: input.displayName,
+        rimvioId: null,
+      },
+      layer,
+    );
+  } catch {
+    return input.threadId;
+  }
+}
+
 export async function sendPeerMessageRemote(input: {
   threadId: string;
   displayName: string;
   body: string;
 }): Promise<PeerMessage> {
+  const sendThreadId = await resolveClientSendThreadId(input);
+
   const post = async () => {
     const response = await fetch(
-      `${resolveAppOrigin()}/api/peers/threads/${encodeURIComponent(input.threadId)}/messages`,
+      `${resolveAppOrigin()}/api/peers/threads/${encodeURIComponent(sendThreadId)}/messages`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -237,7 +279,7 @@ export async function sendPeerMessageRemote(input: {
   } catch (firstError) {
     try {
       await ensurePeerThreadRemote({
-        threadId: input.threadId,
+        threadId: sendThreadId,
         displayName: input.displayName,
       });
       return await post();

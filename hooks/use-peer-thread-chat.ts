@@ -49,8 +49,10 @@ import type { PeerMessageRow } from "@/lib/peer-chat/types";
 import { normalizePeerSyncError } from "@/lib/peer-chat/normalize-peer-sync-error";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { tryCreateClient } from "@/lib/supabase/client";
+import { usePeerReadReceipt } from "@/hooks/use-peer-read-receipt";
 
 const PEER_MESSAGES_TABLE = "peer_messages";
+const PEER_MESSAGES_POLL_MS = 6_000;
 
 function initialMessages(
   threadId: string,
@@ -81,12 +83,17 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
     initialMessages(threadId, canPersist),
   );
   const [inviteCode, setInviteCode] = useState<string | null>(null);
+  const [cloudThreadId, setCloudThreadId] = useState<string | null>(null);
   const [cloudReady, setCloudReady] = useState(false);
   const [messagesHydrating, setMessagesHydrating] = useState(useCloud);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [aiBusy, setAiBusy] = useState(false);
   const [imageBusy, setImageBusy] = useState(false);
   const hydrateGen = useRef(0);
+  const { peerLastReadAt, setPeerLastReadAt, refreshPeerRead } = usePeerReadReceipt(
+    threadId,
+    useCloud && cloudReady,
+  );
 
   const refreshLocal = useCallback(() => {
     if (!canPersist) {
@@ -98,6 +105,7 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
 
   useEffect(() => {
     setMessages(initialMessages(threadId, canPersist));
+    setCloudThreadId(null);
     setCloudReady(false);
     setMessagesHydrating(useCloud);
     hydrateGen.current += 1;
@@ -105,6 +113,7 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
 
   useEffect(() => {
     if (!useCloud) {
+      setCloudThreadId(null);
       setCloudReady(false);
       setMessagesHydrating(false);
       setInviteCode(null);
@@ -120,19 +129,22 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
         setSyncError(null);
         setMessagesHydrating(true);
 
-        const [ensured, remote] = await Promise.all([
-          ensurePeerThreadRemote({ threadId, displayName }),
-          fetchPeerMessages(threadId).catch(async () => {
-            await ensurePeerThreadRemote({ threadId, displayName });
-            return fetchPeerMessages(threadId);
-          }),
-        ]);
+        const ensured = await ensurePeerThreadRemote({ threadId, displayName });
+        if (cancelled || generation !== hydrateGen.current) {
+          return;
+        }
+
+        setCloudThreadId(ensured.threadId);
+        setInviteCode(ensured.inviteCode);
+
+        const remotePayload = await fetchPeerMessages(threadId);
+        const remote = remotePayload.messages;
 
         if (cancelled || generation !== hydrateGen.current) {
           return;
         }
 
-        setInviteCode(ensured.inviteCode);
+        setPeerLastReadAt(remotePayload.peerLastReadAt);
         setMessages((current) => {
           const merged = mergePeerMessagesBatch(current, remote);
           if (canPersist && merged.length > 0) {
@@ -160,10 +172,43 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
     return () => {
       cancelled = true;
     };
-  }, [useCloud, threadId, displayName, refreshLocal, canPersist]);
+  }, [useCloud, threadId, displayName, refreshLocal, canPersist, setPeerLastReadAt]);
+
+  const realtimeThreadId = cloudThreadId ?? threadId;
+
+  const pullRemoteMessages = useCallback(async () => {
+    if (!useCloud) {
+      return;
+    }
+    try {
+      const remotePayload = await fetchPeerMessages(threadId);
+      setPeerLastReadAt(remotePayload.peerLastReadAt);
+      setMessages((current) => {
+        const merged = mergePeerMessagesBatch(current, remotePayload.messages);
+        if (canPersist && merged.length > 0) {
+          replacePeerMessageLog(threadId, merged);
+        }
+        return merged;
+      });
+      setCloudReady(true);
+      setSyncError(null);
+    } catch {
+      // Polling is best-effort when realtime drops or hydrate is slow.
+    }
+  }, [useCloud, threadId, canPersist, setPeerLastReadAt]);
 
   useEffect(() => {
-    if (!useCloud || !supabase || !cloudReady) {
+    if (!useCloud) {
+      return;
+    }
+    const timer = window.setInterval(() => {
+      void pullRemoteMessages();
+    }, PEER_MESSAGES_POLL_MS);
+    return () => window.clearInterval(timer);
+  }, [useCloud, pullRemoteMessages]);
+
+  useEffect(() => {
+    if (!useCloud || !supabase) {
       return;
     }
 
@@ -171,14 +216,14 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
 
     const subscribe = () => {
       channel = supabase
-        .channel(`peer-messages:${threadId}`)
+        .channel(`peer-messages:${realtimeThreadId}`)
         .on(
           "postgres_changes",
           {
             event: "INSERT",
             schema: "public",
             table: PEER_MESSAGES_TABLE,
-            filter: `thread_id=eq.${threadId}`,
+            filter: `thread_id=eq.${realtimeThreadId}`,
           },
           (payload) => {
             const row = (payload as RealtimePostgresChangesPayload<PeerMessageRow>)
@@ -195,10 +240,10 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
               return merged;
             });
             if (
-              isRegisteredPeerDmThread(threadId) &&
+              isRegisteredPeerDmThread(realtimeThreadId) &&
               mapped.author !== "me"
             ) {
-              void syncFeedSlotFromRoomRemote(threadId)
+              void syncFeedSlotFromRoomRemote(realtimeThreadId)
                 .then(() => emitFeedSlotsRefresh())
                 .catch(() => emitFeedSlotsRefresh());
             }
@@ -214,7 +259,14 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
         void supabase.removeChannel(channel);
       }
     };
-  }, [useCloud, supabase, cloudReady, threadId, user?.id, canPersist]);
+  }, [
+    useCloud,
+    supabase,
+    realtimeThreadId,
+    threadId,
+    user?.id,
+    canPersist,
+  ]);
 
   const resolveSendThreadId = useCallback(async () => {
     if (isRegisteredPeerDmThread(threadId)) {
@@ -235,6 +287,13 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
     }
   }, [threadId, displayName]);
 
+  const resolveActiveSendThreadId = useCallback(async () => {
+    if (cloudThreadId) {
+      return cloudThreadId;
+    }
+    return resolveSendThreadId();
+  }, [cloudThreadId, resolveSendThreadId]);
+
   const sendHuman = useCallback(
     async (body: string) => {
       const trimmed = body.trim();
@@ -242,8 +301,8 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
         return null;
       }
 
-      if (useCloud && cloudReady) {
-        const sendThreadId = await resolveSendThreadId();
+      if (useCloud) {
+        const sendThreadId = await resolveActiveSendThreadId();
         const pending = createOptimisticPeerMessage({
           peerThreadId: sendThreadId,
           body: trimmed,
@@ -251,7 +310,7 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
         setMessages((current) => {
           const merged = sortPeerMessages([...current, pending]);
           if (canPersist) {
-            replacePeerMessageLog(sendThreadId, merged);
+            replacePeerMessageLog(threadId, merged);
           }
           return merged;
         });
@@ -262,6 +321,9 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
             displayName,
             body: trimmed,
           });
+          setCloudThreadId((current) => current ?? sendThreadId);
+          setCloudReady(true);
+          setSyncError(null);
           setMessages((current) => {
             const merged = replaceOptimisticPeerMessage(
               current,
@@ -269,7 +331,7 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
               message,
             );
             if (canPersist) {
-              replacePeerMessageLog(sendThreadId, merged);
+              replacePeerMessageLog(threadId, merged);
             }
             return merged;
           });
@@ -295,21 +357,31 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
       setMessages((current) => [...current, message]);
       return message;
     },
-    [useCloud, cloudReady, threadId, displayName, canPersist, resolveSendThreadId],
+    [
+      useCloud,
+      threadId,
+      displayName,
+      canPersist,
+      resolveActiveSendThreadId,
+    ],
   );
 
   const invokeAi = useCallback(
     async (prompt: string) => {
-      if (!useCloud || !cloudReady) {
+      if (!useCloud) {
         return null;
       }
       setAiBusy(true);
       try {
+        const sendThreadId = await resolveActiveSendThreadId();
         const message = await invokePeerRoomAi({
-          threadId,
+          threadId: sendThreadId,
           displayName,
           prompt,
         });
+        setCloudThreadId((current) => current ?? sendThreadId);
+        setCloudReady(true);
+        setSyncError(null);
         setMessages((current) => {
           const merged = mergePeerMessages(current, message);
           if (canPersist) {
@@ -322,19 +394,20 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
         setAiBusy(false);
       }
     },
-    [useCloud, cloudReady, threadId, displayName, canPersist],
+    [useCloud, threadId, displayName, canPersist, resolveActiveSendThreadId],
   );
 
   const sendImage = useCallback(
     async (file: File, caption?: string) => {
-      if (!useCloud || !cloudReady) {
+      if (!useCloud) {
         setSyncError("로그인 후 사진을 보낼 수 있어요");
         return null;
       }
       setImageBusy(true);
+      const sendThreadId = await resolveActiveSendThreadId();
       const previewUrl = URL.createObjectURL(file);
       const pending = createOptimisticPeerMessage({
-        peerThreadId: threadId,
+        peerThreadId: sendThreadId,
         body: caption?.trim() || PEER_MESSAGE_IMAGE_PLACEHOLDER,
         imageUrl: previewUrl,
       });
@@ -349,11 +422,13 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
       try {
         setSyncError(null);
         const message = await sendPeerImageRemote({
-          threadId,
+          threadId: sendThreadId,
           displayName,
           file,
           caption,
         });
+        setCloudThreadId((current) => current ?? sendThreadId);
+        setCloudReady(true);
         setMessages((current) => {
           const merged = replaceOptimisticPeerMessage(
             current,
@@ -365,8 +440,8 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
           }
           return merged;
         });
-        if (isRegisteredPeerDmThread(threadId)) {
-          void syncFeedSlotFromRoomRemote(threadId)
+        if (isRegisteredPeerDmThread(sendThreadId)) {
+          void syncFeedSlotFromRoomRemote(sendThreadId)
             .then(() => emitFeedSlotsRefresh())
             .catch(() => emitFeedSlotsRefresh());
         }
@@ -384,7 +459,7 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
         setImageBusy(false);
       }
     },
-    [useCloud, cloudReady, threadId, displayName, canPersist],
+    [useCloud, threadId, displayName, canPersist, resolveActiveSendThreadId],
   );
 
   const send = useCallback(
@@ -432,9 +507,9 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
     canSend: canPersist,
     send,
     sendImage,
-    canSendImage: useCloud && cloudReady,
+    canSendImage: useCloud,
     refresh: refreshLocal,
-    realtime: useCloud && cloudReady,
+    realtime: useCloud && (cloudReady || Boolean(cloudThreadId)),
     inviteCode,
     inviteUrl,
     syncError,
@@ -442,5 +517,7 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
     aiBusy,
     imageBusy,
     messagesHydrating,
+    peerLastReadAt,
+    refreshPeerRead,
   };
 }

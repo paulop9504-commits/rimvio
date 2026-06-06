@@ -112,6 +112,7 @@ import {
   sendFeedPeerTalkInFeed,
 } from "@/lib/action-chat/feed-peer-talk/feed-peer-talk-actions";
 import { resolveFeedPeerTalkSessionFromMessages } from "@/lib/action-chat/feed-peer-talk/restore-feed-peer-talk-session";
+import { isRimvioPromptUri, routeRimvioPromptUri } from "@/lib/action-chat/rimvio-prompt-router";
 import {
   isFeedPeerTalkSendActive,
   syncFeedPeerTalkSessionWithMessages,
@@ -1485,10 +1486,26 @@ export function useActionChat(
       const turnIntent = parseTurnIntent(text, options, readStoredChatAxis);
       const { trimmed, pendingAttachments } = turnIntent;
 
+      if (trimmed && isRimvioPromptUri(trimmed)) {
+        const handled = routeRimvioPromptUri(trimmed, {
+          sendMessage: (nl) => {
+            void sendMessageRef.current(nl, options);
+          },
+        });
+        if (handled) {
+          return;
+        }
+      }
+
       const currentBeforeSend = readActionChatMessages(scopeId);
       syncFeedPeerTalkSessionWithMessages(currentBeforeSend);
 
-      const peerTalkSession = getFeedPeerTalkSession();
+      const peerTalkSession =
+        getFeedPeerTalkSession() ??
+        resolveFeedPeerTalkSessionFromMessages(currentBeforeSend);
+      if (peerTalkSession && !getFeedPeerTalkSession()) {
+        setFeedPeerTalkSession(peerTalkSession);
+      }
       const routeToFeedPeerTalk =
         isFeedPeerTalkSendActive(peerTalkSession, currentBeforeSend) &&
         pendingAttachments.length === 0 &&
@@ -2118,6 +2135,9 @@ export function useActionChat(
         openSpawnAction({
           deeplink: action.target,
           onPrompt: (uri) => {
+            if (routeRimvioPromptUri(uri, { sendMessage: (nl) => void sendMessage(nl) })) {
+              return;
+            }
             void sendMessage(uri);
           },
         });

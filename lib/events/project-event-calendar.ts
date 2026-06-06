@@ -31,10 +31,23 @@ function toneForCategory(category: EventCandidate["category"]): CalendarChipTone
   }
 }
 
-/** Event Calendar — read-only projection from Event SSOT (scheduled lifecycle). */
+function isFeedPlanEvent(event: EventCandidate): boolean {
+  const meta = event.metadata ?? {};
+  return (
+    meta.feedPlanEnabled === true ||
+    meta.planKind === "plan" ||
+    Boolean(meta.planWindowEndIso)
+  );
+}
+
+/** Event Calendar — read-only projection from Event SSOT (scheduled + active feed plans). */
 export function listEventCalendarRows(): EventCalendarRow[] {
   return readLifeProjections()
-    .events.filter((event) => event.lifecycle === "scheduled")
+    .events.filter(
+      (event) =>
+        event.lifecycle === "scheduled" ||
+        (event.lifecycle === "active" && isFeedPlanEvent(event)),
+    )
     .map((event) => {
       const iso = event.datetime?.trim();
       if (!iso) {

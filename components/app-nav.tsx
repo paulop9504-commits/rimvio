@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Search, Settings, Users } from "lucide-react";
+import { Globe2, Search, Settings, Users } from "lucide-react";
 import { RimvioFeedMark } from "@/lib/brand/rimvio-feed-mark";
 import { useCopy } from "@/hooks/use-copy";
 import { useRoomGuest } from "@/hooks/use-room-guest";
@@ -21,7 +21,7 @@ type NavTab = {
   href: string;
   label: string;
   isActive: (pathname: string, filter: string | null) => boolean;
-  icon: "feed" | "search" | "peers" | "settings";
+  icon: "feed" | "globe" | "search" | "peers" | "settings";
 };
 
 function IgFeedIcon({
@@ -34,28 +34,47 @@ function IgFeedIcon({
   drawn: boolean;
 }) {
   return (
-    <RimvioFeedMark
-      filled={active}
-      variant={drawn ? variant : null}
-    />
+    <span className={NAV_ICON_SLOT} aria-hidden>
+      <RimvioFeedMark
+        filled={active}
+        variant={drawn ? variant : null}
+        nav
+      />
+    </span>
+  );
+}
+
+const NAV_ICON_CLASS = "size-6 shrink-0";
+const NAV_ICON_STROKE = 2;
+const NAV_ICON_SLOT = "rimvio-bottom-nav-slot";
+
+function NavIconSlot({ children }: { children: ReactNode }) {
+  return (
+    <span className={NAV_ICON_SLOT} aria-hidden>
+      {children}
+    </span>
   );
 }
 
 function IgSearchIcon({ active }: { active: boolean }) {
   return (
-    <Search
-      className={cn("size-[1.625rem]", active ? "text-foreground" : "text-foreground/85")}
-      strokeWidth={active ? 2.2 : 1.85}
-    />
+    <NavIconSlot>
+      <Search
+        className={cn(NAV_ICON_CLASS, active ? "text-foreground" : "text-foreground/70")}
+        strokeWidth={NAV_ICON_STROKE}
+      />
+    </NavIconSlot>
   );
 }
 
 function IgSettingsIcon({ active }: { active: boolean }) {
   return (
-    <Settings
-      className={cn("size-[1.625rem]", active ? "text-foreground" : "text-foreground/85")}
-      strokeWidth={active ? 2.2 : 1.85}
-    />
+    <NavIconSlot>
+      <Settings
+        className={cn(NAV_ICON_CLASS, active ? "text-foreground" : "text-foreground/70")}
+        strokeWidth={NAV_ICON_STROKE}
+      />
+    </NavIconSlot>
   );
 }
 
@@ -79,13 +98,21 @@ function NavTabIcon({
       );
     case "peers":
       return (
-        <Users
-          className={cn(
-            "size-[1.625rem]",
-            active ? "text-foreground" : "text-foreground/85"
-          )}
-          strokeWidth={active ? 2.2 : 1.85}
-        />
+        <NavIconSlot>
+          <Users
+            className={cn(NAV_ICON_CLASS, active ? "text-foreground" : "text-foreground/70")}
+            strokeWidth={NAV_ICON_STROKE}
+          />
+        </NavIconSlot>
+      );
+    case "globe":
+      return (
+        <NavIconSlot>
+          <Globe2
+            className={cn(NAV_ICON_CLASS, active ? "text-sky-300" : "text-foreground/70")}
+            strokeWidth={NAV_ICON_STROKE}
+          />
+        </NavIconSlot>
       );
     case "search":
       return <IgSearchIcon active={active} />;
@@ -119,7 +146,7 @@ function NavLinks({
             aria-label={tab.label}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex items-center justify-center transition-opacity active:opacity-60",
+              "mx-auto flex w-full items-center justify-center transition-opacity active:opacity-60 touch-manipulation",
               linkClassName
             )}
           >
@@ -157,6 +184,27 @@ function SideNavRail({
   );
 }
 
+function BottomNavGrid({
+  tabs,
+  pathname,
+  filter,
+  guest,
+}: {
+  tabs: NavTab[];
+  pathname: string;
+  filter: string | null;
+  guest: ReturnType<typeof useRoomGuest>;
+}) {
+  return (
+    <>
+      <div className="rimvio-bottom-nav-grid">
+        <NavLinks tabs={tabs} pathname={pathname} filter={filter} guest={guest} />
+      </div>
+      <div className="rimvio-bottom-nav-safe" aria-hidden />
+    </>
+  );
+}
+
 function InlineNavBar({
   tabs,
   pathname,
@@ -171,16 +219,15 @@ function InlineNavBar({
   return (
     <nav
       className={cn(
-        "mt-[var(--space-phi2)] grid grid-cols-4 rimvio-nav-bar px-[var(--space-phi2)] pt-[var(--space-u)] lg:hidden"
+        "mt-[var(--space-phi2)] flex shrink-0 flex-col rimvio-nav-bar lg:hidden",
       )}
       aria-label="Primary"
     >
-      <NavLinks
+      <BottomNavGrid
         tabs={tabs}
         pathname={pathname}
         filter={filter}
         guest={guest}
-        linkClassName="size-10"
       />
     </nav>
   );
@@ -203,20 +250,17 @@ function FixedBottomNavBar({
         GRID.navBottomFrame,
         "lg:hidden",
         rimvioNavBarClass,
-        "pb-[max(0.25rem,env(safe-area-inset-bottom))]"
+        "flex flex-col",
       )}
       aria-label="Primary"
       data-testid="rimvio-bottom-nav"
     >
-      <div className="grid h-[3.05rem] grid-cols-4 items-center px-[var(--space-phi2)]">
-        <NavLinks
-          tabs={tabs}
-          pathname={pathname}
-          filter={filter}
-          guest={guest}
-          linkClassName="size-11"
-        />
-      </div>
+      <BottomNavGrid
+        tabs={tabs}
+        pathname={pathname}
+        filter={filter}
+        guest={guest}
+      />
     </nav>
   );
 }
@@ -236,6 +280,12 @@ export function AppNav({ immersive = false, placement }: AppNavProps) {
         isActive: (p) =>
           p === "/" || p === "/feed" || p.startsWith("/feed/"),
         icon: "feed",
+      },
+      {
+        href: "/globe",
+        label: copy.nav.globe,
+        isActive: (p) => p === "/globe" || p.startsWith("/globe/"),
+        icon: "globe",
       },
       {
         href: "/search",

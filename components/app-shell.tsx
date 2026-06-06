@@ -133,7 +133,11 @@ export function AppShell({
                 {!hideBottomNav ? (
                   <Suspense
                     fallback={
-                      <div className="h-[3.05rem] shrink-0 lg:hidden" aria-hidden />
+                      <div
+                        className="shrink-0 lg:hidden"
+                        style={{ height: "var(--rimvio-bottom-nav-offset)" }}
+                        aria-hidden
+                      />
                     }
                   >
                     <AppNav placement="inline" />
@@ -146,7 +150,11 @@ export function AppShell({
                 {!immersive ? (
                   <Suspense
                     fallback={
-                      <div className="h-[3.05rem] shrink-0 lg:hidden" aria-hidden />
+                      <div
+                        className="shrink-0 lg:hidden"
+                        style={{ height: "var(--rimvio-bottom-nav-offset)" }}
+                        aria-hidden
+                      />
                     }
                   >
                     <AppNav placement="inline" />

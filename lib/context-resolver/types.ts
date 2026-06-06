@@ -24,6 +24,7 @@ export type WeatherContext = {
   summary: string;
   temp_c?: number;
   feels_like_c?: number;
+  humidity_pct?: number;
   precipitation_chance?: number;
   is_unpleasant?: boolean;
   location_label?: string;

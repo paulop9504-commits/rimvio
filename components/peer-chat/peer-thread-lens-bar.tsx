@@ -1,6 +1,7 @@
 "use client";
 
-import { Pin, Sparkles } from "lucide-react";
+import { Pin } from "lucide-react";
+import { AiLensToggle } from "@/components/peer-chat/ai-lens-toggle";
 import { UNPIN_PEER_RETENTION_DAYS } from "@/lib/context/hub-room-retention";
 import { PINNED_PEER_SLOTS } from "@/lib/context/peer-thread-types";
 import { countConnectedPeers } from "@/lib/context/pinned-peer-roster";
@@ -17,10 +18,7 @@ type PeerThreadLensBarProps = {
   className?: string;
 };
 
-/**
- * 친구 ROOM + 고정(?�결) ?�태?�서�??�즈·고정?�.
- * AI ?�행 �?본인)?�는 ??바�? ?��? ?�음.
- */
+/** 친구 ROOM — 고정(연결) 상태에서 렌즈·고정 핀 */
 export function PeerThreadLensBar({
   displayName,
   aiLensEnabled,
@@ -41,51 +39,40 @@ export function PeerThreadLensBar({
     <div
       className={cn(
         "flex flex-wrap items-center gap-2 border-b border-border bg-rimvio-surface/95 px-3 py-2",
-        className
+        className,
       )}
       role="toolbar"
-      aria-label={`${displayName} ROOM ?�정`}
+      aria-label={`${displayName} ROOM 설정`}
     >
-      <button
-        type="button"
-        role="switch"
-        aria-checked={aiLensEnabled}
-        aria-label="AI ?�즈"
-        onClick={() => onAiLensChange(!aiLensEnabled)}
-        className={cn(
-          "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors",
-          aiLensEnabled
-            ? "bg-indigo-500 text-white shadow-sm"
-            : "bg-[#F3F4F6] text-muted-foreground"
-        )}
-      >
-        <Sparkles className="size-3.5" aria-hidden />
-        AI ?�즈
-      </button>
+      <AiLensToggle
+        enabled={aiLensEnabled}
+        onChange={onAiLensChange}
+        size="md"
+      />
 
       <button
         type="button"
         role="switch"
         aria-checked={isPinned}
-        aria-label="고정?� ?�제"
+        aria-label="고정 해제"
         disabled={rosterFull}
-        title={`고정 ?�제 ???�?�는 ${UNPIN_PEER_RETENTION_DAYS}??????�� · ROOM?� ?��?`}
+        title={`고정 해제 시 대화는 ${UNPIN_PEER_RETENTION_DAYS}일 후 삭제 · ROOM은 유지`}
         onClick={() => onPinnedChange(false)}
         className={cn(
           "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors",
           "bg-amber-500 text-white shadow-sm",
-          rosterFull && "cursor-not-allowed opacity-50"
+          rosterFull && "cursor-not-allowed opacity-50",
         )}
       >
         <Pin className="size-3.5" aria-hidden />
-        고정?�
+        고정됨
         <span className="text-[10px] opacity-80">
           {connectedCount}/{PINNED_PEER_SLOTS}
         </span>
       </button>
 
       <span className="text-[11px] text-[#9CA3AF]">
-        {aiLensEnabled ? "?�??· 맥락·Rail" : "?�??· ?�즈 꺼짐"}
+        {aiLensEnabled ? "맥락·제안 버블" : "렌즈 꺼짐 · 제안 없음"}
       </span>
     </div>
   );

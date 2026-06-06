@@ -1,8 +1,17 @@
 "use client";
 
-import { memo, useMemo, useState } from "react";
+import { memo, useMemo, useRef, useState, type PointerEvent } from "react";
 import Link from "next/link";
-import { GripVertical } from "lucide-react";
+import { ChevronDown, ChevronUp, GripVertical } from "lucide-react";
+import { useCopy } from "@/hooks/use-copy";
+import { useFeedQueueSheetSnap } from "@/hooks/use-feed-queue-sheet-snap";
+import {
+  countFeedQueueRows,
+  filterFeedQueueSections,
+  flattenFeedQueueSections,
+  resolveFeedQueueSections,
+  type FeedQueueSectionId,
+} from "@/lib/feed/resolve-feed-queue-sections";
 import { surfaceTypeVisual } from "@/lib/feed/surface-type-visual";
 import type { RankedSurface, SurfaceType } from "@/lib/surface-engine/surface-contract";
 import type {
@@ -17,6 +26,7 @@ export type FeedQueueSheetProps = {
   onDispatch: DispatchSurfaceAction;
   onAskAi: () => void;
   askAiLabel: string;
+  className?: string;
 };
 
 type QueueFilter = "all" | SurfaceType;
@@ -34,25 +44,34 @@ function asDispatchNode(surface: RankedSurface): SurfaceNode {
   };
 }
 
-function buildQueueRows(
-  primary: SurfaceNode | null,
-  latent: readonly RankedSurface[],
-): RankedSurface[] {
-  const rows: RankedSurface[] = [];
-  if (primary) {
-    for (const action of primary.secondaryActions.slice(3)) {
-      rows.push({
-        ...primary,
-        id: `${primary.id}:sec:${action.id}`,
-        title: action.label,
-        description: primary.title,
-        primaryAction: { ...action, kind: "primary" },
-        secondaryActions: [],
-      });
-    }
-  }
-  rows.push(...latent);
-  return rows.slice(0, 8);
+function QueueRow({
+  row,
+  onDispatch,
+}: {
+  row: RankedSurface;
+  onDispatch: DispatchSurfaceAction;
+}) {
+  const visual = surfaceTypeVisual(row.type);
+  return (
+    <li>
+      <button
+        type="button"
+        className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-white/[0.06] active:bg-white/[0.1]"
+        onClick={() => onDispatch(asDispatchNode(row), row.primaryAction)}
+      >
+        <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-white/10 text-xl">
+          {visual.emoji}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[14px] font-medium text-white">{row.title}</p>
+          <p className="truncate text-[12px] text-white/45">
+            {row.description || row.primaryAction.label}
+          </p>
+        </div>
+        <GripVertical className="size-4 shrink-0 text-white/20" strokeWidth={2} aria-hidden />
+      </button>
+    </li>
+  );
 }
 
 export const FeedQueueSheet = memo(function FeedQueueSheet({
@@ -61,39 +80,125 @@ export const FeedQueueSheet = memo(function FeedQueueSheet({
   onDispatch,
   onAskAi,
   askAiLabel,
+  className,
 }: FeedQueueSheetProps) {
+  const copy = useCopy();
+  const queueCopy = copy.feed.queue;
   const [filter, setFilter] = useState<QueueFilter>("all");
-  const rows = useMemo(() => buildQueueRows(primary, latent), [primary, latent]);
+  const snap = useFeedQueueSheetSnap(false);
+  const draggedRef = useRef(false);
+
+  const sections = useMemo(
+    () => resolveFeedQueueSections(primary, latent),
+    [primary, latent],
+  );
+
+  const allRows = useMemo(() => flattenFeedQueueSections(sections), [sections]);
+  const totalCount = useMemo(() => countFeedQueueRows(sections), [sections]);
 
   const chips = useMemo(() => {
     const types = new Set<SurfaceType>();
-    for (const row of rows) {
+    for (const row of allRows) {
       types.add(row.type);
     }
     return ["all" as const, ...Array.from(types)];
-  }, [rows]);
+  }, [allRows]);
 
-  const filtered = useMemo(() => {
+  const filteredSections = useMemo(() => {
     if (filter === "all") {
-      return rows;
+      return sections;
     }
-    return rows.filter((row) => row.type === filter);
-  }, [filter, rows]);
+    return filterFeedQueueSections(sections, (row) => row.type === filter);
+  }, [filter, sections]);
+
+  const peekRow = allRows[0] ?? null;
+
+  const collapsedSummary = useMemo(() => {
+    if (totalCount === 0) {
+      return queueCopy.collapsedEmpty;
+    }
+    if (peekRow) {
+      return queueCopy.collapsedWithPeek(totalCount, peekRow.title);
+    }
+    return queueCopy.collapsedCount(totalCount);
+  }, [peekRow, queueCopy, totalCount]);
+
+  const sectionLabels: Record<FeedQueueSectionId, string> = {
+    in_progress: queueCopy.sectionInProgress,
+    context_actions: queueCopy.sectionContextActions,
+    up_next: queueCopy.sectionUpNext,
+  };
+
+  const bindDragHandle = () => ({
+    onPointerDown: (event: PointerEvent<HTMLButtonElement>) => {
+      draggedRef.current = false;
+      event.currentTarget.setPointerCapture(event.pointerId);
+      snap.handlePointerDown(event.clientY);
+    },
+    onPointerMove: (event: PointerEvent<HTMLButtonElement>) => {
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.preventDefault();
+      }
+      snap.handlePointerMove(event.clientY);
+      if (Math.abs(event.movementY) > 2) {
+        draggedRef.current = true;
+      }
+    },
+    onPointerUp: (event: PointerEvent<HTMLButtonElement>) => {
+      snap.handlePointerUp();
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+      if (!draggedRef.current) {
+        snap.toggle();
+      }
+    },
+    onPointerCancel: () => {
+      snap.handlePointerUp();
+    },
+  });
+
+  const hasVisibleRows = filteredSections.some((section) => section.rows.length > 0);
 
   return (
     <section
-      className="mt-auto flex max-h-[min(48dvh,420px)] min-h-[11rem] flex-col rounded-t-[1.75rem] border-t border-white/10 bg-[#0c0c0e] shadow-[0_-12px_40px_rgba(0,0,0,0.35)]"
-      aria-label="다음에 할 일"
+      className={cn(
+        "feed-queue-sheet shrink-0 flex flex-col rounded-t-[1.75rem] border-t border-white/10 bg-[#0c0c0e] shadow-[0_-12px_40px_rgba(0,0,0,0.35)]",
+        snap.expanded && "max-h-[min(50vh,400px)] min-h-0",
+        className,
+      )}
+      data-feed-queue-expanded={snap.expanded ? "true" : "false"}
+      aria-label={queueCopy.ariaLabel}
     >
-      <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-white/25" aria-hidden />
+      <button
+        type="button"
+        className="flex w-full shrink-0 flex-col items-center pt-2.5 touch-none"
+        aria-expanded={snap.expanded}
+        aria-label={snap.expanded ? queueCopy.collapseAria : queueCopy.expandAria}
+        {...bindDragHandle()}
+      >
+        <span className="h-1 w-10 rounded-full bg-white/25" aria-hidden />
+      </button>
 
-      <header className="flex items-start justify-between gap-3 px-4 pb-2 pt-3">
-        <div>
+      <header className="flex shrink-0 items-start justify-between gap-3 px-4 pb-2 pt-1">
+        <button
+          type="button"
+          className="min-w-0 flex-1 text-left"
+          onClick={snap.toggle}
+          aria-expanded={snap.expanded}
+        >
           <p className="text-[10px] font-medium uppercase tracking-wide text-white/40">
-            다음에 할 일
+            {queueCopy.eyebrow}
           </p>
-          <p className="mt-0.5 text-[15px] font-semibold text-white">오늘 큐</p>
-        </div>
+          <p className="mt-0.5 text-[15px] font-semibold text-white">{queueCopy.title}</p>
+          {!snap.expanded ? (
+            <p className="mt-1 truncate text-[12px] text-white/45">{collapsedSummary}</p>
+          ) : primary ? (
+            <p className="mt-1 truncate text-[12px] text-white/45">
+              {queueCopy.nowFocus(primary.title)}
+            </p>
+          ) : null}
+        </button>
         <button
           type="button"
           onClick={onAskAi}
@@ -103,71 +208,72 @@ export const FeedQueueSheet = memo(function FeedQueueSheet({
         </button>
       </header>
 
-      {chips.length > 1 ? (
-        <div className="flex gap-2 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {chips.map((chip) => {
-            const label =
-              chip === "all" ? "전체" : surfaceTypeVisual(chip).chipLabel;
-            const active = filter === chip;
-            return (
-              <button
-                key={chip}
-                type="button"
-                onClick={() => setFilter(chip)}
-                className={cn(
-                  "shrink-0 rounded-full px-3.5 py-1.5 text-[12px] font-semibold transition-colors",
-                  active
-                    ? "bg-white text-black"
-                    : "bg-white/10 text-white/75 hover:bg-white/15",
-                )}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
-
-      <ul className="min-h-0 flex-1 overflow-y-auto px-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {filtered.length === 0 ? (
-          <li className="px-3 py-6 text-center text-[13px] text-white/40">
-            다른 일정은 비어 있어요
-          </li>
-        ) : (
-          filtered.map((row) => {
-            const visual = surfaceTypeVisual(row.type);
-            return (
-              <li key={row.id}>
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-white/[0.06] active:bg-white/[0.1]"
-                  onClick={() => onDispatch(asDispatchNode(row), row.primaryAction)}
-                >
-                  <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-white/10 text-xl">
-                    {visual.emoji}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[14px] font-medium text-white">
-                      {row.title}
-                    </p>
-                    <p className="truncate text-[12px] text-white/45">
-                      {row.description || row.primaryAction.label}
-                    </p>
-                  </div>
-                  <GripVertical
-                    className="size-4 shrink-0 text-white/20"
-                    strokeWidth={2}
-                    aria-hidden
-                  />
-                </button>
-              </li>
-            );
-          })
+      <div
+        className={cn(
+          "flex min-h-0 flex-1 flex-col overflow-hidden transition-opacity duration-200",
+          snap.expanded ? "opacity-100" : "pointer-events-none opacity-0",
         )}
-      </ul>
+        aria-hidden={!snap.expanded}
+      >
+        {chips.length > 1 ? (
+          <div className="flex shrink-0 gap-2 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {chips.map((chip) => {
+              const label = chip === "all" ? queueCopy.filterAll : surfaceTypeVisual(chip).chipLabel;
+              const active = filter === chip;
+              return (
+                <button
+                  key={chip}
+                  type="button"
+                  onClick={() => setFilter(chip)}
+                  className={cn(
+                    "shrink-0 rounded-full px-3.5 py-1.5 text-[12px] font-semibold transition-colors",
+                    active
+                      ? "bg-white text-black"
+                      : "bg-white/10 text-white/75 hover:bg-white/15",
+                  )}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {!hasVisibleRows ? (
+            <p className="px-3 py-6 text-center text-[13px] text-white/40">{queueCopy.empty}</p>
+          ) : (
+            filteredSections.map((section) => (
+              <div key={section.id} className="mb-3 last:mb-0">
+                <p className="px-2 pb-1.5 pt-1 text-[11px] font-semibold uppercase tracking-wide text-white/35">
+                  {sectionLabels[section.id]}
+                </p>
+                <ul>
+                  {section.rows.map((row) => (
+                    <QueueRow key={row.id} row={row} onDispatch={onDispatch} />
+                  ))}
+                </ul>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={snap.toggle}
+        className="mx-auto mb-1 flex size-7 shrink-0 items-center justify-center rounded-full text-white/35 transition-colors hover:bg-white/[0.06] hover:text-white/60"
+        aria-label={snap.expanded ? queueCopy.collapseAria : queueCopy.expandAria}
+      >
+        {snap.expanded ? (
+          <ChevronDown className="size-5" strokeWidth={2.2} aria-hidden />
+        ) : (
+          <ChevronUp className="size-5" strokeWidth={2.2} aria-hidden />
+        )}
+      </button>
 
       <p className="sr-only">
-        <Link href="/search">검색 탭에서 AI에게 더 물어보기</Link>
+        <Link href="/search">{queueCopy.searchLink}</Link>
       </p>
     </section>
   );

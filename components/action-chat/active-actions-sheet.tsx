@@ -229,7 +229,7 @@ export function ActiveActionsSheet({
             <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden pl-0 pr-2 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 sm:pr-3">
               <CalendarBoard
                 variant="full"
-                defaultView="list"
+                defaultView="month"
                 overlayRows={overlayRows}
                 contextByMessageId={contextByMessageId}
                 onAddSchedule={() => {

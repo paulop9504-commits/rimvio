@@ -10,12 +10,12 @@ const VISUALS: Record<LensActionType, LensActionCardVisual> = {
   schedule: {
     gradient: "from-violet-600/90 via-fuchsia-600/75 to-rose-500/80",
     icon: "calendar",
-    subtitle: "탭해서 일정에 넣기",
+    subtitle: "탭해서 확인 후 저장",
   },
   movie_schedule: {
     gradient: "from-indigo-700/90 via-purple-600/80 to-pink-500/75",
     icon: "ticket",
-    subtitle: "탭해서 상영 일정 잡기",
+    subtitle: "탭해서 일정 확인하기",
   },
   navigate: {
     gradient: "from-cyan-600/85 via-sky-600/75 to-blue-700/85",

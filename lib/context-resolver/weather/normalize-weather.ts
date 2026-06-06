@@ -1,4 +1,5 @@
-import type { WeatherCondition, WeatherContext } from "@/lib/context-resolver/types";
+import type { WeatherContext } from "@/lib/context-resolver/types";
+import { mapCondition } from "@/lib/context-resolver/weather/open-weather-condition";
 
 export type OpenWeatherMainBlock = {
   temp?: number;
@@ -14,23 +15,6 @@ export type OpenWeatherResponse = {
   wind?: { speed?: number };
 };
 
-function mapCondition(main?: string): WeatherCondition {
-  const key = (main ?? "").toLowerCase();
-  if (key.includes("rain") || key.includes("drizzle") || key.includes("thunder")) {
-    return "rain";
-  }
-  if (key.includes("snow")) {
-    return "snow";
-  }
-  if (key.includes("wind") || key.includes("squall") || key.includes("tornado")) {
-    return "wind";
-  }
-  if (key.includes("clear") || key.includes("cloud")) {
-    return key.includes("clear") ? "clear" : "clear";
-  }
-  return "unknown";
-}
-
 export function normalizeOpenWeatherResponse(
   data: OpenWeatherResponse,
   locationLabel: string
@@ -43,12 +27,15 @@ export function normalizeOpenWeatherResponse(
   const rainy = condition === "rain" || Boolean(data.rain?.["1h"]);
   const isUnpleasant = tempC > 30 || feelsLike > 32 || rainy || condition === "snow";
 
+  const humidity = data.main?.humidity;
+
   return {
     condition: rainy && condition !== "snow" ? "rain" : condition,
     condition_label: mainLabel,
     summary: description,
     temp_c: tempC,
     feels_like_c: Math.round(feelsLike),
+    humidity_pct: typeof humidity === "number" ? Math.round(humidity) : undefined,
     precipitation_chance: rainy ? 0.85 : condition === "clear" ? 0.1 : 0.35,
     is_unpleasant: isUnpleasant,
     location_label: data.name ?? locationLabel,

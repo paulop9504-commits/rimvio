@@ -20,6 +20,8 @@ export type LlmActionCandidateInput = {
   message?: string;
   spawn_phase?: string;
   domain?: CandidateDomain | null;
+  /** group = no personal vitality candidates on shared plan layer */
+  planMode?: import("@/lib/plan-context/plan-context-types").PlanMode;
 };
 
 export type LlmActionCandidateResult = {

@@ -34,6 +34,28 @@ export function buildKakaoMapSearchWebHref(query: string) {
   return `http://m.map.kakao.com/scheme/search?q=${q}`;
 }
 
+/** Kakao Map route deeplink — ep is lat,lng (Kakao mobile scheme). */
+export function buildKakaoMapRouteHref(input: {
+  lat: number;
+  lng: number;
+  placeLabel?: string | null;
+}) {
+  const ep = `${input.lat},${input.lng}`;
+  return `kakaomap://route?ep=${encodeURIComponent(ep)}&by=CAR`;
+}
+
+export function buildKakaoMapRouteWebHref(input: {
+  lat: number;
+  lng: number;
+  placeLabel?: string | null;
+}) {
+  const name = input.placeLabel?.trim();
+  if (name) {
+    return buildKakaoMapSearchWebHref(name);
+  }
+  return `https://map.kakao.com/link/map/${input.lat},${input.lng}`;
+}
+
 export function buildNaverMapSearchHref(query: string) {
   const resolved = resolveSearchQuery({ text: query });
   const q = encodeURIComponent(resolved.trim());

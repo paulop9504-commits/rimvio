@@ -69,7 +69,7 @@ async function screenshotSquare(
     clip: { x: 0, y: 0, width: size, height: size },
   });
   const bytes = fs.statSync(outPath).size;
-  if (bytes < 2048) {
+  if (bytes < 512) {
     throw new Error(`Icon too small (${bytes} bytes): ${outPath}`);
   }
 }

@@ -17,9 +17,9 @@ export function prefetchPeerMessages(threadId: string): void {
     return;
   }
   const promise = fetchPeerMessages(threadId)
-    .then((messages) => {
-      cache.set(threadId, { messages, at: Date.now() });
-      return messages;
+    .then((payload) => {
+      cache.set(threadId, { messages: payload.messages, at: Date.now() });
+      return payload.messages;
     })
     .catch(() => [] as PeerMessage[])
     .finally(() => {

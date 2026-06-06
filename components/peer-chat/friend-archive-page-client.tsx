@@ -4,13 +4,16 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, UserPlus } from "lucide-react";
 import { toast } from "sonner";
-import { ArchiveMarbleStack } from "@/components/peer-chat/archive-marble-stack";
+import { FriendArchiveChatList } from "@/components/peer-chat/friend-archive-chat-list";
 import { IOS } from "@/lib/ui/ios-surface";
 import {
   addPeerByPhoneRemote,
+  fetchRelationshipFeedSlots,
   fetchSocialLayer,
   syncMyProfileFromAuth,
 } from "@/lib/peer-chat/peer-chat-client";
+import { buildArchiveChatRows } from "@/lib/social/archive-chat-rows";
+import type { RelationshipFeedSlot } from "@/lib/social/relationship-slot-types";
 import { addPeerContact } from "@/lib/context/peer-contact-store";
 import {
   applySocialLayerToLocalRoster,
@@ -26,6 +29,7 @@ export function FriendArchivePageClient() {
   const usePhoneChat = Boolean(configured && user && isSupabaseConfigured());
   const [pinnedPeers, setPinnedPeers] = useState<SocialBubblePeer[]>([]);
   const [archivePeers, setArchivePeers] = useState<SocialBubblePeer[]>([]);
+  const [feedSlots, setFeedSlots] = useState<RelationshipFeedSlot[]>([]);
   const [addOpen, setAddOpen] = useState(false);
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
@@ -36,13 +40,22 @@ export function FriendArchivePageClient() {
     [pinnedPeers, archivePeers],
   );
 
+  const archiveChatRows = useMemo(
+    () => buildArchiveChatRows(archiveList, feedSlots),
+    [archiveList, feedSlots],
+  );
+
   const load = useCallback(async () => {
     if (!usePhoneChat) {
       return;
     }
-    const layer = await fetchSocialLayer();
+    const [layer, feed] = await Promise.all([
+      fetchSocialLayer(),
+      fetchRelationshipFeedSlots().catch(() => ({ slots: [] as RelationshipFeedSlot[] })),
+    ]);
     setPinnedPeers(layer.pinned);
     setArchivePeers(layer.archive);
+    setFeedSlots(feed.slots);
     applySocialLayerToLocalRoster(layer);
   }, [usePhoneChat]);
 
@@ -52,6 +65,8 @@ export function FriendArchivePageClient() {
     }
     void syncMyProfileFromAuth().catch(() => {});
     void load().catch(() => {});
+    const timer = window.setInterval(() => void load().catch(() => {}), 12_000);
+    return () => window.clearInterval(timer);
   }, [usePhoneChat, load]);
 
   const submitAdd = () => {
@@ -100,7 +115,7 @@ export function FriendArchivePageClient() {
           <h1 className="text-base font-semibold text-white">구슬 주머니</h1>
           {!empty ? (
             <p className="text-[11px] text-muted-foreground">
-              구슬 {archiveList.length}개 · 탭하면 대화
+              친구 {archiveList.length}명 · 톡 오면 맨 위
             </p>
           ) : null}
         </div>
@@ -114,7 +129,7 @@ export function FriendArchivePageClient() {
         </button>
       </header>
 
-      <ArchiveMarbleStack peers={archiveList} className="flex-1 px-4 pt-6" />
+      <FriendArchiveChatList rows={archiveChatRows} className="min-h-0 flex-1" />
 
       {empty ? (
         <button

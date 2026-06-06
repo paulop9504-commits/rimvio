@@ -26,14 +26,18 @@ import {
   markLensFirstCoachShown,
   shouldShowLensFirstCoach,
 } from "@/lib/onboarding/lens-first-coach";
+import { FriendArchiveChatSheet } from "@/components/peer-chat/friend-archive-chat-sheet";
 import {
   addPeerByPhoneRemote,
   fetchMyAccountProfile,
+  fetchRelationshipFeedSlots,
   fetchSocialLayer,
   pinFriendRemote,
   syncDmThreadsRemote,
   syncMyProfileFromAuth,
 } from "@/lib/peer-chat/peer-chat-client";
+import { buildArchiveChatRows } from "@/lib/social/archive-chat-rows";
+import type { RelationshipFeedSlot } from "@/lib/social/relationship-slot-types";
 import { addPeerContact } from "@/lib/context/peer-contact-store";
 import {
   applySocialLayerToLocalRoster,
@@ -60,6 +64,8 @@ export function FivePeerHubClient() {
   const [contacts, setContacts] = useState<PeerContact[]>(() => readPeerContacts());
   const [pinnedPeers, setPinnedPeers] = useState<SocialBubblePeer[]>([]);
   const [archivePeers, setArchivePeers] = useState<SocialBubblePeer[]>([]);
+  const [feedSlots, setFeedSlots] = useState<RelationshipFeedSlot[]>([]);
+  const [archiveSheetOpen, setArchiveSheetOpen] = useState(false);
   const [assignSlot, setAssignSlot] = useState<PinnedSlotIndex | null>(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -79,15 +85,19 @@ export function FivePeerHubClient() {
     [pinnedPeers, archivePeers],
   );
 
+  const archiveChatRows = useMemo(
+    () => buildArchiveChatRows(archiveList, feedSlots),
+    [archiveList, feedSlots],
+  );
+
   const archiveBagProps = useMemo(
     () => ({
-      href: "/peers/archive",
       count: archiveList.length,
       unreadTotal: totalArchiveUnread(archiveList),
       bubbleState: deriveArchiveBagState(archiveList),
-      previewPeers: archiveList,
+      previewPeers: archiveChatRows,
     }),
-    [archiveList],
+    [archiveList, archiveChatRows],
   );
 
   const refresh = useCallback(() => {
@@ -148,9 +158,13 @@ export function FivePeerHubClient() {
       return;
     }
     try {
-      const layer = await fetchSocialLayer();
+      const [layer, feed] = await Promise.all([
+        fetchSocialLayer(),
+        fetchRelationshipFeedSlots().catch(() => ({ slots: [] as RelationshipFeedSlot[] })),
+      ]);
       setPinnedPeers(layer.pinned);
       setArchivePeers(layer.archive);
+      setFeedSlots(feed.slots);
       applySocialLayerToLocalRoster(layer);
       refresh();
     } catch {
@@ -185,6 +199,15 @@ export function FivePeerHubClient() {
     const timer = window.setInterval(() => void loadSocialLayer(), 30_000);
     return () => window.clearInterval(timer);
   }, [usePhoneChat, refresh, loadSocialLayer]);
+
+  useEffect(() => {
+    if (!usePhoneChat || !archiveSheetOpen) {
+      return;
+    }
+    void loadSocialLayer();
+    const timer = window.setInterval(() => void loadSocialLayer(), 8_000);
+    return () => window.clearInterval(timer);
+  }, [usePhoneChat, archiveSheetOpen, loadSocialLayer]);
 
   const centerLabel = guest.label.startsWith("나")
     ? guest.label
@@ -325,6 +348,7 @@ export function FivePeerHubClient() {
           lensEnabledByThreadId={lensEnabledByThreadId}
           onTogglePeerLens={handleTogglePeerLens}
           archiveBag={usePhoneChat ? archiveBagProps : undefined}
+          onArchiveBagOpen={() => setArchiveSheetOpen(true)}
           onAssignSlot={(idx) => openPinAssign(idx as PinnedSlotIndex)}
           className="absolute inset-0"
         />
@@ -391,6 +415,12 @@ export function FivePeerHubClient() {
         친한 {connectedCount}/5
         {usePhoneChat ? ` · 주머니 ${archiveList.length}명` : ""}
       </p>
+
+      <FriendArchiveChatSheet
+        open={archiveSheetOpen}
+        onOpenChange={setArchiveSheetOpen}
+        rows={archiveChatRows}
+      />
     </div>
   );
 }

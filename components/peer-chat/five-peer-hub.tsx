@@ -37,12 +37,13 @@ type FivePeerHubProps = {
   lensEnabledByThreadId?: ReadonlyMap<string, boolean>;
   onTogglePeerLens?: (peerThreadId: string) => void;
   archiveBag?: {
-    href: string;
+    href?: string;
     count: number;
     unreadTotal: number;
     bubbleState: BubbleState;
     previewPeers: SocialBubblePeer[];
   };
+  onArchiveBagOpen?: () => void;
   onAssignSlot: (slotIndex: number) => void;
   className?: string;
 };
@@ -79,6 +80,7 @@ export function FivePeerHub({
   lensEnabledByThreadId,
   onTogglePeerLens,
   archiveBag,
+  onArchiveBagOpen,
   onAssignSlot,
   className,
 }: FivePeerHubProps) {
@@ -483,6 +485,7 @@ export function FivePeerHub({
         >
           <FriendArchiveBagBubble
             href={archiveBag.href}
+            onOpen={onArchiveBagOpen}
             count={archiveBag.count}
             unreadTotal={archiveBag.unreadTotal}
             bubbleState={archiveBag.bubbleState}

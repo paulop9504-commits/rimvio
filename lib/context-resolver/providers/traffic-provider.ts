@@ -1,55 +1,31 @@
-import type {
-  ContextProvider,
-  ContextResolveInput,
-  TrafficContext,
-} from "@/lib/context-resolver/types";
+import { fetchTrafficContext } from "@/lib/traffic/fetch-traffic-context";
+import { fetchTrafficContextClient } from "@/lib/traffic/fetch-traffic-context-client";
+import type { ContextProvider, ContextResolveInput, TrafficContext } from "@/lib/context-resolver/types";
 
-function cityFromLabel(label: string): string | null {
-  if (/서울|seoul/i.test(label)) {
-    return "seoul";
-  }
-  if (/대전|daejeon/i.test(label)) {
-    return "daejeon";
-  }
-  if (/강남|gangnam/i.test(label)) {
-    return "seoul";
-  }
-  if (/수서|suseo/i.test(label)) {
-    return "seoul";
-  }
-  return null;
-}
-
-/** TrafficProvider — estimates travel + delay at resolve time. */
+/** TrafficProvider — Kakao Directions / geo estimate with keyword heuristic fallback. */
 export class TrafficProvider implements ContextProvider<TrafficContext> {
   readonly id = "traffic";
 
   async resolve(input: ContextResolveInput): Promise<TrafficContext> {
-    const destination = input.event.location;
-    const originCity = cityFromLabel(input.event.origin_hint ?? "대전") ?? "daejeon";
-    const destCity = cityFromLabel(destination);
-
-    if (destCity === "seoul" && originCity !== "seoul") {
-      return {
-        travel_minutes: 102,
-        delay_minutes: 18,
-        distance_label: `${input.event.origin_hint ?? "대전"} → ${destination}`,
-      };
+    const destination = input.event.location?.trim();
+    if (!destination) {
+      return fetchTrafficContext({ destination: "목적지", originHint: input.event.origin_hint });
     }
 
-    if (/강남/.test(destination)) {
-      return {
-        travel_minutes: 35,
-        delay_minutes: 18,
-        distance_label: `현재 위치 → ${destination}`,
-      };
+    if (typeof window !== "undefined") {
+      const client = await fetchTrafficContextClient({
+        destination,
+        originHint: input.event.origin_hint,
+      });
+      if (client) {
+        return client;
+      }
     }
 
-    return {
-      travel_minutes: 28,
-      delay_minutes: 8,
-      distance_label: `현재 위치 → ${destination}`,
-    };
+    return fetchTrafficContext({
+      destination,
+      originHint: input.event.origin_hint,
+    });
   }
 }
 

@@ -1,7 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireAuthUser } from "@/lib/auth/api-auth";
 import { mapPeerMessageRow } from "@/lib/peer-chat/message-mapper";
+import { extractErrorMessage } from "@/lib/peer-chat/extract-error-message";
 import { friendContactErrorMessage } from "@/lib/peer-chat/friend-contact-errors";
+import { peerApiErrorResponse } from "@/lib/peer-chat/peer-api-errors";
 import {
   recordInboundMessage,
   markThreadRead,
@@ -11,6 +13,7 @@ import {
   touchRelationshipSlotsOnMessage,
 } from "@/lib/peer-chat/relationship-slots-server";
 import { resolvePeerThreadIdForSend } from "@/lib/peer-chat/resolve-canonical-peer-thread";
+import { readPeerLastReadAt } from "@/lib/peer-chat/peer-read-receipt";
 import {
   ensurePeerThread,
   insertPeerMessage,
@@ -45,12 +48,20 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 
   try {
     const supabase = await createClient();
-    const rows = await listPeerMessages(supabase, decoded);
+    const resolvedThreadId = await resolvePeerThreadIdForSend(supabase, {
+      userId,
+      threadId: decoded,
+    });
+    const rows = await listPeerMessages(supabase, resolvedThreadId);
     const messages = rows.map((row) => mapPeerMessageRow(row, userId));
-    await markThreadRead(supabase, { userId, threadId: decoded });
-    await markFeedSlotRead(supabase, { userId, roomId: decoded });
+    await markThreadRead(supabase, { userId, threadId: resolvedThreadId });
+    await markFeedSlotRead(supabase, { userId, roomId: resolvedThreadId });
+    const peerLastReadAt = await readPeerLastReadAt(supabase, {
+      userId,
+      threadId: resolvedThreadId,
+    });
 
-    return NextResponse.json({ messages });
+    return NextResponse.json({ messages, peerLastReadAt });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to load messages.";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -132,9 +143,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
       message: mapPeerMessageRow(row, userId),
     });
   } catch (error) {
-    const raw =
-      error instanceof Error ? error.message : "Failed to send message.";
+    const raw = extractErrorMessage(error, "Failed to send message.");
+    if (raw.includes("not_registered")) {
+      return peerApiErrorResponse(error, "가입한 Rimvio 사용자와만 대화할 수 있어요.");
+    }
     const message = friendContactErrorMessage(raw);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: message, message }, { status: 500 });
   }
 }

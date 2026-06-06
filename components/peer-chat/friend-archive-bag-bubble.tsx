@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArchiveMarbleStack } from "@/components/peer-chat/archive-marble-stack";
 import { cn } from "@/lib/utils";
@@ -7,7 +8,8 @@ import { BUBBLE_RING_CLASS, type BubbleState } from "@/lib/social/bubble-state";
 import type { SocialBubblePeer } from "@/lib/social/bubble-state";
 
 type FriendArchiveBagBubbleProps = {
-  href: string;
+  href?: string;
+  onOpen?: () => void;
   count: number;
   unreadTotal: number;
   bubbleState: BubbleState;
@@ -15,8 +17,55 @@ type FriendArchiveBagBubbleProps = {
   className?: string;
 };
 
+function BagBubbleShell({
+  className,
+  ariaLabel,
+  onClick,
+  href,
+  children,
+}: {
+  className?: string;
+  ariaLabel: string;
+  onClick?: () => void;
+  href?: string;
+  children: ReactNode;
+}) {
+  const shellClass = cn(
+    "flex flex-col items-center gap-1.5 active:scale-95",
+    className,
+  );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={shellClass}
+        aria-label={ariaLabel}
+      >
+        {children}
+      </button>
+    );
+  }
+
+  if (href) {
+    return (
+      <Link href={href} className={shellClass} aria-label={ariaLabel}>
+        {children}
+      </Link>
+    );
+  }
+
+  return (
+    <div className={shellClass} aria-label={ariaLabel}>
+      {children}
+    </div>
+  );
+}
+
 export function FriendArchiveBagBubble({
   href,
+  onOpen,
   count,
   unreadTotal,
   bubbleState,
@@ -24,19 +73,16 @@ export function FriendArchiveBagBubble({
   className,
 }: FriendArchiveBagBubbleProps) {
   const empty = count === 0;
+  const ariaLabel = empty
+    ? "구슬 주머니 · 비어 있음"
+    : `나머지 친구 ${count}명 · 구슬 주머니`;
 
   return (
-    <Link
-      href={href}
-      className={cn(
-        "flex flex-col items-center gap-1.5 active:scale-95",
-        className,
-      )}
-      aria-label={
-        empty
-          ? "구슬 주머니 · 비어 있음"
-          : `나머지 친구 ${count}명 · 구슬 주머니`
-      }
+    <BagBubbleShell
+      href={onOpen ? undefined : href}
+      onClick={onOpen}
+      className={className}
+      ariaLabel={ariaLabel}
     >
       <span
         className={cn(
@@ -67,6 +113,6 @@ export function FriendArchiveBagBubble({
       <span className="max-w-[6rem] text-center text-[10px] font-medium text-white/70">
         {empty ? "구슬 주머니" : "나머지 친구"}
       </span>
-    </Link>
+    </BagBubbleShell>
   );
 }

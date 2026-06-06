@@ -13,6 +13,10 @@ import {
   normalizeLlmCandidates,
   parseLlmCandidateGeneratorWire,
 } from "@/lib/llm-action-candidate-generator/validate-candidates";
+import {
+  filterCandidatesForPlanGate,
+  resolvePlanSignalGate,
+} from "@/lib/plan-context/resolve-plan-signal-gate";
 import type {
   LlmActionCandidateInput,
   LlmActionCandidateResult,
@@ -62,7 +66,15 @@ export function generateActionCandidatesSync(
     return { domain: null, candidates: [], source: "rules" };
   }
 
-  const candidates = generateRuleBasedActionCandidates(ecId, domain, input);
+  const gate = resolvePlanSignalGate(
+    input.planMode
+      ? { title: input.title, attachMode: "new", windowConfidence: "open", planMode: input.planMode }
+      : null,
+  );
+  const candidates = filterCandidatesForPlanGate(
+    generateRuleBasedActionCandidates(ecId, domain, input),
+    gate,
+  );
   return { domain, candidates, source: "rules" };
 }
 
@@ -77,7 +89,14 @@ export async function generateActionCandidates(
     return sync;
   }
 
-  const useLlm = options?.use_llm !== false && isOpenAiConfigured();
+  const gate = resolvePlanSignalGate(
+    input.planMode
+      ? { title: input.title, attachMode: "new", windowConfidence: "open", planMode: input.planMode }
+      : null,
+  );
+
+  const useLlm =
+    options?.use_llm !== false && isOpenAiConfigured() && gate.allowLlmVitalitySignals;
   if (!useLlm) {
     return sync;
   }

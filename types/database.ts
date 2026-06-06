@@ -368,6 +368,7 @@ export type Database = {
           interaction_score: number;
           last_interaction_at: string;
           last_read_at: string;
+          peer_last_read_at: string | null;
           last_inbound_at: string | null;
           unread_count: number;
           messages_purge_after: string | null;

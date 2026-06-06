@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { ChevronRight } from "lucide-react";
+import { AiLensToggle } from "@/components/peer-chat/ai-lens-toggle";
 import { useCopy } from "@/hooks/use-copy";
 import {
   notifyPeerRoomFromFeed,
@@ -12,13 +13,17 @@ import { cn } from "@/lib/utils";
 type FeedPeerTalkRoomBannerProps = {
   peerThreadId: string;
   displayName: string;
+  aiLensEnabled: boolean;
+  onAiLensChange: (enabled: boolean) => void;
   className?: string;
 };
 
-/** 피드 @톡 인라인 DM → 친구 ROOM(렌즈·실행) 안내 */
+/** 검색 @톡 인라인 DM — AI 렌즈 토글 + ROOM 이동 */
 export function FeedPeerTalkRoomBanner({
   peerThreadId,
   displayName,
+  aiLensEnabled,
+  onAiLensChange,
   className,
 }: FeedPeerTalkRoomBannerProps) {
   const copy = useCopy();
@@ -27,10 +32,15 @@ export function FeedPeerTalkRoomBanner({
   return (
     <div
       className={cn(
-        "flex items-center gap-2 rounded-xl border border-rimvio-neon-cyan/25 bg-rimvio-neon-cyan/8 px-3 py-2",
+        "flex flex-wrap items-center gap-2 rounded-xl border border-rimvio-neon-cyan/25 bg-rimvio-neon-cyan/8 px-2.5 py-2",
         className,
       )}
     >
+      <AiLensToggle
+        enabled={aiLensEnabled}
+        onChange={onAiLensChange}
+        size="sm"
+      />
       <p className="min-w-0 flex-1 text-[11px] leading-snug text-white/65">
         {copy.product.feedPeerTalkRoomHint}
       </p>

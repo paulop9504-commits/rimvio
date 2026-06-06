@@ -13,6 +13,7 @@ import type {
   SurfaceVisibility,
 } from "@/lib/surface-engine/surface-contract";
 import { deriveUserCoreActionLabel } from "@/lib/inside-out/user-core-action-label";
+import { formatScheduleConfirmWhen } from "@/lib/peer-chat/ai-lens/resolve-schedule-datetime";
 import {
   computeRawPriorityScore,
   hoursUntilEvent,
@@ -271,7 +272,7 @@ function buildDescription(event: EventCandidate, type: SurfaceType): string {
     return `${place}에서의 약속`;
   }
   if (event.datetime) {
-    return `예정: ${event.datetime}`;
+    return formatScheduleConfirmWhen(event.datetime);
   }
   return "다음에 할 일을 정리했어요";
 }

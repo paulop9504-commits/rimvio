@@ -69,3 +69,12 @@ export const CALENDAR_VIEW_LABELS: Record<CalendarViewMode, string> = {
   week: "주간 일정 보기",
   month: "월간 일정 보기",
 };
+
+/** Compact label for the view switcher chip (avoids truncation in sheet header). */
+export const CALENDAR_VIEW_SHORT_LABELS: Record<CalendarViewMode, string> = {
+  list: "목록",
+  day: "일",
+  "3day": "3일",
+  week: "주간",
+  month: "월간",
+};

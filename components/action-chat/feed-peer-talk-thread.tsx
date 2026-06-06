@@ -11,7 +11,14 @@ import {
   shouldShowPeerMessageTime,
   shouldShowPeerProfileHeader,
 } from "@/lib/peer-chat/message-time-visibility";
+import { usePeerAiLens } from "@/hooks/use-peer-ai-lens";
+import { useLensBubbleActions } from "@/hooks/use-lens-bubble-actions";
+import { LensScheduleConfirmSheet } from "@/components/peer-chat/lens-schedule-confirm-sheet";
+import { usePeerThreadSettings } from "@/hooks/use-peer-thread-settings";
+import { usePeerReadReceipt } from "@/hooks/use-peer-read-receipt";
+import { shouldShowPeerSentCheck } from "@/lib/peer-chat/peer-read-receipt";
 import { isRegisteredPeerDmThread } from "@/lib/peer-chat/peer-chat-client";
+import type { DeepLinkBubbleCandidate } from "@/lib/peer-chat/ai-lens/types";
 import { resolveChatBubbleFocusTone } from "@/components/action-chat/chat-ambient-focus";
 import type { ChatBubbleGroup } from "@/lib/ui/chat-bubble-group";
 import { cn } from "@/lib/utils";
@@ -48,6 +55,10 @@ function FeedPeerTalkRow({
   focusedTurnIds,
   composerLive,
   peerProfile,
+  lensCandidates = [],
+  onLensSelect,
+  lensDisabled = false,
+  peerLastReadAt = null,
 }: {
   messageId: string;
   rowKey: string;
@@ -64,6 +75,10 @@ function FeedPeerTalkRow({
     avatarUrl: string | null;
     rimvioId: string | null;
   };
+  lensCandidates?: readonly DeepLinkBubbleCandidate[];
+  onLensSelect?: (candidate: DeepLinkBubbleCandidate) => void;
+  lensDisabled?: boolean;
+  peerLastReadAt?: string | null;
 }) {
   const group = peerRowGroup(parentBubbleGroup, rowIndex);
   const focusTone = resolveChatBubbleFocusTone(
@@ -95,6 +110,13 @@ function FeedPeerTalkRow({
             peerIndex,
           )}
           peerProfile={peerProfile}
+          lensCandidates={lensCandidates}
+          onLensSelect={onLensSelect}
+          lensDisabled={lensDisabled}
+          showSentCheck={
+            isRegisteredPeerDmThread(thread.peerThreadId) &&
+            shouldShowPeerSentCheck(allPeerMessages, peerIndex, peerLastReadAt)
+          }
         />
       </div>
     </div>
@@ -152,12 +174,43 @@ export function FeedPeerTalkFeedRows({
     rimvioId: profile?.rimvioId ?? null,
   };
 
+  const { settings, setAiLens } = usePeerThreadSettings({
+    peerThreadId: thread.peerThreadId,
+    displayName: thread.displayName,
+  });
+  const lensEnabled = settings.aiLensEnabled && !thread.closed;
+  const { peerLastReadAt: polledReadAt } = usePeerReadReceipt(
+    thread.peerThreadId,
+    phoneDm && !thread.closed,
+  );
+  const peerLastReadAt = polledReadAt ?? thread.peerLastReadAt ?? null;
+  const { anchorMessageId, candidates: lensCandidates } = usePeerAiLens({
+    messages: thread.messages,
+    enabled: lensEnabled,
+  });
+  const {
+    handleLensSelect,
+    scheduleConfirm,
+    setScheduleConfirm,
+    handleScheduleSaved,
+  } = useLensBubbleActions(thread.displayName);
+
+  const rowLensProps = (sliceId: string) => ({
+    lensCandidates:
+      sliceId === anchorMessageId ? lensCandidates : [],
+    onLensSelect: (candidate: DeepLinkBubbleCandidate) =>
+      handleLensSelect(candidate, sliceId === anchorMessageId ? anchorMessageId ?? undefined : undefined),
+    lensDisabled: !lensEnabled,
+  });
+
   return (
     <>
       <div data-message-id={messageId} className="chat-message-focus w-full px-0.5 pb-1">
         <FeedPeerTalkRoomBanner
           peerThreadId={thread.peerThreadId}
           displayName={thread.displayName}
+          aiLensEnabled={settings.aiLensEnabled}
+          onAiLensChange={setAiLens}
         />
       </div>
       {prior.map((slice, i) => (
@@ -174,6 +227,8 @@ export function FeedPeerTalkFeedRows({
           focusedTurnIds={focusedTurnIds}
           composerLive={composerLive}
           peerProfile={peerProfile}
+          peerLastReadAt={peerLastReadAt}
+          {...rowLensProps(slice.id)}
         />
       ))}
       <div
@@ -200,8 +255,21 @@ export function FeedPeerTalkFeedRows({
           focusedTurnIds={focusedTurnIds}
           composerLive={composerLive}
           peerProfile={peerProfile}
+          peerLastReadAt={peerLastReadAt}
+          {...rowLensProps(slice.id)}
         />
       ))}
+      <LensScheduleConfirmSheet
+        open={scheduleConfirm.open}
+        draft={scheduleConfirm.draft}
+        onOpenChange={(open) =>
+          setScheduleConfirm((prev) => ({
+            open,
+            draft: open ? prev.draft : null,
+          }))
+        }
+        onSaved={handleScheduleSaved}
+      />
     </>
   );
 }

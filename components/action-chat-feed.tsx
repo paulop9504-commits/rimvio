@@ -10,7 +10,6 @@ import {
 import { OcrReviewDatePickerSheet } from "@/components/action-chat/ocr-review-date-picker-sheet";
 import { ResourcePoolSheet } from "@/components/action-chat/resource-pool-sheet";
 import { RelationshipFeedFolder } from "@/components/feed/relationship-feed-folder";
-import { RimvioManualFeedBanner } from "@/components/rimvio-manual-feed-banner";
 import {
   GoogleSheetsEmbedSheet,
   type GoogleSheetsEmbedTarget,
@@ -29,7 +28,6 @@ import { ExecutionTimeline } from "@/components/threadline/execution-timeline";
 import { TodayThread } from "@/components/threadline/today-thread";
 import { threadlineHeaderStatus } from "@/lib/threadline";
 import { RimvioLogo } from "@/components/rimvio-logo";
-import { RimvioProductContextStrip } from "@/components/rimvio-product-context-strip";
 import { useActionChat } from "@/hooks/use-action-chat";
 import { usePredictiveDock } from "@/hooks/use-predictive-dock";
 import { useRealtimeSurfaceComposition } from "@/hooks/use-realtime-surface-composition";
@@ -40,6 +38,7 @@ import { SurfaceStabilityStrip } from "@/components/surface-composition/surface-
 import { deriveLoopContextKo } from "@/lib/surface-composition/loop-why-copy";
 import { useSurfaceTransientHint } from "@/hooks/use-surface-transient-hint";
 import { useCapabilityDispatch } from "@/hooks/use-capability-dispatch";
+import { routeRimvioPromptUri } from "@/lib/action-chat/rimvio-prompt-router";
 import { buildSurfaceActionKey } from "@/lib/memory";
 import {
   deriveSurfaceWhyLineKo,
@@ -59,6 +58,11 @@ import { normalizeAnchorId } from "@/lib/events/normalize-anchor-id";
 import { executeDockActionWire } from "@/lib/action-os/execute-dock-action-wire";
 import { readClientMasterOrchestratorContext } from "@/lib/action-chat/client-master-context";
 import { useLinkReminderMap } from "@/hooks/use-link-reminders";
+import { useRelationshipFeedSlots } from "@/hooks/use-relationship-feed-slots";
+import {
+  notifyPeerRoomFromFeed,
+  peerRoomPath,
+} from "@/lib/peer-chat/navigate-peer-room-from-feed";
 import { useActionCalendar } from "@/hooks/use-action-calendar";
 import { useResourcePool } from "@/hooks/use-resource-pool";
 import {
@@ -120,6 +124,7 @@ export function ActionChatFeed({
   const router = useRouter();
   const isSlot = variant === "slot";
   const isConversation = variant === "conversation";
+  const { slots: relationshipSlots } = useRelationshipFeedSlots(isSlot);
   const activeLink = activeIndex >= 0 ? links[activeIndex] ?? null : null;
   const {
     chainedLinks,
@@ -196,7 +201,12 @@ export function ActionChatFeed({
   });
   const surfaceFrame = surfaceState.frame;
   const { dispatchAndRecord } = useCapabilityDispatch({
-    sendPrompt: (text) => void sendMessage(text),
+    sendPrompt: (text) => {
+      if (routeRimvioPromptUri(text, { sendMessage: (nl) => void sendMessage(nl) })) {
+        return;
+      }
+      void sendMessage(text);
+    },
   });
   const surfaceFeedback = useSurfaceActionFeedback();
   const { hint: surfaceTransientHint, clearHint: clearSurfaceTransientHint } =
@@ -482,16 +492,7 @@ export function ActionChatFeed({
               ) : null}
             </div>
           </div>
-          {isSlot ? (
-          <RimvioProductContextStrip
-            variant="feed"
-            layout="header"
-            className="mt-1.5 border-t border-white/[0.06] pt-1.5"
-          />
-          ) : null}
         </header>
-
-        {isSlot ? <RimvioManualFeedBanner className="mx-4 mb-2 mt-1 shrink-0" /> : null}
 
         {isConversation && activeLink ? (
           <div className="max-h-[min(40dvh,220px)] shrink-0 overflow-hidden border-b border-white/[0.06] bg-rimvio-surface-muted">
@@ -512,44 +513,49 @@ export function ActionChatFeed({
         <ChatAmbientFocusProvider>
         <ChatAmbientShell
           aria-label="채팅"
-          suppressDecor={feedPeerTalkSendActive}
+          suppressDecor={feedPeerTalkSendActive || isSlot}
           className="flex min-h-0 flex-1 flex-col overflow-hidden"
         >
+          {isSlot ? (
+            <div
+              data-feed-slot-bottom-stack
+              className="flex min-h-0 w-full flex-1 flex-col overflow-hidden"
+            >
+              <SurfaceStabilityStrip
+                learningPaused={surfaceState.learningPaused}
+                systemLoadLevel={surfaceState.systemLoadLevel}
+              />
+              <FeedSlotStage
+                frame={surfaceFrame}
+                overlayRows={calendarForSheet.overlayRows}
+                messages={messages}
+                relationshipSlots={relationshipSlots}
+                peerDetailCopy={copy.feed.today.peerDetail}
+                onDispatchCapability={handleSurfaceDispatch}
+                onSpawnPrompt={(uri) => void sendMessage(uri)}
+                onFireScheduledNow={triggerScheduledActionNow}
+                onOpenCalendar={() => setActiveActionsOpen(true)}
+                onLater={() => toast.message("나중에 다시 보여드릴게요", { duration: 2800 })}
+                onOpenPeerChat={(peer) => {
+                  notifyPeerRoomFromFeed(peer.displayName);
+                  router.push(peerRoomPath(peer.peerThreadId));
+                }}
+                className="min-h-0 flex-1 overflow-hidden"
+              />
+            </div>
+          ) : null}
+
           <div
             ref={threadRef}
-            className="relative z-[1] min-h-0 flex-1 overflow-y-auto overscroll-y-contain rimvio-feed-scroll-inset touch-pan-y [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className={cn(
+              "relative z-[1] min-h-0 overflow-y-auto overscroll-y-contain rimvio-feed-scroll-inset touch-pan-y [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+              isSlot ? "hidden" : "flex-1",
+            )}
           >
-            {isSlot ? (
-              <div className="flex min-h-0 flex-1 flex-col">
-                <SurfaceStabilityStrip
-                  learningPaused={surfaceState.learningPaused}
-                  systemLoadLevel={surfaceState.systemLoadLevel}
-                />
-                {hasActiveDecision ? (
-                  <FeedSlotStage
-                    frame={surfaceFrame}
-                    primaryUx={surfacePrimaryUx}
-                    onDispatchCapability={handleSurfaceDispatch}
-                    onAskAi={() => router.push("/search")}
-                    askAiLabel={copy.feed.askAi}
-                    className="min-h-[min(78dvh,720px)]"
-                  />
-                ) : (
-                  <FeedSlotStage
-                    frame={surfaceFrame}
-                    onDispatchCapability={handleSurfaceDispatch}
-                    onAskAi={() => router.push("/search")}
-                    askAiLabel={copy.feed.askAi}
-                    className="min-h-[min(78dvh,720px)]"
-                  />
-                )}
-              </div>
-            ) : null}
-
             {isConversation ? (
             <div className="feed-hero-slot shrink-0">
               {messages.length === 0 ? (
-                <div className="flex flex-col items-center px-6 pb-6 pt-[min(18dvh,8rem)] text-center">
+                <div className="flex flex-col items-center px-6 pb-4 pt-6 text-center">
                   <p className="text-[17px] font-semibold text-white/90">{copy.search.emptyHint}</p>
                   <p className="mt-2 max-w-[16rem] text-[13px] leading-relaxed text-white/45">
                     {copy.search.emptySubhint}
@@ -613,8 +619,9 @@ export function ActionChatFeed({
           </div>
 
           {isConversation && dockActions.length > 0 ? (
-            <div className="shrink-0 px-3 pb-1">
+            <div className="shrink-0 px-3 pb-0.5">
               <PredictiveActionDock
+                compact
                 actions={dockActions}
                 onSelect={(action) => {
                   markOpportunityConsumed(action.id);
@@ -634,14 +641,16 @@ export function ActionChatFeed({
             </div>
           ) : null}
 
-          {isConversation ? (
+          {isSlot || isConversation ? (
           <div
             className="rimvio-feed-composer-dock pointer-events-auto shrink-0 touch-manipulation lg:relative lg:z-[2]"
             data-feed-composer-dock
           >
             <ActionChatInputBar
               placeholder={
-                feedPeerTalkSendActive && feedPeerTalkSession
+                isSlot
+                  ? copy.search.placeholder
+                  : feedPeerTalkSendActive && feedPeerTalkSession
                   ? `${feedPeerTalkSession.displayName}에게 메시지`
                   : threadlineNeedsTap
                     ? "오늘에 추가…"
@@ -658,6 +667,7 @@ export function ActionChatFeed({
               onSendComposer={async (payload) => {
                 const hasAttachments = (payload.attachments?.length ?? 0) > 0;
                 if (
+                  !isSlot &&
                   feedPeerTalkSendActive &&
                   !hasAttachments &&
                   payload.text.trim() &&

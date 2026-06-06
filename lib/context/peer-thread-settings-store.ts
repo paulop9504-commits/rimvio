@@ -33,7 +33,7 @@ export function defaultPeerThreadSettings(input: {
   return {
     peerThreadId: input.peerThreadId,
     displayName: input.displayName,
-    aiLensEnabled: false,
+    aiLensEnabled: true,
     isPinned: false,
     updatedAt: new Date().toISOString(),
   };

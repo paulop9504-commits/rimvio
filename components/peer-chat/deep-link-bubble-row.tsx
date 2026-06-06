@@ -1,6 +1,8 @@
 "use client";
 
+import { LensActionBubbleChip } from "@/components/peer-chat/lens-action-bubble-chip";
 import { LensActionMediaCard } from "@/components/peer-chat/lens-action-media-card";
+import { partitionLensBubbleCandidates } from "@/lib/peer-chat/ai-lens/is-simple-lens-bubble";
 import type { DeepLinkBubbleCandidate } from "@/lib/peer-chat/ai-lens/types";
 import { cn } from "@/lib/utils";
 
@@ -16,7 +18,7 @@ type DeepLinkBubbleRowProps = {
   };
 };
 
-/** Suggest-only — 인스타 카드형 탭 실행 (자동 실행 없음) */
+/** Suggest-only — all lens actions render as compact chips (no reel card). */
 export function DeepLinkBubbleRow({
   candidates,
   onSelect,
@@ -28,13 +30,27 @@ export function DeepLinkBubbleRow({
     return null;
   }
 
+  const { simple, rich } = partitionLensBubbleCandidates(candidates);
+
   return (
     <div
       className={cn("flex flex-col gap-2", className)}
       role="group"
       aria-label="AI Lens 제안"
     >
-      {candidates.map((candidate) => (
+      {simple.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5">
+          {simple.map((candidate) => (
+            <LensActionBubbleChip
+              key={candidate.id}
+              candidate={candidate}
+              onSelect={onSelect}
+              disabled={disabled}
+            />
+          ))}
+        </div>
+      ) : null}
+      {rich.map((candidate) => (
         <LensActionMediaCard
           key={candidate.id}
           candidate={candidate}

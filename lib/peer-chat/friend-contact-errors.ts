@@ -31,6 +31,15 @@ export function friendContactErrorMessage(
   if (lower.includes("row-level security") || lower.includes("rls")) {
     return "대화방 권한 문제예요. @친추로 친구를 다시 연결한 뒤 보내 주세요.";
   }
+  if (
+    lower.includes("image_url") &&
+    (lower.includes("schema cache") || lower.includes("could not find"))
+  ) {
+    return "메시지 DB 설정이 맞지 않아요. 잠시 후 다시 시도해 주세요.";
+  }
+  if (codeOrMessage.startsWith("peer_image_column_missing:")) {
+    return codeOrMessage.slice("peer_image_column_missing:".length);
+  }
   if (codeOrMessage.startsWith("not_registered:")) {
     return codeOrMessage.slice("not_registered:".length);
   }

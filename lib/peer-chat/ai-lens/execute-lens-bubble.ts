@@ -1,70 +1,55 @@
-import { ingestScheduleSignal } from "@/lib/events/event-ingest-pipeline";
+import type { ScheduleConfirmDraft } from "@/lib/peer-chat/ai-lens/prepare-schedule-confirm";
+import {
+  isScheduleLensAction,
+  prepareScheduleConfirmDraft,
+} from "@/lib/peer-chat/ai-lens/prepare-schedule-confirm";
 import type { DeepLinkBubbleCandidate } from "@/lib/peer-chat/ai-lens/types";
 import { recordLensBubbleClick } from "@/lib/peer-chat/ai-lens/lens-user-history";
+import {
+  openMapProvider,
+  preferredMapProvider,
+} from "@/lib/peer-chat/ai-lens/open-map-navigation";
 
 export type LensBubbleExecuteResult = {
   ok: boolean;
   message: string;
   /** UI opens map picker — no auto navigation. */
   openMapPicker?: { place: string };
+  /** UI opens schedule confirm sheet — no auto save. */
+  openScheduleConfirm?: ScheduleConfirmDraft;
 };
-
-function resolveScheduleDatetime(payload?: {
-  datetime?: string;
-}): string | undefined {
-  const raw = payload?.datetime?.trim();
-  if (!raw) {
-    return undefined;
-  }
-  if (raw.includes("T")) {
-    return raw;
-  }
-  const [h, m] = raw.split(":").map((part) => Number(part));
-  const date = new Date();
-  date.setHours(h ?? 19, m ?? 0, 0, 0);
-  if (date.getTime() < Date.now() - 60_000) {
-    date.setDate(date.getDate() + 1);
-  }
-  return date.toISOString();
-}
 
 /** User tap only — never called without explicit click. */
 export function executeDeepLinkBubbleCandidate(
   candidate: DeepLinkBubbleCandidate,
   input?: { sourceMessageId?: string; peerDisplayName?: string },
 ): LensBubbleExecuteResult {
+  if (isScheduleLensAction(candidate.actionType)) {
+    return {
+      ok: true,
+      message: "",
+      openScheduleConfirm: prepareScheduleConfirmDraft({
+        candidate,
+        sourceMessageId: input?.sourceMessageId,
+        peerDisplayName: input?.peerDisplayName,
+      }),
+    };
+  }
+
   recordLensBubbleClick(candidate.actionType);
 
   switch (candidate.actionType) {
-    case "schedule":
-    case "movie_schedule": {
-      const payload = candidate.payload;
-      const datetime = resolveScheduleDatetime(payload);
-      const event = ingestScheduleSignal({
-        sourceMessageId: input?.sourceMessageId,
-        title: payload?.title ?? candidate.label,
-        datetime,
-        place: payload?.place,
-        category: payload?.category === "entertainment" ? "entertainment" : "schedule",
-      });
-      if (!event) {
-        return { ok: false, message: "일정을 만들지 못했어요" };
-      }
-      return {
-        ok: true,
-        message: `${event.title} · 일정에 넣었어요`,
-      };
-    }
-
     case "navigate": {
       const place = candidate.payload?.place?.trim();
       if (!place) {
         return { ok: false, message: "장소를 찾지 못했어요" };
       }
+      if (typeof window !== "undefined") {
+        openMapProvider(place, preferredMapProvider());
+      }
       return {
         ok: true,
-        message: `${place} · 지도 선택`,
-        openMapPicker: { place },
+        message: `${place} · 길찾기`,
       };
     }
 

@@ -65,7 +65,6 @@ function applyMessageToContext(
 
   if (message.author === "peer") {
     next.lastPeerBody = body;
-    next.anchorMessageId = message.id;
   }
 
   for (const url of body.match(URL_RE) ?? []) {
@@ -127,6 +126,9 @@ export function detectLensThreadContext(
   const slice = messages.slice(-windowSize);
   for (const message of slice) {
     ctx = applyMessageToContext(ctx, message, referenceDate);
+    if (message.messageType === "human" && hasActionableLensIntent(ctx)) {
+      ctx = { ...ctx, anchorMessageId: message.id };
+    }
   }
   return ctx;
 }

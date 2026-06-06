@@ -11,6 +11,8 @@ export type FeedPeerTalkThreadWire = {
   historyEndIndex: number;
   promptLine: string;
   hydrating?: boolean;
+  /** 상대가 마지막으로 읽은 시각 — 발신 체크 표시용 */
+  peerLastReadAt?: string | null;
   /** @대화끝 후 — 히스토리만 남기고 composer 는 AI 피드 */
   closed?: boolean;
 };

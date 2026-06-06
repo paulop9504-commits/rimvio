@@ -11,6 +11,7 @@ import {
 } from "@/lib/social/bubble-state";
 import { purgeAfterIso, isPurgeDue } from "@/lib/context/hub-room-retention";
 import { loadFriendProfilesMap } from "@/lib/peer-chat/load-friend-profiles-map";
+import { touchPeerReadReceiptForSender } from "@/lib/peer-chat/peer-read-receipt";
 import type { Database } from "@/types/database";
 
 export const ARCHIVE_RETENTION_DAYS = 7;
@@ -24,6 +25,7 @@ export type FriendConnectionRow = {
   interaction_score: number;
   last_interaction_at: string;
   last_read_at: string;
+  peer_last_read_at: string | null;
   last_inbound_at: string | null;
   unread_count: number;
   messages_purge_after: string | null;
@@ -141,6 +143,12 @@ export async function markThreadRead(
     })
     .eq("user_id", input.userId)
     .eq("thread_id", input.threadId);
+
+  await touchPeerReadReceiptForSender(supabase, {
+    readerUserId: input.userId,
+    threadId: input.threadId,
+    readAt: now,
+  });
 }
 
 export async function pinFriend(

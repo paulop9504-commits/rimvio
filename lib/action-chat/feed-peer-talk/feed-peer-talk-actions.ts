@@ -3,6 +3,7 @@ import type { PeerContact } from "@/lib/context/peer-contact-types";
 import {
   appendFeedPeerTalkMessage,
   buildFeedPeerTalkPromptLine,
+  migrateFeedPeerTalkThreadId,
   patchFeedPeerTalkThread,
   removeFeedPeerTalkMessageById,
   replaceFeedPeerTalkPendingMessage,
@@ -26,11 +27,13 @@ import {
   syncFeedSlotFromRoomRemote,
 } from "@/lib/peer-chat/peer-chat-client";
 import { addPeerContact } from "@/lib/context/peer-contact-store";
+import { setPeerThreadAiLens } from "@/lib/context/peer-thread-settings-store";
 import { resolveCanonicalPeerThreadFromSocialLayer } from "@/lib/peer-chat/resolve-canonical-peer-thread";
 import {
   getFeedPeerTalkSession,
   setFeedPeerTalkSession,
 } from "@/lib/action-chat/feed-peer-talk/feed-peer-talk-session";
+import { resolveFeedPeerTalkSessionFromMessages } from "@/lib/action-chat/feed-peer-talk/restore-feed-peer-talk-session";
 import { prefetchPeerMessages, takePrefetchedMessages } from "@/lib/peer-chat/message-prefetch-cache";
 import { ingestPeerTalkMarble } from "@/lib/inside-out/marble-ingest";
 
@@ -65,13 +68,22 @@ async function resolveFeedPeerTalkThreadId(input: {
   }
 }
 
-async function loadPeerHistory(threadId: string): Promise<ReturnType<typeof sliceFeedPeerTalkHistory>> {
+async function loadPeerHistory(threadId: string): Promise<{
+  messages: ReturnType<typeof sliceFeedPeerTalkHistory>;
+  peerLastReadAt: string | null;
+}> {
   const prefetched = takePrefetchedMessages(threadId);
   if (prefetched) {
-    return sliceFeedPeerTalkHistory(prefetched);
+    return {
+      messages: sliceFeedPeerTalkHistory(prefetched),
+      peerLastReadAt: null,
+    };
   }
   const remote = await fetchPeerMessages(threadId);
-  return sliceFeedPeerTalkHistory(remote);
+  return {
+    messages: sliceFeedPeerTalkHistory(remote.messages),
+    peerLastReadAt: remote.peerLastReadAt,
+  };
 }
 
 export async function startFeedPeerTalkInFeed(
@@ -93,6 +105,7 @@ export async function startFeedPeerTalkInFeed(
   }
 
   setFeedPeerTalkSession({ peerThreadId, displayName });
+  setPeerThreadAiLens({ peerThreadId, displayName, enabled: true });
   if (peerThreadId !== contact.peerThreadId) {
     addPeerContact({
       displayName,
@@ -123,9 +136,10 @@ export async function startFeedPeerTalkInFeed(
     const wire: FeedPeerTalkThreadWire = {
       peerThreadId,
       displayName,
-      messages: history,
-      historyEndIndex: Math.max(0, history.length - 1),
+      messages: history.messages,
+      historyEndIndex: Math.max(0, history.messages.length - 1),
       promptLine: buildFeedPeerTalkPromptLine(displayName),
+      peerLastReadAt: history.peerLastReadAt,
       hydrating: false,
     };
     deps.persist(
@@ -148,16 +162,42 @@ export async function sendFeedPeerTalkInFeed(
   text: string,
   options?: { quietOnError?: boolean },
 ): Promise<boolean> {
-  const session = getFeedPeerTalkSession();
   const trimmed = text.trim();
-  if (!session || !trimmed) {
+  if (!trimmed) {
     return false;
+  }
+
+  const session =
+    getFeedPeerTalkSession() ??
+    resolveFeedPeerTalkSessionFromMessages(deps.readMessages());
+  if (!session) {
+    if (!options?.quietOnError) {
+      toast.error("톡 대화가 열려 있지 않아요. @톡으로 친구를 선택해 주세요.");
+    }
+    return false;
+  }
+  if (!getFeedPeerTalkSession()) {
+    setFeedPeerTalkSession(session);
   }
 
   const threadId = await resolveFeedPeerTalkThreadId({
     peerThreadId: session.peerThreadId,
     displayName: session.displayName,
   });
+
+  if (threadId !== session.peerThreadId) {
+    setFeedPeerTalkSession({
+      peerThreadId: threadId,
+      displayName: session.displayName,
+    });
+    deps.persist(
+      migrateFeedPeerTalkThreadId(
+        deps.readMessages(),
+        session.peerThreadId,
+        threadId,
+      ),
+    );
+  }
 
   const pendingId = `pending-${Date.now()}`;
   const optimistic: PeerMessage = {

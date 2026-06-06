@@ -14,22 +14,26 @@ const navigateBlock = executeSrc.slice(
   executeSrc.indexOf('case "transfer":'),
 );
 assert.ok(
-  navigateBlock.includes("openMapPicker"),
-  "navigate must return openMapPicker for UI sheet",
+  navigateBlock.includes("openMapProvider"),
+  "navigate must open preferred map provider directly",
 );
 assert.equal(
-  navigateBlock.includes("window.open"),
+  navigateBlock.includes("openMapPicker"),
   false,
-  "navigate case must not open map tabs directly",
+  "navigate case must not defer to map picker sheet",
 );
 
 const navResult = executeDeepLinkBubbleCandidate({
+  id: "nav-1",
   actionType: "navigate",
   label: "둔산동 멕시카나",
   deepLink: "",
   score: 1,
+  confidence: 1,
+  reason: "test",
   payload: { place: "둔산동 멕시카나" },
 });
-assert.deepEqual(navResult.openMapPicker, { place: "둔산동 멕시카나" });
+assert.equal(navResult.ok, true);
+assert.equal(navResult.openMapPicker, undefined);
 
 console.log("test-lens-map-no-multi-tab: ok");

@@ -11,6 +11,8 @@ type PredictiveActionDockProps = {
   actions: PredictiveDockAction[];
   onSelect: (action: PredictiveDockAction) => void;
   className?: string;
+  /** 검색 탭 등 좁은 영역 — MAIN CTA 축소 */
+  compact?: boolean;
 };
 
 /** Engine assigns `action_tier` — UI only partitions for layout. */
@@ -25,6 +27,7 @@ export function PredictiveActionDock({
   actions,
   onSelect,
   className,
+  compact = false,
 }: PredictiveActionDockProps) {
   if (actions.length === 0) {
     return null;
@@ -33,9 +36,12 @@ export function PredictiveActionDock({
   const { main, aux } = layoutDockActions(actions);
 
   return (
-    <div className={cn("space-y-2 px-1 pb-2 pt-1", className)} aria-label="Action Opportunity">
+    <div
+      className={cn(compact ? "space-y-1 px-0.5 pb-1 pt-0" : "space-y-2 px-1 pb-2 pt-1", className)}
+      aria-label="Action Opportunity"
+    >
       {main ? (
-        <div className="space-y-1">
+        <div className={cn(compact ? "space-y-0.5" : "space-y-1")}>
           <MainActionButton
             label={main.label}
             brand={resolveMainActionBrandStyle({
@@ -44,11 +50,12 @@ export function PredictiveActionDock({
               plugin: main.plugin,
               type: main.type,
             })}
-            rounded="2xl"
-            icon={<span className="text-[18px]">{main.icon}</span>}
+            rounded={compact ? "xl" : "2xl"}
+            compact={compact}
+            icon={<span className={compact ? "text-[15px]" : "text-[18px]"}>{main.icon}</span>}
             onClick={() => onSelect(main)}
           />
-          {main.rankingWhy ? (
+          {main.rankingWhy && !compact ? (
             <ActionDockWhyLine line={main.rankingWhy} className="px-1" />
           ) : null}
         </div>

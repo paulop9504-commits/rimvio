@@ -6,11 +6,8 @@ import {
   isDmThreadId,
   readUserProfile,
 } from "@/lib/peer-chat/server-peer-chat";
+import { peerDisplayNamesMatch } from "@/lib/peer-chat/match-peer-display-name";
 import type { Database } from "@/types/database";
-
-function normalizeName(value: string): string {
-  return value.trim().toLowerCase();
-}
 
 function contactMatchesPeer(
   contact: Pick<PeerContact, "peerThreadId" | "displayName" | "rimvioId">,
@@ -19,9 +16,11 @@ function contactMatchesPeer(
   if (contact.peerThreadId === peer.threadId) {
     return true;
   }
-  const needle = normalizeName(contact.displayName);
-  const peerName = normalizeName(peer.displayName);
-  if (needle && needle === peerName) {
+  if (
+    contact.displayName.trim() &&
+    peer.displayName.trim() &&
+    peerDisplayNamesMatch(peer.displayName, contact.displayName)
+  ) {
     return true;
   }
   const rim = contact.rimvioId?.trim().toLowerCase();
@@ -90,23 +89,31 @@ export async function resolvePeerThreadIdForSend(
     isDmThreadId((row.thread_id as string) ?? ""),
   );
 
-  const needle = input.displayName?.trim()
-    ? normalizeName(input.displayName)
-    : "";
+  const queryLabel = input.displayName?.trim() ?? "";
 
-  if (needle) {
+  if (queryLabel) {
     for (const row of dmRows) {
       const friendId = row.friend_id as string;
       const profile = await readUserProfile(supabase, friendId);
-      const names = [
+      const labels = [
         profile?.display_name,
         profile?.rimvio_id,
         profile?.email_lower?.split("@")[0],
-      ]
-        .filter((value): value is string => Boolean(value?.trim()))
-        .map((value) => normalizeName(value));
+      ].filter((value): value is string => Boolean(value?.trim()));
 
-      if (names.some((name) => name === needle || name.includes(needle))) {
+      if (labels.some((label) => peerDisplayNamesMatch(label, queryLabel))) {
+        return row.thread_id as string;
+      }
+    }
+
+    for (const row of dmRows) {
+      const { data: threadRow } = await supabase
+        .from("peer_threads")
+        .select("display_name")
+        .eq("id", row.thread_id as string)
+        .maybeSingle();
+      const roomLabel = (threadRow?.display_name as string | null)?.trim();
+      if (roomLabel && peerDisplayNamesMatch(roomLabel, queryLabel)) {
         return row.thread_id as string;
       }
     }
