@@ -15,5 +15,13 @@ assert.ok(
   globals.includes("repeat(4, minmax(0, 1fr))"),
   "bottom nav grid must be 4 columns",
 );
+assert.ok(
+  appNav.includes("window.location.assign"),
+  "mobile nav must hard-navigate for iOS/PWA tap reliability",
+);
+assert.ok(
+  appNav.includes("createPortal(bar, document.body)"),
+  "bottom nav must portal directly to document.body",
+);
 
 console.log("test-app-nav-tabs: ok", hrefs.join(", "));

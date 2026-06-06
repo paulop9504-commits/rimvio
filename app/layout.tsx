@@ -101,6 +101,7 @@ export default async function RootLayout({
         className="min-h-dvh bg-background font-sans text-foreground"
       >
         <RootShell initialLocale={locale}>{children}</RootShell>
+        <div id="rimvio-bottom-nav-anchor" aria-hidden />
       </body>
     </html>
   );

@@ -31,7 +31,7 @@ assert.ok(
 );
 assert.ok(
   /z-index:\s*40/.test(mobileDockRoot ?? ""),
-  "composer dock must stay below portaled bottom nav (z-200)",
+  "composer dock must stay below portaled bottom nav (z-9999)",
 );
 assert.ok(
   globals.includes(".rimvio-feed-composer-dock .rimvio-composer-textarea--mirror"),
