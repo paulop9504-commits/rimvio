@@ -384,7 +384,7 @@
 /* Bottom tab row — icons sit just above the home-indicator safe area */
 .rimvio-bottom-nav-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: end;
   justify-items: center;
   width: 100%;
@@ -753,11 +753,14 @@
   position: fixed;
   inset-inline: 0;
   bottom: 0;
-  z-index: 40;
+  z-index: 200;
   margin-inline: auto;
   width: 100%;
   max-width: var(--shell-max-phone);
   overflow: hidden;
+  pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /*
@@ -771,18 +774,26 @@
     overflow-x: hidden;
   }
 
-  /*
-   * Let taps reach the composer in the band under the tab chrome;
-   * tab links/buttons stay interactive.
-   */
-  .app-nav-bottom-frame {
-    pointer-events: none;
-  }
-
   .app-nav-bottom-frame a,
   .app-nav-bottom-frame button,
-  .app-nav-bottom-frame [role="button"] {
+  .app-nav-bottom-frame [role="button"],
+  .rimvio-bottom-nav-tab {
+    position: relative;
+    z-index: 2;
     pointer-events: auto;
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+    touch-action: manipulation;
+    cursor: pointer;
+  }
+
+  .rimvio-bottom-nav-grid {
+    align-items: stretch;
+  }
+
+  /* Feed scroll must not compete with the fixed tab bar (globe/search immersive). */
+  [data-feed-slot-shell] {
+    max-height: 100%;
   }
 }
 
@@ -868,10 +879,10 @@
   flex-direction: column;
 }
 
-/* Mobile feed — composer fixed above bottom tab bar */
+/* Mobile feed — composer sticky; portaled tab bar wins at z-200. */
 .rimvio-feed-composer-dock {
   position: relative;
-  z-index: 50;
+  z-index: 40;
 }
 
 @media (max-width: 1023px) {
@@ -882,13 +893,13 @@
   .rimvio-feed-composer-dock {
     position: sticky;
     bottom: 0;
-    z-index: 60;
+    z-index: 40;
     isolation: isolate;
     flex-shrink: 0;
     margin-inline: auto;
     width: 100%;
     max-width: var(--shell-max-phone);
-    /* Shell already pads for tab bar — only safe-area here */
+    /* Keep composer below portaled tab bar (z-200). */
     padding-bottom: max(0.25rem, env(safe-area-inset-bottom, 0px));
     background: linear-gradient(
       to top,

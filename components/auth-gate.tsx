@@ -32,11 +32,11 @@ export function AuthGate({ children }: AuthGateProps) {
   const { user, loading } = useAuth();
 
   if (!isAuthRequired()) {
-    return children;
+    return <div key={pathname}>{children}</div>;
   }
 
   if (isAuthGateBypass(pathname)) {
-    return children;
+    return <div key={pathname}>{children}</div>;
   }
 
   if (loading) {
@@ -47,5 +47,5 @@ export function AuthGate({ children }: AuthGateProps) {
     return <LoginScreen />;
   }
 
-  return children;
+  return <div key={pathname}>{children}</div>;
 }

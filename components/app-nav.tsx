@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, type ReactNode } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
-import { Globe2, Search, Settings, Users } from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { usePathname } from "next/navigation";
+import { Search, Settings, Users } from "lucide-react";
 import { RimvioFeedMark } from "@/lib/brand/rimvio-feed-mark";
 import { useCopy } from "@/hooks/use-copy";
 import { useRoomGuest } from "@/hooks/use-room-guest";
@@ -13,15 +14,15 @@ import { cn } from "@/lib/utils";
 
 type AppNavProps = {
   immersive?: boolean;
-  /** side = desktop rail; inline = compact pages; fixed = immersive feed bottom bar */
+  /** side = desktop rail; inline/fixed = mobile bottom bar (portaled to body) */
   placement?: "side" | "inline" | "fixed";
 };
 
 type NavTab = {
   href: string;
   label: string;
-  isActive: (pathname: string, filter: string | null) => boolean;
-  icon: "feed" | "globe" | "search" | "peers" | "settings";
+  isActive: (pathname: string) => boolean;
+  icon: "feed" | "search" | "peers" | "settings";
 };
 
 function IgFeedIcon({
@@ -105,15 +106,6 @@ function NavTabIcon({
           />
         </NavIconSlot>
       );
-    case "globe":
-      return (
-        <NavIconSlot>
-          <Globe2
-            className={cn(NAV_ICON_CLASS, active ? "text-sky-300" : "text-foreground/70")}
-            strokeWidth={NAV_ICON_STROKE}
-          />
-        </NavIconSlot>
-      );
     case "search":
       return <IgSearchIcon active={active} />;
     case "settings":
@@ -124,30 +116,29 @@ function NavTabIcon({
 function NavLinks({
   tabs,
   pathname,
-  filter,
   guest,
   linkClassName,
 }: {
   tabs: NavTab[];
   pathname: string;
-  filter: string | null;
   guest: ReturnType<typeof useRoomGuest>;
   linkClassName?: string;
 }) {
   return (
     <>
       {tabs.map((tab) => {
-        const active = tab.isActive(pathname, filter);
+        const active = tab.isActive(pathname);
 
         return (
           <Link
             key={tab.href}
             href={tab.href}
+            prefetch
             aria-label={tab.label}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "mx-auto flex w-full items-center justify-center transition-opacity active:opacity-60 touch-manipulation",
-              linkClassName
+              "rimvio-bottom-nav-tab relative z-10 flex h-full w-full min-h-11 min-w-11 items-center justify-center transition-opacity active:opacity-60 touch-manipulation",
+              linkClassName,
             )}
           >
             <NavTabIcon icon={tab.icon} active={active} guest={guest} />
@@ -161,12 +152,10 @@ function NavLinks({
 function SideNavRail({
   tabs,
   pathname,
-  filter,
   guest,
 }: {
   tabs: NavTab[];
   pathname: string;
-  filter: string | null;
   guest: ReturnType<typeof useRoomGuest>;
 }) {
   return (
@@ -175,7 +164,6 @@ function SideNavRail({
         <NavLinks
           tabs={tabs}
           pathname={pathname}
-          filter={filter}
           guest={guest}
           linkClassName="size-11 rounded-2xl hover:bg-foreground/[0.04]"
         />
@@ -187,64 +175,38 @@ function SideNavRail({
 function BottomNavGrid({
   tabs,
   pathname,
-  filter,
   guest,
 }: {
   tabs: NavTab[];
   pathname: string;
-  filter: string | null;
   guest: ReturnType<typeof useRoomGuest>;
 }) {
   return (
     <>
       <div className="rimvio-bottom-nav-grid">
-        <NavLinks tabs={tabs} pathname={pathname} filter={filter} guest={guest} />
+        <NavLinks tabs={tabs} pathname={pathname} guest={guest} />
       </div>
       <div className="rimvio-bottom-nav-safe" aria-hidden />
     </>
   );
 }
 
-function InlineNavBar({
+function PortaledBottomNavBar({
   tabs,
   pathname,
-  filter,
   guest,
 }: {
   tabs: NavTab[];
   pathname: string;
-  filter: string | null;
   guest: ReturnType<typeof useRoomGuest>;
 }) {
-  return (
-    <nav
-      className={cn(
-        "mt-[var(--space-phi2)] flex shrink-0 flex-col rimvio-nav-bar lg:hidden",
-      )}
-      aria-label="Primary"
-    >
-      <BottomNavGrid
-        tabs={tabs}
-        pathname={pathname}
-        filter={filter}
-        guest={guest}
-      />
-    </nav>
-  );
-}
+  const [mounted, setMounted] = useState(false);
 
-function FixedBottomNavBar({
-  tabs,
-  pathname,
-  filter,
-  guest,
-}: {
-  tabs: NavTab[];
-  pathname: string;
-  filter: string | null;
-  guest: ReturnType<typeof useRoomGuest>;
-}) {
-  return (
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const bar = (
     <nav
       className={cn(
         GRID.navBottomFrame,
@@ -254,21 +216,21 @@ function FixedBottomNavBar({
       )}
       aria-label="Primary"
       data-testid="rimvio-bottom-nav"
+      data-rimvio-bottom-nav-portal
     >
-      <BottomNavGrid
-        tabs={tabs}
-        pathname={pathname}
-        filter={filter}
-        guest={guest}
-      />
+      <BottomNavGrid tabs={tabs} pathname={pathname} guest={guest} />
     </nav>
   );
+
+  if (!mounted) {
+    return null;
+  }
+
+  return createPortal(bar, document.body);
 }
 
-export function AppNav({ immersive = false, placement }: AppNavProps) {
+export function AppNav({ placement }: AppNavProps) {
   const pathname = usePathname() ?? "/";
-  const searchParams = useSearchParams();
-  const filter = searchParams.get("filter");
   const copy = useCopy();
   const guest = useRoomGuest();
 
@@ -280,12 +242,6 @@ export function AppNav({ immersive = false, placement }: AppNavProps) {
         isActive: (p) =>
           p === "/" || p === "/feed" || p.startsWith("/feed/"),
         icon: "feed",
-      },
-      {
-        href: "/globe",
-        label: copy.nav.globe,
-        isActive: (p) => p === "/globe" || p.startsWith("/globe/"),
-        icon: "globe",
       },
       {
         href: "/search",
@@ -306,38 +262,14 @@ export function AppNav({ immersive = false, placement }: AppNavProps) {
         icon: "settings",
       },
     ],
-    [copy]
+    [copy],
   );
 
-  const resolvedPlacement = placement ?? (immersive ? "fixed" : "inline");
-
-  switch (resolvedPlacement) {
-    case "side":
-      return (
-        <SideNavRail
-          tabs={tabs}
-          pathname={pathname}
-          filter={filter}
-          guest={guest}
-        />
-      );
-    case "fixed":
-      return (
-        <FixedBottomNavBar
-          tabs={tabs}
-          pathname={pathname}
-          filter={filter}
-          guest={guest}
-        />
-      );
-    case "inline":
-      return (
-        <InlineNavBar
-          tabs={tabs}
-          pathname={pathname}
-          filter={filter}
-          guest={guest}
-        />
-      );
+  if (placement === "side") {
+    return <SideNavRail tabs={tabs} pathname={pathname} guest={guest} />;
   }
+
+  return (
+    <PortaledBottomNavBar tabs={tabs} pathname={pathname} guest={guest} />
+  );
 }

@@ -6,6 +6,7 @@ import { join } from "node:path";
 const root = process.cwd();
 const globals = readFileSync(join(root, "app/globals.css"), "utf8");
 const feed = readFileSync(join(root, "components/action-chat-feed.tsx"), "utf8");
+const appNav = readFileSync(join(root, "components/app-nav.tsx"), "utf8");
 const mentionField = readFileSync(
   join(root, "components/action-chat/composer-mention-field.tsx"),
   "utf8",
@@ -29,8 +30,8 @@ assert.ok(
   "mobile composer dock must not use position:fixed",
 );
 assert.ok(
-  /z-index:\s*60/.test(mobileDockRoot ?? ""),
-  "composer dock must sit above fixed bottom nav (z-40)",
+  /z-index:\s*40/.test(mobileDockRoot ?? ""),
+  "composer dock must stay below portaled bottom nav (z-200)",
 );
 assert.ok(
   globals.includes(".rimvio-feed-composer-dock .rimvio-composer-textarea--mirror"),
@@ -41,12 +42,14 @@ assert.ok(
   "immersive shell must reserve bottom inset for tab bar",
 );
 assert.ok(
-  /\.app-nav-bottom-frame\s*\{[^}]*pointer-events:\s*none/s.test(globals),
-  "bottom nav frame must allow pass-through except tab controls",
+  /(?:@utility\s+app-nav-bottom-frame|\.app-nav-bottom-frame)\s*\{[^}]*pointer-events:\s*auto/s.test(
+    globals,
+  ),
+  "bottom nav frame must capture touches on iOS/PWA (no pointer-events:none parent)",
 );
 assert.ok(
-  /\.app-nav-bottom-frame a,[\s\S]*pointer-events:\s*auto/s.test(globals),
-  "bottom nav links must remain tappable",
+  appNav.includes("createPortal") && appNav.includes("data-rimvio-bottom-nav-portal"),
+  "bottom nav must portal to document.body for reliable PWA taps",
 );
 assert.ok(
   feed.includes('data-feed-composer-dock'),

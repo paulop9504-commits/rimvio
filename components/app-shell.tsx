@@ -118,57 +118,27 @@ export function AppShell({
             }
           >
             {compact ? (
-              <>
-                <div
-                  className={cn(
-                    GOLDEN.shellBody,
-                    "min-h-0 flex-1 overscroll-y-contain",
-                    fullBleed
-                      ? "flex flex-col overflow-hidden"
-                      : "overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-[var(--space-phi)] pb-[var(--space-phi)]",
-                  )}
-                >
-                  {children}
-                </div>
-                {!hideBottomNav ? (
-                  <Suspense
-                    fallback={
-                      <div
-                        className="shrink-0 lg:hidden"
-                        style={{ height: "var(--rimvio-bottom-nav-offset)" }}
-                        aria-hidden
-                      />
-                    }
-                  >
-                    <AppNav placement="inline" />
-                  </Suspense>
-                ) : null}
-              </>
-            ) : (
-              <>
+              <div
+                className={cn(
+                  GOLDEN.shellBody,
+                  "min-h-0 flex-1 overscroll-y-contain",
+                  fullBleed
+                    ? "flex flex-col overflow-hidden"
+                    : "overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-[var(--space-phi)] pb-[var(--space-phi)]",
+                )}
+              >
                 {children}
-                {!immersive ? (
-                  <Suspense
-                    fallback={
-                      <div
-                        className="shrink-0 lg:hidden"
-                        style={{ height: "var(--rimvio-bottom-nav-offset)" }}
-                        aria-hidden
-                      />
-                    }
-                  >
-                    <AppNav placement="inline" />
-                  </Suspense>
-                ) : null}
-              </>
+              </div>
+            ) : (
+              children
             )}
           </main>
         </div>
       </div>
 
-      {immersive ? (
+      {!hideBottomNav ? (
         <Suspense fallback={null}>
-          <AppNav placement="fixed" immersive />
+          <AppNav placement="fixed" />
         </Suspense>
       ) : null}
     </div>
