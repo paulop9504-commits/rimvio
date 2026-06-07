@@ -38,8 +38,14 @@ export function SearchIngressPanel({ copy }: SearchIngressPanelProps) {
         </li>
       </ul>
 
-      <p className="mt-5 max-w-[18rem] text-[12px] leading-relaxed text-white/38">
+      <p className="mt-5 max-w-[18rem] text-[12px] leading-relaxed text-white/45">
+        {copy.contextSearch.ingressHint}
+      </p>
+      <p className="mt-2 max-w-[18rem] text-[12px] leading-relaxed text-white/38">
         {copy.aiDeferredHint}
+      </p>
+      <p className="mt-2 max-w-[18rem] text-[11px] leading-relaxed text-white/32">
+        {copy.contextSearch.timingHint}
       </p>
 
       <Link

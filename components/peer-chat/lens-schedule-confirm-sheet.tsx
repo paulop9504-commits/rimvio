@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
@@ -17,6 +18,7 @@ import { computeWindowEndFromNights } from "@/lib/plan-context/extract-plan-wind
 import { formatPlanWindowLabel } from "@/lib/plan-context/format-plan-window-label";
 import type { PlanAttachMode } from "@/lib/plan-context/plan-context-types";
 import { listEventCandidates } from "@/lib/events/event-store";
+import { resolveTripPrepRecall } from "@/lib/plan-context/resolve-trip-prep-recall";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -127,6 +129,20 @@ export function LensScheduleConfirmSheet({
       }),
     [editedDatetimeIso, editedWindowEndIso, nights, windowConfidence],
   );
+
+  const tripPrepRecall = useMemo(() => {
+    if (!draft) {
+      return null;
+    }
+    return resolveTripPrepRecall({
+      title: draft.title,
+      place: editPlace.trim() || draft.place,
+      peerDisplayName: draft.peerDisplayName,
+      events: listEventCandidates(),
+      excludeEventId:
+        attachMode === "continue" ? draft.planAttach.candidatePlanId : null,
+    });
+  }, [draft, editPlace, attachMode]);
 
   if (!mounted) {
     return null;
@@ -247,6 +263,27 @@ export function LensScheduleConfirmSheet({
                 <X className="size-4" />
               </button>
             </div>
+
+            {tripPrepRecall ? (
+              <Link
+                href={tripPrepRecall.feedHref}
+                className="mb-3 block rounded-2xl bg-violet-500/10 px-3.5 py-3 ring-1 ring-violet-400/25 transition-colors hover:bg-violet-500/15"
+                onClick={() => onOpenChange(false)}
+              >
+                <p className="text-[11px] font-semibold tracking-wide text-violet-200/80">
+                  추억 회상
+                </p>
+                <p className="mt-1 text-[13px] font-medium leading-snug text-white/90">
+                  {tripPrepRecall.recallLine}
+                </p>
+                <p className="mt-1 truncate text-[12px] text-white/50">
+                  {tripPrepRecall.hit.headline}
+                  {tripPrepRecall.hit.timeLabel
+                    ? ` · ${tripPrepRecall.hit.timeLabel}`
+                    : ""}
+                </p>
+              </Link>
+            ) : null}
 
             {draft.planAttach.canContinue ? (
               <div className="mb-3 rounded-2xl bg-emerald-500/10 px-3.5 py-3 ring-1 ring-emerald-400/25">

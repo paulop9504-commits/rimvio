@@ -144,6 +144,43 @@ if (feedMsgTarget.kind === "feed_message") {
   assert.equal(feedMsgTarget.messageId, "msg-main");
 }
 
+const planGroupId = "peer-group-aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+const planFeedTarget = resolveFeedSlotOpenTarget(
+  calendarSlot(null, "ec-plan-germany"),
+  { messages: [], peers: [] },
+  new Map([
+    [
+      "ec-plan-germany",
+      {
+        id: "ec-plan-germany",
+        title: "독일 여행",
+        category: "travel",
+        source: "message",
+        lifecycle: "active",
+        datetime: "2026-07-01T09:00:00+09:00",
+        place: "독일",
+        confidence: 0.9,
+        metadata: {
+          feedPlanEnabled: true,
+          planKind: "plan",
+          planPeerThreadId: planGroupId,
+          planPeerDisplayName: "A,B,C 단톡",
+          planWindowEndIso: "2026-07-10T20:00:00+09:00",
+          lensSource: "peer_chat",
+        },
+        lifecycleUpdatedAt: "2026-01-01T00:00:00.000Z",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    ],
+  ]),
+);
+assert.equal(planFeedTarget.kind, "peer_room");
+if (planFeedTarget.kind === "peer_room") {
+  assert.equal(planFeedTarget.peerThreadId, planGroupId);
+  assert.equal(planFeedTarget.displayName, "A,B,C 단톡");
+}
+
 const calendarTarget = resolveFeedSlotOpenTarget(
   calendarSlot(null, null),
   { messages: [], peers: [] },

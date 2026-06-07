@@ -12,7 +12,7 @@ const TIME_OF_DAY_LABEL: Record<SpatialTimeOfDay, string> = {
   night: "밤",
 };
 
-const SEASON_LABEL: Record<SpatialSeason, string> = {
+export const SEASON_LABEL: Record<SpatialSeason, string> = {
   spring: "봄",
   summer: "여름",
   autumn: "가을",

@@ -22,7 +22,11 @@ export type LensBubbleExecuteResult = {
 /** User tap only — never called without explicit click. */
 export function executeDeepLinkBubbleCandidate(
   candidate: DeepLinkBubbleCandidate,
-  input?: { sourceMessageId?: string; peerDisplayName?: string },
+  input?: {
+    sourceMessageId?: string;
+    peerDisplayName?: string;
+    peerThreadId?: string;
+  },
 ): LensBubbleExecuteResult {
   if (isScheduleLensAction(candidate.actionType)) {
     return {
@@ -32,6 +36,7 @@ export function executeDeepLinkBubbleCandidate(
         candidate,
         sourceMessageId: input?.sourceMessageId,
         peerDisplayName: input?.peerDisplayName,
+        peerThreadId: input?.peerThreadId,
       }),
     };
   }

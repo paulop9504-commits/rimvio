@@ -6,9 +6,9 @@
 >
 > **제품명:** Rimvio 👀
 >
-> **태그라인:** **Your Life, Operable.** — *말·링크·사진 → Action Dock*
+> **태그라인:** **Your Life, Operable.** — *Context → Experience → @ Action*
 >
-> **North Star:** Human Intent를 operable하게 만드는 개인 Action OS
+> **North Star:** 축적된 경험 맥락으로 다음 행동을 제안·실행하는 **Experience OS**
 
 ---
 
@@ -16,7 +16,53 @@
 
 ### 한 줄 정의
 
-**Rimvio는 챗봇이 아니다.** 사용자의 말·링크·사진·일정을 **지금 실행 가능한 Action Dock**으로 바꿔 주는 **개인 Action OS**다.
+**Rimvio는 사용자의 경험 데이터를 시간·장소·사람·행동 단위로 구조화하고, 축적된 맥락을 기반으로 다음 행동을 제안·실행하는 Experience OS입니다.**
+
+**사용자에게:** 하루 동안 남겨진 사진, 위치, 대화를 기억하고, 다음에 하고 싶을 일을 가장 편하게 이어주는 앱.
+
+**Rimvio는 챗봇이 아니다.** 사진·위치·대화가 **Feed 경험 노드**로 모이고, **맞아요** 이후 `@` 실행이 맥락 안에서 열린다.
+
+### Experience Layers (제품 지능 스택)
+
+레이어는 **순서대로** 쌓는다. AI 하나 더 붙이는 것으로는 안 된다.
+
+```text
+FACT → EXPERIENCE → MEANING → RECALL → ACTION
+```
+
+| 단계 | 질문 | 지금 (2026-06) |
+|------|------|----------------|
+| FACT | 무슨 일이 있었나 | ✓ 사진·GPS·링크·대화·이벤트 |
+| EXPERIENCE | 그날/그 상황은 뭐였나 | ✓ "민수랑 제주 Day2" |
+| MEANING | 사용자에게 왜 중요한가 | △ 패턴·취향 학습 약함 |
+| RECALL | 언제 꺼내 보여줄까 | △ Globe recall shell만, 맥락 트리거 약함 |
+| ACTION | 다음에 뭘 하면 되나 | ✓ 맥락 안 `@` 실행 |
+
+상세: [RIMVIO_EXPERIENCE_LAYERS.md](./RIMVIO_EXPERIENCE_LAYERS.md)
+
+**1년 경쟁력:** 채팅·실행 엔진이 아니라 **MEANING → RECALL** 을 얼마나 쌓느냐. 그건 시간이 지나야만 생기는 해자다.
+
+### Three Floors — 메인 화면 구조 (Feed)
+
+> Full spec: [RIMVIO_THREE_FLOORS.md](./RIMVIO_THREE_FLOORS.md)
+
+```text
+1층 REPLAY   🌍 핑 → ▶ 쇼츠 → 한 줄 캡션
+2층 CONTEXT  사람 · 경험 · 장소 · 시간 (관련 맥락 탐험)
+3층 ACTION   길찾기 · 일정 · 공유 · @ (필요할 때만)
+```
+
+**시장 공백:** 실행 앱·사진 앱·AI 챗봇은 많다. **「내 경험을 다시 재생 → 맥락 탐험 → 필요하면 행동」** 은 거의 없다.
+
+**성숙 시 Feed:** 검색창·챗창·추천 리스트가 히어로가 아니다. 사용자 인식 = 생산성/AI 앱 ❌ → **「내 삶이 쌓여서 다시 재생되는 곳」** ⭕
+
+| 1층 (2026-06) | 상태 |
+|---------------|------|
+| Globe classified pins | ✓ |
+| Shorts playback | ✓ |
+| 한 줄 캡션 | ✓ |
+| 2층 사람·경험 축 | ✓ |
+| 3층 context-gated @ | ✓ |
 
 ### Ingress (어떻게 들어오나)
 

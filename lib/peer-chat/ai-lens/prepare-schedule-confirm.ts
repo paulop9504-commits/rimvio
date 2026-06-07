@@ -39,6 +39,8 @@ export function prepareScheduleConfirmDraft(input: {
   candidate: DeepLinkBubbleCandidate;
   sourceMessageId?: string;
   peerDisplayName?: string;
+  /** Active ROOM — stamped as planPeerThreadId on Feed plan commit. */
+  peerThreadId?: string;
 }): ScheduleConfirmDraft {
   const payload = input.candidate.payload;
   const datetimeIso = resolveScheduleDatetime(payload);
@@ -72,6 +74,7 @@ export function prepareScheduleConfirmDraft(input: {
     windowStartIso: datetimeIso,
     place: payload?.place?.trim() || undefined,
     peerDisplayName: input.peerDisplayName,
+    peerThreadId: input.peerThreadId?.trim() || undefined,
     conversationText,
     intentKind: intent.kind,
     events,

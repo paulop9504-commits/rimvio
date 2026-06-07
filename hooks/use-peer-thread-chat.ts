@@ -438,6 +438,7 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
         const spacetime = await attachMediaSpacetime({
           file,
           origin: "peer_chat",
+          originRef: sendThreadId,
         });
         const message = await sendPeerImageRemote({
           threadId: sendThreadId,
@@ -452,6 +453,14 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
             originRef: message.id,
           }),
         );
+        void import("@/lib/feed/ingest-peer-room-media-capture")
+          .then(({ ingestPeerRoomMediaFromContext }) =>
+            ingestPeerRoomMediaFromContext({
+              context: spacetime,
+              peerThreadId: sendThreadId,
+            }),
+          )
+          .catch(() => {});
         setCloudThreadId((current) => current ?? sendThreadId);
         setCloudReady(true);
         setMessages((current) => {

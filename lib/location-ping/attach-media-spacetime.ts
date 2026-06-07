@@ -6,7 +6,11 @@ import {
   appendGpsPing,
   listRecentGpsPings,
 } from "@/lib/location-ping/gps-ping-store";
-import { saveMediaSpacetimeContext } from "@/lib/location-ping/media-context-store";
+import { saveMediaBlob } from "@/lib/location-ping/media-blob-store";
+import {
+  listMediaSpacetimeContexts,
+  saveMediaSpacetimeContext,
+} from "@/lib/location-ping/media-context-store";
 import { resolveCaptureSpacetime } from "@/lib/location-ping/resolve-capture-spacetime";
 import type {
   MediaSpacetimeContext,
@@ -53,7 +57,18 @@ export async function attachMediaSpacetime(input: {
   file: File;
   origin: MediaSpacetimeOrigin;
   originRef?: string | null;
+  /** Stable id for album-sync dedupe (`album-{mediaStoreId}`). */
+  stableContextId?: string | null;
 }): Promise<MediaSpacetimeContext> {
+  const stableId = input.stableContextId?.trim();
+  if (stableId) {
+    const rows = await listMediaSpacetimeContexts();
+    const hit = rows.find((row) => row.id === stableId);
+    if (hit) {
+      return hit;
+    }
+  }
+
   await boostGpsPingForUpload();
   const pings = await listRecentGpsPings();
   const resolved = await resolveCaptureSpacetime({ file: input.file, pings });
@@ -64,7 +79,7 @@ export async function attachMediaSpacetime(input: {
       : null;
 
   const context: MediaSpacetimeContext = {
-    id: crypto.randomUUID(),
+    id: stableId || crypto.randomUUID(),
     capturedAtIso: resolved.capturedAtIso,
     lat: resolved.lat,
     lng: resolved.lng,
@@ -80,6 +95,7 @@ export async function attachMediaSpacetime(input: {
   };
 
   await saveMediaSpacetimeContext(context);
+  await saveMediaBlob(context.id, input.file);
 
   if (resolved.lat !== null && resolved.lng !== null) {
     const label = placeLabel ?? "업로드한 사진";

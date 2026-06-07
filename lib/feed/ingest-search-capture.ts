@@ -14,8 +14,15 @@ import {
   appendFeedCaptureFragment,
   removeFeedCaptureFragment,
 } from "@/lib/feed/feed-capture-metadata";
-import { buildMomentEventDraft } from "@/lib/feed/bootstrap-spacetime-target";
-import { resolveSpacetimeFeedTarget } from "@/lib/feed/resolve-spacetime-feed-target";
+import {
+  attachMediaIngest,
+  evaluateContextMatchMedia,
+  skipMediaIngest,
+  type MediaContextIngestOutcome,
+} from "@/lib/ingest/context-match-media-gate";
+import { resolveTargetEventFromSpacetime } from "@/lib/feed/resolve-target-event-from-spacetime";
+
+export type { MediaContextIngestOutcome } from "@/lib/ingest/context-match-media-gate";
 
 function extractFirstUrl(text: string): string | null {
   const match = text.match(/https?:\/\/[^\s]+/iu);
@@ -74,7 +81,7 @@ function buildToastLine(input: {
   return `Feed에 ${kindLabel} 붙였어요`;
 }
 
-function commitCaptureToEvent(input: {
+export function commitCaptureToEvent(input: {
   target: EventCandidate;
   match: SpacetimeFeedTargetMatch | null;
   createdNewEvent: boolean;
@@ -135,50 +142,21 @@ function commitCaptureToEvent(input: {
   };
 }
 
-function resolveTargetEvent(input: {
-  capturedAtIso: string;
-  lat: number | null;
-  lng: number | null;
-  placeLabel: string | null;
-  memoText?: string | null;
-}): {
-  event: EventCandidate;
-  match: SpacetimeFeedTargetMatch | null;
-  createdNewEvent: boolean;
-} {
-  const events = listEventCandidates();
-  const match = resolveSpacetimeFeedTarget({
-    capturedAtIso: input.capturedAtIso,
-    lat: input.lat,
-    lng: input.lng,
-    placeLabel: input.placeLabel,
-    memoText: input.memoText,
-    events,
-  });
-
-  if (match) {
-    const existing = events.find((event) => event.id === match.eventId);
-    if (existing) {
-      return { event: existing, match, createdNewEvent: false };
-    }
-  }
-
-  const draft = buildMomentEventDraft({
-    capturedAtIso: input.capturedAtIso,
-    placeLabel: input.placeLabel,
-    memoText: input.memoText,
-  });
-  return { event: draft, match: null, createdNewEvent: true };
-}
-
-export async function ingestSearchMediaCapture(file: File): Promise<SearchCaptureIngestResult> {
+export async function ingestSearchMediaCapture(
+  file: File,
+): Promise<MediaContextIngestOutcome> {
   const context = await attachMediaSpacetime({
     file,
     origin: "search_capture",
     originRef: "search",
   });
 
-  const { event, match, createdNewEvent } = resolveTargetEvent({
+  const decision = evaluateContextMatchMedia({ context });
+  if (!decision.allow) {
+    return skipMediaIngest(decision);
+  }
+
+  const { event, match, createdNewEvent } = resolveTargetEventFromSpacetime({
     capturedAtIso: context.capturedAtIso,
     lat: context.lat,
     lng: context.lng,
@@ -193,19 +171,20 @@ export async function ingestSearchMediaCapture(file: File): Promise<SearchCaptur
     placeLabel: context.placeLabel ?? undefined,
   };
 
-  return commitCaptureToEvent({
+  const result = commitCaptureToEvent({
     target: event,
     match,
     createdNewEvent,
     fragment,
   });
+  return attachMediaIngest(result, decision);
 }
 
 export function ingestSearchMemoCapture(text: string): SearchCaptureIngestResult {
   const trimmed = text.trim();
   const url = extractFirstUrl(trimmed);
   const capturedAtIso = new Date().toISOString();
-  const { event, match, createdNewEvent } = resolveTargetEvent({
+  const { event, match, createdNewEvent } = resolveTargetEventFromSpacetime({
     capturedAtIso,
     lat: null,
     lng: null,

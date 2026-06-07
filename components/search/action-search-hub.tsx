@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { ActionChatFeed } from "@/components/action-chat-feed";
 import { SpacetimeTargetSheet } from "@/components/search/spacetime-target-sheet";
+import { useRelatedContextSearch } from "@/hooks/use-related-context-search";
 import { useSearchCaptureIngest } from "@/hooks/use-search-capture-ingest";
 import { useCopy } from "@/hooks/use-copy";
 import { readFeedExperienceRunContext } from "@/lib/feed/feed-experience-run-context-store";
@@ -46,6 +47,7 @@ export function ActionSearchHub() {
     createPlanTarget,
     dismissTargetSheet,
   } = useSearchCaptureIngest();
+  const relatedContext = useRelatedContextSearch();
 
   return (
     <>
@@ -64,6 +66,12 @@ export function ActionSearchHub() {
         className="min-h-0 flex-1"
         searchIngressHint={copy.search.ingressHint}
         searchExecution={searchExecution}
+        relatedContextSearch={{
+          active: relatedContext.active,
+          result: relatedContext.result,
+          onSearch: relatedContext.search,
+          onClear: relatedContext.clear,
+        }}
       />
 
       <SpacetimeTargetSheet

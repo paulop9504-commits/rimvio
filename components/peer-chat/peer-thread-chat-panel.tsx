@@ -103,7 +103,7 @@ export function PeerThreadChatPanel({
     scheduleConfirm,
     setScheduleConfirm,
     handleScheduleSaved,
-  } = useLensBubbleActions(displayName);
+  } = useLensBubbleActions({ displayName, peerThreadId: threadId });
 
   const focusComposer = useCallback(() => {
     requestAnimationFrame(() => {

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Globe } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useLongPress } from "@/lib/hooks/use-long-press";
@@ -32,6 +32,7 @@ import { PeerChatThreadShell } from "@/components/peer-chat/peer-chat-thread-she
 import { PeerThreadChatPanel } from "@/components/peer-chat/peer-thread-chat-panel";
 import { GroupInfoSheet } from "@/components/peer-chat/group-info-sheet";
 import { PeerThreadHubPinBar } from "@/components/peer-chat/peer-thread-hub-pin-bar";
+import { SharedGlobeSheet } from "@/components/peer-chat/shared-globe-sheet";
 
 type PeerThreadRoomClientProps = {
   peerThreadId: string;
@@ -41,6 +42,7 @@ export function PeerThreadRoomClient({ peerThreadId }: PeerThreadRoomClientProps
   const copy = useCopy();
   const [profileOpen, setProfileOpen] = useState(false);
   const [groupInfoOpen, setGroupInfoOpen] = useState(false);
+  const [sharedGlobeOpen, setSharedGlobeOpen] = useState(false);
   const [groupMetaName, setGroupMetaName] = useState<string | null>(null);
   const [groupInviteCode, setGroupInviteCode] = useState<string | null>(null);
   const roster = useMemo(() => readPinnedRoster(), []);
@@ -189,6 +191,15 @@ export function PeerThreadRoomClient({ peerThreadId }: PeerThreadRoomClientProps
             ) : null}
           </button>
         )}
+        <button
+          type="button"
+          onClick={() => setSharedGlobeOpen(true)}
+          className="mr-0.5 flex size-9 shrink-0 items-center justify-center rounded-full text-sky-300/90 ring-1 ring-sky-400/25 active:bg-sky-400/10"
+          aria-label="우리 지구"
+          title="우리 지구"
+        >
+          <Globe className="size-[18px]" aria-hidden />
+        </button>
         <AiLensToggle
           enabled={settings.aiLensEnabled}
           onChange={toggleAiLens}
@@ -210,6 +221,14 @@ export function PeerThreadRoomClient({ peerThreadId }: PeerThreadRoomClientProps
         profile={profile}
         fallbackName={displayName}
         loading={profileLoading}
+        peerThreadId={peerThreadId}
+      />
+
+      <SharedGlobeSheet
+        open={sharedGlobeOpen}
+        onOpenChange={setSharedGlobeOpen}
+        peerThreadId={peerThreadId}
+        displayName={displayName}
       />
 
       {isGroup ? (

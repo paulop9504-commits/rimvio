@@ -15,6 +15,7 @@ const KNOWN_PLACES: ReadonlyArray<{
   { pattern: /강남역|강남/u, lat: 37.498, lng: 127.028, label: "강남역" },
   { pattern: /부산|해운대/u, lat: 35.158, lng: 129.16, label: "부산" },
   { pattern: /오사카/u, lat: 34.693, lng: 135.502, label: "오사카" },
+  { pattern: /독일|베를린|뮌헨/u, lat: 52.52, lng: 13.405, label: "독일" },
   { pattern: /서울/u, lat: 37.566, lng: 126.978, label: "서울" },
   { pattern: /홍대|연남/u, lat: 37.557, lng: 126.924, label: "홍대" },
   { pattern: /성수/u, lat: 37.544, lng: 127.055, label: "성수" },
@@ -49,6 +50,19 @@ export function projectLatLngToMapPercent(lat: number, lng: number): { x: number
   return {
     x: Math.min(100, Math.max(0, x)),
     y: Math.min(100, Math.max(0, y)),
+  };
+}
+
+/** Inverse of projectLatLngToMapPercent — tap on flat globe map. */
+export function mapPercentToLatLng(pinX: number, pinY: number): {
+  lat: number;
+  lng: number;
+} {
+  const x = Math.min(100, Math.max(0, pinX));
+  const y = Math.min(100, Math.max(0, pinY));
+  return {
+    lng: (x / 100) * 360 - 180,
+    lat: 90 - (y / 100) * 180,
   };
 }
 

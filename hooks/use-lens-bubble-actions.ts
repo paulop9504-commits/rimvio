@@ -44,7 +44,15 @@ function showFastCommitUndoToast(message: string, eventId: string) {
   });
 }
 
-export function useLensBubbleActions(displayName: string) {
+export type LensBubbleActionsScope = {
+  displayName: string;
+  peerThreadId?: string;
+};
+
+export function useLensBubbleActions(scope: LensBubbleActionsScope | string) {
+  const displayName = typeof scope === "string" ? scope : scope.displayName;
+  const peerThreadId =
+    typeof scope === "string" ? undefined : scope.peerThreadId?.trim() || undefined;
   const [mapPicker, setMapPicker] = useState<{
     open: boolean;
     place: string | null;
@@ -60,6 +68,7 @@ export function useLensBubbleActions(displayName: string) {
       const result = executeDeepLinkBubbleCandidate(candidate, {
         sourceMessageId,
         peerDisplayName: displayName,
+        peerThreadId,
       });
 
       if (result.openScheduleConfirm) {
@@ -103,7 +112,7 @@ export function useLensBubbleActions(displayName: string) {
         }
       }
     },
-    [displayName],
+    [displayName, peerThreadId],
   );
 
   const handleScheduleSaved = useCallback((message: string, eventId?: string) => {

@@ -4,11 +4,20 @@
 
 import { memo } from "react";
 
+import { GlobeExperienceSlotPin } from "@/components/experience/globe-experience-slot-pin";
 import type { GlobeSpaceBlob } from "@/lib/experience-graph/build-globe-space-blobs";
-
+import type { ClassifiedGlobePin } from "@/lib/feed/experience-globe-ping-types";
+import { mapPercentToLatLng } from "@/lib/experience-graph/resolve-place-coordinates";
 import type { SpatialGlobeView } from "@/lib/experience-graph/spatial-media-types";
-
 import { cn } from "@/lib/utils";
+
+const PIN_KIND_CLASS: Record<ClassifiedGlobePin["kind"], string> = {
+  photo: "bg-emerald-300/90 shadow-[0_0_12px_rgba(52,211,153,0.85)]",
+  video: "bg-violet-300/90 shadow-[0_0_12px_rgba(167,139,250,0.85)]",
+  gps: "bg-sky-400/85 shadow-[0_0_10px_rgba(56,189,248,0.75)]",
+  dwell: "bg-amber-300/90 shadow-[0_0_12px_rgba(251,191,36,0.8)]",
+  place: "bg-white/75 shadow-[0_0_10px_rgba(255,255,255,0.45)]",
+};
 
 
 
@@ -25,6 +34,15 @@ export type SpatialGlobeStageProps = {
   activeBlobId?: string | null;
 
   onBlobPress?: (blobId: string) => void;
+
+  classifiedPins?: readonly ClassifiedGlobePin[];
+
+  activePinId?: string | null;
+
+  onPinPress?: (pinId: string) => void;
+
+  /** Tap empty map — shared ROOM globe pin placement. */
+  onMapPress?: (coords: { lat: number; lng: number; pinX: number; pinY: number }) => void;
 
   variant?: "card" | "immersive";
 
@@ -49,6 +67,14 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
   activeBlobId,
 
   onBlobPress,
+
+  classifiedPins = [],
+
+  activePinId,
+
+  onPinPress,
+
+  onMapPress,
 
   variant = "card",
 
@@ -128,13 +154,30 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
 
           <div
 
-            className="absolute inset-0 rounded-full transition-transform duration-700 ease-out"
+            className={cn(
+              "absolute inset-0 rounded-full transition-transform duration-700 ease-out",
+              onMapPress && "cursor-crosshair",
+            )}
 
             style={{
 
               transform: `translate(${translateX}%, ${translateY}%) scale(1.35)`,
 
             }}
+
+            data-globe-map-surface
+
+            onClick={
+              onMapPress
+                ? (event) => {
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    const pinX = ((event.clientX - rect.left) / rect.width) * 100;
+                    const pinY = ((event.clientY - rect.top) / rect.height) * 100;
+                    const { lat, lng } = mapPercentToLatLng(pinX, pinY);
+                    onMapPress({ lat, lng, pinX, pinY });
+                  }
+                : undefined
+            }
 
           >
 
@@ -145,47 +188,82 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
 
 
             {blobs.map((blob) => {
-
               const active = blob.id === activeBlobId;
-
               const left = `${blob.pinX}%`;
-
               const top = `${blob.pinY}%`;
+              return (
+                <button
+                  key={blob.id}
+                  type="button"
+                  className={cn(
+                    "absolute z-10 -translate-x-1/2 -translate-y-1/2 rounded-full transition-all duration-500",
+                    active
+                      ? "size-4 bg-sky-200 shadow-[0_0_22px_rgba(186,230,253,1)] ring-2 ring-white"
+                      : "size-2.5 bg-sky-400/80 shadow-[0_0_12px_rgba(56,189,248,0.8)] hover:size-3.5",
+                  )}
+                  style={{ left, top }}
+                  data-globe-space-blob={blob.id}
+                  aria-label={`${blob.label} 경험 ${blob.experienceCount}개`}
+                  aria-pressed={active}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onBlobPress?.(blob.id);
+                  }}
+                />
+              );
+            })}
+
+            {classifiedPins.map((pin) => {
+              const active = pin.id === activePinId;
+              const related = pin.emphasis === "related";
+              const isSlot = pin.pinShape === "slot" && pin.slot;
+
+              if (isSlot) {
+                return (
+                  <button
+                    key={pin.id}
+                    type="button"
+                    className="absolute z-[12] -translate-x-1/2 -translate-y-full"
+                    style={{ left: `${pin.pinX}%`, top: `${pin.pinY}%` }}
+                    data-globe-classified-pin={pin.id}
+                    data-globe-pin-shape="slot"
+                    aria-label={`${pin.slot!.experienceTitle} · 사진 ${pin.slot!.photoCount} · 영상 ${pin.slot!.videoCount}`}
+                    aria-pressed={active}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onPinPress?.(pin.id);
+                    }}
+                  >
+                    <GlobeExperienceSlotPin
+                      slot={pin.slot!}
+                      active={active}
+                      related={related}
+                    />
+                  </button>
+                );
+              }
 
               return (
-
                 <button
-
-                  key={blob.id}
-
+                  key={pin.id}
                   type="button"
-
                   className={cn(
-
-                    "absolute z-10 -translate-x-1/2 -translate-y-1/2 rounded-full transition-all duration-500",
-
-                    active
-
-                      ? "size-4 bg-sky-200 shadow-[0_0_22px_rgba(186,230,253,1)] ring-2 ring-white"
-
-                      : "size-2.5 bg-sky-400/80 shadow-[0_0_12px_rgba(56,189,248,0.8)] hover:size-3.5",
-
+                    "absolute z-[11] -translate-x-1/2 -translate-y-1/2 rounded-full transition-all duration-500",
+                    related ? "opacity-55" : "opacity-100",
+                    active ? "size-3.5 ring-2 ring-white" : "size-2 hover:size-2.5",
+                    PIN_KIND_CLASS[pin.kind],
                   )}
-
-                  style={{ left, top }}
-
-                  data-globe-space-blob={blob.id}
-
-                  aria-label={`${blob.label} 경험 ${blob.experienceCount}개`}
-
+                  style={{ left: `${pin.pinX}%`, top: `${pin.pinY}%` }}
+                  data-globe-classified-pin={pin.id}
+                  data-globe-pin-kind={pin.kind}
+                  aria-label={`${pin.label} · ${pin.kind}`}
                   aria-pressed={active}
-
-                  onClick={() => onBlobPress?.(blob.id)}
-
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onPinPress?.(pin.id);
+                  }}
                 />
-
               );
-
             })}
 
           </div>

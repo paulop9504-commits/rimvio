@@ -12,6 +12,7 @@ import { InboxLinkInput } from "@/components/inbox-link-input";
 import { SettingsProfilePanel } from "@/components/settings-profile-panel";
 import { RimvioAccountProfilePanel } from "@/components/rimvio-account-profile-panel";
 import { SettingsIntegrationsPanel } from "@/components/settings-integrations-panel";
+import { SettingsAlbumSyncPanel } from "@/components/settings-album-sync-panel";
 import { RimvioAppManualPanel } from "@/components/rimvio-app-manual-panel";
 import { RimvioProductStoryScreens } from "@/components/rimvio-product-story-screens";
 import { SettingsSection } from "@/components/settings/settings-section";
@@ -174,6 +175,8 @@ export function WelcomeGuide() {
       ) : (
         <AuthSetupPanel variant="embedded" />
       )}
+
+      <SettingsAlbumSyncPanel />
 
       <SettingsIntegrationsPanel variant="embedded" />
 

@@ -68,8 +68,12 @@ export function useSearchCaptureIngest() {
       }
       setIngesting(true);
       try {
-        const result = await ingestSearchMediaCapture(file);
-        finishIngest(result);
+        const outcome = await ingestSearchMediaCapture(file);
+        if (outcome.status === "skipped") {
+          toast.message(outcome.decision.reason, { duration: 3200 });
+          return false;
+        }
+        finishIngest(outcome.result);
         return true;
       } catch {
         toast.error("사진을 Feed에 붙이지 못했어요");

@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useEffect, useMemo, useState } from "react";
-import { SpacetimePingCard } from "@/components/experience/spacetime-ping-card";
+import { ExperienceRecallShortsStage } from "@/components/feed/experience-recall-shorts-stage";
 import { SpatialGlobeStage } from "@/components/experience/spatial-globe-stage";
 import {
   useSpatialContextSync,
@@ -10,6 +10,7 @@ import {
 import type { ExperienceVolume } from "@/lib/experience-graph/experience-volume-types";
 import { projectVolumeSpatialMedia } from "@/lib/experience-graph/project-volume-spatial-media";
 import { MEDIA_SPACETIME_UPDATED } from "@/lib/location-ping/media-context-store";
+import type { ClassifiedGlobePin } from "@/lib/feed/experience-globe-ping-types";
 import type { SpatialMediaKind, SpatialMediaItem } from "@/lib/experience-graph/spatial-media-types";
 import { cn } from "@/lib/utils";
 
@@ -44,6 +45,7 @@ export type SpatialMediaSyncPlayerProps = {
   items?: readonly SpatialMediaItem[];
   sync?: SpatialContextSyncState;
   hideGlobe?: boolean;
+  classifiedPins?: readonly ClassifiedGlobePin[];
   className?: string;
 };
 
@@ -55,6 +57,7 @@ export const SpatialMediaSyncPlayer = memo(function SpatialMediaSyncPlayer({
   items: itemsProp,
   sync: syncProp,
   hideGlobe = false,
+  classifiedPins = [],
   className,
 }: SpatialMediaSyncPlayerProps) {
   const [uploadedMediaTick, setUploadedMediaTick] = useState(0);
@@ -71,6 +74,29 @@ export const SpatialMediaSyncPlayer = memo(function SpatialMediaSyncPlayer({
   );
   const internalSync = useSpatialContextSync(items);
   const sync = syncProp ?? internalSync;
+  const [globePinId, setGlobePinId] = useState<string | null>(null);
+  const activePinId =
+    sync.selectedId && classifiedPins.some((pin) => pin.id === sync.selectedId)
+      ? sync.selectedId
+      : globePinId ?? sync.selectedId;
+
+  const activePin = useMemo(
+    () => classifiedPins.find((pin) => pin.id === activePinId) ?? null,
+    [classifiedPins, activePinId],
+  );
+
+  const nearestItemForPin = useMemo(() => {
+    if (sync.selectedItem || !activePin) {
+      return null;
+    }
+    return (
+      sync.items.find((row) => row.kind === "photo" || row.kind === "video") ??
+      sync.items[0] ??
+      null
+    );
+  }, [sync.selectedItem, sync.items, activePin]);
+
+  const shortsItem = sync.selectedItem ?? nearestItemForPin;
 
   return (
     <div
@@ -84,11 +110,25 @@ export const SpatialMediaSyncPlayer = memo(function SpatialMediaSyncPlayer({
           globe={sync.globe}
           timeLabel={sync.frame.timeLabel}
           environmentLabel={sync.frame.environmentLabel}
+          classifiedPins={classifiedPins}
+          activePinId={activePinId}
+          onPinPress={(pinId) => {
+            if (sync.items.some((item) => item.id === pinId)) {
+              sync.selectItem(pinId);
+              setGlobePinId(null);
+              return;
+            }
+            setGlobePinId(pinId);
+          }}
         />
       ) : null}
 
-      {sync.selectedItem ? (
-        <SpacetimePingCard item={sync.selectedItem} volume={volume} />
+      {shortsItem || activePin ? (
+        <ExperienceRecallShortsStage
+          item={shortsItem}
+          volume={volume}
+          pin={shortsItem ? null : activePin}
+        />
       ) : null}
 
       <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">

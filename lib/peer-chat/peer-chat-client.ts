@@ -320,6 +320,91 @@ async function resolveClientSendThreadId(input: {
   }
 }
 
+export async function fetchSharedGlobePinsRemote(
+  threadId: string,
+): Promise<{
+  pins: import("@/lib/peer-chat/globe-pin-types").SharedGlobePin[];
+  threadId: string;
+}> {
+  const response = await fetch(
+    `${resolveAppOrigin()}/api/peers/threads/${encodeURIComponent(threadId)}/globe-pins`,
+    { credentials: "include" },
+  );
+  return parseJson(response);
+}
+
+export async function sendSharedGlobePinRemote(input: {
+  threadId: string;
+  displayName: string;
+  lat: number;
+  lng: number;
+  placeLabel: string;
+  note?: string;
+  capturedAtIso?: string;
+  file?: File;
+}): Promise<{
+  pin: import("@/lib/peer-chat/globe-pin-types").SharedGlobePin;
+  threadId: string;
+}> {
+  const sendThreadId = await resolveClientSendThreadId({
+    threadId: input.threadId,
+    displayName: input.displayName,
+  });
+
+  const post = async () => {
+    const endpoint = `${resolveAppOrigin()}/api/peers/threads/${encodeURIComponent(sendThreadId)}/globe-pins`;
+    if (input.file) {
+      const form = new FormData();
+      form.append("lat", String(input.lat));
+      form.append("lng", String(input.lng));
+      form.append("placeLabel", input.placeLabel);
+      form.append("displayName", input.displayName);
+      if (input.note?.trim()) {
+        form.append("note", input.note.trim());
+      }
+      if (input.capturedAtIso?.trim()) {
+        form.append("capturedAtIso", input.capturedAtIso.trim());
+      }
+      form.append("file", input.file);
+      const response = await fetch(endpoint, {
+        method: "POST",
+        credentials: "include",
+        body: form,
+      });
+      return parseJson(response);
+    }
+
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        lat: input.lat,
+        lng: input.lng,
+        placeLabel: input.placeLabel,
+        displayName: input.displayName,
+        note: input.note,
+        capturedAtIso: input.capturedAtIso,
+      }),
+    });
+    return parseJson(response);
+  };
+
+  try {
+    return await post();
+  } catch (firstError) {
+    try {
+      await ensurePeerThreadRemote({
+        threadId: sendThreadId,
+        displayName: input.displayName,
+      });
+      return await post();
+    } catch {
+      throw firstError;
+    }
+  }
+}
+
 export async function sendPeerMessageRemote(input: {
   threadId: string;
   displayName: string;

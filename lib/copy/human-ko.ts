@@ -11,9 +11,14 @@ export const copy = {
     northStar: RIMVIO.northStar,
   },
   product: {
-    oneLiner: "말하고, 공유하고 — 실행은 탭 한 번",
+    definition:
+      "사용자의 경험 데이터를 시간·장소·사람·행동 단위로 구조화하고, 축적된 맥락을 기반으로 다음 행동을 제안·실행하는 Experience OS",
+    definitionHuman:
+      "하루 동안 남겨진 사진, 위치, 대화를 기억하고, 다음에 하고 싶을 일을 가장 편하게 이어주는 앱",
+    oneLiner:
+      "하루의 사진·위치·대화를 기억하고, 다음 일을 이어주는 앱",
     oneLinerSub:
-      "친구 대화와 링크에서 실행만 골라요. 자동 실행 없음 · Human decides",
+      "경험이 쌓이면 맛집·길찾기·@실행이 맥락 안에서 열려요 · 자동 실행 없음",
     feedContext: "공유한 링크를 실행 카드로",
     peersContext:
       "대화에서 실행 버튼이 붙어요 · 프로필 길게 누르면 AI 렌즈",
@@ -48,14 +53,20 @@ export const copy = {
   globe: {
     title: "지구본",
     subtitle: "공간 · 시간 · 환경이 함께 움직입니다",
+    sharedTitle: "우리 지구",
+    sharedSubtitle: "친구와 함께 빈 지구에 핀을 박아요",
+    placePin: "여기에 핀 박기",
+    tapToPlace: "지구를 탭해서 핀 위치를 고를 수 있어요",
+    photoPin: "사진으로 핀 박기",
+    emptyPins: "아직 핀이 없어요. 지구를 탭하거나 사진·GPS로 함께 박아보세요.",
   },
   search: {
     title: "수집",
     subtitle: "사진·링크·메모 → 오늘 경험에 자동으로 붙기",
     emptyHint: "여행·만남 일정을 잡아두면 더 정확해요",
     emptySubhint: "사진·링크·메모를 올리면 Feed 경험 노드에 모여요",
-    placeholder: "사진·링크·메모 올리기",
-    ingressHint: "사진·링크·메모 올리기 (경험에 자동 연결)",
+    placeholder: "사진·링크·메모 · 민수 제주처럼 관련 경험 찾기",
+    ingressHint: "사진·링크·메모 올리기 · 민수·제주로 관련 경험 검색",
     ingressEyebrow: "수집",
     ingressTitle: "오늘 경험에 담기",
     ingressPhoto: "사진·영상 — 촬영 또는 앨범",
@@ -71,6 +82,20 @@ export const copy = {
       contextLine: (feature: string) => `@${feature} — 피드에서 이어서 실행`,
       backToFeed: "피드로 돌아가기",
       placeholder: "@명령 입력 · 이 경험 맥락",
+    },
+    contextSearch: {
+      eyebrow: "관련 맥락",
+      titleForQuery: (query: string) => `「${query}」 관련 경험`,
+      empty: "아직 맞는 경험이 없어요. 사진·메모를 올리면 다음부터 찾을 수 있어요.",
+      openOnFeed: "피드에서 이어 보기",
+      clear: "검색 닫기",
+      peoplePrefix: "사람",
+      experiencePrefix: "경험",
+      peopleButton: (n: number) => `사람 ${n}`,
+      experienceButton: (n: number) => `경험 ${n}`,
+      ingressHint: "민수(사람) · 제주(경험)… 축별로 쌓인 경험을 검색해요",
+      timingHint:
+        "여행·만남·@ 실행을 앞두고 관련 추억을 찾을 때 쓰세요 · 대화 중엔 조용히 쌓아요",
     },
   },
   peers: {
@@ -106,11 +131,25 @@ export const copy = {
         collapse: "접기",
         empty: "아래에서 오늘 경험을 선택하세요",
         miniHint: "탭해서 공간·시간 기억 보기",
+        shorts: {
+          playToggle: "영상 재생 · 일시정지",
+          loading: "그때 미디어 불러오는 중…",
+          memoryPlaceholder: "업로드한 사진·영상이 여기 재생돼요",
+        },
       },
       run: {
         at: "@실행",
         sectionLabel: "이 경험에서 실행",
         hint: "맥락이 잡힌 뒤 @로 길찾기·맛집을 실행해요",
+      },
+      relatedContext: {
+        prefix: "관련 · ",
+        peoplePrefix: "사람",
+        experiencePrefix: "경험",
+        peopleButton: (n: number) => `사람 ${n}`,
+        experienceButton: (n: number) => `경험 ${n}`,
+        buttonLabel: (n: number) => (n > 0 ? `관련 ${n}` : "관련"),
+        buttonAria: (n: number) => `관련 맥락 ${n}개 보기`,
       },
       emptyCta: "사진 올리기",
     },
@@ -365,9 +404,9 @@ export const copy = {
       "로그인 후 이름·Rimvio ID만 정하면 친구·실행 탭을 바로 쓸 수 있어요",
     googleCardFoot: "Human decides · 실행은 항상 내가 탭할 때만",
     loading: "프로필 불러오는 중…",
-    introTitle: "Rimvio는 실행 OS예요",
+    introTitle: "Rimvio는 Experience OS예요",
     introBody:
-      "챗봇이 아니라, 대화와 링크에서 나온 약속·장소·송금을 버튼으로 바꿔 줘요.",
+      "하루의 사진·위치·대화를 기억하고, 쌓인 맥락으로 다음 일을 이어줘요.",
     introTapHint: "자동 실행 없음 · 탭할 때만 실행",
     introCta: "프로필 만들기",
     welcomeTitle: "Google 연결 완료",
@@ -569,7 +608,7 @@ export const copy = {
     iosStep3Body: "에 붙여넣기 → Action Dock으로 이어집니다",
     desktopSection: "데스크톱",
     desktopMid: "에 링크를 붙여넣거나",
-    desktopEnd: "로 Action OS를 체험해 보세요",
+    desktopEnd: "로 Experience OS를 체험해 보세요",
     tryDemo: "체험하기",
   },
   manual: {

@@ -58,6 +58,14 @@ export function resolveFeedSlotOpenTarget(
   }
 
   const plan = event ? readPlanContextFromEvent(event) : null;
+  const planPeerThreadId = plan?.peerThreadId?.trim();
+  if (planPeerThreadId && isPeerThreadId(planPeerThreadId)) {
+    return {
+      kind: "peer_room",
+      peerThreadId: planPeerThreadId,
+      displayName: plan.peerDisplayName ?? undefined,
+    };
+  }
   const talkPeer = resolveFeedSlotPeerContext(slot, lookup, plan);
   if (talkPeer?.source === "feed_talk") {
     return {

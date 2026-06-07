@@ -49,7 +49,7 @@ export const APPLE_MOBILE_WEB_UI_FIXED = {
 export const RIMVIO_MOBILE_WEB_UI_FIXED = {
   ...APPLE_MOBILE_WEB_UI_FIXED,
   defaultHeaderTagline:
-    "Rimvio 경험. 링크 한 번으로 일상이 바로 실행되는 순간을 만나보세요.",
+    "Rimvio 경험. 하루의 사진·위치·대화를 기억하고, 다음 일을 이어주는 Experience OS.",
   defaultUrlBar: "rimvio.app",
 } as const;
 

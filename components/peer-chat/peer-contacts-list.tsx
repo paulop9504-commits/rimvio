@@ -97,6 +97,7 @@ function PeerContactRow({
         profile={profile}
         fallbackName={displayName}
         loading={loading}
+        peerThreadId={contact.peerThreadId}
       />
     </li>
   );

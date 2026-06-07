@@ -18,8 +18,10 @@ import { subscribeOpenGoogleSheet } from "@/lib/integrations/google-sheets-open-
 import { ActiveActionsSheet } from "@/components/action-chat/active-actions-sheet";
 import { ActionChatInputBar } from "@/components/action-chat/input-bar";
 import { SearchIngressPanel } from "@/components/search/search-ingress-panel";
+import { SearchRelatedContextPanel } from "@/components/search/search-related-context-panel";
 import { SearchExperienceRunBanner } from "@/components/search/search-experience-run-banner";
 import { classifySearchComposerIntent } from "@/lib/search/classify-search-composer-intent";
+import type { RelatedContextSearchResult } from "@/lib/search/search-related-context-by-axis";
 import {
   buildExperienceMentionComposerText,
   resolveExperienceRunFeatureLabel,
@@ -51,6 +53,7 @@ import { buildSurfaceActionKey } from "@/lib/memory";
 import {
   deriveSurfaceWhyLineKo,
   hasActiveDecisionStream,
+  shouldRenderLatentSuggestionLayers,
 } from "@/lib/surface-composition";
 import {
   derivePrimaryErrorMessage,
@@ -116,6 +119,13 @@ type ActionChatFeedProps = {
   searchIngressHint?: string;
   /** Feed → Search @ execution with experience context. */
   searchExecution?: SearchExperienceExecution | null;
+  /** Search tab — find related Experience nodes (peer · place · trip). */
+  relatedContextSearch?: {
+    active: boolean;
+    result: RelatedContextSearchResult | null;
+    onSearch: (query: string) => RelatedContextSearchResult | null;
+    onClear: () => void;
+  };
   className?: string;
 };
 
@@ -135,6 +145,7 @@ export function ActionChatFeed({
   searchIngesting = false,
   searchIngressHint,
   searchExecution = null,
+  relatedContextSearch = null,
   className,
 }: ActionChatFeedProps) {
   const copy = useCopy();
@@ -145,7 +156,11 @@ export function ActionChatFeed({
   const isSearchMentionRun = Boolean(
     isConversation && scopeKind === "search" && searchExecution,
   );
-  const isSearchIngress = isConversation && scopeKind === "search" && !isSearchMentionRun;
+  const isSearchContextBrowse = Boolean(
+    isConversation && scopeKind === "search" && relatedContextSearch?.active,
+  );
+  const isSearchIngress =
+    isConversation && scopeKind === "search" && !isSearchMentionRun && !isSearchContextBrowse;
   const mentionComposerPrefill = useMemo(
     () =>
       searchExecution
@@ -294,6 +309,10 @@ export function ActionChatFeed({
   const [schedulingLink, setSchedulingLink] = useState<LinkRow | null>(null);
   const hasActiveDecision = useMemo(
     () => hasActiveDecisionStream(surfaceFrame.layout),
+    [surfaceFrame],
+  );
+  const showLatentSuggestionLayers = useMemo(
+    () => shouldRenderLatentSuggestionLayers(surfaceFrame),
     [surfaceFrame],
   );
   const surfacePrimaryUx = useMemo(() => {
@@ -602,6 +621,16 @@ export function ActionChatFeed({
               </div>
             ) : null}
 
+            {isSearchContextBrowse && relatedContextSearch?.result ? (
+              <div className="feed-hero-slot shrink-0">
+                <SearchRelatedContextPanel
+                  copy={copy.search}
+                  result={relatedContextSearch.result}
+                  onClear={relatedContextSearch.onClear}
+                />
+              </div>
+            ) : null}
+
             {isSearchMentionRun && searchExecution ? (
               <div className="feed-hero-slot shrink-0 pt-2">
                 <SearchExperienceRunBanner
@@ -664,7 +693,15 @@ export function ActionChatFeed({
             ) : null}
           </div>
 
-          {isConversation && !isSearchIngress && !isSearchMentionRun && dockActions.length > 0 ? (
+          {isConversation && !isSearchIngress && !isSearchMentionRun && prepSurface.visible && showLatentSuggestionLayers ? (
+            <div className="shrink-0 px-3 pb-1">
+              <p className="rounded-xl bg-rimvio-surface-muted/70 px-3 py-2 text-[12px] font-medium text-foreground">
+                {prepSurface.title}
+              </p>
+            </div>
+          ) : null}
+
+          {isConversation && !isSearchIngress && !isSearchMentionRun && dockActions.length > 0 && showLatentSuggestionLayers ? (
             <div className="shrink-0 px-3 pb-0.5">
               <PredictiveActionDock
                 compact
@@ -722,6 +759,10 @@ export function ActionChatFeed({
                       attachments: payload.attachments,
                       chatAxis: payload.chatAxis,
                     });
+                    return true;
+                  }
+                  if (intent === "context_search" && relatedContextSearch) {
+                    relatedContextSearch.onSearch(payload.text);
                     return true;
                   }
                   if (onSearchMemoIngest) {

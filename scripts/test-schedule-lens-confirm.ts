@@ -31,9 +31,12 @@ const scheduleCandidate: DeepLinkBubbleCandidate = {
   },
 };
 
+const groupThreadId = "peer-group-22222222-2222-2222-2222-222222222222";
+
 const open = executeDeepLinkBubbleCandidate(scheduleCandidate, {
   sourceMessageId: "msg-1",
   peerDisplayName: "황정성",
+  peerThreadId: groupThreadId,
 });
 assert.equal(open.ok, true);
 assert.ok(open.openScheduleConfirm);
@@ -42,6 +45,8 @@ assert.equal(open.openScheduleConfirm!.peerDisplayName, "황정성");
 assert.equal(open.openScheduleConfirm!.conflict.kind, "none");
 assert.ok(open.openScheduleConfirm!.planContext);
 assert.equal(open.openScheduleConfirm!.planAttach.canContinue, false);
+assert.equal(open.openScheduleConfirm!.planContext.peerThreadId, groupThreadId);
+assert.equal(open.openScheduleConfirm!.planContext.planMode, "group");
 
 const planIntent = classifyScheduleIntent({
   title: "수능 공부 루틴 계획",
@@ -87,6 +92,11 @@ const saved = commitLensScheduleFromConfirm({
 });
 assert.equal(saved.ok, true);
 assert.ok(saved.message.includes("캘린더"));
+
+const committed = listEventCandidates().find((row) => row.id === saved.eventId);
+assert.ok(committed);
+assert.equal(committed?.metadata?.planPeerThreadId, groupThreadId);
+assert.equal(committed?.metadata?.lensSource, "peer_chat");
 
 const dup = detectScheduleConflict({
   title: "치킨 약속",

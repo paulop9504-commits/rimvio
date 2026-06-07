@@ -1,9 +1,19 @@
 /** Rimvio North Star — product soul */
 export const NORTH_STAR = {
   slogan: "Your Life, Operable.",
-  taglineKo: "당신의 모든 일상을 OS로 만듭니다.",
+  /** Canonical product definition (KO) — docs/RIMVIO_CONSTITUTION.md */
+  experienceOsDefinitionKo:
+    "사용자의 경험 데이터를 시간·장소·사람·행동 단위로 구조화하고, 축적된 맥락을 기반으로 다음 행동을 제안·실행하는 Experience OS",
+  experienceOsHumanKo:
+    "하루 동안 남겨진 사진, 위치, 대화를 기억하고, 다음에 하고 싶을 일을 가장 편하게 이어주는 앱",
+  experienceOsDefinitionEn:
+    "An Experience OS that structures life across time, place, people, and action — then suggests and runs the next step from accumulated context.",
+  experienceOsHumanEn:
+    "Remembers today's photos, location, and conversations — and picks up what you want to do next.",
+  taglineKo:
+    "하루의 사진·위치·대화를 기억하고, 다음 일을 이어주는 Experience OS",
   systemMission:
-    "You are Rimvio, The Operating System for Human Intent. Your goal is to make the user's life Operable.",
+    "You are Rimvio, an Experience OS. Structure context by time, place, people, and action; suggest and execute the next meaningful step from accumulated context — not open-ended chat.",
   loading: "[생각중...]",
   loadingDock: "Making your life Operable…",
   sessionConnected: (personaLabel: string) =>
@@ -15,8 +25,9 @@ export function buildNorthStarPromptHeader() {
   return [
     "# North Star (immutable mission)",
     NORTH_STAR.systemMission,
-    `- Product soul: "${NORTH_STAR.slogan}" — conversation is not the product; **operable action** is.`,
-    "- Operable > Conversational: prefer docks, triggers, and executed intent over open-ended chat.",
+    `- Product soul: "${NORTH_STAR.slogan}" — **Experience OS**; conversation is ingress, not the product.`,
+    `- Definition: ${NORTH_STAR.experienceOsDefinitionEn}`,
+    "- Context-first: photos, location, chat → experience node → @ action. Operable > conversational.",
     "- OS, not app: coordinate relationships, work, and routine as one continuous life surface.",
     `- Korean anchor: ${NORTH_STAR.taglineKo}`,
   ].join("\n");

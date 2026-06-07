@@ -51,6 +51,8 @@ import { buildFeedTimelineAggregate } from "@/lib/feed/build-feed-timeline-aggre
 import { deriveExperienceSlotHeadline } from "@/lib/feed/derive-experience-slot-headline";
 import { useCopy } from "@/hooks/use-copy";
 import { FeedCaptureVerifyChip } from "@/components/feed/feed-capture-verify-chip";
+import { FeedRelatedContextStrip } from "@/components/feed/feed-related-context-strip";
+import { resolveSlotRelatedContextBundle } from "@/lib/feed/resolve-slot-related-context";
 import { FeedTimelineAggregateStrip } from "@/components/feed/feed-timeline-aggregate-strip";
 import type { GpsPing } from "@/lib/location-ping/types";
 import { resolveFeedSlotPills } from "@/lib/feed/resolve-feed-slot-pills";
@@ -306,6 +308,18 @@ export const FeedTodaySlotCard = memo(function FeedTodaySlotCard({
     [slotEvent, planContext, fallbackHeadline, timelineAggregate],
   );
   const headline = experienceHeadline.headline;
+
+  const relatedContextBundle = useMemo(() => {
+    if (!isActiveExperience || !eventsById || !slotEvent) {
+      return null;
+    }
+    return resolveSlotRelatedContextBundle({
+      slot,
+      events: Array.from(eventsById.values()),
+      eventsById,
+      peerLookup,
+    });
+  }, [isActiveExperience, eventsById, slotEvent, slot, peerLookup]);
   const mergedContext = [
     capturePendingVerify ? copy.feed.experience.autoAttachedHint : null,
     capturePendingVerify ? copy.feed.experience.verifyDeferHint : null,
@@ -424,6 +438,15 @@ export const FeedTodaySlotCard = memo(function FeedTodaySlotCard({
       ) : (
         <div className="flex w-full items-start gap-3">{row}</div>
       )}
+
+      {relatedContextBundle && onSelectExperience && slotEvent ? (
+        <div className="mt-2 pl-[3.25rem]">
+          <FeedRelatedContextStrip
+            bundle={relatedContextBundle}
+            onSelectExperience={(eventId) => onSelectExperience(eventId, { expand: true })}
+          />
+        </div>
+      ) : null}
 
       {capturePendingVerify && slotEvent && onVerifyCapture ? (
         <div className="mt-2 pl-[3.25rem]">

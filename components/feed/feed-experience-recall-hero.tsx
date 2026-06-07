@@ -1,9 +1,12 @@
 "use client";
 
 import { memo } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Globe, MapPin } from "lucide-react";
 import { SpatialMediaSyncPlayer } from "@/components/experience/spatial-media-sync-player";
 import { FeedExperienceRunChips } from "@/components/feed/feed-experience-run-chips";
+import { FeedRelatedContextStrip } from "@/components/feed/feed-related-context-strip";
+import type { ClassifiedGlobePin } from "@/lib/feed/experience-globe-ping-types";
+import type { SlotRelatedContextBundle } from "@/lib/feed/resolve-slot-related-context";
 import type { ExperienceVolume } from "@/lib/experience-graph/experience-volume-types";
 import { useCopy } from "@/hooks/use-copy";
 import { cn } from "@/lib/utils";
@@ -11,10 +14,17 @@ import { cn } from "@/lib/utils";
 export type FeedExperienceRecallHeroProps = {
   volume: ExperienceVolume | null;
   headline: string | null;
+  recallSubtitle?: string | null;
   expanded: boolean;
   onToggleExpanded: () => void;
   runDeferred?: boolean;
   onRunMention?: (featureId: string) => void;
+  relatedContext?: SlotRelatedContextBundle | null;
+  onSelectRelatedExperience?: (eventId: string) => void;
+  classifiedPins?: readonly ClassifiedGlobePin[];
+  isPinnedToPersonalGlobe?: boolean;
+  onPinToPersonalGlobe?: () => void;
+  onOpenPersonalGlobe?: () => void;
   className?: string;
 };
 
@@ -22,10 +32,17 @@ export type FeedExperienceRecallHeroProps = {
 export const FeedExperienceRecallHero = memo(function FeedExperienceRecallHero({
   volume,
   headline,
+  recallSubtitle = null,
   expanded,
   onToggleExpanded,
   runDeferred = false,
   onRunMention,
+  relatedContext = null,
+  onSelectRelatedExperience,
+  classifiedPins = [],
+  isPinnedToPersonalGlobe = false,
+  onPinToPersonalGlobe,
+  onOpenPersonalGlobe,
   className,
 }: FeedExperienceRecallHeroProps) {
   const copy = useCopy();
@@ -67,7 +84,18 @@ export const FeedExperienceRecallHero = memo(function FeedExperienceRecallHero({
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-[15px] font-semibold text-white">{headline ?? volume.title}</p>
-          <p className="mt-0.5 text-[12px] text-white/45">{recallCopy.miniHint}</p>
+          {recallSubtitle ? (
+            <p className="mt-0.5 truncate text-[12px] text-sky-100/75">{recallSubtitle}</p>
+          ) : null}
+          {relatedContext && onSelectRelatedExperience ? (
+            <FeedRelatedContextStrip
+              bundle={relatedContext}
+              onSelectExperience={onSelectRelatedExperience}
+              className="mt-1"
+            />
+          ) : (
+            <p className="mt-0.5 text-[12px] text-white/45">{recallCopy.miniHint}</p>
+          )}
         </div>
         <span className="shrink-0 rounded-full border border-sky-300/35 bg-sky-500/15 px-2.5 py-1 text-[10px] font-bold text-sky-100/95">
           {copy.feed.experience.recallChip}
@@ -89,25 +117,63 @@ export const FeedExperienceRecallHero = memo(function FeedExperienceRecallHero({
       aria-label={recallCopy.expand}
     >
       <div className="flex shrink-0 items-center justify-between gap-2 px-4 pb-2 pt-3">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="text-[10px] font-medium uppercase tracking-wide text-white/35">
             {copy.feed.experience.recallChip}
           </p>
           <p className="truncate text-[16px] font-semibold text-white">{headline ?? volume.title}</p>
+          {recallSubtitle ? (
+            <p className="mt-0.5 truncate text-[13px] text-sky-100/80">{recallSubtitle}</p>
+          ) : null}
+          {relatedContext && onSelectRelatedExperience ? (
+            <FeedRelatedContextStrip
+              bundle={relatedContext}
+              onSelectExperience={onSelectRelatedExperience}
+              className="mt-1.5"
+            />
+          ) : null}
         </div>
-        <button
-          type="button"
-          className="flex shrink-0 items-center gap-1 rounded-full bg-white/10 px-3 py-1.5 text-[12px] font-semibold text-white/85"
-          onClick={onToggleExpanded}
-          aria-expanded
-          aria-label={recallCopy.collapse}
-        >
-          {recallCopy.collapse}
-          <ChevronDown className="size-4" aria-hidden />
-        </button>
+        <div className="flex shrink-0 items-center gap-1.5">
+          {onPinToPersonalGlobe ? (
+            <button
+              type="button"
+              className={cn(
+                "flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[11px] font-semibold",
+                isPinnedToPersonalGlobe
+                  ? "bg-emerald-500/15 text-emerald-100 ring-1 ring-emerald-300/30"
+                  : "bg-sky-500/15 text-sky-100 ring-1 ring-sky-300/30",
+              )}
+              onClick={onPinToPersonalGlobe}
+              aria-label={isPinnedToPersonalGlobe ? "내 지구본에 있음" : "내 지구본에 박기"}
+            >
+              <MapPin className="size-3.5" aria-hidden />
+              {isPinnedToPersonalGlobe ? "박음" : "박기"}
+            </button>
+          ) : null}
+          {onOpenPersonalGlobe ? (
+            <button
+              type="button"
+              className="flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1.5 text-[11px] font-semibold text-white/85"
+              onClick={onOpenPersonalGlobe}
+              aria-label="내 지구본"
+            >
+              <Globe className="size-3.5" aria-hidden />
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="flex shrink-0 items-center gap-1 rounded-full bg-white/10 px-3 py-1.5 text-[12px] font-semibold text-white/85"
+            onClick={onToggleExpanded}
+            aria-expanded
+            aria-label={recallCopy.collapse}
+          >
+            {recallCopy.collapse}
+            <ChevronDown className="size-4" aria-hidden />
+          </button>
+        </div>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <SpatialMediaSyncPlayer volume={volume} />
+        <SpatialMediaSyncPlayer volume={volume} classifiedPins={classifiedPins} />
         {onRunMention ? (
           <div className="mt-4 border-t border-white/8 pt-3">
             <FeedExperienceRunChips deferred={runDeferred} onRun={onRunMention} />

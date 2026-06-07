@@ -1,7 +1,11 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
+import { resolvePlaceCoordinates } from "@/lib/experience-graph/resolve-place-coordinates";
 import type { SpacetimeFeedTargetMatch } from "@/lib/feed/feed-capture-types";
 import { readPlanContextFromEvent } from "@/lib/plan-context/plan-context-metadata";
-import { parseIsoMs, scoreSpacetimeFit } from "@/lib/feed/spacetime-fit";
+import { haversineKm, parseIsoMs, scoreSpacetimeFit } from "@/lib/feed/spacetime-fit";
+
+const PLAN_ARRIVAL_PROXIMITY_KM = 35;
+const PLAN_ARRIVAL_PROXIMITY_BOOST = 0.25;
 
 const PLACE_HINT_PATTERNS: ReadonlyArray<{ pattern: RegExp; label: string }> = [
   { pattern: /제주|애월|성산/u, label: "제주" },
@@ -11,6 +15,7 @@ const PLACE_HINT_PATTERNS: ReadonlyArray<{ pattern: RegExp; label: string }> = [
   { pattern: /홍대|연남/u, label: "홍대" },
   { pattern: /성수/u, label: "성수" },
   { pattern: /오사카/u, label: "오사카" },
+  { pattern: /독일|베를린|뮌헨|프랑크푸르트/u, label: "독일" },
 ];
 
 export function extractPlaceHintFromText(text?: string | null): string | null {
@@ -119,6 +124,22 @@ export function resolveSpacetimeFeedTarget(
         score += 0.12;
       }
       score += lifecycleRank(event.lifecycle) * 0.02;
+
+      const planPlace = plan?.place?.trim() || event.place?.trim();
+      if (
+        input.lat != null &&
+        input.lng != null &&
+        planPlace &&
+        fit.timeOk
+      ) {
+        const coords = resolvePlaceCoordinates(planPlace);
+        if (
+          haversineKm(input.lat, input.lng, coords.lat, coords.lng) <=
+          PLAN_ARRIVAL_PROXIMITY_KM
+        ) {
+          score += PLAN_ARRIVAL_PROXIMITY_BOOST;
+        }
+      }
 
       const dayLabel = plan?.windowEndIso
         ? planDayLabel(event.datetime!, plan.windowEndIso, input.capturedAtIso)

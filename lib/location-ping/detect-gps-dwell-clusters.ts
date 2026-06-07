@@ -27,6 +27,8 @@ function resolveClusterPlaceLabel(lat: number, lng: number): string {
     "홍대",
     "성수",
     "서울",
+    "독일",
+    "오사카",
   ] as const;
 
   let best: string | null = null;

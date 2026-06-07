@@ -65,7 +65,10 @@ export function commitLensScheduleFromConfirm(
     input.intent.kind === "plan" ||
     event.metadata?.feedPlanEnabled === true;
 
-  if (shouldFeed) {
+  const shouldStampPlanContext =
+    shouldFeed || Boolean(input.planContext.peerThreadId?.trim());
+
+  if (shouldStampPlanContext) {
     const planContext: PlanContext = {
       ...input.planContext,
       planId: event.id,
@@ -77,9 +80,13 @@ export function commitLensScheduleFromConfirm(
     const metadata = stampPlanContextMetadata(
       {
         ...event.metadata,
-        feedPlanEnabled: true,
-        planHorizon: input.intent.horizon,
-        planKind: input.intent.kind,
+        ...(shouldFeed
+          ? {
+              feedPlanEnabled: true,
+              planHorizon: input.intent.horizon,
+              planKind: input.intent.kind,
+            }
+          : {}),
         peerDisplayName: input.peerDisplayName?.trim() || planContext.peerDisplayName,
         lensSource: "peer_chat",
       },
@@ -91,7 +98,10 @@ export function commitLensScheduleFromConfirm(
       title: resolvedTitle,
       category: event.category,
       source: event.source,
-      lifecycle: input.intent.kind === "plan" || continuing ? "active" : "scheduled",
+      lifecycle:
+        shouldFeed && (input.intent.kind === "plan" || continuing)
+          ? "active"
+          : "scheduled",
       datetime: planContext.windowStartIso ?? event.datetime,
       place: planContext.place ?? event.place,
       containerId: event.containerId,

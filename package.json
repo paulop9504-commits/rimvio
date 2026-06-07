@@ -173,6 +173,8 @@
     "mobile:android": "npx cap open android",
     "mobile:ios": "npx cap open ios",
     "auth:check": "npx tsx scripts/check-google-auth-setup.ts",
+    "verify:deploy": "npx tsx scripts/verify-deploy-readiness.ts",
+    "deploy:prod": "powershell -ExecutionPolicy Bypass -File scripts/deploy-production.ps1",
     "db:apply": "npx tsx scripts/supabase-apply-migrations.ts",
     "db:apply:peer": "npx tsx scripts/supabase-apply-migrations.ts --from=013",
     "db:apply:avatar": "npx tsx scripts/supabase-apply-migrations.ts --from=019",

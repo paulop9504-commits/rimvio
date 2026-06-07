@@ -7,6 +7,7 @@ import type {
 } from "@/lib/plan-context/plan-context-types";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import type { ScheduleIntentKind } from "@/lib/peer-chat/ai-lens/classify-schedule-intent";
+import { isPeerThreadId } from "@/lib/peer-chat/group-thread";
 
 export type BuildPlanContextDraftInput = {
   title: string;
@@ -53,7 +54,11 @@ export function buildPlanContextDraft(input: BuildPlanContextDraftInput): PlanCo
     peerThreadId: input.peerThreadId ?? null,
     attachMode,
     planId: attachMode === "continue" ? attach.candidatePlanId : undefined,
-    planMode: input.peerDisplayName?.trim() ? "group" : "solo",
+    planMode:
+      input.peerDisplayName?.trim() ||
+      (input.peerThreadId?.trim() && isPeerThreadId(input.peerThreadId.trim()))
+        ? "group"
+        : "solo",
   };
 
   return { context, attach };

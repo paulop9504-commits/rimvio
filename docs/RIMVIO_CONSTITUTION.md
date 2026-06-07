@@ -1,10 +1,14 @@
 # Rimvio Constitution
 
-Rimvio is **not** a chatbot, calendar, messenger, note-taking app, or AI agent.
+Rimvio is **not** a chatbot, calendar, messenger, note-taking app, or generic AI agent.
 
-**Rimvio is an Action-Centric Life OS.**
+**Rimvio is an Experience OS.**
 
-**Mission:** When a user expresses a thought, Rimvio should help turn that thought into progress.
+Rimvio structures user experience data across **time · place · people · action**, and suggests and executes next actions from **accumulated context**.
+
+Rimvio remembers photos, location, and conversations from the day, and is the app that most seamlessly continues what the user wants to do next.
+
+**Mission:** Turn lived context into the next meaningful action — not open-ended chat.
 
 ---
 
@@ -18,11 +22,42 @@ Users should **not** organize resources — resources should gather around the s
 
 Users should **not** remember every next step — the system should surface useful actions.
 
-**Chain (every feature must strengthen it; nothing may weaken it):**
+**Experience layers (build in order — do not skip):**
 
 ```
-Thought → Goal → Event → Action → Execution → Progress
+FACT → EXPERIENCE → MEANING → RECALL → ACTION
 ```
+
+Full spec + examples + code map: **`docs/RIMVIO_EXPERIENCE_LAYERS.md`**
+
+| Layer | One line |
+|-------|----------|
+| **FACT** | Photos, GPS, links, chat, events — what happened |
+| **EXPERIENCE** | Bundled node the user understands ("민수랑 제주 Day2") |
+| **MEANING** | Why it matters *to this user* (patterns, relationships, seasons) |
+| **RECALL** | Right memory at the right moment — first emotional beat |
+| **ACTION** | Memory → operable next step (`@`, navigate) — not generic AI |
+
+**2026-06 maturity:** FACT ✓ · EXPERIENCE ✓ · MEANING △ · RECALL △ · ACTION ✓.  
+**Moat:** MEANING + RECALL compound over time; ACTION is replaceable.
+
+**Main screen (Three Floors — UI stack on Feed):** **`docs/RIMVIO_THREE_FLOORS.md`**
+
+```text
+1층 REPLAY   — 🌍 핑 · ▶ 쇼츠 · 한 줄 캡션
+2층 CONTEXT  — 사람 · 경험 · 장소 · 시간
+3층 ACTION   — 길찾기 · 일정 · 공유 · @ (weak until invited)
+```
+
+Future Feed hero: **not** search · chat · recommendation lists — **replay + context first**. Mature competitor = human memory, not AI apps.
+
+**Execution chain (single-turn orchestrator — same Experience node):**
+
+```
+Context → Experience → Intent → Goal → Action → Execution → Progress
+```
+
+*(Experience = EventCandidate + captures + plan — see §5 Experience Node.)*
 
 ---
 

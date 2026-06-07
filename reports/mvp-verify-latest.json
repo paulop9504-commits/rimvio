@@ -1,0 +1,174 @@
+{
+  "kind": "rimvio_mvp_verify",
+  "version": 1,
+  "project": "new-project",
+  "startedAt": "2026-06-04T13:27:50.340Z",
+  "finishedAt": "2026-06-04T13:28:58.696Z",
+  "ok": true,
+  "summary": "All MVP boundary checks passed.",
+  "steps": [
+    {
+      "id": "routing-patches",
+      "ok": true,
+      "exitCode": 0,
+      "durationMs": 6358,
+      "stdout": "test-routing-patches: ok",
+      "stderr": ""
+    },
+    {
+      "id": "ux-guards",
+      "ok": true,
+      "exitCode": 0,
+      "durationMs": 6438,
+      "stdout": "test-ux-guards: ok",
+      "stderr": ""
+    },
+    {
+      "id": "turn-os-boundary",
+      "ok": true,
+      "exitCode": 0,
+      "durationMs": 6506,
+      "stdout": "test-turn-os-boundary: ok",
+      "stderr": ""
+    },
+    {
+      "id": "data-model-catalog",
+      "ok": true,
+      "exitCode": 0,
+      "durationMs": 3392,
+      "stdout": "test-data-model-catalog: ok",
+      "stderr": ""
+    },
+    {
+      "id": "client-turn-route",
+      "ok": true,
+      "exitCode": 0,
+      "durationMs": 2241,
+      "stdout": "test-client-turn-route: ok",
+      "stderr": ""
+    },
+    {
+      "id": "write-path-boundary",
+      "ok": true,
+      "exitCode": 0,
+      "durationMs": 2257,
+      "stdout": "test-write-path-boundary: ok",
+      "stderr": ""
+    },
+    {
+      "id": "life-read-allowlist",
+      "ok": true,
+      "exitCode": 0,
+      "durationMs": 2797,
+      "stdout": "[life-read-allowlist] OK — scanned 2052 files, 0 violations",
+      "stderr": ""
+    },
+    {
+      "id": "surface-engine",
+      "ok": true,
+      "exitCode": 0,
+      "durationMs": 2407,
+      "stdout": "test-surface-engine: ok",
+      "stderr": ""
+    },
+    {
+      "id": "surface-ux-stability",
+      "ok": true,
+      "exitCode": 0,
+      "durationMs": 2521,
+      "stdout": "test-surface-ux-stability: ok",
+      "stderr": ""
+    },
+    {
+      "id": "surface-composition",
+      "ok": true,
+      "exitCode": 0,
+      "durationMs": 2761,
+      "stdout": "test-surface-composition: ok",
+      "stderr": ""
+    },
+    {
+      "id": "surface-adoption",
+      "ok": true,
+      "exitCode": 0,
+      "durationMs": 2324,
+      "stdout": "[surface-adoption] OK — 326 UI files scanned, integrations verified",
+      "stderr": ""
+    },
+    {
+      "id": "capability-registry",
+      "ok": true,
+      "exitCode": 0,
+      "durationMs": 3257,
+      "stdout": "test-capability-registry: ok",
+      "stderr": ""
+    },
+    {
+      "id": "execution-plane",
+      "ok": true,
+      "exitCode": 0,
+      "durationMs": 3643,
+      "stdout": "test-execution-plane: ok",
+      "stderr": ""
+    },
+    {
+      "id": "learning-layer",
+      "ok": true,
+      "exitCode": 0,
+      "durationMs": 3137,
+      "stdout": "test-learning-layer: ok",
+      "stderr": ""
+    },
+    {
+      "id": "loop-wiring",
+      "ok": true,
+      "exitCode": 0,
+      "durationMs": 2305,
+      "stdout": "test-loop-wiring: ok",
+      "stderr": ""
+    },
+    {
+      "id": "realtime-behavioral-os",
+      "ok": true,
+      "exitCode": 0,
+      "durationMs": 2509,
+      "stdout": "test-realtime: ok",
+      "stderr": ""
+    },
+    {
+      "id": "system-stability",
+      "ok": true,
+      "exitCode": 0,
+      "durationMs": 2546,
+      "stdout": "test-stability: ok",
+      "stderr": ""
+    },
+    {
+      "id": "platform-layer",
+      "ok": true,
+      "exitCode": 0,
+      "durationMs": 3571,
+      "stdout": "test-platform: ok",
+      "stderr": ""
+    },
+    {
+      "id": "marketplace-layer",
+      "ok": true,
+      "exitCode": 0,
+      "durationMs": 4245,
+      "stdout": "test-marketplace: ok",
+      "stderr": ""
+    },
+    {
+      "id": "timeline-read-only",
+      "ok": true,
+      "exitCode": 0,
+      "durationMs": 3138,
+      "stdout": "test-timeline-read-only-boundary: ok",
+      "stderr": ""
+    }
+  ],
+  "nextActions": [
+    "Ship or run broader: npm run test:playbook"
+  ]
+}

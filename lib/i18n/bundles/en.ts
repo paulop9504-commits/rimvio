@@ -1,4 +1,4 @@
-import { RIMVIO } from "@/lib/brand/rimvio";
+import { NORTH_STAR, RIMVIO } from "@/lib/brand/rimvio";
 import type { Copy } from "@/lib/i18n/types";
 
 export const copyEn: Copy = {
@@ -10,9 +10,11 @@ export const copyEn: Copy = {
     northStar: RIMVIO.northStar,
   },
   product: {
-    oneLiner: "Say it, share it — run it with one tap",
+    definition: NORTH_STAR.experienceOsDefinitionEn,
+    definitionHuman: NORTH_STAR.experienceOsHumanEn,
+    oneLiner: "Remembers today's photos, place, and chat — picks up what you do next",
     oneLinerSub:
-      "Pick actions from chats and links only. No auto-run · Human decides",
+      "Experiences stack on Feed; food, directions, and @ run in context · No auto-run",
     feedContext: "Turn shared links into action cards",
     peersContext:
       "Actions from chat · long-press a profile for AI Lens",
@@ -47,14 +49,20 @@ export const copyEn: Copy = {
   globe: {
     title: "Globe",
     subtitle: "Place · time · environment move together",
+    sharedTitle: "Our globe",
+    sharedSubtitle: "Place pins together on an empty earth",
+    placePin: "Drop a pin here",
+    tapToPlace: "Tap the globe to choose a pin spot",
+    photoPin: "Drop a pin from photo",
+    emptyPins: "No pins yet — tap the globe or share photo + GPS together.",
   },
   search: {
     title: "Capture",
     subtitle: "Photos · links · notes → auto-attach to today's experiences",
     emptyHint: "Set a trip or meetup plan for better matches",
     emptySubhint: "Upload photos, links, or notes — they gather on Feed experience nodes",
-    placeholder: "Upload photos, links, or notes",
-    ingressHint: "Upload photos, links, or notes (auto-linked to experiences)",
+    placeholder: "Upload or search — e.g. Minsu Jeju",
+    ingressHint: "Upload captures · search related experiences by name or place",
     ingressEyebrow: "Capture",
     ingressTitle: "Add to today's experience",
     ingressPhoto: "Photos & video — camera or album",
@@ -70,6 +78,20 @@ export const copyEn: Copy = {
       contextLine: (feature: string) => `@${feature} — continue from Feed`,
       backToFeed: "Back to Feed",
       placeholder: "@command · this experience context",
+    },
+    contextSearch: {
+      eyebrow: "Related context",
+      titleForQuery: (query: string) => `Experiences for “${query}”`,
+      empty: "No matches yet. Add photos or notes — they'll be searchable next time.",
+      openOnFeed: "Continue on Feed",
+      clear: "Close search",
+      peoplePrefix: "People",
+      experiencePrefix: "Experience",
+      peopleButton: (n: number) => `People ${n}`,
+      experienceButton: (n: number) => `Places ${n}`,
+      ingressHint: "Minsu (people) · Jeju (experience) — search by axis",
+      timingHint:
+        "Use before a trip, meetup, or @ run · stays quiet during casual chat",
     },
   },
   peers: {
@@ -105,11 +127,25 @@ export const copyEn: Copy = {
         collapse: "Collapse",
         empty: "Pick today's experience below",
         miniHint: "Tap to see place, time & memory",
+        shorts: {
+          playToggle: "Play or pause video",
+          loading: "Loading that moment…",
+          memoryPlaceholder: "Uploaded photos and clips play here",
+        },
       },
       run: {
         at: "@Run",
         sectionLabel: "Run in this experience",
         hint: "After context is set, use @ for directions or food",
+      },
+      relatedContext: {
+        prefix: "Related · ",
+        peoplePrefix: "People",
+        experiencePrefix: "Experience",
+        peopleButton: (n: number) => `People ${n}`,
+        experienceButton: (n: number) => `Places ${n}`,
+        buttonLabel: (n: number) => (n > 0 ? `${n} linked` : "Related"),
+        buttonAria: (n: number) => `Show ${n} related experiences`,
       },
       emptyCta: "Upload a photo",
     },
@@ -363,9 +399,9 @@ export const copyEn: Copy = {
       "After sign-in, set your name and Rimvio ID — Friends and Operate tabs work right away",
     googleCardFoot: "Human decides · actions run only when you tap",
     loading: "Loading profile…",
-    introTitle: "Rimvio is your Action OS",
+    introTitle: "Rimvio is your Experience OS",
     introBody:
-      "Not a chatbot — turn plans, places, and payments from chat and links into buttons.",
+      "Remembers today's photos, place, and chat — then picks up what you do next.",
     introTapHint: "No auto-run · you tap to execute",
     introCta: "Set up profile",
     welcomeTitle: "Google connected",
@@ -567,7 +603,7 @@ export const copyEn: Copy = {
     iosStep3Body: " → paste, and we'll route it to your Action Dock",
     desktopSection: "Desktop",
     desktopMid: " — paste a link, or try ",
-    desktopEnd: " to experience the Action OS",
+    desktopEnd: " to experience the Experience OS",
     tryDemo: "Try the demo",
   },
   manual: {

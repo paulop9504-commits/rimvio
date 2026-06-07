@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Calendar, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import { ActiveActionsSheet } from "@/components/action-chat/active-actions-sheet";
+import { FeedSharedGlobeRecall } from "@/components/feed/feed-shared-globe-recall";
 import { FeedSlotStage } from "@/components/feed/feed-slot-stage";
 import { RelationshipFeedFolder } from "@/components/feed/relationship-feed-folder";
 import { RimvioLogo } from "@/components/rimvio-logo";
@@ -15,6 +16,7 @@ import { useActionCalendar } from "@/hooks/use-action-calendar";
 import { useCapabilityDispatch } from "@/hooks/use-capability-dispatch";
 import { useCopy } from "@/hooks/use-copy";
 import { useFeedSlotChatMessages } from "@/hooks/use-feed-slot-chat-messages";
+import { useGpsArrivalRecall } from "@/hooks/use-gps-arrival-recall";
 import { useRealtimeSurfaceComposition } from "@/hooks/use-realtime-surface-composition";
 import { useRelationshipFeedSlots } from "@/hooks/use-relationship-feed-slots";
 import { useSurfaceActionFeedback } from "@/hooks/use-surface-action-feedback";
@@ -31,13 +33,24 @@ import {
   derivePrimarySuccessMessage,
 } from "@/lib/surface-composition/surface-success-copy";
 import { ensureFeedPlanDemoEvent } from "@/lib/feed/seed-feed-plan-demo";
+import {
+  ensureGermanyGoldenPathDemo,
+  GERMANY_GOLDEN_QUERY,
+} from "@/lib/feed/seed-germany-golden-path-demo";
 import { readPeerContacts } from "@/lib/context/peer-contact-store";
 import { syncDmThreadsRemote } from "@/lib/peer-chat/peer-chat-client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { cn } from "@/lib/utils";
 
-function bootstrapFeedDemoEvents(): void {
+function bootstrapFeedDemoEvents(
+  goldenPath: string | null,
+  simulateArrival = true,
+): void {
   if (typeof window === "undefined") {
+    return;
+  }
+  if (goldenPath === GERMANY_GOLDEN_QUERY) {
+    void ensureGermanyGoldenPathDemo({ simulateArrival });
     return;
   }
   ensureFeedPlanDemoEvent();
@@ -52,11 +65,17 @@ type FeedSlotShellProps = {
  * Feed HQ — today slots only. Avoids useActionChat (heavy orchestrator) on /feed.
  */
 export function FeedSlotShell({ className, onOpenLinkPaste }: FeedSlotShellProps) {
-  bootstrapFeedDemoEvents();
   const copy = useCopy();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const goldenPath = searchParams.get("golden");
+  const simulateArrival = searchParams.get("simulateArrival") !== "0";
+  bootstrapFeedDemoEvents(goldenPath, simulateArrival);
   const recallEventId = searchParams.get("recallEvent");
+  const sharedGlobeThreadId = searchParams.get("sharedGlobe");
+  const { recall: gpsArrivalRecall } = useGpsArrivalRecall({
+    enabled: !recallEventId?.trim() && !sharedGlobeThreadId?.trim(),
+  });
   const { slots: relationshipSlots } = useRelationshipFeedSlots(true);
   const feedSlotMessages = useFeedSlotChatMessages();
   const [peerContacts, setPeerContacts] = useState(() => readPeerContacts());
@@ -92,6 +111,13 @@ export function FeedSlotShell({ className, onOpenLinkPaste }: FeedSlotShellProps
     window.addEventListener("focus", refreshContacts);
     return () => window.removeEventListener("focus", refreshContacts);
   }, []);
+
+  useEffect(() => {
+    if (!gpsArrivalRecall) {
+      return;
+    }
+    toast.message(gpsArrivalRecall.recallLine, { duration: 4200 });
+  }, [gpsArrivalRecall?.sessionKey]);
 
   useEffect(() => {
     if (!isSupabaseConfigured()) {
@@ -200,6 +226,9 @@ export function FeedSlotShell({ className, onOpenLinkPaste }: FeedSlotShellProps
             learningPaused={surfaceState.learningPaused}
             systemLoadLevel={surfaceState.systemLoadLevel}
           />
+          {sharedGlobeThreadId?.trim() ? (
+            <FeedSharedGlobeRecall peerThreadId={sharedGlobeThreadId.trim()} />
+          ) : null}
           <FeedSlotStage
             frame={surfaceFrame}
             overlayRows={calendarForSheet.overlayRows}
@@ -208,6 +237,7 @@ export function FeedSlotShell({ className, onOpenLinkPaste }: FeedSlotShellProps
             groupRooms={groupRooms}
             peerContacts={peerContacts}
             recallEventId={recallEventId}
+            gpsArrivalRecall={gpsArrivalRecall}
             peerDetailCopy={copy.feed.today.peerDetail}
             onDispatchCapability={handleSurfaceDispatch}
             onSpawnPrompt={(uri) => router.push(`/search?q=${encodeURIComponent(uri)}`)}

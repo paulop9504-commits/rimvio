@@ -14,7 +14,13 @@ import {
   resolvePlanContextForCalendarRow,
 } from "@/lib/plan-context/project-plan-to-feed-slot";
 import type { CapabilityId } from "@/lib/capability-registry";
+import { PersonalGlobeSheet } from "@/components/globe/personal-globe-sheet";
 import { FeedExperienceRecallHero } from "@/components/feed/feed-experience-recall-hero";
+import { createPersonalGlobePinFromEvent } from "@/lib/globe/create-personal-globe-pin";
+import {
+  findPersonalGlobePinByEventId,
+  PERSONAL_GLOBE_PINS_UPDATED,
+} from "@/lib/globe/personal-globe-pin-store";
 import { FeedExperienceSlotsDrawer } from "@/components/feed/feed-experience-slots-drawer";
 import { FeedTodaySlotsPanel } from "@/components/feed/feed-today-slots-panel";
 import type { FeedSlotPeerDetailCopy } from "@/components/feed/feed-slot-peer-detail-sheet";
@@ -32,7 +38,18 @@ import { resolveExperienceVolumeForSlot } from "@/lib/feed/project-experience-fe
 import { buildExperienceRunSearchHref } from "@/lib/feed/feed-experience-run-mentions";
 import { writeFeedExperienceRunContext } from "@/lib/feed/feed-experience-run-context-store";
 import { shouldDeferFeedRecommendations } from "@/lib/feed/feed-verify-recommendation-gate";
-import { resolveGlobeRecallPlaceHint } from "@/lib/feed/resolve-globe-recall-eligibility";
+import {
+  isGlobeRecallEligible,
+  resolveGlobeRecallPlaceHint,
+} from "@/lib/feed/resolve-globe-recall-eligibility";
+import type { GpsArrivalRecall } from "@/lib/feed/resolve-gps-arrival-recall";
+import { deriveExperienceSlotHeadline } from "@/lib/feed/derive-experience-slot-headline";
+import { readPlanContextFromEvent } from "@/lib/plan-context/plan-context-metadata";
+import {
+  mergeClassifiedGlobePins,
+  projectExperienceClassifiedGlobePings,
+} from "@/lib/feed/project-experience-classified-globe-pings";
+import { resolveSlotRelatedContextBundle } from "@/lib/feed/resolve-slot-related-context";
 import { useCopy } from "@/hooks/use-copy";
 import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
 import type { FeedSlotPill } from "@/lib/feed/feed-slot-pill-types";
@@ -70,6 +87,7 @@ export type FeedSlotStageProps = {
   groupRooms?: readonly { peerThreadId: string; displayName: string }[];
   peerContacts?: readonly PeerContact[];
   recallEventId?: string | null;
+  gpsArrivalRecall?: GpsArrivalRecall | null;
   className?: string;
 };
 
@@ -103,6 +121,7 @@ export const FeedSlotStage = memo(function FeedSlotStage({
   groupRooms = [],
   peerContacts,
   recallEventId,
+  gpsArrivalRecall = null,
   className,
 }: FeedSlotStageProps) {
   const copy = useCopy();
@@ -115,13 +134,20 @@ export const FeedSlotStage = memo(function FeedSlotStage({
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
   const [recallExpanded, setRecallExpanded] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const [personalGlobeOpen, setPersonalGlobeOpen] = useState(false);
+  const [personalPinRevision, setPersonalPinRevision] = useState(0);
 
   useEffect(() => {
     ensureFeedPlanDemoEvent();
     ensureGlobeDemoEvents();
     const bump = () => setEventRevision((value) => value + 1);
+    const bumpPins = () => setPersonalPinRevision((value) => value + 1);
     window.addEventListener(EVENT_CANDIDATES_UPDATED, bump);
-    return () => window.removeEventListener(EVENT_CANDIDATES_UPDATED, bump);
+    window.addEventListener(PERSONAL_GLOBE_PINS_UPDATED, bumpPins);
+    return () => {
+      window.removeEventListener(EVENT_CANDIDATES_UPDATED, bump);
+      window.removeEventListener(PERSONAL_GLOBE_PINS_UPDATED, bumpPins);
+    };
   }, []);
 
   const eventsById = useMemo(
@@ -157,6 +183,11 @@ export const FeedSlotStage = memo(function FeedSlotStage({
   const weatherByTarget = useFeedPlanWeather(today, eventsById);
   const { volumesByEventId } = useExperienceGraph(eventsById);
 
+  const effectiveRecallEventId =
+    recallEventId?.trim() || gpsArrivalRecall?.recallEventId || null;
+  const verifyEventId =
+    gpsArrivalRecall?.surfaceEventId?.trim() || effectiveRecallEventId;
+
   const peerLookup = useMemo(
     () =>
       buildFeedSlotPeerLookup({
@@ -176,23 +207,23 @@ export const FeedSlotStage = memo(function FeedSlotStage({
       today,
       volumesByEventId,
       eventsById,
-      recallEventId,
+      effectiveRecallEventId,
     );
     setActiveEventId(nextId);
-    if (recallEventId?.trim()) {
+    if (effectiveRecallEventId) {
       setRecallExpanded(true);
     }
     setInitialized(true);
-  }, [initialized, today, volumesByEventId, eventsById, recallEventId]);
+  }, [initialized, today, volumesByEventId, eventsById, effectiveRecallEventId]);
 
   useEffect(() => {
-    const target = recallEventId?.trim();
+    const target = effectiveRecallEventId;
     if (!target) {
       return;
     }
     setActiveEventId(target);
     setRecallExpanded(true);
-  }, [recallEventId]);
+  }, [effectiveRecallEventId]);
 
   const activeSlot = useMemo(
     () => findFeedSlotByEventId(today, activeEventId),
@@ -200,28 +231,113 @@ export const FeedSlotStage = memo(function FeedSlotStage({
   );
 
   const activeVolume = useMemo(() => {
-    if (!activeSlot) {
-      return null;
+    if (activeSlot) {
+      return resolveExperienceVolumeForSlot(activeSlot, volumesByEventId, eventsById);
     }
-    return resolveExperienceVolumeForSlot(activeSlot, volumesByEventId, eventsById);
-  }, [activeSlot, volumesByEventId, eventsById]);
+    if (activeEventId) {
+      return volumesByEventId.get(activeEventId) ?? null;
+    }
+    return null;
+  }, [activeSlot, activeEventId, volumesByEventId, eventsById]);
 
   const activeHeadline = useMemo(() => {
+    if (activeSlot) {
+      return resolveFeedSlotRecallHeadline(activeSlot, eventsById);
+    }
+    if (!activeEventId) {
+      return null;
+    }
+    const event = eventsById.get(activeEventId);
+    if (!event) {
+      return null;
+    }
+    const plan = readPlanContextFromEvent(event);
+    return deriveExperienceSlotHeadline({
+      event,
+      plan,
+      fallbackHeadline: event.title,
+    }).headline;
+  }, [activeSlot, activeEventId, eventsById]);
+
+  const eventList = useMemo(() => Array.from(eventsById.values()), [eventsById]);
+
+  const activeRelatedContext = useMemo(() => {
     if (!activeSlot) {
       return null;
     }
-    return resolveFeedSlotRecallHeadline(activeSlot, eventsById);
-  }, [activeSlot, eventsById]);
+    return resolveSlotRelatedContextBundle({
+      slot: activeSlot,
+      events: eventList,
+      eventsById,
+      peerLookup,
+    });
+  }, [activeSlot, eventList, eventsById, peerLookup]);
+
+  const activeClassifiedPins = useMemo(() => {
+    if (!activeEventId) {
+      return [];
+    }
+    const event = eventsById.get(activeEventId);
+    const primary = projectExperienceClassifiedGlobePings({
+      volume: activeVolume,
+      event,
+      gpsPings,
+      emphasis: "primary",
+    });
+
+    const relatedIds = new Set<string>();
+    if (activeRelatedContext) {
+      for (const hit of activeRelatedContext.people.related) {
+        relatedIds.add(hit.eventId);
+      }
+      for (const hit of activeRelatedContext.experience.related) {
+        relatedIds.add(hit.eventId);
+      }
+    }
+    relatedIds.delete(activeEventId);
+
+    const relatedPins = [...relatedIds].flatMap((id) =>
+      projectExperienceClassifiedGlobePings({
+        volume: volumesByEventId.get(id),
+        event: eventsById.get(id),
+        gpsPings,
+        emphasis: "related",
+      }),
+    );
+
+    return mergeClassifiedGlobePins(primary, relatedPins);
+  }, [
+    activeEventId,
+    activeVolume,
+    activeRelatedContext,
+    eventsById,
+    gpsPings,
+    volumesByEventId,
+  ]);
 
   const showRecallHero = useMemo(() => {
-    if (!activeSlot) {
+    if (activeSlot) {
+      return isFeedSlotRecallEligible(activeSlot, volumesByEventId, eventsById);
+    }
+    if (!activeEventId || !activeVolume) {
       return false;
     }
-    return isFeedSlotRecallEligible(activeSlot, volumesByEventId, eventsById);
-  }, [activeSlot, volumesByEventId, eventsById]);
+    const event = eventsById.get(activeEventId);
+    return isGlobeRecallEligible({
+      volume: activeVolume,
+      placeHint: event?.place ?? gpsArrivalRecall?.placeLabel ?? null,
+    });
+  }, [
+    activeSlot,
+    activeEventId,
+    activeVolume,
+    volumesByEventId,
+    eventsById,
+    gpsArrivalRecall?.placeLabel,
+  ]);
 
-  const activeEvent = activeEventId ? eventsById.get(activeEventId) : null;
-  const runDeferred = shouldDeferFeedRecommendations(activeEvent);
+  const verifyEvent = verifyEventId ? eventsById.get(verifyEventId) : null;
+  const runDeferred = shouldDeferFeedRecommendations(verifyEvent);
 
   const onRunMention = useCallback(
     (featureId: string) => {
@@ -229,13 +345,14 @@ export const FeedSlotStage = memo(function FeedSlotStage({
         return;
       }
       const event = eventsById.get(activeEventId);
-      if (event && shouldDeferFeedRecommendations(event)) {
+      if (verifyEvent && shouldDeferFeedRecommendations(verifyEvent)) {
         toast.message(copy.feed.experience.verifyDeferHint, { duration: 3600 });
         return;
       }
       const place =
         (activeSlot ? resolveGlobeRecallPlaceHint(activeSlot, eventsById) : null) ??
         event?.place ??
+        gpsArrivalRecall?.placeLabel ??
         null;
       const headline = activeSlot
         ? resolveFeedSlotRecallHeadline(activeSlot, eventsById)
@@ -254,7 +371,15 @@ export const FeedSlotStage = memo(function FeedSlotStage({
         }),
       );
     },
-    [activeEventId, activeSlot, copy.feed.experience.verifyDeferHint, eventsById, router],
+    [
+      activeEventId,
+      activeSlot,
+      copy.feed.experience.verifyDeferHint,
+      eventsById,
+      gpsArrivalRecall?.placeLabel,
+      router,
+      verifyEvent,
+    ],
   );
 
   const onRunAtFromDrawer = useCallback(() => {
@@ -333,6 +458,38 @@ export const FeedSlotStage = memo(function FeedSlotStage({
     ],
   );
 
+  const isPinnedToPersonalGlobe = useMemo(() => {
+    if (!activeEventId) {
+      return false;
+    }
+    void personalPinRevision;
+    return Boolean(findPersonalGlobePinByEventId(activeEventId));
+  }, [activeEventId, personalPinRevision]);
+
+  const onPinToPersonalGlobe = useCallback(() => {
+    if (!activeEventId) {
+      return;
+    }
+    const event = eventsById.get(activeEventId);
+    if (!event) {
+      return;
+    }
+    const { pin, created } = createPersonalGlobePinFromEvent({
+      event,
+      experienceTitle: activeHeadline ?? event.title,
+    });
+    setPersonalPinRevision((value) => value + 1);
+    if (created) {
+      toast.success(`${pin.placeLabel} · 내 지구본에 박았어요`);
+      return;
+    }
+    toast.message("이미 내 지구본에 있어요");
+  }, [activeEventId, activeHeadline, eventsById]);
+
+  const onOpenPersonalGlobe = useCallback(() => {
+    setPersonalGlobeOpen(true);
+  }, []);
+
   const onVerifyCapture = useCallback((eventId: string) => {
     const result = verifyFeedCaptureEvent(eventId);
     if (!result.ok || !result.event) {
@@ -380,12 +537,25 @@ export const FeedSlotStage = memo(function FeedSlotStage({
         <FeedExperienceRecallHero
           volume={activeVolume}
           headline={activeHeadline}
+          recallSubtitle={gpsArrivalRecall?.recallLine ?? null}
           expanded={recallExpanded}
           onToggleExpanded={() => setRecallExpanded((value) => !value)}
           runDeferred={runDeferred}
           onRunMention={onRunMention}
+          relatedContext={activeRelatedContext}
+          onSelectRelatedExperience={(eventId) => onSelectExperience(eventId)}
+          classifiedPins={activeClassifiedPins}
+          isPinnedToPersonalGlobe={isPinnedToPersonalGlobe}
+          onPinToPersonalGlobe={activeEventId ? onPinToPersonalGlobe : undefined}
+          onOpenPersonalGlobe={onOpenPersonalGlobe}
         />
       ) : null}
+
+      <PersonalGlobeSheet
+        open={personalGlobeOpen}
+        onOpenChange={setPersonalGlobeOpen}
+        viewer={{ isOwner: true }}
+      />
 
       <FeedExperienceSlotsDrawer
         collapsedSummary={activeHeadline}
@@ -414,7 +584,7 @@ export const FeedSlotStage = memo(function FeedSlotStage({
           onVerifyCapture={onVerifyCapture}
           gpsPings={gpsPings}
           onViewAll={onOpenCalendar}
-          recallEventId={recallEventId}
+          recallEventId={effectiveRecallEventId}
           drawerMode
           activeEventId={activeEventId}
           onSelectExperience={onSelectExperience}

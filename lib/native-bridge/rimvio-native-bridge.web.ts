@@ -16,4 +16,20 @@ export class RimvioNativeBridgeWeb extends WebPlugin implements RimvioNativeBrid
   async getPlatformInfo(): Promise<NativePlatformInfo> {
     return { platform: "web", isNative: false };
   }
+
+  async getNetworkType() {
+    return { type: "unknown" as const };
+  }
+
+  async requestPhotoLibraryPermission() {
+    return { granted: false };
+  }
+
+  async scanPhotoLibrary() {
+    return { photos: [], nextCursorMs: Date.now() };
+  }
+
+  async importPhotoToCache() {
+    throw new Error("album_sync_web_unsupported");
+  }
 }

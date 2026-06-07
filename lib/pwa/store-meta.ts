@@ -3,9 +3,9 @@ import { RIMVIO } from "@/lib/brand/rimvio";
 /** App Store / Play Store / OG listing copy — single source of truth. */
 export const STORE_META = {
   shortDescription:
-    "말하고, 공유하고 — 실행은 탭 한 번. 친구 대화·링크에서 실행만 골라요.",
+    "하루의 사진·위치·대화를 기억하고, 다음 일을 이어주는 Experience OS",
   longDescription:
-    "Rimvio(림비오)는 챗봇·북마크 앱이 아닌 Action OS입니다. 친구 대화(ROOM)에서는 AI Lens가 일정·길찾기 말풍선을 제안하고, 실행 탭(Feed)에서는 공유 링크가 Action Dock 카드로 바뀝니다. 자동 실행 없음 — Human decides, tap to run. 카톡·브라우저 공유는 ingress 중 하나입니다.",
+    "Rimvio(림비오)는 사용자의 경험을 시간·장소·사람·행동 단위로 구조화하고, 쌓인 맥락으로 다음 행동을 제안·실행하는 Experience OS입니다. 하루 동안 남겨진 사진, 위치, 대화를 기억하고, 피드에서 오늘의 경험을 확인한 뒤 맛집·길찾기·@명령을 맥락 안에서 실행할 수 있어요. 챗봇·북마크 앱이 아닙니다. 자동 실행 없음 — Human decides, tap to run.",
   keywords: [
     "링크",
     "할일",

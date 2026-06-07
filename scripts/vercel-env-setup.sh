@@ -32,6 +32,20 @@ echo "=== Rimvio Vercel env setup ==="
 echo "Project: $(npx vercel project ls 2>/dev/null | head -1 || echo 'run from linked new-project')"
 echo
 
+read -rp "NEXT_PUBLIC_SUPABASE_URL (https://xxx.supabase.co): " SUPABASE_URL
+if [ -n "$SUPABASE_URL" ]; then
+  add_env "NEXT_PUBLIC_SUPABASE_URL" "$SUPABASE_URL"
+fi
+
+if ANON=$(prompt_secret "NEXT_PUBLIC_SUPABASE_ANON_KEY"); then
+  add_env "NEXT_PUBLIC_SUPABASE_ANON_KEY" "$ANON"
+fi
+
+read -rp "NEXT_PUBLIC_APP_URL (https://your-app.vercel.app): " APP_URL
+if [ -n "$APP_URL" ]; then
+  add_env "NEXT_PUBLIC_APP_URL" "$APP_URL"
+fi
+
 if GEMINI=$(prompt_secret "GEMINI_API_KEY"); then
   add_env "GEMINI_API_KEY" "$GEMINI"
 fi

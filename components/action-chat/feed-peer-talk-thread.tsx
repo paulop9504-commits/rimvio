@@ -193,7 +193,10 @@ export function FeedPeerTalkFeedRows({
     scheduleConfirm,
     setScheduleConfirm,
     handleScheduleSaved,
-  } = useLensBubbleActions(thread.displayName);
+  } = useLensBubbleActions({
+    displayName: thread.displayName,
+    peerThreadId: thread.peerThreadId,
+  });
 
   const rowLensProps = (sliceId: string) => ({
     lensCandidates:

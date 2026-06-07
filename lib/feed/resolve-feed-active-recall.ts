@@ -59,8 +59,13 @@ export function pickDefaultFeedActiveEventId(
   preferEventId?: string | null,
 ): string | null {
   const preferred = preferEventId?.trim();
-  if (preferred && findFeedSlotByEventId(slots, preferred)) {
-    return preferred;
+  if (preferred) {
+    if (findFeedSlotByEventId(slots, preferred)) {
+      return preferred;
+    }
+    if (eventsById.has(preferred)) {
+      return preferred;
+    }
   }
   for (const slot of slots) {
     if (isFeedSlotRecallEligible(slot, volumesByEventId, eventsById)) {

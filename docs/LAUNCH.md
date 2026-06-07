@@ -44,11 +44,9 @@ git push -u origin main
 ## 3. Supabase (선택 · analytics + 링크 persist)
 
 1. [supabase.com](https://supabase.com) 새 프로젝트
-2. SQL Editor에서 **순서대로** 실행:
-   - `supabase/migrations/001_link_actions.sql`
-   - `supabase/migrations/002_links.sql`
-   - `supabase/migrations/003_user_action_bins.sql`
-   - `supabase/migrations/004_analytics_events.sql`
+2. SQL Editor에서 **001→033 순서대로** 실행 (또는 `npm run db:apply` + `SUPABASE_ACCESS_TOKEN`)
+   - 최소: `001`–`004` (링크·analytics)
+   - 피어/친구/Feed: `013`–`033` (`npm run db:apply:peer` 등 — `package.json` 참고)
 3. Settings → API → URL + anon key 복사
 4. `.env.local`:
 
@@ -65,11 +63,17 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 
 ## 4. Vercel 배포
 
-1. GitHub 연결 Import
+1. GitHub 연결 Import (또는 `npm run deploy:prod`)
 2. Framework: Next.js (자동)
-3. Environment Variables: Supabase 2개 (있으면)
-4. Deploy
-5. 배포 URL에서 확인:
+3. **필수 env (Production):**
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `NEXT_PUBLIC_APP_URL` → `https://new-project-pi-one-52.vercel.app` (OAuth)
+4. 검수: `npm run verify:deploy -- --remote` · `GET /api/health`
+5. Supabase → Auth → URL Configuration:
+   - Site URL: 프로덕션 URL
+   - Redirect: `https://<도메인>/auth/callback`
+6. 배포 URL에서 확인:
    - `/` Feed
    - `/demo` Tier 1 analytics 패널
    - `/now?url=https://map.naver.com/p/search/강릉`
