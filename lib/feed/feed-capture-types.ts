@@ -1,3 +1,4 @@
+/** Fragments that compose an Experience Node with its EventCandidate + plan. */
 export type FeedCaptureKind = "photo" | "video" | "link" | "memo" | "gps_dwell";
 
 export type FeedCaptureFragment = {

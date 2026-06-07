@@ -106,4 +106,21 @@ assert.equal(fromNames[0]?.emailLower, "suyeon@example.com");
 const unknown = resolveFeedSlotPeerContext(calendarSlot(null), { messages: [], peers: [] });
 assert.equal(unknown, null);
 
+const fromPlan = resolveFeedSlotPeerContexts(calendarSlot(null), lookup, {
+  planId: "jeju",
+  title: "제주 여행",
+  windowStartIso: "2026-06-10T15:00:00+09:00",
+  windowEndIso: "2026-06-12T19:00:00+09:00",
+  windowConfidence: "confirmed",
+  nights: 2,
+  place: "제주",
+  peerDisplayName: "민수",
+  peerThreadId: "peer-dm-c__d",
+  attachMode: "new",
+  planMode: "group",
+});
+assert.equal(fromPlan.length, 1);
+assert.equal(fromPlan[0]?.displayName, "민수");
+assert.equal(fromPlan[0]?.source, "plan_metadata");
+
 console.log("test-feed-slot-peer-context: ok");

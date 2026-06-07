@@ -6,9 +6,9 @@ import type { EventCandidate } from "@/lib/events/event-candidate";
 import { resolvePlanContextForCalendarRow } from "@/lib/plan-context/project-plan-to-feed-slot";
 import type { RankedSurface } from "@/lib/surface-engine/surface-contract";
 
-function eventIdFromSlot(
+export function resolveFeedSlotEventId(
   slot: FeedTodaySlot,
-  eventsById?: ReadonlyMap<string, EventCandidate>,
+  _eventsById?: ReadonlyMap<string, EventCandidate>,
 ): string | null {
   if (slot.kind === "calendar") {
     return slot.row.event.eventId?.trim() || null;
@@ -22,7 +22,7 @@ export function resolveExperienceVolumeForSlot(
   volumesByEventId?: ReadonlyMap<string, ExperienceVolume>,
   eventsById?: ReadonlyMap<string, EventCandidate>,
 ): ExperienceVolume | null {
-  const eventId = eventIdFromSlot(slot, eventsById);
+  const eventId = resolveFeedSlotEventId(slot, eventsById);
   if (!eventId || !volumesByEventId) {
     return null;
   }

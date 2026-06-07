@@ -13,6 +13,8 @@ import {
 import { buildPlanEventDraft } from "@/lib/feed/bootstrap-spacetime-target";
 import { resolveSpacetimeFeedTarget } from "@/lib/feed/resolve-spacetime-feed-target";
 import type { SpacetimeFeedTargetMatch } from "@/lib/feed/feed-capture-types";
+import { classifySearchComposerIntent } from "@/lib/search/classify-search-composer-intent";
+import { useCopy } from "@/hooks/use-copy";
 
 export type SpacetimeTargetSheetState = {
   result: SearchCaptureIngestResult;
@@ -20,6 +22,7 @@ export type SpacetimeTargetSheetState = {
 } | null;
 
 export function useSearchCaptureIngest() {
+  const copy = useCopy();
   const [targetSheet, setTargetSheet] = useState<SpacetimeTargetSheetState>(null);
   const [ingesting, setIngesting] = useState(false);
 
@@ -84,6 +87,16 @@ export function useSearchCaptureIngest() {
       if (!trimmed || ingesting) {
         return false;
       }
+
+      const intent = classifySearchComposerIntent(trimmed);
+      if (intent === "generic_ai") {
+        toast.message(copy.search.blockedGenericQuery, {
+          description: copy.search.blockedGenericQuerySub,
+          duration: 4200,
+        });
+        return true;
+      }
+
       setIngesting(true);
       try {
         const result = ingestSearchMemoCapture(trimmed);
@@ -96,7 +109,12 @@ export function useSearchCaptureIngest() {
         setIngesting(false);
       }
     },
-    [finishIngest, ingesting],
+    [
+      copy.search.blockedGenericQuery,
+      copy.search.blockedGenericQuerySub,
+      finishIngest,
+      ingesting,
+    ],
   );
 
   const confirmTargetMatch = useCallback(

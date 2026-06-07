@@ -61,6 +61,18 @@ EventCandidate → CommitTruth → EventStore
 
 All life-state mutations flow through truth. **No projection, surface, or capability may own truth.** Truth must be singular.
 
+#### Experience Node (Feed expression — no new schema)
+
+**Experience** in the Feed is not a separate database model. It is the user-facing name for:
+
+```
+EventCandidate + feedCaptures + plan context = Experience Node
+```
+
+Goals and tasks appear only as **Actions inside** an Experience Node — never as a parallel queue the user must manage. Search is capture ingress; AI execution (food, directions, `@`) opens **after** an experience is selected on Feed.
+
+**L2.5 Verify gate:** auto-attached captures are not auto-recommendations. Until the user taps **맞아요**, navigate / food / `@` spawn stays hidden or weak — creation ≠ execution.
+
 ### 6. Projections never own state
 
 Calendar, timeline, feed, and views are projections. Views may be deleted and replaced; **truth remains**.

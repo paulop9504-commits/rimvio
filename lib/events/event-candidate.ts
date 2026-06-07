@@ -13,7 +13,12 @@ export type EventCandidateCategory = LockedEventCategory;
 export type EventCandidateSource = LockedEventSource;
 export type EventCandidateLifecycle = LockedEventLifecycle;
 
-/** Canonical reality layer — Rimvio SSOT for detected life events. */
+/**
+ * Canonical reality layer — Rimvio SSOT for detected life events.
+ * Feed "Experience" nodes map 1:1 here, enriched with `feedCaptures` metadata
+ * and plan context — no separate Experience schema. Goals/tasks surface as
+ * in-node Actions only.
+ */
 export type EventCandidate = {
   id: string;
   title: string;

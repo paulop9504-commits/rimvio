@@ -11,7 +11,7 @@ import {
   SendHorizontal,
   X,
 } from "lucide-react";
-import { useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useChatAmbientFocusOptional } from "@/components/action-chat/chat-ambient-focus";
 import { GroupTalkBubbles } from "@/components/action-chat/group-talk-bubbles";
 import { PeerTalkContactBubbles } from "@/components/action-chat/peer-talk-contact-bubbles";
@@ -51,6 +51,7 @@ type ActionChatInputBarProps = {
   ) => void | boolean | Promise<void | boolean>;
   /** @톡 버블 탭 — 친구 선택 후 톡 시작 */
   onPeerTalkPick?: (contact: PeerContact) => void;
+  initialComposerText?: string;
   className?: string;
 };
 
@@ -65,14 +66,23 @@ export function ActionChatInputBar({
   onSendMessage,
   onSendComposer,
   onPeerTalkPick,
+  initialComposerText,
   className,
 }: ActionChatInputBarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [text, setText] = useState("");
+  const [text, setText] = useState(initialComposerText ?? "");
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const ambient = useChatAmbientFocusOptional();
+
+  useEffect(() => {
+    if (!initialComposerText?.trim()) {
+      return;
+    }
+    setText(initialComposerText);
+    ambient?.setComposerDraft(true);
+  }, [ambient, initialComposerText]);
 
   const { active: peerTalkComposer, candidates: peerTalkCandidates } =
     usePeerTalkCandidates(text);

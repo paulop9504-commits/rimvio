@@ -22,13 +22,34 @@ function toLocalEventIso(date: Date): string {
   );
 }
 
+function buildJejuWowWindow(now = new Date()): { start: Date; end: Date } {
+  const start = new Date(now);
+  start.setHours(9, 0, 0, 0);
+  if (start.getTime() > now.getTime()) {
+    start.setDate(start.getDate() - 1);
+  }
+  const end = new Date(start);
+  end.setDate(end.getDate() + 2);
+  end.setHours(20, 0, 0, 0);
+  return { start, end };
+}
+
+function jejuDemoNeedsRefresh(existing: EventCandidate, now = new Date()): boolean {
+  const endIso =
+    typeof existing.metadata?.planWindowEndIso === "string"
+      ? existing.metadata.planWindowEndIso
+      : null;
+  const startMs = existing.datetime ? Date.parse(existing.datetime) : Number.NaN;
+  const endMs = endIso ? Date.parse(endIso) : Number.NaN;
+  const nowMs = now.getTime();
+  if (Number.isNaN(startMs) || Number.isNaN(endMs)) {
+    return true;
+  }
+  return nowMs < startMs - 3_600_000 || nowMs > endMs + 3_600_000;
+}
+
 function buildDemoDrafts(now = new Date()): EventCandidate[] {
-  const jejuStart = new Date(now);
-  jejuStart.setDate(jejuStart.getDate() + 10);
-  jejuStart.setHours(15, 0, 0, 0);
-  const jejuEnd = new Date(jejuStart);
-  jejuEnd.setDate(jejuEnd.getDate() + 2);
-  jejuEnd.setHours(19, 0, 0, 0);
+  const { start: jejuStart, end: jejuEnd } = buildJejuWowWindow(now);
 
   const dunsanStart = new Date(now);
   dunsanStart.setDate(dunsanStart.getDate() - 14);
@@ -45,16 +66,22 @@ function buildDemoDrafts(now = new Date()): EventCandidate[] {
       title: "제주 여행",
       category: "travel",
       source: "manual",
-      lifecycle: "scheduled",
+      lifecycle: "active",
       datetime: toLocalEventIso(jejuStart),
-      place: "제주 애월",
+      place: "제주",
       confidence: 0.9,
       metadata: {
         feedPlanEnabled: true,
+        planKind: "plan",
         planWindowEndIso: toLocalEventIso(jejuEnd),
         planNights: 2,
         planPeerDisplayName: "민수",
+        planPeerThreadId: "rimvio-feed-demo-minsu",
+        planMode: "group",
+        experiencePeerNames: ["민수"],
+        sourceMessageId: "feed-demo-jeju-thread-msg",
         globeDemo: true,
+        contextWowDemo: true,
       },
       lifecycleUpdatedAt: stamp,
       createdAt: stamp,
@@ -115,6 +142,21 @@ export function ensureGlobeDemoEvents(now = new Date()): EventCandidate[] {
 
   for (const draft of drafts) {
     const found = existing.find((item) => item.id === draft.id);
+    if (found && draft.id === GLOBE_DEMO_EVENT_IDS.jeju && jejuDemoNeedsRefresh(found, now)) {
+      const saved = upsertEventCandidate({
+        id: draft.id,
+        title: draft.title,
+        category: draft.category,
+        source: draft.source,
+        lifecycle: draft.lifecycle,
+        datetime: draft.datetime,
+        place: draft.place,
+        confidence: draft.confidence,
+        metadata: draft.metadata,
+      });
+      seeded.push(saved);
+      continue;
+    }
     if (found) {
       seeded.push(found);
       continue;

@@ -1,13 +1,42 @@
 "use client";
 
+import { useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { ActionChatFeed } from "@/components/action-chat-feed";
 import { SpacetimeTargetSheet } from "@/components/search/spacetime-target-sheet";
 import { useSearchCaptureIngest } from "@/hooks/use-search-capture-ingest";
 import { useCopy } from "@/hooks/use-copy";
+import { readFeedExperienceRunContext } from "@/lib/feed/feed-experience-run-context-store";
+import {
+  parseExperienceRunSearchParams,
+  type SearchExperienceExecution,
+} from "@/lib/feed/feed-experience-run-mentions";
 
-/** 검색 탭 — 사진·링크·메모를 Feed Event에 자동 귀속. */
+function resolveSearchExecution(
+  params: URLSearchParams,
+): SearchExperienceExecution | null {
+  const parsed = parseExperienceRunSearchParams(params);
+  if (!parsed) {
+    return null;
+  }
+  const stored = readFeedExperienceRunContext();
+  return {
+    eventId: parsed.eventId,
+    featureId: parsed.featureId,
+    place: parsed.place ?? stored?.place ?? null,
+    headline:
+      stored?.eventId === parsed.eventId ? stored.headline : stored?.headline ?? null,
+  };
+}
+
+/** 검색 탭 — 수집 ingress · Feed 경험 @ 실행은 run=mention 모드. */
 export function ActionSearchHub() {
   const copy = useCopy();
+  const searchParams = useSearchParams();
+  const searchExecution = useMemo(
+    () => resolveSearchExecution(searchParams),
+    [searchParams],
+  );
   const {
     ingesting,
     targetSheet,
@@ -34,6 +63,7 @@ export function ActionSearchHub() {
         searchIngesting={ingesting}
         className="min-h-0 flex-1"
         searchIngressHint={copy.search.ingressHint}
+        searchExecution={searchExecution}
       />
 
       <SpacetimeTargetSheet

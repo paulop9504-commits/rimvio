@@ -1,7 +1,8 @@
 export type FeedSlotPeerContextSource =
   | "feed_talk"
   | "surface_people"
-  | "name_match";
+  | "name_match"
+  | "plan_metadata";
 
 /** Who the appointment is with — shown on feed slot cards. */
 export type FeedSlotPeerContext = {

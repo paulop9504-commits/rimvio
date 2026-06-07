@@ -7,6 +7,7 @@ import {
   resolveFeedSlotPeerContexts,
 } from "@/lib/feed/resolve-feed-slot-peer-context";
 import type { FeedTodaySlot } from "@/lib/feed/feed-today-slot-types";
+import { readPlanContextFromEvent } from "@/lib/plan-context/plan-context-metadata";
 import { isPeerThreadId } from "@/lib/peer-chat/group-thread";
 
 function readPeerThreadIdFromMetadata(
@@ -56,7 +57,8 @@ export function resolveFeedSlotOpenTarget(
     };
   }
 
-  const talkPeer = resolveFeedSlotPeerContext(slot, lookup);
+  const plan = event ? readPlanContextFromEvent(event) : null;
+  const talkPeer = resolveFeedSlotPeerContext(slot, lookup, plan);
   if (talkPeer?.source === "feed_talk") {
     return {
       kind: "peer_room",
@@ -65,7 +67,7 @@ export function resolveFeedSlotOpenTarget(
     };
   }
 
-  const peers = resolveFeedSlotPeerContexts(slot, lookup);
+  const peers = resolveFeedSlotPeerContexts(slot, lookup, plan);
   if (peers.length === 1) {
     return {
       kind: "peer_room",

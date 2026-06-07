@@ -5,6 +5,7 @@ import type {
   FeedSlotPeerLookupRow,
 } from "@/lib/feed/feed-slot-peer-context-types";
 import type { FeedTodaySlot } from "@/lib/feed/feed-today-slot-types";
+import type { PlanContext } from "@/lib/plan-context/plan-context-types";
 
 const MAX_PEER_CHIPS = 3;
 
@@ -194,10 +195,26 @@ function resolveFromNameHints(
   return results;
 }
 
+function resolveFromPlanPeer(
+  plan: PlanContext | null | undefined,
+  lookup: FeedSlotPeerLookup,
+): FeedSlotPeerContext | null {
+  const name = plan?.peerDisplayName?.trim();
+  if (!name) {
+    return null;
+  }
+  return buildContext(lookup.peers, {
+    peerThreadId: plan.peerThreadId?.trim() || `plan:${plan.planId}`,
+    displayName: name,
+    source: "plan_metadata",
+  });
+}
+
 /** Pure read — who is this appointment with? Up to 3 peers. */
 export function resolveFeedSlotPeerContexts(
   slot: FeedTodaySlot,
   lookup: FeedSlotPeerLookup,
+  plan?: PlanContext | null,
 ): FeedSlotPeerContext[] {
   if (lookup.peers.length === 0) {
     return [];
@@ -213,6 +230,8 @@ export function resolveFeedSlotPeerContexts(
     seen.add(ctx.peerThreadId);
     merged.push(ctx);
   };
+
+  push(resolveFromPlanPeer(plan, lookup));
 
   if (slot.kind === "calendar") {
     push(resolveFromMessageId(slot.row.event.entry?.messageId, lookup));
@@ -235,6 +254,7 @@ export function resolveFeedSlotPeerContexts(
 export function resolveFeedSlotPeerContext(
   slot: FeedTodaySlot,
   lookup: FeedSlotPeerLookup,
+  plan?: PlanContext | null,
 ): FeedSlotPeerContext | null {
-  return resolveFeedSlotPeerContexts(slot, lookup)[0] ?? null;
+  return resolveFeedSlotPeerContexts(slot, lookup, plan)[0] ?? null;
 }

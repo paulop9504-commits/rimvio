@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { memo, useCallback, useMemo, useState } from "react";
 import { ChevronRight } from "lucide-react";
+import { countPendingFeedVerifyEvents } from "@/lib/feed/count-pending-feed-verify";
 import { FeedSlotCardBoundary } from "@/components/feed/feed-slot-card-boundary";
 import { FeedTodaySlotCard } from "@/components/feed/feed-today-slot-card";
 import {
@@ -46,6 +48,11 @@ export type FeedTodaySlotsPanelProps = {
   gpsPings?: readonly GpsPing[];
   onViewAll?: () => void;
   recallEventId?: string | null;
+  /** Drawer layout — header lives in FeedExperienceSlotsDrawer. */
+  drawerMode?: boolean;
+  activeEventId?: string | null;
+  onSelectExperience?: (eventId: string, options?: { expand?: boolean }) => void;
+  inlineRecall?: boolean;
   className?: string;
 };
 
@@ -66,6 +73,10 @@ export const FeedTodaySlotsPanel = memo(function FeedTodaySlotsPanel({
   gpsPings = [],
   onViewAll,
   recallEventId,
+  drawerMode = false,
+  activeEventId = null,
+  onSelectExperience,
+  inlineRecall = false,
   className,
 }: FeedTodaySlotsPanelProps) {
   const copy = useCopy();
@@ -95,6 +106,10 @@ export const FeedTodaySlotsPanel = memo(function FeedTodaySlotsPanel({
   );
 
   const totalVisible = slots.length;
+  const pendingVerifyCount = useMemo(
+    () => countPendingFeedVerifyEvents(eventsById?.values()),
+    [eventsById],
+  );
   const viewAllLabel =
     overflowCount > 0
       ? `${copy.feed.today.viewAll} (${totalVisible + overflowCount})`
@@ -105,12 +120,17 @@ export const FeedTodaySlotsPanel = memo(function FeedTodaySlotsPanel({
       className={cn("flex min-h-0 flex-col overflow-hidden", className)}
       aria-label={copy.feed.today.ariaLabel}
       data-feed-today-slots-panel
+      data-feed-drawer-mode={drawerMode ? "true" : undefined}
     >
+      {!drawerMode ? (
       <header className="flex shrink-0 items-end justify-between gap-3 px-4 pb-2.5 pt-2">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-white/32">
+            {copy.feed.experience.heroEyebrow}
+          </p>
+          <div className="mt-0.5 flex items-center gap-2">
             <h2 className="text-[22px] font-semibold tracking-tight text-white">
-              {copy.feed.today.title}
+              {copy.feed.experience.heroTitle}
             </h2>
             {totalVisible > 0 ? (
               <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-bold tabular-nums text-white/65">
@@ -118,7 +138,14 @@ export const FeedTodaySlotsPanel = memo(function FeedTodaySlotsPanel({
               </span>
             ) : null}
           </div>
-          <p className="mt-0.5 text-[12px] text-white/38">{copy.feed.today.subtitle}</p>
+          <p className="mt-0.5 text-[12px] text-white/38">
+            {copy.feed.experience.heroSubtitle}
+          </p>
+          {pendingVerifyCount > 0 ? (
+            <p className="mt-1 text-[11px] font-medium text-emerald-200/80">
+              {copy.feed.experience.pendingVerify(pendingVerifyCount)}
+            </p>
+          ) : null}
         </div>
 
         {onViewAll ? (
@@ -132,6 +159,7 @@ export const FeedTodaySlotsPanel = memo(function FeedTodaySlotsPanel({
           </button>
         ) : null}
       </header>
+      ) : null}
 
       <FeedQuickActionStrip
         slots={slots}
@@ -150,6 +178,14 @@ export const FeedTodaySlotsPanel = memo(function FeedTodaySlotsPanel({
             <p className="mx-auto mt-2 max-w-[16rem] text-[12px] leading-relaxed text-white/36">
               {filterType ? copy.feed.today.filterEmptyHint : copy.feed.today.emptyHint}
             </p>
+            {!filterType ? (
+              <Link
+                href="/search"
+                className="mt-4 inline-flex rounded-full bg-white px-4 py-2 text-[13px] font-semibold text-black transition active:scale-[0.98]"
+              >
+                {copy.feed.experience.emptyCta}
+              </Link>
+            ) : null}
           </div>
         ) : (
           <div className="space-y-4">
@@ -179,6 +215,9 @@ export const FeedTodaySlotsPanel = memo(function FeedTodaySlotsPanel({
                           onVerifyCapture={onVerifyCapture}
                           gpsPings={gpsPings}
                           recallEventId={recallEventId}
+                          activeEventId={activeEventId}
+                          onSelectExperience={onSelectExperience}
+                          inlineRecall={inlineRecall}
                         />
                       </FeedSlotCardBoundary>
                     </li>

@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { FeedPlanStack } from "@/components/feed/feed-plan-stack";
 import { FeedExperienceAxisStrip } from "@/components/feed/feed-experience-axis-strip";
 import { FeedWeatherPrepStrip } from "@/components/feed/feed-weather-prep-strip";
@@ -42,7 +42,14 @@ import {
   deriveFeedSlotHeadline,
 } from "@/lib/feed/derive-feed-slot-display";
 import { hasPendingFeedCaptureVerify } from "@/lib/feed/feed-capture-metadata";
+import {
+  gateFeedSlotPills,
+  gatePlanStackProjection,
+  shouldDeferFeedSpawnUri,
+} from "@/lib/feed/feed-verify-recommendation-gate";
 import { buildFeedTimelineAggregate } from "@/lib/feed/build-feed-timeline-aggregate";
+import { deriveExperienceSlotHeadline } from "@/lib/feed/derive-experience-slot-headline";
+import { useCopy } from "@/hooks/use-copy";
 import { FeedCaptureVerifyChip } from "@/components/feed/feed-capture-verify-chip";
 import { FeedTimelineAggregateStrip } from "@/components/feed/feed-timeline-aggregate-strip";
 import type { GpsPing } from "@/lib/location-ping/types";
@@ -70,16 +77,20 @@ function SlotRowBody({
   emoji,
   type,
   timeLabel,
+  experienceEyebrow,
   headline,
   context,
+  belowHeadline,
   peers,
   onPeerPress,
 }: {
   emoji: string;
   type: SurfaceType;
   timeLabel: string;
+  experienceEyebrow?: string | null;
   headline: string;
   context: string | null;
+  belowHeadline?: ReactNode;
   peers: readonly FeedSlotPeerContext[];
   onPeerPress?: (peer: FeedSlotPeerContext) => void;
 }) {
@@ -96,10 +107,17 @@ function SlotRowBody({
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="text-[11px] font-medium tabular-nums text-white/40">{timeLabel}</p>
+        <p className="text-[11px] font-medium tabular-nums text-white/40">
+          {experienceEyebrow ? (
+            <span className="text-emerald-200/75">{experienceEyebrow}</span>
+          ) : null}
+          {experienceEyebrow ? " · " : null}
+          {timeLabel}
+        </p>
         <h3 className="mt-0.5 line-clamp-2 text-[15px] font-semibold leading-snug tracking-tight text-white">
           {headline}
         </h3>
+        {belowHeadline}
         {context ? (
           <p className="mt-0.5 line-clamp-1 text-[12px] text-white/44">{context}</p>
         ) : null}
@@ -126,6 +144,10 @@ export type FeedTodaySlotCardProps = {
   onVerifyCapture?: (eventId: string) => void;
   gpsPings?: readonly GpsPing[];
   recallEventId?: string | null;
+  activeEventId?: string | null;
+  onSelectExperience?: (eventId: string, options?: { expand?: boolean }) => void;
+  /** Top hero owns recall — skip per-card modal sheet. */
+  inlineRecall?: boolean;
   className?: string;
 };
 
@@ -143,8 +165,12 @@ export const FeedTodaySlotCard = memo(function FeedTodaySlotCard({
   onVerifyCapture,
   gpsPings = [],
   recallEventId,
+  activeEventId = null,
+  onSelectExperience,
+  inlineRecall = false,
   className,
 }: FeedTodaySlotCardProps) {
+  const copy = useCopy();
   const type = slot.kind === "surface" ? slot.surface.type : slot.slotType;
   const visual = surfaceTypeVisual(type);
 
@@ -153,7 +179,7 @@ export const FeedTodaySlotCard = memo(function FeedTodaySlotCard({
       ? resolvePlanContextForCalendarRow(slot.row, eventsById)
       : null;
 
-  const headline =
+  const fallbackHeadline =
     slot.kind === "surface"
       ? deriveFeedSlotHeadline(slot.surface)
       : deriveCalendarSlotHeadline(slot.row);
@@ -181,17 +207,42 @@ export const FeedTodaySlotCard = memo(function FeedTodaySlotCard({
     [experienceVolume, recallPlaceHint],
   );
 
+  const slotEvent =
+    slot.kind === "calendar"
+      ? (slot.row.event.eventId && eventsById
+          ? eventsById.get(slot.row.event.eventId) ?? null
+          : null)
+      : (slot.surface.events[0]?.eventId && eventsById
+          ? eventsById.get(slot.surface.events[0].eventId) ?? null
+          : null);
+  const isActiveExperience = Boolean(
+    activeEventId && slotEvent && activeEventId === slotEvent.id,
+  );
+
   const [experiencePlayerOpen, setExperiencePlayerOpen] = useState(false);
   const openExperiencePlayer = useCallback(() => {
+    if (inlineRecall && slotEvent && onSelectExperience) {
+      onSelectExperience(slotEvent.id, { expand: true });
+      return;
+    }
     if (recallEligible && experienceVolume) {
       setExperiencePlayerOpen(true);
     }
-  }, [experienceVolume, recallEligible]);
+  }, [
+    experienceVolume,
+    inlineRecall,
+    onSelectExperience,
+    recallEligible,
+    slotEvent,
+  ]);
   const closeExperiencePlayer = useCallback(() => {
     setExperiencePlayerOpen(false);
   }, []);
 
   useEffect(() => {
+    if (inlineRecall) {
+      return;
+    }
     const targetId = recallEventId?.trim();
     if (!targetId || !experienceVolume || !recallEligible) {
       return;
@@ -199,15 +250,27 @@ export const FeedTodaySlotCard = memo(function FeedTodaySlotCard({
     if (experienceVolume.sourceEventId === targetId) {
       setExperiencePlayerOpen(true);
     }
-  }, [recallEventId, experienceVolume, recallEligible]);
+  }, [inlineRecall, recallEventId, experienceVolume, recallEligible]);
 
   const handleOpenDetail = useCallback(() => {
+    if (inlineRecall && recallEligible && slotEvent && onSelectExperience) {
+      onSelectExperience(slotEvent.id, { expand: true });
+      return;
+    }
     if (recallEligible && experienceVolume) {
       setExperiencePlayerOpen(true);
       return;
     }
     onOpenDetail?.(slot);
-  }, [recallEligible, experienceVolume, onOpenDetail, slot]);
+  }, [
+    inlineRecall,
+    recallEligible,
+    slotEvent,
+    onSelectExperience,
+    experienceVolume,
+    onOpenDetail,
+    slot,
+  ]);
 
   const baseContext =
     slot.kind === "surface"
@@ -220,15 +283,7 @@ export const FeedTodaySlotCard = memo(function FeedTodaySlotCard({
     eventsById,
   );
 
-  const slotEvent =
-    slot.kind === "calendar"
-      ? (slot.row.event.eventId && eventsById
-          ? eventsById.get(slot.row.event.eventId) ?? null
-          : null)
-      : (slot.surface.events[0]?.eventId && eventsById
-          ? eventsById.get(slot.surface.events[0].eventId) ?? null
-          : null);
-  const peers = resolveFeedSlotPeerContexts(slot, peerLookup);
+  const peers = resolveFeedSlotPeerContexts(slot, peerLookup, planContext);
   const capturePendingVerify = hasPendingFeedCaptureVerify(slotEvent);
   const timelineAggregate = useMemo(
     () =>
@@ -240,8 +295,20 @@ export const FeedTodaySlotCard = memo(function FeedTodaySlotCard({
       }),
     [slotEvent, planContext, peers, gpsPings],
   );
+  const experienceHeadline = useMemo(
+    () =>
+      deriveExperienceSlotHeadline({
+        event: slotEvent,
+        plan: planContext,
+        fallbackHeadline,
+        aggregate: timelineAggregate,
+      }),
+    [slotEvent, planContext, fallbackHeadline, timelineAggregate],
+  );
+  const headline = experienceHeadline.headline;
   const mergedContext = [
-    capturePendingVerify ? "자동으로 붙었어요" : null,
+    capturePendingVerify ? copy.feed.experience.autoAttachedHint : null,
+    capturePendingVerify ? copy.feed.experience.verifyDeferHint : null,
     experienceContext ?? baseContext,
   ]
     .filter((line): line is string => Boolean(line?.trim()))
@@ -252,7 +319,10 @@ export const FeedTodaySlotCard = memo(function FeedTodaySlotCard({
       ? deriveSurfaceSlotTimeLabel(slot.surface) ?? visual.chipLabel
       : derivePlanAwareSlotTimeLabel(slot.row, planContext);
 
-  const pills = resolveFeedSlotPills(slot);
+  const pills = useMemo(
+    () => gateFeedSlotPills(resolveFeedSlotPills(slot), slotEvent),
+    [slot, slotEvent],
+  );
 
   const handlePeerPress = onPeerPress
     ? (peer: FeedSlotPeerContext) => onPeerPress(slot, peer)
@@ -270,13 +340,14 @@ export const FeedTodaySlotCard = memo(function FeedTodaySlotCard({
     if (!planContext || slot.kind !== "calendar" || !shouldShowPlanStack(planContext)) {
       return null;
     }
-    return buildPlanStackProjection({
+    const raw = buildPlanStackProjection({
       plan: planContext,
       row: slot.row,
       traffic: liveTraffic,
       weather: weatherSnapshot?.weather ?? undefined,
     });
-  }, [planContext, slot, liveTraffic, weatherSnapshot?.weather]);
+    return gatePlanStackProjection(raw, slotEvent);
+  }, [planContext, slot, liveTraffic, weatherSnapshot?.weather, slotEvent]);
 
   const onStackLegPress = useCallback(
     (leg: PlanStackLeg) => {
@@ -284,6 +355,9 @@ export const FeedTodaySlotCard = memo(function FeedTodaySlotCard({
         return;
       }
       if (leg.deeplink?.trim()) {
+        if (shouldDeferFeedSpawnUri(leg.deeplink, slotEvent)) {
+          return;
+        }
         openSpawnAction({ deeplink: leg.deeplink, onPrompt: onSpawnPrompt });
         return;
       }
@@ -294,18 +368,30 @@ export const FeedTodaySlotCard = memo(function FeedTodaySlotCard({
       if (!action?.deeplink?.trim()) {
         return;
       }
+      if (shouldDeferFeedSpawnUri(action.deeplink, slotEvent)) {
+        return;
+      }
       openSpawnAction({ deeplink: action.deeplink, onPrompt: onSpawnPrompt });
     },
-    [slot, onSpawnPrompt],
+    [slot, slotEvent, onSpawnPrompt],
   );
+
+  const timelineBelowHeadline =
+    timelineAggregate.hasContent ? (
+      <div className="mt-1.5">
+        <FeedTimelineAggregateStrip aggregate={timelineAggregate} />
+      </div>
+    ) : null;
 
   const row = (
     <SlotRowBody
       emoji={visual.emoji}
       type={type}
       timeLabel={timeLabel}
+      experienceEyebrow={experienceHeadline.eyebrow}
       headline={headline}
       context={context}
+      belowHeadline={timelineBelowHeadline}
       peers={peers}
       onPeerPress={handlePeerPress}
     />
@@ -339,12 +425,6 @@ export const FeedTodaySlotCard = memo(function FeedTodaySlotCard({
         <div className="flex w-full items-start gap-3">{row}</div>
       )}
 
-      {timelineAggregate.hasContent ? (
-        <div className="mt-2 pl-[3.25rem]">
-          <FeedTimelineAggregateStrip aggregate={timelineAggregate} />
-        </div>
-      ) : null}
-
       {capturePendingVerify && slotEvent && onVerifyCapture ? (
         <div className="mt-2 pl-[3.25rem]">
           <FeedCaptureVerifyChip
@@ -376,8 +456,13 @@ export const FeedTodaySlotCard = memo(function FeedTodaySlotCard({
 
   return (
     <article
-      className={cn("py-3.5", className)}
+      className={cn(
+        "py-3.5 transition-colors",
+        isActiveExperience && "rounded-2xl bg-white/[0.05] ring-1 ring-sky-300/20",
+        className,
+      )}
       data-feed-today-slot
+      data-feed-today-slot-active={isActiveExperience ? "true" : undefined}
       data-feed-today-slot-kind={slot.kind}
       data-surface-id={slot.kind === "surface" ? slot.surface.id : undefined}
       data-calendar-row-id={slot.kind === "calendar" ? slot.row.id : undefined}
@@ -395,7 +480,7 @@ export const FeedTodaySlotCard = memo(function FeedTodaySlotCard({
         />
       ) : null}
 
-      {prepLine ? (
+      {prepLine && !capturePendingVerify ? (
         <FeedWeatherPrepStrip
           prepLine={prepLine}
           condition={weatherSnapshot?.weather?.condition}
@@ -416,11 +501,13 @@ export const FeedTodaySlotCard = memo(function FeedTodaySlotCard({
         mainBlock
       )}
 
-      <FeedExperienceSyncSheet
-        open={experiencePlayerOpen}
-        volume={experienceVolume}
-        onClose={closeExperiencePlayer}
-      />
+      {!inlineRecall ? (
+        <FeedExperienceSyncSheet
+          open={experiencePlayerOpen}
+          volume={experienceVolume}
+          onClose={closeExperiencePlayer}
+        />
+      ) : null}
     </article>
   );
 });

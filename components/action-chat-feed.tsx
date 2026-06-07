@@ -17,6 +17,14 @@ import {
 import { subscribeOpenGoogleSheet } from "@/lib/integrations/google-sheets-open-event";
 import { ActiveActionsSheet } from "@/components/action-chat/active-actions-sheet";
 import { ActionChatInputBar } from "@/components/action-chat/input-bar";
+import { SearchIngressPanel } from "@/components/search/search-ingress-panel";
+import { SearchExperienceRunBanner } from "@/components/search/search-experience-run-banner";
+import { classifySearchComposerIntent } from "@/lib/search/classify-search-composer-intent";
+import {
+  buildExperienceMentionComposerText,
+  resolveExperienceRunFeatureLabel,
+  type SearchExperienceExecution,
+} from "@/lib/feed/feed-experience-run-mentions";
 import { isFeedPeerTalkSendActive } from "@/lib/action-chat/feed-peer-talk/is-feed-peer-talk-send-active";
 import {
   ChatAmbientFocusProvider,
@@ -90,7 +98,7 @@ import { toast } from "sonner";
 export type ActionChatFeedVariant = "slot" | "conversation";
 
 type ActionChatFeedProps = {
-  /** slot = 피드 HQ 카드만 · conversation = 검색 탭 AI 허브 */
+  /** slot = 피드 HQ 카드만 · conversation = 검색 탭 수집 허브 (AI는 @ 또는 피드 경험 안) */
   variant?: ActionChatFeedVariant;
   scopeKind?: ActionChatScopeKind;
   links: LinkRow[];
@@ -106,6 +114,8 @@ type ActionChatFeedProps = {
   onSearchMemoIngest?: (text: string) => Promise<boolean>;
   searchIngesting?: boolean;
   searchIngressHint?: string;
+  /** Feed → Search @ execution with experience context. */
+  searchExecution?: SearchExperienceExecution | null;
   className?: string;
 };
 
@@ -124,6 +134,7 @@ export function ActionChatFeed({
   onSearchMemoIngest,
   searchIngesting = false,
   searchIngressHint,
+  searchExecution = null,
   className,
 }: ActionChatFeedProps) {
   const copy = useCopy();
@@ -131,6 +142,20 @@ export function ActionChatFeed({
   const router = useRouter();
   const isSlot = variant === "slot";
   const isConversation = variant === "conversation";
+  const isSearchMentionRun = Boolean(
+    isConversation && scopeKind === "search" && searchExecution,
+  );
+  const isSearchIngress = isConversation && scopeKind === "search" && !isSearchMentionRun;
+  const mentionComposerPrefill = useMemo(
+    () =>
+      searchExecution
+        ? buildExperienceMentionComposerText({
+            featureId: searchExecution.featureId,
+            place: searchExecution.place,
+          })
+        : undefined,
+    [searchExecution],
+  );
   const { slots: relationshipSlots } = useRelationshipFeedSlots(isSlot);
   const activeLink = activeIndex >= 0 ? links[activeIndex] ?? null : null;
   const {
@@ -571,20 +596,22 @@ export function ActionChatFeed({
               isSlot ? "hidden" : "flex-1",
             )}
           >
-            {isConversation ? (
-            <div className="feed-hero-slot shrink-0">
-              {messages.length === 0 ? (
-                <div className="flex flex-col items-center px-6 pb-4 pt-6 text-center">
-                  <p className="text-[17px] font-semibold text-white/90">{copy.search.emptyHint}</p>
-                  <p className="mt-2 max-w-[16rem] text-[13px] leading-relaxed text-white/45">
-                    {copy.search.emptySubhint}
-                  </p>
-                </div>
-              ) : null}
-            </div>
+            {isSearchIngress ? (
+              <div className="feed-hero-slot shrink-0">
+                <SearchIngressPanel copy={copy.search} />
+              </div>
             ) : null}
 
-            {isConversation ? (
+            {isSearchMentionRun && searchExecution ? (
+              <div className="feed-hero-slot shrink-0 pt-2">
+                <SearchExperienceRunBanner
+                  headline={searchExecution.headline}
+                  featureLabel={resolveExperienceRunFeatureLabel(searchExecution.featureId)}
+                />
+              </div>
+            ) : null}
+
+            {isConversation && !isSearchIngress ? (
             <ExecutionTimeline>
               {threadlineCards.length > 0 ? (
               <TodayThread
@@ -637,7 +664,7 @@ export function ActionChatFeed({
             ) : null}
           </div>
 
-          {isConversation && dockActions.length > 0 ? (
+          {isConversation && !isSearchIngress && !isSearchMentionRun && dockActions.length > 0 ? (
             <div className="shrink-0 px-3 pb-0.5">
               <PredictiveActionDock
                 compact
@@ -654,7 +681,7 @@ export function ActionChatFeed({
             </div>
           ) : null}
 
-          {isConversation && causalWhyLine ? (
+          {isConversation && !isSearchIngress && !isSearchMentionRun && causalWhyLine ? (
             <div className="shrink-0 px-5 pb-1">
               <ActionDockWhyLine line={causalWhyLine} variant="overlay" />
             </div>
@@ -673,8 +700,11 @@ export function ActionChatFeed({
                   ? `${feedPeerTalkSession.displayName}에게 메시지`
                   : threadlineNeedsTap
                     ? "오늘에 추가…"
-                    : searchIngressHint ?? copy.search.placeholder
+                    : isSearchMentionRun
+                      ? copy.search.run.placeholder
+                      : searchIngressHint ?? copy.search.placeholder
               }
+              initialComposerText={mentionComposerPrefill}
               sending={sending || searchIngesting}
               disabled={sending || searchIngesting}
               onOpenCapture={onOpenCapture}
@@ -685,14 +715,19 @@ export function ActionChatFeed({
               }}
               onSendComposer={async (payload) => {
                 const hasAttachments = (payload.attachments?.length ?? 0) > 0;
-                if (
-                  !isSlot &&
-                  scopeKind === "search" &&
-                  onSearchMemoIngest &&
-                  payload.text.trim() &&
-                  !payload.text.trim().startsWith("@")
-                ) {
-                  return onSearchMemoIngest(payload.text);
+                if (!isSlot && scopeKind === "search" && payload.text.trim()) {
+                  const intent = classifySearchComposerIntent(payload.text);
+                  if (isSearchMentionRun || intent === "mention") {
+                    void sendMessage(payload.text, {
+                      attachments: payload.attachments,
+                      chatAxis: payload.chatAxis,
+                    });
+                    return true;
+                  }
+                  if (onSearchMemoIngest) {
+                    return onSearchMemoIngest(payload.text);
+                  }
+                  return false;
                 }
                 if (
                   !isSlot &&

@@ -3,8 +3,14 @@ import {
   listEventCandidates,
   upsertEventCandidate,
 } from "@/lib/events/event-store";
+import {
+  FEED_CAPTURE_PENDING_VERIFY_META_KEY,
+  FEED_CAPTURE_STATS_META_KEY,
+  FEED_CAPTURES_META_KEY,
+} from "@/lib/feed/feed-capture-types";
 
 export const FEED_PLAN_DEMO_EVENT_ID = "rimvio-feed-plan-demo";
+export const FEED_PLAN_DEMO_PEER_THREAD_ID = "rimvio-feed-demo-minsu";
 
 function roundToNextQuarterHour(date: Date): Date {
   const next = new Date(date);
@@ -28,29 +34,63 @@ function toLocalEventIso(date: Date): string {
   );
 }
 
-export function buildFeedPlanDemoDraft(now = new Date()): EventCandidate {
-  const start = roundToNextQuarterHour(new Date(now.getTime() + 75 * 60_000));
+function buildJejuWowWindow(now = new Date()): { start: Date; end: Date } {
+  const start = new Date(now);
+  start.setHours(9, 0, 0, 0);
+  if (start.getTime() > now.getTime()) {
+    start.setDate(start.getDate() - 1);
+  }
   const end = new Date(start);
   end.setDate(end.getDate() + 2);
-  end.setHours(18, 0, 0, 0);
+  end.setHours(20, 0, 0, 0);
+  return { start, end };
+}
+
+export function buildFeedPlanDemoDraft(now = new Date()): EventCandidate {
+  const { start, end } = buildJejuWowWindow(now);
+  const day2 = new Date(start);
+  day2.setDate(day2.getDate() + 1);
+  day2.setHours(14, 20, 0, 0);
 
   return {
     id: FEED_PLAN_DEMO_EVENT_ID,
-    title: "강남역 미팅",
-    category: "schedule",
+    title: "제주 여행",
+    category: "travel",
     source: "manual",
     lifecycle: "active",
-    datetime: toLocalEventIso(start),
-    place: "강남역",
+    datetime: toLocalEventIso(day2),
+    place: "제주",
     confidence: 0.92,
     metadata: {
       feedPlanEnabled: true,
       planKind: "plan",
       planWindowEndIso: toLocalEventIso(end),
+      planWindowStartIso: toLocalEventIso(start),
       planNights: 2,
       planWindowConfidence: "confirmed",
       planPeerDisplayName: "민수",
+      planPeerThreadId: FEED_PLAN_DEMO_PEER_THREAD_ID,
+      planMode: "group",
+      sourceMessageId: "feed-demo-jeju-thread-msg",
       feedDemo: true,
+      [FEED_CAPTURES_META_KEY]: [
+        {
+          id: "feed-demo-cap-photo",
+          kind: "photo",
+          capturedAtIso: toLocalEventIso(day2),
+          placeLabel: "제주",
+          label: "민수랑 제주",
+          autoAttached: true,
+          verified: false,
+        },
+      ],
+      [FEED_CAPTURE_STATS_META_KEY]: {
+        photos: 1,
+        videos: 0,
+        links: 0,
+        memos: 0,
+      },
+      [FEED_CAPTURE_PENDING_VERIFY_META_KEY]: true,
     },
     lifecycleUpdatedAt: now.toISOString(),
     createdAt: now.toISOString(),
@@ -59,15 +99,17 @@ export function buildFeedPlanDemoDraft(now = new Date()): EventCandidate {
 }
 
 function demoNeedsRefresh(existing: EventCandidate, now: Date): boolean {
-  if (!existing.datetime) {
+  const endIso =
+    typeof existing.metadata?.planWindowEndIso === "string"
+      ? existing.metadata.planWindowEndIso
+      : null;
+  const startMs = existing.datetime ? Date.parse(existing.datetime) : Number.NaN;
+  const endMs = endIso ? Date.parse(endIso) : Number.NaN;
+  const nowMs = now.getTime();
+  if (Number.isNaN(startMs) || Number.isNaN(endMs)) {
     return true;
   }
-  const startMs = Date.parse(existing.datetime);
-  if (Number.isNaN(startMs)) {
-    return true;
-  }
-  const minutesUntil = (startMs - now.getTime()) / 60_000;
-  return minutesUntil < 45 || minutesUntil > 150;
+  return nowMs < startMs - 3_600_000 || nowMs > endMs + 3_600_000;
 }
 
 /** Feed tab demo — seeds one plan-backed slot when the user has no real events yet. */
