@@ -74,30 +74,36 @@ checks.push({
 });
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() ?? "";
-const appUrlFromRemote = checkRemote ? remoteUrl.replace(/\/$/, "") : "";
+const productionUrl = remoteUrl.replace(/\/$/, "");
+const useProductionUrlFallback =
+  pulledEnvMasked && productionUrl.length > 0 && !productionUrl.includes("localhost");
+
+if (useProductionUrlFallback && (!appUrl || appUrl.includes("localhost"))) {
+  process.env.NEXT_PUBLIC_APP_URL = productionUrl;
+}
+
+const effectiveAppUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() ?? "";
+
 checks.push({
   id: "app-url",
   ok:
-    (appUrl.length > 0 && !appUrl.includes("localhost")) ||
-    (pulledEnvMasked && appUrlFromRemote.length > 0),
-  detail: appUrl
-    ? appUrl.includes("localhost")
-      ? `localhost only — set production URL for deploy (${appUrl})`
-      : appUrl
-    : pulledEnvMasked
-      ? `set on Vercel runtime (alias: ${appUrlFromRemote || remoteUrl})`
+    (effectiveAppUrl.length > 0 && !effectiveAppUrl.includes("localhost")) ||
+    useProductionUrlFallback,
+  detail: effectiveAppUrl
+    ? effectiveAppUrl.includes("localhost")
+      ? `localhost only — set production URL for deploy (${effectiveAppUrl})`
+      : effectiveAppUrl
+    : useProductionUrlFallback
+      ? `set on Vercel runtime (alias: ${productionUrl})`
       : "NEXT_PUBLIC_APP_URL empty — OAuth redirect will break on Vercel",
 });
 
-if (pulledEnvMasked && appUrlFromRemote) {
-  process.env.NEXT_PUBLIC_APP_URL = appUrlFromRemote;
-}
 checks.push({
   id: "auth-callback",
   ok: Boolean(
-    (appUrl && !appUrl.includes("localhost")) ||
+    (effectiveAppUrl && !effectiveAppUrl.includes("localhost")) ||
       process.env.VERCEL_URL ||
-      (pulledEnvMasked && appUrlFromRemote),
+      useProductionUrlFallback,
   ),
   detail: `callback: ${getAuthCallbackUrl()}`,
 });
