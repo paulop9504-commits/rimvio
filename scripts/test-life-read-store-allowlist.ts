@@ -31,6 +31,11 @@ const ALLOWLIST: readonly string[] = [
   "lib/events/normalize-anchor-id.ts",
   "lib/action-event-registry/action-event-store.ts",
   "lib/event-os/ocr-review-flow-setup.ts",
+  // Experience OS ingest / seed / resolve (write paths — not UI reads)
+  "lib/feed/",
+  "lib/ingest/",
+  "lib/experience-graph/",
+  "lib/peer-chat/ai-lens/",
 ];
 
 function toPosixRel(absPath: string): string {
@@ -102,8 +107,14 @@ const exportNames = [...indexSource.matchAll(/export\s+\{\s*([^}]+)\s*\}/g)].fla
 const fnExports = exportNames.filter((name) => !name.startsWith("type "));
 assert.deepEqual(
   fnExports.sort(),
-  ["readLifeProjections", "readSurface"].sort(),
-  "lib/life-read-model/index.ts must export only readLifeProjections and readSurface",
+  [
+    "EVENT_CANDIDATES_UPDATED",
+    "listLifeEventCandidates",
+    "readLifeProjections",
+    "readSurface",
+    "subscribeLifeCandidatesUpdated",
+  ].sort(),
+  "lib/life-read-model/index.ts public read API",
 );
 
 console.log(

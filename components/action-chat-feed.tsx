@@ -125,7 +125,7 @@ type ActionChatFeedProps = {
     result: RelatedContextSearchResult | null;
     onSearch: (query: string) => RelatedContextSearchResult | null;
     onClear: () => void;
-  };
+  } | null;
   className?: string;
 };
 
@@ -159,8 +159,6 @@ export function ActionChatFeed({
   const isSearchContextBrowse = Boolean(
     isConversation && scopeKind === "search" && relatedContextSearch?.active,
   );
-  const isSearchIngress =
-    isConversation && scopeKind === "search" && !isSearchMentionRun && !isSearchContextBrowse;
   const mentionComposerPrefill = useMemo(
     () =>
       searchExecution
@@ -223,6 +221,15 @@ export function ActionChatFeed({
       scopeKind ??
       (isConversation ? "search" : activeLink ? "link" : "free"),
   });
+  // Search ingress is empty-state only — @ commands and chat replies must show the thread.
+  const hasSearchChatThread =
+    isConversation && scopeKind === "search" && (messages.length > 0 || sending);
+  const isSearchIngress =
+    isConversation &&
+    scopeKind === "search" &&
+    !isSearchMentionRun &&
+    !isSearchContextBrowse &&
+    !hasSearchChatThread;
   const reminderMap = useLinkReminderMap();
   const linkIds = useMemo(() => links.map((link) => link.id), [links]);
   const {
@@ -365,9 +372,9 @@ export function ActionChatFeed({
       const { result, record } = dispatchAndRecord({
         capabilityId,
         inputs: {
-          title: node.title,
-          destination: node.resources.find((r) => r.kind === "location")?.label,
-          place: node.resources.find((r) => r.kind === "location")?.label,
+          title: node.title ?? "",
+          destination: node.resources.find((r) => r.kind === "location")?.label ?? "",
+          place: node.resources.find((r) => r.kind === "location")?.label ?? "",
         },
         metadata: {
           surfaceId: node.id,

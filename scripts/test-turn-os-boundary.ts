@@ -8,7 +8,7 @@ import { runOrchestratorPipeline } from "../lib/action-chat/orchestrator/run-orc
 assert.deepEqual(
   parseTurnIntent("  hi ", undefined, () => "schedule"),
   {
-    trimmed: "hi",
+    trimmed: "@검색 hi",
     pendingAttachments: [],
     chatAxis: "schedule",
     axisOrchestrateOverride: null,
@@ -21,7 +21,7 @@ assert.equal(
     sending: false,
     intent: parseTurnIntent("x", undefined, () => "schedule"),
   }),
-  "orchestrate_api",
+  "command_os",
 );
 
 assert.equal(

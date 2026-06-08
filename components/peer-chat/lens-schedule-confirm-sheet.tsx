@@ -17,7 +17,7 @@ import { mergePlanContextEdits } from "@/lib/plan-context/build-plan-context-dra
 import { computeWindowEndFromNights } from "@/lib/plan-context/extract-plan-window";
 import { formatPlanWindowLabel } from "@/lib/plan-context/format-plan-window-label";
 import type { PlanAttachMode } from "@/lib/plan-context/plan-context-types";
-import { listEventCandidates } from "@/lib/events/event-store";
+import { listLifeEventCandidates } from "@/lib/life-read-model";
 import { resolveTripPrepRecall } from "@/lib/plan-context/resolve-trip-prep-recall";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -115,7 +115,7 @@ export function LensScheduleConfirmSheet({
       title: draft.title,
       datetime: editedDatetimeIso,
       sourceMessageId: draft.sourceMessageId,
-      events: listEventCandidates(),
+      events: listLifeEventCandidates(),
     });
   }, [draft, editedDatetimeIso]);
 
@@ -138,7 +138,7 @@ export function LensScheduleConfirmSheet({
       title: draft.title,
       place: editPlace.trim() || draft.place,
       peerDisplayName: draft.peerDisplayName,
-      events: listEventCandidates(),
+      events: listLifeEventCandidates(),
       excludeEventId:
         attachMode === "continue" ? draft.planAttach.candidatePlanId : null,
     });

@@ -1,11 +1,11 @@
-# Connect Vercel project `new-project` to GitHub paulop9504-dotcom/rimvio
+# Connect Vercel project `rimvio` to GitHub paulop9504-dotcom/rimvio
 # Usage: powershell -ExecutionPolicy Bypass -File scripts/connect-vercel-rimvio.ps1
 
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot\..
 
 $RimvioRepo = "https://github.com/paulop9504-dotcom/rimvio.git"
-$Project = "new-project"
+$Project = "rimvio"
 $ProdUrl = "https://new-project-pi-one-52.vercel.app"
 
 Write-Host "=== Vercel <-> rimvio Git connect ===" -ForegroundColor Cyan
@@ -23,5 +23,7 @@ Write-Host "Project: $Project"
 Write-Host "Git:     paulop9504-dotcom/rimvio"
 Write-Host "Prod:    $ProdUrl"
 Write-Host ""
-Write-Host "Production branch: main (default) or set release/v1-rimvio-core in Dashboard"
-Write-Host "Verify: push to rimvio then check Deployments tab."
+Write-Host "Branches:"
+Write-Host "  main                    -> Production"
+Write-Host "  release/v1-rimvio-core  -> Preview"
+Write-Host "Verify: npm run verify:pipeline && git push origin release/v1-rimvio-core"

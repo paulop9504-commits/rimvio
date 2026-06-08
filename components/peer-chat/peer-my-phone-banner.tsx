@@ -80,7 +80,7 @@ export function PeerMyPhoneBanner({
     setBusy(true);
     try {
       const result = await saveMyPhoneProfile({ phone });
-      setSaved(result.phone);
+      setSavedPhone(result.phone);
       toast.success("내 번호를 등록했어요");
       onRegistered?.();
     } catch (error) {

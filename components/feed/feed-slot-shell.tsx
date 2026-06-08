@@ -148,9 +148,9 @@ export function FeedSlotShell({ className, onOpenLinkPaste }: FeedSlotShellProps
       const { result, record } = dispatchAndRecord({
         capabilityId,
         inputs: {
-          title: node.title,
-          destination: node.resources.find((r) => r.kind === "location")?.label,
-          place: node.resources.find((r) => r.kind === "location")?.label,
+          title: node.title ?? "",
+          destination: node.resources.find((r) => r.kind === "location")?.label ?? "",
+          place: node.resources.find((r) => r.kind === "location")?.label ?? "",
         },
         metadata: {
           surfaceId: node.id,

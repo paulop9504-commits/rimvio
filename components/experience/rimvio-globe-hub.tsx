@@ -30,7 +30,10 @@ import { ensureGlobeDemoEvents } from "@/lib/experience-graph/seed-globe-demo-ev
 
 import type { EventCandidate } from "@/lib/events/event-candidate";
 
-import { EVENT_CANDIDATES_UPDATED, listEventCandidates } from "@/lib/events/event-store";
+import {
+  EVENT_CANDIDATES_UPDATED,
+  listLifeEventCandidates,
+} from "@/lib/life-read-model";
 
 import { indexEventsById } from "@/lib/plan-context/project-plan-to-feed-slot";
 
@@ -44,7 +47,7 @@ function useGlobeEventSnapshot() {
 
   const [ready, setReady] = useState(false);
 
-  const [eventsById, setEventsById] = useState(
+  const [eventsById, setEventsById] = useState<ReadonlyMap<string, EventCandidate>>(
 
     () => new Map<string, EventCandidate>(),
 
@@ -58,7 +61,7 @@ function useGlobeEventSnapshot() {
 
     const refresh = () => {
 
-      setEventsById(indexEventsById(listEventCandidates()));
+      setEventsById(indexEventsById(listLifeEventCandidates()));
 
       setReady(true);
 

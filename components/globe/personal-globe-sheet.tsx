@@ -128,7 +128,7 @@ export function PersonalGlobeSheet({
         onOpenChange={setReplayOpen}
         pin={replayPin}
         ownerDisplayName={ownerDisplayName}
-        onPinProfile={
+        onOpenProfile={
           onPinProfile && replayPin
             ? () => {
                 onPinProfile(replayPin.pinId);

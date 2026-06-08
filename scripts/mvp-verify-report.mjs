@@ -94,7 +94,7 @@ async function main() {
   const report = {
     kind: "rimvio_mvp_verify",
     version: 1,
-    project: "new-project",
+    project: "rimvio",
     startedAt,
     finishedAt: new Date().toISOString(),
     ok,

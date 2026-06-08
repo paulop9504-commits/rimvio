@@ -2,8 +2,9 @@ name: Verify
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, release/v1-rimvio-core]
   pull_request:
+    branches: [main, master, release/v1-rimvio-core]
 
 jobs:
   verify:
@@ -19,6 +20,9 @@ jobs:
 
       - name: Install
         run: npm ci
+
+      - name: Rimvio pipeline gate
+        run: npm run verify:pipeline
 
       - name: Typecheck
         run: npx tsc --noEmit

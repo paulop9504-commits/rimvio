@@ -10,7 +10,10 @@ import {
 import { emitExperienceBurstDetected } from "@/lib/experience-gravity/experience-burst-events";
 import { ingestExperienceBurst } from "@/lib/ingest/ingest-experience-burst";
 import { scanRecentMediaContexts } from "@/lib/ingest/scan-recent-media-contexts";
-import { EVENT_CANDIDATES_UPDATED, listEventCandidates } from "@/lib/events/event-store";
+import {
+  EVENT_CANDIDATES_UPDATED,
+  listLifeEventCandidates,
+} from "@/lib/life-read-model";
 import {
   GPS_PINGS_UPDATED,
 } from "@/lib/location-ping/gps-ping-store";
@@ -34,7 +37,7 @@ export function useExperienceGravityIngest(input?: { enabled?: boolean }) {
     const contexts = await listMediaSpacetimeContexts();
     const burst = detectExperienceBurst({
       contexts,
-      events: listEventCandidates(),
+      events: listLifeEventCandidates(),
     });
     if (!burst) {
       return;

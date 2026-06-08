@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { commitEventUpsert } from "@/lib/source-of-truth/commit-truth";
-import { listEventCandidates } from "@/lib/events/event-store";
+import { listLifeEventCandidates } from "@/lib/life-read-model";
 import {
   ingestSearchMediaCapture,
   ingestSearchMemoCapture,
@@ -31,7 +31,7 @@ export function useSearchCaptureIngest() {
       return;
     }
 
-    const events = listEventCandidates().filter(
+    const events = listLifeEventCandidates().filter(
       (event) => event.lifecycle !== "archived" && event.id !== result.event.id,
     );
     const candidates = events
@@ -126,7 +126,7 @@ export function useSearchCaptureIngest() {
       if (!targetSheet) {
         return;
       }
-      const event = listEventCandidates().find((row) => row.id === match.eventId);
+      const event = listLifeEventCandidates().find((row) => row.id === match.eventId);
       if (!event) {
         setTargetSheet(null);
         return;
