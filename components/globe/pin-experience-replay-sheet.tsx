@@ -6,7 +6,10 @@ import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import { SpatialMediaSyncPlayer } from "@/components/experience/spatial-media-sync-player";
 import { useExperienceGraph } from "@/hooks/use-experience-graph";
-import { EVENT_CANDIDATES_UPDATED, listEventCandidates } from "@/lib/events/event-store";
+import {
+  EVENT_CANDIDATES_UPDATED,
+  listLifeEventCandidates,
+} from "@/lib/life-read-model";
 import { indexEventsById } from "@/lib/plan-context/project-plan-to-feed-slot";
 import type { PersonalGlobePin } from "@/lib/globe/personal-globe-pin-types";
 import { projectExperienceClassifiedGlobePings } from "@/lib/feed/project-experience-classified-globe-pings";
@@ -42,7 +45,7 @@ export function PinExperienceReplaySheet({
   }, []);
 
   const eventsById = useMemo(
-    () => indexEventsById(listEventCandidates()),
+    () => indexEventsById(listLifeEventCandidates()),
     [revision],
   );
   const { volumesByEventId } = useExperienceGraph(eventsById);

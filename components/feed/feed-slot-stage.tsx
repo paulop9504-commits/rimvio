@@ -8,7 +8,10 @@ import { useFeedPlanWeather } from "@/hooks/use-feed-plan-weather";
 import { ensureFeedPlanDemoEvent } from "@/lib/feed/seed-feed-plan-demo";
 import { ensureGlobeDemoEvents } from "@/lib/experience-graph/seed-globe-demo-events";
 import { enrichCalendarRowWithTieredActions } from "@/lib/action-decision/build-tiered-event-overlay-actions";
-import { EVENT_CANDIDATES_UPDATED, listEventCandidates } from "@/lib/events/event-store";
+import {
+  EVENT_CANDIDATES_UPDATED,
+  listLifeEventCandidates,
+} from "@/lib/life-read-model";
 import {
   indexEventsById,
   resolvePlanContextForCalendarRow,
@@ -151,7 +154,7 @@ export const FeedSlotStage = memo(function FeedSlotStage({
   }, []);
 
   const eventsById = useMemo(
-    () => indexEventsById(listEventCandidates()),
+    () => indexEventsById(listLifeEventCandidates()),
     [eventRevision],
   );
 
@@ -194,7 +197,7 @@ export const FeedSlotStage = memo(function FeedSlotStage({
         messages,
         relationshipSlots,
         groupRooms,
-        contacts: peerContacts,
+        contacts: peerContacts ? [...peerContacts] : undefined,
       }),
     [messages, relationshipSlots, groupRooms, peerContacts],
   );

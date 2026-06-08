@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { EVENT_CANDIDATES_UPDATED, listEventCandidates } from "@/lib/events/event-store";
+import {
+  EVENT_CANDIDATES_UPDATED,
+  listLifeEventCandidates,
+} from "@/lib/life-read-model";
 import {
   canSurfaceGpsArrivalRecall,
   markGpsArrivalRecallShown,
@@ -30,7 +33,7 @@ export function useGpsArrivalRecall(input: { enabled?: boolean }) {
 
     const candidate = resolveGpsArrivalRecall({
       pings,
-      events: listEventCandidates(),
+      events: listLifeEventCandidates(),
     });
     if (!candidate) {
       return;

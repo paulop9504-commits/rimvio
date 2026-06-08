@@ -2,8 +2,9 @@ name: Rimvio CI Gate
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, release/v1-rimvio-core]
   pull_request:
+    branches: [main, master, release/v1-rimvio-core]
 
 jobs:
   ci-gate:

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Register Rimvio API keys on Vercel (Production + Preview + Development).
 # Usage: bash scripts/vercel-env-setup.sh
-# Requires: vercel CLI logged in, project linked in new-project/
+# Requires: vercel CLI logged in, project linked as rimvio
 
 set -euo pipefail
 
@@ -29,7 +29,7 @@ add_env() {
 }
 
 echo "=== Rimvio Vercel env setup ==="
-echo "Project: $(npx vercel project ls 2>/dev/null | head -1 || echo 'run from linked new-project')"
+echo "Project: rimvio ($(npx vercel project ls 2>/dev/null | head -1 || echo 'link with: npx vercel link --project rimvio'))"
 echo
 
 read -rp "NEXT_PUBLIC_SUPABASE_URL (https://xxx.supabase.co): " SUPABASE_URL

@@ -4,6 +4,11 @@
  */
 export { readLifeProjections } from "@/lib/life-read-model/read-life-projections";
 export { readSurface } from "@/lib/life-read-model/read-surface";
+export {
+  EVENT_CANDIDATES_UPDATED,
+  subscribeLifeCandidatesUpdated,
+} from "@/lib/life-read-model/candidates-updated";
+export { listLifeEventCandidates } from "@/lib/life-read-model/internal/event-store-read";
 export type {
   LifeProjections,
   LifeProjectionsInput,

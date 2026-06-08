@@ -55,7 +55,7 @@ const NETWORK_OPTIONS: {
 ];
 
 export function SettingsAlbumSyncPanel({ className }: { className?: string }) {
-  const { syncNow } = useAlbumSync(false);
+  const { syncNow } = useAlbumSync({ enabled: false });
   const { progress, active, percent } = useAlbumSyncProgress();
   const [prefs, setPrefs] = useState<AlbumSyncPrefs>(() => readAlbumSyncPrefs());
   const [networkLabel, setNetworkLabel] = useState("확인 중");

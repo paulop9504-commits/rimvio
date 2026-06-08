@@ -43,7 +43,10 @@ export function detectStudySituation(message: string): StudySituation | null {
   if (WRONGNOTES.test(trimmed)) {
     return "wrongnotes";
   }
-  if (CONCEPT.test(trimmed)) {
+  if (
+    CONCEPT.test(trimmed) &&
+    (STUDY_CORE.test(trimmed) || EXAM.test(trimmed) || LECTURE.test(trimmed))
+  ) {
     return "concept_question";
   }
   if (LECTURE.test(trimmed)) {

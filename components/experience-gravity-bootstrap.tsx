@@ -4,6 +4,6 @@ import { useExperienceGravityIngest } from "@/hooks/use-experience-gravity-inges
 
 /** 7-day media scan + Experience Gravity burst detection. */
 export function ExperienceGravityBootstrap() {
-  useExperienceGravityIngest(true);
+  useExperienceGravityIngest({ enabled: true });
   return null;
 }

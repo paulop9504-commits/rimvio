@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { listEventCandidates } from "@/lib/events/event-store";
+import { listLifeEventCandidates } from "@/lib/life-read-model";
 import { buildSearchableExperienceIndex } from "@/lib/search/build-searchable-experience-index";
 import {
   searchRelatedContextByAxes,
@@ -21,7 +21,7 @@ export function useRelatedContextSearch() {
       setActive(false);
       return null;
     }
-    const index = buildSearchableExperienceIndex(listEventCandidates());
+    const index = buildSearchableExperienceIndex(listLifeEventCandidates());
     const next = searchRelatedContextByAxes(index, trimmed);
     setResult(next);
     setActive(true);
