@@ -199,7 +199,7 @@ export function WelcomeGuide() {
         <Link href="/feed" className={cn("min-w-[45%] flex-1 text-center", IOS.secondaryBtn)}>
           {copy.nav.feed}
         </Link>
-        <Link href="/calendar" className={cn("w-full py-3 text-center text-[15px] font-semibold", IOS.secondaryBtn)}>
+        <Link href="/search?calendar=full" className={cn("w-full py-3 text-center text-[15px] font-semibold", IOS.secondaryBtn)}>
           {copy.nav.calendar}
         </Link>
         <Link

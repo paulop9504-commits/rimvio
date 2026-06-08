@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ChevronLeft, Globe } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useLongPress } from "@/lib/hooks/use-long-press";
 import { useCopy } from "@/hooks/use-copy";
@@ -22,7 +22,11 @@ import {
 import { isGroupThreadId } from "@/lib/peer-chat/group-thread";
 import { emitFeedSlotsRefresh } from "@/lib/feed/feed-slots-events";
 import { UNPIN_PEER_RETENTION_DAYS } from "@/lib/context/hub-room-retention";
-import { getPeerContactById } from "@/lib/context/peer-contact-store";
+import {
+  addPeerContact,
+  getPeerContactById,
+} from "@/lib/context/peer-contact-store";
+import type { PeerContact } from "@/lib/context/peer-contact-types";
 import { purgePendingLabel } from "@/lib/context/pinned-peer-roster";
 import { findSlotByPeerId } from "@/lib/context/pinned-peer-roster";
 import { readPinnedRoster } from "@/lib/context/peer-thread-settings-store";
@@ -46,10 +50,36 @@ export function PeerThreadRoomClient({ peerThreadId }: PeerThreadRoomClientProps
   const [groupMetaName, setGroupMetaName] = useState<string | null>(null);
   const [groupInviteCode, setGroupInviteCode] = useState<string | null>(null);
   const roster = useMemo(() => readPinnedRoster(), []);
-  const contact = useMemo(() => getPeerContactById(peerThreadId), [peerThreadId]);
+  const [contact, setContact] = useState<PeerContact | null>(() =>
+    getPeerContactById(peerThreadId),
+  );
+  const refreshContact = useCallback(() => {
+    setContact(getPeerContactById(peerThreadId));
+  }, [peerThreadId]);
   const hubSlot = findSlotByPeerId(roster, peerThreadId);
   const isGroup = isGroupThreadId(peerThreadId);
   const phoneDm = isRegisteredPeerDmThread(peerThreadId);
+
+  useEffect(() => {
+    refreshContact();
+  }, [refreshContact]);
+
+  useEffect(() => {
+    if (contact || !phoneDm || isGroup) {
+      return;
+    }
+    void fetchPeerThreadMeta(peerThreadId)
+      .then((meta) => {
+        const added = addPeerContact({
+          peerThreadId,
+          displayName: meta.displayName?.trim() || "친구",
+        });
+        if (added.ok) {
+          setContact(added.contact);
+        }
+      })
+      .catch(() => {});
+  }, [contact, phoneDm, isGroup, peerThreadId]);
   const { profile, loading: profileLoading, reload: reloadProfile } =
     useDmPeerProfile(peerThreadId, phoneDm && !isGroup);
 
@@ -121,7 +151,7 @@ export function PeerThreadRoomClient({ peerThreadId }: PeerThreadRoomClientProps
         : undefined,
   });
 
-  if (!isGroup && !contact && !hubSlot) {
+  if (!isGroup && !phoneDm && !contact && !hubSlot) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
         <p className="text-sm text-muted-foreground">

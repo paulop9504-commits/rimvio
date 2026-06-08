@@ -74,6 +74,7 @@ export function FivePeerHubClient() {
   const [groupSheetOpen, setGroupSheetOpen] = useState(false);
   const [groupThreads, setGroupThreads] = useState<GroupThreadListItem[]>([]);
   const [assignSlot, setAssignSlot] = useState<PinnedSlotIndex | null>(null);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [phone, setPhone] = useState("");
   const [centerAvatarUrl, setCenterAvatarUrl] = useState<string | null>(null);
 
@@ -228,12 +229,20 @@ export function FivePeerHubClient() {
   const centerInitial = guest.label.trim().charAt(0) || "나";
 
   const openPinAssign = (slotIndex: PinnedSlotIndex) => {
+    setQuickAddOpen(false);
     setAssignSlot(slotIndex);
+    setPhone("");
+  };
+
+  const openQuickFriendAdd = () => {
+    setAssignSlot(null);
+    setQuickAddOpen(true);
     setPhone("");
   };
 
   const closeDialog = () => {
     setAssignSlot(null);
+    setQuickAddOpen(false);
     setPhone("");
   };
 
@@ -260,34 +269,33 @@ export function FivePeerHubClient() {
           friendId: otherUserId,
           pinSlot: slot,
         });
+        assignPeerToHubAndPin({
+          slotIndex: slot,
+          displayName: result.displayName,
+          peerThreadId: result.threadId,
+        });
+        toast.success(
+          `${result.displayName}를 항상 보이는 관계 ${slot + 1}번에 고정했어요`,
+        );
       } catch (error) {
         toast.error(
           error instanceof Error ? error.message : "고정에 실패했어요",
         );
-        return;
+        toast.message("친구는 추가됐어요. 대화방으로 이동할게요");
       }
-      assignPeerToHubAndPin({
-        slotIndex: slot,
-        displayName: result.displayName,
-        peerThreadId: result.threadId,
-      });
-      await loadSocialLayer();
-      closeDialog();
-      toast.success(
-        `${result.displayName}를 항상 보이는 관계 ${slot + 1}번에 고정했어요`,
-      );
-      router.push(`/peers/${encodeURIComponent(result.threadId)}`);
-      return;
+    } else {
+      toast.success(`${result.displayName}를 구슬 주머니에 넣었어요`);
     }
 
     closeDialog();
     await loadSocialLayer();
-    toast.success(`${result.displayName}를 구슬 주머니에 넣었어요`);
-    router.push(`/peers/archive`);
+    router.push(`/peers/${encodeURIComponent(result.threadId)}`);
   };
 
-  const dialogOpen = assignSlot !== null;
-  const dialogTitle = `${(assignSlot ?? 0) + 1}번 버블에 고정`;
+  const dialogOpen = assignSlot !== null || quickAddOpen;
+  const dialogTitle = quickAddOpen
+    ? "친구 추가"
+    : `${(assignSlot ?? 0) + 1}번 버블에 고정`;
 
   if (!usePhoneChat) {
     return <GuestPeersLanding configured={configured} />;
@@ -305,7 +313,7 @@ export function FivePeerHubClient() {
         <>
           <PeerHubEmptyState
             className="mx-1"
-            onAddFriend={() => openPinAssign(0 as PinnedSlotIndex)}
+            onAddFriend={openQuickFriendAdd}
           />
           <DemoPeerRoomPreview className="mx-1" />
         </>
@@ -344,7 +352,9 @@ export function FivePeerHubClient() {
         >
           <p className="text-sm font-semibold text-white">{dialogTitle}</p>
           <p className="text-[11px] text-white/65">
-            친한 5 · 메시지 영구 보관 · 나머지는 구슬 주머니
+            {quickAddOpen
+              ? "Rimvio ID · 전화번호 · 이메일로 친구를 찾아요"
+              : "친한 5 · 메시지 영구 보관 · 나머지는 구슬 주머니"}
           </p>
           <input
             value={phone}
@@ -356,8 +366,12 @@ export function FivePeerHubClient() {
           />
           <FriendAddContactFlow
             contact={phone}
-            confirmLabel="고정하기"
-            helperText="프로필 확인 후 고정하기를 눌러 주세요."
+            confirmLabel={quickAddOpen ? "친구 추가" : "고정하기"}
+            helperText={
+              quickAddOpen
+                ? "맞는 사람이면 친구 추가 후 바로 대화방으로 이동해요."
+                : "프로필 확인 후 고정하기를 눌러 주세요."
+            }
             onAdded={handleFriendAdded}
             onError={(message) => toast.error(message)}
           />
@@ -383,10 +397,21 @@ export function FivePeerHubClient() {
         />
       ) : null}
 
-      <p className="shrink-0 text-center text-[11px] text-white/60">
-        친한 {connectedCount}/5
-        {usePhoneChat ? ` · 주머니 ${archiveList.length}명` : ""}
-      </p>
+      <div className="flex shrink-0 flex-col items-center gap-2">
+        {usePhoneChat && !dialogOpen ? (
+          <button
+            type="button"
+            onClick={openQuickFriendAdd}
+            className="text-[12px] font-semibold text-rimvio-neon-cyan underline-offset-2 hover:underline"
+          >
+            친구 추가
+          </button>
+        ) : null}
+        <p className="text-center text-[11px] text-white/60">
+          친한 {connectedCount}/5
+          {usePhoneChat ? ` · 주머니 ${archiveList.length}명` : ""}
+        </p>
+      </div>
 
       <FriendArchiveChatSheet
         open={archiveSheetOpen}

@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { resolveAppOrigin } from "@/lib/auth/redirect-url";
 import { getAuthUserId } from "@/lib/auth/session";
 import { isIntegrationProviderId } from "@/lib/integrations/catalog";
 import {
@@ -9,6 +10,7 @@ import {
   encodeOAuthState,
   oauthStateCookieOptions,
 } from "@/lib/integrations/oauth-state";
+import { integrationStatusPath } from "@/lib/integrations/oauth-redirect";
 import type { IntegrationProviderId } from "@/lib/integrations/types";
 
 type RouteContext = {
@@ -36,23 +38,27 @@ export async function GET(request: NextRequest, context: RouteContext) {
   }
 
   const userId = await getAuthUserId();
+  const next = request.nextUrl.searchParams.get("next") ?? "/welcome";
+  const safeNext = next.startsWith("/") ? next : "/welcome";
+
   if (!userId) {
-    const next = request.nextUrl.searchParams.get("next") ?? "/welcome";
-    const loginNext = `/welcome?integration=login_required&provider=${provider}&next=${encodeURIComponent(next)}`;
+    const loginNext = integrationStatusPath(safeNext, "login_required", {
+      provider,
+    });
     return NextResponse.redirect(new URL(loginNext, request.url));
   }
 
-  const next = request.nextUrl.searchParams.get("next") ?? "/welcome";
   const sessionId = request.nextUrl.searchParams.get("sessionId");
 
   const state = encodeOAuthState({
     provider,
-    next: next.startsWith("/") ? next : "/welcome",
+    next: safeNext,
     userId,
     sessionId,
   });
 
-  const authorizeUrl = buildOAuthAuthorizeUrl(provider, state);
+  const origin = resolveAppOrigin(request);
+  const authorizeUrl = buildOAuthAuthorizeUrl(provider, state, origin);
   if (!authorizeUrl) {
     return NextResponse.json({ error: "Could not build authorize URL." }, { status: 500 });
   }

@@ -364,7 +364,7 @@ export function FivePeerHub({
             className="relative flex size-[5.25rem] items-center justify-center rounded-full bg-gradient-to-br from-indigo-400 via-violet-400 to-fuchsia-400 p-[3px] shadow-[0_8px_24px_rgba(99,102,241,0.18)]"
             aria-hidden
           >
-            <div className="flex size-full items-center justify-center overflow-hidden rounded-full bg-rimvio-surface text-xl font-semibold text-white shadow-inner">
+            <div className="flex size-full items-center justify-center overflow-hidden rounded-full bg-secondary text-xl font-semibold text-foreground shadow-inner">
               {centerAvatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -429,7 +429,7 @@ export function FivePeerHub({
               {isGroup ? (
                 <span
                   className={cn(
-                    "flex size-[3.75rem] items-center justify-center rounded-full border-2 bg-rimvio-surface text-white/80",
+                    "flex size-[3.75rem] items-center justify-center rounded-full border-2 bg-secondary text-muted-foreground",
                     BUBBLE_RING_CLASS[bubbleState],
                     lensOn &&
                       "ring-2 ring-cyan-400/45 shadow-[0_0_14px_rgba(34,211,238,0.22)]",
@@ -481,9 +481,9 @@ export function FivePeerHub({
               style={style}
               aria-label={`${node.slotIndex + 1}번 AI 허브 · 친구 또는 단톡`}
             >
-              <span className="relative flex size-[3.75rem] items-center justify-center rounded-full border-2 border-white/15 bg-rimvio-surface shadow-sm">
+              <span className="relative flex size-[3.75rem] items-center justify-center rounded-full border-2 border-border bg-secondary shadow-sm">
                 <Plus className="size-5 text-white/55" strokeWidth={2} aria-hidden />
-                <span className="absolute -bottom-0.5 rounded-full bg-rimvio-surface-muted px-1.5 py-px text-[8px] font-semibold uppercase tracking-wide text-white/55">
+                <span className="absolute -bottom-0.5 rounded-full bg-card px-1.5 py-px text-[8px] font-semibold uppercase tracking-wide text-muted-foreground">
                   {node.roomLabel}
                 </span>
               </span>

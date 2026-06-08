@@ -10,8 +10,8 @@ export const RIMVIO_LOGO_WHITE_SRC = "/brand/rimvio-logo-white.png";
 /** Default in-app mark (transparent). Source kept for PWA icon baking. */
 export const RIMVIO_LOGO_MARK_SRC = RIMVIO_LOGO_TRANSPARENT_SRC;
 
-/** App canvas — soft dark gray (not pure black). */
-export const RIMVIO_CANVAS = "#1c1c1c";
+/** App canvas — Discord-like light gray. */
+export const RIMVIO_CANVAS = "#f2f3f5";
 
 /** Square app icon background — matches screen canvas. */
 export const RIMVIO_LOGO_ICON_BG = RIMVIO_CANVAS;

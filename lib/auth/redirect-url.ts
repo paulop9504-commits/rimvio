@@ -32,8 +32,9 @@ export function resolveAppOrigin(request?: {
     }
   }
 
-  if (process.env.NEXT_PUBLIC_APP_URL) {
-    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (appUrl) {
+    return appUrl.replace(/\/$/, "");
   }
 
   if (process.env.VERCEL_URL) {

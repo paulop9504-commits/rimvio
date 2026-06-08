@@ -5,6 +5,7 @@ import {
   readPeerContacts,
   resetPeerContactsForTests,
 } from "../lib/context/peer-contact-store";
+import { isKnownPeerContact } from "../lib/context/five-peer-rooms-product";
 import {
   canImportPeerAtMention,
   peerStorageMode,
@@ -81,6 +82,20 @@ if (canImportPeerAtMention({ settings: unpinnedSettings, roster })) {
 }
 if (!canImportPeerAtMention({ settings: pinnedSettings, roster })) {
   fail("pinned_import");
+}
+
+const cloudDmSettings: PeerThreadSettings = {
+  peerThreadId: "peer-dm-user-a__user-b",
+  displayName: "서버친구",
+  aiLensEnabled: false,
+  isPinned: false,
+  updatedAt: new Date().toISOString(),
+};
+if (!isKnownPeerContact({ settings: cloudDmSettings, roster })) {
+  fail("registered_dm_known_without_local_contact");
+}
+if (!shouldPersistPeerMessageLog({ settings: cloudDmSettings, roster })) {
+  fail("registered_dm_persist");
 }
 
 clearPeerContactsTestOverride();

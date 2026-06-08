@@ -77,7 +77,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
-  themeColor: "#1c1c1c",
+  themeColor: "#f2f3f5",
   /** Android: avoid dvh thrash when the keyboard opens (composer stays in layout). */
   interactiveWidget: "resizes-content",
 };
@@ -94,7 +94,7 @@ export default async function RootLayout({
     <html
       lang={htmlLang}
       suppressHydrationWarning
-      className={`${inter.variable} h-full antialiased`}
+      className={`${inter.variable} light h-full antialiased`}
     >
       <body
         suppressHydrationWarning

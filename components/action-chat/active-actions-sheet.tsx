@@ -24,6 +24,7 @@ type ActiveActionsSheetProps = {
   onCancelLinkReminder?: (linkId: string) => void;
   onOpenLink?: (linkId: string) => void;
   onAddSchedule?: () => void;
+  onOpenFullCalendar?: () => void;
 };
 
 function ActionButtons({
@@ -172,6 +173,7 @@ export function ActiveActionsSheet({
   onCancelLinkReminder,
   onOpenLink,
   onAddSchedule,
+  onOpenFullCalendar,
 }: ActiveActionsSheetProps) {
   const copy = useCopy();
   const [mounted, setMounted] = useState(false);
@@ -192,7 +194,7 @@ export function ActiveActionsSheet({
           <motion.button
             type="button"
             aria-label="닫기"
-            className="fixed inset-0 z-[80] bg-black/45"
+            className="fixed inset-0 z-[80] bg-black/20 backdrop-blur-[1px]"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -201,22 +203,22 @@ export function ActiveActionsSheet({
           <motion.div
             role="dialog"
             aria-label={copy.nav.calendar}
-            className="fixed inset-x-0 bottom-0 z-[81] mx-auto flex max-h-[min(88vh,760px)] max-w-lg flex-col overflow-hidden rounded-t-[24px] border border-white/10 bg-[#1F2937] shadow-[0_-12px_40px_rgba(0,0,0,0.35)]"
+            className="fixed inset-x-0 bottom-0 z-[81] mx-auto flex max-h-[min(88vh,760px)] max-w-lg flex-col overflow-hidden rounded-t-[24px] border border-border bg-card shadow-[0_-8px_32px_rgba(0,0,0,0.08)]"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", stiffness: 420, damping: 34 }}
           >
-            <div className="flex items-center justify-between border-b border-white/[0.06] px-5 pb-3 pt-4">
+            <div className="flex items-center justify-between border-b border-border px-5 pb-3 pt-4">
               <div className="flex items-center gap-2.5">
-                <div className="flex size-9 items-center justify-center rounded-xl bg-[#4285F4]/20 text-[#93C5FD]">
+                <div className="flex size-9 items-center justify-center rounded-xl bg-primary/12 text-primary">
                   <Calendar className="size-4" />
                 </div>
                 <div>
-                  <p className="text-[15px] font-semibold text-[#F3F4F6]">
+                  <p className="text-[15px] font-semibold text-foreground">
                     {copy.nav.calendar}
                   </p>
-                  <p className="text-[11px] text-[#9CA3AF]">
+                  <p className="text-[11px] text-muted-foreground">
                     {rowCount > 0
                       ? copy.calendar.sheetSummary(rowCount, attachedActionCount)
                       : copy.calendar.sheetSummaryEmpty}
@@ -226,7 +228,7 @@ export function ActiveActionsSheet({
               <button
                 type="button"
                 onClick={() => onOpenChange(false)}
-                className="flex size-8 items-center justify-center rounded-full text-[#9CA3AF] hover:bg-rimvio-surface/5"
+                className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-accent"
               >
                 <X className="size-4" />
               </button>
@@ -237,13 +239,14 @@ export function ActiveActionsSheet({
                 variant="sheet"
                 showLegend
                 showFullScreenLink
-                onOpenFullScreen={() => onOpenChange(false)}
+                onOpenFullScreen={() => {
+                  onOpenChange(false);
+                  onOpenFullCalendar?.();
+                }}
                 className="mb-2 shrink-0"
               />
 
-              {overlayRows.length === 0 ? (
-                <CalendarGoogleConnectBanner className="mb-2 shrink-0" />
-              ) : null}
+              <CalendarGoogleConnectBanner className="mb-2 shrink-0" />
 
               <CalendarBoard
                 variant="full"

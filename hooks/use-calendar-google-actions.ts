@@ -8,6 +8,9 @@ import { useGoogleCalendarSync } from "@/hooks/use-google-calendar-sync";
 import { useIntegrations } from "@/hooks/use-integrations";
 import { markGoogleCalendarAutoSynced } from "@/lib/google-calendar/sync-throttle";
 
+export const CALENDAR_OAUTH_RETURN_PATH = "/search?calendar=full";
+export const CALENDAR_SHEET_OAUTH_RETURN_PATH = "/search?calendar=sheet";
+
 export function useCalendarGoogleActions() {
   const copy = useCopy();
   const router = useRouter();
@@ -31,16 +34,19 @@ export function useCalendarGoogleActions() {
     }
   }, [copy, sync]);
 
-  const connectGoogle = useCallback(() => {
-    startOAuth("google_calendar", "/welcome");
-  }, [startOAuth]);
+  const connectGoogle = useCallback(
+    (returnPath = CALENDAR_OAUTH_RETURN_PATH) => {
+      startOAuth("google_calendar", returnPath);
+    },
+    [startOAuth],
+  );
 
   const openIntegrations = useCallback(() => {
     router.push("/welcome#integrations");
   }, [router]);
 
   const openFullCalendar = useCallback(() => {
-    router.push("/calendar");
+    router.push("/search?calendar=full");
   }, [router]);
 
   const talkSchedule = useCallback(() => {

@@ -10,7 +10,12 @@ import {
   FeedSlotPeerDetailSheet,
   type FeedSlotPeerDetailCopy,
 } from "@/components/feed/feed-slot-peer-detail-sheet";
-import { FeedQuickActionStrip } from "@/components/feed/feed-quick-action-strip";
+import { FeedSlotTaxonomyFilters } from "@/components/feed/feed-slot-taxonomy-filters";
+import {
+  buildFeedSlotTaxonomyMap,
+  filterFeedSlotsByTaxonomy,
+  type FeedSlotTaxonomyFilters as FeedSlotTaxonomyFilterState,
+} from "@/lib/feed/feed-slot-taxonomy";
 import { groupFeedSlotsByWindow } from "@/lib/feed/group-feed-slots-by-window";
 import { useCopy } from "@/hooks/use-copy";
 import type { FeedSlotPill } from "@/lib/feed/feed-slot-pill-types";
@@ -24,12 +29,7 @@ import type { ExperienceVolume } from "@/lib/experience-graph/experience-volume-
 import type { TrafficContext } from "@/lib/context-resolver/types";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import type { GpsPing } from "@/lib/location-ping/types";
-import type { SurfaceType } from "@/lib/surface-engine/surface-contract";
 import { cn } from "@/lib/utils";
-
-function slotType(slot: FeedTodaySlot): SurfaceType {
-  return slot.kind === "surface" ? slot.surface.type : slot.slotType;
-}
 
 export type FeedTodaySlotsPanelProps = {
   slots: readonly FeedTodaySlot[];
@@ -80,29 +80,59 @@ export const FeedTodaySlotsPanel = memo(function FeedTodaySlotsPanel({
   className,
 }: FeedTodaySlotsPanelProps) {
   const copy = useCopy();
-  const [filterType, setFilterType] = useState<SurfaceType | null>(null);
+  const [taxonomyFilters, setTaxonomyFilters] = useState<FeedSlotTaxonomyFilterState>({
+    query: "",
+    l1Id: null,
+    l2Id: null,
+    l3Id: null,
+  });
   const [detailPeer, setDetailPeer] = useState<FeedSlotPeerContext | null>(null);
+
+  const windowLabels = useMemo(
+    () => ({
+      today: copy.feed.today.sectionToday,
+      tomorrow: copy.feed.today.sectionTomorrow,
+      later: copy.feed.today.sectionLater,
+      unset: copy.feed.today.sectionUnset,
+    }),
+    [copy.feed.today],
+  );
+
+  const taxonomies = useMemo(
+    () =>
+      buildFeedSlotTaxonomyMap({
+        slots,
+        eventsById,
+        volumesByEventId,
+        windowLabels,
+      }),
+    [slots, eventsById, volumesByEventId, windowLabels],
+  );
 
   const onPeerPress = useCallback((_slot: FeedTodaySlot, peer: FeedSlotPeerContext) => {
     setDetailPeer(peer);
   }, []);
 
-  const filteredSlots = useMemo(() => {
-    if (!filterType) {
-      return slots;
-    }
-    return slots.filter((slot) => slotType(slot) === filterType);
-  }, [slots, filterType]);
+  const filteredSlots = useMemo(
+    () =>
+      filterFeedSlotsByTaxonomy({
+        slots,
+        taxonomies,
+        filters: taxonomyFilters,
+      }),
+    [slots, taxonomies, taxonomyFilters],
+  );
 
   const groups = useMemo(
-    () =>
-      groupFeedSlotsByWindow(filteredSlots, {
-        today: copy.feed.today.sectionToday,
-        tomorrow: copy.feed.today.sectionTomorrow,
-        later: copy.feed.today.sectionLater,
-        unset: copy.feed.today.sectionUnset,
-      }),
-    [filteredSlots, copy.feed.today],
+    () => groupFeedSlotsByWindow(filteredSlots, windowLabels),
+    [filteredSlots, windowLabels],
+  );
+
+  const hasTaxonomyFilter = Boolean(
+    taxonomyFilters.query.trim() ||
+      taxonomyFilters.l1Id ||
+      taxonomyFilters.l2Id ||
+      taxonomyFilters.l3Id,
   );
 
   const totalVisible = slots.length;
@@ -125,24 +155,24 @@ export const FeedTodaySlotsPanel = memo(function FeedTodaySlotsPanel({
       {!drawerMode ? (
       <header className="flex shrink-0 items-end justify-between gap-3 px-4 pb-2.5 pt-2">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-white/32">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
             {copy.feed.experience.heroEyebrow}
           </p>
           <div className="mt-0.5 flex items-center gap-2">
-            <h2 className="text-[22px] font-semibold tracking-tight text-white">
+            <h2 className="text-[22px] font-semibold tracking-tight text-foreground">
               {copy.feed.experience.heroTitle}
             </h2>
             {totalVisible > 0 ? (
-              <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-bold tabular-nums text-white/65">
+              <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-bold tabular-nums text-muted-foreground">
                 {copy.feed.today.count(totalVisible)}
               </span>
             ) : null}
           </div>
-          <p className="mt-0.5 text-[12px] text-white/38">
+          <p className="mt-0.5 text-[12px] text-muted-foreground">
             {copy.feed.experience.heroSubtitle}
           </p>
           {pendingVerifyCount > 0 ? (
-            <p className="mt-1 text-[11px] font-medium text-emerald-200/80">
+            <p className="mt-1 text-[11px] font-medium text-emerald-600">
               {copy.feed.experience.pendingVerify(pendingVerifyCount)}
             </p>
           ) : null}
@@ -152,7 +182,7 @@ export const FeedTodaySlotsPanel = memo(function FeedTodaySlotsPanel({
           <button
             type="button"
             onClick={onViewAll}
-            className="flex shrink-0 items-center gap-0.5 pb-0.5 text-[12px] font-semibold text-white/48 transition-colors hover:text-white/72"
+            className="flex shrink-0 items-center gap-0.5 pb-0.5 text-[12px] font-semibold text-primary transition-colors hover:text-primary/80"
           >
             {viewAllLabel}
             <ChevronRight className="size-3.5" strokeWidth={2.4} />
@@ -161,27 +191,28 @@ export const FeedTodaySlotsPanel = memo(function FeedTodaySlotsPanel({
       </header>
       ) : null}
 
-      <FeedQuickActionStrip
+      <FeedSlotTaxonomyFilters
         slots={slots}
-        label={copy.feed.today.quickActions}
-        filterAllLabel={copy.feed.today.filterAll}
-        activeType={filterType}
-        onSelectType={setFilterType}
+        taxonomies={taxonomies}
+        filters={taxonomyFilters}
+        onChange={setTaxonomyFilters}
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {filteredSlots.length === 0 ? (
-          <div className="mt-2 rounded-2xl bg-white/[0.03] px-5 py-10 text-center ring-1 ring-white/[0.05]">
-            <p className="text-[15px] font-semibold text-white/70">
-              {filterType ? copy.feed.today.filterEmpty : copy.feed.today.empty}
+          <div className="mt-2 rounded-2xl bg-secondary px-5 py-10 text-center ring-1 ring-border">
+            <p className="text-[15px] font-semibold text-foreground">
+              {hasTaxonomyFilter ? copy.feed.today.filterEmpty : copy.feed.today.empty}
             </p>
-            <p className="mx-auto mt-2 max-w-[16rem] text-[12px] leading-relaxed text-white/36">
-              {filterType ? copy.feed.today.filterEmptyHint : copy.feed.today.emptyHint}
+            <p className="mx-auto mt-2 max-w-[16rem] text-[12px] leading-relaxed text-muted-foreground">
+              {hasTaxonomyFilter
+                ? copy.feed.today.taxonomy.emptyHint
+                : copy.feed.today.emptyHint}
             </p>
-            {!filterType ? (
+            {!hasTaxonomyFilter ? (
               <Link
                 href="/search"
-                className="mt-4 inline-flex rounded-full bg-white px-4 py-2 text-[13px] font-semibold text-black transition active:scale-[0.98]"
+                className="mt-4 inline-flex rounded-full bg-primary px-4 py-2 text-[13px] font-semibold text-primary-foreground transition active:scale-[0.98]"
               >
                 {copy.feed.experience.emptyCta}
               </Link>
@@ -191,11 +222,11 @@ export const FeedTodaySlotsPanel = memo(function FeedTodaySlotsPanel({
           <div className="space-y-4">
             {groups.map((group) => (
               <div key={group.id} data-feed-slot-window={group.id}>
-                <h3 className="sticky top-0 z-[1] -mx-1 bg-rimvio-base/92 px-1 pb-1.5 pt-1 text-[11px] font-bold uppercase tracking-[0.08em] text-white/32 backdrop-blur-sm">
+                <h3 className="sticky top-0 z-[1] -mx-1 bg-background/92 px-1 pb-1.5 pt-1 text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground backdrop-blur-sm">
                   {group.label}
                 </h3>
                 <ul
-                  className="divide-y divide-white/[0.06] rounded-2xl bg-white/[0.025] px-3 ring-1 ring-white/[0.06]"
+                  className="divide-y divide-border rounded-2xl bg-card px-3 ring-1 ring-border shadow-sm"
                   data-feed-slot-list
                 >
                   {group.slots.map((slot) => (

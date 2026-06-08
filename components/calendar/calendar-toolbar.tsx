@@ -1,10 +1,15 @@
 "use client";
 
-import Link from "next/link";
-import { Maximize2, RefreshCw, Settings2 } from "lucide-react";
+import { useMemo } from "react";
+import { usePathname } from "next/navigation";
+import { Link2, Maximize2, RefreshCw, Settings2 } from "lucide-react";
 import { CalendarScheduleOriginBadge } from "@/components/action-chat/calendar-schedule-origin-badge";
 import { useCopy } from "@/hooks/use-copy";
 import { useCalendarGoogleActions } from "@/hooks/use-calendar-google-actions";
+import {
+  calendarOAuthReturnPath,
+  type CalendarOAuthSurface,
+} from "@/lib/calendar/calendar-oauth-return-path";
 import { IOS } from "@/lib/ui/ios-surface";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +18,9 @@ type CalendarToolbarProps = {
   showLegend?: boolean;
   showFullScreenLink?: boolean;
   onOpenFullScreen?: () => void;
+  /** OAuth lands back on this calendar surface (sheet vs full). */
+  oauthSurface?: CalendarOAuthSurface;
+  oauthReturnPath?: string;
   className?: string;
 };
 
@@ -21,15 +29,27 @@ export function CalendarToolbar({
   showLegend = true,
   showFullScreenLink = false,
   onOpenFullScreen,
+  oauthSurface,
+  oauthReturnPath,
   className,
 }: CalendarToolbarProps) {
   const copy = useCopy();
+  const pathname = usePathname();
+  const resolvedOauthReturnPath = useMemo(() => {
+    if (oauthReturnPath) {
+      return oauthReturnPath;
+    }
+    const surface: CalendarOAuthSurface =
+      oauthSurface ?? (showFullScreenLink ? "sheet" : variant === "page" ? "full" : "sheet");
+    return calendarOAuthReturnPath(surface, pathname);
+  }, [oauthReturnPath, oauthSurface, pathname, showFullScreenLink, variant]);
   const {
     available,
     connected,
     syncing,
     runSync,
     connectGoogle,
+    openIntegrations,
     openFullCalendar,
   } = useCalendarGoogleActions();
 
@@ -74,7 +94,10 @@ export function CalendarToolbar({
             <button
               type="button"
               onClick={() => {
-                onOpenFullScreen?.();
+                if (onOpenFullScreen) {
+                  onOpenFullScreen();
+                  return;
+                }
                 openFullCalendar();
               }}
               className={cn(
@@ -87,45 +110,63 @@ export function CalendarToolbar({
             </button>
           ) : null}
 
-          {connected ? (
+          {available ? (
             <button
               type="button"
-              disabled={syncing}
-              onClick={() => void runSync()}
+              disabled={connected && syncing}
+              onClick={() => {
+                if (connected) {
+                  void runSync();
+                  return;
+                }
+                connectGoogle(resolvedOauthReturnPath);
+              }}
               className={cn(
                 "inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-medium",
                 IOS.primaryBtn,
                 "h-auto min-h-0 w-auto py-2",
               )}
             >
-              <RefreshCw className={cn("size-3.5", syncing && "animate-spin")} />
-              {syncing ? copy.calendar.syncing : copy.calendar.syncShort}
-            </button>
-          ) : available ? (
-            <button
-              type="button"
-              onClick={connectGoogle}
-              className={cn(
-                "inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-medium",
-                IOS.primaryBtn,
-                "h-auto min-h-0 w-auto py-2",
-              )}
-            >
-              {copy.calendar.connectGoogle}
+              <RefreshCw className={cn("size-3.5", connected && syncing && "animate-spin")} />
+              {connected
+                ? syncing
+                  ? copy.calendar.syncing
+                  : copy.calendar.syncShort
+                : copy.calendar.syncShort}
             </button>
           ) : null}
 
-          <Link
-            href="/welcome#integrations"
-            aria-label={copy.calendar.integrations}
-            className={cn(
-              "inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-medium",
-              IOS.secondaryBtn,
-            )}
-          >
-            <Settings2 className="size-3.5" />
-            {compact ? null : copy.calendar.integrations}
-          </Link>
+          {available ? (
+            <button
+              type="button"
+              onClick={() => {
+                if (connected) {
+                  openIntegrations();
+                  return;
+                }
+                connectGoogle(resolvedOauthReturnPath);
+              }}
+              aria-label={
+                connected ? copy.calendar.settingsIntegrations : copy.calendar.integrations
+              }
+              className={cn(
+                "inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-medium",
+                connected ? IOS.secondaryBtn : IOS.primaryBtn,
+                !connected && "h-auto min-h-0 w-auto py-2",
+              )}
+            >
+              {connected ? (
+                <Settings2 className="size-3.5" />
+              ) : (
+                <Link2 className="size-3.5" />
+              )}
+              {compact ? null : copy.calendar.integrations}
+            </button>
+          ) : (
+            <span className="rounded-lg bg-secondary px-2.5 py-1.5 text-[10px] font-medium text-muted-foreground">
+              {copy.calendar.oauthSetupPending}
+            </span>
+          )}
         </div>
       </div>
     </div>

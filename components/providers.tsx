@@ -31,7 +31,7 @@ type ProvidersProps = {
 
 export function Providers({ children, initialLocale }: ProvidersProps) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+    <ThemeProvider attribute="class" defaultTheme="light" forcedTheme="light" enableSystem={false}>
       <LocaleProvider initialLocale={initialLocale}>
         <AuthProvider>
           <RimvioAuthProfileBootstrap />

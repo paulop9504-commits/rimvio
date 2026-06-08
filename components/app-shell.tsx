@@ -50,7 +50,7 @@ export function AppShell({
             GRID.column,
             "app-shell-viewport flex h-dvh flex-col overflow-hidden",
             fullBleed && "app-shell-column--chat",
-            iosSurface ? "bg-rimvio-base" : "bg-rimvio-base",
+            "bg-background",
           )}
         >
           <header

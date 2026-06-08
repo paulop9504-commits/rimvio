@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, UserPlus } from "lucide-react";
 import { toast } from "sonner";
@@ -25,6 +26,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { cn } from "@/lib/utils";
 
 export function FriendArchivePageClient() {
+  const router = useRouter();
   const { user, configured } = useAuth();
   const usePhoneChat = Boolean(configured && user && isSupabaseConfigured());
   const [pinnedPeers, setPinnedPeers] = useState<SocialBubblePeer[]>([]);
@@ -142,6 +144,7 @@ export function FriendArchivePageClient() {
               setContact("");
               await load();
               toast.success(`${result.displayName} 구슬이 쌓였어요`);
+              router.push(`/peers/${encodeURIComponent(result.threadId)}`);
             }}
             onError={(message) => toast.error(message)}
           />

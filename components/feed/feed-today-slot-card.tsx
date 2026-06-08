@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { memo, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { FeedPlanStack } from "@/components/feed/feed-plan-stack";
-import { FeedExperienceAxisStrip } from "@/components/feed/feed-experience-axis-strip";
+import { FeedExperienceAxisBreadcrumb } from "@/components/feed/feed-experience-axis-breadcrumb";
 import { FeedWeatherPrepStrip } from "@/components/feed/feed-weather-prep-strip";
 import type { ExperienceVolume } from "@/lib/experience-graph/experience-volume-types";
 import {
@@ -109,19 +109,19 @@ function SlotRowBody({
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="text-[11px] font-medium tabular-nums text-white/40">
+        <p className="text-[11px] font-medium tabular-nums text-muted-foreground">
           {experienceEyebrow ? (
-            <span className="text-emerald-200/75">{experienceEyebrow}</span>
+            <span className="text-emerald-600">{experienceEyebrow}</span>
           ) : null}
           {experienceEyebrow ? " · " : null}
           {timeLabel}
         </p>
-        <h3 className="mt-0.5 line-clamp-2 text-[15px] font-semibold leading-snug tracking-tight text-white">
+        <h3 className="mt-0.5 line-clamp-2 text-[15px] font-semibold leading-snug tracking-tight text-foreground">
           {headline}
         </h3>
         {belowHeadline}
         {context ? (
-          <p className="mt-0.5 line-clamp-1 text-[12px] text-white/44">{context}</p>
+          <p className="mt-0.5 line-clamp-1 text-[12px] text-muted-foreground">{context}</p>
         ) : null}
       </div>
 
@@ -466,7 +466,7 @@ export const FeedTodaySlotCard = memo(function FeedTodaySlotCard({
               data-feed-slot-pill
               data-feed-slot-pill-kind={pill.kind}
               data-deeplink={pill.kind === "deeplink" ? pill.deeplink : undefined}
-              className="rounded-full bg-white/[0.07] px-2.5 py-1 text-[11px] font-semibold text-white/82 transition-colors hover:bg-white/[0.11] active:scale-[0.98]"
+              className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold text-foreground transition-colors hover:bg-accent active:scale-[0.98]"
               onClick={() => onPillPress(slot, pill)}
             >
               {pill.label}
@@ -481,7 +481,7 @@ export const FeedTodaySlotCard = memo(function FeedTodaySlotCard({
     <article
       className={cn(
         "py-3.5 transition-colors",
-        isActiveExperience && "rounded-2xl bg-white/[0.05] ring-1 ring-sky-300/20",
+        isActiveExperience && "rounded-2xl bg-primary/5 ring-1 ring-primary/20",
         className,
       )}
       data-feed-today-slot
@@ -496,7 +496,7 @@ export const FeedTodaySlotCard = memo(function FeedTodaySlotCard({
       data-experience-volume-id={experienceVolume?.id}
     >
       {recallEligible && experienceVolume ? (
-        <FeedExperienceAxisStrip
+        <FeedExperienceAxisBreadcrumb
           volume={experienceVolume}
           onOpenPlayer={openExperiencePlayer}
           className="mb-2"

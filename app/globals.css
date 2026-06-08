@@ -61,59 +61,59 @@
 }
 
 :root {
-  /* Dark gray canvas + prismatic neon edges */
-  --rimvio-canvas: #1c1c1c;
-  --rimvio-base: #1c1c1c;
-  --rimvio-surface: #262626;
-  --rimvio-surface-muted: #161616;
-  --rimvio-surface-raised: #303030;
-  --rimvio-neon-purple: #bf5af2;
-  --rimvio-neon-purple-deep: #9d4edd;
-  --rimvio-neon-cyan: #32d7ff;
-  --rimvio-neon-magenta: #ff375f;
-  --rimvio-neon-amber: #ffd60a;
-  --rimvio-neon-orange: #ff9f0a;
-  --rimvio-neon-green: #30d158;
+  /* Discord-inspired light canvas — airy gray-lavender, blurple accents */
+  --rimvio-canvas: #f2f3f5;
+  --rimvio-base: #ffffff;
+  --rimvio-surface: #ffffff;
+  --rimvio-surface-muted: #f2f3f5;
+  --rimvio-surface-raised: #ebedef;
+  --rimvio-text: #2e3338;
+  --rimvio-text-muted: #5c5e66;
+  --rimvio-text-dim: #949ba4;
+  --rimvio-neon-purple: #5865f2;
+  --rimvio-neon-purple-deep: #4752c4;
+  --rimvio-neon-cyan: #00a8fc;
+  --rimvio-neon-magenta: #ed4245;
+  --rimvio-neon-amber: #faa81a;
+  --rimvio-neon-orange: #f26522;
+  --rimvio-neon-green: #23a559;
   --rimvio-neon-amber-fill: rgba(255, 214, 10, 0.12);
   --rimvio-neon-amber-border: rgba(255, 214, 10, 0.38);
   --rimvio-neon-amber-glow: rgba(255, 214, 10, 0.22);
   --rimvio-neon-amber-glow-strong: rgba(255, 214, 10, 0.38);
   --chat-bubble-user-warm-border: rgba(255, 159, 10, 0.32);
-  --rimvio-neon-border: rgba(191, 90, 242, 0.28);
-  --rimvio-neon-glow: rgba(191, 90, 242, 0.35);
+  --rimvio-neon-border: rgba(88, 101, 242, 0.22);
+  --rimvio-neon-glow: rgba(88, 101, 242, 0.18);
   --rimvio-edge-default: linear-gradient(
     135deg,
-    rgba(191, 90, 242, 0.72) 0%,
-    rgba(50, 215, 255, 0.52) 32%,
-    rgba(255, 55, 95, 0.58) 66%,
-    rgba(48, 209, 88, 0.32) 100%
+    rgba(88, 101, 242, 0.18) 0%,
+    rgba(0, 168, 252, 0.12) 50%,
+    rgba(88, 101, 242, 0.14) 100%
   );
   --rimvio-edge-cyan: linear-gradient(
     135deg,
-    rgba(50, 215, 255, 0.75),
-    rgba(191, 90, 242, 0.35)
+    rgba(0, 168, 252, 0.28),
+    rgba(88, 101, 242, 0.16)
   );
   --rimvio-edge-magenta: linear-gradient(
     135deg,
-    rgba(255, 55, 95, 0.7),
-    rgba(191, 90, 242, 0.4)
+    rgba(237, 66, 69, 0.28),
+    rgba(88, 101, 242, 0.14)
   );
   --rimvio-edge-amber: linear-gradient(
     135deg,
-    rgba(255, 214, 10, 0.65),
-    rgba(255, 55, 95, 0.35)
+    rgba(250, 168, 26, 0.32),
+    rgba(237, 66, 69, 0.14)
   );
   --rimvio-edge-green: linear-gradient(
     135deg,
-    rgba(48, 209, 88, 0.65),
-    rgba(50, 215, 255, 0.35)
+    rgba(35, 165, 89, 0.28),
+    rgba(0, 168, 252, 0.12)
   );
   --rimvio-edge-nav: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(191, 90, 242, 0.55) 22%,
-    rgba(50, 215, 255, 0.5) 50%,
-    rgba(255, 55, 95, 0.48) 78%,
+    rgba(88, 101, 242, 0.12) 50%,
     transparent 100%
   );
   /* Seamless neon flow — duplicated tile + GPU translate (no background-position jump) */
@@ -140,24 +140,24 @@
   --rimvio-neon-flow-duration: 48s;
   --rimvio-neon-flow-duration-live: 36s;
 
-  --background: #1c1c1c;
-  --foreground: #f5f5f7;
-  --card: #262626;
-  --card-foreground: #f5f5f7;
-  --popover: #303030;
-  --popover-foreground: #f5f5f7;
-  --primary: #9d4edd;
-  --primary-foreground: #faf5ff;
-  --secondary: #161616;
-  --secondary-foreground: #f5f5f7;
-  --muted: #161616;
-  --muted-foreground: #98989d;
-  --accent: #303030;
-  --accent-foreground: #f5f5f7;
-  --destructive: #ff453a;
-  --border: rgba(255, 255, 255, 0.08);
-  --input: rgba(255, 255, 255, 0.06);
-  --ring: rgba(50, 215, 255, 0.55);
+  --background: #f2f3f5;
+  --foreground: #2e3338;
+  --card: #ffffff;
+  --card-foreground: #2e3338;
+  --popover: #ffffff;
+  --popover-foreground: #2e3338;
+  --primary: #5865f2;
+  --primary-foreground: #ffffff;
+  --secondary: #ebedef;
+  --secondary-foreground: #2e3338;
+  --muted: #f2f3f5;
+  --muted-foreground: #5c5e66;
+  --accent: #e3e5e8;
+  --accent-foreground: #2e3338;
+  --destructive: #ed4245;
+  --border: rgba(0, 0, 0, 0.08);
+  --input: #ebedef;
+  --ring: rgba(88, 101, 242, 0.45);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -174,10 +174,10 @@
   --inbox-major: 61.8%;
   --golden-major: 61.8%;
   --golden-minor: 38.2%;
-  --rimvio-accent: #bf5af2;
-  --rimvio-accent-soft: #303030;
-  --rimvio-button-blue: #9d4edd;
-  --rimvio-button-blue-pressed: #7b2cbf;
+  --rimvio-accent: #5865f2;
+  --rimvio-accent-soft: #ebedef;
+  --rimvio-button-blue: #5865f2;
+  --rimvio-button-blue-pressed: #4752c4;
   --rimvio-button-easing: cubic-bezier(0.4, 0, 0.2, 1);
   --inbox-thumb: var(--space-phi3);
   /* Responsive shell widths */
@@ -209,14 +209,14 @@
       var(--toast-shift-up)
   );
   --toast-bottom-offset: var(--toast-bottom-offset-inline);
-  --sidebar: #262626;
-  --sidebar-foreground: #f5f5f7;
-  --sidebar-primary: #9d4edd;
-  --sidebar-primary-foreground: #faf5ff;
-  --sidebar-accent: #303030;
-  --sidebar-accent-foreground: #f5f5f7;
-  --sidebar-border: rgba(255, 255, 255, 0.08);
-  --sidebar-ring: rgba(50, 215, 255, 0.5);
+  --sidebar: #e3e5e8;
+  --sidebar-foreground: #2e3338;
+  --sidebar-primary: #5865f2;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f2f3f5;
+  --sidebar-accent-foreground: #2e3338;
+  --sidebar-border: rgba(0, 0, 0, 0.06);
+  --sidebar-ring: rgba(88, 101, 242, 0.4);
 }
 
 .dark {
@@ -263,10 +263,8 @@
     pointer-events: none;
     z-index: 0;
     background:
-      radial-gradient(ellipse 90% 55% at 50% -15%, rgba(157, 78, 221, 0.14), transparent 58%),
-      radial-gradient(ellipse 55% 45% at 100% 35%, rgba(50, 215, 255, 0.07), transparent 52%),
-      radial-gradient(ellipse 50% 40% at 0% 75%, rgba(255, 55, 95, 0.06), transparent 48%),
-      radial-gradient(ellipse 40% 30% at 80% 90%, rgba(48, 209, 88, 0.05), transparent 45%);
+      radial-gradient(ellipse 70% 45% at 50% -10%, rgba(88, 101, 242, 0.06), transparent 62%),
+      radial-gradient(ellipse 45% 35% at 100% 20%, rgba(0, 168, 252, 0.04), transparent 55%);
   }
 }
 
@@ -276,6 +274,9 @@
   position: relative;
   isolation: isolate;
   background: var(--rimvio-surface);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 4px 16px rgba(0, 0, 0, 0.03);
 }
 
 .rimvio-edge-card::before {
@@ -285,6 +286,7 @@
   padding: 1px;
   border-radius: inherit;
   background: var(--rimvio-edge-default);
+  opacity: 0.55;
   -webkit-mask:
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
@@ -390,7 +392,7 @@
 
 .rimvio-bottom-nav-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: center;
   justify-items: center;
   width: 100%;
@@ -414,22 +416,18 @@
   top: 0;
   inset-inline: 0;
   width: 100%;
-  height: 1.25px;
-  opacity: 0.92;
+  height: 1px;
+  opacity: 1;
   pointer-events: none;
-  background: var(--rimvio-edge-nav);
-  box-shadow:
-    0 0 6px rgba(191, 90, 242, 0.38),
-    0 0 10.5px rgba(50, 215, 255, 0.24);
+  background: var(--border);
+  box-shadow: none;
 }
 
 .chat-ambient-shell--composer-live .rimvio-nav-bar::before {
-  height: 2px;
+  height: 1px;
   opacity: 1;
-  box-shadow:
-    0 0 8px rgba(191, 90, 242, 0.55),
-    0 0 15px rgba(50, 215, 255, 0.42),
-    0 0 22px rgba(255, 55, 95, 0.24);
+  background: color-mix(in oklch, var(--primary) 28%, var(--border));
+  box-shadow: none;
 }
 
 @keyframes rimvio-neon-marquee {
@@ -682,7 +680,7 @@
 @utility app-viewport {
   min-height: 100dvh;
   width: 100%;
-  background-color: #e8e8ed;
+  background-color: var(--background);
 }
 
 @utility app-shell-grid {
@@ -840,8 +838,8 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-phi2);
-  border-right: 1px solid color-mix(in oklch, var(--border) 55%, transparent);
-  background: color-mix(in oklch, var(--background) 92%, transparent);
+  border-right: 1px solid var(--sidebar-border);
+  background: var(--sidebar);
   backdrop-filter: blur(12px);
   padding-block: var(--space-phi2);
 }
@@ -1319,7 +1317,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   height: 2.5rem;
   border: none;
   border-radius: 9999px;
-  color: #ffffff;
+  color: var(--rimvio-text-muted);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
@@ -1346,28 +1344,28 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 }
 
 .rimvio-icon-btn--primary {
-  background: transparent;
+  background: var(--primary);
   color: #ffffff;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.85);
+  box-shadow: 0 2px 8px rgba(88, 101, 242, 0.28);
   border-radius: 14px;
 }
 
 @media (hover: hover) {
   .rimvio-icon-btn--primary:not(:disabled):hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--rimvio-neon-purple-deep);
   }
 }
 
 .rimvio-icon-btn--secondary {
   background: var(--rimvio-surface-raised);
   color: var(--rimvio-text-muted);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px var(--border);
 }
 
 .rimvio-icon-btn--ghost {
-  background: var(--rimvio-surface-muted);
+  background: transparent;
   color: var(--rimvio-text-muted);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  box-shadow: none;
 }
 
 .rimvio-icon-btn--cyan {
@@ -1399,14 +1397,14 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   min-height: 2.5rem;
   flex: 1;
   align-items: flex-end;
-  border-radius: 14px;
-  background: transparent;
+  border-radius: 12px;
+  background: var(--rimvio-surface-raised);
   padding: 0.5rem 0.75rem;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  box-shadow: none;
 }
 
 .rimvio-composer-field textarea::placeholder {
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--rimvio-text-dim);
 }
 
 .rimvio-composer-mention-wrap {
@@ -1427,7 +1425,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 .rimvio-composer-mention-mirror {
   z-index: 0;
   padding: 0;
-  color: #ffffff;
+  color: var(--foreground);
 }
 
 .rimvio-composer-mention-valid {
@@ -1438,8 +1436,8 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   position: relative;
   z-index: 1;
   /* Near-transparent (not fully transparent) — iOS Safari skips keyboard with -webkit-text-fill-color: transparent */
-  color: rgba(255, 255, 255, 0.02);
-  caret-color: #ffffff;
+  color: rgba(46, 51, 56, 0.02);
+  caret-color: var(--foreground);
   background: transparent;
 }
 
@@ -1450,8 +1448,8 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 }
 
 .rimvio-composer-textarea--mirror::placeholder {
-  color: rgba(255, 255, 255, 0.75);
-  -webkit-text-fill-color: rgba(255, 255, 255, 0.75);
+  color: var(--rimvio-text-dim);
+  -webkit-text-fill-color: var(--rimvio-text-dim);
 }
 
 .rimvio-composer-textarea--mirror::selection {
@@ -1467,7 +1465,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 
 .rimvio-menu-grid {
   background: var(--rimvio-surface-muted);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 0 0 1px var(--border);
 }
 
 .rimvio-menu-tile {
@@ -1520,7 +1518,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   font-size: 12px;
   font-weight: 600;
   color: var(--rimvio-text-muted);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 0 0 1px var(--border);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition:
@@ -1530,10 +1528,9 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 }
 
 .rimvio-chip-btn--active {
-  color: var(--rimvio-text);
-  box-shadow:
-    inset 0 0 0 1px rgba(191, 90, 242, 0.45),
-    0 0 16px rgba(191, 90, 242, 0.18);
+  color: #ffffff;
+  background: var(--primary);
+  box-shadow: 0 2px 8px rgba(88, 101, 242, 0.22);
 }
 
 .rimvio-suggest-chip {
@@ -1543,15 +1540,15 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   background: var(--rimvio-surface-raised);
   padding: 0.25rem 0.625rem;
   font-weight: 500;
-  color: #e8e8ed;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.85);
+  color: var(--rimvio-text-muted);
+  box-shadow: inset 0 0 0 1px var(--border);
 }
 
 @media (hover: hover) {
   .rimvio-suggest-chip:hover {
-    background: rgba(255, 255, 255, 0.06);
-    color: rgba(255, 255, 255, 0.95);
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 1);
+    background: var(--accent);
+    color: var(--foreground);
+    box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--primary) 22%, var(--border));
   }
 }
 
@@ -1569,7 +1566,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   padding: 0.625rem 0.75rem;
   text-align: left;
   color: var(--rimvio-text);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 0 0 1px var(--border);
   cursor: pointer;
   transition:
     transform 0.2s var(--rimvio-button-easing),
@@ -1582,10 +1579,10 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 }
 
 .rimvio-list-pick-btn--recommended {
-  background: rgba(191, 90, 242, 0.08);
+  background: color-mix(in oklch, var(--primary) 8%, var(--rimvio-surface));
   box-shadow:
-    inset 0 0 0 1px rgba(191, 90, 242, 0.35),
-    0 0 20px rgba(191, 90, 242, 0.1);
+    inset 0 0 0 1px color-mix(in oklch, var(--primary) 28%, var(--border)),
+    0 4px 14px rgba(88, 101, 242, 0.08);
 }
 
 /* ── Rimvio Master Button (black canvas tactile) ── */
@@ -1598,8 +1595,8 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   padding: 16px 28px;
   min-width: 160px;
   border-radius: 14px;
-  background-color: var(--rimvio-surface-raised);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: var(--primary);
+  border: 1px solid color-mix(in oklch, var(--primary) 88%, black);
   color: #ffffff;
   font-family:
     -apple-system,
@@ -1612,9 +1609,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   font-size: 16px;
   line-height: 1.25;
   letter-spacing: -0.02em;
-  box-shadow:
-    inset 3px 0 0 0 rgba(191, 90, 242, 0.82),
-    0 4px 18px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 4px 14px rgba(88, 101, 242, 0.28);
   transition:
     transform 0.2s var(--rimvio-button-easing),
     background-color 0.2s var(--rimvio-button-easing),
@@ -1636,16 +1631,14 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 
 @media (hover: hover) {
   .rimvio-action-button:not(:disabled):hover {
-    background-color: var(--rimvio-surface);
+    background-color: var(--rimvio-neon-purple-deep);
     transform: translateY(1px) scale(0.98);
-    box-shadow:
-      inset 3px 0 0 0 rgba(50, 215, 255, 0.75),
-      0 2px 12px rgba(0, 0, 0, 0.32);
+    box-shadow: 0 2px 10px rgba(88, 101, 242, 0.32);
   }
 }
 
 .rimvio-action-button:not(:disabled):active {
-  background-color: var(--rimvio-surface-muted);
+  background-color: var(--rimvio-neon-purple-deep);
   transform: translateY(1px) scale(0.98);
   box-shadow:
     inset 3px 0 0 0 rgba(191, 90, 242, 0.65),
@@ -1826,7 +1819,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   min-height: 0;
   overflow: hidden;
   background: var(--rimvio-base);
-  color: #f5f5f7;
+  color: var(--foreground);
   font-family:
     -apple-system,
     BlinkMacSystemFont,
@@ -1874,7 +1867,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 @media (max-width: 1023px) {
   .action-shell--slot .rimvio-feed-composer-dock {
     padding-bottom: 0;
-    border-top: 1px solid color-mix(in oklch, white 6%, transparent);
+    border-top: 1px solid var(--border);
     background: var(--rimvio-base);
   }
 }
@@ -1938,19 +1931,17 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 
 .chat-bubble--user {
   font-weight: 400;
-  color: #1a1a1a;
-  background: #fee500;
-  box-shadow: none;
+  color: #ffffff;
+  background: var(--primary);
+  box-shadow: 0 1px 3px rgba(88, 101, 242, 0.22);
 }
 
 .chat-bubble--ai {
   font-weight: 400;
-  color: #ffffff;
-  --chat-bubble-border: rgba(255, 255, 255, 0.09);
-  background: #2e2e2e;
-  box-shadow:
-    inset 0 0 0 1px var(--chat-bubble-border),
-    0 4px 20px rgba(0, 0, 0, 0.35);
+  color: var(--foreground);
+  --chat-bubble-border: var(--border);
+  background: var(--rimvio-surface-raised);
+  box-shadow: inset 0 0 0 1px var(--chat-bubble-border);
 }
 
 .chat-bubble:has(.chat-bubble--thinking) {
@@ -1964,7 +1955,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   font-size: 12px;
   font-weight: 500;
   letter-spacing: -0.01em;
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--rimvio-text-muted);
   display: inline-flex;
   align-items: center;
 }
@@ -1977,8 +1968,8 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   border-radius: 1rem;
   background: var(--rimvio-surface);
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
-    0 8px 32px rgba(0, 0, 0, 0.38);
+    inset 0 0 0 1px var(--border),
+    0 4px 18px rgba(0, 0, 0, 0.06);
 }
 
 .rimvio-inline-chip--sm {
@@ -2230,24 +2221,14 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   z-index: 0;
   height: min(42dvh, 280px);
   pointer-events: none;
-  opacity: calc(0.94 * var(--chat-ambient-strength));
+  opacity: calc(0.55 * var(--chat-ambient-strength));
   transition: opacity 0.65s ease;
   background:
     radial-gradient(
       ellipse 90% 72% at 50% 100%,
-      rgba(191, 90, 242, 0.28) 0%,
-      rgba(50, 215, 255, 0.14) 38%,
+      rgba(88, 101, 242, 0.1) 0%,
+      rgba(0, 168, 252, 0.05) 38%,
       transparent 72%
-    ),
-    radial-gradient(
-      ellipse 55% 40% at 18% 100%,
-      rgba(255, 55, 95, 0.16) 0%,
-      transparent 70%
-    ),
-    radial-gradient(
-      ellipse 55% 40% at 82% 100%,
-      rgba(48, 209, 88, 0.1) 0%,
-      transparent 70%
     );
 }
 
@@ -2257,17 +2238,13 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   bottom: 0;
   inset-inline: 0;
   width: 100%;
-  height: 3px;
+  height: 1px;
   border-radius: 0;
   pointer-events: none;
-  opacity: calc(0.96 * var(--chat-ambient-strength));
+  opacity: calc(0.85 * var(--chat-ambient-strength));
   transition: opacity 0.65s ease;
-  background: var(--rimvio-edge-nav);
-  box-shadow:
-    0 0 9px rgba(191, 90, 242, 0.72),
-    0 0 19.5px rgba(50, 215, 255, 0.52),
-    0 0 30px rgba(255, 55, 95, 0.34),
-    0 -3px 21px rgba(191, 90, 242, 0.2);
+  background: color-mix(in oklch, var(--primary) 22%, var(--border));
+  box-shadow: none;
 }
 
 .chat-ambient-vignette {
@@ -2275,12 +2252,12 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  opacity: calc(0.55 * var(--chat-ambient-strength));
+  opacity: calc(0.35 * var(--chat-ambient-strength));
   transition: opacity 0.65s ease;
   background: radial-gradient(
     ellipse 85% 55% at 50% 88%,
-    transparent 40%,
-    rgba(0, 0, 0, 0.28) 100%
+    transparent 50%,
+    rgba(88, 101, 242, 0.04) 100%
   );
 }
 

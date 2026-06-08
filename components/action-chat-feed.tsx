@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FolderGit2, Settings2 } from "lucide-react";
-import { FeedCalendarHeaderControls } from "@/components/feed/feed-calendar-header-controls";
+import { CalendarFullScreenPanel } from "@/components/calendar/calendar-full-screen-panel";
+import { CalendarHeaderControls } from "@/components/calendar/calendar-header-controls";
 import {
   ActionDatePickerSheet,
 } from "@/components/action-chat/action-date-picker-sheet";
@@ -84,6 +85,7 @@ import {
 } from "@/lib/dual-mode/link-lifecycle";
 import { useLinkContextChain } from "@/hooks/use-link-context-chain";
 import { useCopy, useAppLocale } from "@/hooks/use-copy";
+import { useCalendarSurfaceQuery } from "@/hooks/use-calendar-surface-query";
 import {
   feedThreadScrollBehavior,
   isThreadNearBottom,
@@ -296,6 +298,31 @@ export function ActionChatFeed({
     return map;
   }, [messages]);
   const [activeActionsOpen, setActiveActionsOpen] = useState(false);
+  const [calendarFullOpen, setCalendarFullOpen] = useState(false);
+  const searchParams = useSearchParams();
+  const { clearCalendarQuery } = useCalendarSurfaceQuery({
+    enabled: isConversation && scopeKind === "search",
+    onOpenSheet: () => setActiveActionsOpen(true),
+    onOpenFull: () => setCalendarFullOpen(true),
+  });
+  const handleCalendarFullOpenChange = useCallback(
+    (open: boolean) => {
+      setCalendarFullOpen(open);
+      if (!open && scopeKind === "search" && searchParams.get("calendar") === "full") {
+        clearCalendarQuery();
+      }
+    },
+    [clearCalendarQuery, scopeKind, searchParams],
+  );
+  const handleActiveActionsOpenChange = useCallback(
+    (open: boolean) => {
+      setActiveActionsOpen(open);
+      if (!open && scopeKind === "search" && searchParams.get("calendar") === "sheet") {
+        clearCalendarQuery();
+      }
+    },
+    [clearCalendarQuery, scopeKind, searchParams],
+  );
   const [resourcePoolOpen, setResourcePoolOpen] = useState(false);
   const [googleSheetOpen, setGoogleSheetOpen] = useState(false);
   const [googleSheetTarget, setGoogleSheetTarget] = useState<GoogleSheetsEmbedTarget | null>(
@@ -313,6 +340,7 @@ export function ActionChatFeed({
       openGoogleSheet(url, title);
     });
   }, [openGoogleSheet]);
+
   const { totalCount: resourcePoolCount } = useResourcePool();
   const [schedulingLink, setSchedulingLink] = useState<LinkRow | null>(null);
   const hasActiveDecision = useMemo(
@@ -490,15 +518,15 @@ export function ActionChatFeed({
           className
         )}
       >
-        <header className="shrink-0 border-b border-white/10 bg-rimvio-base/80 px-3 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-md sm:px-5">
+        <header className="shrink-0 border-b border-border bg-card/95 px-3 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-md sm:px-5">
           <div className="flex min-h-9 items-center justify-between gap-2">
-            <RimvioLogo size="sm" className="h-7 shrink-0" appearance="white" />
+            <RimvioLogo size="sm" className="h-7 shrink-0" appearance="dark" />
             <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
               {isConversation && (messages.length > 0 || activeLink) ? (
                 <button
                   type="button"
                   onClick={handleStartFreshConversation}
-                  className="hidden rounded-full border border-white/85 bg-transparent px-2.5 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-white/[0.06] min-[400px]:inline sm:px-3 sm:text-[12px]"
+                  className="hidden rounded-full border border-border bg-transparent px-2.5 py-1.5 text-[11px] font-semibold text-foreground transition-colors hover:bg-accent min-[400px]:inline sm:px-3 sm:text-[12px]"
                 >
                   새 대화
                 </button>
@@ -509,7 +537,7 @@ export function ActionChatFeed({
                   type="button"
                   aria-label="리소스풀"
                   onClick={() => setResourcePoolOpen(true)}
-                  className="relative flex size-8 items-center justify-center rounded-full bg-transparent text-white transition-opacity hover:opacity-80 active:scale-95 sm:size-9"
+                  className="relative flex size-8 items-center justify-center rounded-full bg-transparent text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-95 sm:size-9"
                 >
                   <FolderGit2 className="size-[1.15rem] sm:size-5" strokeWidth={2.1} />
                   <span
@@ -523,15 +551,20 @@ export function ActionChatFeed({
                   </span>
                 </button>
               ) : null}
-              <FeedCalendarHeaderControls
+              <CalendarHeaderControls
                 badgeCount={badgeCount}
                 onOpenSheet={() => setActiveActionsOpen(true)}
+                onOpenFull={
+                  isConversation
+                    ? () => setCalendarFullOpen(true)
+                    : () => router.push("/search?calendar=full")
+                }
               />
               {isSlot ? (
               <Link
                 href="/welcome"
                 aria-label="설정"
-                className="flex size-8 items-center justify-center rounded-full bg-transparent text-white transition-opacity hover:opacity-80 active:scale-95 sm:size-9"
+                className="flex size-8 items-center justify-center rounded-full bg-transparent text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-95 sm:size-9"
               >
                 <Settings2 className="size-[1.15rem] sm:size-5" strokeWidth={2.1} />
               </Link>
@@ -838,7 +871,7 @@ export function ActionChatFeed({
 
       <ActiveActionsSheet
         open={activeActionsOpen}
-        onOpenChange={setActiveActionsOpen}
+        onOpenChange={handleActiveActionsOpenChange}
         calendar={calendarForSheet}
         contextByMessageId={actionContextByMessageId}
         onCancelScheduled={cancelScheduledAction}
@@ -858,7 +891,27 @@ export function ActionChatFeed({
             ?.focus();
           toast.message("채팅에서 일정을 말해 보세요");
         }}
+        onOpenFullCalendar={
+          isConversation ? () => setCalendarFullOpen(true) : undefined
+        }
       />
+
+      {isConversation ? (
+        <CalendarFullScreenPanel
+          open={calendarFullOpen}
+          onOpenChange={handleCalendarFullOpenChange}
+          overlayRows={calendarForSheet.overlayRows}
+          onAddSchedule={() => {
+            handleCalendarFullOpenChange(false);
+            threadRef.current
+              ?.closest("[data-action-chat-root]")
+              ?.querySelector("textarea")
+              ?.focus();
+            toast.message("채팅에서 일정을 말해 보세요");
+          }}
+          onSpawnPrompt={(uri) => void sendMessage(uri)}
+        />
+      ) : null}
 
       <ActionDatePickerSheet
         open={Boolean(schedulingLink)}

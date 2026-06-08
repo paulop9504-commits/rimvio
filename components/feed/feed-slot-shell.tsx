@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Settings2 } from "lucide-react";
-import { FeedCalendarHeaderControls } from "@/components/feed/feed-calendar-header-controls";
+import { CalendarHeaderControls } from "@/components/calendar/calendar-header-controls";
 import { toast } from "sonner";
 import { ActiveActionsSheet } from "@/components/action-chat/active-actions-sheet";
 import { FeedSharedGlobeRecall } from "@/components/feed/feed-shared-globe-recall";
@@ -14,6 +14,7 @@ import { RimvioLogo } from "@/components/rimvio-logo";
 import { SurfaceStabilityStrip } from "@/components/surface-composition/surface-stability-strip";
 import type { SurfaceCompositionRuntimeProps } from "@/components/surface-composition/surface-composition-runtime";
 import { useActionCalendar } from "@/hooks/use-action-calendar";
+import { useCalendarSurfaceQuery } from "@/hooks/use-calendar-surface-query";
 import { useCapabilityDispatch } from "@/hooks/use-capability-dispatch";
 import { useCopy } from "@/hooks/use-copy";
 import { useFeedSlotChatMessages } from "@/hooks/use-feed-slot-chat-messages";
@@ -102,6 +103,19 @@ export function FeedSlotShell({ className, onOpenLinkPaste }: FeedSlotShellProps
   });
   const surfaceFeedback = useSurfaceActionFeedback();
   const [activeActionsOpen, setActiveActionsOpen] = useState(false);
+  const { clearCalendarQuery } = useCalendarSurfaceQuery({
+    onOpenSheet: () => setActiveActionsOpen(true),
+    onOpenFull: () => router.push("/search?calendar=full"),
+  });
+  const handleActiveActionsOpenChange = useCallback(
+    (open: boolean) => {
+      setActiveActionsOpen(open);
+      if (!open && searchParams.get("calendar") === "sheet") {
+        clearCalendarQuery();
+      }
+    },
+    [clearCalendarQuery, searchParams],
+  );
   const [groupRooms, setGroupRooms] = useState<
     readonly { peerThreadId: string; displayName: string }[]
   >([]);
@@ -186,19 +200,20 @@ export function FeedSlotShell({ className, onOpenLinkPaste }: FeedSlotShellProps
           className,
         )}
       >
-        <header className="shrink-0 border-b border-white/10 bg-rimvio-base/80 px-3 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-md sm:px-5">
+        <header className="shrink-0 border-b border-border bg-card/95 px-3 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-md sm:px-5">
           <div className="flex min-h-9 items-center justify-between gap-2">
-            <RimvioLogo size="sm" className="h-7 shrink-0" appearance="white" />
+            <RimvioLogo size="sm" className="h-7 shrink-0" appearance="dark" />
             <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
               <RelationshipFeedFolder />
-              <FeedCalendarHeaderControls
+              <CalendarHeaderControls
                 badgeCount={badgeCount}
                 onOpenSheet={() => setActiveActionsOpen(true)}
+                onOpenFull={() => router.push("/search?calendar=full")}
               />
               <Link
                 href="/welcome"
                 aria-label="설정"
-                className="flex size-8 items-center justify-center rounded-full bg-transparent text-white transition-opacity hover:opacity-80 active:scale-95 sm:size-9"
+                className="flex size-8 items-center justify-center rounded-full bg-transparent text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-95 sm:size-9"
               >
                 <Settings2 className="size-[1.15rem] sm:size-5" strokeWidth={2.1} />
               </Link>
@@ -246,7 +261,7 @@ export function FeedSlotShell({ className, onOpenLinkPaste }: FeedSlotShellProps
 
       <ActiveActionsSheet
         open={activeActionsOpen}
-        onOpenChange={setActiveActionsOpen}
+        onOpenChange={handleActiveActionsOpenChange}
         calendar={calendarForSheet}
         contextByMessageId={{}}
         onCancelScheduled={() => {}}
@@ -258,6 +273,7 @@ export function FeedSlotShell({ className, onOpenLinkPaste }: FeedSlotShellProps
           router.push("/search");
           toast.message("검색에서 일정을 말해 보세요");
         }}
+        onOpenFullCalendar={() => router.push("/search?calendar=full")}
       />
     </>
   );

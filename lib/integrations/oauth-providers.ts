@@ -47,8 +47,9 @@ export const OAUTH_PROVIDER_CONFIGS: Partial<
   },
 };
 
-export function integrationOAuthCallbackUrl(): string {
-  return `${resolveAppOrigin()}/api/integrations/oauth/callback`;
+export function integrationOAuthCallbackUrl(origin?: string): string {
+  const base = (origin ?? resolveAppOrigin()).replace(/\/$/, "");
+  return `${base}/api/integrations/oauth/callback`;
 }
 
 export function readOAuthClientCredentials(provider: IntegrationProviderId): {
@@ -76,6 +77,7 @@ export function isOAuthProviderConfigured(provider: IntegrationProviderId): bool
 export function buildOAuthAuthorizeUrl(
   provider: IntegrationProviderId,
   state: string,
+  origin?: string,
 ): string | null {
   const config = OAUTH_PROVIDER_CONFIGS[provider];
   const creds = readOAuthClientCredentials(provider);
@@ -85,7 +87,7 @@ export function buildOAuthAuthorizeUrl(
 
   const params = new URLSearchParams({
     client_id: creds.clientId,
-    redirect_uri: integrationOAuthCallbackUrl(),
+    redirect_uri: integrationOAuthCallbackUrl(origin),
     response_type: "code",
     state,
   });
@@ -104,6 +106,7 @@ export function buildOAuthAuthorizeUrl(
 export async function exchangeOAuthCode(
   provider: IntegrationProviderId,
   code: string,
+  origin?: string,
 ): Promise<IntegrationSecretPayload & { scopes?: string[] }> {
   const config = OAUTH_PROVIDER_CONFIGS[provider];
   const creds = readOAuthClientCredentials(provider);
@@ -114,7 +117,7 @@ export async function exchangeOAuthCode(
   const body = new URLSearchParams({
     grant_type: "authorization_code",
     code,
-    redirect_uri: integrationOAuthCallbackUrl(),
+    redirect_uri: integrationOAuthCallbackUrl(origin),
   });
 
   const headers: Record<string, string> = {

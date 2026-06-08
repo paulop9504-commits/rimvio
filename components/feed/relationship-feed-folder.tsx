@@ -37,7 +37,7 @@ export function RelationshipFeedFolder({ className }: RelationshipFeedFolderProp
           "relative flex size-8 items-center justify-center rounded-full transition-all active:scale-95 sm:size-9",
           hasUnread
             ? "text-amber-400 hover:text-amber-300"
-            : "bg-transparent text-white hover:opacity-80",
+            : "bg-transparent text-muted-foreground hover:text-foreground",
           className,
         )}
       >

@@ -9,10 +9,11 @@ import {
   readOAuthStateCookie,
 } from "@/lib/integrations/oauth-state";
 import { catalogEntryFor } from "@/lib/integrations/catalog";
+import { integrationStatusPath } from "@/lib/integrations/oauth-redirect";
 import { tryCreateClient } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
-  const origin = resolveAppOrigin();
+  const origin = resolveAppOrigin(request);
   const code = request.nextUrl.searchParams.get("code");
   const stateParam = request.nextUrl.searchParams.get("state");
   const oauthError = request.nextUrl.searchParams.get("error");
@@ -39,16 +40,24 @@ export async function GET(request: NextRequest) {
 
   const userId = await getAuthUserId();
   if (!userId || (state.userId && state.userId !== userId)) {
-    return NextResponse.redirect(`${origin}/welcome?integration=login_required`);
+    return NextResponse.redirect(
+      `${origin}${integrationStatusPath(state.next, "login_required", {
+        provider: state.provider,
+      })}`,
+    );
   }
 
   const supabase = await tryCreateClient();
   if (!supabase) {
-    return NextResponse.redirect(`${origin}/welcome?integration=storage_unavailable`);
+    return NextResponse.redirect(
+      `${origin}${integrationStatusPath(state.next, "storage_unavailable", {
+        provider: state.provider,
+      })}`,
+    );
   }
 
   try {
-    const tokenPayload = await exchangeOAuthCode(state.provider, code);
+    const tokenPayload = await exchangeOAuthCode(state.provider, code, origin);
     const entry = catalogEntryFor(state.provider);
     const label =
       tokenPayload.workspace_name ??
@@ -65,7 +74,9 @@ export async function GET(request: NextRequest) {
       scopes: Array.isArray(tokenPayload.scopes) ? tokenPayload.scopes : entry?.oauthScopes,
     });
 
-    const redirect = `${origin}${state.next}?integration=connected&provider=${state.provider}`;
+    const redirect = `${origin}${integrationStatusPath(state.next, "connected", {
+      provider: state.provider,
+    })}`;
     const response = NextResponse.redirect(redirect);
     response.cookies.set(OAUTH_STATE_COOKIE_NAME, "", { path: "/", maxAge: 0 });
     return response;
@@ -73,7 +84,10 @@ export async function GET(request: NextRequest) {
     console.error("[integrations/oauth/callback]", error);
     const reason = error instanceof Error ? error.message : "oauth_failed";
     return NextResponse.redirect(
-      `${origin}/welcome?integration=error&reason=${encodeURIComponent(reason)}`,
+      `${origin}${integrationStatusPath(state.next, "error", {
+        provider: state.provider,
+        reason,
+      })}`,
     );
   }
 }

@@ -24,14 +24,14 @@ export function CalendarEmptyActions({
     <div className={cn("space-y-3", className)}>
       <div
         className={cn(
-          "rounded-2xl border border-dashed border-white/10 bg-rimvio-surface/[0.03] px-4 py-8 text-center",
+          "rounded-2xl border border-dashed border-border bg-secondary/60 px-4 py-8 text-center",
           compact && "py-5",
         )}
       >
-        <p className="text-[14px] font-medium leading-snug text-[#E5E7EB]">
+        <p className="text-[14px] font-medium leading-snug text-foreground">
           {copy.calendar.emptyTitle}
         </p>
-        <p className="mx-auto mt-2 max-w-[18rem] text-[12px] leading-5 text-[#9CA3AF]">
+        <p className="mx-auto mt-2 max-w-[18rem] text-[12px] leading-5 text-muted-foreground">
           {copy.calendar.emptyBody}
         </p>
         <div className="mx-auto mt-4 flex max-w-[16rem] flex-col gap-2">

@@ -24,8 +24,8 @@ export function PeerHubEmptyState({
       )}
       aria-label={copy.peers.emptyTitle}
     >
-      <h2 className="text-[14px] font-semibold text-white">{copy.peers.emptyTitle}</h2>
-      <p className="text-[12px] leading-relaxed text-white/55">{copy.peers.emptyBody}</p>
+      <h2 className="text-[14px] font-semibold text-foreground">{copy.peers.emptyTitle}</h2>
+      <p className="text-[12px] leading-relaxed text-muted-foreground">{copy.peers.emptyBody}</p>
       <button
         type="button"
         onClick={onAddFriend}

@@ -1,21 +1,36 @@
 "use client";
 
+import { useMemo } from "react";
+import { usePathname } from "next/navigation";
 import { CalendarPlus } from "lucide-react";
 import { useCopy } from "@/hooks/use-copy";
 import { useCalendarGoogleActions } from "@/hooks/use-calendar-google-actions";
+import {
+  calendarOAuthReturnPath,
+  type CalendarOAuthSurface,
+} from "@/lib/calendar/calendar-oauth-return-path";
 import { IOS } from "@/lib/ui/ios-surface";
 import { cn } from "@/lib/utils";
 
 type CalendarGoogleConnectBannerProps = {
   className?: string;
+  oauthReturnPath?: string;
+  oauthSurface?: CalendarOAuthSurface;
   onConnected?: () => void;
 };
 
 export function CalendarGoogleConnectBanner({
   className,
+  oauthReturnPath,
+  oauthSurface = "sheet",
   onConnected,
 }: CalendarGoogleConnectBannerProps) {
   const copy = useCopy();
+  const pathname = usePathname();
+  const resolvedOauthReturnPath = useMemo(
+    () => oauthReturnPath ?? calendarOAuthReturnPath(oauthSurface, pathname),
+    [oauthReturnPath, oauthSurface, pathname],
+  );
   const { available, connected, connectGoogle } = useCalendarGoogleActions();
 
   if (!available || connected) {
@@ -44,7 +59,7 @@ export function CalendarGoogleConnectBanner({
             type="button"
             onClick={() => {
               onConnected?.();
-              connectGoogle();
+              connectGoogle(resolvedOauthReturnPath);
             }}
             className={cn(
               "mt-3 h-10 w-full text-[13px] font-semibold",

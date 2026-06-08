@@ -35,7 +35,7 @@ function MessageTime({ time, compact }: { time: string; compact?: boolean }) {
   return (
     <span
       className={cn(
-        "shrink-0 self-end leading-none text-white/35",
+        "shrink-0 self-end leading-none text-muted-foreground/70",
         compact ? cn(DM_CHAT.timeText, "pb-px") : "pb-1 text-[10px]",
       )}
     >
@@ -133,15 +133,15 @@ export function PeerChatBubble({
           className={cn(
             "whitespace-pre-wrap break-words px-2.5 py-1.5",
             simple
-              ? cn(DM_CHAT.bubbleText, isMe ? "text-[#191919]" : "text-[#f5f5f5]")
+              ? cn(DM_CHAT.bubbleText, isMe ? "text-white" : "text-foreground")
               : cn("text-[15px]", isMe ? "text-white" : "text-foreground"),
             isMe && simple
-              ? "bg-[#FEE500]"
+              ? "bg-primary"
               : !simple && isMe
-                ? "bg-rimvio-neon-purple"
+                ? "bg-primary"
                 : simple
-                  ? "bg-[#2c2c2e]"
-                  : "bg-rimvio-surface-raised",
+                  ? "bg-secondary"
+                  : "bg-secondary",
           )}
         >
           {caption}
@@ -160,14 +160,14 @@ export function PeerChatBubble({
               DM_CHAT.bubbleText,
               DM_CHAT.bubbleRadius,
               isMe
-                ? cn(DM_CHAT.bubbleMeCorner, "bg-[#FEE500] text-[#191919]")
-                : cn(DM_CHAT.bubblePeerCorner, "bg-[#2c2c2e] text-[#f5f5f5]"),
+                ? cn(DM_CHAT.bubbleMeCorner, "bg-primary text-white")
+                : cn(DM_CHAT.bubblePeerCorner, "bg-secondary text-foreground"),
             )
           : cn(
               "rounded-2xl px-4 py-2.5 text-[17px] leading-snug",
               isMe
-                ? "rounded-br-md bg-rimvio-neon-purple text-white"
-                : "rounded-bl-md bg-rimvio-surface-raised text-foreground",
+                ? "rounded-br-md bg-primary text-white"
+                : "rounded-bl-md bg-secondary text-foreground",
             ),
       )}
     >

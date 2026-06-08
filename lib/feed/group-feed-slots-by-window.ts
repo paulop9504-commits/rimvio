@@ -21,7 +21,10 @@ export type FeedSlotWindowLabels = {
   unset: string;
 };
 
-function windowIdForSlot(slot: FeedTodaySlot, now: Date): FeedSlotWindowId {
+export function resolveFeedSlotWindowId(
+  slot: FeedTodaySlot,
+  now = new Date(),
+): FeedSlotWindowId {
   const startMs = resolveSlotStartMs(slot);
   if (startMs === null) {
     return "unset";
@@ -53,7 +56,7 @@ export function groupFeedSlotsByWindow(
   }
 
   for (const slot of slots) {
-    const id = windowIdForSlot(slot, now);
+    const id = resolveFeedSlotWindowId(slot, now);
     buckets.get(id)!.push(slot);
   }
 

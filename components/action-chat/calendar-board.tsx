@@ -97,7 +97,7 @@ function LiveTimeBar({
         style={{ top, transform: "translateY(-50%)" }}
       >
         <span
-          className="size-2.5 rounded-full shadow-[0_0_0_2px_#1F2937]"
+          className="size-2.5 rounded-full shadow-[0_0_0_2px_var(--rimvio-base)]"
           style={{ backgroundColor: LIVE_BAR_COLOR }}
         />
       </div>
@@ -127,7 +127,7 @@ function CalendarOriginLegend({ compact }: { compact?: boolean }) {
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center gap-2 text-[10px] text-[#9CA3AF]",
+        "flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground",
         compact ? "mb-2" : "mb-3 shrink-0 px-0.5",
       )}
     >
@@ -153,7 +153,7 @@ function CalendarEmptyHint({ compact }: { compact?: boolean }) {
   return (
     <p
       className={cn(
-        "mx-auto max-w-[18rem] text-center text-[12px] leading-5 text-[#9CA3AF]",
+        "mx-auto max-w-[18rem] text-center text-[12px] leading-5 text-muted-foreground",
         compact ? "mb-2" : "mb-3 shrink-0 px-2",
       )}
     >
@@ -177,14 +177,14 @@ function CalendarEmpty({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-dashed border-white/10 bg-rimvio-surface/[0.03] px-4 py-8 text-center",
+        "rounded-2xl border border-dashed border-border bg-secondary/60 px-4 py-8 text-center",
         compact && "py-5",
       )}
     >
-      <p className="text-[14px] font-medium leading-snug text-[#E5E7EB]">
+      <p className="text-[14px] font-medium leading-snug text-foreground">
         {copy.calendar.emptyTitle}
       </p>
-      <p className="mx-auto mt-2 max-w-[16rem] text-[12px] leading-5 text-[#9CA3AF]">
+      <p className="mx-auto mt-2 max-w-[16rem] text-[12px] leading-5 text-muted-foreground">
         {copy.calendar.emptyListBody}
       </p>
     </div>
@@ -220,20 +220,20 @@ function ListAgendaOverlayView({
         <div
           key={bucket.dateKey}
           className={cn(
-            "flex gap-3 border-b border-white/[0.06] py-3",
+            "flex gap-3 border-b border-border py-3",
             index === 0 && "pt-1"
           )}
         >
           <div className="flex w-10 shrink-0 flex-col items-center pt-0.5">
-            <span className="text-[10px] font-medium text-[#9CA3AF]">{bucket.weekdayLabel}</span>
+            <span className="text-[10px] font-medium text-muted-foreground">{bucket.weekdayLabel}</span>
             <span
               className={cn(
                 "mt-0.5 flex size-8 items-center justify-center rounded-full text-[15px] font-semibold",
                 bucket.isToday
-                  ? "bg-[#4285F4] text-white"
+                  ? "bg-primary text-white"
                   : bucket.isPast
                     ? "text-muted-foreground"
-                    : "text-[#F3F4F6]"
+                    : "text-foreground"
               )}
             >
               {bucket.dayNumber}
@@ -279,7 +279,7 @@ function TimeGutter({
 }) {
   return (
     <div
-      className="relative shrink-0 bg-[#1F2937]"
+      className="relative shrink-0 bg-rimvio-base"
       style={{ width: TIME_GUTTER_WIDTH }}
     >
       <div className="relative" style={{ height: gridHeight }}>
@@ -292,7 +292,7 @@ function TimeGutter({
         {hours.map((hour, index) => (
           <div
             key={hour}
-            className="absolute left-0 right-0 pr-2 text-right text-[11px] font-medium tabular-nums leading-none text-[#9CA3AF]"
+            className="absolute left-0 right-0 pr-2 text-right text-[11px] font-medium tabular-nums leading-none text-muted-foreground"
             style={{
               top: index * GRID_HOUR_HEIGHT,
               transform: "translateY(-50%)",
@@ -302,7 +302,7 @@ function TimeGutter({
           </div>
         ))}
         <div
-          className="absolute left-0 right-0 pr-2 text-right text-[11px] font-medium tabular-nums leading-none text-[#9CA3AF]"
+          className="absolute left-0 right-0 pr-2 text-right text-[11px] font-medium tabular-nums leading-none text-muted-foreground"
           style={{ top: gridHeight, transform: "translateY(-50%)" }}
         >
           24:00
@@ -334,7 +334,7 @@ function AllDayRow({
   }
 
   return (
-    <div className="flex border-b border-white/[0.06]">
+    <div className="flex border-b border-border">
       {showGutter ? (
         <div
           className="shrink-0 px-2 py-2 text-[9px] text-muted-foreground"
@@ -348,7 +348,7 @@ function AllDayRow({
         style={{ gridTemplateColumns: dayColumnsStyle(buckets.length) }}
       >
         {buckets.map((bucket) => (
-          <div key={`allday-${bucket.dateKey}`} className="space-y-1 border-l border-white/[0.04] p-1">
+          <div key={`allday-${bucket.dateKey}`} className="space-y-1 border-l border-border p-1">
             {bucket.overlayRows
               .filter((row) => !row.event.hasTime)
               .map((row) => (
@@ -404,8 +404,8 @@ function TimeGridView({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="shrink-0 flex border-b border-white/[0.06]">
-        <div className="shrink-0 bg-[#1F2937]" style={{ width: TIME_GUTTER_WIDTH }} />
+      <div className="shrink-0 flex border-b border-border">
+        <div className="shrink-0 bg-rimvio-base" style={{ width: TIME_GUTTER_WIDTH }} />
         <div
           className="grid min-w-0 flex-1 overflow-x-auto"
           style={{
@@ -415,11 +415,11 @@ function TimeGridView({
         >
           {buckets.map((bucket) => (
             <div key={bucket.dateKey} className="py-2 text-center">
-              <p className="text-[10px] text-[#9CA3AF]">{bucket.weekdayLabel}</p>
+              <p className="text-[10px] text-muted-foreground">{bucket.weekdayLabel}</p>
               <p
                 className={cn(
                   "mx-auto mt-0.5 flex size-7 items-center justify-center rounded-full text-[13px] font-semibold",
-                  bucket.isToday ? "bg-[#4285F4] text-white" : "text-[#E5E7EB]"
+                  bucket.isToday ? "bg-primary text-white" : "text-foreground"
                 )}
               >
                 {bucket.dayNumber}
@@ -461,12 +461,12 @@ function TimeGridView({
               {buckets.map((bucket) => (
                 <div
                   key={`grid-${bucket.dateKey}`}
-                  className="relative border-l border-white/[0.04] bg-[#1F2937]/50"
+                  className="relative border-l border-border bg-secondary/50"
                 >
                   {hours.map((hour, index) => (
                     <div
                       key={hour}
-                      className="absolute inset-x-0 border-t border-white/[0.04]"
+                      className="absolute inset-x-0 border-t border-border"
                       style={{ top: index * GRID_HOUR_HEIGHT, height: GRID_HOUR_HEIGHT }}
                     />
                   ))}
@@ -494,7 +494,7 @@ function TimeGridView({
                       return (
                         <div
                           key={row.id}
-                          className="absolute inset-x-1 z-10 overflow-hidden rounded-md bg-[#1F2937]/90 p-0.5"
+                          className="absolute inset-x-1 z-10 overflow-hidden rounded-md bg-card/95 p-0.5 shadow-sm"
                           style={{
                             top: Math.max(0, top),
                             minHeight: blockHeight,
@@ -549,14 +549,14 @@ function MonthGridView({
 
   return (
     <div className="min-h-0 flex-1">
-      <div className="mb-1.5 grid grid-cols-7 border-b border-white/[0.06] pb-1.5 text-center text-[10px] font-semibold text-[#9CA3AF]">
+      <div className="mb-1.5 grid grid-cols-7 border-b border-border pb-1.5 text-center text-[10px] font-semibold text-muted-foreground">
         {weekdayHeaders.map((label) => (
           <span key={label}>{label}</span>
         ))}
       </div>
       <div className="space-y-0.5">
         {weeks.map((week, weekIndex) => (
-          <div key={weekIndex} className="grid grid-cols-7 gap-px rounded-lg bg-white/[0.04] p-px">
+          <div key={weekIndex} className="grid grid-cols-7 gap-px rounded-lg bg-border/40 p-px">
             {week.map((bucket) => {
               const inMonth = bucket.date.getMonth() === anchor.getMonth();
               return (
@@ -565,7 +565,7 @@ function MonthGridView({
                   type="button"
                   onClick={() => onDaySelect(bucket.date)}
                   className={cn(
-                    "min-h-[4.25rem] bg-[#1F2937] p-1 text-left transition-colors hover:bg-[#273244]",
+                    "min-h-[4.25rem] bg-rimvio-base p-1 text-left transition-colors hover:bg-secondary",
                     !inMonth && "opacity-35",
                     bucket.isToday && "ring-1 ring-inset ring-[#4285F4]/60 bg-[#4285F4]/10"
                   )}
@@ -573,7 +573,7 @@ function MonthGridView({
                   <span
                     className={cn(
                       "inline-flex size-6 items-center justify-center rounded-full text-[11px] font-semibold",
-                      bucket.isToday ? "bg-[#4285F4] text-white" : "text-[#E5E7EB]"
+                      bucket.isToday ? "bg-primary text-white" : "text-foreground"
                     )}
                   >
                     {bucket.dayNumber}
@@ -597,7 +597,7 @@ function MonthGridView({
                       </div>
                     ))}
                     {bucket.overlayRows.length > 2 ? (
-                      <p className="px-0.5 text-[9px] text-[#9CA3AF]">
+                      <p className="px-0.5 text-[9px] text-muted-foreground">
                         +{bucket.overlayRows.length - 2}개
                       </p>
                     ) : null}
@@ -635,7 +635,7 @@ function ViewSwitcher({
         className="fixed inset-0 z-[85] cursor-default bg-transparent"
         onClick={() => onOpenChange(false)}
       />
-      <div className="absolute right-0 top-full z-[86] mt-1.5 w-48 overflow-hidden rounded-2xl border border-white/10 bg-[#2D3748] shadow-xl">
+      <div className="absolute right-0 top-full z-[86] mt-1.5 w-48 overflow-hidden rounded-2xl border border-border bg-popover shadow-xl">
         <ul className="py-1">
           {VIEW_OPTIONS.map((mode) => {
             const selected = view === mode;
@@ -652,7 +652,7 @@ function ViewSwitcher({
                     "flex w-full items-center px-3 py-2.5 text-[13px] font-medium transition-colors",
                     selected
                       ? "bg-[#4285F4] text-foreground"
-                      : "text-[#F3F4F6] hover:bg-rimvio-surface/[0.06]"
+                      : "text-foreground hover:bg-accent"
                   )}
                 >
                   {CALENDAR_VIEW_LABELS[mode]}
@@ -789,8 +789,8 @@ export function CalendarBoard({
       className={cn(
         "relative",
         compact
-          ? "rounded-2xl bg-[#1F2937] px-3 py-3 text-[#F9FAFB]"
-          : "flex min-h-0 flex-1 flex-col bg-[#1F2937] text-[#F9FAFB]",
+          ? "rounded-2xl bg-card px-3 py-3 text-foreground shadow-sm ring-1 ring-border/60"
+          : "flex min-h-0 flex-1 flex-col bg-rimvio-base text-foreground",
         className
       )}
     >
@@ -808,7 +808,7 @@ export function CalendarBoard({
               <button
                 type="button"
                 onClick={() => shiftAnchor(-1)}
-                className="rounded-full p-1.5 text-[#9CA3AF] hover:bg-rimvio-surface/5"
+                className="rounded-full p-1.5 text-muted-foreground hover:bg-accent"
                 aria-label="이전"
               >
                 <ChevronLeft className="size-4" />
@@ -816,21 +816,21 @@ export function CalendarBoard({
               <button
                 type="button"
                 onClick={goToday}
-                className="truncate text-[15px] font-semibold text-[#F3F4F6] hover:underline"
+                className="truncate text-[15px] font-semibold text-foreground hover:underline"
               >
                 {formatMonthYear(anchor)}
               </button>
               <button
                 type="button"
                 onClick={() => shiftAnchor(1)}
-                className="rounded-full p-1.5 text-[#9CA3AF] hover:bg-rimvio-surface/5"
+                className="rounded-full p-1.5 text-muted-foreground hover:bg-accent"
                 aria-label="다음"
               >
                 <ChevronRight className="size-4" />
               </button>
             </>
           ) : (
-            <p className="text-[13px] font-semibold text-[#F3F4F6]">{compactTitle}</p>
+            <p className="text-[13px] font-semibold text-foreground">{compactTitle}</p>
           )}
         </div>
 
@@ -839,7 +839,7 @@ export function CalendarBoard({
             <button
               type="button"
               onClick={onExpand}
-              className="text-[11px] font-semibold text-[#93C5FD]"
+              className="text-[11px] font-semibold text-primary"
             >
               전체 {overlayRows.length}건
             </button>
@@ -854,8 +854,8 @@ export function CalendarBoard({
                 className={cn(
                   "rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors",
                   switcherOpen
-                    ? "bg-[#4285F4]/20 text-[#93C5FD]"
-                    : "text-[#93C5FD] hover:bg-rimvio-surface/5"
+                    ? "bg-primary/12 text-primary"
+                    : "text-primary hover:bg-accent"
                 )}
               >
                 {CALENDAR_VIEW_SHORT_LABELS[view]}
@@ -950,7 +950,7 @@ export function CalendarBoard({
           <button
             type="button"
             onClick={() => onAddSchedule?.()}
-            className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-20 flex size-12 items-center justify-center rounded-2xl bg-[#4285F4] text-white shadow-[0_4px_20px_rgba(66,133,244,0.45)] transition-transform hover:scale-105 active:scale-95"
+            className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-20 flex size-12 items-center justify-center rounded-2xl bg-primary text-white shadow-[0_4px_20px_rgba(88,101,242,0.35)] transition-transform hover:scale-105 active:scale-95"
             aria-label={copy.calendar.addScheduleAria}
           >
             <Plus className="size-6 stroke-[2.5]" />
@@ -959,33 +959,33 @@ export function CalendarBoard({
       ) : null}
 
       {selectedRow ? (
-        <div className="fixed inset-x-0 bottom-0 z-[90] mx-auto max-w-lg rounded-t-[20px] border border-white/10 bg-[#2D3748] p-4 shadow-2xl">
+        <div className="fixed inset-x-0 bottom-0 z-[90] mx-auto max-w-lg rounded-t-[20px] border border-border bg-popover p-4 shadow-2xl">
           <div className="mb-3 flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="truncate text-[15px] font-semibold text-[#F9FAFB]">
+              <p className="truncate text-[15px] font-semibold text-foreground">
                 {selectedRow.event.title}
               </p>
               <div className="mt-1 flex flex-wrap items-center gap-1.5">
                 {selectedRow.event.layer === "event" ? (
                   <CalendarScheduleOriginBadge origin={selectedRow.event.scheduleOrigin} />
                 ) : null}
-                <p className="text-[12px] text-[#9CA3AF]">
+                <p className="text-[12px] text-muted-foreground">
                   {selectedRow.event.hasTime
                     ? padTime(selectedRow.event.hour, selectedRow.event.minute)
                     : copy.calendar.allDay}
                 </p>
               </div>
               {selectedRow.event.layer === "event" ? (
-                <p className="mt-0.5 text-[11px] text-[#9CA3AF]">
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
                   {calendarScheduleOriginDetail(selectedRow.event.scheduleOrigin)}
                 </p>
               ) : (
-                <p className="mt-0.5 text-[12px] text-[#9CA3AF]">
+                <p className="mt-0.5 text-[12px] text-muted-foreground">
                   {copy.calendar.savedSchedule}
                 </p>
               )}
               {selectedPresentation ? (
-                <p className="mt-0.5 text-[12px] text-[#9CA3AF]">
+                <p className="mt-0.5 text-[12px] text-muted-foreground">
                   {selectedPresentation.timeLine} · {selectedPresentation.statusLabel}
                 </p>
               ) : null}
@@ -994,7 +994,7 @@ export function CalendarBoard({
                   {selectedRow.overlayActions.map((action) => (
                     <li
                       key={action.id}
-                      className="text-[12px] font-medium text-[#93C5FD]"
+                      className="text-[12px] font-medium text-primary"
                     >
                       {action.label}
                     </li>
@@ -1008,7 +1008,7 @@ export function CalendarBoard({
                 setSelectedRow(null);
                 setSelectedAction(null);
               }}
-              className="shrink-0 rounded-full p-1 text-[#9CA3AF] hover:bg-rimvio-surface/5"
+              className="shrink-0 rounded-full p-1 text-muted-foreground hover:bg-accent"
             >
               <X className="size-4" />
             </button>
