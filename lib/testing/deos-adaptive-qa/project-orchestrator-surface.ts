@@ -101,6 +101,16 @@ function countForkOptions(result: OrchestratorResult): number {
   if (result.experienceChoice?.options?.length) {
     return result.experienceChoice.options.length;
   }
+  const meta = result.metadata as
+    | { semantic_reason?: string; event_intent?: string }
+    | undefined;
+  if (
+    meta?.semantic_reason === "commit_gate_slot_collect" &&
+    meta?.event_intent === "meal" &&
+    (result.actions?.length ?? 0) >= 2
+  ) {
+    return result.actions!.length;
+  }
   return 0;
 }
 

@@ -5,11 +5,22 @@ import { classifyAiIntentUtterance } from "@/lib/action-chat/classify-ai-intent-
 const GENERIC_CLARIFY = "무엇을 도와드릴까요?";
 
 function countForkOptions(result: OrchestratorResult): number {
-  return (
+  const discoveryFork =
     (result.cafeDiscovery?.options?.length ?? 0) +
     (result.entityQuickPick?.options?.length ?? 0) +
-    (result.experienceChoice?.options?.length ?? 0)
-  );
+    (result.experienceChoice?.options?.length ?? 0);
+
+  const meta = result.metadata as
+    | { semantic_reason?: string; event_intent?: string }
+    | undefined;
+  const mealCriterionFork =
+    meta?.semantic_reason === "commit_gate_slot_collect" &&
+    meta?.event_intent === "meal" &&
+    (result.actions?.length ?? 0) >= 2
+      ? result.actions!.length
+      : 0;
+
+  return discoveryFork > 0 ? discoveryFork : mealCriterionFork;
 }
 
 /** Honest projection from pipeline output — no semantic override (for stress tests). */
