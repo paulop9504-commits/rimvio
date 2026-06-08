@@ -16,6 +16,12 @@ const ICON: Record<PredictiveActionType, string> = {
   EXPENSE: "🧾",
   NEXT: "📅",
   REST: "☕",
+  SAVE: "💾",
+  CHECK: "✅",
+  LIST: "📋",
+  SHARE: "📍",
+  TICKET_QR: "🎫",
+  LINK: "🔗",
 };
 
 function chip(

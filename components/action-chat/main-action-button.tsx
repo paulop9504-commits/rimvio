@@ -9,12 +9,15 @@ import { cn } from "@/lib/utils";
 type MainActionBrandInput = Parameters<typeof resolveMainActionBrandStyle>[0];
 
 type MainActionButtonProps = {
-  label: React.ReactNode;
+  label?: React.ReactNode;
+  children?: React.ReactNode;
   /** Pre-resolved brand style (optional if `brandFrom` is set). */
   brand?: MainActionBrandStyle;
   /** Auto-resolve label color from label / deeplink / plugin — no manual color needed. */
   brandFrom?: MainActionBrandInput;
   onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  disabled?: boolean;
+  type?: "button" | "submit";
   compact?: boolean;
   /** Larger tap target — use on feed navigate chips. */
   tapTarget?: boolean;
@@ -26,20 +29,26 @@ type MainActionButtonProps = {
 /** MAIN tier — white border shell; label uses brand text color. */
 export function MainActionButton({
   label,
+  children,
   brand,
   brandFrom,
   onClick,
+  disabled = false,
+  type = "button",
   compact = false,
   tapTarget = false,
   rounded = "xl",
   className,
   icon,
 }: MainActionButtonProps) {
+  const content = children ?? label;
   const resolvedBrand =
     brand ??
     resolveMainActionBrandStyle({
       ...brandFrom,
-      label: brandFrom?.label ?? (typeof label === "string" ? label : undefined),
+      label:
+        brandFrom?.label ??
+        (typeof content === "string" ? content : typeof label === "string" ? label : undefined),
     });
 
   const roundedClass =
@@ -53,9 +62,11 @@ export function MainActionButton({
 
   return (
     <button
-      type="button"
+      type={type}
       onClick={onClick}
+      disabled={disabled}
       className={cn(
+        disabled && "pointer-events-none opacity-50",
         "rimvio-action-shell-btn flex w-full items-center justify-center gap-2 border bg-transparent font-semibold leading-none transition-colors hover:bg-[var(--main-action-hover-bg)] active:scale-[0.99]",
         roundedClass,
         compact
@@ -73,7 +84,11 @@ export function MainActionButton({
       }}
     >
       {icon}
-      <span className="truncate">{label}</span>
+      {typeof content === "string" ? (
+        <span className="truncate">{content}</span>
+      ) : (
+        content
+      )}
     </button>
   );
 }

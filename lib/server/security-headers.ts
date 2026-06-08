@@ -8,7 +8,7 @@ export function applySecurityHeaders(response: NextResponse) {
   response.headers.set("X-DNS-Prefetch-Control", "on");
   response.headers.set(
     "Permissions-Policy",
-    "camera=(), microphone=(), geolocation=(), payment=()"
+    "camera=(), microphone=(), geolocation=(self), payment=()"
   );
   response.headers.set("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
   response.headers.set("Cross-Origin-Resource-Policy", "same-site");

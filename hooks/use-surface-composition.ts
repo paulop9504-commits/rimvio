@@ -10,6 +10,8 @@ import {
   type UseSurfaceEngineInput,
 } from "@/hooks/use-surface-engine";
 
+export type { UseSurfaceEngineInput };
+
 /**
  * Surface Composition hook — engine output → graph → layout slots.
  * UI shells must use this (or `frame` from it), not raw surface lists.

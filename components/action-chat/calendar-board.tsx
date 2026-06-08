@@ -623,7 +623,7 @@ function ViewSwitcher({
 }
 
 export type CalendarBoardProps = {
-  overlayRows: UnifiedCalendarOverlayRow[];
+  overlayRows?: UnifiedCalendarOverlayRow[];
   contextByMessageId?: Record<string, string>;
   /** Stream/chat actions — executed on action click, not event structure. */
   renderStreamAction?: (entry: ActiveActionEntry) => React.ReactNode;

@@ -13,7 +13,7 @@ import {
   resolveMentionFeature,
 } from "@/lib/event-kernel/action-contracts/mention-feature-registry";
 
-const LINKSHEET_MENTION = /^@(\S+)(?:\s+(.*))?$/su;
+const LINKSHEET_MENTION = /^@(\S+)(?:\s+([\s\S]*))?$/u;
 const URL_IN_TEXT = /https?:\/\/[^\s]+/iu;
 
 function createChatMessage(

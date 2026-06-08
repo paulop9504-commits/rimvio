@@ -46,7 +46,7 @@ export function computeFrameDiff(
       continue;
     }
     const currentSnapshot = itemSnapshot(current, id);
-    const previousSnapshot = itemSnapshot(previous, id);
+    const previousSnapshot = previous ? itemSnapshot(previous, id) : null;
     if (currentSnapshot !== previousSnapshot) {
       updated.push(id);
     }

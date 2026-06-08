@@ -22,6 +22,8 @@ export type DockActionWire = {
   label: string;
   execution: DockExecutionWire;
   lifecycle?: "WARM" | "ACTIVE" | "ARCHIVED";
+  /** Optional ranking explanation for MAIN dock chip. */
+  rankingWhy?: string;
 };
 
 export type DockUpdateWire = {

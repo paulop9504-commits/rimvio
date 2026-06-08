@@ -28,9 +28,9 @@ export function usePeerThreadSettings(options: UsePeerThreadSettingsOptions) {
     getOrCreatePeerThreadSettings(options)
   );
   const [roster, setRoster] = useState<PinnedPeerRoster>(() => readPinnedRoster());
-  const [pinError, setPinError] = useState<SetPeerThreadPinnedResult["reason"] | null>(
-    null
-  );
+  const [pinError, setPinError] = useState<
+    Extract<SetPeerThreadPinnedResult, { ok: false }>["reason"] | null
+  >(null);
 
   const policy = useMemo(
     () => ({

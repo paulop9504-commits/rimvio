@@ -328,7 +328,9 @@ export function SettingsIntegrationsPanel({
           provider={entry.id}
           connected={isConnected(entry.id)}
           maskedSecret={integrationByProvider.get(entry.id)?.maskedSecret ?? null}
-          onSave={(secret) => saveApiKey({ provider: entry.id, secret })}
+          onSave={async (secret) => {
+            await saveApiKey({ provider: entry.id, secret });
+          }}
           onDisconnect={() => disconnect(entry.id)}
           copy={copy}
         />

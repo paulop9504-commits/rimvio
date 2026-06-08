@@ -123,19 +123,19 @@ export function buildSlotClarifyResult(input: {
       ? [
           {
             id: "meal-fork-region",
-            kind: "search" as const,
+            kind: "custom" as const,
             label: "지역 맛집",
             payload: { meal_criterion: "location", query: "근처 맛집" },
           },
           {
             id: "meal-fork-menu",
-            kind: "search" as const,
+            kind: "custom" as const,
             label: "메뉴 추천",
             payload: { meal_criterion: "menu", query: message.trim() || "오늘 메뉴" },
           },
           {
             id: "meal-fork-vibe",
-            kind: "search" as const,
+            kind: "custom" as const,
             label: "분위기 맛집",
             payload: { meal_criterion: "vibe", query: "분위기 좋은 식당" },
           },
