@@ -27,6 +27,7 @@ const ALLOWLIST: readonly string[] = [
   "lib/events/notification-ingest.ts",
   "lib/events/chat-scheduled-ingest.ts",
   "lib/events/link-reminder-ingest.ts",
+  "lib/events/google-calendar-ingest.ts",
   "lib/events/event-lifecycle-runner.ts",
   "lib/events/normalize-anchor-id.ts",
   "lib/action-event-registry/action-event-store.ts",

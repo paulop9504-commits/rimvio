@@ -5,10 +5,13 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Calendar, Link2, X } from "lucide-react";
 import { CalendarBoard } from "@/components/action-chat/calendar-board";
+import { CalendarGoogleConnectBanner } from "@/components/calendar/calendar-google-connect-banner";
+import { CalendarToolbar } from "@/components/calendar/calendar-toolbar";
 import { MainActionButton } from "@/components/action-chat/main-action-button";
 import { resolveMainActionBrandStyle } from "@/lib/brand/action-brand-style";
 import type { ActiveActionEntry } from "@/lib/action-chat/active-actions-registry";
 import type { ActionCalendarSheetView } from "@/hooks/use-action-calendar";
+import { useCopy } from "@/hooks/use-copy";
 
 type ActiveActionsSheetProps = {
   open: boolean;
@@ -170,6 +173,7 @@ export function ActiveActionsSheet({
   onOpenLink,
   onAddSchedule,
 }: ActiveActionsSheetProps) {
+  const copy = useCopy();
   const [mounted, setMounted] = useState(false);
   const { overlayRows, attachedActionCount, rowCount } = calendar;
 
@@ -196,7 +200,7 @@ export function ActiveActionsSheet({
           />
           <motion.div
             role="dialog"
-            aria-label="캘린더"
+            aria-label={copy.nav.calendar}
             className="fixed inset-x-0 bottom-0 z-[81] mx-auto flex max-h-[min(88vh,760px)] max-w-lg flex-col overflow-hidden rounded-t-[24px] border border-white/10 bg-[#1F2937] shadow-[0_-12px_40px_rgba(0,0,0,0.35)]"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
@@ -209,11 +213,13 @@ export function ActiveActionsSheet({
                   <Calendar className="size-4" />
                 </div>
                 <div>
-                  <p className="text-[15px] font-semibold text-[#F3F4F6]">캘린더</p>
+                  <p className="text-[15px] font-semibold text-[#F3F4F6]">
+                    {copy.nav.calendar}
+                  </p>
                   <p className="text-[11px] text-[#9CA3AF]">
                     {rowCount > 0
-                      ? `일정 ${rowCount} · 행동 ${attachedActionCount}개 연결`
-                      : "저장된 일정·행동 제안"}
+                      ? copy.calendar.sheetSummary(rowCount, attachedActionCount)
+                      : copy.calendar.sheetSummaryEmpty}
                   </p>
                 </div>
               </div>
@@ -226,12 +232,27 @@ export function ActiveActionsSheet({
               </button>
             </div>
 
-            <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden pl-0 pr-2 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 sm:pr-3">
+            <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2">
+              <CalendarToolbar
+                variant="sheet"
+                showLegend
+                showFullScreenLink
+                onOpenFullScreen={() => onOpenChange(false)}
+                className="mb-2 shrink-0"
+              />
+
+              {overlayRows.length === 0 ? (
+                <CalendarGoogleConnectBanner className="mb-2 shrink-0" />
+              ) : null}
+
               <CalendarBoard
                 variant="full"
                 defaultView="month"
                 overlayRows={overlayRows}
                 contextByMessageId={contextByMessageId}
+                hideOriginLegend
+                showEmptyActions
+                className="min-h-0 flex-1"
                 onAddSchedule={() => {
                   onOpenChange(false);
                   onAddSchedule?.();

@@ -33,6 +33,18 @@ export const OAUTH_PROVIDER_CONFIGS: Partial<
       owner: "user",
     },
   },
+  google_calendar: {
+    provider: "google_calendar",
+    authorizeUrl: "https://accounts.google.com/o/oauth2/v2/auth",
+    tokenUrl: "https://oauth2.googleapis.com/token",
+    scopes: ["https://www.googleapis.com/auth/calendar.readonly"],
+    clientIdEnv: "GOOGLE_CLIENT_ID",
+    clientSecretEnv: "GOOGLE_CLIENT_SECRET",
+    extraAuthorizeParams: {
+      access_type: "offline",
+      prompt: "consent",
+    },
+  },
 };
 
 export function integrationOAuthCallbackUrl(): string {
@@ -160,6 +172,18 @@ export async function exchangeOAuthCode(
       notion_workspace_id: workspaceId,
       notion_workspace_name: workspace,
       scopes: [],
+    };
+  }
+
+  if (provider === "google_calendar") {
+    return {
+      access_token: String(json.access_token ?? ""),
+      refresh_token:
+        typeof json.refresh_token === "string" ? json.refresh_token : undefined,
+      scopes:
+        typeof json.scope === "string"
+          ? json.scope.split(" ").filter(Boolean)
+          : config.scopes,
     };
   }
 

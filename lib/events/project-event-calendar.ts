@@ -1,5 +1,6 @@
 import { parseActionTargetDatetime } from "@/lib/action-chat/action-countdown";
 import type { CalendarChipTone, CalendarEventChip } from "@/lib/calendar/calendar-view-types";
+import { resolveCalendarScheduleOrigin } from "@/lib/calendar/resolve-calendar-schedule-origin";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { readLifeProjections } from "@/lib/life-read-model";
 
@@ -9,6 +10,7 @@ export type EventCalendarRow = {
   startAt: string;
   startMs: number;
   category: EventCandidate["category"];
+  sourceRef?: string;
 };
 
 function dateKeyFrom(date: Date): string {
@@ -57,12 +59,18 @@ export function listEventCalendarRows(): EventCalendarRow[] {
       if (!parsed) {
         return null;
       }
+      const sourceRef =
+        typeof event.metadata?.sourceRef === "string"
+          ? event.metadata.sourceRef
+          : undefined;
+
       return {
         eventId: event.id,
         title: event.title,
         startAt: iso,
         startMs: parsed.getTime(),
         category: event.category,
+        sourceRef,
       };
     })
     .filter((row): row is EventCalendarRow => row !== null)
@@ -89,6 +97,10 @@ export function projectEventCalendarChips(
       minute: parsed.getMinutes(),
       tone: toneForCategory(row.category),
       hasTime: row.startAt.includes("T"),
+      scheduleOrigin: resolveCalendarScheduleOrigin({
+        sourceRef: row.sourceRef,
+        eventId: row.eventId,
+      }),
     };
   });
 }

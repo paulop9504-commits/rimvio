@@ -10,7 +10,8 @@ const hrefs = [...appNav.matchAll(/href:\s*"([^"]+)"/g)]
   .map((match) => match[1])
   .filter((href) => href.startsWith("/"));
 
-assert.equal(hrefs.length, 4, `expected 4 nav tabs, got ${hrefs.length}: ${hrefs.join(", ")}`);
+assert.equal(hrefs.length, 5, `expected 5 nav tabs, got ${hrefs.length}: ${hrefs.join(", ")}`);
+assert.ok(hrefs.includes("/calendar"), "calendar tab must be in app nav");
 assert.ok(!hrefs.includes("/globe"), "globe tab must be removed from app nav");
 assert.ok(!appNav.includes("Globe2"), "Globe2 icon import must be removed");
 assert.ok(
@@ -18,8 +19,8 @@ assert.ok(
   "nav tabs must use button controls for reliable touch",
 );
 assert.ok(
-  globals.includes("repeat(4, minmax(0, 1fr))"),
-  "bottom nav grid must be 4 columns",
+  globals.includes("repeat(5, minmax(0, 1fr))"),
+  "bottom nav grid must be 5 columns",
 );
 assert.ok(
   appNav.includes("window.location.assign"),

@@ -15,7 +15,9 @@ import {
 import type { IntegrationSecretPayload } from "@/lib/integrations/types";
 import { IOS } from "@/lib/ui/ios-surface";
 import { cn } from "@/lib/utils";
-import { Check, KeyRound, Link2, Unplug } from "lucide-react";
+import { GoogleCalendarOAuthSetupHint } from "@/components/settings/google-calendar-oauth-setup-hint";
+import { useCalendarGoogleActions } from "@/hooks/use-calendar-google-actions";
+import { Check, KeyRound, Link2, RefreshCw, Unplug } from "lucide-react";
 
 function IntegrationRowShell({
   title,
@@ -49,14 +51,20 @@ function IntegrationRowShell({
 function OAuthRow({
   provider,
   connected,
+  oauthReady,
   onConnect,
   onDisconnect,
+  onSync,
+  syncing,
   copy,
 }: {
   provider: IntegrationProviderId;
   connected: boolean;
+  oauthReady: boolean;
   onConnect: () => void;
   onDisconnect: () => void;
+  onSync?: () => Promise<void>;
+  syncing?: boolean;
   copy: ReturnType<typeof useCopy>;
 }) {
   const entry = catalogEntryFor(provider);
@@ -67,21 +75,46 @@ function OAuthRow({
   return (
     <IntegrationRowShell
       title={`${entry.emoji} ${entry.label}`}
-      hint={entry.hint}
+      hint={
+        oauthReady
+          ? entry.hint
+          : `${entry.hint} · ${copy.calendar.oauthSetupPending}`
+      }
       connected={connected}
     >
-      {connected ? (
-        <button
-          type="button"
-          onClick={onDisconnect}
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium",
-            IOS.secondaryBtn,
-          )}
-        >
-          <Unplug className="size-3.5" />
-          {copy.settings.integrationsDisconnect}
-        </button>
+      {!oauthReady ? (
+        <p className="w-full text-[12px] leading-relaxed text-muted-foreground">
+          {copy.calendar.oauthSetupPending}
+        </p>
+      ) : connected ? (
+        <>
+          {onSync ? (
+            <button
+              type="button"
+              disabled={syncing}
+              onClick={() => void onSync()}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium",
+                IOS.primaryBtn,
+                "h-auto min-h-0 w-auto py-2",
+              )}
+            >
+              <RefreshCw className={cn("size-3.5", syncing && "animate-spin")} />
+              {syncing ? copy.calendar.syncing : copy.calendar.syncGoogle}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={onDisconnect}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium",
+              IOS.secondaryBtn,
+            )}
+          >
+            <Unplug className="size-3.5" />
+            {copy.settings.integrationsDisconnect}
+          </button>
+        </>
       ) : (
         <button
           type="button"
@@ -263,12 +296,19 @@ export function SettingsIntegrationsPanel({
     isConnected,
     sync,
   } = useIntegrations();
+  const {
+    runSync: runGoogleCalendarSync,
+    syncing: googleCalendarSyncing,
+  } = useCalendarGoogleActions();
 
   const oauthProviders = useMemo(
     () =>
       INTEGRATION_CATALOG.filter((item) => {
         if (!item.authKinds.includes("oauth")) {
           return false;
+        }
+        if (item.id === "google_calendar") {
+          return true;
         }
         return (
           isConnected(item.id) ||
@@ -277,6 +317,8 @@ export function SettingsIntegrationsPanel({
       }),
     [integrations, oauthConfigured],
   );
+
+  const googleCalendarOauthReady = oauthConfigured.google_calendar;
 
   const apiKeyProviders = useMemo(
     () =>
@@ -301,6 +343,9 @@ export function SettingsIntegrationsPanel({
     if (status === "connected" && provider) {
       toast.success(copy.settings.integrationsOAuthSuccess(provider));
       void sync();
+      if (provider === "google_calendar") {
+        void runGoogleCalendarSync().catch(() => {});
+      }
     } else if (status === "login_required") {
       toast.message(copy.settings.integrationsLoginRequired);
     } else if (status === "error") {
@@ -312,13 +357,27 @@ export function SettingsIntegrationsPanel({
     <p className="text-[13px] text-muted-foreground">{copy.settings.integrationsLoading}</p>
   ) : (
     <div className="space-y-2">
+      {!googleCalendarOauthReady ? (
+        <GoogleCalendarOAuthSetupHint />
+      ) : null}
       {oauthProviders.map((entry) => (
         <OAuthRow
           key={entry.id}
           provider={entry.id}
           connected={isConnected(entry.id)}
+          oauthReady={
+            entry.id === "google_calendar"
+              ? googleCalendarOauthReady
+              : Boolean(oauthConfigured[entry.id as keyof typeof oauthConfigured])
+          }
           onConnect={() => startOAuth(entry.id)}
           onDisconnect={() => void disconnect(entry.id)}
+          onSync={
+            entry.id === "google_calendar" && isConnected(entry.id)
+              ? runGoogleCalendarSync
+              : undefined
+          }
+          syncing={entry.id === "google_calendar" ? googleCalendarSyncing : false}
           copy={copy}
         />
       ))}

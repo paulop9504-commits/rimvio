@@ -53,6 +53,7 @@ export async function GET() {
   const oauthConfigured = {
     slack: isOAuthProviderConfigured("slack"),
     notion: isOAuthProviderConfigured("notion"),
+    google_calendar: isOAuthProviderConfigured("google_calendar"),
   };
 
   if (!userId || !supabase) {

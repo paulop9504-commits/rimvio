@@ -18,6 +18,7 @@ import { ReminderPoller } from "@/components/reminder-poller";
 import { ServiceWorkerBootstrap } from "@/components/service-worker-bootstrap";
 import { NativeBridgeBoot } from "@/components/native-bridge-boot";
 import { GpsPingBootstrap } from "@/components/gps-ping-bootstrap";
+import { GoogleCalendarSyncBootstrap } from "@/components/google-calendar-sync-bootstrap";
 import { ExperienceGravityBootstrap } from "@/components/experience-gravity-bootstrap";
 import { AlbumSyncBootstrap } from "@/components/album-sync-bootstrap";
 import { AlbumSyncProgressChip } from "@/components/album-sync-progress-chip";
@@ -41,6 +42,7 @@ export function Providers({ children, initialLocale }: ProvidersProps) {
           {!isAuthRequired() ? <DevDemoSeed /> : null}
           <IosShareBanner />
           <GpsPingBootstrap />
+          <GoogleCalendarSyncBootstrap />
           <ExperienceGravityBootstrap />
           <AlbumSyncBootstrap />
           <AlbumSyncProgressChip />

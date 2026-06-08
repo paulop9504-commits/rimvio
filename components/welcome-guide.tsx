@@ -178,7 +178,9 @@ export function WelcomeGuide() {
 
       <SettingsAlbumSyncPanel />
 
-      <SettingsIntegrationsPanel variant="embedded" />
+      <div id="integrations" className="scroll-mt-4">
+        <SettingsIntegrationsPanel variant="embedded" />
+      </div>
 
       <SettingsSection title={copy.welcome.privacyTitle}>
         <Link
@@ -196,6 +198,9 @@ export function WelcomeGuide() {
         </Link>
         <Link href="/feed" className={cn("min-w-[45%] flex-1 text-center", IOS.secondaryBtn)}>
           {copy.nav.feed}
+        </Link>
+        <Link href="/calendar" className={cn("w-full py-3 text-center text-[15px] font-semibold", IOS.secondaryBtn)}>
+          {copy.nav.calendar}
         </Link>
         <Link
           href="/welcome?paste=1"

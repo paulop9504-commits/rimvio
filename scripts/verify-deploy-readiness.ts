@@ -6,6 +6,8 @@ import { collectHealthReport } from "../lib/server/health-check";
 import { isSupabaseConfigured } from "../lib/supabase/config";
 import { missingSupabaseEnvKeys } from "../lib/auth/setup";
 import { getAuthCallbackUrl } from "../lib/auth/redirect-url";
+import { isGoogleCalendarOAuthConfigured } from "../lib/google-calendar/oauth-setup";
+import { integrationOAuthCallbackUrl } from "../lib/integrations/oauth-providers";
 
 function loadEnvFile(fileName: string) {
   const envPath = path.join(process.cwd(), fileName);
@@ -98,6 +100,15 @@ checks.push({
       (pulledEnvMasked && appUrlFromRemote),
   ),
   detail: `callback: ${getAuthCallbackUrl()}`,
+});
+
+const googleOauthReady = isGoogleCalendarOAuthConfigured();
+checks.push({
+  id: "google-calendar-oauth",
+  ok: true,
+  detail: googleOauthReady
+    ? `configured · ${integrationOAuthCallbackUrl()}`
+    : "optional — GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET not set",
 });
 
 async function main() {

@@ -69,6 +69,8 @@ export type SurfaceEventRef = {
   title: string;
   startAt?: string;
   lifecycle: string;
+  /** Event SSOT metadata — calendar UI uses for origin badge. */
+  sourceRef?: string;
 };
 
 export type SurfaceNarration = {

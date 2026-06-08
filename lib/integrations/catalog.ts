@@ -19,6 +19,14 @@ export const INTEGRATION_CATALOG: IntegrationCatalogEntry[] = [
     apiKeyPlaceholder: "secret_… Integration Token",
   },
   {
+    id: "google_calendar",
+    label: "Google Calendar",
+    emoji: "📅",
+    hint: "일정을 prep surface로 가져오기 (읽기 전용)",
+    authKinds: ["oauth"],
+    oauthScopes: ["https://www.googleapis.com/auth/calendar.readonly"],
+  },
+  {
     id: "naver_search",
     label: "Naver Search",
     emoji: "🔍",

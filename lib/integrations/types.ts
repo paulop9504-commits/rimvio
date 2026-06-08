@@ -5,6 +5,7 @@ export type IntegrationAuthKind = "oauth" | "api_key";
 export type IntegrationProviderId =
   | "slack"
   | "notion"
+  | "google_calendar"
   | "naver_search"
   | "openweather"
   | "openai";

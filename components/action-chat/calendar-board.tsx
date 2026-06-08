@@ -1,7 +1,10 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
+import { CalendarEmptyActions } from "@/components/calendar/calendar-empty-actions";
+import { useCopy } from "@/hooks/use-copy";
 import type { ActiveActionEntry } from "@/lib/action-chat/active-actions-registry";
 import { deriveActionCardPresentation } from "@/lib/action-chat/derive-action-card-presentation";
 import type {
@@ -25,7 +28,9 @@ import {
   threeDayRange,
   weekRange,
 } from "@/lib/calendar/project-action-stream";
+import { CalendarScheduleOriginBadge } from "@/components/action-chat/calendar-schedule-origin-badge";
 import { OverlayEventChip } from "@/components/action-chat/overlay-event-chip";
+import { calendarEventChipClass, calendarScheduleOriginDetail } from "@/lib/calendar/resolve-calendar-schedule-origin";
 import { cn } from "@/lib/utils";
 
 const VIEW_OPTIONS: CalendarViewMode[] = ["list", "day", "3day", "week", "month"];
@@ -113,18 +118,38 @@ function LiveTimeBar({
   );
 }
 
-const CHIP_TONE_CLASS: Record<CalendarEventChip["tone"], string> = {
-  blue: "bg-[#4285F4] text-white",
-  teal: "bg-[#0D9488] text-white",
-  grey: "bg-[#4B5563] text-white",
-  green: "bg-[#16A34A] text-white",
-};
-
 function padTime(hour: number, minute: number): string {
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
+function CalendarOriginLegend({ compact }: { compact?: boolean }) {
+  const copy = useCopy();
+  return (
+    <div
+      className={cn(
+        "flex flex-wrap items-center gap-2 text-[10px] text-[#9CA3AF]",
+        compact ? "mb-2" : "mb-3 shrink-0 px-0.5",
+      )}
+    >
+      <span className="inline-flex items-center gap-1">
+        <span className="inline-flex size-3 rounded-sm bg-[#0D9488]" aria-hidden />
+        <CalendarScheduleOriginBadge origin="rimvio" size="xs" />
+        <span>{copy.calendar.originRimvio}</span>
+      </span>
+      <span className="inline-flex items-center gap-1">
+        <span
+          className="inline-flex size-3 rounded-sm border border-[#4285F4]/60 bg-[#4285F4]/15"
+          aria-hidden
+        />
+        <CalendarScheduleOriginBadge origin="google_calendar" size="xs" />
+        <span>{copy.calendar.originGoogle}</span>
+      </span>
+    </div>
+  );
+}
+
 function CalendarEmptyHint({ compact }: { compact?: boolean }) {
+  const copy = useCopy();
   return (
     <p
       className={cn(
@@ -132,12 +157,23 @@ function CalendarEmptyHint({ compact }: { compact?: boolean }) {
         compact ? "mb-2" : "mb-3 shrink-0 px-2",
       )}
     >
-      아직 등록된 일정이 없어요. 일정을 말하거나 + 버튼으로 추가하면 여기에 쌓여요.
+      {copy.calendar.emptyHint}
     </p>
   );
 }
 
-function CalendarEmpty({ compact }: { compact?: boolean }) {
+function CalendarEmpty({
+  compact,
+  showActions,
+}: {
+  compact?: boolean;
+  showActions?: boolean;
+}) {
+  const copy = useCopy();
+
+  if (showActions) {
+    return <CalendarEmptyActions compact={compact} />;
+  }
   return (
     <div
       className={cn(
@@ -146,10 +182,10 @@ function CalendarEmpty({ compact }: { compact?: boolean }) {
       )}
     >
       <p className="text-[14px] font-medium leading-snug text-[#E5E7EB]">
-        아직 등록된 일정이 없어요
+        {copy.calendar.emptyTitle}
       </p>
       <p className="mx-auto mt-2 max-w-[16rem] text-[12px] leading-5 text-[#9CA3AF]">
-        공유 타이머·예약 실행·일정 말하면 그 시간에 쌓이는 실행이 여기 쌓여요
+        {copy.calendar.emptyListBody}
       </p>
     </div>
   );
@@ -158,12 +194,14 @@ function CalendarEmpty({ compact }: { compact?: boolean }) {
 function ListAgendaOverlayView({
   buckets,
   compact,
+  showEmptyActions,
   onEventSelect,
   onActionSelect,
   onSpawnPrompt,
 }: {
   buckets: UnifiedCalendarDayBucket[];
   compact?: boolean;
+  showEmptyActions?: boolean;
   onEventSelect: (event: CalendarEventChip) => void;
   onActionSelect: (action: CalendarOverlayAction) => void;
   onSpawnPrompt?: (uri: string) => void;
@@ -173,7 +211,7 @@ function ListAgendaOverlayView({
     : buckets;
 
   if (visible.every((bucket) => bucket.overlayRows.length === 0)) {
-    return <CalendarEmpty compact={compact} />;
+    return <CalendarEmpty compact={compact} showActions={showEmptyActions} />;
   }
 
   return (
@@ -545,11 +583,17 @@ function MonthGridView({
                       <div
                         key={row.id}
                         className={cn(
-                          "truncate rounded px-1 py-0.5 text-[9px] font-medium",
-                          CHIP_TONE_CLASS[row.event.tone]
+                          "flex items-center gap-0.5 truncate rounded px-1 py-0.5 text-[9px] font-medium",
+                          calendarEventChipClass(row.event),
                         )}
                       >
-                        {row.event.title}
+                        {row.event.layer === "event" ? (
+                          <CalendarScheduleOriginBadge
+                            origin={row.event.scheduleOrigin}
+                            size="xs"
+                          />
+                        ) : null}
+                        <span className="min-w-0 truncate">{row.event.title}</span>
                       </div>
                     ))}
                     {bucket.overlayRows.length > 2 ? (
@@ -635,6 +679,11 @@ export type CalendarBoardProps = {
   onExpand?: () => void;
   onAddSchedule?: () => void;
   onSpawnPrompt?: (uri: string) => void;
+  /** Parent renders CalendarToolbar — hide built-in origin legend. */
+  hideOriginLegend?: boolean;
+  /** Empty list shows talk-schedule + Google connect CTAs. */
+  showEmptyActions?: boolean;
+  headerSlot?: ReactNode;
 };
 
 export function CalendarBoard({
@@ -648,7 +697,11 @@ export function CalendarBoard({
   onExpand,
   onAddSchedule,
   onSpawnPrompt,
+  hideOriginLegend = false,
+  showEmptyActions = false,
+  headerSlot,
 }: CalendarBoardProps) {
+  const copy = useCopy();
   const compact = variant === "compact";
   const [view, setView] = useState<CalendarViewMode>(compact ? "list" : defaultView);
   const [anchor, setAnchor] = useState(() => new Date());
@@ -741,6 +794,13 @@ export function CalendarBoard({
         className
       )}
     >
+      {headerSlot ? <div className="mb-2 shrink-0">{headerSlot}</div> : null}
+
+      {!hideOriginLegend &&
+      overlayRows.some((row) => row.event.layer === "event") ? (
+        <CalendarOriginLegend compact={compact} />
+      ) : null}
+
       <div className="mb-3 flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-1">
           {!compact ? (
@@ -824,6 +884,7 @@ export function CalendarBoard({
           <ListAgendaOverlayView
             buckets={buckets}
             compact={compact}
+            showEmptyActions={showEmptyActions}
             onSpawnPrompt={onSpawnPrompt}
             onEventSelect={(event) => {
               const row = overlayRows.find((item) => item.event.id === event.id);
@@ -844,7 +905,13 @@ export function CalendarBoard({
           />
         ) : view === "month" ? (
           <>
-            {overlayRows.length === 0 ? <CalendarEmptyHint /> : null}
+            {overlayRows.length === 0 ? (
+              showEmptyActions ? (
+                <CalendarEmptyActions className="mb-3" />
+              ) : (
+                <CalendarEmptyHint />
+              )
+            ) : null}
             <MonthGridView
               anchor={anchor}
               overlayRows={overlayRows}
@@ -884,7 +951,7 @@ export function CalendarBoard({
             type="button"
             onClick={() => onAddSchedule?.()}
             className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-20 flex size-12 items-center justify-center rounded-2xl bg-[#4285F4] text-white shadow-[0_4px_20px_rgba(66,133,244,0.45)] transition-transform hover:scale-105 active:scale-95"
-            aria-label="일정 추가"
+            aria-label={copy.calendar.addScheduleAria}
           >
             <Plus className="size-6 stroke-[2.5]" />
           </button>
@@ -898,12 +965,25 @@ export function CalendarBoard({
               <p className="truncate text-[15px] font-semibold text-[#F9FAFB]">
                 {selectedRow.event.title}
               </p>
-              <p className="mt-0.5 text-[12px] text-[#9CA3AF]">
-                {selectedRow.event.hasTime
-                  ? padTime(selectedRow.event.hour, selectedRow.event.minute)
-                  : "종일"}{" "}
-                · 저장된 일정
-              </p>
+              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                {selectedRow.event.layer === "event" ? (
+                  <CalendarScheduleOriginBadge origin={selectedRow.event.scheduleOrigin} />
+                ) : null}
+                <p className="text-[12px] text-[#9CA3AF]">
+                  {selectedRow.event.hasTime
+                    ? padTime(selectedRow.event.hour, selectedRow.event.minute)
+                    : copy.calendar.allDay}
+                </p>
+              </div>
+              {selectedRow.event.layer === "event" ? (
+                <p className="mt-0.5 text-[11px] text-[#9CA3AF]">
+                  {calendarScheduleOriginDetail(selectedRow.event.scheduleOrigin)}
+                </p>
+              ) : (
+                <p className="mt-0.5 text-[12px] text-[#9CA3AF]">
+                  {copy.calendar.savedSchedule}
+                </p>
+              )}
               {selectedPresentation ? (
                 <p className="mt-0.5 text-[12px] text-[#9CA3AF]">
                   {selectedPresentation.timeLine} · {selectedPresentation.statusLabel}

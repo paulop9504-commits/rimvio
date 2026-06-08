@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Calendar, Settings2 } from "lucide-react";
+import { Settings2 } from "lucide-react";
+import { FeedCalendarHeaderControls } from "@/components/feed/feed-calendar-header-controls";
 import { toast } from "sonner";
 import { ActiveActionsSheet } from "@/components/action-chat/active-actions-sheet";
 import { FeedSharedGlobeRecall } from "@/components/feed/feed-shared-globe-recall";
@@ -190,23 +191,10 @@ export function FeedSlotShell({ className, onOpenLinkPaste }: FeedSlotShellProps
             <RimvioLogo size="sm" className="h-7 shrink-0" appearance="white" />
             <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
               <RelationshipFeedFolder />
-              <button
-                type="button"
-                aria-label="캘린더"
-                onClick={() => setActiveActionsOpen(true)}
-                className="relative flex size-8 items-center justify-center rounded-full bg-transparent text-white transition-opacity hover:opacity-80 active:scale-95 sm:size-9"
-              >
-                <Calendar className="size-[1.15rem] sm:size-5" strokeWidth={2.1} />
-                <span
-                  className={cn(
-                    "absolute -right-0.5 -top-0.5 flex size-4 min-w-4 items-center justify-center rounded-full bg-rimvio-base px-0.5 text-[9px] font-extrabold tabular-nums leading-none text-rimvio-neon-amber shadow-[0_0_8px_rgba(255,214,10,0.35)] sm:-right-1 sm:-top-1 sm:size-[1.125rem] sm:min-w-[1.125rem] sm:text-[10px]",
-                    badgeCount <= 0 && "pointer-events-none opacity-0",
-                  )}
-                  aria-hidden={badgeCount <= 0}
-                >
-                  {badgeCount > 9 ? "9+" : badgeCount || "1"}
-                </span>
-              </button>
+              <FeedCalendarHeaderControls
+                badgeCount={badgeCount}
+                onOpenSheet={() => setActiveActionsOpen(true)}
+              />
               <Link
                 href="/welcome"
                 aria-label="설정"

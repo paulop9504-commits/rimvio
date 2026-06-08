@@ -7,6 +7,7 @@ import type {
   CalendarOverlayAction,
   UnifiedCalendarOverlayRow,
 } from "@/lib/calendar/calendar-view-types";
+import { resolveCalendarScheduleOrigin } from "@/lib/calendar/resolve-calendar-schedule-origin";
 import { composeUnifiedCalendarOverlay } from "@/lib/calendar/compose-unified-calendar-overlay";
 import {
   dedupeCalendarChips,
@@ -55,6 +56,10 @@ function surfaceToEventChip(surface: RankedSurface, anchor: Date): CalendarEvent
     minute: parsed.getMinutes(),
     tone: toneForType(surface.type),
     hasTime: ref.startAt.includes("T"),
+    scheduleOrigin: resolveCalendarScheduleOrigin({
+      sourceRef: ref.sourceRef,
+      eventId: ref.eventId,
+    }),
   };
 }
 

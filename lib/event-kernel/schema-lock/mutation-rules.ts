@@ -20,6 +20,7 @@ export const LOCKED_SSOT_WRITE_CALLER_PREFIXES = [
   "lib/events/event-ingest-pipeline",
   "lib/events/link-reminder-ingest",
   "lib/events/chat-scheduled-ingest",
+  "lib/events/google-calendar-ingest",
   "lib/events/notification-ingest",
   "lib/events/event-lifecycle-runner",
   "lib/action-event-registry/",

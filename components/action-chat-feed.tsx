@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Calendar, FolderGit2, Settings2 } from "lucide-react";
+import { FolderGit2, Settings2 } from "lucide-react";
+import { FeedCalendarHeaderControls } from "@/components/feed/feed-calendar-header-controls";
 import {
   ActionDatePickerSheet,
 } from "@/components/action-chat/action-date-picker-sheet";
@@ -522,23 +523,10 @@ export function ActionChatFeed({
                   </span>
                 </button>
               ) : null}
-              <button
-                type="button"
-                aria-label="캘린더"
-                onClick={() => setActiveActionsOpen(true)}
-                className="relative flex size-8 items-center justify-center rounded-full bg-transparent text-white transition-opacity hover:opacity-80 active:scale-95 sm:size-9"
-              >
-                <Calendar className="size-[1.15rem] sm:size-5" strokeWidth={2.1} />
-                <span
-                  className={cn(
-                    "absolute -right-0.5 -top-0.5 flex size-4 min-w-4 items-center justify-center rounded-full bg-rimvio-base px-0.5 text-[9px] font-extrabold tabular-nums leading-none text-rimvio-neon-amber shadow-[0_0_8px_rgba(255,214,10,0.35)] sm:-right-1 sm:-top-1 sm:size-[1.125rem] sm:min-w-[1.125rem] sm:text-[10px]",
-                    badgeCount <= 0 && "pointer-events-none opacity-0",
-                  )}
-                  aria-hidden={badgeCount <= 0}
-                >
-                  {badgeCount > 9 ? "9+" : badgeCount || "1"}
-                </span>
-              </button>
+              <FeedCalendarHeaderControls
+                badgeCount={badgeCount}
+                onOpenSheet={() => setActiveActionsOpen(true)}
+              />
               {isSlot ? (
               <Link
                 href="/welcome"

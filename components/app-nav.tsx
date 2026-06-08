@@ -8,7 +8,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
-import { Search, Settings, Users } from "lucide-react";
+import { Calendar, Search, Settings, Users } from "lucide-react";
 import { RimvioFeedMark } from "@/lib/brand/rimvio-feed-mark";
 import { useCopy } from "@/hooks/use-copy";
 import { useRoomGuest } from "@/hooks/use-room-guest";
@@ -26,7 +26,7 @@ type NavTab = {
   href: string;
   label: string;
   isActive: (pathname: string) => boolean;
-  icon: "feed" | "search" | "peers" | "settings";
+  icon: "feed" | "search" | "calendar" | "peers" | "settings";
 };
 
 function isSameNavTab(href: string, pathname: string): boolean {
@@ -112,6 +112,15 @@ function NavTabIcon({
           variant={guest.avatarVariant}
           drawn={guest.avatarDrawn}
         />
+      );
+    case "calendar":
+      return (
+        <NavIconSlot>
+          <Calendar
+            className={cn(NAV_ICON_CLASS, active ? "text-foreground" : "text-foreground/70")}
+            strokeWidth={NAV_ICON_STROKE}
+          />
+        </NavIconSlot>
       );
     case "peers":
       return (
@@ -367,6 +376,12 @@ export function AppNav({ placement }: AppNavProps) {
         label: copy.nav.search,
         isActive: (p) => p === "/search" || p.startsWith("/search/"),
         icon: "search",
+      },
+      {
+        href: "/calendar",
+        label: copy.nav.calendar,
+        isActive: (p) => p === "/calendar" || p.startsWith("/calendar/"),
+        icon: "calendar",
       },
       {
         href: "/peers",

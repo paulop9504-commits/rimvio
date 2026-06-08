@@ -1,5 +1,6 @@
 import type { ActiveActionEntry } from "@/lib/action-chat/active-actions-registry";
 import type { ProjectedEventAction } from "@/lib/action-projection/types";
+import type { CalendarScheduleOrigin } from "@/lib/calendar/resolve-calendar-schedule-origin";
 
 export type CalendarViewMode = "list" | "day" | "3day" | "week" | "month";
 
@@ -22,6 +23,8 @@ export type CalendarEventChip = {
   minute: number;
   tone: CalendarChipTone;
   hasTime: boolean;
+  /** Event layer — Rimvio-native vs Google Calendar sync. */
+  scheduleOrigin?: CalendarScheduleOrigin;
 };
 
 export type CalendarDayBucket = {

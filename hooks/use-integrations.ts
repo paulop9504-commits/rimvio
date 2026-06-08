@@ -18,6 +18,7 @@ import type {
 type Capabilities = {
   slack: boolean;
   notion: boolean;
+  google_calendar: boolean;
 };
 
 export function useIntegrations() {
@@ -26,6 +27,7 @@ export function useIntegrations() {
   const [oauthConfigured, setOauthConfigured] = useState<Capabilities>({
     slack: false,
     notion: false,
+    google_calendar: false,
   });
   const [persisted, setPersisted] = useState(false);
   const [loading, setLoading] = useState(true);

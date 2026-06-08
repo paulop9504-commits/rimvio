@@ -11,17 +11,12 @@ import {
 } from "@/lib/archive/record-action-telemetry";
 import { ActionDockWhyLine } from "@/components/action-dock/action-dock-why-line";
 import { cn } from "@/lib/utils";
+import { CalendarScheduleOriginBadge } from "@/components/action-chat/calendar-schedule-origin-badge";
 import type {
   CalendarEventChip,
   CalendarOverlayAction,
 } from "@/lib/calendar/calendar-view-types";
-
-const CHIP_TONE_CLASS: Record<CalendarEventChip["tone"], string> = {
-  blue: "bg-[#4285F4] text-white",
-  teal: "bg-[#0D9488] text-white",
-  grey: "bg-[#4B5563] text-white",
-  green: "bg-[#16A34A] text-white",
-};
+import { calendarEventChipClass } from "@/lib/calendar/resolve-calendar-schedule-origin";
 
 function padTime(hour: number, minute: number): string {
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
@@ -122,10 +117,16 @@ export function OverlayEventChip({
         onClick={() => onEventSelect?.(event)}
         className={cn(
           "flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-[12px] font-medium leading-tight transition-opacity hover:opacity-90",
-          CHIP_TONE_CLASS[event.tone],
+          calendarEventChipClass(event),
           compact && "py-1 text-[11px]",
         )}
       >
+        {event.layer === "event" ? (
+          <CalendarScheduleOriginBadge
+            origin={event.scheduleOrigin}
+            size={compact ? "xs" : "sm"}
+          />
+        ) : null}
         {timeLabel ? <span className="shrink-0 opacity-80">{timeLabel}</span> : null}
         <span className="min-w-0 truncate">{event.title}</span>
       </button>

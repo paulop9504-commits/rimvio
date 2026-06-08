@@ -60,7 +60,7 @@
     "test:action-decision": "npx tsx scripts/test-action-decision.ts",
     "test:secondary-action-generator": "npx tsx scripts/test-secondary-action-generator.ts",
     "test:action-spawn-lifecycle": "npx tsx scripts/test-action-spawn-lifecycle.ts",
-    "test:integrations": "npx tsx scripts/test-integrations.ts",
+    "test:integrations": "npx tsx scripts/test-integrations.ts && npx tsx scripts/test-google-calendar-ingest.ts && npx tsx scripts/test-calendar-schedule-origin.ts && npx tsx scripts/test-google-calendar-sync-throttle.ts && npx tsx scripts/test-google-calendar-oauth-config.ts",
     "test:intent-context-extractor": "npx tsx scripts/test-intent-context-extractor.ts",
     "test:context-understanding": "npx tsx scripts/test-context-understanding.ts",
     "test:llm-action-candidate-generator": "npx tsx scripts/test-llm-action-candidate-generator.ts",

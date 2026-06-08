@@ -115,11 +115,17 @@ function buildResources(event: EventCandidate): SurfaceResource[] {
 }
 
 function buildEventRef(event: EventCandidate): SurfaceEventRef {
+  const sourceRef =
+    typeof event.metadata?.sourceRef === "string"
+      ? event.metadata.sourceRef
+      : undefined;
+
   return {
     eventId: event.id,
     title: event.title,
     startAt: event.datetime,
     lifecycle: event.lifecycle,
+    sourceRef,
   };
 }
 
