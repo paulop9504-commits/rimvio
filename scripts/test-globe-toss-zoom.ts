@@ -2,7 +2,11 @@
 
 import assert from "node:assert/strict";
 import { GLOBE_TILE_MAX_ZOOM } from "../lib/globe/globe-tile-constants";
-import { buildGlobeTileEngineUrl } from "../lib/globe/globe-tile-engine-url";
+import {
+  buildGlobeTileEngineUrl,
+  globeTileEngineUrl,
+  resolveGlobeTileStyleForLevel,
+} from "../lib/globe/globe-tile-engine-url";
 import { resolveGlobePinLabelStyle } from "../lib/globe/resolve-globe-pin-label-style";
 import {
   altitudeForGlobeDetailLevel,
@@ -12,6 +16,10 @@ import { accuracyMetersToRingDegrees } from "../lib/globe/accuracy-ring-degrees"
 
 assert.equal(GLOBE_TILE_MAX_ZOOM, 20);
 assert.match(buildGlobeTileEngineUrl(120, 210, 21, "light"), /z=20/);
+assert.equal(resolveGlobeTileStyleForLevel(0), "voyager");
+assert.equal(resolveGlobeTileStyleForLevel(8), "voyager");
+assert.match(globeTileEngineUrl(120, 210, 8), /style=voyager/);
+assert.match(globeTileEngineUrl(120, 210, 3), /style=voyager/);
 
 assert.equal(resolveGlobeDetailLevel(2.2), "space");
 assert.equal(resolveGlobeDetailLevel(0.1), "city");

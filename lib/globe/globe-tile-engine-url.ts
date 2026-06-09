@@ -15,11 +15,14 @@ export function buildGlobeTileEngineUrl(
   return `/api/globe/tile?z=${z}&x=${tx}&y=${ty}&style=${style}`;
 }
 
-/** Toss-style light map at every zoom — no style switching. */
+/**
+ * Toss globe uses CARTO Voyager at every zoom — green land, blue ocean, road hierarchy.
+ * (Light tiles are too pale for overview; Voyager matches Google Maps coloring.)
+ */
 export function resolveGlobeTileStyleForLevel(_level: number): GlobeMapTileStyle {
-  return "light";
+  return "voyager";
 }
 
 export function globeTileEngineUrl(x: number, y: number, level: number): string {
-  return buildGlobeTileEngineUrl(x, y, level, "light");
+  return buildGlobeTileEngineUrl(x, y, level, resolveGlobeTileStyleForLevel(level));
 }

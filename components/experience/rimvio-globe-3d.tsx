@@ -15,6 +15,7 @@ import { createGlobe3dViewerPinElement } from "@/lib/globe/create-globe-3d-viewe
 import { accuracyMetersToRingDegrees } from "@/lib/globe/accuracy-ring-degrees";
 import { GLOBE_TILE_MAX_ZOOM } from "@/lib/globe/globe-tile-constants";
 import { globeTileEngineUrl } from "@/lib/globe/globe-tile-engine-url";
+import { useGlobeOverviewTexture } from "@/hooks/use-globe-equirect-texture";
 import { GLOBE_TOSS_THEME } from "@/lib/globe/globe-toss-theme";
 import type { GlobeViewerLocation } from "@/lib/globe/globe-viewer-location-types";
 import { clampGpsAccuracyMeters } from "@/lib/globe/format-gps-accuracy-label";
@@ -84,6 +85,7 @@ export const RimvioGlobe3D = memo(
     const pinsRef = useRef(pins);
     const tripArcsRef = useRef(tripArcs);
     const viewerLocationRef = useRef(viewerLocation);
+    const { textureUrl: overviewTextureUrl } = useGlobeOverviewTexture();
 
     onPinPressRef.current = onPinPress;
     onDetailLevelChangeRef.current = onDetailLevelChange;
@@ -227,6 +229,14 @@ export const RimvioGlobe3D = memo(
       }
       globe.arcsData([...tripArcs]);
     }, [tripArcs]);
+
+    useEffect(() => {
+      const globe = globeRef.current;
+      if (!globe || !overviewTextureUrl) {
+        return;
+      }
+      globe.globeImageUrl(overviewTextureUrl);
+    }, [overviewTextureUrl]);
 
     useEffect(() => {
       const globe = globeRef.current;
