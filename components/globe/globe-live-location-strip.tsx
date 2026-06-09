@@ -2,6 +2,7 @@
 
 import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
 import { useGpsTrackingEnabled } from "@/hooks/use-gps-tracking-enabled";
+import { formatGpsAccuracyLabel } from "@/lib/globe/format-gps-accuracy-label";
 import { cn } from "@/lib/utils";
 
 export type GlobeLiveLocationStripProps = {
@@ -53,11 +54,11 @@ export function GlobeLiveLocationStrip({ className }: GlobeLiveLocationStripProp
           <span className="font-semibold text-[#8b95a1]">시간</span>{" "}
           <span className="font-semibold text-[#191f28]">{snapshot.timeLabel}</span>
         </p>
-        {snapshot.accuracyM != null && snapshot.accuracyM > 0 ? (
+        {formatGpsAccuracyLabel(snapshot.accuracyM) ? (
           <p className="text-[11px] text-[#6b7684]">
             <span className="font-semibold text-[#8b95a1]">정확도</span>{" "}
             <span className="font-semibold text-[#3182f6]">
-              ±{Math.round(snapshot.accuracyM)}m
+              {formatGpsAccuracyLabel(snapshot.accuracyM)}
             </span>
           </p>
         ) : null}

@@ -20,8 +20,8 @@ assert.equal(resolveGlobeDetailLevel(0.003), "street");
 assert.equal(resolveGlobeDetailLevel(0.001), "pin");
 
 assert.ok(altitudeForGlobeDetailLevel("pin") < 0.002);
-assert.equal(resolveGlobePinLabelStyle("pin").resolution, 4);
-assert.equal(resolveGlobePinLabelStyle("city").show, true);
+assert.equal(resolveGlobePinLabelStyle("pin").show, false);
+assert.equal(resolveGlobePinLabelStyle("city").show, false);
 
 const ring = accuracyMetersToRingDegrees(37.5, 32);
 assert.ok(ring > 0.0002 && ring < 0.01);
