@@ -10,7 +10,7 @@ import {
 import { resolveGlobePinLabelStyle } from "../lib/globe/resolve-globe-pin-label-style";
 import {
   altitudeForGlobeDetailLevel,
-  GLOBE_MIN_CAMERA_ALTITUDE,
+  GLOBE_MIN_SAFE_ALTITUDE,
   resolveGlobeDetailLevel,
 } from "../lib/globe/globe-zoom-levels";
 import { accuracyMetersToRingDegrees } from "../lib/globe/accuracy-ring-degrees";
@@ -28,8 +28,7 @@ assert.equal(resolveGlobeDetailLevel(0.015), "neighborhood");
 assert.equal(resolveGlobeDetailLevel(0.003), "street");
 assert.equal(resolveGlobeDetailLevel(0.001), "pin");
 
-assert.ok(altitudeForGlobeDetailLevel("pin") < 0.001);
-assert.ok(GLOBE_MIN_CAMERA_ALTITUDE < altitudeForGlobeDetailLevel("pin"));
+assert.ok(altitudeForGlobeDetailLevel("pin") >= GLOBE_MIN_SAFE_ALTITUDE);
 assert.equal(resolveGlobePinLabelStyle("pin").show, false);
 assert.equal(resolveGlobePinLabelStyle("city").show, false);
 

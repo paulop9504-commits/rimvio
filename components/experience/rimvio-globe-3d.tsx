@@ -21,7 +21,7 @@ import type { GlobeViewerLocation } from "@/lib/globe/globe-viewer-location-type
 import { clampGpsAccuracyMeters } from "@/lib/globe/format-gps-accuracy-label";
 import {
   altitudeForGlobeDetailLevel,
-  GLOBE_MIN_CAMERA_ALTITUDE,
+  GLOBE_MIN_SAFE_ALTITUDE,
   resolveGlobeDetailLevel,
   type GlobeDetailLevel,
 } from "@/lib/globe/globe-zoom-levels";
@@ -86,7 +86,9 @@ export const RimvioGlobe3D = memo(
     const pinsRef = useRef(pins);
     const tripArcsRef = useRef(tripArcs);
     const viewerLocationRef = useRef(viewerLocation);
+    const overviewTextureUrlRef = useRef<string | null>(null);
     const { textureUrl: overviewTextureUrl } = useGlobeOverviewTexture();
+    overviewTextureUrlRef.current = overviewTextureUrl;
 
     onPinPressRef.current = onPinPress;
     onDetailLevelChangeRef.current = onDetailLevelChange;
@@ -125,7 +127,7 @@ export const RimvioGlobe3D = memo(
       const globe = new Globe(root, {
         animateIn: true,
         waitForGlobeReady: true,
-        rendererConfig: { antialias: true, alpha: true },
+        rendererConfig: { antialias: true, alpha: true, precision: "mediump" },
       })
         .backgroundColor("rgba(0,0,0,0)")
         .globeTileEngineUrl(globeTileEngineUrl)
@@ -193,8 +195,15 @@ export const RimvioGlobe3D = memo(
       controls.autoRotate = false;
       controls.enableDamping = true;
       controls.dampingFactor = 0.08;
-      controls.minDistance = 1 + GLOBE_MIN_CAMERA_ALTITUDE;
-      controls.zoomSpeed = 1.35;
+
+      const syncOverviewTexture = (altitude: number) => {
+        const overviewUrl = overviewTextureUrlRef.current;
+        if (altitude >= 0.42 && overviewUrl) {
+          globe.globeImageUrl(overviewUrl);
+          return;
+        }
+        globe.globeImageUrl(null);
+      };
 
       const syncDetailForAltitude = (altitude: number) => {
         const level = resolveGlobeDetailLevel(altitude);
@@ -202,10 +211,29 @@ export const RimvioGlobe3D = memo(
         shellRef.current?.setAttribute("data-globe-detail", level);
         globe.showAtmosphere(altitude >= GLOBE_TOSS_THEME.atmosphereCutoffAltitude);
         globe.labelsData([]);
+        syncOverviewTexture(altitude);
+      };
+
+      const handleZoom = (pov: { lat: number; lng: number; altitude: number }) => {
+        if (
+          !Number.isFinite(pov.altitude) ||
+          pov.altitude < GLOBE_MIN_SAFE_ALTITUDE
+        ) {
+          globe.pointOfView({ altitude: GLOBE_MIN_SAFE_ALTITUDE }, 0);
+          syncDetailForAltitude(GLOBE_MIN_SAFE_ALTITUDE);
+          return;
+        }
+        syncDetailForAltitude(pov.altitude);
       };
 
       syncDetailForAltitude(GLOBE_OVERVIEW_POINT_OF_VIEW.altitude);
-      globe.onZoom((pov) => syncDetailForAltitude(pov.altitude));
+      globe.onZoom(handleZoom);
+
+      globe.onGlobeReady(() => {
+        window.setTimeout(() => {
+          syncOverviewTexture(globe.pointOfView().altitude);
+        }, 0);
+      });
 
       globeRef.current = globe;
 
@@ -238,7 +266,10 @@ export const RimvioGlobe3D = memo(
       if (!globe || !overviewTextureUrl) {
         return;
       }
-      globe.globeImageUrl(overviewTextureUrl);
+      const { altitude } = globe.pointOfView();
+      if (altitude >= 0.42) {
+        globe.globeImageUrl(overviewTextureUrl);
+      }
     }, [overviewTextureUrl]);
 
     useEffect(() => {
