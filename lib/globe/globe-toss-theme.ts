@@ -15,4 +15,9 @@ export const GLOBE_TOSS_THEME = {
   hintInk: "#8b95a1",
   shellBg: "#f2f4f6",
   mapStyle: "light" as const,
+  tileMaxZoom: 20,
+  labelInk: "#191f28",
+  labelHalo: "rgba(255, 255, 255, 0.92)",
+  viewerRing: "rgba(49, 130, 246, 0.2)",
+  viewerRingStroke: "rgba(49, 130, 246, 0.45)",
 } as const;

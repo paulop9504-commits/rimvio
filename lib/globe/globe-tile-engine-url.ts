@@ -1,4 +1,5 @@
 import type { GlobeMapTileStyle } from "@/lib/experience-graph/build-globe-map-tiles";
+import { GLOBE_TILE_MAX_ZOOM } from "@/lib/globe/globe-tile-constants";
 
 /** Slippy-map tile URL for globe.gl `globeTileEngineUrl`. */
 export function buildGlobeTileEngineUrl(
@@ -7,7 +8,7 @@ export function buildGlobeTileEngineUrl(
   level: number,
   style: GlobeMapTileStyle = "satellite",
 ): string {
-  const z = Math.max(0, Math.min(18, Math.floor(level)));
+  const z = Math.max(0, Math.min(GLOBE_TILE_MAX_ZOOM, Math.floor(level)));
   const n = 2 ** z;
   const tx = ((Math.floor(x) % n) + n) % n;
   const ty = Math.max(0, Math.min(n - 1, Math.floor(y)));

@@ -39,7 +39,8 @@ assert.ok(gallery.some((row) => row.imageUrl?.includes("unsplash")));
 assert.equal(resolveGlobeDetailLevel(2.2), "space");
 assert.equal(resolveGlobeDetailLevel(0.1), "city");
 assert.equal(resolveGlobeDetailLevel(0.02), "neighborhood");
-assert.equal(resolveGlobeDetailLevel(0.004), "pin");
+assert.equal(resolveGlobeDetailLevel(0.004), "street");
+assert.equal(resolveGlobeDetailLevel(0.001), "pin");
 assert.equal(resolveGlobeTileStyleForLevel(5), "light");
 assert.equal(resolveGlobeTileStyleForLevel(16), "light");
 

@@ -155,6 +155,15 @@ const RimvioGlobeHubBody = memo(function RimvioGlobeHubBody({
         ref={globeRef}
         pins={globePins}
         tripArcs={tripArcs}
+        viewerLocation={
+          gpsEnabled && liveLocation
+            ? {
+                lat: liveLocation.lat,
+                lng: liveLocation.lng,
+                accuracyM: liveLocation.accuracyM,
+              }
+            : null
+        }
         activePinId={activePinId}
         className="h-full flex-1"
         onPinPress={handlePinPress}

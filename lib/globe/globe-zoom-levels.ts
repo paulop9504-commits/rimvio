@@ -1,11 +1,13 @@
 export const GLOBE_ALTITUDE = {
   overview: 2.2,
   region: 0.85,
-  city: 0.18,
+  city: 0.14,
   /** Apartment-district scale — roads + block labels. */
-  neighborhood: 0.022,
-  /** Pin-accurate — building / street names. */
-  pin: 0.005,
+  neighborhood: 0.018,
+  /** Street names legible — Toss map detail. */
+  street: 0.0045,
+  /** Building / alley — max tile zoom z20. */
+  pin: 0.0012,
 } as const;
 
 export type GlobeDetailLevel =
@@ -13,6 +15,7 @@ export type GlobeDetailLevel =
   | "region"
   | "city"
   | "neighborhood"
+  | "street"
   | "pin";
 
 /** @deprecated Use `pin` */
@@ -25,11 +28,14 @@ export function resolveGlobeDetailLevel(altitude: number): GlobeDetailLevel {
   if (altitude >= 0.42) {
     return "region";
   }
-  if (altitude >= 0.075) {
+  if (altitude >= 0.065) {
     return "city";
   }
-  if (altitude >= 0.012) {
+  if (altitude >= 0.01) {
     return "neighborhood";
+  }
+  if (altitude >= 0.0025) {
+    return "street";
   }
   return "pin";
 }

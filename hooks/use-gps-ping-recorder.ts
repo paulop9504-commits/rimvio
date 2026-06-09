@@ -25,9 +25,9 @@ function sampleGpsPing(source: "periodic" | "foreground") {
       // Permission denied or unavailable — stay silent.
     },
     {
-      enableHighAccuracy: false,
-      maximumAge: GPS_PING_INTERVAL_MS,
-      timeout: 12_000,
+      enableHighAccuracy: true,
+      maximumAge: 8_000,
+      timeout: 18_000,
     },
   );
 }

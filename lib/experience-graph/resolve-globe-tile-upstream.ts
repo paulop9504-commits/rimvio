@@ -1,4 +1,5 @@
 import type { GlobeMapTileStyle } from "@/lib/experience-graph/build-globe-map-tiles";
+import { GLOBE_TILE_MAX_ZOOM } from "@/lib/globe/globe-tile-constants";
 
 const UPSTREAM_URLS: Record<GlobeMapTileStyle, string> = {
   satellite:
@@ -17,7 +18,7 @@ export function resolveGlobeTileUpstreamUrl(input: {
   if (!template) {
     return null;
   }
-  const z = Math.max(0, Math.min(18, Math.floor(input.z)));
+  const z = Math.max(0, Math.min(GLOBE_TILE_MAX_ZOOM, Math.floor(input.z)));
   const n = 2 ** z;
   const x = ((Math.floor(input.x) % n) + n) % n;
   const y = Math.max(0, Math.min(n - 1, Math.floor(input.y)));

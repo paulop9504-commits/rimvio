@@ -12,8 +12,12 @@ import type { GlobeInstance } from "globe.gl";
 import { GLOBE_OVERVIEW_POINT_OF_VIEW } from "@/lib/experience-graph/globe-overview-view";
 import { createGlobe3dPinElement } from "@/lib/globe/create-globe-3d-pin-element";
 import { createGlobe3dViewerPinElement } from "@/lib/globe/create-globe-3d-viewer-pin-element";
+import { accuracyMetersToRingDegrees } from "@/lib/globe/accuracy-ring-degrees";
+import { GLOBE_TILE_MAX_ZOOM } from "@/lib/globe/globe-tile-constants";
 import { globeTileEngineUrl } from "@/lib/globe/globe-tile-engine-url";
 import { GLOBE_TOSS_THEME } from "@/lib/globe/globe-toss-theme";
+import type { GlobeViewerLocation } from "@/lib/globe/globe-viewer-location-types";
+import { resolveGlobePinLabelStyle } from "@/lib/globe/resolve-globe-pin-label-style";
 import {
   altitudeForGlobeDetailLevel,
   resolveGlobeDetailLevel,
@@ -42,7 +46,7 @@ export type RimvioGlobe3DHandle = {
   flyToPin: (
     lat: number,
     lng: number,
-    level?: Extract<GlobeDetailLevel, "city" | "neighborhood" | "pin">,
+    level?: Extract<GlobeDetailLevel, "city" | "neighborhood" | "street" | "pin">,
   ) => void;
   resetOverview: () => void;
 };
@@ -50,6 +54,7 @@ export type RimvioGlobe3DHandle = {
 export type RimvioGlobe3DProps = {
   pins: readonly ClassifiedGlobePin[];
   tripArcs?: readonly GlobeTripArc[];
+  viewerLocation?: GlobeViewerLocation | null;
   activePinId?: string | null;
   onPinPress?: (pinId: string) => void;
   onDetailLevelChange?: (level: GlobeDetailLevel) => void;
@@ -62,6 +67,7 @@ export const RimvioGlobe3D = memo(
     {
       pins,
       tripArcs = [],
+      viewerLocation = null,
       activePinId = null,
       onPinPress,
       onDetailLevelChange,
@@ -70,18 +76,21 @@ export const RimvioGlobe3D = memo(
     ref,
   ) {
     const rootRef = useRef<HTMLDivElement>(null);
+    const shellRef = useRef<HTMLDivElement>(null);
     const globeRef = useRef<GlobeInstance | null>(null);
     const onPinPressRef = useRef(onPinPress);
     const onDetailLevelChangeRef = useRef(onDetailLevelChange);
     const activePinIdRef = useRef(activePinId);
     const pinsRef = useRef(pins);
     const tripArcsRef = useRef(tripArcs);
+    const viewerLocationRef = useRef(viewerLocation);
 
     onPinPressRef.current = onPinPress;
     onDetailLevelChangeRef.current = onDetailLevelChange;
     activePinIdRef.current = activePinId;
     pinsRef.current = pins;
     tripArcsRef.current = tripArcs;
+    viewerLocationRef.current = viewerLocation;
 
     useImperativeHandle(ref, () => ({
       flyToPin(lat, lng, level = "neighborhood") {
@@ -117,7 +126,7 @@ export const RimvioGlobe3D = memo(
       })
         .backgroundColor("rgba(0,0,0,0)")
         .globeTileEngineUrl(globeTileEngineUrl)
-        .globeTileEngineMaxLevel(18)
+        .globeTileEngineMaxLevel(GLOBE_TILE_MAX_ZOOM)
         .showGraticules(false)
         .showAtmosphere(true)
         .atmosphereColor(GLOBE_TOSS_THEME.atmosphere)
@@ -132,7 +141,9 @@ export const RimvioGlobe3D = memo(
         .labelSize(0.55)
         .labelDotRadius(0.14)
         .labelAltitude(0.01)
+        .labelColor(() => GLOBE_TOSS_THEME.labelInk)
         .labelResolution(2)
+        .labelIncludeDot(true)
         .labelsTransitionDuration(0)
         .htmlElementsData([...pinsRef.current])
         .htmlLat((pin: object) => (pin as ClassifiedGlobePin).lat)
@@ -146,7 +157,9 @@ export const RimvioGlobe3D = memo(
         .htmlElement((pin: object) => {
           const row = pin as ClassifiedGlobePin;
           if (row.pinShape === "viewer") {
-            return createGlobe3dViewerPinElement();
+            return createGlobe3dViewerPinElement(
+              viewerLocationRef.current?.accuracyM ?? null,
+            );
           }
           return createGlobe3dPinElement(
             row,
@@ -162,7 +175,18 @@ export const RimvioGlobe3D = memo(
         .arcColor((arc: object) => (arc as GlobeTripArc).color)
         .arcAltitude(0.22)
         .arcStroke(0.85)
-        .arcsTransitionDuration(0);
+        .arcsTransitionDuration(0)
+        .ringsData([])
+        .ringLat((row: object) => (row as { lat: number }).lat)
+        .ringLng((row: object) => (row as { lng: number }).lng)
+        .ringMaxRadius((row: object) => (row as { maxR: number }).maxR)
+        .ringColor(() => GLOBE_TOSS_THEME.viewerRingStroke)
+        .ringAltitude(0.001)
+        .ringPropagationSpeed(0)
+        .ringRepeatPeriod(0);
+
+      const renderer = globe.renderer();
+      renderer.setPixelRatio(Math.min(typeof window !== "undefined" ? window.devicePixelRatio : 1, 2.5));
 
       syncGlobeViewport(globe, root);
       requestAnimationFrame(() => syncGlobeViewport(globe, root));
@@ -180,12 +204,24 @@ export const RimvioGlobe3D = memo(
       controls.enableDamping = true;
       controls.dampingFactor = 0.08;
 
+      const experiencePins = () =>
+        pinsRef.current.filter((row) => row.pinShape !== "viewer");
+
       const syncLabelsForAltitude = (altitude: number) => {
         const level = resolveGlobeDetailLevel(altitude);
         onDetailLevelChangeRef.current?.(level);
+        shellRef.current?.setAttribute("data-globe-detail", level);
         globe.showAtmosphere(altitude >= GLOBE_TOSS_THEME.atmosphereCutoffAltitude);
-        if (level === "region") {
-          globe.labelsData([...pinsRef.current]);
+
+        const labelStyle = resolveGlobePinLabelStyle(level);
+        globe
+          .labelSize(labelStyle.size)
+          .labelDotRadius(labelStyle.dotRadius)
+          .labelAltitude(labelStyle.altitude)
+          .labelResolution(labelStyle.resolution);
+
+        if (labelStyle.show) {
+          globe.labelsData([...experiencePins()]);
         } else {
           globe.labelsData([]);
         }
@@ -211,8 +247,9 @@ export const RimvioGlobe3D = memo(
       globe.htmlElementsData([...pins]);
 
       const pov = globe.pointOfView();
-      if (resolveGlobeDetailLevel(pov.altitude) === "region") {
-        globe.labelsData([...pins]);
+      const labelStyle = resolveGlobePinLabelStyle(resolveGlobeDetailLevel(pov.altitude));
+      if (labelStyle.show) {
+        globe.labelsData([...pins.filter((row) => row.pinShape !== "viewer")]);
       }
     }, [pins]);
 
@@ -223,6 +260,27 @@ export const RimvioGlobe3D = memo(
       }
       globe.arcsData([...tripArcs]);
     }, [tripArcs]);
+
+    useEffect(() => {
+      const globe = globeRef.current;
+      if (!globe) {
+        return;
+      }
+      if (!viewerLocation) {
+        globe.ringsData([]);
+        return;
+      }
+      globe.ringsData([
+        {
+          lat: viewerLocation.lat,
+          lng: viewerLocation.lng,
+          maxR: accuracyMetersToRingDegrees(
+            viewerLocation.lat,
+            viewerLocation.accuracyM,
+          ),
+        },
+      ]);
+    }, [viewerLocation]);
 
     useEffect(() => {
       const root = rootRef.current;
@@ -238,10 +296,11 @@ export const RimvioGlobe3D = memo(
       });
     }, [activePinId]);
 
-    const detailHint = "드래그 회전 · 스크롤·핀치 확대";
+    const detailHint = "드래그 회전 · 스크롤·핀치로 거리·지명 확대";
 
     return (
       <div
+        ref={shellRef}
         className={cn(
           "relative h-full min-h-0 w-full overflow-hidden rimvio-globe-space rimvio-globe-space--toss",
           className,
