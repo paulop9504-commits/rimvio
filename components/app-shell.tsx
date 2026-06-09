@@ -23,6 +23,8 @@ type AppShellProps = {
   fullBleed?: boolean;
   /** compact: 하단 탭 숨김 (대화방 전체 화면) */
   hideBottomNav?: boolean;
+  /** Home globe — full-width column beside nav rail */
+  globeHome?: boolean;
   children: ReactNode;
 };
 
@@ -36,11 +38,12 @@ export function AppShell({
   hideBranding = false,
   fullBleed = false,
   hideBottomNav = false,
+  globeHome = false,
   children,
 }: AppShellProps) {
   return (
     <div className={GRID.viewport}>
-      <div className={GRID.shell}>
+      <div className={cn(GRID.shell, globeHome && "app-shell-grid--globe-home")}>
         <Suspense fallback={null}>
           <AppNav placement="side" />
         </Suspense>
@@ -50,7 +53,8 @@ export function AppShell({
             GRID.column,
             "app-shell-viewport flex h-dvh flex-col overflow-hidden",
             fullBleed && "app-shell-column--chat",
-            "bg-background",
+            globeHome && "app-shell-column--globe-home",
+            globeHome ? "bg-[#060a14]" : "bg-background",
           )}
         >
           <header

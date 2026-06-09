@@ -3,6 +3,12 @@ import {
   listEventCandidates,
   upsertEventCandidate,
 } from "@/lib/events/event-store";
+import {
+  FEED_CAPTURES_META_KEY,
+  FEED_CAPTURE_STATS_META_KEY,
+  type FeedCaptureFragment,
+} from "@/lib/feed/feed-capture-types";
+import { stockPhotosForPlaceLabel } from "@/lib/globe/place-stock-photos";
 
 export const GLOBE_DEMO_EVENT_IDS = {
   jeju: "rimvio-globe-demo-jeju",
@@ -48,6 +54,24 @@ function jejuDemoNeedsRefresh(existing: EventCandidate, now = new Date()): boole
   return nowMs < startMs - 3_600_000 || nowMs > endMs + 3_600_000;
 }
 
+function demoCaptures(
+  prefix: string,
+  placeLabel: string,
+  capturedAtIso: string,
+): FeedCaptureFragment[] {
+  return stockPhotosForPlaceLabel(placeLabel)
+    .slice(0, 5)
+    .map((url, index) => ({
+      id: `${prefix}-photo-${index + 1}`,
+      kind: "photo" as const,
+      capturedAtIso,
+      placeLabel,
+      label: placeLabel,
+      url,
+      verified: true,
+    }));
+}
+
 function buildDemoDrafts(now = new Date()): EventCandidate[] {
   const { start: jejuStart, end: jejuEnd } = buildJejuWowWindow(now);
 
@@ -86,6 +110,17 @@ function buildDemoDrafts(now = new Date()): EventCandidate[] {
           { speakerName: "나", body: "좋아, 5시에 출발하자" },
           { speakerName: "민수", body: "애월 카페도 들르자" },
         ],
+        [FEED_CAPTURES_META_KEY]: demoCaptures(
+          "jeju",
+          "제주",
+          toLocalEventIso(jejuStart),
+        ),
+        [FEED_CAPTURE_STATS_META_KEY]: {
+          photos: 5,
+          videos: 0,
+          links: 0,
+          memos: 0,
+        },
         globeDemo: true,
         contextWowDemo: true,
       },
@@ -104,6 +139,17 @@ function buildDemoDrafts(now = new Date()): EventCandidate[] {
       confidence: 0.86,
       metadata: {
         globeDemo: true,
+        [FEED_CAPTURES_META_KEY]: demoCaptures(
+          "dunsan",
+          "대전 둔산동",
+          toLocalEventIso(dunsanStart),
+        ),
+        [FEED_CAPTURE_STATS_META_KEY]: {
+          photos: 5,
+          videos: 0,
+          links: 0,
+          memos: 0,
+        },
       },
       lifecycleUpdatedAt: stamp,
       createdAt: stamp,
@@ -122,6 +168,17 @@ function buildDemoDrafts(now = new Date()): EventCandidate[] {
         feedPlanEnabled: true,
         planPeerDisplayName: "지연",
         globeDemo: true,
+        [FEED_CAPTURES_META_KEY]: demoCaptures(
+          "gangnam",
+          "강남역",
+          toLocalEventIso(gangnamStart),
+        ),
+        [FEED_CAPTURE_STATS_META_KEY]: {
+          photos: 4,
+          videos: 0,
+          links: 0,
+          memos: 0,
+        },
       },
       lifecycleUpdatedAt: stamp,
       createdAt: stamp,

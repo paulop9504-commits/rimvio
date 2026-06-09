@@ -1,7 +1,16 @@
 "use client";
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Ref,
+} from "react";
 import { RimvioGlobe3DClient } from "@/components/experience/rimvio-globe-3d-client";
+import type { RimvioGlobe3DHandle } from "@/components/experience/rimvio-globe-3d";
 import { useExperienceGraph } from "@/hooks/use-experience-graph";
 import { ensureGlobeDemoEvents } from "@/lib/experience-graph/seed-globe-demo-events";
 import type { EventCandidate } from "@/lib/events/event-candidate";
@@ -41,6 +50,7 @@ function useGlobeEventSnapshot() {
 
 export type RimvioGlobeHubProps = {
   className?: string;
+  globeRef?: Ref<RimvioGlobe3DHandle>;
   initialOpenPinId?: string | null;
   initialRecallEventId?: string | null;
   onPinPress?: (cluster: PinCluster) => void;
@@ -48,6 +58,7 @@ export type RimvioGlobeHubProps = {
 
 type RimvioGlobeHubBodyProps = {
   className?: string;
+  globeRef?: Ref<RimvioGlobe3DHandle>;
   clusters: readonly PinCluster[];
   initialOpenPinId?: string | null;
   onPinPress?: (cluster: PinCluster) => void;
@@ -55,6 +66,7 @@ type RimvioGlobeHubBodyProps = {
 
 const RimvioGlobeHubBody = memo(function RimvioGlobeHubBody({
   className,
+  globeRef,
   clusters,
   initialOpenPinId,
   onPinPress,
@@ -103,6 +115,7 @@ const RimvioGlobeHubBody = memo(function RimvioGlobeHubBody({
       data-rimvio-globe-hub
     >
       <RimvioGlobe3DClient
+        ref={globeRef}
         pins={classifiedPins}
         activePinId={activePinId}
         className="h-full flex-1"
@@ -115,6 +128,7 @@ const RimvioGlobeHubBody = memo(function RimvioGlobeHubBody({
 /** Globe-first home — giant earth, pins only. */
 export const RimvioGlobeHub = memo(function RimvioGlobeHub({
   className,
+  globeRef,
   initialOpenPinId,
   initialRecallEventId,
   onPinPress,
@@ -167,6 +181,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
   return (
     <RimvioGlobeHubBody
       className={className}
+      globeRef={globeRef}
       clusters={clusters}
       initialOpenPinId={initialOpenPinId}
       onPinPress={onPinPress}

@@ -1,8 +1,12 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { forwardRef } from "react";
+import type {
+  RimvioGlobe3DHandle,
+  RimvioGlobe3DProps,
+} from "@/components/experience/rimvio-globe-3d";
 import { cn } from "@/lib/utils";
-import type { RimvioGlobe3DProps } from "@/components/experience/rimvio-globe-3d";
 
 const RimvioGlobe3DLazy = dynamic(
   () =>
@@ -17,6 +21,8 @@ const RimvioGlobe3DLazy = dynamic(
   },
 );
 
-export function RimvioGlobe3DClient(props: RimvioGlobe3DProps) {
-  return <RimvioGlobe3DLazy {...props} className={cn(props.className)} />;
-}
+export const RimvioGlobe3DClient = forwardRef<RimvioGlobe3DHandle, RimvioGlobe3DProps>(
+  function RimvioGlobe3DClient(props, ref) {
+    return <RimvioGlobe3DLazy {...props} ref={ref} className={cn(props.className)} />;
+  },
+);

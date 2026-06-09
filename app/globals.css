@@ -3048,6 +3048,33 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   min-height: 0;
 }
 
+/* Immersive home — globe fills shell column; pin sheet shifts globe into visible center */
+.app-shell-grid--globe-home {
+  max-width: 100%;
+}
+
+.app-shell-column--globe-home {
+  max-width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .app-shell-grid--globe-home {
+    width: 100%;
+    max-width: none;
+  }
+
+  .app-shell-column--globe-home {
+    max-width: none;
+  }
+}
+
+@media (min-width: 768px) {
+  body:has([data-pin-open-sheet]) [data-rimvio-globe-3d] {
+    transform: translateX(calc(min(92vw, 420px) * -0.5));
+    transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+}
+
 .rimvio-globe-stars {
   background-image:
     radial-gradient(1px 1px at 12% 18%, rgba(255, 255, 255, 0.75), transparent),

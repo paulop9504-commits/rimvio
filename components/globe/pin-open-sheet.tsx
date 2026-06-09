@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import { EvidenceList } from "@/components/experience/evidence-list";
 import { ExperienceHeroCard } from "@/components/experience/experience-hero-card";
+import { ExperiencePlaceGallery } from "@/components/experience/experience-place-gallery";
 import { PeopleStrip } from "@/components/experience/people-strip";
 import { RecentConversationStrip } from "@/components/experience/recent-conversation-strip";
 import { RepresentativeMomentsRow } from "@/components/experience/representative-moments-row";
@@ -26,6 +27,7 @@ import {
 } from "@/lib/globe/project-experience-conversation";
 import type { PinCluster } from "@/lib/globe/pin-cluster-types";
 import { projectExperienceRoom } from "@/lib/experience-room/project-experience-room";
+import { projectPlaceGallery } from "@/lib/globe/project-place-gallery";
 import { projectRepresentativeMoments } from "@/lib/globe/project-representative-moments";
 import {
   EVENT_CANDIDATES_UPDATED,
@@ -38,13 +40,21 @@ export type PinOpenSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   cluster: PinCluster | null;
+  /** Zoom globe to street altitude when user opens full detail. */
+  onOpenDetail?: () => void;
 };
 
 /** Pin = experience entrance — hero + people + moments + conversation + evidence. */
-export function PinOpenSheet({ open, onOpenChange, cluster }: PinOpenSheetProps) {
+export function PinOpenSheet({
+  open,
+  onOpenChange,
+  cluster,
+  onOpenDetail,
+}: PinOpenSheetProps) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [opened, setOpened] = useState(false);
+  const [galleryActiveId, setGalleryActiveId] = useState<string | null>(null);
   const [revision, setRevision] = useState(0);
   const gpsPings = useFeedGpsPings();
 
@@ -111,6 +121,19 @@ export function PinOpenSheet({ open, onOpenChange, cluster }: PinOpenSheetProps)
     [event, volume],
   );
 
+  const gallery = useMemo(
+    () => projectPlaceGallery({ event, volume, limit: 8 }),
+    [event, volume],
+  );
+
+  useEffect(() => {
+    if (!open) {
+      setGalleryActiveId(null);
+      return;
+    }
+    setGalleryActiveId(gallery[0]?.id ?? null);
+  }, [open, gallery]);
+
   const conversation = useMemo(() => {
     if (!event) {
       return null;
@@ -170,24 +193,32 @@ export function PinOpenSheet({ open, onOpenChange, cluster }: PinOpenSheetProps)
           <motion.button
             type="button"
             aria-label="닫기"
-            className="fixed inset-0 z-[90] bg-black/40"
+            className="fixed inset-0 z-[90] bg-black/35 md:bg-black/15"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => onOpenChange(false)}
           />
-          <motion.div
+          <motion.aside
             role="dialog"
             aria-label={hero.title}
-            className="fixed inset-x-0 bottom-0 z-[91] mx-auto flex max-h-[min(92vh,760px)] w-full max-w-lg flex-col overflow-hidden rounded-t-[24px] border border-border bg-background shadow-[0_-8px_32px_rgba(0,0,0,0.12)]"
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
+            className={cn(
+              "fixed z-[91] flex w-full flex-col overflow-hidden border border-border bg-background shadow-2xl",
+              "inset-x-0 bottom-0 max-h-[min(92vh,760px)] rounded-t-[24px]",
+              "md:inset-y-0 md:right-0 md:left-auto md:max-h-none md:max-w-[min(92vw,420px)] md:rounded-none md:rounded-l-[24px]",
+            )}
+            initial={{ y: "100%", x: 0 }}
+            animate={{ y: 0, x: 0 }}
+            exit={{ y: "100%", x: 0 }}
             transition={{ type: "spring", stiffness: 420, damping: 34 }}
             data-pin-open-sheet
           >
-            <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-foreground/15" aria-hidden />
-            <header className="flex items-center justify-end px-4 pt-3">
+            <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-foreground/15 md:hidden" aria-hidden />
+            <header className="flex items-center gap-2 px-4 pb-2 pt-3">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[18px] font-semibold text-foreground">{hero.place}</p>
+                <p className="truncate text-[12px] text-muted-foreground">{hero.title}</p>
+              </div>
               <button
                 type="button"
                 onClick={() => onOpenChange(false)}
@@ -199,6 +230,14 @@ export function PinOpenSheet({ open, onOpenChange, cluster }: PinOpenSheetProps)
             </header>
 
             <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <ExperiencePlaceGallery
+                items={gallery}
+                activeId={galleryActiveId}
+                onActiveIdChange={setGalleryActiveId}
+              />
+              <p className="text-[14px] leading-relaxed text-foreground/85">
+                {hero.place}에서의 경험 기록입니다. 사진·대화·장소가 한곳에 모여 있어요.
+              </p>
               <ExperienceHeroCard
                 title={hero.title}
                 date={hero.date}
@@ -239,13 +278,21 @@ export function PinOpenSheet({ open, onOpenChange, cluster }: PinOpenSheetProps)
                   !volume && !opened && "opacity-40",
                 )}
                 disabled={!opened && !volume}
-                onClick={() => setOpened((value) => !value)}
+                onClick={() => {
+                  setOpened((value) => {
+                    const next = !value;
+                    if (next) {
+                      onOpenDetail?.();
+                    }
+                    return next;
+                  });
+                }}
                 data-pin-open-primary
               >
                 {opened ? "닫기" : "열기"}
               </button>
             </div>
-          </motion.div>
+          </motion.aside>
         </>
       ) : null}
     </AnimatePresence>,
