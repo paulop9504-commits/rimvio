@@ -102,7 +102,7 @@ const RimvioGlobeHubBody = memo(function RimvioGlobeHubBody({
 
   return (
     <div
-      className={cn("flex min-h-0 flex-1 flex-col", className)}
+      className={cn("flex h-full min-h-0 flex-1 flex-col", className)}
       data-rimvio-globe-hub
     >
       <SpatialGlobeStage
@@ -112,7 +112,7 @@ const RimvioGlobeHubBody = memo(function RimvioGlobeHubBody({
         activePinId={activePinId}
         hideSyncMeta
         hideCenterCrosshair
-        className="min-h-0 flex-1"
+        className="h-full flex-1"
         onPinPress={handlePinPress}
       />
     </div>

@@ -3043,6 +3043,11 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   background: radial-gradient(ellipse 120% 80% at 50% 20%, #142238 0%, #060a14 45%, #010308 100%);
 }
 
+.rimvio-globe-home-canvas {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .rimvio-globe-stars {
   background-image:
     radial-gradient(1px 1px at 12% 18%, rgba(255, 255, 255, 0.75), transparent),
@@ -3073,6 +3078,17 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   will-change: transform;
 }
 
+.rimvio-globe-touch-surface {
+  touch-action: none;
+  cursor: grab;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.rimvio-globe-touch-surface.rimvio-globe-touch-active {
+  cursor: grabbing;
+}
+
 .rimvio-globe-satellite-shade {
   background: radial-gradient(
     circle at 38% 32%,
@@ -3101,6 +3117,16 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
     rgba(0, 0, 0, 0.08) 68%,
     rgba(0, 0, 0, 0.35) 88%,
     rgba(0, 0, 0, 0.55) 100%
+  );
+}
+
+.rimvio-globe-earth-limb {
+  background: radial-gradient(
+    circle at 50% 50%,
+    transparent 54%,
+    rgba(0, 0, 0, 0.12) 72%,
+    rgba(0, 0, 0, 0.42) 88%,
+    rgba(0, 0, 0, 0.72) 100%
   );
 }
 

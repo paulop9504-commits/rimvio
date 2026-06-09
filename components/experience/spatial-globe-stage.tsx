@@ -2,10 +2,11 @@
 
 
 
-import { memo } from "react";
+import { memo, useCallback, useEffect, useRef } from "react";
 
 import { GlobeExperienceSlotPin } from "@/components/experience/globe-experience-slot-pin";
-import { GlobeMapLayer } from "@/components/experience/globe-map-layer";
+import { GlobeEarthSurface } from "@/components/experience/globe-earth-surface";
+import { useGlobeTouchControl } from "@/hooks/use-globe-touch-control";
 import type { GlobeSpaceBlob } from "@/lib/experience-graph/build-globe-space-blobs";
 import type { ClassifiedGlobePin } from "@/lib/feed/experience-globe-ping-types";
 import { mapPercentToLatLng } from "@/lib/experience-graph/resolve-place-coordinates";
@@ -61,6 +62,9 @@ export type SpatialGlobeStageProps = {
   /** Immersive hub — hide center crosshair when pins carry context. */
   hideCenterCrosshair?: boolean;
 
+  /** Drag to pan, pinch / wheel to zoom. Defaults on for immersive. */
+  interactive?: boolean;
+
   className?: string;
 
 };
@@ -97,19 +101,84 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
 
   hideCenterCrosshair = false,
 
+  interactive: interactiveProp,
+
   className,
 
 }: SpatialGlobeStageProps) {
 
-  const translateX = 50 - globe.pinX;
-
-  const translateY = 50 - globe.pinY;
-
   const immersive = variant === "immersive";
+  const interactive = interactiveProp ?? immersive;
+  const sphereRef = useRef<HTMLDivElement>(null);
+
+  const {
+    view: activeGlobe,
+    isInteracting,
+    surfaceProps,
+    onWheel,
+    setSphereDiameterPx,
+    shouldConsumeTap,
+  } = useGlobeTouchControl({
+    baseView: globe,
+    enabled: interactive,
+  });
+
+  const displayGlobe = interactive ? activeGlobe : globe;
+  const translateX = 50 - displayGlobe.pinX;
+  const translateY = 50 - displayGlobe.pinY;
+
   const satellite = true;
   const pinKindClass = PIN_KIND_CLASS_SATELLITE;
 
+  const measureSphere = useCallback(() => {
+    const rect = sphereRef.current?.getBoundingClientRect();
+    if (rect?.width) {
+      setSphereDiameterPx(rect.width);
+    }
+  }, [setSphereDiameterPx]);
 
+  const handleMapPointerDown = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      measureSphere();
+      surfaceProps.onPointerDown(event);
+    },
+    [measureSphere, surfaceProps],
+  );
+
+  useEffect(() => {
+    if (!interactive) {
+      return;
+    }
+    const node = sphereRef.current;
+    if (!node) {
+      return;
+    }
+    const handleWheel = (event: WheelEvent) => {
+      onWheel(event as unknown as React.WheelEvent<HTMLElement>);
+    };
+    node.addEventListener("wheel", handleWheel, { passive: false });
+    return () => node.removeEventListener("wheel", handleWheel);
+  }, [interactive, onWheel]);
+
+  const handleMapClick = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (!onMapPress || shouldConsumeTap()) {
+        return;
+      }
+      const rect = event.currentTarget.getBoundingClientRect();
+      const pinX = ((event.clientX - rect.left) / rect.width) * 100;
+      const pinY = ((event.clientY - rect.top) / rect.height) * 100;
+      const { lat, lng } = mapPercentToLatLng(pinX, pinY);
+      onMapPress({ lat, lng, pinX, pinY });
+    },
+    [onMapPress, shouldConsumeTap],
+  );
+
+
+
+  const sphereSizeClass = immersive
+    ? "size-[min(76vmin,92cqw,480px)]"
+    : "size-[min(72vw,340px)]";
 
   return (
 
@@ -117,10 +186,10 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
 
       className={cn(
 
-        "relative overflow-hidden",
+        "relative flex min-h-0 flex-col overflow-hidden",
 
         immersive
-          ? "rimvio-globe-space min-h-[min(62vh,560px)] rounded-none border-0"
+          ? "rimvio-globe-space h-full min-h-[280px] flex-1 rounded-none border-0 [container-type:inline-size]"
           : "rimvio-globe-space min-h-[min(36vh,320px)] rounded-2xl border border-white/10 shadow-sm",
 
         className,
@@ -131,9 +200,11 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
 
       data-spatial-globe-variant={variant}
 
-      data-spatial-lat={globe.lat}
+      data-spatial-lat={displayGlobe.lat}
 
-      data-spatial-lng={globe.lng}
+      data-spatial-lng={displayGlobe.lng}
+
+      data-spatial-globe-interactive={interactive ? "true" : undefined}
 
     >
 
@@ -145,72 +216,80 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
 
         className={cn(
 
-          "relative w-full",
+          "relative flex min-h-0 w-full flex-1 items-center justify-center",
 
-          immersive ? "min-h-[min(62vh,560px)]" : "aspect-[16/10]",
+          immersive ? "rimvio-globe-home-canvas" : "aspect-[16/10]",
 
         )}
 
       >
 
-        {immersive ? (
-          <div
-            className="pointer-events-none absolute left-1/2 top-[46%] size-[min(98vw,460px)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(56,189,248,0.14)_0%,rgba(37,99,235,0.06)_42%,transparent_72%)]"
-            aria-hidden
-          />
-        ) : null}
-
         <div
-
           className={cn(
-
-            "absolute left-1/2 top-[46%] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full transition-transform duration-[1200ms] ease-out",
-
-            immersive
-              ? "rimvio-globe-sphere-aura size-[min(94vw,420px)] border bg-[#050810]"
-              : "rimvio-globe-sphere-aura size-[min(88vw,340px)] border bg-[#050810]",
-
+            "relative shrink-0",
+            sphereSizeClass,
+            interactive
+              ? isInteracting
+                ? "transition-none"
+                : "transition-transform duration-500 ease-out"
+              : "transition-transform duration-[1200ms] ease-out",
           )}
-
-          style={{ transform: `translate(-50%, -50%) scale(${globe.zoom})` }}
-
-          aria-hidden
-
+          style={{ transform: `scale(${displayGlobe.zoom})` }}
         >
+          {immersive ? (
+            <div
+              className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(56,189,248,0.14)_0%,rgba(37,99,235,0.06)_42%,transparent_72%)]"
+              aria-hidden
+            />
+          ) : null}
+
+          <div
+
+            ref={sphereRef}
+
+            className={cn(
+
+              "absolute inset-0 overflow-hidden rounded-full",
+
+              "rimvio-globe-sphere-aura border bg-[#050810]",
+
+              interactive && "rimvio-globe-touch-surface",
+
+              interactive && isInteracting && "rimvio-globe-touch-active",
+
+            )}
+
+            aria-hidden={!interactive}
+
+          >
 
           <div
             className={cn(
-              "absolute inset-0 rounded-full transition-transform duration-[1200ms] ease-out",
-              onMapPress && "cursor-crosshair",
+              "absolute inset-0 rounded-full",
+              interactive
+                ? isInteracting
+                  ? "transition-none"
+                  : "transition-transform duration-500 ease-out"
+                : "transition-transform duration-[1200ms] ease-out",
+              onMapPress && !interactive && "cursor-crosshair",
             )}
             style={{
-              transform: `translate(${translateX}%, ${translateY}%) scale(${immersive ? 1.42 : 1.35})`,
+              transform: `translate(${translateX}%, ${translateY}%)`,
             }}
             data-globe-map-surface
-            onClick={
-              onMapPress
-                ? (event) => {
-                    const rect = event.currentTarget.getBoundingClientRect();
-                    const pinX = ((event.clientX - rect.left) / rect.width) * 100;
-                    const pinY = ((event.clientY - rect.top) / rect.height) * 100;
-                    const { lat, lng } = mapPercentToLatLng(pinX, pinY);
-                    onMapPress({ lat, lng, pinX, pinY });
-                  }
-                : undefined
-            }
+            onPointerDown={interactive ? handleMapPointerDown : undefined}
+            onPointerMove={interactive ? surfaceProps.onPointerMove : undefined}
+            onPointerUp={interactive ? surfaceProps.onPointerUp : undefined}
+            onPointerCancel={interactive ? surfaceProps.onPointerCancel : undefined}
+            onClick={onMapPress ? handleMapClick : undefined}
           >
             <div
               className={cn(
                 "absolute inset-0 rounded-full",
-                "rimvio-globe-spin",
+                interactive ? undefined : "rimvio-globe-spin",
               )}
             >
-            <GlobeMapLayer
-              lat={globe.lat}
-              lng={globe.lng}
-              globeZoom={globe.zoom}
-              tileStyle="satellite"
-            />
+            <GlobeEarthSurface />
 
             {blobs.map((blob) => {
               const active = blob.id === activeBlobId;
@@ -294,9 +373,22 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
             </div>
           </div>
 
+          </div>
+
         </div>
 
 
+
+        {interactive ? (
+          <p
+            className={cn(
+              "pointer-events-none absolute inset-x-0 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-20 mx-auto w-fit rounded-full bg-black/35 px-3 py-1 text-[10px] font-medium text-white/50 backdrop-blur-sm transition-opacity duration-300",
+              isInteracting && "opacity-0",
+            )}
+          >
+            드래그 · 두 손가락으로 확대
+          </p>
+        ) : null}
 
         {hideCenterCrosshair ? null : (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
@@ -305,7 +397,7 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
 
             <span className="absolute left-1/2 top-full mt-2 -translate-x-1/2 whitespace-nowrap rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-bold text-foreground ring-1 ring-primary/20">
 
-              {globe.placeLabel}
+              {displayGlobe.placeLabel}
 
             </span>
 
@@ -347,7 +439,7 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
 
           >
 
-            📍 {globe.placeLabel}
+            📍 {displayGlobe.placeLabel}
 
           </span>
 

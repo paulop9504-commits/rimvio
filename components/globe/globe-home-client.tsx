@@ -18,9 +18,9 @@ function GlobeHomeBody() {
   }, []);
 
   return (
-    <>
+    <div className="flex h-full min-h-0 flex-1 flex-col">
       <RimvioGlobeHubClient
-        className="min-h-0 flex-1"
+        className="h-full min-h-0 flex-1"
         initialRecallEventId={recallEventId}
         onPinPress={onPinPress}
       />
@@ -29,7 +29,7 @@ function GlobeHomeBody() {
         onOpenChange={setSheetOpen}
         cluster={activeCluster}
       />
-    </>
+    </div>
   );
 }
 

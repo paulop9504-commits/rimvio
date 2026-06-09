@@ -161,13 +161,13 @@ export function globeViewForPinClusters(
   if (clusters.length > 1) {
     return {
       ...view,
-      zoom: 1.35,
+      zoom: 0.95,
       placeLabel: `내 지구 · 핀 ${clusters.length}개`,
     };
   }
   return {
     ...view,
-    zoom: 1.85,
+    zoom: 1.08,
     placeLabel: clusters[0]!.placeLabel,
   };
 }
