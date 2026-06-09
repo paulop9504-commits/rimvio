@@ -8,6 +8,7 @@ import { X } from "lucide-react";
 import { EvidenceList } from "@/components/experience/evidence-list";
 import { ExperienceHeroCard } from "@/components/experience/experience-hero-card";
 import { ExperiencePlaceGallery } from "@/components/experience/experience-place-gallery";
+import { ExperienceTripLegBar } from "@/components/experience/experience-trip-leg-bar";
 import { PeopleStrip } from "@/components/experience/people-strip";
 import { RecentConversationStrip } from "@/components/experience/recent-conversation-strip";
 import { RepresentativeMomentsRow } from "@/components/experience/representative-moments-row";
@@ -26,6 +27,8 @@ import {
   projectExperienceConversation,
 } from "@/lib/globe/project-experience-conversation";
 import type { PinCluster } from "@/lib/globe/pin-cluster-types";
+import { projectPinClustersFromGraph } from "@/lib/globe/project-pin-clusters";
+import { projectTripLegBar } from "@/lib/globe/project-trip-leg-arcs";
 import { projectExperienceRoom } from "@/lib/experience-room/project-experience-room";
 import { projectPlaceGallery } from "@/lib/globe/project-place-gallery";
 import { projectRepresentativeMoments } from "@/lib/globe/project-representative-moments";
@@ -76,9 +79,20 @@ export function PinOpenSheet({
 
   const allEvents = useMemo(() => listLifeEventCandidates(), [revision]);
   const eventsById = useMemo(() => indexEventsById(allEvents), [allEvents]);
-  const { volumesByEventId } = useExperienceGraph(eventsById);
-
   const event = cluster ? eventsById.get(cluster.eventId) : null;
+  const { graph, volumesByEventId } = useExperienceGraph(eventsById);
+  const clusters = useMemo(
+    () =>
+      projectPinClustersFromGraph({
+        volumes: graph.volumes,
+        eventsById,
+      }),
+    [graph.volumes, eventsById],
+  );
+  const tripLeg = useMemo(
+    () => projectTripLegBar({ event, eventsById, clusters }),
+    [event, eventsById, clusters],
+  );
   const volume = cluster ? volumesByEventId.get(cluster.eventId) ?? null : null;
   const experienceRoom = useMemo(
     () => (event ? projectExperienceRoom({ primaryEvent: event }) : null),
@@ -230,6 +244,7 @@ export function PinOpenSheet({
             </header>
 
             <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {tripLeg ? <ExperienceTripLegBar trip={tripLeg} /> : null}
               <ExperiencePlaceGallery
                 items={gallery}
                 activeId={galleryActiveId}

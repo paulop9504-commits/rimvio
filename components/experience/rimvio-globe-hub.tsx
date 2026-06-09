@@ -26,6 +26,7 @@ import {
   projectPinClusterClassifiedPins,
   projectPinClustersFromGraph,
 } from "@/lib/globe/project-pin-clusters";
+import { projectTripLegArcs } from "@/lib/globe/project-trip-leg-arcs";
 import { cn } from "@/lib/utils";
 
 function useGlobeEventSnapshot() {
@@ -60,6 +61,7 @@ type RimvioGlobeHubBodyProps = {
   className?: string;
   globeRef?: Ref<RimvioGlobe3DHandle>;
   clusters: readonly PinCluster[];
+  eventsById: ReadonlyMap<string, EventCandidate>;
   initialOpenPinId?: string | null;
   onPinPress?: (cluster: PinCluster) => void;
 };
@@ -68,12 +70,17 @@ const RimvioGlobeHubBody = memo(function RimvioGlobeHubBody({
   className,
   globeRef,
   clusters,
+  eventsById,
   initialOpenPinId,
   onPinPress,
 }: RimvioGlobeHubBodyProps) {
   const classifiedPins = useMemo(
-    () => projectPinClusterClassifiedPins(clusters),
-    [clusters],
+    () => projectPinClusterClassifiedPins(clusters, eventsById),
+    [clusters, eventsById],
+  );
+  const tripArcs = useMemo(
+    () => projectTripLegArcs({ eventsById, clusters }),
+    [eventsById, clusters],
   );
   const [activePinId, setActivePinId] = useState<string | null>(null);
 
@@ -117,6 +124,7 @@ const RimvioGlobeHubBody = memo(function RimvioGlobeHubBody({
       <RimvioGlobe3DClient
         ref={globeRef}
         pins={classifiedPins}
+        tripArcs={tripArcs}
         activePinId={activePinId}
         className="h-full flex-1"
         onPinPress={handlePinPress}
@@ -183,6 +191,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
       className={className}
       globeRef={globeRef}
       clusters={clusters}
+      eventsById={eventsById}
       initialOpenPinId={initialOpenPinId}
       onPinPress={onPinPress}
     />

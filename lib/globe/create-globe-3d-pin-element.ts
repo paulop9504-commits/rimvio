@@ -8,7 +8,7 @@ export function createGlobe3dPinElement(
   const root = document.createElement("button");
   root.type = "button";
   root.dataset.globePinId = pin.id;
-  root.className = `rimvio-globe-3d-pin${active ? " rimvio-globe-3d-pin--active" : ""}`;
+  root.className = `rimvio-globe-3d-pin${pin.tripLeg === "departure" ? " rimvio-globe-3d-pin--departure" : ""}${active ? " rimvio-globe-3d-pin--active" : ""}`;
   root.setAttribute(
     "aria-label",
     pin.slot?.experienceTitle?.trim() || pin.label.trim() || "경험 핀",
@@ -24,7 +24,12 @@ export function createGlobe3dPinElement(
 
   const meta = document.createElement("span");
   meta.className = "rimvio-globe-3d-pin__meta";
-  meta.textContent = "경험";
+  meta.textContent =
+    pin.tripLeg === "departure"
+      ? "출발"
+      : pin.tripLeg === "destination"
+        ? "도착"
+        : "경험";
   card.appendChild(meta);
 
   root.appendChild(card);

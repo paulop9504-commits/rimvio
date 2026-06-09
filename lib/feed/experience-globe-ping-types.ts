@@ -27,4 +27,6 @@ export type ClassifiedGlobePin = {
   /** 2.5D experience stack on globe */
   pinShape?: "dot" | "slot";
   slot?: GlobePinSlotMeta;
+  /** Overseas trip leg — departure airport vs destination stay. */
+  tripLeg?: "departure" | "destination";
 };

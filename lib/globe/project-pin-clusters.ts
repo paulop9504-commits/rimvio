@@ -9,6 +9,7 @@ import type { PinCluster, PinClusterEvidence } from "@/lib/globe/pin-cluster-typ
 import { countEventMedia } from "@/lib/globe/count-event-media";
 import { listPersonalGlobePins } from "@/lib/globe/personal-globe-pin-store";
 import { resolveEventGlobeCoords } from "@/lib/globe/resolve-event-globe-coords";
+import { readTripLegFromEvent } from "@/lib/globe/trip-leg-metadata";
 import { buildGlobeOverviewView } from "@/lib/experience-graph/globe-overview-view";
 import { globeViewForSharedPins } from "@/lib/peer-chat/globe-view-for-shared-pins";
 
@@ -124,8 +125,12 @@ function pinKindFromEvidence(evidence: PinClusterEvidence): ClassifiedGlobePin["
   return "place";
 }
 
-export function projectPinClusterClassifiedPin(cluster: PinCluster): ClassifiedGlobePin {
+export function projectPinClusterClassifiedPin(
+  cluster: PinCluster,
+  event?: EventCandidate | null,
+): ClassifiedGlobePin {
   const map = projectLatLngToMapPercent(cluster.lat, cluster.lng);
+  const tripLeg = readTripLegFromEvent(event)?.leg;
   return {
     id: cluster.pinId,
     kind: pinKindFromEvidence(cluster.evidence),
@@ -135,8 +140,9 @@ export function projectPinClusterClassifiedPin(cluster: PinCluster): ClassifiedG
     pinX: map.x,
     pinY: map.y,
     sourceEventId: cluster.eventId,
-    emphasis: "primary",
+    emphasis: tripLeg === "departure" ? "related" : "primary",
     pinShape: "slot",
+    tripLeg,
     slot: {
       experienceTitle: cluster.title,
       photoCount: cluster.evidence.photoCount,
@@ -147,8 +153,14 @@ export function projectPinClusterClassifiedPin(cluster: PinCluster): ClassifiedG
 
 export function projectPinClusterClassifiedPins(
   clusters: readonly PinCluster[],
+  eventsById?: ReadonlyMap<string, EventCandidate>,
 ): ClassifiedGlobePin[] {
-  return clusters.map(projectPinClusterClassifiedPin);
+  return clusters.map((cluster) =>
+    projectPinClusterClassifiedPin(
+      cluster,
+      eventsById?.get(cluster.eventId) ?? null,
+    ),
+  );
 }
 
 export function globeViewForPinClusters(

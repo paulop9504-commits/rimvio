@@ -16,6 +16,7 @@ const KNOWN_PLACES: ReadonlyArray<{
   { pattern: /부산|해운대/u, lat: 35.158, lng: 129.16, label: "부산" },
   { pattern: /오사카/u, lat: 34.693, lng: 135.502, label: "오사카" },
   { pattern: /독일|베를린|뮌헨/u, lat: 52.52, lng: 13.405, label: "독일" },
+  { pattern: /인천공항|인천/u, lat: 37.4602, lng: 126.4407, label: "인천공항" },
   { pattern: /서울/u, lat: 37.566, lng: 126.978, label: "서울" },
   { pattern: /홍대|연남/u, lat: 37.557, lng: 126.924, label: "홍대" },
   { pattern: /성수/u, lat: 37.544, lng: 127.055, label: "성수" },

@@ -19,6 +19,7 @@ import {
   type GlobeDetailLevel,
 } from "@/lib/globe/globe-zoom-levels";
 import type { ClassifiedGlobePin } from "@/lib/feed/experience-globe-ping-types";
+import type { GlobeTripArc } from "@/lib/globe/project-trip-leg-arcs";
 import { cn } from "@/lib/utils";
 
 const FLY_MS = 1400;
@@ -47,6 +48,7 @@ export type RimvioGlobe3DHandle = {
 
 export type RimvioGlobe3DProps = {
   pins: readonly ClassifiedGlobePin[];
+  tripArcs?: readonly GlobeTripArc[];
   activePinId?: string | null;
   onPinPress?: (pinId: string) => void;
   onDetailLevelChange?: (level: GlobeDetailLevel) => void;
@@ -58,6 +60,7 @@ export const RimvioGlobe3D = memo(
   forwardRef<RimvioGlobe3DHandle, RimvioGlobe3DProps>(function RimvioGlobe3D(
     {
       pins,
+      tripArcs = [],
       activePinId = null,
       onPinPress,
       onDetailLevelChange,
@@ -71,11 +74,13 @@ export const RimvioGlobe3D = memo(
     const onDetailLevelChangeRef = useRef(onDetailLevelChange);
     const activePinIdRef = useRef(activePinId);
     const pinsRef = useRef(pins);
+    const tripArcsRef = useRef(tripArcs);
 
     onPinPressRef.current = onPinPress;
     onDetailLevelChangeRef.current = onDetailLevelChange;
     activePinIdRef.current = activePinId;
     pinsRef.current = pins;
+    tripArcsRef.current = tripArcs;
 
     useImperativeHandle(ref, () => ({
       flyToPin(lat, lng, level = "neighborhood") {
@@ -144,7 +149,16 @@ export const RimvioGlobe3D = memo(
             row.id === activePinIdRef.current,
             (pinId) => onPinPressRef.current?.(pinId),
           );
-        });
+        })
+        .arcsData([...tripArcsRef.current])
+        .arcStartLat((arc: object) => (arc as GlobeTripArc).startLat)
+        .arcStartLng((arc: object) => (arc as GlobeTripArc).startLng)
+        .arcEndLat((arc: object) => (arc as GlobeTripArc).endLat)
+        .arcEndLng((arc: object) => (arc as GlobeTripArc).endLng)
+        .arcColor((arc: object) => (arc as GlobeTripArc).color)
+        .arcAltitude(0.22)
+        .arcStroke(0.85)
+        .arcsTransitionDuration(0);
 
       syncGlobeViewport(globe, root);
       requestAnimationFrame(() => syncGlobeViewport(globe, root));
@@ -197,6 +211,14 @@ export const RimvioGlobe3D = memo(
         globe.labelsData([...pins]);
       }
     }, [pins]);
+
+    useEffect(() => {
+      const globe = globeRef.current;
+      if (!globe) {
+        return;
+      }
+      globe.arcsData([...tripArcs]);
+    }, [tripArcs]);
 
     useEffect(() => {
       const root = rootRef.current;
