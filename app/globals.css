@@ -3073,6 +3073,11 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   filter: contrast(1.16) saturate(1.1) brightness(1.04);
 }
 
+/* 3D → 2D handoff on deep zoom */
+[data-rimvio-globe-surface="flat2d"] [data-rimvio-globe-flat-map] {
+  z-index: 6;
+}
+
 .rimvio-globe-home-canvas {
   flex: 1 1 auto;
   min-height: 0;

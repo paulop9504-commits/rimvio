@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import type { RimvioGlobe3DHandle } from "@/components/experience/rimvio-globe-3d";
+import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { RimvioGlobeHubClient } from "@/components/experience/rimvio-globe-hub-client";
 import { GlobeGpsPanel } from "@/components/globe/globe-gps-panel";
 import { GlobeLocationConfirmCard } from "@/components/globe/globe-location-confirm-card";
@@ -12,7 +12,7 @@ import type { PinCluster } from "@/lib/globe/pin-cluster-types";
 function GlobeHomeBody() {
   const searchParams = useSearchParams();
   const recallEventId = searchParams.get("recallEvent");
-  const globeRef = useRef<RimvioGlobe3DHandle>(null);
+  const globeRef = useRef<RimvioGlobeHubHandle>(null);
   const [activeCluster, setActiveCluster] = useState<PinCluster | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
@@ -25,7 +25,7 @@ function GlobeHomeBody() {
   const onSheetOpenChange = useCallback((open: boolean) => {
     setSheetOpen(open);
     if (!open) {
-      globeRef.current?.resetOverview();
+      globeRef.current?.resetToOverview();
     }
   }, []);
 

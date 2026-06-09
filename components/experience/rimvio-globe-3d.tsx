@@ -60,6 +60,7 @@ export type RimvioGlobe3DProps = {
   activePinId?: string | null;
   onPinPress?: (pinId: string) => void;
   onDetailLevelChange?: (level: GlobeDetailLevel) => void;
+  onPointOfViewChange?: (pov: { lat: number; lng: number; altitude: number }) => void;
   className?: string;
 };
 
@@ -73,6 +74,7 @@ export const RimvioGlobe3D = memo(
       activePinId = null,
       onPinPress,
       onDetailLevelChange,
+      onPointOfViewChange,
       className,
     },
     ref,
@@ -82,6 +84,7 @@ export const RimvioGlobe3D = memo(
     const globeRef = useRef<GlobeInstance | null>(null);
     const onPinPressRef = useRef(onPinPress);
     const onDetailLevelChangeRef = useRef(onDetailLevelChange);
+    const onPointOfViewChangeRef = useRef(onPointOfViewChange);
     const activePinIdRef = useRef(activePinId);
     const pinsRef = useRef(pins);
     const tripArcsRef = useRef(tripArcs);
@@ -92,6 +95,7 @@ export const RimvioGlobe3D = memo(
 
     onPinPressRef.current = onPinPress;
     onDetailLevelChangeRef.current = onDetailLevelChange;
+    onPointOfViewChangeRef.current = onPointOfViewChange;
     activePinIdRef.current = activePinId;
     pinsRef.current = pins;
     tripArcsRef.current = tripArcs;
@@ -219,11 +223,14 @@ export const RimvioGlobe3D = memo(
           !Number.isFinite(pov.altitude) ||
           pov.altitude < GLOBE_MIN_SAFE_ALTITUDE
         ) {
+          const safe = { ...pov, altitude: GLOBE_MIN_SAFE_ALTITUDE };
           globe.pointOfView({ altitude: GLOBE_MIN_SAFE_ALTITUDE }, 0);
           syncDetailForAltitude(GLOBE_MIN_SAFE_ALTITUDE);
+          onPointOfViewChangeRef.current?.(safe);
           return;
         }
         syncDetailForAltitude(pov.altitude);
+        onPointOfViewChangeRef.current?.(pov);
       };
 
       syncDetailForAltitude(GLOBE_OVERVIEW_POINT_OF_VIEW.altitude);
