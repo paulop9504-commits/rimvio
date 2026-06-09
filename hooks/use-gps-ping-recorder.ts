@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { GPS_PING_INTERVAL_MS } from "@/lib/location-ping/constants";
 import {
   appendGpsPing,
@@ -34,13 +34,10 @@ function sampleGpsPing(source: "periodic" | "foreground") {
 
 /** Background GPS ring buffer — e.g. one ping every 3 minutes while Rimvio is open. */
 export function useGpsPingRecorder(enabled = true) {
-  const startedRef = useRef(false);
-
   useEffect(() => {
-    if (!enabled || startedRef.current) {
+    if (!enabled) {
       return;
     }
-    startedRef.current = true;
 
     void hydrateGpsPingStore().then(() => {
       sampleGpsPing("foreground");
@@ -64,7 +61,6 @@ export function useGpsPingRecorder(enabled = true) {
     return () => {
       window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", onVisible);
-      startedRef.current = false;
     };
   }, [enabled]);
 }

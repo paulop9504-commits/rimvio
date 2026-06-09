@@ -4,6 +4,9 @@ import { Suspense, useCallback, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { RimvioGlobe3DHandle } from "@/components/experience/rimvio-globe-3d";
 import { RimvioGlobeHubClient } from "@/components/experience/rimvio-globe-hub-client";
+import { GlobeGpsControl } from "@/components/globe/globe-gps-control";
+import { GlobeLiveLocationStrip } from "@/components/globe/globe-live-location-strip";
+import { GlobeLocationConfirmCard } from "@/components/globe/globe-location-confirm-card";
 import { PinOpenSheet } from "@/components/globe/pin-open-sheet";
 import type { PinCluster } from "@/lib/globe/pin-cluster-types";
 
@@ -28,13 +31,26 @@ function GlobeHomeBody() {
   }, []);
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col">
+    <div className="relative flex h-full min-h-0 flex-1 flex-col">
       <RimvioGlobeHubClient
         globeRef={globeRef}
         className="h-full min-h-0 flex-1"
         initialRecallEventId={recallEventId}
         onPinPress={onPinPress}
       />
+      <div className="pointer-events-none absolute inset-x-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20 flex flex-col gap-2 sm:left-3 sm:right-auto sm:max-w-[220px]">
+        <div className="pointer-events-auto">
+          <GlobeGpsControl />
+        </div>
+        <div className="pointer-events-auto">
+          <GlobeLiveLocationStrip />
+        </div>
+      </div>
+      <div className="pointer-events-none absolute inset-x-3 bottom-[max(4.5rem,env(safe-area-inset-bottom))] z-20 sm:inset-x-auto sm:right-3 sm:max-w-[280px]">
+        <div className="pointer-events-auto">
+          <GlobeLocationConfirmCard />
+        </div>
+      </div>
       <PinOpenSheet
         open={sheetOpen}
         onOpenChange={onSheetOpenChange}

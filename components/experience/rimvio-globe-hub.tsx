@@ -12,7 +12,10 @@ import {
 import { RimvioGlobe3DClient } from "@/components/experience/rimvio-globe-3d-client";
 import type { RimvioGlobe3DHandle } from "@/components/experience/rimvio-globe-3d";
 import { useExperienceGraph } from "@/hooks/use-experience-graph";
+import { useGpsTrackingEnabled } from "@/hooks/use-gps-tracking-enabled";
+import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
 import { useRelationshipFeedSlots } from "@/hooks/use-relationship-feed-slots";
+import type { ClassifiedGlobePin } from "@/lib/feed/experience-globe-ping-types";
 import { readPeerContacts } from "@/lib/context/peer-contact-store";
 import { buildFeedSlotPeerLookup } from "@/lib/feed/build-feed-slot-peer-lookup";
 import { enrichClassifiedGlobePinPeers } from "@/lib/globe/project-globe-pin-peers";
@@ -101,6 +104,25 @@ const RimvioGlobeHubBody = memo(function RimvioGlobeHubBody({
     () => projectTripLegArcs({ eventsById, clusters }),
     [eventsById, clusters],
   );
+  const { enabled: gpsEnabled } = useGpsTrackingEnabled();
+  const liveLocation = useLiveLocationSnapshot();
+  const globePins = useMemo(() => {
+    const pins: ClassifiedGlobePin[] = [...classifiedPins];
+    if (gpsEnabled && liveLocation) {
+      pins.push({
+        id: "viewer:here",
+        kind: "gps",
+        label: "현재 위치",
+        lat: liveLocation.lat,
+        lng: liveLocation.lng,
+        pinX: 0,
+        pinY: 0,
+        pinShape: "viewer",
+        emphasis: "primary",
+      });
+    }
+    return pins;
+  }, [classifiedPins, gpsEnabled, liveLocation]);
   const [activePinId, setActivePinId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -112,6 +134,9 @@ const RimvioGlobeHubBody = memo(function RimvioGlobeHubBody({
 
   const handlePinPress = useCallback(
     (pinId: string) => {
+      if (pinId === "viewer:here") {
+        return;
+      }
       setActivePinId(pinId);
       const cluster = findPinClusterByPinId(clusters, pinId);
       if (cluster) {
@@ -121,33 +146,27 @@ const RimvioGlobeHubBody = memo(function RimvioGlobeHubBody({
     [clusters, onPinPress],
   );
 
-  if (clusters.length === 0) {
-    return (
-      <div
-        className={cn(
-          "rimvio-globe-space rimvio-globe-space--toss flex min-h-[60vh] flex-1 items-center justify-center px-6 text-center text-[14px] text-[#8b95a1]",
-          className,
-        )}
-        data-rimvio-globe-hub-empty
-      >
-        기록이 쌓이면 지구에 핀이 나타납니다.
-      </div>
-    );
-  }
-
   return (
     <div
-      className={cn("flex h-full min-h-0 flex-1 flex-col", className)}
+      className={cn("relative flex h-full min-h-0 flex-1 flex-col", className)}
       data-rimvio-globe-hub
     >
       <RimvioGlobe3DClient
         ref={globeRef}
-        pins={classifiedPins}
+        pins={globePins}
         tripArcs={tripArcs}
         activePinId={activePinId}
         className="h-full flex-1"
         onPinPress={handlePinPress}
       />
+      {clusters.length === 0 ? (
+        <p
+          className="pointer-events-none absolute inset-x-0 top-[max(4.5rem,env(safe-area-inset-top))] z-10 mx-auto w-fit max-w-[85%] rounded-full bg-white/90 px-3.5 py-1.5 text-center text-[12px] font-medium text-[#8b95a1] shadow-sm backdrop-blur-md"
+          data-rimvio-globe-hub-empty
+        >
+          기록이 쌓이면 지구에 핀이 나타납니다.
+        </p>
+      ) : null}
     </div>
   );
 });

@@ -11,6 +11,7 @@ import Globe from "globe.gl";
 import type { GlobeInstance } from "globe.gl";
 import { GLOBE_OVERVIEW_POINT_OF_VIEW } from "@/lib/experience-graph/globe-overview-view";
 import { createGlobe3dPinElement } from "@/lib/globe/create-globe-3d-pin-element";
+import { createGlobe3dViewerPinElement } from "@/lib/globe/create-globe-3d-viewer-pin-element";
 import { globeTileEngineUrl } from "@/lib/globe/globe-tile-engine-url";
 import { GLOBE_TOSS_THEME } from "@/lib/globe/globe-toss-theme";
 import {
@@ -144,6 +145,9 @@ export const RimvioGlobe3D = memo(
         })
         .htmlElement((pin: object) => {
           const row = pin as ClassifiedGlobePin;
+          if (row.pinShape === "viewer") {
+            return createGlobe3dViewerPinElement();
+          }
           return createGlobe3dPinElement(
             row,
             row.id === activePinIdRef.current,
