@@ -4,8 +4,7 @@ import { Suspense, useCallback, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { RimvioGlobe3DHandle } from "@/components/experience/rimvio-globe-3d";
 import { RimvioGlobeHubClient } from "@/components/experience/rimvio-globe-hub-client";
-import { GlobeGpsControl } from "@/components/globe/globe-gps-control";
-import { GlobeLiveLocationStrip } from "@/components/globe/globe-live-location-strip";
+import { GlobeGpsPanel } from "@/components/globe/globe-gps-panel";
 import { GlobeLocationConfirmCard } from "@/components/globe/globe-location-confirm-card";
 import { PinOpenSheet } from "@/components/globe/pin-open-sheet";
 import type { PinCluster } from "@/lib/globe/pin-cluster-types";
@@ -38,12 +37,9 @@ function GlobeHomeBody() {
         initialRecallEventId={recallEventId}
         onPinPress={onPinPress}
       />
-      <div className="pointer-events-none absolute inset-x-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20 flex flex-col gap-2 sm:left-3 sm:right-auto sm:max-w-[220px]">
+      <div className="pointer-events-none absolute left-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20 sm:right-auto">
         <div className="pointer-events-auto">
-          <GlobeGpsControl />
-        </div>
-        <div className="pointer-events-auto">
-          <GlobeLiveLocationStrip />
+          <GlobeGpsPanel />
         </div>
       </div>
       <div className="pointer-events-none absolute inset-x-3 bottom-[max(4.5rem,env(safe-area-inset-bottom))] z-20 sm:inset-x-auto sm:right-3 sm:max-w-[280px]">

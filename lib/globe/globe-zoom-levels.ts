@@ -3,12 +3,15 @@ export const GLOBE_ALTITUDE = {
   region: 0.85,
   city: 0.14,
   /** Apartment-district scale — roads + block labels. */
-  neighborhood: 0.018,
+  neighborhood: 0.012,
   /** Street names legible — Toss map detail. */
-  street: 0.0045,
-  /** Building / alley — max tile zoom z20. */
-  pin: 0.0012,
+  street: 0.0032,
+  /** Building / alley — max pinch zoom. */
+  pin: 0.00055,
 } as const;
+
+/** Closest camera altitude (globe radii above surface). */
+export const GLOBE_MIN_CAMERA_ALTITUDE = 0.00035;
 
 export type GlobeDetailLevel =
   | "space"
@@ -31,10 +34,10 @@ export function resolveGlobeDetailLevel(altitude: number): GlobeDetailLevel {
   if (altitude >= 0.065) {
     return "city";
   }
-  if (altitude >= 0.01) {
+  if (altitude >= 0.008) {
     return "neighborhood";
   }
-  if (altitude >= 0.0025) {
+  if (altitude >= 0.0018) {
     return "street";
   }
   return "pin";

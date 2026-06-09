@@ -21,6 +21,7 @@ import type { GlobeViewerLocation } from "@/lib/globe/globe-viewer-location-type
 import { clampGpsAccuracyMeters } from "@/lib/globe/format-gps-accuracy-label";
 import {
   altitudeForGlobeDetailLevel,
+  GLOBE_MIN_CAMERA_ALTITUDE,
   resolveGlobeDetailLevel,
   type GlobeDetailLevel,
 } from "@/lib/globe/globe-zoom-levels";
@@ -192,6 +193,8 @@ export const RimvioGlobe3D = memo(
       controls.autoRotate = false;
       controls.enableDamping = true;
       controls.dampingFactor = 0.08;
+      controls.minDistance = 1 + GLOBE_MIN_CAMERA_ALTITUDE;
+      controls.zoomSpeed = 1.35;
 
       const syncDetailForAltitude = (altitude: number) => {
         const level = resolveGlobeDetailLevel(altitude);
