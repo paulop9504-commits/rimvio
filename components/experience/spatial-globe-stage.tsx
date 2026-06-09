@@ -5,6 +5,7 @@
 import { memo } from "react";
 
 import { GlobeExperienceSlotPin } from "@/components/experience/globe-experience-slot-pin";
+import { GlobeMapLayer } from "@/components/experience/globe-map-layer";
 import type { GlobeSpaceBlob } from "@/lib/experience-graph/build-globe-space-blobs";
 import type { ClassifiedGlobePin } from "@/lib/feed/experience-globe-ping-types";
 import { mapPercentToLatLng } from "@/lib/experience-graph/resolve-place-coordinates";
@@ -17,6 +18,14 @@ const PIN_KIND_CLASS: Record<ClassifiedGlobePin["kind"], string> = {
   gps: "bg-sky-400/85 shadow-[0_0_10px_rgba(56,189,248,0.75)]",
   dwell: "bg-amber-300/90 shadow-[0_0_12px_rgba(251,191,36,0.8)]",
   place: "bg-white/75 shadow-[0_0_10px_rgba(255,255,255,0.45)]",
+};
+
+const PIN_KIND_CLASS_SATELLITE: Record<ClassifiedGlobePin["kind"], string> = {
+  photo: "bg-emerald-400 shadow-[0_0_16px_rgba(52,211,153,1)] ring-2 ring-white/90",
+  video: "bg-violet-400 shadow-[0_0_16px_rgba(167,139,250,1)] ring-2 ring-white/90",
+  gps: "bg-sky-300 shadow-[0_0_14px_rgba(125,211,252,1)] ring-2 ring-white/85",
+  dwell: "bg-amber-300 shadow-[0_0_16px_rgba(251,191,36,1)] ring-2 ring-white/90",
+  place: "bg-white shadow-[0_0_14px_rgba(255,255,255,0.9)] ring-2 ring-white/80",
 };
 
 
@@ -45,6 +54,12 @@ export type SpatialGlobeStageProps = {
   onMapPress?: (coords: { lat: number; lng: number; pinX: number; pinY: number }) => void;
 
   variant?: "card" | "immersive";
+
+  /** Hide place/time/environment chips — globe-first home. */
+  hideSyncMeta?: boolean;
+
+  /** Immersive hub — hide center crosshair when pins carry context. */
+  hideCenterCrosshair?: boolean;
 
   className?: string;
 
@@ -78,6 +93,10 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
 
   variant = "card",
 
+  hideSyncMeta = false,
+
+  hideCenterCrosshair = false,
+
   className,
 
 }: SpatialGlobeStageProps) {
@@ -87,6 +106,8 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
   const translateY = 50 - globe.pinY;
 
   const immersive = variant === "immersive";
+  const satellite = true;
+  const pinKindClass = PIN_KIND_CLASS_SATELLITE;
 
 
 
@@ -96,13 +117,11 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
 
       className={cn(
 
-        "relative overflow-hidden bg-[#04060c]",
+        "relative overflow-hidden",
 
         immersive
-
-          ? "min-h-[min(58vh,520px)] rounded-none border-0"
-
-          : "rounded-2xl border border-sky-400/20",
+          ? "rimvio-globe-space min-h-[min(62vh,560px)] rounded-none border-0"
+          : "rimvio-globe-space min-h-[min(36vh,320px)] rounded-2xl border border-white/10 shadow-sm",
 
         className,
 
@@ -118,9 +137,7 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
 
     >
 
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_115%,rgba(56,189,248,0.22),transparent_58%)]" />
-
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(167,139,250,0.12),transparent_32%)]" />
+      <div className="pointer-events-none absolute inset-0 rimvio-globe-stars" aria-hidden />
 
 
 
@@ -130,19 +147,28 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
 
           "relative w-full",
 
-          immersive ? "min-h-[min(58vh,520px)]" : "aspect-[16/10]",
+          immersive ? "min-h-[min(62vh,560px)]" : "aspect-[16/10]",
 
         )}
 
       >
 
+        {immersive ? (
+          <div
+            className="pointer-events-none absolute left-1/2 top-[46%] size-[min(98vw,460px)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(56,189,248,0.14)_0%,rgba(37,99,235,0.06)_42%,transparent_72%)]"
+            aria-hidden
+          />
+        ) : null}
+
         <div
 
           className={cn(
 
-            "absolute left-1/2 top-[46%] -translate-x-1/2 -translate-y-1/2 rounded-full border border-sky-300/20 bg-[radial-gradient(circle_at_30%_24%,#2563eb_0%,#0c1929_38%,#03050a_100%)] shadow-[inset_0_0_80px_rgba(125,211,252,0.16),0_0_60px_rgba(56,189,248,0.12)] transition-transform duration-700 ease-out",
+            "absolute left-1/2 top-[46%] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full transition-transform duration-[1200ms] ease-out",
 
-            immersive ? "size-[min(92vw,380px)] animate-[rimvio-globe-idle_48s_linear_infinite]" : "size-[145%]",
+            immersive
+              ? "rimvio-globe-sphere-aura size-[min(94vw,420px)] border bg-[#050810]"
+              : "rimvio-globe-sphere-aura size-[min(88vw,340px)] border bg-[#050810]",
 
           )}
 
@@ -153,20 +179,14 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
         >
 
           <div
-
             className={cn(
-              "absolute inset-0 rounded-full transition-transform duration-700 ease-out",
+              "absolute inset-0 rounded-full transition-transform duration-[1200ms] ease-out",
               onMapPress && "cursor-crosshair",
             )}
-
             style={{
-
-              transform: `translate(${translateX}%, ${translateY}%) scale(1.35)`,
-
+              transform: `translate(${translateX}%, ${translateY}%) scale(${immersive ? 1.42 : 1.35})`,
             }}
-
             data-globe-map-surface
-
             onClick={
               onMapPress
                 ? (event) => {
@@ -178,14 +198,19 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
                   }
                 : undefined
             }
-
           >
-
-            <div className="absolute inset-0 rounded-full opacity-85 [background-image:radial-gradient(circle_at_22%_34%,rgba(74,222,128,0.42)_0%,transparent_22%),radial-gradient(circle_at_58%_40%,rgba(56,189,248,0.34)_0%,transparent_20%),radial-gradient(circle_at_76%_64%,rgba(34,197,94,0.26)_0%,transparent_18%),linear-gradient(180deg,rgba(125,211,252,0.1),transparent_48%)]" />
-
-            <div className="absolute inset-0 rounded-full opacity-25 [background-image:linear-gradient(rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:24px_24px]" />
-
-
+            <div
+              className={cn(
+                "absolute inset-0 rounded-full",
+                "rimvio-globe-spin",
+              )}
+            >
+            <GlobeMapLayer
+              lat={globe.lat}
+              lng={globe.lng}
+              globeZoom={globe.zoom}
+              tileStyle="satellite"
+            />
 
             {blobs.map((blob) => {
               const active = blob.id === activeBlobId;
@@ -251,7 +276,7 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
                     "absolute z-[11] -translate-x-1/2 -translate-y-1/2 rounded-full transition-all duration-500",
                     related ? "opacity-55" : "opacity-100",
                     active ? "size-3.5 ring-2 ring-white" : "size-2 hover:size-2.5",
-                    PIN_KIND_CLASS[pin.kind],
+                    pinKindClass[pin.kind],
                   )}
                   style={{ left: `${pin.pinX}%`, top: `${pin.pinY}%` }}
                   data-globe-classified-pin={pin.id}
@@ -266,53 +291,47 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
               );
             })}
 
+            </div>
           </div>
 
         </div>
 
 
 
+        {hideCenterCrosshair ? null : (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
 
           <div className="relative translate-y-2">
 
-            <span className="absolute left-1/2 top-full mt-2 -translate-x-1/2 whitespace-nowrap rounded-full bg-sky-500/25 px-2.5 py-0.5 text-[11px] font-bold text-sky-50 ring-1 ring-sky-300/30">
+            <span className="absolute left-1/2 top-full mt-2 -translate-x-1/2 whitespace-nowrap rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-bold text-foreground ring-1 ring-primary/20">
 
               {globe.placeLabel}
 
             </span>
 
-            <span className="block size-4 rounded-full bg-sky-200 shadow-[0_0_24px_rgba(186,230,253,1)] ring-2 ring-white" />
+            <span className="block size-4 rounded-full bg-primary shadow-[0_0_16px_rgba(88,101,242,0.45)] ring-2 ring-white" />
 
-            <span className="absolute left-1/2 top-4 h-10 w-px -translate-x-1/2 bg-gradient-to-b from-sky-100/90 to-transparent" />
+            <span className="absolute left-1/2 top-4 h-10 w-px -translate-x-1/2 bg-gradient-to-b from-primary/70 to-transparent" />
 
           </div>
 
         </div>
+        )}
 
 
-
-        {immersive ? (
-
-          <div className="pointer-events-none absolute left-4 top-4 rounded-full border border-white/15 bg-black/35 px-2.5 py-1 text-[10px] font-bold tracking-wide text-white/70">
-
-            RIMVIO GLOBE
-
-          </div>
-
-        ) : null}
 
       </div>
 
 
 
+      {hideSyncMeta ? null : (
       <div
 
         className={cn(
 
-          "border-t border-white/8 px-3 py-2.5",
+          "border-t border-border px-3 py-2.5",
 
-          immersive && "bg-black/35 backdrop-blur-sm",
+          immersive && "bg-white/80 backdrop-blur-sm",
 
         )}
 
@@ -322,7 +341,7 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
 
           <span
 
-            className="rounded-full border border-sky-400/25 bg-sky-500/10 px-2 py-0.5 text-sky-100/92"
+            className="rounded-full border border-primary/20 bg-primary/8 px-2 py-0.5 text-foreground"
 
             data-spatial-sync-place
 
@@ -336,7 +355,7 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
 
             <span
 
-              className="rounded-full border border-violet-400/25 bg-violet-500/10 px-2 py-0.5 text-violet-100/92 transition-opacity duration-500"
+              className="rounded-full border border-border bg-muted px-2 py-0.5 text-foreground/80 transition-opacity duration-500"
 
               data-spatial-sync-time
 
@@ -352,7 +371,7 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
 
             <span
 
-              className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2 py-0.5 text-emerald-100/92 transition-opacity duration-500"
+              className="rounded-full border border-[var(--rimvio-highlight-green)]/25 bg-[var(--rimvio-highlight-green)]/10 px-2 py-0.5 text-foreground/80 transition-opacity duration-500"
 
               data-spatial-sync-environment
 
@@ -367,6 +386,7 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
         </div>
 
       </div>
+      )}
 
     </div>
 

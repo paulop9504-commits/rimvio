@@ -26,38 +26,34 @@ export const FeedExperienceSyncSheet = memo(function FeedExperienceSyncSheet({
   return (
     <div
       className={cn(
-        "fixed inset-0 z-[80] flex items-end justify-center bg-black/70 backdrop-blur-sm",
+        "fixed inset-0 z-[80] flex items-end justify-center bg-black/40",
         className,
       )}
       data-feed-experience-sync-sheet
       role="dialog"
       aria-modal="true"
-      aria-label="이 맥락의 공간·시간 기억"
+      aria-label={volume.title}
       onClick={onClose}
     >
       <div
-        className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-white/10 bg-[#0c0f16] px-4 pb-8 pt-4 shadow-2xl"
+        className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-t-[24px] border border-border bg-background px-4 pb-8 pt-4 shadow-[0_-8px_32px_rgba(0,0,0,0.12)]"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[11px] font-medium text-white/40">이 맥락의 기억</p>
-            <h2 className="truncate text-[16px] font-semibold text-white">{volume.title}</h2>
+            <p className="text-[11px] font-medium text-muted-foreground">대표 장면</p>
+            <h2 className="truncate text-[16px] font-semibold text-foreground">{volume.title}</h2>
           </div>
           <button
             type="button"
-            className="shrink-0 rounded-full bg-white/10 px-3 py-1.5 text-[12px] font-semibold text-white/85"
+            className="shrink-0 rounded-full border border-border bg-background px-3 py-1.5 text-[12px] font-semibold text-foreground"
             onClick={onClose}
           >
             닫기
           </button>
         </div>
 
-        <p className="mb-3 text-[12px] leading-snug text-white/50">
-          그때 어디에 있었는지, 어떻게 움직였는지 — 사진·영상·글과 함께 떠올려 보세요.
-        </p>
-
-        <SpatialMediaSyncPlayer volume={volume} />
+        <SpatialMediaSyncPlayer volume={volume} hideGlobe experienceOpen />
       </div>
     </div>
   );

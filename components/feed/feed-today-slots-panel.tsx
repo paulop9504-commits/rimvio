@@ -155,7 +155,7 @@ export const FeedTodaySlotsPanel = memo(function FeedTodaySlotsPanel({
       {!drawerMode ? (
       <header className="flex shrink-0 items-end justify-between gap-3 px-4 pb-2.5 pt-2">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--rimvio-highlight-green)]">
             {copy.feed.experience.heroEyebrow}
           </p>
           <div className="mt-0.5 flex items-center gap-2">

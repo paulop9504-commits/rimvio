@@ -1,13 +1,16 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, Globe, MapPin } from "lucide-react";
-import { SpatialMediaSyncPlayer } from "@/components/experience/spatial-media-sync-player";
+import { ExperienceMomentPlayer } from "@/components/experience/experience-moment-player";
+import { SpatialGlobeStage } from "@/components/experience/spatial-globe-stage";
 import { FeedExperienceRunChips } from "@/components/feed/feed-experience-run-chips";
 import { FeedRelatedContextStrip } from "@/components/feed/feed-related-context-strip";
 import type { ClassifiedGlobePin } from "@/lib/feed/experience-globe-ping-types";
 import type { SlotRelatedContextBundle } from "@/lib/feed/resolve-slot-related-context";
 import type { ExperienceVolume } from "@/lib/experience-graph/experience-volume-types";
+import { projectVolumeSpatialMedia } from "@/lib/experience-graph/project-volume-spatial-media";
+import { globeViewForSharedPins } from "@/lib/peer-chat/globe-view-for-shared-pins";
 import { useCopy } from "@/hooks/use-copy";
 import { cn } from "@/lib/utils";
 
@@ -28,7 +31,7 @@ export type FeedExperienceRecallHeroProps = {
   className?: string;
 };
 
-/** YT Music-style top recall — mini bar ↔ full Globe player, one tap. */
+/** YT Music-style top recall — satellite globe + representative moment. */
 export const FeedExperienceRecallHero = memo(function FeedExperienceRecallHero({
   volume,
   headline,
@@ -47,6 +50,22 @@ export const FeedExperienceRecallHero = memo(function FeedExperienceRecallHero({
 }: FeedExperienceRecallHeroProps) {
   const copy = useCopy();
   const recallCopy = copy.feed.experience.recall;
+  const [activePinId, setActivePinId] = useState<string | null>(null);
+
+  const globe = useMemo(
+    () => globeViewForSharedPins(classifiedPins),
+    [classifiedPins],
+  );
+
+  const momentItem = useMemo(() => {
+    if (!volume) {
+      return null;
+    }
+    const items = projectVolumeSpatialMedia(volume);
+    return (
+      items.find((row) => row.kind === "photo" || row.kind === "video") ?? items[0] ?? null
+    );
+  }, [volume]);
 
   if (!volume) {
     return (
@@ -109,7 +128,7 @@ export const FeedExperienceRecallHero = memo(function FeedExperienceRecallHero({
     <section
       className={cn(
         "flex min-h-0 shrink-0 flex-col border-b border-white/8 bg-[#080a10]",
-        "max-h-[min(52vh,420px)] min-h-[min(38vh,320px)]",
+        "max-h-[min(58vh,480px)] min-h-[min(42vh,360px)]",
         className,
       )}
       data-feed-recall-hero
@@ -172,10 +191,24 @@ export const FeedExperienceRecallHero = memo(function FeedExperienceRecallHero({
           </button>
         </div>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <SpatialMediaSyncPlayer volume={volume} classifiedPins={classifiedPins} />
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <SpatialGlobeStage
+          globe={globe}
+          classifiedPins={classifiedPins}
+          activePinId={activePinId}
+          onPinPress={setActivePinId}
+          variant="immersive"
+          hideSyncMeta
+          hideCenterCrosshair
+          className="min-h-[min(34vh,300px)]"
+        />
+        {momentItem ? (
+          <div className="px-4">
+            <ExperienceMomentPlayer item={momentItem} volume={volume} />
+          </div>
+        ) : null}
         {onRunMention ? (
-          <div className="mt-4 border-t border-white/8 pt-3">
+          <div className="border-t border-white/8 px-4 pt-3">
             <FeedExperienceRunChips deferred={runDeferred} onRun={onRunMention} />
           </div>
         ) : null}

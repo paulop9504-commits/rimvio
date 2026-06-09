@@ -155,7 +155,7 @@ export function FeedPeerTalkFeedRows({
     return (
       <div
         data-message-id={messageId}
-        className="chat-message-focus w-full py-3 text-center text-[11px] text-white/45"
+        className="chat-message-focus w-full py-3 text-center text-[11px] text-muted-foreground"
         data-bubble-role="assistant"
       >
         - {thread.promptLine} -
@@ -238,7 +238,7 @@ export function FeedPeerTalkFeedRows({
         data-message-id={messageId}
         className={cn(
           "chat-message-focus w-full py-2 text-center text-[11px]",
-          thread.closed ? "text-white/35" : "text-white/45",
+          thread.closed ? "text-muted-foreground/60" : "text-muted-foreground",
         )}
         data-bubble-role="assistant"
       >

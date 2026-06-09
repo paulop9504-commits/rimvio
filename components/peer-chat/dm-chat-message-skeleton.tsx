@@ -24,7 +24,7 @@ export function DmChatMessageSkeleton({ className }: { className?: string }) {
         >
           <div
             className={cn(
-              "h-[31px] animate-pulse rounded-[18px] bg-white/[0.06]",
+              "h-[31px] animate-pulse rounded-[18px] bg-muted",
               row.w,
               row.side === "end" ? DM_CHAT.bubbleMeCorner : DM_CHAT.bubblePeerCorner,
             )}

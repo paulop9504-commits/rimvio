@@ -4,7 +4,7 @@ type GlobePageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-/** Legacy /globe → feed recall deep link (no standalone tab). */
+/** Legacy /globe → globe home recall deep link. */
 export default async function GlobePage({ searchParams }: GlobePageProps) {
   const params = await searchParams;
   const next = new URLSearchParams();
@@ -24,5 +24,5 @@ export default async function GlobePage({ searchParams }: GlobePageProps) {
   }
 
   const query = next.toString();
-  redirect(query ? `/feed?${query}` : "/feed");
+  redirect(query ? `/?${query}` : "/");
 }

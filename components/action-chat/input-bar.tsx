@@ -157,7 +157,7 @@ export function ActionChatInputBar({
               }}
             />
           ) : (
-            <p className="px-1 py-2 text-center text-[11px] text-white/40">
+            <p className="px-1 py-2 text-center text-[11px] text-muted-foreground">
               {groupTalkComposer.query.trim()
                 ? `"${groupTalkComposer.query.trim()}" 맞는 단톡이 없어요`
                 : "단톡이 없어요 · /peers 에서 만들기"}
@@ -176,7 +176,7 @@ export function ActionChatInputBar({
               }}
             />
           ) : (
-            <p className="px-1 py-2 text-center text-[11px] text-white/40">
+            <p className="px-1 py-2 text-center text-[11px] text-muted-foreground">
               {peerTalkComposer.query.trim()
                 ? `"${peerTalkComposer.query.trim()}" 맞는 친구가 없어요`
                 : "친구가 없어요 · @친추로 추가"}

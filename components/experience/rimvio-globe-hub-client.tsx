@@ -10,13 +10,13 @@ const RimvioGlobeHubLazy = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex min-h-[50vh] items-center justify-center px-6 text-center text-[13px] text-white/45">
-        지구본 불러오는 중…
+      <div className="flex min-h-[60vh] flex-1 items-center justify-center px-6 text-center text-[14px] text-muted-foreground">
+        지구 불러오는 중…
       </div>
     ),
   },
 );
 
-export function RimvioGlobeHubClient({ className }: RimvioGlobeHubProps) {
-  return <RimvioGlobeHubLazy className={cn(className)} />;
+export function RimvioGlobeHubClient(props: RimvioGlobeHubProps) {
+  return <RimvioGlobeHubLazy {...props} className={cn(props.className)} />;
 }

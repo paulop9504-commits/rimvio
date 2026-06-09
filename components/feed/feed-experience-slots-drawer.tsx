@@ -65,7 +65,7 @@ export const FeedExperienceSlotsDrawer = memo(function FeedExperienceSlotsDrawer
   return (
     <section
       className={cn(
-        "feed-experience-slots-drawer flex min-h-0 flex-col rounded-t-[1.75rem] border-t border-white/10 bg-[#0c0c0e] shadow-[0_-12px_40px_rgba(0,0,0,0.35)]",
+        "feed-experience-slots-drawer flex min-h-0 flex-col overflow-hidden rounded-t-[1.75rem] border-t border-border bg-card shadow-[0_-8px_28px_rgba(6,6,7,0.06)]",
         snap.expanded && "min-h-0 flex-1",
         className,
       )}
@@ -73,6 +73,8 @@ export const FeedExperienceSlotsDrawer = memo(function FeedExperienceSlotsDrawer
       data-feed-drawer-expanded={snap.expanded ? "true" : "false"}
       aria-label={copy.feed.today.ariaLabel}
     >
+      <div className="h-1 w-full shrink-0 bg-[var(--rimvio-highlight-green)]" aria-hidden />
+
       <button
         type="button"
         className="flex w-full shrink-0 flex-col items-center pt-2.5 touch-none"
@@ -80,7 +82,7 @@ export const FeedExperienceSlotsDrawer = memo(function FeedExperienceSlotsDrawer
         aria-label={snap.expanded ? copy.feed.queue.collapseAria : copy.feed.queue.expandAria}
         {...bindDragHandle()}
       >
-        <span className="h-1 w-10 rounded-full bg-white/25" aria-hidden />
+        <span className="h-1 w-10 rounded-full bg-border" aria-hidden />
       </button>
 
       <header className="flex shrink-0 items-start justify-between gap-3 px-4 pb-2 pt-1">
@@ -90,13 +92,13 @@ export const FeedExperienceSlotsDrawer = memo(function FeedExperienceSlotsDrawer
           onClick={snap.toggle}
           aria-expanded={snap.expanded}
         >
-          <p className="text-[10px] font-medium uppercase tracking-wide text-white/40">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--rimvio-highlight-green)]">
             {copy.feed.experience.heroEyebrow}
           </p>
-          <p className="mt-0.5 text-[15px] font-semibold text-white">
+          <p className="mt-0.5 text-[15px] font-semibold text-foreground">
             {copy.feed.experience.heroTitle}
           </p>
-          <p className="mt-1 truncate text-[12px] text-white/45">{summary}</p>
+          <p className="mt-1 truncate text-[12px] text-muted-foreground">{summary}</p>
         </button>
         <div className="flex shrink-0 flex-col items-end gap-1">
           {onRunAt && runLabel ? (
@@ -107,8 +109,8 @@ export const FeedExperienceSlotsDrawer = memo(function FeedExperienceSlotsDrawer
               className={cn(
                 "rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors",
                 runDeferred
-                  ? "cursor-not-allowed bg-white/[0.04] text-white/28"
-                  : "border border-violet-300/30 bg-violet-500/15 text-violet-100/90 hover:bg-violet-500/22",
+                  ? "cursor-not-allowed bg-secondary text-muted-foreground/50"
+                  : "border border-primary/25 bg-primary/10 text-primary hover:bg-primary/16",
               )}
             >
               {runLabel}
@@ -117,7 +119,7 @@ export const FeedExperienceSlotsDrawer = memo(function FeedExperienceSlotsDrawer
           <button
             type="button"
             onClick={snap.toggle}
-            className="flex size-7 items-center justify-center rounded-full text-white/35 transition-colors hover:bg-white/[0.06] hover:text-white/60"
+            className="flex size-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             aria-label={snap.expanded ? copy.feed.queue.collapseAria : copy.feed.queue.expandAria}
           >
             {snap.expanded ? (

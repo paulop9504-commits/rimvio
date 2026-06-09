@@ -1,8 +1,6 @@
 "use client";
 
-import { useState } from "react";
 import { Globe, X } from "lucide-react";
-import { PersonalGlobeSheet } from "@/components/globe/personal-globe-sheet";
 import { PeerProfileAvatar } from "@/components/peer-chat/peer-profile-avatar";
 import type { PeerPublicProfile } from "@/lib/peer-chat/peer-chat-client";
 import { cn } from "@/lib/utils";
@@ -25,8 +23,6 @@ export function PeerPublicProfileSheet({
   loading = false,
   peerThreadId = null,
 }: PeerPublicProfileSheetProps) {
-  const [globeOpen, setGlobeOpen] = useState(false);
-
   if (!open) {
     return null;
   }
@@ -81,7 +77,9 @@ export function PeerPublicProfileSheet({
                 <button
                   type="button"
                   className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl bg-sky-500/15 px-4 py-3 text-[14px] font-semibold text-sky-100 ring-1 ring-sky-300/25 active:bg-sky-500/25"
-                  onClick={() => setGlobeOpen(true)}
+                  onClick={() => {
+                    window.location.assign("/");
+                  }}
                 >
                   <Globe className="size-4" aria-hidden />
                   지구 보기
@@ -95,17 +93,6 @@ export function PeerPublicProfileSheet({
         </div>
       </div>
 
-      <PersonalGlobeSheet
-        open={globeOpen}
-        onOpenChange={setGlobeOpen}
-        viewer={{
-          isOwner: false,
-          viewerPeerThreadId: peerThreadId,
-        }}
-        title={`${name}에게 열린 지구`}
-        subtitle="내가 공유한 핀만"
-        ownerDisplayName={name}
-      />
     </>
   );
 }

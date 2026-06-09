@@ -144,13 +144,14 @@ export const FeedSlotStage = memo(function FeedSlotStage({
     ensureFeedPlanDemoEvent();
     ensureGlobeDemoEvents();
     const bump = () => setEventRevision((value) => value + 1);
-    const bumpPins = () => setPersonalPinRevision((value) => value + 1);
     window.addEventListener(EVENT_CANDIDATES_UPDATED, bump);
-    window.addEventListener(PERSONAL_GLOBE_PINS_UPDATED, bumpPins);
-    return () => {
-      window.removeEventListener(EVENT_CANDIDATES_UPDATED, bump);
-      window.removeEventListener(PERSONAL_GLOBE_PINS_UPDATED, bumpPins);
-    };
+    return () => window.removeEventListener(EVENT_CANDIDATES_UPDATED, bump);
+  }, []);
+
+  useEffect(() => {
+    const bump = () => setPersonalPinRevision((value) => value + 1);
+    window.addEventListener(PERSONAL_GLOBE_PINS_UPDATED, bump);
+    return () => window.removeEventListener(PERSONAL_GLOBE_PINS_UPDATED, bump);
   }, []);
 
   const eventsById = useMemo(

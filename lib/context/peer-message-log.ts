@@ -3,6 +3,17 @@ import type { PeerMessage, PeerMessageLog } from "@/lib/context/peer-message-typ
 const LOG_PREFIX = "rimvio.peer-thread.messages.v1";
 const MAX_MESSAGES = 200;
 
+export const PEER_MESSAGE_LOG_UPDATED = "rimvio:peer-message-log-updated";
+
+function emitPeerMessageLogUpdated(peerThreadId: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.dispatchEvent(
+    new CustomEvent(PEER_MESSAGE_LOG_UPDATED, { detail: { peerThreadId } }),
+  );
+}
+
 function logKey(peerThreadId: string) {
   return `${LOG_PREFIX}.${peerThreadId}`;
 }
@@ -47,6 +58,7 @@ export function writePeerMessageLog(log: PeerMessageLog) {
       updatedAt: new Date().toISOString(),
     })
   );
+  emitPeerMessageLogUpdated(log.peerThreadId);
 }
 
 /** 서버 동기화 후 다음 입장 시 즉시 표시 */

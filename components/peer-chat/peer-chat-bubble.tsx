@@ -196,7 +196,7 @@ export function PeerChatBubble({
                 <span
                   className={cn(
                     "leading-none tabular-nums",
-                    simple ? "text-[10px] text-white/40" : "text-[10px] text-white/45",
+                    simple ? "text-[10px] text-muted-foreground" : "text-[10px] text-muted-foreground",
                   )}
                   aria-label={`${groupReadCount}명이 읽음`}
                 >
@@ -207,7 +207,7 @@ export function PeerChatBubble({
                 <Check
                   className={cn(
                     "size-3 stroke-[2.5]",
-                    simple ? "text-white/35" : "text-white/40",
+                    simple ? "text-muted-foreground/70" : "text-muted-foreground/70",
                   )}
                   aria-label="전달됨"
                 />

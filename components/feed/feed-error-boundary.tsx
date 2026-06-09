@@ -29,16 +29,16 @@ export class FeedErrorBoundary extends Component<
     if (this.state.error) {
       return (
         <div className="flex min-h-[50dvh] flex-col items-center justify-center gap-4 px-6 py-10 text-center">
-          <RimvioLogo size="md" appearance="white" />
+          <RimvioLogo size="md" appearance="dark" />
           <div className="max-w-sm space-y-2">
-            <h1 className="text-[17px] font-semibold text-white/90">
+            <h1 className="text-[17px] font-semibold text-foreground">
               피드를 불러오지 못했어요
             </h1>
-            <p className="text-[14px] leading-relaxed text-white/55">
+            <p className="text-[14px] leading-relaxed text-muted-foreground">
               새로고침 후 다시 시도해 주세요. 계속되면 검색 탭을 이용해 주세요.
             </p>
             {this.state.error.message ? (
-              <p className="font-mono text-[10px] text-white/25">
+              <p className="font-mono text-[10px] text-muted-foreground/70">
                 {this.state.error.message}
               </p>
             ) : null}
@@ -49,7 +49,7 @@ export class FeedErrorBoundary extends Component<
               this.setState({ error: null });
               window.location.reload();
             }}
-            className="rounded-full bg-white px-5 py-2.5 text-[14px] font-semibold text-rimvio-base"
+            className="rounded-full bg-primary px-5 py-2.5 text-[14px] font-semibold text-primary-foreground"
           >
             새로고침
           </button>

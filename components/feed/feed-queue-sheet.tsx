@@ -56,19 +56,19 @@ function QueueRow({
     <li>
       <button
         type="button"
-        className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-white/[0.06] active:bg-white/[0.1]"
+        className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-muted/70 active:bg-muted"
         onClick={() => onDispatch(asDispatchNode(row), row.primaryAction)}
       >
-        <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-white/10 text-xl">
+        <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-muted text-xl">
           {visual.emoji}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[14px] font-medium text-white">{row.title}</p>
-          <p className="truncate text-[12px] text-white/45">
+          <p className="truncate text-[14px] font-medium text-foreground">{row.title}</p>
+          <p className="truncate text-[12px] text-muted-foreground">
             {row.description || row.primaryAction.label}
           </p>
         </div>
-        <GripVertical className="size-4 shrink-0 text-white/20" strokeWidth={2} aria-hidden />
+        <GripVertical className="size-4 shrink-0 text-muted-foreground/40" strokeWidth={2} aria-hidden />
       </button>
     </li>
   );
@@ -163,7 +163,7 @@ export const FeedQueueSheet = memo(function FeedQueueSheet({
   return (
     <section
       className={cn(
-        "feed-queue-sheet shrink-0 flex flex-col rounded-t-[1.75rem] border-t border-white/10 bg-[#0c0c0e] shadow-[0_-12px_40px_rgba(0,0,0,0.35)]",
+        "feed-queue-sheet shrink-0 flex flex-col rounded-t-[1.75rem] border-t border-border bg-card shadow-[0_-8px_28px_rgba(6,6,7,0.06)]",
         snap.expanded && "max-h-[min(50vh,400px)] min-h-0",
         className,
       )}
@@ -177,7 +177,7 @@ export const FeedQueueSheet = memo(function FeedQueueSheet({
         aria-label={snap.expanded ? queueCopy.collapseAria : queueCopy.expandAria}
         {...bindDragHandle()}
       >
-        <span className="h-1 w-10 rounded-full bg-white/25" aria-hidden />
+        <span className="h-1 w-10 rounded-full bg-muted-foreground/25" aria-hidden />
       </button>
 
       <header className="flex shrink-0 items-start justify-between gap-3 px-4 pb-2 pt-1">
@@ -187,14 +187,14 @@ export const FeedQueueSheet = memo(function FeedQueueSheet({
           onClick={snap.toggle}
           aria-expanded={snap.expanded}
         >
-          <p className="text-[10px] font-medium uppercase tracking-wide text-white/40">
+          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
             {queueCopy.eyebrow}
           </p>
-          <p className="mt-0.5 text-[15px] font-semibold text-white">{queueCopy.title}</p>
+          <p className="mt-0.5 text-[15px] font-semibold text-foreground">{queueCopy.title}</p>
           {!snap.expanded ? (
-            <p className="mt-1 truncate text-[12px] text-white/45">{collapsedSummary}</p>
+            <p className="mt-1 truncate text-[12px] text-muted-foreground">{collapsedSummary}</p>
           ) : primary ? (
-            <p className="mt-1 truncate text-[12px] text-white/45">
+            <p className="mt-1 truncate text-[12px] text-muted-foreground">
               {queueCopy.nowFocus(primary.title)}
             </p>
           ) : null}
@@ -202,7 +202,7 @@ export const FeedQueueSheet = memo(function FeedQueueSheet({
         <button
           type="button"
           onClick={onAskAi}
-          className="shrink-0 rounded-full border border-white/15 bg-white/[0.06] px-3.5 py-1.5 text-[12px] font-semibold text-white/85 transition-colors hover:bg-white/10"
+          className="shrink-0 rounded-full border border-border bg-muted px-3.5 py-1.5 text-[12px] font-semibold text-foreground transition-colors hover:bg-muted/80"
         >
           {askAiLabel}
         </button>
@@ -228,8 +228,8 @@ export const FeedQueueSheet = memo(function FeedQueueSheet({
                   className={cn(
                     "shrink-0 rounded-full px-3.5 py-1.5 text-[12px] font-semibold transition-colors",
                     active
-                      ? "bg-white text-black"
-                      : "bg-white/10 text-white/75 hover:bg-white/15",
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-foreground/80 hover:bg-muted/80",
                   )}
                 >
                   {label}
@@ -241,11 +241,11 @@ export const FeedQueueSheet = memo(function FeedQueueSheet({
 
         <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {!hasVisibleRows ? (
-            <p className="px-3 py-6 text-center text-[13px] text-white/40">{queueCopy.empty}</p>
+            <p className="px-3 py-6 text-center text-[13px] text-muted-foreground">{queueCopy.empty}</p>
           ) : (
             filteredSections.map((section) => (
               <div key={section.id} className="mb-3 last:mb-0">
-                <p className="px-2 pb-1.5 pt-1 text-[11px] font-semibold uppercase tracking-wide text-white/35">
+                <p className="px-2 pb-1.5 pt-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   {sectionLabels[section.id]}
                 </p>
                 <ul>
@@ -262,7 +262,7 @@ export const FeedQueueSheet = memo(function FeedQueueSheet({
       <button
         type="button"
         onClick={snap.toggle}
-        className="mx-auto mb-1 flex size-7 shrink-0 items-center justify-center rounded-full text-white/35 transition-colors hover:bg-white/[0.06] hover:text-white/60"
+        className="mx-auto mb-1 flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         aria-label={snap.expanded ? queueCopy.collapseAria : queueCopy.expandAria}
       >
         {snap.expanded ? (

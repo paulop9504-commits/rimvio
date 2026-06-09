@@ -4,7 +4,7 @@ export type GlobeFeedLinkParams = {
   mediaId?: string | null;
 };
 
-/** Feed slot → in-feed spatial recall sheet. */
+/** Experience → globe home recall deep link. */
 export function buildGlobeFeedHref(params: GlobeFeedLinkParams): string {
   const search = new URLSearchParams();
   const clusterId = params.clusterId?.trim();
@@ -22,7 +22,7 @@ export function buildGlobeFeedHref(params: GlobeFeedLinkParams): string {
   }
 
   const query = search.toString();
-  return query ? `/feed?${query}` : "/feed";
+  return query ? `/?${query}` : "/";
 }
 
 export function parseGlobeFeedLink(

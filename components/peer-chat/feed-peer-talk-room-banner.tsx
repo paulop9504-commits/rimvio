@@ -32,7 +32,7 @@ export function FeedPeerTalkRoomBanner({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center gap-2 rounded-xl border border-rimvio-neon-cyan/25 bg-rimvio-neon-cyan/8 px-2.5 py-2",
+        "flex flex-wrap items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-2.5 py-2",
         className,
       )}
     >
@@ -41,12 +41,12 @@ export function FeedPeerTalkRoomBanner({
         onChange={onAiLensChange}
         size="sm"
       />
-      <p className="min-w-0 flex-1 text-[11px] leading-snug text-white/65">
+      <p className="min-w-0 flex-1 text-[11px] leading-snug text-muted-foreground">
         {copy.product.feedPeerTalkRoomHint}
       </p>
       <button
         type="button"
-        className="flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-rimvio-neon-cyan"
+        className="flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-sky-800"
         onClick={() => {
           notifyPeerRoomFromFeed(displayName);
           router.push(peerRoomPath(peerThreadId));

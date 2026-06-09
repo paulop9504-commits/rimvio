@@ -39,6 +39,8 @@ export const copyEn: Copy = {
   nav: {
     feed: "Feed",
     globe: "Globe",
+    people: "People",
+    capture: "Capture",
     search: "Search",
     inbox: "Inbox",
     room: "Together",

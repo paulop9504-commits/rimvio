@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { ChevronLeft, Globe } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { ExperienceDiscussionHeader } from "@/components/experience/experience-discussion-header";
+import { buildExperienceRoomBackHref } from "@/lib/globe/resolve-experience-peer-thread-id";
 import { toast } from "sonner";
 import { useLongPress } from "@/lib/hooks/use-long-press";
 import { useCopy } from "@/hooks/use-copy";
@@ -42,8 +45,15 @@ type PeerThreadRoomClientProps = {
   peerThreadId: string;
 };
 
-export function PeerThreadRoomClient({ peerThreadId }: PeerThreadRoomClientProps) {
+function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
   const copy = useCopy();
+  const searchParams = useSearchParams();
+  const experienceEventId = searchParams.get("experience")?.trim() || null;
+  const experienceTitle = searchParams.get("experienceTitle")?.trim() || null;
+  const experienceDate = searchParams.get("experienceDate")?.trim() || null;
+  const experiencePlace = searchParams.get("experiencePlace")?.trim() || null;
+  const experienceDiscussion = Boolean(experienceTitle);
+  const experienceBackHref = buildExperienceRoomBackHref(experienceEventId);
   const [profileOpen, setProfileOpen] = useState(false);
   const [groupInfoOpen, setGroupInfoOpen] = useState(false);
   const [sharedGlobeOpen, setSharedGlobeOpen] = useState(false);
@@ -171,21 +181,27 @@ export function PeerThreadRoomClient({ peerThreadId }: PeerThreadRoomClientProps
   const showHubNotices = !phoneDm && !isGroup;
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col bg-[#0f0f0f]">
-      <header className="flex h-11 shrink-0 items-center border-b border-white/[0.08] bg-[#0f0f0f] px-0.5 pb-0 pt-[env(safe-area-inset-top,0px)]">
+    <div className="flex h-full min-h-0 flex-1 flex-col bg-background">
+      <header className="flex h-11 shrink-0 items-center border-b border-border bg-card px-0.5 pb-0 pt-[env(safe-area-inset-top,0px)]">
         <Link
-          href="/peers"
-          className="flex size-10 items-center justify-center text-white/90"
-          aria-label="뒤로"
+          href={experienceDiscussion ? experienceBackHref : "/peers"}
+          className="flex size-10 items-center justify-center text-foreground"
+          aria-label={experienceDiscussion ? "경험으로" : "뒤로"}
         >
           <ChevronLeft className="size-6" aria-hidden />
         </Link>
-        {phoneDm ? (
+        {experienceDiscussion && experienceTitle ? (
+          <ExperienceDiscussionHeader
+            title={experienceTitle}
+            date={experienceDate}
+            place={experiencePlace}
+          />
+        ) : phoneDm ? (
           <button
             type="button"
             {...headerLongPress}
             className={cn(
-              "relative min-w-0 flex-1 truncate py-1 text-left text-[16px] font-medium text-white",
+              "relative min-w-0 flex-1 truncate py-1 text-left text-[16px] font-medium text-foreground",
               settings.aiLensEnabled &&
                 "after:absolute after:-bottom-0.5 after:left-0 after:h-px after:w-full after:bg-cyan-400/50 after:blur-[2px]",
             )}
@@ -205,7 +221,7 @@ export function PeerThreadRoomClient({ peerThreadId }: PeerThreadRoomClientProps
             type="button"
             {...headerLongPress}
             className={cn(
-              "relative min-w-0 flex-1 truncate py-1 text-left text-[16px] font-medium text-white",
+              "relative min-w-0 flex-1 truncate py-1 text-left text-[16px] font-medium text-foreground",
               settings.aiLensEnabled &&
                 "after:absolute after:-bottom-0.5 after:left-0 after:h-px after:w-full after:bg-cyan-400/50 after:blur-[2px]",
             )}
@@ -221,28 +237,32 @@ export function PeerThreadRoomClient({ peerThreadId }: PeerThreadRoomClientProps
             ) : null}
           </button>
         )}
-        <button
-          type="button"
-          onClick={() => setSharedGlobeOpen(true)}
-          className="mr-0.5 flex size-9 shrink-0 items-center justify-center rounded-full text-sky-300/90 ring-1 ring-sky-400/25 active:bg-sky-400/10"
-          aria-label="우리 지구"
-          title="우리 지구"
-        >
-          <Globe className="size-[18px]" aria-hidden />
-        </button>
-        <AiLensToggle
-          enabled={settings.aiLensEnabled}
-          onChange={toggleAiLens}
-          size="sm"
-          className="mr-1"
-        />
-        <PeerThreadHubPinBar
-          peerThreadId={peerThreadId}
-          displayName={displayName}
-          friendUserId={phoneDm && !isGroup ? profile?.userId : null}
-          roomKind={isGroup ? "group" : "dm"}
-          variant="header"
-        />
+        {experienceDiscussion ? null : (
+          <>
+            <button
+              type="button"
+              onClick={() => setSharedGlobeOpen(true)}
+              className="mr-0.5 flex size-9 shrink-0 items-center justify-center rounded-full text-primary ring-1 ring-primary/25 active:bg-primary/10"
+              aria-label="우리 지구"
+              title="우리 지구"
+            >
+              <Globe className="size-[18px]" aria-hidden />
+            </button>
+            <AiLensToggle
+              enabled={settings.aiLensEnabled}
+              onChange={toggleAiLens}
+              size="sm"
+              className="mr-1"
+            />
+            <PeerThreadHubPinBar
+              peerThreadId={peerThreadId}
+              displayName={displayName}
+              friendUserId={phoneDm && !isGroup ? profile?.userId : null}
+              roomKind={isGroup ? "group" : "dm"}
+              variant="header"
+            />
+          </>
+        )}
       </header>
 
       <PeerPublicProfileSheet
@@ -274,21 +294,21 @@ export function PeerThreadRoomClient({ peerThreadId }: PeerThreadRoomClientProps
         />
       ) : null}
 
-      {showHubNotices && hubSlot?.connection === "purge_pending" ? (
+      {experienceDiscussion ? null : showHubNotices && hubSlot?.connection === "purge_pending" ? (
         <p className="bg-amber-950/40 px-3 py-2 text-[11px] text-amber-200">
           AI 허브가 해제되어 {purgeLabel ?? `${UNPIN_PEER_RETENTION_DAYS}일 후`}{" "}
           대화가 삭제돼요
         </p>
       ) : null}
 
-      {showHubNotices && unpinnedContact ? (
-        <p className="px-3 py-1.5 text-[11px] text-white/40">
+      {experienceDiscussion ? null : showHubNotices && unpinnedContact ? (
+        <p className="px-3 py-1.5 text-[11px] text-muted-foreground">
           AI 허브에 꽂인 친구만 @import 가능
         </p>
       ) : null}
 
-      {isGroup && !pinned ? (
-        <p className="px-3 py-1.5 text-[11px] text-white/40">
+      {experienceDiscussion ? null : isGroup && !pinned ? (
+        <p className="px-3 py-1.5 text-[11px] text-muted-foreground">
           ROOM 1–5번에 고정하면 단톡 AI 렌즈·@import를 쓸 수 있어요
         </p>
       ) : null}
@@ -301,13 +321,22 @@ export function PeerThreadRoomClient({ peerThreadId }: PeerThreadRoomClientProps
         <PeerThreadChatPanel
           displayName={displayName}
           policyInput={policyInput}
-          aiLensEnabled={settings.aiLensEnabled}
+          aiLensEnabled={experienceDiscussion ? false : settings.aiLensEnabled}
           readOnly={!isGroup && hubSlot?.connection === "purge_pending"}
           showAiMentionLink={isGroup || pinned}
           peerAvatarUrl={isGroup ? null : profile?.avatarUrl}
           simpleDm={phoneDm && !isGroup}
+          experienceDiscussion={experienceDiscussion}
         />
       </PeerChatThreadShell>
     </div>
+  );
+}
+
+export function PeerThreadRoomClient({ peerThreadId }: PeerThreadRoomClientProps) {
+  return (
+    <Suspense fallback={null}>
+      <PeerThreadRoomBody peerThreadId={peerThreadId} />
+    </Suspense>
   );
 }

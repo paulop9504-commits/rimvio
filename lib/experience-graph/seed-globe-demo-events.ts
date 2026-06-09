@@ -80,6 +80,12 @@ function buildDemoDrafts(now = new Date()): EventCandidate[] {
         planMode: "group",
         experiencePeerNames: ["민수"],
         sourceMessageId: "feed-demo-jeju-thread-msg",
+        peerMessageCount: 8,
+        experienceConversationSnippets: [
+          { speakerName: "민수", body: "성산일출봉 일출 보러 갈까?" },
+          { speakerName: "나", body: "좋아, 5시에 출발하자" },
+          { speakerName: "민수", body: "애월 카페도 들르자" },
+        ],
         globeDemo: true,
         contextWowDemo: true,
       },

@@ -29,14 +29,14 @@ export function PeerAiInlineCard({
               DM_CHAT.bubbleText,
               DM_CHAT.bubbleRadius,
               DM_CHAT.bubbleMeCorner,
-              "bg-[#2c2c2e] text-[#f5f5f5]",
+              "border border-border bg-muted text-foreground",
             )
           : "rounded-2xl border border-rimvio-neon-purple/25 bg-rimvio-neon-purple/10 px-4 py-2.5 text-[17px] leading-snug",
         className,
       )}
     >
       {simple ? (
-        <p className="mb-0.5 text-[9px] leading-none text-white/40">AI</p>
+        <p className="mb-0.5 text-[9px] leading-none text-muted-foreground">AI</p>
       ) : null}
       <p className="whitespace-pre-wrap break-words">
         {payload?.summary ?? message.body}
@@ -55,7 +55,7 @@ export function PeerAiInlineCard({
                   {action.label}
                 </a>
               ) : (
-                <span className="text-[12px] text-white/50">{action.label}</span>
+                <span className="text-[12px] text-muted-foreground">{action.label}</span>
               )}
             </li>
           ))}

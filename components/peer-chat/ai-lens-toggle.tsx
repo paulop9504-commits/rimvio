@@ -31,14 +31,14 @@ export function AiLensToggle({
         "inline-flex shrink-0 items-center gap-1 rounded-full font-semibold transition-colors",
         size === "sm" ? "px-2 py-1 text-[10px]" : "px-2.5 py-1.5 text-[11px]",
         enabled
-          ? "bg-cyan-500/25 text-cyan-100 ring-1 ring-cyan-400/40"
-          : "bg-white/[0.08] text-white/55 ring-1 ring-white/12",
+          ? "bg-sky-100 text-sky-900 ring-1 ring-sky-300/60"
+          : "bg-muted text-muted-foreground ring-1 ring-border",
         disabled && "cursor-not-allowed opacity-45",
         className,
       )}
     >
       <Sparkles
-        className={cn(size === "sm" ? "size-3" : "size-3.5", enabled && "text-cyan-200")}
+        className={cn(size === "sm" ? "size-3" : "size-3.5", enabled && "text-sky-700")}
         aria-hidden
       />
       {enabled ? "렌즈 ON" : "렌즈 OFF"}

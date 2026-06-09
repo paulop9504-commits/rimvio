@@ -51,12 +51,12 @@ const TONE_CLASS: Record<
   ReturnType<typeof lensActionCardVisual>["icon"],
   string
 > = {
-  map: "border-sky-400/25 bg-sky-500/15 text-sky-100",
-  link: "border-white/12 bg-[#2c2c2e] text-[#e8eaed]",
-  wallet: "border-emerald-400/25 bg-emerald-500/12 text-emerald-100",
-  calendar: "border-violet-400/25 bg-violet-500/12 text-violet-100",
-  ticket: "border-fuchsia-400/25 bg-fuchsia-500/12 text-fuchsia-100",
-  sparkles: "border-white/12 bg-[#2c2c2e] text-[#e8eaed]",
+  map: "border-sky-300/70 bg-sky-50 text-sky-950",
+  link: "border-border bg-muted text-foreground",
+  wallet: "border-emerald-300/70 bg-emerald-50 text-emerald-950",
+  calendar: "border-violet-300/70 bg-violet-50 text-violet-950",
+  ticket: "border-fuchsia-300/70 bg-fuchsia-50 text-fuchsia-950",
+  sparkles: "border-border bg-muted text-foreground",
 };
 
 /** Compact chat bubble — one tap runs deeplink (nav, open link, etc.). */

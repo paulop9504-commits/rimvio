@@ -54,6 +54,11 @@ import { FeedCaptureVerifyChip } from "@/components/feed/feed-capture-verify-chi
 import { FeedRelatedContextStrip } from "@/components/feed/feed-related-context-strip";
 import { resolveSlotRelatedContextBundle } from "@/lib/feed/resolve-slot-related-context";
 import { FeedTimelineAggregateStrip } from "@/components/feed/feed-timeline-aggregate-strip";
+import { FeedRecipeSlotsPanel } from "@/components/feed/feed-recipe-slots-panel";
+import {
+  projectFeedRecipeSlots,
+  shouldUseFeedRecipeLayout,
+} from "@/lib/experience-intent/project-feed-recipe-slots";
 import type { GpsPing } from "@/lib/location-ping/types";
 import { resolveFeedSlotPills } from "@/lib/feed/resolve-feed-slot-pills";
 import { resolveFeedSlotPeerContexts } from "@/lib/feed/resolve-feed-slot-peer-context";
@@ -390,12 +395,57 @@ export const FeedTodaySlotCard = memo(function FeedTodaySlotCard({
     [slot, slotEvent, onSpawnPrompt],
   );
 
+  const typePrepLine = useMemo(
+    () => resolveFeedSlotTypePrepLine(slot, eventsById),
+    [slot, eventsById],
+  );
+
+  const weatherPrepLine = weatherSnapshot?.prepLine?.trim() || null;
+  const prepLine = weatherPrepLine ?? typePrepLine;
+
+  const feedRecipeProjection = useMemo(() => {
+    if (!slotEvent) {
+      return null;
+    }
+    return projectFeedRecipeSlots({
+      event: slotEvent,
+      plan: planContext,
+      peers,
+      timelineAggregate,
+      timeLabel,
+      prepLine,
+      placeLabel: planContext?.place ?? slotEvent.place ?? null,
+      pills,
+    });
+  }, [
+    slotEvent,
+    planContext,
+    peers,
+    timelineAggregate,
+    timeLabel,
+    prepLine,
+    pills,
+  ]);
+
+  const useRecipeLayout = shouldUseFeedRecipeLayout(feedRecipeProjection);
+
   const timelineBelowHeadline =
     timelineAggregate.hasContent ? (
       <div className="mt-1.5">
         <FeedTimelineAggregateStrip aggregate={timelineAggregate} />
       </div>
     ) : null;
+
+  const belowHeadline = useRecipeLayout ? (
+    <div className="mt-2">
+      <FeedRecipeSlotsPanel
+        intent={feedRecipeProjection.intent}
+        slots={feedRecipeProjection.slots}
+      />
+    </div>
+  ) : (
+    timelineBelowHeadline
+  );
 
   const row = (
     <SlotRowBody
@@ -405,19 +455,11 @@ export const FeedTodaySlotCard = memo(function FeedTodaySlotCard({
       experienceEyebrow={experienceHeadline.eyebrow}
       headline={headline}
       context={context}
-      belowHeadline={timelineBelowHeadline}
+      belowHeadline={belowHeadline}
       peers={peers}
       onPeerPress={handlePeerPress}
     />
   );
-
-  const typePrepLine = useMemo(
-    () => resolveFeedSlotTypePrepLine(slot, eventsById),
-    [slot, eventsById],
-  );
-
-  const weatherPrepLine = weatherSnapshot?.prepLine?.trim() || null;
-  const prepLine = weatherPrepLine ?? typePrepLine;
   const typePrepEmoji = useMemo(() => {
     if (weatherPrepLine || !experienceVolume) {
       return undefined;
@@ -457,7 +499,7 @@ export const FeedTodaySlotCard = memo(function FeedTodaySlotCard({
         </div>
       ) : null}
 
-      {pills.length > 0 ? (
+      {!useRecipeLayout && pills.length > 0 ? (
         <div className="mt-2 flex flex-wrap gap-1.5 pl-[3.25rem]">
           {pills.map((pill) => (
             <button
@@ -494,6 +536,8 @@ export const FeedTodaySlotCard = memo(function FeedTodaySlotCard({
       data-feed-weather-prep={weatherPrepLine ? "true" : undefined}
       data-feed-type-prep={!weatherPrepLine && typePrepLine ? "true" : undefined}
       data-experience-volume-id={experienceVolume?.id}
+      data-feed-recipe={useRecipeLayout ? "true" : undefined}
+      data-feed-recipe-intent={useRecipeLayout ? feedRecipeProjection.intent : undefined}
     >
       {recallEligible && experienceVolume ? (
         <FeedExperienceAxisBreadcrumb
@@ -503,7 +547,7 @@ export const FeedTodaySlotCard = memo(function FeedTodaySlotCard({
         />
       ) : null}
 
-      {prepLine && !capturePendingVerify ? (
+      {!useRecipeLayout && prepLine && !capturePendingVerify ? (
         <FeedWeatherPrepStrip
           prepLine={prepLine}
           condition={weatherSnapshot?.weather?.condition}

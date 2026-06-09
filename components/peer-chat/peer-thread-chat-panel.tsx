@@ -10,8 +10,10 @@ import {
   type KeyboardEvent,
 } from "react";
 import { usePeerThreadChat } from "@/hooks/use-peer-thread-chat";
+import type { PeerMessage } from "@/lib/context/peer-message-types";
 import type { PeerThreadPolicyInput } from "@/lib/context/peer-thread-types";
 import { DmChatMessageSkeleton } from "@/components/peer-chat/dm-chat-message-skeleton";
+import { ExperienceDiscussionMessage } from "@/components/experience/experience-discussion-message";
 import { PeerChatBubble } from "@/components/peer-chat/peer-chat-bubble";
 import { PeerInviteBanner } from "@/components/peer-chat/peer-invite-banner";
 import { isDmThreadId } from "@/lib/peer-chat/dm-thread";
@@ -43,6 +45,8 @@ type PeerThreadChatPanelProps = {
   peerAvatarUrl?: string | null;
   /** 카톡보다 단순한 1:1 DM UI */
   simpleDm?: boolean;
+  /** Experience ROOM — no bubbles, no read receipts. */
+  experienceDiscussion?: boolean;
 };
 
 export function PeerThreadChatPanel({
@@ -52,12 +56,13 @@ export function PeerThreadChatPanel({
   readOnly = false,
   simpleDm = false,
   peerAvatarUrl = null,
+  experienceDiscussion = false,
 }: PeerThreadChatPanelProps) {
   const threadId = policyInput.settings.peerThreadId;
   const phoneDm = isDmThreadId(threadId);
   const isGroup = isGroupThreadId(threadId);
   const simple = simpleDm || phoneDm;
-  const lensActive = shouldAnalyzePeerAiLens(policyInput);
+  const lensActive = !experienceDiscussion && shouldAnalyzePeerAiLens(policyInput);
   const { profile: peerProfileRemote } = useDmPeerProfile(
     threadId,
     phoneDm && isRegisteredPeerDmThread(threadId),
@@ -209,14 +214,24 @@ export function PeerThreadChatPanel({
     handleLensSelect(candidate, anchorMessageId ?? undefined);
   };
 
+  const speakerNameFor = (author: PeerMessage["author"]) => {
+    if (author === "me") {
+      return "나";
+    }
+    if (author === "ai") {
+      return "Rimvio";
+    }
+    return peerProfile.displayName;
+  };
+
   return (
     <div
       className={cn(
         "flex min-h-0 flex-1 flex-col",
-        simple ? "bg-[#0f0f0f]" : "rimvio-dm-chat-bg",
+        experienceDiscussion || simple ? "bg-background" : "rimvio-dm-chat-bg",
       )}
     >
-      {!readOnly && !phoneDm && !isGroup ? (
+      {!experienceDiscussion && !readOnly && !phoneDm && !isGroup ? (
         <PeerInviteBanner inviteUrl={inviteUrl} inviteCode={inviteCode} />
       ) : null}
 
@@ -229,7 +244,7 @@ export function PeerThreadChatPanel({
       <div
         className={cn(
           "min-h-0 flex-1 overflow-y-auto",
-          simple ? DM_CHAT.listPad : "px-4 py-4",
+          experienceDiscussion ? "px-0 py-0" : simple ? DM_CHAT.listPad : "px-4 py-4",
         )}
       >
         {showSkeleton ? (
@@ -237,12 +252,38 @@ export function PeerThreadChatPanel({
         ) : showEmptyHint ? (
           <p
             className={cn(
-              "text-center text-white/35",
-              simple ? "py-8 text-sm" : "py-16 text-base",
+              "text-center text-muted-foreground",
+              experienceDiscussion || simple ? "py-8 text-sm" : "py-16 text-base",
             )}
           >
-            {simple ? "메시지를 입력하세요" : `${displayName}와 대화해요`}
+            {experienceDiscussion
+              ? "이 경험에 대한 이야기를 남겨 보세요"
+              : simple
+                ? "메시지를 입력하세요"
+                : `${displayName}와 대화해요`}
           </p>
+        ) : experienceDiscussion ? (
+          <ul
+            className={cn(
+              "divide-y divide-border rounded-xl border border-border bg-background mx-3 my-3",
+              messagesHydrating
+                ? "opacity-100"
+                : cn(
+                    "transition-opacity duration-200",
+                    messagesVisible ? "opacity-100" : "opacity-0",
+                  ),
+            )}
+          >
+            {messages
+              .filter((row) => row.author !== "ai" && row.body.trim().length > 0)
+              .map((message) => (
+                <ExperienceDiscussionMessage
+                  key={message.id}
+                  message={message}
+                  speakerName={speakerNameFor(message.author)}
+                />
+              ))}
+          </ul>
         ) : (
           <ul
             className={cn(
@@ -287,7 +328,7 @@ export function PeerThreadChatPanel({
               <li className="flex justify-end">
                 <span
                   className={cn(
-                    "rounded-full bg-[#2c2c2e] text-white/50",
+                    "rounded-full bg-muted text-muted-foreground",
                     simple ? "px-2 py-0.5 text-[12px]" : "px-3 py-2 text-[13px]",
                   )}
                 >
@@ -304,7 +345,7 @@ export function PeerThreadChatPanel({
         className={cn(
           "shrink-0 border-t",
           simple
-            ? "border-white/[0.08] bg-[#0f0f0f] px-2 pt-1 pb-[max(0.375rem,env(safe-area-inset-bottom))]"
+            ? "border-border bg-card px-2 pt-1 pb-[max(0.375rem,env(safe-area-inset-bottom))]"
             : "rimvio-dm-composer px-3 pb-3 pt-2",
         )}
       >
@@ -331,7 +372,7 @@ export function PeerThreadChatPanel({
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => imageInputRef.current?.click()}
               className={cn(
-                "mb-px flex shrink-0 items-center justify-center rounded-full text-white/70 transition-colors hover:text-white disabled:opacity-30",
+                "mb-px flex shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30",
                 simple ? DM_CHAT.sendSize : "size-11",
               )}
             >
@@ -367,7 +408,7 @@ export function PeerThreadChatPanel({
                     DM_CHAT.composerMinH,
                     DM_CHAT.composerText,
                     DM_CHAT.composerPad,
-                    "max-h-24 rounded-2xl bg-[#1c1c1e] text-[#f5f5f5] placeholder:text-white/30",
+                    "max-h-24 rounded-2xl border border-border bg-muted text-foreground placeholder:text-muted-foreground",
                   )
                 : "max-h-32 min-h-[48px] rounded-xl bg-rimvio-surface-muted px-4 py-3 text-base",
             )}

@@ -153,17 +153,38 @@ async function runScenario(startPath: string) {
     const before = await probeHits(page);
 
     const tabs: TabResult[] = [];
-    for (const href of ["/search", "/peers", "/feed", "/welcome"]) {
+    for (const href of ["/", "/peers", "capture"]) {
       await page.goto(`${base}${startPath}`, {
         waitUntil: "domcontentloaded",
         timeout: 30_000,
       });
       await waitForNav(page);
+      if (href === "capture") {
+        const link = page.locator(
+          '[data-testid="rimvio-bottom-nav"] button[data-nav-action="capture"]',
+        );
+        const found = (await link.count()) > 0;
+        tabs.push({
+          href,
+          found,
+          hit: found,
+          topTag: null,
+          navigated: true,
+          finalUrl: page.url(),
+        });
+        if (found) {
+          await link.click({ timeout: 8_000 });
+          await page.waitForSelector("[data-capture-sheet]", { timeout: 5_000 });
+        }
+        continue;
+      }
       tabs.push(await tapTab(page, href));
     }
 
     const allHits = before && !("error" in before) && before.samples.every((s) => s.hit);
-    const allNavigated = tabs.filter((t) => t.found).every((t) => t.navigated);
+    const allNavigated = tabs
+      .filter((t) => t.found)
+      .every((t) => t.href === "capture" || t.navigated);
 
     return {
       startPath,
@@ -187,26 +208,28 @@ async function main() {
   );
   console.log("health:", health);
 
-  const feed = await runScenario("/feed");
-  console.log(JSON.stringify({ feed }, null, 2));
+  const home = await runScenario("/peers");
+  console.log(JSON.stringify({ home }, null, 2));
 
-  if (feed.blocked === "auth-gate") {
+  if (home.blocked === "auth-gate") {
     console.error("BLOCKED: AUTH_REQUIRED login gate — cannot QA tab taps without session.");
     process.exitCode = 2;
     return;
   }
 
-  assert.ok(feed.before && !("error" in feed.before), "bottom nav must render");
-  assert.equal(feed.before.linkCount, 4, "expected 4 bottom tabs");
+  assert.ok(home.before && !("error" in home.before), "bottom nav must render");
+  assert.equal(home.before.linkCount, 3, "expected 3 bottom tabs");
 
-  for (const sample of feed.before.samples) {
+  for (const sample of home.before.samples) {
     assert.ok(sample.hit, `hit target blocked for ${sample.href} (top=${sample.topTag})`);
   }
 
-  for (const tab of feed.tabs) {
+  for (const tab of home.tabs) {
     assert.ok(tab.found, `missing tab ${tab.href}`);
     assert.ok(tab.hit, `tab ${tab.href} not hittable (top=${tab.topTag})`);
-    assert.ok(tab.navigated, `tab ${tab.href} did not navigate (stayed at ${tab.finalUrl})`);
+    if (tab.href !== "capture") {
+      assert.ok(tab.navigated, `tab ${tab.href} did not navigate (stayed at ${tab.finalUrl})`);
+    }
   }
 
   console.log("qa-bottom-nav-touch: PASS");

@@ -45,7 +45,7 @@ export function FeedSharedGlobeRecall({
       <button
         type="button"
         className={cn(
-          "flex w-full shrink-0 items-center gap-3 border-b border-white/8 bg-gradient-to-b from-sky-500/[0.08] to-transparent px-4 py-3 text-left",
+          "flex w-full shrink-0 items-center gap-3 border-b border-border bg-card px-4 py-3 text-left",
           className,
         )}
         data-feed-shared-globe-recall
@@ -53,44 +53,44 @@ export function FeedSharedGlobeRecall({
         onClick={() => setExpanded(true)}
         aria-expanded={false}
       >
-        <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-sky-500/15 ring-1 ring-sky-300/25">
-          <Globe className="size-5 text-sky-300" aria-hidden />
+        <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/20">
+          <Globe className="size-5 text-primary" aria-hidden />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[15px] font-semibold text-white">우리 지구</p>
-          <p className="truncate text-[12px] text-white/45">
+          <p className="truncate text-[15px] font-semibold text-foreground">우리 지구</p>
+          <p className="truncate text-[12px] text-muted-foreground">
             {loading ? "불러오는 중…" : `핀 ${pins.length}개 · ROOM에서 함께`}
           </p>
         </div>
-        <ChevronDown className="size-5 shrink-0 text-white/40" aria-hidden />
+        <ChevronDown className="size-5 shrink-0 text-muted-foreground" aria-hidden />
       </button>
     );
   }
 
   return (
     <section
-      className={cn("shrink-0 border-b border-white/8 bg-[#04060c]", className)}
+      className={cn("shrink-0 border-b border-border bg-[#f2f3f5]", className)}
       data-feed-shared-globe-recall
       data-feed-recall-state="expanded"
     >
       <div className="flex items-center justify-between gap-2 px-4 py-2.5">
         <div className="min-w-0">
-          <p className="text-[14px] font-semibold text-white">우리 지구</p>
-          <p className="text-[11px] text-white/45">
+          <p className="text-[14px] font-semibold text-foreground">우리 지구</p>
+          <p className="text-[11px] text-muted-foreground">
             {loading ? "불러오는 중…" : `핀 ${pins.length}개`}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Link
             href={peerRoomPath(peerThreadId)}
-            className="rounded-full bg-white/8 px-3 py-1.5 text-[11px] font-medium text-sky-300"
+            className="rounded-full bg-primary/10 px-3 py-1.5 text-[11px] font-medium text-primary"
           >
             ROOM
           </Link>
           <button
             type="button"
             onClick={() => setExpanded(false)}
-            className="flex size-8 items-center justify-center rounded-full bg-white/8 text-white/70"
+            className="flex size-8 items-center justify-center rounded-full bg-muted text-foreground"
             aria-label="접기"
           >
             <ChevronUp className="size-4" aria-hidden />

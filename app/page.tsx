@@ -1,6 +1,11 @@
-import { redirect } from "next/navigation";
+import { AppShell } from "@/components/app-shell";
+import { GlobeHomeClient } from "@/components/globe/globe-home-client";
 
-/** 기본 홈 — 피드(HQ) 우선. */
-export default function Home() {
-  redirect("/feed");
+/** Globe-first home — giant earth, pins only. */
+export default function HomePage() {
+  return (
+    <AppShell title="지구" hideBranding compact fullBleed hideTitle>
+      <GlobeHomeClient />
+    </AppShell>
+  );
 }

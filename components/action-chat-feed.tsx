@@ -575,7 +575,7 @@ export function ActionChatFeed({
 
         {isConversation && activeLink ? (
           <div className="max-h-[min(40dvh,220px)] shrink-0 overflow-hidden border-b border-white/[0.06] bg-rimvio-surface-muted">
-            <p className="px-5 pt-2 text-[10px] font-semibold uppercase tracking-wide text-white/45">
+            <p className="px-5 pt-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               현재 맥락
             </p>
             <ActionChatLinkPanel

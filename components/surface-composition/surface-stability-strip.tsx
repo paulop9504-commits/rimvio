@@ -24,7 +24,7 @@ export const SurfaceStabilityStrip = memo(function SurfaceStabilityStrip({
 
   return (
     <div className={cn("px-3 pb-1", className)} data-surface-stability-strip>
-      <p className="text-[11px] leading-snug text-white/40">{message}</p>
+      <p className="text-[11px] leading-snug text-muted-foreground">{message}</p>
     </div>
   );
 });

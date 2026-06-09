@@ -42,7 +42,9 @@ export const copy = {
   },
   nav: {
     feed: "피드",
-    globe: "지구본",
+    globe: "지구",
+    people: "사람",
+    capture: "기록",
     search: "검색",
     inbox: "인박스",
     room: "함께하기",

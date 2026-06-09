@@ -68,7 +68,7 @@ export function PeerMessageRow({
       )}
       <div className="flex min-w-0 max-w-[min(calc(100%-2.25rem),18rem)] flex-1 flex-col gap-0.5">
         {showPeerHandle && handle ? (
-          <p className="truncate px-0.5 text-[11px] font-semibold text-white/55">
+          <p className="truncate px-0.5 text-[11px] font-semibold text-muted-foreground">
             @{handle}
           </p>
         ) : null}

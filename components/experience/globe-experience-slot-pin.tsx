@@ -50,31 +50,31 @@ export const GlobeExperienceSlotPin = memo(function GlobeExperienceSlotPin({
         className={cn(
           "relative min-w-[52px] max-w-[72px] rounded-lg border px-1.5 py-1 shadow-[0_8px_20px_rgba(0,0,0,0.35)]",
           active
-            ? "border-sky-200/70 bg-[#0f172a]/95 ring-2 ring-white/90"
-            : "border-white/20 bg-[#0c1220]/92",
+            ? "border-primary/40 bg-white ring-2 ring-primary/30"
+            : "border-border bg-white/95",
         )}
       >
-        <p className="line-clamp-2 text-[8px] font-bold leading-tight text-white/92">
+        <p className="line-clamp-2 text-[8px] font-bold leading-tight text-foreground">
           {slot.experienceTitle}
         </p>
         {hasMedia ? (
           <div className="mt-1 flex flex-wrap gap-0.5">
             {slot.photoCount > 0 ? (
-              <span className="rounded bg-emerald-500/20 px-1 py-px text-[7px] font-bold text-emerald-100/95">
+              <span className="rounded bg-[var(--rimvio-highlight-green)]/15 px-1 py-px text-[7px] font-bold text-foreground">
                 📷{slot.photoCount > 99 ? "99+" : slot.photoCount}
               </span>
             ) : null}
             {slot.videoCount > 0 ? (
-              <span className="rounded bg-violet-500/20 px-1 py-px text-[7px] font-bold text-violet-100/95">
+              <span className="rounded bg-primary/12 px-1 py-px text-[7px] font-bold text-primary">
                 ▶{slot.videoCount}
               </span>
             ) : null}
           </div>
         ) : (
-          <p className="mt-0.5 text-[7px] text-white/45">경험</p>
+          <p className="mt-0.5 text-[7px] text-muted-foreground">경험</p>
         )}
         {slot.locked ? (
-          <Lock className="absolute -right-1 -top-1 size-3 text-white/70" aria-hidden />
+          <Lock className="absolute -right-1 -top-1 size-3 text-muted-foreground" aria-hidden />
         ) : null}
       </div>
     </div>

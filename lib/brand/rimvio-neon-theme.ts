@@ -2,26 +2,26 @@ import { cn } from "@/lib/utils";
 import { RIMVIO_CANVAS, RIMVIO_LOGO_ICON_BG } from "@/lib/brand/rimvio-logo-src";
 
 /**
- * Discord-inspired light canvas — soft gray panels + blurple actions.
+ * Retro Raincloud — dusty periwinkle shell + readable charcoal ink.
  */
 export const RIMVIO_NEON = {
   canvas: RIMVIO_LOGO_ICON_BG,
-  base: RIMVIO_CANVAS,
+  base: "#ffffff",
   surface: "#ffffff",
   surfaceMuted: "#f2f3f5",
   surfaceRaised: "#ebedef",
-  border: "rgba(0, 0, 0, 0.08)",
-  borderSubtle: "rgba(0, 0, 0, 0.05)",
+  border: "rgba(6, 6, 7, 0.08)",
+  borderSubtle: "rgba(6, 6, 7, 0.05)",
   purple: "#5865f2",
   purpleDeep: "#4752c4",
   cyan: "#00a8fc",
   cyanDeep: "#0086c9",
-  magenta: "#ed4245",
+  magenta: "#e3717d",
   amber: "#faa81a",
   green: "#23a559",
-  text: "#2e3338",
-  textMuted: "#5c5e66",
-  textDim: "#949ba4",
+  text: "#060607",
+  textMuted: "#4e5058",
+  textDim: "#6d7178",
   primaryBtn: "#5865f2",
   primaryBtnPressed: "#4752c4",
   focusRing: "rgba(88, 101, 242, 0.45)",

@@ -4,14 +4,14 @@ import {
   useCallback,
   useMemo,
   useRef,
+  useState,
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
-import { Search, Settings, Users } from "lucide-react";
-import { RimvioFeedMark } from "@/lib/brand/rimvio-feed-mark";
+import { Globe, Plus, Users } from "lucide-react";
+import { CaptureSheet } from "@/components/globe/capture-sheet";
 import { useCopy } from "@/hooks/use-copy";
-import { useRoomGuest } from "@/hooks/use-room-guest";
 import { rimvioNavBarClass } from "@/lib/brand/rimvio-neon-theme";
 import { GRID } from "@/lib/ui/responsive-grid";
 import { cn } from "@/lib/utils";
@@ -23,40 +23,20 @@ type AppNavProps = {
 };
 
 type NavTab = {
-  href: string;
+  href?: string;
+  action?: "capture";
   label: string;
   isActive: (pathname: string) => boolean;
-  icon: "feed" | "search" | "peers" | "settings";
+  icon: "globe" | "people" | "capture";
 };
 
-function isSameNavTab(href: string, pathname: string): boolean {
-  if (href === "/feed") {
-    return (
-      pathname === "/" ||
-      pathname === "/feed" ||
-      pathname.startsWith("/feed/")
-    );
-  }
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
-
-function IgFeedIcon({
-  active,
-  variant,
-  drawn,
-}: {
-  active: boolean;
-  variant: ReturnType<typeof useRoomGuest>["avatarVariant"];
-  drawn: boolean;
-}) {
+function isGlobePath(pathname: string): boolean {
   return (
-    <span className={NAV_ICON_SLOT} aria-hidden>
-      <RimvioFeedMark
-        filled={active}
-        variant={drawn ? variant : null}
-        nav
-      />
-    </span>
+    pathname === "/" ||
+    pathname === "/feed" ||
+    pathname.startsWith("/feed/") ||
+    pathname === "/globe" ||
+    pathname.startsWith("/globe/")
   );
 }
 
@@ -73,77 +53,57 @@ function NavIconSlot({ children }: { children: ReactNode }) {
   );
 }
 
-function IgSearchIcon({ active }: { active: boolean }) {
-  return (
-    <NavIconSlot>
-      <Search
-        className={cn(NAV_ICON_CLASS, active ? "text-foreground" : "text-foreground/70")}
-        strokeWidth={NAV_ICON_STROKE}
-      />
-    </NavIconSlot>
-  );
-}
-
-function IgSettingsIcon({ active }: { active: boolean }) {
-  return (
-    <NavIconSlot>
-      <Settings
-        className={cn(NAV_ICON_CLASS, active ? "text-foreground" : "text-foreground/70")}
-        strokeWidth={NAV_ICON_STROKE}
-      />
-    </NavIconSlot>
-  );
-}
-
 function NavTabIcon({
   icon,
   active,
-  guest,
 }: {
   icon: NavTab["icon"];
   active: boolean;
-  guest: ReturnType<typeof useRoomGuest>;
 }) {
+  const tone = active ? "text-foreground" : "text-foreground/70";
   switch (icon) {
-    case "feed":
-      return (
-        <IgFeedIcon
-          active={active}
-          variant={guest.avatarVariant}
-          drawn={guest.avatarDrawn}
-        />
-      );
-    case "peers":
+    case "globe":
       return (
         <NavIconSlot>
-          <Users
-            className={cn(NAV_ICON_CLASS, active ? "text-foreground" : "text-foreground/70")}
-            strokeWidth={NAV_ICON_STROKE}
-          />
+          <Globe className={cn(NAV_ICON_CLASS, tone)} strokeWidth={NAV_ICON_STROKE} />
         </NavIconSlot>
       );
-    case "search":
-      return <IgSearchIcon active={active} />;
-    case "settings":
-      return <IgSettingsIcon active={active} />;
+    case "people":
+      return (
+        <NavIconSlot>
+          <Users className={cn(NAV_ICON_CLASS, tone)} strokeWidth={NAV_ICON_STROKE} />
+        </NavIconSlot>
+      );
+    case "capture":
+      return (
+        <NavIconSlot>
+          <Plus className={cn(NAV_ICON_CLASS, tone)} strokeWidth={NAV_ICON_STROKE} />
+        </NavIconSlot>
+      );
   }
 }
 
 function NavTabButton({
   tab,
   active,
-  guest,
   onNavigate,
+  onCapture,
   className,
 }: {
   tab: NavTab;
   active: boolean;
-  guest: ReturnType<typeof useRoomGuest>;
   onNavigate: (href: string) => void;
+  onCapture: () => void;
   className?: string;
 }) {
   const activate = () => {
-    onNavigate(tab.href);
+    if (tab.action === "capture") {
+      onCapture();
+      return;
+    }
+    if (tab.href) {
+      onNavigate(tab.href);
+    }
   };
 
   return (
@@ -151,7 +111,8 @@ function NavTabButton({
       type="button"
       aria-label={tab.label}
       aria-current={active ? "page" : undefined}
-      data-nav-href={tab.href}
+      data-nav-href={tab.href ?? "capture"}
+      data-nav-action={tab.action}
       onTouchEnd={(event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -175,7 +136,7 @@ function NavTabButton({
       )}
     >
       <span className="pointer-events-none flex items-center justify-center">
-        <NavTabIcon icon={tab.icon} active={active} guest={guest} />
+        <NavTabIcon icon={tab.icon} active={active} />
       </span>
     </button>
   );
@@ -184,23 +145,23 @@ function NavTabButton({
 function MobileNavLinks({
   tabs,
   pathname,
-  guest,
   onNavigate,
+  onCapture,
 }: {
   tabs: NavTab[];
   pathname: string;
-  guest: ReturnType<typeof useRoomGuest>;
   onNavigate: (href: string) => void;
+  onCapture: () => void;
 }) {
   return (
     <>
       {tabs.map((tab) => (
         <NavTabButton
-          key={tab.href}
+          key={tab.href ?? tab.action ?? tab.label}
           tab={tab}
           active={tab.isActive(pathname)}
-          guest={guest}
           onNavigate={onNavigate}
+          onCapture={onCapture}
         />
       ))}
     </>
@@ -210,25 +171,25 @@ function MobileNavLinks({
 function SideNavLinks({
   tabs,
   pathname,
-  guest,
   onNavigate,
+  onCapture,
   linkClassName,
 }: {
   tabs: NavTab[];
   pathname: string;
-  guest: ReturnType<typeof useRoomGuest>;
   onNavigate: (href: string) => void;
+  onCapture: () => void;
   linkClassName?: string;
 }) {
   return (
     <>
       {tabs.map((tab) => (
         <NavTabButton
-          key={tab.href}
+          key={tab.href ?? tab.action ?? tab.label}
           tab={tab}
           active={tab.isActive(pathname)}
-          guest={guest}
           onNavigate={onNavigate}
+          onCapture={onCapture}
           className={linkClassName}
         />
       ))}
@@ -239,13 +200,13 @@ function SideNavLinks({
 function SideNavRail({
   tabs,
   pathname,
-  guest,
   onNavigate,
+  onCapture,
 }: {
   tabs: NavTab[];
   pathname: string;
-  guest: ReturnType<typeof useRoomGuest>;
   onNavigate: (href: string) => void;
+  onCapture: () => void;
 }) {
   return (
     <nav className={cn(GRID.navSide, "hidden lg:flex")} aria-label="Primary">
@@ -253,8 +214,8 @@ function SideNavRail({
         <SideNavLinks
           tabs={tabs}
           pathname={pathname}
-          guest={guest}
           onNavigate={onNavigate}
+          onCapture={onCapture}
           linkClassName="size-11 rounded-2xl hover:bg-foreground/[0.04]"
         />
       </div>
@@ -265,23 +226,23 @@ function SideNavRail({
 function BottomNavGrid({
   tabs,
   pathname,
-  guest,
   onNavigate,
+  onCapture,
 }: {
   tabs: NavTab[];
   pathname: string;
-  guest: ReturnType<typeof useRoomGuest>;
   onNavigate: (href: string) => void;
+  onCapture: () => void;
 }) {
   return (
     <>
       <div className="rimvio-bottom-nav-safe" aria-hidden />
-      <div className="rimvio-bottom-nav-grid">
+      <div className="rimvio-bottom-nav-grid rimvio-bottom-nav-grid--3">
         <MobileNavLinks
           tabs={tabs}
           pathname={pathname}
-          guest={guest}
           onNavigate={onNavigate}
+          onCapture={onCapture}
         />
       </div>
     </>
@@ -291,13 +252,13 @@ function BottomNavGrid({
 function PortaledBottomNavBar({
   tabs,
   pathname,
-  guest,
   onNavigate,
+  onCapture,
 }: {
   tabs: NavTab[];
   pathname: string;
-  guest: ReturnType<typeof useRoomGuest>;
   onNavigate: (href: string) => void;
+  onCapture: () => void;
 }) {
   if (typeof document === "undefined") {
     return null;
@@ -318,8 +279,8 @@ function PortaledBottomNavBar({
       <BottomNavGrid
         tabs={tabs}
         pathname={pathname}
-        guest={guest}
         onNavigate={onNavigate}
+        onCapture={onCapture}
       />
     </nav>
   );
@@ -330,12 +291,16 @@ function PortaledBottomNavBar({
 export function AppNav({ placement }: AppNavProps) {
   const pathname = usePathname() ?? "/";
   const copy = useCopy();
-  const guest = useRoomGuest();
+  const [captureOpen, setCaptureOpen] = useState(false);
   const lastNavRef = useRef<{ href: string; at: number } | null>(null);
 
   const navigate = useCallback(
     (href: string) => {
-      if (isSameNavTab(href, pathname)) {
+      const isSame =
+        (href === "/" && isGlobePath(pathname)) ||
+        pathname === href ||
+        pathname.startsWith(`${href}/`);
+      if (isSame) {
         return;
       }
 
@@ -356,51 +321,51 @@ export function AppNav({ placement }: AppNavProps) {
   const tabs = useMemo<NavTab[]>(
     () => [
       {
-        href: "/feed",
-        label: copy.nav.feed,
-        isActive: (p) =>
-          p === "/" || p === "/feed" || p.startsWith("/feed/"),
-        icon: "feed",
-      },
-      {
-        href: "/search",
-        label: copy.nav.search,
-        isActive: (p) => p === "/search" || p.startsWith("/search/"),
-        icon: "search",
+        href: "/",
+        label: copy.nav.globe,
+        isActive: (p) => isGlobePath(p),
+        icon: "globe",
       },
       {
         href: "/peers",
-        label: copy.nav.peers,
+        label: copy.nav.people,
         isActive: (p) => p.startsWith("/peers"),
-        icon: "peers",
+        icon: "people",
       },
       {
-        href: "/welcome",
-        label: copy.nav.settings,
-        isActive: (p) => p.startsWith("/welcome") || p.startsWith("/privacy"),
-        icon: "settings",
+        action: "capture",
+        label: copy.nav.capture,
+        isActive: () => false,
+        icon: "capture",
       },
     ],
     [copy],
   );
 
+  const navChrome = (
+    <>
+      {placement === "side" ? (
+        <SideNavRail
+          tabs={tabs}
+          pathname={pathname}
+          onNavigate={navigate}
+          onCapture={() => setCaptureOpen(true)}
+        />
+      ) : (
+        <PortaledBottomNavBar
+          tabs={tabs}
+          pathname={pathname}
+          onNavigate={navigate}
+          onCapture={() => setCaptureOpen(true)}
+        />
+      )}
+      <CaptureSheet open={captureOpen} onOpenChange={setCaptureOpen} />
+    </>
+  );
+
   if (placement === "side") {
-    return (
-      <SideNavRail
-        tabs={tabs}
-        pathname={pathname}
-        guest={guest}
-        onNavigate={navigate}
-      />
-    );
+    return navChrome;
   }
 
-  return (
-    <PortaledBottomNavBar
-      tabs={tabs}
-      pathname={pathname}
-      guest={guest}
-      onNavigate={navigate}
-    />
-  );
+  return navChrome;
 }

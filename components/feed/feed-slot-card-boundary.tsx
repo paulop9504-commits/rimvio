@@ -33,13 +33,13 @@ export class FeedSlotCardBoundary extends Component<
           className="py-5 text-center"
           data-feed-slot-card-error={this.props.slotId}
         >
-          <p className="text-[13px] font-medium text-white/55">
+          <p className="text-[13px] font-medium text-muted-foreground">
             이 일정을 표시하지 못했어요
           </p>
           <button
             type="button"
             onClick={() => this.setState({ error: null })}
-            className="mt-2 text-[11px] font-semibold text-white/35 underline-offset-2 hover:text-white/55 hover:underline"
+            className="mt-2 text-[11px] font-semibold text-primary underline-offset-2 hover:text-primary/80 hover:underline"
           >
             다시 시도
           </button>

@@ -31,21 +31,21 @@ function AxisList({
   }
 
   return (
-    <ul className="mt-2 space-y-1 rounded-xl bg-white/[0.04] p-2">
+    <ul className="mt-2 space-y-1 rounded-xl bg-secondary p-2">
       {axis.related.map((hit) => (
         <li key={hit.eventId}>
           <button
             type="button"
-            className="flex w-full flex-col rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-white/[0.06] active:scale-[0.99]"
+            className="flex w-full flex-col rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-accent active:scale-[0.99]"
             onClick={() => {
               onSelectExperience(hit.eventId);
               onClose();
             }}
           >
-            <span className="line-clamp-1 text-[13px] font-semibold text-white/90">
+            <span className="line-clamp-1 text-[13px] font-semibold text-foreground">
               {hit.headline}
             </span>
-            <span className="mt-0.5 line-clamp-1 text-[11px] text-white/42">
+            <span className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">
               {[hit.peerDisplayName, hit.place, hit.timeLabel]
                 .filter(Boolean)
                 .join(" · ")}
@@ -87,16 +87,16 @@ export const FeedRelatedContextStrip = memo(function FeedRelatedContextStrip({
     >
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         {bundle.people.labels.length > 0 ? (
-          <p className="inline-flex min-w-0 items-center gap-1 truncate text-[11px] text-white/48">
-            <Users className="size-3 shrink-0 text-white/35" aria-hidden />
-            <span className="font-medium text-white/35">{relatedCopy.peoplePrefix}</span>
+          <p className="inline-flex min-w-0 items-center gap-1 truncate text-[11px] text-muted-foreground">
+            <Users className="size-3 shrink-0 text-muted-foreground/70" aria-hidden />
+            <span className="font-medium text-muted-foreground/80">{relatedCopy.peoplePrefix}</span>
             <span className="truncate">{bundle.people.summaryLine}</span>
           </p>
         ) : null}
         {bundle.experience.labels.length > 0 ? (
-          <p className="inline-flex min-w-0 items-center gap-1 truncate text-[11px] text-white/48">
-            <MapPin className="size-3 shrink-0 text-white/35" aria-hidden />
-            <span className="font-medium text-white/35">{relatedCopy.experiencePrefix}</span>
+          <p className="inline-flex min-w-0 items-center gap-1 truncate text-[11px] text-muted-foreground">
+            <MapPin className="size-3 shrink-0 text-muted-foreground/70" aria-hidden />
+            <span className="font-medium text-muted-foreground/80">{relatedCopy.experiencePrefix}</span>
             <span className="truncate">{bundle.experience.summaryLine}</span>
           </p>
         ) : null}
@@ -110,7 +110,7 @@ export const FeedRelatedContextStrip = memo(function FeedRelatedContextStrip({
               "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold transition-colors",
               expandedAxis === "people"
                 ? "border-violet-300/45 bg-violet-500/20 text-violet-100"
-                : "border-white/12 bg-white/[0.06] text-white/72 hover:bg-white/[0.1]",
+                : "border-border bg-secondary text-foreground hover:bg-accent",
             )}
             onClick={() => toggleAxis("people")}
             aria-expanded={expandedAxis === "people"}
@@ -126,7 +126,7 @@ export const FeedRelatedContextStrip = memo(function FeedRelatedContextStrip({
               "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold transition-colors",
               expandedAxis === "experience"
                 ? "border-sky-300/45 bg-sky-500/20 text-sky-100"
-                : "border-white/12 bg-white/[0.06] text-white/72 hover:bg-white/[0.1]",
+                : "border-border bg-secondary text-foreground hover:bg-accent",
             )}
             onClick={() => toggleAxis("experience")}
             aria-expanded={expandedAxis === "experience"}
