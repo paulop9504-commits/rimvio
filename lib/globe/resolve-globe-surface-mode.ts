@@ -1,20 +1,34 @@
+import type { GlobeDetailLevel } from "@/lib/globe/globe-zoom-levels";
+
 export type GlobeSurfaceMode = "globe3d" | "flat2d";
 
-/** Enter flat map when 3D camera crosses city scale (hysteresis below). */
-export const GLOBE_FLAT_ENTER_ALTITUDE = 0.055;
+/** Hand off to 2D at city scale — before globe.gl min-distance wall (~0.055). */
+export const GLOBE_FLAT_ENTER_ALTITUDE = 0.08;
 
-/** Exit flat map when zooming back out past neighborhood scale. */
-export const GLOBE_FLAT_EXIT_ALTITUDE = 0.075;
+const FLAT_ENTER_LEVELS = new Set<GlobeDetailLevel>([
+  "city",
+  "neighborhood",
+  "street",
+  "pin",
+]);
 
+export function shouldEnterFlatMap(input: {
+  altitude: number;
+  detailLevel?: GlobeDetailLevel;
+}): boolean {
+  if (input.detailLevel && FLAT_ENTER_LEVELS.has(input.detailLevel)) {
+    return true;
+  }
+  return Number.isFinite(input.altitude) && input.altitude < GLOBE_FLAT_ENTER_ALTITUDE;
+}
+
+/** Flat mode exits only via 2D pinch-out — never from damped 3D POV noise. */
 export function resolveGlobeSurfaceMode(
   current: GlobeSurfaceMode,
-  altitude: number,
+  input: { altitude: number; detailLevel?: GlobeDetailLevel },
 ): GlobeSurfaceMode {
-  if (!Number.isFinite(altitude)) {
-    return current;
-  }
   if (current === "flat2d") {
-    return altitude >= GLOBE_FLAT_EXIT_ALTITUDE ? "globe3d" : "flat2d";
+    return "flat2d";
   }
-  return altitude < GLOBE_FLAT_ENTER_ALTITUDE ? "flat2d" : "globe3d";
+  return shouldEnterFlatMap(input) ? "flat2d" : "globe3d";
 }

@@ -60,7 +60,12 @@ export type RimvioGlobe3DProps = {
   activePinId?: string | null;
   onPinPress?: (pinId: string) => void;
   onDetailLevelChange?: (level: GlobeDetailLevel) => void;
-  onPointOfViewChange?: (pov: { lat: number; lng: number; altitude: number }) => void;
+  onPointOfViewChange?: (pov: {
+    lat: number;
+    lng: number;
+    altitude: number;
+    detailLevel: GlobeDetailLevel;
+  }) => void;
   className?: string;
 };
 
@@ -204,18 +209,20 @@ export const RimvioGlobe3D = memo(
         const overviewUrl = overviewTextureUrlRef.current;
         if (altitude >= 0.42 && overviewUrl) {
           globe.globeImageUrl(overviewUrl);
-          return;
         }
-        globe.globeImageUrl(null);
       };
 
-      const syncDetailForAltitude = (altitude: number) => {
-        const level = resolveGlobeDetailLevel(altitude);
-        onDetailLevelChangeRef.current?.(level);
-        shellRef.current?.setAttribute("data-globe-detail", level);
+      const emitPointOfView = (
+        pov: { lat: number; lng: number; altitude: number },
+        altitude = pov.altitude,
+      ) => {
+        const detailLevel = resolveGlobeDetailLevel(altitude);
+        onDetailLevelChangeRef.current?.(detailLevel);
+        shellRef.current?.setAttribute("data-globe-detail", detailLevel);
         globe.showAtmosphere(altitude >= GLOBE_TOSS_THEME.atmosphereCutoffAltitude);
         globe.labelsData([]);
         syncOverviewTexture(altitude);
+        onPointOfViewChangeRef.current?.({ ...pov, altitude, detailLevel });
       };
 
       const handleZoom = (pov: { lat: number; lng: number; altitude: number }) => {
@@ -223,22 +230,22 @@ export const RimvioGlobe3D = memo(
           !Number.isFinite(pov.altitude) ||
           pov.altitude < GLOBE_MIN_SAFE_ALTITUDE
         ) {
-          const safe = { ...pov, altitude: GLOBE_MIN_SAFE_ALTITUDE };
-          globe.pointOfView({ altitude: GLOBE_MIN_SAFE_ALTITUDE }, 0);
-          syncDetailForAltitude(GLOBE_MIN_SAFE_ALTITUDE);
-          onPointOfViewChangeRef.current?.(safe);
+          const safeAlt = GLOBE_MIN_SAFE_ALTITUDE;
+          globe.pointOfView({ altitude: safeAlt }, 0);
+          emitPointOfView(pov, safeAlt);
           return;
         }
-        syncDetailForAltitude(pov.altitude);
-        onPointOfViewChangeRef.current?.(pov);
+        emitPointOfView(pov);
       };
 
-      syncDetailForAltitude(GLOBE_OVERVIEW_POINT_OF_VIEW.altitude);
+      emitPointOfView({ ...GLOBE_OVERVIEW_POINT_OF_VIEW });
       globe.onZoom(handleZoom);
 
       globe.onGlobeReady(() => {
         window.setTimeout(() => {
           syncOverviewTexture(globe.pointOfView().altitude);
+          const controls = globe.controls();
+          controls.zoomSpeed = 0.85;
         }, 0);
       });
 

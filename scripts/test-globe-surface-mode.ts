@@ -9,14 +9,18 @@ import {
 } from "../lib/globe/flat-map-view";
 import {
   GLOBE_FLAT_ENTER_ALTITUDE,
-  GLOBE_FLAT_EXIT_ALTITUDE,
   resolveGlobeSurfaceMode,
+  shouldEnterFlatMap,
 } from "../lib/globe/resolve-globe-surface-mode";
 
-assert.equal(resolveGlobeSurfaceMode("globe3d", 0.2), "globe3d");
-assert.equal(resolveGlobeSurfaceMode("globe3d", GLOBE_FLAT_ENTER_ALTITUDE - 0.01), "flat2d");
-assert.equal(resolveGlobeSurfaceMode("flat2d", 0.04), "flat2d");
-assert.equal(resolveGlobeSurfaceMode("flat2d", GLOBE_FLAT_EXIT_ALTITUDE + 0.01), "globe3d");
+assert.equal(resolveGlobeSurfaceMode("globe3d", { altitude: 0.2, detailLevel: "region" }), "globe3d");
+assert.equal(resolveGlobeSurfaceMode("globe3d", { altitude: 0.14, detailLevel: "city" }), "flat2d");
+assert.equal(
+  resolveGlobeSurfaceMode("globe3d", { altitude: GLOBE_FLAT_ENTER_ALTITUDE - 0.01 }),
+  "flat2d",
+);
+assert.equal(resolveGlobeSurfaceMode("flat2d", { altitude: 0.2 }), "flat2d");
+assert.equal(shouldEnterFlatMap({ altitude: 0.2, detailLevel: "city" }), true);
 
 assert.ok(resolveFlatMapSlippyZoom(2.4) >= 14);
 assert.ok(resolveFlatMapSlippyZoom(4.2) >= 19);

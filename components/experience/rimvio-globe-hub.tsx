@@ -27,6 +27,7 @@ import {
   type FlatMapView,
 } from "@/lib/globe/flat-map-view";
 import { enrichClassifiedGlobePinPeers } from "@/lib/globe/project-globe-pin-peers";
+import type { GlobeDetailLevel } from "@/lib/globe/globe-zoom-levels";
 import {
   resolveGlobeSurfaceMode,
   type GlobeSurfaceMode,
@@ -186,9 +187,17 @@ const RimvioGlobeHubBody = memo(
     );
 
     const handlePointOfViewChange = useCallback(
-      (pov: { lat: number; lng: number; altitude: number }) => {
+      (pov: {
+        lat: number;
+        lng: number;
+        altitude: number;
+        detailLevel: GlobeDetailLevel;
+      }) => {
         setSurfaceMode((current) => {
-          const next = resolveGlobeSurfaceMode(current, pov.altitude);
+          const next = resolveGlobeSurfaceMode(current, {
+            altitude: pov.altitude,
+            detailLevel: pov.detailLevel,
+          });
           if (next === "flat2d") {
             setFlatView({
               lat: pov.lat,
@@ -218,9 +227,10 @@ const RimvioGlobeHubBody = memo(
       >
         <div
           className={cn(
-            "relative h-full flex-1 transition-opacity duration-200",
-            surfaceMode === "flat2d" && "pointer-events-none opacity-0",
+            "relative h-full flex-1",
+            surfaceMode === "flat2d" && "pointer-events-none invisible",
           )}
+          aria-hidden={surfaceMode === "flat2d"}
         >
           <RimvioGlobe3DClient
             ref={innerGlobeRef}
@@ -259,8 +269,10 @@ const RimvioGlobeHubBody = memo(
           }
           active={surfaceMode === "flat2d"}
           className={cn(
-            "z-[5] transition-opacity duration-200",
-            surfaceMode === "flat2d" ? "opacity-100" : "pointer-events-none opacity-0",
+            "z-[5]",
+            surfaceMode === "flat2d"
+              ? "opacity-100"
+              : "pointer-events-none opacity-0",
           )}
         />
 
