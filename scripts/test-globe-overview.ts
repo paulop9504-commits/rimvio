@@ -1,12 +1,16 @@
 #!/usr/bin/env npx tsx
 
 import assert from "node:assert/strict";
-import { buildGlobeOverviewView } from "../lib/experience-graph/globe-overview-view";
+import {
+  buildGlobeOverviewView,
+  GLOBE_OVERVIEW_POINT_OF_VIEW,
+} from "../lib/experience-graph/globe-overview-view";
 import { globeViewForPinClusters } from "../lib/globe/project-pin-clusters";
 import type { PinCluster } from "../lib/globe/pin-cluster-types";
 
 const overview = buildGlobeOverviewView({ pinCount: 3 });
 assert.ok(overview.zoom < 0.9, "overview should stay zoomed out");
+assert.ok(GLOBE_OVERVIEW_POINT_OF_VIEW.altitude >= 2);
 assert.match(overview.placeLabel, /핀 3개/);
 
 const cluster: PinCluster = {

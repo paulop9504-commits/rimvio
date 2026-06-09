@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { SpatialGlobeStage } from "@/components/experience/spatial-globe-stage";
+import { RimvioGlobe3DClient } from "@/components/experience/rimvio-globe-3d-client";
 import { useExperienceGraph } from "@/hooks/use-experience-graph";
 import { ensureGlobeDemoEvents } from "@/lib/experience-graph/seed-globe-demo-events";
 import type { EventCandidate } from "@/lib/events/event-candidate";
@@ -14,7 +14,6 @@ import type { PinCluster } from "@/lib/globe/pin-cluster-types";
 import {
   findPinClusterByEventId,
   findPinClusterByPinId,
-  globeViewForPinClusters,
   projectPinClusterClassifiedPins,
   projectPinClustersFromGraph,
 } from "@/lib/globe/project-pin-clusters";
@@ -64,8 +63,6 @@ const RimvioGlobeHubBody = memo(function RimvioGlobeHubBody({
     () => projectPinClusterClassifiedPins(clusters),
     [clusters],
   );
-  const globe = useMemo(() => globeViewForPinClusters(clusters), [clusters]);
-
   const [activePinId, setActivePinId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -105,13 +102,9 @@ const RimvioGlobeHubBody = memo(function RimvioGlobeHubBody({
       className={cn("flex h-full min-h-0 flex-1 flex-col", className)}
       data-rimvio-globe-hub
     >
-      <SpatialGlobeStage
-        variant="immersive"
-        globe={globe}
-        classifiedPins={classifiedPins}
+      <RimvioGlobe3DClient
+        pins={classifiedPins}
         activePinId={activePinId}
-        hideSyncMeta
-        hideCenterCrosshair
         className="h-full flex-1"
         onPinPress={handlePinPress}
       />

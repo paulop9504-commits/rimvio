@@ -1,6 +1,13 @@
 import { buildSpatialGlobeView } from "@/lib/experience-graph/resolve-place-coordinates";
 import type { SpatialGlobeView } from "@/lib/experience-graph/spatial-media-types";
 
+/** globe.gl camera — altitude ≈ 2.2 shows the full planet from space. */
+export const GLOBE_OVERVIEW_POINT_OF_VIEW = {
+  lat: 12,
+  lng: 25,
+  altitude: 2.2,
+} as const;
+
 /** Google Earth–style startup — full globe, equatorial, slow spin friendly. */
 export function buildGlobeOverviewView(input?: {
   pinCount?: number;

@@ -16,6 +16,7 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   compress: true,
+  transpilePackages: ["globe.gl", "three-globe", "three-render-objects"],
   typescript: {
     ignoreBuildErrors: true,
   },
