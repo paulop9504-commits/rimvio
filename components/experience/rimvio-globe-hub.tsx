@@ -12,6 +12,10 @@ import {
 import { RimvioGlobe3DClient } from "@/components/experience/rimvio-globe-3d-client";
 import type { RimvioGlobe3DHandle } from "@/components/experience/rimvio-globe-3d";
 import { useExperienceGraph } from "@/hooks/use-experience-graph";
+import { useRelationshipFeedSlots } from "@/hooks/use-relationship-feed-slots";
+import { readPeerContacts } from "@/lib/context/peer-contact-store";
+import { buildFeedSlotPeerLookup } from "@/lib/feed/build-feed-slot-peer-lookup";
+import { enrichClassifiedGlobePinPeers } from "@/lib/globe/project-globe-pin-peers";
 import { ensureGlobeDemoEvents } from "@/lib/experience-graph/seed-globe-demo-events";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import {
@@ -74,9 +78,24 @@ const RimvioGlobeHubBody = memo(function RimvioGlobeHubBody({
   initialOpenPinId,
   onPinPress,
 }: RimvioGlobeHubBodyProps) {
+  const { slots: relationshipSlots } = useRelationshipFeedSlots(true);
+  const peerLookup = useMemo(
+    () =>
+      buildFeedSlotPeerLookup({
+        messages: [],
+        relationshipSlots,
+        contacts: readPeerContacts(),
+      }),
+    [relationshipSlots],
+  );
   const classifiedPins = useMemo(
-    () => projectPinClusterClassifiedPins(clusters, eventsById),
-    [clusters, eventsById],
+    () =>
+      enrichClassifiedGlobePinPeers(
+        projectPinClusterClassifiedPins(clusters, eventsById),
+        eventsById,
+        peerLookup,
+      ),
+    [clusters, eventsById, peerLookup],
   );
   const tripArcs = useMemo(
     () => projectTripLegArcs({ eventsById, clusters }),

@@ -1,3 +1,5 @@
+import type { GlobePinPeer } from "@/lib/globe/globe-pin-peer-types";
+
 /** Classified map pin for Feed recall globe — FACT lineage only. */
 export type ExperienceGlobePingKind = "photo" | "video" | "gps" | "dwell" | "place";
 
@@ -29,4 +31,6 @@ export type ClassifiedGlobePin = {
   slot?: GlobePinSlotMeta;
   /** Overseas trip leg — departure airport vs destination stay. */
   tripLeg?: "departure" | "destination";
+  /** Who shared this experience — avatar chips on globe pin card. */
+  peers?: readonly GlobePinPeer[];
 };
