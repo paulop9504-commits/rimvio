@@ -25,7 +25,7 @@ assert.ok(zoomed.zoom > base.zoom, "zoom in should increase scale");
 const pinch = zoomGlobeFromPinch(base, base.zoom, 100, 150);
 assert.ok(pinch.zoom > base.zoom, "pinch spread should zoom in");
 
-assert.equal(clampGlobeZoom(0.5), 0.85);
+assert.equal(clampGlobeZoom(0.5), 0.72);
 assert.equal(clampGlobeZoom(99), 4.8);
 
 console.log("test-shift-globe-view: ok");

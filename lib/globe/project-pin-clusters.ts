@@ -9,6 +9,7 @@ import type { PinCluster, PinClusterEvidence } from "@/lib/globe/pin-cluster-typ
 import { countEventMedia } from "@/lib/globe/count-event-media";
 import { listPersonalGlobePins } from "@/lib/globe/personal-globe-pin-store";
 import { resolveEventGlobeCoords } from "@/lib/globe/resolve-event-globe-coords";
+import { buildGlobeOverviewView } from "@/lib/experience-graph/globe-overview-view";
 import { globeViewForSharedPins } from "@/lib/peer-chat/globe-view-for-shared-pins";
 
 function evidenceFromEvent(event: EventCandidate | null | undefined): PinClusterEvidence {
@@ -153,23 +154,10 @@ export function projectPinClusterClassifiedPins(
 export function globeViewForPinClusters(
   clusters: readonly PinCluster[],
 ): SpatialGlobeView {
-  const classified = projectPinClusterClassifiedPins(clusters);
-  if (classified.length === 0) {
+  if (clusters.length === 0) {
     return globeViewForSharedPins([]);
   }
-  const view = globeViewForSharedPins(classified);
-  if (clusters.length > 1) {
-    return {
-      ...view,
-      zoom: 0.95,
-      placeLabel: `내 지구 · 핀 ${clusters.length}개`,
-    };
-  }
-  return {
-    ...view,
-    zoom: 1.08,
-    placeLabel: clusters[0]!.placeLabel,
-  };
+  return buildGlobeOverviewView({ pinCount: clusters.length });
 }
 
 export function findPinClusterByEventId(

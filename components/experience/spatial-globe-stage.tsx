@@ -6,7 +6,9 @@ import { memo, useCallback, useEffect, useRef } from "react";
 
 import { GlobeExperienceSlotPin } from "@/components/experience/globe-experience-slot-pin";
 import { GlobeEarthSurface } from "@/components/experience/globe-earth-surface";
+import { useGlobeIdleSpin } from "@/hooks/use-globe-idle-spin";
 import { useGlobeTouchControl } from "@/hooks/use-globe-touch-control";
+import { wrapGlobePinX } from "@/lib/experience-graph/shift-globe-view";
 import type { GlobeSpaceBlob } from "@/lib/experience-graph/build-globe-space-blobs";
 import type { ClassifiedGlobePin } from "@/lib/feed/experience-globe-ping-types";
 import { mapPercentToLatLng } from "@/lib/experience-graph/resolve-place-coordinates";
@@ -65,6 +67,9 @@ export type SpatialGlobeStageProps = {
   /** Drag to pan, pinch / wheel to zoom. Defaults on for immersive. */
   interactive?: boolean;
 
+  /** Slow 360° longitude spin — Google Earth idle. Defaults on for immersive. */
+  autoSpin?: boolean;
+
   className?: string;
 
 };
@@ -103,12 +108,15 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
 
   interactive: interactiveProp,
 
+  autoSpin: autoSpinProp,
+
   className,
 
 }: SpatialGlobeStageProps) {
 
   const immersive = variant === "immersive";
   const interactive = interactiveProp ?? immersive;
+  const autoSpin = autoSpinProp ?? immersive;
   const sphereRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -123,8 +131,13 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
     enabled: interactive,
   });
 
+  const spinShiftX = useGlobeIdleSpin({
+    enabled: autoSpin,
+    paused: isInteracting,
+  });
+
   const displayGlobe = interactive ? activeGlobe : globe;
-  const translateX = 50 - displayGlobe.pinX;
+  const translateX = 50 - wrapGlobePinX(displayGlobe.pinX + spinShiftX);
   const translateY = 50 - displayGlobe.pinY;
 
   const satellite = true;
@@ -283,12 +296,7 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
             onPointerCancel={interactive ? surfaceProps.onPointerCancel : undefined}
             onClick={onMapPress ? handleMapClick : undefined}
           >
-            <div
-              className={cn(
-                "absolute inset-0 rounded-full",
-                interactive ? undefined : "rimvio-globe-spin",
-              )}
-            >
+            <div className="absolute inset-0 rounded-full">
             <GlobeEarthSurface />
 
             {blobs.map((blob) => {
@@ -386,7 +394,7 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
               isInteracting && "opacity-0",
             )}
           >
-            드래그 · 두 손가락으로 확대
+            드래그 · 핀치 확대 · 자동 회전
           </p>
         ) : null}
 

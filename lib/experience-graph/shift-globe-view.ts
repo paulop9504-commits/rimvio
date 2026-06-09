@@ -4,10 +4,10 @@ import {
 } from "@/lib/experience-graph/resolve-place-coordinates";
 import type { SpatialGlobeView } from "@/lib/experience-graph/spatial-media-types";
 
-export const GLOBE_ZOOM_MIN = 0.85;
+export const GLOBE_ZOOM_MIN = 0.72;
 export const GLOBE_ZOOM_MAX = 4.8;
 
-function wrapPinX(pinX: number): number {
+export function wrapGlobePinX(pinX: number): number {
   let x = pinX;
   while (x < 0) {
     x += 100;
@@ -27,7 +27,7 @@ function viewFromPinPercent(
   pinX: number,
   pinY: number,
 ): SpatialGlobeView {
-  const wrappedX = wrapPinX(pinX);
+  const wrappedX = wrapGlobePinX(pinX);
   const clampedY = clampPinY(pinY);
   const { lat, lng } = mapPercentToLatLng(wrappedX, clampedY);
   return {
