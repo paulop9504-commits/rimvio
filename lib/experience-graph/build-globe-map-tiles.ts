@@ -1,6 +1,6 @@
 const TILE_SIZE = 256;
 
-export type GlobeMapTileStyle = "satellite" | "voyager";
+export type GlobeMapTileStyle = "satellite" | "voyager" | "light";
 
 /** Client tiles load via same-origin proxy (avoids hotlink/CORS flakes). */
 const TILE_PROXY_PATH = "/api/globe/tile";
@@ -8,6 +8,7 @@ const TILE_PROXY_PATH = "/api/globe/tile";
 const TILE_ATTRIBUTION: Record<GlobeMapTileStyle, string> = {
   satellite: "© Esri · Maxar",
   voyager: "© OSM · CARTO",
+  light: "© OSM · CARTO",
 };
 
 export type GlobeMapTile = {

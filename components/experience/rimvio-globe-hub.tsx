@@ -99,7 +99,7 @@ const RimvioGlobeHubBody = memo(function RimvioGlobeHubBody({
     return (
       <div
         className={cn(
-          "rimvio-globe-space flex min-h-[60vh] flex-1 items-center justify-center px-6 text-center text-[14px] text-white/55",
+          "rimvio-globe-space rimvio-globe-space--toss flex min-h-[60vh] flex-1 items-center justify-center px-6 text-center text-[14px] text-[#8b95a1]",
           className,
         )}
         data-rimvio-globe-hub-empty
@@ -168,7 +168,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
     return (
       <div
         className={cn(
-          "rimvio-globe-space flex min-h-[60vh] flex-1 items-center justify-center px-6 text-center text-[14px] text-white/55",
+          "rimvio-globe-space rimvio-globe-space--toss flex min-h-[60vh] flex-1 items-center justify-center px-6 text-center text-[14px] text-[#8b95a1]",
           className,
         )}
         data-rimvio-globe-hub-loading

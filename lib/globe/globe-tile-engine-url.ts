@@ -14,11 +14,11 @@ export function buildGlobeTileEngineUrl(
   return `/api/globe/tile?z=${z}&x=${tx}&y=${ty}&style=${style}`;
 }
 
-/** Voyager labels for regional zoom; satellite for street-level detail. */
-export function resolveGlobeTileStyleForLevel(level: number): GlobeMapTileStyle {
-  return level <= 7 ? "voyager" : "satellite";
+/** Toss-style light map at every zoom — no style switching. */
+export function resolveGlobeTileStyleForLevel(_level: number): GlobeMapTileStyle {
+  return "light";
 }
 
 export function globeTileEngineUrl(x: number, y: number, level: number): string {
-  return buildGlobeTileEngineUrl(x, y, level, resolveGlobeTileStyleForLevel(level));
+  return buildGlobeTileEngineUrl(x, y, level, "light");
 }

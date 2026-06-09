@@ -4,6 +4,7 @@ const UPSTREAM_URLS: Record<GlobeMapTileStyle, string> = {
   satellite:
     "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
   voyager: "https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
+  light: "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
 };
 
 export function resolveGlobeTileUpstreamUrl(input: {

@@ -15,7 +15,7 @@ function GlobeHomeBody() {
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const onPinPress = useCallback((cluster: PinCluster) => {
-    globeRef.current?.flyToPin(cluster.lat, cluster.lng, "city");
+    globeRef.current?.flyToPin(cluster.lat, cluster.lng, "neighborhood");
     setActiveCluster(cluster);
     setSheetOpen(true);
   }, []);
@@ -44,7 +44,7 @@ function GlobeHomeBody() {
             globeRef.current?.flyToPin(
               activeCluster.lat,
               activeCluster.lng,
-              "street",
+              "pin",
             );
           }
         }}

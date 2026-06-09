@@ -54,7 +54,7 @@ export function AppShell({
             "app-shell-viewport flex h-dvh flex-col overflow-hidden",
             fullBleed && "app-shell-column--chat",
             globeHome && "app-shell-column--globe-home",
-            globeHome ? "bg-[#060a14]" : "bg-background",
+            globeHome ? "bg-[#f2f4f6]" : "bg-background",
           )}
         >
           <header

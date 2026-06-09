@@ -14,8 +14,8 @@ const RimvioGlobe3DLazy = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="rimvio-globe-space flex min-h-[60vh] flex-1 items-center justify-center px-6 text-center text-[14px] text-white/55">
-        3D 지구 불러오는 중…
+      <div className="rimvio-globe-space rimvio-globe-space--toss flex min-h-[60vh] flex-1 items-center justify-center px-6 text-center text-[14px] text-[#8b95a1]">
+        지도 불러오는 중…
       </div>
     ),
   },

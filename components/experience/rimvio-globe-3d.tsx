@@ -9,20 +9,18 @@ import {
 } from "react";
 import Globe from "globe.gl";
 import type { GlobeInstance } from "globe.gl";
-import { useGlobeEarthTexture } from "@/hooks/use-globe-earth-texture";
 import { GLOBE_OVERVIEW_POINT_OF_VIEW } from "@/lib/experience-graph/globe-overview-view";
 import { createGlobe3dPinElement } from "@/lib/globe/create-globe-3d-pin-element";
 import { globeTileEngineUrl } from "@/lib/globe/globe-tile-engine-url";
+import { GLOBE_TOSS_THEME } from "@/lib/globe/globe-toss-theme";
 import {
   altitudeForGlobeDetailLevel,
-  GLOBE_ALTITUDE,
   resolveGlobeDetailLevel,
   type GlobeDetailLevel,
 } from "@/lib/globe/globe-zoom-levels";
 import type { ClassifiedGlobePin } from "@/lib/feed/experience-globe-ping-types";
 import { cn } from "@/lib/utils";
 
-const AUTO_ROTATE_RESUME_MS = 3500;
 const FLY_MS = 1400;
 
 function syncGlobeViewport(
@@ -42,7 +40,7 @@ export type RimvioGlobe3DHandle = {
   flyToPin: (
     lat: number,
     lng: number,
-    level?: Extract<GlobeDetailLevel, "city" | "street">,
+    level?: Extract<GlobeDetailLevel, "city" | "neighborhood" | "pin">,
   ) => void;
   resetOverview: () => void;
 };
@@ -73,7 +71,6 @@ export const RimvioGlobe3D = memo(
     const onDetailLevelChangeRef = useRef(onDetailLevelChange);
     const activePinIdRef = useRef(activePinId);
     const pinsRef = useRef(pins);
-    const { textureUrl, loading } = useGlobeEarthTexture();
 
     onPinPressRef.current = onPinPress;
     onDetailLevelChangeRef.current = onDetailLevelChange;
@@ -81,13 +78,12 @@ export const RimvioGlobe3D = memo(
     pinsRef.current = pins;
 
     useImperativeHandle(ref, () => ({
-      flyToPin(lat, lng, level = "city") {
+      flyToPin(lat, lng, level = "neighborhood") {
         const globe = globeRef.current;
         if (!globe) {
           return;
         }
         const controls = globe.controls();
-        controls.autoRotate = false;
         globe.pointOfView(
           { lat, lng, altitude: altitudeForGlobeDetailLevel(level) },
           FLY_MS,
@@ -104,7 +100,7 @@ export const RimvioGlobe3D = memo(
 
     useEffect(() => {
       const root = rootRef.current;
-      if (!root || !textureUrl) {
+      if (!root) {
         return;
       }
 
@@ -114,12 +110,12 @@ export const RimvioGlobe3D = memo(
         rendererConfig: { antialias: true, alpha: true },
       })
         .backgroundColor("rgba(0,0,0,0)")
-        .globeImageUrl(textureUrl)
         .globeTileEngineUrl(globeTileEngineUrl)
+        .globeTileEngineMaxLevel(18)
         .showGraticules(false)
         .showAtmosphere(true)
-        .atmosphereColor("rgb(56, 189, 248)")
-        .atmosphereAltitude(0.14)
+        .atmosphereColor(GLOBE_TOSS_THEME.atmosphere)
+        .atmosphereAltitude(GLOBE_TOSS_THEME.atmosphereAltitude)
         .labelsData([])
         .labelLat((row: object) => (row as ClassifiedGlobePin).lat)
         .labelLng((row: object) => (row as ClassifiedGlobePin).lng)
@@ -135,8 +131,12 @@ export const RimvioGlobe3D = memo(
         .htmlElementsData([...pinsRef.current])
         .htmlLat((pin: object) => (pin as ClassifiedGlobePin).lat)
         .htmlLng((pin: object) => (pin as ClassifiedGlobePin).lng)
-        .htmlAltitude(0.02)
+        .htmlAltitude(0)
         .htmlTransitionDuration(0)
+        .htmlElementVisibilityModifier((element, visible) => {
+          element.style.opacity = visible ? "1" : "0";
+          element.style.pointerEvents = visible ? "auto" : "none";
+        })
         .htmlElement((pin: object) => {
           const row = pin as ClassifiedGlobePin;
           return createGlobe3dPinElement(
@@ -158,16 +158,14 @@ export const RimvioGlobe3D = memo(
 
       const controls = globe.controls();
       controls.enablePan = false;
-      controls.autoRotate = true;
-      controls.autoRotateSpeed = 0.45;
+      controls.autoRotate = false;
       controls.enableDamping = true;
       controls.dampingFactor = 0.08;
-      controls.minDistance = 101;
-      controls.maxDistance = 520;
 
       const syncLabelsForAltitude = (altitude: number) => {
         const level = resolveGlobeDetailLevel(altitude);
         onDetailLevelChangeRef.current?.(level);
+        globe.showAtmosphere(altitude >= GLOBE_TOSS_THEME.atmosphereCutoffAltitude);
         if (level === "region") {
           globe.labelsData([...pinsRef.current]);
         } else {
@@ -178,85 +176,62 @@ export const RimvioGlobe3D = memo(
       syncLabelsForAltitude(GLOBE_OVERVIEW_POINT_OF_VIEW.altitude);
       globe.onZoom((pov) => syncLabelsForAltitude(pov.altitude));
 
-      let resumeTimer: ReturnType<typeof setTimeout> | null = null;
-      const pauseSpin = () => {
-        controls.autoRotate = false;
-        if (resumeTimer) {
-          clearTimeout(resumeTimer);
-          resumeTimer = null;
-        }
-      };
-      const scheduleResume = () => {
-        if (resumeTimer) {
-          clearTimeout(resumeTimer);
-        }
-        resumeTimer = setTimeout(() => {
-          controls.autoRotate = true;
-        }, AUTO_ROTATE_RESUME_MS);
-      };
-
-      controls.addEventListener("start", pauseSpin);
-      controls.addEventListener("end", scheduleResume);
-
       globeRef.current = globe;
 
       return () => {
         resizeObserver.disconnect();
-        if (resumeTimer) {
-          clearTimeout(resumeTimer);
-        }
-        controls.removeEventListener("start", pauseSpin);
-        controls.removeEventListener("end", scheduleResume);
         globe._destructor();
         globeRef.current = null;
       };
-    }, [textureUrl]);
+    }, []);
 
     useEffect(() => {
       const globe = globeRef.current;
       if (!globe) {
         return;
       }
-      globe
-        .htmlElementsData([...pins])
-        .htmlElement((pin: object) => {
-          const row = pin as ClassifiedGlobePin;
-          return createGlobe3dPinElement(
-            row,
-            row.id === activePinIdRef.current,
-            (pinId) => onPinPressRef.current?.(pinId),
-          );
-        });
+      globe.htmlElementsData([...pins]);
 
       const pov = globe.pointOfView();
       if (resolveGlobeDetailLevel(pov.altitude) === "region") {
         globe.labelsData([...pins]);
       }
-    }, [pins, activePinId]);
+    }, [pins]);
 
-    const detailHint = "드래그 회전 · 스크롤 확대 · 핀치 거리뷰";
+    useEffect(() => {
+      const root = rootRef.current;
+      if (!root) {
+        return;
+      }
+      root.querySelectorAll<HTMLElement>("[data-globe-pin-id]").forEach((element) => {
+        const pinId = element.dataset.globePinId;
+        element.classList.toggle(
+          "rimvio-globe-3d-pin--active",
+          Boolean(pinId && pinId === activePinId),
+        );
+      });
+    }, [activePinId]);
+
+    const detailHint = "드래그 회전 · 스크롤·핀치 확대";
 
     return (
       <div
         className={cn(
-          "relative h-full min-h-0 w-full overflow-hidden rimvio-globe-space",
+          "relative h-full min-h-0 w-full overflow-hidden rimvio-globe-space rimvio-globe-space--toss",
           className,
         )}
         data-rimvio-globe-3d
       >
         <div ref={rootRef} className="absolute inset-0 touch-none" />
-        <div className="pointer-events-none absolute inset-0 rimvio-globe-stars" aria-hidden />
-        {loading ? (
-          <div
-            className="pointer-events-none absolute inset-0 flex items-center justify-center bg-[#060a14]/40"
-            aria-hidden
-          >
-            <p className="rounded-full bg-black/40 px-3 py-1 text-[11px] text-white/55 backdrop-blur-sm">
-              위성 지구 불러오는 중…
-            </p>
-          </div>
-        ) : null}
-        <p className="pointer-events-none absolute inset-x-0 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-10 mx-auto w-fit rounded-full bg-black/35 px-3 py-1 text-[10px] font-medium text-white/45 backdrop-blur-sm">
+        <div
+          className="pointer-events-none absolute inset-0 rimvio-globe-ambient rimvio-globe-ambient--toss"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute inset-0 rimvio-globe-vignette rimvio-globe-vignette--toss"
+          aria-hidden
+        />
+        <p className="pointer-events-none absolute inset-x-0 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-10 mx-auto w-fit rounded-full rimvio-globe-hint--toss px-3.5 py-1.5 text-[11px] font-medium backdrop-blur-md">
           {detailHint}
         </p>
       </div>
