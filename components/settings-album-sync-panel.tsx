@@ -119,10 +119,10 @@ export function SettingsAlbumSyncPanel({ className }: { className?: string }) {
     <section className={cn("overflow-hidden p-4", IOS.cardSm, className)}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold">사진첩 자동 가져오기</h2>
+          <h2 className="text-sm font-semibold">경험 맥락에 맞는 사진 자동 찾기</h2>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            직접 올리지 않아도 최근 7일 사진첩을 훑어요. 여행·ROOM·장소 맥락에
-            맞는 것만 경험에 붙입니다 — TeraBox처럼 전체 업로드는 하지 않아요.
+            기록한 경험의 날짜·장소 구간만 메타 스캔해요. 맞는 사진만 가져와
+            붙이고, 사진첩 전체는 업로드하지 않아요.
           </p>
         </div>
         <span className="shrink-0 rounded-full bg-rimvio-neon-purple/10 px-2.5 py-1 text-[10px] font-semibold text-rimvio-neon-cyan">

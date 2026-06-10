@@ -2,7 +2,7 @@ import {
   GPS_PING_FALLBACK_LOOKBACK_MS,
   GPS_PING_MATCH_WINDOW_MS,
 } from "@/lib/location-ping/constants";
-import { readJpegExifDateTimeIso } from "@/lib/location-ping/read-jpeg-exif-datetime";
+import { readImageExifMetadata } from "@/lib/location-ping/read-image-exif-metadata";
 import type { GpsPing, SpacetimeResolveSource } from "@/lib/location-ping/types";
 
 export type ResolvedCaptureSpacetime = {
@@ -14,9 +14,16 @@ export type ResolvedCaptureSpacetime = {
   matchedPingId: string | null;
 };
 
+/** EXIF capture older than this vs upload time → skip live GPS boost / ping fallback. */
+export const HISTORICAL_CAPTURE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
+
 function parseMs(iso: string): number | null {
   const ms = Date.parse(iso);
   return Number.isNaN(ms) ? null : ms;
+}
+
+export function isHistoricalCaptureMs(capturedMs: number, nowMs: number): boolean {
+  return nowMs - capturedMs > HISTORICAL_CAPTURE_THRESHOLD_MS;
 }
 
 function nearestPing(
@@ -66,11 +73,11 @@ function latestPingBefore(
 
 function resolveCaptureInstant(input: {
   file: File;
-  exifIso: string | null;
+  exifDateIso: string | null;
   nowMs: number;
 }): { capturedAtIso: string; resolveSource: SpacetimeResolveSource } {
-  if (input.exifIso) {
-    return { capturedAtIso: input.exifIso, resolveSource: "exif_datetime" };
+  if (input.exifDateIso) {
+    return { capturedAtIso: input.exifDateIso, resolveSource: "exif_datetime" };
   }
 
   const fileMs = input.file.lastModified;
@@ -91,24 +98,47 @@ function resolveCaptureInstant(input: {
   };
 }
 
-/** Correlate a photo/video file with the nearest GPS ping buffer entry. */
+/** Correlate a photo/video file with EXIF or nearest GPS ping buffer entry. */
 export async function resolveCaptureSpacetime(input: {
   file: File;
   pings: readonly GpsPing[];
   now?: Date;
 }): Promise<ResolvedCaptureSpacetime> {
   const nowMs = (input.now ?? new Date()).getTime();
-  const exifIso = await readJpegExifDateTimeIso(input.file);
+  const exif = await readImageExifMetadata(input.file);
   const instant = resolveCaptureInstant({
     file: input.file,
-    exifIso,
+    exifDateIso: exif.dateTimeIso,
     nowMs,
   });
   const targetMs = parseMs(instant.capturedAtIso) ?? nowMs;
+  const historical = isHistoricalCaptureMs(targetMs, nowMs);
 
-  const matched =
-    nearestPing(input.pings, targetMs, GPS_PING_MATCH_WINDOW_MS) ??
-    latestPingBefore(input.pings, nowMs, GPS_PING_FALLBACK_LOOKBACK_MS);
+  const hasExifGps =
+    exif.lat !== null &&
+    exif.lng !== null &&
+    Number.isFinite(exif.lat) &&
+    Number.isFinite(exif.lng);
+
+  if (hasExifGps) {
+    return {
+      capturedAtIso: instant.capturedAtIso,
+      lat: exif.lat,
+      lng: exif.lng,
+      accuracyM: null,
+      resolveSource: "exif_gps",
+      matchedPingId: null,
+    };
+  }
+
+  const matched = historical
+    ? nearestPing(input.pings, targetMs, GPS_PING_MATCH_WINDOW_MS)
+    : nearestPing(input.pings, targetMs, GPS_PING_MATCH_WINDOW_MS) ??
+      latestPingBefore(
+        input.pings,
+        historical ? targetMs : nowMs,
+        GPS_PING_FALLBACK_LOOKBACK_MS,
+      );
 
   if (!matched) {
     return {

@@ -200,7 +200,7 @@ export function evaluateContextMatchMedia(input: {
   }
 
   if (input.context.origin === "other") {
-    if (match && match.score >= CONTEXT_MATCH_HIGH_SCORE) {
+    if (match && match.score >= CONTEXT_MATCH_MIN_SCORE) {
       return allowDecision({
         reason: match.reason,
         signal: "spacetime",

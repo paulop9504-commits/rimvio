@@ -122,6 +122,7 @@ export async function ingestGlobeContextFromFiles(
   input?: {
     hintEventId?: string | null;
     hintTitle?: string | null;
+    forceAttachToHint?: boolean;
     onProgress?: (done: number, total: number) => void;
   },
 ): Promise<GlobeBulkMediaIngestSummary> {
@@ -129,6 +130,7 @@ export async function ingestGlobeContextFromFiles(
     files,
     hintEventId: input?.hintEventId,
     hintTitle: input?.hintTitle,
+    forceAttachToHint: input?.forceAttachToHint,
     onProgress: input?.onProgress,
   });
   return {

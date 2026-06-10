@@ -48,6 +48,7 @@ export function GlobeContextPhotoButton({
       const summary = await ingestGlobeContextFromFiles(files, {
         hintEventId: eventId,
         hintTitle: eventTitle,
+        forceAttachToHint: true,
         onProgress: (done, total) => {
           if (total > 1) {
             toast.loading(`사진·동영상 ${total}개 올리는 중… ${done}/${total}`, {

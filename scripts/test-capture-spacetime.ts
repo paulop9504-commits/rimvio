@@ -42,7 +42,7 @@ async function run() {
     now,
   });
 
-  assert.equal(resolved.resolveSource, "file_mtime");
+  assert.equal(resolved.resolveSource, "gps_ping");
   assert.equal(resolved.matchedPingId, "ping--3");
   assert.equal(resolved.lat, 33.5101);
   assert.equal(resolved.lng, 126.5215);
@@ -60,8 +60,41 @@ async function run() {
     now,
   });
 
-  assert.equal(fallback.resolveSource, "last_known_ping");
-  assert.equal(fallback.matchedPingId, "ping--3");
+  assert.equal(fallback.resolveSource, "gps_ping");
+  assert.equal(fallback.matchedPingId, "ping-2");
+  assert.equal(fallback.lat, 37.5665);
+
+  const pastExifBytes = new Uint8Array(256).fill(0x20);
+  const exifTail = new TextEncoder().encode(
+    "DateTimeOriginal\x002025:01:10 10:00:00",
+  );
+  const pastBuffer = new Uint8Array(pastExifBytes.length + exifTail.length);
+  pastBuffer.set(pastExifBytes, 0);
+  pastBuffer.set(exifTail, pastExifBytes.length);
+
+  const pastFile = {
+    name: "jeju-past.heic",
+    type: "image/heic",
+    lastModified: now.getTime(),
+    size: pastBuffer.length,
+    slice: (start = 0, end = pastBuffer.length) => ({
+      arrayBuffer: async () =>
+        pastBuffer.slice(start, end).buffer.slice(
+          pastBuffer.byteOffset + start,
+          pastBuffer.byteOffset + Math.min(end, pastBuffer.length),
+        ),
+    }),
+  } as unknown as File;
+
+  const historical = await resolveCaptureSpacetime({
+    file: pastFile,
+    pings,
+    now,
+  });
+
+  assert.equal(historical.resolveSource, "exif_datetime");
+  assert.equal(historical.matchedPingId, null);
+  assert.equal(historical.lat, null);
 
   console.log("test-capture-spacetime: ok");
 }

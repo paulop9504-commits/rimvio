@@ -11,7 +11,11 @@ import {
   listMediaSpacetimeContexts,
   saveMediaSpacetimeContext,
 } from "@/lib/location-ping/media-context-store";
-import { resolveCaptureSpacetime } from "@/lib/location-ping/resolve-capture-spacetime";
+import { readImageExifMetadata } from "@/lib/location-ping/read-image-exif-metadata";
+import {
+  isHistoricalCaptureMs,
+  resolveCaptureSpacetime,
+} from "@/lib/location-ping/resolve-capture-spacetime";
 import type {
   MediaSpacetimeContext,
   MediaSpacetimeOrigin,
@@ -69,7 +73,15 @@ export async function attachMediaSpacetime(input: {
     }
   }
 
-  await boostGpsPingForUpload();
+  const exifPeek = await readImageExifMetadata(input.file);
+  const exifMs = exifPeek.dateTimeIso ? Date.parse(exifPeek.dateTimeIso) : Number.NaN;
+  const isHistorical =
+    !Number.isNaN(exifMs) && isHistoricalCaptureMs(exifMs, Date.now());
+
+  if (!isHistorical) {
+    await boostGpsPingForUpload();
+  }
+
   const pings = await listRecentGpsPings();
   const resolved = await resolveCaptureSpacetime({ file: input.file, pings });
 

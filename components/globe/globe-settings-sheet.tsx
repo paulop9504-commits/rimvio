@@ -266,17 +266,17 @@ function GlobeSettingsBody() {
           />
         </SettingsRow>
         <SettingsRow
-          label="사진첩 자동 가져오기"
+          label="경험 맥락에 맞는 사진 자동 찾기"
           hint={
             native
-              ? `최근 7일 · ${networkLabel}`
+              ? `맥락 날짜·장소에 맞는 것만 · ${networkLabel}`
               : "Android · iOS 앱에서 사진첩 접근"
           }
         >
           <SettingsToggle
             checked={albumPrefs.enabled}
             onCheckedChange={(checked) => patchAlbum({ enabled: checked })}
-            aria-label="사진첩 자동 가져오기"
+            aria-label="경험 맥락에 맞는 사진 자동 찾기"
           />
         </SettingsRow>
         <SettingsRow label="앱 열 때 동기화" hint="백그라운드 복귀 시 다시 훑어요">

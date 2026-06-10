@@ -11,6 +11,7 @@ export type GpsPing = {
 
 export type SpacetimeResolveSource =
   | "exif_datetime"
+  | "exif_gps"
   | "gps_ping"
   | "last_known_ping"
   | "file_mtime"

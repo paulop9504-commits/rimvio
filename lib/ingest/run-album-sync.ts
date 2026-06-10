@@ -1,8 +1,11 @@
 import { Capacitor } from "@capacitor/core";
+import { listEventCandidates } from "@/lib/events/event-store";
 import {
   canRunAlbumSyncOnNetwork,
   readAlbumSyncNetworkType,
 } from "@/lib/ingest/album-sync-network";
+import { resolveGlobeAlbumScanRange } from "@/lib/globe/resolve-globe-album-scan-range";
+import { scoreAlbumItemAgainstGlobeContexts } from "@/lib/globe/score-album-item-against-contexts";
 import {
   isAlbumAssetImported,
   markAlbumAssetImported,
@@ -20,6 +23,7 @@ import {
   RimvioNativeBridge,
   isNativeShell,
 } from "@/lib/native-bridge/rimvio-native-bridge";
+import type { NativePhotoLibraryItem } from "@/lib/native-bridge/rimvio-native-bridge.types";
 
 export type AlbumSyncRunStatus =
   | "disabled"
@@ -39,6 +43,18 @@ export type AlbumSyncRunResult = {
 };
 
 const BATCH_LIMIT = 40;
+const MAX_SCAN_WINDOW_DAYS = 365 * 5;
+
+function filterScannedPhotos(input: {
+  photos: NativePhotoLibraryItem[];
+  sinceMs: number;
+  untilMs: number;
+}): NativePhotoLibraryItem[] {
+  return input.photos.filter(
+    (item) =>
+      item.capturedAtMs >= input.sinceMs && item.capturedAtMs <= input.untilMs,
+  );
+}
 
 async function isAlbumAssetInContextStore(assetId: string): Promise<boolean> {
   const key = assetId.trim();
@@ -175,34 +191,73 @@ export async function runAlbumSync(input?: {
     }
 
     const nowMs = Date.now();
-    const windowStartMs = nowMs - prefs.windowDays * 86_400_000;
-    const sinceMs = prefs.lastSyncCursorMs ?? windowStartMs;
+    const events = listEventCandidates();
+    const scanRange = resolveGlobeAlbumScanRange({
+      events,
+      prefsWindowDays: prefs.windowDays,
+    });
+    const rollingSinceMs = nowMs - prefs.windowDays * 86_400_000;
+    const sinceMs = Math.min(
+      scanRange.sinceMs,
+      rollingSinceMs,
+      prefs.lastSyncCursorMs ?? rollingSinceMs,
+    );
+    const untilMs = scanRange.untilMs;
+    const windowDays = Math.min(
+      MAX_SCAN_WINDOW_DAYS,
+      Math.max(prefs.windowDays, Math.ceil((nowMs - sinceMs) / 86_400_000)),
+    );
 
     const scan = await RimvioNativeBridge.scanPhotoLibrary({
       sinceMs,
       limit: BATCH_LIMIT,
-      windowDays: prefs.windowDays,
+      windowDays,
     });
 
-    const total = scan.photos.length;
+    const candidates = filterScannedPhotos({
+      photos: scan.photos,
+      sinceMs,
+      untilMs,
+    });
+
+    const total = candidates.length;
     emitAlbumSyncProgress({
       phase: "importing",
       total: Math.max(total, 1),
       current: 0,
-      label: total > 0 ? `맥락 맞는 사진 가져오기 · ${total}장` : "새 사진 없음",
+      label:
+        total > 0
+          ? `맥락 맞는 사진 가져오기 · ${total}장`
+          : scanRange.hasContextWindows
+            ? "맥락 구간 새 사진 없음"
+            : "새 사진 없음",
     });
 
     let imported = 0;
     let skipped = 0;
 
-    for (let index = 0; index < scan.photos.length; index += 1) {
-      const item = scan.photos[index]!;
+    for (let index = 0; index < candidates.length; index += 1) {
+      const item = candidates[index]!;
       emitAlbumSyncProgress({
         phase: "importing",
         total: Math.max(total, 1),
         current: index + 1,
         label: `가져오는 중 · ${index + 1}/${total}`,
       });
+
+      const match = scoreAlbumItemAgainstGlobeContexts({
+        item: {
+          capturedAtIso: new Date(item.capturedAtMs).toISOString(),
+          lat: item.lat,
+          lng: item.lng,
+        },
+        events,
+      });
+      if (!match.matches) {
+        skipped += 1;
+        continue;
+      }
+
       try {
         const ok = await importAlbumAsset({
           assetId: item.id,
@@ -229,7 +284,7 @@ export async function runAlbumSync(input?: {
 
     const nextCursorMs = Math.max(
       scan.nextCursorMs ?? sinceMs,
-      prefs.lastSyncCursorMs ?? windowStartMs,
+      prefs.lastSyncCursorMs ?? rollingSinceMs,
     );
 
     writeAlbumSyncPrefs({
@@ -252,7 +307,7 @@ export async function runAlbumSync(input?: {
 
     return {
       status: "done",
-      scanned: scan.photos.length,
+      scanned: candidates.length,
       imported,
       skipped,
       message:

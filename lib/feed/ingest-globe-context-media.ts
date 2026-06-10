@@ -83,6 +83,7 @@ function buildMatch(
 function resolveGlobePhotoTarget(input: {
   context: MediaSpacetimeContext;
   hintEventId?: string | null;
+  forceAttachToHint?: boolean;
 }): {
   event: EventCandidate;
   match: SpacetimeFeedTargetMatch | null;
@@ -92,6 +93,33 @@ function resolveGlobePhotoTarget(input: {
 } {
   const events = listEventCandidates();
   const hintId = input.hintEventId?.trim();
+
+  if (hintId && input.forceAttachToHint) {
+    const hinted = findEventCandidate(hintId);
+    if (hinted) {
+      const plan = readPlanContextFromEvent(hinted);
+      const fit = scoreSpacetimeFit({
+        capturedAtIso: input.context.capturedAtIso,
+        lat: input.context.lat,
+        lng: input.context.lng,
+        eventStartIso: hinted.datetime!,
+        eventEndIso: plan?.windowEndIso ?? null,
+        eventPlace: plan?.place ?? hinted.place,
+        capturedPlaceLabel: input.context.placeLabel,
+      });
+      return {
+        event: hinted,
+        match: buildMatch(
+          hinted,
+          Math.max(fit.score, CONTEXT_MATCH_MIN_SCORE),
+          plan?.place ?? hinted.place ?? input.context.placeLabel,
+        ),
+        createdNewEvent: false,
+        attachedToHintedEvent: true,
+        separated: false,
+      };
+    }
+  }
 
   if (hintId) {
     const hinted = findEventCandidate(hintId);
@@ -180,6 +208,8 @@ export async function ingestGlobeContextMedia(input: {
   file: File;
   hintEventId?: string | null;
   hintTitle?: string | null;
+  /** Pin card upload — always attach to hinted context (user intent). */
+  forceAttachToHint?: boolean;
 }): Promise<GlobeContextMediaIngestResult> {
   const context = await attachMediaSpacetime({
     file: input.file,
@@ -190,6 +220,7 @@ export async function ingestGlobeContextMedia(input: {
   const target = resolveGlobePhotoTarget({
     context,
     hintEventId: input.hintEventId,
+    forceAttachToHint: input.forceAttachToHint === true,
   });
 
   const fragment: FeedCaptureFragment = {
@@ -260,6 +291,7 @@ export async function ingestGlobeContextMediaBulk(input: {
   files: File[];
   hintEventId?: string | null;
   hintTitle?: string | null;
+  forceAttachToHint?: boolean;
   onProgress?: (done: number, total: number) => void;
 }): Promise<
   GlobeBulkMediaIngestSummary & { outcomes: GlobeContextMediaIngestResult[] }
@@ -280,6 +312,7 @@ export async function ingestGlobeContextMediaBulk(input: {
         file: mediaFiles[index]!,
         hintEventId: input.hintEventId,
         hintTitle: input.hintTitle,
+        forceAttachToHint: input.forceAttachToHint,
       });
       outcomes.push(outcome);
       lastEventId = outcome.result.event.id;
