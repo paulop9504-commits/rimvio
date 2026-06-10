@@ -3399,6 +3399,38 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   box-shadow: 0 0 0 6px rgba(49, 130, 246, 0.18);
 }
 
+.rimvio-globe-3d-pin--cluster {
+  max-width: 3.25rem;
+}
+
+.rimvio-globe-3d-pin__card--cluster {
+  align-items: center;
+  min-width: 2.75rem;
+  padding: 0.35rem 0.5rem;
+  background: linear-gradient(145deg, #3182f6 0%, #1b64da 100%);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.rimvio-globe-3d-pin--cluster .rimvio-globe-3d-pin__meta {
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 9px;
+}
+
+.rimvio-globe-3d-pin__cluster-count {
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+}
+
+.rimvio-globe-3d-pin--cluster .rimvio-globe-3d-pin__dot {
+  background: #1b64da;
+}
+
 .rimvio-globe-3d-viewer-pin {
   position: relative;
   display: flex;

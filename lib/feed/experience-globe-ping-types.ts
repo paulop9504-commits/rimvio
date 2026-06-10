@@ -27,7 +27,7 @@ export type ClassifiedGlobePin = {
   authorDisplayName?: string | null;
   peerThreadId?: string | null;
   /** 2.5D experience stack on globe */
-  pinShape?: "dot" | "slot" | "viewer";
+  pinShape?: "dot" | "slot" | "viewer" | "cluster";
   slot?: GlobePinSlotMeta;
   /** Overseas trip leg — departure airport vs destination stay. */
   tripLeg?: "departure" | "destination";

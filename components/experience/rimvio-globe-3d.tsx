@@ -12,7 +12,7 @@ import {
 import Globe from "globe.gl";
 import type { GlobeInstance } from "globe.gl";
 import { GLOBE_OVERVIEW_POINT_OF_VIEW } from "@/lib/experience-graph/globe-overview-view";
-import { createGlobe3dPinElement } from "@/lib/globe/create-globe-3d-pin-element";
+import { createGlobe3dPinElement, createGlobe3dClusterPinElement } from "@/lib/globe/create-globe-3d-pin-element";
 import { createGlobe3dViewerPinElement } from "@/lib/globe/create-globe-3d-viewer-pin-element";
 import { accuracyMetersToRingDegrees } from "@/lib/globe/accuracy-ring-degrees";
 import { GLOBE_TILE_MAX_ZOOM } from "@/lib/globe/globe-tile-constants";
@@ -335,6 +335,11 @@ export const RimvioGlobe3D = memo(
           if (row.pinShape === "viewer") {
             return createGlobe3dViewerPinElement(
               clampGpsAccuracyMeters(viewerLocationRef.current?.accuracyM ?? null),
+            );
+          }
+          if (row.pinShape === "cluster") {
+            return createGlobe3dClusterPinElement(row, (pinId) =>
+              onPinPressRef.current?.(pinId),
             );
           }
           return createGlobe3dPinElement(

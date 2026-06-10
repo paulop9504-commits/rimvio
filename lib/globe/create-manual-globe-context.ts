@@ -82,6 +82,9 @@ export function createManualGlobeContext(
             globePlaceLat: resolved.lat,
             globePlaceLng: resolved.lng,
             globePlaceLabel: resolved.label,
+            globePlaceCardLat: resolved.lat,
+            globePlaceCardLng: resolved.lng,
+            globePlaceCardLabel: resolved.label,
             globePlaceAutoParsed: true,
           }
         : {}),

@@ -61,8 +61,47 @@ function canRelocatePin(
   return (
     relocateEnabled &&
     pin.pinShape !== "viewer" &&
+    pin.pinShape !== "cluster" &&
     Boolean(pin.sourceEventId?.trim())
   );
+}
+
+export function createGlobe3dClusterPinElement(
+  pin: ClassifiedGlobePin,
+  onPress: (pinId: string) => void,
+): HTMLElement {
+  const root = document.createElement("button");
+  root.type = "button";
+  root.dataset.globePinId = pin.id;
+  root.className = "rimvio-globe-3d-pin rimvio-globe-3d-pin--cluster";
+  root.setAttribute("aria-label", pin.label);
+
+  const card = document.createElement("span");
+  card.className = "rimvio-globe-3d-pin__card rimvio-globe-3d-pin__card--cluster";
+
+  const count = document.createElement("span");
+  count.className = "rimvio-globe-3d-pin__cluster-count";
+  count.textContent = pin.slot?.experienceTitle?.trim() || pin.label;
+  card.appendChild(count);
+
+  const meta = document.createElement("span");
+  meta.className = "rimvio-globe-3d-pin__meta";
+  meta.textContent = "맥락";
+  card.appendChild(meta);
+
+  root.appendChild(card);
+
+  const dot = document.createElement("span");
+  dot.className = "rimvio-globe-3d-pin__dot";
+  dot.setAttribute("aria-hidden", "true");
+  root.appendChild(dot);
+
+  root.addEventListener("click", (event) => {
+    event.stopPropagation();
+    onPress(pin.id);
+  });
+
+  return root;
 }
 
 export function createGlobe3dPinElement(

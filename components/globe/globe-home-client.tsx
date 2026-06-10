@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { CalendarPlus, CalendarRange, ListChecks, Settings } from "lucide-react";
 import { toast } from "sonner";
@@ -10,20 +10,27 @@ import { GlobeContextMapVideoStage } from "@/components/globe/globe-context-map-
 import { GlobeContextIngestBar } from "@/components/globe/globe-context-ingest-bar";
 import { GlobeContextListSheet } from "@/components/globe/globe-context-list-sheet";
 import { GlobeContextManageSheet } from "@/components/globe/globe-context-manage-sheet";
+import { GlobeContextPinCard } from "@/components/globe/globe-context-pin-card";
+import { GlobeContextTimeFilterChips } from "@/components/globe/globe-context-time-filter-chips";
 import { GlobeCreateContextSheet } from "@/components/globe/globe-create-context-sheet";
 import { GlobeGpsPanel } from "@/components/globe/globe-gps-panel";
 import { GlobeSettingsSheet } from "@/components/globe/globe-settings-sheet";
 import { GlobeLocationConfirmCard } from "@/components/globe/globe-location-confirm-card";
 import { PinOpenSheet } from "@/components/globe/pin-open-sheet";
 import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
-import { buildPinClusterFromEvent, buildPinClusterFromPersonalPin } from "@/lib/globe/build-pin-cluster-from-event";
+import { focusGlobeContextOnMap } from "@/lib/globe/focus-globe-context-on-map";
+import {
+  revertGlobeContextPinToCardPlace,
+  resolveGlobeContextCardPinCluster,
+} from "@/lib/globe/globe-context-card-coords";
+import type { GlobeContextTimeFilter } from "@/lib/globe/globe-context-time-filter";
 import type { GlobeContextTimelineEntry } from "@/lib/globe/list-globe-context-timeline";
 import type { GlobeManageContextEntry } from "@/lib/globe/list-globe-manage-contexts";
 import type { PinCluster } from "@/lib/globe/pin-cluster-types";
-import { findPersonalGlobePinByEventId } from "@/lib/globe/personal-globe-pin-store";
-import { relocateGlobeContextPin } from "@/lib/globe/relocate-globe-context-pin";
-import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
-import { findLifeEventCandidate } from "@/lib/life-read-model";
+import { resolveGlobeContextPinCluster } from "@/lib/globe/resolve-globe-context-pin-cluster";
+import { EVENT_CANDIDATES_UPDATED } from "@/lib/life-read-model";
+
+const PIN_REVERT_MS = 1_100;
 
 function GlobeHomeBody() {
   const searchParams = useSearchParams();
@@ -32,6 +39,13 @@ function GlobeHomeBody() {
   const liveLocation = useLiveLocationSnapshot();
   const [activeCluster, setActiveCluster] = useState<PinCluster | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [timeFilter, setTimeFilter] = useState<GlobeContextTimeFilter>("all");
+  const [pinDragOverrides, setPinDragOverrides] = useState<
+    Map<string, { lat: number; lng: number }>
+  >(() => new Map());
+  const draggedEventIdRef = useRef<string | null>(null);
+  const pinDragActiveRef = useRef(false);
+  const revertTimerRef = useRef<number | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [listOpen, setListOpen] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
@@ -40,12 +54,43 @@ function GlobeHomeBody() {
   const onPinPress = useCallback((cluster: PinCluster) => {
     globeRef.current?.flyToPin(cluster.lat, cluster.lng, "neighborhood");
     setActiveCluster(cluster);
-    setSheetOpen(true);
+    setSheetOpen(false);
+  }, []);
+
+  const schedulePinRevertToCardPlace = useCallback((eventId: string) => {
+    if (revertTimerRef.current !== null) {
+      window.clearTimeout(revertTimerRef.current);
+    }
+    revertTimerRef.current = window.setTimeout(() => {
+      revertTimerRef.current = null;
+      revertGlobeContextPinToCardPlace(eventId);
+      const cardCluster = resolveGlobeContextCardPinCluster(eventId);
+      if (cardCluster) {
+        globeRef.current?.flyToPin(cardCluster.lat, cardCluster.lng, "neighborhood");
+      }
+    }, PIN_REVERT_MS);
   }, []);
 
   const clearActiveContext = useCallback(() => {
+    const eventId =
+      draggedEventIdRef.current?.trim() || activeCluster?.eventId?.trim() || null;
+    const hadDragPreview = pinDragActiveRef.current;
+
+    if (revertTimerRef.current !== null) {
+      window.clearTimeout(revertTimerRef.current);
+      revertTimerRef.current = null;
+    }
+
     setSheetOpen(false);
     setActiveCluster(null);
+    setPinDragOverrides(new Map());
+    pinDragActiveRef.current = false;
+    draggedEventIdRef.current = null;
+
+    if (eventId && hadDragPreview) {
+      schedulePinRevertToCardPlace(eventId);
+    }
+
     const params = new URLSearchParams(window.location.search);
     if (params.has("recallEvent")) {
       params.delete("recallEvent");
@@ -54,108 +99,122 @@ function GlobeHomeBody() {
         : window.location.pathname;
       window.history.replaceState(null, "", next);
     }
-  }, []);
+  }, [activeCluster?.eventId, schedulePinRevertToCardPlace]);
 
   const onSheetOpenChange = useCallback((open: boolean) => {
     setSheetOpen(open);
   }, []);
 
-  const focusContextOnMap = useCallback((eventId: string) => {
-    let event = findLifeEventCandidate(eventId);
-    if (!event) {
-      event = recoverGlobeContextEventFromPin(eventId);
-    }
-    if (!event) {
-      return;
-    }
-    const cluster = buildPinClusterFromEvent(event);
-    globeRef.current?.flyToPin(cluster.lat, cluster.lng, "neighborhood");
-    setActiveCluster(cluster);
-  }, []);
-
-  const onPinRelocate = useCallback(
-    (input: { pinId: string; sourceEventId: string; lat: number; lng: number }) => {
-      try {
-        relocateGlobeContextPin({
-          eventId: input.sourceEventId,
-          lat: input.lat,
-          lng: input.lng,
-        });
-        setActiveCluster((prev) =>
-          prev?.eventId === input.sourceEventId
-            ? { ...prev, lat: input.lat, lng: input.lng }
-            : prev,
-        );
-        toast.success("핀 위치를 옮겼어요");
-      } catch {
-        toast.error("핀 위치를 옮기지 못했어요");
+  const focusContextByEventId = useCallback(
+    (eventId: string, options?: { openSheet?: boolean }) => {
+      const result = focusGlobeContextOnMap(eventId);
+      if (!result) {
+        toast.error("맥락을 찾지 못했어요");
+        return null;
       }
-    },
-    [],
-  );
-
-  const openPinCluster = useCallback((cluster: PinCluster, eventId: string) => {
-    requestAnimationFrame(() => {
+      const { cluster } = result;
       globeRef.current?.flyToPin(cluster.lat, cluster.lng, "neighborhood");
       setActiveCluster(cluster);
-      setSheetOpen(true);
+      if (options?.openSheet !== false) {
+        setSheetOpen(true);
+      }
       const params = new URLSearchParams(window.location.search);
       if (params.get("recallEvent") !== eventId) {
         params.set("recallEvent", eventId);
         const next = `${window.location.pathname}?${params.toString()}`;
         window.history.replaceState(null, "", next);
       }
-    });
+      return cluster;
+    },
+    [],
+  );
+
+  const focusContextOnMap = useCallback(
+    (eventId: string) => {
+      focusContextByEventId(eventId, { openSheet: false });
+    },
+    [focusContextByEventId],
+  );
+
+  const onRecallEventId = useCallback(
+    (eventId: string) => {
+      setListOpen(false);
+      setManageOpen(false);
+      focusContextByEventId(eventId, { openSheet: true });
+    },
+    [focusContextByEventId],
+  );
+
+  useEffect(() => {
+    const eventId = activeCluster?.eventId?.trim();
+    if (!eventId) {
+      return;
+    }
+    const sync = () => {
+      if (pinDragActiveRef.current) {
+        return;
+      }
+      const next = resolveGlobeContextPinCluster(eventId);
+      if (!next) {
+        return;
+      }
+      setActiveCluster((prev) => {
+        if (!prev || prev.eventId !== eventId) {
+          return prev;
+        }
+        if (prev.lat === next.lat && prev.lng === next.lng) {
+          return prev;
+        }
+        globeRef.current?.flyToPin(next.lat, next.lng, "neighborhood");
+        return next;
+      });
+    };
+    window.addEventListener(EVENT_CANDIDATES_UPDATED, sync);
+    return () => window.removeEventListener(EVENT_CANDIDATES_UPDATED, sync);
+  }, [activeCluster?.eventId]);
+
+  const onPinRelocate = useCallback(
+    (input: { pinId: string; sourceEventId: string; lat: number; lng: number }) => {
+      pinDragActiveRef.current = true;
+      draggedEventIdRef.current = input.sourceEventId;
+      setPinDragOverrides((prev) => {
+        const next = new Map(prev);
+        next.set(input.pinId, { lat: input.lat, lng: input.lng });
+        return next;
+      });
+      setActiveCluster((prev) =>
+        prev?.eventId === input.sourceEventId
+          ? { ...prev, lat: input.lat, lng: input.lng }
+          : prev,
+      );
+    },
+    [],
+  );
+
+  const pinCoordOverrides = useMemo(() => pinDragOverrides, [pinDragOverrides]);
+
+  useEffect(() => {
+    return () => {
+      if (revertTimerRef.current !== null) {
+        window.clearTimeout(revertTimerRef.current);
+      }
+    };
   }, []);
 
   const openContextByEventId = useCallback(
     (eventId: string) => {
-      let event = findLifeEventCandidate(eventId);
-      if (!event) {
-        event = recoverGlobeContextEventFromPin(eventId);
-      }
-      if (!event) {
-        const pin = findPersonalGlobePinByEventId(eventId);
-        if (pin) {
-          setListOpen(false);
-          openPinCluster(buildPinClusterFromPersonalPin(pin), eventId);
-          return;
-        }
-        toast.error("맥락을 찾지 못했어요");
-        return;
-      }
       setListOpen(false);
-      openPinCluster(buildPinClusterFromEvent(event), event.id);
+      focusContextByEventId(eventId, { openSheet: true });
     },
-    [openPinCluster],
+    [focusContextByEventId],
   );
 
   const openProjectedContext = useCallback(
     (entry: GlobeManageContextEntry) => {
       setManageOpen(false);
-      const event = findLifeEventCandidate(entry.eventId);
-      const cluster = event
-        ? buildPinClusterFromEvent(event)
-        : {
-            pinId: entry.pinId,
-            eventId: entry.eventId,
-            title: entry.title,
-            placeLabel: entry.place,
-            lat: entry.lat,
-            lng: entry.lng,
-            dateLabel: entry.dateLabel,
-            startedAtIso: null,
-            evidence: {
-              photoCount: entry.photoCount,
-              videoCount: entry.videoCount,
-              chatCount: 0,
-              placePinCount: 0,
-            },
-            recallLine: null,
-          };
-      openPinCluster(cluster, entry.eventId);
+      focusContextByEventId(entry.eventId, { openSheet: true });
     },
-    [openPinCluster],
+    [focusContextByEventId],
   );
 
   const openContextEntry = useCallback(
@@ -171,10 +230,20 @@ function GlobeHomeBody() {
         globeRef={globeRef}
         className="h-full min-h-0 flex-1"
         initialRecallEventId={recallEventId}
+        onRecallEventId={onRecallEventId}
         highlightedPinId={activeCluster?.pinId ?? null}
         onPinPress={onPinPress}
         pinRelocateEnabled
         onPinRelocate={onPinRelocate}
+        timeFilter={timeFilter}
+        pinCoordOverrides={pinCoordOverrides}
+      />
+      <GlobeContextPinCard
+        globeRef={globeRef}
+        cluster={activeCluster}
+        visible={Boolean(activeCluster?.eventId) && !sheetOpen}
+        onOpenSheet={() => setSheetOpen(true)}
+        onDismiss={clearActiveContext}
       />
       <GlobeContextMapVideoStage
         globeRef={globeRef}
@@ -213,6 +282,12 @@ function GlobeHomeBody() {
             <ListChecks className="size-3.5 text-primary" aria-hidden />
             맥락 관리
           </button>
+        </div>
+        <div className="pointer-events-auto">
+          <GlobeContextTimeFilterChips
+            value={timeFilter}
+            onChange={setTimeFilter}
+          />
         </div>
         <div className="pointer-events-auto">
           <GlobeGpsPanel

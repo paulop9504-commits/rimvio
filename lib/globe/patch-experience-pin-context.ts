@@ -1,6 +1,7 @@
 "use client";
 
 import { appendCorrectionLog } from "@/lib/corrections/correction-log";
+import { applyGlobeContextPlaceCoords } from "@/lib/globe/apply-globe-context-place-coords";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { commitEventUpsert } from "@/lib/source-of-truth/commit-truth";
@@ -49,6 +50,24 @@ export async function patchExperiencePinContext(
     });
   }
 
+  let nextMetadata = {
+    ...existing.metadata,
+    pinContextEditedAt: new Date().toISOString(),
+  };
+
+  if (patch.place !== undefined && correctedPlace) {
+    const withCoords = applyGlobeContextPlaceCoords(
+      {
+        ...existing,
+        title: nextTitle,
+        place: correctedPlace,
+        metadata: nextMetadata,
+      },
+      correctedPlace,
+    );
+    return withCoords;
+  }
+
   return commitEventUpsert({
     id: existing.id,
     title: nextTitle,
@@ -59,10 +78,7 @@ export async function patchExperiencePinContext(
     place: nextPlace,
     containerId: existing.containerId,
     confidence: Math.min(0.98, existing.confidence + 0.02),
-    metadata: {
-      ...existing.metadata,
-      pinContextEditedAt: new Date().toISOString(),
-    },
+    metadata: nextMetadata,
     lifecycleUpdatedAt: existing.lifecycleUpdatedAt,
   });
 }
