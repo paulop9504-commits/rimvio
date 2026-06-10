@@ -107,6 +107,8 @@ type RimvioGlobeHubBodyProps = {
     lng: number;
   }) => void;
 };
+
+const RimvioGlobeHubBody = memo(
   forwardRef<RimvioGlobeHubHandle, RimvioGlobeHubBodyProps>(function RimvioGlobeHubBody(
     {
       className,
