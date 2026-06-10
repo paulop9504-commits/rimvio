@@ -27,7 +27,7 @@ const cluster: PinCluster = {
 };
 
 const homeView = globeViewForPinClusters([cluster]);
-assert.equal(homeView.zoom, overview.zoom);
-assert.ok(Math.abs(homeView.lat - 12) < 0.01);
+assert.ok(Math.abs(homeView.lat - 33.389) < 0.01);
+assert.ok(homeView.zoom >= 1.5);
 
 console.log("test-globe-overview: ok");

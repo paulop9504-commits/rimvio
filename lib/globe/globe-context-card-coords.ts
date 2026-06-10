@@ -24,7 +24,7 @@ export type GlobeContextCardCoords = {
   placeLabel: string;
 };
 
-function resolvePlaceLabel(event: EventCandidate): string {
+export function resolveGlobeContextPlaceLabel(event: EventCandidate): string {
   const meta = event.metadata ?? {};
   const plan = readPlanContextFromEvent(event);
   return (
@@ -48,11 +48,11 @@ export function readGlobeContextCardCoords(
     return {
       lat: cardLat,
       lng: cardLng,
-      placeLabel: resolvePlaceLabel(event),
+      placeLabel: resolveGlobeContextPlaceLabel(event),
     };
   }
 
-  const label = resolvePlaceLabel(event);
+  const label = resolveGlobeContextPlaceLabel(event);
   const geocoded = resolvePlaceCoordinates(label);
   return {
     lat: geocoded.lat,
@@ -65,13 +65,19 @@ export function readGlobeContextCardCoords(
 export function syncGlobeContextCardCoords(
   event: EventCandidate,
   placeLabel?: string,
+  resolved?: { lat: number; lng: number; label: string },
 ): EventCandidate {
-  const label = (placeLabel ?? resolvePlaceLabel(event)).trim();
+  const label = (placeLabel ?? resolveGlobeContextPlaceLabel(event)).trim();
   if (!label) {
     return event;
   }
 
-  const geocoded = resolvePlaceCoordinates(label);
+  const geocoded =
+    resolved ??
+    (() => {
+      const hit = resolvePlaceCoordinates(label);
+      return { lat: hit.lat, lng: hit.lng, label: hit.label.trim() || label };
+    })();
   const meta = event.metadata ?? {};
   const { globePlaceMovedAt: _removed, ...restMeta } = meta;
 

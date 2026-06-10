@@ -18,6 +18,7 @@ import { GlobeSettingsSheet } from "@/components/globe/globe-settings-sheet";
 import { GlobeLocationConfirmCard } from "@/components/globe/globe-location-confirm-card";
 import { PinOpenSheet } from "@/components/globe/pin-open-sheet";
 import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
+import { useGlobeContextPlaceAlignment } from "@/hooks/use-globe-context-place-alignment";
 import { focusGlobeContextOnMap } from "@/lib/globe/focus-globe-context-on-map";
 import {
   revertGlobeContextPinToCardPlace,
@@ -46,6 +47,8 @@ function GlobeHomeBody() {
   const draggedEventIdRef = useRef<string | null>(null);
   const pinDragActiveRef = useRef(false);
   const revertTimerRef = useRef<number | null>(null);
+  const activeClusterRef = useRef<PinCluster | null>(null);
+  const sheetOpenRef = useRef(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [listOpen, setListOpen] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
@@ -192,6 +195,30 @@ function GlobeHomeBody() {
   );
 
   const pinCoordOverrides = useMemo(() => pinDragOverrides, [pinDragOverrides]);
+
+  activeClusterRef.current = activeCluster;
+  sheetOpenRef.current = sheetOpen;
+
+  useGlobeContextPlaceAlignment({
+    userLat: liveLocation?.lat ?? null,
+    userLng: liveLocation?.lng ?? null,
+    onAligned: ({ startupView, updated }) => {
+      if (
+        updated <= 0 ||
+        activeClusterRef.current ||
+        sheetOpenRef.current ||
+        recallEventId ||
+        !startupView
+      ) {
+        return;
+      }
+      globeRef.current?.flyToPin(
+        startupView.lat,
+        startupView.lng,
+        startupView.level,
+      );
+    },
+  });
 
   useEffect(() => {
     return () => {

@@ -12,8 +12,9 @@ import { resolveEventGlobeCoords } from "@/lib/globe/resolve-event-globe-coords"
 import { readTripLegFromEvent } from "@/lib/globe/trip-leg-metadata";
 import { isGlobeContextRemoved } from "@/lib/globe/delete-globe-context";
 import { spreadOverlappingPinCoords } from "@/lib/globe/spread-overlapping-pin-coords";
-import { buildGlobeOverviewView } from "@/lib/experience-graph/globe-overview-view";
+import { buildSpatialGlobeView } from "@/lib/experience-graph/resolve-place-coordinates";
 import { globeViewForSharedPins } from "@/lib/peer-chat/globe-view-for-shared-pins";
+import { resolveGlobeStartupView } from "@/lib/globe/resolve-globe-startup-view";
 
 function evidenceFromEvent(event: EventCandidate | null | undefined): PinClusterEvidence {
   const { photoCount, videoCount } = countEventMedia(event);
@@ -196,10 +197,22 @@ export function projectPinClusterClassifiedPins(
 export function globeViewForPinClusters(
   clusters: readonly PinCluster[],
 ): SpatialGlobeView {
-  if (clusters.length === 0) {
+  const startup = resolveGlobeStartupView(clusters);
+  if (!startup) {
     return globeViewForSharedPins([]);
   }
-  return buildGlobeOverviewView({ pinCount: clusters.length });
+  const zoom =
+    startup.level === "city"
+      ? 1.35
+      : startup.level === "neighborhood"
+        ? 1.65
+        : 1.15;
+  return buildSpatialGlobeView({
+    lat: startup.lat,
+    lng: startup.lng,
+    placeLabel: startup.placeLabel,
+    zoom,
+  });
 }
 
 export function findPinClusterByEventId(
