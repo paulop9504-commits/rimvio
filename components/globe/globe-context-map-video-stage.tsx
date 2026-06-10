@@ -8,19 +8,24 @@ import {
   EVENT_CANDIDATES_UPDATED,
   findLifeEventCandidate,
 } from "@/lib/life-read-model";
-import { MEDIA_SPACETIME_UPDATED } from "@/lib/location-ping/media-context-store";
+import {
+  hydrateMediaContextStore,
+  MEDIA_SPACETIME_UPDATED,
+} from "@/lib/location-ping/media-context-store";
 import { cn } from "@/lib/utils";
 
 export type GlobeContextMapVideoStageProps = {
   eventId: string | null | undefined;
   visible?: boolean;
+  onDismiss?: () => void;
   className?: string;
 };
 
-/** Map center — replays the context video while the pin sheet is open. */
+/** Map center — replays the context video while a pin context is selected. */
 export function GlobeContextMapVideoStage({
   eventId,
   visible = true,
+  onDismiss,
   className,
 }: GlobeContextMapVideoStageProps) {
   const [revision, setRevision] = useState(0);
@@ -29,6 +34,7 @@ export function GlobeContextMapVideoStage({
 
   useEffect(() => {
     const bump = () => setRevision((value) => value + 1);
+    void hydrateMediaContextStore().then(() => bump());
     window.addEventListener(EVENT_CANDIDATES_UPDATED, bump);
     window.addEventListener(MEDIA_SPACETIME_UPDATED, bump);
     return () => {
@@ -75,7 +81,7 @@ export function GlobeContextMapVideoStage({
   return (
     <div
       className={cn(
-        "pointer-events-none absolute inset-0 z-[15] flex items-center justify-center",
+        "pointer-events-none absolute inset-0 z-[22] flex items-center justify-center",
         "pb-[min(38vh,320px)] pt-[max(3rem,env(safe-area-inset-top))]",
         className,
       )}
@@ -111,6 +117,15 @@ export function GlobeContextMapVideoStage({
             onClick={() => setPlaying((value) => !value)}
           >
             {playing ? "일시정지" : "재생"}
+          </button>
+        ) : null}
+        {onDismiss ? (
+          <button
+            type="button"
+            className="pointer-events-auto absolute left-2 top-2 rounded-full bg-black/55 px-2 py-1 text-[10px] font-semibold text-white backdrop-blur-sm"
+            onClick={onDismiss}
+          >
+            닫기
           </button>
         ) : null}
       </div>

@@ -42,8 +42,34 @@ function GlobeHomeBody() {
     setSheetOpen(true);
   }, []);
 
+  const clearActiveContext = useCallback(() => {
+    setSheetOpen(false);
+    setActiveCluster(null);
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("recallEvent")) {
+      params.delete("recallEvent");
+      const next = params.toString()
+        ? `${window.location.pathname}?${params.toString()}`
+        : window.location.pathname;
+      window.history.replaceState(null, "", next);
+    }
+  }, []);
+
   const onSheetOpenChange = useCallback((open: boolean) => {
     setSheetOpen(open);
+  }, []);
+
+  const focusContextOnMap = useCallback((eventId: string) => {
+    let event = findLifeEventCandidate(eventId);
+    if (!event) {
+      event = recoverGlobeContextEventFromPin(eventId);
+    }
+    if (!event) {
+      return;
+    }
+    const cluster = buildPinClusterFromEvent(event);
+    globeRef.current?.flyToPin(cluster.lat, cluster.lng, "neighborhood");
+    setActiveCluster(cluster);
   }, []);
 
   const openPinCluster = useCallback((cluster: PinCluster, eventId: string) => {
@@ -123,12 +149,13 @@ function GlobeHomeBody() {
         globeRef={globeRef}
         className="h-full min-h-0 flex-1"
         initialRecallEventId={recallEventId}
-        highlightedPinId={sheetOpen ? activeCluster?.pinId ?? null : null}
+        highlightedPinId={activeCluster?.pinId ?? null}
         onPinPress={onPinPress}
       />
       <GlobeContextMapVideoStage
-        eventId={sheetOpen ? activeCluster?.eventId ?? null : null}
-        visible={sheetOpen}
+        eventId={activeCluster?.eventId ?? null}
+        visible={Boolean(activeCluster?.eventId)}
+        onDismiss={clearActiveContext}
       />
       <div className="pointer-events-none absolute left-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20 flex flex-col gap-2 sm:right-auto">
         <div className="pointer-events-auto flex flex-col gap-2">
@@ -187,9 +214,9 @@ function GlobeHomeBody() {
         </button>
       </div>
       <GlobeContextIngestBar
-        targetEventId={sheetOpen ? activeCluster?.eventId ?? null : null}
-        targetTitle={sheetOpen ? activeCluster?.title ?? null : null}
-        forceAttachToTarget={sheetOpen && Boolean(activeCluster?.eventId)}
+        targetEventId={activeCluster?.eventId ?? null}
+        targetTitle={activeCluster?.title ?? null}
+        forceAttachToTarget={Boolean(activeCluster?.eventId)}
         onAttached={(eventId) => {
           const params = new URLSearchParams(window.location.search);
           if (params.get("recallEvent") !== eventId) {
@@ -197,6 +224,7 @@ function GlobeHomeBody() {
             const next = `${window.location.pathname}?${params.toString()}`;
             window.history.replaceState(null, "", next);
           }
+          focusContextOnMap(eventId);
         }}
       />
       <div className="pointer-events-none absolute inset-x-3 bottom-[var(--rimvio-globe-ingest-offset)] z-20 sm:inset-x-auto sm:right-3 sm:max-w-[280px] lg:bottom-[calc(var(--rimvio-globe-ingest-bar-height)+1.25rem)]">

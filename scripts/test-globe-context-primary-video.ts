@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { resolveGlobeContextPrimaryVideo } from "../lib/globe/resolve-globe-context-primary-video";
+import { resetMediaContextStoreForTests } from "../lib/location-ping/media-context-store";
 import type { EventCandidate } from "../lib/events/event-candidate";
 
 function baseEvent(overrides: Partial<EventCandidate>): EventCandidate {
@@ -70,6 +71,31 @@ function testNoVideoReturnsNull() {
   assert.equal(resolveGlobeContextPrimaryVideo(event), null);
 }
 
+function testMediaStoreFallback() {
+  resetMediaContextStoreForTests([
+    {
+      id: "media:video:wedding",
+      mediaKind: "video",
+      capturedAtIso: "2026-09-20T14:00:00+09:00",
+      lat: 37.56,
+      lng: 126.97,
+      placeLabel: "서울",
+      origin: "feed_capture",
+      originRef: "schedule:hidden-wedding",
+    },
+  ]);
+
+  const event = baseEvent({
+    id: "schedule:hidden-wedding",
+    metadata: {},
+  });
+
+  const resolved = resolveGlobeContextPrimaryVideo(event);
+  assert.ok(resolved);
+  assert.equal(resolved!.mediaContextId, "media:video:wedding");
+}
+
 testLatestVideoWins();
 testNoVideoReturnsNull();
+testMediaStoreFallback();
 console.log("test-globe-context-primary-video: ok");
