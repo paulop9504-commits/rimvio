@@ -5,8 +5,10 @@ import { friendContactErrorMessage } from "@/lib/peer-chat/friend-contact-errors
 import { uploadPeerChatImage } from "@/lib/peer-chat/peer-chat-image-server";
 import { resolvePeerThreadIdForSend } from "@/lib/peer-chat/resolve-canonical-peer-thread";
 import {
+  deleteSharedGlobePin,
   insertSharedGlobePin,
   listSharedGlobePinsForThread,
+  updateSharedGlobePin,
 } from "@/lib/peer-chat/server-globe-pins";
 import { ensurePeerThread } from "@/lib/peer-chat/server-peer-chat";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
@@ -22,6 +24,16 @@ type GlobePinPostBody = {
   displayName?: string;
   note?: string;
   capturedAtIso?: string;
+};
+
+type GlobePinPatchBody = {
+  messageId?: string;
+  placeLabel?: string;
+  note?: string | null;
+};
+
+type GlobePinDeleteBody = {
+  messageId?: string;
 };
 
 function readNumberField(value: FormDataEntryValue | null): number | null {
@@ -167,5 +179,120 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const raw = extractErrorMessage(error, "Failed to place shared globe pin.");
     const message = friendContactErrorMessage(raw);
     return NextResponse.json({ error: message, message }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: NextRequest, context: RouteContext) {
+  if (!isSupabaseConfigured()) {
+    return NextResponse.json(
+      { error: "Supabase is not configured." },
+      { status: 503 },
+    );
+  }
+
+  const auth = await requireAuthUser();
+  if ("response" in auth) {
+    return auth.response;
+  }
+
+  const userId = auth.user?.id;
+  if (!userId) {
+    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  }
+
+  const { threadId } = await context.params;
+  const decoded = decodeURIComponent(threadId);
+
+  let body: GlobePinPatchBody = {};
+  try {
+    body = (await request.json()) as GlobePinPatchBody;
+  } catch {
+    return NextResponse.json({ error: "Invalid body." }, { status: 400 });
+  }
+
+  const messageId = body.messageId?.trim();
+  if (!messageId) {
+    return NextResponse.json({ error: "messageId required." }, { status: 400 });
+  }
+  if (body.placeLabel === undefined && body.note === undefined) {
+    return NextResponse.json({ error: "placeLabel or note required." }, { status: 400 });
+  }
+
+  try {
+    const supabase = await createClient();
+    const resolvedThreadId = await resolvePeerThreadIdForSend(supabase, {
+      userId,
+      threadId: decoded,
+    });
+    const pin = await updateSharedGlobePin(supabase, {
+      threadId: resolvedThreadId,
+      messageId,
+      callerUserId: userId,
+      placeLabel: body.placeLabel,
+      note: body.note,
+    });
+    return NextResponse.json({ pin, threadId: resolvedThreadId });
+  } catch (error) {
+    const raw = extractErrorMessage(error, "Failed to update shared globe pin.");
+    const message = friendContactErrorMessage(raw);
+    const status = raw.startsWith("not_found")
+      ? 404
+      : raw.startsWith("forbidden")
+        ? 403
+        : 500;
+    return NextResponse.json({ error: message, message }, { status });
+  }
+}
+
+export async function DELETE(request: NextRequest, context: RouteContext) {
+  if (!isSupabaseConfigured()) {
+    return NextResponse.json(
+      { error: "Supabase is not configured." },
+      { status: 503 },
+    );
+  }
+
+  const auth = await requireAuthUser();
+  if ("response" in auth) {
+    return auth.response;
+  }
+
+  const userId = auth.user?.id;
+  if (!userId) {
+    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  }
+
+  const { threadId } = await context.params;
+  const decoded = decodeURIComponent(threadId);
+
+  let body: GlobePinDeleteBody = {};
+  try {
+    body = (await request.json()) as GlobePinDeleteBody;
+  } catch {
+    return NextResponse.json({ error: "messageId required." }, { status: 400 });
+  }
+
+  const messageId = body.messageId?.trim();
+  if (!messageId) {
+    return NextResponse.json({ error: "messageId required." }, { status: 400 });
+  }
+
+  try {
+    const supabase = await createClient();
+    const resolvedThreadId = await resolvePeerThreadIdForSend(supabase, {
+      userId,
+      threadId: decoded,
+    });
+    await deleteSharedGlobePin(supabase, {
+      threadId: resolvedThreadId,
+      messageId,
+      callerUserId: userId,
+    });
+    return NextResponse.json({ ok: true, threadId: resolvedThreadId, messageId });
+  } catch (error) {
+    const raw = extractErrorMessage(error, "Failed to delete shared globe pin.");
+    const message = friendContactErrorMessage(raw);
+    const status = raw.startsWith("not_found") ? 404 : 500;
+    return NextResponse.json({ error: message, message }, { status });
   }
 }

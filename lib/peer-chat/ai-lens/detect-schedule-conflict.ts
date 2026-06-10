@@ -17,6 +17,15 @@ function normalizeTitle(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, "");
 }
 
+function placesSimilar(left?: string | null, right?: string | null): boolean {
+  const a = left?.trim().toLowerCase();
+  const b = right?.trim().toLowerCase();
+  if (!a || !b) {
+    return false;
+  }
+  return a === b || a.includes(b) || b.includes(a);
+}
+
 function titlesSimilar(left: string, right: string): boolean {
   const a = normalizeTitle(left);
   const b = normalizeTitle(right);
@@ -54,6 +63,7 @@ function isOpenSchedule(event: EventCandidate): boolean {
 export function detectScheduleConflict(input: {
   title: string;
   datetime?: string;
+  place?: string;
   sourceMessageId?: string;
   events: readonly EventCandidate[];
 }): ScheduleConflict {
@@ -82,6 +92,13 @@ export function detectScheduleConflict(input: {
       continue;
     }
     if (!titlesSimilar(title, event.title)) {
+      continue;
+    }
+    if (
+      input.place?.trim() &&
+      event.place?.trim() &&
+      !placesSimilar(input.place, event.place)
+    ) {
       continue;
     }
     const existingMs = Date.parse(event.datetime);

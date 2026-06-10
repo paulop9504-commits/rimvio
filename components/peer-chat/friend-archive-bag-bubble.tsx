@@ -110,7 +110,7 @@ export function FriendArchiveBagBubble({
           </span>
         ) : null}
       </span>
-      <span className="max-w-[6rem] text-center text-[10px] font-medium text-white/70">
+      <span className="max-w-[6rem] text-center text-[10px] font-semibold text-[#191f28]">
         {empty ? "구슬 주머니" : "나머지 친구"}
       </span>
     </BagBubbleShell>

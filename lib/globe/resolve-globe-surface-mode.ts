@@ -2,9 +2,10 @@ import type { GlobeDetailLevel } from "@/lib/globe/globe-zoom-levels";
 
 export type GlobeSurfaceMode = "globe3d" | "flat2d";
 
-/** Hand off to 2D at city scale — before globe.gl min-distance wall (~0.055). */
-export const GLOBE_FLAT_ENTER_ALTITUDE = 0.08;
+/** Hand off before 3D hits its min-distance wall (~0.055 altitude). */
+export const GLOBE_FLAT_ENTER_ALTITUDE = 0.9;
 
+/** Region uses altitude threshold only — avoids handoff at country overview (alt ~0.85). */
 const FLAT_ENTER_LEVELS = new Set<GlobeDetailLevel>([
   "city",
   "neighborhood",

@@ -101,9 +101,9 @@ export const copy = {
     sharedTitle: "우리 지구",
     sharedSubtitle: "친구와 함께 빈 지구에 핀을 박아요",
     placePin: "여기에 핀 박기",
-    tapToPlace: "지구를 탭해서 핀 위치를 고를 수 있어요",
+    tapToPlace: "여기에 핀 박기로 위치를 고를 수 있어요",
     photoPin: "사진으로 핀 박기",
-    emptyPins: "아직 핀이 없어요. 지구를 탭하거나 사진·GPS로 함께 박아보세요.",
+    emptyPins: "아직 핀이 없어요. 사진·GPS로 함께 박아보세요.",
   },
   search: {
     title: "수집",

@@ -377,7 +377,7 @@ export function FivePeerHub({
               )}
             </div>
           </div>
-          <p className="mt-2 max-w-[7rem] truncate text-center text-xs font-medium text-white">
+          <p className="mt-2 max-w-[7rem] truncate text-center text-xs font-semibold text-[#191f28]">
             {centerLabel}
           </p>
         </div>
@@ -451,15 +451,15 @@ export function FivePeerHub({
                 />
               )}
               <span className="flex max-w-[5.5rem] flex-col items-center leading-tight">
-                <span className="w-full truncate text-center text-[10px] font-medium text-white/90">
+                <span className="w-full truncate text-center text-[10px] font-semibold text-[#191f28]">
                   {displayName}
                 </span>
                 {isGroup ? (
-                  <span className="w-full truncate text-center text-[9px] text-white/45">
+                  <span className="w-full truncate text-center text-[9px] text-[#6b7684]">
                     단톡
                   </span>
                 ) : rimvioId ? (
-                  <span className="w-full truncate text-center text-[9px] text-[#FEE500]/85">
+                  <span className="w-full truncate text-center text-[9px] font-medium text-[#1b64da]">
                     @{rimvioId}
                   </span>
                 ) : null}
@@ -482,8 +482,8 @@ export function FivePeerHub({
               aria-label={`${node.slotIndex + 1}번 AI 허브 · 친구 또는 단톡`}
             >
               <span className="relative flex size-[3.75rem] items-center justify-center rounded-full border-2 border-border bg-secondary shadow-sm">
-                <Plus className="size-5 text-white/55" strokeWidth={2} aria-hidden />
-                <span className="absolute -bottom-0.5 rounded-full bg-card px-1.5 py-px text-[8px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <Plus className="size-5 text-[#6b7684]" strokeWidth={2} aria-hidden />
+                <span className="absolute -bottom-0.5 rounded-full bg-white px-1.5 py-px text-[8px] font-semibold uppercase tracking-wide text-[#4e5968] shadow-sm ring-1 ring-[#0220470f]">
                   {node.roomLabel}
                 </span>
               </span>

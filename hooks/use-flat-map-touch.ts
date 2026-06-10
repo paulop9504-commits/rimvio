@@ -29,6 +29,8 @@ type PinchSession = {
 export type UseFlatMapTouchOptions = {
   view: FlatMapView;
   onViewChange: (view: FlatMapView) => void;
+  /** Fires when drag/pinch ends — use for 3D handoff, not mid-gesture. */
+  onGestureEnd?: (view: FlatMapView) => void;
   enabled?: boolean;
 };
 
@@ -43,12 +45,15 @@ export type FlatMapTouchSurfaceProps = {
 export function useFlatMapTouch({
   view,
   onViewChange,
+  onGestureEnd,
   enabled = true,
 }: UseFlatMapTouchOptions) {
   const viewRef = useRef(view);
   viewRef.current = view;
   const onViewChangeRef = useRef(onViewChange);
   onViewChangeRef.current = onViewChange;
+  const onGestureEndRef = useRef(onGestureEnd);
+  onGestureEndRef.current = onGestureEnd;
   const [isInteracting, setIsInteracting] = useState(false);
   const dragRef = useRef<DragSession | null>(null);
   const pointersRef = useRef(new Map<number, PointerPoint>());
@@ -66,11 +71,15 @@ export function useFlatMapTouch({
     return Math.hypot(a.x - b.x, a.y - b.y);
   }, []);
 
-  const clearPointerSession = useCallback(() => {
+  const finishGesture = useCallback(() => {
+    const hadSession = Boolean(dragRef.current?.dragging || pinchRef.current);
     dragRef.current = null;
     pinchRef.current = null;
     pointersRef.current.clear();
     setIsInteracting(false);
+    if (hadSession) {
+      onGestureEndRef.current?.(viewRef.current);
+    }
   }, []);
 
   const onPointerDown = useCallback(
@@ -174,7 +183,7 @@ export function useFlatMapTouch({
       }
 
       if (pointersRef.current.size === 0) {
-        clearPointerSession();
+        finishGesture();
         return;
       }
 
@@ -193,7 +202,7 @@ export function useFlatMapTouch({
         }
       }
     },
-    [clearPointerSession, enabled],
+    [finishGesture, enabled],
   );
 
   const onPointerCancel = useCallback(
@@ -203,10 +212,10 @@ export function useFlatMapTouch({
       }
       pointersRef.current.delete(event.pointerId);
       if (pointersRef.current.size === 0) {
-        clearPointerSession();
+        finishGesture();
       }
     },
-    [clearPointerSession, enabled],
+    [finishGesture, enabled],
   );
 
   const onWheel = useCallback(

@@ -88,4 +88,34 @@ const roundTrip = readPlanContextFromEvent({
 });
 assert.equal(roundTrip?.windowEndIso, draft.context.windowEndIso);
 
+const gyesanPlan: EventCandidate = {
+  id: "ec-gyesan",
+  title: "계산동722 약속",
+  category: "schedule",
+  source: "message",
+  lifecycle: "active",
+  datetime: startIso,
+  place: "계산동722",
+  confidence: 0.9,
+  metadata: {
+    feedPlanEnabled: true,
+    planKind: "plan",
+    planPeerDisplayName: "공용계정",
+  },
+  lifecycleUpdatedAt: new Date().toISOString(),
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
+const separateAppointment = resolvePlanAttach({
+  title: "둔산동 스타벅스 약속",
+  windowStartIso: "2026-06-07T05:00:00.000Z",
+  place: "둔산동 스타벅스",
+  peerDisplayName: "공용계정",
+  intentKind: "appointment",
+  events: [gyesanPlan],
+});
+assert.equal(separateAppointment.mode, "new");
+assert.equal(separateAppointment.canContinue, false);
+
 console.log("test-plan-context: ok");

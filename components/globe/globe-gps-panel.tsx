@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 
 export type GlobeGpsPanelProps = {
   className?: string;
+  onFlyToHere?: () => void;
 };
 
 function collapsedSummary(input: {
@@ -32,7 +33,7 @@ function collapsedSummary(input: {
 }
 
 /** Compact GPS gate + live location — collapsed by default on mobile. */
-export function GlobeGpsPanel({ className }: GlobeGpsPanelProps) {
+export function GlobeGpsPanel({ className, onFlyToHere }: GlobeGpsPanelProps) {
   const { enabled, setEnabled } = useGpsTrackingEnabled();
   const snapshot = useLiveLocationSnapshot();
   const [expanded, setExpanded] = useState(false);
@@ -135,6 +136,15 @@ export function GlobeGpsPanel({ className }: GlobeGpsPanelProps) {
                     {formatGpsAccuracyLabel(snapshot.accuracyM)}
                   </span>
                 </p>
+              ) : null}
+              {onFlyToHere ? (
+                <button
+                  type="button"
+                  className="mt-1.5 w-full rounded-xl bg-[#3182f6] px-2 py-2 text-[10px] font-bold text-white shadow-sm"
+                  onClick={onFlyToHere}
+                >
+                  여기로 이동
+                </button>
               ) : null}
             </div>
           ) : null}

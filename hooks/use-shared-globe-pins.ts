@@ -57,6 +57,10 @@ export function useSharedGlobePins(input: {
     });
   }, []);
 
+  const removePin = useCallback((messageId: string) => {
+    setPins((current) => current.filter((row) => row.messageId !== messageId));
+  }, []);
+
   useEffect(() => {
     if (!enabled) {
       return;
@@ -101,12 +105,48 @@ export function useSharedGlobePins(input: {
           }
         },
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: PEER_MESSAGES_TABLE,
+          filter: `thread_id=eq.${resolvedThreadId}`,
+        },
+        (payload) => {
+          const row = (payload as RealtimePostgresChangesPayload<PeerMessageRow>)
+            .new as PeerMessageRow | undefined;
+          if (!row?.id) {
+            return;
+          }
+          const pin = sharedGlobePinFromMessageRow(row);
+          if (pin) {
+            upsertPin(pin);
+          }
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: PEER_MESSAGES_TABLE,
+          filter: `thread_id=eq.${resolvedThreadId}`,
+        },
+        (payload) => {
+          const row = (payload as RealtimePostgresChangesPayload<PeerMessageRow>)
+            .old as PeerMessageRow | undefined;
+          if (row?.id) {
+            removePin(row.id);
+          }
+        },
+      )
       .subscribe();
 
     return () => {
       void supabase!.removeChannel(channel);
     };
-  }, [useRealtime, supabase, resolvedThreadId, upsertPin]);
+  }, [useRealtime, supabase, resolvedThreadId, upsertPin, removePin]);
 
   return {
     pins,
@@ -115,5 +155,6 @@ export function useSharedGlobePins(input: {
     resolvedThreadId,
     refresh,
     upsertPin,
+    removePin,
   };
 }

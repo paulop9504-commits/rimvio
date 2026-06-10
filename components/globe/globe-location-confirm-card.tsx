@@ -8,6 +8,10 @@ import {
   listLifeEventCandidates,
 } from "@/lib/life-read-model";
 import { useGpsTrackingEnabled } from "@/hooks/use-gps-tracking-enabled";
+import {
+  isGlobeLocationConfirmed,
+  markGlobeLocationConfirmed,
+} from "@/lib/globe/globe-location-confirm-store";
 import { cn } from "@/lib/utils";
 
 export type GlobeLocationConfirmCardProps = {
@@ -33,12 +37,22 @@ export function GlobeLocationConfirmCard({ className }: GlobeLocationConfirmCard
     }
     const events = listLifeEventCandidates();
     return (
-      events.find(
-        (event) =>
-          event.metadata?.targetingSource === "gps_background" &&
-          hasPendingFeedCaptureVerify(event) &&
-          !dismissedIds.includes(event.id),
-      ) ?? null
+      events.find((event) => {
+        if (event.metadata?.targetingSource !== "gps_background") {
+          return false;
+        }
+        if (!hasPendingFeedCaptureVerify(event)) {
+          return false;
+        }
+        if (dismissedIds.includes(event.id)) {
+          return false;
+        }
+        const place = event.place?.trim();
+        if (place && isGlobeLocationConfirmed(place, event.datetime)) {
+          return false;
+        }
+        return true;
+      }) ?? null
     );
   }, [enabled, revision, dismissedIds]);
 
@@ -46,7 +60,16 @@ export function GlobeLocationConfirmCard({ className }: GlobeLocationConfirmCard
     if (!pending) {
       return;
     }
-    verifyFeedCaptureEvent(pending.id);
+    const result = verifyFeedCaptureEvent(pending.id);
+    if (result.ok) {
+      const place = pending.place?.trim();
+      if (place) {
+        markGlobeLocationConfirmed(place, pending.datetime);
+      }
+      setDismissedIds((rows) =>
+        rows.includes(pending.id) ? rows : [...rows, pending.id],
+      );
+    }
     setRevision((value) => value + 1);
   }, [pending]);
 

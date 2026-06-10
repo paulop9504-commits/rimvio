@@ -64,6 +64,12 @@ export function readDwellMinutesFromCaptures(
   return Math.max(...dwells);
 }
 
+export function wasFeedCaptureHumanVerified(
+  metadata: Record<string, unknown> | undefined,
+): boolean {
+  return typeof metadata?.[FEED_CAPTURE_VERIFIED_AT_META_KEY] === "string";
+}
+
 export function hasPendingFeedCaptureVerify(
   event: EventCandidate | null | undefined,
 ): boolean {

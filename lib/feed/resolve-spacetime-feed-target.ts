@@ -61,6 +61,31 @@ function planDayLabel(
   return `Day ${dayIndex}`;
 }
 
+function globeManualContextBoost(
+  event: EventCandidate,
+  memoText?: string | null,
+): number {
+  if (event.metadata?.globeManualContext !== true) {
+    return 0;
+  }
+  const hay = memoText?.trim().toLowerCase() ?? "";
+  const title = event.title.trim().toLowerCase();
+  const place = event.place?.trim().toLowerCase() ?? "";
+  const plan = readPlanContextFromEvent(event);
+  const planPlace = plan?.place?.trim().toLowerCase() ?? "";
+
+  if (hay && title && hay.includes(title)) {
+    return 0.2;
+  }
+  if (hay && place && hay.includes(place)) {
+    return 0.16;
+  }
+  if (hay && planPlace && hay.includes(planPlace)) {
+    return 0.16;
+  }
+  return 0.1;
+}
+
 function lifecycleRank(lifecycle: EventCandidate["lifecycle"]): number {
   if (lifecycle === "active") {
     return 4;
@@ -124,6 +149,9 @@ export function resolveSpacetimeFeedTarget(
         score += 0.12;
       }
       score += lifecycleRank(event.lifecycle) * 0.02;
+      if (fit.timeOk) {
+        score += globeManualContextBoost(event, input.memoText);
+      }
 
       const planPlace = plan?.place?.trim() || event.place?.trim();
       if (
@@ -204,6 +232,9 @@ export function listSpacetimeFeedTargetCandidates(
         score += 0.12;
       }
       score += lifecycleRank(event.lifecycle) * 0.02;
+      if (fit.timeOk) {
+        score += globeManualContextBoost(event, input.memoText);
+      }
       const dayLabel = plan?.windowEndIso
         ? planDayLabel(event.datetime!, plan.windowEndIso, input.capturedAtIso)
         : null;

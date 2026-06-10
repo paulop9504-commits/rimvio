@@ -8,7 +8,10 @@ export {
   EVENT_CANDIDATES_UPDATED,
   subscribeLifeCandidatesUpdated,
 } from "@/lib/life-read-model/candidates-updated";
-export { listLifeEventCandidates } from "@/lib/life-read-model/internal/event-store-read";
+export {
+  findLifeEventCandidate,
+  listLifeEventCandidates,
+} from "@/lib/life-read-model/internal/event-store-read";
 export type {
   LifeProjections,
   LifeProjectionsInput,

@@ -90,7 +90,7 @@ export function PeerThreadChatPanel({
     peerLastReadAt,
     groupReadCursors,
   } = usePeerThreadChat(policyInput);
-  const { anchorMessageId, candidates: lensCandidates } = usePeerAiLens({
+  const { candidatesByMessageId } = usePeerAiLens({
     messages,
     enabled: lensActive && !readOnly,
   });
@@ -210,8 +210,11 @@ export function PeerThreadChatPanel({
     }
   };
 
-  const onLensSelect = (candidate: DeepLinkBubbleCandidate) => {
-    handleLensSelect(candidate, anchorMessageId ?? undefined);
+  const onLensSelect = (
+    candidate: DeepLinkBubbleCandidate,
+    sourceMessageId?: string,
+  ) => {
+    handleLensSelect(candidate, sourceMessageId);
   };
 
   const speakerNameFor = (author: PeerMessage["author"]) => {
@@ -308,10 +311,8 @@ export function PeerThreadChatPanel({
                   index,
                 )}
                 peerProfile={peerProfile}
-                lensCandidates={
-                  message.id === anchorMessageId ? lensCandidates : []
-                }
-                onLensSelect={onLensSelect}
+                lensCandidates={candidatesByMessageId[message.id] ?? []}
+                onLensSelect={(candidate) => onLensSelect(candidate, message.id)}
                 lensDisabled={aiBusy}
                 showSentCheck={
                   phoneDm &&

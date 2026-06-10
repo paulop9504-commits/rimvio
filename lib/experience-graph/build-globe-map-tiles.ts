@@ -1,6 +1,11 @@
+import { resolveGlobeTileUpstreamUrl } from "@/lib/experience-graph/resolve-globe-tile-upstream";
+
 const TILE_SIZE = 256;
 
 export type GlobeMapTileStyle = "satellite" | "voyager" | "light";
+
+/** Flat 2D loads CARTO directly — proxy auth/rate-limit flakes break `<img>` tiles on mobile. */
+export type GlobeMapTileDelivery = "proxy" | "direct";
 
 /** Client tiles load via same-origin proxy (avoids hotlink/CORS flakes). */
 const TILE_PROXY_PATH = "/api/globe/tile";
@@ -49,6 +54,22 @@ export function globeMapTileAttribution(tileStyle: GlobeMapTileStyle): string {
   return TILE_ATTRIBUTION[tileStyle];
 }
 
+export function buildGlobeMapTileUrl(
+  z: number,
+  x: number,
+  y: number,
+  tileStyle: GlobeMapTileStyle,
+  delivery: GlobeMapTileDelivery = "proxy",
+): string {
+  if (delivery === "direct") {
+    return (
+      resolveGlobeTileUpstreamUrl({ z, x, y, style: tileStyle }) ??
+      `${TILE_PROXY_PATH}?z=${z}&x=${x}&y=${y}&style=${tileStyle}`
+    );
+  }
+  return `${TILE_PROXY_PATH}?z=${z}&x=${x}&y=${y}&style=${tileStyle}`;
+}
+
 /** 3×3 tile grid centered on lat/lng for the globe map surface. */
 export function buildGlobeMapTileGrid(
   lat: number,
@@ -56,6 +77,7 @@ export function buildGlobeMapTileGrid(
   zoom: number,
   gridSize = 3,
   tileStyle: GlobeMapTileStyle = "satellite",
+  delivery: GlobeMapTileDelivery = "proxy",
 ): GlobeMapTileGrid {
   const tileStyleParam = tileStyle;
   const { x, y, n } = latLngToTileFloat(lat, lng, zoom);
@@ -72,7 +94,7 @@ export function buildGlobeMapTileGrid(
       const ty = Math.max(0, Math.min(n - 1, centerY + dy));
       tiles.push({
         key: `${zoom}-${tx}-${ty}`,
-        url: `${TILE_PROXY_PATH}?z=${zoom}&x=${tx}&y=${ty}&style=${tileStyleParam}`,
+        url: buildGlobeMapTileUrl(zoom, tx, ty, tileStyleParam, delivery),
       });
     }
   }

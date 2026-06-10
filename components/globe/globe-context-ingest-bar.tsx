@@ -1,0 +1,212 @@
+"use client";
+
+import {
+  ImagePlus,
+  Loader2,
+  Plus,
+  SendHorizontal,
+  X,
+} from "lucide-react";
+import { useCallback, useRef, useState, type FormEvent } from "react";
+import { toast } from "sonner";
+import {
+  GLOBE_BULK_PHOTO_MAX,
+  GLOBE_CONTEXT_MEDIA_ACCEPT,
+  ingestGlobeContextFromFiles,
+  ingestGlobeContextFromText,
+} from "@/lib/feed/ingest-globe-context-capture";
+import {
+  rimvioComposerFieldClass,
+  rimvioIconBtnClass,
+  rimvioNavBarClass,
+} from "@/lib/brand/rimvio-neon-theme";
+import { cn } from "@/lib/utils";
+
+export type GlobeContextIngestBarProps = {
+  className?: string;
+  onAttached?: (eventId: string) => void;
+};
+
+/** Globe home — photos, videos, links, memos auto-attach to stored contexts. */
+export function GlobeContextIngestBar({
+  className,
+  onAttached,
+}: GlobeContextIngestBarProps) {
+  const [text, setText] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const photoRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const finish = useCallback(
+    (eventId: string, line: string) => {
+      toast.success(line);
+      onAttached?.(eventId);
+      setText("");
+      setMenuOpen(false);
+    },
+    [onAttached],
+  );
+
+  const ingestMedia = useCallback(
+    async (fileList: FileList | null | undefined) => {
+      if (!fileList?.length || busy) {
+        return;
+      }
+      const files = Array.from(fileList);
+      if (files.length > GLOBE_BULK_PHOTO_MAX) {
+        toast.info(`한 번에 ${GLOBE_BULK_PHOTO_MAX}개까지만 올릴 수 있어요`);
+      }
+      const batchSize = Math.min(files.length, GLOBE_BULK_PHOTO_MAX);
+      setBusy(true);
+      const toastId = toast.loading(
+        files.length === 1
+          ? "올리는 중…"
+          : `사진·동영상 ${batchSize}개 올리는 중… 0/${batchSize}`,
+      );
+      try {
+        const summary = await ingestGlobeContextFromFiles(files, {
+          onProgress: (done, total) => {
+            if (total > 1) {
+              toast.loading(`사진·동영상 ${total}개 올리는 중… ${done}/${total}`, {
+                id: toastId,
+              });
+            }
+          },
+        });
+        if (summary.succeeded === 0) {
+          toast.error(summary.toastLine, { id: toastId });
+          return;
+        }
+        toast.success(summary.toastLine, { id: toastId });
+        if (summary.lastEventId) {
+          onAttached?.(summary.lastEventId);
+        }
+        setText("");
+        setMenuOpen(false);
+      } catch (caught) {
+        const message =
+          caught instanceof Error
+            ? caught.message
+            : "사진·동영상을 넣지 못했어요.";
+        toast.error(message, { id: toastId });
+      } finally {
+        setBusy(false);
+        if (photoRef.current) {
+          photoRef.current.value = "";
+        }
+      }
+    },
+    [busy, onAttached],
+  );
+
+  const submitText = useCallback(
+    async (event?: FormEvent) => {
+      event?.preventDefault();
+      const value = text.trim();
+      if (!value || busy) {
+        return;
+      }
+      setBusy(true);
+      try {
+        const outcome = ingestGlobeContextFromText(value);
+        finish(outcome.result.event.id, outcome.toastLine);
+      } catch (caught) {
+        const message =
+          caught instanceof Error ? caught.message : "맥락에 붙이지 못했어요.";
+        toast.error(message);
+      } finally {
+        setBusy(false);
+      }
+    },
+    [busy, finish, text],
+  );
+
+  return (
+    <div
+      className={cn(
+        "pointer-events-auto fixed inset-x-0 z-30 px-3",
+        "bottom-[var(--rimvio-bottom-nav-offset)]",
+        "lg:bottom-[max(0.75rem,env(safe-area-inset-bottom))]",
+        className,
+      )}
+      data-globe-context-ingest-bar
+    >
+      <form
+        onSubmit={(event) => void submitText(event)}
+        className={cn(
+          rimvioNavBarClass,
+          "rimvio-globe-ingest-bar mx-auto flex max-w-lg items-center gap-2 rounded-2xl px-2 py-2 shadow-lg ring-1 ring-border/80",
+        )}
+      >
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => setMenuOpen((open) => !open)}
+          className={cn(
+            rimvioIconBtnClass("ghost"),
+            "size-10 shrink-0 rounded-xl",
+          )}
+          aria-label={menuOpen ? "닫기" : "추가"}
+        >
+          {menuOpen ? (
+            <X className="size-5" aria-hidden />
+          ) : (
+            <Plus className="size-5" aria-hidden />
+          )}
+        </button>
+
+        <div className={cn(rimvioComposerFieldClass, "min-w-0 flex-1 px-3 py-2")}>
+          <input
+            ref={inputRef}
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            placeholder="사진·동영상·링크·메모 — 맥락에 자동으로 붙어요"
+            disabled={busy}
+            className="w-full bg-transparent text-[15px] text-foreground outline-none placeholder:text-muted-foreground"
+            data-globe-context-ingest-input
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={busy || !text.trim()}
+          className={cn(
+            rimvioIconBtnClass("primary"),
+            "size-10 shrink-0 rounded-xl disabled:opacity-40",
+          )}
+          aria-label="보내기"
+        >
+          {busy ? (
+            <Loader2 className="size-5 animate-spin" aria-hidden />
+          ) : (
+            <SendHorizontal className="size-5" aria-hidden />
+          )}
+        </button>
+      </form>
+
+      {menuOpen ? (
+        <div className="mx-auto mt-2 flex max-w-lg justify-start gap-2 px-1">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => photoRef.current?.click()}
+            className="inline-flex items-center gap-1.5 rounded-full bg-card px-3 py-2 text-[13px] font-medium text-foreground shadow-sm ring-1 ring-border"
+          >
+            <ImagePlus className="size-4 text-primary" aria-hidden />
+            사진·동영상 · 최대 {GLOBE_BULK_PHOTO_MAX}개
+          </button>
+        </div>
+      ) : null}
+
+      <input
+        ref={photoRef}
+        type="file"
+        accept={GLOBE_CONTEXT_MEDIA_ACCEPT}
+        multiple
+        className="hidden"
+        onChange={(event) => void ingestMedia(event.target.files)}
+      />
+    </div>
+  );
+}

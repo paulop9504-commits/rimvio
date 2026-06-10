@@ -2,8 +2,6 @@ import { type NextRequest, NextResponse } from "next/server";
 import type { GlobeMapTileStyle } from "@/lib/experience-graph/build-globe-map-tiles";
 import { resolveGlobeTileUpstreamUrl } from "@/lib/experience-graph/resolve-globe-tile-upstream";
 
-export const runtime = "edge";
-
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const z = Number(params.get("z"));
@@ -34,6 +32,7 @@ export async function GET(request: NextRequest) {
       headers: {
         "Content-Type": response.headers.get("content-type") ?? "image/png",
         "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
+        "Cross-Origin-Resource-Policy": "cross-origin",
       },
     });
   } catch {

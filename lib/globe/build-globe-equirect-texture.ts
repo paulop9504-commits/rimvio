@@ -8,6 +8,7 @@ import {
 } from "@/lib/experience-graph/reproject-mercator-to-equirectangular";
 
 const TILE_SIZE = 256;
+const TILE_LOAD_BATCH = 48;
 const TEXTURE_CACHE = new Map<string, string>();
 
 function tileProxyUrl(z: number, x: number, y: number, style: GlobeMapTileStyle): string {
@@ -34,26 +35,46 @@ async function loadTileImage(
   return loadImage(tileProxyUrl(z, x, y, style));
 }
 
+/** Darken pale CARTO label ink without blowing out water/land. */
+function sharpenMapLabelCanvas(source: HTMLCanvasElement): HTMLCanvasElement {
+  const out = document.createElement("canvas");
+  out.width = source.width;
+  out.height = source.height;
+  const ctx = out.getContext("2d");
+  if (!ctx) {
+    return source;
+  }
+  ctx.filter = "contrast(1.32) saturate(0.88) brightness(0.97)";
+  ctx.drawImage(source, 0, 0);
+  return out;
+}
+
 export function globeEquirectCacheKey(
   style: GlobeMapTileStyle,
   zoom = GLOBE_TEXTURE_ZOOM,
+  outputWidth = GLOBE_EQ_WIDTH,
+  outputHeight = GLOBE_EQ_HEIGHT,
 ): string {
-  return `${style}-eq-z${zoom}`;
+  return `${style}-eq-z${zoom}-${outputWidth}x${outputHeight}`;
 }
 
 export function readGlobeEquirectCache(
   style: GlobeMapTileStyle,
   zoom = GLOBE_TEXTURE_ZOOM,
+  outputWidth = GLOBE_EQ_WIDTH,
+  outputHeight = GLOBE_EQ_HEIGHT,
 ): string | null {
-  return TEXTURE_CACHE.get(globeEquirectCacheKey(style, zoom)) ?? null;
+  return TEXTURE_CACHE.get(globeEquirectCacheKey(style, zoom, outputWidth, outputHeight)) ?? null;
 }
 
 /** Full-earth equirectangular mosaic — Voyager for Toss overview, satellite for legacy 2D. */
 export async function buildGlobeEquirectTextureUrl(
   style: GlobeMapTileStyle,
   zoom = GLOBE_TEXTURE_ZOOM,
+  outputWidth = GLOBE_EQ_WIDTH,
+  outputHeight = GLOBE_EQ_HEIGHT,
 ): Promise<string> {
-  const cacheKey = globeEquirectCacheKey(style, zoom);
+  const cacheKey = globeEquirectCacheKey(style, zoom, outputWidth, outputHeight);
   const cached = TEXTURE_CACHE.get(cacheKey);
   if (cached) {
     return cached;
@@ -71,12 +92,15 @@ export async function buildGlobeEquirectTextureUrl(
   }
 
   const coords = listMercatorTileCoords(zoom);
-  await Promise.all(
-    coords.map(async ({ x, y }) => {
-      const img = await loadTileImage(zoom, x, y, style);
-      ctx.drawImage(img, x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-    }),
-  );
+  for (let index = 0; index < coords.length; index += TILE_LOAD_BATCH) {
+    const batch = coords.slice(index, index + TILE_LOAD_BATCH);
+    await Promise.all(
+      batch.map(async ({ x, y }) => {
+        const img = await loadTileImage(zoom, x, y, style);
+        ctx.drawImage(img, x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      }),
+    );
+  }
 
   const mosaic = ctx.getImageData(0, 0, mosaicWidth, mosaicHeight);
   const equirect = reprojectMercatorMosaicToEquirectangular({
@@ -84,27 +108,30 @@ export async function buildGlobeEquirectTextureUrl(
     mercatorWidth: mosaicWidth,
     mercatorHeight: mosaicHeight,
     zoom,
-    outputWidth: GLOBE_EQ_WIDTH,
-    outputHeight: GLOBE_EQ_HEIGHT,
+    outputWidth,
+    outputHeight,
   });
 
   const output = document.createElement("canvas");
-  output.width = GLOBE_EQ_WIDTH;
-  output.height = GLOBE_EQ_HEIGHT;
+  output.width = outputWidth;
+  output.height = outputHeight;
   const outputCtx = output.getContext("2d");
   if (!outputCtx) {
     throw new Error("canvas_context_unavailable");
   }
   outputCtx.putImageData(
-    new ImageData(equirect, GLOBE_EQ_WIDTH, GLOBE_EQ_HEIGHT),
+    new ImageData(equirect, outputWidth, outputHeight),
     0,
     0,
   );
 
+  const exportCanvas =
+    style === "satellite" ? output : sharpenMapLabelCanvas(output);
+
   const url =
     style === "satellite"
-      ? output.toDataURL("image/jpeg", 0.92)
-      : output.toDataURL("image/png");
+      ? exportCanvas.toDataURL("image/jpeg", 0.92)
+      : exportCanvas.toDataURL("image/png");
   TEXTURE_CACHE.set(cacheKey, url);
   return url;
 }

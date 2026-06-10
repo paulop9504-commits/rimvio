@@ -13,7 +13,6 @@ import {
 } from "react";
 import { RimvioGlobe3DClient } from "@/components/experience/rimvio-globe-3d-client";
 import type { RimvioGlobe3DHandle } from "@/components/experience/rimvio-globe-3d";
-import { GlobeFlatMapStage } from "@/components/globe/globe-flat-map-stage";
 import { useExperienceGraph } from "@/hooks/use-experience-graph";
 import { useGpsTrackingEnabled } from "@/hooks/use-gps-tracking-enabled";
 import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
@@ -21,17 +20,7 @@ import { useRelationshipFeedSlots } from "@/hooks/use-relationship-feed-slots";
 import type { ClassifiedGlobePin } from "@/lib/feed/experience-globe-ping-types";
 import { readPeerContacts } from "@/lib/context/peer-contact-store";
 import { buildFeedSlotPeerLookup } from "@/lib/feed/build-feed-slot-peer-lookup";
-import {
-  flatMapZoomFromGlobeAltitude,
-  shouldExitFlatMapToGlobe3d,
-  type FlatMapView,
-} from "@/lib/globe/flat-map-view";
 import { enrichClassifiedGlobePinPeers } from "@/lib/globe/project-globe-pin-peers";
-import type { GlobeDetailLevel } from "@/lib/globe/globe-zoom-levels";
-import {
-  resolveGlobeSurfaceMode,
-  type GlobeSurfaceMode,
-} from "@/lib/globe/resolve-globe-surface-mode";
 import { ensureGlobeDemoEvents } from "@/lib/experience-graph/seed-globe-demo-events";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import {
@@ -40,6 +29,7 @@ import {
 } from "@/lib/life-read-model";
 import { indexEventsById } from "@/lib/plan-context/project-plan-to-feed-slot";
 import type { PinCluster } from "@/lib/globe/pin-cluster-types";
+import { PERSONAL_GLOBE_PINS_UPDATED } from "@/lib/globe/personal-globe-pin-store";
 import {
   findPinClusterByEventId,
   findPinClusterByPinId,
@@ -47,6 +37,10 @@ import {
   projectPinClustersFromGraph,
 } from "@/lib/globe/project-pin-clusters";
 import { projectTripLegArcs } from "@/lib/globe/project-trip-leg-arcs";
+import {
+  GLOBE_EXPERIENCE_SETTINGS_UPDATED,
+  isShowTripArcsEnabled,
+} from "@/lib/globe/globe-experience-settings";
 import { cn } from "@/lib/utils";
 
 function useGlobeEventSnapshot() {
@@ -63,7 +57,11 @@ function useGlobeEventSnapshot() {
     };
     refresh();
     window.addEventListener(EVENT_CANDIDATES_UPDATED, refresh);
-    return () => window.removeEventListener(EVENT_CANDIDATES_UPDATED, refresh);
+    window.addEventListener(PERSONAL_GLOBE_PINS_UPDATED, refresh);
+    return () => {
+      window.removeEventListener(EVENT_CANDIDATES_UPDATED, refresh);
+      window.removeEventListener(PERSONAL_GLOBE_PINS_UPDATED, refresh);
+    };
   }, []);
 
   return { ready, eventsById };
@@ -89,12 +87,6 @@ type RimvioGlobeHubBodyProps = {
   eventsById: ReadonlyMap<string, EventCandidate>;
   initialOpenPinId?: string | null;
   onPinPress?: (cluster: PinCluster) => void;
-};
-
-const DEFAULT_FLAT_VIEW: FlatMapView = {
-  lat: 36.35,
-  lng: 127.3,
-  zoom: 2.4,
 };
 
 const RimvioGlobeHubBody = memo(
@@ -128,9 +120,19 @@ const RimvioGlobeHubBody = memo(
         ),
       [clusters, eventsById, peerLookup],
     );
+    const [tripArcsEnabled, setTripArcsEnabled] = useState(() => isShowTripArcsEnabled());
+    useEffect(() => {
+      const sync = () => setTripArcsEnabled(isShowTripArcsEnabled());
+      sync();
+      window.addEventListener(GLOBE_EXPERIENCE_SETTINGS_UPDATED, sync);
+      return () => window.removeEventListener(GLOBE_EXPERIENCE_SETTINGS_UPDATED, sync);
+    }, []);
     const tripArcs = useMemo(
-      () => projectTripLegArcs({ eventsById, clusters }),
-      [eventsById, clusters],
+      () =>
+        tripArcsEnabled
+          ? projectTripLegArcs({ eventsById, clusters })
+          : [],
+      [eventsById, clusters, tripArcsEnabled],
     );
     const { enabled: gpsEnabled } = useGpsTrackingEnabled();
     const liveLocation = useLiveLocationSnapshot();
@@ -152,15 +154,12 @@ const RimvioGlobeHubBody = memo(
       return pins;
     }, [classifiedPins, gpsEnabled, liveLocation]);
     const [activePinId, setActivePinId] = useState<string | null>(null);
-    const [surfaceMode, setSurfaceMode] = useState<GlobeSurfaceMode>("globe3d");
-    const [flatView, setFlatView] = useState<FlatMapView>(DEFAULT_FLAT_VIEW);
 
     useImperativeHandle(ref, () => ({
       flyToPin(lat, lng, level) {
         innerGlobeRef.current?.flyToPin(lat, lng, level);
       },
       resetToOverview() {
-        setSurfaceMode("globe3d");
         innerGlobeRef.current?.resetOverview();
       },
     }));
@@ -186,78 +185,16 @@ const RimvioGlobeHubBody = memo(
       [clusters, onPinPress],
     );
 
-    const handlePointOfViewChange = useCallback(
-      (pov: {
-        lat: number;
-        lng: number;
-        altitude: number;
-        detailLevel: GlobeDetailLevel;
-      }) => {
-        setSurfaceMode((current) => {
-          const next = resolveGlobeSurfaceMode(current, {
-            altitude: pov.altitude,
-            detailLevel: pov.detailLevel,
-          });
-          if (next === "flat2d") {
-            setFlatView({
-              lat: pov.lat,
-              lng: pov.lng,
-              zoom: flatMapZoomFromGlobeAltitude(pov.altitude),
-            });
-          }
-          return next;
-        });
-      },
-      [],
-    );
-
-    const handleFlatViewChange = useCallback((next: FlatMapView) => {
-      setFlatView(next);
-      if (shouldExitFlatMapToGlobe3d(next.zoom)) {
-        setSurfaceMode("globe3d");
-        innerGlobeRef.current?.flyToPin(next.lat, next.lng, "city");
-      }
-    }, []);
-
     return (
       <div
         className={cn("relative flex h-full min-h-0 flex-1 flex-col", className)}
         data-rimvio-globe-hub
-        data-rimvio-globe-surface={surfaceMode}
+        data-rimvio-globe-surface="globe3d"
       >
-        <div
-          className={cn(
-            "relative h-full flex-1",
-            surfaceMode === "flat2d" && "pointer-events-none invisible",
-          )}
-          aria-hidden={surfaceMode === "flat2d"}
-        >
-          <RimvioGlobe3DClient
-            ref={innerGlobeRef}
-            pins={globePins}
-            tripArcs={tripArcs}
-            viewerLocation={
-              gpsEnabled && liveLocation
-                ? {
-                    lat: liveLocation.lat,
-                    lng: liveLocation.lng,
-                    accuracyM: liveLocation.accuracyM,
-                  }
-                : null
-            }
-            activePinId={activePinId}
-            className="h-full flex-1"
-            onPinPress={handlePinPress}
-            onPointOfViewChange={handlePointOfViewChange}
-          />
-        </div>
-
-        <GlobeFlatMapStage
-          view={flatView}
-          onViewChange={handleFlatViewChange}
+        <RimvioGlobe3DClient
+          ref={innerGlobeRef}
           pins={globePins}
-          activePinId={activePinId}
-          onPinPress={handlePinPress}
+          tripArcs={tripArcs}
           viewerLocation={
             gpsEnabled && liveLocation
               ? {
@@ -267,13 +204,9 @@ const RimvioGlobeHubBody = memo(
                 }
               : null
           }
-          active={surfaceMode === "flat2d"}
-          className={cn(
-            "z-[5]",
-            surfaceMode === "flat2d"
-              ? "opacity-100"
-              : "pointer-events-none opacity-0",
-          )}
+          activePinId={activePinId}
+          className="h-full flex-1"
+          onPinPress={handlePinPress}
         />
 
         {clusters.length === 0 ? (
@@ -289,7 +222,7 @@ const RimvioGlobeHubBody = memo(
   }),
 );
 
-/** Globe-first home — giant earth, pins only. */
+/** Globe-first home — 3D earth only, pins on top. */
 export const RimvioGlobeHub = memo(function RimvioGlobeHub({
   className,
   globeRef,

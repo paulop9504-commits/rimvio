@@ -20,6 +20,9 @@ const KNOWN_PLACES: ReadonlyArray<{
   { pattern: /서울/u, lat: 37.566, lng: 126.978, label: "서울" },
   { pattern: /홍대|연남/u, lat: 37.557, lng: 126.924, label: "홍대" },
   { pattern: /성수/u, lat: 37.544, lng: 127.055, label: "성수" },
+  { pattern: /신림/u, lat: 37.4842, lng: 126.9295, label: "신림동" },
+  { pattern: /사당/u, lat: 37.4768, lng: 126.9817, label: "사당" },
+  { pattern: /건대|건국대/u, lat: 37.5404, lng: 127.0692, label: "건대" },
 ];
 
 const DEFAULT_COORDS: PlaceCoordinates = {

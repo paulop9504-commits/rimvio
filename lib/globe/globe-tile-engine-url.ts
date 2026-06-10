@@ -1,5 +1,6 @@
 import type { GlobeMapTileStyle } from "@/lib/experience-graph/build-globe-map-tiles";
 import { GLOBE_TILE_MAX_ZOOM } from "@/lib/globe/globe-tile-constants";
+import { GLOBE_TOSS_THEME } from "@/lib/globe/globe-toss-theme";
 
 /** Slippy-map tile URL for globe.gl `globeTileEngineUrl`. */
 export function buildGlobeTileEngineUrl(
@@ -15,12 +16,9 @@ export function buildGlobeTileEngineUrl(
   return `/api/globe/tile?z=${z}&x=${tx}&y=${ty}&style=${style}`;
 }
 
-/**
- * Toss globe uses CARTO Voyager at every zoom — green land, blue ocean, road hierarchy.
- * (Light tiles are too pale for overview; Voyager matches Google Maps coloring.)
- */
+/** Home globe — CARTO light tiles (Toss-style streets). */
 export function resolveGlobeTileStyleForLevel(_level: number): GlobeMapTileStyle {
-  return "voyager";
+  return GLOBE_TOSS_THEME.mapStyle;
 }
 
 export function globeTileEngineUrl(x: number, y: number, level: number): string {

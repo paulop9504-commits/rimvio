@@ -48,9 +48,17 @@ export type RimvioGlobe3DHandle = {
   flyToPin: (
     lat: number,
     lng: number,
-    level?: Extract<GlobeDetailLevel, "city" | "neighborhood" | "street" | "pin">,
+    level?: Extract<
+      GlobeDetailLevel,
+      "region" | "city" | "neighborhood" | "street" | "pin"
+    >,
   ) => void;
   resetOverview: () => void;
+  getPointOfView: () => {
+    lat: number;
+    lng: number;
+    altitude: number;
+  } | null;
 };
 
 export type RimvioGlobe3DProps = {
@@ -59,6 +67,9 @@ export type RimvioGlobe3DProps = {
   viewerLocation?: GlobeViewerLocation | null;
   activePinId?: string | null;
   onPinPress?: (pinId: string) => void;
+  /** Tap empty globe — shared ROOM pin placement. */
+  onGlobePress?: (coords: { lat: number; lng: number }) => void;
+  hintText?: string;
   onDetailLevelChange?: (level: GlobeDetailLevel) => void;
   onPointOfViewChange?: (pov: {
     lat: number;
@@ -78,6 +89,8 @@ export const RimvioGlobe3D = memo(
       viewerLocation = null,
       activePinId = null,
       onPinPress,
+      onGlobePress,
+      hintText,
       onDetailLevelChange,
       onPointOfViewChange,
       className,
@@ -88,6 +101,7 @@ export const RimvioGlobe3D = memo(
     const shellRef = useRef<HTMLDivElement>(null);
     const globeRef = useRef<GlobeInstance | null>(null);
     const onPinPressRef = useRef(onPinPress);
+    const onGlobePressRef = useRef(onGlobePress);
     const onDetailLevelChangeRef = useRef(onDetailLevelChange);
     const onPointOfViewChangeRef = useRef(onPointOfViewChange);
     const activePinIdRef = useRef(activePinId);
@@ -99,6 +113,7 @@ export const RimvioGlobe3D = memo(
     overviewTextureUrlRef.current = overviewTextureUrl;
 
     onPinPressRef.current = onPinPress;
+    onGlobePressRef.current = onGlobePress;
     onDetailLevelChangeRef.current = onDetailLevelChange;
     onPointOfViewChangeRef.current = onPointOfViewChange;
     activePinIdRef.current = activePinId;
@@ -125,6 +140,21 @@ export const RimvioGlobe3D = memo(
         }
         globe.pointOfView({ ...GLOBE_OVERVIEW_POINT_OF_VIEW }, FLY_MS);
       },
+      getPointOfView() {
+        const globe = globeRef.current;
+        if (!globe) {
+          return null;
+        }
+        const pov = globe.pointOfView();
+        if (
+          !Number.isFinite(pov.lat) ||
+          !Number.isFinite(pov.lng) ||
+          !Number.isFinite(pov.altitude)
+        ) {
+          return null;
+        }
+        return { lat: pov.lat, lng: pov.lng, altitude: pov.altitude };
+      },
     }));
 
     useEffect(() => {
@@ -136,7 +166,7 @@ export const RimvioGlobe3D = memo(
       const globe = new Globe(root, {
         animateIn: true,
         waitForGlobeReady: true,
-        rendererConfig: { antialias: true, alpha: true, precision: "mediump" },
+        rendererConfig: { antialias: true, alpha: true, precision: "highp" },
       })
         .backgroundColor("rgba(0,0,0,0)")
         .globeTileEngineUrl(globeTileEngineUrl)
@@ -187,7 +217,12 @@ export const RimvioGlobe3D = memo(
         .ringRepeatPeriod(0);
 
       const renderer = globe.renderer();
-      renderer.setPixelRatio(Math.min(typeof window !== "undefined" ? window.devicePixelRatio : 1, 2.5));
+      renderer.setPixelRatio(
+        Math.min(
+          typeof window !== "undefined" ? window.devicePixelRatio : 1,
+          GLOBE_TOSS_THEME.globePixelRatioCap,
+        ),
+      );
 
       syncGlobeViewport(globe, root);
       requestAnimationFrame(() => syncGlobeViewport(globe, root));
@@ -203,7 +238,7 @@ export const RimvioGlobe3D = memo(
       controls.enablePan = false;
       controls.autoRotate = false;
       controls.enableDamping = true;
-      controls.dampingFactor = 0.08;
+      controls.dampingFactor = 0.05;
 
       const syncOverviewTexture = (altitude: number) => {
         const overviewUrl = overviewTextureUrlRef.current;
@@ -226,26 +261,49 @@ export const RimvioGlobe3D = memo(
       };
 
       const handleZoom = (pov: { lat: number; lng: number; altitude: number }) => {
-        if (
-          !Number.isFinite(pov.altitude) ||
-          pov.altitude < GLOBE_MIN_SAFE_ALTITUDE
-        ) {
-          const safeAlt = GLOBE_MIN_SAFE_ALTITUDE;
-          globe.pointOfView({ altitude: safeAlt }, 0);
-          emitPointOfView(pov, safeAlt);
+        let altitude = pov.altitude;
+        if (!Number.isFinite(altitude)) {
           return;
         }
-        emitPointOfView(pov);
+        if (altitude < GLOBE_MIN_SAFE_ALTITUDE) {
+          altitude = GLOBE_MIN_SAFE_ALTITUDE;
+          globe.pointOfView({ altitude }, 0);
+          emitPointOfView(pov, altitude);
+          return;
+        }
+        const pinLocked = Boolean(activePinIdRef.current);
+        const maxPinFocusAltitude = altitudeForGlobeDetailLevel("city");
+        if (pinLocked && altitude > maxPinFocusAltitude) {
+          altitude = maxPinFocusAltitude;
+          globe.pointOfView({ lat: pov.lat, lng: pov.lng, altitude }, 0);
+        }
+        emitPointOfView({ ...pov, altitude }, altitude);
       };
 
       emitPointOfView({ ...GLOBE_OVERVIEW_POINT_OF_VIEW });
       globe.onZoom(handleZoom);
+      globe.onGlobeClick((coords) => {
+        if (activePinIdRef.current) {
+          return;
+        }
+        const handler = onGlobePressRef.current;
+        if (
+          !handler ||
+          !coords ||
+          !Number.isFinite(coords.lat) ||
+          !Number.isFinite(coords.lng)
+        ) {
+          return;
+        }
+        handler({ lat: coords.lat, lng: coords.lng });
+      });
 
       globe.onGlobeReady(() => {
         window.setTimeout(() => {
           syncOverviewTexture(globe.pointOfView().altitude);
           const controls = globe.controls();
-          controls.zoomSpeed = 0.85;
+          controls.zoomSpeed = 1.5;
+          controls.rotateSpeed = 0.45;
         }, 0);
       });
 
@@ -321,7 +379,17 @@ export const RimvioGlobe3D = memo(
       });
     }, [activePinId]);
 
-    const detailHint = "드래그 회전 · 스크롤·핀치로 거리·지명 확대";
+    useEffect(() => {
+      const globe = globeRef.current;
+      if (!globe) {
+        return;
+      }
+      const controls = globe.controls();
+      controls.enableZoom = !activePinId;
+    }, [activePinId]);
+
+    const detailHint =
+      hintText ?? "드래그 회전 · 스크롤·핀치로 거리·지명 확대";
 
     return (
       <div

@@ -23,7 +23,7 @@ export function GuestPeersLanding({
       {configured ? (
         <>
           <RimvioGoogleSignInCard className="mx-1" nextPath="/onboarding" />
-          <p className="px-3 text-center text-[12px] leading-relaxed text-white/50">
+          <p className="px-3 text-center text-[12px] leading-relaxed text-[#6b7684]">
             {copy.peers.guestSignInHint}
           </p>
           <DemoPeerRoomPreview />

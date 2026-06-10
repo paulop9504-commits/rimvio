@@ -110,6 +110,7 @@ assert.deepEqual(
   fnExports.sort(),
   [
     "EVENT_CANDIDATES_UPDATED",
+    "findLifeEventCandidate",
     "listLifeEventCandidates",
     "readLifeProjections",
     "readSurface",

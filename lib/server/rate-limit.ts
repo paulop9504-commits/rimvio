@@ -40,7 +40,7 @@ export function resolveRateLimitTier(pathname: string, method: string): RateLimi
     return null;
   }
 
-  if (pathname === "/api/health") {
+  if (pathname === "/api/health" || pathname === "/api/globe/tile") {
     return null;
   }
 

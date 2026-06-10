@@ -19,7 +19,7 @@ export function PeerHubEmptyState({
   return (
     <section
       className={cn(
-        "mx-1 space-y-3 rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-4",
+        "mx-1 space-y-3 rounded-2xl border border-dashed border-[#02204714] bg-[#f8f9fb] p-4",
         className,
       )}
       aria-label={copy.peers.emptyTitle}

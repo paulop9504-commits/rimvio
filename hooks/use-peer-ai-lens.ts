@@ -11,6 +11,9 @@ export function usePeerAiLens(input: {
   enabled: boolean;
 }) {
   const [candidates, setCandidates] = useState<DeepLinkBubbleCandidate[]>([]);
+  const [candidatesByMessageId, setCandidatesByMessageId] = useState<
+    Readonly<Record<string, DeepLinkBubbleCandidate[]>>
+  >({});
   const [anchorMessageId, setAnchorMessageId] = useState<string | null>(null);
   const lastShownKey = useRef<string>("");
 
@@ -24,11 +27,13 @@ export function usePeerAiLens(input: {
   useEffect(() => {
     if (!input.enabled || !analysis) {
       setCandidates([]);
+      setCandidatesByMessageId({});
       setAnchorMessageId(null);
       return;
     }
 
     setCandidates(analysis.candidates);
+    setCandidatesByMessageId(analysis.candidatesByMessageId);
     setAnchorMessageId(analysis.anchorMessageId);
 
     const key = `${analysis.anchorMessageId ?? "none"}:${analysis.candidates.map((c) => c.id).join(",")}`;
@@ -41,6 +46,7 @@ export function usePeerAiLens(input: {
   return {
     anchorMessageId,
     candidates,
+    candidatesByMessageId,
     enabled: input.enabled,
   };
 }

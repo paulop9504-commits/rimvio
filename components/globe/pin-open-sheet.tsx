@@ -5,6 +5,14 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
+import { toast } from "sonner";
+import {
+  PinContextFieldSheet,
+  type PinContextFieldKind,
+} from "@/components/globe/pin-context-field-sheet";
+import { PinContextTappableField } from "@/components/globe/pin-context-tappable-field";
+import { GlobeContextPhotoButton } from "@/components/globe/globe-context-photo-button";
+import { patchExperiencePinContext } from "@/lib/globe/patch-experience-pin-context";
 import { EvidenceList } from "@/components/experience/evidence-list";
 import { ExperienceHeroCard } from "@/components/experience/experience-hero-card";
 import { ExperiencePlaceGallery } from "@/components/experience/experience-place-gallery";
@@ -59,6 +67,7 @@ export function PinOpenSheet({
   const [opened, setOpened] = useState(false);
   const [galleryActiveId, setGalleryActiveId] = useState<string | null>(null);
   const [revision, setRevision] = useState(0);
+  const [editKind, setEditKind] = useState<PinContextFieldKind | null>(null);
   const gpsPings = useFeedGpsPings();
 
   useEffect(() => {
@@ -204,15 +213,6 @@ export function PinOpenSheet({
     <AnimatePresence>
       {open && cluster && hero ? (
         <>
-          <motion.button
-            type="button"
-            aria-label="닫기"
-            className="fixed inset-0 z-[90] bg-black/35 md:bg-black/15"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => onOpenChange(false)}
-          />
           <motion.aside
             role="dialog"
             aria-label={hero.title}
@@ -228,10 +228,21 @@ export function PinOpenSheet({
             data-pin-open-sheet
           >
             <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-foreground/15 md:hidden" aria-hidden />
-            <header className="flex items-center gap-2 px-4 pb-2 pt-3">
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[18px] font-semibold text-foreground">{hero.place}</p>
-                <p className="truncate text-[12px] text-muted-foreground">{hero.title}</p>
+            <header className="flex items-start gap-2 px-4 pb-3 pt-3">
+              <div className="min-w-0 flex-1 space-y-1">
+                <PinContextTappableField
+                  label="장소"
+                  value={hero.place}
+                  onPress={() => setEditKind("place")}
+                />
+                <PinContextTappableField
+                  label="경험 제목"
+                  value={hero.title}
+                  onPress={() => setEditKind("title")}
+                />
+                <p className="px-2 text-[11px] text-muted-foreground">
+                  틀린 이름은 탭해서 바로 고쳐요
+                </p>
               </div>
               <button
                 type="button"
@@ -242,6 +253,45 @@ export function PinOpenSheet({
                 <X className="size-5 text-muted-foreground" aria-hidden />
               </button>
             </header>
+
+            <PinContextFieldSheet
+              open={editKind !== null}
+              onOpenChange={(next) => {
+                if (!next) {
+                  setEditKind(null);
+                }
+              }}
+              kind={editKind ?? "place"}
+              value={
+                editKind === "title"
+                  ? hero.title
+                  : editKind === "place"
+                    ? hero.place
+                    : ""
+              }
+              onSave={async (next) => {
+                if (!cluster?.eventId || !editKind || editKind === "note") {
+                  return;
+                }
+                try {
+                  await patchExperiencePinContext(cluster.eventId, {
+                    ...(editKind === "place" ? { place: next } : {}),
+                    ...(editKind === "title" ? { title: next } : {}),
+                  });
+                  setRevision((value) => value + 1);
+                  toast.success(
+                    editKind === "place" ? "장소를 고쳤어요" : "제목을 고쳤어요",
+                  );
+                } catch (caught) {
+                  const message =
+                    caught instanceof Error
+                      ? caught.message
+                      : "저장하지 못했어요.";
+                  toast.error(message);
+                  throw caught;
+                }
+              }}
+            />
 
             <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {tripLeg ? <ExperienceTripLegBar trip={tripLeg} /> : null}
@@ -282,7 +332,14 @@ export function PinOpenSheet({
               ) : null}
             </div>
 
-            <div className="shrink-0 border-t border-border px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <div className="shrink-0 space-y-2 border-t border-border px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+              {cluster ? (
+                <GlobeContextPhotoButton
+                  eventId={cluster.eventId}
+                  eventTitle={hero.title}
+                  onIngested={() => setRevision((value) => value + 1)}
+                />
+              ) : null}
               <button
                 type="button"
                 className={cn(

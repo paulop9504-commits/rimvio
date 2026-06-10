@@ -136,4 +136,33 @@ const transferExecute = executeDeepLinkBubbleCandidate(
 assert.equal(transferExecute.ok, true);
 assert.ok(transferExecute.message.includes("자동 송금 안 함"));
 
+/** Multi-schedule thread — each turn keeps its own title/place (no 계산동 bleed). */
+const refSat = new Date(2026, 5, 6, 12, 0, 0, 0);
+const multiSchedule = analyzePeerThreadForLens(
+  [
+    msg("gyesan", "me", "계산동722"),
+    msg("dunsan", "me", "내일 2시 둔산동 스타벅스에서 만나"),
+    msg("jeju", "me", "6월7일 제주도 여행"),
+    msg("daejeon", "me", "내일모레는 3시에 대전 시청에서 봐"),
+  ],
+  refSat,
+);
+const dunsanSchedule = multiSchedule.candidatesByMessageId.dunsan?.find(
+  (c) => c.actionType === "schedule",
+);
+assert.ok(dunsanSchedule, "둔산 약속 메시지에 일정 렌즈 필요");
+assert.ok(
+  (dunsanSchedule!.payload?.title ?? "").includes("둔산"),
+  "둔산 일정 제목이 계산동에 묶이면 안 됨",
+);
+assert.ok(
+  !(dunsanSchedule!.payload?.title ?? "").includes("계산동"),
+  "계산동 제목 bleed 금지",
+);
+const jejuSchedule = multiSchedule.candidatesByMessageId.jeju?.find(
+  (c) => c.actionType === "schedule",
+);
+assert.ok(jejuSchedule, "제주 여행 메시지에 일정 렌즈 필요");
+assert.ok((jejuSchedule!.payload?.title ?? "").includes("제주"));
+
 console.log("test-peer-ai-lens: ok");

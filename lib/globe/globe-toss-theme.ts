@@ -1,4 +1,4 @@
-/** Toss-inspired globe chrome — colored Voyager earth, blue accent, minimal cards. */
+/** Toss-inspired home globe — light street tiles, voyager overview, blue sky chrome. */
 export const GLOBE_TOSS_THEME = {
   blue: "#3182f6",
   blueDeep: "#1b64da",
@@ -14,10 +14,20 @@ export const GLOBE_TOSS_THEME = {
   hintBg: "rgba(255, 255, 255, 0.92)",
   hintInk: "#8b95a1",
   shellBg: "#f2f4f6",
-  mapStyle: "voyager" as const,
   tileMaxZoom: 20,
   labelInk: "#191f28",
-  labelHalo: "rgba(255, 255, 255, 0.92)",
-  viewerRing: "rgba(49, 130, 246, 0.2)",
-  viewerRingStroke: "rgba(49, 130, 246, 0.45)",
+  labelHalo: "rgba(255, 255, 255, 0.96)",
+  overviewMapStyle: "voyager" as const,
+  overviewTextureZoom: 5,
+  overviewTextureWidth: 4096,
+  overviewTextureHeight: 2048,
+  globePixelRatioCap: 4,
+  viewerDot: "#f04452",
+  viewerDotGlow: "rgba(240, 68, 82, 0.45)",
+  viewerRing: "rgba(240, 68, 82, 0.18)",
+  viewerRingStroke: "rgba(240, 68, 82, 0.42)",
+  /** CARTO light — Toss-like gray roads + soft blue water. */
+  mapStyle: "light" as const,
+  /** Room shared globe (2D 우리 지구) — same Toss map palette. */
+  sharedGlobeMapStyle: "light" as const,
 } as const;

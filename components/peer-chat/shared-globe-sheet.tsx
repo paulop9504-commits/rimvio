@@ -1,22 +1,37 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Globe, ImagePlus, Loader2, MapPin, X } from "lucide-react";
+import { Globe, ImagePlus, Loader2, MapPin, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { MainActionButton } from "@/components/action-chat/main-action-button";
-import { SpatialGlobeStage } from "@/components/experience/spatial-globe-stage";
+import {
+  SharedGlobe3DStage,
+  type SharedGlobe3DStageHandle,
+} from "@/components/peer-chat/shared-globe-3d-stage";
+import {
+  PinContextFieldSheet,
+  type PinContextFieldKind,
+} from "@/components/globe/pin-context-field-sheet";
+import { PinContextTappableField } from "@/components/globe/pin-context-tappable-field";
+import { useAuth } from "@/hooks/use-auth";
+import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
 import { useSharedGlobePins } from "@/hooks/use-shared-globe-pins";
+import type { SharedGlobePin } from "@/lib/peer-chat/globe-pin-types";
 import { attachMediaSpacetime } from "@/lib/location-ping/attach-media-spacetime";
-import { globeViewForSharedPins } from "@/lib/peer-chat/globe-view-for-shared-pins";
+import type { ClassifiedGlobePin } from "@/lib/feed/experience-globe-ping-types";
 import { projectSharedGlobeClassifiedPins } from "@/lib/peer-chat/project-thread-globe-pins";
 import {
   formatSharedGlobePinLabel,
   resolveSharedGlobePinCoords,
 } from "@/lib/peer-chat/resolve-shared-globe-pin-coords";
-import { sendSharedGlobePinRemote } from "@/lib/peer-chat/peer-chat-client";
+import {
+  deleteSharedGlobePinRemote,
+  sendSharedGlobePinRemote,
+  updateSharedGlobePinRemote,
+} from "@/lib/peer-chat/peer-chat-client";
 import { cn } from "@/lib/utils";
 
 export type SharedGlobeSheetProps = {
@@ -44,8 +59,16 @@ export function SharedGlobeSheet({
   const [placing, setPlacing] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [activePinId, setActivePinId] = useState<string | null>(null);
+  const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
+  const [editTarget, setEditTarget] = useState<{
+    pin: SharedGlobePin;
+    kind: Extract<PinContextFieldKind, "place" | "note">;
+  } | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
-  const { pins, loading, error, resolvedThreadId, refresh, upsertPin } =
+  const { user } = useAuth();
+  const globeRef = useRef<SharedGlobe3DStageHandle>(null);
+  const liveLocation = useLiveLocationSnapshot();
+  const { pins, loading, error, resolvedThreadId, refresh, upsertPin, removePin } =
     useSharedGlobePins({
       peerThreadId,
       enabled: open,
@@ -59,10 +82,47 @@ export function SharedGlobeSheet({
     () => projectSharedGlobeClassifiedPins(pins),
     [pins],
   );
-  const globe = useMemo(
-    () => globeViewForSharedPins(classifiedPins),
-    [classifiedPins],
-  );
+  const globePins = useMemo(() => {
+    const rows: ClassifiedGlobePin[] = [...classifiedPins];
+    if (liveLocation) {
+      rows.push({
+        id: "viewer:here",
+        kind: "gps",
+        label: "현재 위치",
+        lat: liveLocation.lat,
+        lng: liveLocation.lng,
+        pinX: 0,
+        pinY: 0,
+        pinShape: "viewer",
+        emphasis: "primary",
+      });
+    }
+    return rows;
+  }, [classifiedPins, liveLocation]);
+
+  const focusPin = useCallback((pinId: string) => {
+    if (pinId === "viewer:here") {
+      if (liveLocation) {
+        globeRef.current?.flyToPin(
+          liveLocation.lat,
+          liveLocation.lng,
+          "neighborhood",
+        );
+      }
+      return;
+    }
+    setActivePinId(pinId);
+    const pin = classifiedPins.find((row) => row.id === pinId);
+    if (pin) {
+      globeRef.current?.flyToPin(pin.lat, pin.lng, "neighborhood");
+    }
+  }, [classifiedPins, liveLocation]);
+
+  useEffect(() => {
+    if (!open) {
+      setActivePinId(null);
+    }
+  }, [open]);
 
   const placePinAt = async (coords: PinCoords, file?: File) => {
     if (placing || photoBusy) {
@@ -84,6 +144,7 @@ export function SharedGlobeSheet({
       });
       upsertPin(pin);
       setActivePinId(pin.payload.pinId);
+      globeRef.current?.flyToPin(coords.lat, coords.lng, "neighborhood");
       toast.success(
         file
           ? `${coords.placeLabel}에 사진 핀을 박았어요`
@@ -110,15 +171,31 @@ export function SharedGlobeSheet({
     }
   };
 
-  const placePinOnMap = async (input: {
-    lat: number;
-    lng: number;
-  }) => {
-    await placePinAt({
-      lat: input.lat,
-      lng: input.lng,
-      placeLabel: formatSharedGlobePinLabel(input.lat, input.lng),
-    });
+  const deletePin = async (messageId: string, placeLabel: string) => {
+    if (deletingMessageId) {
+      return;
+    }
+    setDeletingMessageId(messageId);
+    try {
+      await deleteSharedGlobePinRemote({
+        threadId: peerThreadId,
+        messageId,
+      });
+      removePin(messageId);
+      if (activePinId) {
+        const deleted = pins.find((row) => row.messageId === messageId);
+        if (deleted?.payload.pinId === activePinId) {
+          setActivePinId(null);
+        }
+      }
+      toast.success(`${placeLabel} 핀을 삭제했어요`);
+    } catch (caught) {
+      const message =
+        caught instanceof Error ? caught.message : "핀을 삭제하지 못했어요.";
+      toast.error(message);
+    } finally {
+      setDeletingMessageId(null);
+    }
   };
 
   const sharePhotoPin = async (file: File) => {
@@ -132,7 +209,7 @@ export function SharedGlobeSheet({
         originRef: peerThreadId,
       });
       if (spacetime.lat === null || spacetime.lng === null) {
-        toast.error("사진에서 위치를 찾지 못했어요. 지구를 탭하거나 여기에 핀 박기를 써 주세요.");
+        toast.error("사진에서 위치를 찾지 못했어요. 여기에 핀 박기를 써 주세요.");
         return;
       }
       await placePinAt(
@@ -175,15 +252,6 @@ export function SharedGlobeSheet({
     <AnimatePresence>
       {open ? (
         <>
-          <motion.button
-            type="button"
-            aria-label="닫기"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[80] bg-black/50 backdrop-blur-[2px]"
-            onClick={() => onOpenChange(false)}
-          />
           <motion.div
             role="dialog"
             aria-modal="true"
@@ -204,7 +272,7 @@ export function SharedGlobeSheet({
                   우리 지구
                 </p>
                 <p className="mt-0.5 truncate text-[12px] text-white/55">
-                  {displayName} · 지구를 탭하거나 사진으로 핀을 박아요
+                  {displayName} · 사진·GPS로 핀을 박아요
                 </p>
               </div>
               <button
@@ -218,18 +286,20 @@ export function SharedGlobeSheet({
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto">
-              <SpatialGlobeStage
-                globe={globe}
-                classifiedPins={classifiedPins}
+              <SharedGlobe3DStage
+                ref={globeRef}
+                pins={globePins}
                 activePinId={activePinId}
-                onPinPress={setActivePinId}
-                onMapPress={(coords) => {
-                  if (!busy) {
-                    void placePinOnMap(coords);
-                  }
-                }}
-                variant="immersive"
-                className="min-h-[min(42vh,360px)]"
+                viewerLocation={
+                  liveLocation
+                    ? {
+                        lat: liveLocation.lat,
+                        lng: liveLocation.lng,
+                        accuracyM: liveLocation.accuracyM,
+                      }
+                    : null
+                }
+                onPinPress={focusPin}
               />
 
               <div className="space-y-3 px-4 py-3">
@@ -246,47 +316,113 @@ export function SharedGlobeSheet({
 
                 {pins.length === 0 && !loading ? (
                   <p className="rounded-2xl bg-white/[0.04] px-3 py-3 text-[13px] leading-relaxed text-white/60">
-                    아직 핀이 없어요. 지구를 탭하거나 사진·GPS로 함께 박아보세요.
+                    아직 핀이 없어요. 사진·GPS로 함께 박아보세요.
                   </p>
                 ) : null}
 
                 {pins.length > 0 ? (
-                  <ul className="space-y-2">
-                    {pins.map((pin) => (
-                      <li key={pin.messageId}>
-                        <button
-                          type="button"
-                          onClick={() => setActivePinId(pin.payload.pinId)}
-                          className={cn(
-                            "flex w-full items-start gap-2 rounded-2xl px-3 py-2.5 text-left ring-1 transition",
-                            activePinId === pin.payload.pinId
-                              ? "bg-sky-400/10 ring-sky-400/35"
-                              : "bg-white/[0.04] ring-white/10",
-                          )}
-                        >
-                          {pin.payload.imageUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={pin.payload.imageUrl}
-                              alt=""
-                              className="mt-0.5 size-10 shrink-0 rounded-lg object-cover ring-1 ring-white/15"
-                            />
-                          ) : (
-                            <MapPin className="mt-0.5 size-4 shrink-0 text-sky-300" />
-                          )}
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate text-[13px] font-medium text-white">
-                              {pin.payload.placeLabel}
-                            </span>
-                            <span className="text-[11px] text-white/45">
-                              {pin.payload.senderDisplayName}
-                              {pin.payload.imageUrl ? " · 사진" : ""}
-                            </span>
-                          </span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
+                  <>
+                    <p className="px-1 text-[11px] text-white/40">
+                      내 핀은 장소·메모를 탭해서 고칠 수 있어요
+                    </p>
+                    <ul className="space-y-2">
+                      {pins.map((pin) => {
+                        const isOwn = Boolean(
+                          user?.id && pin.senderUserId === user.id,
+                        );
+                        return (
+                          <li key={pin.messageId}>
+                            <div
+                              className={cn(
+                                "flex items-start gap-2 rounded-2xl px-2 py-2.5 ring-1 transition",
+                                activePinId === pin.payload.pinId
+                                  ? "bg-sky-400/10 ring-sky-400/35"
+                                  : "bg-white/[0.04] ring-white/10",
+                              )}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => focusPin(pin.payload.pinId)}
+                                className="mt-1 flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/6 ring-1 ring-white/10"
+                                aria-label={`${pin.payload.placeLabel} 지도에서 보기`}
+                              >
+                                {pin.payload.imageUrl ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img
+                                    src={pin.payload.imageUrl}
+                                    alt=""
+                                    className="size-10 rounded-xl object-cover"
+                                  />
+                                ) : (
+                                  <MapPin className="size-4 text-sky-300" />
+                                )}
+                              </button>
+                              <div className="min-w-0 flex-1">
+                                {isOwn ? (
+                                  <PinContextTappableField
+                                    label="장소"
+                                    value={pin.payload.placeLabel}
+                                    variant="dark"
+                                    onPress={() =>
+                                      setEditTarget({ pin, kind: "place" })
+                                    }
+                                  />
+                                ) : (
+                                  <p className="truncate px-2 text-[13px] font-medium text-white">
+                                    {pin.payload.placeLabel}
+                                  </p>
+                                )}
+                                <p className="mt-0.5 px-2 text-[11px] text-white/45">
+                                  {pin.payload.senderDisplayName}
+                                  {pin.payload.imageUrl ? " · 사진" : ""}
+                                </p>
+                                {isOwn ? (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setEditTarget({ pin, kind: "note" })
+                                    }
+                                    className="mt-1 px-2 text-left text-[11px] text-sky-300/90 underline-offset-2 hover:underline"
+                                  >
+                                    {pin.payload.note?.trim() || "메모 추가"}
+                                  </button>
+                                ) : pin.payload.note?.trim() ? (
+                                  <p className="mt-1 px-2 text-[11px] text-white/50">
+                                    {pin.payload.note}
+                                  </p>
+                                ) : null}
+                              </div>
+                              {isOwn ? (
+                                <button
+                                  type="button"
+                                  disabled={
+                                    deletingMessageId === pin.messageId || busy
+                                  }
+                                  onClick={() =>
+                                    void deletePin(
+                                      pin.messageId,
+                                      pin.payload.placeLabel,
+                                    )
+                                  }
+                                  className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full text-white/45 transition hover:bg-white/10 hover:text-rose-300 disabled:opacity-40"
+                                  aria-label={`${pin.payload.placeLabel} 핀 삭제`}
+                                >
+                                  {deletingMessageId === pin.messageId ? (
+                                    <Loader2
+                                      className="size-4 animate-spin"
+                                      aria-hidden
+                                    />
+                                  ) : (
+                                    <Trash2 className="size-4" aria-hidden />
+                                  )}
+                                </button>
+                              ) : null}
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </>
                 ) : null}
 
                 <div className="grid grid-cols-[1fr_auto] gap-2">
@@ -351,6 +487,47 @@ export function SharedGlobeSheet({
               </div>
             </div>
           </motion.div>
+          <PinContextFieldSheet
+            open={editTarget !== null}
+            onOpenChange={(next) => {
+              if (!next) {
+                setEditTarget(null);
+              }
+            }}
+            kind={editTarget?.kind ?? "place"}
+            value={
+              editTarget?.kind === "note"
+                ? editTarget.pin.payload.note ?? ""
+                : editTarget?.pin.payload.placeLabel ?? ""
+            }
+            onSave={async (next) => {
+              if (!editTarget) {
+                return;
+              }
+              try {
+                const { pin } = await updateSharedGlobePinRemote({
+                  threadId: peerThreadId,
+                  messageId: editTarget.pin.messageId,
+                  ...(editTarget.kind === "place"
+                    ? { placeLabel: next }
+                    : { note: next }),
+                });
+                upsertPin(pin);
+                toast.success(
+                  editTarget.kind === "place"
+                    ? "장소를 고쳤어요"
+                    : "메모를 저장했어요",
+                );
+              } catch (caught) {
+                const message =
+                  caught instanceof Error
+                    ? caught.message
+                    : "저장하지 못했어요.";
+                toast.error(message);
+                throw caught;
+              }
+            }}
+          />
         </>
       ) : null}
     </AnimatePresence>,

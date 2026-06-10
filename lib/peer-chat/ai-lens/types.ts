@@ -52,5 +52,7 @@ export type LensThreadContext = {
 export type PeerAiLensAnalysis = {
   anchorMessageId: string | null;
   candidates: DeepLinkBubbleCandidate[];
+  /** Actionable human messages → their own lens bubbles (no cross-message bleed). */
+  candidatesByMessageId: Readonly<Record<string, DeepLinkBubbleCandidate[]>>;
   context: LensThreadContext;
 };

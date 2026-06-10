@@ -2,7 +2,12 @@
 
 import { useEffect, useState } from "react";
 import type { GlobeMapTileStyle } from "@/lib/experience-graph/build-globe-map-tiles";
-import { GLOBE_TEXTURE_ZOOM } from "@/lib/experience-graph/reproject-mercator-to-equirectangular";
+import {
+  GLOBE_EQ_HEIGHT,
+  GLOBE_EQ_WIDTH,
+  GLOBE_TEXTURE_ZOOM,
+} from "@/lib/experience-graph/reproject-mercator-to-equirectangular";
+import { GLOBE_TOSS_THEME } from "@/lib/globe/globe-toss-theme";
 import {
   buildGlobeEquirectTextureUrl,
   readGlobeEquirectCache,
@@ -17,9 +22,12 @@ export type GlobeEquirectTextureState = {
 /** Build a cached full-earth equirectangular texture for globe.gl `globeImageUrl`. */
 export function useGlobeEquirectTexture(
   style: GlobeMapTileStyle,
+  zoom = GLOBE_TEXTURE_ZOOM,
+  outputWidth = GLOBE_EQ_WIDTH,
+  outputHeight = GLOBE_EQ_HEIGHT,
 ): GlobeEquirectTextureState {
   const [textureUrl, setTextureUrl] = useState<string | null>(() =>
-    readGlobeEquirectCache(style),
+    readGlobeEquirectCache(style, zoom, outputWidth, outputHeight),
   );
   const [loading, setLoading] = useState(!textureUrl);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +38,7 @@ export function useGlobeEquirectTexture(
     }
     let cancelled = false;
     setLoading(true);
-    void buildGlobeEquirectTextureUrl(style, GLOBE_TEXTURE_ZOOM)
+    void buildGlobeEquirectTextureUrl(style, zoom, outputWidth, outputHeight)
       .then((url) => {
         if (cancelled) {
           return;
@@ -52,12 +60,17 @@ export function useGlobeEquirectTexture(
     return () => {
       cancelled = true;
     };
-  }, [style, textureUrl]);
+  }, [style, textureUrl, zoom, outputWidth, outputHeight]);
 
   return { textureUrl, loading, error };
 }
 
-/** Google Earth–style colored overview base (CARTO Voyager). */
+/** Toss overview — Voyager mosaic at max safe resolution. */
 export function useGlobeOverviewTexture(): GlobeEquirectTextureState {
-  return useGlobeEquirectTexture("voyager");
+  return useGlobeEquirectTexture(
+    GLOBE_TOSS_THEME.overviewMapStyle,
+    GLOBE_TOSS_THEME.overviewTextureZoom,
+    GLOBE_TOSS_THEME.overviewTextureWidth,
+    GLOBE_TOSS_THEME.overviewTextureHeight,
+  );
 }

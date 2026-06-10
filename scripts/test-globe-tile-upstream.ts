@@ -7,6 +7,6 @@ const satellite = resolveGlobeTileUpstreamUrl({ z: 6, x: 54, y: 26, style: "sate
 assert.match(satellite!, /World_Imagery/);
 
 const voyager = resolveGlobeTileUpstreamUrl({ z: 8, x: 210, y: 95, style: "voyager" });
-assert.match(voyager!, /cartocdn/);
+assert.match(voyager!, /\.basemaps\.cartocdn\.com\/rastertiles\/voyager/);
 
 console.log("test-globe-tile-upstream: ok");

@@ -56,31 +56,31 @@ export function FriendArchiveChatSheet({
           <motion.div
             role="dialog"
             aria-label="구슬 주머니"
-            className="fixed inset-x-0 bottom-0 z-[81] mx-auto flex max-h-[min(82vh,640px)] w-full max-w-lg flex-col overflow-hidden rounded-t-[24px] border border-white/10 bg-rimvio-base shadow-[0_-12px_40px_rgba(0,0,0,0.35)]"
+            className="fixed inset-x-0 bottom-0 z-[81] mx-auto flex max-h-[min(82vh,640px)] w-full max-w-lg flex-col overflow-hidden rounded-t-[24px] border border-[#0220470f] bg-rimvio-base shadow-[0_-12px_40px_rgba(0,0,0,0.12)]"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", stiffness: 420, damping: 34 }}
           >
-            <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-white/25" aria-hidden />
+            <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-[#d1d6db]" aria-hidden />
 
-            <header className="flex shrink-0 items-center gap-2 border-b border-white/10 px-4 py-3">
-              <Users className="size-5 text-rimvio-neon-cyan" aria-hidden />
+            <header className="flex shrink-0 items-center gap-2 border-b border-[#0220470f] px-4 py-3">
+              <Users className="size-5 text-[#3182f6]" aria-hidden />
               <div className="min-w-0 flex-1">
-                <h2 className="text-base font-semibold text-white">구슬 주머니</h2>
-                <p className="text-[11px] text-white/45">톡 오면 맨 위로 올라와요</p>
+                <h2 className="text-base font-semibold text-[#191f28]">구슬 주머니</h2>
+                <p className="text-[11px] text-[#6b7684]">톡 오면 맨 위로 올라와요</p>
               </div>
               <Link
                 href="/peers/archive"
                 onClick={() => onOpenChange(false)}
-                className="shrink-0 text-[12px] font-semibold text-rimvio-neon-cyan"
+                className="shrink-0 text-[12px] font-semibold text-[#3182f6]"
               >
                 전체
               </Link>
               <button
                 type="button"
                 onClick={() => onOpenChange(false)}
-                className="flex size-9 items-center justify-center rounded-full active:bg-white/10"
+                className="flex size-9 items-center justify-center rounded-full text-[#6b7684] active:bg-[#f2f4f6]"
                 aria-label="닫기"
               >
                 <X className="size-5" aria-hidden />

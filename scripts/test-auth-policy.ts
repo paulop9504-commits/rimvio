@@ -33,6 +33,7 @@ assert.ok(isPublicPagePath("/auth/callback"));
 assert.ok(!isPublicPagePath("/feed"));
 
 assert.ok(isPublicApiPath("/api/health"));
+assert.ok(isPublicApiPath("/api/globe/tile"));
 assert.ok(!isPublicApiPath("/api/scrape"));
 assert.ok(!isPublicPath("/feed", "GET"));
 

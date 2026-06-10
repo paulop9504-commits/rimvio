@@ -184,7 +184,7 @@ export function FeedPeerTalkFeedRows({
     phoneDm && !thread.closed,
   );
   const peerLastReadAt = polledReadAt ?? thread.peerLastReadAt ?? null;
-  const { anchorMessageId, candidates: lensCandidates } = usePeerAiLens({
+  const { candidatesByMessageId } = usePeerAiLens({
     messages: thread.messages,
     enabled: lensEnabled,
   });
@@ -199,10 +199,9 @@ export function FeedPeerTalkFeedRows({
   });
 
   const rowLensProps = (sliceId: string) => ({
-    lensCandidates:
-      sliceId === anchorMessageId ? lensCandidates : [],
+    lensCandidates: candidatesByMessageId[sliceId] ?? [],
     onLensSelect: (candidate: DeepLinkBubbleCandidate) =>
-      handleLensSelect(candidate, sliceId === anchorMessageId ? anchorMessageId ?? undefined : undefined),
+      handleLensSelect(candidate, sliceId),
     lensDisabled: !lensEnabled,
   });
 

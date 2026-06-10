@@ -56,6 +56,7 @@ export function prepareScheduleConfirmDraft(input: {
   const conflict = detectScheduleConflict({
     title,
     datetime: datetimeIso,
+    place: payload?.place?.trim() || undefined,
     sourceMessageId: input.sourceMessageId,
     events,
   });

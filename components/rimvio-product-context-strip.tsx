@@ -23,13 +23,25 @@ export function RimvioProductContextStrip({
   const line =
     variant === "feed" ? copy.product.feedContext : copy.product.peersContext;
 
+  const lightSurface = variant === "peers";
+
   if (layout === "header") {
     return (
       <div className={cn("min-w-0 pr-1", className)}>
-        <p className="truncate text-[11px] font-medium leading-snug text-white/72">
+        <p
+          className={cn(
+            "truncate text-[11px] font-medium leading-snug",
+            lightSurface ? "text-[#191f28]" : "text-white/72",
+          )}
+        >
           {line}
         </p>
-        <p className="mt-0.5 hidden text-[10px] leading-snug text-white/38 min-[360px]:line-clamp-1 min-[360px]:block">
+        <p
+          className={cn(
+            "mt-0.5 hidden text-[10px] leading-snug min-[360px]:line-clamp-1 min-[360px]:block",
+            lightSurface ? "text-[#6b7684]" : "text-white/38",
+          )}
+        >
           {copy.product.oneLinerSub}
         </p>
       </div>
@@ -39,12 +51,29 @@ export function RimvioProductContextStrip({
   return (
     <div
       className={cn(
-        "rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-center",
+        "rounded-xl px-3 py-2.5 text-center",
+        lightSurface
+          ? "border border-[#0220470f] bg-[#f2f4f6]/90"
+          : "border border-white/[0.08] bg-white/[0.04]",
         className,
       )}
     >
-      <p className="text-[12px] font-medium leading-snug text-white/75">{line}</p>
-      <p className="mt-0.5 text-[10px] text-white/40">{copy.product.oneLinerSub}</p>
+      <p
+        className={cn(
+          "text-[12px] font-medium leading-snug",
+          lightSurface ? "text-[#191f28]" : "text-white/75",
+        )}
+      >
+        {line}
+      </p>
+      <p
+        className={cn(
+          "mt-0.5 text-[10px]",
+          lightSurface ? "text-[#6b7684]" : "text-white/40",
+        )}
+      >
+        {copy.product.oneLinerSub}
+      </p>
       {showFeedLink ? (
         <Link
           href="/feed"

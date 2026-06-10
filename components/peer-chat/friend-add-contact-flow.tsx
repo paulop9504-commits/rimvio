@@ -126,7 +126,7 @@ export function FriendAddContactFlow({
   if (!canUse) {
     return (
       <div className={cn("space-y-2", className)}>
-        <p className="text-[12px] text-amber-200/90">
+        <p className="text-[12px] text-amber-700">
           친추는 Google 로그인 후에 쓸 수 있어요.
         </p>
         <Link
@@ -141,14 +141,14 @@ export function FriendAddContactFlow({
 
   if (loading) {
     return (
-      <p className={cn("text-[12px] text-white/55", className)}>프로필 확인 중…</p>
+      <p className={cn("text-[12px] text-[#6b7684]", className)}>프로필 확인 중…</p>
     );
   }
 
   if (error) {
     return (
       <div className={cn("space-y-2", className)}>
-        <p className="text-[12px] text-amber-200/90">{error}</p>
+        <p className="text-[12px] text-amber-700">{error}</p>
         <button
           type="button"
           onClick={loadPreview}
@@ -166,29 +166,29 @@ export function FriendAddContactFlow({
 
   return (
     <div className={cn("space-y-3", className)}>
-      <div className="flex items-center gap-3 rounded-2xl border border-rimvio-neon-cyan/20 bg-gradient-to-br from-white/[0.08] to-white/[0.02] px-3 py-3 shadow-[0_8px_32px_rgba(50,215,255,0.08)]">
+      <div className="flex items-center gap-3 rounded-2xl border border-[#0220470f] bg-white px-3 py-3 shadow-sm">
         <PeerProfileAvatar
           displayName={preview.displayName}
           avatarUrl={preview.avatarUrl}
           size="md"
-          className="ring-2 ring-rimvio-neon-cyan/25"
+          className="ring-2 ring-[#3182f6]/20"
         />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-white">
+          <p className="truncate text-sm font-semibold text-[#191f28]">
             {preview.displayName}
           </p>
           {preview.rimvioId ? (
-            <p className="truncate text-[12px] text-rimvio-neon-cyan/90">
+            <p className="truncate text-[12px] font-medium text-[#1b64da]">
               @{preview.rimvioId}
             </p>
           ) : null}
-          <p className="mt-0.5 text-[10px] text-white/45">
+          <p className="mt-0.5 text-[10px] text-[#6b7684]">
             {MATCHED_LABEL[preview.matchedBy] ?? preview.matchedBy}로 찾음
           </p>
         </div>
       </div>
       {helperText ? (
-        <p className="text-[11px] text-white/50">{helperText}</p>
+        <p className="text-[11px] text-[#6b7684]">{helperText}</p>
       ) : null}
       <MainActionButton
         label={submitting ? "추가 중…" : confirmLabel}

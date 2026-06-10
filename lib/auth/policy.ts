@@ -12,7 +12,11 @@ import { isAuthGateBypass } from "@/lib/auth/protected-routes";
 
 const PUBLIC_PAGE_PREFIXES = ["/auth/callback"] as const;
 
-const PUBLIC_API_PREFIXES = ["/api/health", "/api/auth/"] as const;
+const PUBLIC_API_PREFIXES = [
+  "/api/health",
+  "/api/auth/",
+  "/api/globe/tile",
+] as const;
 
 export function isPublicPagePath(pathname: string): boolean {
   if (isAuthGateBypass(pathname)) {

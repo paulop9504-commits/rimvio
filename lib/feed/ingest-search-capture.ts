@@ -14,6 +14,7 @@ import {
   appendFeedCaptureFragment,
   removeFeedCaptureFragment,
 } from "@/lib/feed/feed-capture-metadata";
+import { shouldRequireFeedCaptureVerify } from "@/lib/globe/globe-experience-settings";
 import {
   attachMediaIngest,
   evaluateContextMatchMedia,
@@ -95,7 +96,11 @@ export function commitCaptureToEvent(input: {
   };
 
   let metadata = appendFeedCaptureFragment(input.target.metadata, fragment);
-  if (!input.userConfirmedTarget) {
+  const needsVerify = shouldRequireFeedCaptureVerify({
+    userConfirmedTarget: input.userConfirmedTarget,
+    score: input.match?.score ?? null,
+  });
+  if (needsVerify) {
     metadata = {
       ...metadata,
       feedCapturePendingVerify: true,
@@ -104,7 +109,9 @@ export function commitCaptureToEvent(input: {
     metadata = {
       ...metadata,
       feedCapturePendingVerify: false,
-      feedCaptureVerifiedAt: new Date().toISOString(),
+      ...(input.userConfirmedTarget
+        ? { feedCaptureVerifiedAt: new Date().toISOString() }
+        : {}),
     };
   }
 

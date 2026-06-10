@@ -3,30 +3,42 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   buildGlobeMapTileGrid,
+  buildGlobeMapTileUrl,
   globeMapTileAttribution,
 } from "@/lib/experience-graph/build-globe-map-tiles";
-import { resolveGlobeTileUpstreamUrl } from "@/lib/experience-graph/resolve-globe-tile-upstream";
 import type { ClassifiedGlobePin } from "@/lib/feed/experience-globe-ping-types";
 import {
   projectFlatMapPinOffset,
-  resolveFlatMapSlippyZoom,
+  resolveFlatMapTileSlippyZoom,
+  resolveFlatMapZoomScale,
   type FlatMapView,
 } from "@/lib/globe/flat-map-view";
 import type { GlobeViewerLocation } from "@/lib/globe/globe-viewer-location-types";
-import { useFlatMapTouch } from "@/hooks/use-flat-map-touch";
 import { cn } from "@/lib/utils";
 
-function parseProxyTileUrl(url: string) {
+function parseTileCoords(url: string) {
   try {
     const parsed = new URL(url, "http://local");
-    const z = Number(parsed.searchParams.get("z"));
-    const x = Number(parsed.searchParams.get("x"));
-    const y = Number(parsed.searchParams.get("y"));
-    const style = parsed.searchParams.get("style")?.trim() || "voyager";
-    if (!Number.isFinite(z) || !Number.isFinite(x) || !Number.isFinite(y)) {
+    if (parsed.pathname.endsWith("/api/globe/tile")) {
+      const z = Number(parsed.searchParams.get("z"));
+      const x = Number(parsed.searchParams.get("x"));
+      const y = Number(parsed.searchParams.get("y"));
+      const style = parsed.searchParams.get("style")?.trim() || "voyager";
+      if (!Number.isFinite(z) || !Number.isFinite(x) || !Number.isFinite(y)) {
+        return null;
+      }
+      return { z, x, y, style: style as "voyager" };
+    }
+    const match = parsed.pathname.match(/\/(\d+)\/(\d+)\/(\d+)\.png$/);
+    if (!match) {
       return null;
     }
-    return { z, x, y, style: style as "voyager" };
+    return {
+      z: Number(match[1]),
+      x: Number(match[2]),
+      y: Number(match[3]),
+      style: "voyager" as const,
+    };
   } catch {
     return null;
   }
@@ -34,40 +46,50 @@ function parseProxyTileUrl(url: string) {
 
 export type GlobeFlatMapStageProps = {
   view: FlatMapView;
-  onViewChange: (view: FlatMapView) => void;
   pins: readonly ClassifiedGlobePin[];
   activePinId?: string | null;
   onPinPress?: (pinId: string) => void;
   viewerLocation?: GlobeViewerLocation | null;
   active?: boolean;
+  isInteracting?: boolean;
   className?: string;
 };
 
 export const GlobeFlatMapStage = memo(function GlobeFlatMapStage({
   view,
-  onViewChange,
   pins,
   activePinId = null,
   onPinPress,
   viewerLocation = null,
   active = false,
+  isInteracting = false,
   className,
 }: GlobeFlatMapStageProps) {
   const shellRef = useRef<HTMLDivElement>(null);
   const [viewport, setViewport] = useState({ width: 360, height: 640 });
   const [fallbackUrls, setFallbackUrls] = useState<Record<string, string>>({});
 
-  const slippyZoom = resolveFlatMapSlippyZoom(view.zoom);
+  const slippyTileZoom = resolveFlatMapTileSlippyZoom(view.zoom);
+  const zoomScale = resolveFlatMapZoomScale(view.zoom);
+  const panPxX = view.panPxX ?? 0;
+  const panPxY = view.panPxY ?? 0;
+  const gridSize = slippyTileZoom <= 13 ? 7 : 5;
   const grid = useMemo(
-    () => buildGlobeMapTileGrid(view.lat, view.lng, slippyZoom, 7, "voyager"),
-    [view.lat, view.lng, slippyZoom],
+    () =>
+      buildGlobeMapTileGrid(
+        view.lat,
+        view.lng,
+        slippyTileZoom,
+        gridSize,
+        "voyager",
+        "direct",
+      ),
+    [view.lat, view.lng, slippyTileZoom, gridSize],
   );
 
-  const { isInteracting, surfaceProps } = useFlatMapTouch({
-    view,
-    onViewChange,
-    enabled: active,
-  });
+  useEffect(() => {
+    setFallbackUrls({});
+  }, [slippyTileZoom]);
 
   const measureViewport = useCallback(() => {
     const rect = shellRef.current?.getBoundingClientRect();
@@ -87,17 +109,21 @@ export const GlobeFlatMapStage = memo(function GlobeFlatMapStage({
     return () => observer.disconnect();
   }, [measureViewport]);
 
-  const onTileError = useCallback((tileKey: string, proxyUrl: string) => {
-    const coords = parseProxyTileUrl(proxyUrl);
+  const onTileError = useCallback((tileKey: string, failedUrl: string) => {
+    const coords = parseTileCoords(failedUrl);
     if (!coords) {
       return;
     }
-    const upstream = resolveGlobeTileUpstreamUrl(coords);
-    if (!upstream) {
-      return;
-    }
+    const failedWasDirect = failedUrl.includes("cartocdn.com");
+    const fallback = buildGlobeMapTileUrl(
+      coords.z,
+      coords.x,
+      coords.y,
+      coords.style,
+      failedWasDirect ? "proxy" : "direct",
+    );
     setFallbackUrls((prev) =>
-      prev[tileKey] === upstream ? prev : { ...prev, [tileKey]: upstream },
+      prev[tileKey] === fallback ? prev : { ...prev, [tileKey]: fallback },
     );
   }, []);
 
@@ -125,24 +151,17 @@ export const GlobeFlatMapStage = memo(function GlobeFlatMapStage({
       )}
       data-rimvio-globe-flat-map
       data-rimvio-globe-flat-active={active ? "true" : "false"}
-      onPointerDown={(event) => {
-        measureViewport();
-        surfaceProps.onPointerDown(event);
-      }}
-      onPointerMove={surfaceProps.onPointerMove}
-      onPointerUp={surfaceProps.onPointerUp}
-      onPointerCancel={surfaceProps.onPointerCancel}
-      onWheel={surfaceProps.onWheel}
     >
       <div
         className={cn(
-          "absolute left-1/2 top-1/2 grid grid-cols-7 grid-rows-7",
-          isInteracting ? "transition-none" : "transition-transform duration-200 ease-out",
+          "absolute left-1/2 top-1/2 grid",
+          gridSize === 7 ? "grid-cols-7 grid-rows-7" : "grid-cols-5 grid-rows-5",
         )}
         style={{
           width: grid.gridPx,
           height: grid.gridPx,
-          transform: `translate(calc(-${grid.focalOffsetX}px), calc(-${grid.focalOffsetY}px))`,
+          transformOrigin: `${grid.focalOffsetX}px ${grid.focalOffsetY}px`,
+          transform: `translate(calc(-${grid.focalOffsetX}px + ${panPxX}px), calc(-${grid.focalOffsetY}px + ${panPxY}px)) scale(${zoomScale})`,
         }}
         aria-hidden
       >
@@ -156,9 +175,10 @@ export const GlobeFlatMapStage = memo(function GlobeFlatMapStage({
             height={256}
             className="block size-full object-cover contrast-[1.1] saturate-[1.08] brightness-[1.03]"
             loading="eager"
+            decoding="async"
             draggable={false}
             referrerPolicy="no-referrer"
-            onError={() => onTileError(tile.key, tile.url)}
+            onError={(event) => onTileError(tile.key, event.currentTarget.src)}
           />
         ))}
       </div>

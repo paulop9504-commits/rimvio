@@ -1,9 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   buildGlobePinSystemBody,
+  isPeerGlobePinPayload,
   type PeerGlobePinPayload,
   type SharedGlobePin,
 } from "@/lib/peer-chat/globe-pin-types";
+import { assertCallerIsThreadMember } from "@/lib/peer-chat/peer-public-profile";
 import { listSharedGlobePinsFromMessages } from "@/lib/peer-chat/project-thread-globe-pins";
 import {
   insertPeerMessage,
@@ -90,4 +92,125 @@ export async function insertSharedGlobePin(
   };
 
   return { pin, body };
+}
+
+export async function updateSharedGlobePin(
+  supabase: SupabaseClient<Database>,
+  input: {
+    threadId: string;
+    messageId: string;
+    callerUserId: string;
+    placeLabel?: string;
+    note?: string | null;
+  },
+): Promise<SharedGlobePin> {
+  await assertCallerIsThreadMember(
+    supabase,
+    input.threadId,
+    input.callerUserId,
+  );
+
+  const { data: row, error: fetchError } = await supabase
+    .from("peer_messages")
+    .select("id, thread_id, sender_user_id, created_at, message_type, ai_payload")
+    .eq("id", input.messageId)
+    .eq("thread_id", input.threadId)
+    .maybeSingle();
+
+  if (fetchError) {
+    throw fetchError;
+  }
+  if (!row) {
+    throw new Error("not_found:핀을 찾을 수 없어요.");
+  }
+  if (row.sender_user_id !== input.callerUserId) {
+    throw new Error("forbidden:내가 박은 핀만 고칠 수 있어요.");
+  }
+  if (row.message_type !== "system" || !isPeerGlobePinPayload(row.ai_payload)) {
+    throw new Error("not_globe_pin:이 핀은 고칠 수 없어요.");
+  }
+
+  const payload = row.ai_payload;
+  const placeLabel =
+    input.placeLabel !== undefined
+      ? input.placeLabel.trim() || "이곳"
+      : payload.placeLabel;
+  const note =
+    input.note !== undefined ? input.note?.trim() || null : payload.note ?? null;
+
+  const nextPayload: PeerGlobePinPayload = {
+    ...payload,
+    placeLabel,
+    note,
+  };
+
+  const body = buildGlobePinSystemBody({
+    senderDisplayName: payload.senderDisplayName,
+    placeLabel,
+    hasPhoto: Boolean(payload.imageUrl),
+  });
+
+  const { error: updateError } = await supabase
+    .from("peer_messages")
+    .update({
+      body,
+      ai_payload:
+        nextPayload as unknown as import("@/lib/chat-room/types").AiMessagePayload,
+    })
+    .eq("id", input.messageId)
+    .eq("thread_id", input.threadId);
+
+  if (updateError) {
+    throw updateError;
+  }
+
+  return {
+    messageId: row.id,
+    peerThreadId: row.thread_id,
+    senderUserId: row.sender_user_id,
+    sentAt: row.created_at,
+    payload: nextPayload,
+  };
+}
+
+export async function deleteSharedGlobePin(
+  supabase: SupabaseClient<Database>,
+  input: {
+    threadId: string;
+    messageId: string;
+    callerUserId: string;
+  },
+): Promise<void> {
+  await assertCallerIsThreadMember(
+    supabase,
+    input.threadId,
+    input.callerUserId,
+  );
+
+  const { data: row, error: fetchError } = await supabase
+    .from("peer_messages")
+    .select("id, thread_id, message_type, ai_payload")
+    .eq("id", input.messageId)
+    .eq("thread_id", input.threadId)
+    .maybeSingle();
+
+  if (fetchError) {
+    throw fetchError;
+  }
+  if (!row) {
+    throw new Error("not_found:핀을 찾을 수 없어요.");
+  }
+  if (row.message_type !== "system" || !isPeerGlobePinPayload(row.ai_payload)) {
+    throw new Error("not_globe_pin:이 핀은 삭제할 수 없어요.");
+  }
+
+  const { error: deleteError } = await supabase
+    .from("peer_messages")
+    .delete()
+    .eq("id", input.messageId)
+    .eq("thread_id", input.threadId);
+
+  if (deleteError) {
+    throw deleteError;
+  }
 }

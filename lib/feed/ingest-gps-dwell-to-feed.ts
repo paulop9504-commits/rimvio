@@ -6,6 +6,7 @@ import type { FeedCaptureFragment } from "@/lib/feed/feed-capture-types";
 import {
   appendFeedCaptureFragment,
   readFeedCaptureFragments,
+  wasFeedCaptureHumanVerified,
 } from "@/lib/feed/feed-capture-metadata";
 import { formatDwellMinutesLabel } from "@/lib/feed/project-dwell-from-gps-pings";
 import { resolveSpacetimeFeedTarget } from "@/lib/feed/resolve-spacetime-feed-target";
@@ -14,6 +15,7 @@ import {
   markGpsDwellClusterIngested,
 } from "@/lib/feed/gps-dwell-ingest-store";
 import type { GpsDwellCluster } from "@/lib/location-ping/gps-dwell-cluster-types";
+import { resolvePlaceCoordinates } from "@/lib/experience-graph/resolve-place-coordinates";
 import { commitEventUpsert } from "@/lib/source-of-truth/commit-truth";
 
 function toLocalEventIso(date: Date): string {
@@ -59,7 +61,10 @@ function buildGpsDwellEventDraft(cluster: GpsDwellCluster): EventCandidate {
   };
 }
 
-function buildGpsDwellFragment(cluster: GpsDwellCluster): FeedCaptureFragment {
+function buildGpsDwellFragment(
+  cluster: GpsDwellCluster,
+  verified = false,
+): FeedCaptureFragment {
   return {
     id: cluster.id,
     kind: "gps_dwell",
@@ -68,12 +73,63 @@ function buildGpsDwellFragment(cluster: GpsDwellCluster): FeedCaptureFragment {
     label: formatDwellMinutesLabel(cluster.dwellMinutes),
     dwellMinutes: cluster.dwellMinutes,
     autoAttached: true,
-    verified: false,
+    verified,
   };
 }
 
 function clusterAlreadyOnEvent(event: EventCandidate, clusterId: string): boolean {
   return readFeedCaptureFragments(event).some((fragment) => fragment.id === clusterId);
+}
+
+function localDayStamp(iso: string): number | null {
+  const ms = Date.parse(iso);
+  if (Number.isNaN(ms)) {
+    return null;
+  }
+  const date = new Date(ms);
+  return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function placeLabelsOverlap(
+  eventPlace: string,
+  capturedPlace: string,
+): boolean {
+  if (eventPlace.includes(capturedPlace) || capturedPlace.includes(eventPlace)) {
+    return true;
+  }
+  return (
+    resolvePlaceCoordinates(eventPlace).label ===
+    resolvePlaceCoordinates(capturedPlace).label
+  );
+}
+
+/** Reuse a human-confirmed stay card for the same place/day — no second popup. */
+function findSameDayVerifiedGpsEvent(
+  events: readonly EventCandidate[],
+  cluster: GpsDwellCluster,
+): EventCandidate | null {
+  const place = cluster.placeLabel.trim();
+  if (!place || place.includes("°")) {
+    return null;
+  }
+  const clusterDay = localDayStamp(cluster.startIso);
+  if (clusterDay === null) {
+    return null;
+  }
+
+  return (
+    events.find((event) => {
+      if (!wasFeedCaptureHumanVerified(event.metadata)) {
+        return false;
+      }
+      const eventPlace = event.place?.trim();
+      if (!eventPlace || !placeLabelsOverlap(eventPlace, place)) {
+        return false;
+      }
+      const eventDay = event.datetime ? localDayStamp(event.datetime) : null;
+      return eventDay === clusterDay;
+    }) ?? null
+  );
 }
 
 function commitGpsDwellToEvent(input: {
@@ -82,10 +138,11 @@ function commitGpsDwellToEvent(input: {
   match: ReturnType<typeof resolveSpacetimeFeedTarget>;
   createdNewEvent: boolean;
 }): EventCandidate {
-  const fragment = buildGpsDwellFragment(input.cluster);
+  const humanVerified = wasFeedCaptureHumanVerified(input.target.metadata);
+  const fragment = buildGpsDwellFragment(input.cluster, humanVerified);
   const metadata = {
     ...appendFeedCaptureFragment(input.target.metadata, fragment),
-    feedCapturePendingVerify: true,
+    feedCapturePendingVerify: humanVerified ? false : true,
     targetingSource: input.createdNewEvent ? "gps_background" : input.target.metadata?.targetingSource,
     gpsDwellMinutes: Math.max(
       typeof input.target.metadata?.gpsDwellMinutes === "number"
@@ -151,8 +208,13 @@ export function ingestGpsDwellCluster(cluster: GpsDwellCluster): GpsDwellIngestR
       createdNewEvent = true;
     }
   } else {
-    target = buildGpsDwellEventDraft(cluster);
-    createdNewEvent = true;
+    const verifiedSameDay = findSameDayVerifiedGpsEvent(events, cluster);
+    if (verifiedSameDay) {
+      target = verifiedSameDay;
+    } else {
+      target = buildGpsDwellEventDraft(cluster);
+      createdNewEvent = true;
+    }
   }
 
   const saved = commitGpsDwellToEvent({

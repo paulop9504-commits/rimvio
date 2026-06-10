@@ -17,6 +17,10 @@ const voyager = buildGlobeMapTileGrid(37.5665, 126.978, 8, 3, "voyager");
 assert.equal(voyager.tiles.length, 9);
 assert.match(voyager.tiles[0]!.url, /style=voyager/);
 
+const flatDirect = buildGlobeMapTileGrid(37.5665, 126.978, 14, 5, "voyager", "direct");
+assert.equal(flatDirect.tiles.length, 25);
+assert.match(flatDirect.tiles[0]!.url, /cartocdn\.com\/rastertiles\/voyager/);
+
 assert.equal(resolveGlobeMapZoom(1.85, "satellite"), 7);
 assert.equal(resolveGlobeMapZoom(1.85, "voyager"), 11);
 

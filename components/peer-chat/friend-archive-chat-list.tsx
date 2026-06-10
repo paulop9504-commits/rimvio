@@ -67,8 +67,8 @@ export function FriendArchiveChatList({
           className,
         )}
       >
-        <p className="text-sm text-white/55">주머니가 비어 있어요</p>
-        <p className="max-w-[16rem] text-[11px] leading-relaxed text-white/40">
+        <p className="text-sm text-[#6b7684]">주머니가 비어 있어요</p>
+        <p className="max-w-[16rem] text-[11px] leading-relaxed text-[#8b95a1]">
           친구를 추가하면 프로필이 여기에 쌓여요
         </p>
       </div>
@@ -80,18 +80,18 @@ export function FriendArchiveChatList({
       <button
         type="button"
         onClick={() => setCollapsed((value) => !value)}
-        className="flex w-full items-center gap-2 px-4 py-2.5 text-left active:bg-white/[0.04]"
+        className="flex w-full items-center gap-2 px-4 py-2.5 text-left active:bg-[#f2f4f6]"
         aria-expanded={!collapsed}
       >
-        <span className="text-[15px] font-semibold text-white">
+        <span className="text-[15px] font-semibold text-[#191f28]">
           친구 {rows.length}
         </span>
         {unreadTotal > 0 ? (
-          <span className="rounded-full bg-amber-400/20 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
+          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
             새 톡 {unreadTotal > 99 ? "99+" : unreadTotal}
           </span>
         ) : null}
-        <span className="ml-auto text-white/40">
+        <span className="ml-auto text-[#8b95a1]">
           {collapsed ? (
             <ChevronDown className="size-4" aria-hidden />
           ) : (
@@ -103,7 +103,7 @@ export function FriendArchiveChatList({
       {!collapsed ? <StackedProfileStrip rows={rows} /> : null}
 
       {!collapsed ? (
-        <ul className="min-h-0 flex-1 divide-y divide-white/10 overflow-y-auto overscroll-y-contain">
+        <ul className="min-h-0 flex-1 divide-y divide-[#0220470f] overflow-y-auto overscroll-y-contain">
           {rows.map((row) => {
             const href = `/peers/${encodeURIComponent(row.threadId)}`;
             return (
@@ -111,7 +111,7 @@ export function FriendArchiveChatList({
                 <Link
                   href={href}
                   onClick={() => onSelect?.(row.threadId)}
-                  className="flex items-center gap-3 px-4 py-3.5 active:bg-white/[0.04]"
+                  className="flex items-center gap-3 px-4 py-3.5 active:bg-[#f2f4f6]"
                 >
                   <PeerProfileAvatar
                     displayName={row.displayName}
@@ -119,10 +119,10 @@ export function FriendArchiveChatList({
                     size="sm"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[15px] font-semibold text-white">
+                    <p className="truncate text-[15px] font-semibold text-[#191f28]">
                       {row.displayName}
                     </p>
-                    <p className="truncate text-[13px] text-white/55">
+                    <p className="truncate text-[13px] text-[#6b7684]">
                       {row.lastMessage?.trim() ||
                         (row.unreadCount > 0
                           ? `새 메시지 ${row.unreadCount}`
@@ -130,7 +130,7 @@ export function FriendArchiveChatList({
                     </p>
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1.5 pl-1">
-                    <span className="text-[11px] tabular-nums text-white/45">
+                    <span className="text-[11px] tabular-nums text-[#8b95a1]">
                       {formatRelativeKo(row.lastActivityAt)}
                     </span>
                     {row.unreadCount > 0 ? (

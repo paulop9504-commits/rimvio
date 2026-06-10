@@ -30,6 +30,8 @@ type PinchSession = {
 export type UseGlobeTouchControlOptions = {
   baseView: SpatialGlobeView;
   enabled?: boolean;
+  /** Pin focused — block wheel/pinch zoom so the view does not snap back. */
+  lockZoom?: boolean;
 };
 
 export type GlobeTouchSurfaceProps = {
@@ -43,10 +45,13 @@ export type GlobeTouchSurfaceProps = {
 export function useGlobeTouchControl({
   baseView,
   enabled = true,
+  lockZoom = false,
 }: UseGlobeTouchControlOptions) {
   const [view, setView] = useState(baseView);
   const viewRef = useRef(view);
   viewRef.current = view;
+  const lockZoomRef = useRef(lockZoom);
+  lockZoomRef.current = lockZoom;
   const [isInteracting, setIsInteracting] = useState(false);
   const userAdjustedRef = useRef(false);
   const spherePxRef = useRef(400);
@@ -147,6 +152,9 @@ export function useGlobeTouchControl({
       }
 
       if (pointersRef.current.size >= 2 && pinchRef.current) {
+        if (lockZoomRef.current) {
+          return;
+        }
         const points = Array.from(pointersRef.current.values());
         const distance = pointerDistance(points);
         consumedTapRef.current = true;
@@ -239,7 +247,7 @@ export function useGlobeTouchControl({
 
   const onWheel = useCallback(
     (event: React.WheelEvent<HTMLElement>) => {
-      if (!enabled) {
+      if (!enabled || lockZoomRef.current) {
         return;
       }
       event.preventDefault();

@@ -7,7 +7,12 @@ import {
   resetEventCandidatesForTests,
   upsertEventCandidate,
 } from "@/lib/events/event-store";
-import { hasPendingFeedCaptureVerify } from "@/lib/feed/feed-capture-metadata";
+import {
+  appendFeedCaptureFragment,
+  hasPendingFeedCaptureVerify,
+  wasFeedCaptureHumanVerified,
+} from "@/lib/feed/feed-capture-metadata";
+import type { GpsDwellCluster } from "@/lib/location-ping/gps-dwell-cluster-types";
 import type { GpsPing } from "@/lib/location-ping/types";
 
 function jejuPings(): GpsPing[] {
@@ -88,7 +93,57 @@ function testIngestCreatesEventWithoutPhoto() {
   assert.equal(again.ingested, false);
 }
 
+function testFollowUpDwellStaysVerifiedAfterHumanConfirm() {
+  const stamp = new Date().toISOString();
+  const verifiedMetadata = {
+    targetingSource: "gps_background",
+    feedCaptureVerifiedAt: stamp,
+    feedCapturePendingVerify: false,
+    feedCaptures: [
+      {
+        id: "gps-dwell:first",
+        kind: "gps_dwell",
+        capturedAtIso: "2026-06-06T10:00:00+09:00",
+        autoAttached: true,
+        verified: true,
+        dwellMinutes: 129,
+      },
+    ],
+  };
+
+  assert.equal(wasFeedCaptureHumanVerified(verifiedMetadata), true);
+
+  const followUpCluster: GpsDwellCluster = {
+    id: "gps-dwell:follow-up:36300:127000",
+    startIso: "2026-06-06T12:30:00+09:00",
+    endIso: "2026-06-06T13:09:00+09:00",
+    lat: 36.35,
+    lng: 127.38,
+    placeLabel: "둔산동",
+    dwellMinutes: 39,
+    pingCount: 5,
+  };
+
+  const humanVerified = wasFeedCaptureHumanVerified(verifiedMetadata);
+  const metadata = {
+    ...appendFeedCaptureFragment(verifiedMetadata, {
+      id: followUpCluster.id,
+      kind: "gps_dwell",
+      capturedAtIso: followUpCluster.startIso,
+      placeLabel: followUpCluster.placeLabel,
+      label: `${followUpCluster.dwellMinutes}분`,
+      dwellMinutes: followUpCluster.dwellMinutes,
+      autoAttached: true,
+      verified: humanVerified,
+    }),
+    feedCapturePendingVerify: humanVerified ? false : true,
+  };
+
+  assert.equal(hasPendingFeedCaptureVerify({ metadata } as import("../lib/events/event-candidate").EventCandidate), false);
+}
+
 testDetectClosedCluster();
 testIngestAttachesToPlanEvent();
 testIngestCreatesEventWithoutPhoto();
+testFollowUpDwellStaysVerifiedAfterHumanConfirm();
 console.log("test-gps-background-event-ingest: ok");

@@ -210,7 +210,7 @@ function meetsMentionGuard(
 
   }
 
-  return signals.title && (signals.window || signals.peer);
+  return signals.title || signals.place;
 
 }
 

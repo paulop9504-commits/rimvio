@@ -234,10 +234,10 @@ export function RimvioAccountProfilePanel({
           )}
         >
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[12px] font-medium text-white">{ap.editTitle}</p>
+            <p className="text-[12px] font-medium text-foreground">{ap.editTitle}</p>
             <button
               type="button"
-              className="text-[11px] text-white/60"
+              className="text-[11px] text-muted-foreground"
               onClick={() => {
                 setEditing(false);
                 void load();
@@ -268,18 +268,18 @@ export function RimvioAccountProfilePanel({
           className="shrink-0 gap-0"
         />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[12px] font-medium text-white">
+          <p className="truncate text-[12px] font-medium text-foreground">
             {displayName.trim() || ap.noDisplayName}
           </p>
           {savedRimvioId ? (
-            <p className="font-mono text-sm font-semibold text-rimvio-neon-cyan">
+            <p className="font-mono text-sm font-semibold text-[#1b64da]">
               @{savedRimvioId}
             </p>
           ) : (
-            <p className="text-[11px] text-white/55">{ap.noRimvioId}</p>
+            <p className="text-[11px] text-muted-foreground">{ap.noRimvioId}</p>
           )}
           {(email || phone) && (
-            <p className="mt-0.5 truncate text-[10px] text-white/50">
+            <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
               {email ?? ""}
               {email && phone ? " · " : ""}
               {phone ? formatPhoneDisplay(phone) : ""}

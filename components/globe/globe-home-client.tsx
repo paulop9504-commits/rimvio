@@ -2,19 +2,32 @@
 
 import { Suspense, useCallback, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { CalendarPlus, CalendarRange, Settings } from "lucide-react";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { RimvioGlobeHubClient } from "@/components/experience/rimvio-globe-hub-client";
+import { GlobeContextIngestBar } from "@/components/globe/globe-context-ingest-bar";
+import { GlobeContextListSheet } from "@/components/globe/globe-context-list-sheet";
+import { GlobeCreateContextSheet } from "@/components/globe/globe-create-context-sheet";
 import { GlobeGpsPanel } from "@/components/globe/globe-gps-panel";
+import { GlobeSettingsSheet } from "@/components/globe/globe-settings-sheet";
 import { GlobeLocationConfirmCard } from "@/components/globe/globe-location-confirm-card";
 import { PinOpenSheet } from "@/components/globe/pin-open-sheet";
+import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
+import { buildPinClusterFromEvent } from "@/lib/globe/build-pin-cluster-from-event";
+import type { GlobeContextTimelineEntry } from "@/lib/globe/list-globe-context-timeline";
 import type { PinCluster } from "@/lib/globe/pin-cluster-types";
+import { findLifeEventCandidate } from "@/lib/life-read-model";
 
 function GlobeHomeBody() {
   const searchParams = useSearchParams();
   const recallEventId = searchParams.get("recallEvent");
   const globeRef = useRef<RimvioGlobeHubHandle>(null);
+  const liveLocation = useLiveLocationSnapshot();
   const [activeCluster, setActiveCluster] = useState<PinCluster | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [listOpen, setListOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const onPinPress = useCallback((cluster: PinCluster) => {
     globeRef.current?.flyToPin(cluster.lat, cluster.lng, "neighborhood");
@@ -24,10 +37,32 @@ function GlobeHomeBody() {
 
   const onSheetOpenChange = useCallback((open: boolean) => {
     setSheetOpen(open);
-    if (!open) {
-      globeRef.current?.resetToOverview();
+  }, []);
+
+  const openContextByEventId = useCallback((eventId: string) => {
+    const event = findLifeEventCandidate(eventId);
+    if (!event) {
+      return;
+    }
+    const cluster = buildPinClusterFromEvent(event);
+    setListOpen(false);
+    globeRef.current?.flyToPin(cluster.lat, cluster.lng, "neighborhood");
+    setActiveCluster(cluster);
+    setSheetOpen(true);
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("recallEvent") !== event.id) {
+      params.set("recallEvent", event.id);
+      const next = `${window.location.pathname}?${params.toString()}`;
+      window.history.replaceState(null, "", next);
     }
   }, []);
+
+  const openContextEntry = useCallback(
+    (entry: GlobeContextTimelineEntry) => {
+      openContextByEventId(entry.eventId);
+    },
+    [openContextByEventId],
+  );
 
   return (
     <div className="relative flex h-full min-h-0 flex-1 flex-col">
@@ -37,12 +72,64 @@ function GlobeHomeBody() {
         initialRecallEventId={recallEventId}
         onPinPress={onPinPress}
       />
-      <div className="pointer-events-none absolute left-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20 sm:right-auto">
+      <div className="pointer-events-none absolute left-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20 flex flex-col gap-2 sm:right-auto">
+        <div className="pointer-events-auto flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={() => setCreateOpen(true)}
+            className="flex items-center gap-1.5 rounded-full bg-card/95 px-3 py-2 text-[12px] font-semibold text-foreground shadow-sm ring-1 ring-border backdrop-blur-md active:scale-[0.98]"
+            data-globe-create-context-trigger
+          >
+            <CalendarPlus className="size-3.5 text-primary" aria-hidden />
+            맥락 만들기
+          </button>
+          <button
+            type="button"
+            onClick={() => setListOpen(true)}
+            className="flex items-center gap-1.5 rounded-full bg-card/95 px-3 py-2 text-[12px] font-semibold text-foreground shadow-sm ring-1 ring-border backdrop-blur-md active:scale-[0.98]"
+            data-globe-context-list-trigger
+          >
+            <CalendarRange className="size-3.5 text-primary" aria-hidden />
+            내 맥락
+          </button>
+        </div>
         <div className="pointer-events-auto">
-          <GlobeGpsPanel />
+          <GlobeGpsPanel
+            onFlyToHere={
+              liveLocation
+                ? () =>
+                    globeRef.current?.flyToPin(
+                      liveLocation.lat,
+                      liveLocation.lng,
+                      "neighborhood",
+                    )
+                : undefined
+            }
+          />
         </div>
       </div>
-      <div className="pointer-events-none absolute inset-x-3 bottom-[max(4.5rem,env(safe-area-inset-bottom))] z-20 sm:inset-x-auto sm:right-3 sm:max-w-[280px]">
+      <div className="pointer-events-none absolute right-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20">
+        <button
+          type="button"
+          onClick={() => setSettingsOpen(true)}
+          className="pointer-events-auto flex size-10 items-center justify-center rounded-full bg-card/95 text-foreground shadow-sm ring-1 ring-border backdrop-blur-md active:scale-[0.98]"
+          aria-label="지구본 설정"
+          data-globe-settings-trigger
+        >
+          <Settings className="size-4 text-primary" aria-hidden />
+        </button>
+      </div>
+      <GlobeContextIngestBar
+        onAttached={(eventId) => {
+          const params = new URLSearchParams(window.location.search);
+          if (params.get("recallEvent") !== eventId) {
+            params.set("recallEvent", eventId);
+            const next = `${window.location.pathname}?${params.toString()}`;
+            window.history.replaceState(null, "", next);
+          }
+        }}
+      />
+      <div className="pointer-events-none absolute inset-x-3 bottom-[var(--rimvio-globe-ingest-offset)] z-20 sm:inset-x-auto sm:right-3 sm:max-w-[280px] lg:bottom-[calc(var(--rimvio-globe-ingest-bar-height)+1.25rem)]">
         <div className="pointer-events-auto">
           <GlobeLocationConfirmCard />
         </div>
@@ -61,6 +148,19 @@ function GlobeHomeBody() {
           }
         }}
       />
+      <GlobeCreateContextSheet
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={({ event }) => {
+          openContextByEventId(event.id);
+        }}
+      />
+      <GlobeContextListSheet
+        open={listOpen}
+        onOpenChange={setListOpen}
+        onSelect={openContextEntry}
+      />
+      <GlobeSettingsSheet open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   );
 }

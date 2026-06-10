@@ -12,8 +12,10 @@ const TRANSFER_RE = /(?:계좌|송금|이체|보내줘|입금|송금해)/iu;
 const MOVIE_RE = /(?:CGV|영화|메가박스|롯데시네마|상영)/iu;
 const PLACE_QUERY_RE =
   /([가-힣a-zA-Z0-9]+(?:동|역|점|집|카페|식당|CGV|치킨|멕시카나)[가-힣a-zA-Z0-9\s]{0,24})/u;
+const TRAVEL_SIGNAL =
+  /(?:여행|출국|제주|오사카|해외|trip|flight|호텔|숙소)/iu;
 
-function emptyContext(): LensThreadContext {
+export function emptyLensThreadContext(): LensThreadContext {
   return {
     intents: new Set(),
     dateKey: null,
@@ -90,14 +92,29 @@ function applyMessageToContext(
   }
 
   const place = extractPlaceCandidate(body);
+  const scheduleLike =
+    MEETING_RE.test(body) || Boolean(parsedDate) || Boolean(time);
   if (place) {
     next.intents.add("place");
     next.placeText = place;
-    if (!next.titleHint) {
+    if (scheduleLike || !next.titleHint) {
       next.titleHint = place.includes("약속") ? place : `${place} 약속`;
     }
   } else if (MEETING_RE.test(body) && !next.placeText) {
     next.intents.add("place_pending");
+  }
+
+  if (TRAVEL_SIGNAL.test(body) && (parsedDate || time || /여행/u.test(body))) {
+    next.intents.add("meeting");
+    const dest = body.match(/([가-힣a-zA-Z]{2,10}(?:도|시)?)\s*여행/u)?.[1];
+    if (dest) {
+      next.titleHint = `${dest} 여행`;
+      if (!next.placeText) {
+        next.placeText = dest;
+      }
+    } else if (!next.titleHint) {
+      next.titleHint = "여행";
+    }
   }
 
   if (TRANSFER_RE.test(body)) {
@@ -116,21 +133,34 @@ function applyMessageToContext(
   return next;
 }
 
-/** Deterministic intent scan over recent DM thread (newest messages win for place/time). */
+/** Single-message lens context — avoids bleeding place/title from older turns. */
+export function detectLensMessageContext(
+  message: PeerMessage,
+  referenceDate: Date = new Date(),
+): LensThreadContext {
+  let ctx = emptyLensThreadContext();
+  ctx = applyMessageToContext(ctx, message, referenceDate);
+  if (message.messageType === "human" && hasActionableLensIntent(ctx)) {
+    ctx = { ...ctx, anchorMessageId: message.id };
+  }
+  return ctx;
+}
+
+/** @deprecated Prefer per-message analysis in analyzePeerThreadForLens. */
 export function detectLensThreadContext(
   messages: readonly PeerMessage[],
   windowSize = 12,
   referenceDate: Date = new Date(),
 ): LensThreadContext {
-  let ctx = emptyContext();
   const slice = messages.slice(-windowSize);
+  let latest: LensThreadContext = emptyLensThreadContext();
   for (const message of slice) {
-    ctx = applyMessageToContext(ctx, message, referenceDate);
-    if (message.messageType === "human" && hasActionableLensIntent(ctx)) {
-      ctx = { ...ctx, anchorMessageId: message.id };
+    const ctx = detectLensMessageContext(message, referenceDate);
+    if (ctx.anchorMessageId) {
+      latest = ctx;
     }
   }
-  return ctx;
+  return latest;
 }
 
 export function hasActionableLensIntent(ctx: LensThreadContext): boolean {

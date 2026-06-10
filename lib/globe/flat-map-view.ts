@@ -10,25 +10,66 @@ export type FlatMapView = {
   lng: number;
   /** UI zoom knob — maps to slippy z11–z20. */
   zoom: number;
+  /** Drag residue in map pixels — committed to lat/lng on gesture end. */
+  panPxX?: number;
+  panPxY?: number;
 };
 
-export const FLAT_MAP_ZOOM_MIN = 1.25;
-export const FLAT_MAP_ZOOM_MAX = 4.25;
-/** Pinch out below this hands control back to the 3D globe. */
-export const FLAT_MAP_EXIT_ZOOM = 1.42;
+export const FLAT_MAP_ZOOM_MIN = 1.05;
+export const FLAT_MAP_ZOOM_MAX = 4.35;
+/** Pinch out below this (on release) hands control back to the 3D globe. */
+export const FLAT_MAP_EXIT_ZOOM = 1.18;
 
 export function clampFlatMapZoom(zoom: number): number {
   return Math.min(FLAT_MAP_ZOOM_MAX, Math.max(FLAT_MAP_ZOOM_MIN, zoom));
 }
 
+/** Continuous slippy zoom — drives pan math + CSS scale between tile levels. */
+export function resolveFlatMapSlippyZoomContinuous(viewZoom: number): number {
+  const clamped = clampFlatMapZoom(viewZoom);
+  return Math.min(20.999, Math.max(11, 9 + clamped * 2.6));
+}
+
+/** Integer tile level for fetching raster tiles. */
+export function resolveFlatMapTileSlippyZoom(viewZoom: number): number {
+  return Math.floor(resolveFlatMapSlippyZoomContinuous(viewZoom));
+}
+
+/** CSS scale between tile levels so pinch feels continuous (not steppy). */
+export function resolveFlatMapZoomScale(viewZoom: number): number {
+  const continuous = resolveFlatMapSlippyZoomContinuous(viewZoom);
+  return 2 ** (continuous - Math.floor(continuous));
+}
+
+/** Rounded slippy level — legacy/tests. */
 export function resolveFlatMapSlippyZoom(viewZoom: number): number {
-  return Math.min(20, Math.max(11, Math.round(9 + viewZoom * 2.6)));
+  return Math.round(resolveFlatMapSlippyZoomContinuous(viewZoom));
 }
 
 /** Seed flat view when handing off from globe.gl altitude. */
 export function flatMapZoomFromGlobeAltitude(altitude: number): number {
   const safe = Math.max(0.001, altitude);
   return clampFlatMapZoom(2.75 - Math.log10(safe) * 0.82);
+}
+
+/** Default street-map zoom when opening flat mode directly. */
+export const FLAT_MAP_STREET_ZOOM = 3.15;
+
+export function buildFlatMapHandoffView(input: {
+  lat: number;
+  lng: number;
+  altitude?: number;
+  zoom?: number;
+}): FlatMapView {
+  return {
+    lat: input.lat,
+    lng: input.lng,
+    zoom:
+      input.zoom ??
+      (input.altitude != null
+        ? flatMapZoomFromGlobeAltitude(input.altitude)
+        : FLAT_MAP_STREET_ZOOM),
+  };
 }
 
 export function mercatorPixelToLatLng(
@@ -47,19 +88,51 @@ export function mercatorPixelToLatLng(
   };
 }
 
+/** Incremental drag — keeps tile grid anchored until gesture ends. */
+export function panFlatMapViewDelta(
+  view: FlatMapView,
+  deltaXPx: number,
+  deltaYPx: number,
+): FlatMapView {
+  const scale = resolveFlatMapZoomScale(view.zoom);
+  return {
+    ...view,
+    panPxX: (view.panPxX ?? 0) + deltaXPx / scale,
+    panPxY: (view.panPxY ?? 0) + deltaYPx / scale,
+  };
+}
+
+/** Legacy absolute pan — tests only. */
 export function panFlatMapView(
   view: FlatMapView,
   deltaXPx: number,
   deltaYPx: number,
 ): FlatMapView {
-  const slippyZoom = resolveFlatMapSlippyZoom(view.zoom);
+  return commitFlatMapPan(
+    panFlatMapViewDelta(view, deltaXPx, deltaYPx),
+  );
+}
+
+export function commitFlatMapPan(view: FlatMapView): FlatMapView {
+  const panPxX = view.panPxX ?? 0;
+  const panPxY = view.panPxY ?? 0;
+  if (Math.abs(panPxX) < 0.5 && Math.abs(panPxY) < 0.5) {
+    return { ...view, panPxX: 0, panPxY: 0 };
+  }
+  const slippyZoom = resolveFlatMapSlippyZoomContinuous(view.zoom);
   const center = latLngToMercatorPixel(view.lat, view.lng, slippyZoom);
   const next = mercatorPixelToLatLng(
-    center.x - deltaXPx,
-    center.y - deltaYPx,
+    center.x - panPxX,
+    center.y - panPxY,
     slippyZoom,
   );
-  return { ...view, lat: next.lat, lng: next.lng };
+  return {
+    lat: next.lat,
+    lng: next.lng,
+    zoom: view.zoom,
+    panPxX: 0,
+    panPxY: 0,
+  };
 }
 
 export function zoomFlatMapView(view: FlatMapView, factor: number): FlatMapView {
@@ -75,7 +148,9 @@ export function zoomFlatMapFromPinch(
   if (startDistance <= 0 || currentDistance <= 0) {
     return view;
   }
-  return { ...view, zoom: clampFlatMapZoom(startZoom * (currentDistance / startDistance)) };
+  const ratio = currentDistance / startDistance;
+  const adjusted = ratio ** 0.86;
+  return { ...view, zoom: clampFlatMapZoom(startZoom * adjusted) };
 }
 
 export function projectFlatMapPinOffset(
@@ -85,12 +160,12 @@ export function projectFlatMapPinOffset(
   viewportWidth: number,
   viewportHeight: number,
 ): { x: number; y: number } {
-  const slippyZoom = resolveFlatMapSlippyZoom(view.zoom);
+  const slippyZoom = resolveFlatMapSlippyZoomContinuous(view.zoom);
   const center = latLngToMercatorPixel(view.lat, view.lng, slippyZoom);
   const pin = latLngToMercatorPixel(pinLat, pinLng, slippyZoom);
   return {
-    x: viewportWidth / 2 + (pin.x - center.x),
-    y: viewportHeight / 2 + (pin.y - center.y),
+    x: viewportWidth / 2 + (pin.x - center.x) + (view.panPxX ?? 0),
+    y: viewportHeight / 2 + (pin.y - center.y) + (view.panPxY ?? 0),
   };
 }
 

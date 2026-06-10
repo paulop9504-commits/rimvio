@@ -318,7 +318,7 @@ export function FivePeerHubClient() {
           <DemoPeerRoomPreview className="mx-1" />
         </>
       ) : (
-        <p className="px-1 text-center text-[12px] text-white/55">
+        <p className="px-1 text-center text-[12px] text-[#6b7684]">
           {copy.peers.hubHint}
         </p>
       )}
@@ -350,8 +350,8 @@ export function FivePeerHubClient() {
           role="dialog"
           aria-label={dialogTitle}
         >
-          <p className="text-sm font-semibold text-white">{dialogTitle}</p>
-          <p className="text-[11px] text-white/65">
+          <p className="text-sm font-semibold text-[#191f28]">{dialogTitle}</p>
+          <p className="text-[11px] text-[#6b7684]">
             {quickAddOpen
               ? "Rimvio ID · 전화번호 · 이메일로 친구를 찾아요"
               : "친한 5 · 메시지 영구 보관 · 나머지는 구슬 주머니"}
@@ -361,7 +361,7 @@ export function FivePeerHubClient() {
             onChange={(e) => setPhone(e.target.value)}
             placeholder="rimvio_id · 010-… · email@gmail.com"
             inputMode="text"
-            className="h-11 w-full rounded-2xl border-0 bg-rimvio-surface-muted px-4 text-sm text-white outline-none placeholder:text-white/45 focus:ring-2 focus:ring-rimvio-neon-cyan/40"
+            className="h-11 w-full rounded-2xl border border-[#02204714] bg-white px-4 text-sm text-[#191f28] outline-none placeholder:text-[#8b95a1] focus:ring-2 focus:ring-[#3182f6]/35"
             autoFocus
           />
           <FriendAddContactFlow
@@ -377,7 +377,7 @@ export function FivePeerHubClient() {
           />
           <button
             type="button"
-            className="w-full rounded-[14px] py-2.5 text-sm font-semibold text-rimvio-neon-cyan"
+            className="w-full rounded-[14px] py-2.5 text-sm font-semibold text-[#6b7684]"
             onClick={closeDialog}
           >
             취소
@@ -402,12 +402,12 @@ export function FivePeerHubClient() {
           <button
             type="button"
             onClick={openQuickFriendAdd}
-            className="text-[12px] font-semibold text-rimvio-neon-cyan underline-offset-2 hover:underline"
+            className="text-[12px] font-semibold text-[#3182f6] underline-offset-2 hover:underline"
           >
             친구 추가
           </button>
         ) : null}
-        <p className="text-center text-[11px] text-white/60">
+        <p className="text-center text-[11px] text-[#6b7684]">
           친한 {connectedCount}/5
           {usePhoneChat ? ` · 주머니 ${archiveList.length}명` : ""}
         </p>

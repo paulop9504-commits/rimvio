@@ -41,8 +41,8 @@ assert.equal(resolveGlobeDetailLevel(0.1), "city");
 assert.equal(resolveGlobeDetailLevel(0.02), "neighborhood");
 assert.equal(resolveGlobeDetailLevel(0.004), "street");
 assert.equal(resolveGlobeDetailLevel(0.001), "pin");
-assert.equal(resolveGlobeTileStyleForLevel(0), "voyager");
-assert.equal(resolveGlobeTileStyleForLevel(5), "voyager");
-assert.equal(resolveGlobeTileStyleForLevel(16), "voyager");
+assert.equal(resolveGlobeTileStyleForLevel(0), "light");
+assert.equal(resolveGlobeTileStyleForLevel(5), "light");
+assert.equal(resolveGlobeTileStyleForLevel(16), "light");
 
 console.log("test-place-gallery: ok");

@@ -20,14 +20,13 @@ type DemoPeerRoomPreviewProps = {
 export function DemoPeerRoomPreview({ className }: DemoPeerRoomPreviewProps) {
   const copy = useCopy();
 
-  const { anchorMessageId, candidates } = useMemo(() => {
+  const { candidatesByMessageId } = useMemo(() => {
     const analysis = analyzePeerThreadForLens(
       [...DEMO_PEER_MESSAGES],
       DEMO_LENS_REFERENCE_DATE,
     );
     return {
-      anchorMessageId: analysis.anchorMessageId,
-      candidates: analysis.candidates,
+      candidatesByMessageId: analysis.candidatesByMessageId,
     };
   }, []);
 
@@ -60,9 +59,7 @@ export function DemoPeerRoomPreview({ className }: DemoPeerRoomPreviewProps) {
               avatarUrl: null,
               rimvioId: "demo_minsu",
             }}
-            lensCandidates={
-              message.id === anchorMessageId ? candidates : []
-            }
+            lensCandidates={candidatesByMessageId[message.id] ?? []}
             onLensSelect={handleLensSelect}
           />
         ))}

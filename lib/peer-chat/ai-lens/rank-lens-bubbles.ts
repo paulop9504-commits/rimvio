@@ -1,5 +1,8 @@
 import { buildDeepLinkBubbleCandidates } from "@/lib/peer-chat/ai-lens/build-bubble-candidates";
-import { detectLensThreadContext } from "@/lib/peer-chat/ai-lens/detect-thread-context";
+import {
+  detectLensMessageContext,
+  emptyLensThreadContext,
+} from "@/lib/peer-chat/ai-lens/detect-thread-context";
 import {
   lensActionFrequencyBoost,
   lensUserHistoryWeight,
@@ -40,14 +43,35 @@ export function rankDeepLinkBubbleCandidates(
 export function analyzePeerThreadForLens(
   messages: readonly PeerMessage[],
   referenceDate: Date = new Date(),
+  windowSize = 12,
 ): PeerAiLensAnalysis {
-  const context = detectLensThreadContext(messages, 12, referenceDate);
-  const raw = buildDeepLinkBubbleCandidates(context);
-  const candidates = rankDeepLinkBubbleCandidates(raw);
+  const slice = messages.slice(-windowSize);
+  const candidatesByMessageId: Record<string, DeepLinkBubbleCandidate[]> = {};
+  let anchorMessageId: string | null = null;
+  let context = emptyLensThreadContext();
+
+  for (const message of slice) {
+    const msgContext = detectLensMessageContext(message, referenceDate);
+    if (!msgContext.anchorMessageId) {
+      continue;
+    }
+    const ranked = rankDeepLinkBubbleCandidates(
+      buildDeepLinkBubbleCandidates(msgContext),
+    );
+    if (ranked.length === 0) {
+      continue;
+    }
+    candidatesByMessageId[message.id] = ranked;
+    anchorMessageId = message.id;
+    context = msgContext;
+  }
 
   return {
-    anchorMessageId: context.anchorMessageId,
-    candidates,
+    anchorMessageId,
+    candidates: anchorMessageId
+      ? (candidatesByMessageId[anchorMessageId] ?? [])
+      : [],
+    candidatesByMessageId,
     context,
   };
 }

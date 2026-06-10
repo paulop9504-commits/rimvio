@@ -13,6 +13,7 @@ import type { GlobeSpaceBlob } from "@/lib/experience-graph/build-globe-space-bl
 import type { ClassifiedGlobePin } from "@/lib/feed/experience-globe-ping-types";
 import { mapPercentToLatLng } from "@/lib/experience-graph/resolve-place-coordinates";
 import type { SpatialGlobeView } from "@/lib/experience-graph/spatial-media-types";
+import type { GlobeEarthMapVariant } from "@/hooks/use-globe-earth-texture";
 import { cn } from "@/lib/utils";
 
 const PIN_KIND_CLASS: Record<ClassifiedGlobePin["kind"], string> = {
@@ -70,6 +71,9 @@ export type SpatialGlobeStageProps = {
   /** Slow 360° longitude spin — Google Earth idle. Defaults on for immersive. */
   autoSpin?: boolean;
 
+  /** `toss` — CARTO light map (room 우리 지구). Default satellite elsewhere. */
+  mapVariant?: GlobeEarthMapVariant;
+
   className?: string;
 
 };
@@ -110,6 +114,8 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
 
   autoSpin: autoSpinProp,
 
+  mapVariant = "satellite",
+
   className,
 
 }: SpatialGlobeStageProps) {
@@ -129,6 +135,7 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
   } = useGlobeTouchControl({
     baseView: globe,
     enabled: interactive,
+    lockZoom: Boolean(activePinId),
   });
 
   const spinShiftX = useGlobeIdleSpin({
@@ -140,8 +147,8 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
   const translateX = 50 - wrapGlobePinX(displayGlobe.pinX + spinShiftX);
   const translateY = 50 - displayGlobe.pinY;
 
-  const satellite = true;
-  const pinKindClass = PIN_KIND_CLASS_SATELLITE;
+  const toss = mapVariant === "toss";
+  const pinKindClass = toss ? PIN_KIND_CLASS : PIN_KIND_CLASS_SATELLITE;
 
   const measureSphere = useCallback(() => {
     const rect = sphereRef.current?.getBoundingClientRect();
@@ -175,7 +182,7 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
 
   const handleMapClick = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
-      if (!onMapPress || shouldConsumeTap()) {
+      if (!onMapPress || shouldConsumeTap() || activePinId) {
         return;
       }
       const rect = event.currentTarget.getBoundingClientRect();
@@ -184,7 +191,7 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
       const { lat, lng } = mapPercentToLatLng(pinX, pinY);
       onMapPress({ lat, lng, pinX, pinY });
     },
-    [onMapPress, shouldConsumeTap],
+    [activePinId, onMapPress, shouldConsumeTap],
   );
 
 
@@ -202,8 +209,16 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
         "relative flex min-h-0 flex-col overflow-hidden",
 
         immersive
-          ? "rimvio-globe-space h-full min-h-[280px] flex-1 rounded-none border-0 [container-type:inline-size]"
-          : "rimvio-globe-space min-h-[min(36vh,320px)] rounded-2xl border border-white/10 shadow-sm",
+          ? cn(
+              "h-full min-h-[280px] flex-1 rounded-none border-0 [container-type:inline-size]",
+              toss ? "rimvio-globe-space--toss" : "rimvio-globe-space",
+            )
+          : cn(
+              "min-h-[min(36vh,320px)] rounded-2xl shadow-sm",
+              toss
+                ? "rimvio-globe-space--toss border border-[#0220470f]"
+                : "rimvio-globe-space border border-white/10",
+            ),
 
         className,
 
@@ -219,9 +234,18 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
 
       data-spatial-globe-interactive={interactive ? "true" : undefined}
 
+      data-spatial-globe-map={mapVariant}
+
     >
 
-      <div className="pointer-events-none absolute inset-0 rimvio-globe-stars" aria-hidden />
+      {toss ? (
+        <div
+          className="pointer-events-none absolute inset-0 rimvio-globe-ambient rimvio-globe-ambient--toss"
+          aria-hidden
+        />
+      ) : (
+        <div className="pointer-events-none absolute inset-0 rimvio-globe-stars" aria-hidden />
+      )}
 
 
 
@@ -264,7 +288,9 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
 
               "absolute inset-0 overflow-hidden rounded-full",
 
-              "rimvio-globe-sphere-aura border bg-[#050810]",
+              toss
+                ? "border border-[#02204714] bg-[#f2f4f6] shadow-sm"
+                : "rimvio-globe-sphere-aura border bg-[#050810]",
 
               interactive && "rimvio-globe-touch-surface",
 
@@ -297,7 +323,7 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
             onClick={onMapPress ? handleMapClick : undefined}
           >
             <div className="absolute inset-0 rounded-full">
-            <GlobeEarthSurface />
+            <GlobeEarthSurface mapVariant={mapVariant} />
 
             {blobs.map((blob) => {
               const active = blob.id === activeBlobId;
@@ -390,7 +416,10 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
         {interactive ? (
           <p
             className={cn(
-              "pointer-events-none absolute inset-x-0 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-20 mx-auto w-fit rounded-full bg-black/35 px-3 py-1 text-[10px] font-medium text-white/50 backdrop-blur-sm transition-opacity duration-300",
+              "pointer-events-none absolute inset-x-0 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-20 mx-auto w-fit rounded-full px-3 py-1 text-[10px] font-medium backdrop-blur-sm transition-opacity duration-300",
+              toss
+                ? "rimvio-globe-hint--toss"
+                : "bg-black/35 text-white/50",
               isInteracting && "opacity-0",
             )}
           >

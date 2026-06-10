@@ -255,28 +255,28 @@ export function GroupInfoSheet({
           <motion.div
             role="dialog"
             aria-label="단톡 정보"
-            className="fixed inset-x-0 bottom-0 z-[83] mx-auto w-full max-w-lg overflow-hidden rounded-t-[24px] border border-white/10 bg-rimvio-base shadow-[0_-12px_40px_rgba(0,0,0,0.4)]"
+            className="fixed inset-x-0 bottom-0 z-[83] mx-auto w-full max-w-lg overflow-hidden rounded-t-[24px] border border-[#0220470f] bg-rimvio-base shadow-[0_-12px_40px_rgba(0,0,0,0.12)]"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 320 }}
           >
-            <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+            <div className="flex items-center justify-between border-b border-[#0220470f] px-4 py-3">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <Users className="size-4 shrink-0 text-rimvio-neon-cyan" aria-hidden />
-                  <h2 className="truncate text-[16px] font-semibold text-white">
+                  <Users className="size-4 shrink-0 text-[#3182f6]" aria-hidden />
+                  <h2 className="truncate text-[16px] font-semibold text-[#191f28]">
                     {displayName}
                   </h2>
                 </div>
-                <p className="mt-0.5 text-[11px] text-white/42">
+                <p className="mt-0.5 text-[11px] text-[#6b7684]">
                   {loading ? "불러오는 중…" : `멤버 ${members.length}명`}
                 </p>
               </div>
               <button
                 type="button"
                 aria-label="닫기"
-                className="flex size-8 shrink-0 items-center justify-center rounded-full text-white/70 hover:bg-white/10"
+                className="flex size-8 shrink-0 items-center justify-center rounded-full text-[#6b7684] hover:bg-[#f2f4f6]"
                 onClick={() => onOpenChange(false)}
               >
                 <X className="size-4" />
@@ -285,7 +285,7 @@ export function GroupInfoSheet({
 
             <div className="max-h-[min(72dvh,32rem)] space-y-4 overflow-y-auto px-4 py-4">
               <div>
-                <label className="text-[11px] font-semibold uppercase tracking-wide text-white/40">
+                <label className="text-[11px] font-semibold uppercase tracking-wide text-[#6b7684]">
                   방 이름
                 </label>
                 <div className="mt-1.5 flex gap-2">
@@ -293,7 +293,7 @@ export function GroupInfoSheet({
                     value={nameDraft}
                     onChange={(event) => setNameDraft(event.target.value)}
                     placeholder="예: 주말 스터디"
-                    className="h-11 min-w-0 flex-1 rounded-2xl border-0 bg-white/[0.06] px-4 text-sm text-white outline-none placeholder:text-white/35 focus:ring-2 focus:ring-rimvio-neon-cyan/35"
+                    className="h-11 min-w-0 flex-1 rounded-2xl border border-[#02204714] bg-white px-4 text-sm text-[#191f28] outline-none placeholder:text-[#8b95a1] focus:ring-2 focus:ring-[#3182f6]/35"
                   />
                   <button
                     type="button"
@@ -303,7 +303,7 @@ export function GroupInfoSheet({
                       nameDraft.trim() === displayName.trim()
                     }
                     onClick={() => void handleRename()}
-                    className="shrink-0 rounded-2xl bg-white/[0.08] px-3 text-[12px] font-semibold text-rimvio-neon-cyan disabled:opacity-40"
+                    className="shrink-0 rounded-2xl bg-[#e8f3ff] px-3 text-[12px] font-semibold text-[#1b64da] disabled:opacity-40"
                   >
                     {renaming ? "저장 중…" : "저장"}
                   </button>
@@ -318,20 +318,20 @@ export function GroupInfoSheet({
                       aria-hidden
                     />
                     <div className="min-w-0 flex-1">
-                      <p className="text-[12px] font-medium text-white">
+                      <p className="text-[12px] font-medium text-[#191f28]">
                         초대 링크
                       </p>
-                      <p className="mt-0.5 text-[11px] text-white/45">
+                      <p className="mt-0.5 text-[11px] text-[#6b7684]">
                         링크로 들어오면 같은 단톡에서 대화해요
                       </p>
-                      <p className="mt-1 truncate font-mono text-[10px] text-white/35">
+                      <p className="mt-1 truncate font-mono text-[10px] text-[#8b95a1]">
                         코드: {inviteCode}
                       </p>
                     </div>
                     <button
                       type="button"
                       onClick={() => void copyInvite()}
-                      className="flex shrink-0 items-center gap-1 rounded-full border border-white/12 bg-white/[0.06] px-2.5 py-1.5 text-[10px] font-medium text-white active:scale-[0.98]"
+                      className="flex shrink-0 items-center gap-1 rounded-full border border-[#02204714] bg-white px-2.5 py-1.5 text-[10px] font-medium text-[#191f28] active:scale-[0.98]"
                     >
                       {copied ? (
                         <Check className="size-3.5 text-emerald-400" aria-hidden />
@@ -345,7 +345,7 @@ export function GroupInfoSheet({
               ) : null}
 
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-white/40">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-[#6b7684]">
                   멤버
                 </p>
                 {loading ? (
@@ -353,7 +353,7 @@ export function GroupInfoSheet({
                     {[0, 1, 2].map((key) => (
                       <li
                         key={key}
-                        className="h-11 animate-pulse rounded-2xl bg-white/[0.05]"
+                        className="h-11 animate-pulse rounded-2xl bg-[#f2f4f6]"
                       />
                     ))}
                   </ul>
@@ -362,18 +362,18 @@ export function GroupInfoSheet({
                     {members.map((member) => (
                       <li
                         key={member.userId}
-                        className="flex items-center gap-3 rounded-2xl bg-white/[0.04] px-3 py-2.5"
+                        className="flex items-center gap-3 rounded-2xl bg-[#f8f9fb] px-3 py-2.5"
                       >
                         <PeerProfileAvatar
                           displayName={memberLabel(member)}
                           avatarUrl={member.avatarUrl}
                           size="sm"
                         />
-                        <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-white">
+                        <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-[#191f28]">
                           {memberLabel(member)}
                         </span>
                         {member.rimvioId && !member.isSelf ? (
-                          <span className="shrink-0 font-mono text-[11px] text-rimvio-neon-cyan/80">
+                          <span className="shrink-0 font-mono text-[11px] text-[#1b64da]">
                             @{member.rimvioId}
                           </span>
                         ) : null}
@@ -384,11 +384,11 @@ export function GroupInfoSheet({
               </div>
 
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-white/40">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-[#6b7684]">
                   친구 초대
                 </p>
                 {addableContacts.length === 0 ? (
-                  <p className="mt-2 text-[13px] text-white/45">
+                  <p className="mt-2 text-[13px] text-[#6b7684]">
                     추가할 1:1 친구가 없어요. 초대 링크를 공유해 보세요.
                   </p>
                 ) : (
@@ -403,23 +403,23 @@ export function GroupInfoSheet({
                             className={cn(
                               "flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors",
                               checked
-                                ? "bg-rimvio-neon-cyan/12 ring-1 ring-rimvio-neon-cyan/30"
-                                : "bg-white/[0.04] hover:bg-white/[0.07]",
+                                ? "bg-[#e8f3ff] ring-1 ring-[#3182f6]/35"
+                                : "bg-[#f8f9fb] hover:bg-[#f2f4f6]",
                             )}
                           >
                             <PeerProfileAvatar
                               displayName={contact.displayName}
                               size="sm"
                             />
-                            <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-white">
+                            <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-[#191f28]">
                               {contact.displayName}
                             </span>
                             <span
                               className={cn(
                                 "flex size-5 items-center justify-center rounded-full border text-[10px] font-bold",
                                 checked
-                                  ? "border-rimvio-neon-cyan bg-rimvio-neon-cyan text-black"
-                                  : "border-white/25 text-transparent",
+                                  ? "border-[#3182f6] bg-[#3182f6] text-white"
+                                  : "border-[#02204720] text-transparent",
                               )}
                               aria-hidden
                             >
@@ -434,14 +434,14 @@ export function GroupInfoSheet({
               </div>
 
               {error ? (
-                <p className="text-[12px] text-red-300">{error}</p>
+                <p className="text-[12px] text-red-600">{error}</p>
               ) : null}
 
               <button
                 type="button"
                 disabled={leaving}
                 onClick={() => void handleLeave()}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-500/10 px-4 py-3 text-[13px] font-semibold text-red-300 ring-1 ring-red-400/20 disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-50 px-4 py-3 text-[13px] font-semibold text-red-600 ring-1 ring-red-200 disabled:opacity-50"
               >
                 <LogOut className="size-4" aria-hidden />
                 {leaving ? "나가는 중…" : "단톡 나가기"}
@@ -449,7 +449,7 @@ export function GroupInfoSheet({
             </div>
 
             {addableContacts.length > 0 ? (
-              <div className="border-t border-white/10 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+              <div className="border-t border-[#0220470f] px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
                 <MainActionButton
                   label={adding ? "초대 중…" : "선택한 친구 초대"}
                   disabled={adding || selected.size < 1}

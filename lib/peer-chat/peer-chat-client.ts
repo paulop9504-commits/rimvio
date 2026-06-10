@@ -333,6 +333,47 @@ export async function fetchSharedGlobePinsRemote(
   return parseJson(response);
 }
 
+export async function updateSharedGlobePinRemote(input: {
+  threadId: string;
+  messageId: string;
+  placeLabel?: string;
+  note?: string | null;
+}): Promise<{
+  pin: import("@/lib/peer-chat/globe-pin-types").SharedGlobePin;
+  threadId: string;
+}> {
+  const response = await fetch(
+    `${resolveAppOrigin()}/api/peers/threads/${encodeURIComponent(input.threadId)}/globe-pins`,
+    {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messageId: input.messageId,
+        placeLabel: input.placeLabel,
+        note: input.note,
+      }),
+    },
+  );
+  return parseJson(response);
+}
+
+export async function deleteSharedGlobePinRemote(input: {
+  threadId: string;
+  messageId: string;
+}): Promise<{ ok: true; threadId: string; messageId: string }> {
+  const response = await fetch(
+    `${resolveAppOrigin()}/api/peers/threads/${encodeURIComponent(input.threadId)}/globe-pins`,
+    {
+      method: "DELETE",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messageId: input.messageId }),
+    },
+  );
+  return parseJson(response);
+}
+
 export async function sendSharedGlobePinRemote(input: {
   threadId: string;
   displayName: string;
