@@ -6,6 +6,7 @@ import { CalendarPlus, CalendarRange, ListChecks, Settings } from "lucide-react"
 import { toast } from "sonner";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { RimvioGlobeHubClient } from "@/components/experience/rimvio-globe-hub-client";
+import { GlobeContextMapVideoStage } from "@/components/globe/globe-context-map-video-stage";
 import { GlobeContextIngestBar } from "@/components/globe/globe-context-ingest-bar";
 import { GlobeContextListSheet } from "@/components/globe/globe-context-list-sheet";
 import { GlobeContextManageSheet } from "@/components/globe/globe-context-manage-sheet";
@@ -17,7 +18,7 @@ import { PinOpenSheet } from "@/components/globe/pin-open-sheet";
 import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
 import { buildPinClusterFromEvent, buildPinClusterFromPersonalPin } from "@/lib/globe/build-pin-cluster-from-event";
 import type { GlobeContextTimelineEntry } from "@/lib/globe/list-globe-context-timeline";
-import type { GlobeProjectedContextEntry } from "@/lib/globe/list-globe-projected-contexts";
+import type { GlobeManageContextEntry } from "@/lib/globe/list-globe-manage-contexts";
 import type { PinCluster } from "@/lib/globe/pin-cluster-types";
 import { findPersonalGlobePinByEventId } from "@/lib/globe/personal-globe-pin-store";
 import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
@@ -82,7 +83,7 @@ function GlobeHomeBody() {
   );
 
   const openProjectedContext = useCallback(
-    (entry: GlobeProjectedContextEntry) => {
+    (entry: GlobeManageContextEntry) => {
       setManageOpen(false);
       const event = findLifeEventCandidate(entry.eventId);
       const cluster = event
@@ -124,6 +125,10 @@ function GlobeHomeBody() {
         initialRecallEventId={recallEventId}
         highlightedPinId={sheetOpen ? activeCluster?.pinId ?? null : null}
         onPinPress={onPinPress}
+      />
+      <GlobeContextMapVideoStage
+        eventId={sheetOpen ? activeCluster?.eventId ?? null : null}
+        visible={sheetOpen}
       />
       <div className="pointer-events-none absolute left-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20 flex flex-col gap-2 sm:right-auto">
         <div className="pointer-events-auto flex flex-col gap-2">

@@ -8,9 +8,10 @@ import { toast } from "sonner";
 import { useExperienceGraph } from "@/hooks/use-experience-graph";
 import { deleteGlobeContexts } from "@/lib/globe/delete-globe-context";
 import {
-  listGlobeProjectedContexts,
-  type GlobeProjectedContextEntry,
-} from "@/lib/globe/list-globe-projected-contexts";
+  listGlobeManageContexts,
+  summarizeGlobeManageContexts,
+  type GlobeManageContextEntry,
+} from "@/lib/globe/list-globe-manage-contexts";
 import {
   EVENT_CANDIDATES_UPDATED,
   listLifeEventCandidates,
@@ -22,11 +23,11 @@ import { cn } from "@/lib/utils";
 export type GlobeContextManageSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onOpenContext?: (entry: GlobeProjectedContextEntry) => void;
+  onOpenContext?: (entry: GlobeManageContextEntry) => void;
   onDeleted?: (eventIds: string[]) => void;
 };
 
-function mediaLine(entry: GlobeProjectedContextEntry): string | null {
+function mediaLine(entry: GlobeManageContextEntry): string | null {
   const parts: string[] = [];
   if (entry.photoCount > 0) {
     parts.push(`사진 ${entry.photoCount}`);
@@ -75,12 +76,17 @@ export function GlobeContextManageSheet({
 
   const entries = useMemo(
     () =>
-      listGlobeProjectedContexts({
+      listGlobeManageContexts({
         events,
         volumes: graph.volumes,
         eventsById,
       }),
     [events, graph.volumes, eventsById],
+  );
+
+  const summary = useMemo(
+    () => summarizeGlobeManageContexts(entries),
+    [entries],
   );
 
   const allSelected = entries.length > 0 && selected.size === entries.length;
@@ -189,7 +195,8 @@ export function GlobeContextManageSheet({
                     맥락 관리
                   </p>
                   <p className="mt-0.5 text-[12px] text-muted-foreground">
-                    지구본에 보이는 경험 {entries.length}개 · 선택해서 지울 수 있어요
+                    전체 {summary.total}개 · 지구본 {summary.onGlobe}
+                    {summary.offGlobe > 0 ? ` · 일정·보관 ${summary.offGlobe}` : ""}
                   </p>
                 </div>
                 <button
@@ -224,7 +231,7 @@ export function GlobeContextManageSheet({
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
               {entries.length === 0 ? (
                 <p className="rounded-2xl border border-dashed border-border px-3.5 py-8 text-center text-[13px] leading-relaxed text-muted-foreground">
-                  지구본에 꽂힌 경험이 없어요.
+                  맥락·일정이 없어요.
                 </p>
               ) : (
                 <ul className="space-y-2 pb-2">
@@ -261,6 +268,18 @@ export function GlobeContextManageSheet({
                           >
                             <p className="truncate text-[15px] font-semibold text-foreground">
                               {entry.title}
+                              <span
+                                className={cn(
+                                  "ml-1.5 inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-semibold align-middle",
+                                  entry.onGlobe
+                                    ? "bg-primary/10 text-primary"
+                                    : entry.manageKind === "archived"
+                                      ? "bg-muted text-muted-foreground"
+                                      : "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+                                )}
+                              >
+                                {entry.kindLabel}
+                              </span>
                             </p>
                             <p className="truncate text-[13px] text-muted-foreground">
                               {entry.place}

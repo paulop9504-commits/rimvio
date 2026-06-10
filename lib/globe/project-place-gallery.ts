@@ -10,6 +10,7 @@ export type PlaceGalleryItem = {
   imageUrl: string | null;
   mediaContextId: string | null;
   capturedAtIso: string | null;
+  mediaKind?: "photo" | "video";
 };
 
 export function projectPlaceGallery(input: {
@@ -40,10 +41,14 @@ export function projectPlaceGallery(input: {
   for (const row of captures) {
     push({
       id: `capture:${row.id}`,
-      label: row.label?.trim() || row.placeLabel?.trim() || "사진",
+      label:
+        row.label?.trim() ||
+        row.placeLabel?.trim() ||
+        (row.kind === "video" ? "동영상" : "사진"),
       imageUrl: row.url?.trim() || null,
       mediaContextId: row.mediaContextId?.trim() || null,
       capturedAtIso: row.capturedAtIso,
+      mediaKind: row.kind === "video" ? "video" : "photo",
     });
   }
 
@@ -58,6 +63,7 @@ export function projectPlaceGallery(input: {
         imageUrl: null,
         mediaContextId: null,
         capturedAtIso: row.capturedAtIso,
+        mediaKind: row.kind === "video" ? "video" : "photo",
       });
     }
   }
