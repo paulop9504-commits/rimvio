@@ -1,7 +1,6 @@
 "use client";
 
 import type { EventCandidate } from "@/lib/events/event-candidate";
-import { findEventCandidate } from "@/lib/events/event-store";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 import { findPersonalGlobePinByEventId } from "@/lib/globe/personal-globe-pin-store";
 import { commitEventUpsert } from "@/lib/source-of-truth/commit-truth";
@@ -37,7 +36,7 @@ export function recoverGlobeContextEventFromPin(
     return null;
   }
 
-  const existing = findLifeEventCandidate(key) ?? findEventCandidate(key);
+  const existing = findLifeEventCandidate(key);
   if (existing) {
     return existing;
   }
