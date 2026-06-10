@@ -2,12 +2,13 @@
 
 import { Suspense, useCallback, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { CalendarPlus, CalendarRange, Settings } from "lucide-react";
+import { CalendarPlus, CalendarRange, ListChecks, Settings } from "lucide-react";
 import { toast } from "sonner";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { RimvioGlobeHubClient } from "@/components/experience/rimvio-globe-hub-client";
 import { GlobeContextIngestBar } from "@/components/globe/globe-context-ingest-bar";
 import { GlobeContextListSheet } from "@/components/globe/globe-context-list-sheet";
+import { GlobeContextManageSheet } from "@/components/globe/globe-context-manage-sheet";
 import { GlobeCreateContextSheet } from "@/components/globe/globe-create-context-sheet";
 import { GlobeGpsPanel } from "@/components/globe/globe-gps-panel";
 import { GlobeSettingsSheet } from "@/components/globe/globe-settings-sheet";
@@ -28,6 +29,7 @@ function GlobeHomeBody() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [listOpen, setListOpen] = useState(false);
+  const [manageOpen, setManageOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const onPinPress = useCallback((cluster: PinCluster) => {
@@ -102,6 +104,15 @@ function GlobeHomeBody() {
             <CalendarRange className="size-3.5 text-primary" aria-hidden />
             내 맥락
           </button>
+          <button
+            type="button"
+            onClick={() => setManageOpen(true)}
+            className="flex items-center gap-1.5 rounded-full bg-card/95 px-3 py-2 text-[12px] font-semibold text-foreground shadow-sm ring-1 ring-border backdrop-blur-md active:scale-[0.98]"
+            data-globe-context-manage-trigger
+          >
+            <ListChecks className="size-3.5 text-primary" aria-hidden />
+            맥락 관리
+          </button>
         </div>
         <div className="pointer-events-auto">
           <GlobeGpsPanel
@@ -169,6 +180,29 @@ function GlobeHomeBody() {
         open={listOpen}
         onOpenChange={setListOpen}
         onSelect={openContextEntry}
+      />
+      <GlobeContextManageSheet
+        open={manageOpen}
+        onOpenChange={setManageOpen}
+        onOpenContext={(entry) => {
+          setManageOpen(false);
+          openContextEntry(entry);
+        }}
+        onDeleted={(eventIds) => {
+          if (activeCluster && eventIds.includes(activeCluster.eventId)) {
+            setSheetOpen(false);
+            setActiveCluster(null);
+          }
+          const params = new URLSearchParams(window.location.search);
+          const recall = params.get("recallEvent");
+          if (recall && eventIds.includes(recall)) {
+            params.delete("recallEvent");
+            const next = params.toString()
+              ? `${window.location.pathname}?${params.toString()}`
+              : window.location.pathname;
+            window.history.replaceState(null, "", next);
+          }
+        }}
       />
       <GlobeSettingsSheet open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>

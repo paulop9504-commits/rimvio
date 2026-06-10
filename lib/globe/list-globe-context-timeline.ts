@@ -1,6 +1,7 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { countEventMedia } from "@/lib/globe/count-event-media";
 import { formatPinDateLabel } from "@/lib/globe/format-pin-date-label";
+import { isGlobeContextRemoved } from "@/lib/globe/delete-globe-context";
 import { findPersonalGlobePinByEventId } from "@/lib/globe/personal-globe-pin-store";
 import { resolveEventGlobeCoords } from "@/lib/globe/resolve-event-globe-coords";
 import { readPlanContextFromEvent } from "@/lib/plan-context/plan-context-metadata";
@@ -32,6 +33,9 @@ export type GlobeContextTimeline = {
 };
 
 function isGlobeContextEvent(event: EventCandidate): boolean {
+  if (isGlobeContextRemoved(event)) {
+    return false;
+  }
   const meta = event.metadata ?? {};
   if (meta.globeManualContext === true || meta.targetingSource === "globe_manual") {
     return true;

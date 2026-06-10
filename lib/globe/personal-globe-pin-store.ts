@@ -75,6 +75,34 @@ export function upsertPersonalGlobePin(pin: PersonalGlobePin): PersonalGlobePin 
   return pin;
 }
 
+export function removePersonalGlobePinByEventId(eventId: string): boolean {
+  const key = eventId.trim();
+  if (!key) {
+    return false;
+  }
+  const rows = listPersonalGlobePins();
+  const next = rows.filter((row) => row.eventId !== key);
+  if (next.length === rows.length) {
+    return false;
+  }
+  writeAll(next);
+  return true;
+}
+
+export function removePersonalGlobePinByPinId(pinId: string): boolean {
+  const key = pinId.trim();
+  if (!key) {
+    return false;
+  }
+  const rows = listPersonalGlobePins();
+  const next = rows.filter((row) => row.pinId !== key);
+  if (next.length === rows.length) {
+    return false;
+  }
+  writeAll(next);
+  return true;
+}
+
 export function resetPersonalGlobePinsForTests(pins: PersonalGlobePin[] = []) {
   memoryPins = pins;
   if (typeof window === "undefined") {

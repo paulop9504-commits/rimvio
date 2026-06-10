@@ -10,6 +10,8 @@ import { countEventMedia } from "@/lib/globe/count-event-media";
 import { listPersonalGlobePins } from "@/lib/globe/personal-globe-pin-store";
 import { resolveEventGlobeCoords } from "@/lib/globe/resolve-event-globe-coords";
 import { readTripLegFromEvent } from "@/lib/globe/trip-leg-metadata";
+import { isGlobeContextRemoved } from "@/lib/globe/delete-globe-context";
+import { spreadOverlappingPinCoords } from "@/lib/globe/spread-overlapping-pin-coords";
 import { buildGlobeOverviewView } from "@/lib/experience-graph/globe-overview-view";
 import { globeViewForSharedPins } from "@/lib/peer-chat/globe-view-for-shared-pins";
 
@@ -89,10 +91,17 @@ export function projectPinClustersFromGraph(input: {
 
   for (const volume of input.volumes) {
     const event = input.eventsById.get(volume.sourceEventId) ?? null;
+    if (isGlobeContextRemoved(event)) {
+      continue;
+    }
     byEventId.set(volume.sourceEventId, clusterFromVolume({ volume, event }));
   }
 
   for (const pin of listPersonalGlobePins()) {
+    const event = input.eventsById.get(pin.eventId) ?? null;
+    if (isGlobeContextRemoved(event)) {
+      continue;
+    }
     if (byEventId.has(pin.eventId)) {
       const existing = byEventId.get(pin.eventId)!;
       byEventId.set(
@@ -157,12 +166,31 @@ export function projectPinClusterClassifiedPins(
   clusters: readonly PinCluster[],
   eventsById?: ReadonlyMap<string, EventCandidate>,
 ): ClassifiedGlobePin[] {
-  return clusters.map((cluster) =>
+  const base = clusters.map((cluster) =>
     projectPinClusterClassifiedPin(
       cluster,
       eventsById?.get(cluster.eventId) ?? null,
     ),
   );
+  const spread = spreadOverlappingPinCoords(
+    base.map((pin) => ({ id: pin.id, lat: pin.lat, lng: pin.lng })),
+  );
+  const spreadById = new Map(spread.map((row) => [row.id, row]));
+
+  return base.map((pin) => {
+    const layout = spreadById.get(pin.id);
+    if (!layout || layout.overlapGroupSize <= 1) {
+      return pin;
+    }
+    const map = projectLatLngToMapPercent(layout.spreadLat, layout.spreadLng);
+    return {
+      ...pin,
+      lat: layout.spreadLat,
+      lng: layout.spreadLng,
+      pinX: map.x,
+      pinY: map.y,
+    };
+  });
 }
 
 export function globeViewForPinClusters(
