@@ -70,6 +70,8 @@ function useGlobeEventSnapshot() {
 export type RimvioGlobeHubHandle = {
   flyToPin: RimvioGlobe3DHandle["flyToPin"];
   resetToOverview: () => void;
+  getPointOfView: RimvioGlobe3DHandle["getPointOfView"];
+  getScreenCoords: RimvioGlobe3DHandle["getScreenCoords"];
 };
 
 export type RimvioGlobeHubProps = {
@@ -80,6 +82,13 @@ export type RimvioGlobeHubProps = {
   /** Highlight pin card while pin sheet is open — does not lock zoom. */
   highlightedPinId?: string | null;
   onPinPress?: (cluster: PinCluster) => void;
+  pinRelocateEnabled?: boolean;
+  onPinRelocate?: (input: {
+    pinId: string;
+    sourceEventId: string;
+    lat: number;
+    lng: number;
+  }) => void;
 };
 
 type RimvioGlobeHubBodyProps = {
@@ -90,9 +99,14 @@ type RimvioGlobeHubBodyProps = {
   initialOpenPinId?: string | null;
   highlightedPinId?: string | null;
   onPinPress?: (cluster: PinCluster) => void;
+  pinRelocateEnabled?: boolean;
+  onPinRelocate?: (input: {
+    pinId: string;
+    sourceEventId: string;
+    lat: number;
+    lng: number;
+  }) => void;
 };
-
-const RimvioGlobeHubBody = memo(
   forwardRef<RimvioGlobeHubHandle, RimvioGlobeHubBodyProps>(function RimvioGlobeHubBody(
     {
       className,
@@ -101,6 +115,8 @@ const RimvioGlobeHubBody = memo(
       initialOpenPinId,
       highlightedPinId,
       onPinPress,
+      pinRelocateEnabled = false,
+      onPinRelocate,
     },
     ref,
   ) {
@@ -168,6 +184,12 @@ const RimvioGlobeHubBody = memo(
       resetToOverview() {
         innerGlobeRef.current?.resetOverview();
       },
+      getPointOfView() {
+        return innerGlobeRef.current?.getPointOfView() ?? null;
+      },
+      getScreenCoords(lat, lng) {
+        return innerGlobeRef.current?.getScreenCoords(lat, lng) ?? null;
+      },
     }));
 
     useEffect(() => {
@@ -213,6 +235,8 @@ const RimvioGlobeHubBody = memo(
           activePinId={displayPinId}
           className="h-full flex-1"
           onPinPress={handlePinPress}
+          pinRelocateEnabled={pinRelocateEnabled}
+          onPinRelocate={onPinRelocate}
         />
 
         {clusters.length === 0 ? (
@@ -236,6 +260,8 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
   initialRecallEventId,
   highlightedPinId,
   onPinPress,
+  pinRelocateEnabled,
+  onPinRelocate,
 }: RimvioGlobeHubProps) {
   const { ready, eventsById } = useGlobeEventSnapshot();
   const { graph } = useExperienceGraph(ready ? eventsById : undefined);
@@ -291,6 +317,8 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
       initialOpenPinId={initialOpenPinId}
       highlightedPinId={highlightedPinId}
       onPinPress={onPinPress}
+      pinRelocateEnabled={pinRelocateEnabled}
+      onPinRelocate={onPinRelocate}
     />
   );
 });

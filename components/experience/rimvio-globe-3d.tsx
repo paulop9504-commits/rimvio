@@ -3,9 +3,11 @@
 import {
   forwardRef,
   memo,
+  useCallback,
   useEffect,
   useImperativeHandle,
   useRef,
+  useState,
 } from "react";
 import Globe from "globe.gl";
 import type { GlobeInstance } from "globe.gl";
@@ -27,6 +29,7 @@ import {
 } from "@/lib/globe/globe-zoom-levels";
 import type { ClassifiedGlobePin } from "@/lib/feed/experience-globe-ping-types";
 import type { GlobeTripArc } from "@/lib/globe/project-trip-leg-arcs";
+import { screenPointToGlobeCoords } from "@/lib/globe/screen-point-to-globe-coords";
 import { cn } from "@/lib/utils";
 
 const FLY_MS = 1400;
@@ -59,6 +62,10 @@ export type RimvioGlobe3DHandle = {
     lng: number;
     altitude: number;
   } | null;
+  getScreenCoords: (
+    lat: number,
+    lng: number,
+  ) => { x: number; y: number } | null;
 };
 
 export type RimvioGlobe3DProps = {
@@ -67,6 +74,14 @@ export type RimvioGlobe3DProps = {
   viewerLocation?: GlobeViewerLocation | null;
   activePinId?: string | null;
   onPinPress?: (pinId: string) => void;
+  /** Long-press drag — personal globe context pins only. */
+  pinRelocateEnabled?: boolean;
+  onPinRelocate?: (input: {
+    pinId: string;
+    sourceEventId: string;
+    lat: number;
+    lng: number;
+  }) => void;
   /** Tap empty globe — shared ROOM pin placement. */
   onGlobePress?: (coords: { lat: number; lng: number }) => void;
   hintText?: string;
@@ -89,6 +104,8 @@ export const RimvioGlobe3D = memo(
       viewerLocation = null,
       activePinId = null,
       onPinPress,
+      pinRelocateEnabled = false,
+      onPinRelocate,
       onGlobePress,
       hintText,
       onDetailLevelChange,
@@ -101,6 +118,8 @@ export const RimvioGlobe3D = memo(
     const shellRef = useRef<HTMLDivElement>(null);
     const globeRef = useRef<GlobeInstance | null>(null);
     const onPinPressRef = useRef(onPinPress);
+    const onPinRelocateRef = useRef(onPinRelocate);
+    const pinRelocateEnabledRef = useRef(pinRelocateEnabled);
     const onGlobePressRef = useRef(onGlobePress);
     const onDetailLevelChangeRef = useRef(onDetailLevelChange);
     const onPointOfViewChangeRef = useRef(onPointOfViewChange);
@@ -112,7 +131,118 @@ export const RimvioGlobe3D = memo(
     const { textureUrl: overviewTextureUrl } = useGlobeOverviewTexture();
     overviewTextureUrlRef.current = overviewTextureUrl;
 
+    const [relocatingPinId, setRelocatingPinId] = useState<string | null>(null);
+    const relocatingPinIdRef = useRef<string | null>(null);
+    const relocatePreviewRef = useRef<{
+      pinId: string;
+      lat: number;
+      lng: number;
+    } | null>(null);
+
+    const beginPinRelocateRef = useRef<(pinId: string) => void>(() => {});
+
+    const beginPinRelocate = useCallback((pinId: string) => {
+      if (!pinRelocateEnabledRef.current) {
+        return;
+      }
+      const pin = pinsRef.current.find((row) => row.id === pinId);
+      if (!pin?.sourceEventId?.trim()) {
+        return;
+      }
+      relocatingPinIdRef.current = pinId;
+      relocatePreviewRef.current = { pinId, lat: pin.lat, lng: pin.lng };
+      setRelocatingPinId(pinId);
+      const globe = globeRef.current;
+      if (globe) {
+        globe.controls().enabled = false;
+      }
+    }, []);
+
+    beginPinRelocateRef.current = beginPinRelocate;
+
+    useEffect(() => {
+      if (!relocatingPinId) {
+        return;
+      }
+      const root = rootRef.current;
+      const globe = globeRef.current;
+      if (!root || !globe) {
+        return;
+      }
+
+      const finishRelocate = (event: PointerEvent) => {
+        const pinId = relocatingPinIdRef.current;
+        if (!pinId) {
+          return;
+        }
+        const preview = relocatePreviewRef.current;
+        const pin = pinsRef.current.find((row) => row.id === pinId);
+        const hit = screenPointToGlobeCoords(globe, root, event.clientX, event.clientY);
+        const lat = hit?.lat ?? preview?.lat;
+        const lng = hit?.lng ?? preview?.lng;
+        if (
+          lat !== undefined &&
+          lng !== undefined &&
+          pin?.sourceEventId?.trim()
+        ) {
+          onPinRelocateRef.current?.({
+            pinId,
+            sourceEventId: pin.sourceEventId.trim(),
+            lat,
+            lng,
+          });
+        }
+        relocatingPinIdRef.current = null;
+        relocatePreviewRef.current = null;
+        setRelocatingPinId(null);
+        globe.controls().enabled = true;
+        root.querySelectorAll<HTMLElement>("[data-globe-pin-relocating]").forEach(
+          (element) => {
+            element.classList.remove("rimvio-globe-3d-pin--relocating");
+            element.removeAttribute("data-globe-pin-relocating");
+          },
+        );
+      };
+
+      const onMove = (event: PointerEvent) => {
+        event.preventDefault();
+        const coords = screenPointToGlobeCoords(
+          globe,
+          root,
+          event.clientX,
+          event.clientY,
+        );
+        if (!coords) {
+          return;
+        }
+        relocatePreviewRef.current = {
+          pinId: relocatingPinId,
+          lat: coords.lat,
+          lng: coords.lng,
+        };
+        const rows = (globe.htmlElementsData() as ClassifiedGlobePin[]).map(
+          (pin) =>
+            pin.id === relocatingPinId
+              ? { ...pin, lat: coords.lat, lng: coords.lng }
+              : pin,
+        );
+        globe.htmlElementsData(rows);
+      };
+
+      window.addEventListener("pointermove", onMove, { passive: false });
+      window.addEventListener("pointerup", finishRelocate, { passive: false });
+      window.addEventListener("pointercancel", finishRelocate, { passive: false });
+      return () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", finishRelocate);
+        window.removeEventListener("pointercancel", finishRelocate);
+        globe.controls().enabled = true;
+      };
+    }, [relocatingPinId]);
+
     onPinPressRef.current = onPinPress;
+    onPinRelocateRef.current = onPinRelocate;
+    pinRelocateEnabledRef.current = pinRelocateEnabled;
     onGlobePressRef.current = onGlobePress;
     onDetailLevelChangeRef.current = onDetailLevelChange;
     onPointOfViewChangeRef.current = onPointOfViewChange;
@@ -155,6 +285,21 @@ export const RimvioGlobe3D = memo(
         }
         return { lat: pov.lat, lng: pov.lng, altitude: pov.altitude };
       },
+      getScreenCoords(lat, lng) {
+        const globe = globeRef.current;
+        if (!globe || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+          return null;
+        }
+        const coords = globe.getScreenCoords(lat, lng);
+        if (
+          !coords ||
+          !Number.isFinite(coords.x) ||
+          !Number.isFinite(coords.y)
+        ) {
+          return null;
+        }
+        return { x: coords.x, y: coords.y };
+      },
     }));
 
     useEffect(() => {
@@ -195,7 +340,11 @@ export const RimvioGlobe3D = memo(
           return createGlobe3dPinElement(
             row,
             row.id === activePinIdRef.current,
-            (pinId) => onPinPressRef.current?.(pinId),
+            {
+              onPress: (pinId) => onPinPressRef.current?.(pinId),
+              onRelocateStart: (pinId) => beginPinRelocateRef.current(pinId),
+            },
+            { relocateEnabled: pinRelocateEnabledRef.current },
           );
         })
         .arcsData([...tripArcsRef.current])
@@ -277,6 +426,9 @@ export const RimvioGlobe3D = memo(
       emitPointOfView({ ...GLOBE_OVERVIEW_POINT_OF_VIEW });
       globe.onZoom(handleZoom);
       globe.onGlobeClick((coords) => {
+        if (relocatingPinIdRef.current) {
+          return;
+        }
         const handler = onGlobePressRef.current;
         if (
           !handler ||
@@ -370,8 +522,12 @@ export const RimvioGlobe3D = memo(
       });
     }, [activePinId]);
 
-    const detailHint =
-      hintText ?? "드래그 회전 · 스크롤·핀치로 거리·지명 확대";
+    const detailHint = relocatingPinId
+      ? "원하는 위치로 드래그한 뒤 손을 떼세요"
+      : pinRelocateEnabled
+        ? (hintText ??
+          "핀 길게 눌러 위치 이동 · 드래그 회전 · 스크롤·핀치로 거리·지명 확대")
+        : (hintText ?? "드래그 회전 · 스크롤·핀치로 거리·지명 확대");
 
     return (
       <div

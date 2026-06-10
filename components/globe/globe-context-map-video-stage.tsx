@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { RefObject } from "react";
+import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
+import { useGlobePinScreenAnchor } from "@/hooks/use-globe-pin-screen-anchor";
 import { useMediaBlobUrl } from "@/hooks/use-media-blob-url";
 import { resolveGlobeContextPrimaryVideo } from "@/lib/globe/resolve-globe-context-primary-video";
 import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
@@ -16,18 +19,25 @@ import { cn } from "@/lib/utils";
 
 export type GlobeContextMapVideoStageProps = {
   eventId: string | null | undefined;
+  anchorLat?: number | null;
+  anchorLng?: number | null;
+  globeRef?: RefObject<RimvioGlobeHubHandle | null>;
   visible?: boolean;
   onDismiss?: () => void;
   className?: string;
 };
 
-/** Map center — replays the context video while a pin context is selected. */
+/** Pin-anchored context video — scales down when the globe zooms out. */
 export function GlobeContextMapVideoStage({
   eventId,
+  anchorLat,
+  anchorLng,
+  globeRef,
   visible = true,
   onDismiss,
   className,
 }: GlobeContextMapVideoStageProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const [revision, setRevision] = useState(0);
   const [playing, setPlaying] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -58,6 +68,14 @@ export function GlobeContextMapVideoStage({
     primaryVideo?.mediaContextId,
   );
 
+  const anchorLayout = useGlobePinScreenAnchor({
+    globeRef: globeRef ?? { current: null },
+    lat: anchorLat,
+    lng: anchorLng,
+    enabled: visible && Boolean(primaryVideo) && Boolean(globeRef),
+    containerRef,
+  });
+
   useEffect(() => {
     setPlaying(true);
   }, [primaryVideo?.mediaContextId]);
@@ -80,55 +98,68 @@ export function GlobeContextMapVideoStage({
 
   return (
     <div
+      ref={containerRef}
       className={cn(
-        "pointer-events-none absolute inset-0 z-[22] flex items-center justify-center",
-        "pb-[min(38vh,320px)] pt-[max(3rem,env(safe-area-inset-top))]",
+        "pointer-events-none absolute inset-0 z-[22] overflow-hidden",
         className,
       )}
       data-globe-context-map-video
-      aria-hidden={!mediaUrl}
+      aria-hidden={!mediaUrl || !anchorLayout}
     >
-      <div
-        className={cn(
-          "relative w-[min(42vw,168px)] overflow-hidden rounded-[1.25rem]",
-          "border-2 border-white/90 bg-black shadow-[0_12px_40px_rgba(0,0,0,0.28)]",
-          "ring-1 ring-black/10",
-        )}
-      >
-        {mediaUrl ? (
-          <video
-            ref={videoRef}
-            src={mediaUrl}
-            className="aspect-[9/16] w-full object-cover"
-            playsInline
-            muted
-            loop
-            autoPlay
-          />
-        ) : (
-          <div className="flex aspect-[9/16] w-full items-center justify-center bg-black/80 px-3 text-center text-[12px] font-medium text-white/70">
-            {loading ? "동영상 불러오는 중…" : primaryVideo.label}
+      {anchorLayout ? (
+        <div
+          className="absolute z-[1]"
+          style={{
+            left: anchorLayout.x,
+            top: anchorLayout.y,
+            width: anchorLayout.widthPx,
+            transform: "translate(-50%, calc(-100% - 10px))",
+          }}
+          data-globe-context-map-video-anchor
+        >
+          <div
+            className={cn(
+              "relative overflow-hidden rounded-[1.25rem]",
+              "border-2 border-white/90 bg-black shadow-[0_12px_40px_rgba(0,0,0,0.28)]",
+              "ring-1 ring-black/10",
+            )}
+          >
+            {mediaUrl ? (
+              <video
+                ref={videoRef}
+                src={mediaUrl}
+                className="aspect-[9/16] w-full object-cover"
+                playsInline
+                muted
+                loop
+                autoPlay
+              />
+            ) : (
+              <div className="flex aspect-[9/16] w-full items-center justify-center bg-black/80 px-3 text-center text-[12px] font-medium text-white/70">
+                {loading ? "동영상 불러오는 중…" : primaryVideo.label}
+              </div>
+            )}
+            {mediaUrl && anchorLayout.scale >= 0.34 ? (
+              <button
+                type="button"
+                className="pointer-events-auto absolute bottom-2 right-2 rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-sm"
+                onClick={() => setPlaying((value) => !value)}
+              >
+                {playing ? "일시정지" : "재생"}
+              </button>
+            ) : null}
+            {onDismiss && anchorLayout.scale >= 0.34 ? (
+              <button
+                type="button"
+                className="pointer-events-auto absolute left-2 top-2 rounded-full bg-black/55 px-2 py-1 text-[10px] font-semibold text-white backdrop-blur-sm"
+                onClick={onDismiss}
+              >
+                닫기
+              </button>
+            ) : null}
           </div>
-        )}
-        {mediaUrl ? (
-          <button
-            type="button"
-            className="pointer-events-auto absolute bottom-2 right-2 rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-sm"
-            onClick={() => setPlaying((value) => !value)}
-          >
-            {playing ? "일시정지" : "재생"}
-          </button>
-        ) : null}
-        {onDismiss ? (
-          <button
-            type="button"
-            className="pointer-events-auto absolute left-2 top-2 rounded-full bg-black/55 px-2 py-1 text-[10px] font-semibold text-white backdrop-blur-sm"
-            onClick={onDismiss}
-          >
-            닫기
-          </button>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
     </div>
   );
 }

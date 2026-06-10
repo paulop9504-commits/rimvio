@@ -4,6 +4,14 @@ import {
   feedSlotPeerChipShortLabel,
 } from "@/lib/feed/feed-slot-peer-chip-colors";
 
+const LONG_PRESS_MS = 520;
+const MOVE_CANCEL_PX = 10;
+
+export type Globe3dPinInteractionHandlers = {
+  onPress: (pinId: string) => void;
+  onRelocateStart?: (pinId: string) => void;
+};
+
 function appendPeerRow(card: HTMLElement, pin: ClassifiedGlobePin): void {
   const peers = pin.peers ?? [];
   if (peers.length === 0) {
@@ -46,10 +54,22 @@ function appendPeerRow(card: HTMLElement, pin: ClassifiedGlobePin): void {
   card.appendChild(row);
 }
 
+function canRelocatePin(
+  pin: ClassifiedGlobePin,
+  relocateEnabled: boolean,
+): boolean {
+  return (
+    relocateEnabled &&
+    pin.pinShape !== "viewer" &&
+    Boolean(pin.sourceEventId?.trim())
+  );
+}
+
 export function createGlobe3dPinElement(
   pin: ClassifiedGlobePin,
   active: boolean,
-  onPress: (pinId: string) => void,
+  handlers: Globe3dPinInteractionHandlers,
+  options?: { relocateEnabled?: boolean },
 ): HTMLElement {
   const root = document.createElement("button");
   root.type = "button";
@@ -61,6 +81,9 @@ export function createGlobe3dPinElement(
     [
       pin.slot?.experienceTitle?.trim() || pin.label.trim() || "경험 핀",
       peerLabel ? `함께한 사람 ${peerLabel}` : null,
+      canRelocatePin(pin, options?.relocateEnabled !== false)
+        ? "길게 눌러 위치 이동"
+        : null,
     ]
       .filter(Boolean)
       .join(" · "),
@@ -93,10 +116,86 @@ export function createGlobe3dPinElement(
   dot.setAttribute("aria-hidden", "true");
   root.appendChild(dot);
 
-  root.addEventListener("click", (event) => {
-    event.stopPropagation();
-    onPress(pin.id);
+  const relocateEnabled = canRelocatePin(pin, options?.relocateEnabled !== false);
+
+  if (!relocateEnabled || !handlers.onRelocateStart) {
+    root.addEventListener("click", (event) => {
+      event.stopPropagation();
+      handlers.onPress(pin.id);
+    });
+    return root;
+  }
+
+  let longPressTimer: number | null = null;
+  let longPressActive = false;
+  let suppressTap = false;
+  let startX = 0;
+  let startY = 0;
+
+  const clearTimer = () => {
+    if (longPressTimer !== null) {
+      window.clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+  };
+
+  root.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) {
+      return;
+    }
+    suppressTap = false;
+    longPressActive = false;
+    startX = event.clientX;
+    startY = event.clientY;
+    clearTimer();
+    root.setPointerCapture(event.pointerId);
+    longPressTimer = window.setTimeout(() => {
+      longPressActive = true;
+      suppressTap = true;
+      root.classList.add("rimvio-globe-3d-pin--relocating");
+      root.setAttribute("data-globe-pin-relocating", "true");
+      handlers.onRelocateStart?.(pin.id);
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+        navigator.vibrate(12);
+      }
+    }, LONG_PRESS_MS);
   });
+
+  root.addEventListener("pointermove", (event) => {
+    if (longPressActive) {
+      event.stopPropagation();
+      event.preventDefault();
+      return;
+    }
+    const dx = event.clientX - startX;
+    const dy = event.clientY - startY;
+    if (Math.hypot(dx, dy) > MOVE_CANCEL_PX) {
+      clearTimer();
+    }
+  });
+
+  const finishPointer = (event: PointerEvent) => {
+    clearTimer();
+    if (root.hasPointerCapture(event.pointerId)) {
+      root.releasePointerCapture(event.pointerId);
+    }
+    if (longPressActive) {
+      event.stopPropagation();
+      event.preventDefault();
+      root.classList.remove("rimvio-globe-3d-pin--relocating");
+      root.removeAttribute("data-globe-pin-relocating");
+      longPressActive = false;
+      return;
+    }
+    if (!suppressTap) {
+      event.stopPropagation();
+      handlers.onPress(pin.id);
+    }
+    suppressTap = false;
+  };
+
+  root.addEventListener("pointerup", finishPointer);
+  root.addEventListener("pointercancel", finishPointer);
 
   return root;
 }

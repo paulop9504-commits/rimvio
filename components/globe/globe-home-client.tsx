@@ -21,6 +21,7 @@ import type { GlobeContextTimelineEntry } from "@/lib/globe/list-globe-context-t
 import type { GlobeManageContextEntry } from "@/lib/globe/list-globe-manage-contexts";
 import type { PinCluster } from "@/lib/globe/pin-cluster-types";
 import { findPersonalGlobePinByEventId } from "@/lib/globe/personal-globe-pin-store";
+import { relocateGlobeContextPin } from "@/lib/globe/relocate-globe-context-pin";
 import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 
@@ -71,6 +72,27 @@ function GlobeHomeBody() {
     globeRef.current?.flyToPin(cluster.lat, cluster.lng, "neighborhood");
     setActiveCluster(cluster);
   }, []);
+
+  const onPinRelocate = useCallback(
+    (input: { pinId: string; sourceEventId: string; lat: number; lng: number }) => {
+      try {
+        relocateGlobeContextPin({
+          eventId: input.sourceEventId,
+          lat: input.lat,
+          lng: input.lng,
+        });
+        setActiveCluster((prev) =>
+          prev?.eventId === input.sourceEventId
+            ? { ...prev, lat: input.lat, lng: input.lng }
+            : prev,
+        );
+        toast.success("핀 위치를 옮겼어요");
+      } catch {
+        toast.error("핀 위치를 옮기지 못했어요");
+      }
+    },
+    [],
+  );
 
   const openPinCluster = useCallback((cluster: PinCluster, eventId: string) => {
     requestAnimationFrame(() => {
@@ -151,9 +173,14 @@ function GlobeHomeBody() {
         initialRecallEventId={recallEventId}
         highlightedPinId={activeCluster?.pinId ?? null}
         onPinPress={onPinPress}
+        pinRelocateEnabled
+        onPinRelocate={onPinRelocate}
       />
       <GlobeContextMapVideoStage
+        globeRef={globeRef}
         eventId={activeCluster?.eventId ?? null}
+        anchorLat={activeCluster?.lat ?? null}
+        anchorLng={activeCluster?.lng ?? null}
         visible={Boolean(activeCluster?.eventId)}
         onDismiss={clearActiveContext}
       />
