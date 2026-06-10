@@ -271,21 +271,12 @@ export const RimvioGlobe3D = memo(
           emitPointOfView(pov, altitude);
           return;
         }
-        const pinLocked = Boolean(activePinIdRef.current);
-        const maxPinFocusAltitude = altitudeForGlobeDetailLevel("city");
-        if (pinLocked && altitude > maxPinFocusAltitude) {
-          altitude = maxPinFocusAltitude;
-          globe.pointOfView({ lat: pov.lat, lng: pov.lng, altitude }, 0);
-        }
         emitPointOfView({ ...pov, altitude }, altitude);
       };
 
       emitPointOfView({ ...GLOBE_OVERVIEW_POINT_OF_VIEW });
       globe.onZoom(handleZoom);
       globe.onGlobeClick((coords) => {
-        if (activePinIdRef.current) {
-          return;
-        }
         const handler = onGlobePressRef.current;
         if (
           !handler ||
@@ -377,15 +368,6 @@ export const RimvioGlobe3D = memo(
           Boolean(pinId && pinId === activePinId),
         );
       });
-    }, [activePinId]);
-
-    useEffect(() => {
-      const globe = globeRef.current;
-      if (!globe) {
-        return;
-      }
-      const controls = globe.controls();
-      controls.enableZoom = !activePinId;
     }, [activePinId]);
 
     const detailHint =

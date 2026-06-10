@@ -13,6 +13,7 @@ import {
 import { PinContextTappableField } from "@/components/globe/pin-context-tappable-field";
 import { GlobeContextPhotoButton } from "@/components/globe/globe-context-photo-button";
 import { patchExperiencePinContext } from "@/lib/globe/patch-experience-pin-context";
+import { isGlobeManualContextEvent } from "@/lib/events/event-lifecycle";
 import { EvidenceList } from "@/components/experience/evidence-list";
 import { ExperienceHeroCard } from "@/components/experience/experience-hero-card";
 import { ExperiencePlaceGallery } from "@/components/experience/experience-place-gallery";
@@ -29,7 +30,11 @@ import {
 } from "@/lib/context/peer-message-log";
 import { projectExperienceClassifiedGlobePings } from "@/lib/feed/project-experience-classified-globe-pings";
 import { projectEvidenceSummary } from "@/lib/globe/project-evidence-summary";
-import { projectExperienceHeroFromEvent } from "@/lib/globe/project-experience-hero";
+import {
+  projectExperienceHeroFromCluster,
+  projectExperienceHeroFromEvent,
+} from "@/lib/globe/project-experience-hero";
+import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
 import {
   buildExperienceRoomHref,
   projectExperienceConversation,
@@ -124,15 +129,34 @@ export function PinOpenSheet({
     return () => window.removeEventListener(PEER_MESSAGE_LOG_UPDATED, bump);
   }, [open, threadId]);
 
-  const hero = useMemo(
-    () =>
-      projectExperienceHeroFromEvent({
-        event,
-        volume,
-        allEvents,
-      }),
-    [event, volume, allEvents],
-  );
+  useEffect(() => {
+    if (!open || !cluster?.eventId || event) {
+      return;
+    }
+    const recovered = recoverGlobeContextEventFromPin(cluster.eventId);
+    if (recovered) {
+      setRevision((value) => value + 1);
+    }
+  }, [open, cluster, event]);
+
+  const hero = useMemo(() => {
+    const fromEvent = projectExperienceHeroFromEvent({
+      event,
+      volume,
+      allEvents,
+    });
+    if (fromEvent) {
+      return fromEvent;
+    }
+    if (cluster) {
+      return projectExperienceHeroFromCluster(cluster);
+    }
+    return null;
+  }, [event, volume, allEvents, cluster]);
+
+  const photoPrimary =
+    (event != null && isGlobeManualContextEvent(event)) ||
+    (hero != null && hero.photoCount === 0 && hero.videoCount === 0);
 
   const people = useMemo(
     () => experienceRoom?.participants.map((row) => row.displayName) ?? [],
@@ -263,6 +287,17 @@ export function PinOpenSheet({
               </button>
             </header>
 
+            {cluster && hero ? (
+              <div className="shrink-0 px-4 pb-3">
+                <GlobeContextPhotoButton
+                  eventId={cluster.eventId}
+                  eventTitle={hero.title}
+                  variant={photoPrimary ? "primary" : "secondary"}
+                  onIngested={() => setRevision((value) => value + 1)}
+                />
+              </div>
+            ) : null}
+
             <PinContextFieldSheet
               open={editKind !== null}
               onOpenChange={(next) => {
@@ -341,14 +376,7 @@ export function PinOpenSheet({
               ) : null}
             </div>
 
-            <div className="shrink-0 space-y-2 border-t border-border px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-              {cluster ? (
-                <GlobeContextPhotoButton
-                  eventId={cluster.eventId}
-                  eventTitle={hero.title}
-                  onIngested={() => setRevision((value) => value + 1)}
-                />
-              ) : null}
+            <div className="shrink-0 border-t border-border px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
               <button
                 type="button"
                 className={cn(

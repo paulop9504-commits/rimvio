@@ -34,7 +34,7 @@ function testDetectClosedCluster() {
     new Date(Date.parse("2026-06-11T11:30:00+09:00")),
   );
   assert.equal(clusters.length, 1);
-  assert.equal(clusters[0]?.placeLabel, "제주");
+  assert.ok(clusters[0]?.placeLabel.includes("°"));
   assert.ok((clusters[0]?.dwellMinutes ?? 0) >= 15);
 }
 

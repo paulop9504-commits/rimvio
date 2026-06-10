@@ -77,6 +77,8 @@ export type RimvioGlobeHubProps = {
   globeRef?: Ref<RimvioGlobeHubHandle>;
   initialOpenPinId?: string | null;
   initialRecallEventId?: string | null;
+  /** Highlight pin card while pin sheet is open — does not lock zoom. */
+  highlightedPinId?: string | null;
   onPinPress?: (cluster: PinCluster) => void;
 };
 
@@ -86,6 +88,7 @@ type RimvioGlobeHubBodyProps = {
   clusters: readonly PinCluster[];
   eventsById: ReadonlyMap<string, EventCandidate>;
   initialOpenPinId?: string | null;
+  highlightedPinId?: string | null;
   onPinPress?: (cluster: PinCluster) => void;
 };
 
@@ -96,6 +99,7 @@ const RimvioGlobeHubBody = memo(
       clusters,
       eventsById,
       initialOpenPinId,
+      highlightedPinId,
       onPinPress,
     },
     ref,
@@ -154,6 +158,8 @@ const RimvioGlobeHubBody = memo(
       return pins;
     }, [classifiedPins, gpsEnabled, liveLocation]);
     const [activePinId, setActivePinId] = useState<string | null>(null);
+    const displayPinId =
+      highlightedPinId !== undefined ? highlightedPinId : activePinId;
 
     useImperativeHandle(ref, () => ({
       flyToPin(lat, lng, level) {
@@ -204,7 +210,7 @@ const RimvioGlobeHubBody = memo(
                 }
               : null
           }
-          activePinId={activePinId}
+          activePinId={displayPinId}
           className="h-full flex-1"
           onPinPress={handlePinPress}
         />
@@ -228,6 +234,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
   globeRef,
   initialOpenPinId,
   initialRecallEventId,
+  highlightedPinId,
   onPinPress,
 }: RimvioGlobeHubProps) {
   const { ready, eventsById } = useGlobeEventSnapshot();
@@ -282,6 +289,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
       clusters={clusters}
       eventsById={eventsById}
       initialOpenPinId={initialOpenPinId}
+      highlightedPinId={highlightedPinId}
       onPinPress={onPinPress}
     />
   );

@@ -10,6 +10,7 @@ import {
 import { resolveTargetEventFromSpacetime } from "@/lib/feed/resolve-target-event-from-spacetime";
 import { CONTEXT_MATCH_MIN_SCORE } from "@/lib/ingest/context-match-media-gate";
 import { scoreSpacetimeFit } from "@/lib/feed/spacetime-fit";
+import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
 import { syncPersonalGlobePinFromEvent } from "@/lib/globe/sync-personal-globe-pin";
 import { attachMediaSpacetime } from "@/lib/location-ping/attach-media-spacetime";
 import type { MediaSpacetimeContext } from "@/lib/location-ping/types";
@@ -80,6 +81,16 @@ function buildMatch(
   };
 }
 
+function resolveHintedEvent(hintId: string): EventCandidate | null {
+  const trimmed = hintId.trim();
+  if (!trimmed) {
+    return null;
+  }
+  return (
+    findEventCandidate(trimmed) ?? recoverGlobeContextEventFromPin(trimmed)
+  );
+}
+
 function resolveGlobePhotoTarget(input: {
   context: MediaSpacetimeContext;
   hintEventId?: string | null;
@@ -95,7 +106,7 @@ function resolveGlobePhotoTarget(input: {
   const hintId = input.hintEventId?.trim();
 
   if (hintId && input.forceAttachToHint) {
-    const hinted = findEventCandidate(hintId);
+    const hinted = resolveHintedEvent(hintId);
     if (hinted) {
       const plan = readPlanContextFromEvent(hinted);
       const fit = scoreSpacetimeFit({
@@ -122,7 +133,7 @@ function resolveGlobePhotoTarget(input: {
   }
 
   if (hintId) {
-    const hinted = findEventCandidate(hintId);
+    const hinted = resolveHintedEvent(hintId);
     if (hinted) {
       const plan = readPlanContextFromEvent(hinted);
       const fit = scoreSpacetimeFit({

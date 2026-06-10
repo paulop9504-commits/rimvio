@@ -15,9 +15,12 @@ import { GlobeSettingsSheet } from "@/components/globe/globe-settings-sheet";
 import { GlobeLocationConfirmCard } from "@/components/globe/globe-location-confirm-card";
 import { PinOpenSheet } from "@/components/globe/pin-open-sheet";
 import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
-import { buildPinClusterFromEvent } from "@/lib/globe/build-pin-cluster-from-event";
+import { buildPinClusterFromEvent, buildPinClusterFromPersonalPin } from "@/lib/globe/build-pin-cluster-from-event";
 import type { GlobeContextTimelineEntry } from "@/lib/globe/list-globe-context-timeline";
+import type { GlobeProjectedContextEntry } from "@/lib/globe/list-globe-projected-contexts";
 import type { PinCluster } from "@/lib/globe/pin-cluster-types";
+import { findPersonalGlobePinByEventId } from "@/lib/globe/personal-globe-pin-store";
+import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 
 function GlobeHomeBody() {
@@ -58,13 +61,50 @@ function GlobeHomeBody() {
 
   const openContextByEventId = useCallback(
     (eventId: string) => {
-      const event = findLifeEventCandidate(eventId);
+      let event = findLifeEventCandidate(eventId);
       if (!event) {
+        event = recoverGlobeContextEventFromPin(eventId);
+      }
+      if (!event) {
+        const pin = findPersonalGlobePinByEventId(eventId);
+        if (pin) {
+          setListOpen(false);
+          openPinCluster(buildPinClusterFromPersonalPin(pin), eventId);
+          return;
+        }
         toast.error("맥락을 찾지 못했어요");
         return;
       }
       setListOpen(false);
       openPinCluster(buildPinClusterFromEvent(event), event.id);
+    },
+    [openPinCluster],
+  );
+
+  const openProjectedContext = useCallback(
+    (entry: GlobeProjectedContextEntry) => {
+      setManageOpen(false);
+      const event = findLifeEventCandidate(entry.eventId);
+      const cluster = event
+        ? buildPinClusterFromEvent(event)
+        : {
+            pinId: entry.pinId,
+            eventId: entry.eventId,
+            title: entry.title,
+            placeLabel: entry.place,
+            lat: entry.lat,
+            lng: entry.lng,
+            dateLabel: entry.dateLabel,
+            startedAtIso: null,
+            evidence: {
+              photoCount: entry.photoCount,
+              videoCount: entry.videoCount,
+              chatCount: 0,
+              placePinCount: 0,
+            },
+            recallLine: null,
+          };
+      openPinCluster(cluster, entry.eventId);
     },
     [openPinCluster],
   );
@@ -82,6 +122,7 @@ function GlobeHomeBody() {
         globeRef={globeRef}
         className="h-full min-h-0 flex-1"
         initialRecallEventId={recallEventId}
+        highlightedPinId={sheetOpen ? activeCluster?.pinId ?? null : null}
         onPinPress={onPinPress}
       />
       <div className="pointer-events-none absolute left-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20 flex flex-col gap-2 sm:right-auto">
@@ -141,6 +182,9 @@ function GlobeHomeBody() {
         </button>
       </div>
       <GlobeContextIngestBar
+        targetEventId={sheetOpen ? activeCluster?.eventId ?? null : null}
+        targetTitle={sheetOpen ? activeCluster?.title ?? null : null}
+        forceAttachToTarget={sheetOpen && Boolean(activeCluster?.eventId)}
         onAttached={(eventId) => {
           const params = new URLSearchParams(window.location.search);
           if (params.get("recallEvent") !== eventId) {
@@ -184,10 +228,7 @@ function GlobeHomeBody() {
       <GlobeContextManageSheet
         open={manageOpen}
         onOpenChange={setManageOpen}
-        onOpenContext={(entry) => {
-          setManageOpen(false);
-          openContextEntry(entry);
-        }}
+        onOpenContext={openProjectedContext}
         onDeleted={(eventIds) => {
           if (activeCluster && eventIds.includes(activeCluster.eventId)) {
             setSheetOpen(false);

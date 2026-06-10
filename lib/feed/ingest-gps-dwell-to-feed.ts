@@ -54,6 +54,9 @@ function buildGpsDwellEventDraft(cluster: GpsDwellCluster): EventCandidate {
       targetingSource: "gps_background",
       gpsDwellMinutes: cluster.dwellMinutes,
       gpsDwellPingCount: cluster.pingCount,
+      gpsDwellLat: cluster.lat,
+      gpsDwellLng: cluster.lng,
+      gpsDwellPlaceLabel: cluster.placeLabel,
     },
     lifecycleUpdatedAt: stamp,
     createdAt: stamp,
@@ -150,6 +153,9 @@ function commitGpsDwellToEvent(input: {
         : 0,
       input.cluster.dwellMinutes,
     ),
+    gpsDwellLat: input.cluster.lat,
+    gpsDwellLng: input.cluster.lng,
+    gpsDwellPlaceLabel: input.cluster.placeLabel,
   };
 
   return commitEventUpsert({

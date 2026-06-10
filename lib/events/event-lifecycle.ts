@@ -76,8 +76,18 @@ export function scoreEventConfidence(input: {
   return Math.min(0.95, Math.round(confidence * 100) / 100);
 }
 
+export function isGlobeManualContextEvent(event: EventCandidate): boolean {
+  const meta = event.metadata;
+  return (
+    meta?.globeManualContext === true || meta?.targetingSource === "globe_manual"
+  );
+}
+
 export function pruneExpiredEvents(items: EventCandidate[], now = Date.now()): EventCandidate[] {
   return items.filter((item) => {
+    if (isGlobeManualContextEvent(item)) {
+      return true;
+    }
     if (item.lifecycle === "archived") {
       if (!isArchiveFoldComplete(item)) {
         return true;

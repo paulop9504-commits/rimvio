@@ -5,24 +5,28 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { CheckSquare, ListChecks, Square, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
-import type { GlobeContextTimelineEntry } from "@/lib/globe/list-globe-context-timeline";
-import { listGlobeContextTimeline } from "@/lib/globe/list-globe-context-timeline";
+import { useExperienceGraph } from "@/hooks/use-experience-graph";
 import { deleteGlobeContexts } from "@/lib/globe/delete-globe-context";
+import {
+  listGlobeProjectedContexts,
+  type GlobeProjectedContextEntry,
+} from "@/lib/globe/list-globe-projected-contexts";
 import {
   EVENT_CANDIDATES_UPDATED,
   listLifeEventCandidates,
 } from "@/lib/life-read-model";
 import { PERSONAL_GLOBE_PINS_UPDATED } from "@/lib/globe/personal-globe-pin-store";
+import { indexEventsById } from "@/lib/plan-context/project-plan-to-feed-slot";
 import { cn } from "@/lib/utils";
 
 export type GlobeContextManageSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onOpenContext?: (entry: GlobeContextTimelineEntry) => void;
+  onOpenContext?: (entry: GlobeProjectedContextEntry) => void;
   onDeleted?: (eventIds: string[]) => void;
 };
 
-function mediaLine(entry: GlobeContextTimelineEntry): string | null {
+function mediaLine(entry: GlobeProjectedContextEntry): string | null {
   const parts: string[] = [];
   if (entry.photoCount > 0) {
     parts.push(`사진 ${entry.photoCount}`);
@@ -31,16 +35,6 @@ function mediaLine(entry: GlobeContextTimelineEntry): string | null {
     parts.push(`동영상 ${entry.videoCount}`);
   }
   return parts.length > 0 ? parts.join(" · ") : null;
-}
-
-function timingLabel(timing: GlobeContextTimelineEntry["timing"]): string {
-  if (timing === "future") {
-    return "예정";
-  }
-  if (timing === "present") {
-    return "지금";
-  }
-  return "지난";
 }
 
 export function GlobeContextManageSheet({
@@ -72,11 +66,22 @@ export function GlobeContextManageSheet({
     };
   }, [open]);
 
-  const entries = useMemo(() => {
+  const events = useMemo(() => {
     void revision;
-    const timeline = listGlobeContextTimeline(listLifeEventCandidates());
-    return [...timeline.future, ...timeline.present, ...timeline.past];
+    return listLifeEventCandidates();
   }, [revision]);
+  const eventsById = useMemo(() => indexEventsById(events), [events]);
+  const { graph } = useExperienceGraph(eventsById);
+
+  const entries = useMemo(
+    () =>
+      listGlobeProjectedContexts({
+        events,
+        volumes: graph.volumes,
+        eventsById,
+      }),
+    [events, graph.volumes, eventsById],
+  );
 
   const allSelected = entries.length > 0 && selected.size === entries.length;
   const someSelected = selected.size > 0;
@@ -184,7 +189,7 @@ export function GlobeContextManageSheet({
                     맥락 관리
                   </p>
                   <p className="mt-0.5 text-[12px] text-muted-foreground">
-                    선택해서 지구본에서 한 번에 지울 수 있어요
+                    지구본에 보이는 경험 {entries.length}개 · 선택해서 지울 수 있어요
                   </p>
                 </div>
                 <button
@@ -219,7 +224,7 @@ export function GlobeContextManageSheet({
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
               {entries.length === 0 ? (
                 <p className="rounded-2xl border border-dashed border-border px-3.5 py-8 text-center text-[13px] leading-relaxed text-muted-foreground">
-                  지구본에 꽂힌 맥락이 없어요.
+                  지구본에 꽂힌 경험이 없어요.
                 </p>
               ) : (
                 <ul className="space-y-2 pb-2">
@@ -254,19 +259,14 @@ export function GlobeContextManageSheet({
                             onClick={() => onOpenContext?.(entry)}
                             className="min-w-0 flex-1 rounded-xl px-1 py-1 text-left active:bg-muted/50"
                           >
-                            <div className="flex items-center gap-2">
-                              <p className="truncate text-[15px] font-semibold text-foreground">
-                                {entry.title}
-                              </p>
-                              <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                                {timingLabel(entry.timing)}
-                              </span>
-                            </div>
+                            <p className="truncate text-[15px] font-semibold text-foreground">
+                              {entry.title}
+                            </p>
                             <p className="truncate text-[13px] text-muted-foreground">
                               {entry.place}
                             </p>
                             <p className="mt-0.5 text-[11px] text-muted-foreground">
-                              {entry.rangeLabel ?? entry.dateLabel ?? "일정 미정"}
+                              {entry.dateLabel ?? "일정 미정"}
                               {media ? ` · ${media}` : null}
                             </p>
                           </button>

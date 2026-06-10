@@ -66,6 +66,23 @@ function resolveRecallLine(
   return hit?.headline?.trim() || hit?.reason?.trim() || null;
 }
 
+import type { PinCluster } from "@/lib/globe/pin-cluster-types";
+
+export function projectExperienceHeroFromCluster(
+  cluster: PinCluster,
+): ExperienceHeroProjection {
+  return {
+    title: cluster.title.trim() || "경험",
+    date: cluster.dateLabel,
+    place: cluster.placeLabel.trim() || "장소",
+    peopleCount: 0,
+    photoCount: cluster.evidence.photoCount,
+    videoCount: cluster.evidence.videoCount,
+    heroImageContextId: null,
+    recallLine: cluster.recallLine,
+  };
+}
+
 export function projectExperienceHeroFromEvent(input: {
   event: EventCandidate | null | undefined;
   volume?: ExperienceVolume | null;

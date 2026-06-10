@@ -24,12 +24,19 @@ import { cn } from "@/lib/utils";
 
 export type GlobeContextIngestBarProps = {
   className?: string;
+  /** Active pin sheet — photos attach here instead of auto-match. */
+  targetEventId?: string | null;
+  targetTitle?: string | null;
+  forceAttachToTarget?: boolean;
   onAttached?: (eventId: string) => void;
 };
 
 /** Globe home — photos, videos, links, memos auto-attach to stored contexts. */
 export function GlobeContextIngestBar({
   className,
+  targetEventId,
+  targetTitle,
+  forceAttachToTarget = false,
   onAttached,
 }: GlobeContextIngestBarProps) {
   const [text, setText] = useState("");
@@ -47,6 +54,13 @@ export function GlobeContextIngestBar({
     },
     [onAttached],
   );
+
+  const attachHintId = forceAttachToTarget ? targetEventId?.trim() || null : null;
+  const attachHintTitle = forceAttachToTarget ? targetTitle?.trim() || null : null;
+  const inputPlaceholder =
+    attachHintTitle
+      ? `「${attachHintTitle}」에 사진·동영상·메모 넣기`
+      : "사진·동영상·링크·메모 — 맥락에 자동으로 붙어요";
 
   const ingestMedia = useCallback(
     async (fileList: FileList | null | undefined) => {
@@ -66,6 +80,9 @@ export function GlobeContextIngestBar({
       );
       try {
         const summary = await ingestGlobeContextFromFiles(files, {
+          hintEventId: attachHintId,
+          hintTitle: attachHintTitle,
+          forceAttachToHint: forceAttachToTarget && Boolean(attachHintId),
           onProgress: (done, total) => {
             if (total > 1) {
               toast.loading(`사진·동영상 ${total}개 올리는 중… ${done}/${total}`, {
@@ -97,7 +114,7 @@ export function GlobeContextIngestBar({
         }
       }
     },
-    [busy, onAttached],
+    [attachHintId, attachHintTitle, busy, forceAttachToTarget, onAttached],
   );
 
   const submitText = useCallback(
@@ -161,7 +178,7 @@ export function GlobeContextIngestBar({
             ref={inputRef}
             value={text}
             onChange={(event) => setText(event.target.value)}
-            placeholder="사진·동영상·링크·메모 — 맥락에 자동으로 붙어요"
+            placeholder={inputPlaceholder}
             disabled={busy}
             className="w-full bg-transparent text-[15px] text-foreground outline-none placeholder:text-muted-foreground"
             data-globe-context-ingest-input

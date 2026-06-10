@@ -2,7 +2,7 @@ import {
   GPS_PING_INTERVAL_MS,
   GPS_PING_MATCH_WINDOW_MS,
 } from "@/lib/location-ping/constants";
-import { resolvePlaceCoordinates } from "@/lib/experience-graph/resolve-place-coordinates";
+import { resolvePlaceLabelNearCoords } from "@/lib/location-ping/format-place-label";
 import type { GpsDwellCluster } from "@/lib/location-ping/gps-dwell-cluster-types";
 import type { GpsPing } from "@/lib/location-ping/types";
 import { haversineKm, parseIsoMs } from "@/lib/feed/spacetime-fit";
@@ -19,31 +19,7 @@ function clusterId(startIso: string, lat: number, lng: number): string {
 }
 
 function resolveClusterPlaceLabel(lat: number, lng: number): string {
-  const candidates = [
-    "제주",
-    "강남역",
-    "둔산동",
-    "부산",
-    "홍대",
-    "성수",
-    "서울",
-    "독일",
-    "오사카",
-  ] as const;
-
-  let best: string | null = null;
-  let bestKm = Number.POSITIVE_INFINITY;
-
-  for (const label of candidates) {
-    const place = resolvePlaceCoordinates(label);
-    const km = haversineKm(lat, lng, place.lat, place.lng);
-    if (km <= 25 && km < bestKm) {
-      best = place.label;
-      bestKm = km;
-    }
-  }
-
-  return best ?? `${lat.toFixed(3)}°, ${lng.toFixed(3)}°`;
+  return resolvePlaceLabelNearCoords(lat, lng);
 }
 
 function estimateDwellMinutes(pings: readonly GpsPing[]): number {
