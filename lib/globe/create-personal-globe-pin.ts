@@ -44,6 +44,11 @@ export function createPersonalGlobePinFromEvent(input: {
   const { photoCount, videoCount } = countEventMedia(input.event);
   const now = input.now ?? new Date();
 
+  const startedAtIso =
+    input.event.datetime?.trim() ||
+    plan?.windowStartIso?.trim() ||
+    now.toISOString();
+
   const pin: PersonalGlobePin = {
     pinId: `pgpin:${input.event.id}`,
     eventId: input.event.id,
@@ -56,7 +61,7 @@ export function createPersonalGlobePinFromEvent(input: {
       input.event.title.trim(),
     photoCount,
     videoCount,
-    createdAtIso: now.toISOString(),
+    createdAtIso: startedAtIso,
     acl: {
       viewerPeerThreadIds: uniqueViewerThreadIds([
         ...(input.shareWithPeerThreadIds ?? []),

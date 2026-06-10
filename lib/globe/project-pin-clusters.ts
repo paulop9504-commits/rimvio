@@ -59,6 +59,8 @@ function clusterFromPersonalPin(
   event: EventCandidate | null | undefined,
 ): PinCluster {
   const evidence = evidenceFromEvent(event);
+  const startedAtIso =
+    event?.datetime?.trim() || pin.createdAtIso;
   return {
     pinId: pin.pinId,
     eventId: pin.eventId,
@@ -66,8 +68,8 @@ function clusterFromPersonalPin(
     placeLabel: pin.placeLabel,
     lat: pin.lat,
     lng: pin.lng,
-    dateLabel: formatPinDateLabel(pin.createdAtIso),
-    startedAtIso: pin.createdAtIso,
+    dateLabel: formatPinDateLabel(startedAtIso),
+    startedAtIso,
     evidence: {
       photoCount: Math.max(evidence.photoCount, pin.photoCount),
       videoCount: Math.max(evidence.videoCount, pin.videoCount),

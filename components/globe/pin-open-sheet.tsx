@@ -213,11 +213,20 @@ export function PinOpenSheet({
     <AnimatePresence>
       {open && cluster && hero ? (
         <>
+          <motion.div
+            role="presentation"
+            aria-hidden
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[10061] bg-black/35"
+            onClick={() => onOpenChange(false)}
+          />
           <motion.aside
             role="dialog"
             aria-label={hero.title}
             className={cn(
-              "fixed z-[91] flex w-full flex-col overflow-hidden border border-border bg-background shadow-2xl",
+              "fixed z-[10062] flex w-full flex-col overflow-hidden border border-border bg-background shadow-2xl",
               "inset-x-0 bottom-0 max-h-[min(92vh,760px)] rounded-t-[24px]",
               "md:inset-y-0 md:right-0 md:left-auto md:max-h-none md:max-w-[min(92vw,420px)] md:rounded-none md:rounded-l-[24px]",
             )}

@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import type { EventCandidate } from "../lib/events/event-candidate";
+import { buildPinClusterFromEvent } from "../lib/globe/build-pin-cluster-from-event";
 import { listGlobeContextTimeline } from "../lib/globe/list-globe-context-timeline";
 import { resetPersonalGlobePinsForTests } from "../lib/globe/personal-globe-pin-store";
 import { createManualGlobeContext } from "../lib/globe/create-manual-globe-context";
+import { projectExperienceHeroFromEvent } from "../lib/globe/project-experience-hero";
 import { resetEventCandidatesForTests } from "../lib/events/event-store";
 
 function main() {
@@ -52,6 +54,15 @@ function main() {
   assert.equal(full.future.length, 1);
   assert.equal(full.past[0]?.title, "작년 제주");
   assert.equal(full.future[0]?.title, "내년 오사카");
+
+  const pastCluster = buildPinClusterFromEvent(pastCtx.event, pastCtx.pin);
+  assert.equal(pastCluster.eventId, pastCtx.event.id);
+  assert.ok(pastCluster.dateLabel?.includes("2025"));
+  const hero = projectExperienceHeroFromEvent({
+    event: pastCtx.event,
+    allEvents: [pastCtx.event],
+  });
+  assert.ok(hero?.title);
 
   console.log("test-globe-context-timeline: ok");
 }

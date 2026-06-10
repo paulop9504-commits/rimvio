@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { CalendarPlus, CalendarRange, Settings } from "lucide-react";
+import { toast } from "sonner";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { RimvioGlobeHubClient } from "@/components/experience/rimvio-globe-hub-client";
 import { GlobeContextIngestBar } from "@/components/globe/globe-context-ingest-bar";
@@ -39,23 +40,32 @@ function GlobeHomeBody() {
     setSheetOpen(open);
   }, []);
 
-  const openContextByEventId = useCallback((eventId: string) => {
-    const event = findLifeEventCandidate(eventId);
-    if (!event) {
-      return;
-    }
-    const cluster = buildPinClusterFromEvent(event);
-    setListOpen(false);
-    globeRef.current?.flyToPin(cluster.lat, cluster.lng, "neighborhood");
-    setActiveCluster(cluster);
-    setSheetOpen(true);
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("recallEvent") !== event.id) {
-      params.set("recallEvent", event.id);
-      const next = `${window.location.pathname}?${params.toString()}`;
-      window.history.replaceState(null, "", next);
-    }
+  const openPinCluster = useCallback((cluster: PinCluster, eventId: string) => {
+    requestAnimationFrame(() => {
+      globeRef.current?.flyToPin(cluster.lat, cluster.lng, "neighborhood");
+      setActiveCluster(cluster);
+      setSheetOpen(true);
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("recallEvent") !== eventId) {
+        params.set("recallEvent", eventId);
+        const next = `${window.location.pathname}?${params.toString()}`;
+        window.history.replaceState(null, "", next);
+      }
+    });
   }, []);
+
+  const openContextByEventId = useCallback(
+    (eventId: string) => {
+      const event = findLifeEventCandidate(eventId);
+      if (!event) {
+        toast.error("맥락을 찾지 못했어요");
+        return;
+      }
+      setListOpen(false);
+      openPinCluster(buildPinClusterFromEvent(event), event.id);
+    },
+    [openPinCluster],
+  );
 
   const openContextEntry = useCallback(
     (entry: GlobeContextTimelineEntry) => {
