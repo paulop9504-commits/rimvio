@@ -1,5 +1,5 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
-import { findEventCandidate } from "@/lib/events/event-store";
+import { findLifeEventCandidate } from "@/lib/life-read-model";
 import { removePersonalGlobePinByEventId } from "@/lib/globe/personal-globe-pin-store";
 import { commitEventUpsert } from "@/lib/source-of-truth/commit-truth";
 
@@ -31,7 +31,7 @@ export function deleteGlobeContext(eventId: string): DeleteGlobeContextResult {
   }
 
   const removedPin = removePersonalGlobePinByEventId(key);
-  const event = findEventCandidate(key);
+  const event = findLifeEventCandidate(key);
   if (!event) {
     return {
       eventId: key,
