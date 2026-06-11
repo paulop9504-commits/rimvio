@@ -145,10 +145,22 @@ export function SharedGlobeSheet({
       upsertPin(pin);
       setActivePinId(pin.payload.pinId);
       globeRef.current?.flyToPin(coords.lat, coords.lng, "neighborhood");
+      try {
+        const { mirrorSharedGlobePinToPersonalGlobe } = await import(
+          "@/lib/peer-chat/mirror-shared-globe-pin-to-personal"
+        );
+        mirrorSharedGlobePinToPersonalGlobe({
+          payload: pin.payload,
+          peerThreadId: peerThreadId,
+          peerDisplayName: displayName,
+        });
+      } catch (mirrorError) {
+        console.warn("[shared-globe] personal mirror", mirrorError);
+      }
       toast.success(
         file
-          ? `${coords.placeLabel}에 사진 핀을 박았어요`
-          : `${coords.placeLabel}에 핀을 박았어요`,
+          ? `${coords.placeLabel}에 사진 핀을 박았어요 · 내 지구에도 남겼어요`
+          : `${coords.placeLabel}에 핀을 박았어요 · 내 지구에도 남겼어요`,
       );
     } catch (caught) {
       const message =
@@ -222,14 +234,6 @@ export function SharedGlobeSheet({
         },
         file,
       );
-      void import("@/lib/feed/ingest-peer-room-media-capture")
-        .then(({ ingestPeerRoomMediaFromContext }) =>
-          ingestPeerRoomMediaFromContext({
-            context: spacetime,
-            peerThreadId,
-          }),
-        )
-        .catch(() => {});
     } catch (caught) {
       const message =
         caught instanceof Error ? caught.message : "사진 핀을 박지 못했어요.";
