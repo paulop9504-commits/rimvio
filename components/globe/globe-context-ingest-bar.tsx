@@ -15,6 +15,7 @@ import {
   ingestGlobeContextFromFiles,
   ingestGlobeContextFromText,
 } from "@/lib/feed/ingest-globe-context-capture";
+import { runGlobeComposerAction } from "@/lib/globe/run-globe-composer-action";
 import {
   rimvioComposerFieldClass,
   rimvioIconBtnClass,
@@ -59,8 +60,8 @@ export function GlobeContextIngestBar({
   const attachHintTitle = forceAttachToTarget ? targetTitle?.trim() || null : null;
   const inputPlaceholder =
     attachHintTitle
-      ? `「${attachHintTitle}」에 사진·동영상·메모 넣기`
-      : "사진·동영상·링크·메모 — 맥락에 자동으로 붙어요";
+      ? `「${attachHintTitle}」에 @ · 사진 · 메모`
+      : "@길찾기 역이름 · 사진 · 링크 · 메모 — 내 맥락에 붙어요";
 
   const ingestMedia = useCallback(
     async (fileList: FileList | null | undefined) => {
@@ -126,6 +127,14 @@ export function GlobeContextIngestBar({
       }
       setBusy(true);
       try {
+        const action = runGlobeComposerAction(value);
+        if (action) {
+          window.location.assign(action.url);
+          toast.success(`${action.label} 여는 중…`);
+          setText("");
+          setMenuOpen(false);
+          return;
+        }
         const outcome = ingestGlobeContextFromText(value);
         finish(outcome.result.event.id, outcome.toastLine);
       } catch (caught) {

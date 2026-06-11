@@ -6,6 +6,7 @@ import {
   resolveGlobeContextTimeFilterLabel,
   type GlobeContextTimeFilter,
 } from "@/lib/globe/globe-context-time-filter";
+import type { GlobeContextPeerOption } from "@/lib/globe/list-globe-context-peer-options";
 import { cn } from "@/lib/utils";
 
 const FILTERS: GlobeContextTimeFilter[] = ["all", "this_year", "this_month"];
@@ -13,6 +14,9 @@ const FILTERS: GlobeContextTimeFilter[] = ["all", "this_year", "this_month"];
 export type GlobeContextControlDockProps = {
   timeFilter: GlobeContextTimeFilter;
   onTimeFilterChange: (value: GlobeContextTimeFilter) => void;
+  peopleFilter?: string | null;
+  onPeopleFilterChange?: (value: string | null) => void;
+  peerOptions?: readonly GlobeContextPeerOption[];
   onCreate: () => void;
   onList: () => void;
   onManage: () => void;
@@ -24,6 +28,9 @@ export type GlobeContextControlDockProps = {
 export function GlobeContextControlDock({
   timeFilter,
   onTimeFilterChange,
+  peopleFilter = null,
+  onPeopleFilterChange,
+  peerOptions = [],
   onCreate,
   onList,
   onManage,
@@ -73,6 +80,47 @@ export function GlobeContextControlDock({
           </span>
         </button>
       </div>
+
+      {onPeopleFilterChange && peerOptions.length > 0 ? (
+        <div
+          className="border-t border-border/60 px-2 py-1.5"
+          data-globe-context-people-rail
+        >
+          <p className="mb-1 px-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+            사람
+          </p>
+          <div className="flex gap-1 overflow-x-auto overscroll-x-contain pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <button
+              type="button"
+              onClick={() => onPeopleFilterChange(null)}
+              className={cn(
+                "shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold transition active:scale-[0.98]",
+                !peopleFilter
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "bg-muted/80 text-muted-foreground",
+              )}
+            >
+              전체
+            </button>
+            {peerOptions.slice(0, 8).map((peer) => (
+              <button
+                key={peer.displayName}
+                type="button"
+                onClick={() => onPeopleFilterChange(peer.displayName)}
+                className={cn(
+                  "shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold transition active:scale-[0.98]",
+                  peopleFilter === peer.displayName
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-muted/80 text-muted-foreground",
+                )}
+                data-globe-people-filter={peer.displayName}
+              >
+                {peer.displayName} · {peer.contextCount}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div
         className="border-t border-border/60 px-2 py-1.5"

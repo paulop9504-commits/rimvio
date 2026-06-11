@@ -26,6 +26,10 @@ import {
   matchesGlobeContextTimeFilter,
   type GlobeContextTimeFilter,
 } from "@/lib/globe/globe-context-time-filter";
+import {
+  matchesGlobeContextPeopleFilter,
+  type GlobeContextPeopleFilter,
+} from "@/lib/globe/globe-context-people-filter";
 import type { GlobeDetailLevel } from "@/lib/globe/globe-zoom-levels";
 import { projectGlobeZoomClusterPins } from "@/lib/globe/project-globe-zoom-cluster-pins";
 import { resolveGlobeStartupView } from "@/lib/globe/resolve-globe-startup-view";
@@ -100,6 +104,7 @@ export type RimvioGlobeHubProps = {
     lng: number;
   }) => void;
   timeFilter?: GlobeContextTimeFilter;
+  peopleFilter?: GlobeContextPeopleFilter;
   pinCoordOverrides?: ReadonlyMap<
     string,
     { lat: number; lng: number }
@@ -336,6 +341,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
   pinRelocateEnabled,
   onPinRelocate,
   timeFilter = "all",
+  peopleFilter = null,
   pinCoordOverrides,
   onGlobePress,
   onClustersSnapshot,
@@ -353,10 +359,12 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
       volumes: graph.volumes,
       eventsById,
     });
-    return all.filter((cluster) =>
-      matchesGlobeContextTimeFilter(cluster.startedAtIso, timeFilter),
+    return all.filter(
+      (cluster) =>
+        matchesGlobeContextTimeFilter(cluster.startedAtIso, timeFilter) &&
+        matchesGlobeContextPeopleFilter(cluster.eventId, peopleFilter, eventsById),
     );
-  }, [ready, graph.volumes, eventsById, timeFilter]);
+  }, [ready, graph.volumes, eventsById, timeFilter, peopleFilter]);
 
   useEffect(() => {
     onClustersSnapshot?.(clusters);

@@ -18,6 +18,8 @@ import { GlobeSettingsSheet } from "@/components/globe/globe-settings-sheet";
 import { GlobeLocationConfirmCard } from "@/components/globe/globe-location-confirm-card";
 import { PinOpenSheet } from "@/components/globe/pin-open-sheet";
 import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
+import { usePersonalGlobePinSync } from "@/hooks/use-personal-globe-pin-sync";
+import { useGlobeTripArrival } from "@/hooks/use-globe-trip-arrival";
 import { useGlobeContextPlaceAlignment } from "@/hooks/use-globe-context-place-alignment";
 import { focusGlobeContextOnMap } from "@/lib/globe/focus-globe-context-on-map";
 import {
@@ -31,7 +33,12 @@ import type { GlobeContextTimelineEntry } from "@/lib/globe/list-globe-context-t
 import type { GlobeManageContextEntry } from "@/lib/globe/list-globe-manage-contexts";
 import type { PinCluster } from "@/lib/globe/pin-cluster-types";
 import { resolveGlobeContextPinCluster } from "@/lib/globe/resolve-globe-context-pin-cluster";
-import { EVENT_CANDIDATES_UPDATED } from "@/lib/life-read-model";
+import { listGlobeContextPeerOptions } from "@/lib/globe/list-globe-context-peer-options";
+import type { GlobeContextPeopleFilter } from "@/lib/globe/globe-context-people-filter";
+import {
+  EVENT_CANDIDATES_UPDATED,
+  listLifeEventCandidates,
+} from "@/lib/life-read-model";
 
 const PIN_REVERT_MS = 1_100;
 
@@ -40,9 +47,12 @@ function GlobeHomeBody() {
   const recallEventId = searchParams.get("recallEvent");
   const globeRef = useRef<RimvioGlobeHubHandle>(null);
   const liveLocation = useLiveLocationSnapshot();
+  usePersonalGlobePinSync(true);
   const [activeCluster, setActiveCluster] = useState<PinCluster | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [timeFilter, setTimeFilter] = useState<GlobeContextTimeFilter>("all");
+  const [peopleFilter, setPeopleFilter] = useState<GlobeContextPeopleFilter>(null);
+  const [peerOptionsRevision, setPeerOptionsRevision] = useState(0);
   const [pinDragOverrides, setPinDragOverrides] = useState<
     Map<string, { lat: number; lng: number }>
   >(() => new Map());
@@ -146,6 +156,17 @@ function GlobeHomeBody() {
     });
   }, []);
 
+  const peerOptions = useMemo(() => {
+    void peerOptionsRevision;
+    return listGlobeContextPeerOptions(listLifeEventCandidates());
+  }, [peerOptionsRevision]);
+
+  useEffect(() => {
+    const refresh = () => setPeerOptionsRevision((value) => value + 1);
+    window.addEventListener(EVENT_CANDIDATES_UPDATED, refresh);
+    return () => window.removeEventListener(EVENT_CANDIDATES_UPDATED, refresh);
+  }, []);
+
   const onPinPress = useCallback(
     (cluster: PinCluster) => {
       const nearby = resolveNearbyAt(cluster.lat, cluster.lng);
@@ -191,6 +212,23 @@ function GlobeHomeBody() {
       return cluster;
     },
     [],
+  );
+
+  useGlobeTripArrival(
+    {
+      onArrival: ({ lat, lng, recallEventId, recallLine, placeLabel }) => {
+        globeRef.current?.flyToPin(lat, lng, "neighborhood");
+        const nearby = resolveNearbyAt(lat, lng);
+        if (nearby.length > 1) {
+          applyNearbyContexts(nearby);
+          toast.message(recallLine || `${placeLabel} — 이 근처 맥락`);
+          return;
+        }
+        focusContextByEventId(recallEventId, { openSheet: false });
+        toast.message(recallLine || `${placeLabel}에 도착했어요`);
+      },
+    },
+    { enabled: true },
   );
 
   const focusContextOnMap = useCallback(
@@ -337,6 +375,7 @@ function GlobeHomeBody() {
         pinRelocateEnabled
         onPinRelocate={onPinRelocate}
         timeFilter={timeFilter}
+        peopleFilter={peopleFilter}
         pinCoordOverrides={pinCoordOverrides}
       />
       <GlobeContextStackPicker
@@ -369,6 +408,9 @@ function GlobeHomeBody() {
           <GlobeContextControlDock
             timeFilter={timeFilter}
             onTimeFilterChange={setTimeFilter}
+            peopleFilter={peopleFilter}
+            onPeopleFilterChange={setPeopleFilter}
+            peerOptions={peerOptions}
             onCreate={() => setCreateOpen(true)}
             onList={() => setListOpen(true)}
             onManage={() => setManageOpen(true)}
