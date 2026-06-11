@@ -176,6 +176,8 @@ export const copy = {
     createPlaceOverseasNoResults:
       "후보가 없어요 · 영문 도시명을 써 보거나 구글맵에서 확인해 주세요",
     createPlaceApproximateCta: (label: string) => `${label} 중심에 대략 박기`,
+    dockExpandAria: "필터·위치 펼치기",
+    dockCollapseAria: "필터·위치 접기",
     createFail: "맥락을 만들지 못했어요",
     listTitle: "내 맥락",
     manageTitle: "관리",

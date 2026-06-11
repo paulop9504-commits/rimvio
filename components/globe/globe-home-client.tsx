@@ -38,8 +38,11 @@ import type { PinCluster } from "@/lib/globe/pin-cluster-types";
 import { resolveGlobeContextPinCluster } from "@/lib/globe/resolve-globe-context-pin-cluster";
 import { listGlobeContextPeerOptions } from "@/lib/globe/list-globe-context-peer-options";
 import type { GlobeContextPeopleFilter } from "@/lib/globe/globe-context-people-filter";
+import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
+import { globeContextHasVideo } from "@/lib/globe/resolve-globe-context-primary-video";
 import {
   EVENT_CANDIDATES_UPDATED,
+  findLifeEventCandidate,
   listLifeEventCandidates,
 } from "@/lib/life-read-model";
 import { copy } from "@/lib/copy/human-ko";
@@ -182,6 +185,21 @@ function GlobeHomeBody() {
     void peerOptionsRevision;
     return listGlobeContextPeerOptions(listLifeEventCandidates());
   }, [peerOptionsRevision]);
+
+  const activeContextEvent = useMemo(() => {
+    const eventId = activeCluster?.eventId?.trim();
+    if (!eventId) {
+      return null;
+    }
+    return (
+      findLifeEventCandidate(eventId) ?? recoverGlobeContextEventFromPin(eventId)
+    );
+  }, [activeCluster?.eventId]);
+
+  const activeContextHasVideo = useMemo(
+    () => globeContextHasVideo(activeContextEvent),
+    [activeContextEvent],
+  );
 
   useEffect(() => {
     const refresh = () => setPeerOptionsRevision((value) => value + 1);
@@ -446,7 +464,8 @@ function GlobeHomeBody() {
           Boolean(activeCluster?.eventId) &&
           activeCluster?.variant !== "bridge_ghost" &&
           !sheetOpen &&
-          !stackClusters?.length
+          !stackClusters?.length &&
+          !activeContextHasVideo
         }
         onOpenSheet={() => setSheetOpen(true)}
         onDismiss={clearActiveContext}
@@ -458,6 +477,7 @@ function GlobeHomeBody() {
         anchorLng={activeCluster?.lng ?? null}
         visible={Boolean(activeCluster?.eventId) && !stackClusters?.length}
         onDismiss={clearActiveContext}
+        onOpenDetails={() => setSheetOpen(true)}
       />
       <div className="pointer-events-none absolute left-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20">
         <div className="pointer-events-auto">

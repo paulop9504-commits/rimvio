@@ -24,6 +24,7 @@ export type GlobeContextMapVideoStageProps = {
   globeRef?: RefObject<RimvioGlobeHubHandle | null>;
   visible?: boolean;
   onDismiss?: () => void;
+  onOpenDetails?: () => void;
   className?: string;
 };
 
@@ -35,6 +36,7 @@ export function GlobeContextMapVideoStage({
   globeRef,
   visible = true,
   onDismiss,
+  onOpenDetails,
   className,
 }: GlobeContextMapVideoStageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -124,11 +126,19 @@ export function GlobeContextMapVideoStage({
               "ring-1 ring-black/10",
             )}
           >
+            {onOpenDetails ? (
+              <button
+                type="button"
+                className="pointer-events-auto absolute inset-0 z-[1]"
+                aria-label="맥락 자세히 보기"
+                onClick={onOpenDetails}
+              />
+            ) : null}
             {mediaUrl ? (
               <video
                 ref={videoRef}
                 src={mediaUrl}
-                className="aspect-[9/16] w-full object-cover"
+                className="relative z-0 aspect-[9/16] w-full object-cover"
                 playsInline
                 muted
                 loop
@@ -142,8 +152,11 @@ export function GlobeContextMapVideoStage({
             {mediaUrl && anchorLayout.scale >= 0.34 ? (
               <button
                 type="button"
-                className="pointer-events-auto absolute bottom-2 right-2 rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-sm"
-                onClick={() => setPlaying((value) => !value)}
+                className="pointer-events-auto absolute bottom-2 right-2 z-[2] rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-sm"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setPlaying((value) => !value);
+                }}
               >
                 {playing ? "일시정지" : "재생"}
               </button>
@@ -151,8 +164,11 @@ export function GlobeContextMapVideoStage({
             {onDismiss && anchorLayout.scale >= 0.34 ? (
               <button
                 type="button"
-                className="pointer-events-auto absolute left-2 top-2 rounded-full bg-black/55 px-2 py-1 text-[10px] font-semibold text-white backdrop-blur-sm"
-                onClick={onDismiss}
+                className="pointer-events-auto absolute left-2 top-2 z-[2] rounded-full bg-black/55 px-2 py-1 text-[10px] font-semibold text-white backdrop-blur-sm"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onDismiss();
+                }}
               >
                 닫기
               </button>
