@@ -65,9 +65,22 @@ export function AuthCallbackClient() {
     const requestedNext = readAuthNextPath("/onboarding");
 
     void (async () => {
+      let hasSession = false;
+
       const { error } = await supabase.auth.exchangeCodeForSession(code);
       if (error) {
-        console.error("[auth/callback]", error.message);
+        const { data: sessionData } = await supabase.auth.getSession();
+        hasSession = Boolean(sessionData.session?.user);
+        if (!hasSession) {
+          console.error("[auth/callback]", error.message);
+          router.replace("/peers?auth=error");
+          return;
+        }
+      } else {
+        hasSession = true;
+      }
+
+      if (!hasSession) {
         router.replace("/peers?auth=error");
         return;
       }
