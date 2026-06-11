@@ -5,7 +5,24 @@ export function isAuthRequired(): boolean {
     process.env.NEXT_PUBLIC_AUTH_REQUIRED ??
     "";
   const normalized = raw.trim().toLowerCase();
-  return normalized === "true" || normalized === "1" || normalized === "yes";
+  if (normalized === "false" || normalized === "0" || normalized === "no") {
+    return false;
+  }
+  if (normalized === "true" || normalized === "1" || normalized === "yes") {
+    return true;
+  }
+
+  // Deployed Rimvio: Google login required (localhost stays open).
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, "") ?? "";
+  if (
+    appUrl.includes("rimvio.vercel.app") ||
+    appUrl === "https://rimvio.app" ||
+    (appUrl.endsWith(".vercel.app") && !appUrl.includes("localhost"))
+  ) {
+    return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL?.trim());
+  }
+
+  return false;
 }
 
 import { isAuthGateBypass } from "@/lib/auth/protected-routes";

@@ -27,6 +27,10 @@ export function LoginScreen() {
         title: copy.auth.loginFail,
         description: copy.auth.loginFailHint,
       },
+      invalid_key: {
+        title: copy.auth.loginFail,
+        description: copy.auth.invalidSupabaseKeyHint,
+      },
       missing_code: {
         title: copy.auth.loginFail,
         description: `${typeof window !== "undefined" ? window.location.origin : ""}/auth/callback — Supabase Redirect URLs에 등록했는지 확인하세요.`,

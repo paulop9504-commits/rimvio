@@ -1,6 +1,7 @@
-/** 사용자-facing 카피 — 환영과 정성, Apple 감성의 따뜻한 톤 */
+/** 사용자-facing 카피 — L1 Story Layer. @see docs/RIMVIO_STORY_LAYER.md */
 
 import { RIMVIO } from "@/lib/brand/rimvio";
+import { STORY_L0, STORY_L1_NOUNS, STORY_L1_VERBS } from "@/lib/copy/story-layer";
 
 export const copy = {
   brand: {
@@ -96,14 +97,96 @@ export const copy = {
     oauthSetupPending: "서버 OAuth 미설정",
   },
   globe: {
-    title: "지구본",
-    subtitle: "공간 · 시간 · 환경이 함께 움직입니다",
-    sharedTitle: "우리 지구",
-    sharedSubtitle: "친구와 함께 빈 지구에 핀을 박아요",
-    placePin: "여기에 핀 박기",
-    tapToPlace: "여기에 핀 박기로 위치를 고를 수 있어요",
-    photoPin: "사진으로 핀 박기",
-    emptyPins: "아직 핀이 없어요. 사진·GPS로 함께 박아보세요.",
+    /** L0 — onboarding / marketing only */
+    storyPersonal: STORY_L0.personal.ko,
+    storyLaunch: STORY_L0.launchFilm.ko,
+    title: "지구",
+    subtitle: "당신이 지나간 순간이 여기 남아요",
+    sharedTitle: "함께하는 지구",
+    sharedSubtitle: "친구와 남긴 흔적을 이어서 볼 수 있어요",
+    leaveTrace: STORY_L1_VERBS.leaveTrace,
+    leaveHere: STORY_L1_VERBS.leaveHere,
+    tapToPlace: "탭해서 여기에 남길 수 있어요",
+    photoTrace: "사진으로 남기기",
+    emptyTraces: "아직 흔적이 없어요. 한 줄만 남겨보세요.",
+    emptyTracesSub: "사진·메모도 같은 자리에 이어져요",
+    discoverNearby: "이 근처에서 남긴 흔적",
+    stackPickerSub: (count: number) => `${count}개 · 하나를 골라보세요`,
+    stackPickerShowAll: (overflow: number) => `외 ${overflow}개 · 전체 보기`,
+    hubEmpty: "흔적이 쌓이면 여기에 나타나요",
+    recallArrivalNearby: "다시 왔어요 — 이 근처 흔적",
+    recallArrivalSingle: (place: string) => `${place} — 그때 기억`,
+    marketStubToast: "중고 흔적은 준비 중이에요. 지금은 경험으로 남겼어요.",
+    inferredDomainEyebrow: "나중에 열릴 흔적",
+    inferredDomainTitle: (label: string) => `${label} 흔적으로 읽혔어요`,
+    inferredDomainBody:
+      "지금은 내 경험으로만 저장돼요. 공개·거래는 다음 단계에서 열려요.",
+    inferredDomainPriceHint: (price: string) => `가격 힌트 · ${price}`,
+    recallArrival: "다시 왔어요 — 그때 기억",
+    shareTraceLabelOff: "흔적 공개하기",
+    shareTraceLabelOn: "공개 중 · 다시 누르면 나만 보기",
+    shareTraceOn: "다른 사람도 이 흔적을 발견할 수 있어요",
+    shareTraceOff: "나만 보는 흔적으로 바꿨어요",
+    shareTraceFail: "공개 설정을 바꾸지 못했어요",
+    pioneerHint: "이 근처에 남긴 첫 흔적이에요",
+    externalTraceEyebrow: "다른 사람의 흔적",
+    externalTraceReadOnly: "읽기만 · 다른 사람이 남긴 순간",
+    externalDiscoveryEmpty: "아직 이 근처에 다른 흔적이 없어요",
+    gatheringTraceEyebrow: "함께하는 흔적",
+    gatheringTraceTitle: "모임 흔적을 남겼어요",
+    gatheringTraceBody: "같이 갈 사람이 발견할 수 있어요 · 흔적 공개를 켜면 더 잘 보여요",
+    gatheringTraceLineage: "이전 흔적에 이어서",
+    gatheringHeadcountHint: (n: number) => `${n}명`,
+    gatheringTimeHint: (hint: string) => `시간 · ${hint}`,
+    gatheringComposeToast: "모임 흔적으로 남겼어요",
+    bridgeInviteEyebrow: "함께하는 경험",
+    bridgeInviteTitle: (host: string, title: string) =>
+      `${host}님이 「${title}」에 초대했어요`,
+    bridgeInviteBody:
+      "수락하면 내 지도에도 같은 핀이 생겨요 · 상대 사진은 Rimvio 안에서만 볼 수 있어요",
+    bridgeInviteHostFallback: "친구",
+    bridgeInvitePlaceFallback: "여행",
+    bridgeInviteOverflow: (n: number) => `외 ${n}건`,
+    bridgeInviteAcceptCta: "함께 보기",
+    bridgeInviteDeclineCta: "거절",
+    bridgeInviteAccepted: "여행이 연결됐어요 · 내 지도에도 핀이 생겼어요",
+    bridgeInviteDeclined: "초대를 거절했어요",
+    bridgeInviteAcceptFail: "수락하지 못했어요",
+    bridgeInviteDeclineFail: "거절하지 못했어요",
+    bridgeInviteDismissAria: "나중에",
+    ingestPlaceholder: "@길찾기 역이름 · 사진 · 링크 · 메모 — 여기에 남기기",
+    ingestAttachPlaceholder: (title: string) => `「${title}」에 @ · 사진 · 메모`,
+    ingestAttachHint: (title: string) => `「${title}」에 이어서 남기기`,
+    ingestSuccess: "흔적을 남겼어요",
+    ingestFail: "남기지 못했어요",
+    createTitle: STORY_L1_VERBS.create,
+    createPlaceStep: "장소 확인",
+    createFail: "맥락을 만들지 못했어요",
+    listTitle: "내 맥락",
+    manageTitle: "관리",
+    manageDeleteConfirm: (count: number) =>
+      count === 1
+        ? "선택한 맥락을 지울까요?\n지구에서 사라지며, 사진·기록은 기기에 남아요."
+        : `선택한 맥락 ${count}개를 지울까요?\n지구에서 사라지며, 사진·기록은 기기에 남아요.`,
+    manageDeleteSuccess: (count: number) =>
+      count === 1 ? "맥락 1개를 지웠어요" : `맥락 ${count}개를 지웠어요`,
+    manageDeleteFail: "맥락을 지우지 못했어요",
+    manageSelectHint: "맥락을 선택하세요",
+    listEmptyFuture: "다가올 맥락이 없어요",
+    listEmptyNow: "지금 겹치는 맥락이 없어요",
+    listEmptyPast: "지난 맥락이 없어요",
+    listEmptyAll: "아직 맥락이 없어요.\n흔적 남기기로 첫 순간을 남겨 보세요.",
+    listManualBadge: " · 직접 만든 맥락",
+    notFound: "맥락을 찾지 못했어요",
+    contextLabel: STORY_L1_NOUNS.context,
+    /** Settings only — power user */
+    settingsLocation: "위치",
+    settingsGps: "GPS 추적",
+    settingsDwellHint: "같은 장소에 머물면 맥락이 쌓여요",
+    /** @deprecated use leaveTrace / emptyTraces */
+    placePin: STORY_L1_VERBS.leaveHere,
+    photoPin: "사진으로 남기기",
+    emptyPins: "아직 흔적이 없어요. 한 줄만 남겨보세요.",
   },
   search: {
     title: "수집",
@@ -179,7 +262,7 @@ export const copy = {
         shorts: {
           playToggle: "영상 재생 · 일시정지",
           loading: "그때 미디어 불러오는 중…",
-          memoryPlaceholder: "업로드한 사진·영상이 여기 재생돼요",
+          memoryPlaceholder: "남긴 사진·영상이 여기 재생돼요",
         },
       },
       run: {
@@ -434,6 +517,8 @@ export const copy = {
     logoutOk: "다음에 또 만나요",
     loginFail: "로그인에 실패했습니다",
     loginFailHint: "잠시 후 다시 시도해 주세요",
+    invalidSupabaseKeyHint:
+      "Vercel의 NEXT_PUBLIC_SUPABASE_ANON_KEY가 잘못됐어요. Supabase → Settings → API → anon public 키를 다시 붙여넣고 Redeploy 하세요.",
     loginIncomplete: "로그인이 중단되었습니다",
     devSetupTitle: "로그인 준비 중",
     devSetupHint: "서버 연결이 완료되면 Google로 바로 시작하실 수 있습니다",

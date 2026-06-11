@@ -73,7 +73,10 @@ export function AuthCallbackClient() {
         hasSession = Boolean(sessionData.session?.user);
         if (!hasSession) {
           console.error("[auth/callback]", error.message);
-          router.replace("/peers?auth=error");
+          const authCode = error.message.toLowerCase().includes("invalid api key")
+            ? "invalid_key"
+            : "error";
+          router.replace(`/peers?auth=${authCode}`);
           return;
         }
       } else {

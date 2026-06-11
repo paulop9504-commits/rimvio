@@ -77,6 +77,10 @@ export function FivePeerHubClient() {
       toast.error(copy.auth.loginFail, {
         description: copy.auth.loginFailHint,
       });
+    } else if (auth === "invalid_key") {
+      toast.error(copy.auth.loginFail, {
+        description: copy.auth.invalidSupabaseKeyHint,
+      });
     } else if (auth === "missing_code") {
       toast.error(copy.auth.loginIncomplete);
     }

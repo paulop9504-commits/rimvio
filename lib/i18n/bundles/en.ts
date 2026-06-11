@@ -427,6 +427,8 @@ export const copyEn: Copy = {
     logoutOk: "See you again soon",
     loginFail: "Sign-in failed",
     loginFailHint: "Please try again in a moment",
+    invalidSupabaseKeyHint:
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY on Vercel is invalid. Copy the anon key from Supabase → Settings → API, then redeploy.",
     loginIncomplete: "Sign-in was interrupted",
     devSetupTitle: "Getting sign-in ready",
     devSetupHint: "Google sign-in will be available once the server is connected",

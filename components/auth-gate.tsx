@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { Suspense } from "react";
 import { usePathname } from "next/navigation";
 import { LoginScreen } from "@/components/login-screen";
 import { RimvioLogo } from "@/components/rimvio-logo";
@@ -44,7 +45,11 @@ export function AuthGate({ children }: AuthGateProps) {
   }
 
   if (!user) {
-    return <LoginScreen />;
+    return (
+      <Suspense fallback={<AuthGateLoading />}>
+        <LoginScreen />
+      </Suspense>
+    );
   }
 
   return <div key={pathname}>{children}</div>;
