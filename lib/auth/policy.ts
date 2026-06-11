@@ -1,3 +1,6 @@
+import { isAuthGateBypass } from "@/lib/auth/protected-routes";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
+
 /** When true, pages and APIs require a signed-in Supabase user. */
 export function isAuthRequired(): boolean {
   const raw =
@@ -19,13 +22,11 @@ export function isAuthRequired(): boolean {
     appUrl === "https://rimvio.app" ||
     (appUrl.endsWith(".vercel.app") && !appUrl.includes("localhost"))
   ) {
-    return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL?.trim());
+    return isSupabaseConfigured();
   }
 
   return false;
 }
-
-import { isAuthGateBypass } from "@/lib/auth/protected-routes";
 
 const PUBLIC_PAGE_PREFIXES = ["/auth/callback"] as const;
 

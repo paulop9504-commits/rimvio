@@ -2,6 +2,10 @@ import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, type NextResponse } from "next/server";
 import type { Database } from "@/types/database";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import {
+  resolvePublicSupabaseAnonKey,
+  resolvePublicSupabaseUrl,
+} from "@/lib/supabase/resolve-public-supabase-env";
 
 /**
  * Supabase client for Route Handlers — session cookies must be set on the
@@ -16,8 +20,8 @@ export function createClientForRoute(
   }
 
   return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    resolvePublicSupabaseUrl(),
+    resolvePublicSupabaseAnonKey(),
     {
       cookies: {
         getAll() {

@@ -6,6 +6,10 @@ import { isAuthRequired } from "@/lib/auth/policy";
 import { isPublicApiPath } from "@/lib/auth/policy";
 import { isProtectedRoute } from "@/lib/auth/protected-routes";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import {
+  resolvePublicSupabaseAnonKey,
+  resolvePublicSupabaseUrl,
+} from "@/lib/supabase/resolve-public-supabase-env";
 
 function authRequiredJson(status: number, error: string) {
   return NextResponse.json({ error, authRequired: true }, { status });
@@ -20,8 +24,8 @@ export async function readAuthUser(
   }
 
   const supabase = createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    resolvePublicSupabaseUrl(),
+    resolvePublicSupabaseAnonKey(),
     {
       cookies: {
         getAll() {

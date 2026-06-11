@@ -1,10 +1,15 @@
 import { createBrowserClient } from "@supabase/ssr";
 import type { Database } from "@/types/database";
+import {
+  isSupabaseConfigured,
+  resolvePublicSupabaseAnonKey,
+  resolvePublicSupabaseUrl,
+} from "@/lib/supabase/resolve-public-supabase-env";
 
 export function createClient() {
   return createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    resolvePublicSupabaseUrl(),
+    resolvePublicSupabaseAnonKey(),
     {
       auth: {
         // Only `/auth/callback` exchanges the PKCE code (avoid double exchange).
@@ -14,12 +19,7 @@ export function createClient() {
   );
 }
 
-export function isSupabaseConfigured() {
-  return Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL &&
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  );
-}
+export { isSupabaseConfigured };
 
 export function tryCreateClient() {
   if (!isSupabaseConfigured()) {
