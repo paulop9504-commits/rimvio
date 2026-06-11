@@ -19,6 +19,7 @@ import { GLOBE_TILE_MAX_ZOOM } from "@/lib/globe/globe-tile-constants";
 import { globeTileEngineUrl } from "@/lib/globe/globe-tile-engine-url";
 import { useGlobeOverviewTexture } from "@/hooks/use-globe-equirect-texture";
 import { GLOBE_TOSS_THEME } from "@/lib/globe/globe-toss-theme";
+import { resolveGlobeContextVideoScale } from "@/lib/globe/resolve-globe-context-video-layout";
 import type { GlobeViewerLocation } from "@/lib/globe/globe-viewer-location-types";
 import { clampGpsAccuracyMeters } from "@/lib/globe/format-gps-accuracy-label";
 import {
@@ -430,6 +431,10 @@ export const RimvioGlobe3D = memo(
         const detailLevel = resolveGlobeDetailLevel(altitude);
         onDetailLevelChangeRef.current?.(detailLevel);
         shellRef.current?.setAttribute("data-globe-detail", detailLevel);
+        shellRef.current?.style.setProperty(
+          "--globe-pin-scale",
+          String(resolveGlobeContextVideoScale(altitude)),
+        );
         globe.showAtmosphere(altitude >= GLOBE_TOSS_THEME.atmosphereCutoffAltitude);
         globe.labelsData([]);
         syncOverviewTexture(altitude);

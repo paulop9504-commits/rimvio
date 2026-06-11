@@ -3044,6 +3044,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 
 /* Immersive home — default dark space (sheets / legacy) */
 .rimvio-globe-space {
+  --globe-pin-scale: 1;
   background: radial-gradient(ellipse 120% 80% at 50% 20%, #142238 0%, #060a14 45%, #010308 100%);
 }
 
@@ -3269,6 +3270,8 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   box-shadow:
     0 2px 8px rgba(2, 32, 71, 0.06),
     0 8px 24px rgba(49, 130, 246, 0.08);
+  transform: scale(var(--globe-pin-scale, 1));
+  transform-origin: center bottom;
 }
 
 .rimvio-globe-3d-pin__dot {
@@ -3279,6 +3282,8 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   border: 2px solid #ffffff;
   background: #3182f6;
   box-shadow: 0 2px 6px rgba(49, 130, 246, 0.35);
+  transform: scale(var(--globe-pin-scale, 1));
+  transform-origin: center center;
 }
 
 .rimvio-globe-3d-pin--active .rimvio-globe-3d-pin__card {

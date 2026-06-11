@@ -157,9 +157,19 @@ function GlobeHomeBody() {
       globeRef.current?.flyToPin(cluster.lat, cluster.lng, "neighborhood");
       setStackClusters(null);
       setActiveCluster(cluster);
-      setSheetOpen(options?.openSheet !== false);
 
       const eventId = cluster.eventId?.trim();
+      const event = eventId
+        ? findLifeEventCandidate(eventId) ??
+          recoverGlobeContextEventFromPin(eventId)
+        : null;
+      const hasMapVideo = Boolean(resolveGlobeContextPrimaryVideo(event));
+      const openSheet =
+        options?.openSheet !== undefined
+          ? options.openSheet !== false
+          : !hasMapVideo;
+      setSheetOpen(openSheet);
+
       if (!eventId) {
         return;
       }
@@ -192,7 +202,7 @@ function GlobeHomeBody() {
       }
 
       if (nearby.length === 1) {
-        openContextCluster(nearby[0]!, { openSheet: true });
+        openContextCluster(nearby[0]!);
         return;
       }
 
@@ -284,7 +294,7 @@ function GlobeHomeBody() {
         }
         return;
       }
-      openContextCluster(cluster, { openSheet: true });
+      openContextCluster(cluster);
     },
     [markPinPress, openContextCluster, pendingBridgeInvites],
   );
@@ -313,22 +323,10 @@ function GlobeHomeBody() {
         toast.error("맥락을 찾지 못했어요");
         return null;
       }
-      const { cluster } = result;
-      globeRef.current?.flyToPin(cluster.lat, cluster.lng, "neighborhood");
-      setStackClusters(null);
-      setActiveCluster(cluster);
-      if (options?.openSheet !== false) {
-        setSheetOpen(true);
-      }
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("recallEvent") !== eventId) {
-        params.set("recallEvent", eventId);
-        const next = `${window.location.pathname}?${params.toString()}`;
-        window.history.replaceState(null, "", next);
-      }
-      return cluster;
+      openContextCluster(result.cluster, options);
+      return result.cluster;
     },
-    [],
+    [openContextCluster],
   );
 
   useGlobeTripArrival(
@@ -341,7 +339,7 @@ function GlobeHomeBody() {
           toast.message(recallLine || `${placeLabel} — 이 근처 맥락`);
           return;
         }
-        focusContextByEventId(recallEventId, { openSheet: true });
+        focusContextByEventId(recallEventId);
         toast.message(recallLine || `${placeLabel}에 도착했어요`);
       },
     },
@@ -446,7 +444,7 @@ function GlobeHomeBody() {
 
   const onStackSelect = useCallback(
     (cluster: PinCluster) => {
-      openContextCluster(cluster, { openSheet: true });
+      openContextCluster(cluster);
     },
     [openContextCluster],
   );

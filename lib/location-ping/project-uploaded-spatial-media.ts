@@ -10,6 +10,9 @@ import type { SpatialMediaItem } from "@/lib/experience-graph/spatial-media-type
 import { formatCoordsPlaceLabel } from "@/lib/location-ping/format-place-label";
 import type { MediaSpacetimeContext } from "@/lib/location-ping/types";
 
+const VOLUME_FIT_RADIUS_KM = 25;
+const VOLUME_TIME_PADDING_MS = 6 * 60 * 60 * 1000;
+
 function parseMs(iso?: string | null): number | null {
   if (!iso?.trim()) {
     return null;
@@ -51,11 +54,18 @@ function mediaCaption(context: MediaSpacetimeContext): string {
   return time;
 }
 
-function fitsVolume(
+/** Strict spacetime fit — never attach Shanghai upload to Jeju volume. */
+export function fitsUploadedMediaVolume(
   context: MediaSpacetimeContext,
   volume: ExperienceVolume,
   volumeCoords: ReturnType<typeof resolvePlaceCoordinates>,
 ): boolean {
+  const sourceEventId = volume.sourceEventId?.trim();
+  const originRef = context.originRef?.trim();
+  if (sourceEventId && originRef && originRef === sourceEventId) {
+    return true;
+  }
+
   const capturedMs = parseMs(context.capturedAtIso);
   const startMs = parseMs(volume.time.startIso);
   const endMs = parseMs(volume.time.endIso) ?? startMs;
@@ -63,14 +73,14 @@ function fitsVolume(
     return false;
   }
 
-  const windowStart = startMs - 6 * 60 * 60 * 1000;
-  const windowEnd = (endMs ?? startMs) + 6 * 60 * 60 * 1000;
+  const windowStart = startMs - VOLUME_TIME_PADDING_MS;
+  const windowEnd = (endMs ?? startMs) + VOLUME_TIME_PADDING_MS;
   if (capturedMs < windowStart || capturedMs > windowEnd) {
     return false;
   }
 
   if (context.lat === null || context.lng === null) {
-    return volume.space.clusterId.length > 0;
+    return false;
   }
 
   const distance = haversineKm(
@@ -79,7 +89,7 @@ function fitsVolume(
     volumeCoords.lat,
     volumeCoords.lng,
   );
-  return distance <= 25 || volume.space.clusterId.length > 0;
+  return distance <= VOLUME_FIT_RADIUS_KM;
 }
 
 export function projectUploadedSpatialMedia(
@@ -89,7 +99,7 @@ export function projectUploadedSpatialMedia(
   const volumeCoords = resolvePlaceCoordinates(volume.space.label);
 
   return contexts
-    .filter((context) => fitsVolume(context, volume, volumeCoords))
+    .filter((context) => fitsUploadedMediaVolume(context, volume, volumeCoords))
     .map((context) => {
       const date = new Date(context.capturedAtIso);
       const timeOfDay = resolveTimeOfDay(date);
