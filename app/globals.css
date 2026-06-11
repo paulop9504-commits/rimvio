@@ -3048,6 +3048,11 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   background: radial-gradient(ellipse 120% 80% at 50% 20%, #142238 0%, #060a14 45%, #010308 100%);
 }
 
+[data-globe-context-pin-card] {
+  display: none !important;
+  pointer-events: none !important;
+}
+
 /* Toss-style home globe — Google Earth sky + Toss gray floor */
 .rimvio-globe-space--toss {
   background: linear-gradient(

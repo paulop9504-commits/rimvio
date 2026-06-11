@@ -171,13 +171,19 @@ export const RimvioGlobe3D = memo(
     lockGlobeControlsRef.current = () => {
       pinPressLockRef.current = true;
       suppressGlobeClickUntilRef.current = Date.now() + 900;
-      globeRef.current?.controls().enabled = false;
+      const globe = globeRef.current;
+      if (globe) {
+        globe.controls().enabled = false;
+      }
     };
 
     unlockGlobeControlsRef.current = () => {
       pinPressLockRef.current = false;
       if (!relocatingPinIdRef.current) {
-        globeRef.current?.controls().enabled = true;
+        const globe = globeRef.current;
+        if (globe) {
+          globe.controls().enabled = true;
+        }
       }
     };
 
