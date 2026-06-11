@@ -100,6 +100,15 @@ export function createGlobe3dClusterPinElement(
     event.stopPropagation();
     onPress(pin.id);
   });
+  root.addEventListener(
+    "pointerdown",
+    (event) => {
+      if (event.button === 0) {
+        event.stopPropagation();
+      }
+    },
+    { passive: true },
+  );
 
   return root;
 }
@@ -162,6 +171,15 @@ export function createGlobe3dPinElement(
       event.stopPropagation();
       handlers.onPress(pin.id);
     });
+    root.addEventListener(
+      "pointerdown",
+      (event) => {
+        if (event.button === 0) {
+          event.stopPropagation();
+        }
+      },
+      { passive: true },
+    );
     return root;
   }
 
@@ -182,6 +200,7 @@ export function createGlobe3dPinElement(
     if (event.button !== 0) {
       return;
     }
+    event.stopPropagation();
     suppressTap = false;
     longPressActive = false;
     startX = event.clientX;

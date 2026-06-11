@@ -96,6 +96,8 @@ export type RimvioGlobeHubProps = {
   /** Highlight pin card while pin sheet is open — does not lock zoom. */
   highlightedPinId?: string | null;
   onPinPress?: (cluster: PinCluster) => void;
+  /** Zoomed-out cluster badge — multiple contexts at one tap. */
+  onContextGroupPress?: (clusters: readonly PinCluster[]) => void;
   pinRelocateEnabled?: boolean;
   onPinRelocate?: (input: {
     pinId: string;
@@ -125,6 +127,8 @@ type RimvioGlobeHubBodyProps = {
   initialOpenPinId?: string | null;
   highlightedPinId?: string | null;
   onPinPress?: (cluster: PinCluster) => void;
+  /** Zoomed-out cluster badge — multiple contexts at one tap. */
+  onContextGroupPress?: (clusters: readonly PinCluster[]) => void;
   pinRelocateEnabled?: boolean;
   onPinRelocate?: (input: {
     pinId: string;
@@ -150,6 +154,7 @@ const RimvioGlobeHubBody = memo(
       initialOpenPinId,
       highlightedPinId,
       onPinPress,
+      onContextGroupPress,
       pinRelocateEnabled = false,
       onPinRelocate,
       pinCoordOverrides,
@@ -275,6 +280,23 @@ const RimvioGlobeHubBody = memo(
           return;
         }
         if (pinId.startsWith("cluster:")) {
+          const memberPinIds = pinId
+            .slice("cluster:".length)
+            .split("|")
+            .map((row) => row.trim())
+            .filter(Boolean);
+          const memberClusters = memberPinIds
+            .map((memberId) => findPinClusterByPinId(clusters, memberId))
+            .filter((row): row is PinCluster => row != null);
+          if (memberClusters.length === 1) {
+            setActivePinId(memberClusters[0]!.pinId);
+            onPinPress?.(memberClusters[0]!);
+            return;
+          }
+          if (memberClusters.length > 1) {
+            onContextGroupPress?.(memberClusters);
+            return;
+          }
           const pin = globePins.find((row) => row.id === pinId);
           if (pin) {
             innerGlobeRef.current?.flyToPin(pin.lat, pin.lng, "city");
@@ -285,9 +307,19 @@ const RimvioGlobeHubBody = memo(
         const cluster = findPinClusterByPinId(clusters, pinId);
         if (cluster) {
           onPinPress?.(cluster);
+          return;
+        }
+        const pin = globePins.find((row) => row.id === pinId);
+        const eventId = pin?.sourceEventId?.trim();
+        if (eventId) {
+          const byEvent = findPinClusterByEventId(clusters, eventId);
+          if (byEvent) {
+            setActivePinId(byEvent.pinId);
+            onPinPress?.(byEvent);
+          }
         }
       },
-      [clusters, globePins, onPinPress],
+      [clusters, globePins, onContextGroupPress, onPinPress],
     );
 
     return (
@@ -340,6 +372,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
   onRecallEventId,
   highlightedPinId,
   onPinPress,
+  onContextGroupPress,
   pinRelocateEnabled,
   onPinRelocate,
   timeFilter = "all",
@@ -424,6 +457,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
       initialOpenPinId={initialOpenPinId}
       highlightedPinId={highlightedPinId}
       onPinPress={onPinPress}
+      onContextGroupPress={onContextGroupPress}
       pinRelocateEnabled={pinRelocateEnabled}
       onPinRelocate={onPinRelocate}
       pinCoordOverrides={pinCoordOverrides}

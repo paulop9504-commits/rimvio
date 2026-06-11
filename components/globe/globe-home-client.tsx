@@ -31,7 +31,10 @@ import {
 } from "@/lib/globe/globe-context-card-coords";
 import type { GlobeContextTimeFilter } from "@/lib/globe/globe-context-time-filter";
 import type { GlobeDetailLevel } from "@/lib/globe/globe-zoom-levels";
-import { resolveGlobeContextsNearTap } from "@/lib/globe/resolve-globe-contexts-near-tap";
+import {
+  globeContextTapHitRadiusMeters,
+  resolveGlobeContextsNearTap,
+} from "@/lib/globe/resolve-globe-contexts-near-tap";
 import type { GlobeContextTimelineEntry } from "@/lib/globe/list-globe-context-timeline";
 import type { GlobeManageContextEntry } from "@/lib/globe/list-globe-manage-contexts";
 import type { PinCluster } from "@/lib/globe/pin-cluster-types";
@@ -39,7 +42,7 @@ import { resolveGlobeContextPinCluster } from "@/lib/globe/resolve-globe-context
 import { listGlobeContextPeerOptions } from "@/lib/globe/list-globe-context-peer-options";
 import type { GlobeContextPeopleFilter } from "@/lib/globe/globe-context-people-filter";
 import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
-import { globeContextHasVideo } from "@/lib/globe/resolve-globe-context-primary-video";
+import { resolveGlobeContextPrimaryVideo } from "@/lib/globe/resolve-globe-context-primary-video";
 import {
   EVENT_CANDIDATES_UPDATED,
   findLifeEventCandidate,
@@ -50,6 +53,8 @@ import { projectBridgeGhostClusters } from "@/lib/experience-bridge/project-brid
 import type { PendingBridgeInvite } from "@/hooks/use-pending-bridge-invites";
 
 const PIN_REVERT_MS = 1_100;
+/** Pin tap and globe click fire together — ignore the follow-up globe press. */
+const GLOBE_PIN_PRESS_SUPPRESS_MS = 450;
 
 function GlobeHomeBody() {
   const searchParams = useSearchParams();
@@ -93,6 +98,7 @@ function GlobeHomeBody() {
   const [stackClusters, setStackClusters] = useState<PinCluster[] | null>(null);
   const clustersRef = useRef<readonly PinCluster[]>([]);
   const detailLevelRef = useRef<GlobeDetailLevel>("space");
+  const lastPinPressAtRef = useRef(0);
 
   const onClustersSnapshot = useCallback((clusters: readonly PinCluster[]) => {
     clustersRef.current = clusters;
@@ -147,9 +153,37 @@ function GlobeHomeBody() {
     }
   }, [activeCluster?.eventId, schedulePinRevertToCardPlace]);
 
+  const openContextCluster = useCallback(
+    (cluster: PinCluster, options?: { openSheet?: boolean }) => {
+      globeRef.current?.flyToPin(cluster.lat, cluster.lng, "neighborhood");
+      setStackClusters(null);
+      setActiveCluster(cluster);
+      setSheetOpen(options?.openSheet !== false);
+
+      const eventId = cluster.eventId?.trim();
+      if (!eventId) {
+        return;
+      }
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("recallEvent") !== eventId) {
+        params.set("recallEvent", eventId);
+        const next = `${window.location.pathname}?${params.toString()}`;
+        window.history.replaceState(null, "", next);
+      }
+    },
+    [],
+  );
+
+  const markPinPress = useCallback(() => {
+    lastPinPressAtRef.current = Date.now();
+  }, []);
+
   const applyNearbyContexts = useCallback(
     (nearby: readonly PinCluster[], flyCluster?: PinCluster | null) => {
       if (nearby.length === 0) {
+        if (globeContextTapHitRadiusMeters(detailLevelRef.current) == null) {
+          return;
+        }
         clearActiveContext();
         return;
       }
@@ -159,9 +193,7 @@ function GlobeHomeBody() {
       }
 
       if (nearby.length === 1) {
-        setStackClusters(null);
-        setActiveCluster(nearby[0]!);
-        setSheetOpen(false);
+        openContextCluster(nearby[0]!, { openSheet: true });
         return;
       }
 
@@ -169,7 +201,7 @@ function GlobeHomeBody() {
       setActiveCluster(null);
       setSheetOpen(false);
     },
-    [clearActiveContext],
+    [clearActiveContext, openContextCluster],
   );
 
   const resolveNearbyAt = useCallback((tapLat: number, tapLng: number) => {
@@ -196,9 +228,16 @@ function GlobeHomeBody() {
     );
   }, [activeCluster?.eventId]);
 
-  const activeContextHasVideo = useMemo(
-    () => globeContextHasVideo(activeContextEvent),
+  const activeContextPrimaryVideo = useMemo(
+    () => resolveGlobeContextPrimaryVideo(activeContextEvent),
     [activeContextEvent],
+  );
+
+  const showMapVideoReplay = Boolean(
+    activeContextPrimaryVideo &&
+      activeCluster?.eventId &&
+      !sheetOpen &&
+      !stackClusters?.length,
   );
 
   useEffect(() => {
@@ -223,8 +262,17 @@ function GlobeHomeBody() {
     }
   }, [pendingBridgeInvites]);
 
+  const onContextGroupPress = useCallback(
+    (clusters: readonly PinCluster[]) => {
+      markPinPress();
+      applyNearbyContexts(clusters, clusters[0] ?? null);
+    },
+    [applyNearbyContexts, markPinPress],
+  );
+
   const onPinPress = useCallback(
     (cluster: PinCluster) => {
+      markPinPress();
       if (cluster.variant === "bridge_ghost") {
         const invite = pendingBridgeInvites.find(
           (row) => row.state.bridge.eventId === cluster.eventId,
@@ -237,15 +285,17 @@ function GlobeHomeBody() {
         }
         return;
       }
-      const nearby = resolveNearbyAt(cluster.lat, cluster.lng);
-      applyNearbyContexts(nearby.length > 0 ? nearby : [cluster], cluster);
+      openContextCluster(cluster, { openSheet: true });
     },
-    [applyNearbyContexts, pendingBridgeInvites, resolveNearbyAt],
+    [markPinPress, openContextCluster, pendingBridgeInvites],
   );
 
   const onGlobePress = useCallback(
     (coords: { lat: number; lng: number }) => {
       if (pinDragActiveRef.current) {
+        return;
+      }
+      if (Date.now() - lastPinPressAtRef.current < GLOBE_PIN_PRESS_SUPPRESS_MS) {
         return;
       }
       applyNearbyContexts(resolveNearbyAt(coords.lat, coords.lng));
@@ -397,12 +447,9 @@ function GlobeHomeBody() {
 
   const onStackSelect = useCallback(
     (cluster: PinCluster) => {
-      setStackClusters(null);
-      setActiveCluster(cluster);
-      setSheetOpen(false);
-      globeRef.current?.flyToPin(cluster.lat, cluster.lng, "neighborhood");
+      openContextCluster(cluster, { openSheet: true });
     },
-    [],
+    [openContextCluster],
   );
 
   const openContextByEventId = useCallback(
@@ -437,6 +484,7 @@ function GlobeHomeBody() {
         onRecallEventId={onRecallEventId}
         highlightedPinId={activeCluster?.pinId ?? null}
         onPinPress={onPinPress}
+        onContextGroupPress={onContextGroupPress}
         onGlobePress={onGlobePress}
         onClustersSnapshot={onClustersSnapshot}
         onDetailLevelChange={onDetailLevelChange}
@@ -465,7 +513,7 @@ function GlobeHomeBody() {
           activeCluster?.variant !== "bridge_ghost" &&
           !sheetOpen &&
           !stackClusters?.length &&
-          !activeContextHasVideo
+          !showMapVideoReplay
         }
         onOpenSheet={() => setSheetOpen(true)}
         onDismiss={clearActiveContext}
@@ -475,7 +523,7 @@ function GlobeHomeBody() {
         eventId={activeCluster?.eventId ?? null}
         anchorLat={activeCluster?.lat ?? null}
         anchorLng={activeCluster?.lng ?? null}
-        visible={Boolean(activeCluster?.eventId) && !stackClusters?.length}
+        visible={showMapVideoReplay}
         onDismiss={clearActiveContext}
         onOpenDetails={() => setSheetOpen(true)}
       />
