@@ -20,38 +20,20 @@ function extractSupabaseRef(url: string): string | null {
   return match?.[1] ?? null;
 }
 
-function extractJwtRef(token: string): string | null {
-  try {
-    const payloadB64 = token.split(".")[1];
-    if (!payloadB64) return null;
-    const normalized = payloadB64.replace(/-/g, "+").replace(/_/g, "/");
-    const json =
-      typeof atob === "function"
-        ? atob(normalized)
-        : Buffer.from(normalized, "base64").toString("utf8");
-    const payload = JSON.parse(json) as { ref?: unknown };
-    return typeof payload.ref === "string" ? payload.ref : null;
-  } catch {
-    return null;
+function envPointsAtRimvioProject(): boolean {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+  if (!looksValidUrl(url) || !looksValidAnonKey(key)) {
+    return false;
   }
-}
-
-function anonKeyMatchesUrl(key: string, url: string): boolean {
-  if (!looksValidAnonKey(key)) return false;
-  const urlRef = extractSupabaseRef(url);
-  const keyRef = extractJwtRef(key);
-  return Boolean(urlRef && keyRef && urlRef === keyRef);
-}
-
-function isRimvioProjectUrl(url: string): boolean {
   const ref = extractSupabaseRef(url);
   return Boolean(ref && RIMVIO_PROJECT_REF && ref === RIMVIO_PROJECT_REF);
 }
 
-/** Prefer Vercel env; fall back to baked-in public project credentials. */
+/** Server/runtime resolver — browser client uses rimvio-supabase-public directly. */
 export function resolvePublicSupabaseUrl(): string {
   const fromEnv = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  if (looksValidUrl(fromEnv)) {
+  if (envPointsAtRimvioProject() && looksValidUrl(fromEnv)) {
     return fromEnv;
   }
   return RIMVIO_SUPABASE_URL;
@@ -59,25 +41,12 @@ export function resolvePublicSupabaseUrl(): string {
 
 export function resolvePublicSupabaseAnonKey(): string {
   const fromEnv = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
-  const url = resolvePublicSupabaseUrl();
-
-  if (!fromEnv) {
-    return RIMVIO_SUPABASE_ANON_KEY;
-  }
-
-  if (fromEnv === RIMVIO_SUPABASE_ANON_KEY) {
+  if (
+    envPointsAtRimvioProject() &&
+    fromEnv === RIMVIO_SUPABASE_ANON_KEY
+  ) {
     return fromEnv;
   }
-
-  // Rimvio prod: Vercel often has a mistyped anon key — use known-good fallback.
-  if (isRimvioProjectUrl(url)) {
-    return RIMVIO_SUPABASE_ANON_KEY;
-  }
-
-  if (anonKeyMatchesUrl(fromEnv, url)) {
-    return fromEnv;
-  }
-
   return RIMVIO_SUPABASE_ANON_KEY;
 }
 
