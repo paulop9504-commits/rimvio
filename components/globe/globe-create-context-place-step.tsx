@@ -1,11 +1,14 @@
 "use client";
 
-import { ExternalLink, Loader2 } from "lucide-react";
+import { ExternalLink, Globe2, Loader2 } from "lucide-react";
 import { LocationInlinePick } from "@/components/action-chat/location-inline-pick";
 import type {
   LocationConfirmUxWire,
   LocationSuggestion,
 } from "@/lib/action-chat/confirmation-types";
+import { copy } from "@/lib/copy/human-ko";
+import type { OverseasManualPlaceHint } from "@/lib/globe/classify-overseas-manual-place";
+import type { ManualContextResolvedPlace } from "@/lib/globe/resolve-manual-context-place-candidates";
 import { cn } from "@/lib/utils";
 
 export type GlobeCreateContextPlaceStepProps = {
@@ -17,7 +20,10 @@ export type GlobeCreateContextPlaceStepProps = {
   ux: LocationConfirmUxWire | null;
   suggestions: LocationSuggestion[];
   mapLinks: { kakao: string; google: string } | null;
+  overseas: OverseasManualPlaceHint | null;
+  approximateFallback: ManualContextResolvedPlace | null;
   onSelect: (suggestion: LocationSuggestion) => void;
+  onUseApproximate: () => void;
   onUseRawPlace: () => void;
   onBack: () => void;
 };
@@ -36,11 +42,15 @@ export function GlobeCreateContextPlaceStep({
   ux,
   suggestions,
   mapLinks,
+  overseas,
+  approximateFallback,
   onSelect,
+  onUseApproximate,
   onUseRawPlace,
   onBack,
 }: GlobeCreateContextPlaceStepProps) {
   const recommended = suggestions.find((row) => row.id === ux?.recommended_id) ?? suggestions[0];
+  const isOverseas = Boolean(overseas);
 
   return (
     <div className="space-y-4" data-globe-create-context-place-step>
@@ -55,43 +65,67 @@ export function GlobeCreateContextPlaceStep({
         </p>
       </div>
 
+      {isOverseas ? (
+        <div
+          className="flex gap-2.5 rounded-2xl border border-primary/20 bg-primary/5 px-3.5 py-3"
+          data-globe-create-context-overseas-banner
+        >
+          <Globe2 className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+          <div>
+            <p className="text-[12px] font-semibold text-primary">
+              {copy.globe.createPlaceOverseasEyebrow}
+              {overseas?.countryLabel ? ` · ${overseas.countryLabel}` : ""}
+            </p>
+            <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
+              {copy.globe.createPlaceOverseasBody}
+            </p>
+          </div>
+        </div>
+      ) : null}
+
       {loading ? (
         <div className="flex items-center justify-center gap-2 py-8 text-[13px] text-muted-foreground">
           <Loader2 className="size-4 animate-spin" aria-hidden />
-          카카오·구글·네이버에서 장소 찾는 중…
+          {isOverseas
+            ? copy.globe.createPlaceOverseasLoading
+            : "카카오·구글·네이버에서 장소 찾는 중…"}
         </div>
       ) : suggestions.length > 0 ? (
         <LocationInlinePick
           prompt={ux?.prompt ?? `${place} — 여기 맞나요?`}
           suggestions={suggestions}
-          recommendedId={ux?.recommended_id}
+          recommendedId={isOverseas ? undefined : ux?.recommended_id}
           onSelect={onSelect}
         />
       ) : (
         <div className="space-y-2 rounded-2xl border border-dashed border-border px-3.5 py-3">
           <p className="text-[13px] font-medium text-foreground">
-            정확한 후보를 찾지 못했어요
+            {isOverseas ? copy.globe.createPlaceOverseasNoResults : "정확한 후보를 찾지 못했어요"}
           </p>
-          <p className="text-[12px] leading-relaxed text-muted-foreground">
-            카카오맵·구글맵에서 직접 확인한 뒤, 그대로 박거나 다시 검색해 주세요.
-          </p>
+          {!isOverseas ? (
+            <p className="text-[12px] leading-relaxed text-muted-foreground">
+              카카오맵·구글맵에서 직접 확인한 뒤, 그대로 박거나 다시 검색해 주세요.
+            </p>
+          ) : null}
         </div>
       )}
 
       {mapLinks ? (
         <div className="flex flex-wrap gap-2">
-          <a
-            href={mapLinks.kakao}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full bg-card px-3 py-2",
-              "text-[12px] font-medium text-foreground ring-1 ring-border",
-            )}
-          >
-            <ExternalLink className="size-3.5 text-primary" aria-hidden />
-            카카오맵에서 보기
-          </a>
+          {!isOverseas ? (
+            <a
+              href={mapLinks.kakao}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full bg-card px-3 py-2",
+                "text-[12px] font-medium text-foreground ring-1 ring-border",
+              )}
+            >
+              <ExternalLink className="size-3.5 text-primary" aria-hidden />
+              카카오맵에서 보기
+            </a>
+          ) : null}
           <a
             href={mapLinks.google}
             target="_blank"
@@ -107,7 +141,7 @@ export function GlobeCreateContextPlaceStep({
         </div>
       ) : null}
 
-      {!loading && ux?.mode === "quick_pick" && recommended ? (
+      {!loading && !isOverseas && ux?.mode === "quick_pick" && recommended ? (
         <button
           type="button"
           onClick={() => onSelect(recommended)}
@@ -129,14 +163,26 @@ export function GlobeCreateContextPlaceStep({
         >
           다시 입력
         </button>
-        <button
-          type="button"
-          disabled={loading}
-          onClick={onUseRawPlace}
-          className="min-h-11 flex-1 rounded-2xl border border-border px-3 py-2.5 text-[14px] font-medium text-muted-foreground disabled:opacity-45"
-        >
-          입력 그대로 박기
-        </button>
+        {isOverseas && approximateFallback ? (
+          <button
+            type="button"
+            disabled={loading}
+            onClick={onUseApproximate}
+            className="min-h-11 flex-1 rounded-2xl border border-border px-3 py-2.5 text-[14px] font-medium text-foreground disabled:opacity-45"
+            data-globe-create-context-approximate
+          >
+            {copy.globe.createPlaceApproximateCta(approximateFallback.label)}
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled={loading || isOverseas}
+            onClick={onUseRawPlace}
+            className="min-h-11 flex-1 rounded-2xl border border-border px-3 py-2.5 text-[14px] font-medium text-muted-foreground disabled:opacity-45"
+          >
+            입력 그대로 박기
+          </button>
+        )}
       </div>
     </div>
   );

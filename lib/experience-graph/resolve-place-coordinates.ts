@@ -1,3 +1,5 @@
+import { classifyOverseasManualPlace } from "@/lib/globe/classify-overseas-manual-place";
+
 export type PlaceCoordinates = {
   lat: number;
   lng: number;
@@ -14,8 +16,6 @@ const KNOWN_PLACES: ReadonlyArray<{
   { pattern: /둔산/u, lat: 36.351, lng: 127.385, label: "둔산동" },
   { pattern: /강남역|강남/u, lat: 37.498, lng: 127.028, label: "강남역" },
   { pattern: /부산|해운대/u, lat: 35.158, lng: 129.16, label: "부산" },
-  { pattern: /오사카/u, lat: 34.693, lng: 135.502, label: "오사카" },
-  { pattern: /독일|베를린|뮌헨/u, lat: 52.52, lng: 13.405, label: "독일" },
   { pattern: /인천공항|인천/u, lat: 37.4602, lng: 126.4407, label: "인천공항" },
   { pattern: /서울/u, lat: 37.566, lng: 126.978, label: "서울" },
   { pattern: /홍대|연남/u, lat: 37.557, lng: 126.924, label: "홍대" },
@@ -36,6 +36,11 @@ export function resolvePlaceCoordinates(placeLabel: string): PlaceCoordinates {
   const hay = placeLabel.trim();
   if (!hay) {
     return DEFAULT_COORDS;
+  }
+
+  const overseas = classifyOverseasManualPlace(hay);
+  if (overseas) {
+    return { lat: overseas.lat, lng: overseas.lng, label: overseas.label };
   }
 
   for (const entry of KNOWN_PLACES) {

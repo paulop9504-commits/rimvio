@@ -166,6 +166,16 @@ export const copy = {
     ingestFail: "남기지 못했어요",
     createTitle: STORY_L1_VERBS.create,
     createPlaceStep: "장소 확인",
+    createPlacePlaceholder: "예: 상하이 · 홍콩 · 도쿄 · 신림동",
+    createPlaceHint:
+      "해외는 도시·나라 이름을 넣으면 위치를 확인해요 · 국내는 동·역 이름도 돼요",
+    createPlaceOverseasEyebrow: "해외 지역",
+    createPlaceOverseasBody:
+      "구글맵 후보에서 맞는 도시·지점을 골라 주세요 · 자동으로 한국에 박지 않아요",
+    createPlaceOverseasLoading: "구글에서 해외 장소 찾는 중…",
+    createPlaceOverseasNoResults:
+      "후보가 없어요 · 영문 도시명을 써 보거나 구글맵에서 확인해 주세요",
+    createPlaceApproximateCta: (label: string) => `${label} 중심에 대략 박기`,
     createFail: "맥락을 만들지 못했어요",
     listTitle: "내 맥락",
     manageTitle: "관리",

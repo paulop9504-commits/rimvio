@@ -20,7 +20,9 @@ import {
   shareGlobeContextWithFriends,
   type GlobeContextShareFriend,
 } from "@/lib/experience-bridge/share-context-with-friends";
+import type { OverseasManualPlaceHint } from "@/lib/globe/classify-overseas-manual-place";
 import { fetchMyAccountProfile } from "@/lib/peer-chat/peer-chat-client";
+import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
 export type GlobeCreateContextSheetProps = {
@@ -61,6 +63,11 @@ export function GlobeCreateContextSheet({
   const [mapLinks, setMapLinks] = useState<{ kakao: string; google: string } | null>(
     null,
   );
+  const [overseasHint, setOverseasHint] = useState<OverseasManualPlaceHint | null>(
+    null,
+  );
+  const [approximateFallback, setApproximateFallback] =
+    useState<ManualContextResolvedPlace | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -74,6 +81,8 @@ export function GlobeCreateContextSheet({
     setPlaceUx(null);
     setPlaceSuggestions([]);
     setMapLinks(null);
+    setOverseasHint(null);
+    setApproximateFallback(null);
     setPlaceLoading(false);
     setBusy(false);
     setCreatedEvent(null);
@@ -196,6 +205,8 @@ export function GlobeCreateContextSheet({
     setPlaceUx(null);
     setPlaceSuggestions([]);
     setMapLinks(null);
+    setOverseasHint(null);
+    setApproximateFallback(null);
     try {
       const params = new URLSearchParams({
         place: place.trim(),
@@ -211,9 +222,14 @@ export function GlobeCreateContextSheet({
         mapLinks?: { kakao: string; google: string };
         autoResolved?: ManualContextResolvedPlace | null;
         parsed?: { displayLabel?: string; searchQuery?: string };
+        overseas?: OverseasManualPlaceHint | null;
+        approximateFallback?: ManualContextResolvedPlace | null;
       };
 
-      if (body.autoResolved) {
+      setOverseasHint(body.overseas ?? null);
+      setApproximateFallback(body.approximateFallback ?? null);
+
+      if (body.autoResolved && !body.overseas?.isOverseas) {
         await commitContext(body.autoResolved);
         return;
       }
@@ -292,7 +308,9 @@ export function GlobeCreateContextSheet({
                   </p>
                   <p className="mt-0.5 text-[12px] text-muted-foreground">
                     {step === "place"
-                      ? "카카오·구글·네이버 후보 중 맞는 곳을 골라요"
+                      ? overseasHint
+                        ? copy.globe.createPlaceOverseasEyebrow
+                        : "카카오·구글·네이버 후보 중 맞는 곳을 골라요"
                       : step === "share"
                         ? "선택한 친구는 앱을 열면 초대를 받아요"
                         : "장소 문장을 넣으면 자동으로 지도에 박아요"}
@@ -334,7 +352,7 @@ export function GlobeCreateContextSheet({
                     <input
                       value={place}
                       onChange={(event) => setPlace(event.target.value)}
-                      placeholder="예: 약속장소 신림동에서 만나자"
+                      placeholder={copy.globe.createPlacePlaceholder}
                       className={cn(
                         "w-full rounded-2xl border border-border bg-muted/50 px-4 py-3",
                         "text-[15px] text-foreground outline-none ring-primary/30 focus:ring-2",
@@ -393,7 +411,14 @@ export function GlobeCreateContextSheet({
                   ux={placeUx}
                   suggestions={placeSuggestions}
                   mapLinks={mapLinks}
+                  overseas={overseasHint}
+                  approximateFallback={approximateFallback}
                   onSelect={handlePlaceSelect}
+                  onUseApproximate={() => {
+                    if (approximateFallback) {
+                      void commitContext(approximateFallback);
+                    }
+                  }}
                   onUseRawPlace={() => void commitContext(null)}
                   onBack={() => setStep("form")}
                 />
@@ -423,9 +448,7 @@ export function GlobeCreateContextSheet({
                   )}
                 </button>
                 <p className="mt-3 text-center text-[11px] leading-relaxed text-muted-foreground">
-                  신림동·강남역처럼 장소를 파싱해 핀을 박아요.
-                  <br />
-                  애매하면 후보에서 고를 수 있어요.
+                  {copy.globe.createPlaceHint}
                 </p>
               </div>
             ) : step === "share" ? (

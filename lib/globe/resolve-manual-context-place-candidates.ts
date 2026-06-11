@@ -13,6 +13,11 @@ import {
   type ParsedManualContextPlace,
 } from "@/lib/globe/parse-manual-context-place-text";
 import {
+  classifyOverseasManualPlace,
+  overseasPlaceConfirmPrompt,
+  type OverseasManualPlaceHint,
+} from "@/lib/globe/classify-overseas-manual-place";
+import {
   buildGoogleMapsSearchHref,
   buildKakaoMapSearchWebHref,
 } from "@/lib/resolvers/deep-links";
@@ -29,6 +34,8 @@ export type ManualContextPlaceCandidateResult = {
     google: string;
   };
   autoResolved: ManualContextResolvedPlace | null;
+  overseas: OverseasManualPlaceHint | null;
+  approximateFallback: ManualContextResolvedPlace | null;
 };
 
 function dedupeSuggestions(items: LocationSuggestion[]): LocationSuggestion[] {
@@ -143,6 +150,18 @@ function pickAutoResolved(input: {
   };
 }
 
+function buildApproximateFallback(
+  overseas: OverseasManualPlaceHint,
+): ManualContextResolvedPlace {
+  return {
+    label: overseas.label,
+    placeName: overseas.label,
+    lat: overseas.lat,
+    lng: overseas.lng,
+    confirmed: true,
+  };
+}
+
 /** Naver + Google + Kakao — parse NL place + auto-pin when confident. */
 export async function resolveManualContextPlaceCandidates(input: {
   place: string;
@@ -152,33 +171,38 @@ export async function resolveManualContextPlaceCandidates(input: {
   maxResults?: number;
 }): Promise<ManualContextPlaceCandidateResult> {
   const parsed = parseManualContextPlaceText(input.place);
-  const query = parsed.searchQuery.trim() || input.place.trim();
+  const overseas = classifyOverseasManualPlace(input.place);
+  const query =
+    overseas?.geocodeQuery ??
+    (parsed.searchQuery.trim() || input.place.trim());
   const message = [input.title?.trim(), input.place.trim(), query]
     .filter(Boolean)
     .join(" ");
   const maxResults = input.maxResults ?? 5;
 
   const [naverRows, googleRows, kakaoRow] = await Promise.all([
-    resolveLocationSuggestionsForConfirm({
-      extracted: {
-        address: null,
-        phone: null,
-        datetime: null,
-        place_name: parsed.displayLabel || query,
-        url: null,
-      },
-      message,
-      maxResults,
-    }),
+    overseas
+      ? Promise.resolve([])
+      : resolveLocationSuggestionsForConfirm({
+          extracted: {
+            address: null,
+            phone: null,
+            datetime: null,
+            place_name: parsed.displayLabel || query,
+            url: null,
+          },
+          message,
+          maxResults,
+        }),
     isGooglePlacesConfigured()
       ? findPlacesByName({
           placeName: query,
-          userLat: input.userLat,
-          userLng: input.userLng,
+          userLat: overseas ? null : input.userLat,
+          userLng: overseas ? null : input.userLng,
           maxResults,
         })
       : Promise.resolve([]),
-    kakaoSuggestion(query),
+    overseas ? Promise.resolve(null) : kakaoSuggestion(parsed.searchQuery.trim() || input.place.trim()),
   ]);
 
   const merged = dedupeSuggestions([
@@ -187,27 +211,38 @@ export async function resolveManualContextPlaceCandidates(input: {
     ...(kakaoRow ? [kakaoRow] : []),
   ]).slice(0, maxResults);
 
-  const ux = planLocationConfirmUx({
+  let ux = planLocationConfirmUx({
     suggestions: merged,
     extracted: {
       address: null,
       phone: null,
       datetime: null,
-      place_name: parsed.displayLabel || query,
+      place_name: overseas?.label ?? parsed.displayLabel ?? query,
       url: null,
     },
     message,
   });
 
   const suggestions = ux.suggestions.length > 0 ? ux.suggestions : merged;
-  let autoResolved = pickAutoResolved({
-    parsed,
-    suggestions,
-    ux,
-    message,
-  });
+  let autoResolved = overseas
+    ? null
+    : pickAutoResolved({
+        parsed,
+        suggestions,
+        ux,
+        message,
+      });
 
-  if (!autoResolved && suggestions.length === 0 && parsed.displayLabel) {
+  if (overseas) {
+    ux = {
+      ...ux,
+      mode: suggestions.length > 0 ? "inline_pick" : "classic",
+      prompt: overseasPlaceConfirmPrompt(overseas),
+      recommended_id: undefined,
+    };
+  }
+
+  if (!autoResolved && !overseas && suggestions.length === 0 && parsed.displayLabel) {
     const fallback = resolveFallbackCoords(parsed.searchQuery);
     if (fallback.label !== "한국" || parsed.displayLabel.includes("동")) {
       autoResolved = {
@@ -220,12 +255,16 @@ export async function resolveManualContextPlaceCandidates(input: {
     }
   }
 
+  const approximateFallback = overseas ? buildApproximateFallback(overseas) : null;
+
   return {
     query,
     parsed,
     suggestions,
     ux,
     autoResolved,
+    overseas,
+    approximateFallback,
     mapLinks: {
       kakao: buildKakaoMapSearchWebHref(query),
       google: buildGoogleMapsSearchHref(query),
