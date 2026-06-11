@@ -2,18 +2,18 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { CalendarPlus, CalendarRange, ListChecks, Settings } from "lucide-react";
+import { Settings } from "lucide-react";
 import { toast } from "sonner";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { RimvioGlobeHubClient } from "@/components/experience/rimvio-globe-hub-client";
+import { GlobeContextControlDock } from "@/components/globe/globe-context-control-dock";
 import { GlobeContextMapVideoStage } from "@/components/globe/globe-context-map-video-stage";
 import { GlobeContextIngestBar } from "@/components/globe/globe-context-ingest-bar";
 import { GlobeContextListSheet } from "@/components/globe/globe-context-list-sheet";
 import { GlobeContextManageSheet } from "@/components/globe/globe-context-manage-sheet";
+import { GlobeContextStackPicker } from "@/components/globe/globe-context-stack-picker";
 import { GlobeContextPinCard } from "@/components/globe/globe-context-pin-card";
-import { GlobeContextTimeFilterChips } from "@/components/globe/globe-context-time-filter-chips";
 import { GlobeCreateContextSheet } from "@/components/globe/globe-create-context-sheet";
-import { GlobeGpsPanel } from "@/components/globe/globe-gps-panel";
 import { GlobeSettingsSheet } from "@/components/globe/globe-settings-sheet";
 import { GlobeLocationConfirmCard } from "@/components/globe/globe-location-confirm-card";
 import { PinOpenSheet } from "@/components/globe/pin-open-sheet";
@@ -25,6 +25,8 @@ import {
   resolveGlobeContextCardPinCluster,
 } from "@/lib/globe/globe-context-card-coords";
 import type { GlobeContextTimeFilter } from "@/lib/globe/globe-context-time-filter";
+import type { GlobeDetailLevel } from "@/lib/globe/globe-zoom-levels";
+import { resolveGlobeContextsNearTap } from "@/lib/globe/resolve-globe-contexts-near-tap";
 import type { GlobeContextTimelineEntry } from "@/lib/globe/list-globe-context-timeline";
 import type { GlobeManageContextEntry } from "@/lib/globe/list-globe-manage-contexts";
 import type { PinCluster } from "@/lib/globe/pin-cluster-types";
@@ -53,11 +55,16 @@ function GlobeHomeBody() {
   const [listOpen, setListOpen] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [stackClusters, setStackClusters] = useState<PinCluster[] | null>(null);
+  const clustersRef = useRef<readonly PinCluster[]>([]);
+  const detailLevelRef = useRef<GlobeDetailLevel>("space");
 
-  const onPinPress = useCallback((cluster: PinCluster) => {
-    globeRef.current?.flyToPin(cluster.lat, cluster.lng, "neighborhood");
-    setActiveCluster(cluster);
-    setSheetOpen(false);
+  const onClustersSnapshot = useCallback((clusters: readonly PinCluster[]) => {
+    clustersRef.current = clusters;
+  }, []);
+
+  const onDetailLevelChange = useCallback((level: GlobeDetailLevel) => {
+    detailLevelRef.current = level;
   }, []);
 
   const schedulePinRevertToCardPlace = useCallback((eventId: string) => {
@@ -86,6 +93,7 @@ function GlobeHomeBody() {
 
     setSheetOpen(false);
     setActiveCluster(null);
+    setStackClusters(null);
     setPinDragOverrides(new Map());
     pinDragActiveRef.current = false;
     draggedEventIdRef.current = null;
@@ -104,6 +112,58 @@ function GlobeHomeBody() {
     }
   }, [activeCluster?.eventId, schedulePinRevertToCardPlace]);
 
+  const applyNearbyContexts = useCallback(
+    (nearby: readonly PinCluster[], flyCluster?: PinCluster | null) => {
+      if (nearby.length === 0) {
+        clearActiveContext();
+        return;
+      }
+
+      if (flyCluster) {
+        globeRef.current?.flyToPin(flyCluster.lat, flyCluster.lng, "neighborhood");
+      }
+
+      if (nearby.length === 1) {
+        setStackClusters(null);
+        setActiveCluster(nearby[0]!);
+        setSheetOpen(false);
+        return;
+      }
+
+      setStackClusters([...nearby]);
+      setActiveCluster(null);
+      setSheetOpen(false);
+    },
+    [clearActiveContext],
+  );
+
+  const resolveNearbyAt = useCallback((tapLat: number, tapLng: number) => {
+    return resolveGlobeContextsNearTap({
+      tapLat,
+      tapLng,
+      clusters: clustersRef.current,
+      detailLevel: detailLevelRef.current,
+    });
+  }, []);
+
+  const onPinPress = useCallback(
+    (cluster: PinCluster) => {
+      const nearby = resolveNearbyAt(cluster.lat, cluster.lng);
+      applyNearbyContexts(nearby.length > 0 ? nearby : [cluster], cluster);
+    },
+    [applyNearbyContexts, resolveNearbyAt],
+  );
+
+  const onGlobePress = useCallback(
+    (coords: { lat: number; lng: number }) => {
+      if (pinDragActiveRef.current) {
+        return;
+      }
+      applyNearbyContexts(resolveNearbyAt(coords.lat, coords.lng));
+    },
+    [applyNearbyContexts, resolveNearbyAt],
+  );
+
   const onSheetOpenChange = useCallback((open: boolean) => {
     setSheetOpen(open);
   }, []);
@@ -117,6 +177,7 @@ function GlobeHomeBody() {
       }
       const { cluster } = result;
       globeRef.current?.flyToPin(cluster.lat, cluster.lng, "neighborhood");
+      setStackClusters(null);
       setActiveCluster(cluster);
       if (options?.openSheet !== false) {
         setSheetOpen(true);
@@ -228,6 +289,16 @@ function GlobeHomeBody() {
     };
   }, []);
 
+  const onStackSelect = useCallback(
+    (cluster: PinCluster) => {
+      setStackClusters(null);
+      setActiveCluster(cluster);
+      setSheetOpen(false);
+      globeRef.current?.flyToPin(cluster.lat, cluster.lng, "neighborhood");
+    },
+    [],
+  );
+
   const openContextByEventId = useCallback(
     (eventId: string) => {
       setListOpen(false);
@@ -260,15 +331,28 @@ function GlobeHomeBody() {
         onRecallEventId={onRecallEventId}
         highlightedPinId={activeCluster?.pinId ?? null}
         onPinPress={onPinPress}
+        onGlobePress={onGlobePress}
+        onClustersSnapshot={onClustersSnapshot}
+        onDetailLevelChange={onDetailLevelChange}
         pinRelocateEnabled
         onPinRelocate={onPinRelocate}
         timeFilter={timeFilter}
         pinCoordOverrides={pinCoordOverrides}
       />
+      <GlobeContextStackPicker
+        clusters={stackClusters ?? []}
+        visible={Boolean(stackClusters && stackClusters.length > 1)}
+        onSelect={onStackSelect}
+        onDismiss={clearActiveContext}
+        onShowAll={() => {
+          setStackClusters(null);
+          setListOpen(true);
+        }}
+      />
       <GlobeContextPinCard
         globeRef={globeRef}
         cluster={activeCluster}
-        visible={Boolean(activeCluster?.eventId) && !sheetOpen}
+        visible={Boolean(activeCluster?.eventId) && !sheetOpen && !stackClusters?.length}
         onOpenSheet={() => setSheetOpen(true)}
         onDismiss={clearActiveContext}
       />
@@ -277,47 +361,17 @@ function GlobeHomeBody() {
         eventId={activeCluster?.eventId ?? null}
         anchorLat={activeCluster?.lat ?? null}
         anchorLng={activeCluster?.lng ?? null}
-        visible={Boolean(activeCluster?.eventId)}
+        visible={Boolean(activeCluster?.eventId) && !stackClusters?.length}
         onDismiss={clearActiveContext}
       />
-      <div className="pointer-events-none absolute left-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20 flex flex-col gap-2 sm:right-auto">
-        <div className="pointer-events-auto flex flex-col gap-2">
-          <button
-            type="button"
-            onClick={() => setCreateOpen(true)}
-            className="flex items-center gap-1.5 rounded-full bg-card/95 px-3 py-2 text-[12px] font-semibold text-foreground shadow-sm ring-1 ring-border backdrop-blur-md active:scale-[0.98]"
-            data-globe-create-context-trigger
-          >
-            <CalendarPlus className="size-3.5 text-primary" aria-hidden />
-            맥락 만들기
-          </button>
-          <button
-            type="button"
-            onClick={() => setListOpen(true)}
-            className="flex items-center gap-1.5 rounded-full bg-card/95 px-3 py-2 text-[12px] font-semibold text-foreground shadow-sm ring-1 ring-border backdrop-blur-md active:scale-[0.98]"
-            data-globe-context-list-trigger
-          >
-            <CalendarRange className="size-3.5 text-primary" aria-hidden />
-            내 맥락
-          </button>
-          <button
-            type="button"
-            onClick={() => setManageOpen(true)}
-            className="flex items-center gap-1.5 rounded-full bg-card/95 px-3 py-2 text-[12px] font-semibold text-foreground shadow-sm ring-1 ring-border backdrop-blur-md active:scale-[0.98]"
-            data-globe-context-manage-trigger
-          >
-            <ListChecks className="size-3.5 text-primary" aria-hidden />
-            맥락 관리
-          </button>
-        </div>
+      <div className="pointer-events-none absolute left-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20">
         <div className="pointer-events-auto">
-          <GlobeContextTimeFilterChips
-            value={timeFilter}
-            onChange={setTimeFilter}
-          />
-        </div>
-        <div className="pointer-events-auto">
-          <GlobeGpsPanel
+          <GlobeContextControlDock
+            timeFilter={timeFilter}
+            onTimeFilterChange={setTimeFilter}
+            onCreate={() => setCreateOpen(true)}
+            onList={() => setListOpen(true)}
+            onManage={() => setManageOpen(true)}
             onFlyToHere={
               liveLocation
                 ? () =>

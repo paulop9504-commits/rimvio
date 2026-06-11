@@ -105,6 +105,9 @@ export type RimvioGlobeHubProps = {
     { lat: number; lng: number }
   >;
   skipStartupFly?: boolean;
+  onGlobePress?: (coords: { lat: number; lng: number }) => void;
+  onClustersSnapshot?: (clusters: readonly PinCluster[]) => void;
+  onDetailLevelChange?: (level: GlobeDetailLevel) => void;
 };
 
 type RimvioGlobeHubBodyProps = {
@@ -127,6 +130,8 @@ type RimvioGlobeHubBodyProps = {
     { lat: number; lng: number }
   >;
   skipStartupFly?: boolean;
+  onGlobePress?: (coords: { lat: number; lng: number }) => void;
+  onDetailLevelChange?: (level: GlobeDetailLevel) => void;
 };
 
 const RimvioGlobeHubBody = memo(
@@ -142,12 +147,21 @@ const RimvioGlobeHubBody = memo(
       onPinRelocate,
       pinCoordOverrides,
       skipStartupFly = false,
+      onGlobePress,
+      onDetailLevelChange,
     },
     ref,
   ) {
     const innerGlobeRef = useRef<RimvioGlobe3DHandle>(null);
     const startupFlownRef = useRef(false);
     const [detailLevel, setDetailLevel] = useState<GlobeDetailLevel>("space");
+    const handleDetailLevelChange = useCallback(
+      (level: GlobeDetailLevel) => {
+        setDetailLevel(level);
+        onDetailLevelChange?.(level);
+      },
+      [onDetailLevelChange],
+    );
     const { slots: relationshipSlots } = useRelationshipFeedSlots(true);
     const peerLookup = useMemo(
       () =>
@@ -293,7 +307,8 @@ const RimvioGlobeHubBody = memo(
           onPinPress={handlePinPress}
           pinRelocateEnabled={pinRelocateEnabled}
           onPinRelocate={onPinRelocate}
-          onDetailLevelChange={setDetailLevel}
+          onGlobePress={onGlobePress}
+          onDetailLevelChange={handleDetailLevelChange}
         />
 
         {clusters.length === 0 ? (
@@ -322,6 +337,9 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
   onPinRelocate,
   timeFilter = "all",
   pinCoordOverrides,
+  onGlobePress,
+  onClustersSnapshot,
+  onDetailLevelChange,
 }: RimvioGlobeHubProps) {
   const { ready, eventsById } = useGlobeEventSnapshot();
   const { graph } = useExperienceGraph(ready ? eventsById : undefined);
@@ -339,6 +357,10 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
       matchesGlobeContextTimeFilter(cluster.startedAtIso, timeFilter),
     );
   }, [ready, graph.volumes, eventsById, timeFilter]);
+
+  useEffect(() => {
+    onClustersSnapshot?.(clusters);
+  }, [clusters, onClustersSnapshot]);
 
   useEffect(() => {
     if (!ready || recallOpenedRef.current) {
@@ -386,6 +408,8 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
       pinRelocateEnabled={pinRelocateEnabled}
       onPinRelocate={onPinRelocate}
       pinCoordOverrides={pinCoordOverrides}
+      onGlobePress={onGlobePress}
+      onDetailLevelChange={onDetailLevelChange}
       skipStartupFly={Boolean(
         initialRecallEventId?.trim() || initialOpenPinId?.trim(),
       )}

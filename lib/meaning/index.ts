@@ -40,3 +40,17 @@ export {
   topMeaningEdges,
   topMeaningNodes,
 } from "@/lib/meaning/rank-meaning-graph";
+
+export {
+  RELATIONSHIP_MEANING_FRAMES,
+  RELATIONSHIP_MEANING_MIN_CONFIDENCE,
+  type RelationshipFacts,
+  type RelationshipFrequencyTrend,
+  type RelationshipMeaningFrame,
+  type RelationshipMeaningProjection,
+  type RelationshipPatternMatch,
+} from "@/lib/meaning/relationship-meaning-types";
+
+export { collectRelationshipFacts } from "@/lib/meaning/collect-relationship-facts";
+export { detectRelationshipPatterns } from "@/lib/meaning/detect-relationship-patterns";
+export { rankRelationshipFrame } from "@/lib/meaning/rank-relationship-frame";

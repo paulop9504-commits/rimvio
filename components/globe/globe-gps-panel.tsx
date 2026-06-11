@@ -10,6 +10,8 @@ import { cn } from "@/lib/utils";
 export type GlobeGpsPanelProps = {
   className?: string;
   onFlyToHere?: () => void;
+  /** Render inside GlobeContextControlDock — no outer card chrome. */
+  embedded?: boolean;
 };
 
 function collapsedSummary(input: {
@@ -33,7 +35,11 @@ function collapsedSummary(input: {
 }
 
 /** Compact GPS gate + live location — collapsed by default on mobile. */
-export function GlobeGpsPanel({ className, onFlyToHere }: GlobeGpsPanelProps) {
+export function GlobeGpsPanel({
+  className,
+  onFlyToHere,
+  embedded = false,
+}: GlobeGpsPanelProps) {
   const { enabled, setEnabled } = useGpsTrackingEnabled();
   const snapshot = useLiveLocationSnapshot();
   const [expanded, setExpanded] = useState(false);
@@ -49,7 +55,9 @@ export function GlobeGpsPanel({ className, onFlyToHere }: GlobeGpsPanelProps) {
   return (
     <div
       className={cn(
-        "w-[min(100%,11.25rem)] rounded-2xl border border-[#0220470f] bg-white/95 shadow-sm backdrop-blur-md",
+        embedded
+          ? "border-t border-border/60"
+          : "w-[min(100%,11.25rem)] rounded-2xl border border-[#0220470f] bg-white/95 shadow-sm backdrop-blur-md",
         className,
       )}
       data-globe-gps-panel
@@ -57,7 +65,10 @@ export function GlobeGpsPanel({ className, onFlyToHere }: GlobeGpsPanelProps) {
     >
       <button
         type="button"
-        className="flex w-full items-center gap-1.5 px-2 py-1.5 text-left"
+        className={cn(
+          "flex w-full items-center gap-1.5 text-left",
+          embedded ? "px-2.5 py-2" : "px-2 py-1.5",
+        )}
         aria-expanded={expanded}
         onClick={() => setExpanded((open) => !open)}
       >
@@ -84,7 +95,12 @@ export function GlobeGpsPanel({ className, onFlyToHere }: GlobeGpsPanelProps) {
       </button>
 
       {expanded ? (
-        <div className="space-y-2 border-t border-[#02204708] px-2 pb-2 pt-1.5">
+        <div
+          className={cn(
+            "space-y-2 border-t border-[#02204708] pt-1.5",
+            embedded ? "px-2.5 pb-2.5" : "px-2 pb-2",
+          )}
+        >
           <div className="flex rounded-xl bg-[#f2f4f6] p-0.5">
             <button
               type="button"

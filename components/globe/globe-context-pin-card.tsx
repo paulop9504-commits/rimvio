@@ -3,6 +3,8 @@
 import type { RefObject } from "react";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { useGlobePinScreenAnchor } from "@/hooks/use-globe-pin-screen-anchor";
+import { useGlobeContextPrimaryPeer } from "@/hooks/use-globe-context-primary-peer";
+import { useRelationshipMeaningLine } from "@/hooks/use-relationship-meaning-line";
 import { projectExperienceHeroFromCluster } from "@/lib/globe/project-experience-hero";
 import type { PinCluster } from "@/lib/globe/pin-cluster-types";
 import { cn } from "@/lib/utils";
@@ -26,6 +28,8 @@ export function GlobeContextPinCard({
   className,
 }: GlobeContextPinCardProps) {
   const hero = cluster ? projectExperienceHeroFromCluster(cluster) : null;
+  const primaryPeer = useGlobeContextPrimaryPeer(cluster?.eventId);
+  const relationshipMeaning = useRelationshipMeaningLine(primaryPeer);
   const anchor = useGlobePinScreenAnchor({
     globeRef,
     lat: cluster?.lat,
@@ -70,6 +74,19 @@ export function GlobeContextPinCard({
             <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">
               {[hero.date, hero.place].filter(Boolean).join(" · ")}
             </p>
+            {relationshipMeaning ? (
+              <p
+                className="mt-1.5 line-clamp-2 text-[11px] font-medium leading-snug text-foreground/85"
+                data-globe-relationship-meaning={relationshipMeaning.frame}
+              >
+                {relationshipMeaning.line}
+              </p>
+            ) : null}
+            {relationshipMeaning ? (
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                {relationshipMeaning.factAnchor}
+              </p>
+            ) : null}
             <div className="mt-2 flex flex-wrap gap-1">
               {hero.photoCount > 0 ? (
                 <span className="rounded-full bg-[var(--rimvio-highlight-green)]/15 px-2 py-0.5 text-[10px] font-semibold">
