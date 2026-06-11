@@ -12,7 +12,6 @@ import { GlobeContextIngestBar } from "@/components/globe/globe-context-ingest-b
 import { GlobeContextListSheet } from "@/components/globe/globe-context-list-sheet";
 import { GlobeContextManageSheet } from "@/components/globe/globe-context-manage-sheet";
 import { GlobeContextStackPicker } from "@/components/globe/globe-context-stack-picker";
-import { GlobeContextPinCard } from "@/components/globe/globe-context-pin-card";
 import { GlobeCreateContextSheet } from "@/components/globe/globe-create-context-sheet";
 import { ExperienceBridgeInviteBanner } from "@/components/globe/experience-bridge-invite-banner";
 import { ExperienceBridgeGhostSheet } from "@/components/globe/experience-bridge-ghost-sheet";
@@ -342,7 +341,7 @@ function GlobeHomeBody() {
           toast.message(recallLine || `${placeLabel} — 이 근처 맥락`);
           return;
         }
-        focusContextByEventId(recallEventId, { openSheet: false });
+        focusContextByEventId(recallEventId, { openSheet: true });
         toast.message(recallLine || `${placeLabel}에 도착했어요`);
       },
     },
@@ -504,19 +503,6 @@ function GlobeHomeBody() {
           setStackClusters(null);
           setListOpen(true);
         }}
-      />
-      <GlobeContextPinCard
-        globeRef={globeRef}
-        cluster={activeCluster?.variant === "bridge_ghost" ? null : activeCluster}
-        visible={
-          Boolean(activeCluster?.eventId) &&
-          activeCluster?.variant !== "bridge_ghost" &&
-          !sheetOpen &&
-          !stackClusters?.length &&
-          !showMapVideoReplay
-        }
-        onOpenSheet={() => setSheetOpen(true)}
-        onDismiss={clearActiveContext}
       />
       <GlobeContextMapVideoStage
         globeRef={globeRef}
