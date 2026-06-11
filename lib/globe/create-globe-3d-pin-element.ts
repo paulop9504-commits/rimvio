@@ -5,11 +5,15 @@ import {
 } from "@/lib/feed/feed-slot-peer-chip-colors";
 
 const LONG_PRESS_MS = 520;
-const MOVE_CANCEL_PX = 10;
+/** Finger jitter on mobile — above this, treat as globe drag not tap. */
+const TAP_MOVE_PX = 20;
 
 export type Globe3dPinInteractionHandlers = {
   onPress: (pinId: string) => void;
   onRelocateStart?: (pinId: string) => void;
+  /** OrbitControls steal touches unless locked for the full press cycle. */
+  lockControls?: () => void;
+  unlockControls?: () => void;
 };
 
 function appendPeerRow(card: HTMLElement, pin: ClassifiedGlobePin): void {
@@ -66,9 +70,134 @@ function canRelocatePin(
   );
 }
 
+type PinPressSession = {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  moved: boolean;
+  longPress: boolean;
+  suppressTap: boolean;
+  timer: number | null;
+};
+
+/** Window-level pointer tracking — pin element often misses pointerup on mobile. */
+function bindGlobe3dPinPress(
+  root: HTMLElement,
+  pinId: string,
+  handlers: Globe3dPinInteractionHandlers,
+  options?: { relocateEnabled?: boolean },
+): void {
+  let session: PinPressSession | null = null;
+
+  const clearSession = () => {
+    if (!session) {
+      return;
+    }
+    if (session.timer !== null) {
+      window.clearTimeout(session.timer);
+    }
+    window.removeEventListener("pointermove", onWindowMove);
+    window.removeEventListener("pointerup", onWindowUp);
+    window.removeEventListener("pointercancel", onWindowUp);
+    session = null;
+  };
+
+  const finish = (event: PointerEvent) => {
+    if (!session || event.pointerId !== session.pointerId) {
+      return;
+    }
+    const { moved, longPress, suppressTap } = session;
+    clearSession();
+
+    if (longPress) {
+      root.classList.remove("rimvio-globe-3d-pin--relocating");
+      root.removeAttribute("data-globe-pin-relocating");
+      return;
+    }
+
+    handlers.unlockControls?.();
+
+    if (!suppressTap && !moved) {
+      event.stopPropagation();
+      event.preventDefault();
+      handlers.onPress(pinId);
+    }
+  };
+
+  const onWindowMove = (event: PointerEvent) => {
+    if (!session || event.pointerId !== session.pointerId) {
+      return;
+    }
+    if (session.longPress) {
+      event.preventDefault();
+      return;
+    }
+    const dx = event.clientX - session.startX;
+    const dy = event.clientY - session.startY;
+    if (Math.hypot(dx, dy) > TAP_MOVE_PX) {
+      session.moved = true;
+      if (session.timer !== null) {
+        window.clearTimeout(session.timer);
+        session.timer = null;
+      }
+    }
+  };
+
+  const onWindowUp = (event: PointerEvent) => {
+    finish(event);
+  };
+
+  root.addEventListener(
+    "pointerdown",
+    (event) => {
+      if (event.button !== 0 || session) {
+        return;
+      }
+      event.stopPropagation();
+      event.preventDefault();
+
+      handlers.lockControls?.();
+
+      session = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        moved: false,
+        longPress: false,
+        suppressTap: false,
+        timer: null,
+      };
+
+      const relocateEnabled =
+        options?.relocateEnabled !== false && Boolean(handlers.onRelocateStart);
+
+      if (relocateEnabled) {
+        session.timer = window.setTimeout(() => {
+          if (!session) {
+            return;
+          }
+          session.longPress = true;
+          session.suppressTap = true;
+          root.classList.add("rimvio-globe-3d-pin--relocating");
+          root.setAttribute("data-globe-pin-relocating", "true");
+          handlers.onRelocateStart?.(pinId);
+          if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+            navigator.vibrate(12);
+          }
+        }, LONG_PRESS_MS);
+      }
+
+      window.addEventListener("pointermove", onWindowMove, { passive: false });
+      window.addEventListener("pointerup", onWindowUp, { passive: false });
+      window.addEventListener("pointercancel", onWindowUp, { passive: false });
+    },
+    { passive: false },
+  );
+}
+
 export function createGlobe3dClusterPinElement(
   pin: ClassifiedGlobePin,
-  onPress: (pinId: string) => void,
+  handlers: Globe3dPinInteractionHandlers,
 ): HTMLElement {
   const root = document.createElement("button");
   root.type = "button";
@@ -96,19 +225,7 @@ export function createGlobe3dClusterPinElement(
   dot.setAttribute("aria-hidden", "true");
   root.appendChild(dot);
 
-  root.addEventListener("click", (event) => {
-    event.stopPropagation();
-    onPress(pin.id);
-  });
-  root.addEventListener(
-    "pointerdown",
-    (event) => {
-      if (event.button === 0) {
-        event.stopPropagation();
-      }
-    },
-    { passive: true },
-  );
+  bindGlobe3dPinPress(root, pin.id, handlers, { relocateEnabled: false });
 
   return root;
 }
@@ -166,94 +283,9 @@ export function createGlobe3dPinElement(
 
   const relocateEnabled = canRelocatePin(pin, options?.relocateEnabled !== false);
 
-  if (!relocateEnabled || !handlers.onRelocateStart) {
-    root.addEventListener("click", (event) => {
-      event.stopPropagation();
-      handlers.onPress(pin.id);
-    });
-    root.addEventListener(
-      "pointerdown",
-      (event) => {
-        if (event.button === 0) {
-          event.stopPropagation();
-        }
-      },
-      { passive: true },
-    );
-    return root;
-  }
-
-  let longPressTimer: number | null = null;
-  let longPressActive = false;
-  let suppressTap = false;
-  let startX = 0;
-  let startY = 0;
-
-  const clearTimer = () => {
-    if (longPressTimer !== null) {
-      window.clearTimeout(longPressTimer);
-      longPressTimer = null;
-    }
-  };
-
-  root.addEventListener("pointerdown", (event) => {
-    if (event.button !== 0) {
-      return;
-    }
-    event.stopPropagation();
-    suppressTap = false;
-    longPressActive = false;
-    startX = event.clientX;
-    startY = event.clientY;
-    clearTimer();
-    root.setPointerCapture(event.pointerId);
-    longPressTimer = window.setTimeout(() => {
-      longPressActive = true;
-      suppressTap = true;
-      root.classList.add("rimvio-globe-3d-pin--relocating");
-      root.setAttribute("data-globe-pin-relocating", "true");
-      handlers.onRelocateStart?.(pin.id);
-      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-        navigator.vibrate(12);
-      }
-    }, LONG_PRESS_MS);
+  bindGlobe3dPinPress(root, pin.id, handlers, {
+    relocateEnabled,
   });
-
-  root.addEventListener("pointermove", (event) => {
-    if (longPressActive) {
-      event.stopPropagation();
-      event.preventDefault();
-      return;
-    }
-    const dx = event.clientX - startX;
-    const dy = event.clientY - startY;
-    if (Math.hypot(dx, dy) > MOVE_CANCEL_PX) {
-      clearTimer();
-    }
-  });
-
-  const finishPointer = (event: PointerEvent) => {
-    clearTimer();
-    if (root.hasPointerCapture(event.pointerId)) {
-      root.releasePointerCapture(event.pointerId);
-    }
-    if (longPressActive) {
-      event.stopPropagation();
-      event.preventDefault();
-      root.classList.remove("rimvio-globe-3d-pin--relocating");
-      root.removeAttribute("data-globe-pin-relocating");
-      longPressActive = false;
-      return;
-    }
-    if (!suppressTap) {
-      event.stopPropagation();
-      handlers.onPress(pin.id);
-    }
-    suppressTap = false;
-  };
-
-  root.addEventListener("pointerup", finishPointer);
-  root.addEventListener("pointercancel", finishPointer);
 
   return root;
 }

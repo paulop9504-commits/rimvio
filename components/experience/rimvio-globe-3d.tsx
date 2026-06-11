@@ -133,6 +133,7 @@ export const RimvioGlobe3D = memo(
 
     const [relocatingPinId, setRelocatingPinId] = useState<string | null>(null);
     const relocatingPinIdRef = useRef<string | null>(null);
+    const pinPressLockRef = useRef(false);
     const relocatePreviewRef = useRef<{
       pinId: string;
       lat: number;
@@ -159,6 +160,23 @@ export const RimvioGlobe3D = memo(
     }, []);
 
     beginPinRelocateRef.current = beginPinRelocate;
+
+    const lockGlobeControlsRef = useRef(() => {});
+    const unlockGlobeControlsRef = useRef(() => {});
+    const suppressGlobeClickUntilRef = useRef(0);
+
+    lockGlobeControlsRef.current = () => {
+      pinPressLockRef.current = true;
+      suppressGlobeClickUntilRef.current = Date.now() + 900;
+      globeRef.current?.controls().enabled = false;
+    };
+
+    unlockGlobeControlsRef.current = () => {
+      pinPressLockRef.current = false;
+      if (!relocatingPinIdRef.current) {
+        globeRef.current?.controls().enabled = true;
+      }
+    };
 
     useEffect(() => {
       if (!relocatingPinId) {
@@ -338,9 +356,11 @@ export const RimvioGlobe3D = memo(
             );
           }
           if (row.pinShape === "cluster") {
-            return createGlobe3dClusterPinElement(row, (pinId) =>
-              onPinPressRef.current?.(pinId),
-            );
+            return createGlobe3dClusterPinElement(row, {
+              onPress: (pinId) => onPinPressRef.current?.(pinId),
+              lockControls: () => lockGlobeControlsRef.current(),
+              unlockControls: () => unlockGlobeControlsRef.current(),
+            });
           }
           return createGlobe3dPinElement(
             row,
@@ -348,6 +368,8 @@ export const RimvioGlobe3D = memo(
             {
               onPress: (pinId) => onPinPressRef.current?.(pinId),
               onRelocateStart: (pinId) => beginPinRelocateRef.current(pinId),
+              lockControls: () => lockGlobeControlsRef.current(),
+              unlockControls: () => unlockGlobeControlsRef.current(),
             },
             { relocateEnabled: pinRelocateEnabledRef.current },
           );
@@ -431,7 +453,11 @@ export const RimvioGlobe3D = memo(
       emitPointOfView({ ...GLOBE_OVERVIEW_POINT_OF_VIEW });
       globe.onZoom(handleZoom);
       globe.onGlobeClick((coords) => {
-        if (relocatingPinIdRef.current) {
+        if (
+          relocatingPinIdRef.current ||
+          pinPressLockRef.current ||
+          Date.now() < suppressGlobeClickUntilRef.current
+        ) {
           return;
         }
         const handler = onGlobePressRef.current;

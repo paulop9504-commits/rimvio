@@ -54,7 +54,7 @@ import type { PendingBridgeInvite } from "@/hooks/use-pending-bridge-invites";
 
 const PIN_REVERT_MS = 1_100;
 /** Pin tap and globe click fire together — ignore the follow-up globe press. */
-const GLOBE_PIN_PRESS_SUPPRESS_MS = 450;
+const GLOBE_PIN_PRESS_SUPPRESS_MS = 900;
 
 function GlobeHomeBody() {
   const searchParams = useSearchParams();
