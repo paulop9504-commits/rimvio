@@ -30,4 +30,6 @@ export const GLOBE_TOSS_THEME = {
   mapStyle: "light" as const,
   /** Room shared globe (2D 우리 지구) — same Toss map palette. */
   sharedGlobeMapStyle: "light" as const,
+  /** Great-circle trip leg connector on 3D globe (globe.gl arcStroke). */
+  tripArcStroke: 0.085,
 } as const;

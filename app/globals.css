@@ -3230,6 +3230,21 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   box-shadow: 0 2px 12px rgba(2, 32, 71, 0.06);
 }
 
+.rimvio-globe-space[data-globe-detail="space"] .rimvio-globe-3d-pin__peers,
+.rimvio-globe-space[data-globe-detail="region"] .rimvio-globe-3d-pin__peers {
+  display: none;
+}
+
+.rimvio-globe-space[data-globe-detail="space"] .rimvio-globe-3d-pin__title {
+  -webkit-line-clamp: 1;
+  font-size: 0.625rem;
+  line-height: 1.15;
+}
+
+.rimvio-globe-space[data-globe-detail="region"] .rimvio-globe-3d-pin__title {
+  -webkit-line-clamp: 1;
+}
+
 .rimvio-globe-3d-pin {
   display: flex;
   width: max-content;

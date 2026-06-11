@@ -164,10 +164,9 @@ function GlobeHomeBody() {
           recoverGlobeContextEventFromPin(eventId)
         : null;
       const hasMapVideo = Boolean(resolveGlobeContextPrimaryVideo(event));
-      const openSheet =
-        options?.openSheet !== undefined
-          ? options.openSheet !== false
-          : !hasMapVideo;
+      const openSheet = hasMapVideo
+        ? options?.openSheet === true
+        : true;
       setSheetOpen(openSheet);
 
       if (!eventId) {

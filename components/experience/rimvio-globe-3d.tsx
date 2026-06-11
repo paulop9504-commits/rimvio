@@ -19,7 +19,8 @@ import { GLOBE_TILE_MAX_ZOOM } from "@/lib/globe/globe-tile-constants";
 import { globeTileEngineUrl } from "@/lib/globe/globe-tile-engine-url";
 import { useGlobeOverviewTexture } from "@/hooks/use-globe-equirect-texture";
 import { GLOBE_TOSS_THEME } from "@/lib/globe/globe-toss-theme";
-import { resolveGlobeContextVideoScale } from "@/lib/globe/resolve-globe-context-video-layout";
+import { applyGlobePinUiScale } from "@/lib/globe/apply-globe-pin-ui-scale";
+import { resolveGlobePinUiScaleBlended } from "@/lib/globe/resolve-globe-pin-ui-scale";
 import type { GlobeViewerLocation } from "@/lib/globe/globe-viewer-location-types";
 import { clampGpsAccuracyMeters } from "@/lib/globe/format-gps-accuracy-label";
 import {
@@ -165,6 +166,7 @@ export const RimvioGlobe3D = memo(
     const lockGlobeControlsRef = useRef(() => {});
     const unlockGlobeControlsRef = useRef(() => {});
     const suppressGlobeClickUntilRef = useRef(0);
+    const pinUiScaleRef = useRef(1);
 
     lockGlobeControlsRef.current = () => {
       pinPressLockRef.current = true;
@@ -382,7 +384,7 @@ export const RimvioGlobe3D = memo(
         .arcEndLng((arc: object) => (arc as GlobeTripArc).endLng)
         .arcColor((arc: object) => (arc as GlobeTripArc).color)
         .arcAltitude(0.22)
-        .arcStroke(0.85)
+        .arcStroke(GLOBE_TOSS_THEME.tripArcStroke)
         .arcsTransitionDuration(0)
         .ringsData([])
         .ringLat((row: object) => (row as { lat: number }).lat)
@@ -431,10 +433,10 @@ export const RimvioGlobe3D = memo(
         const detailLevel = resolveGlobeDetailLevel(altitude);
         onDetailLevelChangeRef.current?.(detailLevel);
         shellRef.current?.setAttribute("data-globe-detail", detailLevel);
-        shellRef.current?.style.setProperty(
-          "--globe-pin-scale",
-          String(resolveGlobeContextVideoScale(altitude)),
-        );
+        const pinScale = resolveGlobePinUiScaleBlended(altitude, detailLevel);
+        pinUiScaleRef.current = pinScale;
+        shellRef.current?.style.setProperty("--globe-pin-scale", String(pinScale));
+        applyGlobePinUiScale(root, pinScale);
         globe.showAtmosphere(altitude >= GLOBE_TOSS_THEME.atmosphereCutoffAltitude);
         globe.labelsData([]);
         syncOverviewTexture(altitude);
@@ -497,11 +499,13 @@ export const RimvioGlobe3D = memo(
 
     useEffect(() => {
       const globe = globeRef.current;
-      if (!globe) {
+      const root = rootRef.current;
+      if (!globe || !root) {
         return;
       }
       globe.htmlElementsData([...pins]);
       globe.labelsData([]);
+      applyGlobePinUiScale(root, pinUiScaleRef.current);
     }, [pins]);
 
     useEffect(() => {

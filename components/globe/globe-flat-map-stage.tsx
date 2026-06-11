@@ -7,8 +7,10 @@ import {
   globeMapTileAttribution,
 } from "@/lib/experience-graph/build-globe-map-tiles";
 import type { ClassifiedGlobePin } from "@/lib/feed/experience-globe-ping-types";
+import { applyGlobePinUiScale } from "@/lib/globe/apply-globe-pin-ui-scale";
 import {
   projectFlatMapPinOffset,
+  resolveFlatMapPinUiScale,
   resolveFlatMapTileSlippyZoom,
   resolveFlatMapZoomScale,
   type FlatMapView,
@@ -71,6 +73,7 @@ export const GlobeFlatMapStage = memo(function GlobeFlatMapStage({
 
   const slippyTileZoom = resolveFlatMapTileSlippyZoom(view.zoom);
   const zoomScale = resolveFlatMapZoomScale(view.zoom);
+  const pinUiScale = resolveFlatMapPinUiScale(view.zoom);
   const panPxX = view.panPxX ?? 0;
   const panPxY = view.panPxY ?? 0;
   const gridSize = slippyTileZoom <= 13 ? 7 : 5;
@@ -108,6 +111,14 @@ export const GlobeFlatMapStage = memo(function GlobeFlatMapStage({
     observer.observe(shell);
     return () => observer.disconnect();
   }, [measureViewport]);
+
+  useEffect(() => {
+    const shell = shellRef.current;
+    if (!shell) {
+      return;
+    }
+    applyGlobePinUiScale(shell, pinUiScale);
+  }, [pinUiScale, pins]);
 
   const onTileError = useCallback((tileKey: string, failedUrl: string) => {
     const coords = parseTileCoords(failedUrl);
@@ -151,6 +162,7 @@ export const GlobeFlatMapStage = memo(function GlobeFlatMapStage({
       )}
       data-rimvio-globe-flat-map
       data-rimvio-globe-flat-active={active ? "true" : "false"}
+      style={{ ["--globe-pin-scale" as string]: String(pinUiScale) }}
     >
       <div
         className={cn(

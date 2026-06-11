@@ -4,7 +4,7 @@ import {
 } from "@/lib/globe/globe-zoom-levels";
 
 const REFERENCE_ALTITUDE = GLOBE_ALTITUDE.neighborhood;
-const MIN_SCALE = 0.14;
+const MIN_SCALE = 0.06;
 const MAX_SCALE = 1;
 const BASE_WIDTH_PX = 168;
 const BASE_WIDTH_VW = 0.42;
@@ -20,7 +20,8 @@ export type GlobeContextVideoScreenLayout = {
 export function resolveGlobeContextVideoScale(altitude: number): number {
   const safeAltitude = Math.max(altitude, GLOBE_MIN_SAFE_ALTITUDE);
   const raw = REFERENCE_ALTITUDE / safeAltitude;
-  return Math.max(MIN_SCALE, Math.min(MAX_SCALE, raw));
+  const curved = Math.pow(raw, 0.72);
+  return Math.max(MIN_SCALE, Math.min(MAX_SCALE, curved));
 }
 
 export function resolveGlobeContextVideoWidthPx(

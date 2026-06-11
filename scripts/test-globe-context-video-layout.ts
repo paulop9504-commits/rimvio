@@ -12,7 +12,7 @@ function testScaleShrinksOnZoomOut() {
   const far = resolveGlobeContextVideoScale(GLOBE_ALTITUDE.region);
   assert.equal(close, 1);
   assert.ok(far < close);
-  assert.ok(far >= 0.14);
+  assert.ok(far >= 0.06);
 }
 
 function testWidthScalesWithViewport() {

@@ -41,6 +41,17 @@ export function resolveFlatMapZoomScale(viewZoom: number): number {
   return 2 ** (continuous - Math.floor(continuous));
 }
 
+const FLAT_MAP_PIN_SCALE_MIN = 0.26;
+const FLAT_MAP_PIN_SCALE_MAX = 1;
+
+/** Flat map pin labels shrink when zoomed out (wide area view). */
+export function resolveFlatMapPinUiScale(viewZoom: number): number {
+  const clamped = clampFlatMapZoom(viewZoom);
+  const span = FLAT_MAP_ZOOM_MAX - FLAT_MAP_ZOOM_MIN;
+  const t = span > 0 ? (clamped - FLAT_MAP_ZOOM_MIN) / span : 1;
+  return FLAT_MAP_PIN_SCALE_MIN + t * (FLAT_MAP_PIN_SCALE_MAX - FLAT_MAP_PIN_SCALE_MIN);
+}
+
 /** Rounded slippy level — legacy/tests. */
 export function resolveFlatMapSlippyZoom(viewZoom: number): number {
   return Math.round(resolveFlatMapSlippyZoomContinuous(viewZoom));
