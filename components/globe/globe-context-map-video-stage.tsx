@@ -5,7 +5,10 @@ import type { RefObject } from "react";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { useGlobePinScreenAnchor } from "@/hooks/use-globe-pin-screen-anchor";
 import { useMediaBlobUrl } from "@/hooks/use-media-blob-url";
-import { resolveGlobeContextPrimaryVideo } from "@/lib/globe/resolve-globe-context-primary-video";
+import {
+  resolveExperienceVolumeForEvent,
+  resolveGlobeContextPrimaryVideoForMap,
+} from "@/lib/globe/resolve-globe-context-primary-video";
 import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
 import {
   EVENT_CANDIDATES_UPDATED,
@@ -63,7 +66,8 @@ export function GlobeContextMapVideoStage({
     }
     const event =
       findLifeEventCandidate(key) ?? recoverGlobeContextEventFromPin(key);
-    return resolveGlobeContextPrimaryVideo(event);
+    const volume = resolveExperienceVolumeForEvent(key);
+    return resolveGlobeContextPrimaryVideoForMap({ event, volume });
   }, [eventId, revision]);
 
   const { url: mediaUrl, loading } = useMediaBlobUrl(

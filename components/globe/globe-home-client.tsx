@@ -41,12 +41,20 @@ import { resolveGlobeContextPinCluster } from "@/lib/globe/resolve-globe-context
 import { listGlobeContextPeerOptions } from "@/lib/globe/list-globe-context-peer-options";
 import type { GlobeContextPeopleFilter } from "@/lib/globe/globe-context-people-filter";
 import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
-import { resolveGlobeContextPrimaryVideo } from "@/lib/globe/resolve-globe-context-primary-video";
+import {
+  globeContextShouldMapReplayFirst,
+  resolveExperienceVolumeForEvent,
+  resolveGlobeContextPrimaryVideoForMap,
+} from "@/lib/globe/resolve-globe-context-primary-video";
 import {
   EVENT_CANDIDATES_UPDATED,
   findLifeEventCandidate,
   listLifeEventCandidates,
 } from "@/lib/life-read-model";
+import {
+  hydrateMediaContextStore,
+  MEDIA_SPACETIME_UPDATED,
+} from "@/lib/location-ping/media-context-store";
 import { copy } from "@/lib/copy/human-ko";
 import { projectBridgeGhostClusters } from "@/lib/experience-bridge/project-bridge-ghost-clusters";
 import type { PendingBridgeInvite } from "@/hooks/use-pending-bridge-invites";
@@ -95,6 +103,7 @@ function GlobeHomeBody() {
   const [manageOpen, setManageOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [stackClusters, setStackClusters] = useState<PinCluster[] | null>(null);
+  const [mediaStoreRevision, setMediaStoreRevision] = useState(0);
   const clustersRef = useRef<readonly PinCluster[]>([]);
   const detailLevelRef = useRef<GlobeDetailLevel>("space");
   const lastPinPressAtRef = useRef(0);
@@ -163,10 +172,15 @@ function GlobeHomeBody() {
         ? findLifeEventCandidate(eventId) ??
           recoverGlobeContextEventFromPin(eventId)
         : null;
-      const hasMapVideo = Boolean(resolveGlobeContextPrimaryVideo(event));
+      const volume = eventId ? resolveExperienceVolumeForEvent(eventId) : null;
+      const hasMapVideo = globeContextShouldMapReplayFirst({
+        event,
+        cluster,
+        volume,
+      });
       const openSheet = hasMapVideo
         ? options?.openSheet === true
-        : true;
+        : options?.openSheet !== false;
       setSheetOpen(openSheet);
 
       if (!eventId) {
@@ -236,10 +250,15 @@ function GlobeHomeBody() {
     );
   }, [activeCluster?.eventId]);
 
-  const activeContextPrimaryVideo = useMemo(
-    () => resolveGlobeContextPrimaryVideo(activeContextEvent),
-    [activeContextEvent],
-  );
+  const activeContextPrimaryVideo = useMemo(() => {
+    void mediaStoreRevision;
+    const eventId = activeCluster?.eventId?.trim();
+    const volume = eventId ? resolveExperienceVolumeForEvent(eventId) : null;
+    return resolveGlobeContextPrimaryVideoForMap({
+      event: activeContextEvent,
+      volume,
+    });
+  }, [activeCluster?.eventId, activeContextEvent, mediaStoreRevision]);
 
   const showMapVideoReplay = Boolean(
     activeContextPrimaryVideo &&
@@ -253,6 +272,36 @@ function GlobeHomeBody() {
     window.addEventListener(EVENT_CANDIDATES_UPDATED, refresh);
     return () => window.removeEventListener(EVENT_CANDIDATES_UPDATED, refresh);
   }, []);
+
+  useEffect(() => {
+    const bump = () => setMediaStoreRevision((value) => value + 1);
+    void hydrateMediaContextStore().then(bump);
+    window.addEventListener(MEDIA_SPACETIME_UPDATED, bump);
+    return () => window.removeEventListener(MEDIA_SPACETIME_UPDATED, bump);
+  }, []);
+
+  useEffect(() => {
+    if (!activeCluster?.eventId || stackClusters?.length) {
+      return;
+    }
+    void mediaStoreRevision;
+    const eventId = activeCluster.eventId.trim();
+    const volume = resolveExperienceVolumeForEvent(eventId);
+    const shouldMapFirst = globeContextShouldMapReplayFirst({
+      event: activeContextEvent,
+      cluster: activeCluster,
+      volume,
+    });
+    if (shouldMapFirst && sheetOpen) {
+      setSheetOpen(false);
+    }
+  }, [
+    activeCluster,
+    activeContextEvent,
+    mediaStoreRevision,
+    sheetOpen,
+    stackClusters?.length,
+  ]);
 
   useEffect(() => {
     for (const invite of pendingBridgeInvites) {
@@ -356,7 +405,7 @@ function GlobeHomeBody() {
     (eventId: string) => {
       setListOpen(false);
       setManageOpen(false);
-      focusContextByEventId(eventId, { openSheet: true });
+      focusContextByEventId(eventId);
     },
     [focusContextByEventId],
   );

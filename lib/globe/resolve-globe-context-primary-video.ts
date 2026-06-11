@@ -1,6 +1,14 @@
+import type { ExperienceVolume } from "@/lib/experience-graph/experience-volume-types";
+import {
+  buildExperienceGraphFromEvents,
+  indexExperienceVolumesByEventId,
+} from "@/lib/experience-graph/build-experience-graph";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { readFeedCaptureFragments } from "@/lib/feed/feed-capture-metadata";
 import { readMediaContextMemorySnapshot } from "@/lib/location-ping/media-context-store";
+import { listLifeEventCandidates } from "@/lib/life-read-model";
+import type { PinCluster } from "@/lib/globe/pin-cluster-types";
+import { projectContextMediaReel } from "@/lib/globe/project-context-media-reel";
 
 export type GlobeContextPrimaryVideo = {
   mediaContextId: string;
@@ -74,4 +82,65 @@ export function globeContextHasVideo(
     return true;
   }
   return readFeedCaptureFragments(event).some((row) => row.kind === "video");
+}
+
+export function resolveExperienceVolumeForEvent(
+  eventId: string,
+): ExperienceVolume | null {
+  const key = eventId.trim();
+  if (!key) {
+    return null;
+  }
+  const graph = buildExperienceGraphFromEvents(listLifeEventCandidates());
+  return indexExperienceVolumesByEventId(graph).get(key) ?? null;
+}
+
+/** Same sources as pin sheet reel — includes spatial volume + media store. */
+export function globeContextShouldMapReplayFirst(input: {
+  event: EventCandidate | null | undefined;
+  cluster?: PinCluster | null;
+  volume?: ExperienceVolume | null;
+}): boolean {
+  const event = input.event;
+  const volume =
+    input.volume ??
+    (event?.id ? resolveExperienceVolumeForEvent(event.id) : null);
+
+  if (globeContextHasVideo(event)) {
+    return true;
+  }
+  if ((input.cluster?.evidence.videoCount ?? 0) > 0) {
+    return true;
+  }
+  return projectContextMediaReel({ event, volume }).some(
+    (row) => row.kind === "video",
+  );
+}
+
+/** Map replay video — feedCaptures, media store, then spatial reel fallback. */
+export function resolveGlobeContextPrimaryVideoForMap(input: {
+  event: EventCandidate | null | undefined;
+  volume?: ExperienceVolume | null;
+}): GlobeContextPrimaryVideo | null {
+  const primary = resolveGlobeContextPrimaryVideo(input.event);
+  if (primary) {
+    return primary;
+  }
+
+  const volume =
+    input.volume ??
+    (input.event?.id ? resolveExperienceVolumeForEvent(input.event.id) : null);
+  const firstVideo = projectContextMediaReel({ event: input.event, volume }).find(
+    (row) => row.kind === "video" && row.mediaContextId?.trim(),
+  );
+  if (!firstVideo?.mediaContextId?.trim()) {
+    return null;
+  }
+
+  return {
+    mediaContextId: firstVideo.mediaContextId.trim(),
+    label: firstVideo.label,
+    capturedAtIso:
+      firstVideo.capturedAtIso?.trim() || new Date().toISOString(),
+  };
 }

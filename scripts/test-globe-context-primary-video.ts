@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
-import { resolveGlobeContextPrimaryVideo } from "../lib/globe/resolve-globe-context-primary-video";
+import {
+  globeContextShouldMapReplayFirst,
+  resolveGlobeContextPrimaryVideo,
+  resolveGlobeContextPrimaryVideoForMap,
+} from "../lib/globe/resolve-globe-context-primary-video";
 import { resetMediaContextStoreForTests } from "../lib/location-ping/media-context-store";
 import type { EventCandidate } from "../lib/events/event-candidate";
 
@@ -95,7 +99,45 @@ function testMediaStoreFallback() {
   assert.equal(resolved!.mediaContextId, "media:video:wedding");
 }
 
+function testMapReplayGateUsesFeedCaptureVideoWithoutMediaId() {
+  const event = baseEvent({
+    metadata: {
+      feedCaptures: [
+        {
+          id: "cap:video",
+          kind: "video",
+          capturedAtIso: "2026-06-10T12:00:00+09:00",
+          label: "영상만",
+        },
+      ],
+    },
+  });
+  assert.equal(resolveGlobeContextPrimaryVideo(event), null);
+  assert.equal(globeContextShouldMapReplayFirst({ event }), true);
+}
+
+function testMapReplayUsesReelVideoWithMediaId() {
+  const event = baseEvent({
+    metadata: {
+      feedCaptures: [
+        {
+          id: "cap:video",
+          kind: "video",
+          capturedAtIso: "2026-06-10T12:00:00+09:00",
+          mediaContextId: "media:video:reel",
+          label: "릴 영상",
+        },
+      ],
+    },
+  });
+  const resolved = resolveGlobeContextPrimaryVideoForMap({ event, volume: null });
+  assert.ok(resolved);
+  assert.equal(resolved!.mediaContextId, "media:video:reel");
+}
+
 testLatestVideoWins();
 testNoVideoReturnsNull();
 testMediaStoreFallback();
+testMapReplayGateUsesFeedCaptureVideoWithoutMediaId();
+testMapReplayUsesReelVideoWithMediaId();
 console.log("test-globe-context-primary-video: ok");
