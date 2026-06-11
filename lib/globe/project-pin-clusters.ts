@@ -143,23 +143,28 @@ export function projectPinClusterClassifiedPin(
 ): ClassifiedGlobePin {
   const map = projectLatLngToMapPercent(cluster.lat, cluster.lng);
   const tripLeg = readTripLegFromEvent(event)?.leg;
+  const isGhost = cluster.variant === "bridge_ghost";
   return {
     id: cluster.pinId,
     kind: pinKindFromEvidence(cluster.evidence),
-    label: cluster.title,
+    label: isGhost
+      ? cluster.recallLine?.trim() || cluster.title
+      : cluster.title,
     lat: cluster.lat,
     lng: cluster.lng,
     pinX: map.x,
     pinY: map.y,
     sourceEventId: cluster.eventId,
-    emphasis: tripLeg === "departure" ? "related" : "primary",
-    pinShape: "slot",
+    emphasis: isGhost || tripLeg === "departure" ? "related" : "primary",
+    pinShape: isGhost ? "dot" : "slot",
     tripLeg,
-    slot: {
-      experienceTitle: cluster.title,
-      photoCount: cluster.evidence.photoCount,
-      videoCount: cluster.evidence.videoCount,
-    },
+    slot: isGhost
+      ? undefined
+      : {
+          experienceTitle: cluster.title,
+          photoCount: cluster.evidence.photoCount,
+          videoCount: cluster.evidence.videoCount,
+        },
   };
 }
 

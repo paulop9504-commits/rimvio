@@ -113,6 +113,8 @@ export type RimvioGlobeHubProps = {
   onGlobePress?: (coords: { lat: number; lng: number }) => void;
   onClustersSnapshot?: (clusters: readonly PinCluster[]) => void;
   onDetailLevelChange?: (level: GlobeDetailLevel) => void;
+  /** Pending Experience Bridge invites — ghost pins until accept. */
+  bridgeGhostClusters?: readonly PinCluster[];
 };
 
 type RimvioGlobeHubBodyProps = {
@@ -346,6 +348,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
   onGlobePress,
   onClustersSnapshot,
   onDetailLevelChange,
+  bridgeGhostClusters,
 }: RimvioGlobeHubProps) {
   const { ready, eventsById } = useGlobeEventSnapshot();
   const { graph } = useExperienceGraph(ready ? eventsById : undefined);
@@ -366,9 +369,17 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
     );
   }, [ready, graph.volumes, eventsById, timeFilter, peopleFilter]);
 
+  const displayClusters = useMemo(() => {
+    const ghosts = bridgeGhostClusters ?? [];
+    if (ghosts.length === 0) {
+      return clusters;
+    }
+    return [...clusters, ...ghosts];
+  }, [clusters, bridgeGhostClusters]);
+
   useEffect(() => {
-    onClustersSnapshot?.(clusters);
-  }, [clusters, onClustersSnapshot]);
+    onClustersSnapshot?.(displayClusters);
+  }, [displayClusters, onClustersSnapshot]);
 
   useEffect(() => {
     if (!ready || recallOpenedRef.current) {
@@ -381,14 +392,14 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
     if (!eventId) {
       return;
     }
-    const cluster = findPinClusterByEventId(clusters, eventId);
+    const cluster = findPinClusterByEventId(displayClusters, eventId);
     recallOpenedRef.current = true;
     if (cluster && onPinPress) {
       onPinPress(cluster);
       return;
     }
     onRecallEventId?.(eventId);
-  }, [ready, clusters, initialRecallEventId, onPinPress, onRecallEventId]);
+  }, [ready, displayClusters, initialRecallEventId, onPinPress, onRecallEventId]);
 
   if (!ready) {
     return (
@@ -408,7 +419,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
     <RimvioGlobeHubBody
       ref={globeRef}
       className={className}
-      clusters={clusters}
+      clusters={displayClusters}
       eventsById={eventsById}
       initialOpenPinId={initialOpenPinId}
       highlightedPinId={highlightedPinId}

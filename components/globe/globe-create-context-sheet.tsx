@@ -3,9 +3,11 @@
 import { useCallback, useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { CalendarPlus, Loader2, X } from "lucide-react";
+import { CalendarPlus, Loader2, Users, X } from "lucide-react";
 import { toast } from "sonner";
 import { GlobeCreateContextPlaceStep } from "@/components/globe/globe-create-context-place-step";
+import { GlobeCreateContextShareStep } from "@/components/globe/globe-create-context-share-step";
+import { useAuth } from "@/hooks/use-auth";
 import type { LocationConfirmUxWire, LocationSuggestion } from "@/lib/action-chat/confirmation-types";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import {
@@ -14,6 +16,11 @@ import {
 } from "@/lib/globe/create-manual-globe-context";
 import type { ManualContextResolvedPlace } from "@/lib/globe/resolve-manual-context-place-candidates";
 import { suggestionToResolvedPlace } from "@/lib/globe/resolve-manual-context-place-candidates";
+import {
+  shareGlobeContextWithFriends,
+  type GlobeContextShareFriend,
+} from "@/lib/experience-bridge/share-context-with-friends";
+import { fetchMyAccountProfile } from "@/lib/peer-chat/peer-chat-client";
 import { cn } from "@/lib/utils";
 
 export type GlobeCreateContextSheetProps = {
@@ -26,7 +33,7 @@ export type GlobeCreateContextSheetProps = {
   }) => void;
 };
 
-type SheetStep = "form" | "place";
+type SheetStep = "form" | "place" | "share";
 
 /** Manual schedule + globe pin — place verified via Kakao/Google/Naver. */
 export function GlobeCreateContextSheet({
@@ -34,6 +41,7 @@ export function GlobeCreateContextSheet({
   onOpenChange,
   onCreated,
 }: GlobeCreateContextSheetProps) {
+  const { user, configured } = useAuth();
   const titleId = useId();
   const [mounted, setMounted] = useState(false);
   const [step, setStep] = useState<SheetStep>("form");
@@ -42,6 +50,11 @@ export function GlobeCreateContextSheet({
   const [startIso, setStartIso] = useState(defaultManualContextStartIso());
   const [nights, setNights] = useState(1);
   const [busy, setBusy] = useState(false);
+  const [createdEvent, setCreatedEvent] = useState<EventCandidate | null>(null);
+  const [createdPlaceLabel, setCreatedPlaceLabel] = useState("");
+  const [selectedFriends, setSelectedFriends] = useState<
+    Map<string, GlobeContextShareFriend>
+  >(() => new Map());
   const [placeLoading, setPlaceLoading] = useState(false);
   const [placeUx, setPlaceUx] = useState<LocationConfirmUxWire | null>(null);
   const [placeSuggestions, setPlaceSuggestions] = useState<LocationSuggestion[]>([]);
@@ -63,6 +76,9 @@ export function GlobeCreateContextSheet({
     setMapLinks(null);
     setPlaceLoading(false);
     setBusy(false);
+    setCreatedEvent(null);
+    setCreatedPlaceLabel("");
+    setSelectedFriends(new Map());
   }, []);
 
   useEffect(() => {
@@ -96,14 +112,10 @@ export function GlobeCreateContextSheet({
           resolvedPlace,
         });
         const label = resolvedPlace?.label.trim() || place.trim();
+        setCreatedEvent(event);
+        setCreatedPlaceLabel(label);
+        setStep("share");
         toast.success(`${label} 맥락을 지구에 박았어요`);
-        onCreated?.({
-          event,
-          title: title.trim(),
-          place: label,
-        });
-        onOpenChange(false);
-        resetSheet();
       } catch (caught) {
         const message =
           caught instanceof Error ? caught.message : "맥락을 만들지 못했어요.";
@@ -112,8 +124,72 @@ export function GlobeCreateContextSheet({
         setBusy(false);
       }
     },
-    [nights, onCreated, onOpenChange, place, resetSheet, startIso, title],
+    [nights, place, resetSheet, startIso, title],
   );
+
+  const toggleFriend = useCallback((friend: GlobeContextShareFriend) => {
+    setSelectedFriends((prev) => {
+      const next = new Map(prev);
+      if (next.has(friend.userId)) {
+        next.delete(friend.userId);
+      } else {
+        next.set(friend.userId, friend);
+      }
+      return next;
+    });
+  }, []);
+
+  const finishShare = useCallback(async () => {
+    if (!createdEvent) {
+      onOpenChange(false);
+      resetSheet();
+      return;
+    }
+    const friends = [...selectedFriends.values()];
+    if (friends.length > 0 && configured) {
+      setBusy(true);
+      try {
+        let hostName = user?.user_metadata?.full_name?.trim() || "나";
+        try {
+          const profile = await fetchMyAccountProfile();
+          hostName = profile.displayName?.trim() || hostName;
+        } catch {
+          // profile optional
+        }
+        const { invited } = await shareGlobeContextWithFriends({
+          event: createdEvent,
+          hostDisplayName: hostName,
+          friends,
+        });
+        if (invited > 0) {
+          toast.success(`${invited}명에게 경험을 공유했어요`);
+        }
+      } catch (caught) {
+        toast.error(
+          caught instanceof Error ? caught.message : "공유하지 못했어요",
+        );
+      } finally {
+        setBusy(false);
+      }
+    }
+    onCreated?.({
+      event: createdEvent,
+      title: title.trim(),
+      place: createdPlaceLabel,
+    });
+    onOpenChange(false);
+    resetSheet();
+  }, [
+    configured,
+    createdEvent,
+    createdPlaceLabel,
+    onCreated,
+    onOpenChange,
+    resetSheet,
+    selectedFriends,
+    title,
+    user,
+  ]);
 
   const loadPlaceCandidates = useCallback(async () => {
     setPlaceLoading(true);
@@ -208,12 +284,18 @@ export function GlobeCreateContextSheet({
                     className="flex items-center gap-1.5 text-[16px] font-semibold text-foreground"
                   >
                     <CalendarPlus className="size-4 text-primary" aria-hidden />
-                    {step === "place" ? "장소 확인" : "맥락 만들기"}
+                    {step === "place"
+                      ? "장소 확인"
+                      : step === "share"
+                        ? "친구와 공유"
+                        : "맥락 만들기"}
                   </p>
                   <p className="mt-0.5 text-[12px] text-muted-foreground">
                     {step === "place"
                       ? "카카오·구글·네이버 후보 중 맞는 곳을 골라요"
-                      : "장소 문장을 넣으면 자동으로 지도에 박아요"}
+                      : step === "share"
+                        ? "선택한 친구는 앱을 열면 초대를 받아요"
+                        : "장소 문장을 넣으면 자동으로 지도에 박아요"}
                   </p>
                 </div>
                 <button
@@ -295,6 +377,12 @@ export function GlobeCreateContextSheet({
                     </label>
                   </div>
                 </div>
+              ) : step === "share" ? (
+                <GlobeCreateContextShareStep
+                  selectedIds={new Set(selectedFriends.keys())}
+                  onToggle={toggleFriend}
+                  loading={busy}
+                />
               ) : (
                 <GlobeCreateContextPlaceStep
                   title={title.trim()}
@@ -339,6 +427,33 @@ export function GlobeCreateContextSheet({
                   <br />
                   애매하면 후보에서 고를 수 있어요.
                 </p>
+              </div>
+            ) : step === "share" ? (
+              <div className="shrink-0 border-t border-border bg-card px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void finishShare()}
+                  className={cn(
+                    "flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3.5",
+                    "text-[15px] font-semibold text-primary-foreground",
+                    "disabled:pointer-events-none disabled:opacity-45",
+                  )}
+                >
+                  {busy ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" aria-hidden />
+                      공유 중…
+                    </>
+                  ) : selectedFriends.size > 0 ? (
+                    <>
+                      <Users className="size-4" aria-hidden />
+                      {selectedFriends.size}명에게 공유하고 완료
+                    </>
+                  ) : (
+                    "나만 두고 완료"
+                  )}
+                </button>
               </div>
             ) : null}
           </motion.div>

@@ -154,6 +154,11 @@ export const copy = {
     bridgeInviteAcceptFail: "수락하지 못했어요",
     bridgeInviteDeclineFail: "거절하지 못했어요",
     bridgeInviteDismissAria: "나중에",
+    bridgeInviteToast: (host: string, title: string) =>
+      `${host}님이 「${title}」 경험을 공유했어요 · 지도에서 확인`,
+    bridgeGhostSheetBody:
+      "수락하면 내 지구본에도 같은 핀이 생겨요 · 거절하면 사라져요",
+    bridgeGhostAcceptCta: "내 지도에 남기기",
     ingestPlaceholder: "@길찾기 역이름 · 사진 · 링크 · 메모 — 여기에 남기기",
     ingestAttachPlaceholder: (title: string) => `「${title}」에 @ · 사진 · 메모`,
     ingestAttachHint: (title: string) => `「${title}」에 이어서 남기기`,

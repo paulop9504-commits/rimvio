@@ -14,11 +14,14 @@ import { GlobeContextManageSheet } from "@/components/globe/globe-context-manage
 import { GlobeContextStackPicker } from "@/components/globe/globe-context-stack-picker";
 import { GlobeContextPinCard } from "@/components/globe/globe-context-pin-card";
 import { GlobeCreateContextSheet } from "@/components/globe/globe-create-context-sheet";
+import { ExperienceBridgeInviteBanner } from "@/components/globe/experience-bridge-invite-banner";
+import { ExperienceBridgeGhostSheet } from "@/components/globe/experience-bridge-ghost-sheet";
 import { GlobeSettingsSheet } from "@/components/globe/globe-settings-sheet";
 import { GlobeLocationConfirmCard } from "@/components/globe/globe-location-confirm-card";
 import { PinOpenSheet } from "@/components/globe/pin-open-sheet";
 import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
 import { usePersonalGlobePinSync } from "@/hooks/use-personal-globe-pin-sync";
+import { usePendingBridgeInvites } from "@/hooks/use-pending-bridge-invites";
 import { useGlobeTripArrival } from "@/hooks/use-globe-trip-arrival";
 import { useGlobeContextPlaceAlignment } from "@/hooks/use-globe-context-place-alignment";
 import { focusGlobeContextOnMap } from "@/lib/globe/focus-globe-context-on-map";
@@ -39,6 +42,9 @@ import {
   EVENT_CANDIDATES_UPDATED,
   listLifeEventCandidates,
 } from "@/lib/life-read-model";
+import { copy } from "@/lib/copy/human-ko";
+import { projectBridgeGhostClusters } from "@/lib/experience-bridge/project-bridge-ghost-clusters";
+import type { PendingBridgeInvite } from "@/hooks/use-pending-bridge-invites";
 
 const PIN_REVERT_MS = 1_100;
 
@@ -48,6 +54,22 @@ function GlobeHomeBody() {
   const globeRef = useRef<RimvioGlobeHubHandle>(null);
   const liveLocation = useLiveLocationSnapshot();
   usePersonalGlobePinSync(true);
+  const {
+    invites: pendingBridgeInvites,
+    dismissInvite,
+    refresh: refreshBridgeInvites,
+  } = usePendingBridgeInvites(true);
+  const bridgeGhostClusters = useMemo(
+    () => projectBridgeGhostClusters(pendingBridgeInvites),
+    [pendingBridgeInvites],
+  );
+  const seenBridgeToastRef = useRef(new Set<string>());
+  const [bridgeGhostOpen, setBridgeGhostOpen] = useState(false);
+  const [bridgeGhostInvite, setBridgeGhostInvite] =
+    useState<PendingBridgeInvite | null>(null);
+  const [bridgeGhostCluster, setBridgeGhostCluster] = useState<PinCluster | null>(
+    null,
+  );
   const [activeCluster, setActiveCluster] = useState<PinCluster | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [timeFilter, setTimeFilter] = useState<GlobeContextTimeFilter>("all");
@@ -167,12 +189,40 @@ function GlobeHomeBody() {
     return () => window.removeEventListener(EVENT_CANDIDATES_UPDATED, refresh);
   }, []);
 
+  useEffect(() => {
+    for (const invite of pendingBridgeInvites) {
+      const eventId = invite.state.bridge.eventId;
+      if (seenBridgeToastRef.current.has(eventId)) {
+        continue;
+      }
+      seenBridgeToastRef.current.add(eventId);
+      const host = invite.state.participants.find((row) => row.role === "host");
+      const hostName =
+        host?.displayName?.trim() || copy.globe.bridgeInviteHostFallback;
+      toast.message(
+        copy.globe.bridgeInviteToast(hostName, invite.state.bridge.title),
+      );
+    }
+  }, [pendingBridgeInvites]);
+
   const onPinPress = useCallback(
     (cluster: PinCluster) => {
+      if (cluster.variant === "bridge_ghost") {
+        const invite = pendingBridgeInvites.find(
+          (row) => row.state.bridge.eventId === cluster.eventId,
+        );
+        if (invite) {
+          globeRef.current?.flyToPin(cluster.lat, cluster.lng, "neighborhood");
+          setBridgeGhostInvite(invite);
+          setBridgeGhostCluster(cluster);
+          setBridgeGhostOpen(true);
+        }
+        return;
+      }
       const nearby = resolveNearbyAt(cluster.lat, cluster.lng);
       applyNearbyContexts(nearby.length > 0 ? nearby : [cluster], cluster);
     },
-    [applyNearbyContexts, resolveNearbyAt],
+    [applyNearbyContexts, pendingBridgeInvites, resolveNearbyAt],
   );
 
   const onGlobePress = useCallback(
@@ -377,6 +427,7 @@ function GlobeHomeBody() {
         timeFilter={timeFilter}
         peopleFilter={peopleFilter}
         pinCoordOverrides={pinCoordOverrides}
+        bridgeGhostClusters={bridgeGhostClusters}
       />
       <GlobeContextStackPicker
         clusters={stackClusters ?? []}
@@ -390,8 +441,13 @@ function GlobeHomeBody() {
       />
       <GlobeContextPinCard
         globeRef={globeRef}
-        cluster={activeCluster}
-        visible={Boolean(activeCluster?.eventId) && !sheetOpen && !stackClusters?.length}
+        cluster={activeCluster?.variant === "bridge_ghost" ? null : activeCluster}
+        visible={
+          Boolean(activeCluster?.eventId) &&
+          activeCluster?.variant !== "bridge_ghost" &&
+          !sheetOpen &&
+          !stackClusters?.length
+        }
         onOpenSheet={() => setSheetOpen(true)}
         onDismiss={clearActiveContext}
       />
@@ -452,9 +508,17 @@ function GlobeHomeBody() {
           focusContextOnMap(eventId);
         }}
       />
-      <div className="pointer-events-none absolute inset-x-3 bottom-[var(--rimvio-globe-ingest-offset)] z-20 sm:inset-x-auto sm:right-3 sm:max-w-[280px] lg:bottom-[calc(var(--rimvio-globe-ingest-bar-height)+1.25rem)]">
+      <div className="pointer-events-none absolute inset-x-3 top-[calc(max(0.5rem,env(safe-area-inset-top))+3.25rem)] z-20 sm:inset-x-auto sm:left-auto sm:right-3 sm:max-w-[min(100%,22rem)]">
         <div className="pointer-events-auto">
-          <GlobeLocationConfirmCard />
+          <ExperienceBridgeInviteBanner
+            invites={pendingBridgeInvites}
+            onAccepted={(eventId) => {
+              dismissInvite(eventId);
+              void refreshBridgeInvites();
+              focusContextByEventId(eventId, { openSheet: true });
+            }}
+            onDismiss={dismissInvite}
+          />
         </div>
       </div>
       <PinOpenSheet
@@ -502,6 +566,23 @@ function GlobeHomeBody() {
             window.history.replaceState(null, "", next);
           }
         }}
+      />
+      <div className="pointer-events-none absolute inset-x-3 bottom-[var(--rimvio-globe-ingest-offset)] z-20 sm:inset-x-auto sm:right-3 sm:max-w-[280px] lg:bottom-[calc(var(--rimvio-globe-ingest-bar-height)+1.25rem)]">
+        <div className="pointer-events-auto">
+          <GlobeLocationConfirmCard />
+        </div>
+      </div>
+      <ExperienceBridgeGhostSheet
+        open={bridgeGhostOpen}
+        onOpenChange={setBridgeGhostOpen}
+        invite={bridgeGhostInvite}
+        cluster={bridgeGhostCluster}
+        onAccepted={(eventId) => {
+          dismissInvite(eventId);
+          void refreshBridgeInvites();
+          focusContextByEventId(eventId, { openSheet: true });
+        }}
+        onDismissed={dismissInvite}
       />
       <GlobeSettingsSheet open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
