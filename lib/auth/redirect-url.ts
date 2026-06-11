@@ -1,6 +1,37 @@
 /** Cookie set before OAuth; read in `/auth/callback` (avoids query on redirectTo). */
 export const AUTH_NEXT_COOKIE = "rimvio_auth_next";
 
+export function readAuthNextPath(fallback = "/onboarding"): string {
+  if (typeof document === "undefined") {
+    return fallback;
+  }
+
+  const raw = document.cookie
+    .split("; ")
+    .find((row) => row.startsWith(`${AUTH_NEXT_COOKIE}=`))
+    ?.slice(AUTH_NEXT_COOKIE.length + 1);
+
+  if (!raw) {
+    return fallback;
+  }
+
+  try {
+    const decoded = decodeURIComponent(raw);
+    return decoded.startsWith("/") ? decoded : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+export function clearAuthNextCookie(): void {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  const secure = window.location.protocol === "https:";
+  document.cookie = `${AUTH_NEXT_COOKIE}=; path=/; max-age=0; SameSite=Lax${secure ? "; Secure" : ""}`;
+}
+
 /**
  * OAuth redirect URL — path only (no `?next=`).
  * Supabase allowlist must include this exact URL or `origin/**`.
