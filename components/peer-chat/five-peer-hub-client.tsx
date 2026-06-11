@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { FivePeerHub } from "@/components/peer-chat/five-peer-hub";
 import { readPeerContacts } from "@/lib/context/peer-contact-store";
@@ -63,8 +63,27 @@ export function FivePeerHubClient() {
   const copy = useCopy();
   const guest = useRoomGuest();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, configured } = useAuth();
   const usePhoneChat = Boolean(configured && user && isSupabaseConfigured());
+
+  useEffect(() => {
+    const auth = searchParams.get("auth");
+    if (!auth) {
+      return;
+    }
+
+    if (auth === "error") {
+      toast.error(copy.auth.loginFail, {
+        description: copy.auth.loginFailHint,
+      });
+    } else if (auth === "missing_code") {
+      toast.error(copy.auth.loginIncomplete);
+    }
+
+    router.replace("/peers", { scroll: false });
+  }, [searchParams, copy.auth, router]);
+
   const [roster, setRoster] = useState(() => readPinnedRoster());
   const [contacts, setContacts] = useState<PeerContact[]>(() => readPeerContacts());
   const [pinnedPeers, setPinnedPeers] = useState<SocialBubblePeer[]>([]);

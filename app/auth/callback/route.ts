@@ -6,7 +6,7 @@ import { syncUserProfileFromAuth } from "@/lib/peer-chat/server-peer-chat";
 import { createClientForRoute } from "@/lib/supabase/route-handler";
 
 function authErrorRedirect(origin: string, code: string) {
-  const url = new URL("/feed", origin);
+  const url = new URL("/peers", origin);
   url.searchParams.set("auth", code);
   return NextResponse.redirect(url);
 }
@@ -39,6 +39,16 @@ export async function GET(request: NextRequest) {
   const origin = resolveAppOrigin(request);
 
   if (!isSupabaseConfigured()) {
+    return authErrorRedirect(origin, "error");
+  }
+
+  const oauthError = request.nextUrl.searchParams.get("error");
+  if (oauthError) {
+    console.error(
+      "[auth/callback] provider error",
+      oauthError,
+      request.nextUrl.searchParams.get("error_description") ?? "",
+    );
     return authErrorRedirect(origin, "error");
   }
 

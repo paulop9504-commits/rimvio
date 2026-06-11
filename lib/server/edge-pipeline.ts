@@ -77,9 +77,13 @@ export async function runEdgePipeline(request: NextRequest) {
     return response;
   }
 
-  let response = isSupabaseConfigured()
-    ? await updateSession(request)
-    : NextResponse.next({ request });
+  // OAuth callback must not refresh/mutate auth cookies before code exchange.
+  const skipSessionRefresh = pathname.startsWith("/auth/callback");
+
+  let response =
+    isSupabaseConfigured() && !skipSessionRefresh
+      ? await updateSession(request)
+      : NextResponse.next({ request });
 
   const authBlock = await enforceAuthRequired(request, response);
   if (authBlock) {

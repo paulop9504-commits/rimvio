@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { AppShell } from "@/components/app-shell";
 import { FivePeerHubClient } from "@/components/peer-chat/five-peer-hub-client";
 import { getServerCopy } from "@/lib/i18n/server-locale";
@@ -11,7 +12,9 @@ export default async function FivePeerHubPage() {
       compact
       iosSurface
     >
-      <FivePeerHubClient />
+      <Suspense fallback={null}>
+        <FivePeerHubClient />
+      </Suspense>
     </AppShell>
   );
 }
