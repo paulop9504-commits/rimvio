@@ -3235,6 +3235,12 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   box-shadow: 0 2px 12px rgba(2, 32, 71, 0.06);
 }
 
+.rimvio-globe-space[data-globe-detail="space"] .rimvio-globe-3d-pin:not(.rimvio-globe-3d-pin--cluster),
+.rimvio-globe-space[data-globe-detail="region"] .rimvio-globe-3d-pin:not(.rimvio-globe-3d-pin--cluster) {
+  display: none !important;
+  pointer-events: none !important;
+}
+
 .rimvio-globe-space[data-globe-detail="space"] .rimvio-globe-3d-pin__peers,
 .rimvio-globe-space[data-globe-detail="region"] .rimvio-globe-3d-pin__peers {
   display: none;

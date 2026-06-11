@@ -3,6 +3,8 @@ import type { GlobeDetailLevel } from "@/lib/globe/globe-zoom-levels";
 import { projectLatLngToMapPercent } from "@/lib/experience-graph/resolve-place-coordinates";
 
 const CLUSTER_LEVELS = new Set<GlobeDetailLevel>(["space", "region", "city"]);
+/** Far zoom — lone context dots clutter the map; show clusters only. */
+const HIDE_SINGLETON_LEVELS = new Set<GlobeDetailLevel>(["space", "region"]);
 
 function haversineMeters(
   lat1: number,
@@ -21,10 +23,10 @@ function haversineMeters(
 
 function clusterRadiusMeters(detailLevel: GlobeDetailLevel): number {
   if (detailLevel === "space") {
-    return 180_000;
+    return 320_000;
   }
   if (detailLevel === "region") {
-    return 45_000;
+    return 85_000;
   }
   return 12_000;
 }
@@ -37,7 +39,14 @@ export function projectGlobeZoomClusterPins(
   const candidates = pins.filter(
     (pin) => pin.pinShape !== "viewer" && pin.sourceEventId?.trim(),
   );
-  if (!CLUSTER_LEVELS.has(detailLevel) || candidates.length <= 1) {
+  if (!CLUSTER_LEVELS.has(detailLevel)) {
+    return [...pins];
+  }
+
+  if (candidates.length <= 1) {
+    if (HIDE_SINGLETON_LEVELS.has(detailLevel)) {
+      return pins.filter((pin) => pin.pinShape === "viewer");
+    }
     return [...pins];
   }
 
@@ -71,6 +80,9 @@ export function projectGlobeZoomClusterPins(
 
   for (const group of groups) {
     if (group.length === 1) {
+      if (HIDE_SINGLETON_LEVELS.has(detailLevel)) {
+        continue;
+      }
       clustered.push(group[0]!);
       continue;
     }
