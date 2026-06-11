@@ -3,6 +3,7 @@
 import assert from "node:assert/strict";
 import type { EventCandidate } from "../lib/events/event-candidate";
 import { projectContextMediaReel } from "../lib/globe/project-context-media-reel";
+import { resetMediaContextStoreForTests } from "../lib/location-ping/media-context-store";
 
 const event: EventCandidate = {
   id: "evt-reel",
@@ -42,5 +43,24 @@ assert.equal(reel.length, 2);
 assert.equal(reel[0]?.kind, "video");
 assert.equal(reel[1]?.kind, "photo");
 assert.equal(reel[0]?.mediaContextId, "mc-video-1");
+
+resetMediaContextStoreForTests([
+  {
+    id: "mc-store-photo",
+    mediaKind: "photo",
+    capturedAtIso: "2026-01-06T10:00:00+09:00",
+    originRef: "evt-store-only",
+    lat: 31.2,
+    lng: 121.5,
+    placeLabel: "상하이",
+  },
+]);
+
+const storeOnly = projectContextMediaReel({
+  event: { ...event, id: "evt-store-only", metadata: {} },
+  volume: null,
+});
+assert.equal(storeOnly.length, 1);
+assert.equal(storeOnly[0]?.mediaContextId, "mc-store-photo");
 
 console.log("test-context-media-reel: ok");

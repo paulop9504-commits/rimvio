@@ -45,7 +45,7 @@ import { projectContextMediaReel } from "@/lib/globe/project-context-media-reel"
 import { projectTripLegBar } from "@/lib/globe/project-trip-leg-arcs";
 import { projectExperienceRoom } from "@/lib/experience-room/project-experience-room";
 import { projectRepresentativeMoments } from "@/lib/globe/project-representative-moments";
-import { MEDIA_SPACETIME_UPDATED } from "@/lib/location-ping/media-context-store";
+import { MEDIA_SPACETIME_UPDATED, hydrateMediaContextStore } from "@/lib/location-ping/media-context-store";
 import {
   EVENT_CANDIDATES_UPDATED,
   listLifeEventCandidates,
@@ -78,6 +78,13 @@ export function PinOpenSheet({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    void hydrateMediaContextStore().then(() => setRevision((value) => value + 1));
+  }, [open]);
 
   useEffect(() => {
     if (!open) {
@@ -174,7 +181,7 @@ export function PinOpenSheet({
 
   const reelItems = useMemo(
     () => projectContextMediaReel({ event, volume }),
-    [event, volume],
+    [event, volume, revision],
   );
 
   const conversation = useMemo(() => {
@@ -247,8 +254,10 @@ export function PinOpenSheet({
             aria-label={hero.title}
             className={cn(
               "fixed z-[10062] flex w-full flex-col overflow-hidden border border-border bg-background shadow-2xl",
-              "inset-x-0 bottom-0 max-h-[min(96vh,820px)] rounded-t-[24px]",
-              "md:inset-y-0 md:right-0 md:left-auto md:max-h-none md:max-w-[min(92vw,420px)] md:rounded-none md:rounded-l-[24px]",
+              reelItems.length > 0
+                ? "inset-x-0 bottom-0 h-[min(96dvh,820px)] max-h-[96dvh] rounded-t-[24px]"
+                : "inset-x-0 bottom-0 max-h-[min(96vh,820px)] rounded-t-[24px]",
+              "md:inset-y-0 md:right-0 md:left-auto md:h-full md:max-h-none md:max-w-[min(92vw,420px)] md:rounded-none md:rounded-l-[24px]",
             )}
             initial={{ y: "100%", x: 0 }}
             animate={{ y: 0, x: 0 }}
@@ -257,6 +266,72 @@ export function PinOpenSheet({
             data-pin-open-sheet
           >
             <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-foreground/15 md:hidden" aria-hidden />
+            {reelItems.length > 0 ? (
+              <>
+                <div className="relative flex min-h-0 flex-1 flex-col">
+                  <div className="absolute inset-x-0 top-0 z-10 flex items-start gap-2 bg-gradient-to-b from-background via-background/95 to-transparent px-4 pb-3 pt-3">
+                    <div className="min-w-0 flex-1 space-y-0.5">
+                      <p className="px-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        장소 · {hero.place}
+                      </p>
+                      <p className="line-clamp-1 px-2 text-[15px] font-bold text-foreground">
+                        {hero.title}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onOpenChange(false)}
+                      className="flex size-9 shrink-0 items-center justify-center rounded-full bg-background/80 active:bg-foreground/5"
+                      aria-label="닫기"
+                    >
+                      <X className="size-5 text-muted-foreground" aria-hidden />
+                    </button>
+                  </div>
+
+                  <div className="min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto overscroll-y-contain pt-[4.25rem] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    <GlobeContextMediaShortsReel
+                      items={reelItems}
+                      title={hero.title}
+                      place={hero.place}
+                      fillViewport
+                    />
+                    <section className="snap-start space-y-4 bg-background px-4 py-5">
+                      <p className="text-center text-[11px] font-medium text-muted-foreground">
+                        맥락 정보 · 아래로 더 보기
+                      </p>
+                      {tripLeg ? <ExperienceTripLegBar trip={tripLeg} /> : null}
+                      <PeopleStrip names={people} />
+                      <RepresentativeMomentsRow moments={moments} />
+                      {conversation ? (
+                        <RecentConversationStrip
+                          conversation={conversation}
+                          onOpenRoom={openExperienceRoom}
+                        />
+                      ) : null}
+                      <EvidenceList rows={evidence} />
+                    </section>
+                  </div>
+                </div>
+
+                <div className="shrink-0 space-y-2 border-t border-border px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                  <GlobeContextPhotoButton
+                    eventId={cluster.eventId}
+                    eventTitle={hero.title}
+                    variant="secondary"
+                    onIngested={() => setRevision((value) => value + 1)}
+                  />
+                  <button
+                    type="button"
+                    className="w-full rounded-2xl border border-border bg-background py-3.5 text-[15px] font-semibold text-foreground active:opacity-85"
+                    onClick={() => onOpenChange(false)}
+                    data-pin-open-close
+                  >
+                    닫기
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
             <header className="flex items-start gap-2 px-4 pb-3 pt-3">
               <div className="min-w-0 flex-1 space-y-1">
                 <PinContextTappableField
@@ -293,6 +368,69 @@ export function PinOpenSheet({
                 />
               </div>
             ) : null}
+
+            <div className="min-h-0 flex-1 overflow-y-auto pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="snap-start space-y-5 px-4 pt-2">
+                {tripLeg ? <ExperienceTripLegBar trip={tripLeg} /> : null}
+                {reelItems.length === 0 ? (
+                  <ExperienceHeroCard
+                    title={hero.title}
+                    date={hero.date}
+                    place={hero.place}
+                    peopleCount={hero.peopleCount}
+                    photoCount={hero.photoCount}
+                    videoCount={hero.videoCount}
+                    heroImageContextId={hero.heroImageContextId}
+                    recallLine={hero.recallLine}
+                  />
+                ) : null}
+                <PeopleStrip names={people} />
+                <RepresentativeMomentsRow moments={moments} />
+                {conversation ? (
+                  <RecentConversationStrip
+                    conversation={conversation}
+                    onOpenRoom={openExperienceRoom}
+                  />
+                ) : null}
+                <EvidenceList rows={evidence} />
+                {opened && volume ? (
+                  <SpatialMediaSyncPlayer
+                    volume={volume}
+                    classifiedPins={classifiedPins}
+                    experienceOpen
+                    initialItemId={openMomentItemId}
+                  />
+                ) : null}
+              </div>
+            </div>
+
+            <div className="shrink-0 border-t border-border px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                <button
+                  type="button"
+                  className={cn(
+                    "w-full rounded-2xl py-4 text-[16px] font-semibold transition-opacity active:opacity-85",
+                    opened
+                      ? "border border-border bg-background text-foreground"
+                      : "bg-foreground text-background",
+                    !volume && !opened && "opacity-40",
+                  )}
+                  disabled={!opened && !volume}
+                  onClick={() => {
+                    setOpened((value) => {
+                      const next = !value;
+                      if (next) {
+                        onOpenDetail?.();
+                      }
+                      return next;
+                    });
+                  }}
+                  data-pin-open-primary
+                >
+                  {opened ? "닫기" : "열기"}
+                </button>
+            </div>
+              </>
+            )}
 
             <PinContextFieldSheet
               open={editKind !== null}
@@ -332,83 +470,6 @@ export function PinOpenSheet({
                 }
               }}
             />
-
-            <div className="min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <GlobeContextMediaShortsReel
-                items={reelItems}
-                title={hero.title}
-                place={hero.place}
-              />
-              <div className="snap-start space-y-5 px-4 pt-2">
-                {tripLeg ? <ExperienceTripLegBar trip={tripLeg} /> : null}
-                {reelItems.length === 0 ? (
-                  <ExperienceHeroCard
-                    title={hero.title}
-                    date={hero.date}
-                    place={hero.place}
-                    peopleCount={hero.peopleCount}
-                    photoCount={hero.photoCount}
-                    videoCount={hero.videoCount}
-                    heroImageContextId={hero.heroImageContextId}
-                    recallLine={hero.recallLine}
-                  />
-                ) : null}
-                <PeopleStrip names={people} />
-                <RepresentativeMomentsRow moments={moments} />
-                {conversation ? (
-                  <RecentConversationStrip
-                    conversation={conversation}
-                    onOpenRoom={openExperienceRoom}
-                  />
-                ) : null}
-                <EvidenceList rows={evidence} />
-                {opened && volume ? (
-                  <SpatialMediaSyncPlayer
-                    volume={volume}
-                    classifiedPins={classifiedPins}
-                    experienceOpen
-                    initialItemId={openMomentItemId}
-                  />
-                ) : null}
-              </div>
-            </div>
-
-            <div className="shrink-0 border-t border-border px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-              {reelItems.length > 0 ? (
-                <button
-                  type="button"
-                  className="w-full rounded-2xl border border-border bg-background py-3.5 text-[15px] font-semibold text-foreground active:opacity-85"
-                  onClick={() => onOpenChange(false)}
-                  data-pin-open-close
-                >
-                  닫기
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className={cn(
-                    "w-full rounded-2xl py-4 text-[16px] font-semibold transition-opacity active:opacity-85",
-                    opened
-                      ? "border border-border bg-background text-foreground"
-                      : "bg-foreground text-background",
-                    !volume && !opened && "opacity-40",
-                  )}
-                  disabled={!opened && !volume}
-                  onClick={() => {
-                    setOpened((value) => {
-                      const next = !value;
-                      if (next) {
-                        onOpenDetail?.();
-                      }
-                      return next;
-                    });
-                  }}
-                  data-pin-open-primary
-                >
-                  {opened ? "닫기" : "열기"}
-                </button>
-              )}
-            </div>
           </motion.aside>
         </>
       ) : null}

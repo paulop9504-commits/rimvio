@@ -3,6 +3,7 @@ import { projectVolumeSpatialMedia } from "@/lib/experience-graph/project-volume
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { readFeedCaptureFragments } from "@/lib/feed/feed-capture-metadata";
 import { parseUploadMediaContextId } from "@/lib/location-ping/media-blob-store";
+import { readMediaContextMemorySnapshot } from "@/lib/location-ping/media-context-store";
 
 export type ContextMediaReelItem = {
   id: string;
@@ -19,6 +20,35 @@ function parseCapturedMs(iso: string | null | undefined): number {
   }
   const ms = Date.parse(iso);
   return Number.isNaN(ms) ? 0 : ms;
+}
+
+function appendFromMediaStore(
+  eventId: string,
+  push: (item: ContextMediaReelItem) => void,
+): void {
+  const key = eventId.trim();
+  if (!key) {
+    return;
+  }
+
+  for (const row of readMediaContextMemorySnapshot()) {
+    if (row.originRef?.trim() !== key) {
+      continue;
+    }
+    if (row.mediaKind !== "photo" && row.mediaKind !== "video") {
+      continue;
+    }
+    push({
+      id: `store:${row.id}`,
+      label:
+        row.placeLabel?.trim() ||
+        (row.mediaKind === "video" ? "동영상" : "사진"),
+      imageUrl: null,
+      mediaContextId: row.id.trim(),
+      capturedAtIso: row.capturedAtIso,
+      kind: row.mediaKind,
+    });
+  }
 }
 
 /** All photo/video for a context — newest first, no stock placeholders. */
@@ -63,12 +93,19 @@ export function projectContextMediaReel(input: {
     });
   }
 
+  if (input.event?.id) {
+    appendFromMediaStore(input.event.id, push);
+  }
+
   if (input.volume) {
     for (const row of projectVolumeSpatialMedia(input.volume)) {
       if (row.kind !== "photo" && row.kind !== "video") {
         continue;
       }
       const mediaContextId = parseUploadMediaContextId(row.id);
+      if (!mediaContextId) {
+        continue;
+      }
       push({
         id: `spatial:${row.id}`,
         label: row.title?.trim() || row.caption?.trim() || "기록",

@@ -8,15 +8,20 @@ import { cn } from "@/lib/utils";
 function ContextMediaShortsSlide({
   item,
   eyebrow,
-  active,
+  index,
+  total,
+  fillViewport,
 }: {
   item: ContextMediaReelItem;
   eyebrow: string;
-  active: boolean;
+  index: number;
+  total: number;
+  fillViewport?: boolean;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const rootRef = useRef<HTMLElement>(null);
-  const [playing, setPlaying] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const [playing, setPlaying] = useState(true);
   const { url: blobUrl, loading } = useMediaBlobUrl(item.mediaContextId);
   const src = item.imageUrl ?? blobUrl;
   const isVideo = item.kind === "video";
@@ -28,12 +33,10 @@ function ContextMediaShortsSlide({
     }
     const observer = new IntersectionObserver(
       (entries) => {
-        const visible = entries.some(
-          (entry) => entry.isIntersecting && entry.intersectionRatio >= 0.55,
-        );
-        setPlaying(visible);
+        const entry = entries[0];
+        setVisible(Boolean(entry?.isIntersecting && entry.intersectionRatio >= 0.6));
       },
-      { threshold: [0, 0.55, 0.85] },
+      { threshold: [0, 0.6, 0.9] },
     );
     observer.observe(node);
     return () => observer.disconnect();
@@ -44,28 +47,39 @@ function ContextMediaShortsSlide({
     if (!node || !src || !isVideo) {
       return;
     }
-    if (active && playing) {
-      void node.play().catch(() => {
-        /* autoplay blocked */
-      });
+    if (visible && playing) {
+      void node.play().catch(() => setPlaying(false));
     } else {
       node.pause();
     }
-  }, [active, isVideo, playing, src]);
+  }, [visible, isVideo, playing, src]);
 
   return (
     <section
       ref={rootRef}
-      className="relative flex min-h-[min(78vh,680px)] snap-start snap-always flex-col justify-center px-1 py-2"
+      className={cn(
+        "relative flex snap-start snap-always flex-col justify-center px-1 py-2",
+        fillViewport ? "min-h-full h-full" : "min-h-[min(78vh,680px)]",
+      )}
       data-globe-context-shorts-slide
       data-media-kind={item.kind}
     >
-      <div className="relative mx-auto aspect-[9/16] w-full max-w-[min(100%,320px)] overflow-hidden rounded-[1.25rem] bg-black shadow-[0_16px_48px_rgba(0,0,0,0.22)] ring-1 ring-black/10">
+      <div className="relative mx-auto aspect-[9/16] w-full max-w-[min(100%,340px)] overflow-hidden rounded-[1.25rem] bg-black shadow-[0_16px_48px_rgba(0,0,0,0.22)] ring-1 ring-black/10">
+        <button
+          type="button"
+          className="absolute inset-0 z-[1]"
+          aria-label={isVideo ? (playing ? "일시정지" : "재생") : item.label}
+          onClick={() => {
+            if (isVideo && src) {
+              setPlaying((value) => !value);
+            }
+          }}
+        />
         {src && isVideo ? (
           <video
             ref={videoRef}
             src={src}
-            className="size-full object-cover"
+            className="relative z-0 size-full object-cover"
             playsInline
             muted
             loop
@@ -80,7 +94,7 @@ function ContextMediaShortsSlide({
           </div>
         )}
 
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent px-4 pb-4 pt-16">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] bg-gradient-to-t from-black/85 via-black/35 to-transparent px-4 pb-4 pt-20">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-white/55">
             {eyebrow}
           </p>
@@ -89,9 +103,13 @@ function ContextMediaShortsSlide({
           </p>
         </div>
 
+        <span className="pointer-events-none absolute right-3 top-3 z-[2] rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-bold text-white/90">
+          {index + 1}/{total}
+        </span>
+
         {isVideo && src ? (
-          <span className="pointer-events-none absolute right-3 top-3 rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-bold text-white/85">
-            {playing ? "▶" : "❚❚"}
+          <span className="pointer-events-none absolute left-3 top-3 z-[2] rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-semibold text-white/90">
+            {visible && playing ? "일시정지" : "재생"}
           </span>
         ) : null}
       </div>
@@ -103,6 +121,8 @@ export type GlobeContextMediaShortsReelProps = {
   items: readonly ContextMediaReelItem[];
   title: string;
   place: string;
+  /** Each slide fills the scroll viewport — Instagram / Shorts snap. */
+  fillViewport?: boolean;
   className?: string;
 };
 
@@ -111,6 +131,7 @@ export function GlobeContextMediaShortsReel({
   items,
   title,
   place,
+  fillViewport = false,
   className,
 }: GlobeContextMediaShortsReelProps) {
   if (items.length === 0) {
@@ -121,21 +142,25 @@ export function GlobeContextMediaShortsReel({
 
   return (
     <div
-      className={cn("space-y-1", className)}
+      className={cn(fillViewport ? "h-full" : "space-y-1", className)}
       data-globe-context-shorts-reel
       data-globe-context-shorts-count={items.length}
     >
-      {items.map((item) => (
+      {items.map((item, index) => (
         <ContextMediaShortsSlide
           key={item.id}
           item={item}
           eyebrow={eyebrow}
-          active
+          index={index}
+          total={items.length}
+          fillViewport={fillViewport}
         />
       ))}
-      <p className="px-3 pb-1 text-center text-[11px] text-muted-foreground">
-        {items.length}개 · 아래로 스와이프
-      </p>
+      {!fillViewport ? (
+        <p className="px-3 pb-1 text-center text-[11px] text-muted-foreground">
+          {items.length}개 · 아래로 스와이프
+        </p>
+      ) : null}
     </div>
   );
 }
