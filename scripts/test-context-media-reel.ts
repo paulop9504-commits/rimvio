@@ -63,4 +63,25 @@ const storeOnly = projectContextMediaReel({
 assert.equal(storeOnly.length, 1);
 assert.equal(storeOnly[0]?.mediaContextId, "mc-store-photo");
 
+const bridgeShared: EventCandidate = {
+  ...event,
+  id: "evt-bridge-invitee",
+  metadata: {
+    experienceBridgeParticipant: true,
+    feedCaptures: [
+      {
+        id: "host-photo",
+        kind: "photo",
+        capturedAtIso: "2026-01-05T10:00:00+09:00",
+        mediaContextId: "host-only-blob",
+      },
+    ],
+  },
+};
+
+const bridgeReel = projectContextMediaReel({ event: bridgeShared, volume: null });
+assert.equal(bridgeReel.length, 1);
+assert.equal(bridgeReel[0]?.pendingRemote, true);
+assert.equal(bridgeReel[0]?.allowLocalBlob, false);
+
 console.log("test-context-media-reel: ok");

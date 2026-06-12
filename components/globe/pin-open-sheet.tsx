@@ -95,15 +95,29 @@ export function PinOpenSheet({
     if (!open || !eventId) {
       return;
     }
-    void syncBridgeSharedMediaFromRemote(eventId, user?.id)
-      .then((merged) => {
-        if (merged) {
-          setRevision((value) => value + 1);
-        }
-      })
-      .catch(() => {
-        toast.error("공유 사진·동영상을 불러오지 못했어요.");
-      });
+    let cancelled = false;
+    const sync = () =>
+      syncBridgeSharedMediaFromRemote(eventId, user?.id)
+        .then((merged) => {
+          if (!cancelled && merged) {
+            setRevision((value) => value + 1);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            toast.error("공유 사진·동영상을 불러오지 못했어요.");
+          }
+        });
+
+    void sync();
+    const retry = window.setTimeout(() => {
+      void sync();
+    }, 2000);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(retry);
+    };
   }, [open, cluster?.eventId, user?.id]);
 
   useEffect(() => {

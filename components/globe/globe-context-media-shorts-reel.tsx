@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useMediaBlobUrl } from "@/hooks/use-media-blob-url";
 import type { ContextMediaReelItem } from "@/lib/globe/project-context-media-reel";
 import { cn } from "@/lib/utils";
+import { Shimmer } from "@/components/ui/shimmer";
 
 function ContextMediaShortsSlide({
   item,
@@ -90,6 +91,13 @@ function ContextMediaShortsSlide({
         ) : src ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={src} alt="" className="size-full object-cover" loading="lazy" />
+        ) : item.pendingRemote ? (
+          <div className="flex size-full flex-col items-center justify-center gap-3 px-4">
+            <Shimmer className="size-14 rounded-full" />
+            <p className="text-center text-[13px] font-medium text-white/70">
+              공유 {isVideo ? "동영상" : "사진"} 불러오는 중…
+            </p>
+          </div>
         ) : (
           <div className="flex size-full items-center justify-center px-4 text-center text-[13px] font-medium text-white/70">
             {loading ? "불러오는 중…" : item.label}

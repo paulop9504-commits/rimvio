@@ -46,21 +46,22 @@ export async function syncBridgeSharedMediaFromRemote(
     return null;
   }
 
-  const local = findLifeEventCandidate(key);
   const viewerId = viewerUserId?.trim() || null;
+  const local = findLifeEventCandidate(key);
   let stamped: EventCandidate | null = null;
-  if (local && viewerId && viewerId === remote.state.bridge.hostUserId) {
+
+  if (viewerId) {
+    const role =
+      viewerId === remote.state.bridge.hostUserId ? "host" : "participant";
+    const base = local ?? remote.state.bridge.eventSnapshot;
     stamped = stampBridgeEventMetadata({
-      event: local,
+      event: base,
       bridge: remote.state.bridge,
-      role: "host",
+      role,
     });
   }
 
-  let contributions = remote.contributions ?? [];
-  if (contributions.length === 0) {
-    contributions = await fetchBridgeContributionsRemote(key);
-  }
+  const contributions = await fetchBridgeContributionsRemote(key);
 
   let event =
     stamped ??

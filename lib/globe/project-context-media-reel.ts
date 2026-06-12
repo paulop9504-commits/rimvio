@@ -14,6 +14,8 @@ export type ContextMediaReelItem = {
   kind: "photo" | "video";
   /** When false, never load IndexedDB blob — shared/remote captures need https url. */
   allowLocalBlob?: boolean;
+  /** Bridge invitee — capture exists but https url not loaded yet. */
+  pendingRemote?: boolean;
 };
 
 function parseCapturedMs(iso: string | null | undefined): number {
@@ -94,14 +96,18 @@ export function projectContextMediaReel(input: {
 
   const push = (item: ContextMediaReelItem) => {
     const remoteUrl = item.imageUrl?.trim() || "";
+    const canShow =
+      Boolean(remoteUrl) ||
+      item.allowLocalBlob === true ||
+      item.pendingRemote === true;
+    if (!canShow) {
+      return;
+    }
     const key =
       remoteUrl ||
       (item.allowLocalBlob ? item.mediaContextId?.trim() : "") ||
       item.id;
     if (!key || seen.has(key) || items.length >= limit) {
-      return;
-    }
-    if (!remoteUrl && !item.allowLocalBlob) {
       return;
     }
     if (!remoteUrl && item.allowLocalBlob && !item.mediaContextId?.trim()) {
@@ -120,6 +126,7 @@ export function projectContextMediaReel(input: {
     const allowLocalBlob = bridgeShared
       ? isLocalEventMedia(eventId, mediaContextId)
       : Boolean(mediaContextId);
+    const pendingRemote = bridgeShared && !imageUrl && !allowLocalBlob;
 
     push({
       id: `capture:${row.id}`,
@@ -132,6 +139,7 @@ export function projectContextMediaReel(input: {
       capturedAtIso: row.capturedAtIso,
       kind: row.kind,
       allowLocalBlob,
+      pendingRemote,
     });
   }
 
