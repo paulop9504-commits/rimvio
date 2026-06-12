@@ -23,7 +23,7 @@ async function postBridgeContribution(input: {
   });
   const body = (await response.json()) as { error?: string };
   if (!response.ok) {
-    throw new Error(body.error?.trim() || "공유 사진을 저장하지 못했어요.");
+    throw new Error(body.error?.trim() || "공유 미디어를 저장하지 못했어요.");
   }
 }
 
@@ -49,21 +49,20 @@ export async function publishBridgeCaptureContribution(input: {
     authorDisplayName: input.authorDisplayName?.trim() || undefined,
   };
 
-  if (capture.kind === "photo") {
-    const mediaUrl = await uploadBridgeCaptureBlob({
-      eventId,
-      capture: input.fragment,
-    });
-    if (!mediaUrl) {
-      throw new Error("공유 사진 업로드에 실패했어요. 다시 시도해 주세요.");
-    }
-    capture = { ...capture, url: mediaUrl };
+  const mediaUrl = await uploadBridgeCaptureBlob({
+    eventId,
+    capture: input.fragment,
+  });
+  if (!mediaUrl) {
+    const label = capture.kind === "video" ? "동영상" : "사진";
+    throw new Error(`공유 ${label} 업로드에 실패했어요. 다시 시도해 주세요.`);
   }
+  capture = { ...capture, url: mediaUrl };
 
   await postBridgeContribution({ eventId, capture });
 }
 
-/** Publish all new photo captures on a bridge event (batch after bulk ingest). */
+/** Publish all new photo/video captures on a bridge event (batch after bulk ingest). */
 export async function publishBridgeEventCaptureContributions(input: {
   event: EventCandidate;
   authorDisplayName?: string;

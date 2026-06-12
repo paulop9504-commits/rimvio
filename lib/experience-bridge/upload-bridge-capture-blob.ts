@@ -9,6 +9,45 @@ function isRemoteShareUrl(url: string | undefined): boolean {
   return Boolean(value?.startsWith("https://") && !value.startsWith("blob:"));
 }
 
+function resolveBridgeCaptureFileMeta(input: {
+  blob: Blob;
+  capture: FeedCaptureFragment;
+}): { ext: string; contentType: string } {
+  const type = input.blob.type.trim().toLowerCase();
+  const isVideo =
+    input.capture.kind === "video" || type.startsWith("video/");
+
+  if (isVideo) {
+    if (type.includes("quicktime")) {
+      return { ext: "mov", contentType: type || "video/quicktime" };
+    }
+    if (type.includes("webm")) {
+      return { ext: "webm", contentType: type || "video/webm" };
+    }
+    if (type.includes("3gpp2")) {
+      return { ext: "3g2", contentType: type || "video/3gpp2" };
+    }
+    if (type.includes("3gpp")) {
+      return { ext: "3gp", contentType: type || "video/3gpp" };
+    }
+    return { ext: "mp4", contentType: type || "video/mp4" };
+  }
+
+  if (type.includes("png")) {
+    return { ext: "png", contentType: type || "image/png" };
+  }
+  if (type.includes("webp")) {
+    return { ext: "webp", contentType: type || "image/webp" };
+  }
+  if (type.includes("heic")) {
+    return { ext: "heic", contentType: type || "image/heic" };
+  }
+  if (type.includes("heif")) {
+    return { ext: "heif", contentType: type || "image/heif" };
+  }
+  return { ext: "jpg", contentType: type || "image/jpeg" };
+}
+
 /** Upload local capture blob — returns https url or existing url. */
 export async function uploadBridgeCaptureBlob(input: {
   eventId: string;
@@ -28,16 +67,15 @@ export async function uploadBridgeCaptureBlob(input: {
     return input.capture.url?.trim() || null;
   }
 
-  const ext = blob.type.includes("png")
-    ? "png"
-    : blob.type.includes("webp")
-      ? "webp"
-      : "jpg";
+  const { ext, contentType } = resolveBridgeCaptureFileMeta({
+    blob,
+    capture: input.capture,
+  });
   const form = new FormData();
   form.append(
     "file",
     new File([blob], `${input.capture.id}.${ext}`, {
-      type: blob.type || "image/jpeg",
+      type: contentType,
     }),
   );
   form.append("eventId", input.eventId);
@@ -51,7 +89,7 @@ export async function uploadBridgeCaptureBlob(input: {
   });
   const body = (await response.json()) as { mediaUrl?: string; error?: string };
   if (!response.ok || !body.mediaUrl?.trim()) {
-    return null;
+    throw new Error(body.error?.trim() || "미디어 업로드에 실패했어요.");
   }
   return body.mediaUrl.trim();
 }

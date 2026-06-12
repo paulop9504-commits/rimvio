@@ -12,6 +12,7 @@ import {
   declineExperienceBridgeRemote,
 } from "@/lib/experience-bridge/experience-bridge-client";
 import { writeLocalBridgeState } from "@/lib/experience-bridge/local-bridge-store";
+import { syncBridgeSharedMediaFromRemote } from "@/lib/experience-bridge/sync-bridge-participant-media";
 import { verifyFeedCaptureEvent } from "@/lib/feed/verify-feed-capture";
 import { markGlobeLocationConfirmed } from "@/lib/globe/globe-location-confirm-store";
 import type { PendingGlobeLocationConfirm } from "@/lib/globe/list-pending-globe-location-confirms";
@@ -106,6 +107,7 @@ export function GlobeInboxSheet({
         peerThreadId: data.pinSpec.peerThreadId,
       });
       writeLocalBridgeState(data.state);
+      await syncBridgeSharedMediaFromRemote(eventId);
       toast.success(copy.globe.bridgeInviteAccepted);
       onBridgeAccepted?.(eventId);
     } catch (caught) {

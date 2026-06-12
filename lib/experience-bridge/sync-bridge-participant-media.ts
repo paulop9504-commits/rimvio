@@ -9,6 +9,7 @@ import type { ExperienceBridgeContribution } from "@/lib/experience-bridge/exper
 import { resolveAppOrigin } from "@/lib/auth/redirect-url";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
+import { stampBridgeEventMetadata } from "@/lib/experience-bridge/stamp-bridge-event-metadata";
 
 async function fetchBridgeContributionsRemote(
   eventId: string,
@@ -47,8 +48,9 @@ export async function syncBridgeSharedMediaFromRemote(
 
   const local = findLifeEventCandidate(key);
   const viewerId = viewerUserId?.trim() || null;
+  let stamped: EventCandidate | null = null;
   if (local && viewerId && viewerId === remote.state.bridge.hostUserId) {
-    stampBridgeEventMetadata({
+    stamped = stampBridgeEventMetadata({
       event: local,
       bridge: remote.state.bridge,
       role: "host",
@@ -60,8 +62,11 @@ export async function syncBridgeSharedMediaFromRemote(
     contributions = await fetchBridgeContributionsRemote(key);
   }
 
-  const localAfterStamp = findLifeEventCandidate(key);
-  let event = localAfterStamp ?? remote.state.bridge.eventSnapshot;
+  let event =
+    stamped ??
+    findLifeEventCandidate(key) ??
+    remote.state.bridge.eventSnapshot;
+  let merged: EventCandidate | null = stamped;
 
   const urlMerged = mergeBridgeRemoteCaptureUrls({
     event,
@@ -69,6 +74,7 @@ export async function syncBridgeSharedMediaFromRemote(
   });
   if (urlMerged) {
     event = urlMerged;
+    merged = urlMerged;
   }
 
   const contributionMerged = mergeBridgeContributionsIntoEvent({
@@ -77,10 +83,10 @@ export async function syncBridgeSharedMediaFromRemote(
     viewerUserId,
   });
   if (contributionMerged) {
-    event = contributionMerged;
+    merged = contributionMerged;
   }
 
-  return contributionMerged ?? urlMerged;
+  return merged;
 }
 
 /** @deprecated use syncBridgeSharedMediaFromRemote */

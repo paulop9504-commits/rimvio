@@ -12,6 +12,7 @@ import {
 } from "@/lib/experience-bridge";
 import {
   fetchExperienceBridgeState,
+  updateBridgeEventSnapshot,
   upsertBridgeParticipantRow,
   upsertExperienceBridge,
 } from "@/lib/experience-bridge/server-bridge-store";
@@ -181,6 +182,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     if (state.bridge.hostUserId !== userId) {
       return NextResponse.json({ error: "Only host can invite." }, { status: 403 });
+    }
+
+    if (isEventCandidate(body.primaryEvent) && body.primaryEvent.id === key) {
+      await updateBridgeEventSnapshot(supabase, body.primaryEvent);
+      const refreshed = await fetchExperienceBridgeState(supabase, key);
+      if (refreshed) {
+        state = refreshed;
+      }
     }
 
     const threadId = body.peerThreadId?.trim() || state.bridge.peerThreadId?.trim();

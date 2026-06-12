@@ -197,6 +197,30 @@ export async function upsertBridgeParticipantRow(
   }
 }
 
+/** Refresh stored snapshot when host re-shares with new media. */
+export async function updateBridgeEventSnapshot(
+  supabase: SupabaseClient,
+  event: EventCandidate,
+): Promise<void> {
+  const key = event.id.trim();
+  if (!key) {
+    throw new Error("event_id_required");
+  }
+
+  const { error } = await supabase
+    .from("experience_bridges")
+    .update({
+      event_snapshot: event as unknown as Record<string, unknown>,
+      title: event.title.trim() || "경험",
+      place_label: event.place?.trim() || "",
+    })
+    .eq("event_id", key);
+
+  if (error) {
+    throw error;
+  }
+}
+
 /** Invitee accept/decline — update existing pending row (avoid insert RLS). */
 export async function updateBridgeParticipantRow(
   supabase: SupabaseClient,

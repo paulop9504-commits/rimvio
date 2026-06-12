@@ -1,14 +1,15 @@
 import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
-  PEER_CHAT_IMAGE_BUCKET,
-  PEER_CHAT_IMAGE_MAX_BYTES,
-  PEER_CHAT_IMAGE_TYPES,
-} from "@/lib/peer-chat/peer-chat-image-constants";
-import { publicPeerChatImageUrl } from "@/lib/peer-chat/peer-chat-image-server";
+  BRIDGE_PHOTO_MAX_BYTES,
+  BRIDGE_VIDEO_MAX_BYTES,
+  EXPERIENCE_BRIDGE_MEDIA_BUCKET,
+  isBridgePhotoContentType,
+  isBridgeVideoContentType,
+} from "@/lib/experience-bridge/bridge-media-constants";
 import type { Database } from "@/types/database";
 
-function extensionForContentType(contentType: string): string {
+export function extensionForBridgeMediaContentType(contentType: string): string {
   const normalized = contentType.trim().toLowerCase();
   if (normalized.includes("png")) {
     return "png";
@@ -22,6 +23,21 @@ function extensionForContentType(contentType: string): string {
   if (normalized.includes("heif")) {
     return "heif";
   }
+  if (normalized.includes("quicktime")) {
+    return "mov";
+  }
+  if (normalized.includes("webm")) {
+    return "webm";
+  }
+  if (normalized.includes("3gpp2")) {
+    return "3g2";
+  }
+  if (normalized.includes("3gpp")) {
+    return "3gp";
+  }
+  if (normalized.startsWith("video/")) {
+    return "mp4";
+  }
   return "jpg";
 }
 
@@ -31,13 +47,22 @@ export function bridgeMediaObjectPath(input: {
   captureId: string;
   contentType: string;
 }): string {
-  const ext = extensionForContentType(input.contentType);
-  const eventKey = encodeURIComponent(input.eventId.trim());
-  const captureKey = encodeURIComponent(input.captureId.trim());
+  const ext = extensionForBridgeMediaContentType(input.contentType);
+  const eventKey = input.eventId.trim();
+  const captureKey = input.captureId.trim();
   return `${input.userId}/bridge/${eventKey}/${captureKey}.${ext}`;
 }
 
-/** Host share — upload local capture blob to public peer-chat storage. */
+export function publicBridgeMediaUrl(
+  supabaseUrl: string,
+  objectPath: string,
+): string {
+  const base = supabaseUrl.replace(/\/$/, "");
+  const segments = objectPath.split("/").map((part) => encodeURIComponent(part));
+  return `${base}/storage/v1/object/public/${EXPERIENCE_BRIDGE_MEDIA_BUCKET}/${segments.join("/")}`;
+}
+
+/** Upload local capture blob to public experience-bridge storage. */
 export async function uploadBridgeCaptureMedia(
   supabase: SupabaseClient<Database>,
   input: {
@@ -49,15 +74,21 @@ export async function uploadBridgeCaptureMedia(
     contentType: string;
   },
 ): Promise<{ mediaUrl: string }> {
-  const contentType = input.contentType?.trim() || "image/jpeg";
-  if (!PEER_CHAT_IMAGE_TYPES.has(contentType)) {
-    throw new Error("JPEG, PNG, WebP 사진만 공유할 수 있어요.");
-  }
-  if (input.bytes.byteLength > PEER_CHAT_IMAGE_MAX_BYTES) {
-    throw new Error("5MB 이하 사진만 공유할 수 있어요.");
+  const contentType = input.contentType?.trim().toLowerCase() || "image/jpeg";
+  const isPhoto = isBridgePhotoContentType(contentType);
+  const isVideo = isBridgeVideoContentType(contentType);
+
+  if (!isPhoto && !isVideo) {
+    throw new Error("JPEG/PNG/WebP 사진 또는 MP4/MOV/WebM 동영상만 공유할 수 있어요.");
   }
   if (input.bytes.byteLength === 0) {
-    throw new Error("사진 파일이 비어 있어요.");
+    throw new Error("미디어 파일이 비어 있어요.");
+  }
+  if (isPhoto && input.bytes.byteLength > BRIDGE_PHOTO_MAX_BYTES) {
+    throw new Error("5MB 이하 사진만 공유할 수 있어요.");
+  }
+  if (isVideo && input.bytes.byteLength > BRIDGE_VIDEO_MAX_BYTES) {
+    throw new Error("50MB 이하 동영상만 공유할 수 있어요.");
   }
 
   const objectPath = bridgeMediaObjectPath({
@@ -68,7 +99,7 @@ export async function uploadBridgeCaptureMedia(
   });
 
   const { error } = await supabase.storage
-    .from(PEER_CHAT_IMAGE_BUCKET)
+    .from(EXPERIENCE_BRIDGE_MEDIA_BUCKET)
     .upload(objectPath, input.bytes, {
       upsert: true,
       contentType,
@@ -80,6 +111,6 @@ export async function uploadBridgeCaptureMedia(
   }
 
   return {
-    mediaUrl: publicPeerChatImageUrl(input.supabaseUrl, objectPath),
+    mediaUrl: publicBridgeMediaUrl(input.supabaseUrl, objectPath),
   };
 }

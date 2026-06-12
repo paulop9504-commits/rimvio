@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
         : "";
 
     if (!(file instanceof File)) {
-      return NextResponse.json({ error: "사진 파일이 필요해요." }, { status: 400 });
+      return NextResponse.json({ error: "사진 또는 동영상 파일이 필요해요." }, { status: 400 });
     }
     if (!eventId || !captureId) {
       return NextResponse.json({ error: "eventId and captureId required." }, { status: 400 });
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ mediaUrl });
   } catch (error) {
-    const message = extractErrorMessage(error, "사진 업로드에 실패했어요.");
+    const message = extractErrorMessage(error, "미디어 업로드에 실패했어요.");
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

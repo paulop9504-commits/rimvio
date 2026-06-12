@@ -17,7 +17,15 @@ function isRemoteShareUrl(url: string | undefined): boolean {
   return value.startsWith("https://") && !value.startsWith("blob:");
 }
 
-/** Host share prep — upload local blobs so invitees can load photos. */
+function isShareableBridgeCapture(capture: FeedCaptureFragment): boolean {
+  return capture.kind === "photo" || capture.kind === "video";
+}
+
+function mediaLabel(capture: FeedCaptureFragment): string {
+  return capture.kind === "video" ? "동영상" : "사진";
+}
+
+/** Host share prep — upload local blobs so invitees can load photos + videos. */
 export async function hydrateBridgeEventSnapshotForShare(
   event: EventCandidate,
 ): Promise<EventCandidate> {
@@ -28,9 +36,10 @@ export async function hydrateBridgeEventSnapshotForShare(
 
   let changed = false;
   const nextCaptures: FeedCaptureFragment[] = [];
+  const uploadErrors: string[] = [];
 
   for (const capture of captures) {
-    if (capture.kind !== "photo") {
+    if (!isShareableBridgeCapture(capture)) {
       nextCaptures.push(capture);
       continue;
     }
@@ -44,15 +53,25 @@ export async function hydrateBridgeEventSnapshotForShare(
         eventId: event.id,
         capture,
       });
-      if (mediaUrl) {
-        nextCaptures.push({ ...capture, url: mediaUrl });
-        changed = true;
-      } else {
+      if (!mediaUrl) {
+        uploadErrors.push(`${mediaLabel(capture)} 업로드에 실패했어요.`);
         nextCaptures.push(capture);
+        continue;
       }
-    } catch {
+      nextCaptures.push({ ...capture, url: mediaUrl });
+      changed = true;
+    } catch (caught) {
+      const message =
+        caught instanceof Error
+          ? caught.message
+          : `${mediaLabel(capture)} 업로드에 실패했어요.`;
+      uploadErrors.push(message);
       nextCaptures.push(capture);
     }
+  }
+
+  if (uploadErrors.length > 0) {
+    throw new Error(uploadErrors[0]!);
   }
 
   if (!changed) {

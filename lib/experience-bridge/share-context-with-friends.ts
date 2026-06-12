@@ -5,6 +5,7 @@ import {
 } from "@/lib/experience-bridge/experience-bridge-client";
 import { hydrateBridgeEventSnapshotForShare } from "@/lib/experience-bridge/hydrate-bridge-event-snapshot";
 import { writeLocalBridgeState } from "@/lib/experience-bridge/local-bridge-store";
+import { publishBridgeEventCaptureContributions } from "@/lib/experience-bridge/publish-bridge-capture-contribution";
 import { stampBridgeEventMetadata } from "@/lib/experience-bridge/stamp-bridge-event-metadata";
 
 export type GlobeContextShareFriend = {
@@ -38,6 +39,11 @@ export async function shareGlobeContextWithFriends(input: {
     event: shareEvent,
     bridge: bootstrap.state.bridge,
     role: "host",
+  });
+
+  await publishBridgeEventCaptureContributions({
+    event: shareEvent,
+    authorDisplayName: input.hostDisplayName,
   });
 
   let invited = 0;

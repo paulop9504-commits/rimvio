@@ -39,6 +39,7 @@ export function mergeBridgeRemoteCaptureUrls(input: {
   }
 
   const remoteById = new Map(remoteCaptures.map((row) => [row.id, row]));
+  const localIds = new Set(localCaptures.map((row) => row.id));
   let changed = false;
   const merged = localCaptures.map((capture) => {
     const remote = remoteById.get(capture.id);
@@ -51,6 +52,21 @@ export function mergeBridgeRemoteCaptureUrls(input: {
     }
     return next;
   });
+
+  for (const remote of remoteCaptures) {
+    if (localIds.has(remote.id)) {
+      continue;
+    }
+    if (remote.kind !== "photo" && remote.kind !== "video") {
+      continue;
+    }
+    if (!isRemoteShareUrl(remote.url) && !remote.mediaContextId?.trim()) {
+      continue;
+    }
+    merged.push(remote);
+    localIds.add(remote.id);
+    changed = true;
+  }
 
   if (!changed) {
     return null;
@@ -100,7 +116,7 @@ export function mergeBridgeContributionsIntoEvent(input: {
     if (capture.kind !== "photo" && capture.kind !== "video") {
       continue;
     }
-    if (!isRemoteShareUrl(capture.url) && !capture.mediaContextId?.trim()) {
+    if (!isRemoteShareUrl(capture.url)) {
       continue;
     }
     extras.push({
