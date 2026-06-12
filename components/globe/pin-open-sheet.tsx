@@ -320,6 +320,7 @@ export function PinOpenSheet({
 
                   <div className="min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto overscroll-y-contain pt-[4.25rem] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     <GlobeContextMediaShortsReel
+                      key={cluster.eventId}
                       items={reelItems}
                       title={hero.title}
                       place={hero.place}

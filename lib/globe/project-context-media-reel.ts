@@ -1,8 +1,8 @@
 import type { ExperienceVolume } from "@/lib/experience-graph/experience-volume-types";
-import { projectVolumeSpatialMedia } from "@/lib/experience-graph/project-volume-spatial-media";
 import type { EventCandidate } from "@/lib/events/event-candidate";
+import { EXPERIENCE_BRIDGE_META_KEYS } from "@/lib/experience-bridge/constants";
+import { isUsableBridgeMediaUrl } from "@/lib/experience-bridge/bridge-media-url";
 import { readFeedCaptureFragments } from "@/lib/feed/feed-capture-metadata";
-import { parseUploadMediaContextId } from "@/lib/location-ping/media-blob-store";
 import { readMediaContextMemorySnapshot } from "@/lib/location-ping/media-context-store";
 
 export type ContextMediaReelItem = {
@@ -12,6 +12,8 @@ export type ContextMediaReelItem = {
   mediaContextId: string | null;
   capturedAtIso: string | null;
   kind: "photo" | "video";
+  /** When false, never load IndexedDB blob — shared/remote captures need https url. */
+  allowLocalBlob?: boolean;
 };
 
 function parseCapturedMs(iso: string | null | undefined): number {
@@ -20,6 +22,32 @@ function parseCapturedMs(iso: string | null | undefined): number {
   }
   const ms = Date.parse(iso);
   return Number.isNaN(ms) ? 0 : ms;
+}
+
+function isBridgeSharedEvent(event: EventCandidate | null | undefined): boolean {
+  if (!event?.metadata) {
+    return false;
+  }
+  const meta = event.metadata;
+  return (
+    meta.experienceBridgeParticipant === true ||
+    meta.experienceBridgeHost === true ||
+    typeof meta[EXPERIENCE_BRIDGE_META_KEYS.bridgeId] === "string"
+  );
+}
+
+function isLocalEventMedia(
+  eventId: string,
+  mediaContextId: string | null | undefined,
+): boolean {
+  const key = eventId.trim();
+  const mediaId = mediaContextId?.trim();
+  if (!key || !mediaId) {
+    return false;
+  }
+  return readMediaContextMemorySnapshot().some(
+    (row) => row.id.trim() === mediaId && row.originRef?.trim() === key,
+  );
 }
 
 function appendFromMediaStore(
@@ -47,6 +75,7 @@ function appendFromMediaStore(
       mediaContextId: row.id.trim(),
       capturedAtIso: row.capturedAtIso,
       kind: row.mediaKind,
+      allowLocalBlob: true,
     });
   }
 }
@@ -58,6 +87,8 @@ export function projectContextMediaReel(input: {
   limit?: number;
 }): ContextMediaReelItem[] {
   const limit = input.limit ?? 48;
+  const eventId = input.event?.id?.trim() ?? "";
+  const bridgeShared = isBridgeSharedEvent(input.event);
   const items: ContextMediaReelItem[] = [];
   const seen = new Set<string>();
 
@@ -65,12 +96,15 @@ export function projectContextMediaReel(input: {
     const remoteUrl = item.imageUrl?.trim() || "";
     const key =
       remoteUrl ||
-      item.mediaContextId?.trim() ||
+      (item.allowLocalBlob ? item.mediaContextId?.trim() : "") ||
       item.id;
     if (!key || seen.has(key) || items.length >= limit) {
       return;
     }
-    if (!remoteUrl && !item.mediaContextId?.trim()) {
+    if (!remoteUrl && !item.allowLocalBlob) {
+      return;
+    }
+    if (!remoteUrl && item.allowLocalBlob && !item.mediaContextId?.trim()) {
       return;
     }
     seen.add(key);
@@ -81,42 +115,32 @@ export function projectContextMediaReel(input: {
     if (row.kind !== "photo" && row.kind !== "video") {
       continue;
     }
+    const mediaContextId = row.mediaContextId?.trim() || null;
+    const imageUrl = isUsableBridgeMediaUrl(row.url) ? row.url!.trim() : null;
+    const allowLocalBlob = bridgeShared
+      ? isLocalEventMedia(eventId, mediaContextId)
+      : Boolean(mediaContextId);
+
     push({
       id: `capture:${row.id}`,
       label:
         row.label?.trim() ||
         row.placeLabel?.trim() ||
         (row.kind === "video" ? "동영상" : "사진"),
-      imageUrl: row.url?.trim() || null,
-      mediaContextId: row.mediaContextId?.trim() || null,
+      imageUrl,
+      mediaContextId,
       capturedAtIso: row.capturedAtIso,
       kind: row.kind,
+      allowLocalBlob,
     });
   }
 
-  if (input.event?.id) {
-    appendFromMediaStore(input.event.id, push);
+  if (eventId) {
+    appendFromMediaStore(eventId, push);
   }
 
-  if (input.volume) {
-    for (const row of projectVolumeSpatialMedia(input.volume)) {
-      if (row.kind !== "photo" && row.kind !== "video") {
-        continue;
-      }
-      const mediaContextId = parseUploadMediaContextId(row.id);
-      if (!mediaContextId) {
-        continue;
-      }
-      push({
-        id: `spatial:${row.id}`,
-        label: row.title?.trim() || row.caption?.trim() || "기록",
-        imageUrl: null,
-        mediaContextId,
-        capturedAtIso: row.capturedAtIso,
-        kind: row.kind,
-      });
-    }
-  }
+  // Do not project volume spatial media into the pin reel — spacetime matching
+  // leaks unrelated local uploads (e.g. Jeju video) into bridge/shared contexts.
 
   return items.sort(
     (left, right) =>

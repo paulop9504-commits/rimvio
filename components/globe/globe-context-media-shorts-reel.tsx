@@ -22,7 +22,9 @@ function ContextMediaShortsSlide({
   const rootRef = useRef<HTMLElement>(null);
   const [visible, setVisible] = useState(false);
   const [playing, setPlaying] = useState(true);
-  const { url: blobUrl, loading } = useMediaBlobUrl(item.mediaContextId);
+  const { url: blobUrl, loading } = useMediaBlobUrl(
+    item.allowLocalBlob === true ? item.mediaContextId : null,
+  );
   const src = item.imageUrl ?? blobUrl;
   const isVideo = item.kind === "video";
 
