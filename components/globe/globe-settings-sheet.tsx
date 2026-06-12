@@ -22,6 +22,7 @@ import { SettingsToggle } from "@/components/settings/settings-toggle";
 import { useAlbumSync } from "@/hooks/use-album-sync";
 import { useAlbumSyncProgress } from "@/hooks/use-album-sync-progress";
 import { useCopy } from "@/hooks/use-copy";
+import { useAuth } from "@/hooks/use-auth";
 import { useGlobeExperienceSettings } from "@/hooks/use-globe-experience-settings";
 import { useGpsTrackingEnabled } from "@/hooks/use-gps-tracking-enabled";
 import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
@@ -67,6 +68,7 @@ import {
 import type { CountryCode } from "@/lib/links/spark-locale";
 import { formatGpsAccuracyLabel } from "@/lib/globe/format-gps-accuracy-label";
 import { cn } from "@/lib/utils";
+import { AuthLogoutButton } from "@/components/auth-logout-button";
 
 export type GlobeSettingsSheetProps = {
   open: boolean;
@@ -135,6 +137,7 @@ function CompactOptionButton({
 
 function GlobeSettingsBody() {
   const copy = useCopy();
+  const { user } = useAuth();
   const { enabled: gpsEnabled, setEnabled: setGpsEnabled } = useGpsTrackingEnabled();
   const { settings: globePrefs, patch: patchGlobePrefs } = useGlobeExperienceSettings();
   const liveLocation = useLiveLocationSnapshot();
@@ -462,6 +465,21 @@ function GlobeSettingsBody() {
           }}
         />
       </SettingsSection>
+
+      {user ? (
+        <SettingsSection title="계정" description="로그인 · 다른 계정으로 테스트">
+          <p className="text-[13px] font-medium text-foreground">
+            {user.user_metadata?.full_name ??
+              user.user_metadata?.name ??
+              user.email ??
+              copy.auth.guestName}
+          </p>
+          {user.email ? (
+            <p className="mt-0.5 text-[12px] text-muted-foreground">{user.email}</p>
+          ) : null}
+          <AuthLogoutButton className="mt-3" variant="destructive" redirectTo="/globe" />
+        </SettingsSection>
+      ) : null}
     </div>
   );
 }

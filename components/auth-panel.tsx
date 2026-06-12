@@ -5,9 +5,9 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { GoogleSignInButton } from "@/components/google-sign-in-button";
+import { AuthLogoutButton } from "@/components/auth-logout-button";
 import { useAuth } from "@/hooks/use-auth";
 import { useCopy } from "@/hooks/use-copy";
-import { IOS } from "@/lib/ui/ios-surface";
 import { cn } from "@/lib/utils";
 
 type AuthPanelProps = {
@@ -23,7 +23,7 @@ export function AuthPanel({
   variant = "card",
 }: AuthPanelProps) {
   const copy = useCopy();
-  const { user, loading, configured, signInWithGoogle, signOut } = useAuth();
+  const { user, loading, configured, signInWithGoogle } = useAuth();
   const searchParams = useSearchParams();
   const [busy, setBusy] = useState(false);
 
@@ -75,25 +75,7 @@ export function AuthPanel({
         <p className="mt-1 text-[12px] text-muted-foreground">
           {copy.auth.loggedInAs(label)}
         </p>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => {
-            setBusy(true);
-            void signOut()
-              .then(() => {
-                toast.success(copy.auth.logoutOk);
-                window.location.href = "/";
-              })
-              .catch(() => {
-                toast.error(copy.auth.logoutFail);
-              })
-              .finally(() => setBusy(false));
-          }}
-          className={cn("mt-3 w-full py-2.5 text-[13px] font-semibold", IOS.secondaryBtn)}
-        >
-          {copy.auth.logout}
-        </button>
+        <AuthLogoutButton className="mt-3" redirectTo="/" />
       </>,
     );
   }

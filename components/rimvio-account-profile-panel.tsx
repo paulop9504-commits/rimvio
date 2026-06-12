@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useCopy } from "@/hooks/use-copy";
 import { updateRoomGuest } from "@/lib/rooms/guest-session";
 import { cn } from "@/lib/utils";
+import { AuthLogoutButton } from "@/components/auth-logout-button";
 
 type RimvioAccountProfilePanelProps = {
   className?: string;
@@ -221,6 +222,10 @@ export function RimvioAccountProfilePanel({
       >
         {busy ? ap.saving : ap.save}
       </button>
+
+      {user ? (
+        <AuthLogoutButton variant="destructive" redirectTo="/globe" />
+      ) : null}
     </div>
   );
 
@@ -252,63 +257,63 @@ export function RimvioAccountProfilePanel({
     }
 
     return (
-      <div
-        className={cn(
-          "flex items-center gap-3 rounded-2xl border border-rimvio-neon-purple/25 bg-rimvio-neon-purple/10 px-3 py-2.5",
-          className,
-        )}
-      >
-        <RimvioProfilePhoto
-          avatarUrl={avatarUrl}
-          displayName={displayName}
-          fallbackImageUrl={googleAvatar}
-          editable={false}
-          size="md"
-          showHint={false}
-          className="shrink-0 gap-0"
-        />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[12px] font-medium text-foreground">
-            {displayName.trim() || ap.noDisplayName}
-          </p>
-          {savedRimvioId ? (
-            <p className="font-mono text-sm font-semibold text-[#1b64da]">
-              @{savedRimvioId}
+      <div className={cn("space-y-2", className)}>
+        <div className="flex items-center gap-3 rounded-2xl border border-rimvio-neon-purple/25 bg-rimvio-neon-purple/10 px-3 py-2.5">
+          <RimvioProfilePhoto
+            avatarUrl={avatarUrl}
+            displayName={displayName}
+            fallbackImageUrl={googleAvatar}
+            editable={false}
+            size="md"
+            showHint={false}
+            className="shrink-0 gap-0"
+          />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[12px] font-medium text-foreground">
+              {displayName.trim() || ap.noDisplayName}
             </p>
-          ) : (
-            <p className="text-[11px] text-muted-foreground">{ap.noRimvioId}</p>
-          )}
-          {(email || phone) && (
-            <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
-              {email ?? ""}
-              {email && phone ? " · " : ""}
-              {phone ? formatPhoneDisplay(phone) : ""}
-            </p>
-          )}
-        </div>
-        <div className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center">
-          {savedRimvioId ? (
+            {savedRimvioId ? (
+              <p className="font-mono text-sm font-semibold text-[#1b64da]">
+                @{savedRimvioId}
+              </p>
+            ) : (
+              <p className="text-[11px] text-muted-foreground">{ap.noRimvioId}</p>
+            )}
+            {(email || phone) && (
+              <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
+                {email ?? ""}
+                {email && phone ? " · " : ""}
+                {phone ? formatPhoneDisplay(phone) : ""}
+              </p>
+            )}
+          </div>
+          <div className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center">
+            {savedRimvioId ? (
+              <button
+                type="button"
+                onClick={() => void copyId()}
+                className="flex items-center gap-1 rounded-full border border-border bg-rimvio-surface px-2 py-1.5 text-[10px] font-medium"
+              >
+                {copied ? (
+                  <Check className="size-3.5 text-emerald-500" aria-hidden />
+                ) : (
+                  <Copy className="size-3.5" aria-hidden />
+                )}
+              </button>
+            ) : null}
             <button
               type="button"
-              onClick={() => void copyId()}
-              className="flex items-center gap-1 rounded-full border border-border bg-rimvio-surface px-2 py-1.5 text-[10px] font-medium"
+              onClick={() => setEditing(true)}
+              className="flex items-center gap-1 rounded-full border border-border bg-rimvio-surface px-2.5 py-1.5 text-[10px] font-medium"
             >
-              {copied ? (
-                <Check className="size-3.5 text-emerald-500" aria-hidden />
-              ) : (
-                <Copy className="size-3.5" aria-hidden />
-              )}
+              <Pencil className="size-3.5" aria-hidden />
+              {ap.edit}
             </button>
-          ) : null}
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            className="flex items-center gap-1 rounded-full border border-border bg-rimvio-surface px-2.5 py-1.5 text-[10px] font-medium"
-          >
-            <Pencil className="size-3.5" aria-hidden />
-            {ap.edit}
-          </button>
+          </div>
         </div>
+        {user ? (
+          <AuthLogoutButton variant="destructive" redirectTo="/globe" />
+        ) : null}
       </div>
     );
   }
