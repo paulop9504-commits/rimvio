@@ -1,6 +1,7 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { resolveAppOrigin } from "@/lib/auth/redirect-url";
 import type {
+  ExperienceBridgeContribution,
   ExperienceBridgeState,
   ExperienceBridgeTimelineItem,
 } from "@/lib/experience-bridge/experience-bridge-types";
@@ -16,6 +17,7 @@ async function parseJson<T>(response: Response): Promise<T> {
 export async function fetchExperienceBridgeRemote(eventId: string): Promise<{
   state: ExperienceBridgeState | null;
   timeline: ExperienceBridgeTimelineItem[];
+  contributions: ExperienceBridgeContribution[];
 }> {
   const endpoint = `${resolveAppOrigin()}/api/experience-bridge/${encodeURIComponent(eventId)}`;
   return parseJson(await fetch(endpoint, { credentials: "include" }));

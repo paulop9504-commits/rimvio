@@ -11,6 +11,7 @@ import { resolveTargetEventFromSpacetime } from "@/lib/feed/resolve-target-event
 import { CONTEXT_MATCH_MIN_SCORE } from "@/lib/ingest/context-match-media-gate";
 import { scoreSpacetimeFit } from "@/lib/feed/spacetime-fit";
 import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
+import { publishBridgeCaptureContribution } from "@/lib/experience-bridge/publish-bridge-capture-contribution";
 import { syncPersonalGlobePinFromEvent } from "@/lib/globe/sync-personal-globe-pin";
 import { attachMediaSpacetime } from "@/lib/location-ping/attach-media-spacetime";
 import type { MediaSpacetimeContext } from "@/lib/location-ping/types";
@@ -254,6 +255,11 @@ export async function ingestGlobeContextMedia(input: {
   if (input.hintEventId?.trim() && input.hintEventId !== result.event.id) {
     syncPersonalGlobePinFromEvent(input.hintEventId);
   }
+
+  void publishBridgeCaptureContribution({
+    eventId: result.event.id,
+    fragment: result.fragment,
+  }).catch(() => undefined);
 
   return {
     result,

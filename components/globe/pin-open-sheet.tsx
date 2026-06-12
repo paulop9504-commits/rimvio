@@ -46,7 +46,8 @@ import { projectContextMediaReel } from "@/lib/globe/project-context-media-reel"
 import { projectTripLegBar } from "@/lib/globe/project-trip-leg-arcs";
 import { projectExperienceRoom } from "@/lib/experience-room/project-experience-room";
 import { projectRepresentativeMoments } from "@/lib/globe/project-representative-moments";
-import { syncBridgeParticipantMediaFromRemote } from "@/lib/experience-bridge/sync-bridge-participant-media";
+import { syncBridgeSharedMediaFromRemote } from "@/lib/experience-bridge/sync-bridge-participant-media";
+import { useAuth } from "@/hooks/use-auth";
 import { MEDIA_SPACETIME_UPDATED, hydrateMediaContextStore } from "@/lib/location-ping/media-context-store";
 import {
   EVENT_CANDIDATES_UPDATED,
@@ -71,6 +72,7 @@ export function PinOpenSheet({
   onOpenDetail,
 }: PinOpenSheetProps) {
   const router = useRouter();
+  const { user } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [opened, setOpened] = useState(false);
   const [revision, setRevision] = useState(0);
@@ -93,12 +95,12 @@ export function PinOpenSheet({
     if (!open || !eventId) {
       return;
     }
-    void syncBridgeParticipantMediaFromRemote(eventId).then((merged) => {
+    void syncBridgeSharedMediaFromRemote(eventId, user?.id).then((merged) => {
       if (merged) {
         setRevision((value) => value + 1);
       }
     });
-  }, [open, cluster?.eventId]);
+  }, [open, cluster?.eventId, user?.id]);
 
   useEffect(() => {
     if (!open) {

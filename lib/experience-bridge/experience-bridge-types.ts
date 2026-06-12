@@ -1,5 +1,6 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import type { FeedCaptureKind } from "@/lib/feed/feed-capture-types";
+import type { FeedCaptureFragment } from "@/lib/feed/feed-capture-types";
 
 export type ExperienceBridgeParticipantStatus =
   | "pending"
@@ -46,4 +47,13 @@ export type ExperienceBridgeTimelineItem = {
   imageUrl?: string | null;
   /** View-only for non-owner media in shared bridge UI. */
   viewOnly: boolean;
+};
+
+export type ExperienceBridgeContribution = {
+  contributorUserId: string;
+  capture: FeedCaptureFragment & {
+    ownerUserId?: string;
+    authorDisplayName?: string;
+  };
+  createdAtIso: string;
 };

@@ -15,6 +15,7 @@ import {
   upsertBridgeParticipantRow,
   upsertExperienceBridge,
 } from "@/lib/experience-bridge/server-bridge-store";
+import { listBridgeContributions } from "@/lib/experience-bridge/server-bridge-contributions";
 import { extractErrorMessage } from "@/lib/peer-chat/extract-error-message";
 import { listSharedGlobePinsForThread } from "@/lib/peer-chat/server-globe-pins";
 import { assertCallerIsThreadMember } from "@/lib/peer-chat/peer-public-profile";
@@ -71,14 +72,20 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     }
 
     const host = state.participants.find((row) => row.role === "host");
+    const contributions = await listBridgeContributions(supabase, key);
     const timeline = mergeBridgeTimeline({
       bridge: state.bridge,
       sharedPins,
+      contributions,
+      participants: state.participants.map((row) => ({
+        userId: row.userId,
+        displayName: row.displayName,
+      })),
       viewerUserId: userId,
       hostDisplayName: host?.displayName,
     });
 
-    return NextResponse.json({ state, timeline });
+    return NextResponse.json({ state, timeline, contributions });
   } catch (error) {
     const message = extractErrorMessage(error, "Failed to load experience bridge.");
     return NextResponse.json({ error: message }, { status: 500 });

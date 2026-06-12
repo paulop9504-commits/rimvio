@@ -1,6 +1,7 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { readFeedCaptureFragments } from "@/lib/feed/feed-capture-metadata";
 import type { SharedGlobePin } from "@/lib/peer-chat/globe-pin-types";
+import type { ExperienceBridgeContribution } from "@/lib/experience-bridge/experience-bridge-types";
 import { canEditBridgeMedia } from "@/lib/experience-bridge/bridge-access";
 import type {
   ExperienceBridgeSnapshot,
@@ -26,6 +27,8 @@ function captureAuthorName(
 export function mergeBridgeTimeline(input: {
   bridge: ExperienceBridgeSnapshot;
   sharedPins?: readonly SharedGlobePin[];
+  contributions?: readonly ExperienceBridgeContribution[];
+  participants?: readonly { userId: string; displayName: string }[];
   viewerUserId: string;
   hostDisplayName?: string;
 }): ExperienceBridgeTimelineItem[] {
@@ -75,7 +78,31 @@ export function mergeBridgeTimeline(input: {
     },
   );
 
-  return [...fromCaptures, ...fromPins].sort(
+  const participantNameById = new Map(
+    (input.participants ?? []).map((row) => [row.userId, row.displayName.trim() || "친구"]),
+  );
+
+  const fromContributions: ExperienceBridgeTimelineItem[] = (
+    input.contributions ?? []
+  ).map((row) => {
+    const capture = row.capture;
+    const ownerUserId = row.contributorUserId;
+    return {
+      id: `contrib:${ownerUserId}:${capture.id}`,
+      kind: capture.kind === "video" ? "video" : "photo",
+      capturedAtIso: capture.capturedAtIso,
+      ownerUserId,
+      authorDisplayName:
+        capture.authorDisplayName?.trim() ||
+        participantNameById.get(ownerUserId) ||
+        "친구",
+      placeLabel: capture.placeLabel ?? coords.placeLabel,
+      imageUrl: capture.url ?? null,
+      viewOnly: !canEditBridgeMedia({ viewerUserId: input.viewerUserId, ownerUserId }),
+    };
+  });
+
+  return [...fromCaptures, ...fromPins, ...fromContributions].sort(
     (left, right) =>
       Date.parse(left.capturedAtIso) - Date.parse(right.capturedAtIso),
   );
