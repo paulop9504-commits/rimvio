@@ -62,14 +62,15 @@ export function projectContextMediaReel(input: {
   const seen = new Set<string>();
 
   const push = (item: ContextMediaReelItem) => {
+    const remoteUrl = item.imageUrl?.trim() || "";
     const key =
+      remoteUrl ||
       item.mediaContextId?.trim() ||
-      item.imageUrl?.trim() ||
       item.id;
     if (!key || seen.has(key) || items.length >= limit) {
       return;
     }
-    if (!item.mediaContextId?.trim() && !item.imageUrl?.trim()) {
+    if (!remoteUrl && !item.mediaContextId?.trim()) {
       return;
     }
     seen.add(key);

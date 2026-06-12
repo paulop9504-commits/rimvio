@@ -8,14 +8,7 @@ import {
 } from "@/lib/feed/feed-capture-types";
 import { commitEventUpsert } from "@/lib/source-of-truth/commit-truth";
 import { uploadBridgeCaptureBlob } from "@/lib/experience-bridge/upload-bridge-capture-blob";
-
-function isRemoteShareUrl(url: string | undefined): boolean {
-  const value = url?.trim();
-  if (!value) {
-    return false;
-  }
-  return value.startsWith("https://") && !value.startsWith("blob:");
-}
+import { isUsableBridgeMediaUrl } from "@/lib/experience-bridge/bridge-media-url";
 
 function isShareableBridgeCapture(capture: FeedCaptureFragment): boolean {
   return capture.kind === "photo" || capture.kind === "video";
@@ -43,7 +36,7 @@ export async function hydrateBridgeEventSnapshotForShare(
       nextCaptures.push(capture);
       continue;
     }
-    if (isRemoteShareUrl(capture.url)) {
+    if (isUsableBridgeMediaUrl(capture.url)) {
       nextCaptures.push(capture);
       continue;
     }

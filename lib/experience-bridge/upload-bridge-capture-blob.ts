@@ -2,12 +2,8 @@
 
 import type { FeedCaptureFragment } from "@/lib/feed/feed-capture-types";
 import { resolveAppOrigin } from "@/lib/auth/redirect-url";
+import { isUsableBridgeMediaUrl } from "@/lib/experience-bridge/bridge-media-url";
 import { readMediaBlob } from "@/lib/location-ping/media-blob-store";
-
-function isRemoteShareUrl(url: string | undefined): boolean {
-  const value = url?.trim();
-  return Boolean(value?.startsWith("https://") && !value.startsWith("blob:"));
-}
 
 function resolveBridgeCaptureFileMeta(input: {
   blob: Blob;
@@ -53,7 +49,7 @@ export async function uploadBridgeCaptureBlob(input: {
   eventId: string;
   capture: FeedCaptureFragment;
 }): Promise<string | null> {
-  if (isRemoteShareUrl(input.capture.url)) {
+  if (isUsableBridgeMediaUrl(input.capture.url)) {
     return input.capture.url!.trim();
   }
 
