@@ -13,6 +13,7 @@ import { GlobeContextListSheet } from "@/components/globe/globe-context-list-she
 import { GlobeContextManageSheet } from "@/components/globe/globe-context-manage-sheet";
 import { GlobeContextStackPicker } from "@/components/globe/globe-context-stack-picker";
 import { GlobeCreateContextSheet } from "@/components/globe/globe-create-context-sheet";
+import { GlobeContextShareSheet } from "@/components/globe/globe-context-share-sheet";
 import {
   ExperienceBridgeInviteInboxSheet,
   ExperienceBridgeInviteTopChip,
@@ -44,6 +45,10 @@ import { resolveGlobeContextPinCluster } from "@/lib/globe/resolve-globe-context
 import { listGlobeContextPeerOptions } from "@/lib/globe/list-globe-context-peer-options";
 import type { GlobeContextPeopleFilter } from "@/lib/globe/globe-context-people-filter";
 import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
+import {
+  GLOBE_CONTEXT_SHARE_REQUEST,
+  type GlobeContextShareRequestDetail,
+} from "@/lib/globe/globe-context-share-request";
 import {
   globeContextShouldMapReplayFirst,
   resolveExperienceVolumeForEvent,
@@ -89,6 +94,8 @@ function GlobeHomeBody() {
     null,
   );
   const [bridgeInboxOpen, setBridgeInboxOpen] = useState(false);
+  const [shareSheetOpen, setShareSheetOpen] = useState(false);
+  const [shareEventId, setShareEventId] = useState<string | null>(null);
   const [activeCluster, setActiveCluster] = useState<PinCluster | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [timeFilter, setTimeFilter] = useState<GlobeContextTimeFilter>("all");
@@ -328,6 +335,20 @@ function GlobeHomeBody() {
       );
     }
   }, [pendingBridgeInvites]);
+
+  useEffect(() => {
+    const onShareRequest = (event: Event) => {
+      const detail = (event as CustomEvent<GlobeContextShareRequestDetail>).detail;
+      const eventId = detail?.eventId?.trim();
+      if (!eventId) {
+        return;
+      }
+      setShareEventId(eventId);
+      setShareSheetOpen(true);
+    };
+    window.addEventListener(GLOBE_CONTEXT_SHARE_REQUEST, onShareRequest);
+    return () => window.removeEventListener(GLOBE_CONTEXT_SHARE_REQUEST, onShareRequest);
+  }, []);
 
   const onContextGroupPress = useCallback(
     (clusters: readonly PinCluster[]) => {
@@ -705,6 +726,14 @@ function GlobeHomeBody() {
         onDismissed={dismissInvite}
       />
       <GlobeSettingsSheet open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <GlobeContextShareSheet
+        open={shareSheetOpen}
+        onOpenChange={setShareSheetOpen}
+        eventId={shareEventId}
+        onShared={() => {
+          void refreshBridgeInvites();
+        }}
+      />
     </div>
   );
 }

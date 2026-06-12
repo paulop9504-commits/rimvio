@@ -3,6 +3,7 @@ import {
   feedSlotPeerChipGradientCss,
   feedSlotPeerChipShortLabel,
 } from "@/lib/feed/feed-slot-peer-chip-colors";
+import { dispatchGlobeContextShareRequest } from "@/lib/globe/globe-context-share-request";
 
 const LONG_PRESS_MS = 520;
 /** Finger jitter on mobile — above this, treat as globe drag not tap. */
@@ -15,6 +16,80 @@ export type Globe3dPinInteractionHandlers = {
   lockControls?: () => void;
   unlockControls?: () => void;
 };
+
+function bindShareCornerPress(target: HTMLElement, onActivate: () => void): void {
+  target.addEventListener("pointerdown", (event) => {
+    event.stopPropagation();
+    event.preventDefault();
+  });
+  target.addEventListener("click", (event) => {
+    event.stopPropagation();
+    event.preventDefault();
+    onActivate();
+  });
+}
+
+function appendShareCorner(card: HTMLElement, pin: ClassifiedGlobePin): void {
+  const eventId = pin.sourceEventId?.trim();
+  if (!eventId || pin.pinShape === "cluster" || pin.pinShape === "viewer") {
+    return;
+  }
+
+  const shared = pin.sharedWith ?? [];
+  const corner = document.createElement("span");
+  corner.className = "rimvio-globe-3d-pin__share-corner";
+  corner.setAttribute("role", "button");
+  corner.tabIndex = 0;
+
+  if (shared.length > 0) {
+    corner.classList.add("rimvio-globe-3d-pin__share-corner--shared");
+    corner.setAttribute(
+      "aria-label",
+      `${shared.map((row) => row.displayName).join(", ")} · 공유 추가`,
+    );
+
+    const avatars = document.createElement("span");
+    avatars.className = "rimvio-globe-3d-pin__share-avatars";
+    avatars.setAttribute("aria-hidden", "true");
+
+    for (const peer of shared.slice(0, 2)) {
+      const avatar = document.createElement("span");
+      avatar.className = "rimvio-globe-3d-pin__share-avatar";
+
+      if (peer.avatarUrl) {
+        const image = document.createElement("img");
+        image.src = peer.avatarUrl;
+        image.alt = "";
+        image.className = "rimvio-globe-3d-pin__share-avatar-img";
+        avatar.appendChild(image);
+      } else {
+        avatar.style.background = feedSlotPeerChipGradientCss(peer.peerThreadId);
+        avatar.textContent = feedSlotPeerChipShortLabel(peer.displayName);
+      }
+
+      avatars.appendChild(avatar);
+    }
+
+    corner.appendChild(avatars);
+
+    if (shared.length > 2) {
+      const more = document.createElement("span");
+      more.className = "rimvio-globe-3d-pin__share-more";
+      more.textContent = `+${shared.length - 2}`;
+      corner.appendChild(more);
+    }
+  } else {
+    corner.classList.add("rimvio-globe-3d-pin__share-corner--empty");
+    corner.setAttribute("aria-label", "공유하기");
+    corner.textContent = "공유";
+  }
+
+  bindShareCornerPress(corner, () => {
+    dispatchGlobeContextShareRequest({ eventId, pinId: pin.id });
+  });
+
+  card.appendChild(corner);
+}
 
 function appendPeerRow(card: HTMLElement, pin: ClassifiedGlobePin): void {
   const peers = pin.peers ?? [];
@@ -256,6 +331,8 @@ export function createGlobe3dPinElement(
 
   const card = document.createElement("span");
   card.className = "rimvio-globe-3d-pin__card";
+
+  appendShareCorner(card, pin);
 
   const title = document.createElement("span");
   title.className = "rimvio-globe-3d-pin__title";

@@ -21,6 +21,8 @@ import type { ClassifiedGlobePin } from "@/lib/feed/experience-globe-ping-types"
 import { readPeerContacts } from "@/lib/context/peer-contact-store";
 import { buildFeedSlotPeerLookup } from "@/lib/feed/build-feed-slot-peer-lookup";
 import { enrichClassifiedGlobePinPeers } from "@/lib/globe/project-globe-pin-peers";
+import { enrichClassifiedGlobePinSharedWith } from "@/lib/globe/enrich-globe-pin-shared-with";
+import { EXPERIENCE_BRIDGE_UPDATED } from "@/lib/experience-bridge/local-bridge-store";
 import { applyPinCoordOverrides } from "@/lib/globe/apply-pin-coord-overrides";
 import {
   matchesGlobeContextTimeFilter,
@@ -167,6 +169,12 @@ const RimvioGlobeHubBody = memo(
     const innerGlobeRef = useRef<RimvioGlobe3DHandle>(null);
     const startupFlownRef = useRef(false);
     const [detailLevel, setDetailLevel] = useState<GlobeDetailLevel>("space");
+    const [bridgeRevision, setBridgeRevision] = useState(0);
+    useEffect(() => {
+      const bump = () => setBridgeRevision((value) => value + 1);
+      window.addEventListener(EXPERIENCE_BRIDGE_UPDATED, bump);
+      return () => window.removeEventListener(EXPERIENCE_BRIDGE_UPDATED, bump);
+    }, []);
     const handleDetailLevelChange = useCallback(
       (level: GlobeDetailLevel) => {
         setDetailLevel(level);
@@ -186,12 +194,15 @@ const RimvioGlobeHubBody = memo(
     );
     const classifiedPins = useMemo(
       () =>
-        enrichClassifiedGlobePinPeers(
-          projectPinClusterClassifiedPins(clusters, eventsById),
-          eventsById,
+        enrichClassifiedGlobePinSharedWith(
+          enrichClassifiedGlobePinPeers(
+            projectPinClusterClassifiedPins(clusters, eventsById),
+            eventsById,
+            peerLookup,
+          ),
           peerLookup,
         ),
-      [clusters, eventsById, peerLookup],
+      [clusters, eventsById, peerLookup, bridgeRevision],
     );
     const displayPins = useMemo(() => {
       const withOverrides = applyPinCoordOverrides(

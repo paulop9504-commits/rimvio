@@ -3284,6 +3284,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 }
 
 .rimvio-globe-3d-pin__card {
+  position: relative;
   display: flex;
   width: 100%;
   flex-direction: column;
@@ -3293,11 +3294,79 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   border: 1px solid rgba(2, 32, 71, 0.06);
   background: #ffffff;
   padding: 0.45rem 0.55rem;
+  padding-top: 0.65rem;
   box-shadow:
     0 2px 8px rgba(2, 32, 71, 0.06),
     0 8px 24px rgba(49, 130, 246, 0.08);
   transform: scale(var(--globe-pin-scale, 1));
   transform-origin: center bottom;
+}
+
+.rimvio-globe-3d-pin__share-corner {
+  position: absolute;
+  top: -0.35rem;
+  right: -0.35rem;
+  z-index: 2;
+  display: inline-flex;
+  max-width: calc(100% + 0.35rem);
+  align-items: center;
+  gap: 0.1rem;
+  border-radius: 9999px;
+  border: 1.5px solid #ffffff;
+  background: #3182f6;
+  padding: 0.12rem 0.38rem;
+  box-shadow: 0 2px 8px rgba(49, 130, 246, 0.28);
+  color: #ffffff;
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.rimvio-globe-3d-pin__share-corner--shared {
+  background: #ffffff;
+  padding: 0.1rem 0.22rem 0.1rem 0.1rem;
+  color: #191f28;
+}
+
+.rimvio-globe-3d-pin__share-avatars {
+  display: inline-flex;
+  align-items: center;
+}
+
+.rimvio-globe-3d-pin__share-avatar {
+  display: inline-flex;
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 9999px;
+  border: 1px solid #ffffff;
+  margin-left: -0.18rem;
+  font-size: 7px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.rimvio-globe-3d-pin__share-avatars .rimvio-globe-3d-pin__share-avatar:first-child {
+  margin-left: 0;
+}
+
+.rimvio-globe-3d-pin__share-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.rimvio-globe-3d-pin__share-more {
+  padding-right: 0.12rem;
+  font-size: 7px;
+  font-weight: 700;
+  color: #3182f6;
 }
 
 .rimvio-globe-3d-pin__dot {

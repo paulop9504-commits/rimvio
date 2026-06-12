@@ -33,4 +33,6 @@ export type ClassifiedGlobePin = {
   tripLeg?: "departure" | "destination";
   /** Who shared this experience — avatar chips on globe pin card. */
   peers?: readonly GlobePinPeer[];
+  /** Bridge invitees — top-right chip on pin card after share. */
+  sharedWith?: readonly GlobePinPeer[];
 };
