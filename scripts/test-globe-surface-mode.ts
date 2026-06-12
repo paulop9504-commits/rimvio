@@ -29,6 +29,7 @@ assert.equal(shouldEnterFlatMap({ altitude: 0.2, detailLevel: "city" }), true);
 
 assert.ok(resolveFlatMapSlippyZoom(2.4) >= 14);
 assert.ok(resolveFlatMapSlippyZoom(4.2) >= 19);
+assert.ok(resolveFlatMapSlippyZoom(5.0) >= 20);
 assert.ok(flatMapZoomFromGlobeAltitude(0.02) > flatMapZoomFromGlobeAltitude(0.08));
 
 const panned = panFlatMapView({ lat: 36.35, lng: 127.3, zoom: 2.5 }, 120, 40);

@@ -47,7 +47,7 @@ export function resolveGlobeMapZoom(
   if (tileStyle === "satellite") {
     return Math.min(10, Math.max(4, Math.round(3 + globeZoom * 2.2)));
   }
-  return Math.min(14, Math.max(5, Math.round(5 + globeZoom * 3)));
+  return Math.min(GLOBE_TILE_MAX_ZOOM, Math.max(5, Math.round(5 + globeZoom * 3.4)));
 }
 
 export function globeMapTileAttribution(tileStyle: GlobeMapTileStyle): string {

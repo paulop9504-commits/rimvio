@@ -215,7 +215,7 @@ export function useGlobeSurfaceTouch({
         return;
       }
       event.preventDefault();
-      const factor = event.deltaY < 0 ? 1.1 : 0.9;
+      const factor = event.deltaY < 0 ? 1.12 : 0.89;
       onFlatViewChangeRef.current(zoomFlatMapView(flatViewRef.current, factor));
       setIsInteracting(true);
       window.setTimeout(() => setIsInteracting(false), 160);

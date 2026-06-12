@@ -13,6 +13,8 @@ import {
 } from "react";
 import { RimvioGlobe3DClient } from "@/components/experience/rimvio-globe-3d-client";
 import type { RimvioGlobe3DHandle } from "@/components/experience/rimvio-globe-3d";
+import { GlobeFlatMapStage } from "@/components/globe/globe-flat-map-stage";
+import { useGlobeSurfaceTouch } from "@/hooks/use-globe-surface-touch";
 import { useExperienceGraph } from "@/hooks/use-experience-graph";
 import { useGpsTrackingEnabled } from "@/hooks/use-gps-tracking-enabled";
 import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
@@ -33,6 +35,15 @@ import {
   type GlobeContextPeopleFilter,
 } from "@/lib/globe/globe-context-people-filter";
 import type { GlobeDetailLevel } from "@/lib/globe/globe-zoom-levels";
+import {
+  buildFlatMapHandoffView,
+  shouldExitFlatMapToGlobe3d,
+  type FlatMapView,
+} from "@/lib/globe/flat-map-view";
+import {
+  resolveGlobeSurfaceMode,
+  type GlobeSurfaceMode,
+} from "@/lib/globe/resolve-globe-surface-mode";
 import { projectGlobeZoomClusterPins } from "@/lib/globe/project-globe-zoom-cluster-pins";
 import { resolveGlobeStartupView } from "@/lib/globe/resolve-globe-startup-view";
 import { ensureGlobeDemoEvents } from "@/lib/experience-graph/seed-globe-demo-events";
@@ -171,8 +182,17 @@ const RimvioGlobeHubBody = memo(
     ref,
   ) {
     const innerGlobeRef = useRef<RimvioGlobe3DHandle>(null);
+    const hubShellRef = useRef<HTMLDivElement>(null);
+    const surfaceModeRef = useRef<GlobeSurfaceMode>("globe3d");
+    const flatViewRef = useRef<FlatMapView>({
+      lat: 37.5665,
+      lng: 126.978,
+      zoom: 3.45,
+    });
     const startupFlownRef = useRef(false);
     const [detailLevel, setDetailLevel] = useState<GlobeDetailLevel>("space");
+    const [surfaceMode, setSurfaceMode] = useState<GlobeSurfaceMode>("globe3d");
+    const [flatView, setFlatView] = useState<FlatMapView>(flatViewRef.current);
     const [bridgeRevision, setBridgeRevision] = useState(0);
     useEffect(() => {
       const bump = () => setBridgeRevision((value) => value + 1);
@@ -186,6 +206,80 @@ const RimvioGlobeHubBody = memo(
       },
       [onDetailLevelChange],
     );
+
+    const applySurfaceMode = useCallback((mode: GlobeSurfaceMode) => {
+      surfaceModeRef.current = mode;
+      setSurfaceMode(mode);
+    }, []);
+
+    const handoffToFlatMap = useCallback(
+      (input: { lat: number; lng: number; altitude?: number; zoom?: number }) => {
+        const next = buildFlatMapHandoffView(input);
+        flatViewRef.current = next;
+        setFlatView(next);
+        applySurfaceMode("flat2d");
+        return next;
+      },
+      [applySurfaceMode],
+    );
+
+    const handlePointOfViewChange = useCallback(
+      (pov: {
+        lat: number;
+        lng: number;
+        altitude: number;
+        detailLevel: GlobeDetailLevel;
+      }) => {
+        const next = resolveGlobeSurfaceMode(surfaceModeRef.current, {
+          altitude: pov.altitude,
+          detailLevel: pov.detailLevel,
+        });
+        if (next === "flat2d" && surfaceModeRef.current !== "flat2d") {
+          handoffToFlatMap({
+            lat: pov.lat,
+            lng: pov.lng,
+            altitude: pov.altitude,
+          });
+        }
+      },
+      [handoffToFlatMap],
+    );
+
+    const handleFlatViewChange = useCallback((view: FlatMapView) => {
+      flatViewRef.current = view;
+      setFlatView(view);
+    }, []);
+
+    const handleFlatGestureEnd = useCallback(
+      (view: FlatMapView) => {
+        if (shouldExitFlatMapToGlobe3d(view.zoom)) {
+          applySurfaceMode("globe3d");
+          innerGlobeRef.current?.resetOverview();
+        }
+      },
+      [applySurfaceMode],
+    );
+
+    const handlePinchEnterFlat = useCallback(() => {
+      const pov = innerGlobeRef.current?.getPointOfView();
+      if (!pov) {
+        return null;
+      }
+      return handoffToFlatMap({
+        lat: pov.lat,
+        lng: pov.lng,
+        altitude: pov.altitude,
+      });
+    }, [handoffToFlatMap]);
+
+    const { isInteracting: flatInteracting } = useGlobeSurfaceTouch({
+      hubRef: hubShellRef,
+      surfaceModeRef,
+      flatViewRef,
+      onFlatViewChange: handleFlatViewChange,
+      onFlatGestureEnd: handleFlatGestureEnd,
+      onPinchEnterFlat: handlePinchEnterFlat,
+    });
     const { slots: relationshipSlots } = useRelationshipFeedSlots(true);
     const peerLookup = useMemo(
       () =>
@@ -339,9 +433,10 @@ const RimvioGlobeHubBody = memo(
 
     return (
       <div
+        ref={hubShellRef}
         className={cn("relative flex h-full min-h-0 flex-1 flex-col", className)}
         data-rimvio-globe-hub
-        data-rimvio-globe-surface="globe3d"
+        data-rimvio-globe-surface={surfaceMode}
       >
         <RimvioGlobe3DClient
           ref={innerGlobeRef}
@@ -363,6 +458,26 @@ const RimvioGlobeHubBody = memo(
           onPinRelocate={onPinRelocate}
           onGlobePress={onGlobePress}
           onDetailLevelChange={handleDetailLevelChange}
+          onPointOfViewChange={handlePointOfViewChange}
+        />
+
+        <GlobeFlatMapStage
+          view={flatView}
+          pins={globePins}
+          activePinId={displayPinId}
+          onPinPress={handlePinPress}
+          viewerLocation={
+            gpsEnabled && liveLocation
+              ? {
+                  lat: liveLocation.lat,
+                  lng: liveLocation.lng,
+                  accuracyM: liveLocation.accuracyM,
+                }
+              : null
+          }
+          active={surfaceMode === "flat2d"}
+          isInteracting={flatInteracting}
+          className="z-[6]"
         />
 
         {clusters.length === 0 ? (

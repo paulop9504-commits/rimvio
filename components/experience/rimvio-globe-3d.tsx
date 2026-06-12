@@ -489,7 +489,7 @@ export const RimvioGlobe3D = memo(
         window.setTimeout(() => {
           syncOverviewTexture(globe.pointOfView().altitude);
           const controls = globe.controls();
-          controls.zoomSpeed = 1.5;
+          controls.zoomSpeed = 1.9;
           controls.rotateSpeed = 0.45;
         }, 0);
       });

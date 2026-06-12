@@ -16,7 +16,8 @@ export type FlatMapView = {
 };
 
 export const FLAT_MAP_ZOOM_MIN = 1.05;
-export const FLAT_MAP_ZOOM_MAX = 4.35;
+/** UI zoom ceiling — allows z20 tile overzoom for alley-level pinch. */
+export const FLAT_MAP_ZOOM_MAX = 5.15;
 /** Pinch out below this (on release) hands control back to the 3D globe. */
 export const FLAT_MAP_EXIT_ZOOM = 1.18;
 
@@ -27,7 +28,7 @@ export function clampFlatMapZoom(zoom: number): number {
 /** Continuous slippy zoom — drives pan math + CSS scale between tile levels. */
 export function resolveFlatMapSlippyZoomContinuous(viewZoom: number): number {
   const clamped = clampFlatMapZoom(viewZoom);
-  return Math.min(20.999, Math.max(11, 9 + clamped * 2.6));
+  return Math.min(20.999, Math.max(11, 8.1 + clamped * 2.85));
 }
 
 /** Integer tile level for fetching raster tiles. */
@@ -60,11 +61,11 @@ export function resolveFlatMapSlippyZoom(viewZoom: number): number {
 /** Seed flat view when handing off from globe.gl altitude. */
 export function flatMapZoomFromGlobeAltitude(altitude: number): number {
   const safe = Math.max(0.001, altitude);
-  return clampFlatMapZoom(2.75 - Math.log10(safe) * 0.82);
+  return clampFlatMapZoom(2.75 - Math.log10(safe) * 0.95);
 }
 
 /** Default street-map zoom when opening flat mode directly. */
-export const FLAT_MAP_STREET_ZOOM = 3.15;
+export const FLAT_MAP_STREET_ZOOM = 3.45;
 
 export function buildFlatMapHandoffView(input: {
   lat: number;
@@ -160,7 +161,7 @@ export function zoomFlatMapFromPinch(
     return view;
   }
   const ratio = currentDistance / startDistance;
-  const adjusted = ratio ** 0.86;
+  const adjusted = ratio ** 0.93;
   return { ...view, zoom: clampFlatMapZoom(startZoom * adjusted) };
 }
 
