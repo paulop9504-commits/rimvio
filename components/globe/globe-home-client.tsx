@@ -14,17 +14,13 @@ import { GlobeContextManageSheet } from "@/components/globe/globe-context-manage
 import { GlobeContextStackPicker } from "@/components/globe/globe-context-stack-picker";
 import { GlobeCreateContextSheet } from "@/components/globe/globe-create-context-sheet";
 import { GlobeContextShareSheet } from "@/components/globe/globe-context-share-sheet";
-import {
-  ExperienceBridgeInviteInboxSheet,
-  ExperienceBridgeInviteTopChip,
-} from "@/components/globe/experience-bridge-invite-inbox-sheet";
+import { GlobeInboxSheet, GlobeInboxTrigger } from "@/components/globe/globe-inbox-sheet";
 import { ExperienceBridgeGhostSheet } from "@/components/globe/experience-bridge-ghost-sheet";
 import { GlobeSettingsSheet } from "@/components/globe/globe-settings-sheet";
-import { GlobeLocationConfirmCard } from "@/components/globe/globe-location-confirm-card";
 import { PinOpenSheet } from "@/components/globe/pin-open-sheet";
 import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
 import { usePersonalGlobePinSync } from "@/hooks/use-personal-globe-pin-sync";
-import { usePendingBridgeInvites } from "@/hooks/use-pending-bridge-invites";
+import { useGlobeInbox } from "@/hooks/use-globe-inbox";
 import { useGlobeTripArrival } from "@/hooks/use-globe-trip-arrival";
 import { useGlobeContextPlaceAlignment } from "@/hooks/use-globe-context-place-alignment";
 import { focusGlobeContextOnMap } from "@/lib/globe/focus-globe-context-on-map";
@@ -78,22 +74,27 @@ function GlobeHomeBody() {
   const liveLocation = useLiveLocationSnapshot();
   usePersonalGlobePinSync(true);
   const {
-    invites: pendingBridgeInvites,
-    dismissInvite,
-    refresh: refreshBridgeInvites,
-  } = usePendingBridgeInvites(true);
+    bridgeInvites: pendingBridgeInvites,
+    locationConfirms,
+    totalCount: globeInboxCount,
+    refreshBridgeInvites,
+    dismissBridgeInvite: dismissInvite,
+    dismissLocationConfirm,
+    refreshLocationConfirms,
+  } = useGlobeInbox(true);
   const bridgeGhostClusters = useMemo(
     () => projectBridgeGhostClusters(pendingBridgeInvites),
     [pendingBridgeInvites],
   );
   const seenBridgeToastRef = useRef(new Set<string>());
+  const seenInboxCountRef = useRef(0);
   const [bridgeGhostOpen, setBridgeGhostOpen] = useState(false);
   const [bridgeGhostInvite, setBridgeGhostInvite] =
     useState<PendingBridgeInvite | null>(null);
   const [bridgeGhostCluster, setBridgeGhostCluster] = useState<PinCluster | null>(
     null,
   );
-  const [bridgeInboxOpen, setBridgeInboxOpen] = useState(false);
+  const [globeInboxOpen, setGlobeInboxOpen] = useState(false);
   const [shareSheetOpen, setShareSheetOpen] = useState(false);
   const [shareEventId, setShareEventId] = useState<string | null>(null);
   const [activeCluster, setActiveCluster] = useState<PinCluster | null>(null);
@@ -329,12 +330,29 @@ function GlobeHomeBody() {
         {
           action: {
             label: "수신함",
-            onClick: () => setBridgeInboxOpen(true),
+            onClick: () => setGlobeInboxOpen(true),
           },
         },
       );
     }
   }, [pendingBridgeInvites]);
+
+  useEffect(() => {
+    if (globeInboxCount <= seenInboxCountRef.current) {
+      seenInboxCountRef.current = globeInboxCount;
+      return;
+    }
+    const delta = globeInboxCount - seenInboxCountRef.current;
+    seenInboxCountRef.current = globeInboxCount;
+    if (delta > 0 && pendingBridgeInvites.length === 0) {
+      toast.message(copy.globe.inboxToastNew(delta), {
+        action: {
+          label: "수신함",
+          onClick: () => setGlobeInboxOpen(true),
+        },
+      });
+    }
+  }, [globeInboxCount, pendingBridgeInvites.length]);
 
   useEffect(() => {
     const onShareRequest = (event: Event) => {
@@ -614,7 +632,12 @@ function GlobeHomeBody() {
           />
         </div>
       </div>
-      <div className="pointer-events-none absolute right-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20">
+      <div className="pointer-events-none absolute right-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20 flex items-center gap-2">
+        <GlobeInboxTrigger
+          count={globeInboxCount}
+          onOpen={() => setGlobeInboxOpen(true)}
+          className="pointer-events-auto"
+        />
         <button
           type="button"
           onClick={() => setSettingsOpen(true)}
@@ -639,27 +662,27 @@ function GlobeHomeBody() {
           focusContextOnMap(eventId);
         }}
       />
-      <div className="pointer-events-none absolute inset-x-3 top-[calc(max(0.5rem,env(safe-area-inset-top))+3.25rem)] z-20 sm:inset-x-auto sm:left-auto sm:right-3 sm:max-w-[min(100%,22rem)]">
-        <div className="pointer-events-auto">
-          <ExperienceBridgeInviteTopChip
-            invites={pendingBridgeInvites}
-            onOpenInbox={() => setBridgeInboxOpen(true)}
-          />
-        </div>
-      </div>
-      <ExperienceBridgeInviteInboxSheet
-        open={bridgeInboxOpen}
-        onOpenChange={setBridgeInboxOpen}
-        invites={pendingBridgeInvites}
-        onAccepted={(eventId) => {
+      <GlobeInboxSheet
+        open={globeInboxOpen}
+        onOpenChange={setGlobeInboxOpen}
+        bridgeInvites={pendingBridgeInvites}
+        locationConfirms={locationConfirms}
+        onBridgeAccepted={(eventId) => {
           dismissInvite(eventId);
           void refreshBridgeInvites();
-          setBridgeInboxOpen(false);
+          setGlobeInboxOpen(false);
           focusContextByEventId(eventId, { openSheet: true });
         }}
-        onDeclined={(eventId) => {
+        onBridgeDeclined={(eventId) => {
           dismissInvite(eventId);
           void refreshBridgeInvites();
+        }}
+        onLocationConfirmed={(eventId) => {
+          dismissLocationConfirm(eventId);
+          refreshLocationConfirms();
+        }}
+        onLocationDismissed={(eventId) => {
+          dismissLocationConfirm(eventId);
         }}
       />
       <PinOpenSheet
@@ -708,11 +731,6 @@ function GlobeHomeBody() {
           }
         }}
       />
-      <div className="pointer-events-none absolute inset-x-3 bottom-[var(--rimvio-globe-ingest-offset)] z-20 sm:inset-x-auto sm:right-3 sm:max-w-[280px] lg:bottom-[calc(var(--rimvio-globe-ingest-bar-height)+1.25rem)]">
-        <div className="pointer-events-auto">
-          <GlobeLocationConfirmCard />
-        </div>
-      </div>
       <ExperienceBridgeGhostSheet
         open={bridgeGhostOpen}
         onOpenChange={setBridgeGhostOpen}
