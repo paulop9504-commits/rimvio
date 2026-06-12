@@ -155,7 +155,17 @@ export const copy = {
     bridgeInviteDeclineFail: "거절하지 못했어요",
     bridgeInviteDismissAria: "나중에",
     bridgeInviteToast: (host: string, title: string) =>
-      `${host}님이 「${title}」 경험을 공유했어요 · 지도에서 확인`,
+      `${host}님이 「${title}」 경험을 공유했어요 · 수신함에서 확인`,
+    bridgeInviteInboxTitle: "공유 받은 맥락",
+    bridgeInviteInboxSubtitle: "수락하면 내 지도에도 같은 핀이 생겨요",
+    bridgeInviteInboxEmpty: "받은 공유 요청이 없어요",
+    bridgeInviteInboxChip: (n: number) => `공유 요청 ${n}건`,
+    bridgeInviteInboxChipHint: "탭해서 수락 · 거절",
+    bridgeShareSectionTitle: "친구에게 공유",
+    bridgeShareSectionHint: "프로필을 누르면 초대가 바로 가요",
+    bridgeShareSent: (name: string) => `${name}님에게 초대를 보냈어요`,
+    bridgeShareFail: "초대를 보내지 못했어요",
+    bridgeShareLoginRequired: "로그인하면 친구에게 공유할 수 있어요",
     bridgeGhostSheetBody:
       "수락하면 내 지구본에도 같은 핀이 생겨요 · 거절하면 사라져요",
     bridgeGhostAcceptCta: "내 지도에 남기기",

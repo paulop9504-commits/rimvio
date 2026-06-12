@@ -15,7 +15,7 @@ export type PendingBridgeInvite = {
   invite: ExperienceBridgeParticipant;
 };
 
-const POLL_MS = 45_000;
+const POLL_MS = 12_000;
 
 export function usePendingBridgeInvites(enabled = true) {
   const { user, configured } = useAuth();
@@ -48,13 +48,15 @@ export function usePendingBridgeInvites(enabled = true) {
     if (!remote) {
       return;
     }
-    const onFocus = () => void refresh();
-    window.addEventListener("focus", onFocus);
-    window.addEventListener(EXPERIENCE_BRIDGE_UPDATED, onFocus);
+    const onRefresh = () => void refresh();
+    window.addEventListener("focus", onRefresh);
+    document.addEventListener("visibilitychange", onRefresh);
+    window.addEventListener(EXPERIENCE_BRIDGE_UPDATED, onRefresh);
     const timer = window.setInterval(() => void refresh(), POLL_MS);
     return () => {
-      window.removeEventListener("focus", onFocus);
-      window.removeEventListener(EXPERIENCE_BRIDGE_UPDATED, onFocus);
+      window.removeEventListener("focus", onRefresh);
+      document.removeEventListener("visibilitychange", onRefresh);
+      window.removeEventListener(EXPERIENCE_BRIDGE_UPDATED, onRefresh);
       window.clearInterval(timer);
     };
   }, [remote, refresh]);

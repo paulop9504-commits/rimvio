@@ -13,7 +13,10 @@ import { GlobeContextListSheet } from "@/components/globe/globe-context-list-she
 import { GlobeContextManageSheet } from "@/components/globe/globe-context-manage-sheet";
 import { GlobeContextStackPicker } from "@/components/globe/globe-context-stack-picker";
 import { GlobeCreateContextSheet } from "@/components/globe/globe-create-context-sheet";
-import { ExperienceBridgeInviteBanner } from "@/components/globe/experience-bridge-invite-banner";
+import {
+  ExperienceBridgeInviteInboxSheet,
+  ExperienceBridgeInviteTopChip,
+} from "@/components/globe/experience-bridge-invite-inbox-sheet";
 import { ExperienceBridgeGhostSheet } from "@/components/globe/experience-bridge-ghost-sheet";
 import { GlobeSettingsSheet } from "@/components/globe/globe-settings-sheet";
 import { GlobeLocationConfirmCard } from "@/components/globe/globe-location-confirm-card";
@@ -85,6 +88,7 @@ function GlobeHomeBody() {
   const [bridgeGhostCluster, setBridgeGhostCluster] = useState<PinCluster | null>(
     null,
   );
+  const [bridgeInboxOpen, setBridgeInboxOpen] = useState(false);
   const [activeCluster, setActiveCluster] = useState<PinCluster | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [timeFilter, setTimeFilter] = useState<GlobeContextTimeFilter>("all");
@@ -315,6 +319,12 @@ function GlobeHomeBody() {
         host?.displayName?.trim() || copy.globe.bridgeInviteHostFallback;
       toast.message(
         copy.globe.bridgeInviteToast(hostName, invite.state.bridge.title),
+        {
+          action: {
+            label: "수신함",
+            onClick: () => setBridgeInboxOpen(true),
+          },
+        },
       );
     }
   }, [pendingBridgeInvites]);
@@ -610,17 +620,27 @@ function GlobeHomeBody() {
       />
       <div className="pointer-events-none absolute inset-x-3 top-[calc(max(0.5rem,env(safe-area-inset-top))+3.25rem)] z-20 sm:inset-x-auto sm:left-auto sm:right-3 sm:max-w-[min(100%,22rem)]">
         <div className="pointer-events-auto">
-          <ExperienceBridgeInviteBanner
+          <ExperienceBridgeInviteTopChip
             invites={pendingBridgeInvites}
-            onAccepted={(eventId) => {
-              dismissInvite(eventId);
-              void refreshBridgeInvites();
-              focusContextByEventId(eventId, { openSheet: true });
-            }}
-            onDismiss={dismissInvite}
+            onOpenInbox={() => setBridgeInboxOpen(true)}
           />
         </div>
       </div>
+      <ExperienceBridgeInviteInboxSheet
+        open={bridgeInboxOpen}
+        onOpenChange={setBridgeInboxOpen}
+        invites={pendingBridgeInvites}
+        onAccepted={(eventId) => {
+          dismissInvite(eventId);
+          void refreshBridgeInvites();
+          setBridgeInboxOpen(false);
+          focusContextByEventId(eventId, { openSheet: true });
+        }}
+        onDeclined={(eventId) => {
+          dismissInvite(eventId);
+          void refreshBridgeInvites();
+        }}
+      />
       <PinOpenSheet
         open={sheetOpen}
         onOpenChange={onSheetOpenChange}

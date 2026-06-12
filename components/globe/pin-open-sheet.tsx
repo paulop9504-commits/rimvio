@@ -12,6 +12,7 @@ import {
 } from "@/components/globe/pin-context-field-sheet";
 import { PinContextTappableField } from "@/components/globe/pin-context-tappable-field";
 import { GlobeContextPhotoButton } from "@/components/globe/globe-context-photo-button";
+import { GlobeContextShareFriendsPanel } from "@/components/globe/globe-context-share-friends-panel";
 import { GlobeContextMediaShortsReel } from "@/components/globe/globe-context-media-shorts-reel";
 import { patchExperiencePinContext } from "@/lib/globe/patch-experience-pin-context";
 import { isGlobeManualContextEvent } from "@/lib/events/event-lifecycle";
@@ -216,6 +217,16 @@ export function PinOpenSheet({
 
   const openMomentItemId = moments[0]?.spatialItemId ?? null;
 
+  const shareEvent = useMemo(() => {
+    if (event) {
+      return event;
+    }
+    if (!cluster?.eventId) {
+      return null;
+    }
+    return recoverGlobeContextEventFromPin(cluster.eventId);
+  }, [event, cluster?.eventId]);
+
   const openExperienceRoom = () => {
     if (!conversation?.peerThreadId || !event || !hero) {
       return;
@@ -308,6 +319,9 @@ export function PinOpenSheet({
                           onOpenRoom={openExperienceRoom}
                         />
                       ) : null}
+                      {shareEvent ? (
+                        <GlobeContextShareFriendsPanel event={shareEvent} />
+                      ) : null}
                       <EvidenceList rows={evidence} />
                     </section>
                   </div>
@@ -391,6 +405,9 @@ export function PinOpenSheet({
                     conversation={conversation}
                     onOpenRoom={openExperienceRoom}
                   />
+                ) : null}
+                {shareEvent ? (
+                  <GlobeContextShareFriendsPanel event={shareEvent} />
                 ) : null}
                 <EvidenceList rows={evidence} />
                 {opened && volume ? (
