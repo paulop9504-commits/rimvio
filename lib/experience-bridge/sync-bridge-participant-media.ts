@@ -1,50 +1,68 @@
 "use client";
 
 import { fetchExperienceBridgeRemote } from "@/lib/experience-bridge/experience-bridge-client";
-import { EXPERIENCE_BRIDGE_META_KEYS } from "@/lib/experience-bridge/constants";
-import { readLocalBridgeState } from "@/lib/experience-bridge/local-bridge-store";
 import {
   mergeBridgeContributionsIntoEvent,
   mergeBridgeRemoteCaptureUrls,
 } from "@/lib/experience-bridge/merge-bridge-shared-media";
+import type { ExperienceBridgeContribution } from "@/lib/experience-bridge/experience-bridge-types";
+import { resolveAppOrigin } from "@/lib/auth/redirect-url";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 
-function isBridgeLinkedEvent(eventId: string): boolean {
-  const key = eventId.trim();
-  if (!key) {
-    return false;
+async function fetchBridgeContributionsRemote(
+  eventId: string,
+): Promise<ExperienceBridgeContribution[]> {
+  const endpoint = `${resolveAppOrigin()}/api/experience-bridge/${encodeURIComponent(eventId)}/contributions`;
+  const response = await fetch(endpoint, { credentials: "include" });
+  if (!response.ok) {
+    return [];
   }
-  if (readLocalBridgeState(key)) {
-    return true;
-  }
-  const event = findLifeEventCandidate(key);
-  if (!event) {
-    return false;
-  }
-  if (event.metadata?.experienceBridgeParticipant === true) {
-    return true;
-  }
-  return typeof event.metadata?.[EXPERIENCE_BRIDGE_META_KEYS.bridgeId] === "string";
+  const body = (await response.json()) as {
+    contributions?: ExperienceBridgeContribution[];
+  };
+  return body.contributions ?? [];
 }
 
-/** Bridge pin open — merge snapshot urls + other members' contributions. */
+/** Bridge pin open — merge snapshot urls + all members' contributions from server. */
 export async function syncBridgeSharedMediaFromRemote(
   eventId: string,
   viewerUserId?: string | null,
 ): Promise<EventCandidate | null> {
   const key = eventId.trim();
-  if (!key || !isBridgeLinkedEvent(key)) {
+  if (!key) {
     return null;
   }
 
-  const local = findLifeEventCandidate(key);
-  const remote = await fetchExperienceBridgeRemote(key);
+  let remote: Awaited<ReturnType<typeof fetchExperienceBridgeRemote>>;
+  try {
+    remote = await fetchExperienceBridgeRemote(key);
+  } catch {
+    return null;
+  }
+
   if (!remote.state?.bridge.eventSnapshot) {
     return null;
   }
 
-  let event = local ?? remote.state.bridge.eventSnapshot;
+  const local = findLifeEventCandidate(key);
+  const viewerId = viewerUserId?.trim() || null;
+  if (local && viewerId && viewerId === remote.state.bridge.hostUserId) {
+    stampBridgeEventMetadata({
+      event: local,
+      bridge: remote.state.bridge,
+      role: "host",
+    });
+  }
+
+  let contributions = remote.contributions ?? [];
+  if (contributions.length === 0) {
+    contributions = await fetchBridgeContributionsRemote(key);
+  }
+
+  const localAfterStamp = findLifeEventCandidate(key);
+  let event = localAfterStamp ?? remote.state.bridge.eventSnapshot;
+
   const urlMerged = mergeBridgeRemoteCaptureUrls({
     event,
     remoteEvent: remote.state.bridge.eventSnapshot,
@@ -55,7 +73,7 @@ export async function syncBridgeSharedMediaFromRemote(
 
   const contributionMerged = mergeBridgeContributionsIntoEvent({
     event,
-    contributions: remote.contributions ?? [],
+    contributions,
     viewerUserId,
   });
   if (contributionMerged) {

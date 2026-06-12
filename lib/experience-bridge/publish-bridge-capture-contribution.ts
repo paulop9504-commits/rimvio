@@ -2,34 +2,10 @@
 
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import type { FeedCaptureFragment } from "@/lib/feed/feed-capture-types";
-import { readFeedCaptureFragments } from "@/lib/feed/feed-capture-metadata";
 import { resolveAppOrigin } from "@/lib/auth/redirect-url";
-import { EXPERIENCE_BRIDGE_META_KEYS } from "@/lib/experience-bridge/constants";
-import { readLocalBridgeState } from "@/lib/experience-bridge/local-bridge-store";
+import { isBridgeLinkedEventId } from "@/lib/experience-bridge/stamp-bridge-event-metadata";
 import { uploadBridgeCaptureBlob } from "@/lib/experience-bridge/upload-bridge-capture-blob";
-import { findLifeEventCandidate } from "@/lib/life-read-model";
-
-function isBridgeLinkedEvent(eventId: string): boolean {
-  const key = eventId.trim();
-  if (!key) {
-    return false;
-  }
-  if (readLocalBridgeState(key)) {
-    return true;
-  }
-  const event = findLifeEventCandidate(key);
-  if (!event) {
-    return false;
-  }
-  if (event.metadata?.experienceBridgeParticipant === true) {
-    return true;
-  }
-  if (typeof event.metadata?.[EXPERIENCE_BRIDGE_META_KEYS.bridgeId] === "string") {
-    return true;
-  }
-  const participants = event.metadata?.experienceBridgeParticipants;
-  return Array.isArray(participants) && participants.length > 0;
-}
+import { readFeedCaptureFragments } from "@/lib/feed/feed-capture-metadata";
 
 async function postBridgeContribution(input: {
   eventId: string;
@@ -58,7 +34,7 @@ export async function publishBridgeCaptureContribution(input: {
   authorDisplayName?: string;
 }): Promise<void> {
   const eventId = input.eventId.trim();
-  if (!eventId || !isBridgeLinkedEvent(eventId)) {
+  if (!eventId || !isBridgeLinkedEventId(eventId)) {
     return;
   }
   if (input.fragment.kind !== "photo" && input.fragment.kind !== "video") {
@@ -78,9 +54,10 @@ export async function publishBridgeCaptureContribution(input: {
       eventId,
       capture: input.fragment,
     });
-    if (mediaUrl) {
-      capture = { ...capture, url: mediaUrl };
+    if (!mediaUrl) {
+      throw new Error("공유 사진 업로드에 실패했어요. 다시 시도해 주세요.");
     }
+    capture = { ...capture, url: mediaUrl };
   }
 
   await postBridgeContribution({ eventId, capture });
@@ -93,7 +70,7 @@ export async function publishBridgeEventCaptureContributions(input: {
   onlyCaptureIds?: readonly string[];
 }): Promise<void> {
   const eventId = input.event.id.trim();
-  if (!eventId || !isBridgeLinkedEvent(eventId)) {
+  if (!eventId || !isBridgeLinkedEventId(eventId)) {
     return;
   }
 

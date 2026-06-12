@@ -347,7 +347,17 @@ export function PinOpenSheet({
                     eventId={cluster.eventId}
                     eventTitle={hero.title}
                     variant="secondary"
-                    onIngested={() => setRevision((value) => value + 1)}
+                    onIngested={() => {
+                      setRevision((value) => value + 1);
+                      const eventId = cluster.eventId.trim();
+                      void syncBridgeSharedMediaFromRemote(eventId, user?.id).then(
+                        (merged) => {
+                          if (merged) {
+                            setRevision((value) => value + 1);
+                          }
+                        },
+                      );
+                    }}
                   />
                   <button
                     type="button"
