@@ -44,6 +44,7 @@ export function useGlobeInbox(enabled = true) {
   const [dismissedLocationIds, setDismissedLocationIds] = useState<
     readonly string[]
   >(() => readDismissedLocationIds());
+  const [locationRevision, setLocationRevision] = useState(0);
 
   useEffect(() => {
     const bump = () => setLocationRevision((value) => value + 1);
