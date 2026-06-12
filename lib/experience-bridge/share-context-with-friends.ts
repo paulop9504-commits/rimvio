@@ -3,6 +3,7 @@ import {
   bootstrapExperienceBridgeRemote,
   inviteExperienceBridgeRemote,
 } from "@/lib/experience-bridge/experience-bridge-client";
+import { hydrateBridgeEventSnapshotForShare } from "@/lib/experience-bridge/hydrate-bridge-event-snapshot";
 import { writeLocalBridgeState } from "@/lib/experience-bridge/local-bridge-store";
 
 export type GlobeContextShareFriend = {
@@ -25,8 +26,9 @@ export async function shareGlobeContextWithFriends(input: {
   }
 
   const primaryThreadId = friends[0]!.peerThreadId.trim();
+  const shareEvent = await hydrateBridgeEventSnapshotForShare(input.event);
   const bootstrap = await bootstrapExperienceBridgeRemote({
-    event: input.event,
+    event: shareEvent,
     peerThreadId: primaryThreadId,
     hostDisplayName: input.hostDisplayName,
   });
@@ -36,7 +38,7 @@ export async function shareGlobeContextWithFriends(input: {
   for (const friend of friends) {
     const result = await inviteExperienceBridgeRemote({
       eventId: input.event.id,
-      event: input.event,
+      event: shareEvent,
       peerThreadId: friend.peerThreadId,
       hostDisplayName: input.hostDisplayName,
       participantUserId: friend.userId,

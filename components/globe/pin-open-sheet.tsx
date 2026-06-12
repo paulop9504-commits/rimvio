@@ -46,6 +46,7 @@ import { projectContextMediaReel } from "@/lib/globe/project-context-media-reel"
 import { projectTripLegBar } from "@/lib/globe/project-trip-leg-arcs";
 import { projectExperienceRoom } from "@/lib/experience-room/project-experience-room";
 import { projectRepresentativeMoments } from "@/lib/globe/project-representative-moments";
+import { syncBridgeParticipantMediaFromRemote } from "@/lib/experience-bridge/sync-bridge-participant-media";
 import { MEDIA_SPACETIME_UPDATED, hydrateMediaContextStore } from "@/lib/location-ping/media-context-store";
 import {
   EVENT_CANDIDATES_UPDATED,
@@ -86,6 +87,18 @@ export function PinOpenSheet({
     }
     void hydrateMediaContextStore().then(() => setRevision((value) => value + 1));
   }, [open]);
+
+  useEffect(() => {
+    const eventId = cluster?.eventId?.trim();
+    if (!open || !eventId) {
+      return;
+    }
+    void syncBridgeParticipantMediaFromRemote(eventId).then((merged) => {
+      if (merged) {
+        setRevision((value) => value + 1);
+      }
+    });
+  }, [open, cluster?.eventId]);
 
   useEffect(() => {
     if (!open) {

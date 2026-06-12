@@ -54,6 +54,47 @@ export async function saveMediaBlob(id: string, file: File): Promise<void> {
   memoryUrls.set(key, URL.createObjectURL(file));
 }
 
+async function readMediaBlobRow(
+  id: string,
+): Promise<{ blob: Blob; mimeType?: string } | null> {
+  const key = id.trim();
+  if (!key) {
+    return null;
+  }
+
+  try {
+    const db = await openDb();
+    if (!db) {
+      return null;
+    }
+
+    const row = await new Promise<{ blob: Blob; mimeType?: string } | null>(
+      (resolve, reject) => {
+        const tx = db.transaction(STORE, "readonly");
+        const request = tx.objectStore(STORE).get(key);
+        request.onsuccess = () =>
+          resolve(
+            (request.result as { blob: Blob; mimeType?: string } | undefined) ??
+              null,
+          );
+        request.onerror = () => reject(request.error);
+        tx.oncomplete = () => db.close();
+        tx.onerror = () => reject(tx.error);
+      },
+    );
+
+    return row?.blob ? row : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Raw blob for server upload (Experience Bridge share). */
+export async function readMediaBlob(id: string): Promise<Blob | null> {
+  const row = await readMediaBlobRow(id);
+  return row?.blob ?? null;
+}
+
 export async function readMediaBlobUrl(id: string): Promise<string | null> {
   const key = id.trim();
   if (!key) {
@@ -65,32 +106,14 @@ export async function readMediaBlobUrl(id: string): Promise<string | null> {
     return cached;
   }
 
-  try {
-    const db = await openDb();
-    if (!db) {
-      return null;
-    }
-
-    const row = await new Promise<{ blob: Blob } | null>((resolve, reject) => {
-      const tx = db.transaction(STORE, "readonly");
-      const request = tx.objectStore(STORE).get(key);
-      request.onsuccess = () =>
-        resolve((request.result as { blob: Blob } | undefined) ?? null);
-      request.onerror = () => reject(request.error);
-      tx.oncomplete = () => db.close();
-      tx.onerror = () => reject(tx.error);
-    });
-
-    if (!row?.blob) {
-      return null;
-    }
-
-    const url = URL.createObjectURL(row.blob);
-    memoryUrls.set(key, url);
-    return url;
-  } catch {
+  const row = await readMediaBlobRow(key);
+  if (!row?.blob) {
     return null;
   }
+
+  const url = URL.createObjectURL(row.blob);
+  memoryUrls.set(key, url);
+  return url;
 }
 
 export function parseUploadMediaContextId(itemId: string): string | null {
