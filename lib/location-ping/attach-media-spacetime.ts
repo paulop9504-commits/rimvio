@@ -16,6 +16,7 @@ import {
   isHistoricalCaptureMs,
   resolveCaptureSpacetime,
 } from "@/lib/location-ping/resolve-capture-spacetime";
+import { prepareShareVideoFile } from "@/lib/media/share-video-compress/prepare-share-video-file";
 import type {
   MediaSpacetimeContext,
   MediaSpacetimeOrigin,
@@ -63,6 +64,8 @@ export async function attachMediaSpacetime(input: {
   originRef?: string | null;
   /** Stable id for album-sync dedupe (`album-{mediaStoreId}`). */
   stableContextId?: string | null;
+  /** Video compress / ffmpeg load — toast hook. */
+  onFilePrepare?: (message: string) => void;
 }): Promise<MediaSpacetimeContext> {
   const stableId = input.stableContextId?.trim();
   if (stableId) {
@@ -106,8 +109,29 @@ export async function attachMediaSpacetime(input: {
     attachedAtIso: new Date().toISOString(),
   };
 
+  let storeFile = input.file;
+  if (context.mediaKind === "video") {
+    storeFile = await prepareShareVideoFile({
+      file: input.file,
+      onProgress: (progress) => {
+        if (progress.phase === "loading") {
+          input.onFilePrepare?.("동영상 준비 중…");
+          return;
+        }
+        const pct =
+          progress.ratio != null ? Math.round(progress.ratio * 100) : null;
+        input.onFilePrepare?.(
+          pct != null ? `동영상 압축 중… ${pct}%` : "동영상 압축 중…",
+        );
+      },
+    });
+    if (storeFile.name && storeFile.name !== context.fileName) {
+      context.fileName = storeFile.name;
+    }
+  }
+
   await saveMediaSpacetimeContext(context);
-  await saveMediaBlob(context.id, input.file);
+  await saveMediaBlob(context.id, storeFile);
 
   if (resolved.lat !== null && resolved.lng !== null) {
     const label = placeLabel ?? "업로드한 사진";

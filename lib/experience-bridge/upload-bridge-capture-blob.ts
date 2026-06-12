@@ -3,6 +3,8 @@
 import type { FeedCaptureFragment } from "@/lib/feed/feed-capture-types";
 import { resolveAppOrigin } from "@/lib/auth/redirect-url";
 import { isUsableBridgeMediaUrl } from "@/lib/experience-bridge/bridge-media-url";
+import { prepareShareVideoFile } from "@/lib/media/share-video-compress/prepare-share-video-file";
+import { shouldCompressShareVideo } from "@/lib/media/share-video-compress/should-compress-share-video";
 import { readMediaBlob } from "@/lib/location-ping/media-blob-store";
 
 function resolveBridgeCaptureFileMeta(input: {
@@ -58,9 +60,21 @@ export async function uploadBridgeCaptureBlob(input: {
     return input.capture.url?.trim() || null;
   }
 
-  const blob = await readMediaBlob(mediaId);
+  let blob = await readMediaBlob(mediaId);
   if (!blob) {
     return input.capture.url?.trim() || null;
+  }
+
+  const isVideo =
+    input.capture.kind === "video" || blob.type.trim().toLowerCase().startsWith("video/");
+  if (isVideo) {
+    const sourceFile = new File([blob], `${input.capture.id}.mp4`, {
+      type: blob.type || "video/mp4",
+    });
+    if (shouldCompressShareVideo({ file: sourceFile, sizeBytes: blob.size })) {
+      const compressed = await prepareShareVideoFile({ file: sourceFile });
+      blob = compressed;
+    }
   }
 
   const { ext, contentType } = resolveBridgeCaptureFileMeta({

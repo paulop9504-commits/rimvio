@@ -222,11 +222,13 @@ export async function ingestGlobeContextMedia(input: {
   hintTitle?: string | null;
   /** Pin card upload — always attach to hinted context (user intent). */
   forceAttachToHint?: boolean;
+  onFilePrepare?: (message: string) => void;
 }): Promise<GlobeContextMediaIngestResult> {
   const context = await attachMediaSpacetime({
     file: input.file,
     origin: "feed_capture",
     originRef: input.hintEventId?.trim() || "globe",
+    onFilePrepare: input.onFilePrepare,
   });
 
   const target = resolveGlobePhotoTarget({
@@ -316,6 +318,7 @@ export async function ingestGlobeContextMediaBulk(input: {
   hintTitle?: string | null;
   forceAttachToHint?: boolean;
   onProgress?: (done: number, total: number) => void;
+  onFilePrepare?: (message: string) => void;
 }): Promise<
   GlobeBulkMediaIngestSummary & { outcomes: GlobeContextMediaIngestResult[] }
 > {
@@ -336,6 +339,7 @@ export async function ingestGlobeContextMediaBulk(input: {
         hintEventId: input.hintEventId,
         hintTitle: input.hintTitle,
         forceAttachToHint: input.forceAttachToHint,
+        onFilePrepare: input.onFilePrepare,
       });
       outcomes.push(outcome);
       lastEventId = outcome.result.event.id;

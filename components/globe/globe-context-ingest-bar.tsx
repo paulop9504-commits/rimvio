@@ -91,6 +91,9 @@ export function GlobeContextIngestBar({
               });
             }
           },
+          onFilePrepare: (line) => {
+            toast.loading(line, { id: toastId });
+          },
         });
         if (summary.succeeded === 0) {
           toast.error(summary.toastLine, { id: toastId });
