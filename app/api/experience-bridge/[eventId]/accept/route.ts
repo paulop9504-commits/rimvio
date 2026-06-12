@@ -6,7 +6,7 @@ import {
 } from "@/lib/experience-bridge";
 import {
   fetchExperienceBridgeState,
-  upsertBridgeParticipantRow,
+  updateBridgeParticipantRow,
 } from "@/lib/experience-bridge/server-bridge-store";
 import { extractErrorMessage } from "@/lib/peer-chat/extract-error-message";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
@@ -45,7 +45,7 @@ export async function POST(_request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Accept failed." }, { status: 500 });
     }
 
-    await upsertBridgeParticipantRow(supabase, key, accepted);
+    await updateBridgeParticipantRow(supabase, key, accepted);
 
     const pinSpec = {
       bridge: next.bridge,

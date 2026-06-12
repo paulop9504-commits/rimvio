@@ -3,7 +3,7 @@ import { requireAuthUser } from "@/lib/auth/api-auth";
 import { leaveBridgeExperience } from "@/lib/experience-bridge";
 import {
   fetchExperienceBridgeState,
-  upsertBridgeParticipantRow,
+  updateBridgeParticipantRow,
 } from "@/lib/experience-bridge/server-bridge-store";
 import { extractErrorMessage } from "@/lib/peer-chat/extract-error-message";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
@@ -39,7 +39,7 @@ export async function POST(_request: NextRequest, context: RouteContext) {
     const next = leaveBridgeExperience(state, { userId });
     const left = next.participants.find((row) => row.userId === userId);
     if (left) {
-      await upsertBridgeParticipantRow(supabase, key, left);
+      await updateBridgeParticipantRow(supabase, key, left);
     }
 
     return NextResponse.json({ state: next, left: true });

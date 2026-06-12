@@ -3,7 +3,7 @@ import { requireAuthUser } from "@/lib/auth/api-auth";
 import { declineBridgeInvite } from "@/lib/experience-bridge";
 import {
   fetchExperienceBridgeState,
-  upsertBridgeParticipantRow,
+  updateBridgeParticipantRow,
 } from "@/lib/experience-bridge/server-bridge-store";
 import { extractErrorMessage } from "@/lib/peer-chat/extract-error-message";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
@@ -39,7 +39,7 @@ export async function POST(_request: NextRequest, context: RouteContext) {
     const next = declineBridgeInvite(state, { userId });
     const declined = next.participants.find((row) => row.userId === userId);
     if (declined) {
-      await upsertBridgeParticipantRow(supabase, key, declined);
+      await updateBridgeParticipantRow(supabase, key, declined);
     }
 
     return NextResponse.json({ state: next });

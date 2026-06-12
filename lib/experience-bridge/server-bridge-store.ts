@@ -197,6 +197,35 @@ export async function upsertBridgeParticipantRow(
   }
 }
 
+/** Invitee accept/decline — update existing pending row (avoid insert RLS). */
+export async function updateBridgeParticipantRow(
+  supabase: SupabaseClient,
+  bridgeEventId: string,
+  participant: ExperienceBridgeParticipant,
+): Promise<void> {
+  const { data, error } = await supabase
+    .from("experience_bridge_participants")
+    .update({
+      display_name: participant.displayName,
+      role: participant.role,
+      status: participant.status,
+      invited_at: participant.invitedAtIso,
+      joined_at: participant.joinedAtIso ?? null,
+      left_at: participant.leftAtIso ?? null,
+    })
+    .eq("bridge_event_id", bridgeEventId)
+    .eq("user_id", participant.userId)
+    .select("user_id")
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+  if (!data) {
+    throw new Error("participant_row_missing");
+  }
+}
+
 export async function listPendingBridgeInvitesForUser(
   supabase: SupabaseClient,
   userId: string,

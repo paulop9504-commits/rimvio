@@ -62,23 +62,27 @@ function useGlobeEventSnapshot() {
   const [eventsById, setEventsById] = useState<ReadonlyMap<string, EventCandidate>>(
     () => new Map<string, EventCandidate>(),
   );
+  const [personalPinRevision, setPersonalPinRevision] = useState(0);
 
   useEffect(() => {
     ensureGlobeDemoEvents();
-    const refresh = () => {
+    const refreshEvents = () => {
       setEventsById(indexEventsById(listLifeEventCandidates()));
       setReady(true);
     };
-    refresh();
-    window.addEventListener(EVENT_CANDIDATES_UPDATED, refresh);
-    window.addEventListener(PERSONAL_GLOBE_PINS_UPDATED, refresh);
+    const refreshPersonalPins = () => {
+      setPersonalPinRevision((value) => value + 1);
+    };
+    refreshEvents();
+    window.addEventListener(EVENT_CANDIDATES_UPDATED, refreshEvents);
+    window.addEventListener(PERSONAL_GLOBE_PINS_UPDATED, refreshPersonalPins);
     return () => {
-      window.removeEventListener(EVENT_CANDIDATES_UPDATED, refresh);
-      window.removeEventListener(PERSONAL_GLOBE_PINS_UPDATED, refresh);
+      window.removeEventListener(EVENT_CANDIDATES_UPDATED, refreshEvents);
+      window.removeEventListener(PERSONAL_GLOBE_PINS_UPDATED, refreshPersonalPins);
     };
   }, []);
 
-  return { ready, eventsById };
+  return { ready, eventsById, personalPinRevision };
 }
 
 export type RimvioGlobeHubHandle = {
@@ -394,7 +398,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
   onDetailLevelChange,
   bridgeGhostClusters,
 }: RimvioGlobeHubProps) {
-  const { ready, eventsById } = useGlobeEventSnapshot();
+  const { ready, eventsById, personalPinRevision } = useGlobeEventSnapshot();
   const { graph } = useExperienceGraph(ready ? eventsById : undefined);
   const recallOpenedRef = useRef(false);
 
@@ -411,7 +415,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
         matchesGlobeContextTimeFilter(cluster.startedAtIso, timeFilter) &&
         matchesGlobeContextPeopleFilter(cluster.eventId, peopleFilter, eventsById),
     );
-  }, [ready, graph.volumes, eventsById, timeFilter, peopleFilter]);
+  }, [ready, graph.volumes, eventsById, personalPinRevision, timeFilter, peopleFilter]);
 
   const displayClusters = useMemo(() => {
     const ghosts = bridgeGhostClusters ?? [];
