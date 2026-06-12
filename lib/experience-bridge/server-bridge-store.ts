@@ -103,17 +103,22 @@ export async function upsertExperienceBridge(
   },
 ): Promise<ExperienceBridgeState> {
   const { bridge, hostParticipant } = input;
+  const peerThreadId = await resolveBridgePeerThreadIdForUpsert(
+    supabase,
+    bridge.peerThreadId,
+  );
+  const bridgeRow = { ...bridge, peerThreadId };
 
   const { error: bridgeError } = await supabase.from("experience_bridges").upsert(
     {
-      event_id: bridge.eventId,
-      host_user_id: bridge.hostUserId,
-      peer_thread_id: bridge.peerThreadId,
-      title: bridge.title,
-      place_label: bridge.placeLabel,
-      lat: bridge.lat,
-      lng: bridge.lng,
-      event_snapshot: bridge.eventSnapshot as unknown as Record<string, unknown>,
+      event_id: bridgeRow.eventId,
+      host_user_id: bridgeRow.hostUserId,
+      peer_thread_id: bridgeRow.peerThreadId,
+      title: bridgeRow.title,
+      place_label: bridgeRow.placeLabel,
+      lat: bridgeRow.lat,
+      lng: bridgeRow.lng,
+      event_snapshot: bridgeRow.eventSnapshot as unknown as Record<string, unknown>,
     },
     { onConflict: "event_id" },
   );
@@ -149,6 +154,25 @@ export async function upsertExperienceBridge(
   return state;
 }
 
+async function resolveBridgePeerThreadIdForUpsert(
+  supabase: SupabaseClient,
+  peerThreadId: string | null | undefined,
+): Promise<string | null> {
+  const key = peerThreadId?.trim();
+  if (!key) {
+    return null;
+  }
+  const { data, error } = await supabase
+    .from("peer_threads")
+    .select("id")
+    .eq("id", key)
+    .maybeSingle();
+  if (error) {
+    throw error;
+  }
+  return data?.id ?? null;
+}
+
 export async function upsertBridgeParticipantRow(
   supabase: SupabaseClient,
   bridgeEventId: string,
@@ -182,9 +206,9 @@ export async function listPendingBridgeInvitesForUser(
     invite: ExperienceBridgeParticipant;
   }>
 > {
-  const { data: rows, error } = await supabase
+  const { data: pendingRows, error } = await supabase
     .from("experience_bridge_participants")
-    .select("bridge_event_id")
+    .select("*")
     .eq("user_id", userId)
     .eq("status", "pending")
     .order("invited_at", { ascending: false });
@@ -192,26 +216,68 @@ export async function listPendingBridgeInvitesForUser(
   if (error) {
     throw error;
   }
+  if (!pendingRows?.length) {
+    return [];
+  }
+
+  const eventIds = [
+    ...new Set(
+      pendingRows
+        .map((row) => row.bridge_event_id as string)
+        .filter((id) => id.trim()),
+    ),
+  ];
+
+  const { data: bridgeRows, error: bridgeError } = await supabase
+    .from("experience_bridges")
+    .select("*")
+    .in("event_id", eventIds);
+
+  if (bridgeError) {
+    throw bridgeError;
+  }
+
+  const bridgeByEventId = new Map(
+    (bridgeRows ?? []).map((row) => [row.event_id as string, row as BridgeRow]),
+  );
+
+  const { data: participantRows, error: participantError } = await supabase
+    .from("experience_bridge_participants")
+    .select("*")
+    .in("bridge_event_id", eventIds);
+
+  if (participantError) {
+    throw participantError;
+  }
+
+  const participantsByEvent = new Map<string, ExperienceBridgeParticipant[]>();
+  for (const row of participantRows ?? []) {
+    const eventId = row.bridge_event_id as string;
+    const list = participantsByEvent.get(eventId) ?? [];
+    list.push(rowToParticipant(row as ParticipantRow));
+    participantsByEvent.set(eventId, list);
+  }
 
   const out: Array<{
     state: ExperienceBridgeState;
     invite: ExperienceBridgeParticipant;
   }> = [];
 
-  for (const row of rows ?? []) {
-    const state = await fetchExperienceBridgeState(
-      supabase,
-      row.bridge_event_id as string,
-    );
-    if (!state) {
+  for (const row of pendingRows) {
+    const eventId = row.bridge_event_id as string;
+    const bridgeRow = bridgeByEventId.get(eventId);
+    if (!bridgeRow) {
       continue;
     }
-    const invite = state.participants.find(
-      (p) => p.userId === userId && p.status === "pending",
-    );
-    if (invite) {
-      out.push({ state, invite });
-    }
+    const invite = rowToParticipant(row as ParticipantRow);
+    const participants = participantsByEvent.get(eventId) ?? [invite];
+    out.push({
+      state: {
+        bridge: rowToSnapshot(bridgeRow),
+        participants,
+      },
+      invite,
+    });
   }
 
   return out;

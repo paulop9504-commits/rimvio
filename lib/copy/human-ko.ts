@@ -178,6 +178,10 @@ export const copy = {
     bridgeShareSent: (name: string) => `${name}님에게 초대를 보냈어요`,
     bridgeShareFail: "초대를 보내지 못했어요",
     bridgeShareLoginRequired: "로그인하면 친구에게 공유할 수 있어요",
+    bridgeShareNeedsFriendLogin:
+      "친구도 Rimvio에 로그인해야 수신함에 초대가 보여요",
+    inboxNeedsLogin: "로그인하면 공유 요청을 받을 수 있어요",
+    inboxLoadFail: "수신함을 불러오지 못했어요 · 다시 시도해 주세요",
     bridgeGhostSheetBody:
       "수락하면 내 지구본에도 같은 핀이 생겨요 · 거절하면 사라져요",
     bridgeGhostAcceptCta: "내 지도에 남기기",

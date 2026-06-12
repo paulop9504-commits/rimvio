@@ -56,6 +56,8 @@ export type GlobeInboxSheetProps = {
   onOpenChange: (open: boolean) => void;
   bridgeInvites: readonly PendingBridgeInvite[];
   locationConfirms: readonly PendingGlobeLocationConfirm[];
+  needsLogin?: boolean;
+  loadError?: string | null;
   onBridgeAccepted?: (eventId: string) => void;
   onBridgeDeclined?: (eventId: string) => void;
   onLocationConfirmed?: (eventId: string) => void;
@@ -68,6 +70,8 @@ export function GlobeInboxSheet({
   onOpenChange,
   bridgeInvites,
   locationConfirms,
+  needsLogin = false,
+  loadError = null,
   onBridgeAccepted,
   onBridgeDeclined,
   onLocationConfirmed,
@@ -201,7 +205,17 @@ export function GlobeInboxSheet({
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
-              {empty ? (
+              {needsLogin ? (
+                <p className="rounded-2xl bg-muted/50 px-4 py-10 text-center text-[13px] leading-relaxed text-muted-foreground">
+                  {copy.globe.inboxNeedsLogin}
+                </p>
+              ) : loadError ? (
+                <p className="rounded-2xl bg-muted/50 px-4 py-10 text-center text-[13px] leading-relaxed text-muted-foreground">
+                  {copy.globe.inboxLoadFail}
+                  <br />
+                  <span className="text-[11px] opacity-80">{loadError}</span>
+                </p>
+              ) : empty ? (
                 <p className="rounded-2xl bg-muted/50 px-4 py-10 text-center text-[13px] text-muted-foreground">
                   {copy.globe.inboxEmpty}
                 </p>

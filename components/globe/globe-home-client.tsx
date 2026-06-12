@@ -81,6 +81,8 @@ function GlobeHomeBody() {
     dismissBridgeInvite: dismissInvite,
     dismissLocationConfirm,
     refreshLocationConfirms,
+    needsLogin: globeInboxNeedsLogin,
+    bridgeError: globeInboxError,
   } = useGlobeInbox(true);
   const bridgeGhostClusters = useMemo(
     () => projectBridgeGhostClusters(pendingBridgeInvites),
@@ -667,6 +669,8 @@ function GlobeHomeBody() {
         onOpenChange={setGlobeInboxOpen}
         bridgeInvites={pendingBridgeInvites}
         locationConfirms={locationConfirms}
+        needsLogin={globeInboxNeedsLogin}
+        loadError={globeInboxError}
         onBridgeAccepted={(eventId) => {
           dismissInvite(eventId);
           void refreshBridgeInvites();

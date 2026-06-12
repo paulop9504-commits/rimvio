@@ -41,7 +41,6 @@ function writeDismissedLocationIds(ids: readonly string[]) {
 export function useGlobeInbox(enabled = true) {
   const { enabled: gpsEnabled } = useGpsTrackingEnabled();
   const bridge = usePendingBridgeInvites(enabled);
-  const [locationRevision, setLocationRevision] = useState(0);
   const [dismissedLocationIds, setDismissedLocationIds] = useState<
     readonly string[]
   >(() => readDismissedLocationIds());
@@ -84,6 +83,8 @@ export function useGlobeInbox(enabled = true) {
     locationConfirms,
     totalCount,
     loading: bridge.loading,
+    bridgeError: bridge.error,
+    needsLogin: bridge.needsLogin,
     refreshBridgeInvites: bridge.refresh,
     dismissBridgeInvite: bridge.dismissInvite,
     dismissLocationConfirm,

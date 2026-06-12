@@ -179,7 +179,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const threadId = body.peerThreadId?.trim() || state.bridge.peerThreadId?.trim();
     if (threadId) {
       await assertCallerIsThreadMember(supabase, threadId, userId);
-      await assertCallerIsThreadMember(supabase, threadId, participantUserId);
     }
 
     const next = inviteBridgeParticipant(state, {

@@ -52,7 +52,10 @@ export function GlobeContextShareFriendsPanel({
       const contacts = listPeersForTalk();
       const resolved: ShareRow[] = [];
       for (const contact of contacts) {
-        const userId = await resolvePeerPartnerUserId(contact.peerThreadId);
+        const userId = await resolvePeerPartnerUserId(
+          contact.peerThreadId,
+          user.id,
+        );
         if (!userId || userId === user.id) {
           continue;
         }
@@ -136,6 +139,7 @@ export function GlobeContextShareFriendsPanel({
         });
         setInvitedUserIds((prev) => new Set([...prev, friend.userId]));
         toast.success(copy.globe.bridgeShareSent(friend.displayName));
+        toast.message(copy.globe.bridgeShareNeedsFriendLogin, { duration: 5000 });
       } catch (caught) {
         toast.error(
           caught instanceof Error ? caught.message : copy.globe.bridgeShareFail,

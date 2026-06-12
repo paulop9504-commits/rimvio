@@ -5,6 +5,7 @@ import { Loader2, UserRound } from "lucide-react";
 import { listPeersForTalk } from "@/lib/peer-chat/list-peers-for-talk";
 import { resolvePeerPartnerUserId } from "@/lib/peer-chat/resolve-peer-partner-user-id";
 import type { GlobeContextShareFriend } from "@/lib/experience-bridge/share-context-with-friends";
+import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 
 export type GlobeCreateContextShareStepProps = {
@@ -24,6 +25,7 @@ export function GlobeCreateContextShareStep({
   loading = false,
   className,
 }: GlobeCreateContextShareStepProps) {
+  const { user } = useAuth();
   const [rows, setRows] = useState<ShareRow[]>([]);
   const [fetching, setFetching] = useState(true);
 
@@ -34,7 +36,10 @@ export function GlobeCreateContextShareStep({
       const contacts = listPeersForTalk();
       const resolved: ShareRow[] = [];
       for (const contact of contacts) {
-        const userId = await resolvePeerPartnerUserId(contact.peerThreadId);
+        const userId = await resolvePeerPartnerUserId(
+          contact.peerThreadId,
+          user?.id,
+        );
         if (!userId) {
           continue;
         }
@@ -57,7 +62,7 @@ export function GlobeCreateContextShareStep({
     return () => {
       active = false;
     };
-  }, []);
+  }, [user?.id]);
 
   const sorted = useMemo(
     () =>

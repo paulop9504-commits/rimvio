@@ -23,18 +23,26 @@ export function usePendingBridgeInvites(enabled = true) {
 
   const [invites, setInvites] = useState<PendingBridgeInvite[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!enabled || !remote) {
       setInvites([]);
+      setError(null);
       return;
     }
     setLoading(true);
     try {
       const data = await fetchPendingBridgeInvitesRemote();
       setInvites(data.invites ?? []);
-    } catch {
+      setError(null);
+    } catch (caught) {
       setInvites([]);
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "공유 요청을 불러오지 못했어요",
+      );
     } finally {
       setLoading(false);
     }
@@ -68,8 +76,10 @@ export function usePendingBridgeInvites(enabled = true) {
   return {
     invites,
     loading,
+    error,
     refresh,
     dismissInvite,
     hasInvites: invites.length > 0,
+    needsLogin: enabled && configured && isSupabaseConfigured() && !user?.id,
   };
 }

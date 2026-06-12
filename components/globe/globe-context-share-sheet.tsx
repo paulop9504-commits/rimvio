@@ -97,6 +97,7 @@ export function GlobeContextShareSheet({
       });
       if (invited > 0) {
         toast.success(`${invited}명에게 초대를 보냈어요`);
+        toast.message(copy.globe.bridgeShareNeedsFriendLogin, { duration: 5000 });
         onShared?.();
         onOpenChange(false);
       }
