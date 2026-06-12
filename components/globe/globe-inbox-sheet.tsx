@@ -305,7 +305,9 @@ export function GlobeInboxSheet({
                                 {copy.globe.inboxSectionLocation}
                               </p>
                               <p className="mt-0.5 text-[14px] font-semibold text-foreground">
-                                {copy.globe.inboxLocationTitle(row.place)}
+                                {row.kind === "photo_place"
+                                  ? copy.globe.inboxPhotoPlaceTitle(row.place)
+                                  : copy.globe.inboxLocationTitle(row.place)}
                               </p>
                               <p className="mt-1 text-[12px] text-muted-foreground">
                                 {row.title}

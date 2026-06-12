@@ -143,6 +143,7 @@ export async function ingestGlobeContextFromFiles(
     separated: summary.separated,
     lastEventId: summary.lastEventId,
     toastLine: summary.toastLine,
+    lastSuggestedPlaceName: summary.lastSuggestedPlaceName,
   };
 }
 

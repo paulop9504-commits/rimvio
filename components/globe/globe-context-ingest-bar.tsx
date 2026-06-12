@@ -22,6 +22,7 @@ import {
   rimvioNavBarClass,
 } from "@/lib/brand/rimvio-neon-theme";
 import { cn } from "@/lib/utils";
+import { copy } from "@/lib/copy/human-ko";
 
 export type GlobeContextIngestBarProps = {
   className?: string;
@@ -99,7 +100,14 @@ export function GlobeContextIngestBar({
           toast.error(summary.toastLine, { id: toastId });
           return;
         }
-        toast.success(summary.toastLine, { id: toastId });
+        const suggestedPlace = summary.lastSuggestedPlaceName?.trim();
+        if (suggestedPlace) {
+          toast.success(copy.globe.inboxPhotoPlaceSuggestToast(suggestedPlace), {
+            id: toastId,
+          });
+        } else {
+          toast.success(summary.toastLine, { id: toastId });
+        }
         if (summary.lastEventId) {
           onAttached?.(summary.lastEventId);
         }

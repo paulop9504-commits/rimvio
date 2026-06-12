@@ -168,6 +168,9 @@ export const copy = {
     inboxSectionShare: "공유 받은 맥락",
     inboxSectionLocation: "위치 확인",
     inboxLocationTitle: (place: string) => `${place}에서 시간을 보낸 것 같아요`,
+    inboxPhotoPlaceTitle: (place: string) => `${place}에서 찍은 사진 같아요`,
+    inboxPhotoPlaceSuggestToast: (place: string) =>
+      `${place}? 수신함에서 확인해 주세요`,
     inboxLocationConfirm: "맞아요",
     inboxLocationDismiss: "나중에",
     inboxLocationConfirmed: "위치를 확인했어요",

@@ -11,6 +11,7 @@ import { resolveTargetEventFromSpacetime } from "@/lib/feed/resolve-target-event
 import { CONTEXT_MATCH_MIN_SCORE } from "@/lib/ingest/context-match-media-gate";
 import { scoreSpacetimeFit } from "@/lib/feed/spacetime-fit";
 import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
+import { enrichGlobePhotoPlaceAfterIngest } from "@/lib/globe/enrich-globe-photo-place-after-ingest";
 import { publishBridgeCaptureContribution } from "@/lib/experience-bridge/publish-bridge-capture-contribution";
 import { syncPersonalGlobePinFromEvent } from "@/lib/globe/sync-personal-globe-pin";
 import { attachMediaSpacetime } from "@/lib/location-ping/attach-media-spacetime";
@@ -47,6 +48,7 @@ export type GlobeContextMediaIngestResult = {
   attachedToHintedEvent: boolean;
   separated: boolean;
   toastLine: string;
+  suggestedPlaceName: string | null;
 };
 
 export type GlobeBulkMediaIngestSummary = {
@@ -57,6 +59,7 @@ export type GlobeBulkMediaIngestSummary = {
   separated: number;
   lastEventId: string | null;
   toastLine: string;
+  lastSuggestedPlaceName: string | null;
 };
 
 function captureKindFromContext(context: MediaSpacetimeContext): FeedCaptureFragment["kind"] {
@@ -269,6 +272,17 @@ export async function ingestGlobeContextMedia(input: {
     }
   });
 
+  let suggestedPlaceName: string | null = null;
+  try {
+    suggestedPlaceName = await enrichGlobePhotoPlaceAfterIngest({
+      file: input.file,
+      context,
+      eventId: result.event.id,
+    });
+  } catch {
+    // Non-blocking — photo ingest should still succeed.
+  }
+
   return {
     result,
     attachedToHintedEvent: target.attachedToHintedEvent,
@@ -279,6 +293,7 @@ export async function ingestGlobeContextMedia(input: {
       separated: target.separated,
       hintTitle: input.hintTitle,
     }),
+    suggestedPlaceName,
   };
 }
 
@@ -355,6 +370,11 @@ export async function ingestGlobeContextMediaBulk(input: {
   }
 
   const succeeded = outcomes.length;
+  const lastSuggestedPlaceName =
+    [...outcomes]
+      .reverse()
+      .find((row) => row.suggestedPlaceName?.trim())
+      ?.suggestedPlaceName?.trim() ?? null;
   return {
     total,
     succeeded,
@@ -363,6 +383,7 @@ export async function ingestGlobeContextMediaBulk(input: {
     separated,
     lastEventId,
     toastLine: buildBulkToast({ total, succeeded, failed, attached, separated }),
+    lastSuggestedPlaceName,
     outcomes,
   };
 }
