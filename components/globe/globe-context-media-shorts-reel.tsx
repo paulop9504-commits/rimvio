@@ -3,9 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { ContextMediaUploaderBadge } from "@/components/globe/context-media-uploader-badge";
 import { ContextMediaDeleteButton } from "@/components/globe/context-media-delete-button";
+import { ContextMediaVideoSoundButton } from "@/components/globe/context-media-video-sound-button";
 import { useGlobeContextVideoSound } from "@/hooks/use-globe-context-video-sound";
 import { useMediaBlobUrl } from "@/hooks/use-media-blob-url";
-import { copy } from "@/lib/copy/human-ko";
 import type { ContextMediaReelItem } from "@/lib/globe/project-context-media-reel";
 import { fetchMyAccountProfile } from "@/lib/peer-chat/peer-chat-client";
 import { cn } from "@/lib/utils";
@@ -160,23 +160,26 @@ function ContextMediaShortsSlide({
           className="right-3 top-3"
         />
 
+        {isVideo && src ? (
+          <ContextMediaVideoSoundButton
+            soundOn={soundOn}
+            onEnableSound={() => {
+              enableSound();
+              if (!playing) {
+                setPlaying(true);
+              }
+            }}
+            className="absolute left-3 top-3 z-[3]"
+          />
+        ) : null}
+
         <span className="pointer-events-none absolute right-14 top-3 z-[2] rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-bold text-white/90">
           {index + 1}/{total}
         </span>
 
         {isVideo && src ? (
-          <span className="pointer-events-none absolute left-3 top-3 z-[2] rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-semibold text-white/90">
-            {!soundOn
-              ? copy.globe.contextVideoSoundHint
-              : visible && playing
-                ? "일시정지"
-                : "재생"}
-          </span>
-        ) : null}
-
-        {isVideo && src && playing && visible && !soundOn ? (
-          <span className="pointer-events-none absolute bottom-14 left-3 z-[2] rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-medium text-white/80">
-            {copy.globe.contextVideoSoundHint}
+          <span className="pointer-events-none absolute left-14 top-3 z-[2] rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-semibold text-white/90">
+            {visible && playing ? "일시정지" : "재생"}
           </span>
         ) : null}
 

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { ContextMediaUploaderBadge } from "@/components/globe/context-media-uploader-badge";
 import { ContextMediaDeleteButton } from "@/components/globe/context-media-delete-button";
+import { ContextMediaVideoSoundButton } from "@/components/globe/context-media-video-sound-button";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { useGlobePinScreenAnchor } from "@/hooks/use-globe-pin-screen-anchor";
 import { useGlobeContextVideoSound } from "@/hooks/use-globe-context-video-sound";
@@ -352,6 +353,18 @@ export function GlobeContextMapVideoStage({
                 selfAvatarUrl={selfAvatarUrl}
               />
             ) : null}
+            {currentItem?.kind === "video" ? (
+              <ContextMediaVideoSoundButton
+                soundOn={videoSoundOn}
+                onEnableSound={() => {
+                  enableVideoSoundRef.current?.();
+                  if (!playing) {
+                    setPlaying(true);
+                  }
+                }}
+                className="absolute right-2 top-11 z-[4]"
+              />
+            ) : null}
             {reel.length > 1 && anchorLayout.scale >= 0.34 ? (
               <span className="pointer-events-none absolute right-11 top-2 z-[2] rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
                 {mediaIndex + 1}/{reel.length}
@@ -363,30 +376,11 @@ export function GlobeContextMapVideoStage({
                 className="pointer-events-auto absolute bottom-2 right-2 z-[3] rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-sm"
                 onClick={(event) => {
                   event.stopPropagation();
-                  enableVideoSoundRef.current?.();
-                  if (!videoSoundOn) {
-                    if (!playing) {
-                      setPlaying(true);
-                    }
-                    return;
-                  }
                   setPlaying((value) => !value);
                 }}
               >
-                {!videoSoundOn
-                  ? copy.globe.contextVideoSoundHint
-                  : playing
-                    ? "일시정지"
-                    : "재생"}
+                {playing ? "일시정지" : "재생"}
               </button>
-            ) : null}
-            {currentItem?.kind === "video" &&
-            playing &&
-            !videoSoundOn &&
-            anchorLayout.scale >= 0.34 ? (
-              <span className="pointer-events-none absolute bottom-10 left-1/2 z-[3] -translate-x-1/2 rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-semibold text-white/90 backdrop-blur-sm">
-                {copy.globe.contextVideoSoundHint}
-              </span>
             ) : null}
             {onDismiss && anchorLayout.scale >= 0.34 ? (
               <button
