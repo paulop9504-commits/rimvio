@@ -38,6 +38,22 @@ export function useGlobeContextVideoSound(input: {
     setSoundOn(true);
   }, [input.isVideo, input.onPlayFailed, input.playing, input.videoRef, input.visible]);
 
+  const disableSound = useCallback(() => {
+    const node = input.videoRef.current;
+    if (node && input.isVideo) {
+      node.muted = true;
+    }
+    setSoundOn(false);
+  }, [input.isVideo, input.videoRef]);
+
+  const toggleSound = useCallback(() => {
+    if (soundOn) {
+      disableSound();
+      return;
+    }
+    enableSound();
+  }, [disableSound, enableSound, soundOn]);
+
   useEffect(() => {
     const node = input.videoRef.current;
     if (!node || !input.src || !input.isVideo) {
@@ -65,5 +81,5 @@ export function useGlobeContextVideoSound(input: {
     });
   }, [input.src, input.isVideo, input.playing, input.videoRef, input.onPlayFailed, soundOn, visible]);
 
-  return { soundOn, enableSound };
+  return { soundOn, enableSound, disableSound, toggleSound };
 }

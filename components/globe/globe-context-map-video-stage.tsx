@@ -17,7 +17,6 @@ import {
 } from "@/lib/globe/project-context-media-reel";
 import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
 import { resolveExperienceVolumeForEvent } from "@/lib/globe/resolve-globe-context-primary-video";
-import { copy } from "@/lib/copy/human-ko";
 import {
   EVENT_CANDIDATES_UPDATED,
   findLifeEventCandidate,
@@ -51,13 +50,13 @@ function MapMediaSlide({
   item,
   playing,
   onPlayingChange,
-  enableSoundRef,
+  toggleSoundRef,
   onSoundOnChange,
 }: {
   item: ContextMediaReelItem;
   playing: boolean;
   onPlayingChange: (playing: boolean) => void;
-  enableSoundRef: RefObject<(() => void) | null>;
+  toggleSoundRef: RefObject<(() => void) | null>;
   onSoundOnChange?: (soundOn: boolean) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -67,7 +66,7 @@ function MapMediaSlide({
   const src = item.imageUrl ?? blobUrl;
   const isVideo = item.kind === "video";
 
-  const { enableSound, soundOn } = useGlobeContextVideoSound({
+  const { toggleSound, soundOn } = useGlobeContextVideoSound({
     videoRef,
     src,
     isVideo,
@@ -77,8 +76,8 @@ function MapMediaSlide({
   });
 
   useEffect(() => {
-    enableSoundRef.current = enableSound;
-  }, [enableSound, enableSoundRef]);
+    toggleSoundRef.current = toggleSound;
+  }, [toggleSound, toggleSoundRef]);
 
   useEffect(() => {
     onSoundOnChange?.(soundOn);
@@ -140,7 +139,7 @@ export function GlobeContextMapVideoStage({
   const containerRef = useRef<HTMLDivElement>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const skipNextTapRef = useRef(false);
-  const enableVideoSoundRef = useRef<(() => void) | null>(null);
+  const toggleVideoSoundRef = useRef<(() => void) | null>(null);
   const [revision, setRevision] = useState(0);
   const [mediaIndex, setMediaIndex] = useState(0);
   const [playing, setPlaying] = useState(true);
@@ -189,7 +188,12 @@ export function GlobeContextMapVideoStage({
   useEffect(() => {
     setMediaIndex(0);
     setPlaying(true);
+    setVideoSoundOn(false);
   }, [eventId]);
+
+  useEffect(() => {
+    setVideoSoundOn(false);
+  }, [mediaIndex]);
 
   useEffect(() => {
     if (mediaIndex >= reel.length) {
@@ -262,22 +266,35 @@ export function GlobeContextMapVideoStage({
     >
       {anchorLayout ? (
         <div
-          className="absolute z-[1]"
+          className="absolute z-[1] flex items-center gap-1.5"
           style={{
             left: anchorLayout.x,
             top: anchorLayout.y,
-            width: anchorLayout.widthPx,
             transform: "translate(-50%, calc(-100% - 10px))",
           }}
           data-globe-context-map-video-anchor
         >
+          {currentItem?.kind === "video" ? (
+            <ContextMediaVideoSoundButton
+              soundOn={videoSoundOn}
+              onToggleSound={() => {
+                toggleVideoSoundRef.current?.();
+                if (!playing) {
+                  setPlaying(true);
+                }
+              }}
+            />
+          ) : null}
           <div
             className={cn(
-              "relative touch-pan-y overflow-hidden rounded-[1.25rem]",
+              "relative min-w-0 touch-pan-y overflow-hidden rounded-[1.25rem]",
               "border-2 border-white/90 bg-black shadow-[0_12px_40px_rgba(0,0,0,0.28)]",
               "ring-1 ring-black/10",
-              onOpenDetails ? "pointer-events-auto cursor-pointer" : "",
+              currentItem?.kind !== "video" && onOpenDetails
+                ? "pointer-events-auto cursor-pointer"
+                : "pointer-events-auto",
             )}
+            style={{ width: anchorLayout.widthPx }}
             onTouchStart={(event) => {
               const touch = event.changedTouches[0] ?? event.touches[0];
               if (!touch) {
@@ -302,40 +319,19 @@ export function GlobeContextMapVideoStage({
               if ((event.target as HTMLElement).closest("button")) {
                 return;
               }
+              if (currentItem?.kind === "video") {
+                return;
+              }
               onOpenDetails?.();
             }}
           >
-            {currentItem?.kind === "video" ? (
-              <button
-                type="button"
-                className="pointer-events-auto absolute inset-0 z-[1]"
-                aria-label={
-                  videoSoundOn
-                    ? playing
-                      ? "일시정지"
-                      : "재생"
-                    : copy.globe.contextVideoSoundHint
-                }
-                onClick={(event) => {
-                  event.stopPropagation();
-                  enableVideoSoundRef.current?.();
-                  if (!videoSoundOn) {
-                    if (!playing) {
-                      setPlaying(true);
-                    }
-                    return;
-                  }
-                  setPlaying((value) => !value);
-                }}
-              />
-            ) : null}
             {currentItem ? (
               <MapMediaSlide
                 key={currentItem.id}
                 item={currentItem}
                 playing={playing}
                 onPlayingChange={setPlaying}
-                enableSoundRef={enableVideoSoundRef}
+                toggleSoundRef={toggleVideoSoundRef}
                 onSoundOnChange={setVideoSoundOn}
               />
             ) : null}
@@ -351,18 +347,6 @@ export function GlobeContextMapVideoStage({
                 item={currentItem}
                 selfDisplayName={selfDisplayName}
                 selfAvatarUrl={selfAvatarUrl}
-              />
-            ) : null}
-            {currentItem?.kind === "video" ? (
-              <ContextMediaVideoSoundButton
-                soundOn={videoSoundOn}
-                onEnableSound={() => {
-                  enableVideoSoundRef.current?.();
-                  if (!playing) {
-                    setPlaying(true);
-                  }
-                }}
-                className="absolute right-2 top-11 z-[4]"
               />
             ) : null}
             {reel.length > 1 && anchorLayout.scale >= 0.34 ? (

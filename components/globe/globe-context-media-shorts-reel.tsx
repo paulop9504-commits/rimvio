@@ -49,7 +49,7 @@ function ContextMediaShortsSlide({
   const src = item.imageUrl ?? blobUrl;
   const isVideo = item.kind === "video";
 
-  const { enableSound, soundOn } = useGlobeContextVideoSound({
+  const { toggleSound, soundOn } = useGlobeContextVideoSound({
     videoRef,
     src,
     isVideo,
@@ -89,29 +89,39 @@ function ContextMediaShortsSlide({
     >
       <div
         className={cn(
-          "relative mx-auto overflow-hidden rounded-[1.25rem] bg-black shadow-[0_16px_48px_rgba(0,0,0,0.22)] ring-1 ring-black/10",
-          fillViewport && embedded
-            ? "aspect-[9/16] max-h-full w-auto max-w-[min(100%,340px)]"
-            : "aspect-[9/16] w-full max-w-[min(100%,340px)]",
+          "mx-auto flex items-center gap-2",
+          fillViewport && embedded ? "max-h-full" : "max-w-[min(100%,340px)]",
         )}
       >
-        <button
-          type="button"
-          className="absolute inset-0 z-[1]"
-          aria-label={isVideo ? (playing ? "일시정지" : "재생") : item.label}
-          onClick={() => {
-            if (isVideo && src) {
-              enableSound();
-              if (!soundOn) {
-                if (!playing) {
-                  setPlaying(true);
-                }
-                return;
+        {isVideo && src ? (
+          <ContextMediaVideoSoundButton
+            soundOn={soundOn}
+            onToggleSound={() => {
+              toggleSound();
+              if (!playing) {
+                setPlaying(true);
               }
+            }}
+          />
+        ) : null}
+        <div
+          className={cn(
+            "relative min-w-0 overflow-hidden rounded-[1.25rem] bg-black shadow-[0_16px_48px_rgba(0,0,0,0.22)] ring-1 ring-black/10",
+            fillViewport && embedded
+              ? "aspect-[9/16] max-h-full w-auto max-w-[min(100%,340px)]"
+              : "aspect-[9/16] w-full flex-1",
+          )}
+        >
+        {isVideo && src ? (
+          <button
+            type="button"
+            className="absolute inset-0 z-[1]"
+            aria-label={playing ? "일시정지" : "재생"}
+            onClick={() => {
               setPlaying((value) => !value);
-            }
-          }}
-        />
+            }}
+          />
+        ) : null}
         {src && isVideo ? (
           <video
             key={`${item.id}:${src}`}
@@ -160,25 +170,12 @@ function ContextMediaShortsSlide({
           className="right-3 top-3"
         />
 
-        {isVideo && src ? (
-          <ContextMediaVideoSoundButton
-            soundOn={soundOn}
-            onEnableSound={() => {
-              enableSound();
-              if (!playing) {
-                setPlaying(true);
-              }
-            }}
-            className="absolute left-3 top-3 z-[3]"
-          />
-        ) : null}
-
-        <span className="pointer-events-none absolute right-14 top-3 z-[2] rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-bold text-white/90">
+        <span className="pointer-events-none absolute right-3 top-12 z-[2] rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-bold text-white/90">
           {index + 1}/{total}
         </span>
 
         {isVideo && src ? (
-          <span className="pointer-events-none absolute left-14 top-3 z-[2] rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-semibold text-white/90">
+          <span className="pointer-events-none absolute left-3 top-3 z-[2] rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-semibold text-white/90">
             {visible && playing ? "일시정지" : "재생"}
           </span>
         ) : null}
@@ -192,6 +189,7 @@ function ContextMediaShortsSlide({
             onDeleted={onMediaDeleted}
           />
         ) : null}
+        </div>
       </div>
     </section>
   );
