@@ -10,7 +10,6 @@ import {
 import { useCallback, useRef, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import {
-  GLOBE_BULK_PHOTO_MAX,
   GLOBE_CONTEXT_MEDIA_ACCEPT,
   ingestGlobeContextFromFiles,
   ingestGlobeContextFromText,
@@ -70,15 +69,11 @@ export function GlobeContextIngestBar({
         return;
       }
       const files = Array.from(fileList);
-      if (files.length > GLOBE_BULK_PHOTO_MAX) {
-        toast.info(`한 번에 ${GLOBE_BULK_PHOTO_MAX}개까지만 올릴 수 있어요`);
-      }
-      const batchSize = Math.min(files.length, GLOBE_BULK_PHOTO_MAX);
       setBusy(true);
       const toastId = toast.loading(
         files.length === 1
           ? "올리는 중…"
-          : `사진·동영상 ${batchSize}개 올리는 중… 0/${batchSize}`,
+          : `사진·동영상 ${files.length}개 올리는 중… 0/${files.length}`,
       );
       try {
         const summary = await ingestGlobeContextFromFiles(files, {

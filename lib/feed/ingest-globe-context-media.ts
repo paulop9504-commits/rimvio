@@ -30,7 +30,6 @@ import {
   MEDIA_POOL_RETENTION_MS,
 } from "@/lib/media-pool/media-pool-constants";
 
-export const GLOBE_BULK_PHOTO_MAX = 100;
 export const GLOBE_CONTEXT_MEDIA_ACCEPT = "image/*,video/*";
 
 const VIDEO_EXT =
@@ -450,7 +449,7 @@ function buildBulkToast(input: {
   return parts.join(" · ");
 }
 
-/** Up to 100 photos/videos — sequential ingest with attach/split per spacetime. */
+/** Bulk photos/videos — sequential ingest with attach/split per spacetime. */
 export async function ingestGlobeContextMediaBulk(input: {
   files: File[];
   hintEventId?: string | null;
@@ -461,10 +460,8 @@ export async function ingestGlobeContextMediaBulk(input: {
 }): Promise<
   GlobeBulkMediaIngestSummary & { outcomes: GlobeContextMediaIngestResult[] }
 > {
-  const mediaFiles = (
-    await sortMediaFilesByCaptureTime(
-      input.files.filter(isGlobeContextIngestMediaFile).slice(0, GLOBE_BULK_PHOTO_MAX),
-    )
+  const mediaFiles = await sortMediaFilesByCaptureTime(
+    input.files.filter(isGlobeContextIngestMediaFile),
   );
   const total = mediaFiles.length;
   const outcomes: GlobeContextMediaIngestResult[] = [];

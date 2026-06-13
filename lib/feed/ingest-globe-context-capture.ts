@@ -7,7 +7,6 @@ import {
   type SearchCaptureIngestResult,
 } from "@/lib/feed/ingest-search-capture";
 import {
-  GLOBE_BULK_PHOTO_MAX,
   GLOBE_CONTEXT_MEDIA_ACCEPT,
   ingestGlobeContextMedia,
   ingestGlobeContextMediaBulk,
@@ -114,9 +113,9 @@ export async function ingestGlobeContextFromFile(
   };
 }
 
-export { GLOBE_BULK_PHOTO_MAX, GLOBE_CONTEXT_MEDIA_ACCEPT };
+export { GLOBE_CONTEXT_MEDIA_ACCEPT };
 
-/** Photos/videos (up to 100) — spacetime match or split per file. */
+/** Photos/videos — spacetime match or split per file. */
 export async function ingestGlobeContextFromFiles(
   files: File[],
   input?: {
