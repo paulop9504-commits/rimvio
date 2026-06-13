@@ -12,20 +12,44 @@ import {
   shouldExitFlatMapToGlobe3d,
 } from "../lib/globe/flat-map-view";
 import {
-  GLOBE_FLAT_ENTER_ALTITUDE,
+  buildVectorMapHandoffView,
+  shouldExitVectorMapToGlobe3d,
+  vectorMapZoomFromGlobeAltitude,
+  VECTOR_MAP_EXIT_ZOOM,
+} from "../lib/globe/globe-vector-map-view";
+import {
+  GLOBE_VECTOR_ENTER_ALTITUDE,
   resolveGlobeSurfaceMode,
-  shouldEnterFlatMap,
+  shouldEnterVectorMap,
 } from "../lib/globe/resolve-globe-surface-mode";
 
-assert.equal(resolveGlobeSurfaceMode("globe3d", { altitude: 0.6, detailLevel: "region" }), "flat2d");
-assert.equal(resolveGlobeSurfaceMode("globe3d", { altitude: 0.45, detailLevel: "region" }), "flat2d");
-assert.equal(resolveGlobeSurfaceMode("globe3d", { altitude: 0.14, detailLevel: "city" }), "flat2d");
 assert.equal(
-  resolveGlobeSurfaceMode("globe3d", { altitude: GLOBE_FLAT_ENTER_ALTITUDE - 0.01 }),
-  "flat2d",
+  resolveGlobeSurfaceMode("globe3d", { altitude: 0.6, detailLevel: "region" }),
+  "globe3d",
 );
-assert.equal(resolveGlobeSurfaceMode("flat2d", { altitude: 0.2 }), "flat2d");
-assert.equal(shouldEnterFlatMap({ altitude: 0.2, detailLevel: "city" }), true);
+assert.equal(
+  resolveGlobeSurfaceMode("globe3d", { altitude: 0.14, detailLevel: "city" }),
+  "globe3d",
+);
+assert.equal(
+  resolveGlobeSurfaceMode("globe3d", {
+    altitude: GLOBE_VECTOR_ENTER_ALTITUDE - 0.01,
+    detailLevel: "neighborhood",
+  }),
+  "globe3d",
+);
+assert.equal(
+  resolveGlobeSurfaceMode("globe3d", { altitude: 0.004, detailLevel: "street" }),
+  "globe3d",
+);
+assert.equal(resolveGlobeSurfaceMode("vector2d", { altitude: 0.2 }), "globe3d");
+assert.equal(shouldEnterVectorMap({ altitude: 0.2, detailLevel: "city" }), false);
+assert.equal(shouldEnterVectorMap({ altitude: 0.02, detailLevel: "neighborhood" }), false);
+
+assert.ok(vectorMapZoomFromGlobeAltitude(0.004) > vectorMapZoomFromGlobeAltitude(0.018));
+assert.ok(vectorMapZoomFromGlobeAltitude(0.018) >= 14);
+assert.ok(shouldExitVectorMapToGlobe3d(VECTOR_MAP_EXIT_ZOOM - 0.2));
+assert.ok(!shouldExitVectorMapToGlobe3d(VECTOR_MAP_EXIT_ZOOM + 0.5));
 
 assert.ok(resolveFlatMapSlippyZoom(2.4) >= 14);
 assert.ok(resolveFlatMapSlippyZoom(4.2) >= 19);

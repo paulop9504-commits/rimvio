@@ -95,7 +95,7 @@ export function resolveExperienceVolumeForEvent(
   return indexExperienceVolumesByEventId(graph).get(key) ?? null;
 }
 
-/** Same sources as pin sheet reel — includes spatial volume + media store. */
+/** Same sources as pin sheet reel — photo or video on map before bridge sheet. */
 export function globeContextShouldMapReplayFirst(input: {
   event: EventCandidate | null | undefined;
   cluster?: PinCluster | null;
@@ -106,15 +106,14 @@ export function globeContextShouldMapReplayFirst(input: {
     input.volume ??
     (event?.id ? resolveExperienceVolumeForEvent(event.id) : null);
 
+  if (projectContextMediaReel({ event, volume }).length > 0) {
+    return true;
+  }
   if (globeContextHasVideo(event)) {
     return true;
   }
-  if ((input.cluster?.evidence.videoCount ?? 0) > 0) {
-    return true;
-  }
-  return projectContextMediaReel({ event, volume }).some(
-    (row) => row.kind === "video",
-  );
+  return (input.cluster?.evidence.videoCount ?? 0) > 0 ||
+    (input.cluster?.evidence.photoCount ?? 0) > 0;
 }
 
 /** Map replay video — feedCaptures, media store, then spatial reel fallback. */

@@ -1,6 +1,9 @@
 /** Default GPS sampling — e.g. one ping every 3 minutes while the app is open. */
 export const GPS_PING_INTERVAL_MS = 3 * 60 * 1000;
 
+/** Slower ring-buffer sampling while dwelling or UI is backgrounded. */
+export const GPS_PING_INTERVAL_DWELL_MS = 10 * 60 * 1000;
+
 /** Keep pings for 48 hours (enough for same-day uploads). */
 export const GPS_PING_MAX_AGE_MS = 48 * 60 * 60 * 1000;
 

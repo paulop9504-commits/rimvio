@@ -21,14 +21,13 @@ export const GLOBE_TOSS_THEME = {
   overviewTextureZoom: 5,
   overviewTextureWidth: 4096,
   overviewTextureHeight: 2048,
-  globePixelRatioCap: 4,
+  globePixelRatioCap: 2,
   viewerDot: "#f04452",
   viewerDotGlow: "rgba(240, 68, 82, 0.45)",
   viewerRing: "rgba(240, 68, 82, 0.18)",
   viewerRingStroke: "rgba(240, 68, 82, 0.42)",
-  /** CARTO voyager — clearer road hierarchy at street zoom. */
+  /** CARTO voyager — stable with road recolor post-process. */
   mapStyle: "voyager" as const,
-  /** Room shared globe (2D 우리 지구) — same road-forward palette. */
   sharedGlobeMapStyle: "voyager" as const,
   /** Great-circle trip leg connector on 3D globe (globe.gl arcStroke). */
   tripArcStroke: 0.085,

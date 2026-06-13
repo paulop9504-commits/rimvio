@@ -17,6 +17,9 @@ import { createGlobe3dViewerPinElement } from "@/lib/globe/create-globe-3d-viewe
 import { accuracyMetersToRingDegrees } from "@/lib/globe/accuracy-ring-degrees";
 import { GLOBE_TILE_MAX_ZOOM } from "@/lib/globe/globe-tile-constants";
 import { globeTileEngineUrl } from "@/lib/globe/globe-tile-engine-url";
+import { applyRimvioGlobeTileTextureFiltering } from "@/lib/globe/apply-rimvio-globe-tile-texture-filtering";
+import { disposeGlobeGpuResources } from "@/lib/globe/dispose-globe-gpu-resources";
+import { useGlobeAnimationPower } from "@/hooks/use-globe-animation-power";
 import { useGlobeOverviewTexture } from "@/hooks/use-globe-equirect-texture";
 import { GLOBE_TOSS_THEME } from "@/lib/globe/globe-toss-theme";
 import { applyGlobePinUiScale } from "@/lib/globe/apply-globe-pin-ui-scale";
@@ -68,6 +71,8 @@ export type RimvioGlobe3DHandle = {
     lat: number,
     lng: number,
   ) => { x: number; y: number } | null;
+  /** Jump camera without fly animation — vector → 3D handoff. */
+  syncPointOfView: (lat: number, lng: number, altitude: number) => void;
 };
 
 export type RimvioGlobe3DProps = {
@@ -94,6 +99,10 @@ export type RimvioGlobe3DProps = {
     altitude: number;
     detailLevel: GlobeDetailLevel;
   }) => void;
+  /** False while MapLibre vector surface owns gestures. */
+  interactionEnabled?: boolean;
+  /** Pause WebGL when sheets cover the map or tab is hidden. */
+  renderSuspended?: boolean;
   className?: string;
 };
 
@@ -112,6 +121,8 @@ export const RimvioGlobe3D = memo(
       hintText,
       onDetailLevelChange,
       onPointOfViewChange,
+      interactionEnabled = true,
+      renderSuspended = false,
       className,
     },
     ref,
@@ -130,6 +141,7 @@ export const RimvioGlobe3D = memo(
     const tripArcsRef = useRef(tripArcs);
     const viewerLocationRef = useRef(viewerLocation);
     const overviewTextureUrlRef = useRef<string | null>(null);
+    const [globeReady, setGlobeReady] = useState(false);
     const { textureUrl: overviewTextureUrl } = useGlobeOverviewTexture();
     overviewTextureUrlRef.current = overviewTextureUrl;
 
@@ -297,6 +309,20 @@ export const RimvioGlobe3D = memo(
         }
         globe.pointOfView({ ...GLOBE_OVERVIEW_POINT_OF_VIEW }, FLY_MS);
       },
+      syncPointOfView(lat, lng, altitude) {
+        const globe = globeRef.current;
+        if (!globe) {
+          return;
+        }
+        globe.pointOfView(
+          {
+            lat,
+            lng,
+            altitude: Math.max(GLOBE_MIN_SAFE_ALTITUDE, altitude),
+          },
+          0,
+        );
+      },
       getPointOfView() {
         const globe = globeRef.current;
         if (!globe) {
@@ -449,6 +475,18 @@ export const RimvioGlobe3D = memo(
         onPointOfViewChangeRef.current?.({ ...pov, altitude, detailLevel });
       };
 
+      const syncTileTextureFiltering = () => {
+        applyRimvioGlobeTileTextureFiltering(globe.scene());
+      };
+
+      let textureFilterTimer: ReturnType<typeof setTimeout> | null = null;
+      const scheduleTileTextureFiltering = () => {
+        if (textureFilterTimer != null) {
+          clearTimeout(textureFilterTimer);
+        }
+        textureFilterTimer = setTimeout(syncTileTextureFiltering, 280);
+      };
+
       const handleZoom = (pov: { lat: number; lng: number; altitude: number }) => {
         let altitude = pov.altitude;
         if (!Number.isFinite(altitude)) {
@@ -461,6 +499,7 @@ export const RimvioGlobe3D = memo(
           return;
         }
         emitPointOfView({ ...pov, altitude }, altitude);
+        scheduleTileTextureFiltering();
       };
 
       emitPointOfView({ ...GLOBE_OVERVIEW_POINT_OF_VIEW });
@@ -488,20 +527,43 @@ export const RimvioGlobe3D = memo(
       globe.onGlobeReady(() => {
         window.setTimeout(() => {
           syncOverviewTexture(globe.pointOfView().altitude);
+          syncTileTextureFiltering();
           const controls = globe.controls();
           controls.zoomSpeed = 1.9;
           controls.rotateSpeed = 0.45;
         }, 0);
+        window.setTimeout(syncTileTextureFiltering, 420);
       });
 
       globeRef.current = globe;
+      setGlobeReady(true);
 
       return () => {
+        if (textureFilterTimer != null) {
+          clearTimeout(textureFilterTimer);
+        }
+        setGlobeReady(false);
+        disposeGlobeGpuResources(globe);
         resizeObserver.disconnect();
         globe._destructor();
         globeRef.current = null;
       };
     }, []);
+
+    useGlobeAnimationPower({
+      globeRef,
+      interactionRootRef: rootRef,
+      suspended: renderSuspended,
+      enabled: globeReady,
+    });
+
+    useEffect(() => {
+      const globe = globeRef.current;
+      if (!globe) {
+        return;
+      }
+      globe.controls().enabled = interactionEnabled;
+    }, [interactionEnabled]);
 
     useEffect(() => {
       const globe = globeRef.current;

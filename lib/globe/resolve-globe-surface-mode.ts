@@ -1,35 +1,33 @@
 import type { GlobeDetailLevel } from "@/lib/globe/globe-zoom-levels";
 
-export type GlobeSurfaceMode = "globe3d" | "flat2d";
+export type GlobeSurfaceMode = "globe3d" | "vector2d";
 
-/** Hand off before 3D hits its min-distance wall (~0.055 altitude). */
-export const GLOBE_FLAT_ENTER_ALTITUDE = 0.9;
+/** Hand off at neighborhood scale — disabled; 3D globe only. */
+export const GLOBE_VECTOR_ENTER_ALTITUDE = 0.065;
 
-/** Region uses altitude threshold only — avoids handoff at country overview (alt ~0.85). */
-const FLAT_ENTER_LEVELS = new Set<GlobeDetailLevel>([
-  "city",
-  "neighborhood",
-  "street",
-  "pin",
-]);
+/** Vector map handoff disabled — always stay on 3D globe. */
+export function shouldEnterVectorMap(_input: {
+  altitude: number;
+  detailLevel?: GlobeDetailLevel;
+}): boolean {
+  return false;
+}
 
+/** @deprecated Use vector2d handover — flat raster map removed. */
+export type { GlobeSurfaceMode as GlobeFlatSurfaceMode };
+export const GLOBE_FLAT_ENTER_ALTITUDE = GLOBE_VECTOR_ENTER_ALTITUDE;
+
+/** @deprecated */
 export function shouldEnterFlatMap(input: {
   altitude: number;
   detailLevel?: GlobeDetailLevel;
 }): boolean {
-  if (input.detailLevel && FLAT_ENTER_LEVELS.has(input.detailLevel)) {
-    return true;
-  }
-  return Number.isFinite(input.altitude) && input.altitude < GLOBE_FLAT_ENTER_ALTITUDE;
+  return shouldEnterVectorMap(input);
 }
 
-/** Flat mode exits only via 2D pinch-out — never from damped 3D POV noise. */
 export function resolveGlobeSurfaceMode(
-  current: GlobeSurfaceMode,
-  input: { altitude: number; detailLevel?: GlobeDetailLevel },
+  _current: GlobeSurfaceMode,
+  _input: { altitude: number; detailLevel?: GlobeDetailLevel },
 ): GlobeSurfaceMode {
-  if (current === "flat2d") {
-    return "flat2d";
-  }
-  return shouldEnterFlatMap(input) ? "flat2d" : "globe3d";
+  return "globe3d";
 }

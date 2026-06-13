@@ -3064,18 +3064,18 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   );
 }
 
-/* Overview — bolder country/city glyphs, toss-toned */
+/* Overview — post-process contrast (levels-style via CSS filter) */
 [data-rimvio-globe-3d][data-globe-detail="space"] canvas,
 [data-rimvio-globe-3d][data-globe-detail="region"] canvas {
-  filter: saturate(0.76) brightness(1.04) contrast(1.2) hue-rotate(-5deg);
+  filter: contrast(1.18) brightness(0.96) saturate(0.88);
 }
 
-/* Street zoom — light tiles, sharper place labels */
+/* Street zoom — slightly lifted contrast; raw CARTO tiles underneath */
 [data-rimvio-globe-3d][data-globe-detail="city"] canvas,
 [data-rimvio-globe-3d][data-globe-detail="neighborhood"] canvas,
 [data-rimvio-globe-3d][data-globe-detail="street"] canvas,
 [data-rimvio-globe-3d][data-globe-detail="pin"] canvas {
-  filter: saturate(0.86) brightness(1.06) contrast(1.16) hue-rotate(-6deg);
+  filter: contrast(1.12) brightness(1.01) saturate(0.94);
 }
 
 /* Room shared globe — 2D Toss map on sphere */
@@ -3095,6 +3095,104 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 .rimvio-globe-home-canvas {
   flex: 1 1 auto;
   min-height: 0;
+}
+
+@keyframes rimvio-globe-surface-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes rimvio-globe-surface-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+[data-rimvio-globe-hub] [data-rimvio-globe-3d],
+[data-rimvio-globe-hub] [data-rimvio-globe-vector-map] {
+  position: absolute;
+  inset: 0;
+}
+
+[data-rimvio-globe-handoff="globe"] [data-rimvio-globe-3d] {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+[data-rimvio-globe-handoff="globe"] [data-rimvio-globe-vector-map] {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+[data-rimvio-globe-handoff="to-vector"] [data-rimvio-globe-3d] {
+  visibility: visible;
+  pointer-events: none;
+  animation: rimvio-globe-surface-fade-out var(--rimvio-globe-crossfade-ms, 520ms)
+    cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+[data-rimvio-globe-handoff="to-vector"] [data-rimvio-globe-vector-map] {
+  visibility: visible;
+  pointer-events: none;
+  animation: rimvio-globe-surface-fade-in var(--rimvio-globe-crossfade-ms, 520ms)
+    cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+[data-rimvio-globe-handoff="vector"] [data-rimvio-globe-3d] {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  content-visibility: hidden;
+}
+
+[data-rimvio-globe-handoff="vector"] [data-rimvio-globe-vector-map] {
+  opacity: 1;
+  visibility: visible;
+}
+
+[data-rimvio-globe-handoff="to-globe"] [data-rimvio-globe-3d] {
+  visibility: visible;
+  pointer-events: none;
+  animation: rimvio-globe-surface-fade-in var(--rimvio-globe-crossfade-ms, 520ms)
+    cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+[data-rimvio-globe-handoff="to-globe"] [data-rimvio-globe-vector-map] {
+  visibility: visible;
+  pointer-events: none;
+  animation: rimvio-globe-surface-fade-out var(--rimvio-globe-crossfade-ms, 520ms)
+    cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+[data-rimvio-globe-vector-map] {
+  background: #f2f4f6;
+}
+
+[data-rimvio-globe-vector-map] .maplibregl-map,
+[data-rimvio-globe-vector-map] .maplibregl-canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+[data-rimvio-globe-vector-map] .maplibregl-marker {
+  z-index: 3;
+}
+
+[data-rimvio-globe-vector-map] .maplibregl-canvas {
+  outline: none;
+}
+
+[data-rimvio-globe-vector-map] .maplibregl-ctrl-bottom-right {
+  display: none;
 }
 
 /* Immersive home — globe fills shell column; pin sheet shifts globe into visible center */

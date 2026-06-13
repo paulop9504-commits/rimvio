@@ -1,6 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server";
 import type { GlobeMapTileStyle } from "@/lib/experience-graph/build-globe-map-tiles";
 import { resolveGlobeTileUpstreamUrl } from "@/lib/experience-graph/resolve-globe-tile-upstream";
+import {
+  remapRimvioGlobeMapTilePng,
+  shouldRemapRimvioGlobeMapTileStyle,
+} from "@/lib/globe/remap-rimvio-globe-map-tile-png";
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
@@ -26,8 +30,16 @@ export async function GET(request: NextRequest) {
     if (!response.ok) {
       return NextResponse.json({ error: "tile_upstream_failed" }, { status: 502 });
     }
-    const bytes = await response.arrayBuffer();
-    return new NextResponse(bytes, {
+    const raw = Buffer.from(await response.arrayBuffer());
+    let body: Buffer = raw;
+    if (shouldRemapRimvioGlobeMapTileStyle(style)) {
+      try {
+        body = remapRimvioGlobeMapTilePng(raw);
+      } catch {
+        body = raw;
+      }
+    }
+    return new NextResponse(new Uint8Array(body), {
       status: 200,
       headers: {
         "Content-Type": response.headers.get("content-type") ?? "image/png",

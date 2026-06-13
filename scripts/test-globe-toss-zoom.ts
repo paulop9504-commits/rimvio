@@ -20,7 +20,7 @@ assert.match(buildGlobeTileEngineUrl(120, 210, 21, "light"), /z=20/);
 assert.equal(resolveGlobeTileStyleForLevel(0), "voyager");
 assert.equal(resolveGlobeTileStyleForLevel(8), "voyager");
 assert.match(globeTileEngineUrl(120, 210, 8), /style=voyager/);
-assert.match(globeTileEngineUrl(120, 210, 3), /style=voyager/);
+assert.match(globeTileEngineUrl(120, 210, 3), /v=7/);
 
 assert.equal(resolveGlobeDetailLevel(2.2), "space");
 assert.equal(resolveGlobeDetailLevel(0.1), "city");

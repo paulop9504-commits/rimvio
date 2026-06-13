@@ -9,10 +9,13 @@ import {
 
 const TILE_SIZE = 256;
 const TILE_LOAD_BATCH = 48;
+const MAX_TEXTURE_CACHE_ENTRIES = 2;
 const TEXTURE_CACHE = new Map<string, string>();
 
+import { GLOBE_TILE_CANVAS_VERSION } from "@/lib/globe/globe-tile-engine-url";
+
 function tileProxyUrl(z: number, x: number, y: number, style: GlobeMapTileStyle): string {
-  return `/api/globe/tile?z=${z}&x=${x}&y=${y}&style=${style}`;
+  return `/api/globe/tile?z=${z}&x=${x}&y=${y}&style=${style}&v=${GLOBE_TILE_CANVAS_VERSION}`;
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -35,8 +38,8 @@ async function loadTileImage(
   return loadImage(tileProxyUrl(z, x, y, style));
 }
 
-/** Darken pale CARTO label ink without blowing out water/land. */
-function sharpenMapLabelCanvas(source: HTMLCanvasElement): HTMLCanvasElement {
+/** Post-process contrast on overview mosaic — S-curve via CSS filter (no per-pixel edits). */
+function postProcessOverviewCanvas(source: HTMLCanvasElement): HTMLCanvasElement {
   const out = document.createElement("canvas");
   out.width = source.width;
   out.height = source.height;
@@ -44,7 +47,7 @@ function sharpenMapLabelCanvas(source: HTMLCanvasElement): HTMLCanvasElement {
   if (!ctx) {
     return source;
   }
-  ctx.filter = "contrast(1.32) saturate(0.88) brightness(0.97)";
+  ctx.filter = "contrast(1.16) saturate(0.9) brightness(0.98)";
   ctx.drawImage(source, 0, 0);
   return out;
 }
@@ -55,7 +58,25 @@ export function globeEquirectCacheKey(
   outputWidth = GLOBE_EQ_WIDTH,
   outputHeight = GLOBE_EQ_HEIGHT,
 ): string {
-  return `${style}-eq-z${zoom}-${outputWidth}x${outputHeight}`;
+  return `${style}-eq-v8-z${zoom}-${outputWidth}x${outputHeight}`;
+}
+
+function rememberTextureCache(key: string, url: string): void {
+  if (TEXTURE_CACHE.has(key)) {
+    TEXTURE_CACHE.delete(key);
+  }
+  TEXTURE_CACHE.set(key, url);
+  while (TEXTURE_CACHE.size > MAX_TEXTURE_CACHE_ENTRIES) {
+    const oldest = TEXTURE_CACHE.keys().next().value;
+    if (!oldest) {
+      break;
+    }
+    TEXTURE_CACHE.delete(oldest);
+  }
+}
+
+export function clearGlobeEquirectCacheForTests(): void {
+  TEXTURE_CACHE.clear();
 }
 
 export function readGlobeEquirectCache(
@@ -125,13 +146,14 @@ export async function buildGlobeEquirectTextureUrl(
     0,
   );
 
-  const exportCanvas =
-    style === "satellite" ? output : sharpenMapLabelCanvas(output);
+  if (style !== "satellite") {
+    const exportCanvas = postProcessOverviewCanvas(output);
+    const url = exportCanvas.toDataURL("image/png");
+    rememberTextureCache(cacheKey, url);
+    return url;
+  }
 
-  const url =
-    style === "satellite"
-      ? exportCanvas.toDataURL("image/jpeg", 0.92)
-      : exportCanvas.toDataURL("image/png");
-  TEXTURE_CACHE.set(cacheKey, url);
+  const url = output.toDataURL("image/jpeg", 0.92);
+  rememberTextureCache(cacheKey, url);
   return url;
 }

@@ -1,5 +1,6 @@
 import { extractPlaceEntities } from "@/lib/action-chat/clean-entity-text";
 import { resolveNavigationPlaceName } from "@/lib/action-chat/resolve-navigation-place";
+import { classifyOverseasManualPlace } from "@/lib/globe/classify-overseas-manual-place";
 
 export type ParsedManualContextPlace = {
   raw: string;
@@ -102,6 +103,15 @@ export function parseManualContextPlaceText(raw: string): ParsedManualContextPla
   const trimmed = raw.trim();
   if (!trimmed) {
     return { raw: "", displayLabel: "", searchQuery: "" };
+  }
+
+  const overseas = classifyOverseasManualPlace(trimmed);
+  if (overseas) {
+    return {
+      raw: trimmed,
+      displayLabel: overseas.label,
+      searchQuery: overseas.geocodeQuery,
+    };
   }
 
   const cleaned = stripMeetingNoise(trimmed);

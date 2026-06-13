@@ -89,7 +89,7 @@ export function useFeedPlanWeather(
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [requestKey, targets]);
+  }, [requestKey]);
 
   return weatherByKey;
 }

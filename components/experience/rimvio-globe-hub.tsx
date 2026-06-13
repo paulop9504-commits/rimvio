@@ -32,7 +32,9 @@ import {
   matchesGlobeContextPeopleFilter,
   type GlobeContextPeopleFilter,
 } from "@/lib/globe/globe-context-people-filter";
-import type { GlobeDetailLevel } from "@/lib/globe/globe-zoom-levels";
+import {
+  type GlobeDetailLevel,
+} from "@/lib/globe/globe-zoom-levels";
 import { projectGlobeZoomClusterPins } from "@/lib/globe/project-globe-zoom-cluster-pins";
 import { resolveGlobeStartupView } from "@/lib/globe/resolve-globe-startup-view";
 import { ensureGlobeDemoEvents } from "@/lib/experience-graph/seed-globe-demo-events";
@@ -123,6 +125,8 @@ export type RimvioGlobeHubProps = {
   onDetailLevelChange?: (level: GlobeDetailLevel) => void;
   /** Pending Experience Bridge invites — ghost pins until accept. */
   bridgeGhostClusters?: readonly PinCluster[];
+  /** Stop WebGL render loop while sheets cover the globe. */
+  renderSuspended?: boolean;
 };
 
 type RimvioGlobeHubBodyProps = {
@@ -149,6 +153,7 @@ type RimvioGlobeHubBodyProps = {
   skipStartupFly?: boolean;
   onGlobePress?: (coords: { lat: number; lng: number }) => void;
   onDetailLevelChange?: (level: GlobeDetailLevel) => void;
+  renderSuspended?: boolean;
 };
 
 const RimvioGlobeHubBody = memo(
@@ -167,6 +172,7 @@ const RimvioGlobeHubBody = memo(
       skipStartupFly = false,
       onGlobePress,
       onDetailLevelChange,
+      renderSuspended = false,
     },
     ref,
   ) {
@@ -363,6 +369,7 @@ const RimvioGlobeHubBody = memo(
           onPinRelocate={onPinRelocate}
           onGlobePress={onGlobePress}
           onDetailLevelChange={handleDetailLevelChange}
+          renderSuspended={renderSuspended}
         />
 
         {clusters.length === 0 ? (
@@ -378,7 +385,7 @@ const RimvioGlobeHubBody = memo(
   }),
 );
 
-/** Globe-first home — 3D earth only, pins on top. */
+/** Globe-first home — 3D earth only. */
 export const RimvioGlobeHub = memo(function RimvioGlobeHub({
   className,
   globeRef,
@@ -397,10 +404,13 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
   onClustersSnapshot,
   onDetailLevelChange,
   bridgeGhostClusters,
+  renderSuspended,
 }: RimvioGlobeHubProps) {
   const { ready, eventsById, personalPinRevision } = useGlobeEventSnapshot();
   const { graph } = useExperienceGraph(ready ? eventsById : undefined);
   const recallOpenedRef = useRef(false);
+  const onClustersSnapshotRef = useRef(onClustersSnapshot);
+  onClustersSnapshotRef.current = onClustersSnapshot;
 
   const clusters = useMemo(() => {
     if (!ready) {
@@ -426,8 +436,8 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
   }, [clusters, bridgeGhostClusters]);
 
   useEffect(() => {
-    onClustersSnapshot?.(displayClusters);
-  }, [displayClusters, onClustersSnapshot]);
+    onClustersSnapshotRef.current?.(displayClusters);
+  }, [displayClusters]);
 
   useEffect(() => {
     if (!ready || recallOpenedRef.current) {
@@ -481,6 +491,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
       skipStartupFly={Boolean(
         initialRecallEventId?.trim() || initialOpenPinId?.trim(),
       )}
+      renderSuspended={renderSuspended}
     />
   );
 });

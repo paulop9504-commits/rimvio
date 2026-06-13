@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   isGlobeContextVideoScreenVisible,
+  MAP_CONTEXT_MEDIA_SIZE_MULTIPLIER,
   resolveGlobeContextVideoScale,
   resolveGlobeContextVideoScreenLayout,
   resolveGlobeContextVideoWidthPx,
@@ -17,7 +18,7 @@ function testScaleShrinksOnZoomOut() {
 
 function testWidthScalesWithViewport() {
   const width = resolveGlobeContextVideoWidthPx(1, 400);
-  assert.equal(width, 168);
+  assert.equal(width, Math.round(168 * MAP_CONTEXT_MEDIA_SIZE_MULTIPLIER));
   const small = resolveGlobeContextVideoWidthPx(0.2, 400);
   assert.ok(small < width);
   assert.ok(small >= 36);

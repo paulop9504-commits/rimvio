@@ -7,6 +7,8 @@ import {
   type GlobeContextVideoScreenLayout,
 } from "@/lib/globe/resolve-globe-context-video-layout";
 
+const ANCHOR_FRAME_MS = 66; // ~15 fps — enough for pin-anchored video overlay
+
 export function useGlobePinScreenAnchor(input: {
   globeRef: RefObject<RimvioGlobeHubHandle | null>;
   lat: number | null | undefined;
@@ -33,7 +35,7 @@ export function useGlobePinScreenAnchor(input: {
       return;
     }
 
-    let frame = 0;
+    let cancelled = false;
 
     const tick = () => {
       const globe = input.globeRef.current;
@@ -42,19 +44,24 @@ export function useGlobePinScreenAnchor(input: {
       const viewportHeight = container?.clientHeight ?? window.innerHeight;
       const screen = globe?.getScreenCoords(lat, lng) ?? null;
       const altitude = globe?.getPointOfView()?.altitude ?? null;
-      setLayout(
-        resolveGlobeContextVideoScreenLayout({
-          screen,
-          altitude,
-          viewportWidth,
-          viewportHeight,
-        }),
-      );
-      frame = window.requestAnimationFrame(tick);
+      if (!cancelled) {
+        setLayout(
+          resolveGlobeContextVideoScreenLayout({
+            screen,
+            altitude,
+            viewportWidth,
+            viewportHeight,
+          }),
+        );
+      }
     };
 
-    frame = window.requestAnimationFrame(tick);
-    return () => window.cancelAnimationFrame(frame);
+    tick();
+    const intervalId = window.setInterval(tick, ANCHOR_FRAME_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
   }, [enabled, lat, lng, input.globeRef, input.containerRef]);
 
   return layout;

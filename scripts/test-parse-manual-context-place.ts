@@ -33,6 +33,24 @@ async function main() {
   assert.equal(china!.kind, "country");
   assert.match(overseasPlaceConfirmPrompt(china!), /어느 도시/u);
 
+  const hawaii = classifyOverseasManualPlace("하와이");
+  assert.ok(hawaii);
+  assert.equal(hawaii!.label, "하와이");
+  assert.equal(hawaii!.countryLabel, "미국");
+  assert.match(hawaii!.geocodeQuery, /Hawaii/iu);
+
+  const hawaiiTrip = parseManualContextPlaceText("하와이 여행");
+  assert.equal(hawaiiTrip.displayLabel, "하와이");
+  assert.match(hawaiiTrip.searchQuery, /Hawaii/iu);
+
+  const paris = classifyOverseasManualPlace("프랑스 파리");
+  assert.ok(paris);
+  assert.equal(paris!.label, "파리");
+
+  const hawaiiCoords = resolvePlaceCoordinates("하와이");
+  assert.ok(hawaiiCoords.lat > 19 && hawaiiCoords.lat < 23);
+  assert.ok(hawaiiCoords.lng > -160 && hawaiiCoords.lng < -154);
+
   const shanghaiCoords = resolvePlaceCoordinates("상하이");
   assert.ok(shanghaiCoords.lat > 30 && shanghaiCoords.lat < 32);
   assert.ok(shanghaiCoords.lng > 120 && shanghaiCoords.lng < 123);

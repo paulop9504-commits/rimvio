@@ -78,7 +78,7 @@ export function useFeedPlanTraffic(
     return () => {
       cancelled = true;
     };
-  }, [requestKey, destinations]);
+  }, [requestKey]);
 
   return trafficByDestination;
 }

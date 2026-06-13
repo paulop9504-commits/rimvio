@@ -122,7 +122,7 @@ export function useGlobeSurfaceTouch({
       syncTouches(event.touches);
       const mode = surfaceModeRef.current;
 
-      if (mode === "flat2d" || flatActiveRef.current) {
+      if (mode === "vector2d" || flatActiveRef.current) {
         event.preventDefault();
         if (touchesRef.current.size >= 2) {
           startPinch();
@@ -151,7 +151,7 @@ export function useGlobeSurfaceTouch({
     };
 
     const onTouchMove = (event: TouchEvent) => {
-      if (!flatActiveRef.current && surfaceModeRef.current !== "flat2d") {
+      if (!flatActiveRef.current && surfaceModeRef.current !== "vector2d") {
         return;
       }
 
@@ -211,7 +211,7 @@ export function useGlobeSurfaceTouch({
     };
 
     const onWheel = (event: WheelEvent) => {
-      if (surfaceModeRef.current !== "flat2d") {
+      if (surfaceModeRef.current !== "vector2d") {
         return;
       }
       event.preventDefault();

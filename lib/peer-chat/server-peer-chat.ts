@@ -20,6 +20,7 @@ import {
   fetchPeerPublicProfileByUserId,
   type PeerPublicProfile,
 } from "@/lib/peer-chat/peer-public-profile";
+import { assertCallerCanAccessPeerThread } from "@/lib/peer-chat/caller-peer-thread-access";
 import type { ListedPeerThread, PeerMessageRow, PeerThreadRow } from "@/lib/peer-chat/types";
 import type { Database } from "@/types/database";
 
@@ -731,7 +732,7 @@ export async function listPeerThreadMembers(
   supabase: SupabaseClient<Database>,
   input: { threadId: string; callerUserId: string },
 ): Promise<PeerThreadMemberPublic[]> {
-  await assertCallerIsThreadMember(
+  await assertCallerCanAccessPeerThread(
     supabase,
     input.threadId,
     input.callerUserId,
@@ -746,9 +747,19 @@ export async function listPeerThreadMembers(
     throw error;
   }
 
-  const userIds = (memberships ?? [])
+  let userIds = (memberships ?? [])
     .map((row) => row.user_id as string)
     .filter(Boolean);
+
+  if (userIds.length === 0 && isDmThreadId(input.threadId)) {
+    const partnerId = extractOtherUserIdFromDmThread(
+      input.threadId,
+      input.callerUserId,
+    );
+    if (partnerId) {
+      userIds = [input.callerUserId, partnerId];
+    }
+  }
 
   const profiles = await Promise.all(
     userIds.map(async (userId) => {
