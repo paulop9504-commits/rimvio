@@ -10,12 +10,15 @@ export type GlobeExperienceSettings = {
   silentAutoAttach: boolean;
   /** Trip leg arcs on the 3D globe. */
   showTripArcs: boolean;
+  /** Soft warmth wash for personal trace density (overview/region only). */
+  showContextWarmth: boolean;
 };
 
 const DEFAULTS: GlobeExperienceSettings = {
   gpsDwellIngest: true,
   silentAutoAttach: true,
   showTripArcs: true,
+  showContextWarmth: true,
 };
 
 let memory: GlobeExperienceSettings | null = null;
@@ -35,6 +38,7 @@ function normalize(raw: unknown): GlobeExperienceSettings {
     gpsDwellIngest: row.gpsDwellIngest !== false,
     silentAutoAttach: row.silentAutoAttach !== false,
     showTripArcs: row.showTripArcs !== false,
+    showContextWarmth: row.showContextWarmth !== false,
   };
 }
 
@@ -83,6 +87,10 @@ export function isSilentAutoAttachEnabled(): boolean {
 
 export function isShowTripArcsEnabled(): boolean {
   return readGlobeExperienceSettings().showTripArcs;
+}
+
+export function isShowContextWarmthEnabled(): boolean {
+  return readGlobeExperienceSettings().showContextWarmth;
 }
 
 /** Whether auto-attached capture should surface the verify card. */

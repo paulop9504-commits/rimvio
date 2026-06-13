@@ -34,6 +34,8 @@ import {
 } from "@/lib/globe/globe-zoom-levels";
 import type { ClassifiedGlobePin } from "@/lib/feed/experience-globe-ping-types";
 import type { GlobeTripArc } from "@/lib/globe/project-trip-leg-arcs";
+import type { GlobeContextWarmthPoint } from "@/lib/globe/globe-context-warmth-types";
+import { syncGlobeContextWarmthLayer } from "@/lib/globe/sync-globe-context-warmth-layer";
 import { screenPointToGlobeCoords } from "@/lib/globe/screen-point-to-globe-coords";
 import { cn } from "@/lib/utils";
 
@@ -78,6 +80,9 @@ export type RimvioGlobe3DHandle = {
 export type RimvioGlobe3DProps = {
   pins: readonly ClassifiedGlobePin[];
   tripArcs?: readonly GlobeTripArc[];
+  /** Soft trace-density wash — overview/region only. */
+  contextWarmthPoints?: readonly GlobeContextWarmthPoint[];
+  contextWarmthEnabled?: boolean;
   viewerLocation?: GlobeViewerLocation | null;
   activePinId?: string | null;
   onPinPress?: (pinId: string) => void;
@@ -112,6 +117,8 @@ export const RimvioGlobe3D = memo(
     {
       pins,
       tripArcs = [],
+      contextWarmthPoints = [],
+      contextWarmthEnabled = true,
       viewerLocation = null,
       activePinId = null,
       onPinPress,
@@ -139,6 +146,10 @@ export const RimvioGlobe3D = memo(
     const activePinIdRef = useRef(activePinId);
     const pinsRef = useRef(pins);
     const tripArcsRef = useRef(tripArcs);
+    const contextWarmthPointsRef = useRef(contextWarmthPoints);
+    const contextWarmthEnabledRef = useRef(contextWarmthEnabled);
+    const warmthAltitudeRef = useRef(GLOBE_OVERVIEW_POINT_OF_VIEW.altitude);
+    const warmthDetailRef = useRef<GlobeDetailLevel>("space");
     const viewerLocationRef = useRef(viewerLocation);
     const overviewTextureUrlRef = useRef<string | null>(null);
     const [globeReady, setGlobeReady] = useState(false);
@@ -288,6 +299,23 @@ export const RimvioGlobe3D = memo(
     activePinIdRef.current = activePinId;
     pinsRef.current = pins;
     tripArcsRef.current = tripArcs;
+    contextWarmthPointsRef.current = contextWarmthPoints;
+    contextWarmthEnabledRef.current = contextWarmthEnabled;
+
+    const syncContextWarmthRef = useRef(() => {});
+    syncContextWarmthRef.current = () => {
+      const globe = globeRef.current;
+      if (!globe) {
+        return;
+      }
+      syncGlobeContextWarmthLayer({
+        globe,
+        enabled: contextWarmthEnabledRef.current,
+        points: contextWarmthPointsRef.current,
+        altitude: warmthAltitudeRef.current,
+        detailLevel: warmthDetailRef.current,
+      });
+    };
     viewerLocationRef.current = viewerLocation;
 
     useImperativeHandle(ref, () => ({
@@ -425,7 +453,9 @@ export const RimvioGlobe3D = memo(
         .ringColor(() => GLOBE_TOSS_THEME.viewerRingStroke)
         .ringAltitude(0.001)
         .ringPropagationSpeed(0)
-        .ringRepeatPeriod(0);
+        .ringRepeatPeriod(0)
+        .heatmapsData([])
+        .heatmapsTransitionDuration(0);
 
       const renderer = globe.renderer();
       renderer.setPixelRatio(
@@ -463,6 +493,8 @@ export const RimvioGlobe3D = memo(
         altitude = pov.altitude,
       ) => {
         const detailLevel = resolveGlobeDetailLevel(altitude);
+        warmthAltitudeRef.current = altitude;
+        warmthDetailRef.current = detailLevel;
         onDetailLevelChangeRef.current?.(detailLevel);
         shellRef.current?.setAttribute("data-globe-detail", detailLevel);
         const pinScale = resolveGlobePinUiScaleBlended(altitude, detailLevel);
@@ -472,6 +504,7 @@ export const RimvioGlobe3D = memo(
         globe.showAtmosphere(altitude >= GLOBE_TOSS_THEME.atmosphereCutoffAltitude);
         globe.labelsData([]);
         syncOverviewTexture(altitude);
+        syncContextWarmthRef.current();
         onPointOfViewChangeRef.current?.({ ...pov, altitude, detailLevel });
       };
 
@@ -583,6 +616,13 @@ export const RimvioGlobe3D = memo(
       }
       globe.arcsData([...tripArcs]);
     }, [tripArcs]);
+
+    useEffect(() => {
+      if (!globeReady) {
+        return;
+      }
+      syncContextWarmthRef.current();
+    }, [contextWarmthPoints, contextWarmthEnabled, globeReady]);
 
     useEffect(() => {
       const globe = globeRef.current;

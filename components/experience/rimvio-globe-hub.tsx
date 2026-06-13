@@ -55,8 +55,10 @@ import {
 import { projectTripLegArcs } from "@/lib/globe/project-trip-leg-arcs";
 import {
   GLOBE_EXPERIENCE_SETTINGS_UPDATED,
+  isShowContextWarmthEnabled,
   isShowTripArcsEnabled,
 } from "@/lib/globe/globe-experience-settings";
+import { buildGlobeContextWarmthPoints } from "@/lib/globe/build-globe-context-warmth-points";
 import { cn } from "@/lib/utils";
 
 function useGlobeEventSnapshot() {
@@ -222,8 +224,14 @@ const RimvioGlobeHubBody = memo(
       return projectGlobeZoomClusterPins(withOverrides, detailLevel);
     }, [classifiedPins, pinCoordOverrides, detailLevel]);
     const [tripArcsEnabled, setTripArcsEnabled] = useState(() => isShowTripArcsEnabled());
+    const [contextWarmthEnabled, setContextWarmthEnabled] = useState(() =>
+      isShowContextWarmthEnabled(),
+    );
     useEffect(() => {
-      const sync = () => setTripArcsEnabled(isShowTripArcsEnabled());
+      const sync = () => {
+        setTripArcsEnabled(isShowTripArcsEnabled());
+        setContextWarmthEnabled(isShowContextWarmthEnabled());
+      };
       sync();
       window.addEventListener(GLOBE_EXPERIENCE_SETTINGS_UPDATED, sync);
       return () => window.removeEventListener(GLOBE_EXPERIENCE_SETTINGS_UPDATED, sync);
@@ -234,6 +242,10 @@ const RimvioGlobeHubBody = memo(
           ? projectTripLegArcs({ eventsById, clusters })
           : [],
       [eventsById, clusters, tripArcsEnabled],
+    );
+    const contextWarmthPoints = useMemo(
+      () => buildGlobeContextWarmthPoints(clusters),
+      [clusters],
     );
     const { enabled: gpsEnabled } = useGpsTrackingEnabled();
     const liveLocation = useLiveLocationSnapshot();
@@ -353,6 +365,8 @@ const RimvioGlobeHubBody = memo(
           ref={innerGlobeRef}
           pins={globePins}
           tripArcs={tripArcs}
+          contextWarmthPoints={contextWarmthPoints}
+          contextWarmthEnabled={contextWarmthEnabled}
           viewerLocation={
             gpsEnabled && liveLocation
               ? {

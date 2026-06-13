@@ -345,6 +345,13 @@ function GlobeSettingsBody() {
       </SettingsSection>
 
       <SettingsSection title="지구본" description="표시 옵션">
+        <SettingsRow label={copy.globe.contextWarmthLabel} hint={copy.globe.contextWarmthHint}>
+          <SettingsToggle
+            checked={globePrefs.showContextWarmth}
+            onCheckedChange={(checked) => patchGlobePrefs({ showContextWarmth: checked })}
+            aria-label={copy.globe.contextWarmthLabel}
+          />
+        </SettingsRow>
         <SettingsRow label="여행 경로 arc" hint="멀티데이 일정 사이 곡선">
           <SettingsToggle
             checked={globePrefs.showTripArcs}

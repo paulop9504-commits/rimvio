@@ -6,6 +6,7 @@ import { ContextMediaUploaderBadge } from "@/components/globe/context-media-uplo
 import { ContextMediaDeleteButton } from "@/components/globe/context-media-delete-button";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { useGlobePinScreenAnchor } from "@/hooks/use-globe-pin-screen-anchor";
+import { useGlobeContextVideoSound } from "@/hooks/use-globe-context-video-sound";
 import { useMediaBlobUrl } from "@/hooks/use-media-blob-url";
 import type { GlobeContextTimelineEntry } from "@/lib/globe/list-globe-context-timeline";
 import { resolveGlobeContextNavigationStep } from "@/lib/globe/list-globe-context-navigation-order";
@@ -48,10 +49,12 @@ function MapMediaSlide({
   item,
   playing,
   onPlayingChange,
+  enableSoundRef,
 }: {
   item: ContextMediaReelItem;
   playing: boolean;
   onPlayingChange: (playing: boolean) => void;
+  enableSoundRef: RefObject<(() => void) | null>;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const { url: blobUrl, loading } = useMediaBlobUrl(
@@ -60,17 +63,18 @@ function MapMediaSlide({
   const src = item.imageUrl ?? blobUrl;
   const isVideo = item.kind === "video";
 
+  const { enableSound } = useGlobeContextVideoSound({
+    videoRef,
+    src,
+    isVideo,
+    playing,
+    soundByDefault: false,
+    onPlayFailed: () => onPlayingChange(false),
+  });
+
   useEffect(() => {
-    const node = videoRef.current;
-    if (!node || !src || !isVideo) {
-      return;
-    }
-    if (playing) {
-      void node.play().catch(() => onPlayingChange(false));
-    } else {
-      node.pause();
-    }
-  }, [isVideo, onPlayingChange, playing, src]);
+    enableSoundRef.current = enableSound;
+  }, [enableSound, enableSoundRef]);
 
   if (src && isVideo) {
     return (
@@ -80,7 +84,6 @@ function MapMediaSlide({
         src={src}
         className="pointer-events-none relative z-0 aspect-[9/16] w-full object-cover"
         playsInline
-        muted
         loop
         autoPlay
         preload="metadata"
@@ -129,6 +132,7 @@ export function GlobeContextMapVideoStage({
   const containerRef = useRef<HTMLDivElement>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const skipNextTapRef = useRef(false);
+  const enableVideoSoundRef = useRef<(() => void) | null>(null);
   const [revision, setRevision] = useState(0);
   const [mediaIndex, setMediaIndex] = useState(0);
   const [playing, setPlaying] = useState(true);
@@ -297,6 +301,7 @@ export function GlobeContextMapVideoStage({
                 item={currentItem}
                 playing={playing}
                 onPlayingChange={setPlaying}
+                enableSoundRef={enableVideoSoundRef}
               />
             ) : null}
             {currentItem && anchorLayout.scale >= 0.34 ? (
@@ -324,6 +329,7 @@ export function GlobeContextMapVideoStage({
                 className="pointer-events-auto absolute bottom-2 right-2 z-[3] rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-sm"
                 onClick={(event) => {
                   event.stopPropagation();
+                  enableVideoSoundRef.current?.();
                   setPlaying((value) => !value);
                 }}
               >

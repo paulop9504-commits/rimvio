@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ContextMediaUploaderBadge } from "@/components/globe/context-media-uploader-badge";
 import { ContextMediaDeleteButton } from "@/components/globe/context-media-delete-button";
+import { useGlobeContextVideoSound } from "@/hooks/use-globe-context-video-sound";
 import { useMediaBlobUrl } from "@/hooks/use-media-blob-url";
 import type { ContextMediaReelItem } from "@/lib/globe/project-context-media-reel";
 import { fetchMyAccountProfile } from "@/lib/peer-chat/peer-chat-client";
@@ -47,6 +48,16 @@ function ContextMediaShortsSlide({
   const src = item.imageUrl ?? blobUrl;
   const isVideo = item.kind === "video";
 
+  const { enableSound } = useGlobeContextVideoSound({
+    videoRef,
+    src,
+    isVideo,
+    playing,
+    visible,
+    soundByDefault: embedded,
+    onPlayFailed: () => setPlaying(false),
+  });
+
   useEffect(() => {
     const node = rootRef.current;
     if (!node) {
@@ -62,18 +73,6 @@ function ContextMediaShortsSlide({
     observer.observe(node);
     return () => observer.disconnect();
   }, []);
-
-  useEffect(() => {
-    const node = videoRef.current;
-    if (!node || !src || !isVideo) {
-      return;
-    }
-    if (visible && playing) {
-      void node.play().catch(() => setPlaying(false));
-    } else {
-      node.pause();
-    }
-  }, [visible, isVideo, playing, src]);
 
   return (
     <section
@@ -101,6 +100,7 @@ function ContextMediaShortsSlide({
           aria-label={isVideo ? (playing ? "일시정지" : "재생") : item.label}
           onClick={() => {
             if (isVideo && src) {
+              enableSound();
               setPlaying((value) => !value);
             }
           }}
@@ -112,7 +112,6 @@ function ContextMediaShortsSlide({
             src={src}
             className="relative z-0 size-full object-cover"
             playsInline
-            muted
             loop
             preload="metadata"
           />
