@@ -266,35 +266,23 @@ export function GlobeContextMapVideoStage({
     >
       {anchorLayout ? (
         <div
-          className="absolute z-[1] flex items-center gap-1.5"
+          className="absolute z-[1]"
           style={{
             left: anchorLayout.x,
             top: anchorLayout.y,
+            width: anchorLayout.widthPx,
             transform: "translate(-50%, calc(-100% - 10px))",
           }}
           data-globe-context-map-video-anchor
         >
-          {currentItem?.kind === "video" ? (
-            <ContextMediaVideoSoundButton
-              soundOn={videoSoundOn}
-              onToggleSound={() => {
-                toggleVideoSoundRef.current?.();
-                if (!playing) {
-                  setPlaying(true);
-                }
-              }}
-            />
-          ) : null}
           <div
             className={cn(
-              "relative min-w-0 touch-pan-y overflow-hidden rounded-[1.25rem]",
+              "relative touch-pan-y overflow-hidden rounded-[1.25rem]",
               "border-2 border-white/90 bg-black shadow-[0_12px_40px_rgba(0,0,0,0.28)]",
               "ring-1 ring-black/10",
-              currentItem?.kind !== "video" && onOpenDetails
-                ? "pointer-events-auto cursor-pointer"
-                : "pointer-events-auto",
+              "pointer-events-auto",
+              currentItem?.kind !== "video" && onOpenDetails && "cursor-pointer",
             )}
-            style={{ width: anchorLayout.widthPx }}
             onTouchStart={(event) => {
               const touch = event.changedTouches[0] ?? event.touches[0];
               if (!touch) {
@@ -347,6 +335,18 @@ export function GlobeContextMapVideoStage({
                 item={currentItem}
                 selfDisplayName={selfDisplayName}
                 selfAvatarUrl={selfAvatarUrl}
+              />
+            ) : null}
+            {currentItem?.kind === "video" ? (
+              <ContextMediaVideoSoundButton
+                soundOn={videoSoundOn}
+                onToggleSound={() => {
+                  toggleVideoSoundRef.current?.();
+                  if (!playing) {
+                    setPlaying(true);
+                  }
+                }}
+                className="absolute left-2 top-1/2 z-[4] -translate-y-1/2"
               />
             ) : null}
             {reel.length > 1 && anchorLayout.scale >= 0.34 ? (

@@ -20,10 +20,10 @@ export function ContextMediaVideoSoundButton({
     <button
       type="button"
       className={cn(
-        "pointer-events-auto flex size-10 shrink-0 items-center justify-center rounded-full backdrop-blur-sm",
+        "pointer-events-auto flex size-11 shrink-0 items-center justify-center rounded-full backdrop-blur-md",
         soundOn
-          ? "bg-black/55 text-white ring-1 ring-white/25"
-          : "bg-white text-[#191f28] shadow-md ring-2 ring-white/90",
+          ? "bg-black/65 text-white ring-2 ring-white/30 shadow-lg"
+          : "bg-white text-[#191f28] shadow-[0_4px_16px_rgba(0,0,0,0.35)] ring-2 ring-white",
         className,
       )}
       aria-label={

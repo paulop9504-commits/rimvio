@@ -89,10 +89,18 @@ function ContextMediaShortsSlide({
     >
       <div
         className={cn(
-          "mx-auto flex items-center gap-2",
-          fillViewport && embedded ? "max-h-full" : "max-w-[min(100%,340px)]",
+          "relative mx-auto w-full max-w-[min(100%,340px)]",
+          fillViewport && embedded && "max-h-full",
         )}
       >
+        <div
+          className={cn(
+            "relative overflow-hidden rounded-[1.25rem] bg-black shadow-[0_16px_48px_rgba(0,0,0,0.22)] ring-1 ring-black/10",
+            fillViewport && embedded
+              ? "aspect-[9/16] max-h-full w-auto max-w-[min(100%,340px)]"
+              : "aspect-[9/16] w-full",
+          )}
+        >
         {isVideo && src ? (
           <ContextMediaVideoSoundButton
             soundOn={soundOn}
@@ -102,16 +110,9 @@ function ContextMediaShortsSlide({
                 setPlaying(true);
               }
             }}
+            className="absolute left-2 top-1/2 z-[4] -translate-y-1/2"
           />
         ) : null}
-        <div
-          className={cn(
-            "relative min-w-0 overflow-hidden rounded-[1.25rem] bg-black shadow-[0_16px_48px_rgba(0,0,0,0.22)] ring-1 ring-black/10",
-            fillViewport && embedded
-              ? "aspect-[9/16] max-h-full w-auto max-w-[min(100%,340px)]"
-              : "aspect-[9/16] w-full flex-1",
-          )}
-        >
         {isVideo && src ? (
           <button
             type="button"
