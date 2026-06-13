@@ -102,6 +102,12 @@ function ContextMediaShortsSlide({
           onClick={() => {
             if (isVideo && src) {
               enableSound();
+              if (!soundOn) {
+                if (!playing) {
+                  setPlaying(true);
+                }
+                return;
+              }
               setPlaying((value) => !value);
             }
           }}
@@ -160,7 +166,11 @@ function ContextMediaShortsSlide({
 
         {isVideo && src ? (
           <span className="pointer-events-none absolute left-3 top-3 z-[2] rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-semibold text-white/90">
-            {visible && playing ? "일시정지" : "재생"}
+            {!soundOn
+              ? copy.globe.contextVideoSoundHint
+              : visible && playing
+                ? "일시정지"
+                : "재생"}
           </span>
         ) : null}
 

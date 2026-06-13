@@ -21,8 +21,22 @@ export function useGlobeContextVideoSound(input: {
   }, [input.src, input.soundByDefault]);
 
   const enableSound = useCallback(() => {
+    const node = input.videoRef.current;
+    if (node && input.isVideo) {
+      node.playsInline = true;
+      node.setAttribute("playsinline", "");
+      node.setAttribute("webkit-playsinline", "");
+      node.volume = 1;
+      node.muted = false;
+      if (input.playing && (input.visible ?? true)) {
+        void node.play().catch(() => {
+          node.muted = true;
+          void node.play().catch(() => input.onPlayFailed?.());
+        });
+      }
+    }
     setSoundOn(true);
-  }, []);
+  }, [input.isVideo, input.onPlayFailed, input.playing, input.videoRef, input.visible]);
 
   useEffect(() => {
     const node = input.videoRef.current;

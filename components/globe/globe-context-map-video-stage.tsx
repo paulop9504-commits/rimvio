@@ -304,6 +304,30 @@ export function GlobeContextMapVideoStage({
               onOpenDetails?.();
             }}
           >
+            {currentItem?.kind === "video" ? (
+              <button
+                type="button"
+                className="pointer-events-auto absolute inset-0 z-[1]"
+                aria-label={
+                  videoSoundOn
+                    ? playing
+                      ? "일시정지"
+                      : "재생"
+                    : copy.globe.contextVideoSoundHint
+                }
+                onClick={(event) => {
+                  event.stopPropagation();
+                  enableVideoSoundRef.current?.();
+                  if (!videoSoundOn) {
+                    if (!playing) {
+                      setPlaying(true);
+                    }
+                    return;
+                  }
+                  setPlaying((value) => !value);
+                }}
+              />
+            ) : null}
             {currentItem ? (
               <MapMediaSlide
                 key={currentItem.id}
@@ -340,17 +364,27 @@ export function GlobeContextMapVideoStage({
                 onClick={(event) => {
                   event.stopPropagation();
                   enableVideoSoundRef.current?.();
+                  if (!videoSoundOn) {
+                    if (!playing) {
+                      setPlaying(true);
+                    }
+                    return;
+                  }
                   setPlaying((value) => !value);
                 }}
               >
-                {playing ? "일시정지" : "재생"}
+                {!videoSoundOn
+                  ? copy.globe.contextVideoSoundHint
+                  : playing
+                    ? "일시정지"
+                    : "재생"}
               </button>
             ) : null}
             {currentItem?.kind === "video" &&
             playing &&
             !videoSoundOn &&
             anchorLayout.scale >= 0.34 ? (
-              <span className="pointer-events-none absolute bottom-2 left-12 z-[3] rounded-full bg-black/45 px-2 py-0.5 text-[9px] font-medium text-white/80 backdrop-blur-sm">
+              <span className="pointer-events-none absolute bottom-10 left-1/2 z-[3] -translate-x-1/2 rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-semibold text-white/90 backdrop-blur-sm">
                 {copy.globe.contextVideoSoundHint}
               </span>
             ) : null}
