@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { PeerProfileAvatar } from "@/components/peer-chat/peer-profile-avatar";
 import { MainActionButton } from "@/components/action-chat/main-action-button";
 import { resolveMainActionBrandStyle } from "@/lib/brand/action-brand-style";
@@ -38,6 +38,8 @@ const MATCHED_LABEL: Record<string, string> = {
   rimvio_id: "Rimvio ID",
 };
 
+const LOOKUP_DEBOUNCE_MS = 240;
+
 type FriendAddContactFlowProps = {
   contact: string;
   className?: string;
@@ -55,48 +57,93 @@ export function FriendAddContactFlow({
   onAdded,
   onError,
 }: FriendAddContactFlowProps) {
-  const { user, configured } = useAuth();
-  const canUse = Boolean(configured && user && isSupabaseConfigured());
+  const { user, configured, loading: authLoading } = useAuth();
+  const authReady = Boolean(
+    !authLoading && configured && user && isSupabaseConfigured(),
+  );
   const trimmedContact = contact.trim();
+  const [debouncedContact, setDebouncedContact] = useState(trimmedContact);
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState<FriendAddPreview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const onErrorRef = useRef(onError);
+  const onAddedRef = useRef(onAdded);
+  const lookupSeqRef = useRef(0);
+
+  useEffect(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
+
+  useEffect(() => {
+    onAddedRef.current = onAdded;
+  }, [onAdded]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(
+      () => setDebouncedContact(trimmedContact),
+      LOOKUP_DEBOUNCE_MS,
+    );
+    return () => window.clearTimeout(timer);
+  }, [trimmedContact]);
+
   const loadPreview = useCallback(() => {
-    if (!canUse || !trimmedContact) {
+    if (authLoading) {
+      setLoading(true);
+      setError(null);
+      return;
+    }
+
+    if (!authReady || !debouncedContact) {
       setLoading(false);
       setError(null);
       setPreview(null);
       return;
     }
+
+    const seq = ++lookupSeqRef.current;
     setLoading(true);
     setError(null);
     setPreview(null);
-    void lookupFriendContactRemote(trimmedContact)
-      .then((data) => setPreview(data.profile))
+
+    void lookupFriendContactRemote(debouncedContact)
+      .then((data) => {
+        if (seq !== lookupSeqRef.current) {
+          return;
+        }
+        setPreview(data.profile);
+      })
       .catch((err) => {
+        if (seq !== lookupSeqRef.current) {
+          return;
+        }
         const message = friendContactErrorMessage(
           err instanceof Error ? err.message : undefined,
         );
         setError(message);
-        onError?.(message);
+        onErrorRef.current?.(message);
       })
-      .finally(() => setLoading(false));
-  }, [canUse, trimmedContact, onError]);
+      .finally(() => {
+        if (seq !== lookupSeqRef.current) {
+          return;
+        }
+        setLoading(false);
+      });
+  }, [authLoading, authReady, debouncedContact]);
 
   useEffect(() => {
     loadPreview();
   }, [loadPreview]);
 
   const confirmAdd = useCallback(() => {
-    if (!preview || !canUse) {
+    if (!preview || !authReady) {
       return;
     }
     setSubmitting(true);
-    void addPeerByPhoneRemote({ contact: trimmedContact })
+    void addPeerByPhoneRemote({ contact: debouncedContact })
       .then(async (result) => {
-        await onAdded?.({
+        await onAddedRef.current?.({
           threadId: result.threadId,
           displayName: result.displayName,
           otherUserId: result.otherUserId,
@@ -109,10 +156,10 @@ export function FriendAddContactFlow({
         const message = friendContactErrorMessage(
           err instanceof Error ? err.message : undefined,
         );
-        onError?.(message);
+        onErrorRef.current?.(message);
       })
       .finally(() => setSubmitting(false));
-  }, [canUse, trimmedContact, preview, onAdded, onError]);
+  }, [authReady, debouncedContact, preview]);
 
   const brand = resolveMainActionBrandStyle({
     label: confirmLabel,
@@ -123,7 +170,13 @@ export function FriendAddContactFlow({
     return null;
   }
 
-  if (!canUse) {
+  if (authLoading) {
+    return (
+      <p className={cn("text-[12px] text-[#6b7684]", className)}>로그인 확인 중…</p>
+    );
+  }
+
+  if (!authReady) {
     return (
       <div className={cn("space-y-2", className)}>
         <p className="text-[12px] text-amber-700">

@@ -143,7 +143,7 @@ function ContextMediaShortsSlide({
             {eyebrow}
           </p>
           <p className="mt-0.5 line-clamp-2 text-[15px] font-semibold leading-snug text-white">
-            {item.label}
+            {item.recallCaption}
           </p>
         </div>
 

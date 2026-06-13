@@ -170,8 +170,8 @@ export function GlobeContextMapVideoStage({
     const event =
       findLifeEventCandidate(key) ?? recoverGlobeContextEventFromPin(key);
     const volume = resolveExperienceVolumeForEvent(key);
-    return projectContextMediaReel({ event, volume });
-  }, [eventId, revision]);
+    return projectContextMediaReel({ event, volume, viewerUserId });
+  }, [eventId, revision, viewerUserId]);
 
   useEffect(() => {
     setMediaIndex(0);
@@ -298,6 +298,13 @@ export function GlobeContextMapVideoStage({
                 playing={playing}
                 onPlayingChange={setPlaying}
               />
+            ) : null}
+            {currentItem && anchorLayout.scale >= 0.34 ? (
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] bg-gradient-to-t from-black/85 via-black/40 to-transparent px-3 pb-2.5 pt-12">
+                <p className="line-clamp-2 text-[11px] font-semibold leading-snug text-white">
+                  {currentItem.recallCaption}
+                </p>
+              </div>
             ) : null}
             {currentItem && anchorLayout.scale >= 0.34 ? (
               <ContextMediaUploaderBadge

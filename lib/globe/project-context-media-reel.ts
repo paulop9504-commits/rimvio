@@ -4,10 +4,14 @@ import { EXPERIENCE_BRIDGE_META_KEYS } from "@/lib/experience-bridge/constants";
 import { isUsableBridgeMediaUrl } from "@/lib/experience-bridge/bridge-media-url";
 import { readFeedCaptureFragments } from "@/lib/feed/feed-capture-metadata";
 import { readMediaContextMemorySnapshot } from "@/lib/location-ping/media-context-store";
+import { buildGlobeContextMediaRecallCaption } from "@/lib/globe/build-context-media-recall-caption";
 
 export type ContextMediaReelItem = {
   id: string;
   label: string;
+  /** Recall line under map / pin media — "작년 여름 · 민수랑". */
+  recallCaption: string;
+  placeLabel: string | null;
   imageUrl: string | null;
   mediaContextId: string | null;
   capturedAtIso: string | null;
@@ -20,6 +24,8 @@ export type ContextMediaReelItem = {
   authorDisplayName?: string | null;
   authorAvatarUrl?: string | null;
 };
+
+type ContextMediaReelDraft = Omit<ContextMediaReelItem, "recallCaption">;
 
 function parseCapturedMs(iso: string | null | undefined): number {
   if (!iso?.trim()) {
@@ -57,7 +63,7 @@ function isLocalEventMedia(
 
 function appendFromMediaStore(
   eventId: string,
-  push: (item: ContextMediaReelItem) => void,
+  push: (item: ContextMediaReelDraft) => void,
   skipMediaIds: ReadonlySet<string>,
 ): void {
   const key = eventId.trim();
@@ -81,6 +87,7 @@ function appendFromMediaStore(
       label:
         row.placeLabel?.trim() ||
         (row.mediaKind === "video" ? "동영상" : "사진"),
+      placeLabel: row.placeLabel?.trim() || null,
       imageUrl: null,
       mediaContextId: row.id.trim(),
       capturedAtIso: row.capturedAtIso,
@@ -95,6 +102,7 @@ export function projectContextMediaReel(input: {
   event: EventCandidate | null | undefined;
   volume: ExperienceVolume | null | undefined;
   limit?: number;
+  viewerUserId?: string | null;
 }): ContextMediaReelItem[] {
   const limit = input.limit ?? 48;
   const eventId = input.event?.id?.trim() ?? "";
@@ -102,7 +110,7 @@ export function projectContextMediaReel(input: {
   const items: ContextMediaReelItem[] = [];
   const seen = new Set<string>();
 
-  const push = (item: ContextMediaReelItem) => {
+  const push = (item: ContextMediaReelDraft) => {
     const remoteUrl = item.imageUrl?.trim() || "";
     const mediaId = item.mediaContextId?.trim() || "";
     const canShow =
@@ -123,7 +131,15 @@ export function projectContextMediaReel(input: {
       return;
     }
     seen.add(key);
-    items.push(item);
+    items.push({
+      ...item,
+      recallCaption: buildGlobeContextMediaRecallCaption({
+        event: input.event,
+        volume: input.volume,
+        item,
+        viewerUserId: input.viewerUserId,
+      }),
+    });
   };
 
   const linkedMediaIds = new Set<string>();
@@ -145,6 +161,7 @@ export function projectContextMediaReel(input: {
         row.label?.trim() ||
         row.placeLabel?.trim() ||
         (row.kind === "video" ? "동영상" : "사진"),
+      placeLabel: row.placeLabel?.trim() || null,
       imageUrl,
       mediaContextId,
       capturedAtIso: row.capturedAtIso,

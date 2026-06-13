@@ -42,6 +42,7 @@ const reel = projectContextMediaReel({ event, volume: null });
 assert.equal(reel.length, 2);
 assert.equal(reel[0]?.kind, "video");
 assert.equal(reel[1]?.kind, "photo");
+assert.ok(reel[0]?.recallCaption.length > 0);
 assert.equal(reel[0]?.mediaContextId, "mc-video-1");
 
 resetMediaContextStoreForTests([

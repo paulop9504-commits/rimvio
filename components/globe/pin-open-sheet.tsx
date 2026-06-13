@@ -234,8 +234,8 @@ export function PinOpenSheet({
   );
 
   const reelItems = useMemo(
-    () => projectContextMediaReel({ event, volume }),
-    [event, volume, revision],
+    () => projectContextMediaReel({ event, volume, viewerUserId: user?.id }),
+    [event, volume, revision, user?.id],
   );
 
   const conversation = useMemo(() => {
