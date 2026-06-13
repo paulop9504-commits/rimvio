@@ -155,6 +155,7 @@ export const copy = {
     bridgeInviteDeclineFail: "거절하지 못했어요",
     contextWarmthLabel: "기억 온기",
     contextWarmthHint: "맥락이 많은 지역에 은은한 색 · 가까이 가면 사라져요",
+    contextVideoSoundHint: "탭하면 소리",
     bridgeInviteDismissAria: "나중에",
     bridgeInviteToast: (host: string, title: string) =>
       `${host}님이 「${title}」 경험을 공유했어요 · 수신함에서 확인`,

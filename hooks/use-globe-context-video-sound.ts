@@ -16,6 +16,10 @@ export function useGlobeContextVideoSound(input: {
   const [soundOn, setSoundOn] = useState(input.soundByDefault ?? false);
   const visible = input.visible ?? true;
 
+  useEffect(() => {
+    setSoundOn(input.soundByDefault ?? false);
+  }, [input.src, input.soundByDefault]);
+
   const enableSound = useCallback(() => {
     setSoundOn(true);
   }, []);
@@ -26,6 +30,9 @@ export function useGlobeContextVideoSound(input: {
       return;
     }
 
+    node.playsInline = true;
+    node.setAttribute("playsinline", "");
+    node.setAttribute("webkit-playsinline", "");
     node.volume = 1;
     node.muted = !soundOn;
 

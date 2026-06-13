@@ -5,6 +5,7 @@ import { ContextMediaUploaderBadge } from "@/components/globe/context-media-uplo
 import { ContextMediaDeleteButton } from "@/components/globe/context-media-delete-button";
 import { useGlobeContextVideoSound } from "@/hooks/use-globe-context-video-sound";
 import { useMediaBlobUrl } from "@/hooks/use-media-blob-url";
+import { copy } from "@/lib/copy/human-ko";
 import type { ContextMediaReelItem } from "@/lib/globe/project-context-media-reel";
 import { fetchMyAccountProfile } from "@/lib/peer-chat/peer-chat-client";
 import { cn } from "@/lib/utils";
@@ -48,7 +49,7 @@ function ContextMediaShortsSlide({
   const src = item.imageUrl ?? blobUrl;
   const isVideo = item.kind === "video";
 
-  const { enableSound } = useGlobeContextVideoSound({
+  const { enableSound, soundOn } = useGlobeContextVideoSound({
     videoRef,
     src,
     isVideo,
@@ -160,6 +161,12 @@ function ContextMediaShortsSlide({
         {isVideo && src ? (
           <span className="pointer-events-none absolute left-3 top-3 z-[2] rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-semibold text-white/90">
             {visible && playing ? "일시정지" : "재생"}
+          </span>
+        ) : null}
+
+        {isVideo && src && playing && visible && !soundOn ? (
+          <span className="pointer-events-none absolute bottom-14 left-3 z-[2] rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-medium text-white/80">
+            {copy.globe.contextVideoSoundHint}
           </span>
         ) : null}
 

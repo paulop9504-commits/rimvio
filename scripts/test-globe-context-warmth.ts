@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { buildGlobeContextWarmthPoints, scorePinClusterWarmth } from "@/lib/globe/build-globe-context-warmth-points";
 import {
   resolveGlobeContextWarmthOpacity,
+  resolveGlobeContextWarmthHeatmapSaturation,
   shouldRenderGlobeContextWarmth,
   warmthColorForDensity,
 } from "@/lib/globe/globe-context-warmth-visual";
@@ -45,7 +46,9 @@ assert.equal(points.length, 2);
 
 assert.ok(resolveGlobeContextWarmthOpacity(0.9) === 1);
 assert.ok(resolveGlobeContextWarmthOpacity(0.03) === 0);
-assert.ok(resolveGlobeContextWarmthOpacity(0.2) > 0.4);
+assert.ok(resolveGlobeContextWarmthOpacity(0.2) > 0.55);
+assert.equal(resolveGlobeContextWarmthHeatmapSaturation(2), 1.72);
+assert.equal(resolveGlobeContextWarmthHeatmapSaturation(20), 1.12);
 
 assert.equal(
   shouldRenderGlobeContextWarmth({

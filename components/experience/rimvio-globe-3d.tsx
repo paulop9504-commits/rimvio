@@ -306,15 +306,24 @@ export const RimvioGlobe3D = memo(
     syncContextWarmthRef.current = () => {
       const globe = globeRef.current;
       if (!globe) {
+        shellRef.current?.setAttribute("data-globe-context-warmth", "off");
         return;
       }
-      syncGlobeContextWarmthLayer({
+      const state = syncGlobeContextWarmthLayer({
         globe,
         enabled: contextWarmthEnabledRef.current,
         points: contextWarmthPointsRef.current,
         altitude: warmthAltitudeRef.current,
         detailLevel: warmthDetailRef.current,
       });
+      shellRef.current?.setAttribute(
+        "data-globe-context-warmth",
+        state.active ? "active" : "off",
+      );
+      shellRef.current?.setAttribute(
+        "data-globe-context-warmth-points",
+        String(state.pointCount),
+      );
     };
     viewerLocationRef.current = viewerLocation;
 

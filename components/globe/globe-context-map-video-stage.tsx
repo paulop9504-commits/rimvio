@@ -16,6 +16,7 @@ import {
 } from "@/lib/globe/project-context-media-reel";
 import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
 import { resolveExperienceVolumeForEvent } from "@/lib/globe/resolve-globe-context-primary-video";
+import { copy } from "@/lib/copy/human-ko";
 import {
   EVENT_CANDIDATES_UPDATED,
   findLifeEventCandidate,
@@ -50,11 +51,13 @@ function MapMediaSlide({
   playing,
   onPlayingChange,
   enableSoundRef,
+  onSoundOnChange,
 }: {
   item: ContextMediaReelItem;
   playing: boolean;
   onPlayingChange: (playing: boolean) => void;
   enableSoundRef: RefObject<(() => void) | null>;
+  onSoundOnChange?: (soundOn: boolean) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const { url: blobUrl, loading } = useMediaBlobUrl(
@@ -63,7 +66,7 @@ function MapMediaSlide({
   const src = item.imageUrl ?? blobUrl;
   const isVideo = item.kind === "video";
 
-  const { enableSound } = useGlobeContextVideoSound({
+  const { enableSound, soundOn } = useGlobeContextVideoSound({
     videoRef,
     src,
     isVideo,
@@ -75,6 +78,10 @@ function MapMediaSlide({
   useEffect(() => {
     enableSoundRef.current = enableSound;
   }, [enableSound, enableSoundRef]);
+
+  useEffect(() => {
+    onSoundOnChange?.(soundOn);
+  }, [onSoundOnChange, soundOn]);
 
   if (src && isVideo) {
     return (
@@ -136,6 +143,7 @@ export function GlobeContextMapVideoStage({
   const [revision, setRevision] = useState(0);
   const [mediaIndex, setMediaIndex] = useState(0);
   const [playing, setPlaying] = useState(true);
+  const [videoSoundOn, setVideoSoundOn] = useState(false);
   const [selfDisplayName, setSelfDisplayName] = useState<string | null>(null);
   const [selfAvatarUrl, setSelfAvatarUrl] = useState<string | null>(null);
 
@@ -298,10 +306,12 @@ export function GlobeContextMapVideoStage({
           >
             {currentItem ? (
               <MapMediaSlide
+                key={currentItem.id}
                 item={currentItem}
                 playing={playing}
                 onPlayingChange={setPlaying}
                 enableSoundRef={enableVideoSoundRef}
+                onSoundOnChange={setVideoSoundOn}
               />
             ) : null}
             {currentItem && anchorLayout.scale >= 0.34 ? (
@@ -335,6 +345,14 @@ export function GlobeContextMapVideoStage({
               >
                 {playing ? "일시정지" : "재생"}
               </button>
+            ) : null}
+            {currentItem?.kind === "video" &&
+            playing &&
+            !videoSoundOn &&
+            anchorLayout.scale >= 0.34 ? (
+              <span className="pointer-events-none absolute bottom-2 left-12 z-[3] rounded-full bg-black/45 px-2 py-0.5 text-[9px] font-medium text-white/80 backdrop-blur-sm">
+                {copy.globe.contextVideoSoundHint}
+              </span>
             ) : null}
             {onDismiss && anchorLayout.scale >= 0.34 ? (
               <button
