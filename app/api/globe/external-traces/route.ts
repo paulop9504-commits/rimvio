@@ -1,10 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireAuthUser } from "@/lib/auth/api-auth";
-import {
-  EXTERNAL_GLOBE_TRACE_DEFAULT_RADIUS_M,
-  filterExternalTracesNear,
-} from "@/lib/globe/server-external-globe-traces";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { EXTERNAL_GLOBE_TRACE_DEFAULT_RADIUS_M } from "@/lib/globe/server-external-globe-traces";
+import { fetchExternalGlobeTracesNearServer } from "@/lib/globe/server-fetch-external-globe-traces-near";
+import { isSupabaseConfigured } from "@/lib/supabase/server";
 
 function readCoord(value: string | null): number | null {
   if (!value?.trim()) {
@@ -20,8 +18,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ traces: [] });
   }
 
+  const auth = await requireAuthUser();
+  if ("response" in auth) {
+    return auth.response;
+  }
+  const userId = auth.user?.id;
+  if (!userId) {
+    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  }
+
   try {
-    const user = await requireAuthUser();
     const params = request.nextUrl.searchParams;
     const lat = readCoord(params.get("lat"));
     const lng = readCoord(params.get("lng"));
@@ -32,29 +38,16 @@ export async function GET(request: NextRequest) {
     const radiusRaw = readCoord(params.get("radiusM"));
     const radiusM = radiusRaw ?? EXTERNAL_GLOBE_TRACE_DEFAULT_RADIUS_M;
 
-    const supabase = await createClient();
-    const { data, error } = await supabase
-      .from("personal_globe_pins")
-      .select("id,user_id,event_id,pin,visibility,lat,lng,updated_at")
-      .eq("visibility", "external")
-      .limit(120);
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    const traces = filterExternalTracesNear({
-      rows: data ?? [],
+    const traces = await fetchExternalGlobeTracesNearServer({
       lat,
       lng,
       radiusM,
-      excludeUserId: user.id,
+      excludeUserId: userId,
     });
 
     return NextResponse.json({ traces });
   } catch (caught) {
     const message = caught instanceof Error ? caught.message : "fetch_failed";
-    const status = message.includes("auth") ? 401 : 500;
-    return NextResponse.json({ error: message }, { status });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

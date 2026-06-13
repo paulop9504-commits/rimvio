@@ -103,7 +103,7 @@
     "self-learning:loop": "npx tsx scripts/run-self-learning-loop.ts",
     "self-learning:gate": "npx tsx scripts/run-self-learning-gate.ts",
     "self-learning:nightly": "npx tsx scripts/run-nightly-qa.ts",
-    "ci:full": "npm run test:playbook && npm run self-learning:gate",
+    "ci:full": "npm run verify:pipeline && npx tsc --noEmit && npm run lint && npm run test:playbook && npm run self-learning:gate && npm run build",
     "test:llm-router": "npx tsx scripts/test-llm-router.ts",
     "experiment:llm-router": "npx tsx scripts/experiment-llm-router.ts",
     "test:tiki-taka": "npx tsx scripts/test-tiki-taka-dialogue.ts",

@@ -6,6 +6,7 @@ import {
   updateBridgeParticipantRow,
 } from "@/lib/experience-bridge/server-bridge-store";
 import { extractErrorMessage } from "@/lib/peer-chat/extract-error-message";
+import { toBridgeStateWire } from "@/lib/experience-bridge/wire-bridge-response-dto";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
 type RouteContext = {
@@ -42,7 +43,7 @@ export async function POST(_request: NextRequest, context: RouteContext) {
       await updateBridgeParticipantRow(supabase, key, declined);
     }
 
-    return NextResponse.json({ state: next });
+    return NextResponse.json({ state: toBridgeStateWire(next) });
   } catch (error) {
     const message = extractErrorMessage(error, "Failed to decline invite.");
     return NextResponse.json({ error: message }, { status: 400 });

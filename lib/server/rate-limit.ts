@@ -6,7 +6,9 @@ export type RateLimitTier =
   | "scrape"
   | "telemetry"
   | "room-write"
-  | "beam";
+  | "beam"
+  | "bridge-media"
+  | "globe-read";
 
 type Bucket = {
   count: number;
@@ -21,6 +23,8 @@ const LIMITS: Record<RateLimitTier, { windowMs: number; max: number }> = {
   telemetry: { windowMs: 60_000, max: 180 },
   "room-write": { windowMs: 60_000, max: 90 },
   beam: { windowMs: 60_000, max: 60 },
+  "bridge-media": { windowMs: 60_000, max: 20 },
+  "globe-read": { windowMs: 60_000, max: 90 },
 };
 
 function pruneStore(now: number) {
@@ -40,8 +44,23 @@ export function resolveRateLimitTier(pathname: string, method: string): RateLimi
     return null;
   }
 
-  if (pathname === "/api/health" || pathname === "/api/globe/tile") {
+  if (pathname === "/api/health") {
     return null;
+  }
+
+  if (pathname === "/api/experience-bridge/upload-media" && method === "POST") {
+    return "bridge-media";
+  }
+
+  if (
+    pathname === "/api/globe/external-traces" ||
+    pathname === "/api/globe/pins"
+  ) {
+    return "globe-read";
+  }
+
+  if (pathname === "/api/globe/tile") {
+    return "globe-read";
   }
 
   if (pathname === "/api/scrape" || pathname === "/api/scrape/related") {

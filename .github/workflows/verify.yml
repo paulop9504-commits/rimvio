@@ -1,40 +1,11 @@
 name: Verify
 
+# Deprecated — use CI workflow (.github/workflows/ci.yml). Kept as alias for branch protection migration.
 on:
-  push:
-    branches: [main, master, release/v1-rimvio-core]
-  pull_request:
-    branches: [main, master, release/v1-rimvio-core]
+  workflow_dispatch:
 
 jobs:
-  verify:
+  redirect:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-
-      - name: Install
-        run: npm ci
-
-      - name: Rimvio pipeline gate
-        run: npm run verify:pipeline
-
-      - name: Typecheck
-        run: npx tsc --noEmit
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Server pipeline tests
-        run: npm run experiment:server
-
-      - name: URL intelligence tests
-        run: npm run experiment:url
-
-      - name: Build
-        run: npm run build
+      - run: echo "Use the CI workflow — verify.yml is no longer triggered on push/PR."

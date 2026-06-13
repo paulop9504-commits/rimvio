@@ -21,8 +21,16 @@ export async function GET(request: NextRequest) {
     } satisfies GlobePinsIndexResponse);
   }
 
+  const auth = await requireAuthUser();
+  if ("response" in auth) {
+    return auth.response;
+  }
+  const userId = auth.user?.id;
+  if (!userId) {
+    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  }
+
   try {
-    const user = await requireAuthUser();
     const params = request.nextUrl.searchParams;
     const parsed = parseGlobePinsQuery({
       bbox: params.get("bbox"),
@@ -42,7 +50,7 @@ export async function GET(request: NextRequest) {
           : null;
 
     const personalRemote = await fetchPersonalGlobePinsIndexForUser({
-      userId: user.id,
+      userId,
       bbox,
     });
     const personalSlice = queryPinProjectionIndex({
@@ -54,7 +62,7 @@ export async function GET(request: NextRequest) {
     if (includeExternal && PIN_DOMAIN_SHIP_PHASE >= 2 && bbox) {
       external = await fetchExternalGlobePinsIndexInBbox({
         bbox,
-        excludeUserId: user.id,
+        excludeUserId: userId,
       });
     }
 
@@ -66,7 +74,6 @@ export async function GET(request: NextRequest) {
     } satisfies GlobePinsIndexResponse);
   } catch (caught) {
     const message = caught instanceof Error ? caught.message : "fetch_failed";
-    const status = message.includes("auth") ? 401 : 500;
-    return NextResponse.json({ error: message }, { status });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

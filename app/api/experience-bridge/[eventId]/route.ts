@@ -227,7 +227,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       await upsertBridgeParticipantRow(supabase, key, invited);
     }
 
-    return NextResponse.json({ state: next });
+    return NextResponse.json({ state: toBridgeStateWire(next) });
   } catch (error) {
     const message = extractErrorMessage(error, "Failed to update experience bridge.");
     const status = message.includes("participant_cap") ? 409 : 500;

@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 const DEFAULT_MAX_BYTES = 256 * 1024;
 
 const PATH_LIMITS: Record<string, number> = {
+  "/api/experience-bridge/upload-media": 52 * 1024 * 1024,
   "/api/scrape": 32 * 1024,
   "/api/ocr": 8 * 1024 * 1024,
   "/api/beam": 128 * 1024,

@@ -1,32 +1,11 @@
 name: Rimvio CI Gate
 
+# Deprecated — merged into .github/workflows/ci.yml
 on:
-  push:
-    branches: [main, master, release/v1-rimvio-core]
-  pull_request:
-    branches: [main, master, release/v1-rimvio-core]
+  workflow_dispatch:
 
 jobs:
-  ci-gate:
+  redirect:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
-
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-
-      - name: Install
-        run: npm ci
-
-      - name: Playbook regression
-        run: npm run test:playbook
-
-      - name: Self-learning gate (95%)
-        run: npm run self-learning:gate
-
-      - name: Unified stress
-        run: npm run test:unified-stress
+      - run: echo "Use the CI workflow — rimvio-ci-gate.yml is no longer triggered on push/PR."
