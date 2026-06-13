@@ -14,13 +14,19 @@ function mergeCaptureUrls(
   local: FeedCaptureFragment,
   remote: FeedCaptureFragment,
 ): FeedCaptureFragment {
-  if (isUsableBridgeMediaUrl(local.url)) {
-    return local;
+  let next = local;
+  if (isUsableBridgeMediaUrl(remote.url) && !isUsableBridgeMediaUrl(local.url)) {
+    next = { ...next, url: remote.url!.trim() };
   }
-  if (isUsableBridgeMediaUrl(remote.url)) {
-    return { ...local, url: remote.url!.trim() };
+  if (!next.ownerUserId && remote.ownerUserId) {
+    next = {
+      ...next,
+      ownerUserId: remote.ownerUserId,
+      authorDisplayName: remote.authorDisplayName ?? next.authorDisplayName,
+      authorAvatarUrl: remote.authorAvatarUrl ?? next.authorAvatarUrl,
+    };
   }
-  return local;
+  return next;
 }
 
 function commitCaptureMerge(
@@ -65,7 +71,12 @@ export function mergeBridgeRemoteCaptureUrls(input: {
       return capture;
     }
     const next = mergeCaptureUrls(capture, remote);
-    if (next.url !== capture.url) {
+    if (
+      next.url !== capture.url ||
+      next.ownerUserId !== capture.ownerUserId ||
+      next.authorDisplayName !== capture.authorDisplayName ||
+      next.authorAvatarUrl !== capture.authorAvatarUrl
+    ) {
       changed = true;
     }
     return next;
@@ -93,18 +104,39 @@ export function mergeBridgeRemoteCaptureUrls(input: {
   return commitCaptureMerge(input.event, merged);
 }
 
-function contributionUrlByCaptureId(
+function contributionMetaByCaptureId(
   contributions: readonly ExperienceBridgeContribution[],
-): Map<string, string> {
-  const out = new Map<string, string>();
+): Map<
+  string,
+  {
+    ownerUserId: string;
+    authorDisplayName?: string;
+    authorAvatarUrl?: string;
+    url?: string;
+  }
+> {
+  const out = new Map<
+    string,
+    {
+      ownerUserId: string;
+      authorDisplayName?: string;
+      authorAvatarUrl?: string;
+      url?: string;
+    }
+  >();
   for (const row of contributions) {
     const capture = row.capture;
     const id = capture?.id?.trim();
-    const url = capture?.url?.trim();
-    if (!id || !isUsableBridgeMediaUrl(url)) {
+    if (!id) {
       continue;
     }
-    out.set(id, url!);
+    const url = capture.url?.trim();
+    out.set(id, {
+      ownerUserId: row.contributorUserId,
+      authorDisplayName: capture.authorDisplayName?.trim() || undefined,
+      authorAvatarUrl: capture.authorAvatarUrl?.trim() || undefined,
+      url: isUsableBridgeMediaUrl(url) ? url : undefined,
+    });
   }
   return out;
 }
@@ -122,19 +154,29 @@ export function mergeBridgeContributionsIntoEvent(input: {
   const localCaptures = readFeedCaptureFragments(input.event);
   const localIds = new Set(localCaptures.map((row) => row.id));
   const viewerId = input.viewerUserId?.trim() || null;
-  const remoteUrls = contributionUrlByCaptureId(input.contributions);
+  const remoteByCaptureId = contributionMetaByCaptureId(input.contributions);
 
   let changed = false;
   const upgraded = localCaptures.map((capture) => {
-    if (isUsableBridgeMediaUrl(capture.url)) {
+    const remote = remoteByCaptureId.get(capture.id);
+    if (!remote) {
       return capture;
     }
-    const fromContribution = remoteUrls.get(capture.id);
-    if (!fromContribution) {
-      return capture;
+    let next = capture;
+    if (remote.url && !isUsableBridgeMediaUrl(next.url)) {
+      next = { ...next, url: remote.url };
+      changed = true;
     }
-    changed = true;
-    return { ...capture, url: fromContribution };
+    if (!next.ownerUserId) {
+      next = {
+        ...next,
+        ownerUserId: remote.ownerUserId,
+        authorDisplayName: remote.authorDisplayName ?? next.authorDisplayName,
+        authorAvatarUrl: remote.authorAvatarUrl ?? next.authorAvatarUrl,
+      };
+      changed = true;
+    }
+    return next;
   });
 
   const extras: FeedCaptureFragment[] = [];
@@ -160,6 +202,9 @@ export function mergeBridgeContributionsIntoEvent(input: {
       placeLabel: capture.placeLabel,
       label: capture.label,
       url: capture.url,
+      ownerUserId: row.contributorUserId,
+      authorDisplayName: capture.authorDisplayName,
+      authorAvatarUrl: capture.authorAvatarUrl,
     });
     localIds.add(capture.id);
     changed = true;

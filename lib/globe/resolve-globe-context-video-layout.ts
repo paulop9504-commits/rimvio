@@ -8,6 +8,8 @@ const MIN_SCALE = 0.06;
 const MAX_SCALE = 1;
 const BASE_WIDTH_PX = 168;
 const BASE_WIDTH_VW = 0.42;
+/** Pin-anchored map photo/video card — 1.25× vs base layout. */
+export const MAP_CONTEXT_MEDIA_SIZE_MULTIPLIER = 1.25;
 
 export type GlobeContextVideoScreenLayout = {
   x: number;
@@ -29,7 +31,10 @@ export function resolveGlobeContextVideoWidthPx(
   viewportWidth: number,
 ): number {
   const base = Math.min(viewportWidth * BASE_WIDTH_VW, BASE_WIDTH_PX);
-  return Math.max(36, Math.round(base * scale));
+  return Math.max(
+    36,
+    Math.round(base * scale * MAP_CONTEXT_MEDIA_SIZE_MULTIPLIER),
+  );
 }
 
 export function isGlobeContextVideoScreenVisible(

@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireAuthUser } from "@/lib/auth/api-auth";
+import { canReadBridgeExperience } from "@/lib/experience-bridge";
 import { uploadBridgeCaptureMedia } from "@/lib/experience-bridge/bridge-media-server";
+import { fetchExperienceBridgeState } from "@/lib/experience-bridge/server-bridge-store";
 import { extractErrorMessage } from "@/lib/peer-chat/extract-error-message";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
@@ -36,13 +38,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "eventId and captureId required." }, { status: 400 });
     }
 
+    const supabase = await createClient();
+    const bridgeState = await fetchExperienceBridgeState(supabase, eventId);
+    if (!bridgeState) {
+      return NextResponse.json({ error: "Bridge not found." }, { status: 404 });
+    }
+    if (
+      !canReadBridgeExperience({
+        viewerUserId: userId,
+        participants: bridgeState.participants,
+      })
+    ) {
+      return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+    }
+
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
     if (!supabaseUrl) {
       return NextResponse.json({ error: "Supabase URL missing." }, { status: 503 });
     }
 
     const bytes = Buffer.from(await file.arrayBuffer());
-    const supabase = await createClient();
     const { mediaUrl } = await uploadBridgeCaptureMedia(supabase, {
       userId,
       eventId,

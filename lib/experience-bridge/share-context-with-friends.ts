@@ -6,6 +6,7 @@ import {
 import { hydrateBridgeEventSnapshotForShare } from "@/lib/experience-bridge/hydrate-bridge-event-snapshot";
 import { writeLocalBridgeState } from "@/lib/experience-bridge/local-bridge-store";
 import { publishBridgeEventCaptureContributions } from "@/lib/experience-bridge/publish-bridge-capture-contribution";
+import { notifyBridgeSharedMediaUpdated } from "@/lib/experience-bridge/notify-bridge-shared-media-updated";
 import { stampBridgeEventMetadata } from "@/lib/experience-bridge/stamp-bridge-event-metadata";
 
 export type GlobeContextShareFriend = {
@@ -60,5 +61,6 @@ export async function shareGlobeContextWithFriends(input: {
     invited += 1;
   }
 
+  notifyBridgeSharedMediaUpdated();
   return { invited };
 }

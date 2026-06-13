@@ -1,66 +1,19 @@
 import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { EXPERIENCE_BRIDGE_MEDIA_BUCKET } from "@/lib/experience-bridge/bridge-media-constants";
 import {
-  BRIDGE_PHOTO_MAX_BYTES,
-  BRIDGE_VIDEO_MAX_BYTES,
-  EXPERIENCE_BRIDGE_MEDIA_BUCKET,
-  isBridgePhotoContentType,
-  isBridgeVideoContentType,
-} from "@/lib/experience-bridge/bridge-media-constants";
+  assertBridgeCaptureSize,
+  bridgeMediaObjectPath,
+  publicBridgeMediaUrl,
+} from "@/lib/experience-bridge/bridge-media-path";
 import type { Database } from "@/types/database";
 
-export function extensionForBridgeMediaContentType(contentType: string): string {
-  const normalized = contentType.trim().toLowerCase();
-  if (normalized.includes("png")) {
-    return "png";
-  }
-  if (normalized.includes("webp")) {
-    return "webp";
-  }
-  if (normalized.includes("heic")) {
-    return "heic";
-  }
-  if (normalized.includes("heif")) {
-    return "heif";
-  }
-  if (normalized.includes("quicktime")) {
-    return "mov";
-  }
-  if (normalized.includes("webm")) {
-    return "webm";
-  }
-  if (normalized.includes("3gpp2")) {
-    return "3g2";
-  }
-  if (normalized.includes("3gpp")) {
-    return "3gp";
-  }
-  if (normalized.startsWith("video/")) {
-    return "mp4";
-  }
-  return "jpg";
-}
-
-export function bridgeMediaObjectPath(input: {
-  userId: string;
-  eventId: string;
-  captureId: string;
-  contentType: string;
-}): string {
-  const ext = extensionForBridgeMediaContentType(input.contentType);
-  const eventKey = input.eventId.trim();
-  const captureKey = input.captureId.trim();
-  return `${input.userId}/bridge/${eventKey}/${captureKey}.${ext}`;
-}
-
-export function publicBridgeMediaUrl(
-  supabaseUrl: string,
-  objectPath: string,
-): string {
-  const base = supabaseUrl.replace(/\/$/, "");
-  const segments = objectPath.split("/").map((part) => encodeURIComponent(part));
-  return `${base}/storage/v1/object/public/${EXPERIENCE_BRIDGE_MEDIA_BUCKET}/${segments.join("/")}`;
-}
+export {
+  assertBridgeCaptureSize,
+  bridgeMediaObjectPath,
+  extensionForBridgeMediaContentType,
+  publicBridgeMediaUrl,
+} from "@/lib/experience-bridge/bridge-media-path";
 
 /** Upload local capture blob to public experience-bridge storage. */
 export async function uploadBridgeCaptureMedia(
@@ -75,21 +28,10 @@ export async function uploadBridgeCaptureMedia(
   },
 ): Promise<{ mediaUrl: string }> {
   const contentType = input.contentType?.trim().toLowerCase() || "image/jpeg";
-  const isPhoto = isBridgePhotoContentType(contentType);
-  const isVideo = isBridgeVideoContentType(contentType);
-
-  if (!isPhoto && !isVideo) {
-    throw new Error("JPEG/PNG/WebP 사진 또는 MP4/MOV/WebM 동영상만 공유할 수 있어요.");
-  }
-  if (input.bytes.byteLength === 0) {
-    throw new Error("미디어 파일이 비어 있어요.");
-  }
-  if (isPhoto && input.bytes.byteLength > BRIDGE_PHOTO_MAX_BYTES) {
-    throw new Error("5MB 이하 사진만 공유할 수 있어요.");
-  }
-  if (isVideo && input.bytes.byteLength > BRIDGE_VIDEO_MAX_BYTES) {
-    throw new Error("50MB 이하 동영상만 공유할 수 있어요.");
-  }
+  assertBridgeCaptureSize({
+    byteLength: input.bytes.byteLength,
+    contentType,
+  });
 
   const objectPath = bridgeMediaObjectPath({
     userId: input.userId,
@@ -113,4 +55,43 @@ export async function uploadBridgeCaptureMedia(
   return {
     mediaUrl: publicBridgeMediaUrl(input.supabaseUrl, objectPath),
   };
+}
+
+export function parseBridgeMediaObjectPathFromUrl(
+  url: string | undefined | null,
+): string | null {
+  const value = url?.trim();
+  if (!value) {
+    return null;
+  }
+  const marker = `/storage/v1/object/public/${EXPERIENCE_BRIDGE_MEDIA_BUCKET}/`;
+  const index = value.indexOf(marker);
+  if (index < 0) {
+    return null;
+  }
+  const raw = value.slice(index + marker.length).split("?")[0]?.trim();
+  if (!raw) {
+    return null;
+  }
+  return raw
+    .split("/")
+    .map((segment) => decodeURIComponent(segment))
+    .join("/");
+}
+
+/** Best-effort — remove shared bridge object (owner RLS). */
+export async function deleteBridgeCaptureMediaFromStorage(
+  supabase: SupabaseClient<Database>,
+  input: { mediaUrl?: string | null },
+): Promise<void> {
+  const objectPath = parseBridgeMediaObjectPathFromUrl(input.mediaUrl);
+  if (!objectPath) {
+    return;
+  }
+  const { error } = await supabase.storage
+    .from(EXPERIENCE_BRIDGE_MEDIA_BUCKET)
+    .remove([objectPath]);
+  if (error) {
+    throw error;
+  }
 }

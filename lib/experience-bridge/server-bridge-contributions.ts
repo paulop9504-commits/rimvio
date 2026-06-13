@@ -78,3 +78,50 @@ export async function upsertBridgeContribution(
     throw error;
   }
 }
+
+export async function deleteBridgeContribution(
+  supabase: SupabaseClient,
+  input: {
+    bridgeEventId: string;
+    contributorUserId: string;
+    captureId: string;
+  },
+): Promise<{ mediaUrl: string | null }> {
+  const bridgeEventId = input.bridgeEventId.trim();
+  const contributorUserId = input.contributorUserId.trim();
+  const captureId = input.captureId.trim();
+  if (!bridgeEventId || !contributorUserId || !captureId) {
+    throw new Error("capture_id_required");
+  }
+
+  const { data, error: readError } = await supabase
+    .from("experience_bridge_contributions")
+    .select("capture")
+    .eq("bridge_event_id", bridgeEventId)
+    .eq("contributor_user_id", contributorUserId)
+    .eq("capture_id", captureId)
+    .maybeSingle();
+
+  if (readError) {
+    throw readError;
+  }
+
+  const capture = data?.capture as BridgeContribution["capture"] | undefined;
+  const mediaUrl =
+    typeof capture?.url === "string" && capture.url.trim()
+      ? capture.url.trim()
+      : null;
+
+  const { error: deleteError } = await supabase
+    .from("experience_bridge_contributions")
+    .delete()
+    .eq("bridge_event_id", bridgeEventId)
+    .eq("contributor_user_id", contributorUserId)
+    .eq("capture_id", captureId);
+
+  if (deleteError) {
+    throw deleteError;
+  }
+
+  return { mediaUrl };
+}

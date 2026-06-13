@@ -16,6 +16,9 @@ export type ContextMediaReelItem = {
   allowLocalBlob?: boolean;
   /** Bridge invitee — capture exists but https url not loaded yet. */
   pendingRemote?: boolean;
+  ownerUserId?: string | null;
+  authorDisplayName?: string | null;
+  authorAvatarUrl?: string | null;
 };
 
 function parseCapturedMs(iso: string | null | undefined): number {
@@ -55,6 +58,7 @@ function isLocalEventMedia(
 function appendFromMediaStore(
   eventId: string,
   push: (item: ContextMediaReelItem) => void,
+  skipMediaIds: ReadonlySet<string>,
 ): void {
   const key = eventId.trim();
   if (!key) {
@@ -63,6 +67,10 @@ function appendFromMediaStore(
 
   for (const row of readMediaContextMemorySnapshot()) {
     if (row.originRef?.trim() !== key) {
+      continue;
+    }
+    const mediaId = row.id.trim();
+    if (!mediaId || skipMediaIds.has(mediaId)) {
       continue;
     }
     if (row.mediaKind !== "photo" && row.mediaKind !== "video") {
@@ -96,6 +104,7 @@ export function projectContextMediaReel(input: {
 
   const push = (item: ContextMediaReelItem) => {
     const remoteUrl = item.imageUrl?.trim() || "";
+    const mediaId = item.mediaContextId?.trim() || "";
     const canShow =
       Boolean(remoteUrl) ||
       item.allowLocalBlob === true ||
@@ -104,18 +113,20 @@ export function projectContextMediaReel(input: {
       return;
     }
     const key =
+      mediaId ||
       remoteUrl ||
-      (item.allowLocalBlob ? item.mediaContextId?.trim() : "") ||
       item.id;
     if (!key || seen.has(key) || items.length >= limit) {
       return;
     }
-    if (!remoteUrl && item.allowLocalBlob && !item.mediaContextId?.trim()) {
+    if (!remoteUrl && item.allowLocalBlob && !mediaId) {
       return;
     }
     seen.add(key);
     items.push(item);
   };
+
+  const linkedMediaIds = new Set<string>();
 
   for (const row of readFeedCaptureFragments(input.event)) {
     if (row.kind !== "photo" && row.kind !== "video") {
@@ -140,11 +151,17 @@ export function projectContextMediaReel(input: {
       kind: row.kind,
       allowLocalBlob,
       pendingRemote,
+      ownerUserId: row.ownerUserId ?? null,
+      authorDisplayName: row.authorDisplayName ?? null,
+      authorAvatarUrl: row.authorAvatarUrl ?? null,
     });
+    if (mediaContextId) {
+      linkedMediaIds.add(mediaContextId);
+    }
   }
 
   if (eventId) {
-    appendFromMediaStore(eventId, push);
+    appendFromMediaStore(eventId, push, linkedMediaIds);
   }
 
   // Do not project volume spatial media into the pin reel — spacetime matching

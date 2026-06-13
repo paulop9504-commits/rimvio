@@ -54,6 +54,7 @@ export type ExperienceBridgeContribution = {
   capture: FeedCaptureFragment & {
     ownerUserId?: string;
     authorDisplayName?: string;
+    authorAvatarUrl?: string;
   };
   createdAtIso: string;
 };

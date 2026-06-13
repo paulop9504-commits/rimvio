@@ -13,6 +13,10 @@ export type FeedCaptureFragment = {
   /** Search ingress auto-attach — awaits one-tap verify on Feed. */
   autoAttached?: boolean;
   verified?: boolean;
+  /** Bridge / shared capture — who uploaded. */
+  ownerUserId?: string;
+  authorDisplayName?: string;
+  authorAvatarUrl?: string;
 };
 
 export type FeedCaptureStats = {

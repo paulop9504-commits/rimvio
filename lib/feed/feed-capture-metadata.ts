@@ -48,7 +48,108 @@ export function readFeedCaptureFragments(
         typeof item.dwellMinutes === "number" ? item.dwellMinutes : undefined,
       autoAttached: item.autoAttached === true,
       verified: item.verified === true,
+      ownerUserId:
+        typeof item.ownerUserId === "string" ? item.ownerUserId : undefined,
+      authorDisplayName:
+        typeof item.authorDisplayName === "string"
+          ? item.authorDisplayName
+          : undefined,
+      authorAvatarUrl:
+        typeof item.authorAvatarUrl === "string"
+          ? item.authorAvatarUrl
+          : undefined,
     }));
+}
+
+/** After bridge upload — persist https url on the local event capture row. */
+export function patchFeedCaptureRemoteUrl(input: {
+  event: EventCandidate;
+  captureId: string;
+  url: string;
+}): EventCandidate | null {
+  const captureId = input.captureId.trim();
+  const url = input.url.trim();
+  if (!captureId || !url) {
+    return null;
+  }
+
+  const captures = readFeedCaptureFragments(input.event);
+  let changed = false;
+  const next = captures.map((row) => {
+    if (row.id !== captureId && row.mediaContextId?.trim() !== captureId) {
+      return row;
+    }
+    if (row.url === url) {
+      return row;
+    }
+    changed = true;
+    return { ...row, url };
+  });
+
+  if (!changed) {
+    return null;
+  }
+
+  return {
+    ...input.event,
+    metadata: {
+      ...input.event.metadata,
+      [FEED_CAPTURES_META_KEY]: next,
+    },
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+/** Persist uploader identity on a capture row (bridge share). */
+export function patchFeedCaptureAuthor(input: {
+  event: EventCandidate;
+  captureId: string;
+  ownerUserId?: string;
+  authorDisplayName?: string;
+  authorAvatarUrl?: string;
+}): EventCandidate | null {
+  const captureId = input.captureId.trim();
+  if (!captureId) {
+    return null;
+  }
+
+  const captures = readFeedCaptureFragments(input.event);
+  let changed = false;
+  const next = captures.map((row) => {
+    if (row.id !== captureId && row.mediaContextId?.trim() !== captureId) {
+      return row;
+    }
+    const patched = {
+      ...row,
+      ...(input.ownerUserId ? { ownerUserId: input.ownerUserId } : {}),
+      ...(input.authorDisplayName
+        ? { authorDisplayName: input.authorDisplayName }
+        : {}),
+      ...(input.authorAvatarUrl ? { authorAvatarUrl: input.authorAvatarUrl } : {}),
+    };
+    if (
+      patched.ownerUserId === row.ownerUserId &&
+      patched.authorDisplayName === row.authorDisplayName &&
+      patched.authorAvatarUrl === row.authorAvatarUrl
+    ) {
+      return row;
+    }
+    changed = true;
+    return patched;
+  });
+
+  if (!changed) {
+    return null;
+  }
+
+  return {
+    ...input.event,
+    metadata: {
+      ...input.event.metadata,
+      [FEED_CAPTURES_META_KEY]: next,
+    },
+    updatedAt: new Date().toISOString(),
+  };
 }
 
 export function readDwellMinutesFromCaptures(
@@ -182,7 +283,9 @@ export function removeFeedCaptureFragment(
 ): Record<string, unknown> {
   const next = { ...(metadata ?? {}) };
   const existing = readFeedCaptureFragments({ metadata: next } as EventCandidate).filter(
-    (fragment) => fragment.id !== fragmentId,
+    (fragment) =>
+      fragment.id !== fragmentId &&
+      fragment.mediaContextId?.trim() !== fragmentId,
   );
   next[FEED_CAPTURES_META_KEY] = existing;
   next[FEED_CAPTURE_STATS_META_KEY] = readFeedCaptureStats({

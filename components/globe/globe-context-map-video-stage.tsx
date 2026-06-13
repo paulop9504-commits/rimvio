@@ -1,24 +1,32 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
+import { ContextMediaUploaderBadge } from "@/components/globe/context-media-uploader-badge";
+import { ContextMediaDeleteButton } from "@/components/globe/context-media-delete-button";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { useGlobePinScreenAnchor } from "@/hooks/use-globe-pin-screen-anchor";
 import { useMediaBlobUrl } from "@/hooks/use-media-blob-url";
+import type { GlobeContextTimelineEntry } from "@/lib/globe/list-globe-context-timeline";
+import { resolveGlobeContextNavigationStep } from "@/lib/globe/list-globe-context-navigation-order";
 import {
-  resolveExperienceVolumeForEvent,
-  resolveGlobeContextPrimaryVideoForMap,
-} from "@/lib/globe/resolve-globe-context-primary-video";
+  projectContextMediaReel,
+  type ContextMediaReelItem,
+} from "@/lib/globe/project-context-media-reel";
 import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
+import { resolveExperienceVolumeForEvent } from "@/lib/globe/resolve-globe-context-primary-video";
 import {
   EVENT_CANDIDATES_UPDATED,
   findLifeEventCandidate,
 } from "@/lib/life-read-model";
+import { fetchMyAccountProfile } from "@/lib/peer-chat/peer-chat-client";
 import {
   hydrateMediaContextStore,
   MEDIA_SPACETIME_UPDATED,
 } from "@/lib/location-ping/media-context-store";
 import { cn } from "@/lib/utils";
+
+const SWIPE_MIN_PX = 44;
 
 export type GlobeContextMapVideoStageProps = {
   eventId: string | null | undefined;
@@ -26,26 +34,121 @@ export type GlobeContextMapVideoStageProps = {
   anchorLng?: number | null;
   globeRef?: RefObject<RimvioGlobeHubHandle | null>;
   visible?: boolean;
+  navigationEntries?: readonly GlobeContextTimelineEntry[];
   onDismiss?: () => void;
   onOpenDetails?: () => void;
+  onNavigateContext?: (eventId: string) => void;
+  viewerUserId?: string | null;
+  deletable?: boolean;
+  onMediaDeleted?: () => void;
   className?: string;
 };
 
-/** Pin-anchored context video — scales down when the globe zooms out. */
+function MapMediaSlide({
+  item,
+  playing,
+  onPlayingChange,
+}: {
+  item: ContextMediaReelItem;
+  playing: boolean;
+  onPlayingChange: (playing: boolean) => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const { url: blobUrl, loading } = useMediaBlobUrl(
+    item.allowLocalBlob === true ? item.mediaContextId : null,
+  );
+  const src = item.imageUrl ?? blobUrl;
+  const isVideo = item.kind === "video";
+
+  useEffect(() => {
+    const node = videoRef.current;
+    if (!node || !src || !isVideo) {
+      return;
+    }
+    if (playing) {
+      void node.play().catch(() => onPlayingChange(false));
+    } else {
+      node.pause();
+    }
+  }, [isVideo, onPlayingChange, playing, src]);
+
+  if (src && isVideo) {
+    return (
+      <video
+        ref={videoRef}
+        key={`${item.id}:${src}`}
+        src={src}
+        className="pointer-events-none relative z-0 aspect-[9/16] w-full object-cover"
+        playsInline
+        muted
+        loop
+        autoPlay
+        preload="metadata"
+      />
+    );
+  }
+
+  if (src) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        key={`${item.id}:${src}`}
+        src={src}
+        alt=""
+        className="pointer-events-none relative z-0 aspect-[9/16] w-full object-cover"
+        loading="lazy"
+      />
+    );
+  }
+
+  return (
+    <div className="flex aspect-[9/16] w-full items-center justify-center bg-black/80 px-3 text-center text-[12px] font-medium text-white/70">
+      {loading || item.pendingRemote
+        ? `${item.kind === "video" ? "동영상" : "사진"} 불러오는 중…`
+        : item.label}
+    </div>
+  );
+}
+
+/** Pin-anchored context media — swipe ↔ reel, swipe ↕ next context. */
 export function GlobeContextMapVideoStage({
   eventId,
   anchorLat,
   anchorLng,
   globeRef,
   visible = true,
+  navigationEntries = [],
   onDismiss,
   onOpenDetails,
+  onNavigateContext,
+  viewerUserId,
+  deletable = false,
+  onMediaDeleted,
   className,
 }: GlobeContextMapVideoStageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const skipNextTapRef = useRef(false);
   const [revision, setRevision] = useState(0);
+  const [mediaIndex, setMediaIndex] = useState(0);
   const [playing, setPlaying] = useState(true);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const [selfDisplayName, setSelfDisplayName] = useState<string | null>(null);
+  const [selfAvatarUrl, setSelfAvatarUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    void fetchMyAccountProfile()
+      .then((profile) => {
+        setSelfDisplayName(
+          profile?.displayName?.trim() ||
+            profile?.rimvioId?.trim() ||
+            "나",
+        );
+        setSelfAvatarUrl(profile?.avatarUrl?.trim() || null);
+      })
+      .catch(() => {
+        setSelfDisplayName("나");
+      });
+  }, []);
 
   useEffect(() => {
     const bump = () => setRevision((value) => value + 1);
@@ -58,47 +161,79 @@ export function GlobeContextMapVideoStage({
     };
   }, []);
 
-  const primaryVideo = useMemo(() => {
+  const reel = useMemo(() => {
     void revision;
     const key = eventId?.trim();
     if (!key) {
-      return null;
+      return [] as ContextMediaReelItem[];
     }
     const event =
       findLifeEventCandidate(key) ?? recoverGlobeContextEventFromPin(key);
     const volume = resolveExperienceVolumeForEvent(key);
-    return resolveGlobeContextPrimaryVideoForMap({ event, volume });
+    return projectContextMediaReel({ event, volume });
   }, [eventId, revision]);
 
-  const { url: mediaUrl, loading } = useMediaBlobUrl(
-    primaryVideo?.mediaContextId,
-  );
+  useEffect(() => {
+    setMediaIndex(0);
+    setPlaying(true);
+  }, [eventId]);
+
+  useEffect(() => {
+    if (mediaIndex >= reel.length) {
+      setMediaIndex(Math.max(0, reel.length - 1));
+    }
+  }, [mediaIndex, reel.length]);
+
+  const currentItem = reel[mediaIndex] ?? null;
 
   const anchorLayout = useGlobePinScreenAnchor({
     globeRef: globeRef ?? { current: null },
     lat: anchorLat,
     lng: anchorLng,
-    enabled: visible && Boolean(primaryVideo) && Boolean(globeRef),
+    enabled: visible && reel.length > 0 && Boolean(globeRef),
     containerRef,
   });
 
-  useEffect(() => {
-    setPlaying(true);
-  }, [primaryVideo?.mediaContextId]);
+  const handleSwipeEnd = useCallback(
+    (dx: number, dy: number) => {
+      if (Math.abs(dx) < SWIPE_MIN_PX && Math.abs(dy) < SWIPE_MIN_PX) {
+        return false;
+      }
+      skipNextTapRef.current = true;
 
-  useEffect(() => {
-    const node = videoRef.current;
-    if (!node || !mediaUrl) {
-      return;
-    }
-    if (playing) {
-      void node.play().catch(() => setPlaying(false));
-    } else {
-      node.pause();
-    }
-  }, [mediaUrl, playing]);
+      if (Math.abs(dx) > Math.abs(dy)) {
+        if (dx > 0) {
+          setMediaIndex((index) => Math.max(0, index - 1));
+        } else {
+          setMediaIndex((index) => Math.min(reel.length - 1, index + 1));
+        }
+        return true;
+      }
 
-  if (!visible || !primaryVideo) {
+      const key = eventId?.trim();
+      if (!key || !onNavigateContext || navigationEntries.length === 0) {
+        return true;
+      }
+
+      const step = resolveGlobeContextNavigationStep({
+        entries: navigationEntries,
+        currentEventId: key,
+        direction: dy < 0 ? "next" : "prev",
+      });
+      if (step?.eventId && step.eventId !== key) {
+        onNavigateContext(step.eventId);
+      }
+      return true;
+    },
+    [eventId, navigationEntries, onNavigateContext, reel.length],
+  );
+
+  const handleMediaDeleted = useCallback(() => {
+    setRevision((value) => value + 1);
+    onMediaDeleted?.();
+  }, [onMediaDeleted]);
+
+  if (!visible || reel.length === 0) {
     return null;
   }
 
@@ -110,7 +245,7 @@ export function GlobeContextMapVideoStage({
         className,
       )}
       data-globe-context-map-video
-      aria-hidden={!mediaUrl || !anchorLayout}
+      aria-hidden={!anchorLayout}
     >
       {anchorLayout ? (
         <div
@@ -125,38 +260,61 @@ export function GlobeContextMapVideoStage({
         >
           <div
             className={cn(
-              "relative overflow-hidden rounded-[1.25rem]",
+              "relative touch-pan-y overflow-hidden rounded-[1.25rem]",
               "border-2 border-white/90 bg-black shadow-[0_12px_40px_rgba(0,0,0,0.28)]",
               "ring-1 ring-black/10",
+              onOpenDetails ? "pointer-events-auto cursor-pointer" : "",
             )}
+            onTouchStart={(event) => {
+              const touch = event.changedTouches[0] ?? event.touches[0];
+              if (!touch) {
+                return;
+              }
+              touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+            }}
+            onTouchEnd={(event) => {
+              const start = touchStartRef.current;
+              const touch = event.changedTouches[0];
+              touchStartRef.current = null;
+              if (!start || !touch) {
+                return;
+              }
+              handleSwipeEnd(touch.clientX - start.x, touch.clientY - start.y);
+            }}
+            onClick={(event) => {
+              if (skipNextTapRef.current) {
+                skipNextTapRef.current = false;
+                return;
+              }
+              if ((event.target as HTMLElement).closest("button")) {
+                return;
+              }
+              onOpenDetails?.();
+            }}
           >
-            {onOpenDetails ? (
-              <button
-                type="button"
-                className="pointer-events-auto absolute inset-0 z-[1]"
-                aria-label="맥락 자세히 보기"
-                onClick={onOpenDetails}
+            {currentItem ? (
+              <MapMediaSlide
+                item={currentItem}
+                playing={playing}
+                onPlayingChange={setPlaying}
               />
             ) : null}
-            {mediaUrl ? (
-              <video
-                ref={videoRef}
-                src={mediaUrl}
-                className="relative z-0 aspect-[9/16] w-full object-cover"
-                playsInline
-                muted
-                loop
-                autoPlay
+            {currentItem && anchorLayout.scale >= 0.34 ? (
+              <ContextMediaUploaderBadge
+                item={currentItem}
+                selfDisplayName={selfDisplayName}
+                selfAvatarUrl={selfAvatarUrl}
               />
-            ) : (
-              <div className="flex aspect-[9/16] w-full items-center justify-center bg-black/80 px-3 text-center text-[12px] font-medium text-white/70">
-                {loading ? "동영상 불러오는 중…" : primaryVideo.label}
-              </div>
-            )}
-            {mediaUrl && anchorLayout.scale >= 0.34 ? (
+            ) : null}
+            {reel.length > 1 && anchorLayout.scale >= 0.34 ? (
+              <span className="pointer-events-none absolute right-11 top-2 z-[2] rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
+                {mediaIndex + 1}/{reel.length}
+              </span>
+            ) : null}
+            {currentItem?.kind === "video" && anchorLayout.scale >= 0.34 ? (
               <button
                 type="button"
-                className="pointer-events-auto absolute bottom-2 right-2 z-[2] rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-sm"
+                className="pointer-events-auto absolute bottom-2 right-2 z-[3] rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-sm"
                 onClick={(event) => {
                   event.stopPropagation();
                   setPlaying((value) => !value);
@@ -168,7 +326,7 @@ export function GlobeContextMapVideoStage({
             {onDismiss && anchorLayout.scale >= 0.34 ? (
               <button
                 type="button"
-                className="pointer-events-auto absolute left-2 top-2 z-[2] rounded-full bg-black/55 px-2 py-1 text-[10px] font-semibold text-white backdrop-blur-sm"
+                className="pointer-events-auto absolute left-2 top-2 z-[3] rounded-full bg-black/55 px-2 py-1 text-[10px] font-semibold text-white backdrop-blur-sm"
                 onClick={(event) => {
                   event.stopPropagation();
                   onDismiss();
@@ -176,6 +334,16 @@ export function GlobeContextMapVideoStage({
               >
                 닫기
               </button>
+            ) : null}
+            {currentItem && eventId && deletable && anchorLayout.scale >= 0.34 ? (
+              <ContextMediaDeleteButton
+                item={currentItem}
+                eventId={eventId}
+                viewerUserId={viewerUserId}
+                enabled={deletable}
+                className="bottom-2 left-2 size-8"
+                onDeleted={handleMediaDeleted}
+              />
             ) : null}
           </div>
         </div>
