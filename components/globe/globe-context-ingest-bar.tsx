@@ -62,7 +62,7 @@ export function GlobeContextIngestBar({
   const inputPlaceholder =
     attachHintTitle
       ? `「${attachHintTitle}」에 @ · 사진 · 메모`
-      : "@길찾기 역이름 · 사진 · 링크 · 메모 — 내 맥락에 붙어요";
+      : "@길찾기 역이름 · 사진 · 링크 · 메모 — 갤러리 여러 장도 위치·시간 자동";
 
   const ingestMedia = useCallback(
     async (fileList: FileList | null | undefined) => {
@@ -231,7 +231,7 @@ export function GlobeContextIngestBar({
             className="inline-flex items-center gap-1.5 rounded-full bg-card px-3 py-2 text-[13px] font-medium text-foreground shadow-sm ring-1 ring-border"
           >
             <ImagePlus className="size-4 text-primary" aria-hidden />
-            사진·동영상 · 최대 {GLOBE_BULK_PHOTO_MAX}개
+            사진·동영상 · EXIF 위치 자동 · GPS 없으면 보관함
           </button>
         </div>
       ) : null}

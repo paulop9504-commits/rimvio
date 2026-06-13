@@ -12,11 +12,23 @@ import { CONTEXT_MATCH_MIN_SCORE } from "@/lib/ingest/context-match-media-gate";
 import { scoreSpacetimeFit } from "@/lib/feed/spacetime-fit";
 import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
 import { enrichGlobePhotoPlaceAfterIngest } from "@/lib/globe/enrich-globe-photo-place-after-ingest";
+import {
+  buildExifAutoPinMetadata,
+  mergeExifAutoPinOntoEvent,
+} from "@/lib/globe/exif-auto-pin-metadata";
+import { createPersonalGlobePinFromEvent } from "@/lib/globe/create-personal-globe-pin";
 import { publishBridgeCaptureContribution } from "@/lib/experience-bridge/publish-bridge-capture-contribution";
 import { syncPersonalGlobePinFromEvent } from "@/lib/globe/sync-personal-globe-pin";
 import { attachMediaSpacetime } from "@/lib/location-ping/attach-media-spacetime";
+import { patchMediaSpacetimeOriginRef, saveMediaSpacetimeContext } from "@/lib/location-ping/media-context-store";
 import type { MediaSpacetimeContext } from "@/lib/location-ping/types";
 import { readPlanContextFromEvent } from "@/lib/plan-context/plan-context-metadata";
+import { sortMediaFilesByCaptureTime } from "@/lib/feed/sort-media-files-by-capture-time";
+import { shouldStageMediaToPool } from "@/lib/media-pool/is-media-pool-candidate";
+import {
+  MEDIA_POOL_ORIGIN_REF,
+  MEDIA_POOL_RETENTION_MS,
+} from "@/lib/media-pool/media-pool-constants";
 
 export const GLOBE_BULK_PHOTO_MAX = 100;
 export const GLOBE_CONTEXT_MEDIA_ACCEPT = "image/*,video/*";
@@ -49,6 +61,9 @@ export type GlobeContextMediaIngestResult = {
   separated: boolean;
   toastLine: string;
   suggestedPlaceName: string | null;
+  exifAutoPinned: boolean;
+  pinCreated: boolean;
+  stagedToPool?: boolean;
 };
 
 export type GlobeBulkMediaIngestSummary = {
@@ -57,6 +72,9 @@ export type GlobeBulkMediaIngestSummary = {
   failed: number;
   attached: number;
   separated: number;
+  pinsCreated: number;
+  exifPinned: number;
+  poolStaged: number;
   lastEventId: string | null;
   toastLine: string;
   lastSuggestedPlaceName: string | null;
@@ -83,6 +101,18 @@ function buildMatch(
     dayLabel: null,
     reason: event.title,
   };
+}
+
+function readEventPlaceAnchor(
+  event: EventCandidate,
+): { lat: number; lng: number } | null {
+  const meta = event.metadata ?? {};
+  const lat = typeof meta.globePlaceLat === "number" ? meta.globePlaceLat : null;
+  const lng = typeof meta.globePlaceLng === "number" ? meta.globePlaceLng : null;
+  if (lat !== null && lng !== null && Number.isFinite(lat) && Number.isFinite(lng)) {
+    return { lat, lng };
+  }
+  return null;
 }
 
 function resolveHintedEvent(hintId: string): EventCandidate | null {
@@ -113,6 +143,7 @@ function resolveGlobePhotoTarget(input: {
     const hinted = resolveHintedEvent(hintId);
     if (hinted) {
       const plan = readPlanContextFromEvent(hinted);
+      const anchor = readEventPlaceAnchor(hinted);
       const fit = scoreSpacetimeFit({
         capturedAtIso: input.context.capturedAtIso,
         lat: input.context.lat,
@@ -120,6 +151,8 @@ function resolveGlobePhotoTarget(input: {
         eventStartIso: hinted.datetime!,
         eventEndIso: plan?.windowEndIso ?? null,
         eventPlace: plan?.place ?? hinted.place,
+        eventLat: anchor?.lat ?? null,
+        eventLng: anchor?.lng ?? null,
         capturedPlaceLabel: input.context.placeLabel,
       });
       return {
@@ -140,6 +173,7 @@ function resolveGlobePhotoTarget(input: {
     const hinted = resolveHintedEvent(hintId);
     if (hinted) {
       const plan = readPlanContextFromEvent(hinted);
+      const anchor = readEventPlaceAnchor(hinted);
       const fit = scoreSpacetimeFit({
         capturedAtIso: input.context.capturedAtIso,
         lat: input.context.lat,
@@ -147,6 +181,8 @@ function resolveGlobePhotoTarget(input: {
         eventStartIso: hinted.datetime!,
         eventEndIso: plan?.windowEndIso ?? null,
         eventPlace: plan?.place ?? hinted.place,
+        eventLat: anchor?.lat ?? null,
+        eventLng: anchor?.lng ?? null,
         capturedPlaceLabel: input.context.placeLabel,
       });
 
@@ -234,11 +270,68 @@ export async function ingestGlobeContextMedia(input: {
     onFilePrepare: input.onFilePrepare,
   });
 
+  if (
+    shouldStageMediaToPool({
+      context,
+      forceAttachToHint: input.forceAttachToHint === true,
+    })
+  ) {
+    const staged: MediaSpacetimeContext = {
+      ...context,
+      poolStatus: "staged",
+      expiresAtIso: new Date(Date.now() + MEDIA_POOL_RETENTION_MS).toISOString(),
+      origin: "media_pool",
+      originRef: MEDIA_POOL_ORIGIN_REF,
+    };
+    await saveMediaSpacetimeContext(staged);
+
+    const noun = staged.mediaKind === "video" ? "동영상" : "사진";
+    const toastLine = `${noun} 보관함에 넣었어요 · 맥락은 나중에 만들 수 있어요`;
+
+    return {
+      result: {
+        event: {
+          id: staged.id,
+          title: "보관함",
+          category: "travel",
+          source: "system",
+          lifecycle: "candidate",
+          datetime: staged.capturedAtIso,
+          place: staged.placeLabel ?? undefined,
+          confidence: 1,
+          lifecycleUpdatedAt: staged.attachedAtIso,
+          createdAt: staged.attachedAtIso,
+          updatedAt: staged.attachedAtIso,
+          metadata: { mediaPoolStaged: true },
+        },
+        fragment: {
+          id: staged.id,
+          kind: captureKindFromContext(staged),
+          capturedAtIso: staged.capturedAtIso,
+          mediaContextId: staged.id,
+          placeLabel: staged.placeLabel ?? undefined,
+        },
+        createdNewEvent: false,
+        toastLine,
+      },
+      attachedToHintedEvent: false,
+      separated: false,
+      toastLine,
+      suggestedPlaceName: null,
+      exifAutoPinned: false,
+      pinCreated: false,
+      stagedToPool: true,
+    };
+  }
+
   const target = resolveGlobePhotoTarget({
     context,
     hintEventId: input.hintEventId,
     forceAttachToHint: input.forceAttachToHint === true,
   });
+
+  const exifAutoPinned = buildExifAutoPinMetadata(context) !== null;
+  const eventForCommit = mergeExifAutoPinOntoEvent(target.event, context);
 
   const fragment: FeedCaptureFragment = {
     id: context.id,
@@ -249,13 +342,21 @@ export async function ingestGlobeContextMedia(input: {
   };
 
   const result = commitCaptureToEvent({
-    target: target.event,
+    target: eventForCommit,
     match: target.match,
     createdNewEvent: target.createdNewEvent,
     fragment,
     userConfirmedTarget: target.attachedToHintedEvent,
   });
 
+  if (target.event.id.trim() && context.originRef?.trim() !== target.event.id.trim()) {
+    await patchMediaSpacetimeOriginRef(context.id, result.event.id);
+  }
+
+  const savedEvent = findEventCandidate(result.event.id) ?? result.event;
+  const pinResult = createPersonalGlobePinFromEvent({
+    event: savedEvent,
+  });
   syncPersonalGlobePinFromEvent(result.event.id);
   if (input.hintEventId?.trim() && input.hintEventId !== result.event.id) {
     syncPersonalGlobePinFromEvent(input.hintEventId);
@@ -294,6 +395,8 @@ export async function ingestGlobeContextMedia(input: {
       hintTitle: input.hintTitle,
     }),
     suggestedPlaceName,
+    exifAutoPinned,
+    pinCreated: pinResult.created,
   };
 }
 
@@ -303,18 +406,39 @@ function buildBulkToast(input: {
   failed: number;
   attached: number;
   separated: number;
+  pinsCreated: number;
+  exifPinned: number;
+  poolStaged: number;
 }): string {
   if (input.succeeded === 0) {
     return input.failed > 0
       ? "사진·동영상을 넣지 못했어요"
       : "올릴 사진·동영상이 없어요";
   }
-  if (input.total === 1) {
-    return input.failed > 0
-      ? "1개를 넣지 못했어요"
-      : "사진·동영상 1개 붙였어요";
+  if (input.poolStaged > 0 && input.poolStaged === input.succeeded) {
+    if (input.total === 1) {
+      return "사진 보관함에 넣었어요 · 맥락은 나중에";
+    }
+    return `보관함 ${input.poolStaged}개 · 맥락은 나중에 만들 수 있어요`;
   }
-  const parts: string[] = [`사진·동영상 ${input.succeeded}개 붙였어요`];
+  if (input.total === 1) {
+    if (input.exifPinned > 0 && input.pinsCreated > 0) {
+      return "사진 위치를 읽어 지도에 핀을 꽂았어요";
+    }
+    return input.failed > 0 ? "1개를 넣지 못했어요" : "사진·동영상 1개 붙였어요";
+  }
+  const parts: string[] = [];
+  if (input.exifPinned > 0 && input.pinsCreated > 0) {
+    parts.push(
+      input.pinsCreated > 1
+        ? `사진 ${input.succeeded}개 · 지도에 ${input.pinsCreated}곳 핀`
+        : `사진 ${input.succeeded}개 · 지도에 핀 꽂았어요`,
+    );
+  } else if (input.poolStaged > 0) {
+    parts.push(`보관함 ${input.poolStaged}개`);
+  } else {
+    parts.push(`사진·동영상 ${input.succeeded}개 붙였어요`);
+  }
   if (input.attached > 0 && input.separated > 0) {
     parts.push(`${input.attached}개 맥락 · ${input.separated}개 따로`);
   } else if (input.separated > 0) {
@@ -337,15 +461,21 @@ export async function ingestGlobeContextMediaBulk(input: {
 }): Promise<
   GlobeBulkMediaIngestSummary & { outcomes: GlobeContextMediaIngestResult[] }
 > {
-  const mediaFiles = input.files
-    .filter(isGlobeContextIngestMediaFile)
-    .slice(0, GLOBE_BULK_PHOTO_MAX);
+  const mediaFiles = (
+    await sortMediaFilesByCaptureTime(
+      input.files.filter(isGlobeContextIngestMediaFile).slice(0, GLOBE_BULK_PHOTO_MAX),
+    )
+  );
   const total = mediaFiles.length;
   const outcomes: GlobeContextMediaIngestResult[] = [];
   let failed = 0;
   let attached = 0;
   let separated = 0;
+  let pinsCreated = 0;
+  let exifPinned = 0;
+  let poolStaged = 0;
   let lastEventId: string | null = null;
+  const pinEventsSeen = new Set<string>();
 
   for (let index = 0; index < mediaFiles.length; index += 1) {
     try {
@@ -357,11 +487,22 @@ export async function ingestGlobeContextMediaBulk(input: {
         onFilePrepare: input.onFilePrepare,
       });
       outcomes.push(outcome);
-      lastEventId = outcome.result.event.id;
+      if (outcome.stagedToPool) {
+        poolStaged += 1;
+      } else {
+        lastEventId = outcome.result.event.id;
+      }
       if (outcome.attachedToHintedEvent) {
         attached += 1;
       } else if (outcome.separated) {
         separated += 1;
+      }
+      if (outcome.exifAutoPinned) {
+        exifPinned += 1;
+      }
+      if (outcome.pinCreated && !pinEventsSeen.has(outcome.result.event.id)) {
+        pinEventsSeen.add(outcome.result.event.id);
+        pinsCreated += 1;
       }
     } catch {
       failed += 1;
@@ -381,8 +522,20 @@ export async function ingestGlobeContextMediaBulk(input: {
     failed,
     attached,
     separated,
+    pinsCreated,
+    exifPinned,
+    poolStaged,
     lastEventId,
-    toastLine: buildBulkToast({ total, succeeded, failed, attached, separated }),
+    toastLine: buildBulkToast({
+      total,
+      succeeded,
+      failed,
+      attached,
+      separated,
+      pinsCreated,
+      exifPinned,
+      poolStaged,
+    }),
     lastSuggestedPlaceName,
     outcomes,
   };

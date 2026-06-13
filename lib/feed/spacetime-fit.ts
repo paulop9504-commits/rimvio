@@ -59,6 +59,8 @@ export function scoreSpacetimeFit(input: {
   eventStartIso: string;
   eventEndIso?: string | null;
   eventPlace?: string | null;
+  eventLat?: number | null;
+  eventLng?: number | null;
   capturedPlaceLabel?: string | null;
 }): SpacetimeFitResult {
   const capturedMs = parseIsoMs(input.capturedAtIso);
@@ -79,6 +81,16 @@ export function scoreSpacetimeFit(input: {
   if (placeLabelsOverlap(input.eventPlace, input.capturedPlaceLabel)) {
     placeOk = true;
     distanceKm = 0;
+  } else if (
+    input.lat !== null &&
+    input.lng !== null &&
+    input.eventLat != null &&
+    input.eventLng != null &&
+    Number.isFinite(input.eventLat) &&
+    Number.isFinite(input.eventLng)
+  ) {
+    distanceKm = haversineKm(input.lat, input.lng, input.eventLat, input.eventLng);
+    placeOk = distanceKm <= MAX_PLACE_KM;
   } else if (input.lat !== null && input.lng !== null && input.eventPlace?.trim()) {
     const coords = resolvePlaceCoordinates(input.eventPlace);
     distanceKm = haversineKm(input.lat, input.lng, coords.lat, coords.lng);

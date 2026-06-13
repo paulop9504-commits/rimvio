@@ -7,6 +7,22 @@ import { haversineKm, parseIsoMs, scoreSpacetimeFit } from "@/lib/feed/spacetime
 const PLAN_ARRIVAL_PROXIMITY_KM = 35;
 const PLAN_ARRIVAL_PROXIMITY_BOOST = 0.25;
 
+function readFiniteCoord(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function readEventPlaceAnchor(
+  event: EventCandidate,
+): { lat: number; lng: number } | null {
+  const meta = event.metadata ?? {};
+  const lat = readFiniteCoord(meta.globePlaceLat);
+  const lng = readFiniteCoord(meta.globePlaceLng);
+  if (lat !== null && lng !== null) {
+    return { lat, lng };
+  }
+  return null;
+}
+
 const PLACE_HINT_PATTERNS: ReadonlyArray<{ pattern: RegExp; label: string }> = [
   { pattern: /제주|애월|성산/u, label: "제주" },
   { pattern: /강남역|강남/u, label: "강남역" },
@@ -133,6 +149,7 @@ export function resolveSpacetimeFeedTarget(
     .filter((event) => event.lifecycle !== "archived" && event.datetime?.trim())
     .map((event) => {
       const plan = readPlanContextFromEvent(event);
+      const anchor = readEventPlaceAnchor(event);
       const fit = scoreSpacetimeFit({
         capturedAtIso: input.capturedAtIso,
         lat: input.lat ?? null,
@@ -140,6 +157,8 @@ export function resolveSpacetimeFeedTarget(
         eventStartIso: event.datetime!,
         eventEndIso: plan?.windowEndIso ?? null,
         eventPlace: plan?.place ?? event.place,
+        eventLat: anchor?.lat ?? null,
+        eventLng: anchor?.lng ?? null,
         capturedPlaceLabel: capturedPlace,
       });
 
@@ -154,16 +173,12 @@ export function resolveSpacetimeFeedTarget(
       }
 
       const planPlace = plan?.place?.trim() || event.place?.trim();
-      if (
-        input.lat != null &&
-        input.lng != null &&
-        planPlace &&
-        fit.timeOk
-      ) {
-        const coords = resolvePlaceCoordinates(planPlace);
+      if (input.lat != null && input.lng != null && fit.timeOk) {
+        const coords = anchor ?? (planPlace ? resolvePlaceCoordinates(planPlace) : null);
         if (
+          coords &&
           haversineKm(input.lat, input.lng, coords.lat, coords.lng) <=
-          PLAN_ARRIVAL_PROXIMITY_KM
+            PLAN_ARRIVAL_PROXIMITY_KM
         ) {
           score += PLAN_ARRIVAL_PROXIMITY_BOOST;
         }
@@ -217,6 +232,7 @@ export function listSpacetimeFeedTargetCandidates(
     .filter((event) => event.lifecycle !== "archived" && event.datetime?.trim())
     .map((event) => {
       const plan = readPlanContextFromEvent(event);
+      const anchor = readEventPlaceAnchor(event);
       const fit = scoreSpacetimeFit({
         capturedAtIso: input.capturedAtIso,
         lat: input.lat ?? null,
@@ -224,6 +240,8 @@ export function listSpacetimeFeedTargetCandidates(
         eventStartIso: event.datetime!,
         eventEndIso: plan?.windowEndIso ?? null,
         eventPlace: plan?.place ?? event.place,
+        eventLat: anchor?.lat ?? null,
+        eventLng: anchor?.lng ?? null,
         capturedPlaceLabel: capturedPlace,
       });
       const planBoost = Boolean(plan?.windowEndIso);
