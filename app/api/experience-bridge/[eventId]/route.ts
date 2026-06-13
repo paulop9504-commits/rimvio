@@ -17,9 +17,14 @@ import {
   upsertExperienceBridge,
 } from "@/lib/experience-bridge/server-bridge-store";
 import { listBridgeContributions } from "@/lib/experience-bridge/server-bridge-contributions";
+import {
+  toBridgeContributionWire,
+  toBridgeStateWire,
+  toBridgeTimelineWire,
+} from "@/lib/experience-bridge/wire-bridge-response-dto";
 import { extractErrorMessage } from "@/lib/peer-chat/extract-error-message";
 import { listSharedGlobePinsForThread } from "@/lib/peer-chat/server-globe-pins";
-import { assertCallerIsThreadMember } from "@/lib/peer-chat/peer-public-profile";
+import { callerCanAccessPeerThread } from "@/lib/peer-chat/caller-peer-thread-access";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
 type RouteContext = {
@@ -67,9 +72,15 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 
     let sharedPins: Awaited<ReturnType<typeof listSharedGlobePinsForThread>> = [];
     const threadId = state.bridge.peerThreadId?.trim();
-    if (threadId) {
-      await assertCallerIsThreadMember(supabase, threadId, userId);
-      sharedPins = await listSharedGlobePinsForThread(supabase, threadId);
+    if (
+      threadId &&
+      (await callerCanAccessPeerThread(supabase, threadId, userId))
+    ) {
+      try {
+        sharedPins = await listSharedGlobePinsForThread(supabase, threadId);
+      } catch {
+        sharedPins = [];
+      }
     }
 
     const host = state.participants.find((row) => row.role === "host");
@@ -86,7 +97,11 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       hostDisplayName: host?.displayName,
     });
 
-    return NextResponse.json({ state, timeline, contributions });
+    return NextResponse.json({
+      state: toBridgeStateWire(state),
+      timeline: toBridgeTimelineWire(timeline),
+      contributions: contributions.map(toBridgeContributionWire),
+    });
   } catch (error) {
     const message = extractErrorMessage(error, "Failed to load experience bridge.");
     return NextResponse.json({ error: message }, { status: 500 });
@@ -193,8 +208,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     const threadId = body.peerThreadId?.trim() || state.bridge.peerThreadId?.trim();
-    if (threadId) {
-      await assertCallerIsThreadMember(supabase, threadId, userId);
+    if (
+      threadId &&
+      !(await callerCanAccessPeerThread(supabase, threadId, userId))
+    ) {
+      return NextResponse.json(
+        { error: "Peer thread access denied." },
+        { status: 403 },
+      );
     }
 
     const next = inviteBridgeParticipant(state, {

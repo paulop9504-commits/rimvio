@@ -16,6 +16,7 @@ import {
 } from "@/lib/events/event-lifecycle";
 import { foldArchivedEvent } from "@/lib/events/fold-archived-event";
 import { assertAllowedLifecycleMutation } from "@/lib/event-kernel/schema-lock/mutation-rules";
+import { eventCandidateContentEqual } from "@/lib/events/event-candidate-equal";
 
 const STORAGE_KEY = "rimvio-event-candidates.v1";
 export const EVENT_CANDIDATES_UPDATED = "rimvio-event-candidates-updated";
@@ -263,6 +264,9 @@ export function upsertEventCandidate(input: EventCandidateUpsertInput): EventCan
       createdAt: existing.createdAt,
       updatedAt: nowIso,
     };
+    if (eventCandidateContentEqual(existing, next)) {
+      return existing;
+    }
     const nextItems = items.map((item, i) => (i === index ? next : item));
     writePayload(pruneExpiredEvents(nextItems));
     return next;

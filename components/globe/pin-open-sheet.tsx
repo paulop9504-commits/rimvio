@@ -47,6 +47,7 @@ import { projectTripLegBar } from "@/lib/globe/project-trip-leg-arcs";
 import { projectExperienceRoom } from "@/lib/experience-room/project-experience-room";
 import { projectRepresentativeMoments } from "@/lib/globe/project-representative-moments";
 import { syncBridgeSharedMediaFromRemote } from "@/lib/experience-bridge/sync-bridge-participant-media";
+import { isBridgeLinkedEventId } from "@/lib/experience-bridge/stamp-bridge-event-metadata";
 import { useAuth } from "@/hooks/use-auth";
 import { MEDIA_SPACETIME_UPDATED, hydrateMediaContextStore } from "@/lib/location-ping/media-context-store";
 import {
@@ -96,8 +97,13 @@ export function PinOpenSheet({
       return;
     }
     let cancelled = false;
-    const sync = () =>
-      syncBridgeSharedMediaFromRemote(eventId, user?.id)
+    let debounceTimer: number | null = null;
+
+    const runSync = () => {
+      if (cancelled) {
+        return;
+      }
+      void syncBridgeSharedMediaFromRemote(eventId, user?.id)
         .then((merged) => {
           if (!cancelled && merged) {
             setRevision((value) => value + 1);
@@ -108,15 +114,29 @@ export function PinOpenSheet({
             toast.error("공유 사진·동영상을 불러오지 못했어요.");
           }
         });
+    };
 
-    void sync();
-    const retry = window.setTimeout(() => {
-      void sync();
-    }, 2000);
+    runSync();
+    const retry = window.setTimeout(runSync, 2000);
+
+    const onCandidatesUpdated = () => {
+      if (debounceTimer !== null) {
+        window.clearTimeout(debounceTimer);
+      }
+      debounceTimer = window.setTimeout(() => {
+        debounceTimer = null;
+        runSync();
+      }, 1200);
+    };
+    window.addEventListener(EVENT_CANDIDATES_UPDATED, onCandidatesUpdated);
 
     return () => {
       cancelled = true;
       window.clearTimeout(retry);
+      if (debounceTimer !== null) {
+        window.clearTimeout(debounceTimer);
+      }
+      window.removeEventListener(EVENT_CANDIDATES_UPDATED, onCandidatesUpdated);
     };
   }, [open, cluster?.eventId, user?.id]);
 
@@ -182,7 +202,7 @@ export function PinOpenSheet({
     if (recovered) {
       setRevision((value) => value + 1);
     }
-  }, [open, cluster, event]);
+  }, [open, cluster?.eventId, event]);
 
   const hero = useMemo(() => {
     const fromEvent = projectExperienceHeroFromEvent({
@@ -260,6 +280,11 @@ export function PinOpenSheet({
     return recoverGlobeContextEventFromPin(cluster.eventId);
   }, [event, cluster?.eventId]);
 
+  const bridgeMediaDeletable = useMemo(() => {
+    const id = cluster?.eventId?.trim();
+    return Boolean(id && isBridgeLinkedEventId(id));
+  }, [cluster?.eventId]);
+
   const openExperienceRoom = () => {
     if (!conversation?.peerThreadId || !event || !hero) {
       return;
@@ -312,8 +337,8 @@ export function PinOpenSheet({
             <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-foreground/15 md:hidden" aria-hidden />
             {reelItems.length > 0 ? (
               <>
-                <div className="relative flex min-h-0 flex-1 flex-col">
-                  <div className="absolute inset-x-0 top-0 z-10 flex items-start gap-2 bg-gradient-to-b from-background via-background/95 to-transparent px-4 pb-3 pt-3">
+                <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+                  <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start gap-2 bg-gradient-to-b from-background via-background/95 to-transparent px-4 pb-3 pt-3">
                     <div className="min-w-0 flex-1 space-y-0.5">
                       <p className="px-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                         장소 · {hero.place}
@@ -325,25 +350,35 @@ export function PinOpenSheet({
                     <button
                       type="button"
                       onClick={() => onOpenChange(false)}
-                      className="flex size-9 shrink-0 items-center justify-center rounded-full bg-background/80 active:bg-foreground/5"
+                      className="pointer-events-auto flex size-9 shrink-0 items-center justify-center rounded-full bg-background/80 active:bg-foreground/5"
                       aria-label="닫기"
                     >
                       <X className="size-5 text-muted-foreground" aria-hidden />
                     </button>
                   </div>
 
-                  <div className="min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto overscroll-y-contain pt-[4.25rem] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    <GlobeContextMediaShortsReel
-                      key={cluster.eventId}
-                      items={reelItems}
-                      title={hero.title}
-                      place={hero.place}
-                      fillViewport
-                    />
-                    <section className="snap-start space-y-4 bg-background px-4 py-5">
-                      <p className="text-center text-[11px] font-medium text-muted-foreground">
-                        맥락 정보 · 아래로 더 보기
-                      </p>
+                  <div className="flex min-h-0 flex-[1.15] flex-col overflow-hidden pt-[4.25rem]">
+                    <div className="min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                      <GlobeContextMediaShortsReel
+                        key={cluster.eventId}
+                        items={reelItems}
+                        title={hero.title}
+                        place={hero.place}
+                        fillViewport
+                        embedded
+                        eventId={cluster.eventId}
+                        viewerUserId={user?.id}
+                        deletable={bridgeMediaDeletable}
+                        onMediaDeleted={() => {
+                          setRevision((value) => value + 1);
+                          toast.success("삭제했어요");
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="relative z-[1] min-h-0 flex-1 overflow-y-auto overscroll-y-contain border-t border-border bg-background [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    <section className="space-y-4 px-4 py-5">
                       {tripLeg ? <ExperienceTripLegBar trip={tripLeg} /> : null}
                       <PeopleStrip names={people} />
                       <RepresentativeMomentsRow moments={moments} />

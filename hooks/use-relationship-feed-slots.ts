@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { fetchRelationshipFeedSlots } from "@/lib/peer-chat/peer-chat-client";
+import { PEER_FEED_SLOTS_CACHE_KEY } from "@/lib/experience-bridge/bridge-api-cache";
 import { totalFeedSlotUnread } from "@/lib/peer-chat/relationship-slots-server";
 import { FEED_SLOTS_REFRESH_EVENT } from "@/lib/feed/feed-slots-events";
 import type { RelationshipFeedSlot } from "@/lib/social/relationship-slot-types";
 import { useAuth } from "@/hooks/use-auth";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { invalidateCachedFetch } from "@/lib/http/client-fetch-cache";
 
 export function useRelationshipFeedSlots(enabled = true) {
   const { user, configured } = useAuth();
@@ -42,6 +44,7 @@ export function useRelationshipFeedSlots(enabled = true) {
       void refresh();
     };
     const onFeedRefresh = () => {
+      invalidateCachedFetch(PEER_FEED_SLOTS_CACHE_KEY);
       void refresh();
     };
     const onVisible = () => {

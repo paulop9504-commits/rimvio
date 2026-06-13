@@ -56,12 +56,27 @@ export function usePendingBridgeInvites(enabled = true) {
     if (!remote) {
       return;
     }
-    const onRefresh = () => void refresh();
+    let debounceTimer: number | null = null;
+    const onRefresh = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+        return;
+      }
+      if (debounceTimer !== null) {
+        window.clearTimeout(debounceTimer);
+      }
+      debounceTimer = window.setTimeout(() => {
+        debounceTimer = null;
+        void refresh();
+      }, 900);
+    };
     window.addEventListener("focus", onRefresh);
     document.addEventListener("visibilitychange", onRefresh);
     window.addEventListener(EXPERIENCE_BRIDGE_UPDATED, onRefresh);
     const timer = window.setInterval(() => void refresh(), POLL_MS);
     return () => {
+      if (debounceTimer !== null) {
+        window.clearTimeout(debounceTimer);
+      }
       window.removeEventListener("focus", onRefresh);
       document.removeEventListener("visibilitychange", onRefresh);
       window.removeEventListener(EXPERIENCE_BRIDGE_UPDATED, onRefresh);

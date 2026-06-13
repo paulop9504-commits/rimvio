@@ -1,6 +1,11 @@
 import type { PeerMessage } from "@/lib/context/peer-message-types";
 import { resolveAppOrigin } from "@/lib/auth/redirect-url";
 import { fetchWithTimeout } from "@/lib/http/fetch-with-timeout";
+import { cachedFetchJson } from "@/lib/http/client-fetch-cache";
+import {
+  BRIDGE_SLOTS_CACHE_MS,
+  PEER_FEED_SLOTS_CACHE_KEY,
+} from "@/lib/experience-bridge/bridge-api-cache";
 
 import { friendContactErrorMessage } from "@/lib/peer-chat/friend-contact-errors";
 import { resolveCanonicalPeerThreadFromSocialLayer } from "@/lib/peer-chat/resolve-canonical-peer-thread";
@@ -42,10 +47,15 @@ export type PeerPublicProfile = {
 export async function fetchRelationshipFeedSlots(): Promise<{
   slots: import("@/lib/social/relationship-slot-types").RelationshipFeedSlot[];
 }> {
-  const response = await fetch(`${resolveAppOrigin()}/api/peers/feed/slots`, {
-    credentials: "include",
-  });
-  return parseJson(response);
+  const endpoint = `${resolveAppOrigin()}/api/peers/feed/slots`;
+  return cachedFetchJson(
+    PEER_FEED_SLOTS_CACHE_KEY,
+    async () => {
+      const response = await fetch(endpoint, { credentials: "include" });
+      return parseJson(response);
+    },
+    BRIDGE_SLOTS_CACHE_MS,
+  );
 }
 
 /** 관계 버블 DM → 피드 슬롯으로 당기기 (메시지 있을 때). */

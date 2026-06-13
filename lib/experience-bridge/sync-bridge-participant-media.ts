@@ -1,29 +1,14 @@
 "use client";
 
-import { fetchExperienceBridgeRemote } from "@/lib/experience-bridge/experience-bridge-client";
+import { fetchExperienceBridgeRemote, fetchBridgeContributionsRemote } from "@/lib/experience-bridge/experience-bridge-client";
 import {
   mergeBridgeContributionsIntoEvent,
   mergeBridgeRemoteCaptureUrls,
 } from "@/lib/experience-bridge/merge-bridge-shared-media";
 import type { ExperienceBridgeContribution } from "@/lib/experience-bridge/experience-bridge-types";
-import { resolveAppOrigin } from "@/lib/auth/redirect-url";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 import { stampBridgeEventMetadata } from "@/lib/experience-bridge/stamp-bridge-event-metadata";
-
-async function fetchBridgeContributionsRemote(
-  eventId: string,
-): Promise<ExperienceBridgeContribution[]> {
-  const endpoint = `${resolveAppOrigin()}/api/experience-bridge/${encodeURIComponent(eventId)}/contributions`;
-  const response = await fetch(endpoint, { credentials: "include" });
-  if (!response.ok) {
-    return [];
-  }
-  const body = (await response.json()) as {
-    contributions?: ExperienceBridgeContribution[];
-  };
-  return body.contributions ?? [];
-}
 
 /** Bridge pin open — merge snapshot urls + all members' contributions from server. */
 export async function syncBridgeSharedMediaFromRemote(
@@ -48,26 +33,26 @@ export async function syncBridgeSharedMediaFromRemote(
 
   const viewerId = viewerUserId?.trim() || null;
   const local = findLifeEventCandidate(key);
-  let stamped: EventCandidate | null = null;
+  let event =
+    local ?? remote.state.bridge.eventSnapshot;
+  let changed = false;
 
   if (viewerId) {
     const role =
       viewerId === remote.state.bridge.hostUserId ? "host" : "participant";
     const base = local ?? remote.state.bridge.eventSnapshot;
-    stamped = stampBridgeEventMetadata({
+    const stamped = stampBridgeEventMetadata({
       event: base,
       bridge: remote.state.bridge,
       role,
     });
+    if (stamped !== base) {
+      changed = true;
+    }
+    event = stamped;
   }
 
   const contributions = await fetchBridgeContributionsRemote(key);
-
-  let event =
-    stamped ??
-    findLifeEventCandidate(key) ??
-    remote.state.bridge.eventSnapshot;
-  let merged: EventCandidate | null = stamped;
 
   const urlMerged = mergeBridgeRemoteCaptureUrls({
     event,
@@ -75,7 +60,7 @@ export async function syncBridgeSharedMediaFromRemote(
   });
   if (urlMerged) {
     event = urlMerged;
-    merged = urlMerged;
+    changed = true;
   }
 
   const contributionMerged = mergeBridgeContributionsIntoEvent({
@@ -84,10 +69,11 @@ export async function syncBridgeSharedMediaFromRemote(
     viewerUserId,
   });
   if (contributionMerged) {
-    merged = contributionMerged;
+    event = contributionMerged;
+    changed = true;
   }
 
-  return merged;
+  return changed ? event : null;
 }
 
 /** @deprecated use syncBridgeSharedMediaFromRemote */

@@ -13,6 +13,26 @@ export function stampBridgeEventMetadata(input: {
   bridge: ExperienceBridgeSnapshot;
   role: "host" | "participant";
 }): EventCandidate {
+  const meta = input.event.metadata ?? {};
+  const bridgeId = input.bridge.eventId.trim();
+  const hostUserId = input.bridge.hostUserId.trim();
+  const peerThreadId = input.bridge.peerThreadId?.trim() || undefined;
+  const participant = input.role === "participant";
+
+  const alreadyStamped =
+    meta[EXPERIENCE_BRIDGE_META_KEYS.bridgeId] === bridgeId &&
+    meta[EXPERIENCE_BRIDGE_META_KEYS.hostUserId] === hostUserId &&
+    (peerThreadId
+      ? meta[EXPERIENCE_BRIDGE_META_KEYS.peerThreadId] === peerThreadId
+      : !meta[EXPERIENCE_BRIDGE_META_KEYS.peerThreadId]) &&
+    (participant
+      ? meta.experienceBridgeParticipant === true
+      : meta.experienceBridgeHost === true);
+
+  if (alreadyStamped) {
+    return input.event;
+  }
+
   return commitEventUpsert({
     id: input.event.id,
     title: input.event.title,

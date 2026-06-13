@@ -45,9 +45,28 @@ export function readLocalBridgeState(
 }
 
 export function writeLocalBridgeState(state: ExperienceBridgeState) {
+  const key = state.bridge.eventId.trim();
+  if (!key) {
+    return;
+  }
   const rows = readAll();
-  rows[state.bridge.eventId] = state;
+  const existing = rows[key];
+  if (existing && bridgeStatesEqual(existing, state)) {
+    return;
+  }
+  rows[key] = state;
   writeAll(rows);
+}
+
+function bridgeStatesEqual(
+  left: ExperienceBridgeState,
+  right: ExperienceBridgeState,
+): boolean {
+  try {
+    return JSON.stringify(left) === JSON.stringify(right);
+  } catch {
+    return false;
+  }
 }
 
 export function resetLocalBridgeStoreForTests() {

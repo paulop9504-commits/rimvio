@@ -67,9 +67,23 @@ export function useExperienceBridge(input: {
   }, [refresh]);
 
   useEffect(() => {
-    const onUpdate = () => void refresh();
+    let debounceTimer: number | null = null;
+    const onUpdate = () => {
+      if (debounceTimer !== null) {
+        window.clearTimeout(debounceTimer);
+      }
+      debounceTimer = window.setTimeout(() => {
+        debounceTimer = null;
+        void refresh();
+      }, 900);
+    };
     window.addEventListener("rimvio-experience-bridge-updated", onUpdate);
-    return () => window.removeEventListener("rimvio-experience-bridge-updated", onUpdate);
+    return () => {
+      if (debounceTimer !== null) {
+        window.clearTimeout(debounceTimer);
+      }
+      window.removeEventListener("rimvio-experience-bridge-updated", onUpdate);
+    };
   }, [refresh]);
 
   const isHost = Boolean(

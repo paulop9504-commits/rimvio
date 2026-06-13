@@ -1,5 +1,15 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { resolveAppOrigin } from "@/lib/auth/redirect-url";
+import { cachedFetchJson } from "@/lib/http/client-fetch-cache";
+import {
+  BRIDGE_CONTRIBUTIONS_CACHE_MS,
+  BRIDGE_INVITES_CACHE_KEY,
+  BRIDGE_INVITES_CACHE_MS,
+  BRIDGE_PLAN_CACHE_MS,
+  bridgeContributionsCacheKey,
+  bridgePlanCacheKey,
+  invalidateBridgeApiCache,
+} from "@/lib/experience-bridge/bridge-api-cache";
 import type {
   ExperienceBridgeContribution,
   ExperienceBridgeState,
@@ -14,13 +24,34 @@ async function parseJson<T>(response: Response): Promise<T> {
   return body;
 }
 
+async function fetchJsonUncached<T>(
+  endpoint: string,
+  init?: RequestInit,
+): Promise<T> {
+  return parseJson<T>(await fetch(endpoint, { credentials: "include", ...init }));
+}
+
 export async function fetchExperienceBridgeRemote(eventId: string): Promise<{
   state: ExperienceBridgeState | null;
   timeline: ExperienceBridgeTimelineItem[];
   contributions: ExperienceBridgeContribution[];
 }> {
-  const endpoint = `${resolveAppOrigin()}/api/experience-bridge/${encodeURIComponent(eventId)}`;
-  return parseJson(await fetch(endpoint, { credentials: "include" }));
+  const key = eventId.trim();
+  const endpoint = `${resolveAppOrigin()}/api/experience-bridge/${encodeURIComponent(key)}`;
+  return cachedFetchJson(bridgePlanCacheKey(key), () => fetchJsonUncached(endpoint), BRIDGE_PLAN_CACHE_MS);
+}
+
+export async function fetchBridgeContributionsRemote(
+  eventId: string,
+): Promise<ExperienceBridgeContribution[]> {
+  const key = eventId.trim();
+  const endpoint = `${resolveAppOrigin()}/api/experience-bridge/${encodeURIComponent(key)}/contributions`;
+  const body = await cachedFetchJson(
+    bridgeContributionsCacheKey(key),
+    () => fetchJsonUncached<{ contributions?: ExperienceBridgeContribution[] }>(endpoint),
+    BRIDGE_CONTRIBUTIONS_CACHE_MS,
+  );
+  return body.contributions ?? [];
 }
 
 export async function bootstrapExperienceBridgeRemote(input: {
@@ -29,19 +60,18 @@ export async function bootstrapExperienceBridgeRemote(input: {
   hostDisplayName?: string;
 }): Promise<{ state: ExperienceBridgeState }> {
   const endpoint = `${resolveAppOrigin()}/api/experience-bridge/${encodeURIComponent(input.event.id)}`;
-  return parseJson(
-    await fetch(endpoint, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "bootstrap",
-        primaryEvent: input.event,
-        peerThreadId: input.peerThreadId,
-        hostDisplayName: input.hostDisplayName,
-      }),
+  const result = await fetchJsonUncached<{ state: ExperienceBridgeState }>(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: "bootstrap",
+      primaryEvent: input.event,
+      peerThreadId: input.peerThreadId,
+      hostDisplayName: input.hostDisplayName,
     }),
-  );
+  });
+  invalidateBridgeApiCache(input.event.id);
+  return result;
 }
 
 export async function inviteExperienceBridgeRemote(input: {
@@ -53,21 +83,20 @@ export async function inviteExperienceBridgeRemote(input: {
   participantDisplayName: string;
 }): Promise<{ state: ExperienceBridgeState }> {
   const endpoint = `${resolveAppOrigin()}/api/experience-bridge/${encodeURIComponent(input.eventId)}`;
-  return parseJson(
-    await fetch(endpoint, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "invite",
-        primaryEvent: input.event,
-        peerThreadId: input.peerThreadId,
-        hostDisplayName: input.hostDisplayName,
-        participantUserId: input.participantUserId,
-        participantDisplayName: input.participantDisplayName,
-      }),
+  const result = await fetchJsonUncached<{ state: ExperienceBridgeState }>(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: "invite",
+      primaryEvent: input.event,
+      peerThreadId: input.peerThreadId,
+      hostDisplayName: input.hostDisplayName,
+      participantUserId: input.participantUserId,
+      participantDisplayName: input.participantDisplayName,
     }),
-  );
+  });
+  invalidateBridgeApiCache(input.eventId);
+  return result;
 }
 
 export async function acceptExperienceBridgeRemote(eventId: string): Promise<{
@@ -75,36 +104,34 @@ export async function acceptExperienceBridgeRemote(eventId: string): Promise<{
   pinSpec: { bridge: ExperienceBridgeState["bridge"]; peerThreadId: string | null };
 }> {
   const endpoint = `${resolveAppOrigin()}/api/experience-bridge/${encodeURIComponent(eventId)}/accept`;
-  return parseJson(
-    await fetch(endpoint, {
-      method: "POST",
-      credentials: "include",
-    }),
-  );
+  const result = await fetchJsonUncached<{
+    state: ExperienceBridgeState;
+    pinSpec: { bridge: ExperienceBridgeState["bridge"]; peerThreadId: string | null };
+  }>(endpoint, { method: "POST" });
+  invalidateBridgeApiCache(eventId);
+  return result;
 }
 
 export async function leaveExperienceBridgeRemote(eventId: string): Promise<{
   state: ExperienceBridgeState;
 }> {
   const endpoint = `${resolveAppOrigin()}/api/experience-bridge/${encodeURIComponent(eventId)}/leave`;
-  return parseJson(
-    await fetch(endpoint, {
-      method: "POST",
-      credentials: "include",
-    }),
-  );
+  const result = await fetchJsonUncached<{ state: ExperienceBridgeState }>(endpoint, {
+    method: "POST",
+  });
+  invalidateBridgeApiCache(eventId);
+  return result;
 }
 
 export async function declineExperienceBridgeRemote(eventId: string): Promise<{
   state: ExperienceBridgeState;
 }> {
   const endpoint = `${resolveAppOrigin()}/api/experience-bridge/${encodeURIComponent(eventId)}/decline`;
-  return parseJson(
-    await fetch(endpoint, {
-      method: "POST",
-      credentials: "include",
-    }),
-  );
+  const result = await fetchJsonUncached<{ state: ExperienceBridgeState }>(endpoint, {
+    method: "POST",
+  });
+  invalidateBridgeApiCache(eventId);
+  return result;
 }
 
 export async function fetchPendingBridgeInvitesRemote(): Promise<{
@@ -114,7 +141,11 @@ export async function fetchPendingBridgeInvitesRemote(): Promise<{
   }>;
 }> {
   const endpoint = `${resolveAppOrigin()}/api/experience-bridge/invites`;
-  return parseJson(await fetch(endpoint, { credentials: "include" }));
+  return cachedFetchJson(
+    BRIDGE_INVITES_CACHE_KEY,
+    () => fetchJsonUncached(endpoint),
+    BRIDGE_INVITES_CACHE_MS,
+  );
 }
 
 export type PeerThreadMemberRow = {
@@ -126,8 +157,8 @@ export async function fetchPeerThreadMembersRemote(
   threadId: string,
 ): Promise<PeerThreadMemberRow[]> {
   const endpoint = `${resolveAppOrigin()}/api/peers/threads/${encodeURIComponent(threadId)}/members`;
-  const data = await parseJson<{ members: PeerThreadMemberRow[] }>(
-    await fetch(endpoint, { credentials: "include" }),
-  );
+  const data = await fetchJsonUncached<{ members: PeerThreadMemberRow[] }>(endpoint);
   return data.members ?? [];
 }
+
+export { invalidateBridgeApiCache };
