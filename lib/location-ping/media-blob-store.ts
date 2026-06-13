@@ -54,6 +54,37 @@ export async function saveMediaBlob(id: string, file: File): Promise<void> {
   memoryUrls.set(key, URL.createObjectURL(file));
 }
 
+export async function deleteMediaBlob(id: string): Promise<void> {
+  const key = id.trim();
+  if (!key) {
+    return;
+  }
+
+  const previous = memoryUrls.get(key);
+  if (previous) {
+    URL.revokeObjectURL(previous);
+    memoryUrls.delete(key);
+  }
+
+  try {
+    const db = await openDb();
+    if (!db) {
+      return;
+    }
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE, "readwrite");
+      tx.objectStore(STORE).delete(key);
+      tx.oncomplete = () => {
+        db.close();
+        resolve();
+      };
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch {
+    // Memory cache already cleared.
+  }
+}
+
 async function readMediaBlobRow(
   id: string,
 ): Promise<{ blob: Blob; mimeType?: string } | null> {

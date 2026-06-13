@@ -115,3 +115,47 @@ export async function listMediaSpacetimeContexts(): Promise<MediaSpacetimeContex
   await hydrateMediaContextStore();
   return [...memoryContexts];
 }
+
+export async function patchMediaSpacetimeOriginRef(
+  contextId: string,
+  originRef: string,
+): Promise<void> {
+  const id = contextId.trim();
+  const ref = originRef.trim();
+  if (!id || !ref) {
+    return;
+  }
+  const hit = memoryContexts.find((row) => row.id === id);
+  if (!hit || hit.originRef?.trim() === ref) {
+    return;
+  }
+  await saveMediaSpacetimeContext({ ...hit, originRef: ref });
+}
+
+export async function deleteMediaSpacetimeContext(contextId: string): Promise<void> {
+  const id = contextId.trim();
+  if (!id) {
+    return;
+  }
+
+  memoryContexts = memoryContexts.filter((row) => row.id !== id);
+
+  try {
+    const db = await openDb();
+    if (db) {
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(STORE, "readwrite");
+        tx.objectStore(STORE).delete(id);
+        tx.oncomplete = () => {
+          db.close();
+          resolve();
+        };
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+  } catch {
+    // Memory mirror updated.
+  }
+
+  emitUpdated();
+}

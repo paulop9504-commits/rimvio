@@ -28,6 +28,8 @@ import { cn } from "@/lib/utils";
 export type GlobeCreateContextSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Prefill schedule from pool capture time. */
+  initialStartIso?: string | null;
   onCreated?: (input: {
     event: EventCandidate;
     title: string;
@@ -41,6 +43,7 @@ type SheetStep = "form" | "place" | "share";
 export function GlobeCreateContextSheet({
   open,
   onOpenChange,
+  initialStartIso,
   onCreated,
 }: GlobeCreateContextSheetProps) {
   const { user, configured } = useAuth();
@@ -92,11 +95,12 @@ export function GlobeCreateContextSheet({
 
   useEffect(() => {
     if (open) {
-      setStartIso(defaultManualContextStartIso());
+      const seed = initialStartIso?.trim();
+      setStartIso(seed || defaultManualContextStartIso());
     } else {
       resetSheet();
     }
-  }, [open, resetSheet]);
+  }, [initialStartIso, open, resetSheet]);
 
   useEffect(() => {
     if (!open) {

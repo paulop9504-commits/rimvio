@@ -21,7 +21,10 @@ export type MediaSpacetimeOrigin =
   | "peer_chat"
   | "feed_capture"
   | "search_capture"
+  | "media_pool"
   | "other";
+
+export type MediaPoolStatus = "staged" | "attached";
 
 export type MediaSpacetimeContext = {
   id: string;
@@ -37,4 +40,8 @@ export type MediaSpacetimeContext = {
   originRef: string | null;
   fileName: string | null;
   attachedAtIso: string;
+  /** GPS-less screenshots — staged until user picks a context. */
+  poolStatus?: MediaPoolStatus;
+  /** Large local blobs — auto-prune after ~7 days while staged. */
+  expiresAtIso?: string | null;
 };

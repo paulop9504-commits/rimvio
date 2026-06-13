@@ -15,15 +15,25 @@ import { GlobeContextStackPicker } from "@/components/globe/globe-context-stack-
 import { GlobeCreateContextSheet } from "@/components/globe/globe-create-context-sheet";
 import { GlobeContextShareSheet } from "@/components/globe/globe-context-share-sheet";
 import { GlobeInboxSheet, GlobeInboxTrigger } from "@/components/globe/globe-inbox-sheet";
+import {
+  GlobeMediaPoolSheet,
+  GlobeMediaPoolTrigger,
+} from "@/components/globe/globe-media-pool-sheet";
 import { ExperienceBridgeGhostSheet } from "@/components/globe/experience-bridge-ghost-sheet";
 import { GlobeSettingsSheet } from "@/components/globe/globe-settings-sheet";
 import { PinOpenSheet } from "@/components/globe/pin-open-sheet";
 import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
+import { setLiveLocationPowerMode } from "@/lib/location-ping/live-location-service";
 import { usePersonalGlobePinSync } from "@/hooks/use-personal-globe-pin-sync";
 import { useGlobeInbox } from "@/hooks/use-globe-inbox";
+import { useMediaPool } from "@/hooks/use-media-pool";
 import { useGlobeTripArrival } from "@/hooks/use-globe-trip-arrival";
 import { useGlobeContextPlaceAlignment } from "@/hooks/use-globe-context-place-alignment";
+import { useBridgeMediaSync } from "@/hooks/use-bridge-media-sync";
+import { useAuth } from "@/hooks/use-auth";
+import { isBridgeLinkedEventId } from "@/lib/experience-bridge/stamp-bridge-event-metadata";
 import { focusGlobeContextOnMap } from "@/lib/globe/focus-globe-context-on-map";
+import { attachPoolMediaBatch } from "@/lib/media-pool/attach-pool-media-to-event";
 import {
   revertGlobeContextPinToCardPlace,
   resolveGlobeContextCardPinCluster,
@@ -48,8 +58,9 @@ import {
 import {
   globeContextShouldMapReplayFirst,
   resolveExperienceVolumeForEvent,
-  resolveGlobeContextPrimaryVideoForMap,
 } from "@/lib/globe/resolve-globe-context-primary-video";
+import { listGlobeContextNavigationOrder } from "@/lib/globe/list-globe-context-navigation-order";
+import { projectContextMediaReel } from "@/lib/globe/project-context-media-reel";
 import {
   EVENT_CANDIDATES_UPDATED,
   findLifeEventCandidate,
@@ -69,6 +80,7 @@ const GLOBE_PIN_PRESS_SUPPRESS_MS = 900;
 
 function GlobeHomeBody() {
   const searchParams = useSearchParams();
+  const { user } = useAuth();
   const recallEventId = searchParams.get("recallEvent");
   const globeRef = useRef<RimvioGlobeHubHandle>(null);
   const liveLocation = useLiveLocationSnapshot();
@@ -84,6 +96,7 @@ function GlobeHomeBody() {
     needsLogin: globeInboxNeedsLogin,
     bridgeError: globeInboxError,
   } = useGlobeInbox(true);
+  const { count: mediaPoolCount } = useMediaPool(true);
   const bridgeGhostClusters = useMemo(
     () => projectBridgeGhostClusters(pendingBridgeInvites),
     [pendingBridgeInvites],
@@ -97,6 +110,9 @@ function GlobeHomeBody() {
     null,
   );
   const [globeInboxOpen, setGlobeInboxOpen] = useState(false);
+  const [mediaPoolOpen, setMediaPoolOpen] = useState(false);
+  const [poolAttachIds, setPoolAttachIds] = useState<string[]>([]);
+  const [poolSuggestedStart, setPoolSuggestedStart] = useState<string | null>(null);
   const [shareSheetOpen, setShareSheetOpen] = useState(false);
   const [shareEventId, setShareEventId] = useState<string | null>(null);
   const [activeCluster, setActiveCluster] = useState<PinCluster | null>(null);
@@ -217,6 +233,10 @@ function GlobeHomeBody() {
   const applyNearbyContexts = useCallback(
     (nearby: readonly PinCluster[], flyCluster?: PinCluster | null) => {
       if (nearby.length === 0) {
+        if (activeClusterRef.current != null) {
+          clearActiveContext();
+          return;
+        }
         if (globeContextTapHitRadiusMeters(detailLevelRef.current) == null) {
           return;
         }
@@ -229,6 +249,10 @@ function GlobeHomeBody() {
       }
 
       if (nearby.length === 1) {
+        if (activeClusterRef.current?.pinId === nearby[0]!.pinId) {
+          clearActiveContext();
+          return;
+        }
         openContextCluster(nearby[0]!);
         return;
       }
@@ -262,20 +286,38 @@ function GlobeHomeBody() {
     return (
       findLifeEventCandidate(eventId) ?? recoverGlobeContextEventFromPin(eventId)
     );
+  }, [activeCluster?.eventId, mediaStoreRevision]);
+
+  const bridgeMediaDeletable = useMemo(() => {
+    const id = activeCluster?.eventId?.trim();
+    return Boolean(id && isBridgeLinkedEventId(id));
   }, [activeCluster?.eventId]);
 
-  const activeContextPrimaryVideo = useMemo(() => {
+  useBridgeMediaSync({
+    priorityEventId: activeCluster?.eventId ?? null,
+  });
+
+  const activeContextMediaReel = useMemo(() => {
     void mediaStoreRevision;
     const eventId = activeCluster?.eventId?.trim();
-    const volume = eventId ? resolveExperienceVolumeForEvent(eventId) : null;
-    return resolveGlobeContextPrimaryVideoForMap({
-      event: activeContextEvent,
-      volume,
-    });
+    if (!eventId || !activeContextEvent) {
+      return [];
+    }
+    const volume = resolveExperienceVolumeForEvent(eventId);
+    return projectContextMediaReel({ event: activeContextEvent, volume });
   }, [activeCluster?.eventId, activeContextEvent, mediaStoreRevision]);
 
+  const navigableContexts = useMemo(() => {
+    void peerOptionsRevision;
+    void mediaStoreRevision;
+    return listGlobeContextNavigationOrder({
+      timeFilter,
+      peopleFilter,
+    });
+  }, [peerOptionsRevision, mediaStoreRevision, peopleFilter, timeFilter]);
+
   const showMapVideoReplay = Boolean(
-    activeContextPrimaryVideo &&
+    activeContextMediaReel.length > 0 &&
       activeCluster?.eventId &&
       !sheetOpen &&
       !stackClusters?.length,
@@ -291,11 +333,15 @@ function GlobeHomeBody() {
     const bump = () => setMediaStoreRevision((value) => value + 1);
     void hydrateMediaContextStore().then(bump);
     window.addEventListener(MEDIA_SPACETIME_UPDATED, bump);
-    return () => window.removeEventListener(MEDIA_SPACETIME_UPDATED, bump);
+    window.addEventListener(EVENT_CANDIDATES_UPDATED, bump);
+    return () => {
+      window.removeEventListener(MEDIA_SPACETIME_UPDATED, bump);
+      window.removeEventListener(EVENT_CANDIDATES_UPDATED, bump);
+    };
   }, []);
 
   useEffect(() => {
-    if (!activeCluster?.eventId || stackClusters?.length) {
+    if (!activeCluster?.eventId || stackClusters?.length || sheetOpen) {
       return;
     }
     void mediaStoreRevision;
@@ -306,11 +352,12 @@ function GlobeHomeBody() {
       cluster: activeCluster,
       volume,
     });
-    if (shouldMapFirst && sheetOpen) {
+    if (shouldMapFirst) {
       setSheetOpen(false);
     }
   }, [
-    activeCluster,
+    activeCluster?.eventId,
+    activeCluster?.pinId,
     activeContextEvent,
     mediaStoreRevision,
     sheetOpen,
@@ -571,6 +618,25 @@ function GlobeHomeBody() {
     [openContextByEventId],
   );
 
+  const globeRenderSuspended =
+    sheetOpen ||
+    createOpen ||
+    listOpen ||
+    manageOpen ||
+    settingsOpen ||
+    globeInboxOpen ||
+    mediaPoolOpen ||
+    bridgeGhostOpen ||
+    shareSheetOpen;
+
+  useEffect(() => {
+    const dwell =
+      liveLocation?.contextLabel === "체류 중" ||
+      liveLocation?.contextLabel === "위치 대기";
+    const mode = globeRenderSuspended ? "saver" : dwell ? "balanced" : "high";
+    setLiveLocationPowerMode(mode);
+  }, [globeRenderSuspended, liveLocation?.contextLabel]);
+
   return (
     <div className="relative flex h-full min-h-0 flex-1 flex-col">
       <RimvioGlobeHubClient
@@ -590,6 +656,7 @@ function GlobeHomeBody() {
         peopleFilter={peopleFilter}
         pinCoordOverrides={pinCoordOverrides}
         bridgeGhostClusters={bridgeGhostClusters}
+        renderSuspended={globeRenderSuspended}
       />
       <GlobeContextStackPicker
         clusters={stackClusters ?? []}
@@ -607,8 +674,18 @@ function GlobeHomeBody() {
         anchorLat={activeCluster?.lat ?? null}
         anchorLng={activeCluster?.lng ?? null}
         visible={showMapVideoReplay}
+        navigationEntries={navigableContexts}
         onDismiss={clearActiveContext}
         onOpenDetails={() => setSheetOpen(true)}
+        onNavigateContext={(nextEventId) => {
+          focusContextByEventId(nextEventId);
+        }}
+        viewerUserId={user?.id}
+        deletable={bridgeMediaDeletable}
+        onMediaDeleted={() => {
+          setMediaStoreRevision((value) => value + 1);
+          toast.success("삭제했어요");
+        }}
       />
       <div className="pointer-events-none absolute left-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20">
         <div className="pointer-events-auto">
@@ -635,6 +712,11 @@ function GlobeHomeBody() {
         </div>
       </div>
       <div className="pointer-events-none absolute right-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20 flex items-center gap-2">
+        <GlobeMediaPoolTrigger
+          count={mediaPoolCount}
+          onOpen={() => setMediaPoolOpen(true)}
+          className="pointer-events-auto"
+        />
         <GlobeInboxTrigger
           count={globeInboxCount}
           onOpen={() => setGlobeInboxOpen(true)}
@@ -662,6 +744,30 @@ function GlobeHomeBody() {
             window.history.replaceState(null, "", next);
           }
           focusContextOnMap(eventId);
+        }}
+      />
+      <GlobeMediaPoolSheet
+        open={mediaPoolOpen}
+        onOpenChange={setMediaPoolOpen}
+        activeContextTitle={activeCluster?.title ?? null}
+        onAttachToActive={
+          activeCluster?.eventId
+            ? async (contextIds) => {
+                const summary = await attachPoolMediaBatch({
+                  contextIds,
+                  eventId: activeCluster.eventId,
+                  hintTitle: activeCluster.title,
+                });
+                toast.success(summary.toastLine);
+                setMediaStoreRevision((revision) => revision + 1);
+                focusContextOnMap(activeCluster.eventId);
+              }
+            : undefined
+        }
+        onCreateContext={({ contextIds, startIso }) => {
+          setPoolAttachIds(contextIds);
+          setPoolSuggestedStart(startIso);
+          setCreateOpen(true);
         }}
       />
       <GlobeInboxSheet
@@ -705,8 +811,28 @@ function GlobeHomeBody() {
       />
       <GlobeCreateContextSheet
         open={createOpen}
-        onOpenChange={setCreateOpen}
+        initialStartIso={poolSuggestedStart}
+        onOpenChange={(open) => {
+          setCreateOpen(open);
+          if (!open) {
+            setPoolAttachIds([]);
+            setPoolSuggestedStart(null);
+          }
+        }}
         onCreated={({ event }) => {
+          const pendingIds = [...poolAttachIds];
+          setPoolAttachIds([]);
+          setPoolSuggestedStart(null);
+          if (pendingIds.length > 0) {
+            void attachPoolMediaBatch({
+              contextIds: pendingIds,
+              eventId: event.id,
+              hintTitle: event.title,
+            }).then((summary) => {
+              toast.success(summary.toastLine);
+              setMediaStoreRevision((revision) => revision + 1);
+            });
+          }
           openContextByEventId(event.id);
         }}
       />

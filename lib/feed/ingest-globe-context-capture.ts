@@ -144,6 +144,9 @@ export async function ingestGlobeContextFromFiles(
     lastEventId: summary.lastEventId,
     toastLine: summary.toastLine,
     lastSuggestedPlaceName: summary.lastSuggestedPlaceName,
+    pinsCreated: summary.pinsCreated,
+    exifPinned: summary.exifPinned,
+    poolStaged: summary.poolStaged,
   };
 }
 
