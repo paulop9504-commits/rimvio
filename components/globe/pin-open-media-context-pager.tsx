@@ -5,10 +5,11 @@ import { ChevronLeft } from "lucide-react";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
-export type PinOpenBridgeMediaContextPagerProps = {
+export type PinOpenMediaContextPagerProps = {
   media: ReactNode;
   summary: string;
   resetKey?: string;
+  variant?: "bridge" | "personal";
   className?: string;
   children: ReactNode;
 };
@@ -63,14 +64,16 @@ function useHorizontalSwipeHandoff(input: {
   };
 }
 
-/** Bridge pin — swipe media ↔ context text (two full pages). */
-export function PinOpenBridgeMediaContextPager({
+/** Pin sheet — swipe media ↔ context text (two full pages). */
+export function PinOpenMediaContextPager({
   media,
   summary,
   resetKey,
+  variant = "personal",
   className,
   children,
-}: PinOpenBridgeMediaContextPagerProps) {
+}: PinOpenMediaContextPagerProps) {
+  const bridge = variant === "bridge";
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState<0 | 1>(0);
 
@@ -110,17 +113,30 @@ export function PinOpenBridgeMediaContextPager({
   return (
     <div
       className={cn("relative flex min-h-0 flex-1 flex-col", className)}
-      data-pin-bridge-pager
-      data-pin-bridge-page={page === 0 ? "media" : "context"}
+      data-pin-media-context-pager
+      data-pin-media-context-page={page === 0 ? "media" : "context"}
     >
-      <div className="pointer-events-none absolute inset-x-0 top-[3.25rem] z-30 flex justify-center px-4 md:pointer-events-auto">
-        <div className="pointer-events-auto inline-flex rounded-full bg-black/45 p-0.5 ring-1 ring-white/15 backdrop-blur-md">
+      <div className="pointer-events-none absolute inset-x-0 top-[3.25rem] z-30 flex justify-center px-4">
+        <div
+          className={cn(
+            "pointer-events-auto inline-flex rounded-full p-0.5 ring-1 backdrop-blur-md",
+            bridge
+              ? "bg-black/45 ring-white/15"
+              : "bg-background/95 ring-border shadow-sm",
+          )}
+        >
           <button
             type="button"
             onClick={() => scrollToPage(0)}
             className={cn(
               "rounded-full px-3.5 py-1.5 text-[11px] font-semibold transition",
-              page === 0 ? "bg-white text-black" : "text-white/75",
+              page === 0
+                ? bridge
+                  ? "bg-white text-black"
+                  : "bg-foreground text-background"
+                : bridge
+                  ? "text-white/75"
+                  : "text-muted-foreground",
             )}
           >
             {copy.globe.bridgeMediaContextTabMoments}
@@ -130,7 +146,13 @@ export function PinOpenBridgeMediaContextPager({
             onClick={() => scrollToPage(1)}
             className={cn(
               "rounded-full px-3.5 py-1.5 text-[11px] font-semibold transition",
-              page === 1 ? "bg-white text-black" : "text-white/75",
+              page === 1
+                ? bridge
+                  ? "bg-white text-black"
+                  : "bg-foreground text-background"
+                : bridge
+                  ? "text-white/75"
+                  : "text-muted-foreground",
             )}
           >
             {copy.globe.bridgeMediaContextTabContext}
@@ -140,7 +162,7 @@ export function PinOpenBridgeMediaContextPager({
 
       <div
         ref={scrollerRef}
-        className="flex min-h-0 flex-1 snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex min-h-0 flex-1 touch-pan-x snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         onScroll={syncPageFromScroll}
       >
         <section
@@ -150,8 +172,20 @@ export function PinOpenBridgeMediaContextPager({
         >
           {media}
           {page === 0 ? (
-            <div className="pointer-events-none absolute inset-x-0 bottom-[5.5rem] z-30 flex justify-end px-4">
-              <span className="rounded-full bg-black/55 px-3 py-1.5 text-[10px] font-semibold text-white/85 ring-1 ring-white/15 backdrop-blur-sm">
+            <div
+              className={cn(
+                "pointer-events-none absolute inset-x-0 z-30 flex justify-end px-4",
+                bridge ? "bottom-[5.5rem]" : "bottom-4",
+              )}
+            >
+              <span
+                className={cn(
+                  "rounded-full px-3 py-1.5 text-[10px] font-semibold ring-1 backdrop-blur-sm",
+                  bridge
+                    ? "bg-black/55 text-white/85 ring-white/15"
+                    : "bg-foreground/80 text-background ring-foreground/20",
+                )}
+              >
                 {copy.globe.bridgeContextSwipeHint}
               </span>
             </div>
@@ -195,16 +229,23 @@ export function PinOpenBridgeMediaContextPager({
         <span
           className={cn(
             "h-1.5 rounded-full transition-all",
-            page === 0 ? "w-4 bg-white" : "w-1.5 bg-foreground/25",
+            page === 0
+              ? cn("w-4", bridge ? "bg-white" : "bg-foreground/70")
+              : cn("w-1.5", bridge ? "bg-white/35" : "bg-foreground/20"),
           )}
         />
         <span
           className={cn(
             "h-1.5 rounded-full transition-all",
-            page === 1 ? "w-4 bg-foreground/70" : "w-1.5 bg-white/35",
+            page === 1
+              ? cn("w-4", "bg-foreground/70")
+              : cn("w-1.5", bridge ? "bg-white/35" : "bg-foreground/20"),
           )}
         />
       </div>
     </div>
   );
 }
+
+/** @deprecated Use PinOpenMediaContextPager */
+export const PinOpenBridgeMediaContextPager = PinOpenMediaContextPager;

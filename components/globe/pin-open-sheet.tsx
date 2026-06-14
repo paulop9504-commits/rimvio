@@ -15,8 +15,7 @@ import { GlobeContextPhotoButton } from "@/components/globe/globe-context-photo-
 import { GlobeContextShareFriendsPanel } from "@/components/globe/globe-context-share-friends-panel";
 import { GlobeContextMediaShortsReel } from "@/components/globe/globe-context-media-shorts-reel";
 import { ExperienceBridgeMediaShell } from "@/components/globe/experience-bridge-media-shell";
-import { PinOpenBridgeMediaContextPager } from "@/components/globe/pin-open-bridge-media-context-pager";
-import { PinOpenContextDetailsPanel } from "@/components/globe/pin-open-context-details-panel";
+import { PinOpenMediaContextPager } from "@/components/globe/pin-open-media-context-pager";
 import { patchExperiencePinContext } from "@/lib/globe/patch-experience-pin-context";
 import { isGlobeManualContextEvent } from "@/lib/events/event-lifecycle";
 import { EvidenceList } from "@/components/experience/evidence-list";
@@ -83,7 +82,6 @@ export function PinOpenSheet({
   const [opened, setOpened] = useState(false);
   const [revision, setRevision] = useState(0);
   const [editKind, setEditKind] = useState<PinContextFieldKind | null>(null);
-  const [contextDetailsExpanded, setContextDetailsExpanded] = useState(false);
   const gpsPings = useFeedGpsPings();
 
   useEffect(() => {
@@ -323,14 +321,6 @@ export function PinOpenSheet({
     return parts.length > 0 ? parts.join(" · ") : copy.globe.pinContextDetailsFallback;
   }, [moments.length, shareEvent, evidence, people.length]);
 
-  useEffect(() => {
-    if (!open || !cluster?.eventId) {
-      return;
-    }
-    setContextDetailsExpanded(reelItems.length === 0);
-    // Reset only when the sheet or pin changes — not on every media sync.
-  }, [open, cluster?.eventId]);
-
   const openExperienceRoom = () => {
     if (!conversation?.peerThreadId || !event || !hero) {
       return;
@@ -452,12 +442,13 @@ export function PinOpenSheet({
                     </button>
                   </div>
 
-                  {isBridgeContext ? (
-                    <PinOpenBridgeMediaContextPager
-                      resetKey={cluster.eventId}
-                      summary={contextDetailsSummary}
-                      className="min-h-0 flex-1"
-                      media={
+                  <PinOpenMediaContextPager
+                    resetKey={cluster.eventId}
+                    summary={contextDetailsSummary}
+                    variant={isBridgeContext ? "bridge" : "personal"}
+                    className="min-h-0 flex-1"
+                    media={
+                      isBridgeContext ? (
                         <ExperienceBridgeMediaShell
                           items={reelItems}
                           title={hero.title}
@@ -470,20 +461,7 @@ export function PinOpenSheet({
                             toast.success("삭제했어요");
                           }}
                         />
-                      }
-                    >
-                      {contextDetailsBody}
-                    </PinOpenBridgeMediaContextPager>
-                  ) : (
-                    <>
-                      <div
-                        className={cn(
-                          "relative z-0 flex min-h-0 flex-col overflow-hidden",
-                          contextDetailsExpanded
-                            ? "h-[min(44dvh,400px)] shrink-0"
-                            : "min-h-0 flex-1",
-                        )}
-                      >
+                      ) : (
                         <div className="flex h-full min-h-0 flex-col overflow-hidden pt-[3.75rem]">
                           <div className="min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                             <GlobeContextMediaShortsReel
@@ -503,17 +481,11 @@ export function PinOpenSheet({
                             />
                           </div>
                         </div>
-                      </div>
-
-                      <PinOpenContextDetailsPanel
-                        summary={contextDetailsSummary}
-                        expanded={contextDetailsExpanded}
-                        onExpandedChange={setContextDetailsExpanded}
-                      >
-                        {contextDetailsBody}
-                      </PinOpenContextDetailsPanel>
-                    </>
-                  )}
+                      )
+                    }
+                  >
+                    {contextDetailsBody}
+                  </PinOpenMediaContextPager>
                 </div>
 
                 <div className="shrink-0 space-y-2 border-t border-border px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
