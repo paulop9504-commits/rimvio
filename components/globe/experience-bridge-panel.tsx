@@ -10,6 +10,10 @@ import {
 } from "@/lib/peer-chat/peer-chat-client";
 import { useExperienceBridge } from "@/hooks/use-experience-bridge";
 import { useAuth } from "@/hooks/use-auth";
+import { projectContextMediaReel } from "@/lib/globe/project-context-media-reel";
+import { ExperienceBridgePreviewCollage } from "@/components/globe/experience-bridge-preview-collage";
+import { ExperienceBridgeParticipantsStrip } from "@/components/globe/experience-bridge-participants-strip";
+import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
 export type ExperienceBridgePanelProps = {
@@ -57,6 +61,25 @@ export function ExperienceBridgePanel({
       .catch(() => setMembers([]));
   }, [threadId, configured]);
 
+  const reelItems = useMemo(
+    () => projectContextMediaReel({ event, volume: null, viewerUserId: user?.id }),
+    [event, user?.id, bridge.state],
+  );
+
+  const previewMedia = useMemo(
+    () =>
+      reelItems
+        .filter((row) => row.imageUrl?.trim())
+        .slice(0, 3)
+        .map((row) => ({
+          url: row.imageUrl!.trim(),
+          kind: row.kind,
+          authorDisplayName: row.authorDisplayName,
+          authorAvatarUrl: row.authorAvatarUrl,
+        })),
+    [reelItems],
+  );
+
   const myParticipant = bridge.state?.participants.find(
     (row) => row.userId === user?.id,
   );
@@ -99,9 +122,9 @@ export function ExperienceBridgePanel({
     setBusy(true);
     try {
       await bridge.accept();
-      toast.success("여행이 연결됐어요 · 내 지도에도 핀이 생겼어요");
+      toast.success(copy.globe.bridgeInviteAccepted);
     } catch (caught) {
-      toast.error(caught instanceof Error ? caught.message : "수락하지 못했어요");
+      toast.error(caught instanceof Error ? caught.message : copy.globe.bridgeInviteAcceptFail);
     } finally {
       setBusy(false);
     }
@@ -111,9 +134,9 @@ export function ExperienceBridgePanel({
     setBusy(true);
     try {
       await bridge.decline();
-      toast.message("초대를 거절했어요");
+      toast.message(copy.globe.bridgeInviteDeclined);
     } catch (caught) {
-      toast.error(caught instanceof Error ? caught.message : "거절하지 못했어요");
+      toast.error(caught instanceof Error ? caught.message : copy.globe.bridgeInviteDeclineFail);
     } finally {
       setBusy(false);
     }
@@ -137,97 +160,110 @@ export function ExperienceBridgePanel({
 
   return (
     <section
-      className={cn("space-y-3 rounded-2xl bg-muted/40 p-4", className)}
+      className={cn(
+        "overflow-hidden rounded-[1.25rem] border border-border/80 bg-card shadow-sm",
+        className,
+      )}
       data-experience-bridge
     >
-      <div className="space-y-1">
-        <p className="text-[12px] font-semibold text-muted-foreground">함께하는 경험</p>
-        <p className="text-[13px] leading-snug text-foreground">
-          같은 여행 · 각자 지도 · 한 타임라인. 상대 사진은 Rimvio 안에서만 볼 수 있어요.
-        </p>
-      </div>
+      <ExperienceBridgePreviewCollage media={previewMedia} className="rounded-none ring-0" />
 
-      {pendingInvite ? (
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void handleAccept()}
-            className="flex-1 rounded-xl bg-foreground px-4 py-3 text-[14px] font-semibold text-background shadow-sm disabled:opacity-60"
-          >
-            함께 보기
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void handleDecline()}
-            className="rounded-xl px-4 py-3 text-[14px] font-medium text-muted-foreground"
-          >
-            거절
-          </button>
-        </div>
-      ) : null}
-
-      {activeParticipants.length > 0 ? (
-        <ul className="space-y-1.5">
-          {activeParticipants.map((row) => (
-            <li
-              key={row.userId}
-              className="flex items-center justify-between rounded-xl bg-background px-3 py-2 text-[13px]"
-            >
-              <span className="font-medium text-foreground">{row.displayName}</span>
-              <span className="text-muted-foreground">{statusLabel(row.status)}</span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-
-      {canInvite && inviteCandidates.length > 0 ? (
+      <div className="space-y-4 p-4">
         <div className="space-y-2">
-          <p className="text-[12px] font-semibold text-muted-foreground">초대하기</p>
-          <div className="flex flex-wrap gap-2">
-            {inviteCandidates.map((member) => (
-              <button
-                key={member.userId}
-                type="button"
-                disabled={busy}
-                onClick={() => void handleInvite(member)}
-                className="rounded-full border border-border bg-background px-3 py-1.5 text-[13px] font-medium text-foreground shadow-sm disabled:opacity-60"
-              >
-                + {member.displayName}
-              </button>
-            ))}
-          </div>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">
+            {copy.globe.bridgeMediaEyebrow}
+          </p>
+          <p className="text-[14px] leading-snug text-foreground">
+            같은 여행 · 각자 지도 · 한 타임라인. Rimvio 안에서만 함께 봐요.
+          </p>
         </div>
-      ) : null}
 
-      {canInvite && !bridge.state && threadId ? (
-        <button
-          type="button"
-          disabled={busy || bridge.loading}
-          onClick={() => void bridge.bootstrap()}
-          className="w-full rounded-xl border border-border bg-background px-4 py-3 text-[14px] font-medium text-foreground shadow-sm disabled:opacity-60"
-        >
-          함께하기 시작
-        </button>
-      ) : null}
+        {reelItems.length > 0 ? (
+          <ExperienceBridgeParticipantsStrip items={reelItems} />
+        ) : null}
 
-      {myParticipant?.status === "accepted" && myParticipant.role !== "host" ? (
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => void handleLeave()}
-          className="text-[13px] font-medium text-muted-foreground underline-offset-2 hover:underline"
-        >
-          공유 보기에서 나가기
-        </button>
-      ) : null}
+        {pendingInvite ? (
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void handleAccept()}
+              className="flex-1 rounded-2xl bg-foreground px-4 py-3.5 text-[14px] font-semibold text-background shadow-sm disabled:opacity-60"
+            >
+              {copy.globe.bridgeInviteAcceptCta}
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void handleDecline()}
+              className="rounded-2xl px-4 py-3.5 text-[14px] font-medium text-muted-foreground"
+            >
+              {copy.globe.bridgeInviteDeclineCta}
+            </button>
+          </div>
+        ) : null}
 
-      {bridge.timeline.length > 0 ? (
-        <p className="text-[12px] text-muted-foreground">
-          합쳐진 순간 {bridge.timeline.length}개 · 상대 사진은 저장할 수 없어요
-        </p>
-      ) : null}
+        {activeParticipants.length > 0 ? (
+          <ul className="space-y-1.5">
+            {activeParticipants.map((row) => (
+              <li
+                key={row.userId}
+                className="flex items-center justify-between rounded-xl bg-muted/50 px-3 py-2.5 text-[13px]"
+              >
+                <span className="font-medium text-foreground">{row.displayName}</span>
+                <span className="text-muted-foreground">{statusLabel(row.status)}</span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        {canInvite && inviteCandidates.length > 0 ? (
+          <div className="space-y-2">
+            <p className="text-[12px] font-semibold text-muted-foreground">초대하기</p>
+            <div className="flex flex-wrap gap-2">
+              {inviteCandidates.map((member) => (
+                <button
+                  key={member.userId}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void handleInvite(member)}
+                  className="rounded-full border border-border bg-background px-3 py-1.5 text-[13px] font-medium text-foreground shadow-sm disabled:opacity-60"
+                >
+                  + {member.displayName}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {canInvite && !bridge.state && threadId ? (
+          <button
+            type="button"
+            disabled={busy || bridge.loading}
+            onClick={() => void bridge.bootstrap()}
+            className="w-full rounded-2xl border border-border bg-background px-4 py-3.5 text-[14px] font-semibold text-foreground shadow-sm disabled:opacity-60"
+          >
+            함께하기 시작
+          </button>
+        ) : null}
+
+        {myParticipant?.status === "accepted" && myParticipant.role !== "host" ? (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void handleLeave()}
+            className="text-[13px] font-medium text-muted-foreground underline-offset-2 hover:underline"
+          >
+            공유 보기에서 나가기
+          </button>
+        ) : null}
+
+        {reelItems.length > 0 ? (
+          <p className="text-center text-[11px] text-muted-foreground">
+            {copy.globe.bridgeMediaSwipeHint(reelItems.length)}
+          </p>
+        ) : null}
+      </div>
     </section>
   );
 }

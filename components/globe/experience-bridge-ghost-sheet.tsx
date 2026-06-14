@@ -6,6 +6,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { MapPin, X } from "lucide-react";
 import { toast } from "sonner";
 import { copy } from "@/lib/copy/human-ko";
+import { projectBridgePreviewMedia } from "@/lib/globe/project-bridge-preview-media";
+import { ExperienceBridgePreviewCollage } from "@/components/globe/experience-bridge-preview-collage";
 import { ensureBridgeParticipantPin } from "@/lib/experience-bridge/build-participant-pin";
 import {
   acceptExperienceBridgeRemote,
@@ -43,6 +45,10 @@ export function ExperienceBridgeGhostSheet({
   const { bridge } = invite.state;
   const host = invite.state.participants.find((row) => row.role === "host");
   const hostName = host?.displayName?.trim() || copy.globe.bridgeInviteHostFallback;
+  const previewMedia = projectBridgePreviewMedia(
+    invite.state.bridge.eventSnapshot,
+    3,
+  );
 
   const handleAccept = async () => {
     setBusy(true);
@@ -102,9 +108,14 @@ export function ExperienceBridgeGhostSheet({
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 16 }}
-            className="fixed inset-x-0 bottom-0 z-[10061] mx-auto w-full max-w-lg rounded-t-[1.25rem] border border-border bg-card px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 shadow-2xl"
+            className="fixed inset-x-0 bottom-0 z-[10061] mx-auto w-full max-w-lg overflow-hidden rounded-t-[1.35rem] border border-border bg-card shadow-2xl"
             data-experience-bridge-ghost-sheet
           >
+            <ExperienceBridgePreviewCollage
+              media={previewMedia}
+              className="w-full rounded-none ring-0"
+            />
+            <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4">
             <div className="mb-3 flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">
@@ -150,6 +161,7 @@ export function ExperienceBridgeGhostSheet({
               >
                 {copy.globe.bridgeInviteDeclineCta}
               </button>
+            </div>
             </div>
           </motion.div>
         </>

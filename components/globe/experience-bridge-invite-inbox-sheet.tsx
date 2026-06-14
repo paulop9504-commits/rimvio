@@ -5,7 +5,9 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Inbox, Loader2, Users, X } from "lucide-react";
 import { toast } from "sonner";
+import { ExperienceBridgePreviewCollage } from "@/components/globe/experience-bridge-preview-collage";
 import { copy } from "@/lib/copy/human-ko";
+import { projectBridgePreviewMedia } from "@/lib/globe/project-bridge-preview-media";
 import { ensureBridgeParticipantPin } from "@/lib/experience-bridge/build-participant-pin";
 import {
   acceptExperienceBridgeRemote,
@@ -195,27 +197,37 @@ export function ExperienceBridgeInviteInboxSheet({
                       host?.displayName?.trim() || copy.globe.bridgeInviteHostFallback;
                     const busy = busyEventId === bridge.eventId;
 
+                    const previewMedia = projectBridgePreviewMedia(
+                      invite.state.bridge.eventSnapshot,
+                      3,
+                    );
+
                     return (
                       <li
                         key={bridge.eventId}
-                        className="rounded-2xl border border-border bg-muted/30 p-3.5"
+                        className="overflow-hidden rounded-[1.15rem] border border-border bg-card shadow-sm"
                       >
+                        <ExperienceBridgePreviewCollage
+                          media={previewMedia}
+                          className="rounded-none ring-0"
+                        />
+                        <div className="space-y-2 p-3.5">
                         <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">
                           {copy.globe.bridgeInviteEyebrow}
                         </p>
-                        <p className="mt-0.5 text-[14px] font-semibold text-foreground">
+                        <p className="text-[15px] font-semibold leading-snug text-foreground">
                           {copy.globe.bridgeInviteTitle(hostName, bridge.title)}
                         </p>
-                        <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+                        <p className="text-[12px] leading-relaxed text-muted-foreground">
                           {copy.globe.bridgeInviteBody}
                         </p>
-                        <div className="mt-2">
-                          <span className="inline-flex items-center gap-1 rounded-full bg-background px-2 py-0.5 text-[11px] font-medium text-foreground">
+                        <div>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-foreground">
                             <Users className="size-3" aria-hidden />
                             {bridge.placeLabel || copy.globe.bridgeInvitePlaceFallback}
                           </span>
                         </div>
-                        <div className="mt-3 flex gap-2">
+                        <div className="flex gap-2 pt-1">
                           <button
                             type="button"
                             disabled={busy}
@@ -235,6 +247,7 @@ export function ExperienceBridgeInviteInboxSheet({
                           >
                             {copy.globe.bridgeInviteDeclineCta}
                           </button>
+                        </div>
                         </div>
                       </li>
                     );

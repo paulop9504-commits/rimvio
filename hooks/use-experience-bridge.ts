@@ -19,6 +19,7 @@ import {
   readLocalBridgeState,
   writeLocalBridgeState,
 } from "@/lib/experience-bridge/local-bridge-store";
+import { toBridgeFetchError } from "@/lib/experience-bridge/bridge-fetch-error";
 import { useAuth } from "@/hooks/use-auth";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
@@ -56,7 +57,18 @@ export function useExperienceBridge(input: {
       }
       setError(null);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "불러오지 못했어요.");
+      if (remote) {
+        const local = readLocalBridgeState(eventId);
+        if (local) {
+          setState(local);
+          setTimeline([]);
+          setError(null);
+        } else {
+          setError(toBridgeFetchError(caught) ?? "불러오지 못했어요.");
+        }
+      } else {
+        setError(toBridgeFetchError(caught) ?? "불러오지 못했어요.");
+      }
     } finally {
       setLoading(false);
     }

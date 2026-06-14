@@ -34,15 +34,27 @@ export async function cachedFetchJson<T>(
 
   const inflight = fetcher()
     .then((data) => {
-      store.set(trimmed, { expiresAt: now + ttlMs, data });
+      store.set(trimmed, { expiresAt: Date.now() + ttlMs, data });
       return data;
     })
     .catch((error) => {
+      const stale = store.get(trimmed) as CacheRow<T> | undefined;
+      if (stale?.data !== undefined) {
+        store.set(trimmed, {
+          expiresAt: Date.now() + Math.max(ttlMs, 30_000),
+          data: stale.data,
+        });
+        return stale.data;
+      }
       store.delete(trimmed);
       throw error;
     });
 
-  store.set(trimmed, { expiresAt: now + ttlMs, inflight });
+  store.set(trimmed, {
+    expiresAt: now + ttlMs,
+    inflight,
+    data: hit?.data,
+  });
   return inflight;
 }
 

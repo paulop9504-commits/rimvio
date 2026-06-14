@@ -8,6 +8,11 @@ import {
   zoomFlatMapFromPinch,
   zoomFlatMapView,
 } from "@/lib/globe/flat-map-view";
+import { createGestureUpdateCoalescer } from "@/lib/globe/coalesce-gesture-updates";
+import {
+  applyInertialDecay,
+  GestureVelocityTracker,
+} from "@/lib/globe/gesture-velocity-tracker";
 import type { GlobeSurfaceMode } from "@/lib/globe/resolve-globe-surface-mode";
 
 const DRAG_THRESHOLD_PX = 5;
@@ -58,6 +63,11 @@ export function useGlobeSurfaceTouch({
   const dragRef = useRef<DragSession | null>(null);
   const pinchRef = useRef<PinchSession | null>(null);
   const flatActiveRef = useRef(false);
+  const velocityRef = useRef(new GestureVelocityTracker());
+  const inertiaRafRef = useRef<number | null>(null);
+  const viewCoalescerRef = useRef<ReturnType<
+    typeof createGestureUpdateCoalescer<FlatMapView>
+  > | null>(null);
 
   useEffect(() => {
     const hub = hubRef.current;
@@ -83,14 +93,68 @@ export function useGlobeSurfaceTouch({
       return Math.hypot(a.x - b.x, a.y - b.y);
     };
 
+    const emitFlatView = (next: FlatMapView) => {
+      flatViewRef.current = next;
+      if (!viewCoalescerRef.current) {
+        viewCoalescerRef.current = createGestureUpdateCoalescer((view) => {
+          flatViewRef.current = view;
+          onFlatViewChangeRef.current(view);
+        });
+      }
+      viewCoalescerRef.current.push(next);
+    };
+
+    const stopInertia = () => {
+      if (inertiaRafRef.current != null) {
+        cancelAnimationFrame(inertiaRafRef.current);
+        inertiaRafRef.current = null;
+      }
+    };
+
+    const startInertia = () => {
+      stopInertia();
+      let velocity = velocityRef.current.velocity();
+      if (Math.hypot(velocity.vx, velocity.vy) < 1.2) {
+        velocityRef.current.reset();
+        return;
+      }
+      const tick = () => {
+        const decayed = applyInertialDecay(velocity, 0.9);
+        velocity = { vx: decayed.vx, vy: decayed.vy };
+        if (!decayed.active) {
+          inertiaRafRef.current = null;
+          velocityRef.current.reset();
+          const committed = commitFlatMapPan(flatViewRef.current);
+          flatViewRef.current = committed;
+          onFlatViewChangeRef.current(committed);
+          onFlatGestureEndRef.current?.(committed);
+          setIsInteracting(false);
+          return;
+        }
+        emitFlatView(panFlatMapViewDelta(flatViewRef.current, velocity.vx, velocity.vy));
+        inertiaRafRef.current = requestAnimationFrame(tick);
+      };
+      inertiaRafRef.current = requestAnimationFrame(tick);
+    };
+
     const finishGesture = () => {
-      const hadGesture = Boolean(dragRef.current?.dragging || pinchRef.current);
+      const hadDrag = Boolean(dragRef.current?.dragging);
+      const hadPinch = Boolean(pinchRef.current);
       dragRef.current = null;
       pinchRef.current = null;
       touchesRef.current.clear();
       flatActiveRef.current = false;
+      viewCoalescerRef.current?.flushNow();
+
+      if (hadDrag && !hadPinch) {
+        startInertia();
+        return;
+      }
+
+      velocityRef.current.reset();
+      stopInertia();
       setIsInteracting(false);
-      if (!hadGesture) {
+      if (!hadDrag && !hadPinch) {
         return;
       }
       const committed = commitFlatMapPan(flatViewRef.current);
@@ -119,6 +183,8 @@ export function useGlobeSurfaceTouch({
     };
 
     const onTouchStart = (event: TouchEvent) => {
+      stopInertia();
+      velocityRef.current.reset();
       syncTouches(event.touches);
       const mode = surfaceModeRef.current;
 
@@ -159,7 +225,7 @@ export function useGlobeSurfaceTouch({
 
       if (touchesRef.current.size >= 2 && pinchRef.current) {
         event.preventDefault();
-        onFlatViewChangeRef.current(
+        emitFlatView(
           zoomFlatMapFromPinch(
             pinchRef.current.startView,
             pinchRef.current.startZoom,
@@ -187,10 +253,9 @@ export function useGlobeSurfaceTouch({
       drag.dragging = true;
       drag.lastX = point.x;
       drag.lastY = point.y;
+      velocityRef.current.record(deltaX, deltaY);
       setIsInteracting(true);
-      const next = panFlatMapViewDelta(flatViewRef.current, deltaX, deltaY);
-      flatViewRef.current = next;
-      onFlatViewChangeRef.current(next);
+      emitFlatView(panFlatMapViewDelta(flatViewRef.current, deltaX, deltaY));
     };
 
     const onTouchEnd = (event: TouchEvent) => {
@@ -228,6 +293,8 @@ export function useGlobeSurfaceTouch({
     hub.addEventListener("wheel", onWheel, { passive: false });
 
     return () => {
+      stopInertia();
+      viewCoalescerRef.current?.cancel();
       hub.removeEventListener("touchstart", onTouchStart, { capture: true });
       hub.removeEventListener("touchmove", onTouchMove, { capture: true });
       hub.removeEventListener("touchend", onTouchEnd, { capture: true });

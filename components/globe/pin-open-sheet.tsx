@@ -14,6 +14,7 @@ import { PinContextTappableField } from "@/components/globe/pin-context-tappable
 import { GlobeContextPhotoButton } from "@/components/globe/globe-context-photo-button";
 import { GlobeContextShareFriendsPanel } from "@/components/globe/globe-context-share-friends-panel";
 import { GlobeContextMediaShortsReel } from "@/components/globe/globe-context-media-shorts-reel";
+import { ExperienceBridgeMediaShell } from "@/components/globe/experience-bridge-media-shell";
 import { patchExperiencePinContext } from "@/lib/globe/patch-experience-pin-context";
 import { isGlobeManualContextEvent } from "@/lib/events/event-lifecycle";
 import { EvidenceList } from "@/components/experience/evidence-list";
@@ -48,6 +49,7 @@ import { projectExperienceRoom } from "@/lib/experience-room/project-experience-
 import { projectRepresentativeMoments } from "@/lib/globe/project-representative-moments";
 import { syncBridgeSharedMediaFromRemote } from "@/lib/experience-bridge/sync-bridge-participant-media";
 import { isBridgeLinkedEventId } from "@/lib/experience-bridge/stamp-bridge-event-metadata";
+import { isBridgeSharedEvent } from "@/lib/globe/is-bridge-shared-event";
 import { useAuth } from "@/hooks/use-auth";
 import { MEDIA_SPACETIME_UPDATED, hydrateMediaContextStore } from "@/lib/location-ping/media-context-store";
 import {
@@ -56,6 +58,7 @@ import {
 } from "@/lib/life-read-model";
 import { indexEventsById } from "@/lib/plan-context/project-plan-to-feed-slot";
 import { cn } from "@/lib/utils";
+import { copy } from "@/lib/copy/human-ko";
 
 export type PinOpenSheetProps = {
   open: boolean;
@@ -285,6 +288,11 @@ export function PinOpenSheet({
     return Boolean(id && isBridgeLinkedEventId(id));
   }, [cluster?.eventId]);
 
+  const isBridgeContext = useMemo(
+    () => bridgeMediaDeletable || isBridgeSharedEvent(event),
+    [bridgeMediaDeletable, event],
+  );
+
   const openExperienceRoom = () => {
     if (!conversation?.peerThreadId || !event || !hero) {
       return;
@@ -337,35 +345,70 @@ export function PinOpenSheet({
             <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-foreground/15 md:hidden" aria-hidden />
             {reelItems.length > 0 ? (
               <>
-                <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-                  <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start gap-2 bg-gradient-to-b from-background via-background/95 to-transparent px-4 pb-3 pt-3">
+                <div
+                  className={cn(
+                    "relative flex min-h-0 flex-1 flex-col overflow-hidden",
+                    isBridgeContext && "bg-[#0a0c10]",
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start gap-2 px-4 pb-3 pt-3",
+                      isBridgeContext
+                        ? "bg-gradient-to-b from-[#0a0c10] via-[#0a0c10]/95 to-transparent"
+                        : "bg-gradient-to-b from-background via-background/95 to-transparent",
+                    )}
+                  >
                     <div className="min-w-0 flex-1 space-y-0.5">
-                      <p className="px-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        장소 · {hero.place}
+                      <p
+                        className={cn(
+                          "px-2 text-[10px] font-semibold uppercase tracking-wide",
+                          isBridgeContext ? "text-white/50" : "text-muted-foreground",
+                        )}
+                      >
+                        {isBridgeContext ? copy.globe.bridgeMediaEyebrow : `장소 · ${hero.place}`}
                       </p>
-                      <p className="line-clamp-1 px-2 text-[15px] font-bold text-foreground">
+                      <p
+                        className={cn(
+                          "line-clamp-1 px-2 text-[15px] font-bold",
+                          isBridgeContext ? "text-white" : "text-foreground",
+                        )}
+                      >
                         {hero.title}
                       </p>
                     </div>
                     <button
                       type="button"
                       onClick={() => onOpenChange(false)}
-                      className="pointer-events-auto flex size-9 shrink-0 items-center justify-center rounded-full bg-background/80 active:bg-foreground/5"
+                      className={cn(
+                        "pointer-events-auto flex size-9 shrink-0 items-center justify-center rounded-full active:opacity-80",
+                        isBridgeContext
+                          ? "bg-white/10 text-white"
+                          : "bg-background/80 active:bg-foreground/5",
+                      )}
                       aria-label="닫기"
                     >
-                      <X className="size-5 text-muted-foreground" aria-hidden />
+                      <X
+                        className={cn(
+                          "size-5",
+                          isBridgeContext ? "text-white/80" : "text-muted-foreground",
+                        )}
+                        aria-hidden
+                      />
                     </button>
                   </div>
 
-                  <div className="flex min-h-0 flex-[1.15] flex-col overflow-hidden pt-[4.25rem]">
-                    <div className="min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                      <GlobeContextMediaShortsReel
-                        key={cluster.eventId}
+                  <div
+                    className={cn(
+                      "flex min-h-0 flex-[1.15] flex-col overflow-hidden",
+                      !isBridgeContext && "pt-[4.25rem]",
+                    )}
+                  >
+                    {isBridgeContext ? (
+                      <ExperienceBridgeMediaShell
                         items={reelItems}
                         title={hero.title}
                         place={hero.place}
-                        fillViewport
-                        embedded
                         eventId={cluster.eventId}
                         viewerUserId={user?.id}
                         deletable={bridgeMediaDeletable}
@@ -374,7 +417,25 @@ export function PinOpenSheet({
                           toast.success("삭제했어요");
                         }}
                       />
-                    </div>
+                    ) : (
+                      <div className="min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto overscroll-y-contain pt-[4.25rem] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                        <GlobeContextMediaShortsReel
+                          key={cluster.eventId}
+                          items={reelItems}
+                          title={hero.title}
+                          place={hero.place}
+                          fillViewport
+                          embedded
+                          eventId={cluster.eventId}
+                          viewerUserId={user?.id}
+                          deletable={bridgeMediaDeletable}
+                          onMediaDeleted={() => {
+                            setRevision((value) => value + 1);
+                            toast.success("삭제했어요");
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <div className="relative z-[1] min-h-0 flex-1 overflow-y-auto overscroll-y-contain border-t border-border bg-background [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

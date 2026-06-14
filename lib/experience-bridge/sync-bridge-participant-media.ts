@@ -52,7 +52,9 @@ export async function syncBridgeSharedMediaFromRemote(
     event = stamped;
   }
 
-  const contributions = await fetchBridgeContributionsRemote(key);
+  const contributions = await fetchBridgeContributionsRemote(key).catch(
+    () => [] as ExperienceBridgeContribution[],
+  );
 
   const urlMerged = mergeBridgeRemoteCaptureUrls({
     event,

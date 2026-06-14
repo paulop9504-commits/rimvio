@@ -210,6 +210,25 @@ export const copy = {
     bridgeGhostSheetBody:
       "수락하면 내 지구본에도 같은 핀이 생겨요 · 거절하면 사라져요",
     bridgeGhostAcceptCta: "내 지도에 남기기",
+    bridgeMediaEyebrow: "함께 보는 순간",
+    bridgeParticipantsLine: (names: readonly string[]) => {
+      const list = names.filter(Boolean);
+      if (list.length === 0) {
+        return "함께하는 경험";
+      }
+      if (list.length === 1) {
+        return `${list[0]}와 함께`;
+      }
+      if (list.length === 2) {
+        return `${list[0]} · ${list[1]}`;
+      }
+      return `${list[0]} 외 ${list.length - 1}명`;
+    },
+    bridgeMediaSwipeHint: (n: number) =>
+      n > 1 ? `${n}개의 순간 · 아래 필름스트립 또는 스와이프` : "스와이프로 넘기기",
+    bridgeMediaPending: (name: string, kind: "photo" | "video") =>
+      `${name}님 ${kind === "video" ? "동영상" : "사진"} 도착 중`,
+    bridgeMediaAuthorChip: (name: string) => `${name}님의 순간`,
     ingestPlaceholder: "@길찾기 역이름 · 사진 · 링크 · 메모 — 여기에 남기기",
     ingestAttachPlaceholder: (title: string) => `「${title}」에 @ · 사진 · 메모`,
     ingestAttachHint: (title: string) => `「${title}」에 이어서 남기기`,

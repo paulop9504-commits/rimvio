@@ -3263,6 +3263,14 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   cursor: grabbing;
 }
 
+[data-rimvio-globe-3d] canvas {
+  touch-action: none;
+}
+
+[data-rimvio-globe-3d][data-globe-interacting="true"] canvas {
+  will-change: transform;
+}
+
 .rimvio-globe-satellite-shade {
   background: radial-gradient(
     circle at 38% 32%,

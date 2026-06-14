@@ -8,6 +8,8 @@ import { useGlobeContextVideoSound } from "@/hooks/use-globe-context-video-sound
 import { useMediaBlobUrl } from "@/hooks/use-media-blob-url";
 import type { ContextMediaReelItem } from "@/lib/globe/project-context-media-reel";
 import { fetchMyAccountProfile } from "@/lib/peer-chat/peer-chat-client";
+import { copy } from "@/lib/copy/human-ko";
+import { PeerProfileAvatar } from "@/components/peer-chat/peer-profile-avatar";
 import { cn } from "@/lib/utils";
 import { Shimmer } from "@/components/ui/shimmer";
 
@@ -24,6 +26,8 @@ function ContextMediaShortsSlide({
   viewerUserId,
   deletable,
   onMediaDeleted,
+  variant = "default",
+  slideIndex,
 }: {
   item: ContextMediaReelItem;
   eyebrow: string;
@@ -38,7 +42,10 @@ function ContextMediaShortsSlide({
   viewerUserId?: string | null;
   deletable?: boolean;
   onMediaDeleted?: () => void;
+  variant?: "default" | "bridge";
+  slideIndex?: number;
 }) {
+  const bridge = variant === "bridge";
   const videoRef = useRef<HTMLVideoElement>(null);
   const rootRef = useRef<HTMLElement>(null);
   const [visible, setVisible] = useState(false);
@@ -75,30 +82,40 @@ function ContextMediaShortsSlide({
     return () => observer.disconnect();
   }, []);
 
+  const authorName =
+    item.authorDisplayName?.trim() ||
+    (item.allowLocalBlob ? selfDisplayName?.trim() || "나" : "친구");
+
   return (
     <section
       ref={rootRef}
       className={cn(
-        "relative isolate flex shrink-0 snap-start snap-always flex-col px-3",
-        fillViewport && embedded && "min-h-full items-center justify-center py-3",
+        "relative isolate flex shrink-0 snap-start snap-always flex-col",
+        bridge ? "min-h-full justify-center px-2 py-3" : "flex-col px-3",
+        fillViewport && embedded && !bridge && "min-h-full items-center justify-center py-3",
+        fillViewport && embedded && bridge && "min-h-[min(88dvh,720px)] items-center justify-center",
         fillViewport && !embedded && "min-h-full justify-start pb-4 pt-2",
         !fillViewport && "min-h-[min(78vh,680px)] justify-center py-2",
       )}
       data-globe-context-shorts-slide
+      data-slide-index={slideIndex ?? index}
       data-media-kind={item.kind}
+      data-bridge-media={bridge ? "true" : undefined}
     >
       <div
         className={cn(
-          "relative mx-auto w-full max-w-[min(100%,340px)]",
+          "relative mx-auto w-full",
+          bridge ? "max-w-[min(100%,400px)]" : "max-w-[min(100%,340px)]",
           fillViewport && embedded && "max-h-full",
         )}
       >
         <div
           className={cn(
-            "relative overflow-hidden rounded-[1.25rem] bg-black shadow-[0_16px_48px_rgba(0,0,0,0.22)] ring-1 ring-black/10",
-            fillViewport && embedded
-              ? "aspect-[9/16] max-h-full w-auto max-w-[min(100%,340px)]"
-              : "aspect-[9/16] w-full",
+            "relative overflow-hidden bg-black",
+            bridge
+              ? "aspect-[9/16] w-full rounded-[1.35rem] shadow-[0_28px_72px_rgba(0,0,0,0.45)] ring-1 ring-white/15"
+              : "aspect-[9/16] w-full rounded-[1.25rem] shadow-[0_16px_48px_rgba(0,0,0,0.22)] ring-1 ring-black/10",
+            fillViewport && embedded && !bridge && "aspect-[9/16] max-h-full w-auto max-w-[min(100%,340px)]",
           )}
         >
         {isVideo ? (
@@ -145,7 +162,10 @@ function ContextMediaShortsSlide({
             key={`${item.id}:${src}`}
             ref={videoRef}
             src={src}
-            className="relative z-0 size-full object-cover"
+            className={cn(
+              "relative z-0 size-full object-cover",
+              bridge && "brightness-[1.03] contrast-[1.04] saturate-[1.08]",
+            )}
             playsInline
             loop
             preload="metadata"
@@ -156,15 +176,30 @@ function ContextMediaShortsSlide({
             key={`${item.id}:${src}`}
             src={src}
             alt=""
-            className="size-full object-cover"
+            className={cn(
+              "size-full object-cover",
+              bridge && "brightness-[1.03] contrast-[1.04] saturate-[1.08]",
+            )}
             loading="lazy"
           />
         ) : item.pendingRemote ? (
-          <div className="flex size-full flex-col items-center justify-center gap-3 px-4">
-            <Shimmer className="size-14 rounded-full" />
-            <p className="text-center text-[13px] font-medium text-white/70">
-              공유 {isVideo ? "동영상" : "사진"} 불러오는 중…
-            </p>
+          <div className="relative flex size-full flex-col items-center justify-center gap-4 overflow-hidden px-6">
+            <div
+              className="pointer-events-none absolute inset-0 bg-gradient-to-br from-violet-600/35 via-primary/20 to-sky-500/30"
+              aria-hidden
+            />
+            <PeerProfileAvatar
+              displayName={authorName}
+              avatarUrl={item.authorAvatarUrl}
+              size="lg"
+              className="relative z-[1] size-16 ring-4 ring-white/20"
+            />
+            <div className="relative z-[1] space-y-1 text-center">
+              <Shimmer className="mx-auto h-2 w-24 rounded-full opacity-60" />
+              <p className="text-[14px] font-semibold text-white/90">
+                {copy.globe.bridgeMediaPending(authorName, isVideo ? "video" : "photo")}
+              </p>
+            </div>
           </div>
         ) : (
           <div className="flex size-full items-center justify-center px-4 text-center text-[13px] font-medium text-white/70">
@@ -172,20 +207,38 @@ function ContextMediaShortsSlide({
           </div>
         )}
 
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] bg-gradient-to-t from-black/85 via-black/35 to-transparent px-4 pb-4 pt-20">
+        <div
+          className={cn(
+            "pointer-events-none absolute inset-x-0 bottom-0 z-[2] px-4 pb-4 pt-24",
+            bridge
+              ? "bg-gradient-to-t from-black/90 via-black/45 to-transparent"
+              : "bg-gradient-to-t from-black/85 via-black/35 to-transparent",
+          )}
+        >
+          {bridge ? (
+            <span className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-white/12 px-2.5 py-1 text-[11px] font-semibold text-white/90 ring-1 ring-white/15 backdrop-blur-sm">
+              {copy.globe.bridgeMediaAuthorChip(authorName)}
+            </span>
+          ) : null}
           <p className="text-[10px] font-semibold uppercase tracking-wide text-white/55">
-            {eyebrow}
+            {bridge ? item.recallCaption : eyebrow}
           </p>
-          <p className="mt-0.5 line-clamp-2 text-[15px] font-semibold leading-snug text-white">
-            {item.recallCaption}
-          </p>
+          {!bridge ? (
+            <p className="mt-0.5 line-clamp-2 text-[15px] font-semibold leading-snug text-white">
+              {item.recallCaption}
+            </p>
+          ) : (
+            <p className="mt-0.5 line-clamp-1 text-[13px] font-medium text-white/75">
+              {eyebrow}
+            </p>
+          )}
         </div>
 
         <ContextMediaUploaderBadge
           item={item}
           selfDisplayName={selfDisplayName}
           selfAvatarUrl={selfAvatarUrl}
-          className="right-3 top-3"
+          className={cn(bridge ? "right-3 top-3 scale-110" : "right-3 top-3")}
         />
 
         <span className="pointer-events-none absolute right-3 top-12 z-[2] rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-bold text-white/90">
@@ -220,6 +273,7 @@ export type GlobeContextMediaShortsReelProps = {
   viewerUserId?: string | null;
   deletable?: boolean;
   onMediaDeleted?: () => void;
+  variant?: "default" | "bridge";
 };
 
 /** Vertical Shorts reel — all photos & videos in one context. */
@@ -234,6 +288,7 @@ export function GlobeContextMediaShortsReel({
   viewerUserId,
   deletable = false,
   onMediaDeleted,
+  variant = "default",
 }: GlobeContextMediaShortsReelProps) {
   const [selfDisplayName, setSelfDisplayName] = useState<string | null>(null);
   const [selfAvatarUrl, setSelfAvatarUrl] = useState<string | null>(null);
@@ -286,6 +341,8 @@ export function GlobeContextMediaShortsReel({
           viewerUserId={viewerUserId}
           deletable={deletable}
           onMediaDeleted={onMediaDeleted}
+          variant={variant}
+          slideIndex={index}
         />
       ))}
       {!fillViewport ? (

@@ -170,13 +170,18 @@ export function GlobeContextShareFriendsPanel({
 
   return (
     <section
-      className={cn("space-y-2 rounded-2xl bg-muted/40 p-4", className)}
+      className={cn(
+        "overflow-hidden rounded-[1.25rem] border border-border/80 bg-gradient-to-b from-card to-muted/30 shadow-sm",
+        className,
+      )}
       data-globe-context-share-panel
     >
-      <div className="flex items-start gap-2">
-        <Share2 className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+      <div className="flex items-start gap-3 border-b border-border/60 px-4 py-3.5">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-primary">
+          <Share2 className="size-4" aria-hidden />
+        </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-semibold text-foreground">
+          <p className="text-[14px] font-semibold text-foreground">
             {copy.globe.bridgeShareSectionTitle}
           </p>
           <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
@@ -185,6 +190,7 @@ export function GlobeContextShareFriendsPanel({
         </div>
       </div>
 
+      <div className="px-4 py-3">
       {fetching ? (
         <p className="flex items-center gap-2 py-4 text-[13px] text-muted-foreground">
           <Loader2 className="size-4 animate-spin" aria-hidden />
@@ -197,7 +203,7 @@ export function GlobeContextShareFriendsPanel({
           친구 탭에서 추가한 뒤 다시 공유해 보세요.
         </p>
       ) : (
-        <ul className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <ul className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {sorted.map((row) => {
             const invited = invitedUserIds.has(row.userId);
             const busy = busyUserId === row.userId;
@@ -208,11 +214,8 @@ export function GlobeContextShareFriendsPanel({
                   disabled={Boolean(busyUserId) || invited}
                   onClick={() => void inviteFriend(row)}
                   className={cn(
-                    "flex w-[5.5rem] flex-col items-center gap-1.5 rounded-2xl px-2 py-2.5 transition active:scale-[0.98]",
-                    invited
-                      ? "bg-primary/10 ring-1 ring-primary/25"
-                      : "bg-background/80 ring-1 ring-border",
-                    busyUserId && !busy && "opacity-50",
+                    "flex w-[4.75rem] flex-col items-center gap-2 rounded-2xl px-1 py-2 transition active:scale-[0.98]",
+                    invited && "opacity-90",
                   )}
                   aria-label={
                     invited
@@ -222,21 +225,31 @@ export function GlobeContextShareFriendsPanel({
                 >
                   <span
                     className={cn(
-                      "relative flex size-11 items-center justify-center rounded-full",
-                      invited ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground",
+                      "relative flex size-14 items-center justify-center rounded-full shadow-sm ring-2",
+                      invited
+                        ? "bg-primary/15 ring-primary/30"
+                        : "bg-muted ring-border",
                     )}
                   >
                     {busy ? (
-                      <Loader2 className="size-5 animate-spin" aria-hidden />
+                      <Loader2 className="size-5 animate-spin text-primary" aria-hidden />
                     ) : (
-                      <UserRound className="size-5" aria-hidden />
+                      <UserRound
+                        className={cn(
+                          "size-6",
+                          invited ? "text-primary" : "text-muted-foreground",
+                        )}
+                        aria-hidden
+                      />
                     )}
+                    {invited ? (
+                      <span className="absolute -bottom-0.5 rounded-full bg-primary px-1.5 py-px text-[8px] font-bold text-primary-foreground">
+                        ✓
+                      </span>
+                    ) : null}
                   </span>
-                  <span className="line-clamp-2 w-full text-center text-[11px] font-medium leading-tight text-foreground">
+                  <span className="line-clamp-2 w-full text-center text-[11px] font-semibold leading-tight text-foreground">
                     {row.displayName}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground">
-                    {invited ? "초대됨" : "탭해서 공유"}
                   </span>
                 </button>
               </li>
@@ -244,6 +257,7 @@ export function GlobeContextShareFriendsPanel({
           })}
         </ul>
       )}
+      </div>
     </section>
   );
 }

@@ -41,6 +41,22 @@ async function main() {
   );
   assert.equal(calls, 2, "refetch after invalidate");
 
+  resetClientFetchCacheForTests();
+  await cachedFetchJson(
+    "stale:key",
+    async () => ({ ok: true, v: 1 }),
+    1,
+  );
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  const stale = await cachedFetchJson(
+    "stale:key",
+    async () => {
+      throw new Error("network down");
+    },
+    1,
+  );
+  assert.equal(stale.v, 1, "stale fallback on fetch error");
+
   console.log("test-client-fetch-cache: ok");
 }
 

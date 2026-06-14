@@ -21,6 +21,7 @@ import { applyRimvioGlobeTileTextureFiltering } from "@/lib/globe/apply-rimvio-g
 import { disposeGlobeGpuResources } from "@/lib/globe/dispose-globe-gpu-resources";
 import { useGlobeAnimationPower } from "@/hooks/use-globe-animation-power";
 import { useGlobeOverviewTexture } from "@/hooks/use-globe-equirect-texture";
+import { tuneGlobeOrbitControls } from "@/lib/globe/tune-globe-orbit-controls";
 import { GLOBE_TOSS_THEME } from "@/lib/globe/globe-toss-theme";
 import { applyGlobePinUiScale } from "@/lib/globe/apply-globe-pin-ui-scale";
 import { resolveGlobePinUiScaleBlended } from "@/lib/globe/resolve-globe-pin-ui-scale";
@@ -485,10 +486,17 @@ export const RimvioGlobe3D = memo(
       globe.pointOfView({ ...GLOBE_OVERVIEW_POINT_OF_VIEW }, 0);
 
       const controls = globe.controls();
-      controls.enablePan = false;
-      controls.autoRotate = false;
-      controls.enableDamping = true;
-      controls.dampingFactor = 0.05;
+      tuneGlobeOrbitControls(controls);
+
+      const setGlobeInteracting = (active: boolean) => {
+        shellRef.current?.setAttribute(
+          "data-globe-interacting",
+          active ? "true" : "false",
+        );
+      };
+
+      controls.addEventListener("start", () => setGlobeInteracting(true));
+      controls.addEventListener("end", () => setGlobeInteracting(false));
 
       const syncOverviewTexture = (altitude: number) => {
         const overviewUrl = overviewTextureUrlRef.current;
@@ -522,6 +530,13 @@ export const RimvioGlobe3D = memo(
       };
 
       let textureFilterTimer: ReturnType<typeof setTimeout> | null = null;
+      let zoomRaf: number | null = null;
+      let pendingZoomPov: {
+        lat: number;
+        lng: number;
+        altitude: number;
+      } | null = null;
+
       const scheduleTileTextureFiltering = () => {
         if (textureFilterTimer != null) {
           clearTimeout(textureFilterTimer);
@@ -529,7 +544,7 @@ export const RimvioGlobe3D = memo(
         textureFilterTimer = setTimeout(syncTileTextureFiltering, 280);
       };
 
-      const handleZoom = (pov: { lat: number; lng: number; altitude: number }) => {
+      const applyZoomPov = (pov: { lat: number; lng: number; altitude: number }) => {
         let altitude = pov.altitude;
         if (!Number.isFinite(altitude)) {
           return;
@@ -542,6 +557,20 @@ export const RimvioGlobe3D = memo(
         }
         emitPointOfView({ ...pov, altitude }, altitude);
         scheduleTileTextureFiltering();
+      };
+
+      const handleZoom = (pov: { lat: number; lng: number; altitude: number }) => {
+        pendingZoomPov = pov;
+        if (zoomRaf != null) {
+          return;
+        }
+        zoomRaf = requestAnimationFrame(() => {
+          zoomRaf = null;
+          if (pendingZoomPov) {
+            applyZoomPov(pendingZoomPov);
+            pendingZoomPov = null;
+          }
+        });
       };
 
       emitPointOfView({ ...GLOBE_OVERVIEW_POINT_OF_VIEW });
@@ -570,9 +599,7 @@ export const RimvioGlobe3D = memo(
         window.setTimeout(() => {
           syncOverviewTexture(globe.pointOfView().altitude);
           syncTileTextureFiltering();
-          const controls = globe.controls();
-          controls.zoomSpeed = 1.9;
-          controls.rotateSpeed = 0.45;
+          tuneGlobeOrbitControls(globe.controls());
         }, 0);
         window.setTimeout(syncTileTextureFiltering, 420);
       });
@@ -584,6 +611,10 @@ export const RimvioGlobe3D = memo(
         if (textureFilterTimer != null) {
           clearTimeout(textureFilterTimer);
         }
+        if (zoomRaf != null) {
+          cancelAnimationFrame(zoomRaf);
+        }
+        setGlobeInteracting(false);
         setGlobeReady(false);
         disposeGlobeGpuResources(globe);
         resizeObserver.disconnect();

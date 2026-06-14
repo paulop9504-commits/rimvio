@@ -8,6 +8,7 @@ import {
   zoomGlobeView,
 } from "@/lib/experience-graph/shift-globe-view";
 import type { SpatialGlobeView } from "@/lib/experience-graph/spatial-media-types";
+import { createGestureUpdateCoalescer } from "@/lib/globe/coalesce-gesture-updates";
 
 const DRAG_THRESHOLD_PX = 6;
 
@@ -59,6 +60,9 @@ export function useGlobeTouchControl({
   const pointersRef = useRef(new Map<number, PointerPoint>());
   const pinchRef = useRef<PinchSession | null>(null);
   const consumedTapRef = useRef(false);
+  const viewCoalescerRef = useRef(
+    createGestureUpdateCoalescer<SpatialGlobeView>(setView),
+  );
 
   useEffect(() => {
     if (!userAdjustedRef.current) {
@@ -159,7 +163,7 @@ export function useGlobeTouchControl({
         const distance = pointerDistance(points);
         consumedTapRef.current = true;
         userAdjustedRef.current = true;
-        setView(
+        viewCoalescerRef.current.push(
           zoomGlobeFromPinch(
             pinchRef.current.startView,
             pinchRef.current.startZoom,
@@ -186,7 +190,7 @@ export function useGlobeTouchControl({
       consumedTapRef.current = true;
       userAdjustedRef.current = true;
       setIsInteracting(true);
-      setView(
+      viewCoalescerRef.current.push(
         shiftGlobeByPixelDelta(
           drag.startView,
           deltaX,
@@ -210,6 +214,7 @@ export function useGlobeTouchControl({
       }
 
       if (pointersRef.current.size === 0) {
+        viewCoalescerRef.current.flushNow();
         clearPointerSession();
         return;
       }

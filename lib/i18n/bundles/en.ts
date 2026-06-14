@@ -146,6 +146,11 @@ export const copyEn: Copy = {
     bridgeInviteDeclined: "Invite declined",
     bridgeInviteAcceptFail: "Couldn't accept",
     bridgeInviteDeclineFail: "Couldn't decline",
+    contextWarmthLabel: "Memory warmth",
+    contextWarmthHint: "Soft tint where context is rich · fades as you zoom in",
+    contextVideoSoundHint: "Tap for sound",
+    contextVideoSoundOff: "Turn sound on",
+    contextVideoSoundOn: "Sound on",
     bridgeInviteDismissAria: "Later",
     bridgeInviteToast: (host: string, title: string) =>
       `${host} shared 「${title}」 · check your inbox`,
@@ -198,6 +203,25 @@ export const copyEn: Copy = {
     bridgeGhostSheetBody:
       "Accept to get the same pin on your globe · decline to dismiss",
     bridgeGhostAcceptCta: "Keep on my map",
+    bridgeMediaEyebrow: "Viewing together",
+    bridgeParticipantsLine: (names: readonly string[]) => {
+      const list = names.filter(Boolean);
+      if (list.length === 0) {
+        return "Shared experience";
+      }
+      if (list.length === 1) {
+        return `With ${list[0]}`;
+      }
+      if (list.length === 2) {
+        return `${list[0]} · ${list[1]}`;
+      }
+      return `${list[0]} + ${list.length - 1} more`;
+    },
+    bridgeMediaSwipeHint: (n: number) =>
+      n > 1 ? `${n} moments · filmstrip below or swipe` : "Swipe to browse",
+    bridgeMediaPending: (name: string, kind: "photo" | "video") =>
+      `${name}'s ${kind === "video" ? "video" : "photo"} on the way`,
+    bridgeMediaAuthorChip: (name: string) => `${name}'s moment`,
     ingestPlaceholder: "@directions station · photo · link · note — leave here",
     ingestAttachPlaceholder: (title: string) => `「${title}」 · @ · photo · note`,
     ingestAttachHint: (title: string) => `Continue on 「${title}」`,

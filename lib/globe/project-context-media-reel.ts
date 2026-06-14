@@ -1,7 +1,7 @@
 import type { ExperienceVolume } from "@/lib/experience-graph/experience-volume-types";
 import type { EventCandidate } from "@/lib/events/event-candidate";
-import { EXPERIENCE_BRIDGE_META_KEYS } from "@/lib/experience-bridge/constants";
 import { isUsableBridgeMediaUrl } from "@/lib/experience-bridge/bridge-media-url";
+import { isBridgeSharedEvent } from "@/lib/globe/is-bridge-shared-event";
 import { readFeedCaptureFragments } from "@/lib/feed/feed-capture-metadata";
 import { readMediaContextMemorySnapshot } from "@/lib/location-ping/media-context-store";
 import { buildGlobeContextMediaRecallCaption } from "@/lib/globe/build-context-media-recall-caption";
@@ -33,18 +33,6 @@ function parseCapturedMs(iso: string | null | undefined): number {
   }
   const ms = Date.parse(iso);
   return Number.isNaN(ms) ? 0 : ms;
-}
-
-function isBridgeSharedEvent(event: EventCandidate | null | undefined): boolean {
-  if (!event?.metadata) {
-    return false;
-  }
-  const meta = event.metadata;
-  return (
-    meta.experienceBridgeParticipant === true ||
-    meta.experienceBridgeHost === true ||
-    typeof meta[EXPERIENCE_BRIDGE_META_KEYS.bridgeId] === "string"
-  );
 }
 
 function isLocalEventMedia(

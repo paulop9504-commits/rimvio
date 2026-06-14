@@ -6,6 +6,7 @@ import type {
   ExperienceBridgeState,
 } from "@/lib/experience-bridge/experience-bridge-types";
 import { fetchPendingBridgeInvitesRemote } from "@/lib/experience-bridge/experience-bridge-client";
+import { toBridgeFetchError } from "@/lib/experience-bridge/bridge-fetch-error";
 import { EXPERIENCE_BRIDGE_UPDATED } from "@/lib/experience-bridge/local-bridge-store";
 import { useAuth } from "@/hooks/use-auth";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -37,12 +38,11 @@ export function usePendingBridgeInvites(enabled = true) {
       setInvites(data.invites ?? []);
       setError(null);
     } catch (caught) {
-      setInvites([]);
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "공유 요청을 불러오지 못했어요",
-      );
+      setInvites((current) => {
+        const friendly = toBridgeFetchError(caught);
+        setError(current.length > 0 || !friendly ? null : friendly);
+        return current;
+      });
     } finally {
       setLoading(false);
     }
