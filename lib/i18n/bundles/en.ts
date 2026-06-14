@@ -222,7 +222,7 @@ export const copyEn: Copy = {
     bridgeMediaPending: (name: string, kind: "photo" | "video") =>
       `${name}'s ${kind === "video" ? "video" : "photo"} on the way`,
     bridgeMediaAuthorChip: (name: string) => `${name}'s moment`,
-    bridgeContextSwipeHint: "Swipe ← for context",
+    bridgeContextSwipeHint: "View context",
     bridgeMediaSwipeBackHint: "Back to moments",
     bridgeContextPageEyebrow: "Context",
     bridgeMediaContextTabMoments: "Moments",

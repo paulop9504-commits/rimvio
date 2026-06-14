@@ -15,7 +15,7 @@ import { GlobeContextPhotoButton } from "@/components/globe/globe-context-photo-
 import { GlobeContextShareFriendsPanel } from "@/components/globe/globe-context-share-friends-panel";
 import { GlobeContextMediaShortsReel } from "@/components/globe/globe-context-media-shorts-reel";
 import { ExperienceBridgeMediaShell } from "@/components/globe/experience-bridge-media-shell";
-import { PinOpenMediaContextPager } from "@/components/globe/pin-open-media-context-pager";
+import { PinOpenMediaContextPager, PinOpenMediaContextPageTabs, type PinMediaContextPage } from "@/components/globe/pin-open-media-context-pager";
 import { patchExperiencePinContext } from "@/lib/globe/patch-experience-pin-context";
 import { isGlobeManualContextEvent } from "@/lib/events/event-lifecycle";
 import { EvidenceList } from "@/components/experience/evidence-list";
@@ -82,6 +82,7 @@ export function PinOpenSheet({
   const [opened, setOpened] = useState(false);
   const [revision, setRevision] = useState(0);
   const [editKind, setEditKind] = useState<PinContextFieldKind | null>(null);
+  const [sheetPage, setSheetPage] = useState<PinMediaContextPage>("media");
   const gpsPings = useFeedGpsPings();
 
   useEffect(() => {
@@ -321,6 +322,13 @@ export function PinOpenSheet({
     return parts.length > 0 ? parts.join(" · ") : copy.globe.pinContextDetailsFallback;
   }, [moments.length, shareEvent, evidence, people.length]);
 
+  useEffect(() => {
+    if (!open || !cluster?.eventId) {
+      return;
+    }
+    setSheetPage("media");
+  }, [open, cluster?.eventId]);
+
   const openExperienceRoom = () => {
     if (!conversation?.peerThreadId || !event || !hero) {
       return;
@@ -392,59 +400,74 @@ export function PinOpenSheet({
                 <div
                   className={cn(
                     "relative flex min-h-0 flex-1 flex-col overflow-hidden",
-                    isBridgeContext && "bg-[#0a0c10]",
+                    isBridgeContext && sheetPage === "media" && "bg-[#0a0c10]",
                   )}
                 >
-                  <div
+                  <header
                     className={cn(
-                      "pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start gap-2 px-4 pb-3 pt-3",
-                      isBridgeContext
-                        ? "bg-gradient-to-b from-[#0a0c10] via-[#0a0c10]/95 to-transparent"
-                        : "bg-gradient-to-b from-background via-background/95 to-transparent",
+                      "flex shrink-0 items-start gap-2 border-b px-4 pb-3 pt-2",
+                      isBridgeContext && sheetPage === "media"
+                        ? "border-white/10 bg-[#0a0c10]"
+                        : "border-border bg-background",
                     )}
                   >
                     <div className="min-w-0 flex-1 space-y-0.5">
                       <p
                         className={cn(
-                          "px-2 text-[10px] font-semibold uppercase tracking-wide",
-                          isBridgeContext ? "text-white/50" : "text-muted-foreground",
+                          "text-[10px] font-semibold uppercase tracking-wide",
+                          isBridgeContext && sheetPage === "media"
+                            ? "text-white/50"
+                            : "text-muted-foreground",
                         )}
                       >
-                        {isBridgeContext ? copy.globe.bridgeMediaEyebrow : `장소 · ${hero.place}`}
+                        {isBridgeContext && sheetPage === "media"
+                          ? copy.globe.bridgeMediaEyebrow
+                          : `장소 · ${hero.place}`}
                       </p>
                       <p
                         className={cn(
-                          "line-clamp-1 px-2 text-[15px] font-bold",
-                          isBridgeContext ? "text-white" : "text-foreground",
+                          "line-clamp-1 text-[15px] font-bold",
+                          isBridgeContext && sheetPage === "media"
+                            ? "text-white"
+                            : "text-foreground",
                         )}
                       >
                         {hero.title}
                       </p>
                     </div>
+                    <PinOpenMediaContextPageTabs
+                      page={sheetPage}
+                      onPageChange={setSheetPage}
+                      variant={isBridgeContext ? "bridge" : "personal"}
+                      className="mt-0.5"
+                    />
                     <button
                       type="button"
                       onClick={() => onOpenChange(false)}
                       className={cn(
-                        "pointer-events-auto flex size-9 shrink-0 items-center justify-center rounded-full active:opacity-80",
-                        isBridgeContext
+                        "flex size-9 shrink-0 items-center justify-center rounded-full active:opacity-80",
+                        isBridgeContext && sheetPage === "media"
                           ? "bg-white/10 text-white"
-                          : "bg-background/80 active:bg-foreground/5",
+                          : "bg-muted active:bg-muted/80",
                       )}
                       aria-label="닫기"
                     >
                       <X
                         className={cn(
                           "size-5",
-                          isBridgeContext ? "text-white/80" : "text-muted-foreground",
+                          isBridgeContext && sheetPage === "media"
+                            ? "text-white/80"
+                            : "text-muted-foreground",
                         )}
                         aria-hidden
                       />
                     </button>
-                  </div>
+                  </header>
 
                   <PinOpenMediaContextPager
-                    resetKey={cluster.eventId}
                     summary={contextDetailsSummary}
+                    page={sheetPage}
+                    onPageChange={setSheetPage}
                     variant={isBridgeContext ? "bridge" : "personal"}
                     className="min-h-0 flex-1"
                     media={
@@ -462,7 +485,7 @@ export function PinOpenSheet({
                           }}
                         />
                       ) : (
-                        <div className="flex h-full min-h-0 flex-col overflow-hidden pt-[3.75rem]">
+                        <div className="flex h-full min-h-0 flex-col overflow-hidden">
                           <div className="min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                             <GlobeContextMediaShortsReel
                               key={cluster.eventId}
