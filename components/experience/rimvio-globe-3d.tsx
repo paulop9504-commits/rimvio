@@ -22,6 +22,7 @@ import { disposeGlobeGpuResources } from "@/lib/globe/dispose-globe-gpu-resource
 import { useGlobeAnimationPower } from "@/hooks/use-globe-animation-power";
 import { useGlobeOverviewTexture } from "@/hooks/use-globe-equirect-texture";
 import { tuneGlobeOrbitControls } from "@/lib/globe/tune-globe-orbit-controls";
+import { useGlobeFocalPinch } from "@/hooks/use-globe-focal-pinch";
 import { GLOBE_TOSS_THEME } from "@/lib/globe/globe-toss-theme";
 import { applyGlobePinUiScale } from "@/lib/globe/apply-globe-pin-ui-scale";
 import { resolveGlobePinUiScaleBlended } from "@/lib/globe/resolve-globe-pin-ui-scale";
@@ -160,6 +161,7 @@ export const RimvioGlobe3D = memo(
     const [relocatingPinId, setRelocatingPinId] = useState<string | null>(null);
     const relocatingPinIdRef = useRef<string | null>(null);
     const pinPressLockRef = useRef(false);
+    const controlsBlockedRef = useRef(false);
     const relocatePreviewRef = useRef<{
       pinId: string;
       lat: number;
@@ -178,6 +180,7 @@ export const RimvioGlobe3D = memo(
       }
       relocatingPinIdRef.current = pinId;
       relocatePreviewRef.current = { pinId, lat: pin.lat, lng: pin.lng };
+      controlsBlockedRef.current = true;
       setRelocatingPinId(pinId);
       const globe = globeRef.current;
       if (globe) {
@@ -194,6 +197,7 @@ export const RimvioGlobe3D = memo(
 
     lockGlobeControlsRef.current = () => {
       pinPressLockRef.current = true;
+      controlsBlockedRef.current = true;
       suppressGlobeClickUntilRef.current = Date.now() + 900;
       const globe = globeRef.current;
       if (globe) {
@@ -203,6 +207,7 @@ export const RimvioGlobe3D = memo(
 
     unlockGlobeControlsRef.current = () => {
       pinPressLockRef.current = false;
+      controlsBlockedRef.current = Boolean(relocatingPinIdRef.current);
       if (!relocatingPinIdRef.current) {
         const globe = globeRef.current;
         if (globe) {
@@ -245,6 +250,7 @@ export const RimvioGlobe3D = memo(
         }
         relocatingPinIdRef.current = null;
         relocatePreviewRef.current = null;
+        controlsBlockedRef.current = false;
         setRelocatingPinId(null);
         globe.controls().enabled = true;
         root.querySelectorAll<HTMLElement>("[data-globe-pin-relocating]").forEach(
@@ -628,6 +634,19 @@ export const RimvioGlobe3D = memo(
       interactionRootRef: rootRef,
       suspended: renderSuspended,
       enabled: globeReady,
+    });
+
+    useGlobeFocalPinch({
+      rootRef,
+      globeRef,
+      enabled: globeReady && interactionEnabled,
+      controlsBlockedRef,
+      onInteractingChange: (active) => {
+        shellRef.current?.setAttribute(
+          "data-globe-interacting",
+          active ? "true" : "false",
+        );
+      },
     });
 
     useEffect(() => {

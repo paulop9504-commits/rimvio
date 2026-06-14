@@ -2,6 +2,16 @@ import type { GlobeInstance } from "globe.gl";
 
 type OrbitControlsLike = ReturnType<GlobeInstance["controls"]>;
 
+function isCoarsePointer(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  return (
+    window.matchMedia("(pointer: coarse)").matches ||
+    window.matchMedia("(hover: none)").matches
+  );
+}
+
 /** Apple Maps–grade orbit feel — damping, touch split, mobile rotate speed. */
 export function tuneGlobeOrbitControls(controls: OrbitControlsLike): void {
   controls.enablePan = false;
@@ -23,17 +33,13 @@ export function tuneGlobeOrbitControls(controls: OrbitControlsLike): void {
       DOLLY_ROTATE: 3,
     };
     touches.ONE = TOUCH.ROTATE;
-    touches.TWO = TOUCH.DOLLY_ROTATE;
+    // Phone pinch zoom is handled by useGlobeFocalPinch (screen-center anchor).
+    touches.TWO = isCoarsePointer() ? TOUCH.ROTATE : TOUCH.DOLLY;
   }
 
-  if (typeof window !== "undefined") {
-    const coarse =
-      window.matchMedia("(pointer: coarse)").matches ||
-      window.matchMedia("(hover: none)").matches;
-    if (coarse) {
-      controls.rotateSpeed = 0.34;
-      controls.zoomSpeed = 0.82;
-      controls.dampingFactor = 0.088;
-    }
+  if (isCoarsePointer()) {
+    controls.rotateSpeed = 0.34;
+    controls.dampingFactor = 0.088;
+    controls.enableZoom = false;
   }
 }
