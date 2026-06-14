@@ -15,6 +15,7 @@ import { GlobeContextPhotoButton } from "@/components/globe/globe-context-photo-
 import { GlobeContextShareFriendsPanel } from "@/components/globe/globe-context-share-friends-panel";
 import { GlobeContextMediaShortsReel } from "@/components/globe/globe-context-media-shorts-reel";
 import { ExperienceBridgeMediaShell } from "@/components/globe/experience-bridge-media-shell";
+import { PinOpenContextDetailsPanel } from "@/components/globe/pin-open-context-details-panel";
 import { patchExperiencePinContext } from "@/lib/globe/patch-experience-pin-context";
 import { isGlobeManualContextEvent } from "@/lib/events/event-lifecycle";
 import { EvidenceList } from "@/components/experience/evidence-list";
@@ -81,6 +82,7 @@ export function PinOpenSheet({
   const [opened, setOpened] = useState(false);
   const [revision, setRevision] = useState(0);
   const [editKind, setEditKind] = useState<PinContextFieldKind | null>(null);
+  const [contextDetailsExpanded, setContextDetailsExpanded] = useState(false);
   const gpsPings = useFeedGpsPings();
 
   useEffect(() => {
@@ -301,6 +303,25 @@ export function PinOpenSheet({
     );
   }, [bridgeMediaDeletable, event, reelItems, user?.id]);
 
+  const contextDetailsSummary = useMemo(() => {
+    const parts: string[] = [];
+    if (moments.length > 0) {
+      parts.push("대표 장면");
+    }
+    if (shareEvent) {
+      parts.push(copy.globe.bridgeShareSectionTitle);
+    }
+    for (const row of evidence) {
+      if ((row.kind === "photo" || row.kind === "video") && row.count > 0) {
+        parts.push(`${row.label} ${row.count}`);
+      }
+    }
+    if (people.length > 0) {
+      parts.push(`함께 ${people.length}명`);
+    }
+    return parts.length > 0 ? parts.join(" · ") : copy.globe.pinContextDetailsFallback;
+  }, [moments.length, shareEvent, evidence, people.length]);
+
   const openExperienceRoom = () => {
     if (!conversation?.peerThreadId || !event || !hero) {
       return;
@@ -409,7 +430,7 @@ export function PinOpenSheet({
                   <div
                     className={cn(
                       "relative z-0 flex flex-col overflow-hidden",
-                      isBridgeContext
+                      !contextDetailsExpanded || isBridgeContext
                         ? "min-h-0 flex-1"
                         : "min-h-[min(56dvh,520px)] shrink-0",
                     )}
@@ -450,28 +471,26 @@ export function PinOpenSheet({
                     )}
                   </div>
 
-                  <div
-                    className={cn(
-                      "relative z-[1] min-h-0 overflow-y-auto overscroll-y-contain border-t border-border bg-background [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-                      isBridgeContext ? "max-h-[min(30dvh,260px)] shrink-0" : "flex-1",
-                    )}
+                  <PinOpenContextDetailsPanel
+                    summary={contextDetailsSummary}
+                    resetKey={cluster.eventId}
+                    defaultCollapsed={reelItems.length > 0}
+                    onExpandedChange={setContextDetailsExpanded}
                   >
-                    <section className="space-y-4 px-4 py-5">
-                      {tripLeg ? <ExperienceTripLegBar trip={tripLeg} /> : null}
-                      <PeopleStrip names={people} />
-                      <RepresentativeMomentsRow moments={moments} />
-                      {conversation ? (
-                        <RecentConversationStrip
-                          conversation={conversation}
-                          onOpenRoom={openExperienceRoom}
-                        />
-                      ) : null}
-                      {shareEvent ? (
-                        <GlobeContextShareFriendsPanel event={shareEvent} />
-                      ) : null}
-                      <EvidenceList rows={evidence} />
-                    </section>
-                  </div>
+                    {tripLeg ? <ExperienceTripLegBar trip={tripLeg} /> : null}
+                    <PeopleStrip names={people} />
+                    <RepresentativeMomentsRow moments={moments} />
+                    {conversation ? (
+                      <RecentConversationStrip
+                        conversation={conversation}
+                        onOpenRoom={openExperienceRoom}
+                      />
+                    ) : null}
+                    {shareEvent ? (
+                      <GlobeContextShareFriendsPanel event={shareEvent} />
+                    ) : null}
+                    <EvidenceList rows={evidence} />
+                  </PinOpenContextDetailsPanel>
                 </div>
 
                 <div className="shrink-0 space-y-2 border-t border-border px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">

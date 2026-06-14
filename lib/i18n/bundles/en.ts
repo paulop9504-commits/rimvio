@@ -222,6 +222,9 @@ export const copyEn: Copy = {
     bridgeMediaPending: (name: string, kind: "photo" | "video") =>
       `${name}'s ${kind === "video" ? "video" : "photo"} on the way`,
     bridgeMediaAuthorChip: (name: string) => `${name}'s moment`,
+    pinContextDetailsExpand: "Show context",
+    pinContextDetailsCollapse: "Hide context",
+    pinContextDetailsFallback: "Scenes · share · traces",
     ingestPlaceholder: "@directions station · photo · link · note — leave here",
     ingestAttachPlaceholder: (title: string) => `「${title}」 · @ · photo · note`,
     ingestAttachHint: (title: string) => `Continue on 「${title}」`,

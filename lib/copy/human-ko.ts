@@ -229,6 +229,9 @@ export const copy = {
     bridgeMediaPending: (name: string, kind: "photo" | "video") =>
       `${name}님 ${kind === "video" ? "동영상" : "사진"} 도착 중`,
     bridgeMediaAuthorChip: (name: string) => `${name}님의 순간`,
+    pinContextDetailsExpand: "맥락 펼치기",
+    pinContextDetailsCollapse: "맥락 접기",
+    pinContextDetailsFallback: "대표 장면 · 공유 · 흔적",
     ingestPlaceholder: "@길찾기 역이름 · 사진 · 링크 · 메모 — 여기에 남기기",
     ingestAttachPlaceholder: (title: string) => `「${title}」에 @ · 사진 · 메모`,
     ingestAttachHint: (title: string) => `「${title}」에 이어서 남기기`,
