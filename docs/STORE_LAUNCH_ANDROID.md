@@ -35,11 +35,20 @@ npm run mobile:android
 
 ## 2. 서명 키스토어 (최초 1회)
 
-Android Studio → **Build → Generate Signed App Bundle or APK**
+`android/keystore.properties.example` → `android/keystore.properties` (gitignored)
 
-1. **Create new keystore** — `.jks` 파일 생성
-2. **백업 필수** — 분실 시 업데이트 불가
-3. Output: **AAB** (Play는 AAB 필수)
+```properties
+storeFile=../rimvio-release.jks
+storePassword=...
+keyAlias=rimvio
+keyPassword=...
+```
+
+Android Studio → **Build → Generate Signed App Bundle or APK** — 또는:
+
+```powershell
+npm run store:build:android
+```
 
 예상 경로: `android/app/build/outputs/bundle/release/app-release.aab`
 
@@ -91,30 +100,22 @@ Play Console **Data safety** + **App content** 설문 정직하게 작성.
 |------|------|---------|
 | `INTERNET` | Vercel WebView | ✅ 필수 |
 | `READ_MEDIA_IMAGES/VIDEO` | 경험 맥락 사진 매칭 | ✅ opt-in 설명 |
-| `NotificationListenerService` | 알림 → 맥락 (실험) | ⚠️ v1 제출 전 **끄거나 제거** 권장 |
+| `NotificationListenerService` | 알림 → 맥락 (실험) | ❌ v1 manifest에서 제외 |
 
 알림 리스너를 v1에 넣지 않으면 심사·설명 부담이 크게 줄어듭니다.
 
 ---
 
-## 6. 공유하기 (Share Target) — v1.1 뼈대
+## 6. 공유하기 (Share Target) — v1 ✅
 
-PWA `manifest.ts`의 `share_target`은 **웹 PWA 전용**.  
-Play 스토어 APK에서 **다른 앱 → Rimvio 공유**를 받으려면 `MainActivity`에 intent-filter 추가 필요.
+`MainActivity` intent-filter + `AndroidShareIntentRouter.java`:
 
-예시 (아직 미적용 — `android/STORE_SHARE_INTENT.example.xml` 참고):
+| MIME | 동작 |
+|------|------|
+| `text/plain` | `/share?url=…` → `/now` |
+| `image/*` · `video/*` | `/globe` (맥락 ingest) |
 
-```xml
-<intent-filter>
-  <action android:name="android.intent.action.SEND" />
-  <category android:name="android.intent.category.DEFAULT" />
-  <data android:mimeType="text/plain" />
-  <data android:mimeType="image/*" />
-  <data android:mimeType="video/*" />
-</intent-filter>
-```
-
-→ `/share` deep link 처리는 v1.1 slice.
+예시 스캐폴드: `android/STORE_SHARE_INTENT.example.xml` (참고용 — manifest에 반영됨)
 
 ---
 

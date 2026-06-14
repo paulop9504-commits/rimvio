@@ -134,8 +134,13 @@ export function runAndroidStoreLaunchChecks(): StoreLaunchCheck[] {
   checks.push({
     id: "android:share-intent",
     ok: manifest.includes("android.intent.action.SEND"),
-    detail: "SEND share intent (v1.1 — optional for first submit)",
-    optional: true,
+    detail: "SEND share intent on MainActivity",
+  });
+
+  checks.push({
+    id: "android:no-notification-listener-v1",
+    ok: !manifest.includes("RimvioNotificationListenerService"),
+    detail: "NotificationListener excluded from Play v1 manifest",
   });
 
   return checks;

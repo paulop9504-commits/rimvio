@@ -9,7 +9,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { chromium, devices } from "@playwright/test";
 
-const BASE = process.env.STORE_SHOT_BASE ?? "http://127.0.0.1:3001";
+const BASE =
+  process.env.STORE_SHOT_BASE?.trim() ||
+  process.env.NEXT_PUBLIC_APP_URL?.trim()?.replace(/\/$/, "") ||
+  "https://rimvio.app";
 const OUT_DIR = path.join(process.cwd(), "public", "store");
 
 async function ensureOutDir() {

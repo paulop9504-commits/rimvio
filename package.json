@@ -175,6 +175,7 @@
     "mobile:ios": "npx cap open ios",
     "store:prepare:ios": "npx tsx scripts/mobile/prepare-ios-store.ts",
     "store:prepare:android": "npx tsx scripts/mobile/prepare-android-store.ts",
+    "store:build:android": "powershell -ExecutionPolicy Bypass -File scripts/mobile/build-android-release.ps1",
     "auth:check": "npx tsx scripts/check-google-auth-setup.ts",
     "verify:deploy": "npx tsx scripts/verify-deploy-readiness.ts",
     "deploy:prod": "powershell -ExecutionPolicy Bypass -File scripts/deploy-production.ps1",
