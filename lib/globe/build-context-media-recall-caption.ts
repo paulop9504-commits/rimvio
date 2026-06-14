@@ -1,5 +1,5 @@
 import { formatPeerRangLabel } from "@/lib/copy/korean-peer-with";
-import { isActiveBridgeParticipant } from "@/lib/experience-bridge/bridge-mutations";
+import { isActiveBridgeParticipant } from "@/lib/experience-bridge/bridge-access";
 import { readLocalBridgeState } from "@/lib/experience-bridge/local-bridge-store";
 import {
   SEASON_LABEL,
