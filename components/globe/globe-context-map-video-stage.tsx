@@ -337,34 +337,41 @@ export function GlobeContextMapVideoStage({
                 selfAvatarUrl={selfAvatarUrl}
               />
             ) : null}
-            {currentItem?.kind === "video" ? (
-              <ContextMediaVideoSoundButton
-                soundOn={videoSoundOn}
-                onToggleSound={() => {
-                  toggleVideoSoundRef.current?.();
-                  if (!playing) {
-                    setPlaying(true);
-                  }
-                }}
-                className="absolute left-2 top-1/2 z-[4] -translate-y-1/2"
-              />
-            ) : null}
-            {reel.length > 1 && anchorLayout.scale >= 0.34 ? (
-              <span className="pointer-events-none absolute right-11 top-2 z-[2] rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
-                {mediaIndex + 1}/{reel.length}
-              </span>
-            ) : null}
             {currentItem?.kind === "video" && anchorLayout.scale >= 0.34 ? (
-              <button
-                type="button"
-                className="pointer-events-auto absolute bottom-2 right-2 z-[3] rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-sm"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setPlaying((value) => !value);
-                }}
-              >
-                {playing ? "일시정지" : "재생"}
-              </button>
+              <div className="pointer-events-none absolute inset-x-0 bottom-3 z-[6] flex items-center justify-between gap-2 px-2">
+                <div className="pointer-events-auto flex min-w-0 items-center gap-1.5">
+                  <ContextMediaVideoSoundButton
+                    soundOn={videoSoundOn}
+                    variant="pill"
+                    onToggleSound={() => {
+                      toggleVideoSoundRef.current?.();
+                      if (!playing) {
+                        setPlaying(true);
+                      }
+                    }}
+                  />
+                  {eventId && deletable ? (
+                    <ContextMediaDeleteButton
+                      item={currentItem}
+                      eventId={eventId}
+                      viewerUserId={viewerUserId}
+                      enabled={deletable}
+                      className="relative bottom-auto left-auto size-8 shrink-0"
+                      onDeleted={handleMediaDeleted}
+                    />
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  className="pointer-events-auto shrink-0 rounded-full bg-black/70 px-2.5 py-1.5 text-[10px] font-semibold text-white backdrop-blur-sm ring-1 ring-white/20"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setPlaying((value) => !value);
+                  }}
+                >
+                  {playing ? "일시정지" : "재생"}
+                </button>
+              </div>
             ) : null}
             {onDismiss && anchorLayout.scale >= 0.34 ? (
               <button
@@ -378,7 +385,16 @@ export function GlobeContextMapVideoStage({
                 닫기
               </button>
             ) : null}
-            {currentItem && eventId && deletable && anchorLayout.scale >= 0.34 ? (
+            {reel.length > 1 && anchorLayout.scale >= 0.34 ? (
+              <span className="pointer-events-none absolute right-11 top-2 z-[2] rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
+                {mediaIndex + 1}/{reel.length}
+              </span>
+            ) : null}
+            {currentItem &&
+            currentItem.kind !== "video" &&
+            eventId &&
+            deletable &&
+            anchorLayout.scale >= 0.34 ? (
               <ContextMediaDeleteButton
                 item={currentItem}
                 eventId={eventId}

@@ -101,17 +101,34 @@ function ContextMediaShortsSlide({
               : "aspect-[9/16] w-full",
           )}
         >
-        {isVideo && src ? (
-          <ContextMediaVideoSoundButton
-            soundOn={soundOn}
-            onToggleSound={() => {
-              toggleSound();
-              if (!playing) {
-                setPlaying(true);
-              }
-            }}
-            className="absolute left-2 top-1/2 z-[4] -translate-y-1/2"
-          />
+        {isVideo ? (
+          <div className="pointer-events-none absolute inset-x-0 bottom-3 z-[6] flex items-center justify-between gap-2 px-3">
+            <div className="pointer-events-auto flex min-w-0 items-center gap-1.5">
+              <ContextMediaVideoSoundButton
+                soundOn={soundOn}
+                variant="pill"
+                onToggleSound={() => {
+                  toggleSound();
+                  if (!playing) {
+                    setPlaying(true);
+                  }
+                }}
+              />
+              {eventId && deletable ? (
+                <ContextMediaDeleteButton
+                  item={item}
+                  eventId={eventId}
+                  viewerUserId={viewerUserId}
+                  enabled={deletable}
+                  className="relative bottom-auto left-auto size-8 shrink-0"
+                  onDeleted={onMediaDeleted}
+                />
+              ) : null}
+            </div>
+            <span className="pointer-events-none shrink-0 rounded-full bg-black/70 px-2.5 py-1.5 text-[10px] font-semibold text-white ring-1 ring-white/20">
+              {visible && playing ? "일시정지" : "재생"}
+            </span>
+          </div>
         ) : null}
         {isVideo && src ? (
           <button
@@ -175,13 +192,7 @@ function ContextMediaShortsSlide({
           {index + 1}/{total}
         </span>
 
-        {isVideo && src ? (
-          <span className="pointer-events-none absolute left-3 top-3 z-[2] rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-semibold text-white/90">
-            {visible && playing ? "일시정지" : "재생"}
-          </span>
-        ) : null}
-
-        {eventId && deletable ? (
+        {isVideo ? null : eventId && deletable ? (
           <ContextMediaDeleteButton
             item={item}
             eventId={eventId}
