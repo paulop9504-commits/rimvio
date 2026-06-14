@@ -112,3 +112,16 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | 아니오 | 없으면 local-only |
 
 비밀키(service_role)는 **클라이언트에 넣지 말 것**.
+
+---
+
+## 7. 네이티브 스토어 (Capacitor)
+
+PWA(홈 화면 추가)와 별도로 **Play Store / App Store** 출시:
+
+| 플랫폼 | 문서 | 준비 |
+|--------|------|------|
+| **iOS** | [STORE_LAUNCH_IOS.md](./STORE_LAUNCH_IOS.md) | `npm run store:prepare:ios` |
+| **Android** | [STORE_LAUNCH_ANDROID.md](./STORE_LAUNCH_ANDROID.md) | `npm run store:prepare:android` |
+
+SSOT: `lib/mobile/store-launch-config.ts` · `CAPACITOR_SERVER_URL` → prod WebView.
