@@ -21,6 +21,30 @@ export async function registerRimvioServiceWorker() {
   }
 }
 
+/** PWA — check for a new sw.js and reload once it takes control. */
+export async function refreshRimvioServiceWorker() {
+  if (!isServiceWorkerSupported()) {
+    return false;
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.getRegistration("/");
+    if (!registration) {
+      return false;
+    }
+
+    await registration.update();
+
+    if (registration.waiting) {
+      registration.waiting.postMessage({ type: "SKIP_WAITING" });
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function getServiceWorkerRegistration() {
   if (!isServiceWorkerSupported()) {
     return null;

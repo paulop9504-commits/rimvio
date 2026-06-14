@@ -109,6 +109,11 @@ self.addEventListener("message", (event) => {
 
   if (data.type === "CHECK_REMINDERS") {
     void checkDueReminders();
+    return;
+  }
+
+  if (data.type === "SKIP_WAITING") {
+    void self.skipWaiting();
   }
 });
 
