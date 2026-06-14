@@ -1,46 +1,31 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
+import type { ReactNode } from "react";
 
 export type PinOpenContextDetailsPanelProps = {
   summary: string;
-  resetKey?: string;
-  /** When true, panel starts collapsed (more room for photos). */
-  defaultCollapsed?: boolean;
+  expanded: boolean;
+  onExpandedChange: (expanded: boolean) => void;
   className?: string;
-  onExpandedChange?: (expanded: boolean) => void;
   children: ReactNode;
 };
 
 /** Pin sheet — foldable context block (moments · share · evidence). */
 export function PinOpenContextDetailsPanel({
   summary,
-  resetKey,
-  defaultCollapsed = false,
-  className,
+  expanded,
   onExpandedChange,
+  className,
   children,
 }: PinOpenContextDetailsPanelProps) {
-  const [expanded, setExpanded] = useState(!defaultCollapsed);
-
-  useEffect(() => {
-    const next = !defaultCollapsed;
-    setExpanded(next);
-    onExpandedChange?.(next);
-  }, [resetKey, defaultCollapsed, onExpandedChange]);
-
-  const toggle = (next: boolean) => {
-    setExpanded(next);
-    onExpandedChange?.(next);
-  };
-
   return (
     <div
       className={cn(
-        "relative z-[1] shrink-0 border-t border-border bg-background",
+        "relative z-30 flex shrink-0 flex-col border-t border-border bg-background",
+        expanded && "min-h-0 flex-1",
         className,
       )}
       data-pin-context-details
@@ -48,8 +33,8 @@ export function PinOpenContextDetailsPanel({
     >
       <button
         type="button"
-        onClick={() => toggle(!expanded)}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-foreground transition active:opacity-85"
+        onClick={() => onExpandedChange(!expanded)}
+        className="flex w-full shrink-0 items-center justify-between gap-3 px-4 py-3 text-left text-foreground transition active:opacity-85"
         aria-expanded={expanded}
         aria-controls="pin-context-details-body"
       >
@@ -73,7 +58,7 @@ export function PinOpenContextDetailsPanel({
       {expanded ? (
         <div
           id="pin-context-details-body"
-          className="max-h-[min(42dvh,400px)] overflow-y-auto overscroll-y-contain border-t border-border [scrollbar-width:none] md:max-h-[min(48dvh,480px)] [&::-webkit-scrollbar]:hidden"
+          className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain border-t border-border [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           <section className="space-y-4 px-4 py-4">{children}</section>
         </div>

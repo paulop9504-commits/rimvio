@@ -322,6 +322,14 @@ export function PinOpenSheet({
     return parts.length > 0 ? parts.join(" · ") : copy.globe.pinContextDetailsFallback;
   }, [moments.length, shareEvent, evidence, people.length]);
 
+  useEffect(() => {
+    if (!open || !cluster?.eventId) {
+      return;
+    }
+    setContextDetailsExpanded(reelItems.length === 0);
+    // Reset only when the sheet or pin changes — not on every media sync.
+  }, [open, cluster?.eventId]);
+
   const openExperienceRoom = () => {
     if (!conversation?.peerThreadId || !event || !hero) {
       return;
@@ -429,10 +437,10 @@ export function PinOpenSheet({
 
                   <div
                     className={cn(
-                      "relative z-0 flex flex-col overflow-hidden",
-                      !contextDetailsExpanded || isBridgeContext
-                        ? "min-h-0 flex-1"
-                        : "min-h-[min(56dvh,520px)] shrink-0",
+                      "relative z-0 flex min-h-0 flex-col overflow-hidden",
+                      contextDetailsExpanded
+                        ? "h-[min(44dvh,400px)] shrink-0"
+                        : "min-h-0 flex-1",
                     )}
                   >
                     {isBridgeContext ? (
@@ -473,8 +481,7 @@ export function PinOpenSheet({
 
                   <PinOpenContextDetailsPanel
                     summary={contextDetailsSummary}
-                    resetKey={cluster.eventId}
-                    defaultCollapsed={reelItems.length > 0}
+                    expanded={contextDetailsExpanded}
                     onExpandedChange={setContextDetailsExpanded}
                   >
                     {tripLeg ? <ExperienceTripLegBar trip={tripLeg} /> : null}
