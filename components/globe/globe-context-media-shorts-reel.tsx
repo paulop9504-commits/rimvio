@@ -91,11 +91,9 @@ function ContextMediaShortsSlide({
       ref={rootRef}
       className={cn(
         "relative isolate flex shrink-0 snap-start snap-always flex-col",
-        bridge ? "min-h-full justify-center px-2 py-3" : "flex-col px-3",
-        fillViewport && embedded && !bridge && "min-h-full items-center justify-center py-3",
-        fillViewport && embedded && bridge && "min-h-[min(88dvh,720px)] items-center justify-center",
+        fillViewport && embedded && "box-border h-full min-h-full items-center justify-center px-2 py-2",
         fillViewport && !embedded && "min-h-full justify-start pb-4 pt-2",
-        !fillViewport && "min-h-[min(78vh,680px)] justify-center py-2",
+        !fillViewport && "min-h-[min(78vh,680px)] justify-center px-3 py-2",
       )}
       data-globe-context-shorts-slide
       data-slide-index={slideIndex ?? index}
@@ -104,18 +102,22 @@ function ContextMediaShortsSlide({
     >
       <div
         className={cn(
-          "relative mx-auto w-full",
-          bridge ? "max-w-[min(100%,400px)]" : "max-w-[min(100%,340px)]",
-          fillViewport && embedded && "max-h-full",
+          "relative mx-auto flex h-full max-h-full w-full items-center justify-center",
+          bridge ? "max-w-[min(100%,400px)]" : "max-w-[min(100%,360px)]",
         )}
       >
         <div
           className={cn(
             "relative overflow-hidden bg-black",
-            bridge
-              ? "aspect-[9/16] w-full rounded-[1.35rem] shadow-[0_28px_72px_rgba(0,0,0,0.45)] ring-1 ring-white/15"
-              : "aspect-[9/16] w-full rounded-[1.25rem] shadow-[0_16px_48px_rgba(0,0,0,0.22)] ring-1 ring-black/10",
-            fillViewport && embedded && !bridge && "aspect-[9/16] max-h-full w-auto max-w-[min(100%,340px)]",
+            fillViewport && embedded
+              ? "aspect-[9/16] h-full max-h-full w-auto max-w-full"
+              : bridge
+                ? "aspect-[9/16] w-full rounded-[1.35rem] shadow-[0_28px_72px_rgba(0,0,0,0.45)] ring-1 ring-white/15"
+                : "aspect-[9/16] w-full rounded-[1.25rem] shadow-[0_16px_48px_rgba(0,0,0,0.22)] ring-1 ring-black/10",
+            fillViewport && embedded &&
+              (bridge
+                ? "rounded-[1.35rem] shadow-[0_28px_72px_rgba(0,0,0,0.45)] ring-1 ring-white/15"
+                : "rounded-[1.25rem] shadow-[0_16px_48px_rgba(0,0,0,0.22)] ring-1 ring-black/10"),
           )}
         >
         {isVideo ? (

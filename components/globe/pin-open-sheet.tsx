@@ -288,10 +288,18 @@ export function PinOpenSheet({
     return Boolean(id && isBridgeLinkedEventId(id));
   }, [cluster?.eventId]);
 
-  const isBridgeContext = useMemo(
-    () => bridgeMediaDeletable || isBridgeSharedEvent(event),
-    [bridgeMediaDeletable, event],
-  );
+  const isBridgeContext = useMemo(() => {
+    if (bridgeMediaDeletable || isBridgeSharedEvent(event)) {
+      return true;
+    }
+    const viewerId = user?.id?.trim();
+    if (!viewerId) {
+      return false;
+    }
+    return reelItems.some(
+      (row) => row.ownerUserId?.trim() && row.ownerUserId.trim() !== viewerId,
+    );
+  }, [bridgeMediaDeletable, event, reelItems, user?.id]);
 
   const openExperienceRoom = () => {
     if (!conversation?.peerThreadId || !event || !hero) {
@@ -400,8 +408,10 @@ export function PinOpenSheet({
 
                   <div
                     className={cn(
-                      "flex min-h-0 flex-[1.15] flex-col overflow-hidden",
-                      !isBridgeContext && "pt-[4.25rem]",
+                      "relative z-0 flex flex-col overflow-hidden",
+                      isBridgeContext
+                        ? "min-h-0 flex-1"
+                        : "min-h-[min(56dvh,520px)] shrink-0",
                     )}
                   >
                     {isBridgeContext ? (
@@ -418,27 +428,34 @@ export function PinOpenSheet({
                         }}
                       />
                     ) : (
-                      <div className="min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto overscroll-y-contain pt-[4.25rem] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                        <GlobeContextMediaShortsReel
-                          key={cluster.eventId}
-                          items={reelItems}
-                          title={hero.title}
-                          place={hero.place}
-                          fillViewport
-                          embedded
-                          eventId={cluster.eventId}
-                          viewerUserId={user?.id}
-                          deletable={bridgeMediaDeletable}
-                          onMediaDeleted={() => {
-                            setRevision((value) => value + 1);
-                            toast.success("삭제했어요");
-                          }}
-                        />
+                      <div className="flex h-full min-h-0 flex-col overflow-hidden pt-[3.75rem]">
+                        <div className="min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                          <GlobeContextMediaShortsReel
+                            key={cluster.eventId}
+                            items={reelItems}
+                            title={hero.title}
+                            place={hero.place}
+                            fillViewport
+                            embedded
+                            eventId={cluster.eventId}
+                            viewerUserId={user?.id}
+                            deletable={bridgeMediaDeletable}
+                            onMediaDeleted={() => {
+                              setRevision((value) => value + 1);
+                              toast.success("삭제했어요");
+                            }}
+                          />
+                        </div>
                       </div>
                     )}
                   </div>
 
-                  <div className="relative z-[1] min-h-0 flex-1 overflow-y-auto overscroll-y-contain border-t border-border bg-background [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  <div
+                    className={cn(
+                      "relative z-[1] min-h-0 overflow-y-auto overscroll-y-contain border-t border-border bg-background [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+                      isBridgeContext ? "max-h-[min(30dvh,260px)] shrink-0" : "flex-1",
+                    )}
+                  >
                     <section className="space-y-4 px-4 py-5">
                       {tripLeg ? <ExperienceTripLegBar trip={tripLeg} /> : null}
                       <PeopleStrip names={people} />
