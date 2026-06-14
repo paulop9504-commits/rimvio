@@ -44,6 +44,8 @@ yarn-error.log*
 # vercel
 .vercel
 
+docs/generated/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
@@ -53,6 +55,10 @@ next-env.d.ts
 
 .vercel
 
+docs/generated/
+
 .env*
 !.env.example
 .vercel
+
+docs/generated/

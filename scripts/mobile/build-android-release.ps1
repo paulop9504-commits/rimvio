@@ -1,6 +1,7 @@
 # Play Store v1 — release AAB on Windows
 
-> Prereq: Android Studio · JDK 17+ · `android/keystore.properties` (see `keystore.properties.example`)
+> **클릭 순서:** [PLAY_CONSOLE_INTERNAL_TEST.md](../docs/PLAY_CONSOLE_INTERNAL_TEST.md)  
+> **리스팅 복붙:** `npm run store:export:play`
 
 ## 1. Prepare
 
@@ -44,4 +45,4 @@ cd android
 3. Data safety + privacy `https://rimvio.app/privacy`
 4. Store listing copy from `lib/pwa/store-meta.ts`
 
-Full checklist: [docs/STORE_LAUNCH_ANDROID.md](../docs/STORE_LAUNCH_ANDROID.md)
+Full checklist: [docs/STORE_LAUNCH_ANDROID.md](../docs/STORE_LAUNCH_ANDROID.md) · [docs/PLAY_CONSOLE_INTERNAL_TEST.md](../docs/PLAY_CONSOLE_INTERNAL_TEST.md)
