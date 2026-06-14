@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { hasPendingFeedCaptureVerify } from "@/lib/feed/feed-capture-metadata";
+import { hasPendingFeedCaptureVerify, readDwellMinutesFromCaptures } from "@/lib/feed/feed-capture-metadata";
 import { verifyFeedCaptureEvent } from "@/lib/feed/verify-feed-capture";
+import { formatDwellMinutesLabel } from "@/lib/feed/project-dwell-from-gps-pings";
 import {
   EVENT_CANDIDATES_UPDATED,
   listLifeEventCandidates,
@@ -85,7 +86,9 @@ export function GlobeLocationConfirmCard({ className }: GlobeLocationConfirmCard
   }
 
   const place = pending.place?.trim() || "이 위치";
-  const title = pending.title?.trim() || "체류 기록";
+  const dwellMinutes = readDwellMinutesFromCaptures(pending);
+  const dwellLabel =
+    dwellMinutes != null ? formatDwellMinutesLabel(dwellMinutes) : null;
 
   return (
     <div
@@ -96,9 +99,13 @@ export function GlobeLocationConfirmCard({ className }: GlobeLocationConfirmCard
       data-globe-location-confirm
     >
       <p className="text-[12px] font-semibold leading-snug text-[#191f28]">
-        {place}에서 시간을 보낸 것 같아요.
+        {copy.globe.inboxLocationTitle(place, dwellLabel ?? undefined)}
       </p>
-      <p className="mt-0.5 text-[11px] text-[#6b7684]">{title}</p>
+      {dwellLabel ? (
+        <p className="mt-0.5 text-[11px] text-[#6b7684]">
+          {copy.globe.globeLocationAccumulated(dwellLabel)}
+        </p>
+      ) : null}
       <div className="mt-2.5 flex gap-2">
         <button
           type="button"

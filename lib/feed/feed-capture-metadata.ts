@@ -156,13 +156,14 @@ export function readDwellMinutesFromCaptures(
   event: EventCandidate | null | undefined,
 ): number | null {
   const dwells = readFeedCaptureFragments(event)
+    .filter((fragment) => fragment.kind === "gps_dwell")
     .map((fragment) => fragment.dwellMinutes)
     .filter((value): value is number => typeof value === "number" && value > 0);
   if (dwells.length === 0) {
     const meta = event?.metadata?.gpsDwellMinutes;
     return typeof meta === "number" && meta > 0 ? meta : null;
   }
-  return Math.max(...dwells);
+  return dwells.reduce((sum, minutes) => sum + minutes, 0);
 }
 
 export function wasFeedCaptureHumanVerified(
@@ -179,6 +180,9 @@ export function hasPendingFeedCaptureVerify(
   }
   if (event.metadata?.[FEED_CAPTURE_PENDING_VERIFY_META_KEY] === true) {
     return true;
+  }
+  if (event.metadata?.targetingSource === "gps_background") {
+    return false;
   }
   return readFeedCaptureFragments(event).some(
     (fragment) => fragment.autoAttached && !fragment.verified,

@@ -14,6 +14,7 @@ import {
 import { writeLocalBridgeState } from "@/lib/experience-bridge/local-bridge-store";
 import { syncBridgeSharedMediaFromRemote } from "@/lib/experience-bridge/sync-bridge-participant-media";
 import { verifyFeedCaptureEvent } from "@/lib/feed/verify-feed-capture";
+import { formatDwellMinutesLabel } from "@/lib/feed/project-dwell-from-gps-pings";
 import { markGlobeLocationConfirmed } from "@/lib/globe/globe-location-confirm-store";
 import type { PendingGlobeLocationConfirm } from "@/lib/globe/list-pending-globe-location-confirms";
 import type { PendingBridgeInvite } from "@/hooks/use-pending-bridge-invites";
@@ -307,7 +308,12 @@ export function GlobeInboxSheet({
                               <p className="mt-0.5 text-[14px] font-semibold text-foreground">
                                 {row.kind === "photo_place"
                                   ? copy.globe.inboxPhotoPlaceTitle(row.place)
-                                  : copy.globe.inboxLocationTitle(row.place)}
+                                  : copy.globe.inboxLocationTitle(
+                                      row.place,
+                                      row.dwellMinutes != null
+                                        ? formatDwellMinutesLabel(row.dwellMinutes)
+                                        : undefined,
+                                    )}
                               </p>
                               <p className="mt-1 text-[12px] text-muted-foreground">
                                 {row.title}

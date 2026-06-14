@@ -185,7 +185,11 @@ export const copy = {
     mediaPoolDeletedToast: "보관함에서 지웠어요",
     inboxSectionShare: "공유 받은 맥락",
     inboxSectionLocation: "위치 확인",
-    inboxLocationTitle: (place: string) => `${place}에서 시간을 보낸 것 같아요`,
+    inboxLocationTitle: (place: string, dwellLabel?: string) =>
+      dwellLabel
+        ? `${place} · ${dwellLabel} 쌓였어요`
+        : `${place}에서 시간을 보낸 것 같아요`,
+    globeLocationAccumulated: (dwellLabel: string) => `오늘 ${dwellLabel}`,
     inboxPhotoPlaceTitle: (place: string) => `${place}에서 찍은 사진 같아요`,
     inboxPhotoPlaceSuggestToast: (place: string) =>
       `${place}? 수신함에서 확인해 주세요`,

@@ -79,12 +79,32 @@ export function useBridgeMediaSync(input?: {
   }, [remote, sync]);
 
   useEffect(() => {
-    if (!remote) {
+    if (!remote || typeof document === "undefined") {
       return;
     }
-    const intervalMs = priorityEventId ? ACTIVE_POLL_MS : POLL_MS;
-    const timer = window.setInterval(() => void sync(), intervalMs);
-    return () => window.clearInterval(timer);
+
+    let timer: ReturnType<typeof setInterval> | null = null;
+
+    const arm = () => {
+      if (timer != null) {
+        window.clearInterval(timer);
+        timer = null;
+      }
+      if (document.visibilityState === "hidden") {
+        return;
+      }
+      const intervalMs = priorityEventId ? ACTIVE_POLL_MS : POLL_MS;
+      timer = window.setInterval(() => void sync(), intervalMs);
+    };
+
+    arm();
+    document.addEventListener("visibilitychange", arm);
+    return () => {
+      if (timer != null) {
+        window.clearInterval(timer);
+      }
+      document.removeEventListener("visibilitychange", arm);
+    };
   }, [priorityEventId, remote, sync]);
 
   return { sync };

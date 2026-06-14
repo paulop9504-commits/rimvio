@@ -205,7 +205,7 @@ export function FivePeerHubClient() {
   }, [refresh]);
 
   useEffect(() => {
-    if (!usePhoneChat) {
+    if (!usePhoneChat || archiveSheetOpen) {
       return;
     }
     void syncMyProfileFromAuth().catch(() => {});
@@ -235,7 +235,7 @@ export function FivePeerHubClient() {
     void loadSocialLayer();
     const timer = window.setInterval(() => void loadSocialLayer(), 30_000);
     return () => window.clearInterval(timer);
-  }, [usePhoneChat, refresh, loadSocialLayer]);
+  }, [usePhoneChat, archiveSheetOpen, refresh, loadSocialLayer]);
 
   useEffect(() => {
     if (!usePhoneChat || !archiveSheetOpen) {

@@ -69,14 +69,14 @@ export function useSharedGlobePins(input: {
   }, [enabled, refresh]);
 
   useEffect(() => {
-    if (!enabled) {
+    if (!enabled || useRealtime) {
       return;
     }
     const id = window.setInterval(() => {
       void refresh();
     }, POLL_FALLBACK_MS);
     return () => window.clearInterval(id);
-  }, [enabled, refresh]);
+  }, [enabled, refresh, useRealtime]);
 
   useEffect(() => {
     if (!useRealtime || !resolvedThreadId.trim()) {

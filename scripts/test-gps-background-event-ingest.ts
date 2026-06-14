@@ -12,11 +12,15 @@ import {
   hasPendingFeedCaptureVerify,
   wasFeedCaptureHumanVerified,
 } from "@/lib/feed/feed-capture-metadata";
+import { sumGpsDwellCaptureMinutes } from "@/lib/feed/sum-gps-dwell-capture-minutes";
 import type { GpsDwellCluster } from "@/lib/location-ping/gps-dwell-cluster-types";
 import type { GpsPing } from "@/lib/location-ping/types";
 
+const recentIso = (hoursAgo: number) =>
+  new Date(Date.now() - hoursAgo * 60 * 60 * 1000).toISOString();
+
 function jejuPings(): GpsPing[] {
-  const base = Date.parse("2026-06-11T10:00:00+09:00");
+  const base = Date.now() - 8 * 60 * 60 * 1000;
   return [0, 12, 24, 36, 48].map((offsetMin, index) => ({
     id: `p${index}`,
     lat: 33.46 + index * 0.0002,
@@ -27,12 +31,20 @@ function jejuPings(): GpsPing[] {
   }));
 }
 
+function jejuPlanWindow() {
+  const start = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const end = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  return {
+    datetime: start.toISOString(),
+    planWindowEndIso: end.toISOString(),
+    clusterNow: new Date(Date.now() - 6 * 60 * 60 * 1000),
+  };
+}
+
 function testDetectClosedCluster() {
   const pings = jejuPings();
-  const clusters = detectGpsDwellClusters(
-    pings,
-    new Date(Date.parse("2026-06-11T11:30:00+09:00")),
-  );
+  const { clusterNow } = jejuPlanWindow();
+  const clusters = detectGpsDwellClusters(pings, clusterNow);
   assert.equal(clusters.length, 1);
   assert.ok(clusters[0]?.placeLabel.includes("°"));
   assert.ok((clusters[0]?.dwellMinutes ?? 0) >= 15);
@@ -41,6 +53,7 @@ function testDetectClosedCluster() {
 function testIngestAttachesToPlanEvent() {
   resetGpsDwellIngestStoreForTests();
   const stamp = new Date().toISOString();
+  const { datetime, planWindowEndIso, clusterNow } = jejuPlanWindow();
   resetEventCandidatesForTests();
   upsertEventCandidate({
     id: "jeju-plan",
@@ -48,20 +61,17 @@ function testIngestAttachesToPlanEvent() {
     category: "travel",
     source: "manual",
     lifecycle: "scheduled",
-    datetime: "2026-06-10T15:00:00+09:00",
+    datetime,
     place: "제주",
     confidence: 0.9,
     metadata: {
       feedPlanEnabled: true,
-      planWindowEndIso: "2026-06-12T19:00:00+09:00",
+      planWindowEndIso,
     },
     lifecycleUpdatedAt: stamp,
   });
 
-  const clusters = detectGpsDwellClusters(
-    jejuPings(),
-    new Date(Date.parse("2026-06-11T11:30:00+09:00")),
-  );
+  const clusters = detectGpsDwellClusters(jejuPings(), clusterNow);
   const cluster = clusters[0];
   assert.ok(cluster);
 
@@ -76,10 +86,8 @@ function testIngestCreatesEventWithoutPhoto() {
   resetGpsDwellIngestStoreForTests();
   resetEventCandidatesForTests();
 
-  const clusters = detectGpsDwellClusters(
-    jejuPings(),
-    new Date(Date.parse("2026-06-11T11:30:00+09:00")),
-  );
+  const { clusterNow } = jejuPlanWindow();
+  const clusters = detectGpsDwellClusters(jejuPings(), clusterNow);
   const cluster = clusters[0];
   assert.ok(cluster);
 
@@ -142,8 +150,46 @@ function testFollowUpDwellStaysVerifiedAfterHumanConfirm() {
   assert.equal(hasPendingFeedCaptureVerify({ metadata } as import("../lib/events/event-candidate").EventCandidate), false);
 }
 
+function testAccumulateSamePlaceBeforeAsk() {
+  resetGpsDwellIngestStoreForTests();
+  resetEventCandidatesForTests();
+
+  const morning: GpsDwellCluster = {
+    id: "gps-dwell:morning:36300:127000",
+    startIso: recentIso(6),
+    endIso: recentIso(5.7),
+    lat: 36.35,
+    lng: 127.38,
+    placeLabel: "둔산동",
+    dwellMinutes: 18,
+    pingCount: 4,
+  };
+  const first = ingestGpsDwellCluster(morning);
+  assert.equal(first.ingested, true);
+  assert.ok(first.event);
+  assert.equal(hasPendingFeedCaptureVerify(first.event), false);
+  assert.equal(sumGpsDwellCaptureMinutes(first.event), 18);
+
+  const afternoon: GpsDwellCluster = {
+    id: "gps-dwell:afternoon:36300:127000",
+    startIso: recentIso(3),
+    endIso: recentIso(2.6),
+    lat: 36.351,
+    lng: 127.381,
+    placeLabel: "둔산동",
+    dwellMinutes: 22,
+    pingCount: 5,
+  };
+  const second = ingestGpsDwellCluster(afternoon);
+  assert.equal(second.ingested, true);
+  assert.equal(second.event?.id, first.event?.id);
+  assert.equal(sumGpsDwellCaptureMinutes(second.event), 40);
+  assert.equal(hasPendingFeedCaptureVerify(second.event), true);
+}
+
 testDetectClosedCluster();
 testIngestAttachesToPlanEvent();
 testIngestCreatesEventWithoutPhoto();
 testFollowUpDwellStaysVerifiedAfterHumanConfirm();
+testAccumulateSamePlaceBeforeAsk();
 console.log("test-gps-background-event-ingest: ok");

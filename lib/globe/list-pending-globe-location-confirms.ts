@@ -1,5 +1,5 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
-import { hasPendingFeedCaptureVerify } from "@/lib/feed/feed-capture-metadata";
+import { hasPendingFeedCaptureVerify, readDwellMinutesFromCaptures } from "@/lib/feed/feed-capture-metadata";
 import { listLifeEventCandidates } from "@/lib/life-read-model";
 import { isGlobeLocationConfirmed } from "@/lib/globe/globe-location-confirm-store";
 import { readGlobePhotoPlaceSuggest } from "@/lib/globe/read-globe-photo-place-suggest";
@@ -12,6 +12,8 @@ export type PendingGlobeLocationConfirm = {
   place: string;
   datetime: string;
   kind: PendingGlobeLocationConfirmKind;
+  /** Accumulated gps_dwell minutes for the day. */
+  dwellMinutes?: number;
 };
 
 function pushPendingConfirm(
@@ -28,6 +30,10 @@ function pushPendingConfirm(
     place: input.place,
     datetime: event.datetime,
     kind: input.kind,
+    dwellMinutes:
+      input.kind === "gps_dwell"
+        ? (readDwellMinutesFromCaptures(event) ?? undefined)
+        : undefined,
   });
 }
 

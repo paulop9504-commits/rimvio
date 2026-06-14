@@ -173,7 +173,11 @@ export const copyEn: Copy = {
     mediaPoolDeletedToast: "Removed from pool",
     inboxSectionShare: "Shared context",
     inboxSectionLocation: "Location check",
-    inboxLocationTitle: (place: string) => `Looks like time at ${place}`,
+    inboxLocationTitle: (place: string, dwellLabel?: string) =>
+      dwellLabel
+        ? `${place} · ${dwellLabel} accumulated`
+        : `Looks like time at ${place}`,
+    globeLocationAccumulated: (dwellLabel: string) => `Today ${dwellLabel}`,
     inboxPhotoPlaceTitle: (place: string) => `Photo looks like ${place}`,
     inboxPhotoPlaceSuggestToast: (place: string) =>
       `${place}? Check your inbox`,
