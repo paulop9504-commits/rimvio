@@ -40,10 +40,13 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 !.env.example
+.env*
+!.env.example
 
 # vercel
 .vercel
 
+# generated docs (npm run store:export:play)
 docs/generated/
 
 # typescript
@@ -52,13 +55,3 @@ next-env.d.ts
 
 # local beam/room dev snapshots
 .data/
-
-.vercel
-
-docs/generated/
-
-.env*
-!.env.example
-.vercel
-
-docs/generated/
