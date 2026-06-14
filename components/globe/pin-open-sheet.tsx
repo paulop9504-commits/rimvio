@@ -15,6 +15,7 @@ import { GlobeContextPhotoButton } from "@/components/globe/globe-context-photo-
 import { GlobeContextShareFriendsPanel } from "@/components/globe/globe-context-share-friends-panel";
 import { GlobeContextMediaShortsReel } from "@/components/globe/globe-context-media-shorts-reel";
 import { ExperienceBridgeMediaShell } from "@/components/globe/experience-bridge-media-shell";
+import { PinOpenBridgeMediaContextPager } from "@/components/globe/pin-open-bridge-media-context-pager";
 import { PinOpenContextDetailsPanel } from "@/components/globe/pin-open-context-details-panel";
 import { patchExperiencePinContext } from "@/lib/globe/patch-experience-pin-context";
 import { isGlobeManualContextEvent } from "@/lib/events/event-lifecycle";
@@ -350,6 +351,22 @@ export function PinOpenSheet({
     return null;
   }
 
+  const contextDetailsBody = (
+    <>
+      {tripLeg ? <ExperienceTripLegBar trip={tripLeg} /> : null}
+      <PeopleStrip names={people} />
+      <RepresentativeMomentsRow moments={moments} />
+      {conversation ? (
+        <RecentConversationStrip
+          conversation={conversation}
+          onOpenRoom={openExperienceRoom}
+        />
+      ) : null}
+      {shareEvent ? <GlobeContextShareFriendsPanel event={shareEvent} /> : null}
+      <EvidenceList rows={evidence} />
+    </>
+  );
+
   return createPortal(
     <AnimatePresence>
       {open && cluster && hero ? (
@@ -435,69 +452,68 @@ export function PinOpenSheet({
                     </button>
                   </div>
 
-                  <div
-                    className={cn(
-                      "relative z-0 flex min-h-0 flex-col overflow-hidden",
-                      contextDetailsExpanded
-                        ? "h-[min(44dvh,400px)] shrink-0"
-                        : "min-h-0 flex-1",
-                    )}
-                  >
-                    {isBridgeContext ? (
-                      <ExperienceBridgeMediaShell
-                        items={reelItems}
-                        title={hero.title}
-                        place={hero.place}
-                        eventId={cluster.eventId}
-                        viewerUserId={user?.id}
-                        deletable={bridgeMediaDeletable}
-                        onMediaDeleted={() => {
-                          setRevision((value) => value + 1);
-                          toast.success("삭제했어요");
-                        }}
-                      />
-                    ) : (
-                      <div className="flex h-full min-h-0 flex-col overflow-hidden pt-[3.75rem]">
-                        <div className="min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                          <GlobeContextMediaShortsReel
-                            key={cluster.eventId}
-                            items={reelItems}
-                            title={hero.title}
-                            place={hero.place}
-                            fillViewport
-                            embedded
-                            eventId={cluster.eventId}
-                            viewerUserId={user?.id}
-                            deletable={bridgeMediaDeletable}
-                            onMediaDeleted={() => {
-                              setRevision((value) => value + 1);
-                              toast.success("삭제했어요");
-                            }}
-                          />
+                  {isBridgeContext ? (
+                    <PinOpenBridgeMediaContextPager
+                      resetKey={cluster.eventId}
+                      summary={contextDetailsSummary}
+                      className="min-h-0 flex-1"
+                      media={
+                        <ExperienceBridgeMediaShell
+                          items={reelItems}
+                          title={hero.title}
+                          place={hero.place}
+                          eventId={cluster.eventId}
+                          viewerUserId={user?.id}
+                          deletable={bridgeMediaDeletable}
+                          onMediaDeleted={() => {
+                            setRevision((value) => value + 1);
+                            toast.success("삭제했어요");
+                          }}
+                        />
+                      }
+                    >
+                      {contextDetailsBody}
+                    </PinOpenBridgeMediaContextPager>
+                  ) : (
+                    <>
+                      <div
+                        className={cn(
+                          "relative z-0 flex min-h-0 flex-col overflow-hidden",
+                          contextDetailsExpanded
+                            ? "h-[min(44dvh,400px)] shrink-0"
+                            : "min-h-0 flex-1",
+                        )}
+                      >
+                        <div className="flex h-full min-h-0 flex-col overflow-hidden pt-[3.75rem]">
+                          <div className="min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                            <GlobeContextMediaShortsReel
+                              key={cluster.eventId}
+                              items={reelItems}
+                              title={hero.title}
+                              place={hero.place}
+                              fillViewport
+                              embedded
+                              eventId={cluster.eventId}
+                              viewerUserId={user?.id}
+                              deletable={bridgeMediaDeletable}
+                              onMediaDeleted={() => {
+                                setRevision((value) => value + 1);
+                                toast.success("삭제했어요");
+                              }}
+                            />
+                          </div>
                         </div>
                       </div>
-                    )}
-                  </div>
 
-                  <PinOpenContextDetailsPanel
-                    summary={contextDetailsSummary}
-                    expanded={contextDetailsExpanded}
-                    onExpandedChange={setContextDetailsExpanded}
-                  >
-                    {tripLeg ? <ExperienceTripLegBar trip={tripLeg} /> : null}
-                    <PeopleStrip names={people} />
-                    <RepresentativeMomentsRow moments={moments} />
-                    {conversation ? (
-                      <RecentConversationStrip
-                        conversation={conversation}
-                        onOpenRoom={openExperienceRoom}
-                      />
-                    ) : null}
-                    {shareEvent ? (
-                      <GlobeContextShareFriendsPanel event={shareEvent} />
-                    ) : null}
-                    <EvidenceList rows={evidence} />
-                  </PinOpenContextDetailsPanel>
+                      <PinOpenContextDetailsPanel
+                        summary={contextDetailsSummary}
+                        expanded={contextDetailsExpanded}
+                        onExpandedChange={setContextDetailsExpanded}
+                      >
+                        {contextDetailsBody}
+                      </PinOpenContextDetailsPanel>
+                    </>
+                  )}
                 </div>
 
                 <div className="shrink-0 space-y-2 border-t border-border px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">

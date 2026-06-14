@@ -229,6 +229,11 @@ export const copy = {
     bridgeMediaPending: (name: string, kind: "photo" | "video") =>
       `${name}님 ${kind === "video" ? "동영상" : "사진"} 도착 중`,
     bridgeMediaAuthorChip: (name: string) => `${name}님의 순간`,
+    bridgeContextSwipeHint: "← 밀면 맥락",
+    bridgeMediaSwipeBackHint: "순간으로",
+    bridgeContextPageEyebrow: "맥락",
+    bridgeMediaContextTabMoments: "순간",
+    bridgeMediaContextTabContext: "맥락",
     pinContextDetailsExpand: "맥락 펼치기",
     pinContextDetailsCollapse: "맥락 접기",
     pinContextDetailsFallback: "대표 장면 · 공유 · 흔적",
