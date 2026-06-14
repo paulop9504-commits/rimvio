@@ -36,6 +36,12 @@ const ALLOWLIST: readonly string[] = [
   "lib/feed/",
   "lib/ingest/",
   "lib/experience-graph/",
+  "lib/experience-bridge/",
+  "lib/media-pool/",
+  "lib/globe/apply-globe-photo-place-suggestion.ts",
+  "lib/globe/globe-orchestrator-scope-bridge.ts",
+  "lib/globe/resolve-gathering-trace-hint.ts",
+  "lib/globe/resolve-inferred-pin-domain-stub.ts",
   "lib/peer-chat/ai-lens/",
 ];
 

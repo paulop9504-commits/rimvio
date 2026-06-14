@@ -79,7 +79,6 @@ export function PinOpenSheet({
   const router = useRouter();
   const { user } = useAuth();
   const [mounted, setMounted] = useState(false);
-  const [opened, setOpened] = useState(false);
   const [revision, setRevision] = useState(0);
   const [editKind, setEditKind] = useState<PinContextFieldKind | null>(null);
   const [sheetPage, setSheetPage] = useState<PinMediaContextPage>("media");
@@ -144,12 +143,6 @@ export function PinOpenSheet({
       window.removeEventListener(EVENT_CANDIDATES_UPDATED, onCandidatesUpdated);
     };
   }, [open, cluster?.eventId, user?.id]);
-
-  useEffect(() => {
-    if (!open) {
-      setOpened(false);
-    }
-  }, [open]);
 
   useEffect(() => {
     const bump = () => setRevision((value) => value + 1);
@@ -383,9 +376,7 @@ export function PinOpenSheet({
             aria-label={hero.title}
             className={cn(
               "fixed z-[10062] flex w-full flex-col overflow-hidden border border-border bg-background shadow-2xl",
-              reelItems.length > 0
-                ? "inset-x-0 bottom-0 h-[min(96dvh,820px)] max-h-[96dvh] rounded-t-[24px]"
-                : "inset-x-0 bottom-0 max-h-[min(96vh,820px)] rounded-t-[24px]",
+              "inset-x-0 bottom-0 h-[min(96dvh,820px)] max-h-[96dvh] rounded-t-[24px]",
               "md:inset-y-0 md:right-0 md:left-auto md:h-full md:max-h-none md:max-w-[min(92vw,420px)] md:rounded-none md:rounded-l-[24px]",
             )}
             initial={{ y: "100%", x: 0 }}
@@ -393,89 +384,106 @@ export function PinOpenSheet({
             exit={{ y: "100%", x: 0 }}
             transition={{ type: "spring", stiffness: 420, damping: 34 }}
             data-pin-open-sheet
+            data-pin-open-ui="split-v2"
           >
             <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-foreground/15 md:hidden" aria-hidden />
-            {reelItems.length > 0 ? (
-              <>
-                <div
-                  className={cn(
-                    "relative flex min-h-0 flex-1 flex-col overflow-hidden",
-                    isBridgeContext && sheetPage === "media" && "bg-[#0a0c10]",
-                  )}
-                >
-                  <header
+            <div
+              className={cn(
+                "relative flex min-h-0 flex-1 flex-col overflow-hidden",
+                isBridgeContext && sheetPage === "media" && "bg-[#0a0c10]",
+              )}
+            >
+              <header
+                className={cn(
+                  "flex shrink-0 items-start gap-2 border-b px-4 pb-3 pt-2",
+                  isBridgeContext && sheetPage === "media"
+                    ? "border-white/10 bg-[#0a0c10]"
+                    : "border-border bg-background",
+                )}
+              >
+                <div className="min-w-0 flex-1 space-y-0.5">
+                  <p
                     className={cn(
-                      "flex shrink-0 items-start gap-2 border-b px-4 pb-3 pt-2",
+                      "text-[10px] font-semibold uppercase tracking-wide",
                       isBridgeContext && sheetPage === "media"
-                        ? "border-white/10 bg-[#0a0c10]"
-                        : "border-border bg-background",
+                        ? "text-white/50"
+                        : "text-muted-foreground",
                     )}
                   >
-                    <div className="min-w-0 flex-1 space-y-0.5">
-                      <p
-                        className={cn(
-                          "text-[10px] font-semibold uppercase tracking-wide",
-                          isBridgeContext && sheetPage === "media"
-                            ? "text-white/50"
-                            : "text-muted-foreground",
-                        )}
-                      >
-                        {isBridgeContext && sheetPage === "media"
-                          ? copy.globe.bridgeMediaEyebrow
-                          : `장소 · ${hero.place}`}
-                      </p>
-                      <p
-                        className={cn(
-                          "line-clamp-1 text-[15px] font-bold",
-                          isBridgeContext && sheetPage === "media"
-                            ? "text-white"
-                            : "text-foreground",
-                        )}
-                      >
-                        {hero.title}
-                      </p>
-                    </div>
-                    <PinOpenMediaContextPageTabs
-                      page={sheetPage}
-                      onPageChange={setSheetPage}
-                      variant={isBridgeContext ? "bridge" : "personal"}
-                      className="mt-0.5"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => onOpenChange(false)}
-                      className={cn(
-                        "flex size-9 shrink-0 items-center justify-center rounded-full active:opacity-80",
-                        isBridgeContext && sheetPage === "media"
-                          ? "bg-white/10 text-white"
-                          : "bg-muted active:bg-muted/80",
-                      )}
-                      aria-label="닫기"
-                    >
-                      <X
-                        className={cn(
-                          "size-5",
-                          isBridgeContext && sheetPage === "media"
-                            ? "text-white/80"
-                            : "text-muted-foreground",
-                        )}
-                        aria-hidden
-                      />
-                    </button>
-                  </header>
+                    {isBridgeContext && sheetPage === "media"
+                      ? copy.globe.bridgeMediaEyebrow
+                      : `장소 · ${hero.place}`}
+                  </p>
+                  <p
+                    className={cn(
+                      "line-clamp-1 text-[15px] font-bold",
+                      isBridgeContext && sheetPage === "media"
+                        ? "text-white"
+                        : "text-foreground",
+                    )}
+                  >
+                    {hero.title}
+                  </p>
+                </div>
+                <PinOpenMediaContextPageTabs
+                  page={sheetPage}
+                  onPageChange={setSheetPage}
+                  variant={isBridgeContext ? "bridge" : "personal"}
+                  className="mt-0.5"
+                />
+                <button
+                  type="button"
+                  onClick={() => onOpenChange(false)}
+                  className={cn(
+                    "flex size-9 shrink-0 items-center justify-center rounded-full active:opacity-80",
+                    isBridgeContext && sheetPage === "media"
+                      ? "bg-white/10 text-white"
+                      : "bg-muted active:bg-muted/80",
+                  )}
+                  aria-label="닫기"
+                >
+                  <X
+                    className={cn(
+                      "size-5",
+                      isBridgeContext && sheetPage === "media"
+                        ? "text-white/80"
+                        : "text-muted-foreground",
+                    )}
+                    aria-hidden
+                  />
+                </button>
+              </header>
 
-                  <PinOpenMediaContextPager
-                    summary={contextDetailsSummary}
-                    page={sheetPage}
-                    onPageChange={setSheetPage}
-                    variant={isBridgeContext ? "bridge" : "personal"}
-                    className="min-h-0 flex-1"
-                    media={
-                      isBridgeContext ? (
-                        <ExperienceBridgeMediaShell
+              <PinOpenMediaContextPager
+                summary={contextDetailsSummary}
+                page={sheetPage}
+                onPageChange={setSheetPage}
+                variant={isBridgeContext ? "bridge" : "personal"}
+                className="min-h-0 flex-1"
+                media={
+                  isBridgeContext && reelItems.length > 0 ? (
+                    <ExperienceBridgeMediaShell
+                      items={reelItems}
+                      title={hero.title}
+                      place={hero.place}
+                      eventId={cluster.eventId}
+                      viewerUserId={user?.id}
+                      deletable={bridgeMediaDeletable}
+                      onMediaDeleted={() => {
+                        setRevision((value) => value + 1);
+                        toast.success("삭제했어요");
+                      }}
+                    />
+                  ) : reelItems.length > 0 ? (
+                    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+                      <div className="min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                        <GlobeContextMediaShortsReel
+                          key={cluster.eventId}
                           items={reelItems}
                           title={hero.title}
                           place={hero.place}
+                          fillViewport
+                          embedded
                           eventId={cluster.eventId}
                           viewerUserId={user?.id}
                           deletable={bridgeMediaDeletable}
@@ -484,164 +492,79 @@ export function PinOpenSheet({
                             toast.success("삭제했어요");
                           }}
                         />
-                      ) : (
-                        <div className="flex h-full min-h-0 flex-col overflow-hidden">
-                          <div className="min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                            <GlobeContextMediaShortsReel
-                              key={cluster.eventId}
-                              items={reelItems}
-                              title={hero.title}
-                              place={hero.place}
-                              fillViewport
-                              embedded
-                              eventId={cluster.eventId}
-                              viewerUserId={user?.id}
-                              deletable={bridgeMediaDeletable}
-                              onMediaDeleted={() => {
-                                setRevision((value) => value + 1);
-                                toast.success("삭제했어요");
-                              }}
-                            />
-                          </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                      <ExperienceHeroCard
+                        title={hero.title}
+                        date={hero.date}
+                        place={hero.place}
+                        peopleCount={hero.peopleCount}
+                        photoCount={hero.photoCount}
+                        videoCount={hero.videoCount}
+                        heroImageContextId={hero.heroImageContextId}
+                        recallLine={hero.recallLine}
+                      />
+                      {volume ? (
+                        <div className="mt-4">
+                          <SpatialMediaSyncPlayer
+                            volume={volume}
+                            classifiedPins={classifiedPins}
+                            experienceOpen
+                            initialItemId={openMomentItemId}
+                          />
                         </div>
-                      )
-                    }
-                  >
-                    {contextDetailsBody}
-                  </PinOpenMediaContextPager>
-                </div>
-
-                <div className="shrink-0 space-y-2 border-t border-border px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-                  <GlobeContextPhotoButton
-                    eventId={cluster.eventId}
-                    eventTitle={hero.title}
-                    variant="secondary"
-                    onIngested={() => {
-                      setRevision((value) => value + 1);
-                      const eventId = cluster.eventId.trim();
-                      void syncBridgeSharedMediaFromRemote(eventId, user?.id).then(
-                        (merged) => {
-                          if (merged) {
-                            setRevision((value) => value + 1);
-                          }
-                        },
-                      );
-                    }}
+                      ) : null}
+                    </div>
+                  )
+                }
+              >
+                <div className="space-y-3">
+                  <PinContextTappableField
+                    label="장소"
+                    value={hero.place}
+                    onPress={() => setEditKind("place")}
                   />
-                  <button
-                    type="button"
-                    className="w-full rounded-2xl border border-border bg-background py-3.5 text-[15px] font-semibold text-foreground active:opacity-85"
-                    onClick={() => onOpenChange(false)}
-                    data-pin-open-close
-                  >
-                    닫기
-                  </button>
+                  <PinContextTappableField
+                    label="경험 제목"
+                    value={hero.title}
+                    onPress={() => setEditKind("title")}
+                  />
+                  <p className="px-2 text-[11px] text-muted-foreground">
+                    틀린 이름은 탭해서 바로 고쳐요
+                  </p>
                 </div>
-              </>
-            ) : (
-              <>
-            <header className="flex items-start gap-2 px-4 pb-3 pt-3">
-              <div className="min-w-0 flex-1 space-y-1">
-                <PinContextTappableField
-                  label="장소"
-                  value={hero.place}
-                  onPress={() => setEditKind("place")}
-                />
-                <PinContextTappableField
-                  label="경험 제목"
-                  value={hero.title}
-                  onPress={() => setEditKind("title")}
-                />
-                <p className="px-2 text-[11px] text-muted-foreground">
-                  틀린 이름은 탭해서 바로 고쳐요
-                </p>
-              </div>
+                {contextDetailsBody}
+              </PinOpenMediaContextPager>
+            </div>
+
+            <div className="shrink-0 space-y-2 border-t border-border px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+              <GlobeContextPhotoButton
+                eventId={cluster.eventId}
+                eventTitle={hero.title}
+                variant={photoPrimary ? "primary" : "secondary"}
+                onIngested={() => {
+                  setRevision((value) => value + 1);
+                  const eventId = cluster.eventId.trim();
+                  void syncBridgeSharedMediaFromRemote(eventId, user?.id).then(
+                    (merged) => {
+                      if (merged) {
+                        setRevision((value) => value + 1);
+                      }
+                    },
+                  );
+                }}
+              />
               <button
                 type="button"
+                className="w-full rounded-2xl border border-border bg-background py-3.5 text-[15px] font-semibold text-foreground active:opacity-85"
                 onClick={() => onOpenChange(false)}
-                className="flex size-9 shrink-0 items-center justify-center rounded-full active:bg-foreground/5"
-                aria-label="닫기"
+                data-pin-open-close
               >
-                <X className="size-5 text-muted-foreground" aria-hidden />
+                닫기
               </button>
-            </header>
-
-            {cluster && hero ? (
-              <div className="shrink-0 px-4 pb-3">
-                <GlobeContextPhotoButton
-                  eventId={cluster.eventId}
-                  eventTitle={hero.title}
-                  variant={photoPrimary ? "primary" : "secondary"}
-                  onIngested={() => setRevision((value) => value + 1)}
-                />
-              </div>
-            ) : null}
-
-            <div className="min-h-0 flex-1 overflow-y-auto pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <div className="snap-start space-y-5 px-4 pt-2">
-                {tripLeg ? <ExperienceTripLegBar trip={tripLeg} /> : null}
-                {reelItems.length === 0 ? (
-                  <ExperienceHeroCard
-                    title={hero.title}
-                    date={hero.date}
-                    place={hero.place}
-                    peopleCount={hero.peopleCount}
-                    photoCount={hero.photoCount}
-                    videoCount={hero.videoCount}
-                    heroImageContextId={hero.heroImageContextId}
-                    recallLine={hero.recallLine}
-                  />
-                ) : null}
-                <PeopleStrip names={people} />
-                <RepresentativeMomentsRow moments={moments} />
-                {conversation ? (
-                  <RecentConversationStrip
-                    conversation={conversation}
-                    onOpenRoom={openExperienceRoom}
-                  />
-                ) : null}
-                {shareEvent ? (
-                  <GlobeContextShareFriendsPanel event={shareEvent} />
-                ) : null}
-                <EvidenceList rows={evidence} />
-                {opened && volume ? (
-                  <SpatialMediaSyncPlayer
-                    volume={volume}
-                    classifiedPins={classifiedPins}
-                    experienceOpen
-                    initialItemId={openMomentItemId}
-                  />
-                ) : null}
-              </div>
             </div>
-
-            <div className="shrink-0 border-t border-border px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-                <button
-                  type="button"
-                  className={cn(
-                    "w-full rounded-2xl py-4 text-[16px] font-semibold transition-opacity active:opacity-85",
-                    opened
-                      ? "border border-border bg-background text-foreground"
-                      : "bg-foreground text-background",
-                    !volume && !opened && "opacity-40",
-                  )}
-                  disabled={!opened && !volume}
-                  onClick={() => {
-                    setOpened((value) => {
-                      const next = !value;
-                      if (next) {
-                        onOpenDetail?.();
-                      }
-                      return next;
-                    });
-                  }}
-                  data-pin-open-primary
-                >
-                  {opened ? "닫기" : "열기"}
-                </button>
-            </div>
-              </>
-            )}
 
             <PinContextFieldSheet
               open={editKind !== null}

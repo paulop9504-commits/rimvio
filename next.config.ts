@@ -36,6 +36,24 @@ const nextConfig: NextConfig = {
         headers: securityHeaders,
       },
       {
+        source: "/((?!_next/static|_next/image|icons|favicon).*)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+          },
+        ],
+      },
+      {
+        source: "/sw.js",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+          },
+        ],
+      },
+      {
         source: "/api/beam/:slug",
         headers: [
           {
