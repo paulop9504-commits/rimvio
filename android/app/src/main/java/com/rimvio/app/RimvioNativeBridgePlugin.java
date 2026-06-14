@@ -1,24 +1,42 @@
 package com.rimvio.app;
 
+import android.Manifest;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.database.ContentObserver;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.MediaStore;
 import android.provider.Settings;
 import android.text.TextUtils;
 import com.getcapacitor.JSObject;
+import com.getcapacitor.PermissionState;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import com.getcapacitor.annotation.Permission;
+import com.getcapacitor.annotation.PermissionCallback;
 
-@CapacitorPlugin(name = "RimvioNativeBridge")
+@CapacitorPlugin(
+  name = "RimvioNativeBridge",
+  permissions = {
+    @Permission(
+      alias = "photos",
+      strings = {
+        Manifest.permission.READ_MEDIA_IMAGES,
+        Manifest.permission.READ_MEDIA_VIDEO,
+      }),
+    @Permission(
+      alias = "storage",
+      strings = {Manifest.permission.READ_EXTERNAL_STORAGE}),
+    @Permission(
+      alias = "mediaLocation",
+      strings = {Manifest.permission.ACCESS_MEDIA_LOCATION}),
+  })
 public class RimvioNativeBridgePlugin extends Plugin implements NotificationForwarder.Listener {
 
-  private static final int PHOTO_PERMISSION_REQUEST = 9101;
-  private PluginCall savedPhotoPermissionCall;
+  private static final String PHOTO_PERMISSION_CALLBACK = "photoPermissionCallback";
   private ContentObserver photoObserver;
 
   @Override
@@ -90,15 +108,20 @@ public class RimvioNativeBridgePlugin extends Plugin implements NotificationForw
 
   @PluginMethod
   public void requestPhotoLibraryPermission(PluginCall call) {
-    String[] permissions = PhotoLibraryScanner.requiredPermissions();
-    if (hasAllPermissions(permissions)) {
+    if (hasPhotoLibraryPermissions()) {
       JSObject ret = new JSObject();
       ret.put("granted", true);
       call.resolve(ret);
       return;
     }
-    savedPhotoPermissionCall = call;
-    requestAllPermissions(call, permissions, PHOTO_PERMISSION_REQUEST);
+    requestPermissionForAliases(getRequiredPermissionAliases(), call, PHOTO_PERMISSION_CALLBACK);
+  }
+
+  @PermissionCallback
+  private void photoPermissionCallback(PluginCall call) {
+    JSObject ret = new JSObject();
+    ret.put("granted", hasPhotoLibraryPermissions());
+    call.resolve(ret);
   }
 
   @PluginMethod
@@ -124,35 +147,19 @@ public class RimvioNativeBridgePlugin extends Plugin implements NotificationForw
     }
   }
 
-  @Override
-  protected void handleRequestPermissionsResult(
-      int requestCode, String[] permissions, int[] grantResults) {
-    super.handleRequestPermissionsResult(requestCode, permissions, grantResults);
-    if (requestCode != PHOTO_PERMISSION_REQUEST || savedPhotoPermissionCall == null) {
-      return;
+  private String[] getRequiredPermissionAliases() {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+      return new String[] {"photos", "mediaLocation"};
     }
-
-    boolean granted = true;
-    if (grantResults.length == 0) {
-      granted = false;
-    } else {
-      for (int result : grantResults) {
-        if (result != PackageManager.PERMISSION_GRANTED) {
-          granted = false;
-          break;
-        }
-      }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+      return new String[] {"storage", "mediaLocation"};
     }
-
-    JSObject ret = new JSObject();
-    ret.put("granted", granted);
-    savedPhotoPermissionCall.resolve(ret);
-    savedPhotoPermissionCall = null;
+    return new String[] {"storage"};
   }
 
-  private boolean hasAllPermissions(String[] permissions) {
-    for (String permission : permissions) {
-      if (!hasPermission(permission)) {
+  private boolean hasPhotoLibraryPermissions() {
+    for (String alias : getRequiredPermissionAliases()) {
+      if (getPermissionState(alias) != PermissionState.GRANTED) {
         return false;
       }
     }
