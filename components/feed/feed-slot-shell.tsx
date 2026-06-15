@@ -7,7 +7,6 @@ import { Settings2 } from "lucide-react";
 import { CalendarHeaderControls } from "@/components/calendar/calendar-header-controls";
 import { toast } from "sonner";
 import { ActiveActionsSheet } from "@/components/action-chat/active-actions-sheet";
-import { FeedSharedGlobeRecall } from "@/components/feed/feed-shared-globe-recall";
 import { FeedSlotStage } from "@/components/feed/feed-slot-stage";
 import { RelationshipFeedFolder } from "@/components/feed/relationship-feed-folder";
 import { RimvioLogo } from "@/components/rimvio-logo";
@@ -74,9 +73,8 @@ export function FeedSlotShell({ className, onOpenLinkPaste }: FeedSlotShellProps
   const simulateArrival = searchParams.get("simulateArrival") !== "0";
   bootstrapFeedDemoEvents(goldenPath, simulateArrival);
   const recallEventId = searchParams.get("recallEvent");
-  const sharedGlobeThreadId = searchParams.get("sharedGlobe");
   const { recall: gpsArrivalRecall } = useGpsArrivalRecall({
-    enabled: !recallEventId?.trim() && !sharedGlobeThreadId?.trim(),
+    enabled: !recallEventId?.trim(),
   });
   const { slots: relationshipSlots } = useRelationshipFeedSlots(true);
   const feedSlotMessages = useFeedSlotChatMessages();
@@ -229,9 +227,6 @@ export function FeedSlotShell({ className, onOpenLinkPaste }: FeedSlotShellProps
             learningPaused={surfaceState.learningPaused}
             systemLoadLevel={surfaceState.systemLoadLevel}
           />
-          {sharedGlobeThreadId?.trim() ? (
-            <FeedSharedGlobeRecall peerThreadId={sharedGlobeThreadId.trim()} />
-          ) : null}
           <FeedSlotStage
             frame={surfaceFrame}
             overlayRows={calendarForSheet.overlayRows}

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ChevronLeft, Globe } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { ExperienceDiscussionHeader } from "@/components/experience/experience-discussion-header";
 import { buildExperienceRoomBackHref } from "@/lib/globe/resolve-experience-peer-thread-id";
@@ -39,7 +39,6 @@ import { PeerChatThreadShell } from "@/components/peer-chat/peer-chat-thread-she
 import { PeerThreadChatPanel } from "@/components/peer-chat/peer-thread-chat-panel";
 import { GroupInfoSheet } from "@/components/peer-chat/group-info-sheet";
 import { PeerThreadHubPinBar } from "@/components/peer-chat/peer-thread-hub-pin-bar";
-import { SharedGlobeSheet } from "@/components/peer-chat/shared-globe-sheet";
 
 type PeerThreadRoomClientProps = {
   peerThreadId: string;
@@ -56,7 +55,6 @@ function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
   const experienceBackHref = buildExperienceRoomBackHref(experienceEventId);
   const [profileOpen, setProfileOpen] = useState(false);
   const [groupInfoOpen, setGroupInfoOpen] = useState(false);
-  const [sharedGlobeOpen, setSharedGlobeOpen] = useState(false);
   const [groupMetaName, setGroupMetaName] = useState<string | null>(null);
   const [groupInviteCode, setGroupInviteCode] = useState<string | null>(null);
   const roster = useMemo(() => readPinnedRoster(), []);
@@ -239,15 +237,6 @@ function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
         )}
         {experienceDiscussion ? null : (
           <>
-            <button
-              type="button"
-              onClick={() => setSharedGlobeOpen(true)}
-              className="mr-0.5 flex size-9 shrink-0 items-center justify-center rounded-full text-primary ring-1 ring-primary/25 active:bg-primary/10"
-              aria-label="우리 지구"
-              title="우리 지구"
-            >
-              <Globe className="size-[18px]" aria-hidden />
-            </button>
             <AiLensToggle
               enabled={settings.aiLensEnabled}
               onChange={toggleAiLens}
@@ -272,13 +261,6 @@ function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
         fallbackName={displayName}
         loading={profileLoading}
         peerThreadId={peerThreadId}
-      />
-
-      <SharedGlobeSheet
-        open={sharedGlobeOpen}
-        onOpenChange={setSharedGlobeOpen}
-        peerThreadId={peerThreadId}
-        displayName={displayName}
       />
 
       {isGroup ? (

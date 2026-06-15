@@ -6,6 +6,7 @@ import { Settings } from "lucide-react";
 import { toast } from "sonner";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { RimvioGlobeHubClient } from "@/components/experience/rimvio-globe-hub-client";
+import { GlobeBackerLink } from "@/components/globe/globe-backer-link";
 import { GlobeContextControlDock } from "@/components/globe/globe-context-control-dock";
 import { GlobeContextMapVideoStage } from "@/components/globe/globe-context-map-video-stage";
 import { GlobeContextIngestBar, type GlobeContextIngestBarHandle } from "@/components/globe/globe-context-ingest-bar";
@@ -690,7 +691,8 @@ function GlobeHomeBody() {
           toast.success("삭제했어요");
         }}
       />
-      <div className="pointer-events-none absolute left-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20">
+      <div className="pointer-events-none absolute left-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20 flex flex-col items-start gap-2">
+        <GlobeBackerLink className="pointer-events-auto" />
         <div className="pointer-events-auto">
           <GlobeContextControlDock
             timeFilter={timeFilter}
