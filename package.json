@@ -157,6 +157,7 @@
     "brand:transparent-logo": "npx tsx scripts/generate-transparent-logo.ts",
     "brand:all": "npm run brand:transparent-logo && npx tsx scripts/generate-pwa-icons.ts && npm run brand:svgs",
     "backup": "powershell -ExecutionPolicy Bypass -File scripts/backup-release.ps1",
+    "push:public": "powershell -ExecutionPolicy Bypass -File scripts/push-public-github.ps1",
     "verify:release": "npx tsc --noEmit && npm run lint && npm run test && npm run test:e2e && npm run experiment:server && npm run experiment:url && npm run build",
     "experiment:server": "npx tsx scripts/experiment-server-pipeline.ts",
     "experiment:food-photo": "npx tsx scripts/experiment-food-photo.ts",

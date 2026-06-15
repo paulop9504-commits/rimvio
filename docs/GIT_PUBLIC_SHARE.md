@@ -102,19 +102,38 @@ git rm --cached docs/RIMVIO_CONSTITUTION.md   # 이미 private로 옮긴 뒤
 
 ---
 
-## 5. GitHub 공개 repo 만들 때
+## 5. GitHub 저장소 URL (2026-06)
 
-1. **새 public repo** 생성 (또는 기존 repo를 private → public 전환 전 검사)
-2. 위 **3번 이동·`git rm --cached`** 완료
-3. `npm test` / `npm run build` 통과 확인
-4. 첫 push:
+| 용도 | URL | 비고 |
+|------|-----|------|
+| **개발 (private)** | https://github.com/paulop9504-dotcom/rimvio | 전체 소스 · 내부 docs · `origin` |
+| **공개 (public)** | https://github.com/paulop9504-dotcom/rimvio-public | 민감 경로 제외 미러 · `public` remote |
+
+로컬 remote:
 
 ```powershell
-git remote add public https://github.com/YOUR_USER/rimvio-public.git
-git push public main
+git remote -v
+# origin  …/rimvio.git       (private, push/pull 일상)
+# public …/rimvio-public.git (공개 미러만 npm run push:public)
 ```
 
-5. GitHub **Settings → Secrets** 에 Vercel/Supabase 토큰 (코드에 넣지 않음)
+### 공개 미러 push
+
+민감 경로는 `scripts/public-exclude-paths.txt` 에 정의됩니다.
+
+```powershell
+npm run push:public          # rimvio-public 에 동기화
+npm run push:public -- -DryRun   # 제외 목록만 확인 (PowerShell 직접 호출 시)
+```
+
+또는:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/push-public-github.ps1
+powershell -ExecutionPolicy Bypass -File scripts/push-public-github.ps1 -DryRun
+```
+
+push 전: `npm test` / `npm run build` 권장. GitHub **Settings → Secrets** 에 Vercel/Supabase 토큰 (코드에 넣지 않음).
 
 ---
 

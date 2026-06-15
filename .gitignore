@@ -69,3 +69,6 @@ capacitor.config.local.ts
 
 # Agent / IDE local only
 .cursor/rules/local-*.mdc
+
+# public mirror staging (scripts/push-public-github.ps1)
+.public-staging/

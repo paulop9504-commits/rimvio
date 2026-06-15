@@ -8,6 +8,8 @@ North Star: *Your Life, Operable.* (당신의 모든 일상을 OS로 만듭니�
 
 브랜드 가이드: [docs/RIMVIO_BRAND.md](./docs/RIMVIO_BRAND.md)
 
+**GitHub (공개 미러):** [github.com/paulop9504-dotcom/rimvio-public](https://github.com/paulop9504-dotcom/rimvio-public) — 투자·내부 docs 제외. 전체 개발 repo는 private [`rimvio`](https://github.com/paulop9504-dotcom/rimvio). [분리 가이드](./docs/GIT_PUBLIC_SHARE.md)
+
 ## 빠른 시작
 
 **Cursor:** Rimvio만 작업할 때는 [`rimvio.code-workspace`](./rimvio.code-workspace) 로 열기 ([docs/WORKSPACE.md](./docs/WORKSPACE.md)). Silent Ghost repo와 분리.
