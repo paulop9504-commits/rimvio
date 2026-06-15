@@ -13,8 +13,11 @@ import {
 } from "../lib/globe/project-pin-clusters";
 import {
   projectTripLegArcs,
+  projectGlobeTripArcs,
+  projectFocusedContextHubArc,
   projectTripLegBar,
 } from "../lib/globe/project-trip-leg-arcs";
+import { applyFocusedHubGlobePins } from "../lib/globe/context-hub/apply-focused-hub-globe-visuals";
 import {
   LINKED_EVENT_ID_META_KEY,
   TRIP_LEG_META_KEY,
@@ -103,5 +106,44 @@ const destBar = projectTripLegBar({
 });
 assert.ok(destBar);
 assert.equal(destBar!.activeLeg, "destination");
+
+const focusedArc = projectFocusedContextHubArc({
+  focusedEventId: destination.id,
+  eventsById,
+  clusters,
+});
+assert.ok(focusedArc);
+assert.equal(focusedArc!.emphasis, "focused");
+assert.equal(focusedArc!.tripRef, GLOBE_DEMO_TRIP_REF.germany);
+
+const focusedOnly = projectGlobeTripArcs({
+  eventsById,
+  clusters,
+  focusedEventId: destination.id,
+  showBackgroundTripArcs: true,
+});
+assert.equal(focusedOnly.length, 1);
+assert.equal(focusedOnly[0]!.emphasis, "focused");
+
+const backgroundOnly = projectGlobeTripArcs({
+  eventsById,
+  clusters,
+  focusedEventId: null,
+  showBackgroundTripArcs: true,
+});
+assert.equal(backgroundOnly.length, 1);
+
+const mutedPins = applyFocusedHubGlobePins(classified, {
+  focusedEventId: destination.id,
+  eventsById,
+});
+assert.equal(
+  mutedPins.filter((row) => row.hubFocusMuted).length,
+  0,
+);
+assert.equal(
+  mutedPins.filter((row) => row.emphasis === "primary").length,
+  2,
+);
 
 console.log("test-trip-leg-arcs: ok");

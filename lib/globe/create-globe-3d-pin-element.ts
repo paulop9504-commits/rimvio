@@ -314,7 +314,7 @@ export function createGlobe3dPinElement(
   const root = document.createElement("button");
   root.type = "button";
   root.dataset.globePinId = pin.id;
-  root.className = `rimvio-globe-3d-pin${pin.tripLeg === "departure" ? " rimvio-globe-3d-pin--departure" : ""}${active ? " rimvio-globe-3d-pin--active" : ""}`;
+  root.className = `rimvio-globe-3d-pin${pin.tripLeg === "departure" ? " rimvio-globe-3d-pin--departure" : ""}${active ? " rimvio-globe-3d-pin--active" : ""}${pin.hubFocusMuted ? " rimvio-globe-3d-pin--hub-muted" : ""}${!pin.hubFocusMuted && pin.emphasis === "primary" && pin.tripLeg ? " rimvio-globe-3d-pin--hub-neighbor" : ""}`;
   const peerLabel = pin.peers?.map((peer) => peer.displayName).join(", ");
   root.setAttribute(
     "aria-label",

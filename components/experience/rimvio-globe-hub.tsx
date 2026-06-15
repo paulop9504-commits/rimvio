@@ -52,7 +52,8 @@ import {
   projectPinClusterClassifiedPins,
   projectPinClustersFromGraph,
 } from "@/lib/globe/project-pin-clusters";
-import { projectTripLegArcs } from "@/lib/globe/project-trip-leg-arcs";
+import { projectGlobeTripArcs } from "@/lib/globe/project-trip-leg-arcs";
+import { applyFocusedHubGlobePins } from "@/lib/globe/context-hub/apply-focused-hub-globe-visuals";
 import {
   GLOBE_EXPERIENCE_SETTINGS_UPDATED,
   isShowContextWarmthEnabled,
@@ -129,6 +130,8 @@ export type RimvioGlobeHubProps = {
   bridgeGhostClusters?: readonly PinCluster[];
   /** Stop WebGL render loop while sheets cover the globe. */
   renderSuspended?: boolean;
+  /** Selected context — draw hub connector arc on the globe. */
+  focusedContextEventId?: string | null;
 };
 
 type RimvioGlobeHubBodyProps = {
@@ -156,6 +159,7 @@ type RimvioGlobeHubBodyProps = {
   onGlobePress?: (coords: { lat: number; lng: number }) => void;
   onDetailLevelChange?: (level: GlobeDetailLevel) => void;
   renderSuspended?: boolean;
+  focusedContextEventId?: string | null;
 };
 
 const RimvioGlobeHubBody = memo(
@@ -175,6 +179,7 @@ const RimvioGlobeHubBody = memo(
       onGlobePress,
       onDetailLevelChange,
       renderSuspended = false,
+      focusedContextEventId = null,
     },
     ref,
   ) {
@@ -221,8 +226,18 @@ const RimvioGlobeHubBody = memo(
         classifiedPins,
         pinCoordOverrides ?? new Map(),
       );
-      return projectGlobeZoomClusterPins(withOverrides, detailLevel);
-    }, [classifiedPins, pinCoordOverrides, detailLevel]);
+      const zoomed = projectGlobeZoomClusterPins(withOverrides, detailLevel);
+      return applyFocusedHubGlobePins(zoomed, {
+        focusedEventId: focusedContextEventId,
+        eventsById,
+      });
+    }, [
+      classifiedPins,
+      pinCoordOverrides,
+      detailLevel,
+      focusedContextEventId,
+      eventsById,
+    ]);
     const [tripArcsEnabled, setTripArcsEnabled] = useState(() => isShowTripArcsEnabled());
     const [contextWarmthEnabled, setContextWarmthEnabled] = useState(() =>
       isShowContextWarmthEnabled(),
@@ -238,10 +253,13 @@ const RimvioGlobeHubBody = memo(
     }, []);
     const tripArcs = useMemo(
       () =>
-        tripArcsEnabled
-          ? projectTripLegArcs({ eventsById, clusters })
-          : [],
-      [eventsById, clusters, tripArcsEnabled],
+        projectGlobeTripArcs({
+          eventsById,
+          clusters,
+          focusedEventId: focusedContextEventId,
+          showBackgroundTripArcs: tripArcsEnabled && !focusedContextEventId?.trim(),
+        }),
+      [eventsById, clusters, tripArcsEnabled, focusedContextEventId],
     );
     const contextWarmthPoints = useMemo(
       () => buildGlobeContextWarmthPoints(clusters),
@@ -419,6 +437,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
   onDetailLevelChange,
   bridgeGhostClusters,
   renderSuspended,
+  focusedContextEventId,
 }: RimvioGlobeHubProps) {
   const { ready, eventsById, personalPinRevision } = useGlobeEventSnapshot();
   const { graph } = useExperienceGraph(ready ? eventsById : undefined);
@@ -506,6 +525,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
         initialRecallEventId?.trim() || initialOpenPinId?.trim(),
       )}
       renderSuspended={renderSuspended}
+      focusedContextEventId={focusedContextEventId}
     />
   );
 });

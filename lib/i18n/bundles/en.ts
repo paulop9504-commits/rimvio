@@ -313,6 +313,11 @@ export const copyEn: Copy = {
     contextHubDraftBody:
       "They connect when you pin the context · change anytime from the pin sheet",
     contextHubOpenFlight: "View flights",
+    contextHubRailTitle: "Hubs",
+    contextHubRailEmpty: "Travel contexts show up here",
+    contextHubRailPickAirport: "Departure",
+    contextHubRailFocus: (place: string) => `Go to ${place}`,
+    contextHubRailConnect: (place: string) => `Connect hub to ${place}`,
     dockExpandAria: "Expand filters and location",
     dockCollapseAria: "Collapse filters and location",
     createFail: "Couldn't create context",

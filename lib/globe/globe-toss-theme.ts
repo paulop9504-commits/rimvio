@@ -31,4 +31,6 @@ export const GLOBE_TOSS_THEME = {
   sharedGlobeMapStyle: "voyager" as const,
   /** Great-circle trip leg connector on 3D globe (globe.gl arcStroke). */
   tripArcStroke: 0.085,
+  tripArcFocusedStroke: 0.14,
+  tripArcFocusedAltitude: 0.28,
 } as const;

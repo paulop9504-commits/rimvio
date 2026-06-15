@@ -35,4 +35,6 @@ export type ClassifiedGlobePin = {
   peers?: readonly GlobePinPeer[];
   /** Bridge invitees — top-right chip on pin card after share. */
   sharedWith?: readonly GlobePinPeer[];
+  /** Hub focus mode — soften pins outside the selected 1-hop pair. */
+  hubFocusMuted?: boolean;
 };

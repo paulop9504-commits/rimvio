@@ -464,8 +464,16 @@ export const RimvioGlobe3D = memo(
         .arcEndLat((arc: object) => (arc as GlobeTripArc).endLat)
         .arcEndLng((arc: object) => (arc as GlobeTripArc).endLng)
         .arcColor((arc: object) => (arc as GlobeTripArc).color)
-        .arcAltitude(0.22)
-        .arcStroke(GLOBE_TOSS_THEME.tripArcStroke)
+        .arcAltitude((arc: object) =>
+          (arc as GlobeTripArc).emphasis === "focused"
+            ? GLOBE_TOSS_THEME.tripArcFocusedAltitude
+            : 0.22,
+        )
+        .arcStroke((arc: object) =>
+          (arc as GlobeTripArc).emphasis === "focused"
+            ? GLOBE_TOSS_THEME.tripArcFocusedStroke
+            : GLOBE_TOSS_THEME.tripArcStroke,
+        )
         .arcsTransitionDuration(0)
         .ringsData([])
         .ringLat((row: object) => (row as { lat: number }).lat)

@@ -11,6 +11,8 @@ export type GlobeTripArc = {
   endLat: number;
   endLng: number;
   color: string;
+  /** Selected context — thicker stroke on globe. */
+  emphasis?: "focused" | "default";
 };
 
 export type TripLegBarProjection = {
@@ -70,6 +72,84 @@ export function projectTripLegArcs(input: {
   }
 
   return arcs;
+}
+
+/** Arc for the actively selected context with a plugged-in departure hub. */
+export function projectFocusedContextHubArc(input: {
+  focusedEventId: string | null | undefined;
+  eventsById: ReadonlyMap<string, EventCandidate>;
+  clusters: readonly PinCluster[];
+}): GlobeTripArc | null {
+  const eventId = input.focusedEventId?.trim();
+  if (!eventId) {
+    return null;
+  }
+
+  const event = input.eventsById.get(eventId);
+  if (!event) {
+    return null;
+  }
+
+  const leg = readTripLegFromEvent(event);
+  if (!leg?.linkedEventId) {
+    return null;
+  }
+
+  const linkedEvent = input.eventsById.get(leg.linkedEventId);
+  const linkedLeg = readTripLegFromEvent(linkedEvent);
+  if (!linkedEvent || !linkedLeg || linkedLeg.tripRef !== leg.tripRef) {
+    return null;
+  }
+
+  const clusterMap = clusterByEventId(input.clusters);
+  const departureEventId =
+    leg.leg === "departure" ? event.id : leg.linkedEventId;
+  const destinationEventId =
+    leg.leg === "destination" ? event.id : leg.linkedEventId;
+
+  const from = clusterMap.get(departureEventId);
+  const to = clusterMap.get(destinationEventId);
+  if (!from || !to) {
+    return null;
+  }
+
+  return {
+    id: `trip-arc:focus:${leg.tripRef}`,
+    tripRef: leg.tripRef,
+    startLat: from.lat,
+    startLng: from.lng,
+    endLat: to.lat,
+    endLng: to.lng,
+    color: GLOBE_TOSS_THEME.blueDeep,
+    emphasis: "focused",
+  };
+}
+
+/** Selected context only — single 1-hop hub arc. Background arcs when nothing is focused. */
+export function projectGlobeTripArcs(input: {
+  eventsById: ReadonlyMap<string, EventCandidate>;
+  clusters: readonly PinCluster[];
+  focusedEventId?: string | null;
+  showBackgroundTripArcs?: boolean;
+}): GlobeTripArc[] {
+  const focused = projectFocusedContextHubArc({
+    focusedEventId: input.focusedEventId,
+    eventsById: input.eventsById,
+    clusters: input.clusters,
+  });
+
+  if (focused) {
+    return [focused];
+  }
+
+  if (input.showBackgroundTripArcs) {
+    return projectTripLegArcs({
+      eventsById: input.eventsById,
+      clusters: input.clusters,
+    });
+  }
+
+  return [];
 }
 
 export function projectTripLegBar(input: {

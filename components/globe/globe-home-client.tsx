@@ -8,6 +8,7 @@ import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-
 import { RimvioGlobeHubClient } from "@/components/experience/rimvio-globe-hub-client";
 import { GlobeBackerLink } from "@/components/globe/globe-backer-link";
 import { GlobeContextControlDock } from "@/components/globe/globe-context-control-dock";
+import { GlobeContextHubRail } from "@/components/globe/globe-context-hub-rail";
 import { GlobeContextMapVideoStage } from "@/components/globe/globe-context-map-video-stage";
 import { GlobeContextIngestBar, type GlobeContextIngestBarHandle } from "@/components/globe/globe-context-ingest-bar";
 import { GlobeFirstVisitCoach } from "@/components/globe/globe-first-visit-coach";
@@ -688,6 +689,7 @@ function GlobeHomeBody() {
         pinCoordOverrides={pinCoordOverrides}
         bridgeGhostClusters={bridgeGhostClusters}
         renderSuspended={globeRenderSuspended}
+        focusedContextEventId={activeCluster?.eventId ?? null}
       />
       <GlobeContextStackPicker
         clusters={stackClusters ?? []}
@@ -718,7 +720,7 @@ function GlobeHomeBody() {
           toast.success("삭제했어요");
         }}
       />
-      <div className="pointer-events-none absolute left-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20 flex flex-col items-start gap-2">
+      <div className="pointer-events-none absolute left-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20 flex max-h-[calc(100%-var(--rimvio-globe-ingest-offset)-5.5rem)] flex-col items-start gap-2">
         <GlobeBackerLink className="pointer-events-auto" />
         <div className="pointer-events-auto">
           <GlobeContextControlDock
@@ -742,6 +744,16 @@ function GlobeHomeBody() {
             }
           />
         </div>
+        <GlobeContextHubRail
+          className="pointer-events-auto min-h-0 max-h-[min(24rem,calc(100vh-var(--rimvio-globe-ingest-offset)-12rem))]"
+          visible={!globeRenderSuspended}
+          activeEventId={activeCluster?.eventId ?? null}
+          timeFilter={timeFilter}
+          peopleFilter={peopleFilter}
+          onFocusContext={(eventId) => {
+            focusContextByEventId(eventId, { openSheet: false });
+          }}
+        />
       </div>
       <div className="pointer-events-none absolute right-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20 flex items-center gap-2">
         <GlobeMediaPoolTrigger
