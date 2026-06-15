@@ -34,8 +34,8 @@ export function tuneGlobeOrbitControls(controls: OrbitControlsLike): void {
   }
 
   if (touchDevice) {
-    controls.rotateSpeed = 0.34;
-    controls.dampingFactor = 0.088;
+    controls.rotateSpeed = 0.46;
+    controls.dampingFactor = 0.042;
     controls.enableZoom = false;
   }
 }

@@ -197,6 +197,8 @@ export const RimvioGlobe3D = memo(
     const applyZoomPovRef = useRef<
       (pov: { lat: number; lng: number; altitude: number }) => void
     >(() => {});
+    const gestureActiveRef = useRef(false);
+    const flushDeferredGlobeVisualsRef = useRef<(() => void) | null>(null);
 
     lockGlobeControlsRef.current = () => {
       pinPressLockRef.current = true;
@@ -498,14 +500,51 @@ export const RimvioGlobe3D = memo(
       tuneGlobeOrbitControls(controls);
 
       const setGlobeInteracting = (active: boolean) => {
+        gestureActiveRef.current = active;
         shellRef.current?.setAttribute(
           "data-globe-interacting",
           active ? "true" : "false",
         );
       };
 
-      controls.addEventListener("start", () => setGlobeInteracting(true));
-      controls.addEventListener("end", () => setGlobeInteracting(false));
+      const flushDeferredGlobeVisuals = () => {
+        applyGlobePinUiScale(root, pinUiScaleRef.current);
+        syncContextWarmthRef.current();
+        scheduleTileTextureFiltering();
+      };
+      flushDeferredGlobeVisualsRef.current = flushDeferredGlobeVisuals;
+
+      controls.addEventListener("start", () => {
+        controls.enableDamping = false;
+        setGlobeInteracting(true);
+      });
+      controls.addEventListener("end", () => {
+        controls.enableDamping = true;
+        setGlobeInteracting(false);
+        flushDeferredGlobeVisuals();
+      });
+
+      let warmthSyncTimer: ReturnType<typeof setTimeout> | null = null;
+      let lastWarmthSyncAt = 0;
+
+      const scheduleWarmthSync = () => {
+        if (gestureActiveRef.current) {
+          if (warmthSyncTimer != null) {
+            return;
+          }
+          warmthSyncTimer = setTimeout(() => {
+            warmthSyncTimer = null;
+            lastWarmthSyncAt = performance.now();
+            syncContextWarmthRef.current();
+          }, 160);
+          return;
+        }
+        if (performance.now() - lastWarmthSyncAt < 80) {
+          return;
+        }
+        lastWarmthSyncAt = performance.now();
+        syncContextWarmthRef.current();
+      };
 
       const syncOverviewTexture = (altitude: number) => {
         const overviewUrl = overviewTextureUrlRef.current;
@@ -518,19 +557,43 @@ export const RimvioGlobe3D = memo(
         pov: { lat: number; lng: number; altitude: number },
         altitude = pov.altitude,
       ) => {
+        const prevAltitude = warmthAltitudeRef.current;
+        const prevDetail = warmthDetailRef.current;
         const detailLevel = resolveGlobeDetailLevel(altitude);
+        const altitudeChanged = Math.abs(altitude - prevAltitude) > 0.0008;
+        const detailChanged = detailLevel !== prevDetail;
+
         warmthAltitudeRef.current = altitude;
         warmthDetailRef.current = detailLevel;
-        onDetailLevelChangeRef.current?.(detailLevel);
-        shellRef.current?.setAttribute("data-globe-detail", detailLevel);
-        const pinScale = resolveGlobePinUiScaleBlended(altitude, detailLevel);
-        pinUiScaleRef.current = pinScale;
-        shellRef.current?.style.setProperty("--globe-pin-scale", String(pinScale));
-        applyGlobePinUiScale(root, pinScale);
-        globe.showAtmosphere(altitude >= GLOBE_TOSS_THEME.atmosphereCutoffAltitude);
-        globe.labelsData([]);
-        syncOverviewTexture(altitude);
-        syncContextWarmthRef.current();
+
+        if (!altitudeChanged && !detailChanged) {
+          return;
+        }
+
+        if (detailChanged) {
+          onDetailLevelChangeRef.current?.(detailLevel);
+          shellRef.current?.setAttribute("data-globe-detail", detailLevel);
+          globe.showAtmosphere(
+            altitude >= GLOBE_TOSS_THEME.atmosphereCutoffAltitude,
+          );
+          syncOverviewTexture(altitude);
+        }
+
+        if (altitudeChanged) {
+          const pinScale = resolveGlobePinUiScaleBlended(altitude, detailLevel);
+          if (Math.abs(pinScale - pinUiScaleRef.current) > 0.012) {
+            pinUiScaleRef.current = pinScale;
+            shellRef.current?.style.setProperty(
+              "--globe-pin-scale",
+              String(pinScale),
+            );
+            if (!gestureActiveRef.current) {
+              applyGlobePinUiScale(root, pinScale);
+            }
+          }
+          scheduleWarmthSync();
+        }
+
         onPointOfViewChangeRef.current?.({ ...pov, altitude, detailLevel });
       };
 
@@ -565,7 +628,9 @@ export const RimvioGlobe3D = memo(
           return;
         }
         emitPointOfView({ ...pov, altitude }, altitude);
-        scheduleTileTextureFiltering();
+        if (!gestureActiveRef.current) {
+          scheduleTileTextureFiltering();
+        }
       };
       applyZoomPovRef.current = applyZoomPov;
 
@@ -621,9 +686,13 @@ export const RimvioGlobe3D = memo(
         if (textureFilterTimer != null) {
           clearTimeout(textureFilterTimer);
         }
+        if (warmthSyncTimer != null) {
+          clearTimeout(warmthSyncTimer);
+        }
         if (zoomRaf != null) {
           cancelAnimationFrame(zoomRaf);
         }
+        flushDeferredGlobeVisualsRef.current = null;
         setGlobeInteracting(false);
         setGlobeReady(false);
         disposeGlobeGpuResources(globe);
@@ -648,10 +717,14 @@ export const RimvioGlobe3D = memo(
       controlsBlockedRef,
       onAfterFocalZoom: (pov) => applyZoomPovRef.current(pov),
       onInteractingChange: (active) => {
+        gestureActiveRef.current = active;
         shellRef.current?.setAttribute(
           "data-globe-interacting",
           active ? "true" : "false",
         );
+        if (!active) {
+          flushDeferredGlobeVisualsRef.current?.();
+        }
       },
     });
 

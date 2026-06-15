@@ -74,7 +74,7 @@ export function useGlobeAnimationPower(input: {
     };
 
     const controls = globe.controls();
-    const activityEvents = ["pointerdown", "pointermove", "wheel", "touchstart"] as const;
+    const activityEvents = ["pointerdown", "wheel", "touchstart"] as const;
     for (const eventName of activityEvents) {
       root.addEventListener(eventName, markActive, { passive: true });
     }
