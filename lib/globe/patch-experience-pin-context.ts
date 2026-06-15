@@ -4,11 +4,12 @@ import { appendCorrectionLog } from "@/lib/corrections/correction-log";
 import { applyGlobeContextPlaceCoords } from "@/lib/globe/apply-globe-context-place-coords";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 import type { EventCandidate } from "@/lib/events/event-candidate";
-import { commitEventUpsert } from "@/lib/source-of-truth/commit-truth";
+import { GLOBE_CONTEXT_NOTE_KEY } from "@/lib/globe/pin-context-note";
 
 export type ExperiencePinContextPatch = {
   title?: string;
   place?: string;
+  note?: string;
 };
 
 function requireEvent(eventId: string): EventCandidate {
@@ -54,6 +55,16 @@ export async function patchExperiencePinContext(
     ...existing.metadata,
     pinContextEditedAt: new Date().toISOString(),
   };
+
+  if (patch.note !== undefined) {
+    const trimmed = patch.note.trim();
+    nextMetadata = {
+      ...nextMetadata,
+      ...(trimmed
+        ? { [GLOBE_CONTEXT_NOTE_KEY]: trimmed }
+        : { [GLOBE_CONTEXT_NOTE_KEY]: undefined }),
+    };
+  }
 
   if (patch.place !== undefined && correctedPlace) {
     const withCoords = applyGlobeContextPlaceCoords(

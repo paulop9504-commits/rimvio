@@ -15,6 +15,8 @@ import { GlobeContextPhotoButton } from "@/components/globe/globe-context-photo-
 import { GlobeContextShareFriendsPanel } from "@/components/globe/globe-context-share-friends-panel";
 import { GlobeContextMediaShortsReel } from "@/components/globe/globe-context-media-shorts-reel";
 import { ExperienceBridgeMediaShell } from "@/components/globe/experience-bridge-media-shell";
+import { BridgeContextPanel } from "@/components/globe/bridge-context-panel";
+import { GlobeMediaPoolSheet } from "@/components/globe/globe-media-pool-sheet";
 import { PinOpenMediaContextPager, PinOpenMediaContextPageTabs, type PinMediaContextPage } from "@/components/globe/pin-open-media-context-pager";
 import { patchExperiencePinContext } from "@/lib/globe/patch-experience-pin-context";
 import { isGlobeManualContextEvent } from "@/lib/events/event-lifecycle";
@@ -49,6 +51,9 @@ import { projectTripLegBar } from "@/lib/globe/project-trip-leg-arcs";
 import { projectExperienceRoom } from "@/lib/experience-room/project-experience-room";
 import { projectRepresentativeMoments } from "@/lib/globe/project-representative-moments";
 import { syncBridgeSharedMediaFromRemote } from "@/lib/experience-bridge/sync-bridge-participant-media";
+import { listReadableBridgeParticipants } from "@/lib/experience-bridge";
+import { useExperienceBridge } from "@/hooks/use-experience-bridge";
+import { attachPoolMediaBatch } from "@/lib/media-pool/attach-pool-media-to-event";
 import { isBridgeLinkedEventId } from "@/lib/experience-bridge/stamp-bridge-event-metadata";
 import { isBridgeSharedEvent } from "@/lib/globe/is-bridge-shared-event";
 import { useAuth } from "@/hooks/use-auth";
@@ -82,6 +87,8 @@ export function PinOpenSheet({
   const [revision, setRevision] = useState(0);
   const [editKind, setEditKind] = useState<PinContextFieldKind | null>(null);
   const [sheetPage, setSheetPage] = useState<PinMediaContextPage>("media");
+  const [authorFilter, setAuthorFilter] = useState<string | null>(null);
+  const [mediaPoolOpen, setMediaPoolOpen] = useState(false);
   const gpsPings = useFeedGpsPings();
 
   useEffect(() => {
@@ -178,6 +185,12 @@ export function PinOpenSheet({
 
   const threadId = experienceRoom?.threadIds[0] ?? null;
 
+  const bridge = useExperienceBridge({
+    event: event ?? null,
+    peerThreadId: threadId,
+    enabled: Boolean(event),
+  });
+
   useEffect(() => {
     if (!open || !threadId) {
       return;
@@ -235,6 +248,26 @@ export function PinOpenSheet({
     () => projectContextMediaReel({ event, volume, viewerUserId: user?.id }),
     [event, volume, revision, user?.id],
   );
+
+  const filteredReelItems = useMemo(() => {
+    if (!authorFilter) {
+      return reelItems;
+    }
+    return reelItems.filter((row) => {
+      const owner = row.ownerUserId?.trim();
+      const author = row.authorDisplayName?.trim();
+      return owner === authorFilter || author === authorFilter;
+    });
+  }, [authorFilter, reelItems]);
+
+  const bridgeParticipants = useMemo(() => {
+    const rows = listReadableBridgeParticipants(bridge.state?.participants ?? []);
+    return rows.map((row) => ({
+      userId: row.userId,
+      displayName: row.displayName,
+      avatarUrl: null,
+    }));
+  }, [bridge.state?.participants]);
 
   const conversation = useMemo(() => {
     if (!event) {
@@ -297,6 +330,14 @@ export function PinOpenSheet({
   }, [bridgeMediaDeletable, event, reelItems, user?.id]);
 
   const contextDetailsSummary = useMemo(() => {
+    if (isBridgeContext) {
+      const parts = [copy.globe.bridgeContextRecallEyebrow];
+      if (people.length > 0) {
+        parts.push(`함께 ${people.length}명`);
+      }
+      parts.push(copy.globe.bridgeContextActionsEyebrow);
+      return parts.join(" · ");
+    }
     const parts: string[] = [];
     if (moments.length > 0) {
       parts.push("대표 장면");
@@ -313,23 +354,29 @@ export function PinOpenSheet({
       parts.push(`함께 ${people.length}명`);
     }
     return parts.length > 0 ? parts.join(" · ") : copy.globe.pinContextDetailsFallback;
-  }, [moments.length, shareEvent, evidence, people.length]);
+  }, [isBridgeContext, moments.length, shareEvent, evidence, people.length]);
 
   useEffect(() => {
     if (!open || !cluster?.eventId) {
       return;
     }
     setSheetPage("media");
+    setAuthorFilter(null);
   }, [open, cluster?.eventId]);
 
   const openExperienceRoom = () => {
-    if (!conversation?.peerThreadId || !event || !hero) {
+    const peerThreadId =
+      conversation?.peerThreadId?.trim() ||
+      bridge.state?.bridge.peerThreadId?.trim() ||
+      threadId?.trim() ||
+      "";
+    if (!peerThreadId || !event || !hero) {
       return;
     }
     onOpenChange(false);
     router.push(
       buildExperienceRoomHref({
-        peerThreadId: conversation.peerThreadId,
+        peerThreadId,
         eventId: event.id,
         title: hero.title,
         date: hero.date,
@@ -461,9 +508,9 @@ export function PinOpenSheet({
                 variant={isBridgeContext ? "bridge" : "personal"}
                 className="min-h-0 flex-1"
                 media={
-                  isBridgeContext && reelItems.length > 0 ? (
+                  isBridgeContext && filteredReelItems.length > 0 ? (
                     <ExperienceBridgeMediaShell
-                      items={reelItems}
+                      items={filteredReelItems}
                       title={hero.title}
                       place={hero.place}
                       eventId={cluster.eventId}
@@ -520,22 +567,42 @@ export function PinOpenSheet({
                   )
                 }
               >
-                <div className="space-y-3">
-                  <PinContextTappableField
-                    label="장소"
-                    value={hero.place}
-                    onPress={() => setEditKind("place")}
+                {isBridgeContext && event && hero ? (
+                  <BridgeContextPanel
+                    event={event}
+                    hero={hero}
+                    allEvents={allEvents}
+                    reelItems={reelItems}
+                    volume={volume}
+                    viewerUserId={user?.id}
+                    participants={bridgeParticipants}
+                    activeAuthorFilter={authorFilter}
+                    onAuthorFilterChange={setAuthorFilter}
+                    onShowFilteredMedia={() => setSheetPage("media")}
+                    onOpenTalk={openExperienceRoom}
+                    onOpenMediaPool={() => setMediaPoolOpen(true)}
+                    onNoteSaved={() => setRevision((value) => value + 1)}
                   />
-                  <PinContextTappableField
-                    label="경험 제목"
-                    value={hero.title}
-                    onPress={() => setEditKind("title")}
-                  />
-                  <p className="px-2 text-[11px] text-muted-foreground">
-                    틀린 이름은 탭해서 바로 고쳐요
-                  </p>
-                </div>
-                {contextDetailsBody}
+                ) : (
+                  <>
+                    <div className="space-y-3">
+                      <PinContextTappableField
+                        label="장소"
+                        value={hero.place}
+                        onPress={() => setEditKind("place")}
+                      />
+                      <PinContextTappableField
+                        label="경험 제목"
+                        value={hero.title}
+                        onPress={() => setEditKind("title")}
+                      />
+                      <p className="px-2 text-[11px] text-muted-foreground">
+                        틀린 이름은 탭해서 바로 고쳐요
+                      </p>
+                    </div>
+                    {contextDetailsBody}
+                  </>
+                )}
               </PinOpenMediaContextPager>
             </div>
 
@@ -579,20 +646,27 @@ export function PinOpenSheet({
                   ? hero.title
                   : editKind === "place"
                     ? hero.place
-                    : ""
+                    : editKind === "note"
+                      ? event?.metadata?.globeContextNote?.toString() ?? ""
+                      : ""
               }
               onSave={async (next) => {
-                if (!cluster?.eventId || !editKind || editKind === "note") {
+                if (!cluster?.eventId || !editKind) {
                   return;
                 }
                 try {
                   await patchExperiencePinContext(cluster.eventId, {
                     ...(editKind === "place" ? { place: next } : {}),
                     ...(editKind === "title" ? { title: next } : {}),
+                    ...(editKind === "note" ? { note: next } : {}),
                   });
                   setRevision((value) => value + 1);
                   toast.success(
-                    editKind === "place" ? "장소를 고쳤어요" : "제목을 고쳤어요",
+                    editKind === "place"
+                      ? "장소를 고쳤어요"
+                      : editKind === "title"
+                        ? "제목을 고쳤어요"
+                        : copy.globe.bridgeContextNoteSaved,
                   );
                 } catch (caught) {
                   const message =
@@ -602,6 +676,36 @@ export function PinOpenSheet({
                   toast.error(message);
                   throw caught;
                 }
+              }}
+            />
+
+            <GlobeMediaPoolSheet
+              open={mediaPoolOpen}
+              onOpenChange={setMediaPoolOpen}
+              activeContextTitle={hero.title}
+              onAttachToActive={
+                cluster?.eventId
+                  ? async (contextIds) => {
+                      const summary = await attachPoolMediaBatch({
+                        contextIds,
+                        eventId: cluster.eventId,
+                        hintTitle: hero.title,
+                      });
+                      toast.success(summary.toastLine);
+                      setRevision((value) => value + 1);
+                      void syncBridgeSharedMediaFromRemote(
+                        cluster.eventId,
+                        user?.id,
+                      ).then((merged) => {
+                        if (merged) {
+                          setRevision((value) => value + 1);
+                        }
+                      });
+                    }
+                  : undefined
+              }
+              onCreateContext={() => {
+                setMediaPoolOpen(false);
               }}
             />
           </motion.aside>
