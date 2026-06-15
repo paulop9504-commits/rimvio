@@ -1,6 +1,6 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { findEventCandidate } from "@/lib/events/event-store";
-import { buildDepartureHubFlightSearchUrl } from "@/lib/globe/context-hub/build-departure-hub-flight-url";
+import { buildContextHubFlightBooking } from "@/lib/globe/context-hub/build-context-hub-flight-booking-url";
 import {
   readContextHubIds,
   readContextHubKind,
@@ -22,6 +22,8 @@ export type ContextHubLink = {
   airportIata: string | null;
   actionUrl: string | null;
   actionLabelKo: string | null;
+  flightProvider?: "naver_flight" | "trip_com" | "google_flights" | null;
+  flightRouteKind?: "domestic_kr" | "international" | null;
 };
 
 function projectHubLink(
@@ -47,8 +49,8 @@ function projectHubLink(
     readPlanContextFromEvent(contextEvent)?.place?.trim() ||
     contextEvent.title.trim();
   const plan = readPlanContextFromEvent(contextEvent);
-  const actionUrl = airport
-    ? buildDepartureHubFlightSearchUrl({
+  const booking = airport
+    ? buildContextHubFlightBooking({
         airport,
         destinationPlace,
         departDateIso: plan?.windowStartIso ?? contextEvent.datetime,
@@ -61,8 +63,10 @@ function projectHubLink(
     label,
     shortLabel: airport?.shortLabelKo ?? label,
     airportIata: airport?.iata ?? (iata || null),
-    actionUrl,
-    actionLabelKo: actionUrl ? "항공권 보기" : null,
+    actionUrl: booking?.url ?? null,
+    actionLabelKo: booking?.actionLabelKo ?? null,
+    flightProvider: booking?.provider ?? null,
+    flightRouteKind: booking?.routeKind ?? null,
   };
 }
 

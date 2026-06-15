@@ -69,6 +69,9 @@ const relinked = connectDepartureHubToContext({
   airportId: "gmp",
 });
 assert.equal(listContextHubLinks(relinked.destinationEvent)[0]!.airportIata, "GMP");
-assert.ok(listContextHubLinks(relinked.destinationEvent)[0]!.actionUrl?.includes("google.com/travel/flights"));
+const gmpLink = listContextHubLinks(relinked.destinationEvent)[0]!;
+assert.ok(gmpLink.actionUrl?.includes("flight.naver.com/flights/domestic/GMP-CJU"));
+assert.equal(gmpLink.actionLabelKo, "네이버 항공 예매");
+assert.equal(gmpLink.flightRouteKind, "domestic_kr");
 
 console.log("test-departure-hub-connect: ok");

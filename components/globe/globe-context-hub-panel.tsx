@@ -177,7 +177,7 @@ export function GlobeContextHubPanel({
                   </span>
                   <span className="block text-[11px] text-muted-foreground">
                     {link.actionUrl
-                      ? copy.globe.contextHubOpenFlight
+                      ? (link.actionLabelKo ?? copy.globe.contextHubOpenFlight)
                       : copy.globe.contextHubDepartureKind}
                   </span>
                 </span>

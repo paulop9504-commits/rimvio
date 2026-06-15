@@ -467,7 +467,7 @@ export const RimvioGlobe3D = memo(
         .arcAltitude((arc: object) =>
           (arc as GlobeTripArc).emphasis === "focused"
             ? GLOBE_TOSS_THEME.tripArcFocusedAltitude
-            : 0.22,
+            : GLOBE_TOSS_THEME.tripArcAltitude,
         )
         .arcStroke((arc: object) =>
           (arc as GlobeTripArc).emphasis === "focused"

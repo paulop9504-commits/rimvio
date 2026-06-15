@@ -91,7 +91,7 @@ function HubServiceRow({
               className="shrink-0 rounded-full bg-primary px-2 py-1 text-[9px] font-bold text-primary-foreground active:opacity-80"
               data-globe-hub-service-open={row.serviceId}
             >
-              {link.airportIata ?? copy.globe.contextHubOpenFlight}
+              {link.actionLabelKo ?? link.airportIata ?? copy.globe.contextHubOpenFlight}
             </button>
           ) : (
             <button
