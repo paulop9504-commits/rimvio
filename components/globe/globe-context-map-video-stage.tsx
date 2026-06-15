@@ -250,6 +250,14 @@ export function GlobeContextMapVideoStage({
     onMediaDeleted?.();
   }, [onMediaDeleted]);
 
+  const openDetailsFromTap = useCallback(
+    (event?: { stopPropagation: () => void }) => {
+      event?.stopPropagation();
+      onOpenDetails?.();
+    },
+    [onOpenDetails],
+  );
+
   if (!visible || reel.length === 0) {
     return null;
   }
@@ -281,9 +289,10 @@ export function GlobeContextMapVideoStage({
               "border-2 border-white/90 bg-black shadow-[0_12px_40px_rgba(0,0,0,0.28)]",
               "ring-1 ring-black/10",
               "pointer-events-auto",
-              currentItem?.kind !== "video" && onOpenDetails && "cursor-pointer",
+              onOpenDetails && "cursor-pointer",
             )}
             onTouchStart={(event) => {
+              event.stopPropagation();
               const touch = event.changedTouches[0] ?? event.touches[0];
               if (!touch) {
                 return;
@@ -291,15 +300,27 @@ export function GlobeContextMapVideoStage({
               touchStartRef.current = { x: touch.clientX, y: touch.clientY };
             }}
             onTouchEnd={(event) => {
+              event.stopPropagation();
               const start = touchStartRef.current;
               const touch = event.changedTouches[0];
               touchStartRef.current = null;
               if (!start || !touch) {
                 return;
               }
-              handleSwipeEnd(touch.clientX - start.x, touch.clientY - start.y);
+              const dx = touch.clientX - start.x;
+              const dy = touch.clientY - start.y;
+              if (Math.abs(dx) < SWIPE_MIN_PX && Math.abs(dy) < SWIPE_MIN_PX) {
+                if ((event.target as HTMLElement).closest("button")) {
+                  return;
+                }
+                skipNextTapRef.current = true;
+                openDetailsFromTap(event);
+                return;
+              }
+              handleSwipeEnd(dx, dy);
             }}
             onClick={(event) => {
+              event.stopPropagation();
               if (skipNextTapRef.current) {
                 skipNextTapRef.current = false;
                 return;
@@ -307,10 +328,7 @@ export function GlobeContextMapVideoStage({
               if ((event.target as HTMLElement).closest("button")) {
                 return;
               }
-              if (currentItem?.kind === "video") {
-                return;
-              }
-              onOpenDetails?.();
+              openDetailsFromTap(event);
             }}
           >
             {currentItem ? (

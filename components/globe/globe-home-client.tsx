@@ -63,6 +63,8 @@ import {
 } from "@/lib/globe/resolve-globe-context-primary-video";
 import { listGlobeContextNavigationOrder } from "@/lib/globe/list-globe-context-navigation-order";
 import { projectContextMediaReel } from "@/lib/globe/project-context-media-reel";
+import { resolvePinOpenInitialPage } from "@/lib/globe/resolve-pin-open-initial-page";
+import type { PinMediaContextPage } from "@/components/globe/pin-open-media-context-pager";
 import {
   EVENT_CANDIDATES_UPDATED,
   findLifeEventCandidate,
@@ -121,6 +123,8 @@ function GlobeHomeBody() {
   const [shareEventId, setShareEventId] = useState<string | null>(null);
   const [activeCluster, setActiveCluster] = useState<PinCluster | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [pinSheetInitialPage, setPinSheetInitialPage] =
+    useState<PinMediaContextPage>("media");
   const [timeFilter, setTimeFilter] = useState<GlobeContextTimeFilter>("all");
   const [peopleFilter, setPeopleFilter] = useState<GlobeContextPeopleFilter>(null);
   const [peerOptionsRevision, setPeerOptionsRevision] = useState(0);
@@ -215,6 +219,9 @@ function GlobeHomeBody() {
       const openSheet = hasMapVideo
         ? options?.openSheet === true
         : options?.openSheet !== false;
+      if (openSheet) {
+        setPinSheetInitialPage("media");
+      }
       setSheetOpen(openSheet);
 
       if (!eventId) {
@@ -464,7 +471,27 @@ function GlobeHomeBody() {
 
   const onSheetOpenChange = useCallback((open: boolean) => {
     setSheetOpen(open);
+    if (!open) {
+      setPinSheetInitialPage("media");
+    }
   }, []);
+
+  const openMapMediaBridge = useCallback(() => {
+    markPinPress();
+    const eventId = activeClusterRef.current?.eventId?.trim();
+    if (!eventId) {
+      setSheetOpen(true);
+      return;
+    }
+    setPinSheetInitialPage(
+      resolvePinOpenInitialPage({
+        eventId,
+        viewerUserId: user?.id,
+        fromMapMediaTap: true,
+      }),
+    );
+    setSheetOpen(true);
+  }, [markPinPress, user?.id]);
 
   const focusContextByEventId = useCallback(
     (eventId: string, options?: { openSheet?: boolean }) => {
@@ -680,7 +707,7 @@ function GlobeHomeBody() {
         visible={showMapVideoReplay}
         navigationEntries={navigableContexts}
         onDismiss={clearActiveContext}
-        onOpenDetails={() => setSheetOpen(true)}
+        onOpenDetails={openMapMediaBridge}
         onNavigateContext={(nextEventId) => {
           focusContextByEventId(nextEventId);
         }}
@@ -805,6 +832,7 @@ function GlobeHomeBody() {
         open={sheetOpen}
         onOpenChange={onSheetOpenChange}
         cluster={activeCluster}
+        initialPage={pinSheetInitialPage}
         onOpenDetail={() => {
           if (activeCluster) {
             globeRef.current?.flyToPin(

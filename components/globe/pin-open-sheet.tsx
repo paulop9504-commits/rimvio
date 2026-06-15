@@ -70,6 +70,8 @@ export type PinOpenSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   cluster: PinCluster | null;
+  /** First tab when sheet opens — e.g. map media tap → 맥락. */
+  initialPage?: PinMediaContextPage;
   /** Zoom globe to street altitude when user opens full detail. */
   onOpenDetail?: () => void;
 };
@@ -79,6 +81,7 @@ export function PinOpenSheet({
   open,
   onOpenChange,
   cluster,
+  initialPage = "media",
   onOpenDetail,
 }: PinOpenSheetProps) {
   const router = useRouter();
@@ -360,9 +363,9 @@ export function PinOpenSheet({
     if (!open || !cluster?.eventId) {
       return;
     }
-    setSheetPage("media");
+    setSheetPage(initialPage);
     setAuthorFilter(null);
-  }, [open, cluster?.eventId]);
+  }, [open, cluster?.eventId, initialPage]);
 
   const openExperienceRoom = () => {
     const peerThreadId =
