@@ -194,6 +194,9 @@ export const RimvioGlobe3D = memo(
     const unlockGlobeControlsRef = useRef(() => {});
     const suppressGlobeClickUntilRef = useRef(0);
     const pinUiScaleRef = useRef(1);
+    const applyZoomPovRef = useRef<
+      (pov: { lat: number; lng: number; altitude: number }) => void
+    >(() => {});
 
     lockGlobeControlsRef.current = () => {
       pinPressLockRef.current = true;
@@ -564,6 +567,7 @@ export const RimvioGlobe3D = memo(
         emitPointOfView({ ...pov, altitude }, altitude);
         scheduleTileTextureFiltering();
       };
+      applyZoomPovRef.current = applyZoomPov;
 
       const handleZoom = (pov: { lat: number; lng: number; altitude: number }) => {
         pendingZoomPov = pov;
@@ -642,6 +646,7 @@ export const RimvioGlobe3D = memo(
       globeRef,
       enabled: globeReady && interactionEnabled,
       controlsBlockedRef,
+      onAfterFocalZoom: (pov) => applyZoomPovRef.current(pov),
       onInteractingChange: (active) => {
         shellRef.current?.setAttribute(
           "data-globe-interacting",

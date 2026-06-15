@@ -115,7 +115,15 @@ export function applyGlobeFocalZoom(input: {
     nextAltitude,
   } = input;
 
-  globe.pointOfView({ altitude: clampGlobeAltitude(nextAltitude) }, 0);
+  globe.pointOfView(
+    {
+      lat: pov.lat,
+      lng: pov.lng,
+      altitude: clampGlobeAltitude(nextAltitude),
+    },
+    0,
+  );
+  globe.controls().update();
 
   const rect = root.getBoundingClientRect();
   const targetX = focalClientX - rect.left;

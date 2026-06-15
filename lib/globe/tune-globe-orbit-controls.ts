@@ -1,16 +1,7 @@
 import type { GlobeInstance } from "globe.gl";
+import { isTouchZoomDevice } from "@/lib/globe/is-touch-zoom-device";
 
 export type OrbitControlsLike = ReturnType<GlobeInstance["controls"]>;
-
-function isCoarsePointer(): boolean {
-  if (typeof window === "undefined") {
-    return false;
-  }
-  return (
-    window.matchMedia("(pointer: coarse)").matches ||
-    window.matchMedia("(hover: none)").matches
-  );
-}
 
 /** Apple Maps–grade orbit feel — damping, touch split, mobile rotate speed. */
 export function tuneGlobeOrbitControls(controls: OrbitControlsLike): void {
@@ -21,6 +12,7 @@ export function tuneGlobeOrbitControls(controls: OrbitControlsLike): void {
   controls.rotateSpeed = 0.42;
   controls.zoomSpeed = 0.95;
 
+  const touchDevice = isTouchZoomDevice();
   const touches = controls.touches as
     | { ONE?: number; TWO?: number }
     | undefined;
@@ -33,7 +25,7 @@ export function tuneGlobeOrbitControls(controls: OrbitControlsLike): void {
       DOLLY_ROTATE: 3,
     };
     touches.ONE = TOUCH.ROTATE;
-    if (isCoarsePointer()) {
+    if (touchDevice) {
       // Custom pointer pinch owns two-finger zoom — do not map TWO (was ROTATE).
       delete touches.TWO;
     } else {
@@ -41,7 +33,7 @@ export function tuneGlobeOrbitControls(controls: OrbitControlsLike): void {
     }
   }
 
-  if (isCoarsePointer()) {
+  if (touchDevice) {
     controls.rotateSpeed = 0.34;
     controls.dampingFactor = 0.088;
     controls.enableZoom = false;
