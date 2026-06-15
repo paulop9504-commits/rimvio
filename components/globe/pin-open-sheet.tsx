@@ -23,6 +23,7 @@ import { isGlobeManualContextEvent } from "@/lib/events/event-lifecycle";
 import { EvidenceList } from "@/components/experience/evidence-list";
 import { ExperienceHeroCard } from "@/components/experience/experience-hero-card";
 import { ExperienceTripLegBar } from "@/components/experience/experience-trip-leg-bar";
+import { GlobeContextHubPanel } from "@/components/globe/globe-context-hub-panel";
 import { PeopleStrip } from "@/components/experience/people-strip";
 import { RecentConversationStrip } from "@/components/experience/recent-conversation-strip";
 import { RepresentativeMomentsRow } from "@/components/experience/representative-moments-row";
@@ -395,6 +396,13 @@ export function PinOpenSheet({
   const contextDetailsBody = (
     <>
       {tripLeg ? <ExperienceTripLegBar trip={tripLeg} /> : null}
+      {shareEvent ? (
+        <GlobeContextHubPanel
+          event={shareEvent}
+          destinationLabel={hero?.place ?? null}
+          onUpdated={() => setRevision((value) => value + 1)}
+        />
+      ) : null}
       <PeopleStrip names={people} />
       <RepresentativeMomentsRow moments={moments} />
       {conversation ? (

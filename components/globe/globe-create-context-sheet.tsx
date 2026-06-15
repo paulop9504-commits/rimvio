@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { CalendarPlus, Loader2, Users, X } from "lucide-react";
 import { toast } from "sonner";
+import { GlobeContextHubDraftPicker } from "@/components/globe/globe-context-hub-draft-picker";
 import { GlobeCreateContextPlaceStep } from "@/components/globe/globe-create-context-place-step";
 import { GlobeCreateContextShareStep } from "@/components/globe/globe-create-context-share-step";
 import { useAuth } from "@/hooks/use-auth";
@@ -14,6 +15,10 @@ import {
   createManualGlobeContext,
   defaultManualContextStartIso,
 } from "@/lib/globe/create-manual-globe-context";
+import { connectDepartureHubToContext } from "@/lib/globe/connect-departure-hub-to-context";
+import { shouldSuggestContextHubsForDraft } from "@/lib/globe/context-hub/should-suggest-context-hubs";
+import type { DepartureHubAirportId } from "@/lib/globe/departure-hub-airports";
+import { suggestDepartureHubOptions } from "@/lib/globe/suggest-departure-hub-options";
 import type { ManualContextResolvedPlace } from "@/lib/globe/resolve-manual-context-place-candidates";
 import { suggestionToResolvedPlace } from "@/lib/globe/resolve-manual-context-place-candidates";
 import {
@@ -71,6 +76,16 @@ export function GlobeCreateContextSheet({
   );
   const [approximateFallback, setApproximateFallback] =
     useState<ManualContextResolvedPlace | null>(null);
+  const [pendingHubAirports, setPendingHubAirports] = useState<
+    DepartureHubAirportId[]
+  >([]);
+
+  const draftHubOptions = useMemo(() => {
+    if (!shouldSuggestContextHubsForDraft({ title, place })) {
+      return [];
+    }
+    return suggestDepartureHubOptions({ destinationPlace: place.trim() || title.trim() });
+  }, [place, title]);
 
   useEffect(() => {
     setMounted(true);
@@ -91,6 +106,7 @@ export function GlobeCreateContextSheet({
     setCreatedEvent(null);
     setCreatedPlaceLabel("");
     setSelectedFriends(new Map());
+    setPendingHubAirports([]);
   }, []);
 
   useEffect(() => {
@@ -125,7 +141,15 @@ export function GlobeCreateContextSheet({
           resolvedPlace,
         });
         const label = resolvedPlace?.label.trim() || place.trim();
-        setCreatedEvent(event);
+        let nextEvent = event;
+        for (const airportId of pendingHubAirports) {
+          const linked = connectDepartureHubToContext({
+            destinationEventId: nextEvent.id,
+            airportId,
+          });
+          nextEvent = linked.destinationEvent;
+        }
+        setCreatedEvent(nextEvent);
         setCreatedPlaceLabel(label);
         setStep("share");
         toast.success(`${label} 맥락을 지구에 박았어요`);
@@ -137,8 +161,14 @@ export function GlobeCreateContextSheet({
         setBusy(false);
       }
     },
-    [nights, place, resetSheet, startIso, title],
+    [nights, pendingHubAirports, place, startIso, title],
   );
+
+  const togglePendingHub = useCallback((airportId: DepartureHubAirportId) => {
+    setPendingHubAirports((prev) =>
+      prev.includes(airportId) ? [] : [airportId],
+    );
+  }, []);
 
   const toggleFriend = useCallback((friend: GlobeContextShareFriend) => {
     setSelectedFriends((prev) => {
@@ -398,6 +428,13 @@ export function GlobeCreateContextSheet({
                       />
                     </label>
                   </div>
+
+                  <GlobeContextHubDraftPicker
+                    options={draftHubOptions}
+                    selectedIds={pendingHubAirports}
+                    disabled={busy || placeLoading}
+                    onToggle={togglePendingHub}
+                  />
                 </div>
               ) : step === "share" ? (
                 <GlobeCreateContextShareStep

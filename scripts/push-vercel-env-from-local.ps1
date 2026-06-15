@@ -50,7 +50,7 @@ Write-Host ""
 foreach ($key in $keys) {
   if ($skip -contains $key) { continue }
 
-  $line = Select-String -Path $envFile -Pattern "^$key=" -SimpleMatch | Select-Object -First 1
+  $line = Select-String -Path $envFile -Pattern "^$([regex]::Escape($key))=" | Select-Object -First 1
   if (-not $line) { continue }
 
   $value = ($line.Line -split "=", 2)[1].Trim().Trim('"').Trim("'")

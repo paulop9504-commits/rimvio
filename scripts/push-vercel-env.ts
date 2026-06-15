@@ -10,6 +10,9 @@ const PROD_URL =
   process.env.RIMVIO_PROD_URL?.trim().replace(/\/$/, "") ??
   "https://rimvio.vercel.app";
 
+const PREVIEW_BRANCH =
+  process.env.RIMVIO_PREVIEW_BRANCH?.trim() ?? "release/v1-rimvio-core";
+
 const KEYS = [
   "NEXT_PUBLIC_SUPABASE_URL",
   "NEXT_PUBLIC_SUPABASE_ANON_KEY",
@@ -41,28 +44,45 @@ function loadEnvLocal(): Record<string, string> {
   return out;
 }
 
-function addEnv(key: string, value: string, target: string) {
-  const result = spawnSync(
-    "npx",
-    ["vercel", "env", "add", key, target, "--force"],
-    {
-      input: value,
-      encoding: "utf8",
-      shell: true,
-      cwd: process.cwd(),
-    },
-  );
+function addEnv(
+  key: string,
+  value: string,
+  target: "production" | "preview",
+) {
+  const args =
+    target === "preview"
+      ? [
+          "vercel",
+          "env",
+          "add",
+          key,
+          target,
+          PREVIEW_BRANCH,
+          "--value",
+          value,
+          "--yes",
+          "--force",
+        ]
+      : ["vercel", "env", "add", key, target, "--value", value, "--yes", "--force"];
+
+  const result = spawnSync("npx", args, {
+    encoding: "utf8",
+    shell: true,
+    cwd: process.cwd(),
+  });
   if (result.status !== 0) {
     console.error(`Failed ${key} (${target}):`, result.stderr || result.stdout);
     process.exit(1);
   }
-  console.log(`✓ ${key} → ${target}`);
+  const label = target === "preview" ? `${target}/${PREVIEW_BRANCH}` : target;
+  console.log(`✓ ${key} → ${label}`);
 }
 
 const env = loadEnvLocal();
 
 console.log("\n=== Vercel env push ===");
 console.log("APP_URL override:", PROD_URL);
+console.log("Preview branch:", PREVIEW_BRANCH);
 console.log("anon key length:", env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.length ?? 0);
 console.log("");
 
@@ -75,9 +95,8 @@ for (const key of KEYS) {
   if (key === "NEXT_PUBLIC_APP_URL") {
     value = PROD_URL;
   }
-  for (const target of ["production", "preview"] as const) {
-    addEnv(key, value, target);
-  }
+  addEnv(key, value, "production");
+  addEnv(key, value, "preview");
 }
 
 console.log("\nDone. Run: npx vercel deploy --prod\n");
