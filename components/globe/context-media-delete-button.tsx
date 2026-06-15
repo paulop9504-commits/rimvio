@@ -15,6 +15,7 @@ export type ContextMediaDeleteButtonProps = {
   eventId: string;
   viewerUserId?: string | null;
   enabled?: boolean;
+  variant?: "default" | "minimal";
   className?: string;
   onDeleted?: () => void;
 };
@@ -25,6 +26,7 @@ export function ContextMediaDeleteButton({
   eventId,
   viewerUserId,
   enabled = true,
+  variant = "default",
   className,
   onDeleted,
 }: ContextMediaDeleteButtonProps) {
@@ -64,7 +66,10 @@ export function ContextMediaDeleteButton({
       type="button"
       disabled={busy}
       className={cn(
-        "pointer-events-auto absolute bottom-3 left-3 z-[4] flex size-9 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-sm active:bg-black/70 disabled:opacity-50",
+        "pointer-events-auto z-[4] flex items-center justify-center rounded-full backdrop-blur-sm disabled:opacity-50",
+        variant === "minimal"
+          ? "absolute bottom-3 right-3 size-9 bg-background/90 text-muted-foreground shadow-sm ring-1 ring-border/80 active:bg-muted"
+          : "absolute bottom-3 left-3 size-9 bg-black/55 text-white active:bg-black/70",
         className,
       )}
       aria-label={item.kind === "video" ? "동영상 삭제" : "사진 삭제"}

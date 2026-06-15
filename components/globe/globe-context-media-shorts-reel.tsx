@@ -108,24 +108,24 @@ function ContextMediaShortsSlide({
       >
         <div
           className={cn(
-            "relative overflow-hidden bg-black",
+            "relative overflow-hidden",
             fillViewport && embedded
               ? "aspect-[9/16] h-full max-h-full w-auto max-w-full"
               : bridge
-                ? "aspect-[9/16] w-full rounded-[1.35rem] shadow-[0_28px_72px_rgba(0,0,0,0.45)] ring-1 ring-white/15"
-                : "aspect-[9/16] w-full rounded-[1.25rem] shadow-[0_16px_48px_rgba(0,0,0,0.22)] ring-1 ring-black/10",
+                ? "aspect-[9/16] w-full rounded-[1.25rem] bg-muted shadow-sm ring-1 ring-border/60"
+                : "aspect-[9/16] w-full rounded-[1.25rem] shadow-[0_16px_48px_rgba(0,0,0,0.22)] ring-1 ring-black/10 bg-black",
             fillViewport && embedded &&
               (bridge
-                ? "rounded-[1.35rem] shadow-[0_28px_72px_rgba(0,0,0,0.45)] ring-1 ring-white/15"
-                : "rounded-[1.25rem] shadow-[0_16px_48px_rgba(0,0,0,0.22)] ring-1 ring-black/10"),
+                ? "rounded-[1.25rem] bg-muted shadow-sm ring-1 ring-border/60"
+                : "rounded-[1.25rem] shadow-[0_16px_48px_rgba(0,0,0,0.22)] ring-1 ring-black/10 bg-black"),
           )}
         >
         {isVideo ? (
-          <div className="pointer-events-none absolute inset-x-0 bottom-3 z-[6] flex items-center justify-between gap-2 px-3">
+          <div className="pointer-events-none absolute inset-x-0 bottom-3 z-[6] flex items-center justify-end gap-2 px-3">
             <div className="pointer-events-auto flex min-w-0 items-center gap-1.5">
               <ContextMediaVideoSoundButton
                 soundOn={soundOn}
-                variant="pill"
+                variant={bridge ? "icon" : "pill"}
                 onToggleSound={() => {
                   toggleSound();
                   if (!playing) {
@@ -139,14 +139,17 @@ function ContextMediaShortsSlide({
                   eventId={eventId}
                   viewerUserId={viewerUserId}
                   enabled={deletable}
-                  className="relative bottom-auto left-auto size-8 shrink-0"
+                  variant={bridge ? "minimal" : "default"}
+                  className="relative bottom-auto left-auto size-9 shrink-0"
                   onDeleted={onMediaDeleted}
                 />
               ) : null}
             </div>
-            <span className="pointer-events-none shrink-0 rounded-full bg-black/70 px-2.5 py-1.5 text-[10px] font-semibold text-white ring-1 ring-white/20">
-              {visible && playing ? "일시정지" : "재생"}
-            </span>
+            {!bridge ? (
+              <span className="pointer-events-none shrink-0 rounded-full bg-black/70 px-2.5 py-1.5 text-[10px] font-semibold text-white ring-1 ring-white/20">
+                {visible && playing ? "일시정지" : "재생"}
+              </span>
+            ) : null}
           </div>
         ) : null}
         {isVideo && src ? (
@@ -166,7 +169,7 @@ function ContextMediaShortsSlide({
             src={src}
             className={cn(
               "relative z-0 size-full object-cover",
-              bridge && "brightness-[1.03] contrast-[1.04] saturate-[1.08]",
+              bridge && "object-contain",
             )}
             playsInline
             loop
@@ -180,7 +183,7 @@ function ContextMediaShortsSlide({
             alt=""
             className={cn(
               "size-full object-cover",
-              bridge && "brightness-[1.03] contrast-[1.04] saturate-[1.08]",
+              bridge && "object-contain",
             )}
             loading="lazy"
           />
@@ -204,48 +207,41 @@ function ContextMediaShortsSlide({
             </div>
           </div>
         ) : (
-          <div className="flex size-full items-center justify-center px-4 text-center text-[13px] font-medium text-white/70">
+          <div className="flex size-full items-center justify-center px-4 text-center text-[13px] font-medium text-muted-foreground">
             {loading ? "불러오는 중…" : item.label}
           </div>
         )}
 
-        <div
-          className={cn(
-            "pointer-events-none absolute inset-x-0 bottom-0 z-[2] px-4 pb-4 pt-24",
-            bridge
-              ? "bg-gradient-to-t from-black/90 via-black/45 to-transparent"
-              : "bg-gradient-to-t from-black/85 via-black/35 to-transparent",
-          )}
-        >
-          {bridge ? (
-            <span className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-white/12 px-2.5 py-1 text-[11px] font-semibold text-white/90 ring-1 ring-white/15 backdrop-blur-sm">
-              {copy.globe.bridgeMediaAuthorChip(authorName)}
-            </span>
-          ) : null}
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-white/55">
-            {bridge ? item.recallCaption : eyebrow}
-          </p>
-          {!bridge ? (
+        {!bridge ? (
+          <div
+            className={cn(
+              "pointer-events-none absolute inset-x-0 bottom-0 z-[2] px-4 pb-4 pt-24",
+              "bg-gradient-to-t from-black/85 via-black/35 to-transparent",
+            )}
+          >
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-white/55">
+              {eyebrow}
+            </p>
             <p className="mt-0.5 line-clamp-2 text-[15px] font-semibold leading-snug text-white">
               {item.recallCaption}
             </p>
-          ) : (
-            <p className="mt-0.5 line-clamp-1 text-[13px] font-medium text-white/75">
-              {eyebrow}
-            </p>
-          )}
-        </div>
+          </div>
+        ) : null}
 
-        <ContextMediaUploaderBadge
-          item={item}
-          selfDisplayName={selfDisplayName}
-          selfAvatarUrl={selfAvatarUrl}
-          className={cn(bridge ? "right-3 top-3 scale-110" : "right-3 top-3")}
-        />
+        {!bridge ? (
+          <ContextMediaUploaderBadge
+            item={item}
+            selfDisplayName={selfDisplayName}
+            selfAvatarUrl={selfAvatarUrl}
+            className="right-3 top-3"
+          />
+        ) : null}
 
-        <span className="pointer-events-none absolute right-3 top-12 z-[2] rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-bold text-white/90">
-          {index + 1}/{total}
-        </span>
+        {!bridge ? (
+          <span className="pointer-events-none absolute right-3 top-12 z-[2] rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-bold text-white/90">
+            {index + 1}/{total}
+          </span>
+        ) : null}
 
         {isVideo ? null : eventId && deletable ? (
           <ContextMediaDeleteButton
@@ -253,6 +249,7 @@ function ContextMediaShortsSlide({
             eventId={eventId}
             viewerUserId={viewerUserId}
             enabled={deletable}
+            variant={bridge ? "minimal" : "default"}
             onDeleted={onMediaDeleted}
           />
         ) : null}

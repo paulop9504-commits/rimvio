@@ -2,7 +2,6 @@
 
 import { useCallback, useRef, useState } from "react";
 import { GlobeContextMediaShortsReel } from "@/components/globe/globe-context-media-shorts-reel";
-import { ExperienceBridgeParticipantsStrip } from "@/components/globe/experience-bridge-participants-strip";
 import { ExperienceBridgeThumbnailRail } from "@/components/globe/experience-bridge-thumbnail-rail";
 import type { ContextMediaReelItem } from "@/lib/globe/project-context-media-reel";
 import { copy } from "@/lib/copy/human-ko";
@@ -19,7 +18,7 @@ export type ExperienceBridgeMediaShellProps = {
   className?: string;
 };
 
-/** Bridge pin — cinematic media + participant strip + filmstrip. */
+/** Bridge pin — clean Shorts reel + filmstrip (light, photo-first). */
 export function ExperienceBridgeMediaShell({
   items,
   title,
@@ -32,6 +31,10 @@ export function ExperienceBridgeMediaShell({
 }: ExperienceBridgeMediaShellProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+
+  const activeItem = items[activeIndex] ?? items[0] ?? null;
+  const activeAuthor =
+    activeItem?.authorDisplayName?.trim() || copy.globe.bridgeInviteHostFallback;
 
   const scrollToIndex = useCallback((index: number) => {
     const root = scrollRef.current;
@@ -47,16 +50,12 @@ export function ExperienceBridgeMediaShell({
 
   return (
     <div
-      className={cn("relative flex min-h-0 flex-1 flex-col", className)}
+      className={cn("relative flex min-h-0 flex-1 flex-col bg-muted/25", className)}
       data-experience-bridge-media-shell
     >
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-20 px-3 pt-2">
-        <ExperienceBridgeParticipantsStrip items={items} />
-      </div>
-
       <div
         ref={scrollRef}
-        className="min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto overscroll-y-contain pt-[4.5rem] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto overscroll-y-contain px-2 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         onScroll={() => {
           const root = scrollRef.current;
           if (!root) {
@@ -90,15 +89,17 @@ export function ExperienceBridgeMediaShell({
         />
       </div>
 
-      <div className="shrink-0 space-y-2 border-t border-white/10 bg-gradient-to-t from-black/80 via-black/50 to-transparent px-3 py-3 backdrop-blur-md">
+      <div className="shrink-0 space-y-2 border-t border-border/60 bg-background px-3 py-2.5">
+        {items.length > 0 ? (
+          <p className="text-center text-[12px] font-medium text-muted-foreground">
+            {activeAuthor} · {activeIndex + 1}/{items.length}
+          </p>
+        ) : null}
         <ExperienceBridgeThumbnailRail
           items={items}
           activeIndex={activeIndex}
           onSelect={scrollToIndex}
         />
-        <p className="text-center text-[10px] font-medium text-white/45">
-          {copy.globe.bridgeMediaSwipeHint(items.length)}
-        </p>
       </div>
     </div>
   );

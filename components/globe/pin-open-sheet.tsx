@@ -434,41 +434,15 @@ export function PinOpenSheet({
             data-pin-open-ui="split-v2"
           >
             <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-foreground/15 md:hidden" aria-hidden />
-            <div
-              className={cn(
-                "relative flex min-h-0 flex-1 flex-col overflow-hidden",
-                isBridgeContext && sheetPage === "media" && "bg-[#0a0c10]",
-              )}
-            >
-              <header
-                className={cn(
-                  "flex shrink-0 items-start gap-2 border-b px-4 pb-3 pt-2",
-                  isBridgeContext && sheetPage === "media"
-                    ? "border-white/10 bg-[#0a0c10]"
-                    : "border-border bg-background",
-                )}
-              >
+            <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+              <header className="flex shrink-0 items-start gap-2 border-b border-border bg-background px-4 pb-3 pt-2">
                 <div className="min-w-0 flex-1 space-y-0.5">
-                  <p
-                    className={cn(
-                      "text-[10px] font-semibold uppercase tracking-wide",
-                      isBridgeContext && sheetPage === "media"
-                        ? "text-white/50"
-                        : "text-muted-foreground",
-                    )}
-                  >
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                     {isBridgeContext && sheetPage === "media"
                       ? copy.globe.bridgeMediaEyebrow
                       : `장소 · ${hero.place}`}
                   </p>
-                  <p
-                    className={cn(
-                      "line-clamp-1 text-[15px] font-bold",
-                      isBridgeContext && sheetPage === "media"
-                        ? "text-white"
-                        : "text-foreground",
-                    )}
-                  >
+                  <p className="line-clamp-1 text-[15px] font-bold text-foreground">
                     {hero.title}
                   </p>
                 </div>
@@ -481,23 +455,10 @@ export function PinOpenSheet({
                 <button
                   type="button"
                   onClick={() => onOpenChange(false)}
-                  className={cn(
-                    "flex size-9 shrink-0 items-center justify-center rounded-full active:opacity-80",
-                    isBridgeContext && sheetPage === "media"
-                      ? "bg-white/10 text-white"
-                      : "bg-muted active:bg-muted/80",
-                  )}
+                  className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted active:bg-muted/80 active:opacity-80"
                   aria-label="닫기"
                 >
-                  <X
-                    className={cn(
-                      "size-5",
-                      isBridgeContext && sheetPage === "media"
-                        ? "text-white/80"
-                        : "text-muted-foreground",
-                    )}
-                    aria-hidden
-                  />
+                  <X className="size-5 text-muted-foreground" aria-hidden />
                 </button>
               </header>
 

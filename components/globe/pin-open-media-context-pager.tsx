@@ -84,7 +84,6 @@ function useHorizontalSwipeHandoff(input: {
 export function PinOpenMediaContextPageTabs({
   page,
   onPageChange,
-  variant = "personal",
   className,
 }: {
   page: PinMediaContextPage;
@@ -92,15 +91,10 @@ export function PinOpenMediaContextPageTabs({
   variant?: "bridge" | "personal";
   className?: string;
 }) {
-  const bridge = variant === "bridge";
-
   return (
     <div
       className={cn(
-        "inline-flex shrink-0 rounded-full p-0.5 ring-1",
-        bridge
-          ? "bg-black/45 ring-white/15 backdrop-blur-md"
-          : "bg-muted ring-border",
+        "inline-flex shrink-0 rounded-full bg-muted p-0.5 ring-1 ring-border",
         className,
       )}
       role="tablist"
@@ -114,12 +108,8 @@ export function PinOpenMediaContextPageTabs({
         className={cn(
           "rounded-full px-3 py-1 text-[11px] font-semibold transition",
           page === "media"
-            ? bridge
-              ? "bg-white text-black"
-              : "bg-background text-foreground shadow-sm"
-            : bridge
-              ? "text-white/75"
-              : "text-muted-foreground",
+            ? "bg-background text-foreground shadow-sm"
+            : "text-muted-foreground",
         )}
       >
         {copy.globe.bridgeMediaContextTabMoments}
@@ -132,12 +122,8 @@ export function PinOpenMediaContextPageTabs({
         className={cn(
           "rounded-full px-3 py-1 text-[11px] font-semibold transition",
           page === "context"
-            ? bridge
-              ? "bg-white text-black"
-              : "bg-background text-foreground shadow-sm"
-            : bridge
-              ? "text-white/75"
-              : "text-muted-foreground",
+            ? "bg-background text-foreground shadow-sm"
+            : "text-muted-foreground",
         )}
       >
         {copy.globe.bridgeMediaContextTabContext}
@@ -182,20 +168,17 @@ export function PinOpenMediaContextPager({
           {...mediaSwipe}
         >
           {media}
+          {!bridge ? (
           <div className="pointer-events-none absolute inset-x-0 bottom-4 z-20 flex justify-center px-4">
             <button
               type="button"
               onClick={() => onPageChange("context")}
-              className={cn(
-                "pointer-events-auto rounded-full px-3.5 py-1.5 text-[11px] font-semibold ring-1 backdrop-blur-sm active:scale-[0.98]",
-                bridge
-                  ? "bg-black/55 text-white ring-white/15"
-                  : "bg-foreground text-background ring-foreground/20",
-              )}
+              className="pointer-events-auto rounded-full bg-background/95 px-3.5 py-1.5 text-[11px] font-semibold text-foreground shadow-sm ring-1 ring-border backdrop-blur-sm active:scale-[0.98]"
             >
               {copy.globe.bridgeContextSwipeHint}
             </button>
           </div>
+          ) : null}
         </div>
       ) : (
         <div

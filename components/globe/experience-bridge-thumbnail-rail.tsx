@@ -44,8 +44,8 @@ export function ExperienceBridgeThumbnailRail({
             className={cn(
               "relative h-14 w-10 shrink-0 overflow-hidden rounded-lg transition",
               active
-                ? "scale-105 shadow-lg ring-2 ring-white"
-                : "opacity-70 ring-1 ring-white/25 hover:opacity-100",
+                ? "scale-105 shadow-md ring-2 ring-primary"
+                : "opacity-80 ring-1 ring-border hover:opacity-100",
             )}
             aria-label={`${index + 1}번째 순간`}
             aria-current={active ? "true" : undefined}
