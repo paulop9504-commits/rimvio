@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   altitudeFromPinchDistance,
   clampGlobeAltitude,
@@ -20,6 +21,16 @@ assert.equal(
   altitudeFromPinchDistance(start, 100, 100),
   start,
   "no distance change keeps altitude",
+);
+
+const applyGlobeFocalZoomSource = readFileSync(
+  "lib/globe/globe-focal-pinch-zoom.ts",
+  "utf8",
+);
+assert.match(
+  applyGlobeFocalZoomSource,
+  /const pov = globe\.pointOfView\(\)/,
+  "applyGlobeFocalZoom defines pov before use",
 );
 
 console.log("test-globe-focal-pinch-zoom: ok");

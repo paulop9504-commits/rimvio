@@ -115,6 +115,7 @@ export function applyGlobeFocalZoom(input: {
     nextAltitude,
   } = input;
 
+  const pov = globe.pointOfView();
   globe.pointOfView(
     {
       lat: pov.lat,

@@ -25,17 +25,12 @@ export function tuneGlobeOrbitControls(controls: OrbitControlsLike): void {
       DOLLY_ROTATE: 3,
     };
     touches.ONE = TOUCH.ROTATE;
-    if (touchDevice) {
-      // Custom pointer pinch owns two-finger zoom — do not map TWO (was ROTATE).
-      delete touches.TWO;
-    } else {
-      touches.TWO = TOUCH.DOLLY;
-    }
+    touches.TWO = TOUCH.DOLLY;
   }
 
   if (touchDevice) {
     controls.rotateSpeed = 0.46;
     controls.dampingFactor = 0.042;
-    controls.enableZoom = false;
+    controls.enableZoom = true;
   }
 }
