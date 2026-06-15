@@ -1,64 +1,94 @@
-# Rimvio 👀 — Your Life, Operable.
+<div align="center">
 
-**Action OS** for everyday intent — say it, share it, snap it → **Action Dock** executes.
+# 👀 Rimvio · 림비오
 
-North Star: *Your Life, Operable.* (당신의 모든 일상을 OS로 만듭니다.)
+**Experience OS** — lived context → **Recall** → **Action**
 
-링크 공유는 **ingress** 중 하나입니다. 제품 정체성은 **실행(Operate)** 입니다.
+*Your Life, Operable.*
 
-브랜드 가이드: [docs/RIMVIO_BRAND.md](./docs/RIMVIO_BRAND.md)
+<br />
 
-**GitHub (공개 미러):** [github.com/paulop9504-dotcom/rimvio-public](https://github.com/paulop9504-dotcom/rimvio-public) — 투자·내부 docs 제외. 전체 개발 repo는 private [`rimvio`](https://github.com/paulop9504-dotcom/rimvio). [분리 가이드](./docs/GIT_PUBLIC_SHARE.md)
+[![Try Rimvio](https://img.shields.io/badge/▶_Try_Rimvio-rimvio.app-8B5CF6?style=for-the-badge)](https://rimvio.app)
+[![Profile](https://img.shields.io/badge/GitHub-paulop9504--dotcom-181717?style=for-the-badge&logo=github)](https://github.com/paulop9504-dotcom)
 
-## 빠른 시작
+<br />
 
-**Cursor:** Rimvio만 작업할 때는 [`rimvio.code-workspace`](./rimvio.code-workspace) 로 열기 ([docs/WORKSPACE.md](./docs/WORKSPACE.md)). Silent Ghost repo와 분리.
+<a href="https://rimvio.app">
+  <img src="./public/rimvio-wordmark.svg" alt="Rimvio" width="420" />
+</a>
+
+<br />
+
+**Globe** · plug-in **context hubs** · Share → Now · 1-tap actions
+
+</div>
+
+---
+
+## Try it
+
+| | Link |
+|---|------|
+| **Live app** | **[https://rimvio.app](https://rimvio.app)** |
+| **Demo route** | [rimvio.app/demo](https://rimvio.app/demo) |
+| **Feedback** | [Open an issue](../../issues/new?template=feedback.yml) |
+
+> Sign in with Google to save context across devices.
+
+---
+
+## What is Rimvio?
+
+Not another chat app. **Rimvio** structures what you lived (place · people · moment) and surfaces the **next action** — flights, maps, share — in one tap.
+
+| Surface | Role |
+|---------|------|
+| **Globe** | Pin contexts on a 3D map |
+| **Hubs** | Plug in / unplug resource hubs (e.g. departure airport → flight search) |
+| **Feed** | Replay → Context → Action |
+| **Share → Now** | Share a link → land on action sheet, not an inbox scroll |
+
+**Stack:** TypeScript · Next.js · React · Supabase · Vercel · PWA · Three.js / globe.gl
+
+---
+
+## Quick start (local)
 
 ```bash
-cd new-project
+git clone https://github.com/paulop9504-dotcom/rimvio-public.git
+cd rimvio-public
 npm install
-cp .env.example .env.local   # Supabase 선택 (없어도 sessionStorage로 동작)
+cp .env.example .env.local   # optional Supabase
 npm run dev                  # http://localhost:3000
 ```
 
-## 출시 전 검증
-
 ```bash
-npm run verify:release       # tsc + build + analytics 실험
-npm run backup               # Desktop에 zip 백업
+npm test                     # script tests
+npm run build                # production build
 ```
 
-## 문서
+---
 
-| 문서 | 내용 |
-|------|------|
-| [docs/LAUNCH.md](./docs/LAUNCH.md) | **출시 체크리스트** · Vercel · Supabase |
-| [docs/PHONE_QA.md](./docs/PHONE_QA.md) | **실기기 QA** · iPhone/Android 체크리스트 |
-| [docs/RIMVIO_KIPRIS.md](./docs/RIMVIO_KIPRIS.md) | KIPRIS 상표 검색 메모 |
-| [docs/RIMVIO_HANDOFF.md](./docs/RIMVIO_HANDOFF.md) | AI/개발 핸드오프 |
-| [docs/WORKSPACE.md](./docs/WORKSPACE.md) | **Cursor workspace (SG와 분리)** |
-| [docs/GIT_PUBLIC_SHARE.md](./docs/GIT_PUBLIC_SHARE.md) | **Git 공개 시 비공개 자료 분리** |
-| [docs/RIMVIO_PRODUCT.md](./docs/RIMVIO_PRODUCT.md) | **Action OS 제품 정의** |
-| [docs/RIMVIO_ARCHITECTURE.md](./docs/RIMVIO_ARCHITECTURE.md) | 아키텍처 |
+## Changelog
 
-## Vercel 배포
+See [CHANGELOG.md](./CHANGELOG.md) · latest: **context hubs** (plug-in departure airports, flight deep links).
 
-1. GitHub에 push
-2. [vercel.com/new](https://vercel.com/new) → Import
-3. Environment: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (선택)
-4. Deploy
+---
 
-## Supabase (선택)
+## Docs (public)
 
-`supabase/migrations/` 001→004 순서로 SQL Editor 실행.  
-없으면 로컬 + API no-op.
+| Doc | |
+|-----|---|
+| [LAUNCH.md](./docs/LAUNCH.md) | Deploy checklist · Vercel · Supabase |
+| [PHONE_QA.md](./docs/PHONE_QA.md) | Device QA |
+| [GOOGLE_AUTH.md](./docs/GOOGLE_AUTH.md) | Google sign-in |
+| [RIMVIO_PRODUCT.md](./docs/RIMVIO_PRODUCT.md) | Product definition |
+| [RIMVIO_ARCHITECTURE.md](./docs/RIMVIO_ARCHITECTURE.md) | Architecture |
 
-## 실험 스크립트
+---
 
-```bash
-npm run experiment           # scrape 16 cases
-npm run experiment:actions     # copy + deep link
-npm run experiment:analytics   # Tier 1 집계
-```
+## License
 
-Demo: `/demo` · Share ingress: `/share?url=...`
+Private / all rights reserved unless noted otherwise in repo. Feedback and stars welcome.
+
+**Maintainer:** [@paulop9504-dotcom](https://github.com/paulop9504-dotcom)
