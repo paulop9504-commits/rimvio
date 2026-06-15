@@ -107,6 +107,28 @@ export const copyEn: Copy = {
     stackPickerSub: (count: number) => `${count} · pick one`,
     stackPickerShowAll: (overflow: number) => `${overflow} more · show all`,
     hubEmpty: "Traces show up here as they stack",
+    guide: {
+      eyebrow: "Get started",
+      title: "Remember you were here",
+      subtitle: "About 30 seconds",
+      step1Title: "Spin the globe",
+      step1Body:
+        "Places you passed through show up as pins. Photos fill the map over time.",
+      step2Title: "Add photos & video",
+      step2Body:
+        "Tap + at the bottom → pick from gallery. They attach to that time and place.",
+      step3Title: "Zoom & move",
+      step3Body:
+        "One finger to rotate · two fingers to pinch zoom, centered on the screen.",
+      step4Title: "Moment & context",
+      step4Body:
+        "Tap a pin for Moment | Context. Swipe left on a photo for notes, people, place.",
+      primaryCta: "Add first photo",
+      secondaryCta: "Got it",
+      detailLink: "Full guide",
+      settingsRow: "Globe how-to",
+      settingsRowSub: "Replay the 30-second tour",
+    },
     recallArrivalNearby: "You're back — traces nearby",
     recallArrivalSingle: (place: string) => `${place} — that memory`,
     marketStubToast: "Marketplace traces are coming soon. Saved as your experience for now.",

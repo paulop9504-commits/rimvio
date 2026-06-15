@@ -1,13 +1,20 @@
 "use client";
 
 import {
+  forwardRef,
+  useCallback,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
+import {
   ImagePlus,
   Loader2,
   Plus,
   SendHorizontal,
   X,
 } from "lucide-react";
-import { useCallback, useRef, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import {
   GLOBE_CONTEXT_MEDIA_ACCEPT,
@@ -23,6 +30,10 @@ import {
 import { cn } from "@/lib/utils";
 import { copy } from "@/lib/copy/human-ko";
 
+export type GlobeContextIngestBarHandle = {
+  openPhotoPicker: () => void;
+};
+
 export type GlobeContextIngestBarProps = {
   className?: string;
   /** Active pin sheet — photos attach here instead of auto-match. */
@@ -33,18 +44,31 @@ export type GlobeContextIngestBarProps = {
 };
 
 /** Globe home — photos, videos, links, memos auto-attach to stored contexts. */
-export function GlobeContextIngestBar({
-  className,
-  targetEventId,
-  targetTitle,
-  forceAttachToTarget = false,
-  onAttached,
-}: GlobeContextIngestBarProps) {
+export const GlobeContextIngestBar = forwardRef<
+  GlobeContextIngestBarHandle,
+  GlobeContextIngestBarProps
+>(function GlobeContextIngestBar(
+  {
+    className,
+    targetEventId,
+    targetTitle,
+    forceAttachToTarget = false,
+    onAttached,
+  },
+  ref,
+) {
   const [text, setText] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const photoRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    openPhotoPicker: () => {
+      setMenuOpen(true);
+      window.setTimeout(() => photoRef.current?.click(), 0);
+    },
+  }));
 
   const finish = useCallback(
     (eventId: string, line: string) => {
@@ -241,4 +265,4 @@ export function GlobeContextIngestBar({
       />
     </div>
   );
-}
+});

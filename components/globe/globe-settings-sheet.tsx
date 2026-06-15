@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Bell,
+  BookOpen,
   Calendar,
   Check,
   ClipboardCopy,
@@ -68,11 +69,13 @@ import {
 import type { CountryCode } from "@/lib/links/spark-locale";
 import { formatGpsAccuracyLabel } from "@/lib/globe/format-gps-accuracy-label";
 import { cn } from "@/lib/utils";
+import { copy } from "@/lib/copy/human-ko";
 import { AuthLogoutButton } from "@/components/auth-logout-button";
 
 export type GlobeSettingsSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onShowGlobeGuide?: () => void;
 };
 
 const NETWORK_OPTIONS: {
@@ -135,7 +138,7 @@ function CompactOptionButton({
   );
 }
 
-function GlobeSettingsBody() {
+function GlobeSettingsBody({ onShowGlobeGuide }: { onShowGlobeGuide?: () => void }) {
   const copy = useCopy();
   const { user } = useAuth();
   const { enabled: gpsEnabled, setEnabled: setGpsEnabled } = useGpsTrackingEnabled();
@@ -236,6 +239,26 @@ function GlobeSettingsBody() {
 
   return (
     <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+      <SettingsSection title="도움말" description="처음이시면 여기부터">
+        <button
+          type="button"
+          onClick={() => onShowGlobeGuide?.()}
+          className="flex w-full items-center gap-3 rounded-xl bg-rimvio-surface-muted/60 px-3 py-3 text-left active:scale-[0.99]"
+        >
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
+            <BookOpen className="size-4" aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[14px] font-semibold text-foreground">
+              {copy.globe.guide.settingsRow}
+            </span>
+            <span className="mt-0.5 block text-[12px] text-muted-foreground">
+              {copy.globe.guide.settingsRowSub}
+            </span>
+          </span>
+        </button>
+      </SettingsSection>
+
       <SettingsSection title="위치" description="GPS · 체류 기록">
         <SettingsRow label="GPS 추적" hint={locationHint}>
           <SettingsToggle
@@ -492,7 +515,11 @@ function GlobeSettingsBody() {
 }
 
 /** Globe home — all toggles & prefs in one sheet. */
-export function GlobeSettingsSheet({ open, onOpenChange }: GlobeSettingsSheetProps) {
+export function GlobeSettingsSheet({
+  open,
+  onOpenChange,
+  onShowGlobeGuide,
+}: GlobeSettingsSheetProps) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -560,7 +587,7 @@ export function GlobeSettingsSheet({ open, onOpenChange }: GlobeSettingsSheetPro
               </div>
             </div>
 
-            <GlobeSettingsBody />
+            <GlobeSettingsBody onShowGlobeGuide={onShowGlobeGuide} />
           </motion.div>
         </>
       ) : null}

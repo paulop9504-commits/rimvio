@@ -114,6 +114,28 @@ export const copy = {
     stackPickerSub: (count: number) => `${count}개 · 하나를 골라보세요`,
     stackPickerShowAll: (overflow: number) => `외 ${overflow}개 · 전체 보기`,
     hubEmpty: "흔적이 쌓이면 여기에 나타나요",
+    guide: {
+      eyebrow: "시작하기",
+      title: "그때 거기, 이렇게 남겨요",
+      subtitle: "30초면 충분해요",
+      step1Title: "지구를 돌려보세요",
+      step1Body:
+        "지나간 장소에 흔적이 핀으로 남아요. 사진이 쌓일수록 지도가 채워져요.",
+      step2Title: "사진·동영상 남기기",
+      step2Body:
+        "화면 아래 ＋ 버튼 → 사진·동영상. 갤러리에서 고르면 그때·그곳에 붙어요.",
+      step3Title: "확대·이동",
+      step3Body:
+        "한 손가락으로 돌리기 · 두 손가락 핀치로 가까이·멀리. 가운데를 기준으로 확대돼요.",
+      step4Title: "순간과 맥락",
+      step4Body:
+        "핀을 탭하면 「순간 | 맥락」. 사진에서 왼쪽으로 밀면 글·친구·장소를 볼 수 있어요.",
+      primaryCta: "첫 사진 남기기",
+      secondaryCta: "알겠어요",
+      detailLink: "자세한 설명 보기",
+      settingsRow: "지구본 사용법",
+      settingsRowSub: "30초 가이드 다시 보기",
+    },
     recallArrivalNearby: "다시 왔어요 — 이 근처 흔적",
     recallArrivalSingle: (place: string) => `${place} — 그때 기억`,
     marketStubToast: "중고 흔적은 준비 중이에요. 지금은 경험으로 남겼어요.",

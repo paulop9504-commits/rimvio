@@ -8,7 +8,8 @@ import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-
 import { RimvioGlobeHubClient } from "@/components/experience/rimvio-globe-hub-client";
 import { GlobeContextControlDock } from "@/components/globe/globe-context-control-dock";
 import { GlobeContextMapVideoStage } from "@/components/globe/globe-context-map-video-stage";
-import { GlobeContextIngestBar } from "@/components/globe/globe-context-ingest-bar";
+import { GlobeContextIngestBar, type GlobeContextIngestBarHandle } from "@/components/globe/globe-context-ingest-bar";
+import { GlobeFirstVisitCoach } from "@/components/globe/globe-first-visit-coach";
 import { GlobeContextListSheet } from "@/components/globe/globe-context-list-sheet";
 import { GlobeContextManageSheet } from "@/components/globe/globe-context-manage-sheet";
 import { GlobeContextStackPicker } from "@/components/globe/globe-context-stack-picker";
@@ -83,6 +84,8 @@ function GlobeHomeBody() {
   const { user } = useAuth();
   const recallEventId = searchParams.get("recallEvent");
   const globeRef = useRef<RimvioGlobeHubHandle>(null);
+  const ingestBarRef = useRef<GlobeContextIngestBarHandle>(null);
+  const [globeGuideOpen, setGlobeGuideOpen] = useState(false);
   const liveLocation = useLiveLocationSnapshot();
   usePersonalGlobePinSync(true);
   const {
@@ -733,6 +736,7 @@ function GlobeHomeBody() {
         </button>
       </div>
       <GlobeContextIngestBar
+        ref={ingestBarRef}
         targetEventId={activeCluster?.eventId ?? null}
         targetTitle={activeCluster?.title ?? null}
         forceAttachToTarget={Boolean(activeCluster?.eventId)}
@@ -873,7 +877,14 @@ function GlobeHomeBody() {
         }}
         onDismissed={dismissInvite}
       />
-      <GlobeSettingsSheet open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <GlobeSettingsSheet
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        onShowGlobeGuide={() => {
+          setSettingsOpen(false);
+          setGlobeGuideOpen(true);
+        }}
+      />
       <GlobeContextShareSheet
         open={shareSheetOpen}
         onOpenChange={setShareSheetOpen}
@@ -881,6 +892,11 @@ function GlobeHomeBody() {
         onShared={() => {
           void refreshBridgeInvites();
         }}
+      />
+      <GlobeFirstVisitCoach
+        open={globeGuideOpen || undefined}
+        onOpenChange={setGlobeGuideOpen}
+        onAddPhoto={() => ingestBarRef.current?.openPhotoPicker()}
       />
     </div>
   );
