@@ -465,17 +465,26 @@ function GlobeHomeBody() {
       if (Date.now() - lastPinPressAtRef.current < GLOBE_PIN_PRESS_SUPPRESS_MS) {
         return;
       }
-      applyNearbyContexts(resolveNearbyAt(coords.lat, coords.lng));
+      const nearby = resolveNearbyAt(coords.lat, coords.lng);
+      if (nearby.length === 0) {
+        clearActiveContext();
+        return;
+      }
+      applyNearbyContexts(nearby);
     },
-    [applyNearbyContexts, resolveNearbyAt],
+    [applyNearbyContexts, clearActiveContext, resolveNearbyAt],
   );
 
-  const onSheetOpenChange = useCallback((open: boolean) => {
-    setSheetOpen(open);
-    if (!open) {
-      setPinSheetInitialPage("media");
-    }
-  }, []);
+  const onSheetOpenChange = useCallback(
+    (open: boolean) => {
+      setSheetOpen(open);
+      if (!open) {
+        setPinSheetInitialPage("media");
+        clearActiveContext();
+      }
+    },
+    [clearActiveContext],
+  );
 
   const openMapMediaBridge = useCallback(() => {
     markPinPress();

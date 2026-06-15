@@ -57,7 +57,6 @@ import { applyFocusedHubGlobePins } from "@/lib/globe/context-hub/apply-focused-
 import {
   GLOBE_EXPERIENCE_SETTINGS_UPDATED,
   isShowContextWarmthEnabled,
-  isShowTripArcsEnabled,
 } from "@/lib/globe/globe-experience-settings";
 import { buildGlobeContextWarmthPoints } from "@/lib/globe/build-globe-context-warmth-points";
 import { cn } from "@/lib/utils";
@@ -238,13 +237,11 @@ const RimvioGlobeHubBody = memo(
       focusedContextEventId,
       eventsById,
     ]);
-    const [tripArcsEnabled, setTripArcsEnabled] = useState(() => isShowTripArcsEnabled());
     const [contextWarmthEnabled, setContextWarmthEnabled] = useState(() =>
       isShowContextWarmthEnabled(),
     );
     useEffect(() => {
       const sync = () => {
-        setTripArcsEnabled(isShowTripArcsEnabled());
         setContextWarmthEnabled(isShowContextWarmthEnabled());
       };
       sync();
@@ -257,9 +254,10 @@ const RimvioGlobeHubBody = memo(
           eventsById,
           clusters,
           focusedEventId: focusedContextEventId,
-          showBackgroundTripArcs: tripArcsEnabled && !focusedContextEventId?.trim(),
+          // Arc only while a hubbed context is selected — never ambient “all trips”.
+          showBackgroundTripArcs: false,
         }),
-      [eventsById, clusters, tripArcsEnabled, focusedContextEventId],
+      [eventsById, clusters, focusedContextEventId],
     );
     const contextWarmthPoints = useMemo(
       () => buildGlobeContextWarmthPoints(clusters),
