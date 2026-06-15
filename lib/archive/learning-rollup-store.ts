@@ -103,3 +103,38 @@ export function applyLearningSignals(signals: readonly LearningSignal[]): Learni
   writeStore(next);
   return next;
 }
+
+/** Replace rollup rows from aggregated telemetry (fold paths — no double-count). */
+export function applyLearningSignalsAbsolute(
+  signals: readonly LearningSignal[],
+): LearningRollupEntry[] {
+  const map = new Map<string, LearningRollupEntry>(
+    readStore().map((entry) => [rollupKey(entry.contextKey, entry.actionKey), entry]),
+  );
+  const now = new Date().toISOString();
+
+  for (const signal of signals) {
+    const key = rollupKey(signal.contextKey, signal.actionKey);
+    const rates = {
+      clickRate: signal.shown > 0 ? clampRate(signal.clicked / signal.shown) : 0,
+      executeRate: signal.shown > 0 ? clampRate(signal.executed / signal.shown) : 0,
+      dismissRate: signal.shown > 0 ? clampRate(signal.dismissed / signal.shown) : 0,
+    };
+    map.set(key, {
+      contextKey: signal.contextKey,
+      actionKey: signal.actionKey,
+      label: signal.label,
+      shown: signal.shown,
+      clicked: signal.clicked,
+      executed: signal.executed,
+      dismissed: signal.dismissed,
+      rates,
+      scoreDelta: scoreDeltaFromRates(rates),
+      updatedAt: now,
+    });
+  }
+
+  const next = [...map.values()];
+  writeStore(next);
+  return next;
+}

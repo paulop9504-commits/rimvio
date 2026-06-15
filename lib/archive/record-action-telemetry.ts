@@ -1,4 +1,5 @@
 import { appendActionTelemetry } from "@/lib/archive/action-telemetry-store";
+import { syncLearningRollupFromTelemetry } from "@/lib/archive/sync-learning-rollup-from-telemetry";
 import type { ActionTelemetryKind } from "@/lib/archive/types";
 import type { CalendarOverlayAction } from "@/lib/calendar/calendar-view-types";
 
@@ -37,4 +38,14 @@ export function recordOverlayActionsShown(input: {
       phase: input.phase,
     });
   }
+}
+
+export function foldOverlayLearning(input: {
+  eventId: string;
+  contextKey: string;
+}): void {
+  syncLearningRollupFromTelemetry({
+    telemetryEventId: input.eventId,
+    contextKey: input.contextKey,
+  });
 }

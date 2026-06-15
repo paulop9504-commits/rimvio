@@ -16,7 +16,7 @@ import {
 import { buildLinkRankingContextKey } from "@/lib/feed/build-link-ranking-context-key";
 import { markFirstActionSuccess } from "@/lib/platform/pwa-install-nudge";
 import { recordActionTrustSuccess } from "@/lib/preferences/action-trust";
-import type { ScheduleMedium } from "@/lib/preferences/schedule-medium";
+import type { SurfaceLinkTelemetrySurface } from "@/lib/archive/record-surface-link-telemetry";
 import type { LinkActionItem, LinkRow } from "@/types/database";
 import { toast } from "sonner";
 
@@ -24,7 +24,8 @@ export async function runFeedLinkAction(
   action: LinkActionItem,
   link: LinkRow,
   copy: Copy,
-  scheduleMedium?: ScheduleMedium
+  scheduleMedium?: ScheduleMedium,
+  options?: { surface?: SurfaceLinkTelemetrySurface },
 ) {
   if (action.payload?.transportLiveRefresh === true) {
     window.dispatchEvent(
@@ -69,12 +70,15 @@ export async function runFeedLinkAction(
     normalizeEnricherContext({ hour: new Date().getHours() })
   );
 
+  const telemetrySurface = options?.surface ?? "feed";
+
   recordFeedLinkActionTelemetry({
     link,
     action,
     kind: "clicked",
     contextKey: rankingContextKey,
     tier: "MAIN",
+    surface: telemetrySurface,
   });
 
   recordLocalPersonalizationClick({
@@ -105,6 +109,7 @@ export async function runFeedLinkAction(
     kind: "executed",
     contextKey: rankingContextKey,
     tier: "MAIN",
+    surface: telemetrySurface,
   });
   foldFeedLinkLearning({ linkId: link.id, contextKey: rankingContextKey });
 

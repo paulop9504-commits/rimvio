@@ -1,6 +1,6 @@
 "use client";
 
-import { createElement, useEffect, useState } from "react";
+import { createElement, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -17,11 +17,19 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
-import { runLinkAction } from "@/lib/actions/execute-link-action";
+import { ConfirmRevealButtons } from "@/components/action-chat/magic-action-ui";
+import {
+  resolveLinkMainOffer,
+  shouldShowLinkMainHero,
+} from "@/lib/action-chat/resolve-link-main-offer";
+import {
+  foldSurfaceLinkLearning,
+  recordSurfaceLinkActionTelemetry,
+} from "@/lib/archive/record-surface-link-telemetry";
+import { runFeedLinkAction } from "@/lib/feed/run-feed-link-action";
 import {
   analyticsFromEnriched,
   endAnalyticsFlow,
-  runAndTrackLinkAction,
   trackFunnel,
 } from "@/lib/analytics/track-client";
 import {
@@ -32,6 +40,9 @@ import type { EnrichedLink, EnricherContext } from "@/lib/enrichers/types";
 import { getDisplayTitle } from "@/lib/feed/sanitize-link-title";
 import { toActionKey } from "@/lib/intent/action-key";
 import { trackActionBinEvent } from "@/lib/intent/track-client";
+import { buildLocalLinkFromEnriched } from "@/lib/local-links/store";
+import { useCopy } from "@/hooks/use-copy";
+import type { Copy } from "@/lib/i18n/types";
 import type { LinkActionItem } from "@/types/database";
 import {
   getDomainGradient,
@@ -125,15 +136,10 @@ function HeroThumbnail({ enriched }: { enriched: EnrichedLink }) {
 
 async function runPrimaryAction(
   action: LinkActionItem,
-  enriched: EnrichedLink
+  link: ReturnType<typeof buildLocalLinkFromEnriched>,
+  copy: Copy,
 ) {
-  const { copiedText } = await runAndTrackLinkAction(
-    action,
-    analyticsFromEnriched(enriched, "now")
-  );
-  if (copiedText) {
-    toast.success(`"${copiedText}" 복사됨`);
-  }
+  await runFeedLinkAction(action, link, copy, undefined, { surface: "now" });
 }
 
 export function NowActionFocus({
@@ -142,8 +148,33 @@ export function NowActionFocus({
   onStack,
 }: NowActionFocusProps) {
   const router = useRouter();
-  const primary = enriched.actions[0];
-  const secondary = enriched.actions.slice(1, 4);
+  const copy = useCopy();
+  const linkRow = useMemo(() => buildLocalLinkFromEnriched(enriched), [enriched]);
+  const [actionsRevealed, setActionsRevealed] = useState(false);
+  const shownRef = useRef(false);
+
+  const offer = useMemo(
+    () =>
+      resolveLinkMainOffer({
+        link: linkRow,
+        surface: "now",
+        actionsRevealed: actionsRevealed || false,
+      }),
+    [actionsRevealed, linkRow],
+  );
+
+  const primary = offer.primary;
+  const secondary = offer.secondary;
+  const showHero = shouldShowLinkMainHero({
+    offer,
+    actionsRevealed: offer.urgencyBypass || actionsRevealed,
+  });
+  const showConfirm =
+    !offer.urgencyBypass &&
+    offer.ux.showConfirmPrompt &&
+    Boolean(primary) &&
+    !actionsRevealed;
+
   const PrimaryIcon = primary ? iconForAction(primary) : ExternalLink;
   const isYouTube = isYouTubeEnriched(enriched);
   const displayTitle = getDisplayTitle({
@@ -154,6 +185,25 @@ export function NowActionFocus({
   });
   const [isExiting, setIsExiting] = useState(false);
   const [didPrimary, setDidPrimary] = useState(false);
+
+  useEffect(() => {
+    if (offer.urgencyBypass) {
+      setActionsRevealed(true);
+    }
+  }, [offer.urgencyBypass]);
+
+  useEffect(() => {
+    if (!primary || offer.tier === "low" || offer.tier === "none" || shownRef.current) {
+      return;
+    }
+    shownRef.current = true;
+    recordSurfaceLinkActionTelemetry({
+      link: linkRow,
+      action: primary,
+      kind: "shown",
+      surface: "now",
+    });
+  }, [linkRow, offer.tier, primary]);
 
   useEffect(() => {
     if (!primary) {
@@ -178,6 +228,13 @@ export function NowActionFocus({
         actionKey: toActionKey(primary),
         event: "skip",
       });
+      recordSurfaceLinkActionTelemetry({
+        link: linkRow,
+        action: primary,
+        kind: "dismissed",
+        surface: "now",
+      });
+      foldSurfaceLinkLearning({ linkId: linkRow.id, link: linkRow });
     }
 
     trackFunnel("now_done", {
@@ -212,7 +269,7 @@ export function NowActionFocus({
         fallbackHref: enriched.url,
         intent: "touch",
       });
-      void runPrimaryAction(primary, enriched);
+      void runPrimaryAction(primary, linkRow, copy);
     } else {
       launchExternalUrl(enriched.url);
     }
@@ -239,6 +296,18 @@ export function NowActionFocus({
       </p>
 
       <div className="mt-10 w-full max-w-md">
+        {offer.promptSummary && !showHero ? (
+          <p className="mb-4 text-sm text-muted-foreground">{offer.promptSummary}</p>
+        ) : null}
+
+        {showConfirm ? (
+          <ConfirmRevealButtons
+            onConfirm={() => setActionsRevealed(true)}
+            className="justify-center"
+          />
+        ) : null}
+
+        {showHero ? (
         <button
           type="button"
           disabled={isExiting}
@@ -280,8 +349,9 @@ export function NowActionFocus({
           })}
           <span className="relative">{primary?.label ?? "원본 열기"}</span>
         </button>
+        ) : null}
 
-        {secondary.length > 0 ? (
+        {showHero && secondary.length > 0 ? (
           <div className="mt-4 flex flex-wrap justify-center gap-2">
             {secondary.map((action) => {
               const Icon = iconForAction(action);
@@ -298,7 +368,7 @@ export function NowActionFocus({
                       domain: enriched.domain,
                       enricher_id: enriched.enricher_id,
                     });
-                    void runPrimaryAction(action, enriched);
+                    void runPrimaryAction(action, linkRow, copy);
                   }}
                   className={cn(
                     "inline-flex items-center gap-1.5 rounded-full px-4 py-2.5",

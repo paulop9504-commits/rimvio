@@ -7,6 +7,11 @@ import { ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 import { ActionCard } from "@/components/action-card";
 import { Button } from "@/components/ui/button";
+import { resolveLinkMainOffer } from "@/lib/action-chat/resolve-link-main-offer";
+import {
+  foldSurfaceLinkLearning,
+  recordSurfaceLinkActionTelemetry,
+} from "@/lib/archive/record-surface-link-telemetry";
 import { useRealtimeLinks } from "@/hooks/use-realtime-links";
 import {
   dismissLinkId,
@@ -29,6 +34,17 @@ export function ActionStackList() {
   const handleDone = () => {
     if (!topLink) {
       return;
+    }
+
+    const offer = resolveLinkMainOffer({ link: topLink, surface: "stack" });
+    if (offer.primary) {
+      recordSurfaceLinkActionTelemetry({
+        link: topLink,
+        action: offer.primary,
+        kind: "dismissed",
+        surface: "stack",
+      });
+      foldSurfaceLinkLearning({ linkId: topLink.id, link: topLink });
     }
 
     dismissLinkId(topLink.id);

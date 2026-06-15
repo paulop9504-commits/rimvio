@@ -1,10 +1,17 @@
 import { findLearningRollupEntry } from "@/lib/archive/learning-rollup-store";
 
+/** Minimum impressions before rollup shifts MAIN ranking (state inertia). */
+export const ROLLUP_HYSTERESIS_MIN_SHOWN = 3;
+/** scoreDelta must exceed this to promote above neutral weight. */
+export const ROLLUP_HYSTERESIS_PROMOTE_DELTA = 0.06;
+/** scoreDelta must fall below this to demote below neutral weight. */
+export const ROLLUP_HYSTERESIS_DEMOTE_DELTA = -0.1;
+
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, Math.round(value * 100) / 100));
 }
 
-function resolveRollupScoreDelta(input: {
+export function resolveRollupScoreDelta(input: {
   contextKey?: string;
   actionId: string;
   label: string;
@@ -32,11 +39,18 @@ export function resolveRollupUserHistoryWeight(input: {
     findLearningRollupEntry(input.contextKey, input.actionId) ??
     findLearningRollupEntry(input.contextKey, input.label.trim());
 
-  if (!entry) {
+  if (!entry || entry.shown < ROLLUP_HYSTERESIS_MIN_SHOWN) {
     return 0.5;
   }
 
-  return clamp01(0.5 + entry.scoreDelta);
+  const delta = entry.scoreDelta;
+  if (delta >= ROLLUP_HYSTERESIS_PROMOTE_DELTA) {
+    return clamp01(0.5 + delta);
+  }
+  if (delta <= ROLLUP_HYSTERESIS_DEMOTE_DELTA) {
+    return clamp01(0.5 + delta);
+  }
+
+  return 0.5;
 }
 
-export { resolveRollupScoreDelta };

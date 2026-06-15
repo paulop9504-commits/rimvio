@@ -135,6 +135,7 @@ function GlobeHomeBody() {
   const draggedEventIdRef = useRef<string | null>(null);
   const pinDragActiveRef = useRef(false);
   const revertTimerRef = useRef<number | null>(null);
+  const stackClustersRef = useRef<PinCluster[] | null>(null);
   const activeClusterRef = useRef<PinCluster | null>(null);
   const sheetOpenRef = useRef(false);
   const [createOpen, setCreateOpen] = useState(false);
@@ -246,6 +247,10 @@ function GlobeHomeBody() {
     (nearby: readonly PinCluster[], flyCluster?: PinCluster | null) => {
       if (nearby.length === 0) {
         if (activeClusterRef.current != null) {
+          clearActiveContext();
+          return;
+        }
+        if ((stackClustersRef.current?.length ?? 0) > 0) {
           clearActiveContext();
           return;
         }
@@ -598,6 +603,7 @@ function GlobeHomeBody() {
   const pinCoordOverrides = useMemo(() => pinDragOverrides, [pinDragOverrides]);
 
   activeClusterRef.current = activeCluster;
+  stackClustersRef.current = stackClusters;
   sheetOpenRef.current = sheetOpen;
 
   useGlobeContextPlaceAlignment({

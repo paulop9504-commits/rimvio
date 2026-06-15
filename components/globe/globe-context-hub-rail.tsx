@@ -6,6 +6,10 @@ import { Car, Plane, Plus, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { connectDepartureHubToContext } from "@/lib/globe/connect-departure-hub-to-context";
 import {
+  foldContextHubLearning,
+  recordContextHubTelemetry,
+} from "@/lib/globe/context-hub/record-context-hub-telemetry";
+import {
   listContextHubServicesForEvent,
   type ContextHubServiceId,
   type ContextHubServiceRow,
@@ -93,6 +97,10 @@ function HubServiceRow({
             >
               {link.actionLabelKo ?? link.airportIata ?? copy.globe.contextHubOpenFlight}
             </button>
+          ) : row.connected ? (
+            <span className="shrink-0 rounded-full bg-muted px-2 py-1 text-[9px] font-semibold text-muted-foreground">
+              {link?.shortLabel ?? copy.globe.contextHubDepartureKind}
+            </span>
           ) : (
             <button
               type="button"
@@ -186,18 +194,50 @@ export function GlobeContextHubRail({
     return listContextHubServicesForEvent(event);
   }, [activeEventId, revision]);
 
+  useEffect(() => {
+    void revision;
+    const eventId = activeEventId?.trim();
+    if (!eventId) {
+      return;
+    }
+    const event = findLifeEventCandidate(eventId);
+    if (!event) {
+      return;
+    }
+    const services = listContextHubServicesForEvent(event);
+    const flight = services?.services.find(
+      (row) => row.serviceId === "flight" && row.connected && row.link?.actionUrl,
+    );
+    if (flight?.link) {
+      recordContextHubTelemetry({
+        event,
+        kind: "shown",
+        label: flight.link.actionLabelKo ?? flight.link.shortLabel,
+      });
+    }
+  }, [activeEventId, revision]);
+
   const handleConnectFlight = useCallback(
     async (airportId: DepartureHubAirportId) => {
       const eventId = activeEventId?.trim();
       if (!eventId || busy) {
         return;
       }
+      const event = findLifeEventCandidate(eventId);
       setBusy(true);
       try {
         connectDepartureHubToContext({
           destinationEventId: eventId,
           airportId,
         });
+        if (event) {
+          recordContextHubTelemetry({
+            event,
+            kind: "clicked",
+            label: airportId,
+          });
+          foldContextHubLearning(event);
+        }
         const label =
           panel?.services
             .find((row) => row.serviceId === "flight")
@@ -260,6 +300,21 @@ export function GlobeContextHubRail({
             }
             onConnectFlight={(airportId) => void handleConnectFlight(airportId)}
             onOpenAction={(url) => {
+              const eventId = activeEventId?.trim();
+              const event = eventId ? findLifeEventCandidate(eventId) : null;
+              if (event) {
+                recordContextHubTelemetry({
+                  event,
+                  kind: "clicked",
+                  label: copy.globe.contextHubOpenFlight,
+                });
+                recordContextHubTelemetry({
+                  event,
+                  kind: "executed",
+                  label: copy.globe.contextHubOpenFlight,
+                });
+                foldContextHubLearning(event);
+              }
               window.open(url, "_blank", "noopener,noreferrer");
             }}
           />
