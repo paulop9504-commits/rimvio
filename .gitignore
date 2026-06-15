@@ -55,3 +55,17 @@ next-env.d.ts
 
 # local beam/room dev snapshots
 .data/
+
+# ── Private / core materials (see docs/GIT_PUBLIC_SHARE.md) ──
+/private/*
+!/private/README.template.md
+
+# Android release signing (keystore.properties also in android/.gitignore)
+*.keystore
+KEYSTORE_CREDENTIALS.local.txt
+
+# Local Capacitor server override (prod URL stays in capacitor.config.ts)
+capacitor.config.local.ts
+
+# Agent / IDE local only
+.cursor/rules/local-*.mdc

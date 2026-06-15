@@ -35,6 +35,7 @@ npm run backup               # Desktop에 zip 백업
 | [docs/RIMVIO_KIPRIS.md](./docs/RIMVIO_KIPRIS.md) | KIPRIS 상표 검색 메모 |
 | [docs/RIMVIO_HANDOFF.md](./docs/RIMVIO_HANDOFF.md) | AI/개발 핸드오프 |
 | [docs/WORKSPACE.md](./docs/WORKSPACE.md) | **Cursor workspace (SG와 분리)** |
+| [docs/GIT_PUBLIC_SHARE.md](./docs/GIT_PUBLIC_SHARE.md) | **Git 공개 시 비공개 자료 분리** |
 | [docs/RIMVIO_PRODUCT.md](./docs/RIMVIO_PRODUCT.md) | **Action OS 제품 정의** |
 | [docs/RIMVIO_ARCHITECTURE.md](./docs/RIMVIO_ARCHITECTURE.md) | 아키텍처 |
 
