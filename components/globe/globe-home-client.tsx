@@ -745,14 +745,9 @@ function GlobeHomeBody() {
           />
         </div>
         <GlobeContextHubRail
-          className="pointer-events-auto min-h-0 max-h-[min(24rem,calc(100vh-var(--rimvio-globe-ingest-offset)-12rem))]"
+          className="pointer-events-auto"
           visible={!globeRenderSuspended}
           activeEventId={activeCluster?.eventId ?? null}
-          timeFilter={timeFilter}
-          peopleFilter={peopleFilter}
-          onFocusContext={(eventId) => {
-            focusContextByEventId(eventId, { openSheet: false });
-          }}
         />
       </div>
       <div className="pointer-events-none absolute right-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20 flex items-center gap-2">
