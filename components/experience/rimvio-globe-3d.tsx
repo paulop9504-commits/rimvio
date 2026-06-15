@@ -23,6 +23,7 @@ import { useGlobeAnimationPower } from "@/hooks/use-globe-animation-power";
 import { useGlobeOverviewTexture } from "@/hooks/use-globe-equirect-texture";
 import { tuneGlobeOrbitControls } from "@/lib/globe/tune-globe-orbit-controls";
 import { useGlobeFocalPinch } from "@/hooks/use-globe-focal-pinch";
+import { resolveTripArcAltitude } from "@/lib/globe/resolve-trip-arc-altitude";
 import { GLOBE_TOSS_THEME } from "@/lib/globe/globe-toss-theme";
 import { applyGlobePinUiScale } from "@/lib/globe/apply-globe-pin-ui-scale";
 import { resolveGlobePinUiScaleBlended } from "@/lib/globe/resolve-globe-pin-ui-scale";
@@ -464,11 +465,7 @@ export const RimvioGlobe3D = memo(
         .arcEndLat((arc: object) => (arc as GlobeTripArc).endLat)
         .arcEndLng((arc: object) => (arc as GlobeTripArc).endLng)
         .arcColor((arc: object) => (arc as GlobeTripArc).color)
-        .arcAltitude((arc: object) =>
-          (arc as GlobeTripArc).emphasis === "focused"
-            ? GLOBE_TOSS_THEME.tripArcFocusedAltitude
-            : GLOBE_TOSS_THEME.tripArcAltitude,
-        )
+        .arcAltitude((arc: object) => resolveTripArcAltitude(arc as GlobeTripArc))
         .arcStroke((arc: object) =>
           (arc as GlobeTripArc).emphasis === "focused"
             ? GLOBE_TOSS_THEME.tripArcFocusedStroke

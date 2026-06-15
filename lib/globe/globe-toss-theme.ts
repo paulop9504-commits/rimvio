@@ -29,9 +29,12 @@ export const GLOBE_TOSS_THEME = {
   /** CARTO voyager — stable with road recolor post-process. */
   mapStyle: "voyager" as const,
   sharedGlobeMapStyle: "voyager" as const,
-  /** Great-circle trip leg connector on 3D globe (globe.gl arcAltitude — lower = flatter, visible when zoomed in). */
+  /** Trip arc peak height (km) scales with route distance — flat on short hops, capped on long haul. */
+  tripArcPeakToDistanceRatio: 0.055,
+  tripArcFocusedPeakMultiplier: 1.1,
+  tripArcMinPeakKm: 6,
+  tripArcMaxPeakKm: 72,
+  /** Great-circle trip leg connector on 3D globe (globe.gl arcStroke). */
   tripArcStroke: 0.085,
   tripArcFocusedStroke: 0.14,
-  tripArcAltitude: 0.07,
-  tripArcFocusedAltitude: 0.1,
 } as const;
