@@ -8,6 +8,7 @@ import { resolveMainActionBrandStyle } from "@/lib/brand/action-brand-style";
 import {
   recordOverlayActionTelemetry,
   recordOverlayActionsShown,
+  foldOverlayLearningForEvent,
 } from "@/lib/archive/record-action-telemetry";
 import { ActionDockWhyLine } from "@/components/action-dock/action-dock-why-line";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,8 @@ type OverlayEventChipProps = {
   onActionSelect?: (action: CalendarOverlayAction) => void;
   onSpawnPrompt?: (uri: string) => void;
   className?: string;
+  telemetrySurface?: string;
+  telemetryPhase?: string;
 };
 
 function partitionOverlayActions(actions: readonly CalendarOverlayAction[]) {
@@ -55,6 +58,8 @@ export function OverlayEventChip({
   onActionSelect,
   onSpawnPrompt,
   className,
+  telemetrySurface = "overlay",
+  telemetryPhase,
 }: OverlayEventChipProps) {
   const timeLabel = event.hasTime ? padTime(event.hour, event.minute) : null;
   const elapsedLabel =
@@ -70,9 +75,10 @@ export function OverlayEventChip({
     recordOverlayActionsShown({
       eventId,
       actions: overlayActions,
-      surface: "overlay",
+      surface: telemetrySurface,
+      phase: telemetryPhase,
     });
-  }, [event.eventId, overlayActions]);
+  }, [event.eventId, overlayActions, telemetryPhase, telemetrySurface]);
 
   const handleAction = (action: CalendarOverlayAction) => {
     const eventId = event.eventId;
@@ -81,7 +87,8 @@ export function OverlayEventChip({
         eventId,
         action,
         kind: "clicked",
-        surface: "overlay",
+        surface: telemetrySurface,
+        phase: telemetryPhase,
       });
     }
     if (action.deeplink) {
@@ -90,8 +97,10 @@ export function OverlayEventChip({
           eventId,
           action,
           kind: "executed",
-          surface: "overlay",
+          surface: telemetrySurface,
+          phase: telemetryPhase,
         });
+        foldOverlayLearningForEvent(eventId);
       }
       openSpawnAction({
         deeplink: action.deeplink,

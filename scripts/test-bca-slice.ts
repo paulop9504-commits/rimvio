@@ -18,6 +18,9 @@ import {
   resolveLinkMainOffer,
   shouldShowLinkMainHero,
 } from "../lib/action-chat/resolve-link-main-offer";
+import { normalizeEnricherContext } from "../lib/enrichers/context";
+import { toDomainFamily } from "../lib/personalization/action-family";
+import { pickPersonalizedPrimaryAction } from "../lib/personalization/score-guardrails";
 import type { LinkRow } from "../types/database";
 
 function seedLink(partial: Partial<LinkRow> = {}): LinkRow {
@@ -107,6 +110,16 @@ foldFeedLinkLearning({
 const entry = findLearningRollupEntry("event.travel.link:naver.com", "nav");
 assert.ok(entry);
 assert.ok(entry!.shown >= ROLLUP_HYSTERESIS_MIN_SHOWN);
+
+const feedPrimary = pickPersonalizedPrimaryAction({
+  actions: travelLink.actions,
+  context: normalizeEnricherContext({ hour: 12 }),
+  sourceUrl: travelLink.original_url,
+  domainFamily: toDomainFamily(travelLink.domain, travelLink.category),
+  contextBin: "midday",
+  link: travelLink,
+});
+assert.ok(feedPrimary, "feed primary resolves with link rollup ranking");
 assert.ok(
   resolveRollupUserHistoryWeight({
     contextKey: "event.travel.link:naver.com",

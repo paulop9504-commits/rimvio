@@ -3,7 +3,8 @@ import { rankActionsByContext } from "@/lib/enrichers/rank-actions";
 import { scoreActionEffort } from "@/lib/behavior/fogg";
 import { toActionKey } from "@/lib/intent/action-key";
 import { INTENT_SCORE_WEIGHT, MIN_BIN_IMPRESSIONS, type ActionBinStat } from "@/lib/intent/types";
-import type { LinkActionItem } from "@/types/database";
+import type { LinkActionItem, LinkRow } from "@/types/database";
+import { rankFeedLinkActionsForDock } from "@/lib/feed/rank-feed-link-actions";
 import { toActionFamily } from "@/lib/personalization/action-family";
 import type {
   ActionFamily,
@@ -231,13 +232,20 @@ export function pickPersonalizedPrimaryAction(input: {
   contextBin: string;
   /** Session or user-tapped primary — hysteresis applies when swapping away. */
   incumbentActionId?: string | null;
+  /** Feed link — enables rollup-aware rule ranking. */
+  link?: Pick<LinkRow, "domain" | "category" | "original_url">;
 }): LinkActionItem | null {
   const display = input.actions.filter((a) => a.kind !== "copy");
   if (display.length === 0) {
     return input.actions[0] ?? null;
   }
 
-  const ruleRanked = rankActionsByContext(display, input.context, input.sourceUrl);
+  const ruleRanked = input.link
+    ? rankFeedLinkActionsForDock({
+        actions: display,
+        link: input.link,
+      }).map((row) => row.action)
+    : rankActionsByContext(display, input.context, input.sourceUrl);
   const ruleScoreMap = buildRuleScoreMap(display, input.context, input.sourceUrl);
   const statMap = new Map((input.stats ?? []).map((s) => [s.action_key, s]));
 

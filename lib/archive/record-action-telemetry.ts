@@ -1,5 +1,7 @@
 import { appendActionTelemetry } from "@/lib/archive/action-telemetry-store";
 import { syncLearningRollupFromTelemetry } from "@/lib/archive/sync-learning-rollup-from-telemetry";
+import { buildArchiveContextKey } from "@/lib/archive/build-archived-event";
+import { findLifeEventCandidate } from "@/lib/life-read-model";
 import type { ActionTelemetryKind } from "@/lib/archive/types";
 import type { CalendarOverlayAction } from "@/lib/calendar/calendar-view-types";
 
@@ -47,5 +49,16 @@ export function foldOverlayLearning(input: {
   syncLearningRollupFromTelemetry({
     telemetryEventId: input.eventId,
     contextKey: input.contextKey,
+  });
+}
+
+export function foldOverlayLearningForEvent(eventId: string): void {
+  const event = findLifeEventCandidate(eventId);
+  if (!event) {
+    return;
+  }
+  foldOverlayLearning({
+    eventId,
+    contextKey: buildArchiveContextKey(event),
   });
 }

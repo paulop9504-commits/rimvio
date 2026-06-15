@@ -36,6 +36,7 @@ import {
 } from "@/components/action-chat/chat-ambient-focus";
 import { ActionChatLinkPanel } from "@/components/action-chat/link-panel";
 import { ActionChatMessageList } from "@/components/action-chat/message-list";
+import { PrepSurfaceBoard } from "@/components/action-chat/prep-surface-board";
 import { ExecutionTimeline } from "@/components/threadline/execution-timeline";
 import { TodayThread } from "@/components/threadline/today-thread";
 import { threadlineHeaderStatus } from "@/lib/threadline";
@@ -723,9 +724,10 @@ export function ActionChatFeed({
 
           {isConversation && !isSearchIngress && !isSearchMentionRun && prepSurface.visible && showLatentSuggestionLayers ? (
             <div className="shrink-0 px-3 pb-1">
-              <p className="rounded-xl bg-rimvio-surface-muted/70 px-3 py-2 text-[12px] font-medium text-foreground">
-                {prepSurface.title}
-              </p>
+              <PrepSurfaceBoard
+                prepSurface={prepSurface}
+                onSpawnPrompt={(uri) => void sendMessage(uri)}
+              />
             </div>
           ) : null}
 

@@ -174,6 +174,7 @@ export function usePersonalizedFeedActions(
         linkState: lifecycleState,
         domainFamily,
         contextBin,
+        link,
         incumbentActionId:
           primaryLock?.actionId ?? stabilizedPrimaryId.current ?? undefined,
       }) ?? displayActions[0]
@@ -186,7 +187,8 @@ export function usePersonalizedFeedActions(
     lifecycleState,
     domainFamily,
     contextBin,
-    primaryLock?.actionId,
+    link.category,
+    link.domain,
   ]);
 
   if (computedPrimary) {
