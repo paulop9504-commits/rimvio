@@ -17,6 +17,8 @@ import {
   resolveCaptureSpacetime,
 } from "@/lib/location-ping/resolve-capture-spacetime";
 import { prepareShareVideoFile } from "@/lib/media/share-video-compress/prepare-share-video-file";
+import { SHARE_VIDEO_MAX_DURATION_SEC } from "@/lib/media/share-video-compress/constants";
+import { readVideoDurationSec } from "@/lib/media/share-video-compress/read-video-duration-sec";
 import type {
   MediaSpacetimeContext,
   MediaSpacetimeOrigin,
@@ -111,17 +113,32 @@ export async function attachMediaSpacetime(input: {
 
   let storeFile = input.file;
   if (context.mediaKind === "video") {
+    const durationSec = await readVideoDurationSec(input.file);
+    const willTrim =
+      durationSec != null &&
+      durationSec > SHARE_VIDEO_MAX_DURATION_SEC + 0.5;
+    if (willTrim) {
+      input.onFilePrepare?.("2분까지만 넣을게요 · 준비 중…");
+    }
     storeFile = await prepareShareVideoFile({
       file: input.file,
       onProgress: (progress) => {
         if (progress.phase === "loading") {
-          input.onFilePrepare?.("동영상 준비 중…");
+          input.onFilePrepare?.(
+            willTrim ? "2분까지만 넣을게요 · 준비 중…" : "동영상 준비 중…",
+          );
           return;
         }
         const pct =
           progress.ratio != null ? Math.round(progress.ratio * 100) : null;
         input.onFilePrepare?.(
-          pct != null ? `동영상 압축 중… ${pct}%` : "동영상 압축 중…",
+          pct != null
+            ? willTrim
+              ? `2분으로 맞추는 중… ${pct}%`
+              : `동영상 압축 중… ${pct}%`
+            : willTrim
+              ? "2분으로 맞추는 중…"
+              : "동영상 압축 중…",
         );
       },
     });

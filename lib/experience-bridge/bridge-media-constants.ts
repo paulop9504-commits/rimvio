@@ -1,8 +1,14 @@
 /** Supabase Storage — shared bridge photos + videos (public read). */
 export const EXPERIENCE_BRIDGE_MEDIA_BUCKET = "experience-bridge";
 
-export const BRIDGE_PHOTO_MAX_BYTES = 5 * 1024 * 1024;
-export const BRIDGE_VIDEO_MAX_BYTES = 50 * 1024 * 1024;
+/** After client resize — Android gallery originals are often 8–15MB. */
+export const BRIDGE_PHOTO_MAX_BYTES = 12 * 1024 * 1024;
+/** Client-side ffmpeg trim/compress target ceiling before upload. */
+export const BRIDGE_VIDEO_MAX_BYTES = 80 * 1024 * 1024;
+
+export function formatBridgeMediaMaxMb(bytes: number): string {
+  return `${Math.round(bytes / (1024 * 1024))}MB`;
+}
 
 export const BRIDGE_PHOTO_CONTENT_TYPES = new Set([
   "image/jpeg",

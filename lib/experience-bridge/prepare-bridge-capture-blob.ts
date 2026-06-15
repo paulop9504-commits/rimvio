@@ -4,6 +4,7 @@ import { prepareCaptureImageForUpload } from "@/lib/capture/prepare-capture-imag
 import {
   BRIDGE_PHOTO_MAX_BYTES,
   BRIDGE_VIDEO_MAX_BYTES,
+  formatBridgeMediaMaxMb,
 } from "@/lib/experience-bridge/bridge-media-constants";
 import type { FeedCaptureFragment } from "@/lib/feed/feed-capture-types";
 import { prepareShareVideoFile } from "@/lib/media/share-video-compress/prepare-share-video-file";
@@ -46,7 +47,9 @@ export async function prepareBridgeCaptureBlob(input: {
       throw new Error("동영상 압축에 실패했어요. 더 짧은 동영상을 선택해 주세요.");
     }
     if (compressed.size > BRIDGE_VIDEO_MAX_BYTES) {
-      throw new Error("50MB 이하 동영상만 공유할 수 있어요.");
+      throw new Error(
+        `${formatBridgeMediaMaxMb(BRIDGE_VIDEO_MAX_BYTES)} 이하 동영상만 공유할 수 있어요.`,
+      );
     }
     return compressed;
   }
@@ -61,7 +64,9 @@ export async function prepareBridgeCaptureBlob(input: {
     throw new Error("사진을 준비하지 못했어요. 다시 선택해 주세요.");
   }
   if (prepared.size > BRIDGE_PHOTO_MAX_BYTES) {
-    throw new Error("5MB 이하 사진만 공유할 수 있어요. 더 작은 사진을 선택해 주세요.");
+    throw new Error(
+      `${formatBridgeMediaMaxMb(BRIDGE_PHOTO_MAX_BYTES)} 이하 사진만 공유할 수 있어요. 더 작은 사진을 선택해 주세요.`,
+    );
   }
   return prepared;
 }

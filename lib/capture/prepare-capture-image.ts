@@ -1,6 +1,8 @@
-const MAX_UPLOAD_BYTES = 2 * 1024 * 1024;
-const MAX_EDGE_PX = 1600;
-const JPEG_QUALITY = 0.82;
+import { BRIDGE_PHOTO_MAX_BYTES } from "@/lib/experience-bridge/bridge-media-constants";
+
+const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
+const MAX_EDGE_PX = 2048;
+const JPEG_QUALITY = 0.84;
 
 function loadImageFromFile(file: File) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
@@ -72,6 +74,14 @@ export async function prepareCaptureImageForUpload(file: File): Promise<File> {
     ctx.drawImage(image, 0, 0, width, height);
     const blob = await canvasToJpegBlob(canvas, JPEG_QUALITY);
     const baseName = file.name.replace(/\.[^.]+$/, "") || "capture";
+
+    if (blob.size > BRIDGE_PHOTO_MAX_BYTES) {
+      const tighter = await canvasToJpegBlob(canvas, 0.72);
+      return new File([tighter], `${baseName}.jpg`, {
+        type: "image/jpeg",
+        lastModified: file.lastModified,
+      });
+    }
 
     return new File([blob], `${baseName}.jpg`, {
       type: "image/jpeg",

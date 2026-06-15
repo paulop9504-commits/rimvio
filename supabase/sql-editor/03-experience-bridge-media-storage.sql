@@ -7,7 +7,7 @@ values (
   'experience-bridge',
   'experience-bridge',
   true,
-  52428800,
+  83886080,
   array[
     'image/jpeg',
     'image/png',

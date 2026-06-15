@@ -2,6 +2,7 @@ import {
   BRIDGE_PHOTO_MAX_BYTES,
   BRIDGE_VIDEO_MAX_BYTES,
   EXPERIENCE_BRIDGE_MEDIA_BUCKET,
+  formatBridgeMediaMaxMb,
   isBridgePhotoContentType,
   isBridgeVideoContentType,
 } from "@/lib/experience-bridge/bridge-media-constants";
@@ -100,9 +101,13 @@ export function assertBridgeCaptureSize(input: {
     throw new Error("미디어 파일이 비어 있어요.");
   }
   if (isPhoto && input.byteLength > BRIDGE_PHOTO_MAX_BYTES) {
-    throw new Error("5MB 이하 사진만 공유할 수 있어요.");
+    throw new Error(
+      `${formatBridgeMediaMaxMb(BRIDGE_PHOTO_MAX_BYTES)} 이하 사진만 공유할 수 있어요.`,
+    );
   }
   if (isVideo && input.byteLength > BRIDGE_VIDEO_MAX_BYTES) {
-    throw new Error("50MB 이하 동영상만 공유할 수 있어요.");
+    throw new Error(
+      `${formatBridgeMediaMaxMb(BRIDGE_VIDEO_MAX_BYTES)} 이하 동영상만 공유할 수 있어요.`,
+    );
   }
 }

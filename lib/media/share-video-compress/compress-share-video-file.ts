@@ -3,6 +3,7 @@
 import { fetchFile } from "@ffmpeg/util";
 import {
   SHARE_VIDEO_CRF_STEPS,
+  SHARE_VIDEO_MAX_DURATION_SEC,
   SHARE_VIDEO_MAX_HEIGHT,
   SHARE_VIDEO_MAX_WIDTH,
   SHARE_VIDEO_TARGET_MAX_BYTES,
@@ -62,6 +63,8 @@ export async function compressShareVideoFile(
         await ffmpeg.exec([
           "-i",
           inputName,
+          "-t",
+          String(SHARE_VIDEO_MAX_DURATION_SEC),
           "-vf",
           SCALE_FILTER,
           "-c:v",
