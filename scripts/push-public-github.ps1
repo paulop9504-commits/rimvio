@@ -76,7 +76,7 @@ try {
   if ($remotes -notcontains "public") {
     git remote add public $publicRemote
   }
-  git push -u public main
+  git push -u public main --force
   if ($LASTEXITCODE -ne 0) {
     throw "git push failed (exit $LASTEXITCODE)"
   }
