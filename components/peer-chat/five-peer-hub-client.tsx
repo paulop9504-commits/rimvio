@@ -14,10 +14,6 @@ import {
   syncPinnedRoster,
 } from "@/lib/context/peer-thread-settings-store";
 import type { PinnedSlotIndex } from "@/lib/context/peer-thread-types";
-import { PeerProfileSetup } from "@/components/peer-chat/peer-profile-setup";
-import { RimvioProductContextStrip } from "@/components/rimvio-product-context-strip";
-import { PeerHubEmptyState } from "@/components/peer-chat/peer-hub-empty-state";
-import { DemoPeerRoomPreview } from "@/components/peer-chat/demo-peer-room-preview";
 import { GuestPeersLanding } from "@/components/peer-chat/guest-peers-landing";
 import { useCopy } from "@/hooks/use-copy";
 import {
@@ -26,12 +22,10 @@ import {
 } from "@/lib/onboarding/lens-first-coach";
 import { FriendAddSheet } from "@/components/peer-chat/friend-add-sheet";
 import { PeerFriendsRail } from "@/components/peer-chat/peer-friends-rail";
+import { PeerCloseFiveStrip } from "@/components/peer-chat/peer-close-five-strip";
 import type { FriendAddResult } from "@/components/peer-chat/friend-add-contact-flow";
 import { GroupCreateSheet } from "@/components/peer-chat/group-create-sheet";
-import {
-  GroupThreadList,
-  type GroupThreadListItem,
-} from "@/components/peer-chat/group-thread-list";
+import type { GroupThreadListItem } from "@/components/peer-chat/group-thread-list";
 import {
   fetchMyAccountProfile,
   fetchRelationshipFeedSlots,
@@ -40,13 +34,17 @@ import {
   syncDmThreadsRemote,
   syncMyProfileFromAuth,
 } from "@/lib/peer-chat/peer-chat-client";
-import { buildArchiveChatRows } from "@/lib/social/archive-chat-rows";
 import type { RelationshipFeedSlot } from "@/lib/social/relationship-slot-types";
-import { addPeerContact } from "@/lib/context/peer-contact-store";
+import {
+  addPeerContact,
+  readPeerContacts,
+} from "@/lib/context/peer-contact-store";
+import type { PeerContact } from "@/lib/context/peer-contact-types";
 import {
   applySocialLayerToLocalRoster,
   peerMetaByThreadId,
 } from "@/lib/social/sync-social-layer";
+import { buildPeersHomeRows } from "@/lib/social/build-peers-home-rows";
 import type { SocialBubblePeer } from "@/lib/social/bubble-state";
 import { useAuth } from "@/hooks/use-auth";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -82,6 +80,7 @@ export function FivePeerHubClient() {
   }, [searchParams, copy.auth, router]);
 
   const [roster, setRoster] = useState(() => readPinnedRoster());
+  const [contacts, setContacts] = useState<PeerContact[]>(() => readPeerContacts());
   const [pinnedPeers, setPinnedPeers] = useState<SocialBubblePeer[]>([]);
   const [archivePeers, setArchivePeers] = useState<SocialBubblePeer[]>([]);
   const [feedSlots, setFeedSlots] = useState<RelationshipFeedSlot[]>([]);
@@ -99,21 +98,21 @@ export function FivePeerHubClient() {
 
   const [lensRevision, setLensRevision] = useState(0);
 
-  const allFriendPeers = useMemo(() => {
-    const byThread = new Map<string, SocialBubblePeer>();
-    for (const peer of [...pinnedPeers, ...archivePeers]) {
-      byThread.set(peer.threadId, peer);
-    }
-    return [...byThread.values()];
-  }, [pinnedPeers, archivePeers]);
-
   const friendRailRows = useMemo(
-    () => buildArchiveChatRows(allFriendPeers, feedSlots),
-    [allFriendPeers, feedSlots],
+    () =>
+      buildPeersHomeRows({
+        pinned: pinnedPeers,
+        archive: archivePeers,
+        contacts,
+        roster,
+        feedSlots,
+      }),
+    [pinnedPeers, archivePeers, contacts, roster, feedSlots],
   );
 
   const refresh = useCallback(() => {
     setRoster(syncPinnedRoster());
+    setContacts(readPeerContacts());
   }, []);
 
   const lensEnabledByThreadId = useMemo(() => {
@@ -179,7 +178,7 @@ export function FivePeerHubClient() {
       applySocialLayerToLocalRoster(layer);
       refresh();
     } catch {
-      // local roster fallback
+      refresh();
     }
   }, [usePhoneChat, refresh]);
 
@@ -285,75 +284,59 @@ export function FivePeerHubClient() {
   }
 
   return (
-    <div className="flex min-h-0 flex-col gap-4 pb-6">
-      <RimvioProductContextStrip
-        variant="peers"
-        className="mx-1 shrink-0"
-        showFeedLink={false}
-      />
-
-      {connectedCount === 0 && friendRailRows.length === 0 && !friendAddOpen ? (
-        <>
-          <PeerHubEmptyState
-            className="mx-1 shrink-0"
-            onAddFriend={openQuickFriendAdd}
-          />
-          <DemoPeerRoomPreview className="mx-1 shrink-0" />
-        </>
-      ) : (
-        <PeerFriendsRail
-          rows={friendRailRows}
-          onAddFriend={openQuickFriendAdd}
-          className="mx-1 min-h-[min(42dvh,20rem)] max-h-[min(52dvh,28rem)] shrink-0"
-        />
-      )}
-
-      <GroupThreadList
+    <div className="flex h-full min-h-0 flex-col">
+      <PeerFriendsRail
+        rows={friendRailRows}
         groups={groupThreads}
-        onCreate={() => setGroupSheetOpen(true)}
-        className="mx-1 shrink-0"
+        onAddFriend={openQuickFriendAdd}
+        onCreateGroup={() => setGroupSheetOpen(true)}
+        className="min-h-0 flex-1"
       />
 
-      {connectedCount > 0 || friendRailRows.some((row) => row.isPinned) ? (
-        <section className="mx-1 shrink-0">
-          <button
-            type="button"
-            onClick={() => setPinnedHubExpanded((value) => !value)}
-            className="flex w-full items-center gap-2 rounded-2xl border border-[#0220470f] bg-rimvio-base px-4 py-3 text-left shadow-sm active:bg-[#f2f4f6]"
-            aria-expanded={pinnedHubExpanded}
-          >
-            <div className="min-w-0 flex-1">
-              <p className="text-[14px] font-semibold text-[#191f28]">
-                {copy.peers.friendRail.pinnedSection}
-              </p>
-              <p className="text-[11px] text-[#6b7684]">
-                {copy.peers.friendRail.pinnedSectionHint} · {connectedCount}/5
-              </p>
-            </div>
-            {pinnedHubExpanded ? (
-              <ChevronUp className="size-4 shrink-0 text-[#8b95a1]" aria-hidden />
-            ) : (
-              <ChevronDown className="size-4 shrink-0 text-[#8b95a1]" aria-hidden />
-            )}
-          </button>
-
+      <footer className="shrink-0 border-t border-[#0220470f] bg-rimvio-base pb-[max(0.25rem,env(safe-area-inset-bottom))]">
+        <button
+          type="button"
+          onClick={() => setPinnedHubExpanded((value) => !value)}
+          className="flex w-full items-center gap-2 px-4 py-2.5 text-left active:bg-[#f2f4f6]"
+          aria-expanded={pinnedHubExpanded}
+        >
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-semibold text-[#191f28]">
+              {copy.peers.friendRail.pinnedSection}
+            </p>
+            <p className="text-[10px] text-[#6b7684]">
+              {copy.peers.friendRail.pinnedSectionHint} · {connectedCount}/5
+            </p>
+          </div>
           {pinnedHubExpanded ? (
-            <div className="relative mt-2 h-[min(36dvh,16rem)] w-full">
-              <FivePeerHub
-                roster={roster}
-                centerLabel={centerLabel}
-                centerInitial={centerInitial}
-                centerAvatarUrl={centerAvatarUrl}
-                peerMetaByThread={peerMetaMap}
-                lensEnabledByThreadId={lensEnabledByThreadId}
-                onTogglePeerLens={handleTogglePeerLens}
-                onAssignSlot={(idx) => openPinAssign(idx as PinnedSlotIndex)}
-                className="absolute inset-0"
-              />
-            </div>
-          ) : null}
-        </section>
-      ) : null}
+            <ChevronUp className="size-4 shrink-0 text-[#8b95a1]" aria-hidden />
+          ) : (
+            <ChevronDown className="size-4 shrink-0 text-[#8b95a1]" aria-hidden />
+          )}
+        </button>
+
+        {pinnedHubExpanded ? (
+          <div className="relative h-[min(34dvh,15rem)] w-full border-t border-[#0220470f]">
+            <FivePeerHub
+              roster={roster}
+              centerLabel={centerLabel}
+              centerInitial={centerInitial}
+              centerAvatarUrl={centerAvatarUrl}
+              peerMetaByThread={peerMetaMap}
+              lensEnabledByThreadId={lensEnabledByThreadId}
+              onTogglePeerLens={handleTogglePeerLens}
+              onAssignSlot={(idx) => openPinAssign(idx as PinnedSlotIndex)}
+              className="absolute inset-0"
+            />
+          </div>
+        ) : (
+          <PeerCloseFiveStrip
+            roster={roster}
+            peerMetaByThread={peerMetaMap}
+            onAssignSlot={(idx) => openPinAssign(idx as PinnedSlotIndex)}
+          />
+        )}
+      </footer>
 
       <FriendAddSheet
         open={friendAddOpen}
@@ -368,18 +351,6 @@ export function FivePeerHubClient() {
         onAdded={handleFriendAdded}
         onContactSynced={() => void loadSocialLayer()}
       />
-
-      {usePhoneChat ? (
-        <PeerProfileSetup
-          className="mx-1"
-          onRegistered={() => {
-            refresh();
-            void fetchMyAccountProfile()
-              .then((p) => setCenterAvatarUrl(p.avatarUrl ?? null))
-              .catch(() => {});
-          }}
-        />
-      ) : null}
 
       <GroupCreateSheet
         open={groupSheetOpen}

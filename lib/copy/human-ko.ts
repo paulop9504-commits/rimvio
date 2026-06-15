@@ -399,6 +399,9 @@ export const copy = {
       newMessages: (n: number) => `새 메시지 ${n > 99 ? "99+" : n}`,
       pinnedSection: "친한 5",
       pinnedSectionHint: "항상 보이는 관계 · AI 렌즈",
+      groupsSection: "단톡",
+      createGroup: "+ 만들기",
+      createGroupFirst: "첫 단톡 만들기",
     },
   },
   feed: {

@@ -388,6 +388,9 @@ export const copyEn: Copy = {
       newMessages: (n: number) => `${n > 99 ? "99+" : n} new messages`,
       pinnedSection: "Close 5",
       pinnedSectionHint: "Always visible · AI Lens",
+      groupsSection: "Groups",
+      createGroup: "+ New",
+      createGroupFirst: "Create your first group",
     },
   },
   feed: {

@@ -10,6 +10,7 @@ export default async function FivePeerHubPage() {
       title={copy.peers.title}
       subtitle={copy.peers.subtitle}
       compact
+      fullBleed
       iosSurface
     >
       <Suspense fallback={null}>
