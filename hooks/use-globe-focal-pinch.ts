@@ -9,6 +9,10 @@ import {
   resolveGlobeCenterAnchorCoords,
   resolveGlobeScreenCenterClient,
 } from "@/lib/globe/globe-focal-pinch-zoom";
+import {
+  releaseOrbitControlsGesture,
+  restoreOrbitControlsGesture,
+} from "@/lib/globe/release-orbit-controls-gesture";
 
 function isCoarsePointer(): boolean {
   if (typeof window === "undefined") {
@@ -20,6 +24,8 @@ function isCoarsePointer(): boolean {
   );
 }
 
+type PointerPoint = { x: number; y: number };
+
 type PinchSession = {
   startDistance: number;
   startAltitude: number;
@@ -28,16 +34,18 @@ type PinchSession = {
 };
 
 export type UseGlobeFocalPinchOptions = {
+  /** Outer shell — captures pointers over pins + canvas (not just WebGL div). */
+  shellRef: RefObject<HTMLElement | null>;
   rootRef: RefObject<HTMLElement | null>;
   globeRef: RefObject<GlobeInstance | null>;
   enabled?: boolean;
-  /** Block re-enabling orbit while pin relocate / press lock is active. */
   controlsBlockedRef?: RefObject<boolean>;
   onInteractingChange?: (active: boolean) => void;
 };
 
-/** Mobile two-finger zoom — screen-center focal (Naver/Kakao map grade). */
+/** Mobile two-finger zoom — pointer API, screen-center anchor (Naver/Kakao grade). */
 export function useGlobeFocalPinch({
+  shellRef,
   rootRef,
   globeRef,
   enabled = true,
@@ -50,12 +58,16 @@ export function useGlobeFocalPinch({
   onInteractingChangeRef.current = onInteractingChange;
 
   useEffect(() => {
+    const shell = shellRef.current;
     const root = rootRef.current;
-    if (!root || !enabledRef.current || !isCoarsePointer()) {
+    if (!shell || !root || !enabledRef.current || !isCoarsePointer()) {
       return;
     }
 
+    const pointers = new Map<number, PointerPoint>();
     let session: PinchSession | null = null;
+    let pinchActive = false;
+
     const zoomCoalescer = createGestureUpdateCoalescer<{
       altitude: number;
     }>((payload) => {
@@ -75,13 +87,13 @@ export function useGlobeFocalPinch({
       });
     });
 
-    const touchDistance = (touches: TouchList) => {
-      if (touches.length < 2) {
+    const pointerDistance = () => {
+      const points = Array.from(pointers.values());
+      if (points.length < 2) {
         return 0;
       }
-      const a = touches[0]!;
-      const b = touches[1]!;
-      return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      const [a, b] = points;
+      return Math.hypot(a.x - b.x, a.y - b.y);
     };
 
     const restoreControls = () => {
@@ -89,28 +101,20 @@ export function useGlobeFocalPinch({
       if (!globe || controlsBlockedRef?.current) {
         return;
       }
-      const controls = globe.controls();
-      controls.enabled = true;
-      controls.enableRotate = true;
+      restoreOrbitControlsGesture(globe.controls(), {
+        enableRotate: true,
+        enableZoom: false,
+      });
+      globe.controls().enabled = true;
     };
 
-    const lockControlsForPinch = () => {
+    const beginPinch = () => {
       const globe = globeRef.current;
-      if (!globe) {
+      if (!globe || session) {
         return;
       }
-      const controls = globe.controls();
-      controls.enableRotate = false;
-      controls.enableZoom = false;
-    };
-
-    const beginPinch = (touches: TouchList) => {
-      const globe = globeRef.current;
-      if (!globe) {
-        return;
-      }
-      const distance = touchDistance(touches);
-      if (distance <= 0) {
+      const distance = pointerDistance();
+      if (distance < 8) {
         return;
       }
       const anchor = resolveGlobeCenterAnchorCoords(globe, root);
@@ -121,36 +125,73 @@ export function useGlobeFocalPinch({
         anchorLat: anchor.lat,
         anchorLng: anchor.lng,
       };
-      lockControlsForPinch();
+      pinchActive = true;
+      globe.controls().enabled = false;
+      releaseOrbitControlsGesture(globe.controls());
       onInteractingChangeRef.current?.(true);
     };
 
     const endPinch = () => {
-      if (!session) {
+      if (!session && !pinchActive) {
         return;
       }
       session = null;
+      pinchActive = false;
       zoomCoalescer.flushNow();
       restoreControls();
       onInteractingChangeRef.current?.(false);
     };
 
-    const onTouchStart = (event: TouchEvent) => {
-      if (!enabledRef.current || event.touches.length < 2) {
+    const syncPointer = (event: PointerEvent) => {
+      if (event.pointerType === "mouse") {
         return;
       }
-      event.preventDefault();
-      event.stopPropagation();
-      beginPinch(event.touches);
+      pointers.set(event.pointerId, {
+        x: event.clientX,
+        y: event.clientY,
+      });
     };
 
-    const onTouchMove = (event: TouchEvent) => {
-      if (!session || event.touches.length < 2) {
+    const removePointer = (event: PointerEvent) => {
+      pointers.delete(event.pointerId);
+    };
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (!enabledRef.current || event.pointerType === "mouse") {
         return;
       }
+      syncPointer(event);
+      if (pointers.size >= 2) {
+        event.preventDefault();
+        event.stopPropagation();
+        try {
+          shell.setPointerCapture(event.pointerId);
+        } catch {
+          // ignore — capture optional
+        }
+        beginPinch();
+      }
+    };
+
+    const onPointerMove = (event: PointerEvent) => {
+      if (!enabledRef.current || event.pointerType === "mouse") {
+        return;
+      }
+      syncPointer(event);
+
+      if (!session && pointers.size >= 2) {
+        event.preventDefault();
+        event.stopPropagation();
+        beginPinch();
+      }
+
+      if (!session || pointers.size < 2) {
+        return;
+      }
+
       event.preventDefault();
       event.stopPropagation();
-      const distance = touchDistance(event.touches);
+      const distance = pointerDistance();
       zoomCoalescer.push({
         altitude: altitudeFromPinchDistance(
           session.startAltitude,
@@ -160,31 +201,114 @@ export function useGlobeFocalPinch({
       });
     };
 
-    const onTouchEnd = (event: TouchEvent) => {
-      if (event.touches.length >= 2) {
-        return;
+    const onPointerUp = (event: PointerEvent) => {
+      removePointer(event);
+      if (pointers.size < 2) {
+        endPinch();
       }
-      endPinch();
     };
 
-    root.addEventListener("touchstart", onTouchStart, {
-      capture: true,
-      passive: false,
-    });
-    root.addEventListener("touchmove", onTouchMove, {
-      capture: true,
-      passive: false,
-    });
-    root.addEventListener("touchend", onTouchEnd, { capture: true });
-    root.addEventListener("touchcancel", onTouchEnd, { capture: true });
+    const onPointerCancel = (event: PointerEvent) => {
+      removePointer(event);
+      if (pointers.size < 2) {
+        endPinch();
+      }
+    };
+
+    // Legacy touch fallback — some Android WebViews batch poorly on pointer events.
+    const touchDistance = (list: TouchList) => {
+      if (list.length < 2) {
+        return 0;
+      }
+      const a = list[0]!;
+      const b = list[1]!;
+      return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+    };
+
+    const syncTouches = (list: TouchList) => {
+      pointers.clear();
+      for (let i = 0; i < list.length; i += 1) {
+        const touch = list[i]!;
+        pointers.set(touch.identifier, {
+          x: touch.clientX,
+          y: touch.clientY,
+        });
+      }
+    };
+
+    const onTouchStart = (event: TouchEvent) => {
+      if (!enabledRef.current) {
+        return;
+      }
+      syncTouches(event.touches);
+      if (event.touches.length >= 2) {
+        event.preventDefault();
+        event.stopPropagation();
+        beginPinch();
+      }
+    };
+
+    const onTouchMove = (event: TouchEvent) => {
+      if (!enabledRef.current) {
+        return;
+      }
+      syncTouches(event.touches);
+      if (!session && event.touches.length >= 2) {
+        event.preventDefault();
+        event.stopPropagation();
+        beginPinch();
+      }
+      if (!session || event.touches.length < 2) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      zoomCoalescer.push({
+        altitude: altitudeFromPinchDistance(
+          session.startAltitude,
+          session.startDistance,
+          touchDistance(event.touches),
+        ),
+      });
+    };
+
+    const onTouchEnd = (event: TouchEvent) => {
+      syncTouches(event.touches);
+      if (event.touches.length < 2) {
+        endPinch();
+      }
+    };
+
+    const usePointerPinch =
+      typeof window !== "undefined" && "PointerEvent" in window;
+
+    if (usePointerPinch) {
+      shell.addEventListener("pointerdown", onPointerDown, { capture: true, passive: false });
+      shell.addEventListener("pointermove", onPointerMove, { capture: true, passive: false });
+      shell.addEventListener("pointerup", onPointerUp, { capture: true });
+      shell.addEventListener("pointercancel", onPointerCancel, { capture: true });
+    } else {
+      shell.addEventListener("touchstart", onTouchStart, { capture: true, passive: false });
+      shell.addEventListener("touchmove", onTouchMove, { capture: true, passive: false });
+      shell.addEventListener("touchend", onTouchEnd, { capture: true });
+      shell.addEventListener("touchcancel", onTouchEnd, { capture: true });
+    }
 
     return () => {
       zoomCoalescer.cancel();
+      pointers.clear();
       endPinch();
-      root.removeEventListener("touchstart", onTouchStart, { capture: true });
-      root.removeEventListener("touchmove", onTouchMove, { capture: true });
-      root.removeEventListener("touchend", onTouchEnd, { capture: true });
-      root.removeEventListener("touchcancel", onTouchEnd, { capture: true });
+      if (usePointerPinch) {
+        shell.removeEventListener("pointerdown", onPointerDown, { capture: true });
+        shell.removeEventListener("pointermove", onPointerMove, { capture: true });
+        shell.removeEventListener("pointerup", onPointerUp, { capture: true });
+        shell.removeEventListener("pointercancel", onPointerCancel, { capture: true });
+      } else {
+        shell.removeEventListener("touchstart", onTouchStart, { capture: true });
+        shell.removeEventListener("touchmove", onTouchMove, { capture: true });
+        shell.removeEventListener("touchend", onTouchEnd, { capture: true });
+        shell.removeEventListener("touchcancel", onTouchEnd, { capture: true });
+      }
     };
-  }, [controlsBlockedRef, globeRef, rootRef]);
+  }, [controlsBlockedRef, globeRef, rootRef, shellRef]);
 }

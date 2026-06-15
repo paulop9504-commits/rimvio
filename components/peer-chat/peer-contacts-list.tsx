@@ -18,6 +18,7 @@ import {
 } from "@/lib/context/peer-thread-settings-store";
 import type { PeerContact } from "@/lib/context/peer-contact-types";
 import { PeerContactSyncButton } from "@/components/peer-chat/peer-contact-sync-button";
+import { useCopy } from "@/hooks/use-copy";
 import { IOS } from "@/lib/ui/ios-surface";
 import { cn } from "@/lib/utils";
 
@@ -109,6 +110,7 @@ export function PeerContactsList({
   onAddClick,
   className,
 }: PeerContactsListProps) {
+  const copy = useCopy();
   const roster = readPinnedRoster();
 
   const handlePinToggle = (contact: PeerContact, pinned: boolean) => {
@@ -145,17 +147,17 @@ export function PeerContactsList({
         type="button"
         onClick={onAddClick}
         className={cn(
-          "relative z-10 flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-white/20 bg-rimvio-surface py-3 text-sm font-medium text-white active:scale-[0.98]",
+          "relative z-10 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#3182f6] py-3.5 text-sm font-semibold text-white shadow-sm active:scale-[0.98]",
           IOS.cardSm,
         )}
       >
-        <UserPlus className="size-4 text-rimvio-neon-cyan" aria-hidden />
-        친구 추가 (ID·번호·이메일)
+        <UserPlus className="size-4" aria-hidden />
+        {copy.peers.friendAdd.listCta}
       </button>
 
       {contacts.length === 0 ? (
         <p className="rounded-2xl bg-rimvio-surface-muted px-4 py-6 text-center text-xs text-white/65">
-          아직 친구가 없어요. 위에서 추가하거나 AI 허브 슬롯에 연결해 보세요
+          {copy.peers.friendAdd.listEmptyHint}
         </p>
       ) : (
         <ul className={cn("divide-y divide-border overflow-hidden", IOS.cardSm)}>

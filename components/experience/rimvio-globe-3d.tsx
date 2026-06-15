@@ -637,6 +637,7 @@ export const RimvioGlobe3D = memo(
     });
 
     useGlobeFocalPinch({
+      shellRef,
       rootRef,
       globeRef,
       enabled: globeReady && interactionEnabled,
@@ -740,7 +741,7 @@ export const RimvioGlobe3D = memo(
       <div
         ref={shellRef}
         className={cn(
-          "relative h-full min-h-0 w-full overflow-hidden rimvio-globe-space rimvio-globe-space--toss",
+          "relative h-full min-h-0 w-full overflow-hidden rimvio-globe-space rimvio-globe-space--toss touch-none",
           className,
         )}
         data-rimvio-globe-3d

@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { FriendArchiveChatList } from "@/components/peer-chat/friend-archive-chat-list";
-import { FriendAddContactFlow } from "@/components/peer-chat/friend-add-contact-flow";
+import { FriendAddSheet } from "@/components/peer-chat/friend-add-sheet";
 import { IOS } from "@/lib/ui/ios-surface";
 import {
   fetchRelationshipFeedSlots,
@@ -33,7 +33,6 @@ export function FriendArchivePageClient() {
   const [archivePeers, setArchivePeers] = useState<SocialBubblePeer[]>([]);
   const [feedSlots, setFeedSlots] = useState<RelationshipFeedSlot[]>([]);
   const [addOpen, setAddOpen] = useState(false);
-  const [contact, setContact] = useState("");
 
   const archiveList = useMemo(
     () => listArchivePeers(pinnedPeers, archivePeers),
@@ -93,7 +92,7 @@ export function FriendArchivePageClient() {
           type="button"
           onClick={() => setAddOpen(true)}
           className="flex size-9 items-center justify-center rounded-full text-rimvio-neon-cyan active:bg-rimvio-surface-muted"
-          aria-label="구슬 넣기"
+          aria-label="친구 추가"
         >
           <UserPlus className="size-5" aria-hidden />
         </button>
@@ -111,55 +110,26 @@ export function FriendArchivePageClient() {
           )}
         >
           <UserPlus className="size-4 text-rimvio-neon-cyan" aria-hidden />
-          첫 구슬 넣기
+          친구 추가
         </button>
       ) : null}
 
-      {addOpen ? (
-        <div
-          className={cn("mx-4 space-y-3 p-4", IOS.cardSm)}
-          role="dialog"
-          aria-label="친구 추가"
-        >
-          <p className="text-sm font-semibold text-white">주머니에 구슬 넣기</p>
-          <input
-            value={contact}
-            onChange={(e) => setContact(e.target.value)}
-            placeholder="rimvio_id · 010-… · email"
-            className="h-11 w-full rounded-2xl bg-rimvio-surface-muted px-4 text-sm text-white outline-none"
-            autoFocus
-          />
-          <FriendAddContactFlow
-            contact={contact}
-            confirmLabel="구슬 넣기"
-            helperText="맞는 사람이면 구슬 넣기를 눌러 주세요."
-            onAdded={async (result) => {
-              addPeerContact({
-                peerThreadId: result.threadId,
-                displayName: result.displayName,
-                rimvioId: result.rimvioId,
-                emailLower: result.emailLower,
-              });
-              setAddOpen(false);
-              setContact("");
-              await load();
-              toast.success(`${result.displayName} 구슬이 쌓였어요`);
-              router.push(`/peers/${encodeURIComponent(result.threadId)}`);
-            }}
-            onError={(message) => toast.error(message)}
-          />
-          <button
-            type="button"
-            className="w-full py-2 text-sm font-semibold text-rimvio-neon-cyan"
-            onClick={() => {
-              setAddOpen(false);
-              setContact("");
-            }}
-          >
-            취소
-          </button>
-        </div>
-      ) : null}
+      <FriendAddSheet
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        onAdded={async (result) => {
+          addPeerContact({
+            peerThreadId: result.threadId,
+            displayName: result.displayName,
+            rimvioId: result.rimvioId,
+            emailLower: result.emailLower,
+          });
+          await load();
+          toast.success(`${result.displayName}를 친구로 추가했어요`);
+          router.push(`/peers/${encodeURIComponent(result.threadId)}`);
+        }}
+        onContactSynced={() => void load()}
+      />
     </div>
   );
 }

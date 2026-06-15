@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ChevronRight } from "lucide-react";
 import { PeerProfileAvatar } from "@/components/peer-chat/peer-profile-avatar";
-import { MainActionButton } from "@/components/action-chat/main-action-button";
-import { resolveMainActionBrandStyle } from "@/lib/brand/action-brand-style";
 import { friendContactErrorMessage } from "@/lib/peer-chat/friend-contact-errors";
 import {
   addPeerByPhoneRemote,
@@ -32,30 +31,49 @@ export type FriendAddResult = {
   preview: FriendAddPreview;
 };
 
-const MATCHED_LABEL: Record<string, string> = {
-  phone: "전화번호",
-  email: "이메일",
-  rimvio_id: "Rimvio ID",
-};
-
-const LOOKUP_DEBOUNCE_MS = 240;
+const LOOKUP_DEBOUNCE_MS = 280;
 
 type FriendAddContactFlowProps = {
   contact: string;
   className?: string;
   confirmLabel?: string;
-  helperText?: string;
+  previewHint?: string;
+  compact?: boolean;
+  enableEnterSubmit?: boolean;
   onAdded?: (result: FriendAddResult) => void | Promise<void>;
   onError?: (message: string) => void;
+  loginRequiredMessage?: string;
+  loginCtaLabel?: string;
 };
+
+function PreviewShimmer({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-3 rounded-2xl bg-[#f2f4f6] px-3 py-3",
+        className,
+      )}
+    >
+      <div className="size-11 shrink-0 animate-pulse rounded-full bg-[#e5e8eb]" />
+      <div className="min-w-0 flex-1 space-y-2">
+        <div className="h-3.5 w-24 animate-pulse rounded-md bg-[#e5e8eb]" />
+        <div className="h-3 w-16 animate-pulse rounded-md bg-[#e5e8eb]/80" />
+      </div>
+    </div>
+  );
+}
 
 export function FriendAddContactFlow({
   contact,
   className,
   confirmLabel = "친구 추가",
-  helperText = "Google 가입만 한 친구도 이메일로 찾을 수 있어요. 맞으면 친구 추가를 눌러 주세요.",
+  previewHint = "탭해서 친구 추가",
+  compact = false,
+  enableEnterSubmit = true,
   onAdded,
   onError,
+  loginRequiredMessage = "Google 로그인 후 친구를 추가할 수 있어요",
+  loginCtaLabel = "로그인하기",
 }: FriendAddContactFlowProps) {
   const { user, configured, loading: authLoading } = useAuth();
   const authReady = Boolean(
@@ -137,7 +155,7 @@ export function FriendAddContactFlow({
   }, [loadPreview]);
 
   const confirmAdd = useCallback(() => {
-    if (!preview || !authReady) {
+    if (!preview || !authReady || submitting) {
       return;
     }
     setSubmitting(true);
@@ -159,55 +177,58 @@ export function FriendAddContactFlow({
         onErrorRef.current?.(message);
       })
       .finally(() => setSubmitting(false));
-  }, [authReady, debouncedContact, preview]);
+  }, [authReady, debouncedContact, preview, submitting]);
 
-  const brand = resolveMainActionBrandStyle({
-    label: confirmLabel,
-    deeplink: "",
-  });
+  useEffect(() => {
+    if (!enableEnterSubmit || !preview || submitting) {
+      return;
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        confirmAdd();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [confirmAdd, enableEnterSubmit, preview, submitting]);
 
   if (!trimmedContact) {
     return null;
   }
 
   if (authLoading) {
-    return (
-      <p className={cn("text-[12px] text-[#6b7684]", className)}>로그인 확인 중…</p>
-    );
+    return <PreviewShimmer className={className} />;
   }
 
   if (!authReady) {
     return (
-      <div className={cn("space-y-2", className)}>
-        <p className="text-[12px] text-amber-700">
-          친추는 Google 로그인 후에 쓸 수 있어요.
-        </p>
+      <div className={cn("space-y-2 rounded-2xl bg-[#fff8eb] px-3 py-3", className)}>
+        <p className="text-[12px] text-amber-800">{loginRequiredMessage}</p>
         <Link
           href="/welcome"
-          className="inline-block text-sm font-semibold text-rimvio-neon-cyan"
+          className="inline-flex text-sm font-semibold text-[#3182f6]"
         >
-          로그인하기 →
+          {loginCtaLabel} →
         </Link>
       </div>
     );
   }
 
   if (loading) {
-    return (
-      <p className={cn("text-[12px] text-[#6b7684]", className)}>프로필 확인 중…</p>
-    );
+    return <PreviewShimmer className={className} />;
   }
 
   if (error) {
     return (
-      <div className={cn("space-y-2", className)}>
-        <p className="text-[12px] text-amber-700">{error}</p>
+      <div className={cn("space-y-2 rounded-2xl bg-[#fff8eb] px-3 py-3", className)}>
+        <p className="text-[12px] leading-relaxed text-amber-800">{error}</p>
         <button
           type="button"
           onClick={loadPreview}
-          className="text-[11px] font-medium text-rimvio-neon-cyan underline-offset-2 hover:underline"
+          className="text-[12px] font-semibold text-[#3182f6]"
         >
-          다시 확인
+          다시 찾기
         </button>
       </div>
     );
@@ -218,37 +239,38 @@ export function FriendAddContactFlow({
   }
 
   return (
-    <div className={cn("space-y-3", className)}>
-      <div className="flex items-center gap-3 rounded-2xl border border-[#0220470f] bg-white px-3 py-3 shadow-sm">
-        <PeerProfileAvatar
-          displayName={preview.displayName}
-          avatarUrl={preview.avatarUrl}
-          size="md"
-          className="ring-2 ring-[#3182f6]/20"
-        />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-[#191f28]">
-            {preview.displayName}
-          </p>
-          {preview.rimvioId ? (
-            <p className="truncate text-[12px] font-medium text-[#1b64da]">
-              @{preview.rimvioId}
-            </p>
-          ) : null}
-          <p className="mt-0.5 text-[10px] text-[#6b7684]">
-            {MATCHED_LABEL[preview.matchedBy] ?? preview.matchedBy}로 찾음
-          </p>
-        </div>
-      </div>
-      {helperText ? (
-        <p className="text-[11px] text-[#6b7684]">{helperText}</p>
-      ) : null}
-      <MainActionButton
-        label={submitting ? "추가 중…" : confirmLabel}
-        brand={brand}
-        compact
-        onClick={() => confirmAdd()}
+    <button
+      type="button"
+      disabled={submitting}
+      onClick={() => confirmAdd()}
+      className={cn(
+        "group flex w-full items-center gap-3 rounded-2xl border border-[#3182f6]/25 bg-gradient-to-br from-white to-[#f0f6ff] px-3 py-3 text-left shadow-sm transition active:scale-[0.98] disabled:opacity-70",
+        className,
+      )}
+    >
+      <PeerProfileAvatar
+        displayName={preview.displayName}
+        avatarUrl={preview.avatarUrl}
+        size={compact ? "sm" : "md"}
+        className="ring-2 ring-[#3182f6]/25"
       />
-    </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold text-[#191f28]">
+          {preview.displayName}
+        </p>
+        {preview.rimvioId ? (
+          <p className="truncate text-[12px] font-medium text-[#1b64da]">
+            @{preview.rimvioId}
+          </p>
+        ) : null}
+        <p className="mt-0.5 text-[11px] font-medium text-[#3182f6]">
+          {submitting ? "추가 중…" : previewHint}
+        </p>
+      </div>
+      <ChevronRight
+        className="size-5 shrink-0 text-[#3182f6]/70 transition group-active:translate-x-0.5"
+        aria-hidden
+      />
+    </button>
   );
 }

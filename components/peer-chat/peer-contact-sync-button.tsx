@@ -15,11 +15,13 @@ import { cn } from "@/lib/utils";
 type PeerContactSyncButtonProps = {
   className?: string;
   onSynced?: () => void;
+  variant?: "dark" | "light";
 };
 
 export function PeerContactSyncButton({
   className,
   onSynced,
+  variant = "dark",
 }: PeerContactSyncButtonProps) {
   const [busy, setBusy] = useState(false);
   const supported = isContactPickerSupported();
@@ -81,6 +83,8 @@ export function PeerContactSyncButton({
     }
   };
 
+  const light = variant === "light";
+
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
       <button
@@ -88,21 +92,35 @@ export function PeerContactSyncButton({
         disabled={busy || !supported}
         onClick={() => void runSync()}
         className={cn(
-          "flex w-full items-center justify-center gap-2 rounded-2xl border border-rimvio-neon-cyan/30 bg-rimvio-neon-cyan/10 py-3 text-sm font-medium text-white active:scale-[0.98] disabled:opacity-45",
-          IOS.cardSm,
+          "flex w-full items-center justify-center gap-2 rounded-2xl border py-3 text-sm font-semibold active:scale-[0.98] disabled:opacity-45",
+          light
+            ? "border-[#3182f6]/30 bg-[#eef4ff] text-[#1b64da]"
+            : "border-rimvio-neon-cyan/30 bg-rimvio-neon-cyan/10 font-medium text-white",
+          !light && IOS.cardSm,
         )}
       >
         {busy ? (
-          <Loader2 className="size-4 animate-spin" aria-hidden />
+          <Loader2
+            className={cn("size-4 animate-spin", light ? "text-[#3182f6]" : "")}
+            aria-hidden
+          />
         ) : (
-          <Contact className="size-4 text-rimvio-neon-cyan" aria-hidden />
+          <Contact
+            className={cn("size-4", light ? "text-[#3182f6]" : "text-rimvio-neon-cyan")}
+            aria-hidden
+          />
         )}
         {busy ? "친구 찾는 중…" : "연락처에서 Rimvio 친구 찾기"}
       </button>
-      <p className="px-1 text-center text-[10px] text-white/50">
+      <p
+        className={cn(
+          "px-1 text-center text-[10px]",
+          light ? "text-[#8b95a1]" : "text-white/50",
+        )}
+      >
         {supported
-          ? "카톡처럼 · 번호가 Rimvio에 등록된 친구만 자동 추가 (연락처는 서버에 저장 안 함)"
-          : "Android Chrome에서 사용 가능 · iPhone Safari는 ID로 추가"}
+          ? "번호가 Rimvio에 있는 친구만 자동 추가 · 연락처는 서버에 저장 안 함"
+          : "Android Chrome에서 사용 · iPhone은 이메일로 추가"}
       </p>
     </div>
   );

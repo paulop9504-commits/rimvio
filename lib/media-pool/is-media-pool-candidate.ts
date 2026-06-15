@@ -12,8 +12,13 @@ export function hasExifGpsCapture(context: MediaSpacetimeContext): boolean {
 export function shouldStageMediaToPool(input: {
   context: MediaSpacetimeContext;
   forceAttachToHint?: boolean;
+  /** Bulk cluster LLM inferred place — skip pool staging. */
+  bulkClusterPlaceLabel?: string | null;
 }): boolean {
   if (input.forceAttachToHint) {
+    return false;
+  }
+  if (input.bulkClusterPlaceLabel?.trim()) {
     return false;
   }
   if (input.context.poolStatus === "staged") {

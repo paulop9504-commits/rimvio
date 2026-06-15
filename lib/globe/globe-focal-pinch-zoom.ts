@@ -12,7 +12,7 @@ export function clampGlobeAltitude(altitude: number): number {
   return Math.min(GLOBE_ALTITUDE_MAX, Math.max(GLOBE_MIN_SAFE_ALTITUDE, altitude));
 }
 
-/** Spread fingers → zoom in (lower altitude). */
+/** Spread fingers → zoom in (lower altitude). Gentle curve for map-grade feel. */
 export function altitudeFromPinchDistance(
   startAltitude: number,
   startDistance: number,
@@ -22,7 +22,8 @@ export function altitudeFromPinchDistance(
     return clampGlobeAltitude(startAltitude);
   }
   const ratio = currentDistance / startDistance;
-  return clampGlobeAltitude(startAltitude / ratio);
+  const curved = ratio ** 1.04;
+  return clampGlobeAltitude(startAltitude / curved);
 }
 
 export function resolveGlobeScreenCenterClient(root: HTMLElement): {

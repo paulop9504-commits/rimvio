@@ -1,6 +1,6 @@
 import type { GlobeInstance } from "globe.gl";
 
-type OrbitControlsLike = ReturnType<GlobeInstance["controls"]>;
+export type OrbitControlsLike = ReturnType<GlobeInstance["controls"]>;
 
 function isCoarsePointer(): boolean {
   if (typeof window === "undefined") {
@@ -33,8 +33,12 @@ export function tuneGlobeOrbitControls(controls: OrbitControlsLike): void {
       DOLLY_ROTATE: 3,
     };
     touches.ONE = TOUCH.ROTATE;
-    // Phone pinch zoom is handled by useGlobeFocalPinch (screen-center anchor).
-    touches.TWO = isCoarsePointer() ? TOUCH.ROTATE : TOUCH.DOLLY;
+    if (isCoarsePointer()) {
+      // Custom pointer pinch owns two-finger zoom — do not map TWO (was ROTATE).
+      delete touches.TWO;
+    } else {
+      touches.TWO = TOUCH.DOLLY;
+    }
   }
 
   if (isCoarsePointer()) {

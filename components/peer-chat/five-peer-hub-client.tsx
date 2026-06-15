@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { FivePeerHub } from "@/components/peer-chat/five-peer-hub";
 import { readPeerContacts } from "@/lib/context/peer-contact-store";
 import type { PeerContact } from "@/lib/context/peer-contact-types";
-import { IOS } from "@/lib/ui/ios-surface";
 import { countConnectedPeers } from "@/lib/context/pinned-peer-roster";
 import {
   assignPeerToHubAndPin,
@@ -27,7 +26,8 @@ import {
   shouldShowLensFirstCoach,
 } from "@/lib/onboarding/lens-first-coach";
 import { FriendArchiveChatSheet } from "@/components/peer-chat/friend-archive-chat-sheet";
-import { FriendAddContactFlow } from "@/components/peer-chat/friend-add-contact-flow";
+import { FriendAddSheet } from "@/components/peer-chat/friend-add-sheet";
+import type { FriendAddResult } from "@/components/peer-chat/friend-add-contact-flow";
 import { GroupCreateSheet } from "@/components/peer-chat/group-create-sheet";
 import {
   GroupThreadList,
@@ -57,7 +57,6 @@ import type { SocialBubblePeer } from "@/lib/social/bubble-state";
 import { useAuth } from "@/hooks/use-auth";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { useRoomGuest } from "@/hooks/use-room-guest";
-import { cn } from "@/lib/utils";
 
 export function FivePeerHubClient() {
   const copy = useCopy();
@@ -97,8 +96,7 @@ export function FivePeerHubClient() {
   const [groupSheetOpen, setGroupSheetOpen] = useState(false);
   const [groupThreads, setGroupThreads] = useState<GroupThreadListItem[]>([]);
   const [assignSlot, setAssignSlot] = useState<PinnedSlotIndex | null>(null);
-  const [quickAddOpen, setQuickAddOpen] = useState(false);
-  const [phone, setPhone] = useState("");
+  const [friendAddOpen, setFriendAddOpen] = useState(false);
   const [centerAvatarUrl, setCenterAvatarUrl] = useState<string | null>(null);
 
   const peerMetaMap = useMemo(
@@ -252,30 +250,21 @@ export function FivePeerHubClient() {
   const centerInitial = guest.label.trim().charAt(0) || "나";
 
   const openPinAssign = (slotIndex: PinnedSlotIndex) => {
-    setQuickAddOpen(false);
+    setFriendAddOpen(true);
     setAssignSlot(slotIndex);
-    setPhone("");
   };
 
   const openQuickFriendAdd = () => {
     setAssignSlot(null);
-    setQuickAddOpen(true);
-    setPhone("");
+    setFriendAddOpen(true);
   };
 
-  const closeDialog = () => {
+  const closeFriendAdd = () => {
     setAssignSlot(null);
-    setQuickAddOpen(false);
-    setPhone("");
+    setFriendAddOpen(false);
   };
 
-  const handleFriendAdded = async (result: {
-    threadId: string;
-    displayName: string;
-    otherUserId?: string;
-    rimvioId?: string | null;
-    emailLower?: string | null;
-  }) => {
+  const handleFriendAdded = async (result: FriendAddResult) => {
     addPeerContact({
       peerThreadId: result.threadId,
       displayName: result.displayName,
@@ -310,15 +299,10 @@ export function FivePeerHubClient() {
       toast.success(`${result.displayName}를 구슬 주머니에 넣었어요`);
     }
 
-    closeDialog();
+    closeFriendAdd();
     await loadSocialLayer();
     router.push(`/peers/${encodeURIComponent(result.threadId)}`);
   };
-
-  const dialogOpen = assignSlot !== null || quickAddOpen;
-  const dialogTitle = quickAddOpen
-    ? "친구 추가"
-    : `${(assignSlot ?? 0) + 1}번 버블에 고정`;
 
   if (!usePhoneChat) {
     return <GuestPeersLanding configured={configured} />;
@@ -332,7 +316,7 @@ export function FivePeerHubClient() {
         showFeedLink={false}
       />
 
-      {connectedCount === 0 && !dialogOpen ? (
+      {connectedCount === 0 && !friendAddOpen ? (
         <>
           <PeerHubEmptyState
             className="mx-1"
@@ -367,46 +351,19 @@ export function FivePeerHubClient() {
         />
       </div>
 
-      {dialogOpen ? (
-        <div
-          className={cn("mx-auto w-full max-w-sm space-y-3 p-4", IOS.cardSm)}
-          role="dialog"
-          aria-label={dialogTitle}
-        >
-          <p className="text-sm font-semibold text-[#191f28]">{dialogTitle}</p>
-          <p className="text-[11px] text-[#6b7684]">
-            {quickAddOpen
-              ? "Rimvio ID · 전화번호 · 이메일로 친구를 찾아요"
-              : "친한 5 · 메시지 영구 보관 · 나머지는 구슬 주머니"}
-          </p>
-          <input
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="rimvio_id · 010-… · email@gmail.com"
-            inputMode="text"
-            className="h-11 w-full rounded-2xl border border-[#02204714] bg-white px-4 text-sm text-[#191f28] outline-none placeholder:text-[#8b95a1] focus:ring-2 focus:ring-[#3182f6]/35"
-            autoFocus
-          />
-          <FriendAddContactFlow
-            contact={phone}
-            confirmLabel={quickAddOpen ? "친구 추가" : "고정하기"}
-            helperText={
-              quickAddOpen
-                ? "맞는 사람이면 친구 추가 후 바로 대화방으로 이동해요."
-                : "프로필 확인 후 고정하기를 눌러 주세요."
-            }
-            onAdded={handleFriendAdded}
-            onError={(message) => toast.error(message)}
-          />
-          <button
-            type="button"
-            className="w-full rounded-[14px] py-2.5 text-sm font-semibold text-[#6b7684]"
-            onClick={closeDialog}
-          >
-            취소
-          </button>
-        </div>
-      ) : null}
+      <FriendAddSheet
+        open={friendAddOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeFriendAdd();
+          } else {
+            setFriendAddOpen(true);
+          }
+        }}
+        pinSlot={assignSlot}
+        onAdded={handleFriendAdded}
+        onContactSynced={() => void loadSocialLayer()}
+      />
 
       {usePhoneChat ? (
         <PeerProfileSetup
@@ -421,13 +378,13 @@ export function FivePeerHubClient() {
       ) : null}
 
       <div className="flex shrink-0 flex-col items-center gap-2">
-        {usePhoneChat && !dialogOpen ? (
+        {usePhoneChat && !friendAddOpen ? (
           <button
             type="button"
             onClick={openQuickFriendAdd}
-            className="text-[12px] font-semibold text-[#3182f6] underline-offset-2 hover:underline"
+            className="rimvio-accent-submit-btn rounded-full px-5 py-2.5 text-[13px] font-semibold text-white shadow-sm active:scale-[0.98]"
           >
-            친구 추가
+            {copy.peers.friendAdd.listCta}
           </button>
         ) : null}
         <p className="text-center text-[11px] text-[#6b7684]">
