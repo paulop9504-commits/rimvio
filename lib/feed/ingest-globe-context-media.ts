@@ -8,7 +8,7 @@ import type { BulkMediaSpacetimeCluster } from "@/lib/feed/bulk-media-spacetime-
 import { peekBulkMediaSpacetime } from "@/lib/feed/peek-bulk-media-spacetime";
 import { fetchBulkMediaClusterEnrichment } from "@/lib/globe/fetch-bulk-media-cluster-enrichment";
 import { findEventCandidate, upsertEventCandidate } from "@/lib/events/event-store";
-import { HUMAN_KO } from "@/lib/copy/human-ko";
+import { copy } from "@/lib/copy/human-ko";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import type { FeedCaptureFragment, SpacetimeFeedTargetMatch } from "@/lib/feed/feed-capture-types";
 import {
@@ -598,11 +598,11 @@ async function ingestGlobeContextMediaBulkClustered(input: {
     lastEventId: null as string | null,
   };
 
-  input.onFilePrepare?.(HUMAN_KO.globe.bulkClusterPeekToast);
+  input.onFilePrepare?.(copy.globe.bulkClusterPeekToast);
   const peeks = await peekBulkMediaSpacetime(input.mediaFiles);
   let clusters = clusterBulkMediaSpacetime(peeks);
 
-  input.onFilePrepare?.(HUMAN_KO.globe.bulkClusterGroupToast);
+  input.onFilePrepare?.(copy.globe.bulkClusterGroupToast);
   const enrichment = await fetchBulkMediaClusterEnrichment({
     clusters,
     peeks,

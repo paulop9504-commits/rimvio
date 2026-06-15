@@ -1,18 +1,17 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
-const serverUrl = process.env.CAPACITOR_SERVER_URL?.trim();
+const serverUrl =
+  process.env.CAPACITOR_SERVER_URL?.trim() || "https://rimvio.vercel.app";
 
 const config: CapacitorConfig = {
   appId: "com.rimvio.app",
   appName: "Rimvio",
   webDir: "public",
-  server: serverUrl
-    ? {
-        url: serverUrl,
-        cleartext: serverUrl.startsWith("http://"),
-        androidScheme: serverUrl.startsWith("https") ? "https" : "http",
-      }
-    : undefined,
+  server: {
+    url: serverUrl,
+    cleartext: serverUrl.startsWith("http://"),
+    androidScheme: serverUrl.startsWith("https") ? "https" : "http",
+  },
   android: {
     allowMixedContent: true,
   },
