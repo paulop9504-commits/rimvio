@@ -103,6 +103,8 @@ export type RimvioGlobe3DProps = {
   contextWarmthEnabled?: boolean;
   viewerLocation?: GlobeViewerLocation | null;
   activePinId?: string | null;
+  /** Dot tap expansion — slot card popout animation. */
+  expandedPinId?: string | null;
   onPinPress?: (pinId: string) => void;
   /** Long-press drag — personal globe context pins only. */
   pinRelocateEnabled?: boolean;
@@ -145,6 +147,7 @@ export const RimvioGlobe3D = memo(
       contextWarmthEnabled = true,
       viewerLocation = null,
       activePinId = null,
+      expandedPinId = null,
       onPinPress,
       pinRelocateEnabled = false,
       onPinRelocate,
@@ -174,6 +177,7 @@ export const RimvioGlobe3D = memo(
     const onDetailLevelChangeRef = useRef(onDetailLevelChange);
     const onPointOfViewChangeRef = useRef(onPointOfViewChange);
     const activePinIdRef = useRef(activePinId);
+    const expandedPinIdRef = useRef(expandedPinId);
     const pinsRef = useRef(pins);
     const lodgingMarkersRef = useRef(lodgingMarkers);
     const hubAnchorsRef = useRef(hubAnchors);
@@ -343,6 +347,7 @@ export const RimvioGlobe3D = memo(
     onDetailLevelChangeRef.current = onDetailLevelChange;
     onPointOfViewChangeRef.current = onPointOfViewChange;
     activePinIdRef.current = activePinId;
+    expandedPinIdRef.current = expandedPinId;
     pinsRef.current = pins;
     lodgingMarkersRef.current = lodgingMarkers;
     hubAnchorsRef.current = hubAnchors;
@@ -543,7 +548,10 @@ export const RimvioGlobe3D = memo(
               lockControls: () => lockGlobeControlsRef.current(),
               unlockControls: () => unlockGlobeControlsRef.current(),
             },
-            { relocateEnabled: pinRelocateEnabledRef.current },
+            {
+              relocateEnabled: pinRelocateEnabledRef.current,
+              popout: row.id === expandedPinIdRef.current,
+            },
           );
         })
         .arcsData([...tripArcsRef.current])

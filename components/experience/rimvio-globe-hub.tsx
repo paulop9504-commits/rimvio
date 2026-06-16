@@ -222,6 +222,9 @@ const RimvioGlobeHubBody = memo(
     useEffect(() => {
       return subscribeGlobeLodgingFocusStage((detail) => {
         setLodgingFocusStageOpen(detail.open);
+        if (detail.open) {
+          setExpandedPinId(null);
+        }
       });
     }, []);
     useEffect(() => {
@@ -440,6 +443,11 @@ const RimvioGlobeHubBody = memo(
         const pressedPin = displayPins.find((row) => row.id === pinId);
         if (pressedPin?.pinShape === "dot") {
           setExpandedPinId(pinId);
+          innerGlobeRef.current?.flyToPin(
+            pressedPin.lat,
+            pressedPin.lng,
+            "neighborhood",
+          );
         } else {
           setExpandedPinId(null);
         }
@@ -516,6 +524,7 @@ const RimvioGlobeHubBody = memo(
               : null
           }
           activePinId={displayPinId}
+          expandedPinId={expandedPinId}
           className="h-full flex-1"
           onPinPress={handlePinPress}
           pinRelocateEnabled={pinRelocateEnabled}

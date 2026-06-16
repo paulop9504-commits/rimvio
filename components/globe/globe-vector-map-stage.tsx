@@ -4,6 +4,7 @@ import { memo, useEffect, useRef } from "react";
 import type { ClassifiedGlobePin } from "@/lib/feed/experience-globe-ping-types";
 import {
   createGlobe3dClusterPinElement,
+  createGlobe3dDotPinElement,
   createGlobe3dPinElement,
 } from "@/lib/globe/create-globe-3d-pin-element";
 import { createGlobe3dViewerPinElement } from "@/lib/globe/create-globe-3d-viewer-pin-element";
@@ -215,6 +216,10 @@ export const GlobeVectorMapStage = memo(function GlobeVectorMapStage({
           );
         } else if (pin.pinShape === "cluster") {
           element = createGlobe3dClusterPinElement(pin, {
+            onPress: (pinId) => onPinPressRef.current?.(pinId),
+          });
+        } else if (pin.pinShape === "dot") {
+          element = createGlobe3dDotPinElement(pin, pin.id === activePinId, {
             onPress: (pinId) => onPinPressRef.current?.(pinId),
           });
         } else {

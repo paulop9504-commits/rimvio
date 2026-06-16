@@ -6,6 +6,28 @@ import { readPlanContextFromEvent } from "@/lib/plan-context/plan-context-metada
 const RECENT_MS = 14 * 24 * 60 * 60 * 1000;
 const NEAR_KM = 120;
 
+export type GlobePinDisplayShape = "dot" | "slot";
+
+export type GlobePinDisplayReason =
+  | "viewer"
+  | "cluster"
+  | "expanded_tap"
+  | "focused_context"
+  | "trip_destination"
+  | "recent_near"
+  | "recent_scheduled"
+  | "lodging_focus_collapsed"
+  | "hub_muted"
+  | "stale_completed"
+  | "stale_archived"
+  | "no_event"
+  | "unrelated";
+
+export type GlobePinDisplayDecision = {
+  shape: GlobePinDisplayShape;
+  reason: GlobePinDisplayReason;
+};
+
 function readEventStartMs(event: EventCandidate): number {
   const plan = readPlanContextFromEvent(event);
   return (
@@ -25,7 +47,8 @@ function isRelevantLifecycle(lifecycle: EventCandidate["lifecycle"]): boolean {
   );
 }
 
-function shouldRenderPinAsSlot(input: {
+/** Deterministic relevance — why a pin is dot vs slot (testable, no LLM). */
+export function inferGlobePinDisplayDecision(input: {
   pin: ClassifiedGlobePin;
   event: EventCandidate | null;
   focusedEventId: string | null;
@@ -34,55 +57,57 @@ function shouldRenderPinAsSlot(input: {
   viewerLat: number | null;
   viewerLng: number | null;
   nowMs: number;
-}): boolean {
+}): GlobePinDisplayDecision {
   const { pin } = input;
 
-  if (pin.pinShape === "viewer" || pin.pinShape === "cluster") {
-    return true;
+  if (pin.pinShape === "viewer") {
+    return { shape: "slot", reason: "viewer" };
+  }
+  if (pin.pinShape === "cluster") {
+    return { shape: "slot", reason: "cluster" };
   }
 
   if (pin.id === input.expandedPinId) {
-    return true;
+    return { shape: "slot", reason: "expanded_tap" };
   }
 
   const eventId = pin.sourceEventId?.trim() ?? "";
-  if (input.lodgingFocusStageOpen && eventId && eventId === input.focusedEventId) {
-    return false;
-  }
-
   if (input.lodgingFocusStageOpen) {
-    return false;
+    return { shape: "dot", reason: "lodging_focus_collapsed" };
   }
 
   if (pin.hubFocusMuted) {
-    return false;
+    return { shape: "dot", reason: "hub_muted" };
   }
 
   if (eventId && eventId === input.focusedEventId) {
-    return true;
+    return { shape: "slot", reason: "focused_context" };
   }
 
   if (pin.emphasis === "primary" && pin.tripLeg === "destination") {
-    return true;
+    return { shape: "slot", reason: "trip_destination" };
   }
 
   const event = input.event;
   if (!event) {
-    return false;
+    return { shape: "dot", reason: "no_event" };
   }
 
   if (!isRelevantLifecycle(event.lifecycle)) {
-    return false;
+    if (event.lifecycle === "archived") {
+      return { shape: "dot", reason: "stale_archived" };
+    }
+    return { shape: "dot", reason: "stale_completed" };
   }
 
   const startMs = readEventStartMs(event);
   if (startMs > 0 && input.nowMs - startMs > RECENT_MS && eventId !== input.focusedEventId) {
     const endMs = parseIsoMs(readPlanContextFromEvent(event)?.windowEndIso);
     if (endMs != null && endMs < input.nowMs) {
-      return false;
+      return { shape: "dot", reason: "stale_completed" };
     }
     if (event.lifecycle === "completed" || event.lifecycle === "archived") {
-      return false;
+      return { shape: "dot", reason: "stale_archived" };
     }
   }
 
@@ -100,16 +125,42 @@ function shouldRenderPinAsSlot(input: {
     });
     if (fit.placeOk || haversineKm(input.viewerLat, input.viewerLng, pin.lat, pin.lng) <= NEAR_KM) {
       if (isRelevantLifecycle(event.lifecycle)) {
-        return true;
+        return { shape: "slot", reason: "recent_near" };
       }
     }
   }
 
   if (isRelevantLifecycle(event.lifecycle) && startMs > input.nowMs - RECENT_MS) {
-    return true;
+    return { shape: "slot", reason: "recent_scheduled" };
   }
 
-  return false;
+  return { shape: "dot", reason: "unrelated" };
+}
+
+function applyPinDisplayDecision(
+  pin: ClassifiedGlobePin,
+  decision: GlobePinDisplayDecision,
+): ClassifiedGlobePin {
+  if (decision.shape === "slot") {
+    if (pin.pinShape === "slot" && pin.slot) {
+      return pin;
+    }
+    return {
+      ...pin,
+      pinShape: "slot",
+      slot: pin.slot ?? {
+        experienceTitle: pin.label,
+        photoCount: 0,
+        videoCount: 0,
+      },
+    };
+  }
+
+  return {
+    ...pin,
+    pinShape: "dot",
+    slot: undefined,
+  };
 }
 
 /** Collapse stale / unrelated context pins to dots — tap expands to slot card. */
@@ -131,13 +182,9 @@ export function projectGlobePinDisplayMode(input: {
   const nowMs = (input.now ?? new Date()).getTime();
 
   return input.pins.map((pin) => {
-    if (pin.pinShape === "viewer" || pin.pinShape === "cluster") {
-      return pin;
-    }
-
     const eventId = pin.sourceEventId?.trim() ?? "";
     const event = eventId ? input.eventsById.get(eventId) ?? null : null;
-    const asSlot = shouldRenderPinAsSlot({
+    const decision = inferGlobePinDisplayDecision({
       pin,
       event,
       focusedEventId,
@@ -147,26 +194,6 @@ export function projectGlobePinDisplayMode(input: {
       viewerLng,
       nowMs,
     });
-
-    if (asSlot) {
-      if (pin.pinShape === "slot" && pin.slot) {
-        return pin;
-      }
-      return {
-        ...pin,
-        pinShape: "slot" as const,
-        slot: pin.slot ?? {
-          experienceTitle: pin.label,
-          photoCount: 0,
-          videoCount: 0,
-        },
-      };
-    }
-
-    return {
-      ...pin,
-      pinShape: "dot" as const,
-      slot: undefined,
-    };
+    return applyPinDisplayDecision(pin, decision);
   });
 }

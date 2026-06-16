@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { applyLodgingMarkerFocusPresentation } from "@/lib/globe/context-hub/apply-lodging-marker-focus-presentation";
 import { resolveLodgingSituationalLabel } from "@/lib/globe/context-hub/resolve-lodging-situational-label";
 import type { GlobeLodgingMapMarker } from "@/lib/globe/context-hub/lodging-globe-marker-types";
-import { projectGlobePinDisplayMode } from "@/lib/globe/project-globe-pin-display-mode";
+import {
+  inferGlobePinDisplayDecision,
+  projectGlobePinDisplayMode,
+} from "@/lib/globe/project-globe-pin-display-mode";
 import type { ClassifiedGlobePin } from "@/lib/feed/experience-globe-ping-types";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 
@@ -61,6 +64,7 @@ function seedLodgingMarker(
 }
 
 function run() {
+  const nowMs = new Date("2026-06-15T10:00:00.000Z").getTime();
   const travel = seedEvent({
     id: "tokyo-trip",
     title: "도쿄 여행",
@@ -87,36 +91,85 @@ function run() {
   assert.equal(grouped[0]?.label, "여행중 · 숙소");
   assert.equal(grouped[0]?.thumbnailUrl, null);
 
+  const recent = seedEvent({ id: "recent", title: "도쿄", datetime: "2026-06-14T08:00:00.000Z" });
+  const old = seedEvent({
+    id: "old",
+    title: "지난 여행",
+    datetime: "2025-01-01T08:00:00.000Z",
+    lifecycle: "completed",
+  });
   const eventsById = new Map<string, EventCandidate>([
-    ["recent", seedEvent({ id: "recent", title: "도쿄", datetime: "2026-06-14T08:00:00.000Z" })],
-    [
-      "old",
-      seedEvent({
-        id: "old",
-        title: "지난 여행",
-        datetime: "2025-01-01T08:00:00.000Z",
-        lifecycle: "completed",
-      }),
-    ],
+    ["recent", recent],
+    ["old", old],
   ]);
   const pins = [
     seedPin({ id: "p-recent", sourceEventId: "recent", label: "도쿄" }),
     seedPin({ id: "p-old", sourceEventId: "old", label: "지난 여행" }),
   ];
+
+  assert.equal(
+    inferGlobePinDisplayDecision({
+      pin: pins[1]!,
+      event: old,
+      focusedEventId: null,
+      expandedPinId: null,
+      lodgingFocusStageOpen: false,
+      viewerLat: null,
+      viewerLng: null,
+      nowMs,
+    }).reason,
+    "stale_completed",
+  );
+
+  assert.equal(
+    inferGlobePinDisplayDecision({
+      pin: pins[0]!,
+      event: recent,
+      focusedEventId: null,
+      expandedPinId: "p-recent",
+      lodgingFocusStageOpen: false,
+      viewerLat: null,
+      viewerLng: null,
+      nowMs,
+    }).shape,
+    "slot",
+  );
+  assert.equal(
+    inferGlobePinDisplayDecision({
+      pin: pins[0]!,
+      event: recent,
+      focusedEventId: "recent",
+      expandedPinId: null,
+      lodgingFocusStageOpen: false,
+      viewerLat: null,
+      viewerLng: null,
+      nowMs,
+    }).reason,
+    "focused_context",
+  );
+
   const projected = projectGlobePinDisplayMode({
     pins,
     eventsById,
-    now: new Date("2026-06-15T10:00:00.000Z"),
+    now: new Date(nowMs),
   });
   assert.equal(projected.find((row) => row.id === "p-old")?.pinShape, "dot");
   assert.equal(projected.find((row) => row.id === "p-recent")?.pinShape, "slot");
+
+  const expanded = projectGlobePinDisplayMode({
+    pins,
+    eventsById,
+    expandedPinId: "p-old",
+    now: new Date(nowMs),
+  });
+  assert.equal(expanded.find((row) => row.id === "p-old")?.pinShape, "slot");
 
   const lodgingOpen = projectGlobePinDisplayMode({
     pins,
     eventsById,
     lodgingFocusStageOpen: true,
     focusedEventId: "recent",
-    now: new Date("2026-06-15T10:00:00.000Z"),
+    now: new Date(nowMs),
   });
   assert.ok(lodgingOpen.every((row) => row.pinShape === "dot"));
 
