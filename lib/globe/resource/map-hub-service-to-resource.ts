@@ -2,6 +2,7 @@ import type { EventCandidate } from "@/lib/events/event-candidate";
 import type { ContextHubServiceRow } from "@/lib/globe/context-hub/context-hub-service-catalog";
 import { extractHubRunnableAction } from "@/lib/globe/context-hub/extract-hub-runnable-action";
 import { readContextTicketArtifact } from "@/lib/globe/context-hub/read-context-ticket-artifact";
+import { readResourceLastSyncedAtIso } from "@/lib/globe/resource/context-resource-sync-metadata";
 import type {
   ContextResource,
   ContextResourceAction,
@@ -99,6 +100,7 @@ export function mapHubServiceRowToResource(
     row.serviceId === "ticket"
       ? resolveTicketSpacetime(event, ticketArtifact)
       : resolveResourceSpacetime(event);
+  const lastSyncedAtIso = readResourceLastSyncedAtIso(event, row.serviceId);
 
   return {
     resourceId: `${event.id}:${row.serviceId}`,
@@ -111,6 +113,7 @@ export function mapHubServiceRowToResource(
     action: runnable ? mapRunnableToAction(row, runnable) : null,
     createdAtIso: event.updatedAt ?? event.createdAt,
     updatedAtIso: event.updatedAt ?? null,
+    lastSyncedAtIso,
     metadata: ticketArtifact?.qrPreviewUrl
       ? { qrPreviewUrl: ticketArtifact.qrPreviewUrl }
       : undefined,

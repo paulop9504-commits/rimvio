@@ -134,6 +134,7 @@ See `ContextResource` — required: `resourceId`, `contextEventId`, `kind`, `sou
 - [x] Ticket plug-in + QR viewer + scan surface (web)
 - [x] Native MAIN surface L3 contract (`main-native-surface.ts`, `build-main-native-surface-payload.ts`)
 - [x] ApiWakeupController skeleton + weather spacetime gate
+- [x] Hub rank revision → sync worker (`runHubResourceSyncWorker`)
 - [ ] `ContextResource` SSOT + factory emit from Hub transactions
 - [ ] Hub expand = View only; no priority logic
 - [ ] Resource kinds: ticket, flight, lodging, rental, media_album, schedule (extend catalog)
@@ -255,6 +256,18 @@ rankContextResources → MAIN
 - **Policies:** `api-wakeup-providers.ts`
 - **Wired:** `useFeedPlanWeather`, `useBridgeContextEnvironment`
 - **Stale:** `ContextResource.lastSyncedAtIso` + `isResourceSyncStale`
+- **Worker:** `planHubResourceSyncJobs` → `runHubResourceSyncWorker` · hook `useHubResourceSyncWorker` in `GlobeContextHubRail`
+
+### Sync flow
+
+```
+rankContextResources revision
+  → useHubResourceSyncWorker (debounced)
+  → planHubResourceSyncJobs (MAIN first)
+  → resolveApiWakeupDecision per provider
+  → executeHubResourceProviderSync (stub)
+  → writeResourceSyncStamp → EVENT_CANDIDATES_UPDATED
+```
 
 ### Forbidden
 

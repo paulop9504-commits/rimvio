@@ -56,3 +56,19 @@ export {
 } from "@/lib/globe/resource/build-api-wakeup-context";
 
 export { isResourceSyncStale } from "@/lib/globe/resource/is-resource-sync-stale";
+
+export {
+  planHubResourceSyncJobs,
+  hubResourceSyncRevisionKey,
+  type HubResourceSyncJob,
+} from "@/lib/globe/resource/plan-hub-resource-sync-jobs";
+
+export { runHubResourceSyncWorker } from "@/lib/globe/resource/run-hub-resource-sync-worker";
+
+export {
+  readResourceLastSyncedAtIso,
+  writeResourceSyncStamp,
+  CONTEXT_RESOURCE_SYNC_META_KEY,
+} from "@/lib/globe/resource/context-resource-sync-metadata";
+
+export { resolveApiProviderForHubResource } from "@/lib/globe/resource/resolve-resource-api-provider";
