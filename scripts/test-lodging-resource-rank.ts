@@ -8,7 +8,7 @@ import {
   filterLodgingRankedResources,
 } from "@/lib/globe/resource/rank-context-resources";
 
-function run() {
+async function run() {
   const stamp = "2026-06-15T08:00:00.000Z";
   upsertEventCandidate({
     id: "test-daejeon-trip",
@@ -26,7 +26,7 @@ function run() {
     updatedAt: stamp,
   });
 
-  enableLodgingHubForContext("test-daejeon-trip");
+  await enableLodgingHubForContext({ contextEventId: "test-daejeon-trip" });
   const event = findEventCandidate("test-daejeon-trip");
   assert.ok(event);
 
@@ -60,4 +60,4 @@ function run() {
   console.log("test-lodging-resource-rank: ok");
 }
 
-run();
+void run();

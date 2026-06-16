@@ -9,11 +9,13 @@ export type HubResourceSyncHandlerResult = {
   note?: string;
 };
 
-/** Provider-specific fetch — stubs until aviation / ingest APIs ship. */
+/** Provider-specific fetch — gated by ApiWakeupController. */
 export async function executeHubResourceProviderSync(input: {
   providerId: ApiProviderId;
   event: EventCandidate;
   resource: ContextResource;
+  lat?: number | null;
+  lng?: number | null;
 }): Promise<HubResourceSyncHandlerResult> {
   switch (input.providerId) {
     case "flight_status":
@@ -38,7 +40,12 @@ export async function executeHubResourceProviderSync(input: {
       ) {
         return { ok: false, skipped: true, note: "not_lodging" };
       }
-      return syncPlacesLodgingInventory(input.event.id)
+      const refreshed = await syncPlacesLodgingInventory({
+        contextEventId: input.event.id,
+        lat: input.lat,
+        lng: input.lng,
+      });
+      return refreshed
         ? { ok: true, note: "places_lodging_refreshed" }
         : { ok: false, skipped: true, note: "lodging_not_enabled" };
 

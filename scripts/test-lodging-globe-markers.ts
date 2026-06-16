@@ -31,11 +31,14 @@ function seedDaejeonTrip() {
   });
 }
 
-function run() {
+async function run() {
   assert.equal(shouldRenderLodgingGlobeMarkers("space"), false);
   assert.equal(shouldRenderLodgingGlobeMarkers("city"), true);
 
-  const event = enableLodgingHubForContext(seedDaejeonTrip().id);
+  seedDaejeonTrip();
+  const event = await enableLodgingHubForContext({
+    contextEventId: "test-lodging-globe-markers",
+  });
   const panel = listContextHubServicesForEvent(event);
   assert.ok(panel);
 
@@ -62,4 +65,4 @@ function run() {
   console.log("test-lodging-globe-markers: ok");
 }
 
-run();
+void run();

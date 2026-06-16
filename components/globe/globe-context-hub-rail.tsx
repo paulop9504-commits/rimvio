@@ -378,7 +378,11 @@ export function GlobeContextHubRail({
     const event = findLifeEventCandidate(eventId);
     setBusy(true);
     try {
-      enableLodgingHubForContext(eventId);
+      await enableLodgingHubForContext({
+        contextEventId: eventId,
+        lat,
+        lng,
+      });
       if (event) {
         recordContextHubTelemetry({ event, kind: "clicked", label: "lodging" });
         foldContextHubLearning(event);

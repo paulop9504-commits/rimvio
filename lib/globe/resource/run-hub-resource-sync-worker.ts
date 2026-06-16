@@ -48,6 +48,8 @@ export async function runHubResourceSyncWorker(input: {
       providerId: job.providerId,
       event: input.event,
       resource: job.resource,
+      lat: input.lat,
+      lng: input.lng,
     });
 
     if (!result.ok) {

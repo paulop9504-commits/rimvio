@@ -259,6 +259,7 @@ rankContextResources → MAIN
 - **Wired:** `useFeedPlanWeather`, `useBridgeContextEnvironment`
 - **Stale:** `ContextResource.lastSyncedAtIso` + `isResourceSyncStale`
 - **Worker:** `planHubResourceSyncJobs` → `runHubResourceSyncWorker` · hook `useHubResourceSyncWorker` in `GlobeContextHubRail`
+- **Lodging fetch:** `fetchPlacesLodgingNearby` · `GET /api/globe/lodging-inventory` · mock fallback when `GOOGLE_PLACES_API_KEY` unset
 
 ### Sync flow
 
