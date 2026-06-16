@@ -237,6 +237,22 @@ rankContextResources → ranked[0] (MAIN)
 
 ---
 
+## 10. Context map flow (허브 연결 → 맥락 → 허브 오픈)
+
+| Step | UX | L3 |
+|------|-----|-----|
+| **1 · State initiation** | User connects Hub to Context (ticket · flight · lodging · …) | `connectDepartureHubToContext`, `saveContextTicketArtifact`, `enableLodgingHubForContext` |
+| **2 · Contextual view** | Map shows hub opener pill offset from context pin — dock rail hidden | `hasActiveContextHub`, `projectContextHubGlobeAnchor` |
+| **3 · Hub open** | Tap map pill → full Hub detail (carousel + browse), **not** `PinOpenSheet` | `GlobeContextHubDetailSheet`, `GLOBE_CONTEXT_HUB_OPEN_REQUEST` |
+
+**Rules**
+
+- Pin tap → experience / media (`PinOpenSheet`) unchanged.
+- Hub anchor tap → `GlobeContextHubDetailSheet` only.
+- `ai_search` handoff is ambient — does not alone activate map anchor (`hasActiveContextHub` excludes it).
+
+---
+
 ## 9. JIT API wake-up (Phase 2 — shipped skeleton)
 
 > **Goal:** No external API calls until spacetime probability warrants it. Ranker stays pure; fetch gates sit **before** providers.

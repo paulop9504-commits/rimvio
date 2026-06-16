@@ -14,6 +14,7 @@ import type { GlobeInstance } from "globe.gl";
 import { GLOBE_OVERVIEW_POINT_OF_VIEW } from "@/lib/experience-graph/globe-overview-view";
 import { createGlobe3dPinElement, createGlobe3dClusterPinElement } from "@/lib/globe/create-globe-3d-pin-element";
 import { createGlobeLodgingMarkerElement } from "@/lib/globe/create-globe-lodging-marker-element";
+import { createGlobeContextHubAnchorElement } from "@/lib/globe/create-globe-context-hub-anchor-element";
 import { createGlobe3dViewerPinElement } from "@/lib/globe/create-globe-3d-viewer-pin-element";
 import { accuracyMetersToRingDegrees } from "@/lib/globe/accuracy-ring-degrees";
 import { GLOBE_TILE_MAX_ZOOM } from "@/lib/globe/globe-tile-constants";
@@ -37,6 +38,10 @@ import {
   type GlobeDetailLevel,
 } from "@/lib/globe/globe-zoom-levels";
 import type { GlobeLodgingMapMarker } from "@/lib/globe/context-hub/lodging-globe-marker-types";
+import type { GlobeContextHubMapAnchor } from "@/lib/globe/context-hub/context-hub-globe-anchor-types";
+import { isGlobeContextHubMapAnchor } from "@/lib/globe/context-hub/context-hub-globe-anchor-types";
+import { isGlobeLodgingMapMarker } from "@/lib/globe/context-hub/lodging-globe-marker-types";
+import { shouldRenderContextHubGlobeAnchor } from "@/lib/globe/context-hub/project-context-hub-globe-anchor";
 import { shouldRenderLodgingGlobeMarkers } from "@/lib/globe/context-hub/project-lodging-globe-markers";
 import {
   isClassifiedGlobePin,
@@ -124,6 +129,9 @@ export type RimvioGlobe3DProps = {
   /** Ranked lodging markers — View only; no fetch. */
   lodgingMarkers?: readonly GlobeLodgingMapMarker[];
   onLodgingMarkerPress?: (resourceId: string, carouselIndex: number) => void;
+  /** Connected context hub opener — map pill, not pin info sheet. */
+  hubAnchors?: readonly GlobeContextHubMapAnchor[];
+  onContextHubAnchorPress?: (contextEventId: string) => void;
   className?: string;
 };
 
@@ -148,6 +156,8 @@ export const RimvioGlobe3D = memo(
       renderSuspended = false,
       lodgingMarkers = [],
       onLodgingMarkerPress,
+      hubAnchors = [],
+      onContextHubAnchorPress,
       className,
     },
     ref,
@@ -157,6 +167,7 @@ export const RimvioGlobe3D = memo(
     const globeRef = useRef<GlobeInstance | null>(null);
     const onPinPressRef = useRef(onPinPress);
     const onLodgingMarkerPressRef = useRef(onLodgingMarkerPress);
+    const onContextHubAnchorPressRef = useRef(onContextHubAnchorPress);
     const onPinRelocateRef = useRef(onPinRelocate);
     const pinRelocateEnabledRef = useRef(pinRelocateEnabled);
     const onGlobePressRef = useRef(onGlobePress);
@@ -165,6 +176,7 @@ export const RimvioGlobe3D = memo(
     const activePinIdRef = useRef(activePinId);
     const pinsRef = useRef(pins);
     const lodgingMarkersRef = useRef(lodgingMarkers);
+    const hubAnchorsRef = useRef(hubAnchors);
     const tripArcsRef = useRef(tripArcs);
     const contextWarmthPointsRef = useRef(contextWarmthPoints);
     const contextWarmthEnabledRef = useRef(contextWarmthEnabled);
@@ -324,6 +336,7 @@ export const RimvioGlobe3D = memo(
 
     onPinPressRef.current = onPinPress;
     onLodgingMarkerPressRef.current = onLodgingMarkerPress;
+    onContextHubAnchorPressRef.current = onContextHubAnchorPress;
     onPinRelocateRef.current = onPinRelocate;
     pinRelocateEnabledRef.current = pinRelocateEnabled;
     onGlobePressRef.current = onGlobePress;
@@ -332,6 +345,7 @@ export const RimvioGlobe3D = memo(
     activePinIdRef.current = activePinId;
     pinsRef.current = pins;
     lodgingMarkersRef.current = lodgingMarkers;
+    hubAnchorsRef.current = hubAnchors;
     tripArcsRef.current = tripArcs;
     contextWarmthPointsRef.current = contextWarmthPoints;
     contextWarmthEnabledRef.current = contextWarmthEnabled;
@@ -345,11 +359,14 @@ export const RimvioGlobe3D = memo(
         return;
       }
       const showLodging = shouldRenderLodgingGlobeMarkers(warmthDetailRef.current);
+      const showHubAnchors = shouldRenderContextHubGlobeAnchor(warmthDetailRef.current);
       globe.htmlElementsData(
         mergeGlobeHtmlElements({
           pins: pinsRef.current,
           lodgingMarkers: lodgingMarkersRef.current,
+          hubAnchors: hubAnchorsRef.current,
           showLodgingMarkers: showLodging,
+          showHubAnchors,
         }),
       );
       globe.labelsData([]);
@@ -471,7 +488,9 @@ export const RimvioGlobe3D = memo(
           mergeGlobeHtmlElements({
             pins: pinsRef.current,
             lodgingMarkers: lodgingMarkersRef.current,
+            hubAnchors: hubAnchorsRef.current,
             showLodgingMarkers: shouldRenderLodgingGlobeMarkers(warmthDetailRef.current),
+            showHubAnchors: shouldRenderContextHubGlobeAnchor(warmthDetailRef.current),
           }),
         )
         .htmlLat((element: object) => readGlobeHtmlLat(element as GlobeHtmlMapElement))
@@ -484,7 +503,13 @@ export const RimvioGlobe3D = memo(
         })
         .htmlElement((element: object) => {
           const row = element as GlobeHtmlMapElement;
-          if (!isClassifiedGlobePin(row)) {
+          if (isGlobeContextHubMapAnchor(row)) {
+            return createGlobeContextHubAnchorElement(row, {
+              onPress: (contextEventId) =>
+                onContextHubAnchorPressRef.current?.(contextEventId),
+            });
+          }
+          if (isGlobeLodgingMapMarker(row)) {
             return createGlobeLodgingMarkerElement(row, {
               onPress: (resourceId, carouselIndex) =>
                 onLodgingMarkerPressRef.current?.(resourceId, carouselIndex),
@@ -799,7 +824,7 @@ export const RimvioGlobe3D = memo(
 
     useEffect(() => {
       syncHtmlElementsRef.current();
-    }, [pins, lodgingMarkers, globeReady]);
+    }, [pins, lodgingMarkers, hubAnchors, globeReady]);
 
     useEffect(() => {
       const globe = globeRef.current;

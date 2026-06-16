@@ -7,6 +7,7 @@ import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-
 import { RimvioGlobeHubClient } from "@/components/experience/rimvio-globe-hub-client";
 import { GlobeContextControlDock } from "@/components/globe/globe-context-control-dock";
 import { GlobeContextHubRail } from "@/components/globe/globe-context-hub-rail";
+import { GlobeContextHubDetailSheet } from "@/components/globe/globe-context-hub-detail-sheet";
 import { GlobeUtilityMenu } from "@/components/globe/globe-utility-menu";
 import { GlobeContextMapVideoStage } from "@/components/globe/globe-context-map-video-stage";
 import { GlobeContextIngestBar, type GlobeContextIngestBarHandle } from "@/components/globe/globe-context-ingest-bar";
@@ -73,6 +74,8 @@ import {
   MEDIA_SPACETIME_UPDATED,
 } from "@/lib/location-ping/media-context-store";
 import { copy } from "@/lib/copy/human-ko";
+import { hasActiveContextHub } from "@/lib/globe/context-hub/has-active-context-hub";
+import { subscribeGlobeContextHubOpen } from "@/lib/globe/context-hub/globe-context-hub-open-bridge";
 import { projectBridgeGhostClusters } from "@/lib/experience-bridge/project-bridge-ghost-clusters";
 import type { PendingBridgeInvite } from "@/hooks/use-pending-bridge-invites";
 
@@ -141,10 +144,30 @@ function GlobeHomeBody() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [stackClusters, setStackClusters] = useState<PinCluster[] | null>(null);
   const [mediaStoreRevision, setMediaStoreRevision] = useState(0);
+  const [hubDetailOpen, setHubDetailOpen] = useState(false);
+  const [hubRevision, setHubRevision] = useState(0);
   const clustersRef = useRef<readonly PinCluster[]>([]);
 
   /** Hub activates only when user touches a context pin — not proactive. */
   const hubEventId = activeCluster?.eventId?.trim() || null;
+
+  const hubActive = useMemo(() => {
+    void hubRevision;
+    if (!hubEventId) {
+      return false;
+    }
+    return hasActiveContextHub(findLifeEventCandidate(hubEventId));
+  }, [hubEventId, hubRevision]);
+
+  useEffect(() => {
+    const bump = () => setHubRevision((value) => value + 1);
+    window.addEventListener(EVENT_CANDIDATES_UPDATED, bump);
+    return () => window.removeEventListener(EVENT_CANDIDATES_UPDATED, bump);
+  }, []);
+
+  useEffect(() => {
+    setHubDetailOpen(false);
+  }, [hubEventId]);
 
   const detailLevelRef = useRef<GlobeDetailLevel>("space");
   const lastPinPressAtRef = useRef(0);
@@ -523,6 +546,19 @@ function GlobeHomeBody() {
     },
     [openContextCluster],
   );
+  const focusContextByEventIdRef = useRef(focusContextByEventId);
+  focusContextByEventIdRef.current = focusContextByEventId;
+
+  useEffect(() => {
+    return subscribeGlobeContextHubOpen((detail) => {
+      const eventId = detail.contextEventId.trim();
+      setSheetOpen(false);
+      setHubDetailOpen(true);
+      if (activeClusterRef.current?.eventId?.trim() !== eventId) {
+        focusContextByEventIdRef.current(eventId, { openSheet: false });
+      }
+    });
+  }, []);
 
   useGlobeTripArrival(
     {
@@ -670,6 +706,7 @@ function GlobeHomeBody() {
 
   const globeRenderSuspended =
     sheetOpen ||
+    hubDetailOpen ||
     createOpen ||
     listOpen ||
     manageOpen ||
@@ -761,7 +798,7 @@ function GlobeHomeBody() {
             }
           />
         </div>
-        {hubEventId ? (
+        {hubEventId && !hubDetailOpen && !hubActive ? (
           <GlobeContextHubRail
             className="pointer-events-auto"
             visible={!globeRenderSuspended}
@@ -774,6 +811,16 @@ function GlobeHomeBody() {
           />
         ) : null}
       </div>
+      <GlobeContextHubDetailSheet
+        open={hubDetailOpen}
+        onOpenChange={setHubDetailOpen}
+        activeEventId={hubEventId}
+        lat={liveLocation?.lat ?? null}
+        lng={liveLocation?.lng ?? null}
+        authUserId={user?.id ?? null}
+        visible={Boolean(hubEventId)}
+        globeRef={globeRef}
+      />
       <div className="pointer-events-none absolute right-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20">
         <GlobeUtilityMenu
           mediaPoolCount={mediaPoolCount}

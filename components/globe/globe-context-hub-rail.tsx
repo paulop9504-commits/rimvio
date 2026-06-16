@@ -52,6 +52,9 @@ export type GlobeContextHubRailProps = {
   lng?: number | null;
   authUserId?: string | null;
   layout?: "dock" | "hero";
+  /** dock = left rail; detail = full-screen Hub sheet from map anchor. */
+  presentation?: "dock" | "detail";
+  defaultExpanded?: boolean;
   onDismiss?: () => void;
   visible?: boolean;
   className?: string;
@@ -74,6 +77,8 @@ export function GlobeContextHubRail({
   lng = null,
   authUserId = null,
   layout = "dock",
+  presentation = "dock",
+  defaultExpanded = false,
   onDismiss,
   visible = true,
   className,
@@ -85,7 +90,7 @@ export function GlobeContextHubRail({
   const [connectServiceId, setConnectServiceId] = useState<ContextHubServiceId | null>(
     null,
   );
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(defaultExpanded);
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [ticketConnectOpen, setTicketConnectOpen] = useState(false);
   const [qrViewer, setQrViewer] = useState<{
@@ -95,12 +100,12 @@ export function GlobeContextHubRail({
   } | null>(null);
 
   useEffect(() => {
-    setExpanded(false);
+    setExpanded(defaultExpanded);
     setCarouselIndex(0);
     setConnectServiceId(null);
     setTicketConnectOpen(false);
     setQrViewer(null);
-  }, [activeEventId]);
+  }, [activeEventId, defaultExpanded]);
 
   useEffect(() => {
     const bump = () => setRevision((value) => value + 1);
@@ -418,7 +423,12 @@ export function GlobeContextHubRail({
     }
   }, [activeEventId, authUserId, busy, lat, lng]);
 
-  if (!visible || !panel || rankedResources.length === 0) {
+  if (!visible || !panel) {
+    return null;
+  }
+
+  const showCarousel = rankedResources.length > 0;
+  if (presentation === "dock" && !showCarousel) {
     return null;
   }
 
@@ -462,7 +472,7 @@ export function GlobeContextHubRail({
     </>
   );
 
-  if (!expanded) {
+  if (!expanded && presentation === "dock" && showCarousel) {
     return (
       <>
         {ticketSheets}
@@ -497,6 +507,31 @@ export function GlobeContextHubRail({
   return (
     <>
       {ticketSheets}
+      <div className={cn("flex flex-col gap-3", className)}>
+        {showCarousel ? (
+          <GlobeHubResourceCarousel
+            ranked={rankedResources}
+            index={Math.min(carouselIndex, rankedResources.length - 1)}
+            onIndexChange={handleCarouselIndexChange}
+            onRunRow={runCarouselEntry}
+            onExpand={() => setExpanded(true)}
+            onDismiss={onDismiss}
+            busy={busy}
+            contextPlace={panel.contextPlace}
+            layout={layout}
+            contextId={activeEventId}
+            lat={lat}
+            lng={lng}
+            authUserId={authUserId}
+          />
+        ) : null}
+        {hasLodgingResources && showCarousel ? (
+          <GlobeLodgingMapStrip
+            ranked={rankedResources}
+            activeIndex={Math.min(carouselIndex, rankedResources.length - 1)}
+            onSelectIndex={handleCarouselIndexChange}
+          />
+        ) : null}
     <aside
       className={cn(
         "pointer-events-auto overflow-hidden rounded-[1.35rem] border border-border/60 bg-card/95 shadow-[0_12px_40px_rgba(2,32,71,0.12)] backdrop-blur-xl",
@@ -567,6 +602,7 @@ export function GlobeContextHubRail({
         ))}
       </ul>
     </aside>
+      </div>
     </>
   );
 }

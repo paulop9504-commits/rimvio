@@ -61,6 +61,8 @@ import {
 import { listContextHubServicesForEvent } from "@/lib/globe/context-hub/context-hub-service-catalog";
 import { isLodgingHubEnabled } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import { projectLodgingGlobeMarkers } from "@/lib/globe/context-hub/project-lodging-globe-markers";
+import { projectContextHubGlobeAnchor } from "@/lib/globe/context-hub/project-context-hub-globe-anchor";
+import { dispatchGlobeContextHubOpen } from "@/lib/globe/context-hub/globe-context-hub-open-bridge";
 import { rankContextResources } from "@/lib/globe/resource/rank-context-resources";
 import {
   GLOBE_EXPERIENCE_SETTINGS_UPDATED,
@@ -139,6 +141,8 @@ export type RimvioGlobeHubProps = {
   renderSuspended?: boolean;
   /** Selected context — draw hub connector arc on the globe. */
   focusedContextEventId?: string | null;
+  /** Hub map anchor press — opens Hub detail, not pin info sheet. */
+  onContextHubAnchorPress?: (contextEventId: string) => void;
 };
 
 type RimvioGlobeHubBodyProps = {
@@ -167,6 +171,7 @@ type RimvioGlobeHubBodyProps = {
   onDetailLevelChange?: (level: GlobeDetailLevel) => void;
   renderSuspended?: boolean;
   focusedContextEventId?: string | null;
+  onContextHubAnchorPress?: (contextEventId: string) => void;
 };
 
 const RimvioGlobeHubBody = memo(
@@ -187,6 +192,7 @@ const RimvioGlobeHubBody = memo(
       onDetailLevelChange,
       renderSuspended = false,
       focusedContextEventId = null,
+      onContextHubAnchorPress,
     },
     ref,
   ) {
@@ -316,6 +322,22 @@ const RimvioGlobeHubBody = memo(
       liveLocation?.lat,
       liveLocation?.lng,
     ]);
+    const contextHubAnchor = useMemo(() => {
+      const eventId = focusedContextEventId?.trim();
+      if (!eventId) {
+        return null;
+      }
+      const event = eventsById.get(eventId);
+      const cluster = clusters.find((row) => row.eventId === eventId);
+      if (!event || !cluster) {
+        return null;
+      }
+      return projectContextHubGlobeAnchor({
+        event,
+        lat: cluster.lat,
+        lng: cluster.lng,
+      });
+    }, [clusters, eventsById, focusedContextEventId]);
     const globePins = useMemo(() => {
       const pins: ClassifiedGlobePin[] = [...displayPins];
       if (gpsEnabled && liveLocation) {
@@ -455,6 +477,11 @@ const RimvioGlobeHubBody = memo(
           onLodgingMarkerPress={(resourceId, carouselIndex) => {
             dispatchGlobeLodgingFocus({ resourceId, carouselIndex });
           }}
+          hubAnchors={contextHubAnchor ? [contextHubAnchor] : []}
+          onContextHubAnchorPress={(contextEventId) => {
+            dispatchGlobeContextHubOpen({ contextEventId, source: "map_anchor" });
+            onContextHubAnchorPress?.(contextEventId);
+          }}
         />
 
         {clusters.length === 0 ? (
@@ -491,6 +518,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
   bridgeGhostClusters,
   renderSuspended,
   focusedContextEventId,
+  onContextHubAnchorPress,
 }: RimvioGlobeHubProps) {
   const { ready, eventsById, personalPinRevision } = useGlobeEventSnapshot();
   const { graph } = useExperienceGraph(ready ? eventsById : undefined);
@@ -579,6 +607,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
       )}
       renderSuspended={renderSuspended}
       focusedContextEventId={focusedContextEventId}
+      onContextHubAnchorPress={onContextHubAnchorPress}
     />
   );
 });
