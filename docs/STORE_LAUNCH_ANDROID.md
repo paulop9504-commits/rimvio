@@ -139,6 +139,15 @@ Play Console **Data safety** + **App content** 설문 정직하게 작성.
 | Capacitor + prod WebView | Android share intent |
 | Feed · Globe · Bridge | NotificationListener |
 | 사진·동영상 read (opt-in) | TWA 대신 full native shell polish |
+| — | **MAIN ongoing notification + QR brightness** — `docs/GLOBE_HUB_RESOURCE.md` §8 |
+
+---
+
+## 8b. MAIN ongoing notification (Phase 3)
+
+> **Spec:** `docs/GLOBE_HUB_RESOURCE.md` §8 · **L3:** `build-main-native-surface-payload.ts`
+
+Same `MainNativeSurfacePayload` as iOS — Android **ongoing notification** with QR expanded layout + `screenBrightness` boost while visible. Plugin: `RimvioMainSurface.syncMainSurface`.
 
 ---
 

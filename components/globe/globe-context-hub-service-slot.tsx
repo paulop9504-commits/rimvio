@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Car, Plane, Plus, Sparkles, Ticket } from "lucide-react";
+import { Car, Hotel, Plane, Plus, Sparkles, Ticket } from "lucide-react";
 import type {
   ContextHubServiceId,
   ContextHubServiceRow,
@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 const SERVICE_ICON: Record<ContextHubServiceId, typeof Plane> = {
   ticket: Ticket,
   flight: Plane,
+  lodging: Hotel,
   rental_car: Car,
   ai_search: Sparkles,
 };
@@ -24,6 +25,7 @@ export function HubServiceSlot({
   emphasized = false,
   onToggleConnect,
   onConnectFlight,
+  onConnectLodging,
   onOpenAction,
   onOpenHandoff,
 }: {
@@ -33,6 +35,7 @@ export function HubServiceSlot({
   emphasized?: boolean;
   onToggleConnect: () => void;
   onConnectFlight: (airportId: DepartureHubAirportId) => void;
+  onConnectLodging?: () => void;
   onOpenAction: (url: string, label: string) => void;
   onOpenHandoff: (href: string, label: string, internalRoute?: boolean) => void;
 }) {
@@ -136,6 +139,23 @@ export function HubServiceSlot({
           >
             {row.handoffLabelKo ?? copy.globe.contextHubAiSearchOpen}
           </button>
+        ) : row.implemented && row.serviceId === "lodging" ? (
+          row.connected ? (
+            <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-semibold text-primary">
+              {copy.globe.lodgingHubConnectedBadge}
+            </span>
+          ) : (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onConnectLodging?.()}
+              className="flex size-8 shrink-0 items-center justify-center rounded-full border border-primary/25 bg-card text-primary active:scale-95"
+              aria-label={copy.globe.contextHubServicePlugIn}
+              data-globe-hub-service-add={row.serviceId}
+            >
+              <Plus className="size-4 stroke-[2.5]" aria-hidden />
+            </button>
+          )
         ) : row.implemented && row.serviceId === "flight" ? (
           row.connected && link?.actionUrl ? (
             <button

@@ -11,7 +11,12 @@ export {
   type RankedContextResource,
 } from "@/lib/globe/resource/map-hub-service-to-resource";
 
-export { rankContextResources } from "@/lib/globe/resource/rank-context-resources";
+export {
+  rankContextResources,
+  filterLodgingRankedResources,
+} from "@/lib/globe/resource/rank-context-resources";
+
+export { rankLodgingResources } from "@/lib/globe/resource/rank-lodging-resources";
 
 export {
   buildMainNativeSurfaceCommand,

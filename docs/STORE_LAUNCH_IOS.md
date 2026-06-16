@@ -120,7 +120,20 @@ iOS **Share Extension**은 PWA `share_target`과 별도 — v1.1 slice.
 
 ---
 
-## 8. 체크리스트
+## 8. Dynamic Island · Live Activity (Phase 3)
+
+> **Spec:** `docs/GLOBE_HUB_RESOURCE.md` §8  
+> **L3:** `lib/globe/resource/main-native-surface.ts` · `build-main-native-surface-payload.ts`
+
+MAIN (Resource rank #1 — ticket QR at gate time) → **ActivityKit** compact/expanded + Lock Screen Live Activity. Same payload as web carousel index 0; Hub does not start activities.
+
+**Ship order:** Capacitor shell on TestFlight → Widget Extension → `RimvioMainSurface.syncMainSurface` bridge → QR brightness via `UIScreen.brightness` while expanded.
+
+WebView/PWA alone cannot show Dynamic Island — reject any PR that tries from JS-only.
+
+---
+
+## 9. 체크리스트
 
 - [ ] `npm run store:prepare:ios` 전부 ✓
 - [ ] Apple Developer 계정
@@ -131,7 +144,7 @@ iOS **Share Extension**은 PWA `share_target`과 별도 — v1.1 slice.
 
 ---
 
-## 9. 롤백
+## 10. 롤백
 
 - **웹:** Vercel 이전 deployment Promote
 - **앱:** App Store Connect → 이전 버전 선택 · 또는 긴급 제출 중단

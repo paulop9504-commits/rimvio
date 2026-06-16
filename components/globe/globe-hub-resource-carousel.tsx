@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { motion, useMotionValue, animate, type PanInfo } from "framer-motion";
-import { Car, ChevronDown, Plane, Sparkles, Ticket } from "lucide-react";
+import { Car, ChevronDown, Hotel, Plane, Sparkles, Ticket } from "lucide-react";
 import type { ContextHubServiceId } from "@/lib/globe/context-hub/context-hub-service-catalog";
+import { GlobeLodgingMediaHero } from "@/components/globe/globe-lodging-media-hero";
+import { readLodgingPayloadFromResource } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import type { RankedContextResource } from "@/lib/globe/resource/map-hub-service-to-resource";
 import { useHubResourceCurationTelemetry } from "@/hooks/use-hub-resource-curation-telemetry";
 import { copy } from "@/lib/copy/human-ko";
@@ -12,6 +14,7 @@ import { cn } from "@/lib/utils";
 const SERVICE_ICON: Record<ContextHubServiceId, typeof Plane> = {
   ticket: Ticket,
   flight: Plane,
+  lodging: Hotel,
   rental_car: Car,
   ai_search: Sparkles,
 };
@@ -182,6 +185,11 @@ export function GlobeHubResourceCarousel({
   const showSwipeHint = ranked.length > 1 && !hintSeen && isMainSlot;
   const Icon = SERVICE_ICON[row.serviceId];
   const heroLayout = layout === "hero" && isMainSlot;
+  const lodgingPayload =
+    resource.kind === "lodging_voucher"
+      ? readLodgingPayloadFromResource(resource)
+      : null;
+  const showLodgingHero = Boolean(lodgingPayload && (heroLayout || isMainSlot));
 
   return (
     <aside
@@ -226,6 +234,14 @@ export function GlobeHubResourceCarousel({
       </div>
 
       <div className="relative px-2 pb-2 pt-1.5">
+        {showLodgingHero && lodgingPayload ? (
+          <GlobeLodgingMediaHero
+            payload={lodgingPayload}
+            label={resource.label}
+            priceLabel={resource.shortLabel}
+            heroLayout={heroLayout}
+          />
+        ) : null}
         <motion.button
           ref={isMainSlot ? mainCardRef : undefined}
           type="button"

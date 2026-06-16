@@ -13,11 +13,17 @@ import {
   isTicketLikeContext,
   readContextTicketArtifact,
 } from "@/lib/globe/context-hub/read-context-ticket-artifact";
+import { isLodgingHubEnabled } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import { findPersonalGlobePinByEventId } from "@/lib/globe/personal-globe-pin-store";
 import { ticketPrimaryLabel, detectTicketBrand } from "@/lib/resolvers/ticket-deep-links";
 
 /** Plug-in resource service — not a globe context. */
-export type ContextHubServiceId = "ticket" | "flight" | "rental_car" | "ai_search";
+export type ContextHubServiceId =
+  | "ticket"
+  | "flight"
+  | "lodging"
+  | "rental_car"
+  | "ai_search";
 
 export type ContextHubServiceDef = {
   id: ContextHubServiceId;
@@ -41,6 +47,13 @@ export const CONTEXT_HUB_SERVICE_CATALOG: readonly ContextHubServiceDef[] = [
     kind: "departure_airport",
     labelKo: "항공",
     shortLabelKo: "항공",
+    implemented: true,
+  },
+  {
+    id: "lodging",
+    kind: null,
+    labelKo: "숙소",
+    shortLabelKo: "숙소",
     implemented: true,
   },
   {
@@ -101,6 +114,8 @@ function isServiceOffered(serviceId: ContextHubServiceId, event: EventCandidate)
       return isTicketLikeContext(event);
     case "flight":
       return shouldOfferDepartureHub(event);
+    case "lodging":
+      return isTravelContext(event);
     case "rental_car":
       return isTravelContext(event);
     case "ai_search":
@@ -155,9 +170,11 @@ export function listContextHubServicesForEvent(
       connected:
         def.id === "ticket"
           ? Boolean(ticketArtifact?.actionUrl || ticketArtifact?.qrPreviewUrl)
-          : def.id === "ai_search"
-            ? Boolean(aiHandoff)
-            : Boolean(link),
+          : def.id === "lodging"
+            ? isLodgingHubEnabled(event)
+            : def.id === "ai_search"
+              ? Boolean(aiHandoff)
+              : Boolean(link),
       link:
         def.id === "ticket" && ticketArtifact
           ? {

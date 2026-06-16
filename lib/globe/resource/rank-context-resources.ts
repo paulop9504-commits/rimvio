@@ -1,11 +1,13 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { scoreSpacetimeFit } from "@/lib/feed/spacetime-fit";
+import { listLodgingResourcesForEvent } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import type { ContextHubServiceRow } from "@/lib/globe/context-hub/context-hub-service-catalog";
 import { scoreHubServiceRowBase } from "@/lib/globe/context-hub/score-hub-service-row";
 import {
   mapHubServiceRowToResource,
   type RankedContextResource,
 } from "@/lib/globe/resource/map-hub-service-to-resource";
+import { rankLodgingResources } from "@/lib/globe/resource/rank-lodging-resources";
 import type { ContextResource } from "@/lib/globe/resource/types";
 import { readPlanContextFromEvent } from "@/lib/plan-context/plan-context-metadata";
 
@@ -89,8 +91,8 @@ export function rankContextResources(input: {
   const lat = input.lat ?? null;
   const lng = input.lng ?? null;
 
-  return input.services
-    .filter((row) => row.offered)
+  const serviceRanked = input.services
+    .filter((row) => row.offered && row.serviceId !== "lodging")
     .map((hubRow) => {
       const resource = mapHubServiceRowToResource(input.event, hubRow);
       return {
@@ -105,12 +107,30 @@ export function rankContextResources(input: {
           lng,
         }),
       };
-    })
-    .sort((left, right) => {
-      const delta = right.rankScore - left.rankScore;
-      if (delta !== 0) {
-        return delta;
-      }
-      return left.resource.label.localeCompare(right.resource.label, "ko");
     });
+
+  const lodgingResources = listLodgingResourcesForEvent(input.event);
+  const lodgingRanked =
+    lodgingResources.length > 0
+      ? rankLodgingResources({
+          event: input.event,
+          resources: lodgingResources,
+          lat,
+          lng,
+        })
+      : [];
+
+  return [...serviceRanked, ...lodgingRanked].sort((left, right) => {
+    const delta = right.rankScore - left.rankScore;
+    if (delta !== 0) {
+      return delta;
+    }
+    return left.resource.label.localeCompare(right.resource.label, "ko");
+  });
+}
+
+export function filterLodgingRankedResources(
+  ranked: readonly RankedContextResource[],
+): RankedContextResource[] {
+  return ranked.filter((entry) => entry.resource.kind === "lodging_voucher");
 }

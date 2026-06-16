@@ -770,6 +770,7 @@ function GlobeHomeBody() {
             lng={liveLocation?.lng ?? null}
             authUserId={user?.id ?? null}
             layout="dock"
+            globeRef={globeRef}
           />
         ) : null}
       </div>

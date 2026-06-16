@@ -1,10 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState, type RefObject } from "react";
 import { ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { GlobeHubResourceCarousel } from "@/components/globe/globe-hub-resource-carousel";
+import { GlobeLodgingMapStrip } from "@/components/globe/globe-lodging-map-strip";
+import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
+import { enableLodgingHubForContext } from "@/lib/globe/context-hub/enable-lodging-hub-for-context";
 import { GlobeContextTicketConnectSheet } from "@/components/globe/globe-context-ticket-connect-sheet";
 import { GlobeTicketQrViewer } from "@/components/globe/globe-ticket-qr-viewer";
 import { connectDepartureHubToContext } from "@/lib/globe/connect-departure-hub-to-context";
@@ -20,6 +22,7 @@ import {
 import { rankContextHubServices } from "@/lib/globe/context-hub/rank-context-hub-services";
 import type { RankedContextResource } from "@/lib/globe/resource/map-hub-service-to-resource";
 import { rankContextResources } from "@/lib/globe/resource/rank-context-resources";
+import { useRouter } from "next/navigation";
 import type { DepartureHubAirportId } from "@/lib/globe/departure-hub-airports";
 import {
   resolvePinScopeFromEventId,
@@ -47,6 +50,7 @@ export type GlobeContextHubRailProps = {
   onDismiss?: () => void;
   visible?: boolean;
   className?: string;
+  globeRef?: RefObject<RimvioGlobeHubHandle | null>;
 };
 
 const PANEL_WIDTH = "w-[min(calc(100vw-1.5rem),17.5rem)]";
@@ -68,6 +72,7 @@ export function GlobeContextHubRail({
   onDismiss,
   visible = true,
   className,
+  globeRef,
 }: GlobeContextHubRailProps) {
   const router = useRouter();
   const [revision, setRevision] = useState(0);
@@ -292,6 +297,75 @@ export function GlobeContextHubRail({
     [activeEventId, authUserId, busy, lat, lng, panel?.services, rankedResources],
   );
 
+  const hasLodgingResources = rankedResources.some(
+    (entry) => entry.resource.kind === "lodging_voucher",
+  );
+
+  const flyToLodgingAtIndex = useCallback(
+    (index: number) => {
+      const entry = rankedResources[index];
+      if (!entry || entry.resource.kind !== "lodging_voucher") {
+        return;
+      }
+      const rLat = entry.resource.spacetime.lat;
+      const rLng = entry.resource.spacetime.lng;
+      if (rLat == null || rLng == null) {
+        return;
+      }
+      globeRef?.current?.flyToPin(rLat, rLng, "neighborhood");
+    },
+    [globeRef, rankedResources],
+  );
+
+  const handleCarouselIndexChange = useCallback(
+    (index: number) => {
+      setCarouselIndex(index);
+      flyToLodgingAtIndex(index);
+    },
+    [flyToLodgingAtIndex],
+  );
+
+  useEffect(() => {
+    if (!hasLodgingResources) {
+      return;
+    }
+    flyToLodgingAtIndex(carouselIndex);
+  }, [carouselIndex, flyToLodgingAtIndex, hasLodgingResources, rankedResources]);
+
+  const handleConnectLodging = useCallback(async () => {
+    const eventId = activeEventId?.trim();
+    if (!eventId || busy) {
+      return;
+    }
+    const event = findLifeEventCandidate(eventId);
+    setBusy(true);
+    try {
+      enableLodgingHubForContext(eventId);
+      if (event) {
+        recordContextHubTelemetry({ event, kind: "clicked", label: "lodging" });
+        foldContextHubLearning(event);
+      }
+      toast.success(copy.globe.lodgingHubConnected);
+      setRevision((value) => value + 1);
+      emitTransactionConvertedTelemetry({
+        contextId: eventId,
+        resourceId: `${eventId}:lodging`,
+        sourceHubId: "lodging",
+        lat,
+        lng,
+        authUserId,
+        entry: null,
+        transactionKind: "connect",
+      });
+    } catch (caught) {
+      toast.error(
+        caught instanceof Error ? caught.message : copy.globe.lodgingHubConnectFail,
+      );
+    } finally {
+      setBusy(false);
+    }
+  }, [activeEventId, authUserId, busy, lat, lng]);
+
   if (!visible || !panel || rankedResources.length === 0) {
     return null;
   }
@@ -340,22 +414,30 @@ export function GlobeContextHubRail({
     return (
       <>
         {ticketSheets}
-        <GlobeHubResourceCarousel
-        className={className}
-        ranked={rankedResources}
-        index={Math.min(carouselIndex, rankedResources.length - 1)}
-        onIndexChange={setCarouselIndex}
-        onRunRow={runCarouselEntry}
-        onExpand={() => setExpanded(true)}
-        onDismiss={onDismiss}
-        busy={busy}
-        contextPlace={panel.contextPlace}
-        layout={layout}
-        contextId={activeEventId}
-        lat={lat}
-        lng={lng}
-        authUserId={authUserId}
-      />
+        <div className={cn("flex flex-col gap-2", className)}>
+          <GlobeHubResourceCarousel
+            ranked={rankedResources}
+            index={Math.min(carouselIndex, rankedResources.length - 1)}
+            onIndexChange={handleCarouselIndexChange}
+            onRunRow={runCarouselEntry}
+            onExpand={() => setExpanded(true)}
+            onDismiss={onDismiss}
+            busy={busy}
+            contextPlace={panel.contextPlace}
+            layout={layout}
+            contextId={activeEventId}
+            lat={lat}
+            lng={lng}
+            authUserId={authUserId}
+          />
+          {hasLodgingResources ? (
+            <GlobeLodgingMapStrip
+              ranked={rankedResources}
+              activeIndex={Math.min(carouselIndex, rankedResources.length - 1)}
+              onSelectIndex={handleCarouselIndexChange}
+            />
+          ) : null}
+        </div>
       </>
     );
   }
@@ -415,11 +497,16 @@ export function GlobeContextHubRail({
                 setTicketConnectOpen(true);
                 return;
               }
+              if (row.serviceId === "lodging") {
+                void handleConnectLodging();
+                return;
+              }
               setConnectServiceId((current) =>
                 current === row.serviceId ? null : row.serviceId,
               );
             }}
             onConnectFlight={(airportId) => void handleConnectFlight(airportId)}
+            onConnectLodging={() => void handleConnectLodging()}
             onOpenAction={(url, label) => handleOpenAction(url, label)}
             onOpenHandoff={(href, label, internalRoute) =>
               handleOpenHandoff(href, label, internalRoute)
