@@ -174,9 +174,13 @@ export function GlobeContextMapVideoStage({
 
   const contextTitle = useMemo(() => {
     if (!activeEvent) {
-      return copy.experience.recallChip;
+      return copy.globe.contextMediaFocusFallbackTitle;
     }
-    return activeEvent.place?.trim() || activeEvent.title.trim() || copy.experience.recallChip;
+    return (
+      activeEvent.place?.trim() ||
+      activeEvent.title.trim() ||
+      copy.globe.contextMediaFocusFallbackTitle
+    );
   }, [activeEvent]);
 
   useEffect(() => {

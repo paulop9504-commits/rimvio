@@ -26,6 +26,7 @@ import {
 import { ExperienceBridgeGhostSheet } from "@/components/globe/experience-bridge-ghost-sheet";
 import { GlobeSettingsSheet } from "@/components/globe/globe-settings-sheet";
 import { PinOpenSheet } from "@/components/globe/pin-open-sheet";
+import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
 import { subscribeGlobeMapMediaFocus } from "@/lib/globe/globe-map-media-focus-bridge";
 import { setLiveLocationPowerMode } from "@/lib/location-ping/live-location-service";
 import { usePersonalGlobePinSync } from "@/hooks/use-personal-globe-pin-sync";
@@ -37,6 +38,7 @@ import { useBridgeMediaSync } from "@/hooks/use-bridge-media-sync";
 import { useAuth } from "@/hooks/use-auth";
 import { isBridgeLinkedEventId } from "@/lib/experience-bridge/stamp-bridge-event-metadata";
 import { focusGlobeContextOnMap } from "@/lib/globe/focus-globe-context-on-map";
+import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
 import { attachPoolMediaBatch } from "@/lib/media-pool/attach-pool-media-to-event";
 import {
   revertGlobeContextPinToCardPlace,

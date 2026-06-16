@@ -366,6 +366,7 @@ export const copy = {
     lodgingFocusBook: "예매",
     lodgingFocusDetails: "자세히 보기",
     contextMediaFocusCloseAria: "기록 닫기",
+    contextMediaFocusFallbackTitle: "그때 거기",
     contextMediaFocusSwipeMedia: "옆으로 밀어 다른 기록 보기",
     contextMediaFocusSwipeContext: "위아래로 다른 맥락 보기",
     contextMediaFocusPlay: "재생",

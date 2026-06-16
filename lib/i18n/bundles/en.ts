@@ -358,6 +358,7 @@ export const copyEn: Copy = {
     lodgingFocusBook: "Book",
     lodgingFocusDetails: "View details",
     contextMediaFocusCloseAria: "Close memory",
+    contextMediaFocusFallbackTitle: "That place",
     contextMediaFocusSwipeMedia: "Swipe for other memories",
     contextMediaFocusSwipeContext: "Swipe up or down for another context",
     contextMediaFocusPlay: "Play",
