@@ -363,6 +363,8 @@ export const copyEn: Copy = {
     contextMediaFocusSwipeContext: "Swipe up or down for another context",
     contextMediaFocusPlay: "Play",
     contextMediaFocusPause: "Pause",
+    contextMediaFocusResizeHint: "Drag to resize · pinch works too",
+    contextMediaFocusResizeAria: "Resize card",
     lodgingDynamicWalk: (minutesLabel: string) => `${minutesLabel} walk`,
     lodgingDynamicTaxiKrw: (krw: number) => `Taxi ~₩${krw.toLocaleString("en-US")}`,
     lodgingDynamicTaxiIntl: (yen: number) => `Taxi ~¥${yen.toLocaleString("en-US")}`,

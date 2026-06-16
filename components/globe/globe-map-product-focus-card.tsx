@@ -27,6 +27,7 @@ export type GlobeMapProductFocusCardProps = {
   layout?: "sheet" | "card";
   className?: string;
   onTouchStart?: (event: React.TouchEvent) => void;
+  onTouchMove?: (event: React.TouchEvent) => void;
   onTouchEnd?: (event: React.TouchEvent) => void;
 };
 
@@ -46,6 +47,7 @@ export function GlobeMapProductFocusCard({
   layout = "sheet",
   className,
   onTouchStart,
+  onTouchMove,
   onTouchEnd,
 }: GlobeMapProductFocusCardProps) {
   const isSheet = layout === "sheet";
@@ -62,6 +64,7 @@ export function GlobeMapProductFocusCard({
       data-globe-map-product-focus-card
       data-globe-map-product-focus-layout={layout}
       onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
     >
       <div

@@ -371,6 +371,8 @@ export const copy = {
     contextMediaFocusSwipeContext: "위아래로 다른 맥락 보기",
     contextMediaFocusPlay: "재생",
     contextMediaFocusPause: "일시정지",
+    contextMediaFocusResizeHint: "밀어서 크기 조절 · 핀치도 가능",
+    contextMediaFocusResizeAria: "카드 크기 조절",
     lodgingDynamicWalk: (minutesLabel: string) => `도보 ${minutesLabel}`,
     lodgingDynamicTaxiKrw: (krw: number) => `택시 약 ${krw.toLocaleString("ko-KR")}원`,
     lodgingDynamicTaxiIntl: (yen: number) => `택시 약 ¥${yen.toLocaleString("ko-KR")}`,

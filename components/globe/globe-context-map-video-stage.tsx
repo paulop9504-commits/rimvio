@@ -6,6 +6,7 @@ import { ContextMediaDeleteButton } from "@/components/globe/context-media-delet
 import { ContextMediaVideoSoundButton } from "@/components/globe/context-media-video-sound-button";
 import { GlobeMapProductFocusCard } from "@/components/globe/globe-map-product-focus-card";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
+import { useGlobeMapMediaCardSize } from "@/hooks/use-globe-map-media-card-size";
 import { useGlobeContextVideoSound } from "@/hooks/use-globe-context-video-sound";
 import { useMediaBlobUrl } from "@/hooks/use-media-blob-url";
 import type { GlobeContextTimelineEntry } from "@/lib/globe/list-globe-context-timeline";
@@ -120,7 +121,7 @@ function MapMediaSlide({
   );
 }
 
-/** Context media replay — Apple sheet (same rhythm as lodging focus). */
+/** Context media replay — floating card (lodging style) + user resize. */
 export function GlobeContextMapVideoStage({
   eventId,
   visible = true,
@@ -140,6 +141,17 @@ export function GlobeContextMapVideoStage({
   const [mediaIndex, setMediaIndex] = useState(0);
   const [playing, setPlaying] = useState(true);
   const [videoSoundOn, setVideoSoundOn] = useState(false);
+  const {
+    widthPx,
+    pinchActiveRef,
+    isResizing,
+    onResizeHandlePointerDown,
+    onResizeHandlePointerMove,
+    onResizeHandlePointerUp,
+    onCardTouchStart,
+    onCardTouchMove,
+    onCardTouchEnd,
+  } = useGlobeMapMediaCardSize();
 
   useEffect(() => {
     const bump = () => setRevision((value) => value + 1);
@@ -262,6 +274,44 @@ export function GlobeContextMapVideoStage({
     canNavigateContext ? copy.globe.contextMediaFocusSwipeContext : null,
   ].filter(Boolean);
 
+  const mergeCardTouchStart = (event: React.TouchEvent) => {
+    event.stopPropagation();
+    onCardTouchStart(event);
+    if (event.touches.length === 1) {
+      const touch = event.touches[0];
+      if (touch) {
+        touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+      }
+    }
+  };
+
+  const mergeCardTouchMove = (event: React.TouchEvent) => {
+    event.stopPropagation();
+    onCardTouchMove(event);
+  };
+
+  const mergeCardTouchEnd = (event: React.TouchEvent) => {
+    event.stopPropagation();
+    onCardTouchEnd(event);
+    if (pinchActiveRef.current || isResizing()) {
+      touchStartRef.current = null;
+      return;
+    }
+    if ((event.target as HTMLElement).closest("[data-globe-map-media-resize-handle]")) {
+      touchStartRef.current = null;
+      return;
+    }
+    const start = touchStartRef.current;
+    const touch = event.changedTouches[0];
+    touchStartRef.current = null;
+    if (!start || !touch) {
+      return;
+    }
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    handleSwipeEnd(dx, dy);
+  };
+
   return (
     <div
       ref={containerRef}
@@ -271,145 +321,147 @@ export function GlobeContextMapVideoStage({
       )}
       data-globe-context-map-video
     >
-      {onDismiss ? (
-        <button
-          type="button"
-          className="pointer-events-auto absolute inset-x-0 top-0 z-[0] h-[11%] min-h-[2.75rem] bg-gradient-to-b from-black/25 to-transparent"
-          aria-label={copy.globe.contextMediaFocusCloseAria}
-          onClick={dismiss}
-        />
-      ) : null}
+      <button
+        type="button"
+        className="pointer-events-auto absolute inset-0 z-[0] bg-black/45 backdrop-blur-md"
+        aria-label={copy.globe.contextMediaFocusCloseAria}
+        onClick={dismiss}
+      />
 
       <div
-        className="pointer-events-auto absolute inset-x-0 bottom-0 z-[1] flex flex-col"
+        className="pointer-events-none absolute inset-x-0 z-[1] flex flex-col items-center justify-center px-3"
         style={{
-          top: "max(9%, calc(env(safe-area-inset-top) + 2rem))",
-          bottom: "calc(var(--rimvio-globe-ingest-offset, 5.5rem))",
+          top: "max(2.5rem, env(safe-area-inset-top))",
+          bottom: "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 0.5rem)",
         }}
         data-globe-context-map-video-anchor
       >
-        <GlobeMapProductFocusCard
-          layout="sheet"
-          className="h-full min-h-0"
-          title={contextTitle}
-          subtitle={subtitle}
-          primaryAction={{
-            label: copy.globe.lodgingFocusDetails,
-            onClick: () => onOpenDetails?.(),
-            disabled: !onOpenDetails,
-          }}
-          secondaryAction={
-            currentItem?.kind === "video"
-              ? {
-                  label: playing
-                    ? copy.globe.contextMediaFocusPause
-                    : copy.globe.contextMediaFocusPlay,
-                  onClick: () => setPlaying((value) => !value),
-                  variant: "secondary",
-                }
-              : undefined
-          }
-          onClose={dismiss}
-          closeAriaLabel={copy.globe.contextMediaFocusCloseAria}
-          footer={
-            footerLines.length > 0 ? (
-              <div className="space-y-0.5">
-                {footerLines.map((line) => (
-                  <p key={line} className="text-[12px] font-normal text-[#86868b]">
-                    {line}
-                  </p>
-                ))}
-              </div>
-            ) : undefined
-          }
-          onTouchStart={(event) => {
-            event.stopPropagation();
-            const touch = event.changedTouches[0] ?? event.touches[0];
-            if (!touch) {
-              return;
+        <div
+          className="pointer-events-auto w-full max-w-[calc(100vw-1.5rem)]"
+          style={{ width: widthPx }}
+          data-globe-map-media-card-width={widthPx}
+        >
+          <GlobeMapProductFocusCard
+            layout="card"
+            className="w-full"
+            title={contextTitle}
+            subtitle={subtitle}
+            primaryAction={{
+              label: copy.globe.lodgingFocusDetails,
+              onClick: () => onOpenDetails?.(),
+              disabled: !onOpenDetails,
+            }}
+            secondaryAction={
+              currentItem?.kind === "video"
+                ? {
+                    label: playing
+                      ? copy.globe.contextMediaFocusPause
+                      : copy.globe.contextMediaFocusPlay,
+                    onClick: () => setPlaying((value) => !value),
+                    variant: "secondary",
+                  }
+                : undefined
             }
-            touchStartRef.current = { x: touch.clientX, y: touch.clientY };
-          }}
-          onTouchEnd={(event) => {
-            event.stopPropagation();
-            const start = touchStartRef.current;
-            const touch = event.changedTouches[0];
-            touchStartRef.current = null;
-            if (!start || !touch) {
-              return;
-            }
-            const dx = touch.clientX - start.x;
-            const dy = touch.clientY - start.y;
-            if (Math.abs(dx) > Math.abs(dy) || Math.abs(dy) > Math.abs(dx)) {
-              handleSwipeEnd(dx, dy);
-            }
-          }}
-          belowHero={
-            currentItem?.kind === "video" || (deletable && eventId && currentItem) ? (
-              <div className="flex items-center justify-center gap-2 py-0.5">
-                {currentItem?.kind === "video" ? (
-                  <ContextMediaVideoSoundButton
-                    soundOn={videoSoundOn}
-                    variant="pill"
-                    onToggleSound={() => {
-                      toggleVideoSoundRef.current?.();
-                      if (!playing) {
-                        setPlaying(true);
-                      }
-                    }}
-                  />
-                ) : null}
-                {eventId && deletable && currentItem ? (
-                  <ContextMediaDeleteButton
-                    item={currentItem}
-                    eventId={eventId}
-                    viewerUserId={viewerUserId}
-                    enabled={deletable}
-                    className="relative bottom-auto left-auto size-8 shrink-0"
-                    onDeleted={handleMediaDeleted}
-                  />
-                ) : null}
-              </div>
-            ) : undefined
-          }
-          hero={
-            <div className="relative flex h-full min-h-[12rem] flex-col bg-[#f5f5f7]">
-              <div className="relative min-h-0 flex-1 overflow-hidden bg-[#1d1d1f]">
-                {currentItem ? (
-                  <MapMediaSlide
-                    key={currentItem.id}
-                    item={currentItem}
-                    playing={playing}
-                    onPlayingChange={setPlaying}
-                    toggleSoundRef={toggleVideoSoundRef}
-                    onSoundOnChange={setVideoSoundOn}
-                  />
-                ) : null}
-              </div>
-
-              {reel.length > 1 ? (
-                <div className="flex shrink-0 items-center justify-center gap-2 py-3">
-                  {reel.map((item, index) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      aria-label={`${index + 1}`}
-                      aria-current={index === mediaIndex}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setMediaIndex(index);
-                      }}
-                      className={cn(
-                        "size-2 rounded-full transition-colors",
-                        index === mediaIndex ? "bg-[#1d1d1f]" : "bg-[#d2d2d7]",
-                      )}
-                    />
+            onClose={dismiss}
+            closeAriaLabel={copy.globe.contextMediaFocusCloseAria}
+            footer={
+              footerLines.length > 0 ? (
+                <div className="space-y-0.5">
+                  {footerLines.map((line) => (
+                    <p key={line} className="text-[11px] font-normal text-[#86868b]">
+                      {line}
+                    </p>
                   ))}
                 </div>
-              ) : null}
-            </div>
-          }
-        />
+              ) : undefined
+            }
+            onTouchStart={mergeCardTouchStart}
+            onTouchMove={mergeCardTouchMove}
+            onTouchEnd={mergeCardTouchEnd}
+            belowHero={
+              currentItem?.kind === "video" || (deletable && eventId && currentItem) ? (
+                <div className="flex items-center justify-center gap-2 py-0.5">
+                  {currentItem?.kind === "video" ? (
+                    <ContextMediaVideoSoundButton
+                      soundOn={videoSoundOn}
+                      variant="pill"
+                      onToggleSound={() => {
+                        toggleVideoSoundRef.current?.();
+                        if (!playing) {
+                          setPlaying(true);
+                        }
+                      }}
+                    />
+                  ) : null}
+                  {eventId && deletable && currentItem ? (
+                    <ContextMediaDeleteButton
+                      item={currentItem}
+                      eventId={eventId}
+                      viewerUserId={viewerUserId}
+                      enabled={deletable}
+                      className="relative bottom-auto left-auto size-8 shrink-0"
+                      onDeleted={handleMediaDeleted}
+                    />
+                  ) : null}
+                </div>
+              ) : undefined
+            }
+            hero={
+              <div className="relative overflow-hidden rounded-[0.9rem] bg-[#e8e8ed]">
+                {currentItem ? (
+                  <div className="aspect-[4/5] w-full">
+                    <MapMediaSlide
+                      key={currentItem.id}
+                      item={currentItem}
+                      playing={playing}
+                      onPlayingChange={setPlaying}
+                      toggleSoundRef={toggleVideoSoundRef}
+                      onSoundOnChange={setVideoSoundOn}
+                    />
+                  </div>
+                ) : null}
+
+                {reel.length > 1 ? (
+                  <div className="absolute inset-x-0 bottom-2 z-[2] flex justify-center gap-1.5">
+                    {reel.map((item, index) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        aria-label={`${index + 1}`}
+                        aria-current={index === mediaIndex}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setMediaIndex(index);
+                        }}
+                        className={cn(
+                          "size-1.5 rounded-full shadow-sm",
+                          index === mediaIndex ? "bg-white" : "bg-white/45",
+                        )}
+                      />
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            }
+          />
+
+          <button
+            type="button"
+            className="mt-1.5 flex w-full touch-none flex-col items-center gap-1 rounded-full py-2 active:opacity-80"
+            aria-label={copy.globe.contextMediaFocusResizeAria}
+            data-globe-map-media-resize-handle
+            onPointerDown={onResizeHandlePointerDown}
+            onPointerMove={onResizeHandlePointerMove}
+            onPointerUp={onResizeHandlePointerUp}
+            onPointerCancel={onResizeHandlePointerUp}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <span className="h-1 w-10 rounded-full bg-white/70 shadow-sm" aria-hidden />
+            <span className="text-[10px] font-normal text-white/80">
+              {copy.globe.contextMediaFocusResizeHint}
+            </span>
+          </button>
+        </div>
       </div>
     </div>
   );
