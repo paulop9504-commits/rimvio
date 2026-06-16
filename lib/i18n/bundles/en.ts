@@ -213,6 +213,8 @@ export const copyEn: Copy = {
     inboxLocationConfirm: "That's right",
     inboxLocationDismiss: "Later",
     inboxLocationConfirmed: "Location confirmed",
+    inboxLocationMediaAttached: (count: number) =>
+      count === 1 ? "Attached 1 photo from that day" : `Attached ${count} photos from that day`,
     inboxLocationConfirmFail: "Couldn't confirm",
     inboxToastNew: (n: number) => `${n} new inbox notification${n === 1 ? "" : "s"}`,
     bridgeShareSectionTitle: "Share with friends",
@@ -301,6 +303,9 @@ export const copyEn: Copy = {
     departureHubConnectFail: "Couldn't connect departure hub",
     contextHubEyebrow: "Resources",
     contextGardenSummaryEyebrow: "Now",
+    prepChecklistEyebrow: "Prep",
+    prepChecklistHint: "Check off when you're ready",
+    passiveLocationCareConfirm: "Yes!",
     contextHubSectionTitle: "Context hubs",
     contextHubSectionBody:
       "Plug in when you need them, unplug when you don't · tap to reach flights and moves",

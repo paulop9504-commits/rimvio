@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type RefObject } from "react
 import { ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { GlobeContextGardenSummary } from "@/components/globe/globe-context-garden-summary";
+import { GlobePrepChecklistCard } from "@/components/globe/globe-prep-checklist-card";
 import { GlobeHubResourceCarousel } from "@/components/globe/globe-hub-resource-carousel";
 import { GlobeLodgingMapStrip } from "@/components/globe/globe-lodging-map-strip";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
@@ -44,6 +45,7 @@ import { cn } from "@/lib/utils";
 import { HubServiceSlot } from "@/components/globe/globe-context-hub-service-slot";
 import { emitTransactionConvertedTelemetry } from "@/hooks/use-hub-resource-curation-telemetry";
 import { useContextGardenOrganizer } from "@/hooks/use-context-garden-organizer";
+import { useExecutionProfileStamp } from "@/hooks/use-execution-profile-stamp";
 import { useHubResourceSyncWorker } from "@/hooks/use-hub-resource-sync-worker";
 import { useMainNativeSurfaceSync } from "@/hooks/use-main-native-surface-sync";
 import { isTicketQrViewerHref } from "@/lib/globe/ticket-scan-surface";
@@ -171,6 +173,12 @@ export function GlobeContextHubRail({
     lat,
     lng,
     enabled: visible && rankedResources.length > 0,
+  });
+
+  useExecutionProfileStamp({
+    activeEventId,
+    contextPlace: panel?.contextPlace ?? null,
+    enabled: visible && Boolean(activeEventId),
   });
 
   const gardenSummary = useMemo(() => {
@@ -499,6 +507,7 @@ export function GlobeContextHubRail({
       <>
         {ticketSheets}
         <div className={cn("flex flex-col gap-2", className)}>
+          <GlobePrepChecklistCard activeEventId={activeEventId} />
           <GlobeContextGardenSummary summary={gardenSummary} />
           <GlobeHubResourceCarousel
             ranked={rankedResources}
@@ -531,6 +540,7 @@ export function GlobeContextHubRail({
     <>
       {ticketSheets}
       <div className={cn("flex flex-col gap-3", className)}>
+        <GlobePrepChecklistCard activeEventId={activeEventId} />
         <GlobeContextGardenSummary summary={gardenSummary} />
         {showCarousel ? (
           <GlobeHubResourceCarousel

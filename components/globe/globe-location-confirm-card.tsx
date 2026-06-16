@@ -4,6 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { hasPendingFeedCaptureVerify, readDwellMinutesFromCaptures } from "@/lib/feed/feed-capture-metadata";
 import { verifyFeedCaptureEvent } from "@/lib/feed/verify-feed-capture";
 import { formatDwellMinutesLabel } from "@/lib/feed/project-dwell-from-gps-pings";
+import { attachMatchingPoolMediaAfterSeal } from "@/lib/globe/passive-context/attach-matching-pool-media-after-seal";
+import {
+  buildPassiveLocationCareBody,
+  buildPassiveLocationCareTitle,
+} from "@/lib/globe/passive-context/build-passive-location-care-copy";
 import {
   EVENT_CANDIDATES_UPDATED,
   listLifeEventCandidates,
@@ -13,13 +18,14 @@ import {
   isGlobeLocationConfirmed,
   markGlobeLocationConfirmed,
 } from "@/lib/globe/globe-location-confirm-store";
+import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
 export type GlobeLocationConfirmCardProps = {
   className?: string;
 };
 
-/** Human confirmation — GPS ingest enriches; user confirms before trust rises. */
+/** Care confirm on map — GPS dwell verify → sealed Creation context. */
 export function GlobeLocationConfirmCard({ className }: GlobeLocationConfirmCardProps) {
   const { enabled } = useGpsTrackingEnabled();
   const [revision, setRevision] = useState(0);
@@ -67,6 +73,7 @@ export function GlobeLocationConfirmCard({ className }: GlobeLocationConfirmCard
       if (place) {
         markGlobeLocationConfirmed(place, pending.datetime);
       }
+      void attachMatchingPoolMediaAfterSeal(pending.id);
       setDismissedIds((rows) =>
         rows.includes(pending.id) ? rows : [...rows, pending.id],
       );
@@ -85,7 +92,7 @@ export function GlobeLocationConfirmCard({ className }: GlobeLocationConfirmCard
     return null;
   }
 
-  const place = pending.place?.trim() || "이 위치";
+  const place = pending.place?.trim() || "그곳";
   const dwellMinutes = readDwellMinutesFromCaptures(pending);
   const dwellLabel =
     dwellMinutes != null ? formatDwellMinutesLabel(dwellMinutes) : null;
@@ -99,20 +106,18 @@ export function GlobeLocationConfirmCard({ className }: GlobeLocationConfirmCard
       data-globe-location-confirm
     >
       <p className="text-[12px] font-semibold leading-snug text-[#191f28]">
-        {copy.globe.inboxLocationTitle(place, dwellLabel ?? undefined)}
+        {buildPassiveLocationCareTitle({ place, datetimeIso: pending.datetime })}
       </p>
-      {dwellLabel ? (
-        <p className="mt-0.5 text-[11px] text-[#6b7684]">
-          {copy.globe.globeLocationAccumulated(dwellLabel)}
-        </p>
-      ) : null}
+      <p className="mt-0.5 text-[11px] text-[#6b7684]">
+        {buildPassiveLocationCareBody({ dwellLabel })}
+      </p>
       <div className="mt-2.5 flex gap-2">
         <button
           type="button"
           className="flex-1 rounded-xl bg-[#3182f6] py-2 text-[12px] font-bold text-white active:opacity-90"
           onClick={onConfirm}
         >
-          맞아요
+          {copy.globe.passiveLocationCareConfirm}
         </button>
         <button
           type="button"

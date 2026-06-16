@@ -14,6 +14,11 @@ import {
 import { writeLocalBridgeState } from "@/lib/experience-bridge/local-bridge-store";
 import { syncBridgeSharedMediaFromRemote } from "@/lib/experience-bridge/sync-bridge-participant-media";
 import { verifyFeedCaptureEvent } from "@/lib/feed/verify-feed-capture";
+import { attachMatchingPoolMediaAfterSeal } from "@/lib/globe/passive-context/attach-matching-pool-media-after-seal";
+import {
+  buildPassiveLocationCareBody,
+  buildPassiveLocationCareTitle,
+} from "@/lib/globe/passive-context/build-passive-location-care-copy";
 import { formatDwellMinutesLabel } from "@/lib/feed/project-dwell-from-gps-pings";
 import { markGlobeLocationConfirmed } from "@/lib/globe/globe-location-confirm-store";
 import type { PendingGlobeLocationConfirm } from "@/lib/globe/list-pending-globe-location-confirms";
@@ -142,6 +147,11 @@ export function GlobeInboxSheet({
     const result = verifyFeedCaptureEvent(row.eventId);
     if (result.ok) {
       markGlobeLocationConfirmed(row.place, row.datetime);
+      void attachMatchingPoolMediaAfterSeal(row.eventId).then((count) => {
+        if (count > 0) {
+          toast.success(copy.globe.inboxLocationMediaAttached(count));
+        }
+      });
       toast.success(copy.globe.inboxLocationConfirmed);
       onLocationConfirmed?.(row.eventId);
     } else {
@@ -308,15 +318,20 @@ export function GlobeInboxSheet({
                               <p className="mt-0.5 text-[14px] font-semibold text-foreground">
                                 {row.kind === "photo_place"
                                   ? copy.globe.inboxPhotoPlaceTitle(row.place)
-                                  : copy.globe.inboxLocationTitle(
-                                      row.place,
-                                      row.dwellMinutes != null
-                                        ? formatDwellMinutesLabel(row.dwellMinutes)
-                                        : undefined,
-                                    )}
+                                  : buildPassiveLocationCareTitle({
+                                      place: row.place,
+                                      datetimeIso: row.datetime,
+                                    })}
                               </p>
                               <p className="mt-1 text-[12px] text-muted-foreground">
-                                {row.title}
+                                {row.kind === "gps_dwell"
+                                  ? buildPassiveLocationCareBody({
+                                      dwellLabel:
+                                        row.dwellMinutes != null
+                                          ? formatDwellMinutesLabel(row.dwellMinutes)
+                                          : null,
+                                    })
+                                  : row.title}
                               </p>
                               <div className="mt-3 flex gap-2">
                                 <button
@@ -325,7 +340,9 @@ export function GlobeInboxSheet({
                                   onClick={() => handleConfirmLocation(row)}
                                   className="flex flex-1 rounded-xl bg-foreground px-3 py-2.5 text-[13px] font-semibold text-background shadow-sm disabled:opacity-60"
                                 >
-                                  {copy.globe.inboxLocationConfirm}
+                                  {row.kind === "gps_dwell"
+                                    ? copy.globe.passiveLocationCareConfirm
+                                    : copy.globe.inboxLocationConfirm}
                                 </button>
                                 <button
                                   type="button"

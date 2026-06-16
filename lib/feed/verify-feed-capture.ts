@@ -7,6 +7,7 @@ import {
   hasPendingFeedCaptureVerify,
   markFeedCapturesVerified,
 } from "@/lib/feed/feed-capture-metadata";
+import { sealVerifiedPassiveContext } from "@/lib/globe/passive-context/seal-verified-passive-context";
 import { commitEventUpsert } from "@/lib/source-of-truth/commit-truth";
 
 export type VerifyFeedCaptureResult = {
@@ -36,7 +37,7 @@ export function verifyFeedCaptureEvent(eventId: string): VerifyFeedCaptureResult
     lifecycle = advanceEventLifecycle(existing, "confirmed").lifecycle;
   }
 
-  const saved = commitEventUpsert({
+  let saved = commitEventUpsert({
     id: existing.id,
     title: existing.title,
     category: existing.category,
@@ -49,6 +50,13 @@ export function verifyFeedCaptureEvent(eventId: string): VerifyFeedCaptureResult
     metadata: markFeedCapturesVerified(existing.metadata),
     lifecycleUpdatedAt: existing.lifecycleUpdatedAt,
   });
+
+  if (
+    saved.metadata?.targetingSource === "gps_background" ||
+    saved.metadata?.targetingSource === "photo_place_suggest"
+  ) {
+    saved = sealVerifiedPassiveContext(saved);
+  }
 
   return { ok: true, event: saved, alreadyVerified: false };
 }

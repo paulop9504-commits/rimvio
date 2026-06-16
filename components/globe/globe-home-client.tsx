@@ -7,6 +7,7 @@ import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-
 import { RimvioGlobeHubClient } from "@/components/experience/rimvio-globe-hub-client";
 import { GlobeContextControlDock } from "@/components/globe/globe-context-control-dock";
 import { GlobeContextHubRail } from "@/components/globe/globe-context-hub-rail";
+import { GlobeLocationConfirmCard } from "@/components/globe/globe-location-confirm-card";
 import { GlobeContextHubDetailSheet } from "@/components/globe/globe-context-hub-detail-sheet";
 import { GlobeUtilityMenu } from "@/components/globe/globe-utility-menu";
 import { GlobeContextMapVideoStage } from "@/components/globe/globe-context-map-video-stage";
@@ -806,6 +807,7 @@ function GlobeHomeBody() {
             }
           />
         </div>
+        <GlobeLocationConfirmCard className="pointer-events-auto w-[min(calc(100vw-1.5rem),17.5rem)]" />
         {hubEventId && !hubDetailOpen && !hubActive ? (
           <GlobeContextHubRail
             className="pointer-events-auto"

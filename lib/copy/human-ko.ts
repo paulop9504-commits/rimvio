@@ -222,6 +222,8 @@ export const copy = {
     inboxLocationConfirm: "맞아요",
     inboxLocationDismiss: "나중에",
     inboxLocationConfirmed: "위치를 확인했어요",
+    inboxLocationMediaAttached: (count: number) =>
+      count === 1 ? "그날 사진 1장을 붙였어요" : `그날 사진 ${count}장을 붙였어요`,
     inboxLocationConfirmFail: "확인하지 못했어요",
     inboxToastNew: (n: number) => `수신함에 새 알림 ${n}건`,
     bridgeShareSectionTitle: "친구에게 공유",
@@ -310,6 +312,9 @@ export const copy = {
     departureHubConnectFail: "출발 허브를 연결하지 못했어요",
     contextHubEyebrow: "자원",
     contextGardenSummaryEyebrow: "지금 상태",
+    prepChecklistEyebrow: "준비",
+    prepChecklistHint: "다 챙기면 체크해 주세요",
+    passiveLocationCareConfirm: "응!",
     contextHubSectionTitle: "맥락에 맞는 허브",
     contextHubSectionBody:
       "필요할 때 꽂고, 필요 없으면 뺄 수 있어요 · 탭하면 항공·이동으로 이어져요",
