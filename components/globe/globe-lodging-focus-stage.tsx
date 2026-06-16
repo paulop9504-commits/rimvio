@@ -10,6 +10,7 @@ import { useActiveContextWeather } from "@/hooks/use-active-context-weather";
 import { listContextHubServicesForEvent } from "@/lib/globe/context-hub/context-hub-service-catalog";
 import {
   dispatchGlobeLodgingFocus,
+  dispatchGlobeLodgingFocusStage,
   subscribeGlobeLodgingFocus,
   type GlobeLodgingFocusDetail,
 } from "@/lib/globe/context-hub/globe-lodging-marker-bridge";
@@ -91,8 +92,19 @@ export function GlobeLodgingFocusStage({
   }, []);
 
   useEffect(() => {
+    dispatchGlobeLodgingFocusStage(open);
+    if (!open) {
+      return;
+    }
+    return () => {
+      dispatchGlobeLodgingFocusStage(false);
+    };
+  }, [open]);
+
+  useEffect(() => {
     setOpen(false);
     setFocus(null);
+    dispatchGlobeLodgingFocusStage(false);
   }, [contextEventId]);
 
   const eventId = contextEventId?.trim() ?? "";

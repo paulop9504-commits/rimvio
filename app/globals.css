@@ -3661,6 +3661,37 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   background: #1b64da;
 }
 
+.rimvio-globe-3d-pin--dot {
+  width: auto;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.rimvio-globe-3d-pin__dot-only {
+  display: block;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 9999px;
+  border: 2px solid #fff;
+  background: #3182f6;
+  box-shadow: 0 2px 8px rgba(49, 130, 246, 0.45);
+}
+
+.rimvio-globe-3d-pin--dot.rimvio-globe-3d-pin--active .rimvio-globe-3d-pin__dot-only {
+  width: 0.7rem;
+  height: 0.7rem;
+  background: #1b64da;
+  box-shadow:
+    0 0 0 3px rgba(49, 130, 246, 0.22),
+    0 2px 10px rgba(49, 130, 246, 0.5);
+}
+
+.rimvio-globe-3d-pin--dot.rimvio-globe-3d-pin--hub-muted {
+  opacity: 0.35;
+}
+
 .rimvio-globe-lodging-marker {
   position: relative;
   display: flex;
@@ -3738,6 +3769,31 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 
 .rimvio-globe-lodging-marker--main .rimvio-globe-lodging-marker__dot {
   background: #3182f6;
+}
+
+.rimvio-globe-lodging-marker--situational {
+  width: auto;
+  max-width: 9rem;
+}
+
+.rimvio-globe-lodging-marker__situational-pill {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.94);
+  padding: 0.28rem 0.62rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: #191f28;
+  box-shadow: 0 4px 14px rgba(2, 32, 71, 0.14);
+  white-space: nowrap;
+}
+
+.rimvio-globe-lodging-marker--situational .rimvio-globe-lodging-marker__dot {
+  margin-top: 0.12rem;
 }
 
 .rimvio-globe-context-hub-anchor {

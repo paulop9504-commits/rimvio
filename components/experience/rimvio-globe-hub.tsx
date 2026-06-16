@@ -36,6 +36,7 @@ import {
   type GlobeDetailLevel,
 } from "@/lib/globe/globe-zoom-levels";
 import { projectGlobeZoomClusterPins } from "@/lib/globe/project-globe-zoom-cluster-pins";
+import { projectGlobePinDisplayMode } from "@/lib/globe/project-globe-pin-display-mode";
 import { resolveGlobeStartupView } from "@/lib/globe/resolve-globe-startup-view";
 import { ensureGlobeDemoEvents } from "@/lib/experience-graph/seed-globe-demo-events";
 import type { EventCandidate } from "@/lib/events/event-candidate";
@@ -54,10 +55,13 @@ import {
 } from "@/lib/globe/project-pin-clusters";
 import { projectGlobeTripArcs } from "@/lib/globe/project-trip-leg-arcs";
 import { applyFocusedHubGlobePins } from "@/lib/globe/context-hub/apply-focused-hub-globe-visuals";
+import { applyLodgingMarkerFocusPresentation } from "@/lib/globe/context-hub/apply-lodging-marker-focus-presentation";
 import {
   dispatchGlobeLodgingFocus,
   subscribeGlobeLodgingFocus,
+  subscribeGlobeLodgingFocusStage,
 } from "@/lib/globe/context-hub/globe-lodging-marker-bridge";
+import { resolveLodgingSituationalLabel } from "@/lib/globe/context-hub/resolve-lodging-situational-label";
 import { listContextHubServicesForEvent } from "@/lib/globe/context-hub/context-hub-service-catalog";
 import { isLodgingHubEnabled } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import { projectLodgingGlobeMarkers } from "@/lib/globe/context-hub/project-lodging-globe-markers";
@@ -203,6 +207,8 @@ const RimvioGlobeHubBody = memo(
     const [activeLodgingResourceId, setActiveLodgingResourceId] = useState<string | null>(
       null,
     );
+    const [lodgingFocusStageOpen, setLodgingFocusStageOpen] = useState(false);
+    const [expandedPinId, setExpandedPinId] = useState<string | null>(null);
     useEffect(() => {
       const bump = () => setBridgeRevision((value) => value + 1);
       window.addEventListener(EXPERIENCE_BRIDGE_UPDATED, bump);
@@ -214,7 +220,14 @@ const RimvioGlobeHubBody = memo(
       });
     }, []);
     useEffect(() => {
+      return subscribeGlobeLodgingFocusStage((detail) => {
+        setLodgingFocusStageOpen(detail.open);
+      });
+    }, []);
+    useEffect(() => {
       setActiveLodgingResourceId(null);
+      setLodgingFocusStageOpen(false);
+      setExpandedPinId(null);
     }, [focusedContextEventId]);
     const handleDetailLevelChange = useCallback(
       (level: GlobeDetailLevel) => {
@@ -245,9 +258,20 @@ const RimvioGlobeHubBody = memo(
         ),
       [clusters, eventsById, peerLookup, bridgeRevision],
     );
+    const { enabled: gpsEnabled } = useGpsTrackingEnabled();
+    const liveLocation = useLiveLocationSnapshot();
     const displayPins = useMemo(() => {
+      const withDisplay = projectGlobePinDisplayMode({
+        pins: classifiedPins,
+        eventsById,
+        focusedEventId: focusedContextEventId,
+        expandedPinId,
+        lodgingFocusStageOpen,
+        viewerLat: liveLocation?.lat ?? null,
+        viewerLng: liveLocation?.lng ?? null,
+      });
       const withOverrides = applyPinCoordOverrides(
-        classifiedPins,
+        withDisplay,
         pinCoordOverrides ?? new Map(),
       );
       const zoomed = projectGlobeZoomClusterPins(withOverrides, detailLevel);
@@ -257,10 +281,14 @@ const RimvioGlobeHubBody = memo(
       });
     }, [
       classifiedPins,
+      eventsById,
+      expandedPinId,
+      lodgingFocusStageOpen,
+      liveLocation?.lat,
+      liveLocation?.lng,
       pinCoordOverrides,
       detailLevel,
       focusedContextEventId,
-      eventsById,
     ]);
     const [contextWarmthEnabled, setContextWarmthEnabled] = useState(() =>
       isShowContextWarmthEnabled(),
@@ -288,8 +316,6 @@ const RimvioGlobeHubBody = memo(
       () => buildGlobeContextWarmthPoints(clusters),
       [clusters],
     );
-    const { enabled: gpsEnabled } = useGpsTrackingEnabled();
-    const liveLocation = useLiveLocationSnapshot();
     const lodgingGlobeMarkers = useMemo(() => {
       void bridgeRevision;
       const eventId = focusedContextEventId?.trim();
@@ -310,8 +336,17 @@ const RimvioGlobeHubBody = memo(
         lat: liveLocation?.lat ?? null,
         lng: liveLocation?.lng ?? null,
       });
-      return projectLodgingGlobeMarkers({
+      const raw = projectLodgingGlobeMarkers({
         ranked,
+        activeResourceId: activeLodgingResourceId,
+      });
+      if (!lodgingFocusStageOpen) {
+        return raw;
+      }
+      return applyLodgingMarkerFocusPresentation({
+        markers: raw,
+        focusStageOpen: true,
+        situationalLabel: resolveLodgingSituationalLabel(event),
         activeResourceId: activeLodgingResourceId,
       });
     }, [
@@ -321,6 +356,7 @@ const RimvioGlobeHubBody = memo(
       focusedContextEventId,
       liveLocation?.lat,
       liveLocation?.lng,
+      lodgingFocusStageOpen,
     ]);
     const contextHubAnchor = useMemo(() => {
       const eventId = focusedContextEventId?.trim();
@@ -401,6 +437,12 @@ const RimvioGlobeHubBody = memo(
         if (pinId === "viewer:here") {
           return;
         }
+        const pressedPin = displayPins.find((row) => row.id === pinId);
+        if (pressedPin?.pinShape === "dot") {
+          setExpandedPinId(pinId);
+        } else {
+          setExpandedPinId(null);
+        }
         if (pinId.startsWith("cluster:")) {
           const memberPinIds = pinId
             .slice("cluster:".length)
@@ -419,7 +461,7 @@ const RimvioGlobeHubBody = memo(
             onContextGroupPress?.(memberClusters);
             return;
           }
-          const pin = globePins.find((row) => row.id === pinId);
+          const pin = displayPins.find((row) => row.id === pinId);
           if (pin) {
             innerGlobeRef.current?.flyToPin(pin.lat, pin.lng, "city");
           }
@@ -431,7 +473,7 @@ const RimvioGlobeHubBody = memo(
           onPinPress?.(cluster);
           return;
         }
-        const pin = globePins.find((row) => row.id === pinId);
+        const pin = displayPins.find((row) => row.id === pinId);
         const eventId = pin?.sourceEventId?.trim();
         if (eventId) {
           const byEvent = findPinClusterByEventId(clusters, eventId);
@@ -441,7 +483,15 @@ const RimvioGlobeHubBody = memo(
           }
         }
       },
-      [clusters, globePins, onContextGroupPress, onPinPress],
+      [clusters, displayPins, onContextGroupPress, onPinPress],
+    );
+
+    const handleGlobePress = useCallback(
+      (coords: { lat: number; lng: number }) => {
+        setExpandedPinId(null);
+        onGlobePress?.(coords);
+      },
+      [onGlobePress],
     );
 
     return (
@@ -470,7 +520,7 @@ const RimvioGlobeHubBody = memo(
           onPinPress={handlePinPress}
           pinRelocateEnabled={pinRelocateEnabled}
           onPinRelocate={onPinRelocate}
-          onGlobePress={onGlobePress}
+          onGlobePress={handleGlobePress}
           onDetailLevelChange={handleDetailLevelChange}
           renderSuspended={renderSuspended}
           lodgingMarkers={lodgingGlobeMarkers}

@@ -375,6 +375,9 @@ export const copyEn: Copy = {
       `Walkable base for exploring ${place} all day`,
     lodgingDynamicBusinessStay: (minutes: number) =>
       `Short trip legs · ${minutes} min to your meeting is enough`,
+    lodgingSituationalTravel: "On trip · stays",
+    lodgingSituationalBusiness: "Business · stays",
+    lodgingSituationalStay: "Stays",
     contextHubAiSearchOpen: "Search context",
     mainActionEyebrow: "Now",
     mainActionForContext: (title: string, place: string) => `${title} · ${place}`,

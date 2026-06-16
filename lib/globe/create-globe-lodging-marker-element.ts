@@ -15,7 +15,31 @@ export function createGlobeLodgingMarkerElement(
   if (marker.isMain) {
     root.classList.add("rimvio-globe-lodging-marker--main");
   }
+  if (marker.displayVariant === "situational_label") {
+    root.classList.add("rimvio-globe-lodging-marker--situational");
+  }
   root.setAttribute("aria-label", marker.label);
+
+  if (marker.displayVariant === "situational_label") {
+    const pill = document.createElement("span");
+    pill.className = "rimvio-globe-lodging-marker__situational-pill";
+    pill.textContent = marker.label;
+    root.appendChild(pill);
+
+    const dot = document.createElement("span");
+    dot.className = "rimvio-globe-lodging-marker__dot";
+    root.appendChild(dot);
+
+    root.addEventListener("pointerdown", (event) => {
+      event.stopPropagation();
+    });
+    root.addEventListener("click", (event) => {
+      event.stopPropagation();
+      event.preventDefault();
+      handlers.onPress(marker.resourceId, marker.carouselIndex);
+    });
+    return root;
+  }
 
   const card = document.createElement("span");
   card.className = "rimvio-globe-lodging-marker__card";

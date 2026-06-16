@@ -305,6 +305,30 @@ export function createGlobe3dClusterPinElement(
   return root;
 }
 
+export function createGlobe3dDotPinElement(
+  pin: ClassifiedGlobePin,
+  active: boolean,
+  handlers: Globe3dPinInteractionHandlers,
+): HTMLElement {
+  const root = document.createElement("button");
+  root.type = "button";
+  root.dataset.globePinId = pin.id;
+  root.className = `rimvio-globe-3d-pin rimvio-globe-3d-pin--dot${active ? " rimvio-globe-3d-pin--active" : ""}${pin.hubFocusMuted ? " rimvio-globe-3d-pin--hub-muted" : ""}`;
+  root.setAttribute(
+    "aria-label",
+    pin.slot?.experienceTitle?.trim() || pin.label.trim() || "맥락",
+  );
+
+  const dot = document.createElement("span");
+  dot.className = "rimvio-globe-3d-pin__dot-only";
+  dot.setAttribute("aria-hidden", "true");
+  root.appendChild(dot);
+
+  bindGlobe3dPinPress(root, pin.id, handlers, { relocateEnabled: false });
+
+  return root;
+}
+
 export function createGlobe3dPinElement(
   pin: ClassifiedGlobePin,
   active: boolean,

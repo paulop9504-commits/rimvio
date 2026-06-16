@@ -1,12 +1,17 @@
 /** Sync globe lodging markers ↔ hub carousel without coupling components. */
 
 export const GLOBE_LODGING_FOCUS = "rimvio:globe-lodging-focus";
+export const GLOBE_LODGING_FOCUS_STAGE = "rimvio:globe-lodging-focus-stage";
 
 export type GlobeLodgingFocusDetail = {
   resourceId: string;
   carouselIndex: number;
   /** map_marker opens full focus stage; carousel/strip sync markers only. */
   source?: "map_marker" | "carousel" | "strip";
+};
+
+export type GlobeLodgingFocusStageDetail = {
+  open: boolean;
 };
 
 export function dispatchGlobeLodgingFocus(detail: GlobeLodgingFocusDetail): void {
@@ -33,4 +38,28 @@ export function subscribeGlobeLodgingFocus(
   };
   window.addEventListener(GLOBE_LODGING_FOCUS, handler);
   return () => window.removeEventListener(GLOBE_LODGING_FOCUS, handler);
+}
+
+export function dispatchGlobeLodgingFocusStage(open: boolean): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.dispatchEvent(
+    new CustomEvent<GlobeLodgingFocusStageDetail>(GLOBE_LODGING_FOCUS_STAGE, {
+      detail: { open },
+    }),
+  );
+}
+
+export function subscribeGlobeLodgingFocusStage(
+  listener: (detail: GlobeLodgingFocusStageDetail) => void,
+): () => void {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+  const handler = (event: Event) => {
+    listener((event as CustomEvent<GlobeLodgingFocusStageDetail>).detail);
+  };
+  window.addEventListener(GLOBE_LODGING_FOCUS_STAGE, handler);
+  return () => window.removeEventListener(GLOBE_LODGING_FOCUS_STAGE, handler);
 }

@@ -13,6 +13,7 @@ import { enableLodgingHubForContext } from "@/lib/globe/context-hub/enable-lodgi
 import {
   dispatchGlobeLodgingFocus,
   subscribeGlobeLodgingFocus,
+  subscribeGlobeLodgingFocusStage,
 } from "@/lib/globe/context-hub/globe-lodging-marker-bridge";
 import { GlobeContextTicketConnectSheet } from "@/components/globe/globe-context-ticket-connect-sheet";
 import { GlobeTicketQrViewer } from "@/components/globe/globe-ticket-qr-viewer";
@@ -110,6 +111,13 @@ export function GlobeContextHubRail({
     title: string;
     subtitle?: string;
   } | null>(null);
+  const [lodgingFocusStageOpen, setLodgingFocusStageOpen] = useState(false);
+
+  useEffect(() => {
+    return subscribeGlobeLodgingFocusStage((detail) => {
+      setLodgingFocusStageOpen(detail.open);
+    });
+  }, []);
 
   useEffect(() => {
     setExpanded(defaultExpanded);
@@ -556,7 +564,7 @@ export function GlobeContextHubRail({
             lng={lng}
             authUserId={authUserId}
           />
-          {hasLodgingResources ? (
+          {hasLodgingResources && !lodgingFocusStageOpen ? (
             <GlobeLodgingMapStrip
               ranked={rankedResources}
               activeIndex={Math.min(carouselIndex, rankedResources.length - 1)}
@@ -595,7 +603,7 @@ export function GlobeContextHubRail({
             authUserId={authUserId}
           />
         ) : null}
-        {hasLodgingResources && showCarousel ? (
+        {hasLodgingResources && showCarousel && !lodgingFocusStageOpen ? (
           <GlobeLodgingMapStrip
             ranked={rankedResources}
             activeIndex={Math.min(carouselIndex, rankedResources.length - 1)}

@@ -10,6 +10,8 @@ export type GlobeLodgingMapMarker = {
   carouselIndex: number;
   isMain: boolean;
   thumbnailUrl: string | null;
+  /** Collapsed presentation while lodging focus card is open. */
+  displayVariant?: "default" | "situational_label";
 };
 
 export function isGlobeLodgingMapMarker(

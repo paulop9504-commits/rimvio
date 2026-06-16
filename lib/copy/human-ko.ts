@@ -383,6 +383,9 @@ export const copy = {
       `${place} 중심을 저녁까지 걸어 다니기 좋은 위치예요`,
     lodgingDynamicBusinessStay: (minutes: number) =>
       `출장 중 동선이 짧아요 · 미팅까지 ${minutes}분이면 충분해요`,
+    lodgingSituationalTravel: "여행중 · 숙소",
+    lodgingSituationalBusiness: "출장 · 숙소",
+    lodgingSituationalStay: "숙소",
     contextHubAiSearchOpen: "맥락 검색",
     mainActionEyebrow: "지금",
     mainActionForContext: (title: string, place: string) => `${title} · ${place}`,
