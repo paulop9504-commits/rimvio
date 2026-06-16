@@ -263,7 +263,11 @@ export function GlobeLodgingFocusStage({
   }
 
   const priceLabel = formatPriceKrw(payload.priceKrw);
-  const subtitleParts = [priceLabel, payload.partnerLabel?.trim() || null].filter(Boolean);
+  const subtitleParts = [
+    priceLabel,
+    payload.partnerLabel?.trim() || null,
+    contextPlace,
+  ].filter(Boolean);
   const subtitle = subtitleParts.join(" · ");
   const currentMedia = mediaSlides[mediaIndex] ?? null;
   const isVideo =
@@ -279,25 +283,24 @@ export function GlobeLodgingFocusStage({
     >
       <button
         type="button"
-        className="pointer-events-auto absolute inset-0 z-[0] bg-black/50 backdrop-blur-md"
+        className="pointer-events-auto absolute inset-x-0 top-0 z-[0] h-[11%] min-h-[2.75rem] bg-gradient-to-b from-black/25 to-transparent"
         aria-label={copy.globe.lodgingFocusCloseAria}
         onClick={dismiss}
       />
 
       <div
-        className="pointer-events-none absolute inset-x-0 z-[1] flex flex-col items-center justify-center px-4"
+        className="pointer-events-auto absolute inset-x-0 bottom-0 z-[1] flex flex-col"
         style={{
-          top: "max(3rem, env(safe-area-inset-top))",
-          bottom: "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 0.75rem)",
+          top: "max(9%, calc(env(safe-area-inset-top) + 2rem))",
+          bottom: "calc(var(--rimvio-globe-ingest-offset, 5.5rem))",
         }}
         data-globe-lodging-focus-anchor
       >
-        <div className="pointer-events-auto w-full max-w-[380px]">
         <GlobeMapProductFocusCard
-          className="w-full"
+          layout="sheet"
+          className="h-full min-h-0"
           title={entry.resource.label}
           subtitle={subtitle || null}
-          eyebrow={contextPlace}
           primaryAction={{
             label: copy.globe.lodgingFocusBook,
             onClick: handleBook,
@@ -310,6 +313,13 @@ export function GlobeLodgingFocusStage({
           }}
           onClose={dismiss}
           closeAriaLabel={copy.globe.lodgingFocusCloseAria}
+          footer={
+            lodgingRanked.length > 1 ? (
+              <p className="text-[12px] font-normal text-[#86868b]">
+                {copy.globe.lodgingFocusSwipeHint}
+              </p>
+            ) : undefined
+          }
           onTouchStart={(event) => {
             event.stopPropagation();
             const touch = event.changedTouches[0] ?? event.touches[0];
@@ -333,34 +343,36 @@ export function GlobeLodgingFocusStage({
             }
           }}
           hero={
-            <div className="relative overflow-hidden rounded-[1.1rem] bg-[#e8e8ed]">
-              {isVideo && currentMedia ? (
-                <video
-                  key={currentMedia}
-                  src={currentMedia}
-                  className="aspect-[4/5] w-full object-cover"
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                />
-              ) : currentMedia ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  key={currentMedia}
-                  src={currentMedia}
-                  alt=""
-                  className="aspect-[4/5] w-full object-cover"
-                  draggable={false}
-                />
-              ) : (
-                <div className="flex aspect-[4/5] w-full items-center justify-center text-[12px] text-[#6e6e73]">
-                  {copy.globe.lodgingMediaFallback}
-                </div>
-              )}
+            <div className="relative flex h-full min-h-[12rem] flex-col bg-[#f5f5f7]">
+              <div className="relative min-h-0 flex-1 overflow-hidden">
+                {isVideo && currentMedia ? (
+                  <video
+                    key={currentMedia}
+                    src={currentMedia}
+                    className="size-full object-cover object-center"
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                  />
+                ) : currentMedia ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    key={currentMedia}
+                    src={currentMedia}
+                    alt=""
+                    className="size-full object-cover object-center"
+                    draggable={false}
+                  />
+                ) : (
+                  <div className="flex size-full items-center justify-center text-[13px] text-[#86868b]">
+                    {copy.globe.lodgingMediaFallback}
+                  </div>
+                )}
+              </div>
 
               {mediaSlides.length > 1 ? (
-                <div className="absolute inset-x-0 bottom-2.5 z-[2] flex justify-center gap-1.5">
+                <div className="flex shrink-0 justify-center gap-2 py-3">
                   {mediaSlides.map((slide, index) => (
                     <button
                       key={`${slide}:${index}`}
@@ -371,8 +383,8 @@ export function GlobeLodgingFocusStage({
                         setMediaIndex(index);
                       }}
                       className={cn(
-                        "size-2 rounded-full",
-                        index === mediaIndex ? "bg-white" : "bg-white/40",
+                        "size-2 rounded-full transition-colors",
+                        index === mediaIndex ? "bg-[#1d1d1f]" : "bg-[#d2d2d7]",
                       )}
                     />
                   ))}
@@ -381,13 +393,6 @@ export function GlobeLodgingFocusStage({
             </div>
           }
         />
-        </div>
-
-        {lodgingRanked.length > 1 ? (
-          <p className="pointer-events-none mt-3 text-center text-[11px] font-medium text-white/85">
-            {copy.globe.lodgingFocusSwipeHint}
-          </p>
-        ) : null}
       </div>
     </div>
   );
