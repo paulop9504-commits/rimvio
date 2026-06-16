@@ -224,7 +224,7 @@ rankContextResources → ranked[0] (MAIN)
 - [x] Foreground QR → `setScanBrightnessEnabled` (Capacitor)
 - [x] Android ongoing BigPicture QR (base64 data URL)
 - [x] iOS Live Activity controller + Widget Extension sources (`ios/RimvioLiveActivityWidget/`)
-- [ ] Xcode: add Widget Extension target + include `ios/Shared/RimvioMainSurfaceAttributes.swift` in both targets
+- [x] Xcode: `RimvioLiveActivityWidget` target wired in `project.pbxproj` (Attributes shared; controller App-only)
 - [ ] Telemetry: `RESOURCE_IMPRESSION` surface=`native_main` (extend curation ingest)
 
 ### Forbidden (Phase 3 native)

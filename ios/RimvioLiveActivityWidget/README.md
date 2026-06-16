@@ -2,13 +2,17 @@
 
 Dynamic Island + Lock Screen UI for MAIN ticket QR (`MainNativeSurfacePayload`).
 
-## Xcode setup (once)
+## Xcode (pre-wired)
 
-1. Open `ios/App/App.xcworkspace`
-2. **File → New → Target → Widget Extension** (include Live Activity)
-3. Replace generated Swift with `RimvioLiveActivityWidget.swift` from this folder
-4. Add **`ios/Shared/RimvioMainSurfaceAttributes.swift`** to **both** App and Widget extension target membership
-5. Set deployment target **iOS 16.2+** for the widget target
-6. Ensure main app `Info.plist` has `NSSupportsLiveActivities` = true (already set)
+The **`RimvioLiveActivityWidget`** extension target is already in `ios/App/App.xcodeproj/project.pbxproj`:
+
+- Sources: `RimvioLiveActivityWidget.swift` + shared `ios/Shared/RimvioMainSurfaceAttributes.swift`
+- App-only controller: `ios/App/App/RimvioMainSurfaceLiveActivityController.swift`
+- Embedded via **Embed Foundation Extensions** on the App target
+- Bundle id: `com.rimvio.app.RimvioLiveActivityWidget` · deployment **iOS 16.2+**
+
+On Mac: open `ios/App/App.xcworkspace`, set signing for **App** and **RimvioLiveActivityWidget**, then Archive.
 
 Capacitor bridge: `RimvioMainSurface.syncMainSurface` → `RimvioMainSurfaceLiveActivityController.sync`.
+
+Verify locally: `npx tsx scripts/test-ios-live-activity-widget-target.ts`

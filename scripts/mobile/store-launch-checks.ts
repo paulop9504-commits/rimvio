@@ -100,6 +100,53 @@ export function runIosStoreLaunchChecks(): StoreLaunchCheck[] {
     detail: "NSPhotoLibraryUsageDescription in Info.plist",
   });
 
+  checks.push({
+    id: "ios:live-activities-enabled",
+    ok: plist.includes("NSSupportsLiveActivities"),
+    detail: "NSSupportsLiveActivities in Info.plist",
+  });
+
+  const widget = STORE_LAUNCH.ios.liveActivityWidget;
+  for (const [key, relative] of Object.entries({
+    "live-activity-widget-swift": widget.swift,
+    "live-activity-widget-plist": widget.plist,
+    "live-activity-shared-attributes": widget.sharedAttributes,
+    "live-activity-controller": widget.controller,
+  })) {
+    checks.push({
+      id: `ios:${key}`,
+      ok: fileExists(relative),
+      detail: relative,
+    });
+  }
+
+  const pbxprojPath = path.join(
+    process.cwd(),
+    STORE_LAUNCH.ios.xcodeProject,
+    "project.pbxproj",
+  );
+  const pbxproj = fileExists(`${STORE_LAUNCH.ios.xcodeProject}/project.pbxproj`)
+    ? fs.readFileSync(pbxprojPath, "utf8")
+    : "";
+
+  checks.push({
+    id: "ios:live-activity-widget-target",
+    ok: pbxproj.includes(`PBXNativeTarget "${widget.pbxTargetName}"`),
+    detail: `${widget.pbxTargetName} in project.pbxproj`,
+  });
+
+  checks.push({
+    id: "ios:live-activity-widget-embed",
+    ok: pbxproj.includes("Embed Foundation Extensions"),
+    detail: "Widget appex embedded in App target",
+  });
+
+  checks.push({
+    id: "ios:live-activity-widget-bundle-id",
+    ok: pbxproj.includes(widget.extensionBundleId),
+    detail: widget.extensionBundleId,
+  });
+
   return checks;
 }
 

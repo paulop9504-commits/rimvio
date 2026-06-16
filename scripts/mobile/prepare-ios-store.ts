@@ -19,9 +19,8 @@ function main(): number {
   console.log("  2. $env:CAPACITOR_SERVER_URL=\"https://rimvio.app\"  # or your prod URL");
   console.log("  3. npm run store:prepare:ios -- --sync");
   console.log("  4. npm run mobile:ios   → Xcode → Signing → Archive → TestFlight");
-  console.log("  5. Live Activity: File → New Target → Widget Extension");
-  console.log("     · Copy ios/RimvioLiveActivityWidget/RimvioLiveActivityWidget.swift");
-  console.log("     · Add ios/Shared/RimvioMainSurfaceAttributes.swift to App + Widget targets");
+  console.log("  5. Build App + RimvioLiveActivityWidget (already in project.pbxproj)");
+  console.log("     · Sign both targets; verify Live Activity on device (iOS 16.2+)");
   console.log(`  6. Paste review notes from ${STORE_LAUNCH.ios.reviewNotes}`);
   console.log(`  7. Follow ${STORE_LAUNCH.ios.doc}\n`);
 
