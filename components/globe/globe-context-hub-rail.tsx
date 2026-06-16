@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type RefObject } from "react
 import { ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { GlobeContextGardenSummary } from "@/components/globe/globe-context-garden-summary";
+import { GlobePlacePrefillCard } from "@/components/globe/globe-place-prefill-card";
 import { GlobePrepChecklistCard } from "@/components/globe/globe-prep-checklist-card";
 import { GlobeHubResourceCarousel } from "@/components/globe/globe-hub-resource-carousel";
 import { GlobeLodgingMapStrip } from "@/components/globe/globe-lodging-map-strip";
@@ -29,6 +30,11 @@ import { readContextGardenSnapshot } from "@/lib/globe/context-gardener/read-con
 import { rankContextHubServices } from "@/lib/globe/context-hub/rank-context-hub-services";
 import type { RankedContextResource } from "@/lib/globe/resource/map-hub-service-to-resource";
 import { rankContextResources } from "@/lib/globe/resource/rank-context-resources";
+import { recordPlaceHubLearning } from "@/lib/globe/place-history/record-place-hub-learning";
+import {
+  applyWeatherRankMutation,
+  buildWeatherPrepLine,
+} from "@/lib/globe/weather/apply-weather-rank-mutation";
 import { useRouter } from "next/navigation";
 import type { DepartureHubAirportId } from "@/lib/globe/departure-hub-airports";
 import {
@@ -44,6 +50,7 @@ import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 import { HubServiceSlot } from "@/components/globe/globe-context-hub-service-slot";
 import { emitTransactionConvertedTelemetry } from "@/hooks/use-hub-resource-curation-telemetry";
+import { useActiveContextWeather } from "@/hooks/use-active-context-weather";
 import { useContextGardenOrganizer } from "@/hooks/use-context-garden-organizer";
 import { useExecutionProfileStamp } from "@/hooks/use-execution-profile-stamp";
 import { useHubResourceSyncWorker } from "@/hooks/use-hub-resource-sync-worker";
@@ -132,23 +139,39 @@ export function GlobeContextHubRail({
     return listContextHubServicesForEvent(event);
   }, [activeEventId, revision]);
 
-  const rankedResources = useMemo((): RankedContextResource[] => {
+  const activeEvent = useMemo(() => {
     void revision;
     const eventId = activeEventId?.trim();
-    if (!panel || !eventId) {
+    return eventId ? findLifeEventCandidate(eventId) : null;
+  }, [activeEventId, revision]);
+
+  const { tempC } = useActiveContextWeather({
+    event: activeEvent,
+    enabled: visible && Boolean(activeEvent),
+  });
+
+  const weatherPrepLine = useMemo(
+    () => buildWeatherPrepLine(tempC),
+    [tempC],
+  );
+
+  const rankedResources = useMemo((): RankedContextResource[] => {
+    void revision;
+    if (!panel || !activeEvent) {
       return [];
     }
-    const event = findLifeEventCandidate(eventId);
-    if (!event) {
-      return [];
-    }
-    return rankContextResources({
-      event,
+    const base = rankContextResources({
+      event: activeEvent,
       services: panel.services,
       lat,
       lng,
     });
-  }, [activeEventId, lat, lng, panel, revision]);
+    return applyWeatherRankMutation({
+      event: activeEvent,
+      ranked: base,
+      tempC,
+    });
+  }, [activeEvent, lat, lng, panel, revision, tempC]);
 
   useHubResourceSyncWorker({
     activeEventId,
@@ -428,7 +451,12 @@ export function GlobeContextHubRail({
         lat,
         lng,
       });
-      if (event) {
+      const refreshed = findLifeEventCandidate(eventId);
+      if (refreshed) {
+        recordContextHubTelemetry({ event: refreshed, kind: "executed", label: "lodging" });
+        recordPlaceHubLearning({ event: refreshed, hubId: "lodging", kind: "executed" });
+        foldContextHubLearning(refreshed);
+      } else if (event) {
         recordContextHubTelemetry({ event, kind: "clicked", label: "lodging" });
         foldContextHubLearning(event);
       }
@@ -507,8 +535,12 @@ export function GlobeContextHubRail({
       <>
         {ticketSheets}
         <div className={cn("flex flex-col gap-2", className)}>
+          <GlobePlacePrefillCard activeEventId={activeEventId} lat={lat} lng={lng} />
           <GlobePrepChecklistCard activeEventId={activeEventId} />
           <GlobeContextGardenSummary summary={gardenSummary} />
+          {weatherPrepLine ? (
+            <p className="px-0.5 text-[11px] font-medium text-muted-foreground">{weatherPrepLine}</p>
+          ) : null}
           <GlobeHubResourceCarousel
             ranked={rankedResources}
             index={Math.min(carouselIndex, rankedResources.length - 1)}
@@ -540,8 +572,12 @@ export function GlobeContextHubRail({
     <>
       {ticketSheets}
       <div className={cn("flex flex-col gap-3", className)}>
+        <GlobePlacePrefillCard activeEventId={activeEventId} lat={lat} lng={lng} />
         <GlobePrepChecklistCard activeEventId={activeEventId} />
         <GlobeContextGardenSummary summary={gardenSummary} />
+        {weatherPrepLine ? (
+          <p className="px-0.5 text-[11px] font-medium text-muted-foreground">{weatherPrepLine}</p>
+        ) : null}
         {showCarousel ? (
           <GlobeHubResourceCarousel
             ranked={rankedResources}

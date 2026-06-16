@@ -305,6 +305,11 @@ export const copyEn: Copy = {
     contextGardenSummaryEyebrow: "Now",
     prepChecklistEyebrow: "Prep",
     prepChecklistHint: "Check off when you're ready",
+    placePrefillEyebrow: "Past trip",
+    placePrefillAccept: "Set it up",
+    placePrefillDismiss: "I'll pick myself",
+    placePrefillApplied: (hubs: string) => `Connected ${hubs} like last time`,
+    placePrefillApplyFail: "Couldn't apply the pattern",
     passiveLocationCareConfirm: "Yes!",
     contextHubSectionTitle: "Context hubs",
     contextHubSectionBody:

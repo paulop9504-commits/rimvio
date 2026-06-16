@@ -314,6 +314,11 @@ export const copy = {
     contextGardenSummaryEyebrow: "지금 상태",
     prepChecklistEyebrow: "준비",
     prepChecklistHint: "다 챙기면 체크해 주세요",
+    placePrefillEyebrow: "지난번 패턴",
+    placePrefillAccept: "담아 주세요",
+    placePrefillDismiss: "직접 할게요",
+    placePrefillApplied: (hubs: string) => `${hubs} 연결했어요 · 지난번처럼`,
+    placePrefillApplyFail: "패턴을 담지 못했어요",
     passiveLocationCareConfirm: "응!",
     contextHubSectionTitle: "맥락에 맞는 허브",
     contextHubSectionBody:
