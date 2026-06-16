@@ -81,14 +81,14 @@ export function HubServiceSlot({
               onClick={() =>
                 onOpenHandoff(
                   row.handoffHref!,
-                  row.handoffLabelKo ?? "QR 보기",
+                  row.handoffLabelKo ?? copy.globe.contextHubOpenTicketQr,
                   false,
                 )
               }
               className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground active:opacity-85"
               data-globe-hub-service-open={row.serviceId}
             >
-              {row.handoffLabelKo ?? "QR 보기"}
+              {row.handoffLabelKo ?? copy.globe.contextHubOpenTicketQr}
             </button>
           ) : row.connected && link?.actionUrl ? (
             <button
@@ -106,9 +106,19 @@ export function HubServiceSlot({
               {link.actionLabelKo ?? copy.globe.contextHubOpenTicket}
             </button>
           ) : (
-            <span className="shrink-0 rounded-full bg-muted/90 px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">
-              {copy.globe.contextHubServicePlugIn}
-            </span>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={onToggleConnect}
+              className={cn(
+                "flex size-8 shrink-0 items-center justify-center rounded-full border border-primary/25 bg-card text-primary active:scale-95",
+                connectOpen && "border-primary bg-primary text-primary-foreground",
+              )}
+              aria-label={copy.globe.contextHubServicePlugIn}
+              data-globe-hub-service-add={row.serviceId}
+            >
+              <Plus className="size-4 stroke-[2.5]" aria-hidden />
+            </button>
           )
         ) : row.implemented && row.serviceId === "ai_search" && row.handoffHref ? (
           <button

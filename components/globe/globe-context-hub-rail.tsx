@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { GlobeHubResourceCarousel } from "@/components/globe/globe-hub-resource-carousel";
+import { GlobeContextTicketConnectSheet } from "@/components/globe/globe-context-ticket-connect-sheet";
+import { GlobeTicketQrViewer } from "@/components/globe/globe-ticket-qr-viewer";
 import { connectDepartureHubToContext } from "@/lib/globe/connect-departure-hub-to-context";
 import { extractHubRunnableAction } from "@/lib/globe/context-hub/extract-hub-runnable-action";
 import {
@@ -32,6 +34,7 @@ import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 import { HubServiceSlot } from "@/components/globe/globe-context-hub-service-slot";
 import { emitTransactionConvertedTelemetry } from "@/hooks/use-hub-resource-curation-telemetry";
+import { isTicketQrViewerHref } from "@/lib/globe/ticket-scan-surface";
 
 export type GlobeContextHubRailProps = {
   /** Active context — hub inventory for this event only. */
@@ -73,11 +76,19 @@ export function GlobeContextHubRail({
   );
   const [expanded, setExpanded] = useState(false);
   const [carouselIndex, setCarouselIndex] = useState(0);
+  const [ticketConnectOpen, setTicketConnectOpen] = useState(false);
+  const [qrViewer, setQrViewer] = useState<{
+    src: string;
+    title: string;
+    subtitle?: string;
+  } | null>(null);
 
   useEffect(() => {
     setExpanded(false);
     setCarouselIndex(0);
     setConnectServiceId(null);
+    setTicketConnectOpen(false);
+    setQrViewer(null);
   }, [activeEventId]);
 
   useEffect(() => {
@@ -137,6 +148,24 @@ export function GlobeContextHubRail({
     [activeEventId],
   );
 
+  const openTicketQrViewer = useCallback(
+    (href: string, label: string) => {
+      const eventId = activeEventId?.trim();
+      const event = eventId ? findLifeEventCandidate(eventId) : null;
+      if (event) {
+        recordContextHubTelemetry({ event, kind: "clicked", label });
+        recordContextHubTelemetry({ event, kind: "executed", label });
+        foldContextHubLearning(event);
+      }
+      setQrViewer({
+        src: href,
+        title: label,
+        subtitle: panel?.contextPlace ?? undefined,
+      });
+    },
+    [activeEventId, panel?.contextPlace],
+  );
+
   const handleOpenHandoff = useCallback(
     (href: string, label: string, internalRoute = false) => {
       const eventId = activeEventId?.trim();
@@ -157,22 +186,34 @@ export function GlobeContextHubRail({
         router.push(href);
         return;
       }
+      if (isTicketQrViewerHref(href)) {
+        openTicketQrViewer(href, label);
+        return;
+      }
       openExternalHref(href);
     },
-    [activeEventId, router],
+    [activeEventId, openTicketQrViewer, router],
   );
 
   const runCarouselEntry = useCallback(
     (entry: RankedContextResource) => {
+      if (entry.resource.action?.kind === "show_qr") {
+        openTicketQrViewer(entry.resource.action.href, entry.resource.action.labelKo);
+        return;
+      }
       const runnable = extractHubRunnableAction(entry.hubRow);
       if (runnable) {
         handleOpenHandoff(runnable.href, runnable.label, runnable.internalRoute);
         return;
       }
+      if (entry.hubRow.serviceId === "ticket") {
+        setTicketConnectOpen(true);
+        return;
+      }
       setExpanded(true);
       setConnectServiceId(entry.hubRow.serviceId);
     },
-    [handleOpenHandoff],
+    [handleOpenHandoff, openTicketQrViewer],
   );
 
   useEffect(() => {
@@ -246,9 +287,51 @@ export function GlobeContextHubRail({
     return null;
   }
 
+  const ticketSheets = (
+    <>
+      <GlobeContextTicketConnectSheet
+        open={ticketConnectOpen}
+        onOpenChange={setTicketConnectOpen}
+        contextEventId={activeEventId ?? null}
+        onSaved={() => {
+          const eventId = activeEventId?.trim();
+          if (!eventId) {
+            return;
+          }
+          setRevision((value) => value + 1);
+          const ticketEntry =
+            rankedResources.find((row) => row.hubRow.serviceId === "ticket") ?? null;
+          emitTransactionConvertedTelemetry({
+            contextId: eventId,
+            resourceId: `${eventId}:ticket`,
+            sourceHubId: "ticket",
+            lat,
+            lng,
+            authUserId,
+            entry: ticketEntry,
+            transactionKind: "connect",
+          });
+        }}
+      />
+      <GlobeTicketQrViewer
+        open={Boolean(qrViewer)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setQrViewer(null);
+          }
+        }}
+        qrSrc={qrViewer?.src ?? null}
+        title={qrViewer?.title ?? null}
+        subtitle={qrViewer?.subtitle ?? null}
+      />
+    </>
+  );
+
   if (!expanded) {
     return (
-      <GlobeHubResourceCarousel
+      <>
+        {ticketSheets}
+        <GlobeHubResourceCarousel
         className={className}
         ranked={rankedResources}
         index={Math.min(carouselIndex, rankedResources.length - 1)}
@@ -264,10 +347,13 @@ export function GlobeContextHubRail({
         lng={lng}
         authUserId={authUserId}
       />
+      </>
     );
   }
 
   return (
+    <>
+      {ticketSheets}
     <aside
       className={cn(
         "pointer-events-auto overflow-hidden rounded-[1.35rem] border border-border/60 bg-card/95 shadow-[0_12px_40px_rgba(2,32,71,0.12)] backdrop-blur-xl",
@@ -315,11 +401,15 @@ export function GlobeContextHubRail({
             emphasized={
               rankedResources[carouselIndex]?.hubRow.serviceId === row.serviceId
             }
-            onToggleConnect={() =>
+            onToggleConnect={() => {
+              if (row.serviceId === "ticket") {
+                setTicketConnectOpen(true);
+                return;
+              }
               setConnectServiceId((current) =>
                 current === row.serviceId ? null : row.serviceId,
-              )
-            }
+              );
+            }}
             onConnectFlight={(airportId) => void handleConnectFlight(airportId)}
             onOpenAction={(url, label) => handleOpenAction(url, label)}
             onOpenHandoff={(href, label, internalRoute) =>
@@ -329,5 +419,6 @@ export function GlobeContextHubRail({
         ))}
       </ul>
     </aside>
+    </>
   );
 }

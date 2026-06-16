@@ -1,11 +1,13 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { isTicketUrl } from "@/lib/resolvers/ticket-deep-links";
+import type { ContextTicketArtifact } from "@/lib/globe/context-hub/context-ticket-artifact-types";
+import { CONTEXT_TICKET_ARTIFACT_META_KEY } from "@/lib/globe/context-hub/context-ticket-artifact-types";
 
-export type ContextTicketArtifact = {
-  labelKo: string;
-  actionUrl: string | null;
-  qrPreviewUrl: string | null;
-};
+export type { ContextTicketArtifact } from "@/lib/globe/context-hub/context-ticket-artifact-types";
+
+function readOptionalIso(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
 
 function readArtifactRecord(value: unknown): ContextTicketArtifact | null {
   if (!value || typeof value !== "object") {
@@ -27,16 +29,28 @@ function readArtifactRecord(value: unknown): ContextTicketArtifact | null {
   if (!actionUrl && !qrPreviewUrl) {
     return null;
   }
-  return { labelKo, actionUrl, qrPreviewUrl };
+  return {
+    labelKo,
+    actionUrl,
+    qrPreviewUrl,
+    validFromIso: readOptionalIso(row.validFromIso),
+    validUntilIso: readOptionalIso(row.validUntilIso),
+    placeLabel: readOptionalIso(row.placeLabel),
+  };
 }
 
 /** Ticket / QR artifact stored on globe context events. */
 export function readContextTicketArtifact(
   event: EventCandidate,
 ): ContextTicketArtifact | null {
-  const fromMeta = readArtifactRecord(event.metadata?.contextTicketArtifact);
+  const fromMeta = readArtifactRecord(event.metadata?.[CONTEXT_TICKET_ARTIFACT_META_KEY]);
   if (fromMeta) {
     return fromMeta;
+  }
+
+  const legacyMeta = readArtifactRecord(event.metadata?.contextTicketArtifact);
+  if (legacyMeta) {
+    return legacyMeta;
   }
 
   const ticketUrl =

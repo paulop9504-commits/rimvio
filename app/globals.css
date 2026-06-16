@@ -3726,3 +3726,19 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
     animation: none;
   }
 }
+
+/* Ticket QR scan surface — wake lock companion; boosts perceived luminance on white UI */
+html.rimvio-ticket-scan-surface {
+  color-scheme: light;
+}
+
+.rimvio-ticket-qr-card {
+  filter: brightness(1.08) contrast(1.05);
+}
+
+html.rimvio-ticket-scan-surface .rimvio-ticket-qr-card {
+  filter: brightness(1.14) contrast(1.08);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.04),
+    0 12px 40px rgba(0, 0, 0, 0.08);
+}

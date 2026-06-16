@@ -44,6 +44,22 @@ function resolveResourceSpacetime(event: EventCandidate): ContextResourceSpaceti
   };
 }
 
+function resolveTicketSpacetime(
+  event: EventCandidate,
+  ticketArtifact: ReturnType<typeof readContextTicketArtifact>,
+): ContextResourceSpacetime {
+  const base = resolveResourceSpacetime(event);
+  if (!ticketArtifact) {
+    return base;
+  }
+  return {
+    ...base,
+    validFromIso: ticketArtifact.validFromIso ?? base.validFromIso,
+    validUntilIso: ticketArtifact.validUntilIso ?? base.validUntilIso,
+    placeLabel: ticketArtifact.placeLabel ?? base.placeLabel,
+  };
+}
+
 function mapRunnableToAction(
   row: ContextHubServiceRow,
   runnable: NonNullable<ReturnType<typeof extractHubRunnableAction>>,
@@ -79,6 +95,10 @@ export function mapHubServiceRowToResource(
   const label =
     row.link?.actionLabelKo ?? row.handoffLabelKo ?? row.labelKo;
   const shortLabel = row.link?.shortLabel ?? row.shortLabelKo;
+  const spacetime =
+    row.serviceId === "ticket"
+      ? resolveTicketSpacetime(event, ticketArtifact)
+      : resolveResourceSpacetime(event);
 
   return {
     resourceId: `${event.id}:${row.serviceId}`,
@@ -87,7 +107,7 @@ export function mapHubServiceRowToResource(
     sourceHubId: row.serviceId,
     label,
     shortLabel,
-    spacetime: resolveResourceSpacetime(event),
+    spacetime,
     action: runnable ? mapRunnableToAction(row, runnable) : null,
     createdAtIso: event.updatedAt ?? event.createdAt,
     updatedAtIso: event.updatedAt ?? null,
