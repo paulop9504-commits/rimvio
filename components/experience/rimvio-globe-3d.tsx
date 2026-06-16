@@ -55,6 +55,7 @@ import type { GlobeTripArc } from "@/lib/globe/project-trip-leg-arcs";
 import type { GlobeContextWarmthPoint } from "@/lib/globe/globe-context-warmth-types";
 import { syncGlobeContextWarmthLayer } from "@/lib/globe/sync-globe-context-warmth-layer";
 import { screenPointToGlobeCoords } from "@/lib/globe/screen-point-to-globe-coords";
+import { resolveGlobeOffsetForPinViewportY } from "@/lib/globe/map-anchored-overlay-layout";
 import { cn } from "@/lib/utils";
 
 const FLY_MS = 1400;
@@ -72,6 +73,26 @@ function syncGlobeViewport(
   }
 }
 
+function applyGlobePinViewportBias(
+  globe: GlobeInstance,
+  root: HTMLElement | null,
+  pinViewportY?: number,
+): void {
+  const height = root?.clientHeight ?? 0;
+  if (height <= 0) {
+    globe.globeOffset([0, 0]);
+    return;
+  }
+  globe.globeOffset(
+    resolveGlobeOffsetForPinViewportY({ viewportHeight: height, pinViewportY }),
+  );
+}
+
+export type GlobeFlyToPinOptions = {
+  /** 0.5 = center. ~0.58 places the geo pin lower — room for map overlays above. */
+  pinViewportY?: number;
+};
+
 export type RimvioGlobe3DHandle = {
   flyToPin: (
     lat: number,
@@ -80,7 +101,9 @@ export type RimvioGlobe3DHandle = {
       GlobeDetailLevel,
       "region" | "city" | "neighborhood" | "street" | "pin"
     >,
+    options?: GlobeFlyToPinOptions,
   ) => void;
+  clearPinViewportBias: () => void;
   resetOverview: () => void;
   getPointOfView: () => {
     lat: number;
@@ -406,22 +429,31 @@ export const RimvioGlobe3D = memo(
     viewerLocationRef.current = viewerLocation;
 
     useImperativeHandle(ref, () => ({
-      flyToPin(lat, lng, level = "neighborhood") {
+      flyToPin(lat, lng, level = "neighborhood", options?) {
         const globe = globeRef.current;
+        const root = rootRef.current;
         if (!globe) {
           return;
         }
-        const controls = globe.controls();
         globe.pointOfView(
           { lat, lng, altitude: altitudeForGlobeDetailLevel(level) },
           FLY_MS,
         );
+        applyGlobePinViewportBias(globe, root, options?.pinViewportY);
+      },
+      clearPinViewportBias() {
+        const globe = globeRef.current;
+        if (!globe) {
+          return;
+        }
+        globe.globeOffset([0, 0]);
       },
       resetOverview() {
         const globe = globeRef.current;
         if (!globe) {
           return;
         }
+        globe.globeOffset([0, 0]);
         globe.pointOfView({ ...GLOBE_OVERVIEW_POINT_OF_VIEW }, FLY_MS);
       },
       syncPointOfView(lat, lng, altitude) {

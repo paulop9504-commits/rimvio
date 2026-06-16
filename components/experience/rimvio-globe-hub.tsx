@@ -105,6 +105,7 @@ function useGlobeEventSnapshot() {
 
 export type RimvioGlobeHubHandle = {
   flyToPin: RimvioGlobe3DHandle["flyToPin"];
+  clearPinViewportBias: RimvioGlobe3DHandle["clearPinViewportBias"];
   resetToOverview: () => void;
   getPointOfView: RimvioGlobe3DHandle["getPointOfView"];
   getScreenCoords: RimvioGlobe3DHandle["getScreenCoords"];
@@ -399,8 +400,11 @@ const RimvioGlobeHubBody = memo(
       highlightedPinId !== undefined ? highlightedPinId : activePinId;
 
     useImperativeHandle(ref, () => ({
-      flyToPin(lat, lng, level) {
-        innerGlobeRef.current?.flyToPin(lat, lng, level);
+      flyToPin(lat, lng, level, options) {
+        innerGlobeRef.current?.flyToPin(lat, lng, level, options);
+      },
+      clearPinViewportBias() {
+        innerGlobeRef.current?.clearPinViewportBias();
       },
       resetToOverview() {
         innerGlobeRef.current?.resetOverview();

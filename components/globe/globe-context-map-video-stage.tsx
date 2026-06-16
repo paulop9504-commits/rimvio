@@ -7,6 +7,7 @@ import { ContextMediaDeleteButton } from "@/components/globe/context-media-delet
 import { ContextMediaVideoSoundButton } from "@/components/globe/context-media-video-sound-button";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { useGlobePinScreenAnchor } from "@/hooks/use-globe-pin-screen-anchor";
+import { mapAnchoredOverlayTransform } from "@/lib/globe/map-anchored-overlay-layout";
 import { useGlobeContextVideoSound } from "@/hooks/use-globe-context-video-sound";
 import { useMediaBlobUrl } from "@/hooks/use-media-blob-url";
 import type { GlobeContextTimelineEntry } from "@/lib/globe/list-globe-context-timeline";
@@ -279,7 +280,7 @@ export function GlobeContextMapVideoStage({
             left: anchorLayout.x,
             top: anchorLayout.y,
             width: anchorLayout.widthPx,
-            transform: "translate(-50%, calc(-100% - 10px))",
+            transform: mapAnchoredOverlayTransform(),
           }}
           data-globe-context-map-video-anchor
         >

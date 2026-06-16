@@ -16,6 +16,11 @@ import {
 } from "@/lib/globe/context-hub/globe-lodging-marker-bridge";
 import { readLodgingPayloadFromResource } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import { buildLodgingDynamicTags } from "@/lib/globe/lodging/build-lodging-dynamic-tags";
+import {
+  MAP_FOCUS_PIN_VIEWPORT_Y,
+  MAP_LODGING_FOCUS_ANCHOR_FRACTION,
+  mapAnchoredOverlayTransform,
+} from "@/lib/globe/map-anchored-overlay-layout";
 import { projectContextMediaReel } from "@/lib/globe/project-context-media-reel";
 import { resolveExperienceVolumeForEvent } from "@/lib/globe/resolve-globe-context-primary-video";
 import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
@@ -105,7 +110,8 @@ export function GlobeLodgingFocusStage({
     setOpen(false);
     setFocus(null);
     dispatchGlobeLodgingFocusStage(false);
-  }, [contextEventId]);
+    globeRef?.current?.clearPinViewportBias();
+  }, [contextEventId, globeRef]);
 
   const eventId = contextEventId?.trim() ?? "";
   const activeEvent = useMemo(() => {
@@ -197,8 +203,16 @@ export function GlobeLodgingFocusStage({
     if (!open || anchorLat == null || anchorLng == null) {
       return;
     }
-    globeRef?.current?.flyToPin(anchorLat, anchorLng, "neighborhood");
+    globeRef?.current?.flyToPin(anchorLat, anchorLng, "neighborhood", {
+      pinViewportY: MAP_FOCUS_PIN_VIEWPORT_Y,
+    });
   }, [anchorLat, anchorLng, globeRef, open, focus?.resourceId]);
+
+  const dismiss = useCallback(() => {
+    globeRef?.current?.clearPinViewportBias();
+    setOpen(false);
+    setFocus(null);
+  }, [globeRef]);
 
   const anchorLayout = useGlobePinScreenAnchor({
     globeRef: globeRef ?? { current: null },
@@ -256,11 +270,6 @@ export function GlobeLodgingFocusStage({
     [goToLodgingIndex, lodgingIndex, lodgingRanked.length],
   );
 
-  const dismiss = useCallback(() => {
-    setOpen(false);
-    setFocus(null);
-  }, []);
-
   if (!open || !entry || !payload || !anchorLayout) {
     return (
       <div
@@ -297,7 +306,7 @@ export function GlobeLodgingFocusStage({
           left: anchorLayout.x,
           top: anchorLayout.y,
           width: Math.min(anchorLayout.widthPx, 340),
-          transform: "translate(-50%, calc(-100% - 12px))",
+          transform: mapAnchoredOverlayTransform(MAP_LODGING_FOCUS_ANCHOR_FRACTION),
         }}
         data-globe-lodging-focus-anchor
       >
