@@ -15,6 +15,7 @@ export { mapActionSlice } from "@/lib/personal-read-model/map-action-slice";
 export { mapGateSlice } from "@/lib/personal-read-model/map-gate-slice";
 export { resolveReadScopeAi } from "@/lib/personal-read-model/resolve-read-scope-ai";
 export { serializePacketForLlm } from "@/lib/personal-read-model/serialize-packet-for-llm";
+export { redactPacketForExplorer } from "@/lib/personal-read-model/redact-packet-for-explorer";
 export { buildPersonalReadContextBlock } from "@/lib/personal-read-model/build-personal-read-context-block";
 export {
   validateActionContract,

@@ -29,6 +29,7 @@ import {
   shouldShowLinkMainHero,
 } from "@/lib/action-chat/resolve-link-main-offer";
 import {
+  foldSurfaceLinkLearning,
   recordSurfaceLinkActionTelemetry,
 } from "@/lib/archive/record-surface-link-telemetry";
 import { useCopy, useAppLocale } from "@/hooks/use-copy";
@@ -193,6 +194,9 @@ export function ActionShortsSlide({
   } | null>(null);
   const [actionsRevealed, setActionsRevealed] = useState(false);
   const shownRef = useRef(false);
+  const executedPrimaryRef = useRef(false);
+  const dismissRecordedRef = useRef(false);
+  const wasActiveRef = useRef(false);
   const { requestNavSector, shouldOpenNavSector, navSectorSheet } = useNavSectorPicker({
     copy,
     resolveLink: () => link,
@@ -265,7 +269,35 @@ export function ActionShortsSlide({
   useEffect(() => {
     setActionsRevealed(false);
     shownRef.current = false;
+    executedPrimaryRef.current = false;
+    dismissRecordedRef.current = false;
   }, [link.id, actionIndex]);
+
+  useEffect(() => {
+    if (
+      wasActiveRef.current &&
+      !isActive &&
+      applyMainGate &&
+      offer.primary &&
+      !dismissRecordedRef.current
+    ) {
+      if (shownRef.current && !executedPrimaryRef.current) {
+        dismissRecordedRef.current = true;
+        recordSurfaceLinkActionTelemetry({
+          link,
+          action: offer.primary,
+          kind: "dismissed",
+          surface: "feed",
+        });
+        foldSurfaceLinkLearning({
+          linkId: link.id,
+          link,
+          action: offer.primary,
+        });
+      }
+    }
+    wasActiveRef.current = isActive;
+  }, [applyMainGate, isActive, link, offer.primary]);
   const showMarketPrice = shouldShowMarketPrice(link);
   const { snapshot: marketPrice, loading: marketPriceLoading } = useMarketPrice(
     link,
@@ -318,6 +350,7 @@ export function ActionShortsSlide({
   }, [effectivePrimary, link]);
 
   const dispatchLinkAction = (action: LinkActionItem) => {
+    executedPrimaryRef.current = true;
     if (isScheduleAction(action)) {
       setSchedulePick({
         action,

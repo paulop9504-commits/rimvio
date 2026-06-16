@@ -27,7 +27,9 @@ export function buildPersonalReadContextBlock(input: {
       pinScope: input.pinScope ?? "internal",
       now: input.now,
     });
-    return serializePacketForLlm(packet);
+    return serializePacketForLlm(packet, {
+      redactPrivateFacts: input.pinScope === "external",
+    });
   } catch {
     return null;
   }

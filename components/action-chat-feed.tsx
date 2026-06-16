@@ -130,6 +130,8 @@ type ActionChatFeedProps = {
     onSearch: (query: string) => RelatedContextSearchResult | null;
     onClear: () => void;
   } | null;
+  /** Globe hub ai_search — composer send routes to related context search first. */
+  hubContextSearch?: boolean;
   /** Search tab — globe hub ai_search composer seed. */
   searchContextPrefill?: string | null;
   className?: string;
@@ -152,6 +154,7 @@ export function ActionChatFeed({
   searchIngressHint,
   searchExecution = null,
   relatedContextSearch = null,
+  hubContextSearch = false,
   searchContextPrefill = null,
   className,
 }: ActionChatFeedProps) {
@@ -787,6 +790,17 @@ export function ActionChatFeed({
               onSendComposer={async (payload) => {
                 const hasAttachments = (payload.attachments?.length ?? 0) > 0;
                 if (!isSlot && scopeKind === "search" && payload.text.trim()) {
+                  const trimmed = payload.text.trim();
+                  if (
+                    hubContextSearch &&
+                    relatedContextSearch &&
+                    !trimmed.startsWith("@") &&
+                    !/https?:\/\//iu.test(trimmed) &&
+                    !isSearchMentionRun
+                  ) {
+                    relatedContextSearch.onSearch(trimmed);
+                    return true;
+                  }
                   const intent = classifySearchComposerIntent(payload.text);
                   if (isSearchMentionRun || intent === "mention") {
                     void sendMessage(payload.text, {

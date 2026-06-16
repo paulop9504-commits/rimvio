@@ -100,6 +100,7 @@ export function ActionSearchHub() {
         searchIngressHint={copy.search.ingressHint}
         searchExecution={searchExecution}
         searchContextPrefill={searchContextPrefill}
+        hubContextSearch={Boolean(contextEventId)}
         relatedContextSearch={{
           active: relatedContext.active,
           result: relatedContext.result,
