@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { Car, Plane, Plus, Sparkles } from "lucide-react";
 import { toast } from "sonner";
@@ -20,6 +21,10 @@ import {
   findLifeEventCandidate,
 } from "@/lib/life-read-model";
 import { PERSONAL_GLOBE_PINS_UPDATED } from "@/lib/globe/personal-globe-pin-store";
+import {
+  resolvePinScopeFromEventId,
+  writeGlobeOrchestratorScopeHint,
+} from "@/lib/globe/globe-orchestrator-scope-bridge";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +48,7 @@ function HubServiceRow({
   onToggleConnect,
   onConnectFlight,
   onOpenAction,
+  onOpenHandoff,
 }: {
   row: ContextHubServiceRow;
   connectOpen: boolean;
@@ -50,6 +56,7 @@ function HubServiceRow({
   onToggleConnect: () => void;
   onConnectFlight: (airportId: DepartureHubAirportId) => void;
   onOpenAction: (url: string) => void;
+  onOpenHandoff: (href: string) => void;
 }) {
   const Icon = SERVICE_ICON[row.serviceId];
   const link = row.link;
@@ -86,7 +93,17 @@ function HubServiceRow({
           </p>
         </div>
 
-        {row.implemented && row.serviceId === "flight" ? (
+        {row.implemented && row.serviceId === "ai_search" && row.handoffHref ? (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => onOpenHandoff(row.handoffHref!)}
+            className="shrink-0 rounded-full bg-primary px-2 py-1 text-[9px] font-bold text-primary-foreground active:opacity-80"
+            data-globe-hub-service-open={row.serviceId}
+          >
+            {row.handoffLabelKo ?? copy.globe.contextHubAiSearchOpen}
+          </button>
+        ) : row.implemented && row.serviceId === "flight" ? (
           row.connected && link?.actionUrl ? (
             <button
               type="button"
@@ -164,6 +181,7 @@ export function GlobeContextHubRail({
   visible = true,
   className,
 }: GlobeContextHubRailProps) {
+  const router = useRouter();
   const [revision, setRevision] = useState(0);
   const [busy, setBusy] = useState(false);
   const [connectServiceId, setConnectServiceId] = useState<ContextHubServiceId | null>(
@@ -258,6 +276,33 @@ export function GlobeContextHubRail({
     [activeEventId, busy, panel?.services],
   );
 
+  const handleOpenHandoff = useCallback(
+    (href: string) => {
+      const eventId = activeEventId?.trim();
+      const event = eventId ? findLifeEventCandidate(eventId) : null;
+      if (event) {
+        writeGlobeOrchestratorScopeHint({
+          pinScope: resolvePinScopeFromEventId(eventId) ?? "internal",
+          eventId,
+          title: event.title,
+        });
+        recordContextHubTelemetry({
+          event,
+          kind: "clicked",
+          label: copy.globe.contextHubAiSearchOpen,
+        });
+        recordContextHubTelemetry({
+          event,
+          kind: "executed",
+          label: copy.globe.contextHubAiSearchOpen,
+        });
+        foldContextHubLearning(event);
+      }
+      router.push(href);
+    },
+    [activeEventId, router],
+  );
+
   if (!visible || !panel) {
     return null;
   }
@@ -317,6 +362,7 @@ export function GlobeContextHubRail({
               }
               window.open(url, "_blank", "noopener,noreferrer");
             }}
+            onOpenHandoff={handleOpenHandoff}
           />
         ))}
       </ul>

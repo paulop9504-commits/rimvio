@@ -8,6 +8,7 @@ import { shouldOfferDepartureHub } from "@/lib/globe/should-offer-departure-hub"
 import type { DepartureHubOption } from "@/lib/globe/suggest-departure-hub-options";
 import { suggestDepartureHubOptions } from "@/lib/globe/suggest-departure-hub-options";
 import { readPlanContextFromEvent } from "@/lib/plan-context/plan-context-metadata";
+import { buildContextHubAiSearchHandoff } from "@/lib/globe/context-hub/build-context-hub-ai-search-handoff";
 import { findPersonalGlobePinByEventId } from "@/lib/globe/personal-globe-pin-store";
 
 /** Plug-in resource service — not a globe context. */
@@ -42,7 +43,7 @@ export const CONTEXT_HUB_SERVICE_CATALOG: readonly ContextHubServiceDef[] = [
     kind: null,
     labelKo: "AI 검색",
     shortLabelKo: "AI",
-    implemented: false,
+    implemented: true,
   },
 ] as const;
 
@@ -56,6 +57,8 @@ export type ContextHubServiceRow = {
   connected: boolean;
   link: ContextHubLink | null;
   flightOptions: readonly DepartureHubOption[];
+  handoffHref: string | null;
+  handoffLabelKo: string | null;
 };
 
 function resolveContextPlace(event: EventCandidate): string {
@@ -118,6 +121,10 @@ export function listContextHubServicesForEvent(
       def.kind === "departure_airport"
         ? (listContextHubLinks(event).find((row) => row.kind === def.kind) ?? null)
         : null;
+    const aiHandoff =
+      def.id === "ai_search" && offered
+        ? buildContextHubAiSearchHandoff(event)
+        : null;
 
     return {
       serviceId: def.id,
@@ -125,9 +132,11 @@ export function listContextHubServicesForEvent(
       shortLabelKo: def.shortLabelKo,
       implemented: def.implemented,
       offered,
-      connected: Boolean(link),
+      connected: def.id === "ai_search" ? Boolean(aiHandoff) : Boolean(link),
       link,
       flightOptions: def.id === "flight" ? flightOptions : [],
+      handoffHref: aiHandoff?.href ?? null,
+      handoffLabelKo: aiHandoff?.actionLabelKo ?? null,
     };
   }).filter((row) => row.offered);
 

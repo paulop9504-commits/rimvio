@@ -34,7 +34,9 @@ import {
   defaultMasterOrchestratorContext,
   type MasterOrchestratorContext,
 } from "@/lib/action-chat/master-orchestrator-context";
-import { formatDateKey } from "@/lib/schedule/day-schedule";
+import {
+  readGlobeOrchestratorScopeHint,
+} from "@/lib/globe/globe-orchestrator-scope-bridge";
 import { serializeTruthForMasterContext } from "@/lib/source-of-truth/serialize-for-api";
 import {
   resolveAllRemindersFromTruth,
@@ -95,6 +97,8 @@ export function serializeMasterContextForApi(
   const activeChains = resolved.activeChains ?? readActiveChains();
   const activeChainsWire = buildActiveChainsWireFromKeys(activeChains);
   const truth = serializeTruthForMasterContext(resolved.currentDate);
+  const globeHint =
+    typeof window !== "undefined" ? readGlobeOrchestratorScopeHint() : null;
 
   return {
     currentDate: resolved.currentDate,
@@ -136,6 +140,12 @@ export function serializeMasterContextForApi(
     mapApp: typeof window !== "undefined" ? readMapApp(true) : defaultMapApp(true),
     injection: buildMasterContextInjection(resolved),
     ...(goalSnapshotRevision ? { goalSnapshotRevision } : {}),
+    ...(globeHint?.eventId
+      ? {
+          globeContextEventId: globeHint.eventId,
+          pinScopeHint: globeHint.pinScope,
+        }
+      : {}),
   };
 }
 
@@ -176,6 +186,9 @@ export type MasterContextApiPayload = ReturnType<typeof serializeMasterContextFo
     main_action: import("@/lib/action-registry/types").ActionRegistryEntry["main_action"];
     shadow_actions: import("@/lib/action-registry/types").ActionRegistryEntry["shadow_actions"];
   }>;
+  /** Globe context open on chat — PRM activeContextId for server orchestrator. */
+  globeContextEventId?: string | null;
+  pinScopeHint?: import("@/lib/globe/pin-entity").PinScope | null;
   /** When false (default), specialist container action gate is off for general chat. */
   containerGateEnabled?: boolean;
   activeContainers?: Array<{

@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { ActionChatFeed } from "@/components/action-chat-feed";
 import { SpacetimeTargetSheet } from "@/components/search/spacetime-target-sheet";
 import { useRelatedContextSearch } from "@/hooks/use-related-context-search";
 import { useSearchCaptureIngest } from "@/hooks/use-search-capture-ingest";
 import { useCopy } from "@/hooks/use-copy";
+import { findLifeEventCandidate } from "@/lib/life-read-model";
 import { readFeedExperienceRunContext } from "@/lib/feed/feed-experience-run-context-store";
 import {
   parseExperienceRunSearchParams,
@@ -48,6 +49,26 @@ export function ActionSearchHub() {
     dismissTargetSheet,
   } = useSearchCaptureIngest();
   const relatedContext = useRelatedContextSearch();
+  const searchContext = useRef(relatedContext.search);
+  searchContext.current = relatedContext.search;
+
+  const contextEventId = searchParams.get("contextEventId")?.trim() ?? "";
+  const contextQuery = searchParams.get("q")?.trim() ?? "";
+
+  useEffect(() => {
+    if (!contextEventId) {
+      return;
+    }
+    const event = findLifeEventCandidate(contextEventId);
+    const query =
+      contextQuery ||
+      event?.place?.trim() ||
+      event?.title?.trim() ||
+      "";
+    if (query) {
+      searchContext.current(query);
+    }
+  }, [contextEventId, contextQuery]);
 
   return (
     <>

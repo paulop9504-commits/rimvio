@@ -47,6 +47,8 @@ export async function runGlobalBrainMiddleware(input: {
         input.masterContext?.promotedActionTemplates,
       ),
       goalSnapshot: input.goalSnapshot ?? null,
+      activeContextId: input.masterContext?.globeContextEventId ?? null,
+      pinScope: input.masterContext?.pinScopeHint ?? "internal",
     });
     return { ...gathered, promptBlock, shouldEnrich };
   } catch (error) {

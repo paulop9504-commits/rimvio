@@ -19,6 +19,8 @@ export function buildGlobalBrainContextBlock(input: {
   promotedTemplates?: ActionRegistryEntry[];
   /** §5 — pipeline-authored GoalSnapshot; read-only for LLM (never write back). */
   goalSnapshot?: GoalSnapshot | null;
+  /** PRM export — AI-ready personal read frame (projection only). */
+  personalReadBlock?: string | null;
 }): string {
   if (!input.shouldEnrich) {
     const minimalMarkdown = buildCurrentSnapshotMarkdown(input.snapshot);
@@ -81,6 +83,7 @@ export function buildGlobalBrainContextBlock(input: {
 
   const snapshotMarkdown = buildCurrentSnapshotMarkdown(input.snapshot);
   const templatesMarkdown = buildAvailableTemplatesMarkdown(input.promotedTemplates ?? []);
+  const personalReadBlock = input.personalReadBlock?.trim() ?? null;
 
   return [
     GLOBAL_BRAIN_PROTOCOL,
@@ -103,6 +106,7 @@ export function buildGlobalBrainContextBlock(input: {
     "",
     PREDICTIVE_DOCK_PROTOCOL,
     "",
+    ...(personalReadBlock ? [personalReadBlock, ""] : []),
     "# [GLOBAL_BRAIN_SNAPSHOT]",
     JSON.stringify(payload, null, 2),
     "",

@@ -13,7 +13,7 @@ import {
   foldFeedLinkLearning,
   recordFeedLinkActionTelemetry,
 } from "@/lib/archive/record-feed-link-telemetry";
-import { buildLinkRankingContextKey } from "@/lib/feed/build-link-ranking-context-key";
+import { buildCommerceAwareRankingContextKey } from "@/lib/feed/build-commerce-aware-ranking-context-key";
 import { markFirstActionSuccess } from "@/lib/platform/pwa-install-nudge";
 import { recordActionTrustSuccess } from "@/lib/preferences/action-trust";
 import type { SurfaceLinkTelemetrySurface } from "@/lib/archive/record-surface-link-telemetry";
@@ -62,9 +62,9 @@ export async function runFeedLinkAction(
 
   const actionFamily = toActionFamily(action);
   const domainFamily = toDomainFamily(link.domain, link.category);
-  const rankingContextKey = buildLinkRankingContextKey({
-    domain: link.domain,
-    category: link.category,
+  const rankingContextKey = buildCommerceAwareRankingContextKey({
+    link,
+    action,
   });
   const contextBin = toContextBin(
     normalizeEnricherContext({ hour: new Date().getHours() })

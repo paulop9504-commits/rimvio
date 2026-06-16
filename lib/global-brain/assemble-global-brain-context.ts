@@ -3,6 +3,7 @@ import type { GoalSnapshot } from "@/lib/goal-engine/types";
 import { buildGlobalBrainContextBlock } from "@/lib/global-brain/build-context-injection-block";
 import { isConversationalOnlyMessage } from "@/lib/action-chat/conversation-turns";
 import type { ActionRegistryEntry } from "@/lib/action-registry/types";
+import { buildPersonalReadContextBlock } from "@/lib/personal-read-model/build-personal-read-context-block";
 
 /**
  * Global Brain — context assembler only.
@@ -47,16 +48,26 @@ export function assembleGlobalBrainContext(input: {
   promotedTemplates?: ActionRegistryEntry[];
   goalSnapshot?: GoalSnapshot | null;
   message: string;
+  activeContextId?: string | null;
+  pinScope?: import("@/lib/globe/pin-entity").PinScope;
 }): { promptBlock: string; shouldEnrich: boolean } {
   const shouldEnrich = shouldEnrichGlobalBrainContext({
     message: input.message,
     snapshot: input.snapshot,
   });
+  const personalReadBlock = shouldEnrich
+    ? buildPersonalReadContextBlock({
+        scope: typeof window === "undefined" ? "server" : "client",
+        activeContextId: input.activeContextId ?? null,
+        pinScope: input.pinScope ?? "internal",
+      })
+    : null;
   const promptBlock = buildGlobalBrainContextBlock({
     snapshot: input.snapshot,
     shouldEnrich,
     promotedTemplates: input.promotedTemplates,
     goalSnapshot: input.goalSnapshot ?? null,
+    personalReadBlock,
   });
   return { promptBlock, shouldEnrich };
 }

@@ -321,6 +321,7 @@ export const copy = {
     contextHubDraftTitle: "미리 꽂아 둘 허브",
     contextHubDraftBody: "맥락을 박을 때 함께 연결돼요 · 나중에 핀에서도 바꿀 수 있어요",
     contextHubOpenFlight: "항공권 보기",
+    contextHubAiSearchOpen: "맥락 검색",
     contextHubRailTitle: "허브",
     contextHubRailForContext: (place: string) => `「${place}」`,
     contextHubServicePlugIn: "꽂기",
