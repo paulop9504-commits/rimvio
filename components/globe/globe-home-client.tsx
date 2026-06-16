@@ -50,6 +50,7 @@ import type { GlobeManageContextEntry } from "@/lib/globe/list-globe-manage-cont
 import type { PinCluster } from "@/lib/globe/pin-cluster-types";
 import { resolveGlobeContextPinCluster } from "@/lib/globe/resolve-globe-context-pin-cluster";
 import { resolveActiveGlobeContext } from "@/lib/globe/resolve-active-globe-context";
+import { listGlobeContextPeerOptions } from "@/lib/globe/list-globe-context-peer-options";
 import type { GlobeContextPeopleFilter } from "@/lib/globe/globe-context-people-filter";
 import {
   GLOBE_CONTEXT_SHARE_REQUEST,
@@ -802,6 +803,7 @@ function GlobeHomeBody() {
             activeEventId={hubEventId}
             lat={liveLocation?.lat ?? null}
             lng={liveLocation?.lng ?? null}
+            authUserId={user?.id ?? null}
             layout="dock"
           />
         ) : null}
@@ -814,6 +816,7 @@ function GlobeHomeBody() {
             activeEventId={hubEventId}
             lat={liveLocation?.lat ?? null}
             lng={liveLocation?.lng ?? null}
+            authUserId={user?.id ?? null}
             layout="hero"
             onDismiss={hubOnDismiss}
           />

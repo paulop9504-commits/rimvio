@@ -5,6 +5,7 @@ import { motion, useMotionValue, animate, type PanInfo } from "framer-motion";
 import { Car, ChevronDown, Plane, Sparkles, Ticket } from "lucide-react";
 import type { ContextHubServiceId } from "@/lib/globe/context-hub/context-hub-service-catalog";
 import type { RankedContextResource } from "@/lib/globe/resource/map-hub-service-to-resource";
+import { useHubResourceCurationTelemetry } from "@/hooks/use-hub-resource-curation-telemetry";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +29,12 @@ export type GlobeHubResourceCarouselProps = {
   busy?: boolean;
   contextPlace?: string | null;
   layout?: "dock" | "hero";
+  /** Predictive Curation telemetry — non-blocking. */
+  contextId?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  authUserId?: string | null;
+  telemetryEnabled?: boolean;
   className?: string;
 };
 
@@ -59,6 +66,11 @@ export function GlobeHubResourceCarousel({
   busy = false,
   contextPlace = null,
   layout = "dock",
+  contextId = null,
+  lat = null,
+  lng = null,
+  authUserId = null,
+  telemetryEnabled = true,
   className,
 }: GlobeHubResourceCarouselProps) {
   const entry = ranked[index] ?? ranked[0];
@@ -67,6 +79,17 @@ export function GlobeHubResourceCarousel({
   const isMainSlot = index === 0;
   const dragX = useMotionValue(0);
   const [hintSeen, setHintSeen] = useState(false);
+
+  const { mainCardRef, emitMainDismissed, emitManualPick, goToWithTelemetry } =
+    useHubResourceCurationTelemetry({
+      contextId,
+      ranked,
+      index,
+      lat,
+      lng,
+      authUserId,
+      enabled: telemetryEnabled,
+    });
 
   useEffect(() => {
     dragX.set(0);
@@ -114,11 +137,16 @@ export function GlobeHubResourceCarousel({
       const swipePrev = offset > SWIPE_THRESHOLD_PX || velocity > 420;
 
       if (swipeNext) {
-        if (!goTo(index + 1) && index === ranked.length - 1) {
+        if (index === 0) {
+          goToWithTelemetry(index + 1, goTo, "swipe_next");
+        } else if (!goTo(index + 1) && index === ranked.length - 1) {
           goTo(0);
+        } else {
+          goTo(index + 1);
         }
       } else if (swipePrev) {
         if (index === 0 && onDismiss) {
+          emitMainDismissed("swipe_away");
           onDismiss();
         } else {
           goTo(index - 1);
@@ -126,8 +154,26 @@ export function GlobeHubResourceCarousel({
       }
       animate(dragX, 0, { type: "spring", stiffness: 520, damping: 36 });
     },
-    [dragX, goTo, index, onDismiss, ranked.length],
+    [
+      dragX,
+      emitMainDismissed,
+      goTo,
+      goToWithTelemetry,
+      index,
+      onDismiss,
+      ranked.length,
+    ],
   );
+
+  const handleCardClick = useCallback(() => {
+    if (!entry) {
+      return;
+    }
+    if (index > 0) {
+      emitManualPick(entry, index);
+    }
+    onRunRow(entry);
+  }, [emitManualPick, entry, index, onRunRow]);
 
   if (!entry || !row || !resource) {
     return null;
@@ -162,10 +208,7 @@ export function GlobeHubResourceCarousel({
             {contextPlace ? (
               <p className="truncate text-[11px] font-medium text-muted-foreground">
                 {isMainSlot
-                  ? copy.globe.mainActionForContext(
-                      resource.label,
-                      contextPlace,
-                    )
+                  ? copy.globe.mainActionForContext(resource.label, contextPlace)
                   : copy.globe.contextHubRailForContext(contextPlace)}
               </p>
             ) : null}
@@ -184,6 +227,7 @@ export function GlobeHubResourceCarousel({
 
       <div className="relative px-2 pb-2 pt-1.5">
         <motion.button
+          ref={isMainSlot ? mainCardRef : undefined}
           type="button"
           disabled={busy}
           drag={ranked.length > 1 ? "x" : false}
@@ -191,7 +235,7 @@ export function GlobeHubResourceCarousel({
           dragElastic={0.14}
           style={{ x: dragX }}
           onDragEnd={onDragEnd}
-          onClick={() => onRunRow(entry)}
+          onClick={handleCardClick}
           className={cn(
             "flex w-full items-center gap-3 rounded-2xl border px-3 text-left active:scale-[0.99]",
             heroLayout ? "border-primary/25 bg-primary/[0.06] py-4" : "py-3",
@@ -253,7 +297,7 @@ export function GlobeHubResourceCarousel({
                 type="button"
                 role="tab"
                 aria-selected={dotIndex === index}
-                onClick={() => goTo(dotIndex)}
+                onClick={() => goToWithTelemetry(dotIndex, goTo, "carousel_dot")}
                 className={cn(
                   "h-1.5 rounded-full transition-all",
                   dotIndex === index

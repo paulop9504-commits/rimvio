@@ -31,12 +31,14 @@ import { PERSONAL_GLOBE_PINS_UPDATED } from "@/lib/globe/personal-globe-pin-stor
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 import { HubServiceSlot } from "@/components/globe/globe-context-hub-service-slot";
+import { emitTransactionConvertedTelemetry } from "@/hooks/use-hub-resource-curation-telemetry";
 
 export type GlobeContextHubRailProps = {
   /** Active context — hub inventory for this event only. */
   activeEventId?: string | null;
   lat?: number | null;
   lng?: number | null;
+  authUserId?: string | null;
   layout?: "dock" | "hero";
   onDismiss?: () => void;
   visible?: boolean;
@@ -57,6 +59,7 @@ export function GlobeContextHubRail({
   activeEventId,
   lat = null,
   lng = null,
+  authUserId = null,
   layout = "dock",
   onDismiss,
   visible = true,
@@ -214,6 +217,18 @@ export function GlobeContextHubRail({
         toast.success(copy.globe.departureHubConnected(label));
         setConnectServiceId(null);
         setRevision((value) => value + 1);
+        const flightEntry =
+          rankedResources.find((row) => row.hubRow.serviceId === "flight") ?? null;
+        emitTransactionConvertedTelemetry({
+          contextId: eventId,
+          resourceId: `${eventId}:flight`,
+          sourceHubId: "flight",
+          lat,
+          lng,
+          authUserId,
+          entry: flightEntry,
+          transactionKind: "connect",
+        });
       } catch (caught) {
         toast.error(
           caught instanceof Error
@@ -224,7 +239,7 @@ export function GlobeContextHubRail({
         setBusy(false);
       }
     },
-    [activeEventId, busy, panel?.services],
+    [activeEventId, authUserId, busy, lat, lng, panel?.services, rankedResources],
   );
 
   if (!visible || !panel || rankedResources.length === 0) {
@@ -244,6 +259,10 @@ export function GlobeContextHubRail({
         busy={busy}
         contextPlace={panel.contextPlace}
         layout={layout}
+        contextId={activeEventId}
+        lat={lat}
+        lng={lng}
+        authUserId={authUserId}
       />
     );
   }

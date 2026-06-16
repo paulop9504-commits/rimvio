@@ -130,9 +130,28 @@ See `ContextResource` — required: `resourceId`, `contextEventId`, `kind`, `sou
 
 - [x] `rankContextResources(event, { lat, lng, now })` with spacetime + artifact urgency
 - [x] Carousel: index 0 = MAIN Hero; remove cross-context / standalone proactive pill
+- [x] Predictive Curation telemetry (`types/telemetry.ts`, `TelemetryLogger`, carousel hooks)
 - [ ] `ContextResource` SSOT + factory emit from Hub transactions
 - [ ] Hub expand = View only; no priority logic
 - [ ] Resource kinds: ticket, flight, lodging, rental, media_album, schedule (extend catalog)
+
+---
+
+## 7. Predictive Curation telemetry (non-blocking)
+
+Parallel to archive `ActionTelemetry` (rollup spine) — **does not replace** `recordContextHubTelemetry`.
+
+| Event | When |
+|-------|------|
+| `RESOURCE_IMPRESSION` | MAIN (index 0) visible — IntersectionObserver |
+| `RESOURCE_DISMISSED` | Swipe away from MAIN without execute · includes `dwell_time` |
+| `RESOURCE_MANUAL_PICK` | Tap resource at index ≥ 1 |
+| `TRANSACTION_CONVERTED` | Hub factory emit (e.g. flight connect) |
+
+- **Types:** `types/telemetry.ts`
+- **Logger:** `lib/telemetry/telemetry-logger.ts` — idle batch + `sendBeacon`
+- **Ingest:** `POST /api/telemetry/curation` (mock · `persisted: false` until storage phase)
+- **UI hook:** `hooks/use-hub-resource-curation-telemetry.ts` → `GlobeHubResourceCarousel`
 
 ---
 
