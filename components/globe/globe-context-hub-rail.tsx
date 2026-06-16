@@ -42,6 +42,7 @@ import { cn } from "@/lib/utils";
 import { HubServiceSlot } from "@/components/globe/globe-context-hub-service-slot";
 import { emitTransactionConvertedTelemetry } from "@/hooks/use-hub-resource-curation-telemetry";
 import { useHubResourceSyncWorker } from "@/hooks/use-hub-resource-sync-worker";
+import { useMainNativeSurfaceSync } from "@/hooks/use-main-native-surface-sync";
 import { isTicketQrViewerHref } from "@/lib/globe/ticket-scan-surface";
 
 export type GlobeContextHubRailProps = {
@@ -144,6 +145,12 @@ export function GlobeContextHubRail({
     ranked: rankedResources,
     lat,
     lng,
+    enabled: visible && rankedResources.length > 0,
+  });
+
+  useMainNativeSurfaceSync({
+    activeEventId,
+    ranked: rankedResources,
     enabled: visible && rankedResources.length > 0,
   });
 

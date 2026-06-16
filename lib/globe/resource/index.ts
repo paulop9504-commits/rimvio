@@ -71,6 +71,12 @@ export {
 export { runHubResourceSyncWorker } from "@/lib/globe/resource/run-hub-resource-sync-worker";
 
 export {
+  mainNativeSurfaceRevisionKey,
+  shouldDeferNativeMainSurfaceToWeb,
+  syncNativeMainSurface,
+} from "@/lib/globe/resource/sync-native-main-surface";
+
+export {
   readResourceLastSyncedAtIso,
   writeResourceSyncStamp,
   CONTEXT_RESOURCE_SYNC_META_KEY,

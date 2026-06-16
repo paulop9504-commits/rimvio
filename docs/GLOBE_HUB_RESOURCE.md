@@ -219,10 +219,10 @@ rankContextResources → ranked[0] (MAIN)
 ### Phase checklist
 
 - [x] L3 payload contract + builder + test
-- [ ] Capacitor `RimvioMainSurface` plugin (Swift + Java)
+- [x] Capacitor `RimvioMainSurface` plugin bridge (Swift + Java stubs)
+- [x] Wire: hub rank revision → `syncMainSurface` via `useMainNativeSurfaceSync`
 - [ ] iOS Widget Extension + ActivityKit attributes
-- [ ] Android ongoing notification + brightness
-- [ ] Wire: hub rank revision → `syncMainSurface` when app backgrounded near gate time
+- [ ] Android ongoing notification QR expanded layout (BigPicture)
 - [ ] Telemetry: `RESOURCE_IMPRESSION` surface=`native_main` (extend curation ingest)
 
 ### Forbidden (Phase 3 native)

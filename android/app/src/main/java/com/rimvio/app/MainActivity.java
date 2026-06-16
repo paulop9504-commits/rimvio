@@ -9,6 +9,7 @@ public class MainActivity extends BridgeActivity {
   @Override
   public void onCreate(Bundle savedInstanceState) {
     registerPlugin(RimvioNativeBridgePlugin.class);
+    registerPlugin(RimvioMainSurfacePlugin.class);
     super.onCreate(savedInstanceState);
     AndroidShareIntentRouter.captureIntent(getIntent());
   }
