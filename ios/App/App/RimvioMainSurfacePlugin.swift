@@ -9,9 +9,12 @@ public class RimvioMainSurfacePlugin: CAPPlugin, CAPBridgedPlugin {
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "syncMainSurface", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "endAllMainSurfaces", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setScanBrightnessEnabled", returnType: CAPPluginReturnPromise),
     ]
 
     private var savedBrightness: CGFloat?
+    private var foregroundScanActive = false
+    private var backgroundScanPreferred = false
 
     @objc func syncMainSurface(_ call: CAPPluginCall) {
         guard let command = call.getObject("command") else {
@@ -20,9 +23,10 @@ public class RimvioMainSurfacePlugin: CAPPlugin, CAPBridgedPlugin {
         }
 
         let lifecycle = command["lifecycle"] as? String ?? "end"
-        let payload = command["payload"] as? JSObject
+        let payload = command["payload"] as? [String: Any]
 
         if lifecycle == "end" || payload == nil {
+            backgroundScanPreferred = false
             clearSurface()
             call.resolve([
                 "ok": true,
@@ -32,30 +36,48 @@ public class RimvioMainSurfacePlugin: CAPPlugin, CAPBridgedPlugin {
             return
         }
 
-        let preferScanBrightness = payload?["preferScanBrightness"] as? Bool ?? false
-        applyScanBrightness(preferScanBrightness)
+        backgroundScanPreferred = payload?["preferScanBrightness"] as? Bool ?? false
+        refreshScanBrightness()
 
         if let payload = payload,
            let data = try? JSONSerialization.data(withJSONObject: payload, options: []) {
             UserDefaults.standard.set(data, forKey: "rimvio.mainSurface.payload")
         }
 
+        if #available(iOS 16.2, *) {
+            RimvioMainSurfaceLiveActivityController.sync(payload: payload)
+        }
+
         call.resolve([
             "ok": true,
             "platform": "ios",
             "lifecycle": lifecycle,
-            "note": "ios_payload_stored_activitykit_pending",
+            "note": "ios_live_activity_sync",
         ])
     }
 
     @objc func endAllMainSurfaces(_ call: CAPPluginCall) {
+        backgroundScanPreferred = false
         clearSurface()
+        call.resolve(["ok": true])
+    }
+
+    @objc func setScanBrightnessEnabled(_ call: CAPPluginCall) {
+        foregroundScanActive = call.getBool("enabled") ?? false
+        refreshScanBrightness()
         call.resolve(["ok": true])
     }
 
     private func clearSurface() {
         UserDefaults.standard.removeObject(forKey: "rimvio.mainSurface.payload")
-        applyScanBrightness(false)
+        if #available(iOS 16.2, *) {
+            RimvioMainSurfaceLiveActivityController.endAll()
+        }
+        refreshScanBrightness()
+    }
+
+    private func refreshScanBrightness() {
+        applyScanBrightness(foregroundScanActive || backgroundScanPreferred)
     }
 
     private func applyScanBrightness(_ enable: Bool) {

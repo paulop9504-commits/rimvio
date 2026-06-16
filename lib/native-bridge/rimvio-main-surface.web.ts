@@ -17,4 +17,8 @@ export class RimvioMainSurfaceWeb extends WebPlugin implements RimvioMainSurface
   async endAllMainSurfaces(): Promise<{ ok: boolean }> {
     return { ok: true };
   }
+
+  async setScanBrightnessEnabled(): Promise<{ ok: boolean }> {
+    return { ok: false };
+  }
 }

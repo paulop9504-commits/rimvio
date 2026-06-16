@@ -12,4 +12,8 @@ export interface RimvioMainSurfacePlugin {
     command: MainNativeSurfaceCommand;
   }): Promise<MainNativeSurfaceSyncResult>;
   endAllMainSurfaces(): Promise<{ ok: boolean }>;
+  /** Foreground QR viewer — OS brightness boost (Capacitor shell only). */
+  setScanBrightnessEnabled(options: {
+    enabled: boolean;
+  }): Promise<{ ok: boolean }>;
 }

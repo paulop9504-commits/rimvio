@@ -221,8 +221,10 @@ rankContextResources → ranked[0] (MAIN)
 - [x] L3 payload contract + builder + test
 - [x] Capacitor `RimvioMainSurface` plugin bridge (Swift + Java stubs)
 - [x] Wire: hub rank revision → `syncMainSurface` via `useMainNativeSurfaceSync`
-- [ ] iOS Widget Extension + ActivityKit attributes
-- [ ] Android ongoing notification QR expanded layout (BigPicture)
+- [x] Foreground QR → `setScanBrightnessEnabled` (Capacitor)
+- [x] Android ongoing BigPicture QR (base64 data URL)
+- [x] iOS Live Activity controller + Widget Extension sources (`ios/RimvioLiveActivityWidget/`)
+- [ ] Xcode: add Widget Extension target + include `ios/Shared/RimvioMainSurfaceAttributes.swift` in both targets
 - [ ] Telemetry: `RESOURCE_IMPRESSION` surface=`native_main` (extend curation ingest)
 
 ### Forbidden (Phase 3 native)

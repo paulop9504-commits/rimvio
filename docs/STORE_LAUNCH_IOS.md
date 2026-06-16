@@ -127,7 +127,7 @@ iOS **Share Extension**은 PWA `share_target`과 별도 — v1.1 slice.
 
 MAIN (Resource rank #1 — ticket QR at gate time) → **ActivityKit** compact/expanded + Lock Screen Live Activity. Same payload as web carousel index 0; Hub does not start activities.
 
-**Ship order:** Capacitor shell on TestFlight → Widget Extension → `RimvioMainSurface.syncMainSurface` bridge → QR brightness via `UIScreen.brightness` while expanded.
+**Ship order:** Capacitor shell on TestFlight → Widget Extension (see `ios/RimvioLiveActivityWidget/`) → `RimvioMainSurface.syncMainSurface` → QR brightness via `setScanBrightnessEnabled` while viewer open.
 
 WebView/PWA alone cannot show Dynamic Island — reject any PR that tries from JS-only.
 

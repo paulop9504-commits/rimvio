@@ -64,6 +64,7 @@ export const MAIN_NATIVE_SURFACE_PLUGIN = "RimvioMainSurface" as const;
 export const MAIN_NATIVE_SURFACE_PLUGIN_METHODS = {
   sync: "syncMainSurface",
   endAll: "endAllMainSurfaces",
+  setScanBrightness: "setScanBrightnessEnabled",
 } as const;
 
 export function isMainNativeSurfaceEligible(resource: ContextResource): boolean {

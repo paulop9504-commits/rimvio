@@ -6,6 +6,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.os.Build;
 import android.view.Window;
@@ -23,6 +24,8 @@ public class RimvioMainSurfacePlugin extends Plugin {
   private static final String CHANNEL_ID = "rimvio_main_surface";
   private static final int NOTIFICATION_ID = 91001;
   private float savedBrightness = -1f;
+  private boolean foregroundScanActive = false;
+  private boolean backgroundScanPreferred = false;
 
   @Override
   public void load() {
@@ -59,6 +62,7 @@ public class RimvioMainSurfacePlugin extends Plugin {
     JSObject payload = command.getJSObject("payload");
 
     if ("end".equals(lifecycle) || payload == null) {
+      backgroundScanPreferred = false;
       clearSurface();
       JSObject result = new JSObject();
       result.put("ok", true);
@@ -72,10 +76,11 @@ public class RimvioMainSurfacePlugin extends Plugin {
     String label = payload.getString("labelKo", "티켓");
     String cta = payload.getString("ctaLabelKo", "열기");
     String place = payload.getString("contextPlace", "");
-    boolean preferScanBrightness = payload.getBoolean("preferScanBrightness", false);
+    String qrImageSrc = payload.getString("qrImageSrc", null);
+    backgroundScanPreferred = payload.getBoolean("preferScanBrightness", false);
 
-    showOngoingNotification(eyebrow, label, cta, place);
-    applyScanBrightness(preferScanBrightness);
+    showOngoingNotification(eyebrow, label, cta, place, qrImageSrc);
+    refreshScanBrightness();
 
     JSObject result = new JSObject();
     result.put("ok", true);
@@ -87,14 +92,24 @@ public class RimvioMainSurfacePlugin extends Plugin {
 
   @PluginMethod
   public void endAllMainSurfaces(PluginCall call) {
+    backgroundScanPreferred = false;
     clearSurface();
     JSObject result = new JSObject();
     result.put("ok", true);
     call.resolve(result);
   }
 
+  @PluginMethod
+  public void setScanBrightnessEnabled(PluginCall call) {
+    foregroundScanActive = call.getBoolean("enabled", false);
+    refreshScanBrightness();
+    JSObject result = new JSObject();
+    result.put("ok", true);
+    call.resolve(result);
+  }
+
   private void showOngoingNotification(
-      String eyebrow, String label, String cta, String place) {
+      String eyebrow, String label, String cta, String place, String qrImageSrc) {
     Context context = getContext();
     Intent launch = new Intent(context, MainActivity.class);
     launch.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
@@ -106,19 +121,30 @@ public class RimvioMainSurfacePlugin extends Plugin {
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
     String body = place != null && !place.isEmpty() ? place : cta;
-
-    Notification notification =
+    NotificationCompat.Builder builder =
         new NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_myplaces)
             .setContentTitle(eyebrow + " · " + label)
             .setContentText(body)
-            .setStyle(new NotificationCompat.BigTextStyle().bigText(label + "\n" + body))
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_STATUS)
-            .setContentIntent(pending)
-            .build();
+            .setContentIntent(pending);
+
+    Bitmap qrBitmap = MainSurfaceQrBitmap.decode(qrImageSrc);
+    if (qrBitmap != null) {
+      builder
+          .setLargeIcon(qrBitmap)
+          .setStyle(
+              new NotificationCompat.BigPictureStyle()
+                  .bigPicture(qrBitmap)
+                  .bigLargeIcon((Bitmap) null));
+    } else {
+      builder.setStyle(new NotificationCompat.BigTextStyle().bigText(label + "\n" + body));
+    }
+
+    Notification notification = builder.build();
 
     NotificationManager manager =
         (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
@@ -133,7 +159,11 @@ public class RimvioMainSurfacePlugin extends Plugin {
     if (manager != null) {
       manager.cancel(NOTIFICATION_ID);
     }
-    applyScanBrightness(false);
+    refreshScanBrightness();
+  }
+
+  private void refreshScanBrightness() {
+    applyScanBrightness(foregroundScanActive || backgroundScanPreferred);
   }
 
   private void applyScanBrightness(boolean enable) {

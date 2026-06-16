@@ -12,6 +12,7 @@
 		504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };
 		R1MV1001A1B2C3D4E5F60001 /* RimvioNativeBridgePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = R1MV1001A1B2C3D4E5F60002 /* RimvioNativeBridgePlugin.swift */; };
 		R1MV2002A1B2C3D4E5F60001 /* RimvioMainSurfacePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = R1MV2002A1B2C3D4E5F60002 /* RimvioMainSurfacePlugin.swift */; };
+		R1MV3003A1B2C3D4E5F60001 /* RimvioMainSurfaceAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = R1MV3003A1B2C3D4E5F60002 /* RimvioMainSurfaceAttributes.swift */; };
 		R1MV1001A1B2C3D4E5F60003 /* PhotoLibraryScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = R1MV1001A1B2C3D4E5F60004 /* PhotoLibraryScanner.swift */; };
 		504EC30D1FED79650016851F /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30B1FED79650016851F /* Main.storyboard */; };
 		504EC30F1FED79650016851F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
@@ -27,6 +28,7 @@
 		504EC3071FED79650016851F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		R1MV1001A1B2C3D4E5F60002 /* RimvioNativeBridgePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RimvioNativeBridgePlugin.swift; sourceTree = "<group>"; };
 		R1MV2002A1B2C3D4E5F60002 /* RimvioMainSurfacePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RimvioMainSurfacePlugin.swift; sourceTree = "<group>"; };
+		R1MV3003A1B2C3D4E5F60002 /* RimvioMainSurfaceAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RimvioMainSurfaceAttributes.swift; path = ../Shared/RimvioMainSurfaceAttributes.swift; sourceTree = "<group>"; };
 		R1MV1001A1B2C3D4E5F60004 /* PhotoLibraryScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLibraryScanner.swift; sourceTree = "<group>"; };
 		504EC30C1FED79650016851F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		504EC30E1FED79650016851F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -83,6 +85,7 @@
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				R1MV1001A1B2C3D4E5F60002 /* RimvioNativeBridgePlugin.swift */,
 				R1MV2002A1B2C3D4E5F60002 /* RimvioMainSurfacePlugin.swift */,
+				R1MV3003A1B2C3D4E5F60002 /* RimvioMainSurfaceAttributes.swift */,
 				R1MV1001A1B2C3D4E5F60004 /* PhotoLibraryScanner.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
@@ -221,6 +224,7 @@
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				R1MV1001A1B2C3D4E5F60001 /* RimvioNativeBridgePlugin.swift in Sources */,
 				R1MV2002A1B2C3D4E5F60001 /* RimvioMainSurfacePlugin.swift in Sources */,
+				R1MV3003A1B2C3D4E5F60001 /* RimvioMainSurfaceAttributes.swift in Sources */,
 				R1MV1001A1B2C3D4E5F60003 /* PhotoLibraryScanner.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
