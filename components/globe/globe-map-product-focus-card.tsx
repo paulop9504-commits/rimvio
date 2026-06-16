@@ -56,7 +56,7 @@ export function GlobeMapProductFocusCard({
         "flex min-h-0 flex-col overflow-hidden bg-[#f5f5f7]",
         isSheet
           ? "h-full rounded-t-[1.75rem] shadow-[0_-10px_44px_rgba(0,0,0,0.14)]"
-          : "rounded-[1.35rem] shadow-[0_20px_50px_rgba(0,0,0,0.18)] ring-1 ring-black/[0.05]",
+          : "rounded-[1.35rem] shadow-[0_20px_50px_rgba(0,0,0,0.22)] ring-1 ring-black/[0.06]",
         className,
       )}
       data-globe-map-product-focus-card
@@ -67,7 +67,7 @@ export function GlobeMapProductFocusCard({
       <div
         className={cn(
           "relative shrink-0 text-center",
-          isSheet ? "px-6 pb-2 pt-5" : "px-4 pb-3 pt-3.5",
+          isSheet ? "px-6 pb-2 pt-5" : "px-3.5 pb-2 pt-4",
         )}
       >
         <button
@@ -77,10 +77,10 @@ export function GlobeMapProductFocusCard({
             onClose();
           }}
           className={cn(
-            "absolute top-3.5 active:opacity-70",
+            "absolute z-[2] active:opacity-70",
             isSheet
-              ? "right-5 text-[15px] font-normal text-[#0071e3]"
-              : "right-3.5 flex size-7 items-center justify-center rounded-full bg-black/[0.06] text-[#1d1d1f]/70",
+              ? "right-5 top-3.5 text-[15px] font-normal text-[#0071e3]"
+              : "right-2.5 top-2.5 flex size-7 items-center justify-center rounded-full bg-black/[0.06] text-[#1d1d1f]/70",
           )}
           aria-label={closeAriaLabel}
         >
@@ -105,7 +105,7 @@ export function GlobeMapProductFocusCard({
             "line-clamp-2 font-semibold tracking-[-0.02em] text-[#1d1d1f]",
             isSheet
               ? "px-2 text-[clamp(1.5rem,6vw,1.75rem)] leading-[1.12]"
-              : "px-6 text-[20px] leading-tight",
+              : "px-9 pt-0.5 text-[21px] leading-[1.2]",
           )}
         >
           {title}
@@ -114,8 +114,10 @@ export function GlobeMapProductFocusCard({
         {subtitle ? (
           <p
             className={cn(
-              "mx-auto mt-2 line-clamp-2 font-normal leading-snug text-[#6e6e73]",
-              isSheet ? "max-w-[18rem] text-[15px]" : "px-1 text-[13px] font-medium",
+              "mx-auto line-clamp-2 font-normal leading-snug text-[#6e6e73]",
+              isSheet
+                ? "mt-2 max-w-[18rem] text-[15px]"
+                : "mt-1.5 px-6 text-[13px] font-medium",
             )}
           >
             {subtitle}
@@ -127,7 +129,7 @@ export function GlobeMapProductFocusCard({
         <div
           className={cn(
             "flex items-center justify-center",
-            isSheet ? "mt-5 gap-2.5" : "mt-3.5 gap-2",
+            isSheet ? "mt-5 gap-2.5" : "mt-3 gap-2",
           )}
         >
           <FocusActionButton action={primaryAction} size={isSheet ? "lg" : "md"} />
@@ -137,9 +139,13 @@ export function GlobeMapProductFocusCard({
         </div>
       </div>
 
-      <div className={cn("relative min-h-0 flex-1", isSheet ? "" : "px-3 pb-3")}>
+      <div className={cn("relative shrink-0", isSheet ? "min-h-0 flex-1" : "px-1 pb-1")}>
         {hero}
       </div>
+
+      {footer && !isSheet ? (
+        <div className="shrink-0 px-3 pb-2.5 pt-0.5 text-center">{footer}</div>
+      ) : null}
 
       {belowHero ? (
         <div className="shrink-0 border-t border-black/[0.06] bg-[#fbfbfd] px-4 py-2.5">
@@ -147,7 +153,7 @@ export function GlobeMapProductFocusCard({
         </div>
       ) : null}
 
-      {footer ? (
+      {footer && isSheet ? (
         <div className="shrink-0 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-1 text-center">
           {footer}
         </div>
