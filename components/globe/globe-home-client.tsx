@@ -10,6 +10,7 @@ import { GlobeContextHubRail } from "@/components/globe/globe-context-hub-rail";
 import { GlobeLocationConfirmCard } from "@/components/globe/globe-location-confirm-card";
 import { GlobeContextHubDetailSheet } from "@/components/globe/globe-context-hub-detail-sheet";
 import { GlobeUtilityMenu } from "@/components/globe/globe-utility-menu";
+import { GlobeContextHubConnectStep } from "@/components/globe/globe-context-hub-connect-step";
 import { GlobeContextMapVideoStage } from "@/components/globe/globe-context-map-video-stage";
 import { GlobeLodgingFocusStage } from "@/components/globe/globe-lodging-focus-stage";
 import { GlobeContextIngestBar, type GlobeContextIngestBarHandle } from "@/components/globe/globe-context-ingest-bar";
@@ -67,6 +68,12 @@ import {
 import { listGlobeContextNavigationOrder } from "@/lib/globe/list-globe-context-navigation-order";
 import { projectContextMediaReel } from "@/lib/globe/project-context-media-reel";
 import { resolvePinOpenInitialPage } from "@/lib/globe/resolve-pin-open-initial-page";
+import {
+  contextMapTapPhaseAllowsMediaReplay,
+  resolveInitialContextMapTapPhase,
+  shouldShowContextHubOffer,
+  type ContextMapTapPhase,
+} from "@/lib/globe/context-map-tap-phase";
 import type { PinMediaContextPage } from "@/components/globe/pin-open-media-context-pager";
 import {
   EVENT_CANDIDATES_UPDATED,
@@ -149,7 +156,9 @@ function GlobeHomeBody() {
   const [mediaStoreRevision, setMediaStoreRevision] = useState(0);
   const [hubDetailOpen, setHubDetailOpen] = useState(false);
   const [mapMediaFocusOpen, setMapMediaFocusOpen] = useState(false);
-  const [mapMediaReplaySuppressed, setMapMediaReplaySuppressed] = useState(false);
+  const [contextTapPhase, setContextTapPhase] =
+    useState<ContextMapTapPhase>("awaiting_replay");
+  const contextTapPhaseRef = useRef<ContextMapTapPhase>("awaiting_replay");
   const clustersRef = useRef<readonly PinCluster[]>([]);
 
   useEffect(() => {
@@ -203,6 +212,7 @@ function GlobeHomeBody() {
     setSheetOpen(false);
     setActiveCluster(null);
     setStackClusters(null);
+    setContextTapPhase("awaiting_replay");
     setPinDragOverrides(new Map());
     pinDragActiveRef.current = false;
     draggedEventIdRef.current = null;
@@ -222,30 +232,34 @@ function GlobeHomeBody() {
   }, [activeCluster?.eventId, schedulePinRevertToCardPlace]);
 
   const openContextCluster = useCallback(
-    (cluster: PinCluster, options?: { openSheet?: boolean }) => {
+    (
+      cluster: PinCluster,
+      options?: { openSheet?: boolean; mapTap?: boolean },
+    ) => {
       globeRef.current?.flyToPin(cluster.lat, cluster.lng, "neighborhood");
       setStackClusters(null);
       setActiveCluster(cluster);
-      setMapMediaReplaySuppressed(false);
 
       const eventId = cluster.eventId?.trim();
       const event = eventId
         ? findLifeEventCandidate(eventId) ??
           recoverGlobeContextEventFromPin(eventId)
         : null;
-      const volume = eventId ? resolveExperienceVolumeForEvent(eventId) : null;
-      const hasMapVideo = globeContextShouldMapReplayFirst({
-        event,
-        cluster,
-        volume,
-      });
-      const openSheet = hasMapVideo
-        ? options?.openSheet === true
-        : options?.openSheet !== false;
-      if (openSheet) {
-        setPinSheetInitialPage("media");
+
+      const fromMapTap =
+        options?.mapTap !== false && options?.openSheet !== true;
+
+      if (fromMapTap) {
+        setSheetOpen(false);
+        setContextTapPhase(resolveInitialContextMapTapPhase(event));
+      } else {
+        const openSheet = options?.openSheet !== false;
+        if (openSheet) {
+          setPinSheetInitialPage("media");
+        }
+        setSheetOpen(openSheet);
+        setContextTapPhase("awaiting_replay");
       }
-      setSheetOpen(openSheet);
 
       if (!eventId) {
         return;
@@ -259,6 +273,50 @@ function GlobeHomeBody() {
     },
     [],
   );
+
+  const openMapMediaBridgeRef = useRef<(() => void) | null>(null);
+
+  const completeHubOffer = useCallback(() => {
+    setContextTapPhase("awaiting_replay");
+  }, []);
+
+  const handleSameContextRetap = useCallback(() => {
+    const phase = contextTapPhaseRef.current;
+    const cluster = activeClusterRef.current;
+    const eventId = cluster?.eventId?.trim();
+    if (!eventId || !cluster) {
+      clearActiveContext();
+      return;
+    }
+
+    const event =
+      findLifeEventCandidate(eventId) ?? recoverGlobeContextEventFromPin(eventId);
+    const volume = resolveExperienceVolumeForEvent(eventId);
+    const hasMedia = globeContextShouldMapReplayFirst({
+      event,
+      cluster,
+      volume,
+    });
+
+    if (phase === "hub_offer") {
+      setContextTapPhase("awaiting_replay");
+      return;
+    }
+
+    if (phase === "awaiting_replay") {
+      if (hasMedia) {
+        setContextTapPhase("media_open");
+      } else {
+        openMapMediaBridgeRef.current?.();
+      }
+      return;
+    }
+
+    if (phase === "media_open") {
+      setContextTapPhase("awaiting_replay");
+      globeRef.current?.clearPinViewportBias();
+    }
+  }, [clearActiveContext]);
 
   const markPinPress = useCallback(() => {
     lastPinPressAtRef.current = Date.now();
@@ -288,10 +346,10 @@ function GlobeHomeBody() {
 
       if (nearby.length === 1) {
         if (activeClusterRef.current?.pinId === nearby[0]!.pinId) {
-          clearActiveContext();
+          handleSameContextRetap();
           return;
         }
-        openContextCluster(nearby[0]!);
+        openContextCluster(nearby[0]!, { mapTap: true });
         return;
       }
 
@@ -299,7 +357,7 @@ function GlobeHomeBody() {
       setActiveCluster(null);
       setSheetOpen(false);
     },
-    [clearActiveContext, openContextCluster],
+    [clearActiveContext, handleSameContextRetap, openContextCluster],
   );
 
   const resolveNearbyAt = useCallback((tapLat: number, tapLng: number) => {
@@ -354,16 +412,28 @@ function GlobeHomeBody() {
     });
   }, [peerOptionsRevision, mediaStoreRevision, peopleFilter, timeFilter]);
 
+  const contextHasMapMedia = useMemo(() => {
+    if (!activeCluster?.eventId || !activeContextEvent) {
+      return false;
+    }
+    const volume = resolveExperienceVolumeForEvent(activeCluster.eventId);
+    return globeContextShouldMapReplayFirst({
+      event: activeContextEvent,
+      cluster: activeCluster,
+      volume,
+    });
+  }, [activeCluster, activeContextEvent]);
+
   const showMapVideoReplay = Boolean(
-    activeContextMediaReel.length > 0 &&
-      activeCluster?.eventId &&
+    activeCluster?.eventId &&
       !sheetOpen &&
       !stackClusters?.length &&
-      !mapMediaReplaySuppressed,
+      contextMapTapPhaseAllowsMediaReplay(contextTapPhase) &&
+      contextHasMapMedia,
   );
 
   const dismissMapMediaReplay = useCallback(() => {
-    setMapMediaReplaySuppressed(true);
+    setContextTapPhase("awaiting_replay");
     globeRef.current?.clearPinViewportBias();
   }, []);
 
@@ -385,30 +455,6 @@ function GlobeHomeBody() {
       window.removeEventListener(EVENT_CANDIDATES_UPDATED, bump);
     };
   }, []);
-
-  useEffect(() => {
-    if (!activeCluster?.eventId || stackClusters?.length || sheetOpen) {
-      return;
-    }
-    void mediaStoreRevision;
-    const eventId = activeCluster.eventId.trim();
-    const volume = resolveExperienceVolumeForEvent(eventId);
-    const shouldMapFirst = globeContextShouldMapReplayFirst({
-      event: activeContextEvent,
-      cluster: activeCluster,
-      volume,
-    });
-    if (shouldMapFirst) {
-      setSheetOpen(false);
-    }
-  }, [
-    activeCluster?.eventId,
-    activeCluster?.pinId,
-    activeContextEvent,
-    mediaStoreRevision,
-    sheetOpen,
-    stackClusters?.length,
-  ]);
 
   useEffect(() => {
     for (const invite of pendingBridgeInvites) {
@@ -486,9 +532,13 @@ function GlobeHomeBody() {
         }
         return;
       }
-      openContextCluster(cluster);
+      if (activeClusterRef.current?.pinId === cluster.pinId) {
+        handleSameContextRetap();
+        return;
+      }
+      openContextCluster(cluster, { mapTap: true });
     },
-    [markPinPress, openContextCluster, pendingBridgeInvites],
+    [handleSameContextRetap, markPinPress, openContextCluster, pendingBridgeInvites],
   );
 
   const onGlobePress = useCallback(
@@ -527,6 +577,8 @@ function GlobeHomeBody() {
       setSheetOpen(true);
       return;
     }
+    setContextTapPhase("awaiting_replay");
+    globeRef.current?.clearPinViewportBias();
     setPinSheetInitialPage(
       resolvePinOpenInitialPage({
         eventId,
@@ -537,6 +589,8 @@ function GlobeHomeBody() {
     setSheetOpen(true);
   }, [markPinPress, user?.id]);
 
+  openMapMediaBridgeRef.current = openMapMediaBridge;
+
   const focusContextByEventId = useCallback(
     (eventId: string, options?: { openSheet?: boolean }) => {
       const result = focusGlobeContextOnMap(eventId);
@@ -544,7 +598,10 @@ function GlobeHomeBody() {
         toast.error("맥락을 찾지 못했어요");
         return null;
       }
-      openContextCluster(result.cluster, options);
+      openContextCluster(result.cluster, {
+        openSheet: options?.openSheet,
+        mapTap: false,
+      });
       return result.cluster;
     },
     [openContextCluster],
@@ -645,6 +702,7 @@ function GlobeHomeBody() {
   const pinCoordOverrides = useMemo(() => pinDragOverrides, [pinDragOverrides]);
 
   activeClusterRef.current = activeCluster;
+  contextTapPhaseRef.current = contextTapPhase;
   stackClustersRef.current = stackClusters;
   sheetOpenRef.current = sheetOpen;
 
@@ -768,6 +826,7 @@ function GlobeHomeBody() {
         navigationEntries={navigableContexts}
         onDismiss={dismissMapMediaReplay}
         onOpenDetails={openMapMediaBridge}
+        onHeroPress={openMapMediaBridge}
         onNavigateContext={(nextEventId) => {
           focusContextByEventId(nextEventId);
         }}
@@ -778,6 +837,43 @@ function GlobeHomeBody() {
           toast.success("삭제했어요");
         }}
       />
+      {contextTapPhase === "hub_offer" &&
+      activeContextEvent &&
+      shouldShowContextHubOffer(activeContextEvent) ? (
+        <div
+          className="pointer-events-none absolute inset-0 z-[28]"
+          data-globe-context-hub-connect-overlay
+        >
+          <div
+            className="pointer-events-none absolute inset-x-0 z-[1] flex min-h-0 flex-col items-center justify-center overflow-y-auto overscroll-contain px-3 py-1"
+            style={{
+              top: "max(2.5rem, env(safe-area-inset-top))",
+              bottom: "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 0.5rem)",
+            }}
+          >
+            <GlobeContextHubConnectStep
+              event={activeContextEvent}
+              onComplete={completeHubOffer}
+              onUpdated={() => setMediaStoreRevision((value) => value + 1)}
+            />
+          </div>
+        </div>
+      ) : null}
+      {contextTapPhase === "awaiting_replay" &&
+      hubEventId &&
+      contextHasMapMedia &&
+      !sheetOpen &&
+      !mapMediaFocusOpen ? (
+        <p
+          className="pointer-events-none absolute inset-x-6 z-[19] text-center text-[11px] font-medium text-white/90 drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]"
+          style={{
+            bottom: "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 0.75rem)",
+          }}
+          data-globe-context-map-tap-hint
+        >
+          {copy.globe.contextMapTapMediaHint}
+        </p>
+      ) : null}
       <GlobeLodgingFocusStage
         globeRef={globeRef}
         contextEventId={hubEventId}
@@ -813,7 +909,10 @@ function GlobeHomeBody() {
             <GlobeLocationConfirmCard className="pointer-events-auto w-[min(calc(100vw-1.5rem),12rem)]" />
           </>
         ) : null}
-        {hubEventId && !hubDetailOpen && !mapMediaFocusOpen ? (
+        {hubEventId &&
+        !hubDetailOpen &&
+        !mapMediaFocusOpen &&
+        contextTapPhase !== "hub_offer" ? (
           <GlobeContextHubRail
             className="pointer-events-auto"
             visible={!globeRenderSuspended}

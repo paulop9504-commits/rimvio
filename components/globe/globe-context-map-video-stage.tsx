@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
-import { ContextMediaDeleteButton } from "@/components/globe/context-media-delete-button";
-import { ContextMediaVideoSoundButton } from "@/components/globe/context-media-video-sound-button";
 import { GlobeContextMediaFocusCard } from "@/components/globe/globe-context-media-focus-card";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { useGlobeMapMediaCardSize } from "@/hooks/use-globe-map-media-card-size";
@@ -40,6 +38,7 @@ export type GlobeContextMapVideoStageProps = {
   navigationEntries?: readonly GlobeContextTimelineEntry[];
   onDismiss?: () => void;
   onOpenDetails?: () => void;
+  onHeroPress?: () => void;
   onNavigateContext?: (eventId: string) => void;
   viewerUserId?: string | null;
   deletable?: boolean;
@@ -140,6 +139,7 @@ export function GlobeContextMapVideoStage({
   navigationEntries = [],
   onDismiss,
   onOpenDetails,
+  onHeroPress,
   onNavigateContext,
   viewerUserId,
   deletable = false,
@@ -152,14 +152,10 @@ export function GlobeContextMapVideoStage({
   const [revision, setRevision] = useState(0);
   const [mediaIndex, setMediaIndex] = useState(0);
   const [playing, setPlaying] = useState(true);
-  const [videoSoundOn, setVideoSoundOn] = useState(false);
   const {
     widthPx,
     pinchActiveRef,
     isResizing,
-    onResizeHandlePointerDown,
-    onResizeHandlePointerMove,
-    onResizeHandlePointerUp,
     onCardTouchStart,
     onCardTouchMove,
     onCardTouchEnd,
@@ -210,12 +206,7 @@ export function GlobeContextMapVideoStage({
   useEffect(() => {
     setMediaIndex(0);
     setPlaying(true);
-    setVideoSoundOn(false);
   }, [eventId]);
-
-  useEffect(() => {
-    setVideoSoundOn(false);
-  }, [mediaIndex]);
 
   useEffect(() => {
     if (mediaIndex >= reel.length) {
@@ -267,11 +258,6 @@ export function GlobeContextMapVideoStage({
     [eventId, navigationEntries, onNavigateContext, reel.length],
   );
 
-  const handleMediaDeleted = useCallback(() => {
-    setRevision((value) => value + 1);
-    onMediaDeleted?.();
-  }, [onMediaDeleted]);
-
   const dismiss = useCallback(() => {
     onDismiss?.();
   }, [onDismiss]);
@@ -281,10 +267,6 @@ export function GlobeContextMapVideoStage({
   }
 
   const subtitle = currentItem?.recallCaption?.trim() || null;
-  const footerLines = [
-    reel.length > 1 ? copy.globe.contextMediaFocusSwipeMedia : null,
-    canNavigateContext ? copy.globe.contextMediaFocusSwipeContext : null,
-  ].filter(Boolean);
 
   const mergeCardTouchStart = (event: React.TouchEvent) => {
     event.stopPropagation();
@@ -306,10 +288,6 @@ export function GlobeContextMapVideoStage({
     event.stopPropagation();
     onCardTouchEnd(event);
     if (pinchActiveRef.current || isResizing()) {
-      touchStartRef.current = null;
-      return;
-    }
-    if ((event.target as HTMLElement).closest("[data-globe-map-media-resize-handle]")) {
       touchStartRef.current = null;
       return;
     }
@@ -357,68 +335,12 @@ export function GlobeContextMapVideoStage({
             className="w-full"
             title={contextTitle}
             recallCaption={subtitle}
-            primaryAction={
-              onOpenDetails
-                ? {
-                    label: copy.globe.lodgingFocusDetails,
-                    onClick: () => onOpenDetails(),
-                  }
-                : undefined
-            }
-            secondaryAction={
-              currentItem?.kind === "video"
-                ? {
-                    label: playing
-                      ? copy.globe.contextMediaFocusPause
-                      : copy.globe.contextMediaFocusPlay,
-                    onClick: () => setPlaying((value) => !value),
-                  }
-                : undefined
-            }
             onClose={dismiss}
             closeAriaLabel={copy.globe.contextMediaFocusCloseAria}
-            footer={
-              footerLines.length > 0 ? (
-                <div className="space-y-0.5">
-                  {footerLines.map((line) => (
-                    <p key={line} className="text-[11px] font-normal text-[#86868b]">
-                      {line}
-                    </p>
-                  ))}
-                </div>
-              ) : undefined
-            }
+            onHeroPress={onHeroPress ?? onOpenDetails}
             onTouchStart={mergeCardTouchStart}
             onTouchMove={mergeCardTouchMove}
             onTouchEnd={mergeCardTouchEnd}
-            heroControls={
-              currentItem?.kind === "video" || (deletable && eventId && currentItem) ? (
-                <div className="flex items-center gap-1.5">
-                  {currentItem?.kind === "video" ? (
-                    <ContextMediaVideoSoundButton
-                      soundOn={videoSoundOn}
-                      variant="pill"
-                      onToggleSound={() => {
-                        toggleVideoSoundRef.current?.();
-                        if (!playing) {
-                          setPlaying(true);
-                        }
-                      }}
-                    />
-                  ) : null}
-                  {eventId && deletable && currentItem ? (
-                    <ContextMediaDeleteButton
-                      item={currentItem}
-                      eventId={eventId}
-                      viewerUserId={viewerUserId}
-                      enabled={deletable}
-                      className="relative bottom-auto left-auto size-8 shrink-0"
-                      onDeleted={handleMediaDeleted}
-                    />
-                  ) : null}
-                </div>
-              ) : undefined
-            }
             hero={
               <>
                 {currentItem ? (
@@ -429,7 +351,6 @@ export function GlobeContextMapVideoStage({
                       playing={playing}
                       onPlayingChange={setPlaying}
                       toggleSoundRef={toggleVideoSoundRef}
-                      onSoundOnChange={setVideoSoundOn}
                     />
                   </div>
                 ) : null}
@@ -457,23 +378,6 @@ export function GlobeContextMapVideoStage({
               </>
             }
           />
-
-          <button
-            type="button"
-            className="mt-1.5 flex w-full touch-none flex-col items-center gap-1 rounded-full py-2 active:opacity-80"
-            aria-label={copy.globe.contextMediaFocusResizeAria}
-            data-globe-map-media-resize-handle
-            onPointerDown={onResizeHandlePointerDown}
-            onPointerMove={onResizeHandlePointerMove}
-            onPointerUp={onResizeHandlePointerUp}
-            onPointerCancel={onResizeHandlePointerUp}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <span className="h-1 w-10 rounded-full bg-white/70 shadow-sm" aria-hidden />
-            <span className="text-[10px] font-normal text-white/80">
-              {copy.globe.contextMediaFocusResizeHint}
-            </span>
-          </button>
         </div>
       </div>
     </div>

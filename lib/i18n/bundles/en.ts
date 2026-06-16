@@ -301,6 +301,8 @@ export const copyEn: Copy = {
       "We pin an airport hub on the map — tap it later to book flights for this trip",
     departureHubRecommended: "Suggested",
     departureHubSkip: "Not now",
+    contextMapTapMediaHint: "Tap the context again to replay photos and video on the map",
+    contextMapTapBridgeHint: "Tap the photo or video to open the context bridge",
     departureHubConnected: (airport: string) => `Departure hub set · ${airport}`,
     departureHubConnectFail: "Couldn't connect departure hub",
     contextHubEyebrow: "Resources",

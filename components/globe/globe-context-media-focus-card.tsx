@@ -2,43 +2,35 @@
 
 import type { ReactNode } from "react";
 import { X } from "lucide-react";
-import type { GlobeMapProductFocusAction } from "@/components/globe/globe-map-product-focus-card";
 import { cn } from "@/lib/utils";
 
 export type GlobeContextMediaFocusCardProps = {
   title: string;
   recallCaption?: string | null;
-  primaryAction?: GlobeMapProductFocusAction;
-  secondaryAction?: GlobeMapProductFocusAction;
   onClose: () => void;
   closeAriaLabel: string;
   hero: ReactNode;
-  heroControls?: ReactNode;
-  footer?: ReactNode;
   className?: string;
+  onHeroPress?: () => void;
   onTouchStart?: (event: React.TouchEvent) => void;
   onTouchMove?: (event: React.TouchEvent) => void;
   onTouchEnd?: (event: React.TouchEvent) => void;
 };
 
-/** Context photo/video replay — edge-to-edge media, no inner frame. */
+/** Map replay — media only; tap hero opens bridge. No footer chrome. */
 export function GlobeContextMediaFocusCard({
   title,
   recallCaption,
-  primaryAction,
-  secondaryAction,
   onClose,
   closeAriaLabel,
   hero,
-  heroControls,
-  footer,
   className,
+  onHeroPress,
   onTouchStart,
   onTouchMove,
   onTouchEnd,
 }: GlobeContextMediaFocusCardProps) {
   const caption = recallCaption?.trim() || null;
-  const showActions = Boolean(primaryAction || secondaryAction);
 
   return (
     <article
@@ -52,7 +44,35 @@ export function GlobeContextMediaFocusCard({
       onTouchEnd={onTouchEnd}
     >
       <div className="relative">
-        <div className="relative overflow-hidden bg-[#1d1d1f]">{hero}</div>
+        <div
+          className={cn(
+            "relative overflow-hidden bg-[#1d1d1f]",
+            onHeroPress && "cursor-pointer",
+          )}
+          role={onHeroPress ? "button" : undefined}
+          tabIndex={onHeroPress ? 0 : undefined}
+          aria-label={onHeroPress ? title : undefined}
+          onClick={
+            onHeroPress
+              ? (event) => {
+                  event.stopPropagation();
+                  onHeroPress();
+                }
+              : undefined
+          }
+          onKeyDown={
+            onHeroPress
+              ? (event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onHeroPress();
+                  }
+                }
+              : undefined
+          }
+        >
+          {hero}
+        </div>
 
         <button
           type="button"
@@ -66,12 +86,6 @@ export function GlobeContextMediaFocusCard({
           <X className="size-3.5" aria-hidden />
         </button>
 
-        {heroControls ? (
-          <div className="absolute left-1.5 top-10 z-[4] flex items-center gap-1.5">
-            {heroControls}
-          </div>
-        ) : null}
-
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] bg-gradient-to-t from-black/75 via-black/30 to-transparent px-2.5 pb-2.5 pt-14">
           <h2 className="line-clamp-2 text-[16px] font-bold leading-tight tracking-tight text-white">
             {title}
@@ -83,49 +97,6 @@ export function GlobeContextMediaFocusCard({
           ) : null}
         </div>
       </div>
-
-      {showActions ? (
-        <div className="flex items-center justify-center gap-1.5 bg-[#f5f5f7] px-2.5 py-2">
-          {primaryAction ? <MediaFocusAction action={primaryAction} /> : null}
-          {secondaryAction ? (
-            <MediaFocusAction action={secondaryAction} variant="secondary" />
-          ) : null}
-        </div>
-      ) : null}
-
-      {footer ? (
-        <div className="border-t border-white/10 bg-[#f5f5f7] px-2.5 py-1.5 text-center">
-          {footer}
-        </div>
-      ) : null}
     </article>
-  );
-}
-
-function MediaFocusAction({
-  action,
-  variant = "primary",
-}: {
-  action: GlobeMapProductFocusAction;
-  variant?: "primary" | "secondary";
-}) {
-  const primary = variant === "primary";
-  return (
-    <button
-      type="button"
-      disabled={action.disabled}
-      onClick={(event) => {
-        event.stopPropagation();
-        action.onClick();
-      }}
-      className={cn(
-        "min-w-[5rem] rounded-full px-3.5 py-1.5 text-[12px] font-semibold transition active:scale-[0.98]",
-        primary
-          ? "bg-[#0071e3] text-white disabled:bg-[#0071e3]/35"
-          : "border border-[#0071e3] bg-white text-[#0071e3] disabled:opacity-40",
-      )}
-    >
-      {action.label}
-    </button>
   );
 }
