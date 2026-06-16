@@ -71,6 +71,7 @@ import { formatGpsAccuracyLabel } from "@/lib/globe/format-gps-accuracy-label";
 import { cn } from "@/lib/utils";
 import { copy } from "@/lib/copy/human-ko";
 import { AuthLogoutButton } from "@/components/auth-logout-button";
+import { GlobeBackerLink } from "@/components/globe/globe-backer-link";
 
 export type GlobeSettingsSheetProps = {
   open: boolean;
@@ -510,6 +511,10 @@ function GlobeSettingsBody({ onShowGlobeGuide }: { onShowGlobeGuide?: () => void
           <AuthLogoutButton className="mt-3" variant="destructive" redirectTo="/globe" />
         </SettingsSection>
       ) : null}
+
+      <div className="px-1 pb-2 pt-1">
+        <GlobeBackerLink className="w-full justify-center" />
+      </div>
     </div>
   );
 }

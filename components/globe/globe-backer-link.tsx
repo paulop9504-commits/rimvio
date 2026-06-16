@@ -18,7 +18,7 @@ export function GlobeBackerLink({ className }: GlobeBackerLinkProps) {
     <a
       href={href}
       className={cn(
-        "inline-flex max-w-[min(100%,12.75rem)] items-center gap-1.5 rounded-full bg-card/95 px-3 py-2 text-[11px] font-semibold text-foreground shadow-sm ring-1 ring-border backdrop-blur-md active:scale-[0.98]",
+        "inline-flex w-full max-w-none items-center justify-center gap-1.5 rounded-full bg-card/95 px-3 py-2 text-[11px] font-semibold text-foreground shadow-sm ring-1 ring-border backdrop-blur-md active:scale-[0.98]",
         className,
       )}
       aria-label={copy.globe.backerLinkAria}

@@ -2,13 +2,12 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Settings } from "lucide-react";
 import { toast } from "sonner";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { RimvioGlobeHubClient } from "@/components/experience/rimvio-globe-hub-client";
-import { GlobeBackerLink } from "@/components/globe/globe-backer-link";
 import { GlobeContextControlDock } from "@/components/globe/globe-context-control-dock";
 import { GlobeContextHubRail } from "@/components/globe/globe-context-hub-rail";
+import { GlobeUtilityMenu } from "@/components/globe/globe-utility-menu";
 import { GlobeContextMapVideoStage } from "@/components/globe/globe-context-map-video-stage";
 import { GlobeContextIngestBar, type GlobeContextIngestBarHandle } from "@/components/globe/globe-context-ingest-bar";
 import { GlobeFirstVisitCoach } from "@/components/globe/globe-first-visit-coach";
@@ -17,10 +16,9 @@ import { GlobeContextManageSheet } from "@/components/globe/globe-context-manage
 import { GlobeContextStackPicker } from "@/components/globe/globe-context-stack-picker";
 import { GlobeCreateContextSheet } from "@/components/globe/globe-create-context-sheet";
 import { GlobeContextShareSheet } from "@/components/globe/globe-context-share-sheet";
-import { GlobeInboxSheet, GlobeInboxTrigger } from "@/components/globe/globe-inbox-sheet";
+import { GlobeInboxSheet } from "@/components/globe/globe-inbox-sheet";
 import {
   GlobeMediaPoolSheet,
-  GlobeMediaPoolTrigger,
 } from "@/components/globe/globe-media-pool-sheet";
 import { ExperienceBridgeGhostSheet } from "@/components/globe/experience-bridge-ghost-sheet";
 import { GlobeSettingsSheet } from "@/components/globe/globe-settings-sheet";
@@ -736,7 +734,6 @@ function GlobeHomeBody() {
         }}
       />
       <div className="pointer-events-none absolute left-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20 flex max-h-[calc(100%-var(--rimvio-globe-ingest-offset)-5.5rem)] flex-col items-start gap-2">
-        <GlobeBackerLink className="pointer-events-auto" />
         <div className="pointer-events-auto">
           <GlobeContextControlDock
             timeFilter={timeFilter}
@@ -765,26 +762,15 @@ function GlobeHomeBody() {
           activeEventId={activeCluster?.eventId ?? null}
         />
       </div>
-      <div className="pointer-events-none absolute right-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20 flex items-center gap-2">
-        <GlobeMediaPoolTrigger
-          count={mediaPoolCount}
-          onOpen={() => setMediaPoolOpen(true)}
+      <div className="pointer-events-none absolute right-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20">
+        <GlobeUtilityMenu
+          mediaPoolCount={mediaPoolCount}
+          inboxCount={globeInboxCount}
+          onOpenMediaPool={() => setMediaPoolOpen(true)}
+          onOpenInbox={() => setGlobeInboxOpen(true)}
+          onOpenSettings={() => setSettingsOpen(true)}
           className="pointer-events-auto"
         />
-        <GlobeInboxTrigger
-          count={globeInboxCount}
-          onOpen={() => setGlobeInboxOpen(true)}
-          className="pointer-events-auto"
-        />
-        <button
-          type="button"
-          onClick={() => setSettingsOpen(true)}
-          className="pointer-events-auto flex size-10 items-center justify-center rounded-full bg-card/95 text-foreground shadow-sm ring-1 ring-border backdrop-blur-md active:scale-[0.98]"
-          aria-label="지구본 설정"
-          data-globe-settings-trigger
-        >
-          <Settings className="size-4 text-primary" aria-hidden />
-        </button>
       </div>
       <GlobeContextIngestBar
         ref={ingestBarRef}

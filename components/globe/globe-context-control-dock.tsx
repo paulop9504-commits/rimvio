@@ -27,7 +27,7 @@ export type GlobeContextControlDockProps = {
   className?: string;
 };
 
-/** Left-top globe controls — actions always visible; filters fold away. */
+/** Left-top globe controls — compact row; filters fold away. */
 export function GlobeContextControlDock({
   timeFilter,
   onTimeFilterChange,
@@ -70,53 +70,45 @@ export function GlobeContextControlDock({
   return (
     <div
       className={cn(
-        "w-[min(100%,12.75rem)] overflow-hidden rounded-[1.15rem] bg-card/95 shadow-sm ring-1 ring-border backdrop-blur-md",
+        "w-[min(100%,11rem)] overflow-hidden rounded-full bg-card/95 shadow-sm ring-1 ring-border backdrop-blur-md",
+        expanded && "rounded-[1.15rem]",
         className,
       )}
       data-globe-context-dock
       data-globe-context-dock-expanded={expanded ? "true" : "false"}
     >
       <div className="flex items-stretch gap-px bg-border/40 p-1">
-        <div className="grid min-w-0 flex-1 grid-cols-3 gap-px">
-          <button
-            type="button"
-            onClick={onCreate}
-            className="flex flex-col items-center gap-0.5 rounded-[0.85rem] bg-card/95 px-1 py-1.5 active:scale-[0.98]"
-            data-globe-create-context-trigger
-          >
-            <CalendarPlus className="size-3.5 text-primary" aria-hidden />
-            <span className="text-[10px] font-semibold leading-tight text-foreground">
-              만들기
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={onList}
-            className="flex flex-col items-center gap-0.5 rounded-[0.85rem] bg-card/95 px-1 py-1.5 active:scale-[0.98]"
-            data-globe-context-list-trigger
-          >
-            <CalendarRange className="size-3.5 text-primary" aria-hidden />
-            <span className="text-[10px] font-semibold leading-tight text-foreground">
-              내 맥락
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={onManage}
-            className="flex flex-col items-center gap-0.5 rounded-[0.85rem] bg-card/95 px-1 py-1.5 active:scale-[0.98]"
-            data-globe-context-manage-trigger
-          >
-            <ListChecks className="size-3.5 text-primary" aria-hidden />
-            <span className="text-[10px] font-semibold leading-tight text-foreground">
-              관리
-            </span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={onList}
+          className="relative flex min-w-0 flex-1 items-center justify-center gap-1 rounded-full bg-card/95 px-2.5 py-2 active:scale-[0.98]"
+          data-globe-context-list-trigger
+        >
+          <CalendarRange className="size-3.5 shrink-0 text-primary" aria-hidden />
+          <span className="truncate text-[11px] font-semibold text-foreground">
+            {copy.globe.listTitle}
+          </span>
+          {!expanded && hasActiveFilters ? (
+            <span
+              className="absolute right-2 top-1.5 size-1.5 rounded-full bg-primary"
+              aria-hidden
+            />
+          ) : null}
+        </button>
+        <button
+          type="button"
+          onClick={onCreate}
+          className="flex size-9 shrink-0 items-center justify-center rounded-full bg-card/95 active:scale-[0.98]"
+          aria-label={copy.globe.dockCreateAria}
+          data-globe-create-context-trigger
+        >
+          <CalendarPlus className="size-4 text-primary" aria-hidden />
+        </button>
         <button
           type="button"
           onClick={toggleExpanded}
           className={cn(
-            "relative flex w-8 shrink-0 flex-col items-center justify-center rounded-[0.85rem] bg-card/95 active:scale-[0.98]",
+            "flex size-9 shrink-0 items-center justify-center rounded-full bg-card/95 active:scale-[0.98]",
             expanded && "bg-muted/60",
           )}
           aria-expanded={expanded}
@@ -132,17 +124,25 @@ export function GlobeContextControlDock({
             )}
             aria-hidden
           />
-          {!expanded && hasActiveFilters ? (
-            <span
-              className="absolute right-1 top-1 size-1.5 rounded-full bg-primary"
-              aria-hidden
-            />
-          ) : null}
         </button>
       </div>
 
       {expanded ? (
         <>
+          <div className="border-t border-border/60 px-2 py-1.5">
+            <button
+              type="button"
+              onClick={onManage}
+              className="flex w-full items-center gap-2 rounded-[0.85rem] px-2 py-1.5 text-left active:bg-muted/70"
+              data-globe-context-manage-trigger
+            >
+              <ListChecks className="size-3.5 text-primary" aria-hidden />
+              <span className="text-[11px] font-semibold text-foreground">
+                {copy.globe.dockManageLabel}
+              </span>
+            </button>
+          </div>
+
           {onPeopleFilterChange && peerOptions.length > 0 ? (
             <div
               className="border-t border-border/60 px-2 py-1.5"
