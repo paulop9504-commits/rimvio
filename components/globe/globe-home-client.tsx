@@ -49,7 +49,6 @@ import type { GlobeContextTimelineEntry } from "@/lib/globe/list-globe-context-t
 import type { GlobeManageContextEntry } from "@/lib/globe/list-globe-manage-contexts";
 import type { PinCluster } from "@/lib/globe/pin-cluster-types";
 import { resolveGlobeContextPinCluster } from "@/lib/globe/resolve-globe-context-pin-cluster";
-import { resolveActiveGlobeContext } from "@/lib/globe/resolve-active-globe-context";
 import { listGlobeContextPeerOptions } from "@/lib/globe/list-globe-context-peer-options";
 import type { GlobeContextPeopleFilter } from "@/lib/globe/globe-context-people-filter";
 import {
@@ -142,37 +141,10 @@ function GlobeHomeBody() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [stackClusters, setStackClusters] = useState<PinCluster[] | null>(null);
   const [mediaStoreRevision, setMediaStoreRevision] = useState(0);
-  const [contextMatchRevision, setContextMatchRevision] = useState(0);
-  const [dismissedProactiveHubEventIds, setDismissedProactiveHubEventIds] = useState<
-    Set<string>
-  >(() => new Set());
   const clustersRef = useRef<readonly PinCluster[]>([]);
 
-  const proactiveContext = useMemo(() => {
-    void contextMatchRevision;
-    return resolveActiveGlobeContext({
-      events: listLifeEventCandidates(),
-      lat: liveLocation?.lat ?? null,
-      lng: liveLocation?.lng ?? null,
-    });
-  }, [contextMatchRevision, liveLocation?.lat, liveLocation?.lng]);
-
-  const proactiveHubEventId = useMemo(() => {
-    const eventId = proactiveContext?.eventId?.trim();
-    if (!eventId || dismissedProactiveHubEventIds.has(eventId)) {
-      return null;
-    }
-    return eventId;
-  }, [dismissedProactiveHubEventIds, proactiveContext?.eventId]);
-
-  const hubEventId = activeCluster?.eventId?.trim() || proactiveHubEventId || null;
-  const hubOnDismiss =
-    !activeCluster?.eventId?.trim() && proactiveHubEventId
-      ? () =>
-          setDismissedProactiveHubEventIds((current) =>
-            new Set(current).add(proactiveHubEventId),
-          )
-      : undefined;
+  /** Hub activates only when user touches a context pin — not proactive. */
+  const hubEventId = activeCluster?.eventId?.trim() || null;
 
   const detailLevelRef = useRef<GlobeDetailLevel>("space");
   const lastPinPressAtRef = useRef(0);
@@ -371,12 +343,9 @@ function GlobeHomeBody() {
 
   useEffect(() => {
     const refresh = () => setPeerOptionsRevision((value) => value + 1);
-    const refreshContextMatch = () => setContextMatchRevision((value) => value + 1);
     window.addEventListener(EVENT_CANDIDATES_UPDATED, refresh);
-    window.addEventListener(EVENT_CANDIDATES_UPDATED, refreshContextMatch);
     return () => {
       window.removeEventListener(EVENT_CANDIDATES_UPDATED, refresh);
-      window.removeEventListener(EVENT_CANDIDATES_UPDATED, refreshContextMatch);
     };
   }, []);
 
@@ -390,10 +359,6 @@ function GlobeHomeBody() {
       window.removeEventListener(EVENT_CANDIDATES_UPDATED, bump);
     };
   }, []);
-
-  useEffect(() => {
-    setContextMatchRevision((value) => value + 1);
-  }, [liveLocation?.lat, liveLocation?.lng]);
 
   useEffect(() => {
     if (!activeCluster?.eventId || stackClusters?.length || sheetOpen) {
@@ -796,7 +761,7 @@ function GlobeHomeBody() {
             }
           />
         </div>
-        {hubEventId && activeCluster?.eventId ? (
+        {hubEventId ? (
           <GlobeContextHubRail
             className="pointer-events-auto"
             visible={!globeRenderSuspended}
@@ -808,20 +773,6 @@ function GlobeHomeBody() {
           />
         ) : null}
       </div>
-      {hubEventId && !activeCluster?.eventId ? (
-        <div className="pointer-events-none absolute inset-x-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20 flex justify-center">
-          <GlobeContextHubRail
-            className="pointer-events-auto w-full max-w-md"
-            visible={!globeRenderSuspended}
-            activeEventId={hubEventId}
-            lat={liveLocation?.lat ?? null}
-            lng={liveLocation?.lng ?? null}
-            authUserId={user?.id ?? null}
-            layout="hero"
-            onDismiss={hubOnDismiss}
-          />
-        </div>
-      ) : null}
       <div className="pointer-events-none absolute right-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20">
         <GlobeUtilityMenu
           mediaPoolCount={mediaPoolCount}

@@ -19,7 +19,7 @@ Context (맥락 — EventCandidate / pin)
               └─ horizontal swipe = rank #2, #3, … (same context only)
 ```
 
-**Which context is active?** — cross-context resolver (`resolveActiveGlobeContext`).  
+**Which context is active?** — user taps a context pin (`activeCluster`).  
 **Which resource is MAIN?** — per-context resource ranker (`rankContextResources`) — **not the Hub**.
 
 ---
