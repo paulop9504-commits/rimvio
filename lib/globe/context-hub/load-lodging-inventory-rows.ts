@@ -82,8 +82,12 @@ export async function loadLodgingInventoryRows(input: {
   }
 
   const place = resolveContextPlaceLabel(input.event);
+  const anchor = coords ?? resolveContextLodgingSearchCoords(input.event, input);
+  if (!anchor) {
+    return { rows: [], source: "mock" };
+  }
   return {
-    rows: withStayWindow(input.event, [...resolveLodgingMockForPlace(place)]),
+    rows: withStayWindow(input.event, [...resolveLodgingMockForPlace(place, anchor)]),
     source: "mock",
   };
 }

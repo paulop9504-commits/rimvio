@@ -5,6 +5,8 @@ export const GLOBE_LODGING_FOCUS = "rimvio:globe-lodging-focus";
 export type GlobeLodgingFocusDetail = {
   resourceId: string;
   carouselIndex: number;
+  /** map_marker opens full focus stage; carousel/strip sync markers only. */
+  source?: "map_marker" | "carousel" | "strip";
 };
 
 export function dispatchGlobeLodgingFocus(detail: GlobeLodgingFocusDetail): void {

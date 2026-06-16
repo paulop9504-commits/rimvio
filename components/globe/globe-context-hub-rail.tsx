@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type RefObject } from "react";
 import { ChevronDown } from "lucide-react";
 import { toast } from "sonner";
+import { GlobeContextGardenSummary } from "@/components/globe/globe-context-garden-summary";
 import { GlobeHubResourceCarousel } from "@/components/globe/globe-hub-resource-carousel";
 import { GlobeLodgingMapStrip } from "@/components/globe/globe-lodging-map-strip";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
@@ -23,6 +24,7 @@ import {
   listContextHubServicesForEvent,
   type ContextHubServiceId,
 } from "@/lib/globe/context-hub/context-hub-service-catalog";
+import { readContextGardenSnapshot } from "@/lib/globe/context-gardener/read-context-garden";
 import { rankContextHubServices } from "@/lib/globe/context-hub/rank-context-hub-services";
 import type { RankedContextResource } from "@/lib/globe/resource/map-hub-service-to-resource";
 import { rankContextResources } from "@/lib/globe/resource/rank-context-resources";
@@ -41,6 +43,7 @@ import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 import { HubServiceSlot } from "@/components/globe/globe-context-hub-service-slot";
 import { emitTransactionConvertedTelemetry } from "@/hooks/use-hub-resource-curation-telemetry";
+import { useContextGardenOrganizer } from "@/hooks/use-context-garden-organizer";
 import { useHubResourceSyncWorker } from "@/hooks/use-hub-resource-sync-worker";
 import { useMainNativeSurfaceSync } from "@/hooks/use-main-native-surface-sync";
 import { isTicketQrViewerHref } from "@/lib/globe/ticket-scan-surface";
@@ -161,6 +164,24 @@ export function GlobeContextHubRail({
     authUserId,
     enabled: visible && rankedResources.length > 0,
   });
+
+  useContextGardenOrganizer({
+    activeEventId,
+    ranked: rankedResources,
+    lat,
+    lng,
+    enabled: visible && rankedResources.length > 0,
+  });
+
+  const gardenSummary = useMemo(() => {
+    void revision;
+    const eventId = activeEventId?.trim();
+    if (!eventId) {
+      return null;
+    }
+    const event = findLifeEventCandidate(eventId);
+    return readContextGardenSnapshot(event)?.summary ?? null;
+  }, [activeEventId, revision, rankedResources.length]);
 
   const browseRows = useMemo(
     () => (panel ? rankContextHubServices(panel.services) : []),
@@ -345,6 +366,7 @@ export function GlobeContextHubRail({
       dispatchGlobeLodgingFocus({
         resourceId: entry.resource.resourceId,
         carouselIndex: index,
+        source: "carousel",
       });
     },
     [rankedResources],
@@ -477,6 +499,7 @@ export function GlobeContextHubRail({
       <>
         {ticketSheets}
         <div className={cn("flex flex-col gap-2", className)}>
+          <GlobeContextGardenSummary summary={gardenSummary} />
           <GlobeHubResourceCarousel
             ranked={rankedResources}
             index={Math.min(carouselIndex, rankedResources.length - 1)}
@@ -508,6 +531,7 @@ export function GlobeContextHubRail({
     <>
       {ticketSheets}
       <div className={cn("flex flex-col gap-3", className)}>
+        <GlobeContextGardenSummary summary={gardenSummary} />
         {showCarousel ? (
           <GlobeHubResourceCarousel
             ranked={rankedResources}

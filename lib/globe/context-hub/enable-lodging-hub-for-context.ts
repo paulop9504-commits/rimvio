@@ -2,6 +2,7 @@ import type { EventCandidate } from "@/lib/events/event-candidate";
 import { findEventCandidate } from "@/lib/events/event-store";
 import { commitLodgingInventoryToEvent } from "@/lib/globe/context-hub/commit-lodging-inventory";
 import { loadLodgingInventoryRows } from "@/lib/globe/context-hub/load-lodging-inventory-rows";
+import { shouldPreferUserLocationForLodgingSync } from "@/lib/globe/context-hub/resolve-context-lodging-search-coords";
 
 export type EnableLodgingHubInput = {
   contextEventId: string;
@@ -22,6 +23,11 @@ export async function enableLodgingHubForContext(
     event,
     lat: input.lat,
     lng: input.lng,
+    preferUserLocation: shouldPreferUserLocationForLodgingSync({
+      event,
+      lat: input.lat,
+      lng: input.lng,
+    }),
   });
 
   return commitLodgingInventoryToEvent({

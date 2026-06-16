@@ -1,5 +1,6 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import type { ContextHubServiceId } from "@/lib/globe/context-hub/context-hub-service-catalog";
+import { isLodgingInventoryMisanchored } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import { resolveApiWakeupDecision } from "@/lib/globe/resource/api-wakeup-controller";
 import type { ApiProviderId, ApiWakeupPhase } from "@/lib/globe/resource/api-wakeup-types";
 import { buildApiWakeupContextFromEvent } from "@/lib/globe/resource/build-api-wakeup-context";
@@ -54,7 +55,9 @@ export function planHubResourceSyncJobs(input: {
     });
 
     const decision = resolveApiWakeupDecision(providerId, context);
-    if (!decision.allowFetch) {
+    const lodgingMisanchored =
+      providerId === "places_lodging" && isLodgingInventoryMisanchored(input.event);
+    if (!decision.allowFetch && !lodgingMisanchored) {
       return;
     }
 

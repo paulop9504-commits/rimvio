@@ -1,4 +1,5 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
+import { haversineKm } from "@/lib/feed/spacetime-fit";
 import type {
   ContextLodgingInventoryRow,
   LodgingResourcePayload,
@@ -7,8 +8,11 @@ import {
   CONTEXT_LODGING_HUB_ENABLED_META_KEY,
   CONTEXT_LODGING_INVENTORY_META_KEY,
 } from "@/lib/globe/context-hub/lodging-resource-types";
+import { resolveContextLodgingDestinationAnchor } from "@/lib/globe/context-hub/resolve-context-lodging-search-coords";
 import type { ContextResource } from "@/lib/globe/resource/types";
 import { readPlanContextFromEvent } from "@/lib/plan-context/plan-context-metadata";
+
+const LODGING_ANCHOR_TOLERANCE_KM = 30;
 
 function readInventoryRows(value: unknown): ContextLodgingInventoryRow[] {
   if (!Array.isArray(value)) {
@@ -83,6 +87,19 @@ export function readLodgingInventoryRows(
     return [];
   }
   return readInventoryRows(event.metadata?.[CONTEXT_LODGING_INVENTORY_META_KEY]);
+}
+
+/** Stale seed from wrong anchor (e.g. mock 대전 while context is 상하이). */
+export function isLodgingInventoryMisanchored(event: EventCandidate): boolean {
+  const rows = readLodgingInventoryRows(event);
+  if (rows.length === 0) {
+    return false;
+  }
+  const anchor = resolveContextLodgingDestinationAnchor(event);
+  return rows.some(
+    (row) =>
+      haversineKm(row.lat, row.lng, anchor.lat, anchor.lng) > LODGING_ANCHOR_TOLERANCE_KM,
+  );
 }
 
 function formatPriceKrw(value: number | null | undefined): string | null {

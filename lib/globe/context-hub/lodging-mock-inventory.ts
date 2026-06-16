@@ -1,6 +1,6 @@
 import type { ContextLodgingInventoryRow } from "@/lib/globe/context-hub/lodging-resource-types";
 
-/** Demo inventory — 대전 region (Hub factory stub until Places sync). */
+/** Demo inventory — absolute coords for 대전 regression tests. */
 export const DAEJEON_LODGING_MOCK: readonly ContextLodgingInventoryRow[] = [
   {
     placeId: "dj-yuseong-spa",
@@ -64,14 +64,77 @@ export const DAEJEON_LODGING_MOCK: readonly ContextLodgingInventoryRow[] = [
   },
 ];
 
-export function resolveLodgingMockForPlace(placeLabel: string): readonly ContextLodgingInventoryRow[] {
+type LodgingMockTemplate = {
+  id: string;
+  name: string;
+  dLat: number;
+  dLng: number;
+  priceKrw: number;
+  image: string;
+};
+
+const LODGING_MOCK_TEMPLATES: readonly LodgingMockTemplate[] = [
+  {
+    id: "spa",
+    name: "스파 호텔",
+    dLat: 0.018,
+    dLng: -0.012,
+    priceKrw: 89000,
+    image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=640&q=80",
+  },
+  {
+    id: "central",
+    name: "센트럴 스테이",
+    dLat: -0.008,
+    dLng: 0.022,
+    priceKrw: 72000,
+    image: "https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=640&q=80",
+  },
+  {
+    id: "guest",
+    name: "게스트하우스",
+    dLat: 0.012,
+    dLng: 0.008,
+    priceKrw: 54000,
+    image: "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=640&q=80",
+  },
+  {
+    id: "view",
+    name: "뷰 펜션",
+    dLat: 0.025,
+    dLng: 0.015,
+    priceKrw: 98000,
+    image: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=640&q=80",
+  },
+  {
+    id: "rest",
+    name: "휴게 스테이",
+    dLat: -0.015,
+    dLng: -0.018,
+    priceKrw: 61000,
+    image: "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=640&q=80",
+  },
+];
+
+/** Hub factory mock — spread around context destination, not hardcoded 대전. */
+export function resolveLodgingMockForPlace(
+  placeLabel: string,
+  anchor: { lat: number; lng: number },
+): readonly ContextLodgingInventoryRow[] {
   const place = placeLabel.trim();
   if (/대전|유성|신탄진|kaist|카이스트/iu.test(place)) {
     return DAEJEON_LODGING_MOCK;
   }
-  return DAEJEON_LODGING_MOCK.map((row, index) => ({
-    ...row,
-    placeId: `${row.placeId}-generic-${index}`,
-    lat: row.lat + index * 0.008,
+
+  const prefix = place.slice(0, 12) || "숙소";
+  return LODGING_MOCK_TEMPLATES.map((template, index) => ({
+    placeId: `${template.id}:${anchor.lat.toFixed(3)}:${index}`,
+    name: `${prefix} ${template.name}`,
+    lat: anchor.lat + template.dLat,
+    lng: anchor.lng + template.dLng,
+    priceKrw: template.priceKrw,
+    partnerLabel: "demo",
+    images: [template.image],
+    videoUrl: null,
   }));
 }

@@ -475,7 +475,11 @@ const RimvioGlobeHubBody = memo(
           renderSuspended={renderSuspended}
           lodgingMarkers={lodgingGlobeMarkers}
           onLodgingMarkerPress={(resourceId, carouselIndex) => {
-            dispatchGlobeLodgingFocus({ resourceId, carouselIndex });
+            dispatchGlobeLodgingFocus({
+              resourceId,
+              carouselIndex,
+              source: "map_marker",
+            });
           }}
           hubAnchors={contextHubAnchor ? [contextHubAnchor] : []}
           onContextHubAnchorPress={(contextEventId) => {

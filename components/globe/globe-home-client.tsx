@@ -10,6 +10,7 @@ import { GlobeContextHubRail } from "@/components/globe/globe-context-hub-rail";
 import { GlobeContextHubDetailSheet } from "@/components/globe/globe-context-hub-detail-sheet";
 import { GlobeUtilityMenu } from "@/components/globe/globe-utility-menu";
 import { GlobeContextMapVideoStage } from "@/components/globe/globe-context-map-video-stage";
+import { GlobeLodgingFocusStage } from "@/components/globe/globe-lodging-focus-stage";
 import { GlobeContextIngestBar, type GlobeContextIngestBarHandle } from "@/components/globe/globe-context-ingest-bar";
 import { GlobeFirstVisitCoach } from "@/components/globe/globe-first-visit-coach";
 import { GlobeContextListSheet } from "@/components/globe/globe-context-list-sheet";
@@ -774,6 +775,13 @@ function GlobeHomeBody() {
           setMediaStoreRevision((value) => value + 1);
           toast.success("삭제했어요");
         }}
+      />
+      <GlobeLodgingFocusStage
+        globeRef={globeRef}
+        contextEventId={hubEventId}
+        lat={liveLocation?.lat ?? null}
+        lng={liveLocation?.lng ?? null}
+        viewerUserId={user?.id ?? null}
       />
       <div className="pointer-events-none absolute left-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20 flex max-h-[calc(100%-var(--rimvio-globe-ingest-offset)-5.5rem)] flex-col items-start gap-2">
         <div className="pointer-events-auto">

@@ -300,6 +300,7 @@ export const copyEn: Copy = {
     departureHubConnected: (airport: string) => `Departure hub set · ${airport}`,
     departureHubConnectFail: "Couldn't connect departure hub",
     contextHubEyebrow: "Resources",
+    contextGardenSummaryEyebrow: "Now",
     contextHubSectionTitle: "Context hubs",
     contextHubSectionBody:
       "Plug in when you need them, unplug when you don't · tap to reach flights and moves",
@@ -341,6 +342,9 @@ export const copyEn: Copy = {
     lodgingMapStripAria: "Stay locations",
     lodgingMapStripFallback: "Stay",
     lodgingMediaFallback: "Photo loading",
+    lodgingFocusCloseAria: "Close lodging focus",
+    lodgingFocusContextMedia: "From this context",
+    lodgingFocusSwipeHint: "Swipe for other stays",
     contextHubAiSearchOpen: "Search context",
     mainActionEyebrow: "Now",
     mainActionForContext: (title: string, place: string) => `${title} · ${place}`,

@@ -309,6 +309,7 @@ export const copy = {
     departureHubConnected: (airport: string) => `${airport} 출발 허브를 연결했어요`,
     departureHubConnectFail: "출발 허브를 연결하지 못했어요",
     contextHubEyebrow: "자원",
+    contextGardenSummaryEyebrow: "지금 상태",
     contextHubSectionTitle: "맥락에 맞는 허브",
     contextHubSectionBody:
       "필요할 때 꽂고, 필요 없으면 뺄 수 있어요 · 탭하면 항공·이동으로 이어져요",
@@ -349,6 +350,9 @@ export const copy = {
     lodgingMapStripAria: "숙소 위치",
     lodgingMapStripFallback: "숙소",
     lodgingMediaFallback: "사진 준비 중",
+    lodgingFocusCloseAria: "숙소 포커스 닫기",
+    lodgingFocusContextMedia: "이 맥락의 사진",
+    lodgingFocusSwipeHint: "옆으로 밀어 다른 숙소 보기",
     contextHubAiSearchOpen: "맥락 검색",
     mainActionEyebrow: "지금",
     mainActionForContext: (title: string, place: string) => `${title} · ${place}`,

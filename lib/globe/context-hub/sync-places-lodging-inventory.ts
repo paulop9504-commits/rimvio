@@ -3,6 +3,9 @@ import { findEventCandidate } from "@/lib/events/event-store";
 import { commitLodgingInventoryToEvent } from "@/lib/globe/context-hub/commit-lodging-inventory";
 import { isLodgingHubEnabled } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import { loadLodgingInventoryRows } from "@/lib/globe/context-hub/load-lodging-inventory-rows";
+import {
+  shouldPreferUserLocationForLodgingSync,
+} from "@/lib/globe/context-hub/resolve-context-lodging-search-coords";
 
 /** JIT refresh — Places Nearby when configured, mock fallback otherwise. */
 export async function syncPlacesLodgingInventory(input: {
@@ -19,7 +22,11 @@ export async function syncPlacesLodgingInventory(input: {
     event,
     lat: input.lat,
     lng: input.lng,
-    preferUserLocation: true,
+    preferUserLocation: shouldPreferUserLocationForLodgingSync({
+      event,
+      lat: input.lat,
+      lng: input.lng,
+    }),
   });
 
   return commitLodgingInventoryToEvent({

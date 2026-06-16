@@ -1,5 +1,7 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { scoreSpacetimeFit } from "@/lib/feed/spacetime-fit";
+import { readContextGardenArchivedResourceIds } from "@/lib/globe/context-gardener/read-context-garden";
+import { isResourceExpiredForGarden } from "@/lib/globe/context-gardener/sanitize-context-resources";
 import { listLodgingResourcesForEvent } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import type { ContextHubServiceRow } from "@/lib/globe/context-hub/context-hub-service-catalog";
 import { scoreHubServiceRowBase } from "@/lib/globe/context-hub/score-hub-service-row";
@@ -120,12 +122,22 @@ export function rankContextResources(input: {
         })
       : [];
 
-  return [...serviceRanked, ...lodgingRanked].sort((left, right) => {
+  const ranked = [...serviceRanked, ...lodgingRanked].sort((left, right) => {
     const delta = right.rankScore - left.rankScore;
     if (delta !== 0) {
       return delta;
     }
     return left.resource.label.localeCompare(right.resource.label, "ko");
+  });
+
+  const archivedIds = new Set(readContextGardenArchivedResourceIds(input.event));
+  const nowMs = now.getTime();
+
+  return ranked.filter((entry) => {
+    if (archivedIds.has(entry.resource.resourceId)) {
+      return false;
+    }
+    return !isResourceExpiredForGarden(entry.resource, nowMs);
   });
 }
 
