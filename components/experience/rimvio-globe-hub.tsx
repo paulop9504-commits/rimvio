@@ -55,13 +55,11 @@ import {
 } from "@/lib/globe/project-pin-clusters";
 import { projectGlobeTripArcs } from "@/lib/globe/project-trip-leg-arcs";
 import { applyFocusedHubGlobePins } from "@/lib/globe/context-hub/apply-focused-hub-globe-visuals";
-import { applyLodgingMarkerFocusPresentation } from "@/lib/globe/context-hub/apply-lodging-marker-focus-presentation";
 import {
   dispatchGlobeLodgingFocus,
   subscribeGlobeLodgingFocus,
-  subscribeGlobeLodgingFocusStage,
 } from "@/lib/globe/context-hub/globe-lodging-marker-bridge";
-import { resolveLodgingSituationalLabel } from "@/lib/globe/context-hub/resolve-lodging-situational-label";
+import { subscribeGlobeMapMediaFocus } from "@/lib/globe/globe-map-media-focus-bridge";
 import { listContextHubServicesForEvent } from "@/lib/globe/context-hub/context-hub-service-catalog";
 import { isLodgingHubEnabled } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import { projectLodgingGlobeMarkers } from "@/lib/globe/context-hub/project-lodging-globe-markers";
@@ -208,7 +206,7 @@ const RimvioGlobeHubBody = memo(
     const [activeLodgingResourceId, setActiveLodgingResourceId] = useState<string | null>(
       null,
     );
-    const [lodgingFocusStageOpen, setLodgingFocusStageOpen] = useState(false);
+    const [mapMediaFocusOpen, setMapMediaFocusOpen] = useState(false);
     const [expandedPinId, setExpandedPinId] = useState<string | null>(null);
     useEffect(() => {
       const bump = () => setBridgeRevision((value) => value + 1);
@@ -221,8 +219,8 @@ const RimvioGlobeHubBody = memo(
       });
     }, []);
     useEffect(() => {
-      return subscribeGlobeLodgingFocusStage((detail) => {
-        setLodgingFocusStageOpen(detail.open);
+      return subscribeGlobeMapMediaFocus((detail) => {
+        setMapMediaFocusOpen(detail.open);
         if (detail.open) {
           setExpandedPinId(null);
         }
@@ -230,7 +228,7 @@ const RimvioGlobeHubBody = memo(
     }, []);
     useEffect(() => {
       setActiveLodgingResourceId(null);
-      setLodgingFocusStageOpen(false);
+      setMapMediaFocusOpen(false);
       setExpandedPinId(null);
     }, [focusedContextEventId]);
     const handleDetailLevelChange = useCallback(
@@ -270,7 +268,7 @@ const RimvioGlobeHubBody = memo(
         eventsById,
         focusedEventId: focusedContextEventId,
         expandedPinId,
-        lodgingFocusStageOpen,
+        lodgingFocusStageOpen: mapMediaFocusOpen,
         viewerLat: liveLocation?.lat ?? null,
         viewerLng: liveLocation?.lng ?? null,
       });
@@ -287,7 +285,7 @@ const RimvioGlobeHubBody = memo(
       classifiedPins,
       eventsById,
       expandedPinId,
-      lodgingFocusStageOpen,
+      mapMediaFocusOpen,
       liveLocation?.lat,
       liveLocation?.lng,
       pinCoordOverrides,
@@ -344,15 +342,10 @@ const RimvioGlobeHubBody = memo(
         ranked,
         activeResourceId: activeLodgingResourceId,
       });
-      if (!lodgingFocusStageOpen) {
+      if (!mapMediaFocusOpen) {
         return raw;
       }
-      return applyLodgingMarkerFocusPresentation({
-        markers: raw,
-        focusStageOpen: true,
-        situationalLabel: resolveLodgingSituationalLabel(event),
-        activeResourceId: activeLodgingResourceId,
-      });
+      return [];
     }, [
       activeLodgingResourceId,
       bridgeRevision,
@@ -360,7 +353,7 @@ const RimvioGlobeHubBody = memo(
       focusedContextEventId,
       liveLocation?.lat,
       liveLocation?.lng,
-      lodgingFocusStageOpen,
+      mapMediaFocusOpen,
     ]);
     const contextHubAnchor = useMemo(() => {
       const eventId = focusedContextEventId?.trim();
@@ -379,6 +372,9 @@ const RimvioGlobeHubBody = memo(
       });
     }, [clusters, eventsById, focusedContextEventId]);
     const globePins = useMemo(() => {
+      if (mapMediaFocusOpen) {
+        return [];
+      }
       const pins: ClassifiedGlobePin[] = [...displayPins];
       if (gpsEnabled && liveLocation) {
         pins.push({
@@ -394,7 +390,7 @@ const RimvioGlobeHubBody = memo(
         });
       }
       return pins;
-    }, [displayPins, gpsEnabled, liveLocation]);
+    }, [displayPins, gpsEnabled, liveLocation, mapMediaFocusOpen]);
     const [activePinId, setActivePinId] = useState<string | null>(null);
     const displayPinId =
       highlightedPinId !== undefined ? highlightedPinId : activePinId;
@@ -544,7 +540,9 @@ const RimvioGlobeHubBody = memo(
               source: "map_marker",
             });
           }}
-          hubAnchors={contextHubAnchor ? [contextHubAnchor] : []}
+          hubAnchors={
+            mapMediaFocusOpen || !contextHubAnchor ? [] : [contextHubAnchor]
+          }
           onContextHubAnchorPress={(contextEventId) => {
             dispatchGlobeContextHubOpen({ contextEventId, source: "map_anchor" });
             onContextHubAnchorPress?.(contextEventId);

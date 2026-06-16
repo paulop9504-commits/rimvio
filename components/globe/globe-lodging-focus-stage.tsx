@@ -2,11 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
-import { GlobeLodgingDynamicTags } from "@/components/globe/globe-lodging-dynamic-tags";
 import { GlobeMapProductFocusCard } from "@/components/globe/globe-map-product-focus-card";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
-import { useGlobePinScreenAnchor } from "@/hooks/use-globe-pin-screen-anchor";
-import { useActiveContextWeather } from "@/hooks/use-active-context-weather";
 import { listContextHubServicesForEvent } from "@/lib/globe/context-hub/context-hub-service-catalog";
 import {
   dispatchGlobeLodgingFocus,
@@ -16,14 +13,7 @@ import {
 } from "@/lib/globe/context-hub/globe-lodging-marker-bridge";
 import { dispatchGlobeContextHubOpen } from "@/lib/globe/context-hub/globe-context-hub-open-bridge";
 import { readLodgingPayloadFromResource } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
-import { buildLodgingDynamicTags } from "@/lib/globe/lodging/build-lodging-dynamic-tags";
-import {
-  MAP_FOCUS_PIN_VIEWPORT_Y,
-  MAP_LODGING_FOCUS_ANCHOR_FRACTION,
-  mapAnchoredOverlayTransform,
-} from "@/lib/globe/map-anchored-overlay-layout";
-import { projectContextMediaReel } from "@/lib/globe/project-context-media-reel";
-import { resolveExperienceVolumeForEvent } from "@/lib/globe/resolve-globe-context-primary-video";
+import { MAP_FOCUS_PIN_VIEWPORT_Y } from "@/lib/globe/map-anchored-overlay-layout";
 import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
 import type { RankedContextResource } from "@/lib/globe/resource/map-hub-service-to-resource";
 import {
@@ -125,11 +115,6 @@ export function GlobeLodgingFocusStage({
     );
   }, [eventId, revision]);
 
-  const { tempC } = useActiveContextWeather({
-    event: activeEvent,
-    enabled: open && Boolean(activeEvent),
-  });
-
   const fullRanked = useMemo(() => {
     void revision;
     if (!activeEvent) {
@@ -170,35 +155,12 @@ export function GlobeLodgingFocusStage({
   const anchorLat = entry?.resource.spacetime.lat ?? null;
   const anchorLng = entry?.resource.spacetime.lng ?? null;
 
-  const contextReel = useMemo(() => {
-    void revision;
-    if (!activeEvent) {
-      return [];
-    }
-    const volume = resolveExperienceVolumeForEvent(eventId);
-    return projectContextMediaReel({ event: activeEvent, volume, viewerUserId }).slice(0, 6);
-  }, [activeEvent, eventId, revision, viewerUserId]);
-
   const contextPlace = useMemo(() => {
     if (!activeEvent) {
       return null;
     }
     return activeEvent.place?.trim() || activeEvent.title.trim() || null;
   }, [activeEvent]);
-
-  const dynamicTags = useMemo(() => {
-    if (!activeEvent || anchorLat == null || anchorLng == null) {
-      return null;
-    }
-    return buildLodgingDynamicTags({
-      event: activeEvent,
-      lodgingLat: anchorLat,
-      lodgingLng: anchorLng,
-      userLat: lat,
-      userLng: lng,
-      tempC,
-    });
-  }, [activeEvent, anchorLat, anchorLng, lat, lng, tempC]);
 
   useEffect(() => {
     if (!open || anchorLat == null || anchorLng == null) {
@@ -214,14 +176,6 @@ export function GlobeLodgingFocusStage({
     setOpen(false);
     setFocus(null);
   }, [globeRef]);
-
-  const anchorLayout = useGlobePinScreenAnchor({
-    globeRef: globeRef ?? { current: null },
-    lat: anchorLat,
-    lng: anchorLng,
-    enabled: open && Boolean(entry) && Boolean(globeRef),
-    containerRef,
-  });
 
   const mediaSlides = useMemo((): readonly string[] => {
     if (!payload) {
@@ -298,7 +252,7 @@ export function GlobeLodgingFocusStage({
     dismiss();
   }, [dismiss, entry, eventId, fullRanked, lodgingIndex]);
 
-  if (!open || !entry || !payload || !anchorLayout) {
+  if (!open || !entry || !payload) {
     return (
       <div
         ref={containerRef}
@@ -325,23 +279,22 @@ export function GlobeLodgingFocusStage({
     >
       <button
         type="button"
-        className="pointer-events-auto absolute inset-0 z-[0] bg-black/25 backdrop-blur-[2px]"
+        className="pointer-events-auto absolute inset-0 z-[0] bg-black/50 backdrop-blur-md"
         aria-label={copy.globe.lodgingFocusCloseAria}
         onClick={dismiss}
       />
 
       <div
-        className="absolute z-[1]"
+        className="pointer-events-none absolute inset-x-0 z-[1] flex flex-col items-center justify-center px-4"
         style={{
-          left: anchorLayout.x,
-          top: anchorLayout.y,
-          width: Math.min(anchorLayout.widthPx, 340),
-          transform: mapAnchoredOverlayTransform(MAP_LODGING_FOCUS_ANCHOR_FRACTION),
+          top: "max(3rem, env(safe-area-inset-top))",
+          bottom: "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 0.75rem)",
         }}
         data-globe-lodging-focus-anchor
       >
-        <div className="pointer-events-auto">
+        <div className="pointer-events-auto w-full max-w-[380px]">
         <GlobeMapProductFocusCard
+          className="w-full"
           title={entry.resource.label}
           subtitle={subtitle || null}
           eyebrow={contextPlace}
@@ -357,11 +310,6 @@ export function GlobeLodgingFocusStage({
           }}
           onClose={dismiss}
           closeAriaLabel={copy.globe.lodgingFocusCloseAria}
-          headerExtra={
-            dynamicTags ? (
-              <GlobeLodgingDynamicTags tags={dynamicTags} variant="light" />
-            ) : null
-          }
           onTouchStart={(event) => {
             event.stopPropagation();
             const touch = event.changedTouches[0] ?? event.touches[0];
@@ -390,7 +338,7 @@ export function GlobeLodgingFocusStage({
                 <video
                   key={currentMedia}
                   src={currentMedia}
-                  className="aspect-[4/3] w-full object-cover"
+                  className="aspect-[4/5] w-full object-cover"
                   autoPlay
                   loop
                   muted
@@ -402,17 +350,17 @@ export function GlobeLodgingFocusStage({
                   key={currentMedia}
                   src={currentMedia}
                   alt=""
-                  className="aspect-[4/3] w-full object-cover"
+                  className="aspect-[4/5] w-full object-cover"
                   draggable={false}
                 />
               ) : (
-                <div className="flex aspect-[4/3] w-full items-center justify-center text-[12px] text-[#6e6e73]">
+                <div className="flex aspect-[4/5] w-full items-center justify-center text-[12px] text-[#6e6e73]">
                   {copy.globe.lodgingMediaFallback}
                 </div>
               )}
 
               {mediaSlides.length > 1 ? (
-                <div className="absolute inset-x-0 bottom-2 z-[2] flex justify-center gap-1">
+                <div className="absolute inset-x-0 bottom-2.5 z-[2] flex justify-center gap-1.5">
                   {mediaSlides.map((slide, index) => (
                     <button
                       key={`${slide}:${index}`}
@@ -423,8 +371,8 @@ export function GlobeLodgingFocusStage({
                         setMediaIndex(index);
                       }}
                       className={cn(
-                        "size-1.5 rounded-full",
-                        index === mediaIndex ? "bg-white" : "bg-white/45",
+                        "size-2 rounded-full",
+                        index === mediaIndex ? "bg-white" : "bg-white/40",
                       )}
                     />
                   ))}
@@ -432,45 +380,11 @@ export function GlobeLodgingFocusStage({
               ) : null}
             </div>
           }
-          belowHero={
-            contextReel.length > 0 ? (
-              <>
-                <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-[#6e6e73]">
-                  {copy.globe.lodgingFocusContextMedia}
-                </p>
-                <div className="flex gap-1.5 overflow-x-auto">
-                  {contextReel.map((item) => {
-                    const thumb = item.imageUrl ?? null;
-                    return (
-                      <div
-                        key={item.id}
-                        className="relative h-14 w-10 shrink-0 overflow-hidden rounded-md border border-black/[0.08] bg-[#e8e8ed]"
-                      >
-                        {thumb ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={thumb}
-                            alt=""
-                            className="size-full object-cover"
-                            draggable={false}
-                          />
-                        ) : (
-                          <span className="flex size-full items-center justify-center text-[8px] text-[#6e6e73]">
-                            {item.kind === "video" ? "▶" : "·"}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            ) : undefined
-          }
         />
         </div>
 
         {lodgingRanked.length > 1 ? (
-          <p className="pointer-events-none mt-2 text-center text-[10px] font-medium text-white/90 drop-shadow-sm">
+          <p className="pointer-events-none mt-3 text-center text-[11px] font-medium text-white/85">
             {copy.globe.lodgingFocusSwipeHint}
           </p>
         ) : null}

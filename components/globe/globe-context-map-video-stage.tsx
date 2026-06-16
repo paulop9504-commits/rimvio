@@ -6,8 +6,6 @@ import { ContextMediaUploaderBadge } from "@/components/globe/context-media-uplo
 import { ContextMediaDeleteButton } from "@/components/globe/context-media-delete-button";
 import { ContextMediaVideoSoundButton } from "@/components/globe/context-media-video-sound-button";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
-import { useGlobePinScreenAnchor } from "@/hooks/use-globe-pin-screen-anchor";
-import { mapAnchoredOverlayTransform } from "@/lib/globe/map-anchored-overlay-layout";
 import { useGlobeContextVideoSound } from "@/hooks/use-globe-context-video-sound";
 import { useMediaBlobUrl } from "@/hooks/use-media-blob-url";
 import type { GlobeContextTimelineEntry } from "@/lib/globe/list-globe-context-timeline";
@@ -28,6 +26,9 @@ import {
   MEDIA_SPACETIME_UPDATED,
 } from "@/lib/location-ping/media-context-store";
 import { cn } from "@/lib/utils";
+import {
+  dispatchGlobeMapMediaFocus,
+} from "@/lib/globe/globe-map-media-focus-bridge";
 
 const SWIPE_MIN_PX = 44;
 
@@ -90,7 +91,7 @@ function MapMediaSlide({
         ref={videoRef}
         key={`${item.id}:${src}`}
         src={src}
-        className="pointer-events-none relative z-0 aspect-[9/16] w-full object-cover"
+        className="pointer-events-none relative z-0 aspect-[4/5] w-full object-cover"
         playsInline
         loop
         autoPlay
@@ -106,14 +107,14 @@ function MapMediaSlide({
         key={`${item.id}:${src}`}
         src={src}
         alt=""
-        className="pointer-events-none relative z-0 aspect-[9/16] w-full object-cover"
+        className="pointer-events-none relative z-0 aspect-[4/5] w-full object-cover"
         loading="lazy"
       />
     );
   }
 
   return (
-    <div className="flex aspect-[9/16] w-full items-center justify-center bg-black/80 px-3 text-center text-[12px] font-medium text-white/70">
+    <div className="flex aspect-[4/5] w-full items-center justify-center bg-black/80 px-3 text-center text-[12px] font-medium text-white/70">
       {loading || item.pendingRemote
         ? `${item.kind === "video" ? "동영상" : "사진"} 불러오는 중…`
         : item.label}
@@ -202,15 +203,15 @@ export function GlobeContextMapVideoStage({
     }
   }, [mediaIndex, reel.length]);
 
-  const currentItem = reel[mediaIndex] ?? null;
+  useEffect(() => {
+    const active = visible && reel.length > 0;
+    dispatchGlobeMapMediaFocus(active, "video");
+    return () => {
+      dispatchGlobeMapMediaFocus(false, "video");
+    };
+  }, [reel.length, visible]);
 
-  const anchorLayout = useGlobePinScreenAnchor({
-    globeRef: globeRef ?? { current: null },
-    lat: anchorLat,
-    lng: anchorLng,
-    enabled: visible && reel.length > 0 && Boolean(globeRef),
-    containerRef,
-  });
+  const currentItem = reel[mediaIndex] ?? null;
 
   const handleSwipeEnd = useCallback(
     (dx: number, dy: number) => {
@@ -271,161 +272,163 @@ export function GlobeContextMapVideoStage({
         className,
       )}
       data-globe-context-map-video
-      aria-hidden={!anchorLayout}
     >
-      {anchorLayout ? (
+      {onDismiss ? (
+        <button
+          type="button"
+          className="pointer-events-auto absolute inset-0 z-[0] bg-black/50 backdrop-blur-md"
+          aria-label="닫기"
+          onClick={onDismiss}
+        />
+      ) : null}
+
+      <div
+        className="pointer-events-none absolute inset-x-0 z-[1] flex flex-col items-center justify-center px-4"
+        style={{
+          top: "max(3rem, env(safe-area-inset-top))",
+          bottom: "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 0.75rem)",
+        }}
+        data-globe-context-map-video-anchor
+      >
         <div
-          className="absolute z-[1]"
-          style={{
-            left: anchorLayout.x,
-            top: anchorLayout.y,
-            width: anchorLayout.widthPx,
-            transform: mapAnchoredOverlayTransform(),
+          className={cn(
+            "relative w-full max-w-[380px] touch-pan-y overflow-hidden rounded-[1.35rem]",
+            "bg-black shadow-[0_20px_50px_rgba(0,0,0,0.35)] ring-1 ring-white/15",
+            "pointer-events-auto",
+            onOpenDetails && "cursor-pointer",
+          )}
+          onTouchStart={(event) => {
+            event.stopPropagation();
+            const touch = event.changedTouches[0] ?? event.touches[0];
+            if (!touch) {
+              return;
+            }
+            touchStartRef.current = { x: touch.clientX, y: touch.clientY };
           }}
-          data-globe-context-map-video-anchor
-        >
-          <div
-            className={cn(
-              "relative touch-pan-y overflow-hidden rounded-[1.25rem]",
-              "border-2 border-white/90 bg-black shadow-[0_12px_40px_rgba(0,0,0,0.28)]",
-              "ring-1 ring-black/10",
-              "pointer-events-auto",
-              onOpenDetails && "cursor-pointer",
-            )}
-            onTouchStart={(event) => {
-              event.stopPropagation();
-              const touch = event.changedTouches[0] ?? event.touches[0];
-              if (!touch) {
-                return;
-              }
-              touchStartRef.current = { x: touch.clientX, y: touch.clientY };
-            }}
-            onTouchEnd={(event) => {
-              event.stopPropagation();
-              const start = touchStartRef.current;
-              const touch = event.changedTouches[0];
-              touchStartRef.current = null;
-              if (!start || !touch) {
-                return;
-              }
-              const dx = touch.clientX - start.x;
-              const dy = touch.clientY - start.y;
-              if (Math.abs(dx) < SWIPE_MIN_PX && Math.abs(dy) < SWIPE_MIN_PX) {
-                if ((event.target as HTMLElement).closest("button")) {
-                  return;
-                }
-                skipNextTapRef.current = true;
-                openDetailsFromTap(event);
-                return;
-              }
-              handleSwipeEnd(dx, dy);
-            }}
-            onClick={(event) => {
-              event.stopPropagation();
-              if (skipNextTapRef.current) {
-                skipNextTapRef.current = false;
-                return;
-              }
+          onTouchEnd={(event) => {
+            event.stopPropagation();
+            const start = touchStartRef.current;
+            const touch = event.changedTouches[0];
+            touchStartRef.current = null;
+            if (!start || !touch) {
+              return;
+            }
+            const dx = touch.clientX - start.x;
+            const dy = touch.clientY - start.y;
+            if (Math.abs(dx) < SWIPE_MIN_PX && Math.abs(dy) < SWIPE_MIN_PX) {
               if ((event.target as HTMLElement).closest("button")) {
                 return;
               }
+              skipNextTapRef.current = true;
               openDetailsFromTap(event);
-            }}
-          >
-            {currentItem ? (
-              <MapMediaSlide
-                key={currentItem.id}
-                item={currentItem}
-                playing={playing}
-                onPlayingChange={setPlaying}
-                toggleSoundRef={toggleVideoSoundRef}
-                onSoundOnChange={setVideoSoundOn}
-              />
-            ) : null}
-            {currentItem && anchorLayout.scale >= 0.34 ? (
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] bg-gradient-to-t from-black/85 via-black/40 to-transparent px-3 pb-2.5 pt-12">
-                <p className="line-clamp-2 text-[11px] font-semibold leading-snug text-white">
-                  {currentItem.recallCaption}
-                </p>
-              </div>
-            ) : null}
-            {currentItem && anchorLayout.scale >= 0.34 ? (
-              <ContextMediaUploaderBadge
-                item={currentItem}
-                selfDisplayName={selfDisplayName}
-                selfAvatarUrl={selfAvatarUrl}
-              />
-            ) : null}
-            {currentItem?.kind === "video" && anchorLayout.scale >= 0.34 ? (
-              <div className="pointer-events-none absolute inset-x-0 bottom-3 z-[6] flex items-center justify-between gap-2 px-2">
-                <div className="pointer-events-auto flex min-w-0 items-center gap-1.5">
-                  <ContextMediaVideoSoundButton
-                    soundOn={videoSoundOn}
-                    variant="pill"
-                    onToggleSound={() => {
-                      toggleVideoSoundRef.current?.();
-                      if (!playing) {
-                        setPlaying(true);
-                      }
-                    }}
-                  />
-                  {eventId && deletable ? (
-                    <ContextMediaDeleteButton
-                      item={currentItem}
-                      eventId={eventId}
-                      viewerUserId={viewerUserId}
-                      enabled={deletable}
-                      className="relative bottom-auto left-auto size-8 shrink-0"
-                      onDeleted={handleMediaDeleted}
-                    />
-                  ) : null}
-                </div>
-                <button
-                  type="button"
-                  className="pointer-events-auto shrink-0 rounded-full bg-black/70 px-2.5 py-1.5 text-[10px] font-semibold text-white backdrop-blur-sm ring-1 ring-white/20"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setPlaying((value) => !value);
+              return;
+            }
+            handleSwipeEnd(dx, dy);
+          }}
+          onClick={(event) => {
+            event.stopPropagation();
+            if (skipNextTapRef.current) {
+              skipNextTapRef.current = false;
+              return;
+            }
+            if ((event.target as HTMLElement).closest("button")) {
+              return;
+            }
+            openDetailsFromTap(event);
+          }}
+        >
+          {currentItem ? (
+            <MapMediaSlide
+              key={currentItem.id}
+              item={currentItem}
+              playing={playing}
+              onPlayingChange={setPlaying}
+              toggleSoundRef={toggleVideoSoundRef}
+              onSoundOnChange={setVideoSoundOn}
+            />
+          ) : null}
+          {currentItem ? (
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] bg-gradient-to-t from-black/85 via-black/40 to-transparent px-3 pb-2.5 pt-12">
+              <p className="line-clamp-2 text-[11px] font-semibold leading-snug text-white">
+                {currentItem.recallCaption}
+              </p>
+            </div>
+          ) : null}
+          {currentItem ? (
+            <ContextMediaUploaderBadge
+              item={currentItem}
+              selfDisplayName={selfDisplayName}
+              selfAvatarUrl={selfAvatarUrl}
+            />
+          ) : null}
+          {currentItem?.kind === "video" ? (
+            <div className="pointer-events-none absolute inset-x-0 bottom-3 z-[6] flex items-center justify-between gap-2 px-2">
+              <div className="pointer-events-auto flex min-w-0 items-center gap-1.5">
+                <ContextMediaVideoSoundButton
+                  soundOn={videoSoundOn}
+                  variant="pill"
+                  onToggleSound={() => {
+                    toggleVideoSoundRef.current?.();
+                    if (!playing) {
+                      setPlaying(true);
+                    }
                   }}
-                >
-                  {playing ? "일시정지" : "재생"}
-                </button>
+                />
+                {eventId && deletable ? (
+                  <ContextMediaDeleteButton
+                    item={currentItem}
+                    eventId={eventId}
+                    viewerUserId={viewerUserId}
+                    enabled={deletable}
+                    className="relative bottom-auto left-auto size-8 shrink-0"
+                    onDeleted={handleMediaDeleted}
+                  />
+                ) : null}
               </div>
-            ) : null}
-            {onDismiss && anchorLayout.scale >= 0.34 ? (
               <button
                 type="button"
-                className="pointer-events-auto absolute left-2 top-2 z-[3] rounded-full bg-black/55 px-2 py-1 text-[10px] font-semibold text-white backdrop-blur-sm"
+                className="pointer-events-auto shrink-0 rounded-full bg-black/70 px-2.5 py-1.5 text-[10px] font-semibold text-white backdrop-blur-sm ring-1 ring-white/20"
                 onClick={(event) => {
                   event.stopPropagation();
-                  onDismiss();
+                  setPlaying((value) => !value);
                 }}
               >
-                닫기
+                {playing ? "일시정지" : "재생"}
               </button>
-            ) : null}
-            {reel.length > 1 && anchorLayout.scale >= 0.34 ? (
-              <span className="pointer-events-none absolute right-11 top-2 z-[2] rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
-                {mediaIndex + 1}/{reel.length}
-              </span>
-            ) : null}
-            {currentItem &&
-            currentItem.kind !== "video" &&
-            eventId &&
-            deletable &&
-            anchorLayout.scale >= 0.34 ? (
-              <ContextMediaDeleteButton
-                item={currentItem}
-                eventId={eventId}
-                viewerUserId={viewerUserId}
-                enabled={deletable}
-                className="bottom-2 left-2 size-8"
-                onDeleted={handleMediaDeleted}
-              />
-            ) : null}
-          </div>
+            </div>
+          ) : null}
+          {onDismiss ? (
+            <button
+              type="button"
+              className="pointer-events-auto absolute left-2 top-2 z-[3] rounded-full bg-black/55 px-2 py-1 text-[10px] font-semibold text-white backdrop-blur-sm"
+              onClick={(event) => {
+                event.stopPropagation();
+                onDismiss();
+              }}
+            >
+              닫기
+            </button>
+          ) : null}
+          {reel.length > 1 ? (
+            <span className="pointer-events-none absolute right-11 top-2 z-[2] rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
+              {mediaIndex + 1}/{reel.length}
+            </span>
+          ) : null}
+          {currentItem &&
+          currentItem.kind !== "video" &&
+          eventId &&
+          deletable ? (
+            <ContextMediaDeleteButton
+              item={currentItem}
+              eventId={eventId}
+              viewerUserId={viewerUserId}
+              enabled={deletable}
+              className="bottom-2 left-2 size-8"
+              onDeleted={handleMediaDeleted}
+            />
+          ) : null}
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }

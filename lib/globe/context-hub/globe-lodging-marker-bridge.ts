@@ -1,5 +1,7 @@
 /** Sync globe lodging markers ↔ hub carousel without coupling components. */
 
+import { dispatchGlobeMapMediaFocus } from "@/lib/globe/globe-map-media-focus-bridge";
+
 export const GLOBE_LODGING_FOCUS = "rimvio:globe-lodging-focus";
 export const GLOBE_LODGING_FOCUS_STAGE = "rimvio:globe-lodging-focus-stage";
 
@@ -41,6 +43,7 @@ export function subscribeGlobeLodgingFocus(
 }
 
 export function dispatchGlobeLodgingFocusStage(open: boolean): void {
+  dispatchGlobeMapMediaFocus(open, "lodging");
   if (typeof window === "undefined") {
     return;
   }
