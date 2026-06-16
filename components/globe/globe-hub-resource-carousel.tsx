@@ -20,7 +20,8 @@ const SERVICE_ICON: Record<ContextHubServiceId, typeof Plane> = {
 };
 
 const SWIPE_THRESHOLD_PX = 48;
-const COMPACT_WIDTH = "w-[min(calc(100vw-1.5rem),17.5rem)]";
+const STANDARD_WIDTH = "w-[min(calc(100vw-1.5rem),17.5rem)]";
+const COMPACT_WIDTH = "w-[min(calc(100vw-1.5rem),12rem)]";
 
 export type GlobeHubResourceCarouselProps = {
   ranked: readonly RankedContextResource[];
@@ -32,6 +33,7 @@ export type GlobeHubResourceCarouselProps = {
   busy?: boolean;
   contextPlace?: string | null;
   layout?: "dock" | "hero";
+  variant?: "default" | "compact";
   /** Predictive Curation telemetry — non-blocking. */
   contextId?: string | null;
   lat?: number | null;
@@ -69,6 +71,7 @@ export function GlobeHubResourceCarousel({
   busy = false,
   contextPlace = null,
   layout = "dock",
+  variant = "default",
   contextId = null,
   lat = null,
   lng = null,
@@ -185,11 +188,13 @@ export function GlobeHubResourceCarousel({
   const showSwipeHint = ranked.length > 1 && !hintSeen && isMainSlot;
   const Icon = SERVICE_ICON[row.serviceId];
   const heroLayout = layout === "hero" && isMainSlot;
+  const compact = variant === "compact";
   const lodgingPayload =
     resource.kind === "lodging_voucher"
       ? readLodgingPayloadFromResource(resource)
       : null;
-  const showLodgingHero = Boolean(lodgingPayload && (heroLayout || isMainSlot));
+  const showLodgingHero =
+    !compact && Boolean(lodgingPayload && (heroLayout || isMainSlot));
 
   return (
     <aside
@@ -199,14 +204,31 @@ export function GlobeHubResourceCarousel({
           ? "w-full max-w-md border-primary/30 bg-card/95 shadow-[0_14px_44px_rgba(2,32,71,0.14)]"
           : cn(
               "border-border/60 bg-card/95 shadow-[0_10px_32px_rgba(2,32,71,0.1)]",
-              COMPACT_WIDTH,
+              compact ? COMPACT_WIDTH : STANDARD_WIDTH,
             ),
         className,
       )}
       data-globe-hub-carousel
       data-globe-hub-main={isMainSlot ? "true" : "false"}
+      data-globe-hub-variant={variant}
       aria-label={copy.globe.contextHubRailTitle}
     >
+      {compact ? (
+        <div className="flex items-center gap-1 border-b border-border/50 px-2 py-1.5">
+          <span className="min-w-0 flex-1 truncate text-[10px] font-semibold text-muted-foreground">
+            {contextPlace ?? copy.globe.contextHubEyebrow}
+          </span>
+          <button
+            type="button"
+            onClick={onExpand}
+            className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted/60 active:bg-muted"
+            aria-label={copy.globe.contextHubExpandAria}
+            data-globe-hub-rail-expand
+          >
+            <ChevronDown className="size-3.5 text-muted-foreground" aria-hidden />
+          </button>
+        </div>
+      ) : (
       <div className="border-b border-border/50 px-3 py-2">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
@@ -232,8 +254,9 @@ export function GlobeHubResourceCarousel({
           </button>
         </div>
       </div>
+      )}
 
-      <div className="relative px-2 pb-2 pt-1.5">
+      <div className={cn("relative px-2 pb-2", compact ? "pt-1" : "pt-1.5")}>
         {showLodgingHero && lodgingPayload ? (
           <GlobeLodgingMediaHero
             payload={lodgingPayload}
@@ -253,13 +276,15 @@ export function GlobeHubResourceCarousel({
           onDragEnd={onDragEnd}
           onClick={handleCardClick}
           className={cn(
-            "flex w-full items-center gap-3 rounded-2xl border px-3 text-left active:scale-[0.99]",
-            heroLayout ? "border-primary/25 bg-primary/[0.06] py-4" : "py-3",
-            isMainSlot && !heroLayout
+            "flex w-full items-center gap-2.5 rounded-2xl border px-2.5 text-left active:scale-[0.99]",
+            compact ? "py-2" : heroLayout ? "border-primary/25 bg-primary/[0.06] py-4" : "py-3",
+            isMainSlot && !heroLayout && !compact
               ? "border-primary/25 bg-primary/[0.05]"
               : !isMainSlot && row.connected
                 ? "border-primary/20 bg-primary/[0.04]"
-                : "border-border/50 bg-card",
+                : compact
+                  ? "border-border/40 bg-card/90"
+                  : "border-border/50 bg-card",
           )}
           data-globe-hub-carousel-index={index}
           data-globe-resource-id={resource.resourceId}
@@ -267,26 +292,28 @@ export function GlobeHubResourceCarousel({
           <span
             className={cn(
               "flex shrink-0 items-center justify-center rounded-xl",
-              heroLayout ? "size-12 bg-primary/12 text-primary" : "size-10",
+              compact ? "size-8" : heroLayout ? "size-12 bg-primary/12 text-primary" : "size-10",
               isMainSlot || row.connected
                 ? "bg-primary/10 text-primary"
                 : "bg-muted/70 text-muted-foreground",
             )}
           >
-            <Icon className={heroLayout ? "size-5" : "size-[1.125rem]"} aria-hidden />
+            <Icon className={compact ? "size-4" : heroLayout ? "size-5" : "size-[1.125rem]"} aria-hidden />
           </span>
           <span className="min-w-0 flex-1">
             <span
               className={cn(
                 "block truncate font-semibold text-foreground",
-                heroLayout ? "text-[16px]" : "text-[14px]",
+                compact ? "text-[12px]" : heroLayout ? "text-[16px]" : "text-[14px]",
               )}
             >
               {resource.label}
             </span>
+            {!compact ? (
             <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
               {resolveResourceSubtitle(entry)}
             </span>
+            ) : null}
           </span>
           {ranked.length > 1 ? (
             <span className="shrink-0 text-[11px] font-semibold text-primary/70" aria-hidden>
@@ -295,7 +322,7 @@ export function GlobeHubResourceCarousel({
           ) : null}
         </motion.button>
 
-        {showSwipeHint ? (
+        {showSwipeHint && !compact ? (
           <p className="mt-1.5 text-center text-[10px] font-medium text-muted-foreground">
             {copy.globe.contextHubSwipeHint}
           </p>

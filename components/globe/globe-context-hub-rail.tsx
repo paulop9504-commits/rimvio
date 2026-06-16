@@ -70,11 +70,14 @@ export type GlobeContextHubRailProps = {
   defaultExpanded?: boolean;
   onDismiss?: () => void;
   visible?: boolean;
+  /** compact = slim vertical dock chip; default = standard rail width. */
+  variant?: "default" | "compact";
   className?: string;
   globeRef?: RefObject<RimvioGlobeHubHandle | null>;
 };
 
 const PANEL_WIDTH = "w-[min(calc(100vw-1.5rem),17.5rem)]";
+const COMPACT_PANEL_WIDTH = "w-[min(calc(100vw-1.5rem),12rem)]";
 
 function openExternalHref(href: string) {
   if (href.startsWith("/")) {
@@ -94,6 +97,7 @@ export function GlobeContextHubRail({
   defaultExpanded = false,
   onDismiss,
   visible = true,
+  variant = "default",
   className,
   globeRef,
 }: GlobeContextHubRailProps) {
@@ -542,12 +546,18 @@ export function GlobeContextHubRail({
     return (
       <>
         {ticketSheets}
-        <div className={cn("flex flex-col gap-2", className)}>
-          <GlobePlacePrefillCard activeEventId={activeEventId} lat={lat} lng={lng} />
-          <GlobePrepChecklistCard activeEventId={activeEventId} />
-          <GlobeContextGardenSummary summary={gardenSummary} />
-          {weatherPrepLine ? (
-            <p className="px-0.5 text-[11px] font-medium text-muted-foreground">{weatherPrepLine}</p>
+        <div className={cn("flex flex-col gap-1.5", className)}>
+          {variant === "default" ? (
+            <>
+              <GlobePlacePrefillCard activeEventId={activeEventId} lat={lat} lng={lng} />
+              <GlobePrepChecklistCard activeEventId={activeEventId} />
+              <GlobeContextGardenSummary summary={gardenSummary} />
+              {weatherPrepLine ? (
+                <p className="px-0.5 text-[11px] font-medium text-muted-foreground">
+                  {weatherPrepLine}
+                </p>
+              ) : null}
+            </>
           ) : null}
           <GlobeHubResourceCarousel
             ranked={rankedResources}
@@ -559,12 +569,13 @@ export function GlobeContextHubRail({
             busy={busy}
             contextPlace={panel.contextPlace}
             layout={layout}
+            variant={variant}
             contextId={activeEventId}
             lat={lat}
             lng={lng}
             authUserId={authUserId}
           />
-          {hasLodgingResources && !mapMediaFocusOpen ? (
+          {hasLodgingResources && !mapMediaFocusOpen && variant === "default" ? (
             <GlobeLodgingMapStrip
               ranked={rankedResources}
               activeIndex={Math.min(carouselIndex, rankedResources.length - 1)}
@@ -613,23 +624,23 @@ export function GlobeContextHubRail({
     <aside
       className={cn(
         "pointer-events-auto overflow-hidden rounded-[1.35rem] border border-border/60 bg-card/95 shadow-[0_12px_40px_rgba(2,32,71,0.12)] backdrop-blur-xl",
-        layout === "hero" ? "w-full max-w-md" : PANEL_WIDTH,
+        layout === "hero" ? "w-full max-w-md" : variant === "compact" ? COMPACT_PANEL_WIDTH : PANEL_WIDTH,
         className,
       )}
       data-globe-context-hub-rail
       data-globe-context-hub-rail-expanded="true"
       aria-label={copy.globe.contextHubRailTitle}
     >
-      <div className="flex items-start gap-2 border-b border-border/50 px-3.5 py-3">
+      <div className="flex items-start gap-2 border-b border-border/50 px-3 py-2.5">
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-primary">
             {copy.globe.contextHubEyebrow}
           </p>
-          <p className="text-[14px] font-semibold leading-tight text-foreground">
+          <p className="text-[13px] font-semibold leading-tight text-foreground">
             {copy.globe.contextHubRailTitle}
           </p>
           <p
-            className="mt-1 truncate text-[11px] font-medium text-muted-foreground"
+            className="mt-0.5 truncate text-[10px] font-medium text-muted-foreground"
             title={panel.contextPlace}
           >
             {copy.globe.contextHubRailForContext(panel.contextPlace)}
@@ -647,7 +658,7 @@ export function GlobeContextHubRail({
         </button>
       </div>
 
-      <ul className="space-y-2 px-2.5 py-2.5">
+      <ul className="space-y-1.5 px-2 py-2">
         {browseRows.map((row) => (
           <HubServiceSlot
             key={row.serviceId}

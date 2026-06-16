@@ -26,7 +26,7 @@ import {
 import { ExperienceBridgeGhostSheet } from "@/components/globe/experience-bridge-ghost-sheet";
 import { GlobeSettingsSheet } from "@/components/globe/globe-settings-sheet";
 import { PinOpenSheet } from "@/components/globe/pin-open-sheet";
-import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
+import { subscribeGlobeMapMediaFocus } from "@/lib/globe/globe-map-media-focus-bridge";
 import { setLiveLocationPowerMode } from "@/lib/location-ping/live-location-service";
 import { usePersonalGlobePinSync } from "@/hooks/use-personal-globe-pin-sync";
 import { useGlobeInbox } from "@/hooks/use-globe-inbox";
@@ -76,7 +76,6 @@ import {
   MEDIA_SPACETIME_UPDATED,
 } from "@/lib/location-ping/media-context-store";
 import { copy } from "@/lib/copy/human-ko";
-import { hasActiveContextHub } from "@/lib/globe/context-hub/has-active-context-hub";
 import { subscribeGlobeContextHubOpen } from "@/lib/globe/context-hub/globe-context-hub-open-bridge";
 import { projectBridgeGhostClusters } from "@/lib/experience-bridge/project-bridge-ghost-clusters";
 import type { PendingBridgeInvite } from "@/hooks/use-pending-bridge-invites";
@@ -147,25 +146,18 @@ function GlobeHomeBody() {
   const [stackClusters, setStackClusters] = useState<PinCluster[] | null>(null);
   const [mediaStoreRevision, setMediaStoreRevision] = useState(0);
   const [hubDetailOpen, setHubDetailOpen] = useState(false);
-  const [hubRevision, setHubRevision] = useState(0);
+  const [mapMediaFocusOpen, setMapMediaFocusOpen] = useState(false);
+  const [mapMediaReplaySuppressed, setMapMediaReplaySuppressed] = useState(false);
   const clustersRef = useRef<readonly PinCluster[]>([]);
+
+  useEffect(() => {
+    return subscribeGlobeMapMediaFocus((detail) => {
+      setMapMediaFocusOpen(detail.open);
+    });
+  }, []);
 
   /** Hub activates only when user touches a context pin — not proactive. */
   const hubEventId = activeCluster?.eventId?.trim() || null;
-
-  const hubActive = useMemo(() => {
-    void hubRevision;
-    if (!hubEventId) {
-      return false;
-    }
-    return hasActiveContextHub(findLifeEventCandidate(hubEventId));
-  }, [hubEventId, hubRevision]);
-
-  useEffect(() => {
-    const bump = () => setHubRevision((value) => value + 1);
-    window.addEventListener(EVENT_CANDIDATES_UPDATED, bump);
-    return () => window.removeEventListener(EVENT_CANDIDATES_UPDATED, bump);
-  }, []);
 
   useEffect(() => {
     setHubDetailOpen(false);
@@ -232,6 +224,7 @@ function GlobeHomeBody() {
       globeRef.current?.flyToPin(cluster.lat, cluster.lng, "neighborhood");
       setStackClusters(null);
       setActiveCluster(cluster);
+      setMapMediaReplaySuppressed(false);
 
       const eventId = cluster.eventId?.trim();
       const event = eventId
@@ -363,8 +356,14 @@ function GlobeHomeBody() {
     activeContextMediaReel.length > 0 &&
       activeCluster?.eventId &&
       !sheetOpen &&
-      !stackClusters?.length,
+      !stackClusters?.length &&
+      !mapMediaReplaySuppressed,
   );
+
+  const dismissMapMediaReplay = useCallback(() => {
+    setMapMediaReplaySuppressed(true);
+    globeRef.current?.clearPinViewportBias();
+  }, []);
 
   useEffect(() => {
     const refresh = () => setPeerOptionsRevision((value) => value + 1);
@@ -765,7 +764,7 @@ function GlobeHomeBody() {
         anchorLng={activeCluster?.lng ?? null}
         visible={showMapVideoReplay}
         navigationEntries={navigableContexts}
-        onDismiss={clearActiveContext}
+        onDismiss={dismissMapMediaReplay}
         onOpenDetails={openMapMediaBridge}
         onNavigateContext={(nextEventId) => {
           focusContextByEventId(nextEventId);
@@ -784,31 +783,35 @@ function GlobeHomeBody() {
         lng={liveLocation?.lng ?? null}
         viewerUserId={user?.id ?? null}
       />
-      <div className="pointer-events-none absolute left-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20 flex max-h-[calc(100%-var(--rimvio-globe-ingest-offset)-5.5rem)] flex-col items-start gap-2">
-        <div className="pointer-events-auto">
-          <GlobeContextControlDock
-            timeFilter={timeFilter}
-            onTimeFilterChange={setTimeFilter}
-            peopleFilter={peopleFilter}
-            onPeopleFilterChange={setPeopleFilter}
-            peerOptions={peerOptions}
-            onCreate={() => setCreateOpen(true)}
-            onList={() => setListOpen(true)}
-            onManage={() => setManageOpen(true)}
-            onFlyToHere={
-              liveLocation
-                ? () =>
-                    globeRef.current?.flyToPin(
-                      liveLocation.lat,
-                      liveLocation.lng,
-                      "neighborhood",
-                    )
-                : undefined
-            }
-          />
-        </div>
-        <GlobeLocationConfirmCard className="pointer-events-auto w-[min(calc(100vw-1.5rem),17.5rem)]" />
-        {hubEventId && !hubDetailOpen && !hubActive ? (
+      <div className="pointer-events-none absolute left-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20 flex max-h-[calc(100%-var(--rimvio-globe-ingest-offset)-5.5rem)] flex-col items-start gap-1.5">
+        {!mapMediaFocusOpen ? (
+          <>
+            <div className="pointer-events-auto">
+              <GlobeContextControlDock
+                timeFilter={timeFilter}
+                onTimeFilterChange={setTimeFilter}
+                peopleFilter={peopleFilter}
+                onPeopleFilterChange={setPeopleFilter}
+                peerOptions={peerOptions}
+                onCreate={() => setCreateOpen(true)}
+                onList={() => setListOpen(true)}
+                onManage={() => setManageOpen(true)}
+                onFlyToHere={
+                  liveLocation
+                    ? () =>
+                        globeRef.current?.flyToPin(
+                          liveLocation.lat,
+                          liveLocation.lng,
+                          "neighborhood",
+                        )
+                    : undefined
+                }
+              />
+            </div>
+            <GlobeLocationConfirmCard className="pointer-events-auto w-[min(calc(100vw-1.5rem),12rem)]" />
+          </>
+        ) : null}
+        {hubEventId && !hubDetailOpen && !mapMediaFocusOpen ? (
           <GlobeContextHubRail
             className="pointer-events-auto"
             visible={!globeRenderSuspended}
@@ -817,6 +820,7 @@ function GlobeHomeBody() {
             lng={liveLocation?.lng ?? null}
             authUserId={user?.id ?? null}
             layout="dock"
+            variant="compact"
             globeRef={globeRef}
           />
         ) : null}
@@ -831,6 +835,7 @@ function GlobeHomeBody() {
         visible={Boolean(hubEventId)}
         globeRef={globeRef}
       />
+      {!mapMediaFocusOpen ? (
       <div className="pointer-events-none absolute right-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20">
         <GlobeUtilityMenu
           mediaPoolCount={mediaPoolCount}
@@ -841,6 +846,7 @@ function GlobeHomeBody() {
           className="pointer-events-auto"
         />
       </div>
+      ) : null}
       <GlobeContextIngestBar
         ref={ingestBarRef}
         targetEventId={activeCluster?.eventId ?? null}

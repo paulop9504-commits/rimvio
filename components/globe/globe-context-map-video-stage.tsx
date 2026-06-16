@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
-import { ContextMediaUploaderBadge } from "@/components/globe/context-media-uploader-badge";
 import { ContextMediaDeleteButton } from "@/components/globe/context-media-delete-button";
 import { ContextMediaVideoSoundButton } from "@/components/globe/context-media-video-sound-button";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
@@ -20,7 +19,6 @@ import {
   EVENT_CANDIDATES_UPDATED,
   findLifeEventCandidate,
 } from "@/lib/life-read-model";
-import { fetchMyAccountProfile } from "@/lib/peer-chat/peer-chat-client";
 import {
   hydrateMediaContextStore,
   MEDIA_SPACETIME_UPDATED,
@@ -146,23 +144,6 @@ export function GlobeContextMapVideoStage({
   const [mediaIndex, setMediaIndex] = useState(0);
   const [playing, setPlaying] = useState(true);
   const [videoSoundOn, setVideoSoundOn] = useState(false);
-  const [selfDisplayName, setSelfDisplayName] = useState<string | null>(null);
-  const [selfAvatarUrl, setSelfAvatarUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    void fetchMyAccountProfile()
-      .then((profile) => {
-        setSelfDisplayName(
-          profile?.displayName?.trim() ||
-            profile?.rimvioId?.trim() ||
-            "나",
-        );
-        setSelfAvatarUrl(profile?.avatarUrl?.trim() || null);
-      })
-      .catch(() => {
-        setSelfDisplayName("나");
-      });
-  }, []);
 
   useEffect(() => {
     const bump = () => setRevision((value) => value + 1);
@@ -268,7 +249,7 @@ export function GlobeContextMapVideoStage({
     <div
       ref={containerRef}
       className={cn(
-        "pointer-events-none absolute inset-0 z-[22] overflow-hidden",
+        "pointer-events-none absolute inset-0 z-[30] overflow-hidden",
         className,
       )}
       data-globe-context-map-video
@@ -347,23 +328,27 @@ export function GlobeContextMapVideoStage({
               onSoundOnChange={setVideoSoundOn}
             />
           ) : null}
-          {currentItem ? (
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] bg-gradient-to-t from-black/85 via-black/40 to-transparent px-3 pb-2.5 pt-12">
-              <p className="line-clamp-2 text-[11px] font-semibold leading-snug text-white">
-                {currentItem.recallCaption}
-              </p>
-            </div>
+          {onDismiss ? (
+            <button
+              type="button"
+              className="pointer-events-auto absolute right-2 top-2 z-[3] flex size-8 items-center justify-center rounded-full bg-black/55 text-[11px] font-semibold text-white backdrop-blur-sm"
+              aria-label="닫기"
+              onClick={(event) => {
+                event.stopPropagation();
+                onDismiss();
+              }}
+            >
+              ×
+            </button>
           ) : null}
-          {currentItem ? (
-            <ContextMediaUploaderBadge
-              item={currentItem}
-              selfDisplayName={selfDisplayName}
-              selfAvatarUrl={selfAvatarUrl}
-            />
+          {reel.length > 1 ? (
+            <span className="pointer-events-none absolute left-2 top-2 z-[2] rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
+              {mediaIndex + 1}/{reel.length}
+            </span>
           ) : null}
           {currentItem?.kind === "video" ? (
-            <div className="pointer-events-none absolute inset-x-0 bottom-3 z-[6] flex items-center justify-between gap-2 px-2">
-              <div className="pointer-events-auto flex min-w-0 items-center gap-1.5">
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[6] flex items-center justify-between gap-2 bg-gradient-to-t from-black/80 to-transparent px-2 pb-2 pt-8">
+              <div className="pointer-events-auto flex min-w-0 items-center gap-1">
                 <ContextMediaVideoSoundButton
                   soundOn={videoSoundOn}
                   variant="pill"
@@ -387,7 +372,7 @@ export function GlobeContextMapVideoStage({
               </div>
               <button
                 type="button"
-                className="pointer-events-auto shrink-0 rounded-full bg-black/70 px-2.5 py-1.5 text-[10px] font-semibold text-white backdrop-blur-sm ring-1 ring-white/20"
+                className="pointer-events-auto shrink-0 rounded-full bg-black/70 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-sm"
                 onClick={(event) => {
                   event.stopPropagation();
                   setPlaying((value) => !value);
@@ -396,23 +381,6 @@ export function GlobeContextMapVideoStage({
                 {playing ? "일시정지" : "재생"}
               </button>
             </div>
-          ) : null}
-          {onDismiss ? (
-            <button
-              type="button"
-              className="pointer-events-auto absolute left-2 top-2 z-[3] rounded-full bg-black/55 px-2 py-1 text-[10px] font-semibold text-white backdrop-blur-sm"
-              onClick={(event) => {
-                event.stopPropagation();
-                onDismiss();
-              }}
-            >
-              닫기
-            </button>
-          ) : null}
-          {reel.length > 1 ? (
-            <span className="pointer-events-none absolute right-11 top-2 z-[2] rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
-              {mediaIndex + 1}/{reel.length}
-            </span>
           ) : null}
           {currentItem &&
           currentItem.kind !== "video" &&
@@ -423,7 +391,7 @@ export function GlobeContextMapVideoStage({
               eventId={eventId}
               viewerUserId={viewerUserId}
               enabled={deletable}
-              className="bottom-2 left-2 size-8"
+              className="bottom-2 right-2 size-8"
               onDeleted={handleMediaDeleted}
             />
           ) : null}

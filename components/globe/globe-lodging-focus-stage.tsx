@@ -274,7 +274,7 @@ export function GlobeLodgingFocusStage({
   return (
     <div
       ref={containerRef}
-      className={cn("pointer-events-none absolute inset-0 z-[23] overflow-hidden", className)}
+      className={cn("pointer-events-none absolute inset-0 z-[30] overflow-hidden", className)}
       data-globe-lodging-focus-stage
     >
       <button
