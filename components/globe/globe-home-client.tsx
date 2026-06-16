@@ -51,7 +51,7 @@ import type { PinCluster } from "@/lib/globe/pin-cluster-types";
 import { resolveGlobeContextPinCluster } from "@/lib/globe/resolve-globe-context-pin-cluster";
 import { listGlobeContextPeerOptions } from "@/lib/globe/list-globe-context-peer-options";
 import type { GlobeContextPeopleFilter } from "@/lib/globe/globe-context-people-filter";
-import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
+import { resolveActiveGlobeContext } from "@/lib/globe/resolve-active-globe-context";
 import {
   GLOBE_CONTEXT_SHARE_REQUEST,
   type GlobeContextShareRequestDetail,
@@ -142,7 +142,23 @@ function GlobeHomeBody() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [stackClusters, setStackClusters] = useState<PinCluster[] | null>(null);
   const [mediaStoreRevision, setMediaStoreRevision] = useState(0);
+  const [contextMatchRevision, setContextMatchRevision] = useState(0);
   const clustersRef = useRef<readonly PinCluster[]>([]);
+
+  const suggestedContext = useMemo(() => {
+    void contextMatchRevision;
+    return resolveActiveGlobeContext({
+      events: listLifeEventCandidates(),
+      lat: liveLocation?.lat ?? null,
+      lng: liveLocation?.lng ?? null,
+    });
+  }, [contextMatchRevision, liveLocation?.lat, liveLocation?.lng]);
+
+  const hubEventId =
+    activeCluster?.eventId?.trim() ||
+    suggestedContext?.eventId ||
+    null;
+
   const detailLevelRef = useRef<GlobeDetailLevel>("space");
   const lastPinPressAtRef = useRef(0);
 
@@ -340,8 +356,13 @@ function GlobeHomeBody() {
 
   useEffect(() => {
     const refresh = () => setPeerOptionsRevision((value) => value + 1);
+    const refreshContextMatch = () => setContextMatchRevision((value) => value + 1);
     window.addEventListener(EVENT_CANDIDATES_UPDATED, refresh);
-    return () => window.removeEventListener(EVENT_CANDIDATES_UPDATED, refresh);
+    window.addEventListener(EVENT_CANDIDATES_UPDATED, refreshContextMatch);
+    return () => {
+      window.removeEventListener(EVENT_CANDIDATES_UPDATED, refresh);
+      window.removeEventListener(EVENT_CANDIDATES_UPDATED, refreshContextMatch);
+    };
   }, []);
 
   useEffect(() => {
@@ -354,6 +375,10 @@ function GlobeHomeBody() {
       window.removeEventListener(EVENT_CANDIDATES_UPDATED, bump);
     };
   }, []);
+
+  useEffect(() => {
+    setContextMatchRevision((value) => value + 1);
+  }, [liveLocation?.lat, liveLocation?.lng]);
 
   useEffect(() => {
     if (!activeCluster?.eventId || stackClusters?.length || sheetOpen) {
@@ -759,7 +784,7 @@ function GlobeHomeBody() {
         <GlobeContextHubRail
           className="pointer-events-auto"
           visible={!globeRenderSuspended}
-          activeEventId={activeCluster?.eventId ?? null}
+          activeEventId={hubEventId}
         />
       </div>
       <div className="pointer-events-none absolute right-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20">

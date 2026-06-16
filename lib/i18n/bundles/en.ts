@@ -328,6 +328,8 @@ export const copyEn: Copy = {
     utilityMenuSettings: "Settings",
     contextHubExpandAria: "Show more resources",
     contextHubCollapseAria: "Collapse resources",
+    contextHubSwipeHint: "Swipe for more resources",
+    contextHubCarouselDotsAria: "Resource position",
     createFail: "Couldn't create context",
     listTitle: "My context",
     manageTitle: "Manage",

@@ -337,6 +337,8 @@ export const copy = {
     utilityMenuSettings: "설정",
     contextHubExpandAria: "자원 더 보기",
     contextHubCollapseAria: "자원 접기",
+    contextHubSwipeHint: "옆으로 밀어 다른 자원 보기",
+    contextHubCarouselDotsAria: "자원 위치",
     createFail: "맥락을 만들지 못했어요",
     listTitle: "내 맥락",
     manageTitle: "관리",
