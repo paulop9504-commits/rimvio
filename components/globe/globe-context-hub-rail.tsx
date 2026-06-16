@@ -6,6 +6,7 @@ import { ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { GlobeHubResourceCarousel } from "@/components/globe/globe-hub-resource-carousel";
 import { connectDepartureHubToContext } from "@/lib/globe/connect-departure-hub-to-context";
+import { buildHubCarouselSlides } from "@/lib/globe/context-hub/build-hub-carousel-slides";
 import {
   foldContextHubLearning,
   recordContextHubTelemetry,
@@ -30,16 +31,36 @@ import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 import { HubServiceSlot } from "@/components/globe/globe-context-hub-service-slot";
 
+export type GlobeContextHubAlternate = {
+  eventId: string;
+  title: string;
+  place: string;
+};
+
 export type GlobeContextHubRailProps = {
   activeEventId?: string | null;
+  alternateContexts?: readonly GlobeContextHubAlternate[];
+  onSelectContext?: (eventId: string) => void;
+  onDismiss?: () => void;
   visible?: boolean;
   className?: string;
 };
 
 const PANEL_WIDTH = "w-[min(calc(100vw-1.5rem),17.5rem)]";
 
+function openExternalHref(href: string) {
+  if (href.startsWith("/")) {
+    window.location.assign(href);
+    return;
+  }
+  window.open(href, "_blank", "noopener,noreferrer");
+}
+
 export function GlobeContextHubRail({
   activeEventId,
+  alternateContexts = [],
+  onSelectContext,
+  onDismiss,
   visible = true,
   className,
 }: GlobeContextHubRailProps) {
@@ -83,6 +104,29 @@ export function GlobeContextHubRail({
     [panel],
   );
 
+  const slides = useMemo(() => {
+    const eventId = activeEventId?.trim();
+    if (!eventId || rankedRows.length === 0) {
+      return [];
+    }
+    return buildHubCarouselSlides({
+      resources: rankedRows,
+      alternates: alternateContexts,
+      activeEventId: eventId,
+    });
+  }, [activeEventId, alternateContexts, rankedRows]);
+
+  const telemetryLabelForSlide = useCallback((index: number): string | null => {
+    const slide = slides[index];
+    if (!slide) {
+      return null;
+    }
+    if (slide.kind === "context") {
+      return copy.globe.contextHubSwitchTitle(slide.alternate.title);
+    }
+    return slide.row.link?.actionLabelKo ?? slide.row.handoffLabelKo ?? slide.row.labelKo;
+  }, [slides]);
+
   const handleOpenAction = useCallback(
     (url: string, label: string) => {
       const eventId = activeEventId?.trim();
@@ -92,49 +136,53 @@ export function GlobeContextHubRail({
         recordContextHubTelemetry({ event, kind: "executed", label });
         foldContextHubLearning(event);
       }
-      window.open(url, "_blank", "noopener,noreferrer");
+      openExternalHref(url);
     },
     [activeEventId],
   );
 
   const handleOpenHandoff = useCallback(
-    (href: string) => {
+    (href: string, label: string, internalRoute = false) => {
       const eventId = activeEventId?.trim();
       const event = eventId ? findLifeEventCandidate(eventId) : null;
       if (event) {
-        writeGlobeOrchestratorScopeHint({
-          pinScope: resolvePinScopeFromEventId(eventId) ?? "internal",
-          eventId,
-          title: event.title,
-        });
-        recordContextHubTelemetry({
-          event,
-          kind: "clicked",
-          label: copy.globe.contextHubAiSearchOpen,
-        });
-        recordContextHubTelemetry({
-          event,
-          kind: "executed",
-          label: copy.globe.contextHubAiSearchOpen,
-        });
+        if (internalRoute) {
+          writeGlobeOrchestratorScopeHint({
+            pinScope: resolvePinScopeFromEventId(eventId) ?? "internal",
+            eventId,
+            title: event.title,
+          });
+        }
+        recordContextHubTelemetry({ event, kind: "clicked", label });
+        recordContextHubTelemetry({ event, kind: "executed", label });
         foldContextHubLearning(event);
       }
-      router.push(href);
+      if (internalRoute) {
+        router.push(href);
+        return;
+      }
+      openExternalHref(href);
     },
     [activeEventId, router],
   );
 
   const runCarouselRow = useCallback(
     (row: ContextHubServiceRow) => {
+      const label = row.link?.actionLabelKo ?? row.handoffLabelKo ?? row.labelKo;
+      if (row.serviceId === "ticket" && row.handoffHref && !row.handoffHref.startsWith("/")) {
+        handleOpenHandoff(row.handoffHref, label);
+        return;
+      }
       if (row.connected && row.link?.actionUrl) {
-        handleOpenAction(
-          row.link.actionUrl,
-          row.link.actionLabelKo ?? copy.globe.contextHubOpenFlight,
-        );
+        handleOpenAction(row.link.actionUrl, label);
         return;
       }
       if (row.handoffHref) {
-        handleOpenHandoff(row.handoffHref);
+        handleOpenHandoff(
+          row.handoffHref,
+          label,
+          row.serviceId === "ai_search",
+        );
         return;
       }
       setExpanded(true);
@@ -143,23 +191,30 @@ export function GlobeContextHubRail({
     [handleOpenAction, handleOpenHandoff],
   );
 
+  const handleDismiss = useCallback(() => {
+    const eventId = activeEventId?.trim();
+    const event = eventId ? findLifeEventCandidate(eventId) : null;
+    const label = telemetryLabelForSlide(carouselIndex);
+    if (event && label) {
+      recordContextHubTelemetry({ event, kind: "dismissed", label });
+      foldContextHubLearning(event);
+    }
+    onDismiss?.();
+  }, [activeEventId, carouselIndex, onDismiss, telemetryLabelForSlide]);
+
   useEffect(() => {
     void revision;
     const eventId = activeEventId?.trim();
-    const row = rankedRows[carouselIndex] ?? rankedRows[0];
-    if (!eventId || !row) {
+    const label = telemetryLabelForSlide(carouselIndex);
+    if (!eventId || !label) {
       return;
     }
     const event = findLifeEventCandidate(eventId);
     if (!event) {
       return;
     }
-    recordContextHubTelemetry({
-      event,
-      kind: "shown",
-      label: row.link?.actionLabelKo ?? row.handoffLabelKo ?? row.labelKo,
-    });
-  }, [activeEventId, carouselIndex, rankedRows, revision]);
+    recordContextHubTelemetry({ event, kind: "shown", label });
+  }, [activeEventId, carouselIndex, revision, telemetryLabelForSlide]);
 
   const handleConnectFlight = useCallback(
     async (airportId: DepartureHubAirportId) => {
@@ -198,7 +253,7 @@ export function GlobeContextHubRail({
     [activeEventId, busy, panel?.services],
   );
 
-  if (!visible || !panel || rankedRows.length === 0) {
+  if (!visible || !panel || slides.length === 0) {
     return null;
   }
 
@@ -206,10 +261,12 @@ export function GlobeContextHubRail({
     return (
       <GlobeHubResourceCarousel
         className={className}
-        rows={rankedRows}
-        index={Math.min(carouselIndex, rankedRows.length - 1)}
+        slides={slides}
+        index={Math.min(carouselIndex, slides.length - 1)}
         onIndexChange={setCarouselIndex}
-        onRunRow={runCarouselRow}
+        onRunResource={runCarouselRow}
+        onSelectContext={(eventId) => onSelectContext?.(eventId)}
+        onDismiss={handleDismiss}
         onExpand={() => setExpanded(true)}
         busy={busy}
         contextPlace={panel.contextPlace}
@@ -262,17 +319,20 @@ export function GlobeContextHubRail({
             row={row}
             connectOpen={connectServiceId === row.serviceId}
             busy={busy}
-            emphasized={rankedRows[carouselIndex]?.serviceId === row.serviceId}
+            emphasized={
+              slides[carouselIndex]?.kind === "resource" &&
+              slides[carouselIndex]?.row.serviceId === row.serviceId
+            }
             onToggleConnect={() =>
               setConnectServiceId((current) =>
                 current === row.serviceId ? null : row.serviceId,
               )
             }
             onConnectFlight={(airportId) => void handleConnectFlight(airportId)}
-            onOpenAction={(url) =>
-              handleOpenAction(url, copy.globe.contextHubOpenFlight)
+            onOpenAction={(url, label) => handleOpenAction(url, label)}
+            onOpenHandoff={(href, label, internalRoute) =>
+              handleOpenHandoff(href, label, internalRoute)
             }
-            onOpenHandoff={handleOpenHandoff}
           />
         ))}
       </ul>

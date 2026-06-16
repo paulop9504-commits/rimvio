@@ -51,7 +51,10 @@ import type { PinCluster } from "@/lib/globe/pin-cluster-types";
 import { resolveGlobeContextPinCluster } from "@/lib/globe/resolve-globe-context-pin-cluster";
 import { listGlobeContextPeerOptions } from "@/lib/globe/list-globe-context-peer-options";
 import type { GlobeContextPeopleFilter } from "@/lib/globe/globe-context-people-filter";
-import { resolveActiveGlobeContext } from "@/lib/globe/resolve-active-globe-context";
+import {
+  resolveActiveGlobeContext,
+  resolveRankedActiveGlobeContexts,
+} from "@/lib/globe/resolve-active-globe-context";
 import {
   GLOBE_CONTEXT_SHARE_REQUEST,
   type GlobeContextShareRequestDetail,
@@ -143,6 +146,10 @@ function GlobeHomeBody() {
   const [stackClusters, setStackClusters] = useState<PinCluster[] | null>(null);
   const [mediaStoreRevision, setMediaStoreRevision] = useState(0);
   const [contextMatchRevision, setContextMatchRevision] = useState(0);
+  const [manualHubEventId, setManualHubEventId] = useState<string | null>(null);
+  const [dismissedHubEventIds, setDismissedHubEventIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const clustersRef = useRef<readonly PinCluster[]>([]);
 
   const suggestedContext = useMemo(() => {
@@ -154,10 +161,47 @@ function GlobeHomeBody() {
     });
   }, [contextMatchRevision, liveLocation?.lat, liveLocation?.lng]);
 
+  const rankedContexts = useMemo(() => {
+    void contextMatchRevision;
+    return resolveRankedActiveGlobeContexts({
+      events: listLifeEventCandidates(),
+      lat: liveLocation?.lat ?? null,
+      lng: liveLocation?.lng ?? null,
+    });
+  }, [contextMatchRevision, liveLocation?.lat, liveLocation?.lng]);
+
+  const proactiveHubEventId = useMemo(() => {
+    const eventId = suggestedContext?.eventId?.trim();
+    if (!eventId || dismissedHubEventIds.has(eventId)) {
+      return null;
+    }
+    return eventId;
+  }, [dismissedHubEventIds, suggestedContext?.eventId]);
+
   const hubEventId =
     activeCluster?.eventId?.trim() ||
-    suggestedContext?.eventId ||
+    manualHubEventId?.trim() ||
+    proactiveHubEventId ||
     null;
+
+  const hubAlternateContexts = useMemo(
+    () =>
+      rankedContexts
+        .filter((row) => row.eventId !== hubEventId)
+        .slice(0, 2)
+        .map((row) => ({
+          eventId: row.eventId,
+          title: row.title,
+          place: row.place,
+        })),
+    [hubEventId, rankedContexts],
+  );
+
+  useEffect(() => {
+    if (activeCluster?.eventId?.trim()) {
+      setManualHubEventId(null);
+    }
+  }, [activeCluster?.eventId]);
 
   const detailLevelRef = useRef<GlobeDetailLevel>("space");
   const lastPinPressAtRef = useRef(0);
@@ -785,6 +829,23 @@ function GlobeHomeBody() {
           className="pointer-events-auto"
           visible={!globeRenderSuspended}
           activeEventId={hubEventId}
+          alternateContexts={hubAlternateContexts}
+          onSelectContext={(eventId) => {
+            setDismissedHubEventIds((current) => {
+              const next = new Set(current);
+              next.delete(eventId);
+              return next;
+            });
+            setManualHubEventId(eventId);
+          }}
+          onDismiss={() => {
+            const eventId = hubEventId?.trim();
+            if (!eventId || activeCluster?.eventId?.trim()) {
+              return;
+            }
+            setDismissedHubEventIds((current) => new Set(current).add(eventId));
+            setManualHubEventId(null);
+          }}
         />
       </div>
       <div className="pointer-events-none absolute right-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20">

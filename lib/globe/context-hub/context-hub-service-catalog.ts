@@ -9,10 +9,15 @@ import type { DepartureHubOption } from "@/lib/globe/suggest-departure-hub-optio
 import { suggestDepartureHubOptions } from "@/lib/globe/suggest-departure-hub-options";
 import { readPlanContextFromEvent } from "@/lib/plan-context/plan-context-metadata";
 import { buildContextHubAiSearchHandoff } from "@/lib/globe/context-hub/build-context-hub-ai-search-handoff";
+import {
+  isTicketLikeContext,
+  readContextTicketArtifact,
+} from "@/lib/globe/context-hub/read-context-ticket-artifact";
 import { findPersonalGlobePinByEventId } from "@/lib/globe/personal-globe-pin-store";
+import { ticketPrimaryLabel, detectTicketBrand } from "@/lib/resolvers/ticket-deep-links";
 
 /** Plug-in resource service — not a globe context. */
-export type ContextHubServiceId = "flight" | "rental_car" | "ai_search";
+export type ContextHubServiceId = "ticket" | "flight" | "rental_car" | "ai_search";
 
 export type ContextHubServiceDef = {
   id: ContextHubServiceId;
@@ -24,6 +29,13 @@ export type ContextHubServiceDef = {
 };
 
 export const CONTEXT_HUB_SERVICE_CATALOG: readonly ContextHubServiceDef[] = [
+  {
+    id: "ticket",
+    kind: null,
+    labelKo: "티켓",
+    shortLabelKo: "티켓",
+    implemented: true,
+  },
   {
     id: "flight",
     kind: "departure_airport",
@@ -85,6 +97,8 @@ function isTravelContext(event: EventCandidate): boolean {
 
 function isServiceOffered(serviceId: ContextHubServiceId, event: EventCandidate): boolean {
   switch (serviceId) {
+    case "ticket":
+      return isTicketLikeContext(event);
     case "flight":
       return shouldOfferDepartureHub(event);
     case "rental_car":
@@ -117,6 +131,7 @@ export function listContextHubServicesForEvent(
 
   const services: ContextHubServiceRow[] = CONTEXT_HUB_SERVICE_CATALOG.map((def) => {
     const offered = isServiceOffered(def.id, event);
+    const ticketArtifact = def.id === "ticket" ? readContextTicketArtifact(event) : null;
     const link =
       def.kind === "departure_airport"
         ? (listContextHubLinks(event).find((row) => row.kind === def.kind) ?? null)
@@ -126,17 +141,46 @@ export function listContextHubServicesForEvent(
         ? buildContextHubAiSearchHandoff(event)
         : null;
 
+    const ticketUrl = ticketArtifact?.actionUrl ?? null;
+    const ticketBrand = ticketUrl ? detectTicketBrand(ticketUrl, "") : null;
+
     return {
       serviceId: def.id,
       labelKo: def.labelKo,
       shortLabelKo: def.shortLabelKo,
       implemented: def.implemented,
       offered,
-      connected: def.id === "ai_search" ? Boolean(aiHandoff) : Boolean(link),
-      link,
+      connected:
+        def.id === "ticket"
+          ? Boolean(ticketArtifact?.actionUrl || ticketArtifact?.qrPreviewUrl)
+          : def.id === "ai_search"
+            ? Boolean(aiHandoff)
+            : Boolean(link),
+      link:
+        def.id === "ticket" && ticketArtifact
+          ? {
+              eventId: event.id,
+              kind: "departure_airport",
+              label: ticketArtifact.labelKo,
+              shortLabel: ticketArtifact.qrPreviewUrl ? "QR" : ticketArtifact.labelKo,
+              airportIata: null,
+              actionUrl: ticketArtifact.actionUrl,
+              actionLabelKo: ticketArtifact.qrPreviewUrl
+                ? "QR 보기"
+                : ticketBrand
+                  ? ticketPrimaryLabel(ticketBrand)
+                  : "티켓 열기",
+            }
+          : link,
       flightOptions: def.id === "flight" ? flightOptions : [],
-      handoffHref: aiHandoff?.href ?? null,
-      handoffLabelKo: aiHandoff?.actionLabelKo ?? null,
+      handoffHref:
+        def.id === "ticket" && ticketArtifact?.qrPreviewUrl
+          ? ticketArtifact.qrPreviewUrl
+          : aiHandoff?.href ?? null,
+      handoffLabelKo:
+        def.id === "ticket" && ticketArtifact?.qrPreviewUrl
+          ? "QR 보기"
+          : aiHandoff?.actionLabelKo ?? null,
     };
   }).filter((row) => row.offered);
 

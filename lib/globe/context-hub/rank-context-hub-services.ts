@@ -4,6 +4,17 @@ function scoreHubServiceRow(row: ContextHubServiceRow): number {
   if (!row.offered) {
     return 0;
   }
+  if (row.serviceId === "ticket") {
+    if (row.handoffHref) {
+      return 112;
+    }
+    if (row.connected && row.link?.actionUrl) {
+      return 108;
+    }
+    if (row.connected) {
+      return 95;
+    }
+  }
   if (!row.implemented) {
     return 10;
   }

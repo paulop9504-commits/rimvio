@@ -313,6 +313,9 @@ export const copyEn: Copy = {
     contextHubDraftBody:
       "They connect when you pin the context · change anytime from the pin sheet",
     contextHubOpenFlight: "View flights",
+    contextHubOpenTicket: "View ticket",
+    contextHubAiSearchOpen: "Search context",
+    contextHubSwitchTitle: (title: string) => `Other context · ${title}`,
     contextHubRailTitle: "Hubs",
     contextHubRailForContext: (place: string) => `「${place}」`,
     contextHubServicePlugIn: "Plug in",

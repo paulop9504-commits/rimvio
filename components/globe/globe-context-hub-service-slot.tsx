@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Car, Plane, Plus, Sparkles } from "lucide-react";
+import { Car, Plane, Plus, Sparkles, Ticket } from "lucide-react";
 import type {
   ContextHubServiceId,
   ContextHubServiceRow,
@@ -11,6 +11,7 @@ import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
 const SERVICE_ICON: Record<ContextHubServiceId, typeof Plane> = {
+  ticket: Ticket,
   flight: Plane,
   rental_car: Car,
   ai_search: Sparkles,
@@ -32,8 +33,8 @@ export function HubServiceSlot({
   emphasized?: boolean;
   onToggleConnect: () => void;
   onConnectFlight: (airportId: DepartureHubAirportId) => void;
-  onOpenAction: (url: string) => void;
-  onOpenHandoff: (href: string) => void;
+  onOpenAction: (url: string, label: string) => void;
+  onOpenHandoff: (href: string, label: string, internalRoute?: boolean) => void;
 }) {
   const Icon = SERVICE_ICON[row.serviceId];
   const link = row.link;
@@ -72,11 +73,54 @@ export function HubServiceSlot({
           </p>
         </div>
 
-        {row.implemented && row.serviceId === "ai_search" && row.handoffHref ? (
+        {row.implemented && row.serviceId === "ticket" ? (
+          row.handoffHref ? (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() =>
+                onOpenHandoff(
+                  row.handoffHref!,
+                  row.handoffLabelKo ?? "QR 보기",
+                  false,
+                )
+              }
+              className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground active:opacity-85"
+              data-globe-hub-service-open={row.serviceId}
+            >
+              {row.handoffLabelKo ?? "QR 보기"}
+            </button>
+          ) : row.connected && link?.actionUrl ? (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() =>
+                onOpenAction(
+                  link.actionUrl!,
+                  link.actionLabelKo ?? copy.globe.contextHubOpenTicket,
+                )
+              }
+              className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground active:opacity-85"
+              data-globe-hub-service-open={row.serviceId}
+            >
+              {link.actionLabelKo ?? copy.globe.contextHubOpenTicket}
+            </button>
+          ) : (
+            <span className="shrink-0 rounded-full bg-muted/90 px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">
+              {copy.globe.contextHubServicePlugIn}
+            </span>
+          )
+        ) : row.implemented && row.serviceId === "ai_search" && row.handoffHref ? (
           <button
             type="button"
             disabled={busy}
-            onClick={() => onOpenHandoff(row.handoffHref!)}
+            onClick={() =>
+              onOpenHandoff(
+                row.handoffHref!,
+                row.handoffLabelKo ?? copy.globe.contextHubAiSearchOpen,
+                true,
+              )
+            }
             className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground active:opacity-85"
             data-globe-hub-service-open={row.serviceId}
           >
@@ -87,7 +131,7 @@ export function HubServiceSlot({
             <button
               type="button"
               disabled={busy}
-              onClick={() => onOpenAction(link.actionUrl!)}
+              onClick={() => onOpenAction(link.actionUrl!, link.actionLabelKo ?? copy.globe.contextHubOpenFlight)}
               className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground active:opacity-85"
               data-globe-hub-service-open={row.serviceId}
             >

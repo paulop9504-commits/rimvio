@@ -142,6 +142,54 @@ export function resolveActiveGlobeContext(input: {
 
   return {
     ...top,
-    alternates: ranked.slice(1, 3).map((row) => row.eventId),
+    alternates: ranked.slice(1, 3).filter((row) => row.tier !== "low").map((row) => row.eventId),
   };
+}
+
+export type ActiveGlobeContextOption = {
+  eventId: string;
+  title: string;
+  place: string;
+  score: number;
+  tier: ActiveGlobeContextTier;
+};
+
+/** Ranked proactive contexts — for carousel context switcher. */
+export function resolveRankedActiveGlobeContexts(input: {
+  events: readonly EventCandidate[];
+  now?: Date;
+  lat?: number | null;
+  lng?: number | null;
+  limit?: number;
+}): ActiveGlobeContextOption[] {
+  const now = input.now ?? new Date();
+  const nowIso = now.toISOString();
+  const lat = input.lat ?? null;
+  const lng = input.lng ?? null;
+  const timeline = listGlobeContextTimeline(input.events, now);
+  const candidates = [...timeline.present, ...timeline.future].slice(0, 12);
+  const eventsById = new Map(input.events.map((event) => [event.id, event]));
+
+  return candidates
+    .map((entry) => {
+      const event = eventsById.get(entry.eventId);
+      if (!event) {
+        return null;
+      }
+      const { score } = scoreEntry({ entry, event, nowIso, lat, lng });
+      const tier = tierForScore(score);
+      if (tier === "low") {
+        return null;
+      }
+      return {
+        eventId: entry.eventId,
+        title: entry.title,
+        place: entry.place,
+        score,
+        tier,
+      };
+    })
+    .filter((row): row is ActiveGlobeContextOption => row !== null)
+    .sort((left, right) => right.score - left.score)
+    .slice(0, input.limit ?? 3);
 }
