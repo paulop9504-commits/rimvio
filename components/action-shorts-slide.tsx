@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FeedShareSheet } from "@/components/feed-share-sheet";
 import { ScheduleMediumSheet } from "@/components/schedule-medium-sheet";
@@ -24,8 +24,13 @@ import {
 import { isScheduleAction } from "@/lib/actions/is-schedule-action";
 import { runFeedLinkAction } from "@/lib/feed/run-feed-link-action";
 import { buildFeedPrimaryRankingWhy } from "@/lib/feed/rank-feed-link-actions";
-import { recordFeedLinkActionTelemetry } from "@/lib/archive/record-feed-link-telemetry";
-import { buildLinkRankingContextKey } from "@/lib/feed/build-link-ranking-context-key";
+import {
+  resolveLinkMainOffer,
+  shouldShowLinkMainHero,
+} from "@/lib/action-chat/resolve-link-main-offer";
+import {
+  recordSurfaceLinkActionTelemetry,
+} from "@/lib/archive/record-surface-link-telemetry";
 import { useCopy, useAppLocale } from "@/hooks/use-copy";
 import type { Copy } from "@/lib/i18n/types";
 import { shadowAction } from "@/lib/action-shadowing";
@@ -186,6 +191,8 @@ export function ActionShortsSlide({
     action: LinkActionItem;
     label: string;
   } | null>(null);
+  const [actionsRevealed, setActionsRevealed] = useState(false);
+  const shownRef = useRef(false);
   const { requestNavSector, shouldOpenNavSector, navSectorSheet } = useNavSectorPicker({
     copy,
     resolveLink: () => link,
@@ -221,6 +228,44 @@ export function ActionShortsSlide({
   }, [link.actions, link.original_url, link.title, copy.actions.openLink]);
 
   const { focused } = usePersonalizedFeedActions(link, actionIndex, isActive);
+
+  const offer = useMemo(
+    () =>
+      resolveLinkMainOffer({
+        link,
+        surface: "feed",
+        locateLoading,
+        hasLocateResult: Boolean(locateResult),
+        actionsRevealed,
+      }),
+    [actionsRevealed, link, locateLoading, locateResult],
+  );
+
+  const showHero = shouldShowLinkMainHero({
+    offer,
+    actionsRevealed: offer.urgencyBypass || actionsRevealed,
+  });
+
+  const applyMainGate = actionIndex === 0 && Boolean(offer.primary);
+  const showConfirm =
+    applyMainGate &&
+    !offer.urgencyBypass &&
+    offer.ux.showConfirmPrompt &&
+    !actionsRevealed;
+
+  const effectivePrimary =
+    applyMainGate && showHero && offer.primary ? offer.primary : focused;
+
+  useEffect(() => {
+    if (offer.urgencyBypass) {
+      setActionsRevealed(true);
+    }
+  }, [offer.urgencyBypass]);
+
+  useEffect(() => {
+    setActionsRevealed(false);
+    shownRef.current = false;
+  }, [link.id, actionIndex]);
   const showMarketPrice = shouldShowMarketPrice(link);
   const { snapshot: marketPrice, loading: marketPriceLoading } = useMarketPrice(
     link,
@@ -251,26 +296,26 @@ export function ActionShortsSlide({
   const showInsightMarket = insightKind === "market" && showMarketPrice;
   const showInsightTrueCostStacked = showInsightTrueCost;
 
-  const secondary = resolveFeedCardSecondaries(actions, focused);
-  const cardSignal = resolveFeedCardSignal(link, focused);
+  const secondary = resolveFeedCardSecondaries(actions, effectivePrimary);
+  const cardSignal = resolveFeedCardSignal(link, effectivePrimary);
   const cardTitle = getDisplayTitleForLink(link);
   const mergedPanel = mergeFeedPanelWithRemote({
     remote: contextRemote,
     isActive,
     cardSignal,
-    focused,
+    focused: effectivePrimary,
     secondary,
   });
   const panelSignal = mergedPanel.signalLine;
   const panelSecondary = mergedPanel.secondary;
 
   const mapLaunchContext = useMemo(() => {
-    if (!isMapLaunchAction(focused, link)) {
+    if (!isMapLaunchAction(effectivePrimary, link)) {
       return null;
     }
 
-    return resolveMapLaunchContext(link, focused);
-  }, [focused, link]);
+    return resolveMapLaunchContext(link, effectivePrimary);
+  }, [effectivePrimary, link]);
 
   const dispatchLinkAction = (action: LinkActionItem) => {
     if (isScheduleAction(action)) {
@@ -298,41 +343,39 @@ export function ActionShortsSlide({
   };
   const isPinned = isPinnedLinkUrl(link.original_url);
   const categoryLabel = getFeedCategoryLabel(link.category);
-  const primaryLabel = mapLaunchContext
-    ? mapPrimaryLabel(mapLaunchContext)
-    : cleanFeedActionLabel(focused.label, locale);
+  const primaryLabel = showConfirm
+    ? (offer.promptSummary ?? cleanFeedActionLabel(effectivePrimary.label, locale))
+    : mapLaunchContext
+      ? mapPrimaryLabel(mapLaunchContext)
+      : cleanFeedActionLabel(effectivePrimary.label, locale);
+
+  const showPrimaryCta = !applyMainGate || (showHero && !showConfirm) || !offer.primary;
 
   const rankingWhy = useMemo(
     () =>
       buildFeedPrimaryRankingWhy({
         actions,
-        primary: focused,
+        primary: effectivePrimary,
         link,
       }),
-    [actions, focused, link],
-  );
-
-  const rankingContextKey = useMemo(
-    () =>
-      buildLinkRankingContextKey({
-        domain: link.domain,
-        category: link.category,
-      }),
-    [link.category, link.domain],
+    [actions, effectivePrimary, link],
   );
 
   useEffect(() => {
-    if (!isActive) {
+    if (!isActive || !applyMainGate || !offer.primary) {
       return;
     }
-    recordFeedLinkActionTelemetry({
+    if (offer.tier === "low" || offer.tier === "none" || shownRef.current) {
+      return;
+    }
+    shownRef.current = true;
+    recordSurfaceLinkActionTelemetry({
       link,
-      action: focused,
+      action: offer.primary,
       kind: "shown",
-      contextKey: rankingContextKey,
-      tier: "MAIN",
+      surface: "feed",
     });
-  }, [focused.id, isActive, link.id, rankingContextKey]);
+  }, [applyMainGate, isActive, link, offer.primary, offer.tier]);
   const loopHint = resolveOpenLoopHint(link);
   const loopLevel = resolveOpenLoopLevel(link);
   const showLocatePanel =
@@ -383,16 +426,21 @@ export function ActionShortsSlide({
   };
 
   const handleFocusedAction = () => {
+    if (showConfirm) {
+      setActionsRevealed(true);
+      return;
+    }
+
     if (typeof navigator !== "undefined" && navigator.vibrate) {
       navigator.vibrate(12);
     }
 
-    shadowAction(focused, {
+    shadowAction(effectivePrimary, {
       router,
       fallbackHref: link.original_url,
       intent: "touch",
     });
-    dispatchLinkAction(focused);
+    dispatchLinkAction(effectivePrimary);
   };
 
   const actionPanel = showLocatePanel ? (
@@ -428,7 +476,7 @@ export function ActionShortsSlide({
       }}
       locale={locale}
       loading={locateLoading}
-      showPrimary={Boolean(locatePanel?.primary ?? true)}
+      showPrimary={showPrimaryCta}
       primaryVariant={isYouTube ? "youtube" : "default"}
       rankingWhy={rankingWhy}
     />
@@ -448,6 +496,7 @@ export function ActionShortsSlide({
       locale={locale}
       primaryVariant={isYouTube ? "youtube" : "default"}
       rankingWhy={rankingWhy}
+      showPrimary={showPrimaryCta}
       timeReceipt={timeReceipt}
       marketSnapshot={marketPrice}
       trueCostReceipt={trueCostReceipt}

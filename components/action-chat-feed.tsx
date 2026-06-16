@@ -130,6 +130,8 @@ type ActionChatFeedProps = {
     onSearch: (query: string) => RelatedContextSearchResult | null;
     onClear: () => void;
   } | null;
+  /** Search tab — globe hub ai_search composer seed. */
+  searchContextPrefill?: string | null;
   className?: string;
 };
 
@@ -150,6 +152,7 @@ export function ActionChatFeed({
   searchIngressHint,
   searchExecution = null,
   relatedContextSearch = null,
+  searchContextPrefill = null,
   className,
 }: ActionChatFeedProps) {
   const copy = useCopy();
@@ -173,6 +176,7 @@ export function ActionChatFeed({
         : undefined,
     [searchExecution],
   );
+  const composerPrefill = mentionComposerPrefill ?? searchContextPrefill ?? undefined;
   const { slots: relationshipSlots } = useRelationshipFeedSlots(isSlot);
   const activeLink = activeIndex >= 0 ? links[activeIndex] ?? null : null;
   const {
@@ -771,7 +775,7 @@ export function ActionChatFeed({
                       ? copy.search.run.placeholder
                       : searchIngressHint ?? copy.search.placeholder
               }
-              initialComposerText={mentionComposerPrefill}
+              initialComposerText={composerPrefill}
               sending={sending || searchIngesting}
               disabled={sending || searchIngesting}
               onOpenCapture={onOpenCapture}

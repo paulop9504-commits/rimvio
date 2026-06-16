@@ -39,6 +39,7 @@ import {
   actionArchitectToMasterWire,
   parseActionArchitectWire,
 } from "@/lib/action-registry/parse-action-architect";
+import { validateArchitectWireAgainstPrm } from "@/lib/personal-read-model/validate-architect-wire-against-prm";
 
 
 
@@ -459,6 +460,9 @@ export function parseMasterOrchestratorJson(raw: string): MasterOrchestratorWire
 
     const architect = parseActionArchitectWire(parsed);
     if (architect) {
+      if (!validateArchitectWireAgainstPrm(architect)) {
+        return null;
+      }
       return actionArchitectToMasterWire(architect);
     }
 

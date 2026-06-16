@@ -54,6 +54,18 @@ export function ActionSearchHub() {
 
   const contextEventId = searchParams.get("contextEventId")?.trim() ?? "";
   const contextQuery = searchParams.get("q")?.trim() ?? "";
+  const searchContextPrefill = useMemo(() => {
+    if (!contextEventId) {
+      return null;
+    }
+    const event = findLifeEventCandidate(contextEventId);
+    return (
+      contextQuery ||
+      event?.place?.trim() ||
+      event?.title?.trim() ||
+      null
+    );
+  }, [contextEventId, contextQuery]);
 
   useEffect(() => {
     if (!contextEventId) {
@@ -87,6 +99,7 @@ export function ActionSearchHub() {
         className="min-h-0 flex-1"
         searchIngressHint={copy.search.ingressHint}
         searchExecution={searchExecution}
+        searchContextPrefill={searchContextPrefill}
         relatedContextSearch={{
           active: relatedContext.active,
           result: relatedContext.result,

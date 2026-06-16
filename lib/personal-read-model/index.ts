@@ -20,6 +20,7 @@ export {
   validateActionContract,
   type ActionContractResponse,
 } from "@/lib/personal-read-model/validate-action-contract";
+export { validateArchitectWireAgainstPrm } from "@/lib/personal-read-model/validate-architect-wire-against-prm";
 export type {
   ContextPacket,
   PersonalReadPacket,
