@@ -28,6 +28,7 @@ export function planHubResourceSyncJobs(input: {
 }): HubResourceSyncJob[] {
   const now = input.now ?? new Date();
   const jobs: HubResourceSyncJob[] = [];
+  const seenHubProviders = new Set<string>();
 
   input.ranked.forEach((entry, rankIndex) => {
     const sourceHubId = entry.hubRow.serviceId;
@@ -35,6 +36,12 @@ export function planHubResourceSyncJobs(input: {
     if (!providerId || !entry.hubRow.offered) {
       return;
     }
+
+    const dedupeKey = `${sourceHubId}:${providerId}`;
+    if (seenHubProviders.has(dedupeKey)) {
+      return;
+    }
+    seenHubProviders.add(dedupeKey);
 
     const lastSyncedAtIso = readResourceLastSyncedAtIso(input.event, sourceHubId);
     const context = buildApiWakeupContextFromEvent({

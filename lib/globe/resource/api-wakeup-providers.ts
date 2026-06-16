@@ -33,6 +33,13 @@ export const API_WAKEUP_POLICIES: Record<ApiProviderId, ApiProviderWakeupPolicy>
     hot: { allowFetch: true, pollIntervalMs: 5 * 60 * 1000 },
     minSyncGapMs: { warm: 0, hot: 4 * 60 * 1000 },
   },
+  places_lodging: {
+    id: "places_lodging",
+    cold: { allowFetch: false, pollIntervalMs: null },
+    warm: { allowFetch: true, pollIntervalMs: 6 * 60 * 60 * 1000 },
+    hot: { allowFetch: true, pollIntervalMs: 30 * 60 * 1000 },
+    minSyncGapMs: { warm: 5 * 60 * 60 * 1000, hot: 20 * 60 * 1000 },
+  },
 };
 
 export function readApiWakeupPolicy(providerId: ApiProviderId): ApiProviderWakeupPolicy {

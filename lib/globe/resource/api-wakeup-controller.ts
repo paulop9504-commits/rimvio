@@ -10,6 +10,7 @@ import {
   API_WAKEUP_COLD_LEAD_MS,
   API_WAKEUP_HOT_DISTANCE_KM,
   API_WAKEUP_HOT_LEAD_MS,
+  API_WAKEUP_LODGING_HOT_DISTANCE_KM,
   API_WAKEUP_QUEUE_HOT_DISTANCE_KM,
   BACKGROUND_POLL_MULTIPLIER,
 } from "@/lib/globe/resource/api-wakeup-types";
@@ -80,6 +81,24 @@ function queueTimesHotAllowed(context: ApiWakeupContext): boolean {
   );
 }
 
+function placesLodgingHotAllowed(context: ApiWakeupContext): boolean {
+  const fit = scoreSpacetimeFit({
+    capturedAtIso: context.nowIso,
+    lat: context.lat,
+    lng: context.lng,
+    eventStartIso: context.eventStartIso,
+    eventEndIso: context.eventEndIso ?? null,
+    eventPlace: context.eventPlace ?? null,
+    eventLat: context.eventLat ?? null,
+    eventLng: context.eventLng ?? null,
+  });
+  return (
+    fit.timeOk &&
+    fit.placeOk &&
+    (fit.distanceKm === null || fit.distanceKm <= API_WAKEUP_LODGING_HOT_DISTANCE_KM)
+  );
+}
+
 function isSyncGapSatisfied(input: {
   phase: ApiWakeupPhase;
   lastSyncedAtIso: string | null | undefined;
@@ -118,6 +137,16 @@ export function resolveApiWakeupDecision(
         reason: "queue_times_requires_geo_hot",
       };
     }
+  }
+
+  if (providerId === "places_lodging" && phase === "hot" && !placesLodgingHotAllowed(context)) {
+    return {
+      providerId,
+      phase: "warm",
+      allowFetch: policy.warm.allowFetch,
+      pollIntervalMs: policy.warm.allowFetch ? policy.warm.pollIntervalMs : null,
+      reason: "places_lodging_warm_fallback",
+    };
   }
 
   if (providerId === "ticket_ingest" && phase === "hot") {

@@ -10,6 +10,8 @@ export function resolveApiProviderForHubResource(
       return "ticket_ingest";
     case "flight":
       return "flight_status";
+    case "lodging":
+      return "places_lodging";
     default:
       return null;
   }

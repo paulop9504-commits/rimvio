@@ -134,7 +134,9 @@ See `ContextResource` — required: `resourceId`, `contextEventId`, `kind`, `sou
 - [x] Ticket plug-in + QR viewer + scan surface (web)
 - [x] Native MAIN surface L3 contract (`main-native-surface.ts`, `build-main-native-surface-payload.ts`)
 - [x] ApiWakeupController skeleton + weather spacetime gate
-- [x] Hub rank revision → sync worker (`runHubResourceSyncWorker`)
+- [x] Lodging hub prototype (mock inventory · GPS rank · map strip)
+- [x] Globe lodging markers (View-only · ranked inventory)
+- [x] `places_lodging` ApiWakeup provider + sync stub
 - [ ] `ContextResource` SSOT + factory emit from Hub transactions
 - [ ] Hub expand = View only; no priority logic
 - [ ] Resource kinds: ticket, flight, lodging, rental, media_album, schedule (extend catalog)
@@ -241,16 +243,16 @@ Hub factory → Resource (lastSyncedAtIso)
        ↓
 ApiWakeupController ← scoreSpacetimeFit phase (cold / warm / hot)
        ↓
-Provider fetch (weather · flight · ticket_ingest · queue_times)
+Provider fetch (weather · flight · ticket_ingest · queue_times · places_lodging)
        ↓
 rankContextResources → MAIN
 ```
 
-| Phase | When | weather_forecast | queue_times |
-|-------|------|----------------|-------------|
-| **Cold** | >24h before event | ❌ | ❌ |
-| **Warm** | ≤24h or timeOk | ✅ 30m | ❌ |
-| **Hot** | fits or ≤2h + near place | ✅ 20m | ✅ 5m (≤3km) |
+| Phase | When | weather_forecast | queue_times | places_lodging |
+|-------|------|----------------|-------------|----------------|
+| **Cold** | >24h before event | ❌ | ❌ | ❌ |
+| **Warm** | ≤24h or timeOk | ✅ 30m | ❌ | ✅ 6h |
+| **Hot** | fits or ≤2h + near place | ✅ 20m | ✅ 5m (≤3km) | ✅ 30m (≤25km) |
 
 - **SSOT:** `lib/globe/resource/api-wakeup-controller.ts`
 - **Policies:** `api-wakeup-providers.ts`

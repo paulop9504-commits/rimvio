@@ -59,6 +59,17 @@ function run() {
   assert.equal(queueHot.allowFetch, true);
   assert.equal(queueHot.pollIntervalMs, 5 * 60 * 1000);
 
+  const lodgingCold = resolveApiWakeupDecision("places_lodging", monthAway);
+  assert.equal(lodgingCold.allowFetch, false);
+
+  const lodgingWarm = resolveApiWakeupDecision("places_lodging", dayBefore);
+  assert.equal(lodgingWarm.allowFetch, true);
+  assert.equal(lodgingWarm.pollIntervalMs, 6 * 60 * 60 * 1000);
+
+  const lodgingHot = resolveApiWakeupDecision("places_lodging", atGate);
+  assert.equal(lodgingHot.allowFetch, true);
+  assert.equal(lodgingHot.pollIntervalMs, 30 * 60 * 1000);
+
   const ticketCold = resolveApiWakeupDecision("ticket_ingest", monthAway);
   assert.equal(ticketCold.allowFetch, true);
   assert.equal(ticketCold.pollIntervalMs, 24 * 60 * 60 * 1000);

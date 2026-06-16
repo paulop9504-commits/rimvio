@@ -7,6 +7,10 @@ import { GlobeHubResourceCarousel } from "@/components/globe/globe-hub-resource-
 import { GlobeLodgingMapStrip } from "@/components/globe/globe-lodging-map-strip";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { enableLodgingHubForContext } from "@/lib/globe/context-hub/enable-lodging-hub-for-context";
+import {
+  dispatchGlobeLodgingFocus,
+  subscribeGlobeLodgingFocus,
+} from "@/lib/globe/context-hub/globe-lodging-marker-bridge";
 import { GlobeContextTicketConnectSheet } from "@/components/globe/globe-context-ticket-connect-sheet";
 import { GlobeTicketQrViewer } from "@/components/globe/globe-ticket-qr-viewer";
 import { connectDepartureHubToContext } from "@/lib/globe/connect-departure-hub-to-context";
@@ -317,20 +321,54 @@ export function GlobeContextHubRail({
     [globeRef, rankedResources],
   );
 
+  const syncLodgingFocus = useCallback(
+    (index: number) => {
+      const entry = rankedResources[index];
+      if (!entry || entry.resource.kind !== "lodging_voucher") {
+        return;
+      }
+      dispatchGlobeLodgingFocus({
+        resourceId: entry.resource.resourceId,
+        carouselIndex: index,
+      });
+    },
+    [rankedResources],
+  );
+
   const handleCarouselIndexChange = useCallback(
     (index: number) => {
       setCarouselIndex(index);
       flyToLodgingAtIndex(index);
+      syncLodgingFocus(index);
     },
-    [flyToLodgingAtIndex],
+    [flyToLodgingAtIndex, syncLodgingFocus],
   );
+
+  useEffect(() => {
+    return subscribeGlobeLodgingFocus((detail) => {
+      setCarouselIndex((current) => {
+        if (current === detail.carouselIndex) {
+          return current;
+        }
+        flyToLodgingAtIndex(detail.carouselIndex);
+        return detail.carouselIndex;
+      });
+    });
+  }, [flyToLodgingAtIndex]);
 
   useEffect(() => {
     if (!hasLodgingResources) {
       return;
     }
     flyToLodgingAtIndex(carouselIndex);
-  }, [carouselIndex, flyToLodgingAtIndex, hasLodgingResources, rankedResources]);
+    syncLodgingFocus(carouselIndex);
+  }, [
+    carouselIndex,
+    flyToLodgingAtIndex,
+    hasLodgingResources,
+    rankedResources,
+    syncLodgingFocus,
+  ]);
 
   const handleConnectLodging = useCallback(async () => {
     const eventId = activeEventId?.trim();

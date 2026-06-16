@@ -9,7 +9,8 @@ export type ApiProviderId =
   | "weather_forecast"
   | "flight_status"
   | "ticket_ingest"
-  | "queue_times";
+  | "queue_times"
+  | "places_lodging";
 
 export type ApiWakeupContext = {
   nowIso: string;
@@ -47,5 +48,6 @@ export const API_WAKEUP_COLD_LEAD_MS = 24 * 60 * 60 * 1000;
 export const API_WAKEUP_HOT_LEAD_MS = 2 * 60 * 60 * 1000;
 export const API_WAKEUP_HOT_DISTANCE_KM = 5;
 export const API_WAKEUP_QUEUE_HOT_DISTANCE_KM = 3;
+export const API_WAKEUP_LODGING_HOT_DISTANCE_KM = 25;
 
 export const BACKGROUND_POLL_MULTIPLIER = 4;

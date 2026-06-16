@@ -55,6 +55,14 @@ import {
 import { projectGlobeTripArcs } from "@/lib/globe/project-trip-leg-arcs";
 import { applyFocusedHubGlobePins } from "@/lib/globe/context-hub/apply-focused-hub-globe-visuals";
 import {
+  dispatchGlobeLodgingFocus,
+  subscribeGlobeLodgingFocus,
+} from "@/lib/globe/context-hub/globe-lodging-marker-bridge";
+import { listContextHubServicesForEvent } from "@/lib/globe/context-hub/context-hub-service-catalog";
+import { isLodgingHubEnabled } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
+import { projectLodgingGlobeMarkers } from "@/lib/globe/context-hub/project-lodging-globe-markers";
+import { rankContextResources } from "@/lib/globe/resource/rank-context-resources";
+import {
   GLOBE_EXPERIENCE_SETTINGS_UPDATED,
   isShowContextWarmthEnabled,
 } from "@/lib/globe/globe-experience-settings";
@@ -186,11 +194,22 @@ const RimvioGlobeHubBody = memo(
     const startupFlownRef = useRef(false);
     const [detailLevel, setDetailLevel] = useState<GlobeDetailLevel>("space");
     const [bridgeRevision, setBridgeRevision] = useState(0);
+    const [activeLodgingResourceId, setActiveLodgingResourceId] = useState<string | null>(
+      null,
+    );
     useEffect(() => {
       const bump = () => setBridgeRevision((value) => value + 1);
       window.addEventListener(EXPERIENCE_BRIDGE_UPDATED, bump);
       return () => window.removeEventListener(EXPERIENCE_BRIDGE_UPDATED, bump);
     }, []);
+    useEffect(() => {
+      return subscribeGlobeLodgingFocus((detail) => {
+        setActiveLodgingResourceId(detail.resourceId);
+      });
+    }, []);
+    useEffect(() => {
+      setActiveLodgingResourceId(null);
+    }, [focusedContextEventId]);
     const handleDetailLevelChange = useCallback(
       (level: GlobeDetailLevel) => {
         setDetailLevel(level);
@@ -265,6 +284,38 @@ const RimvioGlobeHubBody = memo(
     );
     const { enabled: gpsEnabled } = useGpsTrackingEnabled();
     const liveLocation = useLiveLocationSnapshot();
+    const lodgingGlobeMarkers = useMemo(() => {
+      void bridgeRevision;
+      const eventId = focusedContextEventId?.trim();
+      if (!eventId) {
+        return [];
+      }
+      const event = eventsById.get(eventId);
+      if (!event || !isLodgingHubEnabled(event)) {
+        return [];
+      }
+      const panel = listContextHubServicesForEvent(event);
+      if (!panel) {
+        return [];
+      }
+      const ranked = rankContextResources({
+        event,
+        services: panel.services,
+        lat: liveLocation?.lat ?? null,
+        lng: liveLocation?.lng ?? null,
+      });
+      return projectLodgingGlobeMarkers({
+        ranked,
+        activeResourceId: activeLodgingResourceId,
+      });
+    }, [
+      activeLodgingResourceId,
+      bridgeRevision,
+      eventsById,
+      focusedContextEventId,
+      liveLocation?.lat,
+      liveLocation?.lng,
+    ]);
     const globePins = useMemo(() => {
       const pins: ClassifiedGlobePin[] = [...displayPins];
       if (gpsEnabled && liveLocation) {
@@ -400,6 +451,10 @@ const RimvioGlobeHubBody = memo(
           onGlobePress={onGlobePress}
           onDetailLevelChange={handleDetailLevelChange}
           renderSuspended={renderSuspended}
+          lodgingMarkers={lodgingGlobeMarkers}
+          onLodgingMarkerPress={(resourceId, carouselIndex) => {
+            dispatchGlobeLodgingFocus({ resourceId, carouselIndex });
+          }}
         />
 
         {clusters.length === 0 ? (

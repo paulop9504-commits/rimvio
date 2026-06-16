@@ -1,5 +1,6 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import type { ApiProviderId } from "@/lib/globe/resource/api-wakeup-types";
+import { syncPlacesLodgingInventory } from "@/lib/globe/context-hub/sync-places-lodging-inventory";
 import type { ContextResource } from "@/lib/globe/resource/types";
 
 export type HubResourceSyncHandlerResult = {
@@ -29,6 +30,17 @@ export async function executeHubResourceProviderSync(input: {
         return { ok: true, note: "ticket_already_connected" };
       }
       return { ok: true, note: "ticket_ingest_stub" };
+
+    case "places_lodging":
+      if (
+        input.resource.sourceHubId !== "lodging" &&
+        input.resource.kind !== "lodging_voucher"
+      ) {
+        return { ok: false, skipped: true, note: "not_lodging" };
+      }
+      return syncPlacesLodgingInventory(input.event.id)
+        ? { ok: true, note: "places_lodging_refreshed" }
+        : { ok: false, skipped: true, note: "lodging_not_enabled" };
 
     default:
       return { ok: false, skipped: true, note: "provider_not_hub_synced" };
