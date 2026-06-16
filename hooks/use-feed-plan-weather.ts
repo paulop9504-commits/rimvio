@@ -5,13 +5,20 @@ import type { WeatherContext } from "@/lib/context-resolver/types";
 import { fetchWeatherForecastClient } from "@/lib/context-resolver/weather/fetch-weather-forecast-client";
 import type { FeedTodaySlot } from "@/lib/feed/feed-today-slot-types";
 import type { EventCandidate } from "@/lib/events/event-candidate";
+import {
+  anyWakeupFetchAllowed,
+  minPollIntervalMs,
+  resolveApiWakeupDecision,
+} from "@/lib/globe/resource/api-wakeup-controller";
+import {
+  buildApiWakeupContextFromWeatherTarget,
+  readAppForeground,
+} from "@/lib/globe/resource/build-api-wakeup-context";
 import { collectFeedSlotWeatherTargets } from "@/lib/feed/resolve-feed-slot-weather-target";
 import {
   planWeatherTargetKey,
   type PlanWeatherTarget,
 } from "@/lib/plan-context/resolve-plan-weather-target";
-
-const WEATHER_POLL_MS = 30 * 60 * 1000;
 
 export type PlanWeatherFeedSnapshot = {
   prepLine: string | null;
@@ -19,7 +26,12 @@ export type PlanWeatherFeedSnapshot = {
   target: PlanWeatherTarget;
 };
 
-/** Schedule-matched weather prep lines for feed slots (surface + calendar). */
+type GatedWeatherTarget = {
+  target: PlanWeatherTarget;
+  decision: ReturnType<typeof resolveApiWakeupDecision>;
+};
+
+/** Schedule-matched weather prep — gated by ApiWakeupController (no fetch when Cold). */
 export function useFeedPlanWeather(
   slots: readonly FeedTodaySlot[],
   eventsById?: ReadonlyMap<string, EventCandidate>,
@@ -29,9 +41,53 @@ export function useFeedPlanWeather(
     [slots, eventsById],
   );
 
+  const [appForeground, setAppForeground] = useState(true);
+
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+    const onVisibility = () => setAppForeground(readAppForeground());
+    onVisibility();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
+
+  const gatedTargets = useMemo((): GatedWeatherTarget[] => {
+    const now = new Date();
+    return targets.map((target) => {
+      const context = buildApiWakeupContextFromWeatherTarget({
+        target,
+        eventsById,
+        now,
+        appForeground,
+      });
+      return {
+        target,
+        decision: resolveApiWakeupDecision("weather_forecast", context),
+      };
+    });
+  }, [appForeground, eventsById, targets]);
+
+  const fetchableTargets = useMemo(
+    () => gatedTargets.filter((row) => row.decision.allowFetch),
+    [gatedTargets],
+  );
+
   const requestKey = useMemo(
-    () => targets.map((target) => planWeatherTargetKey(target)).join("|"),
-    [targets],
+    () =>
+      gatedTargets
+        .map(
+          (row) =>
+            `${planWeatherTargetKey(row.target)}:${row.decision.phase}:${row.decision.allowFetch}`,
+        )
+        .join("|"),
+    [gatedTargets],
+  );
+
+  const pollIntervalMs = useMemo(
+    () => minPollIntervalMs(gatedTargets.map((row) => row.decision)),
+    [gatedTargets],
   );
 
   const [weatherByKey, setWeatherByKey] = useState<
@@ -39,7 +95,7 @@ export function useFeedPlanWeather(
   >(() => new Map());
 
   useEffect(() => {
-    if (targets.length === 0) {
+    if (fetchableTargets.length === 0 || !anyWakeupFetchAllowed(gatedTargets.map((r) => r.decision))) {
       setWeatherByKey(new Map());
       return;
     }
@@ -47,8 +103,12 @@ export function useFeedPlanWeather(
     let cancelled = false;
 
     const pull = async () => {
+      if (!readAppForeground()) {
+        return;
+      }
+
       const entries = await Promise.all(
-        targets.map(async (target) => {
+        fetchableTargets.map(async ({ target }) => {
           const payload = await fetchWeatherForecastClient({
             location: target.location,
             targetIso: target.targetIso,
@@ -81,15 +141,22 @@ export function useFeedPlanWeather(
     };
 
     void pull();
+
+    if (pollIntervalMs === null) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
     const timer = window.setInterval(() => {
       void pull();
-    }, WEATHER_POLL_MS);
+    }, pollIntervalMs);
 
     return () => {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [requestKey]);
+  }, [fetchableTargets, gatedTargets, pollIntervalMs, requestKey]);
 
   return weatherByKey;
 }

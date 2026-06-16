@@ -114,7 +114,7 @@ See `ContextResource` — required: `resourceId`, `contextEventId`, `kind`, `sou
 | **L0** | — | — | You were here. And it mattered. |
 | **L1 (KO)** | (avoid 「허브」in hero) · 설정/expand OK | 티켓 · 항공 · QR | **지금** · 이어가기 |
 | **L2** | Hub · Factory · Transaction | Resource · Spacetime rank | MAIN slot · JIT Action |
-| **L3** | `ContextHubDefinition`, `listContextHubServicesForEvent` | `ContextResource`, `rankContextResources` | `GlobeHubResourceCarousel`, index 0 |
+| **L3** | `ContextHubDefinition`, `listContextHubServicesForEvent` | `ContextResource`, `rankContextResources` | `GlobeHubResourceCarousel`, index 0 · Phase 3: `MainNativeSurfacePayload` |
 
 ---
 
@@ -131,6 +131,9 @@ See `ContextResource` — required: `resourceId`, `contextEventId`, `kind`, `sou
 - [x] `rankContextResources(event, { lat, lng, now })` with spacetime + artifact urgency
 - [x] Carousel: index 0 = MAIN Hero; remove cross-context / standalone proactive pill
 - [x] Predictive Curation telemetry (`types/telemetry.ts`, `TelemetryLogger`, carousel hooks)
+- [x] Ticket plug-in + QR viewer + scan surface (web)
+- [x] Native MAIN surface L3 contract (`main-native-surface.ts`, `build-main-native-surface-payload.ts`)
+- [x] ApiWakeupController skeleton + weather spacetime gate
 - [ ] `ContextResource` SSOT + factory emit from Hub transactions
 - [ ] Hub expand = View only; no priority logic
 - [ ] Resource kinds: ticket, flight, lodging, rental, media_album, schedule (extend catalog)
@@ -152,6 +155,111 @@ Parallel to archive `ActionTelemetry` (rollup spine) — **does not replace** `r
 - **Logger:** `lib/telemetry/telemetry-logger.ts` — idle batch + `sendBeacon`
 - **Ingest:** `POST /api/telemetry/curation` (mock · `persisted: false` until storage phase)
 - **UI hook:** `hooks/use-hub-resource-curation-telemetry.ts` → `GlobeHubResourceCarousel`
+
+---
+
+## 8. Native MAIN surface (Phase 3 — pre-aligned)
+
+> **Status:** spec locked · L3 contract · native implementation not shipped  
+> **Goal:** Same MAIN (carousel index 0) on **Dynamic Island / Live Activity (iOS)** and **ongoing notification (Android)** — not a second ranker or global pill.
+
+### One picture
+
+```
+rankContextResources → ranked[0] (MAIN)
+  │
+  ├─ GlobeHubResourceCarousel index 0     (Phase 1 — shipped)
+  ├─ GlobeTicketQrViewer + scan surface   (Phase 2 — shipped web)
+  └─ buildMainNativeSurfacePayload()      (Phase 3 — native OS)
+        │
+        ├─ iOS: ActivityKit · Dynamic Island compact / expanded
+        └─ Android: ongoing notification + brightness boost
+```
+
+### Rules (locked)
+
+| Rule | Detail |
+|------|--------|
+| **SSOT** | `MainNativeSurfacePayload` in `lib/globe/resource/main-native-surface.ts` |
+| **Source** | MAIN only — `ranked[0]` after `rankContextResources`; Hub never emits surface |
+| **Eligibility** | `show_qr` · ticket `open_url`; spacetime window (45m lead · 20m tail) |
+| **Brightness** | `preferScanBrightness: true` when QR image present — native sets OS level |
+| **L1** | eyebrow 「지금」· CTA from Resource action; never 「Live Activity」「Dynamic Island」 |
+| **End** | `validUntil` + tail · user dismiss · context switch → `lifecycle: end` |
+
+### iOS (ActivityKit)
+
+| Mode | UI (reference: Kakao Pay QR in Dynamic Island) |
+|------|--------------------------------------------------|
+| **compact** | QR thumbnail or ticket icon + L1 short label |
+| **minimal** | Icon only when another Live Activity shares the island |
+| **expanded** | QR large · place · countdown · tap → app `GlobeTicketQrViewer` + brightness boost |
+| **Lock Screen** | Same payload — Live Activity widget |
+
+**Requires:** Capacitor iOS app + Swift Widget Extension + `RimvioMainSurface` plugin (`syncMainSurface` / `endAllMainSurfaces`).
+
+### Android
+
+| Surface | UI |
+|---------|-----|
+| **Ongoing notification** | QR expanded layout · tap opens app QR viewer |
+| **Brightness** | `@capacitor-community/screen-brightness` or `WindowManager.LayoutParams.screenBrightness` while visible |
+
+### L3 modules
+
+| Module | Role |
+|--------|------|
+| `main-native-surface.ts` | Contract types · eligibility · plugin method names |
+| `build-main-native-surface-payload.ts` | MAIN → payload · spacetime gate · `buildMainNativeSurfaceCommand` |
+| `scripts/test-main-native-surface.ts` | Contract regression |
+
+### Phase checklist
+
+- [x] L3 payload contract + builder + test
+- [ ] Capacitor `RimvioMainSurface` plugin (Swift + Java)
+- [ ] iOS Widget Extension + ActivityKit attributes
+- [ ] Android ongoing notification + brightness
+- [ ] Wire: hub rank revision → `syncMainSurface` when app backgrounded near gate time
+- [ ] Telemetry: `RESOURCE_IMPRESSION` surface=`native_main` (extend curation ingest)
+
+### Forbidden (Phase 3 native)
+
+- Native surface that picks a different resource than web MAIN
+- Live Activity started from Hub expand / browse list
+- Web/PWA attempting ActivityKit (impossible — reject in review)
+- L1 lock screen copy: 「API」「허브」「Live Activity」
+
+---
+
+## 9. JIT API wake-up (Phase 2 — shipped skeleton)
+
+> **Goal:** No external API calls until spacetime probability warrants it. Ranker stays pure; fetch gates sit **before** providers.
+
+```
+Hub factory → Resource (lastSyncedAtIso)
+       ↓
+ApiWakeupController ← scoreSpacetimeFit phase (cold / warm / hot)
+       ↓
+Provider fetch (weather · flight · ticket_ingest · queue_times)
+       ↓
+rankContextResources → MAIN
+```
+
+| Phase | When | weather_forecast | queue_times |
+|-------|------|----------------|-------------|
+| **Cold** | >24h before event | ❌ | ❌ |
+| **Warm** | ≤24h or timeOk | ✅ 30m | ❌ |
+| **Hot** | fits or ≤2h + near place | ✅ 20m | ✅ 5m (≤3km) |
+
+- **SSOT:** `lib/globe/resource/api-wakeup-controller.ts`
+- **Policies:** `api-wakeup-providers.ts`
+- **Wired:** `useFeedPlanWeather`, `useBridgeContextEnvironment`
+- **Stale:** `ContextResource.lastSyncedAtIso` + `isResourceSyncStale`
+
+### Forbidden
+
+- Hub or Ranker calling third-party APIs without `resolveApiWakeupDecision`
+- Fixed 30m weather poll regardless of event distance in time
 
 ---
 

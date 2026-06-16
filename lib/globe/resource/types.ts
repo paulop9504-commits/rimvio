@@ -54,5 +54,7 @@ export type ContextResource = {
   action: ContextResourceAction | null;
   createdAtIso: string;
   updatedAtIso?: string | null;
+  /** External provider sync — JIT fetch worker updates this. */
+  lastSyncedAtIso?: string | null;
   metadata?: Record<string, unknown>;
 };

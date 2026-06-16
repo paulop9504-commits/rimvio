@@ -4,6 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import type { TrafficContext } from "@/lib/context-resolver/types";
 import { fetchWeatherForecastClient } from "@/lib/context-resolver/weather/fetch-weather-forecast-client";
 import type { EventCandidate } from "@/lib/events/event-candidate";
+import {
+  resolveApiWakeupDecision,
+} from "@/lib/globe/resource/api-wakeup-controller";
+import {
+  buildApiWakeupContextFromEvent,
+  readAppForeground,
+} from "@/lib/globe/resource/build-api-wakeup-context";
 import { resolveBridgeContextWeatherTarget } from "@/lib/globe/resolve-bridge-context-weather-target";
 import { fetchTrafficContextClient } from "@/lib/traffic/fetch-traffic-context-client";
 
@@ -26,9 +33,7 @@ export type BridgeContextEnvironment = {
   place: string | null;
 };
 
-const POLL_MS = 30 * 60 * 1000;
-
-/** Live weather + traffic for bridge context revisit prep. */
+/** Live weather + traffic — gated by ApiWakeupController. */
 export function useBridgeContextEnvironment(
   event: EventCandidate | null | undefined,
   enabled = true,
@@ -38,9 +43,34 @@ export function useBridgeContextEnvironment(
     [enabled, event],
   );
 
+  const [appForeground, setAppForeground] = useState(true);
+
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+    const onVisibility = () => setAppForeground(readAppForeground());
+    onVisibility();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
+
+  const weatherDecision = useMemo(() => {
+    if (!event || !target) {
+      return null;
+    }
+    const context = buildApiWakeupContextFromEvent({
+      event,
+      appForeground,
+    });
+    return resolveApiWakeupDecision("weather_forecast", context);
+  }, [appForeground, event, target]);
+
   const requestKey = target
-    ? `${target.location}|${target.targetIso}`
+    ? `${target.location}|${target.targetIso}|${weatherDecision?.phase}|${weatherDecision?.allowFetch}`
     : "";
+
+  const pollIntervalMs = weatherDecision?.pollIntervalMs ?? null;
 
   const [state, setState] = useState<Omit<BridgeContextEnvironment, "place">>({
     loading: false,
@@ -50,7 +80,7 @@ export function useBridgeContextEnvironment(
   });
 
   useEffect(() => {
-    if (!target || !enabled) {
+    if (!target || !enabled || !weatherDecision?.allowFetch) {
       setState({
         loading: false,
         weatherLine: null,
@@ -64,6 +94,10 @@ export function useBridgeContextEnvironment(
     setState((prev) => ({ ...prev, loading: true }));
 
     const pull = async () => {
+      if (!readAppForeground()) {
+        return;
+      }
+
       const [weatherPayload, traffic] = await Promise.all([
         fetchWeatherForecastClient({
           location: target.location,
@@ -85,13 +119,20 @@ export function useBridgeContextEnvironment(
     };
 
     void pull();
-    const timer = window.setInterval(() => void pull(), POLL_MS);
+
+    if (pollIntervalMs === null) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const timer = window.setInterval(() => void pull(), pollIntervalMs);
 
     return () => {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [enabled, requestKey, target]);
+  }, [enabled, pollIntervalMs, requestKey, target, weatherDecision?.allowFetch]);
 
   return {
     ...state,
