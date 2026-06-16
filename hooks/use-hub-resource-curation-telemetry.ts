@@ -69,6 +69,7 @@ export function useHubResourceCurationTelemetry({
           lat,
           lng,
           userSeed: userSeedRef.current,
+          surface: "carousel_main",
         }),
       );
     },

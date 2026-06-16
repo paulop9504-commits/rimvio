@@ -151,6 +151,9 @@ export function GlobeContextHubRail({
   useMainNativeSurfaceSync({
     activeEventId,
     ranked: rankedResources,
+    lat,
+    lng,
+    authUserId,
     enabled: visible && rankedResources.length > 0,
   });
 

@@ -12,6 +12,9 @@ export type PredictiveCurationEventType =
   | "RESOURCE_MANUAL_PICK"
   | "TRANSACTION_CONVERTED";
 
+/** Where the MAIN impression was captured — carousel web vs native OS surface. */
+export type CurationImpressionSurface = "carousel_main" | "native_main";
+
 /** Spacetime context frozen at event capture — ranking engine input mirror. */
 export type SpacetimeTelemetryContext = {
   /** EventCandidate / context window start (ISO). */
@@ -48,6 +51,8 @@ export type ResourceImpressionTelemetry = PredictiveCurationTelemetryBase &
   SpacetimeTelemetryContext & {
     event_type: "RESOURCE_IMPRESSION";
     carousel_index: 0;
+    /** Web carousel vs native Live Activity / ongoing notification. */
+    surface: CurationImpressionSurface;
   };
 
 export type ResourceDismissedTelemetry = PredictiveCurationTelemetryBase &

@@ -149,7 +149,7 @@ Parallel to archive `ActionTelemetry` (rollup spine) — **does not replace** `r
 
 | Event | When |
 |-------|------|
-| `RESOURCE_IMPRESSION` | MAIN (index 0) visible — IntersectionObserver |
+| `RESOURCE_IMPRESSION` | MAIN (index 0) visible — `surface: carousel_main` (web) or `native_main` (OS) |
 | `RESOURCE_DISMISSED` | Swipe away from MAIN without execute · includes `dwell_time` |
 | `RESOURCE_MANUAL_PICK` | Tap resource at index ≥ 1 |
 | `TRANSACTION_CONVERTED` | Hub factory emit (e.g. flight connect) |
@@ -158,12 +158,13 @@ Parallel to archive `ActionTelemetry` (rollup spine) — **does not replace** `r
 - **Logger:** `lib/telemetry/telemetry-logger.ts` — idle batch + `sendBeacon`
 - **Ingest:** `POST /api/telemetry/curation` (mock · `persisted: false` until storage phase)
 - **UI hook:** `hooks/use-hub-resource-curation-telemetry.ts` → `GlobeHubResourceCarousel`
+- **Native hook:** `hooks/use-main-native-surface-sync.ts` → `surface: native_main` on successful sync
 
 ---
 
 ## 8. Native MAIN surface (Phase 3 — pre-aligned)
 
-> **Status:** spec locked · L3 contract · native implementation not shipped  
+> **Status:** spec locked · L3 contract · Capacitor bridge shipped · Widget target wired  
 > **Goal:** Same MAIN (carousel index 0) on **Dynamic Island / Live Activity (iOS)** and **ongoing notification (Android)** — not a second ranker or global pill.
 
 ### One picture
@@ -225,7 +226,7 @@ rankContextResources → ranked[0] (MAIN)
 - [x] Android ongoing BigPicture QR (base64 data URL)
 - [x] iOS Live Activity controller + Widget Extension sources (`ios/RimvioLiveActivityWidget/`)
 - [x] Xcode: `RimvioLiveActivityWidget` target wired in `project.pbxproj` (Attributes shared; controller App-only)
-- [ ] Telemetry: `RESOURCE_IMPRESSION` surface=`native_main` (extend curation ingest)
+- [x] Telemetry: `RESOURCE_IMPRESSION` surface=`native_main` (extend curation ingest)
 
 ### Forbidden (Phase 3 native)
 

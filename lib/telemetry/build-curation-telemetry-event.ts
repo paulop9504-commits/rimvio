@@ -1,5 +1,6 @@
 import type { RankedContextResource } from "@/lib/globe/resource/map-hub-service-to-resource";
 import type {
+  CurationImpressionSurface,
   PredictiveCurationTelemetryBase,
   PredictiveCurationTelemetryEvent,
   SpacetimeTelemetryContext,
@@ -51,6 +52,7 @@ export function buildResourceImpressionEvent(input: {
   lat: number | null;
   lng: number | null;
   userSeed: string;
+  surface?: CurationImpressionSurface;
   at?: string;
 }): PredictiveCurationTelemetryEvent {
   const base = buildCurationTelemetryBase({ ...input, dwellTimeMs: 0 });
@@ -59,6 +61,7 @@ export function buildResourceImpressionEvent(input: {
     ...buildSpacetimeContextFromResource(input.entry, 0),
     event_type: "RESOURCE_IMPRESSION",
     carousel_index: 0,
+    surface: input.surface ?? "carousel_main",
   };
 }
 

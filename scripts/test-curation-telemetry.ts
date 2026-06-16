@@ -63,10 +63,22 @@ const impression = buildResourceImpressionEvent({
 });
 assert.equal(impression.event_type, "RESOURCE_IMPRESSION");
 assert.equal(impression.carousel_index, 0);
+assert.equal(impression.surface, "carousel_main");
 assert.equal(impression.user_id, hashed);
 assert.equal(impression.context_id, "ec-park");
 assert.equal(impression.resource_id, "ec-park:ticket");
 assert.equal(impression.event_lat, 36.35);
+
+const nativeMain = buildResourceImpressionEvent({
+  contextId: "ec-park",
+  entry,
+  lat: 36.35,
+  lng: 127.38,
+  userSeed,
+  surface: "native_main",
+});
+assert.equal(nativeMain.surface, "native_main");
+assert.equal(nativeMain.resource_id, "ec-park:ticket");
 
 const dismissed = buildResourceDismissedEvent({
   contextId: "ec-park",
