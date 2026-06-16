@@ -2,9 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
-import { GlobeMapProductFocusCard } from "@/components/globe/globe-map-product-focus-card";
+import { GlobeLodgingHubFocusCard } from "@/components/globe/globe-lodging-hub-focus-card";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
+import { useActiveContextWeather } from "@/hooks/use-active-context-weather";
 import { listContextHubServicesForEvent } from "@/lib/globe/context-hub/context-hub-service-catalog";
+import { resolveLodgingSituationalLabel } from "@/lib/globe/context-hub/resolve-lodging-situational-label";
+import { buildLodgingDynamicTags } from "@/lib/globe/lodging/build-lodging-dynamic-tags";
 import {
   dispatchGlobeLodgingFocus,
   dispatchGlobeLodgingFocusStage,
@@ -115,6 +118,11 @@ export function GlobeLodgingFocusStage({
     );
   }, [eventId, revision]);
 
+  const { tempC } = useActiveContextWeather({
+    event: activeEvent,
+    enabled: open && Boolean(activeEvent),
+  });
+
   const fullRanked = useMemo(() => {
     void revision;
     if (!activeEvent) {
@@ -159,8 +167,29 @@ export function GlobeLodgingFocusStage({
     if (!activeEvent) {
       return null;
     }
-    return activeEvent.place?.trim() || activeEvent.title.trim() || null;
+    return activeEvent.place?.trim() || null;
   }, [activeEvent]);
+
+  const situationalLabel = useMemo(() => {
+    if (!activeEvent) {
+      return null;
+    }
+    return resolveLodgingSituationalLabel(activeEvent);
+  }, [activeEvent]);
+
+  const dynamicTags = useMemo(() => {
+    if (!activeEvent || anchorLat == null || anchorLng == null) {
+      return null;
+    }
+    return buildLodgingDynamicTags({
+      event: activeEvent,
+      lodgingLat: anchorLat,
+      lodgingLng: anchorLng,
+      userLat: lat,
+      userLng: lng,
+      tempC,
+    });
+  }, [activeEvent, anchorLat, anchorLng, lat, lng, tempC]);
 
   useEffect(() => {
     if (!open || anchorLat == null || anchorLng == null) {
@@ -263,12 +292,9 @@ export function GlobeLodgingFocusStage({
   }
 
   const priceLabel = formatPriceKrw(payload.priceKrw);
-  const subtitleParts = [
-    priceLabel,
-    payload.partnerLabel?.trim() || null,
-    contextPlace,
-  ].filter(Boolean);
-  const subtitle = subtitleParts.join(" · ");
+  const priceLine = [priceLabel, payload.partnerLabel?.trim() || null]
+    .filter(Boolean)
+    .join(" · ");
   const currentMedia = mediaSlides[mediaIndex] ?? null;
   const isVideo =
     currentMedia != null &&
@@ -297,11 +323,13 @@ export function GlobeLodgingFocusStage({
         data-globe-lodging-focus-anchor
       >
         <div className="pointer-events-auto w-full max-w-[360px]">
-          <GlobeMapProductFocusCard
-            layout="card"
+          <GlobeLodgingHubFocusCard
             className="w-full"
             title={entry.resource.label}
-            subtitle={subtitle || null}
+            priceLine={priceLine || null}
+            placeLabel={contextPlace}
+            situationalLabel={situationalLabel}
+            dynamicTags={dynamicTags}
             primaryAction={{
               label: copy.globe.lodgingFocusBook,
               onClick: handleBook,
@@ -310,7 +338,6 @@ export function GlobeLodgingFocusStage({
             secondaryAction={{
               label: copy.globe.lodgingFocusDetails,
               onClick: handleDetails,
-              variant: "secondary",
             }}
             onClose={dismiss}
             closeAriaLabel={copy.globe.lodgingFocusCloseAria}
@@ -344,7 +371,7 @@ export function GlobeLodgingFocusStage({
               }
             }}
             hero={
-              <div className="relative overflow-hidden rounded-[0.9rem] bg-[#e8e8ed]">
+              <>
                 {isVideo && currentMedia ? (
                   <video
                     key={currentMedia}
@@ -371,7 +398,7 @@ export function GlobeLodgingFocusStage({
                 )}
 
                 {mediaSlides.length > 1 ? (
-                  <div className="absolute inset-x-0 bottom-2 z-[2] flex justify-center gap-1.5">
+                  <div className="absolute inset-x-0 bottom-10 z-[3] flex justify-center gap-1.5">
                     {mediaSlides.map((slide, index) => (
                       <button
                         key={`${slide}:${index}`}
@@ -389,7 +416,7 @@ export function GlobeLodgingFocusStage({
                     ))}
                   </div>
                 ) : null}
-              </div>
+              </>
             }
           />
         </div>

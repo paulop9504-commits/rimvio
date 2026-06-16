@@ -198,6 +198,8 @@ export const copyEn: Copy = {
     mediaPoolAddingToast: "Adding to pool…",
     mediaPoolAddFailToast: "Couldn't add to pool",
     mediaPoolDeletedToast: "Removed from pool",
+    bulkClusterPeekToast: "Reading photo time and place…",
+    bulkClusterGroupToast: "Grouping photos…",
     backerLinkLabel: "Support · Invest",
     backerLinkAria: "Rimvio support and investment inquiry — opens email",
     inboxSectionShare: "Shared context",
