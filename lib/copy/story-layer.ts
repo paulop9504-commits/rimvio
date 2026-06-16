@@ -52,6 +52,9 @@ export const STORY_L1_NOUNS = {
 export const STORY_L2 = {
   trace: "Trace",
   context: "Context",
+  hub: "Hub",
+  resource: "Resource",
+  mainSlot: "MAIN slot",
   recall: "Recall",
   lineage: "Lineage",
   pioneer: "Pioneer",
@@ -63,6 +66,10 @@ export const STORY_L2 = {
 export const STORY_L3 = {
   pinEntity: "PinEntity",
   eventCandidate: "EventCandidate",
+  contextHub: "ContextHubDefinition",
+  contextResource: "ContextResource",
+  rankContextResources: "rankContextResources",
+  globeHubCarousel: "GlobeHubResourceCarousel",
   globeProjection: "Globe projection",
   ingestBar: "GlobeContextIngestBar",
   stackPicker: "GlobeContextStackPicker",
@@ -125,6 +132,7 @@ export function buildStoryLayerPromptHeader(surface: "globe" | "feed" | "peers" 
     `- L1 verbs: ${Object.values(STORY_L1_VERBS).join(" · ")}`,
     `- Never say in UI: ${STORY_FORBIDDEN_USER_FACING.slice(0, 6).join(", ")}…`,
     `- Implement as L3 (Globe): PinEntity projection + EventCandidate truth; no Post model, no like counts.`,
+    `- Hub · Resource (locked): docs/GLOBE_HUB_RESOURCE.md — Hub factory/transactions; Resource rank → MAIN slot.`,
     `- Architecture: docs/RFC_UNIVERSAL_PIN_SYSTEM.md`,
     `- Full spec: docs/RIMVIO_STORY_LAYER.md`,
   ].join("\n");

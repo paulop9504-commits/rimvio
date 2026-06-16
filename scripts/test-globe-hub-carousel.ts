@@ -2,14 +2,10 @@
 
 import assert from "node:assert/strict";
 import type { EventCandidate } from "../lib/events/event-candidate";
-import { buildHubCarouselSlides } from "../lib/globe/context-hub/build-hub-carousel-slides";
 import { rankContextHubServices } from "../lib/globe/context-hub/rank-context-hub-services";
 import type { ContextHubServiceRow } from "../lib/globe/context-hub/context-hub-service-catalog";
 import { resolvePrimaryHubServiceRow } from "../lib/globe/context-hub/resolve-primary-hub-service";
-import {
-  resolveActiveGlobeContext,
-  resolveRankedActiveGlobeContexts,
-} from "../lib/globe/resolve-active-globe-context";
+import { rankContextResources } from "../lib/globe/resource/rank-context-resources";
 
 function row(
   partial: Partial<ContextHubServiceRow> & Pick<ContextHubServiceRow, "serviceId">,
@@ -61,70 +57,44 @@ const ranked = rankContextHubServices([
 assert.equal(ranked[0]?.serviceId, "ticket");
 assert.equal(resolvePrimaryHubServiceRow(ranked)?.serviceId, "ticket");
 
-const slides = buildHubCarouselSlides({
-  resources: ranked,
-  alternates: [
-    { eventId: "ec-later", title: "콘서트", place: "올림픽공원" },
-  ],
-  activeEventId: "ec-park",
-});
-assert.equal(slides.length, 4);
-assert.equal(slides[0]?.kind, "resource");
-assert.equal(slides[3]?.kind, "context");
-assert.equal(
-  slides[3]?.kind === "context" ? slides[3].alternate.eventId : null,
-  "ec-later",
-);
-
 const now = new Date("2026-06-15T10:00:00.000Z");
-const events: EventCandidate[] = [
-  {
-    id: "ec-park",
-    title: "놀이공원",
-    category: "travel",
-    source: "message",
-    lifecycle: "scheduled",
-    confidence: 0.9,
-    lifecycleUpdatedAt: now.toISOString(),
-    createdAt: now.toISOString(),
-    updatedAt: now.toISOString(),
-    datetime: "2026-06-15T09:00:00.000Z",
-    place: "둔산동",
-    metadata: { feedPlanEnabled: true, globeManualContext: true },
+const parkEvent: EventCandidate = {
+  id: "ec-park",
+  title: "놀이공원",
+  category: "travel",
+  source: "message",
+  lifecycle: "scheduled",
+  confidence: 0.9,
+  lifecycleUpdatedAt: now.toISOString(),
+  createdAt: now.toISOString(),
+  updatedAt: now.toISOString(),
+  datetime: "2026-06-15T09:00:00.000Z",
+  place: "둔산동",
+  metadata: {
+    feedPlanEnabled: true,
+    globeManualContext: true,
+    globePlaceLat: 36.35,
+    globePlaceLng: 127.38,
   },
-  {
-    id: "ec-later",
-    title: "콘서트",
-    category: "concert",
-    source: "message",
-    lifecycle: "scheduled",
-    confidence: 0.9,
-    lifecycleUpdatedAt: now.toISOString(),
-    createdAt: now.toISOString(),
-    updatedAt: now.toISOString(),
-    datetime: "2026-06-20T18:00:00.000Z",
-    place: "올림픽공원",
-    metadata: { feedPlanEnabled: true, globeManualContext: true },
-  },
-];
+};
 
-const match = resolveActiveGlobeContext({
-  events,
+const parkAtVenue = rankContextResources({
+  event: parkEvent,
+  services: ranked,
   now,
   lat: 36.35,
   lng: 127.38,
 });
-assert.ok(match);
-assert.equal(match.eventId, "ec-park");
-assert.ok(match.tier === "high" || match.tier === "medium");
+assert.equal(parkAtVenue[0]?.resource.kind, "ticket");
+assert.ok((parkAtVenue[0]?.rankScore ?? 0) > (parkAtVenue[1]?.rankScore ?? 0));
 
-const rankedContexts = resolveRankedActiveGlobeContexts({
-  events,
+const parkRemote = rankContextResources({
+  event: parkEvent,
+  services: ranked,
   now,
-  lat: 36.35,
-  lng: 127.38,
+  lat: 37.56,
+  lng: 126.98,
 });
-assert.ok(rankedContexts.length >= 1);
-assert.equal(rankedContexts[0]?.eventId, "ec-park");
+assert.equal(parkRemote[0]?.resource.kind, "ticket");
 
 console.log("test-globe-hub-carousel: ok");

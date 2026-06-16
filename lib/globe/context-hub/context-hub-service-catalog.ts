@@ -116,7 +116,9 @@ export type ContextHubServicesForEvent = {
   services: ContextHubServiceRow[];
 };
 
-/** Hub services for one selected context — never lists other contexts. */
+/** Hub services for one selected context — never lists other contexts.
+ *  @see docs/GLOBE_HUB_RESOURCE.md — Hub does not rank; emits Resources for ranker.
+ */
 export function listContextHubServicesForEvent(
   event: EventCandidate | null | undefined,
 ): ContextHubServicesForEvent | null {

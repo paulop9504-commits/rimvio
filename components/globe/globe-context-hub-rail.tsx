@@ -6,7 +6,7 @@ import { ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { GlobeHubResourceCarousel } from "@/components/globe/globe-hub-resource-carousel";
 import { connectDepartureHubToContext } from "@/lib/globe/connect-departure-hub-to-context";
-import { buildHubCarouselSlides } from "@/lib/globe/context-hub/build-hub-carousel-slides";
+import { extractHubRunnableAction } from "@/lib/globe/context-hub/extract-hub-runnable-action";
 import {
   foldContextHubLearning,
   recordContextHubTelemetry,
@@ -14,9 +14,10 @@ import {
 import {
   listContextHubServicesForEvent,
   type ContextHubServiceId,
-  type ContextHubServiceRow,
 } from "@/lib/globe/context-hub/context-hub-service-catalog";
 import { rankContextHubServices } from "@/lib/globe/context-hub/rank-context-hub-services";
+import type { RankedContextResource } from "@/lib/globe/resource/map-hub-service-to-resource";
+import { rankContextResources } from "@/lib/globe/resource/rank-context-resources";
 import type { DepartureHubAirportId } from "@/lib/globe/departure-hub-airports";
 import {
   resolvePinScopeFromEventId,
@@ -31,16 +32,12 @@ import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 import { HubServiceSlot } from "@/components/globe/globe-context-hub-service-slot";
 
-export type GlobeContextHubAlternate = {
-  eventId: string;
-  title: string;
-  place: string;
-};
-
 export type GlobeContextHubRailProps = {
+  /** Active context — hub inventory for this event only. */
   activeEventId?: string | null;
-  alternateContexts?: readonly GlobeContextHubAlternate[];
-  onSelectContext?: (eventId: string) => void;
+  lat?: number | null;
+  lng?: number | null;
+  layout?: "dock" | "hero";
   onDismiss?: () => void;
   visible?: boolean;
   className?: string;
@@ -58,8 +55,9 @@ function openExternalHref(href: string) {
 
 export function GlobeContextHubRail({
   activeEventId,
-  alternateContexts = [],
-  onSelectContext,
+  lat = null,
+  lng = null,
+  layout = "dock",
   onDismiss,
   visible = true,
   className,
@@ -99,33 +97,28 @@ export function GlobeContextHubRail({
     return listContextHubServicesForEvent(event);
   }, [activeEventId, revision]);
 
-  const rankedRows = useMemo(
+  const rankedResources = useMemo((): RankedContextResource[] => {
+    void revision;
+    const eventId = activeEventId?.trim();
+    if (!panel || !eventId) {
+      return [];
+    }
+    const event = findLifeEventCandidate(eventId);
+    if (!event) {
+      return [];
+    }
+    return rankContextResources({
+      event,
+      services: panel.services,
+      lat,
+      lng,
+    });
+  }, [activeEventId, lat, lng, panel, revision]);
+
+  const browseRows = useMemo(
     () => (panel ? rankContextHubServices(panel.services) : []),
     [panel],
   );
-
-  const slides = useMemo(() => {
-    const eventId = activeEventId?.trim();
-    if (!eventId || rankedRows.length === 0) {
-      return [];
-    }
-    return buildHubCarouselSlides({
-      resources: rankedRows,
-      alternates: alternateContexts,
-      activeEventId: eventId,
-    });
-  }, [activeEventId, alternateContexts, rankedRows]);
-
-  const telemetryLabelForSlide = useCallback((index: number): string | null => {
-    const slide = slides[index];
-    if (!slide) {
-      return null;
-    }
-    if (slide.kind === "context") {
-      return copy.globe.contextHubSwitchTitle(slide.alternate.title);
-    }
-    return slide.row.link?.actionLabelKo ?? slide.row.handoffLabelKo ?? slide.row.labelKo;
-  }, [slides]);
 
   const handleOpenAction = useCallback(
     (url: string, label: string) => {
@@ -166,55 +159,36 @@ export function GlobeContextHubRail({
     [activeEventId, router],
   );
 
-  const runCarouselRow = useCallback(
-    (row: ContextHubServiceRow) => {
-      const label = row.link?.actionLabelKo ?? row.handoffLabelKo ?? row.labelKo;
-      if (row.serviceId === "ticket" && row.handoffHref && !row.handoffHref.startsWith("/")) {
-        handleOpenHandoff(row.handoffHref, label);
-        return;
-      }
-      if (row.connected && row.link?.actionUrl) {
-        handleOpenAction(row.link.actionUrl, label);
-        return;
-      }
-      if (row.handoffHref) {
-        handleOpenHandoff(
-          row.handoffHref,
-          label,
-          row.serviceId === "ai_search",
-        );
+  const runCarouselEntry = useCallback(
+    (entry: RankedContextResource) => {
+      const runnable = extractHubRunnableAction(entry.hubRow);
+      if (runnable) {
+        handleOpenHandoff(runnable.href, runnable.label, runnable.internalRoute);
         return;
       }
       setExpanded(true);
-      setConnectServiceId(row.serviceId);
+      setConnectServiceId(entry.hubRow.serviceId);
     },
-    [handleOpenAction, handleOpenHandoff],
+    [handleOpenHandoff],
   );
-
-  const handleDismiss = useCallback(() => {
-    const eventId = activeEventId?.trim();
-    const event = eventId ? findLifeEventCandidate(eventId) : null;
-    const label = telemetryLabelForSlide(carouselIndex);
-    if (event && label) {
-      recordContextHubTelemetry({ event, kind: "dismissed", label });
-      foldContextHubLearning(event);
-    }
-    onDismiss?.();
-  }, [activeEventId, carouselIndex, onDismiss, telemetryLabelForSlide]);
 
   useEffect(() => {
     void revision;
     const eventId = activeEventId?.trim();
-    const label = telemetryLabelForSlide(carouselIndex);
-    if (!eventId || !label) {
+    const entry = rankedResources[carouselIndex] ?? rankedResources[0];
+    if (!eventId || !entry) {
       return;
     }
     const event = findLifeEventCandidate(eventId);
     if (!event) {
       return;
     }
-    recordContextHubTelemetry({ event, kind: "shown", label });
-  }, [activeEventId, carouselIndex, revision, telemetryLabelForSlide]);
+    recordContextHubTelemetry({
+      event,
+      kind: "shown",
+      label: entry.resource.label,
+    });
+  }, [activeEventId, carouselIndex, rankedResources, revision]);
 
   const handleConnectFlight = useCallback(
     async (airportId: DepartureHubAirportId) => {
@@ -253,7 +227,7 @@ export function GlobeContextHubRail({
     [activeEventId, busy, panel?.services],
   );
 
-  if (!visible || !panel || slides.length === 0) {
+  if (!visible || !panel || rankedResources.length === 0) {
     return null;
   }
 
@@ -261,15 +235,15 @@ export function GlobeContextHubRail({
     return (
       <GlobeHubResourceCarousel
         className={className}
-        slides={slides}
-        index={Math.min(carouselIndex, slides.length - 1)}
+        ranked={rankedResources}
+        index={Math.min(carouselIndex, rankedResources.length - 1)}
         onIndexChange={setCarouselIndex}
-        onRunResource={runCarouselRow}
-        onSelectContext={(eventId) => onSelectContext?.(eventId)}
-        onDismiss={handleDismiss}
+        onRunRow={runCarouselEntry}
         onExpand={() => setExpanded(true)}
+        onDismiss={onDismiss}
         busy={busy}
         contextPlace={panel.contextPlace}
+        layout={layout}
       />
     );
   }
@@ -278,7 +252,7 @@ export function GlobeContextHubRail({
     <aside
       className={cn(
         "pointer-events-auto overflow-hidden rounded-[1.35rem] border border-border/60 bg-card/95 shadow-[0_12px_40px_rgba(2,32,71,0.12)] backdrop-blur-xl",
-        PANEL_WIDTH,
+        layout === "hero" ? "w-full max-w-md" : PANEL_WIDTH,
         className,
       )}
       data-globe-context-hub-rail
@@ -313,15 +287,14 @@ export function GlobeContextHubRail({
       </div>
 
       <ul className="space-y-2 px-2.5 py-2.5">
-        {rankedRows.map((row) => (
+        {browseRows.map((row) => (
           <HubServiceSlot
             key={row.serviceId}
             row={row}
             connectOpen={connectServiceId === row.serviceId}
             busy={busy}
             emphasized={
-              slides[carouselIndex]?.kind === "resource" &&
-              slides[carouselIndex]?.row.serviceId === row.serviceId
+              rankedResources[carouselIndex]?.hubRow.serviceId === row.serviceId
             }
             onToggleConnect={() =>
               setConnectServiceId((current) =>

@@ -1,43 +1,14 @@
 import type { ContextHubServiceRow } from "@/lib/globe/context-hub/context-hub-service-catalog";
+import { scoreHubServiceRowBase } from "@/lib/globe/context-hub/score-hub-service-row";
 
-function scoreHubServiceRow(row: ContextHubServiceRow): number {
-  if (!row.offered) {
-    return 0;
-  }
-  if (row.serviceId === "ticket") {
-    if (row.handoffHref) {
-      return 112;
-    }
-    if (row.connected && row.link?.actionUrl) {
-      return 108;
-    }
-    if (row.connected) {
-      return 95;
-    }
-  }
-  if (!row.implemented) {
-    return 10;
-  }
-  if (row.connected && row.link?.actionUrl) {
-    return 100;
-  }
-  if (row.handoffHref) {
-    return 92;
-  }
-  if (row.connected) {
-    return 75;
-  }
-  return 50;
-}
-
-/** Carousel order — actionable connected first, plug-in next, soon last. */
+/** Browse order in expanded hub panel — not MAIN priority (see rankContextResources). */
 export function rankContextHubServices(
   services: readonly ContextHubServiceRow[],
 ): ContextHubServiceRow[] {
   return [...services]
     .filter((row) => row.offered)
     .sort((left, right) => {
-      const delta = scoreHubServiceRow(right) - scoreHubServiceRow(left);
+      const delta = scoreHubServiceRowBase(right) - scoreHubServiceRowBase(left);
       if (delta !== 0) {
         return delta;
       }

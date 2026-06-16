@@ -22,6 +22,7 @@ Experience layers (`FACT → ACTION`) map through L1–L3 — see doc table.
 
 - **L0 personal:** You were here. And it mattered.
 - **L1:** 흔적 · 맥락 · 순간 · 그때 거기 — not 「핀 박기」「GPS」「AI Layer」 in hero/empty/toast
+- **L2 Hub · Resource (locked):** `docs/GLOBE_HUB_RESOURCE.md` — Hub = pipeline/transaction/factory (no ranking); Resource = rank target → MAIN slot + swipe
 - **L3:** Globe = renderer; pins = SSOT; default `visibility: private`
 - **Modes:** Personal (now) vs external discovery (Phase 2) — never mix on one screen
 
