@@ -363,6 +363,26 @@ export const copy = {
     lodgingFocusCloseAria: "숙소 포커스 닫기",
     lodgingFocusContextMedia: "이 맥락의 사진",
     lodgingFocusSwipeHint: "옆으로 밀어 다른 숙소 보기",
+    lodgingDynamicWalk: (minutesLabel: string) => `도보 ${minutesLabel}`,
+    lodgingDynamicTaxiKrw: (krw: number) => `택시 약 ${krw.toLocaleString("ko-KR")}원`,
+    lodgingDynamicTaxiIntl: (yen: number) => `택시 약 ¥${yen.toLocaleString("ko-KR")}`,
+    lodgingDynamicToHubWalk: (minutesLabel: string) => `거점까지 ${minutesLabel}`,
+    lodgingDynamicMeetingCommute: (minutes: number) =>
+      `미팅 장소까지 ${minutes}분 거리, 여유로운 출근길을 준비하세요.`,
+    lodgingDynamicCheckoutOnTime: (hour: number) =>
+      `오전 ${hour}시 미팅, 지금 체크아웃하면 늦지 않습니다.`,
+    lodgingDynamicBreakfastRoute:
+      "호텔 조식 챙기시고, 사무실까지 가장 빠른 경로를 확인하세요.",
+    lodgingDynamicHotDayRest: (temp: number) =>
+      `오늘 ${Math.round(temp)}° · 이 숙소면 실내로 바로 쉴 수 있어요`,
+    lodgingDynamicThemePark: (minutes: number) =>
+      `입구까지 도보 ${minutes}분 · 아침 일찍 들어가기 좋아요`,
+    lodgingDynamicOutdoorRest: (place: string) =>
+      `${place} 근처 · 피로할 때 바로 돌아올 수 있어요`,
+    lodgingDynamicLeisureWalk: (place: string) =>
+      `${place} 중심을 저녁까지 걸어 다니기 좋은 위치예요`,
+    lodgingDynamicBusinessStay: (minutes: number) =>
+      `출장 중 동선이 짧아요 · 미팅까지 ${minutes}분이면 충분해요`,
     contextHubAiSearchOpen: "맥락 검색",
     mainActionEyebrow: "지금",
     mainActionForContext: (title: string, place: string) => `${title} · ${place}`,

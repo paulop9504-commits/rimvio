@@ -355,6 +355,26 @@ export const copyEn: Copy = {
     lodgingFocusCloseAria: "Close lodging focus",
     lodgingFocusContextMedia: "From this context",
     lodgingFocusSwipeHint: "Swipe for other stays",
+    lodgingDynamicWalk: (minutesLabel: string) => `${minutesLabel} walk`,
+    lodgingDynamicTaxiKrw: (krw: number) => `Taxi ~₩${krw.toLocaleString("en-US")}`,
+    lodgingDynamicTaxiIntl: (yen: number) => `Taxi ~¥${yen.toLocaleString("en-US")}`,
+    lodgingDynamicToHubWalk: (minutesLabel: string) => `${minutesLabel} to hub`,
+    lodgingDynamicMeetingCommute: (minutes: number) =>
+      `${minutes} min to your meeting — an easy commute morning.`,
+    lodgingDynamicCheckoutOnTime: (hour: number) =>
+      `${hour} AM meeting — check out now and you'll be on time.`,
+    lodgingDynamicBreakfastRoute:
+      "Grab hotel breakfast, then check the fastest route to the office.",
+    lodgingDynamicHotDayRest: (temp: number) =>
+      `${Math.round(temp)}° today · this stay is a quick indoor reset`,
+    lodgingDynamicThemePark: (minutes: number) =>
+      `${minutes} min walk to the gate · good for an early entry`,
+    lodgingDynamicOutdoorRest: (place: string) =>
+      `Near ${place} · easy to duck back when you need a break`,
+    lodgingDynamicLeisureWalk: (place: string) =>
+      `Walkable base for exploring ${place} all day`,
+    lodgingDynamicBusinessStay: (minutes: number) =>
+      `Short trip legs · ${minutes} min to your meeting is enough`,
     contextHubAiSearchOpen: "Search context",
     mainActionEyebrow: "Now",
     mainActionForContext: (title: string, place: string) => `${title} · ${place}`,

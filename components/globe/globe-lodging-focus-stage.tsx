@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { X } from "lucide-react";
+import { GlobeLodgingDynamicTags } from "@/components/globe/globe-lodging-dynamic-tags";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { useGlobePinScreenAnchor } from "@/hooks/use-globe-pin-screen-anchor";
+import { useActiveContextWeather } from "@/hooks/use-active-context-weather";
 import { listContextHubServicesForEvent } from "@/lib/globe/context-hub/context-hub-service-catalog";
 import {
   dispatchGlobeLodgingFocus,
@@ -12,6 +14,7 @@ import {
   type GlobeLodgingFocusDetail,
 } from "@/lib/globe/context-hub/globe-lodging-marker-bridge";
 import { readLodgingPayloadFromResource } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
+import { buildLodgingDynamicTags } from "@/lib/globe/lodging/build-lodging-dynamic-tags";
 import { projectContextMediaReel } from "@/lib/globe/project-context-media-reel";
 import { resolveExperienceVolumeForEvent } from "@/lib/globe/resolve-globe-context-primary-video";
 import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
@@ -93,28 +96,37 @@ export function GlobeLodgingFocusStage({
   }, [contextEventId]);
 
   const eventId = contextEventId?.trim() ?? "";
-  const fullRanked = useMemo(() => {
+  const activeEvent = useMemo(() => {
     void revision;
     if (!eventId) {
+      return null;
+    }
+    return (
+      findLifeEventCandidate(eventId) ?? recoverGlobeContextEventFromPin(eventId)
+    );
+  }, [eventId, revision]);
+
+  const { tempC } = useActiveContextWeather({
+    event: activeEvent,
+    enabled: open && Boolean(activeEvent),
+  });
+
+  const fullRanked = useMemo(() => {
+    void revision;
+    if (!activeEvent) {
       return [] as RankedContextResource[];
     }
-    const event =
-      findLifeEventCandidate(eventId) ??
-      recoverGlobeContextEventFromPin(eventId);
-    if (!event) {
-      return [];
-    }
-    const panel = listContextHubServicesForEvent(event);
+    const panel = listContextHubServicesForEvent(activeEvent);
     if (!panel) {
-      return [];
+      return [] as RankedContextResource[];
     }
     return rankContextResources({
-      event,
+      event: activeEvent,
       services: panel.services,
       lat,
       lng,
     });
-  }, [eventId, lat, lng, revision]);
+  }, [activeEvent, lat, lng, revision]);
 
   const lodgingRanked = useMemo(
     () => filterLodgingRankedResources(fullRanked),
@@ -141,23 +153,33 @@ export function GlobeLodgingFocusStage({
 
   const contextReel = useMemo(() => {
     void revision;
-    if (!eventId) {
+    if (!activeEvent) {
       return [];
     }
-    const event =
-      findLifeEventCandidate(eventId) ?? recoverGlobeContextEventFromPin(eventId);
     const volume = resolveExperienceVolumeForEvent(eventId);
-    return projectContextMediaReel({ event, volume, viewerUserId }).slice(0, 6);
-  }, [eventId, revision, viewerUserId]);
+    return projectContextMediaReel({ event: activeEvent, volume, viewerUserId }).slice(0, 6);
+  }, [activeEvent, eventId, revision, viewerUserId]);
 
   const contextPlace = useMemo(() => {
-    if (!eventId) {
+    if (!activeEvent) {
       return null;
     }
-    const event =
-      findLifeEventCandidate(eventId) ?? recoverGlobeContextEventFromPin(eventId);
-    return event?.place?.trim() || event?.title.trim() || null;
-  }, [eventId]);
+    return activeEvent.place?.trim() || activeEvent.title.trim() || null;
+  }, [activeEvent]);
+
+  const dynamicTags = useMemo(() => {
+    if (!activeEvent || anchorLat == null || anchorLng == null) {
+      return null;
+    }
+    return buildLodgingDynamicTags({
+      event: activeEvent,
+      lodgingLat: anchorLat,
+      lodgingLng: anchorLng,
+      userLat: lat,
+      userLng: lng,
+      tempC,
+    });
+  }, [activeEvent, anchorLat, anchorLng, lat, lng, tempC]);
 
   useEffect(() => {
     if (!open || anchorLat == null || anchorLng == null) {
@@ -365,6 +387,7 @@ export function GlobeLodgingFocusStage({
                   {contextPlace}
                 </p>
               ) : null}
+              {dynamicTags ? <GlobeLodgingDynamicTags tags={dynamicTags} /> : null}
             </div>
           </div>
 
