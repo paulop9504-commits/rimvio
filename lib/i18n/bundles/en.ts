@@ -355,6 +355,8 @@ export const copyEn: Copy = {
     lodgingFocusCloseAria: "Close lodging focus",
     lodgingFocusContextMedia: "From this context",
     lodgingFocusSwipeHint: "Swipe for other stays",
+    lodgingFocusBook: "Book",
+    lodgingFocusDetails: "View details",
     lodgingDynamicWalk: (minutesLabel: string) => `${minutesLabel} walk`,
     lodgingDynamicTaxiKrw: (krw: number) => `Taxi ~₩${krw.toLocaleString("en-US")}`,
     lodgingDynamicTaxiIntl: (yen: number) => `Taxi ~¥${yen.toLocaleString("en-US")}`,

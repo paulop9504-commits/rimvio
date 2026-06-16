@@ -140,7 +140,7 @@ export function mapLodgingRowToContextResource(
     action: {
       kind: "open_url",
       href: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(row.name)}&query_place_id=${encodeURIComponent(row.placeId)}`,
-      labelKo: "숙소 보기",
+      labelKo: "예매",
     },
     createdAtIso: event.updatedAt ?? event.createdAt,
     updatedAtIso: event.updatedAt ?? null,

@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
-import { X } from "lucide-react";
 import { GlobeLodgingDynamicTags } from "@/components/globe/globe-lodging-dynamic-tags";
+import { GlobeMapProductFocusCard } from "@/components/globe/globe-map-product-focus-card";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { useGlobePinScreenAnchor } from "@/hooks/use-globe-pin-screen-anchor";
 import { useActiveContextWeather } from "@/hooks/use-active-context-weather";
@@ -14,6 +14,7 @@ import {
   subscribeGlobeLodgingFocus,
   type GlobeLodgingFocusDetail,
 } from "@/lib/globe/context-hub/globe-lodging-marker-bridge";
+import { dispatchGlobeContextHubOpen } from "@/lib/globe/context-hub/globe-context-hub-open-bridge";
 import { readLodgingPayloadFromResource } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import { buildLodgingDynamicTags } from "@/lib/globe/lodging/build-lodging-dynamic-tags";
 import {
@@ -270,6 +271,33 @@ export function GlobeLodgingFocusStage({
     [goToLodgingIndex, lodgingIndex, lodgingRanked.length],
   );
 
+  const handleBook = useCallback(() => {
+    const href = entry?.resource.action?.href?.trim();
+    if (!href) {
+      return;
+    }
+    window.open(href, "_blank", "noopener,noreferrer");
+  }, [entry?.resource.action?.href]);
+
+  const handleDetails = useCallback(() => {
+    if (!eventId || !entry) {
+      return;
+    }
+    const carouselIndex = fullRanked.findIndex(
+      (row) => row.resource.resourceId === entry.resource.resourceId,
+    );
+    dispatchGlobeContextHubOpen({
+      contextEventId: eventId,
+      source: "lodging_focus",
+    });
+    dispatchGlobeLodgingFocus({
+      resourceId: entry.resource.resourceId,
+      carouselIndex: carouselIndex >= 0 ? carouselIndex : lodgingIndex,
+      source: "carousel",
+    });
+    dismiss();
+  }, [dismiss, entry, eventId, fullRanked, lodgingIndex]);
+
   if (!open || !entry || !payload || !anchorLayout) {
     return (
       <div
@@ -281,6 +309,8 @@ export function GlobeLodgingFocusStage({
   }
 
   const priceLabel = formatPriceKrw(payload.priceKrw);
+  const subtitleParts = [priceLabel, payload.partnerLabel?.trim() || null].filter(Boolean);
+  const subtitle = subtitleParts.join(" · ");
   const currentMedia = mediaSlides[mediaIndex] ?? null;
   const isVideo =
     currentMedia != null &&
@@ -310,8 +340,28 @@ export function GlobeLodgingFocusStage({
         }}
         data-globe-lodging-focus-anchor
       >
-        <div
-          className="pointer-events-auto overflow-hidden rounded-[1.35rem] border-2 border-white/95 bg-black shadow-[0_16px_48px_rgba(0,0,0,0.35)] ring-1 ring-black/10"
+        <div className="pointer-events-auto">
+        <GlobeMapProductFocusCard
+          title={entry.resource.label}
+          subtitle={subtitle || null}
+          eyebrow={contextPlace}
+          primaryAction={{
+            label: copy.globe.lodgingFocusBook,
+            onClick: handleBook,
+            disabled: !entry.resource.action?.href,
+          }}
+          secondaryAction={{
+            label: copy.globe.lodgingFocusDetails,
+            onClick: handleDetails,
+            variant: "secondary",
+          }}
+          onClose={dismiss}
+          closeAriaLabel={copy.globe.lodgingFocusCloseAria}
+          headerExtra={
+            dynamicTags ? (
+              <GlobeLodgingDynamicTags tags={dynamicTags} variant="light" />
+            ) : null
+          }
           onTouchStart={(event) => {
             event.stopPropagation();
             const touch = event.changedTouches[0] ?? event.touches[0];
@@ -334,116 +384,89 @@ export function GlobeLodgingFocusStage({
               handleSwipeEnd(dx);
             }
           }}
-        >
-          <div className="relative aspect-[4/5] w-full bg-black">
-            {isVideo && currentMedia ? (
-              <video
-                key={currentMedia}
-                src={currentMedia}
-                className="size-full object-cover"
-                autoPlay
-                loop
-                muted
-                playsInline
-              />
-            ) : currentMedia ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                key={currentMedia}
-                src={currentMedia}
-                alt=""
-                className="size-full object-cover"
-                draggable={false}
-              />
-            ) : (
-              <div className="flex size-full items-center justify-center text-[12px] text-white/70">
-                {copy.globe.lodgingMediaFallback}
-              </div>
-            )}
+          hero={
+            <div className="relative overflow-hidden rounded-[1.1rem] bg-[#e8e8ed]">
+              {isVideo && currentMedia ? (
+                <video
+                  key={currentMedia}
+                  src={currentMedia}
+                  className="aspect-[4/3] w-full object-cover"
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                />
+              ) : currentMedia ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={currentMedia}
+                  src={currentMedia}
+                  alt=""
+                  className="aspect-[4/3] w-full object-cover"
+                  draggable={false}
+                />
+              ) : (
+                <div className="flex aspect-[4/3] w-full items-center justify-center text-[12px] text-[#6e6e73]">
+                  {copy.globe.lodgingMediaFallback}
+                </div>
+              )}
 
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                dismiss();
-              }}
-              className="absolute right-2 top-2 flex size-8 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm"
-              aria-label={copy.globe.lodgingFocusCloseAria}
-            >
-              <X className="size-4" aria-hidden />
-            </button>
-
-            {mediaSlides.length > 1 ? (
-              <div className="absolute inset-x-0 bottom-[4.5rem] z-[2] flex justify-center gap-1">
-                {mediaSlides.map((slide, index) => (
-                  <button
-                    key={`${slide}:${index}`}
-                    type="button"
-                    aria-label={`${index + 1}`}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setMediaIndex(index);
-                    }}
-                    className={cn(
-                      "size-1.5 rounded-full",
-                      index === mediaIndex ? "bg-white" : "bg-white/40",
-                    )}
-                  />
-                ))}
-              </div>
-            ) : null}
-
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-3.5 pb-3 pt-16">
-              <p className="line-clamp-2 text-[15px] font-semibold leading-snug text-white">
-                {entry.resource.label}
-              </p>
-              {priceLabel ? (
-                <p className="mt-0.5 text-[12px] font-semibold text-primary-foreground/90">
-                  {priceLabel}
-                  {payload.partnerLabel ? ` · ${payload.partnerLabel}` : null}
-                </p>
-              ) : null}
-              {contextPlace ? (
-                <p className="mt-1 text-[11px] font-medium text-white/75">
-                  {contextPlace}
-                </p>
-              ) : null}
-              {dynamicTags ? <GlobeLodgingDynamicTags tags={dynamicTags} /> : null}
-            </div>
-          </div>
-
-          {contextReel.length > 0 ? (
-            <div className="border-t border-white/10 bg-[#0b0f14]/95 px-3 py-2.5">
-              <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white/55">
-                {copy.globe.lodgingFocusContextMedia}
-              </p>
-              <div className="flex gap-1.5 overflow-x-auto">
-                {contextReel.map((item) => {
-                  const thumb = item.imageUrl ?? null;
-                  return (
-                    <div
-                      key={item.id}
-                      className="relative h-14 w-10 shrink-0 overflow-hidden rounded-md border border-white/15 bg-white/10"
-                    >
-                      {thumb ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={thumb}
-                          alt=""
-                          className="size-full object-cover"
-                          draggable={false}
-                        />
-                      ) : (
-                        <span className="flex size-full items-center justify-center text-[8px] text-white/50">
-                          {item.kind === "video" ? "▶" : "·"}
-                        </span>
+              {mediaSlides.length > 1 ? (
+                <div className="absolute inset-x-0 bottom-2 z-[2] flex justify-center gap-1">
+                  {mediaSlides.map((slide, index) => (
+                    <button
+                      key={`${slide}:${index}`}
+                      type="button"
+                      aria-label={`${index + 1}`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setMediaIndex(index);
+                      }}
+                      className={cn(
+                        "size-1.5 rounded-full",
+                        index === mediaIndex ? "bg-white" : "bg-white/45",
                       )}
-                    </div>
-                  );
-                })}
-              </div>
+                    />
+                  ))}
+                </div>
+              ) : null}
             </div>
-          ) : null}
+          }
+          belowHero={
+            contextReel.length > 0 ? (
+              <>
+                <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-[#6e6e73]">
+                  {copy.globe.lodgingFocusContextMedia}
+                </p>
+                <div className="flex gap-1.5 overflow-x-auto">
+                  {contextReel.map((item) => {
+                    const thumb = item.imageUrl ?? null;
+                    return (
+                      <div
+                        key={item.id}
+                        className="relative h-14 w-10 shrink-0 overflow-hidden rounded-md border border-black/[0.08] bg-[#e8e8ed]"
+                      >
+                        {thumb ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={thumb}
+                            alt=""
+                            className="size-full object-cover"
+                            draggable={false}
+                          />
+                        ) : (
+                          <span className="flex size-full items-center justify-center text-[8px] text-[#6e6e73]">
+                            {item.kind === "video" ? "▶" : "·"}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            ) : undefined
+          }
+        />
         </div>
 
         {lodgingRanked.length > 1 ? (

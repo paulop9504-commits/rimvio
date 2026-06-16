@@ -2,7 +2,7 @@ export const GLOBE_CONTEXT_HUB_OPEN_REQUEST = "rimvio:globe-context-hub-open";
 
 export type GlobeContextHubOpenRequestDetail = {
   contextEventId: string;
-  source: "map_anchor" | "programmatic";
+  source: "map_anchor" | "programmatic" | "lodging_focus";
 };
 
 export function dispatchGlobeContextHubOpen(

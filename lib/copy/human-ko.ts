@@ -363,6 +363,8 @@ export const copy = {
     lodgingFocusCloseAria: "숙소 포커스 닫기",
     lodgingFocusContextMedia: "이 맥락의 사진",
     lodgingFocusSwipeHint: "옆으로 밀어 다른 숙소 보기",
+    lodgingFocusBook: "예매",
+    lodgingFocusDetails: "자세히 보기",
     lodgingDynamicWalk: (minutesLabel: string) => `도보 ${minutesLabel}`,
     lodgingDynamicTaxiKrw: (krw: number) => `택시 약 ${krw.toLocaleString("ko-KR")}원`,
     lodgingDynamicTaxiIntl: (yen: number) => `택시 약 ¥${yen.toLocaleString("ko-KR")}`,
