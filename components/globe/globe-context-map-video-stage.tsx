@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { ContextMediaDeleteButton } from "@/components/globe/context-media-delete-button";
 import { ContextMediaVideoSoundButton } from "@/components/globe/context-media-video-sound-button";
-import { GlobeMapProductFocusCard } from "@/components/globe/globe-map-product-focus-card";
+import { GlobeContextMediaFocusCard } from "@/components/globe/globe-context-media-focus-card";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { useGlobeMapMediaCardSize } from "@/hooks/use-globe-map-media-card-size";
 import { useGlobeContextVideoSound } from "@/hooks/use-globe-context-video-sound";
@@ -84,6 +84,18 @@ function MapMediaSlide({
     onSoundOnChange?.(soundOn);
   }, [onSoundOnChange, soundOn]);
 
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el || !isVideo) {
+      return;
+    }
+    if (playing) {
+      void el.play().catch(() => onPlayingChange(false));
+    } else {
+      el.pause();
+    }
+  }, [isVideo, onPlayingChange, playing]);
+
   if (src && isVideo) {
     return (
       <video
@@ -93,7 +105,7 @@ function MapMediaSlide({
         className="pointer-events-none size-full object-cover object-center"
         playsInline
         loop
-        autoPlay
+        muted={!soundOn}
         preload="metadata"
       />
     );
@@ -329,7 +341,7 @@ export function GlobeContextMapVideoStage({
       />
 
       <div
-        className="pointer-events-none absolute inset-x-0 z-[1] flex flex-col items-center justify-center px-3"
+        className="pointer-events-none absolute inset-x-0 z-[1] flex min-h-0 flex-col items-center justify-center overflow-y-auto overscroll-contain px-3 py-1"
         style={{
           top: "max(2.5rem, env(safe-area-inset-top))",
           bottom: "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 0.5rem)",
@@ -337,20 +349,22 @@ export function GlobeContextMapVideoStage({
         data-globe-context-map-video-anchor
       >
         <div
-          className="pointer-events-auto w-full max-w-[calc(100vw-1.5rem)]"
+          className="pointer-events-auto w-full max-w-[min(100vw-1.5rem,18.75rem)] shrink-0 sm:max-w-[calc(100vw-1.5rem)]"
           style={{ width: widthPx }}
           data-globe-map-media-card-width={widthPx}
         >
-          <GlobeMapProductFocusCard
-            layout="card"
+          <GlobeContextMediaFocusCard
             className="w-full"
             title={contextTitle}
-            subtitle={subtitle}
-            primaryAction={{
-              label: copy.globe.lodgingFocusDetails,
-              onClick: () => onOpenDetails?.(),
-              disabled: !onOpenDetails,
-            }}
+            recallCaption={subtitle}
+            primaryAction={
+              onOpenDetails
+                ? {
+                    label: copy.globe.lodgingFocusDetails,
+                    onClick: () => onOpenDetails(),
+                  }
+                : undefined
+            }
             secondaryAction={
               currentItem?.kind === "video"
                 ? {
@@ -358,7 +372,6 @@ export function GlobeContextMapVideoStage({
                       ? copy.globe.contextMediaFocusPause
                       : copy.globe.contextMediaFocusPlay,
                     onClick: () => setPlaying((value) => !value),
-                    variant: "secondary",
                   }
                 : undefined
             }
@@ -378,9 +391,9 @@ export function GlobeContextMapVideoStage({
             onTouchStart={mergeCardTouchStart}
             onTouchMove={mergeCardTouchMove}
             onTouchEnd={mergeCardTouchEnd}
-            belowHero={
+            heroControls={
               currentItem?.kind === "video" || (deletable && eventId && currentItem) ? (
-                <div className="flex items-center justify-center gap-2 py-0.5">
+                <div className="flex items-center gap-1.5">
                   {currentItem?.kind === "video" ? (
                     <ContextMediaVideoSoundButton
                       soundOn={videoSoundOn}
@@ -407,9 +420,9 @@ export function GlobeContextMapVideoStage({
               ) : undefined
             }
             hero={
-              <div className="relative overflow-hidden rounded-[0.9rem] bg-[#e8e8ed]">
+              <>
                 {currentItem ? (
-                  <div className="aspect-[4/5] w-full">
+                  <div className="aspect-[3/4] w-full sm:aspect-[4/5]">
                     <MapMediaSlide
                       key={currentItem.id}
                       item={currentItem}
@@ -422,7 +435,7 @@ export function GlobeContextMapVideoStage({
                 ) : null}
 
                 {reel.length > 1 ? (
-                  <div className="absolute inset-x-0 bottom-2 z-[2] flex justify-center gap-1.5">
+                  <div className="absolute inset-x-0 bottom-12 z-[3] flex justify-center gap-1.5 sm:bottom-14">
                     {reel.map((item, index) => (
                       <button
                         key={item.id}
@@ -441,7 +454,7 @@ export function GlobeContextMapVideoStage({
                     ))}
                   </div>
                 ) : null}
-              </div>
+              </>
             }
           />
 

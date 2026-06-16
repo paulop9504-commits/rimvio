@@ -64,7 +64,7 @@ export function GlobeLodgingHubFocusCard({
   return (
     <article
       className={cn(
-        "overflow-hidden rounded-[1.25rem] bg-[#f5f5f7] shadow-[0_20px_50px_rgba(0,0,0,0.28)] ring-1 ring-white/15",
+        "overflow-hidden rounded-[1.15rem] bg-[#f5f5f7] shadow-[0_16px_40px_rgba(0,0,0,0.26)] ring-1 ring-white/15",
         className,
       )}
       data-globe-lodging-hub-focus-card
@@ -80,44 +80,44 @@ export function GlobeLodgingHubFocusCard({
             event.stopPropagation();
             onClose();
           }}
-          className="absolute right-2 top-2 z-[4] flex size-8 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-md active:scale-95"
+          className="absolute right-1.5 top-1.5 z-[4] flex size-7 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-md active:scale-95"
           aria-label={closeAriaLabel}
         >
-          <X className="size-4" aria-hidden />
+          <X className="size-3.5" aria-hidden />
         </button>
 
         {transitLead || transitTrail ? (
-          <div className="pointer-events-none absolute inset-x-2 top-2 z-[3] flex items-start justify-between gap-2 pr-9">
+          <div className="pointer-events-none absolute inset-x-1.5 top-1.5 z-[3] flex items-start justify-between gap-1.5 pr-8">
             {transitLead ? (
-              <span className="max-w-[48%] truncate rounded-full bg-black/50 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-md">
+              <span className="max-w-[48%] truncate rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-md">
                 {transitLead}
               </span>
             ) : (
               <span aria-hidden />
             )}
             {transitTrail ? (
-              <span className="max-w-[48%] truncate rounded-full bg-black/50 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-md">
+              <span className="max-w-[48%] truncate rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-md">
                 {transitTrail}
               </span>
             ) : null}
           </div>
         ) : null}
 
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] bg-gradient-to-t from-black/80 via-black/35 to-transparent px-3 pb-3 pt-16">
-          <h2 className="line-clamp-2 text-[20px] font-bold leading-tight tracking-tight text-white">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] bg-gradient-to-t from-black/80 via-black/35 to-transparent px-2.5 pb-2.5 pt-12">
+          <h2 className="line-clamp-2 text-[17px] font-bold leading-tight tracking-tight text-white">
             {title}
           </h2>
           {priceLine ? (
-            <p className="mt-0.5 text-[13px] font-medium text-white/90">{priceLine}</p>
+            <p className="mt-0.5 text-[12px] font-medium text-white/90">{priceLine}</p>
           ) : null}
           {placeLabel ? (
-            <p className="mt-0.5 text-[12px] font-medium text-white/75">{placeLabel}</p>
+            <p className="mt-0.5 text-[11px] font-medium text-white/75">{placeLabel}</p>
           ) : null}
         </div>
 
         {situationalLabel ? (
-          <div className="pointer-events-none absolute inset-x-0 -bottom-3.5 z-[5] flex justify-center">
-            <span className="rounded-full border border-black/[0.06] bg-white px-3 py-1 text-[11px] font-bold text-[#1d1d1f] shadow-[0_4px_14px_rgba(0,0,0,0.18)]">
+          <div className="pointer-events-none absolute inset-x-0 -bottom-3 z-[5] flex justify-center">
+            <span className="rounded-full border border-black/[0.06] bg-white px-2.5 py-0.5 text-[10px] font-bold text-[#1d1d1f] shadow-[0_4px_14px_rgba(0,0,0,0.18)]">
               {situationalLabel}
             </span>
           </div>
@@ -125,22 +125,22 @@ export function GlobeLodgingHubFocusCard({
       </div>
 
       {contextLine ? (
-        <div className="relative z-[1] px-2.5 pt-5">
-          <p className="rounded-[1rem] bg-black/55 px-3 py-2.5 text-[13px] font-medium leading-snug text-white/95 backdrop-blur-md">
+        <div className="relative z-[1] px-2 pt-4">
+          <p className="rounded-[0.85rem] bg-black/55 px-2.5 py-2 text-[12px] font-medium leading-snug text-white/95 backdrop-blur-md">
             {contextLine}
           </p>
         </div>
       ) : (
-        <div className={cn(situationalLabel ? "pt-2" : "pt-0")} aria-hidden />
+        <div className={cn(situationalLabel ? "pt-1.5" : "pt-0")} aria-hidden />
       )}
 
-      <div className="flex items-center justify-center gap-2 px-3 pb-3 pt-2.5">
+      <div className="flex items-center justify-center gap-1.5 px-2.5 pb-2.5 pt-2">
         <HubFocusAction action={primaryAction} />
         <HubFocusAction action={secondaryAction} variant="secondary" />
       </div>
 
       {footer ? (
-        <div className="border-t border-black/[0.06] px-3 py-2 text-center">{footer}</div>
+        <div className="border-t border-black/[0.06] px-2.5 py-1.5 text-center">{footer}</div>
       ) : null}
     </article>
   );
@@ -163,7 +163,7 @@ function HubFocusAction({
         action.onClick();
       }}
       className={cn(
-        "min-w-[5.75rem] rounded-full px-4 py-2 text-[13px] font-semibold transition active:scale-[0.98]",
+        "min-w-[5rem] rounded-full px-3.5 py-1.5 text-[12px] font-semibold transition active:scale-[0.98]",
         primary
           ? "bg-[#0071e3] text-white disabled:bg-[#0071e3]/35"
           : "border border-[#0071e3] bg-white text-[#0071e3] disabled:opacity-40",

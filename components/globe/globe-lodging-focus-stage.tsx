@@ -315,14 +315,14 @@ export function GlobeLodgingFocusStage({
       />
 
       <div
-        className="pointer-events-none absolute inset-x-0 z-[1] flex flex-col items-center justify-center px-3"
+        className="pointer-events-none absolute inset-x-0 z-[1] flex min-h-0 flex-col items-center justify-center overflow-y-auto overscroll-contain px-3 py-1"
         style={{
           top: "max(2.5rem, env(safe-area-inset-top))",
           bottom: "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 0.5rem)",
         }}
         data-globe-lodging-focus-anchor
       >
-        <div className="pointer-events-auto w-full max-w-[360px]">
+        <div className="pointer-events-auto w-full max-w-[min(100vw-1.5rem,18.75rem)] shrink-0 sm:max-w-[21.25rem]">
           <GlobeLodgingHubFocusCard
             className="w-full"
             title={entry.resource.label}
@@ -376,7 +376,7 @@ export function GlobeLodgingFocusStage({
                   <video
                     key={currentMedia}
                     src={currentMedia}
-                    className="aspect-[4/5] w-full object-cover"
+                    className="aspect-[3/4] w-full object-cover sm:aspect-[4/5]"
                     autoPlay
                     loop
                     muted
@@ -388,17 +388,17 @@ export function GlobeLodgingFocusStage({
                     key={currentMedia}
                     src={currentMedia}
                     alt=""
-                    className="aspect-[4/5] w-full object-cover"
+                    className="aspect-[3/4] w-full object-cover sm:aspect-[4/5]"
                     draggable={false}
                   />
                 ) : (
-                  <div className="flex aspect-[4/5] w-full items-center justify-center text-[12px] text-[#86868b]">
+                  <div className="flex aspect-[3/4] w-full items-center justify-center text-[12px] text-[#86868b] sm:aspect-[4/5]">
                     {copy.globe.lodgingMediaFallback}
                   </div>
                 )}
 
                 {mediaSlides.length > 1 ? (
-                  <div className="absolute inset-x-0 bottom-10 z-[3] flex justify-center gap-1.5">
+                  <div className="absolute inset-x-0 bottom-8 z-[3] flex justify-center gap-1.5 sm:bottom-10">
                     {mediaSlides.map((slide, index) => (
                       <button
                         key={`${slide}:${index}`}

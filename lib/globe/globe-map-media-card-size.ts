@@ -1,7 +1,7 @@
 const STORAGE_KEY = "rimvio-globe-map-media-card-width";
 
-export const GLOBE_MAP_MEDIA_CARD_WIDTH_DEFAULT = 360;
-export const GLOBE_MAP_MEDIA_CARD_WIDTH_MIN = 280;
+export const GLOBE_MAP_MEDIA_CARD_WIDTH_DEFAULT = 300;
+export const GLOBE_MAP_MEDIA_CARD_WIDTH_MIN = 260;
 export const GLOBE_MAP_MEDIA_CARD_WIDTH_MAX = 480;
 
 export function clampGlobeMapMediaCardWidth(
