@@ -8,6 +8,7 @@ import {
 } from "@/lib/feed/feed-capture-types";
 import type { ExperienceBridgeContribution } from "@/lib/experience-bridge/experience-bridge-types";
 import { isUsableBridgeMediaUrl } from "@/lib/experience-bridge/bridge-media-url";
+import { dedupeBridgeFeedCaptures } from "@/lib/experience-bridge/dedupe-bridge-feed-captures";
 import { commitEventUpsert } from "@/lib/source-of-truth/commit-truth";
 
 function mergeCaptureUrls(
@@ -45,7 +46,7 @@ function commitCaptureMerge(
     confidence: event.confidence,
     metadata: {
       ...event.metadata,
-      [FEED_CAPTURES_META_KEY]: merged,
+      [FEED_CAPTURES_META_KEY]: dedupeBridgeFeedCaptures(merged),
     },
     lifecycleUpdatedAt: event.lifecycleUpdatedAt ?? new Date().toISOString(),
   });

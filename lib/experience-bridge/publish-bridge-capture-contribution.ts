@@ -108,8 +108,8 @@ export async function publishBridgeCaptureContribution(input: {
   await postBridgeContribution({ eventId, capture });
 
   notifyBridgeSharedMediaUpdated();
-  void syncBridgeSharedMediaFromRemote(eventId, capture.ownerUserId).catch(() => {
-    // Background refresh — publish already succeeded.
+  await syncBridgeSharedMediaFromRemote(eventId, capture.ownerUserId).catch(() => {
+    // Publish succeeded — background refresh is best-effort.
   });
 
   const localEvent = findEventCandidate(eventId);

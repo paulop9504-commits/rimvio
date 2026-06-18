@@ -75,12 +75,17 @@ const bridgeShared: EventCandidate = {
         kind: "photo",
         capturedAtIso: "2026-01-05T10:00:00+09:00",
         mediaContextId: "host-only-blob",
+        ownerUserId: "user-host",
       },
     ],
   },
 };
 
-const bridgeReel = projectContextMediaReel({ event: bridgeShared, volume: null });
+const bridgeReel = projectContextMediaReel({
+  event: bridgeShared,
+  volume: null,
+  viewerUserId: "user-invitee",
+});
 assert.equal(bridgeReel.length, 1);
 assert.equal(bridgeReel[0]?.pendingRemote, true);
 assert.equal(bridgeReel[0]?.allowLocalBlob, false);

@@ -6,7 +6,7 @@ export const BRIDGE_PLAN_CACHE_MS = 5_000;
 /** Align with usePendingBridgeInvites POLL_MS. */
 export const BRIDGE_INVITES_CACHE_MS = 12_000;
 
-export const BRIDGE_CONTRIBUTIONS_CACHE_MS = 5_000;
+export const BRIDGE_CONTRIBUTIONS_CACHE_MS = 2_500;
 
 export const BRIDGE_SLOTS_CACHE_MS = 15_000;
 

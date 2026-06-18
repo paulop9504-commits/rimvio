@@ -7,8 +7,9 @@ import { EVENT_CANDIDATES_UPDATED } from "@/lib/events/event-store";
 import { useAuth } from "@/hooks/use-auth";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
-const POLL_MS = 8_000;
-const ACTIVE_POLL_MS = 4_000;
+const POLL_MS = 5_000;
+const ACTIVE_POLL_MS = 2_000;
+const REFRESH_DEBOUNCE_MS = 400;
 
 /** Background poll — friend/host bridge photos sync without app restart. */
 export function useBridgeMediaSync(input?: {
@@ -64,7 +65,7 @@ export function useBridgeMediaSync(input?: {
       debounceTimer = window.setTimeout(() => {
         debounceTimer = null;
         void sync();
-      }, 900);
+      }, REFRESH_DEBOUNCE_MS);
     };
     window.addEventListener("focus", onRefresh);
     document.addEventListener("visibilitychange", onRefresh);

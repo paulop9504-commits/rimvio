@@ -132,7 +132,7 @@ export function PinOpenSheet({
     };
 
     runSync();
-    const retry = window.setTimeout(runSync, 2000);
+    const retry = window.setTimeout(runSync, 900);
 
     const onCandidatesUpdated = () => {
       if (debounceTimer !== null) {
@@ -141,7 +141,7 @@ export function PinOpenSheet({
       debounceTimer = window.setTimeout(() => {
         debounceTimer = null;
         runSync();
-      }, 1200);
+      }, 450);
     };
     window.addEventListener(EVENT_CANDIDATES_UPDATED, onCandidatesUpdated);
 

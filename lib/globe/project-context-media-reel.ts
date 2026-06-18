@@ -2,6 +2,12 @@ import type { ExperienceVolume } from "@/lib/experience-graph/experience-volume-
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { isUsableBridgeMediaUrl } from "@/lib/experience-bridge/bridge-media-url";
 import { isBridgeSharedEvent } from "@/lib/globe/is-bridge-shared-event";
+import {
+  isBridgeCapturePendingRemote,
+  reelDedupeKey,
+  shouldAppendMediaStoreForBridgeReel,
+  shouldShowBridgeCaptureInReel,
+} from "@/lib/globe/bridge-context-media-reel-policy";
 import { readFeedCaptureFragments } from "@/lib/feed/feed-capture-metadata";
 import { readMediaContextMemorySnapshot } from "@/lib/location-ping/media-context-store";
 import { buildGlobeContextMediaRecallCaption } from "@/lib/globe/build-context-media-recall-caption";
@@ -95,12 +101,18 @@ export function projectContextMediaReel(input: {
   const limit = input.limit ?? 48;
   const eventId = input.event?.id?.trim() ?? "";
   const bridgeShared = isBridgeSharedEvent(input.event);
+  const viewerUserId = input.viewerUserId?.trim() || null;
   const items: ContextMediaReelItem[] = [];
   const seen = new Set<string>();
 
   const push = (item: ContextMediaReelDraft) => {
     const remoteUrl = item.imageUrl?.trim() || "";
     const mediaId = item.mediaContextId?.trim() || "";
+    const dedupeKey = reelDedupeKey({
+      id: item.id,
+      imageUrl: remoteUrl || null,
+      mediaContextId: mediaId || null,
+    });
     const canShow =
       Boolean(remoteUrl) ||
       item.allowLocalBlob === true ||
@@ -108,17 +120,13 @@ export function projectContextMediaReel(input: {
     if (!canShow) {
       return;
     }
-    const key =
-      mediaId ||
-      remoteUrl ||
-      item.id;
-    if (!key || seen.has(key) || items.length >= limit) {
+    if (!dedupeKey || seen.has(dedupeKey) || items.length >= limit) {
       return;
     }
     if (!remoteUrl && item.allowLocalBlob && !mediaId) {
       return;
     }
-    seen.add(key);
+    seen.add(dedupeKey);
     items.push({
       ...item,
       recallCaption: buildGlobeContextMediaRecallCaption({
@@ -141,7 +149,26 @@ export function projectContextMediaReel(input: {
     const allowLocalBlob = bridgeShared
       ? isLocalEventMedia(eventId, mediaContextId)
       : Boolean(mediaContextId);
-    const pendingRemote = bridgeShared && !imageUrl && !allowLocalBlob;
+    const pendingRemote = isBridgeCapturePendingRemote({
+      bridgeShared,
+      imageUrl,
+      allowLocalBlob,
+      capture: row,
+      viewerUserId,
+    });
+
+    if (
+      bridgeShared &&
+      !shouldShowBridgeCaptureInReel({
+        capture: row,
+        imageUrl,
+        allowLocalBlob,
+        viewerUserId,
+      }) &&
+      !pendingRemote
+    ) {
+      continue;
+    }
 
     push({
       id: `capture:${row.id}`,
@@ -165,7 +192,7 @@ export function projectContextMediaReel(input: {
     }
   }
 
-  if (eventId) {
+  if (eventId && shouldAppendMediaStoreForBridgeReel(bridgeShared)) {
     appendFromMediaStore(eventId, push, linkedMediaIds);
   }
 
