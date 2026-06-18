@@ -19,6 +19,7 @@ import {
   readLocalBridgeState,
   writeLocalBridgeState,
 } from "@/lib/experience-bridge/local-bridge-store";
+import { syncBridgeSharedMediaFromRemote } from "@/lib/experience-bridge/sync-bridge-participant-media";
 import { toBridgeFetchError } from "@/lib/experience-bridge/bridge-fetch-error";
 import { useAuth } from "@/hooks/use-auth";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -156,9 +157,10 @@ export function useExperienceBridge(input: {
     });
     setState(data.state);
     writeLocalBridgeState(data.state);
+    await syncBridgeSharedMediaFromRemote(eventId, user?.id);
     await refresh();
     return data.state;
-  }, [eventId, refresh]);
+  }, [eventId, refresh, user?.id]);
 
   const decline = useCallback(async () => {
     if (!eventId) {

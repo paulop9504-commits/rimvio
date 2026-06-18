@@ -32,8 +32,14 @@ create policy "Bridge members insert experience_bridge_contributions"
   with check (
     contributor_user_id = auth.uid()
     and (
-      public.is_experience_bridge_member(bridge_event_id, auth.uid())
-      or public.is_experience_bridge_host(bridge_event_id, auth.uid())
+      public.is_experience_bridge_host(bridge_event_id, auth.uid())
+      or exists (
+        select 1
+        from public.experience_bridge_participants p
+        where p.bridge_event_id = experience_bridge_contributions.bridge_event_id
+          and p.user_id = auth.uid()
+          and p.status = 'accepted'
+      )
     )
   );
 

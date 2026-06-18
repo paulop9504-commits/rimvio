@@ -120,6 +120,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ ok: true, capture });
   } catch (error) {
     const message = extractErrorMessage(error, "Failed to save bridge contribution.");
+    const lowered = message.toLowerCase();
+    if (
+      lowered.includes("row-level security") ||
+      lowered.includes("policy") ||
+      lowered.includes("permission denied")
+    ) {
+      return NextResponse.json(
+        { error: "브릿지에 참여한 뒤에 사진·동영상을 공유할 수 있어요." },
+        { status: 403 },
+      );
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

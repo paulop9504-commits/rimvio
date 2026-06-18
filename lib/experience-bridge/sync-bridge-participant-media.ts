@@ -22,7 +22,7 @@ export async function syncBridgeSharedMediaFromRemote(
 
   let remote: Awaited<ReturnType<typeof fetchExperienceBridgeRemote>>;
   try {
-    remote = await fetchExperienceBridgeRemote(key);
+    remote = await fetchExperienceBridgeRemote(key, { fresh: true });
   } catch {
     return null;
   }
@@ -52,7 +52,7 @@ export async function syncBridgeSharedMediaFromRemote(
     event = stamped;
   }
 
-  const contributions = await fetchBridgeContributionsRemote(key).catch(
+  const contributions = await fetchBridgeContributionsRemote(key, { fresh: true }).catch(
     () => [] as ExperienceBridgeContribution[],
   );
 

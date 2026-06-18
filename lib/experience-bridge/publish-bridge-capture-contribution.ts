@@ -3,10 +3,11 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import type { FeedCaptureFragment } from "@/lib/feed/feed-capture-types";
 import { resolveAppOrigin } from "@/lib/auth/redirect-url";
-import { isBridgeLinkedEventId } from "@/lib/experience-bridge/stamp-bridge-event-metadata";
+import { requireBridgeLinkBeforePublish } from "@/lib/experience-bridge/ensure-bridge-link-before-publish";
 import { uploadBridgeCaptureBlob } from "@/lib/experience-bridge/upload-bridge-capture-blob";
 import { notifyBridgeSharedMediaUpdated } from "@/lib/experience-bridge/notify-bridge-shared-media-updated";
 import { invalidateBridgeApiCache } from "@/lib/experience-bridge/bridge-api-cache";
+import { syncBridgeSharedMediaFromRemote } from "@/lib/experience-bridge/sync-bridge-participant-media";
 import {
   patchFeedCaptureRemoteUrl,
   patchFeedCaptureAuthor,
@@ -69,9 +70,10 @@ export async function publishBridgeCaptureContribution(input: {
   authorDisplayName?: string;
 }): Promise<void> {
   const eventId = input.eventId.trim();
-  if (!eventId || !isBridgeLinkedEventId(eventId)) {
+  if (!eventId) {
     return;
   }
+  await requireBridgeLinkBeforePublish(eventId);
   if (input.fragment.kind !== "photo" && input.fragment.kind !== "video") {
     return;
   }
@@ -100,6 +102,9 @@ export async function publishBridgeCaptureContribution(input: {
   await postBridgeContribution({ eventId, capture });
 
   notifyBridgeSharedMediaUpdated();
+  void syncBridgeSharedMediaFromRemote(eventId, capture.ownerUserId).catch(() => {
+    // Background refresh — publish already succeeded.
+  });
 
   const localEvent = findEventCandidate(eventId);
   if (localEvent) {
@@ -128,7 +133,6 @@ export async function publishBridgeCaptureContribution(input: {
         containerId: patched.containerId,
         confidence: patched.confidence,
         metadata: patched.metadata,
-        lifecycleUpdatedAt: patched.lifecycleUpdatedAt ?? new Date().toISOString(),
       });
     }
   }
@@ -141,9 +145,10 @@ export async function publishBridgeEventCaptureContributions(input: {
   onlyCaptureIds?: readonly string[];
 }): Promise<void> {
   const eventId = input.event.id.trim();
-  if (!eventId || !isBridgeLinkedEventId(eventId)) {
+  if (!eventId) {
     return;
   }
+  await requireBridgeLinkBeforePublish(eventId);
 
   const allow = input.onlyCaptureIds
     ? new Set(input.onlyCaptureIds.map((id) => id.trim()))

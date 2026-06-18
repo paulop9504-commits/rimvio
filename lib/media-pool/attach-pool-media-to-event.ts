@@ -93,8 +93,12 @@ export async function attachPoolMediaToEvent(input: {
   void publishBridgeCaptureContribution({
     eventId: result.event.id,
     fragment: result.fragment,
-  }).catch(() => {
-    // Non-blocking.
+  }).catch((caught) => {
+    if (typeof window !== "undefined") {
+      const message =
+        caught instanceof Error ? caught.message : "공유 미디어를 올리지 못했어요.";
+      void import("sonner").then(({ toast }) => toast.error(message));
+    }
   });
 
   const blob = await readMediaBlob(attached.id);

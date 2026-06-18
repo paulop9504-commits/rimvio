@@ -31,21 +31,34 @@ async function fetchJsonUncached<T>(
   return parseJson<T>(await fetch(endpoint, { credentials: "include", ...init }));
 }
 
-export async function fetchExperienceBridgeRemote(eventId: string): Promise<{
+export async function fetchExperienceBridgeRemote(
+  eventId: string,
+  options?: { fresh?: boolean },
+): Promise<{
   state: ExperienceBridgeState | null;
   timeline: ExperienceBridgeTimelineItem[];
   contributions: ExperienceBridgeContribution[];
 }> {
   const key = eventId.trim();
   const endpoint = `${resolveAppOrigin()}/api/experience-bridge/${encodeURIComponent(key)}`;
+  if (options?.fresh) {
+    return fetchJsonUncached(endpoint);
+  }
   return cachedFetchJson(bridgePlanCacheKey(key), () => fetchJsonUncached(endpoint), BRIDGE_PLAN_CACHE_MS);
 }
 
 export async function fetchBridgeContributionsRemote(
   eventId: string,
+  options?: { fresh?: boolean },
 ): Promise<ExperienceBridgeContribution[]> {
   const key = eventId.trim();
   const endpoint = `${resolveAppOrigin()}/api/experience-bridge/${encodeURIComponent(key)}/contributions`;
+  if (options?.fresh) {
+    const body = await fetchJsonUncached<{ contributions?: ExperienceBridgeContribution[] }>(
+      endpoint,
+    );
+    return body.contributions ?? [];
+  }
   const body = await cachedFetchJson(
     bridgeContributionsCacheKey(key),
     () => fetchJsonUncached<{ contributions?: ExperienceBridgeContribution[] }>(endpoint),
