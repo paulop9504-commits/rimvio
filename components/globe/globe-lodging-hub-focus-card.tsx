@@ -72,7 +72,7 @@ export function GlobeLodgingHubFocusCard({
       onTouchEnd={onTouchEnd}
     >
       <div className="relative">
-        <div className="relative overflow-hidden bg-[#1d1d1f]">{hero}</div>
+        <div className="relative overflow-hidden bg-[#141416]">{hero}</div>
 
         <button
           type="button"
@@ -103,7 +103,7 @@ export function GlobeLodgingHubFocusCard({
           </div>
         ) : null}
 
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] bg-gradient-to-t from-black/80 via-black/35 to-transparent px-2.5 pb-2.5 pt-12">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] bg-gradient-to-t from-black/80 via-black/35 to-transparent px-2.5 pb-2 pt-10">
           <h2 className="line-clamp-2 text-[17px] font-bold leading-tight tracking-tight text-white">
             {title}
           </h2>

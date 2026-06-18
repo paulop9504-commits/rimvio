@@ -32,6 +32,11 @@ import {
   MEDIA_SPACETIME_UPDATED,
 } from "@/lib/location-ping/media-context-store";
 import { copy } from "@/lib/copy/human-ko";
+import {
+  GLOBE_MAP_FOCUS_CARD_MAX_WIDTH_CLASS,
+  GLOBE_MAP_FOCUS_HERO_MEDIA_CLASS,
+  GLOBE_MAP_FOCUS_HERO_SHELL_CLASS,
+} from "@/lib/globe/globe-map-focus-hero-layout";
 import { cn } from "@/lib/utils";
 
 const SWIPE_MIN_PX = 44;
@@ -322,7 +327,7 @@ export function GlobeLodgingFocusStage({
         }}
         data-globe-lodging-focus-anchor
       >
-        <div className="pointer-events-auto w-full max-w-[min(100vw-1.5rem,18.75rem)] shrink-0 sm:max-w-[21.25rem]">
+        <div className={cn("pointer-events-auto", GLOBE_MAP_FOCUS_CARD_MAX_WIDTH_CLASS)}>
           <GlobeLodgingHubFocusCard
             className="w-full"
             title={entry.resource.label}
@@ -372,33 +377,35 @@ export function GlobeLodgingFocusStage({
             }}
             hero={
               <>
-                {isVideo && currentMedia ? (
-                  <video
-                    key={currentMedia}
-                    src={currentMedia}
-                    className="aspect-[3/4] w-full object-cover sm:aspect-[4/5]"
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                  />
-                ) : currentMedia ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    key={currentMedia}
-                    src={currentMedia}
-                    alt=""
-                    className="aspect-[3/4] w-full object-cover sm:aspect-[4/5]"
-                    draggable={false}
-                  />
-                ) : (
-                  <div className="flex aspect-[3/4] w-full items-center justify-center text-[12px] text-[#86868b] sm:aspect-[4/5]">
-                    {copy.globe.lodgingMediaFallback}
-                  </div>
-                )}
+                <div className={GLOBE_MAP_FOCUS_HERO_SHELL_CLASS}>
+                  {isVideo && currentMedia ? (
+                    <video
+                      key={currentMedia}
+                      src={currentMedia}
+                      className={GLOBE_MAP_FOCUS_HERO_MEDIA_CLASS}
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                    />
+                  ) : currentMedia ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      key={currentMedia}
+                      src={currentMedia}
+                      alt=""
+                      className={GLOBE_MAP_FOCUS_HERO_MEDIA_CLASS}
+                      draggable={false}
+                    />
+                  ) : (
+                    <div className="flex min-h-[9rem] w-full items-center justify-center text-[12px] text-[#86868b]">
+                      {copy.globe.lodgingMediaFallback}
+                    </div>
+                  )}
+                </div>
 
                 {mediaSlides.length > 1 ? (
-                  <div className="absolute inset-x-0 bottom-8 z-[3] flex justify-center gap-1.5 sm:bottom-10">
+                  <div className="absolute inset-x-0 bottom-2 z-[3] flex justify-center gap-1.5">
                     {mediaSlides.map((slide, index) => (
                       <button
                         key={`${slide}:${index}`}

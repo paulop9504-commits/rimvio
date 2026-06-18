@@ -17,6 +17,11 @@ import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-conte
 import { resolveExperienceVolumeForEvent } from "@/lib/globe/resolve-globe-context-primary-video";
 import { dispatchGlobeMapMediaFocus } from "@/lib/globe/globe-map-media-focus-bridge";
 import {
+  GLOBE_MAP_FOCUS_CARD_MAX_WIDTH_CLASS,
+  GLOBE_MAP_FOCUS_HERO_MEDIA_INTERACTIVE_CLASS,
+  GLOBE_MAP_FOCUS_HERO_SHELL_CLASS,
+} from "@/lib/globe/globe-map-focus-hero-layout";
+import {
   EVENT_CANDIDATES_UPDATED,
   findLifeEventCandidate,
 } from "@/lib/life-read-model";
@@ -101,7 +106,7 @@ function MapMediaSlide({
         ref={videoRef}
         key={`${item.id}:${src}`}
         src={src}
-        className="pointer-events-none size-full object-cover object-center"
+        className={GLOBE_MAP_FOCUS_HERO_MEDIA_INTERACTIVE_CLASS}
         playsInline
         loop
         muted={!soundOn}
@@ -117,14 +122,14 @@ function MapMediaSlide({
         key={`${item.id}:${src}`}
         src={src}
         alt=""
-        className="pointer-events-none size-full object-cover object-center"
+        className={GLOBE_MAP_FOCUS_HERO_MEDIA_INTERACTIVE_CLASS}
         loading="lazy"
       />
     );
   }
 
   return (
-    <div className="flex size-full items-center justify-center bg-[#e8e8ed] px-3 text-center text-[13px] font-normal text-[#86868b]">
+    <div className="flex min-h-[9rem] w-full items-center justify-center bg-[#e8e8ed] px-3 text-center text-[13px] font-normal text-[#86868b]">
       {loading || item.pendingRemote
         ? `${item.kind === "video" ? "동영상" : "사진"} 불러오는 중…`
         : item.label}
@@ -327,7 +332,7 @@ export function GlobeContextMapVideoStage({
         data-globe-context-map-video-anchor
       >
         <div
-          className="pointer-events-auto w-full max-w-[min(100vw-1.5rem,18.75rem)] shrink-0 sm:max-w-[calc(100vw-1.5rem)]"
+          className={cn("pointer-events-auto", GLOBE_MAP_FOCUS_CARD_MAX_WIDTH_CLASS)}
           style={{ width: widthPx }}
           data-globe-map-media-card-width={widthPx}
         >
@@ -344,7 +349,7 @@ export function GlobeContextMapVideoStage({
             hero={
               <>
                 {currentItem ? (
-                  <div className="aspect-[3/4] w-full sm:aspect-[4/5]">
+                  <div className={GLOBE_MAP_FOCUS_HERO_SHELL_CLASS}>
                     <MapMediaSlide
                       key={currentItem.id}
                       item={currentItem}
@@ -356,7 +361,7 @@ export function GlobeContextMapVideoStage({
                 ) : null}
 
                 {reel.length > 1 ? (
-                  <div className="absolute inset-x-0 bottom-12 z-[3] flex justify-center gap-1.5 sm:bottom-14">
+                  <div className="absolute inset-x-0 bottom-2 z-[3] flex justify-center gap-1.5">
                     {reel.map((item, index) => (
                       <button
                         key={item.id}

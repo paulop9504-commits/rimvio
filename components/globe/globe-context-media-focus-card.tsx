@@ -46,7 +46,7 @@ export function GlobeContextMediaFocusCard({
       <div className="relative">
         <div
           className={cn(
-            "relative overflow-hidden bg-[#1d1d1f]",
+            "relative overflow-hidden bg-[#141416]",
             onHeroPress && "cursor-pointer",
           )}
           role={onHeroPress ? "button" : undefined}
@@ -86,7 +86,7 @@ export function GlobeContextMediaFocusCard({
           <X className="size-3.5" aria-hidden />
         </button>
 
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] bg-gradient-to-t from-black/75 via-black/30 to-transparent px-2.5 pb-2.5 pt-14">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] bg-gradient-to-t from-black/75 via-black/30 to-transparent px-2.5 pb-2 pt-10">
           <h2 className="line-clamp-2 text-[16px] font-bold leading-tight tracking-tight text-white">
             {title}
           </h2>
