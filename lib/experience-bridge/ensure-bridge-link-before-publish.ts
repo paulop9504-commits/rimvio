@@ -13,6 +13,9 @@ import { createClient } from "@/lib/supabase/client";
 export const BRIDGE_PUBLISH_LINK_REQUIRED =
   "브릿지에 연결된 맥락에서만 사진·동영상을 공유할 수 있어요.";
 
+export const BRIDGE_PUBLISH_LOGIN_REQUIRED =
+  "로그인 후에 사진·동영상을 공유할 수 있어요.";
+
 export function resolveBridgePublishRole(input: {
   viewerUserId: string;
   hostUserId: string;
@@ -82,6 +85,11 @@ export async function ensureBridgeLinkBeforePublish(eventId: string): Promise<bo
 export async function requireBridgeLinkBeforePublish(eventId: string): Promise<void> {
   if (await ensureBridgeLinkBeforePublish(eventId)) {
     return;
+  }
+  const supabase = createClient();
+  const { data } = await supabase.auth.getSession();
+  if (!data.session?.user?.id?.trim()) {
+    throw new Error(BRIDGE_PUBLISH_LOGIN_REQUIRED);
   }
   throw new Error(BRIDGE_PUBLISH_LINK_REQUIRED);
 }

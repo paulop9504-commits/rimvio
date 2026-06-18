@@ -4,6 +4,7 @@ import { findEventCandidate } from "@/lib/events/event-store";
 import { readFeedCaptureFragments, removeFeedCaptureFragment } from "@/lib/feed/feed-capture-metadata";
 import { resolveAppOrigin } from "@/lib/auth/redirect-url";
 import { isBridgeLinkedEventId } from "@/lib/experience-bridge/stamp-bridge-event-metadata";
+import { ensureBridgeLinkBeforePublish } from "@/lib/experience-bridge/ensure-bridge-link-before-publish";
 import { notifyBridgeSharedMediaUpdated } from "@/lib/experience-bridge/notify-bridge-shared-media-updated";
 import { invalidateBridgeApiCache } from "@/lib/experience-bridge/bridge-api-cache";
 import { syncPersonalGlobePinFromEvent } from "@/lib/globe/sync-personal-globe-pin";
@@ -65,7 +66,7 @@ export async function deleteBridgeCaptureContribution(input: {
     fragment?.mediaContextId?.trim() ||
     captureId;
 
-  if (isBridgeLinkedEventId(eventId)) {
+  if (isBridgeLinkedEventId(eventId) || (await ensureBridgeLinkBeforePublish(eventId))) {
     await deleteRemoteBridgeContribution({ eventId, captureId });
   }
 
@@ -81,7 +82,6 @@ export async function deleteBridgeCaptureContribution(input: {
     containerId: event.containerId,
     confidence: event.confidence,
     metadata: nextMetadata,
-    lifecycleUpdatedAt: event.lifecycleUpdatedAt ?? new Date().toISOString(),
   });
 
   await deleteMediaBlob(mediaContextId);

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { EventCandidate } from "@/lib/events/event-candidate";
-import { ensureBridgeParticipantPin } from "@/lib/experience-bridge/build-participant-pin";
+import { completeBridgeInviteAccept } from "@/lib/experience-bridge/complete-bridge-invite-accept";
 import type {
   ExperienceBridgeState,
   ExperienceBridgeTimelineItem,
@@ -19,7 +19,7 @@ import {
   readLocalBridgeState,
   writeLocalBridgeState,
 } from "@/lib/experience-bridge/local-bridge-store";
-import { syncBridgeSharedMediaFromRemote } from "@/lib/experience-bridge/sync-bridge-participant-media";
+import { stampBridgeEventMetadata } from "@/lib/experience-bridge/stamp-bridge-event-metadata";
 import { toBridgeFetchError } from "@/lib/experience-bridge/bridge-fetch-error";
 import { useAuth } from "@/hooks/use-auth";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -115,6 +115,11 @@ export function useExperienceBridge(input: {
       });
       setState(data.state);
       writeLocalBridgeState(data.state);
+      stampBridgeEventMetadata({
+        event: input.event,
+        bridge: data.state.bridge,
+        role: "host",
+      });
       return data.state;
     }
     return null;
@@ -151,13 +156,12 @@ export function useExperienceBridge(input: {
       return null;
     }
     const data = await acceptExperienceBridgeRemote(eventId);
-    ensureBridgeParticipantPin({
-      bridge: data.state.bridge,
+    await completeBridgeInviteAccept({
+      state: data.state,
       peerThreadId: data.pinSpec.peerThreadId,
+      viewerUserId: user?.id,
     });
     setState(data.state);
-    writeLocalBridgeState(data.state);
-    await syncBridgeSharedMediaFromRemote(eventId, user?.id);
     await refresh();
     return data.state;
   }, [eventId, refresh, user?.id]);

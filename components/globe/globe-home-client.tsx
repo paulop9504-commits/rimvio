@@ -400,8 +400,12 @@ function GlobeHomeBody() {
       return [];
     }
     const volume = resolveExperienceVolumeForEvent(eventId);
-    return projectContextMediaReel({ event: activeContextEvent, volume });
-  }, [activeCluster?.eventId, activeContextEvent, mediaStoreRevision]);
+    return projectContextMediaReel({
+      event: activeContextEvent,
+      volume,
+      viewerUserId: user?.id,
+    });
+  }, [activeCluster?.eventId, activeContextEvent, mediaStoreRevision, user?.id]);
 
   const navigableContexts = useMemo(() => {
     void peerOptionsRevision;

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { syncAllBridgeSharedMedia } from "@/lib/experience-bridge/sync-all-bridge-shared-media";
 import { EXPERIENCE_BRIDGE_UPDATED } from "@/lib/experience-bridge/local-bridge-store";
+import { EVENT_CANDIDATES_UPDATED } from "@/lib/events/event-store";
 import { useAuth } from "@/hooks/use-auth";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
@@ -68,6 +69,7 @@ export function useBridgeMediaSync(input?: {
     window.addEventListener("focus", onRefresh);
     document.addEventListener("visibilitychange", onRefresh);
     window.addEventListener(EXPERIENCE_BRIDGE_UPDATED, onRefresh);
+    window.addEventListener(EVENT_CANDIDATES_UPDATED, onRefresh);
     return () => {
       if (debounceTimer !== null) {
         window.clearTimeout(debounceTimer);
@@ -75,6 +77,7 @@ export function useBridgeMediaSync(input?: {
       window.removeEventListener("focus", onRefresh);
       document.removeEventListener("visibilitychange", onRefresh);
       window.removeEventListener(EXPERIENCE_BRIDGE_UPDATED, onRefresh);
+      window.removeEventListener(EVENT_CANDIDATES_UPDATED, onRefresh);
     };
   }, [remote, sync]);
 

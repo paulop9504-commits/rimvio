@@ -1,6 +1,8 @@
 "use client";
 
 import { fetchExperienceBridgeRemote, fetchBridgeContributionsRemote } from "@/lib/experience-bridge/experience-bridge-client";
+import { resolveBridgePublishRole } from "@/lib/experience-bridge/ensure-bridge-link-before-publish";
+import { resolveBridgeContributionsForSync } from "@/lib/experience-bridge/resolve-bridge-contributions-for-sync";
 import {
   mergeBridgeContributionsIntoEvent,
   mergeBridgeRemoteCaptureUrls,
@@ -38,13 +40,14 @@ export async function syncBridgeSharedMediaFromRemote(
   let changed = false;
 
   if (viewerId) {
-    const role =
-      viewerId === remote.state.bridge.hostUserId ? "host" : "participant";
     const base = local ?? remote.state.bridge.eventSnapshot;
     const stamped = stampBridgeEventMetadata({
       event: base,
       bridge: remote.state.bridge,
-      role,
+      role: resolveBridgePublishRole({
+        viewerUserId: viewerId,
+        hostUserId: remote.state.bridge.hostUserId,
+      }),
     });
     if (stamped !== base) {
       changed = true;
@@ -52,9 +55,13 @@ export async function syncBridgeSharedMediaFromRemote(
     event = stamped;
   }
 
-  const contributions = await fetchBridgeContributionsRemote(key, { fresh: true }).catch(
-    () => [] as ExperienceBridgeContribution[],
-  );
+  const dedicatedContributions = await fetchBridgeContributionsRemote(key, {
+    fresh: true,
+  }).catch(() => [] as ExperienceBridgeContribution[]);
+  const contributions = resolveBridgeContributionsForSync({
+    fromPlan: remote.contributions ?? [],
+    fromDedicated: dedicatedContributions,
+  });
 
   const urlMerged = mergeBridgeRemoteCaptureUrls({
     event,

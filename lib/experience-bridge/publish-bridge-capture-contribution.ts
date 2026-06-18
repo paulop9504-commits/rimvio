@@ -3,7 +3,10 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import type { FeedCaptureFragment } from "@/lib/feed/feed-capture-types";
 import { resolveAppOrigin } from "@/lib/auth/redirect-url";
-import { requireBridgeLinkBeforePublish } from "@/lib/experience-bridge/ensure-bridge-link-before-publish";
+import {
+  BRIDGE_PUBLISH_LOGIN_REQUIRED,
+  requireBridgeLinkBeforePublish,
+} from "@/lib/experience-bridge/ensure-bridge-link-before-publish";
 import { uploadBridgeCaptureBlob } from "@/lib/experience-bridge/upload-bridge-capture-blob";
 import { notifyBridgeSharedMediaUpdated } from "@/lib/experience-bridge/notify-bridge-shared-media-updated";
 import { invalidateBridgeApiCache } from "@/lib/experience-bridge/bridge-api-cache";
@@ -28,6 +31,9 @@ async function resolvePublisherAuthor(input: {
   const supabase = createClient();
   const { data } = await supabase.auth.getSession();
   const ownerUserId = data.session?.user?.id?.trim();
+  if (!ownerUserId) {
+    throw new Error(BRIDGE_PUBLISH_LOGIN_REQUIRED);
+  }
   const profile = await fetchMyAccountProfile().catch(() => null);
   const authorDisplayName =
     input.authorDisplayName?.trim() ||

@@ -6,13 +6,12 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Inbox, Loader2, MapPin, Users, X } from "lucide-react";
 import { toast } from "sonner";
 import { copy } from "@/lib/copy/human-ko";
-import { ensureBridgeParticipantPin } from "@/lib/experience-bridge/build-participant-pin";
+import { completeBridgeInviteAccept } from "@/lib/experience-bridge/complete-bridge-invite-accept";
 import {
   acceptExperienceBridgeRemote,
   declineExperienceBridgeRemote,
 } from "@/lib/experience-bridge/experience-bridge-client";
 import { writeLocalBridgeState } from "@/lib/experience-bridge/local-bridge-store";
-import { syncBridgeSharedMediaFromRemote } from "@/lib/experience-bridge/sync-bridge-participant-media";
 import { verifyFeedCaptureEvent } from "@/lib/feed/verify-feed-capture";
 import { attachMatchingPoolMediaAfterSeal } from "@/lib/globe/passive-context/attach-matching-pool-media-after-seal";
 import {
@@ -108,12 +107,10 @@ export function GlobeInboxSheet({
     setBusyBridgeEventId(eventId);
     try {
       const data = await acceptExperienceBridgeRemote(eventId);
-      ensureBridgeParticipantPin({
-        bridge: data.state.bridge,
+      await completeBridgeInviteAccept({
+        state: data.state,
         peerThreadId: data.pinSpec.peerThreadId,
       });
-      writeLocalBridgeState(data.state);
-      await syncBridgeSharedMediaFromRemote(eventId);
       toast.success(copy.globe.bridgeInviteAccepted);
       onBridgeAccepted?.(eventId);
     } catch (caught) {

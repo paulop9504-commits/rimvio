@@ -167,6 +167,17 @@ export function mergeBridgeContributionsIntoEvent(input: {
       next = { ...next, url: remote.url };
       changed = true;
     }
+    if (
+      remote.authorDisplayName &&
+      remote.authorDisplayName !== next.authorDisplayName
+    ) {
+      next = {
+        ...next,
+        authorDisplayName: remote.authorDisplayName,
+        authorAvatarUrl: remote.authorAvatarUrl ?? next.authorAvatarUrl,
+      };
+      changed = true;
+    }
     if (!next.ownerUserId) {
       next = {
         ...next,

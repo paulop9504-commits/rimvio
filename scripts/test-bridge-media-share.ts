@@ -3,6 +3,7 @@
 import assert from "node:assert/strict";
 import { canReadBridgeExperience } from "../lib/experience-bridge/bridge-access";
 import { resolveBridgePublishRole } from "../lib/experience-bridge/ensure-bridge-link-before-publish";
+import { resolveBridgeContributionsForSync } from "../lib/experience-bridge/resolve-bridge-contributions-for-sync";
 import { isUsableBridgeMediaUrl } from "../lib/experience-bridge/bridge-media-url";
 import { resetClientFetchCacheForTests } from "../lib/http/client-fetch-cache";
 
@@ -63,6 +64,30 @@ assert.ok(
   !isUsableBridgeMediaUrl(
     "https://x.test/storage/v1/object/public/peer-chat/u/bridge/e/c.jpg",
   ),
+);
+
+const fromPlan = [
+  {
+    contributorUserId: "u1",
+    createdAtIso: "2026-01-01T00:00:00.000Z",
+    capture: {
+      id: "c1",
+      kind: "photo" as const,
+      capturedAtIso: "2026-01-01T00:00:00.000Z",
+      url: "https://cdn.example.com/a.jpg",
+    },
+  },
+];
+assert.equal(
+  resolveBridgeContributionsForSync({ fromPlan, fromDedicated: [] }).length,
+  1,
+);
+assert.equal(
+  resolveBridgeContributionsForSync({
+    fromPlan: [],
+    fromDedicated: fromPlan,
+  }).length,
+  1,
 );
 
 resetClientFetchCacheForTests();

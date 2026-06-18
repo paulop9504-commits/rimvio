@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Users, X } from "lucide-react";
 import { toast } from "sonner";
 import { copy } from "@/lib/copy/human-ko";
-import { ensureBridgeParticipantPin } from "@/lib/experience-bridge/build-participant-pin";
+import { completeBridgeInviteAccept } from "@/lib/experience-bridge/complete-bridge-invite-accept";
 import {
   acceptExperienceBridgeRemote,
   declineExperienceBridgeRemote,
@@ -43,11 +43,10 @@ export function ExperienceBridgeInviteBanner({
     setBusyEventId(bridge.eventId);
     try {
       const data = await acceptExperienceBridgeRemote(bridge.eventId);
-      ensureBridgeParticipantPin({
-        bridge: data.state.bridge,
+      await completeBridgeInviteAccept({
+        state: data.state,
         peerThreadId: data.pinSpec.peerThreadId,
       });
-      writeLocalBridgeState(data.state);
       toast.success(copy.globe.bridgeInviteAccepted);
       onAccepted?.(bridge.eventId);
       onDismiss?.(bridge.eventId);
