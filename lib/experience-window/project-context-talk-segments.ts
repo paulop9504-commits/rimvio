@@ -8,6 +8,7 @@ import { formatPinDateLabel } from "@/lib/globe/format-pin-date-label";
 import { resolveEventGlobeCoords } from "@/lib/globe/resolve-event-globe-coords";
 import { projectLatLngToMapPercent } from "@/lib/experience-graph/resolve-place-coordinates";
 import { isPeerGlobePinPayload } from "@/lib/peer-chat/globe-pin-types";
+import { normalizePeerMessageBody } from "@/lib/peer-chat/message-mapper";
 
 const WEEKDAY_KO = ["일", "월", "화", "수", "목", "금", "토"] as const;
 
@@ -159,7 +160,7 @@ export function projectContextTalkSegments(input: {
   };
 
   for (const message of humanMessages) {
-    const hasBody = message.body.trim().length > 0;
+    const hasBody = normalizePeerMessageBody(message.body, message.imageUrl).length > 0;
     const isGlobePin =
       message.messageType === "system" && isPeerGlobePinPayload(message.aiPayload);
     const hasImage =

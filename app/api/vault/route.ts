@@ -7,6 +7,10 @@ import {
   type VaultObjectKind,
 } from "@/lib/vault";
 import { resolveVaultClient } from "@/lib/vault/resolve-vault-client";
+import {
+  isVaultMigrationMissingError,
+  vaultMigrationRequiredResponse,
+} from "@/lib/vault/vault-api-errors";
 
 export async function GET(request: Request) {
   const userId = await getAuthUserId();
@@ -42,6 +46,9 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "vault_read_failed";
+    if (isVaultMigrationMissingError(message)) {
+      return NextResponse.json(vaultMigrationRequiredResponse(), { status: 503 });
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -67,6 +74,9 @@ export async function POST() {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "vault_provision_failed";
+    if (isVaultMigrationMissingError(message)) {
+      return NextResponse.json(vaultMigrationRequiredResponse(), { status: 503 });
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

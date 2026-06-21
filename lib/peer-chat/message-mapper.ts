@@ -1,6 +1,19 @@
 import type { AiMessagePayload, RoomMessageType } from "@/lib/chat-room/types";
 import type { PeerMessage } from "@/lib/context/peer-message-types";
+import { PEER_MESSAGE_IMAGE_PLACEHOLDER } from "@/lib/peer-chat/peer-chat-image-constants";
 import type { PeerMessageRow } from "@/lib/peer-chat/types";
+
+/** DB / legacy rows may omit body for image-only or system messages. */
+export function normalizePeerMessageBody(
+  body: string | null | undefined,
+  imageUrl?: string | null,
+): string {
+  const trimmed = typeof body === "string" ? body.trim() : "";
+  if (trimmed) {
+    return trimmed;
+  }
+  return imageUrl?.trim() ? PEER_MESSAGE_IMAGE_PLACEHOLDER : "";
+}
 
 function resolveAuthor(
   row: PeerMessageRow,
@@ -22,15 +35,17 @@ export function mapPeerMessageRow(
   const messageType = (row.message_type ?? "human") as RoomMessageType;
   const aiPayload = (row.ai_payload as AiMessagePayload | null) ?? null;
 
+  const imageUrl = (row as { image_url?: string | null }).image_url ?? null;
+
   return {
     id: row.id,
     peerThreadId: row.thread_id,
     author: resolveAuthor(row, currentUserId),
-    body: row.body,
+    body: normalizePeerMessageBody(row.body, imageUrl),
     sentAt: row.created_at,
     messageType,
     aiPayload,
-    imageUrl: (row as { image_url?: string | null }).image_url ?? null,
+    imageUrl,
     visibleToMeOnly:
       messageType === "ai_private" &&
       Boolean(currentUserId && row.sender_user_id === currentUserId),

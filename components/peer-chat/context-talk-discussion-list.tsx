@@ -4,6 +4,7 @@ import { Camera } from "lucide-react";
 import type { PeerMessage } from "@/lib/context/peer-message-types";
 import type { ContextTalkSegment } from "@/lib/experience-window/project-context-talk-segments";
 import { isPeerGlobePinPayload } from "@/lib/peer-chat/globe-pin-types";
+import { normalizePeerMessageBody } from "@/lib/peer-chat/message-mapper";
 import { copy } from "@/lib/copy/human-ko";
 import { RIMVIO_RADIUS, RIMVIO_TYPE } from "@/lib/design/rimvio-ontology";
 import { cn } from "@/lib/utils";
@@ -70,7 +71,7 @@ export function ContextTalkDiscussionList({
               )}
             >
               {rows.map((message) => {
-                const body = message.body.trim();
+                const body = normalizePeerMessageBody(message.body, message.imageUrl);
                 const imageUrl = message.imageUrl?.trim() || null;
                 const globePin =
                   message.messageType === "system" &&

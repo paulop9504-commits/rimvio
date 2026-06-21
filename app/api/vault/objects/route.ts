@@ -7,6 +7,10 @@ import {
   type VaultObjectKind,
 } from "@/lib/vault";
 import { resolveVaultClient } from "@/lib/vault/resolve-vault-client";
+import {
+  isVaultMigrationMissingError,
+  vaultMigrationRequiredResponse,
+} from "@/lib/vault/vault-api-errors";
 
 type PutBody = {
   objectKey?: string;
@@ -40,6 +44,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ objectKey, payload });
   } catch (error) {
     const message = error instanceof Error ? error.message : "vault_read_failed";
+    if (isVaultMigrationMissingError(message)) {
+      return NextResponse.json(vaultMigrationRequiredResponse(), { status: 503 });
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -82,6 +89,9 @@ export async function PUT(request: Request) {
     return NextResponse.json({ ok: true, object });
   } catch (error) {
     const message = error instanceof Error ? error.message : "vault_write_failed";
+    if (isVaultMigrationMissingError(message)) {
+      return NextResponse.json(vaultMigrationRequiredResponse(), { status: 503 });
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

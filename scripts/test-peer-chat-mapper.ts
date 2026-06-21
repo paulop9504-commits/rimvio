@@ -62,4 +62,22 @@ const batched = mergePeerMessagesBatch(sorted, [
 assert.equal(batched.length, 3);
 assert.equal(batched[2]?.id, "3");
 
+const imageOnly = mapPeerMessageRow(
+  {
+    ...row,
+    id: "m-image",
+    body: null as unknown as string,
+    image_url: "https://cdn.example/photo.jpg",
+  },
+  "user-a",
+);
+assert.equal(imageOnly.body, "사진");
+assert.equal(
+  mapPeerMessageRow(
+    { ...row, id: "m-empty", body: null as unknown as string, image_url: null },
+    "user-a",
+  ).body,
+  "",
+);
+
 console.log("test-peer-chat-mapper: ok");

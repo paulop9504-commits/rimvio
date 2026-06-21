@@ -29,6 +29,7 @@ export function usePersonalVault(enabled = true): PersonalVaultState {
   const [vault, setVault] = useState<PersonalVaultState["vault"]>(null);
   const [objects, setObjects] = useState<VaultObjectSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [migrationRequired, setMigrationRequired] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!enabled || !user?.id) {
@@ -36,6 +37,7 @@ export function usePersonalVault(enabled = true): PersonalVaultState {
       setVault(null);
       setObjects([]);
       setError(null);
+      setMigrationRequired(false);
       return;
     }
 
@@ -47,6 +49,7 @@ export function usePersonalVault(enabled = true): PersonalVaultState {
         setVault(null);
         setObjects([]);
         setError(null);
+        setMigrationRequired(false);
         return;
       }
       const data = (await response.json()) as {
@@ -54,7 +57,16 @@ export function usePersonalVault(enabled = true): PersonalVaultState {
         vault?: PersonalVaultState["vault"];
         objects?: VaultObjectSummary[];
         error?: string;
+        hint?: string;
       };
+      if (response.status === 503 && data.hint === "vault_migration_required") {
+        setPersisted(false);
+        setVault(null);
+        setObjects([]);
+        setError(null);
+        setMigrationRequired(true);
+        return;
+      }
       if (!response.ok) {
         throw new Error(data.error ?? "vault_fetch_failed");
       }
@@ -70,7 +82,7 @@ export function usePersonalVault(enabled = true): PersonalVaultState {
   }, [enabled, user?.id]);
 
   const ensure = useCallback(async () => {
-    if (!enabled || !user?.id) {
+    if (!enabled || !user?.id || migrationRequired) {
       return;
     }
     setLoading(true);
@@ -79,7 +91,11 @@ export function usePersonalVault(enabled = true): PersonalVaultState {
         method: "POST",
         credentials: "include",
       });
-      const data = (await response.json()) as { error?: string };
+      const data = (await response.json()) as { error?: string; hint?: string };
+      if (response.status === 503 && data.hint === "vault_migration_required") {
+        setMigrationRequired(true);
+        return;
+      }
       if (!response.ok) {
         throw new Error(data.error ?? "vault_ensure_failed");
       }
@@ -89,18 +105,18 @@ export function usePersonalVault(enabled = true): PersonalVaultState {
     } finally {
       setLoading(false);
     }
-  }, [enabled, refresh, user?.id]);
+  }, [enabled, refresh, user?.id, migrationRequired]);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
 
   useEffect(() => {
-    if (!enabled || !user?.id) {
+    if (!enabled || !user?.id || migrationRequired) {
       return;
     }
     void ensure();
-  }, [enabled, ensure, user?.id]);
+  }, [enabled, ensure, migrationRequired, user?.id]);
 
   return {
     ready: Boolean(user?.id && vault),
