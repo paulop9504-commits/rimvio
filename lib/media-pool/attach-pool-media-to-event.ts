@@ -12,6 +12,7 @@ import { enrichGlobePhotoPlaceAfterIngest } from "@/lib/globe/enrich-globe-photo
 import { createPersonalGlobePinFromEvent } from "@/lib/globe/create-personal-globe-pin";
 import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
 import { syncPersonalGlobePinFromEvent } from "@/lib/globe/sync-personal-globe-pin";
+import { ensureBridgeLinkBeforePublish } from "@/lib/experience-bridge/ensure-bridge-link-before-publish";
 import { publishBridgeCaptureContribution } from "@/lib/experience-bridge/publish-bridge-capture-contribution";
 import { readMediaBlob } from "@/lib/location-ping/media-blob-store";
 import { saveMediaSpacetimeContext } from "@/lib/location-ping/media-context-store";
@@ -90,16 +91,20 @@ export async function attachPoolMediaToEvent(input: {
   const pinResult = createPersonalGlobePinFromEvent({ event: result.event });
   syncPersonalGlobePinFromEvent(result.event.id);
 
-  void publishBridgeCaptureContribution({
-    eventId: result.event.id,
-    fragment: result.fragment,
-  }).catch((caught) => {
-    if (typeof window !== "undefined") {
-      const message =
-        caught instanceof Error ? caught.message : "공유 미디어를 올리지 못했어요.";
-      void import("sonner").then(({ toast }) => toast.error(message));
+  if (await ensureBridgeLinkBeforePublish(result.event.id)) {
+    try {
+      await publishBridgeCaptureContribution({
+        eventId: result.event.id,
+        fragment: result.fragment,
+      });
+    } catch (caught) {
+      if (typeof window !== "undefined") {
+        const message =
+          caught instanceof Error ? caught.message : "공유 미디어를 올리지 못했어요.";
+        void import("sonner").then(({ toast }) => toast.error(message));
+      }
     }
-  });
+  }
 
   const blob = await readMediaBlob(attached.id);
   let suggestedPlaceName: string | null = null;

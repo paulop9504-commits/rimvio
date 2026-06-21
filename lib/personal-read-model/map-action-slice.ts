@@ -1,12 +1,16 @@
 import { listManualCoreTemplates } from "@/lib/action-registry/manual-templates";
 import { listContextHubServicesForEvent } from "@/lib/globe/context-hub/context-hub-service-catalog";
 import { listLearningRollup } from "@/lib/archive/learning-rollup-store";
+import type { LearningRollupEntry } from "@/lib/archive/learning-rollup-store";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import type { SurfaceReadBundle } from "@/lib/life-read-model/types";
 import type { PersonalReadActionSlice } from "@/lib/personal-read-model/types";
+import { resolveSemanticMainHint } from "@/lib/semantic/resolve-semantic-main-hint";
+import type { SemanticTriple } from "@/lib/semantic/types";
 
 const REGISTRY_LIMIT = 12;
 const RANKED_MAIN_LIMIT = 3;
+const SEMANTIC_BOOST = 0.35;
 
 function extractSlotNames(prompt: string | undefined): string[] {
   if (!prompt?.trim()) {
@@ -28,6 +32,8 @@ function extractSlotNames(prompt: string | undefined): string[] {
 export function mapActionSlice(input: {
   focusEvent: EventCandidate | null;
   surface: SurfaceReadBundle;
+  semanticTriples?: readonly SemanticTriple[];
+  rollupEntries?: readonly LearningRollupEntry[];
 }): PersonalReadActionSlice {
   const registryEntries = listManualCoreTemplates()
     .slice(0, REGISTRY_LIMIT)
@@ -68,10 +74,38 @@ export function mapActionSlice(input: {
   rankedMainCandidates.sort((a, b) => b.score - a.score);
 
   const hubServices = listContextHubServicesForEvent(input.focusEvent);
+  const services = hubServices?.services ?? [];
+  const semanticMainHint = resolveSemanticMainHint({
+    semanticTriples: input.semanticTriples ?? [],
+    hubServices: services,
+    focusEvent: input.focusEvent,
+    rollupEntries: input.rollupEntries ?? [],
+  });
+
+  if (semanticMainHint) {
+    const key = semanticMainHint.hubServiceId;
+    const existing = rankedMainCandidates.find(
+      (row) => row.actionKey === key || row.label.includes(semanticMainHint.labelKo),
+    );
+    if (existing) {
+      existing.score += SEMANTIC_BOOST * semanticMainHint.confidence;
+      existing.source = "semantic";
+    } else {
+      rankedMainCandidates.push({
+        actionKey: key,
+        label: semanticMainHint.labelKo,
+        score: 0.5 + SEMANTIC_BOOST * semanticMainHint.confidence,
+        contextKey: input.focusEvent?.id ?? "",
+        source: "semantic",
+      });
+    }
+    rankedMainCandidates.sort((a, b) => b.score - a.score);
+  }
 
   return {
     registryEntries,
     rankedMainCandidates: rankedMainCandidates.slice(0, RANKED_MAIN_LIMIT),
-    hubServiceIds: hubServices?.services.filter((row) => row.offered).map((row) => row.serviceId) ?? [],
+    hubServiceIds: services.filter((row) => row.offered).map((row) => row.serviceId) ?? [],
+    semanticMainHint,
   };
 }

@@ -1,3 +1,4 @@
+import { toast } from "sonner";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import {
   bootstrapExperienceBridgeRemote,
@@ -29,7 +30,15 @@ export async function shareGlobeContextWithFriends(input: {
   }
 
   const primaryThreadId = friends[0]!.peerThreadId.trim();
-  const shareEvent = await hydrateBridgeEventSnapshotForShare(input.event);
+  const { event: shareEvent, uploadWarnings } =
+    await hydrateBridgeEventSnapshotForShare(input.event);
+  if (uploadWarnings.length > 0) {
+    toast.message(
+      uploadWarnings.length === 1
+        ? uploadWarnings[0]!
+        : `${uploadWarnings.length}개 순간은 보내지 못했어요 · 나머지는 공유했어요`,
+    );
+  }
   const bootstrap = await bootstrapExperienceBridgeRemote({
     event: shareEvent,
     peerThreadId: primaryThreadId,

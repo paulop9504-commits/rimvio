@@ -48,6 +48,11 @@ import {
   getDomainGradient,
   getDomainInitial,
 } from "@/lib/utils/domain-gradient";
+import {
+  RIMVIO_TYPE,
+  rimvioNowHeroCtaClass,
+  rimvioNowSecondaryChipClass,
+} from "@/lib/design/rimvio-ontology";
 import { cn } from "@/lib/utils";
 
 const actionIcons: Record<LinkActionItem["kind"], LucideIcon> = {
@@ -287,11 +292,11 @@ export function NowActionFocus({
       <HeroThumbnail enriched={enriched} />
 
       {displayTitle ? (
-        <h2 className="mt-7 max-w-[20rem] text-[1.65rem] font-semibold leading-tight tracking-tight">
+        <h2 className={cn("mt-7 max-w-[20rem] text-center", RIMVIO_TYPE.title)}>
           {displayTitle}
         </h2>
       ) : null}
-      <p className={cn("text-sm text-muted-foreground", displayTitle ? "mt-2" : "mt-7")}>
+      <p className={cn(RIMVIO_TYPE.caption, displayTitle ? "mt-2" : "mt-7")}>
         {isYouTube ? "YouTube" : enriched.domain}
       </p>
 
@@ -312,37 +317,11 @@ export function NowActionFocus({
           type="button"
           disabled={isExiting}
           onClick={handlePrimary}
-          className={cn(
-            "group relative flex w-full items-center justify-center gap-3",
-            "rounded-full px-8 py-8 backdrop-blur-2xl",
-            "text-[1.5rem] font-semibold tracking-tight",
-            "transition-[transform,box-shadow,opacity,background-color,border-color] duration-200",
-            "active:scale-[0.97] active:opacity-95",
-            "disabled:pointer-events-none disabled:opacity-60",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
-            isYouTube
-              ? [
-                  "border border-red-500/20 bg-red-500/[0.09] text-foreground",
-                  "shadow-[0_12px_40px_rgba(220,38,38,0.14)]",
-                  "hover:border-red-500/28 hover:bg-red-500/[0.12]",
-                  "hover:shadow-[0_16px_48px_rgba(220,38,38,0.18)]",
-                ]
-              : [
-                  "border border-white/25 bg-background/55 text-foreground",
-                  "shadow-[0_12px_40px_rgba(15,23,42,0.14)]",
-                  "hover:bg-background/70 hover:shadow-[0_16px_48px_rgba(15,23,42,0.18)]",
-                ]
-          )}
+          className={rimvioNowHeroCtaClass(isYouTube)}
         >
-          <span
-            className={cn(
-              "pointer-events-none absolute inset-0 rounded-full bg-gradient-to-b to-transparent opacity-70",
-              isYouTube ? "from-red-100/25" : "from-white/30"
-            )}
-          />
           {createElement(PrimaryIcon, {
             className: cn(
-              "relative size-9 shrink-0",
+              "relative size-8 shrink-0",
               isYouTube && "text-red-600/90"
             ),
             strokeWidth: 2.25,
@@ -364,18 +343,20 @@ export function NowActionFocus({
                     if (typeof navigator !== "undefined" && navigator.vibrate) {
                       navigator.vibrate(10);
                     }
+                    setDidPrimary(true);
+                    trackActionBinEvent({
+                      context,
+                      actionKey: toActionKey(action),
+                      event: "click",
+                    });
                     trackFunnel("now_action", {
                       domain: enriched.domain,
                       enricher_id: enriched.enricher_id,
                     });
                     void runPrimaryAction(action, linkRow, copy);
+                    finish();
                   }}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full px-4 py-2.5",
-                    "border border-border/60 bg-background/50 text-sm font-medium backdrop-blur-md",
-                    "transition-colors hover:bg-secondary/60",
-                    "disabled:pointer-events-none disabled:opacity-50"
-                  )}
+                  className={rimvioNowSecondaryChipClass()}
                 >
                   {createElement(Icon, {
                     className: "size-4 shrink-0",

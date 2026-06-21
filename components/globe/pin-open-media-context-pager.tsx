@@ -185,6 +185,12 @@ export function PinOpenMediaContextPager({
           className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background"
           {...contextSwipe}
         >
+        {bridge ? (
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {children}
+          </div>
+        ) : (
+          <>
           <div className="shrink-0 border-b border-border px-4 pb-3 pt-2">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">
               {copy.globe.bridgeContextPageEyebrow}
@@ -204,6 +210,8 @@ export function PinOpenMediaContextPager({
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div className="space-y-4">{children}</div>
           </div>
+          </>
+        )}
         </div>
       )}
     </div>

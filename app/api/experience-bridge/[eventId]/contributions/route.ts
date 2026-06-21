@@ -1,27 +1,31 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireAuthUser } from "@/lib/auth/api-auth";
 import { canReadBridgeExperience } from "@/lib/experience-bridge";
+import type { BridgeContributionCapture } from "@/lib/experience-bridge/bridge-capture-spacetime";
+import { deleteBridgeCaptureMediaFromStorage } from "@/lib/experience-bridge/bridge-media-server";
+import { normalizeBridgeContributionCapture } from "@/lib/experience-bridge/normalize-bridge-contribution-capture";
+import { serverSaveBridgeContribution } from "@/lib/experience-bridge/server-save-bridge-contribution";
 import {
   deleteBridgeContribution,
   listBridgeContributions,
-  upsertBridgeContribution,
 } from "@/lib/experience-bridge/server-bridge-contributions";
-import { toBridgeContributionWire } from "@/lib/experience-bridge/wire-bridge-response-dto";
-import { deleteBridgeCaptureMediaFromStorage } from "@/lib/experience-bridge/bridge-media-server";
+import { upsertBridgeSyncCursor } from "@/lib/experience-bridge/server-bridge-sync-cursors";
 import { fetchExperienceBridgeState } from "@/lib/experience-bridge/server-bridge-store";
+import { toBridgeContributionWire } from "@/lib/experience-bridge/wire-bridge-response-dto";
 import type { FeedCaptureFragment } from "@/lib/feed/feed-capture-types";
 import { extractErrorMessage } from "@/lib/peer-chat/extract-error-message";
+import { resolveServiceRoleOrUserClient } from "@/lib/supabase/admin";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
 type RouteContext = {
   params: Promise<{ eventId: string }>;
 };
 
-function isPhotoOrVideoCapture(value: unknown): value is FeedCaptureFragment {
+function isPhotoOrVideoCapture(value: unknown): value is BridgeContributionCapture {
   if (!value || typeof value !== "object") {
     return false;
   }
-  const row = value as Partial<FeedCaptureFragment>;
+  const row = value as Partial<BridgeContributionCapture>;
   return (
     typeof row.id === "string" &&
     (row.kind === "photo" || row.kind === "video") &&
@@ -29,12 +33,29 @@ function isPhotoOrVideoCapture(value: unknown): value is FeedCaptureFragment {
   );
 }
 
-export async function GET(_request: NextRequest, context: RouteContext) {
+function maxContributionCreatedAt(
+  contributions: { createdAtIso: string }[],
+): string | null {
+  let max: string | null = null;
+  for (const row of contributions) {
+    const iso = row.createdAtIso?.trim();
+    if (!iso) {
+      continue;
+    }
+    if (!max || Date.parse(iso) > Date.parse(max)) {
+      max = iso;
+    }
+  }
+  return max;
+}
+
+export async function GET(request: NextRequest, context: RouteContext) {
   const { eventId } = await context.params;
   const key = decodeURIComponent(eventId).trim();
+  const since = new URL(request.url).searchParams.get("since")?.trim() || null;
 
   if (!isSupabaseConfigured()) {
-    return NextResponse.json({ contributions: [] });
+    return NextResponse.json({ contributions: [], serverTime: new Date().toISOString() });
   }
 
   const auth = await requireAuthUser();
@@ -50,15 +71,31 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     const supabase = await createClient();
     const state = await fetchExperienceBridgeState(supabase, key);
     if (!state) {
-      return NextResponse.json({ contributions: [] });
+      return NextResponse.json({ contributions: [], serverTime: new Date().toISOString() });
     }
     if (!canReadBridgeExperience({ viewerUserId: userId, participants: state.participants })) {
       return NextResponse.json({ error: "Forbidden." }, { status: 403 });
     }
 
-    const contributions = await listBridgeContributions(supabase, key);
+    const db = resolveServiceRoleOrUserClient(supabase);
+    const contributions = await listBridgeContributions(db, key, { sinceIso: since });
+    const serverTime = new Date().toISOString();
+
+    try {
+      await upsertBridgeSyncCursor(db, {
+        bridgeEventId: key,
+        userId,
+        lastPulledAt: serverTime,
+        lastContributionCreatedAt: maxContributionCreatedAt(contributions),
+      });
+    } catch {
+      /* cursor table may not exist until migration 048 */
+    }
+
     return NextResponse.json({
       contributions: contributions.map(toBridgeContributionWire),
+      serverTime,
+      delta: Boolean(since),
     });
   } catch (error) {
     const message = extractErrorMessage(error, "Failed to load bridge contributions.");
@@ -67,11 +104,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 }
 
 type ContributionPostBody = {
-  capture?: FeedCaptureFragment & {
-    ownerUserId?: string;
-    authorDisplayName?: string;
-    authorAvatarUrl?: string;
-  };
+  capture?: BridgeContributionCapture;
 };
 
 export async function POST(request: NextRequest, context: RouteContext) {
@@ -106,12 +139,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Forbidden." }, { status: 403 });
     }
 
-    const capture = {
+    const capture = normalizeBridgeContributionCapture({
       ...body.capture,
       ownerUserId: userId,
-    };
+    });
 
-    await upsertBridgeContribution(supabase, {
+    await serverSaveBridgeContribution({
+      userClient: supabase,
       bridgeEventId: key,
       contributorUserId: userId,
       capture,

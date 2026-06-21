@@ -88,6 +88,11 @@ assert.ok(packet.fact.recentEventIds.includes("ec-jeju"));
 assert.equal(packet.experience.focus.title, "제주 D-1 출발");
 assert.ok(packet.meaning.relationshipLines.length >= 0);
 assert.ok(packet.action.registryEntries.length > 0);
+assert.ok(Array.isArray(packet.meaning.semanticTriples));
+assert.ok(
+  packet.action.semanticMainHint === null ||
+    typeof packet.action.semanticMainHint.hubServiceId === "string",
+);
 assert.equal(packet.gates.urgencyBypass, true, "D-1 travel link enables urgency bypass");
 assert.equal(packet.gates.forbidRecommendationHero, true);
 
@@ -96,6 +101,8 @@ assert.ok(travelTrigger, "focus context with D-1 title should emit travel_d_minu
 
 const serialized = serializePacketForLlm(packet);
 assert.ok(serialized.includes("[PersonalReadPacket v1]"));
+assert.ok(serialized.includes("[Rimvio Semantic Grounding]"));
+assert.ok(serialized.includes("semanticTriples"));
 assert.ok(serialized.includes("ec-jeju-d1"));
 
 const valid = validateActionContract(

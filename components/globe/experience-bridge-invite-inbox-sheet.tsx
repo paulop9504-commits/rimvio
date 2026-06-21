@@ -15,6 +15,18 @@ import {
 } from "@/lib/experience-bridge/experience-bridge-client";
 import { writeLocalBridgeState } from "@/lib/experience-bridge/local-bridge-store";
 import type { PendingBridgeInvite } from "@/hooks/use-pending-bridge-invites";
+import { useAuth } from "@/hooks/use-auth";
+import {
+  RIMVIO_TYPE,
+  rimvioBottomSheetClass,
+  rimvioCompactPrimaryCtaClass,
+  rimvioEmptyStateClass,
+  rimvioGhostCtaClass,
+  rimvioInboxItemCardClass,
+  rimvioSheetBackdropClass,
+  rimvioSheetCloseBtnClass,
+  rimvioSurfaceCardClass,
+} from "@/lib/design/rimvio-ontology";
 import { cn } from "@/lib/utils";
 
 export type ExperienceBridgeInviteTopChipProps = {
@@ -38,7 +50,9 @@ export function ExperienceBridgeInviteTopChip({
       type="button"
       onClick={onOpenInbox}
       className={cn(
-        "flex w-full items-center gap-2 rounded-[1.15rem] border border-primary/20 bg-card/95 px-3.5 py-2.5 text-left shadow-sm ring-1 ring-black/5 backdrop-blur-md active:scale-[0.99]",
+        rimvioSurfaceCardClass(
+          "flex w-full items-center gap-2 rounded-[1.15rem] border-0 p-3.5 text-left backdrop-blur-md active:scale-[0.99]",
+        ),
         className,
       )}
       data-experience-bridge-invite-chip
@@ -77,6 +91,7 @@ export function ExperienceBridgeInviteInboxSheet({
   onAccepted,
   onDeclined,
 }: ExperienceBridgeInviteInboxSheetProps) {
+  const { user } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [busyEventId, setBusyEventId] = useState<string | null>(null);
 
@@ -103,6 +118,7 @@ export function ExperienceBridgeInviteInboxSheet({
       await completeBridgeInviteAccept({
         state: data.state,
         peerThreadId: data.pinSpec.peerThreadId,
+        viewerUserId: user?.id,
       });
       toast.success(copy.globe.bridgeInviteAccepted);
       onAccepted?.(eventId);
@@ -146,7 +162,7 @@ export function ExperienceBridgeInviteInboxSheet({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[10070] bg-black/40"
+            className={cn(rimvioSheetBackdropClass(), "z-[10070]")}
             onClick={() => onOpenChange(false)}
           />
           <motion.div
@@ -157,24 +173,24 @@ export function ExperienceBridgeInviteInboxSheet({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
             transition={{ type: "spring", stiffness: 420, damping: 36 }}
-            className="fixed inset-x-0 bottom-0 z-[10071] mx-auto flex w-full max-w-lg max-h-[min(88dvh,640px)] flex-col overflow-hidden rounded-t-[1.25rem] border border-border bg-card shadow-2xl"
+            className={cn(rimvioBottomSheetClass(), "z-[10071]")}
             data-experience-bridge-invite-inbox
           >
             <div className="shrink-0 border-b border-border px-4 py-4">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="flex items-center gap-1.5 text-[16px] font-semibold text-foreground">
+                  <p className={cn("flex items-center gap-1.5", RIMVIO_TYPE.headline)}>
                     <Inbox className="size-4 text-primary" aria-hidden />
                     {copy.globe.bridgeInviteInboxTitle}
                   </p>
-                  <p className="mt-0.5 text-[12px] text-muted-foreground">
+                  <p className={cn("mt-0.5", RIMVIO_TYPE.caption)}>
                     {copy.globe.bridgeInviteInboxSubtitle}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => onOpenChange(false)}
-                  className="flex size-9 items-center justify-center rounded-full active:bg-muted"
+                  className={rimvioSheetCloseBtnClass()}
                   aria-label="닫기"
                 >
                   <X className="size-5 text-muted-foreground" aria-hidden />
@@ -184,7 +200,7 @@ export function ExperienceBridgeInviteInboxSheet({
 
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
               {invites.length === 0 ? (
-                <p className="rounded-2xl bg-muted/50 px-4 py-10 text-center text-[13px] text-muted-foreground">
+                <p className={cn(rimvioEmptyStateClass(), RIMVIO_TYPE.body)}>
                   {copy.globe.bridgeInviteInboxEmpty}
                 </p>
               ) : (
@@ -204,22 +220,18 @@ export function ExperienceBridgeInviteInboxSheet({
                     return (
                       <li
                         key={bridge.eventId}
-                        className="overflow-hidden rounded-[1.15rem] border border-border bg-card shadow-sm"
+                        className={cn(rimvioInboxItemCardClass(), "overflow-hidden p-0")}
                       >
                         <ExperienceBridgePreviewCollage
                           media={previewMedia}
                           className="rounded-none ring-0"
                         />
                         <div className="space-y-2 p-3.5">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">
-                          {copy.globe.bridgeInviteEyebrow}
-                        </p>
-                        <p className="text-[15px] font-semibold leading-snug text-foreground">
+                        <p className={RIMVIO_TYPE.eyebrow}>{copy.globe.bridgeInviteEyebrow}</p>
+                        <p className={RIMVIO_TYPE.headline}>
                           {copy.globe.bridgeInviteTitle(hostName, bridge.title)}
                         </p>
-                        <p className="text-[12px] leading-relaxed text-muted-foreground">
-                          {copy.globe.bridgeInviteBody}
-                        </p>
+                        <p className={RIMVIO_TYPE.caption}>{copy.globe.bridgeInviteBody}</p>
                         <div>
                           <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-foreground">
                             <Users className="size-3" aria-hidden />
@@ -231,7 +243,7 @@ export function ExperienceBridgeInviteInboxSheet({
                             type="button"
                             disabled={busy}
                             onClick={() => void handleAccept(invite)}
-                            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-foreground px-3 py-2.5 text-[13px] font-semibold text-background shadow-sm disabled:opacity-60"
+                            className={rimvioCompactPrimaryCtaClass()}
                           >
                             {busy ? (
                               <Loader2 className="size-4 animate-spin" aria-hidden />
@@ -242,7 +254,7 @@ export function ExperienceBridgeInviteInboxSheet({
                             type="button"
                             disabled={busy}
                             onClick={() => void handleDecline(invite)}
-                            className="rounded-xl px-3 py-2.5 text-[13px] font-medium text-muted-foreground disabled:opacity-60"
+                            className={rimvioGhostCtaClass()}
                           >
                             {copy.globe.bridgeInviteDeclineCta}
                           </button>

@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+import { copy } from "@/lib/copy/human-ko";
 import { NowActionFocus } from "@/components/now-action-focus";
 import { NowLoadingShimmer } from "@/components/now-loading-shimmer";
 import type { EnrichedLink, EnricherContext } from "@/lib/enrichers/types";
@@ -96,6 +97,7 @@ function NowBridge() {
     const ctx = context ?? buildEnricherContext();
     persistEnrichedLinkOptimistic(enriched);
     void persistEnrichedLink(enriched, ctx);
+    toast.success(copy.share.newLinkSaved);
     router.replace("/");
     router.refresh();
   };

@@ -1,120 +1,219 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Plane, Plus, X } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { HubServiceSlot } from "@/components/globe/globe-context-hub-service-slot";
+import { GlobeContextTicketConnectSheet } from "@/components/globe/globe-context-ticket-connect-sheet";
+import { GlobeTicketQrViewer } from "@/components/globe/globe-ticket-qr-viewer";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { connectDepartureHubToContext } from "@/lib/globe/connect-departure-hub-to-context";
-import { disconnectContextHub } from "@/lib/globe/context-hub/disconnect-context-hub";
-import { listContextHubLinks } from "@/lib/globe/context-hub/list-context-hub-links";
-import { shouldSuggestContextHubs } from "@/lib/globe/context-hub/should-suggest-context-hubs";
+import { enableLodgingHubForContext } from "@/lib/globe/context-hub/enable-lodging-hub-for-context";
+import { listContextHubServicesForEvent } from "@/lib/globe/context-hub/context-hub-service-catalog";
+import { rankContextHubServices } from "@/lib/globe/context-hub/rank-context-hub-services";
+import {
+  foldContextHubLearning,
+  recordContextHubTelemetry,
+} from "@/lib/globe/context-hub/record-context-hub-telemetry";
 import type { DepartureHubAirportId } from "@/lib/globe/departure-hub-airports";
-import { suggestDepartureHubOptions } from "@/lib/globe/suggest-departure-hub-options";
+import {
+  resolvePinScopeFromEventId,
+  writeGlobeOrchestratorScopeHint,
+} from "@/lib/globe/globe-orchestrator-scope-bridge";
+import { isTicketQrViewerHref } from "@/lib/globe/ticket-scan-surface";
+import { resolveSemanticMainHintForEvent } from "@/lib/semantic/resolve-semantic-main-hint-for-event";
 import { copy } from "@/lib/copy/human-ko";
-import { cn } from "@/lib/utils";
 
 export type GlobeContextHubPanelProps = {
   event: EventCandidate;
   destinationLabel?: string | null;
   homeRegionHint?: string | null;
+  lat?: number | null;
+  lng?: number | null;
   onUpdated?: () => void;
 };
 
+function openExternalHref(href: string) {
+  window.open(href, "_blank", "noopener,noreferrer");
+}
+
+/** Context sheet / bridge — plug flight · lodging · ticket · AI search into one context. */
 export function GlobeContextHubPanel({
   event,
   destinationLabel,
   homeRegionHint,
+  lat = null,
+  lng = null,
   onUpdated,
 }: GlobeContextHubPanelProps) {
+  const router = useRouter();
+  const [revision, setRevision] = useState(0);
   const [busy, setBusy] = useState(false);
-  const [adding, setAdding] = useState(false);
+  const [connectServiceId, setConnectServiceId] = useState<string | null>(null);
+  const [ticketConnectOpen, setTicketConnectOpen] = useState(false);
+  const [qrViewer, setQrViewer] = useState<{
+    src: string;
+    title: string;
+    subtitle?: string;
+  } | null>(null);
 
-  const links = useMemo(() => listContextHubLinks(event), [event]);
-  const canSuggest = shouldSuggestContextHubs(event);
-  const place =
-    event.place?.trim() ||
-    destinationLabel?.trim() ||
-    event.title.trim();
-  const options = useMemo(
+  const panel = useMemo(() => {
+    void revision;
+    void destinationLabel;
+    return listContextHubServicesForEvent(event);
+  }, [destinationLabel, event, revision]);
+
+  const semanticHint = useMemo(
+    () => resolveSemanticMainHintForEvent(event),
+    [event, revision],
+  );
+
+  const serviceRows = useMemo(
     () =>
-      canSuggest
-        ? suggestDepartureHubOptions({
-            destinationPlace: place,
-            homeRegionHint,
-          })
+      panel
+        ? rankContextHubServices(panel.services, semanticHint).filter(
+            (row) => row.implemented,
+          )
         : [],
-    [canSuggest, homeRegionHint, place],
-  );
-  const connectedAirportIds = useMemo(
-    () =>
-      new Set(
-        links
-          .map((row) => row.airportIata?.toLowerCase())
-          .filter(Boolean) as string[],
-      ),
-    [links],
+    [panel, semanticHint],
   );
 
-  const handleConnect = async (airportId: DepartureHubAirportId) => {
-    if (busy) {
-      return;
-    }
-    setBusy(true);
-    try {
-      connectDepartureHubToContext({
-        destinationEventId: event.id,
-        airportId,
-        homeRegionHint,
+  const bump = useCallback(() => {
+    setRevision((value) => value + 1);
+    onUpdated?.();
+  }, [onUpdated]);
+
+  const handleOpenAction = useCallback(
+    (url: string, label: string) => {
+      recordContextHubTelemetry({ event, kind: "clicked", label });
+      recordContextHubTelemetry({ event, kind: "executed", label });
+      foldContextHubLearning(event);
+      openExternalHref(url);
+    },
+    [event],
+  );
+
+  const openTicketQrViewer = useCallback(
+    (href: string, label: string) => {
+      recordContextHubTelemetry({ event, kind: "clicked", label });
+      recordContextHubTelemetry({ event, kind: "executed", label });
+      foldContextHubLearning(event);
+      setQrViewer({
+        src: href,
+        title: label,
+        subtitle: panel?.contextPlace ?? undefined,
       });
-      toast.success(
-        copy.globe.departureHubConnected(
-          options.find((row) => row.id === airportId)?.shortLabelKo ?? airportId,
-        ),
-      );
-      setAdding(false);
-      onUpdated?.();
-    } catch (caught) {
-      toast.error(
-        caught instanceof Error
-          ? caught.message
-          : copy.globe.departureHubConnectFail,
-      );
-    } finally {
-      setBusy(false);
-    }
-  };
+    },
+    [event, panel?.contextPlace],
+  );
 
-  const handleDisconnect = async (hubEventId: string, label: string) => {
+  const handleOpenHandoff = useCallback(
+    (href: string, label: string, internalRoute = false) => {
+      if (internalRoute) {
+        writeGlobeOrchestratorScopeHint({
+          pinScope: resolvePinScopeFromEventId(event.id) ?? "internal",
+          eventId: event.id,
+          title: event.title,
+        });
+      }
+      recordContextHubTelemetry({ event, kind: "clicked", label });
+      recordContextHubTelemetry({ event, kind: "executed", label });
+      foldContextHubLearning(event);
+      if (internalRoute) {
+        router.push(href);
+        return;
+      }
+      if (isTicketQrViewerHref(href)) {
+        openTicketQrViewer(href, label);
+        return;
+      }
+      openExternalHref(href);
+    },
+    [event, openTicketQrViewer, router],
+  );
+
+  const handleConnectFlight = useCallback(
+    async (airportId: DepartureHubAirportId) => {
+      if (busy) {
+        return;
+      }
+      setBusy(true);
+      try {
+        connectDepartureHubToContext({
+          destinationEventId: event.id,
+          airportId,
+          homeRegionHint,
+        });
+        const label =
+          panel?.services
+            .find((row) => row.serviceId === "flight")
+            ?.flightOptions.find((row) => row.id === airportId)?.shortLabelKo ?? airportId;
+        toast.success(copy.globe.departureHubConnected(label));
+        recordContextHubTelemetry({ event, kind: "clicked", label: airportId });
+        foldContextHubLearning(event);
+        setConnectServiceId(null);
+        bump();
+      } catch (caught) {
+        toast.error(
+          caught instanceof Error
+            ? caught.message
+            : copy.globe.departureHubConnectFail,
+        );
+      } finally {
+        setBusy(false);
+      }
+    },
+    [busy, bump, event, homeRegionHint, panel?.services],
+  );
+
+  const handleConnectLodging = useCallback(async () => {
     if (busy) {
       return;
     }
     setBusy(true);
     try {
-      disconnectContextHub({
+      await enableLodgingHubForContext({
         contextEventId: event.id,
-        hubEventId,
+        lat,
+        lng,
       });
-      toast.success(copy.globe.contextHubDisconnected(label));
-      onUpdated?.();
+      toast.success(copy.globe.lodgingHubConnected);
+      recordContextHubTelemetry({ event, kind: "executed", label: "lodging" });
+      foldContextHubLearning(event);
+      bump();
     } catch (caught) {
       toast.error(
-        caught instanceof Error
-          ? caught.message
-          : copy.globe.contextHubDisconnectFail,
+        caught instanceof Error ? caught.message : copy.globe.lodgingHubConnectFail,
       );
     } finally {
       setBusy(false);
     }
-  };
+  }, [busy, bump, event, lat, lng]);
 
-  if (!canSuggest && links.length === 0) {
+  if (!panel || serviceRows.length === 0) {
     return null;
   }
 
   return (
-    <section className="space-y-2.5" data-globe-context-hub-panel>
-      <div className="flex items-start justify-between gap-2">
+    <>
+      <GlobeContextTicketConnectSheet
+        open={ticketConnectOpen}
+        onOpenChange={setTicketConnectOpen}
+        contextEventId={event.id}
+        onSaved={bump}
+      />
+      <GlobeTicketQrViewer
+        open={Boolean(qrViewer)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setQrViewer(null);
+          }
+        }}
+        qrSrc={qrViewer?.src ?? null}
+        title={qrViewer?.title ?? null}
+        subtitle={qrViewer?.subtitle ?? null}
+      />
+      <section className="space-y-2.5" data-globe-context-hub-panel>
         <div>
           <p className="text-[12px] font-semibold text-primary">
             {copy.globe.contextHubEyebrow}
@@ -126,123 +225,35 @@ export function GlobeContextHubPanel({
             {copy.globe.contextHubSectionBody}
           </p>
         </div>
-        {canSuggest ? (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => setAdding((value) => !value)}
-            className={cn(
-              "flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-card",
-              "text-muted-foreground transition-colors active:bg-muted",
-              adding && "border-primary/35 bg-primary/10 text-primary",
-            )}
-            aria-label={copy.globe.contextHubAdd}
-            data-context-hub-add
-          >
-            <Plus className="size-4" aria-hidden />
-          </button>
-        ) : null}
-      </div>
 
-      {links.length > 0 ? (
         <ul className="space-y-2">
-          {links.map((link) => (
-            <li
-              key={link.eventId}
-              className="flex items-center gap-2 rounded-2xl border border-border bg-card px-3 py-2.5"
-              data-context-hub-link={link.eventId}
-            >
-              <button
-                type="button"
-                disabled={busy || !link.actionUrl}
-                onClick={() => {
-                  if (!link.actionUrl) {
-                    return;
-                  }
-                  window.open(link.actionUrl, "_blank", "noopener,noreferrer");
-                }}
-                className={cn(
-                  "flex min-w-0 flex-1 items-center gap-3 text-left",
-                  link.actionUrl && "active:opacity-80",
-                  !link.actionUrl && "cursor-default",
-                )}
-                data-context-hub-open={link.eventId}
-              >
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <Plane className="size-4" aria-hidden />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[14px] font-semibold text-foreground">
-                    {link.shortLabel}
-                  </span>
-                  <span className="block text-[11px] text-muted-foreground">
-                    {link.actionUrl
-                      ? (link.actionLabelKo ?? copy.globe.contextHubOpenFlight)
-                      : copy.globe.contextHubDepartureKind}
-                  </span>
-                </span>
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void handleDisconnect(link.eventId, link.shortLabel)}
-                className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted active:text-foreground"
-                aria-label={copy.globe.contextHubRemove(link.shortLabel)}
-                data-context-hub-remove={link.eventId}
-              >
-                <X className="size-4" aria-hidden />
-              </button>
-            </li>
+          {serviceRows.map((row) => (
+            <HubServiceSlot
+              key={row.serviceId}
+              row={row}
+              connectOpen={connectServiceId === row.serviceId}
+              busy={busy}
+              onToggleConnect={() => {
+                if (row.serviceId === "ticket") {
+                  setTicketConnectOpen(true);
+                  return;
+                }
+                if (row.serviceId === "lodging") {
+                  void handleConnectLodging();
+                  return;
+                }
+                setConnectServiceId((current) =>
+                  current === row.serviceId ? null : row.serviceId,
+                );
+              }}
+              onConnectFlight={(airportId) => void handleConnectFlight(airportId)}
+              onConnectLodging={() => void handleConnectLodging()}
+              onOpenAction={handleOpenAction}
+              onOpenHandoff={handleOpenHandoff}
+            />
           ))}
         </ul>
-      ) : (
-        <p className="rounded-2xl border border-dashed border-border px-3 py-3 text-[12px] text-muted-foreground">
-          {copy.globe.contextHubEmpty}
-        </p>
-      )}
-
-      <AnimatePresence initial={false}>
-        {adding ? (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
-          >
-            <ul className="space-y-2 pt-1">
-              {options.map((option) => {
-                const connected = connectedAirportIds.has(option.id);
-                return (
-                  <li key={option.id}>
-                    <button
-                      type="button"
-                      disabled={busy || connected}
-                      onClick={() => void handleConnect(option.id)}
-                      className={cn(
-                        "flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left",
-                        connected
-                          ? "border-border bg-muted/40 opacity-60"
-                          : "border-border bg-card active:bg-muted/50",
-                        busy && "pointer-events-none opacity-50",
-                      )}
-                      data-context-hub-option={option.id}
-                    >
-                      <span className="text-[14px] font-semibold text-foreground">
-                        {option.shortLabelKo}
-                      </span>
-                      {option.recommended ? (
-                        <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                          {copy.globe.departureHubRecommended}
-                        </span>
-                      ) : null}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
-    </section>
+      </section>
+    </>
   );
 }

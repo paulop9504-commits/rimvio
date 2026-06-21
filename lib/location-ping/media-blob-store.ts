@@ -1,3 +1,9 @@
+import {
+  findMediaSpacetimeContextById,
+  hydrateMediaContextStore,
+} from "@/lib/location-ping/media-context-store";
+import { scheduleMaterializeAfterMediaSave } from "@/lib/materialize/materialize-after-media-save";
+
 const DB_NAME = "rimvio-media-blobs";
 const DB_VERSION = 1;
 const STORE = "blobs";
@@ -52,6 +58,12 @@ export async function saveMediaBlob(id: string, file: File): Promise<void> {
   }
 
   memoryUrls.set(key, URL.createObjectURL(file));
+
+  await hydrateMediaContextStore();
+  const context = await findMediaSpacetimeContextById(key);
+  if (context) {
+    scheduleMaterializeAfterMediaSave({ context, file });
+  }
 }
 
 export async function deleteMediaBlob(id: string): Promise<void> {

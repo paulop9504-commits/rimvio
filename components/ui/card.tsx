@@ -1,6 +1,6 @@
 import * as React from "react"
 
-import { rimvioNeonCardClass } from "@/lib/brand/rimvio-neon-theme";
+import { rimvioSurfaceCardClass } from "@/lib/design/rimvio-ontology";
 import { cn } from "@/lib/utils"
 
 const Card = React.forwardRef<
@@ -9,11 +9,7 @@ const Card = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn(
-      rimvioNeonCardClass,
-      "text-card-foreground shadow-[0_12px_48px_-16px_rgba(0,0,0,0.85)]",
-      className
-    )}
+    className={cn(rimvioSurfaceCardClass(), className)}
     {...props}
   />
 ))
@@ -38,7 +34,7 @@ const CardTitle = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "text-2xl font-semibold leading-none tracking-tight",
+      "text-[17px] font-semibold leading-snug tracking-tight",
       className
     )}
     {...props}

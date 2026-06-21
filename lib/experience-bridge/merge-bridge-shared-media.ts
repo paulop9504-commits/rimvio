@@ -197,7 +197,11 @@ export function mergeBridgeContributionsIntoEvent(input: {
     if (!capture?.id?.trim() || localIds.has(capture.id)) {
       continue;
     }
-    if (viewerId && row.contributorUserId === viewerId) {
+    if (
+      viewerId &&
+      row.contributorUserId === viewerId &&
+      localIds.has(capture.id)
+    ) {
       continue;
     }
     if (capture.kind !== "photo" && capture.kind !== "video") {

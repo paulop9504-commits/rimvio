@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Users, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { X } from "lucide-react";
 import { toast } from "sonner";
 import { copy } from "@/lib/copy/human-ko";
 import { completeBridgeInviteAccept } from "@/lib/experience-bridge/complete-bridge-invite-accept";
@@ -10,7 +11,14 @@ import {
   declineExperienceBridgeRemote,
 } from "@/lib/experience-bridge/experience-bridge-client";
 import { writeLocalBridgeState } from "@/lib/experience-bridge/local-bridge-store";
+import { buildExperienceRoomHref } from "@/lib/globe/project-experience-conversation";
 import type { PendingBridgeInvite } from "@/hooks/use-pending-bridge-invites";
+import { useAuth } from "@/hooks/use-auth";
+import {
+  rimvioCompactPrimaryCtaClass,
+  rimvioGhostCtaClass,
+  rimvioSurfaceCardClass,
+} from "@/lib/design/rimvio-ontology";
 import { cn } from "@/lib/utils";
 
 export type ExperienceBridgeInviteBannerProps = {
@@ -27,7 +35,9 @@ export function ExperienceBridgeInviteBanner({
   onDismiss,
   className,
 }: ExperienceBridgeInviteBannerProps) {
+  const router = useRouter();
   const [busyEventId, setBusyEventId] = useState<string | null>(null);
+  const { user } = useAuth();
 
   if (invites.length === 0) {
     return null;
@@ -46,8 +56,25 @@ export function ExperienceBridgeInviteBanner({
       await completeBridgeInviteAccept({
         state: data.state,
         peerThreadId: data.pinSpec.peerThreadId,
+        viewerUserId: user?.id,
       });
-      toast.success(copy.globe.bridgeInviteAccepted);
+      toast.success(copy.globe.bridgeInviteAccepted, {
+        action: data.pinSpec.peerThreadId
+          ? {
+              label: copy.globe.bridgeTalkContinueCta,
+              onClick: () => {
+                router.push(
+                  buildExperienceRoomHref({
+                    peerThreadId: data.pinSpec.peerThreadId!,
+                    eventId: bridge.eventId,
+                    title: bridge.title,
+                    place: bridge.placeLabel ?? "",
+                  }),
+                );
+              },
+            }
+          : undefined,
+      });
       onAccepted?.(bridge.eventId);
       onDismiss?.(bridge.eventId);
     } catch (caught) {
@@ -79,41 +106,26 @@ export function ExperienceBridgeInviteBanner({
 
   return (
     <div
-      className={cn(
-        "rounded-[1.15rem] border border-border bg-card/95 p-3.5 shadow-sm ring-1 ring-black/5 backdrop-blur-md",
-        className,
-      )}
+      className={cn(rimvioSurfaceCardClass("p-3 backdrop-blur-md"), className)}
       data-experience-bridge-invite-banner
       role="status"
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">
-            {copy.globe.bridgeInviteEyebrow}
-          </p>
-          <p className="mt-0.5 text-[14px] font-semibold text-foreground">
+          <p className="text-[13px] font-semibold leading-snug text-foreground">
             {copy.globe.bridgeInviteTitle(hostName, bridge.title)}
           </p>
-          <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
-            {copy.globe.bridgeInviteBody}
-          </p>
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground">
-              <Users className="size-3" aria-hidden />
-              {bridge.placeLabel || copy.globe.bridgeInvitePlaceFallback}
-            </span>
-            {overflow > 0 ? (
-              <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                {copy.globe.bridgeInviteOverflow(overflow)}
-              </span>
-            ) : null}
-          </div>
-          <div className="mt-3 flex gap-2">
+          {overflow > 0 ? (
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              {copy.globe.bridgeInviteOverflow(overflow)}
+            </p>
+          ) : null}
+          <div className="mt-2.5 flex gap-2">
             <button
               type="button"
               disabled={busy}
               onClick={() => void handleAccept()}
-              className="flex-1 rounded-xl bg-foreground px-3 py-2.5 text-[13px] font-semibold text-background shadow-sm disabled:opacity-60"
+              className={cn(rimvioCompactPrimaryCtaClass(), "rounded-full py-2 text-[12px]")}
             >
               {copy.globe.bridgeInviteAcceptCta}
             </button>
@@ -121,7 +133,7 @@ export function ExperienceBridgeInviteBanner({
               type="button"
               disabled={busy}
               onClick={() => void handleDecline()}
-              className="rounded-xl px-3 py-2.5 text-[13px] font-medium text-muted-foreground disabled:opacity-60"
+              className={cn(rimvioGhostCtaClass(), "rounded-full py-2 text-[12px]")}
             >
               {copy.globe.bridgeInviteDeclineCta}
             </button>
@@ -131,7 +143,7 @@ export function ExperienceBridgeInviteBanner({
           type="button"
           disabled={busy}
           onClick={() => onDismiss?.(bridge.eventId)}
-          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted/80 text-muted-foreground active:scale-95 disabled:opacity-60"
+          className="flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted disabled:opacity-60"
           aria-label={copy.globe.bridgeInviteDismissAria}
         >
           <X className="size-4" aria-hidden />

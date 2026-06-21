@@ -94,7 +94,13 @@ export function rankContextResources(input: {
   const lng = input.lng ?? null;
 
   const serviceRanked = input.services
-    .filter((row) => row.offered && row.serviceId !== "lodging")
+    .filter(
+      (row) =>
+        row.offered &&
+        row.serviceId !== "lodging" &&
+        row.serviceId !== "ai_search" &&
+        row.implemented,
+    )
     .map((hubRow) => {
       const resource = mapHubServiceRowToResource(input.event, hubRow);
       return {

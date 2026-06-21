@@ -10,6 +10,11 @@ import { commitEventUpsert } from "@/lib/source-of-truth/commit-truth";
 import { uploadBridgeCaptureBlob } from "@/lib/experience-bridge/upload-bridge-capture-blob";
 import { isUsableBridgeMediaUrl } from "@/lib/experience-bridge/bridge-media-url";
 
+export type HydrateBridgeEventSnapshotResult = {
+  event: EventCandidate;
+  uploadWarnings: string[];
+};
+
 function isShareableBridgeCapture(capture: FeedCaptureFragment): boolean {
   return capture.kind === "photo" || capture.kind === "video";
 }
@@ -21,15 +26,15 @@ function mediaLabel(capture: FeedCaptureFragment): string {
 /** Host share prep — upload local blobs so invitees can load photos + videos. */
 export async function hydrateBridgeEventSnapshotForShare(
   event: EventCandidate,
-): Promise<EventCandidate> {
+): Promise<HydrateBridgeEventSnapshotResult> {
   const captures = readFeedCaptureFragments(event);
   if (captures.length === 0) {
-    return event;
+    return { event, uploadWarnings: [] };
   }
 
   let changed = false;
   const nextCaptures: FeedCaptureFragment[] = [];
-  const uploadErrors: string[] = [];
+  const uploadWarnings: string[] = [];
 
   for (const capture of captures) {
     if (!isShareableBridgeCapture(capture)) {
@@ -42,36 +47,32 @@ export async function hydrateBridgeEventSnapshotForShare(
     }
 
     try {
-      const mediaUrl = await uploadBridgeCaptureBlob({
+      const upload = await uploadBridgeCaptureBlob({
         eventId: event.id,
         capture,
       });
-      if (!mediaUrl) {
-        uploadErrors.push(`${mediaLabel(capture)} 업로드에 실패했어요.`);
+      if (!upload?.url) {
+        uploadWarnings.push(`${mediaLabel(capture)} 업로드에 실패했어요.`);
         nextCaptures.push(capture);
         continue;
       }
-      nextCaptures.push({ ...capture, url: mediaUrl });
+      nextCaptures.push({ ...capture, url: upload.url });
       changed = true;
     } catch (caught) {
       const message =
         caught instanceof Error
           ? caught.message
           : `${mediaLabel(capture)} 업로드에 실패했어요.`;
-      uploadErrors.push(message);
+      uploadWarnings.push(message);
       nextCaptures.push(capture);
     }
   }
 
-  if (uploadErrors.length > 0) {
-    throw new Error(uploadErrors[0]!);
-  }
-
   if (!changed) {
-    return event;
+    return { event, uploadWarnings };
   }
 
-  return commitEventUpsert({
+  const nextEvent = commitEventUpsert({
     id: event.id,
     title: event.title,
     category: event.category,
@@ -87,4 +88,6 @@ export async function hydrateBridgeEventSnapshotForShare(
     },
     lifecycleUpdatedAt: event.lifecycleUpdatedAt ?? new Date().toISOString(),
   });
+
+  return { event: nextEvent, uploadWarnings };
 }

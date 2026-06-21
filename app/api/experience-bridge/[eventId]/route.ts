@@ -21,9 +21,13 @@ import {
   toBridgeContributionWire,
   toBridgeStateWire,
   toBridgeTimelineWire,
+  toExperienceWindowWire,
 } from "@/lib/experience-bridge/wire-bridge-response-dto";
 import { extractErrorMessage } from "@/lib/peer-chat/extract-error-message";
+import { resolveServiceRoleOrUserClient } from "@/lib/supabase/admin";
 import { listSharedGlobePinsForThread } from "@/lib/peer-chat/server-globe-pins";
+import { listPeerMessages } from "@/lib/peer-chat/server-peer-chat";
+import { resolveExperienceWindow } from "@/lib/experience-window";
 import { callerCanAccessPeerThread } from "@/lib/peer-chat/caller-peer-thread-access";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
@@ -71,6 +75,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     }
 
     let sharedPins: Awaited<ReturnType<typeof listSharedGlobePinsForThread>> = [];
+    let peerMessages: Awaited<ReturnType<typeof listPeerMessages>> = [];
     const threadId = state.bridge.peerThreadId?.trim();
     if (
       threadId &&
@@ -81,14 +86,29 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       } catch {
         sharedPins = [];
       }
+      try {
+        peerMessages = await listPeerMessages(supabase, threadId);
+      } catch {
+        peerMessages = [];
+      }
     }
 
+    const experienceWindow = resolveExperienceWindow({
+      event: state.bridge.eventSnapshot,
+      bridge: state.bridge,
+    });
+
     const host = state.participants.find((row) => row.role === "host");
-    const contributions = await listBridgeContributions(supabase, key);
+    const contributions = await listBridgeContributions(
+      resolveServiceRoleOrUserClient(supabase),
+      key,
+    );
     const timeline = mergeBridgeTimeline({
       bridge: state.bridge,
       sharedPins,
+      peerMessages,
       contributions,
+      experienceWindow,
       participants: state.participants.map((row) => ({
         userId: row.userId,
         displayName: row.displayName,
@@ -101,6 +121,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       state: toBridgeStateWire(state),
       timeline: toBridgeTimelineWire(timeline),
       contributions: contributions.map(toBridgeContributionWire),
+      experienceWindow: toExperienceWindowWire(experienceWindow),
     });
   } catch (error) {
     const message = extractErrorMessage(error, "Failed to load experience bridge.");

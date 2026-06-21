@@ -3,6 +3,8 @@ import {
   FEED_CAPTURES_META_KEY,
   type FeedCaptureFragment,
 } from "@/lib/feed/feed-capture-types";
+import type { BridgeContributionCapture } from "@/lib/experience-bridge/bridge-capture-spacetime";
+import { BRIDGE_CAPTURE_SPACETIME_KEYS } from "@/lib/experience-bridge/bridge-capture-spacetime";
 import type {
   ExperienceBridgeContribution,
   ExperienceBridgeParticipant,
@@ -10,6 +12,7 @@ import type {
   ExperienceBridgeState,
   ExperienceBridgeTimelineItem,
 } from "@/lib/experience-bridge/experience-bridge-types";
+import type { ExperienceWindow } from "@/lib/experience-window/experience-window-types";
 
 const PUBLIC_CAPTURE_KEYS = new Set([
   "id",
@@ -22,6 +25,7 @@ const PUBLIC_CAPTURE_KEYS = new Set([
   "ownerUserId",
   "authorDisplayName",
   "authorAvatarUrl",
+  ...BRIDGE_CAPTURE_SPACETIME_KEYS,
 ]);
 
 /** Strip orchestrator / ingest internals from event metadata before wire egress. */
@@ -132,32 +136,54 @@ export function toBridgeTimelineWire(
     id: row.id,
     kind: row.kind,
     capturedAtIso: row.capturedAtIso,
+    phase: row.phase,
     ownerUserId: row.ownerUserId,
     authorDisplayName: row.authorDisplayName,
     placeLabel: row.placeLabel,
     imageUrl: row.imageUrl ?? null,
+    body: row.body?.trim() ? row.body.trim().slice(0, 280) : undefined,
     viewOnly: row.viewOnly,
   }));
+}
+
+export function toExperienceWindowWire(
+  window: ExperienceWindow,
+): ExperienceWindow {
+  return {
+    eventId: window.eventId,
+    peerThreadId: window.peerThreadId,
+    windowStartIso: window.windowStartIso,
+    windowEndIso: window.windowEndIso,
+    bridgeCreatedAtIso: window.bridgeCreatedAtIso,
+    tripTiming: window.tripTiming,
+  };
 }
 
 export function toBridgeContributionWire(
   row: ExperienceBridgeContribution,
 ): ExperienceBridgeContribution {
-  const capture = row.capture;
+  const capture = row.capture as BridgeContributionCapture;
+  const out: BridgeContributionCapture = {
+    id: capture.id,
+    kind: capture.kind,
+    capturedAtIso: capture.capturedAtIso,
+    mediaContextId: capture.mediaContextId,
+    placeLabel: capture.placeLabel,
+    label: capture.label,
+    url: capture.url,
+    ownerUserId: capture.ownerUserId ?? row.contributorUserId,
+    authorDisplayName: capture.authorDisplayName,
+    authorAvatarUrl: capture.authorAvatarUrl,
+  };
+  for (const key of BRIDGE_CAPTURE_SPACETIME_KEYS) {
+    const value = capture[key];
+    if (value !== undefined && value !== null && value !== "") {
+      out[key] = value as never;
+    }
+  }
   return {
     contributorUserId: row.contributorUserId,
     createdAtIso: row.createdAtIso,
-    capture: {
-      id: capture.id,
-      kind: capture.kind,
-      capturedAtIso: capture.capturedAtIso,
-      mediaContextId: capture.mediaContextId,
-      placeLabel: capture.placeLabel,
-      label: capture.label,
-      url: capture.url,
-      ownerUserId: capture.ownerUserId ?? row.contributorUserId,
-      authorDisplayName: capture.authorDisplayName,
-      authorAvatarUrl: capture.authorAvatarUrl,
-    },
+    capture: out,
   };
 }

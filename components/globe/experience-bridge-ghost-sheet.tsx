@@ -16,6 +16,19 @@ import {
 import { writeLocalBridgeState } from "@/lib/experience-bridge/local-bridge-store";
 import type { PendingBridgeInvite } from "@/hooks/use-pending-bridge-invites";
 import type { PinCluster } from "@/lib/globe/pin-cluster-types";
+import { useAuth } from "@/hooks/use-auth";
+import {
+  RIMVIO_TYPE,
+  rimvioBottomSheetClass,
+  rimvioCompactPrimaryCtaClass,
+  rimvioEmptyStateClass,
+  rimvioGhostCtaClass,
+  rimvioHeroCtaClass,
+  rimvioInboxItemCardClass,
+  rimvioSheetBackdropClass,
+  rimvioSheetCloseBtnClass,
+  rimvioSurfaceCardClass,
+} from "@/lib/design/rimvio-ontology";
 import { cn } from "@/lib/utils";
 
 export type ExperienceBridgeGhostSheetProps = {
@@ -37,6 +50,7 @@ export function ExperienceBridgeGhostSheet({
   onDismissed,
 }: ExperienceBridgeGhostSheetProps) {
   const [busy, setBusy] = useState(false);
+  const { user } = useAuth();
 
   if (!invite || !cluster) {
     return null;
@@ -57,6 +71,7 @@ export function ExperienceBridgeGhostSheet({
       await completeBridgeInviteAccept({
         state: data.state,
         peerThreadId: data.pinSpec.peerThreadId,
+        viewerUserId: user?.id,
       });
       toast.success(copy.globe.bridgeInviteAccepted);
       onAccepted?.(bridge.eventId);
@@ -98,7 +113,7 @@ export function ExperienceBridgeGhostSheet({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[10060] bg-black/40"
+            className={cn(rimvioSheetBackdropClass(), "z-[10060]")}
             onClick={() => onOpenChange(false)}
           />
           <motion.div
@@ -107,7 +122,7 @@ export function ExperienceBridgeGhostSheet({
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 16 }}
-            className="fixed inset-x-0 bottom-0 z-[10061] mx-auto w-full max-w-lg overflow-hidden rounded-t-[1.35rem] border border-border bg-card shadow-2xl"
+            className={cn(rimvioBottomSheetClass("z-[10061] overflow-hidden p-0"), "max-h-none")}
             data-experience-bridge-ghost-sheet
           >
             <ExperienceBridgePreviewCollage
@@ -117,25 +132,21 @@ export function ExperienceBridgeGhostSheet({
             <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4">
             <div className="mb-3 flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">
-                  {copy.globe.bridgeInviteEyebrow}
-                </p>
-                <p className="mt-0.5 text-[16px] font-semibold text-foreground">
+                <p className={RIMVIO_TYPE.eyebrow}>{copy.globe.bridgeInviteEyebrow}</p>
+                <p className={cn("mt-0.5", RIMVIO_TYPE.headline)}>
                   {copy.globe.bridgeInviteTitle(hostName, bridge.title)}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => onOpenChange(false)}
-                className="flex size-9 items-center justify-center rounded-full active:bg-muted"
+                className={rimvioSheetCloseBtnClass()}
                 aria-label="닫기"
               >
                 <X className="size-5 text-muted-foreground" />
               </button>
             </div>
-            <p className="text-[13px] leading-relaxed text-muted-foreground">
-              {copy.globe.bridgeGhostSheetBody}
-            </p>
+            <p className={RIMVIO_TYPE.body}>{copy.globe.bridgeGhostSheetBody}</p>
             <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-[12px] font-medium text-foreground">
               <MapPin className="size-3.5 text-primary" aria-hidden />
               {cluster.placeLabel}
@@ -145,10 +156,7 @@ export function ExperienceBridgeGhostSheet({
                 type="button"
                 disabled={busy}
                 onClick={() => void handleAccept()}
-                className={cn(
-                  "flex-1 rounded-2xl bg-foreground px-4 py-3.5 text-[15px] font-semibold text-background shadow-sm",
-                  "disabled:opacity-60",
-                )}
+                className={cn(rimvioHeroCtaClass("flex-1"), "disabled:opacity-60")}
               >
                 {copy.globe.bridgeGhostAcceptCta}
               </button>
@@ -156,7 +164,7 @@ export function ExperienceBridgeGhostSheet({
                 type="button"
                 disabled={busy}
                 onClick={() => void handleDecline()}
-                className="rounded-2xl px-4 py-3.5 text-[14px] font-medium text-muted-foreground disabled:opacity-60"
+                className={cn(rimvioGhostCtaClass(), "disabled:opacity-60")}
               >
                 {copy.globe.bridgeInviteDeclineCta}
               </button>

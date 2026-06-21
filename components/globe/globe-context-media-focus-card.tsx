@@ -35,7 +35,7 @@ export function GlobeContextMediaFocusCard({
   return (
     <article
       className={cn(
-        "overflow-hidden rounded-[1.15rem] bg-[#1d1d1f] shadow-[0_16px_40px_rgba(0,0,0,0.28)] ring-1 ring-white/10",
+        "overflow-hidden rounded-xl bg-[#1d1d1f] shadow-[0_16px_40px_rgba(0,0,0,0.28)] ring-1 ring-white/10",
         className,
       )}
       data-globe-context-media-focus-card

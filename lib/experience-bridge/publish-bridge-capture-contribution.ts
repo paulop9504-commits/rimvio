@@ -8,6 +8,8 @@ import {
   requireBridgeLinkBeforePublish,
 } from "@/lib/experience-bridge/ensure-bridge-link-before-publish";
 import { uploadBridgeCaptureBlob } from "@/lib/experience-bridge/upload-bridge-capture-blob";
+import { buildBridgeContributionCapture } from "@/lib/experience-bridge/build-bridge-contribution-capture";
+import { setBridgeSyncPhase } from "@/lib/experience-bridge/bridge-sync-session";
 import { notifyBridgeSharedMediaUpdated } from "@/lib/experience-bridge/notify-bridge-shared-media-updated";
 import { invalidateBridgeApiCache } from "@/lib/experience-bridge/bridge-api-cache";
 import { syncBridgeSharedMediaFromRemote } from "@/lib/experience-bridge/sync-bridge-participant-media";
@@ -84,63 +86,75 @@ export async function publishBridgeCaptureContribution(input: {
     return;
   }
 
-  let capture: FeedCaptureFragment & {
-    ownerUserId?: string;
-    authorDisplayName?: string;
-    authorAvatarUrl?: string;
-  } = {
-    ...input.fragment,
-    ...(await resolvePublisherAuthor({
+  setBridgeSyncPhase({ eventId, phase: "uploading" });
+
+  try {
+    const author = await resolvePublisherAuthor({
       authorDisplayName: input.authorDisplayName,
-    })),
-  };
-
-  const mediaUrl = await uploadBridgeCaptureBlob({
-    eventId,
-    capture: input.fragment,
-  });
-  if (!mediaUrl) {
-    const label = capture.kind === "video" ? "동영상" : "사진";
-    throw new Error(`공유 ${label} 업로드에 실패했어요. 다시 시도해 주세요.`);
-  }
-  capture = { ...capture, url: mediaUrl };
-
-  await postBridgeContribution({ eventId, capture });
-
-  notifyBridgeSharedMediaUpdated();
-  await syncBridgeSharedMediaFromRemote(eventId, capture.ownerUserId).catch(() => {
-    // Publish succeeded — background refresh is best-effort.
-  });
-
-  const localEvent = findEventCandidate(eventId);
-  if (localEvent) {
-    const patchedUrl = patchFeedCaptureRemoteUrl({
-      event: localEvent,
-      captureId: capture.id,
-      url: mediaUrl,
     });
-    const patchedAuthor = patchFeedCaptureAuthor({
-      event: patchedUrl ?? localEvent,
-      captureId: capture.id,
-      ownerUserId: capture.ownerUserId,
-      authorDisplayName: capture.authorDisplayName,
-      authorAvatarUrl: capture.authorAvatarUrl,
+
+    const upload = await uploadBridgeCaptureBlob({
+      eventId,
+      capture: input.fragment,
     });
-    const patched = patchedAuthor ?? patchedUrl;
-    if (patched) {
-      commitEventUpsert({
-        id: patched.id,
-        title: patched.title,
-        category: patched.category,
-        source: patched.source,
-        lifecycle: patched.lifecycle,
-        datetime: patched.datetime,
-        place: patched.place,
-        containerId: patched.containerId,
-        confidence: patched.confidence,
-        metadata: patched.metadata,
-      });
+    if (!upload?.url) {
+      const label = input.fragment.kind === "video" ? "동영상" : "사진";
+      throw new Error(`공유 ${label} 업로드에 실패했어요. 다시 시도해 주세요.`);
     }
+
+    const mediaUrl = upload.url;
+    let capture = await buildBridgeContributionCapture({
+      fragment: input.fragment,
+      eventId,
+      userId: author.ownerUserId!,
+      mediaUrl,
+      storagePath: upload.storagePath,
+      byteSize: upload.byteSize,
+    });
+    capture = {
+      ...capture,
+      ...author,
+    };
+
+    await postBridgeContribution({ eventId, capture });
+
+    notifyBridgeSharedMediaUpdated();
+    await syncBridgeSharedMediaFromRemote(eventId, capture.ownerUserId).catch(() => {
+      // Publish succeeded — background refresh is best-effort.
+    });
+
+    const localEvent = findEventCandidate(eventId);
+    if (localEvent) {
+      const patchedUrl = patchFeedCaptureRemoteUrl({
+        event: localEvent,
+        captureId: capture.id,
+        url: mediaUrl,
+      });
+      const patchedAuthor = patchFeedCaptureAuthor({
+        event: patchedUrl ?? localEvent,
+        captureId: capture.id,
+        ownerUserId: capture.ownerUserId,
+        authorDisplayName: capture.authorDisplayName,
+        authorAvatarUrl: capture.authorAvatarUrl,
+      });
+      const patched = patchedAuthor ?? patchedUrl;
+      if (patched) {
+        commitEventUpsert({
+          id: patched.id,
+          title: patched.title,
+          category: patched.category,
+          source: patched.source,
+          lifecycle: patched.lifecycle,
+          datetime: patched.datetime,
+          place: patched.place,
+          containerId: patched.containerId,
+          confidence: patched.confidence,
+          metadata: patched.metadata,
+        });
+      }
+    }
+  } finally {
+    setBridgeSyncPhase({ eventId, phase: "idle" });
   }
 }
 

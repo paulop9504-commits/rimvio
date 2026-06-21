@@ -1,11 +1,17 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { GlobeContextMediaShortsReel } from "@/components/globe/globe-context-media-shorts-reel";
 import { ExperienceBridgeThumbnailRail } from "@/components/globe/experience-bridge-thumbnail-rail";
 import type { ContextMediaReelItem } from "@/lib/globe/project-context-media-reel";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
+
+export type BridgeMediaArrivalHint = {
+  count: number;
+  authorName: string;
+  targetIndex: number;
+};
 
 export type ExperienceBridgeMediaShellProps = {
   items: readonly ContextMediaReelItem[];
@@ -15,10 +21,12 @@ export type ExperienceBridgeMediaShellProps = {
   viewerUserId?: string | null;
   deletable?: boolean;
   onMediaDeleted?: () => void;
+  arrivalHint?: BridgeMediaArrivalHint | null;
+  onDismissArrival?: () => void;
   className?: string;
 };
 
-/** Bridge pin — clean Shorts reel + filmstrip (light, photo-first). */
+/** Bridge pin — full-bleed moments + minimal filmstrip. */
 export function ExperienceBridgeMediaShell({
   items,
   title,
@@ -27,14 +35,12 @@ export function ExperienceBridgeMediaShell({
   viewerUserId,
   deletable = false,
   onMediaDeleted,
+  arrivalHint = null,
+  onDismissArrival,
   className,
 }: ExperienceBridgeMediaShellProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-
-  const activeItem = items[activeIndex] ?? items[0] ?? null;
-  const activeAuthor =
-    activeItem?.authorDisplayName?.trim() || copy.globe.bridgeInviteHostFallback;
 
   const scrollToIndex = useCallback((index: number) => {
     const root = scrollRef.current;
@@ -48,14 +54,36 @@ export function ExperienceBridgeMediaShell({
     setActiveIndex(index);
   }, []);
 
+  useEffect(() => {
+    if (!arrivalHint) {
+      return;
+    }
+    scrollToIndex(arrivalHint.targetIndex);
+    const timer = window.setTimeout(() => onDismissArrival?.(), 4_000);
+    return () => window.clearTimeout(timer);
+  }, [arrivalHint, onDismissArrival, scrollToIndex]);
+
   return (
     <div
-      className={cn("relative flex min-h-0 flex-1 flex-col bg-muted/25", className)}
+      className={cn("relative flex min-h-0 flex-1 flex-col bg-black", className)}
       data-experience-bridge-media-shell
     >
+      {arrivalHint ? (
+        <div className="pointer-events-none absolute inset-x-4 top-3 z-20 flex justify-center">
+          <div className="pointer-events-auto max-w-full rounded-full bg-white/95 px-3.5 py-2 text-[#1d1d1f] shadow-lg backdrop-blur-md">
+            <p className="truncate text-[12px] font-semibold">
+              {copy.globe.bridgeMediaArrivalStrip(
+                arrivalHint.authorName,
+                arrivalHint.count,
+              )}
+            </p>
+          </div>
+        </div>
+      ) : null}
+
       <div
         ref={scrollRef}
-        className="min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto overscroll-y-contain px-2 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         onScroll={() => {
           const root = scrollRef.current;
           if (!root) {
@@ -89,18 +117,17 @@ export function ExperienceBridgeMediaShell({
         />
       </div>
 
-      <div className="shrink-0 space-y-2 border-t border-border/60 bg-background px-3 py-2.5">
-        {items.length > 0 ? (
-          <p className="text-center text-[12px] font-medium text-muted-foreground">
-            {activeAuthor} · {activeIndex + 1}/{items.length}
-          </p>
-        ) : null}
-        <ExperienceBridgeThumbnailRail
-          items={items}
-          activeIndex={activeIndex}
-          onSelect={scrollToIndex}
-        />
-      </div>
+      {items.length > 1 ? (
+        <div className="shrink-0 border-t border-white/10 bg-black/90 px-3 py-2 backdrop-blur-md">
+          <ExperienceBridgeThumbnailRail
+            items={items}
+            activeIndex={activeIndex}
+            onSelect={scrollToIndex}
+            viewerUserId={viewerUserId}
+            variant="dark"
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

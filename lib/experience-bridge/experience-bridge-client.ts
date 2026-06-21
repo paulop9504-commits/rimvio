@@ -2,6 +2,11 @@ import type { EventCandidate } from "@/lib/events/event-candidate";
 import { resolveAppOrigin } from "@/lib/auth/redirect-url";
 import { cachedFetchJson } from "@/lib/http/client-fetch-cache";
 import {
+  maxIsoTimestamp,
+  readBridgeSyncCursor,
+  writeBridgeSyncCursor,
+} from "@/lib/experience-bridge/bridge-sync-cursor-store";
+import {
   BRIDGE_CONTRIBUTIONS_CACHE_MS,
   BRIDGE_INVITES_CACHE_KEY,
   BRIDGE_INVITES_CACHE_MS,
@@ -15,6 +20,7 @@ import type {
   ExperienceBridgeState,
   ExperienceBridgeTimelineItem,
 } from "@/lib/experience-bridge/experience-bridge-types";
+import type { ExperienceWindow } from "@/lib/experience-window/experience-window-types";
 
 async function parseJson<T>(response: Response): Promise<T> {
   const body = (await response.json()) as T & { error?: string };
@@ -38,6 +44,7 @@ export async function fetchExperienceBridgeRemote(
   state: ExperienceBridgeState | null;
   timeline: ExperienceBridgeTimelineItem[];
   contributions: ExperienceBridgeContribution[];
+  experienceWindow?: ExperienceWindow | null;
 }> {
   const key = eventId.trim();
   const endpoint = `${resolveAppOrigin()}/api/experience-bridge/${encodeURIComponent(key)}`;
@@ -49,22 +56,36 @@ export async function fetchExperienceBridgeRemote(
 
 export async function fetchBridgeContributionsRemote(
   eventId: string,
-  options?: { fresh?: boolean },
+  options?: { fresh?: boolean; sinceIso?: string | null },
 ): Promise<ExperienceBridgeContribution[]> {
   const key = eventId.trim();
-  const endpoint = `${resolveAppOrigin()}/api/experience-bridge/${encodeURIComponent(key)}/contributions`;
-  if (options?.fresh) {
-    const body = await fetchJsonUncached<{ contributions?: ExperienceBridgeContribution[] }>(
-      endpoint,
-    );
-    return body.contributions ?? [];
+  const since =
+    options?.sinceIso?.trim() ||
+    (options?.fresh ? null : readBridgeSyncCursor(key));
+  const query = since ? `?since=${encodeURIComponent(since)}` : "";
+  const endpoint = `${resolveAppOrigin()}/api/experience-bridge/${encodeURIComponent(key)}/contributions${query}`;
+
+  const load = async () => {
+    const body = await fetchJsonUncached<{
+      contributions?: ExperienceBridgeContribution[];
+      serverTime?: string;
+    }>(endpoint);
+    const contributions = body.contributions ?? [];
+    const latest = contributions.reduce<string | null>((acc, row) => {
+      return maxIsoTimestamp(acc, row.createdAtIso);
+    }, since);
+    writeBridgeSyncCursor(key, latest ?? body.serverTime ?? new Date().toISOString());
+    return contributions;
+  };
+
+  if (options?.fresh || since) {
+    return load();
   }
-  const body = await cachedFetchJson(
+  return cachedFetchJson(
     bridgeContributionsCacheKey(key),
-    () => fetchJsonUncached<{ contributions?: ExperienceBridgeContribution[] }>(endpoint),
+    load,
     BRIDGE_CONTRIBUTIONS_CACHE_MS,
   );
-  return body.contributions ?? [];
 }
 
 export async function bootstrapExperienceBridgeRemote(input: {

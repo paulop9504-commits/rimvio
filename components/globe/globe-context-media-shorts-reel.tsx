@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { BridgeMediaExchangeChip } from "@/components/globe/bridge-media-exchange-chip";
 import { ContextMediaUploaderBadge } from "@/components/globe/context-media-uploader-badge";
 import { ContextMediaDeleteButton } from "@/components/globe/context-media-delete-button";
 import { ContextMediaVideoSoundButton } from "@/components/globe/context-media-video-sound-button";
@@ -91,7 +92,7 @@ function ContextMediaShortsSlide({
       ref={rootRef}
       className={cn(
         "relative isolate flex shrink-0 snap-start snap-always flex-col",
-        fillViewport && embedded && "box-border h-full min-h-full items-center justify-center px-2 py-2",
+        fillViewport && embedded && "box-border h-full min-h-full items-center justify-center px-0 py-0",
         fillViewport && !embedded && "min-h-full justify-start pb-4 pt-2",
         !fillViewport && "min-h-[min(78vh,680px)] justify-center px-3 py-2",
       )}
@@ -112,11 +113,11 @@ function ContextMediaShortsSlide({
             fillViewport && embedded
               ? "aspect-[9/16] h-full max-h-full w-auto max-w-full"
               : bridge
-                ? "aspect-[9/16] w-full rounded-[1.25rem] bg-muted shadow-sm ring-1 ring-border/60"
+                ? "aspect-[9/16] w-full bg-black"
                 : "aspect-[9/16] w-full rounded-[1.25rem] shadow-[0_16px_48px_rgba(0,0,0,0.22)] ring-1 ring-black/10 bg-black",
             fillViewport && embedded &&
               (bridge
-                ? "rounded-[1.25rem] bg-muted shadow-sm ring-1 ring-border/60"
+                ? "aspect-[9/16] h-full max-h-full w-auto max-w-full bg-black"
                 : "rounded-[1.25rem] shadow-[0_16px_48px_rgba(0,0,0,0.22)] ring-1 ring-black/10 bg-black"),
           )}
         >
@@ -226,6 +227,14 @@ function ContextMediaShortsSlide({
               {item.recallCaption}
             </p>
           </div>
+        ) : null}
+
+        {bridge ? (
+          <BridgeMediaExchangeChip
+            item={item}
+            viewerUserId={viewerUserId}
+            selfDisplayName={selfDisplayName}
+          />
         ) : null}
 
         {!bridge ? (

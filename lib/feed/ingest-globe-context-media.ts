@@ -7,7 +7,11 @@ import {
 import type { BulkMediaSpacetimeCluster } from "@/lib/feed/bulk-media-spacetime-types";
 import { peekBulkMediaSpacetime } from "@/lib/feed/peek-bulk-media-spacetime";
 import { fetchBulkMediaClusterEnrichment } from "@/lib/globe/fetch-bulk-media-cluster-enrichment";
-import { findEventCandidate, upsertEventCandidate } from "@/lib/events/event-store";
+import {
+  findEventCandidate,
+  listEventCandidates,
+  upsertEventCandidate,
+} from "@/lib/events/event-store";
 import { copy } from "@/lib/copy/human-ko";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import type { FeedCaptureFragment, SpacetimeFeedTargetMatch } from "@/lib/feed/feed-capture-types";
@@ -25,6 +29,7 @@ import {
   mergeExifAutoPinOntoEvent,
 } from "@/lib/globe/exif-auto-pin-metadata";
 import { createPersonalGlobePinFromEvent } from "@/lib/globe/create-personal-globe-pin";
+import { ensureBridgeLinkBeforePublish } from "@/lib/experience-bridge/ensure-bridge-link-before-publish";
 import { publishBridgeCaptureContribution } from "@/lib/experience-bridge/publish-bridge-capture-contribution";
 import { syncPersonalGlobePinFromEvent } from "@/lib/globe/sync-personal-globe-pin";
 import { attachMediaSpacetime } from "@/lib/location-ping/attach-media-spacetime";
@@ -85,6 +90,8 @@ export type GlobeBulkMediaIngestSummary = {
   lastEventId: string | null;
   toastLine: string;
   lastSuggestedPlaceName: string | null;
+  /** Set when every file failed — surfaces the last caught error in UI. */
+  lastError?: string | null;
 };
 
 function captureKindFromContext(context: MediaSpacetimeContext): FeedCaptureFragment["kind"] {
@@ -434,16 +441,20 @@ export async function ingestGlobeContextMedia(input: {
     syncPersonalGlobePinFromEvent(input.hintEventId);
   }
 
-  void publishBridgeCaptureContribution({
-    eventId: result.event.id,
-    fragment: result.fragment,
-  }).catch((caught) => {
-    if (typeof window !== "undefined") {
-      const message =
-        caught instanceof Error ? caught.message : "공유 미디어를 올리지 못했어요.";
-      void import("sonner").then(({ toast }) => toast.error(message));
+  if (await ensureBridgeLinkBeforePublish(result.event.id)) {
+    try {
+      await publishBridgeCaptureContribution({
+        eventId: result.event.id,
+        fragment: result.fragment,
+      });
+    } catch (caught) {
+      if (typeof window !== "undefined") {
+        const message =
+          caught instanceof Error ? caught.message : "공유 미디어를 올리지 못했어요.";
+        void import("sonner").then(({ toast }) => toast.error(message));
+      }
     }
-  });
+  }
 
   let suggestedPlaceName: string | null = null;
   try {
@@ -472,6 +483,13 @@ export async function ingestGlobeContextMedia(input: {
   };
 }
 
+function readIngestErrorMessage(caught: unknown): string {
+  if (caught instanceof Error && caught.message.trim()) {
+    return caught.message.trim();
+  }
+  return "사진·동영상을 넣지 못했어요";
+}
+
 function buildBulkToast(input: {
   total: number;
   succeeded: number;
@@ -481,8 +499,12 @@ function buildBulkToast(input: {
   pinsCreated: number;
   exifPinned: number;
   poolStaged: number;
+  lastError?: string | null;
 }): string {
   if (input.succeeded === 0) {
+    if (input.failed > 0 && input.lastError?.trim()) {
+      return input.lastError.trim();
+    }
     return input.failed > 0
       ? "사진·동영상을 넣지 못했어요"
       : "올릴 사진·동영상이 없어요";
@@ -584,6 +606,7 @@ async function ingestGlobeContextMediaBulkClustered(input: {
   exifPinned: number;
   poolStaged: number;
   lastEventId: string | null;
+  lastError: string | null;
 }> {
   const total = input.mediaFiles.length;
   const outcomes: GlobeContextMediaIngestResult[] = [];
@@ -613,6 +636,7 @@ async function ingestGlobeContextMediaBulkClustered(input: {
   }
 
   let progress = 0;
+  let lastError: string | null = null;
   for (const cluster of clusters) {
     const clusterHint = buildBulkClusterHint(cluster);
     let clusterEventId: string | null = null;
@@ -631,8 +655,9 @@ async function ingestGlobeContextMediaBulkClustered(input: {
         if (!clusterEventId && !outcome.stagedToPool) {
           clusterEventId = outcome.result.event.id;
         }
-      } catch {
+      } catch (caught) {
         failed += 1;
+        lastError = readIngestErrorMessage(caught);
       }
       progress += 1;
       input.onProgress?.(progress, total);
@@ -648,6 +673,7 @@ async function ingestGlobeContextMediaBulkClustered(input: {
     exifPinned: counters.exifPinned,
     poolStaged: counters.poolStaged,
     lastEventId: counters.lastEventId,
+    lastError,
   };
 }
 
@@ -700,8 +726,10 @@ export async function ingestGlobeContextMediaBulk(input: {
         pinsCreated: clustered.pinsCreated,
         exifPinned: clustered.exifPinned,
         poolStaged: clustered.poolStaged,
+        lastError: clustered.lastError,
       }),
       lastSuggestedPlaceName,
+      lastError: clustered.lastError,
       outcomes: clustered.outcomes,
     };
   }
@@ -714,6 +742,7 @@ export async function ingestGlobeContextMediaBulk(input: {
   let exifPinned = 0;
   let poolStaged = 0;
   let lastEventId: string | null = null;
+  let lastError: string | null = null;
   const pinEventsSeen = new Set<string>();
 
   for (let index = 0; index < mediaFiles.length; index += 1) {
@@ -743,8 +772,9 @@ export async function ingestGlobeContextMediaBulk(input: {
         pinEventsSeen.add(outcome.result.event.id);
         pinsCreated += 1;
       }
-    } catch {
+    } catch (caught) {
       failed += 1;
+      lastError = readIngestErrorMessage(caught);
     }
     input.onProgress?.(index + 1, total);
   }
@@ -774,8 +804,10 @@ export async function ingestGlobeContextMediaBulk(input: {
       pinsCreated,
       exifPinned,
       poolStaged,
+      lastError,
     }),
     lastSuggestedPlaceName,
+    lastError,
     outcomes,
   };
 }

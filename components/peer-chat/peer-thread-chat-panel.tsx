@@ -32,6 +32,7 @@ import { shouldAnalyzePeerAiLens } from "@/lib/context/peer-thread-policy";
 import type { DeepLinkBubbleCandidate } from "@/lib/peer-chat/ai-lens/types";
 import { LensMapPickerSheet } from "@/components/peer-chat/lens-map-picker-sheet";
 import { LensScheduleConfirmSheet } from "@/components/peer-chat/lens-schedule-confirm-sheet";
+import { ContextTalkRoomPanel } from "@/components/peer-chat/context-talk-room-panel";
 import { usePeerAiLens } from "@/hooks/use-peer-ai-lens";
 import { useLensBubbleActions } from "@/hooks/use-lens-bubble-actions";
 import { cn } from "@/lib/utils";
@@ -47,6 +48,9 @@ type PeerThreadChatPanelProps = {
   simpleDm?: boolean;
   /** Experience ROOM — no bubbles, no read receipts. */
   experienceDiscussion?: boolean;
+  /** Bridge-scoped Context Talk — map backdrop + scroll sync. */
+  contextTalkEventId?: string | null;
+  contextTalkTitle?: string | null;
 };
 
 export function PeerThreadChatPanel({
@@ -57,6 +61,8 @@ export function PeerThreadChatPanel({
   simpleDm = false,
   peerAvatarUrl = null,
   experienceDiscussion = false,
+  contextTalkEventId = null,
+  contextTalkTitle = null,
 }: PeerThreadChatPanelProps) {
   const threadId = policyInput.settings.peerThreadId;
   const phoneDm = isDmThreadId(threadId);
@@ -226,6 +232,112 @@ export function PeerThreadChatPanel({
     }
     return peerProfile.displayName;
   };
+
+  const composer = (
+    <form
+      onSubmit={handleSubmit}
+      className={cn(
+        "flex items-end px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2",
+        experienceDiscussion ? "gap-2" : simple ? "gap-1.5" : "gap-2.5",
+      )}
+    >
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0] ?? null;
+          event.target.value = "";
+          void handleImageFile(file);
+        }}
+      />
+      {canSendImage && !readOnly ? (
+        <button
+          type="button"
+          aria-label="사진 보내기"
+          disabled={composerBusy}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => imageInputRef.current?.click()}
+          className="mb-px flex size-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"
+        >
+          {imageBusy ? (
+            <Loader2 className="size-5 animate-spin" aria-hidden />
+          ) : (
+            <ImagePlus className="size-5" strokeWidth={2} aria-hidden />
+          )}
+        </button>
+      ) : null}
+      <textarea
+        ref={inputRef}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={handleKeyDown}
+        rows={1}
+        enterKeyHint="send"
+        autoComplete="off"
+        autoCorrect="on"
+        disabled={!canSend || readOnly || composerBusy}
+        placeholder={readOnly ? "읽기 전용" : "맥락 이야기"}
+        className="max-h-28 min-h-[44px] flex-1 resize-none overflow-y-auto rounded-2xl border border-border bg-muted px-4 py-2.5 text-[15px] outline-none placeholder:text-muted-foreground"
+      />
+      <button
+        type="button"
+        disabled={!canSend || !text.trim() || composerBusy}
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => void submit()}
+        className="mb-px flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground disabled:opacity-30"
+        aria-label="보내기"
+      >
+        {aiBusy ? (
+          <Loader2 className="size-5 animate-spin" aria-hidden />
+        ) : (
+          <ArrowUp className="size-5 stroke-[2.5]" aria-hidden />
+        )}
+      </button>
+    </form>
+  );
+
+  if (experienceDiscussion && contextTalkEventId?.trim()) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col">
+        {syncError ? (
+          <p className="relative z-10 px-3 py-1.5 text-center text-[11px] text-amber-700/90">
+            {normalizePeerSyncError(syncError)}
+          </p>
+        ) : null}
+        <ContextTalkRoomPanel
+          eventId={contextTalkEventId.trim()}
+          tripTitle={contextTalkTitle}
+          policyInput={policyInput}
+          messages={messages}
+          speakerNameFor={speakerNameFor}
+          composer={composer}
+          className="min-h-0 flex-1"
+        />
+        <LensMapPickerSheet
+          open={Boolean(mapPicker)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setMapPicker(null);
+            }
+          }}
+          candidate={mapPicker}
+          onSelect={(candidate) => onLensSelect(candidate, mapPicker?.sourceMessageId)}
+        />
+        <LensScheduleConfirmSheet
+          open={Boolean(scheduleConfirm)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setScheduleConfirm(null);
+            }
+          }}
+          draft={scheduleConfirm}
+          onSaved={handleScheduleSaved}
+        />
+      </div>
+    );
+  }
 
   return (
     <div

@@ -5,6 +5,7 @@ import type { RefObject } from "react";
 import { GlobeContextMediaFocusCard } from "@/components/globe/globe-context-media-focus-card";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { useGlobeMapMediaCardSize } from "@/hooks/use-globe-map-media-card-size";
+import { useGlobePinScreenAnchor } from "@/hooks/use-globe-pin-screen-anchor";
 import { useGlobeContextVideoSound } from "@/hooks/use-globe-context-video-sound";
 import { useMediaBlobUrl } from "@/hooks/use-media-blob-url";
 import type { GlobeContextTimelineEntry } from "@/lib/globe/list-globe-context-timeline";
@@ -20,6 +21,7 @@ import {
   GLOBE_MAP_FOCUS_CARD_MAX_WIDTH_CLASS,
   GLOBE_MAP_FOCUS_HERO_MEDIA_INTERACTIVE_CLASS,
   GLOBE_MAP_FOCUS_HERO_SHELL_CLASS,
+  GLOBE_MAP_FOCUS_PIN_ANCHOR_OFFSET_PX,
 } from "@/lib/globe/globe-map-focus-hero-layout";
 import {
   EVENT_CANDIDATES_UPDATED,
@@ -129,7 +131,7 @@ function MapMediaSlide({
   }
 
   return (
-    <div className="flex min-h-[9rem] w-full items-center justify-center bg-[#e8e8ed] px-3 text-center text-[13px] font-normal text-[#86868b]">
+    <div className="flex aspect-[16/10] w-full items-center justify-center bg-[#e8e8ed] px-3 text-center text-[13px] font-normal text-[#86868b]">
       {loading || item.pendingRemote
         ? `${item.kind === "video" ? "동영상" : "사진"} 불러오는 중…`
         : item.label}
@@ -137,9 +139,12 @@ function MapMediaSlide({
   );
 }
 
-/** Context media replay — floating card (lodging style) + user resize. */
+/** Context media replay — pin-anchored 16:10 rectangle (early map card). */
 export function GlobeContextMapVideoStage({
   eventId,
+  anchorLat,
+  anchorLng,
+  globeRef,
   visible = true,
   navigationEntries = [],
   onDismiss,
@@ -188,6 +193,18 @@ export function GlobeContextMapVideoStage({
     const volume = resolveExperienceVolumeForEvent(key);
     return projectContextMediaReel({ event, volume, viewerUserId });
   }, [eventId, revision, viewerUserId]);
+
+  const pinLayout = useGlobePinScreenAnchor({
+    globeRef: globeRef ?? { current: null },
+    lat: anchorLat,
+    lng: anchorLng,
+    enabled: visible && reel.length > 0,
+    containerRef,
+  });
+  const pinAnchored = pinLayout?.onScreen === true;
+  const cardWidthPx = pinAnchored
+    ? Math.max(widthPx, pinLayout.widthPx)
+    : widthPx;
 
   const activeEvent = useMemo(() => {
     const key = eventId?.trim();
@@ -307,6 +324,43 @@ export function GlobeContextMapVideoStage({
     handleSwipeEnd(dx, dy);
   };
 
+  const mediaHero = (
+    <>
+      {currentItem ? (
+        <div className={GLOBE_MAP_FOCUS_HERO_SHELL_CLASS}>
+          <MapMediaSlide
+            key={currentItem.id}
+            item={currentItem}
+            playing={playing}
+            onPlayingChange={setPlaying}
+            toggleSoundRef={toggleVideoSoundRef}
+          />
+        </div>
+      ) : null}
+
+      {reel.length > 1 ? (
+        <div className="absolute inset-x-0 bottom-2 z-[3] flex justify-center gap-1.5">
+          {reel.map((item, index) => (
+            <button
+              key={item.id}
+              type="button"
+              aria-label={`${index + 1}`}
+              aria-current={index === mediaIndex}
+              onClick={(event) => {
+                event.stopPropagation();
+                setMediaIndex(index);
+              }}
+              className={cn(
+                "size-1.5 rounded-full shadow-sm",
+                index === mediaIndex ? "bg-white" : "bg-white/45",
+              )}
+            />
+          ))}
+        </div>
+      ) : null}
+    </>
+  );
+
   return (
     <div
       ref={containerRef}
@@ -316,25 +370,26 @@ export function GlobeContextMapVideoStage({
       )}
       data-globe-context-map-video
     >
-      <button
-        type="button"
-        className="pointer-events-auto absolute inset-0 z-[0] bg-black/45 backdrop-blur-md"
-        aria-label={copy.globe.contextMediaFocusCloseAria}
-        onClick={dismiss}
-      />
+      {!pinAnchored ? (
+        <button
+          type="button"
+          className="pointer-events-auto absolute inset-0 z-[0] bg-black/45 backdrop-blur-md"
+          aria-label={copy.globe.contextMediaFocusCloseAria}
+          onClick={dismiss}
+        />
+      ) : null}
 
-      <div
-        className="pointer-events-none absolute inset-x-0 z-[1] flex min-h-0 flex-col items-center justify-center overflow-y-auto overscroll-contain px-3 py-1"
-        style={{
-          top: "max(2.5rem, env(safe-area-inset-top))",
-          bottom: "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 0.5rem)",
-        }}
-        data-globe-context-map-video-anchor
-      >
+      {pinAnchored && pinLayout ? (
         <div
-          className={cn("pointer-events-auto", GLOBE_MAP_FOCUS_CARD_MAX_WIDTH_CLASS)}
-          style={{ width: widthPx }}
-          data-globe-map-media-card-width={widthPx}
+          className="pointer-events-auto absolute z-[1]"
+          style={{
+            left: pinLayout.x,
+            top: pinLayout.y,
+            width: cardWidthPx,
+            transform: `translate(-50%, calc(-100% - ${GLOBE_MAP_FOCUS_PIN_ANCHOR_OFFSET_PX}px))`,
+          }}
+          data-globe-context-map-video-anchor
+          data-globe-map-media-card-width={cardWidthPx}
         >
           <GlobeContextMediaFocusCard
             className="w-full"
@@ -346,45 +401,41 @@ export function GlobeContextMapVideoStage({
             onTouchStart={mergeCardTouchStart}
             onTouchMove={mergeCardTouchMove}
             onTouchEnd={mergeCardTouchEnd}
-            hero={
-              <>
-                {currentItem ? (
-                  <div className={GLOBE_MAP_FOCUS_HERO_SHELL_CLASS}>
-                    <MapMediaSlide
-                      key={currentItem.id}
-                      item={currentItem}
-                      playing={playing}
-                      onPlayingChange={setPlaying}
-                      toggleSoundRef={toggleVideoSoundRef}
-                    />
-                  </div>
-                ) : null}
-
-                {reel.length > 1 ? (
-                  <div className="absolute inset-x-0 bottom-2 z-[3] flex justify-center gap-1.5">
-                    {reel.map((item, index) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        aria-label={`${index + 1}`}
-                        aria-current={index === mediaIndex}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setMediaIndex(index);
-                        }}
-                        className={cn(
-                          "size-1.5 rounded-full shadow-sm",
-                          index === mediaIndex ? "bg-white" : "bg-white/45",
-                        )}
-                      />
-                    ))}
-                  </div>
-                ) : null}
-              </>
-            }
+            hero={mediaHero}
           />
         </div>
-      </div>
+      ) : (
+        <div
+          className="pointer-events-none absolute inset-x-0 z-[1] flex min-h-0 flex-col items-center justify-center overflow-y-auto overscroll-contain px-3 py-1"
+          style={{
+            top: "max(2.5rem, env(safe-area-inset-top))",
+            bottom: "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 0.5rem)",
+          }}
+          data-globe-context-map-video-anchor
+        >
+          <div
+            className={cn(
+              "pointer-events-auto",
+              GLOBE_MAP_FOCUS_CARD_MAX_WIDTH_CLASS,
+            )}
+            style={{ width: cardWidthPx }}
+            data-globe-map-media-card-width={cardWidthPx}
+          >
+            <GlobeContextMediaFocusCard
+              className="w-full"
+              title={contextTitle}
+              recallCaption={subtitle}
+              onClose={dismiss}
+              closeAriaLabel={copy.globe.contextMediaFocusCloseAria}
+              onHeroPress={onHeroPress ?? onOpenDetails}
+              onTouchStart={mergeCardTouchStart}
+              onTouchMove={mergeCardTouchMove}
+              onTouchEnd={mergeCardTouchEnd}
+              hero={mediaHero}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

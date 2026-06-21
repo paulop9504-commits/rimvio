@@ -7,6 +7,7 @@ import type {
   ExperienceBridgeState,
   ExperienceBridgeTimelineItem,
 } from "@/lib/experience-bridge/experience-bridge-types";
+import type { ExperienceWindow } from "@/lib/experience-window/experience-window-types";
 import {
   acceptExperienceBridgeRemote,
   bootstrapExperienceBridgeRemote,
@@ -36,6 +37,7 @@ export function useExperienceBridge(input: {
 
   const [state, setState] = useState<ExperienceBridgeState | null>(null);
   const [timeline, setTimeline] = useState<ExperienceBridgeTimelineItem[]>([]);
+  const [experienceWindow, setExperienceWindow] = useState<ExperienceWindow | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,12 +51,14 @@ export function useExperienceBridge(input: {
         const data = await fetchExperienceBridgeRemote(eventId);
         setState(data.state);
         setTimeline(data.timeline);
+        setExperienceWindow(data.experienceWindow ?? null);
         if (data.state) {
           writeLocalBridgeState(data.state);
         }
       } else {
         setState(readLocalBridgeState(eventId));
         setTimeline([]);
+        setExperienceWindow(null);
       }
       setError(null);
     } catch (caught) {
@@ -63,6 +67,7 @@ export function useExperienceBridge(input: {
         if (local) {
           setState(local);
           setTimeline([]);
+          setExperienceWindow(null);
           setError(null);
         } else {
           setError(toBridgeFetchError(caught) ?? "불러오지 못했어요.");
@@ -189,6 +194,7 @@ export function useExperienceBridge(input: {
   return {
     state,
     timeline,
+    experienceWindow,
     loading,
     error,
     isHost,

@@ -22,7 +22,7 @@ export function GuestPeersLanding({
     <div className={cn("flex flex-col gap-4 pb-6", className)}>
       {configured ? (
         <>
-          <RimvioGoogleSignInCard className="mx-1" nextPath="/onboarding" />
+          <RimvioGoogleSignInCard className="mx-1" nextPath="/peers" />
           <p className="px-3 text-center text-[12px] leading-relaxed text-[#6b7684]">
             {copy.peers.guestSignInHint}
           </p>

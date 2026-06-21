@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { Suspense } from "react";
 import { usePathname } from "next/navigation";
 import { LoginScreen } from "@/components/login-screen";
+import { MaterializeVaultSyncMount } from "@/components/materialize-vault-sync-mount";
 import { RimvioLogo } from "@/components/rimvio-logo";
 import { useAuth } from "@/hooks/use-auth";
 import { useCopy } from "@/hooks/use-copy";
@@ -52,5 +53,10 @@ export function AuthGate({ children }: AuthGateProps) {
     );
   }
 
-  return <div key={pathname}>{children}</div>;
+  return (
+    <div key={pathname}>
+      <MaterializeVaultSyncMount />
+      {children}
+    </div>
+  );
 }

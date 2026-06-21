@@ -1,0 +1,103 @@
+/**
+ * Rimvio ontology utilities — import from globals.css
+ * Simple is Best: one canvas, white surfaces, blue action, shadow not border.
+ */
+
+.rimvio-surface-card {
+  border-radius: 1rem;
+  background: var(--card);
+  color: var(--card-foreground);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.rimvio-hero-cta {
+  display: inline-flex;
+  min-height: 2.75rem;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  background: var(--primary);
+  padding-inline: 1.25rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--primary-foreground);
+  box-shadow: 0 2px 8px rgba(0, 113, 227, 0.22);
+  transition: transform 0.15s ease, opacity 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.rimvio-hero-cta:active:not(:disabled) {
+  transform: scale(0.98);
+  opacity: 0.92;
+}
+
+.rimvio-hero-cta:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.rimvio-secondary-cta {
+  display: inline-flex;
+  min-height: 2.75rem;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  background: var(--muted);
+  padding-inline: 1.25rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--foreground);
+  transition: transform 0.15s ease, background-color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.rimvio-secondary-cta:active:not(:disabled) {
+  transform: scale(0.98);
+  background: color-mix(in oklch, var(--muted) 85%, black);
+}
+
+/* Bottom tab — icon + label (Apple HIG) */
+.rimvio-bottom-nav-tab-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.125rem;
+  min-width: 3.5rem;
+}
+
+.rimvio-bottom-nav-label {
+  font-size: 0.625rem;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--muted-foreground);
+}
+
+.rimvio-bottom-nav-tab[aria-current="page"] .rimvio-bottom-nav-label {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.rimvio-bottom-nav-tab--capture .rimvio-bottom-nav-slot {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: 0 2px 10px rgba(0, 113, 227, 0.35);
+}
+
+.rimvio-bottom-nav-tab--capture .rimvio-bottom-nav-slot svg {
+  color: var(--primary-foreground) !important;
+}
+
+.rimvio-bottom-nav-tab[aria-current="page"] .rimvio-bottom-nav-slot svg {
+  color: var(--primary);
+}

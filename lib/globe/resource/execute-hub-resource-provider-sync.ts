@@ -22,7 +22,7 @@ export async function executeHubResourceProviderSync(input: {
       if (input.resource.sourceHubId !== "flight" || !input.resource.action) {
         return { ok: false, skipped: true, note: "flight_not_connected" };
       }
-      return { ok: true, note: "flight_status_stub" };
+      return { ok: false, skipped: true, note: "flight_status_stub" };
 
     case "ticket_ingest":
       if (input.resource.sourceHubId !== "ticket") {
@@ -31,7 +31,7 @@ export async function executeHubResourceProviderSync(input: {
       if (input.resource.action) {
         return { ok: true, note: "ticket_already_connected" };
       }
-      return { ok: true, note: "ticket_ingest_stub" };
+      return { ok: false, skipped: true, note: "ticket_ingest_stub" };
 
     case "places_lodging":
       if (

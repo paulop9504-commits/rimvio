@@ -1,5 +1,9 @@
 import type { ExperienceBridgeContribution } from "@/lib/experience-bridge/experience-bridge-types";
-import type { FeedCaptureFragment } from "@/lib/feed/feed-capture-types";
+import type { BridgeContributionCapture } from "@/lib/experience-bridge/bridge-capture-spacetime";
+import {
+  bridgeCaptureTakenAtIso,
+  normalizeBridgeContributionCapture,
+} from "@/lib/experience-bridge/normalize-bridge-contribution-capture";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type BridgeContributionRow = {
@@ -7,6 +11,10 @@ export type BridgeContributionRow = {
   contributor_user_id: string;
   capture_id: string;
   capture: unknown;
+  file_hash?: string | null;
+  taken_at_iso?: string | null;
+  geohash?: string | null;
+  storage_path?: string | null;
   created_at: string;
 };
 
@@ -22,6 +30,10 @@ function rowToContribution(row: BridgeContributionRow): BridgeContribution | nul
     capture: {
       ...capture,
       ownerUserId: capture.ownerUserId ?? row.contributor_user_id,
+      fileHash: capture.fileHash ?? row.file_hash ?? null,
+      takenAtIso: capture.takenAtIso ?? row.taken_at_iso ?? capture.capturedAtIso,
+      geohash: capture.geohash ?? row.geohash ?? null,
+      storagePath: capture.storagePath ?? row.storage_path ?? null,
     },
     createdAtIso: row.created_at,
   };
@@ -30,17 +42,25 @@ function rowToContribution(row: BridgeContributionRow): BridgeContribution | nul
 export async function listBridgeContributions(
   supabase: SupabaseClient,
   bridgeEventId: string,
+  options?: { sinceIso?: string | null },
 ): Promise<BridgeContribution[]> {
   const key = bridgeEventId.trim();
   if (!key) {
     return [];
   }
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("experience_bridge_contributions")
     .select("*")
     .eq("bridge_event_id", key)
     .order("created_at", { ascending: true });
+
+  const since = options?.sinceIso?.trim();
+  if (since) {
+    query = query.gt("created_at", since);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     throw error;
@@ -56,20 +76,27 @@ export async function upsertBridgeContribution(
   input: {
     bridgeEventId: string;
     contributorUserId: string;
-    capture: BridgeContribution["capture"];
+    capture: BridgeContributionCapture;
   },
 ): Promise<void> {
-  const captureId = input.capture.id.trim();
+  const normalized = normalizeBridgeContributionCapture(input.capture);
+  const captureId = normalized.id.trim();
   if (!captureId) {
     throw new Error("capture_id_required");
   }
+
+  const takenAtIso = bridgeCaptureTakenAtIso(normalized);
 
   const { error } = await supabase.from("experience_bridge_contributions").upsert(
     {
       bridge_event_id: input.bridgeEventId.trim(),
       contributor_user_id: input.contributorUserId,
       capture_id: captureId,
-      capture: input.capture as unknown as Record<string, unknown>,
+      capture: normalized as unknown as Record<string, unknown>,
+      file_hash: normalized.fileHash ?? null,
+      taken_at_iso: takenAtIso,
+      geohash: normalized.geohash ?? null,
+      storage_path: normalized.storagePath ?? null,
     },
     { onConflict: "bridge_event_id,contributor_user_id,capture_id" },
   );
@@ -106,7 +133,7 @@ export async function deleteBridgeContribution(
     throw readError;
   }
 
-  const capture = data?.capture as BridgeContribution["capture"] | undefined;
+  const capture = data?.capture as BridgeContributionCapture | undefined;
   const mediaUrl =
     typeof capture?.url === "string" && capture.url.trim()
       ? capture.url.trim()

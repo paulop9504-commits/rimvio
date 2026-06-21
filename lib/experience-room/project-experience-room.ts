@@ -5,6 +5,7 @@ import {
 import type { ExperienceRoom } from "@/lib/experience-room/experience-room-types";
 import { resolveExperienceRoomId } from "@/lib/experience-room/resolve-experience-room-id";
 import type { EventCandidate } from "@/lib/events/event-candidate";
+import { EXPERIENCE_BRIDGE_META_KEYS } from "@/lib/experience-bridge/constants";
 import { readFeedCaptureFragments } from "@/lib/feed/feed-capture-metadata";
 import { readPlanContextFromEvent } from "@/lib/plan-context/plan-context-metadata";
 import type { SharedGlobePin } from "@/lib/peer-chat/globe-pin-types";
@@ -77,6 +78,13 @@ export function projectExperienceRoom(input: {
       : null;
   if (metaThread) {
     threadIds.add(metaThread);
+  }
+  const bridgeThread =
+    typeof event.metadata?.[EXPERIENCE_BRIDGE_META_KEYS.peerThreadId] === "string"
+      ? event.metadata[EXPERIENCE_BRIDGE_META_KEYS.peerThreadId]!.trim()
+      : null;
+  if (bridgeThread) {
+    threadIds.add(bridgeThread);
   }
 
   const pinIds = (input.globePins ?? []).map((pin) => pin.payload.pinId);

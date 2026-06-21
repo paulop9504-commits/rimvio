@@ -1,4 +1,5 @@
 import type { MediaSpacetimeContext } from "@/lib/location-ping/types";
+import { scheduleMaterializeAfterMediaSave } from "@/lib/materialize/materialize-after-media-save";
 
 const DB_NAME = "rimvio-spacetime";
 const DB_VERSION = 1;
@@ -108,7 +109,19 @@ export async function saveMediaSpacetimeContext(
   }
 
   emitUpdated();
+  scheduleMaterializeAfterMediaSave({ context });
   return context;
+}
+
+export async function findMediaSpacetimeContextById(
+  contextId: string,
+): Promise<MediaSpacetimeContext | null> {
+  await hydrateMediaContextStore();
+  const id = contextId.trim();
+  if (!id) {
+    return null;
+  }
+  return memoryContexts.find((row) => row.id === id) ?? null;
 }
 
 export async function listMediaSpacetimeContexts(): Promise<MediaSpacetimeContext[]> {

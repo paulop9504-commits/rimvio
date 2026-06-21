@@ -14,6 +14,12 @@ import { projectContextMediaReel } from "@/lib/globe/project-context-media-reel"
 import { ExperienceBridgePreviewCollage } from "@/components/globe/experience-bridge-preview-collage";
 import { ExperienceBridgeParticipantsStrip } from "@/components/globe/experience-bridge-participants-strip";
 import { copy } from "@/lib/copy/human-ko";
+import {
+  RIMVIO_TYPE,
+  rimvioCompactPrimaryCtaClass,
+  rimvioGhostCtaClass,
+  rimvioSurfaceCardClass,
+} from "@/lib/design/rimvio-ontology";
 import { cn } from "@/lib/utils";
 
 export type ExperienceBridgePanelProps = {
@@ -160,20 +166,15 @@ export function ExperienceBridgePanel({
 
   return (
     <section
-      className={cn(
-        "overflow-hidden rounded-[1.25rem] border border-border/80 bg-card shadow-sm",
-        className,
-      )}
+      className={cn(rimvioSurfaceCardClass("overflow-hidden p-0"), className)}
       data-experience-bridge
     >
       <ExperienceBridgePreviewCollage media={previewMedia} className="rounded-none ring-0" />
 
       <div className="space-y-4 p-4">
         <div className="space-y-2">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">
-            {copy.globe.bridgeMediaEyebrow}
-          </p>
-          <p className="text-[14px] leading-snug text-foreground">
+          <p className={RIMVIO_TYPE.eyebrow}>{copy.globe.bridgeMediaEyebrow}</p>
+          <p className={RIMVIO_TYPE.body}>
             같은 여행 · 각자 지도 · 한 타임라인. Rimvio 안에서만 함께 봐요.
           </p>
         </div>
@@ -188,7 +189,7 @@ export function ExperienceBridgePanel({
               type="button"
               disabled={busy}
               onClick={() => void handleAccept()}
-              className="flex-1 rounded-2xl bg-foreground px-4 py-3.5 text-[14px] font-semibold text-background shadow-sm disabled:opacity-60"
+              className={cn(rimvioCompactPrimaryCtaClass(), "py-3.5 disabled:opacity-60")}
             >
               {copy.globe.bridgeInviteAcceptCta}
             </button>
@@ -196,7 +197,7 @@ export function ExperienceBridgePanel({
               type="button"
               disabled={busy}
               onClick={() => void handleDecline()}
-              className="rounded-2xl px-4 py-3.5 text-[14px] font-medium text-muted-foreground"
+              className={cn(rimvioGhostCtaClass(), "py-3.5 disabled:opacity-60")}
             >
               {copy.globe.bridgeInviteDeclineCta}
             </button>

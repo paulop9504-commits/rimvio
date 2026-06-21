@@ -13,18 +13,25 @@ import {
   upsertEventCandidate as storeUpsert,
 } from "@/lib/events/event-store";
 import { validateEventCandidateWire } from "@/lib/event-kernel/schema-lock/event-schema";
+import { scheduleLifeEventVaultSync } from "@/lib/materialize/schedule-life-event-vault-sync";
 
 export function commitEventUpsert(
   input: EventCandidateUpsertInput,
 ): EventCandidate {
-  return storeUpsert(input);
+  const committed = storeUpsert(input);
+  scheduleLifeEventVaultSync(committed);
+  return committed;
 }
 
 export function commitEventLifecycle(
   id: string,
   lifecycle: EventCandidateLifecycle,
 ): EventCandidate | null {
-  return storeTransition(id, lifecycle);
+  const committed = storeTransition(id, lifecycle);
+  if (committed) {
+    scheduleLifeEventVaultSync(committed);
+  }
+  return committed;
 }
 
 /** Client/server — apply orchestrate or hydrate wire into Event SSOT. */

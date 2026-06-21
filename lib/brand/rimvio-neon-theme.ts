@@ -1,30 +1,29 @@
 import { cn } from "@/lib/utils";
-import { RIMVIO_CANVAS, RIMVIO_LOGO_ICON_BG } from "@/lib/brand/rimvio-logo-src";
 
 /**
- * Retro Raincloud — dusty periwinkle shell + readable charcoal ink.
+ * Rimvio visual tokens — Simple is Best (Apple-grade light canvas).
  */
 export const RIMVIO_NEON = {
-  canvas: RIMVIO_LOGO_ICON_BG,
+  canvas: "#f5f5f7",
   base: "#ffffff",
   surface: "#ffffff",
-  surfaceMuted: "#f2f3f5",
-  surfaceRaised: "#ebedef",
-  border: "rgba(6, 6, 7, 0.08)",
-  borderSubtle: "rgba(6, 6, 7, 0.05)",
-  purple: "#5865f2",
-  purpleDeep: "#4752c4",
-  cyan: "#00a8fc",
-  cyanDeep: "#0086c9",
-  magenta: "#e3717d",
-  amber: "#faa81a",
-  green: "#23a559",
-  text: "#060607",
-  textMuted: "#4e5058",
-  textDim: "#6d7178",
-  primaryBtn: "#5865f2",
-  primaryBtnPressed: "#4752c4",
-  focusRing: "rgba(88, 101, 242, 0.45)",
+  surfaceMuted: "#f5f5f7",
+  surfaceRaised: "#ffffff",
+  border: "rgba(0, 0, 0, 0.08)",
+  borderSubtle: "rgba(0, 0, 0, 0.04)",
+  purple: "#0071e3",
+  purpleDeep: "#0066cc",
+  cyan: "#0071e3",
+  cyanDeep: "#0066cc",
+  magenta: "#ff3b30",
+  amber: "#ff9500",
+  green: "#34c759",
+  text: "#1d1d1f",
+  textMuted: "#86868b",
+  textDim: "#aeaeb2",
+  primaryBtn: "#0071e3",
+  primaryBtnPressed: "#0066cc",
+  focusRing: "rgba(0, 113, 227, 0.35)",
 } as const;
 
 export type RimvioEdgeVariant = "default" | "cyan" | "magenta" | "amber" | "green";
@@ -37,15 +36,14 @@ const EDGE_VARIANT_CLASS: Record<RimvioEdgeVariant, string> = {
   green: "rimvio-edge-card--green",
 };
 
-/** Logo tile — prismatic edge only; mark blends with page canvas. */
+/** Logo tile — minimal edge on light canvas. */
 export const rimvioLogoFrameClass = cn(
-  "rimvio-edge-card rimvio-edge-card--logo rounded-2xl bg-transparent p-1",
-  "shadow-[0_4px_18px_rgba(88,101,242,0.12)]",
+  "rounded-2xl bg-transparent p-1",
+  "shadow-[0_1px_4px_rgba(0,0,0,0.06)]",
 );
 
 export const rimvioNeonWordmarkClass = cn(
-  "bg-gradient-to-r from-[#5865f2] via-[#00a8fc] to-[#5865f2]",
-  "bg-clip-text text-transparent",
+  "font-semibold tracking-tight text-primary",
 );
 
 export function rimvioEdgeCardClass(
@@ -59,8 +57,14 @@ export function rimvioEdgeCardClass(
   );
 }
 
-export const rimvioNeonCardClass = rimvioEdgeCardClass("lg");
-export const rimvioNeonCardSmClass = rimvioEdgeCardClass("sm");
+export const rimvioNeonCardClass = cn(
+  "rounded-2xl bg-card text-card-foreground",
+  "shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]",
+);
+export const rimvioNeonCardSmClass = cn(
+  "rounded-xl bg-card text-card-foreground",
+  "shadow-[0_1px_2px_rgba(0,0,0,0.05)] ring-1 ring-black/[0.04]",
+);
 
 /** Sticky chrome — soft divider on light canvas. */
 export const rimvioHeaderChromeClass =

@@ -8,6 +8,9 @@ import { mapGateSlice } from "@/lib/personal-read-model/map-gate-slice";
 import { mapMeaningSlice } from "@/lib/personal-read-model/map-meaning-slice";
 import { mapRecallSlice } from "@/lib/personal-read-model/map-recall-slice";
 import { resolveReadScopeAi } from "@/lib/personal-read-model/resolve-read-scope-ai";
+import { listContextHubServicesForEvent } from "@/lib/globe/context-hub/context-hub-service-catalog";
+import { listLearningRollup } from "@/lib/archive/learning-rollup-store";
+import { projectSemanticTriples } from "@/lib/semantic/project-semantic-triples";
 import type {
   PersonalReadPacket,
   PersonalReadScope,
@@ -81,6 +84,14 @@ export function assemblePersonalReadPacket(
     input.activeLink?.category ||
     null;
 
+  const hubServices = listContextHubServicesForEvent(focusEvent);
+  const rollupEntries = listLearningRollup();
+  const semanticTriples = projectSemanticTriples({
+    focusEvent,
+    hubServices,
+    rollupEntries,
+  });
+
   const packet: PersonalReadPacket = {
     meta: {
       assembledAt: now.toISOString(),
@@ -100,9 +111,15 @@ export function assemblePersonalReadPacket(
       events: life.events,
       now,
       contextFilter,
+      semanticTriples,
     }),
     recall: mapRecallSlice({ life, focusEvent, now }),
-    action: mapActionSlice({ focusEvent, surface }),
+    action: mapActionSlice({
+      focusEvent,
+      surface,
+      semanticTriples,
+      rollupEntries,
+    }),
     gates: mapGateSlice({
       activeLink: input.activeLink,
       trustLevel,

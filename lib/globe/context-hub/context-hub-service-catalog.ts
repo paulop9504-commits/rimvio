@@ -14,6 +14,7 @@ import {
   readContextTicketArtifact,
 } from "@/lib/globe/context-hub/read-context-ticket-artifact";
 import { isLodgingHubEnabled } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
+import { isBridgeSharedEvent } from "@/lib/globe/is-bridge-shared-event";
 import { findPersonalGlobePinByEventId } from "@/lib/globe/personal-globe-pin-store";
 import { ticketPrimaryLabel, detectTicketBrand } from "@/lib/resolvers/ticket-deep-links";
 
@@ -104,6 +105,12 @@ function isTravelContext(event: EventCandidate): boolean {
   }
   if (event.metadata?.feedPlanEnabled === true) {
     return true;
+  }
+  if (isBridgeSharedEvent(event)) {
+    const plan = readPlanContextFromEvent(event);
+    if (plan?.place?.trim() || event.place?.trim()) {
+      return true;
+    }
   }
   return shouldOfferDepartureHub(event);
 }

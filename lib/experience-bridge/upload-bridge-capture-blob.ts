@@ -68,9 +68,14 @@ function resolveSupabasePublicUrl(): string {
 export async function uploadBridgeCaptureBlob(input: {
   eventId: string;
   capture: FeedCaptureFragment;
-}): Promise<string | null> {
+}): Promise<{ url: string; storagePath: string; byteSize: number } | null> {
   if (isUsableBridgeMediaUrl(input.capture.url)) {
-    return input.capture.url!.trim();
+    const url = input.capture.url!.trim();
+    return {
+      url,
+      storagePath: "",
+      byteSize: 0,
+    };
   }
 
   const mediaId = input.capture.mediaContextId?.trim();
@@ -129,5 +134,9 @@ export async function uploadBridgeCaptureBlob(input: {
     throw new Error(message || "미디어 업로드에 실패했어요.");
   }
 
-  return publicBridgeMediaUrl(resolveSupabasePublicUrl(), objectPath);
+  return {
+    url: publicBridgeMediaUrl(resolveSupabasePublicUrl(), objectPath),
+    storagePath: objectPath,
+    byteSize: blob.size,
+  };
 }

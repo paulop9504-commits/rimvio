@@ -1,6 +1,7 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import type { FeedCaptureKind } from "@/lib/feed/feed-capture-types";
 import type { FeedCaptureFragment } from "@/lib/feed/feed-capture-types";
+import type { ExperiencePhase } from "@/lib/experience-window/experience-window-types";
 
 export type ExperienceBridgeParticipantStatus =
   | "pending"
@@ -37,14 +38,25 @@ export type ExperienceBridgeState = {
   participants: readonly ExperienceBridgeParticipant[];
 };
 
+export type ExperienceBridgeTimelineKind =
+  | FeedCaptureKind
+  | "shared_pin_photo"
+  | "shared_pin_video"
+  | "chat_message"
+  | "bridge_prep_marker";
+
 export type ExperienceBridgeTimelineItem = {
   id: string;
-  kind: FeedCaptureKind | "shared_pin_photo" | "shared_pin_video";
+  kind: ExperienceBridgeTimelineKind;
+  /** Sort key — same as occurred-at for all sources. */
   capturedAtIso: string;
+  phase?: ExperiencePhase;
   ownerUserId: string;
   authorDisplayName: string;
   placeLabel?: string;
   imageUrl?: string | null;
+  /** chat_message body (truncated on wire). */
+  body?: string;
   /** View-only for non-owner media in shared bridge UI. */
   viewOnly: boolean;
 };

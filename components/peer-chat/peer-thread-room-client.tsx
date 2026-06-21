@@ -163,10 +163,10 @@ function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
         <p className="text-sm text-muted-foreground">
-          이 친구는 목록에 없어요. ROOM 허브에서 친구를 추가해 주세요
+          이 친구는 목록에 없어요. 친구 탭에서 추가해 주세요
         </p>
-        <Link href="/peers" className="text-sm font-semibold text-rimvio-neon-cyan">
-          ROOM 으로
+        <Link href="/peers" className="text-sm font-semibold text-primary">
+          친구 추가하기
         </Link>
       </div>
     );
@@ -180,7 +180,7 @@ function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col bg-background">
-      <header className="flex h-11 shrink-0 items-center border-b border-border bg-card px-0.5 pb-0 pt-[env(safe-area-inset-top,0px)]">
+      <header className="relative z-20 flex h-11 shrink-0 items-center border-b border-border/80 bg-card/95 px-0.5 pb-0 pt-[env(safe-area-inset-top,0px)] backdrop-blur-md">
         <Link
           href={experienceDiscussion ? experienceBackHref : "/peers"}
           className="flex size-10 items-center justify-center text-foreground"
@@ -309,6 +309,8 @@ function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
           peerAvatarUrl={isGroup ? null : profile?.avatarUrl}
           simpleDm={phoneDm && !isGroup}
           experienceDiscussion={experienceDiscussion}
+          contextTalkEventId={experienceEventId}
+          contextTalkTitle={experienceTitle}
         />
       </PeerChatThreadShell>
     </div>

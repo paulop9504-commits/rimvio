@@ -461,6 +461,14 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
             }),
           )
           .catch(() => {});
+        void import("@/lib/experience-bridge/publish-peer-chat-capture-to-bridge")
+          .then(({ publishPeerChatCaptureToBridgeIfLinked }) =>
+            publishPeerChatCaptureToBridgeIfLinked({
+              peerThreadId: sendThreadId,
+              context: spacetime,
+            }),
+          )
+          .catch(() => {});
         setCloudThreadId((current) => current ?? sendThreadId);
         setCloudReady(true);
         setMessages((current) => {

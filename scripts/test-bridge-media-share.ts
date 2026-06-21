@@ -90,6 +90,36 @@ assert.equal(
   1,
 );
 
+const stalePlan = [
+  {
+    contributorUserId: "u1",
+    createdAtIso: "2026-01-01T00:00:00.000Z",
+    capture: {
+      id: "c1",
+      kind: "photo" as const,
+      capturedAtIso: "2026-01-01T00:00:00.000Z",
+    },
+  },
+];
+const freshDedicated = [
+  {
+    contributorUserId: "u1",
+    createdAtIso: "2026-01-02T00:00:00.000Z",
+    capture: {
+      id: "c1",
+      kind: "photo" as const,
+      capturedAtIso: "2026-01-01T00:00:00.000Z",
+      url: "https://cdn.example.com/b.jpg",
+    },
+  },
+];
+const merged = resolveBridgeContributionsForSync({
+  fromPlan: stalePlan,
+  fromDedicated: freshDedicated,
+});
+assert.equal(merged.length, 1);
+assert.equal(merged[0]?.capture.url, "https://cdn.example.com/b.jpg");
+
 resetClientFetchCacheForTests();
 
 console.log("test-bridge-media-share: ok");

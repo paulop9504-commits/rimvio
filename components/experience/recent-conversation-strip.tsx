@@ -1,6 +1,8 @@
 "use client";
 
 import type { ExperienceConversationProjection } from "@/lib/globe/experience-conversation-types";
+import { MessageCircle } from "lucide-react";
+import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
 export type RecentConversationStripProps = {
@@ -9,24 +11,44 @@ export type RecentConversationStripProps = {
   className?: string;
 };
 
-/** "최근 이 경험에서 있었던 이야기" — no bubbles, no read receipts. */
+/** Recent talk previews — or empty CTA when thread exists but no messages yet. */
 export function RecentConversationStrip({
   conversation,
   onOpenRoom,
   className,
 }: RecentConversationStripProps) {
   if (conversation.previews.length === 0) {
-    return null;
+    if (!conversation.peerThreadId?.trim()) {
+      return null;
+    }
+    return (
+      <button
+        type="button"
+        onClick={onOpenRoom}
+        className={cn(
+          "flex w-full items-center gap-3 rounded-2xl bg-muted/50 px-3.5 py-3 text-left active:bg-muted",
+          className,
+        )}
+        data-recent-conversation-empty
+      >
+        <MessageCircle className="size-5 shrink-0 text-primary" aria-hidden />
+        <span className="min-w-0 flex-1">
+          <span className="block text-[14px] font-semibold text-foreground">
+            {copy.globe.bridgeContextTalkCta}
+          </span>
+          <span className="block text-[12px] text-muted-foreground">
+            {copy.globe.bridgeContextTalkPreviewEmpty}
+          </span>
+        </span>
+      </button>
+    );
   }
 
   return (
     <section className={cn("space-y-2", className)} data-recent-conversation-strip>
-      <div>
-        <p className="text-[12px] font-semibold text-muted-foreground">최근 대화</p>
-        <p className="mt-0.5 text-[11px] text-muted-foreground/80">
-          최근 이 경험에서 있었던 이야기
-        </p>
-      </div>
+      <p className="text-[12px] font-semibold text-muted-foreground">
+        {copy.globe.bridgeContextTalkPreviewEyebrow}
+      </p>
       <div className="rounded-xl border border-border bg-background">
         {conversation.previews.map((row, index) => (
           <button

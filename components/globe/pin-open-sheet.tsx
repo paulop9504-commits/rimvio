@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { X } from "lucide-react";
+import { MessageCircle, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   PinContextFieldSheet,
@@ -14,7 +14,7 @@ import { PinContextTappableField } from "@/components/globe/pin-context-tappable
 import { GlobeContextPhotoButton } from "@/components/globe/globe-context-photo-button";
 import { GlobeContextShareFriendsPanel } from "@/components/globe/globe-context-share-friends-panel";
 import { GlobeContextMediaShortsReel } from "@/components/globe/globe-context-media-shorts-reel";
-import { ExperienceBridgeMediaShell } from "@/components/globe/experience-bridge-media-shell";
+import { ExperienceBridgeMediaShell, type BridgeMediaArrivalHint } from "@/components/globe/experience-bridge-media-shell";
 import { BridgeContextPanel } from "@/components/globe/bridge-context-panel";
 import { GlobeMediaPoolSheet } from "@/components/globe/globe-media-pool-sheet";
 import { PinOpenMediaContextPager, PinOpenMediaContextPageTabs, type PinMediaContextPage } from "@/components/globe/pin-open-media-context-pager";
@@ -45,15 +45,20 @@ import {
   buildExperienceRoomHref,
   projectExperienceConversation,
 } from "@/lib/globe/project-experience-conversation";
+import { resolveExperienceTalkThreadId } from "@/lib/globe/resolve-experience-peer-thread-id";
 import type { PinCluster } from "@/lib/globe/pin-cluster-types";
 import { projectPinClustersFromGraph } from "@/lib/globe/project-pin-clusters";
 import { projectContextMediaReel } from "@/lib/globe/project-context-media-reel";
 import { projectTripLegBar } from "@/lib/globe/project-trip-leg-arcs";
 import { projectExperienceRoom } from "@/lib/experience-room/project-experience-room";
 import { projectRepresentativeMoments } from "@/lib/globe/project-representative-moments";
+import { BridgeCompanionStatusStrip } from "@/components/globe/bridge-companion-status-strip";
+import { projectBridgeCompanionStatus } from "@/lib/experience-bridge/project-bridge-companion-status";
+import { useBridgeSyncPhase } from "@/hooks/use-bridge-stack-prep";
 import { syncBridgeSharedMediaFromRemote } from "@/lib/experience-bridge/sync-bridge-participant-media";
 import { listReadableBridgeParticipants } from "@/lib/experience-bridge";
 import { useExperienceBridge } from "@/hooks/use-experience-bridge";
+import { resolveExperienceWindow } from "@/lib/experience-window";
 import { attachPoolMediaBatch } from "@/lib/media-pool/attach-pool-media-to-event";
 import { isBridgeLinkedEventId } from "@/lib/experience-bridge/stamp-bridge-event-metadata";
 import { isBridgeSharedEvent } from "@/lib/globe/is-bridge-shared-event";
@@ -64,6 +69,18 @@ import {
   listLifeEventCandidates,
 } from "@/lib/life-read-model";
 import { indexEventsById } from "@/lib/plan-context/project-plan-to-feed-slot";
+import {
+  RIMVIO_TYPE,
+  rimvioHeroCtaClass,
+  rimvioPinOpenSheetClass,
+  rimvioSecondaryCtaClass,
+  rimvioSheetBackdropClass,
+  rimvioSheetCloseBtnClass,
+  rimvioSheetFooterClass,
+  rimvioSheetGrabberClass,
+  rimvioSheetHeaderClass,
+  rimvioTalkRowClass,
+} from "@/lib/design/rimvio-ontology";
 import { cn } from "@/lib/utils";
 import { copy } from "@/lib/copy/human-ko";
 
@@ -93,6 +110,10 @@ export function PinOpenSheet({
   const [sheetPage, setSheetPage] = useState<PinMediaContextPage>("media");
   const [authorFilter, setAuthorFilter] = useState<string | null>(null);
   const [mediaPoolOpen, setMediaPoolOpen] = useState(false);
+  const [mediaArrivalHint, setMediaArrivalHint] = useState<BridgeMediaArrivalHint | null>(
+    null,
+  );
+  const reelSnapshotRef = useRef({ count: 0 });
   const gpsPings = useFeedGpsPings();
 
   useEffect(() => {
@@ -195,6 +216,19 @@ export function PinOpenSheet({
     enabled: Boolean(event),
   });
 
+  const journeyExperienceWindow = useMemo(() => {
+    if (bridge.experienceWindow) {
+      return bridge.experienceWindow;
+    }
+    if (!event) {
+      return null;
+    }
+    return resolveExperienceWindow({
+      event,
+      bridge: bridge.state?.bridge ?? null,
+    });
+  }, [bridge.experienceWindow, bridge.state?.bridge, event]);
+
   useEffect(() => {
     if (!open || !threadId) {
       return;
@@ -266,12 +300,62 @@ export function PinOpenSheet({
 
   const bridgeParticipants = useMemo(() => {
     const rows = listReadableBridgeParticipants(bridge.state?.participants ?? []);
+    const avatarByUserId = new Map<string, string | null>();
+    for (const item of reelItems) {
+      const id = item.ownerUserId?.trim();
+      if (id && item.authorAvatarUrl) {
+        avatarByUserId.set(id, item.authorAvatarUrl);
+      }
+    }
     return rows.map((row) => ({
       userId: row.userId,
       displayName: row.displayName,
-      avatarUrl: null,
+      status: row.status,
+      role: row.role,
+      avatarUrl: avatarByUserId.get(row.userId) ?? null,
     }));
-  }, [bridge.state?.participants]);
+  }, [bridge.state?.participants, reelItems]);
+
+  const isBridgeHost = useMemo(() => {
+    const viewerId = user?.id?.trim();
+    if (!viewerId || !bridge.state) {
+      return false;
+    }
+    if (bridge.state.bridge.hostUserId === viewerId) {
+      return true;
+    }
+    return bridge.state.participants.some(
+      (row) => row.userId === viewerId && row.role === "host",
+    );
+  }, [bridge.state, user?.id]);
+
+  useEffect(() => {
+    if (!open) {
+      reelSnapshotRef.current = { count: 0 };
+      setMediaArrivalHint(null);
+      return;
+    }
+    const prevCount = reelSnapshotRef.current.count;
+    if (reelItems.length > prevCount && prevCount > 0) {
+      const newItems = reelItems.slice(prevCount);
+      const friendNew = newItems.filter(
+        (item) =>
+          item.ownerUserId?.trim() &&
+          item.ownerUserId.trim() !== user?.id?.trim(),
+      );
+      if (friendNew.length > 0) {
+        const author =
+          friendNew[0]?.authorDisplayName?.trim() ||
+          copy.globe.bridgeInviteHostFallback;
+        setMediaArrivalHint({
+          count: friendNew.length,
+          authorName: author,
+          targetIndex: reelItems.length - 1,
+        });
+      }
+    }
+    reelSnapshotRef.current = { count: reelItems.length };
+  }, [open, reelItems, user?.id]);
 
   const conversation = useMemo(() => {
     if (!event) {
@@ -333,6 +417,21 @@ export function PinOpenSheet({
     );
   }, [bridgeMediaDeletable, event, reelItems, user?.id]);
 
+  const bridgeSyncPhase = useBridgeSyncPhase(
+    isBridgeContext ? cluster?.eventId : null,
+  );
+
+  const bridgeCompanionStatus = useMemo(() => {
+    if (!isBridgeContext || !event) {
+      return null;
+    }
+    return projectBridgeCompanionStatus({
+      event,
+      viewerUserId: user?.id,
+      syncPhase: bridgeSyncPhase,
+    });
+  }, [bridgeSyncPhase, event, isBridgeContext, revision, user?.id]);
+
   const contextDetailsSummary = useMemo(() => {
     if (isBridgeContext) {
       const parts = [copy.globe.bridgeContextRecallEyebrow];
@@ -369,12 +468,27 @@ export function PinOpenSheet({
   }, [open, cluster?.eventId, initialPage]);
 
   const openExperienceRoom = () => {
-    const peerThreadId =
-      conversation?.peerThreadId?.trim() ||
-      bridge.state?.bridge.peerThreadId?.trim() ||
-      threadId?.trim() ||
-      "";
+    const peerThreadId = resolveExperienceTalkThreadId({
+      event,
+      bridgePeerThreadId: bridge.state?.bridge.peerThreadId,
+      conversationPeerThreadId: conversation?.peerThreadId,
+      experienceRoomThreadId: threadId,
+    });
     if (!peerThreadId || !event || !hero) {
+      toast.message(copy.globe.bridgeTalkUnavailable, {
+        action: isBridgeHost
+          ? {
+              label: copy.globe.bridgeTalkInviteFriendsCta,
+              onClick: () => setSheetPage("context"),
+            }
+          : {
+              label: copy.globe.utilityMenuPeers,
+              onClick: () => {
+                onOpenChange(false);
+                router.push("/peers");
+              },
+            },
+      });
       return;
     }
     onOpenChange(false);
@@ -388,6 +502,14 @@ export function PinOpenSheet({
       }),
     );
   };
+
+  const talkThreadId = resolveExperienceTalkThreadId({
+    event,
+    bridgePeerThreadId: bridge.state?.bridge.peerThreadId,
+    conversationPeerThreadId: conversation?.peerThreadId,
+    experienceRoomThreadId: threadId,
+  });
+  const canOpenTalk = Boolean(talkThreadId && event && hero);
 
   if (!mounted) {
     return null;
@@ -410,6 +532,22 @@ export function PinOpenSheet({
           conversation={conversation}
           onOpenRoom={openExperienceRoom}
         />
+      ) : canOpenTalk ? (
+        <button
+          type="button"
+          onClick={openExperienceRoom}
+          className={rimvioTalkRowClass()}
+        >
+          <MessageCircle className="size-5 shrink-0 text-primary" aria-hidden />
+          <span className="min-w-0 flex-1">
+            <span className={cn("block", RIMVIO_TYPE.body, "font-semibold")}>
+              {copy.globe.bridgeContextTalkCta}
+            </span>
+            <span className={cn("block", RIMVIO_TYPE.caption)}>
+              {copy.globe.bridgeContextTalkPreviewEmpty}
+            </span>
+          </span>
+        </button>
       ) : null}
       {shareEvent ? <GlobeContextShareFriendsPanel event={shareEvent} /> : null}
       <EvidenceList rows={evidence} />
@@ -426,17 +564,13 @@ export function PinOpenSheet({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[10061] bg-black/35"
+            className={cn(rimvioSheetBackdropClass(), "z-[10061]")}
             onClick={() => onOpenChange(false)}
           />
           <motion.aside
             role="dialog"
             aria-label={hero.title}
-            className={cn(
-              "fixed z-[10062] flex w-full flex-col overflow-hidden border border-border bg-background shadow-2xl",
-              "inset-x-0 bottom-0 h-[min(96dvh,820px)] max-h-[96dvh] rounded-t-[24px]",
-              "md:inset-y-0 md:right-0 md:left-auto md:h-full md:max-h-none md:max-w-[min(92vw,420px)] md:rounded-none md:rounded-l-[24px]",
-            )}
+            className={cn(rimvioPinOpenSheetClass(), "z-[10062]")}
             initial={{ y: "100%", x: 0 }}
             animate={{ y: 0, x: 0 }}
             exit={{ y: "100%", x: 0 }}
@@ -444,34 +578,47 @@ export function PinOpenSheet({
             data-pin-open-sheet
             data-pin-open-ui="split-v2"
           >
-            <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-foreground/15 md:hidden" aria-hidden />
+            <div className={rimvioSheetGrabberClass()} aria-hidden />
             <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-              <header className="flex shrink-0 items-start gap-2 border-b border-border bg-background px-4 pb-3 pt-2">
-                <div className="min-w-0 flex-1 space-y-0.5">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    {isBridgeContext && sheetPage === "media"
-                      ? copy.globe.bridgeMediaEyebrow
-                      : `장소 · ${hero.place}`}
-                  </p>
-                  <p className="line-clamp-1 text-[15px] font-bold text-foreground">
+              <header className={rimvioSheetHeaderClass()}>
+                <div className="min-w-0 flex-1">
+                  <p className={cn("line-clamp-1", RIMVIO_TYPE.headline)}>
                     {hero.title}
                   </p>
+                  {!isBridgeContext || sheetPage === "context" ? (
+                    <p className={cn("mt-0.5 line-clamp-1", RIMVIO_TYPE.caption)}>
+                      {hero.place}
+                    </p>
+                  ) : null}
                 </div>
                 <PinOpenMediaContextPageTabs
                   page={sheetPage}
                   onPageChange={setSheetPage}
                   variant={isBridgeContext ? "bridge" : "personal"}
-                  className="mt-0.5"
                 />
                 <button
                   type="button"
                   onClick={() => onOpenChange(false)}
-                  className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted active:bg-muted/80 active:opacity-80"
+                  className={rimvioSheetCloseBtnClass("bg-muted/80")}
                   aria-label="닫기"
                 >
-                  <X className="size-5 text-muted-foreground" aria-hidden />
+                  <X className="size-4 text-muted-foreground" aria-hidden />
                 </button>
               </header>
+
+              {bridgeCompanionStatus &&
+              (bridgeCompanionStatus.tone === "syncing" ||
+                bridgeCompanionStatus.tone === "uploading" ||
+                bridgeCompanionStatus.tone === "pending") ? (
+                <div className="shrink-0 px-4 pb-2 pt-1">
+                  <BridgeCompanionStatusStrip
+                    status={bridgeCompanionStatus}
+                    participants={bridgeParticipants}
+                    viewerUserId={user?.id}
+                    compact
+                  />
+                </div>
+              ) : null}
 
               <PinOpenMediaContextPager
                 summary={contextDetailsSummary}
@@ -488,6 +635,8 @@ export function PinOpenSheet({
                       eventId={cluster.eventId}
                       viewerUserId={user?.id}
                       deletable={bridgeMediaDeletable}
+                      arrivalHint={mediaArrivalHint}
+                      onDismissArrival={() => setMediaArrivalHint(null)}
                       onMediaDeleted={() => {
                         setRevision((value) => value + 1);
                         toast.success("삭제했어요");
@@ -554,6 +703,11 @@ export function PinOpenSheet({
                     onOpenTalk={openExperienceRoom}
                     onOpenMediaPool={() => setMediaPoolOpen(true)}
                     onNoteSaved={() => setRevision((value) => value + 1)}
+                    onHubUpdated={() => setRevision((value) => value + 1)}
+                    conversation={conversation}
+                    isBridgeHost={isBridgeHost}
+                    journeyTimeline={bridge.timeline}
+                    experienceWindow={journeyExperienceWindow}
                   />
                 ) : (
                   <>
@@ -578,11 +732,22 @@ export function PinOpenSheet({
               </PinOpenMediaContextPager>
             </div>
 
-            <div className="shrink-0 space-y-2 border-t border-border px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <div className={rimvioSheetFooterClass()}>
+              {canOpenTalk ? (
+                <button
+                  type="button"
+                  onClick={openExperienceRoom}
+                  className={rimvioHeroCtaClass()}
+                  data-pin-open-talk
+                >
+                  <MessageCircle className="size-5" aria-hidden />
+                  {copy.globe.bridgeContextTalkCta}
+                </button>
+              ) : null}
               <GlobeContextPhotoButton
                 eventId={cluster.eventId}
                 eventTitle={hero.title}
-                variant={photoPrimary ? "primary" : "secondary"}
+                variant={canOpenTalk ? "secondary" : photoPrimary ? "primary" : "secondary"}
                 onIngested={() => {
                   setRevision((value) => value + 1);
                   const eventId = cluster.eventId.trim();
@@ -597,7 +762,7 @@ export function PinOpenSheet({
               />
               <button
                 type="button"
-                className="w-full rounded-2xl border border-border bg-background py-3.5 text-[15px] font-semibold text-foreground active:opacity-85"
+                className={rimvioSecondaryCtaClass()}
                 onClick={() => onOpenChange(false)}
                 data-pin-open-close
               >

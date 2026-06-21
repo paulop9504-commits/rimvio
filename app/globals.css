@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "./rimvio-ontology.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -61,21 +62,21 @@
 }
 
 :root {
-  /* Retro Raincloud — dusty periwinkle shell, white content, readable ink */
-  --rimvio-canvas: #f2f3f5;
+  /* Simple is Best — Apple-grade light canvas */
+  --rimvio-canvas: #f5f5f7;
   --rimvio-base: #ffffff;
   --rimvio-surface: #ffffff;
-  --rimvio-surface-muted: #f2f3f5;
-  --rimvio-surface-raised: #ebedef;
-  --rimvio-sidebar: #e3e5e8;
-  --rimvio-highlight-green: #23a559;
-  --rimvio-highlight-green-soft: #e8f5ee;
-  --rimvio-text: #060607;
-  --rimvio-text-muted: #4e5058;
-  --rimvio-text-dim: #6d7178;
-  --rimvio-neon-purple: #5865f2;
-  --rimvio-neon-purple-deep: #4752c4;
-  --rimvio-neon-cyan: #00a8fc;
+  --rimvio-surface-muted: #f5f5f7;
+  --rimvio-surface-raised: #ffffff;
+  --rimvio-sidebar: #f5f5f7;
+  --rimvio-highlight-green: #34c759;
+  --rimvio-highlight-green-soft: #e8f8ed;
+  --rimvio-text: #1d1d1f;
+  --rimvio-text-muted: #86868b;
+  --rimvio-text-dim: #aeaeb2;
+  --rimvio-neon-purple: #0071e3;
+  --rimvio-neon-purple-deep: #0066cc;
+  --rimvio-neon-cyan: #0071e3;
   --rimvio-neon-magenta: #ed4245;
   --rimvio-neon-amber: #faa81a;
   --rimvio-neon-orange: #f26522;
@@ -143,30 +144,30 @@
   --rimvio-neon-flow-duration: 48s;
   --rimvio-neon-flow-duration-live: 36s;
 
-  --background: #f2f3f5;
-  --foreground: #060607;
+  --background: #f5f5f7;
+  --foreground: #1d1d1f;
   --card: #ffffff;
-  --card-foreground: #060607;
+  --card-foreground: #1d1d1f;
   --popover: #ffffff;
-  --popover-foreground: #060607;
-  --primary: #5865f2;
+  --popover-foreground: #1d1d1f;
+  --primary: #0071e3;
   --primary-foreground: #ffffff;
-  --secondary: #ebedef;
-  --secondary-foreground: #060607;
-  --muted: #f2f3f5;
-  --muted-foreground: #4e5058;
-  --accent: #e3e5e8;
-  --accent-foreground: #060607;
-  --destructive: #e3717d;
-  --border: rgba(6, 6, 7, 0.08);
-  --input: #ebedef;
-  --ring: rgba(88, 101, 242, 0.45);
+  --secondary: #f5f5f7;
+  --secondary-foreground: #1d1d1f;
+  --muted: #f5f5f7;
+  --muted-foreground: #86868b;
+  --accent: #f5f5f7;
+  --accent-foreground: #1d1d1f;
+  --destructive: #ff3b30;
+  --border: rgba(0, 0, 0, 0.08);
+  --input: #f5f5f7;
+  --ring: rgba(0, 113, 227, 0.35);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.5rem;
+  --radius: 0.75rem;
   /* Golden ratio (φ) — spacing & inbox proportions */
   --phi: 1.6180339887;
   --space-u: 0.625rem;
@@ -177,10 +178,10 @@
   --inbox-major: 61.8%;
   --golden-major: 61.8%;
   --golden-minor: 38.2%;
-  --rimvio-accent: #5865f2;
-  --rimvio-accent-soft: #ebedef;
-  --rimvio-button-blue: #5865f2;
-  --rimvio-button-blue-pressed: #4752c4;
+  --rimvio-accent: #0071e3;
+  --rimvio-accent-soft: #f5f5f7;
+  --rimvio-button-blue: #0071e3;
+  --rimvio-button-blue-pressed: #0066cc;
   --rimvio-button-easing: cubic-bezier(0.4, 0, 0.2, 1);
   --inbox-thumb: var(--space-phi3);
   /* Responsive shell widths */
@@ -191,7 +192,7 @@
   --shell-max-desktop: 48rem;
   --nav-rail-width: 5rem;
   /* Feed bottom chrome — composer dock + fixed tab bar (mobile) */
-  --rimvio-bottom-nav-height: 2.875rem;
+  --rimvio-bottom-nav-height: 3.625rem;
   --rimvio-composer-bar-height: 4.5rem;
   --rimvio-bottom-nav-offset: calc(
     var(--rimvio-bottom-nav-height) +
@@ -1607,11 +1608,11 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding: 16px 28px;
+  padding: 14px 24px;
   min-width: 160px;
-  border-radius: 14px;
+  border-radius: 9999px;
   background-color: var(--primary);
-  border: 1px solid color-mix(in oklch, var(--primary) 88%, black);
+  border: none;
   color: #ffffff;
   font-family:
     -apple-system,
@@ -1621,15 +1622,15 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
     Roboto,
     sans-serif;
   font-weight: 600;
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.25;
   letter-spacing: -0.02em;
-  box-shadow: 0 4px 14px rgba(88, 101, 242, 0.28);
+  box-shadow: 0 2px 8px rgba(0, 113, 227, 0.28);
   transition:
-    transform 0.2s var(--rimvio-button-easing),
-    background-color 0.2s var(--rimvio-button-easing),
-    box-shadow 0.2s var(--rimvio-button-easing),
-    opacity 0.2s var(--rimvio-button-easing);
+    transform 0.15s var(--rimvio-button-easing),
+    background-color 0.15s var(--rimvio-button-easing),
+    box-shadow 0.15s var(--rimvio-button-easing),
+    opacity 0.15s var(--rimvio-button-easing);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
@@ -1646,44 +1647,36 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 
 @media (hover: hover) {
   .rimvio-action-button:not(:disabled):hover {
-    background-color: var(--rimvio-neon-purple-deep);
-    transform: translateY(1px) scale(0.98);
-    box-shadow: 0 2px 10px rgba(88, 101, 242, 0.32);
+    background-color: var(--rimvio-button-blue-pressed);
+    transform: scale(0.98);
+    box-shadow: 0 1px 6px rgba(0, 113, 227, 0.32);
   }
 }
 
 .rimvio-action-button:not(:disabled):active {
-  background-color: var(--rimvio-neon-purple-deep);
-  transform: translateY(1px) scale(0.98);
-  box-shadow:
-    inset 3px 0 0 0 rgba(191, 90, 242, 0.65),
-    0 1px 8px rgba(0, 0, 0, 0.28);
+  background-color: var(--rimvio-button-blue-pressed);
+  transform: scale(0.98);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
 }
 
 .rimvio-action-button--secondary {
   min-width: 0;
-  background: var(--rimvio-surface-raised);
-  backdrop-filter: blur(12px) saturate(160%);
-  -webkit-backdrop-filter: blur(12px) saturate(160%);
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow:
-    inset 3px 0 0 0 rgba(50, 215, 255, 0.55),
-    0 2px 14px rgba(0, 0, 0, 0.22);
+  background: var(--muted);
+  color: var(--foreground);
+  border: none;
+  box-shadow: none;
 }
 
 @media (hover: hover) {
   .rimvio-action-button--secondary:not(:disabled):hover {
-    background: var(--rimvio-surface);
-    color: var(--rimvio-text);
-    box-shadow:
-      inset 0 0 0 1px rgba(50, 215, 255, 0.18),
-      0 0 24px rgba(50, 215, 255, 0.1);
+    background: color-mix(in oklch, var(--muted) 90%, black);
+    color: var(--foreground);
+    box-shadow: none;
   }
 }
 
 .rimvio-action-button--secondary:not(:disabled):active {
-  background: var(--rimvio-surface-muted);
+  background: color-mix(in oklch, var(--muted) 85%, black);
 }
 
 .rimvio-action-button--ghost {

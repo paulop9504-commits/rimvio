@@ -1,11 +1,13 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
+import { listContextHubServicesForEvent } from "@/lib/globe/context-hub/context-hub-service-catalog";
 import { shouldOfferDepartureHub } from "@/lib/globe/should-offer-departure-hub";
 
 /** Whether this context (or draft fields) can accept plug-in resource hubs. */
 export function shouldSuggestContextHubs(
   event: EventCandidate | null | undefined,
 ): boolean {
-  return shouldOfferDepartureHub(event);
+  const panel = listContextHubServicesForEvent(event);
+  return panel !== null && panel.services.some((row) => row.implemented);
 }
 
 /** Pre-create draft — title + place before the event exists. */

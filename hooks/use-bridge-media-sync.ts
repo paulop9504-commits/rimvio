@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { syncAllBridgeSharedMedia } from "@/lib/experience-bridge/sync-all-bridge-shared-media";
 import { EXPERIENCE_BRIDGE_UPDATED } from "@/lib/experience-bridge/local-bridge-store";
-import { EVENT_CANDIDATES_UPDATED } from "@/lib/events/event-store";
+import { EVENT_CANDIDATES_UPDATED } from "@/lib/life-read-model";
 import { useAuth } from "@/hooks/use-auth";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 

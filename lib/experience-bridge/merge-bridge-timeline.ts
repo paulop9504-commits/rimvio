@@ -7,7 +7,15 @@ import type {
   ExperienceBridgeSnapshot,
   ExperienceBridgeTimelineItem,
 } from "@/lib/experience-bridge/experience-bridge-types";
+import {
+  classifyExperiencePhase,
+  resolveExperienceWindow,
+} from "@/lib/experience-window";
+import type { ExperienceWindow } from "@/lib/experience-window/experience-window-types";
+import { projectPeerMessagesToTimeline } from "@/lib/experience-window/project-peer-messages-timeline";
+import { parseIsoMs } from "@/lib/feed/spacetime-fit";
 import { resolveEventGlobeCoords } from "@/lib/globe/resolve-event-globe-coords";
+import type { PeerMessageRow } from "@/lib/peer-chat/types";
 
 function captureOwnerId(
   capture: { ownerUserId?: string },
@@ -23,19 +31,64 @@ function captureAuthorName(
   return capture.authorDisplayName?.trim() || capture.label?.trim() || fallback;
 }
 
-/** Shared Experience — merged timeline (host captures + thread shared pins). */
+function buildBridgePrepMarker(input: {
+  bridge: ExperienceBridgeSnapshot;
+  window: ExperienceWindow;
+  hostUserId: string;
+  hostName: string;
+}): ExperienceBridgeTimelineItem | null {
+  const bridgeMs = parseIsoMs(input.window.bridgeCreatedAtIso);
+  const startMs = parseIsoMs(input.window.windowStartIso);
+  if (bridgeMs === null || startMs === null || bridgeMs >= startMs) {
+    return null;
+  }
+
+  const createdAtIso = input.window.bridgeCreatedAtIso!.trim();
+  return {
+    id: `prep:${input.bridge.eventId}`,
+    kind: "bridge_prep_marker",
+    capturedAtIso: createdAtIso,
+    phase: "prep",
+    ownerUserId: input.hostUserId,
+    authorDisplayName: input.hostName,
+    placeLabel: input.bridge.placeLabel,
+    viewOnly: true,
+  };
+}
+
+function stampPhases(
+  items: ExperienceBridgeTimelineItem[],
+  window: ExperienceWindow,
+): ExperienceBridgeTimelineItem[] {
+  return items.map((row) => ({
+    ...row,
+    phase: row.phase ?? classifyExperiencePhase(row.capturedAtIso, window),
+  }));
+}
+
+/** Shared Experience — merged timeline (captures · pins · contributions · talk · prep). */
 export function mergeBridgeTimeline(input: {
   bridge: ExperienceBridgeSnapshot;
   sharedPins?: readonly SharedGlobePin[];
   contributions?: readonly ExperienceBridgeContribution[];
+  peerMessages?: readonly PeerMessageRow[];
   participants?: readonly { userId: string; displayName: string }[];
   viewerUserId: string;
   hostDisplayName?: string;
+  experienceWindow?: ExperienceWindow;
+  now?: Date;
 }): ExperienceBridgeTimelineItem[] {
   const hostUserId = input.bridge.hostUserId;
   const hostName = input.hostDisplayName?.trim() || "호스트";
   const event = input.bridge.eventSnapshot;
   const coords = resolveEventGlobeCoords(event);
+  const window =
+    input.experienceWindow ??
+    resolveExperienceWindow({
+      event,
+      bridge: input.bridge,
+      now: input.now,
+    });
 
   const fromCaptures: ExperienceBridgeTimelineItem[] = readFeedCaptureFragments(
     event,
@@ -102,10 +155,31 @@ export function mergeBridgeTimeline(input: {
     };
   });
 
-  return [...fromCaptures, ...fromPins, ...fromContributions].sort(
+  const fromChat = projectPeerMessagesToTimeline({
+    messages: input.peerMessages ?? [],
+    viewerUserId: input.viewerUserId,
+    participantNames: participantNameById,
+  });
+
+  const prepMarker = buildBridgePrepMarker({
+    bridge: input.bridge,
+    window,
+    hostUserId,
+    hostName,
+  });
+
+  const merged = [
+    ...fromCaptures,
+    ...fromPins,
+    ...fromContributions,
+    ...fromChat,
+    ...(prepMarker ? [prepMarker] : []),
+  ].sort(
     (left, right) =>
       Date.parse(left.capturedAtIso) - Date.parse(right.capturedAtIso),
   );
+
+  return stampPhases(merged, window);
 }
 
 export function buildBridgeSnapshot(input: {

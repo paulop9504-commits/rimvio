@@ -38,6 +38,11 @@ export function redactPacketForExplorer(
       ...packet.meaning,
       relationshipLines: [],
       rollupAffinities: [],
+      semanticTriples: [],
+    },
+    action: {
+      ...packet.action,
+      semanticMainHint: null,
     },
     recall: {
       eligibleTriggers: [],

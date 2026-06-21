@@ -19,10 +19,15 @@ export function shouldShowContextHubOffer(
   return suggestDepartureHubOptions({ destinationPlace: place }).length > 0;
 }
 
+/** Map tap — photo/video on map first when reel exists; else sheet on retap. */
 export function resolveInitialContextMapTapPhase(
-  event: EventCandidate | null | undefined,
+  _event: EventCandidate | null | undefined,
+  options?: { hasMapMedia?: boolean },
 ): ContextMapTapPhase {
-  return shouldShowContextHubOffer(event) ? "hub_offer" : "awaiting_replay";
+  if (options?.hasMapMedia) {
+    return "media_open";
+  }
+  return "awaiting_replay";
 }
 
 export function contextMapTapPhaseAllowsMediaReplay(

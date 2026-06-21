@@ -1,4 +1,6 @@
 /** AI/orchestrator/recall — one read frame. Never persisted as SSOT. */
+import type { SemanticMainHint, SemanticTriple } from "@/lib/semantic/types";
+
 export type PersonalReadPacket = {
   meta: PersonalReadMeta;
   fact: PersonalReadFactSlice;
@@ -67,7 +69,9 @@ export type PersonalReadExperienceSlice = {
   }>;
 };
 
-export type MeaningProvenance = "behavior" | "rollup" | "relationship_rule";
+import type { SemanticMainHint, SemanticTriple } from "@/lib/semantic/types";
+
+export type MeaningProvenance = "behavior" | "rollup" | "relationship_rule" | "semantic_rule";
 
 export type PersonalReadMeaningSlice = {
   topEdges: Array<{
@@ -95,6 +99,8 @@ export type PersonalReadMeaningSlice = {
     shown: number;
     executed: number;
   }>;
+  /** Read-only SPO projection — not SSOT. */
+  semanticTriples: readonly SemanticTriple[];
 };
 
 export type RecallTriggerKind =
@@ -133,9 +139,11 @@ export type PersonalReadActionSlice = {
     label: string;
     score: number;
     contextKey: string;
-    source: "rollup" | "registry" | "link_enricher";
+    source: "rollup" | "registry" | "link_enricher" | "semantic";
   }>;
   hubServiceIds: string[];
+  /** One logical next step — simplifies UI to a single hero. */
+  semanticMainHint: SemanticMainHint | null;
 };
 
 export type PersonalReadGateSlice = {

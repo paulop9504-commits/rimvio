@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type RefObject } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Plane, Ticket } from "lucide-react";
 import { toast } from "sonner";
 import { GlobeContextGardenSummary } from "@/components/globe/globe-context-garden-summary";
 import { GlobePlacePrefillCard } from "@/components/globe/globe-place-prefill-card";
@@ -29,6 +29,7 @@ import {
 } from "@/lib/globe/context-hub/context-hub-service-catalog";
 import { readContextGardenSnapshot } from "@/lib/globe/context-gardener/read-context-garden";
 import { rankContextHubServices } from "@/lib/globe/context-hub/rank-context-hub-services";
+import { resolveSemanticMainHintForEvent } from "@/lib/semantic/resolve-semantic-main-hint-for-event";
 import type { RankedContextResource } from "@/lib/globe/resource/map-hub-service-to-resource";
 import { rankContextResources } from "@/lib/globe/resource/rank-context-resources";
 import { recordPlaceHubLearning } from "@/lib/globe/place-history/record-place-hub-learning";
@@ -226,9 +227,19 @@ export function GlobeContextHubRail({
     return readContextGardenSnapshot(event)?.summary ?? null;
   }, [activeEventId, revision, rankedResources.length]);
 
+  const semanticHint = useMemo(
+    () => resolveSemanticMainHintForEvent(activeEvent),
+    [activeEvent, revision],
+  );
+
   const browseRows = useMemo(
-    () => (panel ? rankContextHubServices(panel.services) : []),
-    [panel],
+    () =>
+      panel
+        ? rankContextHubServices(panel.services, semanticHint).filter(
+            (row) => row.implemented,
+          )
+        : [],
+    [panel, semanticHint],
   );
 
   const handleOpenAction = useCallback(
@@ -498,7 +509,22 @@ export function GlobeContextHubRail({
   }
 
   const showCarousel = rankedResources.length > 0;
-  if (presentation === "dock" && !showCarousel) {
+  const emptyDockOffer = useMemo(() => {
+    if (!panel || showCarousel) {
+      return null;
+    }
+    return (
+      panel.services.find(
+        (row) =>
+          row.offered &&
+          row.implemented &&
+          row.serviceId !== "ai_search" &&
+          row.serviceId !== "lodging",
+      ) ?? null
+    );
+  }, [panel, showCarousel]);
+
+  if (presentation === "dock" && !showCarousel && !emptyDockOffer) {
     return null;
   }
 
@@ -547,18 +573,6 @@ export function GlobeContextHubRail({
       <>
         {ticketSheets}
         <div className={cn("flex flex-col gap-1.5", className)}>
-          {variant === "default" ? (
-            <>
-              <GlobePlacePrefillCard activeEventId={activeEventId} lat={lat} lng={lng} />
-              <GlobePrepChecklistCard activeEventId={activeEventId} />
-              <GlobeContextGardenSummary summary={gardenSummary} />
-              {weatherPrepLine ? (
-                <p className="px-0.5 text-[11px] font-medium text-muted-foreground">
-                  {weatherPrepLine}
-                </p>
-              ) : null}
-            </>
-          ) : null}
           <GlobeHubResourceCarousel
             ranked={rankedResources}
             index={Math.min(carouselIndex, rankedResources.length - 1)}
@@ -583,6 +597,50 @@ export function GlobeContextHubRail({
             />
           ) : null}
         </div>
+      </>
+    );
+  }
+
+  if (!expanded && presentation === "dock" && emptyDockOffer) {
+    const EmptyIcon = emptyDockOffer.serviceId === "ticket" ? Ticket : Plane;
+    return (
+      <>
+        {ticketSheets}
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            if (emptyDockOffer.serviceId === "ticket") {
+              setTicketConnectOpen(true);
+              return;
+            }
+            setExpanded(true);
+            setConnectServiceId(emptyDockOffer.serviceId);
+          }}
+          className={cn(
+            "pointer-events-auto flex w-[min(calc(100vw-1.5rem),17.5rem)] items-center gap-3 rounded-[1.15rem] bg-[#f5f5f7] p-3 text-left shadow-[0_12px_32px_rgba(0,0,0,0.18)] ring-1 ring-white/20 active:scale-[0.99]",
+            className,
+          )}
+          data-globe-hub-empty-dock
+        >
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[#0071e3]/10 text-[#0071e3]">
+            <EmptyIcon className="size-5" aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-[#0071e3]">
+              {copy.globe.mainActionEyebrow}
+            </span>
+            <span className="mt-0.5 block truncate text-[14px] font-semibold text-[#1d1d1f]">
+              {emptyDockOffer.labelKo}
+            </span>
+            <span className="mt-0.5 block text-[12px] text-[#86868b]">
+              {copy.globe.contextHubEmptyDockLine}
+            </span>
+          </span>
+          <span className="shrink-0 rounded-full bg-[#0071e3] px-3.5 py-2 text-[12px] font-semibold text-white">
+            {copy.globe.contextHubEmptyDockCta}
+          </span>
+        </button>
       </>
     );
   }
@@ -623,7 +681,7 @@ export function GlobeContextHubRail({
         ) : null}
     <aside
       className={cn(
-        "pointer-events-auto overflow-hidden rounded-[1.35rem] border border-border/60 bg-card/95 shadow-[0_12px_40px_rgba(2,32,71,0.12)] backdrop-blur-xl",
+        "pointer-events-auto overflow-hidden rounded-[1.15rem] bg-[#f5f5f7] shadow-[0_12px_36px_rgba(0,0,0,0.16)] ring-1 ring-white/20 backdrop-blur-xl",
         layout === "hero" ? "w-full max-w-md" : variant === "compact" ? COMPACT_PANEL_WIDTH : PANEL_WIDTH,
         className,
       )}
@@ -631,16 +689,16 @@ export function GlobeContextHubRail({
       data-globe-context-hub-rail-expanded="true"
       aria-label={copy.globe.contextHubRailTitle}
     >
-      <div className="flex items-start gap-2 border-b border-border/50 px-3 py-2.5">
+      <div className="flex items-start gap-2 px-3 py-3">
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-primary">
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#0071e3]">
             {copy.globe.contextHubEyebrow}
           </p>
-          <p className="text-[13px] font-semibold leading-tight text-foreground">
-            {copy.globe.contextHubRailTitle}
+          <p className="text-[15px] font-semibold leading-tight text-[#1d1d1f]">
+            {copy.globe.contextHubExpandAria}
           </p>
           <p
-            className="mt-0.5 truncate text-[10px] font-medium text-muted-foreground"
+            className="mt-0.5 truncate text-[12px] font-medium text-[#86868b]"
             title={panel.contextPlace}
           >
             {copy.globe.contextHubRailForContext(panel.contextPlace)}
@@ -649,16 +707,16 @@ export function GlobeContextHubRail({
         <button
           type="button"
           onClick={() => setExpanded(false)}
-          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted/60 active:bg-muted"
+          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/90 shadow-sm active:scale-95"
           aria-expanded
           aria-label={copy.globe.contextHubCollapseAria}
           data-globe-hub-rail-collapse
         >
-          <ChevronDown className="size-4 rotate-180 text-muted-foreground" aria-hidden />
+          <ChevronDown className="size-4 rotate-180 text-[#86868b]" aria-hidden />
         </button>
       </div>
 
-      <ul className="space-y-1.5 px-2 py-2">
+      <ul className="space-y-1.5 px-2 pb-2">
         {browseRows.map((row) => (
           <HubServiceSlot
             key={row.serviceId}

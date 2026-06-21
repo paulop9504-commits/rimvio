@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import { GlobeContextHubRail } from "@/components/globe/globe-context-hub-rail";
 import type { GlobeContextHubRailProps } from "@/components/globe/globe-context-hub-rail";
+import { findLifeEventCandidate } from "@/lib/life-read-model";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
@@ -26,9 +27,23 @@ export function GlobeContextHubDetailSheet({
   open,
   onOpenChange,
   className,
+  activeEventId,
   ...railProps
 }: GlobeContextHubDetailSheetProps) {
   const [mounted, setMounted] = useState(false);
+
+  const headerTitle = useMemo(() => {
+    const eventId = activeEventId?.trim();
+    if (!eventId) {
+      return copy.globe.contextHubDetailTitle;
+    }
+    const event = findLifeEventCandidate(eventId);
+    return (
+      event?.place?.trim() ||
+      event?.title?.trim() ||
+      copy.globe.contextHubDetailTitle
+    );
+  }, [activeEventId]);
 
   useEffect(() => {
     setMounted(true);
@@ -54,7 +69,7 @@ export function GlobeContextHubDetailSheet({
       {open ? (
         <motion.div
           className={cn(
-            "fixed inset-0 z-[70] flex flex-col bg-background",
+            "fixed inset-0 z-[70] flex flex-col bg-[#f5f5f7]",
             className,
           )}
           data-globe-context-hub-detail
@@ -63,31 +78,32 @@ export function GlobeContextHubDetailSheet({
           exit={{ opacity: 0, y: 24 }}
           transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
         >
-          <header className="flex shrink-0 items-start gap-3 border-b border-border/50 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+          <header className="flex shrink-0 items-center gap-3 px-4 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-primary">
-                {copy.globe.contextHubEyebrow}
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#0071e3]">
+                {copy.globe.mainActionEyebrow}
               </p>
-              <h1 className="text-[18px] font-semibold leading-tight text-foreground">
-                {copy.globe.contextHubDetailTitle}
+              <h1 className="truncate text-[20px] font-semibold leading-tight text-[#1d1d1f]">
+                {headerTitle}
               </h1>
-              <p className="mt-1 text-[13px] text-muted-foreground">
+              <p className="mt-0.5 text-[13px] text-[#86868b]">
                 {copy.globe.contextHubDetailBody}
               </p>
             </div>
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted/70 active:bg-muted"
+              className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/90 shadow-sm active:scale-95"
               aria-label={copy.globe.contextHubDetailCloseAria}
             >
-              <X className="size-4 text-muted-foreground" aria-hidden />
+              <X className="size-4 text-[#86868b]" aria-hidden />
             </button>
           </header>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
+          <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-1">
             <GlobeContextHubRail
               {...railProps}
+              activeEventId={activeEventId}
               visible
               layout="hero"
               presentation="detail"

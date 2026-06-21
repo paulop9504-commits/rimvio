@@ -7,10 +7,8 @@ import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-
 import { RimvioGlobeHubClient } from "@/components/experience/rimvio-globe-hub-client";
 import { GlobeContextControlDock } from "@/components/globe/globe-context-control-dock";
 import { GlobeContextHubRail } from "@/components/globe/globe-context-hub-rail";
-import { GlobeLocationConfirmCard } from "@/components/globe/globe-location-confirm-card";
 import { GlobeContextHubDetailSheet } from "@/components/globe/globe-context-hub-detail-sheet";
 import { GlobeUtilityMenu } from "@/components/globe/globe-utility-menu";
-import { GlobeContextHubConnectStep } from "@/components/globe/globe-context-hub-connect-step";
 import { GlobeContextMapVideoStage } from "@/components/globe/globe-context-map-video-stage";
 import { GlobeLodgingFocusStage } from "@/components/globe/globe-lodging-focus-stage";
 import { GlobeContextIngestBar, type GlobeContextIngestBarHandle } from "@/components/globe/globe-context-ingest-bar";
@@ -71,7 +69,6 @@ import { resolvePinOpenInitialPage } from "@/lib/globe/resolve-pin-open-initial-
 import {
   contextMapTapPhaseAllowsMediaReplay,
   resolveInitialContextMapTapPhase,
-  shouldShowContextHubOffer,
   type ContextMapTapPhase,
 } from "@/lib/globe/context-map-tap-phase";
 import type { PinMediaContextPage } from "@/components/globe/pin-open-media-context-pager";
@@ -103,13 +100,13 @@ function GlobeHomeBody() {
   const liveLocation = useLiveLocationSnapshot();
   usePersonalGlobePinSync(true);
   const {
+    notifications: globeNotifications,
     bridgeInvites: pendingBridgeInvites,
-    locationConfirms,
     totalCount: globeInboxCount,
     refreshBridgeInvites,
     dismissBridgeInvite: dismissInvite,
-    dismissLocationConfirm,
-    refreshLocationConfirms,
+    dismissNotification,
+    refreshData: refreshGlobeInboxData,
     needsLogin: globeInboxNeedsLogin,
     bridgeError: globeInboxError,
   } = useGlobeInbox(true);
@@ -251,7 +248,15 @@ function GlobeHomeBody() {
 
       if (fromMapTap) {
         setSheetOpen(false);
-        setContextTapPhase(resolveInitialContextMapTapPhase(event));
+        const volume = eventId ? resolveExperienceVolumeForEvent(eventId) : null;
+        const hasMapMedia = globeContextShouldMapReplayFirst({
+          event,
+          cluster,
+          volume,
+        });
+        setContextTapPhase(
+          resolveInitialContextMapTapPhase(event, { hasMapMedia }),
+        );
       } else {
         const openSheet = options?.openSheet !== false;
         if (openSheet) {
@@ -276,10 +281,6 @@ function GlobeHomeBody() {
 
   const openMapMediaBridgeRef = useRef<(() => void) | null>(null);
 
-  const completeHubOffer = useCallback(() => {
-    setContextTapPhase("awaiting_replay");
-  }, []);
-
   const handleSameContextRetap = useCallback(() => {
     const phase = contextTapPhaseRef.current;
     const cluster = activeClusterRef.current;
@@ -297,11 +298,6 @@ function GlobeHomeBody() {
       cluster,
       volume,
     });
-
-    if (phase === "hub_offer") {
-      setContextTapPhase("awaiting_replay");
-      return;
-    }
 
     if (phase === "awaiting_replay") {
       if (hasMedia) {
@@ -435,6 +431,9 @@ function GlobeHomeBody() {
       contextMapTapPhaseAllowsMediaReplay(contextTapPhase) &&
       contextHasMapMedia,
   );
+
+  /** Map stays clean while a context is focused — hub lives in the pin sheet. */
+  const suppressMapHubRail = Boolean(hubEventId || mapMediaFocusOpen);
 
   const dismissMapMediaReplay = useCallback(() => {
     setContextTapPhase("awaiting_replay");
@@ -732,6 +731,21 @@ function GlobeHomeBody() {
   });
 
   useEffect(() => {
+    if (searchParams.get("openGlobeInbox") !== "1") {
+      return;
+    }
+    setGlobeInboxOpen(true);
+    const params = new URLSearchParams(window.location.search);
+    params.delete("openGlobeInbox");
+    const qs = params.toString();
+    window.history.replaceState(
+      null,
+      "",
+      qs ? `${window.location.pathname}?${qs}` : window.location.pathname,
+    );
+  }, [searchParams]);
+
+  useEffect(() => {
     return () => {
       if (revertTimerRef.current !== null) {
         window.clearTimeout(revertTimerRef.current);
@@ -841,31 +855,9 @@ function GlobeHomeBody() {
           toast.success("삭제했어요");
         }}
       />
-      {contextTapPhase === "hub_offer" &&
-      activeContextEvent &&
-      shouldShowContextHubOffer(activeContextEvent) ? (
-        <div
-          className="pointer-events-none absolute inset-0 z-[28]"
-          data-globe-context-hub-connect-overlay
-        >
-          <div
-            className="pointer-events-none absolute inset-x-0 z-[1] flex min-h-0 flex-col items-center justify-center overflow-y-auto overscroll-contain px-3 py-1"
-            style={{
-              top: "max(2.5rem, env(safe-area-inset-top))",
-              bottom: "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 0.5rem)",
-            }}
-          >
-            <GlobeContextHubConnectStep
-              event={activeContextEvent}
-              onComplete={completeHubOffer}
-              onUpdated={() => setMediaStoreRevision((value) => value + 1)}
-            />
-          </div>
-        </div>
-      ) : null}
       {contextTapPhase === "awaiting_replay" &&
       hubEventId &&
-      contextHasMapMedia &&
+      !contextHasMapMedia &&
       !sheetOpen &&
       !mapMediaFocusOpen ? (
         <p
@@ -875,7 +867,7 @@ function GlobeHomeBody() {
           }}
           data-globe-context-map-tap-hint
         >
-          {copy.globe.contextMapTapMediaHint}
+          {copy.globe.contextMapTapOpenHint}
         </p>
       ) : null}
       <GlobeLodgingFocusStage
@@ -910,13 +902,11 @@ function GlobeHomeBody() {
                 }
               />
             </div>
-            <GlobeLocationConfirmCard className="pointer-events-auto w-[min(calc(100vw-1.5rem),12rem)]" />
           </>
         ) : null}
         {hubEventId &&
         !hubDetailOpen &&
-        !mapMediaFocusOpen &&
-        contextTapPhase !== "hub_offer" ? (
+        !suppressMapHubRail ? (
           <GlobeContextHubRail
             className="pointer-events-auto"
             visible={!globeRenderSuspended}
@@ -994,8 +984,7 @@ function GlobeHomeBody() {
       <GlobeInboxSheet
         open={globeInboxOpen}
         onOpenChange={setGlobeInboxOpen}
-        bridgeInvites={pendingBridgeInvites}
-        locationConfirms={locationConfirms}
+        notifications={globeNotifications}
         needsLogin={globeInboxNeedsLogin}
         loadError={globeInboxError}
         onBridgeAccepted={(eventId) => {
@@ -1008,12 +997,9 @@ function GlobeHomeBody() {
           dismissInvite(eventId);
           void refreshBridgeInvites();
         }}
-        onLocationConfirmed={(eventId) => {
-          dismissLocationConfirm(eventId);
-          refreshLocationConfirms();
-        }}
-        onLocationDismissed={(eventId) => {
-          dismissLocationConfirm(eventId);
+        onNotificationDismissed={dismissNotification}
+        onLocationConfirmed={() => {
+          refreshGlobeInboxData();
         }}
       />
       <PinOpenSheet

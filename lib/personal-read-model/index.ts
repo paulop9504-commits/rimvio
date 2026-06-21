@@ -23,6 +23,16 @@ export {
 } from "@/lib/personal-read-model/validate-action-contract";
 export { validateArchitectWireAgainstPrm } from "@/lib/personal-read-model/validate-architect-wire-against-prm";
 export type {
+  SemanticMainHint,
+  SemanticTriple,
+} from "@/lib/semantic/types";
+export {
+  projectSemanticTriples,
+  resolveSemanticMainHint,
+  resolveSemanticMainHintForEvent,
+  buildSemanticGroundingPrompt,
+} from "@/lib/semantic";
+export type {
   ContextPacket,
   PersonalReadPacket,
   PersonalReadMeta,

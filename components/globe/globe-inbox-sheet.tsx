@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Inbox, Loader2, MapPin, Users, X } from "lucide-react";
@@ -14,15 +15,27 @@ import {
 import { writeLocalBridgeState } from "@/lib/experience-bridge/local-bridge-store";
 import { verifyFeedCaptureEvent } from "@/lib/feed/verify-feed-capture";
 import { attachMatchingPoolMediaAfterSeal } from "@/lib/globe/passive-context/attach-matching-pool-media-after-seal";
-import {
-  buildPassiveLocationCareBody,
-  buildPassiveLocationCareTitle,
-} from "@/lib/globe/passive-context/build-passive-location-care-copy";
-import { formatDwellMinutesLabel } from "@/lib/feed/project-dwell-from-gps-pings";
 import { markGlobeLocationConfirmed } from "@/lib/globe/globe-location-confirm-store";
-import type { PendingGlobeLocationConfirm } from "@/lib/globe/list-pending-globe-location-confirms";
-import type { PendingBridgeInvite } from "@/hooks/use-pending-bridge-invites";
+import {
+  groupNotificationsBySection,
+  type RimvioNotification,
+} from "@/lib/ontology";
+import { useAuth } from "@/hooks/use-auth";
+import { buildExperienceRoomHref } from "@/lib/globe/project-experience-conversation";
+import {
+  RIMVIO_TYPE,
+  rimvioBottomSheetClass,
+  rimvioCompactPrimaryCtaClass,
+  rimvioEmptyStateClass,
+  rimvioGhostCtaClass,
+  rimvioHeroCtaClass,
+  rimvioInboxItemCardClass,
+  rimvioSheetBackdropClass,
+  rimvioSheetCloseBtnClass,
+  rimvioSurfaceCardClass,
+} from "@/lib/design/rimvio-ontology";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 export type GlobeInboxTriggerProps = {
   count: number;
@@ -37,7 +50,8 @@ export function GlobeInboxTrigger({ count, onOpen, className }: GlobeInboxTrigge
       type="button"
       onClick={onOpen}
       className={cn(
-        "relative flex size-10 items-center justify-center rounded-full bg-card/95 text-foreground shadow-sm ring-1 ring-border backdrop-blur-md active:scale-[0.98]",
+        "relative flex size-10 items-center justify-center",
+        rimvioSurfaceCardClass("rounded-full p-0 shadow-sm backdrop-blur-md"),
         className,
       )}
       aria-label={
@@ -60,29 +74,35 @@ export function GlobeInboxTrigger({ count, onOpen, className }: GlobeInboxTrigge
 export type GlobeInboxSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  bridgeInvites: readonly PendingBridgeInvite[];
-  locationConfirms: readonly PendingGlobeLocationConfirm[];
+  notifications: readonly RimvioNotification[];
   needsLogin?: boolean;
   loadError?: string | null;
   onBridgeAccepted?: (eventId: string) => void;
   onBridgeDeclined?: (eventId: string) => void;
+  onNotificationDismissed?: (notificationId: string) => void;
   onLocationConfirmed?: (eventId: string) => void;
-  onLocationDismissed?: (eventId: string) => void;
 };
 
-/** Unified globe inbox — share invites + location confirms. */
+const SECTION_LABEL: Record<RimvioNotification["section"], string> = {
+  share: copy.globe.inboxSectionShare,
+  bridge_activity: copy.globe.inboxSectionBridgeActivity,
+  location: copy.globe.inboxSectionLocation,
+};
+
+/** Unified globe inbox — notification objects (single queue). */
 export function GlobeInboxSheet({
   open,
   onOpenChange,
-  bridgeInvites,
-  locationConfirms,
+  notifications,
   needsLogin = false,
   loadError = null,
   onBridgeAccepted,
   onBridgeDeclined,
+  onNotificationDismissed,
   onLocationConfirmed,
-  onLocationDismissed,
 }: GlobeInboxSheetProps) {
+  const router = useRouter();
+  const { user, signInWithGoogle } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [busyBridgeEventId, setBusyBridgeEventId] = useState<string | null>(null);
   const [busyLocationEventId, setBusyLocationEventId] = useState<string | null>(null);
@@ -102,7 +122,14 @@ export function GlobeInboxSheet({
     };
   }, [open]);
 
-  const handleAcceptBridge = async (invite: PendingBridgeInvite) => {
+  const grouped = groupNotificationsBySection(notifications);
+  const empty = notifications.length === 0;
+
+  const handleAcceptBridge = async (notification: RimvioNotification) => {
+    const invite = notification.bridgeInvite;
+    if (!invite) {
+      return;
+    }
     const eventId = invite.state.bridge.eventId;
     setBusyBridgeEventId(eventId);
     try {
@@ -110,8 +137,26 @@ export function GlobeInboxSheet({
       await completeBridgeInviteAccept({
         state: data.state,
         peerThreadId: data.pinSpec.peerThreadId,
+        viewerUserId: user?.id,
       });
-      toast.success(copy.globe.bridgeInviteAccepted);
+      toast.success(copy.globe.bridgeInviteAccepted, {
+        action: data.pinSpec.peerThreadId
+          ? {
+              label: copy.globe.bridgeTalkContinueCta,
+              onClick: () => {
+                router.push(
+                  buildExperienceRoomHref({
+                    peerThreadId: data.pinSpec.peerThreadId!,
+                    eventId,
+                    title: invite.state.bridge.title,
+                    place: invite.state.bridge.placeLabel ?? "",
+                  }),
+                );
+                onOpenChange(false);
+              },
+            }
+          : undefined,
+      });
       onBridgeAccepted?.(eventId);
     } catch (caught) {
       toast.error(
@@ -122,7 +167,11 @@ export function GlobeInboxSheet({
     }
   };
 
-  const handleDeclineBridge = async (invite: PendingBridgeInvite) => {
+  const handleDeclineBridge = async (notification: RimvioNotification) => {
+    const invite = notification.bridgeInvite;
+    if (!invite) {
+      return;
+    }
     const eventId = invite.state.bridge.eventId;
     setBusyBridgeEventId(eventId);
     try {
@@ -139,7 +188,11 @@ export function GlobeInboxSheet({
     }
   };
 
-  const handleConfirmLocation = (row: PendingGlobeLocationConfirm) => {
+  const handleConfirmLocation = (notification: RimvioNotification) => {
+    const row = notification.locationConfirm;
+    if (!row) {
+      return;
+    }
     setBusyLocationEventId(row.eventId);
     const result = verifyFeedCaptureEvent(row.eventId);
     if (result.ok) {
@@ -157,13 +210,6 @@ export function GlobeInboxSheet({
     setBusyLocationEventId(null);
   };
 
-  const handleDismissLocation = (row: PendingGlobeLocationConfirm) => {
-    onLocationDismissed?.(row.eventId);
-  };
-
-  const empty =
-    bridgeInvites.length === 0 && locationConfirms.length === 0;
-
   if (!mounted) {
     return null;
   }
@@ -178,7 +224,7 @@ export function GlobeInboxSheet({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[10070] bg-black/40"
+            className={cn(rimvioSheetBackdropClass(), "z-[10070]")}
             onClick={() => onOpenChange(false)}
           />
           <motion.div
@@ -189,24 +235,24 @@ export function GlobeInboxSheet({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
             transition={{ type: "spring", stiffness: 420, damping: 36 }}
-            className="fixed inset-x-0 bottom-0 z-[10071] mx-auto flex w-full max-w-lg max-h-[min(88dvh,640px)] flex-col overflow-hidden rounded-t-[1.25rem] border border-border bg-card shadow-2xl"
+            className={cn(rimvioBottomSheetClass(), "z-[10071]")}
             data-globe-inbox-sheet
           >
             <div className="shrink-0 border-b border-border px-4 py-4">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="flex items-center gap-1.5 text-[16px] font-semibold text-foreground">
+                  <p className={cn("flex items-center gap-1.5", RIMVIO_TYPE.headline)}>
                     <Inbox className="size-4 text-primary" aria-hidden />
                     {copy.globe.inboxTitle}
                   </p>
-                  <p className="mt-0.5 text-[12px] text-muted-foreground">
+                  <p className={cn("mt-0.5", RIMVIO_TYPE.caption)}>
                     {copy.globe.inboxSubtitle}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => onOpenChange(false)}
-                  className="flex size-9 items-center justify-center rounded-full active:bg-muted"
+                  className={rimvioSheetCloseBtnClass()}
                   aria-label="닫기"
                 >
                   <X className="size-5 text-muted-foreground" aria-hidden />
@@ -216,146 +262,163 @@ export function GlobeInboxSheet({
 
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
               {needsLogin ? (
-                <p className="rounded-2xl bg-muted/50 px-4 py-10 text-center text-[13px] leading-relaxed text-muted-foreground">
-                  {copy.globe.inboxNeedsLogin}
-                </p>
+                <div className={rimvioEmptyStateClass()}>
+                  <p className={RIMVIO_TYPE.body}>{copy.globe.inboxNeedsLogin}</p>
+                  <button
+                    type="button"
+                    onClick={() => void signInWithGoogle("/?openGlobeInbox=1")}
+                    className={cn(rimvioHeroCtaClass(), "mt-4 w-auto px-6")}
+                  >
+                    {copy.globe.inboxSignInCta}
+                  </button>
+                </div>
               ) : loadError ? (
-                <p className="rounded-2xl bg-muted/50 px-4 py-10 text-center text-[13px] leading-relaxed text-muted-foreground">
+                <p className={cn(rimvioEmptyStateClass(), RIMVIO_TYPE.body)}>
                   {copy.globe.inboxLoadFail}
                   <br />
-                  <span className="text-[11px] opacity-80">{loadError}</span>
+                  <span className={RIMVIO_TYPE.eyebrow}>{loadError}</span>
                 </p>
               ) : empty ? (
-                <p className="rounded-2xl bg-muted/50 px-4 py-10 text-center text-[13px] text-muted-foreground">
-                  {copy.globe.inboxEmpty}
-                </p>
+                <div className={rimvioEmptyStateClass()}>
+                  <p className={RIMVIO_TYPE.body}>{copy.globe.inboxEmpty}</p>
+                  <p className={cn("mt-1", RIMVIO_TYPE.caption)}>
+                    {copy.globe.inboxEmptyHint}
+                  </p>
+                  <Link
+                    href="/peers"
+                    onClick={() => onOpenChange(false)}
+                    className={cn(rimvioHeroCtaClass(), "mt-4 w-auto px-6")}
+                  >
+                    {copy.globe.inboxEmptyPeersCta}
+                  </Link>
+                </div>
               ) : (
                 <div className="space-y-5">
-                  {bridgeInvites.length > 0 ? (
-                    <section>
-                      <p className="mb-2 px-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        {copy.globe.inboxSectionShare}
-                      </p>
-                      <ul className="space-y-3">
-                        {bridgeInvites.map((invite) => {
-                          const { bridge } = invite.state;
-                          const host = invite.state.participants.find(
-                            (row) => row.role === "host",
-                          );
-                          const hostName =
-                            host?.displayName?.trim() ||
-                            copy.globe.bridgeInviteHostFallback;
-                          const busy = busyBridgeEventId === bridge.eventId;
+                  {(["share", "bridge_activity", "location"] as const).map((section) => {
+                    const rows = grouped[section];
+                    if (rows.length === 0) {
+                      return null;
+                    }
+                    return (
+                      <section key={section}>
+                        <p className={cn("mb-2 px-0.5", RIMVIO_TYPE.eyebrow)}>
+                          {SECTION_LABEL[section]}
+                        </p>
+                        <ul className="space-y-3">
+                          {rows.map((notification) => {
+                            const busyBridge =
+                              notification.kind === "bridge_invite" &&
+                              busyBridgeEventId === notification.targetId;
+                            const busyLocation =
+                              notification.kind === "location_confirm" &&
+                              busyLocationEventId === notification.targetId;
 
-                          return (
-                            <li
-                              key={bridge.eventId}
-                              className="rounded-2xl border border-border bg-muted/30 p-3.5"
-                            >
-                              <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">
-                                {copy.globe.bridgeInviteEyebrow}
-                              </p>
-                              <p className="mt-0.5 text-[14px] font-semibold text-foreground">
-                                {copy.globe.bridgeInviteTitle(hostName, bridge.title)}
-                              </p>
-                              <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
-                                {copy.globe.bridgeInviteBody}
-                              </p>
-                              <div className="mt-2">
-                                <span className="inline-flex items-center gap-1 rounded-full bg-background px-2 py-0.5 text-[11px] font-medium text-foreground">
-                                  <Users className="size-3" aria-hidden />
-                                  {bridge.placeLabel || copy.globe.bridgeInvitePlaceFallback}
-                                </span>
-                              </div>
-                              <div className="mt-3 flex gap-2">
-                                <button
-                                  type="button"
-                                  disabled={busy}
-                                  onClick={() => void handleAcceptBridge(invite)}
-                                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-foreground px-3 py-2.5 text-[13px] font-semibold text-background shadow-sm disabled:opacity-60"
-                                >
-                                  {busy ? (
-                                    <Loader2 className="size-4 animate-spin" aria-hidden />
-                                  ) : null}
-                                  {copy.globe.bridgeInviteAcceptCta}
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={busy}
-                                  onClick={() => void handleDeclineBridge(invite)}
-                                  className="rounded-xl px-3 py-2.5 text-[13px] font-medium text-muted-foreground disabled:opacity-60"
-                                >
-                                  {copy.globe.bridgeInviteDeclineCta}
-                                </button>
-                              </div>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </section>
-                  ) : null}
-
-                  {locationConfirms.length > 0 ? (
-                    <section>
-                      <p className="mb-2 px-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        {copy.globe.inboxSectionLocation}
-                      </p>
-                      <ul className="space-y-3">
-                        {locationConfirms.map((row) => {
-                          const busy = busyLocationEventId === row.eventId;
-                          return (
-                            <li
-                              key={row.eventId}
-                              className="rounded-2xl border border-border bg-muted/30 p-3.5"
-                            >
-                              <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-primary">
-                                <MapPin className="size-3" aria-hidden />
-                                {copy.globe.inboxSectionLocation}
-                              </p>
-                              <p className="mt-0.5 text-[14px] font-semibold text-foreground">
-                                {row.kind === "photo_place"
-                                  ? copy.globe.inboxPhotoPlaceTitle(row.place)
-                                  : buildPassiveLocationCareTitle({
-                                      place: row.place,
-                                      datetimeIso: row.datetime,
-                                    })}
-                              </p>
-                              <p className="mt-1 text-[12px] text-muted-foreground">
-                                {row.kind === "gps_dwell"
-                                  ? buildPassiveLocationCareBody({
-                                      dwellLabel:
-                                        row.dwellMinutes != null
-                                          ? formatDwellMinutesLabel(row.dwellMinutes)
-                                          : null,
-                                    })
-                                  : row.title}
-                              </p>
-                              <div className="mt-3 flex gap-2">
-                                <button
-                                  type="button"
-                                  disabled={busy}
-                                  onClick={() => handleConfirmLocation(row)}
-                                  className="flex flex-1 rounded-xl bg-foreground px-3 py-2.5 text-[13px] font-semibold text-background shadow-sm disabled:opacity-60"
-                                >
-                                  {row.kind === "gps_dwell"
-                                    ? copy.globe.passiveLocationCareConfirm
-                                    : copy.globe.inboxLocationConfirm}
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={busy}
-                                  onClick={() => handleDismissLocation(row)}
-                                  className="rounded-xl px-3 py-2.5 text-[13px] font-medium text-muted-foreground disabled:opacity-60"
-                                >
-                                  {copy.globe.inboxLocationDismiss}
-                                </button>
-                              </div>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </section>
-                  ) : null}
+                            return (
+                              <li
+                                key={notification.id}
+                                className={rimvioInboxItemCardClass()}
+                                data-rimvio-notification={notification.kind}
+                              >
+                                {notification.kind === "bridge_invite" ? (
+                                  <>
+                                    <p className={RIMVIO_TYPE.eyebrow}>
+                                      {copy.globe.bridgeInviteEyebrow}
+                                    </p>
+                                    <p className={cn("mt-0.5 font-semibold", RIMVIO_TYPE.body)}>
+                                      {notification.title}
+                                    </p>
+                                    <p className={cn("mt-1", RIMVIO_TYPE.caption)}>
+                                      {notification.body}
+                                    </p>
+                                    {notification.bridgeInvite ? (
+                                      <div className="mt-2">
+                                        <span className="inline-flex items-center gap-1 rounded-full bg-background px-2 py-0.5 text-[11px] font-medium text-foreground ring-1 ring-black/[0.04]">
+                                          <Users className="size-3" aria-hidden />
+                                          {notification.bridgeInvite.state.bridge.placeLabel ||
+                                            copy.globe.bridgeInvitePlaceFallback}
+                                        </span>
+                                      </div>
+                                    ) : null}
+                                    <div className="mt-3 flex gap-2">
+                                      <button
+                                        type="button"
+                                        disabled={busyBridge}
+                                        onClick={() => void handleAcceptBridge(notification)}
+                                        className={rimvioCompactPrimaryCtaClass()}
+                                      >
+                                        {busyBridge ? (
+                                          <Loader2 className="size-4 animate-spin" aria-hidden />
+                                        ) : null}
+                                        {notification.primaryCtaLabel}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        disabled={busyBridge}
+                                        onClick={() => void handleDeclineBridge(notification)}
+                                        className={rimvioGhostCtaClass()}
+                                      >
+                                        {notification.dismissCtaLabel}
+                                      </button>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <>
+                                    {notification.kind === "location_confirm" ? (
+                                      <p
+                                        className={cn(
+                                          "flex items-center gap-1",
+                                          RIMVIO_TYPE.eyebrow,
+                                          "text-primary",
+                                        )}
+                                      >
+                                        <MapPin className="size-3" aria-hidden />
+                                        {SECTION_LABEL.location}
+                                      </p>
+                                    ) : null}
+                                    <p className={cn("mt-0.5 font-semibold", RIMVIO_TYPE.body)}>
+                                      {notification.title}
+                                    </p>
+                                    <p className={cn("mt-1", RIMVIO_TYPE.caption)}>
+                                      {notification.body}
+                                    </p>
+                                    <div className="mt-3 flex gap-2">
+                                      {notification.primaryCtaHref ? (
+                                        <Link
+                                          href={notification.primaryCtaHref}
+                                          onClick={() => onOpenChange(false)}
+                                          className={rimvioCompactPrimaryCtaClass()}
+                                        >
+                                          {notification.primaryCtaLabel}
+                                        </Link>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          disabled={busyLocation}
+                                          onClick={() => handleConfirmLocation(notification)}
+                                          className={rimvioCompactPrimaryCtaClass()}
+                                        >
+                                          {notification.primaryCtaLabel}
+                                        </button>
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          onNotificationDismissed?.(notification.id)
+                                        }
+                                        className={rimvioGhostCtaClass()}
+                                      >
+                                        {notification.dismissCtaLabel}
+                                      </button>
+                                    </div>
+                                  </>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </section>
+                    );
+                  })}
                 </div>
               )}
             </div>

@@ -40,8 +40,9 @@ function isGlobePath(pathname: string): boolean {
   );
 }
 
-const NAV_ICON_CLASS = "size-6 shrink-0 pointer-events-none";
-const NAV_ICON_STROKE = 2;
+const NAV_ICON_CLASS = "size-[22px] shrink-0 pointer-events-none";
+const NAV_ICON_STROKE = 2.25;
+const NAV_CAPTURE_ICON_CLASS = "size-5 shrink-0 pointer-events-none";
 const NAV_ICON_SLOT =
   "rimvio-bottom-nav-slot pointer-events-none select-none";
 
@@ -56,28 +57,35 @@ function NavIconSlot({ children }: { children: ReactNode }) {
 function NavTabIcon({
   icon,
   active,
+  capture,
 }: {
   icon: NavTab["icon"];
   active: boolean;
+  capture?: boolean;
 }) {
-  const tone = active ? "text-foreground" : "text-foreground/70";
+  const tone = capture
+    ? "text-primary-foreground"
+    : active
+      ? "text-primary"
+      : "text-muted-foreground";
+  const iconClass = capture ? NAV_CAPTURE_ICON_CLASS : NAV_ICON_CLASS;
   switch (icon) {
     case "globe":
       return (
         <NavIconSlot>
-          <Globe className={cn(NAV_ICON_CLASS, tone)} strokeWidth={NAV_ICON_STROKE} />
+          <Globe className={cn(iconClass, tone)} strokeWidth={NAV_ICON_STROKE} />
         </NavIconSlot>
       );
     case "people":
       return (
         <NavIconSlot>
-          <Users className={cn(NAV_ICON_CLASS, tone)} strokeWidth={NAV_ICON_STROKE} />
+          <Users className={cn(iconClass, tone)} strokeWidth={NAV_ICON_STROKE} />
         </NavIconSlot>
       );
     case "capture":
       return (
         <NavIconSlot>
-          <Plus className={cn(NAV_ICON_CLASS, tone)} strokeWidth={NAV_ICON_STROKE} />
+          <Plus className={cn(iconClass, tone)} strokeWidth={NAV_ICON_STROKE} />
         </NavIconSlot>
       );
   }
@@ -106,6 +114,8 @@ function NavTabButton({
     }
   };
 
+  const isCapture = tab.action === "capture";
+
   return (
     <button
       type="button"
@@ -131,12 +141,16 @@ function NavTabButton({
         activate();
       }}
       className={cn(
-        "rimvio-bottom-nav-tab relative z-10 flex h-full w-full min-h-11 min-w-11 items-center justify-center border-0 bg-transparent p-0 transition-opacity active:opacity-60 touch-manipulation",
+        "rimvio-bottom-nav-tab relative z-10 flex h-full w-full min-h-11 min-w-11 items-center justify-center border-0 bg-transparent p-0 transition-opacity active:opacity-70 touch-manipulation",
+        isCapture && "rimvio-bottom-nav-tab--capture",
         className,
       )}
     >
-      <span className="pointer-events-none flex items-center justify-center">
-        <NavTabIcon icon={tab.icon} active={active} />
+      <span className="rimvio-bottom-nav-tab-inner pointer-events-none">
+        <NavTabIcon icon={tab.icon} active={active} capture={isCapture} />
+        {!isCapture ? (
+          <span className="rimvio-bottom-nav-label">{tab.label}</span>
+        ) : null}
       </span>
     </button>
   );

@@ -21,9 +21,10 @@ function travelEvent(overrides: Partial<EventCandidate> = {}): EventCandidate {
 }
 
 assert.equal(shouldShowContextHubOffer(travelEvent()), true);
+assert.equal(resolveInitialContextMapTapPhase(travelEvent()), "awaiting_replay");
 assert.equal(
-  resolveInitialContextMapTapPhase(travelEvent()),
-  "hub_offer",
+  resolveInitialContextMapTapPhase(travelEvent(), { hasMapMedia: true }),
+  "media_open",
 );
 assert.equal(
   resolveInitialContextMapTapPhase(

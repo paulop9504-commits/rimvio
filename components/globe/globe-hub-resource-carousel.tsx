@@ -60,6 +60,22 @@ function resolveResourceSubtitle(entry: RankedContextResource): string {
   return copy.globe.contextHubServicePlugIn;
 }
 
+function resolveMainHubCtaLabel(entry: RankedContextResource): string {
+  if (entry.resource.action?.kind === "show_qr") {
+    return copy.globe.contextHubOpenTicketQr;
+  }
+  if (entry.resource.action) {
+    return copy.globe.contextHubServiceOpen;
+  }
+  if (entry.hubRow.serviceId === "ticket") {
+    return copy.globe.ticketConnectSave;
+  }
+  if (entry.hubRow.serviceId === "lodging") {
+    return copy.globe.lodgingFocusBook;
+  }
+  return copy.globe.contextHubServicePlugIn;
+}
+
 /** Per-context hub — index 0 = MAIN JIT resource; swipe explores siblings. */
 export function GlobeHubResourceCarousel({
   ranked,
@@ -189,6 +205,9 @@ export function GlobeHubResourceCarousel({
   const Icon = SERVICE_ICON[row.serviceId];
   const heroLayout = layout === "hero" && isMainSlot;
   const compact = variant === "compact";
+  const sleekMain = isMainSlot && !compact;
+  const subtitle = resolveResourceSubtitle(entry);
+  const ctaLabel = resolveMainHubCtaLabel(entry);
   const lodgingPayload =
     resource.kind === "lodging_voucher"
       ? readLodgingPayloadFromResource(resource)
@@ -199,13 +218,19 @@ export function GlobeHubResourceCarousel({
   return (
     <aside
       className={cn(
-        "pointer-events-auto overflow-hidden rounded-[1.35rem] border backdrop-blur-xl",
-        heroLayout
-          ? "w-full max-w-md border-primary/30 bg-card/95 shadow-[0_14px_44px_rgba(2,32,71,0.14)]"
-          : cn(
-              "border-border/60 bg-card/95 shadow-[0_10px_32px_rgba(2,32,71,0.1)]",
-              compact ? COMPACT_WIDTH : STANDARD_WIDTH,
-            ),
+        "pointer-events-auto overflow-hidden backdrop-blur-xl",
+        sleekMain
+          ? cn(
+              "rounded-[1.15rem] bg-[#f5f5f7] shadow-[0_16px_44px_rgba(0,0,0,0.22)] ring-1 ring-white/20",
+              STANDARD_WIDTH,
+            )
+          : heroLayout
+            ? "w-full max-w-md rounded-[1.35rem] border border-primary/30 bg-card/95 shadow-[0_14px_44px_rgba(2,32,71,0.14)]"
+            : cn(
+                "rounded-[1.35rem] border border-border/60 bg-card/95 shadow-[0_10px_32px_rgba(2,32,71,0.1)]",
+                compact ? COMPACT_WIDTH : STANDARD_WIDTH,
+              ),
+        heroLayout && !sleekMain ? "w-full max-w-md" : null,
         className,
       )}
       data-globe-hub-carousel
@@ -228,7 +253,7 @@ export function GlobeHubResourceCarousel({
             <ChevronDown className="size-3.5 text-muted-foreground" aria-hidden />
           </button>
         </div>
-      ) : (
+      ) : sleekMain ? null : (
       <div className="border-b border-border/50 px-3 py-2">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
@@ -256,7 +281,23 @@ export function GlobeHubResourceCarousel({
       </div>
       )}
 
-      <div className={cn("relative px-2 pb-2", compact ? "pt-1" : "pt-1.5")}>
+      <div
+        className={cn(
+          "relative",
+          compact ? "px-2 pb-2 pt-1" : sleekMain ? "px-2.5 pb-2.5 pt-2.5" : "px-2 pb-2 pt-1.5",
+        )}
+      >
+        {sleekMain ? (
+          <button
+            type="button"
+            onClick={onExpand}
+            className="absolute right-4 top-4 z-[2] flex size-8 items-center justify-center rounded-full bg-white/90 text-[#86868b] shadow-sm backdrop-blur-md active:scale-95"
+            aria-label={copy.globe.contextHubExpandAria}
+            data-globe-hub-rail-expand
+          >
+            <ChevronDown className="size-4" aria-hidden />
+          </button>
+        ) : null}
         {showLodgingHero && lodgingPayload ? (
           <GlobeLodgingMediaHero
             payload={lodgingPayload}
@@ -276,19 +317,55 @@ export function GlobeHubResourceCarousel({
           onDragEnd={onDragEnd}
           onClick={handleCardClick}
           className={cn(
-            "flex w-full items-center gap-2.5 rounded-2xl border px-2.5 text-left active:scale-[0.99]",
-            compact ? "py-2" : heroLayout ? "border-primary/25 bg-primary/[0.06] py-4" : "py-3",
-            isMainSlot && !heroLayout && !compact
-              ? "border-primary/25 bg-primary/[0.05]"
-              : !isMainSlot && row.connected
-                ? "border-primary/20 bg-primary/[0.04]"
-                : compact
-                  ? "border-border/40 bg-card/90"
-                  : "border-border/50 bg-card",
+            "flex w-full text-left active:scale-[0.99]",
+            sleekMain
+              ? "flex-col gap-0 rounded-2xl bg-white p-3 shadow-[0_2px_14px_rgba(0,0,0,0.07)]"
+              : cn(
+                  "items-center gap-2.5 rounded-2xl border px-2.5",
+                  compact ? "py-2" : heroLayout ? "border-primary/25 bg-primary/[0.06] py-4" : "py-3",
+                  isMainSlot && !heroLayout && !compact
+                    ? "border-primary/25 bg-primary/[0.05]"
+                    : !isMainSlot && row.connected
+                      ? "border-primary/20 bg-primary/[0.04]"
+                      : compact
+                        ? "border-border/40 bg-card/90"
+                        : "border-border/50 bg-card",
+                ),
           )}
           data-globe-hub-carousel-index={index}
           data-globe-resource-id={resource.resourceId}
         >
+          {sleekMain ? (
+            <>
+              <div className="flex items-center gap-3">
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#0071e3]/10 text-[#0071e3]">
+                  <Icon className="size-5" aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1 pr-6">
+                  <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-[#0071e3]">
+                    {copy.globe.mainActionEyebrow}
+                  </span>
+                  <span className="mt-0.5 block truncate text-[16px] font-semibold leading-tight text-[#1d1d1f]">
+                    {resource.label}
+                  </span>
+                  {contextPlace ? (
+                    <span className="mt-0.5 block truncate text-[12px] font-medium text-[#86868b]">
+                      {contextPlace}
+                    </span>
+                  ) : null}
+                </span>
+              </div>
+              <div className="mt-3 flex items-center justify-between gap-2 border-t border-black/[0.06] pt-3">
+                <span className="min-w-0 truncate text-[12px] font-medium text-[#86868b]">
+                  {subtitle}
+                </span>
+                <span className="shrink-0 rounded-full bg-[#0071e3] px-4 py-2 text-[13px] font-semibold text-white shadow-[0_4px_14px_rgba(0,113,227,0.28)]">
+                  {ctaLabel}
+                </span>
+              </div>
+            </>
+          ) : (
+            <>
           <span
             className={cn(
               "flex shrink-0 items-center justify-center rounded-xl",
@@ -311,7 +388,7 @@ export function GlobeHubResourceCarousel({
             </span>
             {!compact ? (
             <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
-              {resolveResourceSubtitle(entry)}
+              {subtitle}
             </span>
             ) : null}
           </span>
@@ -320,6 +397,8 @@ export function GlobeHubResourceCarousel({
               →
             </span>
           ) : null}
+            </>
+          )}
         </motion.button>
 
         {showSwipeHint && !compact ? (

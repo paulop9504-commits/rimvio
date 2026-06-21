@@ -113,7 +113,7 @@ function testMapReplayGateUsesFeedCaptureVideoWithoutMediaId() {
     },
   });
   assert.equal(resolveGlobeContextPrimaryVideo(event), null);
-  assert.equal(globeContextShouldMapReplayFirst({ event }), true);
+  assert.equal(globeContextShouldMapReplayFirst({ event }), false);
 }
 
 function testMapReplayUsesReelVideoWithMediaId() {

@@ -3,6 +3,7 @@ import { projectRelationshipMeaningLine } from "@/lib/copy/project-relationship-
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { buildMeaningGraph, topMeaningEdges } from "@/lib/meaning";
 import { collectEventPeople } from "@/lib/people-graph/collect-event-people";
+import type { SemanticTriple } from "@/lib/semantic/types";
 import type { PersonalReadMeaningSlice } from "@/lib/personal-read-model/types";
 
 const TOP_EDGE_LIMIT = 5;
@@ -67,6 +68,7 @@ export function mapMeaningSlice(input: {
   events: readonly EventCandidate[];
   now: Date;
   contextFilter?: string | null;
+  semanticTriples?: readonly SemanticTriple[];
 }): PersonalReadMeaningSlice {
   const graph = buildMeaningGraph(input.events, input.now);
   const topEdges = topMeaningEdges(graph, { limit: TOP_EDGE_LIMIT }).map((edge) => ({
@@ -119,5 +121,6 @@ export function mapMeaningSlice(input: {
     relationshipLines,
     seasonPattern: deriveSeasonPattern(input.events, input.now),
     rollupAffinities,
+    semanticTriples: input.semanticTriples ?? [],
   };
 }

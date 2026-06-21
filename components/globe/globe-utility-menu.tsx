@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ImagePlus, Inbox, MoreHorizontal, Settings } from "lucide-react";
+import { ImagePlus, Inbox, MessageCircle, MoreHorizontal, Settings } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useCopy } from "@/hooks/use-copy";
 import { cn } from "@/lib/utils";
 
@@ -32,6 +33,7 @@ export function GlobeUtilityMenu({
   className,
 }: GlobeUtilityMenuProps) {
   const copy = useCopy();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const pendingTotal = mediaPoolCount + inboxCount;
@@ -64,6 +66,16 @@ export function GlobeUtilityMenu({
       onPress: () => {
         setOpen(false);
         onOpenInbox();
+      },
+    },
+    {
+      id: "peers" as const,
+      icon: MessageCircle,
+      label: copy.globe.utilityMenuPeers,
+      badge: null,
+      onPress: () => {
+        setOpen(false);
+        router.push("/peers");
       },
     },
     {

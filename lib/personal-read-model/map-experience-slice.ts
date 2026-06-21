@@ -3,7 +3,7 @@ import { GLOBE_CONTEXT_VISIBILITY_EXTERNAL } from "@/lib/globe/globe-context-vis
 import { listContextHubLinks } from "@/lib/globe/context-hub/list-context-hub-links";
 import { readContextHubIds } from "@/lib/globe/context-hub/context-hub-metadata";
 import { DEPARTURE_HUB_AIRPORT_IATA_META_KEY } from "@/lib/globe/departure-hub-airports";
-import { findEventCandidate } from "@/lib/events/event-store";
+import { findLifeEventCandidate } from "@/lib/life-read-model";
 import { findPersonalGlobePinByEventId } from "@/lib/globe/personal-globe-pin-store";
 import { readTripLegFromEvent } from "@/lib/globe/trip-leg-metadata";
 import type { SurfaceReadBundle } from "@/lib/life-read-model/types";
@@ -25,7 +25,7 @@ function resolveDepartureHubIata(focusEvent: EventCandidate | null): string | nu
     return null;
   }
   for (const hubId of readContextHubIds(focusEvent)) {
-    const hubEvent = findEventCandidate(hubId);
+    const hubEvent = findLifeEventCandidate(hubId);
     const iata = hubEvent?.metadata?.[DEPARTURE_HUB_AIRPORT_IATA_META_KEY];
     if (typeof iata === "string" && iata.trim()) {
       return iata.trim().toUpperCase();

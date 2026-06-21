@@ -1,95 +1,90 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
 import { usePendingBridgeInvites } from "@/hooks/use-pending-bridge-invites";
 import { useGpsTrackingEnabled } from "@/hooks/use-gps-tracking-enabled";
+import { listBridgeLinkedEventIds } from "@/lib/experience-bridge/list-bridge-linked-event-ids";
+import { listBridgeStackPrepItems } from "@/lib/experience-bridge/project-bridge-stack-prep";
 import { listPendingGlobeLocationConfirms } from "@/lib/globe/list-pending-globe-location-confirms";
-import { EVENT_CANDIDATES_UPDATED } from "@/lib/life-read-model";
+import {
+  persistNotificationDismiss,
+  projectPendingNotifications,
+  readDismissedLocationEventIds,
+  readDismissedNotificationIds,
+  type RimvioNotification,
+} from "@/lib/ontology";
+import { EVENT_CANDIDATES_UPDATED, findLifeEventCandidate } from "@/lib/life-read-model";
+import { EXPERIENCE_BRIDGE_UPDATED } from "@/lib/experience-bridge/local-bridge-store";
+import { subscribeBridgeSyncSession } from "@/lib/experience-bridge/bridge-sync-session";
 
-const DISMISSED_KEY = "rimvio.globe-inbox-dismissed-locations";
-
-function readDismissedLocationIds(): string[] {
-  if (typeof window === "undefined") {
-    return [];
-  }
-  try {
-    const raw = sessionStorage.getItem(DISMISSED_KEY);
-    if (!raw) {
-      return [];
-    }
-    const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed)
-      ? parsed.filter((row): row is string => typeof row === "string")
-      : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeDismissedLocationIds(ids: readonly string[]) {
-  if (typeof window === "undefined") {
-    return;
-  }
-  try {
-    sessionStorage.setItem(DISMISSED_KEY, JSON.stringify(ids));
-  } catch {
-    /* ignore */
-  }
-}
-
-/** Globe home — bridge invites + location confirms in one inbox. */
+/** Globe home — notification objects projected from SSOT (inbox SSOT). */
 export function useGlobeInbox(enabled = true) {
+  const { user } = useAuth();
   const { enabled: gpsEnabled } = useGpsTrackingEnabled();
   const bridge = usePendingBridgeInvites(enabled);
-  const [dismissedLocationIds, setDismissedLocationIds] = useState<
-    readonly string[]
-  >(() => readDismissedLocationIds());
-  const [locationRevision, setLocationRevision] = useState(0);
+  const [dismissedRevision, setDismissedRevision] = useState(0);
+  const [dataRevision, setDataRevision] = useState(0);
 
   useEffect(() => {
-    const bump = () => setLocationRevision((value) => value + 1);
+    const bump = () => setDataRevision((value) => value + 1);
     window.addEventListener(EVENT_CANDIDATES_UPDATED, bump);
-    return () => window.removeEventListener(EVENT_CANDIDATES_UPDATED, bump);
+    window.addEventListener(EXPERIENCE_BRIDGE_UPDATED, bump);
+    const unsub = subscribeBridgeSyncSession(bump);
+    return () => {
+      window.removeEventListener(EVENT_CANDIDATES_UPDATED, bump);
+      window.removeEventListener(EXPERIENCE_BRIDGE_UPDATED, bump);
+      unsub();
+    };
   }, []);
 
-  const locationConfirms = useMemo(
-    () =>
-      listPendingGlobeLocationConfirms({
-        dismissedIds: dismissedLocationIds,
-        gpsEnabled,
-      }),
-    [dismissedLocationIds, gpsEnabled, locationRevision],
-  );
+  const dismissedIds = useMemo(() => {
+    void dismissedRevision;
+    return readDismissedNotificationIds();
+  }, [dismissedRevision]);
 
-  const totalCount = bridge.invites.length + locationConfirms.length;
-
-  const dismissLocationConfirm = useCallback((eventId: string) => {
-    setDismissedLocationIds((prev) => {
-      const key = eventId.trim();
-      if (!key || prev.includes(key)) {
-        return prev;
-      }
-      const next = [...prev, key];
-      writeDismissedLocationIds(next);
-      return next;
+  const notifications = useMemo((): RimvioNotification[] => {
+    void dataRevision;
+    const bridgeActivities = listBridgeStackPrepItems({
+      invites: bridge.invites,
+      events: listBridgeLinkedEventIds()
+        .map((eventId) => findLifeEventCandidate(eventId))
+        .filter((event): event is NonNullable<typeof event> => Boolean(event)),
+      viewerUserId: user?.id,
     });
+    const locationConfirms = listPendingGlobeLocationConfirms({
+      dismissedIds: readDismissedLocationEventIds(),
+      gpsEnabled,
+    });
+
+    return projectPendingNotifications({
+      invites: bridge.invites,
+      bridgeActivities,
+      locationConfirms,
+      dismissedIds,
+    });
+  }, [bridge.invites, dataRevision, dismissedIds, gpsEnabled, user?.id]);
+
+  const dismissNotification = useCallback((id: string) => {
+    persistNotificationDismiss(id);
+    setDismissedRevision((value) => value + 1);
   }, []);
 
-  const refreshLocationConfirms = useCallback(() => {
-    setLocationRevision((value) => value + 1);
+  const refreshData = useCallback(() => {
+    setDataRevision((value) => value + 1);
   }, []);
 
   return {
+    notifications,
     bridgeInvites: bridge.invites,
-    locationConfirms,
-    totalCount,
+    totalCount: notifications.length,
     loading: bridge.loading,
     bridgeError: bridge.error,
     needsLogin: bridge.needsLogin,
     refreshBridgeInvites: bridge.refresh,
     dismissBridgeInvite: bridge.dismissInvite,
-    dismissLocationConfirm,
-    refreshLocationConfirms,
-    hasItems: totalCount > 0,
+    dismissNotification,
+    refreshData,
+    hasItems: notifications.length > 0,
   };
 }

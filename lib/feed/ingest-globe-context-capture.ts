@@ -146,6 +146,7 @@ export async function ingestGlobeContextFromFiles(
     pinsCreated: summary.pinsCreated,
     exifPinned: summary.exifPinned,
     poolStaged: summary.poolStaged,
+    lastError: summary.lastError,
   };
 }
 

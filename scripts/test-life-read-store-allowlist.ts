@@ -42,6 +42,11 @@ const ALLOWLIST: readonly string[] = [
   "lib/globe/globe-orchestrator-scope-bridge.ts",
   "lib/globe/resolve-gathering-trace-hint.ts",
   "lib/globe/resolve-inferred-pin-domain-stub.ts",
+  "lib/globe/connect-departure-hub-to-context.ts",
+  "lib/globe/context-hub/",
+  "lib/globe/passive-context/",
+  "lib/globe/resource/context-resource-sync-metadata.ts",
+  "lib/globe/resource/run-hub-resource-sync-worker.ts",
   "lib/peer-chat/ai-lens/",
 ];
 

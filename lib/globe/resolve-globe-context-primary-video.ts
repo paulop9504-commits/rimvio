@@ -109,11 +109,7 @@ export function globeContextShouldMapReplayFirst(input: {
   if (projectContextMediaReel({ event, volume }).length > 0) {
     return true;
   }
-  if (globeContextHasVideo(event)) {
-    return true;
-  }
-  return (input.cluster?.evidence.videoCount ?? 0) > 0 ||
-    (input.cluster?.evidence.photoCount ?? 0) > 0;
+  return false;
 }
 
 /** Map replay video — feedCaptures, media store, then spatial reel fallback. */

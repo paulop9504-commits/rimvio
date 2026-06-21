@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ImagePlus, Loader2, Ticket, X } from "lucide-react";
+import { ImagePlus, Ticket, X } from "lucide-react";
 import { toast } from "sonner";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
@@ -354,10 +354,7 @@ export function GlobeContextTicketConnectSheet({
                 className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3.5 text-[15px] font-semibold text-primary-foreground active:opacity-90 disabled:opacity-60"
                 data-globe-ticket-connect-save
               >
-                {busy ? (
-                  <Loader2 className="size-4 animate-spin" aria-hidden />
-                ) : null}
-                {copy.globe.ticketConnectSave}
+                {busy ? copy.globe.ticketConnectSaving : copy.globe.ticketConnectSave}
               </button>
             </div>
           </motion.div>

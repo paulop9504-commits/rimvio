@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Loader2, Share2, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
@@ -31,7 +32,7 @@ export function GlobeContextShareFriendsPanel({
   event,
   className,
 }: GlobeContextShareFriendsPanelProps) {
-  const { user, configured } = useAuth();
+  const { user, configured, signInWithGoogle } = useAuth();
   const [rows, setRows] = useState<ShareRow[]>([]);
   const [fetching, setFetching] = useState(true);
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
@@ -164,6 +165,13 @@ export function GlobeContextShareFriendsPanel({
         <p className="text-[13px] text-muted-foreground">
           {copy.globe.bridgeShareLoginRequired}
         </p>
+        <button
+          type="button"
+          onClick={() => void signInWithGoogle("/?recallEvent=" + encodeURIComponent(event.id))}
+          className="mt-3 inline-flex h-9 items-center justify-center rounded-full bg-primary px-4 text-[13px] font-semibold text-primary-foreground"
+        >
+          {copy.globe.inboxSignInCta}
+        </button>
       </section>
     );
   }
@@ -197,11 +205,17 @@ export function GlobeContextShareFriendsPanel({
           친구 목록 불러오는 중…
         </p>
       ) : sorted.length === 0 ? (
-        <p className="rounded-xl bg-background/70 px-3 py-4 text-center text-[12px] leading-relaxed text-muted-foreground">
-          아직 친구가 없어요.
-          <br />
-          친구 탭에서 추가한 뒤 다시 공유해 보세요.
-        </p>
+        <div className="rounded-xl bg-background/70 px-3 py-4 text-center">
+          <p className="text-[12px] leading-relaxed text-muted-foreground">
+            {copy.globe.bridgeShareNoFriends}
+          </p>
+          <Link
+            href="/peers"
+            className="mt-3 inline-flex h-9 items-center justify-center rounded-full bg-primary px-4 text-[13px] font-semibold text-primary-foreground active:opacity-90"
+          >
+            {copy.globe.bridgeShareAddFriendsCta}
+          </Link>
+        </div>
       ) : (
         <ul className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {sorted.map((row) => {

@@ -2,11 +2,17 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ChevronUp } from "lucide-react";
+import { motion } from "framer-motion";
+import { ChevronUp, Inbox } from "lucide-react";
 import { toast } from "sonner";
 import { ActionCard } from "@/components/action-card";
-import { Button } from "@/components/ui/button";
+import {
+  RIMVIO_TYPE,
+  rimvioHeroCtaClass,
+  rimvioSurfaceCardClass,
+} from "@/lib/design/rimvio-ontology";
+import { cn } from "@/lib/utils";
+import { useGlobeInbox } from "@/hooks/use-globe-inbox";
 import { resolveLinkMainOffer } from "@/lib/action-chat/resolve-link-main-offer";
 import {
   foldSurfaceLinkLearning,
@@ -17,14 +23,17 @@ import {
   dismissLinkId,
   readDismissedIds,
 } from "@/lib/local-links/now-session";
+import { copy } from "@/lib/copy/human-ko";
 
 export function ActionStackList() {
   const { activeLinks, archivedLinks } = useRealtimeLinks();
   const [dismissed, setDismissed] = useState(() => readDismissedIds());
+  const { notifications, totalCount: inboxCount } = useGlobeInbox(true);
+  const topInboxNotification = notifications[0] ?? null;
 
   const stackLinks = useMemo(
     () => activeLinks.filter((link) => !dismissed.has(link.id)),
-    [activeLinks, dismissed]
+    [activeLinks, dismissed],
   );
 
   const topLink = stackLinks[0];
@@ -52,12 +61,12 @@ export function ActionStackList() {
     toast("👀 Done", { description: topLink.title });
   };
 
-  if (!topLink) {
+  if (!topLink && !topInboxNotification) {
     return (
-      <div className="flex min-h-[60dvh] flex-col items-center justify-center text-center">
+      <div className="flex min-h-[60dvh] flex-col items-center justify-center text-center px-4">
         <p className="text-4xl">👀</p>
-        <p className="mt-4 text-lg font-medium">All clear</p>
-        <p className="mt-2 max-w-[16rem] text-sm text-muted-foreground">
+        <p className={cn("mt-4", RIMVIO_TYPE.headline)}>All clear</p>
+        <p className={cn("mt-2 max-w-[16rem]", RIMVIO_TYPE.caption)}>
           Share a link from another app — your next action appears here.
         </p>
         {archivedLinks.length > 0 ? (
@@ -74,69 +83,104 @@ export function ActionStackList() {
 
   return (
     <div className="flex min-h-[60dvh] flex-col">
-      <div className="relative flex-1 pt-4">
-        {ghostLinks
-          .slice()
-          .reverse()
-          .map((link, index) => (
-            <div
-              key={link.id}
-              className="pointer-events-none absolute inset-x-0 top-4"
-              style={{
-                transform: `translateY(${(ghostLinks.length - index) * 10}px) scale(${0.94 - index * 0.03})`,
-                opacity: 0.35 - index * 0.1,
-                zIndex: index,
-              }}
+      {!topLink && topInboxNotification ? (
+        <div className="flex flex-1 flex-col items-center justify-center px-4">
+          <article
+            className={cn(rimvioSurfaceCardClass("w-full max-w-sm p-4"), "text-left")}
+            data-rimvio-stack-inbox-hint
+          >
+            <p className={cn(RIMVIO_TYPE.eyebrow, "text-primary")}>
+              {copy.globe.inboxTitle}
+            </p>
+            <p className={cn("mt-1 font-semibold", RIMVIO_TYPE.body)}>
+              {topInboxNotification.title}
+            </p>
+            <p className={cn("mt-1", RIMVIO_TYPE.caption)}>{topInboxNotification.body}</p>
+            <Link
+              href="/?openGlobeInbox=1"
+              className={cn(rimvioHeroCtaClass(), "mt-4 inline-flex w-full gap-2")}
             >
-              <ActionCard link={link} />
-            </div>
-          ))}
-
-        <AnimatePresence mode="popLayout">
-          <motion.div
-            key={topLink.id}
-            initial={{ opacity: 0, y: 20, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -40, scale: 0.95 }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="relative z-10"
-          >
-            <ActionCard link={topLink} />
-          </motion.div>
-        </AnimatePresence>
-      </div>
-
-      <div className="mt-6 space-y-3 pb-2">
-        <Button
-          className="h-12 w-full rounded-2xl font-semibold"
-          onClick={handleDone}
-        >
-          <ChevronUp className="mr-2 size-4" strokeWidth={2.5} />
-          Done — next
-        </Button>
-
-        <div className="flex items-center justify-between px-1 text-xs text-muted-foreground">
-          {remaining > 0 ? (
-            <span>{remaining} more in stack</span>
-          ) : (
-            <span>Stack clear after this</span>
-          )}
-          <Link
-            href="/inbox"
-            className="underline-offset-4 transition-colors hover:text-foreground hover:underline"
-          >
-            All links →
-          </Link>
-        </div>
-
-        {archivedLinks.length > 0 ? (
-          <p className="text-center text-xs text-muted-foreground/80">
-            <Link href="/archive" className="hover:underline">
-              👀 보관함으로 이동된 링크 {archivedLinks.length}개
+              <Inbox className="size-4" aria-hidden />
+              {inboxCount > 1
+                ? `${copy.globe.bridgeStackPrepInviteCta} · ${inboxCount}건`
+                : copy.globe.bridgeStackPrepInviteCta}
             </Link>
-          </p>
-        ) : null}
-      </div>
+          </article>
+        </div>
+      ) : null}
+
+      {topLink ? (
+        <>
+          <div className="relative flex-1 pt-4">
+            {ghostLinks
+              .slice()
+              .reverse()
+              .map((link, index) => (
+                <div
+                  key={link.id}
+                  className="pointer-events-none absolute inset-x-4 opacity-[0.35]"
+                  style={{
+                    top: `${(ghostLinks.length - 1 - index) * 10}px`,
+                    transform: `scale(${0.96 - index * 0.02})`,
+                    zIndex: index,
+                  }}
+                >
+                  <div className="rounded-[1.25rem] bg-muted/80 p-4 shadow-sm">
+                    <p className="line-clamp-1 text-sm font-semibold text-muted-foreground">
+                      {link.title}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            <motion.div layout className="relative z-10 px-4">
+              <ActionCard link={topLink} index={0} />
+            </motion.div>
+          </div>
+
+          {inboxCount > 0 ? (
+            <Link
+              href="/?openGlobeInbox=1"
+              className={cn(
+                "mx-4 mb-2 flex items-center justify-center gap-1.5 rounded-full py-2 text-[12px] font-semibold text-primary active:bg-muted",
+              )}
+            >
+              <Inbox className="size-3.5" aria-hidden />
+              {copy.globe.inboxTitle} · {inboxCount}건
+            </Link>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={handleDone}
+            className={cn(rimvioHeroCtaClass(), "mx-4 mt-2 shrink-0")}
+          >
+            <ChevronUp className="mr-2 size-4" strokeWidth={2.5} aria-hidden />
+            Done · next
+          </button>
+
+          <div className="mt-3 flex items-center justify-between px-5 text-xs text-muted-foreground">
+            {remaining > 0 ? (
+              <span>{remaining} more in stack</span>
+            ) : (
+              <span>Stack clear after this</span>
+            )}
+            <Link
+              href="/inbox"
+              className="underline-offset-4 transition-colors hover:text-foreground hover:underline"
+            >
+              All links →
+            </Link>
+          </div>
+
+          {archivedLinks.length > 0 ? (
+            <p className="mt-2 text-center text-xs text-muted-foreground/80">
+              <Link href="/archive" className="hover:underline">
+                👀 보관함 {archivedLinks.length}개
+              </Link>
+            </p>
+          ) : null}
+        </>
+      ) : null}
     </div>
   );
 }
