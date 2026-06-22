@@ -1,20 +1,48 @@
-import { ACTION_INTENT_REGISTRY } from "@/lib/action-dispatcher/registry";
 import { parseActionMention } from "@/lib/event-kernel/action-contracts/parse-action-mention";
+import { ACTION_INTENT_REGISTRY } from "@/lib/action-dispatcher/registry";
 
-export type GlobeComposerActionResult = {
+export type GlobeComposerUrlAction = {
+  kind: "url";
   label: string;
   url: string;
   featureId: string;
 };
 
+export type GlobeComposerMarketComposeAction = {
+  kind: "market-compose";
+  featureId: "market";
+  composeText: string;
+};
+
+export type GlobeComposerActionResult =
+  | GlobeComposerUrlAction
+  | GlobeComposerMarketComposeAction;
+
 /** Run @action from globe ingest bar — deterministic, no LLM. */
-export function runGlobeComposerAction(raw: string): GlobeComposerActionResult | null {
+export function runGlobeComposerAction(
+  raw: string,
+): GlobeComposerActionResult | null {
   const mention = parseActionMention(raw.trim());
-  if (!mention?.feature.action?.trim()) {
+  if (!mention) {
     return null;
   }
 
-  const actionId = mention.feature.action.trim();
+  if (mention.feature.featureId === "market") {
+    const composeText =
+      mention.query.trim() ||
+      mention.rawInput.replace(/^@\S+\s*/u, "").trim();
+    return {
+      kind: "market-compose",
+      featureId: "market",
+      composeText: composeText || mention.rawInput.trim(),
+    };
+  }
+
+  const actionId = mention.feature.action?.trim();
+  if (!actionId) {
+    return null;
+  }
+
   const definition = ACTION_INTENT_REGISTRY[actionId];
   if (!definition) {
     return null;
@@ -28,6 +56,7 @@ export function runGlobeComposerAction(raw: string): GlobeComposerActionResult |
   }
 
   return {
+    kind: "url",
     label: definition.label,
     url,
     featureId: mention.feature.featureId,

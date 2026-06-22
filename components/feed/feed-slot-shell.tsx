@@ -42,6 +42,7 @@ import { readPeerContacts } from "@/lib/context/peer-contact-store";
 import { syncDmThreadsRemote } from "@/lib/peer-chat/peer-chat-client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { cn } from "@/lib/utils";
+import { PulseMainActionSurface } from "@/components/pulse/pulse-main-action-surface";
 
 function bootstrapFeedDemoEvents(
   goldenPath: string | null,
@@ -227,6 +228,10 @@ export function FeedSlotShell({ className, onOpenLinkPaste }: FeedSlotShellProps
             learningPaused={surfaceState.learningPaused}
             systemLoadLevel={surfaceState.systemLoadLevel}
           />
+          <div className="shrink-0 px-3 pt-2 sm:px-5">
+            <PulseMainActionSurface enabled className="mx-auto max-w-md" />
+            <MarketAlignmentSurface enabled className="mx-auto mt-2 max-w-md" />
+          </div>
           <FeedSlotStage
             frame={surfaceFrame}
             overlayRows={calendarForSheet.overlayRows}

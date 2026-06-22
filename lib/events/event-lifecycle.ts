@@ -3,6 +3,7 @@ import type {
   EventCandidateCategory,
   EventCandidateLifecycle,
 } from "@/lib/events/event-candidate";
+import { FEED_CAPTURES_META_KEY } from "@/lib/feed/feed-capture-types";
 import { isArchiveFoldComplete } from "@/lib/events/fold-archived-event";
 import { LOCKED_LIFECYCLE_ORDER } from "@/lib/event-kernel/schema-lock/mutation-rules";
 
@@ -79,13 +80,44 @@ export function scoreEventConfidence(input: {
 export function isGlobeManualContextEvent(event: EventCandidate): boolean {
   const meta = event.metadata;
   return (
-    meta?.globeManualContext === true || meta?.targetingSource === "globe_manual"
+    meta?.globeManualContext === true ||
+    meta?.targetingSource === "globe_manual" ||
+    meta?.targetingSource === "globe_photo_confirm"
   );
+}
+
+function hasGlobeMediaFeedCaptures(event: EventCandidate): boolean {
+  const captures = event.metadata?.[FEED_CAPTURES_META_KEY];
+  if (!Array.isArray(captures)) {
+    return false;
+  }
+  return captures.some((row) => {
+    if (!row || typeof row !== "object") {
+      return false;
+    }
+    const kind = (row as { kind?: string }).kind;
+    return kind === "photo" || kind === "video";
+  });
+}
+
+/** Photo/video contexts stay on the globe — not subject to 48h moment prune. */
+export function isDurableGlobeContextEvent(event: EventCandidate): boolean {
+  if (isGlobeManualContextEvent(event)) {
+    return true;
+  }
+  const meta = event.metadata ?? {};
+  if (meta.feedCaptureDurable === true) {
+    return true;
+  }
+  if (meta.exifAutoPinned === true || meta.globePlaceConfirmed === true) {
+    return true;
+  }
+  return hasGlobeMediaFeedCaptures(event);
 }
 
 export function pruneExpiredEvents(items: EventCandidate[], now = Date.now()): EventCandidate[] {
   return items.filter((item) => {
-    if (isGlobeManualContextEvent(item)) {
+    if (isDurableGlobeContextEvent(item)) {
       return true;
     }
     if (item.lifecycle === "archived") {

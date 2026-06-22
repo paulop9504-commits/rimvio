@@ -2,7 +2,13 @@ import type { ClassifiedGlobePin } from "@/lib/feed/experience-globe-ping-types"
 import type { GlobeDetailLevel } from "@/lib/globe/globe-zoom-levels";
 import { projectLatLngToMapPercent } from "@/lib/experience-graph/resolve-place-coordinates";
 
-const CLUSTER_LEVELS = new Set<GlobeDetailLevel>(["space", "region", "city"]);
+const CLUSTER_LEVELS = new Set<GlobeDetailLevel>([
+  "space",
+  "region",
+  "city",
+  "neighborhood",
+  "street",
+]);
 /** Far zoom — lone context dots clutter the map; show clusters only. */
 const HIDE_SINGLETON_LEVELS = new Set<GlobeDetailLevel>(["space", "region"]);
 
@@ -28,7 +34,13 @@ function clusterRadiusMeters(detailLevel: GlobeDetailLevel): number {
   if (detailLevel === "region") {
     return 85_000;
   }
-  return 12_000;
+  if (detailLevel === "city") {
+    return 12_000;
+  }
+  if (detailLevel === "neighborhood") {
+    return 3_200;
+  }
+  return 850;
 }
 
 /** Zoomed-out map — merge nearby context pins into count badges. */

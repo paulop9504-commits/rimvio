@@ -285,6 +285,50 @@ export function parseImageExifFromBytes(bytes: Uint8Array): ImageExifMetadata {
   };
 }
 
+function isHeicLike(file: File): boolean {
+  const type = file.type.trim().toLowerCase();
+  const name = file.name.trim().toLowerCase();
+  return type.includes("heic") || type.includes("heif") || /\.heic$|\.heif$/iu.test(name);
+}
+
+function mergeExifMeta(
+  left: ImageExifMetadata,
+  right: ImageExifMetadata,
+): ImageExifMetadata {
+  return {
+    dateTimeIso: left.dateTimeIso ?? right.dateTimeIso,
+    lat: left.lat ?? right.lat,
+    lng: left.lng ?? right.lng,
+  };
+}
+
+async function readExifSlices(file: File): Promise<ImageExifMetadata> {
+  const heic = isHeicLike(file);
+  const headSize = Math.min(
+    file.size,
+    heic ? 2 * 1024 * 1024 : 512 * 1024,
+  );
+  const head = new Uint8Array(await file.slice(0, headSize).arrayBuffer());
+  let parsed = parseImageExifFromBytes(head);
+
+  if (
+    heic &&
+    file.size > headSize &&
+    !parsed.dateTimeIso &&
+    parsed.lat === null &&
+    parsed.lng === null
+  ) {
+    const tailSize = Math.min(512 * 1024, file.size);
+    const tailStart = Math.max(0, file.size - tailSize);
+    const tail = new Uint8Array(
+      await file.slice(tailStart, file.size).arrayBuffer(),
+    );
+    parsed = mergeExifMeta(parsed, parseImageExifFromBytes(tail));
+  }
+
+  return parsed;
+}
+
 /** JPEG / HEIC / HEIF — best-effort EXIF datetime + GPS (no dependency). */
 export async function readImageExifMetadata(file: File): Promise<ImageExifMetadata> {
   if (typeof file.slice !== "function") {
@@ -301,9 +345,7 @@ export async function readImageExifMetadata(file: File): Promise<ImageExifMetada
   }
 
   try {
-    const head = file.slice(0, Math.min(file.size, 512 * 1024));
-    const buffer = await head.arrayBuffer();
-    return parseImageExifFromBytes(new Uint8Array(buffer));
+    return await readExifSlices(file);
   } catch {
     return { dateTimeIso: null, lat: null, lng: null };
   }

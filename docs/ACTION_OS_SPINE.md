@@ -48,6 +48,8 @@ Push back until spine vertical slice ships:
 | **New ingest path (5th axis)** | Four context axes are enough — no new `sourceRef` families |
 | **Domain LLM action candidate expansion** | Freeze until `@` registry maps `featureId` → contract |
 | **Silent Ghost / Figma bridge** | Separate repo — see `rimvio-isolation.mdc` |
+| **Global graph explorer UI** | Phase 2 = MEANING micro-surfaces only — see `RIMVIO_EXPERIENCE_LAYERS.md` |
+| **Collective stats on personal Feed/Globe** | Phase 3 = separate surface + opt-in — never mix with personal SSOT |
 
 ---
 
@@ -82,3 +84,5 @@ Push back until spine vertical slice ships:
 - [ ] New LLM action domains before `@` registry  
 - [ ] Cross-repo Ghost/Figma integration  
 - [ ] Second proactive surface (feed/stack/now suggestion redesign)
+- [ ] Global knowledge graph explorer as hero surface
+- [ ] Collective / crowd insights blended into personal home

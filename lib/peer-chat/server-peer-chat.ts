@@ -12,6 +12,10 @@ import {
 } from "@/lib/peer-chat/peer-message-columns";
 import { aiModeForRoomKind } from "@/lib/chat-room/types";
 import {
+  buildBridgeContextThreadId,
+  isBridgeContextThreadId,
+} from "@/lib/peer-chat/bridge-context-thread";
+import {
   buildGroupThreadId,
   isGroupThreadId,
 } from "@/lib/peer-chat/group-thread";
@@ -493,6 +497,101 @@ export async function ensureGroupPeerThread(
     if (!ok) {
       throw new Error(
         "not_registered:가입한 Rimvio 사용자만 단톡에 초대할 수 있어요.",
+      );
+    }
+  }
+
+  const { data: existing, error: readError } = await supabase
+    .from("peer_threads")
+    .select("*")
+    .eq("id", threadId)
+    .maybeSingle();
+
+  if (readError) {
+    throw readError;
+  }
+
+  if (existing) {
+    for (const memberId of memberSet) {
+      await ensureMember(supabase, threadId, memberId);
+    }
+    return { thread: existing as PeerThreadRow, threadId, created: false };
+  }
+
+  const { data: created, error: insertError } = await supabase
+    .from("peer_threads")
+    .insert({
+      id: threadId,
+      owner_user_id: ownerUserId,
+      display_name: displayName,
+      room_kind: "group",
+      ai_mode: aiModeForRoomKind("group"),
+    })
+    .select("*")
+    .single();
+
+  if (insertError) {
+    const code =
+      typeof insertError === "object" &&
+      insertError !== null &&
+      "code" in insertError
+        ? String((insertError as { code?: string }).code)
+        : "";
+    if (code === "23505") {
+      const { data: raced } = await supabase
+        .from("peer_threads")
+        .select("*")
+        .eq("id", threadId)
+        .maybeSingle();
+      if (raced) {
+        for (const memberId of memberSet) {
+          await ensureMember(supabase, threadId, memberId);
+        }
+        return { thread: raced as PeerThreadRow, threadId, created: false };
+      }
+    }
+    throw insertError;
+  }
+
+  for (const memberId of memberSet) {
+    await ensureMember(supabase, threadId, memberId);
+  }
+
+  return { thread: created as PeerThreadRow, threadId, created: true };
+}
+
+/** Bridge Context Talk — solo host room or host + accepted members (no friend required). */
+export async function ensureBridgeContextPeerThread(
+  supabase: SupabaseClient<Database>,
+  input: {
+    eventId: string;
+    displayName: string;
+    ownerUserId: string;
+    memberUserIds?: readonly string[];
+    threadId?: string;
+  },
+): Promise<{ thread: PeerThreadRow; threadId: string; created: boolean }> {
+  const displayName = input.displayName.trim() || "맥락 톡";
+  const ownerUserId = input.ownerUserId.trim();
+  const threadId = input.threadId?.trim() || buildBridgeContextThreadId(input.eventId);
+
+  if (!isBridgeContextThreadId(threadId)) {
+    throw new Error("invalid_bridge_context_thread");
+  }
+
+  const memberSet = new Set<string>([ownerUserId]);
+  for (const raw of input.memberUserIds ?? []) {
+    const id = raw.trim();
+    if (id && id !== ownerUserId) {
+      memberSet.add(id);
+    }
+  }
+
+  for (const memberId of memberSet) {
+    const ok = await ensureRimvioUserProfile(supabase, memberId);
+    if (!ok) {
+      throw new Error(
+        "not_registered:가입한 Rimvio 사용자만 맥락 톡을 쓸 수 있어요.",
       );
     }
   }

@@ -27,6 +27,12 @@ import { tuneGlobeOrbitControls } from "@/lib/globe/tune-globe-orbit-controls";
 import { useGlobeFocalPinch } from "@/hooks/use-globe-focal-pinch";
 import { resolveTripArcAltitude } from "@/lib/globe/resolve-trip-arc-altitude";
 import { GLOBE_TOSS_THEME } from "@/lib/globe/globe-toss-theme";
+import { shouldApplyGlobeOverviewTexture } from "@/lib/globe/globe-overview-texture-altitude";
+import {
+  resolveGlobePixelRatioCap,
+  resolveGlobeRendererConfig,
+  shouldDisableGlobeCanvasCssFilter,
+} from "@/lib/globe/resolve-globe-renderer-config";
 import { applyGlobePinUiScale } from "@/lib/globe/apply-globe-pin-ui-scale";
 import { resolveGlobePinUiScaleBlended } from "@/lib/globe/resolve-globe-pin-ui-scale";
 import type { GlobeViewerLocation } from "@/lib/globe/globe-viewer-location-types";
@@ -140,6 +146,8 @@ export type RimvioGlobe3DProps = {
   /** Tap empty globe — shared ROOM pin placement. */
   onGlobePress?: (coords: { lat: number; lng: number }) => void;
   hintText?: string;
+  /** Idle pinch/drag coach — off on globe home where capture dock owns the bottom. */
+  showInteractionHint?: boolean;
   onDetailLevelChange?: (level: GlobeDetailLevel) => void;
   onPointOfViewChange?: (pov: {
     lat: number;
@@ -176,6 +184,7 @@ export const RimvioGlobe3D = memo(
       onPinRelocate,
       onGlobePress,
       hintText,
+      showInteractionHint = true,
       onDetailLevelChange,
       onPointOfViewChange,
       interactionEnabled = true,
@@ -255,6 +264,10 @@ export const RimvioGlobe3D = memo(
       (pov: { lat: number; lng: number; altitude: number }) => void
     >(() => {});
     const gestureActiveRef = useRef(false);
+    const pendingDetailLevelRef = useRef<ReturnType<typeof resolveGlobeDetailLevel> | null>(
+      null,
+    );
+    const pendingPinSyncRef = useRef(false);
     const flushDeferredGlobeVisualsRef = useRef<(() => void) | null>(null);
 
     lockGlobeControlsRef.current = () => {
@@ -511,7 +524,7 @@ export const RimvioGlobe3D = memo(
       const globe = new Globe(root, {
         animateIn: true,
         waitForGlobeReady: true,
-        rendererConfig: { antialias: true, alpha: true, precision: "highp" },
+        rendererConfig: resolveGlobeRendererConfig(),
       })
         .backgroundColor("rgba(0,0,0,0)")
         .globeTileEngineUrl(globeTileEngineUrl)
@@ -614,7 +627,7 @@ export const RimvioGlobe3D = memo(
       renderer.setPixelRatio(
         Math.min(
           typeof window !== "undefined" ? window.devicePixelRatio : 1,
-          GLOBE_TOSS_THEME.globePixelRatioCap,
+          resolveGlobePixelRatioCap(),
         ),
       );
 
@@ -640,6 +653,14 @@ export const RimvioGlobe3D = memo(
       };
 
       const flushDeferredGlobeVisuals = () => {
+        if (pendingDetailLevelRef.current) {
+          onDetailLevelChangeRef.current?.(pendingDetailLevelRef.current);
+          pendingDetailLevelRef.current = null;
+        }
+        if (pendingPinSyncRef.current) {
+          pendingPinSyncRef.current = false;
+          syncHtmlElementsRef.current();
+        }
         applyGlobePinUiScale(root, pinUiScaleRef.current);
         syncContextWarmthRef.current();
         scheduleTileTextureFiltering();
@@ -661,14 +682,9 @@ export const RimvioGlobe3D = memo(
 
       const scheduleWarmthSync = () => {
         if (gestureActiveRef.current) {
-          if (warmthSyncTimer != null) {
-            return;
-          }
-          warmthSyncTimer = setTimeout(() => {
-            warmthSyncTimer = null;
-            lastWarmthSyncAt = performance.now();
-            syncContextWarmthRef.current();
-          }, 160);
+          return;
+        }
+        if (warmthSyncTimer != null) {
           return;
         }
         if (performance.now() - lastWarmthSyncAt < 80) {
@@ -680,9 +696,12 @@ export const RimvioGlobe3D = memo(
 
       const syncOverviewTexture = (altitude: number) => {
         const overviewUrl = overviewTextureUrlRef.current;
-        if (altitude >= 0.42 && overviewUrl) {
+        if (shouldApplyGlobeOverviewTexture(altitude) && overviewUrl) {
           globe.globeImageUrl(overviewUrl);
+          return;
         }
+        // Stale equirect mosaic blocks slippy tiles on some Android GPUs.
+        globe.globeImageUrl(null);
       };
 
       const emitPointOfView = (
@@ -703,16 +722,25 @@ export const RimvioGlobe3D = memo(
         }
 
         if (detailChanged) {
-          onDetailLevelChangeRef.current?.(detailLevel);
           shellRef.current?.setAttribute("data-globe-detail", detailLevel);
           globe.showAtmosphere(
             altitude >= GLOBE_TOSS_THEME.atmosphereCutoffAltitude,
           );
           syncOverviewTexture(altitude);
-          syncHtmlElementsRef.current();
+          if (gestureActiveRef.current) {
+            pendingDetailLevelRef.current = detailLevel;
+          } else {
+            onDetailLevelChangeRef.current?.(detailLevel);
+            syncHtmlElementsRef.current();
+          }
         }
 
         if (altitudeChanged) {
+          const prevUsesOverview = shouldApplyGlobeOverviewTexture(prevAltitude);
+          const nextUsesOverview = shouldApplyGlobeOverviewTexture(altitude);
+          if (prevUsesOverview !== nextUsesOverview) {
+            syncOverviewTexture(altitude);
+          }
           const pinScale = resolveGlobePinUiScaleBlended(altitude, detailLevel);
           if (Math.abs(pinScale - pinUiScaleRef.current) > 0.012) {
             pinUiScaleRef.current = pinScale;
@@ -870,6 +898,10 @@ export const RimvioGlobe3D = memo(
     }, [interactionEnabled]);
 
     useEffect(() => {
+      if (gestureActiveRef.current) {
+        pendingPinSyncRef.current = true;
+        return;
+      }
       syncHtmlElementsRef.current();
     }, [pins, lodgingMarkers, hubAnchors, globeReady]);
 
@@ -894,10 +926,12 @@ export const RimvioGlobe3D = memo(
         return;
       }
       const { altitude } = globe.pointOfView();
-      if (altitude >= 0.42) {
+      if (shouldApplyGlobeOverviewTexture(altitude)) {
         globe.globeImageUrl(overviewTextureUrl);
+      } else {
+        globe.globeImageUrl(null);
       }
-    }, [overviewTextureUrl]);
+    }, [overviewTextureUrl, globeReady]);
 
     useEffect(() => {
       const globe = globeRef.current;
@@ -949,6 +983,9 @@ export const RimvioGlobe3D = memo(
           className,
         )}
         data-rimvio-globe-3d
+        data-globe-canvas-filter={
+          shouldDisableGlobeCanvasCssFilter() ? "off" : undefined
+        }
       >
         <div ref={rootRef} className="absolute inset-0 touch-none" />
         <div
@@ -959,9 +996,14 @@ export const RimvioGlobe3D = memo(
           className="pointer-events-none absolute inset-0 rimvio-globe-vignette rimvio-globe-vignette--toss"
           aria-hidden
         />
-        <p className="pointer-events-none absolute inset-x-0 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-10 mx-auto w-fit rounded-full rimvio-globe-hint--toss px-3.5 py-1.5 text-[11px] font-medium backdrop-blur-md">
+        {(showInteractionHint || relocatingPinId) ? (
+        <p
+          className="pointer-events-none absolute inset-x-0 bottom-[calc(var(--rimvio-globe-ingest-offset,5.5rem)+0.35rem)] z-10 mx-auto w-fit rounded-full rimvio-globe-hint--toss px-3.5 py-1.5 text-[11px] font-medium backdrop-blur-md"
+          data-rimvio-globe-interaction-hint
+        >
           {detailHint}
         </p>
+        ) : null}
       </div>
     );
   }),

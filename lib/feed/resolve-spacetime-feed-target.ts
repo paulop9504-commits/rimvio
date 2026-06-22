@@ -1,5 +1,7 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { resolvePlaceCoordinates } from "@/lib/experience-graph/resolve-place-coordinates";
+import { extractPlaceHintFromText } from "@/lib/feed/extract-place-hint-from-text";
+export { extractPlaceHintFromText } from "@/lib/feed/extract-place-hint-from-text";
 import type { SpacetimeFeedTargetMatch } from "@/lib/feed/feed-capture-types";
 import { readPlanContextFromEvent } from "@/lib/plan-context/plan-context-metadata";
 import { haversineKm, parseIsoMs, scoreSpacetimeFit } from "@/lib/feed/spacetime-fit";
@@ -19,30 +21,6 @@ function readEventPlaceAnchor(
   const lng = readFiniteCoord(meta.globePlaceLng);
   if (lat !== null && lng !== null) {
     return { lat, lng };
-  }
-  return null;
-}
-
-const PLACE_HINT_PATTERNS: ReadonlyArray<{ pattern: RegExp; label: string }> = [
-  { pattern: /제주|애월|성산/u, label: "제주" },
-  { pattern: /강남역|강남/u, label: "강남역" },
-  { pattern: /둔산/u, label: "둔산동" },
-  { pattern: /부산|해운대/u, label: "부산" },
-  { pattern: /홍대|연남/u, label: "홍대" },
-  { pattern: /성수/u, label: "성수" },
-  { pattern: /오사카/u, label: "오사카" },
-  { pattern: /독일|베를린|뮌헨|프랑크푸르트/u, label: "독일" },
-];
-
-export function extractPlaceHintFromText(text?: string | null): string | null {
-  const hay = text?.trim();
-  if (!hay) {
-    return null;
-  }
-  for (const entry of PLACE_HINT_PATTERNS) {
-    if (entry.pattern.test(hay)) {
-      return entry.label;
-    }
   }
   return null;
 }

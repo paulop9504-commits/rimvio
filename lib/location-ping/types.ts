@@ -1,4 +1,4 @@
-export type GpsPingSource = "periodic" | "upload_boost" | "foreground";
+export type GpsPingSource = "periodic" | "upload_boost" | "foreground" | "place_verify_boost";
 
 export type GpsPing = {
   id: string;

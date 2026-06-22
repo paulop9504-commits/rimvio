@@ -1,6 +1,7 @@
 import { extractPlaceEntities } from "@/lib/action-chat/clean-entity-text";
 import { resolveNavigationPlaceName } from "@/lib/action-chat/resolve-navigation-place";
 import { classifyOverseasManualPlace } from "@/lib/globe/classify-overseas-manual-place";
+import { normalizePlaceLabel } from "@/lib/globe/normalize-place-label";
 
 export type ParsedManualContextPlace = {
   raw: string;
@@ -100,7 +101,7 @@ function buildSearchQuery(input: {
 
 /** Natural language place → geocode query. e.g. 「약속장소 신림동에서 만나자」→ 서울 신림동 */
 export function parseManualContextPlaceText(raw: string): ParsedManualContextPlace {
-  const trimmed = raw.trim();
+  const trimmed = normalizePlaceLabel(raw);
   if (!trimmed) {
     return { raw: "", displayLabel: "", searchQuery: "" };
   }

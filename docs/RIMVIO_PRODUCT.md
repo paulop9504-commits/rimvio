@@ -375,6 +375,18 @@ day | night | commute  ×  default | kakaomap
 | **4** | Android PWA install + real Share | "진짜 폰에서 공유" | 🔜 killer demo |
 | **5** | Auth + per-user AI intent | "나한테 맞는 Top 1" | 🔜 |
 
+### Experience intelligence roadmap (macro)
+
+**SSOT:** [RIMVIO_EXPERIENCE_LAYERS.md](./RIMVIO_EXPERIENCE_LAYERS.md) — **Product roadmap (3 phases)**.
+
+| Phase | Focus | Status |
+|-------|--------|--------|
+| **1 — Memory Recovery** | Event/Bridge window · recall timing law | **Current** |
+| **2 — MEANING micro-surfaces** | Contextual hints (not graph explorer) | Next after Phase 1 slice |
+| **3 — Collective flow** | Anonymized stats · separate from personal UI | Research / opt-in only |
+
+Enricher phases (0–5 above) and experience phases (1–3) are **orthogonal** — both ship against the same `EventCandidate` spine.
+
 ### 다음 우선순위 (합의됨)
 
 1. Android PWA + 실제 Share Target 데모

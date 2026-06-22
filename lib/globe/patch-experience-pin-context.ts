@@ -1,10 +1,11 @@
 "use client";
 
 import { appendCorrectionLog } from "@/lib/corrections/correction-log";
-import { applyGlobeContextPlaceCoords } from "@/lib/globe/apply-globe-context-place-coords";
-import { findLifeEventCandidate } from "@/lib/life-read-model";
 import type { EventCandidate } from "@/lib/events/event-candidate";
+import { geocodeAndSyncGlobeContextPlace } from "@/lib/globe/geocode-and-sync-globe-context-place";
 import { GLOBE_CONTEXT_NOTE_KEY } from "@/lib/globe/pin-context-note";
+import { findLifeEventCandidate } from "@/lib/life-read-model";
+import { commitEventUpsert } from "@/lib/source-of-truth/commit-truth";
 
 export type ExperiencePinContextPatch = {
   title?: string;
@@ -67,16 +68,26 @@ export async function patchExperiencePinContext(
   }
 
   if (patch.place !== undefined && correctedPlace) {
-    const withCoords = applyGlobeContextPlaceCoords(
-      {
-        ...existing,
-        title: nextTitle,
-        place: correctedPlace,
-        metadata: nextMetadata,
-      },
-      correctedPlace,
-    );
-    return withCoords;
+    const staged = commitEventUpsert({
+      id: existing.id,
+      title: nextTitle,
+      category: existing.category,
+      source: existing.source,
+      lifecycle: existing.lifecycle,
+      datetime: existing.datetime,
+      place: correctedPlace,
+      containerId: existing.containerId,
+      confidence: Math.min(0.98, existing.confidence + 0.02),
+      metadata: nextMetadata,
+      lifecycleUpdatedAt: existing.lifecycleUpdatedAt,
+    });
+    const geocoded = await geocodeAndSyncGlobeContextPlace({
+      eventId: staged.id,
+      placeLabel: correctedPlace,
+      title: nextTitle,
+      force: true,
+    });
+    return geocoded.event ?? staged;
   }
 
   return commitEventUpsert({

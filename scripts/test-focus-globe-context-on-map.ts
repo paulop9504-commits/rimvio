@@ -5,7 +5,7 @@ import { resetPersonalGlobePinsForTests } from "../lib/globe/personal-globe-pin-
 import { resetEventCandidatesForTests } from "../lib/events/event-store";
 import { commitEventUpsert } from "../lib/source-of-truth/commit-truth";
 
-function main() {
+async function main() {
   resetEventCandidatesForTests();
   resetPersonalGlobePinsForTests();
 
@@ -22,7 +22,7 @@ function main() {
     },
   });
 
-  const focused = focusGlobeContextOnMap(event.id);
+  const focused = await focusGlobeContextOnMap(event.id);
   assert.ok(focused);
   assert.equal(focused!.cluster.eventId, event.id);
   assert.ok(focused!.cluster.lat > 37.48);
@@ -40,7 +40,7 @@ function main() {
     lifecycleUpdatedAt: new Date().toISOString(),
   });
 
-  const offGlobe = focusGlobeContextOnMap(schedule.id);
+  const offGlobe = await focusGlobeContextOnMap(schedule.id);
   assert.ok(offGlobe);
   assert.equal(offGlobe!.geocoded, true);
   assert.ok(offGlobe!.cluster.lat > 35);
@@ -48,4 +48,4 @@ function main() {
   console.log("test-focus-globe-context-on-map: ok");
 }
 
-main();
+void main();

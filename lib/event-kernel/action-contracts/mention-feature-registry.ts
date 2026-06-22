@@ -195,6 +195,14 @@ const REGISTRY: readonly MentionFeature[] = [
     confirmCopy: "할 일과 시간을 적어 주세요.",
   },
   {
+    featureId: "market",
+    displayName: "맞출 것",
+    aliases: ["중고", "market", "내놓기", "구함", "맞출것"],
+    sourceRef: "mention:market",
+    category: "custom",
+    confirmCopy: "예: @중고 아이폰 15 프로 70만원",
+  },
+  {
     featureId: "calendar",
     displayName: "캘린더",
     aliases: ["캘린더", "calendar", "달력"],

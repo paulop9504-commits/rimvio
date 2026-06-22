@@ -22,7 +22,9 @@ import {
   GLOBE_MAP_FOCUS_HERO_MEDIA_INTERACTIVE_CLASS,
   GLOBE_MAP_FOCUS_HERO_SHELL_CLASS,
   GLOBE_MAP_FOCUS_PIN_ANCHOR_OFFSET_PX,
+  resolveGlobeMapFocusHeroShellStyle,
 } from "@/lib/globe/globe-map-focus-hero-layout";
+import { useMediaIntrinsicSize } from "@/hooks/use-media-intrinsic-size";
 import {
   EVENT_CANDIDATES_UPDATED,
   findLifeEventCandidate,
@@ -35,6 +37,7 @@ import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
 const SWIPE_MIN_PX = 44;
+const TAP_MAX_PX = 14;
 
 export type GlobeContextMapVideoStageProps = {
   eventId: string | null | undefined;
@@ -67,11 +70,20 @@ function MapMediaSlide({
   onSoundOnChange?: (soundOn: boolean) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const { size, reset, onImageLoad, onVideoMetadata } = useMediaIntrinsicSize();
   const { url: blobUrl, loading } = useMediaBlobUrl(
     item.allowLocalBlob === true ? item.mediaContextId : null,
   );
   const src = item.imageUrl ?? blobUrl;
   const isVideo = item.kind === "video";
+
+  useEffect(() => {
+    reset();
+  }, [item.id, reset, src]);
+
+  const shellStyle = resolveGlobeMapFocusHeroShellStyle(
+    size ? { width: size.width, height: size.height } : null,
+  );
 
   const { toggleSound, soundOn } = useGlobeContextVideoSound({
     videoRef,
@@ -104,42 +116,53 @@ function MapMediaSlide({
 
   if (src && isVideo) {
     return (
-      <video
-        ref={videoRef}
-        key={`${item.id}:${src}`}
-        src={src}
-        className={GLOBE_MAP_FOCUS_HERO_MEDIA_INTERACTIVE_CLASS}
-        playsInline
-        loop
-        muted={!soundOn}
-        preload="metadata"
-      />
+      <div className={GLOBE_MAP_FOCUS_HERO_SHELL_CLASS} style={shellStyle}>
+        <video
+          ref={videoRef}
+          key={`${item.id}:${src}`}
+          src={src}
+          className={GLOBE_MAP_FOCUS_HERO_MEDIA_INTERACTIVE_CLASS}
+          playsInline
+          loop
+          muted={!soundOn}
+          preload="metadata"
+          onLoadedMetadata={onVideoMetadata}
+        />
+      </div>
     );
   }
 
   if (src) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        key={`${item.id}:${src}`}
-        src={src}
-        alt=""
-        className={GLOBE_MAP_FOCUS_HERO_MEDIA_INTERACTIVE_CLASS}
-        loading="lazy"
-      />
+      <div className={GLOBE_MAP_FOCUS_HERO_SHELL_CLASS} style={shellStyle}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          key={`${item.id}:${src}`}
+          src={src}
+          alt=""
+          className={GLOBE_MAP_FOCUS_HERO_MEDIA_INTERACTIVE_CLASS}
+          loading="lazy"
+          onLoad={onImageLoad}
+        />
+      </div>
     );
   }
 
   return (
-    <div className="flex aspect-[16/10] w-full items-center justify-center bg-[#e8e8ed] px-3 text-center text-[13px] font-normal text-[#86868b]">
-      {loading || item.pendingRemote
-        ? `${item.kind === "video" ? "동영상" : "사진"} 불러오는 중…`
-        : item.label}
+    <div
+      className={GLOBE_MAP_FOCUS_HERO_SHELL_CLASS}
+      style={resolveGlobeMapFocusHeroShellStyle(null)}
+    >
+      <div className="flex h-full min-h-[8rem] w-full items-center justify-center bg-[#e8e8ed] px-3 text-center text-[13px] font-normal text-[#86868b]">
+        {loading || item.pendingRemote
+          ? `${item.kind === "video" ? "동영상" : "사진"} 불러오는 중…`
+          : item.label}
+      </div>
     </div>
   );
 }
 
-/** Context media replay — pin-anchored 16:10 rectangle (early map card). */
+/** Context media replay — pin-anchored card with oriented photo/video. */
 export function GlobeContextMapVideoStage({
   eventId,
   anchorLat,
@@ -158,6 +181,7 @@ export function GlobeContextMapVideoStage({
 }: GlobeContextMapVideoStageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const suppressHeroClickRef = useRef(false);
   const toggleVideoSoundRef = useRef<(() => void) | null>(null);
   const [revision, setRevision] = useState(0);
   const [mediaIndex, setMediaIndex] = useState(0);
@@ -245,7 +269,18 @@ export function GlobeContextMapVideoStage({
   }, [reel.length, visible]);
 
   const currentItem = reel[mediaIndex] ?? null;
-  const canNavigateContext = navigationEntries.length > 1 && Boolean(onNavigateContext);
+
+  const openHeroBridge = useCallback(() => {
+    (onHeroPress ?? onOpenDetails)?.();
+  }, [onHeroPress, onOpenDetails]);
+
+  const handleHeroPress = useCallback(() => {
+    if (suppressHeroClickRef.current) {
+      suppressHeroClickRef.current = false;
+      return;
+    }
+    openHeroBridge();
+  }, [openHeroBridge]);
 
   const handleSwipeEnd = useCallback(
     (dx: number, dy: number) => {
@@ -253,27 +288,28 @@ export function GlobeContextMapVideoStage({
         return false;
       }
 
-      if (Math.abs(dx) > Math.abs(dy)) {
-        if (dx > 0) {
-          setMediaIndex((index) => Math.max(0, index - 1));
-        } else {
-          setMediaIndex((index) => Math.min(reel.length - 1, index + 1));
+      if (Math.abs(dy) >= Math.abs(dx)) {
+        const key = eventId?.trim();
+        if (!key || !onNavigateContext || navigationEntries.length < 2) {
+          return true;
+        }
+        const step = resolveGlobeContextNavigationStep({
+          entries: navigationEntries,
+          currentEventId: key,
+          direction: dy < 0 ? "next" : "prev",
+        });
+        if (step?.eventId && step.eventId !== key) {
+          onNavigateContext(step.eventId);
         }
         return true;
       }
 
-      const key = eventId?.trim();
-      if (!key || !onNavigateContext || navigationEntries.length === 0) {
-        return true;
-      }
-
-      const step = resolveGlobeContextNavigationStep({
-        entries: navigationEntries,
-        currentEventId: key,
-        direction: dy < 0 ? "next" : "prev",
-      });
-      if (step?.eventId && step.eventId !== key) {
-        onNavigateContext(step.eventId);
+      if (reel.length > 1) {
+        if (dx < 0) {
+          setMediaIndex((index) => Math.min(reel.length - 1, index + 1));
+        } else {
+          setMediaIndex((index) => Math.max(0, index - 1));
+        }
       }
       return true;
     },
@@ -321,21 +357,26 @@ export function GlobeContextMapVideoStage({
     }
     const dx = touch.clientX - start.x;
     const dy = touch.clientY - start.y;
-    handleSwipeEnd(dx, dy);
+    const swiped = handleSwipeEnd(dx, dy);
+    if (swiped) {
+      return;
+    }
+    if (Math.abs(dx) <= TAP_MAX_PX && Math.abs(dy) <= TAP_MAX_PX) {
+      suppressHeroClickRef.current = true;
+      openHeroBridge();
+    }
   };
 
   const mediaHero = (
     <>
       {currentItem ? (
-        <div className={GLOBE_MAP_FOCUS_HERO_SHELL_CLASS}>
-          <MapMediaSlide
-            key={currentItem.id}
-            item={currentItem}
-            playing={playing}
-            onPlayingChange={setPlaying}
-            toggleSoundRef={toggleVideoSoundRef}
-          />
-        </div>
+        <MapMediaSlide
+          key={currentItem.id}
+          item={currentItem}
+          playing={playing}
+          onPlayingChange={setPlaying}
+          toggleSoundRef={toggleVideoSoundRef}
+        />
       ) : null}
 
       {reel.length > 1 ? (
@@ -397,7 +438,7 @@ export function GlobeContextMapVideoStage({
             recallCaption={subtitle}
             onClose={dismiss}
             closeAriaLabel={copy.globe.contextMediaFocusCloseAria}
-            onHeroPress={onHeroPress ?? onOpenDetails}
+            onHeroPress={handleHeroPress}
             onTouchStart={mergeCardTouchStart}
             onTouchMove={mergeCardTouchMove}
             onTouchEnd={mergeCardTouchEnd}
@@ -427,7 +468,7 @@ export function GlobeContextMapVideoStage({
               recallCaption={subtitle}
               onClose={dismiss}
               closeAriaLabel={copy.globe.contextMediaFocusCloseAria}
-              onHeroPress={onHeroPress ?? onOpenDetails}
+              onHeroPress={handleHeroPress}
               onTouchStart={mergeCardTouchStart}
               onTouchMove={mergeCardTouchMove}
               onTouchEnd={mergeCardTouchEnd}

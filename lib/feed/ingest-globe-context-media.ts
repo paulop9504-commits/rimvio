@@ -26,11 +26,12 @@ import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-conte
 import { enrichGlobePhotoPlaceAfterIngest } from "@/lib/globe/enrich-globe-photo-place-after-ingest";
 import {
   buildExifAutoPinMetadata,
-  mergeExifAutoPinOntoEvent,
 } from "@/lib/globe/exif-auto-pin-metadata";
 import { createPersonalGlobePinFromEvent } from "@/lib/globe/create-personal-globe-pin";
 import { ensureBridgeLinkBeforePublish } from "@/lib/experience-bridge/ensure-bridge-link-before-publish";
 import { publishBridgeCaptureContribution } from "@/lib/experience-bridge/publish-bridge-capture-contribution";
+import { stampDurableGlobePhotoEvent } from "@/lib/globe/stamp-durable-globe-photo-event";
+import { boostGpsPingForUploadBatch } from "@/lib/location-ping/upload-gps-boost";
 import { syncPersonalGlobePinFromEvent } from "@/lib/globe/sync-personal-globe-pin";
 import { attachMediaSpacetime } from "@/lib/location-ping/attach-media-spacetime";
 import { patchMediaSpacetimeOriginRef, saveMediaSpacetimeContext } from "@/lib/location-ping/media-context-store";
@@ -272,6 +273,8 @@ export type BulkClusterIngestHint = {
   title?: string | null;
   placeLabel?: string | null;
   bypassPool?: boolean;
+  anchorLat?: number | null;
+  anchorLng?: number | null;
 };
 
 function applyBulkClusterPlaceToContext(
@@ -279,12 +282,25 @@ function applyBulkClusterPlaceToContext(
   hint?: BulkClusterIngestHint | null,
 ): MediaSpacetimeContext {
   const placeLabel = hint?.placeLabel?.trim();
+  const lat =
+    typeof hint?.anchorLat === "number" && Number.isFinite(hint.anchorLat)
+      ? hint.anchorLat
+      : context.lat;
+  const lng =
+    typeof hint?.anchorLng === "number" && Number.isFinite(hint.anchorLng)
+      ? hint.anchorLng
+      : context.lng;
   if (!placeLabel) {
+    if (lat !== context.lat || lng !== context.lng) {
+      return { ...context, lat, lng };
+    }
     return context;
   }
   return {
     ...context,
     placeLabel,
+    lat,
+    lng,
   };
 }
 
@@ -325,6 +341,8 @@ export async function ingestGlobeContextMedia(input: {
   /** Pin card upload — always attach to hinted context (user intent). */
   forceAttachToHint?: boolean;
   bulkClusterHint?: BulkClusterIngestHint | null;
+  userConfirmedContext?: boolean;
+  skipGpsBoost?: boolean;
   onFilePrepare?: (message: string) => void;
 }): Promise<GlobeContextMediaIngestResult> {
   const rawContext = await attachMediaSpacetime({
@@ -332,6 +350,7 @@ export async function ingestGlobeContextMedia(input: {
     origin: "feed_capture",
     originRef: input.hintEventId?.trim() || "globe",
     onFilePrepare: input.onFilePrepare,
+    skipGpsBoost: input.skipGpsBoost === true,
   });
   const context = applyBulkClusterPlaceToContext(rawContext, input.bulkClusterHint);
 
@@ -339,9 +358,9 @@ export async function ingestGlobeContextMedia(input: {
     shouldStageMediaToPool({
       context,
       forceAttachToHint: input.forceAttachToHint === true,
-      bulkClusterPlaceLabel: input.bulkClusterHint?.bypassPool
-        ? input.bulkClusterHint.placeLabel
-        : null,
+      bulkClusterPlaceLabel: input.bulkClusterHint?.placeLabel?.trim() || null,
+      bypassPool: input.bulkClusterHint?.bypassPool === true,
+      userConfirmedContext: input.userConfirmedContext === true,
     })
   ) {
     const staged: MediaSpacetimeContext = {
@@ -399,7 +418,11 @@ export async function ingestGlobeContextMedia(input: {
   });
 
   const exifAutoPinned = buildExifAutoPinMetadata(context) !== null;
-  const eventForCommit = mergeExifAutoPinOntoEvent(target.event, context);
+  const eventForCommit = stampDurableGlobePhotoEvent(target.event, context, {
+    anchorLat: input.bulkClusterHint?.anchorLat ?? null,
+    anchorLng: input.bulkClusterHint?.anchorLng ?? null,
+    placeLabel: input.bulkClusterHint?.placeLabel ?? null,
+  });
 
   const fragment: FeedCaptureFragment = {
     id: context.id,
@@ -581,20 +604,29 @@ function recordBulkOutcome(input: {
 }
 
 function buildBulkClusterHint(cluster: BulkMediaSpacetimeCluster): BulkClusterIngestHint | null {
-  if (!cluster.title?.trim() && !cluster.placeLabel?.trim()) {
+  const title = cluster.title?.trim() || null;
+  const placeLabel = cluster.placeLabel?.trim() || null;
+  const bypassPool = cluster.bypassPool === true;
+  if (!title && !placeLabel && !bypassPool) {
     return null;
   }
   return {
-    title: cluster.title ?? null,
-    placeLabel: cluster.placeLabel ?? null,
-    bypassPool: cluster.bypassPool === true,
+    title,
+    placeLabel,
+    bypassPool,
+    anchorLat: cluster.anchor.lat,
+    anchorLng: cluster.anchor.lng,
   };
 }
 
-async function ingestGlobeContextMediaBulkClustered(input: {
+/** Commit pre-clustered media after user confirms inferred context. */
+export async function commitPreparedGlobeMediaClusters(input: {
   mediaFiles: File[];
+  clusters: readonly BulkMediaSpacetimeCluster[];
   hintEventId?: string | null;
   hintTitle?: string | null;
+  forceAttachToHint?: boolean;
+  userConfirmedContext?: boolean;
   onProgress?: (done: number, total: number) => void;
   onFilePrepare?: (message: string) => void;
 }): Promise<{
@@ -621,23 +653,10 @@ async function ingestGlobeContextMediaBulkClustered(input: {
     lastEventId: null as string | null,
   };
 
-  input.onFilePrepare?.(copy.globe.bulkClusterPeekToast);
-  const peeks = await peekBulkMediaSpacetime(input.mediaFiles);
-  let clusters = clusterBulkMediaSpacetime(peeks);
-
-  input.onFilePrepare?.(copy.globe.bulkClusterGroupToast);
-  const enrichment = await fetchBulkMediaClusterEnrichment({
-    clusters,
-    peeks,
-    files: input.mediaFiles,
-  });
-  if (enrichment) {
-    clusters = applyBulkMediaClusterEnrichment({ clusters, enrichment });
-  }
-
   let progress = 0;
   let lastError: string | null = null;
-  for (const cluster of clusters) {
+  await boostGpsPingForUploadBatch();
+  for (const cluster of input.clusters) {
     const clusterHint = buildBulkClusterHint(cluster);
     let clusterEventId: string | null = null;
 
@@ -647,8 +666,12 @@ async function ingestGlobeContextMediaBulkClustered(input: {
           file: input.mediaFiles[fileIndex]!,
           hintEventId: clusterEventId ?? input.hintEventId,
           hintTitle: clusterHint?.title ?? input.hintTitle,
-          forceAttachToHint: clusterEventId ? true : false,
+          forceAttachToHint:
+            clusterEventId !== null ||
+            (input.forceAttachToHint === true && Boolean(input.hintEventId?.trim())),
           bulkClusterHint: clusterHint,
+          userConfirmedContext: input.userConfirmedContext === true,
+          skipGpsBoost: true,
           onFilePrepare: input.onFilePrepare,
         });
         recordBulkOutcome({ outcome, outcomes, counters });
@@ -675,6 +698,47 @@ async function ingestGlobeContextMediaBulkClustered(input: {
     lastEventId: counters.lastEventId,
     lastError,
   };
+}
+
+async function ingestGlobeContextMediaBulkClustered(input: {
+  mediaFiles: File[];
+  hintEventId?: string | null;
+  hintTitle?: string | null;
+  onProgress?: (done: number, total: number) => void;
+  onFilePrepare?: (message: string) => void;
+}): Promise<{
+  outcomes: GlobeContextMediaIngestResult[];
+  failed: number;
+  attached: number;
+  separated: number;
+  pinsCreated: number;
+  exifPinned: number;
+  poolStaged: number;
+  lastEventId: string | null;
+  lastError: string | null;
+}> {
+  input.onFilePrepare?.(copy.globe.bulkClusterPeekToast);
+  const peeks = await peekBulkMediaSpacetime(input.mediaFiles);
+  let clusters = clusterBulkMediaSpacetime(peeks);
+
+  input.onFilePrepare?.(copy.globe.bulkClusterGroupToast);
+  const enrichment = await fetchBulkMediaClusterEnrichment({
+    clusters,
+    peeks,
+    files: input.mediaFiles,
+  });
+  if (enrichment) {
+    clusters = applyBulkMediaClusterEnrichment({ clusters, enrichment });
+  }
+
+  return commitPreparedGlobeMediaClusters({
+    mediaFiles: input.mediaFiles,
+    clusters,
+    hintEventId: input.hintEventId,
+    hintTitle: input.hintTitle,
+    onProgress: input.onProgress,
+    onFilePrepare: input.onFilePrepare,
+  });
 }
 
 /** Bulk photos/videos — cluster + LLM naming, then attach/split per spacetime. */
@@ -752,6 +816,7 @@ export async function ingestGlobeContextMediaBulk(input: {
         hintEventId: input.hintEventId,
         hintTitle: input.hintTitle,
         forceAttachToHint: input.forceAttachToHint,
+        userConfirmedContext: input.forceAttachToHint === true,
         onFilePrepare: input.onFilePrepare,
       });
       outcomes.push(outcome);

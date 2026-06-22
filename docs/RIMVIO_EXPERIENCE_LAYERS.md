@@ -114,9 +114,9 @@ EventCandidate + feedCaptures + plan context = Experience Node
 
 **Law:** Learn from **behavior** (tap, dismiss, complete, verify) — §9 Constitution. Not from open-ended chat alone. No parallel suggestion store outside prep/Feed ranking.
 
-**Code (2026-06):** Partial — `lib/preferences/` · archive rollup hooks · intent rank bins. **No dedicated Meaning projection yet.**
+**Code (2026-06):** `lib/meaning/` (graph projection) · `lib/context-weight/` (behavior + density) · `lib/preferences/` · archive rollup hooks.
 
-**Maturity:** △ **Weak** — strategic focus for next 12 months.
+**Maturity:** △ **In progress** — engine shipped; micro-surfaces (Phase 2) TBD.
 
 ---
 
@@ -133,9 +133,9 @@ EventCandidate + feedCaptures + plan context = Experience Node
 
 **Law:** Recall is a **projection** — never owns truth. Context triggers (place, weather, calendar, time-since) rank existing Meaning — do not invent memories.
 
-**Code (2026-06):** Partial — Feed Globe recall hero, spatial media sync, `resolve-feed-active-recall.ts`. **No ambient context triggers** (weather, anniversary, gap-since) wired yet.
+**Code (2026-06):** `lib/recall/` · Feed/Globe recall hero · spatial media sync · `resolve-gps-arrival-recall.ts` · recall spam gate.
 
-**Maturity:** △ **Weak** — shell exists; contextual recall engine TBD.
+**Maturity:** △ **In progress** — triggers + timing law shipped; Phase 1 Memory Recovery vertical slice ongoing.
 
 #### Recall Timing Law
 
@@ -208,6 +208,53 @@ ACTION      ✓
 **Gap:** We know *what the user did*. We do not yet fully know *why it mattered* — so recall feels thin and actions can still feel "helpful assistant" instead of "it remembers my life."
 
 **12-month bet:** Competitive edge is not chat or execution engines. It is how well we compound **FACT → EXPERIENCE → MEANING → RECALL**. ACTION stays thin — capabilities are replaceable.
+
+---
+
+## Product roadmap (3 phases — locked 2026-06)
+
+Macro phases for **experience intelligence**. Execution enrichers (Share, `@`, enrichers) stay in [RIMVIO_PRODUCT.md §9](./RIMVIO_PRODUCT.md#9-로드맵-제품-phase).
+
+| Phase | Name | Strengthens | User feels |
+|-------|------|-------------|------------|
+| **1** | **Memory Recovery** | EXPERIENCE + RECALL | "흩어진 사진·톡·prep가 **한 Event/Bridge**로 묶이고, **맞는 순간**에 다시 떠오른다" |
+| **2** | **MEANING micro-surfaces** | MEANING (projection) | "검색 전에 **지금 맥락**과 연결된 사람·장소·시간 관계가 보인다" |
+| **3** | **Collective flow** (opt-in) | Anonymized stats only | "내 raw 데이터가 아니라 **익명·집계**된 흐름 통찰" |
+
+### Phase 1 — Memory Recovery *(current)*
+
+**Unit:** `EventCandidate` SSOT + **Bridge window** (media · chat · prep · GPS projection).
+
+**Ship criteria:**
+
+- Fragment → one experience window (Bridge API + journey timeline)
+- Recall obeys **Recall Timing Law** (max 1–2/day · dismiss weakens trigger)
+- Surfaces: Feed Replay · Globe pin · Bridge — **not** Life Replay archive UI
+
+**Code map:** `lib/experience-bridge/` · `lib/recall/` · `lib/context-weight/` · Globe pin-open · GPS arrival recall.
+
+### Phase 2 — MEANING micro-surfaces *(not Graph explorer)*
+
+**Law:** Surfaces show **one contextual hint** — not a scrollable global knowledge graph.
+
+| OK (Phase 2) | Reject |
+|--------------|--------|
+| Pin weight emphasis (3 levels) | Force-directed graph hero |
+| People strip · "민수 = 제주" one-liner | Node counts · social metrics |
+| Journey timeline (media · talk · prep) | "My whole life map" as primary UX |
+| Recall reason chips | Search/chat as Feed hero |
+
+**Engine:** `lib/meaning/` · `lib/context-weight/` — projection read only; no new truth store.
+
+### Phase 3 — Collective flow *(research — after 1–2 compound)*
+
+**Law:** **Personal UI and collective UI are physically separate surfaces.** Never mix personal SSOT with aggregate insights on one screen.
+
+- Input: per-user MEANING **projections** only — never raw FACT export without opt-in
+- Output: k-anonymized / statistical spacetime patterns (flow, seasonality)
+- Requires: consent · retention · delete path before implementation priority
+
+**Reject in Phase 3 PR:** Shared EventCandidate DB for "crowd truth" · blending Phase 2 personal graph with Phase 3 stats on Feed/Globe home.
 
 ---
 

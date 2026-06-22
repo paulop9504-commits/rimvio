@@ -10,6 +10,9 @@ export type FeedCaptureFragment = {
   label?: string;
   url?: string;
   dwellMinutes?: number;
+  endedAtIso?: string;
+  lat?: number;
+  lng?: number;
   /** Search ingress auto-attach — awaits one-tap verify on Feed. */
   autoAttached?: boolean;
   verified?: boolean;

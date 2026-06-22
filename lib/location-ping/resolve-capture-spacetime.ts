@@ -81,11 +81,7 @@ function resolveCaptureInstant(input: {
   }
 
   const fileMs = input.file.lastModified;
-  if (
-    fileMs > 0 &&
-    input.nowMs - fileMs < 30 * 24 * 60 * 60 * 1000 &&
-    fileMs <= input.nowMs + 60_000
-  ) {
+  if (fileMs > 0 && fileMs <= input.nowMs + 60_000) {
     return {
       capturedAtIso: new Date(fileMs).toISOString(),
       resolveSource: "file_mtime",

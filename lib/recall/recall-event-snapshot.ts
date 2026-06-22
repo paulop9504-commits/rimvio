@@ -1,7 +1,10 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { readFeedCaptureFragments } from "@/lib/feed/feed-capture-metadata";
 import { deriveExperienceSlotHeadline } from "@/lib/feed/derive-experience-slot-headline";
+import { readPinContextNote } from "@/lib/globe/pin-context-note";
 import { readPlanContextFromEvent } from "@/lib/plan-context/plan-context-metadata";
+import { inferPlanMode } from "@/lib/plan-context/resolve-plan-signal-gate";
+import type { PlanMode } from "@/lib/plan-context/plan-context-types";
 import {
   normalizeMeaningPerson,
   normalizeMeaningPlace,
@@ -21,7 +24,41 @@ export type RecallEventSnapshot = {
   titleFingerprint: string;
   captureCount: number;
   lifecycle: EventCandidate["lifecycle"];
+  dayOfWeek: number | null;
+  hourBucket: number | null;
+  planMode: PlanMode | null;
+  noteTokens: readonly string[];
 };
+
+export function tokenizeContextNote(note: string | null | undefined): string[] {
+  if (!note?.trim()) {
+    return [];
+  }
+  return note
+    .trim()
+    .toLowerCase()
+    .split(/\s+/u)
+    .filter((token) => token.length >= 2);
+}
+
+function readTimeShape(iso: string | null | undefined): {
+  dayOfWeek: number | null;
+  hourBucket: number | null;
+} {
+  if (!iso?.trim()) {
+    return { dayOfWeek: null, hourBucket: null };
+  }
+  const ms = Date.parse(iso);
+  if (Number.isNaN(ms)) {
+    return { dayOfWeek: null, hourBucket: null };
+  }
+  const date = new Date(ms);
+  const hour = date.getUTCHours();
+  return {
+    dayOfWeek: date.getUTCDay(),
+    hourBucket: Math.floor(hour / 2),
+  };
+}
 
 function readPeople(event: EventCandidate): string[] {
   const meta = event.metadata ?? {};
@@ -99,6 +136,7 @@ export function buildRecallEventSnapshot(
   const year = Number.isNaN(ms) ? null : new Date(ms).getUTCFullYear();
 
   const meta = event.metadata ?? {};
+  const timeShape = readTimeShape(atIso);
 
   return {
     eventId: event.id,
@@ -115,6 +153,10 @@ export function buildRecallEventSnapshot(
     titleFingerprint: titleFingerprint(event.title),
     captureCount: readFeedCaptureFragments(event).length,
     lifecycle: event.lifecycle,
+    dayOfWeek: timeShape.dayOfWeek,
+    hourBucket: timeShape.hourBucket,
+    planMode: plan ? inferPlanMode(plan) : null,
+    noteTokens: tokenizeContextNote(readPinContextNote(event)),
   };
 }
 
@@ -126,6 +168,8 @@ export function buildRecallAnchorSnapshot(
     peerDisplayName?: string | null;
     datetimeIso?: string | null;
     gcalEventId?: string | null;
+    contextNote?: string | null;
+    planMode?: PlanMode | null;
   },
 ): Omit<RecallEventSnapshot, "eventId" | "headline" | "captureCount" | "lifecycle"> & {
   eventId: string | null;
@@ -138,6 +182,7 @@ export function buildRecallAnchorSnapshot(
 
   const placeRaw = anchor.place?.trim() ?? null;
   const place = placeRaw ? normalizeMeaningPlace(placeRaw) : null;
+  const timeShape = readTimeShape(anchor.datetimeIso);
 
   return {
     eventId: anchor.eventId?.trim() ?? null,
@@ -153,5 +198,9 @@ export function buildRecallAnchorSnapshot(
       : null,
     gcalEventId: anchor.gcalEventId?.trim() ?? null,
     titleFingerprint: titleFingerprint(anchor.title ?? ""),
+    dayOfWeek: timeShape.dayOfWeek,
+    hourBucket: timeShape.hourBucket,
+    planMode: anchor.planMode ?? null,
+    noteTokens: tokenizeContextNote(anchor.contextNote),
   };
 }

@@ -3058,17 +3058,22 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 }
 
 /* Overview — post-process contrast (levels-style via CSS filter) */
-[data-rimvio-globe-3d][data-globe-detail="space"] canvas,
-[data-rimvio-globe-3d][data-globe-detail="region"] canvas {
+[data-rimvio-globe-3d]:not([data-globe-canvas-filter="off"])[data-globe-detail="space"] canvas,
+[data-rimvio-globe-3d]:not([data-globe-canvas-filter="off"])[data-globe-detail="region"] canvas {
   filter: contrast(1.18) brightness(0.96) saturate(0.88);
 }
 
 /* Street zoom — slightly lifted contrast; raw CARTO tiles underneath */
-[data-rimvio-globe-3d][data-globe-detail="city"] canvas,
-[data-rimvio-globe-3d][data-globe-detail="neighborhood"] canvas,
-[data-rimvio-globe-3d][data-globe-detail="street"] canvas,
-[data-rimvio-globe-3d][data-globe-detail="pin"] canvas {
+[data-rimvio-globe-3d]:not([data-globe-canvas-filter="off"])[data-globe-detail="city"] canvas,
+[data-rimvio-globe-3d]:not([data-globe-canvas-filter="off"])[data-globe-detail="neighborhood"] canvas,
+[data-rimvio-globe-3d]:not([data-globe-canvas-filter="off"])[data-globe-detail="street"] canvas,
+[data-rimvio-globe-3d]:not([data-globe-canvas-filter="off"])[data-globe-detail="pin"] canvas {
   filter: contrast(1.12) brightness(1.01) saturate(0.94);
+}
+
+/* Android WebView — CSS filter on WebGL canvas blanks tiles on many GPUs */
+[data-rimvio-globe-3d][data-globe-canvas-filter="off"] canvas {
+  filter: none !important;
 }
 
 /* Room shared globe — 2D Toss map on sphere */
@@ -3471,7 +3476,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   border: 2px solid #ffffff;
   background: #3182f6;
   box-shadow: 0 2px 6px rgba(49, 130, 246, 0.35);
-  transform: scale(var(--globe-pin-scale, 1));
+  transform: scale(var(--globe-pin-dot-scale, var(--globe-pin-scale, 1)));
   transform-origin: center center;
 }
 

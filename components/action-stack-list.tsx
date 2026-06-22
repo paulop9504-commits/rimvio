@@ -24,6 +24,8 @@ import {
   readDismissedIds,
 } from "@/lib/local-links/now-session";
 import { copy } from "@/lib/copy/human-ko";
+import { PulseMainActionSurface } from "@/components/pulse/pulse-main-action-surface";
+import { MarketAlignmentSurface } from "@/components/market/market-alignment-surface";
 
 export function ActionStackList() {
   const { activeLinks, archivedLinks } = useRealtimeLinks();
@@ -63,7 +65,12 @@ export function ActionStackList() {
 
   if (!topLink && !topInboxNotification) {
     return (
-      <div className="flex min-h-[60dvh] flex-col items-center justify-center text-center px-4">
+      <div className="flex min-h-[60dvh] flex-col items-center justify-center px-4 text-center">
+        <PulseMainActionSurface
+          enabled
+          className="mb-6 w-full max-w-sm text-left"
+        />
+        <MarketAlignmentSurface enabled className="mb-4 w-full max-w-sm text-left" />
         <p className="text-4xl">👀</p>
         <p className={cn("mt-4", RIMVIO_TYPE.headline)}>All clear</p>
         <p className={cn("mt-2 max-w-[16rem]", RIMVIO_TYPE.caption)}>
@@ -111,7 +118,11 @@ export function ActionStackList() {
 
       {topLink ? (
         <>
-          <div className="relative flex-1 pt-4">
+          <div className="px-4 pt-3">
+            <PulseMainActionSurface enabled className="mb-3 w-full max-w-md mx-auto" />
+            <MarketAlignmentSurface enabled className="mb-3 w-full max-w-md mx-auto" />
+          </div>
+          <div className="relative flex-1 pt-1">
             {ghostLinks
               .slice()
               .reverse()

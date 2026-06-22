@@ -243,6 +243,19 @@ export function transitionEventLifecycle(
 /** @deprecated use transitionEventLifecycle */
 export const advanceEventLifecycleById = transitionEventLifecycle;
 
+function mergeEventMetadata(
+  existing: EventCandidate["metadata"] | undefined,
+  patch: EventCandidate["metadata"] | undefined,
+): EventCandidate["metadata"] {
+  const merged = { ...(existing ?? {}), ...(patch ?? {}) };
+  for (const key of Object.keys(merged)) {
+    if (merged[key] === undefined) {
+      delete merged[key];
+    }
+  }
+  return merged;
+}
+
 export function upsertEventCandidate(input: EventCandidateUpsertInput): EventCandidate {
   const nowIso = new Date().toISOString();
   const items = readPayload();
@@ -255,7 +268,7 @@ export function upsertEventCandidate(input: EventCandidateUpsertInput): EventCan
       ...input,
       id: existing.id,
       lifecycle: mergeLifecycle(existing.lifecycle, input.lifecycle ?? existing.lifecycle),
-      metadata: { ...existing.metadata, ...input.metadata },
+      metadata: mergeEventMetadata(existing.metadata, input.metadata),
       lifecycleUpdatedAt:
         mergeLifecycle(existing.lifecycle, input.lifecycle ?? existing.lifecycle) !==
         existing.lifecycle

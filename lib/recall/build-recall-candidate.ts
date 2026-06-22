@@ -13,10 +13,16 @@ export function buildRecallCandidate(input: {
   pastSnapshot: RecallEventSnapshot;
   matches: readonly RecallTriggerMatch[];
   now?: Date;
+  meaningWeight?: number;
 }): RecallCandidate {
   const now = input.now ?? new Date();
   const triggers = input.matches.map((row) => row.trigger);
-  const confidence = scoreRecallConfidence(input.matches, input.pastSnapshot, now);
+  const confidence = scoreRecallConfidence(
+    input.matches,
+    input.pastSnapshot,
+    now,
+    input.meaningWeight ?? 0,
+  );
   const media = buildRecallMedia(input.pastEvent);
   const volume = projectEventToExperienceVolume(input.pastEvent);
 

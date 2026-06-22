@@ -33,12 +33,22 @@ import type { PeerContact } from "@/lib/context/peer-contact-types";
 import { purgePendingLabel } from "@/lib/context/pinned-peer-roster";
 import { findSlotByPeerId } from "@/lib/context/pinned-peer-roster";
 import { readPinnedRoster } from "@/lib/context/peer-thread-settings-store";
+import { isBridgeContextThreadId } from "@/lib/peer-chat/bridge-context-thread";
 import { cn } from "@/lib/utils";
 import { AiLensToggle } from "@/components/peer-chat/ai-lens-toggle";
 import { PeerChatThreadShell } from "@/components/peer-chat/peer-chat-thread-shell";
 import { PeerThreadChatPanel } from "@/components/peer-chat/peer-thread-chat-panel";
 import { GroupInfoSheet } from "@/components/peer-chat/group-info-sheet";
-import { PeerThreadHubPinBar } from "@/components/peer-chat/peer-thread-hub-pin-bar";
+import {
+  fetchMarketHandshakeRoomRemote,
+  startMarketHandshakeChatRemote,
+  type MarketHandshakeRoomState,
+} from "@/lib/globe/market/client/sync-market-intent-remote";
+import {
+  MarketHandshakeLockedHint,
+  MarketHandshakeProductStrip,
+  MarketHandshakeStartBar,
+} from "@/components/market/market-handshake-room-gate";
 
 type PeerThreadRoomClientProps = {
   peerThreadId: string;
@@ -57,6 +67,10 @@ function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
   const [groupInfoOpen, setGroupInfoOpen] = useState(false);
   const [groupMetaName, setGroupMetaName] = useState<string | null>(null);
   const [groupInviteCode, setGroupInviteCode] = useState<string | null>(null);
+  const [marketHandshake, setMarketHandshake] = useState<MarketHandshakeRoomState | null>(
+    null,
+  );
+  const [marketStartBusy, setMarketStartBusy] = useState(false);
   const roster = useMemo(() => readPinnedRoster(), []);
   const [contact, setContact] = useState<PeerContact | null>(() =>
     getPeerContactById(peerThreadId),
@@ -66,7 +80,37 @@ function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
   }, [peerThreadId]);
   const hubSlot = findSlotByPeerId(roster, peerThreadId);
   const isGroup = isGroupThreadId(peerThreadId);
+  const isBridgeContextRoom = isBridgeContextThreadId(peerThreadId);
   const phoneDm = isRegisteredPeerDmThread(peerThreadId);
+
+  useEffect(() => {
+    if (!phoneDm || isGroup) {
+      setMarketHandshake(null);
+      return;
+    }
+    void fetchMarketHandshakeRoomRemote(peerThreadId)
+      .then((state) => setMarketHandshake(state))
+      .catch(() => setMarketHandshake(null));
+  }, [isGroup, peerThreadId, phoneDm]);
+
+  const onStartMarketChat = useCallback(async () => {
+    if (!marketHandshake?.id || marketStartBusy) {
+      return;
+    }
+    setMarketStartBusy(true);
+    try {
+      await startMarketHandshakeChatRemote({ handshakeId: marketHandshake.id });
+      const refreshed = await fetchMarketHandshakeRoomRemote(peerThreadId);
+      setMarketHandshake(refreshed);
+      toast.success(copy.globe.marketAlignBridgeToast);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : copy.globe.marketAlignBridgeFail;
+      toast.error(message);
+    } finally {
+      setMarketStartBusy(false);
+    }
+  }, [copy.globe.marketAlignBridgeFail, copy.globe.marketAlignBridgeToast, marketHandshake?.id, marketStartBusy, peerThreadId]);
 
   useEffect(() => {
     refreshContact();
@@ -159,7 +203,7 @@ function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
         : undefined,
   });
 
-  if (!isGroup && !phoneDm && !contact && !hubSlot) {
+  if (!isGroup && !phoneDm && !contact && !hubSlot && !isBridgeContextRoom) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
         <p className="text-sm text-muted-foreground">
@@ -295,6 +339,10 @@ function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
         </p>
       ) : null}
 
+      {marketHandshake ? (
+        <MarketHandshakeProductStrip handshake={marketHandshake} />
+      ) : null}
+
       <PeerChatThreadShell
         peerThreadId={peerThreadId}
         displayName={displayName}
@@ -304,7 +352,10 @@ function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
           displayName={displayName}
           policyInput={policyInput}
           aiLensEnabled={experienceDiscussion ? false : settings.aiLensEnabled}
-          readOnly={!isGroup && hubSlot?.connection === "purge_pending"}
+          readOnly={
+            marketHandshake?.chatLocked ||
+            (!isGroup && hubSlot?.connection === "purge_pending")
+          }
           showAiMentionLink={isGroup || pinned}
           peerAvatarUrl={isGroup ? null : profile?.avatarUrl}
           simpleDm={phoneDm && !isGroup}
@@ -313,6 +364,13 @@ function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
           contextTalkTitle={experienceTitle}
         />
       </PeerChatThreadShell>
+
+      {marketHandshake?.canStartChat ? (
+        <MarketHandshakeStartBar busy={marketStartBusy} onStart={() => void onStartMarketChat()} />
+      ) : null}
+      {marketHandshake?.chatLocked && marketHandshake.viewerRole === "listing" ? (
+        <MarketHandshakeLockedHint />
+      ) : null}
     </div>
   );
 }

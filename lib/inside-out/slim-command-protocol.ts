@@ -31,6 +31,7 @@ export const SLIM_INLINE_ACTION_FEATURE_IDS = [
   "peer_talk",
   "group_talk",
   "todo",
+  "market",
 ] as const;
 
 export const SLIM_MENTION_FEATURE_IDS = [

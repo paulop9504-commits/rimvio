@@ -154,6 +154,27 @@ export async function upsertExperienceBridge(
   return state;
 }
 
+export async function patchBridgePeerThreadId(
+  supabase: SupabaseClient,
+  eventId: string,
+  peerThreadId: string,
+): Promise<void> {
+  const key = eventId.trim();
+  const threadId = peerThreadId.trim();
+  if (!key || !threadId) {
+    throw new Error("bridge_peer_thread_required");
+  }
+
+  const { error } = await supabase
+    .from("experience_bridges")
+    .update({ peer_thread_id: threadId })
+    .eq("event_id", key);
+
+  if (error) {
+    throw error;
+  }
+}
+
 async function resolveBridgePeerThreadIdForUpsert(
   supabase: SupabaseClient,
   peerThreadId: string | null | undefined,

@@ -146,6 +146,8 @@ export type RimvioGlobeHubProps = {
   focusedContextEventId?: string | null;
   /** Hub map anchor press — opens Hub detail, not pin info sheet. */
   onContextHubAnchorPress?: (contextEventId: string) => void;
+  /** Pinch/drag coach on the globe canvas — off when capture dock is shown. */
+  showInteractionHint?: boolean;
 };
 
 type RimvioGlobeHubBodyProps = {
@@ -175,6 +177,7 @@ type RimvioGlobeHubBodyProps = {
   renderSuspended?: boolean;
   focusedContextEventId?: string | null;
   onContextHubAnchorPress?: (contextEventId: string) => void;
+  showInteractionHint?: boolean;
 };
 
 const RimvioGlobeHubBody = memo(
@@ -196,6 +199,7 @@ const RimvioGlobeHubBody = memo(
       renderSuspended = false,
       focusedContextEventId = null,
       onContextHubAnchorPress,
+      showInteractionHint = true,
     },
     ref,
   ) {
@@ -262,6 +266,30 @@ const RimvioGlobeHubBody = memo(
     );
     const { enabled: gpsEnabled } = useGpsTrackingEnabled();
     const liveLocation = useLiveLocationSnapshot();
+    const displayViewerRef = useRef<{ lat: number; lng: number } | null>(null);
+    const [displayViewerRevision, setDisplayViewerRevision] = useState(0);
+
+    useEffect(() => {
+      const lat = liveLocation?.lat;
+      const lng = liveLocation?.lng;
+      if (typeof lat !== "number" || typeof lng !== "number") {
+        return;
+      }
+      const prev = displayViewerRef.current;
+      if (
+        prev &&
+        Math.abs(prev.lat - lat) < 0.00045 &&
+        Math.abs(prev.lng - lng) < 0.00045
+      ) {
+        return;
+      }
+      const timer = window.setTimeout(() => {
+        displayViewerRef.current = { lat, lng };
+        setDisplayViewerRevision((value) => value + 1);
+      }, 600);
+      return () => window.clearTimeout(timer);
+    }, [liveLocation?.lat, liveLocation?.lng]);
+
     const displayPins = useMemo(() => {
       const withDisplay = projectGlobePinDisplayMode({
         pins: classifiedPins,
@@ -269,8 +297,8 @@ const RimvioGlobeHubBody = memo(
         focusedEventId: focusedContextEventId,
         expandedPinId,
         lodgingFocusStageOpen: mapMediaFocusOpen,
-        viewerLat: liveLocation?.lat ?? null,
-        viewerLng: liveLocation?.lng ?? null,
+        viewerLat: displayViewerRef.current?.lat ?? liveLocation?.lat ?? null,
+        viewerLng: displayViewerRef.current?.lng ?? liveLocation?.lng ?? null,
       });
       const withOverrides = applyPinCoordOverrides(
         withDisplay,
@@ -286,6 +314,7 @@ const RimvioGlobeHubBody = memo(
       eventsById,
       expandedPinId,
       mapMediaFocusOpen,
+      displayViewerRevision,
       liveLocation?.lat,
       liveLocation?.lng,
       pinCoordOverrides,
@@ -547,6 +576,7 @@ const RimvioGlobeHubBody = memo(
             dispatchGlobeContextHubOpen({ contextEventId, source: "map_anchor" });
             onContextHubAnchorPress?.(contextEventId);
           }}
+          showInteractionHint={showInteractionHint}
         />
 
         {clusters.length === 0 ? (
@@ -584,6 +614,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
   renderSuspended,
   focusedContextEventId,
   onContextHubAnchorPress,
+  showInteractionHint = true,
 }: RimvioGlobeHubProps) {
   const { ready, eventsById, personalPinRevision } = useGlobeEventSnapshot();
   const { graph } = useExperienceGraph(ready ? eventsById : undefined);
@@ -673,6 +704,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
       renderSuspended={renderSuspended}
       focusedContextEventId={focusedContextEventId}
       onContextHubAnchorPress={onContextHubAnchorPress}
+      showInteractionHint={showInteractionHint}
     />
   );
 });

@@ -5,6 +5,7 @@ import {
   mediaPoolStartIsoFromContext,
 } from "../lib/media-pool/format-media-pool-labels";
 import {
+  hasCaptureGps,
   hasExifGpsCapture,
   shouldStageMediaToPool,
 } from "../lib/media-pool/is-media-pool-candidate";
@@ -55,6 +56,30 @@ async function main() {
     false,
     "pin-card attach bypasses pool",
   );
+  assert.equal(
+    shouldStageMediaToPool({
+      context: screenshot,
+      bypassPool: true,
+    }),
+    false,
+    "walkthrough confirm bypasses pool",
+  );
+  assert.equal(
+    shouldStageMediaToPool({
+      context: screenshot,
+      userConfirmedContext: true,
+    }),
+    false,
+    "user-confirmed context bypasses pool",
+  );
+
+  const pingGps = baseContext({
+    resolveSource: "gps_ping",
+    lat: 37.5,
+    lng: 127.0,
+  });
+  assert.equal(hasCaptureGps(pingGps), true);
+  assert.equal(shouldStageMediaToPool({ context: pingGps }), false);
 
   const travel = baseContext({
     resolveSource: "exif_gps",

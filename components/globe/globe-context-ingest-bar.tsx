@@ -25,7 +25,6 @@ import { runGlobeComposerAction } from "@/lib/globe/run-globe-composer-action";
 import {
   rimvioComposerFieldClass,
   rimvioIconBtnClass,
-  rimvioNavBarClass,
 } from "@/lib/brand/rimvio-neon-theme";
 import { cn } from "@/lib/utils";
 import { copy } from "@/lib/copy/human-ko";
@@ -36,14 +35,18 @@ export type GlobeContextIngestBarHandle = {
 
 export type GlobeContextIngestBarProps = {
   className?: string;
-  /** Active pin sheet — photos attach here instead of auto-match. */
   targetEventId?: string | null;
   targetTitle?: string | null;
   forceAttachToTarget?: boolean;
-  onAttached?: (eventId: string) => void;
+  onAttached?: (
+    eventId: string,
+    options?: { needsPlaceVerify?: boolean },
+  ) => void;
+  onPhotoDraftReady?: (files: File[]) => void | Promise<void>;
+  onTextCommitted?: (input: { eventId: string; text: string }) => void;
 };
 
-/** Globe home — photos, videos, links, memos auto-attach to stored contexts. */
+/** Globe home — one frosted composer; photo action lives inside the + menu. */
 export const GlobeContextIngestBar = forwardRef<
   GlobeContextIngestBarHandle,
   GlobeContextIngestBarProps
@@ -54,6 +57,8 @@ export const GlobeContextIngestBar = forwardRef<
     targetTitle,
     forceAttachToTarget = false,
     onAttached,
+    onPhotoDraftReady,
+    onTextCommitted,
   },
   ref,
 ) {
@@ -71,9 +76,9 @@ export const GlobeContextIngestBar = forwardRef<
   }));
 
   const finish = useCallback(
-    (eventId: string, line: string) => {
+    (eventId: string, line: string, options?: { needsPlaceVerify?: boolean }) => {
       toast.success(line);
-      onAttached?.(eventId);
+      onAttached?.(eventId, options);
       setText("");
       setMenuOpen(false);
     },
@@ -82,10 +87,9 @@ export const GlobeContextIngestBar = forwardRef<
 
   const attachHintId = forceAttachToTarget ? targetEventId?.trim() || null : null;
   const attachHintTitle = forceAttachToTarget ? targetTitle?.trim() || null : null;
-  const inputPlaceholder =
-    attachHintTitle
-      ? `「${attachHintTitle}」에 @ · 사진 · 메모`
-      : "@길찾기 역이름 · 사진 · 링크 · 메모 — 갤러리 여러 장도 위치·시간 자동";
+  const inputPlaceholder = attachHintTitle
+    ? copy.globe.ingestAttachPlaceholder(attachHintTitle)
+    : copy.globe.ingestDefaultPlaceholder;
 
   const ingestMedia = useCallback(
     async (fileList: FileList | null | undefined) => {
@@ -93,11 +97,19 @@ export const GlobeContextIngestBar = forwardRef<
         return;
       }
       const files = Array.from(fileList);
+      if (onPhotoDraftReady) {
+        setMenuOpen(false);
+        if (photoRef.current) {
+          photoRef.current.value = "";
+        }
+        await onPhotoDraftReady(files);
+        return;
+      }
       setBusy(true);
       const toastId = toast.loading(
         files.length === 1
-          ? "올리는 중…"
-          : `사진·동영상 ${files.length}개 올리는 중… 0/${files.length}`,
+          ? copy.globe.ingestUploadingOne
+          : copy.globe.ingestUploadingMany(files.length),
       );
       try {
         const summary = await ingestGlobeContextFromFiles(files, {
@@ -106,7 +118,7 @@ export const GlobeContextIngestBar = forwardRef<
           forceAttachToHint: forceAttachToTarget && Boolean(attachHintId),
           onProgress: (done, total) => {
             if (total > 1) {
-              toast.loading(`사진·동영상 ${total}개 올리는 중… ${done}/${total}`, {
+              toast.loading(copy.globe.ingestUploadProgress(done, total), {
                 id: toastId,
               });
             }
@@ -117,6 +129,10 @@ export const GlobeContextIngestBar = forwardRef<
         });
         if (summary.succeeded === 0) {
           toast.error(summary.toastLine, { id: toastId });
+          return;
+        }
+        if (!summary.lastEventId && summary.poolStaged > 0) {
+          toast.message(summary.toastLine, { id: toastId });
           return;
         }
         const suggestedPlace = summary.lastSuggestedPlaceName?.trim();
@@ -136,7 +152,7 @@ export const GlobeContextIngestBar = forwardRef<
         const message =
           caught instanceof Error
             ? caught.message
-            : "사진·동영상을 넣지 못했어요.";
+            : copy.globe.ingestAttachFail;
         toast.error(message, { id: toastId });
       } finally {
         setBusy(false);
@@ -145,7 +161,7 @@ export const GlobeContextIngestBar = forwardRef<
         }
       }
     },
-    [attachHintId, attachHintTitle, busy, forceAttachToTarget, onAttached],
+    [attachHintId, attachHintTitle, busy, forceAttachToTarget, onAttached, onPhotoDraftReady],
   );
 
   const submitText = useCallback(
@@ -158,102 +174,125 @@ export const GlobeContextIngestBar = forwardRef<
       setBusy(true);
       try {
         const action = runGlobeComposerAction(value);
-        if (action) {
+        if (action?.kind === "url") {
           window.location.assign(action.url);
           toast.success(`${action.label} 여는 중…`);
           setText("");
           setMenuOpen(false);
           return;
         }
-        const outcome = ingestGlobeContextFromText(value);
-        finish(outcome.result.event.id, outcome.toastLine);
+        if (action?.kind === "market-compose") {
+          const composeText = action.composeText.trim() || value;
+          const outcome = await ingestGlobeContextFromText(composeText);
+          finish(outcome.result.event.id, outcome.toastLine, {
+            needsPlaceVerify: outcome.placeVerify?.needsPlaceVerify,
+          });
+          onTextCommitted?.({
+            eventId: outcome.result.event.id,
+            text: composeText,
+          });
+          return;
+        }
+        const outcome = await ingestGlobeContextFromText(value);
+        finish(outcome.result.event.id, outcome.toastLine, {
+          needsPlaceVerify: outcome.placeVerify?.needsPlaceVerify,
+        });
+        onTextCommitted?.({
+          eventId: outcome.result.event.id,
+          text: value,
+        });
       } catch (caught) {
         const message =
-          caught instanceof Error ? caught.message : "맥락에 붙이지 못했어요.";
+          caught instanceof Error ? caught.message : copy.globe.ingestAttachFail;
         toast.error(message);
       } finally {
         setBusy(false);
       }
     },
-    [busy, finish, text],
+    [busy, finish, onTextCommitted, text],
   );
 
   return (
-    <div
-      className={cn(
-        "pointer-events-auto fixed inset-x-0 z-30 px-3",
-        "bottom-[var(--rimvio-bottom-nav-offset)]",
-        "lg:bottom-[max(0.75rem,env(safe-area-inset-bottom))]",
-        className,
-      )}
-      data-globe-context-ingest-bar
-    >
-      <form
-        onSubmit={(event) => void submitText(event)}
+    <div className={cn("w-full", className)} data-globe-context-ingest-bar>
+      <div
         className={cn(
-          rimvioNavBarClass,
-          "rimvio-globe-ingest-bar mx-auto flex max-w-lg items-center gap-2 rounded-2xl px-2 py-2 shadow-lg ring-1 ring-border/80",
+          "overflow-hidden rounded-[1.35rem] bg-white/92 shadow-[0_8px_32px_rgba(2,32,71,0.12)] ring-1 ring-black/[0.06] backdrop-blur-xl",
+          menuOpen && "ring-primary/20",
         )}
       >
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => setMenuOpen((open) => !open)}
-          className={cn(
-            rimvioIconBtnClass("ghost"),
-            "size-10 shrink-0 rounded-xl",
-          )}
-          aria-label={menuOpen ? "닫기" : "추가"}
-        >
-          {menuOpen ? (
-            <X className="size-5" aria-hidden />
-          ) : (
-            <Plus className="size-5" aria-hidden />
-          )}
-        </button>
-
-        <div className={cn(rimvioComposerFieldClass, "min-w-0 flex-1 px-3 py-2")}>
-          <input
-            ref={inputRef}
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-            placeholder={inputPlaceholder}
-            disabled={busy}
-            className="w-full bg-transparent text-[15px] text-foreground outline-none placeholder:text-muted-foreground"
-            data-globe-context-ingest-input
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={busy || !text.trim()}
-          className={cn(
-            rimvioIconBtnClass("primary"),
-            "size-10 shrink-0 rounded-xl disabled:opacity-40",
-          )}
-          aria-label="보내기"
-        >
-          {busy ? (
-            <Loader2 className="size-5 animate-spin" aria-hidden />
-          ) : (
-            <SendHorizontal className="size-5" aria-hidden />
-          )}
-        </button>
-      </form>
-
-      {menuOpen ? (
-        <div className="mx-auto mt-2 flex max-w-lg justify-start gap-2 px-1">
+        {menuOpen ? (
           <button
             type="button"
             disabled={busy}
             onClick={() => photoRef.current?.click()}
-            className="inline-flex items-center gap-1.5 rounded-full bg-card px-3 py-2 text-[13px] font-medium text-foreground shadow-sm ring-1 ring-border"
+            className="flex w-full items-center gap-3 border-b border-black/[0.05] px-3.5 py-3 text-left transition-colors active:bg-black/[0.03]"
+            data-globe-ingest-photo-action
           >
-            <ImagePlus className="size-4 text-primary" aria-hidden />
-            사진·동영상 · EXIF 위치 자동 · GPS 없으면 보관함
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <ImagePlus className="size-[18px]" aria-hidden />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[14px] font-semibold text-foreground">
+                {copy.globe.ingestPhotoActionTitle}
+              </span>
+              <span className="mt-0.5 block truncate text-[12px] text-muted-foreground">
+                {copy.globe.ingestPhotoActionHint}
+              </span>
+            </span>
           </button>
-        </div>
-      ) : null}
+        ) : null}
+
+        <form
+          onSubmit={(event) => void submitText(event)}
+          className="flex items-center gap-2 px-2 py-2"
+        >
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => setMenuOpen((open) => !open)}
+            className={cn(
+              rimvioIconBtnClass(menuOpen ? "primary" : "ghost"),
+              "size-10 shrink-0 rounded-xl",
+            )}
+            aria-label={menuOpen ? copy.globe.ingestMenuCloseAria : copy.globe.ingestMenuOpenAria}
+            aria-expanded={menuOpen}
+          >
+            {menuOpen ? (
+              <X className="size-5" aria-hidden />
+            ) : (
+              <Plus className="size-5" aria-hidden />
+            )}
+          </button>
+
+          <div className={cn(rimvioComposerFieldClass, "min-w-0 flex-1 px-3 py-2.5")}>
+            <input
+              ref={inputRef}
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+              placeholder={inputPlaceholder}
+              disabled={busy}
+              className="w-full bg-transparent text-[15px] text-foreground outline-none placeholder:text-muted-foreground/80"
+              data-globe-context-ingest-input
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={busy || !text.trim()}
+            className={cn(
+              rimvioIconBtnClass("primary"),
+              "size-10 shrink-0 rounded-xl disabled:opacity-35",
+            )}
+            aria-label={copy.globe.ingestSendAria}
+          >
+            {busy ? (
+              <Loader2 className="size-5 animate-spin" aria-hidden />
+            ) : (
+              <SendHorizontal className="size-5" aria-hidden />
+            )}
+          </button>
+        </form>
+      </div>
 
       <input
         ref={photoRef}

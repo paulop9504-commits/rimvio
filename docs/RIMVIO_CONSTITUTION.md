@@ -10,6 +10,8 @@ Rimvio remembers photos, location, and conversations from the day, and is the ap
 
 **Mission:** Turn lived context into the next meaningful action — not open-ended chat.
 
+**Why Rimvio exists (2026-06):** Reduce **cognitive dissonance** — the gap between what the user lived (Memories), what the world is doing now (Pulse, opt-in aggregate), and what they do next (@ Action). **Time saved** is the felt result; the map is for confirmation, not endless browsing.
+
 ---
 
 ## North Star
@@ -39,7 +41,8 @@ Full spec + examples + code map: **`docs/RIMVIO_EXPERIENCE_LAYERS.md`**
 | **ACTION** | Memory → operable next step (`@`, navigate) — not generic AI |
 
 **2026-06 maturity:** FACT ✓ · EXPERIENCE ✓ · MEANING △ · RECALL △ · ACTION ✓.  
-**Moat:** MEANING + RECALL compound over time; ACTION is replaceable.
+**Moat:** MEANING + RECALL compound over time; ACTION is replaceable.  
+**Macro roadmap:** Phase 1 Memory Recovery → Phase 2 MEANING micro-surfaces → Phase 3 collective (opt-in, separate UI) — **`docs/RIMVIO_EXPERIENCE_LAYERS.md` § Product roadmap**.
 
 **Main screen (Three Floors — UI stack on Feed):** **`docs/RIMVIO_THREE_FLOORS.md`**
 

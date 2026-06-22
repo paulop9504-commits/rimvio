@@ -1,11 +1,27 @@
-import type { RecallTriggerMatch } from "@/lib/recall/recall-trigger-matchers";
+import type { RecallTrigger } from "@/lib/recall/recall-types";
 import type { RecallEventSnapshot } from "@/lib/recall/recall-event-snapshot";
+import type { RecallTriggerMatch } from "@/lib/recall/recall-trigger-matchers";
+
+const MEANING_BOOST_TRIGGERS = new Set<RecallTrigger>([
+  "same_person",
+  "same_place",
+  "same_city",
+  "same_calendar_event",
+  "context_note_echo",
+]);
+
+export function recallMatchesAllowMeaningBoost(
+  matches: readonly RecallTriggerMatch[],
+): boolean {
+  return matches.some((row) => MEANING_BOOST_TRIGGERS.has(row.trigger));
+}
 
 /** Composite 0–100 confidence from trigger weights + past signal. */
 export function scoreRecallConfidence(
   matches: readonly RecallTriggerMatch[],
   past: RecallEventSnapshot,
   now = new Date(),
+  meaningWeight = 0,
 ): number {
   if (matches.length === 0) {
     return 0;
@@ -36,6 +52,10 @@ export function scoreRecallConfidence(
         score += 10;
       }
     }
+  }
+
+  if (meaningWeight > 0 && recallMatchesAllowMeaningBoost(matches)) {
+    score += Math.min(20, Math.round(meaningWeight * 0.2));
   }
 
   return Math.min(100, Math.max(0, Math.round(score)));

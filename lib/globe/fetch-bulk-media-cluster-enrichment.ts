@@ -8,8 +8,11 @@ import type {
 } from "@/lib/feed/bulk-media-spacetime-types";
 import { summarizeBulkMediaClustersForWire } from "@/lib/feed/cluster-bulk-media-spacetime";
 import { fetchWithTimeout } from "@/lib/http/fetch-with-timeout";
+import { fallbackBulkMediaClusterEnrichment } from "@/lib/globe/llm/bulk-media-cluster-enrichment";
+import { shouldSkipHeavyPhotoEnrichment } from "@/lib/platform/device";
 
 const BULK_CLUSTER_TIMEOUT_MS = 25_000;
+const BULK_CLUSTER_TIMEOUT_MOBILE_MS = 45_000;
 
 export async function fetchBulkMediaClusterEnrichment(input: {
   clusters: readonly BulkMediaSpacetimeCluster[];
@@ -24,6 +27,10 @@ export async function fetchBulkMediaClusterEnrichment(input: {
     clusters: input.clusters,
     peeks: input.peeks,
   });
+
+  if (shouldSkipHeavyPhotoEnrichment()) {
+    return fallbackBulkMediaClusterEnrichment({ clusters: wireSummaries });
+  }
 
   const form = new FormData();
   form.append("clusters", JSON.stringify(wireSummaries));
@@ -57,7 +64,9 @@ export async function fetchBulkMediaClusterEnrichment(input: {
     const response = await fetchWithTimeout("/api/globe/bulk-media-clusters", {
       method: "POST",
       body: form,
-      timeoutMs: BULK_CLUSTER_TIMEOUT_MS,
+      timeoutMs: shouldSkipHeavyPhotoEnrichment()
+        ? BULK_CLUSTER_TIMEOUT_MOBILE_MS
+        : BULK_CLUSTER_TIMEOUT_MS,
       timeoutLabel: "bulk-media-clusters",
     });
     const payload = (await response.json()) as BulkMediaClusterEnrichmentResult & {

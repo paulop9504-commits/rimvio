@@ -11,7 +11,10 @@ import { GlobeContextHubDetailSheet } from "@/components/globe/globe-context-hub
 import { GlobeUtilityMenu } from "@/components/globe/globe-utility-menu";
 import { GlobeContextMapVideoStage } from "@/components/globe/globe-context-map-video-stage";
 import { GlobeLodgingFocusStage } from "@/components/globe/globe-lodging-focus-stage";
-import { GlobeContextIngestBar, type GlobeContextIngestBarHandle } from "@/components/globe/globe-context-ingest-bar";
+import { GlobeCaptureDock } from "@/components/globe/globe-capture-dock";
+import { GlobeTrendBridgeHud } from "@/components/globe/globe-trend-bridge-hud";
+import { GlobeTrendBridgeLayer } from "@/components/globe/globe-trend-bridge-layer";
+import type { GlobeContextIngestBarHandle } from "@/components/globe/globe-context-ingest-bar";
 import { GlobeFirstVisitCoach } from "@/components/globe/globe-first-visit-coach";
 import { GlobeContextListSheet } from "@/components/globe/globe-context-list-sheet";
 import { GlobeContextManageSheet } from "@/components/globe/globe-context-manage-sheet";
@@ -27,11 +30,14 @@ import { GlobeSettingsSheet } from "@/components/globe/globe-settings-sheet";
 import { PinOpenSheet } from "@/components/globe/pin-open-sheet";
 import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
 import { subscribeGlobeMapMediaFocus } from "@/lib/globe/globe-map-media-focus-bridge";
+import { subscribeGlobePhotoIngest } from "@/lib/globe/globe-photo-ingest-bridge";
 import { setLiveLocationPowerMode } from "@/lib/location-ping/live-location-service";
 import { usePersonalGlobePinSync } from "@/hooks/use-personal-globe-pin-sync";
 import { useGlobeInbox } from "@/hooks/use-globe-inbox";
 import { useMediaPool } from "@/hooks/use-media-pool";
 import { useGlobeTripArrival } from "@/hooks/use-globe-trip-arrival";
+import { useTrendBridge } from "@/hooks/use-trend-bridge";
+import { useTrendBridgeRollup } from "@/hooks/use-trend-bridge-rollup";
 import { useGlobeContextPlaceAlignment } from "@/hooks/use-globe-context-place-alignment";
 import { useBridgeMediaSync } from "@/hooks/use-bridge-media-sync";
 import { useAuth } from "@/hooks/use-auth";
@@ -81,7 +87,26 @@ import {
   hydrateMediaContextStore,
   MEDIA_SPACETIME_UPDATED,
 } from "@/lib/location-ping/media-context-store";
+import { GLOBE_CONTEXT_MEDIA_ACCEPT } from "@/lib/feed/ingest-globe-context-media";
+import { prepareGlobePhotoIngestDraft } from "@/lib/globe/prepare-globe-photo-ingest-draft";
+import {
+  buildPhotoIngestFileItems,
+  patchPhotoIngestFileItem,
+  revokePhotoIngestPreviewUrls,
+  type PhotoIngestFileItem,
+} from "@/lib/globe/photo-ingest-file-progress";
+import type { GlobePhotoIngestDraft } from "@/lib/globe/prepare-globe-photo-ingest-draft";
 import { copy } from "@/lib/copy/human-ko";
+import { resolveRimvioHonorific } from "@/lib/copy/rimvio-honorific";
+import { getTrendBridgeFeature } from "@/lib/globe/trend-bridge/trend-bridge-feature-registry";
+import { PulseMainActionSurface } from "@/components/pulse/pulse-main-action-surface";
+import { MarketAlignmentSurface } from "@/components/market/market-alignment-surface";
+import { GlobeMarketIntentWizardSheet } from "@/components/globe/globe-market-intent-wizard-sheet";
+import { normalizeMarketIntentFromText } from "@/lib/globe/market/normalize-market-intent-from-text";
+import { prefillMarketIntentDraft } from "@/lib/globe/market/prefill-market-intent-draft";
+import { prefillMarketPrioritySlots } from "@/lib/globe/market/prefill-market-priority-slots";
+import type { MarketIntentDraft } from "@/lib/globe/market/market-intent-types";
+import { submitTrendBridgeContributionFromEvent } from "@/lib/globe/trend-bridge/client/submit-trend-bridge-contribution";
 import { subscribeGlobeContextHubOpen } from "@/lib/globe/context-hub/globe-context-hub-open-bridge";
 import { projectBridgeGhostClusters } from "@/lib/experience-bridge/project-bridge-ghost-clusters";
 import type { PendingBridgeInvite } from "@/hooks/use-pending-bridge-invites";
@@ -93,11 +118,24 @@ const GLOBE_PIN_PRESS_SUPPRESS_MS = 900;
 function GlobeHomeBody() {
   const searchParams = useSearchParams();
   const { user } = useAuth();
+  const rimvioHonorific = resolveRimvioHonorific(user);
   const recallEventId = searchParams.get("recallEvent");
   const globeRef = useRef<RimvioGlobeHubHandle>(null);
   const ingestBarRef = useRef<GlobeContextIngestBarHandle>(null);
   const [globeGuideOpen, setGlobeGuideOpen] = useState(false);
+  const [marketIntentDraft, setMarketIntentDraft] = useState<MarketIntentDraft | null>(
+    null,
+  );
+  const [marketConfirmOpen, setMarketConfirmOpen] = useState(false);
+  const [marketFocusEventId, setMarketFocusEventId] = useState<string | null>(null);
   const liveLocation = useLiveLocationSnapshot();
+  const {
+    settings: trendBridgeSettings,
+    setEnabled: setTrendBridgeEnabled,
+    setActiveBridgeId: setTrendBridgeActiveId,
+    setPulseIntent: setTrendBridgePulseIntent,
+    layerActive: trendBridgeLayerActive,
+  } = useTrendBridge();
   usePersonalGlobePinSync(true);
   const {
     notifications: globeNotifications,
@@ -130,6 +168,7 @@ function GlobeHomeBody() {
   const [shareSheetOpen, setShareSheetOpen] = useState(false);
   const [shareEventId, setShareEventId] = useState<string | null>(null);
   const [activeCluster, setActiveCluster] = useState<PinCluster | null>(null);
+  const [placeVerifyEventId, setPlaceVerifyEventId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [pinSheetInitialPage, setPinSheetInitialPage] =
     useState<PinMediaContextPage>("media");
@@ -146,6 +185,13 @@ function GlobeHomeBody() {
   const activeClusterRef = useRef<PinCluster | null>(null);
   const sheetOpenRef = useRef(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmDraft, setConfirmDraft] = useState<GlobePhotoIngestDraft | null>(null);
+  const [confirmPreparing, setConfirmPreparing] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [photoFileProgress, setPhotoFileProgress] = useState<PhotoIngestFileItem[]>([]);
+  const photoFileProgressRef = useRef<PhotoIngestFileItem[]>([]);
+  const createPhotoRef = useRef<HTMLInputElement>(null);
   const [listOpen, setListOpen] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -595,8 +641,8 @@ function GlobeHomeBody() {
   openMapMediaBridgeRef.current = openMapMediaBridge;
 
   const focusContextByEventId = useCallback(
-    (eventId: string, options?: { openSheet?: boolean }) => {
-      const result = focusGlobeContextOnMap(eventId);
+    async (eventId: string, options?: { openSheet?: boolean }) => {
+      const result = await focusGlobeContextOnMap(eventId);
       if (!result) {
         toast.error("맥락을 찾지 못했어요");
         return null;
@@ -641,8 +687,37 @@ function GlobeHomeBody() {
   );
 
   const focusContextOnMap = useCallback(
-    (eventId: string) => {
-      focusContextByEventId(eventId, { openSheet: false });
+    async (eventId: string, options?: { needsPlaceVerify?: boolean }) => {
+      const key = eventId.trim();
+      if (!key) {
+        return;
+      }
+      if (options?.needsPlaceVerify) {
+        const result = await focusGlobeContextOnMap(key);
+        if (!result?.cluster) {
+          toast.error("맥락을 찾지 못했어요");
+          return;
+        }
+        setStackClusters(null);
+        setActiveCluster(result.cluster);
+        setSheetOpen(false);
+        setContextTapPhase("awaiting_replay");
+        setPlaceVerifyEventId(key);
+        globeRef.current?.flyToPin(
+          result.cluster.lat,
+          result.cluster.lng,
+          "street",
+          { pinViewportY: 0.58 },
+        );
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("recallEvent") !== key) {
+          params.set("recallEvent", key);
+          const next = `${window.location.pathname}?${params.toString()}`;
+          window.history.replaceState(null, "", next);
+        }
+        return;
+      }
+      focusContextByEventId(key, { openSheet: false });
     },
     [focusContextByEventId],
   );
@@ -783,6 +858,135 @@ function GlobeHomeBody() {
     [openContextByEventId],
   );
 
+  const beginPhotoIngestFlow = useCallback(async (files: File[]) => {
+    if (files.length === 0) {
+      return;
+    }
+    revokePhotoIngestPreviewUrls(photoFileProgressRef.current);
+    const progressItems = buildPhotoIngestFileItems(files);
+    photoFileProgressRef.current = progressItems;
+    setPhotoFileProgress(progressItems);
+    setConfirmDraft(null);
+    setConfirmError(null);
+    setConfirmPreparing(true);
+    setConfirmOpen(true);
+    try {
+      const draft = await prepareGlobePhotoIngestDraft(files, {
+        onFileStart: (index) => {
+          setPhotoFileProgress((rows) =>
+            patchPhotoIngestFileItem(rows, index, { status: "reading" }),
+          );
+        },
+        onFileReady: (index) => {
+          setPhotoFileProgress((rows) =>
+            patchPhotoIngestFileItem(rows, index, { status: "ready" }),
+          );
+        },
+      });
+      if (!draft) {
+        setConfirmError(copy.globe.photoIngestUnsupportedFormat);
+        setPhotoFileProgress((rows) =>
+          rows.map((row) => ({ ...row, status: "error" as const })),
+        );
+        return;
+      }
+      setPhotoFileProgress((rows) =>
+        rows.map((row) =>
+          row.status === "error" ? row : { ...row, status: "ready" as const },
+        ),
+      );
+      setConfirmDraft(draft);
+    } catch (caught) {
+      const message =
+        caught instanceof Error && caught.message.trim()
+          ? caught.message.trim()
+          : copy.globe.contextConfirmPrepareFail;
+      setConfirmError(message);
+      toast.error(message);
+      setPhotoFileProgress((rows) =>
+        rows.map((row) => ({ ...row, status: "error" as const })),
+      );
+    } finally {
+      setConfirmPreparing(false);
+    }
+  }, []);
+
+  const resetPhotoIngestFlow = useCallback(() => {
+    revokePhotoIngestPreviewUrls(photoFileProgressRef.current);
+    photoFileProgressRef.current = [];
+    setPhotoFileProgress([]);
+    setConfirmOpen(false);
+    setConfirmDraft(null);
+    setConfirmError(null);
+    setConfirmPreparing(false);
+  }, []);
+
+  useEffect(() => {
+    return subscribeGlobePhotoIngest((files) => {
+      void beginPhotoIngestFlow(files);
+    });
+  }, [beginPhotoIngestFlow]);
+
+  const openPhotoPicker = useCallback(() => {
+    createPhotoRef.current?.click();
+  }, []);
+
+  const onTrendBridgeModeChange = useCallback(
+    (enabled: boolean) => {
+      setTrendBridgeEnabled(enabled);
+      if (enabled) {
+        toast.message(copy.globe.trendBridgePulseSwitch);
+      }
+    },
+    [setTrendBridgeEnabled],
+  );
+
+  const onTrendBridgeSelect = useCallback(
+    (bridgeId: string) => {
+      setTrendBridgeActiveId(bridgeId);
+      const feature = getTrendBridgeFeature(bridgeId);
+      if (feature) {
+        toast.message(copy.globe.trendBridgeEnabledToast(feature.displayName));
+        toast.message(copy.globe.trendBridgePulseWonder, { duration: 3200 });
+      }
+    },
+    [setTrendBridgeActiveId],
+  );
+
+  const onTrendBridgePulseIntentChange = useCallback(
+    (intent: "align" | "avoid") => {
+      setTrendBridgePulseIntent(intent);
+    },
+    [setTrendBridgePulseIntent],
+  );
+
+  const onMarketTextCommitted = useCallback(
+    (input: { eventId: string; text: string }) => {
+      const base = normalizeMarketIntentFromText({
+        text: input.text,
+        eventId: input.eventId,
+      });
+      if (!base) {
+        return;
+      }
+      const draft = prefillMarketPrioritySlots(
+        prefillMarketIntentDraft({
+          draft: base,
+          liveLat: liveLocation?.lat ?? null,
+          liveLng: liveLocation?.lng ?? null,
+        }),
+      );
+      setMarketIntentDraft(draft);
+      setMarketConfirmOpen(true);
+    },
+    [liveLocation?.lat, liveLocation?.lng],
+  );
+
+  const trendBridgeAnchorLat =
+    activeCluster?.lat ?? liveLocation?.lat ?? null;
+  const trendBridgeAnchorLng =
+    activeCluster?.lng ?? liveLocation?.lng ?? null;
+
   const globeRenderSuspended =
     sheetOpen ||
     hubDetailOpen ||
@@ -794,6 +998,20 @@ function GlobeHomeBody() {
     mediaPoolOpen ||
     bridgeGhostOpen ||
     shareSheetOpen;
+
+  const trendBridgeRollup = useTrendBridgeRollup({
+    active: trendBridgeLayerActive && !globeRenderSuspended,
+    bridgeId: trendBridgeSettings.activeBridgeId,
+    anchorLat: trendBridgeAnchorLat,
+    anchorLng: trendBridgeAnchorLng,
+  });
+
+  const pulseMainActionEnabled =
+    !globeRenderSuspended &&
+    !mapMediaFocusOpen &&
+    !sheetOpen &&
+    !confirmOpen &&
+    !hubEventId;
 
   useEffect(() => {
     const dwell =
@@ -824,6 +1042,17 @@ function GlobeHomeBody() {
         bridgeGhostClusters={bridgeGhostClusters}
         renderSuspended={globeRenderSuspended}
         focusedContextEventId={activeCluster?.eventId ?? null}
+        showInteractionHint={false}
+      />
+      <GlobeTrendBridgeLayer
+        visible={trendBridgeLayerActive && !globeRenderSuspended}
+        bridgeId={trendBridgeSettings.activeBridgeId}
+        anchorLat={trendBridgeAnchorLat}
+        anchorLng={trendBridgeAnchorLng}
+        zones={trendBridgeRollup.zones}
+        contextSummary={trendBridgeRollup.contextSummary}
+        peakHour={trendBridgeRollup.peakHour}
+        dataSource={trendBridgeRollup.source}
       />
       <GlobeContextStackPicker
         clusters={stackClusters ?? []}
@@ -859,7 +1088,8 @@ function GlobeHomeBody() {
       hubEventId &&
       !contextHasMapMedia &&
       !sheetOpen &&
-      !mapMediaFocusOpen ? (
+      !mapMediaFocusOpen &&
+      !confirmOpen ? (
         <p
           className="pointer-events-none absolute inset-x-6 z-[19] text-center text-[11px] font-medium text-white/90 drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]"
           style={{
@@ -887,7 +1117,7 @@ function GlobeHomeBody() {
                 peopleFilter={peopleFilter}
                 onPeopleFilterChange={setPeopleFilter}
                 peerOptions={peerOptions}
-                onCreate={() => setCreateOpen(true)}
+                onCreate={openPhotoPicker}
                 onList={() => setListOpen(true)}
                 onManage={() => setManageOpen(true)}
                 onFlyToHere={
@@ -902,6 +1132,18 @@ function GlobeHomeBody() {
                 }
               />
             </div>
+            {!hubEventId ? (
+              <GlobeTrendBridgeHud
+                className="pointer-events-auto"
+                enabled={trendBridgeSettings.enabled}
+                activeBridgeId={trendBridgeSettings.activeBridgeId}
+                pulseIntent={trendBridgeSettings.pulseIntent}
+                honorific={rimvioHonorific}
+                onModeChange={onTrendBridgeModeChange}
+                onBridgeSelect={onTrendBridgeSelect}
+                onPulseIntentChange={onTrendBridgePulseIntentChange}
+              />
+            ) : null}
           </>
         ) : null}
         {hubEventId &&
@@ -942,21 +1184,118 @@ function GlobeHomeBody() {
         />
       </div>
       ) : null}
-      <GlobeContextIngestBar
+      {!mapMediaFocusOpen && !confirmOpen ? (
+        <div
+          className="pointer-events-none absolute inset-x-4 z-[19]"
+          style={{
+            bottom: "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 0.35rem)",
+          }}
+        >
+          <MarketAlignmentSurface
+            className="pointer-events-auto mx-auto mb-2 max-w-md"
+            enabled={pulseMainActionEnabled}
+            focusEventId={marketFocusEventId ?? activeCluster?.eventId ?? null}
+            onFocusMatchOffer={(offer) => {
+              setMarketFocusEventId(offer.selfEventId);
+              if (offer.matchUserId) {
+                globeRef.current?.flyToPin(
+                  offer.matchLat,
+                  offer.matchLng,
+                  "street",
+                  { pinViewportY: 0.58 },
+                );
+                return;
+              }
+              void focusContextOnMap(offer.matchEventId);
+            }}
+            onFocusMatchEvent={(eventId) => {
+              setMarketFocusEventId(eventId);
+              void focusContextOnMap(eventId);
+            }}
+          />
+          <PulseMainActionSurface
+            className="pointer-events-auto mx-auto max-w-md"
+            enabled={pulseMainActionEnabled}
+            anchorLat={liveLocation?.lat ?? trendBridgeAnchorLat}
+            anchorLng={liveLocation?.lng ?? trendBridgeAnchorLng}
+          />
+        </div>
+      ) : null}
+      {!mapMediaFocusOpen ? (
+      <GlobeCaptureDock
         ref={ingestBarRef}
-        targetEventId={activeCluster?.eventId ?? null}
-        targetTitle={activeCluster?.title ?? null}
-        forceAttachToTarget={Boolean(activeCluster?.eventId)}
-        onAttached={(eventId) => {
-          const params = new URLSearchParams(window.location.search);
-          if (params.get("recallEvent") !== eventId) {
-            params.set("recallEvent", eventId);
-            const next = `${window.location.pathname}?${params.toString()}`;
-            window.history.replaceState(null, "", next);
-          }
-          focusContextOnMap(eventId);
+        photoFlow={{
+          open: confirmOpen,
+          preparing: confirmPreparing,
+          error: confirmError,
+          draft: confirmDraft,
+          fileProgress: photoFileProgress,
+          attachTarget: activeCluster?.eventId
+            ? {
+                eventId: activeCluster.eventId,
+                title: activeCluster.title,
+                force: true,
+              }
+            : null,
+          onDismiss: resetPhotoIngestFlow,
+          onCommitProgress: (done, total) => {
+            setPhotoFileProgress((rows) => {
+              const next = rows.map((row, index) => {
+                if (index < done) {
+                  return { ...row, status: "done" as const };
+                }
+                if (index === done && done < total) {
+                  return { ...row, status: "committing" as const };
+                }
+                return row;
+              });
+              photoFileProgressRef.current = next;
+              return next;
+            });
+          },
+          onConfirmed: ({ eventId, toastLine, needsPlaceVerify, ok = true }) => {
+            if (ok === false) {
+              toast.error(toastLine);
+              return;
+            }
+            resetPhotoIngestFlow();
+            setMediaStoreRevision((value) => value + 1);
+            toast.success(copy.globe.memoriesFootprintSaved(rimvioHonorific));
+            if (eventId) {
+              if (trendBridgeSettings.enabled) {
+                void submitTrendBridgeContributionFromEvent({ eventId }).then(() => {
+                  toast.message(copy.globe.memoriesContributionPulse(rimvioHonorific), {
+                    duration: 3600,
+                  });
+                });
+              }
+              void focusContextOnMap(eventId, { needsPlaceVerify });
+            }
+          },
+        }}
+        placeVerifyEventId={placeVerifyEventId}
+        onPlaceVerifyDismiss={() => setPlaceVerifyEventId(null)}
+        onPlaceVerifyConfirmed={() => {
+          toast.success(copy.globe.placeVerifyConfirmedToast);
+        }}
+        ingest={{
+          targetEventId: activeCluster?.eventId ?? null,
+          targetTitle: activeCluster?.title ?? null,
+          forceAttachToTarget: Boolean(activeCluster?.eventId),
+          onPhotoDraftReady: beginPhotoIngestFlow,
+          onAttached: (eventId, options) => {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get("recallEvent") !== eventId) {
+              params.set("recallEvent", eventId);
+              const next = `${window.location.pathname}?${params.toString()}`;
+              window.history.replaceState(null, "", next);
+            }
+            void focusContextOnMap(eventId, options);
+          },
+          onTextCommitted: onMarketTextCommitted,
         }}
       />
+      ) : null}
       <GlobeMediaPoolSheet
         open={mediaPoolOpen}
         onOpenChange={setMediaPoolOpen}
@@ -971,7 +1310,7 @@ function GlobeHomeBody() {
                 });
                 toast.success(summary.toastLine);
                 setMediaStoreRevision((revision) => revision + 1);
-                focusContextOnMap(activeCluster.eventId);
+                void focusContextOnMap(activeCluster.eventId);
               }
             : undefined
         }
@@ -1014,6 +1353,21 @@ function GlobeHomeBody() {
               activeCluster.lng,
               "pin",
             );
+          }
+        }}
+      />
+      <input
+        ref={createPhotoRef}
+        type="file"
+        accept={GLOBE_CONTEXT_MEDIA_ACCEPT}
+        multiple
+        className="sr-only"
+        aria-hidden
+        onChange={(event) => {
+          const files = event.target.files ? Array.from(event.target.files) : [];
+          event.target.value = "";
+          if (files.length > 0) {
+            void beginPhotoIngestFlow(files);
           }
         }}
       />
@@ -1080,6 +1434,15 @@ function GlobeHomeBody() {
           focusContextByEventId(eventId, { openSheet: true });
         }}
         onDismissed={dismissInvite}
+      />
+      <GlobeMarketIntentWizardSheet
+        draft={marketIntentDraft}
+        open={marketConfirmOpen}
+        onOpenChange={setMarketConfirmOpen}
+        onConfirmed={(eventId) => {
+          setMarketFocusEventId(eventId);
+          toast.message(copy.globe.marketIntentConfirmCta, { duration: 2800 });
+        }}
       />
       <GlobeSettingsSheet
         open={settingsOpen}

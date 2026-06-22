@@ -1,8 +1,14 @@
 import { BRIDGE_PHOTO_MAX_BYTES } from "@/lib/experience-bridge/bridge-media-constants";
 
+import { isConstrainedMobileDevice } from "@/lib/platform/device";
+
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
-const MAX_EDGE_PX = 2048;
 const JPEG_QUALITY = 0.84;
+const JPEG_QUALITY_MOBILE = 0.78;
+
+function resolveMaxEdgePx(): number {
+  return isConstrainedMobileDevice() ? 1280 : 2048;
+}
 
 function loadImageFromFile(file: File) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
@@ -47,7 +53,7 @@ export async function prepareCaptureImageForUpload(file: File): Promise<File> {
     try {
       const image = await loadImageFromFile(file);
       const longest = Math.max(image.naturalWidth, image.naturalHeight);
-      if (longest <= MAX_EDGE_PX) {
+      if (longest <= resolveMaxEdgePx()) {
         return file;
       }
     } catch {
@@ -57,8 +63,9 @@ export async function prepareCaptureImageForUpload(file: File): Promise<File> {
 
   try {
     const image = await loadImageFromFile(file);
+    const maxEdge = resolveMaxEdgePx();
     const longest = Math.max(image.naturalWidth, image.naturalHeight);
-    const scale = longest > MAX_EDGE_PX ? MAX_EDGE_PX / longest : 1;
+    const scale = longest > maxEdge ? maxEdge / longest : 1;
     const width = Math.max(1, Math.round(image.naturalWidth * scale));
     const height = Math.max(1, Math.round(image.naturalHeight * scale));
 
@@ -72,7 +79,8 @@ export async function prepareCaptureImageForUpload(file: File): Promise<File> {
     }
 
     ctx.drawImage(image, 0, 0, width, height);
-    const blob = await canvasToJpegBlob(canvas, JPEG_QUALITY);
+    const quality = isConstrainedMobileDevice() ? JPEG_QUALITY_MOBILE : JPEG_QUALITY;
+    const blob = await canvasToJpegBlob(canvas, quality);
     const baseName = file.name.replace(/\.[^.]+$/, "") || "capture";
 
     if (blob.size > BRIDGE_PHOTO_MAX_BYTES) {

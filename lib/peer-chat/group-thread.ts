@@ -1,3 +1,5 @@
+import { isBridgeContextThreadId } from "@/lib/peer-chat/bridge-context-thread";
+
 /** Rimvio 단톡 — stable group thread ids (`peer-group-{uuid}`). */
 
 export const GROUP_THREAD_PREFIX = "peer-group-" as const;
@@ -7,7 +9,7 @@ export function buildGroupThreadId(): string {
 }
 
 export function isGroupThreadId(threadId: string): boolean {
-  return threadId.startsWith(GROUP_THREAD_PREFIX);
+  return threadId.startsWith(GROUP_THREAD_PREFIX) || isBridgeContextThreadId(threadId);
 }
 
 export function isPeerThreadId(threadId: string): boolean {

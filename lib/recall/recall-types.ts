@@ -6,6 +6,9 @@ export const RECALL_TRIGGERS = [
   "same_date",
   "same_city",
   "same_calendar_event",
+  "similar_time_of_week",
+  "plan_mode_match",
+  "context_note_echo",
 ] as const;
 
 export type RecallTrigger = (typeof RECALL_TRIGGERS)[number];
@@ -42,6 +45,9 @@ export type RecallAnchor = {
   datetimeIso?: string | null;
   /** Google Calendar recurring id when available. */
   gcalEventId?: string | null;
+  /** Pin context note for echo matching. */
+  contextNote?: string | null;
+  planMode?: "solo" | "group" | null;
 };
 
 /** Minimum confidence to surface. */

@@ -22,6 +22,7 @@ import {
   listPeerMessages,
 } from "@/lib/peer-chat/server-peer-chat";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { assertMarketHandshakeAllowsSend } from "@/lib/globe/market/server/market-handshake-actions";
 
 type RouteContext = {
   params: Promise<{ threadId: string }>;
@@ -119,6 +120,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
       displayName: body.displayName?.trim() || "친구",
       userId,
     });
+
+    await assertMarketHandshakeAllowsSend(supabase, threadId);
 
     const row = await insertPeerMessage(supabase, {
       threadId,

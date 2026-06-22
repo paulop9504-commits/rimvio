@@ -5,6 +5,7 @@ import { fetchNearbyEateryAtCoords } from "@/lib/globe/fetch-nearby-eatery-at-co
 import { fetchLocatePlaceFromPhoto } from "@/lib/globe/fetch-locate-place-from-photo";
 import { pickBestPhotoPlaceSuggest } from "@/lib/globe/pick-best-photo-place-suggest";
 import { applyGlobePhotoPlaceSuggestion } from "@/lib/globe/apply-globe-photo-place-suggestion";
+import { shouldSkipHeavyPhotoEnrichment } from "@/lib/platform/device";
 import type { MediaSpacetimeContext } from "@/lib/location-ping/types";
 
 export function shouldEnrichGlobePhotoPlace(input: {
@@ -43,7 +44,9 @@ export async function enrichGlobePhotoPlaceAfterIngest(input: {
 
   const [nearby, vision] = await Promise.all([
     fetchNearbyEateryAtCoords({ lat, lng }),
-    fetchLocatePlaceFromPhoto({ file: input.file, lat, lng }),
+    shouldSkipHeavyPhotoEnrichment()
+      ? Promise.resolve(null)
+      : fetchLocatePlaceFromPhoto({ file: input.file, lat, lng }),
   ]);
 
   const suggestion = pickBestPhotoPlaceSuggest({

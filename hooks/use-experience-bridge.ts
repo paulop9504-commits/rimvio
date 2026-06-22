@@ -17,11 +17,16 @@ import {
   leaveExperienceBridgeRemote,
 } from "@/lib/experience-bridge/experience-bridge-client";
 import {
+  ensureBridgeContextTalkLocal,
+  ensureBridgeContextTalkRemote,
+} from "@/lib/experience-bridge/ensure-bridge-context-talk-client";
+import {
   readLocalBridgeState,
   writeLocalBridgeState,
 } from "@/lib/experience-bridge/local-bridge-store";
 import { stampBridgeEventMetadata } from "@/lib/experience-bridge/stamp-bridge-event-metadata";
 import { toBridgeFetchError } from "@/lib/experience-bridge/bridge-fetch-error";
+import { resolveExperienceTalkThreadId } from "@/lib/globe/resolve-experience-peer-thread-id";
 import { useAuth } from "@/hooks/use-auth";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
@@ -191,6 +196,52 @@ export function useExperienceBridge(input: {
     return data.state;
   }, [eventId]);
 
+  const ensureTalkRoom = useCallback(
+    async (options?: { talkTitle?: string | null }) => {
+      if (!input.event || !user?.id) {
+        return null;
+      }
+      const existing = resolveExperienceTalkThreadId({
+        event: input.event,
+        bridgePeerThreadId: state?.bridge.peerThreadId,
+        conversationPeerThreadId: null,
+        experienceRoomThreadId: input.peerThreadId,
+      });
+      if (existing?.trim()) {
+        return existing.trim();
+      }
+
+      const hostDisplayName = user.email?.split("@")[0] ?? "나";
+      if (remote) {
+        const data = await ensureBridgeContextTalkRemote({
+          eventId: input.event.id,
+          primaryEvent: input.event,
+          talkTitle: options?.talkTitle ?? input.event.title,
+          hostDisplayName,
+        });
+        setState(data.state);
+        stampBridgeEventMetadata({
+          event: input.event,
+          bridge: data.state.bridge,
+          role: data.state.bridge.hostUserId === user.id ? "host" : "participant",
+        });
+        window.dispatchEvent(new Event("rimvio-experience-bridge-updated"));
+        return data.threadId;
+      }
+
+      const local = ensureBridgeContextTalkLocal({
+        event: input.event,
+        hostUserId: user.id,
+        hostDisplayName,
+        talkTitle: options?.talkTitle ?? input.event.title,
+      });
+      setState(local.state);
+      window.dispatchEvent(new Event("rimvio-experience-bridge-updated"));
+      return local.threadId;
+    },
+    [input.event, input.peerThreadId, remote, state?.bridge.peerThreadId, user],
+  );
+
   return {
     state,
     timeline,
@@ -204,5 +255,6 @@ export function useExperienceBridge(input: {
     accept,
     decline,
     leave,
+    ensureTalkRoom,
   };
 }

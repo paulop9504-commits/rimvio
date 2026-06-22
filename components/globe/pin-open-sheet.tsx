@@ -19,6 +19,7 @@ import { BridgeContextPanel } from "@/components/globe/bridge-context-panel";
 import { GlobeMediaPoolSheet } from "@/components/globe/globe-media-pool-sheet";
 import { PinOpenMediaContextPager, PinOpenMediaContextPageTabs, type PinMediaContextPage } from "@/components/globe/pin-open-media-context-pager";
 import { patchExperiencePinContext } from "@/lib/globe/patch-experience-pin-context";
+import { recordExperienceBehavior } from "@/lib/meaning/record-experience-behavior";
 import { isGlobeManualContextEvent } from "@/lib/events/event-lifecycle";
 import { EvidenceList } from "@/components/experience/evidence-list";
 import { ExperienceHeroCard } from "@/components/experience/experience-hero-card";
@@ -83,6 +84,9 @@ import {
 } from "@/lib/design/rimvio-ontology";
 import { cn } from "@/lib/utils";
 import { copy } from "@/lib/copy/human-ko";
+import { resolveRimvioHonorific } from "@/lib/copy/rimvio-honorific";
+import { PinPulseContextStrip } from "@/components/globe/pin-pulse-context-strip";
+import { usePinPulseContext } from "@/hooks/use-pin-pulse-context";
 
 export type PinOpenSheetProps = {
   open: boolean;
@@ -104,12 +108,14 @@ export function PinOpenSheet({
 }: PinOpenSheetProps) {
   const router = useRouter();
   const { user } = useAuth();
+  const rimvioHonorific = resolveRimvioHonorific(user);
   const [mounted, setMounted] = useState(false);
   const [revision, setRevision] = useState(0);
   const [editKind, setEditKind] = useState<PinContextFieldKind | null>(null);
   const [sheetPage, setSheetPage] = useState<PinMediaContextPage>("media");
   const [authorFilter, setAuthorFilter] = useState<string | null>(null);
   const [mediaPoolOpen, setMediaPoolOpen] = useState(false);
+  const [talkOpening, setTalkOpening] = useState(false);
   const [mediaArrivalHint, setMediaArrivalHint] = useState<BridgeMediaArrivalHint | null>(
     null,
   );
@@ -432,6 +438,14 @@ export function PinOpenSheet({
     });
   }, [bridgeSyncPhase, event, isBridgeContext, revision, user?.id]);
 
+  const pinPulseContextQuery = usePinPulseContext({
+    enabled: open && Boolean(cluster) && !isBridgeContext,
+    lat: cluster?.lat ?? null,
+    lng: cluster?.lng ?? null,
+    placeLabel: hero?.place ?? cluster?.placeLabel ?? null,
+    userCaptureAt: cluster?.startedAtIso ?? event?.datetime ?? null,
+  });
+
   const contextDetailsSummary = useMemo(() => {
     if (isBridgeContext) {
       const parts = [copy.globe.bridgeContextRecallEyebrow];
@@ -467,40 +481,74 @@ export function PinOpenSheet({
     setAuthorFilter(null);
   }, [open, cluster?.eventId, initialPage]);
 
-  const openExperienceRoom = () => {
-    const peerThreadId = resolveExperienceTalkThreadId({
-      event,
-      bridgePeerThreadId: bridge.state?.bridge.peerThreadId,
-      conversationPeerThreadId: conversation?.peerThreadId,
-      experienceRoomThreadId: threadId,
-    });
-    if (!peerThreadId || !event || !hero) {
-      toast.message(copy.globe.bridgeTalkUnavailable, {
-        action: isBridgeHost
-          ? {
-              label: copy.globe.bridgeTalkInviteFriendsCta,
-              onClick: () => setSheetPage("context"),
-            }
-          : {
-              label: copy.globe.utilityMenuPeers,
-              onClick: () => {
-                onOpenChange(false);
-                router.push("/peers");
-              },
-            },
-      });
+  const openedBehaviorRef = useRef<string | null>(null);
+  useEffect(() => {
+    const eventId = cluster?.eventId?.trim();
+    if (!open || !eventId) {
+      openedBehaviorRef.current = null;
       return;
     }
-    onOpenChange(false);
-    router.push(
-      buildExperienceRoomHref({
-        peerThreadId,
-        eventId: event.id,
-        title: hero.title,
-        date: hero.date,
-        place: hero.place,
-      }),
-    );
+    if (openedBehaviorRef.current === eventId) {
+      return;
+    }
+    openedBehaviorRef.current = eventId;
+    recordExperienceBehavior({ eventId, kind: "open" });
+  }, [open, cluster?.eventId]);
+
+  const openExperienceRoom = () => {
+    void (async () => {
+      if (!event || !hero || talkOpening) {
+        return;
+      }
+
+      let peerThreadId = resolveExperienceTalkThreadId({
+        event,
+        bridgePeerThreadId: bridge.state?.bridge.peerThreadId,
+        conversationPeerThreadId: conversation?.peerThreadId,
+        experienceRoomThreadId: threadId,
+      });
+
+      if (!peerThreadId) {
+        setTalkOpening(true);
+        try {
+          peerThreadId = await bridge.ensureTalkRoom({ talkTitle: hero.title });
+        } catch {
+          toast.error(copy.globe.bridgeContextTalkEnsureFail);
+          return;
+        } finally {
+          setTalkOpening(false);
+        }
+      }
+
+      if (!peerThreadId) {
+        toast.message(copy.globe.bridgeTalkUnavailable, {
+          action: isBridgeHost
+            ? {
+                label: copy.globe.bridgeTalkInviteFriendsCta,
+                onClick: () => setSheetPage("context"),
+              }
+            : {
+                label: copy.globe.utilityMenuPeers,
+                onClick: () => {
+                  onOpenChange(false);
+                  router.push("/peers");
+                },
+              },
+        });
+        return;
+      }
+
+      onOpenChange(false);
+      router.push(
+        buildExperienceRoomHref({
+          peerThreadId,
+          eventId: event.id,
+          title: hero.title,
+          date: hero.date,
+          place: hero.place,
+        }),
+      );
+    })();
   };
 
   const talkThreadId = resolveExperienceTalkThreadId({
@@ -510,6 +558,7 @@ export function PinOpenSheet({
     experienceRoomThreadId: threadId,
   });
   const canOpenTalk = Boolean(talkThreadId && event && hero);
+  const showTalkCta = Boolean(event && hero && (canOpenTalk || isBridgeContext));
 
   if (!mounted) {
     return null;
@@ -532,19 +581,26 @@ export function PinOpenSheet({
           conversation={conversation}
           onOpenRoom={openExperienceRoom}
         />
-      ) : canOpenTalk ? (
+      ) : canOpenTalk || isBridgeContext ? (
         <button
           type="button"
           onClick={openExperienceRoom}
+          disabled={talkOpening}
           className={rimvioTalkRowClass()}
         >
           <MessageCircle className="size-5 shrink-0 text-primary" aria-hidden />
           <span className="min-w-0 flex-1">
             <span className={cn("block", RIMVIO_TYPE.body, "font-semibold")}>
-              {copy.globe.bridgeContextTalkCta}
+              {talkOpening
+                ? copy.globe.bridgeContextTalkOpening
+                : canOpenTalk
+                  ? copy.globe.bridgeContextTalkCta
+                  : copy.globe.bridgeContextTalkStartCta}
             </span>
             <span className={cn("block", RIMVIO_TYPE.caption)}>
-              {copy.globe.bridgeContextTalkPreviewEmpty}
+              {canOpenTalk
+                ? copy.globe.bridgeContextTalkPreviewEmpty
+                : copy.globe.bridgeContextTalkStartHint}
             </span>
           </span>
         </button>
@@ -725,6 +781,11 @@ export function PinOpenSheet({
                       <p className="px-2 text-[11px] text-muted-foreground">
                         틀린 이름은 탭해서 바로 고쳐요
                       </p>
+                      <PinPulseContextStrip
+                        honorific={rimvioHonorific}
+                        context={pinPulseContextQuery.context}
+                        loading={pinPulseContextQuery.loading}
+                      />
                     </div>
                     {contextDetailsBody}
                   </>
@@ -733,21 +794,26 @@ export function PinOpenSheet({
             </div>
 
             <div className={rimvioSheetFooterClass()}>
-              {canOpenTalk ? (
+              {showTalkCta ? (
                 <button
                   type="button"
                   onClick={openExperienceRoom}
+                  disabled={talkOpening}
                   className={rimvioHeroCtaClass()}
                   data-pin-open-talk
                 >
                   <MessageCircle className="size-5" aria-hidden />
-                  {copy.globe.bridgeContextTalkCta}
+                  {talkOpening
+                    ? copy.globe.bridgeContextTalkOpening
+                    : canOpenTalk
+                      ? copy.globe.bridgeContextTalkCta
+                      : copy.globe.bridgeContextTalkStartCta}
                 </button>
               ) : null}
               <GlobeContextPhotoButton
                 eventId={cluster.eventId}
                 eventTitle={hero.title}
-                variant={canOpenTalk ? "secondary" : photoPrimary ? "primary" : "secondary"}
+                variant={showTalkCta ? "secondary" : photoPrimary ? "primary" : "secondary"}
                 onIngested={() => {
                   setRevision((value) => value + 1);
                   const eventId = cluster.eventId.trim();

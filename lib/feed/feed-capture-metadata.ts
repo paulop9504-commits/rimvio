@@ -46,6 +46,9 @@ export function readFeedCaptureFragments(
       url: typeof item.url === "string" ? item.url : undefined,
       dwellMinutes:
         typeof item.dwellMinutes === "number" ? item.dwellMinutes : undefined,
+      endedAtIso: typeof item.endedAtIso === "string" ? item.endedAtIso : undefined,
+      lat: typeof item.lat === "number" && Number.isFinite(item.lat) ? item.lat : undefined,
+      lng: typeof item.lng === "number" && Number.isFinite(item.lng) ? item.lng : undefined,
       autoAttached: item.autoAttached === true,
       verified: item.verified === true,
       ownerUserId:
@@ -233,6 +236,44 @@ export function markFeedCapturesVerified(
   next[FEED_CAPTURES_META_KEY] = fragments;
   next[FEED_CAPTURE_PENDING_VERIFY_META_KEY] = false;
   next[FEED_CAPTURE_VERIFIED_AT_META_KEY] = new Date().toISOString();
+  return next;
+}
+
+/** Verify selected gps_dwell rows — drop unselected dwell fragments. */
+export function applySelectedGpsDwellFragmentVerify(
+  metadata: Record<string, unknown> | undefined,
+  selectedFragmentIds: readonly string[],
+): Record<string, unknown> {
+  const selected = new Set(selectedFragmentIds.map((id) => id.trim()).filter(Boolean));
+  const next = { ...(metadata ?? {}) };
+  const fragments = readFeedCaptureFragments({ metadata: next } as EventCandidate)
+    .filter((fragment) => {
+      if (fragment.kind !== "gps_dwell" || fragment.verified) {
+        return true;
+      }
+      return selected.has(fragment.id);
+    })
+    .map((fragment) => {
+      if (
+        fragment.kind === "gps_dwell" &&
+        !fragment.verified &&
+        selected.has(fragment.id)
+      ) {
+        return { ...fragment, verified: true };
+      }
+      return fragment;
+    });
+
+  const pendingDwell = fragments.some(
+    (fragment) =>
+      fragment.kind === "gps_dwell" && fragment.autoAttached && !fragment.verified,
+  );
+
+  next[FEED_CAPTURES_META_KEY] = fragments;
+  if (!pendingDwell) {
+    next[FEED_CAPTURE_PENDING_VERIFY_META_KEY] = false;
+    next[FEED_CAPTURE_VERIFIED_AT_META_KEY] = new Date().toISOString();
+  }
   return next;
 }
 

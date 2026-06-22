@@ -3,7 +3,6 @@
 import { appendSearchActivity } from "@/lib/location-memory/search-activity-log";
 import { resolvePlaceLabelNearCoords } from "@/lib/location-ping/format-place-label";
 import {
-  appendGpsPing,
   listRecentGpsPings,
 } from "@/lib/location-ping/gps-ping-store";
 import { saveMediaBlob } from "@/lib/location-ping/media-blob-store";
@@ -16,6 +15,7 @@ import {
   isHistoricalCaptureMs,
   resolveCaptureSpacetime,
 } from "@/lib/location-ping/resolve-capture-spacetime";
+import { prepareCaptureImageForUpload } from "@/lib/capture/prepare-capture-image";
 import { prepareShareVideoFile } from "@/lib/media/share-video-compress/prepare-share-video-file";
 import { SHARE_VIDEO_MAX_DURATION_SEC } from "@/lib/media/share-video-compress/constants";
 import { readVideoDurationSec } from "@/lib/media/share-video-compress/read-video-duration-sec";
@@ -23,6 +23,7 @@ import type {
   MediaSpacetimeContext,
   MediaSpacetimeOrigin,
 } from "@/lib/location-ping/types";
+import { boostGpsPingForUploadBatch } from "@/lib/location-ping/upload-gps-boost";
 
 function inferMediaKind(file: File): MediaSpacetimeContext["mediaKind"] {
   if (file.type.startsWith("video/")) {
@@ -36,28 +37,7 @@ function inferMediaKind(file: File): MediaSpacetimeContext["mediaKind"] {
 
 /** Sample GPS immediately before upload so the nearest ping is fresh. */
 async function boostGpsPingForUpload(): Promise<void> {
-  if (typeof navigator === "undefined" || !navigator.geolocation) {
-    return;
-  }
-
-  await new Promise<void>((resolve) => {
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        void appendGpsPing({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-          accuracyM: position.coords.accuracy,
-          source: "upload_boost",
-        }).finally(resolve);
-      },
-      () => resolve(),
-      {
-        enableHighAccuracy: true,
-        maximumAge: 60_000,
-        timeout: 8_000,
-      },
-    );
-  });
+  return boostGpsPingForUploadBatch();
 }
 
 export async function attachMediaSpacetime(input: {
@@ -68,6 +48,8 @@ export async function attachMediaSpacetime(input: {
   stableContextId?: string | null;
   /** Video compress / ffmpeg load — toast hook. */
   onFilePrepare?: (message: string) => void;
+  /** Bulk commit — GPS already sampled for the batch. */
+  skipGpsBoost?: boolean;
 }): Promise<MediaSpacetimeContext> {
   const stableId = input.stableContextId?.trim();
   if (stableId) {
@@ -83,7 +65,7 @@ export async function attachMediaSpacetime(input: {
   const isHistorical =
     !Number.isNaN(exifMs) && isHistoricalCaptureMs(exifMs, Date.now());
 
-  if (!isHistorical) {
+  if (!isHistorical && input.skipGpsBoost !== true) {
     await boostGpsPingForUpload();
   }
 
@@ -112,7 +94,14 @@ export async function attachMediaSpacetime(input: {
   };
 
   let storeFile = input.file;
-  if (context.mediaKind === "video") {
+  if (context.mediaKind === "photo") {
+    try {
+      input.onFilePrepare?.("사진 맞추는 중…");
+      storeFile = await prepareCaptureImageForUpload(input.file);
+    } catch {
+      storeFile = input.file;
+    }
+  } else if (context.mediaKind === "video") {
     const durationSec = await readVideoDurationSec(input.file);
     const willTrim =
       durationSec != null &&

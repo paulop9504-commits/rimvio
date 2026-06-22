@@ -13,6 +13,7 @@ import {
   declineExperienceBridgeRemote,
 } from "@/lib/experience-bridge/experience-bridge-client";
 import { writeLocalBridgeState } from "@/lib/experience-bridge/local-bridge-store";
+import { GlobeDwellConfirmSheet } from "@/components/globe/globe-dwell-confirm-sheet";
 import { verifyFeedCaptureEvent } from "@/lib/feed/verify-feed-capture";
 import { attachMatchingPoolMediaAfterSeal } from "@/lib/globe/passive-context/attach-matching-pool-media-after-seal";
 import { markGlobeLocationConfirmed } from "@/lib/globe/globe-location-confirm-store";
@@ -106,6 +107,7 @@ export function GlobeInboxSheet({
   const [mounted, setMounted] = useState(false);
   const [busyBridgeEventId, setBusyBridgeEventId] = useState<string | null>(null);
   const [busyLocationEventId, setBusyLocationEventId] = useState<string | null>(null);
+  const [dwellConfirmEventId, setDwellConfirmEventId] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -193,6 +195,11 @@ export function GlobeInboxSheet({
     if (!row) {
       return;
     }
+    if (row.kind === "gps_dwell") {
+      setDwellConfirmEventId(row.eventId);
+      onOpenChange(false);
+      return;
+    }
     setBusyLocationEventId(row.eventId);
     const result = verifyFeedCaptureEvent(row.eventId);
     if (result.ok) {
@@ -214,7 +221,22 @@ export function GlobeInboxSheet({
     return null;
   }
 
-  return createPortal(
+  return (
+    <>
+      <GlobeDwellConfirmSheet
+        eventId={dwellConfirmEventId}
+        open={Boolean(dwellConfirmEventId)}
+        onOpenChange={(next) => {
+          if (!next) {
+            setDwellConfirmEventId(null);
+          }
+        }}
+        onConfirmed={(eventId) => {
+          setDwellConfirmEventId(null);
+          onLocationConfirmed?.(eventId);
+        }}
+      />
+      {createPortal(
     <AnimatePresence>
       {open ? (
         <>
@@ -427,5 +449,7 @@ export function GlobeInboxSheet({
       ) : null}
     </AnimatePresence>,
     document.body,
+      )}
+    </>
   );
 }

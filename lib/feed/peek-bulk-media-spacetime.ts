@@ -20,12 +20,17 @@ function inferMediaKind(file: File): BulkMediaSpacetimePeek["mediaKind"] {
 /** Read capture time + place hints without persisting media blobs. */
 export async function peekBulkMediaSpacetime(
   files: readonly File[],
+  hooks?: {
+    onFileStart?: (index: number, file: File) => void;
+    onFileComplete?: (index: number, file: File) => void;
+  },
 ): Promise<BulkMediaSpacetimePeek[]> {
   const pings = await listRecentGpsPings();
   const peeks: BulkMediaSpacetimePeek[] = [];
 
   for (let index = 0; index < files.length; index += 1) {
     const file = files[index]!;
+    hooks?.onFileStart?.(index, file);
     const resolved = await resolveCaptureSpacetime({ file, pings });
     const hasGps =
       resolved.lat !== null &&
@@ -47,6 +52,7 @@ export async function peekBulkMediaSpacetime(
       mediaKind: inferMediaKind(file),
       hasGps,
     });
+    hooks?.onFileComplete?.(index, file);
   }
 
   return peeks;

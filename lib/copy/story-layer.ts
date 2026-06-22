@@ -39,6 +39,18 @@ export const STORY_L1_VERBS = {
   create: "만들기",
 } as const;
 
+/** L1 UX vocabulary — system term → user-facing (see product copy guide). */
+export const STORY_UX_VOCAB = {
+  context: { system: "Context", ux: "결 / Pulse 흐름" },
+  log: { system: "Log", ux: "기억 Memories / 발자취" },
+  data: { system: "Data", ux: "일상 Moments" },
+  density: { system: "Density", ux: "온도 / 활기" },
+  algorithm: { system: "Algorithm", ux: "취향 Taste" },
+  analysis: { system: "Analysis", ux: "발견 Discovery" },
+  syncing: { system: "Syncing", ux: "연결 Connecting" },
+  user: { system: "User", ux: "당신 / {name}님" },
+} as const;
+
 /** L1 — user-facing nouns (KO). */
 export const STORY_L1_NOUNS = {
   trace: "흔적",

@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import type { EventCandidate } from "../lib/events/event-candidate";
 import {
+  isDurableGlobeContextEvent,
   isGlobeManualContextEvent,
   pruneExpiredEvents,
 } from "../lib/events/event-lifecycle";
@@ -39,11 +40,25 @@ function testManualContextNotPruned() {
     id: "moment:1704067200000",
     metadata: { autoIngested: true },
   });
+  const withPhoto = baseEvent({
+    id: "moment:1704067200001",
+    metadata: {
+      feedCaptures: [
+        {
+          id: "cap-1",
+          kind: "photo",
+          capturedAtIso: OLD_ISO,
+        },
+      ],
+    },
+  });
 
-  const kept = pruneExpiredEvents([manual, stale], NOW);
-  assert.equal(kept.length, 1);
-  assert.equal(kept[0]?.id, manual.id);
+  const kept = pruneExpiredEvents([manual, stale, withPhoto], NOW);
+  assert.equal(kept.length, 2);
+  assert.equal(kept.some((row) => row.id === manual.id), true);
+  assert.equal(kept.some((row) => row.id === withPhoto.id), true);
   assert.equal(isGlobeManualContextEvent(manual), true);
+  assert.equal(isDurableGlobeContextEvent(withPhoto), true);
   assert.equal(isGlobeManualContextEvent(stale), false);
 }
 

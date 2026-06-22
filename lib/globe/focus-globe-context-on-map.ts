@@ -1,7 +1,8 @@
 "use client";
 
 import type { PinCluster } from "@/lib/globe/pin-cluster-types";
-import { applyGlobeContextPlaceCoords, globeContextHasConfirmedPlace } from "@/lib/globe/apply-globe-context-place-coords";
+import { globeContextHasConfirmedPlace } from "@/lib/globe/apply-globe-context-place-coords";
+import { geocodeAndSyncGlobeContextPlace } from "@/lib/globe/geocode-and-sync-globe-context-place";
 import { resolveGlobeContextPinCluster } from "@/lib/globe/resolve-globe-context-pin-cluster";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 
@@ -14,16 +15,16 @@ export type FocusGlobeContextResult = {
  * Resolve saved place coords and return a cluster ready for flyToPin.
  * Geocodes from place text when coords were never confirmed.
  */
-export function focusGlobeContextOnMap(
+export async function focusGlobeContextOnMap(
   eventId: string,
-): FocusGlobeContextResult | null {
+): Promise<FocusGlobeContextResult | null> {
   const key = eventId.trim();
   if (!key) {
     return null;
   }
 
   let geocoded = false;
-  let event = findLifeEventCandidate(key);
+  const event = findLifeEventCandidate(key);
   if (event && !globeContextHasConfirmedPlace(event)) {
     const place =
       event.place?.trim() ||
@@ -31,7 +32,11 @@ export function focusGlobeContextOnMap(
         ? event.metadata.globePlaceLabel.trim()
         : "");
     if (place) {
-      event = applyGlobeContextPlaceCoords(event, place);
+      await geocodeAndSyncGlobeContextPlace({
+        eventId: key,
+        placeLabel: place,
+        title: event.title,
+      });
       geocoded = true;
     }
   }

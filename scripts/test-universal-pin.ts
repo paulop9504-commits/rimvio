@@ -19,7 +19,7 @@ import { PIN_DOMAIN_META_KEY } from "../lib/globe/pin-entity";
 import { resetEventCandidatesForTests } from "../lib/events/event-store";
 import { resetPersonalGlobePinsForTests } from "../lib/globe/personal-globe-pin-store";
 
-function main() {
+async function main() {
   resetEventCandidatesForTests();
   resetPersonalGlobePinsForTests();
 
@@ -65,14 +65,14 @@ function main() {
   assert.equal(roundTrip.eventId, entity.eventId);
   assert.equal(roundTrip.pinId, entity.id);
 
-  const ingested = ingestGlobeContextFromText("새벽에 가기 좋은 라멘 · 신주쿠");
+  const ingested = await ingestGlobeContextFromText("새벽에 가기 좋은 라멘 · 신주쿠");
   assert.equal(readPinDomainId(ingested.result.event.metadata), "experience");
   assert.ok(ingested.result.event.metadata?.[PIN_DOMAIN_META_KEY]);
 
   resetEventCandidatesForTests();
   resetPersonalGlobePinsForTests();
 
-  const marketIngest = ingestGlobeContextFromText("맥북 팝니다 120만원");
+  const marketIngest = await ingestGlobeContextFromText("맥북 팝니다 120만원");
   assert.equal(readPinDomainId(marketIngest.result.event.metadata), "experience");
   assert.equal(
     readPinInferredDomainId(marketIngest.result.event.metadata),
@@ -84,4 +84,4 @@ function main() {
   console.log("test-universal-pin: ok");
 }
 
-main();
+void main();

@@ -26,6 +26,14 @@ function peopleOverlap(
   return [...new Set(hits)];
 }
 
+function noteTokenOverlap(
+  left: readonly string[],
+  right: readonly string[],
+): string[] {
+  const rightSet = new Set(right);
+  return left.filter((token) => rightSet.has(token));
+}
+
 /** Match past snapshot against anchor — returns fired triggers. */
 export function matchRecallTriggers(
   anchor: Pick<
@@ -37,6 +45,10 @@ export function matchRecallTriggers(
     | "year"
     | "gcalEventId"
     | "titleFingerprint"
+    | "dayOfWeek"
+    | "hourBucket"
+    | "planMode"
+    | "noteTokens"
   >,
   past: RecallEventSnapshot,
 ): RecallTriggerMatch[] {
@@ -108,6 +120,42 @@ export function matchRecallTriggers(
       trigger: "same_calendar_event",
       weight: 20,
       detail: past.title,
+    });
+  }
+
+  if (
+    anchor.dayOfWeek !== null &&
+    past.dayOfWeek !== null &&
+    anchor.hourBucket !== null &&
+    past.hourBucket !== null &&
+    anchor.dayOfWeek === past.dayOfWeek &&
+    anchor.hourBucket === past.hourBucket
+  ) {
+    matches.push({
+      trigger: "similar_time_of_week",
+      weight: 16,
+      detail: `${anchor.dayOfWeek}:${anchor.hourBucket}`,
+    });
+  }
+
+  if (
+    anchor.planMode &&
+    past.planMode &&
+    anchor.planMode === past.planMode
+  ) {
+    matches.push({
+      trigger: "plan_mode_match",
+      weight: 12,
+      detail: past.planMode,
+    });
+  }
+
+  const sharedNoteTokens = noteTokenOverlap(anchor.noteTokens, past.noteTokens);
+  if (sharedNoteTokens.length > 0) {
+    matches.push({
+      trigger: "context_note_echo",
+      weight: 18,
+      detail: sharedNoteTokens.slice(0, 2).join(", "),
     });
   }
 

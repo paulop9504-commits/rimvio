@@ -18,7 +18,7 @@ import { resetEventCandidatesForTests } from "../lib/events/event-store";
 import { resetPersonalGlobePinsForTests } from "../lib/globe/personal-globe-pin-store";
 import { indexEventsById } from "../lib/plan-context/project-plan-to-feed-slot";
 
-function main() {
+async function main() {
   resetEventCandidatesForTests();
   resetPersonalGlobePinsForTests();
 
@@ -33,7 +33,7 @@ function main() {
 
   const marketStub = runGlobeComposerAction("@중고 아이폰 70만원");
   assert.ok(marketStub);
-  assert.equal(marketStub!.kind, "stub");
+  assert.equal(marketStub!.kind, "market-compose");
   assert.equal(marketStub!.featureId, "market");
 
   const manual = createManualGlobeContext({
@@ -71,7 +71,7 @@ function main() {
   resetEventCandidatesForTests();
   resetPersonalGlobePinsForTests();
 
-  const ingested = ingestGlobeContextFromText("맥북 팝니다 90만원");
+  const ingested = await ingestGlobeContextFromText("맥북 팝니다 90만원");
   const stub = resolveInferredPinDomainStub(ingested.result.event.id);
   assert.ok(stub);
   assert.equal(stub!.inferredDomainId, "market");
@@ -79,4 +79,4 @@ function main() {
   console.log("test-universal-pin-p1: ok");
 }
 
-main();
+void main();

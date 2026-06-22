@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Camera, Link2, Mic, StickyNote, X } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { isGlobeHomePath, requestGlobePhotoIngest } from "@/lib/globe/globe-photo-ingest-bridge";
 import { ingestScreenshot } from "@/lib/share/ingest-screenshot";
 import { ingestPastedLinks } from "@/lib/share/inbox-paste";
 import { cn } from "@/lib/utils";
@@ -29,6 +31,8 @@ const TILES: CaptureTile[] = [
 
 /** ➕ tab — input only, no search or AI chat. */
 export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
+  const pathname = usePathname() ?? "/";
+  const onGlobeHome = isGlobeHomePath(pathname);
   const [mounted, setMounted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [memoDraft, setMemoDraft] = useState("");
@@ -52,13 +56,18 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
   const close = useCallback(() => onOpenChange(false), [onOpenChange]);
 
   const onPhotoSelected = useCallback(
-    async (file: File | null) => {
-      if (!file || busy) {
+    async (files: File[]) => {
+      if (files.length === 0 || busy) {
+        return;
+      }
+      if (onGlobeHome) {
+        requestGlobePhotoIngest(files);
+        close();
         return;
       }
       setBusy(true);
       try {
-        await ingestScreenshot(file);
+        await ingestScreenshot(files[0]!);
         close();
       } catch {
         // ingest handles user-facing flow
@@ -66,7 +75,7 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
         setBusy(false);
       }
     },
-    [busy, close],
+    [busy, close, onGlobeHome],
   );
 
   const saveLink = useCallback(async () => {
@@ -106,12 +115,12 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
       <input
         ref={photoInputRef}
         type="file"
-        accept="image/*"
-        capture="environment"
+        accept="image/*,video/*"
+        multiple
         className="sr-only"
         onChange={(event) => {
-          const file = event.target.files?.[0] ?? null;
-          void onPhotoSelected(file);
+          const files = event.target.files ? Array.from(event.target.files) : [];
+          void onPhotoSelected(files);
           event.target.value = "";
         }}
       />

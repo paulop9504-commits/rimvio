@@ -103,15 +103,16 @@ export function projectPinClustersFromGraph(input: {
     if (isGlobeContextRemoved(event)) {
       continue;
     }
+    const isSegmentPin = pin.pinId.startsWith(`pgpin:${pin.eventId}:`);
+    if (isSegmentPin) {
+      byEventId.set(pin.pinId, clusterFromPersonalPin(pin, event));
+      continue;
+    }
     if (byEventId.has(pin.eventId)) {
-      const existing = byEventId.get(pin.eventId)!;
       byEventId.set(
         pin.eventId,
         clusterFromPersonalPin(pin, input.eventsById.get(pin.eventId) ?? null),
       );
-      if (!existing.dateLabel && byEventId.get(pin.eventId)!.dateLabel) {
-        // keep merged cluster
-      }
       continue;
     }
     byEventId.set(

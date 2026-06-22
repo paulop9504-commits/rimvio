@@ -1,4 +1,6 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
+import { buildMeaningGraph } from "@/lib/meaning/build-meaning-graph";
+import { scoreExperienceMeaning } from "@/lib/meaning/score-experience-meaning";
 import { buildRecallCandidate } from "@/lib/recall/build-recall-candidate";
 import {
   buildRecallAnchorSnapshot,
@@ -35,6 +37,7 @@ export function resolveRecallCandidates(input: {
   const limit = input.limit ?? 5;
   const anchorSnapshot = buildRecallAnchorSnapshot(input.anchor);
   const excludeId = anchorSnapshot.eventId;
+  const graph = buildMeaningGraph(input.events, now);
 
   const candidates: RecallCandidate[] = [];
 
@@ -57,6 +60,7 @@ export function resolveRecallCandidates(input: {
       pastSnapshot,
       matches,
       now,
+      meaningWeight: scoreExperienceMeaning(event, { graph, now }).total,
     });
 
     if (candidate.confidence < RECALL_MIN_CONFIDENCE) {

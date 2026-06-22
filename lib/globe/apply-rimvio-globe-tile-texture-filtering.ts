@@ -4,11 +4,13 @@ import {
   LinearMipMapLinearFilter,
   Mesh,
 } from "three";
+import { isAndroid } from "@/lib/platform/device";
 
 const FILTER_FLAG = "__rimvioTileFiltered";
 
 /** Smoother slippy tiles — runs once per texture (not every zoom frame). */
 export function applyRimvioGlobeTileTextureFiltering(root: Object3D): void {
+  const useMipmaps = !isAndroid();
   root.traverse((node) => {
     if (!(node instanceof Mesh)) {
       return;
@@ -20,9 +22,9 @@ export function applyRimvioGlobeTileTextureFiltering(root: Object3D): void {
       if (!map || (map.userData as Record<string, boolean>)[FILTER_FLAG]) {
         continue;
       }
-      map.minFilter = LinearMipMapLinearFilter;
+      map.minFilter = useMipmaps ? LinearMipMapLinearFilter : LinearFilter;
       map.magFilter = LinearFilter;
-      map.anisotropy = Math.min(4, map.anisotropy || 4);
+      map.anisotropy = Math.min(useMipmaps ? 4 : 2, map.anisotropy || (useMipmaps ? 4 : 2));
       map.needsUpdate = true;
       (map.userData as Record<string, boolean>)[FILTER_FLAG] = true;
     }

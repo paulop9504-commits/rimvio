@@ -7,6 +7,9 @@ const TRIGGER_LABELS: Record<RecallTrigger, string> = {
   same_date: "작년 이맘때",
   same_city: "같은 도시",
   same_calendar_event: "같은 일정",
+  similar_time_of_week: "비슷한 시간대",
+  plan_mode_match: "같은 여행 모드",
+  context_note_echo: "맥락 메모",
 };
 
 export function formatRecallReason(matches: readonly RecallTriggerMatch[]): string {

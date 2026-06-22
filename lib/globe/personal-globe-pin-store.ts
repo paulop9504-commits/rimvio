@@ -62,9 +62,7 @@ export function findPersonalGlobePinByEventId(
 
 export function upsertPersonalGlobePin(pin: PersonalGlobePin): PersonalGlobePin {
   const rows = listPersonalGlobePins();
-  const index = rows.findIndex(
-    (row) => row.pinId === pin.pinId || row.eventId === pin.eventId,
-  );
+  const index = rows.findIndex((row) => row.pinId === pin.pinId);
   const next = [...rows];
   if (index >= 0) {
     next[index] = pin;

@@ -4,6 +4,8 @@ import {
   buildPassiveLocationCareTitle,
 } from "@/lib/globe/passive-context/build-passive-location-care-copy";
 import { formatDwellMinutesLabel } from "@/lib/feed/project-dwell-from-gps-pings";
+import { projectGpsDwellConfirmDraft } from "@/lib/globe/gps-dwell/project-gps-dwell-confirm-segments";
+import { findLifeEventCandidate } from "@/lib/life-read-model";
 import {
   bridgeInviteNotificationId,
   locationConfirmNotificationId,
@@ -73,6 +75,13 @@ export function projectPendingNotifications(
     }
     const dwellLabel =
       row.dwellMinutes != null ? formatDwellMinutesLabel(row.dwellMinutes) : null;
+    const dwellDraft =
+      row.kind === "gps_dwell"
+        ? projectGpsDwellConfirmDraft(findLifeEventCandidate(row.eventId))
+        : null;
+    const dwellTimePreview = dwellDraft?.segments
+      .map((segment) => segment.timeRangeLabel)
+      .join(" · ");
     out.push({
       id,
       kind: "location_confirm",
@@ -88,7 +97,9 @@ export function projectPendingNotifications(
             }),
       body:
         row.kind === "gps_dwell"
-          ? buildPassiveLocationCareBody({ dwellLabel })
+          ? dwellTimePreview
+            ? `${dwellTimePreview} · ${dwellLabel ?? ""}`.replace(/ · $/, "")
+            : buildPassiveLocationCareBody({ dwellLabel })
           : row.title,
       primaryCtaLabel:
         row.kind === "gps_dwell"

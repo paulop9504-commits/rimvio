@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarPlus, CalendarRange, ChevronDown, ListChecks } from "lucide-react";
+import { CalendarRange, ChevronDown, ImagePlus, ListChecks } from "lucide-react";
 import { GlobeGpsPanel } from "@/components/globe/globe-gps-panel";
 import { copy } from "@/lib/copy/human-ko";
 import {
@@ -102,7 +102,7 @@ export function GlobeContextControlDock({
           aria-label={copy.globe.dockCreateAria}
           data-globe-create-context-trigger
         >
-          <CalendarPlus className="size-4 text-primary" aria-hidden />
+          <ImagePlus className="size-4 text-primary" aria-hidden />
         </button>
         <button
           type="button"

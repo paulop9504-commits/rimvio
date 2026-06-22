@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { recordExperienceBehavior } from "@/lib/meaning/record-experience-behavior";
 import {
   EVENT_CANDIDATES_UPDATED,
   listLifeEventCandidates,
@@ -43,6 +44,10 @@ export function useGpsArrivalRecall(input: { enabled?: boolean }) {
     }
 
     markGpsArrivalRecallShown(candidate.sessionKey);
+    recordExperienceBehavior({
+      eventId: candidate.recallEventId,
+      kind: "recall_open",
+    });
     setRecall(candidate);
   }, [enabled]);
 
@@ -74,8 +79,14 @@ export function useGpsArrivalRecall(input: { enabled?: boolean }) {
   }, [enabled, evaluate]);
 
   const dismiss = useCallback(() => {
+    if (recall?.recallEventId) {
+      recordExperienceBehavior({
+        eventId: recall.recallEventId,
+        kind: "recall_dismiss",
+      });
+    }
     setRecall(null);
-  }, []);
+  }, [recall?.recallEventId]);
 
   return { recall, dismiss };
 }
