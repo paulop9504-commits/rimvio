@@ -114,3 +114,23 @@ create policy "Participants update market handshakes"
   with check (auth.uid() = seeking_user_id or auth.uid() = listing_user_id);
 
 grant select, insert, update on public.market_alignment_handshakes to authenticated;
+
+-- 4/4 handshake completion (053) — run after table exists
+alter table public.market_alignment_handshakes
+  drop constraint if exists market_alignment_handshakes_phase_check;
+
+alter table public.market_alignment_handshakes
+  add constraint market_alignment_handshakes_phase_check
+  check (phase in (
+    'pending_listing',
+    'pending_buyer_start',
+    'active',
+    'declined',
+    'completed'
+  ));
+
+alter table public.market_alignment_handshakes
+  add column if not exists seeking_confirmed_at timestamptz,
+  add column if not exists listing_confirmed_at timestamptz,
+  add column if not exists realized_price_krw bigint,
+  add column if not exists completed_at timestamptz;

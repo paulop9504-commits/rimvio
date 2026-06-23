@@ -52,7 +52,7 @@ export function PulseMainActionSurface({
     }
   }, []);
 
-  if (!enabled && !pulseMainAction.loading && !pulseMainAction.offer) {
+  if (!enabled || !pulseMainAction.offer) {
     return null;
   }
 
@@ -60,7 +60,7 @@ export function PulseMainActionSurface({
     <PulseMainActionCard
       className={className}
       offer={pulseMainAction.offer}
-      loading={pulseMainAction.loading}
+      loading={false}
       onPrimary={onPrimary}
       onSecondary={onSecondary}
       onDismiss={pulseMainAction.dismiss}

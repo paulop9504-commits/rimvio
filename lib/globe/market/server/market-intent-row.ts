@@ -2,6 +2,9 @@ import type { MarketCategoryId, MarketIntentRecord } from "@/lib/globe/market/ma
 import {
   DEFAULT_MARKET_INTENT_DETAIL,
   type MarketIntentDetail,
+  type MarketMemoryRecord,
+  DEFAULT_MARKET_MEMORY_RECORD,
+  readMarketMemoryRecord,
 } from "@/lib/globe/market/market-intent-detail";
 
 export type MarketIntentDbRow = {
@@ -24,6 +27,17 @@ export type MarketIntentDbRow = {
   updated_at: string;
   detail_json?: Record<string, unknown> | null;
 };
+
+function readMemoryRecord(raw: Record<string, unknown> | null | undefined): MarketMemoryRecord {
+  if (!raw || typeof raw !== "object") {
+    return { ...DEFAULT_MARKET_MEMORY_RECORD };
+  }
+  const nested = raw.memoryRecord;
+  if (nested && typeof nested === "object") {
+    return readMarketMemoryRecord({ memoryRecord: nested as MarketMemoryRecord });
+  }
+  return { ...DEFAULT_MARKET_MEMORY_RECORD };
+}
 
 function readDetailJson(raw: Record<string, unknown> | null | undefined): MarketIntentDetail {
   if (!raw || typeof raw !== "object") {
@@ -61,6 +75,7 @@ function readDetailJson(raw: Record<string, unknown> | null | undefined): Market
       raw.prioritySlots && typeof raw.prioritySlots === "object" && !Array.isArray(raw.prioritySlots)
         ? (raw.prioritySlots as MarketIntentDetail["prioritySlots"])
         : {},
+    memoryRecord: readMemoryRecord(raw),
   };
 }
 
@@ -77,6 +92,7 @@ export function marketIntentDetailToJson(detail: MarketIntentDetail): Record<str
     photoCount: detail.photoCount,
     prioritySchemaVersion: detail.prioritySchemaVersion,
     prioritySlots: detail.prioritySlots,
+    memoryRecord: detail.memoryRecord,
   };
 }
 

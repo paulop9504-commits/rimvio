@@ -1,23 +1,29 @@
 import type { MarketIntentRole } from "@/lib/globe/market/market-intent-types";
 
 export type MarketWizardStepId =
+  | "role"
   | "recognize"
   | "priority"
   | "photos"
+  | "memory"
   | "place"
   | "review";
 
 const SEEKING_STEPS: readonly MarketWizardStepId[] = [
+  "role",
   "recognize",
   "priority",
+  "memory",
   "place",
   "review",
 ];
 
 const LISTING_STEPS: readonly MarketWizardStepId[] = [
+  "role",
   "recognize",
   "priority",
   "photos",
+  "memory",
   "place",
   "review",
 ];

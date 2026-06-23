@@ -234,8 +234,8 @@ export const copyEn: Copy = {
       "We prefilled from your traces and location — just confirm.",
     marketIntentConfirmCta: "Match with this",
     marketIntentConfirmLater: "Later",
-    marketIntentRoleSeeking: "Looking for",
-    marketIntentRoleListing: "Offering",
+    marketIntentRoleSeeking: "Getting",
+    marketIntentRoleListing: "Listing",
     marketIntentFieldRole: "Direction",
     marketIntentFieldCategory: "Category",
     marketIntentFieldPrice: "Price",
@@ -244,11 +244,13 @@ export const copyEn: Copy = {
     marketIntentFieldTime: "Good time",
     marketIntentPriceOpen: "Open to offer",
     marketIntentPrefillHint: "Prefilled from memory and location",
-    marketWizardEyebrowSeeking: "Seeking",
+    marketWizardEyebrowSeeking: "Getting",
     marketWizardEyebrowListing: "Listing",
     marketWizardStepRecognize: "Recognized",
+    marketWizardStepRole: "Direction",
     marketWizardStepProduct: "Item",
     marketWizardStepPhotos: "Photos",
+    marketWizardStepMemory: "Trace",
     marketWizardStepCondition: "Condition",
     marketWizardStepPrice: "Price",
     marketWizardStepPlace: "Area",
@@ -256,8 +258,20 @@ export const copyEn: Copy = {
     marketWizardRecognizeTitleSeeking: "Here's what we understood",
     marketWizardRecognizeTitleListing: "Here's what we understood",
     marketWizardRecognizeBody: "We prefilled from your text. Review each step.",
-    marketWizardProductNameLabel: "Name",
-    marketWizardProductNamePlaceholder: "e.g. iPhone 15 Pro",
+    marketWizardProductNameLabel: "Product",
+    marketWizardProductNamePlaceholder: "iPhone 15 Pro",
+    marketWizardProductNameHint:
+      "Use the exact model name. @used alone is not enough to align.",
+    marketWizardRoleTitle: "Which way?",
+    marketWizardRoleBody: "Choose get or list.",
+    marketWizardRoleSeekingTitle: "Get",
+    marketWizardRoleSeekingBody: "Wait for a listing that fits your context",
+    marketWizardRoleListingTitle: "List",
+    marketWizardRoleListingBody: "Put your offer into the flow",
+    marketTradeDockListingAria: "List — post your alignment",
+    marketTradeDockSeekingAria: "Seek — find matching traces",
+    marketWizardValidationProductDetail:
+      "Enter an exact product name · e.g. iPhone 15 Pro",
     marketWizardProductNoteLabel: "Notes",
     marketWizardProductNotePlaceholderSeeking: "e.g. battery 85%+, no case scratches",
     marketWizardProductNotePlaceholderListing: "e.g. case and charger included",
@@ -286,6 +300,65 @@ export const copyEn: Copy = {
     marketWizardValidationCondition: "Select condition",
     marketWizardValidationPrice: "Enter price or enable negotiable",
     marketPriorityCardEyebrow: "Priority",
+    marketVolumeZoneEyebrow: "Fair range",
+    marketVolumeZoneTierLabel: (tier: string, battery: number) =>
+      `Battery ${battery}% · tier ${tier}`,
+    marketVolumeZoneSeekingBody: (minMan: number, maxMan: number) =>
+      `Traces like this usually cluster around ${minMan}–${maxMan}0k KRW. Searching in this band can align faster.`,
+    marketVolumeZoneSeekingBodyRealized: (minMan: number, maxMan: number, count: number) =>
+      `${count} recent alignments — most cluster at ${minMan}–${maxMan}0k KRW. Search in this band to align faster.`,
+    marketVolumeZoneListingBody: (anchorMan: number, minMan: number, maxMan: number) =>
+      `Similar traces often align at ${minMan}–${maxMan}0k KRW. Listing at ${anchorMan}0k can connect you faster.`,
+    marketVolumeZoneListingBodyRealized: (
+      anchorMan: number,
+      minMan: number,
+      maxMan: number,
+      count: number,
+    ) =>
+      `${count} recent alignments — ${minMan}–${maxMan}0k KRW. Listing near ${anchorMan}0k can connect faster.`,
+    marketVolumeZonePriceBelow: (userMan: number, minMan: number) =>
+      `Your ${userMan}0k is below the fair range. Raising toward ${minMan}0k may align more often.`,
+    marketVolumeZonePriceInZone: (userMan: number) =>
+      `Your ${userMan}0k sits in the fair range — good to align now.`,
+    marketVolumeZonePriceAbove: (userMan: number, maxMan: number) =>
+      `Your ${userMan}0k is above the fair range. Near ${maxMan}0k may align faster.`,
+    marketVolumeZoneSeedDisclaimer: "Reference only · improves as more alignments stack",
+    marketVolumeZoneRealizedDisclaimer: (count: number) =>
+      `Based on ${count} recent alignments · improves as more stack`,
+    marketMemoryStepEyebrow: "Context trace",
+    marketMemoryStepBodyListing:
+      "Leave the moment and care notes so the next person can trust the item.",
+    marketMemoryStepBodySeeking:
+      "Describe the context you want — we align better traces for you.",
+    marketMemoryTagsLabel: "Context tags",
+    marketMemoryTagsHint: "Similar traces align through shared tags.",
+    marketMemoryReviewLabel: "Context",
+    marketMemoryMatchSeekingPreview: (line: string) => `Get context · ${line}`,
+    marketMemoryMatchListingPreview: (line: string) => `List context · ${line}`,
+    marketHandshakeCompleteSeekingCta: "Received",
+    marketHandshakeCompleteListingCta: "Handed over",
+    marketHandshakeAwaitingOtherParty: "Waiting for the other side",
+    marketHandshakeCompleteConfirmedToast: "Confirmation saved",
+    marketHandshakeCompleteAwaitingToast: "Waiting for their confirmation",
+    marketHandshakeCompleteFail: "Could not save confirmation",
+    marketHandshakeSeekingConfirmedSystem: "Get side confirmed receipt",
+    marketHandshakeListingConfirmedSystem: "List side confirmed handover",
+    marketHandshakeCompletedSystem: (input: {
+      productName: string;
+      priceLine: string;
+      place: string;
+    }) =>
+      `Alignment complete · ${input.productName} · ${input.priceLine} · ${input.place}`,
+    marketCompletionTraceSheetTitle: "Save as a trace?",
+    marketCompletionTraceSheetBody: (title: string, place: string) =>
+      `${title} · ${place}`,
+    marketCompletionTraceSheetCta: "Pin on globe",
+    marketCompletionTraceSheetLater: "Later",
+    marketCompletionTracePinnedToast: "Trace saved on globe",
+    marketCompletionTraceTitleSeeking: (product: string, price: string, place: string) =>
+      `${product} · ${price} · aligned at ${place}`,
+    marketCompletionTraceTitleListing: (product: string, price: string, place: string) =>
+      `${product} · ${price} · handed over at ${place}`,
     marketAlignPriorityHint: (labels: string) =>
       labels.length > 0 ? `Aligned on ${labels.join(" · ")}` : "Aligned trace",
     marketAlignHeadlineSeeking: (title: string, place: string) =>

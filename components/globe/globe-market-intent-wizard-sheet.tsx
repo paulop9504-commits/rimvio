@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { MarketPrioritySlotFields } from "@/components/market/market-priority-slot-fields";
+import { MarketMemoryRecordFields } from "@/components/market/market-memory-record-fields";
 import {
   MARKET_CATEGORY_OPTIONS,
   marketCategoryLabelKo,
@@ -27,6 +28,10 @@ import {
   type MarketWizardStepId,
 } from "@/lib/globe/market/market-intent-wizard-flow";
 import type { MarketIntentDraft } from "@/lib/globe/market/market-intent-types";
+import type { MarketIntentRole } from "@/lib/globe/market/market-intent-types";
+import { syncMarketMemoryRecordOnDraft } from "@/lib/globe/market/memory/sync-market-memory-record";
+import { formatMarketMemoryPreview } from "@/lib/globe/market/memory/format-market-memory-preview";
+import { isValidMarketProductName } from "@/lib/globe/market/sanitize-market-product-name";
 import { getTopPrioritySlots } from "@/lib/globe/market/market-priority-matrix";
 import { copy } from "@/lib/copy/human-ko";
 import {
@@ -37,6 +42,10 @@ import {
   rimvioSheetBackdropClass,
   rimvioSheetCloseBtnClass,
 } from "@/lib/design/rimvio-ontology";
+import {
+  MARKET_TRADE_LIST_PILL,
+  MARKET_TRADE_SEEK_PILL,
+} from "@/lib/design/market-trade-pills";
 import { cn } from "@/lib/utils";
 
 export type GlobeMarketIntentWizardSheetProps = {
@@ -44,6 +53,8 @@ export type GlobeMarketIntentWizardSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirmed?: (eventId: string) => void;
+  /** Skip role step when opened from globe trade dock. */
+  startStep?: MarketWizardStepId;
 };
 
 const MEET_OPTIONS: readonly MarketMeetPreferenceId[] = ["nearby", "flexible", "pickup_only"];
@@ -76,12 +87,16 @@ function Chip({
 
 function stepLabel(step: MarketWizardStepId): string {
   switch (step) {
+    case "role":
+      return copy.globe.marketWizardStepRole;
     case "recognize":
       return copy.globe.marketWizardStepRecognize;
     case "priority":
       return copy.globe.marketPriorityCardEyebrow;
     case "photos":
       return copy.globe.marketWizardStepPhotos;
+    case "memory":
+      return copy.globe.marketWizardStepMemory;
     case "place":
       return copy.globe.marketWizardStepPlace;
     case "review":
@@ -113,10 +128,11 @@ export function GlobeMarketIntentWizardSheet({
   open,
   onOpenChange,
   onConfirmed,
+  startStep,
 }: GlobeMarketIntentWizardSheetProps) {
   const [mounted, setMounted] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [step, setStep] = useState<MarketWizardStepId>("recognize");
+  const [step, setStep] = useState<MarketWizardStepId>("role");
   const [working, setWorking] = useState<MarketIntentDraft | null>(null);
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
@@ -137,10 +153,14 @@ export function GlobeMarketIntentWizardSheet({
       return;
     }
     setWorking({ ...draft, detail: { ...draft.detail, prioritySlots: { ...draft.detail.prioritySlots } } });
-    setStep("recognize");
+    const skipRole =
+      startStep &&
+      startStep !== "role" &&
+      draft.prefillSources.includes("trade_dock");
+    setStep(skipRole ? startStep : "role");
     setPhotoFiles([]);
     setPhotoPreviews([]);
-  }, [draft, open]);
+  }, [draft, open, startStep]);
 
   useEffect(() => {
     if (!open) {
@@ -183,14 +203,28 @@ export function GlobeMarketIntentWizardSheet({
     setStep(steps[index - 1]!);
   }, [step, steps, working]);
 
+  const selectRole = useCallback(
+    (role: MarketIntentRole) => {
+      if (!working) {
+        return;
+      }
+      setWorking({ ...working, role });
+      setStep("recognize");
+    },
+    [working],
+  );
+
   const validateStep = useCallback((): boolean => {
     if (!working) {
       return false;
     }
+    if (step === "role") {
+      return false;
+    }
     if (step === "priority") {
       const name = working.detail.productName.trim();
-      if (!name) {
-        toast.message(copy.globe.marketWizardValidationProduct);
+      if (!isValidMarketProductName(name)) {
+        toast.message(copy.globe.marketWizardValidationProductDetail);
         return false;
       }
       const top = getTopPrioritySlots(working.categoryId);
@@ -229,19 +263,22 @@ export function GlobeMarketIntentWizardSheet({
     setBusy(true);
     try {
       const name = working.detail.productName.trim() || working.title.trim();
-      const finalDraft: MarketIntentDraft = {
-        ...working,
-        title: name,
-        detail: {
-          ...working.detail,
-          productName: name,
-          photoCount: photoFiles.length,
-          prioritySlots: {
-            ...working.detail.prioritySlots,
-            distance: `${working.radiusKm}km`,
+      const finalDraft = syncMarketMemoryRecordOnDraft(
+        {
+          ...working,
+          title: name,
+          detail: {
+            ...working.detail,
+            productName: name,
+            photoCount: photoFiles.length,
+            prioritySlots: {
+              ...working.detail.prioritySlots,
+              distance: `${working.radiusKm}km`,
+            },
           },
         },
-      };
+        {},
+      );
       await commitMarketIntentFromDraft(finalDraft, {
         photoFiles: photoFiles.length > 0 ? photoFiles : undefined,
       });
@@ -268,7 +305,7 @@ export function GlobeMarketIntentWizardSheet({
           <motion.button
             type="button"
             aria-label="닫기"
-            className={rimvioSheetBackdropClass()}
+            className={cn(rimvioSheetBackdropClass(), "z-[10080]")}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -279,7 +316,7 @@ export function GlobeMarketIntentWizardSheet({
             aria-modal
             className={cn(
               rimvioBottomSheetClass(),
-              "flex max-h-[min(92dvh,720px)] flex-col px-4 pb-[max(1rem,env(safe-area-inset-bottom))]",
+              "z-[10081] flex max-h-[min(92dvh,720px)] flex-col px-4 pb-[max(1rem,env(safe-area-inset-bottom))]",
             )}
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
@@ -307,6 +344,33 @@ export function GlobeMarketIntentWizardSheet({
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+              {step === "role" ? (
+                <div className="space-y-4">
+                  <p className={cn(RIMVIO_TYPE.headline, "text-lg")}>
+                    {copy.globe.marketWizardRoleTitle}
+                  </p>
+                  <p className={cn(RIMVIO_TYPE.caption)}>{copy.globe.marketWizardRoleBody}</p>
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    <button
+                      type="button"
+                      className={MARKET_TRADE_LIST_PILL}
+                      onClick={() => selectRole("listing")}
+                      data-market-role-card="listing"
+                    >
+                      {copy.globe.marketWizardRoleListingTitle}
+                    </button>
+                    <button
+                      type="button"
+                      className={MARKET_TRADE_SEEK_PILL}
+                      onClick={() => selectRole("seeking")}
+                      data-market-role-card="seeking"
+                    >
+                      {copy.globe.marketWizardRoleSeekingTitle}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
               {step === "recognize" ? (
                 <div>
                   <p className={cn(RIMVIO_TYPE.headline, "text-lg")}>
@@ -378,6 +442,10 @@ export function GlobeMarketIntentWizardSheet({
                 </div>
               ) : null}
 
+              {step === "memory" ? (
+                <MarketMemoryRecordFields draft={working} onChange={setWorking} />
+              ) : null}
+
               {step === "place" ? (
                 <div className="space-y-3">
                   <p className={cn(RIMVIO_TYPE.headline, "text-lg")}>
@@ -439,13 +507,33 @@ export function GlobeMarketIntentWizardSheet({
                       <dt className="text-muted-foreground">{copy.globe.marketIntentFieldPrice}</dt>
                       <dd className="font-semibold">{formatPriceRange(working)}</dd>
                     </div>
+                    {formatMarketMemoryPreview(working.detail, working.role) ? (
+                      <div className="border-t border-black/[0.06] pt-2">
+                        <dt className="text-muted-foreground">{copy.globe.marketMemoryReviewLabel}</dt>
+                        <dd className="mt-1 font-medium leading-snug">
+                          {formatMarketMemoryPreview(working.detail, working.role)}
+                        </dd>
+                        {working.detail.memoryRecord.experienceTags.length > 0 ? (
+                          <dd className="mt-2 flex flex-wrap gap-1.5">
+                            {working.detail.memoryRecord.experienceTags.map((tag) => (
+                              <span
+                                key={tag}
+                                className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </dd>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </dl>
                 </div>
               ) : null}
             </div>
 
             <div className="mt-3 shrink-0 border-t border-black/[0.06] pt-3">
-              {step !== "review" ? (
+              {step !== "review" && step !== "role" ? (
                 <button
                   type="button"
                   className={cn(rimvioCompactPrimaryCtaClass(), "w-full gap-2")}

@@ -200,7 +200,7 @@ const REGISTRY: readonly MentionFeature[] = [
     aliases: ["중고", "market", "내놓기", "구함", "맞출것"],
     sourceRef: "mention:market",
     category: "custom",
-    confirmCopy: "예: @중고 아이폰 15 프로 70만원",
+    confirmCopy: "예: @중고 아이폰 15 프로 · 제품명까지",
   },
   {
     featureId: "calendar",

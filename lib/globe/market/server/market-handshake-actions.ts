@@ -2,10 +2,20 @@ import { copy } from "@/lib/copy/human-ko";
 import {
   findMarketHandshakeById,
   findMarketHandshakeByThreadId,
+  patchMarketHandshake,
   updateMarketHandshakePhase,
 } from "@/lib/globe/market/server/market-alignment-handshake-store";
 import { findMarketIntentById } from "@/lib/globe/market/server/upsert-market-intent";
 import { marketCategoryLabelKo } from "@/lib/globe/market/market-category-registry";
+import type {
+  MarketCompletionTraceDraft,
+  MarketHandshakeRecord,
+} from "@/lib/globe/market/market-handshake-types";
+import type { MarketIntentRole } from "@/lib/globe/market/market-intent-types";
+import {
+  buildMarketCompletionTraceDraft,
+  resolveRealizedPriceKrw,
+} from "@/lib/globe/market/build-market-completion-trace-draft";
 import {
   ensureDmThreadBetweenUsers,
   insertPeerMessage,
@@ -134,6 +144,166 @@ export async function startBuyerMarketHandshakeChat(
   });
 
   return { threadId: handshake.threadId };
+}
+
+async function deactivateMarketIntents(
+  supabase: SupabaseClient,
+  seekingIntentId: string,
+  listingIntentId: string,
+): Promise<void> {
+  const now = new Date().toISOString();
+  await supabase
+    .from("market_intents")
+    .update({ active: false, updated_at: now })
+    .in("id", [seekingIntentId, listingIntentId]);
+}
+
+export async function confirmMarketHandshakeComplete(
+  supabase: SupabaseClient,
+  userId: string,
+  handshakeId: string,
+): Promise<{
+  completed: boolean;
+  awaitingOtherParty: boolean;
+  handshake: MarketHandshakeRecord;
+  trace: MarketCompletionTraceDraft | null;
+}> {
+  const handshake = await findMarketHandshakeById(supabase, handshakeId);
+  if (!handshake) {
+    throw new Error("handshake_not_found");
+  }
+  if (handshake.seekingUserId !== userId && handshake.listingUserId !== userId) {
+    throw new Error("forbidden");
+  }
+  if (handshake.phase !== "active" && handshake.phase !== "completed") {
+    throw new Error("invalid_phase");
+  }
+
+  const viewerRole: MarketIntentRole =
+    userId === handshake.seekingUserId ? "seeking" : "listing";
+
+  const listingIntent = await findMarketIntentById(supabase, handshake.listingIntentId);
+  if (!listingIntent) {
+    throw new Error("intent_not_found");
+  }
+
+  const priceLine = formatPriceLine(listingIntent.priceMinKrw, listingIntent.priceMaxKrw);
+
+  if (handshake.phase === "completed") {
+    const trace = buildMarketCompletionTraceDraft({
+      handshake,
+      viewerRole,
+      viewerUserId: userId,
+      productName: listingIntent.detail.productName || listingIntent.title,
+      priceLine,
+      placeLabel: listingIntent.placeLabel,
+      lat: listingIntent.anchorLat,
+      lng: listingIntent.anchorLng,
+    });
+    return {
+      completed: true,
+      awaitingOtherParty: false,
+      handshake,
+      trace,
+    };
+  }
+
+  const viewerConfirmed =
+    viewerRole === "seeking"
+      ? Boolean(handshake.seekingConfirmedAtIso)
+      : Boolean(handshake.listingConfirmedAtIso);
+
+  if (viewerConfirmed) {
+    throw new Error("already_confirmed");
+  }
+
+  const nowIso = new Date().toISOString();
+  const realizedPriceKrw = resolveRealizedPriceKrw(
+    listingIntent.priceMinKrw,
+    listingIntent.priceMaxKrw,
+  );
+
+  const seekingConfirmedAtIso =
+    viewerRole === "seeking" ? nowIso : handshake.seekingConfirmedAtIso;
+  const listingConfirmedAtIso =
+    viewerRole === "listing" ? nowIso : handshake.listingConfirmedAtIso;
+
+  const otherConfirmed =
+    viewerRole === "seeking"
+      ? Boolean(handshake.listingConfirmedAtIso)
+      : Boolean(handshake.seekingConfirmedAtIso);
+
+  if (!otherConfirmed) {
+    const patched = await patchMarketHandshake(supabase, handshake.id, {
+      seekingConfirmedAtIso,
+      listingConfirmedAtIso,
+      realizedPriceKrw,
+    });
+
+    if (handshake.threadId) {
+      await insertPeerMessage(supabase, {
+        threadId: handshake.threadId,
+        senderUserId: userId,
+        messageType: "system",
+        body:
+          viewerRole === "seeking"
+            ? copy.globe.marketHandshakeSeekingConfirmedSystem
+            : copy.globe.marketHandshakeListingConfirmedSystem,
+      });
+    }
+
+    return {
+      completed: false,
+      awaitingOtherParty: true,
+      handshake: patched,
+      trace: null,
+    };
+  }
+
+  const patched = await patchMarketHandshake(supabase, handshake.id, {
+    phase: "completed",
+    seekingConfirmedAtIso,
+    listingConfirmedAtIso,
+    realizedPriceKrw,
+    completedAtIso: nowIso,
+  });
+
+  await deactivateMarketIntents(
+    supabase,
+    handshake.seekingIntentId,
+    handshake.listingIntentId,
+  );
+
+  if (handshake.threadId) {
+    await insertPeerMessage(supabase, {
+      threadId: handshake.threadId,
+      senderUserId: userId,
+      messageType: "system",
+      body: copy.globe.marketHandshakeCompletedSystem({
+        productName: listingIntent.detail.productName || listingIntent.title,
+        priceLine,
+        place: listingIntent.placeLabel || "근처",
+      }),
+    });
+  }
+
+  const trace = buildMarketCompletionTraceDraft({
+    handshake: patched,
+    viewerRole,
+    viewerUserId: userId,
+    productName: listingIntent.detail.productName || listingIntent.title,
+    priceLine,
+    placeLabel: listingIntent.placeLabel,
+    lat: listingIntent.anchorLat,
+    lng: listingIntent.anchorLng,
+  });
+
+  return {
+    completed: true,
+    awaitingOtherParty: false,
+    handshake: patched,
+    trace,
+  };
 }
 
 export async function assertMarketHandshakeAllowsSend(

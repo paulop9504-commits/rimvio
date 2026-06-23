@@ -16,29 +16,14 @@ export type MarketAlignmentMainCardProps = {
 
 export function MarketAlignmentMainCard({
   offer,
-  loading = false,
+  loading: _loading = false,
   onOpen,
   onDismiss,
   className,
 }: MarketAlignmentMainCardProps) {
   return (
     <AnimatePresence>
-      {loading ? (
-        <motion.div
-          key="market-align-loading"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 8 }}
-          className={cn(
-            "rounded-2xl bg-white/92 px-3.5 py-3 shadow-lg ring-1 ring-black/[0.06] backdrop-blur-md",
-            className,
-          )}
-          aria-busy
-        >
-          <div className="h-4 w-2/3 animate-pulse rounded bg-muted" />
-          <div className="mt-2 h-3 w-full animate-pulse rounded bg-muted/80" />
-        </motion.div>
-      ) : offer ? (
+      {offer ? (
         <motion.div
           key={`market-align-${offer.matchIntentId}`}
           initial={{ opacity: 0, y: 10 }}

@@ -1,4 +1,7 @@
+import { sanitizeMarketProductNameFromParse } from "@/lib/globe/market/sanitize-market-product-name";
+
 const MENTION_PREFIX = /^@\S+\s*/u;
+const ALL_MENTIONS = /@\S+/gu;
 const ROLE_NOISE =
   /(?:삽니다|구합니다|구해요?|구함|찾아요|찾습니다|팝니다|팔아요?|판매|나눔|양도|sell|wanted)/giu;
 const RANGE_NOISE =
@@ -33,11 +36,13 @@ export function parseMarketProductFromText(text: string): {
 } {
   const sourceText = text.trim();
   let working = sourceText.replace(MENTION_PREFIX, "");
+  working = working.replace(ALL_MENTIONS, " ");
   working = working.replace(RANGE_NOISE, " ");
   working = stripPriceTokens(working);
   working = working.replace(ROLE_NOISE, " ");
   working = collapseWhitespace(working.replace(/[·|,]+/gu, " "));
 
-  const productName = working.slice(0, 80) || sourceText.slice(0, 80);
+  const rawName = working.slice(0, 80);
+  const productName = sanitizeMarketProductNameFromParse(rawName);
   return { productName, sourceText };
 }

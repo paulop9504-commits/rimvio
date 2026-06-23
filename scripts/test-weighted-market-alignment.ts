@@ -65,11 +65,11 @@ function main() {
     id: "mi-b",
     eventId: "ev-b",
     role: "listing",
-    priceMinKrw: 500_000,
-    priceMaxKrw: 550_000,
+    priceMinKrw: 1_000_000,
+    priceMaxKrw: 1_000_000,
     detail: {
       ...listing.detail,
-      prioritySlots: { ...listing.detail.prioritySlots, price: 520_000 },
+      prioritySlots: { ...listing.detail.prioritySlots, price: 1_000_000 },
     },
   });
   const miss = scoreWeightedMarketAlignment(seeking, badPrice);

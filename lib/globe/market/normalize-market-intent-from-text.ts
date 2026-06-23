@@ -4,13 +4,14 @@ import {
 } from "@/lib/globe/market/market-category-registry";
 import { DEFAULT_MARKET_INTENT_DETAIL } from "@/lib/globe/market/market-intent-detail";
 import { parseMarketProductFromText } from "@/lib/globe/market/parse-market-product-from-text";
+import { sanitizeMarketProductNameFromParse } from "@/lib/globe/market/sanitize-market-product-name";
 import type {
   MarketIntentDraft,
   MarketIntentRole,
 } from "@/lib/globe/market/market-intent-types";
 
-const SEEKING_SIGNAL = /(?:삽니다|구합니다|구해|구함|찾아요|찾습니다|wanted)/u;
-const LISTING_SIGNAL = /(?:팝니다|팔아|판매|나눔|양도|sell)/u;
+const SEEKING_SIGNAL = /(?:삽니다|구합니다|구해|구함|구하기|찾아요|찾습니다|wanted)/u;
+const LISTING_SIGNAL = /(?:팝니다|팔아|판매|나눔|양도|내놓기|sell)/u;
 
 function readRole(text: string): MarketIntentRole {
   const trimmed = text.trim();
@@ -112,8 +113,7 @@ export function normalizeMarketIntentFromText(input: {
   const role = readRole(text);
   const { priceMinKrw, priceMaxKrw } = resolvePriceRange(text, slotPrice);
   const parsed = parseMarketProductFromText(text);
-  const productName =
-    parsed.productName || marketCategoryLabelKo(categoryId);
+  const productName = sanitizeMarketProductNameFromParse(parsed.productName);
 
   return {
     eventId: input.eventId,

@@ -5,6 +5,7 @@ import { copy } from "@/lib/copy/human-ko";
 import { rimvioCompactPrimaryCtaClass, RIMVIO_TYPE } from "@/lib/design/rimvio-ontology";
 import { cn } from "@/lib/utils";
 import type { MarketHandshakeRoomState } from "@/lib/globe/market/client/sync-market-intent-remote";
+import { MarketExperienceTagPills } from "@/components/market/market-memory-record-fields";
 
 export type MarketHandshakeProductStripProps = {
   handshake: MarketHandshakeRoomState;
@@ -43,6 +44,23 @@ export function MarketHandshakeProductStrip({
               {handshake.priorityHint}
             </p>
           ) : null}
+          {handshake.viewerRole === "seeking" && handshake.product.memoryPreview ? (
+            <p className={cn(RIMVIO_TYPE.caption, "mt-1.5 leading-snug text-foreground/90")}>
+              {handshake.product.memoryPreview}
+            </p>
+          ) : null}
+          {handshake.viewerRole === "listing" && handshake.product.matchMemoryPreview ? (
+            <p className={cn(RIMVIO_TYPE.caption, "mt-1.5 leading-snug text-foreground/90")}>
+              {copy.globe.marketMemoryMatchSeekingPreview(handshake.product.matchMemoryPreview)}
+            </p>
+          ) : null}
+          <MarketExperienceTagPills
+            tags={
+              handshake.viewerRole === "listing"
+                ? handshake.product.matchExperienceTags
+                : handshake.product.experienceTags
+            }
+          />
         </div>
       </div>
     </div>

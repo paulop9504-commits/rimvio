@@ -1,10 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { copy } from "@/lib/copy/human-ko";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import { marketCategoryLabelKo } from "@/lib/globe/market/market-category-registry";
-import {
-  findMarketHandshakeByThreadId,
-} from "@/lib/globe/market/server/market-alignment-handshake-store";
+import { buildMarketHandshakeRoomPayload } from "@/lib/globe/market/server/build-market-handshake-room-state";
+import { findMarketHandshakeByThreadId } from "@/lib/globe/market/server/market-alignment-handshake-store";
 import { findMarketIntentById } from "@/lib/globe/market/server/upsert-market-intent";
 
 export async function GET(request: NextRequest) {
@@ -38,39 +35,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: true, handshake: null });
   }
 
-  const priceLine =
-    listingIntent.priceMinKrw !== null && listingIntent.priceMaxKrw !== null
-      ? listingIntent.priceMinKrw === listingIntent.priceMaxKrw
-        ? `${Math.round(listingIntent.priceMinKrw / 10_000)}만원`
-        : `${Math.round((listingIntent.priceMinKrw ?? 0) / 10_000)}~${Math.round((listingIntent.priceMaxKrw ?? 0) / 10_000)}만원`
-      : copy.globe.marketIntentPriceOpen;
-
-  const viewerRole =
-    user.id === handshake.seekingUserId
-      ? "seeking"
-      : user.id === handshake.listingUserId
-        ? "listing"
-        : null;
+  const seekingIntent = await findMarketIntentById(supabase, handshake.seekingIntentId);
 
   return NextResponse.json({
     ok: true,
-    handshake: {
-      id: handshake.id,
-      phase: handshake.phase,
-      threadId: handshake.threadId,
-      priorityHint: handshake.priorityHint,
-      viewerRole,
-      chatLocked: handshake.phase === "pending_buyer_start",
-      canStartChat:
-        handshake.phase === "pending_buyer_start" && viewerRole === "seeking",
-      product: {
-        title: listingIntent.detail.productName || listingIntent.title,
-        priceLine,
-        category: marketCategoryLabelKo(listingIntent.categoryId),
-        placeLabel: listingIntent.placeLabel,
-        photoCount: listingIntent.detail.photoCount,
-        prioritySlots: listingIntent.detail.prioritySlots,
-      },
-    },
+    handshake: buildMarketHandshakeRoomPayload({
+      handshake,
+      listingIntent,
+      seekingIntent,
+      viewerUserId: user.id,
+    }),
   });
 }

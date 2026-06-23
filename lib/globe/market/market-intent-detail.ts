@@ -7,10 +7,35 @@ export type MarketListingConditionId =
 export type MarketMeetPreferenceId = "nearby" | "flexible" | "pickup_only";
 
 import type { MarketPrioritySlotId } from "@/lib/globe/market/market-priority-matrix";
+import { MARKET_MEMORY_SCHEMA_VERSION } from "@/lib/globe/market/memory/market-memory-template";
 
 export type MarketPrioritySlotValues = Partial<
   Record<MarketPrioritySlotId, string | number | boolean | null>
 >;
+
+export type MarketMemoryRecord = {
+  schemaVersion: typeof MARKET_MEMORY_SCHEMA_VERSION;
+  templateId: string;
+  story: string;
+  care: string;
+  why: string;
+  categoryAnswer: string;
+  seekingContext: string;
+  seekingWhy: string;
+  experienceTags: string[];
+};
+
+export const DEFAULT_MARKET_MEMORY_RECORD: MarketMemoryRecord = {
+  schemaVersion: MARKET_MEMORY_SCHEMA_VERSION,
+  templateId: "universal",
+  story: "",
+  care: "",
+  why: "",
+  categoryAnswer: "",
+  seekingContext: "",
+  seekingWhy: "",
+  experienceTags: [],
+};
 
 /** Extended slots — wizard + pinned product card (v1.2). */
 export type MarketIntentDetail = {
@@ -25,7 +50,24 @@ export type MarketIntentDetail = {
   photoCount: number;
   prioritySlots: MarketPrioritySlotValues;
   prioritySchemaVersion: "market.v1.2";
+  memoryRecord: MarketMemoryRecord;
 };
+
+export function readMarketMemoryRecord(
+  detail: Pick<MarketIntentDetail, "memoryRecord"> | { memoryRecord?: MarketMemoryRecord | null },
+): MarketMemoryRecord {
+  const raw = detail.memoryRecord;
+  if (!raw || typeof raw !== "object") {
+    return { ...DEFAULT_MARKET_MEMORY_RECORD };
+  }
+  return {
+    ...DEFAULT_MARKET_MEMORY_RECORD,
+    ...raw,
+    experienceTags: Array.isArray(raw.experienceTags)
+      ? raw.experienceTags.filter((tag) => typeof tag === "string")
+      : [],
+  };
+}
 
 export const DEFAULT_MARKET_INTENT_DETAIL: MarketIntentDetail = {
   sourceText: "",
@@ -39,6 +81,7 @@ export const DEFAULT_MARKET_INTENT_DETAIL: MarketIntentDetail = {
   photoCount: 0,
   prioritySlots: {},
   prioritySchemaVersion: "market.v1.2",
+  memoryRecord: { ...DEFAULT_MARKET_MEMORY_RECORD },
 };
 
 export function marketListingConditionLabelKo(

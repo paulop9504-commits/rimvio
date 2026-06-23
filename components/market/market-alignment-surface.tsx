@@ -34,7 +34,7 @@ export function MarketAlignmentSurface({
 }: MarketAlignmentSurfaceProps) {
   const router = useRouter();
   const [actionBusy, setActionBusy] = useState(false);
-  const { offer, loading, dismiss } = useMarketAlignmentMain({ enabled, focusEventId });
+  const { offer, dismiss } = useMarketAlignmentMain({ enabled, focusEventId });
 
   const onOpen = useCallback(
     async (resolved: MarketAlignmentOffer) => {
@@ -91,7 +91,7 @@ export function MarketAlignmentSurface({
     [actionBusy, onFocusMatchEvent, onFocusMatchOffer, router],
   );
 
-  if (!enabled && !loading && !offer) {
+  if (!enabled || !offer) {
     return null;
   }
 
@@ -99,7 +99,7 @@ export function MarketAlignmentSurface({
     <MarketAlignmentMainCard
       className={className}
       offer={offer}
-      loading={loading}
+      loading={false}
       onOpen={onOpen}
       onDismiss={dismiss}
     />

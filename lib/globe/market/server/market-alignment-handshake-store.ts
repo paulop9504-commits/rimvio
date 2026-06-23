@@ -16,6 +16,10 @@ export type MarketHandshakeDbRow = {
   priority_hint: string;
   listing_accepted_at: string | null;
   buyer_started_at: string | null;
+  seeking_confirmed_at: string | null;
+  listing_confirmed_at: string | null;
+  realized_price_krw: number | null;
+  completed_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -33,6 +37,10 @@ export function marketHandshakeRowToRecord(row: MarketHandshakeDbRow): MarketHan
     priorityHint: row.priority_hint,
     listingAcceptedAtIso: row.listing_accepted_at,
     buyerStartedAtIso: row.buyer_started_at,
+    seekingConfirmedAtIso: row.seeking_confirmed_at,
+    listingConfirmedAtIso: row.listing_confirmed_at,
+    realizedPriceKrw: row.realized_price_krw,
+    completedAtIso: row.completed_at,
     createdAtIso: row.created_at,
     updatedAtIso: row.updated_at,
   };
@@ -168,6 +176,60 @@ export async function upsertMarketHandshake(
   return marketHandshakeRowToRecord(data as MarketHandshakeDbRow);
 }
 
+export async function patchMarketHandshake(
+  supabase: SupabaseClient,
+  handshakeId: string,
+  patch: {
+    phase?: MarketHandshakePhase;
+    threadId?: string | null;
+    listingAcceptedAtIso?: string | null;
+    buyerStartedAtIso?: string | null;
+    seekingConfirmedAtIso?: string | null;
+    listingConfirmedAtIso?: string | null;
+    realizedPriceKrw?: number | null;
+    completedAtIso?: string | null;
+  },
+): Promise<MarketHandshakeRecord> {
+  const row: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+  if (patch.phase !== undefined) {
+    row.phase = patch.phase;
+  }
+  if (patch.threadId !== undefined) {
+    row.thread_id = patch.threadId;
+  }
+  if (patch.listingAcceptedAtIso !== undefined) {
+    row.listing_accepted_at = patch.listingAcceptedAtIso;
+  }
+  if (patch.buyerStartedAtIso !== undefined) {
+    row.buyer_started_at = patch.buyerStartedAtIso;
+  }
+  if (patch.seekingConfirmedAtIso !== undefined) {
+    row.seeking_confirmed_at = patch.seekingConfirmedAtIso;
+  }
+  if (patch.listingConfirmedAtIso !== undefined) {
+    row.listing_confirmed_at = patch.listingConfirmedAtIso;
+  }
+  if (patch.realizedPriceKrw !== undefined) {
+    row.realized_price_krw = patch.realizedPriceKrw;
+  }
+  if (patch.completedAtIso !== undefined) {
+    row.completed_at = patch.completedAtIso;
+  }
+
+  const { data, error } = await supabase
+    .from("market_alignment_handshakes")
+    .update(row)
+    .eq("id", handshakeId)
+    .select("*")
+    .single();
+  if (error) {
+    throw error;
+  }
+  return marketHandshakeRowToRecord(data as MarketHandshakeDbRow);
+}
+
 export async function updateMarketHandshakePhase(
   supabase: SupabaseClient,
   handshakeId: string,
@@ -178,20 +240,5 @@ export async function updateMarketHandshakePhase(
     buyerStartedAtIso?: string | null;
   },
 ): Promise<MarketHandshakeRecord> {
-  const { data, error } = await supabase
-    .from("market_alignment_handshakes")
-    .update({
-      phase: patch.phase,
-      thread_id: patch.threadId,
-      listing_accepted_at: patch.listingAcceptedAtIso,
-      buyer_started_at: patch.buyerStartedAtIso,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", handshakeId)
-    .select("*")
-    .single();
-  if (error) {
-    throw error;
-  }
-  return marketHandshakeRowToRecord(data as MarketHandshakeDbRow);
+  return patchMarketHandshake(supabase, handshakeId, patch);
 }

@@ -10,6 +10,7 @@ import {
   type MarketPrioritySlotId,
 } from "@/lib/globe/market/market-priority-matrix";
 import { marketListingConditionLabelKo } from "@/lib/globe/market/market-intent-detail";
+import { MarketVolumeZoneInsight } from "@/components/market/market-volume-zone-insight";
 import { copy } from "@/lib/copy/human-ko";
 import { rimvioComposerFieldClass } from "@/lib/brand/rimvio-neon-theme";
 import { RIMVIO_TYPE } from "@/lib/design/rimvio-ontology";
@@ -19,15 +20,47 @@ const ABC_GRADES = ["A", "B", "C"] as const;
 const COSMETIC_GRADES = ["like_new", "good", "fair"] as const;
 
 function manToKrw(value: string): number | null {
-  const trimmed = value.trim();
+  const trimmed = value.replace(/\D/g, "");
   if (!trimmed) {
     return null;
   }
-  const parsed = Number.parseInt(trimmed.replace(/,/g, ""), 10);
+  const parsed = Number.parseInt(trimmed, 10);
   if (!Number.isFinite(parsed) || parsed <= 0) {
     return null;
   }
   return parsed * 10_000;
+}
+
+function NumericUnitField({
+  value,
+  onChange,
+  suffix,
+  placeholder,
+  inputMode = "numeric",
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  suffix: string;
+  placeholder: string;
+  inputMode?: "numeric" | "decimal";
+}) {
+  return (
+    <div className="relative">
+      <input
+        inputMode={inputMode}
+        className={cn(rimvioComposerFieldClass, "w-full py-2.5 pl-3 pr-[3.25rem]")}
+        value={value}
+        onChange={(event) => onChange(event.target.value.replace(/\D/g, ""))}
+        placeholder={placeholder}
+      />
+      <span
+        className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[14px] font-medium text-muted-foreground"
+        aria-hidden
+      >
+        {suffix}
+      </span>
+    </div>
+  );
 }
 
 function Chip({
@@ -111,7 +144,12 @@ export function MarketPrioritySlotFields({ draft, onChange }: MarketPrioritySlot
             })
           }
           placeholder={copy.globe.marketWizardProductNamePlaceholder}
+          autoComplete="off"
+          spellCheck={false}
         />
+        <p className={cn("mt-1.5", RIMVIO_TYPE.caption)}>
+          {copy.globe.marketWizardProductNameHint}
+        </p>
       </label>
 
       {topSlots.map((slot) => {
@@ -129,12 +167,12 @@ export function MarketPrioritySlotFields({ draft, onChange }: MarketPrioritySlot
               <span className={cn(RIMVIO_TYPE.caption, "mb-1 block font-medium text-foreground")}>
                 {label}
               </span>
-              <input
-                inputMode="numeric"
-                className={cn(rimvioComposerFieldClass, "w-full px-3 py-2.5")}
+              <NumericUnitField
                 value={man}
-                onChange={(event) => {
-                  const krw = manToKrw(event.target.value);
+                suffix="만원"
+                placeholder="80"
+                onChange={(digits) => {
+                  const krw = manToKrw(digits);
                   const prioritySlots = { ...draft.detail.prioritySlots, price: krw };
                   onChange({
                     ...draft,
@@ -143,24 +181,27 @@ export function MarketPrioritySlotFields({ draft, onChange }: MarketPrioritySlot
                     detail: { ...draft.detail, prioritySlots },
                   });
                 }}
-                placeholder={marketPrioritySlotPlaceholderKo(field, draft.role)}
               />
             </label>
           );
         }
 
         if (slot.kind === "percent") {
+          const percentValue =
+            value !== undefined && value !== null ? String(value).replace(/\D/g, "") : "";
           return (
             <label key={field} className="block">
               <span className={cn(RIMVIO_TYPE.caption, "mb-1 block font-medium text-foreground")}>
                 {label}
               </span>
-              <input
-                inputMode="numeric"
-                className={cn(rimvioComposerFieldClass, "w-full px-3 py-2.5")}
-                value={value !== undefined && value !== null ? String(value) : ""}
-                onChange={(event) => patchSlot(field, event.target.value)}
-                placeholder={marketPrioritySlotPlaceholderKo(field, draft.role)}
+              <NumericUnitField
+                value={percentValue}
+                suffix="%"
+                placeholder="85"
+                onChange={(digits) => {
+                  const parsed = digits ? Number.parseInt(digits, 10) : null;
+                  patchSlot(field, Number.isFinite(parsed) ? parsed : null);
+                }}
               />
             </label>
           );
@@ -248,6 +289,8 @@ export function MarketPrioritySlotFields({ draft, onChange }: MarketPrioritySlot
           </label>
         );
       })}
+
+      <MarketVolumeZoneInsight draft={draft} />
     </div>
   );
 }

@@ -243,8 +243,8 @@ export const copy = {
       "내 흔적과 위치를 바탕으로 채웠어요. 확인만 하면 돼요.",
     marketIntentConfirmCta: "이 조건으로 맞출게요",
     marketIntentConfirmLater: "나중에",
-    marketIntentRoleSeeking: "찾는 중",
-    marketIntentRoleListing: "내놓기",
+    marketIntentRoleSeeking: "구하는 중",
+    marketIntentRoleListing: "내놓는 중",
     marketIntentFieldRole: "방향",
     marketIntentFieldCategory: "카테고리",
     marketIntentFieldPrice: "가격",
@@ -253,11 +253,13 @@ export const copy = {
     marketIntentFieldTime: "맞던 시간",
     marketIntentPriceOpen: "가격 협의",
     marketIntentPrefillHint: "기억·위치에서 일부를 채웠어요",
-    marketWizardEyebrowSeeking: "찾는 조건",
+    marketWizardEyebrowSeeking: "구하는 조건",
     marketWizardEyebrowListing: "내놓는 조건",
     marketWizardStepRecognize: "맞춤 인식",
+    marketWizardStepRole: "방향 선택",
     marketWizardStepProduct: "무엇인가요",
     marketWizardStepPhotos: "사진",
+    marketWizardStepMemory: "흔적",
     marketWizardStepCondition: "상태",
     marketWizardStepPrice: "가격",
     marketWizardStepPlace: "장소·반경",
@@ -266,8 +268,21 @@ export const copy = {
     marketWizardRecognizeTitleListing: "이렇게 이해했어요",
     marketWizardRecognizeBody:
       "입력을 바탕으로 채웠어요. 순서대로 확인·수정해 주세요.",
-    marketWizardProductNameLabel: "이름",
-    marketWizardProductNamePlaceholder: "예: 아이폰 15 프로",
+    marketWizardProductNameLabel: "제품명",
+    marketWizardProductNamePlaceholder: "아이폰 15 프로",
+    marketWizardProductNameHint:
+      "정확한 모델명을 적어 주세요. @중고만 적히면 맞춤이 어려워요.",
+    marketWizardRoleTitle: "어떤 맞춤인가요?",
+    marketWizardRoleBody: "구하기와 내놓기 중 골라 주세요.",
+    marketWizardRoleSeekingTitle: "구하기",
+    marketWizardRoleSeekingBody: "내 맥락에 맞는 내놓기를 기다릴게요",
+    marketWizardRoleListingTitle: "내놓기",
+    marketWizardRoleListingBody: "내 조건을 흐름에 올릴게요",
+    marketTradeDockListingAria: "내놓기 — 맞춤 조건 올리기",
+    marketTradeDockSeekingAria: "구하기 — 맞는 흔적 찾기",
+    marketWizardValidationProduct: "제품명을 적어 주세요",
+    marketWizardValidationProductDetail:
+      "정확한 제품명을 적어 주세요 · 예: 아이폰 15 프로",
     marketWizardProductNoteLabel: "추가 메모",
     marketWizardProductNotePlaceholderSeeking: "예: 배터리 85% 이상, 케이스 흠 없음",
     marketWizardProductNotePlaceholderListing: "예: 케이스·충전기 포함, 박스 있음",
@@ -292,10 +307,68 @@ export const copy = {
     marketWizardConfirm: "이 조건으로 맞출게요",
     marketWizardLater: "나중에",
     marketWizardProgress: (current: number, total: number) => `${current} / ${total}`,
-    marketWizardValidationProduct: "이름을 적어 주세요",
     marketWizardValidationCondition: "상태를 선택해 주세요",
     marketWizardValidationPrice: "가격을 입력하거나 협의 가능을 켜 주세요",
     marketPriorityCardEyebrow: "우선순위",
+    marketVolumeZoneEyebrow: "적정 구간",
+    marketVolumeZoneTierLabel: (tier: string, battery: number) =>
+      `배터리 ${battery}% · ${tier}구간`,
+    marketVolumeZoneSeekingBody: (minMan: number, maxMan: number) =>
+      `이 조건 흔적은 보통 ${minMan}~${maxMan}만 원 구간에 모여 있어요. 이 범위로 찾으면 빠르게 맞춰질 수 있어요.`,
+    marketVolumeZoneSeekingBodyRealized: (minMan: number, maxMan: number, count: number) =>
+      `같은 조건 맞춤 ${count}건 — ${minMan}~${maxMan}만 원에 가장 많이 모여 있어요. 이 범위로 찾으면 빠르게 맞춰질 수 있어요.`,
+    marketVolumeZoneListingBody: (anchorMan: number, minMan: number, maxMan: number) =>
+      `같은 조건 흔적은 ${minMan}~${maxMan}만 원에 많이 맞춰져 있어요. ${anchorMan}만 원에 내놓으면 이웃과 빠르게 연결될 수 있어요.`,
+    marketVolumeZoneListingBodyRealized: (
+      anchorMan: number,
+      minMan: number,
+      maxMan: number,
+      count: number,
+    ) =>
+      `최근 맞춤 ${count}건 — ${minMan}~${maxMan}만 원에 모여 있어요. ${anchorMan}만 원에 내놓으면 이웃과 빠르게 연결될 수 있어요.`,
+    marketVolumeZonePriceBelow: (userMan: number, minMan: number) =>
+      `입력하신 ${userMan}만 원은 적정 구간 아래예요. ${minMan}만 원까지 올리면 맞춤이 더 잦을 수 있어요.`,
+    marketVolumeZonePriceInZone: (userMan: number) =>
+      `입력하신 ${userMan}만 원은 적정 구간에 있어요. 바로 맞춰도 좋아요.`,
+    marketVolumeZonePriceAbove: (userMan: number, maxMan: number) =>
+      `입력하신 ${userMan}만 원은 적정 구간 위예요. ${maxMan}만 원 근처로 맞추면 더 빠르게 정렬될 수 있어요.`,
+    marketVolumeZoneSeedDisclaimer: "참고 · 맞춤 데이터가 쌓일수록 더 정확해져요",
+    marketVolumeZoneRealizedDisclaimer: (count: number) =>
+      `최근 맞춤 ${count}건 기준 · 계속 쌓일수록 더 정확해져요`,
+    marketMemoryStepEyebrow: "맥락 기록",
+    marketMemoryStepBodyListing:
+      "다음 주인이 안심할 수 있게, 함께한 순간과 관리 방법을 남겨 주세요.",
+    marketMemoryStepBodySeeking:
+      "원하는 맥락을 적어 두면 더 잘 맞는 흔적을 찾을 수 있어요.",
+    marketMemoryTagsLabel: "맥락 태그",
+    marketMemoryTagsHint: "같은 태그로 비슷한 흔적을 정렬할 수 있어요.",
+    marketMemoryReviewLabel: "맥락",
+    marketMemoryMatchSeekingPreview: (line: string) => `구하기 맥락 · ${line}`,
+    marketMemoryMatchListingPreview: (line: string) => `내놓기 맥락 · ${line}`,
+    marketHandshakeCompleteSeekingCta: "받았어요",
+    marketHandshakeCompleteListingCta: "넘겼어요",
+    marketHandshakeAwaitingOtherParty: "상대 확인을 기다리고 있어요",
+    marketHandshakeCompleteConfirmedToast: "맞춤 확인을 남겼어요",
+    marketHandshakeCompleteAwaitingToast: "상대 확인을 기다릴게요",
+    marketHandshakeCompleteFail: "맞춤 확인을 남기지 못했어요",
+    marketHandshakeSeekingConfirmedSystem: "구하기 쪽에서 받았다고 확인했어요",
+    marketHandshakeListingConfirmedSystem: "내놓기 쪽에서 넘겼다고 확인했어요",
+    marketHandshakeCompletedSystem: (input: {
+      productName: string;
+      priceLine: string;
+      place: string;
+    }) =>
+      `맞춤이 완료됐어요 · ${input.productName} · ${input.priceLine} · ${input.place}`,
+    marketCompletionTraceSheetTitle: "흔적으로 남길까요?",
+    marketCompletionTraceSheetBody: (title: string, place: string) =>
+      `${title} · ${place}`,
+    marketCompletionTraceSheetCta: "지구에 남기기",
+    marketCompletionTraceSheetLater: "나중에",
+    marketCompletionTracePinnedToast: "지구에 흔적을 남겼어요",
+    marketCompletionTraceTitleSeeking: (product: string, price: string, place: string) =>
+      `${product} · ${price} · ${place}에서 맞춤`,
+    marketCompletionTraceTitleListing: (product: string, price: string, place: string) =>
+      `${product} · ${price} · ${place}에서 넘김`,
     marketAlignPriorityHint: (labels: string) =>
       labels.length > 0 ? `${labels.join(" · ")} 맞는 흔적` : "맞는 흔적",
     marketHandshakeListingHeadline: (title: string, place: string) =>
@@ -328,9 +401,9 @@ export const copy = {
     marketHandshakeStartCta: "대화 시작하기",
     marketHandshakeWaitingSeller: "판매자가 맞춤을 확인 중이에요",
     marketAlignHeadlineSeeking: (title: string, place: string) =>
-      `찾던 조건과 맞는 내놓기 · ${place}`,
+      `구하는 조건과 맞는 내놓기 · ${place}`,
     marketAlignHeadlineListing: (title: string, place: string) =>
-      `내놓은 물건에 맞는 찾기 · ${place}`,
+      `내놓은 조건에 맞는 구하기 · ${place}`,
     marketAlignBody: (category: string, distanceKm: number, priceLine: string) =>
       `${category} · ${distanceKm}km · ${priceLine}`,
     marketAlignCta: "맞는 흔적 보기",

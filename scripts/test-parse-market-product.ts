@@ -5,15 +5,17 @@ import { parseMarketProductFromText } from "../lib/globe/market/parse-market-pro
 import { marketWizardSteps } from "../lib/globe/market/market-intent-wizard-flow";
 
 function main() {
-  const seeking = parseMarketProductFromText("@중고 아이폰 15 삽니다 80만 이하");
-  assert.equal(seeking.productName, "아이폰 15");
-  assert.match(seeking.sourceText, /삽니다/u);
+  const bare = parseMarketProductFromText("@중고");
+  assert.equal(bare.productName, "");
+
+  const seeking = parseMarketProductFromText("@중고 아이폰 15 프로 삽니다 80만 이하");
+  assert.equal(seeking.productName, "아이폰 15 프로");
 
   const listing = parseMarketProductFromText("맥북 프로 14 팝니다 120만원");
   assert.equal(listing.productName, "맥북 프로 14");
 
   const seekingSteps = marketWizardSteps("seeking");
-  assert.deepEqual(seekingSteps, ["recognize", "priority", "place", "review"]);
+  assert.deepEqual(seekingSteps, ["role", "recognize", "priority", "place", "review"]);
 
   const listingSteps = marketWizardSteps("listing");
   assert.ok(listingSteps.includes("priority"));

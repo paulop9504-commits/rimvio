@@ -4,7 +4,8 @@ export type MarketHandshakePhase =
   | "pending_listing"
   | "pending_buyer_start"
   | "active"
-  | "declined";
+  | "declined"
+  | "completed";
 
 export type MarketHandshakeViewerAction =
   | "accept_listing"
@@ -23,8 +24,23 @@ export type MarketHandshakeRecord = {
   priorityHint: string;
   listingAcceptedAtIso: string | null;
   buyerStartedAtIso: string | null;
+  seekingConfirmedAtIso: string | null;
+  listingConfirmedAtIso: string | null;
+  realizedPriceKrw: number | null;
+  completedAtIso: string | null;
   createdAtIso: string;
   updatedAtIso: string;
+};
+
+export type MarketCompletionTraceDraft = {
+  handshakeId: string;
+  eventId: string;
+  title: string;
+  placeLabel: string;
+  lat: number;
+  lng: number;
+  priceLine: string;
+  role: MarketIntentRole;
 };
 
 export type MarketHandshakeContext = {

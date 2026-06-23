@@ -9,6 +9,11 @@ import {
   type MarketPrioritySlotId,
 } from "@/lib/globe/market/market-priority-matrix";
 import { haversineKm } from "@/lib/globe/trend-bridge/server/trend-bridge-geo";
+import {
+  marketMemoryOverlapLabels,
+  scoreMarketExperienceTagAlignment,
+} from "@/lib/globe/market/memory/score-market-memory-alignment";
+import { scoreMarketPriceAlignment } from "@/lib/globe/market/score-market-price-alignment";
 
 export type MarketPrioritySlotValues = Partial<
   Record<MarketPrioritySlotId, string | number | boolean | null>
@@ -16,27 +21,6 @@ export type MarketPrioritySlotValues = Partial<
 
 function readSlotValues(record: MarketIntentRecord): MarketPrioritySlotValues {
   return record.detail.prioritySlots ?? {};
-}
-
-function priceOverlapScore(a: MarketIntentRecord, b: MarketIntentRecord): number {
-  const aMin = a.priceMinKrw ?? 0;
-  const aMax = a.priceMaxKrw ?? Number.MAX_SAFE_INTEGER;
-  const bMin = b.priceMinKrw ?? 0;
-  const bMax = b.priceMaxKrw ?? Number.MAX_SAFE_INTEGER;
-  if (aMax < bMin || bMax < aMin) {
-    return 0;
-  }
-  const overlapMin = Math.max(aMin, bMin);
-  const overlapMax = Math.min(aMax, bMax);
-  const overlap = Math.max(0, overlapMax - overlapMin);
-  const span = Math.max(aMax, bMax) - Math.min(aMin || overlapMin, bMin || overlapMin);
-  if (span <= 0) {
-    return 1;
-  }
-  if (a.detail.priceNegotiable || b.detail.priceNegotiable) {
-    return Math.max(0.55, overlap / span);
-  }
-  return Math.min(1, overlap / span);
 }
 
 function gradeScore(
@@ -148,7 +132,7 @@ function slotMatchScore(
 
   switch (field) {
     case "price":
-      return priceOverlapScore(seeking, listing);
+      return scoreMarketPriceAlignment(seeking, listing);
     case "battery_health":
       return batteryScore(seeking, listing);
     case "cosmetic_grade":
@@ -234,17 +218,25 @@ export function scoreWeightedMarketAlignment(
       ? breakdown.reduce((sum, row) => sum + row.weight * row.match, 0) / weightSum
       : 0;
 
-  const sorted = [...breakdown].sort((a, b) => b.weight * b.match - a.weight * a.match);
+  const memoryMatch = scoreMarketExperienceTagAlignment(self, other);
+  const totalWithMemory = Math.min(1, total * 0.88 + memoryMatch * 0.12);
+
+  const sorted = [...breakdown].sort((a, b) => b.weight * b.match - a.weight * b.match);
   const topMatchedLabelsKo = sorted
     .filter((row) => row.match >= 0.7)
     .slice(0, 2)
     .map((row) => SLOT_LABEL_KO[row.field] ?? row.field);
 
+  const memoryOverlap = marketMemoryOverlapLabels(self, other);
+  if (memoryOverlap.length > 0) {
+    topMatchedLabelsKo.unshift(`맥락 ${memoryOverlap[0]}`);
+  }
+
   return {
-    total,
+    total: totalWithMemory,
     threshold: matrix.matchThreshold,
-    passes: total >= matrix.matchThreshold,
+    passes: totalWithMemory >= matrix.matchThreshold,
     breakdown,
-    topMatchedLabelsKo,
+    topMatchedLabelsKo: topMatchedLabelsKo.slice(0, 3),
   };
 }

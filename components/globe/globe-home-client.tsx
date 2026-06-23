@@ -102,10 +102,14 @@ import { getTrendBridgeFeature } from "@/lib/globe/trend-bridge/trend-bridge-fea
 import { PulseMainActionSurface } from "@/components/pulse/pulse-main-action-surface";
 import { MarketAlignmentSurface } from "@/components/market/market-alignment-surface";
 import { GlobeMarketIntentWizardSheet } from "@/components/globe/globe-market-intent-wizard-sheet";
+import { GlobeMarketTradeDock } from "@/components/globe/globe-market-trade-dock";
+import { createMarketIntentDraftFromRole } from "@/lib/globe/market/create-market-intent-draft-from-role";
+import { ingestGlobeContextFromText } from "@/lib/feed/ingest-globe-context-capture";
 import { normalizeMarketIntentFromText } from "@/lib/globe/market/normalize-market-intent-from-text";
 import { prefillMarketIntentDraft } from "@/lib/globe/market/prefill-market-intent-draft";
 import { prefillMarketPrioritySlots } from "@/lib/globe/market/prefill-market-priority-slots";
-import type { MarketIntentDraft } from "@/lib/globe/market/market-intent-types";
+import type { MarketIntentDraft, MarketIntentRole } from "@/lib/globe/market/market-intent-types";
+import type { MarketWizardStepId } from "@/lib/globe/market/market-intent-wizard-flow";
 import { submitTrendBridgeContributionFromEvent } from "@/lib/globe/trend-bridge/client/submit-trend-bridge-contribution";
 import { subscribeGlobeContextHubOpen } from "@/lib/globe/context-hub/globe-context-hub-open-bridge";
 import { projectBridgeGhostClusters } from "@/lib/experience-bridge/project-bridge-ghost-clusters";
@@ -127,6 +131,9 @@ function GlobeHomeBody() {
     null,
   );
   const [marketConfirmOpen, setMarketConfirmOpen] = useState(false);
+  const [marketWizardStartStep, setMarketWizardStartStep] =
+    useState<MarketWizardStepId | undefined>(undefined);
+  const [marketTradeBusy, setMarketTradeBusy] = useState(false);
   const [marketFocusEventId, setMarketFocusEventId] = useState<string | null>(null);
   const liveLocation = useLiveLocationSnapshot();
   const {
@@ -976,10 +983,45 @@ function GlobeHomeBody() {
           liveLng: liveLocation?.lng ?? null,
         }),
       );
+      setMarketWizardStartStep(undefined);
       setMarketIntentDraft(draft);
       setMarketConfirmOpen(true);
     },
     [liveLocation?.lat, liveLocation?.lng],
+  );
+
+  const onMarketRoleSelected = useCallback(
+    async (role: MarketIntentRole) => {
+      if (marketTradeBusy) {
+        return;
+      }
+      setMarketTradeBusy(true);
+      try {
+        const outcome = await ingestGlobeContextFromText(
+          role === "listing" ? "@중고 내놓기" : "@중고 구하기",
+        );
+        const draft = prefillMarketPrioritySlots(
+          prefillMarketIntentDraft({
+            draft: createMarketIntentDraftFromRole({
+              role,
+              eventId: outcome.result.event.id,
+            }),
+            liveLat: liveLocation?.lat ?? null,
+            liveLng: liveLocation?.lng ?? null,
+          }),
+        );
+        setMarketWizardStartStep("recognize");
+        setMarketIntentDraft(draft);
+        setMarketConfirmOpen(true);
+      } catch (caught) {
+        const message =
+          caught instanceof Error ? caught.message : copy.globe.ingestAttachFail;
+        toast.error(message);
+      } finally {
+        setMarketTradeBusy(false);
+      }
+    },
+    [liveLocation?.lat, liveLocation?.lng, marketTradeBusy],
   );
 
   const trendBridgeAnchorLat =
@@ -1011,6 +1053,7 @@ function GlobeHomeBody() {
     !mapMediaFocusOpen &&
     !sheetOpen &&
     !confirmOpen &&
+    !marketConfirmOpen &&
     !hubEventId;
 
   useEffect(() => {
@@ -1222,8 +1265,24 @@ function GlobeHomeBody() {
         </div>
       ) : null}
       {!mapMediaFocusOpen ? (
+      <>
+        {pulseMainActionEnabled ? (
+          <div
+            className="pointer-events-none fixed inset-x-4 z-[29]"
+            style={{
+              bottom: "calc(var(--rimvio-bottom-nav-offset) + 3.65rem)",
+            }}
+          >
+            <GlobeMarketTradeDock
+              className="pointer-events-auto mx-auto max-w-lg"
+              disabled={marketTradeBusy}
+              onSelectRole={(role) => void onMarketRoleSelected(role)}
+            />
+          </div>
+        ) : null}
       <GlobeCaptureDock
         ref={ingestBarRef}
+        composeHidden={marketConfirmOpen}
         photoFlow={{
           open: confirmOpen,
           preparing: confirmPreparing,
@@ -1295,6 +1354,7 @@ function GlobeHomeBody() {
           onTextCommitted: onMarketTextCommitted,
         }}
       />
+      </>
       ) : null}
       <GlobeMediaPoolSheet
         open={mediaPoolOpen}
@@ -1438,7 +1498,13 @@ function GlobeHomeBody() {
       <GlobeMarketIntentWizardSheet
         draft={marketIntentDraft}
         open={marketConfirmOpen}
-        onOpenChange={setMarketConfirmOpen}
+        startStep={marketWizardStartStep}
+        onOpenChange={(open) => {
+          setMarketConfirmOpen(open);
+          if (!open) {
+            setMarketWizardStartStep(undefined);
+          }
+        }}
         onConfirmed={(eventId) => {
           setMarketFocusEventId(eventId);
           toast.message(copy.globe.marketIntentConfirmCta, { duration: 2800 });

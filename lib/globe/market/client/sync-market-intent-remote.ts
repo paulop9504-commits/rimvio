@@ -1,4 +1,5 @@
 import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
+import type { MarketCompletionTraceDraft } from "@/lib/globe/market/market-handshake-types";
 import { resolveAppOrigin } from "@/lib/auth/redirect-url";
 
 export async function syncMarketIntentRemote(
@@ -116,12 +117,22 @@ export type MarketHandshakeRoomState = {
   viewerRole: "seeking" | "listing" | null;
   chatLocked: boolean;
   canStartChat: boolean;
+  canConfirmComplete: boolean;
+  viewerConfirmed: boolean;
+  otherPartyConfirmed: boolean;
+  awaitingOtherParty: boolean;
+  completed: boolean;
+  trace: MarketCompletionTraceDraft | null;
   product: {
     title: string;
     priceLine: string;
     category: string;
     placeLabel: string;
     photoCount: number;
+    memoryPreview: string | null;
+    experienceTags: string[];
+    matchMemoryPreview: string | null;
+    matchExperienceTags: string[];
   };
 };
 
@@ -141,6 +152,69 @@ export async function fetchMarketHandshakeRoomRemote(
       handshake?: MarketHandshakeRoomState | null;
     };
     return body.handshake ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function confirmMarketHandshakeCompleteRemote(input: {
+  handshakeId: string;
+}): Promise<{
+  completed: boolean;
+  awaitingOtherParty: boolean;
+  trace: MarketCompletionTraceDraft | null;
+}> {
+  const response = await fetch(`${resolveAppOrigin()}/api/globe/market-alignment/complete`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ handshakeId: input.handshakeId }),
+  });
+  const body = (await response.json()) as {
+    completed?: boolean;
+    awaitingOtherParty?: boolean;
+    trace?: MarketCompletionTraceDraft | null;
+    error?: string;
+  };
+  if (!response.ok) {
+    throw new Error(body.error ?? "complete_failed");
+  }
+  return {
+    completed: Boolean(body.completed),
+    awaitingOtherParty: Boolean(body.awaitingOtherParty),
+    trace: body.trace ?? null,
+  };
+}
+
+export type MarketVolumeZoneRollupRemote = {
+  sampleCount: number;
+  bandMinMan: number;
+  bandMaxMan: number;
+  anchorMan: number;
+};
+
+export async function fetchMarketVolumeZoneRollupRemote(input: {
+  productName: string;
+  batteryPercent: number;
+  categoryId: string;
+}): Promise<MarketVolumeZoneRollupRemote | null> {
+  const params = new URLSearchParams({
+    product: input.productName,
+    battery: String(input.batteryPercent),
+    categoryId: input.categoryId,
+  });
+  try {
+    const response = await fetch(
+      `${resolveAppOrigin()}/api/globe/market-intent/volume-zone?${params.toString()}`,
+      { credentials: "include" },
+    );
+    if (!response.ok) {
+      return null;
+    }
+    const body = (await response.json()) as {
+      rollup?: MarketVolumeZoneRollupRemote | null;
+    };
+    return body.rollup ?? null;
   } catch {
     return null;
   }

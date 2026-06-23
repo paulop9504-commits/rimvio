@@ -112,12 +112,45 @@ const GENERAL_MATRIX: CategoryPriorityMatrix = {
   ],
 };
 
+const CONTEXT_MATRIX: CategoryPriorityMatrix = {
+  categoryId: "market.camera",
+  schemaVersion: MARKET_PRIORITY_SCHEMA_VERSION,
+  matchThreshold: 0.72,
+  sellerGuideKo: "가격·작동 상태·맥락 사진을 함께 맞춰 주세요.",
+  seekerGuideKo: "가격·상태·맥락이 맞는 흔적을 찾을게요.",
+  prioritySlots: [
+    { field: "price", weight: 0.4, required: true, kind: "price_man", autoFill: "text" },
+    { field: "working_state", weight: 0.3, required: true, kind: "text", autoFill: "text" },
+    { field: "condition_abc", weight: 0.2, required: true, kind: "grade_abc", autoFill: "text" },
+    { field: "distance", weight: 0.1, required: true, kind: "text", autoFill: "gps" },
+  ],
+};
+
 const MATRIX_BY_CATEGORY: Record<MarketCategoryId, CategoryPriorityMatrix> = {
   "market.phone": PHONE_MATRIX,
   "market.fashion": FASHION_MATRIX,
   "market.bike": BIKE_MATRIX,
   "market.furniture": FURNITURE_MATRIX,
   "market.general": GENERAL_MATRIX,
+  "market.camera": { ...CONTEXT_MATRIX, categoryId: "market.camera" },
+  "market.camping": {
+    ...CONTEXT_MATRIX,
+    categoryId: "market.camping",
+    sellerGuideKo: "가격·사용 횟수·맥락을 함께 맞춰 주세요.",
+    seekerGuideKo: "캠핑 맥락·상태·가격이 맞는 흔적을 찾을게요.",
+  },
+  "market.instrument": {
+    ...CONTEXT_MATRIX,
+    categoryId: "market.instrument",
+    sellerGuideKo: "가격·보관·연주 맥락을 함께 맞춰 주세요.",
+    seekerGuideKo: "연주 맥락·상태·가격이 맞는 흔적을 찾을게요.",
+  },
+  "market.outdoor": {
+    ...CONTEXT_MATRIX,
+    categoryId: "market.outdoor",
+    sellerGuideKo: "가격·안전 상태·산행 맥락을 함께 맞춰 주세요.",
+    seekerGuideKo: "등산 맥락·상태·가격이 맞는 흔적을 찾을게요.",
+  },
 };
 
 export function getCategoryPriorityMatrix(
@@ -192,6 +225,8 @@ export function marketPrioritySlotPlaceholderKo(
       return "예: 2인 소파 · 180cm";
     case "distance":
       return "근처 직거래";
+    case "working_state":
+      return "예: 정상 작동 · 셔터 양호";
     default:
       return "";
   }

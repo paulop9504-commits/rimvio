@@ -10,6 +10,10 @@ export type MarketCategoryId =
   | "market.bike"
   | "market.furniture"
   | "market.fashion"
+  | "market.camera"
+  | "market.camping"
+  | "market.instrument"
+  | "market.outdoor"
   | "market.general";
 
 /** Normalized condition — Rimvio SSOT for v0 alignment (no user DSL). */

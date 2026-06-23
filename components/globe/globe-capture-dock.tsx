@@ -34,6 +34,8 @@ export type GlobeCaptureDockProps = {
   placeVerifyEventId: string | null;
   onPlaceVerifyDismiss: () => void;
   onPlaceVerifyConfirmed: () => void;
+  /** Hide composer while a full-screen bottom sheet owns the flow (e.g. market wizard). */
+  composeHidden?: boolean;
   ingest: GlobeContextIngestBarProps;
 };
 
@@ -46,6 +48,7 @@ export const GlobeCaptureDock = forwardRef<GlobeContextIngestBarHandle, GlobeCap
       placeVerifyEventId,
       onPlaceVerifyDismiss,
       onPlaceVerifyConfirmed,
+      composeHidden = false,
       ingest,
     },
     ref,
@@ -101,7 +104,7 @@ export const GlobeCaptureDock = forwardRef<GlobeContextIngestBarHandle, GlobeCap
           />
         ) : null}
 
-        {!photoActive ? (
+        {!photoActive && !composeHidden ? (
           <GlobeContextIngestBar
             ref={ref}
             {...ingest}
