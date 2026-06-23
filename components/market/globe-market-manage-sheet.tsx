@@ -10,6 +10,8 @@ import { copy } from "@/lib/copy/human-ko";
 import { RIMVIO_TYPE, rimvioGhostCtaClass } from "@/lib/design/rimvio-ontology";
 import { marketCategoryLabelKo } from "@/lib/globe/market/market-category-registry";
 import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
+import { isMarketIntentPublishedExternal } from "@/lib/globe/market/market-intent-detail";
+import { publishMarketIntentExternal } from "@/lib/globe/market/publish-market-intent-external";
 import { cn } from "@/lib/utils";
 
 export type GlobeMarketManageSheetProps = {
@@ -36,19 +38,23 @@ function MarketManageRow({
   record,
   onFlyTo,
   onEnd,
+  onPublish,
 }: {
   record: MarketIntentRecord;
   onFlyTo: () => void;
   onEnd: () => void;
+  onPublish: () => void;
 }) {
   const title =
     record.detail.productName.trim() || record.title.trim() || copy.globe.marketTradePlaceProductFallback;
+  const published = isMarketIntentPublishedExternal(record.detail);
 
   return (
     <div
       className="rounded-2xl bg-muted/35 px-3 py-3 ring-1 ring-black/[0.04]"
       data-market-manage-row={record.eventId}
       data-market-manage-role={record.role}
+      data-market-manage-published={published ? "true" : "false"}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -61,16 +67,23 @@ function MarketManageRow({
             <span className="truncate">{record.placeLabel || copy.globe.marketIntentPrefillHint}</span>
           </p>
         </div>
-        <span
-          className={cn(
-            "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold text-white",
-            record.role === "listing" ? "bg-[#2b7fff]" : "bg-[#ef2b2b]",
-          )}
-        >
-          {record.role === "listing"
-            ? copy.globe.marketPinRoleListing
-            : copy.globe.marketPinRoleSeeking}
-        </span>
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <span
+            className={cn(
+              "rounded-full px-2 py-0.5 text-[10px] font-bold text-white",
+              record.role === "listing" ? "bg-[#2b7fff]" : "bg-[#ef2b2b]",
+            )}
+          >
+            {record.role === "listing"
+              ? copy.globe.marketPinRoleListing
+              : copy.globe.marketPinRoleSeeking}
+          </span>
+          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+            {published
+              ? copy.globe.marketManagePublishedBadge
+              : copy.globe.marketManageInternalBadge}
+          </span>
+        </div>
       </div>
       <div className="mt-2.5 flex gap-2">
         <button
@@ -80,6 +93,15 @@ function MarketManageRow({
         >
           {copy.globe.marketManageFlyTo}
         </button>
+        {!published ? (
+          <button
+            type="button"
+            className={cn(rimvioGhostCtaClass(), "flex-1 text-[12px] font-semibold text-primary")}
+            onClick={onPublish}
+          >
+            {copy.globe.marketManagePublishCta}
+          </button>
+        ) : null}
         <button
           type="button"
           className={cn(rimvioGhostCtaClass(), "flex-1 text-[12px] text-muted-foreground")}
@@ -99,6 +121,7 @@ function MarketManageSection({
   rows,
   onFlyTo,
   onEnd,
+  onPublish,
 }: {
   title: string;
   pillClass: string;
@@ -106,6 +129,7 @@ function MarketManageSection({
   rows: MarketIntentRecord[];
   onFlyTo: (record: MarketIntentRecord) => void;
   onEnd: (record: MarketIntentRecord) => void;
+  onPublish: (record: MarketIntentRecord) => void;
 }) {
   return (
     <section className="space-y-2" data-market-manage-section={title}>
@@ -127,6 +151,7 @@ function MarketManageSection({
               record={record}
               onFlyTo={() => onFlyTo(record)}
               onEnd={() => onEnd(record)}
+              onPublish={() => onPublish(record)}
             />
           ))}
         </div>
@@ -161,6 +186,14 @@ export function GlobeMarketManageSheet({
   const handleEnd = (record: MarketIntentRecord) => {
     void endIntent(record.eventId).then(() => {
       toast.message(copy.globe.marketManageEndedToast);
+    });
+  };
+
+  const handlePublish = (record: MarketIntentRecord) => {
+    void publishMarketIntentExternal(record.eventId).then((saved) => {
+      if (saved) {
+        toast.success(copy.globe.marketManagePublishedToast);
+      }
     });
   };
 
@@ -224,6 +257,7 @@ export function GlobeMarketManageSheet({
                       onOpenChange(false);
                     }}
                     onEnd={handleEnd}
+                    onPublish={handlePublish}
                   />
                   <MarketManageSection
                     title={copy.globe.marketManageSeekingSection}
@@ -235,6 +269,7 @@ export function GlobeMarketManageSheet({
                       onOpenChange(false);
                     }}
                     onEnd={handleEnd}
+                    onPublish={handlePublish}
                   />
                 </>
               )}

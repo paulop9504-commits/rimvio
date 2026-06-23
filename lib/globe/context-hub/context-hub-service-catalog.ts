@@ -16,6 +16,7 @@ import {
 import { isLodgingHubEnabled } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import { isBridgeSharedEvent } from "@/lib/globe/is-bridge-shared-event";
 import { findPersonalGlobePinByEventId } from "@/lib/globe/personal-globe-pin-store";
+import { findMarketIntentByEventId } from "@/lib/globe/market/market-alignment-store";
 import { ticketPrimaryLabel, detectTicketBrand } from "@/lib/resolvers/ticket-deep-links";
 
 /** Plug-in resource service — not a globe context. */
@@ -24,6 +25,7 @@ export type ContextHubServiceId =
   | "flight"
   | "lodging"
   | "rental_car"
+  | "market"
   | "ai_search";
 
 export type ContextHubServiceDef = {
@@ -63,6 +65,13 @@ export const CONTEXT_HUB_SERVICE_CATALOG: readonly ContextHubServiceDef[] = [
     labelKo: "렌트카",
     shortLabelKo: "렌트카",
     implemented: false,
+  },
+  {
+    id: "market",
+    kind: null,
+    labelKo: "맞춤",
+    shortLabelKo: "맞춤",
+    implemented: true,
   },
   {
     id: "ai_search",
@@ -125,6 +134,8 @@ function isServiceOffered(serviceId: ContextHubServiceId, event: EventCandidate)
       return isTravelContext(event);
     case "rental_car":
       return isTravelContext(event);
+    case "market":
+      return true;
     case "ai_search":
       return true;
     default:
@@ -156,6 +167,9 @@ export function listContextHubServicesForEvent(
   const services: ContextHubServiceRow[] = CONTEXT_HUB_SERVICE_CATALOG.map((def) => {
     const offered = isServiceOffered(def.id, event);
     const ticketArtifact = def.id === "ticket" ? readContextTicketArtifact(event) : null;
+    const marketIntent = def.id === "market" ? findMarketIntentByEventId(event.id) : null;
+    const marketProduct =
+      marketIntent?.detail.productName?.trim() || marketIntent?.title?.trim() || "";
     const link =
       def.kind === "departure_airport"
         ? (listContextHubLinks(event).find((row) => row.kind === def.kind) ?? null)
@@ -179,6 +193,8 @@ export function listContextHubServicesForEvent(
           ? Boolean(ticketArtifact?.actionUrl || ticketArtifact?.qrPreviewUrl)
           : def.id === "lodging"
             ? isLodgingHubEnabled(event)
+            : def.id === "market"
+              ? Boolean(marketIntent?.active)
             : def.id === "ai_search"
               ? Boolean(aiHandoff)
               : Boolean(link),
@@ -206,6 +222,8 @@ export function listContextHubServicesForEvent(
       handoffLabelKo:
         def.id === "ticket" && ticketArtifact?.qrPreviewUrl
           ? "QR 보기"
+          : def.id === "market" && marketIntent?.active
+            ? marketProduct || (marketIntent.role === "seeking" ? "구하는 중" : "내놓는 중")
           : aiHandoff?.actionLabelKo ?? null,
     };
   }).filter((row) => row.offered);

@@ -73,6 +73,10 @@ function scoreResourceJit(input: {
     score += 15;
   }
 
+  if (input.resource.kind === "market_match" && input.hubRow.connected) {
+    score += 85;
+  }
+
   if (!input.resource.action) {
     score -= 80;
   }

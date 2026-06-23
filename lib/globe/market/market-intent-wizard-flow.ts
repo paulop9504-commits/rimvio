@@ -28,15 +28,23 @@ const LISTING_STEPS: readonly MarketWizardStepId[] = [
   "review",
 ];
 
-export function marketWizardSteps(role: MarketIntentRole): readonly MarketWizardStepId[] {
-  return role === "seeking" ? SEEKING_STEPS : LISTING_STEPS;
+export function marketWizardSteps(
+  role: MarketIntentRole,
+  options?: { skipRole?: boolean },
+): readonly MarketWizardStepId[] {
+  const base = role === "seeking" ? SEEKING_STEPS : LISTING_STEPS;
+  if (options?.skipRole) {
+    return base.filter((step) => step !== "role");
+  }
+  return base;
 }
 
 export function marketWizardProgress(
   role: MarketIntentRole,
   step: MarketWizardStepId,
+  options?: { skipRole?: boolean },
 ): { current: number; total: number } {
-  const steps = marketWizardSteps(role);
+  const steps = marketWizardSteps(role, options);
   const index = steps.indexOf(step);
   return {
     current: index < 0 ? 1 : index + 1,

@@ -5,6 +5,7 @@ import {
   type MarketMemoryRecord,
   DEFAULT_MARKET_MEMORY_RECORD,
   readMarketMemoryRecord,
+  isMarketIntentPublishedExternal,
 } from "@/lib/globe/market/market-intent-detail";
 
 export type MarketIntentDbRow = {
@@ -90,6 +91,7 @@ function readDetailJson(raw: Record<string, unknown> | null | undefined): Market
     photoUrls: Array.isArray(raw.photoUrls)
       ? raw.photoUrls.filter((url): url is string => typeof url === "string" && url.trim().length > 0)
       : [],
+    publishedExternal: raw.publishedExternal === true,
   };
 }
 
@@ -111,6 +113,7 @@ export function marketIntentDetailToJson(detail: MarketIntentDetail): Record<str
     memoryPlaceLat: detail.memoryPlaceLat,
     memoryPlaceLng: detail.memoryPlaceLng,
     photoUrls: detail.photoUrls ?? [],
+    publishedExternal: isMarketIntentPublishedExternal(detail),
   };
 }
 

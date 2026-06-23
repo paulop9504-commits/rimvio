@@ -17,6 +17,7 @@ import { useExperienceGraph } from "@/hooks/use-experience-graph";
 import { useGpsTrackingEnabled } from "@/hooks/use-gps-tracking-enabled";
 import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
 import { useGlobePinsPlatformExternal } from "@/hooks/use-globe-pins-platform-external";
+import { useMarketDiscoveryPins } from "@/hooks/use-market-discovery-pins";
 import { useRelationshipFeedSlots } from "@/hooks/use-relationship-feed-slots";
 import type { ClassifiedGlobePin } from "@/lib/feed/experience-globe-ping-types";
 import { readPeerContacts } from "@/lib/context/peer-contact-store";
@@ -635,6 +636,11 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
     lat: liveLocation?.lat ?? null,
     lng: liveLocation?.lng ?? null,
   });
+  const { intents: marketDiscoveryIntents } = useMarketDiscoveryPins({
+    enabled: layerMode === "discovery",
+    lat: liveLocation?.lat ?? null,
+    lng: liveLocation?.lng ?? null,
+  });
   const { graph } = useExperienceGraph(ready ? eventsById : undefined);
   const recallOpenedRef = useRef(false);
   const onClustersSnapshotRef = useRef(onClustersSnapshot);
@@ -665,6 +671,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
       personalClusters: filtered,
       bridgeGhostClusters: bridgeGhostClusters,
       externalTraces,
+      marketDiscoveryIntents,
     });
   }, [
     ready,
@@ -676,6 +683,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
     layerMode,
     bridgeGhostClusters,
     externalTraces,
+    marketDiscoveryIntents,
   ]);
 
   const displayClusters = clusters;

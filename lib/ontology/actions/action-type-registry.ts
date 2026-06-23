@@ -36,6 +36,15 @@ const HUB_ACTION_TYPES: readonly RimvioActionType[] = [
     rankWeight: 105,
   },
   {
+    actionTypeId: "hub.connect_market",
+    family: "hub",
+    labelKo: "맞춤",
+    actionCategory: "transaction",
+    hubServiceId: "market",
+    requiredSlots: [ACTION_CONTRACT_SLOTS.entity],
+    rankWeight: 110,
+  },
+  {
     actionTypeId: "hub.ai_search",
     family: "hub",
     labelKo: "AI 검색",

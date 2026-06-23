@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type RefObject } from "react";
-import { ChevronDown, Plane, Ticket } from "lucide-react";
+import { ChevronDown, Plane, ShoppingBag, Ticket } from "lucide-react";
 import { toast } from "sonner";
 import { GlobeContextGardenSummary } from "@/components/globe/globe-context-garden-summary";
 import { GlobePlacePrefillCard } from "@/components/globe/globe-place-prefill-card";
@@ -58,6 +58,8 @@ import { useExecutionProfileStamp } from "@/hooks/use-execution-profile-stamp";
 import { useHubResourceSyncWorker } from "@/hooks/use-hub-resource-sync-worker";
 import { useMainNativeSurfaceSync } from "@/hooks/use-main-native-surface-sync";
 import { isTicketQrViewerHref } from "@/lib/globe/ticket-scan-surface";
+import { dispatchGlobeMarketHubConnect } from "@/lib/globe/context-hub/globe-market-hub-bridge";
+import { MARKET_INTENTS_UPDATED } from "@/lib/globe/market/market-alignment-store";
 
 export type GlobeContextHubRailProps = {
   /** Active context — hub inventory for this event only. */
@@ -136,9 +138,11 @@ export function GlobeContextHubRail({
     const bump = () => setRevision((value) => value + 1);
     window.addEventListener(EVENT_CANDIDATES_UPDATED, bump);
     window.addEventListener(PERSONAL_GLOBE_PINS_UPDATED, bump);
+    window.addEventListener(MARKET_INTENTS_UPDATED, bump);
     return () => {
       window.removeEventListener(EVENT_CANDIDATES_UPDATED, bump);
       window.removeEventListener(PERSONAL_GLOBE_PINS_UPDATED, bump);
+      window.removeEventListener(MARKET_INTENTS_UPDATED, bump);
     };
   }, []);
 
@@ -291,6 +295,13 @@ export function GlobeContextHubRail({
         foldContextHubLearning(event);
       }
       if (internalRoute) {
+        if (href.startsWith("rimvio://market-hub")) {
+          const eventId = activeEventId?.trim();
+          if (eventId) {
+            dispatchGlobeMarketHubConnect({ eventId });
+          }
+          return;
+        }
         router.push(href);
         return;
       }
@@ -318,10 +329,17 @@ export function GlobeContextHubRail({
         setTicketConnectOpen(true);
         return;
       }
+      if (entry.hubRow.serviceId === "market") {
+        const eventId = activeEventId?.trim();
+        if (eventId) {
+          dispatchGlobeMarketHubConnect({ eventId });
+        }
+        return;
+      }
       setExpanded(true);
       setConnectServiceId(entry.hubRow.serviceId);
     },
-    [handleOpenHandoff, openTicketQrViewer],
+    [activeEventId, handleOpenHandoff, openTicketQrViewer],
   );
 
   useEffect(() => {
@@ -504,6 +522,19 @@ export function GlobeContextHubRail({
     }
   }, [activeEventId, authUserId, busy, lat, lng]);
 
+  const handleConnectMarket = useCallback(() => {
+    const eventId = activeEventId?.trim();
+    if (!eventId) {
+      return;
+    }
+    const event = findLifeEventCandidate(eventId);
+    if (event) {
+      recordContextHubTelemetry({ event, kind: "clicked", label: "market" });
+      foldContextHubLearning(event);
+    }
+    dispatchGlobeMarketHubConnect({ eventId });
+  }, [activeEventId]);
+
   if (!visible || !panel) {
     return null;
   }
@@ -602,7 +633,12 @@ export function GlobeContextHubRail({
   }
 
   if (!expanded && presentation === "dock" && emptyDockOffer) {
-    const EmptyIcon = emptyDockOffer.serviceId === "ticket" ? Ticket : Plane;
+    const EmptyIcon =
+      emptyDockOffer.serviceId === "ticket"
+        ? Ticket
+        : emptyDockOffer.serviceId === "market"
+          ? ShoppingBag
+          : Plane;
     return (
       <>
         {ticketSheets}
@@ -612,6 +648,10 @@ export function GlobeContextHubRail({
           onClick={() => {
             if (emptyDockOffer.serviceId === "ticket") {
               setTicketConnectOpen(true);
+              return;
+            }
+            if (emptyDockOffer.serviceId === "market") {
+              handleConnectMarket();
               return;
             }
             setExpanded(true);
@@ -735,12 +775,17 @@ export function GlobeContextHubRail({
                 void handleConnectLodging();
                 return;
               }
+              if (row.serviceId === "market") {
+                handleConnectMarket();
+                return;
+              }
               setConnectServiceId((current) =>
                 current === row.serviceId ? null : row.serviceId,
               );
             }}
             onConnectFlight={(airportId) => void handleConnectFlight(airportId)}
             onConnectLodging={() => void handleConnectLodging()}
+            onConnectMarket={handleConnectMarket}
             onOpenAction={(url, label) => handleOpenAction(url, label)}
             onOpenHandoff={(href, label, internalRoute) =>
               handleOpenHandoff(href, label, internalRoute)

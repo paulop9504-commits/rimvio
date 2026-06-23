@@ -12,11 +12,13 @@ import { createClient } from "@/lib/supabase/client";
 
 export async function commitMarketIntentFromDraft(
   draft: MarketIntentDraft,
-  options?: { photoFiles?: File[] },
+  options?: { photoFiles?: File[]; publishExternal?: boolean },
 ): Promise<MarketIntentRecord> {
+  const publishExternal = options?.publishExternal === true;
   let detail = {
     ...(draft.detail ?? DEFAULT_MARKET_INTENT_DETAIL),
     photoCount: options?.photoFiles?.length ?? draft.detail?.photoCount ?? 0,
+    publishedExternal: publishExternal,
   };
   const record: MarketIntentRecord = {
     id: `mi-${Date.now().toString(36)}`,
@@ -79,6 +81,10 @@ export async function commitMarketIntentFromDraft(
 
   saveMarketIntent(anchoredRecord);
   stampMarketIntentOnEvent(anchoredRecord);
+
+  if (!publishExternal) {
+    return anchoredRecord;
+  }
 
   const remote = await syncMarketIntentRemote(anchoredRecord);
   if (remote) {

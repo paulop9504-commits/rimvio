@@ -2,6 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolveMarketAlignment } from "@/lib/globe/market/resolve-market-alignment";
 import { scoreWeightedMarketAlignment } from "@/lib/globe/market/score-weighted-market-alignment";
 import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
+import { filterPublishedMarketIntents } from "@/lib/globe/market/filter-published-market-intents";
+import { isMarketIntentPublishedExternal } from "@/lib/globe/market/market-intent-detail";
 import {
   listActiveMarketIntentsForMatching,
   listOwnMarketIntents,
@@ -24,11 +26,15 @@ export async function scanMarketHandshakesForIntent(
   if (!userId) {
     return;
   }
+  if (!isMarketIntentPublishedExternal(saved.detail)) {
+    return;
+  }
 
-  const own = await listOwnMarketIntents(supabase, userId);
+  const own = filterPublishedMarketIntents(await listOwnMarketIntents(supabase, userId));
   const others = await listActiveMarketIntentsForMatching(supabase, {
     excludeUserId: userId,
     limit: 150,
+    publishedOnly: true,
   });
   if (others.length === 0) {
     return;

@@ -62,6 +62,8 @@ export type GlobeMarketIntentWizardSheetProps = {
   }) => void;
   /** Skip role step when opened from globe trade dock. */
   startStep?: MarketWizardStepId;
+  /** Portal launch — intent already chosen; never show role step. */
+  portalLaunch?: boolean;
 };
 
 const MEET_OPTIONS: readonly MarketMeetPreferenceId[] = ["nearby", "flexible", "pickup_only"];
@@ -136,6 +138,7 @@ export function GlobeMarketIntentWizardSheet({
   onOpenChange,
   onConfirmed,
   startStep,
+  portalLaunch = false,
 }: GlobeMarketIntentWizardSheetProps) {
   const [mounted, setMounted] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -146,10 +149,15 @@ export function GlobeMarketIntentWizardSheet({
   const photoRef = useRef<HTMLInputElement>(null);
 
   const steps = useMemo(
-    () => (working ? marketWizardSteps(working.role) : []),
-    [working],
+    () =>
+      working
+        ? marketWizardSteps(working.role, { skipRole: portalLaunch })
+        : [],
+    [portalLaunch, working],
   );
-  const progress = working ? marketWizardProgress(working.role, step) : { current: 1, total: 1 };
+  const progress = working
+    ? marketWizardProgress(working.role, step, { skipRole: portalLaunch })
+    : { current: 1, total: 1 };
 
   useEffect(() => {
     setMounted(true);
@@ -161,13 +169,14 @@ export function GlobeMarketIntentWizardSheet({
     }
     setWorking({ ...draft, detail: { ...draft.detail, prioritySlots: { ...draft.detail.prioritySlots } } });
     const skipRole =
-      startStep &&
-      startStep !== "role" &&
-      draft.prefillSources.includes("trade_dock");
-    setStep(skipRole ? startStep : "role");
+      portalLaunch ||
+      (startStep &&
+        startStep !== "role" &&
+        draft.prefillSources.includes("trade_dock"));
+    setStep(skipRole ? startStep ?? "recognize" : "role");
     setPhotoFiles([]);
     setPhotoPreviews([]);
-  }, [draft, open, startStep]);
+  }, [draft, open, portalLaunch, startStep]);
 
   useEffect(() => {
     if (!open) {
@@ -267,7 +276,8 @@ export function GlobeMarketIntentWizardSheet({
     }
   }, [photoFiles]);
 
-  const handleConfirm = useCallback(async () => {
+  const handleConfirm = useCallback(
+    async (publishExternal: boolean) => {
     if (!working || busy) {
       return;
     }
@@ -295,7 +305,13 @@ export function GlobeMarketIntentWizardSheet({
       }
       const saved = await commitMarketIntentFromDraft(finalDraft, {
         photoFiles: photoFiles.length > 0 ? photoFiles : undefined,
+        publishExternal,
       });
+      if (publishExternal) {
+        toast.success(copy.globe.marketWizardPublishedToast);
+      } else {
+        toast.success(copy.globe.marketWizardSavedInternalToast);
+      }
       onConfirmed?.({
         eventId: saved.eventId,
         role: saved.role,
@@ -307,7 +323,9 @@ export function GlobeMarketIntentWizardSheet({
     } finally {
       setBusy(false);
     }
-  }, [busy, onConfirmed, onOpenChange, photoFiles, working]);
+  },
+    [busy, onConfirmed, onOpenChange, photoFiles, working],
+  );
 
   if (!mounted) {
     return null;
@@ -364,7 +382,7 @@ export function GlobeMarketIntentWizardSheet({
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-              {step === "role" ? (
+              {step === "role" && !portalLaunch ? (
                 <div className="space-y-4">
                   <p className={cn(RIMVIO_TYPE.headline, "text-lg")}>
                     {copy.globe.marketWizardRoleTitle}
@@ -537,6 +555,9 @@ export function GlobeMarketIntentWizardSheet({
                   <p className={cn(RIMVIO_TYPE.headline, "text-lg")}>
                     {copy.globe.marketWizardReviewTitle}
                   </p>
+                  <p className={cn("mt-1", RIMVIO_TYPE.caption)}>
+                    {copy.globe.marketWizardReviewPublishHint}
+                  </p>
                   <dl className="mt-4 space-y-2 rounded-2xl bg-muted/40 p-3 text-[13px]">
                     <div className="flex justify-between gap-3">
                       <dt className="text-muted-foreground">{copy.globe.marketWizardProductNameLabel}</dt>
@@ -597,17 +618,27 @@ export function GlobeMarketIntentWizardSheet({
                   {copy.globe.marketWizardNext}
                   <ChevronRight className="size-4" aria-hidden />
                 </button>
-              ) : (
+              ) : step === "review" ? (
+                <>
                 <button
                   type="button"
                   className={cn(rimvioCompactPrimaryCtaClass(), "w-full gap-2")}
                   disabled={busy}
-                  onClick={() => void handleConfirm()}
+                  onClick={() => void handleConfirm(true)}
                 >
                   <Check className="size-4" aria-hidden />
-                  {copy.globe.marketWizardConfirm}
+                  {copy.globe.marketWizardPublishExternal}
                 </button>
-              )}
+                <button
+                  type="button"
+                  className={cn(rimvioGhostCtaClass(), "mt-2 w-full gap-2")}
+                  disabled={busy}
+                  onClick={() => void handleConfirm(false)}
+                >
+                  {copy.globe.marketWizardSaveInternal}
+                </button>
+                </>
+              ) : null}
               {steps.indexOf(step) > 0 ? (
                 <button
                   type="button"

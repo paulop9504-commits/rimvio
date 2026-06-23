@@ -13,7 +13,7 @@ import { GlobeUtilityMenu } from "@/components/globe/globe-utility-menu";
 import { GlobeContextMapVideoStage } from "@/components/globe/globe-context-map-video-stage";
 import { GlobeLodgingFocusStage } from "@/components/globe/globe-lodging-focus-stage";
 import { GlobeCaptureDock } from "@/components/globe/globe-capture-dock";
-import { GlobeTrendBridgeHud } from "@/components/globe/globe-trend-bridge-hud";
+import { GlobeTrendBridgePulseChip } from "@/components/globe/globe-trend-bridge-pulse-chip";
 import { GlobeTrendBridgeLayer } from "@/components/globe/globe-trend-bridge-layer";
 import type { GlobeContextIngestBarHandle } from "@/components/globe/globe-context-ingest-bar";
 import { GlobeFirstVisitCoach } from "@/components/globe/globe-first-visit-coach";
@@ -109,15 +109,15 @@ import {
   listActiveMarketIntents,
   subscribeMarketIntents,
 } from "@/lib/globe/market/market-alignment-store";
-import { createMarketIntentDraftFromRole } from "@/lib/globe/market/create-market-intent-draft-from-role";
 import { ingestGlobeContextFromText } from "@/lib/feed/ingest-globe-context-capture";
-import { normalizeMarketIntentFromText } from "@/lib/globe/market/normalize-market-intent-from-text";
-import { prefillMarketIntentDraft } from "@/lib/globe/market/prefill-market-intent-draft";
-import { prefillMarketPrioritySlots } from "@/lib/globe/market/prefill-market-priority-slots";
-import type { MarketIntentDraft, MarketIntentRole } from "@/lib/globe/market/market-intent-types";
+import type { MarketIntentDraft } from "@/lib/globe/market/market-intent-types";
 import type { MarketWizardStepId } from "@/lib/globe/market/market-intent-wizard-flow";
 import { submitTrendBridgeContributionFromEvent } from "@/lib/globe/trend-bridge/client/submit-trend-bridge-contribution";
 import { subscribeGlobeContextHubOpen } from "@/lib/globe/context-hub/globe-context-hub-open-bridge";
+import { RimvioPortalSheet } from "@/components/portal/rimvio-portal-sheet";
+import type { EventCandidate } from "@/lib/events/event-candidate";
+import type { PortalOpenSource } from "@/lib/portal/portal-types";
+import { subscribeGlobePortalOpen } from "@/lib/portal/globe-portal-open-bridge";
 import { isExternalPinCluster } from "@/lib/globe/merge-globe-pin-clusters";
 import type { GlobeLayerMode } from "@/lib/globe/globe-layer-mode";
 import { projectBridgeGhostClusters } from "@/lib/experience-bridge/project-bridge-ghost-clusters";
@@ -141,6 +141,11 @@ function GlobeHomeBody() {
   const [marketConfirmOpen, setMarketConfirmOpen] = useState(false);
   const [marketWizardStartStep, setMarketWizardStartStep] =
     useState<MarketWizardStepId | undefined>(undefined);
+  const [marketPortalLaunch, setMarketPortalLaunch] = useState(false);
+  const [portalOpen, setPortalOpen] = useState(false);
+  const [portalEvent, setPortalEvent] = useState<EventCandidate | null>(null);
+  const [portalComposeText, setPortalComposeText] = useState<string | undefined>();
+  const [portalSource, setPortalSource] = useState<PortalOpenSource>("composer");
   const [marketTradeBusy, setMarketTradeBusy] = useState(false);
   const [marketFocusEventId, setMarketFocusEventId] = useState<string | null>(null);
   const [marketManageOpen, setMarketManageOpen] = useState(false);
@@ -928,7 +933,25 @@ function GlobeHomeBody() {
     [openContextByEventId],
   );
 
+  const onDiscoveryMarketBrowse = useCallback(() => {
+    const marketPin = clustersRef.current.find(
+      (cluster) => cluster.marketRole && cluster.origin === "external",
+    );
+    if (!marketPin) {
+      toast.message(copy.globe.discoveryMarketBrowseEmpty);
+      return;
+    }
+    globeRef.current?.flyToPin(marketPin.lat, marketPin.lng, "street", {
+      pinViewportY: 0.58,
+    });
+    setActiveCluster(marketPin);
+  }, []);
+
   const beginPhotoIngestFlow = useCallback(async (files: File[]) => {
+    if (layerMode === "discovery") {
+      toast.message(copy.globe.ingestDiscoveryNoTrace);
+      return;
+    }
     if (files.length === 0) {
       return;
     }
@@ -979,7 +1002,7 @@ function GlobeHomeBody() {
     } finally {
       setConfirmPreparing(false);
     }
-  }, []);
+  }, [layerMode]);
 
   const resetPhotoIngestFlow = useCallback(() => {
     revokePhotoIngestPreviewUrls(photoFileProgressRef.current);
@@ -1030,60 +1053,46 @@ function GlobeHomeBody() {
     [setTrendBridgePulseIntent],
   );
 
-  const onMarketTextCommitted = useCallback(
-    (input: { eventId: string; text: string }) => {
-      const base = normalizeMarketIntentFromText({
-        text: input.text,
-        eventId: input.eventId,
-      });
-      if (!base) {
-        return;
-      }
-      const draft = prefillMarketPrioritySlots(
-        prefillMarketIntentDraft({
-          draft: base,
-          liveLat: liveLocation?.lat ?? null,
-          liveLng: liveLocation?.lng ?? null,
-        }),
-      );
-      setMarketWizardStartStep(undefined);
-      setMarketIntentDraft(draft);
-      setMarketConfirmOpen(true);
-    },
-    [liveLocation?.lat, liveLocation?.lng],
-  );
-
-  const onMarketRoleSelected = useCallback(
-    async (role: MarketIntentRole, composeText?: string) => {
+  const openPortal = useCallback(
+    async (input: {
+      eventId?: string | null;
+      composeText?: string;
+      source?: PortalOpenSource;
+    }) => {
       if (marketTradeBusy) {
         return;
       }
       setMarketTradeBusy(true);
       try {
-        const raw =
-          composeText?.trim() ||
-          (role === "listing" ? "@중고 내놓기" : "@중고 구하기");
-        const outcome = await ingestGlobeContextFromText(raw);
-        const normalized = normalizeMarketIntentFromText({
-          text: raw,
-          eventId: outcome.result.event.id,
-        });
-        const baseDraft = normalized
-          ? { ...normalized, role }
-          : createMarketIntentDraftFromRole({
-              role,
-              eventId: outcome.result.event.id,
-            });
-        const draft = prefillMarketPrioritySlots(
-          prefillMarketIntentDraft({
-            draft: baseDraft,
-            liveLat: liveLocation?.lat ?? null,
-            liveLng: liveLocation?.lng ?? null,
-          }),
-        );
-        setMarketWizardStartStep("recognize");
-        setMarketIntentDraft(draft);
-        setMarketConfirmOpen(true);
+        let event: EventCandidate | null = null;
+        const key = input.eventId?.trim();
+        if (key) {
+          event =
+            findLifeEventCandidate(key) ?? recoverGlobeContextEventFromPin(key);
+        }
+        if (!event && input.composeText?.trim()) {
+          const outcome = await ingestGlobeContextFromText(input.composeText.trim());
+          event = outcome.result.event;
+        }
+        if (!event) {
+          const attachId = activeCluster?.eventId?.trim();
+          if (attachId) {
+            event =
+              findLifeEventCandidate(attachId) ??
+              recoverGlobeContextEventFromPin(attachId);
+          }
+        }
+        if (!event) {
+          const outcome = await ingestGlobeContextFromText(
+            input.composeText?.trim() || copy.portal.homeTitle,
+          );
+          event = outcome.result.event;
+        }
+        setPortalEvent(event);
+        setPortalComposeText(input.composeText);
+        setPortalSource(input.source ?? "composer");
+        setPortalOpen(true);
+        setHubDetailOpen(false);
       } catch (caught) {
         const message =
           caught instanceof Error ? caught.message : copy.globe.ingestAttachFail;
@@ -1092,8 +1101,29 @@ function GlobeHomeBody() {
         setMarketTradeBusy(false);
       }
     },
-    [liveLocation?.lat, liveLocation?.lng, marketTradeBusy],
+    [activeCluster?.eventId, marketTradeBusy],
   );
+
+  const launchMarketProjection = useCallback(
+    (input: { draft: MarketIntentDraft; eventId: string }) => {
+      setMarketPortalLaunch(true);
+      setMarketWizardStartStep("recognize");
+      setMarketIntentDraft(input.draft);
+      setMarketConfirmOpen(true);
+      setMarketFocusEventId(input.eventId);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    return subscribeGlobePortalOpen((request) => {
+      void openPortal({
+        eventId: request.eventId,
+        composeText: request.composeText,
+        source: request.source ?? "hub",
+      });
+    });
+  }, [openPortal]);
 
   const trendBridgeAnchorLat =
     activeCluster?.lat ?? liveLocation?.lat ?? null;
@@ -1103,6 +1133,8 @@ function GlobeHomeBody() {
   const globeRenderSuspended =
     sheetOpen ||
     hubDetailOpen ||
+    portalOpen ||
+    marketConfirmOpen ||
     createOpen ||
     listOpen ||
     manageOpen ||
@@ -1125,6 +1157,7 @@ function GlobeHomeBody() {
     !mapMediaFocusOpen &&
     !sheetOpen &&
     !confirmOpen &&
+    !portalOpen &&
     !marketConfirmOpen &&
     !hubEventId;
 
@@ -1265,13 +1298,12 @@ function GlobeHomeBody() {
             </div>
             ) : null}
             {layerMode === "personal" && !hubEventId ? (
-              <GlobeTrendBridgeHud
+              <GlobeTrendBridgePulseChip
                 className="pointer-events-auto"
                 enabled={trendBridgeSettings.enabled}
                 activeBridgeId={trendBridgeSettings.activeBridgeId}
                 pulseIntent={trendBridgeSettings.pulseIntent}
-                honorific={rimvioHonorific}
-                onModeChange={onTrendBridgeModeChange}
+                onToggle={onTrendBridgeModeChange}
                 onBridgeSelect={onTrendBridgeSelect}
                 onPulseIntentChange={onTrendBridgePulseIntentChange}
               />
@@ -1321,7 +1353,7 @@ function GlobeHomeBody() {
       {!mapMediaFocusOpen ? (
       <GlobeCaptureDock
         ref={ingestBarRef}
-        composeHidden={marketConfirmOpen}
+        composeHidden={portalOpen || marketConfirmOpen}
         stackAboveCompose={
           pulseMainActionEnabled ? (
             <>
@@ -1422,11 +1454,24 @@ function GlobeHomeBody() {
             }
             void focusContextOnMap(eventId, options);
           },
-          onTextCommitted: onMarketTextCommitted,
-          onMarketRoleSelect: (role, composeText) =>
-            void onMarketRoleSelected(role, composeText),
+          onTextCommitted: (input) => {
+            void openPortal({
+              eventId: input.eventId,
+              composeText: input.text,
+              source: "composer",
+            });
+          },
+          onOpenPortal: (input) => {
+            void openPortal({
+              eventId: input.eventId,
+              composeText: input.composeText,
+              source: "composer",
+            });
+          },
           onOpenMarketManage: () => setMarketManageOpen(true),
           marketRoleBusy: marketTradeBusy,
+          layerMode,
+          onDiscoveryMarketBrowse,
         }}
       />
       ) : null}
@@ -1569,14 +1614,26 @@ function GlobeHomeBody() {
         }}
         onDismissed={dismissInvite}
       />
+      <RimvioPortalSheet
+        open={portalOpen}
+        onOpenChange={setPortalOpen}
+        event={portalEvent}
+        composeText={portalComposeText}
+        source={portalSource}
+        liveLat={liveLocation?.lat ?? null}
+        liveLng={liveLocation?.lng ?? null}
+        onLaunchMarketProjection={launchMarketProjection}
+      />
       <GlobeMarketIntentWizardSheet
         draft={marketIntentDraft}
         open={marketConfirmOpen}
         startStep={marketWizardStartStep}
+        portalLaunch={marketPortalLaunch}
         onOpenChange={(open) => {
           setMarketConfirmOpen(open);
           if (!open) {
             setMarketWizardStartStep(undefined);
+            setMarketPortalLaunch(false);
           }
         }}
         onConfirmed={({ eventId, role, lat, lng, placeLabel }) => {

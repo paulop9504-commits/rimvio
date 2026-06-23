@@ -3,6 +3,8 @@ import { isExternalPinCluster } from "@/lib/globe/merge-globe-pin-clusters";
 import type { PinCluster } from "@/lib/globe/pin-cluster-types";
 import { projectExternalPinClusters } from "@/lib/globe/project-external-globe-trace";
 import type { ExternalGlobeTrace } from "@/lib/globe/external-globe-trace-types";
+import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
+import { projectMarketDiscoveryPinClusters } from "@/lib/globe/market/project-market-discovery-pins";
 
 /** Personal layer — life traces only; @중고 trade anchors live in manage sheet. */
 export function filterPersonalGlobeClusters(
@@ -18,8 +20,11 @@ export function filterPersonalGlobeClusters(
 
 export function projectDiscoveryGlobeClusters(input: {
   externalTraces: readonly ExternalGlobeTrace[];
+  marketDiscoveryIntents?: readonly MarketIntentRecord[];
 }): PinCluster[] {
-  return projectExternalPinClusters(input.externalTraces);
+  const traces = projectExternalPinClusters(input.externalTraces);
+  const market = projectMarketDiscoveryPinClusters(input.marketDiscoveryIntents ?? []);
+  return [...traces, ...market];
 }
 
 export function resolveGlobeClustersForLayerMode(input: {
@@ -27,10 +32,12 @@ export function resolveGlobeClustersForLayerMode(input: {
   personalClusters: readonly PinCluster[];
   bridgeGhostClusters?: readonly PinCluster[];
   externalTraces?: readonly ExternalGlobeTrace[];
+  marketDiscoveryIntents?: readonly MarketIntentRecord[];
 }): PinCluster[] {
   if (input.mode === "discovery") {
     return projectDiscoveryGlobeClusters({
       externalTraces: input.externalTraces ?? [],
+      marketDiscoveryIntents: input.marketDiscoveryIntents,
     });
   }
 

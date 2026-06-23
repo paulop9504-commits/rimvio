@@ -92,8 +92,52 @@ const discoveryLayer = resolveGlobeClustersForLayerMode({
       pioneerCell: null,
     },
   ],
+  marketDiscoveryIntents: [
+    {
+      id: "mi-remote-1",
+      eventId: "evt-remote",
+      role: "listing",
+      categoryId: "market.general",
+      title: "의자",
+      priceMinKrw: 30_000,
+      priceMaxKrw: 30_000,
+      radiusKm: 5,
+      anchorLat: 37.57,
+      anchorLng: 126.98,
+      placeLabel: "마포",
+      peakHour: null,
+      confirmedAtIso: "2026-01-01T00:00:00.000Z",
+      active: true,
+      detail: {
+        sourceText: "",
+        productName: "의자",
+        detailNote: "",
+        conditionId: "good",
+        includesBox: false,
+        includesReceipt: false,
+        meetPreference: "nearby",
+        priceNegotiable: false,
+        photoCount: 0,
+        prioritySlots: {},
+        prioritySchemaVersion: "market.v1.2",
+        memoryRecord: {
+          schemaVersion: "market.memory.v1",
+          templateId: "universal",
+          story: "",
+          care: "",
+          why: "",
+          categoryAnswer: "",
+          seekingContext: "",
+          seekingWhy: "",
+          experienceTags: [],
+        },
+        publishedExternal: true,
+      },
+    },
+  ],
 });
-assert.equal(discoveryLayer.length, 1);
-assert.equal(discoveryLayer[0]?.origin, "external");
+assert.equal(discoveryLayer.length, 2);
+assert.ok(discoveryLayer.some((row) => row.origin === "external" && !row.marketRole));
+assert.ok(discoveryLayer.some((row) => row.marketRole === "listing"));
 
 console.log("test-globe-layer-mode: ok");

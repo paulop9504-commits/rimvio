@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
+  Fragment,
   type FormEvent,
   type KeyboardEvent,
 } from "react";
@@ -19,6 +20,7 @@ import { PeerChatBubble } from "@/components/peer-chat/peer-chat-bubble";
 import { PeerInviteBanner } from "@/components/peer-chat/peer-invite-banner";
 import { isDmThreadId } from "@/lib/peer-chat/dm-thread";
 import { isGroupThreadId } from "@/lib/peer-chat/group-thread";
+import { shouldShowPeerDateDivider } from "@/lib/peer-chat/peer-chat-date-divider";
 import { DM_CHAT } from "@/lib/peer-chat/dm-chat-density";
 import {
   shouldShowPeerMessageTime,
@@ -35,7 +37,10 @@ import { LensMapPickerSheet } from "@/components/peer-chat/lens-map-picker-sheet
 import { LensScheduleConfirmSheet } from "@/components/peer-chat/lens-schedule-confirm-sheet";
 import { ContextTalkRoomPanel } from "@/components/peer-chat/context-talk-room-panel";
 import { usePeerAiLens } from "@/hooks/use-peer-ai-lens";
+import { PeerChatDateDivider } from "@/components/peer-chat/peer-chat-date-divider";
+import { PeerDmKakaoComposer } from "@/components/peer-chat/peer-dm-kakao-composer";
 import { useLensBubbleActions } from "@/hooks/use-lens-bubble-actions";
+import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 import { isMarketHandshakeSeedMessage } from "@/lib/globe/market/is-market-handshake-seed-message";
 
@@ -177,7 +182,7 @@ export function PeerThreadChatPanel({
     }
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, simple ? 96 : 128)}px`;
-  }, []);
+  }, [simple]);
 
   useEffect(() => {
     resizeComposer();
@@ -388,7 +393,7 @@ export function PeerThreadChatPanel({
             {experienceDiscussion
               ? "이 경험에 대한 이야기를 남겨 보세요"
               : simple
-                ? "메시지를 입력하세요"
+                ? copy.peers.dmChat.messagePlaceholder
                 : `${displayName}와 대화해요`}
           </p>
         ) : experienceDiscussion ? (
@@ -427,29 +432,33 @@ export function PeerThreadChatPanel({
             )}
           >
             {visibleMessages.map((message, index) => (
-              <PeerChatBubble
-                key={message.id}
-                message={message}
-                simple={simple}
-                showTime={shouldShowPeerMessageTime(visibleMessages, index)}
-                showPeerProfileHeader={shouldShowPeerProfileHeader(
-                  visibleMessages,
-                  index,
-                )}
-                peerProfile={peerProfile}
-                lensCandidates={candidatesByMessageId[message.id] ?? []}
-                onLensSelect={(candidate) => onLensSelect(candidate, message.id)}
-                lensDisabled={aiBusy}
-                showSentCheck={
-                  phoneDm &&
-                  shouldShowPeerSentCheck(visibleMessages, index, peerLastReadAt)
-                }
-                groupReadCount={
-                  isGroup
-                    ? groupReadCountForMessage(visibleMessages, index, groupReadCursors)
-                    : 0
-                }
-              />
+              <Fragment key={message.id}>
+                {simple && shouldShowPeerDateDivider(visibleMessages, index) ? (
+                  <PeerChatDateDivider sentAt={message.sentAt} />
+                ) : null}
+                <PeerChatBubble
+                  message={message}
+                  simple={simple}
+                  showTime={shouldShowPeerMessageTime(visibleMessages, index)}
+                  showPeerProfileHeader={shouldShowPeerProfileHeader(
+                    visibleMessages,
+                    index,
+                  )}
+                  peerProfile={peerProfile}
+                  lensCandidates={candidatesByMessageId[message.id] ?? []}
+                  onLensSelect={(candidate) => onLensSelect(candidate, message.id)}
+                  lensDisabled={aiBusy}
+                  showSentCheck={
+                    phoneDm &&
+                    shouldShowPeerSentCheck(visibleMessages, index, peerLastReadAt)
+                  }
+                  groupReadCount={
+                    isGroup
+                      ? groupReadCountForMessage(visibleMessages, index, groupReadCursors)
+                      : 0
+                  }
+                />
+              </Fragment>
             ))}
             {aiBusy ? (
               <li className="flex justify-end">
@@ -468,17 +477,33 @@ export function PeerThreadChatPanel({
         <div ref={bottomRef} />
       </div>
 
+      {simple ? (
+        <PeerDmKakaoComposer
+          text={text}
+          onTextChange={setText}
+          onSubmit={submit}
+          onFormSubmit={handleSubmit}
+          onKeyDown={handleKeyDown}
+          inputRef={inputRef}
+          imageInputRef={imageInputRef}
+          onImageSelected={(file) => void handleImageFile(file)}
+          canSend={canSend}
+          readOnly={readOnly}
+          composerBusy={composerBusy}
+          canSendImage={canSendImage}
+          imageBusy={imageBusy}
+          aiBusy={aiBusy}
+        />
+      ) : (
       <div
         className={cn(
           "shrink-0 border-t",
-          simple
-            ? "border-border bg-card px-2 pt-1 pb-[max(0.375rem,env(safe-area-inset-bottom))]"
-            : "rimvio-dm-composer px-3 pb-3 pt-2",
+          "rimvio-dm-composer px-3 pb-3 pt-2",
         )}
       >
         <form
           onSubmit={handleSubmit}
-          className={cn("flex items-end", simple ? "gap-1.5" : "gap-2.5")}
+          className="flex items-end gap-2.5"
         >
           <input
             ref={imageInputRef}
@@ -498,19 +523,16 @@ export function PeerThreadChatPanel({
               disabled={composerBusy}
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => imageInputRef.current?.click()}
-              className={cn(
-                "mb-px flex shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30",
-                simple ? DM_CHAT.sendSize : "size-11",
-              )}
+              className="mb-px flex size-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"
             >
               {imageBusy ? (
                 <Loader2
-                  className={cn(simple ? "size-4" : "size-5", "animate-spin")}
+                  className="size-5 animate-spin"
                   aria-hidden
                 />
               ) : (
                 <ImagePlus
-                  className={cn(simple ? "size-5" : "size-6")}
+                  className="size-6"
                   strokeWidth={2}
                   aria-hidden
                 />
@@ -528,45 +550,31 @@ export function PeerThreadChatPanel({
             autoCorrect="on"
             disabled={!canSend || readOnly || composerBusy}
             placeholder={readOnly ? "읽기 전용" : "메시지"}
-            className={cn(
-              "flex-1 resize-none overflow-y-auto outline-none",
-              simple
-                ? cn(
-                    DM_CHAT.composerMinH,
-                    DM_CHAT.composerText,
-                    DM_CHAT.composerPad,
-                    "max-h-24 rounded-2xl border border-border bg-muted text-foreground placeholder:text-muted-foreground",
-                  )
-                : "max-h-32 min-h-[48px] rounded-xl bg-rimvio-surface-muted px-4 py-3 text-base",
-            )}
+            className="max-h-32 min-h-[48px] flex-1 resize-none overflow-y-auto rounded-xl bg-rimvio-surface-muted px-4 py-3 text-base outline-none"
           />
           <button
             type="button"
             disabled={!canSend || !text.trim() || composerBusy}
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => void submit()}
-            className={cn(
-              "mb-px flex shrink-0 items-center justify-center rounded-full disabled:opacity-30",
-              simple
-                ? cn(DM_CHAT.sendSize, "bg-[#FEE500] text-[#191919]")
-                : "rimvio-dm-send-btn size-11 text-white",
-            )}
+            className="rimvio-dm-send-btn mb-px flex size-11 shrink-0 items-center justify-center rounded-full text-white disabled:opacity-30"
             aria-label="보내기"
           >
             {aiBusy ? (
               <Loader2
-                className={cn(simple ? "size-4" : "size-5", "animate-spin")}
+                className="size-5 animate-spin"
                 aria-hidden
               />
             ) : (
               <ArrowUp
-                className={cn(simple ? "size-4 stroke-[2.5]" : "size-6 stroke-[2.5]")}
+                className="size-6 stroke-[2.5]"
                 aria-hidden
               />
             )}
           </button>
         </form>
       </div>
+      )}
 
       <LensMapPickerSheet
         open={mapPicker.open}

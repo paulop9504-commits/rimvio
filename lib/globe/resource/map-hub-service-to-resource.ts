@@ -27,6 +27,8 @@ function mapServiceIdToKind(serviceId: ContextHubServiceRow["serviceId"]): Conte
       return "rental_car";
     case "ai_search":
       return "ai_handoff";
+    case "market":
+      return "market_match";
     default:
       return "ticket";
   }

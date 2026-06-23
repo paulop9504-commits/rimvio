@@ -26,14 +26,13 @@ import {
   isBareMarketComposeInput,
   isMarketComposeInput,
 } from "@/lib/globe/market/detect-market-compose-input";
-import { GlobeMarketComposeRoleCard } from "@/components/globe/globe-market-compose-role-card";
-import type { MarketIntentRole } from "@/lib/globe/market/market-intent-types";
 import {
   rimvioComposerFieldClass,
   rimvioIconBtnClass,
 } from "@/lib/brand/rimvio-neon-theme";
-import { cn } from "@/lib/utils";
+import type { GlobeLayerMode } from "@/lib/globe/globe-layer-mode";
 import { copy } from "@/lib/copy/human-ko";
+import { cn } from "@/lib/utils";
 
 export type GlobeContextIngestBarHandle = {
   openPhotoPicker: () => void;
@@ -50,9 +49,14 @@ export type GlobeContextIngestBarProps = {
   ) => void;
   onPhotoDraftReady?: (files: File[]) => void | Promise<void>;
   onTextCommitted?: (input: { eventId: string; text: string }) => void;
-  onMarketRoleSelect?: (role: MarketIntentRole, composeText: string) => void;
+  onOpenPortal?: (input: {
+    eventId?: string | null;
+    composeText?: string;
+  }) => void;
   onOpenMarketManage?: () => void;
   marketRoleBusy?: boolean;
+  layerMode?: GlobeLayerMode;
+  onDiscoveryMarketBrowse?: () => void;
 };
 
 /** Globe home — one frosted composer; photo action lives inside the + menu. */
@@ -68,9 +72,11 @@ export const GlobeContextIngestBar = forwardRef<
     onAttached,
     onPhotoDraftReady,
     onTextCommitted,
-    onMarketRoleSelect,
+    onOpenPortal,
     onOpenMarketManage,
     marketRoleBusy = false,
+    layerMode = "personal",
+    onDiscoveryMarketBrowse,
   },
   ref,
 ) {
@@ -79,6 +85,7 @@ export const GlobeContextIngestBar = forwardRef<
   const [busy, setBusy] = useState(false);
   const photoRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isDiscovery = layerMode === "discovery";
 
   useImperativeHandle(ref, () => ({
     openPhotoPicker: () => {
@@ -99,15 +106,32 @@ export const GlobeContextIngestBar = forwardRef<
 
   const attachHintId = forceAttachToTarget ? targetEventId?.trim() || null : null;
   const attachHintTitle = forceAttachToTarget ? targetTitle?.trim() || null : null;
-  const inputPlaceholder = attachHintTitle
-    ? copy.globe.ingestAttachPlaceholder(attachHintTitle)
-    : copy.globe.ingestDefaultPlaceholder;
-  const showMarketRoleCard = isMarketComposeInput(text);
+  const inputPlaceholder = isDiscovery
+    ? copy.globe.ingestDiscoveryPlaceholder
+    : attachHintTitle
+      ? copy.globe.ingestAttachPlaceholder(attachHintTitle)
+      : copy.globe.ingestDefaultPlaceholder;
   const marketComposeBusy = busy || marketRoleBusy;
+
+  const openPortalFromComposer = useCallback(
+    (composeText: string) => {
+      onOpenPortal?.({
+        eventId: attachHintId,
+        composeText,
+      });
+      setText("");
+      setMenuOpen(false);
+    },
+    [attachHintId, onOpenPortal],
+  );
 
   const ingestMedia = useCallback(
     async (fileList: FileList | null | undefined) => {
       if (!fileList?.length || busy) {
+        return;
+      }
+      if (isDiscovery) {
+        toast.message(copy.globe.ingestDiscoveryNoTrace);
         return;
       }
       const files = Array.from(fileList);
@@ -175,7 +199,7 @@ export const GlobeContextIngestBar = forwardRef<
         }
       }
     },
-    [attachHintId, attachHintTitle, busy, forceAttachToTarget, onAttached, onPhotoDraftReady],
+    [attachHintId, attachHintTitle, busy, forceAttachToTarget, isDiscovery, onAttached, onPhotoDraftReady],
   );
 
   const submitText = useCallback(
@@ -185,8 +209,26 @@ export const GlobeContextIngestBar = forwardRef<
       if (!value || busy) {
         return;
       }
-      if (isBareMarketComposeInput(value)) {
-        toast.message(copy.globe.marketComposeBareHint);
+      if (isDiscovery) {
+        if (isBareMarketComposeInput(value) || isMarketComposeInput(value)) {
+          onDiscoveryMarketBrowse?.();
+          setText("");
+          setMenuOpen(false);
+          return;
+        }
+        const action = runGlobeComposerAction(value);
+        if (action?.kind === "url") {
+          window.location.assign(action.url);
+          toast.success(`${action.label} 여는 중…`);
+          setText("");
+          setMenuOpen(false);
+          return;
+        }
+        toast.message(copy.globe.ingestDiscoveryNearbyHint);
+        return;
+      }
+      if (isBareMarketComposeInput(value) || isMarketComposeInput(value)) {
+        openPortalFromComposer(value);
         return;
       }
       setBusy(true);
@@ -200,15 +242,7 @@ export const GlobeContextIngestBar = forwardRef<
           return;
         }
         if (action?.kind === "market-compose") {
-          const composeText = action.composeText.trim() || value;
-          const outcome = await ingestGlobeContextFromText(composeText);
-          finish(outcome.result.event.id, outcome.toastLine, {
-            needsPlaceVerify: outcome.placeVerify?.needsPlaceVerify,
-          });
-          onTextCommitted?.({
-            eventId: outcome.result.event.id,
-            text: composeText,
-          });
+          openPortalFromComposer(action.composeText.trim() || value);
           return;
         }
         const outcome = await ingestGlobeContextFromText(value);
@@ -227,7 +261,7 @@ export const GlobeContextIngestBar = forwardRef<
         setBusy(false);
       }
     },
-    [busy, finish, onTextCommitted, text],
+    [busy, finish, isDiscovery, onDiscoveryMarketBrowse, onTextCommitted, openPortalFromComposer, text],
   );
 
   return (
@@ -238,7 +272,7 @@ export const GlobeContextIngestBar = forwardRef<
           menuOpen && "ring-primary/20",
         )}
       >
-        {menuOpen ? (
+        {menuOpen && !isDiscovery ? (
           <button
             type="button"
             disabled={marketComposeBusy}
@@ -260,22 +294,11 @@ export const GlobeContextIngestBar = forwardRef<
           </button>
         ) : null}
 
-        {showMarketRoleCard ? (
-          <GlobeMarketComposeRoleCard
-            disabled={marketComposeBusy}
-            onSelectRole={(role) => {
-              onMarketRoleSelect?.(role, text.trim());
-              setText("");
-              setMenuOpen(false);
-            }}
-            onOpenManage={onOpenMarketManage}
-          />
-        ) : null}
-
         <form
           onSubmit={(event) => void submitText(event)}
           className="flex items-center gap-2 px-2 py-2"
         >
+          {!isDiscovery ? (
           <button
             type="button"
             disabled={marketComposeBusy}
@@ -293,6 +316,7 @@ export const GlobeContextIngestBar = forwardRef<
               <Plus className="size-5" aria-hidden />
             )}
           </button>
+          ) : null}
 
           <div className={cn(rimvioComposerFieldClass, "min-w-0 flex-1 px-3 py-2.5")}>
             <input

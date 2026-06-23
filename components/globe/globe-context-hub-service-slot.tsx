@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Car, Hotel, Plane, Plus, Sparkles, Ticket } from "lucide-react";
+import { Car, Hotel, Plane, Plus, ShoppingBag, Sparkles, Ticket } from "lucide-react";
 import type {
   ContextHubServiceId,
   ContextHubServiceRow,
@@ -15,6 +15,7 @@ const SERVICE_ICON: Record<ContextHubServiceId, typeof Plane> = {
   flight: Plane,
   lodging: Hotel,
   rental_car: Car,
+  market: ShoppingBag,
   ai_search: Sparkles,
 };
 
@@ -26,6 +27,7 @@ export function HubServiceSlot({
   onToggleConnect,
   onConnectFlight,
   onConnectLodging,
+  onConnectMarket,
   onOpenAction,
   onOpenHandoff,
 }: {
@@ -36,6 +38,7 @@ export function HubServiceSlot({
   onToggleConnect: () => void;
   onConnectFlight: (airportId: DepartureHubAirportId) => void;
   onConnectLodging?: () => void;
+  onConnectMarket?: () => void;
   onOpenAction: (url: string, label: string) => void;
   onOpenHandoff: (href: string, label: string, internalRoute?: boolean) => void;
 }) {
@@ -71,8 +74,12 @@ export function HubServiceSlot({
             {!row.implemented
               ? copy.globe.contextHubServiceSoon
               : row.connected
-                ? link?.shortLabel ?? copy.globe.contextHubDepartureKind
-                : copy.globe.contextHubServicePlugIn}
+                ? row.serviceId === "market"
+                  ? row.handoffLabelKo ?? copy.globe.contextHubMarketConnected
+                  : link?.shortLabel ?? copy.globe.contextHubDepartureKind
+                : row.serviceId === "market"
+                  ? copy.globe.contextHubMarketPlugIn
+                  : copy.globe.contextHubServicePlugIn}
           </p>
         </div>
 
@@ -156,6 +163,32 @@ export function HubServiceSlot({
               <Plus className="size-4 stroke-[2.5]" aria-hidden />
             </button>
           )
+        ) : row.implemented && row.serviceId === "market" ? (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => onConnectMarket?.()}
+            className={
+              row.connected
+                ? "shrink-0 rounded-full bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground active:opacity-85"
+                : cn(
+                    "flex size-8 shrink-0 items-center justify-center rounded-full border border-primary/25 bg-card text-primary active:scale-95",
+                  )
+            }
+            aria-label={
+              row.connected
+                ? copy.globe.contextHubMarketOpen
+                : copy.globe.contextHubServicePlugIn
+            }
+            data-globe-hub-service-open={row.connected ? row.serviceId : undefined}
+            data-globe-hub-service-add={row.connected ? undefined : row.serviceId}
+          >
+            {row.connected ? (
+              copy.globe.contextHubMarketOpen
+            ) : (
+              <Plus className="size-4 stroke-[2.5]" aria-hidden />
+            )}
+          </button>
         ) : row.implemented && row.serviceId === "flight" ? (
           row.connected && link?.actionUrl ? (
             <button

@@ -58,7 +58,15 @@ export type MarketIntentDetail = {
   memoryPlaceLng?: number | null;
   /** Public URLs — uploaded on listing confirm for handshake chat. */
   photoUrls?: string[];
+  /** Portal gate — true only after explicit 외부 공개 on review or manage. */
+  publishedExternal?: boolean;
 };
+
+export function isMarketIntentPublishedExternal(
+  detail: Pick<MarketIntentDetail, "publishedExternal"> | null | undefined,
+): boolean {
+  return detail?.publishedExternal === true;
+}
 
 export function readMarketMemoryRecord(
   detail: Pick<MarketIntentDetail, "memoryRecord"> | { memoryRecord?: MarketMemoryRecord | null },

@@ -22,6 +22,7 @@ import {
 } from "@/lib/globe/globe-orchestrator-scope-bridge";
 import { isTicketQrViewerHref } from "@/lib/globe/ticket-scan-surface";
 import { resolveSemanticMainHintForEvent } from "@/lib/semantic/resolve-semantic-main-hint-for-event";
+import { dispatchGlobeMarketHubConnect } from "@/lib/globe/context-hub/globe-market-hub-bridge";
 import { copy } from "@/lib/copy/human-ko";
 
 export type GlobeContextHubPanelProps = {
@@ -190,6 +191,11 @@ export function GlobeContextHubPanel({
     }
   }, [busy, bump, event, lat, lng]);
 
+  const handleConnectMarket = useCallback(() => {
+    recordContextHubTelemetry({ event, kind: "clicked", label: "market" });
+    dispatchGlobeMarketHubConnect({ eventId: event.id });
+  }, [event]);
+
   if (!panel || serviceRows.length === 0) {
     return null;
   }
@@ -242,12 +248,17 @@ export function GlobeContextHubPanel({
                   void handleConnectLodging();
                   return;
                 }
+                if (row.serviceId === "market") {
+                  handleConnectMarket();
+                  return;
+                }
                 setConnectServiceId((current) =>
                   current === row.serviceId ? null : row.serviceId,
                 );
               }}
               onConnectFlight={(airportId) => void handleConnectFlight(airportId)}
               onConnectLodging={() => void handleConnectLodging()}
+              onConnectMarket={handleConnectMarket}
               onOpenAction={handleOpenAction}
               onOpenHandoff={handleOpenHandoff}
             />

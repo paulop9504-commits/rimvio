@@ -13,7 +13,8 @@ export type ContextResourceKind =
   | "rental_car"
   | "media_album"
   | "schedule"
-  | "ai_handoff";
+  | "ai_handoff"
+  | "market_match";
 
 /** Spacetime metadata — ranking engine input (GPS · Now). */
 export type ContextResourceSpacetime = {

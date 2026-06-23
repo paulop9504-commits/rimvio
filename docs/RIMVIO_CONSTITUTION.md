@@ -46,6 +46,8 @@ Full spec + examples + code map: **`docs/RIMVIO_EXPERIENCE_LAYERS.md`**
 
 **Main screen (Three Floors — UI stack on Feed):** **`docs/RIMVIO_THREE_FLOORS.md`**
 
+**Globe four-layer model (Internal · Hub · Portal · External):** **`docs/RIMVIO_GLOBE_ARCHITECTURE.md`**
+
 ```text
 1층 REPLAY   — 🌍 핑 · ▶ 쇼츠 · 한 줄 캡션
 2층 CONTEXT  — 사람 · 경험 · 장소 · 시간

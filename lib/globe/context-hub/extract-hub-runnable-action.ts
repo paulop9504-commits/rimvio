@@ -36,6 +36,14 @@ export function extractHubRunnableAction(
     };
   }
 
+  if (row.serviceId === "market" && row.connected) {
+    return {
+      href: `rimvio://market-hub/${row.serviceId}`,
+      label: row.handoffLabelKo ?? label,
+      internalRoute: true,
+    };
+  }
+
   if (row.handoffHref) {
     return {
       href: row.handoffHref,

@@ -6,7 +6,7 @@ import {
   listOwnMarketIntents,
 } from "@/lib/globe/market/server/upsert-market-intent";
 import { scanMarketHandshakesForIntent } from "@/lib/globe/market/server/scan-market-handshakes";
-import { DEFAULT_MARKET_INTENT_DETAIL } from "@/lib/globe/market/market-intent-detail";
+import { isMarketIntentPublishedExternal, DEFAULT_MARKET_INTENT_DETAIL } from "@/lib/globe/market/market-intent-detail";
 import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
 
 function parseRecord(body: unknown): MarketIntentRecord | null {
@@ -52,6 +52,7 @@ function parseRecord(body: unknown): MarketIntentRecord | null {
         d.prioritySlots && typeof d.prioritySlots === "object" && !Array.isArray(d.prioritySlots)
           ? (d.prioritySlots as typeof detail.prioritySlots)
           : {},
+      publishedExternal: d.publishedExternal === true,
     };
   }
 
@@ -104,10 +105,12 @@ export async function POST(request: NextRequest) {
 
   try {
     const saved = await upsertMarketIntentRemote(supabase, user.id, record);
-    try {
-      await scanMarketHandshakesForIntent(supabase, { ...saved, userId: user.id });
-    } catch {
-      // handshake scan is best-effort
+    if (isMarketIntentPublishedExternal(saved.detail)) {
+      try {
+        await scanMarketHandshakesForIntent(supabase, { ...saved, userId: user.id });
+      } catch {
+        // handshake scan is best-effort
+      }
     }
     return NextResponse.json({ ok: true, intent: saved });
   } catch {

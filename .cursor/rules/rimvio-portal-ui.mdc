@@ -1,0 +1,50 @@
+---
+description: Rimvio Portal UI — Intent-first projection layer (not marketplace)
+alwaysApply: false
+globs:
+  - components/portal/**
+  - lib/portal/**
+  - components/globe/globe-market-intent-wizard-sheet.tsx
+  - components/globe/globe-context-ingest-bar.tsx
+  - components/globe/globe-home-client.tsx
+---
+
+# Rimvio Portal UI
+
+**Canonical spec:** `docs/RIMVIO_PORTAL_UI_SPEC.md` · **Architecture:** `docs/RIMVIO_GLOBE_ARCHITECTURE.md`
+
+## Portal is
+
+- Intent → Category → Projection → 외부 공개
+- Action Center / Launch Pad — **not** marketplace, settings, or board UI
+- Projection engine only — **never** creates context on External Globe
+
+## Portal home MUST show (L1)
+
+1. 내놓기 (offer)
+2. 구하기 (seek)
+3. 함께하기 (together)
+4. 참여하기 (join)
+
+## Forbidden on Portal first screen
+
+- 중고거래 · 채용 · 부동산 · 동행 · 티켓 as top-level tiles
+- 내놓기/구하기 role cards in composer (use `RimvioPortalSheet`)
+- `marketWizard` `role` step when entering from Portal (intent already chosen)
+- 「Portal」「Hub」「Marketplace」 in hero/empty copy
+
+## Entry points (all → Portal)
+
+- Hub 맞춤 connect
+- Composer `@` market mention
+- Context bridge
+
+## v1 live projection
+
+`offer` + `used_goods` → listing · `seek` + `used_goods` → seeking → existing market wizard from `recognize` step.
+
+## PR reject
+
+- New domain-specific compose role cards
+- Skipping intent layer for new verticals
+- Writing `market_intents` without `publishedExternal` gate

@@ -5,6 +5,7 @@ import {
   marketIntentDetailToJson,
   type MarketIntentDbRow,
 } from "@/lib/globe/market/server/market-intent-row";
+import { filterPublishedMarketIntents } from "@/lib/globe/market/filter-published-market-intents";
 
 export async function upsertMarketIntentRemote(
   supabase: SupabaseClient,
@@ -45,7 +46,7 @@ export async function upsertMarketIntentRemote(
 
 export async function listActiveMarketIntentsForMatching(
   supabase: SupabaseClient,
-  options?: { excludeUserId?: string; limit?: number },
+  options?: { excludeUserId?: string; limit?: number; publishedOnly?: boolean },
 ): Promise<MarketIntentRecord[]> {
   let query = supabase
     .from("market_intents")
@@ -64,7 +65,11 @@ export async function listActiveMarketIntentsForMatching(
     throw error;
   }
 
-  return ((data ?? []) as MarketIntentDbRow[]).map(marketIntentRowToRecord);
+  const rows = ((data ?? []) as MarketIntentDbRow[]).map(marketIntentRowToRecord);
+  if (options?.publishedOnly) {
+    return filterPublishedMarketIntents(rows);
+  }
+  return rows;
 }
 
 export async function listOwnMarketIntents(

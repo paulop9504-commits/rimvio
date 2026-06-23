@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { motion, useMotionValue, animate, type PanInfo } from "framer-motion";
-import { Car, ChevronDown, Hotel, Plane, Sparkles, Ticket } from "lucide-react";
+import { Car, ChevronDown, Hotel, Plane, ShoppingBag, Sparkles, Ticket } from "lucide-react";
 import type { ContextHubServiceId } from "@/lib/globe/context-hub/context-hub-service-catalog";
 import { GlobeLodgingMediaHero } from "@/components/globe/globe-lodging-media-hero";
 import { readLodgingPayloadFromResource } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
@@ -16,6 +16,7 @@ const SERVICE_ICON: Record<ContextHubServiceId, typeof Plane> = {
   flight: Plane,
   lodging: Hotel,
   rental_car: Car,
+  market: ShoppingBag,
   ai_search: Sparkles,
 };
 
