@@ -3,7 +3,6 @@
  */
 
 import type { MarketIntentDraft } from "@/lib/globe/market/market-intent-types";
-import { marketListingConditionLabelKo } from "@/lib/globe/market/market-intent-detail";
 import {
   getTopPrioritySlots,
   type MarketPrioritySlotId,
@@ -17,6 +16,8 @@ function mapConditionToAbc(
     return null;
   }
   switch (conditionId) {
+    case "sealed":
+      return "S";
     case "like_new":
       return "A";
     case "good":
@@ -55,11 +56,20 @@ function parseColorFromText(text: string): string | null {
   return match?.[0] ?? null;
 }
 
+function parseCosmeticFromText(text: string): MarketIntentDraft["detail"]["conditionId"] | null {
+  if (/미개봉|sealed|unopened|새제품\s*그대로/iu.test(text)) {
+    return "sealed";
+  }
+  return null;
+}
+
 export function prefillMarketPrioritySlots(draft: MarketIntentDraft): MarketIntentDraft {
   const text = draft.detail.sourceText || draft.title;
   const { productName } = parseMarketProductFromText(text);
   const slots = { ...(draft.detail.prioritySlots ?? {}) };
   const top = getTopPrioritySlots(draft.categoryId);
+  const parsedCosmetic = parseCosmeticFromText(text);
+  const conditionId = draft.detail.conditionId ?? parsedCosmetic;
 
   for (const slot of top) {
     const current = slots[slot.field];
@@ -75,12 +85,12 @@ export function prefillMarketPrioritySlots(draft: MarketIntentDraft): MarketInte
         break;
       }
       case "cosmetic_grade":
-        if (draft.detail.conditionId) {
-          slots.cosmetic_grade = marketListingConditionLabelKo(draft.detail.conditionId);
+        if (conditionId) {
+          slots.cosmetic_grade = conditionId;
         }
         break;
       case "condition_abc": {
-        const abc = mapConditionToAbc(draft.detail.conditionId);
+        const abc = mapConditionToAbc(conditionId);
         if (abc) {
           slots.condition_abc = abc;
         }
@@ -119,6 +129,7 @@ export function prefillMarketPrioritySlots(draft: MarketIntentDraft): MarketInte
     ...draft,
     detail: {
       ...draft.detail,
+      conditionId: conditionId ?? draft.detail.conditionId,
       productName: draft.detail.productName || productName,
       prioritySlots: slots,
     },

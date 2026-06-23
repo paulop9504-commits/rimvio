@@ -25,6 +25,7 @@ export function projectPersonalGlobeClassifiedPin(
 ): ClassifiedGlobePin {
   const map = projectLatLngToMapPercent(pin.lat, pin.lng);
   const locked = !viewer.isOwner && pin.acl.viewerPeerThreadIds.length === 0;
+  const isMarket = Boolean(pin.marketRole);
   return {
     id: pin.pinId,
     kind: pinKindFromCounts(pin),
@@ -35,12 +36,14 @@ export function projectPersonalGlobeClassifiedPin(
     pinY: map.y,
     sourceEventId: pin.eventId,
     emphasis: "primary",
-    pinShape: "slot",
+    pinShape: isMarket ? "market" : "slot",
+    marketRole: pin.marketRole ?? null,
     slot: {
       experienceTitle: pin.experienceTitle,
       photoCount: pin.photoCount,
       videoCount: pin.videoCount,
       locked,
+      marketRole: pin.marketRole ?? undefined,
     },
   };
 }

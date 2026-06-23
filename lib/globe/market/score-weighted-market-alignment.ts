@@ -27,11 +27,14 @@ function gradeScore(
   seeking: string | null | undefined,
   listing: string | null | undefined,
 ): number {
-  const order = ["A", "B", "C", "D"];
+  const order = ["S", "A", "B", "C", "D"];
   const normalize = (raw: string) => {
     const upper = raw.trim().toUpperCase();
     if (order.includes(upper)) {
       return upper;
+    }
+    if (/미개봉|sealed|unopened|새제품/iu.test(raw) || upper === "SEALED") {
+      return "S";
     }
     if (/새|like|mint/iu.test(raw)) {
       return "A";

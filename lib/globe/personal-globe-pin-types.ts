@@ -5,6 +5,8 @@ export type PersonalGlobePinAcl = {
   viewerPeerThreadIds: readonly string[];
 };
 
+export type PersonalGlobePinMarketRole = "listing" | "seeking";
+
 export type PersonalGlobePin = {
   pinId: string;
   eventId: string;
@@ -16,6 +18,8 @@ export type PersonalGlobePin = {
   videoCount: number;
   createdAtIso: string;
   acl: PersonalGlobePinAcl;
+  /** @중고 intent — grey market pin (seeking=구매, listing=내놓기). */
+  marketRole?: PersonalGlobePinMarketRole | null;
 };
 
 export type PersonalGlobePinViewer = {

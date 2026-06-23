@@ -7,7 +7,11 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Inbox, Handshake, Loader2, MapPin, Users, X } from "lucide-react";
 import { toast } from "sonner";
 import { copy } from "@/lib/copy/human-ko";
-import { acceptMarketHandshakeRemote } from "@/lib/globe/market/client/sync-market-intent-remote";
+import {
+  acceptMarketHandshakeRemote,
+  startMarketHandshakeChatRemote,
+} from "@/lib/globe/market/client/sync-market-intent-remote";
+import { readMarketHandshakeUserError } from "@/lib/globe/market/read-market-handshake-user-error";
 import { peerRoomPath } from "@/lib/peer-chat/navigate-peer-room-from-feed";
 import { completeBridgeInviteAccept } from "@/lib/experience-bridge/complete-bridge-invite-accept";
 import {
@@ -209,16 +213,20 @@ export function GlobeInboxSheet({
         onOpenChange(false);
         return;
       }
-      if (
-        offer.threadId &&
-        (offer.viewerAction === "open_preview" || offer.viewerAction === "open_chat")
-      ) {
+      if (offer.viewerAction === "open_preview") {
+        const started = await startMarketHandshakeChatRemote({ handshakeId });
+        router.push(peerRoomPath(started.threadId));
+        onOpenChange(false);
+        return;
+      }
+      if (offer.threadId && offer.viewerAction === "open_chat") {
         router.push(peerRoomPath(offer.threadId));
         onOpenChange(false);
       }
     } catch (caught) {
-      const message =
-        caught instanceof Error ? caught.message : copy.globe.marketAlignBridgeFail;
+      const message = readMarketHandshakeUserError(
+        caught instanceof Error ? caught.message : copy.globe.marketAlignBridgeFail,
+      );
       toast.error(message);
     } finally {
       setBusyMarketHandshakeId(null);

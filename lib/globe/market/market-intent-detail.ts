@@ -1,4 +1,5 @@
 export type MarketListingConditionId =
+  | "sealed"
   | "like_new"
   | "good"
   | "fair"
@@ -51,6 +52,10 @@ export type MarketIntentDetail = {
   prioritySlots: MarketPrioritySlotValues;
   prioritySchemaVersion: "market.v1.2";
   memoryRecord: MarketMemoryRecord;
+  /** Photo EXIF / experience place — separate from trade anchor. */
+  memoryPlaceLabel?: string;
+  memoryPlaceLat?: number | null;
+  memoryPlaceLng?: number | null;
 };
 
 export function readMarketMemoryRecord(
@@ -88,6 +93,8 @@ export function marketListingConditionLabelKo(
   id: MarketListingConditionId,
 ): string {
   switch (id) {
+    case "sealed":
+      return "미개봉";
     case "like_new":
       return "거의 새것";
     case "good":

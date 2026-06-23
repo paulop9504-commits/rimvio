@@ -9,6 +9,8 @@ export type PinClusterEvidence = {
 
 export type PinClusterVariant = "experience" | "bridge_ghost";
 
+export type PinClusterMarketRole = "listing" | "seeking";
+
 export type PinCluster = {
   pinId: string;
   eventId: string;
@@ -24,4 +26,6 @@ export type PinCluster = {
   /** Pending Experience Bridge invite — tap to accept onto personal globe. */
   variant?: PinClusterVariant;
   bridgeHostName?: string | null;
+  /** Active @중고 alignment — distinct grey pin on globe. */
+  marketRole?: PinClusterMarketRole | null;
 };

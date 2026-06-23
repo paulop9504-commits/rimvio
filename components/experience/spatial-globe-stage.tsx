@@ -5,6 +5,7 @@
 import { memo, useCallback, useEffect, useRef } from "react";
 
 import { GlobeExperienceSlotPin } from "@/components/experience/globe-experience-slot-pin";
+import { GlobeMarketSlotPin } from "@/components/experience/globe-market-slot-pin";
 import { GlobeEarthSurface } from "@/components/experience/globe-earth-surface";
 import { useGlobeIdleSpin } from "@/hooks/use-globe-idle-spin";
 import { useGlobeTouchControl } from "@/hooks/use-globe-touch-control";
@@ -354,7 +355,29 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
             {classifiedPins.map((pin) => {
               const active = pin.id === activePinId;
               const related = pin.emphasis === "related";
+              const isMarket = pin.pinShape === "market" && pin.slot;
               const isSlot = pin.pinShape === "slot" && pin.slot;
+
+              if (isMarket) {
+                return (
+                  <button
+                    key={pin.id}
+                    type="button"
+                    className="absolute z-[12] -translate-x-1/2 -translate-y-full"
+                    style={{ left: `${pin.pinX}%`, top: `${pin.pinY}%` }}
+                    data-globe-classified-pin={pin.id}
+                    data-globe-pin-shape="market"
+                    aria-label={`${pin.slot!.experienceTitle} · ${pin.slot!.marketRole === "seeking" ? "구매" : "내놓기"}`}
+                    aria-pressed={active}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onPinPress?.(pin.id);
+                    }}
+                  >
+                    <GlobeMarketSlotPin slot={pin.slot!} active={active} />
+                  </button>
+                );
+              }
 
               if (isSlot) {
                 return (

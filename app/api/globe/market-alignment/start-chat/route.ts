@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { readMarketHandshakeUserError } from "@/lib/globe/market/read-market-handshake-user-error";
 import { startBuyerMarketHandshakeChat } from "@/lib/globe/market/server/market-handshake-actions";
+import { extractErrorMessage } from "@/lib/peer-chat/extract-error-message";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
 export async function POST(request: NextRequest) {
   if (!isSupabaseConfigured()) {
@@ -34,7 +36,8 @@ export async function POST(request: NextRequest) {
     const result = await startBuyerMarketHandshakeChat(supabase, user.id, handshakeId);
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "start_failed";
-    return NextResponse.json({ error: message }, { status: 400 });
+    const raw = extractErrorMessage(error, "start_failed");
+    const message = readMarketHandshakeUserError(raw);
+    return NextResponse.json({ error: raw, message }, { status: 400 });
   }
 }

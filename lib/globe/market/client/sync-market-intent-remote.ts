@@ -102,9 +102,11 @@ export async function acceptMarketHandshakeRemote(input: {
     threadId?: string;
     handshakeId?: string;
     error?: string;
+    message?: string;
   };
   if (!response.ok || !body.threadId) {
-    throw new Error(body.error ?? "accept_failed");
+    const raw = body.message ?? body.error ?? "accept_failed";
+    throw new Error(raw);
   }
   return {
     threadId: body.threadId,
@@ -121,9 +123,9 @@ export async function startMarketHandshakeChatRemote(input: {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ handshakeId: input.handshakeId }),
   });
-  const body = (await response.json()) as { threadId?: string; error?: string };
+  const body = (await response.json()) as { threadId?: string; error?: string; message?: string };
   if (!response.ok || !body.threadId) {
-    throw new Error(body.error ?? "start_failed");
+    throw new Error(body.message ?? body.error ?? "start_failed");
   }
   return { threadId: body.threadId };
 }

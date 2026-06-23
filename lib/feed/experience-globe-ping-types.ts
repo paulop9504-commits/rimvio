@@ -3,11 +3,14 @@ import type { GlobePinPeer } from "@/lib/globe/globe-pin-peer-types";
 /** Classified map pin for Feed recall globe — FACT lineage only. */
 export type ExperienceGlobePingKind = "photo" | "video" | "gps" | "dwell" | "place";
 
+export type MarketGlobePinRole = "listing" | "seeking";
+
 export type GlobePinSlotMeta = {
   experienceTitle: string;
   photoCount: number;
   videoCount: number;
   locked?: boolean;
+  marketRole?: MarketGlobePinRole;
 };
 
 export type ClassifiedGlobePin = {
@@ -27,7 +30,8 @@ export type ClassifiedGlobePin = {
   authorDisplayName?: string | null;
   peerThreadId?: string | null;
   /** 2.5D experience stack on globe */
-  pinShape?: "dot" | "slot" | "viewer" | "cluster";
+  pinShape?: "dot" | "slot" | "viewer" | "cluster" | "market";
+  marketRole?: MarketGlobePinRole | null;
   slot?: GlobePinSlotMeta;
   /** Overseas trip leg — departure airport vs destination stay. */
   tripLeg?: "departure" | "destination";

@@ -16,10 +16,8 @@ import {
   buildMarketCompletionTraceDraft,
   resolveRealizedPriceKrw,
 } from "@/lib/globe/market/build-market-completion-trace-draft";
-import {
-  ensureDmThreadBetweenUsers,
-  insertPeerMessage,
-} from "@/lib/peer-chat/server-peer-chat";
+import { completeDmFriendAdd } from "@/lib/peer-chat/dm-friend-add-server";
+import { insertPeerMessage } from "@/lib/peer-chat/server-peer-chat";
 import { fetchPeerPublicProfileByUserId } from "@/lib/peer-chat/peer-public-profile";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -48,6 +46,9 @@ export async function acceptListingMarketHandshake(
   if (handshake.listingUserId !== userId) {
     throw new Error("listing_only");
   }
+  if (handshake.phase === "pending_buyer_start" && handshake.threadId) {
+    return { threadId: handshake.threadId, handshakeId: handshake.id };
+  }
   if (handshake.phase !== "pending_listing") {
     throw new Error("invalid_phase");
   }
@@ -58,24 +59,19 @@ export async function acceptListingMarketHandshake(
     throw new Error("intent_not_found");
   }
 
-  const callerProfile = await fetchPeerPublicProfileByUserId(supabase, userId);
   const seekingProfile = await fetchPeerPublicProfileByUserId(
     supabase,
     handshake.seekingUserId,
   );
 
-  const { threadId } = await ensureDmThreadBetweenUsers(supabase, {
-    callerUserId: userId,
+  const dm = await completeDmFriendAdd(supabase, {
     otherUserId: handshake.seekingUserId,
-    callerDisplayName:
-      callerProfile?.displayName?.trim() ||
-      listingIntent.detail.productName ||
-      copy.globe.marketAlignBridgeThreadLabel,
-    otherDisplayName:
+    friendDisplayName:
       seekingProfile?.displayName?.trim() ||
       seekingIntent.detail.productName ||
       copy.globe.marketAlignBridgeThreadLabel,
   });
+  const threadId = dm.threadId;
 
   const category = marketCategoryLabelKo(listingIntent.categoryId);
   const priceLine = formatPriceLine(listingIntent.priceMinKrw, listingIntent.priceMaxKrw);

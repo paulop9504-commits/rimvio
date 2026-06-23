@@ -17,7 +17,7 @@ import { RIMVIO_TYPE } from "@/lib/design/rimvio-ontology";
 import { cn } from "@/lib/utils";
 
 const ABC_GRADES = ["A", "B", "C"] as const;
-const COSMETIC_GRADES = ["like_new", "good", "fair"] as const;
+const COSMETIC_GRADES = ["sealed", "like_new", "good", "fair"] as const;
 
 function manToKrw(value: string): number | null {
   const trimmed = value.replace(/\D/g, "");

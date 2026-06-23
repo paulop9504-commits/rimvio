@@ -5,6 +5,7 @@ import {
   stampMarketIntentOnEvent,
 } from "@/lib/globe/market/market-alignment-store";
 import { syncMarketIntentRemote } from "@/lib/globe/market/client/sync-market-intent-remote";
+import { syncMarketIntentGlobePin } from "@/lib/globe/market/sync-market-intent-globe-pin";
 import { ingestGlobeContextFromFiles } from "@/lib/feed/ingest-globe-context-capture";
 
 export async function commitMarketIntentFromDraft(
@@ -32,8 +33,6 @@ export async function commitMarketIntentFromDraft(
     active: true,
     detail,
   };
-  saveMarketIntent(record);
-  stampMarketIntentOnEvent(record);
 
   if (options?.photoFiles?.length) {
     try {
@@ -47,13 +46,25 @@ export async function commitMarketIntentFromDraft(
     }
   }
 
-  const remote = await syncMarketIntentRemote(record);
+  const anchor = await syncMarketIntentGlobePin(record);
+  const anchoredRecord: MarketIntentRecord = {
+    ...record,
+    anchorLat: anchor.lat,
+    anchorLng: anchor.lng,
+    placeLabel: anchor.placeLabel,
+  };
+
+  saveMarketIntent(anchoredRecord);
+  stampMarketIntentOnEvent(anchoredRecord);
+
+  const remote = await syncMarketIntentRemote(anchoredRecord);
   if (remote) {
-    const merged = { ...record, ...remote, id: remote.id, userId: remote.userId };
+    const merged = { ...anchoredRecord, ...remote, id: remote.id, userId: remote.userId };
     saveMarketIntent(merged);
     stampMarketIntentOnEvent(merged);
+    await syncMarketIntentGlobePin(merged);
     return merged;
   }
 
-  return record;
+  return anchoredRecord;
 }

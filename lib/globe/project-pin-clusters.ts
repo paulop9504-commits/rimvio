@@ -80,6 +80,7 @@ function clusterFromPersonalPin(
       placePinCount: evidence.placePinCount,
     },
     recallLine: null,
+    marketRole: pin.marketRole ?? null,
   };
 }
 
@@ -145,6 +146,7 @@ export function projectPinClusterClassifiedPin(
   const map = projectLatLngToMapPercent(cluster.lat, cluster.lng);
   const tripLeg = readTripLegFromEvent(event)?.leg;
   const isGhost = cluster.variant === "bridge_ghost";
+  const isMarket = Boolean(cluster.marketRole);
   return {
     id: cluster.pinId,
     kind: pinKindFromEvidence(cluster.evidence),
@@ -157,7 +159,8 @@ export function projectPinClusterClassifiedPin(
     pinY: map.y,
     sourceEventId: cluster.eventId,
     emphasis: isGhost || tripLeg === "departure" ? "related" : "primary",
-    pinShape: isGhost ? "dot" : "slot",
+    pinShape: isGhost ? "dot" : isMarket ? "market" : "slot",
+    marketRole: cluster.marketRole ?? null,
     tripLeg,
     slot: isGhost
       ? undefined
@@ -165,6 +168,7 @@ export function projectPinClusterClassifiedPin(
           experienceTitle: cluster.title,
           photoCount: cluster.evidence.photoCount,
           videoCount: cluster.evidence.videoCount,
+          marketRole: cluster.marketRole ?? undefined,
         },
   };
 }

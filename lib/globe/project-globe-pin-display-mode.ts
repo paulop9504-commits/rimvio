@@ -66,6 +66,9 @@ export function inferGlobePinDisplayDecision(input: {
   if (pin.pinShape === "cluster") {
     return { shape: "slot", reason: "cluster" };
   }
+  if (pin.pinShape === "market") {
+    return { shape: "slot", reason: "focused_context" };
+  }
 
   if (pin.id === input.expandedPinId) {
     return { shape: "slot", reason: "expanded_tap" };
@@ -142,7 +145,7 @@ function applyPinDisplayDecision(
   decision: GlobePinDisplayDecision,
 ): ClassifiedGlobePin {
   if (decision.shape === "slot") {
-    if (pin.pinShape === "slot" && pin.slot) {
+    if ((pin.pinShape === "slot" || pin.pinShape === "market") && pin.slot) {
       return pin;
     }
     return {

@@ -214,7 +214,7 @@ export function marketPrioritySlotPlaceholderKo(
     case "battery_health":
       return "예: 85";
     case "cosmetic_grade":
-      return "거의 새것 / 사용감 적음";
+      return "미개봉 / 거의 새것 / 사용감 적음";
     case "color_design":
       return "예: 블랙 · 미니멀";
     case "condition_abc":

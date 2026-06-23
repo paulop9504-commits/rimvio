@@ -216,6 +216,35 @@ export const GlobeFlatMapStage = memo(function GlobeFlatMapStage({
             </div>
           );
         }
+        if (pin.pinShape === "market") {
+          const role = pin.marketRole ?? pin.slot?.marketRole ?? "listing";
+          return (
+            <button
+              key={pin.id}
+              type="button"
+              className={cn(
+                "rimvio-globe-3d-pin rimvio-globe-3d-pin--market absolute z-20",
+                `rimvio-globe-3d-pin--market-${role}`,
+                pin.id === activePinId && "rimvio-globe-3d-pin--active",
+              )}
+              style={{ left: pos.x, top: pos.y }}
+              onClick={() => onPinPress?.(pin.id)}
+            >
+              <span className="rimvio-globe-3d-pin__card rimvio-globe-3d-pin__card--market">
+                <span className="rimvio-globe-3d-pin__title">{pin.label}</span>
+                <span
+                  className={cn(
+                    "rimvio-globe-3d-pin__market-pill",
+                    `rimvio-globe-3d-pin__market-pill--${role}`,
+                  )}
+                >
+                  {role === "seeking" ? "구매" : "내놓기"}
+                </span>
+              </span>
+              <span className="rimvio-globe-3d-pin__dot" />
+            </button>
+          );
+        }
         return (
           <button
             key={pin.id}

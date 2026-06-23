@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { MarketListingTradePlaceStep } from "@/components/market/market-listing-trade-place-step";
 import { MarketPrioritySlotFields } from "@/components/market/market-priority-slot-fields";
 import { MarketMemoryRecordFields } from "@/components/market/market-memory-record-fields";
 import {
@@ -236,6 +237,10 @@ export function GlobeMarketIntentWizardSheet({
       }
       return true;
     }
+    if (step === "place" && !working.placeLabel.trim()) {
+      toast.message(copy.globe.marketTradePlaceResolving);
+      return false;
+    }
     return true;
   }, [step, working]);
 
@@ -279,6 +284,9 @@ export function GlobeMarketIntentWizardSheet({
         },
         {},
       );
+      if (working.role !== "listing") {
+        toast.message(copy.globe.marketPinGpsPrompt, { duration: 2400 });
+      }
       await commitMarketIntentFromDraft(finalDraft, {
         photoFiles: photoFiles.length > 0 ? photoFiles : undefined,
       });
@@ -460,7 +468,16 @@ export function GlobeMarketIntentWizardSheet({
                 <MarketMemoryRecordFields draft={working} onChange={setWorking} />
               ) : null}
 
-              {step === "place" ? (
+              {step === "place" && !isSeeking ? (
+                <MarketListingTradePlaceStep
+                  draft={working}
+                  photoFiles={photoFiles}
+                  onChange={setWorking}
+                  onResolvingChange={setBusy}
+                />
+              ) : null}
+
+              {step === "place" && isSeeking ? (
                 <div className="space-y-3">
                   <p className={cn(RIMVIO_TYPE.headline, "text-lg")}>
                     {copy.globe.marketWizardPlaceTitle}
@@ -521,6 +538,12 @@ export function GlobeMarketIntentWizardSheet({
                       <dt className="text-muted-foreground">{copy.globe.marketIntentFieldPrice}</dt>
                       <dd className="font-semibold">{formatPriceRange(working)}</dd>
                     </div>
+                    {!isSeeking && working.placeLabel ? (
+                      <div className="flex justify-between gap-3">
+                        <dt className="text-muted-foreground">{copy.globe.marketTradePlaceCurrentLabel}</dt>
+                        <dd className="font-semibold text-right">{working.placeLabel}</dd>
+                      </div>
+                    ) : null}
                     {formatMarketMemoryPreview(working.detail, working.role) ? (
                       <div className="border-t border-black/[0.06] pt-2">
                         <dt className="text-muted-foreground">{copy.globe.marketMemoryReviewLabel}</dt>

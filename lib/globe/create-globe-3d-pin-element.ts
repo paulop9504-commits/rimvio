@@ -4,6 +4,7 @@ import {
   feedSlotPeerChipShortLabel,
 } from "@/lib/feed/feed-slot-peer-chip-colors";
 import { dispatchGlobeContextShareRequest } from "@/lib/globe/globe-context-share-request";
+import { marketGlobePinRoleLabelKo } from "@/lib/globe/market/market-globe-pin-label";
 
 const LONG_PRESS_MS = 520;
 /** Finger jitter on mobile — above this, treat as globe drag not tap. */
@@ -321,6 +322,47 @@ export function createGlobe3dDotPinElement(
 
   const dot = document.createElement("span");
   dot.className = "rimvio-globe-3d-pin__dot-only";
+  dot.setAttribute("aria-hidden", "true");
+  root.appendChild(dot);
+
+  bindGlobe3dPinPress(root, pin.id, handlers, { relocateEnabled: false });
+
+  return root;
+}
+
+export function createGlobe3dMarketPinElement(
+  pin: ClassifiedGlobePin,
+  active: boolean,
+  handlers: Globe3dPinInteractionHandlers,
+): HTMLElement {
+  const role = pin.marketRole ?? pin.slot?.marketRole ?? "listing";
+  const roleLabel = marketGlobePinRoleLabelKo(role);
+  const title = pin.slot?.experienceTitle?.trim() || pin.label.trim() || roleLabel;
+
+  const root = document.createElement("button");
+  root.type = "button";
+  root.dataset.globePinId = pin.id;
+  root.dataset.globeMarketRole = role;
+  root.className = `rimvio-globe-3d-pin rimvio-globe-3d-pin--market rimvio-globe-3d-pin--market-${role}${active ? " rimvio-globe-3d-pin--active" : ""}`;
+  root.setAttribute("aria-label", `${title} · ${roleLabel}`);
+
+  const card = document.createElement("span");
+  card.className = "rimvio-globe-3d-pin__card rimvio-globe-3d-pin__card--market";
+
+  const titleEl = document.createElement("span");
+  titleEl.className = "rimvio-globe-3d-pin__title";
+  titleEl.textContent = title;
+  card.appendChild(titleEl);
+
+  const pill = document.createElement("span");
+  pill.className = `rimvio-globe-3d-pin__market-pill rimvio-globe-3d-pin__market-pill--${role}`;
+  pill.textContent = roleLabel;
+  card.appendChild(pill);
+
+  root.appendChild(card);
+
+  const dot = document.createElement("span");
+  dot.className = "rimvio-globe-3d-pin__dot";
   dot.setAttribute("aria-hidden", "true");
   root.appendChild(dot);
 

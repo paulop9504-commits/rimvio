@@ -3572,6 +3572,53 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   color: #3182f6;
 }
 
+.rimvio-globe-3d-pin__card--market {
+  border-color: rgba(139, 149, 161, 0.28);
+  background: rgba(242, 244, 246, 0.94);
+  box-shadow:
+    0 2px 8px rgba(60, 70, 80, 0.08),
+    0 8px 20px rgba(78, 89, 104, 0.1);
+  backdrop-filter: blur(6px);
+}
+
+.rimvio-globe-3d-pin--market .rimvio-globe-3d-pin__title {
+  color: #4e5968;
+  font-weight: 600;
+}
+
+.rimvio-globe-3d-pin--market .rimvio-globe-3d-pin__dot {
+  background: #8b95a1;
+  box-shadow: 0 2px 6px rgba(107, 118, 132, 0.35);
+}
+
+.rimvio-globe-3d-pin--market.rimvio-globe-3d-pin--active .rimvio-globe-3d-pin__card--market {
+  border-color: rgba(107, 118, 132, 0.38);
+  box-shadow:
+    0 0 0 2px rgba(139, 149, 161, 0.18),
+    0 8px 20px rgba(78, 89, 104, 0.12);
+}
+
+.rimvio-globe-3d-pin__market-pill {
+  display: inline-flex;
+  border-radius: 9999px;
+  padding: 0.1rem 0.38rem;
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.rimvio-globe-3d-pin__market-pill--seeking {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.rimvio-globe-3d-pin__market-pill--listing {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+}
+
 .rimvio-globe-3d-pin--departure .rimvio-globe-3d-pin__card {
   border-color: rgba(139, 149, 161, 0.22);
   background: #f9fbff;

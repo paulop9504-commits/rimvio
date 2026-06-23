@@ -23,6 +23,7 @@ export const FEATURE_ACTION_CATEGORY: Record<string, ActionCategory> = {
   transfer: "transaction",
   dutch: "transaction",
   receipt: "transaction",
+  market: "transaction",
 
   // Planning
   schedule: "planning",

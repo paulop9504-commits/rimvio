@@ -213,6 +213,14 @@ export function isAmbiguousDistrictOnlyLabel(placeLabel: string): boolean {
   return listAmbiguousDistrictCandidates(placeLabel) !== null;
 }
 
+export function listMetroDistrictsForCity(city: string): readonly KoreaMetroDistrict[] {
+  const key = city.trim();
+  if (!key) {
+    return [];
+  }
+  return KOREA_METRO_DISTRICTS.filter((row) => row.city === key);
+}
+
 export function formatDistrictPickPrompt(districtName: string): string {
   return `${districtName} — 어느 도시인가요?`;
 }

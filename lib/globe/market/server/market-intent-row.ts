@@ -54,6 +54,7 @@ function readDetailJson(raw: Record<string, unknown> | null | undefined): Market
     detailNote:
       typeof raw.detailNote === "string" ? raw.detailNote : DEFAULT_MARKET_INTENT_DETAIL.detailNote,
     conditionId:
+      raw.conditionId === "sealed" ||
       raw.conditionId === "like_new" ||
       raw.conditionId === "good" ||
       raw.conditionId === "fair" ||
@@ -76,6 +77,16 @@ function readDetailJson(raw: Record<string, unknown> | null | undefined): Market
         ? (raw.prioritySlots as MarketIntentDetail["prioritySlots"])
         : {},
     memoryRecord: readMemoryRecord(raw),
+    memoryPlaceLabel:
+      typeof raw.memoryPlaceLabel === "string" ? raw.memoryPlaceLabel : undefined,
+    memoryPlaceLat:
+      typeof raw.memoryPlaceLat === "number" && Number.isFinite(raw.memoryPlaceLat)
+        ? raw.memoryPlaceLat
+        : null,
+    memoryPlaceLng:
+      typeof raw.memoryPlaceLng === "number" && Number.isFinite(raw.memoryPlaceLng)
+        ? raw.memoryPlaceLng
+        : null,
   };
 }
 
@@ -93,6 +104,9 @@ export function marketIntentDetailToJson(detail: MarketIntentDetail): Record<str
     prioritySchemaVersion: detail.prioritySchemaVersion,
     prioritySlots: detail.prioritySlots,
     memoryRecord: detail.memoryRecord,
+    memoryPlaceLabel: detail.memoryPlaceLabel,
+    memoryPlaceLat: detail.memoryPlaceLat,
+    memoryPlaceLng: detail.memoryPlaceLng,
   };
 }
 

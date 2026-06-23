@@ -21,7 +21,9 @@ export function syncMarketMemoryRecordOnDraft(
   const experienceTags = generateMarketExperienceTags({
     categoryId: draft.categoryId,
     productName: draft.detail.productName || draft.title,
-    placeLabel: draft.placeLabel,
+    placeLabel:
+      draft.detail.memoryPlaceLabel?.trim() ||
+      draft.placeLabel,
     memory: merged,
   });
   return {

@@ -8,7 +8,9 @@ import { copy } from "@/lib/copy/human-ko";
 import { openHrefWithFallback } from "@/lib/actions/open-with-fallback";
 import {
   acceptMarketHandshakeRemote,
+  startMarketHandshakeChatRemote,
 } from "@/lib/globe/market/client/sync-market-intent-remote";
+import { readMarketHandshakeUserError } from "@/lib/globe/market/read-market-handshake-user-error";
 import type { MarketAlignmentOffer } from "@/lib/globe/market/market-intent-types";
 import {
   buildKakaoMapRouteHref,
@@ -52,8 +54,30 @@ export function MarketAlignmentSurface({
           toast.success(copy.globe.marketHandshakeListingAcceptedToast);
           router.push(peerRoomPath(accepted.threadId));
         } catch (error) {
-          const message =
-            error instanceof Error ? error.message : copy.globe.marketAlignBridgeFail;
+          const message = readMarketHandshakeUserError(
+            error instanceof Error ? error.message : copy.globe.marketAlignBridgeFail,
+          );
+          toast.error(message);
+        } finally {
+          setActionBusy(false);
+        }
+        return;
+      }
+
+      if (resolved.handshakeId && resolved.viewerAction === "open_preview") {
+        if (actionBusy) {
+          return;
+        }
+        setActionBusy(true);
+        try {
+          const started = await startMarketHandshakeChatRemote({
+            handshakeId: resolved.handshakeId,
+          });
+          router.push(peerRoomPath(started.threadId));
+        } catch (error) {
+          const message = readMarketHandshakeUserError(
+            error instanceof Error ? error.message : copy.globe.marketAlignBridgeFail,
+          );
           toast.error(message);
         } finally {
           setActionBusy(false);
@@ -63,7 +87,7 @@ export function MarketAlignmentSurface({
 
       if (
         resolved.threadId &&
-        (resolved.viewerAction === "open_preview" || resolved.viewerAction === "open_chat")
+        resolved.viewerAction === "open_chat"
       ) {
         router.push(peerRoomPath(resolved.threadId));
         return;

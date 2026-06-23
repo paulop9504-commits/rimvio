@@ -33,6 +33,7 @@ const PHONE_BANDS: Record<
 };
 
 const COSMETIC_WEIGHT: Record<string, number> = {
+  sealed: 1.08,
   like_new: 1.04,
   good: 1,
   fair: 0.93,
