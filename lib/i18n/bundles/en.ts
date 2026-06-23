@@ -1242,8 +1242,8 @@ export const copyEn: Copy = {
       "My Links for yourself, Together for sharing — each in its place",
   },
   auth: {
-    loginTagline: "Say it, share it — run it with one tap",
-    loginPrompt: "Sign in with Google, then pick actions from friends and links.",
+    loginTagline: "Leave the experience. Run the next step.",
+    loginPrompt: "Sign in with Google to continue your context on the globe.",
     googleLogin: "Get Started with Google",
     googleContinue: "Continue with Google",
     loggedInAs: (name: string) =>

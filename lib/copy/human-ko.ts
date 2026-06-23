@@ -1255,8 +1255,8 @@ export const copy = {
       "혼자 실행할 입력은 실행 화면, 함께 볼 것은 함께하기 — 편하게 나눠 두었습니다",
   },
   auth: {
-    loginTagline: "말하고, 공유하고 — 실행은 탭 한 번",
-    loginPrompt: "Google로 시작한 뒤, 친구·링크에서 실행만 골라요.",
+    loginTagline: "경험은 남기고, 실행은 한 번에",
+    loginPrompt: "Google로 시작해, 당신의 맥락을 지구 위에서 이어가세요.",
     googleLogin: "Google로 시작하기",
     googleContinue: "Google로 계속하기",
     loggedInAs: (name: string) =>

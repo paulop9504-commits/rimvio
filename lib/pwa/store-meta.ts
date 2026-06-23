@@ -3,9 +3,9 @@ import { RIMVIO } from "@/lib/brand/rimvio";
 /** App Store / Play Store / OG listing copy — single source of truth. */
 export const STORE_META = {
   shortDescription:
-    "하루의 사진·위치·대화를 기억하고, 다음 일을 이어주는 Experience OS",
+    "일상의 맥락을 경험으로 구조화하고, 다음 행동까지 연결하는 Experience OS",
   longDescription:
-    "Rimvio(림비오)는 사용자의 경험을 시간·장소·사람·행동 단위로 구조화하고, 쌓인 맥락으로 다음 행동을 제안·실행하는 Experience OS입니다. 하루 동안 남겨진 사진, 위치, 대화를 기억하고, 피드에서 오늘의 경험을 확인한 뒤 맛집·길찾기·@명령을 맥락 안에서 실행할 수 있어요. 챗봇·북마크 앱이 아닙니다. 자동 실행 없음 — Human decides, tap to run.",
+    "Rimvio(림비오)는 시간·장소·사람·행동으로 흩어진 하루를 하나의 경험으로 엮습니다. 지나온 장소와 사진, 대화가 지구 위에 남고, 쌓인 맥락에서 길찾기·일정·공유 등 필요한 다음 행동을 제안합니다. 대화만 하는 앱이 아닙니다. 당신이 고르고, 한 번의 실행으로 이어집니다.",
   keywords: [
     "링크",
     "할일",
@@ -43,7 +43,7 @@ export const STORE_META = {
       path: "/store/welcome-mobile.png",
       width: 390,
       height: 844,
-      label: "말하고, 공유하고 — 실행은 탭 한 번",
+      label: "경험은 남기고, 실행은 한 번에",
     },
   },
 } as const;
