@@ -458,6 +458,7 @@ function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
           experienceDiscussion={experienceDiscussion}
           contextTalkEventId={experienceEventId}
           contextTalkTitle={experienceTitle}
+          hideMarketHandshakeSeeds={Boolean(marketHandshake)}
         />
       </PeerChatThreadShell>
 

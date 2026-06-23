@@ -4,6 +4,7 @@ import type { MarketCompletionTraceDraft } from "@/lib/globe/market/market-hands
 import type { MarketHandshakeRecord } from "@/lib/globe/market/market-handshake-types";
 import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
 import { buildMarketCompletionTraceDraft } from "@/lib/globe/market/build-market-completion-trace-draft";
+import { formatMarketPlaceLabel } from "@/lib/globe/market/format-market-place-label";
 import { formatMarketMemoryPreview } from "@/lib/globe/market/memory/format-market-memory-preview";
 import { readMarketMemoryRecord } from "@/lib/globe/market/market-intent-detail";
 
@@ -39,7 +40,10 @@ export type MarketHandshakeRoomPayload = {
     priceLine: string;
     category: string;
     placeLabel: string;
+    listingEventId: string;
     photoCount: number;
+    photoUrls: string[];
+    memoryPlaceLabel: string | null;
     memoryPreview: string | null;
     experienceTags: string[];
     matchMemoryPreview: string | null;
@@ -121,8 +125,11 @@ export function buildMarketHandshakeRoomPayload(input: {
       title: listingIntent.detail.productName || listingIntent.title,
       priceLine,
       category: marketCategoryLabelKo(listingIntent.categoryId),
-      placeLabel: listingIntent.placeLabel,
+      placeLabel: formatMarketPlaceLabel(listingIntent.placeLabel) || "근처",
+      listingEventId: listingIntent.eventId,
       photoCount: listingIntent.detail.photoCount,
+      photoUrls: listingIntent.detail.photoUrls ?? [],
+      memoryPlaceLabel: listingIntent.detail.memoryPlaceLabel?.trim() || null,
       memoryPreview: formatMarketMemoryPreview(listingIntent.detail, "listing"),
       experienceTags: listingMemory.experienceTags,
       matchMemoryPreview,

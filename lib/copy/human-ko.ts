@@ -424,14 +424,16 @@ export const copy = {
       place: string;
       priorityHint: string;
     }) =>
-      `[맞는 흔적] ${input.productName} · ${input.priceLine}\n${input.category} · ${input.place}${input.priorityHint ? `\n${input.priorityHint}` : ""}`,
+      `맞는 흔적으로 연결됐어요 · ${input.productName}`,
     marketHandshakeStartSystemMessage: (input: {
       productName: string;
       priceLine: string;
       priorityHint: string;
       place: string;
-    }) =>
-      `대화를 시작했어요 · ${input.productName} · ${input.priceLine}\n${input.priorityHint || input.place}`,
+    }) => `대화를 시작했어요 · ${input.productName}`,
+    marketHandshakePhotoLoading: (count: number) => `사진 ${count}장`,
+    marketHandshakeNoPhoto: "사진이 아직 없어요",
+    marketHandshakeMemoryPlace: (place: string) => `${place} 흔적이 담긴 물건이에요`,
     marketHandshakeChatLocked: "구매자가 상품을 확인하고 대화를 시작해요",
     marketHandshakeStartCta: "대화 시작하기",
     marketHandshakeWaitingSeller: "판매자가 맞춤을 확인 중이에요",

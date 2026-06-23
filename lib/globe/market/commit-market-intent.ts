@@ -7,12 +7,14 @@ import {
 import { syncMarketIntentRemote } from "@/lib/globe/market/client/sync-market-intent-remote";
 import { syncMarketIntentGlobePin } from "@/lib/globe/market/sync-market-intent-globe-pin";
 import { ingestGlobeContextFromFiles } from "@/lib/feed/ingest-globe-context-capture";
+import { uploadMarketListingPhotos } from "@/lib/globe/market/upload-market-listing-photos";
+import { createClient } from "@/lib/supabase/client";
 
 export async function commitMarketIntentFromDraft(
   draft: MarketIntentDraft,
   options?: { photoFiles?: File[] },
 ): Promise<MarketIntentRecord> {
-  const detail = {
+  let detail = {
     ...(draft.detail ?? DEFAULT_MARKET_INTENT_DETAIL),
     photoCount: options?.photoFiles?.length ?? draft.detail?.photoCount ?? 0,
   };
@@ -43,6 +45,27 @@ export async function commitMarketIntentFromDraft(
       });
     } catch {
       // photos are optional — intent still commits
+    }
+
+    if (draft.role === "listing") {
+      try {
+        const supabase = createClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (user?.id) {
+          const photoUrls = await uploadMarketListingPhotos({
+            userId: user.id,
+            eventId: draft.eventId,
+            photoFiles: options.photoFiles,
+          });
+          if (photoUrls.length > 0) {
+            detail = { ...detail, photoUrls };
+          }
+        }
+      } catch {
+        // remote gallery is best-effort
+      }
     }
   }
 

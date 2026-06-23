@@ -182,7 +182,10 @@ export type MarketHandshakeRoomState = {
     priceLine: string;
     category: string;
     placeLabel: string;
+    listingEventId: string;
     photoCount: number;
+    photoUrls: string[];
+    memoryPlaceLabel: string | null;
     memoryPreview: string | null;
     experienceTags: string[];
     matchMemoryPreview: string | null;

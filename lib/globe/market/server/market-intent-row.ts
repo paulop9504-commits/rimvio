@@ -87,6 +87,9 @@ function readDetailJson(raw: Record<string, unknown> | null | undefined): Market
       typeof raw.memoryPlaceLng === "number" && Number.isFinite(raw.memoryPlaceLng)
         ? raw.memoryPlaceLng
         : null,
+    photoUrls: Array.isArray(raw.photoUrls)
+      ? raw.photoUrls.filter((url): url is string => typeof url === "string" && url.trim().length > 0)
+      : [],
   };
 }
 
@@ -107,6 +110,7 @@ export function marketIntentDetailToJson(detail: MarketIntentDetail): Record<str
     memoryPlaceLabel: detail.memoryPlaceLabel,
     memoryPlaceLat: detail.memoryPlaceLat,
     memoryPlaceLng: detail.memoryPlaceLng,
+    photoUrls: detail.photoUrls ?? [],
   };
 }
 

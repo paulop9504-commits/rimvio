@@ -4,6 +4,7 @@ import { ArrowUp, ImagePlus, Loader2 } from "lucide-react";
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type FormEvent,
@@ -36,6 +37,7 @@ import { ContextTalkRoomPanel } from "@/components/peer-chat/context-talk-room-p
 import { usePeerAiLens } from "@/hooks/use-peer-ai-lens";
 import { useLensBubbleActions } from "@/hooks/use-lens-bubble-actions";
 import { cn } from "@/lib/utils";
+import { isMarketHandshakeSeedMessage } from "@/lib/globe/market/is-market-handshake-seed-message";
 
 type PeerThreadChatPanelProps = {
   displayName: string;
@@ -51,6 +53,8 @@ type PeerThreadChatPanelProps = {
   /** Bridge-scoped Context Talk — map backdrop + scroll sync. */
   contextTalkEventId?: string | null;
   contextTalkTitle?: string | null;
+  /** Handshake hero card already shows product — hide duplicate system seeds. */
+  hideMarketHandshakeSeeds?: boolean;
 };
 
 export function PeerThreadChatPanel({
@@ -63,6 +67,7 @@ export function PeerThreadChatPanel({
   experienceDiscussion = false,
   contextTalkEventId = null,
   contextTalkTitle = null,
+  hideMarketHandshakeSeeds = false,
 }: PeerThreadChatPanelProps) {
   const threadId = policyInput.settings.peerThreadId;
   const phoneDm = isDmThreadId(threadId);
@@ -96,8 +101,17 @@ export function PeerThreadChatPanel({
     peerLastReadAt,
     groupReadCursors,
   } = usePeerThreadChat(policyInput);
+  const visibleMessages = useMemo(() => {
+    if (!hideMarketHandshakeSeeds) {
+      return messages;
+    }
+    return messages.filter(
+      (row) =>
+        row.messageType !== "system" || !isMarketHandshakeSeedMessage(row.body),
+    );
+  }, [hideMarketHandshakeSeeds, messages]);
   const { candidatesByMessageId } = usePeerAiLens({
-    messages,
+    messages: visibleMessages,
     enabled: lensActive && !readOnly,
   });
   const [text, setText] = useState("");
@@ -412,14 +426,14 @@ export function PeerThreadChatPanel({
                   ),
             )}
           >
-            {messages.map((message, index) => (
+            {visibleMessages.map((message, index) => (
               <PeerChatBubble
                 key={message.id}
                 message={message}
                 simple={simple}
-                showTime={shouldShowPeerMessageTime(messages, index)}
+                showTime={shouldShowPeerMessageTime(visibleMessages, index)}
                 showPeerProfileHeader={shouldShowPeerProfileHeader(
-                  messages,
+                  visibleMessages,
                   index,
                 )}
                 peerProfile={peerProfile}
@@ -428,11 +442,11 @@ export function PeerThreadChatPanel({
                 lensDisabled={aiBusy}
                 showSentCheck={
                   phoneDm &&
-                  shouldShowPeerSentCheck(messages, index, peerLastReadAt)
+                  shouldShowPeerSentCheck(visibleMessages, index, peerLastReadAt)
                 }
                 groupReadCount={
                   isGroup
-                    ? groupReadCountForMessage(messages, index, groupReadCursors)
+                    ? groupReadCountForMessage(visibleMessages, index, groupReadCursors)
                     : 0
                 }
               />

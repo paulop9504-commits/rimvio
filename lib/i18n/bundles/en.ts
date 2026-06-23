@@ -426,15 +426,16 @@ export const copyEn: Copy = {
       category: string;
       place: string;
       priorityHint: string;
-    }) =>
-      `[Aligned trace] ${input.productName} · ${input.priceLine}\n${input.category} · ${input.place}${input.priorityHint ? `\n${input.priorityHint}` : ""}`,
+    }) => `Aligned · ${input.productName}`,
     marketHandshakeStartSystemMessage: (input: {
       productName: string;
       priceLine: string;
       priorityHint: string;
       place: string;
-    }) =>
-      `Chat started · ${input.productName} · ${input.priceLine}\n${input.priorityHint || input.place}`,
+    }) => `Chat started · ${input.productName}`,
+    marketHandshakePhotoLoading: (count: number) => `${count} photos`,
+    marketHandshakeNoPhoto: "No photos yet",
+    marketHandshakeMemoryPlace: (place: string) => `Traces from ${place}`,
     marketHandshakeChatLocked: "The seeker is reviewing the item before chat opens",
     marketHandshakeStartCta: "Start chat",
     marketHandshakeWaitingSeller: "Waiting for the lister to confirm alignment",

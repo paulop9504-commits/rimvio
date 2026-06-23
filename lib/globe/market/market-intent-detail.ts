@@ -56,6 +56,8 @@ export type MarketIntentDetail = {
   memoryPlaceLabel?: string;
   memoryPlaceLat?: number | null;
   memoryPlaceLng?: number | null;
+  /** Public URLs — uploaded on listing confirm for handshake chat. */
+  photoUrls?: string[];
 };
 
 export function readMarketMemoryRecord(
