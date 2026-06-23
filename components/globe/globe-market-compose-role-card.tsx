@@ -9,31 +9,32 @@ import { RIMVIO_TYPE } from "@/lib/design/rimvio-ontology";
 import type { MarketIntentRole } from "@/lib/globe/market/market-intent-types";
 import { cn } from "@/lib/utils";
 
-export type GlobeMarketTradeDockProps = {
+export type GlobeMarketComposeRoleCardProps = {
   className?: string;
   disabled?: boolean;
   onSelectRole: (role: MarketIntentRole) => void;
 };
 
-/** Globe bottom — 구하기 / 내놓기 entry before the market wizard. */
-export function GlobeMarketTradeDock({
+/** Shown when composer detects @중고 — pick 내놓기 or 구하기. */
+export function GlobeMarketComposeRoleCard({
   className,
   disabled = false,
   onSelectRole,
-}: GlobeMarketTradeDockProps) {
+}: GlobeMarketComposeRoleCardProps) {
   return (
     <div
       className={cn(
-        "rounded-[1.25rem] bg-white/90 p-2 shadow-[0_6px_24px_rgba(2,32,71,0.08)] ring-1 ring-black/[0.05] backdrop-blur-xl",
+        "border-b border-black/[0.05] bg-primary/[0.03] px-3 py-3",
         disabled && "opacity-70",
         className,
       )}
-      data-globe-market-trade-dock
+      data-globe-market-compose-role-card
     >
-      <p className={cn(RIMVIO_TYPE.eyebrow, "mb-2 text-center text-muted-foreground")}>
-        {copy.globe.marketTradeDockEyebrow}
+      <p className={cn(RIMVIO_TYPE.body, "font-semibold text-foreground")}>
+        {copy.globe.marketComposeRoleTitle}
       </p>
-      <div className="grid grid-cols-2 gap-2">
+      <p className={cn("mt-1", RIMVIO_TYPE.caption)}>{copy.globe.marketComposeRoleBody}</p>
+      <div className="mt-3 grid grid-cols-2 gap-2">
         <button
           type="button"
           disabled={disabled}

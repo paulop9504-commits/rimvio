@@ -271,6 +271,12 @@ export const copyEn: Copy = {
     marketTradeDockListingAria: "List — post your alignment",
     marketTradeDockSeekingAria: "Seek — find matching traces",
     marketTradeDockEyebrow: "Aligned traces",
+    marketComposeRoleTitle: "Which alignment?",
+    marketComposeRoleBody:
+      "The more traces you leave, the better we match what you list or seek.",
+    marketComposeBareHint: "Choose list or seek",
+    marketAlignInboxToast: (title: string) => `Aligned · ${title}`,
+    marketAlignInboxOpenCta: "Inbox",
     marketWizardValidationProductDetail:
       "Enter an exact product name · e.g. iPhone 15 Pro",
     marketWizardProductNoteLabel: "Notes",
@@ -505,7 +511,7 @@ export const copyEn: Copy = {
     photoIngestProgressCommitting: (name: string, index: number, total: number) =>
       `${index}/${total} · saving ${name}`,
     photoIngestProgressReady: (total: number) => `${total} items ready`,
-    ingestDefaultPlaceholder: "Place · memo · @navigate",
+    ingestDefaultPlaceholder: "Place · memo · @market · @navigate",
     ingestAttachPlaceholder: (title: string) => `Attach to “${title}”`,
     ingestPhotoActionTitle: "Photos & video",
     ingestPhotoActionHint: "Time & place auto",
@@ -522,6 +528,7 @@ export const copyEn: Copy = {
     inboxSectionShare: "Shared context",
     inboxSectionBridgeActivity: "Continue context",
     inboxSectionLocation: "Location check",
+    inboxSectionMarketAlign: "Alignment",
     inboxLocationTitle: (place: string, dwellLabel?: string) =>
       dwellLabel
         ? `${place} · ${dwellLabel} accumulated`

@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Inbox, Loader2, MapPin, Users, X } from "lucide-react";
+import { Inbox, Handshake, Loader2, MapPin, Users, X } from "lucide-react";
 import { toast } from "sonner";
 import { copy } from "@/lib/copy/human-ko";
+import { acceptMarketHandshakeRemote } from "@/lib/globe/market/client/sync-market-intent-remote";
+import { peerRoomPath } from "@/lib/peer-chat/navigate-peer-room-from-feed";
 import { completeBridgeInviteAccept } from "@/lib/experience-bridge/complete-bridge-invite-accept";
 import {
   acceptExperienceBridgeRemote,
@@ -88,6 +90,7 @@ const SECTION_LABEL: Record<RimvioNotification["section"], string> = {
   share: copy.globe.inboxSectionShare,
   bridge_activity: copy.globe.inboxSectionBridgeActivity,
   location: copy.globe.inboxSectionLocation,
+  market_align: copy.globe.inboxSectionMarketAlign,
 };
 
 /** Unified globe inbox — notification objects (single queue). */
@@ -106,6 +109,7 @@ export function GlobeInboxSheet({
   const { user, signInWithGoogle } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [busyBridgeEventId, setBusyBridgeEventId] = useState<string | null>(null);
+  const [busyMarketHandshakeId, setBusyMarketHandshakeId] = useState<string | null>(null);
   const [busyLocationEventId, setBusyLocationEventId] = useState<string | null>(null);
   const [dwellConfirmEventId, setDwellConfirmEventId] = useState<string | null>(null);
 
@@ -187,6 +191,37 @@ export function GlobeInboxSheet({
       );
     } finally {
       setBusyBridgeEventId(null);
+    }
+  };
+
+  const handleMarketAlign = async (notification: RimvioNotification) => {
+    const offer = notification.marketAlignOffer;
+    const handshakeId = offer?.handshakeId?.trim();
+    if (!offer || !handshakeId) {
+      return;
+    }
+    setBusyMarketHandshakeId(handshakeId);
+    try {
+      if (offer.viewerAction === "accept_listing") {
+        const accepted = await acceptMarketHandshakeRemote({ handshakeId });
+        toast.success(copy.globe.marketHandshakeListingAcceptedToast);
+        router.push(peerRoomPath(accepted.threadId));
+        onOpenChange(false);
+        return;
+      }
+      if (
+        offer.threadId &&
+        (offer.viewerAction === "open_preview" || offer.viewerAction === "open_chat")
+      ) {
+        router.push(peerRoomPath(offer.threadId));
+        onOpenChange(false);
+      }
+    } catch (caught) {
+      const message =
+        caught instanceof Error ? caught.message : copy.globe.marketAlignBridgeFail;
+      toast.error(message);
+    } finally {
+      setBusyMarketHandshakeId(null);
     }
   };
 
@@ -316,7 +351,7 @@ export function GlobeInboxSheet({
                 </div>
               ) : (
                 <div className="space-y-5">
-                  {(["share", "bridge_activity", "location"] as const).map((section) => {
+                  {(["market_align", "share", "bridge_activity", "location"] as const).map((section) => {
                     const rows = grouped[section];
                     if (rows.length === 0) {
                       return null;
@@ -331,6 +366,10 @@ export function GlobeInboxSheet({
                             const busyBridge =
                               notification.kind === "bridge_invite" &&
                               busyBridgeEventId === notification.targetId;
+                            const busyMarket =
+                              notification.kind === "market_align" &&
+                              busyMarketHandshakeId ===
+                                notification.marketAlignOffer?.handshakeId;
                             const busyLocation =
                               notification.kind === "location_confirm" &&
                               busyLocationEventId === notification.targetId;
@@ -377,6 +416,46 @@ export function GlobeInboxSheet({
                                         type="button"
                                         disabled={busyBridge}
                                         onClick={() => void handleDeclineBridge(notification)}
+                                        className={rimvioGhostCtaClass()}
+                                      >
+                                        {notification.dismissCtaLabel}
+                                      </button>
+                                    </div>
+                                  </>
+                                ) : notification.kind === "market_align" ? (
+                                  <>
+                                    <p
+                                      className={cn(
+                                        "flex items-center gap-1",
+                                        RIMVIO_TYPE.eyebrow,
+                                        "text-primary",
+                                      )}
+                                    >
+                                      <Handshake className="size-3" aria-hidden />
+                                      {copy.globe.inboxSectionMarketAlign}
+                                    </p>
+                                    <p className={cn("mt-0.5 font-semibold", RIMVIO_TYPE.body)}>
+                                      {notification.title}
+                                    </p>
+                                    <p className={cn("mt-1", RIMVIO_TYPE.caption)}>
+                                      {notification.body}
+                                    </p>
+                                    <div className="mt-3 flex gap-2">
+                                      <button
+                                        type="button"
+                                        disabled={busyMarket}
+                                        onClick={() => void handleMarketAlign(notification)}
+                                        className={rimvioCompactPrimaryCtaClass()}
+                                      >
+                                        {busyMarket ? (
+                                          <Loader2 className="size-4 animate-spin" aria-hidden />
+                                        ) : null}
+                                        {notification.primaryCtaLabel}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        disabled={busyMarket}
+                                        onClick={() => onNotificationDismissed?.(notification.id)}
                                         className={rimvioGhostCtaClass()}
                                       >
                                         {notification.dismissCtaLabel}

@@ -6,6 +6,10 @@ export function locationConfirmNotificationId(eventId: string): string {
   return `location:${eventId.trim()}`;
 }
 
+export function marketAlignNotificationId(handshakeId: string): string {
+  return `market_align:${handshakeId.trim()}`;
+}
+
 export function parseLocationEventIdFromNotificationId(id: string): string | null {
   const trimmed = id.trim();
   if (!trimmed.startsWith("location:")) {

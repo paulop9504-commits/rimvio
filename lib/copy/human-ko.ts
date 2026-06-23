@@ -281,6 +281,12 @@ export const copy = {
     marketTradeDockListingAria: "내놓기 — 맞춤 조건 올리기",
     marketTradeDockSeekingAria: "구하기 — 맞는 흔적 찾기",
     marketTradeDockEyebrow: "맞춤 흔적",
+    marketComposeRoleTitle: "어떤 맞춤인가요?",
+    marketComposeRoleBody:
+      "내놓거나 구할 때, 흔적이 쌓일수록 맞는 조건을 더 잘 찾아줘요.",
+    marketComposeBareHint: "내놓기 또는 구하기를 골라 주세요",
+    marketAlignInboxToast: (title: string) => `맞춤됐어요 · ${title}`,
+    marketAlignInboxOpenCta: "수신함",
     marketWizardValidationProduct: "제품명을 적어 주세요",
     marketWizardValidationProductDetail:
       "정확한 제품명을 적어 주세요 · 예: 아이폰 15 프로",
@@ -517,7 +523,7 @@ export const copy = {
     photoIngestProgressCommitting: (name: string, index: number, total: number) =>
       `${index}/${total} · ${name} 남기는 중`,
     photoIngestProgressReady: (total: number) => `사진 ${total}장 확인됨`,
-    ingestDefaultPlaceholder: "장소 · 메모 · @길찾기",
+    ingestDefaultPlaceholder: "장소 · 메모 · @중고 · @길찾기",
     ingestAttachPlaceholder: (title: string) => `「${title}」에 붙이기`,
     ingestPhotoActionTitle: "사진·동영상",
     ingestPhotoActionHint: "시간·위치 자동",
@@ -532,6 +538,7 @@ export const copy = {
     inboxSectionShare: "공유 받은 맥락",
     inboxSectionBridgeActivity: "맥락 이어가기",
     inboxSectionLocation: "위치 확인",
+    inboxSectionMarketAlign: "맞춤 알림",
     inboxLocationTitle: (place: string, dwellLabel?: string) =>
       dwellLabel
         ? `${place} · ${dwellLabel} 쌓였어요`

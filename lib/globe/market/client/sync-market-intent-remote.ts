@@ -47,6 +47,25 @@ export async function fetchMarketAlignmentOfferRemote(input: {
   }
 }
 
+export async function fetchMarketAlignInboxRemote(): Promise<
+  import("@/lib/globe/market/market-handshake-types").MarketHandshakeOffer[]
+> {
+  try {
+    const response = await fetch(`${resolveAppOrigin()}/api/globe/market-alignment/inbox`, {
+      credentials: "include",
+    });
+    if (!response.ok) {
+      return [];
+    }
+    const body = (await response.json()) as {
+      offers?: import("@/lib/globe/market/market-handshake-types").MarketHandshakeOffer[];
+    };
+    return body.offers ?? [];
+  } catch {
+    return [];
+  }
+}
+
 export async function ensureMarketAlignmentBridgeRemote(input: {
   matchIntentId: string;
 }): Promise<{ threadId: string; createdThread: boolean }> {

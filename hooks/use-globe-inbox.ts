@@ -17,12 +17,14 @@ import {
 import { EVENT_CANDIDATES_UPDATED, findLifeEventCandidate } from "@/lib/life-read-model";
 import { EXPERIENCE_BRIDGE_UPDATED } from "@/lib/experience-bridge/local-bridge-store";
 import { subscribeBridgeSyncSession } from "@/lib/experience-bridge/bridge-sync-session";
+import { usePendingMarketAlignInbox } from "@/hooks/use-pending-market-align-inbox";
 
 /** Globe home — notification objects projected from SSOT (inbox SSOT). */
 export function useGlobeInbox(enabled = true) {
   const { user } = useAuth();
   const { enabled: gpsEnabled } = useGpsTrackingEnabled();
   const bridge = usePendingBridgeInvites(enabled);
+  const marketAlign = usePendingMarketAlignInbox(enabled && Boolean(user?.id));
   const [dismissedRevision, setDismissedRevision] = useState(0);
   const [dataRevision, setDataRevision] = useState(0);
 
@@ -61,9 +63,10 @@ export function useGlobeInbox(enabled = true) {
       invites: bridge.invites,
       bridgeActivities,
       locationConfirms,
+      marketAlignOffers: marketAlign.offers,
       dismissedIds,
     });
-  }, [bridge.invites, dataRevision, dismissedIds, gpsEnabled, user?.id]);
+  }, [bridge.invites, dataRevision, dismissedIds, gpsEnabled, marketAlign.offers, user?.id]);
 
   const dismissNotification = useCallback((id: string) => {
     persistNotificationDismiss(id);

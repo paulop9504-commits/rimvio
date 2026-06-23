@@ -9,6 +9,7 @@ import { findLifeEventCandidate } from "@/lib/life-read-model";
 import {
   bridgeInviteNotificationId,
   locationConfirmNotificationId,
+  marketAlignNotificationId,
 } from "@/lib/ontology/notifications/notification-id";
 import type {
   ProjectPendingNotificationsInput,
@@ -68,6 +69,31 @@ export function projectPendingNotifications(
     });
   }
 
+  for (const offer of input.marketAlignOffers ?? []) {
+    const handshakeId = offer.handshakeId?.trim();
+    if (!handshakeId) {
+      continue;
+    }
+    const id = marketAlignNotificationId(handshakeId);
+    if (dismissed.has(id)) {
+      continue;
+    }
+    out.push({
+      id,
+      kind: "market_align",
+      status: "pending",
+      priority: 90,
+      section: "market_align",
+      title: offer.headline,
+      body: offer.body,
+      primaryCtaLabel: offer.ctaLabel,
+      dismissCtaLabel: copy.globe.inboxLocationDismiss,
+      targetKind: "experience",
+      targetId: offer.selfEventId,
+      marketAlignOffer: offer,
+    });
+  }
+
   for (const row of input.locationConfirms) {
     const id = locationConfirmNotificationId(row.eventId);
     if (dismissed.has(id)) {
@@ -122,5 +148,6 @@ export function groupNotificationsBySection(
     share: notifications.filter((row) => row.section === "share"),
     bridge_activity: notifications.filter((row) => row.section === "bridge_activity"),
     location: notifications.filter((row) => row.section === "location"),
+    market_align: notifications.filter((row) => row.section === "market_align"),
   };
 }

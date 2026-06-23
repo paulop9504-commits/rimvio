@@ -102,7 +102,6 @@ import { getTrendBridgeFeature } from "@/lib/globe/trend-bridge/trend-bridge-fea
 import { PulseMainActionSurface } from "@/components/pulse/pulse-main-action-surface";
 import { MarketAlignmentSurface } from "@/components/market/market-alignment-surface";
 import { GlobeMarketIntentWizardSheet } from "@/components/globe/globe-market-intent-wizard-sheet";
-import { GlobeMarketTradeDock } from "@/components/globe/globe-market-trade-dock";
 import { createMarketIntentDraftFromRole } from "@/lib/globe/market/create-market-intent-draft-from-role";
 import { ingestGlobeContextFromText } from "@/lib/feed/ingest-globe-context-capture";
 import { normalizeMarketIntentFromText } from "@/lib/globe/market/normalize-market-intent-from-text";
@@ -161,6 +160,7 @@ function GlobeHomeBody() {
     [pendingBridgeInvites],
   );
   const seenBridgeToastRef = useRef(new Set<string>());
+  const seenMarketAlignToastRef = useRef(new Set<string>());
   const seenInboxCountRef = useRef(0);
   const [bridgeGhostOpen, setBridgeGhostOpen] = useState(false);
   const [bridgeGhostInvite, setBridgeGhostInvite] =
@@ -533,6 +533,26 @@ function GlobeHomeBody() {
       );
     }
   }, [pendingBridgeInvites]);
+
+  useEffect(() => {
+    for (const notification of globeNotifications) {
+      if (notification.kind !== "market_align") {
+        continue;
+      }
+      const handshakeId = notification.marketAlignOffer?.handshakeId?.trim();
+      if (!handshakeId || seenMarketAlignToastRef.current.has(handshakeId)) {
+        continue;
+      }
+      seenMarketAlignToastRef.current.add(handshakeId);
+      toast.message(copy.globe.marketAlignInboxToast(notification.title), {
+        duration: 4200,
+        action: {
+          label: copy.globe.marketAlignInboxOpenCta,
+          onClick: () => setGlobeInboxOpen(true),
+        },
+      });
+    }
+  }, [globeNotifications]);
 
   useEffect(() => {
     if (globeInboxCount <= seenInboxCountRef.current) {
@@ -991,21 +1011,29 @@ function GlobeHomeBody() {
   );
 
   const onMarketRoleSelected = useCallback(
-    async (role: MarketIntentRole) => {
+    async (role: MarketIntentRole, composeText?: string) => {
       if (marketTradeBusy) {
         return;
       }
       setMarketTradeBusy(true);
       try {
-        const outcome = await ingestGlobeContextFromText(
-          role === "listing" ? "@중고 내놓기" : "@중고 구하기",
-        );
-        const draft = prefillMarketPrioritySlots(
-          prefillMarketIntentDraft({
-            draft: createMarketIntentDraftFromRole({
+        const raw =
+          composeText?.trim() ||
+          (role === "listing" ? "@중고 내놓기" : "@중고 구하기");
+        const outcome = await ingestGlobeContextFromText(raw);
+        const normalized = normalizeMarketIntentFromText({
+          text: raw,
+          eventId: outcome.result.event.id,
+        });
+        const baseDraft = normalized
+          ? { ...normalized, role }
+          : createMarketIntentDraftFromRole({
               role,
               eventId: outcome.result.event.id,
-            }),
+            });
+        const draft = prefillMarketPrioritySlots(
+          prefillMarketIntentDraft({
+            draft: baseDraft,
             liveLat: liveLocation?.lat ?? null,
             liveLng: liveLocation?.lng ?? null,
           }),
@@ -1056,9 +1084,6 @@ function GlobeHomeBody() {
     !marketConfirmOpen &&
     !hubEventId;
 
-  const globeStackExtra =
-    pulseMainActionEnabled && !mapMediaFocusOpen ? "5.75rem" : "0px";
-
   useEffect(() => {
     const dwell =
       liveLocation?.contextLabel === "체류 중" ||
@@ -1068,10 +1093,7 @@ function GlobeHomeBody() {
   }, [globeRenderSuspended, liveLocation?.contextLabel]);
 
   return (
-    <div
-      className="relative flex h-full min-h-0 flex-1 flex-col"
-      style={{ ["--rimvio-globe-stack-extra" as string]: globeStackExtra }}
-    >
+    <div className="relative flex h-full min-h-0 flex-1 flex-col">
       <RimvioGlobeHubClient
         globeRef={globeRef}
         className="h-full min-h-0 flex-1"
@@ -1266,10 +1288,6 @@ function GlobeHomeBody() {
                 anchorLat={liveLocation?.lat ?? trendBridgeAnchorLat}
                 anchorLng={liveLocation?.lng ?? trendBridgeAnchorLng}
               />
-              <GlobeMarketTradeDock
-                disabled={marketTradeBusy}
-                onSelectRole={(role) => void onMarketRoleSelected(role)}
-              />
             </>
           ) : null
         }
@@ -1342,6 +1360,9 @@ function GlobeHomeBody() {
             void focusContextOnMap(eventId, options);
           },
           onTextCommitted: onMarketTextCommitted,
+          onMarketRoleSelect: (role, composeText) =>
+            void onMarketRoleSelected(role, composeText),
+          marketRoleBusy: marketTradeBusy,
         }}
       />
       ) : null}

@@ -23,6 +23,12 @@ import {
 } from "@/lib/feed/ingest-globe-context-capture";
 import { runGlobeComposerAction } from "@/lib/globe/run-globe-composer-action";
 import {
+  isBareMarketComposeInput,
+  isMarketComposeInput,
+} from "@/lib/globe/market/detect-market-compose-input";
+import { GlobeMarketComposeRoleCard } from "@/components/globe/globe-market-compose-role-card";
+import type { MarketIntentRole } from "@/lib/globe/market/market-intent-types";
+import {
   rimvioComposerFieldClass,
   rimvioIconBtnClass,
 } from "@/lib/brand/rimvio-neon-theme";
@@ -44,6 +50,8 @@ export type GlobeContextIngestBarProps = {
   ) => void;
   onPhotoDraftReady?: (files: File[]) => void | Promise<void>;
   onTextCommitted?: (input: { eventId: string; text: string }) => void;
+  onMarketRoleSelect?: (role: MarketIntentRole, composeText: string) => void;
+  marketRoleBusy?: boolean;
 };
 
 /** Globe home — one frosted composer; photo action lives inside the + menu. */
@@ -59,6 +67,8 @@ export const GlobeContextIngestBar = forwardRef<
     onAttached,
     onPhotoDraftReady,
     onTextCommitted,
+    onMarketRoleSelect,
+    marketRoleBusy = false,
   },
   ref,
 ) {
@@ -90,6 +100,8 @@ export const GlobeContextIngestBar = forwardRef<
   const inputPlaceholder = attachHintTitle
     ? copy.globe.ingestAttachPlaceholder(attachHintTitle)
     : copy.globe.ingestDefaultPlaceholder;
+  const showMarketRoleCard = isMarketComposeInput(text);
+  const marketComposeBusy = busy || marketRoleBusy;
 
   const ingestMedia = useCallback(
     async (fileList: FileList | null | undefined) => {
@@ -171,6 +183,10 @@ export const GlobeContextIngestBar = forwardRef<
       if (!value || busy) {
         return;
       }
+      if (isBareMarketComposeInput(value)) {
+        toast.message(copy.globe.marketComposeBareHint);
+        return;
+      }
       setBusy(true);
       try {
         const action = runGlobeComposerAction(value);
@@ -223,7 +239,7 @@ export const GlobeContextIngestBar = forwardRef<
         {menuOpen ? (
           <button
             type="button"
-            disabled={busy}
+            disabled={marketComposeBusy}
             onClick={() => photoRef.current?.click()}
             className="flex w-full items-center gap-3 border-b border-black/[0.05] px-3.5 py-3 text-left transition-colors active:bg-black/[0.03]"
             data-globe-ingest-photo-action
@@ -242,13 +258,24 @@ export const GlobeContextIngestBar = forwardRef<
           </button>
         ) : null}
 
+        {showMarketRoleCard ? (
+          <GlobeMarketComposeRoleCard
+            disabled={marketComposeBusy}
+            onSelectRole={(role) => {
+              onMarketRoleSelect?.(role, text.trim());
+              setText("");
+              setMenuOpen(false);
+            }}
+          />
+        ) : null}
+
         <form
           onSubmit={(event) => void submitText(event)}
           className="flex items-center gap-2 px-2 py-2"
         >
           <button
             type="button"
-            disabled={busy}
+            disabled={marketComposeBusy}
             onClick={() => setMenuOpen((open) => !open)}
             className={cn(
               rimvioIconBtnClass(menuOpen ? "primary" : "ghost"),
@@ -270,7 +297,7 @@ export const GlobeContextIngestBar = forwardRef<
               value={text}
               onChange={(event) => setText(event.target.value)}
               placeholder={inputPlaceholder}
-              disabled={busy}
+              disabled={marketComposeBusy}
               className="w-full bg-transparent text-[15px] text-foreground outline-none placeholder:text-muted-foreground/80"
               data-globe-context-ingest-input
             />
