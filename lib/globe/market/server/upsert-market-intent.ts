@@ -85,6 +85,30 @@ export async function listOwnMarketIntents(
   return ((data ?? []) as MarketIntentDbRow[]).map(marketIntentRowToRecord);
 }
 
+export async function deactivateMarketIntentRemote(
+  supabase: SupabaseClient,
+  userId: string,
+  eventId: string,
+): Promise<void> {
+  const key = eventId.trim();
+  if (!key) {
+    return;
+  }
+
+  const { error } = await supabase
+    .from("market_intents")
+    .update({
+      active: false,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", userId)
+    .eq("client_event_id", key);
+
+  if (error) {
+    throw error;
+  }
+}
+
 export async function findMarketIntentById(
   supabase: SupabaseClient,
   intentId: string,

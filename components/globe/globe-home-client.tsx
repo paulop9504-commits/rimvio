@@ -101,7 +101,12 @@ import { resolveRimvioHonorific } from "@/lib/copy/rimvio-honorific";
 import { getTrendBridgeFeature } from "@/lib/globe/trend-bridge/trend-bridge-feature-registry";
 import { PulseMainActionSurface } from "@/components/pulse/pulse-main-action-surface";
 import { MarketAlignmentSurface } from "@/components/market/market-alignment-surface";
+import { GlobeMarketManageSheet } from "@/components/market/globe-market-manage-sheet";
 import { GlobeMarketIntentWizardSheet } from "@/components/globe/globe-market-intent-wizard-sheet";
+import {
+  listActiveMarketIntents,
+  subscribeMarketIntents,
+} from "@/lib/globe/market/market-alignment-store";
 import { createMarketIntentDraftFromRole } from "@/lib/globe/market/create-market-intent-draft-from-role";
 import { ingestGlobeContextFromText } from "@/lib/feed/ingest-globe-context-capture";
 import { normalizeMarketIntentFromText } from "@/lib/globe/market/normalize-market-intent-from-text";
@@ -134,7 +139,17 @@ function GlobeHomeBody() {
     useState<MarketWizardStepId | undefined>(undefined);
   const [marketTradeBusy, setMarketTradeBusy] = useState(false);
   const [marketFocusEventId, setMarketFocusEventId] = useState<string | null>(null);
+  const [marketManageOpen, setMarketManageOpen] = useState(false);
+  const [marketIntentRevision, setMarketIntentRevision] = useState(0);
   const liveLocation = useLiveLocationSnapshot();
+  useEffect(
+    () => subscribeMarketIntents(() => setMarketIntentRevision((value) => value + 1)),
+    [],
+  );
+  const marketManageCount = useMemo(() => {
+    void marketIntentRevision;
+    return listActiveMarketIntents().length;
+  }, [marketIntentRevision]);
   const {
     settings: trendBridgeSettings,
     setEnabled: setTrendBridgeEnabled,
@@ -1063,6 +1078,7 @@ function GlobeHomeBody() {
     createOpen ||
     listOpen ||
     manageOpen ||
+    marketManageOpen ||
     settingsOpen ||
     globeInboxOpen ||
     mediaPoolOpen ||
@@ -1248,8 +1264,10 @@ function GlobeHomeBody() {
         <GlobeUtilityMenu
           mediaPoolCount={mediaPoolCount}
           inboxCount={globeInboxCount}
+          marketManageCount={marketManageCount}
           onOpenMediaPool={() => setMediaPoolOpen(true)}
           onOpenInbox={() => setGlobeInboxOpen(true)}
+          onOpenMarketManage={() => setMarketManageOpen(true)}
           onOpenSettings={() => setSettingsOpen(true)}
           className="pointer-events-auto"
         />
@@ -1362,6 +1380,7 @@ function GlobeHomeBody() {
           onTextCommitted: onMarketTextCommitted,
           onMarketRoleSelect: (role, composeText) =>
             void onMarketRoleSelected(role, composeText),
+          onOpenMarketManage: () => setMarketManageOpen(true),
           marketRoleBusy: marketTradeBusy,
         }}
       />
@@ -1515,9 +1534,27 @@ function GlobeHomeBody() {
             setMarketWizardStartStep(undefined);
           }
         }}
-        onConfirmed={(eventId) => {
+        onConfirmed={({ eventId, role, lat, lng, placeLabel }) => {
           setMarketFocusEventId(eventId);
-          toast.message(copy.globe.marketIntentConfirmCta, { duration: 2800 });
+          setMarketIntentRevision((value) => value + 1);
+          globeRef.current?.flyToPin(lat, lng, "street", { pinViewportY: 0.58 });
+          focusContextByEventId(eventId, { openSheet: false });
+          toast.success(
+            role === "listing"
+              ? copy.globe.marketPinPlacedListing(placeLabel)
+              : copy.globe.marketPinPlacedSeeking(placeLabel),
+          );
+        }}
+      />
+      <GlobeMarketManageSheet
+        open={marketManageOpen}
+        onOpenChange={setMarketManageOpen}
+        onFlyToIntent={(record) => {
+          setMarketFocusEventId(record.eventId);
+          globeRef.current?.flyToPin(record.anchorLat, record.anchorLng, "street", {
+            pinViewportY: 0.58,
+          });
+          focusContextByEventId(record.eventId, { openSheet: false });
         }}
       />
       <GlobeSettingsSheet

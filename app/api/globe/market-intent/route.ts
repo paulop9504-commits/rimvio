@@ -1,6 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { upsertMarketIntentRemote } from "@/lib/globe/market/server/upsert-market-intent";
+import {
+  deactivateMarketIntentRemote as deactivateMarketIntentOnServer,
+  listOwnMarketIntents,
+} from "@/lib/globe/market/server/upsert-market-intent";
 import { scanMarketHandshakesForIntent } from "@/lib/globe/market/server/scan-market-handshakes";
 import { DEFAULT_MARKET_INTENT_DETAIL } from "@/lib/globe/market/market-intent-detail";
 import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
@@ -108,5 +112,62 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, intent: saved });
   } catch {
     return NextResponse.json({ error: "upsert_failed" }, { status: 500 });
+  }
+}
+
+export async function GET() {
+  if (!isSupabaseConfigured()) {
+    return NextResponse.json({ ok: true, intents: [] });
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user?.id) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const intents = await listOwnMarketIntents(supabase, user.id);
+    return NextResponse.json({ ok: true, intents });
+  } catch {
+    return NextResponse.json({ error: "list_failed" }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  if (!isSupabaseConfigured()) {
+    return NextResponse.json({ ok: true });
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user?.id) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "invalid_json" }, { status: 400 });
+  }
+
+  const eventId =
+    body && typeof body === "object" && typeof (body as { eventId?: unknown }).eventId === "string"
+      ? (body as { eventId: string }).eventId.trim()
+      : "";
+  if (!eventId) {
+    return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
+  }
+
+  try {
+    await deactivateMarketIntentOnServer(supabase, user.id, eventId);
+    return NextResponse.json({ ok: true });
+  } catch {
+    return NextResponse.json({ error: "deactivate_failed" }, { status: 500 });
   }
 }

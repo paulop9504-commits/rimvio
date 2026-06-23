@@ -13,6 +13,7 @@ export type GlobeMarketComposeRoleCardProps = {
   className?: string;
   disabled?: boolean;
   onSelectRole: (role: MarketIntentRole) => void;
+  onOpenManage?: () => void;
 };
 
 /** Shown when composer detects @중고 — pick 내놓기 or 구하기. */
@@ -20,6 +21,7 @@ export function GlobeMarketComposeRoleCard({
   className,
   disabled = false,
   onSelectRole,
+  onOpenManage,
 }: GlobeMarketComposeRoleCardProps) {
   return (
     <div
@@ -62,6 +64,17 @@ export function GlobeMarketComposeRoleCard({
           </span>
         </button>
       </div>
+      {onOpenManage ? (
+        <button
+          type="button"
+          disabled={disabled}
+          className="mt-2 w-full text-center text-[12px] font-semibold text-primary"
+          onClick={onOpenManage}
+          data-globe-market-manage-open
+        >
+          {copy.globe.marketManageOpenCta}
+        </button>
+      ) : null}
     </div>
   );
 }

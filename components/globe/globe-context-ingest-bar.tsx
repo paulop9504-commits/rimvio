@@ -51,6 +51,7 @@ export type GlobeContextIngestBarProps = {
   onPhotoDraftReady?: (files: File[]) => void | Promise<void>;
   onTextCommitted?: (input: { eventId: string; text: string }) => void;
   onMarketRoleSelect?: (role: MarketIntentRole, composeText: string) => void;
+  onOpenMarketManage?: () => void;
   marketRoleBusy?: boolean;
 };
 
@@ -68,6 +69,7 @@ export const GlobeContextIngestBar = forwardRef<
     onPhotoDraftReady,
     onTextCommitted,
     onMarketRoleSelect,
+    onOpenMarketManage,
     marketRoleBusy = false,
   },
   ref,
@@ -266,6 +268,7 @@ export const GlobeContextIngestBar = forwardRef<
               setText("");
               setMenuOpen(false);
             }}
+            onOpenManage={onOpenMarketManage}
           />
         ) : null}
 

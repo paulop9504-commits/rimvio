@@ -28,7 +28,7 @@ import {
   marketWizardSteps,
   type MarketWizardStepId,
 } from "@/lib/globe/market/market-intent-wizard-flow";
-import type { MarketIntentDraft } from "@/lib/globe/market/market-intent-types";
+import type { MarketIntentDraft, MarketIntentRole } from "@/lib/globe/market/market-intent-types";
 import type { MarketIntentRole } from "@/lib/globe/market/market-intent-types";
 import { syncMarketMemoryRecordOnDraft } from "@/lib/globe/market/memory/sync-market-memory-record";
 import { formatMarketMemoryPreview } from "@/lib/globe/market/memory/format-market-memory-preview";
@@ -53,7 +53,13 @@ export type GlobeMarketIntentWizardSheetProps = {
   draft: MarketIntentDraft | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirmed?: (eventId: string) => void;
+  onConfirmed?: (input: {
+    eventId: string;
+    role: MarketIntentRole;
+    lat: number;
+    lng: number;
+    placeLabel: string;
+  }) => void;
   /** Skip role step when opened from globe trade dock. */
   startStep?: MarketWizardStepId;
 };
@@ -287,10 +293,16 @@ export function GlobeMarketIntentWizardSheet({
       if (working.role !== "listing") {
         toast.message(copy.globe.marketPinGpsPrompt, { duration: 2400 });
       }
-      await commitMarketIntentFromDraft(finalDraft, {
+      const saved = await commitMarketIntentFromDraft(finalDraft, {
         photoFiles: photoFiles.length > 0 ? photoFiles : undefined,
       });
-      onConfirmed?.(finalDraft.eventId);
+      onConfirmed?.({
+        eventId: saved.eventId,
+        role: saved.role,
+        lat: saved.anchorLat,
+        lng: saved.anchorLng,
+        placeLabel: saved.placeLabel,
+      });
       onOpenChange(false);
     } finally {
       setBusy(false);

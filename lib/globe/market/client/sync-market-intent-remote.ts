@@ -22,6 +22,39 @@ export async function syncMarketIntentRemote(
   }
 }
 
+export async function fetchOwnMarketIntentsRemote(): Promise<MarketIntentRecord[]> {
+  try {
+    const response = await fetch(`${resolveAppOrigin()}/api/globe/market-intent`, {
+      credentials: "include",
+    });
+    if (!response.ok) {
+      return [];
+    }
+    const body = (await response.json()) as { intents?: MarketIntentRecord[] };
+    return body.intents ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export async function deactivateMarketIntentRemote(eventId: string): Promise<boolean> {
+  const key = eventId.trim();
+  if (!key) {
+    return false;
+  }
+  try {
+    const response = await fetch(`${resolveAppOrigin()}/api/globe/market-intent`, {
+      method: "DELETE",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ eventId: key }),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 export async function fetchMarketAlignmentOfferRemote(input: {
   focusEventId?: string | null;
 }): Promise<import("@/lib/globe/market/market-intent-types").MarketAlignmentOffer | null> {

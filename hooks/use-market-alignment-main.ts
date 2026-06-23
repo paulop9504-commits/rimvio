@@ -12,6 +12,7 @@ import { resolveMarketAlignment } from "@/lib/globe/market/resolve-market-alignm
 import type { MarketAlignmentOffer } from "@/lib/globe/market/market-intent-types";
 
 const DISMISS_KEY = "rimvio-market-align-dismissed";
+const MATCH_POLL_MS = 12_000;
 
 function readDismissedMatchId(): string | null {
   if (typeof window === "undefined") {
@@ -24,12 +25,20 @@ function readDismissedMatchId(): string | null {
   }
 }
 
-export function dismissMarketAlignment(matchIntentId: string): void {
+function resolveDismissKey(offer: MarketAlignmentOffer): string {
+  return (
+    offer.handshakeId ??
+    offer.matchIntentServerId ??
+    offer.matchIntentId
+  );
+}
+
+export function dismissMarketAlignment(offer: MarketAlignmentOffer): void {
   if (typeof window === "undefined") {
     return;
   }
   try {
-    sessionStorage.setItem(DISMISS_KEY, matchIntentId.trim());
+    sessionStorage.setItem(DISMISS_KEY, resolveDismissKey(offer));
   } catch {
     // ignore
   }
@@ -54,7 +63,15 @@ export function useMarketAlignmentMain(input: {
   useEffect(() => subscribeMarketIntents(() => setRevision((n) => n + 1)), []);
 
   useEffect(() => {
-    if (!input.enabled || !user?.id) {
+    if (!input.enabled) {
+      return;
+    }
+    const id = window.setInterval(() => setRevision((n) => n + 1), MATCH_POLL_MS);
+    return () => window.clearInterval(id);
+  }, [input.enabled]);
+
+  useEffect(() => {
+    if (!input.enabled) {
       setRemoteOffer(null);
       setLoading(false);
       return;
@@ -63,9 +80,11 @@ export function useMarketAlignmentMain(input: {
     let cancelled = false;
     setLoading(true);
     void (async () => {
-      const offer = await fetchMarketAlignmentOfferRemote({
-        focusEventId: input.focusEventId,
-      });
+      const offer = user?.id
+        ? await fetchMarketAlignmentOfferRemote({
+            focusEventId: input.focusEventId,
+          })
+        : null;
       if (!cancelled) {
         setRemoteOffer(offer);
         setLoading(false);
@@ -78,7 +97,7 @@ export function useMarketAlignmentMain(input: {
   }, [input.enabled, input.focusEventId, revision, user?.id]);
 
   const localOffer = useMemo(() => {
-    if (!input.enabled || user?.id) {
+    if (!input.enabled) {
       return null;
     }
     void revision;
@@ -92,17 +111,14 @@ export function useMarketAlignmentMain(input: {
         cta: copy.globe.marketAlignCta,
       },
     });
-  }, [input.enabled, input.focusEventId, revision, user?.id]);
+  }, [input.enabled, input.focusEventId, revision]);
 
   const offer = useMemo(() => {
-    const resolved = user?.id ? remoteOffer : localOffer;
+    const resolved = user?.id ? remoteOffer ?? localOffer : localOffer;
     if (!resolved) {
       return null;
     }
-    const dismissKey =
-      resolved.handshakeId ??
-      resolved.matchIntentServerId ??
-      resolved.matchIntentId;
+    const dismissKey = resolveDismissKey(resolved);
     if (dismissedId && dismissedId === dismissKey) {
       return null;
     }
@@ -113,8 +129,8 @@ export function useMarketAlignmentMain(input: {
     if (!offer) {
       return;
     }
-    const dismissKey = offer.matchIntentServerId ?? offer.matchIntentId;
-    dismissMarketAlignment(dismissKey);
+    const dismissKey = resolveDismissKey(offer);
+    dismissMarketAlignment(offer);
     setDismissedId(dismissKey);
   }, [offer]);
 

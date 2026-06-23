@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ImagePlus, Inbox, MessageCircle, MoreHorizontal, Settings } from "lucide-react";
+import { ImagePlus, Inbox, ListChecks, MessageCircle, MoreHorizontal, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCopy } from "@/hooks/use-copy";
 import { cn } from "@/lib/utils";
@@ -10,8 +10,10 @@ import { cn } from "@/lib/utils";
 export type GlobeUtilityMenuProps = {
   mediaPoolCount: number;
   inboxCount: number;
+  marketManageCount?: number;
   onOpenMediaPool: () => void;
   onOpenInbox: () => void;
+  onOpenMarketManage?: () => void;
   onOpenSettings: () => void;
   className?: string;
 };
@@ -27,8 +29,10 @@ function formatBadgeCount(count: number): string | null {
 export function GlobeUtilityMenu({
   mediaPoolCount,
   inboxCount,
+  marketManageCount = 0,
   onOpenMediaPool,
   onOpenInbox,
+  onOpenMarketManage,
   onOpenSettings,
   className,
 }: GlobeUtilityMenuProps) {
@@ -36,7 +40,7 @@ export function GlobeUtilityMenu({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const pendingTotal = mediaPoolCount + inboxCount;
+  const pendingTotal = mediaPoolCount + inboxCount + marketManageCount;
   const badge = formatBadgeCount(pendingTotal);
 
   useEffect(() => {
@@ -68,6 +72,20 @@ export function GlobeUtilityMenu({
         onOpenInbox();
       },
     },
+    ...(onOpenMarketManage
+      ? [
+          {
+            id: "market" as const,
+            icon: ListChecks,
+            label: copy.globe.utilityMenuMarket,
+            badge: formatBadgeCount(marketManageCount),
+            onPress: () => {
+              setOpen(false);
+              onOpenMarketManage();
+            },
+          },
+        ]
+      : []),
     {
       id: "peers" as const,
       icon: MessageCircle,
