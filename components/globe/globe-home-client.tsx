@@ -1056,6 +1056,9 @@ function GlobeHomeBody() {
     !marketConfirmOpen &&
     !hubEventId;
 
+  const globeStackExtra =
+    pulseMainActionEnabled && !mapMediaFocusOpen ? "5.75rem" : "0px";
+
   useEffect(() => {
     const dwell =
       liveLocation?.contextLabel === "체류 중" ||
@@ -1065,7 +1068,10 @@ function GlobeHomeBody() {
   }, [globeRenderSuspended, liveLocation?.contextLabel]);
 
   return (
-    <div className="relative flex h-full min-h-0 flex-1 flex-col">
+    <div
+      className="relative flex h-full min-h-0 flex-1 flex-col"
+      style={{ ["--rimvio-globe-stack-extra" as string]: globeStackExtra }}
+    >
       <RimvioGlobeHubClient
         globeRef={globeRef}
         className="h-full min-h-0 flex-1"
@@ -1227,62 +1233,46 @@ function GlobeHomeBody() {
         />
       </div>
       ) : null}
-      {!mapMediaFocusOpen && !confirmOpen ? (
-        <div
-          className="pointer-events-none absolute inset-x-4 z-[19]"
-          style={{
-            bottom: "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 0.35rem)",
-          }}
-        >
-          <MarketAlignmentSurface
-            className="pointer-events-auto mx-auto mb-2 max-w-md"
-            enabled={pulseMainActionEnabled}
-            focusEventId={marketFocusEventId ?? activeCluster?.eventId ?? null}
-            onFocusMatchOffer={(offer) => {
-              setMarketFocusEventId(offer.selfEventId);
-              if (offer.matchUserId) {
-                globeRef.current?.flyToPin(
-                  offer.matchLat,
-                  offer.matchLng,
-                  "street",
-                  { pinViewportY: 0.58 },
-                );
-                return;
-              }
-              void focusContextOnMap(offer.matchEventId);
-            }}
-            onFocusMatchEvent={(eventId) => {
-              setMarketFocusEventId(eventId);
-              void focusContextOnMap(eventId);
-            }}
-          />
-          <PulseMainActionSurface
-            className="pointer-events-auto mx-auto max-w-md"
-            enabled={pulseMainActionEnabled}
-            anchorLat={liveLocation?.lat ?? trendBridgeAnchorLat}
-            anchorLng={liveLocation?.lng ?? trendBridgeAnchorLng}
-          />
-        </div>
-      ) : null}
       {!mapMediaFocusOpen ? (
-      <>
-        {pulseMainActionEnabled ? (
-          <div
-            className="pointer-events-none fixed inset-x-4 z-[29]"
-            style={{
-              bottom: "calc(var(--rimvio-bottom-nav-offset) + 3.65rem)",
-            }}
-          >
-            <GlobeMarketTradeDock
-              className="pointer-events-auto mx-auto max-w-lg"
-              disabled={marketTradeBusy}
-              onSelectRole={(role) => void onMarketRoleSelected(role)}
-            />
-          </div>
-        ) : null}
       <GlobeCaptureDock
         ref={ingestBarRef}
         composeHidden={marketConfirmOpen}
+        stackAboveCompose={
+          pulseMainActionEnabled ? (
+            <>
+              <MarketAlignmentSurface
+                enabled={pulseMainActionEnabled}
+                focusEventId={marketFocusEventId ?? activeCluster?.eventId ?? null}
+                onFocusMatchOffer={(offer) => {
+                  setMarketFocusEventId(offer.selfEventId);
+                  if (offer.matchUserId) {
+                    globeRef.current?.flyToPin(
+                      offer.matchLat,
+                      offer.matchLng,
+                      "street",
+                      { pinViewportY: 0.58 },
+                    );
+                    return;
+                  }
+                  void focusContextOnMap(offer.matchEventId);
+                }}
+                onFocusMatchEvent={(eventId) => {
+                  setMarketFocusEventId(eventId);
+                  void focusContextOnMap(eventId);
+                }}
+              />
+              <PulseMainActionSurface
+                enabled={pulseMainActionEnabled}
+                anchorLat={liveLocation?.lat ?? trendBridgeAnchorLat}
+                anchorLng={liveLocation?.lng ?? trendBridgeAnchorLng}
+              />
+              <GlobeMarketTradeDock
+                disabled={marketTradeBusy}
+                onSelectRole={(role) => void onMarketRoleSelected(role)}
+              />
+            </>
+          ) : null
+        }
         photoFlow={{
           open: confirmOpen,
           preparing: confirmPreparing,
@@ -1354,7 +1344,6 @@ function GlobeHomeBody() {
           onTextCommitted: onMarketTextCommitted,
         }}
       />
-      </>
       ) : null}
       <GlobeMediaPoolSheet
         open={mediaPoolOpen}

@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { Handshake, X } from "lucide-react";
+import { copy } from "@/lib/copy/human-ko";
 import type { MarketAlignmentOffer } from "@/lib/globe/market/market-intent-types";
 import { rimvioHeroCtaClass, RIMVIO_TYPE } from "@/lib/design/rimvio-ontology";
 import { cn } from "@/lib/utils";
@@ -51,7 +52,7 @@ export function MarketAlignmentMainCard({
             <button
               type="button"
               className="shrink-0 rounded-lg p-1 text-muted-foreground hover:bg-muted/80"
-              aria-label="닫기"
+              aria-label={copy.globe.ingestMenuCloseAria}
               onClick={onDismiss}
             >
               <X className="size-4" aria-hidden />
@@ -63,9 +64,7 @@ export function MarketAlignmentMainCard({
             onClick={() => onOpen(offer)}
           >
             <Handshake className="size-5" aria-hidden />
-            {offer.matchUserId
-              ? offer.ctaLabel
-              : offer.ctaLabel}
+            {offer.ctaLabel}
           </button>
         </motion.div>
       ) : null}

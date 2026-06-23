@@ -199,8 +199,12 @@
       max(0.25rem, env(safe-area-inset-bottom, 0px))
   );
   --rimvio-globe-ingest-bar-height: 3.75rem;
+  --rimvio-globe-stack-extra: 0px;
   --rimvio-globe-ingest-offset: calc(
-    var(--rimvio-bottom-nav-offset) + var(--rimvio-globe-ingest-bar-height) + 0.35rem
+    var(--rimvio-bottom-nav-offset) +
+      var(--rimvio-globe-ingest-bar-height) +
+      var(--rimvio-globe-stack-extra) +
+      0.35rem
   );
   --rimvio-feed-scroll-pad: calc(
     var(--rimvio-composer-bar-height) + var(--rimvio-bottom-nav-offset) + 0.25rem

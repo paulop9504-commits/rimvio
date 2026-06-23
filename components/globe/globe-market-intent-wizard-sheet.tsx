@@ -350,14 +350,19 @@ export function GlobeMarketIntentWizardSheet({
                     {copy.globe.marketWizardRoleTitle}
                   </p>
                   <p className={cn(RIMVIO_TYPE.caption)}>{copy.globe.marketWizardRoleBody}</p>
-                  <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div className="grid grid-cols-2 gap-2 pt-1">
                     <button
                       type="button"
                       className={MARKET_TRADE_LIST_PILL}
                       onClick={() => selectRole("listing")}
                       data-market-role-card="listing"
                     >
-                      {copy.globe.marketWizardRoleListingTitle}
+                      <span className="block leading-tight">
+                        {copy.globe.marketWizardRoleListingTitle}
+                      </span>
+                      <span className="mt-0.5 block text-[11px] font-medium opacity-90">
+                        {copy.globe.marketWizardRoleListingBody}
+                      </span>
                     </button>
                     <button
                       type="button"
@@ -365,7 +370,12 @@ export function GlobeMarketIntentWizardSheet({
                       onClick={() => selectRole("seeking")}
                       data-market-role-card="seeking"
                     >
-                      {copy.globe.marketWizardRoleSeekingTitle}
+                      <span className="block leading-tight">
+                        {copy.globe.marketWizardRoleSeekingTitle}
+                      </span>
+                      <span className="mt-0.5 block text-[11px] font-medium opacity-90">
+                        {copy.globe.marketWizardRoleSeekingBody}
+                      </span>
                     </button>
                   </div>
                 </div>
@@ -385,7 +395,11 @@ export function GlobeMarketIntentWizardSheet({
                     <div className="flex items-start gap-2">
                       <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
                       <p className="text-[14px] leading-relaxed text-foreground">
-                        {working.detail.sourceText || working.title}
+                        {working.detail.sourceText ||
+                          working.title ||
+                          (isSeeking
+                            ? copy.globe.marketWizardRoleSeekingBody
+                            : copy.globe.marketWizardRoleListingBody)}
                       </p>
                     </div>
                   </div>

@@ -270,6 +270,7 @@ export const copyEn: Copy = {
     marketWizardRoleListingBody: "Put your offer into the flow",
     marketTradeDockListingAria: "List — post your alignment",
     marketTradeDockSeekingAria: "Seek — find matching traces",
+    marketTradeDockEyebrow: "Aligned traces",
     marketWizardValidationProductDetail:
       "Enter an exact product name · e.g. iPhone 15 Pro",
     marketWizardProductNoteLabel: "Notes",
@@ -374,6 +375,35 @@ export const copyEn: Copy = {
     marketAlignBridgeThreadLabel: "Aligned trace",
     marketAlignBridgeSeedMessage: (title: string, place: string) =>
       `Connected for alignment · ${title} · ${place}`,
+    marketHandshakeListingHeadline: (title: string, place: string) =>
+      `Seeker that fits your list · ${title} · ${place}`,
+    marketHandshakeListingBody: (category: string, hint: string) =>
+      hint ? `${category} · ${hint}` : category,
+    marketHandshakeListingCta: "Accept aligned trace",
+    marketHandshakeListingAcceptedToast: "Notified the seeker about this trace",
+    marketHandshakeBuyerHeadline: (title: string, place: string) =>
+      `Listing that fits · ${title} · ${place}`,
+    marketHandshakeBuyerBody: (category: string, priceLine: string) =>
+      `${category} · ${priceLine}`,
+    marketHandshakeBuyerCta: "Review item and start chat",
+    marketHandshakePreviewSystemMessage: (input: {
+      productName: string;
+      priceLine: string;
+      category: string;
+      place: string;
+      priorityHint: string;
+    }) =>
+      `[Aligned trace] ${input.productName} · ${input.priceLine}\n${input.category} · ${input.place}${input.priorityHint ? `\n${input.priorityHint}` : ""}`,
+    marketHandshakeStartSystemMessage: (input: {
+      productName: string;
+      priceLine: string;
+      priorityHint: string;
+      place: string;
+    }) =>
+      `Chat started · ${input.productName} · ${input.priceLine}\n${input.priorityHint || input.place}`,
+    marketHandshakeChatLocked: "The seeker is reviewing the item before chat opens",
+    marketHandshakeStartCta: "Start chat",
+    marketHandshakeWaitingSeller: "Waiting for the lister to confirm alignment",
     contextWarmthHint: "Soft tint where context is rich · fades as you zoom in",
     contextVideoSoundHint: "Tap for sound",
     contextVideoSoundOff: "Turn sound on",
@@ -487,6 +517,7 @@ export const copyEn: Copy = {
     ingestUploadProgress: (done: number, total: number) =>
       `${done}/${total} uploaded`,
     ingestAttachFail: "Couldn't attach to context",
+    backerLinkLabel: "Support · invest",
     backerLinkAria: "Rimvio support and investment inquiry — opens email",
     inboxSectionShare: "Shared context",
     inboxSectionBridgeActivity: "Continue context",
@@ -588,6 +619,20 @@ export const copyEn: Copy = {
     bridgeContextTalkOpening: "Opening chat…",
     bridgeContextTalkEnsureFail: "Couldn't create the chat room",
     bridgeContextTalkHint: "Pick up where you left off",
+    bridgeJourneyEyebrow: "One-line timeline",
+    bridgeJourneyTripFuture: "Upcoming trip",
+    bridgeJourneyTripPresent: "Now",
+    bridgeJourneyTripPast: "Past trip",
+    bridgeJourneyPhasePrep: "Prep",
+    bridgeJourneyPhaseLive: "On trip",
+    bridgeJourneyPhaseRecall: "That moment",
+    bridgeJourneyPrepMarker: "Started together",
+    bridgeJourneyEmpty: "Chat and photos stack here in time order",
+    bridgeJourneyChatOpen: "Continue in chat",
+    bridgeJourneyMediaOpen: "View moment",
+    contextTalkEmpty: "Leave a note about this experience",
+    contextTalkScrollHint: "Scroll — the map context follows",
+    contextTalkMediaPin: "That place",
     bridgeTalkContinueCta: "Continue in chat",
     bridgeTalkUnavailable: "No chat thread yet",
     bridgeTalkInviteFriendsCta: "Invite friends",

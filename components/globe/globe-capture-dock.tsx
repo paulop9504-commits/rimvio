@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { forwardRef } from "react";
 import { GlobeContextIngestBar, type GlobeContextIngestBarHandle, type GlobeContextIngestBarProps } from "@/components/globe/globe-context-ingest-bar";
 import { GlobePhotoPlaceWalkthrough } from "@/components/globe/globe-photo-place-walkthrough";
@@ -36,6 +37,8 @@ export type GlobeCaptureDockProps = {
   onPlaceVerifyConfirmed: () => void;
   /** Hide composer while a full-screen bottom sheet owns the flow (e.g. market wizard). */
   composeHidden?: boolean;
+  /** Alignment cards, trade dock, pulse — stacked above ingest in one column. */
+  stackAboveCompose?: ReactNode;
   ingest: GlobeContextIngestBarProps;
 };
 
@@ -49,6 +52,7 @@ export const GlobeCaptureDock = forwardRef<GlobeContextIngestBarHandle, GlobeCap
       onPlaceVerifyDismiss,
       onPlaceVerifyConfirmed,
       composeHidden = false,
+      stackAboveCompose,
       ingest,
     },
     ref,
@@ -102,6 +106,15 @@ export const GlobeCaptureDock = forwardRef<GlobeContextIngestBarHandle, GlobeCap
             onDismiss={onPlaceVerifyDismiss}
             onPlaceConfirmed={onPlaceVerifyConfirmed}
           />
+        ) : null}
+
+        {!photoActive && stackAboveCompose ? (
+          <div
+            className="pointer-events-auto mx-auto flex w-full max-w-lg flex-col gap-2"
+            data-globe-bottom-action-stack
+          >
+            {stackAboveCompose}
+          </div>
         ) : null}
 
         {!photoActive && !composeHidden ? (

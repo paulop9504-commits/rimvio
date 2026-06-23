@@ -280,6 +280,7 @@ export const copy = {
     marketWizardRoleListingBody: "내 조건을 흐름에 올릴게요",
     marketTradeDockListingAria: "내놓기 — 맞춤 조건 올리기",
     marketTradeDockSeekingAria: "구하기 — 맞는 흔적 찾기",
+    marketTradeDockEyebrow: "맞춤 흔적",
     marketWizardValidationProduct: "제품명을 적어 주세요",
     marketWizardValidationProductDetail:
       "정확한 제품명을 적어 주세요 · 예: 아이폰 15 프로",
