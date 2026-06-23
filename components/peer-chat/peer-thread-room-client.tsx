@@ -38,6 +38,7 @@ import { cn } from "@/lib/utils";
 import { AiLensToggle } from "@/components/peer-chat/ai-lens-toggle";
 import { PeerChatThreadShell } from "@/components/peer-chat/peer-chat-thread-shell";
 import { PeerThreadChatPanel } from "@/components/peer-chat/peer-thread-chat-panel";
+import { PeerThreadHubPinBar } from "@/components/peer-chat/peer-thread-hub-pin-bar";
 import { GroupInfoSheet } from "@/components/peer-chat/group-info-sheet";
 import {
   confirmMarketHandshakeCompleteRemote,
