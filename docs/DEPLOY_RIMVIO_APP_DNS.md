@@ -1,6 +1,25 @@
-# rimvio.app 배포 · DNS 복구
+# rimvio.app 배포 · DNS · Vercel Pro
 
-> **2026-06 확인:** 배포 상태 `Ready`인데 URL이 **402** / **paused** 로 보이면 **두 가지**를 모두 해야 합니다.
+> **⚠️ 도메인 변경:** 프로덕션은 **`rimvio.com` (가비아)** — [`DEPLOY_RIMVIO_COM_GABIA.md`](./DEPLOY_RIMVIO_COM_GABIA.md) 참고.
+
+> **Production URL (지금):** `https://rimvio.vercel.app`  
+> **Custom domain:** `rimvio.com` — 가비아 DNS 연결 후 Valid  
+> **Pro 업그레이드 후:** `powershell -File scripts/vercel-pro-setup.ps1`
+
+---
+
+## Vercel Pro 올린 직후 (자동)
+
+```powershell
+cd c:\Users\userguest\Desktop\new-project
+powershell -ExecutionPolicy Bypass -File scripts/vercel-pro-setup.ps1
+```
+
+수동으로 한 일:
+
+- [x] `NEXT_PUBLIC_APP_URL` → `https://rimvio.vercel.app` (비어 있던 값 복구)
+- [ ] Production **redeploy** (스크립트가 실행 — `NEXT_PUBLIC_*`는 빌드 시 박힘)
+- [ ] `rimvio.app` 도메인 연결 (아래 §2)
 
 ---
 
@@ -21,8 +40,8 @@
 2. 상단 배너: **Paused / Fair Use / Payment required** 확인
 3. **Resume** 또는 **Upgrade to Pro** / 결제 수단 확인
 4. 복구 후 브라우저에서 테스트:
-   - `https://rimvio-17sa9dsbe-paulop9504-dotcoms-projects.vercel.app`
-   - `https://new-project-pi-one-52.vercel.app`
+   - `https://rimvio.vercel.app`
+   - `https://rimvio.app` (DNS Valid 후)
 
 CLI로 배포 상태만 보려면:
 

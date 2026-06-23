@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { RimvioGlobeHubClient } from "@/components/experience/rimvio-globe-hub-client";
 import { GlobeContextControlDock } from "@/components/globe/globe-context-control-dock";
+import { GlobeLayerModeToggle } from "@/components/globe/globe-layer-mode-toggle";
 import { GlobeContextHubRail } from "@/components/globe/globe-context-hub-rail";
 import { GlobeContextHubDetailSheet } from "@/components/globe/globe-context-hub-detail-sheet";
 import { GlobeUtilityMenu } from "@/components/globe/globe-utility-menu";
@@ -33,6 +34,7 @@ import { subscribeGlobeMapMediaFocus } from "@/lib/globe/globe-map-media-focus-b
 import { subscribeGlobePhotoIngest } from "@/lib/globe/globe-photo-ingest-bridge";
 import { setLiveLocationPowerMode } from "@/lib/location-ping/live-location-service";
 import { usePersonalGlobePinSync } from "@/hooks/use-personal-globe-pin-sync";
+import { useGlobeLayerMode } from "@/hooks/use-globe-layer-mode";
 import { useGlobeInbox } from "@/hooks/use-globe-inbox";
 import { useMediaPool } from "@/hooks/use-media-pool";
 import { useGlobeTripArrival } from "@/hooks/use-globe-trip-arrival";
@@ -116,6 +118,8 @@ import type { MarketIntentDraft, MarketIntentRole } from "@/lib/globe/market/mar
 import type { MarketWizardStepId } from "@/lib/globe/market/market-intent-wizard-flow";
 import { submitTrendBridgeContributionFromEvent } from "@/lib/globe/trend-bridge/client/submit-trend-bridge-contribution";
 import { subscribeGlobeContextHubOpen } from "@/lib/globe/context-hub/globe-context-hub-open-bridge";
+import { isExternalPinCluster } from "@/lib/globe/merge-globe-pin-clusters";
+import type { GlobeLayerMode } from "@/lib/globe/globe-layer-mode";
 import { projectBridgeGhostClusters } from "@/lib/experience-bridge/project-bridge-ghost-clusters";
 import type { PendingBridgeInvite } from "@/hooks/use-pending-bridge-invites";
 
@@ -158,6 +162,7 @@ function GlobeHomeBody() {
     layerActive: trendBridgeLayerActive,
   } = useTrendBridge();
   usePersonalGlobePinSync(true);
+  const { layerMode, setLayerMode } = useGlobeLayerMode();
   const {
     notifications: globeNotifications,
     bridgeInvites: pendingBridgeInvites,
@@ -295,6 +300,18 @@ function GlobeHomeBody() {
       window.history.replaceState(null, "", next);
     }
   }, [activeCluster?.eventId, schedulePinRevertToCardPlace]);
+
+  const onLayerModeChange = useCallback(
+    (mode: GlobeLayerMode) => {
+      setLayerMode(mode);
+      clearActiveContext();
+      setHubDetailOpen(false);
+      setListOpen(false);
+      setManageOpen(false);
+      globeRef.current?.resetToOverview();
+    },
+    [clearActiveContext, setLayerMode],
+  );
 
   const openContextCluster = useCallback(
     (
@@ -611,6 +628,17 @@ function GlobeHomeBody() {
   const onPinPress = useCallback(
     (cluster: PinCluster) => {
       markPinPress();
+      if (isExternalPinCluster(cluster)) {
+        globeRef.current?.flyToPin(cluster.lat, cluster.lng, "neighborhood");
+        const author = cluster.authorDisplayName?.trim();
+        const headline = author
+          ? `${author} · ${cluster.title}`
+          : cluster.title;
+        toast.message(headline, {
+          description: cluster.recallLine ?? copy.globe.externalTraceReadOnly,
+        });
+        return;
+      }
       if (cluster.variant === "bridge_ghost") {
         const invite = pendingBridgeInvites.find(
           (row) => row.state.bridge.eventId === cluster.eventId,
@@ -725,7 +753,7 @@ function GlobeHomeBody() {
         toast.message(recallLine || `${placeLabel}에 도착했어요`);
       },
     },
-    { enabled: true },
+    { enabled: layerMode === "personal" },
   );
 
   const focusContextOnMap = useCallback(
@@ -1121,7 +1149,7 @@ function GlobeHomeBody() {
         onGlobePress={onGlobePress}
         onClustersSnapshot={onClustersSnapshot}
         onDetailLevelChange={onDetailLevelChange}
-        pinRelocateEnabled
+        pinRelocateEnabled={layerMode === "personal"}
         onPinRelocate={onPinRelocate}
         timeFilter={timeFilter}
         peopleFilter={peopleFilter}
@@ -1130,6 +1158,7 @@ function GlobeHomeBody() {
         renderSuspended={globeRenderSuspended}
         focusedContextEventId={activeCluster?.eventId ?? null}
         showInteractionHint={false}
+        layerMode={layerMode}
       />
       <GlobeTrendBridgeLayer
         visible={trendBridgeLayerActive && !globeRenderSuspended}
@@ -1198,6 +1227,21 @@ function GlobeHomeBody() {
         {!mapMediaFocusOpen ? (
           <>
             <div className="pointer-events-auto">
+              <GlobeLayerModeToggle
+                mode={layerMode}
+                onModeChange={onLayerModeChange}
+              />
+            </div>
+            {layerMode === "discovery" ? (
+              <p
+                className="pointer-events-none max-w-[11rem] px-1 text-[11px] font-medium leading-snug text-muted-foreground"
+                data-globe-layer-mode-hint
+              >
+                {copy.globe.layerModeDiscoveryHint}
+              </p>
+            ) : null}
+            {layerMode === "personal" ? (
+            <div className="pointer-events-auto">
               <GlobeContextControlDock
                 timeFilter={timeFilter}
                 onTimeFilterChange={setTimeFilter}
@@ -1219,7 +1263,8 @@ function GlobeHomeBody() {
                 }
               />
             </div>
-            {!hubEventId ? (
+            ) : null}
+            {layerMode === "personal" && !hubEventId ? (
               <GlobeTrendBridgeHud
                 className="pointer-events-auto"
                 enabled={trendBridgeSettings.enabled}

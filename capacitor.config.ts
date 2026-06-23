@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 const serverUrl =
-  process.env.CAPACITOR_SERVER_URL?.trim() || "https://rimvio.vercel.app";
+  process.env.CAPACITOR_SERVER_URL?.trim() || "https://rimvio.com";
 
 const config: CapacitorConfig = {
   appId: "com.rimvio.app",

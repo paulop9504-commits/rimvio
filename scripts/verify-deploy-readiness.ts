@@ -45,7 +45,7 @@ const checkRemote = args.has("--remote");
 const remoteUrl =
   process.env.DEPLOY_URL?.trim() ||
   process.env.NEXT_PUBLIC_APP_URL?.trim() ||
-  "https://new-project-pi-one-52.vercel.app";
+  "https://rimvio.vercel.app";
 
 if (useVercelEnv) {
   loadEnvFile(".env.vercel.production");

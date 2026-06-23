@@ -46,7 +46,7 @@ export const RIMVIO = {
   taglineShort: "말하면 실행",
   /** Link share remains an ingress channel, not product identity */
   ingressTagline: "링크·사진 공유로도 시작할 수 있어요",
-  domain: "rimvio.app",
+  domain: "rimvio.com",
   homeLabel: "Rimvio 홈",
 } as const;
 

@@ -28,4 +28,9 @@ export type PinCluster = {
   bridgeHostName?: string | null;
   /** Active @중고 alignment — distinct grey pin on globe. */
   marketRole?: PinClusterMarketRole | null;
+  /** Platform discovery layer — read-only trace from another user. */
+  origin?: "personal" | "external";
+  externalTraceId?: string | null;
+  readOnly?: boolean;
+  authorDisplayName?: string | null;
 };

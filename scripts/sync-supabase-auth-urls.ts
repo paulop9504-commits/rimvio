@@ -5,8 +5,9 @@
 import { readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 
-const PROD_URL = "https://rimvio.app";
+const PROD_URL = "https://rimvio.com";
 const VERCEL_ALIAS = "https://rimvio.vercel.app";
+const LEGACY_APP = "https://rimvio.app";
 const VERCEL_LEGACY = "https://new-project-pi-one-52.vercel.app";
 const LOCAL_URL = "http://localhost:3000";
 
@@ -51,7 +52,9 @@ async function main() {
 
   const redirectUrls = [
     `${PROD_URL}/auth/callback`,
+    `https://www.rimvio.com/auth/callback`,
     `${VERCEL_ALIAS}/auth/callback`,
+    `${LEGACY_APP}/auth/callback`,
     `${VERCEL_LEGACY}/auth/callback`,
     `${LOCAL_URL}/auth/callback`,
   ];

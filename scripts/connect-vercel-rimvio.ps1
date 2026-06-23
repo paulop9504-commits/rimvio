@@ -6,7 +6,7 @@ Set-Location $PSScriptRoot\..
 
 $RimvioRepo = "https://github.com/paulop9504-dotcom/rimvio.git"
 $Project = "rimvio"
-$ProdUrl = "https://new-project-pi-one-52.vercel.app"
+$ProdUrl = "https://rimvio.vercel.app"
 
 Write-Host "=== Vercel <-> rimvio Git connect ===" -ForegroundColor Cyan
 

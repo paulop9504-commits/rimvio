@@ -16,6 +16,7 @@ import type { RimvioGlobe3DHandle } from "@/components/experience/rimvio-globe-3
 import { useExperienceGraph } from "@/hooks/use-experience-graph";
 import { useGpsTrackingEnabled } from "@/hooks/use-gps-tracking-enabled";
 import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
+import { useGlobePinsPlatformExternal } from "@/hooks/use-globe-pins-platform-external";
 import { useRelationshipFeedSlots } from "@/hooks/use-relationship-feed-slots";
 import type { ClassifiedGlobePin } from "@/lib/feed/experience-globe-ping-types";
 import { readPeerContacts } from "@/lib/context/peer-contact-store";
@@ -71,6 +72,9 @@ import {
   isShowContextWarmthEnabled,
 } from "@/lib/globe/globe-experience-settings";
 import { buildGlobeContextWarmthPoints } from "@/lib/globe/build-globe-context-warmth-points";
+import { resolveGlobeClustersForLayerMode } from "@/lib/globe/filter-globe-clusters-by-layer-mode";
+import type { GlobeLayerMode } from "@/lib/globe/globe-layer-mode";
+import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
 function useGlobeEventSnapshot() {
@@ -148,6 +152,8 @@ export type RimvioGlobeHubProps = {
   onContextHubAnchorPress?: (contextEventId: string) => void;
   /** Pinch/drag coach on the globe canvas — off when capture dock is shown. */
   showInteractionHint?: boolean;
+  /** personal = 내 지구 · discovery = 밖 지구 (external traces only). */
+  layerMode?: GlobeLayerMode;
 };
 
 type RimvioGlobeHubBodyProps = {
@@ -178,6 +184,7 @@ type RimvioGlobeHubBodyProps = {
   focusedContextEventId?: string | null;
   onContextHubAnchorPress?: (contextEventId: string) => void;
   showInteractionHint?: boolean;
+  layerMode?: GlobeLayerMode;
 };
 
 const RimvioGlobeHubBody = memo(
@@ -200,6 +207,7 @@ const RimvioGlobeHubBody = memo(
       focusedContextEventId = null,
       onContextHubAnchorPress,
       showInteractionHint = true,
+      layerMode = "personal",
     },
     ref,
   ) {
@@ -536,6 +544,7 @@ const RimvioGlobeHubBody = memo(
         className={cn("relative flex h-full min-h-0 flex-1 flex-col", className)}
         data-rimvio-globe-hub
         data-rimvio-globe-surface="globe3d"
+        data-rimvio-globe-layer-mode={layerMode}
       >
         <RimvioGlobe3DClient
           ref={innerGlobeRef}
@@ -584,7 +593,9 @@ const RimvioGlobeHubBody = memo(
             className="pointer-events-none absolute inset-x-0 top-[max(4.5rem,env(safe-area-inset-top))] z-10 mx-auto w-fit max-w-[85%] rounded-full bg-white/90 px-3.5 py-1.5 text-center text-[12px] font-medium text-[#8b95a1] shadow-sm backdrop-blur-md"
             data-rimvio-globe-hub-empty
           >
-            기록이 쌓이면 지구에 핀이 나타납니다.
+            {layerMode === "discovery"
+              ? copy.globe.externalDiscoveryEmpty
+              : copy.globe.layerModePersonalEmpty}
           </p>
         ) : null}
       </div>
@@ -615,8 +626,15 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
   focusedContextEventId,
   onContextHubAnchorPress,
   showInteractionHint = true,
+  layerMode = "personal",
 }: RimvioGlobeHubProps) {
   const { ready, eventsById, personalPinRevision } = useGlobeEventSnapshot();
+  const liveLocation = useLiveLocationSnapshot();
+  const { traces: externalTraces } = useGlobePinsPlatformExternal({
+    enabled: layerMode === "discovery",
+    lat: liveLocation?.lat ?? null,
+    lng: liveLocation?.lng ?? null,
+  });
   const { graph } = useExperienceGraph(ready ? eventsById : undefined);
   const recallOpenedRef = useRef(false);
   const onClustersSnapshotRef = useRef(onClustersSnapshot);
@@ -630,20 +648,37 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
       volumes: graph.volumes,
       eventsById,
     });
-    return all.filter(
-      (cluster) =>
-        matchesGlobeContextTimeFilter(cluster.startedAtIso, timeFilter) &&
-        matchesGlobeContextPeopleFilter(cluster.eventId, peopleFilter, eventsById),
-    );
-  }, [ready, graph.volumes, eventsById, personalPinRevision, timeFilter, peopleFilter]);
+    const filtered =
+      layerMode === "discovery"
+        ? all
+        : all.filter(
+            (cluster) =>
+              matchesGlobeContextTimeFilter(cluster.startedAtIso, timeFilter) &&
+              matchesGlobeContextPeopleFilter(
+                cluster.eventId,
+                peopleFilter,
+                eventsById,
+              ),
+          );
+    return resolveGlobeClustersForLayerMode({
+      mode: layerMode,
+      personalClusters: filtered,
+      bridgeGhostClusters: bridgeGhostClusters,
+      externalTraces,
+    });
+  }, [
+    ready,
+    graph.volumes,
+    eventsById,
+    personalPinRevision,
+    timeFilter,
+    peopleFilter,
+    layerMode,
+    bridgeGhostClusters,
+    externalTraces,
+  ]);
 
-  const displayClusters = useMemo(() => {
-    const ghosts = bridgeGhostClusters ?? [];
-    if (ghosts.length === 0) {
-      return clusters;
-    }
-    return [...clusters, ...ghosts];
-  }, [clusters, bridgeGhostClusters]);
+  const displayClusters = clusters;
 
   useEffect(() => {
     onClustersSnapshotRef.current?.(displayClusters);
@@ -705,6 +740,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
       focusedContextEventId={focusedContextEventId}
       onContextHubAnchorPress={onContextHubAnchorPress}
       showInteractionHint={showInteractionHint}
+      layerMode={layerMode}
     />
   );
 });

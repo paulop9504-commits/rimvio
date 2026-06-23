@@ -5,7 +5,8 @@ $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot\..
 
 $Project = "rimvio"
-$ProdUrl = "https://new-project-pi-one-52.vercel.app"
+$ProdUrl = "https://rimvio.vercel.app"
+$CustomDomain = "https://rimvio.com"
 $PreviewBranch = "release/v1-rimvio-core"
 
 Write-Host "=== Rimvio production deploy ===" -ForegroundColor Cyan
@@ -47,6 +48,7 @@ npx tsx scripts/verify-deploy-readiness.ts --vercel-env --remote
 if ($LASTEXITCODE -ne 0) { exit 1 }
 
 Write-Host "`nDone. Production: $ProdUrl" -ForegroundColor Green
+Write-Host "Custom domain (when DNS Valid): $CustomDomain" -ForegroundColor Cyan
 Write-Host "Supabase → Auth → URL Configuration:" -ForegroundColor Cyan
-Write-Host "  Site URL: $ProdUrl"
+Write-Host "  Site URL: $ProdUrl (or $CustomDomain after DNS)"
 Write-Host "  Redirect URLs: $ProdUrl/auth/callback"

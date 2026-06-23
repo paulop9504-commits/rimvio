@@ -19,6 +19,8 @@ export function isAuthRequired(): boolean {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, "") ?? "";
   if (
     appUrl.includes("rimvio.vercel.app") ||
+    appUrl === "https://rimvio.com" ||
+    appUrl === "https://www.rimvio.com" ||
     appUrl === "https://rimvio.app" ||
     (appUrl.endsWith(".vercel.app") && !appUrl.includes("localhost"))
   ) {
