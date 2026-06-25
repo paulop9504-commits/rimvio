@@ -152,7 +152,7 @@ export function OpportunityDashboardSheet({
                   row={detailRow}
                   whyTitle={field.detailWhy}
                   focusEventId={selectedPill.contextId}
-                  seekingIntentId={selectedPill.seeking.id}
+                  seeking={selectedPill.seeking}
                   neighborBadge={field.neighborListingBadge}
                   hasActiveTrade={tradeSessions.some(
                     (session) => session.listingIntentId === detailRow.listing.id,

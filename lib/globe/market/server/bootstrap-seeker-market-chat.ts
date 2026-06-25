@@ -113,6 +113,8 @@ export async function bootstrapSeekerMarketChat(
     initialMessage?: string | null;
     initTradeSession?: boolean;
     requireTradeSession?: boolean;
+    /** User tapped a Field discovery row — trust listing/seeking pair, skip score re-gate. */
+    fromFieldDiscovery?: boolean;
   },
 ): Promise<{ threadId: string; handshakeId: string }> {
   let seeking: Awaited<ReturnType<typeof findMarketIntentById>> = null;
@@ -152,9 +154,11 @@ export async function bootstrapSeekerMarketChat(
   }
 
   const weighted = scoreWeightedMarketAlignment(seeking, listing);
-  const fieldFloor = OPPORTUNITY_FIELD_MIN_FIELD_SCORE * 0.72;
-  if (weighted.total < fieldFloor) {
-    throw new Error("no_match");
+  if (!input.fromFieldDiscovery) {
+    const fieldFloor = OPPORTUNITY_FIELD_MIN_FIELD_SCORE * 0.72;
+    if (weighted.total < fieldFloor) {
+      throw new Error("no_match");
+    }
   }
 
   const hint =

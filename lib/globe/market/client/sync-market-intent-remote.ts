@@ -174,6 +174,7 @@ export async function openMarketChatRemote(input: {
   initialMessage?: string;
   initTradeSession?: boolean;
   requireTradeSession?: boolean;
+  fromFieldDiscovery?: boolean;
 }): Promise<{ threadId: string; handshakeId: string }> {
   const response = await fetch(`${resolveAppOrigin()}/api/globe/market-alignment/open-chat`, {
     method: "POST",
@@ -186,6 +187,7 @@ export async function openMarketChatRemote(input: {
       initialMessage: input.initialMessage?.trim() || undefined,
       initTradeSession: input.initTradeSession === true,
       requireTradeSession: input.requireTradeSession === true,
+      fromFieldDiscovery: input.fromFieldDiscovery === true,
     }),
   });
   const body = (await response.json()) as {

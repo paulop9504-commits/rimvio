@@ -8,12 +8,14 @@ import { useAuth } from "@/hooks/use-auth";
 import { useCopy } from "@/hooks/use-copy";
 import { addPeerContact } from "@/lib/context/peer-contact-store";
 import { openMarketChatForListing } from "@/lib/globe/market/open-market-alignment-offer";
+import { ensureSeekingIntentSynced } from "@/lib/globe/market/client/ensure-seeking-intent-synced";
 import { readMarketHandshakeUserError } from "@/lib/globe/market/read-market-handshake-user-error";
+import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
 import { cn } from "@/lib/utils";
 
 export type OpportunityFieldActionBarProps = {
   focusEventId: string;
-  seekingIntentId: string;
+  seeking: MarketIntentRecord;
   matchIntentId: string;
   peerDisplayName: string;
   /** Already in trade for this listing — skip bootstrap, go to trades tab. */
@@ -27,7 +29,7 @@ export type OpportunityFieldActionBarProps = {
 
 export function OpportunityFieldActionBar({
   focusEventId,
-  seekingIntentId,
+  seeking,
   matchIntentId,
   peerDisplayName,
   hasActiveTrade = false,
@@ -57,10 +59,12 @@ export function OpportunityFieldActionBar({
     }
     setBusy("chat");
     try {
+      const syncedSeeking = await ensureSeekingIntentSynced(seeking);
       await openMarketChatForListing({
         focusEventId,
-        seekingIntentId,
+        seekingIntentId: syncedSeeking.id,
         matchIntentId,
+        fromFieldDiscovery: true,
         initTradeSession: false,
         copy: { bridgeFail: copy.globe.marketAlignBridgeFail },
         navigate,
@@ -100,10 +104,12 @@ export function OpportunityFieldActionBar({
     }
     setBusy("schedule");
     try {
+      const syncedSeeking = await ensureSeekingIntentSynced(seeking);
       await openMarketChatForListing({
         focusEventId,
-        seekingIntentId,
+        seekingIntentId: syncedSeeking.id,
         matchIntentId,
+        fromFieldDiscovery: true,
         initTradeSession: true,
         requireTradeSession: true,
         copy: { bridgeFail: copy.globe.marketAlignBridgeFail },

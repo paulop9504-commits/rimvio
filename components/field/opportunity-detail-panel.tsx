@@ -14,6 +14,7 @@ import {
 } from "@/lib/bridge/marketplace-bridge-schema";
 import { buildMarketListingMediaItems } from "@/lib/globe/market/market-listing-media";
 import type { OpportunityRow } from "@/lib/globe/opportunity-field";
+import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
 import { RIMVIO_TYPE } from "@/lib/design/rimvio-ontology";
 import { cn } from "@/lib/utils";
 
@@ -21,7 +22,7 @@ export type OpportunityDetailPanelProps = {
   row: OpportunityRow;
   whyTitle: string;
   focusEventId: string;
-  seekingIntentId: string;
+  seeking: MarketIntentRecord;
   neighborBadge: string;
   hasActiveTrade?: boolean;
   onBeforeNavigate?: () => void;
@@ -35,7 +36,7 @@ export function OpportunityDetailPanel({
   row,
   whyTitle,
   focusEventId,
-  seekingIntentId,
+  seeking,
   neighborBadge,
   hasActiveTrade = false,
   onBeforeNavigate,
@@ -126,7 +127,7 @@ export function OpportunityDetailPanel({
 
       <OpportunityFieldActionBar
         focusEventId={focusEventId}
-        seekingIntentId={seekingIntentId}
+        seeking={seeking}
         matchIntentId={row.listing.id}
         peerDisplayName={card.productName}
         hasActiveTrade={hasActiveTrade}

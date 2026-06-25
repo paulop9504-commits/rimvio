@@ -78,6 +78,7 @@ export async function openMarketChatForListing(input: {
   initialMessage?: string;
   initTradeSession?: boolean;
   requireTradeSession?: boolean;
+  fromFieldDiscovery?: boolean;
   copy: { bridgeFail: string };
   navigate: (href: string) => void;
   onBeforeNavigate?: () => void;
@@ -94,6 +95,7 @@ export async function openMarketChatForListing(input: {
     initialMessage: input.initialMessage,
     initTradeSession: input.initTradeSession,
     requireTradeSession: input.requireTradeSession,
+    fromFieldDiscovery: input.fromFieldDiscovery,
   });
   if (!result.threadId) {
     throw new Error("open_chat_failed");

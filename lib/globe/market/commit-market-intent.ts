@@ -104,10 +104,6 @@ export async function commitMarketIntentFromDraft(
   stampMarketIntentOnEvent(anchoredRecord);
   syncMarketPreferenceOnIntentCommit(anchoredRecord);
 
-  if (!publishExternal) {
-    return anchoredRecord;
-  }
-
   const remote = await syncMarketIntentRemote(anchoredRecord);
   if (remote) {
     const merged = { ...anchoredRecord, ...remote, id: remote.id, userId: remote.userId };

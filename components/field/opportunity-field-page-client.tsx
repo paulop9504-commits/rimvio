@@ -72,7 +72,7 @@ export function OpportunityFieldPageClient() {
           row={detailRow}
           whyTitle={field.detailWhy}
           focusEventId={selectedPill.contextId}
-          seekingIntentId={selectedPill.seeking.id}
+          seeking={selectedPill.seeking}
           neighborBadge={field.neighborListingBadge}
           hasActiveTrade={hasActiveTrade}
           className="min-h-0 flex-1"
