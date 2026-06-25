@@ -1,21 +1,23 @@
-import { Suspense } from "react";
-import { AppShell } from "@/components/app-shell";
-import { OpportunityFieldPageClient } from "@/components/field/opportunity-field-page-client";
-import { copy } from "@/lib/copy/human-ko";
+"use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { dispatchOpenFieldSheet } from "@/lib/nav/field-sheet-bridge";
+
+/** Mobile-safe entry — never render the heavy /field page; open global sheet on home. */
 export default function FieldPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    dispatchOpenFieldSheet();
+    router.replace("/");
+  }, [router]);
+
   return (
-    <AppShell
-      title={copy.globe.field.sheetTitle}
-      hideBranding
-      hideTitle
-      compact
-      fullBleed
-      iosSurface
-    >
-      <Suspense fallback={null}>
-        <OpportunityFieldPageClient />
-      </Suspense>
-    </AppShell>
+    <div
+      className="min-h-dvh bg-[#f2f4f6]"
+      aria-busy="true"
+      aria-label="맞춤 열기"
+    />
   );
 }

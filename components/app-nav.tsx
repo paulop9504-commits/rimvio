@@ -14,7 +14,10 @@ import { Globe, Plus, Sparkles, Users } from "lucide-react";
 import { CaptureSheet } from "@/components/globe/capture-sheet";
 import { useCopy } from "@/hooks/use-copy";
 import { subscribeOpenCaptureSheet } from "@/lib/nav/open-capture-sheet-bridge";
-import { dispatchOpenFieldSheet } from "@/lib/nav/open-field-sheet-bridge";
+import {
+  dispatchOpenFieldSheet,
+  subscribeFieldSheetOpenState,
+} from "@/lib/nav/field-sheet-bridge";
 import { GRID } from "@/lib/ui/responsive-grid";
 import { cn } from "@/lib/utils";
 
@@ -348,6 +351,7 @@ export function AppNav({ placement }: AppNavProps) {
   const router = useRouter();
   const copy = useCopy();
   const [captureOpen, setCaptureOpen] = useState(false);
+  const [fieldSheetOpen, setFieldSheetOpen] = useState(false);
   const lastNavRef = useRef<{ href: string; at: number } | null>(null);
 
   useEffect(() => {
@@ -355,7 +359,10 @@ export function AppNav({ placement }: AppNavProps) {
   }, []);
 
   useEffect(() => {
-    router.prefetch("/field");
+    return subscribeFieldSheetOpenState(setFieldSheetOpen);
+  }, []);
+
+  useEffect(() => {
     router.prefetch("/peers");
   }, [router]);
 
@@ -363,6 +370,7 @@ export function AppNav({ placement }: AppNavProps) {
     (href: string) => {
       const isSame =
         (href === "/" && isGlobePath(pathname)) ||
+        (href === "/field" && fieldSheetOpen) ||
         pathname === href ||
         pathname.startsWith(`${href}/`);
       if (isSame) {
@@ -378,14 +386,14 @@ export function AppNav({ placement }: AppNavProps) {
       }
       lastNavRef.current = { href, at: now };
 
-      if (href === "/field" && isGlobePath(pathname)) {
+      if (href === "/field") {
         dispatchOpenFieldSheet();
         return;
       }
 
       router.push(href);
     },
-    [pathname, router],
+    [fieldSheetOpen, pathname, router],
   );
 
   const tabs = useMemo<NavTab[]>(
@@ -399,7 +407,8 @@ export function AppNav({ placement }: AppNavProps) {
       {
         href: "/field",
         label: copy.nav.field,
-        isActive: (p) => p === "/field" || p.startsWith("/field/"),
+        isActive: (p) =>
+          fieldSheetOpen || p === "/field" || p.startsWith("/field/"),
         icon: "field",
       },
       {
@@ -415,7 +424,7 @@ export function AppNav({ placement }: AppNavProps) {
         icon: "capture",
       },
     ],
-    [copy],
+    [copy, fieldSheetOpen],
   );
 
   const navChrome = (

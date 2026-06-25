@@ -23,7 +23,6 @@ import { GlobeContextStackPicker } from "@/components/globe/globe-context-stack-
 import { GlobeCreateContextSheet } from "@/components/globe/globe-create-context-sheet";
 import { GlobeContextShareSheet } from "@/components/globe/globe-context-share-sheet";
 import { GlobeInboxSheet } from "@/components/globe/globe-inbox-sheet";
-import { OpportunityDashboardSheet } from "@/components/field/opportunity-dashboard-sheet";
 import {
   GlobeMediaPoolSheet,
 } from "@/components/globe/globe-media-pool-sheet";
@@ -37,7 +36,10 @@ import { setLiveLocationPowerMode } from "@/lib/location-ping/live-location-serv
 import { usePersonalGlobePinSync } from "@/hooks/use-personal-globe-pin-sync";
 import { useGlobeLayerMode } from "@/hooks/use-globe-layer-mode";
 import { useOpportunityFieldBadge } from "@/hooks/use-opportunity-field-badge";
-import { subscribeOpenFieldSheet } from "@/lib/nav/open-field-sheet-bridge";
+import {
+  dispatchOpenFieldSheet,
+  subscribeFieldSheetOpenState,
+} from "@/lib/nav/field-sheet-bridge";
 import { useGlobeInbox } from "@/hooks/use-globe-inbox";
 import { useMediaPool } from "@/hooks/use-media-pool";
 import { useGlobeTripArrival } from "@/hooks/use-globe-trip-arrival";
@@ -217,9 +219,9 @@ function GlobeHomeBody() {
     null,
   );
   const [globeInboxOpen, setGlobeInboxOpen] = useState(false);
-  const [opportunityFieldOpen, setOpportunityFieldOpen] = useState(false);
+  const [fieldSheetOpen, setFieldSheetOpen] = useState(false);
   useEffect(() => {
-    return subscribeOpenFieldSheet(() => setOpportunityFieldOpen(true));
+    return subscribeFieldSheetOpenState(setFieldSheetOpen);
   }, []);
   const [mediaPoolOpen, setMediaPoolOpen] = useState(false);
   const [poolAttachIds, setPoolAttachIds] = useState<string[]>([]);
@@ -228,7 +230,7 @@ function GlobeHomeBody() {
   const [shareEventId, setShareEventId] = useState<string | null>(null);
   const [activeCluster, setActiveCluster] = useState<PinCluster | null>(null);
   const fieldMatchCount = useOpportunityFieldBadge({
-    enabled: layerMode === "discovery" && !opportunityFieldOpen,
+    enabled: layerMode === "discovery" && !fieldSheetOpen,
     primaryEventId: activeCluster?.eventId ?? null,
   });
   const [placeVerifyEventId, setPlaceVerifyEventId] = useState<string | null>(null);
@@ -974,7 +976,7 @@ function GlobeHomeBody() {
     if (layerMode !== "discovery") {
       onLayerModeChange("discovery");
     }
-    setOpportunityFieldOpen(true);
+    dispatchOpenFieldSheet({ primaryEventId: activeCluster?.eventId ?? null });
     const params = new URLSearchParams(window.location.search);
     params.delete("openField");
     const qs = params.toString();
@@ -1285,7 +1287,7 @@ function GlobeHomeBody() {
     marketManageOpen ||
     settingsOpen ||
     globeInboxOpen ||
-    opportunityFieldOpen ||
+    fieldSheetOpen ||
     mediaPoolOpen ||
     bridgeGhostOpen ||
     shareSheetOpen;
@@ -1488,7 +1490,11 @@ function GlobeHomeBody() {
           onOpenMediaPool={() => setMediaPoolOpen(true)}
           onOpenInbox={() => setGlobeInboxOpen(true)}
           onOpenMarketManage={() => setMarketManageOpen(true)}
-          onOpenField={() => setOpportunityFieldOpen(true)}
+          onOpenField={() =>
+            dispatchOpenFieldSheet({
+              primaryEventId: activeCluster?.eventId ?? null,
+            })
+          }
           onOpenSettings={() => setSettingsOpen(true)}
           className="pointer-events-auto"
         />
@@ -1657,13 +1663,6 @@ function GlobeHomeBody() {
         onLocationConfirmed={() => {
           refreshGlobeInboxData();
         }}
-      />
-      <OpportunityDashboardSheet
-        open={opportunityFieldOpen}
-        onOpenChange={setOpportunityFieldOpen}
-        layerMode={layerMode}
-        primaryEventId={activeCluster?.eventId ?? null}
-        onSwitchToDiscovery={() => onLayerModeChange("discovery")}
       />
       <PinOpenSheet
         open={sheetOpen}
