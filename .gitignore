@@ -72,3 +72,5 @@ capacitor.config.local.ts
 
 # public mirror staging (scripts/push-public-github.ps1)
 .public-staging/
+
+supabase/.temp/
