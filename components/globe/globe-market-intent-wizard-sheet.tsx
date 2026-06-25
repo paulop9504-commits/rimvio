@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { MarketPriorityStepSurface } from "@/components/market/market-priority-step-surface";
+import { MarketListingTradePlaceStep } from "@/components/market/market-listing-trade-place-step";
 import { commitMarketIntentFromDraft } from "@/lib/globe/market/commit-market-intent";
 import type { MarketListingInferenceSource } from "@/lib/globe/market/infer-market-listing-from-media";
 import { inferMarketListingFromPhotoFiles } from "@/lib/globe/market/infer-market-listing-from-photo-client";
