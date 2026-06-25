@@ -40,8 +40,12 @@ export async function compressShareVideoFile(
   file: File,
   input?: {
     onProgress?: (ratio: number) => void;
+    maxDurationSec?: number;
+    targetMaxBytes?: number;
   },
 ): Promise<File> {
+  const maxDurationSec = input?.maxDurationSec ?? SHARE_VIDEO_MAX_DURATION_SEC;
+  const targetMaxBytes = input?.targetMaxBytes ?? SHARE_VIDEO_TARGET_MAX_BYTES;
   return runShareVideoCompressSerial(async () => {
     const ffmpeg = await loadShareFfmpeg();
     const inputName = `in-${crypto.randomUUID()}.${inputExt(file)}`;
@@ -64,7 +68,7 @@ export async function compressShareVideoFile(
           "-i",
           inputName,
           "-t",
-          String(SHARE_VIDEO_MAX_DURATION_SEC),
+          String(maxDurationSec),
           "-vf",
           SCALE_FILTER,
           "-c:v",
@@ -91,7 +95,7 @@ export async function compressShareVideoFile(
         const blob = new Blob([bytes], { type: "video/mp4" });
         bestBlob = blob;
 
-        if (blob.size <= SHARE_VIDEO_TARGET_MAX_BYTES) {
+        if (blob.size <= targetMaxBytes) {
           break;
         }
       }

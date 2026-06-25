@@ -7,7 +7,12 @@ import {
 import { syncMarketIntentRemote } from "@/lib/globe/market/client/sync-market-intent-remote";
 import { syncMarketIntentGlobePin } from "@/lib/globe/market/sync-market-intent-globe-pin";
 import { ingestGlobeContextFromFiles } from "@/lib/feed/ingest-globe-context-capture";
-import { uploadMarketListingPhotos } from "@/lib/globe/market/upload-market-listing-photos";
+import { countMarketListingMedia } from "@/lib/globe/market/market-listing-media";
+import {
+  uploadMarketListingPhotos,
+  uploadMarketListingVideos,
+} from "@/lib/globe/market/upload-market-listing-photos";
+import { syncMarketPreferenceOnIntentCommit } from "@/lib/globe/market/preference-memory/sync-market-preference-on-intent-commit";
 import { createClient } from "@/lib/supabase/client";
 
 export async function commitMarketIntentFromDraft(
@@ -15,9 +20,11 @@ export async function commitMarketIntentFromDraft(
   options?: { photoFiles?: File[]; publishExternal?: boolean },
 ): Promise<MarketIntentRecord> {
   const publishExternal = options?.publishExternal === true;
+  const mediaCounts = countMarketListingMedia(options?.photoFiles ?? []);
   let detail = {
     ...(draft.detail ?? DEFAULT_MARKET_INTENT_DETAIL),
-    photoCount: options?.photoFiles?.length ?? draft.detail?.photoCount ?? 0,
+    photoCount: mediaCounts.photoCount || draft.detail?.photoCount || 0,
+    videoCount: mediaCounts.videoCount || draft.detail?.videoCount || 0,
     publishedExternal: publishExternal,
   };
 
@@ -29,7 +36,7 @@ export async function commitMarketIntentFromDraft(
         forceAttachToHint: true,
       });
     } catch {
-      // photos are optional — intent still commits
+      // media is optional — intent still commits
     }
 
     if (draft.role === "listing") {
@@ -39,13 +46,24 @@ export async function commitMarketIntentFromDraft(
           data: { user },
         } = await supabase.auth.getUser();
         if (user?.id) {
-          const photoUrls = await uploadMarketListingPhotos({
-            userId: user.id,
-            eventId: draft.eventId,
-            photoFiles: options.photoFiles,
-          });
-          if (photoUrls.length > 0) {
-            detail = { ...detail, photoUrls, photoCount: photoUrls.length };
+          const [photoUrls, videoUrls] = await Promise.all([
+            uploadMarketListingPhotos({
+              userId: user.id,
+              eventId: draft.eventId,
+              photoFiles: options.photoFiles,
+            }),
+            uploadMarketListingVideos({
+              userId: user.id,
+              eventId: draft.eventId,
+              videoFiles: options.photoFiles,
+            }),
+          ]);
+          if (photoUrls.length > 0 || videoUrls.length > 0) {
+            detail = {
+              ...detail,
+              ...(photoUrls.length > 0 ? { photoUrls, photoCount: photoUrls.length } : {}),
+              ...(videoUrls.length > 0 ? { videoUrls, videoCount: videoUrls.length } : {}),
+            };
           }
         }
       } catch {
@@ -82,6 +100,7 @@ export async function commitMarketIntentFromDraft(
 
   saveMarketIntent(anchoredRecord);
   stampMarketIntentOnEvent(anchoredRecord);
+  syncMarketPreferenceOnIntentCommit(anchoredRecord);
 
   if (!publishExternal) {
     return anchoredRecord;
@@ -93,6 +112,7 @@ export async function commitMarketIntentFromDraft(
     saveMarketIntent(merged);
     stampMarketIntentOnEvent(merged);
     await syncMarketIntentGlobePin(merged);
+    syncMarketPreferenceOnIntentCommit(merged);
     return merged;
   }
 

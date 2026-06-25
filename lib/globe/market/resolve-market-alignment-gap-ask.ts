@@ -54,6 +54,13 @@ function buildChipsForField(
         { label: "90%", value: 90 },
         { label: "95%", value: 95 },
       ];
+    case "storage_gb":
+      return [
+        { label: "128GB", value: 128 },
+        { label: "256GB", value: 256 },
+        { label: "512GB", value: 512 },
+        { label: "1TB", value: 1024 },
+      ];
     case "cosmetic_grade":
       return [
         { label: "미개봉", value: "sealed" },

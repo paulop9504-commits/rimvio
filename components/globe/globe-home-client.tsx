@@ -1244,7 +1244,9 @@ function GlobeHomeBody() {
   const launchMarketProjection = useCallback(
     (input: { draft: MarketIntentDraft; eventId: string }) => {
       setMarketPortalLaunch(true);
-      setMarketWizardStartStep("recognize");
+      setMarketWizardStartStep(
+        input.draft.role === "listing" ? "photos" : "recognize",
+      );
       setMarketIntentDraft(input.draft);
       setMarketConfirmOpen(true);
       setMarketFocusEventId(input.eventId);

@@ -3,6 +3,7 @@ import type { WeightedAlignmentScore } from "@/lib/globe/market/score-weighted-m
 import type { OpportunityFieldCopy } from "@/lib/globe/opportunity-field/types";
 
 const FIELD_LABELS: Partial<Record<MarketPrioritySlotId, keyof OpportunityFieldCopy>> = {
+  storage_gb: "reasonStorage",
   battery_health: "reasonBattery",
   price: "reasonPrice",
   distance: "reasonDistance",

@@ -8,6 +8,7 @@ export const MARKET_PRIORITY_SCHEMA_VERSION = "market.v1.2" as const;
 
 export type MarketPrioritySlotId =
   | "price"
+  | "storage_gb"
   | "battery_health"
   | "cosmetic_grade"
   | "repair_history"
@@ -20,6 +21,7 @@ export type MarketPrioritySlotId =
 
 export type MarketPrioritySlotKind =
   | "price_man"
+  | "storage_gb"
   | "percent"
   | "grade_abc"
   | "grade_cosmetic"
@@ -48,12 +50,13 @@ const PHONE_MATRIX: CategoryPriorityMatrix = {
   categoryId: "market.phone",
   schemaVersion: MARKET_PRIORITY_SCHEMA_VERSION,
   matchThreshold: 0.72,
-  sellerGuideKo: "디지털은 가격과 배터리·외관을 먼저 맞춰 주세요.",
-  seekerGuideKo: "가격과 배터리·외관이 맞는 흔적을 찾을게요.",
+  sellerGuideKo: "배터리·용량·가격·외관 순으로 맞춰 주세요.",
+  seekerGuideKo: "배터리·용량·가격·외관이 맞는 흔적을 찾을게요.",
   prioritySlots: [
-    { field: "price", weight: 0.5, required: true, kind: "price_man", autoFill: "text" },
     { field: "battery_health", weight: 0.25, required: true, kind: "percent", autoFill: "text" },
-    { field: "cosmetic_grade", weight: 0.25, required: true, kind: "grade_cosmetic", autoFill: "text" },
+    { field: "storage_gb", weight: 0.25, required: true, kind: "storage_gb", autoFill: "text" },
+    { field: "price", weight: 0.3, required: true, kind: "price_man", autoFill: "text" },
+    { field: "cosmetic_grade", weight: 0.2, required: true, kind: "grade_cosmetic", autoFill: "text" },
     { field: "repair_history", weight: 0, required: false, kind: "boolean_none", autoFill: "text" },
   ],
 };
@@ -181,6 +184,8 @@ export function marketPrioritySlotLabelKo(field: MarketPrioritySlotId): string {
   switch (field) {
     case "price":
       return "가격";
+    case "storage_gb":
+      return "저장 용량";
     case "battery_health":
       return "배터리 효율";
     case "cosmetic_grade":
@@ -213,6 +218,8 @@ export function marketPrioritySlotPlaceholderKo(
       return role === "seeking" ? "예: 70" : "예: 80";
     case "battery_health":
       return "예: 85";
+    case "storage_gb":
+      return role === "seeking" ? "예: 256GB 이상" : "예: 256GB";
     case "cosmetic_grade":
       return "미개봉 / 거의 새것 / 사용감 적음";
     case "color_design":

@@ -101,6 +101,7 @@ export function scoreMarketplaceOpportunityRow(input: {
     listingId: input.listing.id,
     listingEventId: input.listing.eventId,
     photoUrl: input.listing.detail.photoUrls?.[0]?.trim() || null,
+    videoUrl: input.listing.detail.videoUrls?.[0]?.trim() || null,
     title,
     price,
     priceLine,

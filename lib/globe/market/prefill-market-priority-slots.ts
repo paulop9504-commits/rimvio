@@ -7,6 +7,7 @@ import {
   getTopPrioritySlots,
   type MarketPrioritySlotId,
 } from "@/lib/globe/market/market-priority-matrix";
+import { parseStorageGb } from "@/lib/globe/market/parse-storage-gb";
 import { parseMarketProductFromText } from "@/lib/globe/market/parse-market-product-from-text";
 
 function mapConditionToAbc(
@@ -29,6 +30,10 @@ function mapConditionToAbc(
     default:
       return null;
   }
+}
+
+function parseStorageFromText(text: string): number | null {
+  return parseStorageGb(text);
 }
 
 function parseBatteryFromText(text: string): number | null {
@@ -81,6 +86,13 @@ export function prefillMarketPrioritySlots(draft: MarketIntentDraft): MarketInte
         const battery = parseBatteryFromText(text);
         if (battery !== null) {
           slots.battery_health = battery;
+        }
+        break;
+      }
+      case "storage_gb": {
+        const storage = parseStorageFromText(text);
+        if (storage !== null) {
+          slots.storage_gb = storage;
         }
         break;
       }

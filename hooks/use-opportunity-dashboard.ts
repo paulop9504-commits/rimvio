@@ -86,6 +86,7 @@ export function useOpportunityDashboard(input: {
   const fieldCopy = useMemo<OpportunityFieldCopy>(
     () => ({
       reasonBattery: copy.globe.field.reasonBattery,
+      reasonStorage: copy.globe.field.reasonStorage,
       reasonPrice: copy.globe.field.reasonPrice,
       reasonDistance: copy.globe.field.reasonDistance,
       reasonRecency: copy.globe.field.reasonRecency,

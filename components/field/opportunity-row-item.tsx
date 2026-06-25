@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { ImageIcon, MapPin } from "lucide-react";
+import { MarketListingMediaRowThumb } from "@/components/market/market-listing-media-thumb";
 import { MarketIntentOwnershipChip } from "@/components/market/market-intent-ownership-chip";
 import type { OpportunityRow } from "@/lib/globe/opportunity-field";
 import { cn } from "@/lib/utils";
@@ -38,14 +39,8 @@ export function OpportunityRowItem({
       data-opportunity-ownership="neighbor"
     >
       <div className="relative size-[52px] shrink-0 overflow-hidden rounded-2xl bg-[#f2f4f6] ring-1 ring-black/[0.04]">
-        {row.photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={row.photoUrl}
-            alt=""
-            className="size-full object-cover"
-            loading="lazy"
-          />
+        {row.photoUrl || row.videoUrl ? (
+          <MarketListingMediaRowThumb photoUrl={row.photoUrl} videoUrl={row.videoUrl} />
         ) : (
           <div className="flex size-full items-center justify-center text-[#b0b8c1]">
             <ImageIcon className="size-6" aria-hidden />

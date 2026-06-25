@@ -91,6 +91,10 @@ export function readDetailJson(raw: Record<string, unknown> | null | undefined):
     photoUrls: Array.isArray(raw.photoUrls)
       ? raw.photoUrls.filter((url): url is string => typeof url === "string" && url.trim().length > 0)
       : [],
+    videoUrls: Array.isArray(raw.videoUrls)
+      ? raw.videoUrls.filter((url): url is string => typeof url === "string" && url.trim().length > 0)
+      : [],
+    videoCount: typeof raw.videoCount === "number" ? raw.videoCount : 0,
     publishedExternal: raw.publishedExternal === true,
   };
 }
@@ -113,6 +117,8 @@ export function marketIntentDetailToJson(detail: MarketIntentDetail): Record<str
     memoryPlaceLat: detail.memoryPlaceLat,
     memoryPlaceLng: detail.memoryPlaceLng,
     photoUrls: detail.photoUrls ?? [],
+    videoUrls: detail.videoUrls ?? [],
+    videoCount: detail.videoCount ?? 0,
     publishedExternal: isMarketIntentPublishedExternal(detail),
   };
 }

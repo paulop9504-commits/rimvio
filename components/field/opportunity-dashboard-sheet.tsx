@@ -9,9 +9,9 @@ import { OpportunityDetailPanel } from "@/components/field/opportunity-detail-pa
 import { OpportunityOwnershipSectionLabel } from "@/components/field/opportunity-ownership-section-label";
 import { OpportunityPillBar } from "@/components/field/opportunity-pill-bar";
 import {
-  OpportunityRowItem,
-  OpportunityRowShimmer,
-} from "@/components/field/opportunity-row-item";
+  OpportunityCardShimmer,
+  OpportunityCardSlot,
+} from "@/components/field/opportunity-card-slot";
 import { useCopy } from "@/hooks/use-copy";
 import { useOpportunityDashboard } from "@/hooks/use-opportunity-dashboard";
 import {
@@ -190,7 +190,7 @@ export function OpportunityDashboardSheet({
 
                 <div className="min-h-0 flex-1 overflow-y-auto bg-[#f8f9fb]/40">
                   {loading ? (
-                    <OpportunityRowShimmer />
+                    <OpportunityCardShimmer />
                   ) : pills.length === 0 ? (
                     <EmptyBlock
                       title={field.emptySeekingTitle}
@@ -209,7 +209,7 @@ export function OpportunityDashboardSheet({
                         tone="neighbor"
                         className="bg-white"
                       />
-                      <div className="bg-white ring-1 ring-black/[0.03]">
+                      <div className="bg-transparent pt-1">
                     <AnimatePresence mode="wait" initial={false}>
                       <motion.div
                         key={selectedContextId ?? "none"}
@@ -220,12 +220,16 @@ export function OpportunityDashboardSheet({
                       >
                         <AnimatePresence mode="popLayout" initial={false}>
                           {rows.map((row) => (
-                            <OpportunityRowItem
+                            <OpportunityCardSlot
                               key={row.listingId}
                               row={row}
                               scoreAria={field.rowScoreAria}
                               neighborBadge={field.neighborListingBadge}
-                              onPress={() => setDetailRow(row)}
+                              storyTitle={field.cardStoryTitle}
+                              storyEmpty={field.cardStoryEmpty}
+                              swipeHint={field.cardFilmSwipeHint}
+                              chatCta={field.tradeCta}
+                              onChat={() => setDetailRow(row)}
                             />
                           ))}
                         </AnimatePresence>

@@ -21,6 +21,7 @@ export type OpportunityRow = {
   listingId: string;
   listingEventId: string;
   photoUrl: string | null;
+  videoUrl: string | null;
   title: string;
   price: number | null;
   priceLine: string;
@@ -35,6 +36,7 @@ export type OpportunityRow = {
 
 export type OpportunityFieldCopy = {
   reasonBattery: string;
+  reasonStorage: string;
   reasonPrice: string;
   reasonDistance: string;
   reasonRecency: string;

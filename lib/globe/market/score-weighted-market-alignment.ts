@@ -14,6 +14,7 @@ import {
   scoreMarketExperienceTagAlignment,
 } from "@/lib/globe/market/memory/score-market-memory-alignment";
 import { scoreMarketPriceAlignment } from "@/lib/globe/market/score-market-price-alignment";
+import { scoreMarketStorageAlignment } from "@/lib/globe/market/score-market-storage-alignment";
 
 export type MarketPrioritySlotValues = Partial<
   Record<MarketPrioritySlotId, string | number | boolean | null>
@@ -61,6 +62,13 @@ function gradeScore(
     return 1;
   }
   return Math.max(0, 1 - (li - si) * 0.35);
+}
+
+function storageScore(seeking: MarketIntentRecord, listing: MarketIntentRecord): number {
+  return scoreMarketStorageAlignment({
+    seekingGb: readSlotValues(seeking).storage_gb,
+    listingGb: readSlotValues(listing).storage_gb,
+  });
 }
 
 function batteryScore(seeking: MarketIntentRecord, listing: MarketIntentRecord): number {
@@ -138,6 +146,8 @@ function slotMatchScore(
       return scoreMarketPriceAlignment(seeking, listing);
     case "battery_health":
       return batteryScore(seeking, listing);
+    case "storage_gb":
+      return storageScore(seeking, listing);
     case "cosmetic_grade":
       return gradeScore(
         String(seekSlots.cosmetic_grade ?? ""),
@@ -179,6 +189,7 @@ function slotMatchScore(
 
 const SLOT_LABEL_KO: Record<MarketPrioritySlotId, string> = {
   price: "가격",
+  storage_gb: "용량",
   battery_health: "배터리",
   cosmetic_grade: "외관",
   repair_history: "수리 이력",

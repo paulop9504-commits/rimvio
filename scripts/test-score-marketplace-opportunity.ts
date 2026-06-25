@@ -13,6 +13,7 @@ import type { OpportunityFieldCopy } from "../lib/globe/opportunity-field/types"
 
 const COPY: OpportunityFieldCopy = {
   reasonBattery: "배터리 조건 일치",
+  reasonStorage: "용량 조건 일치",
   reasonPrice: "가격 범위 일치",
   reasonDistance: "집 근처 거래 가능",
   reasonRecency: "최근 등록된 매물",

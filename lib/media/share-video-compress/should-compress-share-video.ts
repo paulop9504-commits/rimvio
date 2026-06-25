@@ -18,14 +18,17 @@ export function shouldCompressShareVideo(input: {
   file: Pick<File, "type" | "name">;
   sizeBytes?: number;
   durationSec?: number | null;
+  maxDurationSec?: number;
 }): boolean {
   if (!isShareVideoFile(input.file)) {
     return false;
   }
 
+  const durationCap = input.maxDurationSec ?? SHARE_VIDEO_MAX_DURATION_SEC;
+
   if (
     input.durationSec != null &&
-    input.durationSec > SHARE_VIDEO_MAX_DURATION_SEC + 0.5
+    input.durationSec > durationCap + 0.5
   ) {
     return true;
   }

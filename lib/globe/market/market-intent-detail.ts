@@ -58,6 +58,9 @@ export type MarketIntentDetail = {
   memoryPlaceLng?: number | null;
   /** Public URLs — uploaded on listing confirm for handshake chat. */
   photoUrls?: string[];
+  /** Short listing clip — shown on opportunity field for buyers. */
+  videoUrls?: string[];
+  videoCount?: number;
   /** Portal gate — true only after explicit 외부 공개 on review or manage. */
   publishedExternal?: boolean;
 };

@@ -3,11 +3,16 @@
 import { useState } from "react";
 import { Check, MapPin, Package } from "lucide-react";
 import { OpportunityFieldChatBar } from "@/components/field/opportunity-field-chat-bar";
+import {
+  MarketListingMediaHero,
+  MarketListingMediaThumb,
+} from "@/components/market/market-listing-media-thumb";
 import { MarketIntentOwnershipChip } from "@/components/market/market-intent-ownership-chip";
 import {
   projectMarketplaceBridgeFromIntent,
   projectMarketplaceDiscoveryCard,
 } from "@/lib/bridge/marketplace-bridge-schema";
+import { buildMarketListingMediaItems } from "@/lib/globe/market/market-listing-media";
 import type { OpportunityRow } from "@/lib/globe/opportunity-field";
 import { RIMVIO_TYPE } from "@/lib/design/rimvio-ontology";
 import { cn } from "@/lib/utils";
@@ -40,43 +45,39 @@ export function OpportunityDetailPanel({
   const card = projectMarketplaceDiscoveryCard(
     projectMarketplaceBridgeFromIntent(row.listing),
   );
-  const photos = row.listing.detail.photoUrls ?? [];
-  const [activePhoto, setActivePhoto] = useState(0);
-  const hero = photos[activePhoto] ?? photos[0] ?? null;
+  const media = buildMarketListingMediaItems(row.listing.detail);
+  const [activeMedia, setActiveMedia] = useState(0);
+  const hero = media[activeMedia] ?? media[0] ?? null;
 
   return (
     <div className={cn("flex min-h-0 flex-1 flex-col bg-white", className)}>
       <div className="relative aspect-[16/10] w-full shrink-0 bg-[#f2f4f6]">
         {hero ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={hero} alt="" className="size-full object-cover" />
+          <MarketListingMediaHero
+            item={hero}
+            playbackKey={`${activeMedia}-${hero.url}`}
+          />
         ) : (
           <div className="flex size-full flex-col items-center justify-center gap-2 text-[#b0b8c1]">
             <Package className="size-10" aria-hidden />
-            <span className={RIMVIO_TYPE.caption}>사진 없음</span>
+            <span className={RIMVIO_TYPE.caption}>사진·동영상 없음</span>
           </div>
         )}
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-4 pb-4 pt-10">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-4 pb-4 pt-10">
           <p className="text-[22px] font-bold leading-tight text-white">{card.productName}</p>
           <p className="mt-1 text-[18px] font-semibold text-white/95">{card.priceLine}</p>
         </div>
       </div>
 
-      {photos.length > 1 ? (
+      {media.length > 1 ? (
         <div className="flex gap-2 overflow-x-auto border-b border-[#f2f4f6] px-4 py-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {photos.map((url, index) => (
-            <button
-              key={`${url}-${index}`}
-              type="button"
-              onClick={() => setActivePhoto(index)}
-              className={cn(
-                "relative h-14 w-14 shrink-0 overflow-hidden rounded-xl ring-2",
-                index === activePhoto ? "ring-[#3182f6]" : "ring-transparent",
-              )}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={url} alt="" className="size-full object-cover" />
-            </button>
+          {media.map((item, index) => (
+            <MarketListingMediaThumb
+              key={`${item.kind}-${item.url}-${index}`}
+              item={item}
+              active={index === activeMedia}
+              onPress={() => setActiveMedia(index)}
+            />
           ))}
         </div>
       ) : null}

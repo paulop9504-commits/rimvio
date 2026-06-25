@@ -9,17 +9,21 @@ export type MarketWizardStepId =
   | "place"
   | "review";
 
+/** Seeking: 상품 → Priority(조건) → 위치 → 확인 */
 const SEEKING_STEPS: readonly MarketWizardStepId[] = [
   "role",
   "recognize",
+  "priority",
   "place",
   "review",
 ];
 
+/** Listing: 사진 → AI 인식 → Dynamic Slot → 장소 → 확인 */
 const LISTING_STEPS: readonly MarketWizardStepId[] = [
   "role",
-  "recognize",
   "photos",
+  "recognize",
+  "priority",
   "place",
   "review",
 ];
@@ -46,4 +50,15 @@ export function marketWizardProgress(
     current: index < 0 ? 1 : index + 1,
     total: steps.length,
   };
+}
+
+export function marketWizardDefaultStep(
+  role: MarketIntentRole,
+  options?: { skipRole?: boolean; startStep?: MarketWizardStepId },
+): MarketWizardStepId {
+  const steps = marketWizardSteps(role, options);
+  if (options?.startStep && steps.includes(options.startStep)) {
+    return options.startStep;
+  }
+  return steps[0] ?? "recognize";
 }

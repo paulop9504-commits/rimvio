@@ -12,7 +12,7 @@ const RULES: ReadonlyArray<{
   { id: "market.bike", pattern: /자전거|바이크|bike|전동킥|킥보드/iu },
   {
     id: "market.camera",
-    pattern: /카메라|camera|렌즈|lens|canon|sony|nikon|fuji|leica|gopro/iu,
+    pattern: /카메라|camera|렌즈|lens|canon|sony|nikon|fuji|leica|gopro|a7m|a7\b|alpha/iu,
   },
   {
     id: "market.camping",

@@ -14,20 +14,31 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { MarketListingTradePlaceStep } from "@/components/market/market-listing-trade-place-step";
-import {
-  MARKET_CATEGORY_OPTIONS,
-  marketCategoryLabelKo,
-} from "@/lib/globe/market/market-category-registry";
+import { MarketPriorityStepSurface } from "@/components/market/market-priority-step-surface";
 import { commitMarketIntentFromDraft } from "@/lib/globe/market/commit-market-intent";
+import type { MarketListingInferenceSource } from "@/lib/globe/market/infer-market-listing-from-media";
+import { inferMarketListingFromPhotoFiles } from "@/lib/globe/market/infer-market-listing-from-photo-client";
+import {
+  countMarketListingMedia,
+  isMarketListingVideoFile,
+  MARKET_LISTING_MEDIA_ACCEPT,
+  MARKET_LISTING_VIDEO_MAX_DURATION_SEC,
+  mergeMarketListingMediaFiles,
+  validateMarketListingMediaPick,
+} from "@/lib/globe/market/market-listing-media";
+import { readVideoDurationSec } from "@/lib/media/share-video-compress/read-video-duration-sec";
 import { marketMeetPreferenceLabelKo, type MarketMeetPreferenceId } from "@/lib/globe/market/market-intent-detail";
 import {
+  marketWizardDefaultStep,
   marketWizardProgress,
   marketWizardSteps,
   type MarketWizardStepId,
 } from "@/lib/globe/market/market-intent-wizard-flow";
 import type { MarketIntentDraft, MarketIntentRole } from "@/lib/globe/market/market-intent-types";
-import type { MarketIntentRole } from "@/lib/globe/market/market-intent-types";
+import {
+  MARKET_CATEGORY_OPTIONS,
+  marketCategoryLabelKo,
+} from "@/lib/globe/market/market-category-registry";
 import { syncMarketMemoryRecordOnDraft } from "@/lib/globe/market/memory/sync-market-memory-record";
 import { formatMarketMemoryPreview } from "@/lib/globe/market/memory/format-market-memory-preview";
 import { isValidMarketProductName } from "@/lib/globe/market/sanitize-market-product-name";
@@ -99,7 +110,7 @@ function stepLabel(step: MarketWizardStepId): string {
     case "recognize":
       return copy.globe.marketWizardStepRecognize;
     case "priority":
-      return copy.globe.marketPriorityCardEyebrow;
+      return copy.globe.marketWizardStepPriority;
     case "photos":
       return copy.globe.marketWizardStepPhotos;
     case "place":
@@ -142,6 +153,9 @@ export function GlobeMarketIntentWizardSheet({
   const [working, setWorking] = useState<MarketIntentDraft | null>(null);
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
+  const [listingInferenceBusy, setListingInferenceBusy] = useState(false);
+  const [listingInferenceSource, setListingInferenceSource] =
+    useState<MarketListingInferenceSource | null>(null);
   const photoRef = useRef<HTMLInputElement>(null);
 
   const steps = useMemo(
@@ -169,9 +183,17 @@ export function GlobeMarketIntentWizardSheet({
       (startStep &&
         startStep !== "role" &&
         draft.prefillSources.includes("trade_dock"));
-    setStep(skipRole ? startStep ?? "recognize" : "role");
+    setStep(
+      skipRole
+        ? marketWizardDefaultStep(draft.role, {
+            skipRole: true,
+            startStep: startStep ?? undefined,
+          })
+        : "role",
+    );
     setPhotoFiles([]);
     setPhotoPreviews([]);
+    setListingInferenceSource(null);
   }, [draft, open, portalLaunch, startStep]);
 
   useEffect(() => {
@@ -221,10 +243,80 @@ export function GlobeMarketIntentWizardSheet({
         return;
       }
       setWorking({ ...working, role });
-      setStep("recognize");
+      setStep(role === "listing" ? "photos" : "recognize");
     },
     [working],
   );
+
+  useEffect(() => {
+    if (!open || !working || step !== "recognize" || working.role !== "listing") {
+      return;
+    }
+    if (photoFiles.length === 0 || listingInferenceBusy) {
+      return;
+    }
+    const hasProduct = Boolean(working.detail.productName.trim());
+    const hasSource = Boolean(working.detail.sourceText.trim());
+    if (hasProduct && hasSource && listingInferenceSource !== null) {
+      return;
+    }
+
+    let cancelled = false;
+    setListingInferenceBusy(true);
+    void inferMarketListingFromPhotoFiles(photoFiles, {
+      title: working.title,
+      sourceText: working.detail.sourceText,
+    }).then((inference) => {
+      if (cancelled) {
+        return;
+      }
+      setListingInferenceBusy(false);
+      if (!inference) {
+        setListingInferenceSource("none");
+        return;
+      }
+      setListingInferenceSource(inference.source);
+      setWorking((prev) => {
+        if (!prev) {
+          return prev;
+        }
+        const prioritySlots = { ...prev.detail.prioritySlots };
+        if (
+          inference.storageGb &&
+          (prioritySlots.storage_gb === undefined ||
+            prioritySlots.storage_gb === null ||
+            prioritySlots.storage_gb === "")
+        ) {
+          prioritySlots.storage_gb = inference.storageGb;
+        }
+        return {
+          ...prev,
+          categoryId: inference.categoryId,
+          title: prev.title.trim() || inference.productName,
+          detail: {
+            ...prev.detail,
+            productName: prev.detail.productName.trim() || inference.productName,
+            sourceText: prev.detail.sourceText.trim() || inference.snippet,
+            prioritySlots,
+          },
+        };
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    listingInferenceBusy,
+    open,
+    photoFiles,
+    step,
+    working,
+    working?.detail.productName,
+    working?.detail.sourceText,
+    working?.role,
+    listingInferenceSource,
+  ]);
 
   const validateStep = useCallback((): boolean => {
     if (!working) {
@@ -241,18 +333,49 @@ export function GlobeMarketIntentWizardSheet({
       }
       return true;
     }
+    if (step === "photos" && working.role === "listing") {
+      const photoCount = countMarketListingMedia(photoFiles).photoCount;
+      if (photoCount < 1) {
+        toast.message(copy.globe.marketWizardPhotosRequired);
+        return false;
+      }
+      return true;
+    }
     if (step === "place" && !working.placeLabel.trim()) {
       toast.message(copy.globe.marketTradePlaceResolving);
       return false;
     }
     return true;
-  }, [step, working]);
+  }, [photoFiles, step, working]);
 
-  const onPhotosSelected = useCallback((fileList: FileList | null) => {
+  const onPhotosSelected = useCallback(async (fileList: FileList | null) => {
     if (!fileList?.length) {
       return;
     }
-    const next = [...photoFiles, ...Array.from(fileList)].slice(0, 3);
+    const { accepted, rejectedSize } = validateMarketListingMediaPick(Array.from(fileList));
+    if (rejectedSize > 0) {
+      toast.message(copy.globe.marketWizardMediaTooLarge);
+    }
+    if (accepted.length === 0) {
+      if (photoRef.current) {
+        photoRef.current.value = "";
+      }
+      return;
+    }
+    for (const file of accepted) {
+      if (!isMarketListingVideoFile(file)) {
+        continue;
+      }
+      const durationSec = await readVideoDurationSec(file);
+      if (
+        durationSec != null &&
+        durationSec > MARKET_LISTING_VIDEO_MAX_DURATION_SEC + 0.5
+      ) {
+        toast.message(copy.globe.marketWizardVideoTrimToast, { duration: 3200 });
+        break;
+      }
+    }
+    const next = mergeMarketListingMediaFiles(photoFiles, accepted);
     setPhotoFiles(next);
     setPhotoPreviews((prev) => {
       for (const url of prev) {
@@ -264,6 +387,10 @@ export function GlobeMarketIntentWizardSheet({
       photoRef.current.value = "";
     }
   }, [photoFiles]);
+
+  const mediaCounts = countMarketListingMedia(photoFiles);
+  const canAddListingMedia =
+    mediaCounts.photoCount < 3 || mediaCounts.videoCount < 1;
 
   const handleConfirm = useCallback(
     async (publishExternal: boolean) => {
@@ -280,7 +407,8 @@ export function GlobeMarketIntentWizardSheet({
           detail: {
             ...working.detail,
             productName: name,
-            photoCount: photoFiles.length,
+            photoCount: mediaCounts.photoCount,
+            videoCount: mediaCounts.videoCount,
             prioritySlots: {
               ...working.detail.prioritySlots,
               distance: `${working.radiusKm}km`,
@@ -416,20 +544,40 @@ export function GlobeMarketIntentWizardSheet({
                       : copy.globe.marketWizardRecognizeTitleListing}
                   </p>
                   <p className={cn("mt-1", RIMVIO_TYPE.caption)}>
-                    {copy.globe.marketWizardRecognizeBody}
+                    {listingInferenceBusy
+                      ? copy.globe.marketWizardRecognizeListingInferenceLoading
+                      : listingInferenceSource === "none"
+                        ? copy.globe.marketWizardRecognizeListingInferenceFallback
+                        : listingInferenceSource === "filename" ||
+                            listingInferenceSource === "draft"
+                          ? copy.globe.marketWizardRecognizeListingInferenceFallbackHint
+                          : !isSeeking && photoFiles.length > 0
+                            ? copy.globe.marketWizardRecognizeListingInferenceDone
+                            : copy.globe.marketWizardRecognizeBody}
                   </p>
-                  <div className="mt-4 rounded-2xl bg-muted/40 p-3">
-                    <div className="flex items-start gap-2">
-                      <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
-                      <p className="text-[14px] leading-relaxed text-foreground">
-                        {working.detail.sourceText ||
-                          working.title ||
-                          (isSeeking
-                            ? copy.globe.marketWizardRoleSeekingBody
-                            : copy.globe.marketWizardRoleListingBody)}
-                      </p>
+                  {!isSeeking && photoPreviews[0] ? (
+                    <div className="mt-3 overflow-hidden rounded-2xl bg-muted/40">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={photoPreviews[0]}
+                        alt=""
+                        className="max-h-36 w-full object-cover"
+                      />
                     </div>
-                  </div>
+                  ) : (
+                    <div className="mt-4 rounded-2xl bg-muted/40 p-3">
+                      <div className="flex items-start gap-2">
+                        <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+                        <p className="text-[14px] leading-relaxed text-foreground">
+                          {working.detail.sourceText ||
+                            working.title ||
+                            (isSeeking
+                              ? copy.globe.marketWizardRoleSeekingBody
+                              : copy.globe.marketWizardRoleListingBody)}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   <div className="mt-3 flex flex-wrap gap-2">
                     {MARKET_CATEGORY_OPTIONS.map((id) => (
                       <Chip
@@ -466,6 +614,10 @@ export function GlobeMarketIntentWizardSheet({
                 </div>
               ) : null}
 
+              {step === "priority" ? (
+                <MarketPriorityStepSurface draft={working} onChange={setWorking} />
+              ) : null}
+
               {step === "photos" && !isSeeking ? (
                 <div className="space-y-3">
                   <p className={cn(RIMVIO_TYPE.headline, "text-lg")}>
@@ -473,13 +625,32 @@ export function GlobeMarketIntentWizardSheet({
                   </p>
                   <p className={cn(RIMVIO_TYPE.caption)}>{copy.globe.marketWizardPhotosBody}</p>
                   <div className="flex flex-wrap gap-2">
-                    {photoPreviews.map((url, index) => (
-                      <div key={url} className="relative size-20 overflow-hidden rounded-xl bg-muted">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={url} alt="" className="size-full object-cover" />
-                      </div>
-                    ))}
-                    {photoPreviews.length < 3 ? (
+                    {photoPreviews.map((url, index) => {
+                      const file = photoFiles[index];
+                      const isVideo = file ? isMarketListingVideoFile(file) : false;
+                      return (
+                        <div key={url} className="relative size-20 overflow-hidden rounded-xl bg-muted">
+                          {isVideo ? (
+                            <>
+                              <video
+                                src={url}
+                                muted
+                                playsInline
+                                preload="metadata"
+                                className="size-full object-cover"
+                              />
+                              <span className="pointer-events-none absolute inset-x-0 bottom-1 text-center text-[9px] font-semibold text-white drop-shadow">
+                                {copy.globe.marketWizardMediaVideoBadge}
+                              </span>
+                            </>
+                          ) : (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={url} alt="" className="size-full object-cover" />
+                          )}
+                        </div>
+                      );
+                    })}
+                    {canAddListingMedia ? (
                       <button
                         type="button"
                         className="flex size-20 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-muted-foreground/30 bg-muted/30 text-[11px] text-muted-foreground"
@@ -493,7 +664,7 @@ export function GlobeMarketIntentWizardSheet({
                   <input
                     ref={photoRef}
                     type="file"
-                    accept="image/*"
+                    accept={MARKET_LISTING_MEDIA_ACCEPT}
                     className="hidden"
                     multiple
                     onChange={(event) => onPhotosSelected(event.target.files)}

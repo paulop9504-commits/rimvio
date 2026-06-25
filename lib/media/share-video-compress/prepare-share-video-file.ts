@@ -17,16 +17,22 @@ export type ShareVideoPrepareProgress = {
 export async function prepareShareVideoFile(input: {
   file: File;
   onProgress?: (progress: ShareVideoPrepareProgress) => void;
+  maxDurationSec?: number;
+  maxBytes?: number;
+  targetMaxBytes?: number;
 }): Promise<File> {
+  const durationCap = input.maxDurationSec ?? SHARE_VIDEO_MAX_DURATION_SEC;
+  const maxBytes = input.maxBytes ?? BRIDGE_VIDEO_MAX_BYTES;
   const durationSec = await readVideoDurationSec(input.file);
   const needsDurationTrim =
-    durationSec != null && durationSec > SHARE_VIDEO_MAX_DURATION_SEC + 0.5;
+    durationSec != null && durationSec > durationCap + 0.5;
 
   if (
     !shouldCompressShareVideo({
       file: input.file,
       sizeBytes: input.file.size,
       durationSec,
+      maxDurationSec: durationCap,
     })
   ) {
     return input.file;
@@ -42,6 +48,8 @@ export async function prepareShareVideoFile(input: {
       onProgress: (ratio) => {
         input.onProgress?.({ phase: "compressing", ratio });
       },
+      maxDurationSec: durationCap,
+      targetMaxBytes: input.targetMaxBytes,
     });
 
     if (
@@ -54,13 +62,13 @@ export async function prepareShareVideoFile(input: {
 
     return input.file;
   } catch (caught) {
-    if (input.file.size > BRIDGE_VIDEO_MAX_BYTES) {
+    if (input.file.size > maxBytes) {
       const message =
         caught instanceof Error
           ? caught.message
           : "동영상 압축에 실패했어요.";
       throw new Error(
-        `${message} ${formatBridgeMediaMaxMb(BRIDGE_VIDEO_MAX_BYTES)} 이하·2분 이내 동영상을 선택하거나 Wi-Fi에서 다시 시도해 주세요.`,
+        `${message} ${formatBridgeMediaMaxMb(maxBytes)} 이하·${durationCap}초 이내 동영상을 선택하거나 Wi-Fi에서 다시 시도해 주세요.`,
       );
     }
     console.warn("[share-video-compress] fallback to original", caught);

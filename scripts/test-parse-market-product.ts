@@ -18,11 +18,17 @@ function main() {
   assert.equal(withPlace.productName, "아이폰 15 프로");
 
   const seekingSteps = marketWizardSteps("seeking");
-  assert.deepEqual(seekingSteps, ["role", "recognize", "place", "review"]);
+  assert.deepEqual(seekingSteps, ["role", "recognize", "priority", "place", "review"]);
 
   const listingSteps = marketWizardSteps("listing");
-  assert.ok(!listingSteps.includes("priority"));
-  assert.ok(listingSteps.includes("photos"));
+  assert.deepEqual(listingSteps, [
+    "role",
+    "photos",
+    "recognize",
+    "priority",
+    "place",
+    "review",
+  ]);
 
   console.log("test-parse-market-product: ok");
 }
