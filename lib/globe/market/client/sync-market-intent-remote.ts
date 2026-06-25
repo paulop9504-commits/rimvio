@@ -189,7 +189,7 @@ export async function openMarketChatRemote(input: {
     message?: string;
   };
   if (!response.ok || !body.threadId) {
-    throw new Error(body.message ?? body.error ?? "open_chat_failed");
+    throw new Error(body.error ?? body.message ?? "open_chat_failed");
   }
   return {
     threadId: body.threadId,

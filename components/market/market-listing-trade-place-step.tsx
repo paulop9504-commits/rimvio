@@ -17,6 +17,7 @@ import {
 import { marketMeetPreferenceLabelKo } from "@/lib/globe/market/market-intent-detail";
 import type { MarketMeetPreferenceId } from "@/lib/globe/market/market-intent-detail";
 import {
+  MARKET_AVAILABILITY_PRESET_ORDER,
   type MarketAvailabilityPreset,
   marketAvailabilityPresetLabelKo,
 } from "@/lib/globe/market/market-availability-preset";
@@ -26,20 +27,20 @@ import { cn } from "@/lib/utils";
 
 const RADIUS_OPTIONS = [3, 5, 10] as const;
 const MEET_OPTIONS: MarketMeetPreferenceId[] = ["nearby", "flexible", "pickup_only"];
-const AVAILABILITY_OPTIONS: MarketAvailabilityPreset[] = [
-  "weeknight",
-  "weekend_day",
-  "flex",
-];
+const AVAILABILITY_OPTIONS = MARKET_AVAILABILITY_PRESET_ORDER;
 
 function marketAvailabilityPresetLabel(preset: MarketAvailabilityPreset): string {
   switch (preset) {
-    case "weeknight":
-      return copy.globe.marketWizardAvailabilityWeeknight;
+    case "weekend_evening":
+      return copy.globe.marketWizardAvailabilityWeekendEvening;
     case "weekend_day":
       return copy.globe.marketWizardAvailabilityWeekendDay;
-    case "flex":
-      return copy.globe.marketWizardAvailabilityFlex;
+    case "weekday_afternoon":
+      return copy.globe.marketWizardAvailabilityWeekdayAfternoon;
+    case "weekday_day":
+      return copy.globe.marketWizardAvailabilityWeekdayDay;
+    case "anytime":
+      return copy.globe.marketWizardAvailabilityAnytime;
     default:
       return marketAvailabilityPresetLabelKo(preset);
   }

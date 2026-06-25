@@ -53,11 +53,25 @@ assert.ok(eta && eta.etaMinutes >= 1);
 const countdown = formatMarketTradeCountdownLabel(meetAt.toISOString(), new Date());
 assert.ok(countdown);
 
-const weeknight = generateMarketTradeScheduleCandidates("weeknight", new Date("2026-06-26T10:00:00+09:00"));
-assert.equal(weeknight.length, 3);
-weeknight.forEach((slot) => {
+const weekdayAfternoon = generateMarketTradeScheduleCandidates(
+  "weekday_afternoon",
+  new Date("2026-06-26T10:00:00+09:00"),
+);
+assert.equal(weekdayAfternoon.length, 3);
+weekdayAfternoon.forEach((slot) => {
   const d = new Date(slot);
-  assert.ok(d.getDay() >= 1 && d.getDay() <= 5, "weeknight skips weekend");
+  assert.ok(d.getDay() >= 1 && d.getDay() <= 5, "weekday_afternoon skips weekend");
+});
+
+const weekendEvening = generateMarketTradeScheduleCandidates(
+  "weekend_evening",
+  new Date("2026-06-26T10:00:00+09:00"),
+);
+assert.equal(weekendEvening.length, 3);
+weekendEvening.forEach((slot) => {
+  const d = new Date(slot);
+  assert.ok(d.getDay() === 0 || d.getDay() === 6, "weekend_evening is sat/sun");
+  assert.ok(d.getHours() >= 18, "weekend_evening is evening");
 });
 
 const weekend = generateMarketTradeScheduleCandidates("weekend_day", new Date("2026-06-26T10:00:00+09:00"));
@@ -66,6 +80,9 @@ weekend.forEach((slot) => {
   const d = new Date(slot);
   assert.ok(d.getDay() === 0 || d.getDay() === 6, "weekend_day is sat/sun");
 });
+
+const anytime = generateMarketTradeScheduleCandidates("anytime", new Date("2026-06-26T10:00:00+09:00"));
+assert.equal(anytime.length, 3);
 
 assert.equal(MARKET_SCHEDULING_SLA_HOURS, 24);
 const slaLabel = formatMarketTradeSchedulingCountdown(

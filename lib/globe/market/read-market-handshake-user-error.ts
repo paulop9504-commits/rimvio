@@ -23,6 +23,16 @@ export function readMarketHandshakeUserError(raw: string): string {
       return "약속 시간이 아직 없어요.";
     case "scheduling_expired":
       return "응답 시간이 지났어요.";
+    case "unauthorized":
+      return copy.globe.field.loginRequiredBody;
+    case "seeking_not_found":
+      return "구하기 맥락을 먼저 등록해 주세요.";
+    case "listing_not_found":
+      return "매물을 찾지 못했어요.";
+    case "no_match":
+      return copy.globe.field.handshakeNoMatch;
+    case "open_chat_failed":
+      return copy.globe.marketAlignBridgeFail;
     case "invalid_phase":
       return "이미 처리된 맞춤이에요.";
     case "intent_not_found":

@@ -20,7 +20,6 @@ import {
   rimvioSheetCloseBtnClass,
 } from "@/lib/design/rimvio-ontology";
 import type { OpportunityRow } from "@/lib/globe/opportunity-field";
-import { listMarketChatQuickReplies } from "@/lib/globe/market/market-chat-quick-replies";
 import type { GlobeLayerMode } from "@/lib/globe/globe-layer-mode";
 import { cn } from "@/lib/utils";
 
@@ -88,7 +87,6 @@ export function OpportunityDashboardSheet({
   }, [open]);
 
   const field = copy.globe.field;
-  const quickReplies = listMarketChatQuickReplies(field);
   const discoveryOnly = layerMode !== "discovery";
 
   if (!mounted) {
@@ -154,15 +152,15 @@ export function OpportunityDashboardSheet({
                   row={detailRow}
                   whyTitle={field.detailWhy}
                   focusEventId={selectedPill.contextId}
-                  quickReplies={quickReplies}
-                  chatPlaceholder={field.chatPlaceholder}
-                  bridgeFail={copy.globe.marketAlignBridgeFail}
                   neighborBadge={field.neighborListingBadge}
-                  stayOnDashboard
-                  tradeStartedToast={copy.globe.marketTradeStartedToast}
+                  hasActiveTrade={tradeSessions.some(
+                    (session) => session.listingIntentId === detailRow.listing.id,
+                  )}
                   onBeforeNavigate={() => onOpenChange(false)}
                   navigate={(href) => router.push(href)}
-                  onTradeStarted={() => {
+                  onChatOpened={() => setDetailRow(null)}
+                  onScheduleStarted={() => {
+                    setDetailRow(null);
                     void refreshTrades();
                     setFocusTradesToken((value) => value + 1);
                   }}

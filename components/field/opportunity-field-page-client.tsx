@@ -10,7 +10,6 @@ import { useActiveMarketTrades } from "@/hooks/use-active-market-trades";
 import { useOpportunityDashboard } from "@/hooks/use-opportunity-dashboard";
 import { filterOpportunityRowsExcludingActiveTrades } from "@/lib/globe/opportunity-field/filter-rows-excluding-active-trades";
 import type { OpportunityRow } from "@/lib/globe/opportunity-field";
-import { listMarketChatQuickReplies } from "@/lib/globe/market/market-chat-quick-replies";
 
 /** Bottom-tab field surface — tabbed transaction + discovery. */
 export function OpportunityFieldPageClient() {
@@ -45,9 +44,12 @@ export function OpportunityFieldPageClient() {
   );
 
   const field = copy.globe.field;
-  const quickReplies = listMarketChatQuickReplies(field);
 
   if (detailRow && selectedPill) {
+    const hasActiveTrade = tradeSessions.some(
+      (session) => session.listingIntentId === detailRow.listing.id,
+    );
+
     return (
       <div
         className="flex h-full min-h-0 flex-1 flex-col bg-white"
@@ -70,14 +72,13 @@ export function OpportunityFieldPageClient() {
           row={detailRow}
           whyTitle={field.detailWhy}
           focusEventId={selectedPill.contextId}
-          quickReplies={quickReplies}
-          chatPlaceholder={field.chatPlaceholder}
-          bridgeFail={copy.globe.marketAlignBridgeFail}
           neighborBadge={field.neighborListingBadge}
-          stayOnDashboard
-          tradeStartedToast={copy.globe.marketTradeStartedToast}
+          hasActiveTrade={hasActiveTrade}
           navigate={(href) => router.push(href)}
-          onTradeStarted={() => {
+          onBeforeNavigate={() => setDetailRow(null)}
+          onChatOpened={() => setDetailRow(null)}
+          onScheduleStarted={() => {
+            setDetailRow(null);
             void refreshTrades();
             setFocusTradesToken((value) => value + 1);
           }}

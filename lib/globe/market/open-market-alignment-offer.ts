@@ -79,7 +79,7 @@ export async function openMarketChatForListing(input: {
   navigate: (href: string) => void;
   onBeforeNavigate?: () => void;
   skipNavigate?: boolean;
-}): Promise<string | null> {
+}): Promise<string> {
   const { openMarketChatRemote } = await import(
     "@/lib/globe/market/client/sync-market-intent-remote"
   );
@@ -89,7 +89,7 @@ export async function openMarketChatForListing(input: {
     initialMessage: input.initialMessage,
   });
   if (!result.threadId) {
-    return null;
+    throw new Error("open_chat_failed");
   }
   if (!input.skipNavigate) {
     input.onBeforeNavigate?.();
