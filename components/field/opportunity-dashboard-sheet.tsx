@@ -209,7 +209,7 @@ export function OpportunityDashboardSheet({
                         tone="neighbor"
                         className="bg-white"
                       />
-                      <div className="bg-transparent pt-1">
+                      <div className="bg-white pt-0">
                     <AnimatePresence mode="wait" initial={false}>
                       <motion.div
                         key={selectedContextId ?? "none"}

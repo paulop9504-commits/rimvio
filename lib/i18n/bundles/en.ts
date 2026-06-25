@@ -1035,6 +1035,7 @@ export const copyEn: Copy = {
       ownershipMinePill: "Mine",
       neighborListingBadge: "Neighbor listing",
       cardFilmSwipeHint: "Swipe for more",
+      cardFilmHeroBadge: "Main",
       cardStoryTitle: "About this item",
       cardStoryEmpty: "No description yet · ask in chat",
     },

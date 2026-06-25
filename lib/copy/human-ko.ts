@@ -1045,6 +1045,7 @@ export const copy = {
       ownershipMinePill: "내 글",
       neighborListingBadge: "이웃 매물",
       cardFilmSwipeHint: "옆으로 밀어 더 보기",
+      cardFilmHeroBadge: "대표",
       cardStoryTitle: "상품 맥락",
       cardStoryEmpty: "설명이 없어요 · 대화로 물어보세요",
     },
