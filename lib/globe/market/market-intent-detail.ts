@@ -7,6 +7,8 @@ export type MarketListingConditionId =
 
 export type MarketMeetPreferenceId = "nearby" | "flexible" | "pickup_only";
 
+import type { MarketAvailabilityPreset } from "@/lib/globe/market/market-availability-preset";
+import { DEFAULT_MARKET_AVAILABILITY_PRESET } from "@/lib/globe/market/market-availability-preset";
 import type { MarketPrioritySlotId } from "@/lib/globe/market/market-priority-matrix";
 import { MARKET_MEMORY_SCHEMA_VERSION } from "@/lib/globe/market/memory/market-memory-template";
 
@@ -47,6 +49,8 @@ export type MarketIntentDetail = {
   includesBox: boolean;
   includesReceipt: boolean;
   meetPreference: MarketMeetPreferenceId;
+  /** When seller can meet — drives Pull schedule candidates (listing only). */
+  availabilityPreset: MarketAvailabilityPreset;
   priceNegotiable: boolean;
   photoCount: number;
   prioritySlots: MarketPrioritySlotValues;
@@ -95,6 +99,7 @@ export const DEFAULT_MARKET_INTENT_DETAIL: MarketIntentDetail = {
   includesBox: false,
   includesReceipt: false,
   meetPreference: "nearby",
+  availabilityPreset: DEFAULT_MARKET_AVAILABILITY_PRESET,
   priceNegotiable: false,
   photoCount: 0,
   prioritySlots: {},
@@ -133,3 +138,5 @@ export function marketMeetPreferenceLabelKo(id: MarketMeetPreferenceId): string 
       return id;
   }
 }
+
+export { marketAvailabilityPresetLabelKo } from "@/lib/globe/market/market-availability-preset";

@@ -37,6 +37,22 @@ export async function confirmMarketTradeScheduleRemote(input: {
   return body.session ?? null;
 }
 
+export async function proposeMarketTradePreferredRemote(input: {
+  handshakeId: string;
+  meetAtIso: string;
+}): Promise<MarketTradeSessionView | null> {
+  const response = await fetch("/api/globe/market-transaction/propose-preferred", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+  const body = (await response.json()) as { session?: MarketTradeSessionView | null };
+  return body.session ?? null;
+}
+
 export async function departMarketTradeRemote(input: {
   handshakeId: string;
   lat: number;

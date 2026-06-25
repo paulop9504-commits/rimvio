@@ -6,7 +6,8 @@ export type MarketTradeStatus =
   | "confirmed"
   | "en_route"
   | "meeting"
-  | "completed";
+  | "completed"
+  | "expired";
 
 /** Seller anchor (default) vs symmetric midpoint (v2). */
 export type MarketMeetMode = "host" | "convergence";
@@ -34,6 +35,8 @@ export type MarketTradeSessionRecord = {
   guestLng: number | null;
   guestLocationAtIso: string | null;
   scheduleCandidates: readonly string[];
+  preferredMeetAtIso: string | null;
+  schedulingExpiresAtIso: string | null;
   viewerRole: MarketIntentRole;
   productTitle: string;
   priceLine: string;
@@ -61,4 +64,7 @@ export type MarketTradeSessionView = MarketTradeSessionRecord & {
   showDepart: boolean;
   isEnRoute: boolean;
   hostGuestEtaLabelKo: string | null;
+  showProposePreferred: boolean;
+  preferredMeetAtIso: string | null;
+  schedulingCountdownKo: string | null;
 };

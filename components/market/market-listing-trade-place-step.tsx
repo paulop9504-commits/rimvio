@@ -16,12 +16,34 @@ import {
 } from "@/lib/globe/korea-metro-districts";
 import { marketMeetPreferenceLabelKo } from "@/lib/globe/market/market-intent-detail";
 import type { MarketMeetPreferenceId } from "@/lib/globe/market/market-intent-detail";
+import {
+  type MarketAvailabilityPreset,
+  marketAvailabilityPresetLabelKo,
+} from "@/lib/globe/market/market-availability-preset";
 import { sampleEphemeralGpsPlace } from "@/lib/globe/sample-ephemeral-gps-place";
 import { rimvioGhostCtaClass, rimvioHeroCtaClass, RIMVIO_TYPE } from "@/lib/design/rimvio-ontology";
 import { cn } from "@/lib/utils";
 
 const RADIUS_OPTIONS = [3, 5, 10] as const;
 const MEET_OPTIONS: MarketMeetPreferenceId[] = ["nearby", "flexible", "pickup_only"];
+const AVAILABILITY_OPTIONS: MarketAvailabilityPreset[] = [
+  "weeknight",
+  "weekend_day",
+  "flex",
+];
+
+function marketAvailabilityPresetLabel(preset: MarketAvailabilityPreset): string {
+  switch (preset) {
+    case "weeknight":
+      return copy.globe.marketWizardAvailabilityWeeknight;
+    case "weekend_day":
+      return copy.globe.marketWizardAvailabilityWeekendDay;
+    case "flex":
+      return copy.globe.marketWizardAvailabilityFlex;
+    default:
+      return marketAvailabilityPresetLabelKo(preset);
+  }
+}
 
 function Chip({
   active,
@@ -293,6 +315,26 @@ export function MarketListingTradePlaceStep({
             {marketMeetPreferenceLabelKo(id)}
           </Chip>
         ))}
+      </div>
+
+      <div className="space-y-2">
+        <p className={cn(RIMVIO_TYPE.caption)}>{copy.globe.marketWizardAvailabilityTitle}</p>
+        <div className="flex flex-wrap gap-2">
+          {AVAILABILITY_OPTIONS.map((preset) => (
+            <Chip
+              key={preset}
+              active={draft.detail.availabilityPreset === preset}
+              onClick={() =>
+                onChange({
+                  ...draft,
+                  detail: { ...draft.detail, availabilityPreset: preset },
+                })
+              }
+            >
+              {marketAvailabilityPresetLabel(preset)}
+            </Chip>
+          ))}
+        </div>
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 import type { MarketCategoryId, MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
+import { readMarketAvailabilityPreset } from "@/lib/globe/market/market-availability-preset";
 import {
   DEFAULT_MARKET_INTENT_DETAIL,
   type MarketIntentDetail,
@@ -70,6 +71,7 @@ export function readDetailJson(raw: Record<string, unknown> | null | undefined):
       raw.meetPreference === "pickup_only"
         ? raw.meetPreference
         : DEFAULT_MARKET_INTENT_DETAIL.meetPreference,
+    availabilityPreset: readMarketAvailabilityPreset(raw.availabilityPreset),
     priceNegotiable: raw.priceNegotiable === true,
     photoCount: typeof raw.photoCount === "number" ? raw.photoCount : 0,
     prioritySchemaVersion: "market.v1.2",
@@ -108,6 +110,7 @@ export function marketIntentDetailToJson(detail: MarketIntentDetail): Record<str
     includesBox: detail.includesBox,
     includesReceipt: detail.includesReceipt,
     meetPreference: detail.meetPreference,
+    availabilityPreset: detail.availabilityPreset,
     priceNegotiable: detail.priceNegotiable,
     photoCount: detail.photoCount,
     prioritySchemaVersion: detail.prioritySchemaVersion,

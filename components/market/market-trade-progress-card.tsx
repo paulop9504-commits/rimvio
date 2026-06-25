@@ -9,6 +9,7 @@ import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
 import {
   confirmMarketTradeScheduleRemote,
   departMarketTradeRemote,
+  proposeMarketTradePreferredRemote,
 } from "@/lib/globe/market/client/fetch-market-trades-client";
 import { formatMarketTradeMeetAtLabel } from "@/lib/globe/market/resolve-market-trade-progress";
 import type { MarketTradeSessionView } from "@/lib/globe/market/market-trade-types";
@@ -113,6 +114,27 @@ export function MarketTradeProgressCard({
     }
   };
 
+  const onProposePreferred = async (meetAtIso: string) => {
+    if (busySlot) {
+      return;
+    }
+    setBusySlot(meetAtIso);
+    try {
+      const updated = await proposeMarketTradePreferredRemote({
+        handshakeId: session.handshakeId,
+        meetAtIso,
+      });
+      if (updated) {
+        toast.success(globe.marketTradeProposePreferredSuccess);
+        onUpdated?.(updated);
+      }
+    } catch {
+      toast.error(globe.marketTradeProposePreferredFail);
+    } finally {
+      setBusySlot(null);
+    }
+  };
+
   const onDepart = async () => {
     if (departBusy) {
       return;
@@ -185,7 +207,7 @@ export function MarketTradeProgressCard({
 
       {session.tradeStatus === "scheduling" && session.viewerRole === "listing" ? (
         <div className="mt-3 space-y-2 rounded-xl bg-[#f8f9fb] px-3 py-3">
-          <p className="text-[13px] text-[#4e5968]">{globe.marketTradeWaitingBuyer}</p>
+          <p className="text-[13px] font-medium text-[#191f28]">{globe.marketTradePickScheduleSlot}</p>
           {session.proposalLineKo ? (
             <p className="flex items-center gap-1.5 text-[13px] font-medium text-[#3182f6]">
               <Calendar className="size-3.5 shrink-0" aria-hidden />
@@ -193,17 +215,54 @@ export function MarketTradeProgressCard({
             </p>
           ) : null}
           <div className="flex flex-wrap gap-2 pt-1">
-            {session.scheduleCandidates.map((slot) => (
-              <button
-                key={slot}
-                type="button"
-                disabled={busySlot !== null}
-                onClick={() => void onConfirmSlot(slot)}
-                className="rounded-full bg-[#3182f6] px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50"
-              >
-                {busySlot === slot ? "…" : formatMarketTradeMeetAtLabel(slot)}
-              </button>
-            ))}
+            {session.scheduleCandidates.map((slot) => {
+              const isPreferred = session.preferredMeetAtIso === slot;
+              return (
+                <button
+                  key={slot}
+                  type="button"
+                  disabled={busySlot !== null}
+                  onClick={() => void onConfirmSlot(slot)}
+                  className={cn(
+                    "rounded-full px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50",
+                    isPreferred
+                      ? "bg-[#3182f6] ring-2 ring-[#3182f6] ring-offset-1"
+                      : "bg-[#3182f6]",
+                  )}
+                >
+                  {busySlot === slot ? "…" : formatMarketTradeMeetAtLabel(slot)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
+      {session.showProposePreferred ? (
+        <div className="mt-3 space-y-2 rounded-xl bg-[#f8f9fb] px-3 py-3">
+          <p className="text-[13px] text-[#4e5968]">{globe.marketTradeStatusSchedulingSeekingSub}</p>
+          <div className="flex flex-wrap gap-2 pt-1">
+            {session.scheduleCandidates.map((slot) => {
+              const isPreferred = session.preferredMeetAtIso === slot;
+              return (
+                <button
+                  key={slot}
+                  type="button"
+                  disabled={busySlot !== null}
+                  onClick={() => void onProposePreferred(slot)}
+                  className={cn(
+                    "rounded-full border px-3 py-1.5 text-[12px] font-semibold disabled:opacity-50",
+                    isPreferred
+                      ? "border-[#3182f6] bg-[#eff6ff] text-[#3182f6]"
+                      : "border-[#e5e8eb] bg-white text-[#191f28]",
+                  )}
+                >
+                  {busySlot === slot ? "…" : globe.marketTradeProposePreferred}
+                  {" · "}
+                  {formatMarketTradeMeetAtLabel(slot)}
+                </button>
+              );
+            })}
           </div>
         </div>
       ) : null}

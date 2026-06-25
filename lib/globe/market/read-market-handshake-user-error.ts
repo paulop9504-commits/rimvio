@@ -21,6 +21,8 @@ export function readMarketHandshakeUserError(raw: string): string {
       return "출발 가능 시간이 아니에요.";
     case "meet_not_set":
       return "약속 시간이 아직 없어요.";
+    case "scheduling_expired":
+      return "응답 시간이 지났어요.";
     case "invalid_phase":
       return "이미 처리된 맞춤이에요.";
     case "intent_not_found":

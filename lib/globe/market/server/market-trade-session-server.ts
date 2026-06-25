@@ -12,8 +12,27 @@ import {
   type MarketHandshakeDbRow,
 } from "@/lib/globe/market/server/market-alignment-handshake-store";
 import { findMarketIntentById } from "@/lib/globe/market/server/upsert-market-intent";
+import {
+  isMarketTradeSchedulingExpired,
+  isScheduleCandidateAllowed,
+} from "@/lib/globe/market/resolve-market-trade-scheduling";
 
 const ACTIVE_TRADE_PHASES = ["pending_buyer_start", "active"] as const;
+
+async function refreshSchedulingHandshake(
+  supabase: SupabaseClient,
+  handshake: Awaited<ReturnType<typeof findMarketHandshakeById>>,
+) {
+  if (!handshake) {
+    return null;
+  }
+  if (isMarketTradeSchedulingExpired(handshake)) {
+    return patchMarketHandshake(supabase, handshake.id, {
+      tradeStatus: "expired",
+    });
+  }
+  return handshake;
+}
 
 export async function listActiveMarketTradeSessionsForUser(
   supabase: SupabaseClient,
@@ -26,6 +45,7 @@ export async function listActiveMarketTradeSessionsForUser(
     .or(`seeking_user_id.eq.${userId},listing_user_id.eq.${userId}`)
     .in("phase", [...ACTIVE_TRADE_PHASES])
     .neq("trade_status", "completed")
+    .neq("trade_status", "expired")
     .order("updated_at", { ascending: false })
     .limit(12);
 
@@ -35,7 +55,11 @@ export async function listActiveMarketTradeSessionsForUser(
 
   const views: MarketTradeSessionView[] = [];
   for (const row of (data ?? []) as MarketHandshakeDbRow[]) {
-    const handshake = marketHandshakeRowToRecord(row);
+    let handshake = marketHandshakeRowToRecord(row);
+    handshake = (await refreshSchedulingHandshake(supabase, handshake)) ?? handshake;
+    if (handshake.tradeStatus === "expired") {
+      continue;
+    }
     const listing = await findMarketIntentById(supabase, handshake.listingIntentId);
     if (!listing) {
       continue;
@@ -71,6 +95,16 @@ export async function confirmMarketTradeSchedule(
   }
   if (!ACTIVE_TRADE_PHASES.includes(handshake.phase as (typeof ACTIVE_TRADE_PHASES)[number])) {
     throw new Error("invalid_phase");
+  }
+  if (handshake.tradeStatus !== "scheduling") {
+    throw new Error("invalid_phase");
+  }
+  if (isMarketTradeSchedulingExpired(handshake)) {
+    await patchMarketHandshake(supabase, handshake.id, { tradeStatus: "expired" });
+    throw new Error("scheduling_expired");
+  }
+  if (!isScheduleCandidateAllowed(input.meetAtIso, handshake.scheduleCandidates)) {
+    throw new Error("invalid_meet_at");
   }
 
   const meetAt = new Date(input.meetAtIso);
@@ -232,6 +266,44 @@ export async function pingMarketTradeGuestLocation(
     guestLng: lng,
     guestLocationAtIso: atIso,
     ...(eta?.arrived ? { tradeStatus: "meeting" as const } : {}),
+  });
+
+  return buildTradeSessionViewForUser(supabase, updated, userId);
+}
+
+export async function proposeMarketTradePreferredSchedule(
+  supabase: SupabaseClient,
+  userId: string,
+  input: {
+    handshakeId: string;
+    meetAtIso: string;
+  },
+): Promise<MarketTradeSessionView | null> {
+  const handshake = await findMarketHandshakeById(supabase, input.handshakeId);
+  if (!handshake) {
+    throw new Error("handshake_not_found");
+  }
+  if (handshake.seekingUserId !== userId) {
+    throw new Error("seeking_only");
+  }
+  if (handshake.tradeStatus !== "scheduling") {
+    throw new Error("invalid_phase");
+  }
+  if (isMarketTradeSchedulingExpired(handshake)) {
+    await patchMarketHandshake(supabase, handshake.id, { tradeStatus: "expired" });
+    throw new Error("scheduling_expired");
+  }
+  if (!isScheduleCandidateAllowed(input.meetAtIso, handshake.scheduleCandidates)) {
+    throw new Error("invalid_meet_at");
+  }
+
+  const meetAt = new Date(input.meetAtIso);
+  if (!Number.isFinite(meetAt.getTime())) {
+    throw new Error("invalid_meet_at");
+  }
+
+  const updated = await patchMarketHandshake(supabase, handshake.id, {
+    preferredMeetAtIso: meetAt.toISOString(),
   });
 
   return buildTradeSessionViewForUser(supabase, updated, userId);

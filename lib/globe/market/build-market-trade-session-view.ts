@@ -12,6 +12,9 @@ import {
   formatMarketTradeProposalLine,
   resolveMarketTradeActiveStep,
 } from "@/lib/globe/market/resolve-market-trade-progress";
+import {
+  formatMarketTradeSchedulingCountdown,
+} from "@/lib/globe/market/resolve-market-trade-scheduling";
 
 export type MarketTradeSessionCopy = {
   roleBadgeSeeking: string;
@@ -19,6 +22,7 @@ export type MarketTradeSessionCopy = {
   statusSchedulingListing: string;
   statusSchedulingListingSub: string;
   statusSchedulingSeeking: string;
+  statusExpired: string;
   statusConfirmedSeeking: string;
   statusConfirmedSeekingSub: (countdown: string) => string;
   statusBeforeDeparture: string;
@@ -35,6 +39,8 @@ export type MarketTradeSessionCopy = {
   hostGuestEtaArrived: string;
   hostGuestEtaLine: (minutes: number, distanceKm: number) => string;
   hostGuestEtaStale: string;
+  statusSchedulingSeekingSub: string;
+  statusSchedulingListingPreferred: (label: string) => string;
 };
 
 function formatPriceLine(
@@ -89,6 +95,8 @@ export function buildMarketTradeSessionRecord(input: {
     guestLng: handshake.guestLng,
     guestLocationAtIso: handshake.guestLocationAtIso,
     scheduleCandidates: handshake.scheduleCandidates,
+    preferredMeetAtIso: handshake.preferredMeetAtIso,
+    schedulingExpiresAtIso: handshake.schedulingExpiresAtIso,
     viewerRole,
     productTitle: listing.detail.productName.trim() || listing.title.trim(),
     priceLine: formatPriceLine(
@@ -136,11 +144,24 @@ export function buildMarketTradeSessionView(
   let countdownLabelKo: string | null = null;
   let meetAtLabelKo: string | null = null;
   const meetPlaceDisplay = record.meetPlaceLabel?.trim() || null;
+  const schedulingCountdownKo = formatMarketTradeSchedulingCountdown(
+    record.schedulingExpiresAtIso,
+    now,
+  );
 
   if (record.tradeStatus === "scheduling") {
     if (record.viewerRole === "listing") {
       statusHeadlineKo = copy.statusSchedulingListing;
       statusSublineKo = copy.statusSchedulingListingSub;
+      if (record.preferredMeetAtIso) {
+        const preferredLabel = formatMarketTradeMeetAtLabel(
+          record.preferredMeetAtIso,
+          now,
+        );
+        if (preferredLabel) {
+          statusSublineKo = copy.statusSchedulingListingPreferred(preferredLabel);
+        }
+      }
       const firstCandidate = record.scheduleCandidates[0];
       if (firstCandidate) {
         proposalLineKo = formatMarketTradeProposalLine(
@@ -150,7 +171,13 @@ export function buildMarketTradeSessionView(
       }
     } else {
       statusHeadlineKo = copy.statusSchedulingSeeking;
+      statusSublineKo = copy.statusSchedulingSeekingSub;
+      if (schedulingCountdownKo) {
+        statusSublineKo = `${copy.statusSchedulingSeekingSub} · ${schedulingCountdownKo}`;
+      }
     }
+  } else if (record.tradeStatus === "expired") {
+    statusHeadlineKo = copy.statusExpired;
   } else if (record.tradeStatus === "completed") {
     statusHeadlineKo = copy.statusCompleted;
   } else if (record.tradeStatus === "en_route") {
@@ -186,9 +213,11 @@ export function buildMarketTradeSessionView(
   const showDepart =
     record.viewerRole === "seeking" &&
     !isEnRoute &&
-    (record.tradeStatus === "confirmed" || activeStepId === "before_departure") &&
-    record.tradeStatus !== "completed" &&
+    record.tradeStatus === "confirmed" &&
     Boolean(record.meetAtIso);
+
+  const showProposePreferred =
+    record.viewerRole === "seeking" && record.tradeStatus === "scheduling";
 
   let hostGuestEtaLabelKo: string | null = null;
   if (
@@ -228,5 +257,8 @@ export function buildMarketTradeSessionView(
     showDepart,
     isEnRoute,
     hostGuestEtaLabelKo,
+    showProposePreferred,
+    preferredMeetAtIso: record.preferredMeetAtIso,
+    schedulingCountdownKo,
   };
 }

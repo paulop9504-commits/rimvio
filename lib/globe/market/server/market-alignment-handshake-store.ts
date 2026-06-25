@@ -36,6 +36,8 @@ export type MarketHandshakeDbRow = {
   guest_lat?: number | null;
   guest_lng?: number | null;
   guest_location_at?: string | null;
+  preferred_meet_at?: string | null;
+  scheduling_expires_at?: string | null;
   schedule_candidates?: unknown;
 };
 
@@ -45,7 +47,8 @@ function readTradeStatus(raw: MarketHandshakeDbRow): MarketTradeStatus {
     raw.trade_status === "confirmed" ||
     raw.trade_status === "en_route" ||
     raw.trade_status === "meeting" ||
-    raw.trade_status === "completed"
+    raw.trade_status === "completed" ||
+    raw.trade_status === "expired"
   ) {
     return raw.trade_status;
   }
@@ -97,6 +100,8 @@ export function marketHandshakeRowToRecord(row: MarketHandshakeDbRow): MarketHan
     guestLng: readFiniteCoord(row.guest_lng),
     guestLocationAtIso: row.guest_location_at ?? null,
     scheduleCandidates: readScheduleCandidates(row),
+    preferredMeetAtIso: row.preferred_meet_at ?? null,
+    schedulingExpiresAtIso: row.scheduling_expires_at ?? null,
   };
 }
 
@@ -272,6 +277,8 @@ export async function patchMarketHandshake(
     guestLat?: number | null;
     guestLng?: number | null;
     guestLocationAtIso?: string | null;
+    preferredMeetAtIso?: string | null;
+    schedulingExpiresAtIso?: string | null;
     scheduleCandidates?: readonly string[];
   },
 ): Promise<MarketHandshakeRecord> {
@@ -331,6 +338,12 @@ export async function patchMarketHandshake(
   }
   if (patch.guestLocationAtIso !== undefined) {
     row.guest_location_at = patch.guestLocationAtIso;
+  }
+  if (patch.preferredMeetAtIso !== undefined) {
+    row.preferred_meet_at = patch.preferredMeetAtIso;
+  }
+  if (patch.schedulingExpiresAtIso !== undefined) {
+    row.scheduling_expires_at = patch.schedulingExpiresAtIso;
   }
   if (patch.scheduleCandidates !== undefined) {
     row.schedule_candidates = [...patch.scheduleCandidates];

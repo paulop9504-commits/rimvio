@@ -6,6 +6,11 @@ import {
   formatMarketTradeCountdownLabel,
   resolveMarketTradeActiveStep,
 } from "../lib/globe/market/resolve-market-trade-progress";
+import {
+  generateMarketTradeScheduleCandidates,
+  MARKET_SCHEDULING_SLA_HOURS,
+} from "../lib/globe/market/market-availability-preset";
+import { formatMarketTradeSchedulingCountdown } from "../lib/globe/market/resolve-market-trade-scheduling";
 
 const meetAt = new Date();
 meetAt.setHours(meetAt.getHours() + 3, 0, 0, 0);
@@ -47,5 +52,26 @@ assert.ok(eta && eta.etaMinutes >= 1);
 
 const countdown = formatMarketTradeCountdownLabel(meetAt.toISOString(), new Date());
 assert.ok(countdown);
+
+const weeknight = generateMarketTradeScheduleCandidates("weeknight", new Date("2026-06-26T10:00:00+09:00"));
+assert.equal(weeknight.length, 3);
+weeknight.forEach((slot) => {
+  const d = new Date(slot);
+  assert.ok(d.getDay() >= 1 && d.getDay() <= 5, "weeknight skips weekend");
+});
+
+const weekend = generateMarketTradeScheduleCandidates("weekend_day", new Date("2026-06-26T10:00:00+09:00"));
+assert.equal(weekend.length, 3);
+weekend.forEach((slot) => {
+  const d = new Date(slot);
+  assert.ok(d.getDay() === 0 || d.getDay() === 6, "weekend_day is sat/sun");
+});
+
+assert.equal(MARKET_SCHEDULING_SLA_HOURS, 24);
+const slaLabel = formatMarketTradeSchedulingCountdown(
+  new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+  new Date(),
+);
+assert.ok(slaLabel);
 
 console.log("test-market-trade-progress: ok");
