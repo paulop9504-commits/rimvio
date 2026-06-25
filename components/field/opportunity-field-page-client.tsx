@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, Radio, Sparkles } from "lucide-react";
-import { toast } from "sonner";
 import { OpportunityDetailPanel } from "@/components/field/opportunity-detail-panel";
 import { OpportunityPillBar } from "@/components/field/opportunity-pill-bar";
 import {
@@ -15,7 +14,7 @@ import { useCopy } from "@/hooks/use-copy";
 import { useOpportunityDashboard } from "@/hooks/use-opportunity-dashboard";
 import { RIMVIO_TYPE, rimvioEmptyStateClass } from "@/lib/design/rimvio-ontology";
 import type { OpportunityRow } from "@/lib/globe/opportunity-field";
-import { requestMarketHandshakeForListing } from "@/lib/globe/market/open-market-alignment-offer";
+import { listMarketChatQuickReplies } from "@/lib/globe/market/market-chat-quick-replies";
 import { cn } from "@/lib/utils";
 
 /** Bottom-tab field surface — full page opportunity inbox. */
@@ -23,7 +22,6 @@ export function OpportunityFieldPageClient() {
   const copy = useCopy();
   const router = useRouter();
   const [detailRow, setDetailRow] = useState<OpportunityRow | null>(null);
-  const [tradeBusy, setTradeBusy] = useState(false);
 
   const {
     loading,
@@ -36,33 +34,9 @@ export function OpportunityFieldPageClient() {
   } = useOpportunityDashboard({ open: true, primaryEventId: null });
 
   const field = copy.globe.field;
+  const quickReplies = listMarketChatQuickReplies(field);
 
-  const onTrade = async () => {
-    if (!detailRow || !selectedPill || tradeBusy) {
-      return;
-    }
-    setTradeBusy(true);
-    try {
-      await requestMarketHandshakeForListing({
-        focusEventId: selectedPill.contextId,
-        matchIntentId: detailRow.listing.id,
-        copy: {
-          bridgeFail: copy.globe.marketAlignBridgeFail,
-          bridgeToast: copy.globe.marketAlignBridgeToast,
-          handshakeListingAcceptedToast: copy.globe.marketHandshakeListingAcceptedToast,
-          handshakeSentWaiting: field.handshakeSentWaiting,
-          handshakeNoMatch: field.handshakeNoMatch,
-        },
-        navigate: (href) => router.push(href),
-      });
-    } catch {
-      toast.error(copy.globe.marketAlignBridgeFail);
-    } finally {
-      setTradeBusy(false);
-    }
-  };
-
-  if (detailRow) {
+  if (detailRow && selectedPill) {
     return (
       <div
         className="flex h-full min-h-0 flex-1 flex-col bg-white"
@@ -84,9 +58,11 @@ export function OpportunityFieldPageClient() {
         <OpportunityDetailPanel
           row={detailRow}
           whyTitle={field.detailWhy}
-          tradeCta={field.tradeCta}
-          tradeBusy={tradeBusy}
-          onTrade={() => void onTrade()}
+          focusEventId={selectedPill.contextId}
+          quickReplies={quickReplies}
+          chatPlaceholder={field.chatPlaceholder}
+          bridgeFail={copy.globe.marketAlignBridgeFail}
+          navigate={(href) => router.push(href)}
         />
       </div>
     );

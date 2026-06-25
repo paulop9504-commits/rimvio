@@ -2,29 +2,36 @@
 
 import { useState } from "react";
 import { Check, MapPin, Package } from "lucide-react";
+import { OpportunityFieldChatBar } from "@/components/field/opportunity-field-chat-bar";
 import {
   projectMarketplaceBridgeFromIntent,
   projectMarketplaceDiscoveryCard,
 } from "@/lib/bridge/marketplace-bridge-schema";
 import type { OpportunityRow } from "@/lib/globe/opportunity-field";
-import { rimvioHeroCtaClass, RIMVIO_TYPE } from "@/lib/design/rimvio-ontology";
+import { RIMVIO_TYPE } from "@/lib/design/rimvio-ontology";
 import { cn } from "@/lib/utils";
 
 export type OpportunityDetailPanelProps = {
   row: OpportunityRow;
   whyTitle: string;
-  tradeCta: string;
-  tradeBusy?: boolean;
-  onTrade: () => void;
+  focusEventId: string;
+  quickReplies: string[];
+  chatPlaceholder: string;
+  bridgeFail: string;
+  onBeforeNavigate?: () => void;
+  navigate: (href: string) => void;
   className?: string;
 };
 
 export function OpportunityDetailPanel({
   row,
   whyTitle,
-  tradeCta,
-  tradeBusy = false,
-  onTrade,
+  focusEventId,
+  quickReplies,
+  chatPlaceholder,
+  bridgeFail,
+  onBeforeNavigate,
+  navigate,
   className,
 }: OpportunityDetailPanelProps) {
   const card = projectMarketplaceDiscoveryCard(
@@ -104,16 +111,15 @@ export function OpportunityDetailPanel({
         </div>
       </div>
 
-      <div className="shrink-0 border-t border-[#f2f4f6] bg-white/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-sm">
-        <button
-          type="button"
-          className={rimvioHeroCtaClass()}
-          disabled={tradeBusy}
-          onClick={onTrade}
-        >
-          {tradeCta}
-        </button>
-      </div>
+      <OpportunityFieldChatBar
+        focusEventId={focusEventId}
+        matchIntentId={row.listing.id}
+        quickReplies={quickReplies}
+        placeholder={chatPlaceholder}
+        bridgeFail={bridgeFail}
+        onBeforeNavigate={onBeforeNavigate}
+        navigate={navigate}
+      />
     </div>
   );
 }

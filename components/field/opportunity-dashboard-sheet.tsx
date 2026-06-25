@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, Radio, Sparkles, X } from "lucide-react";
-import { toast } from "sonner";
 import { OpportunityDetailPanel } from "@/components/field/opportunity-detail-panel";
 import { OpportunityPillBar } from "@/components/field/opportunity-pill-bar";
 import {
@@ -23,7 +22,7 @@ import {
   rimvioSheetCloseBtnClass,
 } from "@/lib/design/rimvio-ontology";
 import type { OpportunityRow } from "@/lib/globe/opportunity-field";
-import { requestMarketHandshakeForListing } from "@/lib/globe/market/open-market-alignment-offer";
+import { listMarketChatQuickReplies } from "@/lib/globe/market/market-chat-quick-replies";
 import type { GlobeLayerMode } from "@/lib/globe/globe-layer-mode";
 import { cn } from "@/lib/utils";
 
@@ -46,7 +45,6 @@ export function OpportunityDashboardSheet({
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [detailRow, setDetailRow] = useState<OpportunityRow | null>(null);
-  const [tradeBusy, setTradeBusy] = useState(false);
 
   const {
     loading,
@@ -75,35 +73,8 @@ export function OpportunityDashboardSheet({
   }, [open]);
 
   const field = copy.globe.field;
+  const quickReplies = listMarketChatQuickReplies(field);
   const discoveryOnly = layerMode !== "discovery";
-
-  const onTrade = async () => {
-    if (!detailRow || !selectedPill || tradeBusy) {
-      return;
-    }
-    setTradeBusy(true);
-    try {
-      await requestMarketHandshakeForListing({
-        focusEventId: selectedPill.contextId,
-        matchIntentId: detailRow.listing.id,
-        copy: {
-          bridgeFail: copy.globe.marketAlignBridgeFail,
-          bridgeToast: copy.globe.marketAlignBridgeToast,
-          handshakeListingAcceptedToast: copy.globe.marketHandshakeListingAcceptedToast,
-          handshakeSentWaiting: field.handshakeSentWaiting,
-          handshakeNoMatch: field.handshakeNoMatch,
-        },
-        navigate: (href) => {
-          onOpenChange(false);
-          router.push(href);
-        },
-      });
-    } catch {
-      toast.error(copy.globe.marketAlignBridgeFail);
-    } finally {
-      setTradeBusy(false);
-    }
-  };
 
   if (!mounted) {
     return null;
@@ -141,7 +112,7 @@ export function OpportunityDashboardSheet({
                 onClose={() => onOpenChange(false)}
                 onSwitch={() => onSwitchToDiscovery?.()}
               />
-            ) : detailRow ? (
+            ) : detailRow && selectedPill ? (
               <>
                 <header className="flex shrink-0 items-center gap-2 border-b border-[#f2f4f6] px-3 py-3">
                   <button
@@ -167,9 +138,12 @@ export function OpportunityDashboardSheet({
                 <OpportunityDetailPanel
                   row={detailRow}
                   whyTitle={field.detailWhy}
-                  tradeCta={field.tradeCta}
-                  tradeBusy={tradeBusy}
-                  onTrade={() => void onTrade()}
+                  focusEventId={selectedPill.contextId}
+                  quickReplies={quickReplies}
+                  chatPlaceholder={field.chatPlaceholder}
+                  bridgeFail={copy.globe.marketAlignBridgeFail}
+                  onBeforeNavigate={() => onOpenChange(false)}
+                  navigate={(href) => router.push(href)}
                 />
               </>
             ) : (

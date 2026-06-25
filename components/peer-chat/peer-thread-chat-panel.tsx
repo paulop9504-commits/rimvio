@@ -40,6 +40,7 @@ import { ContextTalkRoomPanel } from "@/components/peer-chat/context-talk-room-p
 import { usePeerAiLens } from "@/hooks/use-peer-ai-lens";
 import { PeerChatDateDivider } from "@/components/peer-chat/peer-chat-date-divider";
 import { PeerDmKakaoComposer } from "@/components/peer-chat/peer-dm-kakao-composer";
+import { MarketChatQuickReplyPills } from "@/components/market/market-chat-quick-reply-pills";
 import { useLensBubbleActions } from "@/hooks/use-lens-bubble-actions";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
@@ -61,6 +62,8 @@ type PeerThreadChatPanelProps = {
   contextTalkTitle?: string | null;
   /** Handshake hero card already shows product — hide duplicate system seeds. */
   hideMarketHandshakeSeeds?: boolean;
+  /** Karrot-style opener pills for marketplace seeker DM. */
+  marketQuickReplies?: string[];
 };
 
 export function PeerThreadChatPanel({
@@ -74,6 +77,7 @@ export function PeerThreadChatPanel({
   contextTalkEventId = null,
   contextTalkTitle = null,
   hideMarketHandshakeSeeds = false,
+  marketQuickReplies = [],
 }: PeerThreadChatPanelProps) {
   const threadId = policyInput.settings.peerThreadId;
   const phoneDm = isDmThreadId(threadId);
@@ -121,6 +125,7 @@ export function PeerThreadChatPanel({
     enabled: lensActive && !readOnly,
   });
   const [text, setText] = useState("");
+  const [quickRepliesVisible, setQuickRepliesVisible] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -149,6 +154,7 @@ export function PeerThreadChatPanel({
   useEffect(() => {
     scrollBehaviorRef.current = "auto";
     setMessagesVisible(messages.length > 0);
+    setQuickRepliesVisible(true);
   }, [threadId]);
 
   useEffect(() => {
@@ -169,6 +175,15 @@ export function PeerThreadChatPanel({
   const showSkeleton = messagesHydrating && messages.length === 0;
   const showEmptyHint =
     !messagesHydrating && messages.length === 0 && !showSkeleton;
+
+  useEffect(() => {
+    const hasUserText = messages.some(
+      (row) => row.messageType !== "system" && row.body.trim().length > 0,
+    );
+    if (hasUserText) {
+      setQuickRepliesVisible(false);
+    }
+  }, [messages]);
 
   useEffect(() => {
     if (canSend && !readOnly) {
@@ -199,6 +214,21 @@ export function PeerThreadChatPanel({
     focusComposer();
     void send(body, "me").then(() => focusComposer());
   }, [text, canSend, readOnly, composerBusy, send, focusComposer, resizeComposer]);
+
+  const sendQuickReply = useCallback(
+    async (body: string) => {
+      const trimmed = body.trim();
+      if (!trimmed || !canSend || readOnly || composerBusy) {
+        return;
+      }
+      setQuickRepliesVisible(false);
+      void send(trimmed, "me").then(() => focusComposer());
+    },
+    [canSend, readOnly, composerBusy, send, focusComposer],
+  );
+
+  const showMarketQuickReplies =
+    quickRepliesVisible && marketQuickReplies.length > 0 && !readOnly && canSend;
 
   const handleImageFile = useCallback(
     async (file: File | null) => {
@@ -479,7 +509,16 @@ export function PeerThreadChatPanel({
       </div>
 
       {simple ? (
-        <PeerDmKakaoComposer
+        <>
+          {showMarketQuickReplies ? (
+            <MarketChatQuickReplyPills
+              replies={marketQuickReplies}
+              disabled={composerBusy}
+              onSelect={(reply) => void sendQuickReply(reply)}
+              className="bg-background"
+            />
+          ) : null}
+          <PeerDmKakaoComposer
           text={text}
           onTextChange={setText}
           onSubmit={submit}
@@ -495,6 +534,7 @@ export function PeerThreadChatPanel({
           imageBusy={imageBusy}
           aiBusy={aiBusy}
         />
+        </>
       ) : (
       <div
         className={cn(

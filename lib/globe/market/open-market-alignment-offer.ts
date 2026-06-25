@@ -71,6 +71,30 @@ export async function openMarketAlignmentOffer(
   return false;
 }
 
+export async function openMarketChatForListing(input: {
+  focusEventId: string;
+  matchIntentId: string;
+  initialMessage?: string;
+  copy: { bridgeFail: string };
+  navigate: (href: string) => void;
+  onBeforeNavigate?: () => void;
+}): Promise<string | null> {
+  const { openMarketChatRemote } = await import(
+    "@/lib/globe/market/client/sync-market-intent-remote"
+  );
+  const result = await openMarketChatRemote({
+    focusEventId: input.focusEventId,
+    matchIntentId: input.matchIntentId,
+    initialMessage: input.initialMessage,
+  });
+  if (!result.threadId) {
+    return null;
+  }
+  input.onBeforeNavigate?.();
+  input.navigate(peerRoomPath(result.threadId));
+  return result.threadId;
+}
+
 export async function requestMarketHandshakeForListing(input: {
   focusEventId: string;
   matchIntentId: string;

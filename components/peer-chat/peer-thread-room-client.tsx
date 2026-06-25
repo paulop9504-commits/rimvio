@@ -43,6 +43,7 @@ import {
   startMarketHandshakeChatRemote,
   type MarketHandshakeRoomState,
 } from "@/lib/globe/market/client/sync-market-intent-remote";
+import { listMarketChatQuickReplies } from "@/lib/globe/market/market-chat-quick-replies";
 import {
   MarketHandshakeLockedHint,
   MarketHandshakeProductStrip,
@@ -272,6 +273,17 @@ function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
   const showAlignmentRolePill = Boolean(
     marketHandshake && !marketHandshake.completed && alignmentPeerRole,
   );
+  const marketQuickReplies = useMemo(() => {
+    if (
+      !marketHandshake ||
+      marketHandshake.viewerRole !== "seeking" ||
+      marketHandshake.chatLocked ||
+      marketHandshake.completed
+    ) {
+      return [];
+    }
+    return listMarketChatQuickReplies(copy.globe.field);
+  }, [copy.globe.field, marketHandshake]);
 
   const { settings, setAiLens } = usePeerThreadSettings({
     peerThreadId,
@@ -436,6 +448,7 @@ function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
           contextTalkEventId={experienceEventId}
           contextTalkTitle={experienceTitle}
           hideMarketHandshakeSeeds={Boolean(marketHandshake)}
+          marketQuickReplies={marketQuickReplies}
         />
       </PeerChatThreadShell>
 
