@@ -13,7 +13,7 @@ import { ExperimentLabBootstrap } from "@/components/experiment-lab-bootstrap";
 import { IosShareBanner } from "@/components/ios-share-banner";
 import { LocaleProvider } from "@/lib/i18n/locale-context";
 import type { AppLocale } from "@/lib/i18n/types";
-import { FieldDashboardHost } from "@/components/field/field-dashboard-host";
+import { FieldSheetProvider } from "@/components/field/field-sheet-provider";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { ReminderPoller } from "@/components/reminder-poller";
 import { ServiceWorkerBootstrap } from "@/components/service-worker-bootstrap";
@@ -47,8 +47,11 @@ export function Providers({ children, initialLocale }: ProvidersProps) {
           <ExperienceGravityBootstrap />
           <AlbumSyncBootstrap />
           <AlbumSyncProgressChip />
-          <RimvioProfileSetupGate>{children}</RimvioProfileSetupGate>
-          <FieldDashboardHost />
+          <Suspense fallback={null}>
+            <FieldSheetProvider>
+              <RimvioProfileSetupGate>{children}</RimvioProfileSetupGate>
+            </FieldSheetProvider>
+          </Suspense>
           <ReminderPoller />
           <ServiceWorkerBootstrap />
           <NativeBridgeBoot />

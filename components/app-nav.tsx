@@ -13,11 +13,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { Globe, Plus, Sparkles, Users } from "lucide-react";
 import { CaptureSheet } from "@/components/globe/capture-sheet";
 import { useCopy } from "@/hooks/use-copy";
+import { useFieldSheet } from "@/components/field/field-sheet-provider";
 import { subscribeOpenCaptureSheet } from "@/lib/nav/open-capture-sheet-bridge";
-import {
-  dispatchOpenFieldSheet,
-  subscribeFieldSheetOpenState,
-} from "@/lib/nav/field-sheet-bridge";
+import { subscribeFieldSheetOpenState } from "@/lib/nav/field-sheet-bridge";
 import { GRID } from "@/lib/ui/responsive-grid";
 import { cn } from "@/lib/utils";
 
@@ -133,7 +131,7 @@ function NavTabButton({
   className?: string;
   showLabel?: boolean;
 }) {
-  const touchActivatedRef = useRef(false);
+  const activatedRef = useRef(false);
 
   const activate = () => {
     if (tab.action === "capture") {
@@ -154,19 +152,22 @@ function NavTabButton({
       aria-current={active ? "page" : undefined}
       data-nav-href={tab.href ?? "capture"}
       data-nav-action={tab.action}
-      onTouchEnd={(event) => {
+      onPointerUp={(event) => {
+        if (event.pointerType === "mouse" && event.button !== 0) {
+          return;
+        }
         event.preventDefault();
         event.stopPropagation();
-        touchActivatedRef.current = true;
+        activatedRef.current = true;
         activate();
         window.setTimeout(() => {
-          touchActivatedRef.current = false;
-        }, 450);
+          activatedRef.current = false;
+        }, 400);
       }}
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();
-        if (touchActivatedRef.current) {
+        if (activatedRef.current) {
           return;
         }
         activate();
@@ -350,16 +351,12 @@ export function AppNav({ placement }: AppNavProps) {
   const pathname = usePathname() ?? "/";
   const router = useRouter();
   const copy = useCopy();
+  const { open: fieldSheetOpen, openFieldSheet } = useFieldSheet();
   const [captureOpen, setCaptureOpen] = useState(false);
-  const [fieldSheetOpen, setFieldSheetOpen] = useState(false);
   const lastNavRef = useRef<{ href: string; at: number } | null>(null);
 
   useEffect(() => {
     return subscribeOpenCaptureSheet(() => setCaptureOpen(true));
-  }, []);
-
-  useEffect(() => {
-    return subscribeFieldSheetOpenState(setFieldSheetOpen);
   }, []);
 
   useEffect(() => {
@@ -387,13 +384,13 @@ export function AppNav({ placement }: AppNavProps) {
       lastNavRef.current = { href, at: now };
 
       if (href === "/field") {
-        dispatchOpenFieldSheet();
+        openFieldSheet();
         return;
       }
 
       router.push(href);
     },
-    [fieldSheetOpen, pathname, router],
+    [fieldSheetOpen, openFieldSheet, pathname, router],
   );
 
   const tabs = useMemo<NavTab[]>(

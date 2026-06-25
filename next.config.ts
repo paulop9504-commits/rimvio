@@ -21,6 +21,15 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   allowedDevOrigins: ["127.0.0.1", "localhost"],
+  async redirects() {
+    return [
+      {
+        source: "/field",
+        destination: "/?openField=1",
+        permanent: false,
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       {

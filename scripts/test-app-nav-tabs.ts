@@ -50,7 +50,7 @@ assert.ok(
   "active tab must use inner pill highlight",
 );
 assert.ok(
-  appNav.includes("dispatchOpenFieldSheet") &&
+  appNav.includes("openFieldSheet") &&
     !appNav.includes('router.push("/field")') &&
     !appNav.includes("router.push('/field')"),
   "field tab must open global sheet — never navigate to /field route",

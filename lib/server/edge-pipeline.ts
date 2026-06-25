@@ -26,6 +26,18 @@ export async function runEdgePipeline(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const requestId = createRequestId();
 
+  if (pathname === "/field" || pathname.startsWith("/field/")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    if (!url.searchParams.has("openField")) {
+      url.searchParams.set("openField", "1");
+    }
+    const response = NextResponse.redirect(url, 307);
+    response.headers.set(REQUEST_ID_HEADER, requestId);
+    applySecurityHeaders(response);
+    return response;
+  }
+
   if (pathname === "/share" && request.method === "POST") {
     const rewriteUrl = request.nextUrl.clone();
     rewriteUrl.pathname = "/api/share-receiver";

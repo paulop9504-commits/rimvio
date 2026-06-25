@@ -21,6 +21,7 @@ import {
 } from "@/lib/design/rimvio-ontology";
 import type { OpportunityRow } from "@/lib/globe/opportunity-field";
 import type { GlobeLayerMode } from "@/lib/globe/globe-layer-mode";
+import { isIOS, isStandalonePwa } from "@/lib/platform/device";
 import { cn } from "@/lib/utils";
 
 export type OpportunityDashboardSheetProps = {
@@ -41,6 +42,7 @@ export function OpportunityDashboardSheet({
   const copy = useCopy();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [iosPwaSheet] = useState(() => isIOS() && isStandalonePwa());
   const [detailRow, setDetailRow] = useState<OpportunityRow | null>(null);
   const [focusTradesToken, setFocusTradesToken] = useState(0);
 
@@ -89,8 +91,113 @@ export function OpportunityDashboardSheet({
   const field = copy.globe.field;
   const discoveryOnly = layerMode !== "discovery";
 
-  if (!mounted) {
+  const sheetContent =
+    discoveryOnly ? (
+      <DiscoveryGate
+        onClose={() => onOpenChange(false)}
+        onSwitch={() => onSwitchToDiscovery?.()}
+      />
+    ) : detailRow && selectedPill ? (
+      <>
+        <header className="flex shrink-0 items-center gap-2 border-b border-[#f2f4f6] px-3 py-3">
+          <button
+            type="button"
+            onClick={() => setDetailRow(null)}
+            className="flex size-9 items-center justify-center rounded-full text-[#4e5968] active:bg-[#f2f4f6]"
+            aria-label={field.backAria}
+          >
+            <ArrowLeft className="size-5" aria-hidden />
+          </button>
+          <p className="min-w-0 flex-1 truncate text-[17px] font-semibold text-[#191f28]">
+            {detailRow.title}
+          </p>
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className={rimvioSheetCloseBtnClass()}
+            aria-label={field.closeAria}
+          >
+            <X className="size-4" aria-hidden />
+          </button>
+        </header>
+        <OpportunityDetailPanel
+          row={detailRow}
+          whyTitle={field.detailWhy}
+          focusEventId={selectedPill.contextId}
+          seeking={selectedPill.seeking}
+          neighborBadge={field.neighborListingBadge}
+          hasActiveTrade={tradeSessions.some(
+            (session) => session.listingIntentId === detailRow.listing.id,
+          )}
+          className="min-h-0 flex-1"
+          onBeforeNavigate={() => onOpenChange(false)}
+          navigate={(href) => router.push(href)}
+          onChatOpened={() => setDetailRow(null)}
+          onScheduleStarted={() => {
+            setDetailRow(null);
+            void refreshTrades();
+            setFocusTradesToken((value) => value + 1);
+          }}
+        />
+      </>
+    ) : (
+      <OpportunityDashboardBody
+        loading={loading}
+        pills={pills}
+        discoveryRows={discoveryRows}
+        tradeSessions={tradeSessions}
+        selectedContextId={selectedContextId}
+        onSelectContext={setSelectedContextId}
+        listeningLabel={listeningLabel}
+        onRowPress={setDetailRow}
+        onSessionUpdated={replaceSession}
+        focusTradesToken={focusTradesToken}
+        headerClassName="pt-4"
+        headerRight={
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className={rimvioSheetCloseBtnClass()}
+            aria-label={field.closeAria}
+          >
+            <X className="size-4" aria-hidden />
+          </button>
+        }
+        className="min-h-0 flex-1"
+      />
+    );
+
+  if (!mounted || !open) {
     return null;
+  }
+
+  const sheetPanelClass = cn(
+    rimvioBottomSheetClass(),
+    "z-[10071] flex max-h-[min(92dvh,52rem)] flex-col overflow-hidden bg-white",
+  );
+
+  if (iosPwaSheet) {
+    return createPortal(
+      <>
+        <div
+          role="presentation"
+          aria-hidden
+          className={cn(rimvioSheetBackdropClass(), "z-[10070]")}
+          onClick={() => onOpenChange(false)}
+        />
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={field.sheetTitle}
+          className={sheetPanelClass}
+          data-opportunity-dashboard-sheet
+          data-opportunity-dashboard-sheet-ios-pwa
+        >
+          {sheetContent}
+        </div>
+      </>,
+      document.body,
+    );
   }
 
   return createPortal(
@@ -114,86 +221,10 @@ export function OpportunityDashboardSheet({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 24 }}
             transition={{ type: "spring", stiffness: 420, damping: 36 }}
-            className={cn(
-              rimvioBottomSheetClass(),
-              "z-[10071] flex max-h-[min(92dvh,52rem)] flex-col overflow-hidden bg-white",
-            )}
+            className={sheetPanelClass}
             data-opportunity-dashboard-sheet
           >
-            {discoveryOnly ? (
-              <DiscoveryGate
-                onClose={() => onOpenChange(false)}
-                onSwitch={() => onSwitchToDiscovery?.()}
-              />
-            ) : detailRow && selectedPill ? (
-              <>
-                <header className="flex shrink-0 items-center gap-2 border-b border-[#f2f4f6] px-3 py-3">
-                  <button
-                    type="button"
-                    onClick={() => setDetailRow(null)}
-                    className="flex size-9 items-center justify-center rounded-full text-[#4e5968] active:bg-[#f2f4f6]"
-                    aria-label={field.backAria}
-                  >
-                    <ArrowLeft className="size-5" aria-hidden />
-                  </button>
-                  <p className="min-w-0 flex-1 truncate text-[17px] font-semibold text-[#191f28]">
-                    {detailRow.title}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => onOpenChange(false)}
-                    className={rimvioSheetCloseBtnClass()}
-                    aria-label={field.closeAria}
-                  >
-                    <X className="size-4" aria-hidden />
-                  </button>
-                </header>
-                <OpportunityDetailPanel
-                  row={detailRow}
-                  whyTitle={field.detailWhy}
-                  focusEventId={selectedPill.contextId}
-                  seeking={selectedPill.seeking}
-                  neighborBadge={field.neighborListingBadge}
-                  hasActiveTrade={tradeSessions.some(
-                    (session) => session.listingIntentId === detailRow.listing.id,
-                  )}
-                  className="min-h-0 flex-1"
-                  onBeforeNavigate={() => onOpenChange(false)}
-                  navigate={(href) => router.push(href)}
-                  onChatOpened={() => setDetailRow(null)}
-                  onScheduleStarted={() => {
-                    setDetailRow(null);
-                    void refreshTrades();
-                    setFocusTradesToken((value) => value + 1);
-                  }}
-                />
-              </>
-            ) : (
-              <OpportunityDashboardBody
-                loading={loading}
-                pills={pills}
-                discoveryRows={discoveryRows}
-                tradeSessions={tradeSessions}
-                selectedContextId={selectedContextId}
-                onSelectContext={setSelectedContextId}
-                listeningLabel={listeningLabel}
-                onRowPress={setDetailRow}
-                onSessionUpdated={replaceSession}
-                focusTradesToken={focusTradesToken}
-                headerClassName="pt-4"
-                headerRight={
-                  <button
-                    type="button"
-                    onClick={() => onOpenChange(false)}
-                    className={rimvioSheetCloseBtnClass()}
-                    aria-label={field.closeAria}
-                  >
-                    <X className="size-4" aria-hidden />
-                  </button>
-                }
-                className="min-h-0 flex-1"
-              />
-            )}
+            {sheetContent}
           </motion.div>
         </>
       ) : null}

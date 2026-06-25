@@ -35,11 +35,8 @@ import { subscribeGlobePhotoIngest } from "@/lib/globe/globe-photo-ingest-bridge
 import { setLiveLocationPowerMode } from "@/lib/location-ping/live-location-service";
 import { usePersonalGlobePinSync } from "@/hooks/use-personal-globe-pin-sync";
 import { useGlobeLayerMode } from "@/hooks/use-globe-layer-mode";
+import { useFieldSheet } from "@/components/field/field-sheet-provider";
 import { useOpportunityFieldBadge } from "@/hooks/use-opportunity-field-badge";
-import {
-  dispatchOpenFieldSheet,
-  subscribeFieldSheetOpenState,
-} from "@/lib/nav/field-sheet-bridge";
 import { useGlobeInbox } from "@/hooks/use-globe-inbox";
 import { useMediaPool } from "@/hooks/use-media-pool";
 import { useGlobeTripArrival } from "@/hooks/use-globe-trip-arrival";
@@ -219,10 +216,7 @@ function GlobeHomeBody() {
     null,
   );
   const [globeInboxOpen, setGlobeInboxOpen] = useState(false);
-  const [fieldSheetOpen, setFieldSheetOpen] = useState(false);
-  useEffect(() => {
-    return subscribeFieldSheetOpenState(setFieldSheetOpen);
-  }, []);
+  const { open: fieldSheetOpen, openFieldSheet } = useFieldSheet();
   const [mediaPoolOpen, setMediaPoolOpen] = useState(false);
   const [poolAttachIds, setPoolAttachIds] = useState<string[]>([]);
   const [poolSuggestedStart, setPoolSuggestedStart] = useState<string | null>(null);
@@ -976,15 +970,6 @@ function GlobeHomeBody() {
     if (layerMode !== "discovery") {
       onLayerModeChange("discovery");
     }
-    dispatchOpenFieldSheet({ primaryEventId: activeCluster?.eventId ?? null });
-    const params = new URLSearchParams(window.location.search);
-    params.delete("openField");
-    const qs = params.toString();
-    window.history.replaceState(
-      null,
-      "",
-      qs ? `${window.location.pathname}?${qs}` : window.location.pathname,
-    );
   }, [layerMode, onLayerModeChange, searchParams]);
 
   useEffect(() => {
@@ -1491,7 +1476,7 @@ function GlobeHomeBody() {
           onOpenInbox={() => setGlobeInboxOpen(true)}
           onOpenMarketManage={() => setMarketManageOpen(true)}
           onOpenField={() =>
-            dispatchOpenFieldSheet({
+            openFieldSheet({
               primaryEventId: activeCluster?.eventId ?? null,
             })
           }
