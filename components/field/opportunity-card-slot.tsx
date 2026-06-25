@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Check, ChevronRight, ImageIcon, MapPin, MessageCircle, Play } from "lucide-react";
+import { Check, ChevronRight, ImageIcon, MapPin, Play } from "lucide-react";
 import { MarketListingMediaRowThumb } from "@/components/market/market-listing-media-thumb";
 import { MarketIntentOwnershipChip } from "@/components/market/market-intent-ownership-chip";
 import { useCopy } from "@/hooks/use-copy";
@@ -25,7 +25,7 @@ export type OpportunityCardSlotProps = {
   className?: string;
 };
 
-const FILM_H = "h-[168px]";
+const FILM_H = "h-[132px]";
 
 export function OpportunityCardSlot({
   row,
@@ -38,6 +38,7 @@ export function OpportunityCardSlot({
   onChat,
   className,
 }: OpportunityCardSlotProps) {
+  const copy = useCopy();
   const segments = buildOpportunityCardFilm(row);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showFilmFade, setShowFilmFade] = useState(false);
@@ -65,19 +66,24 @@ export function OpportunityCardSlot({
   return (
     <motion.article
       layout
-      initial={{ opacity: 0, y: 6 }}
+      initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -4 }}
-      transition={{ duration: 0.22, ease: "easeOut" }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
       className={cn(
-        "border-b border-[#f2f4f6] bg-white px-4 py-3.5",
+        "border-b border-[#f2f4f6] bg-white px-4 py-3 active:bg-[#f8f9fb]",
         className,
       )}
       data-opportunity-card={row.listingId}
       data-opportunity-ownership="neighbor"
     >
-      <div className="flex items-start gap-3">
-        <div className="relative size-[52px] shrink-0 overflow-hidden rounded-2xl bg-[#f2f4f6] ring-1 ring-black/[0.04]">
+      <button
+        type="button"
+        onClick={onChat}
+        className="flex w-full items-start gap-3 text-left"
+        aria-label={`${row.title} · ${chatCta}`}
+      >
+        <div className="relative size-[52px] shrink-0 overflow-hidden rounded-2xl bg-[#f2f4f6]">
           {row.photoUrl || row.videoUrl ? (
             <MarketListingMediaRowThumb photoUrl={row.photoUrl} videoUrl={row.videoUrl} />
           ) : (
@@ -88,7 +94,7 @@ export function OpportunityCardSlot({
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="mb-1">
+          <div className="mb-0.5">
             <MarketIntentOwnershipChip kind="neighbor" label={neighborBadge} size="xs" />
           </div>
           <div className="flex items-start justify-between gap-2">
@@ -103,62 +109,55 @@ export function OpportunityCardSlot({
               <span className="text-[12px] font-semibold">%</span>
             </span>
           </div>
-          <p className="mt-0.5 text-[14px] font-medium text-[#191f28]">
+          <p className="mt-0.5 truncate text-[14px] text-[#6b7684]">
             {row.priceLine}
             <span className="mx-1.5 text-[#d1d6db]">·</span>
-            <span className="font-normal text-[#6b7684]">{row.conditionLabel}</span>
+            {row.conditionLabel}
           </p>
-          <p className="mt-1 flex items-center gap-1 text-[13px] text-[#3182f6]">
+          <p className="mt-0.5 flex items-center gap-1 truncate text-[13px] text-[#3182f6]">
             {row.distanceKm != null && row.distanceKm <= 8 ? (
               <MapPin className="size-3.5 shrink-0 opacity-80" aria-hidden />
             ) : null}
-            <span className="line-clamp-1">{row.reasonKo}</span>
+            <span>{row.reasonKo}</span>
           </p>
         </div>
-      </div>
-
-      {segments.length > 0 ? (
-        <div className="relative mt-3">
-          <div
-            ref={scrollRef}
-            onScroll={updateFilmFade}
-            className={cn(
-              "flex gap-2.5 overflow-x-auto overflow-y-hidden scroll-smooth",
-              "[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-              "[touch-action:pan-x] overscroll-x-contain",
-            )}
-            aria-label={swipeHint}
-          >
-            {segments.map((segment, index) => (
-              <FilmTile
-                key={segmentKey(segment, index)}
-                segment={segment}
-                storyTitle={storyTitle}
-                storyEmpty={storyEmpty}
-                isHero={index === 0 && segment.type === "media"}
-              />
-            ))}
-          </div>
-
-          {showFilmFade ? (
-            <div
-              className="pointer-events-none absolute inset-y-0 right-0 flex w-14 items-center justify-end bg-gradient-to-l from-white via-white/85 to-transparent pr-0.5"
-              aria-hidden
-            >
-              <ChevronRight className="size-4 text-[#b0b8c1]" />
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
-      <button
-        type="button"
-        onClick={onChat}
-        className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#3182f6] px-4 py-2.5 text-[14px] font-semibold text-white shadow-[0_4px_14px_rgba(49,130,246,0.22)] active:scale-[0.99]"
-      >
-        <MessageCircle className="size-4" aria-hidden />
-        {chatCta}
       </button>
+
+      <div className="relative mt-2.5 pl-[64px]">
+        <div
+          ref={scrollRef}
+          onScroll={updateFilmFade}
+          onPointerDown={(event) => event.stopPropagation()}
+          className={cn(
+            "-mr-4 flex gap-2 overflow-x-auto overflow-y-hidden scroll-smooth pr-4",
+            "[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+            "[touch-action:pan-x] overscroll-x-contain",
+            FILM_H,
+          )}
+          aria-label={swipeHint}
+        >
+          {segments.map((segment, index) => (
+            <FilmTile
+              key={segmentKey(segment, index)}
+              segment={segment}
+              storyTitle={storyTitle}
+              storyEmpty={storyEmpty}
+              noMediaLabel={copy.globe.field.cardFilmNoMedia}
+              heroBadge={copy.globe.field.cardFilmHeroBadge}
+              isHero={index === 0 && (segment.type === "media" || segment.type === "placeholder")}
+            />
+          ))}
+        </div>
+
+        {showFilmFade ? (
+          <div
+            className="pointer-events-none absolute inset-y-0 right-0 flex w-10 items-center justify-end bg-gradient-to-l from-white via-white/90 to-transparent"
+            aria-hidden
+          >
+            <ChevronRight className="size-4 text-[#b0b8c1]" />
+          </div>
+        ) : null}
+      </div>
     </motion.article>
   );
 }
@@ -167,6 +166,9 @@ function segmentKey(segment: OpportunityCardFilmSegment, index: number): string 
   if (segment.type === "media") {
     return `media-${segment.item.kind}-${segment.item.url}-${index}`;
   }
+  if (segment.type === "placeholder") {
+    return `placeholder-${index}`;
+  }
   return `story-${index}`;
 }
 
@@ -174,27 +176,41 @@ function FilmTile({
   segment,
   storyTitle,
   storyEmpty,
+  noMediaLabel,
+  heroBadge,
   isHero,
 }: {
   segment: OpportunityCardFilmSegment;
   storyTitle: string;
   storyEmpty: string;
+  noMediaLabel: string;
+  heroBadge: string;
   isHero: boolean;
 }) {
-  const copy = useCopy();
-
-  if (segment.type === "media") {
-    const widthClass = isHero
-      ? "w-[min(68vw,248px)]"
-      : "w-[132px]";
+  if (segment.type === "placeholder") {
     return (
       <div
         className={cn(
-          "relative shrink-0 overflow-hidden rounded-2xl bg-[#f2f4f6] ring-1 ring-black/[0.05]",
+          "relative flex shrink-0 flex-col items-center justify-center gap-1.5 bg-[#f2f4f6]",
           FILM_H,
-          widthClass,
+          "w-[min(62vw,220px)]",
         )}
       >
+        <ImageIcon className="size-7 text-[#b0b8c1]" aria-hidden />
+        <span className="text-[12px] font-medium text-[#8b95a1]">{noMediaLabel}</span>
+        {isHero ? (
+          <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-black/40 px-2 py-0.5 text-[10px] font-semibold text-white">
+            {heroBadge}
+          </span>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (segment.type === "media") {
+    const widthClass = isHero ? "w-[min(62vw,220px)]" : "w-[120px]";
+    return (
+      <div className={cn("relative shrink-0 overflow-hidden bg-[#e8eaed]", FILM_H, widthClass)}>
         {segment.item.kind === "video" ? (
           <FilmVideoTile url={segment.item.url} prominent={isHero} />
         ) : (
@@ -207,8 +223,8 @@ function FilmTile({
           />
         )}
         {isHero ? (
-          <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
-            {copy.globe.field.cardFilmHeroBadge}
+          <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-black/40 px-2 py-0.5 text-[10px] font-semibold text-white">
+            {heroBadge}
           </span>
         ) : null}
       </div>
@@ -218,30 +234,28 @@ function FilmTile({
   return (
     <div
       className={cn(
-        "shrink-0 overflow-hidden rounded-2xl bg-[#f8f9fb] ring-1 ring-black/[0.05]",
+        "shrink-0 overflow-hidden bg-[#f8f9fb] px-3 py-2.5",
         FILM_H,
-        "w-[min(76vw,288px)]",
+        "w-[min(72vw,260px)]",
       )}
     >
-      <div className="h-full overflow-y-auto px-3.5 py-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-[#8b95a1]">
-          {storyTitle}
-        </p>
+      <div className="h-full overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <p className="text-[11px] font-semibold text-[#8b95a1]">{storyTitle}</p>
         {segment.detailNote ? (
-          <p className="mt-2 text-[14px] leading-relaxed text-[#191f28] line-clamp-4 whitespace-pre-wrap">
+          <p className="mt-1.5 text-[13px] leading-relaxed text-[#191f28] line-clamp-3 whitespace-pre-wrap">
             {segment.detailNote}
           </p>
         ) : segment.memoryLine ? (
-          <p className="mt-2 text-[14px] leading-relaxed text-[#191f28] line-clamp-4">
+          <p className="mt-1.5 text-[13px] leading-relaxed text-[#191f28] line-clamp-3">
             {segment.memoryLine}
           </p>
         ) : (
-          <p className="mt-2 text-[13px] leading-relaxed text-[#6b7684]">{storyEmpty}</p>
+          <p className="mt-1.5 text-[13px] leading-relaxed text-[#6b7684]">{storyEmpty}</p>
         )}
         {segment.matchReasons.length > 0 ? (
-          <ul className="mt-2.5 space-y-1 border-t border-black/[0.06] pt-2.5">
+          <ul className="mt-2 space-y-1">
             {segment.matchReasons.slice(0, 3).map((reason) => (
-              <li key={reason} className="flex items-center gap-1.5 text-[12px] text-[#191f28]">
+              <li key={reason} className="flex items-center gap-1.5 text-[12px] text-[#4e5968]">
                 <Check className="size-3 shrink-0 text-[#3182f6]" aria-hidden />
                 <span className="truncate">{reason}</span>
               </li>
@@ -273,7 +287,7 @@ function FilmVideoTile({ url, prominent }: { url: string; prominent: boolean }) 
       {!playing ? (
         <button
           type="button"
-          className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/25"
+          className="absolute inset-0 flex items-center justify-center bg-black/20"
           onClick={(event) => {
             event.stopPropagation();
             const el = videoRef.current;
@@ -288,12 +302,12 @@ function FilmVideoTile({ url, prominent }: { url: string; prominent: boolean }) 
         >
           <span
             className={cn(
-              "flex items-center justify-center rounded-full bg-white/20 ring-1 ring-white/35 backdrop-blur-sm",
-              prominent ? "size-11" : "size-9",
+              "flex items-center justify-center rounded-full bg-white/25 ring-1 ring-white/30",
+              prominent ? "size-10" : "size-8",
             )}
           >
             <Play
-              className={cn("fill-white text-white", prominent ? "size-5" : "size-4")}
+              className={cn("fill-white text-white", prominent ? "size-4" : "size-3.5")}
               aria-hidden
             />
           </span>
@@ -307,7 +321,7 @@ export function OpportunityCardShimmer() {
   return (
     <div className="space-y-0">
       {[0, 1, 2].map((key) => (
-        <div key={key} className="border-b border-[#f2f4f6] px-4 py-3.5">
+        <div key={key} className="border-b border-[#f2f4f6] px-4 py-3">
           <div className="flex items-center gap-3">
             <div className="size-[52px] shrink-0 animate-pulse rounded-2xl bg-[#f2f4f6]" />
             <div className="min-w-0 flex-1 space-y-2">
@@ -317,11 +331,11 @@ export function OpportunityCardShimmer() {
             </div>
             <div className="h-7 w-11 animate-pulse rounded-md bg-[#f2f4f6]" />
           </div>
-          <div className="mt-3 flex gap-2.5 overflow-hidden">
-            <div className="h-[168px] w-[248px] shrink-0 animate-pulse rounded-2xl bg-[#f2f4f6]" />
-            <div className="h-[168px] w-[132px] shrink-0 animate-pulse rounded-2xl bg-[#f2f4f6]" />
+          <div className="mt-2.5 flex gap-2 overflow-hidden pl-[64px]">
+            <div className={cn("w-[220px] shrink-0 animate-pulse bg-[#f2f4f6]", FILM_H)} />
+            <div className={cn("w-[120px] shrink-0 animate-pulse bg-[#f2f4f6]", FILM_H)} />
+            <div className={cn("w-[260px] shrink-0 animate-pulse bg-[#f2f4f6]", FILM_H)} />
           </div>
-          <div className="mt-3 h-10 w-full animate-pulse rounded-xl bg-[#f2f4f6]" />
         </div>
       ))}
     </div>

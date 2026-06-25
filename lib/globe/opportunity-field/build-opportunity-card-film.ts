@@ -8,6 +8,10 @@ export type OpportunityCardFilmMediaSegment = {
   item: MarketListingMediaItem;
 };
 
+export type OpportunityCardFilmPlaceholderSegment = {
+  type: "placeholder";
+};
+
 export type OpportunityCardFilmStorySegment = {
   type: "story";
   detailNote: string;
@@ -17,29 +21,45 @@ export type OpportunityCardFilmStorySegment = {
 
 export type OpportunityCardFilmSegment =
   | OpportunityCardFilmMediaSegment
+  | OpportunityCardFilmPlaceholderSegment
   | OpportunityCardFilmStorySegment;
+
+function resolveListingMedia(row: OpportunityRow): MarketListingMediaItem[] {
+  const fromDetail = buildMarketListingMediaItems(row.listing.detail);
+  if (fromDetail.length > 0) {
+    return fromDetail;
+  }
+  const video = row.videoUrl?.trim();
+  if (video) {
+    return [{ kind: "video", url: video }];
+  }
+  const photo = row.photoUrl?.trim();
+  if (photo) {
+    return [{ kind: "photo", url: photo }];
+  }
+  return [];
+}
 
 /** One continuous horizontal film — media panels then story panel. */
 export function buildOpportunityCardFilm(row: OpportunityRow): OpportunityCardFilmSegment[] {
-  const media = buildMarketListingMediaItems(row.listing.detail);
+  const media = resolveListingMedia(row);
   const segments: OpportunityCardFilmSegment[] = media.map((item) => ({
     type: "media",
     item,
   }));
 
+  if (segments.length === 0) {
+    segments.push({ type: "placeholder" });
+  }
+
   const detailNote = row.listing.detail.detailNote?.trim() ?? "";
   const memoryLine = formatMarketMemoryPreview(row.listing.detail, "listing");
-  const hasStory =
-    detailNote.length > 0 || Boolean(memoryLine) || row.matchReasons.length > 0;
-
-  if (hasStory || segments.length === 0) {
-    segments.push({
-      type: "story",
-      detailNote,
-      memoryLine,
-      matchReasons: row.matchReasons,
-    });
-  }
+  segments.push({
+    type: "story",
+    detailNote,
+    memoryLine,
+    matchReasons: row.matchReasons,
+  });
 
   return segments;
 }
