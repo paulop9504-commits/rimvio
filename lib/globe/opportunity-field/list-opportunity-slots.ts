@@ -1,6 +1,7 @@
 import { filterPublishedMarketIntents } from "@/lib/globe/market/filter-published-market-intents";
 import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
 import { OPPORTUNITY_FIELD_MIN_FIELD_SCORE } from "@/lib/globe/opportunity-field/observation-constants";
+import { scoreMarketplaceOpportunityRow } from "@/lib/globe/opportunity-field/score-marketplace-opportunity-row";
 import type {
   OpportunityFieldCopy,
   OpportunityPill,
