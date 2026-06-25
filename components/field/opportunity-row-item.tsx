@@ -1,103 +1,110 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ImageIcon, MapPin } from "lucide-react";
+import { ImageIcon } from "lucide-react";
 import { MarketListingMediaRowThumb } from "@/components/market/market-listing-media-thumb";
-import { MarketIntentOwnershipChip } from "@/components/market/market-intent-ownership-chip";
 import type { OpportunityRow } from "@/lib/globe/opportunity-field";
+import { formatPeerChatListTime } from "@/lib/peer-chat/format-peer-chat-list-time";
+import { PEERS_CHAT_LIST } from "@/lib/peer-chat/peers-chat-list-density";
 import { cn } from "@/lib/utils";
 
 export type OpportunityRowItemProps = {
   row: OpportunityRow;
   onPress: () => void;
   scoreAria: (pct: number) => string;
-  neighborBadge: string;
+  previewFallback: string;
   className?: string;
 };
+
+function formatOpportunityListPreview(row: OpportunityRow, fallback: string): string {
+  const price = row.priceLine.trim();
+  const reason = row.reasonKo.trim();
+  if (price && reason) {
+    return `${price} · ${reason}`;
+  }
+  return price || reason || fallback;
+}
 
 export function OpportunityRowItem({
   row,
   onPress,
   scoreAria,
-  neighborBadge,
+  previewFallback,
   className,
 }: OpportunityRowItemProps) {
+  const timeLabel = formatPeerChatListTime(row.listing.confirmedAtIso);
+  const preview = formatOpportunityListPreview(row, previewFallback);
+
   return (
-    <motion.button
-      type="button"
+    <motion.li
       layout
-      initial={{ opacity: 0, y: 6 }}
+      initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -4 }}
-      transition={{ duration: 0.22 }}
-      onClick={onPress}
-      className={cn(
-        "flex w-full items-center gap-3 border-b border-[#f2f4f6] bg-white px-4 py-3.5 text-left transition-colors active:bg-[#f8f9fb]",
-        className,
-      )}
+      transition={{ duration: 0.2, ease: "easeOut" }}
+      className={cn("border-b border-[#f2f4f6]", className)}
       data-opportunity-row={row.listingId}
       data-opportunity-ownership="neighbor"
     >
-      <div className="relative size-[52px] shrink-0 overflow-hidden rounded-2xl bg-[#f2f4f6] ring-1 ring-black/[0.04]">
-        {row.photoUrl || row.videoUrl ? (
-          <MarketListingMediaRowThumb photoUrl={row.photoUrl} videoUrl={row.videoUrl} />
-        ) : (
-          <div className="flex size-full items-center justify-center text-[#b0b8c1]">
-            <ImageIcon className="size-6" aria-hidden />
-          </div>
-        )}
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <div className="mb-1">
-          <MarketIntentOwnershipChip kind="neighbor" label={neighborBadge} size="xs" />
-        </div>
-        <p className="truncate text-[16px] font-semibold leading-snug text-[#191f28]">
-          {row.title}
-        </p>
-        <p className="mt-0.5 text-[14px] font-medium text-[#191f28]">
-          {row.priceLine}
-          <span className="mx-1.5 text-[#d1d6db]">·</span>
-          <span className="font-normal text-[#6b7684]">{row.conditionLabel}</span>
-        </p>
-        <p className="mt-1 flex items-center gap-1 text-[13px] text-[#3182f6]">
-          {row.distanceKm != null && row.distanceKm <= 8 ? (
-            <MapPin className="size-3.5 shrink-0 opacity-80" aria-hidden />
-          ) : null}
-          <span className="truncate">{row.reasonKo}</span>
-        </p>
-      </div>
-
-      <div className="flex shrink-0 flex-col items-end gap-0.5 pl-1">
-        <span
-          className="text-[22px] font-bold tabular-nums leading-none text-[#3182f6]"
-          aria-label={scoreAria(row.scorePct)}
-        >
-          {row.scorePct}
-          <span className="text-[13px] font-semibold">%</span>
+      <button
+        type="button"
+        onClick={onPress}
+        className={cn(PEERS_CHAT_LIST.row, "w-full text-left")}
+      >
+        <span className="relative size-10 shrink-0 overflow-hidden rounded-full bg-[#f2f4f6] ring-1 ring-black/[0.04]">
+          {row.photoUrl || row.videoUrl ? (
+            <MarketListingMediaRowThumb photoUrl={row.photoUrl} videoUrl={row.videoUrl} />
+          ) : (
+            <span className="flex size-full items-center justify-center text-[#b0b8c1]">
+              <ImageIcon className="size-5" aria-hidden />
+            </span>
+          )}
         </span>
-      </div>
-    </motion.button>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start gap-2">
+            <p className={cn("min-w-0 flex-1 truncate", PEERS_CHAT_LIST.name)}>{row.title}</p>
+            {timeLabel ? (
+              <span className={PEERS_CHAT_LIST.time}>{timeLabel}</span>
+            ) : null}
+          </div>
+          <div className="mt-0.5 flex items-center gap-2">
+            <p className={cn("min-w-0 flex-1 truncate", PEERS_CHAT_LIST.contextPreview)}>
+              {preview}
+            </p>
+            <span
+              className="shrink-0 text-[11px] font-bold tabular-nums text-[#3182f6]"
+              aria-label={scoreAria(row.scorePct)}
+            >
+              {row.scorePct}%
+            </span>
+          </div>
+        </div>
+      </button>
+    </motion.li>
   );
 }
 
 export function OpportunityRowShimmer() {
   return (
-    <div className="space-y-0">
+    <ul className="bg-white" aria-hidden>
       {[0, 1, 2, 3].map((key) => (
-        <div
-          key={key}
-          className="flex items-center gap-3 border-b border-[#f2f4f6] px-4 py-3.5"
-        >
-          <div className="size-[52px] shrink-0 animate-pulse rounded-2xl bg-[#f2f4f6]" />
-          <div className="min-w-0 flex-1 space-y-2">
-            <div className="h-4 w-3/5 animate-pulse rounded-md bg-[#f2f4f6]" />
-            <div className="h-3.5 w-4/5 animate-pulse rounded-md bg-[#f2f4f6]" />
-            <div className="h-3 w-2/5 animate-pulse rounded-md bg-[#f2f4f6]" />
+        <li key={key} className="border-b border-[#f2f4f6]">
+          <div className={PEERS_CHAT_LIST.row}>
+            <div className="size-10 shrink-0 animate-pulse rounded-full bg-[#f2f4f6]" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="flex justify-between gap-2">
+                <div className="h-4 w-2/5 animate-pulse rounded-md bg-[#f2f4f6]" />
+                <div className="h-3 w-10 animate-pulse rounded-md bg-[#f2f4f6]" />
+              </div>
+              <div className="flex justify-between gap-2">
+                <div className="h-3.5 w-3/5 animate-pulse rounded-md bg-[#f2f4f6]" />
+                <div className="h-3.5 w-8 animate-pulse rounded-md bg-[#f2f4f6]" />
+              </div>
+            </div>
           </div>
-          <div className="h-7 w-12 animate-pulse rounded-md bg-[#f2f4f6]" />
-        </div>
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }

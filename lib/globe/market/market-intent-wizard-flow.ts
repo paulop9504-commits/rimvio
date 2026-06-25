@@ -6,6 +6,7 @@ export type MarketWizardStepId =
   | "priority"
   | "photos"
   | "memory"
+  | "description"
   | "place"
   | "review";
 
@@ -18,12 +19,13 @@ const SEEKING_STEPS: readonly MarketWizardStepId[] = [
   "review",
 ];
 
-/** Listing: 사진 → AI 인식 → Dynamic Slot → 장소 → 확인 */
+/** Listing: 사진 → AI 인식 → Dynamic Slot → 자세한 설명 → 장소 → 확인 */
 const LISTING_STEPS: readonly MarketWizardStepId[] = [
   "role",
   "photos",
   "recognize",
   "priority",
+  "description",
   "place",
   "review",
 ];

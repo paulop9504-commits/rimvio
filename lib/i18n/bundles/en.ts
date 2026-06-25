@@ -333,7 +333,16 @@ export const copyEn: Copy = {
     marketWizardStepCondition: "Condition",
     marketWizardStepPrice: "Price",
     marketWizardStepPlace: "Area",
+    marketWizardStepDescription: "Description",
     marketWizardStepReview: "Review",
+    marketWizardDescriptionTitle: "Detailed description",
+    marketWizardDescriptionBody:
+      "What buyers will read. State, what's included, and how you prefer to trade — detail helps the right person find you.",
+    marketWizardDescriptionPlaceholder:
+      "e.g. case and charger included, 87% battery, in-person only",
+    marketWizardDescriptionPlaceholderWithArea: (area: string) =>
+      `Describe what you're listing near ${area}. Restricted items may not align. Write clearly for a trustworthy trade.`,
+    marketWizardReviewDescriptionLabel: "Description",
     marketWizardRecognizeTitleSeeking: "Here's what we understood",
     marketWizardRecognizeTitleListing: "Here's what we understood",
     marketWizardRecognizeBody: "We prefilled from your text. Review each step.",
@@ -352,6 +361,9 @@ export const copyEn: Copy = {
     marketWizardPriorityCompleteHint: "Core slots are filled. You can continue.",
     marketWizardProductNameLabel: "Product",
     marketWizardProductNamePlaceholder: "iPhone 15 Pro",
+    marketWizardPriceLabel: "Price",
+    marketWizardPricePlaceholder: "800000",
+    marketWizardPriceSuffix: "KRW",
     marketWizardProductNameHint:
       "Use the exact model name. @used alone is not enough to align.",
     marketWizardRoleTitle: "Which way?",
@@ -371,6 +383,7 @@ export const copyEn: Copy = {
     marketAlignInboxOpenCta: "Inbox",
     marketWizardValidationProductDetail:
       "Enter an exact product name · e.g. iPhone 15 Pro",
+    marketWizardValidationPrice: "Enter the price in numbers only",
     marketWizardProductNoteLabel: "Notes",
     marketWizardProductNotePlaceholderSeeking: "e.g. battery 85%+, no case scratches",
     marketWizardProductNotePlaceholderListing: "e.g. case and charger included",

@@ -9,9 +9,9 @@ import { OpportunityDetailPanel } from "@/components/field/opportunity-detail-pa
 import { OpportunityOwnershipSectionLabel } from "@/components/field/opportunity-ownership-section-label";
 import { OpportunityPillBar } from "@/components/field/opportunity-pill-bar";
 import {
-  OpportunityCardShimmer,
-  OpportunityCardSlot,
-} from "@/components/field/opportunity-card-slot";
+  OpportunityRowItem,
+  OpportunityRowShimmer,
+} from "@/components/field/opportunity-row-item";
 import { useCopy } from "@/hooks/use-copy";
 import { useOpportunityDashboard } from "@/hooks/use-opportunity-dashboard";
 import {
@@ -190,7 +190,7 @@ export function OpportunityDashboardSheet({
 
                 <div className="min-h-0 flex-1 overflow-y-auto bg-[#f8f9fb]/40">
                   {loading ? (
-                    <OpportunityCardShimmer />
+                    <OpportunityRowShimmer />
                   ) : pills.length === 0 ? (
                     <EmptyBlock
                       title={field.emptySeekingTitle}
@@ -209,33 +209,28 @@ export function OpportunityDashboardSheet({
                         tone="neighbor"
                         className="bg-white"
                       />
-                      <div className="bg-white pt-0">
-                    <AnimatePresence mode="wait" initial={false}>
-                      <motion.div
-                        key={selectedContextId ?? "none"}
-                        initial={{ opacity: 0, x: 10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -10 }}
-                        transition={{ duration: 0.22, ease: "easeOut" }}
-                      >
-                        <AnimatePresence mode="popLayout" initial={false}>
-                          {rows.map((row) => (
-                            <OpportunityCardSlot
-                              key={row.listingId}
-                              row={row}
-                              scoreAria={field.rowScoreAria}
-                              neighborBadge={field.neighborListingBadge}
-                              storyTitle={field.cardStoryTitle}
-                              storyEmpty={field.cardStoryEmpty}
-                              swipeHint={field.cardFilmSwipeHint}
-                              chatCta={field.tradeCta}
-                              onChat={() => setDetailRow(row)}
-                            />
-                          ))}
-                        </AnimatePresence>
-                      </motion.div>
-                    </AnimatePresence>
-                      </div>
+                      <AnimatePresence mode="wait" initial={false}>
+                        <motion.ul
+                          key={selectedContextId ?? "none"}
+                          className="bg-white pt-0"
+                          initial={{ opacity: 0, x: 10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -10 }}
+                          transition={{ duration: 0.22, ease: "easeOut" }}
+                        >
+                          <AnimatePresence mode="popLayout" initial={false}>
+                            {rows.map((row) => (
+                              <OpportunityRowItem
+                                key={row.listingId}
+                                row={row}
+                                scoreAria={field.rowScoreAria}
+                                previewFallback={field.tradeCta}
+                                onPress={() => setDetailRow(row)}
+                              />
+                            ))}
+                          </AnimatePresence>
+                        </motion.ul>
+                      </AnimatePresence>
                     </>
                   )}
                 </div>

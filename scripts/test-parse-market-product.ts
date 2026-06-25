@@ -26,6 +26,7 @@ function main() {
     "photos",
     "recognize",
     "priority",
+    "description",
     "place",
     "review",
   ]);

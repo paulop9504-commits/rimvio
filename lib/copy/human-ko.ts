@@ -342,7 +342,16 @@ export const copy = {
     marketWizardStepCondition: "상태",
     marketWizardStepPrice: "가격",
     marketWizardStepPlace: "장소·반경",
+    marketWizardStepDescription: "자세한 설명",
     marketWizardStepReview: "확인",
+    marketWizardDescriptionTitle: "자세한 설명",
+    marketWizardDescriptionBody:
+      "구매자가 볼 내용을 적어 주세요. 상태·구성·거래 방식까지 자세할수록 맞는 사람이 찾기 쉬워요.",
+    marketWizardDescriptionPlaceholder:
+      "예: 케이스·충전기 포함, 배터리 87%, 직거래만 가능해요.",
+    marketWizardDescriptionPlaceholderWithArea: (area: string) =>
+      `${area} 근처에서 내놓을 내용을 적어 주세요. 제한 품목은 맞춤이 어려울 수 있어요. 신뢰할 수 있는 거래를 위해 자세히 적어 주세요.`,
+    marketWizardReviewDescriptionLabel: "자세한 설명",
     marketWizardRecognizeTitleSeeking: "이렇게 이해했어요",
     marketWizardRecognizeTitleListing: "이렇게 이해했어요",
     marketWizardRecognizeBody:
@@ -362,6 +371,9 @@ export const copy = {
     marketWizardPriorityCompleteHint: "핵심 조건은 이미 채워졌어요. 다음으로 넘어가도 돼요.",
     marketWizardProductNameLabel: "제품명",
     marketWizardProductNamePlaceholder: "아이폰 15 프로",
+    marketWizardPriceLabel: "가격",
+    marketWizardPricePlaceholder: "800000",
+    marketWizardPriceSuffix: "원",
     marketWizardProductNameHint:
       "정확한 모델명을 적어 주세요. @중고만 적히면 맞춤이 어려워요.",
     marketWizardRoleTitle: "어떤 맞춤인가요?",
@@ -382,6 +394,7 @@ export const copy = {
     marketWizardValidationProduct: "제품명을 적어 주세요",
     marketWizardValidationProductDetail:
       "정확한 제품명을 적어 주세요 · 예: 아이폰 15 프로",
+    marketWizardValidationPrice: "가격을 숫자로 적어 주세요",
     marketWizardProductNoteLabel: "추가 메모",
     marketWizardProductNotePlaceholderSeeking: "예: 배터리 85% 이상, 케이스 흠 없음",
     marketWizardProductNotePlaceholderListing: "예: 케이스·충전기 포함, 박스 있음",

@@ -80,6 +80,71 @@ export type GlobeMarketIntentWizardSheetProps = {
 const MEET_OPTIONS: readonly MarketMeetPreferenceId[] = ["nearby", "flexible", "pickup_only"];
 const RADIUS_OPTIONS = [3, 5, 10] as const;
 
+function formatFixedPriceKrw(krw: number | null | undefined): string {
+  if (krw == null || krw <= 0) {
+    return "";
+  }
+  return String(Math.round(krw));
+}
+
+function patchDraftFixedPriceKrw(
+  draft: MarketIntentDraft,
+  digits: string,
+): MarketIntentDraft {
+  const parsed = digits ? Number.parseInt(digits, 10) : Number.NaN;
+  const price =
+    Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : null;
+  return {
+    ...draft,
+    priceMinKrw: price,
+    priceMaxKrw: price,
+    detail: {
+      ...draft.detail,
+      priceNegotiable: false,
+      prioritySlots: {
+        ...draft.detail.prioritySlots,
+        price,
+      },
+    },
+  };
+}
+
+function WonPriceField({
+  value,
+  onChange,
+  label,
+  placeholder,
+  suffix,
+}: {
+  value: string;
+  onChange: (digits: string) => void;
+  label: string;
+  placeholder: string;
+  suffix: string;
+}) {
+  return (
+    <label className="block">
+      <span className={cn(RIMVIO_TYPE.caption, "mb-1 block")}>{label}</span>
+      <div className="relative">
+        <input
+          inputMode="numeric"
+          className={cn(rimvioComposerFieldClass, "w-full py-2.5 pl-3 pr-[2.75rem] text-[15px]")}
+          value={value}
+          onChange={(event) => onChange(event.target.value.replace(/\D/g, ""))}
+          placeholder={placeholder}
+          autoComplete="off"
+        />
+        <span
+          className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[14px] font-medium text-muted-foreground"
+          aria-hidden
+        >
+          {suffix}
+        </span>
+      </div>
+    </label>
+  );
+}
+
 function Chip({
   active,
   onClick,
@@ -115,6 +180,8 @@ function stepLabel(step: MarketWizardStepId): string {
       return copy.globe.marketWizardStepPriority;
     case "photos":
       return copy.globe.marketWizardStepPhotos;
+    case "description":
+      return copy.globe.marketWizardStepDescription;
     case "place":
       return copy.globe.marketWizardStepPlace;
     case "review":
@@ -332,6 +399,13 @@ export function GlobeMarketIntentWizardSheet({
       if (!isValidMarketProductName(name)) {
         toast.message(copy.globe.marketWizardValidationProductDetail);
         return false;
+      }
+      if (working.role === "listing") {
+        const priceKrw = working.priceMinKrw ?? working.priceMaxKrw;
+        if (priceKrw == null || priceKrw <= 0) {
+          toast.message(copy.globe.marketWizardValidationPrice);
+          return false;
+        }
       }
       return true;
     }
@@ -589,28 +663,43 @@ export function GlobeMarketIntentWizardSheet({
                       </Chip>
                     ))}
                   </div>
-                  <label className="mt-4 block">
-                    <span className={cn(RIMVIO_TYPE.caption, "mb-1 block")}>
-                      {copy.globe.marketWizardProductNameLabel}
-                    </span>
-                    <input
-                      className={cn(rimvioComposerFieldClass, "w-full px-3 py-2.5 text-[15px]")}
-                      value={working.detail.productName}
-                      onChange={(event) =>
-                        setWorking({
-                          ...working,
-                          title: event.target.value,
-                          detail: {
-                            ...working.detail,
-                            productName: event.target.value,
-                          },
-                        })
+                  <div className="mt-4 grid grid-cols-[minmax(0,1fr)_7.5rem] gap-2.5 sm:grid-cols-[minmax(0,1fr)_8.5rem]">
+                    <label className="block min-w-0">
+                      <span className={cn(RIMVIO_TYPE.caption, "mb-1 block")}>
+                        {copy.globe.marketWizardProductNameLabel}
+                      </span>
+                      <input
+                        className={cn(rimvioComposerFieldClass, "w-full px-3 py-2.5 text-[15px]")}
+                        value={working.detail.productName}
+                        onChange={(event) =>
+                          setWorking({
+                            ...working,
+                            title: event.target.value,
+                            detail: {
+                              ...working.detail,
+                              productName: event.target.value,
+                            },
+                          })
+                        }
+                        placeholder={copy.globe.marketWizardProductNamePlaceholder}
+                        autoComplete="off"
+                        spellCheck={false}
+                      />
+                    </label>
+                    <WonPriceField
+                      label={copy.globe.marketWizardPriceLabel}
+                      placeholder={copy.globe.marketWizardPricePlaceholder}
+                      suffix={copy.globe.marketWizardPriceSuffix}
+                      value={formatFixedPriceKrw(
+                        working.priceMinKrw ?? working.priceMaxKrw,
+                      )}
+                      onChange={(digits) =>
+                        setWorking((prev) =>
+                          prev ? patchDraftFixedPriceKrw(prev, digits) : prev,
+                        )
                       }
-                      placeholder={copy.globe.marketWizardProductNamePlaceholder}
-                      autoComplete="off"
-                      spellCheck={false}
                     />
-                  </label>
+                  </div>
                 </div>
               ) : null}
 
@@ -621,6 +710,46 @@ export function GlobeMarketIntentWizardSheet({
                     setWorking((prev) => (prev ? updater(prev) : prev))
                   }
                 />
+              ) : null}
+
+              {step === "description" && !isSeeking ? (
+                <div className="space-y-3">
+                  <p className={cn(RIMVIO_TYPE.headline, "text-lg")}>
+                    {copy.globe.marketWizardDescriptionTitle}
+                  </p>
+                  <p className={cn(RIMVIO_TYPE.caption)}>
+                    {copy.globe.marketWizardDescriptionBody}
+                  </p>
+                  <label className="block">
+                    <span className="sr-only">{copy.globe.marketWizardDescriptionTitle}</span>
+                    <textarea
+                      className={cn(
+                        rimvioComposerFieldClass,
+                        "min-h-[12.5rem] w-full resize-y px-3 py-3 text-[15px] leading-relaxed",
+                      )}
+                      value={working.detail.detailNote}
+                      onChange={(event) =>
+                        setWorking({
+                          ...working,
+                          detail: {
+                            ...working.detail,
+                            detailNote: event.target.value,
+                          },
+                        })
+                      }
+                      placeholder={
+                        working.placeLabel.trim()
+                          ? copy.globe.marketWizardDescriptionPlaceholderWithArea(
+                              working.placeLabel.trim(),
+                            )
+                          : copy.globe.marketWizardDescriptionPlaceholder
+                      }
+                      rows={8}
+                      autoComplete="off"
+                      spellCheck
+                    />
+                  </label>
+                </div>
               ) : null}
 
               {step === "photos" && !isSeeking ? (
@@ -750,6 +879,16 @@ export function GlobeMarketIntentWizardSheet({
                       <dt className="text-muted-foreground">{copy.globe.marketIntentFieldPrice}</dt>
                       <dd className="font-semibold">{formatPriceRange(working)}</dd>
                     </div>
+                    {!isSeeking && working.detail.detailNote.trim() ? (
+                      <div className="border-t border-black/[0.06] pt-2">
+                        <dt className="text-muted-foreground">
+                          {copy.globe.marketWizardReviewDescriptionLabel}
+                        </dt>
+                        <dd className="mt-1 whitespace-pre-wrap font-medium leading-snug">
+                          {working.detail.detailNote.trim()}
+                        </dd>
+                      </div>
+                    ) : null}
                     {!isSeeking && working.placeLabel ? (
                       <div className="flex justify-between gap-3">
                         <dt className="text-muted-foreground">{copy.globe.marketTradePlaceCurrentLabel}</dt>
