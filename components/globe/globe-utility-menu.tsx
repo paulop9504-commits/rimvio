@@ -2,7 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ImagePlus, Inbox, ListChecks, MessageCircle, MoreHorizontal, Settings } from "lucide-react";
+import {
+  ImagePlus,
+  Inbox,
+  ListChecks,
+  MessageCircle,
+  MoreHorizontal,
+  Settings,
+  Sparkles,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCopy } from "@/hooks/use-copy";
 import { cn } from "@/lib/utils";
@@ -11,9 +19,12 @@ export type GlobeUtilityMenuProps = {
   mediaPoolCount: number;
   inboxCount: number;
   marketManageCount?: number;
+  fieldMatchCount?: number;
+  showFieldEntry?: boolean;
   onOpenMediaPool: () => void;
   onOpenInbox: () => void;
   onOpenMarketManage?: () => void;
+  onOpenField?: () => void;
   onOpenSettings: () => void;
   className?: string;
 };
@@ -30,9 +41,12 @@ export function GlobeUtilityMenu({
   mediaPoolCount,
   inboxCount,
   marketManageCount = 0,
+  fieldMatchCount = 0,
+  showFieldEntry = false,
   onOpenMediaPool,
   onOpenInbox,
   onOpenMarketManage,
+  onOpenField,
   onOpenSettings,
   className,
 }: GlobeUtilityMenuProps) {
@@ -82,6 +96,20 @@ export function GlobeUtilityMenu({
             onPress: () => {
               setOpen(false);
               onOpenMarketManage();
+            },
+          },
+        ]
+      : []),
+    ...(showFieldEntry && onOpenField
+      ? [
+          {
+            id: "field" as const,
+            icon: Sparkles,
+            label: copy.globe.utilityMenuField,
+            badge: formatBadgeCount(fieldMatchCount),
+            onPress: () => {
+              setOpen(false);
+              onOpenField();
             },
           },
         ]

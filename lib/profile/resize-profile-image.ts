@@ -11,6 +11,51 @@ export function isAllowedProfileImageType(type: string): boolean {
   return ALLOWED_TYPES.has(type);
 }
 
+/** Wide cover crop — 3:1 center, max width 1200px. */
+export async function resizeCoverImageFile(file: File): Promise<Blob> {
+  if (!isAllowedProfileImageType(file.type)) {
+    throw new Error("JPEG, PNG, WebP만 올릴 수 있어요.");
+  }
+  if (file.size > 8 * 1024 * 1024) {
+    throw new Error("8MB 이하 사진만 올릴 수 있어요.");
+  }
+
+  const bitmap = await createImageBitmap(file);
+  try {
+    const targetRatio = 3;
+    let cropW = bitmap.width;
+    let cropH = Math.round(cropW / targetRatio);
+    if (cropH > bitmap.height) {
+      cropH = bitmap.height;
+      cropW = Math.round(cropH * targetRatio);
+    }
+    const sx = Math.floor((bitmap.width - cropW) / 2);
+    const sy = Math.floor((bitmap.height - cropH) / 2);
+    const outW = Math.min(cropW, 1200);
+    const outH = Math.round(outW / targetRatio);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = outW;
+    canvas.height = outH;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      throw new Error("이미지 처리에 실패했어요.");
+    }
+    ctx.drawImage(bitmap, sx, sy, cropW, cropH, 0, 0, outW, outH);
+
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (b) => (b ? resolve(b) : reject(new Error("이미지 변환에 실패했어요."))),
+        "image/jpeg",
+        JPEG_QUALITY,
+      );
+    });
+    return blob;
+  } finally {
+    bitmap.close();
+  }
+}
+
 /** Square-crop center and export JPEG for upload. */
 export async function resizeProfileImageFile(file: File): Promise<Blob> {
   if (!isAllowedProfileImageType(file.type)) {

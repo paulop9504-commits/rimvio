@@ -71,7 +71,7 @@ export function PeerContactSyncButton({
       ) {
         toast.error("이 기기·브라우저는 연락처 불러오기를 지원하지 않아요", {
           description:
-            "Android Chrome에서 시도하거나, ID·번호로 직접 추가해 주세요",
+            "Android Chrome에서 시도하거나, QR·번호로 추가해 주세요",
         });
         return;
       }

@@ -8,14 +8,19 @@ import { applyDateOverrideToPhotoDraft } from "@/lib/globe/apply-date-override-t
 import { applyPlaceOverrideToPhotoDraft } from "@/lib/globe/apply-place-override-to-photo-draft";
 import { sealPhotoDraftForCommit } from "@/lib/globe/seal-photo-draft-for-commit";
 import { commitGlobePhotoIngestDraft } from "@/lib/globe/commit-globe-photo-ingest-draft";
+import { draftHasExplicitGps } from "@/lib/globe/draft-has-explicit-gps";
 import { geocodeAndSyncGlobeContextPlace } from "@/lib/globe/geocode-and-sync-globe-context-place";
+import { isCoordsPlaceLabel } from "@/lib/globe/is-coords-place-label";
 import type { GlobePhotoIngestDraft } from "@/lib/globe/prepare-globe-photo-ingest-draft";
 import {
   parsePhotoDateInputValue,
   resolveGlobePhotoDateHint,
 } from "@/lib/globe/resolve-globe-photo-date-hint";
 import { resolveGlobePhotoPlaceBranch } from "@/lib/globe/resolve-globe-photo-place-branch";
-import { sampleEphemeralGpsPlace } from "@/lib/globe/sample-ephemeral-gps-place";
+import {
+  sampleEphemeralGpsPlaceDetailed,
+} from "@/lib/globe/sample-ephemeral-gps-place";
+import { syncPersonalGlobePinFromEvent } from "@/lib/globe/sync-personal-globe-pin";
 import { stageGlobeMediaFilesToPool } from "@/lib/globe/stage-globe-media-to-pool";
 import { normalizePlaceLabel } from "@/lib/globe/normalize-place-label";
 import {
@@ -29,7 +34,10 @@ import {
 import { copy } from "@/lib/copy/human-ko";
 import { resolveRimvioHonorific } from "@/lib/copy/rimvio-honorific";
 import { useAuth } from "@/hooks/use-auth";
-import { cn } from "@/lib/utils";
+import { GlobeContextSendRail } from "@/components/globe/globe-context-send-rail";
+import { formatPinDateLabel } from "@/lib/globe/format-pin-date-label";
+import { resolveGlobeContextPlaceLabel } from "@/lib/globe/globe-context-card-coords";
+import { findLifeEventCandidate } from "@/lib/life-read-model";
 
 export type GlobePhotoPlaceWalkthroughProps = {
   visible: boolean;
@@ -61,7 +69,8 @@ type WalkthroughStep =
   | "place_method"
   | "manual_input"
   | "district_pick"
-  | "gps_confirm";
+  | "gps_confirm"
+  | "share_people";
 
 function resolveProgress(
   step: WalkthroughStep,
@@ -157,10 +166,15 @@ export function GlobePhotoPlaceWalkthrough({
   onCommitProgress,
   onConfirmed,
 }: GlobePhotoPlaceWalkthroughProps) {
-  const { user } = useAuth();
+  const { user, configured } = useAuth();
   const honorific = resolveRimvioHonorific(user);
   const [step, setStep] = useState<WalkthroughStep>("analyzing");
   const [busy, setBusy] = useState(false);
+  const [committedShare, setCommittedShare] = useState<{
+    eventId: string;
+    toastLine: string;
+    needsPlaceVerify: boolean;
+  } | null>(null);
   const [workingDraft, setWorkingDraft] = useState<GlobePhotoIngestDraft | null>(null);
   const [dateInput, setDateInput] = useState("");
   const [manualPlace, setManualPlace] = useState("");
@@ -188,6 +202,50 @@ export function GlobePhotoPlaceWalkthrough({
     timeHint && timeHint !== "날짜 미확인" && dateHint?.capturedAtIso,
   );
 
+  const shareEvent = useMemo(() => {
+    const eventId = committedShare?.eventId?.trim();
+    if (!eventId) {
+      return null;
+    }
+    return findLifeEventCandidate(eventId);
+  }, [committedShare?.eventId]);
+
+  const finalizeAfterShare = useCallback(() => {
+    if (!committedShare) {
+      onDismiss();
+      return;
+    }
+    onConfirmed?.({
+      eventId: committedShare.eventId,
+      toastLine: committedShare.toastLine,
+      needsPlaceVerify: committedShare.needsPlaceVerify,
+      ok: true,
+    });
+    onDismiss();
+  }, [committedShare, onConfirmed, onDismiss]);
+
+  const goToSharePeopleStep = useCallback(
+    (summary: {
+      eventId: string;
+      toastLine: string;
+      needsPlaceVerify: boolean;
+    }) => {
+      if (!configured || !user?.id) {
+        onConfirmed?.({
+          eventId: summary.eventId,
+          toastLine: summary.toastLine,
+          needsPlaceVerify: summary.needsPlaceVerify,
+          ok: true,
+        });
+        onDismiss();
+        return;
+      }
+      setCommittedShare(summary);
+      setStep("share_people");
+    },
+    [configured, onConfirmed, onDismiss, user?.id],
+  );
+
   const goToPlaceStep = useCallback(() => {
     const nextBranch = workingDraft
       ? resolveGlobePhotoPlaceBranch(workingDraft)
@@ -204,6 +262,7 @@ export function GlobePhotoPlaceWalkthrough({
       setDistrictCandidates([]);
       setGpsLabel(null);
       setGpsCoords(null);
+      setCommittedShare(null);
       return;
     }
     if (preparing) {
@@ -248,26 +307,38 @@ export function GlobePhotoPlaceWalkthrough({
       const place =
         nextDraft.candidates[0]?.placeLabel?.trim() ||
         nextDraft.clusters[0]?.placeLabel?.trim();
-      if (place) {
-        const geocoded = await geocodeAndSyncGlobeContextPlace({
-          eventId: summary.lastEventId,
-          placeLabel: place,
-          title: nextDraft.candidates[0]?.title,
-          userLat: nextDraft.clusters[0]?.anchor.lat,
-          userLng: nextDraft.clusters[0]?.anchor.lng,
-          force: true,
-        });
-        needsPlaceVerify = geocoded.needsPlaceVerify;
+      const explicitGps = draftHasExplicitGps(nextDraft);
+
+      if (explicitGps) {
+        syncPersonalGlobePinFromEvent(summary.lastEventId);
+        needsPlaceVerify = isCoordsPlaceLabel(place);
+      } else if (place) {
+        try {
+          const geocoded = await Promise.race([
+            geocodeAndSyncGlobeContextPlace({
+              eventId: summary.lastEventId,
+              placeLabel: place,
+              title: nextDraft.candidates[0]?.title,
+              userLat: nextDraft.clusters[0]?.anchor.lat,
+              userLng: nextDraft.clusters[0]?.anchor.lng,
+              force: false,
+            }),
+            new Promise<null>((resolve) => {
+              window.setTimeout(() => resolve(null), 18_000);
+            }),
+          ]);
+          needsPlaceVerify = geocoded?.needsPlaceVerify === true;
+        } catch {
+          // Pin commit succeeded — geocode is best-effort before fly-to.
+        }
       }
-      onConfirmed?.({
+      goToSharePeopleStep({
         eventId: summary.lastEventId,
         toastLine: summary.toastLine,
         needsPlaceVerify,
-        ok: true,
       });
-      onDismiss();
     },
-    [attachTarget, onCommitProgress, onConfirmed, onDismiss],
+    [attachTarget, goToSharePeopleStep, onCommitProgress, onConfirmed, onDismiss],
   );
 
   const handleCaseAConfirm = useCallback(async () => {
@@ -277,6 +348,12 @@ export function GlobePhotoPlaceWalkthrough({
     setBusy(true);
     try {
       await finishCommit(sealPhotoDraftForCommit(workingDraft, branch));
+    } catch (caught) {
+      const message =
+        caught instanceof Error && caught.message.trim()
+          ? caught.message.trim()
+          : copy.globe.photoWalkthroughCommitFail;
+      toast.error(message);
     } finally {
       setBusy(false);
     }
@@ -311,6 +388,12 @@ export function GlobePhotoPlaceWalkthrough({
           placeLabel: normalized,
         });
         await finishCommit(patched);
+      } catch (caught) {
+        const message =
+          caught instanceof Error && caught.message.trim()
+            ? caught.message.trim()
+            : copy.globe.photoWalkthroughCommitFail;
+        toast.error(message);
       } finally {
         setBusy(false);
       }
@@ -346,15 +429,25 @@ export function GlobePhotoPlaceWalkthrough({
     if (busy) {
       return;
     }
+    if (typeof window !== "undefined" && !window.isSecureContext) {
+      toast.error(copy.globe.photoPlaceGpsSecureContext);
+      return;
+    }
     setBusy(true);
     try {
-      const sample = await sampleEphemeralGpsPlace();
-      if (!sample) {
-        toast.error(copy.globe.photoPlaceGpsFail);
+      const result = await sampleEphemeralGpsPlaceDetailed();
+      if (!result.ok) {
+        const message =
+          result.reason === "denied"
+            ? copy.globe.photoPlaceGpsDenied
+            : result.reason === "timeout"
+              ? copy.globe.photoPlaceGpsTimeout
+              : copy.globe.photoPlaceGpsFail;
+        toast.error(message);
         return;
       }
-      setGpsLabel(sample.placeLabel);
-      setGpsCoords({ lat: sample.lat, lng: sample.lng });
+      setGpsLabel(result.sample.placeLabel);
+      setGpsCoords({ lat: result.sample.lat, lng: result.sample.lng });
       setStep("gps_confirm");
     } finally {
       setBusy(false);
@@ -374,6 +467,12 @@ export function GlobePhotoPlaceWalkthrough({
         lng: gpsCoords.lng,
       });
       await finishCommit(patched);
+    } catch (caught) {
+      const message =
+        caught instanceof Error && caught.message.trim()
+          ? caught.message.trim()
+          : copy.globe.photoWalkthroughCommitFail;
+      toast.error(message);
     } finally {
       setBusy(false);
     }
@@ -421,7 +520,9 @@ export function GlobePhotoPlaceWalkthrough({
         role="dialog"
         aria-live="polite"
       >
-        <ProgressBar index={progress.index} total={progress.total} />
+        {step !== "share_people" ? (
+          <ProgressBar index={progress.index} total={progress.total} />
+        ) : null}
 
         <div className="mb-4 flex items-start justify-between gap-2">
           <AnimatePresence mode="wait">
@@ -523,6 +624,15 @@ export function GlobePhotoPlaceWalkthrough({
                   </p>
                   <p className="mt-1.5 text-[14px] leading-relaxed text-muted-foreground">
                     {copy.globe.photoPlaceGpsBody}
+                  </p>
+                </>
+              ) : step === "share_people" ? (
+                <>
+                  <p className="text-[20px] font-bold leading-snug tracking-tight text-foreground">
+                    {copy.globe.photoWalkthroughShareTitle}
+                  </p>
+                  <p className="mt-1.5 text-[14px] leading-relaxed text-muted-foreground">
+                    {copy.globe.photoWalkthroughShareSub}
                   </p>
                 </>
               ) : null}
@@ -728,6 +838,28 @@ export function GlobePhotoPlaceWalkthrough({
                   className={cn(rimvioGhostCtaClass(), "w-full")}
                 >
                   {copy.globe.photoPlaceBack}
+                </button>
+              </>
+            ) : null}
+
+            {step === "share_people" && shareEvent ? (
+              <>
+                <GlobeContextSendRail
+                  event={shareEvent}
+                  delivery={{
+                    title: shareEvent.title.trim() || "경험",
+                    date: formatPinDateLabel(shareEvent.datetime),
+                    place: resolveGlobeContextPlaceLabel(shareEvent),
+                  }}
+                  onSent={finalizeAfterShare}
+                />
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={finalizeAfterShare}
+                  className={cn(rimvioGhostCtaClass(), "w-full")}
+                >
+                  {copy.globe.photoWalkthroughShareSkip}
                 </button>
               </>
             ) : null}

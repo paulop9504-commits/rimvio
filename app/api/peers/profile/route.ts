@@ -2,7 +2,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import { requireAuthUser } from "@/lib/auth/api-auth";
 import { normalizePhoneE164 } from "@/lib/peer-chat/phone";
 import { validateRimvioId } from "@/lib/peer-chat/rimvio-id";
+import { normalizeProfileCoverTheme } from "@/lib/profile/profile-cover-themes";
 import { removeUserProfileAvatar } from "@/lib/peer-chat/profile-avatar-server";
+import { removeUserProfileCover } from "@/lib/peer-chat/profile-cover-server";
 import {
   patchUserProfile,
   readUserProfile,
@@ -43,6 +45,9 @@ export async function GET() {
       rimvioId: profile?.rimvio_id ?? null,
       displayName: profile?.display_name ?? null,
       avatarUrl: profile?.avatar_url ?? null,
+      statusMessage: profile?.status_message ?? null,
+      coverUrl: profile?.cover_url ?? null,
+      coverTheme: profile?.cover_theme ?? "default",
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to read profile.";
@@ -75,6 +80,10 @@ export async function PATCH(request: NextRequest) {
       rimvioId?: string;
       clearPhone?: boolean;
       clearAvatar?: boolean;
+      statusMessage?: string;
+      clearStatusMessage?: boolean;
+      coverTheme?: string;
+      clearCover?: boolean;
     };
 
     const patch: {
@@ -82,6 +91,9 @@ export async function PATCH(request: NextRequest) {
       phoneE164?: string | null;
       rimvioId?: string;
       avatarUrl?: string | null;
+      statusMessage?: string | null;
+      coverUrl?: string | null;
+      coverTheme?: string;
     } = {};
 
     if (body.displayName !== undefined) {
@@ -116,6 +128,29 @@ export async function PATCH(request: NextRequest) {
       patch.rimvioId = parsed.id;
     }
 
+    if (body.clearStatusMessage) {
+      patch.statusMessage = null;
+    } else if (body.statusMessage !== undefined) {
+      const trimmed = body.statusMessage.trim();
+      if (trimmed.length > 60) {
+        return NextResponse.json(
+          { error: "상태 메시지는 60자까지 입력할 수 있어요." },
+          { status: 400 },
+        );
+      }
+      patch.statusMessage = trimmed || null;
+    }
+
+    if (body.coverTheme !== undefined) {
+      patch.coverTheme = normalizeProfileCoverTheme(body.coverTheme);
+    }
+
+    if (body.clearCover) {
+      const supabase = await createClient();
+      await removeUserProfileCover(supabase, userId);
+      patch.coverUrl = null;
+    }
+
     if (body.clearAvatar) {
       const supabase = await createClient();
       await removeUserProfileAvatar(supabase, userId);
@@ -127,13 +162,19 @@ export async function PATCH(request: NextRequest) {
         rimvioId: profile?.rimvio_id ?? null,
         displayName: profile?.display_name ?? null,
         avatarUrl: null,
+        statusMessage: profile?.status_message ?? null,
+        coverUrl: profile?.cover_url ?? null,
+        coverTheme: profile?.cover_theme ?? "default",
       });
     }
 
     if (
       patch.displayName === undefined &&
       patch.phoneE164 === undefined &&
-      patch.rimvioId === undefined
+      patch.rimvioId === undefined &&
+      patch.statusMessage === undefined &&
+      patch.coverTheme === undefined &&
+      patch.coverUrl === undefined
     ) {
       return NextResponse.json({ error: "변경할 항목이 없습니다." }, { status: 400 });
     }
@@ -161,6 +202,9 @@ export async function PATCH(request: NextRequest) {
       rimvioId: profile?.rimvio_id ?? null,
       displayName: profile?.display_name ?? null,
       avatarUrl: profile?.avatar_url ?? null,
+      statusMessage: profile?.status_message ?? null,
+      coverUrl: profile?.cover_url ?? null,
+      coverTheme: profile?.cover_theme ?? "default",
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to update profile.";

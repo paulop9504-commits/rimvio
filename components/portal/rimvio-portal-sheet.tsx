@@ -34,6 +34,7 @@ export type RimvioPortalSheetProps = {
   event: EventCandidate | null;
   composeText?: string;
   source?: PortalOpenSource;
+  initialIntentId?: PortalIntentId | null;
   liveLat?: number | null;
   liveLng?: number | null;
   onLaunchMarketProjection: (input: {
@@ -79,6 +80,7 @@ export function RimvioPortalSheet({
   event,
   composeText,
   source = "composer",
+  initialIntentId = null,
   liveLat = null,
   liveLng = null,
   onLaunchMarketProjection,
@@ -95,8 +97,13 @@ export function RimvioPortalSheet({
     if (!open) {
       setStep("intent");
       setIntentId(null);
+      return;
     }
-  }, [open]);
+    if (initialIntentId) {
+      setIntentId(initialIntentId);
+      setStep("category");
+    }
+  }, [initialIntentId, open]);
 
   useEffect(() => {
     if (!open) {

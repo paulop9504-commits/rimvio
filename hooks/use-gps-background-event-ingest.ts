@@ -7,6 +7,7 @@ import {
   listRecentGpsPings,
 } from "@/lib/location-ping/gps-ping-store";
 import { ingestGpsDwellClusters } from "@/lib/feed/ingest-gps-dwell-to-feed";
+import { runSilentPassiveLocationResolves } from "@/lib/globe/passive-context/run-silent-passive-location-resolves";
 
 const PROCESS_DEBOUNCE_MS = 2_500;
 
@@ -29,6 +30,7 @@ export function useGpsBackgroundEventIngest(enabled = true) {
         const pings = await listRecentGpsPings();
         const clusters = detectGpsDwellClusters(pings);
         ingestGpsDwellClusters(clusters);
+        runSilentPassiveLocationResolves({ gpsEnabled: true });
       } finally {
         processingRef.current = false;
       }

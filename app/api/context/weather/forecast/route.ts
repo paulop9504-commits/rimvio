@@ -1,8 +1,30 @@
 import { NextResponse } from "next/server";
 import { composeWeatherPrepLine } from "@/lib/plan-context/compose-weather-prep-line";
-import { fetchWeatherForecastAt } from "@/lib/context-resolver/weather/fetch-weather-forecast";
+import { resolveBridgeWeatherSnapshot } from "@/lib/globe/bridge-weather/resolve-bridge-weather-snapshot";
+import type { BridgeEventTimeSource } from "@/lib/globe/bridge-weather/bridge-weather-types";
 
 export const runtime = "nodejs";
+
+function readEventTimeSource(raw: string | null): BridgeEventTimeSource {
+  const value = raw?.trim();
+  if (
+    value === "photo_exif" ||
+    value === "event_start" ||
+    value === "visit_date" ||
+    value === "check_in_out" ||
+    value === "bridge_created"
+  ) {
+    return value;
+  }
+  return "event_start";
+}
+
+function toEventDate(date: Date): string {
+  const y = date.getFullYear();
+  const m = `${date.getMonth() + 1}`.padStart(2, "0");
+  const d = `${date.getDate()}`.padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -18,19 +40,26 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "invalid_at" }, { status: 400 });
   }
 
-  const forecast = await fetchWeatherForecastAt({ location, targetAt });
-  if (!forecast) {
-    return NextResponse.json({ prep_line: null, weather: null });
+  const snapshot = await resolveBridgeWeatherSnapshot({
+    location,
+    targetAt,
+    eventDate: searchParams.get("event_date")?.trim() || toEventDate(targetAt),
+    eventTimeSource: readEventTimeSource(searchParams.get("event_time_source")),
+  });
+
+  if (!snapshot) {
+    return NextResponse.json({ prep_line: null, weather: null, bridge_weather: null });
   }
 
   const prep_line = composeWeatherPrepLine({
-    weather: forecast,
+    weather: snapshot.weather,
     targetAt,
   });
 
   return NextResponse.json({
     prep_line,
-    weather: forecast,
-    target_at: forecast.target_at,
+    weather: snapshot.weather,
+    bridge_weather: snapshot.bridgeWeather,
+    target_at: snapshot.target_at,
   });
 }

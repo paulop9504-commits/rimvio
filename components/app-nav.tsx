@@ -2,6 +2,7 @@
 
 import {
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -9,10 +10,10 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
-import { Globe, Plus, Users } from "lucide-react";
+import { Globe, Plus, Sparkles, Users } from "lucide-react";
 import { CaptureSheet } from "@/components/globe/capture-sheet";
 import { useCopy } from "@/hooks/use-copy";
-import { rimvioNavBarClass } from "@/lib/brand/rimvio-neon-theme";
+import { subscribeOpenCaptureSheet } from "@/lib/nav/open-capture-sheet-bridge";
 import { GRID } from "@/lib/ui/responsive-grid";
 import { cn } from "@/lib/utils";
 
@@ -27,7 +28,7 @@ type NavTab = {
   action?: "capture";
   label: string;
   isActive: (pathname: string) => boolean;
-  icon: "globe" | "people" | "capture";
+  icon: "globe" | "field" | "people" | "capture";
 };
 
 function isGlobePath(pathname: string): boolean {
@@ -41,8 +42,9 @@ function isGlobePath(pathname: string): boolean {
 }
 
 const NAV_ICON_CLASS = "size-[22px] shrink-0 pointer-events-none";
-const NAV_ICON_STROKE = 2.25;
-const NAV_CAPTURE_ICON_CLASS = "size-5 shrink-0 pointer-events-none";
+const NAV_ICON_STROKE = 2;
+const NAV_ICON_STROKE_ACTIVE = 2.35;
+const NAV_CAPTURE_ICON_CLASS = "size-[22px] shrink-0 pointer-events-none";
 const NAV_ICON_SLOT =
   "rimvio-bottom-nav-slot pointer-events-none select-none";
 
@@ -57,35 +59,56 @@ function NavIconSlot({ children }: { children: ReactNode }) {
 function NavTabIcon({
   icon,
   active,
-  capture,
 }: {
   icon: NavTab["icon"];
   active: boolean;
-  capture?: boolean;
 }) {
-  const tone = capture
-    ? "text-primary-foreground"
-    : active
-      ? "text-primary"
-      : "text-muted-foreground";
-  const iconClass = capture ? NAV_CAPTURE_ICON_CLASS : NAV_ICON_CLASS;
+  const inactiveTone = "text-[#94a3b8]/75";
+  const stroke = active ? NAV_ICON_STROKE_ACTIVE : NAV_ICON_STROKE;
   switch (icon) {
     case "globe":
       return (
         <NavIconSlot>
-          <Globe className={cn(iconClass, tone)} strokeWidth={NAV_ICON_STROKE} />
+          <Globe
+            className={cn(
+              NAV_ICON_CLASS,
+              active ? "text-[#0284c7] fill-sky-200/55" : inactiveTone,
+            )}
+            strokeWidth={stroke}
+          />
+        </NavIconSlot>
+      );
+    case "field":
+      return (
+        <NavIconSlot>
+          <Sparkles
+            className={cn(
+              NAV_ICON_CLASS,
+              active ? "text-[#3182f6] fill-sky-100/70" : inactiveTone,
+            )}
+            strokeWidth={stroke}
+          />
         </NavIconSlot>
       );
     case "people":
       return (
         <NavIconSlot>
-          <Users className={cn(iconClass, tone)} strokeWidth={NAV_ICON_STROKE} />
+          <Users
+            className={cn(
+              NAV_ICON_CLASS,
+              active ? "text-[#7c3aed] fill-violet-200/50" : inactiveTone,
+            )}
+            strokeWidth={stroke}
+          />
         </NavIconSlot>
       );
     case "capture":
       return (
         <NavIconSlot>
-          <Plus className={cn(iconClass, tone)} strokeWidth={NAV_ICON_STROKE} />
+          <Plus
+            className={cn(NAV_CAPTURE_ICON_CLASS, "text-[#f472b6]/85")}
+            strokeWidth={stroke}
+          />
         </NavIconSlot>
       );
   }
@@ -97,12 +120,14 @@ function NavTabButton({
   onNavigate,
   onCapture,
   className,
+  showLabel = false,
 }: {
   tab: NavTab;
   active: boolean;
   onNavigate: (href: string) => void;
   onCapture: () => void;
   className?: string;
+  showLabel?: boolean;
 }) {
   const activate = () => {
     if (tab.action === "capture") {
@@ -141,17 +166,30 @@ function NavTabButton({
         activate();
       }}
       className={cn(
-        "rimvio-bottom-nav-tab relative z-10 flex h-full w-full min-h-11 min-w-11 items-center justify-center border-0 bg-transparent p-0 transition-opacity active:opacity-70 touch-manipulation",
-        isCapture && "rimvio-bottom-nav-tab--capture",
+        "rimvio-bottom-nav-tab relative z-10 flex shrink-0 flex-col items-center justify-center gap-0.5 border-0 bg-transparent p-0 transition-transform active:scale-95 touch-manipulation",
+        showLabel ? "h-auto min-h-11 w-[3.75rem] py-0.5" : "h-11 w-11",
+        tab.action === "capture" && "active:[&_.rimvio-bottom-nav-icon-pill]:bg-rose-100/70",
         className,
       )}
     >
-      <span className="rimvio-bottom-nav-tab-inner pointer-events-none">
-        <NavTabIcon icon={tab.icon} active={active} capture={isCapture} />
-        {!isCapture ? (
-          <span className="rimvio-bottom-nav-label">{tab.label}</span>
-        ) : null}
+      <span
+        className={cn(
+          "rimvio-bottom-nav-icon-pill pointer-events-none",
+          active && !isCapture && "rimvio-bottom-nav-icon-pill--active",
+        )}
+      >
+        <NavTabIcon icon={tab.icon} active={active} />
       </span>
+      {showLabel ? (
+        <span
+          className={cn(
+            "pointer-events-none max-w-full truncate text-[10px] font-semibold leading-none",
+            active && !isCapture ? "text-[#191f28]" : "text-[#8b95a1]",
+          )}
+        >
+          {tab.label}
+        </span>
+      ) : null}
     </button>
   );
 }
@@ -176,6 +214,7 @@ function MobileNavLinks({
           active={tab.isActive(pathname)}
           onNavigate={onNavigate}
           onCapture={onCapture}
+          showLabel
         />
       ))}
     </>
@@ -249,17 +288,14 @@ function BottomNavGrid({
   onCapture: () => void;
 }) {
   return (
-    <>
-      <div className="rimvio-bottom-nav-safe" aria-hidden />
-      <div className="rimvio-bottom-nav-grid rimvio-bottom-nav-grid--3">
-        <MobileNavLinks
-          tabs={tabs}
-          pathname={pathname}
-          onNavigate={onNavigate}
-          onCapture={onCapture}
-        />
-      </div>
-    </>
+    <div className="rimvio-bottom-nav-pill" role="tablist">
+      <MobileNavLinks
+        tabs={tabs}
+        pathname={pathname}
+        onNavigate={onNavigate}
+        onCapture={onCapture}
+      />
+    </div>
   );
 }
 
@@ -280,12 +316,7 @@ function PortaledBottomNavBar({
 
   const bar = (
     <nav
-      className={cn(
-        GRID.navBottomFrame,
-        "rimvio-bottom-nav-shell lg:hidden",
-        rimvioNavBarClass,
-        "flex flex-col",
-      )}
+      className={cn(GRID.navBottomFrame, "rimvio-bottom-nav-shell lg:hidden")}
       aria-label="Primary"
       data-testid="rimvio-bottom-nav"
       data-rimvio-bottom-nav-portal
@@ -307,6 +338,10 @@ export function AppNav({ placement }: AppNavProps) {
   const copy = useCopy();
   const [captureOpen, setCaptureOpen] = useState(false);
   const lastNavRef = useRef<{ href: string; at: number } | null>(null);
+
+  useEffect(() => {
+    return subscribeOpenCaptureSheet(() => setCaptureOpen(true));
+  }, []);
 
   const navigate = useCallback(
     (href: string) => {
@@ -339,6 +374,12 @@ export function AppNav({ placement }: AppNavProps) {
         label: copy.nav.globe,
         isActive: (p) => isGlobePath(p),
         icon: "globe",
+      },
+      {
+        href: "/field",
+        label: copy.nav.field,
+        isActive: (p) => p === "/field" || p.startsWith("/field/"),
+        icon: "field",
       },
       {
         href: "/peers",

@@ -25,6 +25,10 @@ export function syncGlobeContextWarmthLayer(input: {
   detailLevel?: GlobeDetailLevel;
 }): GlobeContextWarmthLayerState {
   const pointCount = input.points.length;
+  if (!input.enabled) {
+    input.globe.heatmapsData([]);
+    return { active: false, pointCount, layerOpacity: 0 };
+  }
   const visible = shouldRenderGlobeContextWarmth({
     enabled: input.enabled,
     pointCount,

@@ -64,6 +64,26 @@ export async function findMarketHandshakeById(
   return marketHandshakeRowToRecord(data as MarketHandshakeDbRow);
 }
 
+export async function findMarketHandshakeByIntentPair(
+  supabase: SupabaseClient,
+  seekingIntentId: string,
+  listingIntentId: string,
+): Promise<MarketHandshakeRecord | null> {
+  const { data, error } = await supabase
+    .from("market_alignment_handshakes")
+    .select("*")
+    .eq("seeking_intent_id", seekingIntentId.trim())
+    .eq("listing_intent_id", listingIntentId.trim())
+    .maybeSingle();
+  if (error) {
+    throw error;
+  }
+  if (!data) {
+    return null;
+  }
+  return marketHandshakeRowToRecord(data as MarketHandshakeDbRow);
+}
+
 export async function findMarketHandshakeByThreadId(
   supabase: SupabaseClient,
   threadId: string,

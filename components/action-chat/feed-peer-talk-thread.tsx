@@ -9,7 +9,6 @@ import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
 import { DM_CHAT } from "@/lib/peer-chat/dm-chat-density";
 import {
   shouldShowPeerMessageTime,
-  shouldShowPeerProfileHeader,
 } from "@/lib/peer-chat/message-time-visibility";
 import { usePeerAiLens } from "@/hooks/use-peer-ai-lens";
 import { useLensBubbleActions } from "@/hooks/use-lens-bubble-actions";
@@ -105,10 +104,7 @@ function FeedPeerTalkRow({
           simple
           as="div"
           showTime={shouldShowPeerMessageTime(allPeerMessages, peerIndex)}
-          showPeerProfileHeader={shouldShowPeerProfileHeader(
-            allPeerMessages,
-            peerIndex,
-          )}
+          showPeerProfileHeader={false}
           peerProfile={peerProfile}
           lensCandidates={lensCandidates}
           onLensSelect={onLensSelect}

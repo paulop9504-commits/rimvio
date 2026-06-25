@@ -88,6 +88,9 @@ export type UserProfileRecord = {
   rimvio_id: string | null;
   display_name: string | null;
   avatar_url: string | null;
+  status_message: string | null;
+  cover_url: string | null;
+  cover_theme: string | null;
 };
 
 export async function lookupUserIdByPhone(
@@ -144,6 +147,9 @@ export async function upsertUserProfile(
     rimvioId?: string | null;
     displayName?: string | null;
     avatarUrl?: string | null;
+    statusMessage?: string | null;
+    coverUrl?: string | null;
+    coverTheme?: string | null;
   },
 ) {
   const existing = await readUserProfile(supabase, input.userId);
@@ -154,6 +160,18 @@ export async function upsertUserProfile(
     input.avatarUrl !== undefined
       ? input.avatarUrl
       : (existing?.avatar_url ?? null);
+  const statusMessage =
+    input.statusMessage !== undefined
+      ? input.statusMessage
+      : (existing?.status_message ?? null);
+  const coverUrl =
+    input.coverUrl !== undefined
+      ? input.coverUrl
+      : (existing?.cover_url ?? null);
+  const coverTheme =
+    input.coverTheme !== undefined
+      ? input.coverTheme
+      : (existing?.cover_theme ?? "default");
 
   if (!phone && !email && !rimvioId) {
     throw new Error("Phone, email, or Rimvio ID required for profile.");
@@ -168,6 +186,9 @@ export async function upsertUserProfile(
       display_name:
         input.displayName?.trim() || existing?.display_name || null,
       avatar_url: avatarUrl,
+      status_message: statusMessage?.trim() || null,
+      cover_url: coverUrl,
+      cover_theme: coverTheme ?? "default",
       updated_at: new Date().toISOString(),
     },
     { onConflict: "user_id" },
@@ -288,6 +309,9 @@ export async function patchUserProfile(
     phoneE164?: string | null;
     rimvioId?: string;
     avatarUrl?: string | null;
+    statusMessage?: string | null;
+    coverUrl?: string | null;
+    coverTheme?: string | null;
   },
 ): Promise<UserProfileRecord | null> {
   const existing = await readUserProfile(supabase, input.userId);
@@ -309,6 +333,18 @@ export async function patchUserProfile(
     input.avatarUrl !== undefined
       ? input.avatarUrl
       : (existing?.avatar_url ?? null);
+  const statusMessage =
+    input.statusMessage !== undefined
+      ? input.statusMessage
+      : (existing?.status_message ?? null);
+  const coverUrl =
+    input.coverUrl !== undefined
+      ? input.coverUrl
+      : (existing?.cover_url ?? null);
+  const coverTheme =
+    input.coverTheme !== undefined
+      ? input.coverTheme
+      : (existing?.cover_theme ?? "default");
 
   if (!phoneE164 && !emailLower && !rimvioId) {
     throw new Error(
@@ -323,6 +359,9 @@ export async function patchUserProfile(
     rimvioId,
     displayName,
     avatarUrl,
+    statusMessage,
+    coverUrl,
+    coverTheme,
   });
 
   return readUserProfile(supabase, input.userId);
@@ -869,6 +908,9 @@ export async function listPeerThreadMembers(
         rimvioId: profile?.rimvioId ?? null,
         avatarUrl: profile?.avatarUrl ?? null,
         emailLower: profile?.emailLower ?? null,
+        statusMessage: profile?.statusMessage ?? null,
+        coverUrl: profile?.coverUrl ?? null,
+        coverTheme: profile?.coverTheme ?? null,
         isSelf: userId === input.callerUserId,
       } satisfies PeerThreadMemberPublic;
     }),

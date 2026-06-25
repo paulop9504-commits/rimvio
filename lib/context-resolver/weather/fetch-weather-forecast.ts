@@ -1,8 +1,10 @@
 import type { WeatherContext } from "@/lib/context-resolver/types";
 import { fetchWeatherContext, openWeatherApiKey } from "@/lib/context-resolver/weather/fetch-weather-context";
+import { fetchHistoricalWeatherAt } from "@/lib/context-resolver/weather/fetch-historical-weather";
 import { mapCondition } from "@/lib/context-resolver/weather/open-weather-condition";
 const FORECAST_URL = "https://api.openweathermap.org/data/2.5/forecast";
 const FORECAST_HORIZON_MS = 5 * 24 * 60 * 60 * 1000;
+const PAST_THRESHOLD_MS = 2 * 60 * 60 * 1000;
 
 export type WeatherForecastSnapshot = WeatherContext & {
   target_at: string;
@@ -86,7 +88,11 @@ export async function fetchWeatherForecastAt(input: {
   const now = Date.now();
   const delta = targetAt.getTime() - now;
 
-  if (delta < -2 * 60 * 60 * 1000) {
+  if (delta < -PAST_THRESHOLD_MS) {
+    const historical = await fetchHistoricalWeatherAt({ location, targetAt });
+    if (historical) {
+      return historical;
+    }
     return null;
   }
 

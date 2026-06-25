@@ -11,11 +11,11 @@ const FLUSH_INTERVAL_MS = 45_000;
 /** Ensure vault + drain device materialization sync queue when online. */
 export function useMaterializeVaultSync(enabled = true): void {
   const { user } = useAuth();
-  const { ensure, refresh } = usePersonalVault(enabled && Boolean(user?.id));
+  const { ensure, refresh, vaultAvailable } = usePersonalVault(enabled && Boolean(user?.id));
   const flushingRef = useRef(false);
 
   const flush = useCallback(async () => {
-    if (!enabled || !user?.id || flushingRef.current) {
+    if (!enabled || !user?.id || flushingRef.current || !vaultAvailable) {
       return;
     }
     if (typeof navigator !== "undefined" && !navigator.onLine) {
@@ -32,7 +32,7 @@ export function useMaterializeVaultSync(enabled = true): void {
     } finally {
       flushingRef.current = false;
     }
-  }, [enabled, ensure, refresh, user?.id]);
+  }, [enabled, ensure, refresh, user?.id, vaultAvailable]);
 
   useEffect(() => {
     if (!enabled || !user?.id) {

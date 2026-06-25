@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import type { SharedGlobePin } from "@/lib/peer-chat/globe-pin-types";
 import { sharedGlobePinFromMessageRow } from "@/lib/peer-chat/project-thread-globe-pins";
+import { mirrorInboundSharedGlobePinIfNeeded, mirrorInboundSharedGlobePinsIfNeeded } from "@/lib/peer-chat/mirror-inbound-shared-globe-pins";
 import { fetchSharedGlobePinsRemote } from "@/lib/peer-chat/peer-chat-client";
 import type { PeerMessageRow } from "@/lib/peer-chat/types";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -40,12 +41,18 @@ export function useSharedGlobePins(input: {
       setPins(data.pins);
       setResolvedThreadId(data.threadId);
       setError(null);
+      if (user?.id) {
+        mirrorInboundSharedGlobePinsIfNeeded({
+          pins: data.pins,
+          viewerUserId: user.id,
+        });
+      }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "핀을 불러오지 못했어요.");
     } finally {
       setLoading(false);
     }
-  }, [enabled, input.peerThreadId]);
+  }, [enabled, input.peerThreadId, user?.id]);
 
   const upsertPin = useCallback((pin: SharedGlobePin) => {
     setPins((current) => {
@@ -102,6 +109,13 @@ export function useSharedGlobePins(input: {
           const pin = sharedGlobePinFromMessageRow(row);
           if (pin) {
             upsertPin(pin);
+            if (user?.id) {
+              mirrorInboundSharedGlobePinIfNeeded({
+                pin,
+                viewerUserId: user.id,
+                peerDisplayName: pin.payload.senderDisplayName,
+              });
+            }
           }
         },
       )
@@ -146,7 +160,7 @@ export function useSharedGlobePins(input: {
     return () => {
       void supabase!.removeChannel(channel);
     };
-  }, [useRealtime, supabase, resolvedThreadId, upsertPin, removePin]);
+  }, [useRealtime, supabase, resolvedThreadId, upsertPin, removePin, user?.id]);
 
   return {
     pins,

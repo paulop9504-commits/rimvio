@@ -22,7 +22,7 @@ export type PinDomainClassification = {
 };
 
 const MARKET_SIGNAL =
-  /(?:팔아|판매|삽니다|팝니다|중고|거래|나눔|양도)/u;
+  /(?:팔아|판매|삽니다|팝니다|중고|거래|나눔|양도|구매|구입)/u;
 const PRICE_SIGNAL =
   /(?:(\d{1,3}(?:,\d{3})+|\d+)\s*(?:만\s*)?원)/u;
 const PROPERTY_SIGNAL =

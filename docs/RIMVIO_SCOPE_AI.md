@@ -24,7 +24,9 @@ Signal → EventCandidate → right moment Surface
 ```
 
 Internal = **Recall · Nudge · Preserve** onto Surface.  
-External = **Discover · Connect · Compose** across Surfaces.
+External = **Discover · Connect · Compose · Achieve** across Surfaces.
+
+Full spec: [RIMVIO_EXTERNAL_GLOBE_AI.md](./RIMVIO_EXTERNAL_GLOBE_AI.md)
 
 ---
 

@@ -8,7 +8,7 @@ import { useGpsTrackingEnabled } from "@/hooks/use-gps-tracking-enabled";
 import { hydrateGpsPingStore } from "@/lib/location-ping/gps-ping-store";
 import { hydrateMediaContextStore } from "@/lib/location-ping/media-context-store";
 
-/** Starts periodic GPS pings and hydrates local spacetime stores. */
+/** Starts passive GPS burst scheduler and hydrates local spacetime stores. */
 export function GpsPingBootstrap() {
   const { enabled } = useGpsTrackingEnabled();
   const { settings } = useGlobeExperienceSettings();

@@ -4,7 +4,6 @@
  */
 
 import { getPeerContactById } from "@/lib/context/peer-contact-store";
-import { isPeerConnectedToHub } from "@/lib/context/pinned-peer-roster";
 import type { PeerThreadPolicyInput } from "@/lib/context/peer-thread-types";
 import { isGroupThreadId } from "@/lib/peer-chat/group-thread";
 import { isRegisteredPeerDmThread } from "@/lib/peer-chat/peer-chat-client";
@@ -20,15 +19,12 @@ export function isKnownPeerContact(input: PeerThreadPolicyInput): boolean {
   return Boolean(getPeerContactById(threadId));
 }
 
-/** AI pin active — full log · @import · optional lens. */
-export function isActivePeerRoom(input: PeerThreadPolicyInput): boolean {
-  return (
-    input.settings.isPinned &&
-    isPeerConnectedToHub(input.roster, input.settings.peerThreadId)
-  );
+/** AI pin slots removed — all known contacts use basic chat storage. */
+export function isActivePeerRoom(_input: PeerThreadPolicyInput): boolean {
+  return false;
 }
 
-/** Hub always shows 5 pin slots (vacant or connected). */
+/** Pin hub UI removed — peers home is chat list only. */
 export function isHubRoomSurface(): boolean {
-  return FIVE_PEER_ROOMS_PRODUCT;
+  return false;
 }

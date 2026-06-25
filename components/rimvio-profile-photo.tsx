@@ -8,6 +8,11 @@ import {
   removeMyProfileAvatar,
   uploadMyProfileAvatar,
 } from "@/lib/peer-chat/peer-chat-client";
+import {
+  primeMyProfileAvatarCache,
+  warmMyProfileAvatarCacheFromProfile,
+  writeCachedMyProfile,
+} from "@/lib/peer-chat/peer-profile-avatar-cache";
 import { resizeProfileImageFile } from "@/lib/profile/resize-profile-image";
 import { cn } from "@/lib/utils";
 
@@ -65,6 +70,11 @@ export function RimvioProfilePhoto({
       const { avatarUrl: next } = await uploadMyProfileAvatar(resized);
       setPreview(null);
       URL.revokeObjectURL(objectUrl);
+      await warmMyProfileAvatarCacheFromProfile({
+        displayName,
+        avatarUrl: next,
+      });
+      void primeMyProfileAvatarCache(next);
       onAvatarChange?.(next);
       toast.success(ap.photoChanged);
     } catch (error) {
@@ -86,6 +96,7 @@ export function RimvioProfilePhoto({
     try {
       await removeMyProfileAvatar();
       setPreview(null);
+      writeCachedMyProfile({ avatarUrl: null });
       onAvatarChange?.(null);
       toast.success(ap.photoRemoved);
     } catch (error) {

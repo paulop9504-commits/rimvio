@@ -46,3 +46,24 @@ export function shouldShowPeerProfileHeader(
     new Date(current.sentAt).getTime() - new Date(prev.sentAt).getTime();
   return gap > CLUSTER_GAP_MS;
 }
+
+/** 인스타 DM — 클러스터 첫 말풍선에만 상대 아바타 */
+export function shouldShowPeerAvatarCluster(
+  messages: PeerMessage[],
+  index: number,
+): boolean {
+  const current = messages[index];
+  if (!current || current.author === "me") {
+    return false;
+  }
+  const prev = messages[index - 1];
+  if (!prev) {
+    return true;
+  }
+  if (prev.author !== current.author) {
+    return true;
+  }
+  const gap =
+    new Date(current.sentAt).getTime() - new Date(prev.sentAt).getTime();
+  return gap > CLUSTER_GAP_MS;
+}

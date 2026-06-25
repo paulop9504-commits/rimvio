@@ -9,11 +9,12 @@ import {
   type BubbleState,
   type SocialBubblePeer,
 } from "@/lib/social/bubble-state";
-import { purgeAfterIso, isPurgeDue } from "@/lib/context/hub-room-retention";
 import { loadFriendProfilesMap } from "@/lib/peer-chat/load-friend-profiles-map";
 import { isGroupThreadId } from "@/lib/peer-chat/group-thread";
 import { markGroupThreadMemberRead } from "@/lib/peer-chat/group-read-receipt";
 import { touchPeerReadReceiptForSender } from "@/lib/peer-chat/peer-read-receipt";
+import { touchRecipientRelationshipSlotOnMessage } from "@/lib/peer-chat/relationship-slots-server";
+import { resolveServiceRoleOrUserClient } from "@/lib/supabase/admin";
 import type { Database } from "@/types/database";
 
 export const ARCHIVE_RETENTION_DAYS = 7;
@@ -73,13 +74,20 @@ export async function upsertFriendConnection(
 
 export async function recordInboundMessage(
   supabase: SupabaseClient<Database>,
-  input: { threadId: string; senderUserId: string },
+  input: {
+    threadId: string;
+    senderUserId: string;
+    body?: string;
+    createdAt?: string;
+  },
 ) {
   if (!isDmThreadId(input.threadId)) {
     return;
   }
 
-  const { data: members, error: memberError } = await supabase
+  const admin = resolveServiceRoleOrUserClient(supabase);
+
+  const { data: members, error: memberError } = await admin
     .from("peer_thread_members")
     .select("user_id")
     .eq("thread_id", input.threadId);
@@ -96,8 +104,8 @@ export async function recordInboundMessage(
     return;
   }
 
-  const now = new Date().toISOString();
-  const { data: row } = await supabase
+  const now = input.createdAt ?? new Date().toISOString();
+  const { data: row } = await admin
     .from("friend_connections")
     .select("unread_count, interaction_score")
     .eq("user_id", recipientId)
@@ -110,7 +118,7 @@ export async function recordInboundMessage(
       recipientId,
     );
     if (friendId) {
-      await upsertFriendConnection(supabase, {
+      await upsertFriendConnection(admin, {
         userId: recipientId,
         friendId,
         threadId: input.threadId,
@@ -118,7 +126,7 @@ export async function recordInboundMessage(
     }
   }
 
-  await supabase
+  const { error: updateError } = await admin
     .from("friend_connections")
     .update({
       unread_count: (row?.unread_count ?? 0) + 1,
@@ -129,6 +137,19 @@ export async function recordInboundMessage(
     })
     .eq("user_id", recipientId)
     .eq("thread_id", input.threadId);
+
+  if (updateError) {
+    throw updateError;
+  }
+
+  if (input.body?.trim()) {
+    await touchRecipientRelationshipSlotOnMessage(admin, {
+      threadId: input.threadId,
+      senderUserId: input.senderUserId,
+      body: input.body,
+      createdAt: now,
+    });
+  }
 }
 
 export async function markThreadRead(
@@ -234,14 +255,13 @@ export async function unpinFriend(
   input: { userId: string; friendId: string },
 ): Promise<FriendConnectionRow> {
   const now = new Date().toISOString();
-  const purgeAfter = purgeAfterIso(now);
 
   const { data, error } = await supabase
     .from("friend_connections")
     .update({
       is_pinned: false,
       pin_slot: null,
-      messages_purge_after: purgeAfter,
+      messages_purge_after: null,
       updated_at: now,
     })
     .eq("user_id", input.userId)
@@ -317,37 +337,13 @@ export async function listSocialLayer(
   return { pinned, archive };
 }
 
-/** Unpinned rooms past retention — delete messages only, keep friend_connections. */
+/** Unpinned rooms — no longer delete full message history (media retention is separate). */
 export async function purgeExpiredArchiveMessages(
   supabase: SupabaseClient<Database>,
   userId: string,
 ): Promise<number> {
-  const now = Date.now();
-  const { data: due } = await supabase
-    .from("friend_connections")
-    .select("thread_id, messages_purge_after")
-    .eq("user_id", userId)
-    .eq("is_pinned", false)
-    .not("messages_purge_after", "is", null);
-
-  let purged = 0;
-  for (const row of due ?? []) {
-    const after = row.messages_purge_after as string | null;
-    if (!after || !isPurgeDue(after, now)) {
-      continue;
-    }
-    const threadId = row.thread_id as string;
-    await supabase.from("peer_messages").delete().eq("thread_id", threadId);
-    await supabase
-      .from("friend_connections")
-      .update({
-        messages_purge_after: null,
-        unread_count: 0,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("user_id", userId)
-      .eq("thread_id", threadId);
-    purged += 1;
-  }
-  return purged;
+  const { purgeStalePeerThreadMediaForUser } = await import(
+    "@/lib/peer-chat/purge-stale-peer-thread-media"
+  );
+  return purgeStalePeerThreadMediaForUser(supabase, userId);
 }

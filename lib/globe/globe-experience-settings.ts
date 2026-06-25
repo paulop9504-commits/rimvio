@@ -18,7 +18,7 @@ const DEFAULTS: GlobeExperienceSettings = {
   gpsDwellIngest: true,
   silentAutoAttach: true,
   showTripArcs: true,
-  showContextWarmth: true,
+  showContextWarmth: false,
 };
 
 let memory: GlobeExperienceSettings | null = null;
@@ -38,7 +38,7 @@ function normalize(raw: unknown): GlobeExperienceSettings {
     gpsDwellIngest: row.gpsDwellIngest !== false,
     silentAutoAttach: row.silentAutoAttach !== false,
     showTripArcs: row.showTripArcs !== false,
-    showContextWarmth: row.showContextWarmth !== false,
+    showContextWarmth: row.showContextWarmth === true,
   };
 }
 
@@ -90,7 +90,7 @@ export function isShowTripArcsEnabled(): boolean {
 }
 
 export function isShowContextWarmthEnabled(): boolean {
-  return readGlobeExperienceSettings().showContextWarmth;
+  return false;
 }
 
 /** Whether auto-attached capture should surface the verify card. */

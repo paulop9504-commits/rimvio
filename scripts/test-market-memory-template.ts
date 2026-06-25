@@ -29,7 +29,6 @@ function intent(
       productName: "2인 텐트",
       memoryRecord: {
         ...DEFAULT_MARKET_INTENT_DETAIL.memoryRecord,
-        story: "강원도 차박",
         categoryAnswer: "5회 사용",
         experienceTags: ["강원·밤", "차박"],
       },

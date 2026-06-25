@@ -26,6 +26,7 @@ import {
   isBareMarketComposeInput,
   isMarketComposeInput,
 } from "@/lib/globe/market/detect-market-compose-input";
+import { canQuickListMarketCompose } from "@/lib/globe/market/build-market-quick-list-draft";
 import {
   rimvioComposerFieldClass,
   rimvioIconBtnClass,
@@ -53,6 +54,10 @@ export type GlobeContextIngestBarProps = {
     eventId?: string | null;
     composeText?: string;
   }) => void;
+  onQuickListMarket?: (input: {
+    composeText: string;
+    eventId?: string | null;
+  }) => Promise<boolean>;
   onOpenMarketManage?: () => void;
   marketRoleBusy?: boolean;
   layerMode?: GlobeLayerMode;
@@ -73,6 +78,7 @@ export const GlobeContextIngestBar = forwardRef<
     onPhotoDraftReady,
     onTextCommitted,
     onOpenPortal,
+    onQuickListMarket,
     onOpenMarketManage,
     marketRoleBusy = false,
     layerMode = "personal",
@@ -112,6 +118,24 @@ export const GlobeContextIngestBar = forwardRef<
       ? copy.globe.ingestAttachPlaceholder(attachHintTitle)
       : copy.globe.ingestDefaultPlaceholder;
   const marketComposeBusy = busy || marketRoleBusy;
+
+  const tryQuickListMarket = useCallback(
+    async (composeText: string): Promise<boolean> => {
+      if (!canQuickListMarketCompose(composeText) || !onQuickListMarket) {
+        return false;
+      }
+      setBusy(true);
+      try {
+        return await onQuickListMarket({
+          composeText: composeText.trim(),
+          eventId: attachHintId,
+        });
+      } finally {
+        setBusy(false);
+      }
+    },
+    [attachHintId, onQuickListMarket],
+  );
 
   const openPortalFromComposer = useCallback(
     (composeText: string) => {
@@ -228,6 +252,11 @@ export const GlobeContextIngestBar = forwardRef<
         return;
       }
       if (isBareMarketComposeInput(value) || isMarketComposeInput(value)) {
+        if (await tryQuickListMarket(value)) {
+          setText("");
+          setMenuOpen(false);
+          return;
+        }
         openPortalFromComposer(value);
         return;
       }
@@ -242,7 +271,13 @@ export const GlobeContextIngestBar = forwardRef<
           return;
         }
         if (action?.kind === "market-compose") {
-          openPortalFromComposer(action.composeText.trim() || value);
+          const compose = action.composeText.trim() || value;
+          if (await tryQuickListMarket(compose)) {
+            setText("");
+            setMenuOpen(false);
+            return;
+          }
+          openPortalFromComposer(compose);
           return;
         }
         const outcome = await ingestGlobeContextFromText(value);
@@ -261,7 +296,7 @@ export const GlobeContextIngestBar = forwardRef<
         setBusy(false);
       }
     },
-    [busy, finish, isDiscovery, onDiscoveryMarketBrowse, onTextCommitted, openPortalFromComposer, text],
+    [busy, finish, isDiscovery, onDiscoveryMarketBrowse, onTextCommitted, openPortalFromComposer, tryQuickListMarket, text],
   );
 
   return (

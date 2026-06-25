@@ -90,12 +90,9 @@ export function generateMarketExperienceTags(input: {
   );
   const corpus = [
     input.productName ?? "",
-    input.memory?.story ?? "",
     input.memory?.care ?? "",
-    input.memory?.why ?? "",
     input.memory?.categoryAnswer ?? "",
     input.memory?.seekingContext ?? "",
-    input.memory?.seekingWhy ?? "",
   ].join(" ");
 
   const tags: string[] = [];

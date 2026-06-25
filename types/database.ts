@@ -146,6 +146,8 @@ export type PeerThreadRow = {
   owner_user_id: string;
   display_name: string;
   invite_code: string;
+  room_kind: string;
+  ai_mode: string;
   created_at: string;
 };
 
@@ -162,6 +164,9 @@ export type PeerMessageRow = {
   sender_user_id: string;
   body: string;
   created_at: string;
+  image_url: string | null;
+  message_type: string;
+  ai_payload: Record<string, unknown> | null;
 };
 
 export type UserProfileRow = {
@@ -171,6 +176,9 @@ export type UserProfileRow = {
   rimvio_id: string | null;
   display_name: string | null;
   avatar_url: string | null;
+  status_message: string | null;
+  cover_url: string | null;
+  cover_theme: string | null;
   updated_at: string;
 };
 
@@ -316,6 +324,8 @@ export type Database = {
           owner_user_id: string;
           display_name?: string;
           invite_code?: string;
+          room_kind?: string;
+          ai_mode?: string;
           created_at?: string;
         };
         Update: {
@@ -323,6 +333,8 @@ export type Database = {
           owner_user_id?: string;
           display_name?: string;
           invite_code?: string;
+          room_kind?: string;
+          ai_mode?: string;
           created_at?: string;
         };
         Relationships: [];
@@ -333,11 +345,13 @@ export type Database = {
           thread_id: string;
           user_id: string;
           joined_at?: string;
+          last_read_at?: string | null;
         };
         Update: {
           thread_id?: string;
           user_id?: string;
           joined_at?: string;
+          last_read_at?: string | null;
         };
         Relationships: [];
       };
@@ -349,6 +363,9 @@ export type Database = {
           sender_user_id: string;
           body: string;
           created_at?: string;
+          image_url?: string | null;
+          message_type?: string;
+          ai_payload?: Record<string, unknown> | null;
         };
         Update: {
           id?: string;
@@ -356,6 +373,9 @@ export type Database = {
           sender_user_id?: string;
           body?: string;
           created_at?: string;
+          image_url?: string | null;
+          message_type?: string;
+          ai_payload?: Record<string, unknown> | null;
         };
         Relationships: [];
       };
@@ -407,6 +427,9 @@ export type Database = {
           rimvio_id?: string | null;
           display_name?: string | null;
           avatar_url?: string | null;
+          status_message?: string | null;
+          cover_url?: string | null;
+          cover_theme?: string | null;
           updated_at?: string;
         };
         Update: {
@@ -416,6 +439,9 @@ export type Database = {
           rimvio_id?: string | null;
           display_name?: string | null;
           avatar_url?: string | null;
+          status_message?: string | null;
+          cover_url?: string | null;
+          cover_theme?: string | null;
           updated_at?: string;
         };
         Relationships: [];

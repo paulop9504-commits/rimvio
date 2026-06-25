@@ -6,6 +6,10 @@ import { verifyFeedCaptureEvent } from "@/lib/feed/verify-feed-capture";
 import { formatDwellMinutesLabel } from "@/lib/feed/project-dwell-from-gps-pings";
 import { attachMatchingPoolMediaAfterSeal } from "@/lib/globe/passive-context/attach-matching-pool-media-after-seal";
 import {
+  canOfferGlobeLocationPrompt,
+  markGlobeLocationPromptOffered,
+} from "@/lib/globe/globe-location-prompt-budget";
+import {
   buildPassiveLocationCareBody,
   buildPassiveLocationCareTitle,
 } from "@/lib/globe/passive-context/build-passive-location-care-copy";
@@ -39,7 +43,7 @@ export function GlobeLocationConfirmCard({ className }: GlobeLocationConfirmCard
   const [dismissedIds, setDismissedIds] = useState<readonly string[]>([]);
 
   const pending = useMemo(() => {
-    if (!enabled) {
+    if (!enabled || !canOfferGlobeLocationPrompt()) {
       return null;
     }
     const events = listLifeEventCandidates();
@@ -67,6 +71,10 @@ export function GlobeLocationConfirmCard({ className }: GlobeLocationConfirmCard
     if (!pending) {
       return;
     }
+    if (!canOfferGlobeLocationPrompt()) {
+      return;
+    }
+    markGlobeLocationPromptOffered();
     const result = verifyFeedCaptureEvent(pending.id);
     if (result.ok) {
       const place = pending.place?.trim();

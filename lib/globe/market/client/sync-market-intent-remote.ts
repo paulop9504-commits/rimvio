@@ -57,10 +57,14 @@ export async function deactivateMarketIntentRemote(eventId: string): Promise<boo
 
 export async function fetchMarketAlignmentOfferRemote(input: {
   focusEventId?: string | null;
+  matchIntentId?: string | null;
 }): Promise<import("@/lib/globe/market/market-intent-types").MarketAlignmentOffer | null> {
   const params = new URLSearchParams();
   if (input.focusEventId?.trim()) {
     params.set("focusEventId", input.focusEventId.trim());
+  }
+  if (input.matchIntentId?.trim()) {
+    params.set("matchIntentId", input.matchIntentId.trim());
   }
   const qs = params.toString();
   try {

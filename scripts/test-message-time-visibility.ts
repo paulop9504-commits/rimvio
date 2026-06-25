@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import type { PeerMessage } from "../lib/context/peer-message-types";
-import { shouldShowPeerMessageTime } from "../lib/peer-chat/message-time-visibility";
+import { shouldShowPeerAvatarCluster, shouldShowPeerMessageTime } from "../lib/peer-chat/message-time-visibility";
 
 const base = (i: number, author: "me" | "peer", offsetSec: number): PeerMessage => ({
   id: `m${i}`,
@@ -19,5 +19,10 @@ assert.equal(shouldShowPeerMessageTime(burst, 2), true);
 const gap = [base(0, "peer", 0), base(1, "peer", 90)];
 assert.equal(shouldShowPeerMessageTime(gap, 0), true);
 assert.equal(shouldShowPeerMessageTime(gap, 1), true);
+
+const peerBurst = [base(0, "peer", 0), base(1, "peer", 20), base(2, "peer", 40)];
+assert.equal(shouldShowPeerAvatarCluster(peerBurst, 0), true);
+assert.equal(shouldShowPeerAvatarCluster(peerBurst, 1), false);
+assert.equal(shouldShowPeerAvatarCluster(peerBurst, 2), false);
 
 console.log("test-message-time-visibility: ok");

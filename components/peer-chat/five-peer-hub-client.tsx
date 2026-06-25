@@ -1,58 +1,52 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { FivePeerHub } from "@/components/peer-chat/five-peer-hub";
-import { countConnectedPeers } from "@/lib/context/pinned-peer-roster";
-import {
-  assignPeerToHubAndPin,
-  readPeerThreadSettings,
-  readPinnedRoster,
-  setPeerThreadAiLens,
-  syncPinnedRoster,
-} from "@/lib/context/peer-thread-settings-store";
-import type { PinnedSlotIndex } from "@/lib/context/peer-thread-types";
+import { readPinnedRoster, syncPinnedRoster } from "@/lib/context/peer-thread-settings-store";
 import { GuestPeersLanding } from "@/components/peer-chat/guest-peers-landing";
 import { useCopy } from "@/hooks/use-copy";
-import {
-  markLensFirstCoachShown,
-  shouldShowLensFirstCoach,
-} from "@/lib/onboarding/lens-first-coach";
 import { FriendAddSheet } from "@/components/peer-chat/friend-add-sheet";
 import { PeerFriendsRail } from "@/components/peer-chat/peer-friends-rail";
-import { PeerCloseFiveStrip } from "@/components/peer-chat/peer-close-five-strip";
 import type { FriendAddResult } from "@/components/peer-chat/friend-add-contact-flow";
 import { GroupCreateSheet } from "@/components/peer-chat/group-create-sheet";
 import type { GroupThreadListItem } from "@/components/peer-chat/group-thread-list";
 import {
-  fetchMyAccountProfile,
+  fetchAlignmentChatsRemote,
+} from "@/lib/peer-chat/fetch-alignment-chats-client";
+import type { AlignmentChatListItem } from "@/lib/peer-chat/alignment-chat-types";
+import { usePeerInboxSync } from "@/hooks/use-peer-inbox-sync";
+import {
   fetchRelationshipFeedSlots,
   fetchSocialLayer,
-  pinFriendRemote,
   syncDmThreadsRemote,
   syncMyProfileFromAuth,
 } from "@/lib/peer-chat/peer-chat-client";
+import { PEER_FEED_SLOTS_CACHE_KEY } from "@/lib/experience-bridge/bridge-api-cache";
+import { invalidateCachedFetch } from "@/lib/http/client-fetch-cache";
 import type { RelationshipFeedSlot } from "@/lib/social/relationship-slot-types";
 import {
   addPeerContact,
   readPeerContacts,
 } from "@/lib/context/peer-contact-store";
 import type { PeerContact } from "@/lib/context/peer-contact-types";
+import { dedupeAlignmentChatsByThread } from "@/lib/peer-chat/dedupe-alignment-chats";
 import {
-  applySocialLayerToLocalRoster,
-  peerMetaByThreadId,
-} from "@/lib/social/sync-social-layer";
+  primePeerAvatarCache,
+  writeCachedPeerAvatar,
+} from "@/lib/peer-chat/peer-profile-avatar-cache";
 import { buildPeersHomeRows } from "@/lib/social/build-peers-home-rows";
+import { enrichArchiveChatRowsWithContext } from "@/lib/social/archive-chat-rows";
 import type { SocialBubblePeer } from "@/lib/social/bubble-state";
+import {
+  listLifeEventCandidates,
+  subscribeLifeCandidatesUpdated,
+} from "@/lib/life-read-model";
 import { useAuth } from "@/hooks/use-auth";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { useRoomGuest } from "@/hooks/use-room-guest";
 
 export function FivePeerHubClient() {
   const copy = useCopy();
-  const guest = useRoomGuest();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, configured } = useAuth();
@@ -84,30 +78,26 @@ export function FivePeerHubClient() {
   const [pinnedPeers, setPinnedPeers] = useState<SocialBubblePeer[]>([]);
   const [archivePeers, setArchivePeers] = useState<SocialBubblePeer[]>([]);
   const [feedSlots, setFeedSlots] = useState<RelationshipFeedSlot[]>([]);
-  const [pinnedHubExpanded, setPinnedHubExpanded] = useState(false);
   const [groupSheetOpen, setGroupSheetOpen] = useState(false);
   const [groupThreads, setGroupThreads] = useState<GroupThreadListItem[]>([]);
-  const [assignSlot, setAssignSlot] = useState<PinnedSlotIndex | null>(null);
+  const [alignmentChats, setAlignmentChats] = useState<AlignmentChatListItem[]>([]);
   const [friendAddOpen, setFriendAddOpen] = useState(false);
-  const [centerAvatarUrl, setCenterAvatarUrl] = useState<string | null>(null);
+  const [lifeTick, setLifeTick] = useState(0);
 
-  const peerMetaMap = useMemo(
-    () => peerMetaByThreadId([...pinnedPeers, ...archivePeers]),
-    [pinnedPeers, archivePeers],
-  );
-
-  const [lensRevision, setLensRevision] = useState(0);
+  useEffect(() => subscribeLifeCandidatesUpdated(() => setLifeTick((t) => t + 1)), []);
 
   const friendRailRows = useMemo(
-    () =>
-      buildPeersHomeRows({
+    () => {
+      const rows = buildPeersHomeRows({
         pinned: pinnedPeers,
         archive: archivePeers,
         contacts,
         roster,
         feedSlots,
-      }),
-    [pinnedPeers, archivePeers, contacts, roster, feedSlots],
+      });
+      return enrichArchiveChatRowsWithContext(rows, listLifeEventCandidates());
+    },
+    [pinnedPeers, archivePeers, contacts, roster, feedSlots, lifeTick],
   );
 
   const refresh = useCallback(() => {
@@ -115,66 +105,39 @@ export function FivePeerHubClient() {
     setContacts(readPeerContacts());
   }, []);
 
-  const lensEnabledByThreadId = useMemo(() => {
-    const map = new Map<string, boolean>();
-    for (const slot of roster.slots) {
-      if (slot.peerThreadId && slot.connection === "connected") {
-        const threadSettings = readPeerThreadSettings(slot.peerThreadId);
-        map.set(slot.peerThreadId, Boolean(threadSettings?.aiLensEnabled));
-      }
-    }
-    return map;
-  }, [roster, lensRevision]);
-
-  const handleTogglePeerLens = useCallback(
-    (peerThreadId: string) => {
-      const slot = roster.slots.find((s) => s.peerThreadId === peerThreadId);
-      const meta = peerMetaMap.get(peerThreadId);
-      const displayName =
-        meta?.displayName?.trim() ||
-        slot?.displayName?.trim() ||
-        meta?.rimvioId ||
-        "친구";
-      const current = readPeerThreadSettings(peerThreadId)?.aiLensEnabled ?? false;
-      const next = !current;
-      setPeerThreadAiLens({
-        peerThreadId,
-        displayName,
-        enabled: next,
-      });
-      setLensRevision((n) => n + 1);
-      refresh();
-      if (next && shouldShowLensFirstCoach()) {
-        markLensFirstCoachShown();
-        toast.success(copy.product.lensCoachOn, {
-          description: copy.product.lensCoachSub,
-          duration: 5500,
-        });
-      } else {
-        toast.success(
-          next
-            ? `${displayName} · AI 렌즈 켜짐`
-            : `${displayName} · AI 렌즈 꺼짐`,
-        );
-      }
-    },
-    [roster, peerMetaMap, refresh, copy.product.lensCoachOn, copy.product.lensCoachSub],
-  );
-
-  const connectedCount = countConnectedPeers(roster);
-
   const loadSocialLayer = useCallback(async () => {
     if (!usePhoneChat) {
       return;
     }
     try {
-      const [layer, feed] = await Promise.all([
+      invalidateCachedFetch(PEER_FEED_SLOTS_CACHE_KEY);
+      const [layer, feed, alignment] = await Promise.all([
         fetchSocialLayer(),
         fetchRelationshipFeedSlots().catch(() => ({ slots: [] as RelationshipFeedSlot[] })),
+        fetchAlignmentChatsRemote().catch(() => ({ items: [] as AlignmentChatListItem[] })),
       ]);
       setPinnedPeers(layer.pinned);
       setArchivePeers(layer.archive);
       setFeedSlots(feed.slots);
+      setAlignmentChats(dedupeAlignmentChatsByThread(alignment.items));
+      for (const peer of [...layer.pinned, ...layer.archive]) {
+        if (peer.avatarUrl?.trim()) {
+          writeCachedPeerAvatar(peer.friendId, peer.avatarUrl);
+          void primePeerAvatarCache({
+            userId: peer.friendId,
+            avatarUrl: peer.avatarUrl,
+          });
+        }
+      }
+      for (const item of alignment.items) {
+        if (item.otherAvatarUrl?.trim()) {
+          writeCachedPeerAvatar(item.otherUserId, item.otherAvatarUrl);
+          void primePeerAvatarCache({
+            userId: item.otherUserId,
+            avatarUrl: item.otherAvatarUrl,
+          });
+        }
+      }
       applySocialLayerToLocalRoster(layer);
       refresh();
     } catch {
@@ -191,9 +154,6 @@ export function FivePeerHubClient() {
       return;
     }
     void syncMyProfileFromAuth().catch(() => {});
-    void fetchMyAccountProfile()
-      .then((p) => setCenterAvatarUrl(p.avatarUrl ?? null))
-      .catch(() => {});
     void syncDmThreadsRemote()
       .then((threads) => {
         const groups: GroupThreadListItem[] = [];
@@ -215,29 +175,12 @@ export function FivePeerHubClient() {
       })
       .catch(() => {});
     void loadSocialLayer();
-    const timer = window.setInterval(() => void loadSocialLayer(), 30_000);
-    return () => window.clearInterval(timer);
   }, [usePhoneChat, refresh, loadSocialLayer]);
 
-  const centerLabel = guest.label.startsWith("나")
-    ? guest.label
-    : `나 (${guest.label})`;
-  const centerInitial = guest.label.trim().charAt(0) || "나";
-
-  const openPinAssign = (slotIndex: PinnedSlotIndex) => {
-    setFriendAddOpen(true);
-    setAssignSlot(slotIndex);
-  };
-
-  const openQuickFriendAdd = () => {
-    setAssignSlot(null);
-    setFriendAddOpen(true);
-  };
-
-  const closeFriendAdd = () => {
-    setAssignSlot(null);
-    setFriendAddOpen(false);
-  };
+  usePeerInboxSync({
+    enabled: usePhoneChat,
+    onRefresh: loadSocialLayer,
+  });
 
   const handleFriendAdded = async (result: FriendAddResult) => {
     addPeerContact({
@@ -246,35 +189,8 @@ export function FivePeerHubClient() {
       rimvioId: result.rimvioId,
       emailLower: result.emailLower,
     });
-
-    const slot = assignSlot;
-    const otherUserId = result.otherUserId;
-
-    if (slot !== null && otherUserId) {
-      try {
-        await pinFriendRemote({
-          friendId: otherUserId,
-          pinSlot: slot,
-        });
-        assignPeerToHubAndPin({
-          slotIndex: slot,
-          displayName: result.displayName,
-          peerThreadId: result.threadId,
-        });
-        toast.success(
-          `${result.displayName}를 항상 보이는 관계 ${slot + 1}번에 고정했어요`,
-        );
-      } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : "고정에 실패했어요",
-        );
-        toast.message("친구는 추가됐어요. 대화방으로 이동할게요");
-      }
-    } else {
-      toast.success(`${result.displayName}를 친구 목록에 추가했어요`);
-    }
-
-    closeFriendAdd();
+    toast.success(`${result.displayName}를 친구 목록에 추가했어요`);
+    setFriendAddOpen(false);
     await loadSocialLayer();
     router.push(`/peers/${encodeURIComponent(result.threadId)}`);
   };
@@ -288,66 +204,15 @@ export function FivePeerHubClient() {
       <PeerFriendsRail
         rows={friendRailRows}
         groups={groupThreads}
-        onAddFriend={openQuickFriendAdd}
+        alignmentChats={alignmentChats}
+        onAddFriend={() => setFriendAddOpen(true)}
         onCreateGroup={() => setGroupSheetOpen(true)}
         className="min-h-0 flex-1"
       />
 
-      <footer className="shrink-0 border-t border-[#0220470f] bg-rimvio-base pb-[max(0.25rem,env(safe-area-inset-bottom))]">
-        <button
-          type="button"
-          onClick={() => setPinnedHubExpanded((value) => !value)}
-          className="flex w-full items-center gap-2 px-4 py-2.5 text-left active:bg-[#f2f4f6]"
-          aria-expanded={pinnedHubExpanded}
-        >
-          <div className="min-w-0 flex-1">
-            <p className="text-[13px] font-semibold text-[#191f28]">
-              {copy.peers.friendRail.pinnedSection}
-            </p>
-            <p className="text-[10px] text-[#6b7684]">
-              {copy.peers.friendRail.pinnedSectionHint} · {connectedCount}/5
-            </p>
-          </div>
-          {pinnedHubExpanded ? (
-            <ChevronUp className="size-4 shrink-0 text-[#8b95a1]" aria-hidden />
-          ) : (
-            <ChevronDown className="size-4 shrink-0 text-[#8b95a1]" aria-hidden />
-          )}
-        </button>
-
-        {pinnedHubExpanded ? (
-          <div className="relative h-[min(34dvh,15rem)] w-full border-t border-[#0220470f]">
-            <FivePeerHub
-              roster={roster}
-              centerLabel={centerLabel}
-              centerInitial={centerInitial}
-              centerAvatarUrl={centerAvatarUrl}
-              peerMetaByThread={peerMetaMap}
-              lensEnabledByThreadId={lensEnabledByThreadId}
-              onTogglePeerLens={handleTogglePeerLens}
-              onAssignSlot={(idx) => openPinAssign(idx as PinnedSlotIndex)}
-              className="absolute inset-0"
-            />
-          </div>
-        ) : (
-          <PeerCloseFiveStrip
-            roster={roster}
-            peerMetaByThread={peerMetaMap}
-            onAssignSlot={(idx) => openPinAssign(idx as PinnedSlotIndex)}
-          />
-        )}
-      </footer>
-
       <FriendAddSheet
         open={friendAddOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            closeFriendAdd();
-          } else {
-            setFriendAddOpen(true);
-          }
-        }}
-        pinSlot={assignSlot}
+        onOpenChange={setFriendAddOpen}
         onAdded={handleFriendAdded}
         onContactSynced={() => void loadSocialLayer()}
       />

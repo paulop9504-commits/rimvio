@@ -18,6 +18,8 @@ import {
 } from "@/lib/feed/gps-dwell-ingest-store";
 import type { GpsDwellCluster } from "@/lib/location-ping/gps-dwell-cluster-types";
 import { resolvePlaceCoordinates } from "@/lib/experience-graph/resolve-place-coordinates";
+import { globeContextHasConfirmedPlace } from "@/lib/globe/apply-globe-context-place-coords";
+import { resolveParentTravelContextEventId } from "@/lib/globe/passive-context/resolve-parent-travel-context";
 import { commitEventUpsert } from "@/lib/source-of-truth/commit-truth";
 
 function toLocalEventIso(date: Date): string {
@@ -219,8 +221,14 @@ function commitGpsDwellToEvent(input: {
     (typeof input.target.metadata?.gpsDwellPlaceLabel === "string"
       ? input.target.metadata.gpsDwellPlaceLabel.trim()
       : "");
+  const parentContextEventId = resolveParentTravelContextEventId(draftEvent);
+  const hasConfirmedAnchor = globeContextHasConfirmedPlace(input.target);
   const shouldAsk =
-    !humanVerified && totalDwellMinutes >= GPS_DWELL_CONFIRM_MIN_MINUTES;
+    !humanVerified &&
+    !hasConfirmedAnchor &&
+    !parentContextEventId &&
+    !input.match &&
+    totalDwellMinutes >= GPS_DWELL_CONFIRM_MIN_MINUTES;
 
   const metadata = {
     ...metadataWithFragment,

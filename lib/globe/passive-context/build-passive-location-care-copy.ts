@@ -22,16 +22,16 @@ export function buildPassiveLocationCareTitle(input: {
 }): string {
   const place = input.place.trim() || "그곳";
   if (isPassiveLocationFromPriorDay(input.datetimeIso, input.now)) {
-    return `어제 ${place} 다녀오셨네요`;
+    return `어제 ${place}`;
   }
-  return `${place} · 시간이 쌓였어요`;
+  return `${place} · 기록이 쌓였어요`;
 }
 
 export function buildPassiveLocationCareBody(input: {
   dwellLabel?: string | null;
 }): string {
   if (input.dwellLabel?.trim()) {
-    return `${input.dwellLabel} · 즐거우셨나요?`;
+    return `${input.dwellLabel} · 수신함에서 볼 수 있어요`;
   }
-  return "즐거우셨나요?";
+  return "수신함에서 볼 수 있어요";
 }

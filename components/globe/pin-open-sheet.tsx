@@ -11,8 +11,9 @@ import {
   type PinContextFieldKind,
 } from "@/components/globe/pin-context-field-sheet";
 import { PinContextTappableField } from "@/components/globe/pin-context-tappable-field";
+import { GlobeContextSendRail } from "@/components/globe/globe-context-send-rail";
+import { MarketplacePinContextPanel } from "@/components/globe/marketplace-pin-context-panel";
 import { GlobeContextPhotoButton } from "@/components/globe/globe-context-photo-button";
-import { GlobeContextShareFriendsPanel } from "@/components/globe/globe-context-share-friends-panel";
 import { GlobeContextMediaShortsReel } from "@/components/globe/globe-context-media-shorts-reel";
 import { ExperienceBridgeMediaShell, type BridgeMediaArrivalHint } from "@/components/globe/experience-bridge-media-shell";
 import { BridgeContextPanel } from "@/components/globe/bridge-context-panel";
@@ -86,7 +87,21 @@ import { cn } from "@/lib/utils";
 import { copy } from "@/lib/copy/human-ko";
 import { resolveRimvioHonorific } from "@/lib/copy/rimvio-honorific";
 import { PinPulseContextStrip } from "@/components/globe/pin-pulse-context-strip";
+import { PortalMarketSuggestionCard } from "@/components/portal/portal-market-suggestion-card";
 import { usePinPulseContext } from "@/hooks/use-pin-pulse-context";
+import { dispatchGlobeContextShareRequest } from "@/lib/globe/globe-context-share-request";
+import {
+  findMarketIntentByEventId,
+  subscribeMarketIntents,
+} from "@/lib/globe/market/market-alignment-store";
+import { readBridgeTypeFromMetadata, isMarketplaceBridgeType } from "@/lib/bridge/bridge-type";
+import { publishMarketIntentExternal } from "@/lib/globe/market/publish-market-intent-external";
+import { dispatchGlobePortalOpen } from "@/lib/portal/globe-portal-open-bridge";
+import {
+  dismissPortalMarketSuggestion,
+  shouldShowPortalMarketSuggestion,
+} from "@/lib/portal/portal-market-suggestion-policy";
+import { resolvePortalMarketSuggestionFromEvent } from "@/lib/portal/resolve-portal-market-suggestion";
 
 export type PinOpenSheetProps = {
   open: boolean;
@@ -395,6 +410,21 @@ export function PinOpenSheet({
 
   const openMomentItemId = moments[0]?.spatialItemId ?? null;
 
+  const [marketRevision, setMarketRevision] = useState(0);
+
+  useEffect(() => {
+    return subscribeMarketIntents(() => setMarketRevision((value) => value + 1));
+  }, []);
+
+  const marketIntent = useMemo(() => {
+    void marketRevision;
+    const eventId = cluster?.eventId?.trim();
+    if (!eventId) {
+      return null;
+    }
+    return findMarketIntentByEventId(eventId);
+  }, [cluster?.eventId, marketRevision]);
+
   const shareEvent = useMemo(() => {
     if (event) {
       return event;
@@ -405,12 +435,43 @@ export function PinOpenSheet({
     return recoverGlobeContextEventFromPin(cluster.eventId);
   }, [event, cluster?.eventId]);
 
+  const portalMarketSuggestion = useMemo(() => {
+    void marketRevision;
+    return resolvePortalMarketSuggestionFromEvent(shareEvent);
+  }, [marketRevision, shareEvent]);
+
+  const [portalSuggestVisible, setPortalSuggestVisible] = useState(true);
+  const [portalSuggestBusy, setPortalSuggestBusy] = useState(false);
+
+  useEffect(() => {
+    const eventId = shareEvent?.id?.trim();
+    if (!eventId) {
+      setPortalSuggestVisible(false);
+      return;
+    }
+    setPortalSuggestVisible(shouldShowPortalMarketSuggestion({ eventId }));
+  }, [shareEvent?.id]);
+
+  const isMarketplaceContext = useMemo(() => {
+    if (cluster?.marketRole) {
+      return true;
+    }
+    if (marketIntent) {
+      return true;
+    }
+    const bridgeType = readBridgeTypeFromMetadata(event?.metadata ?? shareEvent?.metadata);
+    return isMarketplaceBridgeType(bridgeType);
+  }, [cluster?.marketRole, event?.metadata, marketIntent, shareEvent?.metadata]);
+
   const bridgeMediaDeletable = useMemo(() => {
     const id = cluster?.eventId?.trim();
     return Boolean(id && isBridgeLinkedEventId(id));
   }, [cluster?.eventId]);
 
   const isBridgeContext = useMemo(() => {
+    if (isMarketplaceContext) {
+      return false;
+    }
     if (bridgeMediaDeletable || isBridgeSharedEvent(event)) {
       return true;
     }
@@ -421,7 +482,7 @@ export function PinOpenSheet({
     return reelItems.some(
       (row) => row.ownerUserId?.trim() && row.ownerUserId.trim() !== viewerId,
     );
-  }, [bridgeMediaDeletable, event, reelItems, user?.id]);
+  }, [bridgeMediaDeletable, event, isMarketplaceContext, reelItems, user?.id]);
 
   const bridgeSyncPhase = useBridgeSyncPhase(
     isBridgeContext ? cluster?.eventId : null,
@@ -439,7 +500,7 @@ export function PinOpenSheet({
   }, [bridgeSyncPhase, event, isBridgeContext, revision, user?.id]);
 
   const pinPulseContextQuery = usePinPulseContext({
-    enabled: open && Boolean(cluster) && !isBridgeContext,
+    enabled: open && Boolean(cluster) && !isBridgeContext && !isMarketplaceContext,
     lat: cluster?.lat ?? null,
     lng: cluster?.lng ?? null,
     placeLabel: hero?.place ?? cluster?.placeLabel ?? null,
@@ -447,6 +508,10 @@ export function PinOpenSheet({
   });
 
   const contextDetailsSummary = useMemo(() => {
+    if (isMarketplaceContext && cluster) {
+      const role = cluster.marketRole === "seeking" ? "구하기" : "내놓기";
+      return [role, cluster.title, cluster.placeLabel].filter(Boolean).join(" · ");
+    }
     if (isBridgeContext) {
       const parts = [copy.globe.bridgeContextRecallEyebrow];
       if (people.length > 0) {
@@ -471,7 +536,7 @@ export function PinOpenSheet({
       parts.push(`함께 ${people.length}명`);
     }
     return parts.length > 0 ? parts.join(" · ") : copy.globe.pinContextDetailsFallback;
-  }, [isBridgeContext, moments.length, shareEvent, evidence, people.length]);
+  }, [cluster, isBridgeContext, isMarketplaceContext, moments.length, shareEvent, evidence, people.length]);
 
   useEffect(() => {
     if (!open || !cluster?.eventId) {
@@ -558,14 +623,94 @@ export function PinOpenSheet({
     experienceRoomThreadId: threadId,
   });
   const canOpenTalk = Boolean(talkThreadId && event && hero);
-  const showTalkCta = Boolean(event && hero && (canOpenTalk || isBridgeContext));
+  const showTalkCta = Boolean(
+    event && hero && (canOpenTalk || isBridgeContext) && !isMarketplaceContext,
+  );
+
+  const acceptPortalMarketSuggestion = () => {
+    if (!portalMarketSuggestion || portalSuggestBusy) {
+      return;
+    }
+    void (async () => {
+      setPortalSuggestBusy(true);
+      try {
+        if (portalMarketSuggestion.kind === "publish_external") {
+          const saved = await publishMarketIntentExternal(portalMarketSuggestion.eventId);
+          if (saved) {
+            toast.success(
+              copy.portal.marketSuggestPublishedToast(
+                saved.detail.productName.trim() || saved.title.trim(),
+              ),
+            );
+            dismissPortalMarketSuggestion({ eventId: portalMarketSuggestion.eventId });
+            setPortalSuggestVisible(false);
+            setMarketRevision((value) => value + 1);
+            return;
+          }
+        }
+        dispatchGlobePortalOpen({
+          eventId: portalMarketSuggestion.eventId,
+          composeText: portalMarketSuggestion.seedText,
+          initialIntentId: portalMarketSuggestion.portalIntentId,
+          source: "context",
+        });
+        dismissPortalMarketSuggestion({ eventId: portalMarketSuggestion.eventId });
+        setPortalSuggestVisible(false);
+        onOpenChange(false);
+      } catch (caught) {
+        toast.error(
+          caught instanceof Error ? caught.message : copy.globe.ingestAttachFail,
+        );
+      } finally {
+        setPortalSuggestBusy(false);
+      }
+    })();
+  };
+
+  const portalSuggestionCard =
+    portalMarketSuggestion &&
+    portalSuggestVisible &&
+    shouldShowPortalMarketSuggestion({ eventId: portalMarketSuggestion.eventId }) ? (
+      <PortalMarketSuggestionCard
+        suggestion={portalMarketSuggestion}
+        headline={
+          portalMarketSuggestion.kind === "publish_external"
+            ? copy.portal.marketSuggestPublishHeadline(portalMarketSuggestion.productName)
+            : copy.portal.marketSuggestCreateHeadline(portalMarketSuggestion.productName)
+        }
+        body={
+          portalMarketSuggestion.kind === "publish_external"
+            ? copy.portal.marketSuggestPublishBody
+            : copy.portal.marketSuggestCreateBody
+        }
+        cta={
+          portalMarketSuggestion.kind === "publish_external"
+            ? copy.portal.marketSuggestPublishCta
+            : copy.portal.marketSuggestCreateCta
+        }
+        dismissAria={copy.portal.marketSuggestDismissAria}
+        busy={portalSuggestBusy}
+        onAccept={acceptPortalMarketSuggestion}
+        onDismiss={() => {
+          dismissPortalMarketSuggestion({ eventId: portalMarketSuggestion.eventId });
+          setPortalSuggestVisible(false);
+        }}
+        className="mb-3"
+      />
+    ) : null;
 
   if (!mounted) {
     return null;
   }
 
-  const contextDetailsBody = (
+  const contextDetailsBody = isMarketplaceContext && cluster ? (
     <>
+      {portalSuggestionCard}
+      <MarketplacePinContextPanel cluster={cluster} intent={marketIntent} />
+    </>
+  ) : (
+    <>
+      {portalSuggestionCard}
       {tripLeg ? <ExperienceTripLegBar trip={tripLeg} /> : null}
       {shareEvent ? (
         <GlobeContextHubPanel
@@ -605,7 +750,6 @@ export function PinOpenSheet({
           </span>
         </button>
       ) : null}
-      {shareEvent ? <GlobeContextShareFriendsPanel event={shareEvent} /> : null}
       <EvidenceList rows={evidence} />
     </>
   );
@@ -794,6 +938,22 @@ export function PinOpenSheet({
             </div>
 
             <div className={rimvioSheetFooterClass()}>
+              {shareEvent && hero && !isMarketplaceContext ? (
+                <GlobeContextSendRail
+                  event={shareEvent}
+                  delivery={{
+                    title: hero.title,
+                    date: hero.date,
+                    place: hero.place,
+                  }}
+                  onOpenMore={() => {
+                    dispatchGlobeContextShareRequest({
+                      eventId: shareEvent.id,
+                      pinId: cluster.pinId,
+                    });
+                  }}
+                />
+              ) : null}
               {showTalkCta ? (
                 <button
                   type="button"
@@ -810,6 +970,7 @@ export function PinOpenSheet({
                       : copy.globe.bridgeContextTalkStartCta}
                 </button>
               ) : null}
+              {!isMarketplaceContext ? (
               <GlobeContextPhotoButton
                 eventId={cluster.eventId}
                 eventTitle={hero.title}
@@ -826,6 +987,7 @@ export function PinOpenSheet({
                   );
                 }}
               />
+              ) : null}
               <button
                 type="button"
                 className={rimvioSecondaryCtaClass()}

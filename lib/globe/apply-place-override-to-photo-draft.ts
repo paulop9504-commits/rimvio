@@ -1,6 +1,7 @@
 import type { GlobePhotoIngestDraft } from "@/lib/globe/prepare-globe-photo-ingest-draft";
 import { projectGlobeContextCandidateViews } from "@/lib/globe/project-globe-context-candidate-view";
 import { isCoordsPlaceLabel } from "@/lib/globe/is-coords-place-label";
+import { matchKoreaKnownPlace } from "@/lib/globe/korea-known-places";
 import { matchKoreaKnownNeighborhood } from "@/lib/globe/korea-known-neighborhoods";
 import { matchKoreaMetroDistrict } from "@/lib/globe/korea-metro-districts";
 

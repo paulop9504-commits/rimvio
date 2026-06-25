@@ -23,12 +23,13 @@ import {
 } from "@/lib/peer-chat/server-peer-chat";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { assertMarketHandshakeAllowsSend } from "@/lib/globe/market/server/market-handshake-actions";
+import { purgeStalePeerThreadMediaForThread } from "@/lib/peer-chat/purge-stale-peer-thread-media";
 
 type RouteContext = {
   params: Promise<{ threadId: string }>;
 };
 
-export async function GET(_request: NextRequest, context: RouteContext) {
+export async function GET(request: NextRequest, context: RouteContext) {
   if (!isSupabaseConfigured()) {
     return NextResponse.json(
       { error: "Supabase is not configured." },
@@ -55,10 +56,18 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       userId,
       threadId: decoded,
     });
+    await purgeStalePeerThreadMediaForThread(supabase, {
+      threadId: resolvedThreadId,
+    });
     const rows = await listPeerMessages(supabase, resolvedThreadId);
     const messages = rows.map((row) => mapPeerMessageRow(row, userId));
-    await markThreadRead(supabase, { userId, threadId: resolvedThreadId });
-    await markFeedSlotRead(supabase, { userId, roomId: resolvedThreadId });
+    const markRead =
+      request.nextUrl.searchParams.get("markRead") !== "0" &&
+      request.nextUrl.searchParams.get("peek") !== "1";
+    if (markRead) {
+      await markThreadRead(supabase, { userId, threadId: resolvedThreadId });
+      await markFeedSlotRead(supabase, { userId, roomId: resolvedThreadId });
+    }
     const peerLastReadAt = await readPeerLastReadAt(supabase, {
       userId,
       threadId: resolvedThreadId,
@@ -133,6 +142,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
       await recordInboundMessage(supabase, {
         threadId,
         senderUserId: userId,
+        body: text,
+        createdAt: row.created_at,
       });
     } catch (sideEffectError) {
       console.error("[peer-messages] recordInboundMessage", sideEffectError);

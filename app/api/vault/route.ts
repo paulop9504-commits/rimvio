@@ -49,7 +49,11 @@ export async function GET(request: Request) {
     if (isVaultMigrationMissingError(message)) {
       return NextResponse.json(vaultMigrationRequiredResponse(), { status: 503 });
     }
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[vault] GET failed:", message);
+    return NextResponse.json(
+      { error: message, hint: "vault_unavailable" },
+      { status: 503 },
+    );
   }
 }
 
@@ -77,6 +81,10 @@ export async function POST() {
     if (isVaultMigrationMissingError(message)) {
       return NextResponse.json(vaultMigrationRequiredResponse(), { status: 503 });
     }
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[vault] POST failed:", message);
+    return NextResponse.json(
+      { error: message, hint: "vault_unavailable" },
+      { status: 503 },
+    );
   }
 }

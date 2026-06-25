@@ -87,6 +87,28 @@ export function inviteBridgeParticipant(
   };
 }
 
+/** 1:1 DM delivery — invite then accept in one host action (no inbox ceremony). */
+export function inviteBridgeParticipantForDirectDelivery(
+  state: ExperienceBridgeState,
+  input: {
+    userId: string;
+    displayName: string;
+    now?: Date;
+  },
+): ExperienceBridgeState {
+  const afterInvite = inviteBridgeParticipant(state, input);
+  const row = afterInvite.participants.find(
+    (participant) => participant.userId === input.userId.trim(),
+  );
+  if (!row || row.status !== "pending") {
+    return afterInvite;
+  }
+  return acceptBridgeInvite(afterInvite, {
+    userId: input.userId,
+    now: input.now,
+  });
+}
+
 export function acceptBridgeInvite(
   state: ExperienceBridgeState,
   input: { userId: string; now?: Date },

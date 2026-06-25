@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { isVaultUnavailableStatus } from "@/lib/vault/vault-api-errors";
 import type { VaultObjectSummary } from "@/lib/vault/types";
 
 export type PersonalVaultState = {
   ready: boolean;
   loading: boolean;
   persisted: boolean;
+  vaultAvailable: boolean;
   vault: {
     userId: string;
     status: string;
@@ -17,7 +19,7 @@ export type PersonalVaultState = {
   } | null;
   objects: VaultObjectSummary[];
   error: string | null;
-  ensure: () => Promise<void>;
+  ensure: () => Promise<boolean>;
   refresh: () => Promise<void>;
 };
 
@@ -26,10 +28,14 @@ export function usePersonalVault(enabled = true): PersonalVaultState {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [persisted, setPersisted] = useState(false);
+  const [vaultAvailable, setVaultAvailable] = useState(true);
+
+  useEffect(() => {
+    setVaultAvailable(true);
+  }, [user?.id]);
   const [vault, setVault] = useState<PersonalVaultState["vault"]>(null);
   const [objects, setObjects] = useState<VaultObjectSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [migrationRequired, setMigrationRequired] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!enabled || !user?.id) {
@@ -37,21 +43,17 @@ export function usePersonalVault(enabled = true): PersonalVaultState {
       setVault(null);
       setObjects([]);
       setError(null);
-      setMigrationRequired(false);
+      setVaultAvailable(true);
+      return;
+    }
+
+    if (!vaultAvailable) {
       return;
     }
 
     setLoading(true);
     try {
       const response = await fetch("/api/vault", { credentials: "include" });
-      if (response.status === 401) {
-        setPersisted(false);
-        setVault(null);
-        setObjects([]);
-        setError(null);
-        setMigrationRequired(false);
-        return;
-      }
       const data = (await response.json()) as {
         persisted?: boolean;
         vault?: PersonalVaultState["vault"];
@@ -59,12 +61,19 @@ export function usePersonalVault(enabled = true): PersonalVaultState {
         error?: string;
         hint?: string;
       };
-      if (response.status === 503 && data.hint === "vault_migration_required") {
+      if (response.status === 401) {
         setPersisted(false);
         setVault(null);
         setObjects([]);
         setError(null);
-        setMigrationRequired(true);
+        return;
+      }
+      if (isVaultUnavailableStatus(response.status, data.hint, data.error)) {
+        setPersisted(false);
+        setVault(null);
+        setObjects([]);
+        setError(null);
+        setVaultAvailable(false);
         return;
       }
       if (!response.ok) {
@@ -79,11 +88,11 @@ export function usePersonalVault(enabled = true): PersonalVaultState {
     } finally {
       setLoading(false);
     }
-  }, [enabled, user?.id]);
+  }, [enabled, user?.id, vaultAvailable]);
 
-  const ensure = useCallback(async () => {
-    if (!enabled || !user?.id || migrationRequired) {
-      return;
+  const ensure = useCallback(async (): Promise<boolean> => {
+    if (!enabled || !user?.id || !vaultAvailable) {
+      return false;
     }
     setLoading(true);
     try {
@@ -92,36 +101,39 @@ export function usePersonalVault(enabled = true): PersonalVaultState {
         credentials: "include",
       });
       const data = (await response.json()) as { error?: string; hint?: string };
-      if (response.status === 503 && data.hint === "vault_migration_required") {
-        setMigrationRequired(true);
-        return;
+      if (isVaultUnavailableStatus(response.status, data.hint, data.error)) {
+        setVaultAvailable(false);
+        return false;
       }
       if (!response.ok) {
         throw new Error(data.error ?? "vault_ensure_failed");
       }
       await refresh();
+      return true;
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "vault_ensure_failed");
+      return false;
     } finally {
       setLoading(false);
     }
-  }, [enabled, refresh, user?.id, migrationRequired]);
+  }, [enabled, refresh, user?.id, vaultAvailable]);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
 
   useEffect(() => {
-    if (!enabled || !user?.id || migrationRequired) {
+    if (!enabled || !user?.id || !vaultAvailable) {
       return;
     }
     void ensure();
-  }, [enabled, ensure, migrationRequired, user?.id]);
+  }, [enabled, ensure, user?.id, vaultAvailable]);
 
   return {
     ready: Boolean(user?.id && vault),
     loading,
     persisted,
+    vaultAvailable,
     vault,
     objects,
     error,

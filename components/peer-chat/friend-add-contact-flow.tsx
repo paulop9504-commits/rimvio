@@ -258,11 +258,6 @@ export function FriendAddContactFlow({
         <p className="truncate text-sm font-semibold text-[#191f28]">
           {preview.displayName}
         </p>
-        {preview.rimvioId ? (
-          <p className="truncate text-[12px] font-medium text-[#1b64da]">
-            @{preview.rimvioId}
-          </p>
-        ) : null}
         <p className="mt-0.5 text-[11px] font-medium text-[#3182f6]">
           {submitting ? "추가 중…" : previewHint}
         </p>

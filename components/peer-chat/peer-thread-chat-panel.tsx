@@ -21,10 +21,11 @@ import { PeerInviteBanner } from "@/components/peer-chat/peer-invite-banner";
 import { isDmThreadId } from "@/lib/peer-chat/dm-thread";
 import { isGroupThreadId } from "@/lib/peer-chat/group-thread";
 import { shouldShowPeerDateDivider } from "@/lib/peer-chat/peer-chat-date-divider";
+import { PEER_CHAT_MEDIA_ACCEPT } from "@/lib/peer-chat/peer-chat-image-constants";
 import { DM_CHAT } from "@/lib/peer-chat/dm-chat-density";
 import {
+  shouldShowPeerAvatarCluster,
   shouldShowPeerMessageTime,
-  shouldShowPeerProfileHeader,
 } from "@/lib/peer-chat/message-time-visibility";
 import { groupReadCountForMessage } from "@/lib/peer-chat/group-read-receipt";
 import { shouldShowPeerSentCheck } from "@/lib/peer-chat/peer-read-receipt";
@@ -263,7 +264,7 @@ export function PeerThreadChatPanel({
       <input
         ref={imageInputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+        accept={PEER_CHAT_MEDIA_ACCEPT}
         className="hidden"
         onChange={(event) => {
           const file = event.target.files?.[0] ?? null;
@@ -335,23 +336,21 @@ export function PeerThreadChatPanel({
           className="min-h-0 flex-1"
         />
         <LensMapPickerSheet
-          open={Boolean(mapPicker)}
-          onOpenChange={(open) => {
-            if (!open) {
-              setMapPicker(null);
-            }
-          }}
-          candidate={mapPicker}
-          onSelect={(candidate) => onLensSelect(candidate, mapPicker?.sourceMessageId)}
+          open={mapPicker.open}
+          place={mapPicker.place}
+          onOpenChange={(open) =>
+            setMapPicker((prev) => ({ ...prev, open, place: open ? prev.place : null }))
+          }
         />
         <LensScheduleConfirmSheet
-          open={Boolean(scheduleConfirm)}
-          onOpenChange={(open) => {
-            if (!open) {
-              setScheduleConfirm(null);
-            }
-          }}
-          draft={scheduleConfirm}
+          open={scheduleConfirm.open}
+          draft={scheduleConfirm.draft}
+          onOpenChange={(open) =>
+            setScheduleConfirm((prev) => ({
+              open,
+              draft: open ? prev.draft : null,
+            }))
+          }
           onSaved={handleScheduleSaved}
         />
       </div>
@@ -362,7 +361,7 @@ export function PeerThreadChatPanel({
     <div
       className={cn(
         "flex min-h-0 flex-1 flex-col",
-        experienceDiscussion || simple ? "bg-background" : "rimvio-dm-chat-bg",
+        experienceDiscussion || simple ? cn("bg-background", simple && DM_CHAT.surface) : "rimvio-dm-chat-bg",
       )}
     >
       {!experienceDiscussion && !readOnly && !phoneDm && !isGroup ? (
@@ -439,11 +438,13 @@ export function PeerThreadChatPanel({
                 <PeerChatBubble
                   message={message}
                   simple={simple}
-                  showTime={shouldShowPeerMessageTime(visibleMessages, index)}
-                  showPeerProfileHeader={shouldShowPeerProfileHeader(
-                    visibleMessages,
-                    index,
-                  )}
+                  showTime={!simple && shouldShowPeerMessageTime(visibleMessages, index)}
+                  showPeerAvatar={
+                    simple
+                      ? shouldShowPeerAvatarCluster(visibleMessages, index)
+                      : shouldShowPeerMessageTime(visibleMessages, index)
+                  }
+                  showPeerProfileHeader={false}
                   peerProfile={peerProfile}
                   lensCandidates={candidatesByMessageId[message.id] ?? []}
                   onLensSelect={(candidate) => onLensSelect(candidate, message.id)}
@@ -508,7 +509,7 @@ export function PeerThreadChatPanel({
           <input
             ref={imageInputRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+            accept={PEER_CHAT_MEDIA_ACCEPT}
             className="hidden"
             onChange={(event) => {
               const file = event.target.files?.[0] ?? null;

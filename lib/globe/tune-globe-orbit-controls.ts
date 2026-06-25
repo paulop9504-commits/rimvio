@@ -1,18 +1,24 @@
 import type { GlobeInstance } from "globe.gl";
+import {
+  GLOBE_ORBIT_DESKTOP,
+  GLOBE_ORBIT_TOUCH,
+} from "@/lib/globe/globe-gesture-tuning";
 import { isTouchZoomDevice } from "@/lib/globe/is-touch-zoom-device";
 
 export type OrbitControlsLike = ReturnType<GlobeInstance["controls"]>;
 
-/** Apple Maps–grade orbit feel — damping, touch split, mobile rotate speed. */
+/** Apple Maps–grade orbit — damping always on for buttery release inertia. */
 export function tuneGlobeOrbitControls(controls: OrbitControlsLike): void {
   controls.enablePan = false;
   controls.autoRotate = false;
   controls.enableDamping = true;
-  controls.dampingFactor = 0.078;
-  controls.rotateSpeed = 0.42;
-  controls.zoomSpeed = 0.95;
 
   const touchDevice = isTouchZoomDevice();
+  const profile = touchDevice ? GLOBE_ORBIT_TOUCH : GLOBE_ORBIT_DESKTOP;
+  controls.rotateSpeed = profile.rotateSpeed;
+  controls.dampingFactor = profile.dampingFactor;
+  controls.zoomSpeed = profile.zoomSpeed;
+
   const touches = controls.touches as
     | { ONE?: number; TWO?: number }
     | undefined;
@@ -29,8 +35,6 @@ export function tuneGlobeOrbitControls(controls: OrbitControlsLike): void {
   }
 
   if (touchDevice) {
-    controls.rotateSpeed = 0.46;
-    controls.dampingFactor = 0.042;
     controls.enableZoom = true;
   }
 }

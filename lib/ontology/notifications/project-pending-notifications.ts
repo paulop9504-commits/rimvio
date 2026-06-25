@@ -5,6 +5,7 @@ import {
 } from "@/lib/globe/passive-context/build-passive-location-care-copy";
 import { formatDwellMinutesLabel } from "@/lib/feed/project-dwell-from-gps-pings";
 import { projectGpsDwellConfirmDraft } from "@/lib/globe/gps-dwell/project-gps-dwell-confirm-segments";
+import { pickSurfacedLocationConfirms } from "@/lib/globe/pick-surfaced-location-confirms";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 import {
   bridgeInviteNotificationId,
@@ -94,7 +95,9 @@ export function projectPendingNotifications(
     });
   }
 
-  for (const row of input.locationConfirms) {
+  for (const row of pickSurfacedLocationConfirms(input.locationConfirms, {
+    markOffered: false,
+  })) {
     const id = locationConfirmNotificationId(row.eventId);
     if (dismissed.has(id)) {
       continue;

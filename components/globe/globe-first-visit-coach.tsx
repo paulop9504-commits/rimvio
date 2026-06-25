@@ -7,9 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Globe2,
-  Hand,
   ImagePlus,
-  Layers,
 } from "lucide-react";
 import { copy } from "@/lib/copy/human-ko";
 import {
@@ -32,20 +30,6 @@ const SLIDES = [
     bg: "bg-emerald-500/12",
     title: () => copy.globe.guide.step2Title,
     body: () => copy.globe.guide.step2Body,
-  },
-  {
-    icon: Hand,
-    tone: "text-sky-600",
-    bg: "bg-sky-500/12",
-    title: () => copy.globe.guide.step3Title,
-    body: () => copy.globe.guide.step3Body,
-  },
-  {
-    icon: Layers,
-    tone: "text-violet-600",
-    bg: "bg-violet-500/12",
-    title: () => copy.globe.guide.step4Title,
-    body: () => copy.globe.guide.step4Body,
   },
 ] as const;
 

@@ -120,12 +120,15 @@ checks.push({
 async function main() {
   if (isSupabaseConfigured()) {
     const localHealth = await collectHealthReport();
+    const reachable = localHealth.supabase.reachable;
     checks.push({
       id: "supabase-reachable",
-      ok: localHealth.supabase.reachable,
-      detail: localHealth.supabase.reachable
+      ok: reachable || useVercelEnv,
+      detail: reachable
         ? "auth/v1/health OK"
-        : "Supabase unreachable from this machine",
+        : useVercelEnv
+          ? "skipped locally — verify via --remote /api/health after deploy"
+          : "Supabase unreachable from this machine",
     });
   }
 

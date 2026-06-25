@@ -381,7 +381,14 @@ export function BridgeContextPanel({
       ) : null}
 
       {isBridgeHost ? (
-        <GlobeContextShareFriendsPanel event={event} />
+        <GlobeContextShareFriendsPanel
+          event={event}
+          delivery={{
+            title: hero.title,
+            date: hero.date,
+            place: hero.place,
+          }}
+        />
       ) : null}
     </div>
   );

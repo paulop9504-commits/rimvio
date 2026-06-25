@@ -175,7 +175,7 @@ export const RimvioGlobe3D = memo(
       pins,
       tripArcs = [],
       contextWarmthPoints = [],
-      contextWarmthEnabled = true,
+      contextWarmthEnabled = false,
       viewerLocation = null,
       activePinId = null,
       expandedPinId = null,
@@ -668,11 +668,9 @@ export const RimvioGlobe3D = memo(
       flushDeferredGlobeVisualsRef.current = flushDeferredGlobeVisuals;
 
       controls.addEventListener("start", () => {
-        controls.enableDamping = false;
         setGlobeInteracting(true);
       });
       controls.addEventListener("end", () => {
-        controls.enableDamping = true;
         setGlobeInteracting(false);
         flushDeferredGlobeVisuals();
       });

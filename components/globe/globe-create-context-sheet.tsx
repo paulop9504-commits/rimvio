@@ -19,6 +19,7 @@ import { connectDepartureHubToContext } from "@/lib/globe/connect-departure-hub-
 import { shouldSuggestContextHubsForDraft } from "@/lib/globe/context-hub/should-suggest-context-hubs";
 import type { DepartureHubAirportId } from "@/lib/globe/departure-hub-airports";
 import { suggestDepartureHubOptions } from "@/lib/globe/suggest-departure-hub-options";
+import { formatPinDateLabel } from "@/lib/globe/format-pin-date-label";
 import type { ManualContextResolvedPlace } from "@/lib/globe/resolve-manual-context-place-candidates";
 import { suggestionToResolvedPlace } from "@/lib/globe/resolve-manual-context-place-candidates";
 import {
@@ -203,9 +204,14 @@ export function GlobeCreateContextSheet({
           event: createdEvent,
           hostDisplayName: hostName,
           friends,
+          delivery: {
+            title: title.trim() || createdEvent.title.trim() || "경험",
+            date: formatPinDateLabel(createdEvent.datetime),
+            place: createdPlaceLabel.trim() || createdEvent.place?.trim() || "장소",
+          },
         });
         if (invited > 0) {
-          toast.success(`${invited}명에게 경험을 공유했어요`);
+          toast.success(`${invited}명에게 보냈어요`);
         }
       } catch (caught) {
         toast.error(

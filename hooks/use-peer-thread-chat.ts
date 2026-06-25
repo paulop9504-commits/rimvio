@@ -26,11 +26,16 @@ import {
   removeOptimisticPeerMessage,
   replaceOptimisticPeerMessage,
 } from "@/lib/peer-chat/optimistic-peer-message";
-import { PEER_MESSAGE_IMAGE_PLACEHOLDER } from "@/lib/peer-chat/peer-chat-image-constants";
+import {
+  PEER_MESSAGE_IMAGE_PLACEHOLDER,
+  PEER_MESSAGE_VIDEO_PLACEHOLDER,
+} from "@/lib/peer-chat/peer-chat-image-constants";
+import { isPeerChatVideoContentType } from "@/lib/peer-chat/infer-peer-chat-media-kind";
 import {
   takePrefetchedMessages,
 } from "@/lib/peer-chat/message-prefetch-cache";
-import { parseOutgoingMessage } from "@/lib/chat-room/parse-ai-invoke";
+import { sharedGlobePinFromMessageRow } from "@/lib/peer-chat/project-thread-globe-pins";
+import { mirrorInboundSharedGlobePinIfNeeded } from "@/lib/peer-chat/mirror-inbound-shared-globe-pins";
 import {
   buildPeerInviteUrl,
   ensurePeerThreadRemote,
@@ -251,6 +256,14 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
               }
               return merged;
             });
+            const inboundPin = sharedGlobePinFromMessageRow(row);
+            if (inboundPin && user?.id && inboundPin.senderUserId !== user.id) {
+              mirrorInboundSharedGlobePinIfNeeded({
+                pin: inboundPin,
+                viewerUserId: user.id,
+                peerDisplayName: displayName,
+              });
+            }
             if (
               isRegisteredPeerDmThread(realtimeThreadId) &&
               mapped.author !== "me"
@@ -278,6 +291,7 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
     threadId,
     user?.id,
     canPersist,
+    displayName,
   ]);
 
   const resolveSendThreadId = useCallback(async () => {
@@ -412,15 +426,27 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
   const sendImage = useCallback(
     async (file: File, caption?: string) => {
       if (!useCloud) {
-        setSyncError("로그인 후 사진을 보낼 수 있어요");
+        setSyncError("로그인 후 사진·동영상을 보낼 수 있어요");
         return null;
       }
       setImageBusy(true);
       const sendThreadId = await resolveActiveSendThreadId();
-      const previewUrl = URL.createObjectURL(file);
+      const isVideo =
+        isPeerChatVideoContentType(file.type) ||
+        /\.(mp4|mov|webm|3gp)$/iu.test(file.name);
+      let uploadFile = file;
+      if (isVideo) {
+        const { prepareShareVideoFile } = await import(
+          "@/lib/media/share-video-compress/prepare-share-video-file"
+        );
+        uploadFile = await prepareShareVideoFile({ file });
+      }
+      const previewUrl = URL.createObjectURL(uploadFile);
       const pending = createOptimisticPeerMessage({
         peerThreadId: sendThreadId,
-        body: caption?.trim() || PEER_MESSAGE_IMAGE_PLACEHOLDER,
+        body:
+          caption?.trim() ||
+          (isVideo ? PEER_MESSAGE_VIDEO_PLACEHOLDER : PEER_MESSAGE_IMAGE_PLACEHOLDER),
         imageUrl: previewUrl,
       });
       setMessages((current) => {
@@ -436,14 +462,14 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
         const { attachMediaSpacetime, serializeMediaSpacetimeForUpload } =
           await import("@/lib/location-ping/attach-media-spacetime");
         const spacetime = await attachMediaSpacetime({
-          file,
+          file: uploadFile,
           origin: "peer_chat",
           originRef: sendThreadId,
         });
         const message = await sendPeerImageRemote({
           threadId: sendThreadId,
           displayName,
-          file,
+          file: uploadFile,
           caption,
           spacetimeJson: serializeMediaSpacetimeForUpload(spacetime),
         });
@@ -493,7 +519,7 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
           removeOptimisticPeerMessage(current, pending.id),
         );
         setSyncError(
-          error instanceof Error ? error.message : "사진 전송에 실패했어요",
+          error instanceof Error ? error.message : "사진·동영상 전송에 실패했어요",
         );
         return null;
       } finally {

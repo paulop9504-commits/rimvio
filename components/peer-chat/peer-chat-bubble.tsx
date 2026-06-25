@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Check } from "lucide-react";
 import type { PeerMessage } from "@/lib/context/peer-message-types";
 import { DeepLinkBubbleRow } from "@/components/peer-chat/deep-link-bubble-row";
@@ -7,12 +8,17 @@ import {
   PeerMessageRow,
   type PeerMessageRowProfile,
 } from "@/components/peer-chat/peer-message-row";
+import { PeerMessageLongPressSheet } from "@/components/peer-chat/peer-message-long-press-sheet";
 import { DM_CHAT } from "@/lib/peer-chat/dm-chat-density";
 import { formatPeerMessageTime } from "@/lib/peer-chat/format-message-time";
 import { PeerAiInlineCard } from "@/components/peer-chat/peer-ai-inline-card";
 import type { DeepLinkBubbleCandidate } from "@/lib/peer-chat/ai-lens/types";
-import { PEER_MESSAGE_IMAGE_PLACEHOLDER } from "@/lib/peer-chat/peer-chat-image-constants";
+import {
+  inferPeerChatMediaKind,
+  isPeerChatMediaPlaceholder,
+} from "@/lib/peer-chat/infer-peer-chat-media-kind";
 import { isPendingPeerMessageId } from "@/lib/peer-chat/optimistic-peer-message";
+import { useLongPress } from "@/lib/hooks/use-long-press";
 import { cn } from "@/lib/utils";
 
 type PeerChatBubbleProps = {
@@ -24,6 +30,7 @@ type PeerChatBubbleProps = {
   /** 단톡 — 읽은 인원 수 (카톡 단톡식) */
   groupReadCount?: number;
   showPeerProfileHeader?: boolean;
+  showPeerAvatar?: boolean;
   peerProfile?: PeerMessageRowProfile | null;
   as?: "li" | "div";
   lensCandidates?: readonly DeepLinkBubbleCandidate[];
@@ -51,17 +58,30 @@ export function PeerChatBubble({
   showSentCheck = false,
   groupReadCount = 0,
   showPeerProfileHeader = false,
+  showPeerAvatar = true,
   peerProfile = null,
   as = "li",
   lensCandidates = [],
   onLensSelect,
   lensDisabled = false,
 }: PeerChatBubbleProps) {
-  const time =
-    showTime && message.sentAt ? formatPeerMessageTime(message.sentAt) : "";
+  const [timeSheetOpen, setTimeSheetOpen] = useState(false);
+  const instagramDm = simple;
+  const inlineTime =
+    !instagramDm && showTime && message.sentAt
+      ? formatPeerMessageTime(message.sentAt)
+      : "";
 
   const isMe = message.author === "me";
   const isPending = isPendingPeerMessageId(message.id);
+
+  const longPress = useLongPress({
+    onLongPress: () => {
+      if (message.sentAt) {
+        setTimeSheetOpen(true);
+      }
+    },
+  });
 
   const Tag = as;
 
@@ -80,7 +100,7 @@ export function PeerChatBubble({
         <PeerMessageRow
           isMe={isMe}
           peer={peerProfile}
-          showPeerAvatar={!isMe && showTime}
+          showPeerAvatar={!isMe && showPeerAvatar}
         >
           <div
             className={cn(
@@ -88,7 +108,7 @@ export function PeerChatBubble({
               simple ? DM_CHAT.rowGap : "gap-1.5",
             )}
           >
-            {time ? <MessageTime time={time} compact={simple} /> : null}
+            {inlineTime ? <MessageTime time={inlineTime} compact={simple} /> : null}
             <PeerAiInlineCard message={message} simple={simple} />
           </div>
         </PeerMessageRow>
@@ -100,48 +120,89 @@ export function PeerChatBubble({
     lensCandidates.length > 0 && typeof onLensSelect === "function";
 
   const imageUrl = message.imageUrl?.trim() || null;
+  const mediaKind = imageUrl
+    ? inferPeerChatMediaKind({ imageUrl, body: message.body })
+    : null;
   const caption =
-    message.body.trim() &&
-    message.body.trim() !== PEER_MESSAGE_IMAGE_PLACEHOLDER
+    message.body.trim() && !isPeerChatMediaPlaceholder(message.body)
       ? message.body
       : null;
 
+  const mediaShellClass = cn(
+    "min-w-0 overflow-hidden",
+    isPending && isMe && "opacity-85",
+    simple ? DM_CHAT.bubbleRadius : "rounded-2xl",
+    isMe ? DM_CHAT.bubbleMeCorner : DM_CHAT.bubblePeerCorner,
+  );
+
+  const textBubbleClass = cn(
+    "min-w-0 select-none",
+    isPending && isMe && "opacity-85",
+    simple
+      ? cn(
+          DM_CHAT.bubblePx,
+          DM_CHAT.bubblePy,
+          DM_CHAT.bubbleText,
+          DM_CHAT.bubbleRadius,
+          isMe
+            ? cn(DM_CHAT.bubbleMeCorner, DM_CHAT.bubbleMe)
+            : cn(DM_CHAT.bubblePeerCorner, DM_CHAT.bubblePeer),
+        )
+      : cn(
+          "rounded-2xl px-4 py-2.5 text-[17px] leading-snug",
+          isMe
+            ? "rounded-br-md bg-primary text-white"
+            : "rounded-bl-md bg-secondary text-foreground",
+        ),
+  );
+
   const bubbleBody = imageUrl ? (
     <div
-      className={cn(
-        "min-w-0 overflow-hidden",
-        isPending && isMe && "opacity-85",
-        simple ? DM_CHAT.bubbleRadius : "rounded-2xl",
-        isMe ? DM_CHAT.bubbleMeCorner : DM_CHAT.bubblePeerCorner,
-      )}
+      className={mediaShellClass}
+      {...(instagramDm ? longPress : {})}
     >
-      <a
-        href={imageUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="block"
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+      {mediaKind === "video" ? (
+        <video
           src={imageUrl}
-          alt={caption ?? "사진"}
-          className="max-h-[min(52dvh,20rem)] w-full max-w-[min(72vw,15rem)] object-cover sm:max-w-[16rem]"
+          controls
+          playsInline
+          preload="metadata"
+          className="max-h-[min(52dvh,20rem)] w-full max-w-[min(72vw,15rem)] bg-black object-contain sm:max-w-[16rem]"
         />
-      </a>
+      ) : (
+        <a
+          href={imageUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block"
+          onClick={(event) => {
+            if (timeSheetOpen) {
+              event.preventDefault();
+            }
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={imageUrl}
+            alt={caption ?? "사진"}
+            className="max-h-[min(52dvh,20rem)] w-full max-w-[min(72vw,15rem)] object-cover sm:max-w-[16rem]"
+          />
+        </a>
+      )}
       {caption ? (
         <p
           className={cn(
             "whitespace-pre-wrap break-words px-2.5 py-1.5",
             simple
-              ? cn(DM_CHAT.bubbleText, isMe ? "text-white" : "text-foreground")
+              ? cn(DM_CHAT.bubbleText, isMe ? "text-white" : "text-[#262626]")
               : cn("text-[15px]", isMe ? "text-white" : "text-foreground"),
-            isMe && simple
-              ? "bg-primary"
-              : !simple && isMe
-                ? "bg-primary"
-                : simple
-                  ? "bg-secondary"
-                  : "bg-secondary",
+            isMe
+              ? simple
+                ? DM_CHAT.bubbleMe
+                : "bg-primary"
+              : simple
+                ? DM_CHAT.bubblePeer
+                : "bg-secondary",
           )}
         >
           {caption}
@@ -149,72 +210,71 @@ export function PeerChatBubble({
       ) : null}
     </div>
   ) : (
-    <div
-      className={cn(
-        "min-w-0",
-        isPending && isMe && "opacity-85",
-        simple
-          ? cn(
-              DM_CHAT.bubblePx,
-              DM_CHAT.bubblePy,
-              DM_CHAT.bubbleText,
-              DM_CHAT.bubbleRadius,
-              isMe
-                ? cn(DM_CHAT.bubbleMeCorner, "bg-primary text-white")
-                : cn(DM_CHAT.bubblePeerCorner, "bg-secondary text-foreground"),
-            )
-          : cn(
-              "rounded-2xl px-4 py-2.5 text-[17px] leading-snug",
-              isMe
-                ? "rounded-br-md bg-primary text-white"
-                : "rounded-bl-md bg-secondary text-foreground",
-            ),
-      )}
-    >
+    <div className={textBubbleClass} {...(instagramDm ? longPress : {})}>
       <p className="whitespace-pre-wrap break-words">{message.body}</p>
     </div>
   );
+
+  const metaRow =
+    !instagramDm && (inlineTime || showSentCheck || groupReadCount > 0) ? (
+      <div className="flex shrink-0 flex-col items-end gap-0.5 self-end">
+        {inlineTime ? <MessageTime time={inlineTime} compact={simple} /> : null}
+        {groupReadCount > 0 ? (
+          <span
+            className="text-[10px] leading-none tabular-nums text-muted-foreground"
+            aria-label={`${groupReadCount}명이 읽음`}
+          >
+            {groupReadCount}
+          </span>
+        ) : null}
+        {showSentCheck ? (
+          <Check
+            className="size-3 stroke-[2.5] text-muted-foreground/70"
+            aria-label="전달됨"
+          />
+        ) : null}
+      </div>
+    ) : null;
 
   return (
     <Tag className="w-full max-w-full">
       <PeerMessageRow
         isMe={isMe}
         peer={peerProfile}
-        showPeerAvatar={!isMe && showTime}
+        showPeerAvatar={!isMe && showPeerAvatar}
         showPeerHandle={showPeerProfileHeader && !isMe}
       >
         <div
           className={cn(
             "flex w-full items-end",
             simple ? DM_CHAT.rowGap : "gap-1.5",
+            isMe && instagramDm && (showSentCheck || groupReadCount > 0) && "flex-col items-end gap-0.5",
           )}
         >
-          {time || showSentCheck || groupReadCount > 0 ? (
-            <div className="flex shrink-0 flex-col items-end gap-0.5 self-end">
-              {time ? <MessageTime time={time} compact={simple} /> : null}
-              {groupReadCount > 0 ? (
-                <span
-                  className={cn(
-                    "leading-none tabular-nums",
-                    simple ? "text-[10px] text-muted-foreground" : "text-[10px] text-muted-foreground",
-                  )}
-                  aria-label={`${groupReadCount}명이 읽음`}
-                >
-                  {groupReadCount}
-                </span>
-              ) : null}
-              {showSentCheck ? (
-                <Check
-                  className={cn(
-                    "size-3 stroke-[2.5]",
-                    simple ? "text-muted-foreground/70" : "text-muted-foreground/70",
-                  )}
-                  aria-label="전달됨"
-                />
-              ) : null}
-            </div>
+          <div
+            className={cn(
+              "flex items-end",
+              simple ? DM_CHAT.rowGap : "gap-1.5",
+              isMe && "flex-row-reverse",
+            )}
+          >
+            {metaRow}
+            {bubbleBody}
+          </div>
+          {isMe && instagramDm && showSentCheck ? (
+            <Check
+              className="size-3 stroke-[2.5] text-muted-foreground/55"
+              aria-label="전달됨"
+            />
           ) : null}
-          {bubbleBody}
+          {isMe && instagramDm && groupReadCount > 0 ? (
+            <span
+              className="text-[10px] leading-none tabular-nums text-muted-foreground/70"
+              aria-label={`${groupReadCount}명이 읽음`}
+            >
+              {groupReadCount}
+            </span>
+          ) : null}
         </div>
         {showLens ? (
           <DeepLinkBubbleRow
@@ -226,6 +286,13 @@ export function PeerChatBubble({
           />
         ) : null}
       </PeerMessageRow>
+      {instagramDm ? (
+        <PeerMessageLongPressSheet
+          open={timeSheetOpen}
+          sentAt={message.sentAt}
+          onOpenChange={setTimeSheetOpen}
+        />
+      ) : null}
     </Tag>
   );
 }

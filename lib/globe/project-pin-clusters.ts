@@ -4,7 +4,11 @@ import { readFeedCaptureFragments } from "@/lib/feed/feed-capture-metadata";
 import type { ClassifiedGlobePin } from "@/lib/feed/experience-globe-ping-types";
 import { projectLatLngToMapPercent } from "@/lib/experience-graph/resolve-place-coordinates";
 import type { SpatialGlobeView } from "@/lib/experience-graph/spatial-media-types";
-import { formatPinDateLabel } from "@/lib/globe/format-pin-date-label";
+import {
+  formatPinDateLabel,
+  resolveEventPinStartedAtIso,
+  resolvePinDisplayIso,
+} from "@/lib/globe/format-pin-date-label";
 import type { PinCluster, PinClusterEvidence } from "@/lib/globe/pin-cluster-types";
 import { countEventMedia } from "@/lib/globe/count-event-media";
 import { listPersonalGlobePins } from "@/lib/globe/personal-globe-pin-store";
@@ -41,7 +45,10 @@ function clusterFromVolume(input: {
         placeLabel: input.volume.space.label,
       };
   const startedAtIso =
-    input.volume.time.startIso?.trim() || event?.datetime?.trim() || null;
+    resolvePinDisplayIso(
+      input.volume.time.startIso,
+      resolveEventPinStartedAtIso(event),
+    ) ?? null;
 
   return {
     pinId: `pcluster:${input.volume.sourceEventId}`,
@@ -62,8 +69,7 @@ function clusterFromPersonalPin(
   event: EventCandidate | null | undefined,
 ): PinCluster {
   const evidence = evidenceFromEvent(event);
-  const startedAtIso =
-    event?.datetime?.trim() || pin.createdAtIso;
+  const startedAtIso = resolveEventPinStartedAtIso(event, pin.createdAtIso);
   return {
     pinId: pin.pinId,
     eventId: pin.eventId,

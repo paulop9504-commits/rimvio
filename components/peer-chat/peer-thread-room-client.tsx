@@ -24,13 +24,11 @@ import {
 } from "@/lib/peer-chat/peer-chat-client";
 import { isGroupThreadId } from "@/lib/peer-chat/group-thread";
 import { emitFeedSlotsRefresh } from "@/lib/feed/feed-slots-events";
-import { UNPIN_PEER_RETENTION_DAYS } from "@/lib/context/hub-room-retention";
 import {
   addPeerContact,
   getPeerContactById,
 } from "@/lib/context/peer-contact-store";
 import type { PeerContact } from "@/lib/context/peer-contact-types";
-import { purgePendingLabel } from "@/lib/context/pinned-peer-roster";
 import { findSlotByPeerId } from "@/lib/context/pinned-peer-roster";
 import { readPinnedRoster } from "@/lib/context/peer-thread-settings-store";
 import { isBridgeContextThreadId } from "@/lib/peer-chat/bridge-context-thread";
@@ -38,7 +36,6 @@ import { cn } from "@/lib/utils";
 import { AiLensToggle } from "@/components/peer-chat/ai-lens-toggle";
 import { PeerChatThreadShell } from "@/components/peer-chat/peer-chat-thread-shell";
 import { PeerThreadChatPanel } from "@/components/peer-chat/peer-thread-chat-panel";
-import { PeerThreadHubPinBar } from "@/components/peer-chat/peer-thread-hub-pin-bar";
 import { GroupInfoSheet } from "@/components/peer-chat/group-info-sheet";
 import {
   confirmMarketHandshakeCompleteRemote,
@@ -52,7 +49,9 @@ import {
   MarketHandshakeStartBar,
 } from "@/components/market/market-handshake-room-gate";
 import { MarketHandshakeCompleteBar } from "@/components/market/market-handshake-complete-bar";
+import { MarketAlignmentRolePill } from "@/components/market/market-alignment-role-pill";
 import { MarketCompletionTraceSheet } from "@/components/market/market-completion-trace-sheet";
+import { resolveOtherPartyMarketRole } from "@/lib/globe/market/market-intent-role";
 import { commitMarketCompletionTrace } from "@/lib/globe/market/commit-market-completion-trace";
 import {
   dismissMarketCompletionTrace,
@@ -266,6 +265,14 @@ function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
       hubSlot?.displayName ||
       "친구";
 
+  const alignmentPeerRole = useMemo(
+    () => resolveOtherPartyMarketRole(marketHandshake?.viewerRole ?? null),
+    [marketHandshake?.viewerRole],
+  );
+  const showAlignmentRolePill = Boolean(
+    marketHandshake && !marketHandshake.completed && alignmentPeerRole,
+  );
+
   const { settings, setAiLens } = usePeerThreadSettings({
     peerThreadId,
     displayName,
@@ -312,11 +319,6 @@ function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
     );
   }
 
-  const purgeLabel = hubSlot ? purgePendingLabel(hubSlot) : null;
-  const connected = hubSlot?.connection === "connected";
-  const pinned = connected;
-  const unpinnedContact = Boolean(contact) && !pinned;
-  const showHubNotices = !phoneDm && !isGroup;
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col bg-background">
@@ -339,7 +341,7 @@ function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
             type="button"
             {...headerLongPress}
             className={cn(
-              "relative min-w-0 flex-1 truncate py-1 text-left text-[16px] font-medium text-foreground",
+              "relative flex min-w-0 flex-1 items-center gap-1.5 py-1 text-left",
               settings.aiLensEnabled &&
                 "after:absolute after:-bottom-0.5 after:left-0 after:h-px after:w-full after:bg-cyan-400/50 after:blur-[2px]",
             )}
@@ -349,9 +351,14 @@ function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
                 : `${displayName} · 길게 눌러 AI 렌즈`
             }
           >
-            {displayName}
+            <span className="min-w-0 truncate text-[16px] font-medium text-foreground">
+              {displayName}
+            </span>
+            {showAlignmentRolePill && alignmentPeerRole ? (
+              <MarketAlignmentRolePill role={alignmentPeerRole} size="xs" />
+            ) : null}
             {settings.aiLensEnabled ? (
-              <span className="ml-1.5 inline-block size-1.5 translate-y-[-1px] rounded-full bg-cyan-400/80 align-middle" />
+              <span className="inline-block size-1.5 shrink-0 translate-y-[-1px] rounded-full bg-cyan-400/80" />
             ) : null}
           </button>
         ) : (
@@ -376,21 +383,12 @@ function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
           </button>
         )}
         {experienceDiscussion ? null : (
-          <>
-            <AiLensToggle
-              enabled={settings.aiLensEnabled}
-              onChange={toggleAiLens}
-              size="sm"
-              className="mr-1"
-            />
-            <PeerThreadHubPinBar
-              peerThreadId={peerThreadId}
-              displayName={displayName}
-              friendUserId={phoneDm && !isGroup ? profile?.userId : null}
-              roomKind={isGroup ? "group" : "dm"}
-              variant="header"
-            />
-          </>
+          <AiLensToggle
+            enabled={settings.aiLensEnabled}
+            onChange={toggleAiLens}
+            size="sm"
+            className="mr-2"
+          />
         )}
       </header>
 
@@ -401,6 +399,7 @@ function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
         fallbackName={displayName}
         loading={profileLoading}
         peerThreadId={peerThreadId}
+        alignmentPeerRole={showAlignmentRolePill ? alignmentPeerRole : null}
       />
 
       {isGroup ? (
@@ -416,25 +415,6 @@ function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
         />
       ) : null}
 
-      {experienceDiscussion ? null : showHubNotices && hubSlot?.connection === "purge_pending" ? (
-        <p className="bg-amber-950/40 px-3 py-2 text-[11px] text-amber-200">
-          AI 허브가 해제되어 {purgeLabel ?? `${UNPIN_PEER_RETENTION_DAYS}일 후`}{" "}
-          대화가 삭제돼요
-        </p>
-      ) : null}
-
-      {experienceDiscussion ? null : showHubNotices && unpinnedContact ? (
-        <p className="px-3 py-1.5 text-[11px] text-muted-foreground">
-          AI 허브에 꽂인 친구만 @import 가능
-        </p>
-      ) : null}
-
-      {experienceDiscussion ? null : isGroup && !pinned ? (
-        <p className="px-3 py-1.5 text-[11px] text-muted-foreground">
-          ROOM 1–5번에 고정하면 단톡 AI 렌즈·@import를 쓸 수 있어요
-        </p>
-      ) : null}
-
       {marketHandshake ? (
         <MarketHandshakeProductStrip handshake={marketHandshake} />
       ) : null}
@@ -448,11 +428,8 @@ function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
           displayName={displayName}
           policyInput={policyInput}
           aiLensEnabled={experienceDiscussion ? false : settings.aiLensEnabled}
-          readOnly={
-            marketHandshake?.chatLocked ||
-            (!isGroup && hubSlot?.connection === "purge_pending")
-          }
-          showAiMentionLink={isGroup || pinned}
+          readOnly={marketHandshake?.chatLocked}
+          showAiMentionLink={isGroup || phoneDm || Boolean(contact)}
           peerAvatarUrl={isGroup ? null : profile?.avatarUrl}
           simpleDm={phoneDm && !isGroup}
           experienceDiscussion={experienceDiscussion}

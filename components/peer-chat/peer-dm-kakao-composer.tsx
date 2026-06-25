@@ -1,9 +1,9 @@
 "use client";
 
-import { ArrowUp, AudioLines, Hash, Loader2, Plus, Smile } from "lucide-react";
+import { ArrowUp, Loader2, Plus } from "lucide-react";
 import type { FormEvent, KeyboardEvent, RefObject } from "react";
-import { toast } from "sonner";
 import { copy } from "@/lib/copy/human-ko";
+import { PEER_CHAT_MEDIA_ACCEPT } from "@/lib/peer-chat/peer-chat-image-constants";
 import { DM_KAKAO_COMPOSER } from "@/lib/peer-chat/dm-chat-density";
 import { cn } from "@/lib/utils";
 
@@ -25,7 +25,7 @@ export type PeerDmKakaoComposerProps = {
   className?: string;
 };
 
-/** 1:1 DM — 카톡식 다크 pill 컴포저 (+ · 입력 · 이모지 · # · 음성 / 입력 시 전송) */
+/** 1:1 DM — 카톡식 다크 pill 컴포저 (+ · 입력 · 전송) */
 export function PeerDmKakaoComposer({
   text,
   onTextChange,
@@ -46,10 +46,6 @@ export function PeerDmKakaoComposer({
   const hasText = text.trim().length > 0;
   const disabled = !canSend || readOnly || composerBusy;
 
-  const soon = () => {
-    toast.message(copy.peers.dmChat.featureSoon);
-  };
-
   return (
     <div
       className={cn(
@@ -62,7 +58,7 @@ export function PeerDmKakaoComposer({
         <input
           ref={imageInputRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+          accept={PEER_CHAT_MEDIA_ACCEPT}
           className="hidden"
           onChange={(event) => {
             const file = event.target.files?.[0] ?? null;
@@ -118,40 +114,7 @@ export function PeerDmKakaoComposer({
               <ArrowUp className="size-[18px] stroke-[2.5]" aria-hidden />
             )}
           </button>
-        ) : (
-          <>
-            <button
-              type="button"
-              className={DM_KAKAO_COMPOSER.iconBtn}
-              aria-label={copy.peers.dmChat.emojiAria}
-              disabled={readOnly}
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={soon}
-            >
-              <Smile className="size-[22px] stroke-[1.75]" aria-hidden />
-            </button>
-            <button
-              type="button"
-              className={DM_KAKAO_COMPOSER.iconBtnFilled}
-              aria-label={copy.peers.dmChat.hashAria}
-              disabled={readOnly}
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={soon}
-            >
-              <Hash className="size-[18px] stroke-[2.25]" aria-hidden />
-            </button>
-            <button
-              type="button"
-              className={DM_KAKAO_COMPOSER.iconBtnFilled}
-              aria-label={copy.peers.dmChat.voiceAria}
-              disabled={readOnly}
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={soon}
-            >
-              <AudioLines className="size-[18px] stroke-[2.25]" aria-hidden />
-            </button>
-          </>
-        )}
+        ) : null}
       </form>
     </div>
   );

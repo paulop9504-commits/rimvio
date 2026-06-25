@@ -24,6 +24,10 @@ import { verifyFeedCaptureEvent } from "@/lib/feed/verify-feed-capture";
 import { attachMatchingPoolMediaAfterSeal } from "@/lib/globe/passive-context/attach-matching-pool-media-after-seal";
 import { markGlobeLocationConfirmed } from "@/lib/globe/globe-location-confirm-store";
 import {
+  canOfferGlobeLocationPrompt,
+  markGlobeLocationPromptOffered,
+} from "@/lib/globe/globe-location-prompt-budget";
+import {
   groupNotificationsBySection,
   type RimvioNotification,
 } from "@/lib/ontology";
@@ -238,6 +242,10 @@ export function GlobeInboxSheet({
     if (!row) {
       return;
     }
+    if (!canOfferGlobeLocationPrompt()) {
+      return;
+    }
+    markGlobeLocationPromptOffered();
     if (row.kind === "gps_dwell") {
       setDwellConfirmEventId(row.eventId);
       onOpenChange(false);

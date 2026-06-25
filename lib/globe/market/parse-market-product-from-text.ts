@@ -1,9 +1,10 @@
 import { sanitizeMarketProductNameFromParse } from "@/lib/globe/market/sanitize-market-product-name";
+import { PLACE_TOKENS_FOR_PARSE } from "@/lib/globe/market/parse-market-place-from-text";
 
 const MENTION_PREFIX = /^@\S+\s*/u;
 const ALL_MENTIONS = /@\S+/gu;
 const ROLE_NOISE =
-  /(?:삽니다|구합니다|구해요?|구함|찾아요|찾습니다|팝니다|팔아요?|판매|나눔|양도|sell|wanted)/giu;
+  /(?:삽니다|구합니다|구해요?|구함|구하기|구매|구입|찾아요|찾습니다|팝니다|팔아요?|판매|나눔|양도|sell|wanted)/giu;
 const RANGE_NOISE =
   /(\d{1,3}(?:,\d{3})+|\d+)\s*(?:만)?\s*[-~]\s*(\d{1,3}(?:,\d{3})+|\d+)\s*(?:만)?/giu;
 
@@ -40,6 +41,9 @@ export function parseMarketProductFromText(text: string): {
   working = working.replace(RANGE_NOISE, " ");
   working = stripPriceTokens(working);
   working = working.replace(ROLE_NOISE, " ");
+  for (const token of PLACE_TOKENS_FOR_PARSE) {
+    working = working.replace(new RegExp(token, "gu"), " ");
+  }
   working = collapseWhitespace(working.replace(/[·|,]+/gu, " "));
 
   const rawName = working.slice(0, 80);

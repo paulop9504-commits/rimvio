@@ -8,7 +8,8 @@ export default async function FivePeerHubPage() {
   return (
     <AppShell
       title={copy.peers.title}
-      subtitle={copy.peers.subtitle}
+      hideBranding
+      hideTitle
       compact
       fullBleed
       iosSurface

@@ -80,7 +80,12 @@ export async function fetchGlobeContextPlaceGeocode(input: {
   }
 
   try {
-    const response = await fetch(`/api/globe/place-candidates?${params.toString()}`);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 12_000);
+    const response = await fetch(`/api/globe/place-candidates?${params.toString()}`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
     if (!response.ok) {
       return null;
     }

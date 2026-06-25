@@ -21,12 +21,16 @@ export type RelationshipSlotRow = {
   archived_at: string | null;
 };
 
-function previewMessage(body: string): string {
+export function previewRelationshipSlotMessage(body: string): string {
   const trimmed = body.trim();
   if (!trimmed) {
     return "";
   }
   return trimmed.length > 120 ? `${trimmed.slice(0, 117)}…` : trimmed;
+}
+
+function previewMessage(body: string): string {
+  return previewRelationshipSlotMessage(body);
 }
 
 /** Unpinned slots idle 7d → archived (removed from main feed). */
@@ -88,6 +92,75 @@ export async function touchRelationshipSlotsOnMessage(
       last_message: lastMessage || null,
       last_activity_at: now,
       unread_count: existing?.unread_count ?? 0,
+      is_pinned: existing?.is_pinned ?? false,
+      archived_at: null,
+      updated_at: now,
+    },
+    { onConflict: "user_id,room_id" },
+  );
+
+  if (error) {
+    throw error;
+  }
+}
+
+/** Recipient inbox line — Kakao-style preview without opening the room. */
+export async function touchRecipientRelationshipSlotOnMessage(
+  supabase: SupabaseClient<Database>,
+  input: {
+    threadId: string;
+    senderUserId: string;
+    body: string;
+    createdAt?: string;
+  },
+): Promise<void> {
+  if (!isDmThreadId(input.threadId)) {
+    return;
+  }
+
+  const { data: members, error: memberError } = await supabase
+    .from("peer_thread_members")
+    .select("user_id")
+    .eq("thread_id", input.threadId);
+
+  if (memberError) {
+    throw memberError;
+  }
+
+  const recipientId = (members ?? [])
+    .map((member) => member.user_id as string)
+    .find((id) => id !== input.senderUserId);
+
+  if (!recipientId) {
+    return;
+  }
+
+  const friendId = extractOtherUserIdFromDmThread(
+    input.threadId,
+    recipientId,
+  );
+  if (!friendId) {
+    return;
+  }
+
+  const now = input.createdAt ?? new Date().toISOString();
+  const lastMessage = previewMessage(input.body);
+
+  const { data: existing } = await supabase
+    .from("relationship_slots")
+    .select("unread_count, is_pinned, archived_at")
+    .eq("user_id", recipientId)
+    .eq("room_id", input.threadId)
+    .maybeSingle();
+
+  const { error } = await supabase.from("relationship_slots").upsert(
+    {
+      user_id: recipientId,
+      room_id: input.threadId,
+      friend_id: friendId,
+      last_message: lastMessage || null,
+      last_activity_at: now,
+      unread_count: (existing?.unread_count ?? 0) + 1,
       is_pinned: existing?.is_pinned ?? false,
       archived_at: null,
       updated_at: now,

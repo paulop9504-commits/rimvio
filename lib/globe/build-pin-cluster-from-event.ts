@@ -1,5 +1,9 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
-import { formatPinDateLabel } from "@/lib/globe/format-pin-date-label";
+import {
+  formatPinDateLabel,
+  resolveEventPinStartedAtIso,
+  resolvePinDisplayIso,
+} from "@/lib/globe/format-pin-date-label";
 import { countEventMedia } from "@/lib/globe/count-event-media";
 import { readFeedCaptureFragments } from "@/lib/feed/feed-capture-metadata";
 import type { PinCluster } from "@/lib/globe/pin-cluster-types";
@@ -15,8 +19,8 @@ export function buildPinClusterFromPersonalPin(pin: PersonalGlobePin): PinCluste
     placeLabel: pin.placeLabel.trim() || "장소",
     lat: pin.lat,
     lng: pin.lng,
-    dateLabel: formatPinDateLabel(pin.createdAtIso),
-    startedAtIso: pin.createdAtIso,
+    dateLabel: formatPinDateLabel(resolvePinDisplayIso(pin.createdAtIso)),
+    startedAtIso: resolvePinDisplayIso(pin.createdAtIso),
     evidence: {
       photoCount: pin.photoCount,
       videoCount: pin.videoCount,
@@ -46,8 +50,10 @@ export function buildPinClusterFromEvent(
     placeLabel: pin?.placeLabel?.trim() || coords.placeLabel,
     lat: pin?.lat ?? coords.lat,
     lng: pin?.lng ?? coords.lng,
-    dateLabel: formatPinDateLabel(event.datetime ?? pin?.createdAtIso),
-    startedAtIso: event.datetime?.trim() || pin?.createdAtIso || null,
+    dateLabel: formatPinDateLabel(
+      resolveEventPinStartedAtIso(event, pin?.createdAtIso),
+    ),
+    startedAtIso: resolveEventPinStartedAtIso(event, pin?.createdAtIso),
     evidence: {
       photoCount: Math.max(photoCount, pin?.photoCount ?? 0),
       videoCount: Math.max(videoCount, pin?.videoCount ?? 0),

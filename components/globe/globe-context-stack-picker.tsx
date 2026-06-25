@@ -47,7 +47,13 @@ function StackRow({
             {hero.title}
           </p>
           <p className="truncate text-[12px] text-muted-foreground">
-            {[hero.date, hero.place].filter(Boolean).join(" · ")}
+            {[hero.date, hero.place]
+              .filter(
+                (part, index) =>
+                  Boolean(part?.trim()) &&
+                  (index === 0 || part!.trim() !== hero.title.trim()),
+              )
+              .join(" · ")}
           </p>
           {relationshipMeaning ? (
             <p className="mt-1 line-clamp-2 text-[11px] font-medium leading-snug text-foreground/85">

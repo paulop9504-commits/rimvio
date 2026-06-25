@@ -1,19 +1,22 @@
-/** 1:1 DM — 카톡 밀도 (+5% 말풍선) */
+/** 1:1 DM — 인스타 밀도 */
 export const DM_CHAT = {
-  bubblePx: "px-[10.5px]",
-  bubblePy: "py-[4px]",
-  bubbleText: "text-[15.75px] leading-[1.35]",
+  bubblePx: "px-3",
+  bubblePy: "py-2",
+  bubbleText: "text-[15px] leading-[1.35]",
   bubbleRadius: "rounded-[18px]",
   bubbleMeCorner: "rounded-br-[4px]",
   bubblePeerCorner: "rounded-bl-[4px]",
-  listGap: "gap-0.5",
-  listPad: "px-2 py-1.5",
+  bubblePeer: "bg-[#EFEFEF] text-[#262626]",
+  bubbleMe: "bg-primary text-white",
+  listGap: "gap-[3px]",
+  listPad: "px-3 py-2",
   timeText: "text-[9.5px]",
   rowGap: "gap-1",
   composerMinH: "min-h-[36px]",
   composerText: "text-[15px] leading-[1.35]",
   composerPad: "py-1.5 px-3",
   sendSize: "size-9",
+  surface: "bg-[#FAFAFA]",
 } as const;
 
 /** 1:1 DM — 카톡식 다크 컴포저 (단일 pill) */

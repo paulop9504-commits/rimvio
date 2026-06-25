@@ -6,8 +6,15 @@ import { listPendingHandshakesForUser } from "@/lib/globe/market/server/market-a
 import {
   listActiveMarketIntentsForMatching,
   listOwnMarketIntents,
+  findMarketIntentById,
 } from "@/lib/globe/market/server/upsert-market-intent";
+import { scoreWeightedMarketAlignment } from "@/lib/globe/market/score-weighted-market-alignment";
+import {
+  findMarketHandshakeByIntentPair,
+  upsertMarketHandshake,
+} from "@/lib/globe/market/server/market-alignment-handshake-store";
 import { scanMarketHandshakesForIntent } from "@/lib/globe/market/server/scan-market-handshakes";
+import { isMarketIntentPublishedExternal } from "@/lib/globe/market/market-intent-detail";
 
 const HANDSHAKE_COPY = {
   listingPendingHeadline: (title: string, place: string) =>
@@ -69,12 +76,83 @@ async function resolveLiveMarketAlignmentOffer(input: {
   return enrichLiveOffer(offer, pool);
 }
 
+async function ensureHandshakeForListingPair(input: {
+  supabase: import("@supabase/supabase-js").SupabaseClient;
+  userId: string;
+  focusEventId: string;
+  matchIntentId: string;
+}): Promise<MarketAlignmentOffer | null> {
+  const own = await listOwnMarketIntents(input.supabase, input.userId);
+  const seeking = own.find(
+    (row) => row.eventId === input.focusEventId && row.role === "seeking",
+  );
+  if (!seeking) {
+    return null;
+  }
+
+  const listing = await findMarketIntentById(input.supabase, input.matchIntentId);
+  if (
+    !listing?.active ||
+    listing.role !== "listing" ||
+    !listing.userId ||
+    !isMarketIntentPublishedExternal(listing.detail)
+  ) {
+    return null;
+  }
+
+  const weighted = scoreWeightedMarketAlignment(seeking, listing);
+  if (!weighted.passes) {
+    return null;
+  }
+
+  const hint =
+    weighted.topMatchedLabelsKo.length > 0
+      ? `${weighted.topMatchedLabelsKo.join(" · ")} 맞음`
+      : "";
+
+  await upsertMarketHandshake(input.supabase, {
+    seekingIntentId: seeking.id,
+    listingIntentId: listing.id,
+    seekingUserId: input.userId,
+    listingUserId: listing.userId,
+    alignmentScore: weighted.total,
+    priorityHint: hint,
+  });
+
+  const handshake = await findMarketHandshakeByIntentPair(
+    input.supabase,
+    seeking.id,
+    listing.id,
+  );
+  if (!handshake) {
+    return null;
+  }
+
+  return buildHandshakeOfferForViewer({
+    supabase: input.supabase,
+    handshake,
+    viewerUserId: input.userId,
+    copy: HANDSHAKE_COPY,
+  });
+}
+
 export async function resolveServerMarketAlignmentOffer(input: {
   supabase: import("@supabase/supabase-js").SupabaseClient;
   userId: string;
   focusEventId?: string | null;
+  matchIntentId?: string | null;
 }): Promise<MarketAlignmentOffer | null> {
   const focusEventId = input.focusEventId?.trim() || null;
+  const matchIntentId = input.matchIntentId?.trim() || null;
+
+  if (focusEventId && matchIntentId) {
+    return ensureHandshakeForListingPair({
+      supabase: input.supabase,
+      userId: input.userId,
+      focusEventId,
+      matchIntentId,
+    });
+  }
 
   const pending = await listPendingHandshakesForUser(input.supabase, input.userId);
   for (const handshake of pending) {

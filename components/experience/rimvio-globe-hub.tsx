@@ -68,14 +68,11 @@ import { projectLodgingGlobeMarkers } from "@/lib/globe/context-hub/project-lodg
 import { projectContextHubGlobeAnchor } from "@/lib/globe/context-hub/project-context-hub-globe-anchor";
 import { dispatchGlobeContextHubOpen } from "@/lib/globe/context-hub/globe-context-hub-open-bridge";
 import { rankContextResources } from "@/lib/globe/resource/rank-context-resources";
-import {
-  GLOBE_EXPERIENCE_SETTINGS_UPDATED,
-  isShowContextWarmthEnabled,
-} from "@/lib/globe/globe-experience-settings";
-import { buildGlobeContextWarmthPoints } from "@/lib/globe/build-globe-context-warmth-points";
 import { resolveGlobeClustersForLayerMode } from "@/lib/globe/filter-globe-clusters-by-layer-mode";
 import type { GlobeLayerMode } from "@/lib/globe/globe-layer-mode";
+import Link from "next/link";
 import { copy } from "@/lib/copy/human-ko";
+import { dispatchOpenCaptureSheet } from "@/lib/nav/open-capture-sheet-bridge";
 import { cn } from "@/lib/utils";
 
 function useGlobeEventSnapshot() {
@@ -330,17 +327,6 @@ const RimvioGlobeHubBody = memo(
       detailLevel,
       focusedContextEventId,
     ]);
-    const [contextWarmthEnabled, setContextWarmthEnabled] = useState(() =>
-      isShowContextWarmthEnabled(),
-    );
-    useEffect(() => {
-      const sync = () => {
-        setContextWarmthEnabled(isShowContextWarmthEnabled());
-      };
-      sync();
-      window.addEventListener(GLOBE_EXPERIENCE_SETTINGS_UPDATED, sync);
-      return () => window.removeEventListener(GLOBE_EXPERIENCE_SETTINGS_UPDATED, sync);
-    }, []);
     const tripArcs = useMemo(
       () =>
         projectGlobeTripArcs({
@@ -351,10 +337,6 @@ const RimvioGlobeHubBody = memo(
           showBackgroundTripArcs: false,
         }),
       [eventsById, clusters, focusedContextEventId],
-    );
-    const contextWarmthPoints = useMemo(
-      () => buildGlobeContextWarmthPoints(clusters),
-      [clusters],
     );
     const lodgingGlobeMarkers = useMemo(() => {
       void bridgeRevision;
@@ -551,8 +533,6 @@ const RimvioGlobeHubBody = memo(
           ref={innerGlobeRef}
           pins={globePins}
           tripArcs={tripArcs}
-          contextWarmthPoints={contextWarmthPoints}
-          contextWarmthEnabled={contextWarmthEnabled}
           viewerLocation={
             gpsEnabled && liveLocation
               ? {
@@ -590,14 +570,39 @@ const RimvioGlobeHubBody = memo(
         />
 
         {clusters.length === 0 ? (
-          <p
-            className="pointer-events-none absolute inset-x-0 top-[max(4.5rem,env(safe-area-inset-top))] z-10 mx-auto w-fit max-w-[85%] rounded-full bg-white/90 px-3.5 py-1.5 text-center text-[12px] font-medium text-[#8b95a1] shadow-sm backdrop-blur-md"
-            data-rimvio-globe-hub-empty
-          >
-            {layerMode === "discovery"
-              ? copy.globe.externalDiscoveryEmpty
-              : copy.globe.layerModePersonalEmpty}
-          </p>
+          layerMode === "discovery" ? (
+            <p
+              className="pointer-events-none absolute inset-x-0 top-[max(4.5rem,env(safe-area-inset-top))] z-10 mx-auto w-fit max-w-[85%] rounded-full bg-white/90 px-3.5 py-1.5 text-center text-[12px] font-medium text-[#8b95a1] shadow-sm backdrop-blur-md"
+              data-rimvio-globe-hub-empty
+            >
+              {copy.globe.externalDiscoveryEmpty}
+            </p>
+          ) : (
+            <div
+              className="absolute inset-x-4 bottom-[max(6.5rem,calc(env(safe-area-inset-bottom)+5.5rem))] z-10 flex flex-col items-center gap-2.5 rounded-[1.35rem] bg-white/95 px-5 py-4 text-center shadow-lg ring-1 ring-[#0220470a] backdrop-blur-md"
+              data-rimvio-globe-hub-empty
+            >
+              <p className="text-[15px] font-semibold text-[#191f28]">
+                {copy.globe.emptyFirstTitle}
+              </p>
+              <p className="max-w-[16rem] text-[13px] leading-relaxed text-[#6b7684]">
+                {copy.globe.emptyFirstBody}
+              </p>
+              <button
+                type="button"
+                onClick={() => dispatchOpenCaptureSheet()}
+                className="rimvio-accent-submit-btn mt-1 w-full max-w-[14rem] rounded-full py-3 text-[14px] font-semibold text-white shadow-sm active:scale-[0.98]"
+              >
+                {copy.globe.emptyFirstCta}
+              </button>
+              <Link
+                href="/peers"
+                className="py-1 text-[13px] font-medium text-[#3182f6] active:opacity-70"
+              >
+                {copy.globe.emptyFirstPeersLink}
+              </Link>
+            </div>
+          )
         ) : null}
       </div>
     );

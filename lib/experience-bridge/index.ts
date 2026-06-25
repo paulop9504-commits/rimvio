@@ -25,6 +25,7 @@ export {
   createInitialBridgeState,
   declineBridgeInvite,
   inviteBridgeParticipant,
+  inviteBridgeParticipantForDirectDelivery,
   leaveBridgeExperience,
   listReadableBridgeParticipants,
   removeBridgeParticipant,

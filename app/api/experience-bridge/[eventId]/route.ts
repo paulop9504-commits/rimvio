@@ -8,6 +8,7 @@ import {
   canReadBridgeExperience,
   createInitialBridgeState,
   inviteBridgeParticipant,
+  inviteBridgeParticipantForDirectDelivery,
   mergeBridgeTimeline,
 } from "@/lib/experience-bridge";
 import {
@@ -26,7 +27,7 @@ import {
 import { extractErrorMessage } from "@/lib/peer-chat/extract-error-message";
 import { resolveServiceRoleOrUserClient } from "@/lib/supabase/admin";
 import { listSharedGlobePinsForThread } from "@/lib/peer-chat/server-globe-pins";
-import { listPeerMessages } from "@/lib/peer-chat/server-peer-chat";
+import { listPeerMessages, isDmThreadId } from "@/lib/peer-chat/server-peer-chat";
 import { resolveExperienceWindow } from "@/lib/experience-window";
 import { callerCanAccessPeerThread } from "@/lib/peer-chat/caller-peer-thread-access";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
@@ -136,6 +137,8 @@ type BridgePostBody = {
   hostDisplayName?: string;
   participantUserId?: string;
   participantDisplayName?: string;
+  /** 1:1 DM — auto-accept participant (skip inbox invite). */
+  directDelivery?: boolean;
 };
 
 export async function POST(request: NextRequest, context: RouteContext) {
@@ -239,10 +242,19 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
 
-    const next = inviteBridgeParticipant(state, {
-      userId: participantUserId,
-      displayName: participantDisplayName,
-    });
+    const directDelivery =
+      body.directDelivery === true &&
+      Boolean(threadId && isDmThreadId(threadId));
+
+    const next = directDelivery
+      ? inviteBridgeParticipantForDirectDelivery(state, {
+          userId: participantUserId,
+          displayName: participantDisplayName,
+        })
+      : inviteBridgeParticipant(state, {
+          userId: participantUserId,
+          displayName: participantDisplayName,
+        });
     const invited = next.participants.find((row) => row.userId === participantUserId);
     if (invited) {
       await upsertBridgeParticipantRow(supabase, key, invited);

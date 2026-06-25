@@ -4,15 +4,27 @@ import {
   PEER_CHAT_IMAGE_BUCKET,
   PEER_CHAT_IMAGE_MAX_BYTES,
   PEER_CHAT_IMAGE_TYPES,
+  PEER_CHAT_VIDEO_MAX_BYTES,
 } from "@/lib/peer-chat/peer-chat-image-constants";
+import { isPeerChatVideoContentType } from "@/lib/peer-chat/infer-peer-chat-media-kind";
 import type { Database } from "@/types/database";
 
 function extensionForContentType(contentType: string): string {
-  if (contentType.includes("png")) {
+  const normalized = contentType.trim().toLowerCase();
+  if (normalized.includes("png")) {
     return "png";
   }
-  if (contentType.includes("webp")) {
+  if (normalized.includes("webp")) {
     return "webp";
+  }
+  if (normalized.includes("quicktime")) {
+    return "mov";
+  }
+  if (normalized.includes("mp4") || normalized.includes("3gpp")) {
+    return "mp4";
+  }
+  if (normalized.includes("webm")) {
+    return "webm";
   }
   return "jpg";
 }
@@ -47,14 +59,21 @@ export async function uploadPeerChatImage(
   },
 ): Promise<{ messageId: string; imageUrl: string }> {
   const contentType = input.contentType?.trim() || "image/jpeg";
-  if (!PEER_CHAT_IMAGE_TYPES.has(contentType)) {
-    throw new Error("JPEG, PNG, WebP 사진만 보낼 수 있어요.");
+  const isVideo = isPeerChatVideoContentType(contentType);
+  const isImage = PEER_CHAT_IMAGE_TYPES.has(contentType);
+  if (!isImage && !isVideo) {
+    throw new Error("JPEG·PNG·WebP 사진 또는 MP4·MOV 동영상만 보낼 수 있어요.");
   }
-  if (input.bytes.byteLength > PEER_CHAT_IMAGE_MAX_BYTES) {
-    throw new Error("5MB 이하 사진만 보낼 수 있어요.");
+  const maxBytes = isVideo ? PEER_CHAT_VIDEO_MAX_BYTES : PEER_CHAT_IMAGE_MAX_BYTES;
+  if (input.bytes.byteLength > maxBytes) {
+    throw new Error(
+      isVideo
+        ? "80MB 이하 동영상만 보낼 수 있어요."
+        : "5MB 이하 사진만 보낼 수 있어요.",
+    );
   }
   if (input.bytes.byteLength === 0) {
-    throw new Error("사진 파일이 비어 있어요.");
+    throw new Error(isVideo ? "동영상 파일이 비어 있어요." : "사진 파일이 비어 있어요.");
   }
 
   const messageId = randomUUID();

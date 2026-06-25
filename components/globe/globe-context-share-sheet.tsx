@@ -13,6 +13,8 @@ import {
   type GlobeContextShareFriend,
 } from "@/lib/experience-bridge/share-context-with-friends";
 import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
+import { resolveGlobeContextPlaceLabel } from "@/lib/globe/globe-context-card-coords";
+import { formatPinDateLabel } from "@/lib/globe/format-pin-date-label";
 import { fetchMyAccountProfile } from "@/lib/peer-chat/peer-chat-client";
 import { copy } from "@/lib/copy/human-ko";
 
@@ -66,6 +68,14 @@ export function GlobeContextShareSheet({
     eventProp ??
     (eventId ? recoverGlobeContextEventFromPin(eventId) : null);
 
+  const delivery = resolvedEvent
+    ? {
+        title: resolvedEvent.title.trim() || "경험",
+        date: formatPinDateLabel(resolvedEvent.datetime) || null,
+        place: resolveGlobeContextPlaceLabel(resolvedEvent),
+      }
+    : null;
+
   const toggleFriend = useCallback((friend: GlobeContextShareFriend) => {
     setSelected((prev) => {
       const next = new Map(prev);
@@ -94,10 +104,14 @@ export function GlobeContextShareSheet({
         event: resolvedEvent,
         hostDisplayName,
         friends: [...selected.values()],
+        delivery,
       });
       if (invited > 0) {
-        toast.success(`${invited}명에게 초대를 보냈어요`);
-        toast.message(copy.globe.bridgeShareNeedsFriendLogin, { duration: 5000 });
+        toast.success(
+          invited === 1
+            ? copy.globe.bridgeShareSent([...selected.values()][0]!.displayName)
+            : `${invited}명에게 보냈어요`,
+        );
         onShared?.();
         onOpenChange(false);
       }
@@ -108,7 +122,7 @@ export function GlobeContextShareSheet({
     } finally {
       setBusy(false);
     }
-  }, [resolvedEvent, selected, busy, user?.email, onShared, onOpenChange]);
+  }, [resolvedEvent, selected, busy, user?.email, onShared, onOpenChange, delivery]);
 
   if (!mounted) {
     return null;
@@ -179,7 +193,7 @@ export function GlobeContextShareSheet({
                 className="w-full rounded-2xl bg-foreground py-4 text-[16px] font-semibold text-background shadow-sm disabled:opacity-40"
               >
                 {selected.size > 0
-                  ? `${selected.size}명에게 공유하기`
+                  ? `${selected.size}명에게 보내기`
                   : "친구를 선택하세요"}
               </button>
             </div>

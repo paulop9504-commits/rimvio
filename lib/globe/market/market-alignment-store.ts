@@ -2,6 +2,7 @@ import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types"
 import { DEFAULT_MARKET_INTENT_DETAIL } from "@/lib/globe/market/market-intent-detail";
 import { upsertEventCandidate } from "@/lib/events/event-store";
 import { findEventCandidate } from "@/lib/events/event-store";
+import { BRIDGE_TYPE_META_KEY } from "@/lib/bridge/bridge-type";
 import { MARKET_INTENT_META_KEY } from "@/lib/globe/market/market-intent-types";
 
 const STORAGE_KEY = "rimvio-market-intents.v1";
@@ -71,6 +72,7 @@ export function stampMarketIntentOnEvent(record: MarketIntentRecord): void {
     ...event,
     metadata: {
       ...event.metadata,
+      [BRIDGE_TYPE_META_KEY]: "marketplace",
       [MARKET_INTENT_META_KEY]: {
         id: record.id,
         role: record.role,

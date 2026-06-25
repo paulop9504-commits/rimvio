@@ -1,19 +1,5 @@
 import type { AppLocale } from "@/lib/i18n/types";
-
-function speechLang(locale: AppLocale) {
-  switch (locale) {
-    case "ko":
-      return "ko-KR";
-    case "ja":
-      return "ja-JP";
-    case "zh":
-      return "zh-CN";
-    case "en":
-      return "en-US";
-    default:
-      return "ko-KR";
-  }
-}
+import { speechLangForLocale } from "@/lib/media/speech-lang";
 
 function pickVoice(lang: string) {
   if (typeof window === "undefined" || !window.speechSynthesis) {
@@ -56,7 +42,7 @@ export function speakText(text: string, locale: AppLocale = "ko") {
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(trimmed);
-    const lang = speechLang(locale);
+    const lang = speechLangForLocale(locale);
     utterance.lang = lang;
     utterance.rate = 1;
 

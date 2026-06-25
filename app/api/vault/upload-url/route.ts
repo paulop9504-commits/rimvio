@@ -4,6 +4,10 @@ import { getAuthUserId } from "@/lib/auth/session";
 import { tryCreateClient } from "@/lib/supabase/server";
 import { createPersonalVaultUploadUrl, ensureUserVault } from "@/lib/vault";
 import { resolveVaultClient } from "@/lib/vault/resolve-vault-client";
+import {
+  isVaultMigrationMissingError,
+  vaultMigrationRequiredResponse,
+} from "@/lib/vault/vault-api-errors";
 
 type PostBody = {
   objectId?: string;
@@ -42,6 +46,12 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "upload_url_failed";
-    return NextResponse.json({ error: message }, { status: 500 });
+    if (isVaultMigrationMissingError(message)) {
+      return NextResponse.json(vaultMigrationRequiredResponse(), { status: 503 });
+    }
+    return NextResponse.json(
+      { error: message, hint: "vault_unavailable" },
+      { status: 503 },
+    );
   }
 }

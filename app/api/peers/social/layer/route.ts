@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { requireAuthUser } from "@/lib/auth/api-auth";
 import {
   listSocialLayer,
-  purgeExpiredArchiveMessages,
 } from "@/lib/peer-chat/friend-connections-server";
+import { purgeStalePeerThreadMediaForUser } from "@/lib/peer-chat/purge-stale-peer-thread-media";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
 export async function GET() {
@@ -23,7 +23,7 @@ export async function GET() {
 
   try {
     const supabase = await createClient();
-    await purgeExpiredArchiveMessages(supabase, userId);
+    await purgeStalePeerThreadMediaForUser(supabase, userId);
     const layer = await listSocialLayer(supabase, userId);
     return NextResponse.json(layer);
   } catch (error) {

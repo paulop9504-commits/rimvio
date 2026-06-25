@@ -3,6 +3,10 @@ import { GLOBE_OVERVIEW_POINT_OF_VIEW } from "@/lib/experience-graph/globe-overv
 import { GLOBE_MIN_SAFE_ALTITUDE } from "@/lib/globe/globe-zoom-levels";
 import { screenPointToGlobeCoords } from "@/lib/globe/screen-point-to-globe-coords";
 
+import {
+  GLOBE_PINCH_ZOOM_EXPONENT,
+} from "@/lib/globe/globe-gesture-tuning";
+
 const GLOBE_ALTITUDE_MAX = GLOBE_OVERVIEW_POINT_OF_VIEW.altitude;
 
 export function clampGlobeAltitude(altitude: number): number {
@@ -22,7 +26,7 @@ export function altitudeFromPinchDistance(
     return clampGlobeAltitude(startAltitude);
   }
   const ratio = currentDistance / startDistance;
-  const curved = ratio ** 1.04;
+  const curved = ratio ** GLOBE_PINCH_ZOOM_EXPONENT;
   return clampGlobeAltitude(startAltitude / curved);
 }
 

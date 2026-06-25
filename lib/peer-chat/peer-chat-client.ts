@@ -42,6 +42,9 @@ export type PeerPublicProfile = {
   rimvioId: string | null;
   avatarUrl: string | null;
   emailLower: string | null;
+  statusMessage?: string | null;
+  coverUrl?: string | null;
+  coverTheme?: string | null;
 };
 
 export async function fetchRelationshipFeedSlots(): Promise<{
@@ -202,9 +205,12 @@ export type PeerMessagesPayload = {
 
 export async function fetchPeerMessages(
   threadId: string,
+  options?: { markRead?: boolean },
 ): Promise<PeerMessagesPayload> {
+  const markRead = options?.markRead !== false;
+  const query = markRead ? "" : "?markRead=0";
   const response = await fetch(
-    `${resolveAppOrigin()}/api/peers/threads/${encodeURIComponent(threadId)}/messages`,
+    `${resolveAppOrigin()}/api/peers/threads/${encodeURIComponent(threadId)}/messages${query}`,
     { credentials: "include" },
   );
   return parseJson<PeerMessagesPayload>(response);
@@ -598,6 +604,9 @@ export type MyAccountProfile = {
   rimvioId: string | null;
   displayName: string | null;
   avatarUrl: string | null;
+  statusMessage: string | null;
+  coverUrl: string | null;
+  coverTheme: string | null;
 };
 
 export async function fetchMyAccountProfile(): Promise<MyAccountProfile> {
@@ -628,12 +637,35 @@ export async function removeMyProfileAvatar(): Promise<{ avatarUrl: null }> {
   return parseJson(response);
 }
 
+export async function removeMyProfileCover(): Promise<{ coverUrl: null }> {
+  const response = await fetch(`${resolveAppOrigin()}/api/peers/profile/cover`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  return parseJson(response);
+}
+
+export async function uploadMyProfileCover(file: Blob): Promise<{ coverUrl: string }> {
+  const form = new FormData();
+  form.append("file", file, "cover.jpg");
+  const response = await fetch(`${resolveAppOrigin()}/api/peers/profile/cover`, {
+    method: "POST",
+    credentials: "include",
+    body: form,
+  });
+  return parseJson(response);
+}
+
 export async function saveMyAccountProfile(input: {
   displayName?: string;
   phone?: string;
   rimvioId?: string;
   clearPhone?: boolean;
   clearAvatar?: boolean;
+  statusMessage?: string;
+  clearStatusMessage?: boolean;
+  coverTheme?: string;
+  clearCover?: boolean;
 }): Promise<MyAccountProfile & { ok: boolean }> {
   const response = await fetch(`${resolveAppOrigin()}/api/peers/profile`, {
     method: "PATCH",

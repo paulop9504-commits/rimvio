@@ -15,8 +15,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { MarketListingTradePlaceStep } from "@/components/market/market-listing-trade-place-step";
-import { MarketPrioritySlotFields } from "@/components/market/market-priority-slot-fields";
-import { MarketMemoryRecordFields } from "@/components/market/market-memory-record-fields";
 import {
   MARKET_CATEGORY_OPTIONS,
   marketCategoryLabelKo,
@@ -33,7 +31,6 @@ import type { MarketIntentRole } from "@/lib/globe/market/market-intent-types";
 import { syncMarketMemoryRecordOnDraft } from "@/lib/globe/market/memory/sync-market-memory-record";
 import { formatMarketMemoryPreview } from "@/lib/globe/market/memory/format-market-memory-preview";
 import { isValidMarketProductName } from "@/lib/globe/market/sanitize-market-product-name";
-import { getTopPrioritySlots } from "@/lib/globe/market/market-priority-matrix";
 import { copy } from "@/lib/copy/human-ko";
 import {
   RIMVIO_TYPE,
@@ -43,6 +40,7 @@ import {
   rimvioSheetBackdropClass,
   rimvioSheetCloseBtnClass,
 } from "@/lib/design/rimvio-ontology";
+import { rimvioComposerFieldClass } from "@/lib/brand/rimvio-neon-theme";
 import {
   MARKET_TRADE_LIST_PILL,
   MARKET_TRADE_SEEK_PILL,
@@ -104,8 +102,6 @@ function stepLabel(step: MarketWizardStepId): string {
       return copy.globe.marketPriorityCardEyebrow;
     case "photos":
       return copy.globe.marketWizardStepPhotos;
-    case "memory":
-      return copy.globe.marketWizardStepMemory;
     case "place":
       return copy.globe.marketWizardStepPlace;
     case "review":
@@ -237,17 +233,10 @@ export function GlobeMarketIntentWizardSheet({
     if (step === "role") {
       return false;
     }
-    if (step === "priority") {
+    if (step === "recognize") {
       const name = working.detail.productName.trim();
       if (!isValidMarketProductName(name)) {
         toast.message(copy.globe.marketWizardValidationProductDetail);
-        return false;
-      }
-      const top = getTopPrioritySlots(working.categoryId);
-      const hasPrice = working.priceMinKrw !== null || working.priceMaxKrw !== null;
-      const priceRequired = top.some((slot) => slot.field === "price");
-      if (priceRequired && !hasPrice && !working.detail.priceNegotiable) {
-        toast.message(copy.globe.marketWizardValidationPrice);
         return false;
       }
       return true;
@@ -452,11 +441,29 @@ export function GlobeMarketIntentWizardSheet({
                       </Chip>
                     ))}
                   </div>
+                  <label className="mt-4 block">
+                    <span className={cn(RIMVIO_TYPE.caption, "mb-1 block")}>
+                      {copy.globe.marketWizardProductNameLabel}
+                    </span>
+                    <input
+                      className={cn(rimvioComposerFieldClass, "w-full px-3 py-2.5 text-[15px]")}
+                      value={working.detail.productName}
+                      onChange={(event) =>
+                        setWorking({
+                          ...working,
+                          title: event.target.value,
+                          detail: {
+                            ...working.detail,
+                            productName: event.target.value,
+                          },
+                        })
+                      }
+                      placeholder={copy.globe.marketWizardProductNamePlaceholder}
+                      autoComplete="off"
+                      spellCheck={false}
+                    />
+                  </label>
                 </div>
-              ) : null}
-
-              {step === "priority" ? (
-                <MarketPrioritySlotFields draft={working} onChange={setWorking} />
               ) : null}
 
               {step === "photos" && !isSeeking ? (
@@ -492,10 +499,6 @@ export function GlobeMarketIntentWizardSheet({
                     onChange={(event) => onPhotosSelected(event.target.files)}
                   />
                 </div>
-              ) : null}
-
-              {step === "memory" ? (
-                <MarketMemoryRecordFields draft={working} onChange={setWorking} />
               ) : null}
 
               {step === "place" && !isSeeking ? (
@@ -579,7 +582,7 @@ export function GlobeMarketIntentWizardSheet({
                     ) : null}
                     {formatMarketMemoryPreview(working.detail, working.role) ? (
                       <div className="border-t border-black/[0.06] pt-2">
-                        <dt className="text-muted-foreground">{copy.globe.marketMemoryReviewLabel}</dt>
+                        <dt className="text-muted-foreground">{copy.globe.marketConditionReviewLabel}</dt>
                         <dd className="mt-1 font-medium leading-snug">
                           {formatMarketMemoryPreview(working.detail, working.role)}
                         </dd>

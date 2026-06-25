@@ -42,10 +42,9 @@ assert.ok(
   "immersive shell must reserve bottom inset for tab bar",
 );
 assert.ok(
-  /(?:@utility\s+app-nav-bottom-frame|\.app-nav-bottom-frame)\s*\{[^}]*pointer-events:\s*auto/s.test(
-    globals,
-  ),
-  "bottom nav frame must capture touches on iOS/PWA (no pointer-events:none parent)",
+  globals.includes(".rimvio-bottom-nav-pill") &&
+    /\.rimvio-bottom-nav-pill\s*\{[^}]*pointer-events:\s*auto/s.test(globals),
+  "bottom nav pill must capture touches on iOS/PWA",
 );
 assert.ok(
   appNav.includes("createPortal") && appNav.includes("data-rimvio-bottom-nav-portal"),

@@ -2,7 +2,7 @@ import type {
   BulkMediaSpacetimeCluster,
   BulkMediaSpacetimePeek,
 } from "@/lib/feed/bulk-media-spacetime-types";
-import { parseIsoMs } from "@/lib/feed/spacetime-fit";
+import { parsePinDateMs } from "@/lib/globe/format-pin-date-label";
 import { summarizeBulkMediaClustersForWire } from "@/lib/feed/cluster-bulk-media-spacetime";
 
 export type GlobeContextCandidateView = {
@@ -17,8 +17,8 @@ export type GlobeContextCandidateView = {
 };
 
 function formatCandidateDateRange(startIso: string, endIso: string): string {
-  const startMs = parseIsoMs(startIso);
-  const endMs = parseIsoMs(endIso);
+  const startMs = parsePinDateMs(startIso);
+  const endMs = parsePinDateMs(endIso);
   if (startMs === null) {
     return "날짜 미확인";
   }

@@ -1,3 +1,4 @@
+import { isFriendAddUserId } from "@/lib/peer-chat/friend-add-qr-url";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { normalizeEmail, looksLikeEmail } from "@/lib/peer-chat/email";
 import { fetchFriendAddPreviewProfile } from "@/lib/peer-chat/friend-add-preview-profile";
@@ -64,7 +65,7 @@ async function lookupUserIdByEmailSafe(
   }
 }
 
-export type FriendContactMatchedBy = "email" | "phone" | "rimvio_id";
+export type FriendContactMatchedBy = "email" | "phone" | "rimvio_id" | "qr";
 
 export type FriendContactLookup = {
   otherUserId: string;
@@ -99,12 +100,39 @@ export async function lookupRegisteredFriendContact(
   );
   if (!rawContact) {
     throw new FriendContactLookupError(
-      "친구 Rimvio ID · 전화번호 · 이메일을 입력해 주세요.",
+      "전화번호를 입력하거나 QR을 스캔해 주세요.",
       "empty",
     );
   }
 
   const callerProfile = await readUserProfile(supabase, input.callerId);
+
+  if (isFriendAddUserId(rawContact)) {
+    const otherUserId = rawContact.trim();
+    if (otherUserId === input.callerId) {
+      throw new FriendContactLookupError("내 QR은 추가할 수 없어요.", "self");
+    }
+    await ensureRimvioUserProfile(supabase, otherUserId);
+    const preview = await fetchFriendAddPreviewProfile(supabase, otherUserId);
+    if (!preview) {
+      throw new FriendContactLookupError(
+        "상대 프로필을 불러오지 못했어요.",
+        "not_registered",
+      );
+    }
+    return {
+      otherUserId,
+      displayName:
+        preview.displayName?.trim() ||
+        preview.rimvioId ||
+        preview.emailLower?.split("@")[0] ||
+        "친구",
+      rimvioId: preview.rimvioId,
+      avatarUrl: preview.avatarUrl,
+      emailLower: preview.emailLower,
+      matchedBy: "qr",
+    };
+  }
 
   const byEmail = looksLikeEmail(rawContact);
   const friendRimvioId = !byEmail ? tryParseRimvioIdContact(rawContact) : null;
@@ -146,7 +174,7 @@ export async function lookupRegisteredFriendContact(
     const friendPhone = normalizePhoneE164(rawContact);
     if (!friendPhone) {
       throw new FriendContactLookupError(
-        "Rimvio ID · 010 번호 · 이메일 중 하나를 올바르게 입력해 주세요.",
+        "올바른 전화번호를 입력해 주세요.",
         "invalid",
       );
     }
@@ -164,9 +192,7 @@ export async function lookupRegisteredFriendContact(
     }
     if (!otherUserId) {
       throw new FriendContactLookupError(
-        rimvioIdHint
-          ? "이 번호·ID는 Rimvio에 없어요. Google 이메일로도 시도해 보세요."
-          : "이 번호는 Rimvio에 등록되지 않았어요. Rimvio ID나 Google 이메일로 추가해 보세요.",
+        "이 번호로 가입한 친구가 없어요. QR로 추가해 보세요.",
         "not_registered",
       );
     }

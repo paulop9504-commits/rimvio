@@ -6,6 +6,7 @@ import {
   recordInboundMessage,
 } from "@/lib/peer-chat/friend-connections-server";
 import { touchRelationshipSlotsOnMessage } from "@/lib/peer-chat/relationship-slots-server";
+import { PEER_MESSAGE_IMAGE_PLACEHOLDER } from "@/lib/peer-chat/peer-chat-image-constants";
 import { uploadPeerChatImage } from "@/lib/peer-chat/peer-chat-image-server";
 import { resolvePeerThreadIdForSend } from "@/lib/peer-chat/resolve-canonical-peer-thread";
 import {
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       typeof captionRaw === "string" ? captionRaw.trim().slice(0, 4000) : "";
 
     if (!(file instanceof File)) {
-      return NextResponse.json({ error: "사진 파일이 필요해요." }, { status: 400 });
+      return NextResponse.json({ error: "사진·동영상 파일이 필요해요." }, { status: 400 });
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
@@ -95,6 +96,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
       await recordInboundMessage(supabase, {
         threadId,
         senderUserId: userId,
+        body: caption || PEER_MESSAGE_IMAGE_PLACEHOLDER,
+        createdAt: row.created_at,
       });
     } catch (sideEffectError) {
       console.error("[peer-image] recordInboundMessage", sideEffectError);

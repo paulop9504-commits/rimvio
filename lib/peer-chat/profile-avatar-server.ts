@@ -53,6 +53,9 @@ export async function uploadUserProfileAvatar(
     rimvioId: existing?.rimvio_id ?? null,
     displayName: existing?.display_name ?? null,
     avatarUrl,
+    statusMessage: existing?.status_message ?? null,
+    coverUrl: existing?.cover_url ?? null,
+    coverTheme: existing?.cover_theme ?? "default",
   });
 
   return avatarUrl;
@@ -77,5 +80,8 @@ export async function removeUserProfileAvatar(
     rimvioId: existing.rimvio_id,
     displayName: existing.display_name,
     avatarUrl: null,
+    statusMessage: existing.status_message,
+    coverUrl: existing.cover_url,
+    coverTheme: existing.cover_theme,
   });
 }

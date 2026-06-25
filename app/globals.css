@@ -191,12 +191,15 @@
   --shell-max-laptop: 42rem;
   --shell-max-desktop: 48rem;
   --nav-rail-width: 5rem;
-  /* Feed bottom chrome — composer dock + fixed tab bar (mobile) */
-  --rimvio-bottom-nav-height: 3.625rem;
+  /* Feed bottom chrome — floating pill tab bar + composer dock (mobile) */
+  --rimvio-bottom-nav-pill-height: 3.75rem;
+  --rimvio-bottom-nav-float-gap: 0.375rem;
+  --rimvio-bottom-nav-height: var(--rimvio-bottom-nav-pill-height);
   --rimvio-composer-bar-height: 4.5rem;
   --rimvio-bottom-nav-offset: calc(
-    var(--rimvio-bottom-nav-height) +
-      max(0.25rem, env(safe-area-inset-bottom, 0px))
+    var(--rimvio-bottom-nav-pill-height) +
+      var(--rimvio-bottom-nav-float-gap) +
+      max(0.5rem, env(safe-area-inset-bottom, 0px))
   );
   --rimvio-globe-ingest-bar-height: 3.75rem;
   --rimvio-globe-stack-extra: 0px;
@@ -396,34 +399,52 @@
   overflow: hidden;
 }
 
-/* Bottom tab row — top spacer, icon row at the screen edge */
-.rimvio-bottom-nav-safe {
-  flex: 0 0 auto;
-  width: 100%;
-  min-height: 0.375rem;
-}
-
-.rimvio-bottom-nav-grid--3 {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.rimvio-bottom-nav-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+/* Floating bottom nav pill — icon row */
+.rimvio-bottom-nav-pill {
+  pointer-events: auto;
+  display: inline-flex;
   align-items: center;
-  justify-items: center;
-  width: 100%;
-  height: var(--rimvio-bottom-nav-height);
-  padding-inline: var(--space-phi2);
-  padding-bottom: max(0.25rem, env(safe-area-inset-bottom, 0px));
+  justify-content: center;
+  gap: 0.5rem;
+  min-width: min(calc(100vw - 2rem), 21.5rem);
+  min-height: var(--rimvio-bottom-nav-pill-height);
+  padding: 0.375rem 0.875rem;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in oklch, white 88%, #c4b5fd 12%);
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklch, #fff7fb 92%, #fbcfe8 8%) 0%,
+    color-mix(in oklch, #faf5ff 90%, #ddd6fe 10%) 48%,
+    color-mix(in oklch, #f0f9ff 92%, #bae6fd 8%) 100%
+  );
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  box-shadow:
+    0 14px 36px rgba(167, 139, 250, 0.14),
+    0 4px 12px rgba(56, 189, 248, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
 }
 
 .rimvio-bottom-nav-slot {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.75rem;
-  height: 2.75rem;
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+/* Sheets portaled over floating bottom nav (nav frame z-index: 9999) */
+.rimvio-sheet-over-nav-backdrop {
+  z-index: 10000;
+}
+
+.rimvio-sheet-over-nav-panel {
+  z-index: 10001;
+}
+
+body:has([data-capture-sheet]) [data-rimvio-bottom-nav-portal] {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .rimvio-nav-bar::before {
@@ -776,18 +797,26 @@
   inset-inline: 0;
   bottom: 0;
   z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
   margin-inline: auto;
   width: 100%;
   min-height: var(--rimvio-bottom-nav-offset);
   max-width: var(--shell-max-phone);
+  padding-inline: 1.25rem;
+  padding-bottom: calc(
+    var(--rimvio-bottom-nav-float-gap) +
+      max(0.5rem, env(safe-area-inset-bottom, 0px))
+  );
   overflow: visible;
-  pointer-events: auto;
+  pointer-events: none;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   isolation: isolate;
-  background: color-mix(in oklch, var(--rimvio-base) 96%, transparent);
-  backdrop-filter: blur(12px);
-  box-shadow: 0 -1px 0 var(--border);
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
 }
 
 .rimvio-bottom-nav-shell.rimvio-nav-bar {
@@ -824,10 +853,6 @@
   .rimvio-bottom-nav-slot img,
   .rimvio-brand-mark {
     pointer-events: none;
-  }
-
-  .rimvio-bottom-nav-grid {
-    align-items: stretch;
   }
 
   /* Feed scroll must not compete with the fixed tab bar (globe/search immersive). */
@@ -3271,6 +3296,10 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 
 [data-rimvio-globe-3d][data-globe-interacting="true"] canvas {
   will-change: transform;
+}
+
+[data-rimvio-globe-3d][data-globe-interacting="true"] {
+  transform: translateZ(0);
 }
 
 .rimvio-globe-satellite-shade {

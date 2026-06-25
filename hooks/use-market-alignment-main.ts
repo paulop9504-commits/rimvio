@@ -8,40 +8,20 @@ import {
   listActiveMarketIntents,
   subscribeMarketIntents,
 } from "@/lib/globe/market/market-alignment-store";
+import {
+  dismissMarketAlignmentSession,
+  recordMarketAlignmentNudgeDismissed,
+  recordMarketAlignmentNudgeShown,
+  resolveMarketAlignmentDismissKey,
+  shouldShowMarketAlignmentNudge,
+} from "@/lib/globe/market/market-alignment-nudge-policy";
 import { resolveMarketAlignment } from "@/lib/globe/market/resolve-market-alignment";
 import type { MarketAlignmentOffer } from "@/lib/globe/market/market-intent-types";
 
-const DISMISS_KEY = "rimvio-market-align-dismissed";
 const MATCH_POLL_MS = 12_000;
 
-function readDismissedMatchId(): string | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-  try {
-    return sessionStorage.getItem(DISMISS_KEY);
-  } catch {
-    return null;
-  }
-}
-
-function resolveDismissKey(offer: MarketAlignmentOffer): string {
-  return (
-    offer.handshakeId ??
-    offer.matchIntentServerId ??
-    offer.matchIntentId
-  );
-}
-
 export function dismissMarketAlignment(offer: MarketAlignmentOffer): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-  try {
-    sessionStorage.setItem(DISMISS_KEY, resolveDismissKey(offer));
-  } catch {
-    // ignore
-  }
+  recordMarketAlignmentNudgeDismissed({ offer });
 }
 
 export function useMarketAlignmentMain(input: {
@@ -56,9 +36,8 @@ export function useMarketAlignmentMain(input: {
   const [revision, setRevision] = useState(0);
   const [remoteOffer, setRemoteOffer] = useState<MarketAlignmentOffer | null>(null);
   const [loading, setLoading] = useState(false);
-  const [dismissedId, setDismissedId] = useState<string | null>(() =>
-    readDismissedMatchId(),
-  );
+  const [sessionDismissedId, setSessionDismissedId] = useState<string | null>(null);
+  const [nudgeRecordedId, setNudgeRecordedId] = useState<string | null>(null);
 
   useEffect(() => subscribeMarketIntents(() => setRevision((n) => n + 1)), []);
 
@@ -113,25 +92,44 @@ export function useMarketAlignmentMain(input: {
     });
   }, [input.enabled, input.focusEventId, revision]);
 
+  const resolvedOffer = useMemo(() => {
+    return user?.id ? remoteOffer ?? localOffer : localOffer;
+  }, [localOffer, remoteOffer, user?.id]);
+
   const offer = useMemo(() => {
-    const resolved = user?.id ? remoteOffer ?? localOffer : localOffer;
-    if (!resolved) {
+    if (!resolvedOffer) {
       return null;
     }
-    const dismissKey = resolveDismissKey(resolved);
-    if (dismissedId && dismissedId === dismissKey) {
+    if (!shouldShowMarketAlignmentNudge({ offer: resolvedOffer })) {
       return null;
     }
-    return resolved;
-  }, [dismissedId, localOffer, remoteOffer, user?.id]);
+    const dismissKey = resolveMarketAlignmentDismissKey(resolvedOffer);
+    if (sessionDismissedId && sessionDismissedId === dismissKey) {
+      return null;
+    }
+    return resolvedOffer;
+  }, [resolvedOffer, sessionDismissedId]);
+
+  useEffect(() => {
+    if (!offer) {
+      return;
+    }
+    const dismissKey = resolveMarketAlignmentDismissKey(offer);
+    if (nudgeRecordedId === dismissKey) {
+      return;
+    }
+    recordMarketAlignmentNudgeShown({ offer });
+    setNudgeRecordedId(dismissKey);
+  }, [nudgeRecordedId, offer]);
 
   const dismiss = useCallback(() => {
     if (!offer) {
       return;
     }
-    const dismissKey = resolveDismissKey(offer);
-    dismissMarketAlignment(offer);
-    setDismissedId(dismissKey);
+    const dismissKey = resolveMarketAlignmentDismissKey(offer);
+    dismissMarketAlignmentSession(offer);
+    recordMarketAlignmentNudgeDismissed({ offer });
+    setSessionDismissedId(dismissKey);
   }, [offer]);
 
   return { offer, loading, dismiss };

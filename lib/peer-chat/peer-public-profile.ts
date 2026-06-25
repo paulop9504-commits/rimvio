@@ -11,6 +11,9 @@ export type PeerPublicProfile = {
   rimvioId: string | null;
   avatarUrl: string | null;
   emailLower: string | null;
+  statusMessage: string | null;
+  coverUrl: string | null;
+  coverTheme: string | null;
 };
 
 export function parsePublicProfileRow(raw: unknown): PeerPublicProfile | null {
@@ -30,6 +33,11 @@ export function parsePublicProfileRow(raw: unknown): PeerPublicProfile | null {
     avatarUrl: typeof row.avatar_url === "string" ? row.avatar_url : null,
     emailLower:
       typeof row.email_lower === "string" ? row.email_lower : null,
+    statusMessage:
+      typeof row.status_message === "string" ? row.status_message : null,
+    coverUrl: typeof row.cover_url === "string" ? row.cover_url : null,
+    coverTheme:
+      typeof row.cover_theme === "string" ? row.cover_theme : "default",
   };
 }
 

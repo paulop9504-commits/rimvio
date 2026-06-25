@@ -8,7 +8,7 @@ export const GLOBE_TOSS_THEME = {
   skyBottom: "#f2f4f6",
   ink: "#191f28",
   inkMuted: "#8b95a1",
-  atmosphere: "rgba(49, 130, 246, 0.88)",
+  atmosphere: "#3182f6",
   atmosphereAltitude: 0.14,
   atmosphereCutoffAltitude: 0.28,
   hintBg: "rgba(255, 255, 255, 0.92)",

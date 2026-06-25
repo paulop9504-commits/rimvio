@@ -4,11 +4,16 @@ import {
   bootstrapExperienceBridgeRemote,
   inviteExperienceBridgeRemote,
 } from "@/lib/experience-bridge/experience-bridge-client";
+import {
+  deliverGlobeContextToPeerChat,
+  type GlobeContextShareDelivery,
+} from "@/lib/experience-bridge/deliver-globe-context-to-peer-chat";
 import { hydrateBridgeEventSnapshotForShare } from "@/lib/experience-bridge/hydrate-bridge-event-snapshot";
 import { writeLocalBridgeState } from "@/lib/experience-bridge/local-bridge-store";
 import { publishBridgeEventCaptureContributions } from "@/lib/experience-bridge/publish-bridge-capture-contribution";
 import { notifyBridgeSharedMediaUpdated } from "@/lib/experience-bridge/notify-bridge-shared-media-updated";
 import { stampBridgeEventMetadata } from "@/lib/experience-bridge/stamp-bridge-event-metadata";
+import { isDmThreadId } from "@/lib/peer-chat/dm-thread";
 
 export type GlobeContextShareFriend = {
   userId: string;
@@ -16,17 +21,20 @@ export type GlobeContextShareFriend = {
   peerThreadId: string;
 };
 
+export type { GlobeContextShareDelivery };
+
 /** Host: bootstrap bridge + invite selected friends. */
 export async function shareGlobeContextWithFriends(input: {
   event: EventCandidate;
   hostDisplayName: string;
   friends: readonly GlobeContextShareFriend[];
-}): Promise<{ invited: number }> {
+  delivery?: GlobeContextShareDelivery | null;
+}): Promise<{ invited: number; peerThreadIds: string[] }> {
   const friends = input.friends.filter(
     (row) => row.userId.trim() && row.displayName.trim(),
   );
   if (friends.length === 0) {
-    return { invited: 0 };
+    return { invited: 0, peerThreadIds: [] };
   }
 
   const primaryThreadId = friends[0]!.peerThreadId.trim();
@@ -65,11 +73,30 @@ export async function shareGlobeContextWithFriends(input: {
       hostDisplayName: input.hostDisplayName,
       participantUserId: friend.userId,
       participantDisplayName: friend.displayName,
+      directDelivery:
+        Boolean(input.delivery) && isDmThreadId(friend.peerThreadId),
     });
     writeLocalBridgeState(result.state);
     invited += 1;
   }
 
+  const peerThreadIds: string[] = [];
+  if (input.delivery) {
+    for (const friend of friends) {
+      try {
+        await deliverGlobeContextToPeerChat({
+          event: shareEvent,
+          peerThreadId: friend.peerThreadId,
+          hostDisplayName: input.hostDisplayName,
+          delivery: input.delivery,
+        });
+        peerThreadIds.push(friend.peerThreadId.trim());
+      } catch {
+        /* bridge invite still landed — DM card is best-effort */
+      }
+    }
+  }
+
   notifyBridgeSharedMediaUpdated();
-  return { invited };
+  return { invited, peerThreadIds };
 }

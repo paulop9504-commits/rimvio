@@ -16,7 +16,7 @@ export function prefetchPeerMessages(threadId: string): void {
   if (typeof window === "undefined" || cache.has(threadId) || inflight.has(threadId)) {
     return;
   }
-  const promise = fetchPeerMessages(threadId)
+  const promise = fetchPeerMessages(threadId, { markRead: false })
     .then((payload) => {
       cache.set(threadId, { messages: payload.messages, at: Date.now() });
       return payload.messages;

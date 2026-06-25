@@ -5,6 +5,12 @@ import type { TrafficContext } from "@/lib/context-resolver/types";
 import { fetchWeatherForecastClient } from "@/lib/context-resolver/weather/fetch-weather-forecast-client";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import {
+  bridgeWeatherMatchesExperience,
+  readBridgeWeatherFromEvent,
+  stampBridgeWeatherOnEvent,
+} from "@/lib/globe/bridge-weather/bridge-weather-metadata";
+import { formatBridgeWeatherLine } from "@/lib/globe/bridge-weather/format-bridge-weather-line";
+import {
   resolveApiWakeupDecision,
 } from "@/lib/globe/resource/api-wakeup-controller";
 import {
@@ -33,7 +39,7 @@ export type BridgeContextEnvironment = {
   place: string | null;
 };
 
-/** Live weather + traffic — gated by ApiWakeupController. */
+/** Experience-time weather + traffic — gated by ApiWakeupController. */
 export function useBridgeContextEnvironment(
   event: EventCandidate | null | undefined,
   enabled = true,
@@ -42,6 +48,30 @@ export function useBridgeContextEnvironment(
     () => (event && enabled ? resolveBridgeContextWeatherTarget(event) : null),
     [enabled, event],
   );
+
+  const stampedWeather = useMemo(
+    () =>
+      event && target
+        ? readBridgeWeatherFromEvent(event)
+        : null,
+    [event, target],
+  );
+
+  const cachedWeatherLine = useMemo(() => {
+    if (!stampedWeather || !target) {
+      return null;
+    }
+    if (
+      !bridgeWeatherMatchesExperience({
+        stored: stampedWeather,
+        eventDate: target.eventDate,
+        location: target.location,
+      })
+    ) {
+      return null;
+    }
+    return formatBridgeWeatherLine(stampedWeather);
+  }, [stampedWeather, target]);
 
   const [appForeground, setAppForeground] = useState(true);
 
@@ -67,10 +97,11 @@ export function useBridgeContextEnvironment(
   }, [appForeground, event, target]);
 
   const requestKey = target
-    ? `${target.location}|${target.targetIso}|${weatherDecision?.phase}|${weatherDecision?.allowFetch}`
+    ? `${target.location}|${target.targetIso}|${target.eventDate}|${weatherDecision?.phase}|${weatherDecision?.allowFetch}`
     : "";
 
   const pollIntervalMs = weatherDecision?.pollIntervalMs ?? null;
+  const hasValidStamp = Boolean(cachedWeatherLine);
 
   const [state, setState] = useState<Omit<BridgeContextEnvironment, "place">>({
     loading: false,
@@ -80,13 +111,40 @@ export function useBridgeContextEnvironment(
   });
 
   useEffect(() => {
-    if (!target || !enabled || !weatherDecision?.allowFetch) {
+    if (!target || !enabled) {
       setState({
         loading: false,
         weatherLine: null,
         weatherCondition: "unknown",
         trafficLine: null,
       });
+      return;
+    }
+
+    if (hasValidStamp && stampedWeather) {
+      setState({
+        loading: false,
+        weatherLine: formatBridgeWeatherLine(stampedWeather),
+        weatherCondition: stampedWeather.condition,
+        trafficLine: null,
+      });
+    }
+  }, [enabled, hasValidStamp, stampedWeather, target]);
+
+  useEffect(() => {
+    if (!target || !enabled || !weatherDecision?.allowFetch) {
+      if (!hasValidStamp) {
+        setState({
+          loading: false,
+          weatherLine: null,
+          weatherCondition: "unknown",
+          trafficLine: null,
+        });
+      }
+      return;
+    }
+
+    if (hasValidStamp) {
       return;
     }
 
@@ -102,6 +160,8 @@ export function useBridgeContextEnvironment(
         fetchWeatherForecastClient({
           location: target.location,
           targetIso: target.targetIso,
+          eventDate: target.eventDate,
+          eventTimeSource: target.eventTimeSource,
         }),
         fetchTrafficContextClient({ destination: target.location }),
       ]);
@@ -110,9 +170,21 @@ export function useBridgeContextEnvironment(
         return;
       }
 
+      if (weatherPayload?.bridge_weather && event?.id) {
+        stampBridgeWeatherOnEvent({
+          eventId: event.id,
+          weather: weatherPayload.bridge_weather,
+        });
+      }
+
+      const weatherLine =
+        formatBridgeWeatherLine(weatherPayload?.bridge_weather) ??
+        weatherPayload?.prep_line?.trim() ??
+        null;
+
       setState({
         loading: false,
-        weatherLine: weatherPayload?.prep_line?.trim() || null,
+        weatherLine,
         weatherCondition: weatherPayload?.weather?.condition ?? "unknown",
         trafficLine: formatTrafficLine(traffic),
       });
@@ -132,10 +204,19 @@ export function useBridgeContextEnvironment(
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [enabled, pollIntervalMs, requestKey, target, weatherDecision?.allowFetch]);
+  }, [
+    enabled,
+    event?.id,
+    hasValidStamp,
+    pollIntervalMs,
+    requestKey,
+    target,
+    weatherDecision?.allowFetch,
+  ]);
 
   return {
     ...state,
+    weatherLine: state.weatherLine ?? cachedWeatherLine,
     place: target?.location ?? null,
   };
 }

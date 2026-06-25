@@ -40,6 +40,7 @@ function Field({
   );
 }
 
+/** Optional condition notes — not used in main wizard (priority step is SSOT). */
 export function MarketMemoryRecordFields({ draft, onChange }: MarketMemoryRecordFieldsProps) {
   const template = resolveMarketMemoryTemplate(
     draft.categoryId,
@@ -54,10 +55,8 @@ export function MarketMemoryRecordFields({ draft, onChange }: MarketMemoryRecord
 
   return (
     <div className="space-y-4">
-      <p className={cn(RIMVIO_TYPE.caption, "rounded-xl bg-primary/5 px-3 py-2 text-[13px]")}>
-        {copy.globe.marketMemoryStepEyebrow}
-        {" · "}
-        {isListing ? copy.globe.marketMemoryStepBodyListing : copy.globe.marketMemoryStepBodySeeking}
+      <p className={cn(RIMVIO_TYPE.caption, "rounded-xl bg-muted/50 px-3 py-2 text-[13px]")}>
+        {copy.globe.marketConditionStepHint}
       </p>
 
       {isListing ? (
@@ -69,61 +68,20 @@ export function MarketMemoryRecordFields({ draft, onChange }: MarketMemoryRecord
             onValue={(categoryAnswer) => patch({ categoryAnswer })}
           />
           <Field
-            label={template.storyLabelKo}
-            placeholder={template.storyPlaceholderKo}
-            value={memory.story}
-            onValue={(story) => patch({ story })}
-          />
-          <Field
             label={template.careLabelKo}
             placeholder={template.carePlaceholderKo}
             value={memory.care}
             onValue={(care) => patch({ care })}
           />
-          <Field
-            label={template.whyLabelKo}
-            placeholder={template.whyPlaceholderKo}
-            value={memory.why}
-            onValue={(why) => patch({ why })}
-          />
         </>
       ) : (
-        <>
-          <Field
-            label={template.seekingContextLabelKo}
-            placeholder={template.seekingContextPlaceholderKo}
-            value={memory.seekingContext}
-            onValue={(seekingContext) => patch({ seekingContext })}
-          />
-          <Field
-            label={template.seekingWhyLabelKo}
-            placeholder={template.seekingWhyPlaceholderKo}
-            value={memory.seekingWhy}
-            onValue={(seekingWhy) => patch({ seekingWhy })}
-          />
-        </>
+        <Field
+          label={template.seekingContextLabelKo}
+          placeholder={template.seekingContextPlaceholderKo}
+          value={memory.seekingContext}
+          onValue={(seekingContext) => patch({ seekingContext })}
+        />
       )}
-
-      {memory.experienceTags.length > 0 ? (
-        <div>
-          <p className={cn(RIMVIO_TYPE.caption, "mb-2 font-medium text-foreground")}>
-            {copy.globe.marketMemoryTagsLabel}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {memory.experienceTags.map((tag) => (
-              <span
-                key={tag}
-                className="rounded-full bg-primary/10 px-2.5 py-1 text-[12px] font-medium text-primary"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-          <p className={cn("mt-1.5", RIMVIO_TYPE.caption)}>
-            {copy.globe.marketMemoryTagsHint}
-          </p>
-        </div>
-      ) : null}
     </div>
   );
 }

@@ -76,10 +76,10 @@ export function RimvioProductContextStrip({
       </p>
       {showFeedLink ? (
         <Link
-          href="/feed"
+          href="/"
           className="mt-1.5 inline-block text-[11px] font-medium text-rimvio-neon-cyan"
         >
-          {copy.peers.emptyFeedLink} →
+          {copy.peers.emptyGlobeLink} →
         </Link>
       ) : null}
     </div>

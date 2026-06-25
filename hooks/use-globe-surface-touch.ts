@@ -13,9 +13,13 @@ import {
   applyInertialDecay,
   GestureVelocityTracker,
 } from "@/lib/globe/gesture-velocity-tracker";
+import {
+  GLOBE_DRAG_THRESHOLD_PX,
+  GLOBE_INERTIA_FRICTION,
+  GLOBE_INERTIA_MIN_SPEED,
+} from "@/lib/globe/globe-gesture-tuning";
 import type { GlobeSurfaceMode } from "@/lib/globe/resolve-globe-surface-mode";
 
-const DRAG_THRESHOLD_PX = 5;
 
 type TouchPoint = { x: number; y: number };
 
@@ -114,12 +118,12 @@ export function useGlobeSurfaceTouch({
     const startInertia = () => {
       stopInertia();
       let velocity = velocityRef.current.velocity();
-      if (Math.hypot(velocity.vx, velocity.vy) < 1.2) {
+      if (Math.hypot(velocity.vx, velocity.vy) < GLOBE_INERTIA_MIN_SPEED) {
         velocityRef.current.reset();
         return;
       }
       const tick = () => {
-        const decayed = applyInertialDecay(velocity, 0.9);
+        const decayed = applyInertialDecay(velocity, GLOBE_INERTIA_FRICTION);
         velocity = { vx: decayed.vx, vy: decayed.vy };
         if (!decayed.active) {
           inertiaRafRef.current = null;
@@ -245,7 +249,7 @@ export function useGlobeSurfaceTouch({
       const point = Array.from(touchesRef.current.values())[0]!;
       const deltaX = point.x - drag.lastX;
       const deltaY = point.y - drag.lastY;
-      if (!drag.dragging && Math.hypot(deltaX, deltaY) < DRAG_THRESHOLD_PX) {
+      if (!drag.dragging && Math.hypot(deltaX, deltaY) < GLOBE_DRAG_THRESHOLD_PX) {
         return;
       }
 

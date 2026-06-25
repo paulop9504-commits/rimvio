@@ -48,6 +48,7 @@ const ALLOWLIST: readonly string[] = [
   "lib/globe/resource/context-resource-sync-metadata.ts",
   "lib/globe/resource/run-hub-resource-sync-worker.ts",
   "lib/globe/market/",
+  "lib/globe/bridge-weather/",
   "lib/globe/trend-bridge/",
   "lib/peer-chat/ai-lens/",
 ];

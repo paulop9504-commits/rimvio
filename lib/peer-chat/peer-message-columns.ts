@@ -1,4 +1,8 @@
-import { PEER_MESSAGE_IMAGE_PLACEHOLDER } from "@/lib/peer-chat/peer-chat-image-constants";
+import {
+  PEER_MESSAGE_IMAGE_PLACEHOLDER,
+  PEER_MESSAGE_VIDEO_PLACEHOLDER,
+} from "@/lib/peer-chat/peer-chat-image-constants";
+import { inferPeerChatMediaKindFromUrl } from "@/lib/peer-chat/infer-peer-chat-media-kind";
 import type { PeerMessageRow } from "@/lib/peer-chat/types";
 
 /** Legacy DBs may lack image_url — list without it for PostgREST compatibility. */
@@ -26,7 +30,13 @@ export function buildPeerMessageInsertRow(input: {
 }): Record<string, unknown> {
   const trimmed = input.body.trim();
   const imageUrl = input.imageUrl?.trim() || null;
-  const body = trimmed || (imageUrl ? PEER_MESSAGE_IMAGE_PLACEHOLDER : "");
+  const body =
+    trimmed ||
+    (imageUrl
+      ? inferPeerChatMediaKindFromUrl(imageUrl) === "video"
+        ? PEER_MESSAGE_VIDEO_PLACEHOLDER
+        : PEER_MESSAGE_IMAGE_PLACEHOLDER
+      : "");
 
   const row: Record<string, unknown> = {
     thread_id: input.threadId,

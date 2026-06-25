@@ -12,8 +12,6 @@ export type MarketWizardStepId =
 const SEEKING_STEPS: readonly MarketWizardStepId[] = [
   "role",
   "recognize",
-  "priority",
-  "memory",
   "place",
   "review",
 ];
@@ -21,9 +19,7 @@ const SEEKING_STEPS: readonly MarketWizardStepId[] = [
 const LISTING_STEPS: readonly MarketWizardStepId[] = [
   "role",
   "recognize",
-  "priority",
   "photos",
-  "memory",
   "place",
   "review",
 ];

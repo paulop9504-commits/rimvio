@@ -115,6 +115,7 @@ export async function inviteExperienceBridgeRemote(input: {
   hostDisplayName?: string;
   participantUserId: string;
   participantDisplayName: string;
+  directDelivery?: boolean;
 }): Promise<{ state: ExperienceBridgeState }> {
   const endpoint = `${resolveAppOrigin()}/api/experience-bridge/${encodeURIComponent(input.eventId)}`;
   const result = await fetchJsonUncached<{ state: ExperienceBridgeState }>(endpoint, {
@@ -127,6 +128,7 @@ export async function inviteExperienceBridgeRemote(input: {
       hostDisplayName: input.hostDisplayName,
       participantUserId: input.participantUserId,
       participantDisplayName: input.participantDisplayName,
+      directDelivery: input.directDelivery === true,
     }),
   });
   invalidateBridgeApiCache(input.eventId);

@@ -17,12 +17,15 @@ export async function GET(request: NextRequest) {
 
   const focusEventId =
     request.nextUrl.searchParams.get("focusEventId")?.trim() || null;
+  const matchIntentId =
+    request.nextUrl.searchParams.get("matchIntentId")?.trim() || null;
 
   try {
     const offer = await resolveServerMarketAlignmentOffer({
       supabase,
       userId: user.id,
       focusEventId,
+      matchIntentId,
     });
     return NextResponse.json({ ok: true, offer });
   } catch {

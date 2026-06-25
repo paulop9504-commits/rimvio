@@ -78,8 +78,11 @@ export function shouldShowContextRail(input: PeerThreadPolicyInput): boolean {
   return shouldRunAiLens(input);
 }
 
-/** AI 창 @이름 — pinned 5 only. */
+/** DM Room @import — known friends (pin slots removed). */
 export function canImportPeerAtMention(input: PeerThreadPolicyInput): boolean {
+  if (FIVE_PEER_ROOMS_PRODUCT) {
+    return isKnownPeerContact(input);
+  }
   return isPinnedFullStorage(input);
 }
 

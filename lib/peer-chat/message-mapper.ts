@@ -1,6 +1,10 @@
 import type { AiMessagePayload, RoomMessageType } from "@/lib/chat-room/types";
 import type { PeerMessage } from "@/lib/context/peer-message-types";
-import { PEER_MESSAGE_IMAGE_PLACEHOLDER } from "@/lib/peer-chat/peer-chat-image-constants";
+import {
+  PEER_MESSAGE_IMAGE_PLACEHOLDER,
+  PEER_MESSAGE_VIDEO_PLACEHOLDER,
+} from "@/lib/peer-chat/peer-chat-image-constants";
+import { inferPeerChatMediaKindFromUrl } from "@/lib/peer-chat/infer-peer-chat-media-kind";
 import type { PeerMessageRow } from "@/lib/peer-chat/types";
 
 /** DB / legacy rows may omit body for image-only or system messages. */
@@ -12,7 +16,13 @@ export function normalizePeerMessageBody(
   if (trimmed) {
     return trimmed;
   }
-  return imageUrl?.trim() ? PEER_MESSAGE_IMAGE_PLACEHOLDER : "";
+  const url = imageUrl?.trim();
+  if (!url) {
+    return "";
+  }
+  return inferPeerChatMediaKindFromUrl(url) === "video"
+    ? PEER_MESSAGE_VIDEO_PLACEHOLDER
+    : PEER_MESSAGE_IMAGE_PLACEHOLDER;
 }
 
 function resolveAuthor(
