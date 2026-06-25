@@ -23,6 +23,8 @@ export type MarketTradeSessionRecord = {
   phase: string;
   tradeStatus: MarketTradeStatus;
   meetMode: MarketMeetMode;
+  listingIntentId: string;
+  seekingIntentId: string;
   meetAtIso: string | null;
   meetPlaceLabel: string | null;
   meetLat: number | null;

@@ -23,14 +23,18 @@ export function MarketActiveTradesSection({
   }
 
   return (
-    <section className={cn("bg-white px-4 pb-3 pt-2", className)} data-market-active-trades>
-      <div className="mb-2.5 flex items-center justify-between gap-2">
+    <section
+      className={cn(
+        "border-b-4 border-[#eef1f4] bg-[#fafbfc] px-4 pb-3 pt-2",
+        className,
+      )}
+      data-market-active-trades
+    >
+      <div className="mb-2.5">
         <h2 className="text-[16px] font-bold text-[#191f28]">
           {copy.globe.marketTradeSectionTitle}
         </h2>
-        <span className="text-[13px] font-medium text-[#8b95a1]">
-          {copy.globe.marketTradeSectionViewAll}
-        </span>
+        <p className="mt-0.5 text-[12px] text-[#8b95a1]">{copy.globe.marketTradeSectionHint}</p>
       </div>
       <div className="space-y-3">
         {sessions.map((session) => (

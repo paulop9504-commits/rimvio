@@ -1,26 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, Radio, Sparkles } from "lucide-react";
+import { ArrowLeft, Sparkles } from "lucide-react";
 import { OpportunityDetailPanel } from "@/components/field/opportunity-detail-panel";
-import { OpportunityOwnershipSectionLabel } from "@/components/field/opportunity-ownership-section-label";
-import { OpportunityPillBar } from "@/components/field/opportunity-pill-bar";
-import {
-  OpportunityRowItem,
-  OpportunityRowShimmer,
-} from "@/components/field/opportunity-row-item";
-import { useCopy } from "@/hooks/use-copy";
+import { OpportunityDiscoveryFloor } from "@/components/field/opportunity-discovery-floor";
 import { MarketActiveTradesSection } from "@/components/field/market-active-trades-section";
+import { useCopy } from "@/hooks/use-copy";
 import { useActiveMarketTrades } from "@/hooks/use-active-market-trades";
 import { useOpportunityDashboard } from "@/hooks/use-opportunity-dashboard";
-import { RIMVIO_TYPE, rimvioEmptyStateClass } from "@/lib/design/rimvio-ontology";
+import { filterOpportunityRowsExcludingActiveTrades } from "@/lib/globe/opportunity-field/filter-rows-excluding-active-trades";
 import type { OpportunityRow } from "@/lib/globe/opportunity-field";
 import { listMarketChatQuickReplies } from "@/lib/globe/market/market-chat-quick-replies";
-import { cn } from "@/lib/utils";
 
-/** Bottom-tab field surface — full page opportunity inbox. */
+/** Bottom-tab field surface — transaction floor + discovery floor. */
 export function OpportunityFieldPageClient() {
   const copy = useCopy();
   const router = useRouter();
@@ -38,8 +31,18 @@ export function OpportunityFieldPageClient() {
 
   const { sessions: tradeSessions, refresh: refreshTrades, replaceSession } =
     useActiveMarketTrades({
-    enabled: true,
-  });
+      enabled: true,
+    });
+
+  const discoveryRows = useMemo(
+    () =>
+      filterOpportunityRowsExcludingActiveTrades(
+        rows,
+        tradeSessions,
+        selectedPill?.seeking.id ?? null,
+      ),
+    [rows, selectedPill?.seeking.id, tradeSessions],
+  );
 
   const field = copy.globe.field;
   const quickReplies = listMarketChatQuickReplies(field);
@@ -90,10 +93,6 @@ export function OpportunityFieldPageClient() {
           <Sparkles className="size-5 shrink-0 text-[#3182f6]" aria-hidden />
           {field.sheetTitle}
         </p>
-        <p className="mt-1 flex items-center gap-1.5 text-[13px] text-[#6b7684]">
-          <Radio className="size-3.5 shrink-0 text-[#3182f6] animate-pulse" aria-hidden />
-          {listeningLabel}
-        </p>
       </header>
 
       <MarketActiveTradesSection
@@ -101,70 +100,16 @@ export function OpportunityFieldPageClient() {
         onSessionUpdated={replaceSession}
       />
 
-      {pills.length > 0 ? (
-        <OpportunityOwnershipSectionLabel
-          title={field.mySeekingSection}
-          hint={field.mySeekingHint}
-          tone="mine"
-        />
-      ) : null}
-      <OpportunityPillBar
+      <OpportunityDiscoveryFloor
+        loading={loading}
         pills={pills}
+        rows={discoveryRows}
         selectedContextId={selectedContextId}
-        onSelect={setSelectedContextId}
-        pillAria={field.pillAria}
-        minePillLabel={field.ownershipMinePill}
+        onSelectContext={setSelectedContextId}
+        listeningLabel={listeningLabel}
+        onRowPress={setDetailRow}
+        className="flex-1"
       />
-
-      <div className="min-h-0 flex-1 overflow-y-auto bg-[#f8f9fb]/40 pb-[var(--rimvio-bottom-nav-offset)]">
-        {loading ? (
-          <OpportunityRowShimmer />
-        ) : pills.length === 0 ? (
-          <EmptyBlock title={field.emptySeekingTitle} body={field.emptySeekingBody} />
-        ) : rows.length === 0 ? (
-          <EmptyBlock title={field.emptyRowsTitle} body={field.emptyRowsBody} />
-        ) : (
-          <>
-            <OpportunityOwnershipSectionLabel
-              title={field.neighborListingsSection}
-              hint={field.neighborListingsHint}
-              tone="neighbor"
-              className="bg-white"
-            />
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.ul
-                key={selectedContextId ?? "none"}
-                className="bg-white pt-0"
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                transition={{ duration: 0.22, ease: "easeOut" }}
-              >
-                <AnimatePresence mode="popLayout" initial={false}>
-                  {rows.map((row) => (
-                    <OpportunityRowItem
-                      key={row.listingId}
-                      row={row}
-                      scoreAria={field.rowScoreAria}
-                      previewFallback={field.tradeCta}
-                      onPress={() => setDetailRow(row)}
-                    />
-                  ))}
-                </AnimatePresence>
-              </motion.ul>
-            </AnimatePresence>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function EmptyBlock({ title, body }: { title: string; body: string }) {
-  return (
-    <div className={cn(rimvioEmptyStateClass(), "px-6 py-16 text-center")}>
-      <p className={RIMVIO_TYPE.headline}>{title}</p>
-      <p className={cn("mt-2", RIMVIO_TYPE.caption)}>{body}</p>
     </div>
   );
 }

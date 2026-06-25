@@ -78,6 +78,8 @@ export function buildMarketTradeSessionRecord(input: {
     phase: handshake.phase,
     tradeStatus: handshake.tradeStatus,
     meetMode: handshake.meetMode,
+    listingIntentId: handshake.listingIntentId,
+    seekingIntentId: handshake.seekingIntentId,
     meetAtIso: handshake.meetAtIso,
     meetPlaceLabel: handshake.meetPlaceLabel,
     meetLat: handshake.meetLat,
