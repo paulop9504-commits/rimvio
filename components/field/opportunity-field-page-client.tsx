@@ -2,10 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { OpportunityDetailPanel } from "@/components/field/opportunity-detail-panel";
-import { OpportunityDiscoveryFloor } from "@/components/field/opportunity-discovery-floor";
-import { MarketActiveTradesSection } from "@/components/field/market-active-trades-section";
+import { OpportunityDashboardBody } from "@/components/field/opportunity-dashboard-body";
 import { useCopy } from "@/hooks/use-copy";
 import { useActiveMarketTrades } from "@/hooks/use-active-market-trades";
 import { useOpportunityDashboard } from "@/hooks/use-opportunity-dashboard";
@@ -13,11 +12,12 @@ import { filterOpportunityRowsExcludingActiveTrades } from "@/lib/globe/opportun
 import type { OpportunityRow } from "@/lib/globe/opportunity-field";
 import { listMarketChatQuickReplies } from "@/lib/globe/market/market-chat-quick-replies";
 
-/** Bottom-tab field surface — transaction floor + discovery floor. */
+/** Bottom-tab field surface — tabbed transaction + discovery. */
 export function OpportunityFieldPageClient() {
   const copy = useCopy();
   const router = useRouter();
   const [detailRow, setDetailRow] = useState<OpportunityRow | null>(null);
+  const [focusTradesToken, setFocusTradesToken] = useState(0);
 
   const {
     loading,
@@ -77,39 +77,28 @@ export function OpportunityFieldPageClient() {
           stayOnDashboard
           tradeStartedToast={copy.globe.marketTradeStartedToast}
           navigate={(href) => router.push(href)}
-          onTradeStarted={() => void refreshTrades()}
+          onTradeStarted={() => {
+            void refreshTrades();
+            setFocusTradesToken((value) => value + 1);
+          }}
         />
       </div>
     );
   }
 
   return (
-    <div
-      className="flex h-full min-h-0 flex-1 flex-col bg-white"
-      data-opportunity-field-page="list"
-    >
-      <header className="shrink-0 border-b border-[#f2f4f6] bg-white px-4 pb-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
-        <p className="flex items-center gap-1.5 text-[20px] font-bold tracking-tight text-[#191f28]">
-          <Sparkles className="size-5 shrink-0 text-[#3182f6]" aria-hidden />
-          {field.sheetTitle}
-        </p>
-      </header>
-
-      <MarketActiveTradesSection
-        sessions={tradeSessions}
-        onSessionUpdated={replaceSession}
-      />
-
-      <OpportunityDiscoveryFloor
-        loading={loading}
-        pills={pills}
-        rows={discoveryRows}
-        selectedContextId={selectedContextId}
-        onSelectContext={setSelectedContextId}
-        listeningLabel={listeningLabel}
-        onRowPress={setDetailRow}
-        className="flex-1"
-      />
-    </div>
+    <OpportunityDashboardBody
+      loading={loading}
+      pills={pills}
+      discoveryRows={discoveryRows}
+      tradeSessions={tradeSessions}
+      selectedContextId={selectedContextId}
+      onSelectContext={setSelectedContextId}
+      listeningLabel={listeningLabel}
+      onRowPress={setDetailRow}
+      onSessionUpdated={replaceSession}
+      focusTradesToken={focusTradesToken}
+      className="h-full flex-1"
+    />
   );
 }

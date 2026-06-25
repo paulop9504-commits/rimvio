@@ -21,6 +21,8 @@ export type OpportunityDiscoveryFloorProps = {
   onSelectContext: (id: string) => void;
   listeningLabel: string;
   onRowPress: (row: OpportunityRow) => void;
+  /** Inside tab panel — hides redundant section header. */
+  embedded?: boolean;
   className?: string;
 };
 
@@ -42,6 +44,7 @@ export function OpportunityDiscoveryFloor({
   onSelectContext,
   listeningLabel,
   onRowPress,
+  embedded = false,
   className,
 }: OpportunityDiscoveryFloorProps) {
   const copy = useCopy();
@@ -49,20 +52,31 @@ export function OpportunityDiscoveryFloor({
 
   return (
     <section
-      className={cn("flex min-h-0 flex-1 flex-col bg-[#f8f9fb]/40", className)}
+      className={cn(
+        "flex min-h-0 flex-1 flex-col",
+        embedded ? "bg-transparent" : "bg-[#f8f9fb]/40",
+        className,
+      )}
       data-opportunity-discovery-floor
     >
-      <div className="shrink-0 border-b border-[#eef1f4] bg-white px-4 pb-3 pt-2">
-        <OpportunityOwnershipSectionLabel
-          title={field.discoveryFloorTitle}
-          hint={field.discoveryFloorHint}
-          tone="neighbor"
-        />
-        <p className="mt-1 flex items-center gap-1.5 text-[13px] text-[#6b7684]">
+      {embedded ? (
+        <div className="shrink-0 flex items-center gap-1.5 border-b border-[#eef1f4] bg-white/90 px-4 py-2.5 backdrop-blur-sm">
           <Radio className="size-3.5 shrink-0 text-[#3182f6] animate-pulse" aria-hidden />
-          {listeningLabel}
-        </p>
-      </div>
+          <p className="truncate text-[12px] font-medium text-[#6b7684]">{listeningLabel}</p>
+        </div>
+      ) : (
+        <div className="shrink-0 border-b border-[#eef1f4] bg-white px-4 pb-3 pt-2">
+          <OpportunityOwnershipSectionLabel
+            title={field.discoveryFloorTitle}
+            hint={field.discoveryFloorHint}
+            tone="neighbor"
+          />
+          <p className="mt-1 flex items-center gap-1.5 text-[13px] text-[#6b7684]">
+            <Radio className="size-3.5 shrink-0 text-[#3182f6] animate-pulse" aria-hidden />
+            {listeningLabel}
+          </p>
+        </div>
+      )}
 
       {pills.length > 0 ? (
         <OpportunityOwnershipSectionLabel

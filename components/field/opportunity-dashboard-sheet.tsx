@@ -4,10 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, Sparkles, X } from "lucide-react";
+import { ArrowLeft, X } from "lucide-react";
 import { OpportunityDetailPanel } from "@/components/field/opportunity-detail-panel";
-import { OpportunityDiscoveryFloor } from "@/components/field/opportunity-discovery-floor";
-import { MarketActiveTradesSection } from "@/components/field/market-active-trades-section";
+import { OpportunityDashboardBody } from "@/components/field/opportunity-dashboard-body";
 import { useCopy } from "@/hooks/use-copy";
 import { useActiveMarketTrades } from "@/hooks/use-active-market-trades";
 import { useOpportunityDashboard } from "@/hooks/use-opportunity-dashboard";
@@ -44,6 +43,7 @@ export function OpportunityDashboardSheet({
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [detailRow, setDetailRow] = useState<OpportunityRow | null>(null);
+  const [focusTradesToken, setFocusTradesToken] = useState(0);
 
   const {
     loading,
@@ -162,46 +162,37 @@ export function OpportunityDashboardSheet({
                   tradeStartedToast={copy.globe.marketTradeStartedToast}
                   onBeforeNavigate={() => onOpenChange(false)}
                   navigate={(href) => router.push(href)}
-                  onTradeStarted={() => void refreshTrades()}
+                  onTradeStarted={() => {
+                    void refreshTrades();
+                    setFocusTradesToken((value) => value + 1);
+                  }}
                 />
               </>
             ) : (
-              <>
-                <header className="shrink-0 border-b border-[#f2f4f6] bg-white px-4 pb-3 pt-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="flex items-center gap-1.5 text-[20px] font-bold tracking-tight text-[#191f28]">
-                        <Sparkles className="size-5 shrink-0 text-[#3182f6]" aria-hidden />
-                        {field.sheetTitle}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => onOpenChange(false)}
-                      className={rimvioSheetCloseBtnClass()}
-                      aria-label={field.closeAria}
-                    >
-                      <X className="size-4" aria-hidden />
-                    </button>
-                  </div>
-                </header>
-
-                <MarketActiveTradesSection
-                  sessions={tradeSessions}
-                  onSessionUpdated={replaceSession}
-                />
-
-                <OpportunityDiscoveryFloor
-                  loading={loading}
-                  pills={pills}
-                  rows={discoveryRows}
-                  selectedContextId={selectedContextId}
-                  onSelectContext={setSelectedContextId}
-                  listeningLabel={listeningLabel}
-                  onRowPress={setDetailRow}
-                  className="min-h-0 flex-1"
-                />
-              </>
+              <OpportunityDashboardBody
+                loading={loading}
+                pills={pills}
+                discoveryRows={discoveryRows}
+                tradeSessions={tradeSessions}
+                selectedContextId={selectedContextId}
+                onSelectContext={setSelectedContextId}
+                listeningLabel={listeningLabel}
+                onRowPress={setDetailRow}
+                onSessionUpdated={replaceSession}
+                focusTradesToken={focusTradesToken}
+                headerClassName="pt-4"
+                headerRight={
+                  <button
+                    type="button"
+                    onClick={() => onOpenChange(false)}
+                    className={rimvioSheetCloseBtnClass()}
+                    aria-label={field.closeAria}
+                  >
+                    <X className="size-4" aria-hidden />
+                  </button>
+                }
+                className="min-h-0 flex-1"
+              />
             )}
           </motion.div>
         </>
