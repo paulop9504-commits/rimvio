@@ -12,6 +12,7 @@ import { useGlobeTouchControl } from "@/hooks/use-globe-touch-control";
 import { wrapGlobePinX } from "@/lib/experience-graph/shift-globe-view";
 import type { GlobeSpaceBlob } from "@/lib/experience-graph/build-globe-space-blobs";
 import type { ClassifiedGlobePin } from "@/lib/feed/experience-globe-ping-types";
+import { marketGlobePinRoleLabelKo } from "@/lib/globe/market/market-globe-pin-label";
 import { mapPercentToLatLng } from "@/lib/experience-graph/resolve-place-coordinates";
 import type { SpatialGlobeView } from "@/lib/experience-graph/spatial-media-types";
 import type { GlobeEarthMapVariant } from "@/hooks/use-globe-earth-texture";
@@ -367,7 +368,7 @@ export const SpatialGlobeStage = memo(function SpatialGlobeStage({
                     style={{ left: `${pin.pinX}%`, top: `${pin.pinY}%` }}
                     data-globe-classified-pin={pin.id}
                     data-globe-pin-shape="market"
-                    aria-label={`${pin.slot!.experienceTitle} · ${pin.slot!.marketRole === "seeking" ? "구매" : "내놓기"}`}
+                    aria-label={`${pin.slot!.experienceTitle} · ${marketGlobePinRoleLabelKo(pin.slot!.marketRole ?? "listing")}`}
                     aria-pressed={active}
                     onClick={(event) => {
                       event.stopPropagation();

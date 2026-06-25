@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, Radio, Sparkles } from "lucide-react";
 import { OpportunityDetailPanel } from "@/components/field/opportunity-detail-panel";
+import { OpportunityOwnershipSectionLabel } from "@/components/field/opportunity-ownership-section-label";
 import { OpportunityPillBar } from "@/components/field/opportunity-pill-bar";
 import {
   OpportunityRowItem,
@@ -62,6 +63,7 @@ export function OpportunityFieldPageClient() {
           quickReplies={quickReplies}
           chatPlaceholder={field.chatPlaceholder}
           bridgeFail={copy.globe.marketAlignBridgeFail}
+          neighborBadge={field.neighborListingBadge}
           navigate={(href) => router.push(href)}
         />
       </div>
@@ -84,14 +86,22 @@ export function OpportunityFieldPageClient() {
         </p>
       </header>
 
+      {pills.length > 0 ? (
+        <OpportunityOwnershipSectionLabel
+          title={field.mySeekingSection}
+          hint={field.mySeekingHint}
+          tone="mine"
+        />
+      ) : null}
       <OpportunityPillBar
         pills={pills}
         selectedContextId={selectedContextId}
         onSelect={setSelectedContextId}
         pillAria={field.pillAria}
+        minePillLabel={field.ownershipMinePill}
       />
 
-      <div className="min-h-0 flex-1 overflow-y-auto bg-white pb-[var(--rimvio-bottom-nav-offset)]">
+      <div className="min-h-0 flex-1 overflow-y-auto bg-[#f8f9fb]/40 pb-[var(--rimvio-bottom-nav-offset)]">
         {loading ? (
           <OpportunityRowShimmer />
         ) : pills.length === 0 ? (
@@ -99,6 +109,14 @@ export function OpportunityFieldPageClient() {
         ) : rows.length === 0 ? (
           <EmptyBlock title={field.emptyRowsTitle} body={field.emptyRowsBody} />
         ) : (
+          <>
+            <OpportunityOwnershipSectionLabel
+              title={field.neighborListingsSection}
+              hint={field.neighborListingsHint}
+              tone="neighbor"
+              className="bg-white"
+            />
+            <div className="bg-white ring-1 ring-black/[0.03]">
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={selectedContextId ?? "none"}
@@ -113,12 +131,15 @@ export function OpportunityFieldPageClient() {
                     key={row.listingId}
                     row={row}
                     scoreAria={field.rowScoreAria}
+                    neighborBadge={field.neighborListingBadge}
                     onPress={() => setDetailRow(row)}
                   />
                 ))}
               </AnimatePresence>
             </motion.div>
           </AnimatePresence>
+            </div>
+          </>
         )}
       </div>
     </div>

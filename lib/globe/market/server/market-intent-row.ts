@@ -40,7 +40,7 @@ function readMemoryRecord(raw: Record<string, unknown> | null | undefined): Mark
   return { ...DEFAULT_MARKET_MEMORY_RECORD };
 }
 
-function readDetailJson(raw: Record<string, unknown> | null | undefined): MarketIntentDetail {
+export function readDetailJson(raw: Record<string, unknown> | null | undefined): MarketIntentDetail {
   if (!raw || typeof raw !== "object") {
     return { ...DEFAULT_MARKET_INTENT_DETAIL };
   }

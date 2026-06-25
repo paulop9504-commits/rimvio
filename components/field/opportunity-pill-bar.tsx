@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { MarketIntentOwnershipChip } from "@/components/market/market-intent-ownership-chip";
 import { cn } from "@/lib/utils";
 import type { OpportunityPill } from "@/lib/globe/opportunity-field";
 
@@ -9,6 +10,7 @@ export type OpportunityPillBarProps = {
   selectedContextId: string | null;
   onSelect: (contextId: string) => void;
   pillAria: (title: string, count: number) => string;
+  minePillLabel: string;
   className?: string;
 };
 
@@ -17,6 +19,7 @@ export function OpportunityPillBar({
   selectedContextId,
   onSelect,
   pillAria,
+  minePillLabel,
   className,
 }: OpportunityPillBarProps) {
   if (pills.length === 0) {
@@ -59,6 +62,14 @@ export function OpportunityPillBar({
                 />
               ) : null}
               <span className="relative z-[1] flex items-center gap-1.5">
+                <span
+                  className={cn(
+                    "rounded px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide",
+                    active ? "bg-white/20 text-white" : "bg-[#3182f6]/10 text-[#3182f6]",
+                  )}
+                >
+                  {minePillLabel}
+                </span>
                 {pill.title}
                 <span
                   className={cn(

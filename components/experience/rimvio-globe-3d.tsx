@@ -12,7 +12,7 @@ import {
 import Globe from "globe.gl";
 import type { GlobeInstance } from "globe.gl";
 import { GLOBE_OVERVIEW_POINT_OF_VIEW } from "@/lib/experience-graph/globe-overview-view";
-import { createGlobe3dPinElement, createGlobe3dClusterPinElement, createGlobe3dDotPinElement } from "@/lib/globe/create-globe-3d-pin-element";
+import { createGlobe3dPinElement, createGlobe3dClusterPinElement, createGlobe3dDotPinElement, createGlobe3dMarketPinElement } from "@/lib/globe/create-globe-3d-pin-element";
 import { createGlobeLodgingMarkerElement } from "@/lib/globe/create-globe-lodging-marker-element";
 import { createGlobeContextHubAnchorElement } from "@/lib/globe/create-globe-context-hub-anchor-element";
 import { createGlobe3dViewerPinElement } from "@/lib/globe/create-globe-3d-viewer-pin-element";
@@ -579,6 +579,13 @@ export const RimvioGlobe3D = memo(
           }
           if (row.pinShape === "dot") {
             return createGlobe3dDotPinElement(row, row.id === activePinIdRef.current, {
+              onPress: (pinId) => onPinPressRef.current?.(pinId),
+              lockControls: () => lockGlobeControlsRef.current(),
+              unlockControls: () => unlockGlobeControlsRef.current(),
+            });
+          }
+          if (row.pinShape === "market") {
+            return createGlobe3dMarketPinElement(row, row.id === activePinIdRef.current, {
               onPress: (pinId) => onPinPressRef.current?.(pinId),
               lockControls: () => lockGlobeControlsRef.current(),
               unlockControls: () => unlockGlobeControlsRef.current(),

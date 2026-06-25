@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Check, MapPin, Package } from "lucide-react";
 import { OpportunityFieldChatBar } from "@/components/field/opportunity-field-chat-bar";
+import { MarketIntentOwnershipChip } from "@/components/market/market-intent-ownership-chip";
 import {
   projectMarketplaceBridgeFromIntent,
   projectMarketplaceDiscoveryCard,
@@ -18,6 +19,7 @@ export type OpportunityDetailPanelProps = {
   quickReplies: string[];
   chatPlaceholder: string;
   bridgeFail: string;
+  neighborBadge: string;
   onBeforeNavigate?: () => void;
   navigate: (href: string) => void;
   className?: string;
@@ -30,6 +32,7 @@ export function OpportunityDetailPanel({
   quickReplies,
   chatPlaceholder,
   bridgeFail,
+  neighborBadge,
   onBeforeNavigate,
   navigate,
   className,
@@ -79,6 +82,11 @@ export function OpportunityDetailPanel({
       ) : null}
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+        <MarketIntentOwnershipChip
+          kind="neighbor"
+          label={neighborBadge}
+          className="mb-3"
+        />
         <p className="flex items-center gap-1.5 text-[14px] text-[#4e5968]">
           <MapPin className="size-4 shrink-0 text-[#3182f6]" aria-hidden />
           {card.regionLine}

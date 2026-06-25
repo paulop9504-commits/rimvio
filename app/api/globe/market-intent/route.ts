@@ -5,6 +5,7 @@ import {
   deactivateMarketIntentRemote as deactivateMarketIntentOnServer,
   listOwnMarketIntents,
 } from "@/lib/globe/market/server/upsert-market-intent";
+import { readDetailJson } from "@/lib/globe/market/server/market-intent-row";
 import { scanMarketHandshakesForIntent } from "@/lib/globe/market/server/scan-market-handshakes";
 import { isMarketIntentPublishedExternal, DEFAULT_MARKET_INTENT_DETAIL } from "@/lib/globe/market/market-intent-detail";
 import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
@@ -24,36 +25,7 @@ function parseRecord(body: unknown): MarketIntentRecord | null {
   let detail = { ...DEFAULT_MARKET_INTENT_DETAIL };
   const detailRaw = row.detail;
   if (detailRaw && typeof detailRaw === "object" && !Array.isArray(detailRaw)) {
-    const d = detailRaw as Record<string, unknown>;
-    detail = {
-      ...DEFAULT_MARKET_INTENT_DETAIL,
-      sourceText: typeof d.sourceText === "string" ? d.sourceText : "",
-      productName: typeof d.productName === "string" ? d.productName : "",
-      detailNote: typeof d.detailNote === "string" ? d.detailNote : "",
-      conditionId:
-        d.conditionId === "like_new" ||
-        d.conditionId === "good" ||
-        d.conditionId === "fair" ||
-        d.conditionId === "for_parts"
-          ? d.conditionId
-          : null,
-      includesBox: d.includesBox === true,
-      includesReceipt: d.includesReceipt === true,
-      meetPreference:
-        d.meetPreference === "nearby" ||
-        d.meetPreference === "flexible" ||
-        d.meetPreference === "pickup_only"
-          ? d.meetPreference
-          : DEFAULT_MARKET_INTENT_DETAIL.meetPreference,
-      priceNegotiable: d.priceNegotiable === true,
-      photoCount: typeof d.photoCount === "number" ? d.photoCount : 0,
-      prioritySchemaVersion: "market.v1.2",
-      prioritySlots:
-        d.prioritySlots && typeof d.prioritySlots === "object" && !Array.isArray(d.prioritySlots)
-          ? (d.prioritySlots as typeof detail.prioritySlots)
-          : {},
-      publishedExternal: d.publishedExternal === true,
-    };
+    detail = readDetailJson(detailRaw as Record<string, unknown>);
   }
 
   return {

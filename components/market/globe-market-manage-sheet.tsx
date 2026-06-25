@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { MapPin, X } from "lucide-react";
 import { toast } from "sonner";
+import { MarketIntentOwnershipChip } from "@/components/market/market-intent-ownership-chip";
 import { useMarketManageIntents } from "@/hooks/use-market-manage-intents";
 import { copy } from "@/lib/copy/human-ko";
 import { RIMVIO_TYPE, rimvioGhostCtaClass } from "@/lib/design/rimvio-ontology";
@@ -48,16 +49,47 @@ function MarketManageRow({
   const title =
     record.detail.productName.trim() || record.title.trim() || copy.globe.marketTradePlaceProductFallback;
   const published = isMarketIntentPublishedExternal(record.detail);
+  const roleAccent =
+    record.role === "listing"
+      ? "border-l-[#2b7fff]"
+      : "border-l-[#ef2b2b]";
 
   return (
     <div
-      className="rounded-2xl bg-muted/35 px-3 py-3 ring-1 ring-black/[0.04]"
+      className={cn(
+        "rounded-2xl border-l-[3px] px-3 py-3 ring-1 ring-black/[0.04]",
+        roleAccent,
+        published
+          ? "bg-white shadow-[0_2px_12px_rgba(49,130,246,0.08)]"
+          : "bg-muted/30",
+      )}
       data-market-manage-row={record.eventId}
       data-market-manage-role={record.role}
       data-market-manage-published={published ? "true" : "false"}
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
+          <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+            <MarketIntentOwnershipChip
+              kind={published ? "mine-external" : "mine-internal"}
+              label={
+                published
+                  ? copy.globe.ownershipMineExternal
+                  : copy.globe.ownershipMineInternal
+              }
+              size="xs"
+            />
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-[10px] font-bold text-white",
+                record.role === "listing" ? "bg-[#2b7fff]" : "bg-[#ef2b2b]",
+              )}
+            >
+              {record.role === "listing"
+                ? copy.globe.marketPinRoleListing
+                : copy.globe.marketPinRoleSeeking}
+            </span>
+          </div>
           <p className="truncate text-[15px] font-semibold text-foreground">{title}</p>
           <p className={cn("mt-0.5", RIMVIO_TYPE.caption)}>
             {marketCategoryLabelKo(record.categoryId)} · {formatPriceLine(record)}
@@ -66,23 +98,6 @@ function MarketManageRow({
             <MapPin className="size-3.5 shrink-0 text-primary" aria-hidden />
             <span className="truncate">{record.placeLabel || copy.globe.marketIntentPrefillHint}</span>
           </p>
-        </div>
-        <div className="flex shrink-0 flex-col items-end gap-1">
-          <span
-            className={cn(
-              "rounded-full px-2 py-0.5 text-[10px] font-bold text-white",
-              record.role === "listing" ? "bg-[#2b7fff]" : "bg-[#ef2b2b]",
-            )}
-          >
-            {record.role === "listing"
-              ? copy.globe.marketPinRoleListing
-              : copy.globe.marketPinRoleSeeking}
-          </span>
-          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-            {published
-              ? copy.globe.marketManagePublishedBadge
-              : copy.globe.marketManageInternalBadge}
-          </span>
         </div>
       </div>
       <div className="mt-2.5 flex gap-2">
@@ -114,7 +129,44 @@ function MarketManageRow({
   );
 }
 
-function MarketManageSection({
+function MarketManageVisibilityGroup({
+  title,
+  rows,
+  onFlyTo,
+  onEnd,
+  onPublish,
+}: {
+  title: string;
+  rows: MarketIntentRecord[];
+  onFlyTo: (record: MarketIntentRecord) => void;
+  onEnd: (record: MarketIntentRecord) => void;
+  onPublish: (record: MarketIntentRecord) => void;
+}) {
+  if (rows.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-2" data-market-manage-visibility-group>
+      <p className={cn(RIMVIO_TYPE.caption, "px-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground")}>
+        {title}
+      </p>
+      <div className="space-y-2">
+        {rows.map((record) => (
+          <MarketManageRow
+            key={record.eventId}
+            record={record}
+            onFlyTo={() => onFlyTo(record)}
+            onEnd={() => onEnd(record)}
+            onPublish={() => onPublish(record)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MarketManageRoleSection({
   title,
   pillClass,
   emptyLabel,
@@ -131,8 +183,11 @@ function MarketManageSection({
   onEnd: (record: MarketIntentRecord) => void;
   onPublish: (record: MarketIntentRecord) => void;
 }) {
+  const external = rows.filter((row) => isMarketIntentPublishedExternal(row.detail));
+  const internal = rows.filter((row) => !isMarketIntentPublishedExternal(row.detail));
+
   return (
-    <section className="space-y-2" data-market-manage-section={title}>
+    <section className="space-y-3" data-market-manage-section={title}>
       <div className="flex items-center gap-2 px-0.5">
         <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold text-white", pillClass)}>
           {title}
@@ -144,16 +199,21 @@ function MarketManageSection({
           {emptyLabel}
         </p>
       ) : (
-        <div className="space-y-2">
-          {rows.map((record) => (
-            <MarketManageRow
-              key={record.eventId}
-              record={record}
-              onFlyTo={() => onFlyTo(record)}
-              onEnd={() => onEnd(record)}
-              onPublish={() => onPublish(record)}
-            />
-          ))}
+        <div className="space-y-4">
+          <MarketManageVisibilityGroup
+            title={copy.globe.marketManageExternalGroup}
+            rows={external}
+            onFlyTo={onFlyTo}
+            onEnd={onEnd}
+            onPublish={onPublish}
+          />
+          <MarketManageVisibilityGroup
+            title={copy.globe.marketManageInternalGroup}
+            rows={internal}
+            onFlyTo={onFlyTo}
+            onEnd={onEnd}
+            onPublish={onPublish}
+          />
         </div>
       )}
     </section>
@@ -167,6 +227,12 @@ export function GlobeMarketManageSheet({
 }: GlobeMarketManageSheetProps) {
   const [mounted, setMounted] = useState(false);
   const { listings, seekings, loading, endIntent } = useMarketManageIntents(open);
+
+  const allRows = [...listings, ...seekings];
+  const externalCount = allRows.filter((row) =>
+    isMarketIntentPublishedExternal(row.detail),
+  ).length;
+  const internalCount = allRows.length - externalCount;
 
   useEffect(() => {
     setMounted(true);
@@ -240,6 +306,26 @@ export function GlobeMarketManageSheet({
               </button>
             </div>
 
+            {!loading && allRows.length > 0 ? (
+              <div className="border-b border-black/[0.06] bg-[#f8f9fb]/80 px-4 py-2.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <MarketIntentOwnershipChip
+                    kind="mine-external"
+                    label={copy.globe.ownershipMineExternal}
+                    size="xs"
+                  />
+                  <MarketIntentOwnershipChip
+                    kind="mine-internal"
+                    label={copy.globe.ownershipMineInternal}
+                    size="xs"
+                  />
+                  <span className={cn(RIMVIO_TYPE.caption, "text-[11px]")}>
+                    {copy.globe.marketManageStatsSummary(externalCount, internalCount)}
+                  </span>
+                </div>
+              </div>
+            ) : null}
+
             <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-4">
               {loading ? (
                 <p className={cn(RIMVIO_TYPE.caption, "text-center py-6")}>
@@ -247,11 +333,11 @@ export function GlobeMarketManageSheet({
                 </p>
               ) : (
                 <>
-                  <MarketManageSection
-                    title={copy.globe.marketManageListingSection}
-                    pillClass="bg-[#2b7fff]"
-                    emptyLabel={copy.globe.marketManageEmptyListing}
-                    rows={listings}
+                  <MarketManageRoleSection
+                    title={copy.globe.marketManageSeekingSection}
+                    pillClass="bg-[#ef2b2b]"
+                    emptyLabel={copy.globe.marketManageEmptySeeking}
+                    rows={seekings}
                     onFlyTo={(record) => {
                       onFlyToIntent?.(record);
                       onOpenChange(false);
@@ -259,11 +345,11 @@ export function GlobeMarketManageSheet({
                     onEnd={handleEnd}
                     onPublish={handlePublish}
                   />
-                  <MarketManageSection
-                    title={copy.globe.marketManageSeekingSection}
-                    pillClass="bg-[#ef2b2b]"
-                    emptyLabel={copy.globe.marketManageEmptySeeking}
-                    rows={seekings}
+                  <MarketManageRoleSection
+                    title={copy.globe.marketManageListingSection}
+                    pillClass="bg-[#2b7fff]"
+                    emptyLabel={copy.globe.marketManageEmptyListing}
+                    rows={listings}
                     onFlyTo={(record) => {
                       onFlyToIntent?.(record);
                       onOpenChange(false);

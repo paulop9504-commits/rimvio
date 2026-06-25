@@ -28,6 +28,7 @@ export function buildPinClusterFromPersonalPin(pin: PersonalGlobePin): PinCluste
       placePinCount: pin.placeLabel.trim() ? 1 : 0,
     },
     recallLine: null,
+    marketRole: pin.marketRole ?? null,
   };
 }
 
@@ -61,5 +62,6 @@ export function buildPinClusterFromEvent(
       placePinCount: event.place?.trim() ? 1 : 0,
     },
     recallLine: null,
+    marketRole: pin?.marketRole ?? null,
   };
 }

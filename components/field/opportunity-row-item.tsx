@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { ImageIcon, MapPin } from "lucide-react";
+import { MarketIntentOwnershipChip } from "@/components/market/market-intent-ownership-chip";
 import type { OpportunityRow } from "@/lib/globe/opportunity-field";
 import { cn } from "@/lib/utils";
 
@@ -9,6 +10,7 @@ export type OpportunityRowItemProps = {
   row: OpportunityRow;
   onPress: () => void;
   scoreAria: (pct: number) => string;
+  neighborBadge: string;
   className?: string;
 };
 
@@ -16,6 +18,7 @@ export function OpportunityRowItem({
   row,
   onPress,
   scoreAria,
+  neighborBadge,
   className,
 }: OpportunityRowItemProps) {
   return (
@@ -28,10 +31,11 @@ export function OpportunityRowItem({
       transition={{ duration: 0.22 }}
       onClick={onPress}
       className={cn(
-        "flex w-full items-center gap-3 border-b border-[#f2f4f6] px-4 py-3.5 text-left transition-colors active:bg-[#f8f9fb]",
+        "flex w-full items-center gap-3 border-b border-[#f2f4f6] bg-white px-4 py-3.5 text-left transition-colors active:bg-[#f8f9fb]",
         className,
       )}
       data-opportunity-row={row.listingId}
+      data-opportunity-ownership="neighbor"
     >
       <div className="relative size-[52px] shrink-0 overflow-hidden rounded-2xl bg-[#f2f4f6] ring-1 ring-black/[0.04]">
         {row.photoUrl ? (
@@ -50,6 +54,9 @@ export function OpportunityRowItem({
       </div>
 
       <div className="min-w-0 flex-1">
+        <div className="mb-1">
+          <MarketIntentOwnershipChip kind="neighbor" label={neighborBadge} size="xs" />
+        </div>
         <p className="truncate text-[16px] font-semibold leading-snug text-[#191f28]">
           {row.title}
         </p>

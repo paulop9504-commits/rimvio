@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, Radio, Sparkles, X } from "lucide-react";
 import { OpportunityDetailPanel } from "@/components/field/opportunity-detail-panel";
+import { OpportunityOwnershipSectionLabel } from "@/components/field/opportunity-ownership-section-label";
 import { OpportunityPillBar } from "@/components/field/opportunity-pill-bar";
 import {
   OpportunityRowItem,
@@ -142,6 +143,7 @@ export function OpportunityDashboardSheet({
                   quickReplies={quickReplies}
                   chatPlaceholder={field.chatPlaceholder}
                   bridgeFail={copy.globe.marketAlignBridgeFail}
+                  neighborBadge={field.neighborListingBadge}
                   onBeforeNavigate={() => onOpenChange(false)}
                   navigate={(href) => router.push(href)}
                 />
@@ -171,14 +173,22 @@ export function OpportunityDashboardSheet({
                   </div>
                 </header>
 
+                {pills.length > 0 ? (
+                  <OpportunityOwnershipSectionLabel
+                    title={field.mySeekingSection}
+                    hint={field.mySeekingHint}
+                    tone="mine"
+                  />
+                ) : null}
                 <OpportunityPillBar
                   pills={pills}
                   selectedContextId={selectedContextId}
                   onSelect={setSelectedContextId}
                   pillAria={field.pillAria}
+                  minePillLabel={field.ownershipMinePill}
                 />
 
-                <div className="min-h-0 flex-1 overflow-y-auto bg-white">
+                <div className="min-h-0 flex-1 overflow-y-auto bg-[#f8f9fb]/40">
                   {loading ? (
                     <OpportunityRowShimmer />
                   ) : pills.length === 0 ? (
@@ -192,6 +202,14 @@ export function OpportunityDashboardSheet({
                       body={field.emptyRowsBody}
                     />
                   ) : (
+                    <>
+                      <OpportunityOwnershipSectionLabel
+                        title={field.neighborListingsSection}
+                        hint={field.neighborListingsHint}
+                        tone="neighbor"
+                        className="bg-white"
+                      />
+                      <div className="bg-white ring-1 ring-black/[0.03]">
                     <AnimatePresence mode="wait" initial={false}>
                       <motion.div
                         key={selectedContextId ?? "none"}
@@ -206,12 +224,15 @@ export function OpportunityDashboardSheet({
                               key={row.listingId}
                               row={row}
                               scoreAria={field.rowScoreAria}
+                              neighborBadge={field.neighborListingBadge}
                               onPress={() => setDetailRow(row)}
                             />
                           ))}
                         </AnimatePresence>
                       </motion.div>
                     </AnimatePresence>
+                      </div>
+                    </>
                   )}
                 </div>
               </>

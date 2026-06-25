@@ -20,29 +20,12 @@ export async function commitMarketIntentFromDraft(
     photoCount: options?.photoFiles?.length ?? draft.detail?.photoCount ?? 0,
     publishedExternal: publishExternal,
   };
-  const record: MarketIntentRecord = {
-    id: `mi-${Date.now().toString(36)}`,
-    eventId: draft.eventId,
-    role: draft.role,
-    categoryId: draft.categoryId,
-    title: draft.title.trim() || detail.productName,
-    priceMinKrw: draft.priceMinKrw,
-    priceMaxKrw: draft.priceMaxKrw,
-    radiusKm: draft.radiusKm,
-    anchorLat: draft.anchorLat,
-    anchorLng: draft.anchorLng,
-    placeLabel: draft.placeLabel,
-    peakHour: draft.peakHour,
-    confirmedAtIso: new Date().toISOString(),
-    active: true,
-    detail,
-  };
 
   if (options?.photoFiles?.length) {
     try {
       await ingestGlobeContextFromFiles(options.photoFiles, {
         hintEventId: draft.eventId,
-        hintTitle: record.title,
+        hintTitle: draft.title.trim() || detail.productName,
         forceAttachToHint: true,
       });
     } catch {
@@ -62,7 +45,7 @@ export async function commitMarketIntentFromDraft(
             photoFiles: options.photoFiles,
           });
           if (photoUrls.length > 0) {
-            detail = { ...detail, photoUrls };
+            detail = { ...detail, photoUrls, photoCount: photoUrls.length };
           }
         }
       } catch {
@@ -70,6 +53,24 @@ export async function commitMarketIntentFromDraft(
       }
     }
   }
+
+  const record: MarketIntentRecord = {
+    id: `mi-${Date.now().toString(36)}`,
+    eventId: draft.eventId,
+    role: draft.role,
+    categoryId: draft.categoryId,
+    title: draft.title.trim() || detail.productName,
+    priceMinKrw: draft.priceMinKrw,
+    priceMaxKrw: draft.priceMaxKrw,
+    radiusKm: draft.radiusKm,
+    anchorLat: draft.anchorLat,
+    anchorLng: draft.anchorLng,
+    placeLabel: draft.placeLabel,
+    peakHour: draft.peakHour,
+    confirmedAtIso: new Date().toISOString(),
+    active: true,
+    detail,
+  };
 
   const anchor = await syncMarketIntentGlobePin(record);
   const anchoredRecord: MarketIntentRecord = {

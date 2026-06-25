@@ -16,6 +16,7 @@ import {
   type FlatMapView,
 } from "@/lib/globe/flat-map-view";
 import type { GlobeViewerLocation } from "@/lib/globe/globe-viewer-location-types";
+import { marketGlobePinRoleLabelKo } from "@/lib/globe/market/market-globe-pin-label";
 import { cn } from "@/lib/utils";
 
 function parseTileCoords(url: string) {
@@ -238,7 +239,7 @@ export const GlobeFlatMapStage = memo(function GlobeFlatMapStage({
                     `rimvio-globe-3d-pin__market-pill--${role}`,
                   )}
                 >
-                  {role === "seeking" ? "구매" : "내놓기"}
+                  {marketGlobePinRoleLabelKo(role)}
                 </span>
               </span>
               <span className="rimvio-globe-3d-pin__dot" />

@@ -32,7 +32,13 @@ function bindShareCornerPress(target: HTMLElement, onActivate: () => void): void
 
 function appendShareCorner(card: HTMLElement, pin: ClassifiedGlobePin): void {
   const eventId = pin.sourceEventId?.trim();
-  if (!eventId || pin.pinShape === "cluster" || pin.pinShape === "viewer") {
+  if (
+    !eventId ||
+    pin.pinShape === "cluster" ||
+    pin.pinShape === "viewer" ||
+    pin.pinShape === "market" ||
+    pin.marketRole
+  ) {
     return;
   }
 
@@ -409,12 +415,15 @@ export function createGlobe3dPinElement(
 
   const meta = document.createElement("span");
   meta.className = "rimvio-globe-3d-pin__meta";
+  const marketRole = pin.marketRole ?? pin.slot?.marketRole ?? null;
   meta.textContent =
-    pin.tripLeg === "departure"
-      ? "출발"
-      : pin.tripLeg === "destination"
-        ? "도착"
-        : "경험";
+    marketRole != null
+      ? marketGlobePinRoleLabelKo(marketRole)
+      : pin.tripLeg === "departure"
+        ? "출발"
+        : pin.tripLeg === "destination"
+          ? "도착"
+          : "경험";
   card.appendChild(meta);
 
   root.appendChild(card);

@@ -25,7 +25,7 @@ export type NormalizedExternalOpportunity = {
 };
 
 function roleSubtitle(role: MarketIntentRecord["role"]): string {
-  return role === "listing" ? "내놓기" : "구매";
+  return role === "listing" ? "내놓기" : "구하기";
 }
 
 export function normalizeAlignmentChat(

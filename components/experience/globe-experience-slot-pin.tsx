@@ -3,6 +3,7 @@
 import { memo } from "react";
 import { Lock } from "lucide-react";
 import type { GlobePinSlotMeta } from "@/lib/feed/experience-globe-ping-types";
+import { marketGlobePinRoleLabelKo } from "@/lib/globe/market/market-globe-pin-label";
 import { cn } from "@/lib/utils";
 
 export type GlobeExperienceSlotPinProps = {
@@ -20,6 +21,8 @@ export const GlobeExperienceSlotPin = memo(function GlobeExperienceSlotPin({
   className,
 }: GlobeExperienceSlotPinProps) {
   const hasMedia = slot.photoCount > 0 || slot.videoCount > 0;
+  const marketRole = slot.marketRole ?? null;
+  const roleLabel = marketRole ? marketGlobePinRoleLabelKo(marketRole) : null;
 
   return (
     <div
@@ -57,7 +60,18 @@ export const GlobeExperienceSlotPin = memo(function GlobeExperienceSlotPin({
         <p className="line-clamp-2 text-[8px] font-bold leading-tight text-foreground">
           {slot.experienceTitle}
         </p>
-        {hasMedia ? (
+        {roleLabel ? (
+          <span
+            className={cn(
+              "mt-1 inline-flex rounded-full px-1.5 py-px text-[7px] font-bold",
+              marketRole === "seeking"
+                ? "bg-[#fef2f2] text-[#dc2626] ring-1 ring-[#fecaca]/90"
+                : "bg-[#eff6ff] text-[#2563eb] ring-1 ring-[#bfdbfe]/90",
+            )}
+          >
+            {roleLabel}
+          </span>
+        ) : hasMedia ? (
           <div className="mt-1 flex flex-wrap gap-0.5">
             {slot.photoCount > 0 ? (
               <span className="rounded bg-[var(--rimvio-highlight-green)]/15 px-1 py-px text-[7px] font-bold text-foreground">
