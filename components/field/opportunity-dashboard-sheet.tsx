@@ -15,6 +15,7 @@ import {
 import { useCopy } from "@/hooks/use-copy";
 import { MarketActiveTradesSection } from "@/components/field/market-active-trades-section";
 import { useActiveMarketTrades } from "@/hooks/use-active-market-trades";
+import { useOpportunityDashboard } from "@/hooks/use-opportunity-dashboard";
 import {
   RIMVIO_TYPE,
   rimvioBottomSheetClass,
