@@ -47,12 +47,12 @@ export async function GET(request: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "vault_read_failed";
     if (isVaultMigrationMissingError(message)) {
-      return NextResponse.json(vaultMigrationRequiredResponse(), { status: 503 });
+      return NextResponse.json(vaultMigrationRequiredResponse());
     }
     console.error("[vault] GET failed:", message);
     return NextResponse.json(
-      { error: message, hint: "vault_unavailable" },
-      { status: 503 },
+      { error: message, hint: "vault_unavailable", persisted: false, vault: null, objects: [] },
+      { status: 200 },
     );
   }
 }
@@ -79,12 +79,12 @@ export async function POST() {
   } catch (error) {
     const message = error instanceof Error ? error.message : "vault_provision_failed";
     if (isVaultMigrationMissingError(message)) {
-      return NextResponse.json(vaultMigrationRequiredResponse(), { status: 503 });
+      return NextResponse.json(vaultMigrationRequiredResponse());
     }
     console.error("[vault] POST failed:", message);
     return NextResponse.json(
-      { error: message, hint: "vault_unavailable" },
-      { status: 503 },
+      { ok: false, error: message, hint: "vault_unavailable" },
+      { status: 200 },
     );
   }
 }

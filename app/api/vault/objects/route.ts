@@ -45,11 +45,11 @@ export async function GET(request: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "vault_read_failed";
     if (isVaultMigrationMissingError(message)) {
-      return NextResponse.json(vaultMigrationRequiredResponse(), { status: 503 });
+      return NextResponse.json(vaultMigrationRequiredResponse());
     }
     return NextResponse.json(
       { error: message, hint: "vault_unavailable" },
-      { status: 503 },
+      { status: 200 },
     );
   }
 }
@@ -93,11 +93,11 @@ export async function PUT(request: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "vault_write_failed";
     if (isVaultMigrationMissingError(message)) {
-      return NextResponse.json(vaultMigrationRequiredResponse(), { status: 503 });
+      return NextResponse.json(vaultMigrationRequiredResponse());
     }
     return NextResponse.json(
       { error: message, hint: "vault_unavailable" },
-      { status: 503 },
+      { status: 200 },
     );
   }
 }

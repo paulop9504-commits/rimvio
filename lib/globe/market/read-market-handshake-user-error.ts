@@ -33,6 +33,8 @@ export function readMarketHandshakeUserError(raw: string): string {
       return copy.globe.field.handshakeNoMatch;
     case "open_chat_failed":
       return copy.globe.marketAlignBridgeFail;
+    case "trade_init_failed":
+      return copy.globe.field.tradeInitFail;
     case "invalid_phase":
       return "이미 처리된 맞춤이에요.";
     case "intent_not_found":

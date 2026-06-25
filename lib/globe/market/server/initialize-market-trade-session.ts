@@ -33,3 +33,24 @@ export async function initializeMarketTradeSession(
     schedulingExpiresAtIso: expiresAt,
   });
 }
+
+/** Best-effort — chat must not fail when trade SQL migrations are pending. */
+export async function tryInitializeMarketTradeSession(
+  supabase: SupabaseClient,
+  handshakeId: string,
+  listing: Pick<
+    MarketIntentRecord,
+    "placeLabel" | "anchorLat" | "anchorLng" | "detail"
+  >,
+): Promise<boolean> {
+  try {
+    await initializeMarketTradeSession(supabase, handshakeId, listing);
+    return true;
+  } catch (error) {
+    console.error(
+      "[market-trade] init skipped:",
+      error instanceof Error ? error.message : error,
+    );
+    return false;
+  }
+}

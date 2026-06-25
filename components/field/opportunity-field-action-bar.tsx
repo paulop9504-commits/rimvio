@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { GoogleSignInButton } from "@/components/google-sign-in-button";
 import { useAuth } from "@/hooks/use-auth";
 import { useCopy } from "@/hooks/use-copy";
+import { addPeerContact } from "@/lib/context/peer-contact-store";
 import { openMarketChatForListing } from "@/lib/globe/market/open-market-alignment-offer";
 import { readMarketHandshakeUserError } from "@/lib/globe/market/read-market-handshake-user-error";
 import { cn } from "@/lib/utils";
@@ -14,6 +15,7 @@ export type OpportunityFieldActionBarProps = {
   focusEventId: string;
   seekingIntentId: string;
   matchIntentId: string;
+  peerDisplayName: string;
   /** Already in trade for this listing — skip bootstrap, go to trades tab. */
   hasActiveTrade?: boolean;
   navigate: (href: string) => void;
@@ -27,6 +29,7 @@ export function OpportunityFieldActionBar({
   focusEventId,
   seekingIntentId,
   matchIntentId,
+  peerDisplayName,
   hasActiveTrade = false,
   navigate,
   onBeforeNavigate,
@@ -58,10 +61,17 @@ export function OpportunityFieldActionBar({
         focusEventId,
         seekingIntentId,
         matchIntentId,
+        initTradeSession: false,
         copy: { bridgeFail: copy.globe.marketAlignBridgeFail },
         navigate,
         onBeforeNavigate,
         skipNavigate: false,
+        onThreadReady: (threadId) => {
+          addPeerContact({
+            peerThreadId: threadId,
+            displayName: peerDisplayName.trim() || "친구",
+          });
+        },
       });
       onChatOpened?.();
     } catch (error) {
@@ -94,6 +104,8 @@ export function OpportunityFieldActionBar({
         focusEventId,
         seekingIntentId,
         matchIntentId,
+        initTradeSession: true,
+        requireTradeSession: true,
         copy: { bridgeFail: copy.globe.marketAlignBridgeFail },
         navigate,
         onBeforeNavigate,

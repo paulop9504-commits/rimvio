@@ -76,10 +76,13 @@ export async function openMarketChatForListing(input: {
   seekingIntentId?: string;
   matchIntentId: string;
   initialMessage?: string;
+  initTradeSession?: boolean;
+  requireTradeSession?: boolean;
   copy: { bridgeFail: string };
   navigate: (href: string) => void;
   onBeforeNavigate?: () => void;
   skipNavigate?: boolean;
+  onThreadReady?: (threadId: string) => void;
 }): Promise<string> {
   const { openMarketChatRemote } = await import(
     "@/lib/globe/market/client/sync-market-intent-remote"
@@ -89,10 +92,13 @@ export async function openMarketChatForListing(input: {
     seekingIntentId: input.seekingIntentId,
     matchIntentId: input.matchIntentId,
     initialMessage: input.initialMessage,
+    initTradeSession: input.initTradeSession,
+    requireTradeSession: input.requireTradeSession,
   });
   if (!result.threadId) {
     throw new Error("open_chat_failed");
   }
+  input.onThreadReady?.(result.threadId);
   if (!input.skipNavigate) {
     input.onBeforeNavigate?.();
     input.navigate(peerRoomPath(result.threadId));

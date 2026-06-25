@@ -128,6 +128,7 @@ export function OpportunityDetailPanel({
         focusEventId={focusEventId}
         seekingIntentId={seekingIntentId}
         matchIntentId={row.listing.id}
+        peerDisplayName={card.productName}
         hasActiveTrade={hasActiveTrade}
         navigate={navigate}
         onBeforeNavigate={onBeforeNavigate}

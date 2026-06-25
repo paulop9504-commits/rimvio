@@ -1040,6 +1040,7 @@ export const copy = {
       loginRequiredTitle: "로그인이 필요해요",
       loginRequiredBody: "채팅과 일정 맞추기는 로그인 후 이용할 수 있어요.",
       actionUnavailable: "지금은 연결할 수 없어요. 잠시 후 다시 시도해 주세요.",
+      tradeInitFail: "일정을 시작하지 못했어요. Supabase 13~15번 SQL을 적용했는지 확인해 주세요.",
       chatPlaceholder: "메시지 보내기",
       quickReplyHello: "안녕하세요 😊",
       quickReplyInterest: "관심 있어서 문의드려요",

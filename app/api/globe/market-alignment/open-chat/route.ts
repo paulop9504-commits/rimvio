@@ -40,6 +40,9 @@ export async function POST(request: NextRequest) {
     typeof (body as { initialMessage?: unknown }).initialMessage === "string"
       ? (body as { initialMessage: string }).initialMessage
       : null;
+  const initTradeSession = (body as { initTradeSession?: unknown }).initTradeSession === true;
+  const requireTradeSession =
+    (body as { requireTradeSession?: unknown }).requireTradeSession === true;
 
   if (!focusEventId || !matchIntentId) {
     return NextResponse.json({ error: "focus_and_match_required" }, { status: 400 });
@@ -51,6 +54,8 @@ export async function POST(request: NextRequest) {
       seekingIntentId: seekingIntentId || undefined,
       matchIntentId,
       initialMessage,
+      initTradeSession,
+      requireTradeSession,
     });
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {

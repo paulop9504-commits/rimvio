@@ -18,6 +18,9 @@ export function isVaultUnavailableStatus(
   hint?: string | null,
   error?: string | null,
 ): boolean {
+  if (hint === "vault_migration_required" || hint === "vault_unavailable") {
+    return true;
+  }
   if (status === 503 && (hint === "vault_migration_required" || hint === "vault_unavailable")) {
     return true;
   }

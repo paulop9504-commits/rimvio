@@ -37,6 +37,7 @@ async function eagerOpenSeekerMarketThread(
   supabase: SupabaseClient,
   userId: string,
   handshake: Awaited<ReturnType<typeof findMarketHandshakeByIntentPair>>,
+  options: { initTradeSession: boolean; requireTradeSession: boolean },
 ): Promise<string> {
   if (!handshake) {
     throw new Error("handshake_not_found");
@@ -88,10 +89,15 @@ async function eagerOpenSeekerMarketThread(
     buyerStartedAtIso: now,
   });
 
-  const { initializeMarketTradeSession } = await import(
+  const { tryInitializeMarketTradeSession } = await import(
     "@/lib/globe/market/server/initialize-market-trade-session"
   );
-  await initializeMarketTradeSession(supabase, handshake.id, listingIntent);
+  if (options.initTradeSession) {
+    const ok = await tryInitializeMarketTradeSession(supabase, handshake.id, listingIntent);
+    if (!ok && options.requireTradeSession) {
+      throw new Error("trade_init_failed");
+    }
+  }
 
   return dm.threadId;
 }
@@ -105,6 +111,8 @@ export async function bootstrapSeekerMarketChat(
     seekingIntentId?: string | null;
     matchIntentId: string;
     initialMessage?: string | null;
+    initTradeSession?: boolean;
+    requireTradeSession?: boolean;
   },
 ): Promise<{ threadId: string; handshakeId: string }> {
   let seeking: Awaited<ReturnType<typeof findMarketIntentById>> = null;
@@ -172,14 +180,36 @@ export async function bootstrapSeekerMarketChat(
     throw new Error("handshake_not_found");
   }
 
+  const initTradeSession = input.initTradeSession === true;
+  const requireTradeSession = input.requireTradeSession === true;
+  const tradeOptions = { initTradeSession, requireTradeSession };
+
   let threadId = handshake.threadId;
 
   if (handshake.phase === "active" && threadId) {
-    // already open
+    if (initTradeSession && handshake.scheduleCandidates.length === 0) {
+      const listingForTrade = listing;
+      const { tryInitializeMarketTradeSession } = await import(
+        "@/lib/globe/market/server/initialize-market-trade-session"
+      );
+      const ok = await tryInitializeMarketTradeSession(
+        supabase,
+        handshake.id,
+        listingForTrade,
+      );
+      if (!ok && requireTradeSession) {
+        throw new Error("trade_init_failed");
+      }
+    }
   } else if (handshake.phase === "pending_buyer_start" && threadId) {
     await startBuyerMarketHandshakeChat(supabase, userId, handshake.id);
   } else if (handshake.phase === "pending_listing" || !threadId) {
-    threadId = await eagerOpenSeekerMarketThread(supabase, userId, handshake);
+    threadId = await eagerOpenSeekerMarketThread(
+      supabase,
+      userId,
+      handshake,
+      tradeOptions,
+    );
   } else if (handshake.phase === "completed") {
     throw new Error("handshake_completed");
   } else if (!threadId) {
