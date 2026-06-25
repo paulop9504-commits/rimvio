@@ -9,11 +9,12 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Globe, Plus, Sparkles, Users } from "lucide-react";
 import { CaptureSheet } from "@/components/globe/capture-sheet";
 import { useCopy } from "@/hooks/use-copy";
 import { subscribeOpenCaptureSheet } from "@/lib/nav/open-capture-sheet-bridge";
+import { dispatchOpenFieldSheet } from "@/lib/nav/open-field-sheet-bridge";
 import { GRID } from "@/lib/ui/responsive-grid";
 import { cn } from "@/lib/utils";
 
@@ -129,6 +130,8 @@ function NavTabButton({
   className?: string;
   showLabel?: boolean;
 }) {
+  const touchActivatedRef = useRef(false);
+
   const activate = () => {
     if (tab.action === "capture") {
       onCapture();
@@ -151,11 +154,18 @@ function NavTabButton({
       onTouchEnd={(event) => {
         event.preventDefault();
         event.stopPropagation();
+        touchActivatedRef.current = true;
         activate();
+        window.setTimeout(() => {
+          touchActivatedRef.current = false;
+        }, 450);
       }}
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();
+        if (touchActivatedRef.current) {
+          return;
+        }
         activate();
       }}
       onKeyDown={(event) => {
@@ -335,6 +345,7 @@ function PortaledBottomNavBar({
 
 export function AppNav({ placement }: AppNavProps) {
   const pathname = usePathname() ?? "/";
+  const router = useRouter();
   const copy = useCopy();
   const [captureOpen, setCaptureOpen] = useState(false);
   const lastNavRef = useRef<{ href: string; at: number } | null>(null);
@@ -342,6 +353,11 @@ export function AppNav({ placement }: AppNavProps) {
   useEffect(() => {
     return subscribeOpenCaptureSheet(() => setCaptureOpen(true));
   }, []);
+
+  useEffect(() => {
+    router.prefetch("/field");
+    router.prefetch("/peers");
+  }, [router]);
 
   const navigate = useCallback(
     (href: string) => {
@@ -362,9 +378,14 @@ export function AppNav({ placement }: AppNavProps) {
       }
       lastNavRef.current = { href, at: now };
 
-      window.location.assign(href);
+      if (href === "/field" && isGlobePath(pathname)) {
+        dispatchOpenFieldSheet();
+        return;
+      }
+
+      router.push(href);
     },
-    [pathname],
+    [pathname, router],
   );
 
   const tabs = useMemo<NavTab[]>(

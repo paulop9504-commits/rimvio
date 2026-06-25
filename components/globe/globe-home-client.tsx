@@ -37,6 +37,7 @@ import { setLiveLocationPowerMode } from "@/lib/location-ping/live-location-serv
 import { usePersonalGlobePinSync } from "@/hooks/use-personal-globe-pin-sync";
 import { useGlobeLayerMode } from "@/hooks/use-globe-layer-mode";
 import { useOpportunityFieldBadge } from "@/hooks/use-opportunity-field-badge";
+import { subscribeOpenFieldSheet } from "@/lib/nav/open-field-sheet-bridge";
 import { useGlobeInbox } from "@/hooks/use-globe-inbox";
 import { useMediaPool } from "@/hooks/use-media-pool";
 import { useGlobeTripArrival } from "@/hooks/use-globe-trip-arrival";
@@ -217,6 +218,9 @@ function GlobeHomeBody() {
   );
   const [globeInboxOpen, setGlobeInboxOpen] = useState(false);
   const [opportunityFieldOpen, setOpportunityFieldOpen] = useState(false);
+  useEffect(() => {
+    return subscribeOpenFieldSheet(() => setOpportunityFieldOpen(true));
+  }, []);
   const [mediaPoolOpen, setMediaPoolOpen] = useState(false);
   const [poolAttachIds, setPoolAttachIds] = useState<string[]>([]);
   const [poolSuggestedStart, setPoolSuggestedStart] = useState<string | null>(null);

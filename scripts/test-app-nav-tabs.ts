@@ -50,8 +50,8 @@ assert.ok(
   "active tab must use inner pill highlight",
 );
 assert.ok(
-  appNav.includes("window.location.assign"),
-  "mobile nav must hard-navigate for iOS/PWA tap reliability",
+  appNav.includes("router.push") && appNav.includes("dispatchOpenFieldSheet"),
+  "mobile nav must client-route and open field sheet from globe home",
 );
 assert.ok(
   appNav.includes("createPortal(bar, document.body)"),
