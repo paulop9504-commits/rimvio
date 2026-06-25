@@ -23,6 +23,7 @@ import { GoogleCalendarSyncBootstrap } from "@/components/google-calendar-sync-b
 import { ExperienceGravityBootstrap } from "@/components/experience-gravity-bootstrap";
 import { AlbumSyncBootstrap } from "@/components/album-sync-bootstrap";
 import { AlbumSyncProgressChip } from "@/components/album-sync-progress-chip";
+import { MobileErudaBootstrap } from "@/components/mobile-eruda-bootstrap";
 import { Toaster } from "@/components/ui/sonner";
 
 type ProvidersProps = {
@@ -53,6 +54,7 @@ export function Providers({ children, initialLocale }: ProvidersProps) {
             </FieldSheetProvider>
           </Suspense>
           <ReminderPoller />
+          <MobileErudaBootstrap />
           <ServiceWorkerBootstrap />
           <NativeBridgeBoot />
           <PwaInstallPrompt />
