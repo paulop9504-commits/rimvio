@@ -660,6 +660,7 @@ export const copyEn: Copy = {
     photoWalkthroughShareTitle: "Send to someone who was there",
     photoWalkthroughShareSub: "One tap — that moment goes straight to chat",
     photoWalkthroughShareSkip: "Not now",
+    photoWalkthroughShareLoading: "Wrapping up your trace…",
     photoWalkthroughConfirmNo: "Different place",
     photoWalkthroughCommitFail: "Couldn't create context",
     photoWalkthroughManualHint: "We'll find it from the name",

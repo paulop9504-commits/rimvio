@@ -155,6 +155,15 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
       if (files.length === 0 || busy) {
         return;
       }
+      if (isPersonal) {
+        setAttachMode("closed");
+        if (!onGlobeHome) {
+          close();
+          router.push("/");
+        }
+        requestGlobePhotoIngest(files);
+        return;
+      }
       if (onGlobeHome) {
         requestGlobePhotoIngest(files);
         setAttachMode("closed");
@@ -164,13 +173,17 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
       try {
         await ingestScreenshot(files[0]!);
         setAttachMode("closed");
-      } catch {
-        /* ingest handles flow */
+      } catch (caught) {
+        const message =
+          caught instanceof Error && caught.message.trim()
+            ? caught.message.trim()
+            : copy.globe.ingestAttachFail;
+        toast.error(message);
       } finally {
         setBusy(false);
       }
     },
-    [busy, onGlobeHome],
+    [busy, close, isPersonal, onGlobeHome, router],
   );
 
   const saveLink = useCallback(async () => {

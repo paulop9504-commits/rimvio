@@ -254,6 +254,16 @@ export function GlobePhotoPlaceWalkthrough({
   }, [workingDraft]);
 
   useEffect(() => {
+    if (step !== "share_people" || !committedShare || shareEvent) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      finalizeAfterShare();
+    }, 1200);
+    return () => window.clearTimeout(timer);
+  }, [committedShare, finalizeAfterShare, shareEvent, step]);
+
+  useEffect(() => {
     if (!visible) {
       setStep("analyzing");
       setWorkingDraft(null);
@@ -842,17 +852,23 @@ export function GlobePhotoPlaceWalkthrough({
               </>
             ) : null}
 
-            {step === "share_people" && shareEvent ? (
+            {step === "share_people" ? (
               <>
-                <GlobeContextSendRail
-                  event={shareEvent}
-                  delivery={{
-                    title: shareEvent.title.trim() || "경험",
-                    date: formatPinDateLabel(shareEvent.datetime),
-                    place: resolveGlobeContextPlaceLabel(shareEvent),
-                  }}
-                  onSent={finalizeAfterShare}
-                />
+                {shareEvent ? (
+                  <GlobeContextSendRail
+                    event={shareEvent}
+                    delivery={{
+                      title: shareEvent.title.trim() || "경험",
+                      date: formatPinDateLabel(shareEvent.datetime),
+                      place: resolveGlobeContextPlaceLabel(shareEvent),
+                    }}
+                    onSent={finalizeAfterShare}
+                  />
+                ) : (
+                  <p className="text-center text-[13px] text-muted-foreground">
+                    {copy.globe.photoWalkthroughShareLoading}
+                  </p>
+                )}
                 <button
                   type="button"
                   disabled={busy}

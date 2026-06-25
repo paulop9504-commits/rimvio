@@ -673,6 +673,7 @@ export const copy = {
     photoWalkthroughShareTitle: "함께했던 사람에게",
     photoWalkthroughShareSub: "탭 한 번이면 그때 거기가 바로 가요",
     photoWalkthroughShareSkip: "나중에",
+    photoWalkthroughShareLoading: "맥락을 정리하는 중…",
     photoWalkthroughConfirmNo: "다른 장소예요",
     photoWalkthroughCommitFail: "맥락을 만들지 못했어요",
     photoWalkthroughManualHint: "이름만 넣으면 위치를 찾아요",
