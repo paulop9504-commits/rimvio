@@ -32,6 +32,10 @@ export async function POST(request: NextRequest) {
     typeof (body as { matchIntentId?: unknown }).matchIntentId === "string"
       ? (body as { matchIntentId: string }).matchIntentId.trim()
       : "";
+  const seekingIntentId =
+    typeof (body as { seekingIntentId?: unknown }).seekingIntentId === "string"
+      ? (body as { seekingIntentId: string }).seekingIntentId.trim()
+      : "";
   const initialMessage =
     typeof (body as { initialMessage?: unknown }).initialMessage === "string"
       ? (body as { initialMessage: string }).initialMessage
@@ -44,6 +48,7 @@ export async function POST(request: NextRequest) {
   try {
     const result = await bootstrapSeekerMarketChat(supabase, user.id, {
       focusEventId,
+      seekingIntentId: seekingIntentId || undefined,
       matchIntentId,
       initialMessage,
     });

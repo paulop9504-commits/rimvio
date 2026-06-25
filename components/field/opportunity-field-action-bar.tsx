@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 
 export type OpportunityFieldActionBarProps = {
   focusEventId: string;
+  seekingIntentId: string;
   matchIntentId: string;
   /** Already in trade for this listing — skip bootstrap, go to trades tab. */
   hasActiveTrade?: boolean;
@@ -24,6 +25,7 @@ export type OpportunityFieldActionBarProps = {
 
 export function OpportunityFieldActionBar({
   focusEventId,
+  seekingIntentId,
   matchIntentId,
   hasActiveTrade = false,
   navigate,
@@ -54,6 +56,7 @@ export function OpportunityFieldActionBar({
     try {
       await openMarketChatForListing({
         focusEventId,
+        seekingIntentId,
         matchIntentId,
         copy: { bridgeFail: copy.globe.marketAlignBridgeFail },
         navigate,
@@ -89,6 +92,7 @@ export function OpportunityFieldActionBar({
     try {
       await openMarketChatForListing({
         focusEventId,
+        seekingIntentId,
         matchIntentId,
         copy: { bridgeFail: copy.globe.marketAlignBridgeFail },
         navigate,

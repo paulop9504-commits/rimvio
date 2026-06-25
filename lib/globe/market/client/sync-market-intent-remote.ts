@@ -169,6 +169,7 @@ export async function startMarketHandshakeChatRemote(input: {
 
 export async function openMarketChatRemote(input: {
   focusEventId: string;
+  seekingIntentId?: string;
   matchIntentId: string;
   initialMessage?: string;
 }): Promise<{ threadId: string; handshakeId: string }> {
@@ -178,6 +179,7 @@ export async function openMarketChatRemote(input: {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       focusEventId: input.focusEventId,
+      seekingIntentId: input.seekingIntentId?.trim() || undefined,
       matchIntentId: input.matchIntentId,
       initialMessage: input.initialMessage?.trim() || undefined,
     }),

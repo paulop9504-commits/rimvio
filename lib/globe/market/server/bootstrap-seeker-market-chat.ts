@@ -12,6 +12,8 @@ import {
   findMarketIntentById,
   listOwnMarketIntents,
 } from "@/lib/globe/market/server/upsert-market-intent";
+import { isListingCandidateForSeeking } from "@/lib/globe/opportunity-field/filter-listing-candidates";
+import { OPPORTUNITY_FIELD_MIN_FIELD_SCORE } from "@/lib/globe/opportunity-field/observation-constants";
 import { scoreWeightedMarketAlignment } from "@/lib/globe/market/score-weighted-market-alignment";
 import { completeDmFriendAdd } from "@/lib/peer-chat/dm-friend-add-server";
 import { insertPeerMessage } from "@/lib/peer-chat/server-peer-chat";
@@ -100,14 +102,29 @@ export async function bootstrapSeekerMarketChat(
   userId: string,
   input: {
     focusEventId: string;
+    seekingIntentId?: string | null;
     matchIntentId: string;
     initialMessage?: string | null;
   },
 ): Promise<{ threadId: string; handshakeId: string }> {
-  const own = await listOwnMarketIntents(supabase, userId);
-  const seeking = own.find(
-    (row) => row.eventId === input.focusEventId.trim() && row.role === "seeking",
-  );
+  let seeking: Awaited<ReturnType<typeof findMarketIntentById>> = null;
+
+  const seekingIntentId = input.seekingIntentId?.trim() ?? "";
+  if (seekingIntentId) {
+    const row = await findMarketIntentById(supabase, seekingIntentId);
+    if (row?.userId === userId && row.role === "seeking" && row.active) {
+      seeking = row;
+    }
+  }
+
+  if (!seeking) {
+    const own = await listOwnMarketIntents(supabase, userId);
+    seeking =
+      own.find(
+        (row) => row.eventId === input.focusEventId.trim() && row.role === "seeking",
+      ) ?? null;
+  }
+
   if (!seeking) {
     throw new Error("seeking_not_found");
   }
@@ -122,8 +139,13 @@ export async function bootstrapSeekerMarketChat(
     throw new Error("listing_not_found");
   }
 
+  if (!isListingCandidateForSeeking(seeking, listing)) {
+    throw new Error("no_match");
+  }
+
   const weighted = scoreWeightedMarketAlignment(seeking, listing);
-  if (!weighted.passes) {
+  const fieldFloor = OPPORTUNITY_FIELD_MIN_FIELD_SCORE * 0.72;
+  if (weighted.total < fieldFloor) {
     throw new Error("no_match");
   }
 

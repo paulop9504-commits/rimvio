@@ -72,8 +72,10 @@ export function OpportunityFieldPageClient() {
           row={detailRow}
           whyTitle={field.detailWhy}
           focusEventId={selectedPill.contextId}
+          seekingIntentId={selectedPill.seeking.id}
           neighborBadge={field.neighborListingBadge}
           hasActiveTrade={hasActiveTrade}
+          className="min-h-0 flex-1"
           navigate={(href) => router.push(href)}
           onBeforeNavigate={() => setDetailRow(null)}
           onChatOpened={() => setDetailRow(null)}

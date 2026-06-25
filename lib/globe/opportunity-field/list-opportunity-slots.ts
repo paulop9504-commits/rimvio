@@ -1,6 +1,6 @@
 import { filterPublishedMarketIntents } from "@/lib/globe/market/filter-published-market-intents";
 import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
-import { scoreMarketplaceOpportunityRow } from "@/lib/globe/opportunity-field/score-marketplace-opportunity-row";
+import { OPPORTUNITY_FIELD_MIN_FIELD_SCORE } from "@/lib/globe/opportunity-field/observation-constants";
 import type {
   OpportunityFieldCopy,
   OpportunityPill,
@@ -66,7 +66,7 @@ export function listOpportunityRows(input: {
     if (!row) {
       continue;
     }
-    const min = input.minFieldScore ?? 0.28;
+    const min = input.minFieldScore ?? OPPORTUNITY_FIELD_MIN_FIELD_SCORE;
     if (row.fieldScore < min) {
       continue;
     }

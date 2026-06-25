@@ -73,6 +73,7 @@ export async function openMarketAlignmentOffer(
 
 export async function openMarketChatForListing(input: {
   focusEventId: string;
+  seekingIntentId?: string;
   matchIntentId: string;
   initialMessage?: string;
   copy: { bridgeFail: string };
@@ -85,6 +86,7 @@ export async function openMarketChatForListing(input: {
   );
   const result = await openMarketChatRemote({
     focusEventId: input.focusEventId,
+    seekingIntentId: input.seekingIntentId,
     matchIntentId: input.matchIntentId,
     initialMessage: input.initialMessage,
   });

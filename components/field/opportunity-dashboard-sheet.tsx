@@ -152,10 +152,12 @@ export function OpportunityDashboardSheet({
                   row={detailRow}
                   whyTitle={field.detailWhy}
                   focusEventId={selectedPill.contextId}
+                  seekingIntentId={selectedPill.seeking.id}
                   neighborBadge={field.neighborListingBadge}
                   hasActiveTrade={tradeSessions.some(
                     (session) => session.listingIntentId === detailRow.listing.id,
                   )}
+                  className="min-h-0 flex-1"
                   onBeforeNavigate={() => onOpenChange(false)}
                   navigate={(href) => router.push(href)}
                   onChatOpened={() => setDetailRow(null)}
