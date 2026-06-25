@@ -12,6 +12,7 @@ import {
   uploadMarketListingPhotos,
   uploadMarketListingVideos,
 } from "@/lib/globe/market/upload-market-listing-photos";
+import { normalizeMarketIntentDraftFromPrioritySlots } from "@/lib/globe/market/patch-market-draft-priority-slot";
 import { syncMarketPreferenceOnIntentCommit } from "@/lib/globe/market/preference-memory/sync-market-preference-on-intent-commit";
 import { createClient } from "@/lib/supabase/client";
 
@@ -20,9 +21,10 @@ export async function commitMarketIntentFromDraft(
   options?: { photoFiles?: File[]; publishExternal?: boolean },
 ): Promise<MarketIntentRecord> {
   const publishExternal = options?.publishExternal === true;
+  const normalizedDraft = normalizeMarketIntentDraftFromPrioritySlots(draft);
   const mediaCounts = countMarketListingMedia(options?.photoFiles ?? []);
   let detail = {
-    ...(draft.detail ?? DEFAULT_MARKET_INTENT_DETAIL),
+    ...(normalizedDraft.detail ?? DEFAULT_MARKET_INTENT_DETAIL),
     photoCount: mediaCounts.photoCount || draft.detail?.photoCount || 0,
     videoCount: mediaCounts.videoCount || draft.detail?.videoCount || 0,
     publishedExternal: publishExternal,
@@ -31,15 +33,15 @@ export async function commitMarketIntentFromDraft(
   if (options?.photoFiles?.length) {
     try {
       await ingestGlobeContextFromFiles(options.photoFiles, {
-        hintEventId: draft.eventId,
-        hintTitle: draft.title.trim() || detail.productName,
+        hintEventId: normalizedDraft.eventId,
+        hintTitle: normalizedDraft.title.trim() || detail.productName,
         forceAttachToHint: true,
       });
     } catch {
       // media is optional — intent still commits
     }
 
-    if (draft.role === "listing") {
+    if (normalizedDraft.role === "listing") {
       try {
         const supabase = createClient();
         const {
@@ -49,12 +51,12 @@ export async function commitMarketIntentFromDraft(
           const [photoUrls, videoUrls] = await Promise.all([
             uploadMarketListingPhotos({
               userId: user.id,
-              eventId: draft.eventId,
+              eventId: normalizedDraft.eventId,
               photoFiles: options.photoFiles,
             }),
             uploadMarketListingVideos({
               userId: user.id,
-              eventId: draft.eventId,
+              eventId: normalizedDraft.eventId,
               videoFiles: options.photoFiles,
             }),
           ]);
@@ -74,17 +76,17 @@ export async function commitMarketIntentFromDraft(
 
   const record: MarketIntentRecord = {
     id: `mi-${Date.now().toString(36)}`,
-    eventId: draft.eventId,
-    role: draft.role,
-    categoryId: draft.categoryId,
-    title: draft.title.trim() || detail.productName,
-    priceMinKrw: draft.priceMinKrw,
-    priceMaxKrw: draft.priceMaxKrw,
-    radiusKm: draft.radiusKm,
-    anchorLat: draft.anchorLat,
-    anchorLng: draft.anchorLng,
-    placeLabel: draft.placeLabel,
-    peakHour: draft.peakHour,
+    eventId: normalizedDraft.eventId,
+    role: normalizedDraft.role,
+    categoryId: normalizedDraft.categoryId,
+    title: normalizedDraft.title.trim() || detail.productName,
+    priceMinKrw: normalizedDraft.priceMinKrw,
+    priceMaxKrw: normalizedDraft.priceMaxKrw,
+    radiusKm: normalizedDraft.radiusKm,
+    anchorLat: normalizedDraft.anchorLat,
+    anchorLng: normalizedDraft.anchorLng,
+    placeLabel: normalizedDraft.placeLabel,
+    peakHour: normalizedDraft.peakHour,
     confirmedAtIso: new Date().toISOString(),
     active: true,
     detail,

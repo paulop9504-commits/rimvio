@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 
 export type MarketPriorityStepSurfaceProps = {
   draft: MarketIntentDraft;
-  onChange: (draft: MarketIntentDraft) => void;
+  onPatch: (updater: (prev: MarketIntentDraft) => MarketIntentDraft) => void;
   className?: string;
 };
 
@@ -29,7 +29,7 @@ function blendImportance(matrixWeight: number, learned?: number): number {
 
 export function MarketPriorityStepSurface({
   draft,
-  onChange,
+  onPatch,
   className,
 }: MarketPriorityStepSurfaceProps) {
   const profile = useMemo(
@@ -131,7 +131,7 @@ export function MarketPriorityStepSurface({
 
       <MarketDynamicQuestionFields
         draft={draft}
-        onChange={onChange}
+        onPatch={onPatch}
         emptyFallback={
           plan.confirmations.length === 0 && plan.questions.length === 0
             ? copy.globe.marketWizardPriorityCompleteHint

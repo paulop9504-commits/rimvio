@@ -1,8 +1,9 @@
 import type { MarketIntentRole } from "@/lib/globe/market/market-intent-types";
 import type { MarketPrioritySlotId } from "@/lib/globe/market/market-priority-matrix";
+import { MARKET_SLOT_IMPORTANCE_STORAGE_KEY } from "@/lib/globe/market/preference-memory/market-preference-storage-keys";
 import type { MarketQuestionEngineCategorySlug } from "@/lib/globe/market/question-engine/types";
 
-const STORAGE_KEY = "rimvio-market-slot-importance.v1";
+const STORAGE_KEY = MARKET_SLOT_IMPORTANCE_STORAGE_KEY;
 const MAX_ROWS = 24;
 
 export type MarketSlotImportanceRow = {

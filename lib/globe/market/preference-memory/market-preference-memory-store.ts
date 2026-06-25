@@ -5,9 +5,10 @@ import {
   MARKET_PREFERENCE_MEMORY_SCHEMA,
   type MarketPreferenceMemoryEntry,
 } from "@/lib/globe/market/preference-memory/market-preference-memory-types";
+import { MARKET_PREFERENCE_MEMORY_STORAGE_KEY } from "@/lib/globe/market/preference-memory/market-preference-storage-keys";
 import type { MarketQuestionEngineCategorySlug } from "@/lib/globe/market/question-engine/types";
 
-const STORAGE_KEY = "rimvio-market-preference-memory.v1";
+const STORAGE_KEY = MARKET_PREFERENCE_MEMORY_STORAGE_KEY;
 const MAX_ENTRIES = 80;
 
 let memoryStore: MarketPreferenceMemoryEntry[] = [];

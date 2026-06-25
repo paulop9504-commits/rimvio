@@ -8,37 +8,21 @@ import {
   resolveMarketQuestionPlan,
 } from "@/lib/globe/market/preference-memory";
 import type { MarketPrioritySlotId } from "@/lib/globe/market/market-priority-matrix";
+import { patchMarketDraftPrioritySlot } from "@/lib/globe/market/patch-market-draft-priority-slot";
 import { copy } from "@/lib/copy/human-ko";
 import { RIMVIO_TYPE } from "@/lib/design/rimvio-ontology";
 import { cn } from "@/lib/utils";
 
 export type MarketDynamicQuestionFieldsProps = {
   draft: MarketIntentDraft;
-  onChange: (draft: MarketIntentDraft) => void;
+  onPatch: (updater: (prev: MarketIntentDraft) => MarketIntentDraft) => void;
   className?: string;
   emptyFallback?: string;
 };
 
-function patchSlot(
-  draft: MarketIntentDraft,
-  slotId: MarketPrioritySlotId,
-  value: string | number | boolean,
-): MarketIntentDraft {
-  return {
-    ...draft,
-    detail: {
-      ...draft.detail,
-      prioritySlots: {
-        ...draft.detail.prioritySlots,
-        [slotId]: value,
-      },
-    },
-  };
-}
-
 export function MarketDynamicQuestionFields({
   draft,
-  onChange,
+  onPatch,
   className,
   emptyFallback,
 }: MarketDynamicQuestionFieldsProps) {
@@ -84,16 +68,20 @@ export function MarketDynamicQuestionFields({
     value: string | number | boolean,
     kind: "save_answer" | "confirm_apply",
   ) => {
-    recordMarketPreferenceSignal({
-      categorySlug: plan.category,
-      categoryId: plan.categoryId,
-      role: draft.role,
-      slotId,
-      factorKey,
-      value,
-      kind,
-    });
-    onChange(patchSlot(draft, slotId, value));
+    try {
+      recordMarketPreferenceSignal({
+        categorySlug: plan.category,
+        categoryId: plan.categoryId,
+        role: draft.role,
+        slotId,
+        factorKey,
+        value,
+        kind,
+      });
+    } catch {
+      // preference memory is best-effort — slot still applies
+    }
+    onPatch((prev) => patchMarketDraftPrioritySlot(prev, slotId, value));
   };
 
   return (

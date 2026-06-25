@@ -23,3 +23,8 @@ export {
   formatMarketPreferenceValueLabelKo,
 } from "@/lib/globe/market/preference-memory/format-market-preference-label";
 export { syncMarketPreferenceOnIntentCommit } from "@/lib/globe/market/preference-memory/sync-market-preference-on-intent-commit";
+export {
+  MARKET_PREFERENCE_MEMORY_STORAGE_KEY,
+  MARKET_SLOT_IMPORTANCE_STORAGE_KEY,
+  MARKET_SUGGESTION_PREFERENCE_KEY,
+} from "@/lib/globe/market/preference-memory/market-preference-storage-keys";

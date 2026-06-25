@@ -9,6 +9,7 @@ export type MarketPriceBounds = {
 
 /** Seeking — single price field = budget ceiling (상한). */
 export function readSeekingBudgetBounds(record: MarketIntentRecord): MarketPriceBounds {
+  const slotPrice = record.detail.prioritySlots?.price;
   const min = record.priceMinKrw;
   const max = record.priceMaxKrw;
   if (min !== null && max !== null && min === max) {
@@ -20,11 +21,15 @@ export function readSeekingBudgetBounds(record: MarketIntentRecord): MarketPrice
   if (min !== null && max === null) {
     return { minKrw: min, maxKrw: OPEN_MAX };
   }
+  if (typeof slotPrice === "number" && slotPrice > 0) {
+    return { minKrw: 0, maxKrw: slotPrice };
+  }
   return { minKrw: min ?? 0, maxKrw: max ?? OPEN_MAX };
 }
 
 /** Listing — single price field = ask (희망 판매가). */
 export function readListingAskBounds(record: MarketIntentRecord): MarketPriceBounds {
+  const slotPrice = record.detail.prioritySlots?.price;
   const min = record.priceMinKrw;
   const max = record.priceMaxKrw;
   if (min !== null && max !== null && min === max) {
@@ -35,6 +40,9 @@ export function readListingAskBounds(record: MarketIntentRecord): MarketPriceBou
   }
   if (min === null && max !== null) {
     return { minKrw: 0, maxKrw: max };
+  }
+  if (typeof slotPrice === "number" && slotPrice > 0) {
+    return { minKrw: slotPrice, maxKrw: slotPrice };
   }
   return { minKrw: min ?? 0, maxKrw: max ?? OPEN_MAX };
 }

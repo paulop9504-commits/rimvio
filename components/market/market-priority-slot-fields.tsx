@@ -186,6 +186,27 @@ export function MarketPrioritySlotFields({ draft, onChange }: MarketPrioritySlot
           );
         }
 
+        if (slot.kind === "storage_gb") {
+          return (
+            <div key={field}>
+              <span className={cn(RIMVIO_TYPE.caption, "mb-2 block font-medium text-foreground")}>
+                {label}
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {[128, 256, 512, 1024].map((gb) => (
+                  <Chip
+                    key={gb}
+                    active={value === gb}
+                    onClick={() => patchSlot(field, gb)}
+                  >
+                    {gb >= 1024 ? "1TB" : `${gb}GB`}
+                  </Chip>
+                ))}
+              </div>
+            </div>
+          );
+        }
+
         if (slot.kind === "percent") {
           const percentValue =
             value !== undefined && value !== null ? String(value).replace(/\D/g, "") : "";

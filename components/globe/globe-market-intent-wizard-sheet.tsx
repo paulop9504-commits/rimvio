@@ -18,6 +18,7 @@ import { MarketPriorityStepSurface } from "@/components/market/market-priority-s
 import { commitMarketIntentFromDraft } from "@/lib/globe/market/commit-market-intent";
 import type { MarketListingInferenceSource } from "@/lib/globe/market/infer-market-listing-from-media";
 import { inferMarketListingFromPhotoFiles } from "@/lib/globe/market/infer-market-listing-from-photo-client";
+import { normalizeMarketIntentDraftFromPrioritySlots } from "@/lib/globe/market/patch-market-draft-priority-slot";
 import {
   countMarketListingMedia,
   isMarketListingVideoFile,
@@ -400,23 +401,21 @@ export function GlobeMarketIntentWizardSheet({
     setBusy(true);
     try {
       const name = working.detail.productName.trim() || working.title.trim();
-      const finalDraft = syncMarketMemoryRecordOnDraft(
-        {
-          ...working,
-          title: name,
-          detail: {
-            ...working.detail,
-            productName: name,
-            photoCount: mediaCounts.photoCount,
-            videoCount: mediaCounts.videoCount,
-            prioritySlots: {
-              ...working.detail.prioritySlots,
-              distance: `${working.radiusKm}km`,
-            },
+      const normalizedWorking = normalizeMarketIntentDraftFromPrioritySlots({
+        ...working,
+        title: name,
+        detail: {
+          ...working.detail,
+          productName: name,
+          photoCount: mediaCounts.photoCount,
+          videoCount: mediaCounts.videoCount,
+          prioritySlots: {
+            ...working.detail.prioritySlots,
+            distance: `${working.radiusKm}km`,
           },
         },
-        {},
-      );
+      });
+      const finalDraft = syncMarketMemoryRecordOnDraft(normalizedWorking, {});
       if (working.role !== "listing") {
         toast.message(copy.globe.marketPinGpsPrompt, { duration: 2400 });
       }
@@ -615,7 +614,12 @@ export function GlobeMarketIntentWizardSheet({
               ) : null}
 
               {step === "priority" ? (
-                <MarketPriorityStepSurface draft={working} onChange={setWorking} />
+                <MarketPriorityStepSurface
+                  draft={working}
+                  onPatch={(updater) =>
+                    setWorking((prev) => (prev ? updater(prev) : prev))
+                  }
+                />
               ) : null}
 
               {step === "photos" && !isSeeking ? (
