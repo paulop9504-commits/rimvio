@@ -79,17 +79,19 @@ export function OpportunityDashboardBody({
     >
       <header
         className={cn(
-          "shrink-0 border-b border-[#f2f4f6] bg-white px-4 pb-0 pt-[max(0.5rem,env(safe-area-inset-top))]",
+          "shrink-0 border-b border-[#f2f4f6] bg-white px-4 pb-0 pt-1",
           headerClassName,
         )}
       >
-        <div className="flex items-start justify-between gap-3 pb-3">
+        <div className="flex items-start justify-between gap-3 pb-3.5">
           <div className="min-w-0">
-            <p className="flex items-center gap-1.5 text-[20px] font-bold tracking-tight text-[#191f28]">
-              <Sparkles className="size-5 shrink-0 text-[#3182f6]" aria-hidden />
+            <p className="flex items-center gap-2 text-[22px] font-bold tracking-tight text-[#191f28]">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#3182f6]/10">
+                <Sparkles className="size-[18px] shrink-0 text-[#3182f6]" aria-hidden />
+              </span>
               {field.sheetTitle}
             </p>
-            <p className="mt-0.5 text-[12px] font-medium text-[#8b95a1]">
+            <p className="mt-1 pl-[2.75rem] text-[13px] font-medium text-[#8b95a1]">
               {tab === "trades" ? field.dashboardTabTradesHint : field.dashboardTabDiscoveryHint}
             </p>
           </div>
@@ -100,11 +102,11 @@ export function OpportunityDashboardBody({
           value={tab}
           onChange={setTab}
           tradeCount={tradeSessions.length}
-          className="px-0 pb-3"
+          className="px-0 pb-4"
         />
       </header>
 
-      <div className="relative min-h-0 flex-1 overflow-hidden bg-[#f8f9fb]/50">
+      <div className="relative min-h-0 flex-1 overflow-hidden bg-[#f2f4f6]/80">
         <AnimatePresence mode="wait" initial={false}>
           {tab === "trades" ? (
             <motion.div

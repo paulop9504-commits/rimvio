@@ -93,7 +93,14 @@ export function OpportunityDiscoveryFloor({
         minePillLabel={field.ownershipMinePill}
       />
 
-      <div className="min-h-0 flex-1 overflow-y-auto pb-[var(--rimvio-bottom-nav-offset)]">
+      <div
+        className={cn(
+          "min-h-0 flex-1 overflow-y-auto",
+          embedded
+            ? "pb-[max(1.25rem,env(safe-area-inset-bottom))]"
+            : "pb-[var(--rimvio-bottom-nav-offset)]",
+        )}
+      >
         {loading ? (
           <OpportunityRowShimmer />
         ) : pills.length === 0 ? (

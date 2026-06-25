@@ -140,6 +140,17 @@ export function rimvioPinOpenSheetClass(className?: string) {
   );
 }
 
+/** Field match dashboard — tall mobile surface (맞춤 tab). */
+export function rimvioFieldDashboardSheetClass(className?: string) {
+  return cn(
+    rimvioSheetShellClass(),
+    "fixed inset-x-0 bottom-0 mx-auto flex w-full max-w-lg flex-col overflow-hidden",
+    "h-[min(96dvh,920px)] max-h-[96dvh] border-x-0 border-b-0 border-t border-[#e8eaed] bg-white",
+    "shadow-[0_-20px_56px_rgba(0,0,0,0.14)]",
+    className,
+  );
+}
+
 export function rimvioSheetGrabberClass(className?: string) {
   return cn(
     "mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-foreground/15 md:hidden",

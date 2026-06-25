@@ -13,11 +13,12 @@ import { useOpportunityDashboard } from "@/hooks/use-opportunity-dashboard";
 import { filterOpportunityRowsExcludingActiveTrades } from "@/lib/globe/opportunity-field/filter-rows-excluding-active-trades";
 import {
   RIMVIO_TYPE,
-  rimvioBottomSheetClass,
   rimvioEmptyStateClass,
+  rimvioFieldDashboardSheetClass,
   rimvioHeroCtaClass,
   rimvioSheetBackdropClass,
   rimvioSheetCloseBtnClass,
+  rimvioSheetGrabberClass,
 } from "@/lib/design/rimvio-ontology";
 import type { OpportunityRow } from "@/lib/globe/opportunity-field";
 import type { GlobeLayerMode } from "@/lib/globe/globe-layer-mode";
@@ -153,7 +154,7 @@ export function OpportunityDashboardSheet({
         onRowPress={setDetailRow}
         onSessionUpdated={replaceSession}
         focusTradesToken={focusTradesToken}
-        headerClassName="pt-4"
+        headerClassName="pt-0"
         headerRight={
           <button
             type="button"
@@ -173,8 +174,17 @@ export function OpportunityDashboardSheet({
   }
 
   const sheetPanelClass = cn(
-    rimvioBottomSheetClass(),
-    "z-[10071] flex max-h-[min(92dvh,52rem)] flex-col overflow-hidden bg-white",
+    rimvioFieldDashboardSheetClass(),
+    "z-[10071]",
+  );
+
+  const sheetChrome = (
+    <>
+      <div className="shrink-0 pt-1" aria-hidden>
+        <div className={rimvioSheetGrabberClass()} />
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{sheetContent}</div>
+    </>
   );
 
   if (iosPwaSheet) {
@@ -194,7 +204,7 @@ export function OpportunityDashboardSheet({
           data-opportunity-dashboard-sheet
           data-opportunity-dashboard-sheet-ios-pwa
         >
-          {sheetContent}
+          {sheetChrome}
         </div>
       </>,
       document.body,
@@ -218,14 +228,14 @@ export function OpportunityDashboardSheet({
             role="dialog"
             aria-modal="true"
             aria-label={field.sheetTitle}
-            initial={{ opacity: 0, y: 28 }}
+            initial={{ opacity: 0, y: "8%" }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 24 }}
-            transition={{ type: "spring", stiffness: 420, damping: 36 }}
+            exit={{ opacity: 0, y: "6%" }}
+            transition={{ type: "spring", stiffness: 380, damping: 34 }}
             className={sheetPanelClass}
             data-opportunity-dashboard-sheet
           >
-            {sheetContent}
+            {sheetChrome}
           </motion.div>
         </>
       ) : null}

@@ -50,7 +50,7 @@ export function MarketActiveTradesSection({
     return (
       <div
         className={cn(
-          "min-h-0 flex-1 overflow-y-auto px-4 py-3 pb-[var(--rimvio-bottom-nav-offset)]",
+          "min-h-0 flex-1 overflow-y-auto px-4 py-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]",
           className,
         )}
         data-market-active-trades
