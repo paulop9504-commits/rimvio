@@ -19,7 +19,7 @@ import {
   publishFieldSheetOpen,
   type FieldSheetOpenRequest,
 } from "@/lib/nav/field-sheet-bridge";
-import { shouldUseIosPwaMemoryGuards } from "@/lib/platform/ios-pwa-memory";
+import { useIosPwaMemoryGuards } from "@/hooks/use-ios-pwa-memory-guards";
 
 const OpportunityDashboardSheet = dynamic(
   () =>
@@ -48,6 +48,7 @@ export function useFieldSheet(): FieldSheetContextValue {
 /** Global Field sheet — bottom nav opens overlay; no /field navigation on iOS PWA. */
 export function FieldSheetProvider({ children }: { children: ReactNode }) {
   const { layerMode, setLayerMode } = useGlobeLayerMode();
+  const iosPwaLazySheet = useIosPwaMemoryGuards();
   const [open, setOpen] = useState(false);
   const [primaryEventId, setPrimaryEventId] = useState<string | null>(null);
 
@@ -101,7 +102,7 @@ export function FieldSheetProvider({ children }: { children: ReactNode }) {
   return (
     <FieldSheetContext.Provider value={value}>
       {children}
-      {open || !shouldUseIosPwaMemoryGuards() ? (
+      {open || !iosPwaLazySheet ? (
         <OpportunityDashboardSheet
           open={open}
           onOpenChange={onOpenChange}

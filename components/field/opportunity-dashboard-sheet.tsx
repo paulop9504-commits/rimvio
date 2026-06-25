@@ -42,7 +42,7 @@ export function OpportunityDashboardSheet({
   const copy = useCopy();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
-  const [iosPwaSheet] = useState(() => isIOS() && isStandalonePwa());
+  const [iosPwaSheet, setIosPwaSheet] = useState(false);
   const [detailRow, setDetailRow] = useState<OpportunityRow | null>(null);
   const [focusTradesToken, setFocusTradesToken] = useState(0);
 
@@ -74,6 +74,7 @@ export function OpportunityDashboardSheet({
 
   useEffect(() => {
     setMounted(true);
+    setIosPwaSheet(isIOS() && isStandalonePwa());
   }, []);
 
   useEffect(() => {

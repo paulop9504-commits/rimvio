@@ -38,9 +38,9 @@ import { useGlobeLayerMode } from "@/hooks/use-globe-layer-mode";
 import { useFieldSheet } from "@/components/field/field-sheet-provider";
 import { useOpportunityFieldBadge } from "@/hooks/use-opportunity-field-badge";
 import { subscribeFieldSheetOpenState } from "@/lib/nav/field-sheet-bridge";
+import { useIosPwaMemoryGuards } from "@/hooks/use-ios-pwa-memory-guards";
 import {
   iosPwaDiscoveryPinsDelayMs,
-  shouldUseIosPwaMemoryGuards,
 } from "@/lib/platform/ios-pwa-memory";
 import { useGlobeInbox } from "@/hooks/use-globe-inbox";
 import { useMediaPool } from "@/hooks/use-media-pool";
@@ -228,9 +228,8 @@ function GlobeHomeBody() {
   }, []);
   const fieldOverlayOpen = fieldSheetOpen || fieldSheetSignalOpen;
   const [layerSwitchSuspend, setLayerSwitchSuspend] = useState(false);
-  const [discoveryBadgeReady, setDiscoveryBadgeReady] = useState(
-    () => !shouldUseIosPwaMemoryGuards(),
-  );
+  const iosPwaGuards = useIosPwaMemoryGuards();
+  const [discoveryBadgeReady, setDiscoveryBadgeReady] = useState(false);
   const [mediaPoolOpen, setMediaPoolOpen] = useState(false);
   const [poolAttachIds, setPoolAttachIds] = useState<string[]>([]);
   const [poolSuggestedStart, setPoolSuggestedStart] = useState<string | null>(null);
@@ -238,7 +237,7 @@ function GlobeHomeBody() {
   const [shareEventId, setShareEventId] = useState<string | null>(null);
   const [activeCluster, setActiveCluster] = useState<PinCluster | null>(null);
   useEffect(() => {
-    if (!shouldUseIosPwaMemoryGuards()) {
+    if (!iosPwaGuards) {
       setDiscoveryBadgeReady(layerMode === "discovery");
       return;
     }
@@ -252,7 +251,7 @@ function GlobeHomeBody() {
       iosPwaDiscoveryPinsDelayMs(),
     );
     return () => window.clearTimeout(timer);
-  }, [layerMode]);
+  }, [iosPwaGuards, layerMode]);
 
   const fieldMatchCount = useOpportunityFieldBadge({
     enabled:
@@ -367,7 +366,7 @@ function GlobeHomeBody() {
 
   const onLayerModeChange = useCallback(
     (mode: GlobeLayerMode) => {
-      if (shouldUseIosPwaMemoryGuards()) {
+      if (iosPwaGuards) {
         setLayerSwitchSuspend(true);
         setDiscoveryBadgeReady(false);
         window.setTimeout(() => {
@@ -391,7 +390,7 @@ function GlobeHomeBody() {
       setManageOpen(false);
       globeRef.current?.resetToOverview();
     },
-    [clearActiveContext, setLayerMode],
+    [clearActiveContext, iosPwaGuards, setLayerMode],
   );
 
   const openContextCluster = useCallback(

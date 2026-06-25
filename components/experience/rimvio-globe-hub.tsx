@@ -70,9 +70,9 @@ import { dispatchGlobeContextHubOpen } from "@/lib/globe/context-hub/globe-conte
 import { rankContextResources } from "@/lib/globe/resource/rank-context-resources";
 import { resolveGlobeClustersForLayerMode } from "@/lib/globe/filter-globe-clusters-by-layer-mode";
 import type { GlobeLayerMode } from "@/lib/globe/globe-layer-mode";
+import { useIosPwaMemoryGuards } from "@/hooks/use-ios-pwa-memory-guards";
 import {
   iosPwaDiscoveryPinsDelayMs,
-  shouldUseIosPwaMemoryGuards,
 } from "@/lib/platform/ios-pwa-memory";
 import Link from "next/link";
 import { copy } from "@/lib/copy/human-ko";
@@ -640,9 +640,9 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
 }: RimvioGlobeHubProps) {
   const { ready, eventsById, personalPinRevision } = useGlobeEventSnapshot();
   const liveLocation = useLiveLocationSnapshot();
-  const iosPwaGuards = shouldUseIosPwaMemoryGuards();
+  const iosPwaGuards = useIosPwaMemoryGuards();
   const [discoveryPinsReady, setDiscoveryPinsReady] = useState(
-    () => layerMode !== "discovery" || !iosPwaGuards,
+    () => layerMode !== "discovery",
   );
 
   useEffect(() => {
