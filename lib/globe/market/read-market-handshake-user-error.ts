@@ -15,7 +15,12 @@ export function readMarketHandshakeUserError(raw: string): string {
     case "listing_only":
       return "내놓기 쪽에서만 수락할 수 있어요.";
     case "seeker_only":
-      return "구하기 쪽에서만 대화를 시작할 수 있어요.";
+    case "seeking_only":
+      return "구하기 쪽에서만 할 수 있어요.";
+    case "depart_window_closed":
+      return "출발 가능 시간이 아니에요.";
+    case "meet_not_set":
+      return "약속 시간이 아직 없어요.";
     case "invalid_phase":
       return "이미 처리된 맞춤이에요.";
     case "intent_not_found":

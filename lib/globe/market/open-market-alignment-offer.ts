@@ -78,6 +78,7 @@ export async function openMarketChatForListing(input: {
   copy: { bridgeFail: string };
   navigate: (href: string) => void;
   onBeforeNavigate?: () => void;
+  skipNavigate?: boolean;
 }): Promise<string | null> {
   const { openMarketChatRemote } = await import(
     "@/lib/globe/market/client/sync-market-intent-remote"
@@ -90,8 +91,10 @@ export async function openMarketChatForListing(input: {
   if (!result.threadId) {
     return null;
   }
-  input.onBeforeNavigate?.();
-  input.navigate(peerRoomPath(result.threadId));
+  if (!input.skipNavigate) {
+    input.onBeforeNavigate?.();
+    input.navigate(peerRoomPath(result.threadId));
+  }
   return result.threadId;
 }
 

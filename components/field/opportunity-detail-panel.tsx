@@ -27,6 +27,9 @@ export type OpportunityDetailPanelProps = {
   neighborBadge: string;
   onBeforeNavigate?: () => void;
   navigate: (href: string) => void;
+  stayOnDashboard?: boolean;
+  tradeStartedToast?: string;
+  onTradeStarted?: () => void;
   className?: string;
 };
 
@@ -40,6 +43,9 @@ export function OpportunityDetailPanel({
   neighborBadge,
   onBeforeNavigate,
   navigate,
+  stayOnDashboard = false,
+  tradeStartedToast,
+  onTradeStarted,
   className,
 }: OpportunityDetailPanelProps) {
   const card = projectMarketplaceDiscoveryCard(
@@ -128,6 +134,9 @@ export function OpportunityDetailPanel({
         bridgeFail={bridgeFail}
         onBeforeNavigate={onBeforeNavigate}
         navigate={navigate}
+        stayOnDashboard={stayOnDashboard}
+        tradeStartedToast={tradeStartedToast}
+        onTradeStarted={onTradeStarted}
       />
     </div>
   );

@@ -30,6 +30,17 @@ export type MarketHandshakeRecord = {
   completedAtIso: string | null;
   createdAtIso: string;
   updatedAtIso: string;
+  tradeStatus: import("@/lib/globe/market/market-trade-types").MarketTradeStatus;
+  meetMode: import("@/lib/globe/market/market-trade-types").MarketMeetMode;
+  meetAtIso: string | null;
+  meetPlaceLabel: string | null;
+  meetLat: number | null;
+  meetLng: number | null;
+  guestShareLocation: boolean;
+  guestLat: number | null;
+  guestLng: number | null;
+  guestLocationAtIso: string | null;
+  scheduleCandidates: readonly string[];
 };
 
 export type MarketCompletionTraceDraft = {

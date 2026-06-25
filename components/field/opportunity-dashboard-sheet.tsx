@@ -13,7 +13,8 @@ import {
   OpportunityRowShimmer,
 } from "@/components/field/opportunity-row-item";
 import { useCopy } from "@/hooks/use-copy";
-import { useOpportunityDashboard } from "@/hooks/use-opportunity-dashboard";
+import { MarketActiveTradesSection } from "@/components/field/market-active-trades-section";
+import { useActiveMarketTrades } from "@/hooks/use-active-market-trades";
 import {
   RIMVIO_TYPE,
   rimvioBottomSheetClass,
@@ -56,6 +57,12 @@ export function OpportunityDashboardSheet({
     selectedPill,
     listeningLabel,
   } = useOpportunityDashboard({ open, primaryEventId });
+
+  const {
+    sessions: tradeSessions,
+    refresh: refreshTrades,
+    replaceSession,
+  } = useActiveMarketTrades({ enabled: open });
 
   useEffect(() => {
     setMounted(true);
@@ -144,8 +151,11 @@ export function OpportunityDashboardSheet({
                   chatPlaceholder={field.chatPlaceholder}
                   bridgeFail={copy.globe.marketAlignBridgeFail}
                   neighborBadge={field.neighborListingBadge}
+                  stayOnDashboard
+                  tradeStartedToast={copy.globe.marketTradeStartedToast}
                   onBeforeNavigate={() => onOpenChange(false)}
                   navigate={(href) => router.push(href)}
+                  onTradeStarted={() => void refreshTrades()}
                 />
               </>
             ) : (
@@ -172,6 +182,11 @@ export function OpportunityDashboardSheet({
                     </button>
                   </div>
                 </header>
+
+                <MarketActiveTradesSection
+                  sessions={tradeSessions}
+                  onSessionUpdated={replaceSession}
+                />
 
                 {pills.length > 0 ? (
                   <OpportunityOwnershipSectionLabel

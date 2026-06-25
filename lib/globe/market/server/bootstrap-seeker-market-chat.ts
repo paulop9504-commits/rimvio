@@ -86,6 +86,11 @@ async function eagerOpenSeekerMarketThread(
     buyerStartedAtIso: now,
   });
 
+  const { initializeMarketTradeSession } = await import(
+    "@/lib/globe/market/server/initialize-market-trade-session"
+  );
+  await initializeMarketTradeSession(supabase, handshake.id, listingIntent);
+
   return dm.threadId;
 }
 

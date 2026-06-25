@@ -15,6 +15,10 @@ export type OpportunityFieldChatBarProps = {
   bridgeFail: string;
   onBeforeNavigate?: () => void;
   navigate: (href: string) => void;
+  /** Pull experiment — start trade without opening chat. */
+  stayOnDashboard?: boolean;
+  tradeStartedToast?: string;
+  onTradeStarted?: () => void;
   className?: string;
 };
 
@@ -26,6 +30,9 @@ export function OpportunityFieldChatBar({
   bridgeFail,
   onBeforeNavigate,
   navigate,
+  stayOnDashboard = false,
+  tradeStartedToast,
+  onTradeStarted,
   className,
 }: OpportunityFieldChatBarProps) {
   const [text, setText] = useState("");
@@ -45,9 +52,17 @@ export function OpportunityFieldChatBar({
         copy: { bridgeFail },
         navigate,
         onBeforeNavigate,
+        skipNavigate: stayOnDashboard,
       });
       if (!threadId) {
         toast.error(bridgeFail);
+        return;
+      }
+      if (stayOnDashboard) {
+        toast.success(tradeStartedToast ?? "거래를 시작했어요");
+        onTradeStarted?.();
+        setText("");
+        return;
       }
     } catch {
       toast.error(bridgeFail);

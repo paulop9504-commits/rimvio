@@ -95,6 +95,11 @@ export async function acceptListingMarketHandshake(
     listingAcceptedAtIso: new Date().toISOString(),
   });
 
+  const { initializeMarketTradeSession } = await import(
+    "@/lib/globe/market/server/initialize-market-trade-session"
+  );
+  await initializeMarketTradeSession(supabase, handshake.id, listingIntent);
+
   return { threadId, handshakeId: handshake.id };
 }
 
@@ -262,6 +267,7 @@ export async function confirmMarketHandshakeComplete(
     listingConfirmedAtIso,
     realizedPriceKrw,
     completedAtIso: nowIso,
+    tradeStatus: "completed",
   });
 
   await deactivateMarketIntents(

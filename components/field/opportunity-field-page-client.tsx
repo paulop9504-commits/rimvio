@@ -12,6 +12,8 @@ import {
   OpportunityRowShimmer,
 } from "@/components/field/opportunity-row-item";
 import { useCopy } from "@/hooks/use-copy";
+import { MarketActiveTradesSection } from "@/components/field/market-active-trades-section";
+import { useActiveMarketTrades } from "@/hooks/use-active-market-trades";
 import { useOpportunityDashboard } from "@/hooks/use-opportunity-dashboard";
 import { RIMVIO_TYPE, rimvioEmptyStateClass } from "@/lib/design/rimvio-ontology";
 import type { OpportunityRow } from "@/lib/globe/opportunity-field";
@@ -33,6 +35,11 @@ export function OpportunityFieldPageClient() {
     listeningLabel,
     selectedPill,
   } = useOpportunityDashboard({ open: true, primaryEventId: null });
+
+  const { sessions: tradeSessions, refresh: refreshTrades, replaceSession } =
+    useActiveMarketTrades({
+    enabled: true,
+  });
 
   const field = copy.globe.field;
   const quickReplies = listMarketChatQuickReplies(field);
@@ -64,7 +71,10 @@ export function OpportunityFieldPageClient() {
           chatPlaceholder={field.chatPlaceholder}
           bridgeFail={copy.globe.marketAlignBridgeFail}
           neighborBadge={field.neighborListingBadge}
+          stayOnDashboard
+          tradeStartedToast={copy.globe.marketTradeStartedToast}
           navigate={(href) => router.push(href)}
+          onTradeStarted={() => void refreshTrades()}
         />
       </div>
     );
@@ -85,6 +95,11 @@ export function OpportunityFieldPageClient() {
           {listeningLabel}
         </p>
       </header>
+
+      <MarketActiveTradesSection
+        sessions={tradeSessions}
+        onSessionUpdated={replaceSession}
+      />
 
       {pills.length > 0 ? (
         <OpportunityOwnershipSectionLabel

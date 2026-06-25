@@ -3,6 +3,10 @@ import type {
   MarketHandshakePhase,
   MarketHandshakeRecord,
 } from "@/lib/globe/market/market-handshake-types";
+import type {
+  MarketMeetMode,
+  MarketTradeStatus,
+} from "@/lib/globe/market/market-trade-types";
 
 export type MarketHandshakeDbRow = {
   id: string;
@@ -22,7 +26,46 @@ export type MarketHandshakeDbRow = {
   completed_at: string | null;
   created_at: string;
   updated_at: string;
+  trade_status?: MarketTradeStatus | string | null;
+  meet_at?: string | null;
+  meet_place_label?: string | null;
+  meet_lat?: number | null;
+  meet_lng?: number | null;
+  meet_mode?: MarketMeetMode | string | null;
+  guest_share_location?: boolean | null;
+  guest_lat?: number | null;
+  guest_lng?: number | null;
+  guest_location_at?: string | null;
+  schedule_candidates?: unknown;
 };
+
+function readTradeStatus(raw: MarketHandshakeDbRow): MarketTradeStatus {
+  if (
+    raw.trade_status === "scheduling" ||
+    raw.trade_status === "confirmed" ||
+    raw.trade_status === "en_route" ||
+    raw.trade_status === "meeting" ||
+    raw.trade_status === "completed"
+  ) {
+    return raw.trade_status;
+  }
+  return "scheduling";
+}
+
+function readMeetMode(raw: MarketHandshakeDbRow): MarketMeetMode {
+  return raw.meet_mode === "convergence" ? "convergence" : "host";
+}
+
+function readFiniteCoord(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function readScheduleCandidates(raw: MarketHandshakeDbRow): string[] {
+  if (!Array.isArray(raw.schedule_candidates)) {
+    return [];
+  }
+  return raw.schedule_candidates.filter((value): value is string => typeof value === "string");
+}
 
 export function marketHandshakeRowToRecord(row: MarketHandshakeDbRow): MarketHandshakeRecord {
   return {
@@ -43,6 +86,17 @@ export function marketHandshakeRowToRecord(row: MarketHandshakeDbRow): MarketHan
     completedAtIso: row.completed_at,
     createdAtIso: row.created_at,
     updatedAtIso: row.updated_at,
+    tradeStatus: readTradeStatus(row),
+    meetMode: readMeetMode(row),
+    meetAtIso: row.meet_at ?? null,
+    meetPlaceLabel: row.meet_place_label ?? null,
+    meetLat: readFiniteCoord(row.meet_lat),
+    meetLng: readFiniteCoord(row.meet_lng),
+    guestShareLocation: row.guest_share_location === true,
+    guestLat: readFiniteCoord(row.guest_lat),
+    guestLng: readFiniteCoord(row.guest_lng),
+    guestLocationAtIso: row.guest_location_at ?? null,
+    scheduleCandidates: readScheduleCandidates(row),
   };
 }
 
@@ -208,6 +262,17 @@ export async function patchMarketHandshake(
     listingConfirmedAtIso?: string | null;
     realizedPriceKrw?: number | null;
     completedAtIso?: string | null;
+    tradeStatus?: MarketTradeStatus;
+    meetMode?: MarketMeetMode;
+    meetAtIso?: string | null;
+    meetPlaceLabel?: string | null;
+    meetLat?: number | null;
+    meetLng?: number | null;
+    guestShareLocation?: boolean;
+    guestLat?: number | null;
+    guestLng?: number | null;
+    guestLocationAtIso?: string | null;
+    scheduleCandidates?: readonly string[];
   },
 ): Promise<MarketHandshakeRecord> {
   const row: Record<string, unknown> = {
@@ -236,6 +301,39 @@ export async function patchMarketHandshake(
   }
   if (patch.completedAtIso !== undefined) {
     row.completed_at = patch.completedAtIso;
+  }
+  if (patch.tradeStatus !== undefined) {
+    row.trade_status = patch.tradeStatus;
+  }
+  if (patch.meetAtIso !== undefined) {
+    row.meet_at = patch.meetAtIso;
+  }
+  if (patch.meetPlaceLabel !== undefined) {
+    row.meet_place_label = patch.meetPlaceLabel;
+  }
+  if (patch.meetLat !== undefined) {
+    row.meet_lat = patch.meetLat;
+  }
+  if (patch.meetLng !== undefined) {
+    row.meet_lng = patch.meetLng;
+  }
+  if (patch.meetMode !== undefined) {
+    row.meet_mode = patch.meetMode;
+  }
+  if (patch.guestShareLocation !== undefined) {
+    row.guest_share_location = patch.guestShareLocation;
+  }
+  if (patch.guestLat !== undefined) {
+    row.guest_lat = patch.guestLat;
+  }
+  if (patch.guestLng !== undefined) {
+    row.guest_lng = patch.guestLng;
+  }
+  if (patch.guestLocationAtIso !== undefined) {
+    row.guest_location_at = patch.guestLocationAtIso;
+  }
+  if (patch.scheduleCandidates !== undefined) {
+    row.schedule_candidates = [...patch.scheduleCandidates];
   }
 
   const { data, error } = await supabase
