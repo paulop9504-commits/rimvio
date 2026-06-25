@@ -70,6 +70,10 @@ import { dispatchGlobeContextHubOpen } from "@/lib/globe/context-hub/globe-conte
 import { rankContextResources } from "@/lib/globe/resource/rank-context-resources";
 import { resolveGlobeClustersForLayerMode } from "@/lib/globe/filter-globe-clusters-by-layer-mode";
 import type { GlobeLayerMode } from "@/lib/globe/globe-layer-mode";
+import {
+  iosPwaDiscoveryPinsDelayMs,
+  shouldUseIosPwaMemoryGuards,
+} from "@/lib/platform/ios-pwa-memory";
 import Link from "next/link";
 import { copy } from "@/lib/copy/human-ko";
 import { dispatchOpenCaptureSheet } from "@/lib/nav/open-capture-sheet-bridge";
@@ -636,13 +640,37 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
 }: RimvioGlobeHubProps) {
   const { ready, eventsById, personalPinRevision } = useGlobeEventSnapshot();
   const liveLocation = useLiveLocationSnapshot();
+  const iosPwaGuards = shouldUseIosPwaMemoryGuards();
+  const [discoveryPinsReady, setDiscoveryPinsReady] = useState(
+    () => layerMode !== "discovery" || !iosPwaGuards,
+  );
+
+  useEffect(() => {
+    if (layerMode !== "discovery") {
+      setDiscoveryPinsReady(!iosPwaGuards);
+      return;
+    }
+    if (!iosPwaGuards) {
+      setDiscoveryPinsReady(true);
+      return;
+    }
+    setDiscoveryPinsReady(false);
+    const timer = window.setTimeout(
+      () => setDiscoveryPinsReady(true),
+      iosPwaDiscoveryPinsDelayMs(),
+    );
+    return () => window.clearTimeout(timer);
+  }, [iosPwaGuards, layerMode]);
+
+  const discoveryPinsEnabled = layerMode === "discovery" && discoveryPinsReady;
+
   const { traces: externalTraces } = useGlobePinsPlatformExternal({
-    enabled: layerMode === "discovery",
+    enabled: discoveryPinsEnabled,
     lat: liveLocation?.lat ?? null,
     lng: liveLocation?.lng ?? null,
   });
   const { intents: marketDiscoveryIntents } = useMarketDiscoveryPins({
-    enabled: layerMode === "discovery",
+    enabled: discoveryPinsEnabled,
     lat: liveLocation?.lat ?? null,
     lng: liveLocation?.lng ?? null,
   });

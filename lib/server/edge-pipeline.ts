@@ -29,9 +29,7 @@ export async function runEdgePipeline(request: NextRequest) {
   if (pathname === "/field" || pathname.startsWith("/field/")) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
-    if (!url.searchParams.has("openField")) {
-      url.searchParams.set("openField", "1");
-    }
+    url.searchParams.delete("openField");
     const response = NextResponse.redirect(url, 307);
     response.headers.set(REQUEST_ID_HEADER, requestId);
     applySecurityHeaders(response);

@@ -25,7 +25,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/field",
-        destination: "/?openField=1",
+        destination: "/",
         permanent: false,
       },
     ];

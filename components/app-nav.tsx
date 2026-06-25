@@ -352,11 +352,17 @@ export function AppNav({ placement }: AppNavProps) {
   const router = useRouter();
   const copy = useCopy();
   const { open: fieldSheetOpen, openFieldSheet } = useFieldSheet();
+  const [fieldSheetSignalOpen, setFieldSheetSignalOpen] = useState(false);
+  const fieldTabActive = fieldSheetOpen || fieldSheetSignalOpen;
   const [captureOpen, setCaptureOpen] = useState(false);
   const lastNavRef = useRef<{ href: string; at: number } | null>(null);
 
   useEffect(() => {
     return subscribeOpenCaptureSheet(() => setCaptureOpen(true));
+  }, []);
+
+  useEffect(() => {
+    return subscribeFieldSheetOpenState(setFieldSheetSignalOpen);
   }, []);
 
   useEffect(() => {
@@ -367,7 +373,7 @@ export function AppNav({ placement }: AppNavProps) {
     (href: string) => {
       const isSame =
         (href === "/" && isGlobePath(pathname)) ||
-        (href === "/field" && fieldSheetOpen) ||
+        (href === "/field" && fieldTabActive) ||
         pathname === href ||
         pathname.startsWith(`${href}/`);
       if (isSame) {
@@ -390,7 +396,7 @@ export function AppNav({ placement }: AppNavProps) {
 
       router.push(href);
     },
-    [fieldSheetOpen, openFieldSheet, pathname, router],
+    [fieldTabActive, openFieldSheet, pathname, router],
   );
 
   const tabs = useMemo<NavTab[]>(
@@ -405,7 +411,7 @@ export function AppNav({ placement }: AppNavProps) {
         href: "/field",
         label: copy.nav.field,
         isActive: (p) =>
-          fieldSheetOpen || p === "/field" || p.startsWith("/field/"),
+          fieldTabActive || p === "/field" || p.startsWith("/field/"),
         icon: "field",
       },
       {
@@ -421,7 +427,7 @@ export function AppNav({ placement }: AppNavProps) {
         icon: "capture",
       },
     ],
-    [copy, fieldSheetOpen],
+    [copy, fieldTabActive],
   );
 
   const navChrome = (

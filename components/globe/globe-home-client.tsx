@@ -37,6 +37,11 @@ import { usePersonalGlobePinSync } from "@/hooks/use-personal-globe-pin-sync";
 import { useGlobeLayerMode } from "@/hooks/use-globe-layer-mode";
 import { useFieldSheet } from "@/components/field/field-sheet-provider";
 import { useOpportunityFieldBadge } from "@/hooks/use-opportunity-field-badge";
+import { subscribeFieldSheetOpenState } from "@/lib/nav/field-sheet-bridge";
+import {
+  iosPwaDiscoveryPinsDelayMs,
+  shouldUseIosPwaMemoryGuards,
+} from "@/lib/platform/ios-pwa-memory";
 import { useGlobeInbox } from "@/hooks/use-globe-inbox";
 import { useMediaPool } from "@/hooks/use-media-pool";
 import { useGlobeTripArrival } from "@/hooks/use-globe-trip-arrival";
@@ -217,14 +222,41 @@ function GlobeHomeBody() {
   );
   const [globeInboxOpen, setGlobeInboxOpen] = useState(false);
   const { open: fieldSheetOpen, openFieldSheet } = useFieldSheet();
+  const [fieldSheetSignalOpen, setFieldSheetSignalOpen] = useState(false);
+  useEffect(() => {
+    return subscribeFieldSheetOpenState(setFieldSheetSignalOpen);
+  }, []);
+  const fieldOverlayOpen = fieldSheetOpen || fieldSheetSignalOpen;
+  const [layerSwitchSuspend, setLayerSwitchSuspend] = useState(false);
+  const [discoveryBadgeReady, setDiscoveryBadgeReady] = useState(
+    () => !shouldUseIosPwaMemoryGuards(),
+  );
   const [mediaPoolOpen, setMediaPoolOpen] = useState(false);
   const [poolAttachIds, setPoolAttachIds] = useState<string[]>([]);
   const [poolSuggestedStart, setPoolSuggestedStart] = useState<string | null>(null);
   const [shareSheetOpen, setShareSheetOpen] = useState(false);
   const [shareEventId, setShareEventId] = useState<string | null>(null);
   const [activeCluster, setActiveCluster] = useState<PinCluster | null>(null);
+  useEffect(() => {
+    if (!shouldUseIosPwaMemoryGuards()) {
+      setDiscoveryBadgeReady(layerMode === "discovery");
+      return;
+    }
+    if (layerMode !== "discovery") {
+      setDiscoveryBadgeReady(false);
+      return;
+    }
+    setDiscoveryBadgeReady(false);
+    const timer = window.setTimeout(
+      () => setDiscoveryBadgeReady(true),
+      iosPwaDiscoveryPinsDelayMs(),
+    );
+    return () => window.clearTimeout(timer);
+  }, [layerMode]);
+
   const fieldMatchCount = useOpportunityFieldBadge({
-    enabled: layerMode === "discovery" && !fieldSheetOpen,
+    enabled:
+      layerMode === "discovery" && !fieldOverlayOpen && discoveryBadgeReady,
     primaryEventId: activeCluster?.eventId ?? null,
   });
   const [placeVerifyEventId, setPlaceVerifyEventId] = useState<string | null>(null);
@@ -335,6 +367,23 @@ function GlobeHomeBody() {
 
   const onLayerModeChange = useCallback(
     (mode: GlobeLayerMode) => {
+      if (shouldUseIosPwaMemoryGuards()) {
+        setLayerSwitchSuspend(true);
+        setDiscoveryBadgeReady(false);
+        window.setTimeout(() => {
+          setLayerSwitchSuspend(false);
+          if (mode === "discovery") {
+            window.setTimeout(
+              () => setDiscoveryBadgeReady(true),
+              iosPwaDiscoveryPinsDelayMs(),
+            );
+          }
+        }, 500);
+      } else if (mode === "discovery") {
+        setDiscoveryBadgeReady(true);
+      } else {
+        setDiscoveryBadgeReady(false);
+      }
       setLayerMode(mode);
       clearActiveContext();
       setHubDetailOpen(false);
@@ -969,8 +1018,18 @@ function GlobeHomeBody() {
     }
     if (layerMode !== "discovery") {
       onLayerModeChange("discovery");
+    } else {
+      openFieldSheet();
     }
-  }, [layerMode, onLayerModeChange, searchParams]);
+    const params = new URLSearchParams(window.location.search);
+    params.delete("openField");
+    const qs = params.toString();
+    window.history.replaceState(
+      null,
+      "",
+      qs ? `${window.location.pathname}?${qs}` : window.location.pathname,
+    );
+  }, [layerMode, onLayerModeChange, openFieldSheet, searchParams]);
 
   useEffect(() => {
     return () => {
@@ -1272,10 +1331,11 @@ function GlobeHomeBody() {
     marketManageOpen ||
     settingsOpen ||
     globeInboxOpen ||
-    fieldSheetOpen ||
+    fieldOverlayOpen ||
     mediaPoolOpen ||
     bridgeGhostOpen ||
-    shareSheetOpen;
+    shareSheetOpen ||
+    layerSwitchSuspend;
 
   const trendBridgeRollup = useTrendBridgeRollup({
     active: trendBridgeLayerActive && !globeRenderSuspended,

@@ -1,6 +1,6 @@
 /* Rimvio service worker v2 — push + background reminders. */
 
-const RIMVIO_SW_VERSION = 2;
+const RIMVIO_SW_VERSION = 3;
 
 const REMINDER_CACHE = "rimvio-reminders-v1";
 const REMINDER_JSON_KEY = "/reminders.json";

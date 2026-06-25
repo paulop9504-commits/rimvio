@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import {
   createContext,
   useCallback,
@@ -9,14 +10,24 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useSearchParams } from "next/navigation";
-import { OpportunityDashboardSheet } from "@/components/field/opportunity-dashboard-sheet";
 import { useGlobeLayerMode } from "@/hooks/use-globe-layer-mode";
 import {
+  bindLegacyOpenFieldSheet,
+  requestOpenFieldSheet,
+} from "@/lib/nav/open-field-sheet-request";
+import {
   publishFieldSheetOpen,
-  subscribeOpenFieldSheet,
   type FieldSheetOpenRequest,
 } from "@/lib/nav/field-sheet-bridge";
+import { shouldUseIosPwaMemoryGuards } from "@/lib/platform/ios-pwa-memory";
+
+const OpportunityDashboardSheet = dynamic(
+  () =>
+    import("@/components/field/opportunity-dashboard-sheet").then((mod) => ({
+      default: mod.OpportunityDashboardSheet,
+    })),
+  { ssr: false, loading: () => null },
+);
 
 type FieldSheetContextValue = {
   open: boolean;
@@ -34,43 +45,26 @@ export function useFieldSheet(): FieldSheetContextValue {
   return ctx;
 }
 
-function FieldSheetUrlBootstrap({
-  onOpen,
-}: {
-  onOpen: (request?: FieldSheetOpenRequest) => void;
-}) {
-  const searchParams = useSearchParams();
-
-  useEffect(() => {
-    if (searchParams.get("openField") !== "1") {
-      return;
-    }
-    onOpen();
-    const params = new URLSearchParams(window.location.search);
-    params.delete("openField");
-    const qs = params.toString();
-    window.history.replaceState(
-      null,
-      "",
-      qs ? `${window.location.pathname}?${qs}` : window.location.pathname,
-    );
-  }, [onOpen, searchParams]);
-
-  return null;
-}
-
-/** Global Field sheet — bottom nav + /field redirect land here (iOS PWA safe). */
+/** Global Field sheet — bottom nav opens overlay; no /field navigation on iOS PWA. */
 export function FieldSheetProvider({ children }: { children: ReactNode }) {
   const { layerMode, setLayerMode } = useGlobeLayerMode();
   const [open, setOpen] = useState(false);
   const [primaryEventId, setPrimaryEventId] = useState<string | null>(null);
 
-  const openFieldSheet = useCallback((request?: FieldSheetOpenRequest) => {
+  const applyOpen = useCallback((request?: FieldSheetOpenRequest) => {
     setPrimaryEventId(request?.primaryEventId ?? null);
     setOpen(true);
   }, []);
 
+  const openFieldSheet = useCallback(
+    (request?: FieldSheetOpenRequest) => {
+      requestOpenFieldSheet(applyOpen, request);
+    },
+    [applyOpen],
+  );
+
   const closeFieldSheet = useCallback(() => {
+    publishFieldSheetOpen(false);
     setOpen(false);
     setPrimaryEventId(null);
   }, []);
@@ -78,6 +72,7 @@ export function FieldSheetProvider({ children }: { children: ReactNode }) {
   const onOpenChange = useCallback(
     (next: boolean) => {
       if (next) {
+        publishFieldSheetOpen(true);
         setOpen(true);
         return;
       }
@@ -91,8 +86,8 @@ export function FieldSheetProvider({ children }: { children: ReactNode }) {
   }, [open]);
 
   useEffect(() => {
-    return subscribeOpenFieldSheet(openFieldSheet);
-  }, [openFieldSheet]);
+    return bindLegacyOpenFieldSheet(applyOpen);
+  }, [applyOpen]);
 
   const value = useMemo(
     () => ({
@@ -105,15 +100,16 @@ export function FieldSheetProvider({ children }: { children: ReactNode }) {
 
   return (
     <FieldSheetContext.Provider value={value}>
-      <FieldSheetUrlBootstrap onOpen={openFieldSheet} />
       {children}
-      <OpportunityDashboardSheet
-        open={open}
-        onOpenChange={onOpenChange}
-        layerMode={layerMode}
-        primaryEventId={primaryEventId}
-        onSwitchToDiscovery={() => setLayerMode("discovery")}
-      />
+      {open || !shouldUseIosPwaMemoryGuards() ? (
+        <OpportunityDashboardSheet
+          open={open}
+          onOpenChange={onOpenChange}
+          layerMode={layerMode}
+          primaryEventId={primaryEventId}
+          onSwitchToDiscovery={() => setLayerMode("discovery")}
+        />
+      ) : null}
     </FieldSheetContext.Provider>
   );
 }

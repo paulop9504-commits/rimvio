@@ -7,14 +7,12 @@ import {
   subscribeWebPush,
 } from "@/lib/pwa/service-worker";
 import { isStandalonePwa } from "@/lib/platform/device";
-
-/** Registers SW on boot; refreshes on focus for PWA deploy updates. */
 export function ServiceWorkerBootstrap() {
   useEffect(() => {
     let reloaded = false;
 
     const onControllerChange = () => {
-      if (reloaded) {
+      if (reloaded || isStandalonePwa()) {
         return;
       }
       reloaded = true;

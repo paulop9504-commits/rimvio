@@ -129,7 +129,7 @@ export function OpportunityFieldActionBar({
 
   const onSignIn = () => {
     setBusy("login");
-    void signInWithGoogle("/?openField=1")
+    void signInWithGoogle("/")
       .catch(() => {
         toast.error(auth.loginFail, { description: auth.loginFailHint });
       })
