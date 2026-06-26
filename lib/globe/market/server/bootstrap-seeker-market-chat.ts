@@ -116,7 +116,7 @@ export async function bootstrapSeekerMarketChat(
     /** User tapped a Field discovery row — trust listing/seeking pair, skip score re-gate. */
     fromFieldDiscovery?: boolean;
   },
-): Promise<{ threadId: string; handshakeId: string }> {
+): Promise<{ threadId: string; handshakeId: string; alreadyCompleted?: boolean }> {
   let seeking: Awaited<ReturnType<typeof findMarketIntentById>> = null;
 
   const seekingIntentId = input.seekingIntentId?.trim() ?? "";
@@ -189,6 +189,7 @@ export async function bootstrapSeekerMarketChat(
   const tradeOptions = { initTradeSession, requireTradeSession };
 
   let threadId = handshake.threadId;
+  let alreadyCompleted = false;
 
   if (handshake.phase === "active" && threadId) {
     if (initTradeSession && handshake.scheduleCandidates.length === 0) {
@@ -215,7 +216,10 @@ export async function bootstrapSeekerMarketChat(
       tradeOptions,
     );
   } else if (handshake.phase === "completed") {
-    throw new Error("handshake_completed");
+    if (!threadId) {
+      throw new Error("handshake_completed");
+    }
+    alreadyCompleted = true;
   } else if (!threadId) {
     throw new Error("thread_missing");
   }
@@ -229,5 +233,5 @@ export async function bootstrapSeekerMarketChat(
     });
   }
 
-  return { threadId: threadId!, handshakeId: handshake.id };
+  return { threadId: threadId!, handshakeId: handshake.id, alreadyCompleted };
 }

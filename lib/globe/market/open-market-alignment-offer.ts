@@ -84,7 +84,7 @@ export async function openMarketChatForListing(input: {
   onBeforeNavigate?: () => void;
   skipNavigate?: boolean;
   onThreadReady?: (threadId: string) => void;
-}): Promise<string> {
+}): Promise<{ threadId: string; alreadyCompleted: boolean }> {
   const { openMarketChatRemote } = await import(
     "@/lib/globe/market/client/sync-market-intent-remote"
   );
@@ -105,7 +105,10 @@ export async function openMarketChatForListing(input: {
     input.onBeforeNavigate?.();
     input.navigate(peerRoomPath(result.threadId));
   }
-  return result.threadId;
+  return {
+    threadId: result.threadId,
+    alreadyCompleted: result.alreadyCompleted === true,
+  };
 }
 
 export async function requestMarketHandshakeForListing(input: {

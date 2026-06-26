@@ -1031,6 +1031,8 @@ export const copyEn: Copy = {
       loginRequiredBody: "Chat and scheduling need a signed-in account.",
       actionUnavailable: "Cannot connect right now. Try again shortly.",
       tradeInitFail: "Could not start scheduling. Apply Supabase SQL 13–15.",
+      handshakeAlreadyCompleted: "This match is already complete",
+      handshakeAlreadyInProgress: "Already in progress · check the Active tab",
       chatPlaceholder: "Send a message",
       quickReplyHello: "Hi there 😊",
       quickReplyInterest: "I'm interested — quick question",

@@ -105,7 +105,7 @@ export function OpportunityFieldActionBar({
     setBusy("schedule");
     try {
       const syncedSeeking = await ensureSeekingIntentSynced(seeking);
-      await openMarketChatForListing({
+      const result = await openMarketChatForListing({
         focusEventId,
         seekingIntentId: syncedSeeking.id,
         matchIntentId,
@@ -117,8 +117,12 @@ export function OpportunityFieldActionBar({
         onBeforeNavigate,
         skipNavigate: true,
       });
-      toast.success(copy.globe.marketTradeStartedToast);
-      onScheduleStarted?.();
+      if (result.alreadyCompleted) {
+        toast.message(field.handshakeAlreadyCompleted);
+      } else {
+        toast.success(copy.globe.marketTradeStartedToast);
+        onScheduleStarted?.();
+      }
     } catch (error) {
       const raw = error instanceof Error ? error.message : "open_chat_failed";
       toast.error(readMarketHandshakeUserError(raw));
@@ -141,7 +145,7 @@ export function OpportunityFieldActionBar({
   return (
     <div
       className={cn(
-        "shrink-0 border-t border-[#eef1f4] bg-white pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3",
+        "relative z-20 shrink-0 touch-manipulation border-t border-[#eef1f4] bg-white pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3",
         className,
       )}
       data-opportunity-field-action-bar
@@ -164,7 +168,7 @@ export function OpportunityFieldActionBar({
           type="button"
           disabled={busy !== null}
           onClick={() => void runChat()}
-          className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-[#e5e8eb] bg-white py-3.5 text-[16px] font-semibold text-[#191f28] active:bg-[#f8f9fb] disabled:opacity-50"
+          className="flex flex-1 touch-manipulation items-center justify-center gap-2 rounded-2xl border border-[#e5e8eb] bg-white py-3.5 text-[16px] font-semibold text-[#191f28] active:bg-[#f8f9fb] disabled:opacity-50"
         >
           {busy === "chat" ? (
             <Loader2 className="size-5 animate-spin" aria-hidden />
@@ -177,7 +181,7 @@ export function OpportunityFieldActionBar({
           type="button"
           disabled={busy !== null}
           onClick={() => void runSchedule()}
-          className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#3182f6] py-3.5 text-[16px] font-semibold text-white active:bg-[#2563eb] disabled:opacity-50"
+          className="flex flex-1 touch-manipulation items-center justify-center gap-2 rounded-2xl bg-[#3182f6] py-3.5 text-[16px] font-semibold text-white active:bg-[#2563eb] disabled:opacity-50"
         >
           {busy === "schedule" ? (
             <Loader2 className="size-5 animate-spin" aria-hidden />

@@ -45,7 +45,7 @@ export function OpportunityFieldChatBar({
     }
     setBusy(true);
     try {
-      const threadId = await openMarketChatForListing({
+      const result = await openMarketChatForListing({
         focusEventId,
         matchIntentId,
         initialMessage: trimmed,
@@ -54,7 +54,7 @@ export function OpportunityFieldChatBar({
         onBeforeNavigate,
         skipNavigate: stayOnDashboard,
       });
-      if (!threadId) {
+      if (!result.threadId) {
         toast.error(bridgeFail);
         return;
       }

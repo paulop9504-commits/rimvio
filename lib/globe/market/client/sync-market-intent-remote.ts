@@ -175,7 +175,7 @@ export async function openMarketChatRemote(input: {
   initTradeSession?: boolean;
   requireTradeSession?: boolean;
   fromFieldDiscovery?: boolean;
-}): Promise<{ threadId: string; handshakeId: string }> {
+}): Promise<{ threadId: string; handshakeId: string; alreadyCompleted?: boolean }> {
   const response = await fetch(`${resolveAppOrigin()}/api/globe/market-alignment/open-chat`, {
     method: "POST",
     credentials: "include",
@@ -193,15 +193,17 @@ export async function openMarketChatRemote(input: {
   const body = (await response.json()) as {
     threadId?: string;
     handshakeId?: string;
+    alreadyCompleted?: boolean;
     error?: string;
     message?: string;
   };
   if (!response.ok || !body.threadId) {
-    throw new Error(body.error ?? body.message ?? "open_chat_failed");
+    throw new Error(body.message ?? body.error ?? "open_chat_failed");
   }
   return {
     threadId: body.threadId,
     handshakeId: body.handshakeId ?? "",
+    alreadyCompleted: body.alreadyCompleted === true,
   };
 }
 

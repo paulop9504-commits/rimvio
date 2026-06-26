@@ -100,7 +100,7 @@ export function OpportunityDashboardSheet({
         onSwitch={() => onSwitchToDiscovery?.()}
       />
     ) : detailRow && selectedPill ? (
-      <>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <header className="flex shrink-0 items-center gap-2 border-b border-[#f2f4f6] px-3 py-3">
           <button
             type="button"
@@ -141,7 +141,7 @@ export function OpportunityDashboardSheet({
             setFocusTradesToken((value) => value + 1);
           }}
         />
-      </>
+      </div>
     ) : (
       <OpportunityDashboardBody
         loading={loading}
@@ -175,7 +175,7 @@ export function OpportunityDashboardSheet({
 
   const sheetPanelClass = cn(
     rimvioFieldDashboardSheetClass(),
-    "z-[10071]",
+    "rimvio-sheet-over-nav-panel touch-manipulation",
   );
 
   const sheetChrome = (
@@ -193,7 +193,7 @@ export function OpportunityDashboardSheet({
         <div
           role="presentation"
           aria-hidden
-          className={cn(rimvioSheetBackdropClass(), "z-[10070]")}
+          className={cn(rimvioSheetBackdropClass(), "rimvio-sheet-over-nav-backdrop")}
           onClick={() => onOpenChange(false)}
         />
         <div
@@ -221,7 +221,7 @@ export function OpportunityDashboardSheet({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className={cn(rimvioSheetBackdropClass(), "z-[10070]")}
+            className={cn(rimvioSheetBackdropClass(), "rimvio-sheet-over-nav-backdrop")}
             onClick={() => onOpenChange(false)}
           />
           <motion.div

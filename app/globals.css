@@ -442,7 +442,8 @@
   z-index: 10001;
 }
 
-body:has([data-capture-sheet]) [data-rimvio-bottom-nav-portal] {
+body:has([data-capture-sheet]) [data-rimvio-bottom-nav-portal],
+body:has([data-opportunity-dashboard-sheet]) [data-rimvio-bottom-nav-portal] {
   visibility: hidden;
   pointer-events: none;
 }
