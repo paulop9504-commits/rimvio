@@ -71,9 +71,14 @@ export function useOpportunityDashboard(input: {
   const [remoteRows, setRemoteRows] = useState<MarketIntentRecord[]>([]);
   const [pool, setPool] = useState<MarketIntentRecord[]>([]);
   const [loading, setLoading] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const [selectedContextId, setSelectedContextId] = useState<string | null>(null);
   const lastGpsRef = useRef<{ lat: number; lng: number } | null>(null);
   const lastDiscoveryGpsRef = useRef<{ lat: number; lng: number } | null>(null);
+  const loadedOnceRef = useRef(false);
+  const hadLocationRef = useRef(false);
+  const liveLocationRef = useRef(liveLocation);
+  liveLocationRef.current = liveLocation;
 
   const fieldCopy = useMemo<OpportunityFieldCopy>(
     () => ({
@@ -126,19 +131,36 @@ export function useOpportunityDashboard(input: {
 
   useEffect(() => {
     if (!input.open) {
+      loadedOnceRef.current = false;
+      hadLocationRef.current = false;
+      setHydrated(false);
+      setLoading(false);
       return;
     }
     let cancelled = false;
-    setLoading(true);
+    const isInitialLoad = !loadedOnceRef.current;
+    if (isInitialLoad) {
+      setLoading(true);
+    }
 
     void (async () => {
+      const snapshot = liveLocationRef.current;
+      const lat = snapshot?.lat ?? null;
+      const lng = snapshot?.lng ?? null;
       const [remote, discovery] = await Promise.all([
         user?.id ? fetchOwnMarketIntentsRemote() : Promise.resolve([]),
-        fetchPool(liveLocation?.lat ?? null, liveLocation?.lng ?? null),
+        fetchPool(lat, lng),
       ]);
       if (!cancelled) {
+        if (lat != null && lng != null) {
+          hadLocationRef.current = true;
+          lastGpsRef.current = { lat, lng };
+          lastDiscoveryGpsRef.current = { lat, lng };
+        }
         setRemoteRows(remote);
         setPool(discovery);
+        loadedOnceRef.current = true;
+        setHydrated(true);
         setLoading(false);
       }
     })();
@@ -146,7 +168,21 @@ export function useOpportunityDashboard(input: {
     return () => {
       cancelled = true;
     };
-  }, [fetchPool, input.open, liveLocation?.lat, liveLocation?.lng, revision, user?.id]);
+  }, [fetchPool, input.open, revision, user?.id]);
+
+  /** GPS fix after first paint — refresh in place without skeleton. */
+  useEffect(() => {
+    if (!input.open || !hydrated || liveLocation?.lat == null || liveLocation?.lng == null) {
+      return;
+    }
+    if (hadLocationRef.current) {
+      return;
+    }
+    hadLocationRef.current = true;
+    lastGpsRef.current = { lat: liveLocation.lat, lng: liveLocation.lng };
+    lastDiscoveryGpsRef.current = { lat: liveLocation.lat, lng: liveLocation.lng };
+    refresh();
+  }, [hydrated, input.open, liveLocation?.lat, liveLocation?.lng, refresh]);
 
   useEffect(() => {
     if (!input.open) {

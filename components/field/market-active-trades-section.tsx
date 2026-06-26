@@ -1,6 +1,10 @@
 "use client";
 
 import { Clock3 } from "lucide-react";
+import {
+  FIELD_DASHBOARD_CANVAS,
+  FIELD_DASHBOARD_INSET,
+} from "@/components/field/field-dashboard-layout";
 import { MarketTradeProgressCard } from "@/components/market/market-trade-progress-card";
 import { useCopy } from "@/hooks/use-copy";
 import { RIMVIO_TYPE, rimvioEmptyStateClass } from "@/lib/design/rimvio-ontology";
@@ -30,7 +34,8 @@ export function MarketActiveTradesSection({
     return (
       <div
         className={cn(
-          "flex min-h-0 flex-1 flex-col items-center justify-center px-8 py-16 text-center",
+          "flex min-h-0 flex-1 flex-col items-center justify-center px-8 py-12 text-center",
+          FIELD_DASHBOARD_CANVAS,
           className,
         )}
         data-market-active-trades-empty
@@ -50,12 +55,13 @@ export function MarketActiveTradesSection({
     return (
       <div
         className={cn(
-          "min-h-0 flex-1 overflow-y-auto px-4 py-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]",
+          "min-h-0 flex-1 overflow-y-auto pb-[max(1rem,env(safe-area-inset-bottom))] pt-2",
+          FIELD_DASHBOARD_CANVAS,
           className,
         )}
         data-market-active-trades
       >
-        <div className="space-y-3">
+        <div className={cn("space-y-2.5", FIELD_DASHBOARD_INSET)}>
           {sessions.map((session) => (
             <MarketTradeProgressCard
               key={session.handshakeId}

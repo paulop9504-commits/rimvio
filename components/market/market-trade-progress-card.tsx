@@ -314,12 +314,12 @@ export function MarketTradeProgressCard({
     <>
       <article
         className={cn(
-          "rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/[0.05]",
+          "rounded-2xl bg-white px-4 py-3.5 shadow-sm ring-1 ring-black/[0.05]",
           className,
         )}
         data-market-trade-card={session.handshakeId}
       >
-        <div className="mb-3 flex items-start justify-between gap-3">
+        <div className="mb-2.5 flex items-start justify-between gap-3">
           <span className={cn("rounded-full px-2.5 py-1 text-[11px] font-bold", badgeTone)}>
             {session.roleBadgeKo}
           </span>
@@ -331,8 +331,8 @@ export function MarketTradeProgressCard({
           </div>
         </div>
 
-        <div className="flex gap-3">
-          <div className="relative size-14 shrink-0 overflow-hidden rounded-xl bg-[#f2f4f6]">
+        <div className="flex gap-2.5">
+          <div className="relative size-[52px] shrink-0 overflow-hidden rounded-xl bg-[#f2f4f6]">
             {session.photoUrl ? (
               <MarketListingMediaRowThumb
                 photoUrl={session.photoUrl}
@@ -345,8 +345,8 @@ export function MarketTradeProgressCard({
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[16px] font-bold text-[#191f28]">{session.productTitle}</p>
-            <p className="mt-0.5 text-[15px] font-semibold text-[#191f28]">{session.priceLine}</p>
+            <p className="truncate text-[15px] font-bold text-[#191f28]">{session.productTitle}</p>
+            <p className="mt-0.5 text-[14px] font-semibold text-[#191f28]">{session.priceLine}</p>
           </div>
         </div>
 

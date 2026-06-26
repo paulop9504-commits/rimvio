@@ -2,8 +2,11 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Sparkles } from "lucide-react";
 import { OpportunityDiscoveryFloor } from "@/components/field/opportunity-discovery-floor";
+import {
+  FIELD_DASHBOARD_CANVAS,
+  FIELD_DASHBOARD_INSET,
+} from "@/components/field/field-dashboard-layout";
 import {
   OpportunityDashboardTabBar,
   type FieldDashboardTab,
@@ -79,34 +82,34 @@ export function OpportunityDashboardBody({
     >
       <header
         className={cn(
-          "shrink-0 border-b border-[#f2f4f6] bg-white px-4 pb-0 pt-1",
+          "shrink-0 border-b border-[#eef1f4] bg-white pb-0 pt-2",
+          FIELD_DASHBOARD_INSET,
           headerClassName,
         )}
       >
-        <div className="flex items-start justify-between gap-3 pb-3.5">
-          <div className="min-w-0">
-            <p className="flex items-center gap-2 text-[22px] font-bold tracking-tight text-[#191f28]">
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#3182f6]/10">
-                <Sparkles className="size-[18px] shrink-0 text-[#3182f6]" aria-hidden />
-              </span>
+        <div className="flex items-start justify-between gap-3 pb-2.5">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-[20px] font-bold leading-tight tracking-tight text-[#191f28]">
               {field.sheetTitle}
-            </p>
-            <p className="mt-1 pl-[2.75rem] text-[13px] font-medium text-[#8b95a1]">
+            </h1>
+            <p className="mt-0.5 text-[13px] leading-snug text-[#8b95a1]">
               {tab === "trades" ? field.dashboardTabTradesHint : field.dashboardTabDiscoveryHint}
             </p>
           </div>
-          {headerRight}
+          {headerRight ? (
+            <div className="flex shrink-0 items-center pt-0.5">{headerRight}</div>
+          ) : null}
         </div>
 
         <OpportunityDashboardTabBar
           value={tab}
           onChange={setTab}
           tradeCount={tradeSessions.length}
-          className="px-0 pb-4"
+          className="px-0 pb-3 pt-0"
         />
       </header>
 
-      <div className="relative min-h-0 flex-1 overflow-hidden bg-[#f2f4f6]/80">
+      <div className={cn("relative min-h-0 flex-1 overflow-hidden", FIELD_DASHBOARD_CANVAS)}>
         <AnimatePresence mode="wait" initial={false}>
           {tab === "trades" ? (
             <motion.div

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useMarketTradeGuestPing } from "@/hooks/use-market-trade-guest-ping";
 import { fetchActiveMarketTradesRemote } from "@/lib/globe/market/client/fetch-market-trades-client";
@@ -17,6 +17,7 @@ export function useActiveMarketTrades(input: { enabled: boolean }) {
   const [sessions, setSessions] = useState<MarketTradeSessionView[]>([]);
   const [resolvedPairs, setResolvedPairs] = useState<MarketHandshakeIntentPair[]>([]);
   const [loading, setLoading] = useState(false);
+  const loadedOnceRef = useRef(false);
 
   const replaceSession = useCallback((updated: MarketTradeSessionView) => {
     setSessions((prev) => {
@@ -37,16 +38,23 @@ export function useActiveMarketTrades(input: { enabled: boolean }) {
     if (!user?.id) {
       setSessions([]);
       setResolvedPairs([]);
+      loadedOnceRef.current = false;
       return;
     }
-    setLoading(true);
+    const isInitialLoad = !loadedOnceRef.current;
+    if (isInitialLoad) {
+      setLoading(true);
+    }
     try {
       const result = await fetchActiveMarketTradesRemote();
       setSessions(result.sessions);
       setResolvedPairs(result.resolvedPairs);
+      loadedOnceRef.current = true;
     } catch {
-      setSessions([]);
-      setResolvedPairs([]);
+      if (isInitialLoad) {
+        setSessions([]);
+        setResolvedPairs([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -63,6 +71,7 @@ export function useActiveMarketTrades(input: { enabled: boolean }) {
 
   useEffect(() => {
     if (!input.enabled) {
+      loadedOnceRef.current = false;
       return;
     }
     void refresh();

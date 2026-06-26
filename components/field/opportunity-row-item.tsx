@@ -30,8 +30,8 @@ function formatOpportunityListPreview(row: OpportunityRow, fallback: string): st
   return price || reason || fallback;
 }
 
-const ROW_H = "min-h-[74px]";
-const THUMB = "size-[46px] shrink-0 overflow-hidden rounded-[14px] ring-1 ring-black/[0.05]";
+const ROW_H = "min-h-[68px]";
+const THUMB = "size-[44px] shrink-0 overflow-hidden rounded-xl ring-1 ring-black/[0.05]";
 
 export function OpportunityRowItem({
   row,
@@ -86,11 +86,10 @@ export function OpportunityRowItem({
 
   return (
     <motion.li
-      layout
-      initial={{ opacity: 0, y: 4 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={false}
+      animate={{ opacity: 1 }}
       exit={{ opacity: 0, y: -4 }}
-      transition={{ duration: 0.2, ease: "easeOut" }}
+      transition={{ duration: 0.15, ease: "easeOut" }}
       className={cn("relative border-b border-[#f2f4f6] bg-white", className)}
       data-opportunity-row={row.listingId}
       data-opportunity-ownership="neighbor"
@@ -111,7 +110,7 @@ export function OpportunityRowItem({
             type="button"
             onClick={handleMainPress}
             className={cn(
-              "flex w-full items-center gap-3 px-4 py-2.5 text-left active:bg-[#f8f9fb]",
+              "flex w-full items-center gap-3 px-4 py-2 text-left active:bg-[#f8f9fb]",
               ROW_H,
             )}
           >
@@ -126,7 +125,7 @@ export function OpportunityRowItem({
 
             <div className="min-w-0 flex-1">
               <div className="flex items-start gap-2">
-                <p className="min-w-0 flex-1 truncate text-[16px] font-semibold leading-tight text-[#191f28]">
+                <p className="min-w-0 flex-1 truncate text-[15px] font-semibold leading-tight text-[#191f28]">
                   {row.title}
                 </p>
                 {timeLabel ? (
@@ -230,7 +229,7 @@ export function OpportunityRowShimmer() {
     <ul className="bg-white" aria-hidden>
       {[0, 1, 2, 3].map((key) => (
         <li key={key} className="border-b border-[#f2f4f6]">
-          <div className={cn("flex items-center gap-3 px-4 py-2.5", ROW_H)}>
+          <div className={cn("flex items-center gap-3 px-4 py-2", ROW_H)}>
             <div className={cn("animate-pulse bg-[#f2f4f6]", THUMB)} />
             <div className="min-w-0 flex-1 space-y-2">
               <div className="flex justify-between gap-2">

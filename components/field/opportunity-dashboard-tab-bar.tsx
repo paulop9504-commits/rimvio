@@ -32,11 +32,11 @@ export function OpportunityDashboardTabBar({
   ];
 
   return (
-    <div className={cn("shrink-0 px-4 pb-3.5 pt-1", className)}>
+    <div className={cn("shrink-0 pb-3 pt-0", className)}>
       <div
         role="tablist"
         aria-label={field.dashboardTabAria}
-        className="flex rounded-2xl bg-[#e8eaed]/90 p-1.5"
+        className="grid grid-cols-2 gap-1 rounded-xl bg-[#eef1f4] p-1"
       >
         {tabs.map((tab) => {
           const active = value === tab.id;
@@ -48,19 +48,19 @@ export function OpportunityDashboardTabBar({
               aria-selected={active}
               onClick={() => onChange(tab.id)}
               className={cn(
-                "relative min-w-0 flex-1 rounded-[13px] py-3 transition-colors duration-200",
+                "relative min-h-[44px] rounded-[10px] transition-colors duration-200",
                 active ? "text-[#191f28]" : "text-[#6b7684] active:opacity-80",
               )}
             >
               {active ? (
                 <motion.span
                   layoutId="field-dashboard-tab-indicator"
-                  className="absolute inset-0 rounded-[13px] bg-white shadow-[0_2px_8px_rgba(0,0,0,0.08)]"
+                  className="absolute inset-0 rounded-[10px] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
                   transition={{ type: "spring", stiffness: 440, damping: 36 }}
                 />
               ) : null}
-              <span className="relative z-[1] flex items-center justify-center gap-1.5 px-2">
-                <span className="truncate text-[15px] font-semibold tracking-tight">
+              <span className="relative z-[1] flex h-full items-center justify-center gap-1.5 px-2">
+                <span className="truncate text-[14px] font-semibold tracking-tight">
                   {tab.label}
                 </span>
                 {tab.count != null && tab.count > 0 ? (
