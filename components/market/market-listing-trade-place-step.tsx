@@ -26,6 +26,7 @@ import {
   marketAvailabilityPresetLabelKo,
 } from "@/lib/globe/market/market-availability-preset";
 import { sampleEphemeralGpsPlace } from "@/lib/globe/sample-ephemeral-gps-place";
+import { mergeDistrictLabelWithGpsCoords } from "@/lib/globe/market/resolve-market-intent-pin-anchor";
 import { resolveKoreaPlaceFromCoords } from "@/lib/globe/korea-place-from-coords";
 import { rimvioGhostCtaClass, rimvioHeroCtaClass, RIMVIO_TYPE } from "@/lib/design/rimvio-ontology";
 import { cn } from "@/lib/utils";
@@ -129,6 +130,7 @@ export function MarketTradePlaceStep({
   const [uiMode, setUiMode] = useState<UiMode>("district");
   const [metroCity, setMetroCity] = useState<string>("서울");
   const [suggestedDistrictLabel, setSuggestedDistrictLabel] = useState<string | null>(null);
+  const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number } | null>(null);
   const onChangeRef = useRef(onChange);
   const draftRef = useRef(draft);
   onChangeRef.current = onChange;
@@ -177,6 +179,7 @@ export function MarketTradePlaceStep({
       let nextMode: UiMode = "district";
 
       if (gps) {
+        setGpsCoords({ lat: gps.lat, lng: gps.lng });
         if (isListing) {
           const photoMemory = await extractMarketPhotoMemoryPlace(photoFiles);
           if (cancelled) {
@@ -215,15 +218,23 @@ export function MarketTradePlaceStep({
 
     return () => {
       cancelled = true;
+      setGpsCoords(null);
     };
   }, [draft.eventId, isListing, photoFiles, setResolvingSafe]);
 
   const pickDistrict = (row: KoreaMetroDistrict) => {
+    const place = mergeDistrictLabelWithGpsCoords({
+      districtLabel: row.label,
+      districtLat: row.lat,
+      districtLng: row.lng,
+      gpsLat: gpsCoords?.lat,
+      gpsLng: gpsCoords?.lng,
+    });
     onChange(
       applyTradePlace(draft, {
-        placeLabel: row.label,
-        lat: row.lat,
-        lng: row.lng,
+        placeLabel: place.placeLabel,
+        lat: place.lat,
+        lng: place.lng,
       }),
     );
     setUiMode("options");

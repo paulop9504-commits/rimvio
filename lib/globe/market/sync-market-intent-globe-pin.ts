@@ -2,9 +2,9 @@
 
 import { findEventCandidate } from "@/lib/events/event-store";
 import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
+import { resolveMarketIntentPinAnchor } from "@/lib/globe/market/resolve-market-intent-pin-anchor";
 import type { PersonalGlobePin } from "@/lib/globe/personal-globe-pin-types";
 import { upsertPersonalGlobePin } from "@/lib/globe/personal-globe-pin-store";
-import { sampleEphemeralGpsPlace } from "@/lib/globe/sample-ephemeral-gps-place";
 import { commitEventUpsert } from "@/lib/source-of-truth/commit-truth";
 
 export type MarketIntentGlobePinAnchor = {
@@ -14,40 +14,17 @@ export type MarketIntentGlobePinAnchor = {
   gpsSampled: boolean;
 };
 
-function hasTradeAnchor(record: MarketIntentRecord): boolean {
-  return (
-    Number.isFinite(record.anchorLat) &&
-    Number.isFinite(record.anchorLng) &&
-    record.anchorLat !== 0 &&
-    record.anchorLng !== 0 &&
-    Boolean(record.placeLabel?.trim())
-  );
-}
-
-/** @중고 confirm — trade anchor → grey market pin (GPS only if unset). */
+/** @중고 confirm — pin at live GPS; place label stays chosen 구 when set. */
 export async function syncMarketIntentGlobePin(
   record: MarketIntentRecord,
 ): Promise<MarketIntentGlobePinAnchor> {
-  let lat = record.anchorLat;
-  let lng = record.anchorLng;
-  let placeLabel = record.placeLabel?.trim() || "";
-  let gpsSampled = false;
+  const anchor = await resolveMarketIntentPinAnchor({
+    placeLabel: record.placeLabel,
+    anchorLat: record.anchorLat,
+    anchorLng: record.anchorLng,
+  });
 
-  if (!hasTradeAnchor(record)) {
-    const gps = await sampleEphemeralGpsPlace();
-    gpsSampled = Boolean(gps);
-    lat =
-      gps?.lat ??
-      (Number.isFinite(record.anchorLat) && record.anchorLat !== 0
-        ? record.anchorLat
-        : 37.5665);
-    lng =
-      gps?.lng ??
-      (Number.isFinite(record.anchorLng) && record.anchorLng !== 0
-        ? record.anchorLng
-        : 126.978);
-    placeLabel = gps?.placeLabel?.trim() || record.placeLabel?.trim() || "근처";
-  }
+  const { lat, lng, placeLabel, gpsSampled } = anchor;
 
   const event = findEventCandidate(record.eventId);
   if (event) {

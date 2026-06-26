@@ -1,5 +1,8 @@
 import { findEventCandidate } from "@/lib/events/event-store";
 import { findPersonalGlobePinByEventId } from "@/lib/globe/personal-globe-pin-store";
+import { isCoordPlaceLabel } from "@/lib/globe/market/format-market-place-label";
+import { resolveKoreaPlaceFromCoords } from "@/lib/globe/korea-place-from-coords";
+import { matchKoreaMetroDistrict } from "@/lib/globe/korea-metro-districts";
 import { formatTrendHourBucketLabel } from "@/lib/globe/trend-bridge/analysis/normalize-capture-time";
 import { normalizeCaptureTimeAnchor } from "@/lib/globe/trend-bridge/analysis/normalize-capture-time";
 import { pickPulseMemoryCandidate } from "@/lib/globe/trend-bridge/pick-pulse-memory-candidate";
@@ -74,6 +77,15 @@ export function prefillMarketIntentDraft(input: {
     anchorLat = input.liveLat;
     anchorLng = input.liveLng;
     sources.push("gps");
+    if (!placeLabel || isCoordPlaceLabel(placeLabel)) {
+      const resolved = resolveKoreaPlaceFromCoords(input.liveLat, input.liveLng);
+      const metro = matchKoreaMetroDistrict(resolved.label);
+      if (metro) {
+        placeLabel = metro.label;
+      } else if (!placeLabel || isCoordPlaceLabel(placeLabel)) {
+        placeLabel = resolved.label;
+      }
+    }
   }
 
   const memory =

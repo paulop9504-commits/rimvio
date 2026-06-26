@@ -12,6 +12,7 @@ import { RIMVIO_TYPE, rimvioGhostCtaClass } from "@/lib/design/rimvio-ontology";
 import { marketCategoryLabelKo } from "@/lib/globe/market/market-category-registry";
 import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
 import { isMarketIntentPublishedExternal } from "@/lib/globe/market/market-intent-detail";
+import { formatMarketPlaceLabel } from "@/lib/globe/market/format-market-place-label";
 import { publishMarketIntentExternal } from "@/lib/globe/market/publish-market-intent-external";
 import { cn } from "@/lib/utils";
 
@@ -96,7 +97,9 @@ function MarketManageRow({
           </p>
           <p className="mt-1 flex items-center gap-1 text-[12px] text-muted-foreground">
             <MapPin className="size-3.5 shrink-0 text-primary" aria-hidden />
-            <span className="truncate">{record.placeLabel || copy.globe.marketIntentPrefillHint}</span>
+            <span className="truncate">
+              {formatMarketPlaceLabel(record.placeLabel) || copy.globe.marketIntentPrefillHint}
+            </span>
           </p>
         </div>
       </div>
