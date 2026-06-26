@@ -56,6 +56,7 @@ export async function ensureBridgeLinkBeforePublish(eventId: string): Promise<bo
       !canReadBridgeExperience({
         viewerUserId: viewerId,
         participants: state.participants,
+        hostUserId: state.bridge.hostUserId,
       })
     ) {
       return false;

@@ -7,6 +7,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { formatMarketPriceLine } from "@/lib/globe/market/format-market-price-line";
 import type { RegionalProfile } from "@/lib/preferences/regional-profile";
 import { resolveRegionalProfile } from "@/lib/preferences/regional-profile";
+
+export type HandshakeOfferCopy = {
   listingPendingHeadline: (title: string, place: string) => string;
   listingPendingBody: (category: string, hint: string) => string;
   listingPendingCta: string;
@@ -22,7 +24,7 @@ export async function buildHandshakeOfferForViewer(input: {
   copy: HandshakeOfferCopy;
   regionalProfile?: RegionalProfile;
 }): Promise<MarketHandshakeOffer | null> {
-  const profile = input.regionalProfile ?? resolveRegionalProfile("KR");
+  const regionalProfile = input.regionalProfile ?? resolveRegionalProfile("KR");
   const { handshake, viewerUserId } = input;
   const isListing = viewerUserId === handshake.listingUserId;
   const isSeeking = viewerUserId === handshake.seekingUserId;
@@ -45,12 +47,12 @@ export async function buildHandshakeOfferForViewer(input: {
   const matchIntent = isListing ? seekingIntent : listingIntent;
   const selfIntent = isListing ? listingIntent : seekingIntent;
   const otherUserId = isListing ? handshake.seekingUserId : handshake.listingUserId;
-  const profile = await fetchPeerPublicProfileByUserId(input.supabase, otherUserId);
+  const peerProfile = await fetchPeerPublicProfileByUserId(input.supabase, otherUserId);
   const category = marketCategoryLabelKo(listingIntent.categoryId);
   const priceLine = formatMarketPriceLine(
     listingIntent.priceMinKrw,
     listingIntent.priceMaxKrw,
-    profile,
+    regionalProfile,
   );
   const hint = handshake.priorityHint.trim();
 
@@ -76,7 +78,7 @@ export async function buildHandshakeOfferForViewer(input: {
       alignmentScore: handshake.alignmentScore ?? undefined,
       priorityHintKo: hint || undefined,
       matchUserId: handshake.seekingUserId,
-      matchDisplayName: profile?.displayName ?? profile?.rimvioId ?? null,
+      matchDisplayName: peerProfile?.displayName ?? peerProfile?.rimvioId ?? null,
       matchIntentServerId: matchIntent.id,
       selfIntentServerId: selfIntent.id,
       handshakeId: handshake.id,
@@ -108,7 +110,7 @@ export async function buildHandshakeOfferForViewer(input: {
       alignmentScore: handshake.alignmentScore ?? undefined,
       priorityHintKo: hint || undefined,
       matchUserId: handshake.listingUserId,
-      matchDisplayName: profile?.displayName ?? profile?.rimvioId ?? null,
+      matchDisplayName: peerProfile?.displayName ?? peerProfile?.rimvioId ?? null,
       matchIntentServerId: matchIntent.id,
       selfIntentServerId: selfIntent.id,
       handshakeId: handshake.id,

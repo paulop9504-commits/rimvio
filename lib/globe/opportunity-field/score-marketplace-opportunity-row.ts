@@ -14,6 +14,7 @@ import type {
 } from "@/lib/globe/opportunity-field/types";
 
 import { formatMarketPriceLine } from "@/lib/globe/market/format-market-price-line";
+import { pickMarketListingThumbUrls } from "@/lib/globe/market/market-listing-media";
 import type { RegionalProfile } from "@/lib/preferences/regional-profile";
 import { resolveRegionalProfile } from "@/lib/preferences/regional-profile";
 
@@ -86,11 +87,13 @@ export function scoreMarketplaceOpportunityRow(input: {
     input.listing.title.trim() ||
     "매물";
 
+  const thumbUrls = pickMarketListingThumbUrls(input.listing.detail);
+
   return {
     listingId: input.listing.id,
     listingEventId: input.listing.eventId,
-    photoUrl: input.listing.detail.photoUrls?.[0]?.trim() || null,
-    videoUrl: input.listing.detail.videoUrls?.[0]?.trim() || null,
+    photoUrl: thumbUrls.photoUrl,
+    videoUrl: thumbUrls.videoUrl,
     title,
     price,
     priceLine,

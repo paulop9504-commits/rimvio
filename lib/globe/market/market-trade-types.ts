@@ -55,6 +55,7 @@ export type MarketTradeSessionRecord = {
   productTitle: string;
   priceLine: string;
   photoUrl: string | null;
+  videoUrl: string | null;
   updatedAtIso: string;
 };
 

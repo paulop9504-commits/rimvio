@@ -102,37 +102,42 @@ export async function attachMediaSpacetime(input: {
       storeFile = input.file;
     }
   } else if (context.mediaKind === "video") {
-    const durationSec = await readVideoDurationSec(input.file);
-    const willTrim =
-      durationSec != null &&
-      durationSec > SHARE_VIDEO_MAX_DURATION_SEC + 0.5;
-    if (willTrim) {
-      input.onFilePrepare?.("2분까지만 넣을게요 · 준비 중…");
-    }
-    storeFile = await prepareShareVideoFile({
-      file: input.file,
-      onProgress: (progress) => {
-        if (progress.phase === "loading") {
+    try {
+      const durationSec = await readVideoDurationSec(input.file);
+      const willTrim =
+        durationSec != null &&
+        durationSec > SHARE_VIDEO_MAX_DURATION_SEC + 0.5;
+      if (willTrim) {
+        input.onFilePrepare?.("2분까지만 넣을게요 · 준비 중…");
+      }
+      storeFile = await prepareShareVideoFile({
+        file: input.file,
+        onProgress: (progress) => {
+          if (progress.phase === "loading") {
+            input.onFilePrepare?.(
+              willTrim ? "2분까지만 넣을게요 · 준비 중…" : "동영상 준비 중…",
+            );
+            return;
+          }
+          const pct =
+            progress.ratio != null ? Math.round(progress.ratio * 100) : null;
           input.onFilePrepare?.(
-            willTrim ? "2분까지만 넣을게요 · 준비 중…" : "동영상 준비 중…",
+            pct != null
+              ? willTrim
+                ? `2분으로 맞추는 중… ${pct}%`
+                : `동영상 압축 중… ${pct}%`
+              : willTrim
+                ? "2분으로 맞추는 중…"
+                : "동영상 압축 중…",
           );
-          return;
-        }
-        const pct =
-          progress.ratio != null ? Math.round(progress.ratio * 100) : null;
-        input.onFilePrepare?.(
-          pct != null
-            ? willTrim
-              ? `2분으로 맞추는 중… ${pct}%`
-              : `동영상 압축 중… ${pct}%`
-            : willTrim
-              ? "2분으로 맞추는 중…"
-              : "동영상 압축 중…",
-        );
-      },
-    });
-    if (storeFile.name && storeFile.name !== context.fileName) {
-      context.fileName = storeFile.name;
+        },
+      });
+      if (storeFile.name && storeFile.name !== context.fileName) {
+        context.fileName = storeFile.name;
+      }
+    } catch (caught) {
+      console.warn("[attach-media-spacetime] video prepare fallback", caught);
+      storeFile = input.file;
     }
   }
 

@@ -230,6 +230,7 @@ export type MarketHandshakeRoomState = {
     listingEventId: string;
     photoCount: number;
     photoUrls: string[];
+    videoUrls?: string[];
     memoryPlaceLabel: string | null;
     memoryPreview: string | null;
     experienceTags: string[];

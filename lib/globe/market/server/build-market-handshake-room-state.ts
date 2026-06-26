@@ -11,6 +11,8 @@ import { readMarketMemoryRecord } from "@/lib/globe/market/market-intent-detail"
 import { formatMarketPriceLine } from "@/lib/globe/market/format-market-price-line";
 import type { RegionalProfile } from "@/lib/preferences/regional-profile";
 import { resolveRegionalProfile } from "@/lib/preferences/regional-profile";
+
+export type MarketHandshakeRoomPayload = {
   id: string;
   phase: string;
   threadId: string | null;
@@ -34,6 +36,7 @@ import { resolveRegionalProfile } from "@/lib/preferences/regional-profile";
     listingEventId: string;
     photoCount: number;
     photoUrls: string[];
+    videoUrls?: string[];
     memoryPlaceLabel: string | null;
     memoryPreview: string | null;
     experienceTags: string[];
@@ -132,6 +135,7 @@ export function buildMarketHandshakeRoomPayload(input: {
       listingEventId: listingIntent.eventId,
       photoCount: listingIntent.detail.photoCount,
       photoUrls: listingIntent.detail.photoUrls ?? [],
+      videoUrls: listingIntent.detail.videoUrls ?? [],
       memoryPlaceLabel: listingIntent.detail.memoryPlaceLabel?.trim() || null,
       memoryPreview: formatMarketMemoryPreview(listingIntent.detail, "listing"),
       experienceTags: listingMemory.experienceTags,

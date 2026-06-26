@@ -98,6 +98,7 @@ export async function ensureBridgeContextTalk(
     !canReadBridgeExperience({
       viewerUserId: userId,
       participants: state.participants,
+      hostUserId: state.bridge.hostUserId,
     })
   ) {
     throw new Error("forbidden");

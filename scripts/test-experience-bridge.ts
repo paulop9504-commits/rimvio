@@ -148,4 +148,12 @@ assert.equal(declineState.participants[1]?.status, "declined");
 
 assert.ok(buildHostParticipant({ hostUserId: "user-a", displayName: "민수" }).role === "host");
 
+assert.ok(
+  canReadBridgeExperience({
+    viewerUserId: "user-a",
+    participants: [],
+    hostUserId: "user-a",
+  }),
+);
+
 console.log("test-experience-bridge: ok");

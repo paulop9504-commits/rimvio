@@ -334,7 +334,10 @@ export function MarketTradeProgressCard({
         <div className="flex gap-3">
           <div className="relative size-14 shrink-0 overflow-hidden rounded-xl bg-[#f2f4f6]">
             {session.photoUrl ? (
-              <MarketListingMediaRowThumb photoUrl={session.photoUrl} videoUrl={null} />
+              <MarketListingMediaRowThumb
+                photoUrl={session.photoUrl}
+                videoUrl={session.videoUrl}
+              />
             ) : (
               <div className="flex size-full items-center justify-center text-[#b0b8c1]">
                 <ImageIcon className="size-6" aria-hidden />

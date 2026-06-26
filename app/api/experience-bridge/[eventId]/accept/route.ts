@@ -59,6 +59,7 @@ export async function POST(_request: NextRequest, context: RouteContext) {
       canRead: canReadBridgeExperience({
         viewerUserId: userId,
         participants: next.participants,
+        hostUserId: next.bridge.hostUserId,
       }),
     });
   } catch (error) {

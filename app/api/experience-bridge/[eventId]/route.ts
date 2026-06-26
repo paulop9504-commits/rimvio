@@ -71,8 +71,14 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       return NextResponse.json({ state: null, timeline: [] });
     }
 
-    if (!canReadBridgeExperience({ viewerUserId: userId, participants: state.participants })) {
-      return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+    if (
+      !canReadBridgeExperience({
+        viewerUserId: userId,
+        participants: state.participants,
+        hostUserId: state.bridge.hostUserId,
+      })
+    ) {
+      return NextResponse.json({ state: null, timeline: [] });
     }
 
     let sharedPins: Awaited<ReturnType<typeof listSharedGlobePinsForThread>> = [];

@@ -23,7 +23,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { formatMarketPriceLine } from "@/lib/globe/market/format-market-price-line";
 import { getServerRegionalProfile } from "@/lib/preferences/server-regional-profile";
-import type { RegionalProfile } from "@/lib/preferences/regional-profile";
+
+export async function acceptListingMarketHandshake(
   supabase: SupabaseClient,
   userId: string,
   handshakeId: string,

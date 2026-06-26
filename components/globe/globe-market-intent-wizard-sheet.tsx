@@ -26,6 +26,7 @@ import {
   MARKET_LISTING_MEDIA_ACCEPT,
   MARKET_LISTING_VIDEO_MAX_DURATION_SEC,
   mergeMarketListingMediaFiles,
+  orderMarketListingMediaFiles,
   validateMarketListingMediaPick,
 } from "@/lib/globe/market/market-listing-media";
 import { readVideoDurationSec } from "@/lib/media/share-video-compress/read-video-duration-sec";
@@ -448,7 +449,9 @@ export function GlobeMarketIntentWizardSheet({
         break;
       }
     }
-    const next = mergeMarketListingMediaFiles(photoFiles, accepted);
+    const next = orderMarketListingMediaFiles(
+      mergeMarketListingMediaFiles(photoFiles, accepted),
+    );
     setPhotoFiles(next);
     setPhotoPreviews((prev) => {
       for (const url of prev) {
@@ -635,12 +638,24 @@ export function GlobeMarketIntentWizardSheet({
                   </p>
                   {!isSeeking && photoPreviews[0] ? (
                     <div className="mt-3 overflow-hidden rounded-2xl bg-muted/40">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={photoPreviews[0]}
-                        alt=""
-                        className="max-h-36 w-full object-cover"
-                      />
+                      {photoFiles[0] && isMarketListingVideoFile(photoFiles[0]!) ? (
+                        <video
+                          src={photoPreviews[0]}
+                          muted
+                          playsInline
+                          autoPlay
+                          loop
+                          preload="metadata"
+                          className="max-h-36 w-full object-cover"
+                        />
+                      ) : (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={photoPreviews[0]}
+                          alt=""
+                          className="max-h-36 w-full object-cover"
+                        />
+                      )}
                     </div>
                   ) : (
                     <div className="mt-4 rounded-2xl bg-muted/40 p-3">

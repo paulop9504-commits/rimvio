@@ -18,7 +18,7 @@ export function MarketHandshakeProductStrip({
   className,
 }: MarketHandshakeProductStripProps) {
   const { product } = handshake;
-  const { heroUrl } = useMarketHandshakeProductPhotos(handshake);
+  const { heroUrl, heroVideoUrl } = useMarketHandshakeProductPhotos(handshake);
   const metaParts = [product.priceLine, product.placeLabel].filter(Boolean);
 
   return (
@@ -30,7 +30,17 @@ export function MarketHandshakeProductStrip({
       data-market-handshake-product
     >
       <div className="relative size-10 shrink-0 overflow-hidden rounded-lg bg-muted/60 ring-1 ring-black/[0.05]">
-        {heroUrl ? (
+        {heroVideoUrl ? (
+          <video
+            src={heroVideoUrl}
+            muted
+            playsInline
+            autoPlay
+            loop
+            preload="metadata"
+            className="size-full object-cover"
+          />
+        ) : heroUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={heroUrl} alt="" className="size-full object-cover" loading="lazy" />
         ) : (

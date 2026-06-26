@@ -9,12 +9,21 @@ export function isActiveBridgeParticipant(
 export function canReadBridgeExperience(input: {
   viewerUserId: string;
   participants: readonly ExperienceBridgeParticipant[];
+  /** Bridge row host — covers missing participant rows after bootstrap. */
+  hostUserId?: string | null;
 }): boolean {
-  const viewer = input.participants.find((row) => row.userId === input.viewerUserId);
+  const viewer = input.viewerUserId.trim();
   if (!viewer) {
     return false;
   }
-  return viewer.role === "host" || viewer.status === "accepted";
+  if (input.hostUserId?.trim() === viewer) {
+    return true;
+  }
+  const row = input.participants.find((participant) => participant.userId === viewer);
+  if (!row) {
+    return false;
+  }
+  return row.role === "host" || row.status === "accepted";
 }
 
 export function canEditBridgeMedia(input: {

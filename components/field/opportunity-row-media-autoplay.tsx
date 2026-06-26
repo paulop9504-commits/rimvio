@@ -13,19 +13,20 @@ function resolveMediaItems(input: {
   videoUrl: string | null;
   detail: { photoUrls?: string[]; videoUrls?: string[] };
 }): MarketListingMediaItem[] {
-  const fromDetail = buildMarketListingMediaItems(input.detail);
-  if (fromDetail.length > 0) {
-    return fromDetail;
+  const items = buildMarketListingMediaItems(input.detail);
+  if (items.length > 0) {
+    return items;
   }
+  const merged: MarketListingMediaItem[] = [];
   const video = input.videoUrl?.trim();
   if (video) {
-    return [{ kind: "video", url: video }];
+    merged.push({ kind: "video", url: video });
   }
   const photo = input.photoUrl?.trim();
   if (photo) {
-    return [{ kind: "photo", url: photo }];
+    merged.push({ kind: "photo", url: photo });
   }
-  return [];
+  return merged;
 }
 
 export function OpportunityRowMediaAutoplay({

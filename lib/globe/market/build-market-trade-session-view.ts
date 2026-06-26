@@ -4,6 +4,7 @@ import {
   computeMarketTradeHostEta,
 } from "@/lib/globe/market/compute-market-trade-host-eta";
 import { formatMarketPriceLine } from "@/lib/globe/market/format-market-price-line";
+import { pickMarketListingThumbUrls } from "@/lib/globe/market/market-listing-media";
 import { readMarketAvailabilityPreset } from "@/lib/globe/market/market-availability-preset";
 import { MARKET_TRADE_CANCEL_REASONS } from "@/lib/globe/market/market-trade-cancel-reasons";
 import type { MarketTradeSessionRecord, MarketTradeSessionView } from "@/lib/globe/market/market-trade-types";
@@ -120,7 +121,8 @@ export function buildMarketTradeSessionRecord(input: {
     return null;
   }
 
-  const photoUrl = listing.detail.photoUrls?.[0] ?? null;
+  const { photoUrl: listingPhotoUrl, videoUrl: listingVideoUrl } =
+    pickMarketListingThumbUrls(listing.detail);
 
   return {
     handshakeId: handshake.id,
@@ -153,7 +155,8 @@ export function buildMarketTradeSessionRecord(input: {
       profile,
       priceOpen,
     ),
-    photoUrl,
+    photoUrl: listingPhotoUrl,
+    videoUrl: listingVideoUrl,
     updatedAtIso: handshake.updatedAtIso,
   };
 }

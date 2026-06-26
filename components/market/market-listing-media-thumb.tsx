@@ -141,12 +141,6 @@ export function MarketListingMediaRowThumb({
   videoUrl: string | null;
   className?: string;
 }) {
-  if (photoUrl) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img src={photoUrl} alt="" className={cn("size-full object-cover", className)} loading="lazy" />
-    );
-  }
   if (videoUrl) {
     return (
       <div className={cn("relative size-full", className)}>
@@ -154,13 +148,18 @@ export function MarketListingMediaRowThumb({
           src={videoUrl}
           muted
           playsInline
+          autoPlay
+          loop
           preload="metadata"
           className="size-full object-cover"
         />
-        <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20">
-          <Play className="size-5 text-white drop-shadow" aria-hidden />
-        </span>
       </div>
+    );
+  }
+  if (photoUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={photoUrl} alt="" className={cn("size-full object-cover", className)} loading="lazy" />
     );
   }
   return null;

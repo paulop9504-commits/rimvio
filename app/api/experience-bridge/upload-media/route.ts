@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
       !canReadBridgeExperience({
         viewerUserId: userId,
         participants: bridgeState.participants,
+        hostUserId: bridgeState.bridge.hostUserId,
       })
     ) {
       return NextResponse.json({ error: "Forbidden." }, { status: 403 });

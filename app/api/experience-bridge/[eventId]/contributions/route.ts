@@ -73,11 +73,15 @@ export async function GET(request: NextRequest, context: RouteContext) {
     if (!state) {
       return NextResponse.json({ contributions: [], serverTime: new Date().toISOString() });
     }
-    if (!canReadBridgeExperience({ viewerUserId: userId, participants: state.participants })) {
-      return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+    if (
+      !canReadBridgeExperience({
+        viewerUserId: userId,
+        participants: state.participants,
+        hostUserId: state.bridge.hostUserId,
+      })
+    ) {
+      return NextResponse.json({ contributions: [], serverTime: new Date().toISOString() });
     }
-
-    const db = resolveServiceRoleOrUserClient(supabase);
     const contributions = await listBridgeContributions(db, key, { sinceIso: since });
     const serverTime = new Date().toISOString();
 
@@ -135,7 +139,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if (!state) {
       return NextResponse.json({ error: "Bridge not found." }, { status: 404 });
     }
-    if (!canReadBridgeExperience({ viewerUserId: userId, participants: state.participants })) {
+    if (
+      !canReadBridgeExperience({
+        viewerUserId: userId,
+        participants: state.participants,
+        hostUserId: state.bridge.hostUserId,
+      })
+    ) {
       return NextResponse.json({ error: "Forbidden." }, { status: 403 });
     }
 
@@ -202,7 +212,13 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     if (!state) {
       return NextResponse.json({ error: "Bridge not found." }, { status: 404 });
     }
-    if (!canReadBridgeExperience({ viewerUserId: userId, participants: state.participants })) {
+    if (
+      !canReadBridgeExperience({
+        viewerUserId: userId,
+        participants: state.participants,
+        hostUserId: state.bridge.hostUserId,
+      })
+    ) {
       return NextResponse.json({ error: "Forbidden." }, { status: 403 });
     }
 

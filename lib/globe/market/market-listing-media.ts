@@ -125,3 +125,30 @@ export function buildMarketListingMediaItems(detail: {
   }
   return items;
 }
+
+/** Videos always lead when both photo and video exist. */
+export function pickPrimaryMarketListingMedia(detail: {
+  photoUrls?: string[];
+  videoUrls?: string[];
+}): MarketListingMediaItem | null {
+  return buildMarketListingMediaItems(detail)[0] ?? null;
+}
+
+export function pickMarketListingThumbUrls(detail: {
+  photoUrls?: string[];
+  videoUrls?: string[];
+}): { photoUrl: string | null; videoUrl: string | null } {
+  const items = buildMarketListingMediaItems(detail);
+  return {
+    videoUrl: items.find((row) => row.kind === "video")?.url ?? null,
+    photoUrl: items.find((row) => row.kind === "photo")?.url ?? null,
+  };
+}
+
+/** Normalize local picks — videos first for preview and upload order. */
+export function orderMarketListingMediaFiles(files: readonly File[]): File[] {
+  return [
+    ...files.filter(isMarketListingVideoFile),
+    ...files.filter(isMarketListingPhotoFile),
+  ];
+}
