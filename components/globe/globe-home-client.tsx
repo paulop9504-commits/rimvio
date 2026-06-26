@@ -137,6 +137,7 @@ import { copy } from "@/lib/copy/human-ko";
 import { resolveRimvioHonorific } from "@/lib/copy/rimvio-honorific";
 import { getTrendBridgeFeature } from "@/lib/globe/trend-bridge/trend-bridge-feature-registry";
 import { findMarketIntentByEventId } from "@/lib/globe/market/market-alignment-store";
+import { MarketAlignmentSurface } from "@/components/market/market-alignment-surface";
 import { GlobeMarketManageSheet } from "@/components/market/globe-market-manage-sheet";
 import { GlobeMarketIntentWizardSheet } from "@/components/globe/globe-market-intent-wizard-sheet";
 import {
