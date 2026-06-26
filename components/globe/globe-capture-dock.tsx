@@ -35,6 +35,7 @@ export type GlobeCaptureDockProps = {
       toastLine: string;
       needsPlaceVerify?: boolean;
       ok?: boolean;
+      undoPayload?: import("@/lib/globe/globe-photo-ingest-undo").GlobePhotoIngestUndoPayload | null;
     }) => void;
   };
   placeVerifyEventId: string | null;

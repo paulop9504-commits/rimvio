@@ -37,6 +37,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { GlobeContextSendRail } from "@/components/globe/globe-context-send-rail";
 import { formatPinDateLabel } from "@/lib/globe/format-pin-date-label";
 import { resolveGlobeContextPlaceLabel } from "@/lib/globe/globe-context-card-coords";
+import { buildPhotoIngestUndoPayload } from "@/lib/globe/globe-photo-ingest-undo";
+import type { GlobePhotoIngestUndoPayload } from "@/lib/globe/globe-photo-ingest-undo";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 
 export type GlobePhotoPlaceWalkthroughProps = {
@@ -60,6 +62,7 @@ export type GlobePhotoPlaceWalkthroughProps = {
     toastLine: string;
     needsPlaceVerify?: boolean;
     ok?: boolean;
+    undoPayload?: GlobePhotoIngestUndoPayload | null;
   }) => void;
 };
 
@@ -178,6 +181,7 @@ export function GlobePhotoPlaceWalkthrough({
     eventId: string;
     toastLine: string;
     needsPlaceVerify: boolean;
+    undoPayload?: GlobePhotoIngestUndoPayload | null;
   } | null>(null);
   const [workingDraft, setWorkingDraft] = useState<GlobePhotoIngestDraft | null>(null);
   const [dateInput, setDateInput] = useState("");
@@ -224,6 +228,7 @@ export function GlobePhotoPlaceWalkthrough({
       toastLine: committedShare.toastLine,
       needsPlaceVerify: committedShare.needsPlaceVerify,
       ok: true,
+      undoPayload: committedShare.undoPayload ?? null,
     });
     onDismiss();
   }, [committedShare, onConfirmed, onDismiss]);
@@ -233,6 +238,7 @@ export function GlobePhotoPlaceWalkthrough({
       eventId: string;
       toastLine: string;
       needsPlaceVerify: boolean;
+      undoPayload?: GlobePhotoIngestUndoPayload | null;
     }) => {
       if (!configured || !user?.id) {
         onConfirmed?.({
@@ -240,6 +246,7 @@ export function GlobePhotoPlaceWalkthrough({
           toastLine: summary.toastLine,
           needsPlaceVerify: summary.needsPlaceVerify,
           ok: true,
+          undoPayload: summary.undoPayload ?? null,
         });
         onDismiss();
         return;
@@ -373,6 +380,7 @@ export function GlobePhotoPlaceWalkthrough({
         eventId: summary.lastEventId,
         toastLine: summary.toastLine,
         needsPlaceVerify,
+        undoPayload: buildPhotoIngestUndoPayload(summary.outcomes ?? []),
       });
     },
     [attachTarget, goToSharePeopleStep, onCommitFileIndexProgress, onCommitProgress, onConfirmed, onDismiss],

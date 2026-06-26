@@ -118,7 +118,7 @@ function resolveTimeRecallTrigger(
     id: `time-${best.eventId}`,
     kind: "time_recall",
     eventId: best.eventId,
-    emoji: "✈️",
+    emoji: "📅",
     title: `${yearsAgoLabel(best.year, nowYear)}, ${best.title}`,
     body: copy.globe.contextTriggerBodyTimeRecall(place),
     ctaLabel: copy.globe.contextTriggerCtaExploreMemory,

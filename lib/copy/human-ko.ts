@@ -719,6 +719,13 @@ export const copy = {
     photoIngestDropHint: "사진·동영상을 여기에 놓으면 흔적으로 남겨요",
     photoIngestPartialSuccess: (ok: number, failed: number) =>
       `${ok}개 남겼어요 · ${failed}개는 다시 시도해 주세요`,
+    photoIngestUndoTitle: "방금 남긴 흔적",
+    photoIngestUndoAction: "되돌리기",
+    photoIngestUndone: "방금 남긴 흔적을 되돌렸어요",
+    memoryRecallEyebrow: "그때 거기",
+    resumeContextEyebrow: "이어하기",
+    resumeContextCta: "이어서",
+    resumeContextDismiss: "닫기",
     ingestDefaultPlaceholder: "장소 · 메모 · @중고 · @길찾기",
     ingestDiscoveryPlaceholder: "이 근처 · @중고 둘러보기 · @길찾기",
     ingestDiscoveryNoTrace: "밖 지구에서는 흔적을 남길 수 없어요",

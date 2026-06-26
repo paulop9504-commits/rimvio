@@ -103,6 +103,7 @@ export type GlobeBulkMediaIngestSummary = {
   lastSuggestedPlaceName: string | null;
   /** Set when every file failed — surfaces the last caught error in UI. */
   lastError?: string | null;
+  outcomes?: GlobeContextMediaIngestResult[];
 };
 
 function captureKindFromContext(context: MediaSpacetimeContext): FeedCaptureFragment["kind"] {

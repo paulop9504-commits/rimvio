@@ -706,6 +706,13 @@ export const copyEn: Copy = {
     photoIngestDropHint: "Drop photos or video here to save a trace",
     photoIngestPartialSuccess: (ok: number, failed: number) =>
       `Saved ${ok} · retry ${failed}`,
+    photoIngestUndoTitle: "Just saved",
+    photoIngestUndoAction: "Undo",
+    photoIngestUndone: "Reverted your last trace",
+    memoryRecallEyebrow: "That moment",
+    resumeContextEyebrow: "Pick up",
+    resumeContextCta: "Continue",
+    resumeContextDismiss: "Dismiss",
     ingestDefaultPlaceholder: "Place · memo · @market · @navigate",
     ingestDiscoveryPlaceholder: "Nearby · browse @market · @navigate",
     ingestDiscoveryNoTrace: "You can't leave traces on the outer globe",

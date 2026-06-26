@@ -2,6 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { RimvioGlobeHubClient } from "@/components/experience/rimvio-globe-hub-client";
@@ -13,6 +14,8 @@ import { GlobeUtilityMenu } from "@/components/globe/globe-utility-menu";
 import { GlobeContextMapVideoStage } from "@/components/globe/globe-context-map-video-stage";
 import { GlobeLodgingFocusStage } from "@/components/globe/globe-lodging-focus-stage";
 import { GlobeCaptureDock } from "@/components/globe/globe-capture-dock";
+import { GlobeHomeMemoryDock } from "@/components/globe/globe-home-memory-dock";
+import { GlobePhotoIngestUndoBar } from "@/components/globe/globe-photo-ingest-undo-bar";
 import { GlobeTrendBridgePulseChip } from "@/components/globe/globe-trend-bridge-pulse-chip";
 import { GlobeTrendBridgeLayer } from "@/components/globe/globe-trend-bridge-layer";
 import type { GlobeContextIngestBarHandle } from "@/components/globe/globe-context-ingest-bar";
@@ -118,11 +121,22 @@ import {
 } from "@/lib/globe/photo-ingest-file-progress";
 import { retryGlobePhotoIngestFile } from "@/lib/globe/retry-globe-photo-ingest-file";
 import { validateIngestMediaFiles } from "@/lib/globe/validate-ingest-media-files";
+import { resolveContextTriggerOpenOptions } from "@/lib/globe/context-triggers/resolve-context-trigger-open-options";
+import type { GlobeContextTrigger } from "@/lib/globe/context-triggers/globe-context-trigger-types";
+import {
+  stashPhotoIngestUndo,
+  undoGlobePhotoIngest,
+  type GlobePhotoIngestUndoPayload,
+} from "@/lib/globe/globe-photo-ingest-undo";
+import {
+  writeGlobeResumeSession,
+  type GlobeResumeSession,
+} from "@/lib/globe/globe-resume-session";
 import type { GlobePhotoIngestDraft } from "@/lib/globe/prepare-globe-photo-ingest-draft";
 import { copy } from "@/lib/copy/human-ko";
 import { resolveRimvioHonorific } from "@/lib/copy/rimvio-honorific";
 import { getTrendBridgeFeature } from "@/lib/globe/trend-bridge/trend-bridge-feature-registry";
-import { MarketAlignmentSurface } from "@/components/market/market-alignment-surface";
+import { findMarketIntentByEventId } from "@/lib/globe/market/market-alignment-store";
 import { GlobeMarketManageSheet } from "@/components/market/globe-market-manage-sheet";
 import { GlobeMarketIntentWizardSheet } from "@/components/globe/globe-market-intent-wizard-sheet";
 import {
@@ -290,6 +304,9 @@ function GlobeHomeBody() {
   const [photoRetryingIndex, setPhotoRetryingIndex] = useState<number | null>(null);
   const [photoDropActive, setPhotoDropActive] = useState(false);
   const photoDropDepthRef = useRef(0);
+  const [photoUndoPayload, setPhotoUndoPayload] = useState<GlobePhotoIngestUndoPayload | null>(
+    null,
+  );
   const createPhotoRef = useRef<HTMLInputElement>(null);
   const [listOpen, setListOpen] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
@@ -308,6 +325,22 @@ function GlobeHomeBody() {
       setMapMediaFocusOpen(detail.open);
     });
   }, []);
+
+  useEffect(() => {
+    const eventId = marketFocusEventId?.trim();
+    if (!eventId || layerMode !== "personal") {
+      return;
+    }
+    const event =
+      findLifeEventCandidate(eventId) ?? recoverGlobeContextEventFromPin(eventId);
+    const intent = findMarketIntentByEventId(eventId);
+    writeGlobeResumeSession({
+      eventId,
+      title: intent?.title?.trim() || event?.title?.trim() || "맞춤",
+      placeLabel: intent?.placeLabel?.trim() || event?.place?.trim() || null,
+      kind: "market",
+    });
+  }, [layerMode, marketFocusEventId]);
 
   /** Hub activates only when user touches a context pin — not proactive. */
   const hubEventId = activeCluster?.eventId?.trim() || null;
@@ -420,6 +453,15 @@ function GlobeHomeBody() {
         ? findLifeEventCandidate(eventId) ??
           recoverGlobeContextEventFromPin(eventId)
         : null;
+
+      if (eventId && event) {
+        writeGlobeResumeSession({
+          eventId,
+          title: cluster.title?.trim() || event.title,
+          placeLabel: cluster.placeLabel?.trim() || event.place,
+          kind: "context",
+        });
+      }
 
       const fromMapTap =
         options?.mapTap !== false && options?.openSheet !== true;
@@ -1456,6 +1498,35 @@ function GlobeHomeBody() {
     setLiveLocationPowerMode("saver");
   }, []);
 
+  const onMemoryTriggerPress = useCallback(
+    (trigger: GlobeContextTrigger) => {
+      const eventId = trigger.eventId?.trim();
+      if (!eventId) {
+        return;
+      }
+      const openOptions = resolveContextTriggerOpenOptions(trigger);
+      if (openOptions.mapTap) {
+        void focusContextByEventId(eventId, { openSheet: false, mapTap: true });
+        return;
+      }
+      void focusContextByEventId(eventId, {
+        openSheet: true,
+        sheetPage: openOptions.sheetPage,
+      });
+    },
+    [focusContextByEventId],
+  );
+
+  const onResumeSession = useCallback(
+    (session: GlobeResumeSession) => {
+      void focusContextByEventId(session.eventId, {
+        openSheet: session.kind === "market",
+        mapTap: session.kind === "context",
+      });
+    },
+    [focusContextByEventId],
+  );
+
   return (
     <div
       className="relative flex h-full min-h-0 flex-1 flex-col"
@@ -1699,29 +1770,40 @@ function GlobeHomeBody() {
         ref={ingestBarRef}
         composeHidden={portalOpen || marketConfirmOpen}
         stackAboveCompose={
-          pulseMainActionEnabled ? (
-            <MarketAlignmentSurface
-              enabled={pulseMainActionEnabled}
-              focusEventId={marketFocusEventId ?? activeCluster?.eventId ?? null}
-              onFocusMatchEvent={(eventId) => {
-                setMarketFocusEventId(eventId);
-                void focusContextOnMap(eventId);
-              }}
-              onFocusMatchOffer={(offer) => {
-                setMarketFocusEventId(offer.selfEventId);
-                if (offer.matchUserId) {
-                  globeRef.current?.flyToPin(
-                    offer.matchLat,
-                    offer.matchLng,
-                    "street",
-                    { pinViewportY: 0.58 },
-                  );
-                  return;
-                }
-                void focusContextOnMap(offer.matchEventId);
-              }}
-            />
-          ) : null
+          <>
+            {!confirmOpen && !sheetOpen && layerMode === "personal" ? (
+              <GlobeHomeMemoryDock
+                enabled={!globeRenderSuspended}
+                layerMode={layerMode}
+                activeEventId={activeCluster?.eventId ?? null}
+                onActivateTrigger={onMemoryTriggerPress}
+                onResumeSession={onResumeSession}
+              />
+            ) : null}
+            {pulseMainActionEnabled ? (
+              <MarketAlignmentSurface
+                enabled={pulseMainActionEnabled}
+                focusEventId={marketFocusEventId ?? activeCluster?.eventId ?? null}
+                onFocusMatchEvent={(eventId) => {
+                  setMarketFocusEventId(eventId);
+                  void focusContextOnMap(eventId);
+                }}
+                onFocusMatchOffer={(offer) => {
+                  setMarketFocusEventId(offer.selfEventId);
+                  if (offer.matchUserId) {
+                    globeRef.current?.flyToPin(
+                      offer.matchLat,
+                      offer.matchLng,
+                      "street",
+                      { pinViewportY: 0.58 },
+                    );
+                    return;
+                  }
+                  void focusContextOnMap(offer.matchEventId);
+                }}
+              />
+            ) : null}
+          </>
         }
         photoFlow={{
           open: confirmOpen,
@@ -1760,10 +1842,20 @@ function GlobeHomeBody() {
             void handleRetryPhotoFile(fileIndex);
           },
           retryingFileIndex: photoRetryingIndex,
-          onConfirmed: ({ eventId, toastLine, needsPlaceVerify, ok = true }) => {
+          onConfirmed: ({
+            eventId,
+            toastLine,
+            needsPlaceVerify,
+            ok = true,
+            undoPayload,
+          }) => {
             if (ok === false) {
               toast.error(toastLine);
               return;
+            }
+            if (undoPayload) {
+              stashPhotoIngestUndo(undoPayload);
+              setPhotoUndoPayload(undoPayload);
             }
             const hasRetryableErrors = photoFileProgressRef.current.some(
               (row) => row.status === "error",
@@ -2037,6 +2129,20 @@ function GlobeHomeBody() {
         onOpenChange={setGlobeGuideOpen}
         onAddPhoto={() => ingestBarRef.current?.openPhotoPicker()}
       />
+      <AnimatePresence>
+        {photoUndoPayload ? (
+          <GlobePhotoIngestUndoBar
+            headline={photoUndoPayload.headline}
+            onUndo={() => {
+              undoGlobePhotoIngest(photoUndoPayload);
+              setPhotoUndoPayload(null);
+              setMediaStoreRevision((value) => value + 1);
+              toast.message(copy.globe.photoIngestUndone);
+            }}
+            onExpire={() => setPhotoUndoPayload(null)}
+          />
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }
