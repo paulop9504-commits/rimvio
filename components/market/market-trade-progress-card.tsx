@@ -342,6 +342,11 @@ export function MarketTradeProgressCard({
             <p className="text-[13px] font-medium text-[#191f28]">
               {globe.marketTradeProposeScheduleTitle}
             </p>
+            {session.preferredMeetDateKey ? (
+              <p className="text-[12px] font-semibold text-[#3182f6]">
+                {formatMarketTradeDateLabelKo(session.preferredMeetDateKey)}
+              </p>
+            ) : null}
             <div className="flex flex-wrap gap-2">
               {session.proposeTimeSlots.map((slot) => (
                 <button

@@ -3,11 +3,14 @@
 import assert from "node:assert/strict";
 import {
   generateMarketTradeDateCandidates,
+  generateMarketTradeProposeTimeSlots,
   generateMarketTradeTimeSlotsForDate,
   formatMarketTradeDateLabelKo,
   isScheduleDateCandidateAllowed,
   isMeetTimeAllowedForTrade,
   toMarketTradeDateKey,
+  resolveMarketTradeScheduleDateCandidates,
+  marketTradeScheduleDateCandidatesNeedBackfill,
 } from "../lib/globe/market/market-trade-schedule";
 
 const now = new Date("2026-06-26T10:00:00+09:00");
@@ -42,5 +45,22 @@ assert.ok(
     now,
   }),
 );
+
+const emptyResolved = resolveMarketTradeScheduleDateCandidates([], "weekday_afternoon", now);
+assert.ok(emptyResolved.length >= 2);
+assert.equal(formatMarketTradeDateLabelKo(emptyResolved[0]!, now), "오늘");
+assert.ok(marketTradeScheduleDateCandidatesNeedBackfill([], "weekday_afternoon", now));
+
+const legacyIso = ["2026-06-28T04:00:00.000Z", "2026-06-29T04:00:00.000Z"];
+assert.ok(marketTradeScheduleDateCandidatesNeedBackfill(legacyIso, "anytime", now));
+const legacyResolved = resolveMarketTradeScheduleDateCandidates(legacyIso, "anytime", now);
+assert.ok(legacyResolved.every((key) => /^\d{4}-\d{2}-\d{2}$/u.test(key)));
+assert.equal(legacyResolved[0], "2026-06-28");
+
+const weekendKey = "2026-06-27";
+const weekdayPresetSlots = generateMarketTradeTimeSlotsForDate("weekday_day", weekendKey, now);
+assert.equal(weekdayPresetSlots.length, 0);
+const proposeSlots = generateMarketTradeProposeTimeSlots("weekday_day", weekendKey, now);
+assert.ok(proposeSlots.length >= 1);
 
 console.log("test-market-trade-schedule: ok");

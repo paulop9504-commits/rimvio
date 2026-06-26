@@ -147,6 +147,7 @@ export function marketAvailabilityPresetLabelKo(preset: MarketAvailabilityPreset
 
 export {
   generateMarketTradeDateCandidates,
+  generateMarketTradeProposeTimeSlots,
   generateMarketTradeTimeSlotsForDate,
   formatMarketTradeDateLabelKo,
 } from "@/lib/globe/market/market-trade-schedule";

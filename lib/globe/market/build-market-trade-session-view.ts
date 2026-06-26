@@ -8,7 +8,9 @@ import { readMarketAvailabilityPreset } from "@/lib/globe/market/market-availabi
 import type { MarketTradeSessionRecord, MarketTradeSessionView } from "@/lib/globe/market/market-trade-types";
 import {
   formatMarketTradeDateLabelKo,
+  generateMarketTradeProposeTimeSlots,
   generateMarketTradeTimeSlotsForDate,
+  resolveMarketTradeScheduleDateCandidates,
 } from "@/lib/globe/market/market-trade-schedule";
 import {
   buildMarketTradeProgressSteps,
@@ -216,7 +218,10 @@ export function buildMarketTradeSessionView(
         statusSublineKo = `${sessionCopy.statusSchedulingSeekingSub} · ${schedulingCountdownKo}`;
       }
     }
-  } else if (record.tradeStatus === "buyer_picked_day") {
+  } else if (
+    record.tradeStatus === "buyer_picked_day" ||
+    (record.tradeStatus === "scheduling" && record.preferredMeetDateKey?.trim())
+  ) {
     const dayLabel = record.preferredMeetDateKey
       ? formatMarketTradeDateLabelKo(record.preferredMeetDateKey, now)
       : null;
@@ -283,17 +288,23 @@ export function buildMarketTradeSessionView(
     Boolean(record.meetAtIso);
 
   const showPickDay =
-    record.viewerRole === "seeking" && record.tradeStatus === "scheduling";
-  const showProposeSchedule =
-    record.viewerRole === "listing" && record.tradeStatus === "buyer_picked_day";
+    record.viewerRole === "seeking" &&
+    record.tradeStatus === "scheduling" &&
+    !record.preferredMeetDateKey?.trim();
+  const sellerAwaitingTimeProposal =
+    record.viewerRole === "listing" &&
+    Boolean(record.preferredMeetDateKey?.trim()) &&
+    (record.tradeStatus === "buyer_picked_day" || record.tradeStatus === "scheduling");
+  const showProposeSchedule = sellerAwaitingTimeProposal;
   const showAcceptProposal =
     record.viewerRole === "seeking" && record.tradeStatus === "seller_proposed";
 
+  const pickedDateKey = record.preferredMeetDateKey?.trim() || null;
   const proposeTimeSlots =
-    record.preferredMeetDateKey && showProposeSchedule
-      ? generateMarketTradeTimeSlotsForDate(
+    pickedDateKey && showProposeSchedule
+      ? generateMarketTradeProposeTimeSlots(
           record.availabilityPreset,
-          record.preferredMeetDateKey,
+          pickedDateKey,
           now,
         )
       : [];
@@ -333,8 +344,15 @@ export function buildMarketTradeSessionView(
     }
   }
 
+  const scheduleCandidates = resolveMarketTradeScheduleDateCandidates(
+    record.scheduleCandidates,
+    record.availabilityPreset,
+    now,
+  );
+
   return {
     ...record,
+    scheduleCandidates,
     roleBadgeKo,
     statusHeadlineKo,
     statusSublineKo,

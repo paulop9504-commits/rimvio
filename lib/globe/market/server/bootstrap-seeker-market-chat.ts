@@ -18,6 +18,7 @@ import { scoreWeightedMarketAlignment } from "@/lib/globe/market/score-weighted-
 import { completeDmFriendAdd } from "@/lib/peer-chat/dm-friend-add-server";
 import { insertPeerMessage } from "@/lib/peer-chat/server-peer-chat";
 import { fetchPeerPublicProfileByUserId } from "@/lib/peer-chat/peer-public-profile";
+import { readMarketAvailabilityPreset } from "@/lib/globe/market/market-availability-preset";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 function formatPriceLine(priceMin: number | null, priceMax: number | null): string {
@@ -191,20 +192,33 @@ export async function bootstrapSeekerMarketChat(
   let threadId = handshake.threadId;
   let alreadyCompleted = false;
 
-  if (handshake.phase === "active" && threadId) {
-    if (initTradeSession && handshake.scheduleCandidates.length === 0) {
-      const listingForTrade = listing;
+  if (handshake.phase === "active" && threadId && initTradeSession) {
+    const preset = readMarketAvailabilityPreset(listing.detail?.availabilityPreset);
+    const { marketTradeScheduleDateCandidatesNeedBackfill, resolveMarketTradeScheduleDateCandidates } =
+      await import("@/lib/globe/market/market-trade-schedule");
+    const emptyCandidates = handshake.scheduleCandidates.length === 0;
+    const needsDateBackfill =
+      handshake.tradeStatus === "scheduling" &&
+      marketTradeScheduleDateCandidatesNeedBackfill(handshake.scheduleCandidates, preset);
+
+    if (emptyCandidates || handshake.tradeStatus !== "scheduling") {
       const { tryInitializeMarketTradeSession } = await import(
         "@/lib/globe/market/server/initialize-market-trade-session"
       );
-      const ok = await tryInitializeMarketTradeSession(
-        supabase,
-        handshake.id,
-        listingForTrade,
-      );
+      const ok = await tryInitializeMarketTradeSession(supabase, handshake.id, listing);
       if (!ok && requireTradeSession) {
         throw new Error("trade_init_failed");
       }
+    } else if (needsDateBackfill) {
+      const { patchMarketHandshake } = await import(
+        "@/lib/globe/market/server/market-alignment-handshake-store"
+      );
+      await patchMarketHandshake(supabase, handshake.id, {
+        scheduleCandidates: resolveMarketTradeScheduleDateCandidates(
+          handshake.scheduleCandidates,
+          preset,
+        ),
+      });
     }
   } else if (handshake.phase === "pending_buyer_start" && threadId) {
     await startBuyerMarketHandshakeChat(supabase, userId, handshake.id);

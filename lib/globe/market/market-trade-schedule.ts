@@ -101,6 +101,34 @@ export function generateMarketTradeTimeSlotsForDate(
   return slots.slice(0, 6);
 }
 
+const PROPOSE_FALLBACK_HOURS = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20] as const;
+
+/** Seller propose step — buyer already picked the day; relax preset when strict slots are empty. */
+export function generateMarketTradeProposeTimeSlots(
+  preset: MarketAvailabilityPreset,
+  dateKey: string,
+  now = new Date(),
+): string[] {
+  const strict = generateMarketTradeTimeSlotsForDate(preset, dateKey, now);
+  if (strict.length > 0) {
+    return strict;
+  }
+  if (!isMarketTradeDateKey(dateKey)) {
+    return [];
+  }
+  const base = parseMarketTradeDateKey(dateKey);
+  const minLeadMs = 30 * 60 * 1000;
+  const slots: string[] = [];
+  for (const hour of PROPOSE_FALLBACK_HOURS) {
+    const slot = new Date(base);
+    slot.setHours(hour, 0, 0, 0);
+    if (slot.getTime() > now.getTime() + minLeadMs) {
+      slots.push(slot.toISOString());
+    }
+  }
+  return slots.slice(0, 6);
+}
+
 export function normalizeScheduleCandidateToDateKey(candidate: string): string | null {
   const trimmed = candidate.trim();
   if (isMarketTradeDateKey(trimmed)) {
@@ -111,6 +139,59 @@ export function normalizeScheduleCandidateToDateKey(candidate: string): string |
     return null;
   }
   return toMarketTradeDateKey(new Date(parsed));
+}
+
+/** v2 day-pick SSOT — normalize legacy ISO slots, regenerate when empty. */
+export function resolveMarketTradeScheduleDateCandidates(
+  candidates: readonly string[],
+  preset: MarketAvailabilityPreset = "anytime",
+  now = new Date(),
+): string[] {
+  const keys: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of candidates) {
+    const key = normalizeScheduleCandidateToDateKey(raw);
+    if (key && !seen.has(key)) {
+      seen.add(key);
+      keys.push(key);
+    }
+  }
+  if (keys.length > 0) {
+    return keys.slice(0, 5);
+  }
+  const generated = generateMarketTradeDateCandidates(preset, now);
+  if (generated.length > 0) {
+    return generated;
+  }
+  const anytime = generateMarketTradeDateCandidates("anytime", now);
+  if (anytime.length > 0) {
+    return anytime;
+  }
+  return [];
+}
+
+export function marketTradeScheduleDateCandidatesNeedBackfill(
+  candidates: readonly string[],
+  preset: MarketAvailabilityPreset = "anytime",
+  now = new Date(),
+): boolean {
+  const resolved = resolveMarketTradeScheduleDateCandidates(candidates, preset, now);
+  if (resolved.length === 0) {
+    return false;
+  }
+  const storedKeys = candidates
+    .map(normalizeScheduleCandidateToDateKey)
+    .filter((key): key is string => key !== null);
+  if (storedKeys.length === 0) {
+    return true;
+  }
+  if (candidates.some((candidate) => !isMarketTradeDateKey(candidate.trim()))) {
+    return true;
+  }
+  if (storedKeys.length !== resolved.length) {
+    return true;
+  }
+  return storedKeys.some((key, index) => key !== resolved[index]);
 }
 
 export function isScheduleDateCandidateAllowed(
@@ -136,7 +217,7 @@ export function isMeetTimeAllowedForTrade(input: {
   if (toMarketTradeDateKey(meetAt) !== input.dateKey.trim()) {
     return false;
   }
-  const allowed = generateMarketTradeTimeSlotsForDate(
+  const allowed = generateMarketTradeProposeTimeSlots(
     input.preset,
     input.dateKey,
     input.now ?? new Date(),
