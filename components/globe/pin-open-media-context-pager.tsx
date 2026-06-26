@@ -84,6 +84,7 @@ function useHorizontalSwipeHandoff(input: {
 export function PinOpenMediaContextPageTabs({
   page,
   onPageChange,
+  variant = "personal",
   className,
 }: {
   page: PinMediaContextPage;
@@ -91,6 +92,42 @@ export function PinOpenMediaContextPageTabs({
   variant?: "bridge" | "personal";
   className?: string;
 }) {
+  if (variant === "bridge") {
+    return (
+      <div
+        className={cn("inline-flex shrink-0 gap-0.5 rounded-full bg-black/[0.06] p-0.5", className)}
+        role="tablist"
+        aria-label={copy.globe.bridgeContextPageEyebrow}
+      >
+        {(
+          [
+            ["media", copy.globe.bridgeMediaContextTabMoments],
+            ["context", copy.globe.bridgeMediaContextTabContext],
+          ] as const
+        ).map(([id, label]) => {
+          const active = page === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => onPageChange(id)}
+              className={cn(
+                "rounded-full px-2.5 py-1 text-[11px] font-semibold transition",
+                active
+                  ? "bg-white text-foreground shadow-sm"
+                  : "text-muted-foreground",
+              )}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(
@@ -186,7 +223,7 @@ export function PinOpenMediaContextPager({
           {...contextSwipe}
         >
         {bridge ? (
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3.5 py-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {children}
           </div>
         ) : (

@@ -14,6 +14,7 @@ export type GlobeContextPhotoButtonProps = {
   eventId: string;
   eventTitle: string;
   variant?: "primary" | "secondary";
+  layout?: "full" | "compact";
   className?: string;
   onIngested?: () => void;
 };
@@ -23,6 +24,7 @@ export function GlobeContextPhotoButton({
   eventId,
   eventTitle,
   variant = "secondary",
+  layout = "full",
   className,
   onIngested,
 }: GlobeContextPhotoButtonProps) {
@@ -84,6 +86,7 @@ export function GlobeContextPhotoButton({
   };
 
   const primary = variant === "primary";
+  const compact = layout === "compact";
 
   return (
     <>
@@ -92,10 +95,15 @@ export function GlobeContextPhotoButton({
         disabled={busy}
         onClick={() => inputRef.current?.click()}
         className={cn(
-          "inline-flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-[15px] font-semibold transition active:opacity-90 disabled:opacity-50",
-          primary
+          "inline-flex items-center justify-center gap-1.5 font-semibold transition active:opacity-90 disabled:opacity-50",
+          compact
+            ? "rounded-full border border-border bg-card px-3 text-[14px] text-foreground"
+            : "w-full rounded-2xl py-3.5 text-[15px]",
+          !compact && primary
             ? "bg-foreground text-background"
-            : "border border-border bg-card text-foreground",
+            : !compact
+              ? "border border-border bg-card text-foreground"
+              : "",
           className,
         )}
         data-globe-context-photo-button
@@ -103,9 +111,9 @@ export function GlobeContextPhotoButton({
         {busy ? (
           <Loader2 className="size-4 animate-spin" aria-hidden />
         ) : (
-          <ImagePlus className="size-4" aria-hidden />
+          <ImagePlus className={cn("shrink-0", compact ? "size-[18px]" : "size-4")} aria-hidden />
         )}
-        사진·동영상 넣기
+        {compact ? copy.globe.bridgeContextPhotoCompactCta : "사진·동영상 넣기"}
       </button>
       <input
         ref={inputRef}

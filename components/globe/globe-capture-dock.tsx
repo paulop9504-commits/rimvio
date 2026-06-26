@@ -45,6 +45,8 @@ export type GlobeCaptureDockProps = {
   composeHidden?: boolean;
   /** Alignment cards, trade dock, pulse — stacked above ingest in one column. */
   stackAboveCompose?: ReactNode;
+  /** Right-aligned chrome sitting directly above the prompt bar (e.g. recall pill). */
+  composeAccessory?: ReactNode;
   ingest: GlobeContextIngestBarProps;
 };
 
@@ -59,6 +61,7 @@ export const GlobeCaptureDock = forwardRef<GlobeContextIngestBarHandle, GlobeCap
       onPlaceVerifyConfirmed,
       composeHidden = false,
       stackAboveCompose,
+      composeAccessory,
       ingest,
     },
     ref,
@@ -127,11 +130,16 @@ export const GlobeCaptureDock = forwardRef<GlobeContextIngestBarHandle, GlobeCap
         ) : null}
 
         {!photoActive && !composeHidden ? (
-          <GlobeContextIngestBar
-            ref={ref}
-            {...ingest}
-            className="pointer-events-auto relative inset-auto bottom-auto mx-auto w-full max-w-lg"
-          />
+          <div className="pointer-events-none mx-auto w-full max-w-lg">
+            {composeAccessory ? (
+              <div className="pointer-events-auto">{composeAccessory}</div>
+            ) : null}
+            <GlobeContextIngestBar
+              ref={ref}
+              {...ingest}
+              className="pointer-events-auto relative inset-auto bottom-auto w-full"
+            />
+          </div>
         ) : null}
         </div>
       </>

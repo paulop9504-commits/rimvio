@@ -14,7 +14,11 @@ import { GlobeUtilityMenu } from "@/components/globe/globe-utility-menu";
 import { GlobeContextMapVideoStage } from "@/components/globe/globe-context-map-video-stage";
 import { GlobeLodgingFocusStage } from "@/components/globe/globe-lodging-focus-stage";
 import { GlobeCaptureDock } from "@/components/globe/globe-capture-dock";
-import { GlobeHomeMemoryDock } from "@/components/globe/globe-home-memory-dock";
+import {
+  GlobeHomeMemoryRecallPanel,
+  GlobeHomeMemoryRecallProvider,
+  GlobeHomeMemoryRecallToggleAnchor,
+} from "@/components/globe/globe-home-memory-dock";
 import { GlobePhotoIngestUndoBar } from "@/components/globe/globe-photo-ingest-undo-bar";
 import { GlobeTrendBridgePulseChip } from "@/components/globe/globe-trend-bridge-pulse-chip";
 import { GlobeTrendBridgeLayer } from "@/components/globe/globe-trend-bridge-layer";
@@ -172,6 +176,11 @@ function GlobeHomeBody() {
   const recallEventId = searchParams.get("recallEvent");
   const globeRef = useRef<RimvioGlobeHubHandle>(null);
   const ingestBarRef = useRef<GlobeContextIngestBarHandle>(null);
+  const memoryRecallComposeRef = useRef<{
+    onFocus: () => void;
+    onBlur: () => void;
+  } | null>(null);
+  const [globeMemoryDismissToken, setGlobeMemoryDismissToken] = useState(0);
   const [globeGuideOpen, setGlobeGuideOpen] = useState(false);
   const [marketIntentDraft, setMarketIntentDraft] = useState<MarketIntentDraft | null>(
     null,
@@ -796,8 +805,16 @@ function GlobeHomeBody() {
     [handleSameContextRetap, markPinPress, openContextCluster, pendingBridgeInvites],
   );
 
+  const registerMemoryRecallComposeHandlers = useCallback(
+    (handlers: { onFocus: () => void; onBlur: () => void }) => {
+      memoryRecallComposeRef.current = handlers;
+    },
+    [],
+  );
+
   const onGlobePress = useCallback(
     (coords: { lat: number; lng: number }) => {
+      setGlobeMemoryDismissToken((token) => token + 1);
       if (pinDragActiveRef.current) {
         return;
       }
@@ -1767,19 +1784,27 @@ function GlobeHomeBody() {
       </div>
       ) : null}
       {!mapMediaFocusOpen ? (
+      <GlobeHomeMemoryRecallProvider
+        enabled={!globeRenderSuspended}
+        layerMode={layerMode}
+        activeEventId={activeCluster?.eventId ?? null}
+        globeDismissToken={globeMemoryDismissToken}
+        registerComposeHandlers={registerMemoryRecallComposeHandlers}
+        onActivateTrigger={onMemoryTriggerPress}
+        onResumeSession={onResumeSession}
+      >
       <GlobeCaptureDock
         ref={ingestBarRef}
         composeHidden={portalOpen || marketConfirmOpen}
+        composeAccessory={
+          !confirmOpen && !sheetOpen && layerMode === "personal" ? (
+            <GlobeHomeMemoryRecallToggleAnchor />
+          ) : null
+        }
         stackAboveCompose={
           <>
             {!confirmOpen && !sheetOpen && layerMode === "personal" ? (
-              <GlobeHomeMemoryDock
-                enabled={!globeRenderSuspended}
-                layerMode={layerMode}
-                activeEventId={activeCluster?.eventId ?? null}
-                onActivateTrigger={onMemoryTriggerPress}
-                onResumeSession={onResumeSession}
-              />
+              <GlobeHomeMemoryRecallPanel />
             ) : null}
             {pulseMainActionEnabled ? (
               <MarketAlignmentSurface
@@ -1916,8 +1941,11 @@ function GlobeHomeBody() {
           marketRoleBusy: marketTradeBusy,
           layerMode,
           onDiscoveryMarketBrowse,
+          onComposeFocus: () => memoryRecallComposeRef.current?.onFocus(),
+          onComposeBlur: () => memoryRecallComposeRef.current?.onBlur(),
         }}
       />
+      </GlobeHomeMemoryRecallProvider>
       ) : null}
       <GlobeMediaPoolSheet
         open={mediaPoolOpen}

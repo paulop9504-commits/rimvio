@@ -17,6 +17,7 @@ import { GlobeContextPhotoButton } from "@/components/globe/globe-context-photo-
 import { GlobeContextMediaShortsReel } from "@/components/globe/globe-context-media-shorts-reel";
 import { ExperienceBridgeMediaShell, type BridgeMediaArrivalHint } from "@/components/globe/experience-bridge-media-shell";
 import { BridgeContextPanel } from "@/components/globe/bridge-context-panel";
+import { BridgePinSheetFooter } from "@/components/globe/bridge-pin-sheet-footer";
 import { GlobeMediaPoolSheet } from "@/components/globe/globe-media-pool-sheet";
 import { PinOpenMediaContextPager, PinOpenMediaContextPageTabs, type PinMediaContextPage } from "@/components/globe/pin-open-media-context-pager";
 import { patchExperiencePinContext } from "@/lib/globe/patch-experience-pin-context";
@@ -778,11 +779,21 @@ export function PinOpenSheet({
             data-pin-open-sheet
             data-pin-open-ui="split-v2"
           >
-            <div className={rimvioSheetGrabberClass()} aria-hidden />
+            <div className={rimvioSheetGrabberClass(isBridgeContext ? "opacity-0" : undefined)} aria-hidden />
             <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-              <header className={rimvioSheetHeaderClass()}>
+              <header
+                className={cn(
+                  rimvioSheetHeaderClass(),
+                  isBridgeContext && "border-b border-border/50 px-3.5 pb-2 pt-1.5",
+                )}
+              >
                 <div className="min-w-0 flex-1">
-                  <p className={cn("line-clamp-1", RIMVIO_TYPE.headline)}>
+                  <p
+                    className={cn(
+                      "line-clamp-1",
+                      isBridgeContext ? "text-[16px] font-bold tracking-tight" : RIMVIO_TYPE.headline,
+                    )}
+                  >
                     {hero.title}
                   </p>
                   {!isBridgeContext || sheetPage === "context" ? (
@@ -937,6 +948,38 @@ export function PinOpenSheet({
               </PinOpenMediaContextPager>
             </div>
 
+            {isBridgeContext && shareEvent && hero ? (
+              <BridgePinSheetFooter
+                event={shareEvent}
+                eventId={cluster.eventId}
+                eventTitle={hero.title}
+                delivery={{
+                  title: hero.title,
+                  date: hero.date,
+                  place: hero.place,
+                }}
+                talkOpening={talkOpening}
+                showTalk={showTalkCta}
+                onOpenTalk={openExperienceRoom}
+                onOpenShareMore={() => {
+                  dispatchGlobeContextShareRequest({
+                    eventId: shareEvent.id,
+                    pinId: cluster.pinId,
+                  });
+                }}
+                onPhotoIngested={() => {
+                  setRevision((value) => value + 1);
+                  const eventId = cluster.eventId.trim();
+                  void syncBridgeSharedMediaFromRemote(eventId, user?.id).then(
+                    (merged) => {
+                      if (merged) {
+                        setRevision((value) => value + 1);
+                      }
+                    },
+                  );
+                }}
+              />
+            ) : (
             <div className={rimvioSheetFooterClass()}>
               {shareEvent && hero && !isMarketplaceContext ? (
                 <GlobeContextSendRail
@@ -997,6 +1040,7 @@ export function PinOpenSheet({
                 닫기
               </button>
             </div>
+            )}
 
             <PinContextFieldSheet
               open={editKind !== null}

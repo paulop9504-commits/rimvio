@@ -6,7 +6,6 @@ import {
   ChevronDown,
   ImagePlus,
   MapPin,
-  MessageCircle,
   StickyNote,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -35,7 +34,6 @@ import { copy } from "@/lib/copy/human-ko";
 import {
   RIMVIO_RADIUS,
   RIMVIO_TYPE,
-  rimvioTalkRowClass,
 } from "@/lib/design/rimvio-ontology";
 import { cn } from "@/lib/utils";
 
@@ -94,9 +92,9 @@ function BridgeToolButton({
     <button
       type="button"
       onClick={onPress}
-      className="flex min-w-0 flex-1 flex-col items-center gap-1 rounded-xl py-2 active:bg-muted/80"
+      className="flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-xl py-1.5 active:bg-muted/80"
     >
-      <span className="relative flex size-9 items-center justify-center rounded-full bg-muted text-foreground">
+      <span className="relative flex size-8 items-center justify-center rounded-full bg-muted text-foreground">
         {icon}
         {badge != null && badge > 0 ? (
           <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
@@ -219,9 +217,9 @@ export function BridgeContextPanel({
     null;
 
   return (
-    <div className={cn("space-y-4 pb-1", className)} data-bridge-context-panel>
-      <div className="space-y-1 px-0.5">
-        <p className="text-[18px] font-semibold leading-snug tracking-tight text-foreground">
+    <div className={cn("space-y-3 pb-0.5", className)} data-bridge-context-panel>
+      <div className="space-y-0.5 px-0.5">
+        <p className="text-[16px] font-semibold leading-snug tracking-tight text-foreground">
           {recall.primary}
         </p>
         {recall.secondary ? (
@@ -247,15 +245,15 @@ export function BridgeContextPanel({
       ) : null}
 
       {people.length > 0 ? (
-        <div className="flex gap-3 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex gap-2.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <button
             type="button"
             onClick={() => selectAuthor(null)}
-            className="flex shrink-0 flex-col items-center gap-1"
+            className="flex shrink-0 flex-col items-center gap-0.5"
           >
             <span
               className={cn(
-                "flex size-11 items-center justify-center rounded-full text-[10px] font-bold",
+                "flex size-10 items-center justify-center rounded-full text-[9px] font-bold",
                 activeAuthorFilter === null
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted text-muted-foreground",
@@ -271,18 +269,18 @@ export function BridgeContextPanel({
                 key={row.userId}
                 type="button"
                 onClick={() => selectAuthor(row.userId)}
-                className="flex shrink-0 flex-col items-center gap-1"
+                className="flex shrink-0 flex-col items-center gap-0.5"
               >
                 <PeerProfileAvatar
                   displayName={row.displayName}
                   avatarUrl={row.avatarUrl}
                   size="md"
                   className={cn(
-                    "size-11 ring-2",
+                    "size-10 ring-2",
                     selected ? "ring-primary" : "ring-transparent",
                   )}
                 />
-                <span className="max-w-[3.5rem] truncate text-[10px] font-medium text-foreground">
+                <span className="max-w-[3.25rem] truncate text-[9px] font-medium text-foreground">
                   {row.displayName}
                 </span>
               </button>
@@ -293,25 +291,9 @@ export function BridgeContextPanel({
 
       {conversation && conversation.previews.length > 0 ? (
         <RecentConversationStrip conversation={conversation} onOpenRoom={onOpenTalk} />
-      ) : (
-        <button
-          type="button"
-          onClick={onOpenTalk}
-          className={rimvioTalkRowClass()}
-        >
-          <MessageCircle className="size-5 shrink-0 text-primary" aria-hidden />
-          <span className="min-w-0 flex-1">
-            <span className={cn("block font-semibold", RIMVIO_TYPE.body)}>
-              {copy.globe.bridgeContextTalkCta}
-            </span>
-            <span className={cn("block", RIMVIO_TYPE.caption)}>
-              {copy.globe.bridgeContextTalkPreviewEmpty}
-            </span>
-          </span>
-        </button>
-      )}
+      ) : null}
 
-      <div className={cn("flex items-stretch justify-between gap-1 px-1 py-1", RIMVIO_RADIUS.lg, "bg-muted/40")}>
+      <div className={cn("flex items-stretch justify-between gap-0.5 px-0.5 py-0.5", RIMVIO_RADIUS.lg, "bg-muted/30")}>
         <BridgeToolButton
           icon={<MapPin className="size-4" aria-hidden />}
           label={copy.globe.bridgeContextNavCta}

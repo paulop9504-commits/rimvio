@@ -118,7 +118,7 @@ export function ExperienceBridgeMediaShell({
       </div>
 
       {items.length > 1 ? (
-        <div className="shrink-0 border-t border-white/10 bg-black/90 px-3 py-2 backdrop-blur-md">
+        <div className="shrink-0 border-t border-white/[0.08] bg-black/80 px-2.5 py-1.5 backdrop-blur-md">
           <ExperienceBridgeThumbnailRail
             items={items}
             activeIndex={activeIndex}

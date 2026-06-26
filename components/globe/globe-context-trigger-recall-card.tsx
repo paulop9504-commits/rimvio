@@ -124,6 +124,7 @@ function RecallPolaroid({
 export type GlobeContextTriggerRecallCardProps = {
   trigger: GlobeContextTrigger;
   active?: boolean;
+  compact?: boolean;
   onPress: () => void;
   className?: string;
 };
@@ -132,6 +133,7 @@ export type GlobeContextTriggerRecallCardProps = {
 export function GlobeContextTriggerRecallCard({
   trigger,
   active = false,
+  compact = false,
   onPress,
   className,
 }: GlobeContextTriggerRecallCardProps) {
@@ -149,10 +151,14 @@ export function GlobeContextTriggerRecallCard({
       data-trigger-carousel-active={active ? "true" : "false"}
       data-globe-context-trigger-recall-card
       className={cn(
-        "group relative shrink-0 snap-center overflow-hidden rounded-[22px] text-left shadow-[0_8px_28px_rgba(15,23,42,0.14)] ring-1 ring-black/[0.06] transition-all duration-300 active:scale-[0.98]",
-        active
-          ? "h-[16.5rem] w-[13rem] scale-100 opacity-100 shadow-[0_14px_44px_rgba(255,107,74,0.24)] ring-[#ff6b4a]/35"
-          : "h-[15rem] w-[11.75rem] scale-[0.96] opacity-[0.88]",
+        "group relative shrink-0 snap-center overflow-hidden rounded-[18px] text-left shadow-[0_6px_20px_rgba(15,23,42,0.12)] ring-1 ring-black/[0.06] transition-all duration-300 active:scale-[0.98]",
+        compact
+          ? active
+            ? "h-[8.25rem] w-[9.25rem] scale-100 opacity-100 shadow-[0_10px_28px_rgba(255,107,74,0.2)] ring-[#ff6b4a]/35"
+            : "h-[7.5rem] w-[8.25rem] scale-[0.96] opacity-[0.88]"
+          : active
+            ? "h-[16.5rem] w-[13rem] scale-100 opacity-100 shadow-[0_14px_44px_rgba(255,107,74,0.24)] ring-[#ff6b4a]/35"
+            : "h-[15rem] w-[11.75rem] scale-[0.96] opacity-[0.88]",
         className,
       )}
     >
@@ -180,10 +186,11 @@ export function GlobeContextTriggerRecallCard({
         </span>
       ) : null}
 
-      <div className="absolute inset-x-0 bottom-0 z-20 px-3.5 pb-3.5 pt-10">
+      <div className={cn("absolute inset-x-0 bottom-0 z-20", compact ? "px-2.5 pb-2 pt-6" : "px-3.5 pb-3.5 pt-10")}>
         <p
           className={cn(
-            "line-clamp-2 text-[15px] font-bold leading-snug tracking-tight drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]",
+            "line-clamp-2 font-bold leading-snug tracking-tight drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]",
+            compact ? "text-[13px]" : "text-[15px]",
             hasMedia ? "text-white" : "text-white",
           )}
         >
@@ -191,15 +198,18 @@ export function GlobeContextTriggerRecallCard({
         </p>
         <p
           className={cn(
-            "mt-1 line-clamp-2 text-[12px] leading-relaxed",
+            "mt-0.5 line-clamp-2 leading-relaxed",
+            compact ? "text-[10px]" : "text-[12px]",
             hasMedia ? "text-white/78" : "text-white/72",
           )}
         >
           {trigger.body}
         </p>
-        <p className="mt-2 text-[11px] font-medium text-white/52 transition-colors group-hover:text-white/72">
-          {copy.globe.contextTriggerOpenHint}
-        </p>
+        {!compact ? (
+          <p className="mt-2 text-[11px] font-medium text-white/52 transition-colors group-hover:text-white/72">
+            {copy.globe.contextTriggerOpenHint}
+          </p>
+        ) : null}
       </div>
     </button>
   );

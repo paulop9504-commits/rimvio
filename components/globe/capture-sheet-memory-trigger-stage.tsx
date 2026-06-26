@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 export type CaptureSheetMemoryTriggerStageProps = {
   triggers: readonly GlobeContextTrigger[];
   onTriggerPress: (trigger: GlobeContextTrigger) => void;
+  compact?: boolean;
   className?: string;
 };
 
@@ -15,6 +16,7 @@ export type CaptureSheetMemoryTriggerStageProps = {
 export function CaptureSheetMemoryTriggerStage({
   triggers,
   onTriggerPress,
+  compact = false,
   className,
 }: CaptureSheetMemoryTriggerStageProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -65,7 +67,10 @@ export function CaptureSheetMemoryTriggerStage({
       <div
         ref={scrollerRef}
         onScroll={syncActiveFromScroll}
-        className="flex snap-x snap-mandatory items-end gap-3.5 overflow-x-auto overscroll-x-contain px-6 py-2 pr-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className={cn(
+          "flex snap-x snap-mandatory items-end overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+          compact ? "gap-2.5 px-4 py-1 pr-3" : "gap-3.5 px-6 py-2 pr-4",
+        )}
         data-trigger-carousel
       >
         {triggers.map((trigger, index) => (
@@ -73,6 +78,7 @@ export function CaptureSheetMemoryTriggerStage({
             key={trigger.id}
             trigger={trigger}
             active={index === activeIndex}
+            compact={compact}
             onPress={() => {
               setActiveIndex(index);
               onTriggerPress(trigger);

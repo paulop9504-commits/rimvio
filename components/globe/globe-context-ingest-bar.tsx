@@ -62,6 +62,8 @@ export type GlobeContextIngestBarProps = {
   marketRoleBusy?: boolean;
   layerMode?: GlobeLayerMode;
   onDiscoveryMarketBrowse?: () => void;
+  onComposeFocus?: () => void;
+  onComposeBlur?: () => void;
 };
 
 /** Globe home — one frosted composer; photo action lives inside the + menu. */
@@ -83,6 +85,8 @@ export const GlobeContextIngestBar = forwardRef<
     marketRoleBusy = false,
     layerMode = "personal",
     onDiscoveryMarketBrowse,
+    onComposeFocus,
+    onComposeBlur,
   },
   ref,
 ) {
@@ -358,6 +362,8 @@ export const GlobeContextIngestBar = forwardRef<
               ref={inputRef}
               value={text}
               onChange={(event) => setText(event.target.value)}
+              onFocus={onComposeFocus}
+              onBlur={onComposeBlur}
               placeholder={inputPlaceholder}
               disabled={marketComposeBusy}
               className="w-full bg-transparent text-[15px] text-foreground outline-none placeholder:text-muted-foreground/80"

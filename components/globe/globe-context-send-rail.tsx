@@ -22,6 +22,7 @@ export type GlobeContextSendRailProps = {
   delivery: GlobeContextShareDelivery;
   onOpenMore?: () => void;
   onSent?: () => void;
+  compact?: boolean;
   className?: string;
 };
 
@@ -31,6 +32,7 @@ export function GlobeContextSendRail({
   delivery,
   onOpenMore,
   onSent,
+  compact = false,
   className,
 }: GlobeContextSendRailProps) {
   const router = useRouter();
@@ -105,7 +107,7 @@ export function GlobeContextSendRail({
   if (fetching) {
     return (
       <div
-        className={cn("flex items-center gap-2 px-1 py-1", className)}
+        className={cn("flex items-center gap-2", compact ? "px-0 py-0" : "px-1 py-1", className)}
         data-globe-context-send-rail
       >
         <Loader2 className="size-4 animate-spin text-muted-foreground" aria-hidden />
@@ -139,16 +141,19 @@ export function GlobeContextSendRail({
   }
 
   return (
-    <section className={cn("space-y-2", className)} data-globe-context-send-rail>
-      <div className="flex items-center justify-between gap-2 px-1">
-        <p className="text-[11px] font-semibold text-muted-foreground">
+    <section
+      className={cn(compact ? "space-y-1.5" : "space-y-2", className)}
+      data-globe-context-send-rail
+    >
+      <div className={cn("flex items-center justify-between gap-2", compact ? "px-0" : "px-1")}>
+        <p className={cn("font-semibold text-muted-foreground", compact ? "text-[10px]" : "text-[11px]")}>
           {copy.globe.bridgeShareRailEyebrow}
         </p>
         {onOpenMore && (overflowCount > 0 || visible.length > 0) ? (
           <button
             type="button"
             onClick={onOpenMore}
-            className="text-[11px] font-semibold text-primary"
+            className={cn("font-semibold text-primary", compact ? "text-[10px]" : "text-[11px]")}
           >
             {overflowCount > 0
               ? copy.globe.bridgeShareMoreFriends(overflowCount)
@@ -156,10 +161,11 @@ export function GlobeContextSendRail({
           </button>
         ) : null}
       </div>
-      <ul className="flex gap-2.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <ul className="flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {visible.map((row) => {
           const sent = invitedUserIds.has(row.userId);
           const busy = busyUserId === row.userId;
+          const avatarSize = compact ? "size-10" : "size-12";
           return (
             <li key={row.userId} className="shrink-0">
               <button
@@ -167,7 +173,8 @@ export function GlobeContextSendRail({
                 disabled={Boolean(busyUserId)}
                 onClick={() => void sendToFriend(row)}
                 className={cn(
-                  "flex w-[4.5rem] flex-col items-center gap-1.5 rounded-2xl px-1 py-1.5 transition active:scale-[0.98]",
+                  "flex flex-col items-center gap-1 transition active:scale-[0.98]",
+                  compact ? "w-[3.25rem] rounded-xl px-0.5 py-0.5" : "w-[4.5rem] gap-1.5 rounded-2xl px-1 py-1.5",
                   sent && "opacity-95",
                 )}
                 aria-label={
@@ -183,9 +190,9 @@ export function GlobeContextSendRail({
                   )}
                 >
                   {busy ? (
-                    <span className="flex size-12 items-center justify-center rounded-full bg-muted">
+                    <span className={cn("flex items-center justify-center rounded-full bg-muted", avatarSize)}>
                       <Loader2
-                        className="size-5 animate-spin text-primary"
+                        className={cn("animate-spin text-primary", compact ? "size-4" : "size-5")}
                         aria-hidden
                       />
                     </span>
@@ -195,11 +202,11 @@ export function GlobeContextSendRail({
                       avatarUrl={row.avatarUrl}
                       instantSrc={row.instantAvatarSrc}
                       size="md"
-                      className="size-12"
+                      className={avatarSize}
                     />
                   ) : (
-                    <span className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                      <UserRound className="size-5" aria-hidden />
+                    <span className={cn("flex items-center justify-center rounded-full bg-muted text-muted-foreground", avatarSize)}>
+                      <UserRound className={cn(compact ? "size-4" : "size-5")} aria-hidden />
                     </span>
                   )}
                   {sent ? (
@@ -208,7 +215,7 @@ export function GlobeContextSendRail({
                     </span>
                   ) : null}
                 </span>
-                <span className="line-clamp-2 w-full text-center text-[10px] font-semibold leading-tight text-foreground">
+                <span className={cn("line-clamp-2 w-full text-center font-semibold leading-tight text-foreground", compact ? "text-[9px]" : "text-[10px]")}>
                   {row.displayName}
                 </span>
               </button>

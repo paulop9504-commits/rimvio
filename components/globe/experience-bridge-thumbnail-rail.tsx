@@ -36,7 +36,7 @@ export function ExperienceBridgeThumbnailRail({
   return (
     <div
       className={cn(
-        "flex gap-2 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        "flex gap-1.5 overflow-x-auto px-0.5 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
         className,
       )}
       data-experience-bridge-thumbnail-rail
@@ -55,10 +55,8 @@ export function ExperienceBridgeThumbnailRail({
             type="button"
             onClick={() => onSelect(index)}
             className={cn(
-              "relative h-12 w-9 shrink-0 overflow-hidden rounded-md transition",
-              active
-                ? "scale-105 ring-2"
-                : "opacity-80 ring-1 hover:opacity-100",
+              "relative h-10 w-[2.125rem] shrink-0 overflow-hidden rounded-[7px] transition",
+              active ? "scale-[1.04] ring-2" : "opacity-75 ring-1 hover:opacity-95",
               active && mine && (dark ? "ring-[#0071e3]" : "ring-[#0071e3]"),
               active && !mine && (dark ? "ring-white/70" : "ring-foreground/40"),
               !active && mine && "ring-[#0071e3]/40",
