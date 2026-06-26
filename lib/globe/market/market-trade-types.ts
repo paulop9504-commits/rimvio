@@ -8,6 +8,7 @@ export type MarketHandshakeIntentPair = {
 };
 
 export type MarketTradeStatus =
+  | "chat"
   | "scheduling"
   | "buyer_picked_day"
   | "seller_proposed"

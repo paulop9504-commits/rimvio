@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useCopy } from "@/hooks/use-copy";
 import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
+import { useRegionalProfile } from "@/hooks/use-regional-profile";
 import { fetchOwnMarketIntentsRemote } from "@/lib/globe/market/client/sync-market-intent-remote";
 import {
   listAllMarketIntents,
@@ -64,6 +65,7 @@ export function useOpportunityDashboard(input: {
 } {
   const copy = useCopy();
   const { user } = useAuth();
+  const { profile: regionalProfile } = useRegionalProfile();
   const liveLocation = useLiveLocationSnapshot();
   const [revision, setRevision] = useState(0);
   const [remoteRows, setRemoteRows] = useState<MarketIntentRecord[]>([]);
@@ -218,8 +220,9 @@ export function useOpportunityDashboard(input: {
         pool,
         userState,
         copy: fieldCopy,
+        regionalProfile,
       }),
-    [fieldCopy, pool, seekings, userState],
+    [fieldCopy, pool, regionalProfile, seekings, userState],
   );
 
   useEffect(() => {
@@ -245,8 +248,9 @@ export function useOpportunityDashboard(input: {
       pool,
       userState,
       copy: fieldCopy,
+      regionalProfile,
     });
-  }, [fieldCopy, pool, selectedPill, userState]);
+  }, [fieldCopy, pool, regionalProfile, selectedPill, userState]);
 
   const listeningLabel = selectedPill
     ? copy.globe.field.listening(selectedPill.title)

@@ -8,6 +8,7 @@ import {
 import { readDetailJson } from "@/lib/globe/market/server/market-intent-row";
 import { scanMarketHandshakesForIntent } from "@/lib/globe/market/server/scan-market-handshakes";
 import { isMarketIntentPublishedExternal, DEFAULT_MARKET_INTENT_DETAIL } from "@/lib/globe/market/market-intent-detail";
+import { readMarketProhibitedListingUserError } from "@/lib/globe/market/guard-market-prohibited-listing";
 import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
 
 function parseRecord(body: unknown): MarketIntentRecord | null {
@@ -85,7 +86,17 @@ export async function POST(request: NextRequest) {
       }
     }
     return NextResponse.json({ ok: true, intent: saved });
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "upsert_failed";
+    if (message.startsWith("prohibited_listing:")) {
+      return NextResponse.json(
+        {
+          error: message,
+          message: readMarketProhibitedListingUserError(message),
+        },
+        { status: 400 },
+      );
+    }
     return NextResponse.json({ error: "upsert_failed" }, { status: 500 });
   }
 }

@@ -2,8 +2,8 @@ import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types"
 import type { MarketHandshakeRecord } from "@/lib/globe/market/market-handshake-types";
 import {
   computeMarketTradeHostEta,
-  formatMarketTradeHostEtaLabel,
 } from "@/lib/globe/market/compute-market-trade-host-eta";
+import { formatMarketPriceLine } from "@/lib/globe/market/format-market-price-line";
 import { readMarketAvailabilityPreset } from "@/lib/globe/market/market-availability-preset";
 import { MARKET_TRADE_CANCEL_REASONS } from "@/lib/globe/market/market-trade-cancel-reasons";
 import type { MarketTradeSessionRecord, MarketTradeSessionView } from "@/lib/globe/market/market-trade-types";
@@ -15,11 +15,14 @@ import { isMarketTradeDepartWindowOpen } from "@/lib/globe/market/market-trade-d
 import {
   buildMarketTradeProgressSteps,
   formatMarketTradeCountdownLabel,
-  formatMarketTradeMeetAtLabel,
   resolveMarketTradeActiveStep,
 } from "@/lib/globe/market/resolve-market-trade-progress";
 import { formatMarketTradeSchedulingCountdown } from "@/lib/globe/market/resolve-market-trade-scheduling";
 import { copy } from "@/lib/copy/human-ko";
+import { formatRegionalCountdownLabel, formatRegionalMeetAtLabel } from "@/lib/format/format-regional-datetime";
+import { formatRegionalHostEtaLine } from "@/lib/format/format-regional-distance";
+import type { RegionalProfile } from "@/lib/preferences/regional-profile";
+import { resolveRegionalProfile } from "@/lib/preferences/regional-profile";
 
 export type MarketTradeSessionCopy = {
   roleBadgeSeeking: string;
@@ -46,6 +49,7 @@ export type MarketTradeSessionCopy = {
   priceOpen: string;
   statusEnRouteSeeking: string;
   statusEnRouteListing: string;
+  statusEnRouteListingSub: string;
   hostGuestEtaArrived: string;
   hostGuestEtaLine: (minutes: number, distanceKm: number) => string;
   hostGuestEtaStale: string;
@@ -55,23 +59,6 @@ export type MarketTradeSessionCopy = {
   handshakeAwaitingOtherParty: string;
   departOpensHint: string;
 };
-
-function formatPriceLine(
-  priceMin: number | null,
-  priceMax: number | null,
-  priceOpen: string,
-): string {
-  if (priceMin !== null && priceMax !== null && priceMin === priceMax) {
-    return `${priceMin.toLocaleString("ko-KR")}원`;
-  }
-  if (priceMax !== null) {
-    return `${Math.round(priceMax / 10_000)}만원 이하`;
-  }
-  if (priceMin !== null) {
-    return `${Math.round(priceMin / 10_000)}만원 이상`;
-  }
-  return priceOpen;
-}
 
 function readViewerHandshakeConfirmed(
   record: Pick<
@@ -117,8 +104,12 @@ export function buildMarketTradeSessionRecord(input: {
   handshake: MarketHandshakeRecord;
   listing: MarketIntentRecord;
   viewerUserId: string;
+  regionalProfile?: RegionalProfile;
+  priceOpenLabel?: string;
 }): MarketTradeSessionRecord | null {
   const { handshake, listing, viewerUserId } = input;
+  const profile = input.regionalProfile ?? resolveRegionalProfile("KR");
+  const priceOpen = input.priceOpenLabel ?? copy.globe.marketIntentPriceOpen;
   const viewerRole =
     viewerUserId === handshake.seekingUserId
       ? "seeking"
@@ -156,10 +147,11 @@ export function buildMarketTradeSessionRecord(input: {
     listingConfirmedAtIso: handshake.listingConfirmedAtIso,
     viewerRole,
     productTitle: listing.detail.productName.trim() || listing.title.trim(),
-    priceLine: formatPriceLine(
+    priceLine: formatMarketPriceLine(
       listing.priceMinKrw,
       listing.priceMaxKrw,
-      "가격 협의",
+      profile,
+      priceOpen,
     ),
     photoUrl,
     updatedAtIso: handshake.updatedAtIso,
@@ -170,6 +162,7 @@ export function buildMarketTradeSessionView(
   record: MarketTradeSessionRecord,
   sessionCopy: MarketTradeSessionCopy,
   now = new Date(),
+  regionalProfile: RegionalProfile = resolveRegionalProfile("KR"),
 ): MarketTradeSessionView {
   const activeStepId = resolveMarketTradeActiveStep({
     tradeStatus: record.tradeStatus,
@@ -239,7 +232,7 @@ export function buildMarketTradeSessionView(
     }
   } else if (record.tradeStatus === "seller_proposed") {
     if (record.meetAtIso) {
-      meetAtLabelKo = formatMarketTradeMeetAtLabel(record.meetAtIso, now);
+      meetAtLabelKo = formatRegionalMeetAtLabel(record.meetAtIso, regionalProfile, now);
     }
     if (record.viewerRole === "seeking") {
       statusHeadlineKo = sessionCopy.statusSellerProposedSeeking;
@@ -253,13 +246,20 @@ export function buildMarketTradeSessionView(
   } else if (record.tradeStatus === "completed") {
     statusHeadlineKo = sessionCopy.statusCompleted;
   } else if (record.tradeStatus === "en_route") {
-    statusHeadlineKo =
-      record.viewerRole === "seeking"
-        ? sessionCopy.statusEnRouteSeeking
-        : sessionCopy.statusEnRouteListing;
+    if (record.viewerRole === "seeking") {
+      statusHeadlineKo = sessionCopy.statusEnRouteSeeking;
+      if (meetPlaceDisplay) {
+        statusSublineKo = meetPlaceDisplay;
+      }
+    } else {
+      statusHeadlineKo = sessionCopy.statusEnRouteListing;
+      statusSublineKo = sessionCopy.statusEnRouteListingSub;
+    }
   } else if (record.meetAtIso) {
-    meetAtLabelKo = formatMarketTradeMeetAtLabel(record.meetAtIso, now);
-    countdownLabelKo = formatMarketTradeCountdownLabel(record.meetAtIso, now);
+    meetAtLabelKo = formatRegionalMeetAtLabel(record.meetAtIso, regionalProfile, now);
+    countdownLabelKo =
+      formatRegionalCountdownLabel(record.meetAtIso, regionalProfile, now) ??
+      formatMarketTradeCountdownLabel(record.meetAtIso, now);
     if (activeStepId === "before_departure") {
       statusHeadlineKo = sessionCopy.statusBeforeDeparture;
       statusSublineKo = countdownLabelKo
@@ -335,11 +335,17 @@ export function buildMarketTradeSessionView(
       now,
     });
     if (eta) {
-      hostGuestEtaLabelKo = formatMarketTradeHostEtaLabel(eta, {
-        arrived: sessionCopy.hostGuestEtaArrived,
-        eta: sessionCopy.hostGuestEtaLine,
-        stale: sessionCopy.hostGuestEtaStale,
-      });
+      if (eta.stale) {
+        hostGuestEtaLabelKo = sessionCopy.hostGuestEtaStale;
+      } else if (eta.arrived) {
+        hostGuestEtaLabelKo = sessionCopy.hostGuestEtaArrived;
+      } else {
+        hostGuestEtaLabelKo = formatRegionalHostEtaLine(
+          eta.etaMinutes,
+          eta.distanceKm,
+          regionalProfile,
+        );
+      }
     }
   }
 

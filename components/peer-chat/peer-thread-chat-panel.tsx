@@ -44,6 +44,7 @@ import { MarketChatQuickReplyPills } from "@/components/market/market-chat-quick
 import { useLensBubbleActions } from "@/hooks/use-lens-bubble-actions";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { isMarketHandshakeSeedMessage } from "@/lib/globe/market/is-market-handshake-seed-message";
 
 type PeerThreadChatPanelProps = {
@@ -51,6 +52,9 @@ type PeerThreadChatPanelProps = {
   policyInput: PeerThreadPolicyInput;
   aiLensEnabled: boolean;
   readOnly?: boolean;
+  /** Shown when user tries to send while readOnly (e.g. 맞춤 대화 잠금). */
+  readOnlySendHint?: string | null;
+  composerPlaceholder?: string | null;
   showAiMentionLink?: boolean;
   peerAvatarUrl?: string | null;
   /** 카톡보다 단순한 1:1 DM UI */
@@ -71,6 +75,8 @@ export function PeerThreadChatPanel({
   policyInput,
   aiLensEnabled,
   readOnly = false,
+  readOnlySendHint = null,
+  composerPlaceholder = null,
   simpleDm = false,
   peerAvatarUrl = null,
   experienceDiscussion = false,
@@ -206,14 +212,23 @@ export function PeerThreadChatPanel({
 
   const submit = useCallback(async () => {
     const body = text.trim();
-    if (!body || !canSend || readOnly || composerBusy) {
+    if (!body || composerBusy) {
+      return;
+    }
+    if (readOnly) {
+      if (readOnlySendHint?.trim()) {
+        toast.message(readOnlySendHint);
+      }
+      return;
+    }
+    if (!canSend) {
       return;
     }
     setText("");
     resizeComposer();
     focusComposer();
     void send(body, "me").then(() => focusComposer());
-  }, [text, canSend, readOnly, composerBusy, send, focusComposer, resizeComposer]);
+  }, [text, canSend, readOnly, readOnlySendHint, composerBusy, send, focusComposer, resizeComposer]);
 
   const sendQuickReply = useCallback(
     async (body: string) => {
@@ -328,7 +343,7 @@ export function PeerThreadChatPanel({
         autoComplete="off"
         autoCorrect="on"
         disabled={!canSend || readOnly || composerBusy}
-        placeholder={readOnly ? "읽기 전용" : "맥락 이야기"}
+        placeholder={readOnly ? copy.peers.dmChat.readOnlyPlaceholder : "맥락 이야기"}
         className="max-h-28 min-h-[44px] flex-1 resize-none overflow-y-auto rounded-2xl border border-border bg-muted px-4 py-2.5 text-[15px] outline-none placeholder:text-muted-foreground"
       />
       <button
@@ -533,6 +548,7 @@ export function PeerThreadChatPanel({
           canSendImage={canSendImage}
           imageBusy={imageBusy}
           aiBusy={aiBusy}
+          placeholder={composerPlaceholder}
         />
         </>
       ) : (

@@ -21,24 +21,16 @@ import { fetchPeerPublicProfileByUserId } from "@/lib/peer-chat/peer-public-prof
 import { readMarketAvailabilityPreset } from "@/lib/globe/market/market-availability-preset";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-function formatPriceLine(priceMin: number | null, priceMax: number | null): string {
-  if (priceMin !== null && priceMax !== null && priceMin === priceMax) {
-    return `${Math.round(priceMin / 10_000)}만원`;
-  }
-  if (priceMax !== null) {
-    return `${Math.round(priceMax / 10_000)}만원 이하`;
-  }
-  if (priceMin !== null) {
-    return `${Math.round(priceMin / 10_000)}만원 이상`;
-  }
-  return copy.globe.marketIntentPriceOpen;
-}
+import { formatMarketPriceLine } from "@/lib/globe/market/format-market-price-line";
+import { getServerRegionalProfile } from "@/lib/preferences/server-regional-profile";
+import type { RegionalProfile } from "@/lib/preferences/regional-profile";
 
 async function eagerOpenSeekerMarketThread(
   supabase: SupabaseClient,
   userId: string,
   handshake: Awaited<ReturnType<typeof findMarketHandshakeByIntentPair>>,
   options: { initTradeSession: boolean; requireTradeSession: boolean },
+  regionalProfile: RegionalProfile,
 ): Promise<string> {
   if (!handshake) {
     throw new Error("handshake_not_found");
@@ -64,7 +56,11 @@ async function eagerOpenSeekerMarketThread(
   });
 
   const category = marketCategoryLabelKo(listingIntent.categoryId);
-  const priceLine = formatPriceLine(listingIntent.priceMinKrw, listingIntent.priceMaxKrw);
+  const priceLine = formatMarketPriceLine(
+    listingIntent.priceMinKrw,
+    listingIntent.priceMaxKrw,
+    regionalProfile,
+  );
   const now = new Date().toISOString();
 
   await insertPeerMessage(supabase, {
@@ -98,6 +94,11 @@ async function eagerOpenSeekerMarketThread(
     if (!ok && options.requireTradeSession) {
       throw new Error("trade_init_failed");
     }
+  } else {
+    const { patchMarketHandshake } = await import(
+      "@/lib/globe/market/server/market-alignment-handshake-store"
+    );
+    await patchMarketHandshake(supabase, handshake.id, { tradeStatus: "chat" });
   }
 
   return dm.threadId;
@@ -118,6 +119,7 @@ export async function bootstrapSeekerMarketChat(
     fromFieldDiscovery?: boolean;
   },
 ): Promise<{ threadId: string; handshakeId: string; alreadyCompleted?: boolean }> {
+  const regionalProfile = await getServerRegionalProfile();
   let seeking: Awaited<ReturnType<typeof findMarketIntentById>> = null;
 
   const seekingIntentId = input.seekingIntentId?.trim() ?? "";
@@ -189,6 +191,19 @@ export async function bootstrapSeekerMarketChat(
   const requireTradeSession = input.requireTradeSession === true;
   const tradeOptions = { initTradeSession, requireTradeSession };
 
+  if (initTradeSession) {
+    const { findListingReservedHandshake } = await import(
+      "@/lib/globe/market/server/find-listing-reserved-handshake"
+    );
+    const reserved = await findListingReservedHandshake(supabase, {
+      listingIntentId: listing.id,
+      excludeSeekingUserId: userId,
+    });
+    if (reserved) {
+      throw new Error("listing_meet_reserved");
+    }
+  }
+
   let threadId = handshake.threadId;
   let alreadyCompleted = false;
 
@@ -222,12 +237,22 @@ export async function bootstrapSeekerMarketChat(
     }
   } else if (handshake.phase === "pending_buyer_start" && threadId) {
     await startBuyerMarketHandshakeChat(supabase, userId, handshake.id);
+    if (initTradeSession) {
+      const { tryInitializeMarketTradeSession } = await import(
+        "@/lib/globe/market/server/initialize-market-trade-session"
+      );
+      const ok = await tryInitializeMarketTradeSession(supabase, handshake.id, listing);
+      if (!ok && requireTradeSession) {
+        throw new Error("trade_init_failed");
+      }
+    }
   } else if (handshake.phase === "pending_listing" || !threadId) {
     threadId = await eagerOpenSeekerMarketThread(
       supabase,
       userId,
       handshake,
       tradeOptions,
+      regionalProfile,
     );
   } else if (handshake.phase === "completed") {
     if (!threadId) {

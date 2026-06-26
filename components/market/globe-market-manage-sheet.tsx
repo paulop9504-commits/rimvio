@@ -7,11 +7,13 @@ import { MapPin, X } from "lucide-react";
 import { toast } from "sonner";
 import { MarketIntentOwnershipChip } from "@/components/market/market-intent-ownership-chip";
 import { useMarketManageIntents } from "@/hooks/use-market-manage-intents";
+import { useRegionalProfile } from "@/hooks/use-regional-profile";
 import { copy } from "@/lib/copy/human-ko";
 import { RIMVIO_TYPE, rimvioGhostCtaClass } from "@/lib/design/rimvio-ontology";
 import { marketCategoryLabelKo } from "@/lib/globe/market/market-category-registry";
 import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
 import { isMarketIntentPublishedExternal } from "@/lib/globe/market/market-intent-detail";
+import { formatMarketPriceLine } from "@/lib/globe/market/format-market-price-line";
 import { formatMarketPlaceLabel } from "@/lib/globe/market/format-market-place-label";
 import { publishMarketIntentExternal } from "@/lib/globe/market/publish-market-intent-external";
 import { cn } from "@/lib/utils";
@@ -21,20 +23,6 @@ export type GlobeMarketManageSheetProps = {
   onOpenChange: (open: boolean) => void;
   onFlyToIntent?: (record: MarketIntentRecord) => void;
 };
-
-function formatPriceLine(record: MarketIntentRecord): string {
-  if (record.priceMinKrw === null && record.priceMaxKrw === null) {
-    return copy.globe.marketIntentPriceOpen;
-  }
-  if (record.priceMinKrw !== null && record.priceMaxKrw !== null) {
-    if (record.priceMinKrw === record.priceMaxKrw) {
-      return `${Math.round(record.priceMinKrw / 10_000)}만원`;
-    }
-    return `${Math.round(record.priceMinKrw / 10_000)}~${Math.round(record.priceMaxKrw / 10_000)}만원`;
-  }
-  const value = record.priceMinKrw ?? record.priceMaxKrw ?? 0;
-  return `${Math.round(value / 10_000)}만원`;
-}
 
 function MarketManageRow({
   record,
@@ -47,6 +35,7 @@ function MarketManageRow({
   onEnd: () => void;
   onPublish: () => void;
 }) {
+  const { profile } = useRegionalProfile();
   const title =
     record.detail.productName.trim() || record.title.trim() || copy.globe.marketTradePlaceProductFallback;
   const published = isMarketIntentPublishedExternal(record.detail);
@@ -93,7 +82,8 @@ function MarketManageRow({
           </div>
           <p className="truncate text-[15px] font-semibold text-foreground">{title}</p>
           <p className={cn("mt-0.5", RIMVIO_TYPE.caption)}>
-            {marketCategoryLabelKo(record.categoryId)} · {formatPriceLine(record)}
+            {marketCategoryLabelKo(record.categoryId)} ·{" "}
+            {formatMarketPriceLine(record.priceMinKrw, record.priceMaxKrw, profile)}
           </p>
           <p className="mt-1 flex items-center gap-1 text-[12px] text-muted-foreground">
             <MapPin className="size-3.5 shrink-0 text-primary" aria-hidden />

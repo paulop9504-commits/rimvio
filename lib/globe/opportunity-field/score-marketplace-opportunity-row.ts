@@ -13,27 +13,9 @@ import type {
   UserStateV1,
 } from "@/lib/globe/opportunity-field/types";
 
-function formatPriceKrw(record: MarketIntentRecord): {
-  price: number | null;
-  priceLine: string;
-} {
-  const { priceMinKrw, priceMaxKrw } = record;
-  if (priceMinKrw === null && priceMaxKrw === null) {
-    return { price: null, priceLine: "가격 협의" };
-  }
-  if (priceMinKrw !== null && priceMaxKrw !== null) {
-    if (priceMinKrw === priceMaxKrw) {
-      const line = `${Math.round(priceMinKrw / 10_000)}만원`;
-      return { price: priceMinKrw, priceLine: line };
-    }
-    return {
-      price: priceMinKrw,
-      priceLine: `${Math.round(priceMinKrw / 10_000)}~${Math.round(priceMaxKrw / 10_000)}만원`,
-    };
-  }
-  const value = priceMinKrw ?? priceMaxKrw ?? 0;
-  return { price: value, priceLine: `${Math.round(value / 10_000)}만원` };
-}
+import { formatMarketPriceLine } from "@/lib/globe/market/format-market-price-line";
+import type { RegionalProfile } from "@/lib/preferences/regional-profile";
+import { resolveRegionalProfile } from "@/lib/preferences/regional-profile";
 
 function readConditionLabel(listing: MarketIntentRecord): string {
   const battery = listing.detail.prioritySlots?.battery_health;
@@ -64,6 +46,7 @@ export function scoreMarketplaceOpportunityRow(input: {
   listing: MarketIntentRecord;
   userState: UserStateV1;
   copy: OpportunityFieldCopy;
+  regionalProfile?: RegionalProfile;
 }): OpportunityRow | null {
   if (!isListingCandidateForSeeking(input.seeking, input.listing)) {
     return null;
@@ -91,7 +74,13 @@ export function scoreMarketplaceOpportunityRow(input: {
     copy: input.copy,
   });
 
-  const { price, priceLine } = formatPriceKrw(input.listing);
+  const profile = input.regionalProfile ?? resolveRegionalProfile("KR");
+  const { price, priceLine } = (() => {
+    const { priceMinKrw, priceMaxKrw } = input.listing;
+    const line = formatMarketPriceLine(priceMinKrw, priceMaxKrw, profile, input.copy.reasonPrice);
+    const priceValue = priceMinKrw ?? priceMaxKrw;
+    return { price: priceValue, priceLine: line };
+  })();
   const title =
     input.listing.detail.productName.trim() ||
     input.listing.title.trim() ||

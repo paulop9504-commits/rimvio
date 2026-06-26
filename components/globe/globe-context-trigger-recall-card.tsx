@@ -1,6 +1,5 @@
 "use client";
 
-import { Play } from "lucide-react";
 import { Shimmer } from "@/components/ui/shimmer";
 import { useMediaBlobUrl } from "@/hooks/use-media-blob-url";
 import { copy } from "@/lib/copy/human-ko";
@@ -176,16 +175,9 @@ export function GlobeContextTriggerRecallCard({
       {stack.length > 0 ? <RecallPolaroidStack items={stack} /> : null}
 
       {isVideo ? (
-        <>
-          <span className="absolute left-2.5 top-2.5 z-20 rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-semibold text-white/92 backdrop-blur-sm">
-            영상
-          </span>
-          <span className="absolute inset-0 z-10 flex items-center justify-center">
-            <span className="flex size-11 items-center justify-center rounded-full bg-white/92 shadow-[0_6px_20px_rgba(15,23,42,0.2)]">
-              <Play className="ml-0.5 size-4 fill-[#191f28] text-[#191f28]" aria-hidden />
-            </span>
-          </span>
-        </>
+        <span className="absolute left-2.5 top-2.5 z-20 rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-semibold text-white/92 backdrop-blur-sm">
+          영상
+        </span>
       ) : null}
 
       <div className="absolute inset-x-0 bottom-0 z-20 px-3.5 pb-3.5 pt-10">

@@ -15,6 +15,8 @@ import {
 } from "@/lib/globe/market/server/market-alignment-handshake-store";
 import { scanMarketHandshakesForIntent } from "@/lib/globe/market/server/scan-market-handshakes";
 import { isMarketIntentPublishedExternal } from "@/lib/globe/market/market-intent-detail";
+import { getServerRegionalProfile } from "@/lib/preferences/server-regional-profile";
+import type { RegionalProfile } from "@/lib/preferences/regional-profile";
 
 const HANDSHAKE_COPY = {
   listingPendingHeadline: (title: string, place: string) =>
@@ -81,6 +83,7 @@ async function ensureHandshakeForListingPair(input: {
   userId: string;
   focusEventId: string;
   matchIntentId: string;
+  regionalProfile: RegionalProfile;
 }): Promise<MarketAlignmentOffer | null> {
   const own = await listOwnMarketIntents(input.supabase, input.userId);
   const seeking = own.find(
@@ -133,6 +136,7 @@ async function ensureHandshakeForListingPair(input: {
     handshake,
     viewerUserId: input.userId,
     copy: HANDSHAKE_COPY,
+    regionalProfile: input.regionalProfile,
   });
 }
 
@@ -144,6 +148,7 @@ export async function resolveServerMarketAlignmentOffer(input: {
 }): Promise<MarketAlignmentOffer | null> {
   const focusEventId = input.focusEventId?.trim() || null;
   const matchIntentId = input.matchIntentId?.trim() || null;
+  const regionalProfile = await getServerRegionalProfile();
 
   if (focusEventId && matchIntentId) {
     return ensureHandshakeForListingPair({
@@ -151,6 +156,7 @@ export async function resolveServerMarketAlignmentOffer(input: {
       userId: input.userId,
       focusEventId,
       matchIntentId,
+      regionalProfile,
     });
   }
 
@@ -161,6 +167,7 @@ export async function resolveServerMarketAlignmentOffer(input: {
       handshake,
       viewerUserId: input.userId,
       copy: HANDSHAKE_COPY,
+      regionalProfile,
     });
     if (offer) {
       return offer;
@@ -190,6 +197,7 @@ export async function resolveServerMarketAlignmentOffer(input: {
           handshake,
           viewerUserId: input.userId,
           copy: HANDSHAKE_COPY,
+          regionalProfile,
         });
         if (offer) {
           return offer;

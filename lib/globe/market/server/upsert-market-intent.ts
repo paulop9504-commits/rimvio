@@ -1,17 +1,21 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
+import { assertMarketListingAllowed } from "@/lib/globe/market/guard-market-prohibited-listing";
 import {
   marketIntentRowToRecord,
   marketIntentDetailToJson,
   type MarketIntentDbRow,
 } from "@/lib/globe/market/server/market-intent-row";
 import { filterPublishedMarketIntents } from "@/lib/globe/market/filter-published-market-intents";
+import { isMarketListingAllowed } from "@/lib/globe/market/guard-market-prohibited-listing";
 
 export async function upsertMarketIntentRemote(
   supabase: SupabaseClient,
   userId: string,
   record: MarketIntentRecord,
 ): Promise<MarketIntentRecord> {
+  assertMarketListingAllowed(record);
+
   const payload = {
     user_id: userId,
     client_event_id: record.eventId.trim(),
@@ -66,10 +70,11 @@ export async function listActiveMarketIntentsForMatching(
   }
 
   const rows = ((data ?? []) as MarketIntentDbRow[]).map(marketIntentRowToRecord);
+  const allowed = rows.filter(isMarketListingAllowed);
   if (options?.publishedOnly) {
-    return filterPublishedMarketIntents(rows);
+    return filterPublishedMarketIntents(allowed);
   }
-  return rows;
+  return allowed;
 }
 
 export async function listOwnMarketIntents(

@@ -520,6 +520,12 @@ export function MarketTradeProgressCard({
                   {globe.marketTradeEnRoute}
                 </span>
               ) : null}
+              {session.isEnRoute && session.viewerRole === "listing" ? (
+                <span className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#eff6ff] py-2.5 text-[14px] font-semibold text-[#2563eb]">
+                  <Car className="size-4" aria-hidden />
+                  {globe.marketTradeGuestEnRouteListing}
+                </span>
+              ) : null}
             </div>
             {session.departOpensHintKo ? (
               <p className="text-[12px] leading-relaxed text-[#6b7684]">

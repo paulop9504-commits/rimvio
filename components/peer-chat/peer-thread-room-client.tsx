@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ExperienceDiscussionHeader } from "@/components/experience/experience-discussion-header";
 import { buildExperienceRoomBackHref } from "@/lib/globe/resolve-experience-peer-thread-id";
 import { toast } from "sonner";
@@ -50,6 +50,7 @@ import {
 } from "@/components/market/market-handshake-room-gate";
 import { MarketAlignmentRolePill } from "@/components/market/market-alignment-role-pill";
 import { resolveOtherPartyMarketRole } from "@/lib/globe/market/market-intent-role";
+import { readMarketHandshakeUserError } from "@/lib/globe/market/read-market-handshake-user-error";
 
 type PeerThreadRoomClientProps = {
   peerThreadId: string;
@@ -72,6 +73,7 @@ function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
     null,
   );
   const [marketStartBusy, setMarketStartBusy] = useState(false);
+  const marketAutoStartAttemptedRef = useRef(false);
   const roster = useMemo(() => readPinnedRoster(), []);
   const [contact, setContact] = useState<PeerContact | null>(() =>
     getPeerContactById(peerThreadId),
@@ -102,26 +104,82 @@ function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
     return refreshed;
   }, [peerThreadId]);
 
-  const onStartMarketChat = useCallback(async () => {
-    if (!marketHandshake?.id || marketStartBusy) {
+  useEffect(() => {
+    if (
+      !phoneDm ||
+      isGroup ||
+      !marketHandshake ||
+      marketHandshake.viewerRole !== "listing" ||
+      marketHandshake.completed
+    ) {
       return;
     }
-    setMarketStartBusy(true);
-    try {
-      await startMarketHandshakeChatRemote({ handshakeId: marketHandshake.id });
-      const refreshed = await refreshMarketHandshake();
-      if (refreshed) {
-        setMarketHandshake(refreshed);
+    const id = window.setInterval(() => {
+      void refreshMarketHandshake();
+    }, 30_000);
+    return () => window.clearInterval(id);
+  }, [
+    isGroup,
+    marketHandshake?.completed,
+    marketHandshake?.viewerRole,
+    phoneDm,
+    refreshMarketHandshake,
+  ]);
+
+  useEffect(() => {
+    marketAutoStartAttemptedRef.current = false;
+  }, [peerThreadId]);
+
+  const onStartMarketChat = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!marketHandshake?.id || marketStartBusy) {
+        return false;
       }
-      toast.success(copy.globe.marketAlignBridgeToast);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : copy.globe.marketAlignBridgeFail;
-      toast.error(message);
-    } finally {
-      setMarketStartBusy(false);
+      setMarketStartBusy(true);
+      try {
+        await startMarketHandshakeChatRemote({ handshakeId: marketHandshake.id });
+        const refreshed = await refreshMarketHandshake();
+        if (refreshed) {
+          setMarketHandshake(refreshed);
+        }
+        if (!options?.silent) {
+          toast.success(copy.globe.marketAlignBridgeToast);
+        }
+        return true;
+      } catch (error) {
+        const message = readMarketHandshakeUserError(
+          error instanceof Error ? error.message : copy.globe.marketAlignBridgeFail,
+        );
+        toast.error(message);
+        return false;
+      } finally {
+        setMarketStartBusy(false);
+      }
+    },
+    [
+      copy.globe.marketAlignBridgeFail,
+      copy.globe.marketAlignBridgeToast,
+      marketHandshake?.id,
+      marketStartBusy,
+      refreshMarketHandshake,
+    ],
+  );
+
+  useEffect(() => {
+    if (
+      !marketHandshake?.canStartChat ||
+      marketStartBusy ||
+      marketAutoStartAttemptedRef.current
+    ) {
+      return;
     }
-  }, [copy.globe.marketAlignBridgeFail, copy.globe.marketAlignBridgeToast, marketHandshake?.id, marketStartBusy, refreshMarketHandshake]);
+    marketAutoStartAttemptedRef.current = true;
+    void onStartMarketChat({ silent: true }).then((ok) => {
+      if (!ok) {
+        marketAutoStartAttemptedRef.current = false;
+      }
+    });
+  }, [marketHandshake?.canStartChat, marketHandshake?.id, marketStartBusy, onStartMarketChat]);
 
   useEffect(() => {
     refreshContact();
@@ -188,6 +246,16 @@ function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
   const showAlignmentRolePill = Boolean(
     marketHandshake && !marketHandshake.completed && alignmentPeerRole,
   );
+  const marketChatLocked = Boolean(marketHandshake?.chatLocked);
+  const marketComposerPlaceholder =
+    marketChatLocked && marketHandshake?.viewerRole === "seeking"
+      ? copy.globe.marketHandshakeChatLockedSeekingPlaceholder
+      : null;
+  const marketReadOnlySendHint =
+    marketChatLocked && marketHandshake?.viewerRole === "seeking"
+      ? copy.globe.marketHandshakeChatLockedSeekingSendHint
+      : null;
+
   const marketQuickReplies = useMemo(() => {
     if (
       !marketHandshake ||
@@ -355,7 +423,9 @@ function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
           displayName={displayName}
           policyInput={policyInput}
           aiLensEnabled={experienceDiscussion ? false : settings.aiLensEnabled}
-          readOnly={marketHandshake?.chatLocked}
+          readOnly={marketChatLocked}
+          readOnlySendHint={marketReadOnlySendHint}
+          composerPlaceholder={marketComposerPlaceholder}
           showAiMentionLink={isGroup || phoneDm || Boolean(contact)}
           peerAvatarUrl={isGroup ? null : profile?.avatarUrl}
           simpleDm={phoneDm && !isGroup}
@@ -367,8 +437,11 @@ function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
         />
       </PeerChatThreadShell>
 
-      {marketHandshake?.canStartChat ? (
-        <MarketHandshakeStartBar busy={marketStartBusy} onStart={() => void onStartMarketChat()} />
+      {marketHandshake?.canStartChat && !marketStartBusy ? (
+        <MarketHandshakeStartBar
+          busy={marketStartBusy}
+          onStart={() => void onStartMarketChat()}
+        />
       ) : null}
       {marketHandshake?.chatLocked && marketHandshake.viewerRole === "listing" ? (
         <MarketHandshakeLockedHint />

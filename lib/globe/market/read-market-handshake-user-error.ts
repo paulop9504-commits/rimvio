@@ -41,6 +41,8 @@ export function readMarketHandshakeUserError(raw: string): string {
       return "이미 처리된 맞춤이에요.";
     case "invalid_cancel_reason":
       return "취소 사유를 골라주세요.";
+    case "listing_meet_reserved":
+      return copy.globe.field.listingMeetReservedToast;
     case "seller_meet_conflict":
       return copy.globe.marketTradeSellerMeetConflict;
     case "cancel_failed":

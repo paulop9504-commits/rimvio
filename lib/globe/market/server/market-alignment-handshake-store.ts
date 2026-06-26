@@ -3,6 +3,7 @@ import type {
   MarketHandshakePhase,
   MarketHandshakeRecord,
 } from "@/lib/globe/market/market-handshake-types";
+import { normalizeMarketTradeStatus } from "@/lib/globe/market/market-trade-pipeline";
 import type {
   MarketMeetMode,
   MarketTradeStatus,
@@ -45,20 +46,7 @@ export type MarketHandshakeDbRow = {
 };
 
 function readTradeStatus(raw: MarketHandshakeDbRow): MarketTradeStatus {
-  if (
-    raw.trade_status === "scheduling" ||
-    raw.trade_status === "buyer_picked_day" ||
-    raw.trade_status === "seller_proposed" ||
-    raw.trade_status === "confirmed" ||
-    raw.trade_status === "en_route" ||
-    raw.trade_status === "meeting" ||
-    raw.trade_status === "completed" ||
-    raw.trade_status === "expired" ||
-    raw.trade_status === "cancelled"
-  ) {
-    return raw.trade_status;
-  }
-  return "scheduling";
+  return normalizeMarketTradeStatus(raw.trade_status);
 }
 
 function readMeetMode(raw: MarketHandshakeDbRow): MarketMeetMode {

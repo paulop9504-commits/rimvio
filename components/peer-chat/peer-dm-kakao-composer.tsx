@@ -23,6 +23,7 @@ export type PeerDmKakaoComposerProps = {
   imageBusy: boolean;
   aiBusy: boolean;
   className?: string;
+  placeholder?: string | null;
 };
 
 /** 1:1 DM — 카톡식 다크 pill 컴포저 (+ · 입력 · 전송) */
@@ -42,6 +43,7 @@ export function PeerDmKakaoComposer({
   imageBusy,
   aiBusy,
   className,
+  placeholder = null,
 }: PeerDmKakaoComposerProps) {
   const hasText = text.trim().length > 0;
   const disabled = !canSend || readOnly || composerBusy;
@@ -93,9 +95,10 @@ export function PeerDmKakaoComposer({
           autoCorrect="on"
           disabled={disabled}
           placeholder={
-            readOnly
+            placeholder?.trim() ||
+            (readOnly
               ? copy.peers.dmChat.readOnlyPlaceholder
-              : copy.peers.dmChat.messagePlaceholder
+              : copy.peers.dmChat.messagePlaceholder)
           }
           className={DM_KAKAO_COMPOSER.input}
         />

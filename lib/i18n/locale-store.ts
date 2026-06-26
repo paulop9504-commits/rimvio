@@ -1,4 +1,5 @@
-import { parseStoredLocale } from "@/lib/i18n/detect-locale";
+import { parseStoredLocale, detectAppLocaleFromBrowser } from "@/lib/i18n/detect-locale";
+import { hasCompletedLocaleSetup } from "@/lib/i18n/locale-setup-store";
 import type { AppLocale } from "@/lib/i18n/types";
 export const LOCALE_COOKIE = "rimvio.locale";
 export const LOCALE_STORAGE_KEY = "rimvio.locale.v1";
@@ -42,8 +43,13 @@ export function autoInitAppLocale(): AppLocale {
     return existing;
   }
 
-  const detected = "ko" as AppLocale;
-  writeStoredLocale(detected);
+  const detected = detectAppLocaleFromBrowser();
+  document.documentElement.lang = detected === "ko" ? "ko" : detected;
+
+  if (hasCompletedLocaleSetup()) {
+    writeStoredLocale(detected);
+  }
+
   return detected;
 }
 

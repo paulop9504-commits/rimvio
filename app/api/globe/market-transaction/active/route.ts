@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { marketTradeSessionCopy } from "@/lib/globe/market/market-trade-copy";
 import { listActiveMarketTradeSessionsForUser, listResolvedMarketHandshakePairsForUser } from "@/lib/globe/market/server/market-trade-session-server";
+import { getServerRegionalProfile } from "@/lib/preferences/server-regional-profile";
 
 export async function GET() {
   if (!isSupabaseConfigured()) {
@@ -17,8 +18,9 @@ export async function GET() {
   }
 
   try {
+    const profile = await getServerRegionalProfile();
     const [sessions, resolvedPairs] = await Promise.all([
-      listActiveMarketTradeSessionsForUser(supabase, user.id, marketTradeSessionCopy),
+      listActiveMarketTradeSessionsForUser(supabase, user.id, marketTradeSessionCopy, profile),
       listResolvedMarketHandshakePairsForUser(supabase, user.id),
     ]);
     return NextResponse.json({ ok: true, sessions, resolvedPairs });

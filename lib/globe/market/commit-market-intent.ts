@@ -1,4 +1,5 @@
 import type { MarketIntentDraft, MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
+import { assertMarketListingAllowed } from "@/lib/globe/market/guard-market-prohibited-listing";
 import { DEFAULT_MARKET_INTENT_DETAIL } from "@/lib/globe/market/market-intent-detail";
 import {
   saveMarketIntent,
@@ -22,6 +23,7 @@ export async function commitMarketIntentFromDraft(
 ): Promise<MarketIntentRecord> {
   const publishExternal = options?.publishExternal === true;
   const normalizedDraft = normalizeMarketIntentDraftFromPrioritySlots(draft);
+  assertMarketListingAllowed(normalizedDraft);
   const mediaCounts = countMarketListingMedia(options?.photoFiles ?? []);
   let detail = {
     ...(normalizedDraft.detail ?? DEFAULT_MARKET_INTENT_DETAIL),

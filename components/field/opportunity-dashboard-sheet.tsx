@@ -11,6 +11,7 @@ import { useCopy } from "@/hooks/use-copy";
 import { useActiveMarketTrades } from "@/hooks/use-active-market-trades";
 import { useOpportunityDashboard } from "@/hooks/use-opportunity-dashboard";
 import { filterOpportunityRowsExcludingActiveTrades } from "@/lib/globe/opportunity-field/filter-rows-excluding-active-trades";
+import { hasActiveMarketTradeForListing } from "@/lib/globe/market/market-trade-pipeline";
 import {
   RIMVIO_TYPE,
   rimvioEmptyStateClass,
@@ -55,6 +56,7 @@ export function OpportunityDashboardSheet({
     setSelectedContextId,
     selectedPill,
     listeningLabel,
+    refresh: refreshDiscovery,
   } = useOpportunityDashboard({ open, primaryEventId });
 
   const {
@@ -130,16 +132,12 @@ export function OpportunityDashboardSheet({
           focusEventId={selectedPill.contextId}
           seeking={selectedPill.seeking}
           neighborBadge={field.neighborListingBadge}
-          hasActiveTrade={
-            tradeSessions.some(
-              (session) => session.listingIntentId === detailRow.listing.id,
-            ) ||
-            resolvedTradePairs.some(
-              (pair) =>
-                pair.listingIntentId === detailRow.listing.id &&
-                pair.seekingIntentId === selectedPill.seeking.id,
-            )
-          }
+          hasActiveTrade={hasActiveMarketTradeForListing(
+            tradeSessions,
+            detailRow.listing.id,
+            selectedPill.seeking.id,
+            resolvedTradePairs,
+          )}
           className="min-h-0 flex-1"
           onBeforeNavigate={() => onOpenChange(false)}
           navigate={(href) => router.push(href)}
@@ -148,6 +146,10 @@ export function OpportunityDashboardSheet({
             setDetailRow(null);
             void refreshTrades();
             setFocusTradesToken((value) => value + 1);
+          }}
+          onListingReserved={() => {
+            setDetailRow(null);
+            refreshDiscovery();
           }}
         />
       </div>

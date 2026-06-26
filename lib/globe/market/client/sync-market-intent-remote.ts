@@ -220,6 +220,7 @@ export type MarketHandshakeRoomState = {
   otherPartyConfirmed: boolean;
   awaitingOtherParty: boolean;
   completed: boolean;
+  buyerEnRouteLabel: string | null;
   trace: MarketCompletionTraceDraft | null;
   product: {
     title: string;

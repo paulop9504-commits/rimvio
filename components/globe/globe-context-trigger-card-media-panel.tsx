@@ -1,6 +1,5 @@
 "use client";
 
-import { Play } from "lucide-react";
 import { Shimmer } from "@/components/ui/shimmer";
 import { useMediaBlobUrl } from "@/hooks/use-media-blob-url";
 import type { GlobeContextTriggerMediaPreview } from "@/lib/globe/context-triggers/globe-context-trigger-types";
@@ -39,11 +38,6 @@ function TriggerMediaGridCell({
           decoding="async"
         />
       ) : null}
-      {media.kind === "video" ? (
-        <span className="absolute inset-0 flex items-center justify-center bg-black/18">
-          <Play className="size-2.5 fill-white text-white" aria-hidden />
-        </span>
-      ) : null}
     </span>
   );
 }
@@ -76,11 +70,6 @@ function TriggerMediaVideoHero({
           decoding="async"
         />
       ) : null}
-      <span className="absolute inset-0 flex items-center justify-center bg-black/12">
-        <span className="flex size-10 items-center justify-center rounded-full bg-white/92 shadow-[0_4px_14px_rgba(15,23,42,0.14)]">
-          <Play className="ml-0.5 size-4 fill-[#191f28] text-[#191f28]" aria-hidden />
-        </span>
-      </span>
     </div>
   );
 }

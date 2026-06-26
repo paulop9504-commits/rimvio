@@ -33,6 +33,9 @@ import {
 } from "@/lib/globe/market/market-trade-cancel-reasons";
 import { insertPeerMessage } from "@/lib/peer-chat/server-peer-chat";
 import { copy } from "@/lib/copy/human-ko";
+import { isMarketTradePipelineActive } from "@/lib/globe/market/market-trade-pipeline";
+import { getServerRegionalProfile } from "@/lib/preferences/server-regional-profile";
+import type { RegionalProfile } from "@/lib/preferences/regional-profile";
 import {
   MARKET_SCHEDULING_SLA_HOURS,
   readMarketAvailabilityPreset,
@@ -121,8 +124,10 @@ async function refreshSchedulingHandshake(
 export async function listActiveMarketTradeSessionsForUser(
   supabase: SupabaseClient,
   userId: string,
-  copy: MarketTradeSessionCopy,
+  sessionCopy: MarketTradeSessionCopy,
+  regionalProfile?: RegionalProfile,
 ): Promise<MarketTradeSessionView[]> {
+  const profile = regionalProfile ?? (await getServerRegionalProfile());
   const { data, error } = await supabase
     .from("market_alignment_handshakes")
     .select("*")
@@ -152,15 +157,20 @@ export async function listActiveMarketTradeSessionsForUser(
     const preset = readMarketAvailabilityPreset(listing.detail?.availabilityPreset);
     handshake = await ensureMarketTradeScheduleDateCandidates(supabase, handshake, preset);
     handshake = await ensureBuyerPickedDayTradeStatus(supabase, handshake);
+    if (!isMarketTradePipelineActive(handshake.tradeStatus)) {
+      continue;
+    }
     const record = buildMarketTradeSessionRecord({
       handshake,
       listing,
       viewerUserId: userId,
+      regionalProfile: profile,
+      priceOpenLabel: sessionCopy.priceOpen,
     });
     if (!record) {
       continue;
     }
-    views.push(buildMarketTradeSessionView(record, copy));
+    views.push(buildMarketTradeSessionView(record, sessionCopy, new Date(), profile));
   }
   return views;
 }
@@ -504,17 +514,19 @@ export async function confirmMarketTradeSchedule(
     meetLng: handshake.meetLng ?? listing.anchorLng ?? null,
   });
 
+  const profile = await getServerRegionalProfile();
   const record = buildMarketTradeSessionRecord({
     handshake: updated,
     listing,
     viewerUserId: userId,
+    regionalProfile: profile,
   });
   if (!record) {
     return null;
   }
 
   const { marketTradeSessionCopy } = await import("@/lib/globe/market/market-trade-copy");
-  return buildMarketTradeSessionView(record, marketTradeSessionCopy);
+  return buildMarketTradeSessionView(record, marketTradeSessionCopy, new Date(), profile);
 }
 
 
@@ -533,6 +545,7 @@ async function buildTradeSessionViewForUser(
   if (!handshake) {
     return null;
   }
+  const profile = await getServerRegionalProfile();
   const listing = await findMarketIntentById(supabase, handshake.listingIntentId);
   if (!listing) {
     return null;
@@ -541,12 +554,13 @@ async function buildTradeSessionViewForUser(
     handshake,
     listing,
     viewerUserId: userId,
+    regionalProfile: profile,
   });
   if (!record) {
     return null;
   }
   const { marketTradeSessionCopy } = await import("@/lib/globe/market/market-trade-copy");
-  return buildMarketTradeSessionView(record, marketTradeSessionCopy);
+  return buildMarketTradeSessionView(record, marketTradeSessionCopy, new Date(), profile);
 }
 
 export async function departMarketTradeGuest(
@@ -583,6 +597,7 @@ export async function departMarketTradeGuest(
   const lat = assertFiniteCoord(input.lat, "invalid_lat");
   const lng = assertFiniteCoord(input.lng, "invalid_lng");
   const atIso = new Date().toISOString();
+  const wasFirstDepart = handshake.tradeStatus === "confirmed";
 
   const updated = await patchMarketHandshake(supabase, handshake.id, {
     tradeStatus: "en_route",
@@ -591,6 +606,15 @@ export async function departMarketTradeGuest(
     guestLng: lng,
     guestLocationAtIso: atIso,
   });
+
+  if (wasFirstDepart && handshake.threadId) {
+    await insertPeerMessage(supabase, {
+      threadId: handshake.threadId,
+      senderUserId: userId,
+      messageType: "system",
+      body: copy.globe.marketTradeBuyerDepartedSystem,
+    });
+  }
 
   return buildTradeSessionViewForUser(supabase, updated, userId);
 }

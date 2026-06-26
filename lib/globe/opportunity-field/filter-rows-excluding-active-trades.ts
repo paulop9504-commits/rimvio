@@ -1,8 +1,15 @@
+import {
+  isMarketListingReservedForOthers,
+  isMarketTradePipelineActive,
+} from "@/lib/globe/market/market-trade-pipeline";
 import type { MarketHandshakeIntentPair } from "@/lib/globe/market/market-trade-types";
 import type { MarketTradeSessionView } from "@/lib/globe/market/market-trade-types";
 import type { OpportunityRow } from "@/lib/globe/opportunity-field";
 
-/** Discovery rows must not repeat listings in active or completed trades. */
+/**
+ * Discovery rows: hide listings reserved for another buyer, or in an active
+ * schedule pipeline for the current seeker. Chat-only matches stay visible.
+ */
 export function filterOpportunityRowsExcludingActiveTrades(
   rows: readonly OpportunityRow[],
   sessions: readonly MarketTradeSessionView[],
@@ -12,13 +19,17 @@ export function filterOpportunityRowsExcludingActiveTrades(
   const blockedListingIds = new Set<string>();
 
   for (const session of sessions) {
-    if (
-      selectedSeekingIntentId &&
-      session.seekingIntentId !== selectedSeekingIntentId
-    ) {
+    if (isMarketListingReservedForOthers(session.tradeStatus)) {
+      blockedListingIds.add(session.listingIntentId);
       continue;
     }
-    blockedListingIds.add(session.listingIntentId);
+
+    const isCurrentSeeker =
+      !selectedSeekingIntentId ||
+      session.seekingIntentId === selectedSeekingIntentId;
+    if (isCurrentSeeker && isMarketTradePipelineActive(session.tradeStatus)) {
+      blockedListingIds.add(session.listingIntentId);
+    }
   }
 
   for (const pair of resolvedPairs) {

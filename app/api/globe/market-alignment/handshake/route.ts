@@ -3,6 +3,7 @@ import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { buildMarketHandshakeRoomPayload } from "@/lib/globe/market/server/build-market-handshake-room-state";
 import { findMarketHandshakeByThreadId } from "@/lib/globe/market/server/market-alignment-handshake-store";
 import { findMarketIntentById } from "@/lib/globe/market/server/upsert-market-intent";
+import { getServerRegionalProfile } from "@/lib/preferences/server-regional-profile";
 
 export async function GET(request: NextRequest) {
   if (!isSupabaseConfigured()) {
@@ -36,6 +37,7 @@ export async function GET(request: NextRequest) {
   }
 
   const seekingIntent = await findMarketIntentById(supabase, handshake.seekingIntentId);
+  const regionalProfile = await getServerRegionalProfile();
 
   return NextResponse.json({
     ok: true,
@@ -44,6 +46,7 @@ export async function GET(request: NextRequest) {
       listingIntent,
       seekingIntent,
       viewerUserId: user.id,
+      regionalProfile,
     }),
   });
 }

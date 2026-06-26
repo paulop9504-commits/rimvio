@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { MarketPriorityStepSurface } from "@/components/market/market-priority-step-surface";
 import { MarketTradePlaceStep } from "@/components/market/market-listing-trade-place-step";
 import { commitMarketIntentFromDraft } from "@/lib/globe/market/commit-market-intent";
+import { readMarketProhibitedListingUserError } from "@/lib/globe/market/guard-market-prohibited-listing";
 import type { MarketListingInferenceSource } from "@/lib/globe/market/infer-market-listing-from-media";
 import { inferMarketListingFromPhotoFiles } from "@/lib/globe/market/infer-market-listing-from-photo-client";
 import { normalizeMarketIntentDraftFromPrioritySlots } from "@/lib/globe/market/patch-market-draft-priority-slot";
@@ -507,6 +508,13 @@ export function GlobeMarketIntentWizardSheet({
         placeLabel: saved.placeLabel,
       });
       onOpenChange(false);
+    } catch (error) {
+      const raw = error instanceof Error ? error.message : "";
+      if (raw.startsWith("prohibited_listing:")) {
+        toast.error(readMarketProhibitedListingUserError(raw));
+        return;
+      }
+      toast.error(copy.globe.createFail);
     } finally {
       setBusy(false);
     }

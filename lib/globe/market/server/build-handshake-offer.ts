@@ -4,26 +4,9 @@ import { findMarketIntentById } from "@/lib/globe/market/server/upsert-market-in
 import { fetchPeerPublicProfileByUserId } from "@/lib/peer-chat/peer-public-profile";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-function formatPriceLine(
-  priceMinKrw: number | null,
-  priceMaxKrw: number | null,
-): string {
-  if (priceMinKrw === null && priceMaxKrw === null) {
-    return "가격 협의";
-  }
-  if (priceMinKrw !== null && priceMaxKrw !== null) {
-    if (priceMinKrw === priceMaxKrw) {
-      return `${Math.round(priceMinKrw / 10_000)}만원`;
-    }
-    return `${Math.round(priceMinKrw / 10_000)}~${Math.round(priceMaxKrw / 10_000)}만원`;
-  }
-  if (priceMaxKrw !== null) {
-    return `${Math.round(priceMaxKrw / 10_000)}만원 이하`;
-  }
-  return `${Math.round((priceMinKrw ?? 0) / 10_000)}만원 이상`;
-}
-
-export type HandshakeOfferCopy = {
+import { formatMarketPriceLine } from "@/lib/globe/market/format-market-price-line";
+import type { RegionalProfile } from "@/lib/preferences/regional-profile";
+import { resolveRegionalProfile } from "@/lib/preferences/regional-profile";
   listingPendingHeadline: (title: string, place: string) => string;
   listingPendingBody: (category: string, hint: string) => string;
   listingPendingCta: string;
@@ -37,7 +20,9 @@ export async function buildHandshakeOfferForViewer(input: {
   handshake: MarketHandshakeRecord;
   viewerUserId: string;
   copy: HandshakeOfferCopy;
+  regionalProfile?: RegionalProfile;
 }): Promise<MarketHandshakeOffer | null> {
+  const profile = input.regionalProfile ?? resolveRegionalProfile("KR");
   const { handshake, viewerUserId } = input;
   const isListing = viewerUserId === handshake.listingUserId;
   const isSeeking = viewerUserId === handshake.seekingUserId;
@@ -62,7 +47,11 @@ export async function buildHandshakeOfferForViewer(input: {
   const otherUserId = isListing ? handshake.seekingUserId : handshake.listingUserId;
   const profile = await fetchPeerPublicProfileByUserId(input.supabase, otherUserId);
   const category = marketCategoryLabelKo(listingIntent.categoryId);
-  const priceLine = formatPriceLine(listingIntent.priceMinKrw, listingIntent.priceMaxKrw);
+  const priceLine = formatMarketPriceLine(
+    listingIntent.priceMinKrw,
+    listingIntent.priceMaxKrw,
+    profile,
+  );
   const hint = handshake.priorityHint.trim();
 
   if (handshake.phase === "pending_listing" && isListing) {

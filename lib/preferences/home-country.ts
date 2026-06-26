@@ -6,6 +6,7 @@ import {
 const STORAGE_KEY = "rimvio.home-country.v1";
 
 export const HOME_COUNTRY_UPDATED = "rimvio-home-country-updated";
+export const HOME_COUNTRY_COOKIE = "rimvio.home-country";
 
 const BROWSER_LOCALE_MAP: Array<{ prefix: string; code: CountryCode }> = [
   { prefix: "ko", code: "KR" },
@@ -96,6 +97,7 @@ export function setHomeCountry(code: CountryCode): void {
 
   try {
     localStorage.setItem(STORAGE_KEY, code);
+    document.cookie = `${HOME_COUNTRY_COOKIE}=${code}; path=/; max-age=31536000; samesite=lax`;
     window.dispatchEvent(new CustomEvent(HOME_COUNTRY_UPDATED));
   } catch {
     // ignore quota / private mode

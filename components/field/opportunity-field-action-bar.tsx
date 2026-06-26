@@ -18,12 +18,14 @@ export type OpportunityFieldActionBarProps = {
   seeking: MarketIntentRecord;
   matchIntentId: string;
   peerDisplayName: string;
-  /** Already in trade for this listing — skip bootstrap, go to trades tab. */
+  /** Already in schedule pipeline for this listing — skip bootstrap, go to trades tab. */
   hasActiveTrade?: boolean;
   navigate: (href: string) => void;
   onBeforeNavigate?: () => void;
   onChatOpened?: () => void;
   onScheduleStarted?: () => void;
+  /** Seller listing reserved for another buyer — return to discovery list. */
+  onListingReserved?: () => void;
   className?: string;
 };
 
@@ -37,6 +39,7 @@ export function OpportunityFieldActionBar({
   onBeforeNavigate,
   onChatOpened,
   onScheduleStarted,
+  onListingReserved,
   className,
 }: OpportunityFieldActionBarProps) {
   const copy = useCopy();
@@ -125,6 +128,11 @@ export function OpportunityFieldActionBar({
       }
     } catch (error) {
       const raw = error instanceof Error ? error.message : "open_chat_failed";
+      if (raw === "listing_meet_reserved") {
+        toast.message(field.listingMeetReservedToast);
+        onListingReserved?.();
+        return;
+      }
       toast.error(readMarketHandshakeUserError(raw));
     } finally {
       setBusy(null);

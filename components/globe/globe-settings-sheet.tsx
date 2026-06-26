@@ -17,12 +17,14 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { HomeCountryPicker } from "@/components/home-country-picker";
+import { LocaleSettingsPicker } from "@/components/locale-settings-picker";
 import { SettingsIntegrationsPanel } from "@/components/settings-integrations-panel";
 import { SettingsRow, SettingsSection } from "@/components/settings/settings-section";
 import { SettingsToggle } from "@/components/settings/settings-toggle";
 import { useAlbumSync } from "@/hooks/use-album-sync";
 import { useAlbumSyncProgress } from "@/hooks/use-album-sync-progress";
 import { useCopy } from "@/hooks/use-copy";
+import { useLocale } from "@/lib/i18n/locale-context";
 import { useAuth } from "@/hooks/use-auth";
 import { useGlobeExperienceSettings } from "@/hooks/use-globe-experience-settings";
 import { useGpsTrackingEnabled } from "@/hooks/use-gps-tracking-enabled";
@@ -141,6 +143,7 @@ function CompactOptionButton({
 
 function GlobeSettingsBody({ onShowGlobeGuide }: { onShowGlobeGuide?: () => void }) {
   const copy = useCopy();
+  const { locale, setLocale } = useLocale();
   const { user } = useAuth();
   const { enabled: gpsEnabled, setEnabled: setGpsEnabled } = useGpsTrackingEnabled();
   const { settings: globePrefs, patch: patchGlobePrefs } = useGlobeExperienceSettings();
@@ -477,7 +480,23 @@ function GlobeSettingsBody({ onShowGlobeGuide }: { onShowGlobeGuide?: () => void
         </p>
       </SettingsSection>
 
-      <SettingsSection title="홈 국가" description="국내/해외 맥락 · 지도 추천">
+      <SettingsSection
+        title={copy.settings.languageSectionTitle}
+        description={copy.settings.languageSectionHint}
+      >
+        <LocaleSettingsPicker
+          value={locale}
+          onChange={(next) => {
+            setLocale(next);
+            toast.success(copy.settings.languageSaved);
+          }}
+        />
+      </SettingsSection>
+
+      <SettingsSection
+        title={copy.settings.homeRegionSectionTitle}
+        description={copy.settings.homeRegionSectionHint}
+      >
         <HomeCountryPicker
           compact
           value={homeCountry ?? suggestHomeCountryFromBrowser()}
@@ -485,7 +504,7 @@ function GlobeSettingsBody({ onShowGlobeGuide }: { onShowGlobeGuide?: () => void
           onChange={(code) => {
             setHomeCountry(code);
             setHomeCountryState(code);
-            toast.success("홈 국가를 저장했어요");
+            toast.success(copy.settings.homeRegionSaved);
           }}
         />
       </SettingsSection>

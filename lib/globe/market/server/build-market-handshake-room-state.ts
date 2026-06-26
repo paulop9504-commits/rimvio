@@ -8,20 +8,9 @@ import { formatMarketPlaceLabel } from "@/lib/globe/market/format-market-place-l
 import { formatMarketMemoryPreview } from "@/lib/globe/market/memory/format-market-memory-preview";
 import { readMarketMemoryRecord } from "@/lib/globe/market/market-intent-detail";
 
-function formatPriceLine(priceMin: number | null, priceMax: number | null): string {
-  if (priceMin !== null && priceMax !== null && priceMin === priceMax) {
-    return `${Math.round(priceMin / 10_000)}만원`;
-  }
-  if (priceMax !== null) {
-    return `${Math.round(priceMax / 10_000)}만원 이하`;
-  }
-  if (priceMin !== null) {
-    return `${Math.round(priceMin / 10_000)}만원 이상`;
-  }
-  return copy.globe.marketIntentPriceOpen;
-}
-
-export type MarketHandshakeRoomPayload = {
+import { formatMarketPriceLine } from "@/lib/globe/market/format-market-price-line";
+import type { RegionalProfile } from "@/lib/preferences/regional-profile";
+import { resolveRegionalProfile } from "@/lib/preferences/regional-profile";
   id: string;
   phase: string;
   threadId: string | null;
@@ -34,6 +23,8 @@ export type MarketHandshakeRoomPayload = {
   otherPartyConfirmed: boolean;
   awaitingOtherParty: boolean;
   completed: boolean;
+  /** Listing viewer — buyer tapped depart and is en route. */
+  buyerEnRouteLabel: string | null;
   trace: MarketCompletionTraceDraft | null;
   product: {
     title: string;
@@ -56,10 +47,16 @@ export function buildMarketHandshakeRoomPayload(input: {
   listingIntent: MarketIntentRecord;
   seekingIntent?: MarketIntentRecord | null;
   viewerUserId: string;
+  regionalProfile?: RegionalProfile;
 }): MarketHandshakeRoomPayload {
   const { handshake, listingIntent, viewerUserId } = input;
   const seekingIntent = input.seekingIntent ?? null;
-  const priceLine = formatPriceLine(listingIntent.priceMinKrw, listingIntent.priceMaxKrw);
+  const profile = input.regionalProfile ?? resolveRegionalProfile("KR");
+  const priceLine = formatMarketPriceLine(
+    listingIntent.priceMinKrw,
+    listingIntent.priceMaxKrw,
+    profile,
+  );
 
   const viewerRole =
     viewerUserId === handshake.seekingUserId
@@ -107,6 +104,11 @@ export function buildMarketHandshakeRoomPayload(input: {
         ? formatMarketMemoryPreview(seekingIntent.detail, "seeking")
         : null;
 
+  const buyerEnRouteLabel =
+    viewerRole === "listing" && handshake.tradeStatus === "en_route"
+      ? copy.globe.marketTradeStatusEnRouteListing
+      : null;
+
   return {
     id: handshake.id,
     phase: handshake.phase,
@@ -120,6 +122,7 @@ export function buildMarketHandshakeRoomPayload(input: {
     otherPartyConfirmed,
     awaitingOtherParty: active && viewerConfirmed && !otherPartyConfirmed,
     completed,
+    buyerEnRouteLabel,
     trace,
     product: {
       title: listingIntent.detail.productName || listingIntent.title,

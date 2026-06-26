@@ -21,20 +21,9 @@ import { insertPeerMessage } from "@/lib/peer-chat/server-peer-chat";
 import { fetchPeerPublicProfileByUserId } from "@/lib/peer-chat/peer-public-profile";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-function formatPriceLine(priceMin: number | null, priceMax: number | null): string {
-  if (priceMin !== null && priceMax !== null && priceMin === priceMax) {
-    return `${Math.round(priceMin / 10_000)}만원`;
-  }
-  if (priceMax !== null) {
-    return `${Math.round(priceMax / 10_000)}만원 이하`;
-  }
-  if (priceMin !== null) {
-    return `${Math.round(priceMin / 10_000)}만원 이상`;
-  }
-  return copy.globe.marketIntentPriceOpen;
-}
-
-export async function acceptListingMarketHandshake(
+import { formatMarketPriceLine } from "@/lib/globe/market/format-market-price-line";
+import { getServerRegionalProfile } from "@/lib/preferences/server-regional-profile";
+import type { RegionalProfile } from "@/lib/preferences/regional-profile";
   supabase: SupabaseClient,
   userId: string,
   handshakeId: string,
@@ -73,8 +62,13 @@ export async function acceptListingMarketHandshake(
   });
   const threadId = dm.threadId;
 
+  const regionalProfile = await getServerRegionalProfile();
   const category = marketCategoryLabelKo(listingIntent.categoryId);
-  const priceLine = formatPriceLine(listingIntent.priceMinKrw, listingIntent.priceMaxKrw);
+  const priceLine = formatMarketPriceLine(
+    listingIntent.priceMinKrw,
+    listingIntent.priceMaxKrw,
+    regionalProfile,
+  );
 
   await insertPeerMessage(supabase, {
     threadId,
@@ -95,10 +89,7 @@ export async function acceptListingMarketHandshake(
     listingAcceptedAtIso: new Date().toISOString(),
   });
 
-  const { initializeMarketTradeSession } = await import(
-    "@/lib/globe/market/server/initialize-market-trade-session"
-  );
-  await initializeMarketTradeSession(supabase, handshake.id, listingIntent);
+  await patchMarketHandshake(supabase, handshake.id, { tradeStatus: "chat" });
 
   return { threadId, handshakeId: handshake.id };
 }
@@ -124,7 +115,12 @@ export async function startBuyerMarketHandshakeChat(
     throw new Error("intent_not_found");
   }
 
-  const priceLine = formatPriceLine(listingIntent.priceMinKrw, listingIntent.priceMaxKrw);
+  const regionalProfile = await getServerRegionalProfile();
+  const priceLine = formatMarketPriceLine(
+    listingIntent.priceMinKrw,
+    listingIntent.priceMaxKrw,
+    regionalProfile,
+  );
 
   await insertPeerMessage(supabase, {
     threadId: handshake.threadId,
@@ -208,7 +204,12 @@ export async function confirmMarketHandshakeComplete(
     throw new Error("intent_not_found");
   }
 
-  const priceLine = formatPriceLine(listingIntent.priceMinKrw, listingIntent.priceMaxKrw);
+  const regionalProfile = await getServerRegionalProfile();
+  const priceLine = formatMarketPriceLine(
+    listingIntent.priceMinKrw,
+    listingIntent.priceMaxKrw,
+    regionalProfile,
+  );
 
   if (handshake.phase === "completed") {
     const trace = buildMarketCompletionTraceDraft({

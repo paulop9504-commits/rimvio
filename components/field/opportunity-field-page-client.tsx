@@ -8,6 +8,7 @@ import { OpportunityDashboardBody } from "@/components/field/opportunity-dashboa
 import { useCopy } from "@/hooks/use-copy";
 import { useActiveMarketTrades } from "@/hooks/use-active-market-trades";
 import { useOpportunityDashboard } from "@/hooks/use-opportunity-dashboard";
+import { hasActiveMarketTradeForListing } from "@/lib/globe/market/market-trade-pipeline";
 import { filterOpportunityRowsExcludingActiveTrades } from "@/lib/globe/opportunity-field/filter-rows-excluding-active-trades";
 import type { OpportunityRow } from "@/lib/globe/opportunity-field";
 
@@ -26,6 +27,7 @@ export function OpportunityFieldPageClient() {
     setSelectedContextId,
     listeningLabel,
     selectedPill,
+    refresh: refreshDiscovery,
   } = useOpportunityDashboard({ open: true, primaryEventId: null });
 
   const { sessions: tradeSessions, resolvedPairs: resolvedTradePairs, refresh: refreshTrades, replaceSession } =
@@ -47,13 +49,12 @@ export function OpportunityFieldPageClient() {
   const field = copy.globe.field;
 
   if (detailRow && selectedPill) {
-    const hasActiveTrade =
-      tradeSessions.some((session) => session.listingIntentId === detailRow.listing.id) ||
-      resolvedTradePairs.some(
-        (pair) =>
-          pair.listingIntentId === detailRow.listing.id &&
-          pair.seekingIntentId === selectedPill.seeking.id,
-      );
+    const hasActiveTrade = hasActiveMarketTradeForListing(
+      tradeSessions,
+      detailRow.listing.id,
+      selectedPill.seeking.id,
+      resolvedTradePairs,
+    );
 
     return (
       <div
@@ -88,6 +89,10 @@ export function OpportunityFieldPageClient() {
             setDetailRow(null);
             void refreshTrades();
             setFocusTradesToken((value) => value + 1);
+          }}
+          onListingReserved={() => {
+            setDetailRow(null);
+            refreshDiscovery();
           }}
         />
       </div>

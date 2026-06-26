@@ -28,6 +28,7 @@ export type OpportunityDetailPanelProps = {
   onBeforeNavigate?: () => void;
   onChatOpened?: () => void;
   onScheduleStarted?: () => void;
+  onListingReserved?: () => void;
   navigate: (href: string) => void;
   className?: string;
 };
@@ -42,6 +43,7 @@ export function OpportunityDetailPanel({
   onBeforeNavigate,
   onChatOpened,
   onScheduleStarted,
+  onListingReserved,
   navigate,
   className,
 }: OpportunityDetailPanelProps) {
@@ -135,6 +137,7 @@ export function OpportunityDetailPanel({
         onBeforeNavigate={onBeforeNavigate}
         onChatOpened={onChatOpened}
         onScheduleStarted={onScheduleStarted}
+        onListingReserved={onListingReserved}
       />
     </div>
   );

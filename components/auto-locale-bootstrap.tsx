@@ -2,11 +2,15 @@
 
 import { useEffect } from "react";
 import { autoInitAppLocale } from "@/lib/i18n/locale-store";
+import { hasCompletedLocaleSetup } from "@/lib/i18n/locale-setup-store";
 import { autoInitHomeCountry } from "@/lib/preferences/home-country";
 
-/** First launch: detect language + home country from browser — no modal. */
+/** Returning users: persist browser defaults if missing. First run: welcome sheet handles it. */
 export function AutoLocaleBootstrap() {
   useEffect(() => {
+    if (!hasCompletedLocaleSetup()) {
+      return;
+    }
     autoInitAppLocale();
     autoInitHomeCountry();
   }, []);

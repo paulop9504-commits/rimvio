@@ -8,6 +8,7 @@ import { RimvioAuthProfileBootstrap } from "@/components/rimvio-auth-profile-boo
 import { RimvioProfileSetupGate } from "@/components/rimvio-profile-setup-gate";
 import { isAuthRequired } from "@/lib/auth/policy";
 import { AutoLocaleBootstrap } from "@/components/auto-locale-bootstrap";
+import { RimvioLocaleWelcomeSetup } from "@/components/rimvio-locale-welcome-setup";
 import { DevDemoSeed } from "@/components/dev-demo-seed";
 import { ExperimentLabBootstrap } from "@/components/experiment-lab-bootstrap";
 import { IosShareBanner } from "@/components/ios-share-banner";
@@ -38,6 +39,7 @@ export function Providers({ children, initialLocale }: ProvidersProps) {
         <AuthProvider>
           <RimvioAuthProfileBootstrap />
           <AutoLocaleBootstrap />
+          <RimvioLocaleWelcomeSetup />
           <Suspense fallback={null}>
             <ExperimentLabBootstrap />
           </Suspense>

@@ -1,6 +1,5 @@
 "use client";
 
-import { Play } from "lucide-react";
 import { Shimmer } from "@/components/ui/shimmer";
 import { useMediaBlobUrl } from "@/hooks/use-media-blob-url";
 import type { GlobeContextTriggerMediaPreview } from "@/lib/globe/context-triggers/globe-context-trigger-types";
@@ -41,11 +40,6 @@ export function GlobeContextTriggerCardThumb({
           loading="lazy"
           decoding="async"
         />
-        {media?.kind === "video" ? (
-          <span className="absolute inset-0 flex items-center justify-center rounded-[12px] bg-black/20">
-            <Play className="size-3.5 fill-white text-white" aria-hidden />
-          </span>
-        ) : null}
       </span>
     );
   }

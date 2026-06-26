@@ -1,6 +1,7 @@
 import { filterPublishedMarketIntents } from "@/lib/globe/market/filter-published-market-intents";
 import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
 import { OPPORTUNITY_FIELD_MIN_FIELD_SCORE } from "@/lib/globe/opportunity-field/observation-constants";
+import type { RegionalProfile } from "@/lib/preferences/regional-profile";
 import { scoreMarketplaceOpportunityRow } from "@/lib/globe/opportunity-field/score-marketplace-opportunity-row";
 import type {
   OpportunityFieldCopy,
@@ -22,6 +23,7 @@ export function listOpportunityPills(input: {
   pool: readonly MarketIntentRecord[];
   userState: UserStateV1;
   copy: OpportunityFieldCopy;
+  regionalProfile?: RegionalProfile;
 }): OpportunityPill[] {
   const published = filterPublishedMarketIntents(
     input.seekings.filter((row) => row.role === "seeking"),
@@ -34,6 +36,7 @@ export function listOpportunityPills(input: {
         pool: input.pool,
         userState: input.userState,
         copy: input.copy,
+        regionalProfile: input.regionalProfile,
       });
       const bestScore = rows[0]?.fieldScore ?? 0;
       return {
@@ -53,6 +56,7 @@ export function listOpportunityRows(input: {
   userState: UserStateV1;
   copy: OpportunityFieldCopy;
   minFieldScore?: number;
+  regionalProfile?: RegionalProfile;
 }): OpportunityRow[] {
   const listings = input.pool.filter((row) => row.role === "listing");
   const rows: OpportunityRow[] = [];
@@ -63,6 +67,7 @@ export function listOpportunityRows(input: {
       listing,
       userState: input.userState,
       copy: input.copy,
+      regionalProfile: input.regionalProfile,
     });
     if (!row) {
       continue;

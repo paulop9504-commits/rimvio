@@ -41,7 +41,11 @@ export function MarketHandshakeProductStrip({
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-[14px] font-semibold text-foreground">{product.title}</p>
-        {metaParts.length > 0 ? (
+        {handshake.buyerEnRouteLabel ? (
+          <p className="truncate text-[13px] font-medium text-[#2563eb]">
+            {handshake.buyerEnRouteLabel}
+          </p>
+        ) : metaParts.length > 0 ? (
           <p className={cn(RIMVIO_TYPE.caption, "truncate")}>{metaParts.join(" · ")}</p>
         ) : null}
       </div>

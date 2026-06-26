@@ -2,6 +2,7 @@ import { copy } from "@/lib/copy/human-ko";
 import { buildHandshakeOfferForViewer } from "@/lib/globe/market/server/build-handshake-offer";
 import { listPendingHandshakesForUser } from "@/lib/globe/market/server/market-alignment-handshake-store";
 import type { MarketHandshakeOffer } from "@/lib/globe/market/market-handshake-types";
+import { getServerRegionalProfile } from "@/lib/preferences/server-regional-profile";
 
 const HANDSHAKE_COPY = {
   listingPendingHeadline: (title: string, place: string) =>
@@ -22,6 +23,7 @@ export async function resolveServerMarketInboxOffers(input: {
   userId: string;
 }): Promise<MarketHandshakeOffer[]> {
   const pending = await listPendingHandshakesForUser(input.supabase, input.userId);
+  const regionalProfile = await getServerRegionalProfile();
   const offers: MarketHandshakeOffer[] = [];
   for (const handshake of pending) {
     const offer = await buildHandshakeOfferForViewer({
@@ -29,6 +31,7 @@ export async function resolveServerMarketInboxOffers(input: {
       handshake,
       viewerUserId: input.userId,
       copy: HANDSHAKE_COPY,
+      regionalProfile,
     });
     if (offer?.handshakeId) {
       offers.push(offer);

@@ -451,6 +451,10 @@ export const copy = {
     marketWizardReviewPublishHint:
       "내 맥락에는 바로 저장돼요. 밖 지구에 보이려면 외부 공개를 눌러 주세요.",
     marketWizardSavedInternalToast: "내 맥락에 저장했어요",
+    marketProhibitedListingAlcohol: "주류는 올릴 수 없어요",
+    marketProhibitedListingTobacco: "담배·전자담배는 올릴 수 없어요",
+    marketProhibitedListingRegulated: "올릴 수 없는 품목이에요",
+    marketProhibitedListingGeneric: "이 품목은 올릴 수 없어요",
     marketWizardPublishedToast: "밖 지구에 공개했어요",
     marketManagePublishCta: "외부 공개",
     marketManagePublishedBadge: "외부 공개 중",
@@ -581,6 +585,8 @@ export const copy = {
     marketHandshakeMemoryPlace: (place: string) => `${place} 흔적이 담긴 물건이에요`,
     marketHandshakeChatLocked: "구매자가 상품을 확인하고 대화를 시작해요",
     marketHandshakeStartCta: "대화 시작하기",
+    marketHandshakeChatLockedSeekingPlaceholder: "대화를 연결하는 중이에요…",
+    marketHandshakeChatLockedSeekingSendHint: "잠깐만요 — 대화를 연결하고 있어요",
     marketHandshakeWaitingSeller: "판매자가 맞춤을 확인 중이에요",
     marketAlignHeadlineSeeking: (title: string, place: string) =>
       `구하는 조건과 맞는 내놓기 · ${place}`,
@@ -1046,6 +1052,8 @@ export const copy = {
       actionUnavailable: "지금은 연결할 수 없어요. 잠시 후 다시 시도해 주세요.",
       tradeInitFail: "일정을 시작하지 못했어요. Supabase 13~16번 SQL을 적용했는지 확인해 주세요.",
       handshakeAlreadyCompleted: "이미 완료된 맞춤이에요",
+      listingMeetReservedToast:
+        "이 판매자는 이미 다른 분과 약속이 잡혀 있어요. 더 맞는 매물을 찾아볼게요.",
       handshakeAlreadyInProgress: "이미 진행 중이에요 · 진행 중 탭에서 확인하세요",
       chatPlaceholder: "메시지 보내기",
       quickReplyHello: "안녕하세요 😊",
@@ -1132,6 +1140,7 @@ export const copy = {
       input.bySeeking
         ? `구매자가 약속을 취소했어요 · ${input.reasonLabel}`
         : `판매자가 약속을 취소했어요 · ${input.reasonLabel}`,
+    marketTradeBuyerDepartedSystem: "구매자가 약속장소로 출발했어요",
     marketTradeSellerMeetConflict: "이 시간에는 다른 약속이 있어요",
     marketTradeStatusExpired: "응답 시간이 지났어요",
     marketTradeProposePreferred: "이 시간이 좋아요",
@@ -1168,7 +1177,9 @@ export const copy = {
     marketTradeDepartFail: "출발을 기록하지 못했어요",
     marketTradeLocationNeeded: "위치를 켜면 출발할 수 있어요",
     marketTradeStatusEnRouteSeeking: "이동 중",
-    marketTradeStatusEnRouteListing: "구매자가 이동 중",
+    marketTradeStatusEnRouteListing: "상대방이 약속장소로 오고있어요",
+    marketTradeStatusEnRouteListingSub: "곧 도착할 예정이에요",
+    marketTradeGuestEnRouteListing: "오고 있어요",
     marketTradeHostGuestEtaArrived: "곧 도착",
     marketTradeHostGuestEtaLine: (minutes: number, distanceKm: number) =>
       `약 ${minutes}분 후 도착 · ${distanceKm}km`,
@@ -1206,7 +1217,7 @@ export const copy = {
   },
   portal: {
     homeTitle: "무엇을 하고 싶으신가요?",
-    homeBody: "맥락을 바탕으로 세상과 연결해 드릴게요",
+    homeBody: "고르는 순간, 맥락이 열려요",
     intentOfferTitle: "내놓기",
     intentOfferBody: "내 물건, 재능, 기회 제공",
     intentSeekTitle: "구하기",
@@ -1234,7 +1245,7 @@ export const copy = {
     categorySoonToast: "이 분야는 준비 중이에요",
     backToIntents: "의도 다시 고르기",
     closeAria: "닫기",
-    projectionEyebrow: "맞춤 실행",
+    projectionEyebrow: "새 맥락",
     marketSuggestCreateHeadline: (product: string) => `${product} 맞춤을 밖에 낼까요?`,
     marketSuggestCreateBody: "이 맥락을 바탕으로 구하기·내놓기를 시작해요",
     marketSuggestCreateCta: "맞춤 시작하기",
@@ -1730,7 +1741,21 @@ export const copy = {
     importFail: "가져오기에 실패했습니다",
     importFailHint: `${RIMVIO.name}에서 만든 백업 파일인지 확인해 주세요`,
   },
+  localeWelcome: {
+    title: "Rimvio에 오신 것을 환영합니다",
+    body: "기기 언어에 맞춰 두었어요. 필요하면 바꿀 수 있어요.",
+    languageLabel: "언어",
+    regionLabel: "지역",
+    continueCta: "계속하기",
+    suggested: "추천",
+  },
   settings: {
+    languageSectionTitle: "언어",
+    languageSectionHint: "앱 화면 언어",
+    homeRegionSectionTitle: "지역",
+    homeRegionSectionHint: "날짜·거리·통화·지도 맥락",
+    languageSaved: "언어를 바꿨어요",
+    homeRegionSaved: "지역을 저장했어요",
     profileNameSectionTitle: "표시 이름",
     profileNameSectionHint: "함께하기·피드에서 보이는 이름이에요",
     profileNameLabel: "이름",

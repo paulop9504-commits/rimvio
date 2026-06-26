@@ -27,6 +27,7 @@ export const marketTradeSessionCopy: MarketTradeSessionCopy = {
   priceOpen: copy.globe.marketIntentPriceOpen,
   statusEnRouteSeeking: copy.globe.marketTradeStatusEnRouteSeeking,
   statusEnRouteListing: copy.globe.marketTradeStatusEnRouteListing,
+  statusEnRouteListingSub: copy.globe.marketTradeStatusEnRouteListingSub,
   hostGuestEtaArrived: copy.globe.marketTradeHostGuestEtaArrived,
   hostGuestEtaLine: copy.globe.marketTradeHostGuestEtaLine,
   hostGuestEtaStale: copy.globe.marketTradeHostGuestEtaStale,
