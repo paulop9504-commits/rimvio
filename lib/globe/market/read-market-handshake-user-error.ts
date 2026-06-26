@@ -18,7 +18,7 @@ export function readMarketHandshakeUserError(raw: string): string {
     case "seeking_only":
       return "구하기 쪽에서만 할 수 있어요.";
     case "depart_window_closed":
-      return "출발 가능 시간이 아니에요.";
+      return "약속 3시간 전부터 누를 수 있어요.";
     case "meet_not_set":
       return "약속 시간이 아직 없어요.";
     case "scheduling_expired":
@@ -39,6 +39,12 @@ export function readMarketHandshakeUserError(raw: string): string {
       return copy.globe.field.handshakeAlreadyCompleted;
     case "invalid_phase":
       return "이미 처리된 맞춤이에요.";
+    case "invalid_cancel_reason":
+      return "취소 사유를 골라주세요.";
+    case "seller_meet_conflict":
+      return copy.globe.marketTradeSellerMeetConflict;
+    case "cancel_failed":
+      return copy.globe.marketTradeCancelFail;
     case "intent_not_found":
       return "등록한 조건을 찾지 못했어요.";
     case "accept_failed":

@@ -20,7 +20,11 @@ export function useActiveMarketTrades(input: { enabled: boolean }) {
 
   const replaceSession = useCallback((updated: MarketTradeSessionView) => {
     setSessions((prev) => {
-      if (updated.tradeStatus === "completed" || updated.phase === "completed") {
+      if (
+        updated.tradeStatus === "completed" ||
+        updated.tradeStatus === "cancelled" ||
+        updated.phase === "completed"
+      ) {
         return prev.filter((session) => session.handshakeId !== updated.handshakeId);
       }
       return prev.map((session) =>

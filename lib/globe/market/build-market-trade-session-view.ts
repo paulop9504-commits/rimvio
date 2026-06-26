@@ -5,11 +5,13 @@ import {
   formatMarketTradeHostEtaLabel,
 } from "@/lib/globe/market/compute-market-trade-host-eta";
 import { readMarketAvailabilityPreset } from "@/lib/globe/market/market-availability-preset";
+import { MARKET_TRADE_CANCEL_REASONS } from "@/lib/globe/market/market-trade-cancel-reasons";
 import type { MarketTradeSessionRecord, MarketTradeSessionView } from "@/lib/globe/market/market-trade-types";
 import {
   formatMarketTradeDateLabelKo,
   resolveMarketTradeScheduleDateCandidates,
 } from "@/lib/globe/market/market-trade-schedule";
+import { isMarketTradeDepartWindowOpen } from "@/lib/globe/market/market-trade-depart-window";
 import {
   buildMarketTradeProgressSteps,
   formatMarketTradeCountdownLabel,
@@ -51,6 +53,7 @@ export type MarketTradeSessionCopy = {
   handshakeCompleteSeekingCta: string;
   handshakeCompleteListingCta: string;
   handshakeAwaitingOtherParty: string;
+  departOpensHint: string;
 };
 
 function formatPriceLine(
@@ -284,6 +287,9 @@ export function buildMarketTradeSessionView(
     !isEnRoute &&
     record.tradeStatus === "confirmed" &&
     Boolean(record.meetAtIso);
+  const canDepart = showDepart && isMarketTradeDepartWindowOpen(record.meetAtIso, now);
+  const departOpensHintKo =
+    showDepart && !canDepart ? sessionCopy.departOpensHint : null;
 
   const showPickDay =
     record.viewerRole === "seeking" &&
@@ -296,6 +302,11 @@ export function buildMarketTradeSessionView(
   const showProposeSchedule = sellerAwaitingTimeProposal;
   const showAcceptProposal =
     record.viewerRole === "seeking" && record.tradeStatus === "seller_proposed";
+  const showCancelReservation =
+    (record.tradeStatus === "seller_proposed" && Boolean(record.meetAtIso)) ||
+    record.tradeStatus === "confirmed" ||
+    record.tradeStatus === "en_route" ||
+    record.tradeStatus === "meeting";
 
   const showHandshakeComplete = canShowHandshakeComplete(record);
   const viewerHandshakeConfirmed = readViewerHandshakeConfirmed(record);
@@ -352,6 +363,8 @@ export function buildMarketTradeSessionView(
     countdownLabelKo,
     showNavigate,
     showDepart,
+    canDepart,
+    departOpensHintKo,
     isEnRoute,
     hostGuestEtaLabelKo,
     showProposePreferred: false,
@@ -361,6 +374,8 @@ export function buildMarketTradeSessionView(
     showPickDay,
     showProposeSchedule,
     showAcceptProposal,
+    showCancelReservation,
+    cancelReasons: MARKET_TRADE_CANCEL_REASONS,
     canConfirmHandshakeComplete,
     awaitingHandshakeOtherParty,
     handshakeCompleteCtaKo,

@@ -24,9 +24,46 @@ import {
   marketTradeScheduleDateCandidatesNeedBackfill,
   resolveMarketTradeScheduleDateCandidates,
 } from "@/lib/globe/market/market-trade-schedule";
-import { readMarketAvailabilityPreset, MARKET_SCHEDULING_SLA_HOURS } from "@/lib/globe/market/market-availability-preset";
+import { isMarketTradeDepartWindowOpen } from "@/lib/globe/market/market-trade-depart-window";
+import { findListingUserMeetTimeConflict } from "@/lib/globe/market/server/find-listing-user-meet-conflict";
+import {
+  marketTradeCancelReasonLabelKo,
+  readMarketTradeCancelReasonId,
+  type MarketTradeCancelReasonId,
+} from "@/lib/globe/market/market-trade-cancel-reasons";
+import { insertPeerMessage } from "@/lib/peer-chat/server-peer-chat";
+import { copy } from "@/lib/copy/human-ko";
+import {
+  MARKET_SCHEDULING_SLA_HOURS,
+  readMarketAvailabilityPreset,
+} from "@/lib/globe/market/market-availability-preset";
 
 const ACTIVE_TRADE_PHASES = ["pending_buyer_start", "active"] as const;
+
+const CANCELLABLE_TRADE_STATUSES = [
+  "seller_proposed",
+  "confirmed",
+  "en_route",
+  "meeting",
+] as const;
+
+async function assertListingMeetTimeAvailable(
+  supabase: SupabaseClient,
+  input: {
+    listingUserId: string;
+    meetAtIso: string;
+    handshakeId: string;
+  },
+): Promise<void> {
+  const conflict = await findListingUserMeetTimeConflict(supabase, {
+    listingUserId: input.listingUserId,
+    meetAtIso: input.meetAtIso,
+    excludeHandshakeId: input.handshakeId,
+  });
+  if (conflict) {
+    throw new Error("seller_meet_conflict");
+  }
+}
 
 async function ensureMarketTradeScheduleDateCandidates(
   supabase: SupabaseClient,
@@ -93,6 +130,7 @@ export async function listActiveMarketTradeSessionsForUser(
     .in("phase", [...ACTIVE_TRADE_PHASES])
     .neq("trade_status", "completed")
     .neq("trade_status", "expired")
+    .neq("trade_status", "cancelled")
     .order("updated_at", { ascending: false })
     .limit(12);
 
@@ -271,6 +309,12 @@ export async function proposeMarketTradeSchedule(
     throw new Error("invalid_meet_at");
   }
 
+  await assertListingMeetTimeAvailable(supabase, {
+    listingUserId: handshake.listingUserId,
+    meetAtIso: meetAt.toISOString(),
+    handshakeId: handshake.id,
+  });
+
   const placeLabel =
     input.meetPlaceLabel?.trim() ||
     handshake.meetPlaceLabel?.trim() ||
@@ -319,11 +363,82 @@ export async function acceptMarketTradeSchedule(
     throw new Error("meet_not_set");
   }
 
+  await assertListingMeetTimeAvailable(supabase, {
+    listingUserId: handshake.listingUserId,
+    meetAtIso: handshake.meetAtIso,
+    handshakeId: handshake.id,
+  });
+
   const updated = await patchMarketHandshake(supabase, handshake.id, {
     tradeStatus: "confirmed",
     meetMode: "host",
     schedulingExpiresAtIso: null,
   });
+
+  return buildTradeSessionViewForUser(supabase, updated, userId);
+}
+
+export async function cancelMarketTradeReservation(
+  supabase: SupabaseClient,
+  userId: string,
+  input: {
+    handshakeId: string;
+    reasonId: string;
+  },
+): Promise<MarketTradeSessionView | null> {
+  const handshake = await findMarketHandshakeById(supabase, input.handshakeId);
+  if (!handshake) {
+    throw new Error("handshake_not_found");
+  }
+  const isSeeking = handshake.seekingUserId === userId;
+  const isListing = handshake.listingUserId === userId;
+  if (!isSeeking && !isListing) {
+    throw new Error("unauthorized");
+  }
+  if (!ACTIVE_TRADE_PHASES.includes(handshake.phase as (typeof ACTIVE_TRADE_PHASES)[number])) {
+    throw new Error("invalid_phase");
+  }
+  const cancellable = CANCELLABLE_TRADE_STATUSES.includes(
+    handshake.tradeStatus as (typeof CANCELLABLE_TRADE_STATUSES)[number],
+  );
+  if (!cancellable) {
+    throw new Error("invalid_phase");
+  }
+  if (handshake.tradeStatus === "seller_proposed" && !handshake.meetAtIso) {
+    throw new Error("invalid_phase");
+  }
+
+  const reasonId: MarketTradeCancelReasonId | null = readMarketTradeCancelReasonId(
+    input.reasonId,
+  );
+  if (!reasonId) {
+    throw new Error("invalid_cancel_reason");
+  }
+
+  const nowIso = new Date().toISOString();
+  const updated = await patchMarketHandshake(supabase, handshake.id, {
+    tradeStatus: "cancelled",
+    tradeCancelReasonId: reasonId,
+    tradeCancelledAtIso: nowIso,
+    guestShareLocation: false,
+    guestLat: null,
+    guestLng: null,
+    guestLocationAtIso: null,
+    schedulingExpiresAtIso: null,
+  });
+
+  if (handshake.threadId) {
+    const reasonLabel = marketTradeCancelReasonLabelKo(reasonId);
+    await insertPeerMessage(supabase, {
+      threadId: handshake.threadId,
+      senderUserId: userId,
+      messageType: "system",
+      body: copy.globe.marketTradeCancelReservationSystem({
+        reasonLabel,
+        bySeeking: isSeeking,
+      }),
+    });
+  }
 
   return buildTradeSessionViewForUser(supabase, updated, userId);
 }
@@ -363,6 +478,12 @@ export async function confirmMarketTradeSchedule(
     throw new Error("invalid_meet_at");
   }
 
+  await assertListingMeetTimeAvailable(supabase, {
+    listingUserId: handshake.listingUserId,
+    meetAtIso: meetAt.toISOString(),
+    handshakeId: handshake.id,
+  });
+
   const listing = await findMarketIntentById(supabase, handshake.listingIntentId);
   if (!listing) {
     throw new Error("intent_not_found");
@@ -396,8 +517,6 @@ export async function confirmMarketTradeSchedule(
   return buildMarketTradeSessionView(record, marketTradeSessionCopy);
 }
 
-const DEPART_WINDOW_BEFORE_MS = 3 * 60 * 60 * 1000;
-const DEPART_WINDOW_AFTER_MS = 2 * 60 * 60 * 1000;
 
 function assertFiniteCoord(value: unknown, code: string): number {
   if (typeof value !== "number" || !Number.isFinite(value)) {
@@ -454,11 +573,10 @@ export async function departMarketTradeGuest(
   }
 
   const meetAt = new Date(handshake.meetAtIso).getTime();
-  const now = Date.now();
-  if (
-    now < meetAt - DEPART_WINDOW_BEFORE_MS ||
-    now > meetAt + DEPART_WINDOW_AFTER_MS
-  ) {
+  if (!Number.isFinite(meetAt)) {
+    throw new Error("meet_not_set");
+  }
+  if (!isMarketTradeDepartWindowOpen(handshake.meetAtIso)) {
     throw new Error("depart_window_closed");
   }
 

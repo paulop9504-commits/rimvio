@@ -33,4 +33,5 @@ export const marketTradeSessionCopy: MarketTradeSessionCopy = {
   handshakeCompleteSeekingCta: copy.globe.marketHandshakeCompleteSeekingCta,
   handshakeCompleteListingCta: copy.globe.marketHandshakeCompleteListingCta,
   handshakeAwaitingOtherParty: copy.globe.marketHandshakeAwaitingOtherParty,
+  departOpensHint: copy.globe.marketTradeDepartOpensHint,
 };

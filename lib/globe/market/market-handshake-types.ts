@@ -44,6 +44,8 @@ export type MarketHandshakeRecord = {
   preferredMeetDateKey: string | null;
   preferredMeetAtIso: string | null;
   schedulingExpiresAtIso: string | null;
+  tradeCancelReasonId: string | null;
+  tradeCancelledAtIso: string | null;
 };
 
 export type MarketCompletionTraceDraft = {

@@ -1108,6 +1108,21 @@ export const copyEn: Copy = {
     marketTradeAcceptSchedule: "Book this slot",
     marketTradeAcceptSuccess: "Meet-up booked",
     marketTradeAcceptFail: "Could not book meet-up",
+    marketTradeCancelCta: "Cancel meet-up",
+    marketTradeCancelTitle: "Why are you cancelling?",
+    marketTradeCancelHint: "Your reason is shared with the other person",
+    marketTradeCancelDismiss: "Go back",
+    marketTradeCancelConfirm: "Cancel meet-up",
+    marketTradeCancelSuccess: "Meet-up cancelled",
+    marketTradeCancelFail: "Could not cancel meet-up",
+    marketTradeCancelReservationSystem: (input: {
+      reasonLabel: string;
+      bySeeking: boolean;
+    }) =>
+      input.bySeeking
+        ? `Buyer cancelled · ${input.reasonLabel}`
+        : `Seller cancelled · ${input.reasonLabel}`,
+    marketTradeSellerMeetConflict: "You already have another meet-up at this time",
     marketTradeStatusExpired: "Response window passed",
     marketTradeProposePreferred: "Prefer this time",
     marketTradeProposePreferredSuccess: "Preferred time sent",
@@ -1132,7 +1147,9 @@ export const copyEn: Copy = {
     marketTradeWaitingBuyer: "Waiting for buyer",
     marketTradeConfirmSchedule: "Confirm this time",
     marketTradeNavigate: "Directions",
-    marketTradeDepart: "Head out",
+    marketTradeDepart: "Depart to meet-up",
+    marketTradeDepartOpensHint:
+      "「Depart to meet-up」 opens 3 hours before your meet-up — so an early tap doesn’t start the trip by mistake.",
     marketTradeStartedToast: "Trade started · see In progress",
     marketTradeConfirmFail: "Could not confirm schedule",
     marketTradeConfirmSuccess: "Meet time confirmed",

@@ -126,6 +126,24 @@ function main() {
   assert.equal(rows.length, 1);
   assert.equal(rows[0]!.listingEventId, listing.eventId);
 
+  const wrongGen = phoneIntent({
+    id: "mi-wrong",
+    eventId: "ev-wrong",
+    role: "listing",
+    detail: {
+      ...DEFAULT_MARKET_INTENT_DETAIL,
+      productName: "아이폰 16",
+      publishedExternal: true,
+    },
+  });
+  const filtered = listOpportunityRows({
+    seeking,
+    pool: [wrongGen],
+    userState,
+    copy: COPY,
+  });
+  assert.equal(filtered.length, 0);
+
   console.log("test-score-marketplace-opportunity: ok");
 }
 

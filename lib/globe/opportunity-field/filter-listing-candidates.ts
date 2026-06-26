@@ -1,4 +1,5 @@
 import { marketCategoriesCompatible } from "@/lib/globe/market/market-category-registry";
+import { isMarketProductTitleMatchForSeeking } from "@/lib/globe/market/match-market-product-title";
 import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
 import { haversineKm } from "@/lib/globe/trend-bridge/server/trend-bridge-geo";
 
@@ -13,6 +14,9 @@ export function isListingCandidateForSeeking(
     return false;
   }
   if (!marketCategoriesCompatible(seeking.categoryId, listing.categoryId)) {
+    return false;
+  }
+  if (!isMarketProductTitleMatchForSeeking(seeking, listing)) {
     return false;
   }
   const distanceKm = haversineKm(

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Calendar, Car, Check, ImageIcon, MapPin, Navigation } from "lucide-react";
 import { toast } from "sonner";
 import { MarketCompletionTraceSheet } from "@/components/market/market-completion-trace-sheet";
+import { MarketTradeCancelReservationPanel } from "@/components/market/market-trade-cancel-reservation-panel";
 import { MarketListingMediaRowThumb } from "@/components/market/market-listing-media-thumb";
 import { useCopy } from "@/hooks/use-copy";
 import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
@@ -166,8 +167,10 @@ export function MarketTradeProgressCard({
         toast.success(globe.marketTradeProposeSuccess);
         onUpdated?.(updated);
       }
-    } catch {
-      toast.error(globe.marketTradeProposeFail);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : globe.marketTradeProposeFail,
+      );
     } finally {
       setBusyKey(null);
     }
@@ -186,15 +189,17 @@ export function MarketTradeProgressCard({
         toast.success(globe.marketTradeAcceptSuccess);
         onUpdated?.(updated);
       }
-    } catch {
-      toast.error(globe.marketTradeAcceptFail);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : globe.marketTradeAcceptFail,
+      );
     } finally {
       setBusyKey(null);
     }
   };
 
   const onDepart = async () => {
-    if (departBusy) {
+    if (departBusy || !session.canDepart) {
       return;
     }
     const lat = liveLocation?.lat;
@@ -481,36 +486,60 @@ export function MarketTradeProgressCard({
         ) : null}
 
         {(session.showNavigate || session.showDepart || session.isEnRoute) && (
-          <div className="mt-4 flex gap-2">
-            {session.showNavigate ? (
-              <button
-                type="button"
-                onClick={onNavigate}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#f2f4f6] py-2.5 text-[14px] font-semibold text-[#191f28]"
-              >
-                <Navigation className="size-4" aria-hidden />
-                {globe.marketTradeNavigate}
-              </button>
-            ) : null}
-            {session.showDepart ? (
-              <button
-                type="button"
-                disabled={departBusy}
-                onClick={() => void onDepart()}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#22c55e] py-2.5 text-[14px] font-semibold text-white disabled:opacity-50"
-              >
-                <Car className="size-4" aria-hidden />
-                {departBusy ? "…" : globe.marketTradeDepart}
-              </button>
-            ) : null}
-            {session.isEnRoute && session.viewerRole === "seeking" ? (
-              <span className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#ecfdf3] py-2.5 text-[14px] font-semibold text-[#16a34a]">
-                <Car className="size-4" aria-hidden />
-                {globe.marketTradeEnRoute}
-              </span>
+          <div className="mt-4 space-y-2">
+            <div className="flex gap-2">
+              {session.showNavigate ? (
+                <button
+                  type="button"
+                  onClick={onNavigate}
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#f2f4f6] py-2.5 text-[14px] font-semibold text-[#191f28]"
+                >
+                  <Navigation className="size-4" aria-hidden />
+                  {globe.marketTradeNavigate}
+                </button>
+              ) : null}
+              {session.showDepart ? (
+                <button
+                  type="button"
+                  disabled={!session.canDepart || departBusy}
+                  onClick={() => void onDepart()}
+                  className={cn(
+                    "flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 text-[14px] font-semibold disabled:opacity-50",
+                    session.canDepart
+                      ? "bg-[#22c55e] text-white"
+                      : "cursor-not-allowed bg-[#f2f4f6] text-[#b0b8c1]",
+                  )}
+                >
+                  <Car className="size-4" aria-hidden />
+                  {departBusy ? "…" : globe.marketTradeDepart}
+                </button>
+              ) : null}
+              {session.isEnRoute && session.viewerRole === "seeking" ? (
+                <span className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#ecfdf3] py-2.5 text-[14px] font-semibold text-[#16a34a]">
+                  <Car className="size-4" aria-hidden />
+                  {globe.marketTradeEnRoute}
+                </span>
+              ) : null}
+            </div>
+            {session.departOpensHintKo ? (
+              <p className="text-[12px] leading-relaxed text-[#6b7684]">
+                {session.departOpensHintKo}
+              </p>
             ) : null}
           </div>
         )}
+
+        <MarketTradeCancelReservationPanel
+          session={session}
+          onUpdated={onUpdated}
+          onCancelled={() => {
+            onUpdated?.({
+              ...session,
+              tradeStatus: "cancelled",
+              showCancelReservation: false,
+            });
+          }}
+        />
 
         {session.canConfirmHandshakeComplete || session.awaitingHandshakeOtherParty ? (
           <div className="mt-4 border-t border-black/[0.06] pt-3">

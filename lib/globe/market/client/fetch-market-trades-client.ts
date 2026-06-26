@@ -50,7 +50,8 @@ export async function proposeMarketTradeScheduleRemote(input: {
     body: JSON.stringify(input),
   });
   if (!response.ok) {
-    throw new Error(await response.text());
+    const body = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(body?.error ?? "propose_failed");
   }
   const body = (await response.json()) as { session?: MarketTradeSessionView | null };
   return body.session ?? null;
@@ -65,7 +66,25 @@ export async function acceptMarketTradeScheduleRemote(input: {
     body: JSON.stringify(input),
   });
   if (!response.ok) {
-    throw new Error(await response.text());
+    const body = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(body?.error ?? "accept_failed");
+  }
+  const body = (await response.json()) as { session?: MarketTradeSessionView | null };
+  return body.session ?? null;
+}
+
+export async function cancelMarketTradeReservationRemote(input: {
+  handshakeId: string;
+  reasonId: string;
+}): Promise<MarketTradeSessionView | null> {
+  const response = await fetch("/api/globe/market-transaction/cancel-schedule", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(body?.error ?? "cancel_failed");
   }
   const body = (await response.json()) as { session?: MarketTradeSessionView | null };
   return body.session ?? null;

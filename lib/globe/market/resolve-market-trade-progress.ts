@@ -1,7 +1,8 @@
 import type { MarketTradeProgressStep, MarketTradeProgressStepId, MarketTradeStatus } from "@/lib/globe/market/market-trade-types";
 import { computeMarketTradeHostEta } from "@/lib/globe/market/compute-market-trade-host-eta";
+import { MARKET_TRADE_DEPART_WINDOW_BEFORE_MS } from "@/lib/globe/market/market-trade-depart-window";
 
-const DEPARTURE_LEAD_MS = 2 * 60 * 60 * 1000;
+const DEPARTURE_LEAD_MS = MARKET_TRADE_DEPART_WINDOW_BEFORE_MS;
 const MEETING_WINDOW_MS = 45 * 60 * 1000;
 
 export function resolveMarketTradeActiveStep(input: {

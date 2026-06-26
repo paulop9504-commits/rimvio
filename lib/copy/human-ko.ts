@@ -1118,6 +1118,21 @@ export const copy = {
     marketTradeAcceptSchedule: "이대로 예약",
     marketTradeAcceptSuccess: "거래 예약을 잡았어요",
     marketTradeAcceptFail: "예약을 잡지 못했어요",
+    marketTradeCancelCta: "약속 취소",
+    marketTradeCancelTitle: "취소 사유를 골라주세요",
+    marketTradeCancelHint: "상대에게 사유가 전달돼요",
+    marketTradeCancelDismiss: "돌아가기",
+    marketTradeCancelConfirm: "약속 취소하기",
+    marketTradeCancelSuccess: "약속을 취소했어요",
+    marketTradeCancelFail: "약속을 취소하지 못했어요",
+    marketTradeCancelReservationSystem: (input: {
+      reasonLabel: string;
+      bySeeking: boolean;
+    }) =>
+      input.bySeeking
+        ? `구매자가 약속을 취소했어요 · ${input.reasonLabel}`
+        : `판매자가 약속을 취소했어요 · ${input.reasonLabel}`,
+    marketTradeSellerMeetConflict: "이 시간에는 다른 약속이 있어요",
     marketTradeStatusExpired: "응답 시간이 지났어요",
     marketTradeProposePreferred: "이 시간이 좋아요",
     marketTradeProposePreferredSuccess: "희망 시간을 전달했어요",
@@ -1142,7 +1157,9 @@ export const copy = {
     marketTradeWaitingBuyer: "구매자 답변 대기 중",
     marketTradeConfirmSchedule: "이 시간으로 확정",
     marketTradeNavigate: "길찾기",
-    marketTradeDepart: "출발하기",
+    marketTradeDepart: "약속장소로 출발",
+    marketTradeDepartOpensHint:
+      "「약속장소로 출발」은 약속 3시간 전부터 누를 수 있어요. 일찍 눌러 실수하는 일을 막기 위해 그렇게 했어요.",
     marketTradeStartedToast: "거래를 시작했어요 · 진행 중에서 확인하세요",
     marketTradeConfirmFail: "일정을 확정하지 못했어요",
     marketTradeConfirmSuccess: "거래 일정을 확정했어요",

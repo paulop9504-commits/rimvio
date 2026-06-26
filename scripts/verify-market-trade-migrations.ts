@@ -59,6 +59,7 @@ const COLUMNS_14 = [
 ] as const;
 const COLUMNS_15 = ["preferred_meet_at", "scheduling_expires_at"] as const;
 const COLUMNS_16 = ["preferred_meet_date"] as const;
+const COLUMNS_17 = ["trade_cancel_reason", "trade_cancelled_at"] as const;
 
 async function runQuery(query: string): Promise<unknown> {
   if (!token || !projectRef) {
@@ -139,13 +140,15 @@ async function main() {
   const m14 = checkMigration("14 / 056 market-trade-host-mode", COLUMNS_14, found);
   const m15 = checkMigration("15 / 057 market-trade-schedule-v1", COLUMNS_15, found);
   const m16 = checkMigration("16 / 058 market-trade-schedule-v2", COLUMNS_16, found);
+  const m17 = checkMigration("17 / 059 market-trade-cancel", COLUMNS_17, found);
   const hasEnRoute = def.includes("en_route");
   const hasExpired = def.includes("expired");
   const hasBuyerPickedDay = def.includes("buyer_picked_day");
   const hasSellerProposed = def.includes("seller_proposed");
+  const hasCancelled = def.includes("cancelled");
 
   console.log(`\n=== Market trade migrations (${projectRef}) ===\n`);
-  for (const row of [m13, m14, m15, m16]) {
+  for (const row of [m13, m14, m15, m16, m17]) {
     console.log(`${row.ok ? "✅" : "❌"} ${row.name}`);
     if (row.missing.length > 0) {
       console.log(`   missing: ${row.missing.join(", ")}`);
@@ -161,17 +164,20 @@ async function main() {
 
   console.log(`${hasBuyerPickedDay ? "✅" : "❌"} trade_status check includes buyer_picked_day (16)`);
   console.log(`${hasSellerProposed ? "✅" : "❌"} trade_status check includes seller_proposed (16)`);
+  console.log(`${hasCancelled ? "✅" : "❌"} trade_status check includes cancelled (17)`);
 
   const allOk =
     m13.ok &&
     m14.ok &&
     m15.ok &&
     m16.ok &&
+    m17.ok &&
     hasEnRoute &&
     hasExpired &&
     hasBuyerPickedDay &&
-    hasSellerProposed;
-  console.log(allOk ? "\n✅ 13 → 16 모두 적용됨\n" : "\n❌ 미적용 migration 있음 — sql-editor 13→16 순서로 실행\n");
+    hasSellerProposed &&
+    hasCancelled;
+  console.log(allOk ? "\n✅ 13 → 17 모두 적용됨\n" : "\n❌ 미적용 migration 있음 — sql-editor 13→17 순서로 실행\n");
   process.exit(allOk ? 0 : 1);
 }
 

@@ -6,6 +6,7 @@ import {
   formatMarketTradeCountdownLabel,
   resolveMarketTradeActiveStep,
 } from "../lib/globe/market/resolve-market-trade-progress";
+import { isMarketTradeDepartWindowOpen } from "../lib/globe/market/market-trade-depart-window";
 import {
   generateMarketTradeScheduleCandidates,
   MARKET_SCHEDULING_SLA_HOURS,
@@ -13,7 +14,7 @@ import {
 import { formatMarketTradeSchedulingCountdown } from "../lib/globe/market/resolve-market-trade-scheduling";
 
 const meetAt = new Date();
-meetAt.setHours(meetAt.getHours() + 3, 0, 0, 0);
+meetAt.setHours(meetAt.getHours() + 4, 0, 0, 0);
 
 const step = resolveMarketTradeActiveStep({
   tradeStatus: "confirmed",
@@ -22,13 +23,19 @@ const step = resolveMarketTradeActiveStep({
 });
 assert.equal(step, "confirmed");
 
-const nearDepart = new Date(meetAt.getTime() - 90 * 60 * 1000);
+const nearDepart = new Date(meetAt.getTime() - 2.5 * 60 * 60 * 1000);
 const departStep = resolveMarketTradeActiveStep({
   tradeStatus: "confirmed",
   meetAtIso: meetAt.toISOString(),
   now: nearDepart,
 });
 assert.equal(departStep, "before_departure");
+
+assert.equal(isMarketTradeDepartWindowOpen(meetAt.toISOString(), new Date()), false);
+assert.equal(
+  isMarketTradeDepartWindowOpen(meetAt.toISOString(), nearDepart),
+  true,
+);
 
 const enRouteStep = resolveMarketTradeActiveStep({
   tradeStatus: "en_route",

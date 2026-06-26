@@ -40,6 +40,8 @@ export type MarketHandshakeDbRow = {
   preferred_meet_date?: string | null;
   scheduling_expires_at?: string | null;
   schedule_candidates?: unknown;
+  trade_cancel_reason?: string | null;
+  trade_cancelled_at?: string | null;
 };
 
 function readTradeStatus(raw: MarketHandshakeDbRow): MarketTradeStatus {
@@ -51,7 +53,8 @@ function readTradeStatus(raw: MarketHandshakeDbRow): MarketTradeStatus {
     raw.trade_status === "en_route" ||
     raw.trade_status === "meeting" ||
     raw.trade_status === "completed" ||
-    raw.trade_status === "expired"
+    raw.trade_status === "expired" ||
+    raw.trade_status === "cancelled"
   ) {
     return raw.trade_status;
   }
@@ -106,6 +109,8 @@ export function marketHandshakeRowToRecord(row: MarketHandshakeDbRow): MarketHan
     preferredMeetDateKey: row.preferred_meet_date?.trim() || null,
     preferredMeetAtIso: row.preferred_meet_at ?? null,
     schedulingExpiresAtIso: row.scheduling_expires_at ?? null,
+    tradeCancelReasonId: row.trade_cancel_reason?.trim() || null,
+    tradeCancelledAtIso: row.trade_cancelled_at ?? null,
   };
 }
 
@@ -285,6 +290,8 @@ export async function patchMarketHandshake(
     preferredMeetDateKey?: string | null;
     schedulingExpiresAtIso?: string | null;
     scheduleCandidates?: readonly string[];
+    tradeCancelReasonId?: string | null;
+    tradeCancelledAtIso?: string | null;
   },
 ): Promise<MarketHandshakeRecord> {
   const row: Record<string, unknown> = {
@@ -355,6 +362,12 @@ export async function patchMarketHandshake(
   }
   if (patch.scheduleCandidates !== undefined) {
     row.schedule_candidates = [...patch.scheduleCandidates];
+  }
+  if (patch.tradeCancelReasonId !== undefined) {
+    row.trade_cancel_reason = patch.tradeCancelReasonId;
+  }
+  if (patch.tradeCancelledAtIso !== undefined) {
+    row.trade_cancelled_at = patch.tradeCancelledAtIso;
   }
 
   const { data, error } = await supabase
