@@ -45,7 +45,7 @@ export type GlobeCaptureDockProps = {
   composeHidden?: boolean;
   /** Alignment cards, trade dock, pulse — stacked above ingest in one column. */
   stackAboveCompose?: ReactNode;
-  /** Right-aligned chrome sitting directly above the prompt bar (e.g. recall pill). */
+  /** Chrome directly above the prompt bar (e.g. recall pill beside + column). */
   composeAccessory?: ReactNode;
   ingest: GlobeContextIngestBarProps;
 };

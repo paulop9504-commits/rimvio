@@ -230,7 +230,7 @@ export function GlobeHomeMemoryRecallPanel({ className }: { className?: string }
   );
 }
 
-/** Pill — right-aligned directly above the prompt bar. */
+/** Pill — left-aligned above prompt, same column as the + button. */
 export function GlobeHomeMemoryRecallToggleAnchor({ className }: { className?: string }) {
   const ctx = useMemoryRecallContext();
   if (!ctx?.hasContent) {
@@ -238,7 +238,7 @@ export function GlobeHomeMemoryRecallToggleAnchor({ className }: { className?: s
   }
   return (
     <div
-      className={cn("pointer-events-auto flex w-full justify-end pb-1", className)}
+      className={cn("pointer-events-auto flex w-full justify-start px-2 pb-1", className)}
       data-globe-home-memory-dock-toggle
     >
       <GlobeMemoryRecallToggle open={ctx.panelOpen} onToggle={ctx.onToggle} />
