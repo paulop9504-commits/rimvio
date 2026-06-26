@@ -1264,6 +1264,8 @@ export const copy = {
     backToIntents: "의도 다시 고르기",
     closeAria: "닫기",
     projectionEyebrow: "새 맥락",
+    peekToggleExpand: "새 맥락 펼치기",
+    peekToggleCollapse: "새 맥락 접기",
     marketSuggestCreateHeadline: (product: string) => `${product} 맞춤을 밖에 낼까요?`,
     marketSuggestCreateBody: "이 맥락을 바탕으로 구하기·내놓기를 시작해요",
     marketSuggestCreateCta: "맞춤 시작하기",

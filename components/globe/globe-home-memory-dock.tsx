@@ -231,14 +231,23 @@ export function GlobeHomeMemoryRecallPanel({ className }: { className?: string }
 }
 
 /** Pill — left-aligned above prompt, same column as the + button. */
-export function GlobeHomeMemoryRecallToggleAnchor({ className }: { className?: string }) {
+export function GlobeHomeMemoryRecallToggleAnchor({
+  className,
+  embedded = false,
+}: {
+  className?: string;
+  embedded?: boolean;
+}) {
   const ctx = useMemoryRecallContext();
   if (!ctx?.hasContent) {
     return null;
   }
   return (
     <div
-      className={cn("pointer-events-auto flex w-full justify-start px-2 pb-1", className)}
+      className={cn(
+        embedded ? "pointer-events-auto" : "pointer-events-auto flex w-full justify-start px-2 pb-1",
+        className,
+      )}
       data-globe-home-memory-dock-toggle
     >
       <GlobeMemoryRecallToggle open={ctx.panelOpen} onToggle={ctx.onToggle} />

@@ -14,11 +14,13 @@ import { GlobeUtilityMenu } from "@/components/globe/globe-utility-menu";
 import { GlobeContextMapVideoStage } from "@/components/globe/globe-context-map-video-stage";
 import { GlobeLodgingFocusStage } from "@/components/globe/globe-lodging-focus-stage";
 import { GlobeCaptureDock } from "@/components/globe/globe-capture-dock";
+import { GlobeComposeAccessoryBar } from "@/components/globe/globe-compose-accessory-bar";
 import {
   GlobeHomeMemoryRecallPanel,
   GlobeHomeMemoryRecallProvider,
   GlobeHomeMemoryRecallToggleAnchor,
 } from "@/components/globe/globe-home-memory-dock";
+import { GlobePortalIntentPeekPanel } from "@/components/globe/globe-portal-intent-peek";
 import { GlobePhotoIngestUndoBar } from "@/components/globe/globe-photo-ingest-undo-bar";
 import { GlobeTrendBridgePulseChip } from "@/components/globe/globe-trend-bridge-pulse-chip";
 import { GlobeTrendBridgeLayer } from "@/components/globe/globe-trend-bridge-layer";
@@ -181,6 +183,7 @@ function GlobeHomeBody() {
     onBlur: () => void;
   } | null>(null);
   const [globeMemoryDismissToken, setGlobeMemoryDismissToken] = useState(0);
+  const [portalPeekOpen, setPortalPeekOpen] = useState(false);
   const [globeGuideOpen, setGlobeGuideOpen] = useState(false);
   const [marketIntentDraft, setMarketIntentDraft] = useState<MarketIntentDraft | null>(
     null,
@@ -807,14 +810,31 @@ function GlobeHomeBody() {
 
   const registerMemoryRecallComposeHandlers = useCallback(
     (handlers: { onFocus: () => void; onBlur: () => void }) => {
-      memoryRecallComposeRef.current = handlers;
+      memoryRecallComposeRef.current = {
+        onFocus: () => {
+          setPortalPeekOpen(false);
+          handlers.onFocus();
+        },
+        onBlur: handlers.onBlur,
+      };
     },
     [],
   );
 
+  const togglePortalPeek = useCallback(() => {
+    setPortalPeekOpen((open) => {
+      const next = !open;
+      if (next) {
+        setGlobeMemoryDismissToken((token) => token + 1);
+      }
+      return next;
+    });
+  }, []);
+
   const onGlobePress = useCallback(
     (coords: { lat: number; lng: number }) => {
       setGlobeMemoryDismissToken((token) => token + 1);
+      setPortalPeekOpen(false);
       if (pinDragActiveRef.current) {
         return;
       }
@@ -1401,6 +1421,18 @@ function GlobeHomeBody() {
     [activeCluster?.eventId, marketTradeBusy],
   );
 
+  const onPortalIntentPeekSelect = useCallback(
+    (intentId: PortalIntentId) => {
+      setPortalPeekOpen(false);
+      void openPortal({
+        initialIntentId: intentId,
+        eventId: activeCluster?.eventId ?? null,
+        source: "composer",
+      });
+    },
+    [activeCluster?.eventId, openPortal],
+  );
+
   const quickListMarket = useCallback(
     async (input: {
       composeText: string;
@@ -1798,14 +1830,16 @@ function GlobeHomeBody() {
         composeHidden={portalOpen || marketConfirmOpen}
         composeAccessory={
           !confirmOpen && !sheetOpen && layerMode === "personal" ? (
-            <GlobeHomeMemoryRecallToggleAnchor />
+            <GlobeComposeAccessoryBar
+              portalPeekOpen={portalPeekOpen}
+              onPortalPeekToggle={togglePortalPeek}
+            >
+              <GlobeHomeMemoryRecallToggleAnchor embedded />
+            </GlobeComposeAccessoryBar>
           ) : null
         }
         stackAboveCompose={
           <>
-            {!confirmOpen && !sheetOpen && layerMode === "personal" ? (
-              <GlobeHomeMemoryRecallPanel />
-            ) : null}
             {pulseMainActionEnabled ? (
               <MarketAlignmentSurface
                 enabled={pulseMainActionEnabled}
@@ -1827,6 +1861,15 @@ function GlobeHomeBody() {
                   }
                   void focusContextOnMap(offer.matchEventId);
                 }}
+              />
+            ) : null}
+            {!confirmOpen && !sheetOpen && layerMode === "personal" ? (
+              <GlobeHomeMemoryRecallPanel />
+            ) : null}
+            {!confirmOpen && !sheetOpen && layerMode === "personal" ? (
+              <GlobePortalIntentPeekPanel
+                open={portalPeekOpen}
+                onSelectIntent={onPortalIntentPeekSelect}
               />
             ) : null}
           </>

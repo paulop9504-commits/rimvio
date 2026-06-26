@@ -1252,6 +1252,8 @@ export const copyEn: Copy = {
     backToIntents: "Choose intent again",
     closeAria: "Close",
     projectionEyebrow: "New context",
+    peekToggleExpand: "Expand new context",
+    peekToggleCollapse: "Collapse new context",
     marketSuggestCreateHeadline: (product: string) => `Share ${product} outside?`,
     marketSuggestCreateBody: "Start seeking or listing from this context",
     marketSuggestCreateCta: "Start alignment",
