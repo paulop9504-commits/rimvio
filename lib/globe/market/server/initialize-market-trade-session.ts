@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
-  generateMarketTradeScheduleCandidates,
+  generateMarketTradeDateCandidates,
   MARKET_SCHEDULING_SLA_HOURS,
   readMarketAvailabilityPreset,
 } from "@/lib/globe/market/market-availability-preset";
@@ -16,7 +16,7 @@ export async function initializeMarketTradeSession(
   >,
 ): Promise<void> {
   const preset = readMarketAvailabilityPreset(listing.detail?.availabilityPreset);
-  const candidates = generateMarketTradeScheduleCandidates(preset);
+  const candidates = generateMarketTradeDateCandidates(preset);
   const placeLabel = listing.placeLabel?.trim() || null;
   const expiresAt = new Date(
     Date.now() + MARKET_SCHEDULING_SLA_HOURS * 60 * 60 * 1000,
@@ -30,6 +30,7 @@ export async function initializeMarketTradeSession(
     meetLat: listing.anchorLat ?? null,
     meetLng: listing.anchorLng ?? null,
     preferredMeetAtIso: null,
+    preferredMeetDateKey: null,
     schedulingExpiresAtIso: expiresAt,
   });
 }

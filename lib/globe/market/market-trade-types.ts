@@ -1,3 +1,4 @@
+import type { MarketAvailabilityPreset } from "@/lib/globe/market/market-availability-preset";
 import type { MarketIntentRole } from "@/lib/globe/market/market-intent-types";
 
 /** Revert UI experiment: git checkout bookmark/pre-transaction-dashboard */
@@ -8,6 +9,8 @@ export type MarketHandshakeIntentPair = {
 
 export type MarketTradeStatus =
   | "scheduling"
+  | "buyer_picked_day"
+  | "seller_proposed"
   | "confirmed"
   | "en_route"
   | "meeting"
@@ -40,8 +43,12 @@ export type MarketTradeSessionRecord = {
   guestLng: number | null;
   guestLocationAtIso: string | null;
   scheduleCandidates: readonly string[];
+  preferredMeetDateKey: string | null;
   preferredMeetAtIso: string | null;
   schedulingExpiresAtIso: string | null;
+  availabilityPreset: MarketAvailabilityPreset;
+  seekingConfirmedAtIso: string | null;
+  listingConfirmedAtIso: string | null;
   viewerRole: MarketIntentRole;
   productTitle: string;
   priceLine: string;
@@ -71,5 +78,13 @@ export type MarketTradeSessionView = MarketTradeSessionRecord & {
   hostGuestEtaLabelKo: string | null;
   showProposePreferred: boolean;
   preferredMeetAtIso: string | null;
+  preferredMeetDateKey: string | null;
   schedulingCountdownKo: string | null;
+  showPickDay: boolean;
+  showProposeSchedule: boolean;
+  showAcceptProposal: boolean;
+  proposeTimeSlots: readonly string[];
+  canConfirmHandshakeComplete: boolean;
+  awaitingHandshakeOtherParty: boolean;
+  handshakeCompleteCtaKo: string | null;
 };

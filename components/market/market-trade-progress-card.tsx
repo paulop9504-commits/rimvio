@@ -1,16 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Calendar, Car, Check, ImageIcon, MapPin, Navigation } from "lucide-react";
 import { toast } from "sonner";
+import { MarketCompletionTraceSheet } from "@/components/market/market-completion-trace-sheet";
 import { MarketListingMediaRowThumb } from "@/components/market/market-listing-media-thumb";
 import { useCopy } from "@/hooks/use-copy";
 import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
 import {
-  confirmMarketTradeScheduleRemote,
+  acceptMarketTradeScheduleRemote,
   departMarketTradeRemote,
-  proposeMarketTradePreferredRemote,
+  pickMarketTradeDayRemote,
+  proposeMarketTradeScheduleRemote,
 } from "@/lib/globe/market/client/fetch-market-trades-client";
+import { confirmMarketHandshakeCompleteRemote } from "@/lib/globe/market/client/sync-market-intent-remote";
+import { commitMarketCompletionTrace } from "@/lib/globe/market/commit-market-completion-trace";
+import { dismissMarketCompletionTrace } from "@/lib/globe/market/market-completion-pinned-store";
+import type { MarketCompletionTraceDraft } from "@/lib/globe/market/market-handshake-types";
+import { formatMarketTradeDateLabelKo } from "@/lib/globe/market/market-trade-schedule";
 import { formatMarketTradeMeetAtLabel } from "@/lib/globe/market/resolve-market-trade-progress";
 import type { MarketTradeSessionView } from "@/lib/globe/market/market-trade-types";
 import {
@@ -18,6 +25,7 @@ import {
   buildKakaoMapRouteWebHref,
 } from "@/lib/resolvers/deep-links";
 import { openHrefWithFallback } from "@/lib/actions/open-with-fallback";
+import { rimvioCompactPrimaryCtaClass } from "@/lib/design/rimvio-ontology";
 import { cn } from "@/lib/utils";
 
 export type MarketTradeProgressCardProps = {
@@ -60,12 +68,17 @@ export function MarketTradeProgressCard({
   const copy = useCopy();
   const globe = copy.globe;
   const liveLocation = useLiveLocationSnapshot();
-  const [busySlot, setBusySlot] = useState<string | null>(null);
+  const [busyKey, setBusyKey] = useState<string | null>(null);
   const [departBusy, setDepartBusy] = useState(false);
+  const [completeBusy, setCompleteBusy] = useState(false);
+  const [proposePlace, setProposePlace] = useState(session.meetPlaceDisplay ?? "");
+  const [selectedTimeIso, setSelectedTimeIso] = useState<string | null>(null);
+  const [completionTrace, setCompletionTrace] = useState<MarketCompletionTraceDraft | null>(null);
+  const [completionSheetOpen, setCompletionSheetOpen] = useState(false);
+  const [completionPinBusy, setCompletionPinBusy] = useState(false);
+
   const isSeeking = session.viewerRole === "seeking";
-  const badgeTone = isSeeking
-    ? "bg-[#7c3aed] text-white"
-    : "bg-[#3182f6] text-white";
+  const badgeTone = isSeeking ? "bg-[#7c3aed] text-white" : "bg-[#3182f6] text-white";
 
   const onNavigate = () => {
     if (session.meetLat != null && session.meetLng != null) {
@@ -92,46 +105,67 @@ export function MarketTradeProgressCard({
     }
   };
 
-  const onConfirmSlot = async (meetAtIso: string) => {
-    if (busySlot) {
+  const onPickDay = async (dateKey: string) => {
+    if (busyKey) {
       return;
     }
-    setBusySlot(meetAtIso);
+    setBusyKey(dateKey);
     try {
-      const updated = await confirmMarketTradeScheduleRemote({
+      const updated = await pickMarketTradeDayRemote({
         handshakeId: session.handshakeId,
-        meetAtIso,
-        meetPlaceLabel: session.meetPlaceDisplay ?? undefined,
+        dateKey,
       });
       if (updated) {
-        toast.success(globe.marketTradeConfirmSuccess);
+        toast.success(globe.marketTradePickDaySuccess);
         onUpdated?.(updated);
       }
     } catch {
-      toast.error(globe.marketTradeConfirmFail);
+      toast.error(globe.marketTradePickDayFail);
     } finally {
-      setBusySlot(null);
+      setBusyKey(null);
     }
   };
 
-  const onProposePreferred = async (meetAtIso: string) => {
-    if (busySlot) {
+  const onProposeSchedule = async () => {
+    const meetAtIso = selectedTimeIso;
+    if (!meetAtIso || busyKey) {
       return;
     }
-    setBusySlot(meetAtIso);
+    setBusyKey(meetAtIso);
     try {
-      const updated = await proposeMarketTradePreferredRemote({
+      const updated = await proposeMarketTradeScheduleRemote({
         handshakeId: session.handshakeId,
         meetAtIso,
+        meetPlaceLabel: proposePlace.trim() || session.meetPlaceDisplay || undefined,
       });
       if (updated) {
-        toast.success(globe.marketTradeProposePreferredSuccess);
+        toast.success(globe.marketTradeProposeSuccess);
         onUpdated?.(updated);
       }
     } catch {
-      toast.error(globe.marketTradeProposePreferredFail);
+      toast.error(globe.marketTradeProposeFail);
     } finally {
-      setBusySlot(null);
+      setBusyKey(null);
+    }
+  };
+
+  const onAcceptSchedule = async () => {
+    if (busyKey) {
+      return;
+    }
+    setBusyKey("accept");
+    try {
+      const updated = await acceptMarketTradeScheduleRemote({
+        handshakeId: session.handshakeId,
+      });
+      if (updated) {
+        toast.success(globe.marketTradeAcceptSuccess);
+        onUpdated?.(updated);
+      }
+    } catch {
+      toast.error(globe.marketTradeAcceptFail);
+    } finally {
+      setBusyKey(null);
     }
   };
 
@@ -163,198 +197,331 @@ export function MarketTradeProgressCard({
     }
   };
 
+  const onConfirmHandshakeComplete = useCallback(async () => {
+    if (completeBusy) {
+      return;
+    }
+    setCompleteBusy(true);
+    try {
+      const result = await confirmMarketHandshakeCompleteRemote({
+        handshakeId: session.handshakeId,
+      });
+      if (result.awaitingOtherParty) {
+        toast.success(globe.marketHandshakeCompleteAwaitingToast);
+      } else {
+        toast.success(globe.marketHandshakeCompleteConfirmedToast);
+      }
+      if (result.completed && result.trace) {
+        setCompletionTrace(result.trace);
+        setCompletionSheetOpen(true);
+      }
+      if (result.completed) {
+        onUpdated?.({
+          ...session,
+          phase: "completed",
+          tradeStatus: "completed",
+          canConfirmHandshakeComplete: false,
+          awaitingHandshakeOtherParty: false,
+        });
+      } else {
+        onUpdated?.({
+          ...session,
+          canConfirmHandshakeComplete: false,
+          awaitingHandshakeOtherParty: true,
+        });
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : globe.marketHandshakeCompleteFail;
+      toast.error(message);
+    } finally {
+      setCompleteBusy(false);
+    }
+  }, [
+    completeBusy,
+    globe.marketHandshakeCompleteAwaitingToast,
+    globe.marketHandshakeCompleteConfirmedToast,
+    globe.marketHandshakeCompleteFail,
+    onUpdated,
+    session,
+  ]);
+
+  const onPinCompletionTrace = async () => {
+    if (!completionTrace || completionPinBusy) {
+      return;
+    }
+    setCompletionPinBusy(true);
+    try {
+      commitMarketCompletionTrace({
+        trace: completionTrace,
+        threadId: session.threadId,
+      });
+      setCompletionSheetOpen(false);
+      toast.success(globe.marketCompletionTracePinnedToast);
+    } finally {
+      setCompletionPinBusy(false);
+    }
+  };
+
+  const onDismissCompletionTrace = () => {
+    if (completionTrace) {
+      dismissMarketCompletionTrace(completionTrace.handshakeId);
+    }
+    setCompletionSheetOpen(false);
+  };
+
   const showProgress =
     session.tradeStatus === "confirmed" ||
     session.tradeStatus === "en_route" ||
     session.tradeStatus === "meeting" ||
     session.activeStepId !== "confirmed";
 
+  const schedulingActive =
+    session.tradeStatus === "scheduling" ||
+    session.tradeStatus === "buyer_picked_day" ||
+    session.tradeStatus === "seller_proposed";
+
   return (
-    <article
-      className={cn(
-        "rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/[0.05]",
-        className,
-      )}
-      data-market-trade-card={session.handshakeId}
-    >
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <span className={cn("rounded-full px-2.5 py-1 text-[11px] font-bold", badgeTone)}>
-          {session.roleBadgeKo}
-        </span>
-        <div className="text-right">
-          <p className="text-[13px] font-semibold text-[#191f28]">{session.statusHeadlineKo}</p>
-          {session.statusSublineKo ? (
-            <p className="mt-0.5 text-[12px] text-[#6b7684]">{session.statusSublineKo}</p>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="flex gap-3">
-        <div className="relative size-14 shrink-0 overflow-hidden rounded-xl bg-[#f2f4f6]">
-          {session.photoUrl ? (
-            <MarketListingMediaRowThumb photoUrl={session.photoUrl} videoUrl={null} />
-          ) : (
-            <div className="flex size-full items-center justify-center text-[#b0b8c1]">
-              <ImageIcon className="size-6" aria-hidden />
-            </div>
-          )}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[16px] font-bold text-[#191f28]">{session.productTitle}</p>
-          <p className="mt-0.5 text-[15px] font-semibold text-[#191f28]">{session.priceLine}</p>
-        </div>
-      </div>
-
-      {session.tradeStatus === "scheduling" && session.viewerRole === "listing" ? (
-        <div className="mt-3 space-y-2 rounded-xl bg-[#f8f9fb] px-3 py-3">
-          <p className="text-[13px] font-medium text-[#191f28]">{globe.marketTradePickScheduleSlot}</p>
-          {session.proposalLineKo ? (
-            <p className="flex items-center gap-1.5 text-[13px] font-medium text-[#3182f6]">
-              <Calendar className="size-3.5 shrink-0" aria-hidden />
-              {session.proposalLineKo}
-            </p>
-          ) : null}
-          <div className="flex flex-wrap gap-2 pt-1">
-            {session.scheduleCandidates.map((slot) => {
-              const isPreferred = session.preferredMeetAtIso === slot;
-              return (
-                <button
-                  key={slot}
-                  type="button"
-                  disabled={busySlot !== null}
-                  onClick={() => void onConfirmSlot(slot)}
-                  className={cn(
-                    "rounded-full px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50",
-                    isPreferred
-                      ? "bg-[#3182f6] ring-2 ring-[#3182f6] ring-offset-1"
-                      : "bg-[#3182f6]",
-                  )}
-                >
-                  {busySlot === slot ? "…" : formatMarketTradeMeetAtLabel(slot)}
-                </button>
-              );
-            })}
+    <>
+      <article
+        className={cn(
+          "rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/[0.05]",
+          className,
+        )}
+        data-market-trade-card={session.handshakeId}
+      >
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <span className={cn("rounded-full px-2.5 py-1 text-[11px] font-bold", badgeTone)}>
+            {session.roleBadgeKo}
+          </span>
+          <div className="text-right">
+            <p className="text-[13px] font-semibold text-[#191f28]">{session.statusHeadlineKo}</p>
+            {session.statusSublineKo ? (
+              <p className="mt-0.5 text-[12px] text-[#6b7684]">{session.statusSublineKo}</p>
+            ) : null}
           </div>
         </div>
-      ) : null}
 
-      {session.showProposePreferred ? (
-        <div className="mt-3 space-y-2 rounded-xl bg-[#f8f9fb] px-3 py-3">
-          <p className="text-[13px] text-[#4e5968]">{globe.marketTradeStatusSchedulingSeekingSub}</p>
-          <div className="flex flex-wrap gap-2 pt-1">
-            {session.scheduleCandidates.map((slot) => {
-              const isPreferred = session.preferredMeetAtIso === slot;
-              return (
+        <div className="flex gap-3">
+          <div className="relative size-14 shrink-0 overflow-hidden rounded-xl bg-[#f2f4f6]">
+            {session.photoUrl ? (
+              <MarketListingMediaRowThumb photoUrl={session.photoUrl} videoUrl={null} />
+            ) : (
+              <div className="flex size-full items-center justify-center text-[#b0b8c1]">
+                <ImageIcon className="size-6" aria-hidden />
+              </div>
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[16px] font-bold text-[#191f28]">{session.productTitle}</p>
+            <p className="mt-0.5 text-[15px] font-semibold text-[#191f28]">{session.priceLine}</p>
+          </div>
+        </div>
+
+        {session.showPickDay ? (
+          <div className="mt-3 space-y-2 rounded-xl bg-[#f8f9fb] px-3 py-3">
+            <p className="text-[13px] font-medium text-[#191f28]">{globe.marketTradePickDayTitle}</p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              {session.scheduleCandidates.map((dateKey) => (
+                <button
+                  key={dateKey}
+                  type="button"
+                  disabled={busyKey !== null}
+                  onClick={() => void onPickDay(dateKey)}
+                  className="rounded-full bg-[#7c3aed] px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50"
+                >
+                  {busyKey === dateKey ? "…" : formatMarketTradeDateLabelKo(dateKey)}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {session.showProposeSchedule ? (
+          <div className="mt-3 space-y-3 rounded-xl bg-[#f8f9fb] px-3 py-3">
+            <p className="text-[13px] font-medium text-[#191f28]">
+              {globe.marketTradeProposeScheduleTitle}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {session.proposeTimeSlots.map((slot) => (
                 <button
                   key={slot}
                   type="button"
-                  disabled={busySlot !== null}
-                  onClick={() => void onProposePreferred(slot)}
+                  disabled={busyKey !== null}
+                  onClick={() => setSelectedTimeIso(slot)}
                   className={cn(
-                    "rounded-full border px-3 py-1.5 text-[12px] font-semibold disabled:opacity-50",
-                    isPreferred
-                      ? "border-[#3182f6] bg-[#eff6ff] text-[#3182f6]"
-                      : "border-[#e5e8eb] bg-white text-[#191f28]",
+                    "rounded-full px-3 py-1.5 text-[12px] font-semibold",
+                    selectedTimeIso === slot
+                      ? "bg-[#3182f6] text-white"
+                      : "bg-white text-[#191f28] ring-1 ring-[#e5e8eb]",
                   )}
                 >
-                  {busySlot === slot ? "…" : globe.marketTradeProposePreferred}
-                  {" · "}
                   {formatMarketTradeMeetAtLabel(slot)}
                 </button>
-              );
-            })}
+              ))}
+            </div>
+            <label className="block">
+              <span className="mb-1 block text-[12px] font-medium text-[#6b7684]">
+                {globe.marketTradeProposePlaceLabel}
+              </span>
+              <input
+                type="text"
+                value={proposePlace}
+                onChange={(event) => setProposePlace(event.target.value)}
+                placeholder={globe.marketTradeProposePlacePlaceholder}
+                className="w-full rounded-xl border border-[#e5e8eb] bg-white px-3 py-2.5 text-[14px] outline-none focus:border-[#3182f6]"
+              />
+            </label>
+            <button
+              type="button"
+              disabled={!selectedTimeIso || busyKey !== null}
+              onClick={() => void onProposeSchedule()}
+              className={cn(rimvioCompactPrimaryCtaClass(), "w-full disabled:opacity-50")}
+            >
+              {busyKey ? "…" : globe.marketTradeProposeSend}
+            </button>
           </div>
-        </div>
-      ) : null}
+        ) : null}
 
-      {session.meetAtLabelKo ? (
-        <p className="mt-3 flex items-center gap-2 text-[14px] text-[#191f28]">
-          <Calendar className="size-4 shrink-0 text-[#3182f6]" aria-hidden />
-          {session.meetAtLabelKo}
-        </p>
-      ) : null}
+        {session.showAcceptProposal ? (
+          <div className="mt-3 space-y-3 rounded-xl bg-[#f8f9fb] px-3 py-3">
+            {session.meetAtLabelKo ? (
+              <p className="flex items-center gap-2 text-[14px] font-semibold text-[#191f28]">
+                <Calendar className="size-4 text-[#3182f6]" aria-hidden />
+                {session.meetAtLabelKo}
+              </p>
+            ) : null}
+            {session.meetPlaceDisplay ? (
+              <p className="flex items-center gap-2 text-[14px] text-[#191f28]">
+                <MapPin className="size-4 text-[#3182f6]" aria-hidden />
+                {session.meetPlaceDisplay}
+              </p>
+            ) : null}
+            <button
+              type="button"
+              disabled={busyKey !== null}
+              onClick={() => void onAcceptSchedule()}
+              className={cn(rimvioCompactPrimaryCtaClass(), "w-full disabled:opacity-50")}
+            >
+              {busyKey ? "…" : globe.marketTradeAcceptSchedule}
+            </button>
+          </div>
+        ) : null}
 
-      {session.meetPlaceDisplay ? (
-        <p className="mt-1.5 flex items-center gap-2 text-[14px] text-[#191f28]">
-          <MapPin className="size-4 shrink-0 text-[#3182f6]" aria-hidden />
-          {session.meetPlaceDisplay}
-        </p>
-      ) : null}
+        {!schedulingActive && session.meetAtLabelKo ? (
+          <p className="mt-3 flex items-center gap-2 text-[14px] text-[#191f28]">
+            <Calendar className="size-4 shrink-0 text-[#3182f6]" aria-hidden />
+            {session.meetAtLabelKo}
+          </p>
+        ) : null}
 
-      {session.hostGuestEtaLabelKo ? (
-        <p className="mt-2 flex items-center gap-2 text-[13px] font-medium text-[#3182f6]">
-          <Car className="size-3.5 shrink-0" aria-hidden />
-          {session.hostGuestEtaLabelKo}
-        </p>
-      ) : null}
+        {!schedulingActive && session.meetPlaceDisplay ? (
+          <p className="mt-1.5 flex items-center gap-2 text-[14px] text-[#191f28]">
+            <MapPin className="size-4 shrink-0 text-[#3182f6]" aria-hidden />
+            {session.meetPlaceDisplay}
+          </p>
+        ) : null}
 
-      {showProgress && session.tradeStatus !== "scheduling" ? (
-        <div className="mt-4">
-          <div className="flex items-center justify-between gap-1">
-            {session.progressSteps.map((step, index) => (
-              <div key={step.id} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-                <StepIcon stepId={step.id} state={step.state} />
-                <span
-                  className={cn(
-                    "truncate text-center text-[10px] font-medium",
-                    step.state === "active" ? "text-[#22c55e]" : "text-[#8b95a1]",
-                  )}
-                >
-                  {step.labelKo}
-                </span>
-                {index < session.progressSteps.length - 1 ? (
+        {session.hostGuestEtaLabelKo ? (
+          <p className="mt-2 flex items-center gap-2 text-[13px] font-medium text-[#3182f6]">
+            <Car className="size-3.5 shrink-0" aria-hidden />
+            {session.hostGuestEtaLabelKo}
+          </p>
+        ) : null}
+
+        {showProgress && !schedulingActive ? (
+          <div className="mt-4">
+            <div className="flex items-center justify-between gap-1">
+              {session.progressSteps.map((step) => (
+                <div key={step.id} className="flex min-w-0 flex-1 flex-col items-center gap-1">
+                  <StepIcon stepId={step.id} state={step.state} />
                   <span
                     className={cn(
-                      "absolute hidden",
+                      "truncate text-center text-[10px] font-medium",
+                      step.state === "active" ? "text-[#22c55e]" : "text-[#8b95a1]",
                     )}
-                    aria-hidden
-                  />
-                ) : null}
-              </div>
-            ))}
+                  >
+                    {step.labelKo}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="relative mt-1 h-0.5 rounded-full bg-[#e5e8eb]">
+              <div
+                className="absolute inset-y-0 left-0 rounded-full bg-[#22c55e] transition-all"
+                style={{
+                  width: `${Math.max(25, (session.progressSteps.findIndex((s) => s.state === "active") + 1) * 25)}%`,
+                }}
+              />
+            </div>
           </div>
-          <div className="relative mt-1 h-0.5 rounded-full bg-[#e5e8eb]">
-            <div
-              className="absolute inset-y-0 left-0 rounded-full bg-[#22c55e] transition-all"
-              style={{
-                width: `${Math.max(25, (session.progressSteps.findIndex((s) => s.state === "active") + 1) * 25)}%`,
-              }}
-            />
-          </div>
-        </div>
-      ) : null}
+        ) : null}
 
-      {(session.showNavigate || session.showDepart || session.isEnRoute) && (
-        <div className="mt-4 flex gap-2">
-          {session.showNavigate ? (
-            <button
-              type="button"
-              onClick={onNavigate}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#f2f4f6] py-2.5 text-[14px] font-semibold text-[#191f28]"
-            >
-              <Navigation className="size-4" aria-hidden />
-              {globe.marketTradeNavigate}
-            </button>
-          ) : null}
-          {session.showDepart ? (
-            <button
-              type="button"
-              disabled={departBusy}
-              onClick={() => void onDepart()}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#22c55e] py-2.5 text-[14px] font-semibold text-white disabled:opacity-50"
-            >
-              <Car className="size-4" aria-hidden />
-              {departBusy ? "…" : globe.marketTradeDepart}
-            </button>
-          ) : null}
-          {session.isEnRoute && session.viewerRole === "seeking" ? (
-            <span className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#ecfdf3] py-2.5 text-[14px] font-semibold text-[#16a34a]">
-              <Car className="size-4" aria-hidden />
-              {globe.marketTradeEnRoute}
-            </span>
-          ) : null}
-        </div>
-      )}
-    </article>
+        {(session.showNavigate || session.showDepart || session.isEnRoute) && (
+          <div className="mt-4 flex gap-2">
+            {session.showNavigate ? (
+              <button
+                type="button"
+                onClick={onNavigate}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#f2f4f6] py-2.5 text-[14px] font-semibold text-[#191f28]"
+              >
+                <Navigation className="size-4" aria-hidden />
+                {globe.marketTradeNavigate}
+              </button>
+            ) : null}
+            {session.showDepart ? (
+              <button
+                type="button"
+                disabled={departBusy}
+                onClick={() => void onDepart()}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#22c55e] py-2.5 text-[14px] font-semibold text-white disabled:opacity-50"
+              >
+                <Car className="size-4" aria-hidden />
+                {departBusy ? "…" : globe.marketTradeDepart}
+              </button>
+            ) : null}
+            {session.isEnRoute && session.viewerRole === "seeking" ? (
+              <span className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#ecfdf3] py-2.5 text-[14px] font-semibold text-[#16a34a]">
+                <Car className="size-4" aria-hidden />
+                {globe.marketTradeEnRoute}
+              </span>
+            ) : null}
+          </div>
+        )}
+
+        {session.canConfirmHandshakeComplete || session.awaitingHandshakeOtherParty ? (
+          <div className="mt-4 border-t border-black/[0.06] pt-3">
+            {session.awaitingHandshakeOtherParty ? (
+              <p className="text-center text-[13px] text-[#6b7684]">
+                {globe.marketHandshakeAwaitingOtherParty}
+              </p>
+            ) : (
+              <button
+                type="button"
+                disabled={completeBusy || !session.canConfirmHandshakeComplete}
+                onClick={() => void onConfirmHandshakeComplete()}
+                className={cn(rimvioCompactPrimaryCtaClass(), "w-full disabled:opacity-50")}
+              >
+                {session.handshakeCompleteCtaKo}
+              </button>
+            )}
+          </div>
+        ) : null}
+      </article>
+
+      <MarketCompletionTraceSheet
+        trace={completionTrace}
+        open={completionSheetOpen}
+        busy={completionPinBusy}
+        onOpenChange={(open) => {
+          if (!open) {
+            onDismissCompletionTrace();
+            return;
+          }
+          setCompletionSheetOpen(true);
+        }}
+        onConfirm={() => void onPinCompletionTrace()}
+      />
+    </>
   );
 }

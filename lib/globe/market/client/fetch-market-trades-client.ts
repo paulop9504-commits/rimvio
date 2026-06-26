@@ -23,6 +23,54 @@ export async function fetchActiveMarketTradesRemote(): Promise<{
   };
 }
 
+export async function pickMarketTradeDayRemote(input: {
+  handshakeId: string;
+  dateKey: string;
+}): Promise<MarketTradeSessionView | null> {
+  const response = await fetch("/api/globe/market-transaction/pick-day", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+  const body = (await response.json()) as { session?: MarketTradeSessionView | null };
+  return body.session ?? null;
+}
+
+export async function proposeMarketTradeScheduleRemote(input: {
+  handshakeId: string;
+  meetAtIso: string;
+  meetPlaceLabel?: string;
+}): Promise<MarketTradeSessionView | null> {
+  const response = await fetch("/api/globe/market-transaction/propose-schedule", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+  const body = (await response.json()) as { session?: MarketTradeSessionView | null };
+  return body.session ?? null;
+}
+
+export async function acceptMarketTradeScheduleRemote(input: {
+  handshakeId: string;
+}): Promise<MarketTradeSessionView | null> {
+  const response = await fetch("/api/globe/market-transaction/accept-schedule", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+  const body = (await response.json()) as { session?: MarketTradeSessionView | null };
+  return body.session ?? null;
+}
+
 export async function confirmMarketTradeScheduleRemote(input: {
   handshakeId: string;
   meetAtIso: string;

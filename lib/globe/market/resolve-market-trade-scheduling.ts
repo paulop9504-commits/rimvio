@@ -8,7 +8,9 @@ export function isMarketTradeSchedulingExpired(
   >,
   now = new Date(),
 ): boolean {
-  if (handshake.tradeStatus !== "scheduling") {
+  if (handshake.tradeStatus !== "scheduling" &&
+    handshake.tradeStatus !== "buyer_picked_day" &&
+    handshake.tradeStatus !== "seller_proposed") {
     return false;
   }
   const expiresAt = handshake.schedulingExpiresAtIso

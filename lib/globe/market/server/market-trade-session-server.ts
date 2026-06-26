@@ -16,6 +16,11 @@ import {
   isMarketTradeSchedulingExpired,
   isScheduleCandidateAllowed,
 } from "@/lib/globe/market/resolve-market-trade-scheduling";
+import {
+  isMeetTimeAllowedForTrade,
+  isScheduleDateCandidateAllowed,
+} from "@/lib/globe/market/market-trade-schedule";
+import { readMarketAvailabilityPreset, MARKET_SCHEDULING_SLA_HOURS } from "@/lib/globe/market/market-availability-preset";
 
 const ACTIVE_TRADE_PHASES = ["pending_buyer_start", "active"] as const;
 
@@ -109,6 +114,157 @@ export async function listResolvedMarketHandshakePairsForUser(
     pairs.push({ seekingIntentId, listingIntentId });
   }
   return pairs;
+}
+
+export async function pickMarketTradeDay(
+  supabase: SupabaseClient,
+  userId: string,
+  input: {
+    handshakeId: string;
+    dateKey: string;
+  },
+): Promise<MarketTradeSessionView | null> {
+  const handshake = await findMarketHandshakeById(supabase, input.handshakeId);
+  if (!handshake) {
+    throw new Error("handshake_not_found");
+  }
+  if (handshake.seekingUserId !== userId) {
+    throw new Error("seeking_only");
+  }
+  if (!ACTIVE_TRADE_PHASES.includes(handshake.phase as (typeof ACTIVE_TRADE_PHASES)[number])) {
+    throw new Error("invalid_phase");
+  }
+  if (handshake.tradeStatus !== "scheduling") {
+    throw new Error("invalid_phase");
+  }
+  if (isMarketTradeSchedulingExpired(handshake)) {
+    await patchMarketHandshake(supabase, handshake.id, { tradeStatus: "expired" });
+    throw new Error("scheduling_expired");
+  }
+  const dateKey = input.dateKey.trim();
+  if (!isScheduleDateCandidateAllowed(dateKey, handshake.scheduleCandidates)) {
+    throw new Error("invalid_meet_at");
+  }
+
+  const sellerExpiresAt = new Date(
+    Date.now() + MARKET_SCHEDULING_SLA_HOURS * 60 * 60 * 1000,
+  ).toISOString();
+
+  const updated = await patchMarketHandshake(supabase, handshake.id, {
+    tradeStatus: "buyer_picked_day",
+    preferredMeetDateKey: dateKey,
+    preferredMeetAtIso: null,
+    meetAtIso: null,
+    schedulingExpiresAtIso: sellerExpiresAt,
+  });
+
+  return buildTradeSessionViewForUser(supabase, updated, userId);
+}
+
+export async function proposeMarketTradeSchedule(
+  supabase: SupabaseClient,
+  userId: string,
+  input: {
+    handshakeId: string;
+    meetAtIso: string;
+    meetPlaceLabel?: string | null;
+  },
+): Promise<MarketTradeSessionView | null> {
+  const handshake = await findMarketHandshakeById(supabase, input.handshakeId);
+  if (!handshake) {
+    throw new Error("handshake_not_found");
+  }
+  if (handshake.listingUserId !== userId) {
+    throw new Error("listing_only");
+  }
+  if (!ACTIVE_TRADE_PHASES.includes(handshake.phase as (typeof ACTIVE_TRADE_PHASES)[number])) {
+    throw new Error("invalid_phase");
+  }
+  if (handshake.tradeStatus !== "buyer_picked_day") {
+    throw new Error("invalid_phase");
+  }
+  if (isMarketTradeSchedulingExpired(handshake)) {
+    await patchMarketHandshake(supabase, handshake.id, { tradeStatus: "expired" });
+    throw new Error("scheduling_expired");
+  }
+  const dateKey = handshake.preferredMeetDateKey?.trim();
+  if (!dateKey) {
+    throw new Error("invalid_meet_at");
+  }
+
+  const listing = await findMarketIntentById(supabase, handshake.listingIntentId);
+  if (!listing) {
+    throw new Error("intent_not_found");
+  }
+  const preset = readMarketAvailabilityPreset(listing.detail?.availabilityPreset);
+  if (!isMeetTimeAllowedForTrade({
+    meetAtIso: input.meetAtIso,
+    dateKey,
+    preset,
+  })) {
+    throw new Error("invalid_meet_at");
+  }
+
+  const meetAt = new Date(input.meetAtIso);
+  if (!Number.isFinite(meetAt.getTime())) {
+    throw new Error("invalid_meet_at");
+  }
+
+  const placeLabel =
+    input.meetPlaceLabel?.trim() ||
+    handshake.meetPlaceLabel?.trim() ||
+    listing.placeLabel?.trim() ||
+    null;
+
+  const updated = await patchMarketHandshake(supabase, handshake.id, {
+    tradeStatus: "seller_proposed",
+    meetAtIso: meetAt.toISOString(),
+    meetPlaceLabel: placeLabel,
+    meetLat: handshake.meetLat ?? listing.anchorLat ?? null,
+    meetLng: handshake.meetLng ?? listing.anchorLng ?? null,
+    schedulingExpiresAtIso: new Date(
+      Date.now() + MARKET_SCHEDULING_SLA_HOURS * 60 * 60 * 1000,
+    ).toISOString(),
+  });
+
+  return buildTradeSessionViewForUser(supabase, updated, userId);
+}
+
+export async function acceptMarketTradeSchedule(
+  supabase: SupabaseClient,
+  userId: string,
+  input: {
+    handshakeId: string;
+  },
+): Promise<MarketTradeSessionView | null> {
+  const handshake = await findMarketHandshakeById(supabase, input.handshakeId);
+  if (!handshake) {
+    throw new Error("handshake_not_found");
+  }
+  if (handshake.seekingUserId !== userId) {
+    throw new Error("seeking_only");
+  }
+  if (!ACTIVE_TRADE_PHASES.includes(handshake.phase as (typeof ACTIVE_TRADE_PHASES)[number])) {
+    throw new Error("invalid_phase");
+  }
+  if (handshake.tradeStatus !== "seller_proposed") {
+    throw new Error("invalid_phase");
+  }
+  if (isMarketTradeSchedulingExpired(handshake)) {
+    await patchMarketHandshake(supabase, handshake.id, { tradeStatus: "expired" });
+    throw new Error("scheduling_expired");
+  }
+  if (!handshake.meetAtIso) {
+    throw new Error("meet_not_set");
+  }
+
+  const updated = await patchMarketHandshake(supabase, handshake.id, {
+    tradeStatus: "confirmed",
+    meetMode: "host",
+    schedulingExpiresAtIso: null,
+  });
+
+  return buildTradeSessionViewForUser(supabase, updated, userId);
 }
 
 export async function confirmMarketTradeSchedule(

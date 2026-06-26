@@ -4,17 +4,20 @@ import {
   computeMarketTradeHostEta,
   formatMarketTradeHostEtaLabel,
 } from "@/lib/globe/market/compute-market-trade-host-eta";
+import { readMarketAvailabilityPreset } from "@/lib/globe/market/market-availability-preset";
 import type { MarketTradeSessionRecord, MarketTradeSessionView } from "@/lib/globe/market/market-trade-types";
+import {
+  formatMarketTradeDateLabelKo,
+  generateMarketTradeTimeSlotsForDate,
+} from "@/lib/globe/market/market-trade-schedule";
 import {
   buildMarketTradeProgressSteps,
   formatMarketTradeCountdownLabel,
   formatMarketTradeMeetAtLabel,
-  formatMarketTradeProposalLine,
   resolveMarketTradeActiveStep,
 } from "@/lib/globe/market/resolve-market-trade-progress";
-import {
-  formatMarketTradeSchedulingCountdown,
-} from "@/lib/globe/market/resolve-market-trade-scheduling";
+import { formatMarketTradeSchedulingCountdown } from "@/lib/globe/market/resolve-market-trade-scheduling";
+import { copy } from "@/lib/copy/human-ko";
 
 export type MarketTradeSessionCopy = {
   roleBadgeSeeking: string;
@@ -22,6 +25,12 @@ export type MarketTradeSessionCopy = {
   statusSchedulingListing: string;
   statusSchedulingListingSub: string;
   statusSchedulingSeeking: string;
+  statusBuyerPickedDayListing: string;
+  statusBuyerPickedDayListingSub: (label: string) => string;
+  statusBuyerPickedDaySeeking: string;
+  statusSellerProposedSeeking: string;
+  statusSellerProposedSeekingSub: string;
+  statusSellerProposedListing: string;
   statusExpired: string;
   statusConfirmedSeeking: string;
   statusConfirmedSeekingSub: (countdown: string) => string;
@@ -32,7 +41,6 @@ export type MarketTradeSessionCopy = {
   stepBeforeDeparture: string;
   stepMeeting: string;
   stepDone: string;
-  proposalPrefix: string;
   priceOpen: string;
   statusEnRouteSeeking: string;
   statusEnRouteListing: string;
@@ -40,7 +48,9 @@ export type MarketTradeSessionCopy = {
   hostGuestEtaLine: (minutes: number, distanceKm: number) => string;
   hostGuestEtaStale: string;
   statusSchedulingSeekingSub: string;
-  statusSchedulingListingPreferred: (label: string) => string;
+  handshakeCompleteSeekingCta: string;
+  handshakeCompleteListingCta: string;
+  handshakeAwaitingOtherParty: string;
 };
 
 function formatPriceLine(
@@ -58,6 +68,46 @@ function formatPriceLine(
     return `${Math.round(priceMin / 10_000)}만원 이상`;
   }
   return priceOpen;
+}
+
+function readViewerHandshakeConfirmed(
+  record: Pick<
+    MarketTradeSessionRecord,
+    "viewerRole" | "seekingConfirmedAtIso" | "listingConfirmedAtIso"
+  >,
+): boolean {
+  if (record.viewerRole === "seeking") {
+    return Boolean(record.seekingConfirmedAtIso);
+  }
+  if (record.viewerRole === "listing") {
+    return Boolean(record.listingConfirmedAtIso);
+  }
+  return false;
+}
+
+function readOtherHandshakeConfirmed(
+  record: Pick<
+    MarketTradeSessionRecord,
+    "viewerRole" | "seekingConfirmedAtIso" | "listingConfirmedAtIso"
+  >,
+): boolean {
+  if (record.viewerRole === "seeking") {
+    return Boolean(record.listingConfirmedAtIso);
+  }
+  if (record.viewerRole === "listing") {
+    return Boolean(record.seekingConfirmedAtIso);
+  }
+  return false;
+}
+
+function canShowHandshakeComplete(record: MarketTradeSessionRecord): boolean {
+  return (
+    record.phase === "active" &&
+    (record.tradeStatus === "confirmed" ||
+      record.tradeStatus === "en_route" ||
+      record.tradeStatus === "meeting") &&
+    Boolean(record.meetAtIso)
+  );
 }
 
 export function buildMarketTradeSessionRecord(input: {
@@ -95,8 +145,12 @@ export function buildMarketTradeSessionRecord(input: {
     guestLng: handshake.guestLng,
     guestLocationAtIso: handshake.guestLocationAtIso,
     scheduleCandidates: handshake.scheduleCandidates,
+    preferredMeetDateKey: handshake.preferredMeetDateKey,
     preferredMeetAtIso: handshake.preferredMeetAtIso,
     schedulingExpiresAtIso: handshake.schedulingExpiresAtIso,
+    availabilityPreset: readMarketAvailabilityPreset(listing.detail?.availabilityPreset),
+    seekingConfirmedAtIso: handshake.seekingConfirmedAtIso,
+    listingConfirmedAtIso: handshake.listingConfirmedAtIso,
     viewerRole,
     productTitle: listing.detail.productName.trim() || listing.title.trim(),
     priceLine: formatPriceLine(
@@ -111,7 +165,7 @@ export function buildMarketTradeSessionRecord(input: {
 
 export function buildMarketTradeSessionView(
   record: MarketTradeSessionRecord,
-  copy: MarketTradeSessionCopy,
+  sessionCopy: MarketTradeSessionCopy,
   now = new Date(),
 ): MarketTradeSessionView {
   const activeStepId = resolveMarketTradeActiveStep({
@@ -128,17 +182,19 @@ export function buildMarketTradeSessionView(
   const progressSteps = buildMarketTradeProgressSteps({
     activeStepId,
     labels: {
-      confirmed: copy.stepConfirmed,
-      beforeDeparture: copy.stepBeforeDeparture,
-      meeting: copy.stepMeeting,
-      done: copy.stepDone,
+      confirmed: sessionCopy.stepConfirmed,
+      beforeDeparture: sessionCopy.stepBeforeDeparture,
+      meeting: sessionCopy.stepMeeting,
+      done: sessionCopy.stepDone,
     },
   });
 
   const roleBadgeKo =
-    record.viewerRole === "seeking" ? copy.roleBadgeSeeking : copy.roleBadgeListing;
+    record.viewerRole === "seeking"
+      ? sessionCopy.roleBadgeSeeking
+      : sessionCopy.roleBadgeListing;
 
-  let statusHeadlineKo = copy.statusSchedulingSeeking;
+  let statusHeadlineKo = sessionCopy.statusSchedulingSeeking;
   let statusSublineKo: string | null = null;
   let proposalLineKo: string | null = null;
   let countdownLabelKo: string | null = null;
@@ -151,57 +207,67 @@ export function buildMarketTradeSessionView(
 
   if (record.tradeStatus === "scheduling") {
     if (record.viewerRole === "listing") {
-      statusHeadlineKo = copy.statusSchedulingListing;
-      statusSublineKo = copy.statusSchedulingListingSub;
-      if (record.preferredMeetAtIso) {
-        const preferredLabel = formatMarketTradeMeetAtLabel(
-          record.preferredMeetAtIso,
-          now,
-        );
-        if (preferredLabel) {
-          statusSublineKo = copy.statusSchedulingListingPreferred(preferredLabel);
-        }
-      }
-      const firstCandidate = record.scheduleCandidates[0];
-      if (firstCandidate) {
-        proposalLineKo = formatMarketTradeProposalLine(
-          firstCandidate,
-          copy.proposalPrefix,
-        );
-      }
+      statusHeadlineKo = sessionCopy.statusSchedulingListing;
+      statusSublineKo = sessionCopy.statusSchedulingListingSub;
     } else {
-      statusHeadlineKo = copy.statusSchedulingSeeking;
-      statusSublineKo = copy.statusSchedulingSeekingSub;
+      statusHeadlineKo = sessionCopy.statusSchedulingSeeking;
+      statusSublineKo = sessionCopy.statusSchedulingSeekingSub;
       if (schedulingCountdownKo) {
-        statusSublineKo = `${copy.statusSchedulingSeekingSub} · ${schedulingCountdownKo}`;
+        statusSublineKo = `${sessionCopy.statusSchedulingSeekingSub} · ${schedulingCountdownKo}`;
       }
     }
+  } else if (record.tradeStatus === "buyer_picked_day") {
+    const dayLabel = record.preferredMeetDateKey
+      ? formatMarketTradeDateLabelKo(record.preferredMeetDateKey, now)
+      : null;
+    if (record.viewerRole === "listing") {
+      statusHeadlineKo = sessionCopy.statusBuyerPickedDayListing;
+      statusSublineKo = dayLabel
+        ? sessionCopy.statusBuyerPickedDayListingSub(dayLabel)
+        : sessionCopy.statusSchedulingListingSub;
+    } else {
+      statusHeadlineKo = sessionCopy.statusBuyerPickedDaySeeking;
+      statusSublineKo = dayLabel
+        ? `${dayLabel} · ${copy.globe.marketTradeBuyerPickedDaySeekingSub}`
+        : copy.globe.marketTradeBuyerPickedDaySeekingSub;
+    }
+  } else if (record.tradeStatus === "seller_proposed") {
+    if (record.meetAtIso) {
+      meetAtLabelKo = formatMarketTradeMeetAtLabel(record.meetAtIso, now);
+    }
+    if (record.viewerRole === "seeking") {
+      statusHeadlineKo = sessionCopy.statusSellerProposedSeeking;
+      statusSublineKo = sessionCopy.statusSellerProposedSeekingSub;
+    } else {
+      statusHeadlineKo = sessionCopy.statusSellerProposedListing;
+      statusSublineKo = copy.globe.marketTradeSellerProposedListingSub;
+    }
   } else if (record.tradeStatus === "expired") {
-    statusHeadlineKo = copy.statusExpired;
+    statusHeadlineKo = sessionCopy.statusExpired;
   } else if (record.tradeStatus === "completed") {
-    statusHeadlineKo = copy.statusCompleted;
+    statusHeadlineKo = sessionCopy.statusCompleted;
   } else if (record.tradeStatus === "en_route") {
     statusHeadlineKo =
       record.viewerRole === "seeking"
-        ? copy.statusEnRouteSeeking
-        : copy.statusEnRouteListing;
+        ? sessionCopy.statusEnRouteSeeking
+        : sessionCopy.statusEnRouteListing;
   } else if (record.meetAtIso) {
     meetAtLabelKo = formatMarketTradeMeetAtLabel(record.meetAtIso, now);
     countdownLabelKo = formatMarketTradeCountdownLabel(record.meetAtIso, now);
     if (activeStepId === "before_departure") {
-      statusHeadlineKo = copy.statusBeforeDeparture;
+      statusHeadlineKo = sessionCopy.statusBeforeDeparture;
       statusSublineKo = countdownLabelKo
-        ? copy.statusConfirmedSeekingSub(`약속까지 ${countdownLabelKo}`)
+        ? sessionCopy.statusConfirmedSeekingSub(`약속까지 ${countdownLabelKo}`)
         : null;
     } else if (activeStepId === "meeting") {
-      statusHeadlineKo = copy.statusMeeting;
+      statusHeadlineKo = sessionCopy.statusMeeting;
     } else if (record.viewerRole === "seeking") {
-      statusHeadlineKo = copy.statusConfirmedSeeking;
+      statusHeadlineKo = sessionCopy.statusConfirmedSeeking;
       statusSublineKo = countdownLabelKo
-        ? copy.statusConfirmedSeekingSub(`약속까지 ${countdownLabelKo}`)
+        ? sessionCopy.statusConfirmedSeekingSub(`약속까지 ${countdownLabelKo}`)
         : null;
     } else {
-      statusHeadlineKo = copy.statusConfirmedSeeking;
+      statusHeadlineKo = sessionCopy.statusConfirmedSeeking;
     }
   }
 
@@ -216,8 +282,33 @@ export function buildMarketTradeSessionView(
     record.tradeStatus === "confirmed" &&
     Boolean(record.meetAtIso);
 
-  const showProposePreferred =
+  const showPickDay =
     record.viewerRole === "seeking" && record.tradeStatus === "scheduling";
+  const showProposeSchedule =
+    record.viewerRole === "listing" && record.tradeStatus === "buyer_picked_day";
+  const showAcceptProposal =
+    record.viewerRole === "seeking" && record.tradeStatus === "seller_proposed";
+
+  const proposeTimeSlots =
+    record.preferredMeetDateKey && showProposeSchedule
+      ? generateMarketTradeTimeSlotsForDate(
+          record.availabilityPreset,
+          record.preferredMeetDateKey,
+          now,
+        )
+      : [];
+
+  const showHandshakeComplete = canShowHandshakeComplete(record);
+  const viewerHandshakeConfirmed = readViewerHandshakeConfirmed(record);
+  const otherHandshakeConfirmed = readOtherHandshakeConfirmed(record);
+  const canConfirmHandshakeComplete =
+    showHandshakeComplete && !viewerHandshakeConfirmed;
+  const awaitingHandshakeOtherParty =
+    showHandshakeComplete && viewerHandshakeConfirmed && !otherHandshakeConfirmed;
+  const handshakeCompleteCtaKo =
+    record.viewerRole === "seeking"
+      ? sessionCopy.handshakeCompleteSeekingCta
+      : sessionCopy.handshakeCompleteListingCta;
 
   let hostGuestEtaLabelKo: string | null = null;
   if (
@@ -235,9 +326,9 @@ export function buildMarketTradeSessionView(
     });
     if (eta) {
       hostGuestEtaLabelKo = formatMarketTradeHostEtaLabel(eta, {
-        arrived: copy.hostGuestEtaArrived,
-        eta: copy.hostGuestEtaLine,
-        stale: copy.hostGuestEtaStale,
+        arrived: sessionCopy.hostGuestEtaArrived,
+        eta: sessionCopy.hostGuestEtaLine,
+        stale: sessionCopy.hostGuestEtaStale,
       });
     }
   }
@@ -257,8 +348,16 @@ export function buildMarketTradeSessionView(
     showDepart,
     isEnRoute,
     hostGuestEtaLabelKo,
-    showProposePreferred,
+    showProposePreferred: false,
     preferredMeetAtIso: record.preferredMeetAtIso,
+    preferredMeetDateKey: record.preferredMeetDateKey,
     schedulingCountdownKo,
+    showPickDay,
+    showProposeSchedule,
+    showAcceptProposal,
+    proposeTimeSlots,
+    canConfirmHandshakeComplete,
+    awaitingHandshakeOtherParty,
+    handshakeCompleteCtaKo,
   };
 }

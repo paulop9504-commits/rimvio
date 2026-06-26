@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, MapPin } from "lucide-react";
 import { copy } from "@/lib/copy/human-ko";
 import type { MarketIntentDraft } from "@/lib/globe/market/market-intent-types";
+import type { MarketIntentRole } from "@/lib/globe/market/market-intent-types";
 import { enrichMarketMemoryFromPhotoPlace } from "@/lib/globe/market/enrich-market-memory-from-photo-place";
 import { extractMarketPhotoMemoryPlace } from "@/lib/globe/market/extract-market-photo-memory-place";
 import {
@@ -11,7 +12,10 @@ import {
   type MarketListingTradePlaceResolution,
 } from "@/lib/globe/market/resolve-market-listing-trade-place";
 import {
+  hasValidMarketTradeDistrict,
+  listMetroCities,
   listMetroDistrictsForCity,
+  matchKoreaMetroDistrict,
   type KoreaMetroDistrict,
 } from "@/lib/globe/korea-metro-districts";
 import { marketMeetPreferenceLabelKo } from "@/lib/globe/market/market-intent-detail";
@@ -22,12 +26,15 @@ import {
   marketAvailabilityPresetLabelKo,
 } from "@/lib/globe/market/market-availability-preset";
 import { sampleEphemeralGpsPlace } from "@/lib/globe/sample-ephemeral-gps-place";
+import { resolveKoreaPlaceFromCoords } from "@/lib/globe/korea-place-from-coords";
 import { rimvioGhostCtaClass, rimvioHeroCtaClass, RIMVIO_TYPE } from "@/lib/design/rimvio-ontology";
 import { cn } from "@/lib/utils";
 
 const RADIUS_OPTIONS = [3, 5, 10] as const;
 const MEET_OPTIONS: MarketMeetPreferenceId[] = ["nearby", "flexible", "pickup_only"];
 const AVAILABILITY_OPTIONS = MARKET_AVAILABILITY_PRESET_ORDER;
+
+type UiMode = "mismatch" | "district" | "options";
 
 function marketAvailabilityPresetLabel(preset: MarketAvailabilityPreset): string {
   switch (preset) {
@@ -90,36 +97,51 @@ function applyTradePlace(
   };
 }
 
-export type MarketListingTradePlaceStepProps = {
+function placeStepTitle(role: MarketIntentRole): string {
+  return role === "seeking"
+    ? copy.globe.marketWizardPlaceTitleSeeking
+    : copy.globe.marketWizardPlaceTitleListing;
+}
+
+export type MarketTradePlaceStepProps = {
   draft: MarketIntentDraft;
-  photoFiles: readonly File[];
+  role: MarketIntentRole;
+  photoFiles?: readonly File[];
   onChange: (draft: MarketIntentDraft) => void;
   onResolvingChange?: (resolving: boolean) => void;
 };
 
-export function MarketListingTradePlaceStep({
+export type MarketListingTradePlaceStepProps = Omit<MarketTradePlaceStepProps, "role"> & {
+  role?: MarketIntentRole;
+};
+
+export function MarketTradePlaceStep({
   draft,
-  photoFiles,
+  role,
+  photoFiles = [],
   onChange,
   onResolvingChange,
-}: MarketListingTradePlaceStepProps) {
+}: MarketTradePlaceStepProps) {
   const [resolving, setResolving] = useState(true);
   const [resolution, setResolution] = useState<MarketListingTradePlaceResolution | null>(
     null,
   );
-  const [uiMode, setUiMode] = useState<"auto" | "mismatch" | "district">("auto");
+  const [uiMode, setUiMode] = useState<UiMode>("district");
   const [metroCity, setMetroCity] = useState<string>("서울");
+  const [suggestedDistrictLabel, setSuggestedDistrictLabel] = useState<string | null>(null);
   const onChangeRef = useRef(onChange);
   const draftRef = useRef(draft);
   onChangeRef.current = onChange;
   draftRef.current = draft;
 
+  const isListing = role === "listing";
   const productLabel =
     draft.detail.productName.trim() || draft.title.trim() || copy.globe.marketTradePlaceProductFallback;
-
-  const districts = useMemo(
-    () => listMetroDistrictsForCity(metroCity),
-    [metroCity],
+  const metroCities = useMemo(() => listMetroCities(), []);
+  const districts = useMemo(() => listMetroDistrictsForCity(metroCity), [metroCity]);
+  const matchedDistrict = useMemo(
+    () => matchKoreaMetroDistrict(draft.placeLabel),
+    [draft.placeLabel],
   );
 
   const setResolvingSafe = useCallback(
@@ -133,40 +155,60 @@ export function MarketListingTradePlaceStep({
   useEffect(() => {
     let cancelled = false;
     setResolvingSafe(true);
+    setUiMode("district");
+    setSuggestedDistrictLabel(null);
+    onChangeRef.current({
+      ...draftRef.current,
+      placeLabel: "",
+      anchorLat: 0,
+      anchorLng: 0,
+    });
+
     void (async () => {
       const gps = await sampleEphemeralGpsPlace();
       if (cancelled) {
         return;
       }
-      if (!gps) {
-        setResolution(null);
-        setUiMode("auto");
-        setResolvingSafe(false);
-        return;
+
+      let nextDraft = draftRef.current;
+      let nextResolution: MarketListingTradePlaceResolution | null = null;
+      let nextCity = "서울";
+      let nextSuggested: string | null = null;
+      let nextMode: UiMode = "district";
+
+      if (gps) {
+        if (isListing) {
+          const photoMemory = await extractMarketPhotoMemoryPlace(photoFiles);
+          if (cancelled) {
+            return;
+          }
+          nextDraft = enrichMarketMemoryFromPhotoPlace(draftRef.current, photoMemory);
+          nextResolution = resolveMarketListingTradePlace({
+            gpsLat: gps.lat,
+            gpsLng: gps.lng,
+            photoMemory,
+          });
+          setResolution(nextResolution);
+
+          if (nextResolution.kind === "mismatch") {
+            nextCity = nextResolution.metroCity;
+            nextMode = "mismatch";
+          } else {
+            nextCity = nextResolution.trade.metroCity ?? "서울";
+            const metroMatch = matchKoreaMetroDistrict(nextResolution.trade.placeLabel);
+            nextSuggested = metroMatch?.label ?? null;
+          }
+        } else {
+          const gpsResolved = resolveKoreaPlaceFromCoords(gps.lat, gps.lng);
+          const metroMatch = matchKoreaMetroDistrict(gpsResolved.label);
+          nextCity = gpsResolved.metroCity ?? metroMatch?.city ?? "서울";
+          nextSuggested = metroMatch?.label ?? null;
+        }
       }
 
-      const photoMemory = await extractMarketPhotoMemoryPlace(photoFiles);
-      if (cancelled) {
-        return;
-      }
-
-      let nextDraft = enrichMarketMemoryFromPhotoPlace(draftRef.current, photoMemory);
-      const resolved = resolveMarketListingTradePlace({
-        gpsLat: gps.lat,
-        gpsLng: gps.lng,
-        photoMemory,
-      });
-      setResolution(resolved);
-
-      if (resolved.kind === "auto") {
-        nextDraft = applyTradePlace(nextDraft, resolved.trade);
-        setUiMode("auto");
-        setMetroCity(resolved.trade.metroCity ?? "서울");
-      } else {
-        setUiMode("mismatch");
-        setMetroCity(resolved.metroCity);
-      }
-
+      setMetroCity(nextCity);
+      setSuggestedDistrictLabel(nextSuggested);
+      setUiMode(nextMode);
       onChangeRef.current(nextDraft);
       setResolvingSafe(false);
     })();
@@ -174,7 +216,7 @@ export function MarketListingTradePlaceStep({
     return () => {
       cancelled = true;
     };
-  }, [draft.eventId, photoFiles, setResolvingSafe]);
+  }, [draft.eventId, isListing, photoFiles, setResolvingSafe]);
 
   const pickDistrict = (row: KoreaMetroDistrict) => {
     onChange(
@@ -184,7 +226,7 @@ export function MarketListingTradePlaceStep({
         lng: row.lng,
       }),
     );
-    setUiMode("auto");
+    setUiMode("options");
   };
 
   if (resolving) {
@@ -213,8 +255,10 @@ export function MarketListingTradePlaceStep({
             type="button"
             className={cn(rimvioHeroCtaClass(), "w-full")}
             onClick={() => {
-              onChange(applyTradePlace(draft, resolution.gps));
-              setUiMode("auto");
+              const metroMatch = matchKoreaMetroDistrict(resolution.gps.placeLabel);
+              setMetroCity(metroMatch?.city ?? resolution.metroCity);
+              setSuggestedDistrictLabel(metroMatch?.label ?? null);
+              setUiMode("district");
             }}
           >
             {copy.globe.marketTradePlaceTradeHere(resolution.gps.placeLabel)}
@@ -222,7 +266,11 @@ export function MarketListingTradePlaceStep({
           <button
             type="button"
             className={cn(rimvioGhostCtaClass(), "w-full")}
-            onClick={() => setUiMode("district")}
+            onClick={() => {
+              setMetroCity(resolution.metroCity);
+              setSuggestedDistrictLabel(null);
+              setUiMode("district");
+            }}
           >
             {copy.globe.marketTradePlaceOtherDistrict}
           </button>
@@ -233,50 +281,66 @@ export function MarketListingTradePlaceStep({
 
   if (uiMode === "district") {
     return (
-      <div className="space-y-3">
-        <p className={cn(RIMVIO_TYPE.headline, "text-lg")}>
-          {copy.globe.marketTradePlaceDistrictTitle(metroCity)}
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {districts.map((row) => (
-            <Chip
-              key={row.label}
-              active={draft.placeLabel === row.label}
-              onClick={() => pickDistrict(row)}
-            >
-              {row.district}
-            </Chip>
-          ))}
+      <div className="space-y-4">
+        <p className={cn(RIMVIO_TYPE.headline, "text-lg")}>{placeStepTitle(role)}</p>
+        <div className="space-y-2">
+          <p className={cn(RIMVIO_TYPE.caption)}>{copy.globe.marketTradePlaceCityLabel}</p>
+          <div className="flex flex-wrap gap-2">
+            {metroCities.map((city) => (
+              <Chip
+                key={city}
+                active={metroCity === city}
+                onClick={() => {
+                  setMetroCity(city);
+                  setSuggestedDistrictLabel(null);
+                }}
+              >
+                {city}
+              </Chip>
+            ))}
+          </div>
         </div>
-        <button
-          type="button"
-          className={cn(rimvioGhostCtaClass(), "w-full text-[13px]")}
-          onClick={() => setUiMode(resolution?.kind === "mismatch" ? "mismatch" : "auto")}
-        >
-          {copy.globe.marketWizardBack}
-        </button>
+        <div className="space-y-2">
+          <p className={cn(RIMVIO_TYPE.caption)}>
+            {copy.globe.marketTradePlaceDistrictTitle(metroCity)}
+          </p>
+          {suggestedDistrictLabel ? (
+            <p className={cn(RIMVIO_TYPE.caption, "text-[12px] text-primary")}>
+              {suggestedDistrictLabel}
+            </p>
+          ) : null}
+          <div className="flex flex-wrap gap-2">
+            {districts.map((row) => (
+              <Chip
+                key={row.label}
+                active={draft.placeLabel === row.label}
+                onClick={() => pickDistrict(row)}
+              >
+                {row.district}
+              </Chip>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <p className={cn(RIMVIO_TYPE.headline, "text-lg")}>{copy.globe.marketWizardPlaceTitle}</p>
+      <p className={cn(RIMVIO_TYPE.headline, "text-lg")}>{placeStepTitle(role)}</p>
       <div className="rounded-2xl bg-muted/40 px-3 py-3">
         <p className={cn(RIMVIO_TYPE.caption, "mb-1")}>{copy.globe.marketTradePlaceCurrentLabel}</p>
         <p className="flex items-center gap-1.5 text-[15px] font-semibold">
           <MapPin className="size-4 shrink-0 text-primary" aria-hidden />
-          {draft.placeLabel || copy.globe.marketIntentPrefillHint}
+          {matchedDistrict?.label ?? draft.placeLabel}
         </p>
         <button
           type="button"
           className="mt-2 text-[13px] font-medium text-primary"
           onClick={() => {
-            setMetroCity(
-              resolution?.kind === "auto"
-                ? resolution.trade.metroCity ?? metroCity
-                : metroCity,
-            );
+            if (matchedDistrict) {
+              setMetroCity(matchedDistrict.city);
+            }
             setUiMode("district");
           }}
         >
@@ -284,7 +348,7 @@ export function MarketListingTradePlaceStep({
         </button>
       </div>
 
-      {draft.detail.memoryPlaceLabel ? (
+      {isListing && draft.detail.memoryPlaceLabel ? (
         <p className={cn(RIMVIO_TYPE.caption, "rounded-xl bg-primary/5 px-3 py-2 text-[13px]")}>
           {copy.globe.marketTradePlaceMemoryLinked(draft.detail.memoryPlaceLabel)}
         </p>
@@ -318,25 +382,39 @@ export function MarketListingTradePlaceStep({
         ))}
       </div>
 
-      <div className="space-y-2">
-        <p className={cn(RIMVIO_TYPE.caption)}>{copy.globe.marketWizardAvailabilityTitle}</p>
-        <div className="flex flex-wrap gap-2">
-          {AVAILABILITY_OPTIONS.map((preset) => (
-            <Chip
-              key={preset}
-              active={draft.detail.availabilityPreset === preset}
-              onClick={() =>
-                onChange({
-                  ...draft,
-                  detail: { ...draft.detail, availabilityPreset: preset },
-                })
-              }
-            >
-              {marketAvailabilityPresetLabel(preset)}
-            </Chip>
-          ))}
+      {isListing ? (
+        <div className="space-y-2">
+          <p className={cn(RIMVIO_TYPE.caption)}>{copy.globe.marketWizardAvailabilityTitle}</p>
+          <div className="flex flex-wrap gap-2">
+            {AVAILABILITY_OPTIONS.map((preset) => (
+              <Chip
+                key={preset}
+                active={draft.detail.availabilityPreset === preset}
+                onClick={() =>
+                  onChange({
+                    ...draft,
+                    detail: { ...draft.detail, availabilityPreset: preset },
+                  })
+                }
+              >
+                {marketAvailabilityPresetLabel(preset)}
+              </Chip>
+            ))}
+          </div>
         </div>
-      </div>
+      ) : null}
     </div>
   );
+}
+
+/** @deprecated Use MarketTradePlaceStep */
+export function MarketListingTradePlaceStep({
+  role = "listing",
+  ...props
+}: MarketListingTradePlaceStepProps) {
+  return <MarketTradePlaceStep {...props} role={role} />;
+}
+
+export function marketTradePlaceStepIsComplete(placeLabel: string): boolean {
+  return hasValidMarketTradeDistrict(placeLabel);
 }

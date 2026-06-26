@@ -9,13 +9,12 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  MapPin,
   Sparkles,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { MarketPriorityStepSurface } from "@/components/market/market-priority-step-surface";
-import { MarketListingTradePlaceStep } from "@/components/market/market-listing-trade-place-step";
+import { MarketTradePlaceStep } from "@/components/market/market-listing-trade-place-step";
 import { commitMarketIntentFromDraft } from "@/lib/globe/market/commit-market-intent";
 import type { MarketListingInferenceSource } from "@/lib/globe/market/infer-market-listing-from-media";
 import { inferMarketListingFromPhotoFiles } from "@/lib/globe/market/infer-market-listing-from-photo-client";
@@ -29,7 +28,6 @@ import {
   validateMarketListingMediaPick,
 } from "@/lib/globe/market/market-listing-media";
 import { readVideoDurationSec } from "@/lib/media/share-video-compress/read-video-duration-sec";
-import { marketMeetPreferenceLabelKo, type MarketMeetPreferenceId } from "@/lib/globe/market/market-intent-detail";
 import {
   marketWizardDefaultStep,
   marketWizardProgress,
@@ -42,6 +40,7 @@ import {
   marketCategoryLabelKo,
 } from "@/lib/globe/market/market-category-registry";
 import { syncMarketMemoryRecordOnDraft } from "@/lib/globe/market/memory/sync-market-memory-record";
+import { hasValidMarketTradeDistrict } from "@/lib/globe/market/validate-market-trade-district";
 import { formatMarketMemoryPreview } from "@/lib/globe/market/memory/format-market-memory-preview";
 import { isValidMarketProductName } from "@/lib/globe/market/sanitize-market-product-name";
 import { copy } from "@/lib/copy/human-ko";
@@ -76,9 +75,6 @@ export type GlobeMarketIntentWizardSheetProps = {
   /** Portal launch — intent already chosen; never show role step. */
   portalLaunch?: boolean;
 };
-
-const MEET_OPTIONS: readonly MarketMeetPreferenceId[] = ["nearby", "flexible", "pickup_only"];
-const RADIUS_OPTIONS = [3, 5, 10] as const;
 
 function formatFixedPriceKrw(krw: number | null | undefined): string {
   if (krw == null || krw <= 0) {
@@ -417,8 +413,8 @@ export function GlobeMarketIntentWizardSheet({
       }
       return true;
     }
-    if (step === "place" && !working.placeLabel.trim()) {
-      toast.message(copy.globe.marketTradePlaceResolving);
+    if (step === "place" && !hasValidMarketTradeDistrict(working.placeLabel)) {
+      toast.message(copy.globe.marketTradePlaceDistrictRequired);
       return false;
     }
     return true;
@@ -806,56 +802,14 @@ export function GlobeMarketIntentWizardSheet({
                 </div>
               ) : null}
 
-              {step === "place" && !isSeeking ? (
-                <MarketListingTradePlaceStep
+              {step === "place" ? (
+                <MarketTradePlaceStep
                   draft={working}
-                  photoFiles={photoFiles}
+                  role={working.role}
+                  photoFiles={isSeeking ? [] : photoFiles}
                   onChange={setWorking}
                   onResolvingChange={setBusy}
                 />
-              ) : null}
-
-              {step === "place" && isSeeking ? (
-                <div className="space-y-3">
-                  <p className={cn(RIMVIO_TYPE.headline, "text-lg")}>
-                    {copy.globe.marketWizardPlaceTitle}
-                  </p>
-                  {working.placeLabel ? (
-                    <p className="flex items-center gap-1.5 text-[14px] font-medium">
-                      <MapPin className="size-4 text-primary" aria-hidden />
-                      {working.placeLabel}
-                    </p>
-                  ) : (
-                    <p className={cn(RIMVIO_TYPE.caption)}>{copy.globe.marketIntentPrefillHint}</p>
-                  )}
-                  <div className="flex gap-2">
-                    {RADIUS_OPTIONS.map((km) => (
-                      <Chip
-                        key={km}
-                        active={working.radiusKm === km}
-                        onClick={() => setWorking({ ...working, radiusKm: km })}
-                      >
-                        {km}km
-                      </Chip>
-                    ))}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {MEET_OPTIONS.map((id) => (
-                      <Chip
-                        key={id}
-                        active={working.detail.meetPreference === id}
-                        onClick={() =>
-                          setWorking({
-                            ...working,
-                            detail: { ...working.detail, meetPreference: id },
-                          })
-                        }
-                      >
-                        {marketMeetPreferenceLabelKo(id)}
-                      </Chip>
-                    ))}
-                  </div>
-                </div>
               ) : null}
 
               {step === "review" ? (
@@ -889,7 +843,7 @@ export function GlobeMarketIntentWizardSheet({
                         </dd>
                       </div>
                     ) : null}
-                    {!isSeeking && working.placeLabel ? (
+                    {working.placeLabel ? (
                       <div className="flex justify-between gap-3">
                         <dt className="text-muted-foreground">{copy.globe.marketTradePlaceCurrentLabel}</dt>
                         <dd className="font-semibold text-right">{working.placeLabel}</dd>

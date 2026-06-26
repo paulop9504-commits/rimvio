@@ -9,10 +9,10 @@ export const DEFAULT_MARKET_AVAILABILITY_PRESET: MarketAvailabilityPreset = "any
 
 /** Wizard chip order — SSOT for listing place step. */
 export const MARKET_AVAILABILITY_PRESET_ORDER: readonly MarketAvailabilityPreset[] = [
-  "weekend_evening",
-  "weekend_day",
-  "weekday_afternoon",
   "weekday_day",
+  "weekday_afternoon",
+  "weekend_day",
+  "weekend_evening",
   "anytime",
 ];
 
@@ -131,16 +131,22 @@ export function generateMarketTradeScheduleCandidates(
 export function marketAvailabilityPresetLabelKo(preset: MarketAvailabilityPreset): string {
   switch (preset) {
     case "weekend_evening":
-      return "주말 저녁";
+      return "주말 오후";
     case "weekend_day":
-      return "주말 낮";
+      return "주말 오전";
     case "weekday_afternoon":
-      return "평일 오후";
+      return "주중 오후";
     case "weekday_day":
-      return "평일 낮";
+      return "주중 오전";
     case "anytime":
       return "상관없음";
     default:
       return preset;
   }
 }
+
+export {
+  generateMarketTradeDateCandidates,
+  generateMarketTradeTimeSlotsForDate,
+  formatMarketTradeDateLabelKo,
+} from "@/lib/globe/market/market-trade-schedule";

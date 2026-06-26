@@ -33,19 +33,20 @@ alter table public.market_alignment_handshakes
 
 ## Apply DB
 
-Run `supabase/sql-editor/13-market-trade-session.sql` then `14-market-trade-host-mode.sql`, or migrations `055` + `056`.
+Run `supabase/sql-editor/13-market-trade-session.sql` through `16-market-trade-schedule-v2.sql`, or migrations `055`–`058`.
 
-## HOST mode (v2 experiment)
+## Scheduling v2 (buyer day → seller propose → buyer accept)
 
-- Default `meet_mode: host` — seller anchor = `meet_lat/lng`
-- Buyer **출발하기** → `trade_status: en_route` + session-scoped guest location
-- Seller card shows guest ETA line
-- APIs: `POST /api/globe/market-transaction/depart`, `POST .../guest-location`
+- Buyer picks **오늘/내일** date chips on Field **진행 중** card
+- Seller proposes **time + meet-up place**
+- Buyer taps **이대로 예약** → `confirmed`
+- Handshake complete (**받았어요/넘겼어요**) only on dashboard — not in chat
 
 ## Try flow
 
 1. Seeking user opens Field → taps listing → sends message (Pull mode)
-2. **진행 중 거래** card appears (scheduling)
-3. Listing account opens Field → picks time chip → **confirmed**
+2. **진행 중 거래** card appears (`scheduling`)
+3. Buyer picks a date → seller proposes time/place → buyer accepts
 4. Seeking card shows time · place · progress · **출발하기**
-5. After depart → seller sees ETA · buyer sees **이동 중**
+5. After meet → **받았어요/넘겼어요** on dashboard card
+6. After depart → seller sees ETA · buyer sees **이동 중**

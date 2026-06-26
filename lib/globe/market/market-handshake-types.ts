@@ -41,6 +41,7 @@ export type MarketHandshakeRecord = {
   guestLng: number | null;
   guestLocationAtIso: string | null;
   scheduleCandidates: readonly string[];
+  preferredMeetDateKey: string | null;
   preferredMeetAtIso: string | null;
   schedulingExpiresAtIso: string | null;
 };

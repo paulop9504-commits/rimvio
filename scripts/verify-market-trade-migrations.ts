@@ -58,6 +58,7 @@ const COLUMNS_14 = [
   "guest_location_at",
 ] as const;
 const COLUMNS_15 = ["preferred_meet_at", "scheduling_expires_at"] as const;
+const COLUMNS_16 = ["preferred_meet_date"] as const;
 
 async function runQuery(query: string): Promise<unknown> {
   if (!token || !projectRef) {
@@ -137,11 +138,14 @@ async function main() {
   const m13 = checkMigration("13 / 055 market-trade-session", COLUMNS_13, found);
   const m14 = checkMigration("14 / 056 market-trade-host-mode", COLUMNS_14, found);
   const m15 = checkMigration("15 / 057 market-trade-schedule-v1", COLUMNS_15, found);
+  const m16 = checkMigration("16 / 058 market-trade-schedule-v2", COLUMNS_16, found);
   const hasEnRoute = def.includes("en_route");
   const hasExpired = def.includes("expired");
+  const hasBuyerPickedDay = def.includes("buyer_picked_day");
+  const hasSellerProposed = def.includes("seller_proposed");
 
   console.log(`\n=== Market trade migrations (${projectRef}) ===\n`);
-  for (const row of [m13, m14, m15]) {
+  for (const row of [m13, m14, m15, m16]) {
     console.log(`${row.ok ? "✅" : "❌"} ${row.name}`);
     if (row.missing.length > 0) {
       console.log(`   missing: ${row.missing.join(", ")}`);
@@ -155,8 +159,19 @@ async function main() {
     console.log("❌ trade_status check constraint not found");
   }
 
-  const allOk = m13.ok && m14.ok && m15.ok && hasEnRoute && hasExpired;
-  console.log(allOk ? "\n✅ 13 → 14 → 15 모두 적용됨\n" : "\n❌ 미적용 migration 있음 — sql-editor 13→14→15 순서로 실행\n");
+  console.log(`${hasBuyerPickedDay ? "✅" : "❌"} trade_status check includes buyer_picked_day (16)`);
+  console.log(`${hasSellerProposed ? "✅" : "❌"} trade_status check includes seller_proposed (16)`);
+
+  const allOk =
+    m13.ok &&
+    m14.ok &&
+    m15.ok &&
+    m16.ok &&
+    hasEnRoute &&
+    hasExpired &&
+    hasBuyerPickedDay &&
+    hasSellerProposed;
+  console.log(allOk ? "\n✅ 13 → 16 모두 적용됨\n" : "\n❌ 미적용 migration 있음 — sql-editor 13→16 순서로 실행\n");
   process.exit(allOk ? 0 : 1);
 }
 

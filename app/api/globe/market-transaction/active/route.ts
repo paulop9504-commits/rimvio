@@ -24,7 +24,7 @@ export async function GET() {
     return NextResponse.json({ ok: true, sessions, resolvedPairs });
   } catch (error) {
     const message = error instanceof Error ? error.message : "trade_list_failed";
-    if (message.includes("trade_status") || message.includes("column")) {
+    if (message.includes("trade_status") || message.includes("column") || message.includes("preferred_meet_date")) {
       return NextResponse.json({ ok: true, sessions: [], migrationPending: true });
     }
     return NextResponse.json({ error: message }, { status: 400 });

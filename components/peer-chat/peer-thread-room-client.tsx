@@ -38,7 +38,6 @@ import { PeerChatThreadShell } from "@/components/peer-chat/peer-chat-thread-she
 import { PeerThreadChatPanel } from "@/components/peer-chat/peer-thread-chat-panel";
 import { GroupInfoSheet } from "@/components/peer-chat/group-info-sheet";
 import {
-  confirmMarketHandshakeCompleteRemote,
   fetchMarketHandshakeRoomRemote,
   startMarketHandshakeChatRemote,
   type MarketHandshakeRoomState,
@@ -49,16 +48,8 @@ import {
   MarketHandshakeProductStrip,
   MarketHandshakeStartBar,
 } from "@/components/market/market-handshake-room-gate";
-import { MarketHandshakeCompleteBar } from "@/components/market/market-handshake-complete-bar";
 import { MarketAlignmentRolePill } from "@/components/market/market-alignment-role-pill";
-import { MarketCompletionTraceSheet } from "@/components/market/market-completion-trace-sheet";
 import { resolveOtherPartyMarketRole } from "@/lib/globe/market/market-intent-role";
-import { commitMarketCompletionTrace } from "@/lib/globe/market/commit-market-completion-trace";
-import {
-  dismissMarketCompletionTrace,
-  isMarketCompletionTracePinned,
-} from "@/lib/globe/market/market-completion-pinned-store";
-import type { MarketCompletionTraceDraft } from "@/lib/globe/market/market-handshake-types";
 
 type PeerThreadRoomClientProps = {
   peerThreadId: string;
@@ -81,12 +72,6 @@ function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
     null,
   );
   const [marketStartBusy, setMarketStartBusy] = useState(false);
-  const [marketCompleteBusy, setMarketCompleteBusy] = useState(false);
-  const [completionTrace, setCompletionTrace] = useState<MarketCompletionTraceDraft | null>(
-    null,
-  );
-  const [completionSheetOpen, setCompletionSheetOpen] = useState(false);
-  const [completionPinBusy, setCompletionPinBusy] = useState(false);
   const roster = useMemo(() => readPinnedRoster(), []);
   const [contact, setContact] = useState<PeerContact | null>(() =>
     getPeerContactById(peerThreadId),
@@ -107,14 +92,6 @@ function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
     void fetchMarketHandshakeRoomRemote(peerThreadId)
       .then((state) => {
         setMarketHandshake(state);
-        if (
-          state?.completed &&
-          state.trace &&
-          !isMarketCompletionTracePinned(state.trace.handshakeId)
-        ) {
-          setCompletionTrace(state.trace);
-          setCompletionSheetOpen(true);
-        }
       })
       .catch(() => setMarketHandshake(null));
   }, [isGroup, peerThreadId, phoneDm]);
@@ -145,68 +122,6 @@ function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
       setMarketStartBusy(false);
     }
   }, [copy.globe.marketAlignBridgeFail, copy.globe.marketAlignBridgeToast, marketHandshake?.id, marketStartBusy, refreshMarketHandshake]);
-
-  const onConfirmMarketComplete = useCallback(async () => {
-    if (!marketHandshake?.id || marketCompleteBusy) {
-      return;
-    }
-    setMarketCompleteBusy(true);
-    try {
-      const result = await confirmMarketHandshakeCompleteRemote({
-        handshakeId: marketHandshake.id,
-      });
-      const refreshed = await refreshMarketHandshake();
-      if (refreshed) {
-        setMarketHandshake(refreshed);
-      }
-      if (result.awaitingOtherParty) {
-        toast.success(copy.globe.marketHandshakeCompleteAwaitingToast);
-      } else {
-        toast.success(copy.globe.marketHandshakeCompleteConfirmedToast);
-      }
-      if (result.completed && result.trace) {
-        setCompletionTrace(result.trace);
-        setCompletionSheetOpen(true);
-      }
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : copy.globe.marketHandshakeCompleteFail;
-      toast.error(message);
-    } finally {
-      setMarketCompleteBusy(false);
-    }
-  }, [
-    copy.globe.marketHandshakeCompleteAwaitingToast,
-    copy.globe.marketHandshakeCompleteConfirmedToast,
-    copy.globe.marketHandshakeCompleteFail,
-    marketCompleteBusy,
-    marketHandshake?.id,
-    refreshMarketHandshake,
-  ]);
-
-  const onPinCompletionTrace = useCallback(async () => {
-    if (!completionTrace || completionPinBusy) {
-      return;
-    }
-    setCompletionPinBusy(true);
-    try {
-      commitMarketCompletionTrace({
-        trace: completionTrace,
-        threadId: peerThreadId,
-      });
-      setCompletionSheetOpen(false);
-      toast.success(copy.globe.marketCompletionTracePinnedToast);
-    } finally {
-      setCompletionPinBusy(false);
-    }
-  }, [completionPinBusy, completionTrace, copy.globe.marketCompletionTracePinnedToast, peerThreadId]);
-
-  const onDismissCompletionTrace = useCallback(() => {
-    if (completionTrace) {
-      dismissMarketCompletionTrace(completionTrace.handshakeId);
-    }
-    setCompletionSheetOpen(false);
-  }, [completionTrace]);
 
   useEffect(() => {
     refreshContact();
@@ -455,31 +370,9 @@ function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
       {marketHandshake?.canStartChat ? (
         <MarketHandshakeStartBar busy={marketStartBusy} onStart={() => void onStartMarketChat()} />
       ) : null}
-      {marketHandshake &&
-      (marketHandshake.canConfirmComplete || marketHandshake.awaitingOtherParty) ? (
-        <MarketHandshakeCompleteBar
-          handshake={marketHandshake}
-          busy={marketCompleteBusy}
-          onConfirm={() => void onConfirmMarketComplete()}
-        />
-      ) : null}
       {marketHandshake?.chatLocked && marketHandshake.viewerRole === "listing" ? (
         <MarketHandshakeLockedHint />
       ) : null}
-
-      <MarketCompletionTraceSheet
-        trace={completionTrace}
-        open={completionSheetOpen}
-        busy={completionPinBusy}
-        onOpenChange={(open) => {
-          if (!open) {
-            onDismissCompletionTrace();
-            return;
-          }
-          setCompletionSheetOpen(true);
-        }}
-        onConfirm={() => void onPinCompletionTrace()}
-      />
     </div>
   );
 }

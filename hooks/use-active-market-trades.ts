@@ -19,11 +19,14 @@ export function useActiveMarketTrades(input: { enabled: boolean }) {
   const [loading, setLoading] = useState(false);
 
   const replaceSession = useCallback((updated: MarketTradeSessionView) => {
-    setSessions((prev) =>
-      prev.map((session) =>
+    setSessions((prev) => {
+      if (updated.tradeStatus === "completed" || updated.phase === "completed") {
+        return prev.filter((session) => session.handshakeId !== updated.handshakeId);
+      }
+      return prev.map((session) =>
         session.handshakeId === updated.handshakeId ? updated : session,
-      ),
-    );
+      );
+    });
   }, []);
 
   const refresh = useCallback(async () => {

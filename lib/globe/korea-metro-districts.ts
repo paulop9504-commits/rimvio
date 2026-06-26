@@ -213,12 +213,28 @@ export function isAmbiguousDistrictOnlyLabel(placeLabel: string): boolean {
   return listAmbiguousDistrictCandidates(placeLabel) !== null;
 }
 
+export function listMetroCities(): readonly string[] {
+  const seen = new Set<string>();
+  const cities: string[] = [];
+  for (const row of KOREA_METRO_DISTRICTS) {
+    if (!seen.has(row.city)) {
+      seen.add(row.city);
+      cities.push(row.city);
+    }
+  }
+  return cities;
+}
+
 export function listMetroDistrictsForCity(city: string): readonly KoreaMetroDistrict[] {
   const key = city.trim();
   if (!key) {
     return [];
   }
   return KOREA_METRO_DISTRICTS.filter((row) => row.city === key);
+}
+
+export function hasValidMarketTradeDistrict(placeLabel: string): boolean {
+  return matchKoreaMetroDistrict(placeLabel.trim()) !== null;
 }
 
 export function formatDistrictPickPrompt(districtName: string): string {
