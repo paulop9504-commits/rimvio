@@ -47,23 +47,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     let active = true;
 
-    void supabase.auth.getUser().then(({ data }) => {
+    void supabase.auth.getUser().then((result) => {
       if (active) {
-        setUser(data.user ?? null);
+        setUser(result?.data?.user ?? null);
         setLoading(false);
       }
     });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    const listener = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       setLoading(false);
     });
+    const subscription = listener?.data?.subscription;
 
     return () => {
       active = false;
-      subscription.unsubscribe();
+      subscription?.unsubscribe();
     };
   }, [supabase]);
 

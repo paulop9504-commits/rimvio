@@ -19,6 +19,7 @@ import {
   publishFieldSheetOpen,
   type FieldSheetOpenRequest,
 } from "@/lib/nav/field-sheet-bridge";
+import { OpportunityFieldErrorBoundary } from "@/components/field/opportunity-field-error-boundary";
 import { useIosPwaMemoryGuards } from "@/hooks/use-ios-pwa-memory-guards";
 
 const OpportunityDashboardSheet = dynamic(
@@ -103,13 +104,15 @@ export function FieldSheetProvider({ children }: { children: ReactNode }) {
     <FieldSheetContext.Provider value={value}>
       {children}
       {open || !iosPwaLazySheet ? (
-        <OpportunityDashboardSheet
-          open={open}
-          onOpenChange={onOpenChange}
-          layerMode={layerMode}
-          primaryEventId={primaryEventId}
-          onSwitchToDiscovery={() => setLayerMode("discovery")}
-        />
+        <OpportunityFieldErrorBoundary onReset={() => setPrimaryEventId((id) => id)}>
+          <OpportunityDashboardSheet
+            open={open}
+            onOpenChange={onOpenChange}
+            layerMode={layerMode}
+            primaryEventId={primaryEventId}
+            onSwitchToDiscovery={() => setLayerMode("discovery")}
+          />
+        </OpportunityFieldErrorBoundary>
       ) : null}
     </FieldSheetContext.Provider>
   );

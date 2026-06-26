@@ -7,7 +7,7 @@ export function shouldUseIosPwaMemoryGuards(): boolean {
 
 /** Defer heavy overlays until Globe GPU can suspend (ms). */
 export function iosPwaOverlayOpenDelayMs(): number {
-  return shouldUseIosPwaMemoryGuards() ? 180 : 0;
+  return shouldUseIosPwaMemoryGuards() ? 320 : 0;
 }
 
 /** Defer discovery pin fetches after layer toggle (ms). */

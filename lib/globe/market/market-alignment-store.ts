@@ -8,6 +8,15 @@ import { MARKET_INTENT_META_KEY } from "@/lib/globe/market/market-intent-types";
 const STORAGE_KEY = "rimvio-market-intents.v1";
 export const MARKET_INTENTS_UPDATED = "rimvio-market-intents-updated";
 
+function normalizeMarketIntentRecord(row: MarketIntentRecord): MarketIntentRecord {
+  return {
+    ...row,
+    detail: row.detail
+      ? { ...DEFAULT_MARKET_INTENT_DETAIL, ...row.detail }
+      : { ...DEFAULT_MARKET_INTENT_DETAIL },
+  };
+}
+
 function readAll(): MarketIntentRecord[] {
   if (typeof window === "undefined") {
     return [];
@@ -18,7 +27,11 @@ function readAll(): MarketIntentRecord[] {
       return [];
     }
     const parsed = JSON.parse(raw) as MarketIntentRecord[];
-    return Array.isArray(parsed) ? parsed.filter((row) => row?.id && row.eventId) : [];
+    return Array.isArray(parsed)
+      ? parsed
+          .filter((row) => row?.id && row.eventId)
+          .map(normalizeMarketIntentRecord)
+      : [];
   } catch {
     return [];
   }

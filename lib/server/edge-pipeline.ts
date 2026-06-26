@@ -36,6 +36,15 @@ export async function runEdgePipeline(request: NextRequest) {
     return response;
   }
 
+  if (pathname === "/market" || pathname.startsWith("/market/")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    const response = NextResponse.redirect(url, 307);
+    response.headers.set(REQUEST_ID_HEADER, requestId);
+    applySecurityHeaders(response);
+    return response;
+  }
+
   if (pathname === "/share" && request.method === "POST") {
     const rewriteUrl = request.nextUrl.clone();
     rewriteUrl.pathname = "/api/share-receiver";

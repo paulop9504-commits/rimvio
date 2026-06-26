@@ -1,4 +1,7 @@
-import { marketListingConditionLabelKo } from "@/lib/globe/market/market-intent-detail";
+import {
+  DEFAULT_MARKET_INTENT_DETAIL,
+  marketListingConditionLabelKo,
+} from "@/lib/globe/market/market-intent-detail";
 import { scoreWeightedMarketAlignment } from "@/lib/globe/market/score-weighted-market-alignment";
 import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
 import { calibrateOpportunityPct } from "@/lib/globe/opportunity-field/calibrate-opportunity-pct";
@@ -53,15 +56,20 @@ export function scoreMarketplaceOpportunityRow(input: {
     return null;
   }
 
-  const weighted = scoreWeightedMarketAlignment(input.seeking, input.listing);
+  const listingDetail = input.listing.detail ?? DEFAULT_MARKET_INTENT_DETAIL;
+  const seekingDetail = input.seeking.detail ?? DEFAULT_MARKET_INTENT_DETAIL;
+  const listing = { ...input.listing, detail: listingDetail };
+  const seeking = { ...input.seeking, detail: seekingDetail };
+
+  const weighted = scoreWeightedMarketAlignment(seeking, listing);
   const distanceKm = resolveViewerDistanceKm({
-    seeking: input.seeking,
-    listing: input.listing,
+    seeking,
+    listing,
     lat: input.userState.gpsFresh ? input.userState.lat : null,
     lng: input.userState.gpsFresh ? input.userState.lng : null,
   });
 
-  let fieldScore = weighted.total * focusBoost(input.seeking, input.userState);
+  let fieldScore = weighted.total * focusBoost(seeking, input.userState);
   if (input.userState.gpsFresh && distanceKm <= 2) {
     fieldScore = Math.min(1, fieldScore * 1.06);
   }
@@ -70,39 +78,39 @@ export function scoreMarketplaceOpportunityRow(input: {
   const { reasonKo, matchReasons } = explainOpportunityReasonKo({
     weighted,
     distanceKm,
-    confirmedAtIso: input.listing.confirmedAtIso,
+    confirmedAtIso: listing.confirmedAtIso,
     now: input.userState.now,
     copy: input.copy,
   });
 
   const profile = input.regionalProfile ?? resolveRegionalProfile("KR");
   const { price, priceLine } = (() => {
-    const { priceMinKrw, priceMaxKrw } = input.listing;
+    const { priceMinKrw, priceMaxKrw } = listing;
     const line = formatMarketPriceLine(priceMinKrw, priceMaxKrw, profile, input.copy.reasonPrice);
     const priceValue = priceMinKrw ?? priceMaxKrw;
     return { price: priceValue, priceLine: line };
   })();
   const title =
-    input.listing.detail.productName.trim() ||
-    input.listing.title.trim() ||
+    listingDetail.productName.trim() ||
+    listing.title.trim() ||
     "매물";
 
-  const thumbUrls = pickMarketListingThumbUrls(input.listing.detail);
+  const thumbUrls = pickMarketListingThumbUrls(listingDetail);
 
   return {
-    listingId: input.listing.id,
-    listingEventId: input.listing.eventId,
+    listingId: listing.id,
+    listingEventId: listing.eventId,
     photoUrl: thumbUrls.photoUrl,
     videoUrl: thumbUrls.videoUrl,
     title,
     price,
     priceLine,
-    conditionLabel: readConditionLabel(input.listing),
+    conditionLabel: readConditionLabel(listing),
     reasonKo,
     scorePct: calibrateOpportunityPct(fieldScore),
     fieldScore,
     distanceKm,
-    listing: input.listing,
+    listing,
     matchReasons,
   };
 }

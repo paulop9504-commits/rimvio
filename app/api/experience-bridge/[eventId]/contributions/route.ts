@@ -82,6 +82,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     ) {
       return NextResponse.json({ contributions: [], serverTime: new Date().toISOString() });
     }
+    const db = resolveServiceRoleOrUserClient(supabase);
     const contributions = await listBridgeContributions(db, key, { sinceIso: since });
     const serverTime = new Date().toISOString();
 

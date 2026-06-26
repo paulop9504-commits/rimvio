@@ -28,6 +28,16 @@ const nextConfig: NextConfig = {
         destination: "/",
         permanent: false,
       },
+      {
+        source: "/market",
+        destination: "/",
+        permanent: false,
+      },
+      {
+        source: "/market/:path*",
+        destination: "/",
+        permanent: false,
+      },
     ];
   },
   images: {
