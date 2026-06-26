@@ -59,6 +59,7 @@ export function OpportunityDashboardSheet({
 
   const {
     sessions: tradeSessions,
+    resolvedPairs: resolvedTradePairs,
     refresh: refreshTrades,
     replaceSession,
   } = useActiveMarketTrades({ enabled: open });
@@ -69,8 +70,9 @@ export function OpportunityDashboardSheet({
         rows,
         tradeSessions,
         selectedPill?.seeking.id ?? null,
+        resolvedTradePairs,
       ),
-    [rows, selectedPill?.seeking.id, tradeSessions],
+    [resolvedTradePairs, rows, selectedPill?.seeking.id, tradeSessions],
   );
 
   useEffect(() => {
@@ -128,9 +130,16 @@ export function OpportunityDashboardSheet({
           focusEventId={selectedPill.contextId}
           seeking={selectedPill.seeking}
           neighborBadge={field.neighborListingBadge}
-          hasActiveTrade={tradeSessions.some(
-            (session) => session.listingIntentId === detailRow.listing.id,
-          )}
+          hasActiveTrade={
+            tradeSessions.some(
+              (session) => session.listingIntentId === detailRow.listing.id,
+            ) ||
+            resolvedTradePairs.some(
+              (pair) =>
+                pair.listingIntentId === detailRow.listing.id &&
+                pair.seekingIntentId === selectedPill.seeking.id,
+            )
+          }
           className="min-h-0 flex-1"
           onBeforeNavigate={() => onOpenChange(false)}
           navigate={(href) => router.push(href)}

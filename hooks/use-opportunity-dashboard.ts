@@ -6,7 +6,8 @@ import { useCopy } from "@/hooks/use-copy";
 import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
 import { fetchOwnMarketIntentsRemote } from "@/lib/globe/market/client/sync-market-intent-remote";
 import {
-  listActiveMarketIntents,
+  listAllMarketIntents,
+  mergeOwnMarketIntents,
   subscribeMarketIntents,
 } from "@/lib/globe/market/market-alignment-store";
 import { filterPublishedMarketIntents } from "@/lib/globe/market/filter-published-market-intents";
@@ -34,18 +35,7 @@ function mergeOwnIntents(
   local: readonly MarketIntentRecord[],
   remote: readonly MarketIntentRecord[],
 ): MarketIntentRecord[] {
-  const merged = new Map<string, MarketIntentRecord>();
-  for (const row of local) {
-    if (row.active) {
-      merged.set(row.eventId, row);
-    }
-  }
-  for (const row of remote) {
-    if (row.active) {
-      merged.set(row.eventId, row);
-    }
-  }
-  return [...merged.values()];
+  return mergeOwnMarketIntents(local, remote);
 }
 
 function movedMeters(
@@ -197,7 +187,7 @@ export function useOpportunityDashboard(input: {
 
   const seekings = useMemo(() => {
     void revision;
-    const merged = mergeOwnIntents(listActiveMarketIntents(), remoteRows);
+    const merged = mergeOwnIntents(listAllMarketIntents(), remoteRows);
     return filterPublishedMarketIntents(
       merged.filter((row) => row.role === "seeking"),
     );

@@ -77,6 +77,40 @@ export async function listActiveMarketTradeSessionsForUser(
   return views;
 }
 
+export async function listResolvedMarketHandshakePairsForUser(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<Array<{ seekingIntentId: string; listingIntentId: string }>> {
+  const { data, error } = await supabase
+    .from("market_alignment_handshakes")
+    .select("seeking_intent_id, listing_intent_id, phase, trade_status")
+    .or(`seeking_user_id.eq.${userId},listing_user_id.eq.${userId}`)
+    .order("updated_at", { ascending: false })
+    .limit(48);
+
+  if (error) {
+    throw error;
+  }
+
+  const pairs: Array<{ seekingIntentId: string; listingIntentId: string }> = [];
+  for (const row of data ?? []) {
+    const phase = typeof row.phase === "string" ? row.phase : "";
+    const tradeStatus = typeof row.trade_status === "string" ? row.trade_status : "";
+    if (phase !== "completed" && tradeStatus !== "completed") {
+      continue;
+    }
+    const seekingIntentId =
+      typeof row.seeking_intent_id === "string" ? row.seeking_intent_id.trim() : "";
+    const listingIntentId =
+      typeof row.listing_intent_id === "string" ? row.listing_intent_id.trim() : "";
+    if (!seekingIntentId || !listingIntentId) {
+      continue;
+    }
+    pairs.push({ seekingIntentId, listingIntentId });
+  }
+  return pairs;
+}
+
 export async function confirmMarketTradeSchedule(
   supabase: SupabaseClient,
   userId: string,

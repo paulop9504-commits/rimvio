@@ -1,6 +1,11 @@
 import type { MarketIntentRole } from "@/lib/globe/market/market-intent-types";
 
 /** Revert UI experiment: git checkout bookmark/pre-transaction-dashboard */
+export type MarketHandshakeIntentPair = {
+  seekingIntentId: string;
+  listingIntentId: string;
+};
+
 export type MarketTradeStatus =
   | "scheduling"
   | "confirmed"

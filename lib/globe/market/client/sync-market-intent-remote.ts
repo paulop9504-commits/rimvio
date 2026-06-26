@@ -264,6 +264,7 @@ export async function confirmMarketHandshakeCompleteRemote(input: {
   completed: boolean;
   awaitingOtherParty: boolean;
   trace: MarketCompletionTraceDraft | null;
+  deactivatedEventIds: string[];
 }> {
   const response = await fetch(`${resolveAppOrigin()}/api/globe/market-alignment/complete`, {
     method: "POST",
@@ -275,15 +276,28 @@ export async function confirmMarketHandshakeCompleteRemote(input: {
     completed?: boolean;
     awaitingOtherParty?: boolean;
     trace?: MarketCompletionTraceDraft | null;
+    deactivatedEventIds?: string[];
     error?: string;
   };
   if (!response.ok) {
     throw new Error(body.error ?? "complete_failed");
   }
+  const deactivatedEventIds = Array.isArray(body.deactivatedEventIds)
+    ? body.deactivatedEventIds.filter((id): id is string => typeof id === "string" && id.trim().length > 0)
+    : [];
+  if (deactivatedEventIds.length > 0) {
+    const { deactivateMarketIntent } = await import(
+      "@/lib/globe/market/market-alignment-store"
+    );
+    for (const eventId of deactivatedEventIds) {
+      deactivateMarketIntent(eventId);
+    }
+  }
   return {
     completed: Boolean(body.completed),
     awaitingOtherParty: Boolean(body.awaitingOtherParty),
     trace: body.trace ?? null,
+    deactivatedEventIds,
   };
 }
 

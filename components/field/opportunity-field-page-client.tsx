@@ -28,7 +28,7 @@ export function OpportunityFieldPageClient() {
     selectedPill,
   } = useOpportunityDashboard({ open: true, primaryEventId: null });
 
-  const { sessions: tradeSessions, refresh: refreshTrades, replaceSession } =
+  const { sessions: tradeSessions, resolvedPairs: resolvedTradePairs, refresh: refreshTrades, replaceSession } =
     useActiveMarketTrades({
       enabled: true,
     });
@@ -39,16 +39,21 @@ export function OpportunityFieldPageClient() {
         rows,
         tradeSessions,
         selectedPill?.seeking.id ?? null,
+        resolvedTradePairs,
       ),
-    [rows, selectedPill?.seeking.id, tradeSessions],
+    [resolvedTradePairs, rows, selectedPill?.seeking.id, tradeSessions],
   );
 
   const field = copy.globe.field;
 
   if (detailRow && selectedPill) {
-    const hasActiveTrade = tradeSessions.some(
-      (session) => session.listingIntentId === detailRow.listing.id,
-    );
+    const hasActiveTrade =
+      tradeSessions.some((session) => session.listingIntentId === detailRow.listing.id) ||
+      resolvedTradePairs.some(
+        (pair) =>
+          pair.listingIntentId === detailRow.listing.id &&
+          pair.seekingIntentId === selectedPill.seeking.id,
+      );
 
     return (
       <div

@@ -8,7 +8,8 @@ import {
 } from "@/lib/globe/market/client/sync-market-intent-remote";
 import {
   deactivateMarketIntent,
-  listActiveMarketIntents,
+  listAllMarketIntents,
+  mergeOwnMarketIntents,
   subscribeMarketIntents,
 } from "@/lib/globe/market/market-alignment-store";
 import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
@@ -17,18 +18,7 @@ function mergeMarketIntents(
   local: readonly MarketIntentRecord[],
   remote: readonly MarketIntentRecord[],
 ): MarketIntentRecord[] {
-  const merged = new Map<string, MarketIntentRecord>();
-  for (const row of local) {
-    if (row.active) {
-      merged.set(row.eventId, row);
-    }
-  }
-  for (const row of remote) {
-    if (row.active) {
-      merged.set(row.eventId, row);
-    }
-  }
-  return [...merged.values()].sort(
+  return mergeOwnMarketIntents(local, remote).sort(
     (left, right) =>
       Date.parse(right.confirmedAtIso) - Date.parse(left.confirmedAtIso),
   );
@@ -79,7 +69,7 @@ export function useMarketManageIntents(open: boolean): {
 
   const active = useMemo(() => {
     void revision;
-    return mergeMarketIntents(listActiveMarketIntents(), remoteRows);
+    return mergeMarketIntents(listAllMarketIntents(), remoteRows);
   }, [remoteRows, revision]);
 
   const listings = useMemo(

@@ -151,12 +151,31 @@ async function deactivateMarketIntents(
   supabase: SupabaseClient,
   seekingIntentId: string,
   listingIntentId: string,
-): Promise<void> {
+): Promise<string[]> {
   const now = new Date().toISOString();
-  await supabase
+  const { data: rows, error: readError } = await supabase
+    .from("market_intents")
+    .select("client_event_id")
+    .in("id", [seekingIntentId, listingIntentId]);
+
+  if (readError) {
+    throw readError;
+  }
+
+  const { error } = await supabase
     .from("market_intents")
     .update({ active: false, updated_at: now })
     .in("id", [seekingIntentId, listingIntentId]);
+
+  if (error) {
+    throw error;
+  }
+
+  return (rows ?? [])
+    .map((row) =>
+      typeof row.client_event_id === "string" ? row.client_event_id.trim() : "",
+    )
+    .filter((eventId) => eventId.length > 0);
 }
 
 export async function confirmMarketHandshakeComplete(
@@ -168,6 +187,7 @@ export async function confirmMarketHandshakeComplete(
   awaitingOtherParty: boolean;
   handshake: MarketHandshakeRecord;
   trace: MarketCompletionTraceDraft | null;
+  deactivatedEventIds: string[];
 }> {
   const handshake = await findMarketHandshakeById(supabase, handshakeId);
   if (!handshake) {
@@ -206,6 +226,7 @@ export async function confirmMarketHandshakeComplete(
       awaitingOtherParty: false,
       handshake,
       trace,
+      deactivatedEventIds: [],
     };
   }
 
@@ -258,6 +279,7 @@ export async function confirmMarketHandshakeComplete(
       awaitingOtherParty: true,
       handshake: patched,
       trace: null,
+      deactivatedEventIds: [],
     };
   }
 
@@ -270,7 +292,7 @@ export async function confirmMarketHandshakeComplete(
     tradeStatus: "completed",
   });
 
-  await deactivateMarketIntents(
+  const deactivatedEventIds = await deactivateMarketIntents(
     supabase,
     handshake.seekingIntentId,
     handshake.listingIntentId,
@@ -305,6 +327,7 @@ export async function confirmMarketHandshakeComplete(
     awaitingOtherParty: false,
     handshake: patched,
     trace,
+    deactivatedEventIds,
   };
 }
 

@@ -42,6 +42,38 @@ export function listActiveMarketIntents(): MarketIntentRecord[] {
   return readAll().filter((row) => row.active);
 }
 
+export function listAllMarketIntents(): MarketIntentRecord[] {
+  return readAll();
+}
+
+/** Merge remote SSOT with local rows — never resurrect locally ended intents. */
+export function mergeOwnMarketIntents(
+  localAll: readonly MarketIntentRecord[],
+  remote: readonly MarketIntentRecord[],
+): MarketIntentRecord[] {
+  const deactivatedEventIds = new Set(
+    localAll.filter((row) => !row.active).map((row) => row.eventId),
+  );
+  const merged = new Map<string, MarketIntentRecord>();
+
+  for (const row of localAll) {
+    if (row.active) {
+      merged.set(row.eventId, row);
+    }
+  }
+
+  for (const row of remote) {
+    if (!row.active || deactivatedEventIds.has(row.eventId)) {
+      continue;
+    }
+    if (!merged.has(row.eventId)) {
+      merged.set(row.eventId, row);
+    }
+  }
+
+  return [...merged.values()];
+}
+
 export function findMarketIntentByEventId(
   eventId: string,
 ): MarketIntentRecord | null {

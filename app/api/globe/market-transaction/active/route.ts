@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { marketTradeSessionCopy } from "@/lib/globe/market/market-trade-copy";
-import { listActiveMarketTradeSessionsForUser } from "@/lib/globe/market/server/market-trade-session-server";
+import { listActiveMarketTradeSessionsForUser, listResolvedMarketHandshakePairsForUser } from "@/lib/globe/market/server/market-trade-session-server";
 
 export async function GET() {
   if (!isSupabaseConfigured()) {
@@ -17,12 +17,11 @@ export async function GET() {
   }
 
   try {
-    const sessions = await listActiveMarketTradeSessionsForUser(
-      supabase,
-      user.id,
-      marketTradeSessionCopy,
-    );
-    return NextResponse.json({ ok: true, sessions });
+    const [sessions, resolvedPairs] = await Promise.all([
+      listActiveMarketTradeSessionsForUser(supabase, user.id, marketTradeSessionCopy),
+      listResolvedMarketHandshakePairsForUser(supabase, user.id),
+    ]);
+    return NextResponse.json({ ok: true, sessions, resolvedPairs });
   } catch (error) {
     const message = error instanceof Error ? error.message : "trade_list_failed";
     if (message.includes("trade_status") || message.includes("column")) {

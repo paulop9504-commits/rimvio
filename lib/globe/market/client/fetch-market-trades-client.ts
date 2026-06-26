@@ -1,21 +1,24 @@
-import type { MarketTradeSessionView } from "@/lib/globe/market/market-trade-types";
+import type { MarketHandshakeIntentPair, MarketTradeSessionView } from "@/lib/globe/market/market-trade-types";
 
 export async function fetchActiveMarketTradesRemote(): Promise<{
   sessions: MarketTradeSessionView[];
+  resolvedPairs: MarketHandshakeIntentPair[];
   migrationPending?: boolean;
 }> {
   const response = await fetch("/api/globe/market-transaction/active", {
     cache: "no-store",
   });
   if (!response.ok) {
-    return { sessions: [] };
+    return { sessions: [], resolvedPairs: [] };
   }
   const body = (await response.json()) as {
     sessions?: MarketTradeSessionView[];
+    resolvedPairs?: MarketHandshakeIntentPair[];
     migrationPending?: boolean;
   };
   return {
     sessions: Array.isArray(body.sessions) ? body.sessions : [],
+    resolvedPairs: Array.isArray(body.resolvedPairs) ? body.resolvedPairs : [],
     migrationPending: body.migrationPending,
   };
 }
