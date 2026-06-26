@@ -33,7 +33,10 @@ import {
 } from "@/lib/globe/market/market-trade-cancel-reasons";
 import { insertPeerMessage } from "@/lib/peer-chat/server-peer-chat";
 import { copy } from "@/lib/copy/human-ko";
-import { isMarketTradePipelineActive } from "@/lib/globe/market/market-trade-pipeline";
+import {
+  isExplicitMarketTradePipeline,
+  normalizeMarketTradeStatus,
+} from "@/lib/globe/market/market-trade-pipeline";
 import { getServerRegionalProfile } from "@/lib/preferences/server-regional-profile";
 import type { RegionalProfile } from "@/lib/preferences/regional-profile";
 import {
@@ -154,10 +157,29 @@ export async function listActiveMarketTradeSessionsForUser(
     if (!listing) {
       continue;
     }
+    if (
+      normalizeMarketTradeStatus(handshake.tradeStatus) === "scheduling" &&
+      !handshake.schedulingExpiresAtIso?.trim()
+    ) {
+      await patchMarketHandshake(supabase, handshake.id, { tradeStatus: "chat" });
+      continue;
+    }
+
     const preset = readMarketAvailabilityPreset(listing.detail?.availabilityPreset);
-    handshake = await ensureMarketTradeScheduleDateCandidates(supabase, handshake, preset);
+    if (handshake.schedulingExpiresAtIso?.trim()) {
+      handshake = await ensureMarketTradeScheduleDateCandidates(
+        supabase,
+        handshake,
+        preset,
+      );
+    }
     handshake = await ensureBuyerPickedDayTradeStatus(supabase, handshake);
-    if (!isMarketTradePipelineActive(handshake.tradeStatus)) {
+    if (
+      !isExplicitMarketTradePipeline({
+        tradeStatus: handshake.tradeStatus,
+        schedulingExpiresAtIso: handshake.schedulingExpiresAtIso,
+      })
+    ) {
       continue;
     }
     const record = buildMarketTradeSessionRecord({

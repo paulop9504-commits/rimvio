@@ -53,6 +53,22 @@ export function isMarketTradePipelineActive(
   );
 }
 
+/** Buyer tapped 일정 맞추기 — not legacy default scheduling rows. */
+export function isExplicitMarketTradePipeline(input: {
+  tradeStatus: MarketTradeStatus | string | null | undefined;
+  schedulingExpiresAtIso?: string | null;
+}): boolean {
+  const normalized = normalizeMarketTradeStatus(
+    typeof input.tradeStatus === "string"
+      ? input.tradeStatus
+      : input.tradeStatus ?? null,
+  );
+  if (normalized === "scheduling") {
+    return Boolean(input.schedulingExpiresAtIso?.trim());
+  }
+  return isMarketTradePipelineActive(normalized);
+}
+
 export function isMarketListingReservedForOthers(
   status: MarketTradeStatus | string | null | undefined,
 ): boolean {
@@ -74,7 +90,10 @@ export function hasActiveMarketTradeForListing(
     (session) =>
       session.listingIntentId === listingIntentId &&
       (!seekingIntentId || session.seekingIntentId === seekingIntentId) &&
-      isMarketTradePipelineActive(session.tradeStatus),
+      isExplicitMarketTradePipeline({
+        tradeStatus: session.tradeStatus,
+        schedulingExpiresAtIso: session.schedulingExpiresAtIso,
+      }),
   );
   if (inPipeline) {
     return true;

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { filterOpportunityRowsExcludingActiveTrades } from "../lib/globe/opportunity-field/filter-rows-excluding-active-trades";
 import {
   hasActiveMarketTradeForListing,
+  isExplicitMarketTradePipeline,
   isMarketListingReservedForOthers,
   isMarketTradePipelineActive,
   normalizeMarketTradeStatus,
@@ -102,6 +103,17 @@ assert.equal(normalizeMarketTradeStatus(null), "chat");
 assert.equal(normalizeMarketTradeStatus("scheduling"), "scheduling");
 assert.equal(isMarketTradePipelineActive("chat"), false);
 assert.equal(isMarketTradePipelineActive("scheduling"), true);
+assert.equal(
+  isExplicitMarketTradePipeline({ tradeStatus: "scheduling", schedulingExpiresAtIso: null }),
+  false,
+);
+assert.equal(
+  isExplicitMarketTradePipeline({
+    tradeStatus: "scheduling",
+    schedulingExpiresAtIso: new Date(Date.now() + 3600_000).toISOString(),
+  }),
+  true,
+);
 assert.equal(isMarketListingReservedForOthers("seller_proposed"), false);
 assert.equal(isMarketListingReservedForOthers("confirmed"), true);
 
@@ -118,6 +130,13 @@ const scheduling = sessionStub({
   listingIntentId: listingA,
   seekingIntentId: seeking1,
   tradeStatus: "scheduling",
+  schedulingExpiresAtIso: new Date(Date.now() + 3600_000).toISOString(),
+});
+const orphanScheduling = sessionStub({
+  listingIntentId: listingA,
+  seekingIntentId: seeking1,
+  tradeStatus: "scheduling",
+  schedulingExpiresAtIso: null,
 });
 const confirmedOther = sessionStub({
   listingIntentId: listingA,
@@ -128,6 +147,11 @@ const confirmedOther = sessionStub({
 assert.equal(
   hasActiveMarketTradeForListing([chatOnly], listingA, seeking1),
   false,
+);
+assert.equal(
+  hasActiveMarketTradeForListing([orphanScheduling], listingA, seeking1),
+  false,
+  "orphan scheduling should not count as active trade",
 );
 assert.equal(
   hasActiveMarketTradeForListing([scheduling], listingA, seeking1),

@@ -1,6 +1,6 @@
 import {
+  isExplicitMarketTradePipeline,
   isMarketListingReservedForOthers,
-  isMarketTradePipelineActive,
 } from "@/lib/globe/market/market-trade-pipeline";
 import type { MarketHandshakeIntentPair } from "@/lib/globe/market/market-trade-types";
 import type { MarketTradeSessionView } from "@/lib/globe/market/market-trade-types";
@@ -27,7 +27,13 @@ export function filterOpportunityRowsExcludingActiveTrades(
     const isCurrentSeeker =
       !selectedSeekingIntentId ||
       session.seekingIntentId === selectedSeekingIntentId;
-    if (isCurrentSeeker && isMarketTradePipelineActive(session.tradeStatus)) {
+    if (
+      isCurrentSeeker &&
+      isExplicitMarketTradePipeline({
+        tradeStatus: session.tradeStatus,
+        schedulingExpiresAtIso: session.schedulingExpiresAtIso,
+      })
+    ) {
       blockedListingIds.add(session.listingIntentId);
     }
   }
