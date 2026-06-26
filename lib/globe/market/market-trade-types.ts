@@ -83,7 +83,6 @@ export type MarketTradeSessionView = MarketTradeSessionRecord & {
   showPickDay: boolean;
   showProposeSchedule: boolean;
   showAcceptProposal: boolean;
-  proposeTimeSlots: readonly string[];
   canConfirmHandshakeComplete: boolean;
   awaitingHandshakeOtherParty: boolean;
   handshakeCompleteCtaKo: string | null;

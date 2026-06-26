@@ -2,15 +2,16 @@
 
 import assert from "node:assert/strict";
 import {
+  buildMarketTradeMeetAtIsoFromParts,
   generateMarketTradeDateCandidates,
-  generateMarketTradeProposeTimeSlots,
   generateMarketTradeTimeSlotsForDate,
   formatMarketTradeDateLabelKo,
-  isScheduleDateCandidateAllowed,
   isMeetTimeAllowedForTrade,
-  toMarketTradeDateKey,
-  resolveMarketTradeScheduleDateCandidates,
+  isScheduleDateCandidateAllowed,
   marketTradeScheduleDateCandidatesNeedBackfill,
+  resolveMarketTradeScheduleDateCandidates,
+  suggestMarketTradeProposeTimeValue,
+  toMarketTradeDateKey,
 } from "../lib/globe/market/market-trade-schedule";
 
 const now = new Date("2026-06-26T10:00:00+09:00");
@@ -36,12 +37,14 @@ assert.ok(slots.length >= 1);
 assert.equal(formatMarketTradeDateLabelKo(todayKey, now), "오늘");
 assert.ok(isScheduleDateCandidateAllowed(weekdayDates[0]!, weekdayDates));
 
-const meetAt = slots[0]!;
+const customTime = suggestMarketTradeProposeTimeValue(todayKey, now);
+assert.match(customTime, /^\d{2}:\d{2}$/u);
+const customMeetAt = buildMarketTradeMeetAtIsoFromParts(todayKey, "15:30");
+assert.ok(customMeetAt);
 assert.ok(
   isMeetTimeAllowedForTrade({
-    meetAtIso: meetAt,
+    meetAtIso: customMeetAt!,
     dateKey: todayKey,
-    preset: "weekday_afternoon",
     now,
   }),
 );
@@ -57,10 +60,13 @@ const legacyResolved = resolveMarketTradeScheduleDateCandidates(legacyIso, "anyt
 assert.ok(legacyResolved.every((key) => /^\d{4}-\d{2}-\d{2}$/u.test(key)));
 assert.equal(legacyResolved[0], "2026-06-28");
 
-const weekendKey = "2026-06-27";
-const weekdayPresetSlots = generateMarketTradeTimeSlotsForDate("weekday_day", weekendKey, now);
-assert.equal(weekdayPresetSlots.length, 0);
-const proposeSlots = generateMarketTradeProposeTimeSlots("weekday_day", weekendKey, now);
-assert.ok(proposeSlots.length >= 1);
+assert.equal(
+  isMeetTimeAllowedForTrade({
+    meetAtIso: buildMarketTradeMeetAtIsoFromParts(todayKey, "10:15")!,
+    dateKey: todayKey,
+    now,
+  }),
+  false,
+);
 
 console.log("test-market-trade-schedule: ok");

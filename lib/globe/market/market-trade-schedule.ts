@@ -101,34 +101,6 @@ export function generateMarketTradeTimeSlotsForDate(
   return slots.slice(0, 6);
 }
 
-const PROPOSE_FALLBACK_HOURS = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20] as const;
-
-/** Seller propose step — buyer already picked the day; relax preset when strict slots are empty. */
-export function generateMarketTradeProposeTimeSlots(
-  preset: MarketAvailabilityPreset,
-  dateKey: string,
-  now = new Date(),
-): string[] {
-  const strict = generateMarketTradeTimeSlotsForDate(preset, dateKey, now);
-  if (strict.length > 0) {
-    return strict;
-  }
-  if (!isMarketTradeDateKey(dateKey)) {
-    return [];
-  }
-  const base = parseMarketTradeDateKey(dateKey);
-  const minLeadMs = 30 * 60 * 1000;
-  const slots: string[] = [];
-  for (const hour of PROPOSE_FALLBACK_HOURS) {
-    const slot = new Date(base);
-    slot.setHours(hour, 0, 0, 0);
-    if (slot.getTime() > now.getTime() + minLeadMs) {
-      slots.push(slot.toISOString());
-    }
-  }
-  return slots.slice(0, 6);
-}
-
 export function normalizeScheduleCandidateToDateKey(candidate: string): string | null {
   const trimmed = candidate.trim();
   if (isMarketTradeDateKey(trimmed)) {
@@ -204,26 +176,64 @@ export function isScheduleDateCandidateAllowed(
   return candidates.some((candidate) => normalizeScheduleCandidateToDateKey(candidate) === dateKey);
 }
 
+const CUSTOM_TIME_VALUE_RE = /^([01]\d|2[0-3]):([0-5]\d)$/u;
+
+export function isMarketTradeCustomTimeValue(value: string): boolean {
+  return CUSTOM_TIME_VALUE_RE.test(value.trim());
+}
+
+export function buildMarketTradeMeetAtIsoFromParts(
+  dateKey: string,
+  timeValue: string,
+): string | null {
+  if (!isMarketTradeDateKey(dateKey) || !isMarketTradeCustomTimeValue(timeValue)) {
+    return null;
+  }
+  const [hour, minute] = timeValue.trim().split(":").map((part) => Number.parseInt(part, 10));
+  const meetAt = parseMarketTradeDateKey(dateKey);
+  meetAt.setHours(hour!, minute!, 0, 0);
+  if (!Number.isFinite(meetAt.getTime())) {
+    return null;
+  }
+  return meetAt.toISOString();
+}
+
+export function suggestMarketTradeProposeTimeValue(dateKey: string, now = new Date()): string {
+  if (!isMarketTradeDateKey(dateKey)) {
+    return "14:00";
+  }
+  const minAt = new Date(now.getTime() + 30 * 60 * 1000);
+  const base = parseMarketTradeDateKey(dateKey);
+  if (toMarketTradeDateKey(minAt) !== dateKey) {
+    return "10:00";
+  }
+  const suggested = new Date(Math.max(base.getTime(), minAt.getTime()));
+  const roundedMinutes = Math.ceil(suggested.getMinutes() / 5) * 5;
+  if (roundedMinutes === 60) {
+    suggested.setHours(suggested.getHours() + 1, 0, 0, 0);
+  } else {
+    suggested.setMinutes(roundedMinutes, 0, 0);
+  }
+  return `${String(suggested.getHours()).padStart(2, "0")}:${String(suggested.getMinutes()).padStart(2, "0")}`;
+}
+
 export function isMeetTimeAllowedForTrade(input: {
   meetAtIso: string;
   dateKey: string;
-  preset: MarketAvailabilityPreset;
+  preset?: MarketAvailabilityPreset;
   now?: Date;
 }): boolean {
   const meetAt = new Date(input.meetAtIso);
   if (!Number.isFinite(meetAt.getTime())) {
     return false;
   }
-  if (toMarketTradeDateKey(meetAt) !== input.dateKey.trim()) {
+  const dateKey = input.dateKey.trim();
+  if (!isMarketTradeDateKey(dateKey) || toMarketTradeDateKey(meetAt) !== dateKey) {
     return false;
   }
-  const allowed = generateMarketTradeProposeTimeSlots(
-    input.preset,
-    input.dateKey,
-    input.now ?? new Date(),
-  );
-  const target = meetAt.getTime();
-  return allowed.some((slot) => Date.parse(slot) === target);
+  const now = input.now ?? new Date();
+  const minLeadMs = 30 * 60 * 1000;
+  return meetAt.getTime() > now.getTime() + minLeadMs;
 }
 
 export function formatMarketTradeDateLabelKo(

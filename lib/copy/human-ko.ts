@@ -1108,6 +1108,8 @@ export const copy = {
     marketTradePickDaySuccess: "날짜를 전달했어요",
     marketTradePickDayFail: "날짜를 보내지 못했어요",
     marketTradeProposeScheduleTitle: "시간과 만남 장소",
+    marketTradeProposeTimeLabel: "만남 시간",
+    marketTradeProposeTimeInvalid: "30분 이후 시간을 골라주세요",
     marketTradeProposePlaceLabel: "만남 장소",
     marketTradeProposePlacePlaceholder: "예: 강남역 2번 출구",
     marketTradeProposeSend: "제안 보내기",

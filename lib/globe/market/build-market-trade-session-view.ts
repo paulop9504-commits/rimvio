@@ -8,8 +8,6 @@ import { readMarketAvailabilityPreset } from "@/lib/globe/market/market-availabi
 import type { MarketTradeSessionRecord, MarketTradeSessionView } from "@/lib/globe/market/market-trade-types";
 import {
   formatMarketTradeDateLabelKo,
-  generateMarketTradeProposeTimeSlots,
-  generateMarketTradeTimeSlotsForDate,
   resolveMarketTradeScheduleDateCandidates,
 } from "@/lib/globe/market/market-trade-schedule";
 import {
@@ -299,16 +297,6 @@ export function buildMarketTradeSessionView(
   const showAcceptProposal =
     record.viewerRole === "seeking" && record.tradeStatus === "seller_proposed";
 
-  const pickedDateKey = record.preferredMeetDateKey?.trim() || null;
-  const proposeTimeSlots =
-    pickedDateKey && showProposeSchedule
-      ? generateMarketTradeProposeTimeSlots(
-          record.availabilityPreset,
-          pickedDateKey,
-          now,
-        )
-      : [];
-
   const showHandshakeComplete = canShowHandshakeComplete(record);
   const viewerHandshakeConfirmed = readViewerHandshakeConfirmed(record);
   const otherHandshakeConfirmed = readOtherHandshakeConfirmed(record);
@@ -373,7 +361,6 @@ export function buildMarketTradeSessionView(
     showPickDay,
     showProposeSchedule,
     showAcceptProposal,
-    proposeTimeSlots,
     canConfirmHandshakeComplete,
     awaitingHandshakeOtherParty,
     handshakeCompleteCtaKo,

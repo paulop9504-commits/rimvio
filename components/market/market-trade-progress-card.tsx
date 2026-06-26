@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Calendar, Car, Check, ImageIcon, MapPin, Navigation } from "lucide-react";
 import { toast } from "sonner";
 import { MarketCompletionTraceSheet } from "@/components/market/market-completion-trace-sheet";
@@ -17,7 +17,12 @@ import { confirmMarketHandshakeCompleteRemote } from "@/lib/globe/market/client/
 import { commitMarketCompletionTrace } from "@/lib/globe/market/commit-market-completion-trace";
 import { dismissMarketCompletionTrace } from "@/lib/globe/market/market-completion-pinned-store";
 import type { MarketCompletionTraceDraft } from "@/lib/globe/market/market-handshake-types";
-import { formatMarketTradeDateLabelKo } from "@/lib/globe/market/market-trade-schedule";
+import {
+  buildMarketTradeMeetAtIsoFromParts,
+  formatMarketTradeDateLabelKo,
+  isMeetTimeAllowedForTrade,
+  suggestMarketTradeProposeTimeValue,
+} from "@/lib/globe/market/market-trade-schedule";
 import { formatMarketTradeMeetAtLabel } from "@/lib/globe/market/resolve-market-trade-progress";
 import type { MarketTradeSessionView } from "@/lib/globe/market/market-trade-types";
 import {
@@ -72,13 +77,21 @@ export function MarketTradeProgressCard({
   const [departBusy, setDepartBusy] = useState(false);
   const [completeBusy, setCompleteBusy] = useState(false);
   const [proposePlace, setProposePlace] = useState(session.meetPlaceDisplay ?? "");
-  const [selectedTimeIso, setSelectedTimeIso] = useState<string | null>(null);
+  const [proposeTimeValue, setProposeTimeValue] = useState("");
   const [completionTrace, setCompletionTrace] = useState<MarketCompletionTraceDraft | null>(null);
   const [completionSheetOpen, setCompletionSheetOpen] = useState(false);
   const [completionPinBusy, setCompletionPinBusy] = useState(false);
 
   const isSeeking = session.viewerRole === "seeking";
   const badgeTone = isSeeking ? "bg-[#7c3aed] text-white" : "bg-[#3182f6] text-white";
+
+  useEffect(() => {
+    const dateKey = session.preferredMeetDateKey?.trim();
+    if (!dateKey || !session.showProposeSchedule) {
+      return;
+    }
+    setProposeTimeValue(suggestMarketTradeProposeTimeValue(dateKey));
+  }, [session.handshakeId, session.preferredMeetDateKey, session.showProposeSchedule]);
 
   const onNavigate = () => {
     if (session.meetLat != null && session.meetLng != null) {
@@ -127,8 +140,19 @@ export function MarketTradeProgressCard({
   };
 
   const onProposeSchedule = async () => {
-    const meetAtIso = selectedTimeIso;
-    if (!meetAtIso || busyKey) {
+    const dateKey = session.preferredMeetDateKey?.trim();
+    if (!dateKey || !proposeTimeValue || busyKey) {
+      return;
+    }
+    const meetAtIso = buildMarketTradeMeetAtIsoFromParts(dateKey, proposeTimeValue);
+    if (
+      !meetAtIso ||
+      !isMeetTimeAllowedForTrade({
+        meetAtIso,
+        dateKey,
+      })
+    ) {
+      toast.error(globe.marketTradeProposeTimeInvalid);
       return;
     }
     setBusyKey(meetAtIso);
@@ -347,24 +371,18 @@ export function MarketTradeProgressCard({
                 {formatMarketTradeDateLabelKo(session.preferredMeetDateKey)}
               </p>
             ) : null}
-            <div className="flex flex-wrap gap-2">
-              {session.proposeTimeSlots.map((slot) => (
-                <button
-                  key={slot}
-                  type="button"
-                  disabled={busyKey !== null}
-                  onClick={() => setSelectedTimeIso(slot)}
-                  className={cn(
-                    "rounded-full px-3 py-1.5 text-[12px] font-semibold",
-                    selectedTimeIso === slot
-                      ? "bg-[#3182f6] text-white"
-                      : "bg-white text-[#191f28] ring-1 ring-[#e5e8eb]",
-                  )}
-                >
-                  {formatMarketTradeMeetAtLabel(slot)}
-                </button>
-              ))}
-            </div>
+            <label className="block">
+              <span className="mb-1 block text-[12px] font-medium text-[#6b7684]">
+                {globe.marketTradeProposeTimeLabel}
+              </span>
+              <input
+                type="time"
+                step={60}
+                value={proposeTimeValue}
+                onChange={(event) => setProposeTimeValue(event.target.value)}
+                className="w-full rounded-xl border border-[#e5e8eb] bg-white px-3 py-2.5 text-[14px] outline-none focus:border-[#3182f6]"
+              />
+            </label>
             <label className="block">
               <span className="mb-1 block text-[12px] font-medium text-[#6b7684]">
                 {globe.marketTradeProposePlaceLabel}
@@ -379,7 +397,7 @@ export function MarketTradeProgressCard({
             </label>
             <button
               type="button"
-              disabled={!selectedTimeIso || busyKey !== null}
+              disabled={!proposeTimeValue || busyKey !== null}
               onClick={() => void onProposeSchedule()}
               className={cn(rimvioCompactPrimaryCtaClass(), "w-full disabled:opacity-50")}
             >

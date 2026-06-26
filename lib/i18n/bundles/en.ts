@@ -1098,6 +1098,8 @@ export const copyEn: Copy = {
     marketTradePickDaySuccess: "Date sent",
     marketTradePickDayFail: "Could not send date",
     marketTradeProposeScheduleTitle: "Time and meet-up place",
+    marketTradeProposeTimeLabel: "Meet-up time",
+    marketTradeProposeTimeInvalid: "Pick a time at least 30 minutes from now",
     marketTradeProposePlaceLabel: "Meet-up place",
     marketTradeProposePlacePlaceholder: "e.g. Gangnam Station exit 2",
     marketTradeProposeSend: "Send proposal",
