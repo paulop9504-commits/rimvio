@@ -10,7 +10,11 @@ export type HealthReport = {
   ts: number;
   supabase: { configured: boolean; reachable: boolean };
   naver: { configured: boolean };
-  storage: { writable: boolean };
+  storage: {
+    writable: boolean;
+    /** local = dev disk; ephemeral = serverless (writable false is expected). */
+    mode: "local" | "ephemeral";
+  };
   version: string;
 };
 
@@ -65,6 +69,7 @@ export async function collectHealthReport(): Promise<HealthReport> {
 
   const supabaseConfigured = isSupabaseConfigured();
   const onVercel = Boolean(process.env.VERCEL);
+  const storageMode = onVercel ? "ephemeral" : "local";
   const storageOk = onVercel || storageWritable;
   const ok = storageOk && (!supabaseConfigured || supabaseReachable);
 
@@ -80,6 +85,7 @@ export async function collectHealthReport(): Promise<HealthReport> {
     },
     storage: {
       writable: storageWritable,
+      mode: storageMode,
     },
     version: process.env.npm_package_version ?? "0.0.0",
   };
