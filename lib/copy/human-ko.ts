@@ -711,6 +711,14 @@ export const copy = {
     photoIngestProgressCommitting: (name: string, index: number, total: number) =>
       `${index}/${total} · ${name} 남기는 중`,
     photoIngestProgressReady: (total: number) => `사진 ${total}장 확인됨`,
+    photoIngestProgressSummary: (done: number, total: number, failed: number) =>
+      failed > 0
+        ? `${done}/${total} 완료 · ${failed}개 다시 필요`
+        : `${done}/${total} 완료`,
+    photoIngestProgressRetry: "다시",
+    photoIngestDropHint: "사진·동영상을 여기에 놓으면 흔적으로 남겨요",
+    photoIngestPartialSuccess: (ok: number, failed: number) =>
+      `${ok}개 남겼어요 · ${failed}개는 다시 시도해 주세요`,
     ingestDefaultPlaceholder: "장소 · 메모 · @중고 · @길찾기",
     ingestDiscoveryPlaceholder: "이 근처 · @중고 둘러보기 · @길찾기",
     ingestDiscoveryNoTrace: "밖 지구에서는 흔적을 남길 수 없어요",

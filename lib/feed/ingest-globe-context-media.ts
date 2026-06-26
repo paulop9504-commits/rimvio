@@ -38,11 +38,21 @@ import { patchMediaSpacetimeOriginRef, saveMediaSpacetimeContext } from "@/lib/l
 import type { MediaSpacetimeContext } from "@/lib/location-ping/types";
 import { readPlanContextFromEvent } from "@/lib/plan-context/plan-context-metadata";
 import { sortMediaFilesByCaptureTime } from "@/lib/feed/sort-media-files-by-capture-time";
+import { mapWithConcurrency } from "@/lib/async/map-with-concurrency";
+import {
+  resolveGlobeMediaClusterCommitConcurrency,
+  resolveGlobeMediaForceAttachConcurrency,
+} from "@/lib/globe/globe-media-ingest-limits";
 import { shouldStageMediaToPool } from "@/lib/media-pool/is-media-pool-candidate";
 import {
   MEDIA_POOL_ORIGIN_REF,
   MEDIA_POOL_RETENTION_MS,
 } from "@/lib/media-pool/media-pool-constants";
+
+export type GlobeMediaIngestProgressEvent =
+  | { phase: "committing"; fileIndex: number }
+  | { phase: "done"; fileIndex: number }
+  | { phase: "error"; fileIndex: number; message: string };
 
 export const GLOBE_CONTEXT_MEDIA_ACCEPT = "image/*,video/*";
 
@@ -628,6 +638,7 @@ export async function commitPreparedGlobeMediaClusters(input: {
   forceAttachToHint?: boolean;
   userConfirmedContext?: boolean;
   onProgress?: (done: number, total: number) => void;
+  onFileIndexProgress?: (event: GlobeMediaIngestProgressEvent) => void;
   onFilePrepare?: (message: string) => void;
 }): Promise<{
   outcomes: GlobeContextMediaIngestResult[];
@@ -656,12 +667,31 @@ export async function commitPreparedGlobeMediaClusters(input: {
   let progress = 0;
   let lastError: string | null = null;
   await boostGpsPingForUploadBatch();
-  for (const cluster of input.clusters) {
+
+  const bumpProgress = () => {
+    progress += 1;
+    input.onProgress?.(progress, total);
+  };
+
+  const commitCluster = async (cluster: BulkMediaSpacetimeCluster) => {
     const clusterHint = buildBulkClusterHint(cluster);
     let clusterEventId: string | null = null;
+    const clusterOutcomes: GlobeContextMediaIngestResult[] = [];
+    const clusterCounters = {
+      attached: 0,
+      separated: 0,
+      exifPinned: 0,
+      poolStaged: 0,
+      pinsCreated: 0,
+      pinEventsSeen: new Set<string>(),
+      lastEventId: null as string | null,
+    };
+    let clusterFailed = 0;
+    let clusterLastError: string | null = null;
 
     for (const fileIndex of cluster.indices) {
       try {
+        input.onFileIndexProgress?.({ phase: "committing", fileIndex });
         const outcome = await ingestGlobeContextMedia({
           file: input.mediaFiles[fileIndex]!,
           hintEventId: clusterEventId ?? input.hintEventId,
@@ -674,16 +704,63 @@ export async function commitPreparedGlobeMediaClusters(input: {
           skipGpsBoost: true,
           onFilePrepare: input.onFilePrepare,
         });
-        recordBulkOutcome({ outcome, outcomes, counters });
+        recordBulkOutcome({
+          outcome,
+          outcomes: clusterOutcomes,
+          counters: clusterCounters,
+        });
+        input.onFileIndexProgress?.({ phase: "done", fileIndex });
         if (!clusterEventId && !outcome.stagedToPool) {
           clusterEventId = outcome.result.event.id;
         }
       } catch (caught) {
-        failed += 1;
-        lastError = readIngestErrorMessage(caught);
+        clusterFailed += 1;
+        clusterLastError = readIngestErrorMessage(caught);
+        input.onFileIndexProgress?.({
+          phase: "error",
+          fileIndex,
+          message: clusterLastError,
+        });
       }
-      progress += 1;
-      input.onProgress?.(progress, total);
+      bumpProgress();
+    }
+
+    return {
+      clusterOutcomes,
+      clusterCounters,
+      clusterFailed,
+      clusterLastError,
+    };
+  };
+
+  const clusterConcurrency = resolveGlobeMediaClusterCommitConcurrency();
+  const clusterResults =
+    input.clusters.length <= 1 || clusterConcurrency <= 1
+      ? await (async () => {
+          const rows = [];
+          for (const cluster of input.clusters) {
+            rows.push(await commitCluster(cluster));
+          }
+          return rows;
+        })()
+      : await mapWithConcurrency(input.clusters, clusterConcurrency, commitCluster);
+
+  for (const row of clusterResults) {
+    outcomes.push(...row.clusterOutcomes);
+    failed += row.clusterFailed;
+    if (row.clusterLastError) {
+      lastError = row.clusterLastError;
+    }
+    counters.attached += row.clusterCounters.attached;
+    counters.separated += row.clusterCounters.separated;
+    counters.exifPinned += row.clusterCounters.exifPinned;
+    counters.poolStaged += row.clusterCounters.poolStaged;
+    counters.pinsCreated += row.clusterCounters.pinsCreated;
+    for (const eventId of row.clusterCounters.pinEventsSeen) {
+      counters.pinEventsSeen.add(eventId);
+    }
+    if (row.clusterCounters.lastEventId) {
+      counters.lastEventId = row.clusterCounters.lastEventId;
     }
   }
 
@@ -705,6 +782,7 @@ async function ingestGlobeContextMediaBulkClustered(input: {
   hintEventId?: string | null;
   hintTitle?: string | null;
   onProgress?: (done: number, total: number) => void;
+  onFileIndexProgress?: (event: GlobeMediaIngestProgressEvent) => void;
   onFilePrepare?: (message: string) => void;
 }): Promise<{
   outcomes: GlobeContextMediaIngestResult[];
@@ -737,6 +815,7 @@ async function ingestGlobeContextMediaBulkClustered(input: {
     hintEventId: input.hintEventId,
     hintTitle: input.hintTitle,
     onProgress: input.onProgress,
+    onFileIndexProgress: input.onFileIndexProgress,
     onFilePrepare: input.onFilePrepare,
   });
 }
@@ -748,6 +827,7 @@ export async function ingestGlobeContextMediaBulk(input: {
   hintTitle?: string | null;
   forceAttachToHint?: boolean;
   onProgress?: (done: number, total: number) => void;
+  onFileIndexProgress?: (event: GlobeMediaIngestProgressEvent) => void;
   onFilePrepare?: (message: string) => void;
 }): Promise<
   GlobeBulkMediaIngestSummary & { outcomes: GlobeContextMediaIngestResult[] }
@@ -763,6 +843,7 @@ export async function ingestGlobeContextMediaBulk(input: {
       hintEventId: input.hintEventId,
       hintTitle: input.hintTitle,
       onProgress: input.onProgress,
+      onFileIndexProgress: input.onFileIndexProgress,
       onFilePrepare: input.onFilePrepare,
     });
     const succeeded = clustered.outcomes.length;
@@ -809,16 +890,50 @@ export async function ingestGlobeContextMediaBulk(input: {
   let lastError: string | null = null;
   const pinEventsSeen = new Set<string>();
 
-  for (let index = 0; index < mediaFiles.length; index += 1) {
+  const forceParallel =
+    input.forceAttachToHint === true && Boolean(input.hintEventId?.trim());
+
+  const ingestOne = async (file: File, index: number) => {
     try {
+      input.onFileIndexProgress?.({ phase: "committing", fileIndex: index });
       const outcome = await ingestGlobeContextMedia({
-        file: mediaFiles[index]!,
+        file,
         hintEventId: input.hintEventId,
         hintTitle: input.hintTitle,
         forceAttachToHint: input.forceAttachToHint,
         userConfirmedContext: input.forceAttachToHint === true,
         onFilePrepare: input.onFilePrepare,
       });
+      input.onFileIndexProgress?.({ phase: "done", fileIndex: index });
+      return { ok: true as const, outcome, index };
+    } catch (caught) {
+      const message = readIngestErrorMessage(caught);
+      input.onFileIndexProgress?.({
+        phase: "error",
+        fileIndex: index,
+        message,
+      });
+      return { ok: false as const, message, index };
+    }
+  };
+
+  if (forceParallel && mediaFiles.length > 1) {
+    await boostGpsPingForUploadBatch();
+    const concurrency = resolveGlobeMediaForceAttachConcurrency();
+    const results = await mapWithConcurrency(
+      mediaFiles,
+      concurrency,
+      ingestOne,
+    );
+    results.sort((left, right) => left.index - right.index);
+    for (const row of results) {
+      if (!row.ok) {
+        failed += 1;
+        lastError = row.message;
+        input.onProgress?.(row.index + 1, total);
+        continue;
+      }
+      const outcome = row.outcome;
       outcomes.push(outcome);
       if (outcome.stagedToPool) {
         poolStaged += 1;
@@ -837,11 +952,38 @@ export async function ingestGlobeContextMediaBulk(input: {
         pinEventsSeen.add(outcome.result.event.id);
         pinsCreated += 1;
       }
-    } catch (caught) {
-      failed += 1;
-      lastError = readIngestErrorMessage(caught);
+      input.onProgress?.(row.index + 1, total);
     }
-    input.onProgress?.(index + 1, total);
+  } else {
+    for (let index = 0; index < mediaFiles.length; index += 1) {
+      const row = await ingestOne(mediaFiles[index]!, index);
+      if (!row.ok) {
+        failed += 1;
+        lastError = row.message;
+        input.onProgress?.(index + 1, total);
+        continue;
+      }
+      const outcome = row.outcome;
+      outcomes.push(outcome);
+      if (outcome.stagedToPool) {
+        poolStaged += 1;
+      } else {
+        lastEventId = outcome.result.event.id;
+      }
+      if (outcome.attachedToHintedEvent) {
+        attached += 1;
+      } else if (outcome.separated) {
+        separated += 1;
+      }
+      if (outcome.exifAutoPinned) {
+        exifPinned += 1;
+      }
+      if (outcome.pinCreated && !pinEventsSeen.has(outcome.result.event.id)) {
+        pinEventsSeen.add(outcome.result.event.id);
+        pinsCreated += 1;
+      }
+      input.onProgress?.(index + 1, total);
+    }
   }
 
   const succeeded = outcomes.length;

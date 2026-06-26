@@ -52,6 +52,9 @@ export type GlobePhotoPlaceWalkthroughProps = {
   className?: string;
   onDismiss: () => void;
   onCommitProgress?: (done: number, total: number) => void;
+  onCommitFileIndexProgress?: (
+    event: import("@/lib/feed/ingest-globe-context-media").GlobeMediaIngestProgressEvent,
+  ) => void;
   onConfirmed?: (input: {
     eventId: string | null;
     toastLine: string;
@@ -164,6 +167,7 @@ export function GlobePhotoPlaceWalkthrough({
   className,
   onDismiss,
   onCommitProgress,
+  onCommitFileIndexProgress,
   onConfirmed,
 }: GlobePhotoPlaceWalkthroughProps) {
   const { user, configured } = useAuth();
@@ -297,7 +301,30 @@ export function GlobePhotoPlaceWalkthrough({
         onProgress: (done, total) => {
           onCommitProgress?.(done, total);
         },
+        onFileIndexProgress: (event) => {
+          onCommitFileIndexProgress?.(event);
+        },
       });
+
+      if (summary.succeeded === 0) {
+        const line =
+          summary.lastError?.trim() ||
+          summary.toastLine ||
+          copy.globe.photoWalkthroughCommitFail;
+        toast.error(line);
+        onConfirmed?.({
+          eventId: null,
+          toastLine: line,
+          ok: false,
+        });
+        return;
+      }
+
+      if (summary.failed > 0) {
+        toast.message(
+          copy.globe.photoIngestPartialSuccess(summary.succeeded, summary.failed),
+        );
+      }
 
       if (!summary.lastEventId) {
         const line =
@@ -348,7 +375,7 @@ export function GlobePhotoPlaceWalkthrough({
         needsPlaceVerify,
       });
     },
-    [attachTarget, goToSharePeopleStep, onCommitProgress, onConfirmed, onDismiss],
+    [attachTarget, goToSharePeopleStep, onCommitFileIndexProgress, onCommitProgress, onConfirmed, onDismiss],
   );
 
   const handleCaseAConfirm = useCallback(async () => {

@@ -3,6 +3,7 @@
 import type { GlobePhotoIngestDraft } from "@/lib/globe/prepare-globe-photo-ingest-draft";
 import { commitPreparedGlobeMediaClusters } from "@/lib/feed/ingest-globe-context-media";
 import type { GlobeBulkMediaIngestSummary } from "@/lib/feed/ingest-globe-context-media";
+import type { GlobeMediaIngestProgressEvent } from "@/lib/feed/ingest-globe-context-media";
 
 function buildBulkToastFromCommit(input: {
   total: number;
@@ -62,6 +63,7 @@ export async function commitGlobePhotoIngestDraft(
     hintTitle?: string | null;
     forceAttachToHint?: boolean;
     onProgress?: (done: number, total: number) => void;
+    onFileIndexProgress?: (event: GlobeMediaIngestProgressEvent) => void;
     onFilePrepare?: (message: string) => void;
   },
 ): Promise<GlobeBulkMediaIngestSummary> {
@@ -73,6 +75,7 @@ export async function commitGlobePhotoIngestDraft(
     forceAttachToHint: input?.forceAttachToHint,
     userConfirmedContext: true,
     onProgress: input?.onProgress,
+    onFileIndexProgress: input?.onFileIndexProgress,
     onFilePrepare: input?.onFilePrepare,
   });
   const contextOutcomes = committed.outcomes.filter((row) => !row.stagedToPool);

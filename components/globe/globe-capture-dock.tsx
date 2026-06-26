@@ -25,6 +25,11 @@ export type GlobeCaptureDockProps = {
     } | null;
     onDismiss: () => void;
     onCommitProgress?: (done: number, total: number) => void;
+    onCommitFileIndexProgress?: (
+      event: import("@/lib/feed/ingest-globe-context-media").GlobeMediaIngestProgressEvent,
+    ) => void;
+    onRetryFile?: (fileIndex: number) => void;
+    retryingFileIndex?: number | null;
     onConfirmed: (input: {
       eventId: string | null;
       toastLine: string;
@@ -76,12 +81,15 @@ export const GlobeCaptureDock = forwardRef<GlobeContextIngestBarHandle, GlobeCap
               className="pointer-events-auto w-full max-w-[360px]"
               onDismiss={photoFlow.onDismiss}
               onCommitProgress={photoFlow.onCommitProgress}
+              onCommitFileIndexProgress={photoFlow.onCommitFileIndexProgress}
               onConfirmed={photoFlow.onConfirmed}
             />
             {photoFlow.fileProgress && photoFlow.fileProgress.length > 0 ? (
               <GlobePhotoIngestProgressStrip
                 items={photoFlow.fileProgress}
                 className="pointer-events-auto"
+                onRetryFile={photoFlow.onRetryFile}
+                retryingIndex={photoFlow.retryingFileIndex}
               />
             ) : null}
           </div>

@@ -698,6 +698,14 @@ export const copyEn: Copy = {
     photoIngestProgressCommitting: (name: string, index: number, total: number) =>
       `${index}/${total} · saving ${name}`,
     photoIngestProgressReady: (total: number) => `${total} items ready`,
+    photoIngestProgressSummary: (done: number, total: number, failed: number) =>
+      failed > 0
+        ? `${done}/${total} done · ${failed} need retry`
+        : `${done}/${total} done`,
+    photoIngestProgressRetry: "Retry",
+    photoIngestDropHint: "Drop photos or video here to save a trace",
+    photoIngestPartialSuccess: (ok: number, failed: number) =>
+      `Saved ${ok} · retry ${failed}`,
     ingestDefaultPlaceholder: "Place · memo · @market · @navigate",
     ingestDiscoveryPlaceholder: "Nearby · browse @market · @navigate",
     ingestDiscoveryNoTrace: "You can't leave traces on the outer globe",

@@ -105,13 +105,19 @@ import {
   MEDIA_SPACETIME_UPDATED,
 } from "@/lib/location-ping/media-context-store";
 import { GLOBE_CONTEXT_MEDIA_ACCEPT } from "@/lib/feed/ingest-globe-context-media";
+import type { GlobeMediaIngestProgressEvent } from "@/lib/feed/ingest-globe-context-media";
 import { prepareGlobePhotoIngestDraft } from "@/lib/globe/prepare-globe-photo-ingest-draft";
 import {
   buildPhotoIngestFileItems,
+  markPhotoIngestFileCommitting,
+  markPhotoIngestFileDone,
+  markPhotoIngestFileError,
   patchPhotoIngestFileItem,
   revokePhotoIngestPreviewUrls,
   type PhotoIngestFileItem,
 } from "@/lib/globe/photo-ingest-file-progress";
+import { retryGlobePhotoIngestFile } from "@/lib/globe/retry-globe-photo-ingest-file";
+import { validateIngestMediaFiles } from "@/lib/globe/validate-ingest-media-files";
 import type { GlobePhotoIngestDraft } from "@/lib/globe/prepare-globe-photo-ingest-draft";
 import { copy } from "@/lib/copy/human-ko";
 import { resolveRimvioHonorific } from "@/lib/copy/rimvio-honorific";
@@ -281,6 +287,9 @@ function GlobeHomeBody() {
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [photoFileProgress, setPhotoFileProgress] = useState<PhotoIngestFileItem[]>([]);
   const photoFileProgressRef = useRef<PhotoIngestFileItem[]>([]);
+  const [photoRetryingIndex, setPhotoRetryingIndex] = useState<number | null>(null);
+  const [photoDropActive, setPhotoDropActive] = useState(false);
+  const photoDropDepthRef = useRef(0);
   const createPhotoRef = useRef<HTMLInputElement>(null);
   const [listOpen, setListOpen] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
@@ -1101,14 +1110,18 @@ function GlobeHomeBody() {
     try {
       const draft = await prepareGlobePhotoIngestDraft(files, {
         onFileStart: (index) => {
-          setPhotoFileProgress((rows) =>
-            patchPhotoIngestFileItem(rows, index, { status: "reading" }),
-          );
+          setPhotoFileProgress((rows) => {
+            const next = patchPhotoIngestFileItem(rows, index, { status: "reading" });
+            photoFileProgressRef.current = next;
+            return next;
+          });
         },
         onFileReady: (index) => {
-          setPhotoFileProgress((rows) =>
-            patchPhotoIngestFileItem(rows, index, { status: "ready" }),
-          );
+          setPhotoFileProgress((rows) => {
+            const next = patchPhotoIngestFileItem(rows, index, { status: "ready" });
+            photoFileProgressRef.current = next;
+            return next;
+          });
         },
       });
       if (!draft) {
@@ -1143,11 +1156,98 @@ function GlobeHomeBody() {
     revokePhotoIngestPreviewUrls(photoFileProgressRef.current);
     photoFileProgressRef.current = [];
     setPhotoFileProgress([]);
+    setPhotoRetryingIndex(null);
     setConfirmOpen(false);
     setConfirmDraft(null);
     setConfirmError(null);
     setConfirmPreparing(false);
   }, []);
+
+  const handleCommitFileIndexProgress = useCallback(
+    (event: GlobeMediaIngestProgressEvent) => {
+      setPhotoFileProgress((rows) => {
+        let next = rows;
+        if (event.phase === "committing") {
+          next = markPhotoIngestFileCommitting(rows, event.fileIndex);
+        } else if (event.phase === "done") {
+          next = markPhotoIngestFileDone(rows, event.fileIndex);
+        } else {
+          next = markPhotoIngestFileError(rows, event.fileIndex, event.message);
+        }
+        photoFileProgressRef.current = next;
+        return next;
+      });
+    },
+    [],
+  );
+
+  const handleRetryPhotoFile = useCallback(
+    async (fileIndex: number) => {
+      if (!confirmDraft || photoRetryingIndex !== null) {
+        return;
+      }
+      setPhotoRetryingIndex(fileIndex);
+      setPhotoFileProgress((rows) => {
+        const next = markPhotoIngestFileCommitting(rows, fileIndex);
+        photoFileProgressRef.current = next;
+        return next;
+      });
+      try {
+        const result = await retryGlobePhotoIngestFile({
+          draft: confirmDraft,
+          fileIndex,
+          hintEventId: activeCluster?.eventId ?? null,
+          hintTitle: activeCluster?.title ?? null,
+          forceAttachToHint: Boolean(activeCluster?.eventId),
+        });
+        setPhotoFileProgress((rows) => {
+          const next = result.error
+            ? markPhotoIngestFileError(rows, fileIndex, result.error)
+            : markPhotoIngestFileDone(rows, fileIndex);
+          photoFileProgressRef.current = next;
+          return next;
+        });
+        if (result.error) {
+          toast.error(result.error);
+          return;
+        }
+        if (result.eventId) {
+          setMediaStoreRevision((value) => value + 1);
+          void focusContextOnMap(result.eventId);
+        }
+        toast.success(copy.globe.memoriesFootprintSaved(rimvioHonorific));
+      } finally {
+        setPhotoRetryingIndex(null);
+      }
+    },
+    [
+      activeCluster?.eventId,
+      activeCluster?.title,
+      confirmDraft,
+      focusContextOnMap,
+      photoRetryingIndex,
+      rimvioHonorific,
+    ],
+  );
+
+  const ingestDroppedMediaFiles = useCallback(
+    (fileList: FileList | DataTransferItemList | readonly File[]) => {
+      const raw =
+        fileList instanceof DataTransferItemList
+          ? Array.from(fileList)
+              .filter((item) => item.kind === "file")
+              .map((item) => item.getAsFile())
+              .filter((file): file is File => file instanceof File)
+          : Array.from(fileList as Iterable<File>);
+      const validated = validateIngestMediaFiles(raw);
+      if (!validated.ok) {
+        toast.error(validated.message);
+        return;
+      }
+      void beginPhotoIngestFlow(validated.files);
+    },
+    [beginPhotoIngestFlow],
+  );
 
   useEffect(() => {
     return subscribeGlobePhotoIngest((files) => {
@@ -1357,7 +1457,57 @@ function GlobeHomeBody() {
   }, []);
 
   return (
-    <div className="relative flex h-full min-h-0 flex-1 flex-col">
+    <div
+      className="relative flex h-full min-h-0 flex-1 flex-col"
+      onDragEnter={(event) => {
+        if (layerMode === "discovery" || confirmOpen) {
+          return;
+        }
+        if (!event.dataTransfer.types.includes("Files")) {
+          return;
+        }
+        event.preventDefault();
+        photoDropDepthRef.current += 1;
+        setPhotoDropActive(true);
+      }}
+      onDragLeave={() => {
+        photoDropDepthRef.current = Math.max(0, photoDropDepthRef.current - 1);
+        if (photoDropDepthRef.current === 0) {
+          setPhotoDropActive(false);
+        }
+      }}
+      onDragOver={(event) => {
+        if (layerMode === "discovery" || confirmOpen) {
+          return;
+        }
+        if (!event.dataTransfer.types.includes("Files")) {
+          return;
+        }
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "copy";
+      }}
+      onDrop={(event) => {
+        photoDropDepthRef.current = 0;
+        setPhotoDropActive(false);
+        if (layerMode === "discovery" || confirmOpen) {
+          return;
+        }
+        event.preventDefault();
+        if (event.dataTransfer.files?.length) {
+          ingestDroppedMediaFiles(event.dataTransfer.files);
+        }
+      }}
+    >
+      {photoDropActive ? (
+        <div
+          className="pointer-events-none absolute inset-3 z-[28] flex items-center justify-center rounded-[1.75rem] border-2 border-dashed border-primary/55 bg-primary/8 backdrop-blur-[2px]"
+          data-globe-photo-drop-target
+        >
+          <p className="rounded-full bg-white/92 px-4 py-2 text-[13px] font-semibold text-foreground shadow-sm">
+            {copy.globe.photoIngestDropHint}
+          </p>
+        </div>
+      ) : null}
       <RimvioGlobeHubClient
         globeRef={globeRef}
         className="h-full min-h-0 flex-1"
@@ -1590,6 +1740,9 @@ function GlobeHomeBody() {
           onCommitProgress: (done, total) => {
             setPhotoFileProgress((rows) => {
               const next = rows.map((row, index) => {
+                if (row.status === "error") {
+                  return row;
+                }
                 if (index < done) {
                   return { ...row, status: "done" as const };
                 }
@@ -1602,12 +1755,22 @@ function GlobeHomeBody() {
               return next;
             });
           },
+          onCommitFileIndexProgress: handleCommitFileIndexProgress,
+          onRetryFile: (fileIndex) => {
+            void handleRetryPhotoFile(fileIndex);
+          },
+          retryingFileIndex: photoRetryingIndex,
           onConfirmed: ({ eventId, toastLine, needsPlaceVerify, ok = true }) => {
             if (ok === false) {
               toast.error(toastLine);
               return;
             }
-            resetPhotoIngestFlow();
+            const hasRetryableErrors = photoFileProgressRef.current.some(
+              (row) => row.status === "error",
+            );
+            if (!hasRetryableErrors) {
+              resetPhotoIngestFlow();
+            }
             setMediaStoreRevision((value) => value + 1);
             toast.success(copy.globe.memoriesFootprintSaved(rimvioHonorific));
             if (eventId) {
