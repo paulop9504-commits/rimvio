@@ -37,7 +37,8 @@ function shouldSilentlyResolve(eventId: string): boolean {
     typeof meta.gpsDwellLat === "number" &&
     typeof meta.gpsDwellLng === "number"
   ) {
-    const parentId = meta.containerId?.trim();
+    const containerIdRaw = meta.containerId;
+    const parentId = typeof containerIdRaw === "string" ? containerIdRaw.trim() : "";
     if (parentId && findLifeEventCandidate(parentId)) {
       return true;
     }

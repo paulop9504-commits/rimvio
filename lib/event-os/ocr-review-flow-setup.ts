@@ -9,7 +9,7 @@ import { resetReviewExecutionQueueForTests } from "@/lib/event-os/review-executi
 import { resetProofPersistStoreForTests } from "@/lib/event-os/runtime/proof-persist-store";
 import { eventOSOrchestrator } from "@/lib/event-os/runtime/event-os-orchestrator";
 import { resetEventCandidatesForTests } from "@/lib/events/event-store";
-import { orchestrateOcrScheduleCandidates } from "@/lib/events/orchestrate-ocr-schedule-candidates";
+import { orchestrateOcrScheduleCandidates } from "@/lib/event-kernel/review/orchestrate-ocr-schedule-candidates";
 
 export const DEFAULT_OCR_REVIEW_BLOCK = `[첨부1·사진] schedule.png
 [첨부1·OCR본문]

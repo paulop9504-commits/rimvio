@@ -17,6 +17,7 @@ import { buildCommerceAwareRankingContextKey } from "@/lib/feed/build-commerce-a
 import { markFirstActionSuccess } from "@/lib/platform/pwa-install-nudge";
 import { recordActionTrustSuccess } from "@/lib/preferences/action-trust";
 import type { SurfaceLinkTelemetrySurface } from "@/lib/archive/record-surface-link-telemetry";
+import type { ScheduleMedium } from "@/lib/preferences/schedule-medium";
 import type { LinkActionItem, LinkRow } from "@/types/database";
 import { toast } from "sonner";
 

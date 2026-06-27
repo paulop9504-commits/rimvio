@@ -233,7 +233,7 @@ export function projectFeedRecipeSlots(
     return null;
   }
 
-  const slots = recipe.slots.map((kind) => projectSlot(kind, input)) as FeedRecipeProjection["slots"];
+  const slots = recipe.slots.map((kind) => projectSlot(kind, input)) as unknown as FeedRecipeProjection["slots"];
 
   return {
     intent,

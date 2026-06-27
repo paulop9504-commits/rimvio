@@ -104,7 +104,7 @@ export function surfacesToOverlayRows(
     const overlayActions: CalendarOverlayAction[] = [
       surfaceActionToOverlay(surface.primaryAction, "MAIN"),
       ...surface.secondaryActions
-        .filter((a) => a.intent !== "dismiss_surface")
+        .filter((a) => a.capabilityId !== "DISMISS_SURFACE")
         .slice(0, 3)
         .map((a) => surfaceActionToOverlay(a, "AUX")),
     ];

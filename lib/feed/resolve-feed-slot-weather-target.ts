@@ -10,7 +10,7 @@ import {
   resolvePlanWeatherTarget,
   type PlanWeatherTarget,
 } from "@/lib/plan-context/resolve-plan-weather-target";
-import type { RankedSurface } from "@/lib/surface-engine/surface-contract";
+import type { RankedSurface } from "@/lib/experience-intent/feed-surface-wire";
 
 function weatherPrepEnabledForEvent(event: EventCandidate): boolean {
   const eventType = resolveExperienceEventType(event);

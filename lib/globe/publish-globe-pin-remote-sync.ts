@@ -34,6 +34,7 @@ export async function tryPublishGlobePinVisibilityRemote(
       {
         user_id: userId,
         ...row,
+        pin: row.pin as unknown as import("@/types/database").Json,
       },
       { onConflict: "user_id,event_id" },
     );

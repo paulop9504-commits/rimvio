@@ -30,7 +30,7 @@ export function parseStorageGb(
 
 /** Snap arbitrary GB to nearest standard phone tier (for fuzzy labels). */
 export function normalizeStorageTierGb(gb: number): number {
-  let best = MARKET_PHONE_STORAGE_TIERS_GB[0]!;
+  let best: MarketPhoneStorageTierGb = MARKET_PHONE_STORAGE_TIERS_GB[0];
   let bestDelta = Math.abs(gb - best);
   for (const tier of MARKET_PHONE_STORAGE_TIERS_GB) {
     const delta = Math.abs(gb - tier);

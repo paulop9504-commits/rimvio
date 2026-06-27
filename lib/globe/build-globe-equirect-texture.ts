@@ -141,7 +141,7 @@ export async function buildGlobeEquirectTextureUrl(
     throw new Error("canvas_context_unavailable");
   }
   outputCtx.putImageData(
-    new ImageData(equirect, outputWidth, outputHeight),
+    new ImageData(new Uint8ClampedArray(equirect), outputWidth, outputHeight),
     0,
     0,
   );

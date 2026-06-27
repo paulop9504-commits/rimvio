@@ -48,7 +48,7 @@ export function buildGlobalBrainContextBlock(input: {
     remaining_schedule: input.snapshot.remainingSchedule,
     sentinel_tasks: input.snapshot.sentinelTasks,
     user_goals: input.snapshot.userGoals.slice(0, 5).map((goal) => ({
-      title: goal.title,
+      title: goal.label,
       kind: goal.kind,
     })),
     user_status: input.snapshot.userStatus

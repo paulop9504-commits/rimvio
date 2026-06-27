@@ -1,5 +1,7 @@
 /** Experience compressed to one globe pin — Constitution V2 SSOT. */
 
+export type PinClusterOrigin = "personal" | "external";
+
 export type PinClusterEvidence = {
   photoCount: number;
   videoCount: number;

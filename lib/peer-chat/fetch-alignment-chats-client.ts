@@ -15,8 +15,7 @@ export async function fetchAlignmentChatsRemote(): Promise<{
 }> {
   const response = await fetchWithTimeout(
     `${resolveAppOrigin()}/api/peers/alignment-chats`,
-    { credentials: "include" },
-    12_000,
+    { credentials: "include", timeoutMs: 12_000 },
   );
   return parseJson(response);
 }

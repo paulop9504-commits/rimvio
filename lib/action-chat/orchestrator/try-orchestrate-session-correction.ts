@@ -69,7 +69,6 @@ export function tryOrchestrateSessionCorrection(input: {
         action_id: "NAVIGATE",
         params: { dest: target },
         fallback_url: "https://map.naver.com",
-        updatedAt: new Date().toISOString(),
       },
       scopeId
     );

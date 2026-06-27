@@ -223,7 +223,7 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
     }
     const userId = `u-${Date.now()}`;
     const assistantId = `a-${Date.now()}`;
-    const scope = isPersonal ? "personal" : "discovery";
+    const scope: AskMessage["scope"] = isPersonal ? "personal" : "discovery";
 
     setMessages((prev) => [
       ...prev,

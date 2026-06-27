@@ -3,9 +3,9 @@ import type {
   EventCandidateCategory,
   EventCandidateLifecycle,
 } from "@/lib/events/event-candidate";
-import { FEED_CAPTURES_META_KEY } from "@/lib/feed/feed-capture-types";
+import { FEED_CAPTURES_META_KEY } from "@/lib/events/event-metadata-keys";
 import { isArchiveFoldComplete } from "@/lib/events/fold-archived-event";
-import { LOCKED_LIFECYCLE_ORDER } from "@/lib/event-kernel/schema-lock/mutation-rules";
+import { LOCKED_LIFECYCLE_ORDER } from "@/lib/events/schema-lock/mutation-rules";
 
 export const ACTIVE_WINDOW_MS = 60 * 60 * 1000;
 export const ARCHIVE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;

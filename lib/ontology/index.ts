@@ -1,14 +1,11 @@
-export {
-  projectPendingNotifications,
-  groupNotificationsBySection,
-} from "@/lib/ontology/notifications/project-pending-notifications";
 export type {
-  RimvioNotification,
-  RimvioNotificationKind,
-  RimvioNotificationSection,
-  RimvioNotificationStatus,
-  RimvioNotificationTargetKind,
-} from "@/lib/ontology/notifications/types";
+  BridgeNode,
+  CaptureNode,
+  ExperienceNode,
+  ExperienceSubgraph,
+  OntologyObjectKind,
+} from "@/lib/ontology/nodes/types";
+
 export {
   bridgeInviteNotificationId,
   locationConfirmNotificationId,
@@ -21,31 +18,16 @@ export {
   resetNotificationStoreForTests,
 } from "@/lib/ontology/notifications/notification-store";
 
-export {
-  projectExperienceNode,
-  projectCaptureNodes,
-  projectBridgeNode,
-  projectExperienceSubgraph,
-} from "@/lib/ontology/nodes/project-experience-subgraph";
-export type {
-  BridgeNode,
-  CaptureNode,
-  ExperienceNode,
-  ExperienceSubgraph,
-  OntologyObjectKind,
-} from "@/lib/ontology/nodes/types";
-
-export {
-  getActionTypeRankWeightForHubService,
-  getHubActionTypeForService,
-  getRimvioActionType,
-  listRimvioActionTypes,
-  resolveActionTypeIdForHubService,
-  resolveActionTypeIdForMentionFeature,
-  resolveActionTypeIdForSemanticHint,
-} from "@/lib/ontology/actions/action-type-registry";
 export type {
   RimvioActionFamily,
   RimvioActionType,
   RimvioActionTypeId,
 } from "@/lib/ontology/actions/types";
+
+export type { ContextHubServiceId } from "@/lib/ontology/context-hub-service-id";
+export type { FeedCaptureKind, FeedCaptureFragment } from "@/lib/ontology/feed-capture-wire";
+export {
+  EXPERIENCE_BRIDGE_MAX_PARTICIPANTS,
+  EXPERIENCE_BRIDGE_META_KEYS,
+} from "@/lib/ontology/experience-bridge-meta-keys";
+export { isBridgeSharedEvent } from "@/lib/ontology/is-bridge-shared-event";

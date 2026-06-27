@@ -5,8 +5,8 @@ import { applyPendingEventCandidateDatePatches } from "../lib/event-kernel/revie
 import { executeApprovePendingEvents } from "../lib/event-kernel/review/execute-approve-pending-events";
 import { getReviewState, resetReviewStateForTests } from "../lib/event-kernel/review/review-state";
 import { resetPendingEventCandidatesForTests } from "../lib/event-kernel/review/pending-event-candidate-store";
-import { orchestrateOcrScheduleCandidates } from "../lib/events/orchestrate-ocr-schedule-candidates";
-import { orchestrateEventReviewApproval } from "../lib/events/orchestrate-event-review-approval";
+import { orchestrateOcrScheduleCandidates } from "../lib/event-kernel/review/orchestrate-ocr-schedule-candidates";
+import { orchestrateEventReviewApproval } from "../lib/event-kernel/review/orchestrate-event-review-approval";
 import {
   readEventCandidatesRaw,
   resetEventCandidatesForTests,

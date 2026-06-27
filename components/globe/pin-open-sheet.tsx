@@ -18,6 +18,7 @@ import { GlobeContextMediaShortsReel } from "@/components/globe/globe-context-me
 import { ExperienceBridgeMediaShell, type BridgeMediaArrivalHint } from "@/components/globe/experience-bridge-media-shell";
 import { BridgeContextPanel } from "@/components/globe/bridge-context-panel";
 import { BridgePinSheetFooter } from "@/components/globe/bridge-pin-sheet-footer";
+import { GlobeContextLineageChip } from "@/components/globe/globe-context-lineage-chip";
 import { GlobeMediaPoolSheet } from "@/components/globe/globe-media-pool-sheet";
 import { PinOpenMediaContextPager, PinOpenMediaContextPageTabs, type PinMediaContextPage } from "@/components/globe/pin-open-media-context-pager";
 import { patchExperiencePinContext } from "@/lib/globe/patch-experience-pin-context";
@@ -800,6 +801,12 @@ export function PinOpenSheet({
                     <p className={cn("mt-0.5 line-clamp-1", RIMVIO_TYPE.caption)}>
                       {hero.place}
                     </p>
+                  ) : null}
+                  {cluster?.eventId ? (
+                    <GlobeContextLineageChip
+                      eventId={cluster.eventId}
+                      className="mt-2"
+                    />
                   ) : null}
                 </div>
                 <PinOpenMediaContextPageTabs

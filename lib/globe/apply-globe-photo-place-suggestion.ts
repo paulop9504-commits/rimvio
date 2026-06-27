@@ -1,5 +1,6 @@
 "use client";
 
+import type { EventCandidate } from "@/lib/events/event-candidate";
 import { findEventCandidate } from "@/lib/events/event-store";
 import {
   readFeedCaptureFragments,
@@ -29,7 +30,7 @@ function patchCapturePlaceLabels(
   metadata: Record<string, unknown>,
   placeName: string,
 ): Record<string, unknown> {
-  const fragments = readFeedCaptureFragments({ metadata });
+  const fragments = readFeedCaptureFragments({ metadata } as EventCandidate);
   if (fragments.length === 0) {
     return metadata;
   }

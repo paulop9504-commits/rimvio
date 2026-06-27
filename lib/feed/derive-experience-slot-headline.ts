@@ -67,7 +67,7 @@ export function deriveExperienceSlotHeadline(input: {
     const dayLabel = plan.windowStartIso
       ? planDayLabelForMoment(
           plan.windowStartIso,
-          plan.windowEndIso,
+          plan.windowEndIso ?? null,
           event?.datetime ?? nowIso,
         )
       : null;

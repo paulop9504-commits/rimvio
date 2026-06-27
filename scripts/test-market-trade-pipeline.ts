@@ -7,6 +7,7 @@ import {
   isMarketListingReservedForOthers,
   isMarketTradePipelineActive,
   normalizeMarketTradeStatus,
+  shouldIncludeInActiveMarketTradeList,
 } from "../lib/globe/market/market-trade-pipeline";
 import type { MarketTradeSessionView } from "../lib/globe/market/market-trade-types";
 import type { OpportunityRow } from "../lib/globe/opportunity-field";
@@ -116,6 +117,49 @@ assert.equal(
 );
 assert.equal(isMarketListingReservedForOthers("seller_proposed"), false);
 assert.equal(isMarketListingReservedForOthers("confirmed"), true);
+
+assert.equal(
+  shouldIncludeInActiveMarketTradeList({
+    phase: "active",
+    tradeStatus: "chat",
+    schedulingExpiresAtIso: null,
+  }),
+  false,
+);
+assert.equal(
+  shouldIncludeInActiveMarketTradeList({
+    phase: "active",
+    tradeStatus: "scheduling",
+    schedulingExpiresAtIso: null,
+  }),
+  false,
+  "orphan scheduling excluded from active list",
+);
+assert.equal(
+  shouldIncludeInActiveMarketTradeList({
+    phase: "active",
+    tradeStatus: "scheduling",
+    schedulingExpiresAtIso: new Date(Date.now() + 3600_000).toISOString(),
+  }),
+  true,
+);
+assert.equal(
+  shouldIncludeInActiveMarketTradeList({
+    phase: "pending_listing",
+    tradeStatus: "confirmed",
+    schedulingExpiresAtIso: null,
+  }),
+  false,
+  "wrong handshake phase excluded",
+);
+assert.equal(
+  shouldIncludeInActiveMarketTradeList({
+    phase: "active",
+    tradeStatus: "completed",
+    schedulingExpiresAtIso: null,
+  }),
+  false,
+);
 
 const listingA = "listing-a";
 const seeking1 = "seeking-1";

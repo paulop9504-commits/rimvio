@@ -3,7 +3,8 @@ import type { EventKernelMemoryState } from "@/lib/event-kernel/memory/types";
 import { collectMemoryHints } from "@/lib/event-kernel/memory/collect-memory-hints";
 import { decideKernelIntent } from "@/lib/event-kernel/decide-kernel-intent";
 import type { EventKernelState } from "@/lib/event-kernel/types";
-import type { IntentRoutingDecision } from "@/lib/event-kernel/intent-routing-kernel/types";
+import type { IntentRoutingDecision, IntentRoutingIntent, IntentRoutingState } from "@/lib/event-kernel/intent-routing-kernel/types";
+import type { KernelFinalState } from "@/lib/event-kernel/intent-kernel-system/types";
 
 export type RouteIntentKernelInput = {
   message: string;
@@ -31,8 +32,8 @@ export function routeIntentKernel(input: RouteIntentKernelInput): IntentRoutingD
   });
 
   return {
-    intent: decision.intent,
-    state: decision.state === "DIRECT_ACTION" ? "QUERY" : decision.state,
+    intent: decision.intent as IntentRoutingIntent,
+    state: (decision.state === "DIRECT_ACTION" ? "QUERY" : decision.state) as IntentRoutingState,
     route: decision.route,
     confidence: decision.confidence,
     notes: decision.notes ?? "",

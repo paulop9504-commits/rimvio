@@ -1,4 +1,4 @@
-import { parseActionTargetDatetime } from "@/lib/action-chat/action-countdown";
+import { parseActionTargetDatetime } from "@/lib/schedule/parse-action-target-datetime";
 import type { CalendarChipTone, CalendarEventChip } from "@/lib/calendar/calendar-view-types";
 import { resolveCalendarScheduleOrigin } from "@/lib/calendar/resolve-calendar-schedule-origin";
 import type { EventCandidate } from "@/lib/events/event-candidate";
@@ -70,7 +70,7 @@ export function listEventCalendarRows(): EventCalendarRow[] {
         startAt: iso,
         startMs: parsed.getTime(),
         category: event.category,
-        sourceRef,
+        ...(sourceRef ? { sourceRef } : {}),
       };
     })
     .filter((row): row is EventCalendarRow => row !== null)

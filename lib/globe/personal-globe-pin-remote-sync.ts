@@ -52,7 +52,7 @@ export async function trySyncPersonalGlobePinsFromRemote(): Promise<PersonalGlob
         {
           user_id: userId,
           event_id: pin.eventId,
-          pin,
+          pin: pin as unknown as import("@/types/database").Json,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "user_id,event_id" },

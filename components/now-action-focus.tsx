@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import {
   Bell,
   Bookmark,
-  Copy,
+  Copy as CopyIcon,
   ExternalLink,
   Link2,
   MapPin,
@@ -60,7 +60,7 @@ const actionIcons: Record<LinkActionItem["kind"], LucideIcon> = {
   save: Bookmark,
   share: Share2,
   remind: Bell,
-  copy: Copy,
+  copy: CopyIcon,
   custom: Sparkles,
 };
 

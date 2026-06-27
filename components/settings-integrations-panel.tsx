@@ -374,7 +374,9 @@ export function SettingsIntegrationsPanel({
           onDisconnect={() => void disconnect(entry.id)}
           onSync={
             entry.id === "google_calendar" && isConnected(entry.id)
-              ? runGoogleCalendarSync
+              ? async () => {
+                  await runGoogleCalendarSync();
+                }
               : undefined
           }
           syncing={entry.id === "google_calendar" ? googleCalendarSyncing : false}

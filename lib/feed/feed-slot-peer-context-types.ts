@@ -22,9 +22,15 @@ export type FeedSlotPeerLookupRow = {
   emailLower?: string | null;
 };
 
+/** Minimal chat message wire for peer lookup — no orchestrator-types dependency. */
+export type FeedSlotPeerMessageWire = {
+  id: string;
+  feedPeerTalkThread?: { peerThreadId: string; displayName: string } | null;
+};
+
 export type FeedSlotPeerLookup = {
   /** Chat log — links calendar messageId → @톡 thread. */
-  messages: readonly { id: string; feedPeerTalkThread?: { peerThreadId: string; displayName: string } | null }[];
+  messages: readonly FeedSlotPeerMessageWire[];
   /** Friends with avatars (relationship feed slots). */
   peers: readonly FeedSlotPeerLookupRow[];
 };

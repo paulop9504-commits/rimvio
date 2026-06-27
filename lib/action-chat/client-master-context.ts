@@ -56,6 +56,7 @@ import {
 import { serializeUserDefinedActionsForApi } from "@/lib/actions/user-defined-action-store";
 import type { UserDefinedAction } from "@/lib/actions/user-defined-action-types";
 import { readLastGoalSnapshotRevision } from "@/lib/goal-engine/goal-snapshot-session";
+import { formatDateKey } from "@/lib/schedule/day-schedule";
 
 export function readClientMasterOrchestratorContext(): MasterOrchestratorContext {
   const currentDate = formatDateKey();

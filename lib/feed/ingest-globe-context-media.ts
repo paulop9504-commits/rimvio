@@ -411,6 +411,8 @@ export async function ingestGlobeContextMedia(input: {
         },
         createdNewEvent: false,
         toastLine,
+        match: null,
+        needsTargetingConfirm: false,
       },
       attachedToHintedEvent: false,
       separated: false,

@@ -4,6 +4,19 @@ import type {
   MarketTradeStatus,
 } from "@/lib/globe/market/market-trade-types";
 
+/** Handshake phases eligible for the Field 진행 중 거래 list. */
+export const MARKET_TRADE_ACTIVE_HANDSHAKE_PHASES = [
+  "pending_buyer_start",
+  "active",
+] as const;
+
+/** Trade statuses that end the active-trades dashboard section. */
+export const MARKET_TRADE_TERMINAL_STATUSES: readonly MarketTradeStatus[] = [
+  "completed",
+  "expired",
+  "cancelled",
+] as const;
+
 /** Match accepted — chat only, no scheduling pipeline yet. */
 export const MARKET_TRADE_CHAT_STATUS: MarketTradeStatus = "chat";
 
@@ -67,6 +80,36 @@ export function isExplicitMarketTradePipeline(input: {
     return Boolean(input.schedulingExpiresAtIso?.trim());
   }
   return isMarketTradePipelineActive(normalized);
+}
+
+/** Single gate for Field 진행 중 거래 + discovery hide rules. */
+export function shouldIncludeInActiveMarketTradeList(input: {
+  tradeStatus: MarketTradeStatus | string | null | undefined;
+  schedulingExpiresAtIso?: string | null;
+  phase?: string | null;
+}): boolean {
+  const phase = input.phase?.trim() || "";
+  if (
+    !(
+      MARKET_TRADE_ACTIVE_HANDSHAKE_PHASES as readonly string[]
+    ).includes(phase)
+  ) {
+    return false;
+  }
+  const normalized = normalizeMarketTradeStatus(
+    typeof input.tradeStatus === "string"
+      ? input.tradeStatus
+      : input.tradeStatus ?? null,
+  );
+  if (
+    (MARKET_TRADE_TERMINAL_STATUSES as readonly string[]).includes(normalized)
+  ) {
+    return false;
+  }
+  return isExplicitMarketTradePipeline({
+    tradeStatus: normalized,
+    schedulingExpiresAtIso: input.schedulingExpiresAtIso,
+  });
 }
 
 export function isMarketListingReservedForOthers(

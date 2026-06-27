@@ -47,7 +47,7 @@ function mediaTitle(context: MediaSpacetimeContext): string {
 }
 
 function mediaCaption(context: MediaSpacetimeContext): string {
-  const time = formatSpatialTimeLabel(new Date(context.capturedAtIso));
+  const time = formatSpatialTimeLabel(context.capturedAtIso) ?? "";
   if (context.placeLabel) {
     return `${context.placeLabel} · ${time}`;
   }

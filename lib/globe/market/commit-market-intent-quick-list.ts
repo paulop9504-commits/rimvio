@@ -9,7 +9,12 @@ export async function commitMarketIntentQuickList(input: {
   liveLat?: number | null;
   liveLng?: number | null;
 }): Promise<MarketIntentRecord | null> {
-  const draft = buildMarketQuickListDraft(input);
+  const draft = buildMarketQuickListDraft({
+    text: input.composeText,
+    eventId: input.eventId,
+    liveLat: input.liveLat,
+    liveLng: input.liveLng,
+  });
   if (!draft) {
     return null;
   }

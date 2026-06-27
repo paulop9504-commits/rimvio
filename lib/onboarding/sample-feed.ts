@@ -1,4 +1,4 @@
-import { isExperimentLabMode } from "@/lib/demo/reset-experiment-lab";
+import { isExperimentLabMode } from "@/lib/onboarding/experiment-lab-mode";
 import {
   clearDismissedLinkIds,
   readLocalLinks,

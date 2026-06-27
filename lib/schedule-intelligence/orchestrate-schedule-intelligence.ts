@@ -129,7 +129,7 @@ export async function orchestrateScheduleIntelligence(input: {
       disclosure: "high",
       actionsRevealed: true,
       metadata: { intent: "SCHEDULE", trust_level_adjustment: "NONE" },
-      presentation: { mode: wire.studyBlocks?.length ? "TIMELINE" : "DEFAULT" },
+      presentation: { mode: wire.studyBlocks?.length ? "TIMELINE" : "ACTION" },
       thought: `GoalAlignment · ${wire.kind}${wire.score != null ? ` · score=${wire.score}` : ""}`,
       schedule: wire.studyBlocks?.length
         ? {
@@ -243,7 +243,7 @@ export async function orchestrateScheduleIntelligence(input: {
     actionsRevealed: true,
     metadata: { intent: "SCHEDULE", trust_level_adjustment: "NONE" },
     presentation: {
-      mode: retrieval.items.length ? "TIMELINE" : retrieval.userInLoop ? "DEFAULT" : "DEFAULT",
+      mode: retrieval.items.length ? "TIMELINE" : "ACTION",
     },
     schedule: retrieval.items.length
       ? {

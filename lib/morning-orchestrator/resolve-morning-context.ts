@@ -75,7 +75,7 @@ function resolveFinanceProvider(): MorningProviderSnapshot {
     (record) =>
       PAYMENT_PATTERN.test(record.summary) ||
       PAYMENT_PATTERN.test(record.source_app) ||
-      record.container === "finance"
+      String(record.container) === "finance"
   );
 
   if (financeHits.length === 0) {

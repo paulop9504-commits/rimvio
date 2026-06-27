@@ -86,12 +86,12 @@ export function overlayEntityActionSurfaceOnOsResult(
       ? {
           ...presentationResult,
           meta: {
-            ...result.orchestratorResult.meta,
-            ...presentationResult.meta,
+            ...(result.orchestratorResult.meta ?? {}),
+            ...(presentationResult.meta ?? {}),
             kernel_decision: result.kernel.committedDecision,
             entity_input_state: surface.state,
             entity_type_guess: surface.entityType,
-          },
+          } as NonNullable<typeof presentationResult.meta>,
         }
       : presentationResult,
     entityActionSurface: surface,

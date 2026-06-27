@@ -285,8 +285,8 @@ export function GlobeContextHubRail({
       if (event) {
         if (internalRoute) {
           writeGlobeOrchestratorScopeHint({
-            pinScope: resolvePinScopeFromEventId(eventId) ?? "internal",
-            eventId,
+            pinScope: resolvePinScopeFromEventId(eventId!) ?? "internal",
+            eventId: eventId!,
             title: event.title,
           });
         }

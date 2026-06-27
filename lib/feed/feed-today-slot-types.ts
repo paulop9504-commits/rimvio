@@ -1,5 +1,5 @@
 import type { UnifiedCalendarOverlayRow } from "@/lib/calendar/calendar-view-types";
-import type { RankedSurface, SurfaceType } from "@/lib/surface-engine/surface-contract";
+import type { RankedSurface, SurfaceType } from "@/lib/experience-intent/feed-surface-wire";
 
 export type FeedTodaySurfaceSlot = {
   kind: "surface";

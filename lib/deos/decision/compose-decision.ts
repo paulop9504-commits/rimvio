@@ -255,7 +255,10 @@ export function composeDecision(input: ComposeDecisionInput): ComposeDecisionRes
     });
     return {
       surface,
-      actionIds: surface.chips.map((c) => c.actionId),
+      actionIds:
+        surface.mode === "fork"
+          ? surface.chips.map((c) => c.actionId)
+          : [],
       composeVersion: COMPOSE_DECISION_VERSION,
       diagnostics,
     };

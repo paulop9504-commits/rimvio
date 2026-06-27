@@ -13,7 +13,7 @@ export type ProjectedContinuity = "CONTINUE" | "NEW_TASK" | "SHIFT" | "HOLD";
 const NEW_TASK_CUE =
   /(?:일정\s*(?:잡|등록|추가)|경기장|월드컵|새로\s*(?:찾|잡|등록))/i;
 
-function legacyMicroIntent(key: KernelMicroIntentKey): IntentRoute["micro_intent"] {
+export function legacyMicroIntent(key: KernelMicroIntentKey): IntentRoute["micro_intent"] {
   switch (key) {
     case "QUERY":
       return "DIRECT_QUERY";

@@ -2,7 +2,7 @@ import type { EventCandidate } from "@/lib/events/event-candidate";
 import { EXPERIENCE_BRIDGE_META_KEYS } from "@/lib/experience-bridge/constants";
 import { readFeedCaptureFragments } from "@/lib/feed/feed-capture-metadata";
 import { readPinContextNote } from "@/lib/globe/pin-context-note";
-import type { MeaningGraph } from "@/lib/meaning/meaning-graph-types";
+import type { MeaningGraph } from "@/lib/meaning/meaning-types";
 import { readExperienceBehaviorScore } from "@/lib/meaning/experience-behavior-store";
 import {
   readExperienceMeaningTags,
@@ -32,12 +32,15 @@ function scoreExperienceDensity(event: EventCandidate): number {
     .length;
   const hasNote = Boolean(readPinContextNote(event)?.trim());
   const meta = event.metadata ?? {};
+  const bridgeIdRaw = meta[EXPERIENCE_BRIDGE_META_KEYS.bridgeId];
+  const hostUserIdRaw = meta[EXPERIENCE_BRIDGE_META_KEYS.hostUserId];
   const bridgeLinked = Boolean(
-    meta[EXPERIENCE_BRIDGE_META_KEYS.bridgeId]?.trim() ||
-      meta[EXPERIENCE_BRIDGE_META_KEYS.hostUserId]?.trim(),
+    (typeof bridgeIdRaw === "string" ? bridgeIdRaw.trim() : "") ||
+      (typeof hostUserIdRaw === "string" ? hostUserIdRaw.trim() : ""),
   );
+  const gcalRaw = meta.gcalEventId;
   const calendarLinked = Boolean(
-    meta.gcalEventId?.trim() || plan?.feedPlanEnabled,
+    (typeof gcalRaw === "string" ? gcalRaw.trim() : "") || plan?.windowStartIso?.trim(),
   );
 
   const raw =

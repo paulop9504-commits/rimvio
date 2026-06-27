@@ -1,4 +1,4 @@
-import type { ContextHubServiceId } from "@/lib/globe/context-hub/context-hub-service-catalog";
+import type { ContextHubServiceId } from "@/lib/ontology/context-hub-service-id";
 import type { ActionCategory } from "@/lib/semantic/types";
 
 export type RimvioActionFamily = "mention" | "hub";

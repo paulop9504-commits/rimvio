@@ -36,21 +36,20 @@ function readContextStoreFromBrowser(): ArchitectContainerRef[] {
     if (!Array.isArray(parsed)) {
       return [];
     }
-    return parsed
-      .map((entry) => {
-        const title = typeof entry.title === "string" ? entry.title.trim() : "";
-        const id = typeof entry.id === "string" ? entry.id : "";
-        if (!title || !id) {
-          return null;
-        }
-        return {
-          id,
-          title,
-          topic: typeof entry.topic === "string" ? entry.topic : undefined,
-          kind: "context" as const,
-        };
-      })
-      .filter((entry): entry is ArchitectContainerRef => Boolean(entry));
+    return parsed.flatMap((entry) => {
+      const title = typeof entry.title === "string" ? entry.title.trim() : "";
+      const id = typeof entry.id === "string" ? entry.id : "";
+      if (!title || !id) {
+        return [];
+      }
+      const ref: ArchitectContainerRef = {
+        id,
+        title,
+        topic: typeof entry.topic === "string" ? entry.topic : undefined,
+        kind: "context",
+      };
+      return [ref];
+    });
   } catch {
     return [];
   }
@@ -94,20 +93,19 @@ export function listExistingContainers(): ArchitectContainerRef[] {
     kind: "canonical" as const,
   }));
 
-  const places = readPlaceStore()
-    .map((record) => {
-      const title = record.schema.name ?? record.schema.address;
-      if (!title) {
-        return null;
-      }
-      return {
-        id: record.id,
-        title,
-        topic: "place",
-        kind: "place" as const,
-      };
-    })
-    .filter((entry): entry is ArchitectContainerRef => Boolean(entry));
+  const places = readPlaceStore().flatMap((record) => {
+    const title = record.schema.name ?? record.schema.address;
+    if (!title) {
+      return [];
+    }
+    const ref: ArchitectContainerRef = {
+      id: record.id,
+      title,
+      topic: "place",
+      kind: "place",
+    };
+    return [ref];
+  });
 
   const contexts = readContextStoreFromBrowser();
   const fromStore = listContainers({ status: "active" }).map((record) => ({

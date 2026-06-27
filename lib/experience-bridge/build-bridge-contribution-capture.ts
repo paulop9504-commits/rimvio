@@ -58,9 +58,9 @@ export async function buildBridgeContributionCapture(input: {
     byteSize: input.byteSize,
     fileHash,
     takenAtIso: input.fragment.capturedAtIso,
-    geohash,
-    lat,
-    lng,
+    geohash: geohash ?? undefined,
+    lat: lat ?? undefined,
+    lng: lng ?? undefined,
   });
 }
 

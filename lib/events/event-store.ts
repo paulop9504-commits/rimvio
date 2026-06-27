@@ -15,7 +15,7 @@ import {
   pruneExpiredEvents,
 } from "@/lib/events/event-lifecycle";
 import { foldArchivedEvent } from "@/lib/events/fold-archived-event";
-import { assertAllowedLifecycleMutation } from "@/lib/event-kernel/schema-lock/mutation-rules";
+import { assertAllowedLifecycleMutation } from "@/lib/events/schema-lock/mutation-rules";
 import { eventCandidateContentEqual } from "@/lib/events/event-candidate-equal";
 
 const STORAGE_KEY = "rimvio-event-candidates.v1";

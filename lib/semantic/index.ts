@@ -1,5 +1,4 @@
 export {
-  ACTION_CATEGORIES,
   FEATURE_ACTION_CATEGORY,
   listFeatureIdsByActionCategory,
   resolveActionCategory,
@@ -35,6 +34,7 @@ export type {
 export {
   RIMVIO_ENTITY_CLASSES,
   RIMVIO_PREDICATES,
+  ACTION_CATEGORIES,
 } from "@/lib/semantic/types";
 export {
   semanticActionId,

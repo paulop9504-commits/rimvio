@@ -66,10 +66,10 @@ export function dismissPlacePrefill(input: {
     title: input.event.title,
     category: input.event.category,
     source: input.event.source,
-    lifecycle: input.lifecycle,
-    datetime: input.datetime,
-    place: input.place,
-    description: input.description,
+    lifecycle: input.event.lifecycle,
+    datetime: input.event.datetime,
+    place: input.event.place,
+    description: input.event.description,
     metadata: {
       ...(input.event.metadata ?? {}),
       [PLACE_PREFILL_STATE_META_KEY]: {

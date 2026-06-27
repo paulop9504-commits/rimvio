@@ -5,24 +5,12 @@ import {
   type PlaybookCategoryId,
 } from "@/lib/testing/routing-playbook-banks";
 import { evaluatePlaybookCategory } from "@/lib/testing/evaluate-playbook-category";
+import { MINIMAL_MASTER_CONTEXT } from "@/lib/testing/minimal-master-context-fixture";
 import type { RegressionCaseResult, RegressionGateResult } from "@/lib/self-learning/types";
 
 export const SUCCESS_THRESHOLD = 0.95;
 
-const masterContext = {
-  currentDate: "2026-06-02",
-  trustLevel: "L1" as const,
-  existingSchedule: [],
-  allReminders: [],
-  userGoals: [],
-  activitySources: [],
-  conversationMemories: [],
-  activeContainers: [],
-  activeChains: [],
-  activeChain: null,
-  userDefinedActions: [],
-  mapApp: "kakao" as const,
-};
+const masterContext = MINIMAL_MASTER_CONTEXT;
 
 /**
  * Anti-drift gate — fixed regression sample, no random updates.

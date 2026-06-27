@@ -15,6 +15,7 @@ import { postFinalizeOrchestratorResult } from "@/lib/action-chat/orchestrator/p
 
 import type { ChatAxis } from "@/lib/action-chat/chat-three-axis";
 import type { GoalPriorityHint, GoalSnapshot } from "@/lib/goal-engine/types";
+import type { UnifiedExperienceContext } from "@/lib/experience-context/unified-experience-context-types";
 
 export type OrchestratorPipelineInput = {
   message: string;
@@ -64,6 +65,7 @@ export type OrchestratorPipelineContext = {
   brain: GlobalBrainMiddlewareResult | null;
   autoSavedWire: OrchestratorResult["knowledgeSaved"];
   eventCandidate: EventCandidateWire | null;
+  unifiedContext: UnifiedExperienceContext;
   finalize: (result: OrchestratorResult) => Promise<OrchestratorResult>;
 };
 
@@ -105,6 +107,7 @@ export function createPipelineShell(input: {
   trace: OrchestratorTrace;
   containerRoute: ContainerRouteResult;
   autoSavedWire: OrchestratorResult["knowledgeSaved"];
+  unifiedContext: UnifiedExperienceContext;
 }): OrchestratorPipelineContext {
   const shell: OrchestratorPipelineContext = {
     ...input,

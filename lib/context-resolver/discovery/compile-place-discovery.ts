@@ -71,7 +71,8 @@ export function compilePlaceDiscovery(
     action_buttons: buildPlaceActions(place).map((action) => ({
       label: action.label,
       href: action.href ?? "",
-      icon: action.icon,
+      icon:
+        typeof action.payload?.icon === "string" ? action.payload.icon : undefined,
     })),
   }));
 

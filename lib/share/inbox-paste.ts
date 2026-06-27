@@ -2,7 +2,7 @@
 
 import type { BeamSnapshot } from "@/lib/beam/types";
 import { saveBeamToPocket } from "@/lib/beam/save-beam-to-pocket";
-import { LOCAL_LINKS_UPDATED } from "@/lib/demo/seed";
+import { LOCAL_LINKS_UPDATED } from "@/lib/local-links/local-links-events";
 import {
   addLocalLink,
   buildLocalLink,

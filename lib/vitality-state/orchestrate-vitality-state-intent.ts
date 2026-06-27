@@ -294,6 +294,7 @@ function buildChoiceWire(
         mode: "BALANCED",
         action: "ASK_CHOICE",
         headline: "어떻게 도와드릴까요?",
+        empathy_line: hint,
         context_hint: hint,
         options: [],
       };
@@ -305,11 +306,12 @@ async function orchestrateHunger(
   match: VitalityStateMatch
 ): Promise<OrchestratorResult> {
   const discovery = await orchestratePlaceRecommendation("근처 맛집 추천해줘");
-  if (discovery?.cafeDiscovery || (discovery?.actions?.length ?? 0) > 0) {
+  if (discovery && (discovery.cafeDiscovery || (discovery.actions?.length ?? 0) > 0)) {
     return {
       ...discovery,
       summary: "배고프시군요. 근처에서 골라볼게요.",
       thought: `VitalityState · hunger · Haven · food_discovery · ${discovery.thought ?? ""}`,
+      actions: discovery.actions ?? [],
     };
   }
 

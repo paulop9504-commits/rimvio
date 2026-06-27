@@ -26,6 +26,7 @@ import {
 import { copy } from "@/lib/copy/human-ko";
 import { PulseMainActionSurface } from "@/components/pulse/pulse-main-action-surface";
 import { MarketAlignmentSurface } from "@/components/market/market-alignment-surface";
+import { StackGlobePickupCard } from "@/components/stack/stack-globe-pickup-card";
 
 export function ActionStackList() {
   const { activeLinks, archivedLinks } = useRealtimeLinks();
@@ -66,6 +67,7 @@ export function ActionStackList() {
   if (!topLink && !topInboxNotification) {
     return (
       <div className="flex min-h-[60dvh] flex-col items-center justify-center px-4 text-center">
+        <StackGlobePickupCard className="mb-4 text-left" />
         <PulseMainActionSurface
           enabled
           className="mb-6 w-full max-w-sm text-left"
@@ -90,6 +92,7 @@ export function ActionStackList() {
 
   return (
     <div className="flex min-h-[60dvh] flex-col">
+      <StackGlobePickupCard className="px-4 pt-2" />
       {!topLink && topInboxNotification ? (
         <div className="flex flex-1 flex-col items-center justify-center px-4">
           <article

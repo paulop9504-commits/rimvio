@@ -9,6 +9,7 @@ import type {
   KernelExecutionRuntime,
 } from "@/lib/event-kernel/execute-kernel-decision";
 import type { EventKernelStrictOutput } from "@/lib/event-kernel/serialize-event-kernel-output";
+import { legacyMicroIntent } from "@/lib/event-kernel/project-intent-route";
 import { dominantMicroIntent } from "@/lib/event-kernel/types";
 
 export type ContractExecutionState = "PROCEED" | "MISSING_SLOT";
@@ -90,7 +91,7 @@ export function buildMissingSlotKernelOutcome(input: {
       contract_slots: input.gate.slots,
       kernel_decision: input.wire.decision,
       kernel_entropy: input.wire.entropy,
-      micro_intent: dominant,
+      micro_intent: legacyMicroIntent(dominant),
       micro_confidence: input.wire.micro_intent[dominant],
       stability_score: 1 - input.wire.entropy,
       turn_pressure: input.runtime.turnPressure,

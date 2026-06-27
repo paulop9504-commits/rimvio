@@ -30,6 +30,7 @@ import {
   PEER_MESSAGE_IMAGE_PLACEHOLDER,
   PEER_MESSAGE_VIDEO_PLACEHOLDER,
 } from "@/lib/peer-chat/peer-chat-image-constants";
+import { parseOutgoingMessage } from "@/lib/chat-room/parse-ai-invoke";
 import { isPeerChatVideoContentType } from "@/lib/peer-chat/infer-peer-chat-media-kind";
 import {
   takePrefetchedMessages,

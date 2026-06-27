@@ -3,6 +3,8 @@ import { scoreSpacetimeFit } from "@/lib/feed/spacetime-fit";
 import { readContextGardenArchivedResourceIds } from "@/lib/globe/context-gardener/read-context-garden";
 import { isResourceExpiredForGarden } from "@/lib/globe/context-gardener/sanitize-context-resources";
 import { listLodgingResourcesForEvent } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
+import { listEateryResourcesForEvent } from "@/lib/globe/eatery/read-eatery-resource-inventory";
+import { rankEateryResources } from "@/lib/globe/resource/rank-eatery-resources";
 import type { ContextHubServiceRow } from "@/lib/globe/context-hub/context-hub-service-catalog";
 import { scoreHubServiceRowBase } from "@/lib/globe/context-hub/score-hub-service-row";
 import {
@@ -132,7 +134,18 @@ export function rankContextResources(input: {
         })
       : [];
 
-  const ranked = [...serviceRanked, ...lodgingRanked].sort((left, right) => {
+  const eateryResources = listEateryResourcesForEvent(input.event);
+  const eateryRanked =
+    eateryResources.length > 0
+      ? rankEateryResources({
+          event: input.event,
+          resources: eateryResources,
+          lat,
+          lng,
+        })
+      : [];
+
+  const ranked = [...serviceRanked, ...lodgingRanked, ...eateryRanked].sort((left, right) => {
     const delta = right.rankScore - left.rankScore;
     if (delta !== 0) {
       return delta;
@@ -155,4 +168,10 @@ export function filterLodgingRankedResources(
   ranked: readonly RankedContextResource[],
 ): RankedContextResource[] {
   return ranked.filter((entry) => entry.resource.kind === "lodging_voucher");
+}
+
+export function filterEateryRankedResources(
+  ranked: readonly RankedContextResource[],
+): RankedContextResource[] {
+  return ranked.filter((entry) => entry.resource.sourceHubId === "eatery");
 }

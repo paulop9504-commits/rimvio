@@ -49,7 +49,7 @@ export function CalendarEmptyActions({
           {available && !connected ? (
             <button
               type="button"
-              onClick={connectGoogle}
+              onClick={() => connectGoogle()}
               className={cn(
                 "inline-flex h-10 items-center justify-center text-[12px] font-medium",
                 IOS.secondaryBtn,

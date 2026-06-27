@@ -14,6 +14,7 @@ import {
   buildKernelUiRenderInput,
   type KernelUiRenderInput,
 } from "@/lib/event-kernel/render-kernel-ui";
+import { legacyMicroIntent } from "@/lib/event-kernel/project-intent-route";
 import { dominantMicroIntent } from "@/lib/event-kernel/types";
 
 export type KernelExecutionDisposition = "terminal" | "delegate" | "hold";
@@ -107,7 +108,7 @@ function buildOrchestratorMeta(
     requires_context_switch: dominant === "SHIFT",
     kernel_entropy: wire.entropy,
     kernel_decision: wire.decision,
-    micro_intent: dominant === "QUERY" ? "DIRECT_QUERY" : dominant,
+    micro_intent: legacyMicroIntent(dominant),
     micro_confidence: wire.micro_intent[dominant],
     stability_score: 1 - wire.entropy,
     turn_pressure: runtime.turnPressure,

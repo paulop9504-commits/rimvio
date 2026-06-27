@@ -19,14 +19,9 @@ import { findPersonalGlobePinByEventId } from "@/lib/globe/personal-globe-pin-st
 import { findMarketIntentByEventId } from "@/lib/globe/market/market-alignment-store";
 import { ticketPrimaryLabel, detectTicketBrand } from "@/lib/resolvers/ticket-deep-links";
 
-/** Plug-in resource service — not a globe context. */
-export type ContextHubServiceId =
-  | "ticket"
-  | "flight"
-  | "lodging"
-  | "rental_car"
-  | "market"
-  | "ai_search";
+import type { ContextHubServiceId } from "@/lib/ontology/context-hub-service-id";
+
+export type { ContextHubServiceId };
 
 export type ContextHubServiceDef = {
   id: ContextHubServiceId;
@@ -200,19 +195,19 @@ export function listContextHubServicesForEvent(
               : Boolean(link),
       link:
         def.id === "ticket" && ticketArtifact
-          ? {
+          ? ({
               eventId: event.id,
-              kind: "departure_airport",
+              kind: "departure_airport" as const,
               label: ticketArtifact.labelKo,
               shortLabel: ticketArtifact.qrPreviewUrl ? "QR" : ticketArtifact.labelKo,
               airportIata: null,
-              actionUrl: ticketArtifact.actionUrl,
+              actionUrl: ticketArtifact.actionUrl ?? null,
               actionLabelKo: ticketArtifact.qrPreviewUrl
                 ? "QR 보기"
                 : ticketBrand
                   ? ticketPrimaryLabel(ticketBrand)
                   : "티켓 열기",
-            }
+            } satisfies ContextHubLink)
           : link,
       flightOptions: def.id === "flight" ? flightOptions : [],
       handoffHref:

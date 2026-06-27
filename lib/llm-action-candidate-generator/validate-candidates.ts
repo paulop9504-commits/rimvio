@@ -1,7 +1,7 @@
 import {
   parseContextUnderstandingWire,
-  type ContextUnderstandingWire,
 } from "@/lib/context-understanding/parse-context-understanding-wire";
+import type { ContextUnderstandingWire } from "@/lib/context-understanding/types";
 import { sanitizePluginId } from "@/lib/plugin-registry/resolve-plugin";
 import type { CandidateDomain } from "@/lib/llm-action-candidate-generator/types";
 import type {

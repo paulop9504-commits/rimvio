@@ -29,8 +29,8 @@ import {
 } from "@/lib/globe/globe-location-prompt-budget";
 import {
   groupNotificationsBySection,
-  type RimvioNotification,
-} from "@/lib/ontology";
+} from "@/lib/globe/inbox/project-pending-notifications";
+import type { RimvioNotification } from "@/lib/globe/inbox/notification-types";
 import { useAuth } from "@/hooks/use-auth";
 import { buildExperienceRoomHref } from "@/lib/globe/project-experience-conversation";
 import {

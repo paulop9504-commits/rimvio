@@ -125,7 +125,6 @@ function checkActionExecutability(sim: AdaptiveSimulation): QaCheckResult {
       Boolean(action.label?.trim()) &&
       (Boolean(action.href) ||
         Boolean(action.payload) ||
-        action.kind === "search" ||
         Boolean(action.id))
   );
   return {

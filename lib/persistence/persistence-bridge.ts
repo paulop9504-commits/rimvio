@@ -61,7 +61,7 @@ export function resolvePlaceKnowledgeContainerId(): string {
 }
 
 /** Persist ephemeral place card → container Knowledge (client-side). */
-export function persistPlaceToKnowledge(
+export async function persistPlaceToKnowledge(
   placeData: PlaceKnowledgePayload,
   containerId?: string
 ): Promise<{ containerId: string; knowledgeId: string; container: ContainerRecord | null }> {

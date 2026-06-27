@@ -1,6 +1,7 @@
 import type {
   ContextType,
   IntentContextExtractInput,
+  IntentContextProximity,
   IntentContextWire,
   LocationRelevance,
   PossibleActionCandidate,
@@ -71,7 +72,7 @@ function inferTimeSensitivity(minutes: number | null | undefined): TimeSensitivi
 
 function inferLocationRelevance(
   place: string | null,
-  proximity?: IntentContextExtractInput["signals"]["proximity"],
+  proximity?: IntentContextProximity,
 ): LocationRelevance {
   if (proximity === "at_venue" || proximity === "en_route") {
     return "direct";
@@ -111,7 +112,7 @@ function buildMeetingActions(input: {
   title: string;
   place: string | null;
   minutes: number | null;
-  proximity?: IntentContextExtractInput["signals"]["proximity"];
+  proximity?: IntentContextProximity;
 }): {
   actions: PossibleActionCandidate[];
   signals: SecondaryReasonSignal[];

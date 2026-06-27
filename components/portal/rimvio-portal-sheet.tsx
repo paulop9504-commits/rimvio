@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
-import { PortalIntentTile, PORTAL_INTENT_TILE_MOTION } from "@/components/portal/portal-intent-tile";
+import { PortalIntentTile, PORTAL_INTENT_TILE_MOTION, PORTAL_INTENT_VISUAL } from "@/components/portal/portal-intent-tile";
 import { toast } from "sonner";
 import { copy } from "@/lib/copy/human-ko";
 import {
@@ -129,7 +129,7 @@ export function RimvioPortalSheet({
   }, [open]);
 
   const activeIntent = intentId ? getPortalIntent(intentId) : null;
-  const activeVisual = intentId ? INTENT_VISUAL[intentId] : null;
+  const activeVisual = intentId ? PORTAL_INTENT_VISUAL[intentId] : null;
   const categories = useMemo(
     () => (intentId ? listPortalCategoriesForIntent(intentId) : []),
     [intentId],

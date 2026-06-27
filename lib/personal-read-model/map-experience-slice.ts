@@ -61,7 +61,7 @@ export function mapExperienceSlice(input: {
       visibility: readFocusVisibility(focusEvent),
     },
     spatial: {
-      pinIds: pin ? [pin.id] : [],
+      pinIds: pin ? [pin.pinId] : [],
       tripLegId: tripLeg?.tripRef ?? null,
       departureHubIata: resolveDepartureHubIata(focusEvent),
     },

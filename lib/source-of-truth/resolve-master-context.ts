@@ -1,6 +1,6 @@
-import type { MasterContextApiPayload } from "@/lib/action-chat/client-master-context";
-import type { MasterOrchestratorContext } from "@/lib/action-chat/master-orchestrator-context";
-import { defaultMasterOrchestratorContext } from "@/lib/action-chat/master-orchestrator-context";
+import type { MasterContextHydrationPayload } from "@/lib/source-of-truth/master-context-hydration-wire";
+import type { MasterOrchestratorContext } from "@/lib/source-of-truth/master-orchestrator-context";
+import { defaultMasterOrchestratorContext } from "@/lib/source-of-truth/master-orchestrator-context";
 import { normalizeActiveChains } from "@/lib/containers/container-types";
 import { hydrateEventStoreFromTruthWire } from "@/lib/source-of-truth/hydrate-event-store";
 import { readLifeProjections } from "@/lib/life-read-model";
@@ -8,7 +8,7 @@ import { buildTruthProjections } from "@/lib/source-of-truth/project-truth";
 import { formatDateKey } from "@/lib/schedule/day-schedule";
 
 function mapContainers(
-  payload: Partial<MasterContextApiPayload>,
+  payload: Partial<MasterContextHydrationPayload>,
 ): MasterOrchestratorContext["activeContainers"] {
   return (payload.activeContainers ?? []).map((item) => {
     const now = new Date().toISOString();
@@ -33,7 +33,7 @@ function mapContainers(
  * Ignores client-only `existingSchedule` when `eventCandidates` is provided.
  */
 export function resolveMasterContextFromTruth(
-  payload?: Partial<MasterContextApiPayload> | null,
+  payload?: Partial<MasterContextHydrationPayload> | null,
 ): MasterOrchestratorContext {
   if (!payload) {
     return defaultMasterOrchestratorContext();
@@ -66,8 +66,8 @@ export function resolveMasterContextFromTruth(
 
 /** Reminders for masterContext fields not on MasterOrchestratorContext. */
 export function resolveAllRemindersFromTruth(
-  payload?: Partial<MasterContextApiPayload> | null,
-): MasterContextApiPayload["allReminders"] {
+  payload?: Partial<MasterContextHydrationPayload> | null,
+): MasterContextHydrationPayload["allReminders"] {
   if (!payload) {
     return [];
   }

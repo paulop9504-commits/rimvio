@@ -1,17 +1,16 @@
 import type { LinkActionItem, LinkRow } from "@/types/database";
 import { resolveCategory } from "@/lib/categories/resolve-category";
 import type { EnrichedLink } from "@/lib/enrichers/types";
-import { buildVisualFieldsFromEnriched } from "@/lib/feed/feed-visual";
-import { sanitizeLinkTitle } from "@/lib/feed/sanitize-link-title";
+import { buildVisualFieldsFromEnriched, sanitizeLinkTitle } from "@/lib/links/link-row-projection";
 import { registerBeamSnapshot } from "@/lib/beam/register-beam";
-import { createShareSlug } from "@/lib/share/share-slug";
+import { createShareSlug } from "@/lib/links/share-slug";
 import { exportFeedBackup, parseFeedBackup } from "@/lib/links/feed-backup";
 import { normalizeLinkReadAloudActions } from "@/lib/actions/read-aloud-action";
-import { recordSaveTrajectoryEntry } from "@/lib/intent/save-trajectory-client";
+import { recordSaveTrajectoryEntry } from "@/lib/local-links/save-trajectory-client";
 import { toDomainFamily } from "@/lib/personalization/action-family";
 import { recordLocalLinkSave } from "@/lib/personalization/client-store";
 import { dismissSampleFeedIfRealLinkAdded } from "@/lib/onboarding/sample-feed";
-import { sharedLinkExpiresAt } from "@/lib/share/scrape-shared-link";
+import { sharedLinkExpiresAt } from "@/lib/links/shared-link-expiry";
 
 const STORAGE_KEY = "blink-local-links";
 const DISMISSED_KEY = "blink-dismissed-link-ids";

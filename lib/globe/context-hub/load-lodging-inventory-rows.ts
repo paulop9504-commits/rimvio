@@ -1,7 +1,9 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { fetchPlacesLodgingNearby } from "@/lib/globe/context-hub/fetch-places-lodging-nearby";
-import { resolveLodgingMockForPlace } from "@/lib/globe/context-hub/lodging-mock-inventory";
+import { resolveLodgingMockForPlace, resolveLodgingMockNearUser } from "@/lib/globe/context-hub/lodging-mock-inventory";
 import type { ContextLodgingInventoryRow } from "@/lib/globe/context-hub/lodging-resource-types";
+import { LODGING_DISCOVERY_RADIUS_M } from "@/lib/globe/lodging/lodging-discovery-constants";
+import { filterLodgingRowsWithinRadius } from "@/lib/globe/lodging/project-lodging-discovery-session";
 import { resolveContextLodgingSearchCoords } from "@/lib/globe/context-hub/resolve-context-lodging-search-coords";
 import { resolveContextPlaceLabel } from "@/lib/globe/context-hub/resolve-context-place-label";
 import { readPlanContextFromEvent } from "@/lib/plan-context/plan-context-metadata";
@@ -54,7 +56,9 @@ export async function loadLodgingInventoryRows(input: {
   lng?: number | null;
   maxResults?: number;
   preferUserLocation?: boolean;
+  radiusM?: number;
 }): Promise<LoadedLodgingInventory> {
+  const radiusM = input.radiusM ?? LODGING_DISCOVERY_RADIUS_M;
   const coords = resolveContextLodgingSearchCoords(input.event, input);
   let rows: ContextLodgingInventoryRow[] = [];
 
@@ -75,8 +79,14 @@ export async function loadLodgingInventoryRows(input: {
   }
 
   if (rows.length > 0) {
+    const filtered = filterLodgingRowsWithinRadius({
+      rows,
+      lat: input.lat ?? coords?.lat ?? null,
+      lng: input.lng ?? coords?.lng ?? null,
+      radiusM,
+    });
     return {
-      rows: withStayWindow(input.event, rows),
+      rows: withStayWindow(input.event, filtered.length > 0 ? filtered : rows),
       source: "google_places",
     };
   }
@@ -86,8 +96,23 @@ export async function loadLodgingInventoryRows(input: {
   if (!anchor) {
     return { rows: [], source: "mock" };
   }
+
+  const userLat = input.lat ?? anchor.lat;
+  const userLng = input.lng ?? anchor.lng;
+  const mockRows =
+    input.preferUserLocation && input.lat != null && input.lng != null
+      ? resolveLodgingMockNearUser({ lat: userLat, lng: userLng })
+      : resolveLodgingMockForPlace(place, anchor);
+
+  const filteredMock = filterLodgingRowsWithinRadius({
+    rows: mockRows,
+    lat: userLat,
+    lng: userLng,
+    radiusM: radiusM * 4,
+  });
+
   return {
-    rows: withStayWindow(input.event, [...resolveLodgingMockForPlace(place, anchor)]),
+    rows: withStayWindow(input.event, filteredMock.length > 0 ? filteredMock : [...mockRows]),
     source: "mock",
   };
 }

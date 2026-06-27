@@ -1,7 +1,7 @@
 import type {
   LocationConfirmUxWire,
   LocationSuggestion,
-} from "@/lib/action-chat/confirmation-types";
+} from "@/lib/corrections/location-wire-types";
 import { planLocationConfirmUx } from "@/lib/corrections/location-confirm-ux";
 import { rankLocationSuggestions } from "@/lib/corrections/score-location-match";
 import { placeCandidateToLocationSuggestion } from "@/lib/corrections/place-candidate-to-suggestion";

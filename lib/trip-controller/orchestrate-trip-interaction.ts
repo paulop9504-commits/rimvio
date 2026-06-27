@@ -106,10 +106,10 @@ export function orchestrateTripInteraction(input: {
         : `${trip.airportLabel} 가는 택시를 예약할게요.`,
       actions: [
         {
+          id: "trip-taxi",
           label: `${trip.airportLabel} 택시 호출`,
-          icon: "taxi",
-          action_type: "DEEP_LINK",
-          url: `https://taxi.rimvio.local/?dest=${encodeURIComponent(trip.airportLabel)}`,
+          kind: "open",
+          href: `https://taxi.rimvio.local/?dest=${encodeURIComponent(trip.airportLabel)}`,
         },
       ],
       source: "rules",
@@ -165,10 +165,10 @@ export function handlePackingItemToggle(input: {
     actions: wire.promoteTaxi || justCompleted
       ? [
           {
+            id: "trip-taxi",
             label: `${trip.airportLabel} 택시 호출`,
-            icon: "taxi",
-            action_type: "DEEP_LINK",
-            url: `rimvio://trip/taxi`,
+            kind: "open",
+            href: "rimvio://trip/taxi",
           },
         ]
       : [],

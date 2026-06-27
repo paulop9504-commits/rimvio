@@ -58,7 +58,7 @@ function isOffGlobeManageCandidate(event: EventCandidate): boolean {
     return /schedule|calendar|notification|plan|globe_manual/u.test(source);
   }
 
-  return event.source === "notification" || event.source === "calendar";
+  return event.source === "notification";
 }
 
 function classifyManageKind(

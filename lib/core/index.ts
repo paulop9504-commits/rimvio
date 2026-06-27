@@ -20,8 +20,6 @@ export {
 
 export { wireLoopFromCapabilityExecution, selectActiveLoop } from "@/lib/loop-wiring";
 
-export { resolveSurfaces, buildSurfacesFromLife } from "@/lib/surface-engine";
-
 export { ingestExecutionOutcome } from "@/lib/learning";
 
 export {

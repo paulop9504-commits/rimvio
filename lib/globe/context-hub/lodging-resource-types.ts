@@ -10,6 +10,13 @@ export type LodgingResourcePayload = {
 
 export const CONTEXT_LODGING_HUB_ENABLED_META_KEY = "contextLodgingHubEnabled";
 export const CONTEXT_LODGING_INVENTORY_META_KEY = "contextLodgingInventory";
+export const CONTEXT_LODGING_RECOMMEND_SCORES_META_KEY = "contextLodgingRecommendScores";
+
+export type LodgingRecommendScoreWire = {
+  score: number;
+  reasonKo: string;
+  matchReasons: readonly string[];
+};
 
 export type ContextLodgingInventoryRow = LodgingResourcePayload & {
   lat: number;

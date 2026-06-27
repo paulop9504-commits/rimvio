@@ -6,7 +6,7 @@ import type {
   LockedEventCategory,
   LockedEventLifecycle,
   LockedEventSource,
-} from "@/lib/event-kernel/schema-lock/event-schema";
+} from "@/lib/events/schema-lock/event-schema";
 
 /** Schema-locked — see `lib/event-kernel/schema-lock/event-schema.ts`. */
 export type EventCandidateCategory = LockedEventCategory;
@@ -22,6 +22,8 @@ export type EventCandidateLifecycle = LockedEventLifecycle;
 export type EventCandidate = {
   id: string;
   title: string;
+  /** Optional body line — often mirrored in metadata for globe contexts. */
+  description?: string;
   category: EventCandidateCategory;
   source: EventCandidateSource;
   lifecycle: EventCandidateLifecycle;
@@ -44,6 +46,7 @@ export type EventCandidateDraft = Omit<
 export type EventCandidateWire = {
   id: string;
   title: string;
+  description?: string;
   category: EventCandidateCategory;
   source: EventCandidateSource;
   lifecycle: EventCandidateLifecycle;
@@ -57,6 +60,9 @@ export type EventCandidateWire = {
 
 export type EventCandidateUpsertInput = EventCandidateDraft & {
   id?: string;
+  lifecycleUpdatedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 const SCHEDULE_SIGNAL =

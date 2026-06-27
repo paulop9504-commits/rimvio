@@ -14,6 +14,7 @@ import type {
   UnifiedStressCase,
   UnifiedStressRun,
 } from "@/lib/testing/unified-stress/types";
+import { MINIMAL_MASTER_CONTEXT } from "@/lib/testing/minimal-master-context-fixture";
 
 export type MasterContextFixture = Parameters<
   typeof runOrchestratorPipeline
@@ -24,12 +25,13 @@ async function runPipeline(
   message: string,
   masterContext: MasterContextFixture
 ): Promise<OrchestratorResult> {
+  const base = masterContext ?? MINIMAL_MASTER_CONTEXT;
   return runOrchestratorPipeline({
     message,
     history: testCase.history ? [...testCase.history] : undefined,
     masterContext: {
-      ...masterContext,
-      existingSchedule: testCase.existingSchedule ?? masterContext.existingSchedule,
+      ...base,
+      existingSchedule: testCase.existingSchedule ?? base.existingSchedule,
     },
   });
 }
@@ -136,6 +138,8 @@ export async function runUnifiedStressCase(
 export function evaluateUnifiedStressRun(run: UnifiedStressRun): {
   pass: boolean;
   reasons: string[];
+  primaryRow?: ReturnType<typeof validateRouting>;
+  variationFailureCount: number;
 } {
   const reasons: string[] = [];
   if (!run.pass) {

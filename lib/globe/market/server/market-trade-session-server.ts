@@ -35,7 +35,9 @@ import { insertPeerMessage } from "@/lib/peer-chat/server-peer-chat";
 import { copy } from "@/lib/copy/human-ko";
 import {
   isExplicitMarketTradePipeline,
+  MARKET_TRADE_ACTIVE_HANDSHAKE_PHASES,
   normalizeMarketTradeStatus,
+  shouldIncludeInActiveMarketTradeList,
 } from "@/lib/globe/market/market-trade-pipeline";
 import { getServerRegionalProfile } from "@/lib/preferences/server-regional-profile";
 import type { RegionalProfile } from "@/lib/preferences/regional-profile";
@@ -44,7 +46,7 @@ import {
   readMarketAvailabilityPreset,
 } from "@/lib/globe/market/market-availability-preset";
 
-const ACTIVE_TRADE_PHASES = ["pending_buyer_start", "active"] as const;
+const ACTIVE_TRADE_PHASES = [...MARKET_TRADE_ACTIVE_HANDSHAKE_PHASES] as const;
 
 const CANCELLABLE_TRADE_STATUSES = [
   "seller_proposed",
@@ -175,7 +177,8 @@ export async function listActiveMarketTradeSessionsForUser(
     }
     handshake = await ensureBuyerPickedDayTradeStatus(supabase, handshake);
     if (
-      !isExplicitMarketTradePipeline({
+      !shouldIncludeInActiveMarketTradeList({
+        phase: handshake.phase,
         tradeStatus: handshake.tradeStatus,
         schedulingExpiresAtIso: handshake.schedulingExpiresAtIso,
       })

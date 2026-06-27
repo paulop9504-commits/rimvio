@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
-import { orchestrateOcrScheduleCandidates } from "../lib/events/orchestrate-ocr-schedule-candidates";
-import { orchestrateEventReviewApproval } from "../lib/events/orchestrate-event-review-approval";
+import { orchestrateOcrScheduleCandidates } from "../lib/event-kernel/review/orchestrate-ocr-schedule-candidates";
+import { orchestrateEventReviewApproval } from "../lib/event-kernel/review/orchestrate-event-review-approval";
 import {
   inferApprovalAction,
   APPROVE_PENDING_EVENTS,

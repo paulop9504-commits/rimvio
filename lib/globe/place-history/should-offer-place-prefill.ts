@@ -36,7 +36,11 @@ export function shouldOfferPlacePrefill(
     return false;
   }
   const lifecycle = event.lifecycle;
-  if (lifecycle !== "planned" && lifecycle !== "confirmed" && lifecycle !== "scheduled") {
+  if (
+    lifecycle !== "candidate" &&
+    lifecycle !== "confirmed" &&
+    lifecycle !== "scheduled"
+  ) {
     return false;
   }
 

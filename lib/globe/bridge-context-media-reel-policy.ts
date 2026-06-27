@@ -7,7 +7,7 @@ export function shouldAppendMediaStoreForBridgeReel(bridgeShared: boolean): bool
 }
 
 export function isOwnBridgeCapture(input: {
-  capture: Pick<FeedCaptureFragment, "ownerUserId">;
+  capture: { ownerUserId?: string | null };
   viewerUserId?: string | null;
 }): boolean {
   const owner = input.capture.ownerUserId?.trim();
@@ -42,7 +42,7 @@ export function isBridgeCapturePendingRemote(input: {
   bridgeShared: boolean;
   imageUrl: string | null;
   allowLocalBlob: boolean;
-  capture: FeedCaptureFragment;
+  capture: { ownerUserId?: string | null };
   viewerUserId?: string | null;
 }): boolean {
   if (!input.bridgeShared || input.imageUrl || input.allowLocalBlob) {

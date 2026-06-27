@@ -97,14 +97,10 @@ export function readExperienceIntentFromEvent(
     return null;
   }
 
-  const confidence =
-    typeof meta[EXPERIENCE_INTENT_META_KEYS.confidence] === "number"
-      ? meta[EXPERIENCE_INTENT_META_KEYS.confidence]
-      : 0;
-  const score =
-    typeof meta[EXPERIENCE_INTENT_META_KEYS.score] === "number"
-      ? meta[EXPERIENCE_INTENT_META_KEYS.score]
-      : 0;
+  const confidenceRaw = meta[EXPERIENCE_INTENT_META_KEYS.confidence];
+  const confidence = typeof confidenceRaw === "number" ? confidenceRaw : 0;
+  const scoreRaw = meta[EXPERIENCE_INTENT_META_KEYS.score];
+  const score = typeof scoreRaw === "number" ? scoreRaw : 0;
   const evidenceRaw = meta[EXPERIENCE_INTENT_META_KEYS.evidence];
   const evidence = Array.isArray(evidenceRaw) ? evidenceRaw : [];
   const runnerUpRaw = meta[EXPERIENCE_INTENT_META_KEYS.runnerUp];
@@ -120,15 +116,16 @@ export function readExperienceIntentFromEvent(
         }
       : null;
 
+  const resolvedAtRaw = meta[EXPERIENCE_INTENT_META_KEYS.resolvedAt];
+  const resolvedAt =
+    typeof resolvedAtRaw === "string" ? resolvedAtRaw : new Date().toISOString();
+
   return {
     intent: intent as ExperienceIntent,
     confidence,
     score,
     runnerUp,
     evidence: evidence as IntentResolution["evidence"],
-    resolvedAt:
-      typeof meta[EXPERIENCE_INTENT_META_KEYS.resolvedAt] === "string"
-        ? meta[EXPERIENCE_INTENT_META_KEYS.resolvedAt]
-        : new Date().toISOString(),
+    resolvedAt,
   };
 }

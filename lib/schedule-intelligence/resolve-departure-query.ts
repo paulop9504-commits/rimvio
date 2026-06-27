@@ -57,12 +57,26 @@ export async function resolveDepartureAdvice(input: {
     origin_hint: "현재 위치",
   };
 
-  const traffic = await trafficProvider.resolve({ event, now: new Date() });
-  const weather = await weatherProvider.resolve({ event, now: new Date() });
+  const now = new Date();
+  const traffic = await trafficProvider.resolve({ event, now });
+  const weather = await weatherProvider.resolve({ event, now });
   const leave = computeLeaveTime({
     event,
-    context: { traffic, weather },
-    now: new Date(),
+    context: {
+      resolved_at: now.toISOString(),
+      traffic,
+      weather,
+      location: { label: event.origin_hint ?? "현재 위치" },
+      calendar: {
+        current_time: now.toISOString(),
+        minutes_until_event: Math.max(
+          0,
+          Math.round((Date.parse(meetingIso) - now.getTime()) / 60_000),
+        ),
+        event_title: event.title,
+      },
+    },
+    now,
   });
 
   const leaveBy = formatLeaveTimeClock(leave.show_at);

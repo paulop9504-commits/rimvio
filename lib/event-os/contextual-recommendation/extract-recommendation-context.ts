@@ -132,7 +132,9 @@ export function extractRecommendationContext(input: {
     : "UNKNOWN";
 
   let lastMeal = extractLastMealFromText(message);
-  let lastMealCategory = lastMeal ? inferMealCategory(lastMeal) : null;
+  let lastMealCategory: RecommendationContext["lastMealCategory"] = lastMeal
+    ? inferMealCategory(lastMeal)
+    : null;
 
   const historyMeal = latestMealFromHistory(input.eventHistory);
   if (!lastMeal && historyMeal) {

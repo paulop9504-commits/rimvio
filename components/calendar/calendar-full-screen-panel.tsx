@@ -96,7 +96,7 @@ export function CalendarFullScreenPanel({
               <CalendarBoard
                 variant="full"
                 defaultView="month"
-                overlayRows={overlayRows}
+                overlayRows={[...overlayRows]}
                 hideOriginLegend
                 showEmptyActions
                 className="min-h-0 flex-1 rounded-2xl"

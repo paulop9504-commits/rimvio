@@ -1,7 +1,7 @@
 import { getAuthUserId } from "@/lib/auth/session";
 import { isAuthRequired } from "@/lib/auth/policy";
 import { filterActiveLinks } from "@/lib/utils/link-archive";
-import { funFeedLinks } from "@/lib/demo/fun-feed-links";
+import { funFeedLinks } from "@/lib/onboarding/fun-feed-links";
 import type { LinkRow } from "@/types/database";
 import { tryCreateClient } from "@/lib/supabase/server";
 

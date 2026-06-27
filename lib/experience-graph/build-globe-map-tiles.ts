@@ -1,4 +1,5 @@
 import { resolveGlobeTileUpstreamUrl } from "@/lib/experience-graph/resolve-globe-tile-upstream";
+import { GLOBE_TILE_MAX_ZOOM } from "@/lib/globe/globe-tile-constants";
 
 const TILE_SIZE = 256;
 

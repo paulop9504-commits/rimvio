@@ -5,6 +5,7 @@ import type {
   GoalSnapshot,
 } from "@/lib/goal-engine/types";
 import type { OrchestratorResult } from "@/lib/action-chat/orchestrator-types";
+import { mergeOrchestratorMetadata } from "@/lib/action-chat/orchestrator-types";
 import type {
   FoodCandidate,
   RankedCandidate,
@@ -267,8 +268,8 @@ export function applyMealGoalPolicyToOrchestrator(
     payload: {
       recommendationItem: row.item,
       recommendationScore: row.score,
-      goalTraitLabel: row.goalTraitLabel,
-      goalScoreBonus: row.goalScoreBonus,
+      ...(row.goalTraitLabel ? { goalTraitLabel: row.goalTraitLabel } : {}),
+      ...(row.goalScoreBonus != null ? { goalScoreBonus: row.goalScoreBonus } : {}),
     },
   }));
 
@@ -276,12 +277,11 @@ export function applyMealGoalPolicyToOrchestrator(
     ...orchestrator,
     summary: summaryWithNudge,
     actions,
-    metadata: {
-      ...orchestrator.metadata,
+    metadata: mergeOrchestratorMetadata(orchestrator.metadata, {
       contextual_recommendation: adjustedRecommendation,
       goal_meal_policy_applied: true,
       goal_primary_focus: snapshot.primaryFocus,
-    },
+    }),
   };
 }
 

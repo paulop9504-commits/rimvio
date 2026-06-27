@@ -159,7 +159,7 @@ function buildContextLine(input: {
     }
 
     if (hour >= 7 && hour <= 9 && hubTransit.walkMinutes <= 25) {
-      return copy.globe.lodgingDynamicBreakfastRoute();
+      return copy.globe.lodgingDynamicBreakfastRoute;
     }
 
     if (hubTransit.taxiMinutes <= 15) {

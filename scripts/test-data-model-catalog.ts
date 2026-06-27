@@ -28,7 +28,7 @@ assert.ok(ids.includes("TAXI_CALL"));
 
 assert.equal(LOCKED_EVENT_SCHEMA_VERSION, "event-candidate.v1");
 assert.equal(LOCKED_EVENT_CATEGORIES.length, 7);
-assert.equal(LOCKED_EVENT_SOURCES.length, 3);
+assert.equal(LOCKED_EVENT_SOURCES.length, 4);
 assert.equal(LOCKED_EVENT_LIFECYCLES.length, 7);
 
 console.log("test-data-model-catalog: ok");

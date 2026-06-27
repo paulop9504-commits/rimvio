@@ -191,8 +191,8 @@ function buildBecause(result: OrchestratorResult, plugins: InferredPlugin[]): st
   if (result.entityQuickPick?.lead) {
     return result.entityQuickPick.lead;
   }
-  if (result.cafeDiscovery?.headline) {
-    return result.cafeDiscovery.headline;
+  if (result.cafeDiscovery?.summary) {
+    return result.cafeDiscovery.summary;
   }
   const summary = result.summary?.trim();
   if (summary && summary !== GENERIC_CLARIFY) {
@@ -219,7 +219,7 @@ export function simulateAdaptiveTest(input: {
     `source=${input.orchestrator.source ?? "unknown"}`,
     `projected=${projectedKind}`,
     `plugins=${plugins.join("+")}`,
-    ...(input.orchestrator.orchestratorTrace?.hits?.slice(-3).map((hit) => hit.detail) ?? []),
+    ...(input.orchestrator.orchestratorTrace?.slice(-3) ?? []),
   ].filter(Boolean);
 
   return {

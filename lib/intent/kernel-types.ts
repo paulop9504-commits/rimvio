@@ -2,6 +2,8 @@ import type { ConfidenceBand } from "@/lib/screenshot/transition-gate";
 import type { SignalEntry } from "@/lib/screenshot/signal-ledger";
 import type { ActionFamily } from "@/lib/personalization/types";
 import { INTENT_KERNEL_VERSION } from "@/lib/intent/kernel-version";
+export type { SaveTrajectoryEntry } from "@/lib/local-links/save-trajectory-types";
+import type { SaveTrajectoryEntry } from "@/lib/local-links/save-trajectory-types";
 
 export type KernelCategory =
   | "commerce"
@@ -33,16 +35,6 @@ export type CrossLinkPattern = "comparison" | "workflow" | "repeat" | "none";
 export type LlmRefineResult = {
   kind?: "place" | "product" | "unknown";
   query?: string;
-};
-
-export type SaveTrajectoryEntry = {
-  timestamp: string;
-  category: string;
-  title: string;
-  domain: string | null;
-  query?: string | null;
-  source_type?: string | null;
-  session_id?: string | null;
 };
 
 export type IntentKernelResult = {

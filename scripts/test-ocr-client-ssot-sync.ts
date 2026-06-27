@@ -11,8 +11,8 @@ import {
   applyPendingEventCandidateDatePatches,
   resetPendingEventCandidatesForTests,
 } from "../lib/event-kernel/review/pending-event-candidate-store";
-import { orchestrateOcrScheduleCandidates } from "../lib/events/orchestrate-ocr-schedule-candidates";
-import { orchestrateEventReviewApproval } from "../lib/events/orchestrate-event-review-approval";
+import { orchestrateOcrScheduleCandidates } from "../lib/event-kernel/review/orchestrate-ocr-schedule-candidates";
+import { orchestrateEventReviewApproval } from "../lib/event-kernel/review/orchestrate-event-review-approval";
 import { resetEventCandidatesForTests } from "../lib/events/event-store";
 import { listEventCalendarRows } from "../lib/events/project-event-calendar";
 

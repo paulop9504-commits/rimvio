@@ -56,7 +56,11 @@ export const PORTAL_INTENT_TILE_MOTION = {
     opacity: 1,
     y: 0,
     scale: 1,
-    transition: { delay: index * 0.05, duration: 0.34, ease: [0.22, 1, 0.36, 1] },
+    transition: {
+      delay: index * 0.05,
+      duration: 0.34,
+      ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
+    },
   }),
 };
 

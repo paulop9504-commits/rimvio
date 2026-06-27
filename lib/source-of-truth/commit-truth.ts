@@ -12,7 +12,7 @@ import {
   transitionEventLifecycle as storeTransition,
   upsertEventCandidate as storeUpsert,
 } from "@/lib/events/event-store";
-import { validateEventCandidateWire } from "@/lib/event-kernel/schema-lock/event-schema";
+import { validateEventCandidateWire } from "@/lib/events/schema-lock/event-schema";
 import { scheduleLifeEventVaultSync } from "@/lib/materialize/schedule-life-event-vault-sync";
 
 export function commitEventUpsert(

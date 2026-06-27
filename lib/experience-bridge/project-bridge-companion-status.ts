@@ -7,7 +7,7 @@ import {
   isBridgeCapturePendingRemote,
   isOwnBridgeCapture,
 } from "@/lib/globe/bridge-context-media-reel-policy";
-import { projectCaptureNodes } from "@/lib/ontology/nodes/project-experience-subgraph";
+import { projectCaptureNodes } from "@/lib/experience-graph/project-experience-subgraph";
 import { isBridgeSharedEvent } from "@/lib/globe/is-bridge-shared-event";
 
 export type BridgeCompanionTone =
@@ -49,9 +49,11 @@ export function projectBridgeCompanionStatus(input: {
       continue;
     }
     mediaCount += 1;
-    const imageUrl = isUsableBridgeMediaUrl(capture.url) ? capture.url!.trim() : null;
+    const imageUrl = isUsableBridgeMediaUrl(capture.url ?? undefined)
+      ? capture.url!.trim()
+      : null;
     const mediaContextId = capture.mediaContextId?.trim() || null;
-    const allowLocalBlob = isLocalEventMedia(eventId, mediaContextId);
+    const allowLocalBlob = isLocalEventMedia(eventId, mediaContextId ?? undefined);
 
     if (
       isBridgeCapturePendingRemote({

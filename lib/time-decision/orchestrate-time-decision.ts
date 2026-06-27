@@ -89,7 +89,7 @@ function relativeCountdownResult(input: {
     status: "pending",
   };
 
-  const placeLabel = extracted.place_name ?? extracted.task_label ?? "일정";
+  const placeLabel = extracted.place_name ?? extracted.schedule_note ?? "일정";
 
   return {
     summary: compileRelativeCountdownSummary({

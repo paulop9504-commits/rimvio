@@ -1,8 +1,8 @@
 import { readPeerContacts } from "@/lib/context/peer-contact-store";
-import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
 import type {
   FeedSlotPeerLookup,
   FeedSlotPeerLookupRow,
+  FeedSlotPeerMessageWire,
 } from "@/lib/feed/feed-slot-peer-context-types";
 import type { RelationshipFeedSlot } from "@/lib/social/relationship-slot-types";
 
@@ -26,7 +26,7 @@ function mergePeerRow(
 
 /** Pure read — index friends for slot peer resolution. */
 export function buildFeedSlotPeerLookup(input: {
-  messages: readonly ActionChatMessage[];
+  messages: readonly FeedSlotPeerMessageWire[];
   relationshipSlots: readonly RelationshipFeedSlot[];
   contacts?: ReturnType<typeof readPeerContacts>;
   /** 단톡 ROOM — standalone /feed 에서 messageId 역추적 보강 */

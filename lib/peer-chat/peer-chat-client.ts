@@ -55,7 +55,9 @@ export async function fetchRelationshipFeedSlots(): Promise<{
     PEER_FEED_SLOTS_CACHE_KEY,
     async () => {
       const response = await fetch(endpoint, { credentials: "include" });
-      return parseJson(response);
+      return parseJson<{
+        slots: import("@/lib/social/relationship-slot-types").RelationshipFeedSlot[];
+      }>(response);
     },
     BRIDGE_SLOTS_CACHE_MS,
   );
@@ -408,7 +410,12 @@ export async function sendSharedGlobePinRemote(input: {
     displayName: input.displayName,
   });
 
-  const post = async () => {
+  type GlobePinPostResult = {
+    pin: import("@/lib/peer-chat/globe-pin-types").SharedGlobePin;
+    threadId: string;
+  };
+
+  const post = async (): Promise<GlobePinPostResult> => {
     const endpoint = `${resolveAppOrigin()}/api/peers/threads/${encodeURIComponent(sendThreadId)}/globe-pins`;
     if (input.file) {
       const form = new FormData();
@@ -428,7 +435,7 @@ export async function sendSharedGlobePinRemote(input: {
         credentials: "include",
         body: form,
       });
-      return parseJson(response);
+      return parseJson<GlobePinPostResult>(response);
     }
 
     const response = await fetch(endpoint, {
@@ -444,7 +451,7 @@ export async function sendSharedGlobePinRemote(input: {
         capturedAtIso: input.capturedAtIso,
       }),
     });
-    return parseJson(response);
+    return parseJson<GlobePinPostResult>(response);
   };
 
   try {

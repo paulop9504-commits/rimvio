@@ -1,4 +1,4 @@
-import type { ConfirmationExtractedData } from "@/lib/action-chat/confirmation-types";
+import type { ConfirmationExtractedData } from "@/lib/corrections/confirmation-wire-types";
 import type {
   EventCandidate,
   EventCandidateCategory,

@@ -95,9 +95,10 @@ export function expandQueryCandidates(frame: SemanticFrame): QueryCandidate[] {
   const expanded = expandedQuery(frame, canonical);
   const local = localIntentQuery(frame, canonical);
 
-  return [
+  const candidates: QueryCandidate[] = [
     { kind: "canonical", query: canonical, score: 0 },
     { kind: "expanded", query: expanded, score: 0 },
     { kind: "local_intent", query: local, score: 0 },
-  ].filter((candidate) => candidate.query.trim());
+  ];
+  return candidates.filter((candidate) => candidate.query.trim());
 }

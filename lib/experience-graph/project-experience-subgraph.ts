@@ -1,7 +1,7 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
-import { readFeedCaptureFragments } from "@/lib/feed/feed-capture-metadata";
-import { EXPERIENCE_BRIDGE_META_KEYS } from "@/lib/experience-bridge/constants";
-import { isBridgeSharedEvent } from "@/lib/globe/is-bridge-shared-event";
+import { readFeedCaptureFragments } from "@/lib/events/read-feed-capture-fragments";
+import { EXPERIENCE_BRIDGE_META_KEYS } from "@/lib/ontology/experience-bridge-meta-keys";
+import { isBridgeSharedEvent } from "@/lib/ontology/is-bridge-shared-event";
 import type {
   BridgeNode,
   CaptureNode,
@@ -42,23 +42,20 @@ export function projectBridgeNode(event: EventCandidate): BridgeNode | null {
     return null;
   }
   const meta = event.metadata ?? {};
+  const bridgeIdRaw = meta[EXPERIENCE_BRIDGE_META_KEYS.bridgeId];
   const bridgeId =
-    typeof meta[EXPERIENCE_BRIDGE_META_KEYS.bridgeId] === "string"
-      ? meta[EXPERIENCE_BRIDGE_META_KEYS.bridgeId].trim()
-      : event.id;
+    typeof bridgeIdRaw === "string" ? bridgeIdRaw.trim() : event.id;
   const role = meta.experienceBridgeHost
     ? ("host" as const)
     : meta.experienceBridgeParticipant
       ? ("participant" as const)
       : null;
+  const peerThreadIdRaw = meta[EXPERIENCE_BRIDGE_META_KEYS.peerThreadId];
   const peerThreadId =
-    typeof meta[EXPERIENCE_BRIDGE_META_KEYS.peerThreadId] === "string"
-      ? meta[EXPERIENCE_BRIDGE_META_KEYS.peerThreadId].trim()
-      : null;
+    typeof peerThreadIdRaw === "string" ? peerThreadIdRaw.trim() : null;
+  const hostUserIdRaw = meta[EXPERIENCE_BRIDGE_META_KEYS.hostUserId];
   const hostUserId =
-    typeof meta[EXPERIENCE_BRIDGE_META_KEYS.hostUserId] === "string"
-      ? meta[EXPERIENCE_BRIDGE_META_KEYS.hostUserId].trim()
-      : null;
+    typeof hostUserIdRaw === "string" ? hostUserIdRaw.trim() : null;
 
   return {
     objectKind: "bridge",

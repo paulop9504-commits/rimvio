@@ -16,6 +16,7 @@ import {
 } from "@/lib/globe/context-hub/globe-lodging-marker-bridge";
 import { dispatchGlobeContextHubOpen } from "@/lib/globe/context-hub/globe-context-hub-open-bridge";
 import { readLodgingPayloadFromResource } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
+import { readLodgingRecommendReason } from "@/lib/globe/lodging/lodging-recommendation-reason-store";
 import { MAP_FOCUS_PIN_VIEWPORT_Y } from "@/lib/globe/map-anchored-overlay-layout";
 import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
 import type { RankedContextResource } from "@/lib/globe/resource/map-hub-service-to-resource";
@@ -165,6 +166,12 @@ export function GlobeLodgingFocusStage({
 
   const entry = lodgingIndex >= 0 ? lodgingRanked[lodgingIndex] : null;
   const payload = entry ? readLodgingPayloadFromResource(entry.resource) : null;
+  const recommendReason = useMemo(() => {
+    if (!eventId || !payload?.placeId) {
+      return null;
+    }
+    return readLodgingRecommendReason(eventId, payload.placeId);
+  }, [eventId, payload?.placeId, revision]);
   const anchorLat = entry?.resource.spacetime.lat ?? null;
   const anchorLng = entry?.resource.spacetime.lng ?? null;
 
@@ -335,6 +342,8 @@ export function GlobeLodgingFocusStage({
             placeLabel={contextPlace}
             situationalLabel={situationalLabel}
             dynamicTags={dynamicTags}
+            recommendReason={recommendReason?.reasonKo ?? null}
+            recommendReasons={recommendReason?.matchReasons ?? []}
             primaryAction={{
               label: copy.globe.lodgingFocusBook,
               onClick: handleBook,

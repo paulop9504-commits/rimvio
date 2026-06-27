@@ -59,7 +59,7 @@ export function resolveFeedSlotOpenTarget(
 
   const plan = event ? readPlanContextFromEvent(event) : null;
   const planPeerThreadId = plan?.peerThreadId?.trim();
-  if (planPeerThreadId && isPeerThreadId(planPeerThreadId)) {
+  if (planPeerThreadId && isPeerThreadId(planPeerThreadId) && plan) {
     return {
       kind: "peer_room",
       peerThreadId: planPeerThreadId,

@@ -3,21 +3,9 @@ import { mergeCorrectionLogEntries } from "@/lib/corrections/merge-correction-lo
 import { extractPlaceIntentKey } from "@/lib/corrections/prior-place-choice";
 import { getAuthUserId } from "@/lib/auth/session";
 import { tryCreateClient } from "@/lib/supabase/server";
+import type { PlaceCorrectionRow } from "@/types/database";
 
-export type PlaceCorrectionRow = {
-  id: string;
-  client_id: string;
-  user_id: string | null;
-  session_id: string;
-  user_input: string;
-  ai_inferred_location: string | null;
-  ai_inferred_place_name: string | null;
-  user_corrected_location: string | null;
-  user_corrected_place_name: string | null;
-  outcome: CorrectionLogEntry["outcome"];
-  intent_key: string | null;
-  created_at: string;
-};
+export type { PlaceCorrectionRow };
 
 function rowToEntry(row: PlaceCorrectionRow): CorrectionLogEntry {
   return {

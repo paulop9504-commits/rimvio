@@ -14,6 +14,7 @@ import type { GlobeInstance } from "globe.gl";
 import { GLOBE_OVERVIEW_POINT_OF_VIEW } from "@/lib/experience-graph/globe-overview-view";
 import { createGlobe3dPinElement, createGlobe3dClusterPinElement, createGlobe3dDotPinElement, createGlobe3dMarketPinElement } from "@/lib/globe/create-globe-3d-pin-element";
 import { createGlobeLodgingMarkerElement } from "@/lib/globe/create-globe-lodging-marker-element";
+import { createGlobeEateryMarkerElement } from "@/lib/globe/create-globe-eatery-marker-element";
 import { createGlobeContextHubAnchorElement } from "@/lib/globe/create-globe-context-hub-anchor-element";
 import { createGlobe3dViewerPinElement } from "@/lib/globe/create-globe-3d-viewer-pin-element";
 import { accuracyMetersToRingDegrees } from "@/lib/globe/accuracy-ring-degrees";
@@ -47,8 +48,11 @@ import type { GlobeLodgingMapMarker } from "@/lib/globe/context-hub/lodging-glob
 import type { GlobeContextHubMapAnchor } from "@/lib/globe/context-hub/context-hub-globe-anchor-types";
 import { isGlobeContextHubMapAnchor } from "@/lib/globe/context-hub/context-hub-globe-anchor-types";
 import { isGlobeLodgingMapMarker } from "@/lib/globe/context-hub/lodging-globe-marker-types";
-import { shouldRenderContextHubGlobeAnchor } from "@/lib/globe/context-hub/project-context-hub-globe-anchor";
+import type { GlobeEateryMapMarker } from "@/lib/globe/eatery/eatery-globe-marker-types";
+import { isGlobeEateryMapMarker } from "@/lib/globe/eatery/eatery-globe-marker-types";
 import { shouldRenderLodgingGlobeMarkers } from "@/lib/globe/context-hub/project-lodging-globe-markers";
+import { shouldRenderEateryGlobeMarkers } from "@/lib/globe/eatery/project-eatery-globe-markers";
+import { shouldRenderContextHubGlobeAnchor } from "@/lib/globe/context-hub/project-context-hub-globe-anchor";
 import {
   isClassifiedGlobePin,
   mergeGlobeHtmlElements,
@@ -109,6 +113,12 @@ export type RimvioGlobe3DHandle = {
     >,
     options?: GlobeFlyToPinOptions,
   ) => void;
+  flyToDiscoveryBounds: (input: {
+    centerLat: number;
+    centerLng: number;
+    altitude: number;
+    pinViewportY?: number;
+  }) => void;
   clearPinViewportBias: () => void;
   resetOverview: () => void;
   getPointOfView: () => {
@@ -162,6 +172,9 @@ export type RimvioGlobe3DProps = {
   /** Ranked lodging markers — View only; no fetch. */
   lodgingMarkers?: readonly GlobeLodgingMapMarker[];
   onLodgingMarkerPress?: (resourceId: string, carouselIndex: number) => void;
+  /** Ranked eatery markers — View only; no fetch. */
+  eateryMarkers?: readonly GlobeEateryMapMarker[];
+  onEateryMarkerPress?: (resourceId: string, carouselIndex: number) => void;
   /** Connected context hub opener — map pill, not pin info sheet. */
   hubAnchors?: readonly GlobeContextHubMapAnchor[];
   onContextHubAnchorPress?: (contextEventId: string) => void;
@@ -191,6 +204,8 @@ export const RimvioGlobe3D = memo(
       renderSuspended = false,
       lodgingMarkers = [],
       onLodgingMarkerPress,
+      eateryMarkers = [],
+      onEateryMarkerPress,
       hubAnchors = [],
       onContextHubAnchorPress,
       className,
@@ -202,6 +217,7 @@ export const RimvioGlobe3D = memo(
     const globeRef = useRef<GlobeInstance | null>(null);
     const onPinPressRef = useRef(onPinPress);
     const onLodgingMarkerPressRef = useRef(onLodgingMarkerPress);
+    const onEateryMarkerPressRef = useRef(onEateryMarkerPress);
     const onContextHubAnchorPressRef = useRef(onContextHubAnchorPress);
     const onPinRelocateRef = useRef(onPinRelocate);
     const pinRelocateEnabledRef = useRef(pinRelocateEnabled);
@@ -212,11 +228,12 @@ export const RimvioGlobe3D = memo(
     const expandedPinIdRef = useRef(expandedPinId);
     const pinsRef = useRef(pins);
     const lodgingMarkersRef = useRef(lodgingMarkers);
+    const eateryMarkersRef = useRef(eateryMarkers);
     const hubAnchorsRef = useRef(hubAnchors);
     const tripArcsRef = useRef(tripArcs);
     const contextWarmthPointsRef = useRef(contextWarmthPoints);
     const contextWarmthEnabledRef = useRef(contextWarmthEnabled);
-    const warmthAltitudeRef = useRef(GLOBE_OVERVIEW_POINT_OF_VIEW.altitude);
+    const warmthAltitudeRef = useRef<number>(GLOBE_OVERVIEW_POINT_OF_VIEW.altitude);
     const warmthDetailRef = useRef<GlobeDetailLevel>("space");
     const viewerLocationRef = useRef(viewerLocation);
     const overviewTextureUrlRef = useRef<string | null>(null);
@@ -376,6 +393,7 @@ export const RimvioGlobe3D = memo(
 
     onPinPressRef.current = onPinPress;
     onLodgingMarkerPressRef.current = onLodgingMarkerPress;
+    onEateryMarkerPressRef.current = onEateryMarkerPress;
     onContextHubAnchorPressRef.current = onContextHubAnchorPress;
     onPinRelocateRef.current = onPinRelocate;
     pinRelocateEnabledRef.current = pinRelocateEnabled;
@@ -386,6 +404,7 @@ export const RimvioGlobe3D = memo(
     expandedPinIdRef.current = expandedPinId;
     pinsRef.current = pins;
     lodgingMarkersRef.current = lodgingMarkers;
+    eateryMarkersRef.current = eateryMarkers;
     hubAnchorsRef.current = hubAnchors;
     tripArcsRef.current = tripArcs;
     contextWarmthPointsRef.current = contextWarmthPoints;
@@ -400,13 +419,16 @@ export const RimvioGlobe3D = memo(
         return;
       }
       const showLodging = shouldRenderLodgingGlobeMarkers(warmthDetailRef.current);
+      const showEatery = shouldRenderEateryGlobeMarkers(warmthDetailRef.current);
       const showHubAnchors = shouldRenderContextHubGlobeAnchor(warmthDetailRef.current);
       globe.htmlElementsData(
         mergeGlobeHtmlElements({
           pins: pinsRef.current,
           lodgingMarkers: lodgingMarkersRef.current,
+          eateryMarkers: eateryMarkersRef.current,
           hubAnchors: hubAnchorsRef.current,
           showLodgingMarkers: showLodging,
+          showEateryMarkers: showEatery,
           showHubAnchors,
         }),
       );
@@ -453,6 +475,22 @@ export const RimvioGlobe3D = memo(
           FLY_MS,
         );
         applyGlobePinViewportBias(globe, root, options?.pinViewportY);
+      },
+      flyToDiscoveryBounds(input) {
+        const globe = globeRef.current;
+        const root = rootRef.current;
+        if (!globe) {
+          return;
+        }
+        globe.pointOfView(
+          {
+            lat: input.centerLat,
+            lng: input.centerLng,
+            altitude: input.altitude,
+          },
+          FLY_MS * 1.4,
+        );
+        applyGlobePinViewportBias(globe, root, input.pinViewportY ?? 0.62);
       },
       clearPinViewportBias() {
         const globe = globeRef.current;
@@ -538,8 +576,10 @@ export const RimvioGlobe3D = memo(
           mergeGlobeHtmlElements({
             pins: pinsRef.current,
             lodgingMarkers: lodgingMarkersRef.current,
+            eateryMarkers: eateryMarkersRef.current,
             hubAnchors: hubAnchorsRef.current,
             showLodgingMarkers: shouldRenderLodgingGlobeMarkers(warmthDetailRef.current),
+            showEateryMarkers: shouldRenderEateryGlobeMarkers(warmthDetailRef.current),
             showHubAnchors: shouldRenderContextHubGlobeAnchor(warmthDetailRef.current),
           }),
         )
@@ -563,6 +603,12 @@ export const RimvioGlobe3D = memo(
             return createGlobeLodgingMarkerElement(row, {
               onPress: (resourceId, carouselIndex) =>
                 onLodgingMarkerPressRef.current?.(resourceId, carouselIndex),
+            });
+          }
+          if (isGlobeEateryMapMarker(row)) {
+            return createGlobeEateryMarkerElement(row, {
+              onPress: (resourceId, carouselIndex) =>
+                onEateryMarkerPressRef.current?.(resourceId, carouselIndex),
             });
           }
           if (row.pinShape === "viewer") {
@@ -706,7 +752,7 @@ export const RimvioGlobe3D = memo(
           return;
         }
         // Stale equirect mosaic blocks slippy tiles on some Android GPUs.
-        globe.globeImageUrl(null);
+        globe.globeImageUrl(undefined as unknown as string);
       };
 
       const emitPointOfView = (
@@ -908,7 +954,7 @@ export const RimvioGlobe3D = memo(
         return;
       }
       syncHtmlElementsRef.current();
-    }, [pins, lodgingMarkers, hubAnchors, globeReady]);
+    }, [pins, lodgingMarkers, eateryMarkers, hubAnchors, globeReady]);
 
     useEffect(() => {
       const globe = globeRef.current;
@@ -934,7 +980,7 @@ export const RimvioGlobe3D = memo(
       if (shouldApplyGlobeOverviewTexture(altitude)) {
         globe.globeImageUrl(overviewTextureUrl);
       } else {
-        globe.globeImageUrl(null);
+        globe.globeImageUrl(undefined as unknown as string);
       }
     }, [overviewTextureUrl, globeReady]);
 

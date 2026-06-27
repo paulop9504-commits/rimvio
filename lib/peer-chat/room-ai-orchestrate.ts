@@ -1,4 +1,4 @@
-import { orchestrateUserMessage } from "@/lib/action-chat/orchestrate-user-message";
+import { orchestrateUserMessage } from "@/lib/chat-room/orchestrate-composer-turn";
 import type { AiMessagePayload } from "@/lib/chat-room/types";
 import type { PeerMessage } from "@/lib/context/peer-message-types";
 

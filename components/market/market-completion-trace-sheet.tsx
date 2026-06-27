@@ -41,7 +41,7 @@ export function MarketCompletionTraceSheet({
           <motion.button
             type="button"
             aria-label={copy.globe.marketCompletionTraceSheetLater}
-            className={rimvioSheetBackdropClass}
+            className={rimvioSheetBackdropClass()}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -72,7 +72,7 @@ export function MarketCompletionTraceSheet({
               </div>
               <button
                 type="button"
-                className={rimvioSheetCloseBtnClass}
+                className={rimvioSheetCloseBtnClass()}
                 aria-label={copy.globe.marketCompletionTraceSheetLater}
                 onClick={() => onOpenChange(false)}
               >

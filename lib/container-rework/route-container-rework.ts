@@ -161,7 +161,9 @@ function resolveConflicts(routes: ContainerRoute[]): ContainerRoute[] {
       primary_container: "dock" as UiContainer,
       dock: true,
       notification_surface: false,
-      suppressed_containers: [...new Set([...route.suppressed_containers, "notification_surface"])],
+      suppressed_containers: [
+        ...new Set<UiContainer>([...route.suppressed_containers, "notification_surface"]),
+      ],
       reason: `${route.reason}; notification coalesced to dock`,
     };
   });

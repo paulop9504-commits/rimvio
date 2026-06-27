@@ -1,6 +1,6 @@
 "use client";
 
-import { LOCAL_LINKS_UPDATED } from "@/lib/demo/seed";
+import { LOCAL_LINKS_UPDATED } from "@/lib/local-links/local-links-events";
 import {
   readCaptureVision,
   setCaptureIntent,

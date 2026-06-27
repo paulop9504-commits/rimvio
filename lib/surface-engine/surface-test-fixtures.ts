@@ -7,7 +7,7 @@ const NOW = new Date("2026-06-07T10:00:00.000Z");
 function baseEvent(partial: Partial<EventCandidate> & Pick<EventCandidate, "id" | "title">): EventCandidate {
   return {
     category: "schedule",
-    source: "chat",
+    source: "message",
     lifecycle: "scheduled",
     confidence: 0.82,
     lifecycleUpdatedAt: NOW.toISOString(),

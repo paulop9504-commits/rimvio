@@ -10,6 +10,7 @@ export {
   type SurfaceGraph,
   type CompositionLayout,
   type SurfaceCompositionFrame,
+  type SurfaceCollapseSnapshot,
   type DispatchSurfaceAction,
 } from "@/lib/surface-composition/surface-node-contract";
 

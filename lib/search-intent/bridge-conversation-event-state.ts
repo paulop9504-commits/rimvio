@@ -4,13 +4,10 @@ import { resolveSearchIntent, type ResolvedSearchIntent } from "@/lib/search-int
 /** Bridge chat event state topic into search frame context (티키타카 ↔ search). */
 export function resolveSearchIntentWithEventState(input: {
   text: string;
-  eventState?: Pick<ConversationEventState, "current_topic" | "domain"> | null;
+  eventState?: Pick<ConversationEventState, "current_topic"> | null;
   deeplinkSeed?: string;
 }): ResolvedSearchIntent {
-  const context =
-    input.eventState?.current_topic?.trim() ||
-    input.eventState?.domain?.trim() ||
-    undefined;
+  const context = input.eventState?.current_topic?.trim() || undefined;
 
   return resolveSearchIntent({
     text: input.text,

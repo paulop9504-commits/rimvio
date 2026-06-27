@@ -1,5 +1,6 @@
 import { isAirportLikeTitle } from "@/lib/action-projection/detect-travel-event";
 import type {
+  SecondaryActionCategory,
   SecondaryActionGeneratorInput,
   SecondaryActionReason,
   SecondaryActionWire,
@@ -373,7 +374,7 @@ function poolDrafts(input: SecondaryActionGeneratorInput): DraftSecondary[] {
     }
 
     let reason: SecondaryActionReason = "convenience";
-    let category = "convenience_optimization" as const;
+    let category: SecondaryActionCategory = "convenience_optimization";
     let plugin = "navigation";
 
     if (/(?:티켓|체크인|확인)/u.test(item.label)) {

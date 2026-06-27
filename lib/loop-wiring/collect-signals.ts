@@ -1,6 +1,8 @@
 import type { CapabilityId } from "@/lib/capability-registry/capability-types";
 import type { LoopWiringInput } from "@/lib/loop-wiring/loop-wiring-input";
 import type { SignalKind, TriggerSignal } from "@/lib/loop-wiring/loop-contract";
+
+export type { TriggerSignal };
 import { getSignalDefinition } from "@/lib/loop-wiring/signal-registry";
 
 let signalCounter = 0;

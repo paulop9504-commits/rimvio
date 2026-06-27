@@ -1,6 +1,6 @@
-import type { RankedSurface, SurfaceLifecycle } from "@/lib/surface-engine/surface-contract";
+import type { RankedSurface, SurfaceLifecycle } from "@/lib/experience-intent/feed-surface-wire";
 import type { SurfaceNode } from "@/lib/surface-composition/surface-node-contract";
-import { isFallbackSurface } from "@/lib/surface-engine/surface-ux-state";
+import { isFallbackSurface } from "@/lib/experience-intent/feed-surface-wire";
 
 export type FeedQueueSectionId = "in_progress" | "context_actions" | "up_next";
 

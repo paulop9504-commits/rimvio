@@ -10,7 +10,7 @@ import {
 } from "@/lib/event-kernel/review/execute-approve-pending-events";
 import { loadPendingEventCandidates } from "@/lib/event-kernel/review/pending-event-candidate-store";
 import { getReviewState } from "@/lib/event-kernel/review/review-state";
-import { buildOcrReviewDatePickerOrchestratorResult } from "@/lib/events/build-ocr-review-date-picker-result";
+import { buildOcrReviewDatePickerOrchestratorResult } from "@/lib/event-kernel/review/build-ocr-review-date-picker-result";
 import { buildEventCandidateUpsertsFromCommit } from "@/lib/event-kernel/review/sync-ocr-commit-to-client";
 
 function formatCommittedSummary(count: number): string {

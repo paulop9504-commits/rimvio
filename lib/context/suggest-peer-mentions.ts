@@ -10,18 +10,20 @@ export type PeerMentionSuggestion = {
 export function suggestPeerMentions(query: string): PeerMentionSuggestion[] {
   const roster = readPinnedRoster();
   const q = query.trim().toLowerCase();
-  return roster.slots
-    .filter(
-      (s) =>
-        s.connection === "connected" &&
-        s.displayName &&
-        (!q || s.displayName.toLowerCase().includes(q))
-    )
-    .map((s) => ({
-      peerThreadId: s.peerThreadId,
-      displayName: s.displayName,
-      label: `@${s.displayName}`,
-    }));
+  return roster.slots.flatMap((s) => {
+    if (s.connection !== "connected") {
+      return [];
+    }
+    const peerThreadId = s.peerThreadId?.trim();
+    const displayName = s.displayName?.trim();
+    if (!peerThreadId || !displayName) {
+      return [];
+    }
+    if (q && !displayName.toLowerCase().includes(q)) {
+      return [];
+    }
+    return [{ peerThreadId, displayName, label: `@${displayName}` }];
+  });
 }
 
 export function activePeerMentionQuery(text: string): string | null {

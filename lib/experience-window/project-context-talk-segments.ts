@@ -152,20 +152,20 @@ export function projectContextTalkSegments(input: {
   }
 
   const segments: ContextTalkSegment[] = [];
-  let current: ContextTalkSegment | null = null;
 
   const pushSegment = (segment: ContextTalkSegment) => {
     segments.push(segment);
-    current = segment;
   };
 
   for (const message of humanMessages) {
     const hasBody = normalizePeerMessageBody(message.body, message.imageUrl).length > 0;
-    const isGlobePin =
-      message.messageType === "system" && isPeerGlobePinPayload(message.aiPayload);
+    const pinPayload =
+      message.messageType === "system" && isPeerGlobePinPayload(message.aiPayload)
+        ? message.aiPayload
+        : null;
+    const isGlobePin = pinPayload !== null;
     const hasImage =
-      Boolean(message.imageUrl?.trim()) ||
-      Boolean(isGlobePin && message.aiPayload?.imageUrl?.trim());
+      Boolean(message.imageUrl?.trim()) || Boolean(pinPayload?.imageUrl?.trim());
     if (!hasBody && !hasImage && !isGlobePin) {
       continue;
     }
@@ -178,11 +178,15 @@ export function projectContextTalkSegments(input: {
       placeLabel: defaultPlace,
     });
 
+    const prevSegment = segments[segments.length - 1] ?? null;
     const needsNewSegment =
-      !current ||
-      parseDayKey(current.occurredAtIso) !== dayKey ||
-      (isGlobePin &&
-        Math.abs(current.lat - space.lat) + Math.abs(current.lng - space.lng) > 0.02);
+      prevSegment === null
+        ? true
+        : parseDayKey(prevSegment.occurredAtIso) !== dayKey ||
+          (pinPayload !== null &&
+            Math.abs(prevSegment.lat - pinPayload.lat) +
+              Math.abs(prevSegment.lng - pinPayload.lng) >
+              0.02);
 
     if (needsNewSegment) {
       pushSegment({
@@ -203,23 +207,23 @@ export function projectContextTalkSegments(input: {
       });
     }
 
-    const segment = current!;
+    const segment = segments[segments.length - 1]!;
     segment.messageIds.push(message.id);
 
-    if (isGlobePin && message.aiPayload) {
+    if (pinPayload) {
       segment.mapPins.push(
         buildMapPin({
           id: `pin:${message.id}`,
-          lat: message.aiPayload.lat,
-          lng: message.aiPayload.lng,
-          label: message.aiPayload.placeLabel,
+          lat: pinPayload.lat,
+          lng: pinPayload.lng,
+          label: pinPayload.placeLabel,
           kind:
-            message.aiPayload.mediaKind === "video"
+            pinPayload.mediaKind === "video"
               ? "video"
-              : message.aiPayload.imageUrl
+              : pinPayload.imageUrl
                 ? "photo"
                 : "place",
-          capturedAtIso: message.aiPayload.capturedAtIso,
+          capturedAtIso: pinPayload.capturedAtIso,
         }),
       );
     }

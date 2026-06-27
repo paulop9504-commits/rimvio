@@ -79,10 +79,9 @@ export function projectExperienceRoom(input: {
   if (metaThread) {
     threadIds.add(metaThread);
   }
+  const bridgeThreadRaw = event.metadata?.[EXPERIENCE_BRIDGE_META_KEYS.peerThreadId];
   const bridgeThread =
-    typeof event.metadata?.[EXPERIENCE_BRIDGE_META_KEYS.peerThreadId] === "string"
-      ? event.metadata[EXPERIENCE_BRIDGE_META_KEYS.peerThreadId]!.trim()
-      : null;
+    typeof bridgeThreadRaw === "string" ? bridgeThreadRaw.trim() : null;
   if (bridgeThread) {
     threadIds.add(bridgeThread);
   }

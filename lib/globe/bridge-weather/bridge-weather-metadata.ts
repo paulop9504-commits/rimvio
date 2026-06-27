@@ -1,5 +1,5 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
-import { upsertEventCandidate } from "@/lib/events/event-store";
+import { findEventCandidate, upsertEventCandidate } from "@/lib/events/event-store";
 import type { BridgeWeatherRecord } from "@/lib/globe/bridge-weather/bridge-weather-types";
 import { BRIDGE_WEATHER_META_KEY } from "@/lib/globe/bridge-weather/bridge-weather-types";
 
@@ -47,9 +47,20 @@ export function stampBridgeWeatherOnEvent(input: {
     return null;
   }
 
+  const existing = findEventCandidate(eventId);
+  if (!existing) {
+    return null;
+  }
+
   return upsertEventCandidate({
     id: eventId,
+    title: existing.title,
+    category: existing.category,
+    source: existing.source,
+    lifecycle: existing.lifecycle,
+    confidence: existing.confidence,
     metadata: {
+      ...(existing.metadata ?? {}),
       [BRIDGE_WEATHER_META_KEY]: input.weather,
     },
   });

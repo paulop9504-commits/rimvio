@@ -1,5 +1,5 @@
 import { humanizeFeedHeadline } from "@/lib/feed/humanize-feed-headline";
-import type { RankedSurface, SurfaceAction } from "@/lib/surface-engine/surface-contract";
+import type { RankedSurface, SurfaceAction } from "@/lib/experience-intent/feed-surface-wire";
 
 const SLOT_ACTION_CAPS = [
   "NAVIGATE",

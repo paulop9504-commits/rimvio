@@ -14,7 +14,7 @@ function policyOptionsToActions(wire: PolicyWire): LinkActionItem[] {
     payload: {
       policyRedirect: true,
       policyRedirectPrompt: option.prompt,
-      redirectTag: wire.redirect_tag,
+      ...(wire.redirect_tag ? { redirectTag: wire.redirect_tag } : {}),
     },
   }));
 }

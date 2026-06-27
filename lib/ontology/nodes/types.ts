@@ -1,5 +1,5 @@
 import type { EventCandidateCategory, EventCandidateLifecycle } from "@/lib/events/event-candidate";
-import type { FeedCaptureKind } from "@/lib/feed/feed-capture-types";
+import type { FeedCaptureKind } from "@/lib/ontology/feed-capture-wire";
 
 export type OntologyObjectKind = "experience" | "capture" | "bridge";
 

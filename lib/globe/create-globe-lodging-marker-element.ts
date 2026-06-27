@@ -18,7 +18,41 @@ export function createGlobeLodgingMarkerElement(
   if (marker.displayVariant === "situational_label") {
     root.classList.add("rimvio-globe-lodging-marker--situational");
   }
+  if (marker.popInDelayMs != null && marker.popInDelayMs >= 0) {
+    root.classList.add("rimvio-globe-lodging-marker--popin");
+    root.style.animationDelay = `${marker.popInDelayMs}ms`;
+  }
   root.setAttribute("aria-label", marker.label);
+
+  if (marker.discoveryShortLabel) {
+    root.classList.add("rimvio-globe-lodging-marker--discovery");
+    if (marker.discoveryAccent) {
+      root.dataset.discoveryAccent = marker.discoveryAccent;
+    }
+    const pill = document.createElement("span");
+    pill.className = "rimvio-globe-lodging-marker__discovery-pill";
+    const name = document.createElement("span");
+    name.className = "rimvio-globe-lodging-marker__discovery-name";
+    name.textContent = marker.discoveryShortLabel;
+    pill.appendChild(name);
+    if (marker.discoveryPriceLabel) {
+      const price = document.createElement("span");
+      price.className = "rimvio-globe-lodging-marker__discovery-price";
+      price.textContent = marker.discoveryPriceLabel;
+      pill.appendChild(price);
+    }
+    root.appendChild(pill);
+    const dot = document.createElement("span");
+    dot.className = "rimvio-globe-lodging-marker__dot";
+    root.appendChild(dot);
+    root.addEventListener("pointerdown", (event) => event.stopPropagation());
+    root.addEventListener("click", (event) => {
+      event.stopPropagation();
+      event.preventDefault();
+      handlers.onPress(marker.resourceId, marker.carouselIndex);
+    });
+    return root;
+  }
 
   if (marker.displayVariant === "situational_label") {
     const pill = document.createElement("span");

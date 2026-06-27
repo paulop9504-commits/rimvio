@@ -171,25 +171,26 @@ export function resolveRankedActiveGlobeContexts(input: {
   const eventsById = new Map(input.events.map((event) => [event.id, event]));
 
   return candidates
-    .map((entry) => {
+    .flatMap((entry) => {
       const event = eventsById.get(entry.eventId);
       if (!event) {
-        return null;
+        return [];
       }
       const { score } = scoreEntry({ entry, event, nowIso, lat, lng });
       const tier = tierForScore(score);
       if (tier === "low") {
-        return null;
+        return [];
       }
-      return {
-        eventId: entry.eventId,
-        title: entry.title,
-        place: entry.place,
-        score,
-        tier,
-      };
+      return [
+        {
+          eventId: entry.eventId,
+          title: entry.title,
+          place: entry.place,
+          score,
+          tier,
+        },
+      ];
     })
-    .filter((row): row is ActiveGlobeContextOption => row !== null)
     .sort((left, right) => right.score - left.score)
     .slice(0, input.limit ?? 3);
 }

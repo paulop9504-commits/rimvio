@@ -4,7 +4,7 @@ import { memo, useMemo } from "react";
 import { Search, X } from "lucide-react";
 import {
   collectFeedSlotTaxonomyOptions,
-  type FeedSlotTaxonomyFilters,
+  type FeedSlotTaxonomyFilters as FeedSlotTaxonomyFilterState,
 } from "@/lib/feed/feed-slot-taxonomy";
 import type { FeedSlotTaxonomy } from "@/lib/feed/feed-slot-taxonomy";
 import type { FeedTodaySlot } from "@/lib/feed/feed-today-slot-types";
@@ -14,8 +14,8 @@ import { cn } from "@/lib/utils";
 export type FeedSlotTaxonomyFiltersProps = {
   slots: readonly FeedTodaySlot[];
   taxonomies: Map<string, FeedSlotTaxonomy>;
-  filters: FeedSlotTaxonomyFilters;
-  onChange: (next: FeedSlotTaxonomyFilters) => void;
+  filters: FeedSlotTaxonomyFilterState;
+  onChange: (next: FeedSlotTaxonomyFilterState) => void;
   className?: string;
 };
 

@@ -129,6 +129,7 @@ export type NotificationShadowContext = {
   recentNotifications?: readonly NotificationHistoryEntry[];
   dockVisible?: boolean;
   dockFocusedEcId?: string | null;
+  chatVisible?: boolean;
   recentInteractionEcIds?: readonly string[];
   /** Default 45 minutes (within 30–60 min spec window) */
   cooldownMs?: number;

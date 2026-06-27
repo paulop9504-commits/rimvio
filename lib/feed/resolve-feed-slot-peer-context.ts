@@ -199,7 +199,10 @@ function resolveFromPlanPeer(
   plan: PlanContext | null | undefined,
   lookup: FeedSlotPeerLookup,
 ): FeedSlotPeerContext | null {
-  const name = plan?.peerDisplayName?.trim();
+  if (!plan) {
+    return null;
+  }
+  const name = plan.peerDisplayName?.trim();
   if (!name) {
     return null;
   }

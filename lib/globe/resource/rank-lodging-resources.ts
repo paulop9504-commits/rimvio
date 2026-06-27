@@ -1,5 +1,9 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { haversineKm } from "@/lib/feed/spacetime-fit";
+import {
+  CONTEXT_LODGING_RECOMMEND_SCORES_META_KEY,
+  type LodgingRecommendScoreWire,
+} from "@/lib/globe/context-hub/lodging-resource-types";
 import type { ContextHubServiceRow } from "@/lib/globe/context-hub/context-hub-service-catalog";
 import type { ContextResource } from "@/lib/globe/resource/types";
 import type { RankedContextResource } from "@/lib/globe/resource/map-hub-service-to-resource";
@@ -30,10 +34,21 @@ function syntheticLodgingHubRow(
   };
 }
 
+function readRecommendScores(
+  event: EventCandidate,
+): Record<string, LodgingRecommendScoreWire> {
+  const raw = event.metadata?.[CONTEXT_LODGING_RECOMMEND_SCORES_META_KEY];
+  if (!raw || typeof raw !== "object") {
+    return {};
+  }
+  return raw as Record<string, LodgingRecommendScoreWire>;
+}
+
 function scoreLodgingByGps(input: {
   resource: ContextResource;
   lat: number | null;
   lng: number | null;
+  recommendBonus?: number;
 }): number {
   let score = 60;
   const rLat = input.resource.spacetime.lat;
@@ -46,6 +61,9 @@ function scoreLodgingByGps(input: {
     !Number.isFinite(rLat) ||
     !Number.isFinite(rLng)
   ) {
+    if (input.recommendBonus != null && input.recommendBonus > 0) {
+      score += input.recommendBonus;
+    }
     return score;
   }
 
@@ -67,6 +85,10 @@ function scoreLodgingByGps(input: {
     }
   }
 
+  if (input.recommendBonus != null && input.recommendBonus > 0) {
+    score += input.recommendBonus;
+  }
+
   return score;
 }
 
@@ -79,14 +101,21 @@ export function rankLodgingResources(input: {
 }): RankedContextResource[] {
   const lat = input.lat ?? null;
   const lng = input.lng ?? null;
+  const recommendScores = readRecommendScores(input.event);
 
   return input.resources
     .map((resource) => {
       const hubRow = syntheticLodgingHubRow(input.event, resource);
+      const lodgingMeta = resource.metadata?.lodging;
+      const placeId =
+        lodgingMeta && typeof lodgingMeta === "object" && "placeId" in lodgingMeta
+          ? String((lodgingMeta as { placeId?: string }).placeId ?? "")
+          : "";
+      const recommendBonus = placeId ? (recommendScores[placeId]?.score ?? 0) : 0;
       return {
         resource,
         hubRow,
-        rankScore: scoreLodgingByGps({ resource, lat, lng }),
+        rankScore: scoreLodgingByGps({ resource, lat, lng, recommendBonus }),
       };
     })
     .sort((left, right) => {

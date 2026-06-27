@@ -17,6 +17,7 @@ import {
   resolveGlobePhotoDateHint,
 } from "@/lib/globe/resolve-globe-photo-date-hint";
 import { resolveGlobePhotoPlaceBranch } from "@/lib/globe/resolve-globe-photo-place-branch";
+import { cn } from "@/lib/utils";
 import {
   sampleEphemeralGpsPlaceDetailed,
 } from "@/lib/globe/sample-ephemeral-gps-place";

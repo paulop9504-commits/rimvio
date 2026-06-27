@@ -63,12 +63,12 @@ function findScheduleEvent(
   message: string,
   existingSchedule?: ExistingScheduleInput
 ): { title: string; time?: string; location?: string } | null {
-  if (!existingSchedule?.tasks?.length) {
+  if (!existingSchedule?.length) {
     return null;
   }
 
   const normalized = message.toLowerCase();
-  for (const task of existingSchedule.tasks) {
+  for (const task of existingSchedule) {
     const title = task.task?.trim();
     if (!title) {
       continue;
@@ -78,10 +78,10 @@ function findScheduleEvent(
     }
   }
 
-  return existingSchedule.tasks[0]
+  return existingSchedule[0]
     ? {
-        title: existingSchedule.tasks[0].task,
-        time: existingSchedule.tasks[0].time,
+        title: existingSchedule[0].task,
+        time: existingSchedule[0].time,
       }
     : null;
 }

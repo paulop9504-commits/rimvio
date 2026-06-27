@@ -66,12 +66,23 @@ export async function runPhase2Enrichment(
     referenceDate: ctx.context.currentDate,
   });
 
-  const retrieved = [locationIntelBlock, deepRetrievalPrompt, timeDecisionPrompt]
+  const unifiedBlock = ctx.unifiedContext.promptBlock;
+
+  const retrieved = [
+    unifiedBlock,
+    locationIntelBlock,
+    deepRetrievalPrompt,
+    timeDecisionPrompt,
+  ]
     .filter(Boolean)
     .join("\n\n");
 
   if (retrieved) {
-    ctx.trace.inject(9, "Retrieval", "context_blocks");
+    ctx.trace.inject(
+      9,
+      "Retrieval",
+      unifiedBlock ? "unified_experience_context+blocks" : "context_blocks",
+    );
     ctx.enrichment.retrievedContextBlock = retrieved;
   } else {
     ctx.trace.pass(2, 9, "Retrieval");

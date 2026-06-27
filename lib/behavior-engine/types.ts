@@ -17,6 +17,7 @@ export type BehaviorEngineContext = {
   focusedEcId?: string | null;
   /** ec-ids recently interacted with */
   recentEcIds?: readonly string[];
+  now?: Date;
 };
 
 export type BehaviorEngineResult = EventBehaviorPolicy[] | "NO_ACTION";

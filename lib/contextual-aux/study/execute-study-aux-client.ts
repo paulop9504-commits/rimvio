@@ -1,12 +1,12 @@
 import type { ActionUiTriggerWire } from "@/lib/action-chat/action-oriented-prompt";
 import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
+import type { StudyAuxKind } from "@/lib/contextual-aux/study/types";
 import {
   isStudyAuxKind,
   readSavedLectureUrl,
   saveLectureUrl,
   setAwaitingLectureUrl,
   setStudyQaMode,
-  type StudyAuxKind,
 } from "@/lib/contextual-aux/study/study-aux-session";
 import {
   formatStudyFocusStartClock,

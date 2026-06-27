@@ -9,11 +9,13 @@ import { listBridgeStackPrepItems } from "@/lib/experience-bridge/project-bridge
 import { listPendingGlobeLocationConfirms } from "@/lib/globe/list-pending-globe-location-confirms";
 import {
   persistNotificationDismiss,
-  projectPendingNotifications,
   readDismissedLocationEventIds,
   readDismissedNotificationIds,
-  type RimvioNotification,
 } from "@/lib/ontology";
+import {
+  projectPendingNotifications,
+} from "@/lib/globe/inbox/project-pending-notifications";
+import type { RimvioNotification } from "@/lib/globe/inbox/notification-types";
 import { EVENT_CANDIDATES_UPDATED, findLifeEventCandidate } from "@/lib/life-read-model";
 import { EXPERIENCE_BRIDGE_UPDATED } from "@/lib/experience-bridge/local-bridge-store";
 import { subscribeBridgeSyncSession } from "@/lib/experience-bridge/bridge-sync-session";

@@ -1,14 +1,16 @@
 import assert from "node:assert/strict";
 import type { EventCandidate } from "../lib/events/event-candidate";
 import {
-  getHubActionTypeForService,
-  listRimvioActionTypes,
-  projectExperienceSubgraph,
-  projectPendingNotifications,
   resetNotificationStoreForTests,
   bridgeInviteNotificationId,
   locationConfirmNotificationId,
 } from "../lib/ontology";
+import { projectExperienceSubgraph } from "../lib/experience-graph/project-experience-subgraph";
+import { projectPendingNotifications } from "../lib/globe/inbox/project-pending-notifications";
+import {
+  getHubActionTypeForService,
+  listRimvioActionTypes,
+} from "../lib/event-kernel/action-contracts/rimvio-action-type-registry";
 import { scoreHubServiceRowBase } from "../lib/globe/context-hub/score-hub-service-row";
 import type { ContextHubServiceRow } from "../lib/globe/context-hub/context-hub-service-catalog";
 

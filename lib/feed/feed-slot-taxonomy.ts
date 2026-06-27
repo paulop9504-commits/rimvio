@@ -16,7 +16,7 @@ import { resolvePlanContextForCalendarRow } from "@/lib/plan-context/project-pla
 import { surfaceTypeVisual } from "@/lib/feed/surface-type-visual";
 import type { FeedTodaySlot } from "@/lib/feed/feed-today-slot-types";
 import type { EventCandidate } from "@/lib/events/event-candidate";
-import type { SurfaceType } from "@/lib/surface-engine/surface-contract";
+import type { SurfaceType } from "@/lib/experience-intent/feed-surface-wire";
 
 export type FeedSlotTaxonomy = {
   slotId: string;

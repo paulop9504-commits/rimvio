@@ -21,7 +21,7 @@ export function matchesGlobeContextTimeFilter(
     return true;
   }
   if (!startedAtIso?.trim()) {
-    return filter === "all";
+    return false;
   }
   const ms = Date.parse(startedAtIso);
   if (Number.isNaN(ms)) {

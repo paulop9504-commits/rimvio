@@ -211,6 +211,31 @@ export type IntentRouteMeta = {
   /** Event OS / review execution client ingress route. */
   execution_route?: ExecutionRoute;
 
+  /** Contract gate — slot filling before action execution. */
+  contract_state?: "MISSING_SLOT" | "PROCEED";
+  contract_action?: string;
+  contract_missing_slots?: string[];
+  contract_slots?: Record<string, string>;
+
+  /** Contextual meal recommendation engine snapshot. */
+  contextual_meal_engine?: {
+    intent: import("@/lib/event-os/contextual-recommendation/recommendation-types").RecommendationIntent;
+    constraints: import("@/lib/event-os/contextual-recommendation/recommendation-types").RecommendationConstraints;
+    topScore: number;
+  };
+
+  /** Event review / OCR schedule pipeline. */
+  approval_action?: string;
+  review_state?: string;
+  approval_detected?: boolean;
+  commit_ok?: boolean;
+  calendar_commit_count?: number;
+  ready_for_approval?: boolean;
+  validation_blocked?: boolean;
+  ocr_event_extraction_json?: string;
+  pending_event_candidates?: boolean;
+  review_candidate_ids?: string[];
+
 };
 
 

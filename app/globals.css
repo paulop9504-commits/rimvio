@@ -3794,6 +3794,57 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
     0 14px 36px rgba(49, 130, 246, 0.22);
 }
 
+.rimvio-globe-lodging-marker--discovery {
+  width: auto;
+  min-width: 3.5rem;
+}
+
+.rimvio-globe-lodging-marker__discovery-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  border-radius: 0.65rem;
+  background: rgba(18, 20, 24, 0.88);
+  padding: 0.35rem 0.55rem 0.3rem;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.rimvio-globe-lodging-marker__discovery-name {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.01em;
+}
+
+.rimvio-globe-lodging-marker__discovery-price {
+  font-size: 0.58rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.rimvio-globe-lodging-marker--discovery[data-discovery-accent="green"] .rimvio-globe-lodging-marker__dot {
+  background: #34c759;
+}
+
+.rimvio-globe-lodging-marker--discovery[data-discovery-accent="blue"] .rimvio-globe-lodging-marker__dot {
+  background: #3182f6;
+}
+
+.rimvio-globe-lodging-marker--discovery[data-discovery-accent="orange"] .rimvio-globe-lodging-marker__dot {
+  background: #ff9500;
+}
+
+.rimvio-globe-lodging-marker--discovery[data-discovery-accent="purple"] .rimvio-globe-lodging-marker__dot {
+  background: #bf5af2;
+}
+
+.rimvio-globe-lodging-marker--popin {
+  animation: rimvio-globe-pin-popout 420ms cubic-bezier(0.19, 1, 0.22, 1) both;
+  transform-origin: center bottom;
+}
+
 .rimvio-globe-lodging-marker {
   position: relative;
   display: flex;

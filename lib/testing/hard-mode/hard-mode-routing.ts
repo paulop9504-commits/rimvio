@@ -40,7 +40,7 @@ export function resolveHardModeBucket(
       : "STEP";
   }
   if (surface === "INFO") return "INFO";
-  if (surface === "BLOCKED" || surface === "ARTIFACT") {
+  if (surface === "ARTIFACT") {
     return semantic.domain === "food" ? "FOOD" : "BLOCKED";
   }
   if (semantic.domain === "food") return "FOOD";

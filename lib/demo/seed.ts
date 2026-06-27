@@ -1,11 +1,16 @@
 import type { LinkRow } from "@/types/database";
-import { funFeedLinks } from "@/lib/demo/fun-feed-links";
+import { funFeedLinks } from "@/lib/onboarding/fun-feed-links";
 import {
   ensureExperimentLabFeed,
+} from "@/lib/demo/reset-experiment-lab";
+import {
   EXPERIMENT_LAB_FLAG,
   isExperimentLabMode,
-} from "@/lib/demo/reset-experiment-lab";
+} from "@/lib/onboarding/experiment-lab-mode";
+import { LOCAL_LINKS_UPDATED } from "@/lib/local-links/local-links-events";
 import { readLocalLinks, writeLocalLinks, clearDismissedLinkIds } from "@/lib/local-links/store";
+
+export { LOCAL_LINKS_UPDATED };
 
 const DEMO_FLAG = "blink-fun-feed-v3";
 const FUN_FEED_MARKER = "fun-google-portal";
@@ -27,8 +32,6 @@ function needsFunSeed() {
 
   return true;
 }
-
-export const LOCAL_LINKS_UPDATED = "rimvio-local-links-updated";
 
 function notifyLocalLinksUpdated() {
   if (typeof window === "undefined") {

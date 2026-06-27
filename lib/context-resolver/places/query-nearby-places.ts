@@ -149,7 +149,7 @@ async function queryGooglePlaces(input: {
           rating: result.rating ?? 0,
           open_now: result.opening_hours?.open_now ?? true,
           vibes: inferVibesFromName(result.name ?? ""),
-          phone: null,
+          phone: null as string | null,
           maps_url: result.place_id
             ? `https://www.google.com/maps/place/?q=place_id:${result.place_id}`
             : null,

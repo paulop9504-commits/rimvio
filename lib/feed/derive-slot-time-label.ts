@@ -1,6 +1,6 @@
 import type { UnifiedCalendarOverlayRow } from "@/lib/calendar/calendar-view-types";
-import type { RankedSurface } from "@/lib/surface-engine/surface-contract";
-import { parseActionTargetDatetime } from "@/lib/action-chat/action-countdown";
+import type { RankedSurface } from "@/lib/experience-intent/feed-surface-wire";
+import { parseActionTargetDatetime } from "@/lib/schedule/parse-action-target-datetime";
 
 function formatRelativeDay(dateKey: string, now: Date): string {
   const todayKey = [

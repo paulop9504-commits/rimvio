@@ -9,7 +9,7 @@ import { parseFindPlaceIntent } from "@/lib/context-resolver/discovery/parse-fin
 import { orchestratePlaceRecommendation } from "@/lib/context-resolver/discovery/orchestrate-place-recommendation";
 import { toMealDiscoveryQuery } from "@/lib/event-kernel/execution-planner/to-meal-discovery-query";
 import { orchestrateContextualMealRecommendation } from "@/lib/event-os/contextual-recommendation/orchestrate-contextual-meal";
-import { orchestrateOcrScheduleCandidates } from "@/lib/events/orchestrate-ocr-schedule-candidates";
+import { orchestrateOcrScheduleCandidates } from "@/lib/event-kernel/review/orchestrate-ocr-schedule-candidates";
 import { orchestrateViaReviewExecutionQueue } from "@/lib/event-os/resolve-review-execution-orchestrator";
 import { eventKernelOSIsTerminal } from "@/lib/event-kernel";
 import { resolveContractActionFromMessage } from "@/lib/event-kernel/slot-filling/resolve-contract-action-from-message";

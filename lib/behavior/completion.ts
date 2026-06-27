@@ -1,4 +1,4 @@
-import { LOCAL_LINKS_UPDATED } from "@/lib/demo/seed";
+import { LOCAL_LINKS_UPDATED } from "@/lib/local-links/local-links-events";
 import { resolveBurnerFromLink } from "@/lib/behavior/burners";
 import { updateLocalLink } from "@/lib/local-links/store";
 import type { LifeBurner } from "@/lib/behavior/burners";

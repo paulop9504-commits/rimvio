@@ -4,7 +4,7 @@ const CLUSTER_GAP_MS = 60_000;
 
 /** 카톡처럼 1분 안 연속 메시지는 마지막(또는 끊길 때)만 시간 표시 */
 export function shouldShowPeerMessageTime(
-  messages: PeerMessage[],
+  messages: readonly PeerMessage[],
   index: number,
 ): boolean {
   const current = messages[index];

@@ -182,6 +182,33 @@ export type UserProfileRow = {
   updated_at: string;
 };
 
+export type PlaceCorrectionRow = {
+  id: string;
+  client_id: string;
+  user_id: string | null;
+  session_id: string;
+  user_input: string;
+  ai_inferred_location: string | null;
+  ai_inferred_place_name: string | null;
+  user_corrected_location: string | null;
+  user_corrected_place_name: string | null;
+  outcome: "accepted" | "corrected" | "rejected";
+  intent_key: string | null;
+  created_at: string;
+};
+
+export type PersonalGlobePinRow = {
+  id: string;
+  user_id: string;
+  event_id: string;
+  pin: Json;
+  updated_at: string;
+  visibility: "private" | "external";
+  lat: number | null;
+  lng: number | null;
+  cell_key: string | null;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -315,6 +342,41 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
+      };
+      place_corrections: {
+        Row: PlaceCorrectionRow;
+        Insert: {
+          id?: string;
+          client_id: string;
+          user_id?: string | null;
+          session_id: string;
+          user_input: string;
+          ai_inferred_location?: string | null;
+          ai_inferred_place_name?: string | null;
+          user_corrected_location?: string | null;
+          user_corrected_place_name?: string | null;
+          outcome: PlaceCorrectionRow["outcome"];
+          intent_key?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<PlaceCorrectionRow>;
+        Relationships: [];
+      };
+      personal_globe_pins: {
+        Row: PersonalGlobePinRow;
+        Insert: {
+          id?: string;
+          user_id: string;
+          event_id: string;
+          pin: Json;
+          updated_at?: string;
+          visibility?: "private" | "external";
+          lat?: number | null;
+          lng?: number | null;
+          cell_key?: string | null;
+        };
+        Update: Partial<PersonalGlobePinRow>;
         Relationships: [];
       };
       peer_threads: {

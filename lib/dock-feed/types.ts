@@ -24,6 +24,7 @@ export type DockFeedContext = {
   recentEcIds?: readonly string[];
   scrollPosition?: number;
   dockVisible?: boolean;
+  now?: Date;
 };
 
 export type DockFeedResult = DockCard[] | "NO_ACTION";

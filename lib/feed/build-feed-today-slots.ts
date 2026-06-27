@@ -4,10 +4,14 @@ import {
   flattenFeedQueueSections,
   resolveFeedQueueSections,
 } from "@/lib/feed/resolve-feed-queue-sections";
-import type { FeedTodaySlot } from "@/lib/feed/feed-today-slot-types";
-import type { RankedSurface, SurfaceType } from "@/lib/surface-engine/surface-contract";
+import type {
+  FeedTodayCalendarSlot,
+  FeedTodaySlot,
+  FeedTodaySurfaceSlot,
+} from "@/lib/feed/feed-today-slot-types";
+import type { RankedSurface, SurfaceType } from "@/lib/experience-intent/feed-surface-wire";
 import type { SurfaceNode } from "@/lib/surface-composition/surface-node-contract";
-import { isFallbackSurface } from "@/lib/surface-engine/surface-ux-state";
+import { isFallbackSurface } from "@/lib/experience-intent/feed-surface-wire";
 
 export const FEED_TODAY_SLOT_MAX = 4;
 
@@ -130,9 +134,7 @@ function surfaceSlotsFromQueue(
   primary: SurfaceNode | null,
   latent: readonly RankedSurface[],
 ): FeedTodaySurfaceSlot[] {
-  const queuePrimary =
-    primary && !isFallbackSurface(primary) ? (primary as RankedSurface) : null;
-  const rows = flattenFeedQueueSections(resolveFeedQueueSections(queuePrimary, latent));
+  const rows = flattenFeedQueueSections(resolveFeedQueueSections(primary, latent));
   return rows.map((surface) => ({
     kind: "surface" as const,
     id: `surface:${surface.id}`,

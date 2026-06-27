@@ -113,9 +113,7 @@ export function stampUniversalPinMetadata(
         : GLOBE_CONTEXT_VISIBILITY_PRIVATE,
   };
 
-  metadata = stampPinLineageParent(metadata, input.lineageParentEventId);
-
-  return metadata;
+  return stampPinLineageParent(metadata, input.lineageParentEventId);
 }
 
 /** Ensure event carries universal pin metadata (idempotent). */

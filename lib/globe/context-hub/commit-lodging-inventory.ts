@@ -2,14 +2,19 @@ import type { EventCandidate } from "@/lib/events/event-candidate";
 import {
   CONTEXT_LODGING_HUB_ENABLED_META_KEY,
   CONTEXT_LODGING_INVENTORY_META_KEY,
+  CONTEXT_LODGING_RECOMMEND_SCORES_META_KEY,
 } from "@/lib/globe/context-hub/lodging-resource-types";
-import type { ContextLodgingInventoryRow } from "@/lib/globe/context-hub/lodging-resource-types";
+import type {
+  ContextLodgingInventoryRow,
+  LodgingRecommendScoreWire,
+} from "@/lib/globe/context-hub/lodging-resource-types";
 import { commitEventUpsert } from "@/lib/source-of-truth/commit-truth";
 
 export function commitLodgingInventoryToEvent(input: {
   event: EventCandidate;
   inventory: readonly ContextLodgingInventoryRow[];
   inventorySource?: string | null;
+  recommendScores?: Record<string, LodgingRecommendScoreWire>;
 }): EventCandidate {
   const stamp = new Date().toISOString();
 
@@ -26,6 +31,9 @@ export function commitLodgingInventoryToEvent(input: {
       ...(input.event.metadata ?? {}),
       [CONTEXT_LODGING_HUB_ENABLED_META_KEY]: true,
       [CONTEXT_LODGING_INVENTORY_META_KEY]: [...input.inventory],
+      ...(input.recommendScores && Object.keys(input.recommendScores).length > 0
+        ? { [CONTEXT_LODGING_RECOMMEND_SCORES_META_KEY]: input.recommendScores }
+        : {}),
       contextLodgingInventorySource: input.inventorySource ?? null,
       feedPlanEnabled: input.event.metadata?.feedPlanEnabled ?? true,
     },

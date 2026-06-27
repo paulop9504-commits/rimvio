@@ -41,7 +41,7 @@ export function buildCurrentSnapshotMarkdown(snapshot: GlobalBrainSnapshot): str
   }
 
   if (snapshot.resolvedTemporal) {
-    lines.push(`- Resolved Date: ${snapshot.resolvedTemporal.display}`);
+    lines.push(`- Resolved Date: ${snapshot.resolvedTemporal.displayLabel}`);
   }
 
   return lines.join("\n");

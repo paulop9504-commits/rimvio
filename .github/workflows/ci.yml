@@ -26,7 +26,13 @@ jobs:
         run: npm run verify:pipeline
 
       - name: Typecheck
-        run: npx tsc --noEmit
+        run: node scripts/typecheck-ci.mjs
+
+      - name: Migration SSOT
+        run: node scripts/verify-migration-ssot.mjs
+
+      - name: lib import boundaries
+        run: node scripts/verify-lib-boundaries.mjs
 
       - name: Lint
         run: npm run lint

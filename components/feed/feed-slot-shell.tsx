@@ -11,6 +11,8 @@ import { FeedSlotStage } from "@/components/feed/feed-slot-stage";
 import { RelationshipFeedFolder } from "@/components/feed/relationship-feed-folder";
 import { RimvioLogo } from "@/components/rimvio-logo";
 import { SurfaceStabilityStrip } from "@/components/surface-composition/surface-stability-strip";
+import { PulseMainActionSurface } from "@/components/pulse/pulse-main-action-surface";
+import { MarketAlignmentSurface } from "@/components/market/market-alignment-surface";
 import type { SurfaceCompositionRuntimeProps } from "@/components/surface-composition/surface-composition-runtime";
 import { useActionCalendar } from "@/hooks/use-action-calendar";
 import { useCalendarSurfaceQuery } from "@/hooks/use-calendar-surface-query";
@@ -42,7 +44,6 @@ import { readPeerContacts } from "@/lib/context/peer-contact-store";
 import { syncDmThreadsRemote } from "@/lib/peer-chat/peer-chat-client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { cn } from "@/lib/utils";
-import { PulseMainActionSurface } from "@/components/pulse/pulse-main-action-surface";
 
 function bootstrapFeedDemoEvents(
   goldenPath: string | null,

@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { X } from "lucide-react";
 import type { GlobeMapProductFocusAction } from "@/components/globe/globe-map-product-focus-card";
 import type { LodgingDynamicTags } from "@/lib/globe/lodging/lodging-dynamic-tag-types";
+import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
 export type GlobeLodgingHubFocusCardProps = {
@@ -12,6 +13,8 @@ export type GlobeLodgingHubFocusCardProps = {
   placeLabel?: string | null;
   situationalLabel?: string | null;
   dynamicTags?: LodgingDynamicTags | null;
+  recommendReason?: string | null;
+  recommendReasons?: readonly string[];
   primaryAction: GlobeMapProductFocusAction;
   secondaryAction: GlobeMapProductFocusAction;
   onClose: () => void;
@@ -48,6 +51,8 @@ export function GlobeLodgingHubFocusCard({
   placeLabel,
   situationalLabel,
   dynamicTags,
+  recommendReason = null,
+  recommendReasons = [],
   primaryAction,
   secondaryAction,
   onClose,
@@ -129,6 +134,22 @@ export function GlobeLodgingHubFocusCard({
           <p className="rounded-[0.85rem] bg-black/55 px-2.5 py-2 text-[12px] font-medium leading-snug text-white/95 backdrop-blur-md">
             {contextLine}
           </p>
+        </div>
+      ) : recommendReason ? (
+        <div className="relative z-[1] px-2 pt-4">
+          <p className="text-[11px] font-semibold text-[#86868b]">
+            {copy.globe.lodgingReasonCardTitle}
+          </p>
+          <p className="mt-1 rounded-[0.85rem] bg-white px-2.5 py-2 text-[13px] font-medium leading-snug text-[#1d1d1f] shadow-sm ring-1 ring-black/[0.05]">
+            {recommendReason}
+          </p>
+          {recommendReasons.length > 1 ? (
+            <ul className="mt-1.5 space-y-0.5 px-1 text-[11px] font-medium text-[#86868b]">
+              {recommendReasons.slice(1).map((line) => (
+                <li key={line}>· {line}</li>
+              ))}
+            </ul>
+          ) : null}
         </div>
       ) : (
         <div className={cn(situationalLabel ? "pt-1.5" : "pt-0")} aria-hidden />

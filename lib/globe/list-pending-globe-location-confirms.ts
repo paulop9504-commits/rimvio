@@ -28,7 +28,7 @@ function pushPendingConfirm(
     eventId: event.id,
     title: event.title?.trim() || "체류 기록",
     place: input.place,
-    datetime: event.datetime,
+    datetime: event.datetime ?? "",
     kind: input.kind,
     dwellMinutes:
       input.kind === "gps_dwell"

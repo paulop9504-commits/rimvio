@@ -10,24 +10,12 @@ import {
   runUnifiedStressCase,
 } from "@/lib/testing/unified-stress/evaluate-unified-stress";
 import { UNIFIED_STRESS_CASES } from "@/lib/testing/unified-stress/unified-stress-banks";
+import { MINIMAL_MASTER_CONTEXT } from "@/lib/testing/minimal-master-context-fixture";
 
 const GATE_THRESHOLD = 0.95;
 const STRESS_THRESHOLD = 0.9;
 
-const masterContext = {
-  currentDate: "2026-06-02",
-  trustLevel: "L1" as const,
-  existingSchedule: [],
-  allReminders: [],
-  userGoals: [],
-  activitySources: [],
-  conversationMemories: [],
-  activeContainers: [],
-  activeChains: [],
-  activeChain: null,
-  userDefinedActions: [],
-  mapApp: "kakao" as const,
-};
+const masterContext = MINIMAL_MASTER_CONTEXT;
 
 export type NightlyQAReport = {
   timestamp: string;

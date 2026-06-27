@@ -12,6 +12,13 @@ export type GlobeLodgingMapMarker = {
   thumbnailUrl: string | null;
   /** Collapsed presentation while lodging focus card is open. */
   displayVariant?: "default" | "situational_label";
+  /** Staged discovery pop-in delay (ms). */
+  popInDelayMs?: number;
+  /** Discovery mode — short map pill label. */
+  discoveryShortLabel?: string | null;
+  /** Discovery mode — price pill on map. */
+  discoveryPriceLabel?: string | null;
+  discoveryAccent?: "green" | "blue" | "orange" | "purple";
 };
 
 export function isGlobeLodgingMapMarker(

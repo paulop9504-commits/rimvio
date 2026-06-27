@@ -4,7 +4,7 @@ const MEMORY_HAYSTACK =
   /뷰|전망|노을|일몰|바다|해변|감성|분위기|데이트|루프탑|terrace|ocean|view|카페/u;
 
 function memoryScore(place: PlaceCandidate): number {
-  const hay = [place.name, place.naver_category, place.description, place.reason]
+  const hay = [place.name, place.naver_category, place.description]
     .filter(Boolean)
     .join(" ");
 

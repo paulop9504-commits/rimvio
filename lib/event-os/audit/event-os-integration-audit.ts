@@ -146,7 +146,7 @@ function auditLockQueue(scopeId: string): string[] {
     type: "approve",
     payload: { message: "맞아" },
   });
-  const blockedProof = blockedWhileLocked.runtime?.processed[0]?.proof;
+  const blockedProof = blockedWhileLocked.processed[0]?.proof;
   if (!blockedProof?.execution.blockedByLock) {
     failures.push("lock_enqueue_should_block_when_scope_busy");
   }
@@ -267,9 +267,9 @@ function auditGraphGolden(canonical: {
   });
 
   const orchProofs = [
-    flowA.runtime?.processed[0]?.proof,
-    flowD.runtime?.processed[0]?.proof,
-    flowC.runtime?.processed[0]?.proof,
+    flowA.processed[0]?.proof,
+    flowD.processed[0]?.proof,
+    flowC.processed[0]?.proof,
   ];
 
   for (const [label, proof] of [
@@ -358,7 +358,7 @@ export function runEventOsIntegrationAudit(): EventOsIntegrationAuditReport {
   let commandProof: CausalProof | undefined;
   try {
     const compiled = compileCommandToEventOs("@캘린더 14시 병원");
-    commandProof = compiled.runtime.runtime?.processed[0]?.proof;
+    commandProof = compiled.runtime.processed[0]?.proof;
   } catch (error) {
     allViolations.push(
       `e2e_command_compile:${error instanceof Error ? error.message : "unknown"}`
@@ -373,7 +373,7 @@ export function runEventOsIntegrationAudit(): EventOsIntegrationAuditReport {
     type: "approve",
     payload: { message: "맞아", clockIso: "2026-06-01T12:00:00.000Z" },
   });
-  const proofApprove = flowApprove.runtime?.processed[0]?.proof;
+  const proofApprove = flowApprove.processed[0]?.proof;
   if (!proofApprove) {
     allViolations.push("e2e_approve_proof_missing");
   }
@@ -388,14 +388,14 @@ export function runEventOsIntegrationAudit(): EventOsIntegrationAuditReport {
     type: "date",
     payload: { patches, clockIso: "2026-06-01T12:01:00.000Z" },
   });
-  const proofDate = flowDate.runtime?.processed[0]?.proof;
+  const proofDate = flowDate.processed[0]?.proof;
 
   const flowConfirm = enqueueReviewExecution({
     scopeId: "default",
     type: "confirm",
     payload: { message: "응", clockIso: "2026-06-01T12:02:00.000Z" },
   });
-  const proofConfirm = flowConfirm.runtime?.processed[0]?.proof;
+  const proofConfirm = flowConfirm.processed[0]?.proof;
 
   const flowProofs = [commandProof, proofApprove, proofDate, proofConfirm].filter(
     Boolean

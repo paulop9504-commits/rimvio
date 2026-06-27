@@ -77,7 +77,7 @@ async function latestPingAgeMs(): Promise<number | null> {
 
 /** Passive GPS burst scheduler — no continuous watchPosition. */
 export function useGpsPingRecorder(enabled = true) {
-  const intervalIdRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const intervalIdRef = useRef<number | null>(null);
   const movementSessionUntilRef = useRef(0);
 
   useEffect(() => {

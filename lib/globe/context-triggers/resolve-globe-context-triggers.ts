@@ -83,9 +83,6 @@ function dayRotationOffset(now: Date, poolSize: number): number {
 }
 
 function isTravelSnapshot(snapshot: RecallEventSnapshot): boolean {
-  if (snapshot.planMode === "travel") {
-    return true;
-  }
   const blob = [snapshot.title, snapshot.headline, snapshot.place, ...snapshot.noteTokens]
     .join(" ")
     .toLowerCase();

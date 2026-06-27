@@ -129,7 +129,7 @@ export function GlobeContextConfirmSheet({
         <>
           <motion.button
             type="button"
-            className={rimvioSheetBackdropClass}
+            className={rimvioSheetBackdropClass()}
             aria-label={copy.globe.contextConfirmCloseAria}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -173,7 +173,7 @@ export function GlobeContextConfirmSheet({
               </div>
               <button
                 type="button"
-                className={rimvioSheetCloseBtnClass}
+                className={rimvioSheetCloseBtnClass()}
                 aria-label={copy.globe.contextConfirmCloseAria}
                 onClick={dismiss}
                 disabled={busy}
@@ -204,7 +204,7 @@ export function GlobeContextConfirmSheet({
             <div className="flex flex-col gap-2 border-t border-border/60 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4">
               <button
                 type="button"
-                className={rimvioCompactPrimaryCtaClass}
+                className={rimvioCompactPrimaryCtaClass()}
                 disabled={preparing || busy || !draft || Boolean(prepareError)}
                 onClick={() => void handleConfirm()}
                 data-globe-context-confirm-yes
@@ -216,7 +216,7 @@ export function GlobeContextConfirmSheet({
               </button>
               <button
                 type="button"
-                className={rimvioGhostCtaClass}
+                className={rimvioGhostCtaClass()}
                 disabled={preparing || busy || !draft}
                 onClick={() => void handleLater()}
                 data-globe-context-confirm-later

@@ -46,10 +46,10 @@ export function syncGlobeContextWarmthLayer(input: {
 
   input.globe
     .heatmapsData([{ id: "personal", points: [...input.points] }])
-    .heatmapPoints((row: { points: GlobeContextWarmthPoint[] }) => row.points)
-    .heatmapPointLat((point: GlobeContextWarmthPoint) => point.lat)
-    .heatmapPointLng((point: GlobeContextWarmthPoint) => point.lng)
-    .heatmapPointWeight((point: GlobeContextWarmthPoint) => point.weight)
+    .heatmapPoints((row) => (row as { points: GlobeContextWarmthPoint[] }).points)
+    .heatmapPointLat((point) => (point as GlobeContextWarmthPoint).lat)
+    .heatmapPointLng((point) => (point as GlobeContextWarmthPoint).lng)
+    .heatmapPointWeight((point) => (point as GlobeContextWarmthPoint).weight)
     .heatmapBandwidth(bandwidth)
     .heatmapColorSaturation(saturation)
     .heatmapColorFn(() => (t: number) => warmthColorForDensity(t, layerOpacity))

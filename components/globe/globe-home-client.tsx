@@ -13,6 +13,11 @@ import { GlobeContextHubDetailSheet } from "@/components/globe/globe-context-hub
 import { GlobeUtilityMenu } from "@/components/globe/globe-utility-menu";
 import { GlobeContextMapVideoStage } from "@/components/globe/globe-context-map-video-stage";
 import { GlobeLodgingFocusStage } from "@/components/globe/globe-lodging-focus-stage";
+import { GlobeLodgingDiscoveryStage } from "@/components/globe/globe-lodging-discovery-stage";
+import { GlobeEateryDiscoveryStage } from "@/components/globe/globe-eatery-discovery-stage";
+import { GlobeEateryFocusSheet } from "@/components/globe/globe-eatery-focus-sheet";
+import { useGlobeLodgingDiscoverySession } from "@/hooks/use-globe-lodging-discovery-session";
+import { useGlobeEateryDiscoverySession } from "@/hooks/use-globe-eatery-discovery-session";
 import { GlobeCaptureDock } from "@/components/globe/globe-capture-dock";
 import { GlobeComposeAccessoryBar } from "@/components/globe/globe-compose-accessory-bar";
 import {
@@ -269,6 +274,18 @@ function GlobeHomeBody() {
   const [shareSheetOpen, setShareSheetOpen] = useState(false);
   const [shareEventId, setShareEventId] = useState<string | null>(null);
   const [activeCluster, setActiveCluster] = useState<PinCluster | null>(null);
+  const lodgingDiscovery = useGlobeLodgingDiscoverySession({
+    globeRef,
+    userLat: liveLocation?.lat ?? null,
+    userLng: liveLocation?.lng ?? null,
+    contextEventId: activeCluster?.eventId ?? null,
+  });
+  const eateryDiscovery = useGlobeEateryDiscoverySession({
+    globeRef,
+    userLat: liveLocation?.lat ?? null,
+    userLng: liveLocation?.lng ?? null,
+    contextEventId: activeCluster?.eventId ?? null,
+  });
   useEffect(() => {
     if (!iosPwaGuards) {
       setDiscoveryBadgeReady(layerMode === "discovery");
@@ -1650,7 +1667,24 @@ function GlobeHomeBody() {
         focusedContextEventId={activeCluster?.eventId ?? null}
         showInteractionHint={false}
         layerMode={layerMode}
+        lodgingDiscoveryCards={lodgingDiscovery.cardByResourceId}
+        eateryDiscoveryCards={eateryDiscovery.cardByResourceId}
       />
+      {lodgingDiscovery.session && !eateryDiscovery.session ? (
+        <GlobeLodgingDiscoveryStage
+          session={lodgingDiscovery.session}
+          globeRef={globeRef}
+          onDismiss={lodgingDiscovery.dismiss}
+        />
+      ) : null}
+      {eateryDiscovery.session ? (
+        <GlobeEateryDiscoveryStage
+          session={eateryDiscovery.session}
+          globeRef={globeRef}
+          onDismiss={eateryDiscovery.dismiss}
+        />
+      ) : null}
+      <GlobeEateryFocusSheet eventId={activeCluster?.eventId ?? null} />
       <GlobeTrendBridgeLayer
         visible={trendBridgeLayerActive && !globeRenderSuspended}
         bridgeId={trendBridgeSettings.activeBridgeId}
@@ -1964,6 +1998,14 @@ function GlobeHomeBody() {
               window.history.replaceState(null, "", next);
             }
             void focusContextOnMap(eventId, options);
+          },
+          userLat: liveLocation?.lat ?? null,
+          userLng: liveLocation?.lng ?? null,
+          onLodgingDiscovery: ({ eventId }) => {
+            void focusContextOnMap(eventId);
+          },
+          onEateryDiscovery: ({ eventId }) => {
+            void focusContextOnMap(eventId);
           },
           onTextCommitted: (input) => {
             void openPortal({

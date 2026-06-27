@@ -30,5 +30,5 @@ export function shouldSuggestContextHubsForDraft(input: {
     lifecycle: "scheduled",
     confidence: 0.5,
     metadata: { feedPlanEnabled: true, globeManualContext: true },
-  });
+  } as unknown as EventCandidate);
 }

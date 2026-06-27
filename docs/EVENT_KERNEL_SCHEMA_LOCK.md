@@ -11,7 +11,12 @@ Frozen OS contracts — **do not extend enums or fields without bumping `EVENT_K
 | Kernel output | `event-kernel-output.v1` |
 | Causal trace graph | `causal-trace-graph.v1` |
 
-Module: `lib/event-kernel/schema-lock/`
+Module split:
+
+| Layer | Path | Contents |
+|-------|------|----------|
+| **L0 event SSOT** | `lib/events/schema-lock/` | Event categories, lifecycles, wire keys, mutation rules |
+| **L2 kernel output** | `lib/event-kernel/schema-lock/` | Kernel output schema, causal edges, graph versioning (re-exports event SSOT) |
 
 ## 1. Event schema (life-state SSOT)
 
@@ -50,7 +55,8 @@ Schema lock: `npm run test:event-kernel-schema-lock`
 
 ## Change process
 
-1. Edit `lib/event-kernel/schema-lock/*` constants  
-2. Bump `EVENT_KERNEL_SCHEMA_LOCK_VERSION`  
-3. Update golden hashes / replay tests if graph or proof shape changes  
-4. Document migration in this file
+1. **Event fields / lifecycles:** edit `lib/events/schema-lock/*`  
+2. **Kernel output / causal graph:** edit `lib/event-kernel/schema-lock/*`  
+3. Bump `EVENT_KERNEL_SCHEMA_LOCK_VERSION`  
+4. Update golden hashes / replay tests if graph or proof shape changes  
+5. Document migration in this file

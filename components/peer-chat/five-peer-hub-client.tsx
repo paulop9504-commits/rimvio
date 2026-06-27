@@ -15,6 +15,7 @@ import {
   fetchAlignmentChatsRemote,
 } from "@/lib/peer-chat/fetch-alignment-chats-client";
 import type { AlignmentChatListItem } from "@/lib/peer-chat/alignment-chat-types";
+import { applySocialLayerToLocalRoster } from "@/lib/social/sync-social-layer";
 import { usePeerInboxSync } from "@/hooks/use-peer-inbox-sync";
 import {
   fetchRelationshipFeedSlots,

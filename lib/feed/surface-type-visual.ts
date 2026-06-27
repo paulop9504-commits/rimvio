@@ -1,4 +1,4 @@
-import type { SurfaceType } from "@/lib/surface-engine/surface-contract";
+import type { SurfaceType } from "@/lib/experience-intent/feed-surface-wire";
 
 export type SurfaceTypeVisual = {
   emoji: string;

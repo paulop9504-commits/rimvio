@@ -1,5 +1,9 @@
-import { LOCAL_LINKS_UPDATED } from "@/lib/demo/seed";
+import { LOCAL_LINKS_UPDATED } from "@/lib/local-links/local-links-events";
 import { experimentLabLinks } from "@/lib/demo/experiment-lab-links";
+import {
+  EXPERIMENT_LAB_FLAG,
+  isExperimentLabMode,
+} from "@/lib/onboarding/experiment-lab-mode";
 import {
   clearDismissedLinkIds,
   readLocalLinks,
@@ -7,7 +11,8 @@ import {
 } from "@/lib/local-links/store";
 import type { LinkRow } from "@/types/database";
 
-export const EXPERIMENT_LAB_FLAG = "rimvio-experiment-lab-v3";
+export { EXPERIMENT_LAB_FLAG, isExperimentLabMode } from "@/lib/onboarding/experiment-lab-mode";
+
 export const EXPERIMENT_LAB_VERSION_KEY = "rimvio-experiment-lab-version";
 /** Bump when feed content/count changes so dev clients auto-refresh stale localStorage. */
 export const EXPERIMENT_LAB_VERSION = "v3-46-2";
@@ -53,14 +58,6 @@ export function clearExperimentLabState() {
   }
 
   sessionStorage.removeItem("blink-analytics-session-id");
-}
-
-export function isExperimentLabMode() {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  return localStorage.getItem(EXPERIMENT_LAB_FLAG) === "1";
 }
 
 function sortLinksByCreatedAt(links: LinkRow[]) {

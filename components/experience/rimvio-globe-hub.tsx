@@ -16,6 +16,8 @@ import type { RimvioGlobe3DHandle } from "@/components/experience/rimvio-globe-3
 import { useExperienceGraph } from "@/hooks/use-experience-graph";
 import { useGpsTrackingEnabled } from "@/hooks/use-gps-tracking-enabled";
 import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
+import { useGlobeLodgingDiscoveryReveal } from "@/hooks/use-globe-lodging-discovery-reveal";
+import { useGlobeEateryDiscoveryReveal } from "@/hooks/use-globe-eatery-discovery-reveal";
 import { useGlobePinsPlatformExternal } from "@/hooks/use-globe-pins-platform-external";
 import { useMarketDiscoveryPins } from "@/hooks/use-market-discovery-pins";
 import { useRelationshipFeedSlots } from "@/hooks/use-relationship-feed-slots";
@@ -61,10 +63,16 @@ import {
   dispatchGlobeLodgingFocus,
   subscribeGlobeLodgingFocus,
 } from "@/lib/globe/context-hub/globe-lodging-marker-bridge";
+import {
+  dispatchGlobeEateryFocus,
+  subscribeGlobeEateryFocus,
+} from "@/lib/globe/eatery/globe-eatery-focus-bridge";
 import { subscribeGlobeMapMediaFocus } from "@/lib/globe/globe-map-media-focus-bridge";
 import { listContextHubServicesForEvent } from "@/lib/globe/context-hub/context-hub-service-catalog";
 import { isLodgingHubEnabled } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
+import { isEateryHubEnabled } from "@/lib/globe/eatery/read-eatery-resource-inventory";
 import { projectLodgingGlobeMarkers } from "@/lib/globe/context-hub/project-lodging-globe-markers";
+import { projectEateryGlobeMarkers } from "@/lib/globe/eatery/project-eatery-globe-markers";
 import { projectContextHubGlobeAnchor } from "@/lib/globe/context-hub/project-context-hub-globe-anchor";
 import { dispatchGlobeContextHubOpen } from "@/lib/globe/context-hub/globe-context-hub-open-bridge";
 import { rankContextResources } from "@/lib/globe/resource/rank-context-resources";
@@ -109,15 +117,21 @@ function useGlobeEventSnapshot() {
 
 export type RimvioGlobeHubHandle = {
   flyToPin: RimvioGlobe3DHandle["flyToPin"];
+  flyToDiscoveryBounds: RimvioGlobe3DHandle["flyToDiscoveryBounds"];
   clearPinViewportBias: RimvioGlobe3DHandle["clearPinViewportBias"];
   resetToOverview: () => void;
   getPointOfView: RimvioGlobe3DHandle["getPointOfView"];
   getScreenCoords: RimvioGlobe3DHandle["getScreenCoords"];
 };
 
+import type { GlobeLodgingDiscoveryCard } from "@/lib/globe/lodging/project-lodging-discovery-session";
+import type { GlobeEateryDiscoveryCard } from "@/lib/globe/eatery/project-eatery-discovery-session";
+
 export type RimvioGlobeHubProps = {
   className?: string;
   globeRef?: Ref<RimvioGlobeHubHandle>;
+  lodgingDiscoveryCards?: Readonly<Record<string, GlobeLodgingDiscoveryCard>> | null;
+  eateryDiscoveryCards?: Readonly<Record<string, GlobeEateryDiscoveryCard>> | null;
   initialOpenPinId?: string | null;
   initialRecallEventId?: string | null;
   /** Fallback when context is not yet projected as a globe pin cluster. */
@@ -187,6 +201,8 @@ type RimvioGlobeHubBodyProps = {
   onContextHubAnchorPress?: (contextEventId: string) => void;
   showInteractionHint?: boolean;
   layerMode?: GlobeLayerMode;
+  lodgingDiscoveryCards?: Readonly<Record<string, GlobeLodgingDiscoveryCard>> | null;
+  eateryDiscoveryCards?: Readonly<Record<string, GlobeEateryDiscoveryCard>> | null;
 };
 
 const RimvioGlobeHubBody = memo(
@@ -210,6 +226,8 @@ const RimvioGlobeHubBody = memo(
       onContextHubAnchorPress,
       showInteractionHint = true,
       layerMode = "personal",
+      lodgingDiscoveryCards = null,
+      eateryDiscoveryCards = null,
     },
     ref,
   ) {
@@ -218,6 +236,9 @@ const RimvioGlobeHubBody = memo(
     const [detailLevel, setDetailLevel] = useState<GlobeDetailLevel>("space");
     const [bridgeRevision, setBridgeRevision] = useState(0);
     const [activeLodgingResourceId, setActiveLodgingResourceId] = useState<string | null>(
+      null,
+    );
+    const [activeEateryResourceId, setActiveEateryResourceId] = useState<string | null>(
       null,
     );
     const [mapMediaFocusOpen, setMapMediaFocusOpen] = useState(false);
@@ -233,6 +254,11 @@ const RimvioGlobeHubBody = memo(
       });
     }, []);
     useEffect(() => {
+      return subscribeGlobeEateryFocus((detail) => {
+        setActiveEateryResourceId(detail.resourceId);
+      });
+    }, []);
+    useEffect(() => {
       return subscribeGlobeMapMediaFocus((detail) => {
         setMapMediaFocusOpen(detail.open);
         if (detail.open) {
@@ -242,6 +268,7 @@ const RimvioGlobeHubBody = memo(
     }, []);
     useEffect(() => {
       setActiveLodgingResourceId(null);
+      setActiveEateryResourceId(null);
       setMapMediaFocusOpen(false);
       setExpandedPinId(null);
     }, [focusedContextEventId]);
@@ -276,6 +303,8 @@ const RimvioGlobeHubBody = memo(
     );
     const { enabled: gpsEnabled } = useGpsTrackingEnabled();
     const liveLocation = useLiveLocationSnapshot();
+    const lodgingDiscoveryReveal = useGlobeLodgingDiscoveryReveal(focusedContextEventId);
+    const eateryDiscoveryReveal = useGlobeEateryDiscoveryReveal(focusedContextEventId);
     const displayViewerRef = useRef<{ lat: number; lng: number } | null>(null);
     const [displayViewerRevision, setDisplayViewerRevision] = useState(0);
 
@@ -365,9 +394,32 @@ const RimvioGlobeHubBody = memo(
       const raw = projectLodgingGlobeMarkers({
         ranked,
         activeResourceId: activeLodgingResourceId,
+        visibleResourceIds:
+          lodgingDiscoveryReveal.visibleResourceIds.size > 0
+            ? lodgingDiscoveryReveal.visibleResourceIds
+            : null,
+        popInDelays:
+          lodgingDiscoveryReveal.popInDelays.size > 0
+            ? lodgingDiscoveryReveal.popInDelays
+            : null,
       });
       if (!mapMediaFocusOpen) {
-        return raw;
+        return raw.map((marker) => {
+          const card = lodgingDiscoveryCards?.[marker.resourceId];
+          if (!card) {
+            return marker;
+          }
+          const priceLabel =
+            card.priceKrw != null
+              ? `₩${Math.round(card.priceKrw).toLocaleString("ko-KR")}`
+              : null;
+          return {
+            ...marker,
+            discoveryShortLabel: card.shortLabel,
+            discoveryPriceLabel: priceLabel,
+            discoveryAccent: card.accent,
+          };
+        });
       }
       return [];
     }, [
@@ -377,6 +429,68 @@ const RimvioGlobeHubBody = memo(
       focusedContextEventId,
       liveLocation?.lat,
       liveLocation?.lng,
+      lodgingDiscoveryReveal.popInDelays,
+      lodgingDiscoveryReveal.visibleResourceIds,
+      lodgingDiscoveryCards,
+      mapMediaFocusOpen,
+    ]);
+    const eateryGlobeMarkers = useMemo(() => {
+      void bridgeRevision;
+      const eventId = focusedContextEventId?.trim();
+      if (!eventId) {
+        return [];
+      }
+      const event = eventsById.get(eventId);
+      if (!event || !isEateryHubEnabled(event)) {
+        return [];
+      }
+      const panel = listContextHubServicesForEvent(event);
+      if (!panel) {
+        return [];
+      }
+      const ranked = rankContextResources({
+        event,
+        services: panel.services,
+        lat: liveLocation?.lat ?? null,
+        lng: liveLocation?.lng ?? null,
+      });
+      const raw = projectEateryGlobeMarkers({
+        ranked,
+        activeResourceId: activeEateryResourceId,
+        visibleResourceIds:
+          eateryDiscoveryReveal.visibleResourceIds.size > 0
+            ? eateryDiscoveryReveal.visibleResourceIds
+            : null,
+        popInDelays:
+          eateryDiscoveryReveal.popInDelays.size > 0
+            ? eateryDiscoveryReveal.popInDelays
+            : null,
+      });
+      if (!mapMediaFocusOpen) {
+        return raw.map((marker) => {
+          const card = eateryDiscoveryCards?.[marker.resourceId];
+          if (!card) {
+            return marker;
+          }
+          return {
+            ...marker,
+            discoveryShortLabel: card.shortLabel,
+            discoveryPriceLabel: card.priceLabel,
+            discoveryAccent: card.accent,
+          };
+        });
+      }
+      return [];
+    }, [
+      activeEateryResourceId,
+      bridgeRevision,
+      eventsById,
+      focusedContextEventId,
+      liveLocation?.lat,
+      liveLocation?.lng,
+      eateryDiscoveryReveal.popInDelays,
+      eateryDiscoveryReveal.visibleResourceIds,
+      eateryDiscoveryCards,
       mapMediaFocusOpen,
     ]);
     const contextHubAnchor = useMemo(() => {
@@ -422,6 +536,9 @@ const RimvioGlobeHubBody = memo(
     useImperativeHandle(ref, () => ({
       flyToPin(lat, lng, level, options) {
         innerGlobeRef.current?.flyToPin(lat, lng, level, options);
+      },
+      flyToDiscoveryBounds(input) {
+        innerGlobeRef.current?.flyToDiscoveryBounds(input);
       },
       clearPinViewportBias() {
         innerGlobeRef.current?.clearPinViewportBias();
@@ -563,6 +680,14 @@ const RimvioGlobeHubBody = memo(
               source: "map_marker",
             });
           }}
+          eateryMarkers={eateryGlobeMarkers}
+          onEateryMarkerPress={(resourceId, carouselIndex) => {
+            dispatchGlobeEateryFocus({
+              resourceId,
+              carouselIndex,
+              source: "map_marker",
+            });
+          }}
           hubAnchors={
             mapMediaFocusOpen || !contextHubAnchor ? [] : [contextHubAnchor]
           }
@@ -637,6 +762,8 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
   onContextHubAnchorPress,
   showInteractionHint = true,
   layerMode = "personal",
+  lodgingDiscoveryCards = null,
+  eateryDiscoveryCards = null,
 }: RimvioGlobeHubProps) {
   const { ready, eventsById, personalPinRevision } = useGlobeEventSnapshot();
   const liveLocation = useLiveLocationSnapshot();
@@ -782,6 +909,8 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
       onContextHubAnchorPress={onContextHubAnchorPress}
       showInteractionHint={showInteractionHint}
       layerMode={layerMode}
+      lodgingDiscoveryCards={lodgingDiscoveryCards}
+      eateryDiscoveryCards={eateryDiscoveryCards}
     />
   );
 });

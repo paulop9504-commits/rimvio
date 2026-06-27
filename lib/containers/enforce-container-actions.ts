@@ -2,7 +2,7 @@ import { generateChainContext } from "@/lib/containers/context-generator";
 import { buildContainerUnsupportedSummary } from "@/lib/containers/container-system-prompt";
 import type { ContainerAllowedAction } from "@/lib/containers/container-types";
 import { normalizeActiveChains } from "@/lib/containers/container-types";
-import type { OrchestratorResult } from "@/lib/action-chat/orchestrator-types";
+import type { ContainerOrchestratorGateResult } from "@/lib/containers/orchestrator-gate-result";
 
 function detectRequestedActions(message: string): ContainerAllowedAction[] {
   const lower = message.toLowerCase();
@@ -93,7 +93,7 @@ export function tryContainerActionGate(input: {
   message: string;
   activeChains?: string[] | null;
   legacyChainIds?: string[] | null;
-}): OrchestratorResult | null {
+}): ContainerOrchestratorGateResult | null {
   if (isInformationalPaste(input.message)) {
     return null;
   }

@@ -40,6 +40,8 @@ export type IntentContextWire = {
   secondary_reason_signals: SecondaryReasonSignal[];
 };
 
+export type IntentContextProximity = "at_venue" | "en_route" | "unknown";
+
 export type IntentContextExtractInput = {
   message?: string;
   event?: {
@@ -52,6 +54,6 @@ export type IntentContextExtractInput = {
   signals?: {
     unread_team_feedback_count?: number;
     upcoming_meeting_count?: number;
-    proximity?: "at_venue" | "en_route" | "unknown";
+    proximity?: IntentContextProximity;
   };
 };

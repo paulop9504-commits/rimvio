@@ -47,7 +47,7 @@ export function orchestrateViaReviewExecutionQueue(input: {
 
   const dateInput = reviewExecutionInputFromMessage({ message, scopeId });
   if (dateInput) {
-    return lastOrchestrator(enqueueReviewExecution(dateInput));
+    return lastOrchestrator(enqueueReviewExecution(dateInput).processed);
   }
 
   if (!inferApprovalAction(message, scopeId)) {
@@ -70,7 +70,7 @@ export function orchestrateViaReviewExecutionQueue(input: {
         scopeId,
         type: "approve",
         payload: { message },
-      })
+      }).processed
     );
   }
   return null;

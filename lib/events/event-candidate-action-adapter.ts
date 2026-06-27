@@ -1,8 +1,5 @@
-import {
-  detectActionEventKind,
-  type ActionEventKind,
-} from "@/lib/action-event-registry/evaluate-lifecycle";
-import type { ActionEventRecord } from "@/lib/action-event-registry/types";
+import { detectActionEventKind } from "@/lib/action-event-registry/evaluate-lifecycle";
+import type { ActionEventKind, ActionEventRecord } from "@/lib/action-event-registry/types";
 import type {
   EventCandidate,
   EventCandidateCategory,

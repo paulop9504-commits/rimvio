@@ -1,5 +1,7 @@
-import { extractPlaceEntities } from "@/lib/action-chat/clean-entity-text";
-import { resolveNavigationPlaceName } from "@/lib/action-chat/resolve-navigation-place";
+import {
+  extractPlaceEntities,
+  resolveNavigationPlaceName,
+} from "@/lib/context-resolver/place-entity-text";
 import { classifyOverseasManualPlace } from "@/lib/globe/classify-overseas-manual-place";
 import { normalizePlaceLabel } from "@/lib/globe/normalize-place-label";
 

@@ -29,7 +29,10 @@ export class RimvioNativeBridgeWeb extends WebPlugin implements RimvioNativeBrid
     return { photos: [], nextCursorMs: Date.now() };
   }
 
-  async importPhotoToCache() {
+  async importPhotoToCache(_options: {
+    contentUri: string;
+    fileName?: string;
+  }): Promise<import("@/lib/native-bridge/rimvio-native-bridge.types").NativePhotoCacheImport> {
     throw new Error("album_sync_web_unsupported");
   }
 }

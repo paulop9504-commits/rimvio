@@ -37,6 +37,7 @@ import type { DeepLinkBubbleCandidate } from "@/lib/peer-chat/ai-lens/types";
 import { LensMapPickerSheet } from "@/components/peer-chat/lens-map-picker-sheet";
 import { LensScheduleConfirmSheet } from "@/components/peer-chat/lens-schedule-confirm-sheet";
 import { ContextTalkRoomPanel } from "@/components/peer-chat/context-talk-room-panel";
+import { PeerContextMiniMap } from "@/components/peer-chat/peer-context-mini-map";
 import { usePeerAiLens } from "@/hooks/use-peer-ai-lens";
 import { PeerChatDateDivider } from "@/components/peer-chat/peer-chat-date-divider";
 import { PeerDmKakaoComposer } from "@/components/peer-chat/peer-dm-kakao-composer";
@@ -411,6 +412,14 @@ export function PeerThreadChatPanel({
     >
       {!experienceDiscussion && !readOnly && !phoneDm && !isGroup ? (
         <PeerInviteBanner inviteUrl={inviteUrl} inviteCode={inviteCode} />
+      ) : null}
+
+      {contextTalkEventId?.trim() && !experienceDiscussion ? (
+        <PeerContextMiniMap
+          eventId={contextTalkEventId}
+          title={contextTalkTitle}
+          className="mt-2"
+        />
       ) : null}
 
       {syncError ? (

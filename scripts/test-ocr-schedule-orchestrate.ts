@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { extractEventsFromOcr } from "../lib/events/extract-events-from-ocr";
 import { parseOcrTextFromComposerContext } from "../lib/events/parse-ocr-from-composer-context";
-import { orchestrateOcrScheduleCandidates } from "../lib/events/orchestrate-ocr-schedule-candidates";
+import { orchestrateOcrScheduleCandidates } from "../lib/event-kernel/review/orchestrate-ocr-schedule-candidates";
 import { orchestrateUserMessage } from "../lib/action-chat/orchestrate-user-message";
 
 const REF = "2026-06-01";

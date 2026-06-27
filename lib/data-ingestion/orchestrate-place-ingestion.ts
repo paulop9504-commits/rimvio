@@ -7,13 +7,30 @@ import {
 } from "@/lib/data-ingestion/ingest-place-text";
 import type { PlaceIngestionSchema } from "@/lib/data-ingestion/types";
 
+import type { KnowledgeContainerId } from "@/lib/knowledge/knowledge-entity-types";
+
 function mapKnowledgeWire(schema: PlaceIngestionSchema) {
+  const containerId: KnowledgeContainerId = "data";
   return [
     schema.name
-      ? { label: schema.name, value: schema.address ?? schema.name, type: "place" as const }
+      ? {
+          id: crypto.randomUUID(),
+          label: schema.name,
+          value: schema.address ?? schema.name,
+          type: "place" as const,
+          containerId,
+        }
       : null,
-    schema.phone ? { label: "전화", value: schema.phone, type: "phone" as const } : null,
-  ].filter(Boolean) as Array<{ label: string; value: string; type: string }>;
+    schema.phone
+      ? {
+          id: crypto.randomUUID(),
+          label: "전화",
+          value: schema.phone,
+          type: "phone" as const,
+          containerId,
+        }
+      : null,
+  ].filter((entry): entry is NonNullable<(typeof entry)> => entry !== null);
 }
 
 export async function orchestratePlaceIngestion(message: string): Promise<OrchestratorResult | null> {

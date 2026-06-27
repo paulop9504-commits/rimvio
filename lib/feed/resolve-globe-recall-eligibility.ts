@@ -65,5 +65,7 @@ export function resolveGlobeRecallPlaceHint(
     return null;
   }
   const plan = resolvePlanContextForCalendarRow(slot.row, eventsById);
-  return plan?.place?.trim() || slot.row.event.place?.trim() || null;
+  const eventId = slot.row.event.eventId;
+  const event = eventId ? eventsById.get(eventId) : undefined;
+  return plan?.place?.trim() || event?.place?.trim() || null;
 }

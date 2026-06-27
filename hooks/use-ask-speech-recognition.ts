@@ -4,7 +4,22 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { speechLangForLocale } from "@/lib/media/speech-lang";
 import type { AppLocale } from "@/lib/i18n/types";
 
-type SpeechRecognitionCtor = new () => SpeechRecognition;
+/** Minimal Web Speech API surface — avoids requiring DOM lib in CI typecheck. */
+type BrowserSpeechRecognition = {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  maxAlternatives: number;
+  onresult: ((event: {
+    results: ArrayLike<{ 0?: { transcript?: string }; isFinal?: boolean }>;
+  }) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+type SpeechRecognitionCtor = new () => BrowserSpeechRecognition;
 
 function readSpeechRecognitionCtor(): SpeechRecognitionCtor | null {
   if (typeof window === "undefined") {
@@ -32,7 +47,7 @@ export type UseAskSpeechRecognitionInput = {
 export function useAskSpeechRecognition(input: UseAskSpeechRecognitionInput) {
   const enabled = input.enabled ?? true;
   const [listening, setListening] = useState(false);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
 
   const onFinalRef = useRef(input.onFinalTranscript);
   const onErrorRef = useRef(input.onError);

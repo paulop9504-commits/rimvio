@@ -119,7 +119,7 @@ export function inferGlobePinDisplayDecision(input: {
       capturedAtIso: new Date(input.nowMs).toISOString(),
       lat: input.viewerLat,
       lng: input.viewerLng,
-      eventStartIso: event.datetime ?? null,
+      eventStartIso: event.datetime?.trim() || new Date(input.nowMs).toISOString(),
       eventEndIso: readPlanContextFromEvent(event)?.windowEndIso ?? null,
       eventPlace: event.place,
       eventLat: pin.lat,

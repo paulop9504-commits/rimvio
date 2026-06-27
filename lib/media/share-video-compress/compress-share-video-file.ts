@@ -92,7 +92,7 @@ export async function compressShareVideoFile(
           data instanceof Uint8Array
             ? data
             : new TextEncoder().encode(String(data));
-        const blob = new Blob([bytes], { type: "video/mp4" });
+        const blob = new Blob([bytes as BlobPart], { type: "video/mp4" });
         bestBlob = blob;
 
         if (blob.size <= targetMaxBytes) {

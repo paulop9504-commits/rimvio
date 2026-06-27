@@ -12,7 +12,7 @@ function meaningfulTurns(messages: ActionChatMessage[]) {
     (message) =>
       message.text.trim().length >= 2 &&
       !message.loading &&
-      (message.role === "user" || message.summary || message.text)
+      (message.role === "user" || message.text)
   );
 }
 
@@ -54,7 +54,7 @@ function extractKeywords(topic: string, messages: ActionChatMessage[]): string[]
   }
 
   for (const message of messages.slice(-8)) {
-    const text = `${message.text} ${message.summary ?? ""}`;
+    const text = message.text;
     for (const match of text.matchAll(DOMAIN_TERMS)) {
       if (match[0]) {
         terms.add(match[0]);
@@ -68,7 +68,7 @@ function extractKeywords(topic: string, messages: ActionChatMessage[]): string[]
 function buildSummary(messages: ActionChatMessage[]): string {
   const assistantSummaries = messages
     .filter((message) => message.role === "assistant")
-    .map((message) => message.summary?.trim() || message.text.trim())
+    .map((message) => message.text.trim())
     .filter(Boolean)
     .slice(-3);
 

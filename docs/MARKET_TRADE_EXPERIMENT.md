@@ -33,7 +33,7 @@ alter table public.market_alignment_handshakes
 
 ## Apply DB
 
-Run `supabase/sql-editor/13-market-trade-session.sql` through `16-market-trade-schedule-v2.sql`, or migrations `055`–`058`.
+Run `supabase/sql-editor/13-market-trade-session.sql` through `16-market-trade-schedule-v2.sql`, then `20-market-trade-post-bootstrap.sql` (includes 17–19 / migration 061 orphan heal), or migrations `055`–`061`.
 
 ## Scheduling v2 (buyer day → seller propose → buyer accept)
 

@@ -80,8 +80,24 @@ export function applyFrameDiff(
   const next = cloneSurfaceUiState(previous);
 
   for (const surface of SURFACE_KEYS) {
-    next[surface] = removeIdsFromSurface(next[surface], removed) as SurfaceUiState[typeof surface];
-    next[surface] = removeIdsFromSurface(next[surface], changed) as SurfaceUiState[typeof surface];
+    switch (surface) {
+      case "CALENDAR":
+        next.CALENDAR = removeIdsFromSurface(next.CALENDAR, removed);
+        next.CALENDAR = removeIdsFromSurface(next.CALENDAR, changed);
+        break;
+      case "DOCK":
+        next.DOCK = removeIdsFromSurface(next.DOCK, removed);
+        next.DOCK = removeIdsFromSurface(next.DOCK, changed);
+        break;
+      case "TIMELINE":
+        next.TIMELINE = removeIdsFromSurface(next.TIMELINE, removed);
+        next.TIMELINE = removeIdsFromSurface(next.TIMELINE, changed);
+        break;
+      case "NARRATION":
+        next.NARRATION = removeIdsFromSurface(next.NARRATION, removed);
+        next.NARRATION = removeIdsFromSurface(next.NARRATION, changed);
+        break;
+    }
   }
 
   for (const id of changed) {
@@ -97,32 +113,105 @@ export function applyFrameDiff(
     const targetIndex = targetSurfaceItems.findIndex((entry) => entry.id === id);
     const insertAt = Math.min(Math.max(targetIndex, 0), surfaceItems.length);
     surfaceItems.splice(insertAt, 0, cloned);
-    next[located.surface] = surfaceItems as SurfaceUiState[typeof located.surface];
+    switch (located.surface) {
+      case "CALENDAR":
+        next.CALENDAR = surfaceItems as CalendarUiItem[];
+        break;
+      case "DOCK":
+        next.DOCK = surfaceItems as DockUiItem[];
+        break;
+      case "TIMELINE":
+        next.TIMELINE = surfaceItems as TimelineUiItem[];
+        break;
+      case "NARRATION":
+        next.NARRATION = surfaceItems as NarrationUiItem[];
+        break;
+    }
   }
 
   for (const surface of SURFACE_KEYS) {
-    const ordered: SurfaceUiState[typeof surface] = [];
-    const seen = new Set<string>();
-
-    for (const targetItem of target[surface]) {
-      if (removed.has(targetItem.id)) {
-        continue;
+    switch (surface) {
+      case "CALENDAR": {
+        const ordered: CalendarUiItem[] = [];
+        const seen = new Set<string>();
+        for (const targetItem of target.CALENDAR) {
+          if (removed.has(targetItem.id)) continue;
+          const existing = next.CALENDAR.find((entry) => entry.id === targetItem.id);
+          if (existing && !seen.has(existing.id)) {
+            ordered.push(cloneCalendarItem(existing));
+            seen.add(existing.id);
+          }
+        }
+        for (const item of next.CALENDAR) {
+          if (!seen.has(item.id)) {
+            ordered.push(cloneCalendarItem(item));
+            seen.add(item.id);
+          }
+        }
+        next.CALENDAR = ordered;
+        break;
       }
-      const existing = next[surface].find((entry) => entry.id === targetItem.id);
-      if (existing && !seen.has(existing.id)) {
-        ordered.push(cloneSurfaceItem(surface, existing) as SurfaceUiState[typeof surface][number]);
-        seen.add(existing.id);
+      case "DOCK": {
+        const ordered: DockUiItem[] = [];
+        const seen = new Set<string>();
+        for (const targetItem of target.DOCK) {
+          if (removed.has(targetItem.id)) continue;
+          const existing = next.DOCK.find((entry) => entry.id === targetItem.id);
+          if (existing && !seen.has(existing.id)) {
+            ordered.push(cloneDockItem(existing));
+            seen.add(existing.id);
+          }
+        }
+        for (const item of next.DOCK) {
+          if (!seen.has(item.id)) {
+            ordered.push(cloneDockItem(item));
+            seen.add(item.id);
+          }
+        }
+        next.DOCK = ordered;
+        break;
+      }
+      case "TIMELINE": {
+        const ordered: TimelineUiItem[] = [];
+        const seen = new Set<string>();
+        for (const targetItem of target.TIMELINE) {
+          if (removed.has(targetItem.id)) continue;
+          const existing = next.TIMELINE.find((entry) => entry.id === targetItem.id);
+          if (existing && !seen.has(existing.id)) {
+            ordered.push(cloneTimelineItem(existing));
+            seen.add(existing.id);
+          }
+        }
+        for (const item of next.TIMELINE) {
+          if (!seen.has(item.id)) {
+            ordered.push(cloneTimelineItem(item));
+            seen.add(item.id);
+          }
+        }
+        next.TIMELINE = ordered;
+        break;
+      }
+      case "NARRATION": {
+        const ordered: NarrationUiItem[] = [];
+        const seen = new Set<string>();
+        for (const targetItem of target.NARRATION) {
+          if (removed.has(targetItem.id)) continue;
+          const existing = next.NARRATION.find((entry) => entry.id === targetItem.id);
+          if (existing && !seen.has(existing.id)) {
+            ordered.push(cloneNarrationItem(existing));
+            seen.add(existing.id);
+          }
+        }
+        for (const item of next.NARRATION) {
+          if (!seen.has(item.id)) {
+            ordered.push(cloneNarrationItem(item));
+            seen.add(item.id);
+          }
+        }
+        next.NARRATION = ordered;
+        break;
       }
     }
-
-    for (const item of next[surface]) {
-      if (!seen.has(item.id)) {
-        ordered.push(cloneSurfaceItem(surface, item) as SurfaceUiState[typeof surface][number]);
-        seen.add(item.id);
-      }
-    }
-
-    next[surface] = ordered;
   }
 
   return next;

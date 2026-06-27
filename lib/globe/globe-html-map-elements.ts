@@ -7,10 +7,15 @@ import {
   isGlobeLodgingMapMarker,
   type GlobeLodgingMapMarker,
 } from "@/lib/globe/context-hub/lodging-globe-marker-types";
+import {
+  isGlobeEateryMapMarker,
+  type GlobeEateryMapMarker,
+} from "@/lib/globe/eatery/eatery-globe-marker-types";
 
 export type GlobeHtmlMapElement =
   | ClassifiedGlobePin
   | GlobeLodgingMapMarker
+  | GlobeEateryMapMarker
   | GlobeContextHubMapAnchor;
 
 export function readGlobeHtmlLat(element: GlobeHtmlMapElement): number {
@@ -24,8 +29,10 @@ export function readGlobeHtmlLng(element: GlobeHtmlMapElement): number {
 export function mergeGlobeHtmlElements(input: {
   pins: readonly ClassifiedGlobePin[];
   lodgingMarkers: readonly GlobeLodgingMapMarker[];
+  eateryMarkers: readonly GlobeEateryMapMarker[];
   hubAnchors: readonly GlobeContextHubMapAnchor[];
   showLodgingMarkers: boolean;
+  showEateryMarkers: boolean;
   showHubAnchors: boolean;
 }): GlobeHtmlMapElement[] {
   const merged: GlobeHtmlMapElement[] = [...input.pins];
@@ -35,11 +42,18 @@ export function mergeGlobeHtmlElements(input: {
   if (input.showLodgingMarkers && input.lodgingMarkers.length > 0) {
     merged.push(...input.lodgingMarkers);
   }
+  if (input.showEateryMarkers && input.eateryMarkers.length > 0) {
+    merged.push(...input.eateryMarkers);
+  }
   return merged;
 }
 
 export function isClassifiedGlobePin(
   element: GlobeHtmlMapElement,
 ): element is ClassifiedGlobePin {
-  return !isGlobeLodgingMapMarker(element) && !isGlobeContextHubMapAnchor(element);
+  return (
+    !isGlobeLodgingMapMarker(element) &&
+    !isGlobeEateryMapMarker(element) &&
+    !isGlobeContextHubMapAnchor(element)
+  );
 }

@@ -1,3 +1,4 @@
+import type { CapabilityProviderId } from "@/lib/capability-registry/capability-contract";
 import { resolvePluginCapability, getPlugin } from "@/lib/platform/extension-registry";
 import {
   bridgeBuildContextFromEngine,
@@ -116,12 +117,15 @@ export function dispatchCapability(
       surfaceId: mapped.surfaceId ?? request.surfaceId,
       eventId: mapped.eventId ?? request.eventId,
       platform: request.platform,
-      providerId: request.providerId,
+      providerId: request.providerId as CapabilityProviderId | undefined,
     });
     return { ...result, source: "plugin" };
   }
 
-  const result = bridgeDispatchCapability(request);
+  const result = bridgeDispatchCapability({
+    ...request,
+    providerId: request.providerId as CapabilityProviderId | undefined,
+  });
   return { ...result, source: "core" };
 }
 

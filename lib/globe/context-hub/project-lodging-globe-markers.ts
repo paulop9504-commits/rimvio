@@ -21,6 +21,8 @@ export function shouldRenderLodgingGlobeMarkers(
 export function projectLodgingGlobeMarkers(input: {
   ranked: readonly RankedContextResource[];
   activeResourceId?: string | null;
+  visibleResourceIds?: ReadonlySet<string> | null;
+  popInDelays?: ReadonlyMap<string, number> | null;
 }): GlobeLodgingMapMarker[] {
   const lodging = filterLodgingRankedResources(input.ranked);
   if (lodging.length === 0) {
@@ -28,9 +30,13 @@ export function projectLodgingGlobeMarkers(input: {
   }
 
   const activeId = input.activeResourceId?.trim() || lodging[0]?.resource.resourceId;
+  const filterIds = input.visibleResourceIds;
 
   return lodging
     .map((entry) => {
+      if (filterIds && filterIds.size > 0 && !filterIds.has(entry.resource.resourceId)) {
+        return null;
+      }
       const carouselIndex = input.ranked.findIndex(
         (row) => row.resource.resourceId === entry.resource.resourceId,
       );
@@ -43,6 +49,8 @@ export function projectLodgingGlobeMarkers(input: {
       const payload = readLodgingPayloadFromResource(entry.resource);
       const isMain = entry.resource.resourceId === activeId;
 
+      const popInDelayMs = input.popInDelays?.get(entry.resource.resourceId);
+
       return {
         markerKind: "lodging" as const,
         id: `lodging:${entry.resource.resourceId}`,
@@ -53,6 +61,7 @@ export function projectLodgingGlobeMarkers(input: {
         carouselIndex: carouselIndex >= 0 ? carouselIndex : 0,
         isMain,
         thumbnailUrl: payload?.images[0] ?? null,
+        ...(popInDelayMs != null ? { popInDelayMs } : {}),
       };
     })
     .filter((row): row is GlobeLodgingMapMarker => row != null);

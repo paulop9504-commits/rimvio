@@ -1,5 +1,74 @@
 import type { ContextLodgingInventoryRow } from "@/lib/globe/context-hub/lodging-resource-types";
 
+/** Demo inventory — Hongdae / Mapo regression + screenshot parity. */
+export function resolveLodgingMockNearUser(input: {
+  lat: number;
+  lng: number;
+}): readonly ContextLodgingInventoryRow[] {
+  const isSeoulMetro =
+    input.lat >= 37.42 &&
+    input.lat <= 37.65 &&
+    input.lng >= 126.85 &&
+    input.lng <= 127.12;
+
+  if (isSeoulMetro) {
+    const mLat = (m: number) => m / 111_320;
+    const mLng = (m: number) => m / (111_320 * Math.cos((input.lat * Math.PI) / 180));
+    return [
+      {
+        placeId: "hh-guesthouse",
+        name: "홍대 게스트하우스",
+        lat: input.lat + mLat(120),
+        lng: input.lng + mLng(85),
+        priceKrw: 65_000,
+        partnerLabel: "demo",
+        images: [
+          "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=640&q=80",
+        ],
+        videoUrl: null,
+      },
+      {
+        placeId: "hh-han-river",
+        name: "한강뷰 레지던스",
+        lat: input.lat + mLat(290),
+        lng: input.lng - mLng(140),
+        priceKrw: 95_000,
+        partnerLabel: "demo",
+        images: [
+          "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=640&q=80",
+        ],
+        videoUrl: null,
+      },
+      {
+        placeId: "hh-myeongdong",
+        name: "명동 시티호텔",
+        lat: input.lat - mLat(180),
+        lng: input.lng + mLng(320),
+        priceKrw: 120_000,
+        partnerLabel: "demo",
+        images: [
+          "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=640&q=80",
+        ],
+        videoUrl: null,
+      },
+      {
+        placeId: "hh-gangnam",
+        name: "강남 비즈니스",
+        lat: input.lat - mLat(350),
+        lng: input.lng - mLng(60),
+        priceKrw: 89_000,
+        partnerLabel: "demo",
+        images: [
+          "https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=640&q=80",
+        ],
+        videoUrl: null,
+      },
+    ];
+  }
+
+  return resolveLodgingMockForPlace("근처", input);
+}
+
 /** Demo inventory — absolute coords for 대전 regression tests. */
 export const DAEJEON_LODGING_MOCK: readonly ContextLodgingInventoryRow[] = [
   {

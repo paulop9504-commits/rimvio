@@ -113,9 +113,9 @@ export async function fetchPlacesLodgingNearby(
           partnerLabel: "google_places",
           images: [] as string[],
           videoUrl: null,
-        } satisfies ContextLodgingInventoryRow;
+        } as ContextLodgingInventoryRow;
       })
-      .filter((row): row is ContextLodgingInventoryRow => row != null)
+      .filter((row): row is ContextLodgingInventoryRow => row !== null)
       .slice(0, maxResults);
 
     if (candidates.length === 0) {

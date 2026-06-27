@@ -69,8 +69,6 @@ export type PersonalReadExperienceSlice = {
   }>;
 };
 
-import type { SemanticMainHint, SemanticTriple } from "@/lib/semantic/types";
-
 export type MeaningProvenance = "behavior" | "rollup" | "relationship_rule" | "semantic_rule";
 
 export type PersonalReadMeaningSlice = {

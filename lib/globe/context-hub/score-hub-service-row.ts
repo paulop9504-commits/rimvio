@@ -1,5 +1,5 @@
 import type { ContextHubServiceRow } from "@/lib/globe/context-hub/context-hub-service-catalog";
-import { getActionTypeRankWeightForHubService } from "@/lib/ontology/actions/action-type-registry";
+import { getActionTypeRankWeightForHubService } from "@/lib/event-kernel/action-contracts/rimvio-action-type-registry";
 
 /** Hub row score — action type rankWeight is SSOT for MAIN ordering. */
 export function scoreHubServiceRowBase(row: ContextHubServiceRow): number {

@@ -94,7 +94,9 @@ export function extractPreferenceFromMessage(message: string): PreferenceEntry |
   return null;
 }
 
-export function applyPreferencePatchFromApi(entry: PreferenceEntry | null | undefined) {
+export function applyPreferencePatchFromApi(
+  entry: Omit<PreferenceEntry, "updatedAt"> | null | undefined,
+) {
   if (!entry?.key) {
     return;
   }

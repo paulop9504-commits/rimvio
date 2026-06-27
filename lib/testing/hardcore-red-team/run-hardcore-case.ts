@@ -13,6 +13,7 @@ import type {
   HardcoreRedTeamCase,
 } from "@/lib/testing/hardcore-red-team/types";
 import type { MasterContextFixture } from "@/lib/testing/unified-stress/evaluate-unified-stress";
+import { MINIMAL_MASTER_CONTEXT } from "@/lib/testing/minimal-master-context-fixture";
 
 function promptComplexityScore(input: string, historyLen: number): number {
   let score = 1;
@@ -44,12 +45,13 @@ export async function runHardcoreRedTeamCase(
   const schedulingCheckTimeMs = performance.now() - schedulingStart;
 
   const routingStart = performance.now();
+  const base = masterContext ?? MINIMAL_MASTER_CONTEXT;
   const result = await runOrchestratorPipeline({
     message: testCase.input,
     history: testCase.history ? [...testCase.history] : undefined,
     masterContext: {
-      ...masterContext,
-      existingSchedule: testCase.existingSchedule ?? masterContext.existingSchedule,
+      ...base,
+      existingSchedule: testCase.existingSchedule ?? base.existingSchedule,
     },
   });
   const routingTimeMs = performance.now() - routingStart;

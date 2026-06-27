@@ -87,7 +87,7 @@ export function useBridgeMediaSync(input?: {
       return;
     }
 
-    let timer: ReturnType<typeof setInterval> | null = null;
+    let timer: number | null = null;
 
     const arm = () => {
       if (timer != null) {

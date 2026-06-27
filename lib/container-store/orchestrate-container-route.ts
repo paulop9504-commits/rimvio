@@ -11,7 +11,7 @@ import {
 import type { ContainerRecord } from "@/lib/container-store/types";
 import { appendStreamRecords } from "@/lib/data-architect/persist-stream-record";
 import { extractKnowledgeAndStream } from "@/lib/data-architect/rule-classify-input";
-import type { OrchestratorResult } from "@/lib/action-chat/orchestrator-types";
+import type { OrchestratorResultPersistWire } from "@/lib/containers/orchestrator-gate-result";
 
 export type ContainerRouteResult = {
   container: ContainerRecord | null;
@@ -63,7 +63,7 @@ export async function routeOrchestratorContainer(input: {
 export async function persistOrchestratorToContainer(input: {
   container: ContainerRecord | null;
   message: string;
-  result: OrchestratorResult;
+  result: OrchestratorResultPersistWire;
 }): Promise<void> {
   if (!input.container) {
     appendContainerEvent({

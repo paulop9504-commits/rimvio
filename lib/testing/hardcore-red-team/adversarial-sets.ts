@@ -48,11 +48,11 @@ const SET1: HardcoreRedTeamCase[] = [
 const SET2: HardcoreRedTeamCase[] = [
   {
     input: "그거 비슷하게 해줘",
-    history: [{ role: "user", content: "근처 맛집 추천" }],
+    history: [{ role: "user" as const, content: "근처 맛집 추천" }],
   },
   {
     input: "아까 거 기준으로 다시",
-    history: [{ role: "assistant", content: "A) 가성비 B) 맛 C) 가볍게" }],
+    history: [{ role: "assistant" as const, content: "A) 가성비 B) 맛 C) 가볍게" }],
   },
   { input: "전에 했던 느낌으로" },
   { input: "대충 알아서" },

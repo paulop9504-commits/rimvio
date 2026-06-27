@@ -43,7 +43,7 @@ export function hashCausalProofBody(
 export function buildCausalProof(input: {
   input: CausalProofInput;
   plan: CausalProofPlan;
-  execution: CausalProofExecution;
+  execution: Omit<CausalProofExecution, "blockedByLock"> & { blockedByLock?: boolean };
   stateBefore: EventOsStateSnapshot;
   stateAfter: EventOsStateSnapshot;
   validationProof: ValidationProof;

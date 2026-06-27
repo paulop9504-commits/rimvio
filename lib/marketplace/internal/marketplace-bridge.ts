@@ -4,10 +4,8 @@
 import { resolveCapabilityProvider } from "@/lib/capability-registry/capability-resolver";
 import { getCapability } from "@/lib/capability-registry/capability-registry";
 import type { CapabilityId, CapabilityProviderId } from "@/lib/capability-registry/capability-contract";
-import {
-  registerPlugin,
-  type RegisteredPlugin,
-} from "@/lib/platform/extension-registry";
+import { registerPlugin } from "@/lib/platform/extension-registry";
+import type { RegisteredPlugin } from "@/lib/platform/plugin-contract";
 import { dispatchCapability } from "@/lib/platform/platform-api";
 import type { PlatformCapabilityRequest, PlatformDispatchResult } from "@/lib/platform/platform-contract";
 import { assertRuntimeReady, readRuntimeVersion } from "@/lib/platform/rimvio-runtime";

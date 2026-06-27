@@ -26,6 +26,8 @@ export type LiveTurnLogEntry = {
   failureKind?: FailureKind;
   isFailure?: boolean;
   latencyMs?: number;
+  metadata?: Record<string, unknown>;
+  history?: Array<{ role: string; content: string }>;
   source: "client" | "server";
 };
 

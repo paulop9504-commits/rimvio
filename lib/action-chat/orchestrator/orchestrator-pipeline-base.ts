@@ -3,9 +3,7 @@ import {
 } from "@/lib/action-chat/client-master-context";
 import {
   applyContextIsolation,
-  eventStateToIntentRoute,
 } from "@/lib/action-chat/intent-router";
-import { buildConversationEventState } from "@/lib/action-chat/conversation-event-state";
 import { routeOrchestratorContainer } from "@/lib/container-store/orchestrate-container-route";
 import type { OrchestratorPipelineInput } from "@/lib/action-chat/orchestrator/pipeline-context";
 import {
@@ -52,6 +50,8 @@ import {
   autoSaveKnowledgeFromMessage,
   mapKnowledgeEntitiesToWire,
 } from "@/lib/action-chat/action-oriented-handler";
+import { buildUnifiedExperienceContext } from "@/lib/experience-context/build-unified-experience-context";
+import type { UnifiedExperienceContext } from "@/lib/experience-context/unified-experience-context-types";
 
 export type OrchestratorPipelineBase = {
   input: OrchestratorPipelineInput;
@@ -70,6 +70,8 @@ export type OrchestratorPipelineBase = {
   userDefinedActions: UserDefinedAction[];
   goalSnapshot: GoalSnapshot;
   goalPriorityHint: GoalPriorityHint;
+  /** Unified event + behavior + people + recall context (assembled once per turn). */
+  unifiedContext: UnifiedExperienceContext;
   /** Mutable flags shared across decision probes (e.g. LLM router defer). */
   flags: { skipAiIntentStub: boolean };
 };
@@ -154,11 +156,16 @@ export async function buildOrchestratorPipelineBase(
     existingSchedule: context.existingSchedule,
   });
 
-  const eventState = buildConversationEventState({
+  const unifiedContext = buildUnifiedExperienceContext({
     message,
     history: input.history,
     linkTitle: input.linkTitle,
+    scopeId: input.sessionScopeId,
+    masterContext: context,
+    masterContextApi: input.masterContext,
   });
+
+  const eventState = unifiedContext.eventState;
 
   return {
     input,
@@ -168,7 +175,7 @@ export async function buildOrchestratorPipelineBase(
     routingMessage: enrichPlaceDiscoveryMessage(adaptive.effectiveMessage, input.history),
     context,
     adaptive,
-    route: eventStateToIntentRoute(eventState),
+    route: unifiedContext.route,
     kernel: eventState.kernel,
     eventState,
     memoryOutput: eventState.memoryOutput,
@@ -178,6 +185,7 @@ export async function buildOrchestratorPipelineBase(
       input.userDefinedActions ?? input.masterContext?.userDefinedActions ?? [],
     goalSnapshot,
     goalPriorityHint,
+    unifiedContext,
     flags: { skipAiIntentStub: false },
   };
 }
@@ -218,6 +226,7 @@ export async function completeEarlyOrchestratorDecision(
     trace,
     containerRoute,
     autoSavedWire: undefined,
+    unifiedContext: base.unifiedContext,
   });
 
   let partial = decision.partial;
@@ -265,6 +274,7 @@ export async function prepareStandardPipelineContext(
     trace,
     containerRoute,
     autoSavedWire,
+    unifiedContext: base.unifiedContext,
   });
 }
 

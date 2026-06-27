@@ -24,6 +24,7 @@ export type TimelineProjectionContext = {
   focusedEcId?: string | null;
   recentEcIds?: readonly string[];
   now?: Date;
+  timelineVisible?: boolean;
 };
 
 export type TimelineProjectionResult = TimelineSection[];

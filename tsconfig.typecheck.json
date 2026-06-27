@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "exclude": [
+    "node_modules",
+    "scripts",
+    "tests",
+    "lib/testing/**",
+    "lib/data-architect/**",
+    "lib/react-atomic-frame-binder/**",
+    "lib/event-os/**",
+    "lib/experience-window/**",
+    "lib/secondary-action-generator/**",
+    "lib/conversation-memory/**",
+    "lib/safety/**",
+    "lib/meaning/**"
+  ]
+}

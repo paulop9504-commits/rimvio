@@ -187,7 +187,6 @@ export function buildRecallAnchorSnapshot(
   return {
     eventId: anchor.eventId?.trim() ?? null,
     title: anchor.title?.trim() ?? "",
-    headline: anchor.title?.trim() ?? "",
     place,
     city: place,
     people,

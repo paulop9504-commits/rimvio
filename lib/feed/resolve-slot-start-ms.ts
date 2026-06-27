@@ -1,4 +1,4 @@
-import { parseActionTargetDatetime } from "@/lib/action-chat/action-countdown";
+import { parseActionTargetDatetime } from "@/lib/schedule/parse-action-target-datetime";
 import type { FeedTodaySlot } from "@/lib/feed/feed-today-slot-types";
 
 export function resolveSlotStartMs(slot: FeedTodaySlot): number | null {

@@ -14,7 +14,7 @@ const LOOP_SURFACE_BIAS: Record<
 > = {
   MORNING_LOOP: {
     types: ["schedule", "reminder", "goal", "work"],
-    capabilities: ["CALENDAR", "ALARM", "REMINDER"],
+    capabilities: ["CALENDAR", "ALARM"],
     boost: 0.22,
   },
   TRANSIT_LOOP: {

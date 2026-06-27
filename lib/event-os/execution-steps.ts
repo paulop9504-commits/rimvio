@@ -37,8 +37,8 @@ export function runWithOptionalLock<T>(
   return withReviewExecutionLock(scopeId, fn);
 }
 import { snapshotEventOsState } from "@/lib/event-os/snapshot-event-os-state";
-import { orchestrateEventReviewApproval } from "@/lib/events/orchestrate-event-review-approval";
-import { orchestrateEventReviewDateResolution } from "@/lib/events/orchestrate-event-review-date-resolution";
+import { orchestrateEventReviewApproval } from "@/lib/event-kernel/review/orchestrate-event-review-approval";
+import { orchestrateEventReviewDateResolution } from "@/lib/event-kernel/review/orchestrate-event-review-date-resolution";
 import {
   listEventCalendarRows,
   projectEventCalendarChips,

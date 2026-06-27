@@ -1,4 +1,4 @@
-import { funFeedLinks } from "@/lib/demo/fun-feed-links";
+import { funFeedLinks } from "@/lib/onboarding/fun-feed-links";
 import {
   addLinkToRoom,
   getOrCreateDefaultRoom,

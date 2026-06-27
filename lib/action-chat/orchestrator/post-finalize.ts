@@ -2,6 +2,7 @@ import { enforceConfirmationTrigger } from "@/lib/action-chat/confirm-enforcemen
 import { reconcileRecommendationOrchestratorResult } from "@/lib/action-chat/reconcile-recommendation-result";
 import { derivePresentationWire } from "@/lib/presentation/presentation-mode";
 import { persistOrchestratorToContainer } from "@/lib/container-store/orchestrate-container-route";
+import { getContainerById } from "@/lib/container-store/containers-store";
 import { isGuardrailNegotiation } from "@/lib/safety/types";
 import { isPolicyIntercept } from "@/lib/policy/orchestrate-content-policy";
 import {
@@ -156,7 +157,7 @@ export async function postFinalizeOrchestratorResult(
   };
 
   void persistOrchestratorToContainer({
-    container: input.container ?? null,
+    container: input.container?.id ? getContainerById(input.container.id) : null,
     message: input.message,
     result: withPresentation,
   });

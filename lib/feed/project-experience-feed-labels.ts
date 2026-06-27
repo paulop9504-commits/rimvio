@@ -4,7 +4,7 @@ import { formatPrimaryExperiencePeak } from "@/lib/experience-graph/format-exper
 import type { FeedTodaySlot } from "@/lib/feed/feed-today-slot-types";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { resolvePlanContextForCalendarRow } from "@/lib/plan-context/project-plan-to-feed-slot";
-import type { RankedSurface } from "@/lib/surface-engine/surface-contract";
+import type { RankedSurface } from "@/lib/experience-intent/feed-surface-wire";
 
 export function resolveFeedSlotEventId(
   slot: FeedTodaySlot,

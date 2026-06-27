@@ -17,25 +17,26 @@ function parsePriorityActions(value: unknown): MorningPriorityAction[] {
   }
 
   return value
-    .map((entry) => {
+    .flatMap((entry) => {
       if (!entry || typeof entry !== "object") {
-        return null;
+        return [];
       }
       const row = entry as Record<string, unknown>;
       const category = asString(row.category);
       const content = asString(row.content);
       const action_label = asString(row.action_label);
       if (!content || !action_label) {
-        return null;
+        return [];
       }
-      return {
-        category: category || "일반",
-        content,
-        action_label,
-        action_type: asString(row.action_type) || undefined,
-      };
+      return [
+        {
+          category: category || "일반",
+          content,
+          action_label,
+          action_type: asString(row.action_type) || undefined,
+        },
+      ];
     })
-    .filter((entry): entry is MorningPriorityAction => Boolean(entry))
     .slice(0, 3);
 }
 

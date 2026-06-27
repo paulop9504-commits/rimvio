@@ -20,6 +20,7 @@ const KIND_LABEL_KO: Record<ContextResourceKind, string> = {
   media_album: "앨범",
   schedule: "일정",
   ai_handoff: "탐색",
+  market_match: "맞춤",
 };
 
 function dayOffsetLabel(

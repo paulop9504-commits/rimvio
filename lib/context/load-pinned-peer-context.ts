@@ -53,9 +53,28 @@ export function loadPinnedPeerContext(
     return { ok: false, reason: "not_pinned", token: mentionToken };
   }
 
+  const peerThreadId = slot.peerThreadId?.trim();
+  const displayName = slot.displayName?.trim();
+  const pinnedAt = slot.pinnedAt?.trim();
+  if (
+    slot.connection !== "connected" ||
+    !peerThreadId ||
+    !displayName ||
+    !pinnedAt
+  ) {
+    return { ok: false, reason: "not_pinned", token: mentionToken };
+  }
+
+  const pinnedSlot: PinnedPeerSlot = {
+    ...slot,
+    peerThreadId,
+    displayName,
+    pinnedAt,
+  };
+
   const settings = getOrCreatePeerThreadSettings({
-    peerThreadId: slot.peerThreadId,
-    displayName: slot.displayName,
+    peerThreadId,
+    displayName,
   });
 
   if (
@@ -68,18 +87,18 @@ export function loadPinnedPeerContext(
       ok: false,
       reason: "import_blocked",
       token: mentionToken,
-      displayName: slot.displayName,
+      displayName: displayName,
     };
   }
 
-  const log = readPeerMessageLog(slot.peerThreadId);
+  const log = readPeerMessageLog(peerThreadId);
   const aiLensOn = shouldRunAiLens({ settings, roster });
 
   return {
     ok: true,
-    slot,
-    displayName: slot.displayName,
-    transcriptBlock: formatTranscript(slot.displayName, log.messages),
+    slot: pinnedSlot,
+    displayName,
+    transcriptBlock: formatTranscript(displayName, log.messages),
     messageCount: log.messages.length,
     aiLensOn,
   };

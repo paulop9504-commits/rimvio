@@ -215,10 +215,7 @@ export function buildMarketTradeSessionView(
         statusSublineKo = `${sessionCopy.statusSchedulingSeekingSub} · ${schedulingCountdownKo}`;
       }
     }
-  } else if (
-    record.tradeStatus === "buyer_picked_day" ||
-    (record.tradeStatus === "scheduling" && record.preferredMeetDateKey?.trim())
-  ) {
+  } else if (record.tradeStatus === "buyer_picked_day") {
     const dayLabel = record.preferredMeetDateKey
       ? formatMarketTradeDateLabelKo(record.preferredMeetDateKey, now)
       : null;

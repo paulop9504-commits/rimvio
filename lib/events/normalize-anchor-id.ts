@@ -34,7 +34,7 @@ export type NormalizeAnchorInput =
       messageId?: string | null;
     };
 
-function isEcId(value: string): value is EcAnchorId {
+function isEcId(value: string): boolean {
   return EC_PREFIX.test(value.trim());
 }
 

@@ -75,7 +75,7 @@ export function runSearchStep(input: {
     );
   }
 
-  const result = locked.value;
+  const result = locked.value as unknown as OrchestratorResult | null;
   const stateAfter = snapshotEventOsState(scopeId, now);
 
   return stepOutcome(

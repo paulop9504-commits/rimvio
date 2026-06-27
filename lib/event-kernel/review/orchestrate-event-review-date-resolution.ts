@@ -9,7 +9,7 @@ import {
 } from "@/lib/event-kernel/review/pending-event-candidate-dates";
 import { getReviewState } from "@/lib/event-kernel/review/review-state";
 import { validatePendingEventCandidates } from "@/lib/event-kernel/review/validate-pending-event-candidate";
-import { buildOcrReviewDatePickerOrchestratorResult } from "@/lib/events/build-ocr-review-date-picker-result";
+import { buildOcrReviewDatePickerOrchestratorResult } from "@/lib/event-kernel/review/build-ocr-review-date-picker-result";
 
 function buildConfirmSummary(
   candidates: ReturnType<typeof loadPendingEventCandidates>

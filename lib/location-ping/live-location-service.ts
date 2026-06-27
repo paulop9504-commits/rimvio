@@ -92,6 +92,7 @@ async function pollOnce() {
   }
 
   await refreshFromStore();
+  const priorContextLabel = snapshot?.contextLabel;
   if (snapshot) {
     return;
   }
@@ -117,7 +118,7 @@ async function pollOnce() {
     lng: ping.lng,
     accuracyM: ping.accuracyM,
     capturedAtIso: ping.capturedAtIso,
-    contextLabel: snapshot?.contextLabel,
+    contextLabel: priorContextLabel,
   });
 }
 

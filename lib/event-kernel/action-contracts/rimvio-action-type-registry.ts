@@ -3,7 +3,7 @@ import {
   getActionContract,
 } from "@/lib/event-kernel/action-contracts/action-contract-registry";
 import { listMentionFeatures } from "@/lib/event-kernel/action-contracts/mention-feature-registry";
-import type { ContextHubServiceId } from "@/lib/globe/context-hub/context-hub-service-catalog";
+import type { ContextHubServiceId } from "@/lib/ontology/context-hub-service-id";
 import { resolveActionCategory } from "@/lib/semantic/action-category-map";
 import type { RimvioActionType } from "@/lib/ontology/actions/types";
 

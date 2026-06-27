@@ -171,7 +171,7 @@ export class EventOSOrchestrator {
     return {
       processed,
       executionGraph,
-      remaining: getReviewExecutionQueueSnapshot(),
+      remaining: [...getReviewExecutionQueueSnapshot()],
     };
   }
 

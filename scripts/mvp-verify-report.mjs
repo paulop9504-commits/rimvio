@@ -18,6 +18,7 @@ const CORE_STEPS = [
   { id: "data-model-catalog", command: "npx", args: ["tsx", "scripts/test-data-model-catalog.ts"] },
   { id: "client-turn-route", command: "npx", args: ["tsx", "scripts/test-client-turn-route.ts"] },
   { id: "write-path-boundary", command: "npx", args: ["tsx", "scripts/test-write-path-boundary.ts"] },
+  { id: "event-kernel-schema-lock", command: "npx", args: ["tsx", "scripts/test-event-kernel-schema-lock.ts"] },
   { id: "life-read-allowlist", command: "npx", args: ["tsx", "scripts/test-life-read-store-allowlist.ts"] },
   { id: "surface-engine", command: "npx", args: ["tsx", "scripts/test-surface-engine.ts"] },
   { id: "surface-ux-stability", command: "npx", args: ["tsx", "scripts/test-surface-ux-stability.ts"] },
@@ -31,6 +32,8 @@ const CORE_STEPS = [
   { id: "system-stability", command: "npx", args: ["tsx", "scripts/test-stability.ts"] },
   { id: "platform-layer", command: "npx", args: ["tsx", "scripts/test-platform.ts"] },
   { id: "marketplace-layer", command: "npx", args: ["tsx", "scripts/test-marketplace.ts"] },
+  { id: "market-trade-regression", command: "npx", args: ["tsx", "scripts/test-market-trade-pipeline.ts"] },
+  { id: "market-trade-session-view", command: "npx", args: ["tsx", "scripts/test-market-trade-session-view.ts"] },
   { id: "timeline-read-only", command: "npx", args: ["tsx", "scripts/test-timeline-read-only-boundary.ts"] },
 ];
 

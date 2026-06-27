@@ -10,9 +10,9 @@ import { loadPendingEventCandidates } from "../lib/event-kernel/review/pending-e
 import { validatePendingEventCandidates } from "../lib/event-kernel/review/validate-pending-event-candidate";
 import { getReviewState, resetReviewStateForTests } from "../lib/event-kernel/review/review-state";
 import { extractEventsFromOcr } from "../lib/events/extract-events-from-ocr";
-import { orchestrateOcrScheduleCandidates } from "../lib/events/orchestrate-ocr-schedule-candidates";
-import { orchestrateEventReviewApproval } from "../lib/events/orchestrate-event-review-approval";
-import { orchestrateEventReviewDateResolution } from "../lib/events/orchestrate-event-review-date-resolution";
+import { orchestrateOcrScheduleCandidates } from "../lib/event-kernel/review/orchestrate-ocr-schedule-candidates";
+import { orchestrateEventReviewApproval } from "../lib/event-kernel/review/orchestrate-event-review-approval";
+import { orchestrateEventReviewDateResolution } from "../lib/event-kernel/review/orchestrate-event-review-date-resolution";
 import { resetEventCandidatesForTests } from "../lib/events/event-store";
 import { resetLinkRemindersForTests } from "../lib/local-links/reminders";
 

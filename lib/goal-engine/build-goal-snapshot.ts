@@ -151,7 +151,7 @@ function mapReminders(
     id: item.id,
     title: item.title,
     fireAt: item.fireAt,
-    url: item.url ?? null,
+    url: item.url ?? undefined,
   }));
 }
 

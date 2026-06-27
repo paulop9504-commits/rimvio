@@ -15,7 +15,7 @@ import {
 import type {
   ProjectPendingNotificationsInput,
   RimvioNotification,
-} from "@/lib/ontology/notifications/types";
+} from "@/lib/globe/inbox/notification-types";
 
 /** Single inbox queue — bridge invite · activity · location confirm. */
 export function projectPendingNotifications(

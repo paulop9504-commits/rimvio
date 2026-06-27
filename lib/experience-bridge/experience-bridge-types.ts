@@ -1,3 +1,4 @@
+import type { BridgeContributionCapture } from "@/lib/experience-bridge/bridge-capture-spacetime";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import type { FeedCaptureKind } from "@/lib/feed/feed-capture-types";
 import type { FeedCaptureFragment } from "@/lib/feed/feed-capture-types";
@@ -63,10 +64,6 @@ export type ExperienceBridgeTimelineItem = {
 
 export type ExperienceBridgeContribution = {
   contributorUserId: string;
-  capture: FeedCaptureFragment & {
-    ownerUserId?: string;
-    authorDisplayName?: string;
-    authorAvatarUrl?: string;
-  };
+  capture: BridgeContributionCapture;
   createdAtIso: string;
 };

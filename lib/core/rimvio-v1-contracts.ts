@@ -23,6 +23,6 @@ export {
   type SurfaceAction as ActionEvent,
   type SurfaceBuildContext,
   type SurfaceUxState,
-} from "@/lib/surface-engine/surface-contract";
+} from "@/lib/surface-contract/surface-contract";
 
 export { LOOP_WIRING_CONTRACT_VERSION } from "@/lib/loop-wiring/loop-contract";
