@@ -14,6 +14,11 @@ function toPosixRel(absPath) {
   return path.relative(REPO, absPath).split(path.sep).join("/");
 }
 
+function violationKey(rel, msg) {
+  // Stable across OS — eslint message text embeds platform-specific paths.
+  return `${rel}|${msg.line}|${msg.ruleId ?? "unknown"}`;
+}
+
 function runEslint() {
   const result = spawnSync("npx", ["eslint", ".", "-f", "json"], {
     cwd: REPO,
@@ -41,7 +46,7 @@ function runEslint() {
       if (msg.severity !== 2) {
         continue;
       }
-      keys.push(`${rel}|${msg.line}|${msg.ruleId ?? "unknown"}|${msg.message}`);
+      keys.push(violationKey(rel, msg));
     }
   }
 
