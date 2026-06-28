@@ -2,7 +2,7 @@
 /**
  * Ensures supabase/migrations/ is the SSOT — sql-editor/*.sql must mirror or be archived.
  */
-import { readFileSync, readdirSync, existsSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 
 const ROOT = path.resolve(import.meta.dirname, "..");

@@ -728,7 +728,7 @@ export const RimvioGlobe3D = memo(
         flushDeferredGlobeVisuals();
       });
 
-      let warmthSyncTimer: ReturnType<typeof setTimeout> | null = null;
+      const warmthSyncTimer: ReturnType<typeof setTimeout> | null = null;
       let lastWarmthSyncAt = 0;
 
       const scheduleWarmthSync = () => {

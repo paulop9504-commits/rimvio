@@ -35,7 +35,7 @@ jobs:
         run: node scripts/verify-lib-boundaries.mjs
 
       - name: Lint
-        run: npm run lint
+        run: node scripts/lint-ci.mjs
 
       - name: Playbook regression
         run: npm run test:playbook
