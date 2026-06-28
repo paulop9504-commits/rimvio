@@ -91,6 +91,7 @@ import {
   detectExtensionProfile,
 } from "../lib/actions/extension-catalog";
 import { appendExtensionActions } from "../lib/actions/append-extension-actions";
+import { MARKET_PRIMARY_LABEL } from "../lib/markets/packs";
 import { buildBlinkFeatureActions } from "../lib/actions/blink-feature-actions";
 import { extractPriceHint } from "../lib/links/extract-price-hint";
 import { findSimilarLinks } from "../lib/links/similar-links";
@@ -127,7 +128,7 @@ import {
   rankSmartSuites,
   suggestDefaultSuite,
 } from "../lib/personalization/suite-profile";
-import { extractPhoneFromText, toTelHref } from "../lib/enrichers/extract-phone";
+import { extractPhoneFromText, isTelHref, toTelHref } from "../lib/enrichers/extract-phone";
 import { isDirectNavigationHref } from "../lib/actions/open-with-fallback";
 
 const cases = [
@@ -903,7 +904,7 @@ const cases = [
     fn: () => {
       const locale = detectLocaleFromLanguageTags("en-US,en");
       const copy = getCopy(locale);
-      return locale === "en" && copy.nav.feed.toLowerCase().includes("links");
+      return locale === "en" && copy.nav.feed === "Feed";
     },
     expect: true,
   },
@@ -979,7 +980,7 @@ const cases = [
         domain: "coupang.com",
         title: "무선 이어폰",
       })[0]?.label,
-    expect: "💰 최저가 비교",
+    expect: MARKET_PRIMARY_LABEL.kr,
   },
   {
     name: "YouTube playlist extension",
@@ -1021,7 +1022,7 @@ const cases = [
         title: "텀블러",
       });
       const fallbackIdx = merged.findIndex((a) => a.label.includes("그 페이지로 가기"));
-      const priceIdx = merged.findIndex((a) => a.label.includes("최저가"));
+      const priceIdx = merged.findIndex((a) => a.label.includes("알맞은 곳"));
       return priceIdx >= 0 && fallbackIdx >= 0 && priceIdx < fallbackIdx;
     },
     expect: true,
@@ -1195,7 +1196,7 @@ const cases = [
         title: "법률 상담",
         phone: "010-1234-5678",
       });
-      return actions[0]?.href?.startsWith("tel:+82");
+      return isTelHref(actions[0]?.href ?? "");
     },
     expect: true,
   },
