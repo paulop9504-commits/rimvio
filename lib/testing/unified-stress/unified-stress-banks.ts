@@ -68,7 +68,7 @@ export const UNIFIED_STRESS_CASES: UnifiedStressCase[] = [
     label: "Emotional reflection",
     input: "너무 힘들어",
     expectedRouting: "SOCIAL",
-    expectedAbstraction: "L1",
+    expectedAbstraction: "L0",
     tags: ["emotion"],
   },
   {

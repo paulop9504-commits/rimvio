@@ -53,7 +53,7 @@ export function classifyAiIntentUtterance(message: string): AiIntentCategory | n
     return null;
   }
 
-  if (MEAL_FOOD_HINT.test(trimmed)) {
+  if (MEAL_FOOD_HINT.test(trimmed) && !/(?:운동|헬스|러닝|조깅|수영)/iu.test(trimmed)) {
     return null;
   }
 

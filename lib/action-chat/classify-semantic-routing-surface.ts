@@ -70,6 +70,20 @@ export function analyzeSemanticRouting(message: string): SemanticRoutingAnalysis
   const trimmed = message.trim();
   const multiIntent = MULTI_INTENT.test(trimmed);
 
+  const hasExerciseSchedule =
+    /(?:운동|헬스|러닝|조깅|수영|헬스장)/iu.test(trimmed) &&
+    /(?:가도|해도|괜찮|될(?:까|지)?)/iu.test(trimmed);
+
+  if (hasExerciseSchedule) {
+    return {
+      domain: "schedule",
+      expected: ["DECISION", "STEP"],
+      forbidInfo: true,
+      multiIntent: false,
+      reason: "exercise_schedule_permission",
+    };
+  }
+
   const hasFood = FOOD_SEMANTIC.test(trimmed);
   const hasHousing = HOUSING_SEMANTIC.test(trimmed);
   const hasTravel =

@@ -31,17 +31,37 @@ export function resolveHardModeBucket(
   surface: RoutingSurface
 ): HardModeBucket {
   const semantic = analyzeSemanticRouting(message);
-  if (surface === "FORK") return "FORK";
+  if (surface === "FORK") {
+    if (semantic.domain === "schedule" || semantic.domain === "travel") {
+      return "SCHEDULE";
+    }
+    return "FORK";
+  }
   if (surface === "REFLECT") return "REFLECT";
-  if (surface === "DECISION") return "DECISION";
+  if (surface === "DECISION") {
+    if (semantic.domain === "schedule" || semantic.domain === "travel") {
+      return "SCHEDULE";
+    }
+    return "DECISION";
+  }
   if (surface === "STEP") {
-    return semantic.domain === "schedule" || semantic.domain === "travel"
-      ? "SCHEDULE"
-      : "STEP";
+    if (semantic.domain === "schedule" || semantic.domain === "travel") {
+      return "SCHEDULE";
+    }
+    if (
+      semantic.domain === "housing" ||
+      /(?:이직|예산|월세|돈\s*줄)/iu.test(message)
+    ) {
+      return "DECISION";
+    }
+    return "STEP";
   }
   if (surface === "INFO") return "INFO";
   if (surface === "ARTIFACT") {
     return semantic.domain === "food" ? "FOOD" : "BLOCKED";
+  }
+  if (semantic.domain === "schedule" || semantic.domain === "travel") {
+    return "SCHEDULE";
   }
   if (semantic.domain === "food") return "FOOD";
   return "BLOCKED";
