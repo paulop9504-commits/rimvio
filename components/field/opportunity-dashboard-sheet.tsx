@@ -23,6 +23,7 @@ import {
 } from "@/lib/design/rimvio-ontology";
 import type { OpportunityRow } from "@/lib/globe/opportunity-field";
 import type { GlobeLayerMode } from "@/lib/globe/globe-layer-mode";
+import type { FieldDashboardTab } from "@/lib/nav/field-dashboard-types";
 import { isIOS, isStandalonePwa } from "@/lib/platform/device";
 import { cn } from "@/lib/utils";
 
@@ -32,6 +33,11 @@ export type OpportunityDashboardSheetProps = {
   layerMode: GlobeLayerMode;
   onSwitchToDiscovery?: () => void;
   primaryEventId?: string | null;
+  dashboardTab?: FieldDashboardTab | null;
+  highlightTradeId?: string | null;
+  ingressGeneration?: number;
+  /** Bottom-nav 맞춤 — skip personal-layer discovery gate. */
+  bypassDiscoveryGate?: boolean;
 };
 
 export function OpportunityDashboardSheet({
@@ -40,6 +46,10 @@ export function OpportunityDashboardSheet({
   layerMode,
   onSwitchToDiscovery,
   primaryEventId,
+  dashboardTab = null,
+  highlightTradeId = null,
+  ingressGeneration = 0,
+  bypassDiscoveryGate = false,
 }: OpportunityDashboardSheetProps) {
   const copy = useCopy();
   const router = useRouter();
@@ -95,10 +105,10 @@ export function OpportunityDashboardSheet({
   }, [open]);
 
   const field = copy.globe.field;
-  const discoveryOnly = layerMode !== "discovery";
+  const showDiscoveryGate = layerMode !== "discovery" && !bypassDiscoveryGate;
 
   const sheetContent =
-    discoveryOnly ? (
+    showDiscoveryGate ? (
       <DiscoveryGate
         onClose={() => onOpenChange(false)}
         onSwitch={() => onSwitchToDiscovery?.()}
@@ -165,6 +175,9 @@ export function OpportunityDashboardSheet({
         onRowPress={setDetailRow}
         onSessionUpdated={replaceSession}
         focusTradesToken={focusTradesToken}
+        initialTab={dashboardTab}
+        highlightTradeId={highlightTradeId}
+        ingressGeneration={ingressGeneration}
         headerClassName="pt-0"
         headerRight={
           <button

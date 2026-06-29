@@ -19,6 +19,7 @@ import {
   publishFieldSheetOpen,
   type FieldSheetOpenRequest,
 } from "@/lib/nav/field-sheet-bridge";
+import type { FieldDashboardTab } from "@/lib/nav/field-dashboard-types";
 import { OpportunityFieldErrorBoundary } from "@/components/field/opportunity-field-error-boundary";
 import { useIosPwaMemoryGuards } from "@/hooks/use-ios-pwa-memory-guards";
 
@@ -52,9 +53,17 @@ export function FieldSheetProvider({ children }: { children: ReactNode }) {
   const iosPwaLazySheet = useIosPwaMemoryGuards();
   const [open, setOpen] = useState(false);
   const [primaryEventId, setPrimaryEventId] = useState<string | null>(null);
+  const [dashboardTab, setDashboardTab] = useState<FieldDashboardTab | null>(null);
+  const [highlightTradeId, setHighlightTradeId] = useState<string | null>(null);
+  const [bypassDiscoveryGate, setBypassDiscoveryGate] = useState(false);
+  const [ingressGeneration, setIngressGeneration] = useState(0);
 
   const applyOpen = useCallback((request?: FieldSheetOpenRequest) => {
     setPrimaryEventId(request?.primaryEventId ?? null);
+    setDashboardTab(request?.tab ?? null);
+    setHighlightTradeId(request?.highlightTradeId ?? null);
+    setBypassDiscoveryGate(request?.bypassDiscoveryGate === true);
+    setIngressGeneration((value) => value + 1);
     setOpen(true);
   }, []);
 
@@ -69,6 +78,9 @@ export function FieldSheetProvider({ children }: { children: ReactNode }) {
     publishFieldSheetOpen(false);
     setOpen(false);
     setPrimaryEventId(null);
+    setDashboardTab(null);
+    setHighlightTradeId(null);
+    setBypassDiscoveryGate(false);
   }, []);
 
   const onOpenChange = useCallback(
@@ -110,6 +122,10 @@ export function FieldSheetProvider({ children }: { children: ReactNode }) {
             onOpenChange={onOpenChange}
             layerMode={layerMode}
             primaryEventId={primaryEventId}
+            dashboardTab={dashboardTab}
+            highlightTradeId={highlightTradeId}
+            ingressGeneration={ingressGeneration}
+            bypassDiscoveryGate={bypassDiscoveryGate}
             onSwitchToDiscovery={() => setLayerMode("discovery")}
           />
         </OpportunityFieldErrorBoundary>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { Clock3 } from "lucide-react";
 import {
   FIELD_DASHBOARD_CANVAS,
@@ -14,6 +15,8 @@ import { cn } from "@/lib/utils";
 export type MarketActiveTradesSectionProps = {
   sessions: readonly MarketTradeSessionView[];
   onSessionUpdated?: (session: MarketTradeSessionView) => void;
+  /** Scroll + ring highlight — `handshakeId` SSOT. */
+  highlightTradeId?: string | null;
   /** Tab panel — no section chrome; shows empty state when none. */
   embedded?: boolean;
   className?: string;
@@ -22,10 +25,25 @@ export type MarketActiveTradesSectionProps = {
 export function MarketActiveTradesSection({
   sessions,
   onSessionUpdated,
+  highlightTradeId = null,
   embedded = false,
   className,
 }: MarketActiveTradesSectionProps) {
   const copy = useCopy();
+  const scrolledTradeRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const id = highlightTradeId?.trim();
+    if (!id || sessions.length === 0 || scrolledTradeRef.current === id) {
+      return;
+    }
+    const node = document.querySelector(`[data-market-trade-id="${id}"]`);
+    if (!node) {
+      return;
+    }
+    scrolledTradeRef.current = id;
+    node.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [highlightTradeId, sessions]);
 
   if (sessions.length === 0) {
     if (!embedded) {
@@ -62,13 +80,26 @@ export function MarketActiveTradesSection({
         data-market-active-trades
       >
         <div className={cn("space-y-2.5", FIELD_DASHBOARD_INSET)}>
-          {sessions.map((session) => (
-            <MarketTradeProgressCard
-              key={session.handshakeId}
-              session={session}
-              onUpdated={onSessionUpdated}
-            />
-          ))}
+          {sessions.map((session) => {
+            const highlighted =
+              Boolean(highlightTradeId?.trim()) &&
+              session.handshakeId === highlightTradeId?.trim();
+            return (
+              <div
+                key={session.handshakeId}
+                data-market-trade-id={session.handshakeId}
+                className={cn(
+                  highlighted &&
+                    "rounded-2xl ring-2 ring-[#3182f6]/40 ring-offset-2 ring-offset-[#fafbfc]",
+                )}
+              >
+                <MarketTradeProgressCard
+                  session={session}
+                  onUpdated={onSessionUpdated}
+                />
+              </div>
+            );
+          })}
         </div>
       </div>
     );

@@ -9,8 +9,8 @@ import {
 } from "@/components/field/field-dashboard-layout";
 import {
   OpportunityDashboardTabBar,
-  type FieldDashboardTab,
 } from "@/components/field/opportunity-dashboard-tab-bar";
+import type { FieldDashboardTab } from "@/lib/nav/field-dashboard-types";
 import { MarketActiveTradesSection } from "@/components/field/market-active-trades-section";
 import { useCopy } from "@/hooks/use-copy";
 import type { OpportunityPill, OpportunityRow } from "@/lib/globe/opportunity-field";
@@ -29,6 +29,10 @@ export type OpportunityDashboardBodyProps = {
   onSessionUpdated?: (session: MarketTradeSessionView) => void;
   /** Increment to focus the trades tab (e.g. after Pull start). */
   focusTradesToken?: number;
+  /** Set when sheet opens via ingress (pill / deep link). */
+  initialTab?: FieldDashboardTab | null;
+  highlightTradeId?: string | null;
+  ingressGeneration?: number;
   headerRight?: ReactNode;
   headerClassName?: string;
   className?: string;
@@ -46,6 +50,9 @@ export function OpportunityDashboardBody({
   onRowPress,
   onSessionUpdated,
   focusTradesToken = 0,
+  initialTab = null,
+  highlightTradeId = null,
+  ingressGeneration = 0,
   headerRight,
   headerClassName,
   className,
@@ -62,6 +69,21 @@ export function OpportunityDashboardBody({
       setTab("trades");
     }
   }, [focusTradesToken]);
+
+  useEffect(() => {
+    if (ingressGeneration <= 0) {
+      return;
+    }
+    if (initialTab) {
+      setTab(initialTab);
+      return;
+    }
+    if (tradeSessions.length > 0) {
+      setTab("trades");
+      return;
+    }
+    setTab("discovery");
+  }, [ingressGeneration, initialTab, tradeSessions.length]);
 
   useEffect(() => {
     const prev = prevTradeCountRef.current;
@@ -124,6 +146,7 @@ export function OpportunityDashboardBody({
               <MarketActiveTradesSection
                 sessions={tradeSessions}
                 onSessionUpdated={onSessionUpdated}
+                highlightTradeId={highlightTradeId}
                 embedded
               />
             </motion.div>

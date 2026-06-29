@@ -52,6 +52,10 @@ import { useGlobeLayerMode } from "@/hooks/use-globe-layer-mode";
 import { useFieldSheet } from "@/components/field/field-sheet-provider";
 import { useOpportunityFieldBadge } from "@/hooks/use-opportunity-field-badge";
 import { subscribeFieldSheetOpenState } from "@/lib/nav/field-sheet-bridge";
+import {
+  clearFieldDashboardSearchParams,
+  parseFieldDashboardIngressFromSearchParams,
+} from "@/lib/nav/field-dashboard-ingress";
 import { useIosPwaMemoryGuards } from "@/hooks/use-ios-pwa-memory-guards";
 import {
   iosPwaDiscoveryPinsDelayMs,
@@ -1118,16 +1122,17 @@ function GlobeHomeBody() {
   }, [searchParams]);
 
   useEffect(() => {
-    if (searchParams.get("openField") !== "1") {
+    const ingress = parseFieldDashboardIngressFromSearchParams(searchParams);
+    if (!ingress) {
       return;
     }
     if (layerMode !== "discovery") {
       onLayerModeChange("discovery");
-    } else {
-      openFieldSheet();
+      return;
     }
+    openFieldSheet(ingress);
     const params = new URLSearchParams(window.location.search);
-    params.delete("openField");
+    clearFieldDashboardSearchParams(params);
     const qs = params.toString();
     window.history.replaceState(
       null,
@@ -1842,6 +1847,7 @@ function GlobeHomeBody() {
           onOpenField={() =>
             openFieldSheet({
               primaryEventId: activeCluster?.eventId ?? null,
+              tab: "discovery",
             })
           }
           onOpenSettings={() => setSettingsOpen(true)}

@@ -1,6 +1,9 @@
-export type FieldSheetOpenRequest = {
-  primaryEventId?: string | null;
-};
+import type { FieldDashboardIngress } from "@/lib/nav/field-dashboard-types";
+
+export type { FieldDashboardIngress, FieldDashboardTab } from "@/lib/nav/field-dashboard-types";
+
+/** @alias FieldDashboardIngress — legacy name for sheet open events. */
+export type FieldSheetOpenRequest = FieldDashboardIngress;
 
 export const FIELD_SHEET_OPEN_EVENT = "rimvio:field-sheet-open";
 export const FIELD_SHEET_STATE_EVENT = "rimvio:field-sheet-state";

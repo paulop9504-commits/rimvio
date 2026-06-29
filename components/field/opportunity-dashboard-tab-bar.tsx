@@ -4,7 +4,9 @@ import { motion } from "framer-motion";
 import { useCopy } from "@/hooks/use-copy";
 import { cn } from "@/lib/utils";
 
-export type FieldDashboardTab = "trades" | "discovery";
+import type { FieldDashboardTab } from "@/lib/nav/field-dashboard-types";
+
+export type { FieldDashboardTab };
 
 export type OpportunityDashboardTabBarProps = {
   value: FieldDashboardTab;

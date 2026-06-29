@@ -13,9 +13,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { Globe, Plus, Sparkles, Users } from "lucide-react";
 import { CaptureSheet } from "@/components/globe/capture-sheet";
 import { useCopy } from "@/hooks/use-copy";
+import { useFieldNavBadge } from "@/hooks/use-field-nav-badge";
 import { useFieldSheet } from "@/components/field/field-sheet-provider";
 import { subscribeOpenCaptureSheet } from "@/lib/nav/open-capture-sheet-bridge";
 import { subscribeFieldSheetOpenState } from "@/lib/nav/field-sheet-bridge";
+import { openFieldDashboardFromBottomNav } from "@/lib/nav/field-dashboard-ingress";
 import { GRID } from "@/lib/ui/responsive-grid";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +33,7 @@ type NavTab = {
   label: string;
   isActive: (pathname: string) => boolean;
   icon: "globe" | "field" | "people" | "capture";
+  badge?: number;
 };
 
 function isGlobePath(pathname: string): boolean {
@@ -188,11 +191,22 @@ function NavTabButton({
     >
       <span
         className={cn(
-          "rimvio-bottom-nav-icon-pill pointer-events-none",
+          "rimvio-bottom-nav-icon-pill pointer-events-none relative",
           active && !isCapture && "rimvio-bottom-nav-icon-pill--active",
         )}
       >
         <NavTabIcon icon={tab.icon} active={active} />
+        {tab.badge != null && tab.badge > 0 ? (
+          <span
+            className={cn(
+              "absolute -right-0.5 -top-0.5 flex size-4 min-w-4 items-center justify-center rounded-full px-0.5 text-[9px] font-extrabold leading-none tabular-nums",
+              active ? "bg-[#3182f6] text-white" : "bg-[#3182f6] text-white shadow-sm",
+            )}
+            aria-hidden
+          >
+            {tab.badge > 9 ? "9+" : tab.badge}
+          </span>
+        ) : null}
       </span>
       {showLabel ? (
         <span
@@ -351,7 +365,8 @@ export function AppNav({ placement }: AppNavProps) {
   const pathname = usePathname() ?? "/";
   const router = useRouter();
   const copy = useCopy();
-  const { open: fieldSheetOpen, openFieldSheet } = useFieldSheet();
+  const { open: fieldSheetOpen, closeFieldSheet } = useFieldSheet();
+  const { total: fieldNavBadge, suggestedTab: fieldSuggestedTab } = useFieldNavBadge();
   const [fieldSheetSignalOpen, setFieldSheetSignalOpen] = useState(false);
   const fieldTabActive = fieldSheetOpen || fieldSheetSignalOpen;
   const [captureOpen, setCaptureOpen] = useState(false);
@@ -371,15 +386,6 @@ export function AppNav({ placement }: AppNavProps) {
 
   const navigate = useCallback(
     (href: string) => {
-      const isSame =
-        (href === "/" && isGlobePath(pathname)) ||
-        (href === "/field" && fieldTabActive) ||
-        pathname === href ||
-        pathname.startsWith(`${href}/`);
-      if (isSame) {
-        return;
-      }
-
       const now = Date.now();
       if (
         lastNavRef.current?.href === href &&
@@ -390,13 +396,25 @@ export function AppNav({ placement }: AppNavProps) {
       lastNavRef.current = { href, at: now };
 
       if (href === "/field") {
-        openFieldSheet();
+        if (fieldTabActive) {
+          closeFieldSheet();
+          return;
+        }
+        openFieldDashboardFromBottomNav({ tab: fieldSuggestedTab });
+        return;
+      }
+
+      const isSame =
+        (href === "/" && isGlobePath(pathname)) ||
+        pathname === href ||
+        pathname.startsWith(`${href}/`);
+      if (isSame) {
         return;
       }
 
       router.push(href);
     },
-    [fieldTabActive, openFieldSheet, pathname, router],
+    [closeFieldSheet, fieldSuggestedTab, fieldTabActive, pathname, router],
   );
 
   const tabs = useMemo<NavTab[]>(
@@ -410,6 +428,7 @@ export function AppNav({ placement }: AppNavProps) {
       {
         href: "/field",
         label: copy.nav.field,
+        badge: fieldNavBadge > 0 ? fieldNavBadge : undefined,
         isActive: (p) =>
           fieldTabActive || p === "/field" || p.startsWith("/field/"),
         icon: "field",
@@ -427,7 +446,7 @@ export function AppNav({ placement }: AppNavProps) {
         icon: "capture",
       },
     ],
-    [copy, fieldTabActive],
+    [copy, fieldNavBadge, fieldTabActive],
   );
 
   const navChrome = (

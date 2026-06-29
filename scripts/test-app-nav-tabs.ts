@@ -50,10 +50,11 @@ assert.ok(
   "active tab must use inner pill highlight",
 );
 assert.ok(
-  appNav.includes("openFieldSheet") &&
+  appNav.includes("openFieldDashboardFromBottomNav") &&
+    appNav.includes("closeFieldSheet") &&
     !appNav.includes('router.push("/field")') &&
     !appNav.includes("router.push('/field')"),
-  "field tab must open global sheet — never navigate to /field route",
+  "field tab must open global sheet via bottom-nav ingress — never navigate to /field route",
 );
 assert.ok(
   appNav.includes("createPortal(bar, document.body)"),
