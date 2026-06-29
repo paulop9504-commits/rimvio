@@ -3,10 +3,8 @@
 import { useRef, useState } from "react";
 import { ImagePlus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import {
-  GLOBE_CONTEXT_MEDIA_ACCEPT,
-  ingestGlobeContextFromFiles,
-} from "@/lib/feed/ingest-globe-context-capture";
+import { GLOBE_CONTEXT_MEDIA_ACCEPT } from "@/lib/feed/ingest-globe-context-capture";
+import { dispatchContextRun } from "@/lib/context-run/dispatch-context-run";
 import { cn } from "@/lib/utils";
 import { copy } from "@/lib/copy/human-ko";
 
@@ -43,34 +41,49 @@ export function GlobeContextPhotoButton({
         : `사진·동영상 ${files.length}개 올리는 중… 0/${files.length}`,
     );
     try {
-      const summary = await ingestGlobeContextFromFiles(files, {
-        hintEventId: eventId,
-        hintTitle: eventTitle,
-        forceAttachToHint: true,
-        onProgress: (done, total) => {
-          if (total > 1) {
-            toast.loading(`사진·동영상 ${total}개 올리는 중… ${done}/${total}`, {
-              id: toastId,
-            });
-          }
+      await dispatchContextRun(
+        {
+          kind: "photo",
+          files,
+          surface: "composer",
+          layerMode: "personal",
+          mode: "direct",
+          contextEventId: eventId,
+          hintTitle: eventTitle,
+          forceAttachToTarget: true,
         },
-        onFilePrepare: (line) => {
-          toast.loading(line, { id: toastId });
+        {
+          openPortal: async () => {},
+          openFieldDiscovery: () => {},
+          tryQuickListMarket: async () => false,
+          navigateUrl: () => {},
+          onPhotoIngestProgress: (done, total) => {
+            if (total > 1) {
+              toast.loading(`사진·동영상 ${total}개 올리는 중… ${done}/${total}`, {
+                id: toastId,
+              });
+            }
+          },
+          onPhotoFilePrepare: (line) => {
+            toast.loading(line, { id: toastId });
+          },
+          onPhotoIngested: (summary) => {
+            if (summary.succeeded === 0) {
+              toast.error(summary.toastLine, { id: toastId });
+              return;
+            }
+            const suggestedPlace = summary.lastSuggestedPlaceName?.trim();
+            if (suggestedPlace) {
+              toast.success(copy.globe.inboxPhotoPlaceSuggestToast(suggestedPlace), {
+                id: toastId,
+              });
+            } else {
+              toast.success(summary.toastLine, { id: toastId });
+            }
+            onIngested?.();
+          },
         },
-      });
-      if (summary.succeeded === 0) {
-        toast.error(summary.toastLine, { id: toastId });
-        return;
-      }
-      const suggestedPlace = summary.lastSuggestedPlaceName?.trim();
-      if (suggestedPlace) {
-        toast.success(copy.globe.inboxPhotoPlaceSuggestToast(suggestedPlace), {
-          id: toastId,
-        });
-      } else {
-        toast.success(summary.toastLine, { id: toastId });
-      }
-      onIngested?.();
+      );
     } catch (caught) {
       const message =
         caught instanceof Error

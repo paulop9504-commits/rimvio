@@ -13,9 +13,15 @@ import { filterPublishedMarketIntents } from "@/lib/globe/market/filter-publishe
 import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
 import {
   buildUserStateV1,
+  listExternalBrowseRows,
   listOpportunityPills,
   type OpportunityFieldCopy,
 } from "@/lib/globe/opportunity-field";
+
+export type OpportunityFieldBadgeCounts = {
+  matchedCount: number;
+  browseCount: number;
+};
 
 const PASSIVE_POLL_MS = 60_000;
 const DEFAULT_RADIUS_KM = 15;
@@ -38,11 +44,11 @@ function mergeOwnIntents(
   return [...merged.values()];
 }
 
-/** Passive match count for utility menu badge — no observation GPS burst. */
+/** Passive counts for utility menu / nav — no observation GPS burst. */
 export function useOpportunityFieldBadge(input: {
   enabled: boolean;
   primaryEventId?: string | null;
-}): number {
+}): OpportunityFieldBadgeCounts {
   const copy = useCopy();
   const { user } = useAuth();
   const liveLocation = useLiveLocationSnapshot();
@@ -161,8 +167,21 @@ export function useOpportunityFieldBadge(input: {
     [fieldCopy, pool, seekings, userState],
   );
 
+  const browseRows = useMemo(
+    () =>
+      listExternalBrowseRows({
+        pool,
+        userState,
+        copy: fieldCopy,
+      }),
+    [fieldCopy, pool, userState],
+  );
+
   return useMemo(
-    () => pills.reduce((sum, pill) => sum + pill.count, 0),
-    [pills],
+    () => ({
+      matchedCount: pills.reduce((sum, pill) => sum + pill.count, 0),
+      browseCount: browseRows.length,
+    }),
+    [browseRows.length, pills],
   );
 }

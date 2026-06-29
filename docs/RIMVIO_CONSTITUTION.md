@@ -24,6 +24,27 @@ Users should **not** organize resources — resources should gather around the s
 
 Users should **not** remember every next step — the system should surface useful actions.
 
+**Rimvio AI is not a conversational AI — it derives and executes Task Graphs from truth.**
+
+**Users create context only; Rimvio executes that context and projects it—personal globe (내 지구) and external globe (밖 지구)—in the most appropriate surface. Projection is read-only; Commit is truth.**
+
+**Durability law:** *Execution is disposable. Truth is durable.* Derived Execution Graphs are ephemeral and may be rebuilt at any time. Only committed truth is durable. Projection may be redrawn at any time; it never owns truth.
+
+**Reconstruct test (scale / PR):** *Can this execution be reconstructed tomorrow?* — Re-entry is **RunState + Truth → Planner → derived graph**, not resuming a saved graph snapshot. Watcher reads truth; Planner regenerates the graph. **RunState** (minimal, durable): `graphId`, `goal`, `status`, `resumeHint`, `lastVisitedNode`, `updatedAt`. **Truth** (Commit only): `Event`, `MarketIntent`, `Reservation`, `Ledger`.
+
+**Deterministic roles (LLM must not replace):** Core policy lives in code — not model inference. If the LLM starts choosing “ask this” vs “publish now”, execution rules dissolve into the model.
+
+| Role | Decides |
+|------|---------|
+| **Planner** | Goal and rules; derives Task Graph from Truth + RunState |
+| **Question Engine** | Which constraints are still missing (slot IDs) |
+| **Execution Decision** | Auto-run, approval required, or ask again |
+| **LLM** | Understand user language; phrase questions; explain outcomes — **never** goal, slot priority, or commit |
+| **Commit** | Sole truth writer |
+| **Projection** | Map, Hub, Portal, Field, UI — read-only surfaces |
+
+Full stack: **`docs/CONTEXT_RUN_ENGINE.md`** · Globe UX: **`docs/GLOBE_EXECUTION_SURFACE_UX.md`**
+
 **Experience layers (build in order — do not skip):**
 
 ```
@@ -201,4 +222,4 @@ The experience should feel like: *“The system already understands what I need 
 | §8 Execution | `lib/execution/` — queue, lifecycle, adapters; UI never executes providers directly |
 | §8 Execution | Dispatchers / deep links — no SSOT ownership |
 
-See also: `docs/RIMVIO_SYSTEM_AUDIT.md`, `docs/ORCHESTRATOR_OS_LAYERS.md`, `.cursor/rules/rimvio-jobs-layers.mdc`.
+See also: `docs/RIMVIO_SYSTEM_AUDIT.md`, `docs/ORCHESTRATOR_OS_LAYERS.md`, `docs/RIMVIO_CAPITAL_OS.md`, `.cursor/rules/rimvio-jobs-layers.mdc`.

@@ -3,16 +3,18 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
+import { toast } from "sonner";
 import { OpportunityDetailPanel } from "@/components/field/opportunity-detail-panel";
 import { OpportunityDashboardBody } from "@/components/field/opportunity-dashboard-body";
 import { useCopy } from "@/hooks/use-copy";
 import { useActiveMarketTrades } from "@/hooks/use-active-market-trades";
+import { useMarketManageIntents } from "@/hooks/use-market-manage-intents";
 import { useOpportunityDashboard } from "@/hooks/use-opportunity-dashboard";
 import { hasActiveMarketTradeForListing } from "@/lib/globe/market/market-trade-pipeline";
 import { filterOpportunityRowsExcludingActiveTrades } from "@/lib/globe/opportunity-field/filter-rows-excluding-active-trades";
 import type { OpportunityRow } from "@/lib/globe/opportunity-field";
 
-/** Bottom-tab field surface — tabbed transaction + discovery. */
+/** Bottom-tab field surface — 밖 지구 통로 (거래 · 자원 찾기 · 내 게시물). */
 export function OpportunityFieldPageClient() {
   const copy = useCopy();
   const router = useRouter();
@@ -23,6 +25,7 @@ export function OpportunityFieldPageClient() {
     loading,
     pills,
     rows,
+    browseRows,
     selectedContextId,
     setSelectedContextId,
     listeningLabel,
@@ -30,12 +33,15 @@ export function OpportunityFieldPageClient() {
     refresh: refreshDiscovery,
   } = useOpportunityDashboard({ open: true, primaryEventId: null });
 
+  const { listings, seekings } = useMarketManageIntents(true);
+  const mineCount = listings.length + seekings.length;
+
   const { sessions: tradeSessions, resolvedPairs: resolvedTradePairs, refresh: refreshTrades, replaceSession } =
     useActiveMarketTrades({
       enabled: true,
     });
 
-  const discoveryRows = useMemo(
+  const matchedRows = useMemo(
     () =>
       filterOpportunityRowsExcludingActiveTrades(
         rows,
@@ -46,13 +52,33 @@ export function OpportunityFieldPageClient() {
     [resolvedTradePairs, rows, selectedPill?.seeking.id, tradeSessions],
   );
 
+  const filteredBrowseRows = useMemo(
+    () =>
+      filterOpportunityRowsExcludingActiveTrades(
+        browseRows,
+        tradeSessions,
+        null,
+        resolvedTradePairs,
+      ),
+    [browseRows, resolvedTradePairs, tradeSessions],
+  );
+
+  const tradeSeeking = selectedPill?.seeking ?? pills[0]?.seeking ?? null;
   const field = copy.globe.field;
 
-  if (detailRow && selectedPill) {
+  const handleRowPress = (row: OpportunityRow) => {
+    if (!tradeSeeking) {
+      toast.message(field.browseNeedSeekingBody);
+      return;
+    }
+    setDetailRow(row);
+  };
+
+  if (detailRow && tradeSeeking) {
     const hasActiveTrade = hasActiveMarketTradeForListing(
       tradeSessions,
       detailRow.listing.id,
-      selectedPill.seeking.id,
+      tradeSeeking.id,
       resolvedTradePairs,
     );
 
@@ -77,8 +103,8 @@ export function OpportunityFieldPageClient() {
         <OpportunityDetailPanel
           row={detailRow}
           whyTitle={field.detailWhy}
-          focusEventId={selectedPill.contextId}
-          seeking={selectedPill.seeking}
+          focusEventId={tradeSeeking.eventId}
+          seeking={tradeSeeking}
           neighborBadge={field.neighborListingBadge}
           hasActiveTrade={hasActiveTrade}
           className="min-h-0 flex-1"
@@ -103,15 +129,17 @@ export function OpportunityFieldPageClient() {
     <OpportunityDashboardBody
       loading={loading}
       pills={pills}
-      discoveryRows={discoveryRows}
+      matchedRows={matchedRows}
+      browseRows={filteredBrowseRows}
       tradeSessions={tradeSessions}
       selectedPill={selectedPill}
       selectedContextId={selectedContextId}
       onSelectContext={setSelectedContextId}
       listeningLabel={listeningLabel}
-      onRowPress={setDetailRow}
+      onRowPress={handleRowPress}
       onSessionUpdated={replaceSession}
       focusTradesToken={focusTradesToken}
+      mineCount={mineCount}
       className="h-full flex-1"
     />
   );

@@ -1,4 +1,5 @@
 import type { MarketIntentDraft, MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
+import { assertCommitPermitted } from "@/lib/context-run/commit-gate";
 import { assertMarketListingAllowed } from "@/lib/globe/market/guard-market-prohibited-listing";
 import { DEFAULT_MARKET_INTENT_DETAIL } from "@/lib/globe/market/market-intent-detail";
 import {
@@ -19,9 +20,23 @@ import { createClient } from "@/lib/supabase/client";
 
 export async function commitMarketIntentFromDraft(
   draft: MarketIntentDraft,
-  options?: { photoFiles?: File[]; publishExternal?: boolean },
+  options?: {
+    photoFiles?: File[];
+    publishExternal?: boolean;
+    approvalGranted?: boolean;
+    autoEnvelope?: import("@/lib/context-run/execution-decision").CommitAutoEnvelope | null;
+  },
 ): Promise<MarketIntentRecord> {
   const publishExternal = options?.publishExternal === true;
+  if (publishExternal) {
+    assertCommitPermitted({
+      risk: "publish_external",
+      approvalGranted: options?.approvalGranted,
+      autoEnvelope: options?.autoEnvelope ?? null,
+    });
+  } else {
+    assertCommitPermitted({ risk: "none" });
+  }
   const normalizedDraft = normalizeMarketIntentDraftFromPrioritySlots(draft);
   assertMarketListingAllowed(normalizedDraft);
   const mediaCounts = countMarketListingMedia(options?.photoFiles ?? []);
@@ -40,7 +55,7 @@ export async function commitMarketIntentFromDraft(
         forceAttachToHint: true,
       });
     } catch {
-      // media is optional — intent still commits
+      // media is optional ??intent still commits
     }
 
     if (normalizedDraft.role === "listing") {

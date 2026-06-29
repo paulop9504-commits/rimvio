@@ -3,7 +3,7 @@ import {
   defaultMasterOrchestratorContext,
 } from "@/lib/experience-context/read-client-master-orchestrator-context";
 import { buildUnifiedExperienceContext } from "@/lib/experience-context/build-unified-experience-context";
-import { ingestGlobeContextFromText } from "@/lib/feed/ingest-globe-context-capture";
+import { commitTextContextIngress } from "@/lib/context-run/commit-text-context";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 import {
   buildIntentSupplySignalChips,
@@ -95,7 +95,7 @@ export async function runGlobeMapIntentSupply(
       intent.kind === "place_food_supply" ||
       intent.kind === "context_connect");
   if (needsNewContext) {
-    const captured = await ingestGlobeContextFromText(message);
+    const captured = await commitTextContextIngress(message);
     eventId = captured.result.event.id;
   }
   if (!eventId) {

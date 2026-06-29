@@ -5,6 +5,7 @@ export {
   listOpportunityPills,
   listOpportunityRows,
 } from "@/lib/globe/opportunity-field/list-opportunity-slots";
+export { listExternalBrowseRows } from "@/lib/globe/opportunity-field/list-external-browse-rows";
 export { scoreMarketplaceOpportunityRow } from "@/lib/globe/opportunity-field/score-marketplace-opportunity-row";
 export {
   OPPORTUNITY_DISCOVERY_MOVE_M,

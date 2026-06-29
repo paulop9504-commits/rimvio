@@ -14,6 +14,8 @@ export type PortalCategoryDef = {
   implemented: boolean;
   /** v1 — routes to market projection when true */
   marketProjection?: boolean;
+  /** v1 — conversational together/join Run */
+  socialProjection?: boolean;
 };
 
 const INTENTS: readonly PortalIntentDef[] = [
@@ -61,15 +63,15 @@ const CATEGORIES_BY_INTENT: Record<PortalIntentId, readonly PortalCategoryDef[]>
     { id: "info", labelKo: copy.portal.categoryInfo, implemented: false },
   ],
   together: [
-    { id: "companion", labelKo: copy.portal.categoryCompanion, implemented: false },
-    { id: "sport", labelKo: copy.portal.categorySport, implemented: false },
-    { id: "study", labelKo: copy.portal.categoryStudy, implemented: false },
-    { id: "project", labelKo: copy.portal.categoryProject, implemented: false },
-    { id: "meetup", labelKo: copy.portal.categoryMeetup, implemented: false },
+    { id: "companion", labelKo: copy.portal.categoryCompanion, implemented: true, socialProjection: true },
+    { id: "sport", labelKo: copy.portal.categorySport, implemented: true, socialProjection: true },
+    { id: "study", labelKo: copy.portal.categoryStudy, implemented: true, socialProjection: true },
+    { id: "project", labelKo: copy.portal.categoryProject, implemented: true, socialProjection: true },
+    { id: "meetup", labelKo: copy.portal.categoryMeetup, implemented: true, socialProjection: true },
   ],
   join: [
-    { id: "event", labelKo: copy.portal.categoryEvent, implemented: false },
-    { id: "ticket", labelKo: copy.portal.categoryTicket, implemented: false },
+    { id: "event", labelKo: copy.portal.categoryEvent, implemented: true, socialProjection: true },
+    { id: "ticket", labelKo: copy.portal.categoryTicket, implemented: true, socialProjection: true },
   ],
 };
 

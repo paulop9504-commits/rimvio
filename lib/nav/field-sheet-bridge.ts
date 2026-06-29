@@ -54,3 +54,30 @@ export function subscribeFieldSheetOpenState(
   window.addEventListener(FIELD_SHEET_STATE_EVENT, handler);
   return () => window.removeEventListener(FIELD_SHEET_STATE_EVENT, handler);
 }
+
+export const FIELD_FLY_TO_INTENT_EVENT = "rimvio:field-fly-to-intent";
+
+export function dispatchFieldFlyToIntent(record: import("@/lib/globe/market/market-intent-types").MarketIntentRecord): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.dispatchEvent(
+    new CustomEvent(FIELD_FLY_TO_INTENT_EVENT, { detail: record }),
+  );
+}
+
+export function subscribeFieldFlyToIntent(
+  listener: (record: import("@/lib/globe/market/market-intent-types").MarketIntentRecord) => void,
+): () => void {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+  const handler = (event: Event) => {
+    const record = (event as CustomEvent<import("@/lib/globe/market/market-intent-types").MarketIntentRecord>).detail;
+    if (record?.eventId) {
+      listener(record);
+    }
+  };
+  window.addEventListener(FIELD_FLY_TO_INTENT_EVENT, handler);
+  return () => window.removeEventListener(FIELD_FLY_TO_INTENT_EVENT, handler);
+}

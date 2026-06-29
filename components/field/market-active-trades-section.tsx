@@ -17,6 +17,8 @@ export type MarketActiveTradesSectionProps = {
   onSessionUpdated?: (session: MarketTradeSessionView) => void;
   /** Scroll + ring highlight — `handshakeId` SSOT. */
   highlightTradeId?: string | null;
+  /** Bumps when ingress re-opens — re-triggers scroll highlight. */
+  highlightScrollKey?: number;
   /** Tab panel — no section chrome; shows empty state when none. */
   embedded?: boolean;
   className?: string;
@@ -26,11 +28,16 @@ export function MarketActiveTradesSection({
   sessions,
   onSessionUpdated,
   highlightTradeId = null,
+  highlightScrollKey = 0,
   embedded = false,
   className,
 }: MarketActiveTradesSectionProps) {
   const copy = useCopy();
   const scrolledTradeRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    scrolledTradeRef.current = null;
+  }, [highlightScrollKey]);
 
   useEffect(() => {
     const id = highlightTradeId?.trim();

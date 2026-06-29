@@ -23,12 +23,12 @@ export type OpportunityDiscoveryFloorProps = {
   loading: boolean;
   pills: readonly OpportunityPill[];
   rows: readonly OpportunityRow[];
+  /** True when showing all external browse rows (no seeking pill filter). */
+  browseMode?: boolean;
   selectedContextId: string | null;
-  onSelectContext: (id: string) => void;
+  onSelectContext: (id: string | null) => void;
   listeningLabel: string;
   onRowPress: (row: OpportunityRow) => void;
-  placeDiscovery?: ReactNode;
-  lodgingDiscovery?: ReactNode;
   /** Inside tab panel — hides redundant section header. */
   embedded?: boolean;
   className?: string;
@@ -48,12 +48,11 @@ export function OpportunityDiscoveryFloor({
   loading,
   pills,
   rows,
+  browseMode = false,
   selectedContextId,
   onSelectContext,
   listeningLabel,
   onRowPress,
-  placeDiscovery = null,
-  lodgingDiscovery = null,
   embedded = false,
   className,
 }: OpportunityDiscoveryFloorProps) {
@@ -124,27 +123,34 @@ export function OpportunityDiscoveryFloor({
                 onSelect={onSelectContext}
                 pillAria={field.pillAria}
                 minePillLabel={field.ownershipMinePill}
+                browseAllLabel={field.browseAllPill}
                 className="border-0 bg-transparent px-3 pb-3 pt-2"
               />
             </div>
           ) : null}
 
-          {placeDiscovery}
-          {lodgingDiscovery}
-
           {showInitialSkeleton ? (
             <div className={cn("mx-5", FIELD_DASHBOARD_CARD)}>
               <OpportunityRowShimmer />
             </div>
-          ) : pills.length === 0 ? (
-            <EmptyBlock title={field.emptySeekingTitle} body={field.emptySeekingBody} />
           ) : rows.length === 0 ? (
-            <EmptyBlock title={field.emptyRowsTitle} body={field.emptyRowsBody} />
+            <EmptyBlock
+              title={browseMode ? field.emptyBrowseTitle : field.emptyRowsTitle}
+              body={browseMode ? field.emptyBrowseBody : field.emptyRowsBody}
+            />
           ) : (
             <div className={cn("mx-5", FIELD_DASHBOARD_CARD)}>
               <OpportunityOwnershipSectionLabel
-                title={field.neighborListingsSection}
-                hint={field.neighborListingsHint}
+                title={
+                  browseMode
+                    ? field.externalResourcesSection
+                    : field.neighborListingsSection
+                }
+                hint={
+                  browseMode
+                    ? field.externalResourcesHint
+                    : field.neighborListingsHint
+                }
                 tone="neighbor"
                 className="border-b border-[#f2f4f6] px-4 pb-2 pt-2.5"
               />
@@ -188,20 +194,30 @@ export function OpportunityDiscoveryFloor({
             onSelect={onSelectContext}
             pillAria={field.pillAria}
             minePillLabel={field.ownershipMinePill}
+            browseAllLabel={field.browseAllPill}
           />
 
           <div className={scrollClass}>
             {showInitialSkeleton ? (
               <OpportunityRowShimmer />
-            ) : pills.length === 0 ? (
-              <EmptyBlock title={field.emptySeekingTitle} body={field.emptySeekingBody} />
             ) : rows.length === 0 ? (
-              <EmptyBlock title={field.emptyRowsTitle} body={field.emptyRowsBody} />
+              <EmptyBlock
+                title={browseMode ? field.emptyBrowseTitle : field.emptyRowsTitle}
+                body={browseMode ? field.emptyBrowseBody : field.emptyRowsBody}
+              />
             ) : (
               <>
                 <OpportunityOwnershipSectionLabel
-                  title={field.neighborListingsSection}
-                  hint={field.neighborListingsHint}
+                  title={
+                    browseMode
+                      ? field.externalResourcesSection
+                      : field.neighborListingsSection
+                  }
+                  hint={
+                    browseMode
+                      ? field.externalResourcesHint
+                      : field.neighborListingsHint
+                  }
                   tone="neighbor"
                   className="bg-white"
                 />

@@ -31,8 +31,8 @@ All active work must fit this loop. Nothing else ships until the vertical slice 
 ### Phase 6 entry (next build)
 
 1. `@` mention registry schema + chat `@` parser — **done** (`mention-feature-registry`, `parse-action-mention`)
-2. `@featureId` → action contract / EventCandidate ingress — **done** (`resolveContractActionFromMessage`, contract gate)
-3. Rollup `scoreDelta` read in MAIN resolver — **done** (`resolve-rollup-history-weight`, prep surface chain)
+2. `@featureId` → action contract / EventCandidate ingress — **done** (`resolveContractActionFromMessage`, contract gate, composer `mention_contract` via Context Run)
+3. Rollup `scoreDelta` read in MAIN resolver — **done** (`resolve-rollup-history-weight`, prep surface chain, `test-spine-mention-prep-e2e`)
 
 ---
 

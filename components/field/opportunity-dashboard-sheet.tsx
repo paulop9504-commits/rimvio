@@ -5,51 +5,46 @@ import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, X } from "lucide-react";
+import { toast } from "sonner";
 import { OpportunityDetailPanel } from "@/components/field/opportunity-detail-panel";
 import { OpportunityDashboardBody } from "@/components/field/opportunity-dashboard-body";
 import { useCopy } from "@/hooks/use-copy";
 import { useActiveMarketTrades } from "@/hooks/use-active-market-trades";
+import { useMarketManageIntents } from "@/hooks/use-market-manage-intents";
 import { useOpportunityDashboard } from "@/hooks/use-opportunity-dashboard";
 import { filterOpportunityRowsExcludingActiveTrades } from "@/lib/globe/opportunity-field/filter-rows-excluding-active-trades";
 import { hasActiveMarketTradeForListing } from "@/lib/globe/market/market-trade-pipeline";
 import {
-  RIMVIO_TYPE,
-  rimvioEmptyStateClass,
   rimvioFieldDashboardSheetClass,
-  rimvioHeroCtaClass,
   rimvioSheetBackdropClass,
   rimvioSheetCloseBtnClass,
   rimvioSheetGrabberClass,
 } from "@/lib/design/rimvio-ontology";
 import type { OpportunityRow } from "@/lib/globe/opportunity-field";
-import type { GlobeLayerMode } from "@/lib/globe/globe-layer-mode";
+import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
 import type { FieldDashboardTab } from "@/lib/nav/field-dashboard-types";
 import { isIOS, isStandalonePwa } from "@/lib/platform/device";
+import { dispatchFieldFlyToIntent } from "@/lib/nav/field-sheet-bridge";
 import { cn } from "@/lib/utils";
 
 export type OpportunityDashboardSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  layerMode: GlobeLayerMode;
-  onSwitchToDiscovery?: () => void;
   primaryEventId?: string | null;
   dashboardTab?: FieldDashboardTab | null;
   highlightTradeId?: string | null;
   ingressGeneration?: number;
-  /** Bottom-nav 맞춤 — skip personal-layer discovery gate. */
-  bypassDiscoveryGate?: boolean;
+  onFlyToMineIntent?: (record: MarketIntentRecord) => void;
 };
 
 export function OpportunityDashboardSheet({
   open,
   onOpenChange,
-  layerMode,
-  onSwitchToDiscovery,
   primaryEventId,
   dashboardTab = null,
   highlightTradeId = null,
   ingressGeneration = 0,
-  bypassDiscoveryGate = false,
+  onFlyToMineIntent,
 }: OpportunityDashboardSheetProps) {
   const copy = useCopy();
   const router = useRouter();
@@ -62,12 +57,16 @@ export function OpportunityDashboardSheet({
     loading,
     pills,
     rows,
+    browseRows,
     selectedContextId,
     setSelectedContextId,
     selectedPill,
     listeningLabel,
     refresh: refreshDiscovery,
   } = useOpportunityDashboard({ open, primaryEventId });
+
+  const { listings, seekings } = useMarketManageIntents(open);
+  const mineCount = listings.length + seekings.length;
 
   const {
     sessions: tradeSessions,
@@ -76,7 +75,7 @@ export function OpportunityDashboardSheet({
     replaceSession,
   } = useActiveMarketTrades({ enabled: open });
 
-  const discoveryRows = useMemo(
+  const matchedRows = useMemo(
     () =>
       filterOpportunityRowsExcludingActiveTrades(
         rows,
@@ -86,6 +85,28 @@ export function OpportunityDashboardSheet({
       ),
     [resolvedTradePairs, rows, selectedPill?.seeking.id, tradeSessions],
   );
+
+  const filteredBrowseRows = useMemo(
+    () =>
+      filterOpportunityRowsExcludingActiveTrades(
+        browseRows,
+        tradeSessions,
+        null,
+        resolvedTradePairs,
+      ),
+    [browseRows, resolvedTradePairs, tradeSessions],
+  );
+
+  const tradeSeeking = selectedPill?.seeking ?? pills[0]?.seeking ?? null;
+  const field = copy.globe.field;
+
+  const handleRowPress = (row: OpportunityRow) => {
+    if (!tradeSeeking) {
+      toast.message(field.browseNeedSeekingBody);
+      return;
+    }
+    setDetailRow(row);
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -104,16 +125,8 @@ export function OpportunityDashboardSheet({
     };
   }, [open]);
 
-  const field = copy.globe.field;
-  const showDiscoveryGate = layerMode !== "discovery" && !bypassDiscoveryGate;
-
   const sheetContent =
-    showDiscoveryGate ? (
-      <DiscoveryGate
-        onClose={() => onOpenChange(false)}
-        onSwitch={() => onSwitchToDiscovery?.()}
-      />
-    ) : detailRow && selectedPill ? (
+    detailRow && tradeSeeking ? (
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <header className="flex shrink-0 items-center gap-2 border-b border-[#f2f4f6] px-3 py-3">
           <button
@@ -139,13 +152,13 @@ export function OpportunityDashboardSheet({
         <OpportunityDetailPanel
           row={detailRow}
           whyTitle={field.detailWhy}
-          focusEventId={selectedPill.contextId}
-          seeking={selectedPill.seeking}
+          focusEventId={tradeSeeking.eventId}
+          seeking={tradeSeeking}
           neighborBadge={field.neighborListingBadge}
           hasActiveTrade={hasActiveMarketTradeForListing(
             tradeSessions,
             detailRow.listing.id,
-            selectedPill.seeking.id,
+            tradeSeeking.id,
             resolvedTradePairs,
           )}
           className="min-h-0 flex-1"
@@ -167,18 +180,25 @@ export function OpportunityDashboardSheet({
       <OpportunityDashboardBody
         loading={loading}
         pills={pills}
-        discoveryRows={discoveryRows}
+        matchedRows={matchedRows}
+        browseRows={filteredBrowseRows}
         tradeSessions={tradeSessions}
         selectedPill={selectedPill}
         selectedContextId={selectedContextId}
         onSelectContext={setSelectedContextId}
         listeningLabel={listeningLabel}
-        onRowPress={setDetailRow}
+        onRowPress={handleRowPress}
         onSessionUpdated={replaceSession}
+        onFlyToMineIntent={(record) => {
+          onFlyToMineIntent?.(record);
+          dispatchFieldFlyToIntent(record);
+          onOpenChange(false);
+        }}
         focusTradesToken={focusTradesToken}
         initialTab={dashboardTab}
         highlightTradeId={highlightTradeId}
         ingressGeneration={ingressGeneration}
+        mineCount={mineCount}
         headerClassName="pt-0"
         headerRight={
           <button
@@ -266,43 +286,5 @@ export function OpportunityDashboardSheet({
       ) : null}
     </AnimatePresence>,
     document.body,
-  );
-}
-
-function DiscoveryGate({
-  onClose,
-  onSwitch,
-}: {
-  onClose: () => void;
-  onSwitch: () => void;
-}) {
-  const copy = useCopy();
-  const field = copy.globe.field;
-
-  return (
-    <>
-      <header className="flex shrink-0 items-center justify-between border-b border-[#f2f4f6] px-4 py-4">
-        <p className="text-[20px] font-bold text-[#191f28]">{field.sheetTitle}</p>
-        <button
-          type="button"
-          onClick={onClose}
-          className={rimvioSheetCloseBtnClass()}
-          aria-label={field.closeAria}
-        >
-          <X className="size-4" aria-hidden />
-        </button>
-      </header>
-      <div className={cn(rimvioEmptyStateClass(), "flex flex-1 flex-col px-6 py-12 text-center")}>
-        <p className={RIMVIO_TYPE.headline}>{field.discoveryGateTitle}</p>
-        <p className={cn("mt-2", RIMVIO_TYPE.caption)}>{field.discoveryGateBody}</p>
-        <button
-          type="button"
-          className={cn(rimvioHeroCtaClass(), "mt-8")}
-          onClick={onSwitch}
-        >
-          {field.discoveryGateCta}
-        </button>
-      </div>
-    </>
   );
 }

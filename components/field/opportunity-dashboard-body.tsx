@@ -2,23 +2,18 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { FieldLodgingDiscoverySection } from "@/components/field/field-lodging-discovery-section";
-import { FieldPlaceDiscoverySection } from "@/components/field/field-place-discovery-section";
+import { FieldExternalMinePanel } from "@/components/field/field-external-mine-panel";
 import { OpportunityDiscoveryFloor } from "@/components/field/opportunity-discovery-floor";
 import {
   FIELD_DASHBOARD_CANVAS,
   FIELD_DASHBOARD_INSET,
 } from "@/components/field/field-dashboard-layout";
-import {
-  OpportunityDashboardTabBar,
-} from "@/components/field/opportunity-dashboard-tab-bar";
+import { OpportunityDashboardTabBar } from "@/components/field/opportunity-dashboard-tab-bar";
 import type { FieldDashboardTab } from "@/lib/nav/field-dashboard-types";
 import { MarketActiveTradesSection } from "@/components/field/market-active-trades-section";
 import { useCopy } from "@/hooks/use-copy";
-import { useFieldLodgingDiscovery } from "@/hooks/use-field-lodging-discovery";
-import { useFieldPlaceDiscovery } from "@/hooks/use-field-place-discovery";
-import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
 import type { OpportunityPill, OpportunityRow } from "@/lib/globe/opportunity-field";
+import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
 import type { MarketTradeSessionView } from "@/lib/globe/market/market-trade-types";
 import { runStagedFieldDiscoveryPinReveal } from "@/lib/globe/opportunity-field/globe-field-discovery-bridge";
 import { cn } from "@/lib/utils";
@@ -26,30 +21,45 @@ import { cn } from "@/lib/utils";
 export type OpportunityDashboardBodyProps = {
   loading: boolean;
   pills: readonly OpportunityPill[];
-  discoveryRows: readonly OpportunityRow[];
+  matchedRows: readonly OpportunityRow[];
+  browseRows: readonly OpportunityRow[];
   tradeSessions: readonly MarketTradeSessionView[];
   selectedPill: OpportunityPill | null;
   selectedContextId: string | null;
-  onSelectContext: (id: string) => void;
+  onSelectContext: (id: string | null) => void;
   listeningLabel: string;
   onRowPress: (row: OpportunityRow) => void;
   onSessionUpdated?: (session: MarketTradeSessionView) => void;
-  /** Increment to focus the trades tab (e.g. after Pull start). */
+  onFlyToMineIntent?: (record: MarketIntentRecord) => void;
   focusTradesToken?: number;
-  /** Set when sheet opens via ingress (pill / deep link). */
   initialTab?: FieldDashboardTab | null;
   highlightTradeId?: string | null;
   ingressGeneration?: number;
+  mineCount?: number;
   headerRight?: ReactNode;
   headerClassName?: string;
   className?: string;
 };
 
-/** Tabbed Field dashboard — transaction vs live discovery. */
+function tabHint(
+  tab: FieldDashboardTab,
+  field: ReturnType<typeof useCopy>["globe"]["field"],
+): string {
+  if (tab === "trades") {
+    return field.dashboardTabTradesHint;
+  }
+  if (tab === "mine") {
+    return field.dashboardTabMineHint;
+  }
+  return field.dashboardTabDiscoveryHint;
+}
+
+/** 밖 지구 통로 — 진행 중 거래 · 자원 찾기 · 내가 올린 맥락. */
 export function OpportunityDashboardBody({
   loading,
   pills,
-  discoveryRows,
+  matchedRows,
+  browseRows,
   tradeSessions,
   selectedPill,
   selectedContextId,
@@ -57,21 +67,27 @@ export function OpportunityDashboardBody({
   listeningLabel,
   onRowPress,
   onSessionUpdated,
+  onFlyToMineIntent,
   focusTradesToken = 0,
   initialTab = null,
   highlightTradeId = null,
   ingressGeneration = 0,
+  mineCount = 0,
   headerRight,
   headerClassName,
   className,
 }: OpportunityDashboardBodyProps) {
   const copy = useCopy();
   const field = copy.globe.field;
-  const liveLocation = useLiveLocationSnapshot();
   const [tab, setTab] = useState<FieldDashboardTab>(() =>
     tradeSessions.length > 0 ? "trades" : "discovery",
   );
   const prevTradeCountRef = useRef(tradeSessions.length);
+
+  const discoveryRows = useMemo(
+    () => (selectedPill ? matchedRows : browseRows),
+    [browseRows, matchedRows, selectedPill],
+  );
 
   useEffect(() => {
     if (focusTradesToken > 0) {
@@ -116,22 +132,6 @@ export function OpportunityDashboardBody({
     });
   }, [discoveryRevealKey, discoveryRows, selectedContextId, tab]);
 
-  const placeDiscovery = useFieldPlaceDiscovery({
-    enabled: tab === "discovery",
-    selectedPill,
-    lat: liveLocation?.lat ?? null,
-    lng: liveLocation?.lng ?? null,
-    contextId: selectedContextId,
-  });
-
-  const lodgingDiscovery = useFieldLodgingDiscovery({
-    enabled: tab === "discovery",
-    selectedPill,
-    lat: liveLocation?.lat ?? null,
-    lng: liveLocation?.lng ?? null,
-    contextId: selectedContextId,
-  });
-
   return (
     <div
       className={cn("flex min-h-0 flex-1 flex-col bg-white", className)}
@@ -151,7 +151,7 @@ export function OpportunityDashboardBody({
               {field.sheetTitle}
             </h1>
             <p className="mt-0.5 text-[13px] leading-snug text-[#8b95a1]">
-              {tab === "trades" ? field.dashboardTabTradesHint : field.dashboardTabDiscoveryHint}
+              {tabHint(tab, field)}
             </p>
           </div>
           {headerRight ? (
@@ -163,6 +163,7 @@ export function OpportunityDashboardBody({
           value={tab}
           onChange={setTab}
           tradeCount={tradeSessions.length}
+          mineCount={mineCount}
           className="px-0 pb-3 pt-0"
         />
       </header>
@@ -183,7 +184,24 @@ export function OpportunityDashboardBody({
                 sessions={tradeSessions}
                 onSessionUpdated={onSessionUpdated}
                 highlightTradeId={highlightTradeId}
+                highlightScrollKey={ingressGeneration}
                 embedded
+              />
+            </motion.div>
+          ) : tab === "mine" ? (
+            <motion.div
+              key="mine-panel"
+              role="tabpanel"
+              initial={{ opacity: 0, x: 12 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -12 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+              className="absolute inset-0 flex min-h-0 flex-col"
+            >
+              <FieldExternalMinePanel
+                enabled
+                onFlyToIntent={onFlyToMineIntent}
+                className="h-full"
               />
             </motion.div>
           ) : (
@@ -200,29 +218,11 @@ export function OpportunityDashboardBody({
                 loading={loading}
                 pills={pills}
                 rows={discoveryRows}
+                browseMode={!selectedPill}
                 selectedContextId={selectedContextId}
                 onSelectContext={onSelectContext}
                 listeningLabel={listeningLabel}
                 onRowPress={onRowPress}
-                placeDiscovery={
-                  placeDiscovery.enabled ? (
-                    <FieldPlaceDiscoverySection
-                      loading={placeDiscovery.loading}
-                      summary={placeDiscovery.payload?.summary ?? null}
-                      wire={placeDiscovery.wire}
-                      query={placeDiscovery.query}
-                    />
-                  ) : null
-                }
-                lodgingDiscovery={
-                  lodgingDiscovery.enabled ? (
-                    <FieldLodgingDiscoverySection
-                      loading={lodgingDiscovery.loading}
-                      rows={lodgingDiscovery.rows}
-                      source={lodgingDiscovery.source}
-                    />
-                  ) : null
-                }
                 embedded
                 className="h-full"
               />

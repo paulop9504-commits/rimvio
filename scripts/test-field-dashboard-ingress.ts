@@ -12,6 +12,7 @@ const root = process.cwd();
 
 assert.equal(parseFieldDashboardTab("trades"), "trades");
 assert.equal(parseFieldDashboardTab("discovery"), "discovery");
+assert.equal(parseFieldDashboardTab("mine"), "mine");
 assert.equal(parseFieldDashboardTab("nope"), undefined);
 
 const sp = buildFieldDashboardSearchParams({
@@ -40,12 +41,6 @@ const provider = readFileSync(
 assert.ok(provider.includes("highlightTradeId"), "provider must wire highlightTradeId");
 assert.ok(provider.includes("ingressGeneration"), "provider must bump ingress generation");
 
-const body = readFileSync(
-  join(root, "components/field/opportunity-dashboard-body.tsx"),
-  "utf8",
-);
-assert.ok(body.includes("ingressGeneration"), "dashboard body must apply ingress tab");
-
 const trades = readFileSync(
   join(root, "components/field/market-active-trades-section.tsx"),
   "utf8",
@@ -57,10 +52,21 @@ assert.ok(
   ingress.includes("openFieldDashboardFromBottomNav"),
   "bottom-nav ingress preset required",
 );
-assert.ok(ingress.includes("bypassDiscoveryGate: true"), "bottom-nav must bypass discovery gate");
+assert.ok(ingress.includes("openFieldMineIngress"), "mine tab ingress preset required");
+assert.ok(!ingress.includes("bypassDiscoveryGate"), "discovery gate removed from field ingress");
+
+const body = readFileSync(
+  join(root, "components/field/opportunity-dashboard-body.tsx"),
+  "utf8",
+);
+assert.ok(body.includes("ingressGeneration"), "dashboard body must apply ingress tab");
+assert.ok(body.includes("FieldExternalMinePanel"), "mine tab panel required");
+assert.ok(body.includes("browseRows"), "browse rows wired");
+assert.ok(body.includes("highlightScrollKey"), "trade highlight scroll key wired");
 
 const appNav = readFileSync(join(root, "components/app-nav.tsx"), "utf8");
 assert.ok(appNav.includes("openFieldDashboardFromBottomNav"), "app nav must use bottom-nav ingress");
 assert.ok(appNav.includes("useFieldNavBadge"), "app nav must show field badge");
+assert.ok(trades.includes("highlightScrollKey"), "trade section must accept highlight scroll key");
 
 console.log("test-field-dashboard-ingress: ok");

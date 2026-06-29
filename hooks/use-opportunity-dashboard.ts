@@ -15,6 +15,7 @@ import { filterPublishedMarketIntents } from "@/lib/globe/market/filter-publishe
 import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
 import {
   buildUserStateV1,
+  listExternalBrowseRows,
   listOpportunityPills,
   listOpportunityRows,
   OPPORTUNITY_DISCOVERY_MOVE_M,
@@ -56,8 +57,9 @@ export function useOpportunityDashboard(input: {
   loading: boolean;
   pills: OpportunityPill[];
   rows: OpportunityRow[];
+  browseRows: OpportunityRow[];
   selectedContextId: string | null;
-  setSelectedContextId: (id: string) => void;
+  setSelectedContextId: (id: string | null) => void;
   selectedPill: OpportunityPill | null;
   listeningLabel: string;
   fieldCopy: OpportunityFieldCopy;
@@ -261,17 +263,11 @@ export function useOpportunityDashboard(input: {
     [fieldCopy, pool, regionalProfile, seekings, userState],
   );
 
-  useEffect(() => {
-    if (!input.open || pills.length === 0) {
-      return;
-    }
-    if (!selectedContextId || !pills.some((pill) => pill.contextId === selectedContextId)) {
-      setSelectedContextId(pills[0]!.contextId);
-    }
-  }, [input.open, pills, selectedContextId]);
-
   const selectedPill = useMemo(
-    () => pills.find((pill) => pill.contextId === selectedContextId) ?? null,
+    () =>
+      selectedContextId
+        ? (pills.find((pill) => pill.contextId === selectedContextId) ?? null)
+        : null,
     [pills, selectedContextId],
   );
 
@@ -288,14 +284,27 @@ export function useOpportunityDashboard(input: {
     });
   }, [fieldCopy, pool, regionalProfile, selectedPill, userState]);
 
-  const listeningLabel = selectedPill
-    ? copy.globe.field.listening(selectedPill.title)
-    : copy.globe.field.sheetTitle;
+  const browseRows = useMemo(
+    () =>
+      listExternalBrowseRows({
+        pool,
+        userState,
+        copy: fieldCopy,
+        regionalProfile,
+      }),
+    [fieldCopy, pool, regionalProfile, userState],
+  );
+
+  const listeningLabel =
+    selectedPill != null
+      ? copy.globe.field.listening(selectedPill.title)
+      : copy.globe.field.discoveryBrowseListening;
 
   return {
     loading,
     pills,
     rows,
+    browseRows,
     selectedContextId,
     setSelectedContextId,
     selectedPill,

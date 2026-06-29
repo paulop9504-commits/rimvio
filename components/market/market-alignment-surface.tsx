@@ -29,6 +29,7 @@ export type MarketAlignmentSurfaceProps = {
   className?: string;
 };
 
+/** Field trades tab — full handshake pipeline (accept, gap-fill, peer chat bootstrap). */
 export function MarketAlignmentSurface({
   enabled,
   focusEventId,

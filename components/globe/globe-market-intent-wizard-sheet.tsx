@@ -46,6 +46,9 @@ import { hasValidMarketTradeDistrict } from "@/lib/globe/market/validate-market-
 import { formatMarketMemoryPreview } from "@/lib/globe/market/memory/format-market-memory-preview";
 import { isValidMarketProductName } from "@/lib/globe/market/sanitize-market-product-name";
 import { copy } from "@/lib/copy/human-ko";
+import { syncMarketWizardStepToFeed } from "@/lib/context-run/sync-market-compose-to-feed";
+import { touchRunStateNode } from "@/lib/context-run/run-state-store";
+import { marketComposeRunNode } from "@/lib/context-run/watcher-reconstruct";
 import {
   RIMVIO_TYPE,
   rimvioBottomSheetClass,
@@ -76,6 +79,8 @@ export type GlobeMarketIntentWizardSheetProps = {
   startStep?: MarketWizardStepId;
   /** Portal launch — intent already chosen; never show role step. */
   portalLaunch?: boolean;
+  /** Composer / portal seed — keeps Execution Feed in sync with wizard steps. */
+  feedComposeText?: string;
 };
 
 function formatFixedPriceKrw(krw: number | null | undefined): string {
@@ -213,6 +218,7 @@ export function GlobeMarketIntentWizardSheet({
   onConfirmed,
   startStep,
   portalLaunch = false,
+  feedComposeText,
 }: GlobeMarketIntentWizardSheetProps) {
   const [mounted, setMounted] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -281,6 +287,28 @@ export function GlobeMarketIntentWizardSheet({
       }
     };
   }, [photoPreviews]);
+
+  useEffect(() => {
+    if (!open || !working) {
+      return;
+    }
+    const composeText =
+      feedComposeText?.trim() ||
+      working.detail.productName?.trim() ||
+      working.title?.trim() ||
+      "";
+    if (!composeText) {
+      return;
+    }
+    syncMarketWizardStepToFeed({
+      composeText,
+      eventId: working.eventId,
+      role: working.role,
+      activeStep: step,
+      portalLaunch,
+    });
+    touchRunStateNode(marketComposeRunNode(step));
+  }, [feedComposeText, open, portalLaunch, step, working]);
 
   const goNext = useCallback(() => {
     if (!working) {
@@ -497,6 +525,7 @@ export function GlobeMarketIntentWizardSheet({
       const saved = await commitMarketIntentFromDraft(finalDraft, {
         photoFiles: photoFiles.length > 0 ? photoFiles : undefined,
         publishExternal,
+        approvalGranted: true,
       });
       if (publishExternal) {
         toast.success(copy.globe.marketWizardPublishedToast);

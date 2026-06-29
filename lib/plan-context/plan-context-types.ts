@@ -1,4 +1,9 @@
-/** Time × space bundle — one living situation for the user. */
+/** Time × space bundle — one living situation for the user.
+ *
+ * Capital prep: multi-horizon life goals (결혼 → 주택 → 창업) will **extend**
+ * this model + EventCandidate metadata — not a separate plan store.
+ * See docs/RIMVIO_CAPITAL_OS.md · lib/capital/PREP.md
+ */
 
 export type PlanWindowConfidence = "confirmed" | "estimated" | "open";
 

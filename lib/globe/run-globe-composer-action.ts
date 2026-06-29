@@ -1,5 +1,6 @@
 import { parseActionMention } from "@/lib/event-kernel/action-contracts/parse-action-mention";
 import { ACTION_INTENT_REGISTRY } from "@/lib/action-dispatcher/registry";
+import { detectNaturalMarketComposeInput } from "@/lib/globe/market/detect-market-compose-input";
 
 export type GlobeComposerUrlAction = {
   kind: "url";
@@ -22,7 +23,20 @@ export type GlobeComposerActionResult =
 export function runGlobeComposerAction(
   raw: string,
 ): GlobeComposerActionResult | null {
-  const mention = parseActionMention(raw.trim());
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  if (detectNaturalMarketComposeInput(trimmed)) {
+    return {
+      kind: "market-compose",
+      featureId: "market",
+      composeText: trimmed,
+    };
+  }
+
+  const mention = parseActionMention(trimmed);
   if (!mention) {
     return null;
   }

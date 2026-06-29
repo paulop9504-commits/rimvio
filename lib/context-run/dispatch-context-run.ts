@@ -1,0 +1,571 @@
+import { bindSituation } from "@/lib/context-run/bind-situation";
+import { assertCommitPermitted } from "@/lib/context-run/commit-gate";
+import { commitMentionContextIngress } from "@/lib/context-run/commit-mention-context";
+import { commitTextContextIngress } from "@/lib/context-run/commit-text-context";
+import { dispatchExecutionFeedGoal } from "@/lib/context-run/execution-feed-bridge";
+import type {
+  BoundSituation,
+  ContextRunEffectHandlers,
+  ContextRunIngress,
+  ContextRunPlan,
+  ContextRunTurnResult,
+} from "@/lib/context-run/ingress-types";
+import {
+  discoveryHintMessage,
+  discoveryPhotoHintMessage,
+  planContextRun,
+  planMarketPortalFallback,
+  planPersonalContextAskFallback,
+  planTextIngestFallback,
+} from "@/lib/context-run/plan-context-run";
+import { ensureRunState, touchRunStateNode } from "@/lib/context-run/run-state-store";
+import {
+  resolveGlobeComposerSurface,
+} from "@/lib/context-run/resolve-globe-composer-surface";
+import { resolvePrimarySurface } from "@/lib/context-run/surface-resolver";
+import {
+  syncMarketComposeStartToFeed,
+  syncMarketQuickListStartToFeed,
+} from "@/lib/context-run/sync-market-compose-to-feed";
+import { ingestGlobeContextFromFiles } from "@/lib/feed/ingest-globe-context-capture";
+import { ingestPastedLinks } from "@/lib/share/inbox-paste";
+import {
+  fetchExternalContextSourcesClient,
+  resolveExternalContextAsk,
+} from "@/lib/external-context-ask";
+import { resolveExperienceRunTurn } from "@/lib/experience-run";
+import { runGlobeMapIntentSupply } from "@/lib/globe/intent-supply/run-globe-map-intent-supply";
+import { parseMentionForContract } from "@/lib/context-run/plan-mention-contract";
+import {
+  getMentionFeature,
+} from "@/lib/event-kernel/action-contracts/mention-feature-registry";
+import { evaluateContractGate } from "@/lib/event-kernel/slot-filling/contract-gated-execution";
+import { runGlobeComposerAction } from "@/lib/globe/run-globe-composer-action";
+import { listLifeEventCandidates } from "@/lib/life-read-model";
+import { resolvePersonalContextAsk } from "@/lib/personal-context-ask";
+import {
+  syncExperienceRunClarifyToFeed,
+  syncExperienceRunSummaryToFeed,
+} from "@/lib/context-run/sync-experience-run-to-feed";
+import {
+  syncPortalComposeClarifyToFeed,
+  syncPortalComposeSocialSummaryToFeed,
+  syncPortalComposeStartToFeed,
+  syncPortalComposeWizardLaunchToFeed,
+} from "@/lib/context-run/sync-portal-compose-to-feed";
+import { readActiveRunState } from "@/lib/context-run/run-state-store";
+import { commitPortalSocialContext } from "@/lib/portal/commit-portal-social-context";
+import {
+  clearPortalComposeRunState,
+  readPortalComposeRunState,
+  writePortalComposeRunState,
+} from "@/lib/portal/portal-compose-run-store";
+import { resolvePortalComposeRunTurn } from "@/lib/portal/resolve-portal-compose-run-turn";
+import type { PortalIntentId } from "@/lib/portal/portal-types";
+
+/**
+ * Single ingress for Context Run Engine (composer + capture sheet text).
+ * UI must call this instead of branching ingest / supply / portal directly.
+ */
+export async function dispatchContextRun(
+  ingress: ContextRunIngress,
+  handlers: ContextRunEffectHandlers,
+): Promise<ContextRunTurnResult> {
+  const bound = bindSituation(ingress);
+  const { graphId, goalKo } = bound;
+
+  if (ingress.kind === "text" && ingress.layerMode === "personal") {
+    dispatchExecutionFeedGoal({ graphId, goalKo });
+  }
+  ensureRunState({ graphId, goal: goalKo });
+
+  const plan = planContextRun(bound);
+  if (plan.kind === "noop") {
+    return { graphId, status: "noop", planKind: "noop" };
+  }
+
+  try {
+    return await executeContextRunPlan(bound, plan, handlers);
+  } catch (caught) {
+    const errorMessage =
+      caught instanceof Error ? caught.message : "Context run failed";
+    return {
+      graphId,
+      status: "error",
+      planKind: plan.kind,
+      errorMessage,
+    };
+  }
+}
+
+async function executeContextRunPlan(
+  bound: BoundSituation,
+  plan: ContextRunPlan,
+  handlers: ContextRunEffectHandlers,
+): Promise<ContextRunTurnResult> {
+  const { graphId } = bound;
+  const ingress = bound.ingress;
+  const eventId =
+    ingress.kind === "text" ? ingress.contextEventId?.trim() || null : null;
+
+  const surface = plan.composerPhase
+    ? resolvePrimarySurface({
+        graphId,
+        composerPhase: plan.composerPhase,
+      })
+    : undefined;
+
+  switch (plan.kind) {
+    case "discovery_browse": {
+      handlers.openFieldDiscovery();
+      return { graphId, status: "done", planKind: plan.kind, surface };
+    }
+    case "discovery_hint": {
+      handlers.toastMessage?.(discoveryHintMessage());
+      return { graphId, status: "done", planKind: plan.kind };
+    }
+    case "external_url": {
+      if (plan.url && plan.urlLabel) {
+        handlers.navigateUrl(plan.url, plan.urlLabel);
+      }
+      return { graphId, status: "done", planKind: plan.kind, surface };
+    }
+    case "portal_compose_run": {
+      const intentId = (plan.portalIntentId ??
+        readPortalComposeRunState(readActiveRunState()?.graphId)?.intentId) as
+        | PortalIntentId
+        | undefined;
+      if (!intentId) {
+        return { graphId, status: "noop", planKind: "noop" };
+      }
+
+      const activeRun = readActiveRunState();
+      const pending = activeRun
+        ? readPortalComposeRunState(activeRun.graphId)
+        : null;
+      const runGraphId = pending?.graphId ?? activeRun?.graphId ?? graphId;
+
+      let resolvedEventId =
+        pending?.eventId?.trim() ||
+        eventId?.trim() ||
+        (ingress.kind === "text" ? ingress.contextEventId?.trim() : "") ||
+        "";
+
+      if (!resolvedEventId) {
+        const seed = plan.resumePortalRun
+          ? pending?.accumulatedText ?? bound.goalKo
+          : bound.goalKo;
+        const outcome = await commitTextContextIngress(seed);
+        resolvedEventId = outcome.result.event.id;
+      }
+
+      if (!plan.resumePortalRun) {
+        syncPortalComposeStartToFeed({
+          graphId: runGraphId,
+          goalKo: bound.goalKo,
+          intentId,
+        });
+      }
+
+      const result = resolvePortalComposeRunTurn({
+        graphId: runGraphId,
+        intentId,
+        categoryId: plan.portalCategoryId ?? pending?.categoryId ?? null,
+        message: plan.resumePortalRun
+          ? (pending?.accumulatedText ?? bound.goalKo)
+          : bound.goalKo,
+        eventId: resolvedEventId,
+        liveLat: ingress.kind === "text" ? ingress.lat : null,
+        liveLng: ingress.kind === "text" ? ingress.lng : null,
+        resumeState: plan.resumePortalRun ? pending : null,
+        answerText: plan.resumePortalRun ? bound.goalKo : null,
+      });
+
+      if (result.kind === "clarify") {
+        writePortalComposeRunState(result.state);
+        touchRunStateNode(`portal:${result.slotId}`);
+        syncPortalComposeClarifyToFeed({
+          graphId: runGraphId,
+          questionKo: result.questionKo,
+          goalKo: bound.goalKo,
+          slotId: result.slotId,
+        });
+        handlers.onPortalComposeClarify?.({
+          questionKo: result.questionKo,
+          slotId: result.slotId,
+        });
+        return { graphId, status: "done", planKind: plan.kind };
+      }
+
+      clearPortalComposeRunState(runGraphId);
+
+      if (result.kind === "quick_list_ready") {
+        syncMarketQuickListStartToFeed({
+          composeText: result.composeText,
+          eventId: result.eventId,
+        });
+        const quickListed = await handlers.tryQuickListMarket(result.composeText);
+        if (quickListed) {
+          handlers.onAttached?.(result.eventId);
+          return { graphId, status: "done", planKind: plan.kind };
+        }
+        const portalPlan = planMarketPortalFallback(bound, result.composeText);
+        return executeContextRunPlan(bound, portalPlan, handlers);
+      }
+
+      if (result.kind === "launch_wizard") {
+        syncPortalComposeWizardLaunchToFeed({
+          graphId: runGraphId,
+          productLabel: result.draft.detail.productName?.trim() || null,
+          intentId: result.intentId,
+        });
+        handlers.onLaunchMarketProjection?.({
+          draft: result.draft,
+          eventId: result.eventId,
+          composeText: result.composeText,
+        });
+        return { graphId, status: "done", planKind: plan.kind };
+      }
+
+      commitPortalSocialContext({
+        eventId: result.eventId,
+        title: result.title,
+        intentId: result.intentId,
+        categoryId: result.categoryId,
+        socialSlots: result.socialSlots,
+      });
+      syncPortalComposeSocialSummaryToFeed({
+        graphId: runGraphId,
+        titleKo: result.title,
+        summaryKo: result.summaryKo,
+        intentId: result.intentId,
+      });
+      handlers.onAttached?.(result.eventId);
+      handlers.toastSuccess?.(result.summaryKo);
+      return { graphId, status: "done", planKind: plan.kind };
+    }
+    case "market_quick_list": {
+      const composeText = plan.composeText?.trim() ?? bound.goalKo;
+      syncMarketQuickListStartToFeed({ composeText, eventId });
+      const quickListed = await handlers.tryQuickListMarket(composeText);
+      if (quickListed) {
+        return { graphId, status: "done", planKind: plan.kind, surface };
+      }
+      const portalPlan = planMarketPortalFallback(
+        bound,
+        composeText,
+        plan.composerPhase === "market_supply_pass"
+          ? "market_supply_pass"
+          : "market_compose",
+      );
+      return executeContextRunPlan(bound, portalPlan, handlers);
+    }
+    case "market_portal": {
+      const composeText = plan.composeText?.trim() ?? bound.goalKo;
+      const phase = plan.composerPhase ?? "market_compose";
+      const resolution = resolveGlobeComposerSurface({
+        phase,
+        eventId,
+        composeText,
+      });
+      const { effect } = resolution;
+      if (effect.type === "open_portal") {
+        syncMarketComposeStartToFeed({
+          composeText: effect.composeText,
+          eventId: effect.eventId,
+        });
+        await handlers.openPortal({
+          eventId: effect.eventId,
+          composeText: effect.composeText,
+        });
+      } else if (effect.type === "field_discovery") {
+        handlers.openFieldDiscovery();
+      }
+      return {
+        graphId,
+        status: "done",
+        planKind: plan.kind,
+        surface,
+      };
+    }
+    case "map_intent_supply": {
+      const supplyInput = plan.supplyInput;
+      if (!supplyInput) {
+        return executeContextRunPlan(
+          bound,
+          planTextIngestFallback(bound),
+          handlers,
+        );
+      }
+      const supply = await runGlobeMapIntentSupply(supplyInput);
+
+      if (supply?.status === "pass") {
+        if (supply.pass === "market") {
+          const quickPlan: ContextRunPlan = {
+            kind: "market_quick_list",
+            graphId,
+            goalKo: bound.goalKo,
+            composerPhase: "market_supply_pass",
+            composeText: bound.goalKo,
+          };
+          return executeContextRunPlan(bound, quickPlan, handlers);
+        }
+        if (supply.pass === "navigation") {
+          const nav = runGlobeComposerAction(bound.goalKo);
+          if (nav?.kind === "url") {
+            handlers.navigateUrl(nav.url, nav.label);
+            return { graphId, status: "done", planKind: plan.kind, supply };
+          }
+        }
+      }
+
+      if (supply?.status === "supplied") {
+        const { ack } = supply;
+        if (supply.lodgingEventId) {
+          handlers.onLodgingDiscovery?.({
+            eventId: supply.lodgingEventId,
+            summaryKo: ack.summaryKo,
+          });
+        }
+        if (supply.foodEventId) {
+          handlers.onEateryDiscovery?.({
+            eventId: supply.foodEventId,
+            summaryKo: ack.summaryKo,
+          });
+        }
+        handlers.onAttached?.(ack.eventId);
+        if (!supply.lodgingEventId && !supply.foodEventId) {
+          handlers.toastSuccess?.(ack.summaryKo);
+        }
+        return { graphId, status: "done", planKind: plan.kind, supply };
+      }
+
+      return executeContextRunPlan(
+        bound,
+        planTextIngestFallback(bound),
+        handlers,
+      );
+    }
+    case "mention_contract": {
+      if (plan.needsConfirmOnly) {
+        const feature = plan.mentionFeatureId
+          ? getMentionFeature(plan.mentionFeatureId)
+          : null;
+        if (feature?.confirmCopy) {
+          handlers.toastMessage?.(feature.confirmCopy);
+        }
+        if (plan.mentionSourceRef) {
+          touchRunStateNode(plan.mentionSourceRef);
+        }
+        return { graphId, status: "done", planKind: plan.kind };
+      }
+
+      const gate = evaluateContractGate(bound.goalKo);
+      if (gate.state === "MISSING_SLOT") {
+        handlers.toastMessage?.(gate.question);
+        if (plan.mentionSourceRef) {
+          touchRunStateNode(plan.mentionSourceRef);
+        }
+        return { graphId, status: "done", planKind: plan.kind };
+      }
+
+      const mention = parseMentionForContract(bound.goalKo);
+      if (!mention) {
+        return executeContextRunPlan(
+          bound,
+          planTextIngestFallback(bound),
+          handlers,
+        );
+      }
+
+      const captured = await commitMentionContextIngress({
+        rawText: bound.goalKo,
+        mention,
+      });
+      touchRunStateNode(mention.feature.sourceRef);
+
+      const routing = mention.routingMessage.trim();
+      let supply: Awaited<ReturnType<typeof runGlobeMapIntentSupply>> | null = null;
+
+      if (routing) {
+        supply = await runGlobeMapIntentSupply({
+          message: routing,
+          contextEventId: captured.result.event.id,
+          lat: ingress.kind === "text" ? ingress.lat : null,
+          lng: ingress.kind === "text" ? ingress.lng : null,
+          layerMode: ingress.kind === "text" ? ingress.layerMode : "personal",
+        });
+
+        if (supply?.status === "supplied") {
+          const { ack } = supply;
+          if (supply.lodgingEventId) {
+            handlers.onLodgingDiscovery?.({
+              eventId: supply.lodgingEventId,
+              summaryKo: ack.summaryKo,
+            });
+          }
+          if (supply.foodEventId) {
+            handlers.onEateryDiscovery?.({
+              eventId: supply.foodEventId,
+              summaryKo: ack.summaryKo,
+            });
+          }
+          handlers.onAttached?.(ack.eventId);
+          if (!supply.lodgingEventId && !supply.foodEventId) {
+            handlers.toastSuccess?.(ack.summaryKo);
+          }
+        }
+      }
+
+      handlers.onTextIngested?.({
+        eventId: captured.result.event.id,
+        toastLine: captured.toastLine,
+        needsPlaceVerify: captured.placeVerify?.needsPlaceVerify,
+      });
+
+      return {
+        graphId,
+        status: "done",
+        planKind: plan.kind,
+        supply,
+      };
+    }
+    case "text_ingest": {
+      const outcome = await commitTextContextIngress(bound.goalKo);
+      handlers.onTextIngested?.({
+        eventId: outcome.result.event.id,
+        toastLine: outcome.toastLine,
+        needsPlaceVerify: outcome.placeVerify?.needsPlaceVerify,
+      });
+      return { graphId, status: "done", planKind: plan.kind };
+    }
+    case "photo_ingest": {
+      const photoInput = plan.photoInput;
+      if (!photoInput?.files.length) {
+        return { graphId, status: "noop", planKind: "noop" };
+      }
+      assertCommitPermitted({
+        risk: "none",
+        autoEnvelope: "photo_attach",
+      });
+      const summary = await ingestGlobeContextFromFiles(photoInput.files, {
+        hintEventId: photoInput.contextEventId,
+        hintTitle: photoInput.hintTitle,
+        forceAttachToHint:
+          photoInput.forceAttachToTarget && Boolean(photoInput.contextEventId),
+        onProgress: handlers.onPhotoIngestProgress,
+        onFilePrepare: handlers.onPhotoFilePrepare,
+      });
+      handlers.onPhotoIngested?.(summary);
+      return { graphId, status: "done", planKind: plan.kind };
+    }
+    case "photo_walkthrough": {
+      const files = plan.photoInput?.files ?? [];
+      if (files.length > 0) {
+        await handlers.onPhotoWalkthrough?.(files);
+      }
+      return { graphId, status: "done", planKind: plan.kind };
+    }
+    case "discovery_photo_hint": {
+      handlers.toastMessage?.(discoveryPhotoHintMessage());
+      return { graphId, status: "done", planKind: plan.kind };
+    }
+    case "share_ingest": {
+      const shareText = plan.shareText?.trim() ?? bound.goalKo;
+      if (!shareText) {
+        return { graphId, status: "noop", planKind: "noop" };
+      }
+      assertCommitPermitted({
+        risk: "none",
+        autoEnvelope: "context_text_ingest",
+      });
+      await ingestPastedLinks(shareText);
+      handlers.onShareIngested?.();
+      return { graphId, status: "done", planKind: plan.kind };
+    }
+    case "gps_dwell_confirm_open": {
+      const eventId = plan.gpsDwellEventId?.trim();
+      if (eventId) {
+        handlers.onGpsDwellConfirmOpen?.(eventId);
+      }
+      return { graphId, status: "done", planKind: plan.kind };
+    }
+    case "experience_run": {
+      const ingressText = bound.ingress;
+      const runResult = await resolveExperienceRunTurn({
+        message: bound.goalKo,
+        lat: ingressText.kind === "text" ? ingressText.lat : null,
+        lng: ingressText.kind === "text" ? ingressText.lng : null,
+      });
+
+      if (runResult.kind === "clarify") {
+        syncExperienceRunClarifyToFeed(runResult, bound.goalKo);
+        handlers.onExperienceRunClarify?.(runResult);
+        return {
+          graphId,
+          status: "done",
+          planKind: plan.kind,
+          experienceRun: runResult,
+        };
+      }
+
+      if (runResult.kind === "summary") {
+        syncExperienceRunSummaryToFeed(runResult.summary, bound.goalKo);
+        handlers.onExperienceRunSummary?.(runResult);
+        return {
+          graphId,
+          status: "done",
+          planKind: plan.kind,
+          experienceRun: runResult,
+        };
+      }
+
+      return executeContextRunPlan(
+        bound,
+        planPersonalContextAskFallback(bound),
+        handlers,
+      );
+    }
+    case "personal_context_ask": {
+      const personal = resolvePersonalContextAsk({
+        query: bound.goalKo,
+        events: listLifeEventCandidates(),
+        scope: "personal",
+      });
+      handlers.onPersonalContextAsk?.(personal);
+      return {
+        graphId,
+        status: "done",
+        planKind: plan.kind,
+        personalAsk: personal,
+      };
+    }
+    case "external_context_ask": {
+      const ingressText = bound.ingress;
+      try {
+        const sources = await fetchExternalContextSourcesClient({
+          lat: ingressText.kind === "text" ? ingressText.lat : null,
+          lng: ingressText.kind === "text" ? ingressText.lng : null,
+        });
+        const external = resolveExternalContextAsk({
+          query: bound.goalKo,
+          sources,
+          lat: ingressText.kind === "text" ? ingressText.lat : null,
+          lng: ingressText.kind === "text" ? ingressText.lng : null,
+        });
+        handlers.onExternalContextAsk?.(external);
+        return {
+          graphId,
+          status: "done",
+          planKind: plan.kind,
+          externalAsk: external,
+        };
+      } catch {
+        handlers.onExternalContextAskError?.();
+        return { graphId, status: "done", planKind: plan.kind };
+      }
+    }
+    default:
+      return { graphId, status: "noop", planKind: "noop" };
+  }
+}

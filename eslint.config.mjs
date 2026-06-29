@@ -86,6 +86,92 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  {
+    files: [
+      "components/globe/**/*.{ts,tsx}",
+      "components/experience/**/*.{ts,tsx}",
+      "hooks/**/*.{ts,tsx}",
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@/components/field/field-sheet-provider",
+              importNames: ["useFieldSheet"],
+              message:
+                "Globe → Field must use openFieldDashboardIngress() from @/lib/nav/field-dashboard-ingress — not useFieldSheet().",
+            },
+            {
+              name: "@/lib/nav/field-dashboard-ingress",
+              importNames: [
+                "openFieldDashboardFromBottomNav",
+                "openFieldTradesIngress",
+                "openFieldDiscoveryIngress",
+                "openFieldMineIngress",
+              ],
+              message:
+                "Globe → Field must call openFieldDashboardIngress() only — use presets from app-nav, not Globe surfaces.",
+            },
+            {
+              name: "@/lib/nav/field-sheet-bridge",
+              importNames: ["dispatchOpenFieldSheet"],
+              message:
+                "Globe → Field must use openFieldDashboardIngress() from @/lib/nav/field-dashboard-ingress.",
+            },
+            {
+              name: "@/components/market/market-alignment-surface",
+              importNames: ["MarketAlignmentSurface"],
+              message:
+                "Full handshake pipeline is Field-only. Use MarketAlignmentSummary on Globe/Feed.",
+            },
+            {
+              name: "@/lib/feed/ingest-globe-context-capture",
+              importNames: ["ingestGlobeContextFromText", "ingestGlobeContextFromFiles"],
+              message:
+                "Globe UI must use dispatchContextRun() or commitTextContextIngress() — not direct ingest.",
+            },
+            {
+              name: "@/lib/globe/intent-supply/run-globe-map-intent-supply",
+              importNames: ["runGlobeMapIntentSupply"],
+              message:
+                "Globe UI must use dispatchContextRun() — not direct map intent supply.",
+            },
+            {
+              name: "@/lib/experience-run",
+              importNames: ["resolveExperienceRunTurn"],
+              message:
+                "Globe UI must use dispatchContextRun({ surface: 'capture_sheet' }) — not direct experience run.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["components/field/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@/components/globe/globe-market-intent-wizard-sheet",
+              message:
+                "Listing wizard is Field-owned. Open via openFieldDashboardIngress({ tab: 'mine' }).",
+            },
+            {
+              name: "@/components/market/market-alignment-surface",
+              importNames: ["MarketAlignmentSurface"],
+              message:
+                "Use MarketTradeProgressCard in Field trades tab — not Globe alignment surface.",
+            },
+          ],
+        },
+      ],
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

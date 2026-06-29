@@ -17,5 +17,10 @@ assert.equal(
 assert.equal(portalIntentToMarketRole("offer"), "listing");
 assert.equal(portalIntentToMarketRole("seek"), "seeking");
 assert.equal(portalIntentToMarketRole("together"), null);
+assert.equal(
+  listPortalCategoriesForIntent("together").find((row) => row.id === "companion")
+    ?.socialProjection,
+  true,
+);
 
 console.log("test-portal-intent-registry: ok");

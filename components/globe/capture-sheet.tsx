@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ArrowUp, Camera, Link2, Mic, Plus, StickyNote, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { ExperienceRunSummaryCard } from "@/components/globe/experience-run-summary-card";
 import { ExternalContextAskReply } from "@/components/globe/external-context-ask-reply";
 import { CaptureSheetMemoryTriggerStage } from "@/components/globe/capture-sheet-memory-trigger-stage";
 import { GlobeContextAiOrb } from "@/components/globe/globe-context-ai-orb";
@@ -16,24 +17,21 @@ import { useGlobeContextTriggers } from "@/hooks/use-globe-context-triggers";
 import { useGlobeLayerMode } from "@/hooks/use-globe-layer-mode";
 import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
 import { useCopy, useAppLocale } from "@/hooks/use-copy";
-import {
-  fetchExternalContextSourcesClient,
-  resolveExternalContextAsk,
-  type ExternalContextOpportunityHit,
-} from "@/lib/external-context-ask";
+import type { ExternalContextOpportunityHit } from "@/lib/external-context-ask";
 import { isGlobeHomePath, requestGlobePhotoIngest } from "@/lib/globe/globe-photo-ingest-bridge";
 import { requestGlobeAskBridgeFocus } from "@/lib/globe/globe-ask-bridge-focus";
 import type { GlobeContextTrigger } from "@/lib/globe/context-triggers/globe-context-trigger-types";
 import { resolveContextTriggerOpenOptions } from "@/lib/globe/context-triggers/resolve-context-trigger-open-options";
-import { listLifeEventCandidates } from "@/lib/life-read-model";
-import {
-  resolvePersonalContextAsk,
-  type PersonalContextAskRecallContext,
-  type PersonalContextBridgeHit,
-  type PersonalContextResponseFocus,
+import type { ExperienceRunSummary } from "@/lib/experience-run/experience-run-types";
+import { clearPendingSituationLock } from "@/lib/experience-run/situation-lock";
+import type {
+  PersonalContextAskRecallContext,
+  PersonalContextBridgeHit,
+  PersonalContextResponseFocus,
 } from "@/lib/personal-context-ask";
 import { ingestScreenshot } from "@/lib/share/ingest-screenshot";
-import { ingestPastedLinks } from "@/lib/share/inbox-paste";
+import { dispatchGlobeMarketProjectionLaunch } from "@/lib/portal/globe-market-projection-bridge";
+import { dispatchContextRun } from "@/lib/context-run/dispatch-context-run";
 import { cn } from "@/lib/utils";
 
 export type CaptureSheetProps = {
@@ -53,6 +51,7 @@ type AskMessage = {
   totalPhotoCount?: number;
   responseFocus?: PersonalContextResponseFocus;
   recallContext?: PersonalContextAskRecallContext | null;
+  experienceRunSummary?: ExperienceRunSummary;
   loading?: boolean;
   scope?: "personal" | "discovery";
 };
@@ -114,6 +113,7 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
       setLinkDraft("");
       setMemoDraft("");
       setBusy(false);
+      clearPendingSituationLock();
     }
   }, [open]);
 
@@ -125,6 +125,53 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
   }, [messages, open]);
 
   const close = useCallback(() => onOpenChange(false), [onOpenChange]);
+
+  const captureRunStubs = useCallback(
+    () => ({
+      openPortal: async () => {},
+      openFieldDiscovery: () => {},
+      tryQuickListMarket: async () => false,
+      navigateUrl: (url: string, label: string) => {
+        window.location.assign(url);
+        toast.success(`${label} 여는 중…`);
+      },
+    }),
+    [],
+  );
+
+  const ingestShare = useCallback(
+    async (text: string, shareKind: "url" | "memo") => {
+      if (!text.trim() || busy) {
+        return;
+      }
+      setBusy(true);
+      try {
+        await dispatchContextRun(
+          {
+            kind: "share",
+            text: text.trim(),
+            shareKind,
+            surface: "capture_sheet",
+            layerMode: isPersonal ? "personal" : "discovery",
+          },
+          {
+            ...captureRunStubs(),
+            onShareIngested: () => {
+              if (shareKind === "url") {
+                setLinkDraft("");
+              } else {
+                setMemoDraft("");
+              }
+              setAttachMode("closed");
+            },
+          },
+        );
+      } finally {
+        setBusy(false);
+      }
+    },
+    [busy, captureRunStubs, isPersonal],
+  );
 
   const onRecallTriggerPress = useCallback(
     (trigger: GlobeContextTrigger) => {
@@ -155,18 +202,33 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
       if (files.length === 0 || busy) {
         return;
       }
-      if (isPersonal) {
-        setAttachMode("closed");
-        if (!onGlobeHome) {
-          close();
-          router.push("/");
+      if (isPersonal || onGlobeHome) {
+        setBusy(true);
+        try {
+          await dispatchContextRun(
+            {
+              kind: "photo",
+              files,
+              surface: "capture_sheet",
+              layerMode: isPersonal ? "personal" : "discovery",
+              mode: "walkthrough",
+            },
+            {
+              ...captureRunStubs(),
+              onPhotoWalkthrough: async (walkFiles) => {
+                setAttachMode("closed");
+                if (isPersonal && !onGlobeHome) {
+                  close();
+                  router.push("/");
+                }
+                requestGlobePhotoIngest(walkFiles);
+              },
+              toastMessage: (message) => toast.message(message),
+            },
+          );
+        } finally {
+          setBusy(false);
         }
-        requestGlobePhotoIngest(files);
-        return;
-      }
-      if (onGlobeHome) {
-        requestGlobePhotoIngest(files);
-        setAttachMode("closed");
         return;
       }
       setBusy(true);
@@ -183,38 +245,16 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
         setBusy(false);
       }
     },
-    [busy, close, isPersonal, onGlobeHome, router],
+    [busy, captureRunStubs, close, isPersonal, onGlobeHome, router],
   );
 
   const saveLink = useCallback(async () => {
-    const url = linkDraft.trim();
-    if (!url || busy) {
-      return;
-    }
-    setBusy(true);
-    try {
-      await ingestPastedLinks(url);
-      setLinkDraft("");
-      setAttachMode("closed");
-    } finally {
-      setBusy(false);
-    }
-  }, [busy, linkDraft]);
+    await ingestShare(linkDraft, "url");
+  }, [ingestShare, linkDraft]);
 
   const saveMemo = useCallback(async () => {
-    const text = memoDraft.trim();
-    if (!text || busy) {
-      return;
-    }
-    setBusy(true);
-    try {
-      await ingestPastedLinks(text);
-      setMemoDraft("");
-      setAttachMode("closed");
-    } finally {
-      setBusy(false);
-    }
-  }, [busy, memoDraft]);
+    await ingestShare(memoDraft, "memo");
+  }, [ingestShare, memoDraft]);
 
   const sendAsk = useCallback(() => {
     const text = draft.trim();
@@ -228,92 +268,152 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
     setMessages((prev) => [
       ...prev,
       { id: userId, role: "user", text },
-      ...(scope === "discovery"
-        ? [
-            {
-              id: assistantId,
-              role: "assistant" as const,
-              text: ask.externalLoading,
-              loading: true,
-              scope,
-            },
-          ]
-        : []),
+      {
+        id: assistantId,
+        role: "assistant" as const,
+        text: scope === "discovery" ? ask.externalLoading : ask.replySoon,
+        loading: true,
+        scope,
+      },
     ]);
     setDraft("");
     setAttachMode("closed");
-
-    if (scope === "personal") {
-      const result = resolvePersonalContextAsk({
-        query: text,
-        events: listLifeEventCandidates(),
-        scope,
-      });
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: assistantId,
-          role: "assistant",
-          text: result.summaryKo,
-          narrative: result.narrativeKo || result.summaryKo,
-          hits: result.hits.length > 0 ? result.hits : undefined,
-          featuredHitId: result.featuredHitId,
-          totalPhotoCount: result.totalPhotoCount,
-          responseFocus: result.responseFocus,
-          recallContext: result.recallContext,
-          scope,
-        },
-      ]);
-      return;
-    }
-
     setBusy(true);
+
     void (async () => {
       try {
-        const sources = await fetchExternalContextSourcesClient({
-          lat: liveLocation?.lat ?? null,
-          lng: liveLocation?.lng ?? null,
-        });
-        const result = resolveExternalContextAsk({
-          query: text,
-          sources,
-          lat: liveLocation?.lat ?? null,
-          lng: liveLocation?.lng ?? null,
-        });
-        setMessages((prev) =>
-          prev.map((message) =>
-            message.id === assistantId
-              ? {
+        await dispatchContextRun(
+          {
+            kind: "text",
+            text,
+            surface: "capture_sheet",
+            layerMode: scope,
+            lat: liveLocation?.lat ?? null,
+            lng: liveLocation?.lng ?? null,
+          },
+          {
+            openPortal: async () => {},
+            openFieldDiscovery: () => {},
+            tryQuickListMarket: async () => false,
+            navigateUrl: (url, label) => {
+              window.location.assign(url);
+              toast.success(`${label} 여는 중…`);
+            },
+            onExperienceRunClarify: (runResult) => {
+              setMessages((prev) => [
+                ...prev.filter((m) => m.id !== assistantId || m.role === "user"),
+                {
+                  id: assistantId,
+                  role: "assistant",
+                  text: runResult.questionKo,
+                  scope,
+                },
+              ]);
+            },
+            onExperienceRunSummary: (runResult) => {
+              setMessages((prev) => [
+                ...prev.filter((m) => m.id !== assistantId || m.role === "user"),
+                {
+                  id: assistantId,
+                  role: "assistant",
+                  text: runResult.summary.bodyKo,
+                  experienceRunSummary: runResult.summary,
+                  scope,
+                },
+              ]);
+              if (runResult.closeSheet) {
+                if (onGlobeHome) {
+                  close();
+                } else {
+                  window.setTimeout(() => close(), 480);
+                }
+              }
+            },
+            onPortalComposeClarify: ({ questionKo }) => {
+              setMessages((prev) => [
+                ...prev.filter((m) => m.id !== assistantId || m.role === "user"),
+                {
+                  id: assistantId,
+                  role: "assistant",
+                  text: questionKo,
+                  scope,
+                },
+              ]);
+            },
+            onLaunchMarketProjection: (input) => {
+              if (onGlobeHome) {
+                dispatchGlobeMarketProjectionLaunch(input);
+                close();
+                return;
+              }
+              toast.message(copy.portal.composeRunWizardChecklist);
+            },
+            onPersonalContextAsk: (result) => {
+              setMessages((prev) => [
+                ...prev.filter((m) => m.id !== assistantId || m.role === "user"),
+                {
                   id: assistantId,
                   role: "assistant",
                   text: result.summaryKo,
                   narrative: result.narrativeKo || result.summaryKo,
-                  externalHits:
-                    result.hits.length > 0 ? result.hits : undefined,
-                  recommendedHitId: result.recommendedHitId,
+                  hits: result.hits.length > 0 ? result.hits : undefined,
+                  featuredHitId: result.featuredHitId,
+                  totalPhotoCount: result.totalPhotoCount,
+                  responseFocus: result.responseFocus,
+                  recallContext: result.recallContext,
                   scope,
-                }
-              : message,
-          ),
-        );
-      } catch {
-        setMessages((prev) =>
-          prev.map((message) =>
-            message.id === assistantId
-              ? {
-                  id: assistantId,
-                  role: "assistant",
-                  text: ask.replySoon,
-                  scope,
-                }
-              : message,
-          ),
+                },
+              ]);
+            },
+            onExternalContextAsk: (result) => {
+              setMessages((prev) =>
+                prev.map((message) =>
+                  message.id === assistantId
+                    ? {
+                        id: assistantId,
+                        role: "assistant",
+                        text: result.summaryKo,
+                        narrative: result.narrativeKo || result.summaryKo,
+                        externalHits:
+                          result.hits.length > 0 ? result.hits : undefined,
+                        recommendedHitId: result.recommendedHitId,
+                        scope,
+                      }
+                    : message,
+                ),
+              );
+            },
+            onExternalContextAskError: () => {
+              setMessages((prev) =>
+                prev.map((message) =>
+                  message.id === assistantId
+                    ? {
+                        id: assistantId,
+                        role: "assistant",
+                        text: ask.replySoon,
+                        scope,
+                      }
+                    : message,
+                ),
+              );
+            },
+          },
         );
       } finally {
         setBusy(false);
       }
     })();
-  }, [ask.externalLoading, ask.replySoon, busy, draft, isPersonal, liveLocation?.lat, liveLocation?.lng]);
+  }, [
+    ask.externalLoading,
+    ask.replySoon,
+    busy,
+    close,
+    draft,
+    isPersonal,
+    liveLocation?.lat,
+    liveLocation?.lng,
+    onGlobeHome,
+  ]);
 
   if (!mounted) {
     return null;
@@ -446,6 +546,13 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
                               <div className="h-4 w-[88%] animate-pulse rounded-md bg-[#e5e8eb]" />
                               <div className="h-4 w-[72%] animate-pulse rounded-md bg-[#e5e8eb]/90" />
                               <p className="text-[13px] text-[#8b95a1]">{message.text}</p>
+                            </div>
+                          ) : message.experienceRunSummary ? (
+                            <div className="max-w-[92%]">
+                              <ExperienceRunSummaryCard
+                                summary={message.experienceRunSummary}
+                                onDismiss={close}
+                              />
                             </div>
                           ) : message.externalHits && message.externalHits.length > 0 ? (
                             <div className="max-w-[92%] rounded-[20px] rounded-bl-md bg-white px-4 py-3 shadow-sm ring-1 ring-black/[0.04]">

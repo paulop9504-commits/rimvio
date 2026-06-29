@@ -18,5 +18,8 @@ export async function commitMarketIntentQuickList(input: {
   if (!draft) {
     return null;
   }
-  return commitMarketIntentFromDraft(draft, { publishExternal: true });
+  return commitMarketIntentFromDraft(draft, {
+    publishExternal: true,
+    autoEnvelope: "market_quick_list_one_liner",
+  });
 }

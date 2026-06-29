@@ -12,7 +12,7 @@ import { RelationshipFeedFolder } from "@/components/feed/relationship-feed-fold
 import { RimvioLogo } from "@/components/rimvio-logo";
 import { SurfaceStabilityStrip } from "@/components/surface-composition/surface-stability-strip";
 import { PulseMainActionSurface } from "@/components/pulse/pulse-main-action-surface";
-import { MarketAlignmentSurface } from "@/components/market/market-alignment-surface";
+import { MarketAlignmentSummary } from "@/components/market/market-alignment-summary";
 import type { SurfaceCompositionRuntimeProps } from "@/components/surface-composition/surface-composition-runtime";
 import { useActionCalendar } from "@/hooks/use-action-calendar";
 import { useCalendarSurfaceQuery } from "@/hooks/use-calendar-surface-query";
@@ -231,7 +231,7 @@ export function FeedSlotShell({ className, onOpenLinkPaste }: FeedSlotShellProps
           />
           <div className="shrink-0 px-3 pt-2 sm:px-5">
             <PulseMainActionSurface enabled className="mx-auto max-w-md" />
-            <MarketAlignmentSurface enabled className="mx-auto mt-2 max-w-md" />
+            <MarketAlignmentSummary enabled className="mx-auto mt-2 max-w-md" />
           </div>
           <FeedSlotStage
             frame={surfaceFrame}

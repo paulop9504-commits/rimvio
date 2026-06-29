@@ -1,8 +1,10 @@
 "use client";
 
-import { Calendar, MapPin, Sparkles, Users } from "lucide-react";
+import { MapPin, Sparkles } from "lucide-react";
 import type { ExternalContextOpportunityHit } from "@/lib/external-context-ask";
-import { runGlobeAskExternalAction } from "@/lib/globe/globe-ask-external-action";
+import { openFieldDashboardIngress } from "@/lib/nav/field-dashboard-ingress";
+import { copy } from "@/lib/copy/human-ko";
+import { rimvioHeroCtaClass } from "@/lib/design/rimvio-ontology";
 import { cn } from "@/lib/utils";
 
 function formatOpportunityDate(iso: string | null): string {
@@ -20,58 +22,41 @@ function formatOpportunityDate(iso: string | null): string {
   return `${y}.${m}.${d}`;
 }
 
-function ctaLabel(
-  cta: ExternalContextOpportunityHit["primaryCta"],
-  labels: ExternalContextAskReplyProps["ctaLabels"],
-): string {
-  switch (cta) {
-    case "join":
-      return labels.join;
-    case "chat":
-      return labels.chat;
-    case "trade":
-      return labels.trade;
-    case "view_map":
-      return labels.viewMap;
-    case "open_bridge":
-      return labels.openBridge;
-    default:
-      return labels.openBridge;
-  }
-}
-
 export type ExternalContextAskReplyProps = {
   narrative: string;
   hits: readonly ExternalContextOpportunityHit[];
   recommendedHitId?: string | null;
   opportunitiesLabel: string;
-  ctaLabels: {
+  /** @deprecated Globe no longer runs trade/join CTAs — kept for capture-sheet prop compat */
+  ctaLabels?: {
     join: string;
     chat: string;
     trade: string;
     viewMap: string;
     openBridge: string;
   };
-  focusAria: (title: string) => string;
+  focusAria?: (title: string) => string;
   onFocus?: () => void;
   className?: string;
 };
 
+/** Discovery-mode ask reply — narrative + read-only hits; actions delegate to Field dashboard. */
 export function ExternalContextAskReply({
   narrative,
   hits,
   recommendedHitId,
   opportunitiesLabel,
-  ctaLabels,
-  focusAria,
   onFocus,
   className,
 }: ExternalContextAskReplyProps) {
-  const runAction = (hit: ExternalContextOpportunityHit) => {
-    runGlobeAskExternalAction({
-      cta: hit.primaryCta,
-      eventId: hit.eventId,
-      threadId: hit.threadId,
+  const field = copy.globe.field;
+  const featured =
+    hits.find((hit) => hit.id === recommendedHitId) ?? hits[0] ?? null;
+
+  const openField = () => {
+    openFieldDashboardIngress({
+      tab: "discovery",
+      primaryEventId: featured?.eventId ?? null,
     });
     onFocus?.();
   };
@@ -130,55 +115,13 @@ export function ExternalContextAskReply({
                         </div>
                       </div>
 
-                      <ul className="space-y-1 pl-6 text-[13px] text-[#4e5968]">
-                        {hit.placeLabel ? (
-                          <li className="flex items-center gap-2">
-                            <MapPin className="size-3.5 shrink-0 text-[#8b95a1]" aria-hidden />
-                            <span>{hit.placeLabel}</span>
-                          </li>
-                        ) : null}
-                        {hit.subtitle ? (
-                          <li className="flex items-center gap-2">
-                            <Users className="size-3.5 shrink-0 text-[#8b95a1]" aria-hidden />
-                            <span>
-                              {hit.bridgeKindKo} · {hit.subtitle}
-                            </span>
-                          </li>
-                        ) : null}
-                        {when ? (
-                          <li className="flex items-center gap-2">
-                            <Calendar className="size-3.5 shrink-0 text-[#8b95a1]" aria-hidden />
-                            <span>{when}</span>
-                          </li>
-                        ) : null}
-                      </ul>
-
-                      <div className="flex flex-wrap gap-2 pt-1">
-                        <button
-                          type="button"
-                          className="rounded-full bg-[#191f28] px-3 py-1.5 text-[12px] font-semibold text-white active:scale-[0.98]"
-                          aria-label={focusAria(hit.title)}
-                          onClick={() => runAction(hit)}
-                        >
-                          {ctaLabel(hit.primaryCta, ctaLabels)}
-                        </button>
-                        {hit.eventId ? (
-                          <button
-                            type="button"
-                            className="rounded-full bg-white px-3 py-1.5 text-[12px] font-semibold text-[#191f28] ring-1 ring-black/[0.06] active:scale-[0.98]"
-                            aria-label={focusAria(hit.title)}
-                            onClick={() => {
-                              runGlobeAskExternalAction({
-                                cta: "view_map",
-                                eventId: hit.eventId,
-                              });
-                              onFocus?.();
-                            }}
-                          >
-                            {ctaLabels.viewMap}
-                          </button>
-                        ) : null}
-                      </div>
+                      {hit.placeLabel || hit.subtitle || when ? (
+                        <ul className="space-y-1 pl-6 text-[13px] text-[#4e5968]">
+                          {hit.placeLabel ? <li>{hit.placeLabel}</li> : null}
+                          {hit.subtitle ? <li>{hit.subtitle}</li> : null}
+                          {when ? <li>{when}</li> : null}
+                        </ul>
+                      ) : null}
                     </div>
                   </div>
                 </li>
@@ -187,6 +130,15 @@ export function ExternalContextAskReply({
           </ul>
         </div>
       ) : null}
+
+      <button
+        type="button"
+        className={cn(rimvioHeroCtaClass(), "w-full")}
+        onClick={openField}
+        data-external-ask-field-ingress
+      >
+        {field.ingressFromGlobeCta}
+      </button>
     </div>
   );
 }

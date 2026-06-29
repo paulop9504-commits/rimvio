@@ -12,6 +12,7 @@ export type OpportunityDashboardTabBarProps = {
   value: FieldDashboardTab;
   onChange: (tab: FieldDashboardTab) => void;
   tradeCount: number;
+  mineCount?: number;
   className?: string;
 };
 
@@ -19,6 +20,7 @@ export function OpportunityDashboardTabBar({
   value,
   onChange,
   tradeCount,
+  mineCount = 0,
   className,
 }: OpportunityDashboardTabBarProps) {
   const copy = useCopy();
@@ -31,6 +33,7 @@ export function OpportunityDashboardTabBar({
   }[] = [
     { id: "trades", label: field.dashboardTabTrades, count: tradeCount },
     { id: "discovery", label: field.dashboardTabDiscovery, count: null },
+    { id: "mine", label: field.dashboardTabMine, count: mineCount },
   ];
 
   return (
@@ -38,7 +41,7 @@ export function OpportunityDashboardTabBar({
       <div
         role="tablist"
         aria-label={field.dashboardTabAria}
-        className="grid grid-cols-2 gap-1 rounded-xl bg-[#eef1f4] p-1"
+        className="grid grid-cols-3 gap-1 rounded-xl bg-[#eef1f4] p-1"
       >
         {tabs.map((tab) => {
           const active = value === tab.id;
@@ -61,14 +64,14 @@ export function OpportunityDashboardTabBar({
                   transition={{ type: "spring", stiffness: 440, damping: 36 }}
                 />
               ) : null}
-              <span className="relative z-[1] flex h-full items-center justify-center gap-1.5 px-2">
-                <span className="truncate text-[14px] font-semibold tracking-tight">
+              <span className="relative z-[1] flex h-full items-center justify-center gap-1 px-1.5">
+                <span className="truncate text-[13px] font-semibold tracking-tight">
                   {tab.label}
                 </span>
                 {tab.count != null && tab.count > 0 ? (
                   <span
                     className={cn(
-                      "min-w-[18px] rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none tabular-nums",
+                      "min-w-[18px] shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none tabular-nums",
                       active ? "bg-[#3182f6] text-white" : "bg-white text-[#3182f6]",
                     )}
                   >

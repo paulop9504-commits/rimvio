@@ -157,6 +157,11 @@ export function RimvioPortalSheet({
         toast.message(copy.portal.categorySoonToast);
         return;
       }
+      if (category.socialProjection) {
+        toast.message(copy.portal.composeSheetSocialHint);
+        close();
+        return;
+      }
       if (!category.marketProjection) {
         toast.message(copy.portal.categorySoonToast);
         return;

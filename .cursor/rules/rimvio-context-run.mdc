@@ -1,0 +1,57 @@
+---
+description: Context Run Engine — single ingress, Decision/Surface, reconstruct
+globs:
+  - lib/context-run/**
+  - lib/experience-run/**
+  - lib/globe/intent-supply/**
+  - lib/globe/market/question-engine/**
+  - components/globe/execution-feed/**
+  - components/globe/globe-context-ingest-bar.tsx
+  - components/globe/capture-sheet.tsx
+  - components/globe/globe-home-client.tsx
+  - hooks/use-globe-execution-feed.ts
+  - docs/CONTEXT_RUN_ENGINE.md
+---
+
+# Context Run Engine
+
+**SSOT:** `docs/CONTEXT_RUN_ENGINE.md` · `docs/GLOBE_EXECUTION_SURFACE_UX.md` · Constitution § North Star
+
+## Single ingress (locked)
+
+All Globe text / photo / share / GPS dwell UI → **`dispatchContextRun()`** (`lib/context-run/dispatch-context-run.ts`).
+
+Portal / quick-list text commit → **`commitTextContextIngress()`** only.
+
+**PR reject:** `ingestGlobeContextFromText`, `runGlobeMapIntentSupply`, `resolveExperienceRunTurn` from `components/globe/**` (ESLint enforced).
+
+## LLM boundary
+
+| Deterministic (code) | LLM only |
+|----------------------|----------|
+| Planner — goal, rules, derived graph | Parse user language |
+| Question Engine — missing slot IDs | Natural question phrasing |
+| Execution Decision — auto / approve / re-ask | Explain outcomes |
+| Surface Resolver — which UI kind | Wording inside surface |
+
+**PR reject:** LLM chooses publish vs ask vs pay; LLM picks surface; LLM writes truth; projection commits.
+
+## Execution Surface guardrails (summary)
+
+1. **Surface ≠ Commit** — open UI ≠ truth write  
+2. **Single ingress** — Run Engine only  
+3. **One primary surface per turn** — `resolvePrimarySurface()`  
+4. **Questions = unfilled slots only**  
+5. **Decision before risk** — `decideRiskOperation` → `approval_required` for publish/pay/handshake  
+6. **Surface matches Decision** — `assertSurfaceMatchesDecision`  
+7. **Commit gate** — `assertCommitPermitted` before every truth write  
+8. **Globe vs Field boundary**  
+9. **Reconstruct tomorrow** — `watcher-reconstruct.ts`, not chat replay  
+10. **LLM never routes surfaces**
+
+**Decision + Surface code:** `execution-decision.ts` · `surface-resolver.ts` · `commit-gate.ts`  
+Full: `docs/CONTEXT_RUN_ENGINE.md` · `docs/GLOBE_EXECUTION_SURFACE_UX.md`
+
+## Durability
+
+Execution disposable · Truth durable · **RunState** (`run-state-store.ts`) + Watcher reconstruct · **`finishContextRun()`** on market quick-list / wizard confirm.

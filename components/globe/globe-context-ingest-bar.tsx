@@ -18,16 +18,10 @@ import {
 import { toast } from "sonner";
 import {
   GLOBE_CONTEXT_MEDIA_ACCEPT,
-  ingestGlobeContextFromFiles,
-  ingestGlobeContextFromText,
 } from "@/lib/feed/ingest-globe-context-capture";
-import { runGlobeMapIntentSupply } from "@/lib/globe/intent-supply/run-globe-map-intent-supply";
-import { runGlobeComposerAction } from "@/lib/globe/run-globe-composer-action";
-import {
-  isBareMarketComposeInput,
-  isMarketComposeInput,
-} from "@/lib/globe/market/detect-market-compose-input";
 import { canQuickListMarketCompose } from "@/lib/globe/market/build-market-quick-list-draft";
+import { dispatchContextRun } from "@/lib/context-run/dispatch-context-run";
+import type { ContextRunEffectHandlers } from "@/lib/context-run/ingress-types";
 import {
   rimvioComposerFieldClass,
   rimvioIconBtnClass,
@@ -50,7 +44,6 @@ export type GlobeContextIngestBarProps = {
     options?: { needsPlaceVerify?: boolean },
   ) => void;
   onPhotoDraftReady?: (files: File[]) => void | Promise<void>;
-  onTextCommitted?: (input: { eventId: string; text: string }) => void;
   onOpenPortal?: (input: {
     eventId?: string | null;
     composeText?: string;
@@ -59,6 +52,11 @@ export type GlobeContextIngestBarProps = {
     composeText: string;
     eventId?: string | null;
   }) => Promise<boolean>;
+  onLaunchMarketProjection?: (input: {
+    draft: import("@/lib/globe/market/market-intent-types").MarketIntentDraft;
+    eventId: string;
+    composeText: string;
+  }) => void;
   onOpenMarketManage?: () => void;
   marketRoleBusy?: boolean;
   layerMode?: GlobeLayerMode;
@@ -91,9 +89,9 @@ export const GlobeContextIngestBar = forwardRef<
     forceAttachToTarget = false,
     onAttached,
     onPhotoDraftReady,
-    onTextCommitted,
     onOpenPortal,
     onQuickListMarket,
+    onLaunchMarketProjection,
     onOpenMarketManage,
     marketRoleBusy = false,
     layerMode = "personal",
@@ -148,29 +146,57 @@ export const GlobeContextIngestBar = forwardRef<
       if (!canQuickListMarketCompose(composeText) || !onQuickListMarket) {
         return false;
       }
-      setBusy(true);
-      try {
-        return await onQuickListMarket({
-          composeText: composeText.trim(),
-          eventId: attachHintId,
-        });
-      } finally {
-        setBusy(false);
-      }
+      return onQuickListMarket({
+        composeText: composeText.trim(),
+        eventId: attachHintId,
+      });
     },
     [attachHintId, onQuickListMarket],
   );
 
-  const openPortalFromComposer = useCallback(
-    (composeText: string) => {
-      onOpenPortal?.({
-        eventId: attachHintId,
-        composeText,
-      });
-      setText("");
-      setMenuOpen(false);
-    },
-    [attachHintId, onOpenPortal],
+  const contextRunHandlers = useCallback(
+    (): ContextRunEffectHandlers => ({
+      openPortal: (input) => onOpenPortal?.(input),
+      openFieldDiscovery: () => onDiscoveryMarketBrowse?.(),
+      tryQuickListMarket,
+      navigateUrl: (url, label) => {
+        window.location.assign(url);
+        toast.success(`${label} 여는 중…`);
+      },
+      onLodgingDiscovery,
+      onEateryDiscovery,
+      onAttached,
+      onTextIngested: ({ eventId, toastLine, needsPlaceVerify }) => {
+        finish(eventId, toastLine, { needsPlaceVerify });
+      },
+      onExperienceRunClarify: (runResult) => {
+        toast.message(runResult.questionKo, { duration: 8000 });
+      },
+      onExperienceRunSummary: (runResult) => {
+        if (runResult.summary.eventId) {
+          onAttached?.(runResult.summary.eventId);
+        }
+        toast.success(runResult.summary.titleKo, { duration: 7000 });
+      },
+      onPortalComposeClarify: ({ questionKo }) => {
+        toast.message(questionKo, { duration: 8000 });
+      },
+      onLaunchMarketProjection: (input) => {
+        onLaunchMarketProjection?.(input);
+      },
+      toastSuccess: (message) => toast.success(message, { duration: 7000 }),
+      toastMessage: (message) => toast.message(message),
+    }),
+    [
+      finish,
+      onAttached,
+      onDiscoveryMarketBrowse,
+      onEateryDiscovery,
+      onLodgingDiscovery,
+      onLaunchMarketProjection,
+      onOpenPortal,
+      tryQuickListMarket,
+    ],
   );
 
   const ingestMedia = useCallback(
@@ -178,19 +204,7 @@ export const GlobeContextIngestBar = forwardRef<
       if (!fileList?.length || busy) {
         return;
       }
-      if (isDiscovery) {
-        toast.message(copy.globe.ingestDiscoveryNoTrace);
-        return;
-      }
       const files = Array.from(fileList);
-      if (onPhotoDraftReady) {
-        setMenuOpen(false);
-        if (photoRef.current) {
-          photoRef.current.value = "";
-        }
-        await onPhotoDraftReady(files);
-        return;
-      }
       setBusy(true);
       const toastId = toast.loading(
         files.length === 1
@@ -198,42 +212,63 @@ export const GlobeContextIngestBar = forwardRef<
           : copy.globe.ingestUploadingMany(files.length),
       );
       try {
-        const summary = await ingestGlobeContextFromFiles(files, {
-          hintEventId: attachHintId,
-          hintTitle: attachHintTitle,
-          forceAttachToHint: forceAttachToTarget && Boolean(attachHintId),
-          onProgress: (done, total) => {
-            if (total > 1) {
-              toast.loading(copy.globe.ingestUploadProgress(done, total), {
-                id: toastId,
-              });
-            }
+        await dispatchContextRun(
+          {
+            kind: "photo",
+            files,
+            surface: "composer",
+            layerMode: isDiscovery ? "discovery" : "personal",
+            mode: onPhotoDraftReady ? "walkthrough" : "direct",
+            contextEventId: attachHintId,
+            hintTitle: attachHintTitle,
+            forceAttachToTarget: forceAttachToTarget && Boolean(attachHintId),
           },
-          onFilePrepare: (line) => {
-            toast.loading(line, { id: toastId });
+          {
+            ...contextRunHandlers(),
+            onPhotoWalkthrough: async (walkFiles) => {
+              setMenuOpen(false);
+              if (photoRef.current) {
+                photoRef.current.value = "";
+              }
+              toast.dismiss(toastId);
+              await onPhotoDraftReady?.(walkFiles);
+            },
+            onPhotoIngestProgress: (done, total) => {
+              if (total > 1) {
+                toast.loading(copy.globe.ingestUploadProgress(done, total), {
+                  id: toastId,
+                });
+              }
+            },
+            onPhotoFilePrepare: (line) => {
+              toast.loading(line, { id: toastId });
+            },
+            onPhotoIngested: (summary) => {
+              if (summary.succeeded === 0) {
+                toast.error(summary.toastLine, { id: toastId });
+                return;
+              }
+              if (!summary.lastEventId && summary.poolStaged > 0) {
+                toast.message(summary.toastLine, { id: toastId });
+                return;
+              }
+              const suggestedPlace = summary.lastSuggestedPlaceName?.trim();
+              if (suggestedPlace) {
+                toast.success(copy.globe.inboxPhotoPlaceSuggestToast(suggestedPlace), {
+                  id: toastId,
+                });
+              } else {
+                toast.success(summary.toastLine, { id: toastId });
+              }
+              if (summary.lastEventId) {
+                onAttached?.(summary.lastEventId);
+              }
+              setText("");
+              setMenuOpen(false);
+            },
+            toastMessage: (message) => toast.message(message, { id: toastId }),
           },
-        });
-        if (summary.succeeded === 0) {
-          toast.error(summary.toastLine, { id: toastId });
-          return;
-        }
-        if (!summary.lastEventId && summary.poolStaged > 0) {
-          toast.message(summary.toastLine, { id: toastId });
-          return;
-        }
-        const suggestedPlace = summary.lastSuggestedPlaceName?.trim();
-        if (suggestedPlace) {
-          toast.success(copy.globe.inboxPhotoPlaceSuggestToast(suggestedPlace), {
-            id: toastId,
-          });
-        } else {
-          toast.success(summary.toastLine, { id: toastId });
-        }
-        if (summary.lastEventId) {
-          onAttached?.(summary.lastEventId);
-        }
-        setText("");
-        setMenuOpen(false);
+        );
       } catch (caught) {
         const message =
           caught instanceof Error
@@ -247,7 +282,16 @@ export const GlobeContextIngestBar = forwardRef<
         }
       }
     },
-    [attachHintId, attachHintTitle, busy, forceAttachToTarget, isDiscovery, onAttached, onPhotoDraftReady],
+    [
+      attachHintId,
+      attachHintTitle,
+      busy,
+      contextRunHandlers,
+      forceAttachToTarget,
+      isDiscovery,
+      onAttached,
+      onPhotoDraftReady,
+    ],
   );
 
   const submitText = useCallback(
@@ -257,115 +301,31 @@ export const GlobeContextIngestBar = forwardRef<
       if (!value || busy) {
         return;
       }
-      if (isDiscovery) {
-        if (isBareMarketComposeInput(value) || isMarketComposeInput(value)) {
-          onDiscoveryMarketBrowse?.();
-          setText("");
-          setMenuOpen(false);
-          return;
-        }
-        const action = runGlobeComposerAction(value);
-        if (action?.kind === "url") {
-          window.location.assign(action.url);
-          toast.success(`${action.label} 여는 중…`);
-          setText("");
-          setMenuOpen(false);
-          return;
-        }
-        toast.message(copy.globe.ingestDiscoveryNearbyHint);
-        return;
-      }
-      if (isBareMarketComposeInput(value) || isMarketComposeInput(value)) {
-        if (await tryQuickListMarket(value)) {
-          setText("");
-          setMenuOpen(false);
-          return;
-        }
-        openPortalFromComposer(value);
-        return;
-      }
+
       setBusy(true);
       try {
-        const action = runGlobeComposerAction(value);
-        if (action?.kind === "url") {
-          window.location.assign(action.url);
-          toast.success(`${action.label} 여는 중…`);
+        const result = await dispatchContextRun(
+          {
+            kind: "text",
+            text: value,
+            surface: "composer",
+            layerMode: isDiscovery ? "discovery" : "personal",
+            contextEventId: attachHintId,
+            lat: userLat,
+            lng: userLng,
+          },
+          contextRunHandlers(),
+        );
+
+        if (result.status === "error") {
+          toast.error(result.errorMessage ?? copy.globe.ingestAttachFail);
+          return;
+        }
+
+        if (result.status === "done" && result.planKind !== "discovery_hint") {
           setText("");
           setMenuOpen(false);
-          return;
         }
-        if (action?.kind === "market-compose") {
-          const compose = action.composeText.trim() || value;
-          if (await tryQuickListMarket(compose)) {
-            setText("");
-            setMenuOpen(false);
-            return;
-          }
-          openPortalFromComposer(compose);
-          return;
-        }
-
-        const supply = await runGlobeMapIntentSupply({
-          message: value,
-          contextEventId: attachHintId,
-          lat: userLat,
-          lng: userLng,
-          layerMode: isDiscovery ? "discovery" : "personal",
-        });
-
-        if (supply?.status === "pass") {
-          if (supply.pass === "market") {
-            if (await tryQuickListMarket(value)) {
-              setText("");
-              setMenuOpen(false);
-              return;
-            }
-            openPortalFromComposer(value);
-            return;
-          }
-          if (supply.pass === "navigation") {
-            const nav = runGlobeComposerAction(value);
-            if (nav?.kind === "url") {
-              window.location.assign(nav.url);
-              toast.success(`${nav.label} 여는 중…`);
-              setText("");
-              setMenuOpen(false);
-              return;
-            }
-          }
-        }
-
-        if (supply?.status === "supplied") {
-          const { ack } = supply;
-          if (supply.lodgingEventId) {
-            onLodgingDiscovery?.({
-              eventId: supply.lodgingEventId,
-              summaryKo: ack.summaryKo,
-            });
-          }
-          if (supply.foodEventId) {
-            onEateryDiscovery?.({
-              eventId: supply.foodEventId,
-              summaryKo: ack.summaryKo,
-            });
-          }
-          onAttached?.(ack.eventId);
-          if (!supply.lodgingEventId && !supply.foodEventId) {
-            toast.success(ack.summaryKo, { duration: 7000 });
-          }
-          setText("");
-          setMenuOpen(false);
-          return;
-        }
-
-        const outcome = await ingestGlobeContextFromText(value);
-        finish(outcome.result.event.id, outcome.toastLine, {
-          needsPlaceVerify: outcome.placeVerify?.needsPlaceVerify,
-        });
-        onTextCommitted?.({
-          eventId: outcome.result.event.id,
-          text: value,
-        });
       } catch (caught) {
         const message =
           caught instanceof Error ? caught.message : copy.globe.ingestAttachFail;
@@ -374,7 +334,15 @@ export const GlobeContextIngestBar = forwardRef<
         setBusy(false);
       }
     },
-    [attachHintId, busy, finish, isDiscovery, onAttached, onDiscoveryMarketBrowse, onEateryDiscovery, onLodgingDiscovery, onTextCommitted, openPortalFromComposer, tryQuickListMarket, text, userLat, userLng],
+    [
+      attachHintId,
+      busy,
+      contextRunHandlers,
+      isDiscovery,
+      text,
+      userLat,
+      userLng,
+    ],
   );
 
   return (

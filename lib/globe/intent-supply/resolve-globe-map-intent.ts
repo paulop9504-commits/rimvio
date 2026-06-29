@@ -1,7 +1,8 @@
 import { detectLodgingSearchIntent } from "@/lib/globe/lodging/detect-lodging-search-intent";
 import {
+  detectNaturalMarketComposeInput,
   isBareMarketComposeInput,
-  isMarketComposeInput,
+  isMentionMarketComposeInput,
 } from "@/lib/globe/market/detect-market-compose-input";
 import { parseActionMention } from "@/lib/event-kernel/action-contracts/parse-action-mention";
 import type { GlobeMapIntent } from "@/lib/globe/intent-supply/globe-map-intent-types";
@@ -20,7 +21,7 @@ export function resolveGlobeMapIntent(message: string): GlobeMapIntent {
     return { kind: "unknown", supplyTarget: null };
   }
 
-  if (isBareMarketComposeInput(text) || isMarketComposeInput(text)) {
+  if (isMentionMarketComposeInput(text) || isBareMarketComposeInput(text)) {
     return { kind: "market_compose", supplyTarget: "market" };
   }
 
@@ -35,6 +36,10 @@ export function resolveGlobeMapIntent(message: string): GlobeMapIntent {
 
   if (FOOD_ENTITY.test(text) && FOOD_NEED.test(text)) {
     return { kind: "place_food_supply", supplyTarget: "eatery" };
+  }
+
+  if (detectNaturalMarketComposeInput(text)) {
+    return { kind: "market_compose", supplyTarget: "market" };
   }
 
   if (RECALL_SIGNAL.test(text) && RECALL_PERSON_HINT.test(text)) {

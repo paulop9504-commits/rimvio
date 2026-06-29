@@ -91,17 +91,25 @@ assert.ok(
   !fieldSheet.includes("context-ops"),
   "Field product must not import Context Ops",
 );
-assert.ok(
-  readFileSync(join(root, "components/field/opportunity-dashboard-body.tsx"), "utf8").includes(
-    "useFieldPlaceDiscovery",
-  ),
-  "Field discovery must wire place-search hook",
+const dashboardBody = readFileSync(
+  join(root, "components/field/opportunity-dashboard-body.tsx"),
+  "utf8",
 );
 assert.ok(
-  readFileSync(join(root, "components/field/opportunity-dashboard-body.tsx"), "utf8").includes(
-    "useFieldLodgingDiscovery",
-  ),
-  "Field discovery must wire lodging market-price hook",
+  dashboardBody.includes("FieldExternalMinePanel"),
+  "Field must expose mine tab for external globe manage",
+);
+assert.ok(
+  dashboardBody.includes("browseRows"),
+  "Field discovery must wire external browse rows",
+);
+assert.ok(
+  !dashboardBody.includes("useFieldPlaceDiscovery"),
+  "Field must not wire personal place-search hook",
+);
+assert.ok(
+  !dashboardBody.includes("useFieldLodgingDiscovery"),
+  "Field must not wire personal lodging hook",
 );
 
 console.log("test-surface-tiers: ok");

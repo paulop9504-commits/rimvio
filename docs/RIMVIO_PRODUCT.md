@@ -387,6 +387,15 @@ day | night | commute  ×  default | kakaomap
 
 Enricher phases (0–5 above) and experience phases (1–3) are **orthogonal** — both ship against the same `EventCandidate` spine.
 
+### Capital OS (finance — prep only, locked 2026-06)
+
+**SSOT:** [RIMVIO_CAPITAL_OS.md](./RIMVIO_CAPITAL_OS.md) — **direction + boundaries only**. C0–C4 **not started**.
+
+- **Now:** keep Event Graph / `plan-context` extension-friendly; Field Market ≠ Macro Graph naming.
+- **Later:** connect CFO (fusion, ledger) on same `EventCandidate` spine.
+
+Globe / ExperienceRun work **does not block** future capital — it **is** the Event Graph front half.
+
 ### 다음 우선순위 (합의됨)
 
 1. Android PWA + 실제 Share Target 데모

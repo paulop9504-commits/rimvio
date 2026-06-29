@@ -6,13 +6,9 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Inbox, Handshake, Loader2, MapPin, Users, X } from "lucide-react";
 import { toast } from "sonner";
+import { dispatchContextRun } from "@/lib/context-run/dispatch-context-run";
 import { copy } from "@/lib/copy/human-ko";
-import {
-  acceptMarketHandshakeRemote,
-  startMarketHandshakeChatRemote,
-} from "@/lib/globe/market/client/sync-market-intent-remote";
-import { readMarketHandshakeUserError } from "@/lib/globe/market/read-market-handshake-user-error";
-import { peerRoomPath } from "@/lib/peer-chat/navigate-peer-room-from-feed";
+import { openFieldDashboardIngress } from "@/lib/nav/field-dashboard-ingress";
 import { completeBridgeInviteAccept } from "@/lib/experience-bridge/complete-bridge-invite-accept";
 import {
   acceptExperienceBridgeRemote,
@@ -117,7 +113,6 @@ export function GlobeInboxSheet({
   const { user, signInWithGoogle } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [busyBridgeEventId, setBusyBridgeEventId] = useState<string | null>(null);
-  const [busyMarketHandshakeId, setBusyMarketHandshakeId] = useState<string | null>(null);
   const [busyLocationEventId, setBusyLocationEventId] = useState<string | null>(null);
   const [dwellConfirmEventId, setDwellConfirmEventId] = useState<string | null>(null);
 
@@ -202,39 +197,17 @@ export function GlobeInboxSheet({
     }
   };
 
-  const handleMarketAlign = async (notification: RimvioNotification) => {
+  const handleMarketAlign = (notification: RimvioNotification) => {
     const offer = notification.marketAlignOffer;
     const handshakeId = offer?.handshakeId?.trim();
-    if (!offer || !handshakeId) {
+    if (!handshakeId) {
       return;
     }
-    setBusyMarketHandshakeId(handshakeId);
-    try {
-      if (offer.viewerAction === "accept_listing") {
-        const accepted = await acceptMarketHandshakeRemote({ handshakeId });
-        toast.success(copy.globe.marketHandshakeListingAcceptedToast);
-        router.push(peerRoomPath(accepted.threadId));
-        onOpenChange(false);
-        return;
-      }
-      if (offer.viewerAction === "open_preview") {
-        const started = await startMarketHandshakeChatRemote({ handshakeId });
-        router.push(peerRoomPath(started.threadId));
-        onOpenChange(false);
-        return;
-      }
-      if (offer.threadId && offer.viewerAction === "open_chat") {
-        router.push(peerRoomPath(offer.threadId));
-        onOpenChange(false);
-      }
-    } catch (caught) {
-      const message = readMarketHandshakeUserError(
-        caught instanceof Error ? caught.message : copy.globe.marketAlignBridgeFail,
-      );
-      toast.error(message);
-    } finally {
-      setBusyMarketHandshakeId(null);
-    }
+    openFieldDashboardIngress({
+      tab: "trades",
+      highlightTradeId: handshakeId,
+    });
+    onOpenChange(false);
   };
 
   const handleConfirmLocation = (notification: RimvioNotification) => {
@@ -247,8 +220,23 @@ export function GlobeInboxSheet({
     }
     markGlobeLocationPromptOffered();
     if (row.kind === "gps_dwell") {
-      setDwellConfirmEventId(row.eventId);
-      onOpenChange(false);
+      void dispatchContextRun(
+        {
+          kind: "gps_dwell_confirm",
+          eventId: row.eventId,
+          surface: "globe_inbox",
+        },
+        {
+          openPortal: async () => {},
+          openFieldDiscovery: () => {},
+          tryQuickListMarket: async () => false,
+          navigateUrl: () => {},
+          onGpsDwellConfirmOpen: (eventId) => {
+            setDwellConfirmEventId(eventId);
+            onOpenChange(false);
+          },
+        },
+      );
       return;
     }
     setBusyLocationEventId(row.eventId);
@@ -382,10 +370,6 @@ export function GlobeInboxSheet({
                             const busyBridge =
                               notification.kind === "bridge_invite" &&
                               busyBridgeEventId === notification.targetId;
-                            const busyMarket =
-                              notification.kind === "market_align" &&
-                              busyMarketHandshakeId ===
-                                notification.marketAlignOffer?.handshakeId;
                             const busyLocation =
                               notification.kind === "location_confirm" &&
                               busyLocationEventId === notification.targetId;
@@ -459,18 +443,13 @@ export function GlobeInboxSheet({
                                     <div className="mt-3 flex gap-2">
                                       <button
                                         type="button"
-                                        disabled={busyMarket}
-                                        onClick={() => void handleMarketAlign(notification)}
+                                        onClick={() => handleMarketAlign(notification)}
                                         className={rimvioCompactPrimaryCtaClass()}
                                       >
-                                        {busyMarket ? (
-                                          <Loader2 className="size-4 animate-spin" aria-hidden />
-                                        ) : null}
-                                        {notification.primaryCtaLabel}
+                                        {copy.globe.field.ingressTradesCta}
                                       </button>
                                       <button
                                         type="button"
-                                        disabled={busyMarket}
                                         onClick={() => onNotificationDismissed?.(notification.id)}
                                         className={rimvioGhostCtaClass()}
                                       >

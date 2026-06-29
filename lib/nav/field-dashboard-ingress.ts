@@ -5,12 +5,16 @@ import type {
 } from "@/lib/nav/field-dashboard-types";
 
 /**
- * Field product ingress — bottom-nav 맞춤 · globe pills.
+ * Field product ingress — 밖 지구 통로 (중고·모임 등 자원 찾기 · 외부 대화).
  * Not mounted from `/metrics` (Context Ops tier).
  * @see lib/dev/rimvio-surface-tiers.ts
  */
 
-const FIELD_DASHBOARD_TABS = new Set<FieldDashboardTab>(["trades", "discovery"]);
+const FIELD_DASHBOARD_TABS = new Set<FieldDashboardTab>([
+  "trades",
+  "discovery",
+  "mine",
+]);
 
 /** Canonical opener — globe pills, hub handoffs, bottom nav all land here. */
 export function openFieldDashboardIngress(request?: FieldDashboardIngress): void {
@@ -33,7 +37,7 @@ export function openFieldDiscoveryIngress(primaryEventId?: string | null): void 
   });
 }
 
-/** Bottom-nav 맞춤 — full dashboard SSOT; auto tab from active trades. */
+/** Bottom-nav 맞춤 — external globe dashboard SSOT. */
 export function openFieldDashboardFromBottomNav(input?: {
   tab?: FieldDashboardTab;
   highlightTradeId?: string | null;
@@ -41,8 +45,12 @@ export function openFieldDashboardFromBottomNav(input?: {
   openFieldDashboardIngress({
     tab: input?.tab,
     highlightTradeId: input?.highlightTradeId ?? null,
-    bypassDiscoveryGate: true,
   });
+}
+
+/** Globe utility · legacy manage entry — same sheet, mine tab. */
+export function openFieldMineIngress(): void {
+  openFieldDashboardIngress({ tab: "mine" });
 }
 
 export function parseFieldDashboardTab(

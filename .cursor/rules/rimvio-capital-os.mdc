@@ -1,0 +1,38 @@
+---
+description: Rimvio finance prep — boundaries only until Capital OS is scheduled
+globs:
+  - lib/capital/**
+  - lib/plan-context/**
+  - lib/globe/market/**
+  - docs/RIMVIO_CAPITAL_OS.md
+---
+
+# Rimvio Capital OS (prep phase)
+
+**Canonical spec:** `docs/RIMVIO_CAPITAL_OS.md`
+
+## Phase: PREP ONLY
+
+Founder locked **direction** (AI CFO, Event + Macro + Fusion). **Do not implement C0–C4** unless the user explicitly asks to build capital features.
+
+**Now:** Globe / Experience / Field — keep lines clean for later finance connect.
+
+## Namespace (do not tangle)
+
+| Path | Role |
+|------|------|
+| `lib/globe/market/` | Field Market (listings, trades) |
+| `lib/capital/` | Reserved for Capital OS (empty until C0) |
+| `lib/plan-context/` | Life situations — extend for multi-horizon goals later |
+
+Never use bare `market` in new capital code — `fieldMarket` vs `macro` qualifier.
+
+## While building other features
+
+- Truth stays `EventCandidate` + `commitEventUpsert`
+- No finance hero UI · no parallel finance SSOT
+- No mixing Field trades sheet with personal CFO surface
+
+## When capital ships (later)
+
+Investment = one `@` slot in execution plan, not product category. L3 → `PLATFORM_OS` ledger + confirm.

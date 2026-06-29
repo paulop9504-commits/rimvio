@@ -63,4 +63,23 @@ Runtime shell only. No canonical ranking. Dispatches capabilities with `metadata
 - Learning calling `dispatchCapability` directly
 - Experimental modules writing surface memory without execution plane
 
-See boundary tests: `scripts/test-*-boundary.ts`.
+## Reserved namespaces (capital prep)
+
+**Purpose:** 나중에 금융 연결 시 `market` 이름 충돌 방지. **지금은 폴더·규칙만 — 구현 없음.**
+
+| Path | Meaning | Now |
+|------|---------|-----|
+| `lib/globe/market/` | **Field Market** — neighbor `market_intents`, handshake, Portal | production |
+| `lib/capital/` | **Capital OS** — life plan horizons, financial facts, fusion (future) | **reserved** — see `lib/capital/PREP.md` |
+| `lib/markets/` | Domain intent probes (travel, etc.) | production — **not** macro FX/rates |
+| Macro rates/FX (future) | `lib/capital/macro/` projection only | do not create until C2 |
+
+**Import law:**
+
+- Field listing code → `lib/globe/market/*` only
+- Personal CFO / fusion (future) → `lib/capital/*` only
+- Never import Field market types from `lib/capital/` or vice versa without an explicit bridge module
+
+Spec: [RIMVIO_CAPITAL_OS.md](./RIMVIO_CAPITAL_OS.md)
+
+---

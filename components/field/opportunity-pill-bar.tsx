@@ -8,9 +8,10 @@ import type { OpportunityPill } from "@/lib/globe/opportunity-field";
 export type OpportunityPillBarProps = {
   pills: readonly OpportunityPill[];
   selectedContextId: string | null;
-  onSelect: (contextId: string) => void;
+  onSelect: (contextId: string | null) => void;
   pillAria: (title: string, count: number) => string;
   minePillLabel: string;
+  browseAllLabel: string;
   className?: string;
 };
 
@@ -20,6 +21,7 @@ export function OpportunityPillBar({
   onSelect,
   pillAria,
   minePillLabel,
+  browseAllLabel,
   className,
 }: OpportunityPillBarProps) {
   if (pills.length === 0) {
@@ -37,6 +39,27 @@ export function OpportunityPillBar({
         className="flex gap-1.5 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         role="tablist"
       >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={selectedContextId == null}
+          onClick={() => onSelect(null)}
+          className={cn(
+            "relative shrink-0 rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition-all duration-200 active:scale-[0.97]",
+            selectedContextId == null
+              ? "text-white shadow-[0_2px_8px_rgba(49,130,246,0.28)]"
+              : "bg-[#f2f4f6] text-[#4e5968]",
+          )}
+        >
+          {selectedContextId == null ? (
+            <motion.span
+              layoutId="opportunity-pill-active"
+              className="absolute inset-0 rounded-full bg-[#3182f6]"
+              transition={{ type: "spring", stiffness: 420, damping: 34 }}
+            />
+          ) : null}
+          <span className="relative z-[1]">{browseAllLabel}</span>
+        </button>
         {pills.map((pill) => {
           const active = pill.contextId === selectedContextId;
           return (
