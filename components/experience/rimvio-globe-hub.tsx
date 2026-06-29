@@ -16,6 +16,7 @@ import type { RimvioGlobe3DHandle } from "@/components/experience/rimvio-globe-3
 import { useExperienceGraph } from "@/hooks/use-experience-graph";
 import { useGpsTrackingEnabled } from "@/hooks/use-gps-tracking-enabled";
 import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
+import { useGlobeFieldDiscoveryReveal, filterFieldRevealIntents, filterFieldRevealPlaceClusters } from "@/hooks/use-globe-field-discovery-reveal";
 import { useGlobeLodgingDiscoveryReveal } from "@/hooks/use-globe-lodging-discovery-reveal";
 import { useGlobeEateryDiscoveryReveal } from "@/hooks/use-globe-eatery-discovery-reveal";
 import { useGlobePinsPlatformExternal } from "@/hooks/use-globe-pins-platform-external";
@@ -77,6 +78,7 @@ import { projectContextHubGlobeAnchor } from "@/lib/globe/context-hub/project-co
 import { dispatchGlobeContextHubOpen } from "@/lib/globe/context-hub/globe-context-hub-open-bridge";
 import { rankContextResources } from "@/lib/globe/resource/rank-context-resources";
 import { resolveGlobeClustersForLayerMode } from "@/lib/globe/filter-globe-clusters-by-layer-mode";
+import { projectMarketDiscoveryPinClusters } from "@/lib/globe/market/project-market-discovery-pins";
 import type { GlobeLayerMode } from "@/lib/globe/globe-layer-mode";
 import { useIosPwaMemoryGuards } from "@/hooks/use-ios-pwa-memory-guards";
 import {
@@ -789,6 +791,8 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
     return () => window.clearTimeout(timer);
   }, [iosPwaGuards, layerMode]);
 
+  const fieldDiscoveryReveal = useGlobeFieldDiscoveryReveal();
+
   const discoveryPinsEnabled = layerMode === "discovery" && discoveryPinsReady;
 
   const { traces: externalTraces } = useGlobePinsPlatformExternal({
@@ -826,13 +830,24 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
                 eventsById,
               ),
           );
-    return resolveGlobeClustersForLayerMode({
+    const base = resolveGlobeClustersForLayerMode({
       mode: layerMode,
       personalClusters: filtered,
       bridgeGhostClusters: bridgeGhostClusters,
       externalTraces,
       marketDiscoveryIntents,
     });
+    const fieldRevealIntents = filterFieldRevealIntents(fieldDiscoveryReveal);
+    const fieldRevealPlaces = filterFieldRevealPlaceClusters(fieldDiscoveryReveal);
+    if (fieldRevealIntents.length === 0 && fieldRevealPlaces.length === 0) {
+      return base;
+    }
+    const existingPinIds = new Set(base.map((cluster) => cluster.pinId));
+    const marketOverlay = projectMarketDiscoveryPinClusters(fieldRevealIntents);
+    const extra = [...marketOverlay, ...fieldRevealPlaces].filter(
+      (cluster) => !existingPinIds.has(cluster.pinId),
+    );
+    return [...base, ...extra];
   }, [
     ready,
     graph.volumes,
@@ -844,6 +859,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
     bridgeGhostClusters,
     externalTraces,
     marketDiscoveryIntents,
+    fieldDiscoveryReveal,
   ]);
 
   const displayClusters = clusters;

@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Radio } from "lucide-react";
 import {
@@ -26,6 +27,8 @@ export type OpportunityDiscoveryFloorProps = {
   onSelectContext: (id: string) => void;
   listeningLabel: string;
   onRowPress: (row: OpportunityRow) => void;
+  placeDiscovery?: ReactNode;
+  lodgingDiscovery?: ReactNode;
   /** Inside tab panel — hides redundant section header. */
   embedded?: boolean;
   className?: string;
@@ -49,6 +52,8 @@ export function OpportunityDiscoveryFloor({
   onSelectContext,
   listeningLabel,
   onRowPress,
+  placeDiscovery = null,
+  lodgingDiscovery = null,
   embedded = false,
   className,
 }: OpportunityDiscoveryFloorProps) {
@@ -123,6 +128,9 @@ export function OpportunityDiscoveryFloor({
               />
             </div>
           ) : null}
+
+          {placeDiscovery}
+          {lodgingDiscovery}
 
           {showInitialSkeleton ? (
             <div className={cn("mx-5", FIELD_DASHBOARD_CARD)}>

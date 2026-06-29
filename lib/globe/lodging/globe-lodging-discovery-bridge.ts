@@ -7,6 +7,7 @@ export const GLOBE_LODGING_DISCOVERY_SESSION = "rimvio:globe-lodging-discovery-s
 export const GLOBE_LODGING_DISCOVERY_CLOSE = "rimvio:globe-lodging-discovery-close";
 
 import type { GlobeLodgingDiscoverySession } from "@/lib/globe/lodging/project-lodging-discovery-session";
+import { runStagedPinReveal } from "@/lib/globe/opportunity-field/staged-pin-reveal";
 
 export type GlobeLodgingDiscoveryStartDetail = {
   eventId: string;
@@ -161,27 +162,16 @@ export function runStagedLodgingPinReveal(
   detail: GlobeLodgingDiscoveryStartDetail,
 ): () => void {
   const intervalMs = detail.intervalMs ?? REVEAL_INTERVAL_MS;
-  const ids = [...detail.resourceIds];
-  let index = 0;
-
-  const tick = () => {
-    const resourceId = ids[index];
-    if (!resourceId) {
-      return;
-    }
-    dispatchGlobeLodgingDiscoveryReveal({
-      eventId: detail.eventId,
-      resourceId,
-      index,
-      total: ids.length,
-    });
-    index += 1;
-    if (index >= ids.length) {
-      window.clearInterval(timer);
-    }
-  };
-
-  tick();
-  const timer = window.setInterval(tick, intervalMs);
-  return () => window.clearInterval(timer);
+  return runStagedPinReveal({
+    items: detail.resourceIds.map((id) => ({ id })),
+    intervalMs,
+    onReveal: (tick) => {
+      dispatchGlobeLodgingDiscoveryReveal({
+        eventId: detail.eventId,
+        resourceId: tick.id,
+        index: tick.index,
+        total: tick.total,
+      });
+    },
+  });
 }

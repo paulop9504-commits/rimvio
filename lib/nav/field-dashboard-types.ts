@@ -1,4 +1,9 @@
-/** Field dashboard sheet tabs — SSOT for trades vs discovery ingress. */
+/**
+ * Field dashboard sheet tabs — SSOT for trades vs discovery ingress.
+ *
+ * Surface tier: **Field = product**. Do not mount from `/metrics` (Context Ops).
+ * @see lib/dev/rimvio-surface-tiers.ts
+ */
 export type FieldDashboardTab = "trades" | "discovery";
 
 /**

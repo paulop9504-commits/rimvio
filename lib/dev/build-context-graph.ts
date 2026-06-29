@@ -116,13 +116,36 @@ export function buildContextGraph(input: {
 
   for (const memory of input.memories.slice(0, 20)) {
     const memoryId = `memory:${memory.id}`;
+    const memoryTokens = tokenize(
+      `${memory.topic} ${memory.summary} ${memory.keywords.join(" ")}`,
+    );
     nodes.push({
       id: memoryId,
       kind: "memory",
       label: memory.topic,
       detail: memory.summary.slice(0, 80),
-      searchTokens: tokenize(`${memory.topic} ${memory.summary} ${memory.keywords.join(" ")}`),
+      searchTokens: memoryTokens,
     });
+
+    for (const event of input.events.slice(0, 40)) {
+      const eventNodeId = `event:${event.id}`;
+      if (!nodes.some((node) => node.id === eventNodeId)) {
+        continue;
+      }
+      const eventTokens = tokenize(`${event.title} ${event.place ?? ""} ${event.description ?? ""}`);
+      const overlap = memoryTokens.some((token) =>
+        eventTokens.some((other) => other.includes(token) || token.includes(other)),
+      );
+      if (!overlap) {
+        continue;
+      }
+      edges.push({
+        id: `edge:${memoryId}:${eventNodeId}`,
+        from: memoryId,
+        to: eventNodeId,
+        label: "recalls",
+      });
+    }
   }
 
   return { nodes, edges };

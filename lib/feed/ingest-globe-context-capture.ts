@@ -17,6 +17,10 @@ import { extractPlaceHintFromText } from "@/lib/feed/extract-place-hint-from-tex
 import { geocodeAndSyncGlobeContextPlace } from "@/lib/globe/geocode-and-sync-globe-context-place";
 import { stampComposerTargetEvent } from "@/lib/globe/commit-pin-from-composer";
 import { syncPersonalGlobePinFromEvent } from "@/lib/globe/sync-personal-globe-pin";
+import {
+  detectAccommodationIntent,
+  stampAccommodationServiceTypeOnEvent,
+} from "@/lib/event-kernel";
 
 export type GlobeContextCaptureResult = {
   result: SearchCaptureIngestResult;
@@ -91,6 +95,10 @@ function commitTextCapture(input: {
     fragment,
     userConfirmedTarget: !separated && Boolean(match) && match!.confidence !== "low",
   });
+
+  if (detectAccommodationIntent(trimmed)) {
+    stampAccommodationServiceTypeOnEvent(result.event.id);
+  }
 
   return {
     result,

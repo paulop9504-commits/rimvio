@@ -1,3 +1,5 @@
+import type { GlobeContextVisibility } from "@/lib/globe/globe-context-visibility";
+
 /** Owner-local globe pin — experience entry on personal earth (not ROOM shared). */
 
 export type PersonalGlobePinAcl = {
@@ -6,6 +8,10 @@ export type PersonalGlobePinAcl = {
 };
 
 export type PersonalGlobePinMarketRole = "listing" | "seeking";
+
+export type PersonalGlobePinSource =
+  | "experience"
+  | "accommodation_search";
 
 export type PersonalGlobePin = {
   pinId: string;
@@ -20,6 +26,12 @@ export type PersonalGlobePin = {
   acl: PersonalGlobePinAcl;
   /** @중고 intent — grey market pin (seeking=구매, listing=내놓기). */
   marketRole?: PersonalGlobePinMarketRole | null;
+  /** Personal layer default — accommodation search pins stay private. */
+  visibility?: GlobeContextVisibility;
+  /** Projection origin — accommodation_search = Hub Rail pipeline. */
+  source?: PersonalGlobePinSource;
+  /** Parent context when this pin is a search result child. */
+  parentContextEventId?: string | null;
 };
 
 export type PersonalGlobePinViewer = {

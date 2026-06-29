@@ -10,6 +10,7 @@ import { GlobeHubResourceCarousel } from "@/components/globe/globe-hub-resource-
 import { GlobeLodgingMapStrip } from "@/components/globe/globe-lodging-map-strip";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { enableLodgingHubForContext } from "@/lib/globe/context-hub/enable-lodging-hub-for-context";
+import { runAccommodationHubPipeline } from "@/lib/globe/context-hub/run-accommodation-hub-pipeline";
 import {
   dispatchGlobeLodgingFocus,
   subscribeGlobeLodgingFocus,
@@ -56,6 +57,7 @@ import { useActiveContextWeather } from "@/hooks/use-active-context-weather";
 import { useContextGardenOrganizer } from "@/hooks/use-context-garden-organizer";
 import { useExecutionProfileStamp } from "@/hooks/use-execution-profile-stamp";
 import { useHubResourceSyncWorker } from "@/hooks/use-hub-resource-sync-worker";
+import { useAccommodationHubPipeline } from "@/hooks/use-accommodation-hub-pipeline";
 import { useMainNativeSurfaceSync } from "@/hooks/use-main-native-surface-sync";
 import { isTicketQrViewerHref } from "@/lib/globe/ticket-scan-surface";
 import { dispatchGlobeMarketHubConnect } from "@/lib/globe/context-hub/globe-market-hub-bridge";
@@ -196,6 +198,14 @@ export function GlobeContextHubRail({
     lat,
     lng,
     enabled: visible && rankedResources.length > 0,
+  });
+
+  useAccommodationHubPipeline({
+    activeEventId,
+    lat,
+    lng,
+    enabled: visible && Boolean(activeEventId),
+    onCompleted: () => setRevision((value) => value + 1),
   });
 
   useMainNativeSurfaceSync({
@@ -487,11 +497,23 @@ export function GlobeContextHubRail({
     const event = findLifeEventCandidate(eventId);
     setBusy(true);
     try {
-      await enableLodgingHubForContext({
-        contextEventId: eventId,
-        lat,
-        lng,
-      });
+      const pipelineOutcome =
+        lat != null && lng != null
+          ? await runAccommodationHubPipeline({
+              contextEventId: eventId,
+              lat,
+              lng,
+            })
+          : null;
+
+      if (!pipelineOutcome) {
+        await enableLodgingHubForContext({
+          contextEventId: eventId,
+          lat,
+          lng,
+        });
+      }
+
       const refreshed = findLifeEventCandidate(eventId);
       if (refreshed) {
         recordContextHubTelemetry({ event: refreshed, kind: "executed", label: "lodging" });

@@ -332,6 +332,18 @@ export {
 } from "@/lib/event-kernel/action-contracts/validate-action-contract";
 
 export {
+  detectAccommodationIntent,
+  messageSignalsAccommodationIntent,
+  type AccommodationIntent,
+} from "@/lib/event-kernel/detect-accommodation-intent";
+
+export {
+  eventHasAccommodationServiceType,
+  readEventServiceType,
+  stampAccommodationServiceTypeOnEvent,
+} from "@/lib/event-kernel/stamp-accommodation-service-type";
+
+export {
   getActionContract,
   listActionContracts,
   isRegisteredActionContract,

@@ -4,6 +4,9 @@ import type {
   ContextSnapshotExternalKpi,
   ContextLiveStreamRow,
 } from "@/lib/dev/context-snapshot-types";
+import type { EventCandidate } from "@/lib/events/event-candidate";
+import { GLOBE_CONTEXT_VISIBILITY_EXTERNAL } from "@/lib/globe/globe-context-visibility";
+import { readPinScopeFromMetadata } from "@/lib/globe/stamp-universal-pin-metadata";
 
 const RECALL_PATTERN =
   /(?:아까|방금|그때|전에|다시|기억|뭐\s*였|뭐더라|얘기(?:하)?(?:던|한)\s*거|다녀|어디)/u;
@@ -12,8 +15,36 @@ export function detectContextAlerts(input: {
   internal: ContextSnapshotInternalKpi;
   external: ContextSnapshotExternalKpi;
   liveStream: ContextLiveStreamRow[];
+  events?: readonly EventCandidate[];
+  externalPinRows?: Array<{ event_id: string; visibility: "private" | "external" }>;
 }): ContextAlert[] {
   const alerts: ContextAlert[] = [];
+
+  if (input.events && input.externalPinRows) {
+    const pinVisibilityByEvent = new Map(
+      input.externalPinRows.map((row) => [row.event_id, row.visibility]),
+    );
+    const driftEvents = input.events.filter((event) => {
+      const pinVisibility = pinVisibilityByEvent.get(event.id);
+      if (!pinVisibility) {
+        return false;
+      }
+      const metaExternal =
+        event.metadata?.globeContextVisibility === GLOBE_CONTEXT_VISIBILITY_EXTERNAL ||
+        readPinScopeFromMetadata(event.metadata) === "external";
+      const pinExternal = pinVisibility === "external";
+      return metaExternal !== pinExternal;
+    });
+    if (driftEvents.length > 0) {
+      alerts.push({
+        id: "scope-drift",
+        kind: "scope_drift",
+        severity: "medium",
+        title: "Scope Drift",
+        detail: `${driftEvents.length} event(s) — metadata visibility disagrees with pin row.`,
+      });
+    }
+  }
 
   if (
     input.internal.conversationMemoryCount > 0 &&

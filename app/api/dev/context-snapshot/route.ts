@@ -1,19 +1,19 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { readLiveTurnLog } from "@/lib/dev/read-live-turn-log";
-import { listLifeEventCandidates } from "@/lib/life-read-model";
+import { devOnlyApiGuard } from "@/lib/dev/assert-dev-only-api";
 import { buildContextSnapshot } from "@/lib/dev/build-context-snapshot";
+import { computeRecallHitRate } from "@/lib/dev/compute-recall-hit-rate";
+import { readLiveTurnLog } from "@/lib/dev/read-live-turn-log";
 import type { ContextSnapshotServerPayload } from "@/lib/dev/context-snapshot-types";
+import { createClient } from "@/lib/supabase/server";
+import { listLifeEventCandidates } from "@/lib/life-read-model";
 
 export const runtime = "nodejs";
-
-function devOnly() {
-  return process.env.NODE_ENV === "production";
-}
+export const dynamic = "force-dynamic";
 
 export async function GET() {
-  if (devOnly()) {
-    return NextResponse.json({ error: "Dev only" }, { status: 404 });
+  const blocked = devOnlyApiGuard();
+  if (blocked) {
+    return blocked;
   }
 
   const liveTurns = readLiveTurnLog(120);
@@ -52,7 +52,7 @@ export async function GET() {
     // Supabase optional in local dev
   }
 
-  const snapshot = buildContextSnapshot({
+  const serverSnapshot = buildContextSnapshot({
     events,
     contacts: [],
     conversationMemories: [],
@@ -61,11 +61,19 @@ export async function GET() {
     liveTurns,
   });
 
+  const recall = computeRecallHitRate({
+    liveStream: serverSnapshot.liveStream,
+    conversationMemoryCount: serverSnapshot.internal.conversationMemoryCount,
+  });
+
   const payload: ContextSnapshotServerPayload = {
-    builtAt: snapshot.builtAt,
-    liveStream: snapshot.liveStream,
+    builtAt: serverSnapshot.builtAt,
+    liveStream: serverSnapshot.liveStream,
     externalPinRows,
-    external: snapshot.external,
+    external: serverSnapshot.external,
+    internal: serverSnapshot.internal,
+    graph: serverSnapshot.graph,
+    alerts: serverSnapshot.alerts,
   };
 
   return NextResponse.json({
@@ -73,5 +81,11 @@ export async function GET() {
     server: payload,
     serverEventCount: events.length,
     liveTurnCount: liveTurns.length,
+    recallHitRatePct: recall.hitRatePct,
+    recallUtteranceCount: recall.recallUtteranceCount,
+    peopleGraphNodeCount: serverSnapshot.internal.peopleCount,
+    externalPinCount: serverSnapshot.external.externalPinCount,
+    alertCount: serverSnapshot.alerts.length,
+    dominantCluster: serverSnapshot.internal.dominantTrajectoryCluster,
   });
 }

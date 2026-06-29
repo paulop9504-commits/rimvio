@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { FieldLodgingDiscoverySection } from "@/components/field/field-lodging-discovery-section";
+import { FieldPlaceDiscoverySection } from "@/components/field/field-place-discovery-section";
 import { OpportunityDiscoveryFloor } from "@/components/field/opportunity-discovery-floor";
 import {
   FIELD_DASHBOARD_CANVAS,
@@ -13,8 +15,12 @@ import {
 import type { FieldDashboardTab } from "@/lib/nav/field-dashboard-types";
 import { MarketActiveTradesSection } from "@/components/field/market-active-trades-section";
 import { useCopy } from "@/hooks/use-copy";
+import { useFieldLodgingDiscovery } from "@/hooks/use-field-lodging-discovery";
+import { useFieldPlaceDiscovery } from "@/hooks/use-field-place-discovery";
+import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
 import type { OpportunityPill, OpportunityRow } from "@/lib/globe/opportunity-field";
 import type { MarketTradeSessionView } from "@/lib/globe/market/market-trade-types";
+import { runStagedFieldDiscoveryPinReveal } from "@/lib/globe/opportunity-field/globe-field-discovery-bridge";
 import { cn } from "@/lib/utils";
 
 export type OpportunityDashboardBodyProps = {
@@ -22,6 +28,7 @@ export type OpportunityDashboardBodyProps = {
   pills: readonly OpportunityPill[];
   discoveryRows: readonly OpportunityRow[];
   tradeSessions: readonly MarketTradeSessionView[];
+  selectedPill: OpportunityPill | null;
   selectedContextId: string | null;
   onSelectContext: (id: string) => void;
   listeningLabel: string;
@@ -44,6 +51,7 @@ export function OpportunityDashboardBody({
   pills,
   discoveryRows,
   tradeSessions,
+  selectedPill,
   selectedContextId,
   onSelectContext,
   listeningLabel,
@@ -59,6 +67,7 @@ export function OpportunityDashboardBody({
 }: OpportunityDashboardBodyProps) {
   const copy = useCopy();
   const field = copy.globe.field;
+  const liveLocation = useLiveLocationSnapshot();
   const [tab, setTab] = useState<FieldDashboardTab>(() =>
     tradeSessions.length > 0 ? "trades" : "discovery",
   );
@@ -95,6 +104,37 @@ export function OpportunityDashboardBody({
       setTab("discovery");
     }
   }, [tab, tradeSessions.length]);
+
+  const discoveryRevealKey = useMemo(
+    () => discoveryRows.map((row) => row.listingId).join("|"),
+    [discoveryRows],
+  );
+
+  useEffect(() => {
+    if (tab !== "discovery" || discoveryRows.length === 0) {
+      return;
+    }
+    return runStagedFieldDiscoveryPinReveal({
+      rows: discoveryRows,
+      contextId: selectedContextId,
+    });
+  }, [discoveryRevealKey, discoveryRows, selectedContextId, tab]);
+
+  const placeDiscovery = useFieldPlaceDiscovery({
+    enabled: tab === "discovery",
+    selectedPill,
+    lat: liveLocation?.lat ?? null,
+    lng: liveLocation?.lng ?? null,
+    contextId: selectedContextId,
+  });
+
+  const lodgingDiscovery = useFieldLodgingDiscovery({
+    enabled: tab === "discovery",
+    selectedPill,
+    lat: liveLocation?.lat ?? null,
+    lng: liveLocation?.lng ?? null,
+    contextId: selectedContextId,
+  });
 
   return (
     <div
@@ -168,6 +208,25 @@ export function OpportunityDashboardBody({
                 onSelectContext={onSelectContext}
                 listeningLabel={listeningLabel}
                 onRowPress={onRowPress}
+                placeDiscovery={
+                  placeDiscovery.enabled ? (
+                    <FieldPlaceDiscoverySection
+                      loading={placeDiscovery.loading}
+                      summary={placeDiscovery.payload?.summary ?? null}
+                      wire={placeDiscovery.wire}
+                      query={placeDiscovery.query}
+                    />
+                  ) : null
+                }
+                lodgingDiscovery={
+                  lodgingDiscovery.enabled ? (
+                    <FieldLodgingDiscoverySection
+                      loading={lodgingDiscovery.loading}
+                      rows={lodgingDiscovery.rows}
+                      source={lodgingDiscovery.source}
+                    />
+                  ) : null
+                }
                 embedded
                 className="h-full"
               />

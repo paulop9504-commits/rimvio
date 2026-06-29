@@ -4,6 +4,12 @@ import type {
   FieldDashboardTab,
 } from "@/lib/nav/field-dashboard-types";
 
+/**
+ * Field product ingress — bottom-nav 맞춤 · globe pills.
+ * Not mounted from `/metrics` (Context Ops tier).
+ * @see lib/dev/rimvio-surface-tiers.ts
+ */
+
 const FIELD_DASHBOARD_TABS = new Set<FieldDashboardTab>(["trades", "discovery"]);
 
 /** Canonical opener — globe pills, hub handoffs, bottom nav all land here. */

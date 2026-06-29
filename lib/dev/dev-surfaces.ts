@@ -1,6 +1,11 @@
+import {
+  DEV_ONLY_ROUTE_PREFIXES,
+  isDevOnlyRoute,
+} from "@/lib/dev/rimvio-surface-tiers";
+
 const DEV_COOKIE = "rimvio-dev";
 
-const DEV_ONLY_PREFIXES = ["/demo", "/stack", "/metrics", "/actions/"];
+export { isDevOnlyRoute as isDevOnlyPath };
 
 export function isDevSurfacesEnabled(request: {
   nextUrl: URL;
@@ -17,11 +22,8 @@ export function isDevSurfacesEnabled(request: {
   return request.cookies.get(DEV_COOKIE)?.value === "1";
 }
 
-export function isDevOnlyPath(pathname: string) {
-  return DEV_ONLY_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(prefix)
-  );
-}
+/** @deprecated use isDevOnlyRoute from rimvio-surface-tiers */
+export const DEV_ONLY_PREFIXES = DEV_ONLY_ROUTE_PREFIXES;
 
 export function devCookieOptions() {
   return {

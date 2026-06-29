@@ -4,6 +4,7 @@ import {
   isDevOnlyPath,
   isDevSurfacesEnabled,
 } from "@/lib/dev/dev-surfaces";
+import { isDevOnlyApi } from "@/lib/dev/rimvio-surface-tiers";
 import { isBodyTooLarge } from "@/lib/server/body-limit";
 import { logApi } from "@/lib/server/logger";
 import {
@@ -61,6 +62,16 @@ export async function runEdgePipeline(request: NextRequest) {
     devRedirect.cookies.set(devCookieOptions());
     applySecurityHeaders(devRedirect);
     return devRedirect;
+  }
+
+  if (
+    process.env.NODE_ENV === "production" &&
+    isDevOnlyApi(pathname)
+  ) {
+    const response = NextResponse.json({ error: "Dev only" }, { status: 404 });
+    response.headers.set(REQUEST_ID_HEADER, requestId);
+    applySecurityHeaders(response);
+    return response;
   }
 
   if (isDevOnlyPath(pathname) && !isDevSurfacesEnabled(request)) {

@@ -185,7 +185,13 @@ export function buildContextSnapshot(input: {
 
   const liveStream = buildLiveStreamRows(input.liveTurns ?? []);
 
-  const alerts = detectContextAlerts({ internal, external, liveStream });
+  const alerts = detectContextAlerts({
+    internal,
+    external,
+    liveStream,
+    events,
+    externalPinRows,
+  });
 
   return {
     builtAt: now,

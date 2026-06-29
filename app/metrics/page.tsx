@@ -1,26 +1,20 @@
 import { AppShell } from "@/components/app-shell";
-import { AnalyticsPanel } from "@/components/analytics-panel";
-import { ContextOpsPanel } from "@/components/context-ops/context-ops-panel";
-import { PmfMetricsPanel } from "@/components/pmf-metrics-panel";
+import { ContextOpsDashboard } from "@/components/context-ops/context-ops-dashboard";
+import { DevSurfaceShell } from "@/components/dev/dev-surface-shell";
+import { requireDevPage } from "@/lib/dev/require-dev-page";
 
 export default function MetricsPage() {
-  if (process.env.NODE_ENV === "production") {
-    return (
-      <AppShell title="Metrics" subtitle="Dev surface">
-        <p className="text-sm text-muted-foreground">
-          Context Ops는 development 환경에서만 사용할 수 있어요.
-        </p>
-      </AppShell>
-    );
-  }
+  requireDevPage();
 
   return (
-    <AppShell title="Metrics" subtitle="Context Ops · PMF · dev surface">
-      <div className="space-y-6">
-        <ContextOpsPanel />
-        <PmfMetricsPanel />
-        <AnalyticsPanel />
-      </div>
+    <AppShell title="Context Ops" subtitle="Pipeline observability · dev-only">
+      <DevSurfaceShell
+        active="context-ops"
+        title="Context Ops"
+        subtitle="EventCandidate · recall · people graph · projection health"
+      >
+        <ContextOpsDashboard />
+      </DevSurfaceShell>
     </AppShell>
   );
 }

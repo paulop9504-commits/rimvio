@@ -54,7 +54,8 @@ export function resolveRateLimitTier(pathname: string, method: string): RateLimi
 
   if (
     pathname === "/api/globe/external-traces" ||
-    pathname === "/api/globe/pins"
+    pathname === "/api/globe/pins" ||
+    pathname === "/api/globe/place-discovery"
   ) {
     return "globe-read";
   }

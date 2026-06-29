@@ -105,6 +105,7 @@ export function OpportunityFieldPageClient() {
       pills={pills}
       discoveryRows={discoveryRows}
       tradeSessions={tradeSessions}
+      selectedPill={selectedPill}
       selectedContextId={selectedContextId}
       onSelectContext={setSelectedContextId}
       listeningLabel={listeningLabel}

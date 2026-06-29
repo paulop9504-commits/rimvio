@@ -75,7 +75,10 @@ async function loadCandidates(input: {
 
 export async function orchestratePlaceRecommendation(
   message: string,
-  options?: { history?: readonly OrchestrateHistoryTurn[] }
+  options?: {
+    history?: readonly OrchestrateHistoryTurn[];
+    origin?: { lat: number; lng: number };
+  },
 ): Promise<OrchestratorResult | null> {
   const enriched = enrichPlaceDiscoveryMessage(message, options?.history);
   const event = parseFindPlaceIntent(enriched);
@@ -89,7 +92,7 @@ export async function orchestratePlaceRecommendation(
     /아이스크림|디저트|간식|카페|분위기|뷰/u.test(enriched);
 
   const criteria = buildPlaceDiscoveryCriteria(event);
-  const origin = await resolveOrigin();
+  const origin = options?.origin ?? (await resolveOrigin());
   const rawCandidates = await loadCandidates({
     naverQuery: event.naverQuery,
     criteria,
@@ -205,7 +208,17 @@ export async function orchestratePlaceRecommendation(
     pendingConfirm: false,
     cafeDiscovery: wire,
     thought: `Naver local · ${event.naverQuery} · ${candidates.length}건 · ${experienceMode}${memoryNote ? ` · ${memoryNote}` : ""}`,
-    metadata: { intent: "ACTION", trust_level_adjustment: "NONE" },
+    metadata: {
+      intent: "ACTION",
+      trust_level_adjustment: "NONE",
+      place_pins: nearbyCandidates.map((place) => ({
+        place_id: place.place_id,
+        name: place.name,
+        lat: place.lat,
+        lng: place.lng,
+        reason: place.reason,
+      })),
+    },
   };
 }
 

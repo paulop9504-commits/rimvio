@@ -91,4 +91,7 @@ export type ContextSnapshotServerPayload = {
     updated_at?: string;
   }>;
   external: ContextSnapshotExternalKpi;
+  internal: ContextSnapshotInternalKpi;
+  graph: ContextSnapshot["graph"];
+  alerts: ContextAlert[];
 };
