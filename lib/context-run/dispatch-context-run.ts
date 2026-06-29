@@ -34,6 +34,7 @@ import {
   resolveExternalContextAsk,
 } from "@/lib/external-context-ask";
 import { resolveExperienceRunTurn } from "@/lib/experience-run";
+import { buildMarketQuickListDraft } from "@/lib/globe/market/build-market-quick-list-draft";
 import { runGlobeMapIntentSupply } from "@/lib/globe/intent-supply/run-globe-map-intent-supply";
 import { parseMentionForContract } from "@/lib/context-run/plan-mention-contract";
 import {
