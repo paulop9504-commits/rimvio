@@ -87,12 +87,8 @@ export function OpportunityDashboardBody({
       setTab(initialTab);
       return;
     }
-    if (tradeSessions.length > 0) {
-      setTab("trades");
-      return;
-    }
-    setTab("discovery");
-  }, [ingressGeneration, initialTab, tradeSessions.length]);
+    setTab(tradeSessions.length > 0 ? "trades" : "discovery");
+  }, [ingressGeneration, initialTab]);
 
   useEffect(() => {
     const prev = prevTradeCountRef.current;

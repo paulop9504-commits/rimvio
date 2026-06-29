@@ -1449,6 +1449,23 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   box-shadow: none;
 }
 
+/* Globe map prompt — dark frosted shell; inner field must not paint white over typed text */
+[data-globe-map-intent-prompt] .rimvio-composer-field--map-prompt {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+[data-globe-map-intent-prompt] .rimvio-composer-field--map-prompt input {
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+  caret-color: #ffffff;
+}
+
+[data-globe-map-intent-prompt] .rimvio-composer-field--map-prompt input::placeholder {
+  color: rgba(255, 255, 255, 0.45);
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.45);
+}
+
 .rimvio-composer-field textarea::placeholder {
   color: var(--rimvio-text-dim);
 }

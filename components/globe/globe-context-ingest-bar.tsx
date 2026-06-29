@@ -433,7 +433,13 @@ export const GlobeContextIngestBar = forwardRef<
           </button>
           ) : null}
 
-          <div className={cn(rimvioComposerFieldClass, "min-w-0 flex-1 px-3 py-2.5", mapPromptMode && !isDiscovery && "border-white/10 bg-white/6")}>
+          <div
+            className={cn(
+              rimvioComposerFieldClass,
+              "min-w-0 flex-1 px-3 py-2.5",
+              mapPromptMode && !isDiscovery && "rimvio-composer-field--map-prompt",
+            )}
+          >
             <input
               ref={inputRef}
               value={text}
@@ -446,7 +452,7 @@ export const GlobeContextIngestBar = forwardRef<
                 "w-full bg-transparent text-[15px] outline-none",
                 mapPromptMode && !isDiscovery
                   ? "text-white placeholder:text-white/45"
-                  : "text-foreground placeholder:text-muted-foreground/80",
+                  : "text-[#191f28] placeholder:text-[#8b95a1]",
               )}
               data-globe-map-intent-prompt-input
             />

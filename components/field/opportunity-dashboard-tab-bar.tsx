@@ -50,14 +50,14 @@ export function OpportunityDashboardTabBar({
               aria-selected={active}
               onClick={() => onChange(tab.id)}
               className={cn(
-                "relative min-h-[44px] rounded-[10px] transition-colors duration-200",
+                "relative z-[1] min-h-[44px] rounded-[10px] transition-colors duration-200",
                 active ? "text-[#191f28]" : "text-[#6b7684] active:opacity-80",
               )}
             >
               {active ? (
                 <motion.span
                   layoutId="field-dashboard-tab-indicator"
-                  className="absolute inset-0 rounded-[10px] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
+                  className="pointer-events-none absolute inset-0 rounded-[10px] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
                   transition={{ type: "spring", stiffness: 440, damping: 36 }}
                 />
               ) : null}
