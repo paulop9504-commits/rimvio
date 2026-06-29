@@ -41,17 +41,8 @@ export function syncPortalComposeClarifyToFeed(input: {
     stepId: STEP_PORTAL,
     artifact: {
       kind: "question",
-      titleKo: copy.portal.composeRunClarifyTitle,
       summaryLineKo: input.questionKo,
       bodyKo: input.goalKo,
-      checklist: [
-        {
-          id: input.slotId,
-          titleKo: input.questionKo,
-          done: false,
-          priorityKo: copy.globe.executionFeed.checklistActive,
-        },
-      ],
     },
   });
 }
@@ -83,6 +74,8 @@ export function syncPortalComposeSocialSummaryToFeed(input: {
   });
 }
 
+/** Wizard opens as a sheet — feed keeps goal only (no checklist). */
+/** Wizard opens as a sheet — feed keeps goal only (no checklist). */
 export function syncPortalComposeWizardLaunchToFeed(input: {
   graphId: string;
   productLabel: string | null;
@@ -92,31 +85,8 @@ export function syncPortalComposeWizardLaunchToFeed(input: {
   dispatchExecutionFeedStep({
     graphId: input.graphId,
     stepId: STEP_PORTAL,
-    labelKo: copy.portal.composeRunWizardStep,
+    labelKo: intent?.labelKo ?? copy.portal.composeRunWizardStep,
     status: "running",
     resultKo: input.productLabel,
-  });
-  dispatchExecutionFeedArtifact({
-    graphId: input.graphId,
-    stepId: STEP_PORTAL,
-    artifact: {
-      kind: "checklist",
-      titleKo: copy.portal.composeRunWizardTitle(intent?.labelKo ?? ""),
-      summaryLineKo: input.productLabel
-        ? copy.globe.executionFeed.marketProductSummary(input.productLabel)
-        : copy.globe.executionFeed.marketPortalHint,
-      checklist: [
-        {
-          id: "wizard",
-          titleKo: copy.portal.composeRunWizardChecklist,
-          done: false,
-          priorityKo: copy.globe.executionFeed.checklistActive,
-        },
-      ],
-      tabs: [
-        { id: "checklist", labelKo: copy.globe.executionFeed.marketTabChecklist },
-      ],
-      activeTabId: "checklist",
-    },
   });
 }

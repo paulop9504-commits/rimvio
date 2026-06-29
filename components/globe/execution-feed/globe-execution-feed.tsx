@@ -1,11 +1,9 @@
 "use client";
 
 import { useGlobeExecutionFeed } from "@/hooks/use-globe-execution-feed";
+import { GlobeComposeChatThread } from "@/components/globe/execution-feed/globe-compose-chat-thread";
 import { GlobeExecutionArtifactCard } from "@/components/globe/execution-feed/globe-execution-artifact-card";
-import {
-  GlobeExecutionGoalPill,
-  GlobeExecutionPillBar,
-} from "@/components/globe/execution-feed/globe-execution-pill-bar";
+import { GlobeExecutionPillBar } from "@/components/globe/execution-feed/globe-execution-pill-bar";
 import { cn } from "@/lib/utils";
 
 export type GlobeExecutionFeedProps = {
@@ -40,29 +38,42 @@ export function GlobeExecutionFeed({ className }: GlobeExecutionFeedProps) {
       ? true
       : expandedPill != null && run.expandedPillId === expandedPill.id;
 
+  const chatQuestion =
+    run.artifact?.kind === "question" && run.artifact.summaryLineKo
+      ? run.artifact.summaryLineKo
+      : null;
+  const chatMode = Boolean(chatQuestion && run.goalKo);
+
   return (
     <div
       className={cn("flex flex-col gap-2", className)}
       data-globe-execution-feed
       data-globe-execution-graph-id={run.graphId}
     >
-      {run.goalKo ? <GlobeExecutionGoalPill goalKo={run.goalKo} /> : null}
-
-      <GlobeExecutionPillBar
-        pills={run.pills}
-        activePillId={run.activePillId}
-        expandedPillId={run.expandedPillId}
-        onTogglePill={togglePill}
-      />
-
-      {run.artifact && artifactExpanded ? (
-        <GlobeExecutionArtifactCard
-          artifact={run.artifact}
-          pill={expandedPill ?? activePill}
-          expanded
-          onTabChange={toggleArtifactTab}
+      {chatMode ? (
+        <GlobeComposeChatThread
+          userText={run.goalKo!}
+          assistantText={chatQuestion!}
         />
-      ) : null}
+      ) : (
+        <>
+          <GlobeExecutionPillBar
+            pills={run.pills}
+            activePillId={run.activePillId}
+            expandedPillId={run.expandedPillId}
+            onTogglePill={togglePill}
+          />
+
+          {run.artifact && artifactExpanded ? (
+            <GlobeExecutionArtifactCard
+              artifact={run.artifact}
+              pill={expandedPill ?? activePill}
+              expanded
+              onTabChange={toggleArtifactTab}
+            />
+          ) : null}
+        </>
+      )}
     </div>
   );
 }

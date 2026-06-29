@@ -729,7 +729,7 @@ export const copyEn: Copy = {
       marketProgressLabel: "Progress",
       marketFastPathLabel: "Path",
       marketFastPathValue: "Quick list",
-      marketPortalHint: "Continue in Portal",
+      marketPortalHint: "Continue below in one line",
       marketProductSummary: (name: string) => `Preparing 「${name}」`,
       marketQuickListSummary: (name: string) => `Listing 「${name}」 on the outer globe`,
       marketPlaceLabel: "Meet-up place",
@@ -1414,7 +1414,7 @@ export const copyEn: Copy = {
     composeRunDoneStep: "Context saved",
     composeRunWizardStep: "Fine-tuning",
     composeRunWizardTitle: (intentLabel: string) => `${intentLabel} - details`,
-    composeRunWizardChecklist: "Continue in Portal",
+    composeRunWizardChecklist: "Fine-tune details",
     composeSheetSocialHint:
       "Say it in one line - together and join fill in through conversation",
     backToIntents: "Choose intent again",

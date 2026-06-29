@@ -109,6 +109,7 @@ export const GlobeContextIngestBar = forwardRef<
   const [text, setText] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [clarifyPlaceholder, setClarifyPlaceholder] = useState<string | null>(null);
   const photoRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const isDiscovery = layerMode === "discovery";
@@ -132,13 +133,13 @@ export const GlobeContextIngestBar = forwardRef<
 
   const attachHintId = forceAttachToTarget ? targetEventId?.trim() || null : null;
   const attachHintTitle = forceAttachToTarget ? targetTitle?.trim() || null : null;
-  const inputPlaceholder = isDiscovery
+  const inputPlaceholder = clarifyPlaceholder ?? (isDiscovery
     ? copy.globe.ingestDiscoveryPlaceholder
     : mapPromptMode
       ? copy.globe.mapIntentPromptPlaceholder
       : attachHintTitle
         ? copy.globe.ingestAttachPlaceholder(attachHintTitle)
-        : copy.globe.ingestDefaultPlaceholder;
+        : copy.globe.ingestDefaultPlaceholder);
   const marketComposeBusy = busy || marketRoleBusy;
 
   const tryQuickListMarket = useCallback(
@@ -179,7 +180,8 @@ export const GlobeContextIngestBar = forwardRef<
         toast.success(runResult.summary.titleKo, { duration: 7000 });
       },
       onPortalComposeClarify: ({ questionKo }) => {
-        toast.message(questionKo, { duration: 8000 });
+        setClarifyPlaceholder(questionKo);
+        window.setTimeout(() => inputRef.current?.focus(), 0);
       },
       onLaunchMarketProjection: (input) => {
         onLaunchMarketProjection?.(input);
@@ -323,6 +325,15 @@ export const GlobeContextIngestBar = forwardRef<
         }
 
         if (result.status === "done" && result.planKind !== "discovery_hint") {
+          {
+            const activeGraph = readActiveRunState()?.graphId;
+            const pending = activeGraph
+              ? readPortalComposeRunState(activeGraph)
+              : null;
+            if (pending?.status !== "waiting_slot") {
+              setClarifyPlaceholder(null);
+            }
+          }
           setText("");
           setMenuOpen(false);
         }

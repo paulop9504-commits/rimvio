@@ -20,11 +20,11 @@ import {
 } from "@/lib/context-run/plan-context-run";
 import { ensureRunState, touchRunStateNode } from "@/lib/context-run/run-state-store";
 import {
+  buildComposerGraphId,
   resolveGlobeComposerSurface,
 } from "@/lib/context-run/resolve-globe-composer-surface";
 import { resolvePrimarySurface } from "@/lib/context-run/surface-resolver";
 import {
-  syncMarketComposeStartToFeed,
   syncMarketQuickListStartToFeed,
 } from "@/lib/context-run/sync-market-compose-to-feed";
 import { ingestGlobeContextFromFiles } from "@/lib/feed/ingest-globe-context-capture";
@@ -51,7 +51,6 @@ import {
   syncPortalComposeClarifyToFeed,
   syncPortalComposeSocialSummaryToFeed,
   syncPortalComposeStartToFeed,
-  syncPortalComposeWizardLaunchToFeed,
 } from "@/lib/context-run/sync-portal-compose-to-feed";
 import { readActiveRunState } from "@/lib/context-run/run-state-store";
 import { commitPortalSocialContext } from "@/lib/portal/commit-portal-social-context";
@@ -60,6 +59,7 @@ import {
   readPortalComposeRunState,
   writePortalComposeRunState,
 } from "@/lib/portal/portal-compose-run-store";
+import { detectPortalIntentFromText } from "@/lib/portal/detect-portal-intent-from-text";
 import { resolvePortalComposeRunTurn } from "@/lib/portal/resolve-portal-compose-run-turn";
 import type { PortalIntentId } from "@/lib/portal/portal-types";
 
@@ -214,11 +214,6 @@ async function executeContextRunPlan(
       }
 
       if (result.kind === "launch_wizard") {
-        syncPortalComposeWizardLaunchToFeed({
-          graphId: runGraphId,
-          productLabel: result.draft.detail.productName?.trim() || null,
-          intentId: result.intentId,
-        });
         handlers.onLaunchMarketProjection?.({
           draft: result.draft,
           eventId: result.eventId,
@@ -262,31 +257,72 @@ async function executeContextRunPlan(
     }
     case "market_portal": {
       const composeText = plan.composeText?.trim() ?? bound.goalKo;
-      const phase = plan.composerPhase ?? "market_compose";
-      const resolution = resolveGlobeComposerSurface({
-        phase,
-        eventId,
-        composeText,
-      });
-      const { effect } = resolution;
-      if (effect.type === "open_portal") {
-        syncMarketComposeStartToFeed({
-          composeText: effect.composeText,
-          eventId: effect.eventId,
-        });
-        await handlers.openPortal({
-          eventId: effect.eventId,
-          composeText: effect.composeText,
-        });
-      } else if (effect.type === "field_discovery") {
-        handlers.openFieldDiscovery();
+      const detected = detectPortalIntentFromText(composeText);
+      const intentId = (detected?.intentId ?? "offer") as PortalIntentId;
+      let resolvedEventId = eventId?.trim() || "";
+      if (!resolvedEventId) {
+        const outcome = await commitTextContextIngress(composeText);
+        resolvedEventId = outcome.result.event.id;
       }
-      return {
-        graphId,
-        status: "done",
-        planKind: plan.kind,
-        surface,
-      };
+      const runGraphId = buildComposerGraphId(resolvedEventId, composeText);
+      syncPortalComposeStartToFeed({
+        graphId: runGraphId,
+        goalKo: composeText,
+        intentId,
+      });
+      const result = resolvePortalComposeRunTurn({
+        graphId: runGraphId,
+        intentId,
+        categoryId: detected?.categoryId ?? null,
+        message: composeText,
+        eventId: resolvedEventId,
+        liveLat: ingress.kind === "text" ? ingress.lat : null,
+        liveLng: ingress.kind === "text" ? ingress.lng : null,
+      });
+      if (result.kind === "clarify") {
+        writePortalComposeRunState(result.state);
+        touchRunStateNode(`portal:${result.slotId}`);
+        syncPortalComposeClarifyToFeed({
+          graphId: runGraphId,
+          questionKo: result.questionKo,
+          goalKo: composeText,
+          slotId: result.slotId,
+        });
+        handlers.onPortalComposeClarify?.({
+          questionKo: result.questionKo,
+          slotId: result.slotId,
+        });
+        return { graphId, status: "done", planKind: plan.kind };
+      }
+      clearPortalComposeRunState(runGraphId);
+      if (result.kind === "quick_list_ready") {
+        const quickListed = await handlers.tryQuickListMarket(result.composeText);
+        if (quickListed) {
+          handlers.onAttached?.(result.eventId);
+          return { graphId, status: "done", planKind: plan.kind };
+        }
+        const fallbackDraft = buildMarketQuickListDraft({
+          text: result.composeText,
+          eventId: result.eventId,
+        });
+        if (fallbackDraft) {
+          handlers.onLaunchMarketProjection?.({
+            draft: fallbackDraft,
+            eventId: result.eventId,
+            composeText: result.composeText,
+          });
+        }
+        return { graphId, status: "done", planKind: plan.kind };
+      }
+      if (result.kind === "launch_wizard") {
+        handlers.onLaunchMarketProjection?.({
+          draft: result.draft,
+          eventId: result.eventId,
+          composeText: result.composeText,
+        });
+        return { graphId, status: "done", planKind: plan.kind };
+      }
+      return { graphId, status: "done", planKind: plan.kind };
     }
     case "map_intent_supply": {
       const supplyInput = plan.supplyInput;
