@@ -3,7 +3,7 @@ import {
   EVENT_SERVICE_TYPE_ACCOMMODATION,
   EVENT_SERVICE_TYPE_META_KEY,
 } from "@/lib/events/event-metadata-keys";
-import { findEventCandidate } from "@/lib/events/event-store";
+import { findLifeEventCandidate } from "@/lib/life-read-model";
 import { commitEventUpsert } from "@/lib/source-of-truth/commit-truth";
 
 export function readEventServiceType(
@@ -23,7 +23,7 @@ export function eventHasAccommodationServiceType(
 export function stampAccommodationServiceTypeOnEvent(
   eventId: string,
 ): EventCandidate | null {
-  const event = findEventCandidate(eventId.trim());
+  const event = findLifeEventCandidate(eventId.trim());
   if (!event) {
     return null;
   }
