@@ -32,6 +32,7 @@ import type {
 import { ingestScreenshot } from "@/lib/share/ingest-screenshot";
 import { dispatchGlobeMarketProjectionLaunch } from "@/lib/portal/globe-market-projection-bridge";
 import { dispatchContextRun } from "@/lib/context-run/dispatch-context-run";
+import { consumeCaptureSheetSeedText } from "@/lib/nav/open-capture-sheet-bridge";
 import { cn } from "@/lib/utils";
 
 export type CaptureSheetProps = {
@@ -256,8 +257,8 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
     await ingestShare(memoDraft, "memo");
   }, [ingestShare, memoDraft]);
 
-  const sendAsk = useCallback(() => {
-    const text = draft.trim();
+  const runAskTurn = useCallback((rawText: string) => {
+    const text = rawText.trim();
     if (!text || busy) {
       return;
     }
@@ -408,12 +409,29 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
     ask.replySoon,
     busy,
     close,
-    draft,
+    copy.portal.composeRunWizardChecklist,
     isPersonal,
     liveLocation?.lat,
     liveLocation?.lng,
     onGlobeHome,
   ]);
+
+  const sendAsk = useCallback(() => {
+    runAskTurn(draft);
+  }, [draft, runAskTurn]);
+
+  useEffect(() => {
+    if (!open || busy) {
+      return;
+    }
+    const seed = consumeCaptureSheetSeedText();
+    if (!seed) {
+      return;
+    }
+    setLayerMode("personal");
+    setMessages([]);
+    runAskTurn(seed);
+  }, [open, busy, runAskTurn, setLayerMode]);
 
   if (!mounted) {
     return null;
