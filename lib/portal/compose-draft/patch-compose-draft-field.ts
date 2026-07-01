@@ -9,7 +9,9 @@ import type { ComposeSchemaId, SellItemDraft } from "@/lib/portal/compose-draft/
 import { buildMarketIntentFromComposeDraft } from "@/lib/portal/compose-draft/draft-to-market-intent";
 import { sellItemDraftToComposeText } from "@/lib/portal/compose-draft/draft-to-market-intent";
 
-import { parseComposePriceKrwOrNull } from "@/lib/portal/compose-draft/parse-compose-price-krw";(input: {
+import { parseComposePriceKrwOrNull } from "@/lib/portal/compose-draft/parse-compose-price-krw";
+
+export function patchComposeDraftField(input: {
   graphId: string;
   fieldId: keyof SellItemDraft;
   rawValue: string;

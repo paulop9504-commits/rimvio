@@ -1493,6 +1493,15 @@ export const copyEn: Copy = {
     slotAskClothingCondition: "How often worn, and washed?",
     slotAskFurnitureCondition: "Size, assembly, and condition?",
     slotAskPrice: "What price are you thinking?",
+    slotPriceParseHint:
+      "Enter the price again. e.g. 700k KRW, 700000, 1 million — bare digits count as 만 (×10,000).",
+    slotPriceConfirmAsk: (krw: number) => {
+      const man = krw / 10_000;
+      if (Number.isInteger(man) && man >= 1 && man <= 999) {
+        return `${man}0k KRW (${krw.toLocaleString("en-US")} KRW) — correct?`;
+      }
+      return `${krw.toLocaleString("en-US")} KRW — correct?`;
+    },
     slotAskPlace: "Where should the trade happen?",
     slotAskPlacePickup: "Where can pickup happen?",
     slotAskNoteOptional: "Any extra note? Send “none” if not.",

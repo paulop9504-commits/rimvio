@@ -29,7 +29,6 @@ import {
   matchAgentTasksComplete,
 } from "@/lib/resource/build-match-agent-tasks";
 import { resolveResourceStatus } from "@/lib/resource/resolve-resource-status";
-import { SELL_ITEM_FLOW } from "@/lib/portal/compose-draft/sell-item-flow";
 import { readPortalComposeRunState } from "@/lib/portal/portal-compose-run-store";
 import { resetGlobeComposeChatSession } from "@/lib/portal/reset-globe-compose-chat";
 import type { GlobeChatMessage } from "@/lib/globe/chat/globe-chat-session-types";
