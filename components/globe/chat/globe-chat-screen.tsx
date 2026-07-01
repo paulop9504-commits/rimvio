@@ -22,6 +22,8 @@ import { readActiveRunState } from "@/lib/context-run/run-state-store";
 import { copy } from "@/lib/copy/human-ko";
 import { findMarketIntentByEventId } from "@/lib/globe/market/market-alignment-store";
 import { sellItemDraftCanPublish } from "@/lib/portal/compose-draft/draft-utils";
+import { buildGlobeChatActionHint } from "@/lib/portal/compose-draft/build-globe-chat-action-hint";
+import { readPillSubmitText } from "@/components/globe/globe-action-pill-guide";
 import { findNextFlowStep } from "@/lib/portal/compose-draft/flow-step-types";
 import { SELL_ITEM_FLOW } from "@/lib/portal/compose-draft/sell-item-flow";
 import {
@@ -31,7 +33,6 @@ import {
 import { resolveResourceStatus } from "@/lib/resource/resolve-resource-status";
 import { readPortalComposeRunState } from "@/lib/portal/portal-compose-run-store";
 import { resetGlobeComposeChatSession } from "@/lib/portal/reset-globe-compose-chat";
-import type { GlobeChatMessage } from "@/lib/globe/chat/globe-chat-session-types";
 import { globeChatLight } from "@/lib/design/globe-chat-light-theme";
 import { cn } from "@/lib/utils";
 
@@ -67,28 +68,6 @@ function readChatHeaderSubtitle(
     return copy.globe.chatScreenSubtitleFill;
   }
   return copy.globe.chatScreenSubtitleChat;
-}
-
-function readPendingAnswerHint(messages: readonly GlobeChatMessage[]): string | null {
-  const last = messages[messages.length - 1];
-  if (last?.kind === "slot_prompt") {
-    const hasChips =
-      (last.choices?.length ?? 0) > 0 || (last.categoryOptions?.length ?? 0) > 0;
-    if (hasChips) {
-      return null;
-    }
-    return last.text.trim() || null;
-  }
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const message = messages[index];
-    if (message?.kind === "slot_prompt") {
-      return message.text.trim() || null;
-    }
-    if (message?.role === "assistant" && message.kind === "text") {
-      return message.text.trim() || null;
-    }
-  }
-  return null;
 }
 
 function draftCardHasValues(
@@ -182,7 +161,14 @@ export function GlobeChatScreen({
     return null;
   }, [messages]);
 
-  const answerHint = useMemo(() => readPendingAnswerHint(messages), [messages]);
+  const actionHint = useMemo(
+    () =>
+      buildGlobeChatActionHint({
+        composeState,
+        messages,
+      }),
+    [composeState, messages],
+  );
   const chatPlaceholderOverride = useMemo(() => {
     if (
       composeState?.status === "waiting_slot" ||
@@ -275,7 +261,9 @@ export function GlobeChatScreen({
           data-globe-chat-messages
         >
           <div className="mx-auto flex w-full max-w-lg flex-col gap-3.5">
-            {showEmptyState ? <GlobeChatEmptyState /> : null}
+            {showEmptyState ? (
+              <GlobeChatEmptyState onPillSelect={submitChipAnswer} />
+            ) : null}
             {messages.map((message) => {
               if (message.kind === "resource_complete") {
                 return (
@@ -410,17 +398,19 @@ export function GlobeChatScreen({
 
         <div
           className={cn(
-            "relative z-[2] shrink-0 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2.5",
+            "relative z-[2] shrink-0 px-3 pb-[max(0.625rem,env(safe-area-inset-bottom))] pt-2",
             globeChatLight.composerBar,
           )}
           data-globe-chat-composer
         >
-          <div className="mx-auto w-full max-w-[min(100%,20rem)] space-y-2">
-            {answerHint ? (
+          <div className="mx-auto w-full max-w-[min(100%,20rem)] space-y-1.5">
+            {actionHint && !showEmptyState ? (
               <GlobeChatAnswerHint
-                questionKo={answerHint}
+                bodyKo={actionHint.bodyKo}
+                pills={actionHint.pills}
+                onPillSelect={(pill) => submitChipAnswer(readPillSubmitText(pill))}
                 tone="light"
-                className="rounded-2xl bg-white px-3.5 py-2.5 shadow-[0_2px_10px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.05]"
+                className="rounded-[0.875rem] bg-white px-3 py-2 shadow-[0_1px_6px_rgba(0,0,0,0.05)] ring-1 ring-black/[0.05]"
               />
             ) : null}
             <GlobeContextIngestBar

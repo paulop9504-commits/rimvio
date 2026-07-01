@@ -1,45 +1,41 @@
 "use client";
 
-import { copy } from "@/lib/copy/human-ko";
+import { GlobeActionPillGuide } from "@/components/globe/globe-action-pill-guide";
+import type { GlobeChatActionHintPill } from "@/lib/portal/compose-draft/build-globe-chat-action-hint";
 import { cn } from "@/lib/utils";
 
 export type GlobeChatAnswerHintProps = {
-  questionKo: string;
+  bodyKo: string;
+  pills?: readonly GlobeChatActionHintPill[];
+  onPillSelect?: (pill: GlobeChatActionHintPill) => void;
   className?: string;
   tone?: "dark" | "light";
 };
 
-/** Current AI question — pinned above input so users know what to answer. */
+/** Chat composer — “지금 할 일” card with optional tap-to-fill pills. */
 export function GlobeChatAnswerHint({
-  questionKo,
+  bodyKo,
+  pills = [],
+  onPillSelect,
   className,
   tone = "light",
 }: GlobeChatAnswerHintProps) {
-  const trimmed = questionKo.trim();
-  if (!trimmed) {
+  const trimmed = bodyKo.trim();
+  if (!trimmed && pills.length === 0) {
+    return null;
+  }
+  if (pills.length > 0 && !onPillSelect) {
     return null;
   }
 
-  const isLight = tone === "light";
-
   return (
-    <div className={className} data-globe-chat-answer-hint>
-      <p
-        className={cn(
-          "mb-1 text-[10px] font-semibold uppercase tracking-wide",
-          isLight ? "text-[#8b95a1]" : "text-white/40",
-        )}
-      >
-        {copy.globe.chatWaitingLabel}
-      </p>
-      <p
-        className={cn(
-          "line-clamp-3 text-[13px] leading-snug",
-          isLight ? "text-[#191f28]" : "text-white/88",
-        )}
-      >
-        {trimmed}
-      </p>
-    </div>
+    <GlobeActionPillGuide
+      bodyKo={trimmed}
+      pills={pills}
+      onPillSelect={onPillSelect!}
+      variant="card"
+      tone={tone}
+      className={cn(className)}
+    />
   );
 }

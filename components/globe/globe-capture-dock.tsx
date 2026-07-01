@@ -1,10 +1,15 @@
 "use client";
 
-import { forwardRef } from "react";
+import { forwardRef, useImperativeHandle, useRef } from "react";
+import {
+  GlobeActionPillGuide,
+  readPillSubmitText,
+} from "@/components/globe/globe-action-pill-guide";
 import { GlobeContextIngestBar, type GlobeContextIngestBarHandle, type GlobeContextIngestBarProps } from "@/components/globe/globe-context-ingest-bar";
 import { GlobePhotoPlaceWalkthrough } from "@/components/globe/globe-photo-place-walkthrough";
 import { GlobePhotoIngestProgressStrip } from "@/components/globe/globe-photo-ingest-progress-strip";
 import { GlobePlaceVerifyCard } from "@/components/globe/globe-place-verify-card";
+import { buildMapIntentPills } from "@/lib/globe/build-map-intent-pills";
 import type { GlobePhotoIngestDraft } from "@/lib/globe/prepare-globe-photo-ingest-draft";
 import type { PhotoIngestFileItem } from "@/lib/globe/photo-ingest-file-progress";
 import { cn } from "@/lib/utils";
@@ -63,8 +68,12 @@ export const GlobeCaptureDock = forwardRef<GlobeContextIngestBarHandle, GlobeCap
     },
     ref,
   ) {
+    const ingestRef = useRef<GlobeContextIngestBarHandle>(null);
+    useImperativeHandle(ref, () => ingestRef.current as GlobeContextIngestBarHandle);
+
     const photoActive = photoFlow.open;
     const showPlaceVerify = Boolean(placeVerifyEventId) && !photoActive;
+    const mapPills = buildMapIntentPills(ingest.layerMode ?? "personal");
 
     return (
       <>
@@ -128,14 +137,25 @@ export const GlobeCaptureDock = forwardRef<GlobeContextIngestBarHandle, GlobeCap
 
         {!photoActive && !composeHidden ? (
           <div
-            className="pointer-events-none mx-auto flex w-full max-w-[min(100%,20rem)] flex-col gap-2"
+            className="pointer-events-none mx-auto flex w-full max-w-[min(100%,20rem)] flex-col gap-1"
             data-globe-ingest-compact="pill"
           >
             {composeAccessory ? (
               <div className="pointer-events-auto">{composeAccessory}</div>
             ) : null}
+            <GlobeActionPillGuide
+              pills={mapPills}
+              variant="inline"
+              showLabel={false}
+              tone="dark"
+              chipVariant="confirm"
+              className="pointer-events-auto"
+              onPillSelect={(pill) => {
+                void ingestRef.current?.submitComposerText(readPillSubmitText(pill));
+              }}
+            />
             <GlobeContextIngestBar
-              ref={ref}
+              ref={ingestRef}
               {...ingest}
               className="pointer-events-auto relative inset-auto bottom-auto w-full"
             />

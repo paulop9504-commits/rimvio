@@ -1,5 +1,6 @@
 "use client";
 
+import { globeActionPillStyles } from "@/lib/design/globe-action-pill-styles";
 import { cn } from "@/lib/utils";
 
 export type GlobeChatSlotChipsProps = {
@@ -8,7 +9,32 @@ export type GlobeChatSlotChipsProps = {
   className?: string;
   variant?: "confirm" | "slot" | "category";
   tone?: "dark" | "light";
+  /** bubble = in-chat chips; action = 지금 할 일; map = dock row */
+  size?: "bubble" | "action" | "map";
+  layout?: "wrap" | "scroll";
 };
+
+function readPillButtonClass(
+  variant: GlobeChatSlotChipsProps["variant"],
+  tone: GlobeChatSlotChipsProps["tone"],
+  size: NonNullable<GlobeChatSlotChipsProps["size"]>,
+): string {
+  const light = tone === "light";
+  const confirm = variant === "confirm" || variant === "category";
+
+  if (size === "action" || size === "map") {
+    return light ? globeActionPillStyles.action.light : globeActionPillStyles.action.dark;
+  }
+
+  if (light) {
+    return confirm
+      ? globeActionPillStyles.bubble.lightConfirm
+      : globeActionPillStyles.bubble.light;
+  }
+  return confirm
+    ? globeActionPillStyles.bubble.darkConfirm
+    : globeActionPillStyles.bubble.dark;
+}
 
 /** Tap-to-answer chips — storage, size, category confirm/pick. */
 export function GlobeChatSlotChips({
@@ -17,34 +43,32 @@ export function GlobeChatSlotChips({
   className,
   variant = "slot",
   tone = "light",
+  size = "bubble",
+  layout = "wrap",
 }: GlobeChatSlotChipsProps) {
   if (choices.length === 0) {
     return null;
   }
 
-  const light = tone === "light";
+  const buttonClass = readPillButtonClass(variant, tone, size);
 
   return (
     <div
-      className={cn("mt-2.5 flex flex-wrap gap-1.5", className)}
+      className={cn(
+        size === "bubble" ? "mt-2" : "mt-0",
+        layout === "scroll" ? globeActionPillStyles.rowScroll : globeActionPillStyles.rowWrap,
+        className,
+      )}
       data-globe-chat-slot-chips
       data-variant={variant}
+      data-size={size}
     >
       {choices.map((choice) => (
         <button
           key={choice.id}
           type="button"
           onClick={() => onSelect(choice)}
-          className={cn(
-            "rounded-full px-3 py-1.5 text-[12px] font-medium ring-1 transition-colors active:scale-[0.98]",
-            light
-              ? variant === "confirm"
-                ? "bg-[#f0f2f5] text-[#191f28] ring-black/[0.08] hover:bg-[#e8ebee]"
-                : "bg-[#e8f5ec] text-[#1a7f37] ring-[#34c759]/22 hover:bg-[#dcf5e4]"
-              : variant === "confirm"
-                ? "bg-white/10 text-white ring-white/16 hover:bg-white/14"
-                : "bg-[#34c759]/14 text-[#b8f5c8] ring-[#34c759]/28 hover:bg-[#34c759]/22",
-          )}
+          className={cn(globeActionPillStyles.buttonBase, buttonClass)}
         >
           {choice.labelKo}
         </button>
