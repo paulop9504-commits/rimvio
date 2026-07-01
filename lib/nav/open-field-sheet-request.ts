@@ -3,7 +3,6 @@ import {
   shouldUseIosPwaMemoryGuards,
 } from "@/lib/platform/ios-pwa-memory";
 import {
-  publishFieldSheetOpen,
   subscribeOpenFieldSheet,
   type FieldSheetOpenRequest,
 } from "@/lib/nav/field-sheet-bridge";
@@ -18,8 +17,6 @@ export function requestOpenFieldSheet(
     clearTimeout(openTimer);
     openTimer = null;
   }
-
-  publishFieldSheetOpen(true);
 
   const delay = iosPwaOverlayOpenDelayMs();
   if (delay <= 0) {

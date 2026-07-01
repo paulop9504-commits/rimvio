@@ -16,7 +16,6 @@ import { useCopy } from "@/hooks/use-copy";
 import { useFieldNavBadge } from "@/hooks/use-field-nav-badge";
 import { useFieldSheet } from "@/components/field/field-sheet-provider";
 import { subscribeOpenCaptureSheet } from "@/lib/nav/open-capture-sheet-bridge";
-import { subscribeFieldSheetOpenState } from "@/lib/nav/field-sheet-bridge";
 import { openFieldDashboardFromBottomNav } from "@/lib/nav/field-dashboard-ingress";
 import { GRID } from "@/lib/ui/responsive-grid";
 import { cn } from "@/lib/utils";
@@ -367,17 +366,11 @@ export function AppNav({ placement }: AppNavProps) {
   const copy = useCopy();
   const { open: fieldSheetOpen, closeFieldSheet } = useFieldSheet();
   const { total: fieldNavBadge, suggestedTab: fieldSuggestedTab } = useFieldNavBadge();
-  const [fieldSheetSignalOpen, setFieldSheetSignalOpen] = useState(false);
-  const fieldTabActive = fieldSheetOpen || fieldSheetSignalOpen;
   const [captureOpen, setCaptureOpen] = useState(false);
   const lastNavRef = useRef<{ href: string; at: number } | null>(null);
 
   useEffect(() => {
     return subscribeOpenCaptureSheet(() => setCaptureOpen(true));
-  }, []);
-
-  useEffect(() => {
-    return subscribeFieldSheetOpenState(setFieldSheetSignalOpen);
   }, []);
 
   useEffect(() => {
@@ -396,7 +389,7 @@ export function AppNav({ placement }: AppNavProps) {
       lastNavRef.current = { href, at: now };
 
       if (href === "/field") {
-        if (fieldTabActive) {
+        if (fieldSheetOpen) {
           closeFieldSheet();
           return;
         }
@@ -414,7 +407,7 @@ export function AppNav({ placement }: AppNavProps) {
 
       router.push(href);
     },
-    [closeFieldSheet, fieldSuggestedTab, fieldTabActive, pathname, router],
+    [closeFieldSheet, fieldSheetOpen, fieldSuggestedTab, pathname, router],
   );
 
   const tabs = useMemo<NavTab[]>(
@@ -430,7 +423,7 @@ export function AppNav({ placement }: AppNavProps) {
         label: copy.nav.field,
         badge: fieldNavBadge > 0 ? fieldNavBadge : undefined,
         isActive: (p) =>
-          fieldTabActive || p === "/field" || p.startsWith("/field/"),
+          fieldSheetOpen || p === "/field" || p.startsWith("/field/"),
         icon: "field",
       },
       {
@@ -446,7 +439,7 @@ export function AppNav({ placement }: AppNavProps) {
         icon: "capture",
       },
     ],
-    [copy, fieldNavBadge, fieldTabActive],
+    [copy, fieldNavBadge, fieldSheetOpen],
   );
 
   const navChrome = (

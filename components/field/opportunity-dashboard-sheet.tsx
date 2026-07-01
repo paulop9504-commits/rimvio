@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
@@ -24,6 +24,7 @@ import type { OpportunityRow } from "@/lib/globe/opportunity-field";
 import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
 import type { FieldDashboardTab } from "@/lib/nav/field-dashboard-types";
 import { isIOS, isStandalonePwa } from "@/lib/platform/device";
+import { useRimvioSheetDismissGuard } from "@/lib/platform/sheet-dismiss-guard";
 import { dispatchFieldFlyToIntent } from "@/lib/nav/field-sheet-bridge";
 import { cn } from "@/lib/utils";
 
@@ -99,6 +100,11 @@ export function OpportunityDashboardSheet({
 
   const tradeSeeking = selectedPill?.seeking ?? pills[0]?.seeking ?? null;
   const field = copy.globe.field;
+  const requestDismiss = useRimvioSheetDismissGuard(open, ingressGeneration);
+
+  const dismissSheet = useCallback(() => {
+    requestDismiss(() => onOpenChange(false));
+  }, [onOpenChange, requestDismiss]);
 
   const handleRowPress = (row: OpportunityRow) => {
     if (!tradeSeeking) {
@@ -239,7 +245,7 @@ export function OpportunityDashboardSheet({
           role="presentation"
           aria-hidden
           className={cn(rimvioSheetBackdropClass(), "rimvio-sheet-over-nav-backdrop")}
-          onClick={() => onOpenChange(false)}
+          onClick={dismissSheet}
         />
         <div
           role="dialog"
@@ -267,7 +273,7 @@ export function OpportunityDashboardSheet({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className={cn(rimvioSheetBackdropClass(), "rimvio-sheet-over-nav-backdrop")}
-            onClick={() => onOpenChange(false)}
+            onClick={dismissSheet}
           />
           <motion.div
             role="dialog"
