@@ -7,6 +7,10 @@ import { ArrowUp, Camera, Link2, Mic, Plus, StickyNote, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ExperienceRunSummaryCard } from "@/components/globe/experience-run-summary-card";
+import {
+  GlobeActionPillGuide,
+  readPillSubmitText,
+} from "@/components/globe/globe-action-pill-guide";
 import { ExternalContextAskReply } from "@/components/globe/external-context-ask-reply";
 import { CaptureSheetMemoryTriggerStage } from "@/components/globe/capture-sheet-memory-trigger-stage";
 import { GlobeContextAiOrb } from "@/components/globe/globe-context-ai-orb";
@@ -668,6 +672,20 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
               ) : null}
 
               <div className="relative shrink-0 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2">
+                {messages.length === 0 && attachMode === "closed" ? (
+                  <GlobeActionPillGuide
+                    pills={
+                      isPersonal
+                        ? copy.globe.askSheet.capturePillsPersonal
+                        : copy.globe.askSheet.capturePillsDiscovery
+                    }
+                    variant="inline"
+                    showLabel={false}
+                    tone="light"
+                    className="mb-2"
+                    onPillSelect={(pill) => runAskTurn(readPillSubmitText(pill))}
+                  />
+                ) : null}
                 <AnimatePresence>
                   {attachMode === "menu" ? (
                     <motion.div

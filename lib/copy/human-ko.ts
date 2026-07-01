@@ -190,6 +190,16 @@ export const copy = {
       heroDiscovery: "무엇을 찾아볼까요?",
       placeholderPersonal: "기억 · 사람 · 일정 물어보기",
       placeholderDiscovery: "맞춤 · 모임 · 장소 찾기",
+      capturePillsPersonal: [
+        { id: "memory", labelKo: "기억 떠올리기", submitKo: "오늘 떠올릴 기억 있어" },
+        { id: "schedule", labelKo: "오늘 일정", submitKo: "오늘 일정 알려줘" },
+        { id: "sell", labelKo: "팔기", submitKo: "핸드폰 팔고 싶어요" },
+      ],
+      capturePillsDiscovery: [
+        { id: "nearby", labelKo: "이 근처", submitKo: "이 근처 뭐 있어?" },
+        { id: "align", labelKo: "맞춤 찾기", submitKo: "맞춤 찾아줘" },
+        { id: "place", labelKo: "장소", submitKo: "장소 추천해줘" },
+      ],
       attachAria: "사진 · 링크 · 메모",
       voiceAria: "음성",
       voiceSoon: "곧 열려요",
@@ -1582,6 +1592,9 @@ export const copy = {
       "사진까지 확인했어요. 아래 「한 줄로 내놓기」를 눌러 등록을 마무리해 주세요.",
     composeIntentChatPhoneAge:
       "아, 바꾸고 싶으신 거예요? 아니면 지금 쓰시는 거 팔 생각도 있으세요?",
+    composeIntentChatGreetingShort: "안녕하세요! 편하게 말씀해 주세요.",
+    composeIntentChatGreeting: "반가워요. 오늘 어떤 얘기부터 할까요?",
+    composeIntentChatEmpathy: "고생 많으셨어요. 오늘 뭐가 제일 바빴어요?",
     composeIntentChatDefault: "그렇군요. 편하게 이어서 말씀해 주세요.",
     composeIntentSoftDefault:
       "괜찮아요, 천천히 생각해 보셔도 돼요. 올려보고 싶으시면 말씀해 주세요.",

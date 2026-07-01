@@ -32,6 +32,7 @@ import {
 } from "@/lib/resource/build-match-agent-tasks";
 import { resolveResourceStatus } from "@/lib/resource/resolve-resource-status";
 import { readPortalComposeRunState } from "@/lib/portal/portal-compose-run-store";
+import { readGlobeChatGraphId } from "@/lib/globe/chat/ensure-globe-chat-graph-id";
 import { resetGlobeComposeChatSession } from "@/lib/portal/reset-globe-compose-chat";
 import { globeChatLight } from "@/lib/design/globe-chat-light-theme";
 import { cn } from "@/lib/utils";
@@ -92,6 +93,7 @@ export function GlobeChatScreen({
   const { state: feedState } = useGlobeExecutionFeed();
   const graphId =
     feedState.run?.graphId?.trim() ||
+    readGlobeChatGraphId() ||
     readActiveRunState()?.graphId?.trim() ||
     "";
   const { messages } = useGlobeChatSession(graphId);

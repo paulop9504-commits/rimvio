@@ -5,6 +5,10 @@ import type {
   IntentState,
 } from "@/lib/portal/compose-intent/intent-state-types";
 import { detectComposeSchemaFromText } from "@/lib/portal/compose-draft/schema-registry";
+import {
+  buildComposeContextText,
+  hasListingSubstanceForConfirm,
+} from "@/lib/portal/compose-intent/compose-intent-context";
 
 const AFFIRM_SIGNAL =
   /(?:^(?:네|응|예|좋아요|그래요?|그럼|올려볼게|올릴게|등록할게|해볼게|해주세요)|올려\s*볼|등록\s*할|해볼게요)/iu;
@@ -57,9 +61,11 @@ function isAffirmationAfterSoft(text: string, previous: IntentState | null): boo
 function classifyComposeIntentRules(input: {
   newMessage: string;
   previousStage: IntentState | null;
+  contextText: string;
 }): IntentState {
   const text = input.newMessage.trim();
-  const resourceType = readResourceType(text);
+  const context = input.contextText.trim() || text;
+  const resourceType = readResourceType(context);
 
   if (input.previousStage?.stage === "confirmed") {
     return input.previousStage;
@@ -76,19 +82,25 @@ function classifyComposeIntentRules(input: {
     };
   }
 
-  if (isExplicitMarketIntent(text)) {
+  if (isExplicitMarketIntent(text) || isExplicitMarketIntent(context)) {
     return { stage: "confirmed", resourceType };
   }
 
-  if (isSoftMarketSignal(text)) {
+  if (isSoftMarketSignal(text) || isSoftMarketSignal(context)) {
     return { stage: "soft_signal", possibleIntent: resourceType };
   }
 
-  if (DEVICE_SIGNAL.test(text)) {
+  if (DEVICE_SIGNAL.test(text) || DEVICE_SIGNAL.test(context)) {
     return { stage: "soft_signal", possibleIntent: resourceType };
   }
 
   if (input.previousStage?.stage === "soft_signal") {
+    if (hasListingSubstanceForConfirm(context)) {
+      return {
+        stage: "confirmed",
+        resourceType: input.previousStage.possibleIntent,
+      };
+    }
     return input.previousStage;
   }
 
@@ -151,7 +163,15 @@ export async function classifyComposeIntent(input: {
   previousStage?: IntentState | null;
 }): Promise<IntentState> {
   const previousStage = input.previousStage ?? null;
-  const rule = classifyComposeIntentRules({ newMessage: input.newMessage, previousStage });
+  const contextText = buildComposeContextText({
+    history: input.history,
+    newMessage: input.newMessage,
+  });
+  const rule = classifyComposeIntentRules({
+    newMessage: input.newMessage,
+    previousStage,
+    contextText,
+  });
   const llm = await classifyComposeIntentLlm({
     history: input.history,
     newMessage: input.newMessage,

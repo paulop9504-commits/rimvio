@@ -13,33 +13,41 @@ export async function callOpenAiTextJson(input: {
     return null;
   }
 
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${openAiApiKey()}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: openAiVisionModel(),
-      temperature: input.temperature ?? 0.1,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: input.systemPrompt },
-        { role: "user", content: input.userText },
-      ],
-    }),
-  });
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${openAiApiKey()}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: openAiVisionModel(),
+        temperature: input.temperature ?? 0.1,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: input.systemPrompt },
+          { role: "user", content: input.userText },
+        ],
+      }),
+    });
 
-  if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(`openai_failed:${response.status}:${detail.slice(0, 240)}`);
+    if (!response.ok) {
+      const detail = await response.text();
+      console.error(
+        `[openai-json] chat failed ${response.status}: ${detail.slice(0, 240)}`,
+      );
+      return null;
+    }
+
+    const payload = (await response.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
+
+    return payload.choices?.[0]?.message?.content?.trim() ?? null;
+  } catch (error) {
+    console.error("[openai-json] chat request failed", error);
+    return null;
   }
-
-  const payload = (await response.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-
-  return payload.choices?.[0]?.message?.content?.trim() ?? null;
 }
 
 /** Plain-text chat completion — persona replies (not JSON). */
@@ -53,33 +61,41 @@ export async function callOpenAiText(input: {
     return null;
   }
 
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${openAiApiKey()}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: openAiVisionModel(),
-      temperature: input.temperature ?? 0.8,
-      max_tokens: input.maxTokens ?? 120,
-      messages: [
-        { role: "system", content: input.systemPrompt },
-        { role: "user", content: input.userText },
-      ],
-    }),
-  });
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${openAiApiKey()}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: openAiVisionModel(),
+        temperature: input.temperature ?? 0.8,
+        max_tokens: input.maxTokens ?? 120,
+        messages: [
+          { role: "system", content: input.systemPrompt },
+          { role: "user", content: input.userText },
+        ],
+      }),
+    });
 
-  if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(`openai_failed:${response.status}:${detail.slice(0, 240)}`);
+    if (!response.ok) {
+      const detail = await response.text();
+      console.error(
+        `[openai-text] chat failed ${response.status}: ${detail.slice(0, 240)}`,
+      );
+      return null;
+    }
+
+    const payload = (await response.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
+
+    return payload.choices?.[0]?.message?.content?.trim() ?? null;
+  } catch (error) {
+    console.error("[openai-text] chat request failed", error);
+    return null;
   }
-
-  const payload = (await response.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-
-  return payload.choices?.[0]?.message?.content?.trim() ?? null;
 }
 
 export async function callOpenAiVisionJson(input: {

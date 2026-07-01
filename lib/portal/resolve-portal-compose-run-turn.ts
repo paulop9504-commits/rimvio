@@ -167,6 +167,7 @@ async function resolveComposeMarketTurn(input: {
   liveLng: number | null;
   resumeState?: PortalComposeRunState | null;
   answerText?: string | null;
+  memoryNotesKo?: string | null;
 }): Promise<PortalComposeRunTurnResult> {
   const role = portalIntentToMarketRole(input.intentId);
   if (!role) {
@@ -205,6 +206,7 @@ async function resolveComposeMarketTurn(input: {
       intentStage,
       history,
       newMessage: incoming,
+      memoryNotesKo: input.memoryNotesKo,
     });
     return {
       kind: "compose_converse",
@@ -444,6 +446,7 @@ export async function resolvePortalComposeRunTurn(input: {
   liveLng?: number | null;
   resumeState?: PortalComposeRunState | null;
   answerText?: string | null;
+  memoryNotesKo?: string | null;
 }): Promise<PortalComposeRunTurnResult> {
   const liveLat = input.liveLat ?? null;
   const liveLng = input.liveLng ?? null;
@@ -491,5 +494,6 @@ export async function resolvePortalComposeRunTurn(input: {
     liveLng,
     resumeState: input.resumeState,
     answerText: input.answerText,
+    memoryNotesKo: input.memoryNotesKo,
   });
 }

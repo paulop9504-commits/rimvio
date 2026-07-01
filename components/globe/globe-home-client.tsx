@@ -178,6 +178,7 @@ import {
 } from "@/lib/globe/market/market-alignment-store";
 import { commitTextContextIngress } from "@/lib/context-run/commit-text-context";
 import { dispatchContextRun } from "@/lib/context-run/dispatch-context-run";
+import { ensureGlobeChatGraphId } from "@/lib/globe/chat/ensure-globe-chat-graph-id";
 import { commitMarketIntentQuickList } from "@/lib/globe/market/commit-market-intent-quick-list";
 import { buildMarketQuickListDraft } from "@/lib/globe/market/build-market-quick-list-draft";
 import {
@@ -1690,6 +1691,7 @@ function GlobeHomeBody() {
   }, [launchMarketProjection, liveLocation?.lat, liveLocation?.lng]);
 
   const openGlobeChat = useCallback(() => {
+    ensureGlobeChatGraphId();
     setGlobeChatOpen(true);
   }, []);
 

@@ -183,6 +183,16 @@ export const copyEn: Copy = {
       heroDiscovery: "What are you looking for?",
       placeholderPersonal: "Memories · people · schedule",
       placeholderDiscovery: "Align · meetups · places",
+      capturePillsPersonal: [
+        { id: "memory", labelKo: "Recall a memory", submitKo: "What should I remember today?" },
+        { id: "schedule", labelKo: "Today's schedule", submitKo: "What's on my schedule today?" },
+        { id: "sell", labelKo: "Sell", submitKo: "I want to sell my phone" },
+      ],
+      capturePillsDiscovery: [
+        { id: "nearby", labelKo: "Nearby", submitKo: "What's nearby?" },
+        { id: "align", labelKo: "Find a match", submitKo: "Help me find a match" },
+        { id: "place", labelKo: "Places", submitKo: "Recommend a place" },
+      ],
       attachAria: "Photo · link · memo",
       voiceAria: "Voice",
       voiceSoon: "Coming soon",
@@ -1571,6 +1581,9 @@ export const copyEn: Copy = {
       "Photos look good. Tap “List in one line” below the card to publish.",
     composeIntentChatPhoneAge:
       "Thinking of upgrading, or maybe selling the one you have now?",
+    composeIntentChatGreetingShort: "Hi! Feel free to say what's on your mind.",
+    composeIntentChatGreeting: "Hey — what would you like to talk about?",
+    composeIntentChatEmpathy: "Sounds like a lot. What kept you busiest today?",
     composeIntentChatDefault: "Got it. Feel free to keep chatting.",
     composeIntentSoftDefault:
       "No rush. If you want to list it later, just say the word.",

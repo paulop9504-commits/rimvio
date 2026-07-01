@@ -9,6 +9,7 @@ import {
   parseSlotAnswer,
   type SlotExtras,
 } from "@/lib/portal/compose-draft/parse-slot-answer";
+import { parseComposeOneTurn } from "@/lib/portal/compose-draft/parse-compose-one-turn";
 import type { ComposeClarifyKind, ComposeSlotId } from "@/lib/portal/compose-draft/product-category-types";
 import type { ComposeSchemaId, SellItemDraft } from "@/lib/portal/compose-draft/types";
 
@@ -51,18 +52,23 @@ function prefillSlotExtrasIfEmpty(input: {
   message: string;
   slotExtras: SlotExtras;
 }): SlotExtras {
+  const parsed = parseComposeOneTurn(input.message);
   const next: SlotExtras = { ...input.slotExtras };
   for (const slotId of EXTRA_SLOT_IDS) {
     if (next[slotId]?.trim()) {
       continue;
     }
-    const parsed = parseSlotAnswer(slotId, input.message);
     const value = parsed.extras[slotId]?.trim();
     if (value) {
       next[slotId] = value;
     }
   }
   return next;
+}
+
+function buildCombinedComposeText(accumulatedText: string, incoming: string): string {
+  const parts = [accumulatedText.trim(), incoming.trim()].filter(Boolean);
+  return parts.join(" ");
 }
 
 function reconcilePrefillProductName(input: {
@@ -113,10 +119,8 @@ export async function prefillComposeDraftFromTurn(input: {
   let slotExtras = { ...input.slotExtras };
 
   if (input.schemaId === "sell_item") {
-    const rulesPatch = mergeComposeDraft(
-      extractDraftSlotsRulesOnly(input.accumulatedText),
-      extractDraftSlotsRulesOnly(incoming),
-    );
+    const combined = buildCombinedComposeText(input.accumulatedText, incoming);
+    const rulesPatch = parseComposeOneTurn(combined).draft;
     let patch = rulesPatch;
 
     if (shouldUseLlmPrefill(input)) {
@@ -143,7 +147,7 @@ export async function prefillComposeDraftFromTurn(input: {
     });
 
     draft = mergeComposeDraftIfEmpty(draft, patch);
-    slotExtras = prefillSlotExtrasIfEmpty({ message: incoming, slotExtras });
+    slotExtras = prefillSlotExtrasIfEmpty({ message: combined, slotExtras });
   } else {
     const history = buildComposeIntentHistory({
       graphId: input.graphId,

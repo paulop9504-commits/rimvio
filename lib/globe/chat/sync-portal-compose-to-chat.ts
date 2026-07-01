@@ -1,6 +1,7 @@
 import {
   appendGlobeChatSlotPromptMessage,
   appendGlobeChatTextMessage,
+  readGlobeChatSession,
 } from "@/lib/globe/chat/globe-chat-session-store";
 import type { ComposeClarifyKind } from "@/lib/portal/compose-draft/product-category-types";
 
@@ -10,8 +11,17 @@ export function syncPortalComposeTurnToChat(input: {
   userText: string;
   assistantText: string;
 }): void {
-  if (input.userText.trim()) {
-    appendGlobeChatTextMessage({ graphId: input.graphId, role: "user", text: input.userText });
+  const trimmedUser = input.userText.trim();
+  if (trimmedUser) {
+    const session = readGlobeChatSession(input.graphId);
+    const last = session?.messages[session.messages.length - 1];
+    const alreadyShown =
+      last?.kind === "text" &&
+      last.role === "user" &&
+      last.text.trim() === trimmedUser;
+    if (!alreadyShown) {
+      appendGlobeChatTextMessage({ graphId: input.graphId, role: "user", text: trimmedUser });
+    }
   }
   if (input.assistantText.trim()) {
     appendGlobeChatTextMessage({

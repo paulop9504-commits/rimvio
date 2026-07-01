@@ -3,6 +3,7 @@ import { parseMarketProductFromText } from "@/lib/globe/market/parse-market-prod
 import { isValidMarketProductName } from "@/lib/globe/market/sanitize-market-product-name";
 import { mergeComposeDraft } from "@/lib/portal/compose-draft/draft-utils";
 import { parseComposePriceKrw } from "@/lib/portal/compose-draft/parse-compose-price-krw";
+import { parseConditionFromComposeText } from "@/lib/portal/compose-draft/parse-compose-one-turn";
 import type { ComposeSlotId } from "@/lib/portal/compose-draft/product-category-types";
 import type { SellItemDraft } from "@/lib/portal/compose-draft/types";
 
@@ -11,7 +12,6 @@ const SIZE_SIGNAL = /\b(XXS|XS|S|M|L|XL|XXL|FREE)\b/iu;
 const CPU_RAM_SIGNAL =
   /(?:\d+\s*(?:gb|tb|기가)|(?:m[1-9]|i[3579]|ryzen|core\s*i\d)|(?:ram|램|ssd|cpu))/iu;
 const SKIP_NOTE = /^(?:없어|없음|패스|skip|\.|-)$/iu;
-const BATTERY_SIGNAL = /(?:배터리|성능)\s*(\d{1,3})\s*%?/iu;
 
 export type SlotExtras = Partial<Record<ComposeSlotId, string>>;
 
@@ -74,8 +74,8 @@ export function parseSlotAnswer(
       };
     }
     case "condition": {
-      const battery = text.match(BATTERY_SIGNAL);
-      const condition = battery ? text.trim() : text.trim();
+      const parsed = parseConditionFromComposeText(text);
+      const condition = parsed ?? text.trim();
       return { draft: { condition }, extras: {}, skipped: false };
     }
     case "placeLabel": {

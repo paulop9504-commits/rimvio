@@ -223,6 +223,69 @@ async function main() {
     assert.equal(categoryFlow.productCategoryStatus, "confirmed");
   }
 
+  const oneTurnCombo = await runComposeSlotFillTurn({
+    resumeState: {
+      graphId: "composer:combo",
+      intentId: "offer",
+      categoryId: "used_goods",
+      composeSeed: "아이폰15",
+      accumulatedText: "아이폰15프로",
+      eventId: "evt-combo",
+      pendingSlotId: "priceKrw",
+      askedCount: 2,
+      status: "waiting_slot",
+      composeSchemaId: "sell_item",
+      composeDraft: {
+        productName: "아이폰15프로",
+        placeLabel: "서울",
+      },
+      productCategoryId: "smartphone",
+      productCategoryStatus: "confirmed",
+      pendingClarifyKind: "slot",
+      updatedAt: new Date().toISOString(),
+    },
+    message: "70만원, 상태 사용감 있음",
+    answerText: "70만원, 상태 사용감 있음",
+    schemaId: "sell_item",
+    graphId: "composer:combo",
+    accumulatedText: "아이폰15프로",
+  });
+  assert.equal(oneTurnCombo.kind, "slot_review");
+  if (oneTurnCombo.kind === "slot_review") {
+    assert.equal(oneTurnCombo.draft.priceKrw, 700_000);
+    assert.equal(oneTurnCombo.draft.condition, "사용감 있음");
+    assert.equal(oneTurnCombo.canPublish, true);
+  }
+
+  const skipReask = await runComposeSlotFillTurn({
+    resumeState: {
+      graphId: "composer:skip",
+      intentId: "offer",
+      categoryId: "used_goods",
+      composeSeed: "아이폰15",
+      accumulatedText: "아이폰15 70만원 사용감 있음 강남역",
+      eventId: "evt-skip",
+      pendingSlotId: null,
+      askedCount: 0,
+      status: "drafting",
+      composeSchemaId: "sell_item",
+      composeDraft: {},
+      productCategoryId: "smartphone",
+      productCategoryStatus: "confirmed",
+      updatedAt: new Date().toISOString(),
+    },
+    message: "아이폰15 70만원 사용감 있음 강남역",
+    schemaId: "sell_item",
+    graphId: "composer:skip",
+    accumulatedText: "아이폰15 70만원 사용감 있음 강남역",
+  });
+  assert.equal(skipReask.kind, "slot_review");
+  if (skipReask.kind === "slot_review") {
+    assert.equal(skipReask.draft.priceKrw, 700_000);
+    assert.equal(skipReask.draft.condition, "사용감 있음");
+    assert.notEqual(skipReask.draft.productName, undefined);
+  }
+
   console.log("test-compose-slot-fill: ok");
 }
 

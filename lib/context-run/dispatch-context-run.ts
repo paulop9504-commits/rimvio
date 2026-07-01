@@ -19,6 +19,8 @@ import {
   planTextIngestFallback,
 } from "@/lib/context-run/plan-context-run";
 import { ensureRunState, touchRunStateNode } from "@/lib/context-run/run-state-store";
+import { appendGlobeChatTextMessage } from "@/lib/globe/chat/globe-chat-session-store";
+import { ensureGlobeChatGraphId } from "@/lib/globe/chat/ensure-globe-chat-graph-id";
 import {
   buildComposerGraphId,
   resolveGlobeComposerSurface,
@@ -67,7 +69,7 @@ import {
   writePortalComposeRunState,
 } from "@/lib/portal/portal-compose-run-store";
 import { detectPortalIntentFromText } from "@/lib/portal/detect-portal-intent-from-text";
-import { resolvePortalComposeRunTurn } from "@/lib/portal/resolve-portal-compose-run-turn";
+import { requestPortalComposeRunTurn } from "@/lib/portal/request-portal-compose-run-turn";
 import {
   syncPortalComposeClarifyToChat,
   syncPortalComposeTurnToChat,
@@ -90,6 +92,14 @@ export async function dispatchContextRun(
   const bound = bindSituation(ingress);
   const { graphId, goalKo } = bound;
 
+  if (
+    ingress.kind === "text" &&
+    ingress.surface === "composer" &&
+    ingress.layerMode === "personal"
+  ) {
+    ensureGlobeChatGraphId();
+  }
+
   const plan = planContextRun(bound);
   if (plan.kind === "noop") {
     return { graphId, status: "noop", planKind: "noop" };
@@ -105,6 +115,17 @@ export async function dispatchContextRun(
     dispatchGlobeIntentSupplyClear();
   }
   ensureRunState({ graphId: runGraphId, goal: runGoalKo });
+
+  if (isComposerTextIngress(ingress) && ingress.kind === "text") {
+    const trimmed = ingress.text.trim();
+    if (trimmed) {
+      appendGlobeChatTextMessage({
+        graphId: runGraphId,
+        role: "user",
+        text: trimmed,
+      });
+    }
+  }
 
   try {
     return await executeContextRunPlan(bound, plan, handlers);
@@ -191,7 +212,7 @@ async function executeContextRunPlan(
         // Goal sync happens in compose_intent / compose_draft feed handlers.
       }
 
-      const result = await resolvePortalComposeRunTurn({
+      const result = await requestPortalComposeRunTurn({
         graphId: runGraphId,
         intentId,
         categoryId: plan.portalCategoryId ?? pending?.categoryId ?? null,
@@ -392,7 +413,7 @@ async function executeContextRunPlan(
         resolvedEventId = outcome.result.event.id;
       }
       const runGraphId = buildComposerGraphId(resolvedEventId, composeText);
-      const result = await resolvePortalComposeRunTurn({
+      const result = await requestPortalComposeRunTurn({
         graphId: runGraphId,
         intentId,
         categoryId: detected?.categoryId ?? null,

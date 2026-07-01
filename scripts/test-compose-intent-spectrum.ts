@@ -34,6 +34,13 @@ async function main() {
   });
   assert.equal(affirm.stage, "confirmed");
 
+  const pillAfterSoft = await classifyComposeIntent({
+    history: [{ role: "user", text: "핸드폰 판매" }],
+    newMessage: "70만원, 사용감 있음",
+    previousStage: { stage: "soft_signal", possibleIntent: "sell_item" },
+  });
+  assert.equal(pillAfterSoft.stage, "confirmed");
+
   const event = commitEventUpsert({
     id: "ec-intent-spectrum",
     title: "테스트",
@@ -65,11 +72,12 @@ async function main() {
     message: "물건 팔고 싶어",
     eventId: event.id,
   });
-  assert.equal(confirmed.kind, "compose_intent");
-  if (confirmed.kind === "compose_intent") {
+  assert.equal(confirmed.kind, "clarify");
+  if (confirmed.kind === "clarify") {
     assert.equal(confirmed.state.intentStage?.stage, "confirmed");
-    assert.equal(composeDraftHasValues(confirmed.state.composeDraft), false);
     assert.equal(confirmed.state.composeSchemaId, "sell_item");
+    assert.equal(confirmed.state.status, "waiting_slot");
+    assert.ok(confirmed.questionKo.trim().length > 0);
   }
 
   console.log("test-compose-intent-spectrum: ok");

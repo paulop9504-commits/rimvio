@@ -1,10 +1,6 @@
 import { callOpenAiTextJson } from "@/lib/llm/openai-json-client";
-import { normalizeMarketIntentFromText } from "@/lib/globe/market/normalize-market-intent-from-text";
-import { parseMarketPlaceFromText } from "@/lib/globe/market/parse-market-place-from-text";
-import { parseMarketProductFromText } from "@/lib/globe/market/parse-market-product-from-text";
-import { isValidMarketProductName } from "@/lib/globe/market/sanitize-market-product-name";
 import { mergeComposeDraft } from "@/lib/portal/compose-draft/draft-utils";
-import { parseComposePriceKrwOrNull } from "@/lib/portal/compose-draft/parse-compose-price-krw";
+import { parseComposeOneTurn } from "@/lib/portal/compose-draft/parse-compose-one-turn";
 import { getComposeSchema } from "@/lib/portal/compose-draft/schema-registry";
 import type {
   ComposeMessage,
@@ -16,10 +12,9 @@ import {
   COMPOSE_EXTRACT_TEMPERATURE,
 } from "@/lib/portal/compose-chat/compose-chat-persona";
 import { formatComposeHistoryForLlm } from "@/lib/portal/compose-chat/format-compose-history";
-
-const CONDITION_SIGNAL =
-  /(?:(\d+)\s*년\s*(?:쓴|사용|됨)|새\s*것|새거|미개봉|거의\s*새|중고|상태\s*(?:좋|양호|최상|하|괜찮|나쁘지)|(?:좋아|좋음|괜찮|낫뱃|나쁘지))/iu;
-const BATTERY_SIGNAL = /(?:배터리|성능)\s*(\d{1,3})\s*%?/iu;
+import { parseMarketProductFromText } from "@/lib/globe/market/parse-market-product-from-text";
+import { parseMarketPlaceFromText } from "@/lib/globe/market/parse-market-place-from-text";
+import { isValidMarketProductName } from "@/lib/globe/market/sanitize-market-product-name";
 
 const VAGUE_PRODUCT_NAME = /^(?:물건|물품|상품|제품|것|거)$/iu;
 
@@ -44,66 +39,13 @@ function sanitizeExtractedProductName(name: string | undefined | null): string |
   return trimmed;
 }
 
-function parseConditionFromText(text: string): string | null {
-  const battery = text.match(BATTERY_SIGNAL);
-  if (battery) {
-    return text.trim();
-  }
-  const statePhrase = text.match(/상태\s*(?:는|가)?\s*[^\n,.!?]+/iu);
-  if (statePhrase) {
-    return statePhrase[0].trim();
-  }
-  const match = text.match(CONDITION_SIGNAL);
-  if (!match) {
-    return null;
-  }
-  if (/^(?:좋아|좋음|괜찮|낫뱃|나쁘지)/iu.test(match[0])) {
-    return "상태 좋음";
-  }
-  return match[0].trim();
-}
-
 /** Rules-only slot extraction — no LLM (chip answers, fast prefill). */
 export function extractDraftSlotsRulesOnly(text: string): Partial<SellItemDraft> {
-  return extractSellItemDraftRules(text);
+  return parseComposeOneTurn(text).draft;
 }
 
 function extractSellItemDraftRules(text: string): Partial<SellItemDraft> {
-  const trimmed = stripComposeIntentTail(text.trim());
-  if (!trimmed) {
-    return {};
-  }
-
-  const parsed = parseMarketProductFromText(trimmed);
-  const normalized = normalizeMarketIntentFromText({
-    text: text.trim(),
-    eventId: "probe",
-  });
-  const place = parseMarketPlaceFromText(text.trim());
-  const condition = parseConditionFromText(trimmed);
-
-  const patch: Partial<SellItemDraft> = {};
-  const productName = sanitizeExtractedProductName(parsed.productName);
-  if (productName) {
-    patch.productName = productName;
-  }
-  const price =
-    parseComposePriceKrwOrNull(text.trim()) ??
-    normalized?.priceMinKrw ??
-    (normalized?.priceMaxKrw != null ? normalized.priceMaxKrw : null);
-  if (price != null && price >= 10_000) {
-    patch.priceKrw = price;
-  }
-  if (condition) {
-    patch.condition = condition;
-  }
-  if (place?.trim()) {
-    patch.placeLabel = place.trim();
-  }
-  if (normalized?.role) {
-    patch.role = normalized.role;
-  }
-  return patch;
+  return parseComposeOneTurn(text).draft;
 }
 
 async function extractSellItemDraftSlotsLlm(input: {

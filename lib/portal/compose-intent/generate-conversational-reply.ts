@@ -11,17 +11,32 @@ import {
   COMPOSE_CHAT_TEMPERATURE,
 } from "@/lib/portal/compose-chat/compose-chat-persona";
 import { formatComposeHistoryForLlm } from "@/lib/portal/compose-chat/format-compose-history";
+import { readProductLabelFromComposeContext } from "@/lib/portal/compose-intent/compose-intent-context";
 
 function fallbackConversationalReply(input: {
   intentStage: IntentState;
   newMessage: string;
+  history: ComposeIntentMessage[];
   draft?: Partial<SellItemDraft>;
 }): string {
   const text = input.newMessage.trim();
-  const product = parseMarketProductFromText(text).productName;
+  const product =
+    readProductLabelFromComposeContext({
+      history: input.history,
+      newMessage: input.newMessage,
+    }) ?? "";
   const hasProduct = isValidMarketProductName(product);
 
   if (input.intentStage.stage === "chatting") {
+    if (/^(?:ㅎㅇ|하이|헬로|hello|hi)$/iu.test(text)) {
+      return copy.portal.composeIntentChatGreetingShort;
+    }
+    if (/(?:안녕|반가)/iu.test(text)) {
+      return copy.portal.composeIntentChatGreeting;
+    }
+    if (/(?:바빴|바빠|힘들|피곤|고생|지쳤)/iu.test(text)) {
+      return copy.portal.composeIntentChatEmpathy;
+    }
     if (/(?:핸드폰|아이폰|폰)/iu.test(text) && /(?:오래|오래됐|오래돼)/iu.test(text)) {
       return copy.portal.composeIntentChatPhoneAge;
     }
@@ -67,6 +82,7 @@ async function generateConversationalReplyLlm(input: {
   history: ComposeIntentMessage[];
   newMessage: string;
   draft?: Partial<SellItemDraft>;
+  memoryNotesKo?: string | null;
 }): Promise<string | null> {
   const confirmedStage: IntentState =
     input.intentStage.stage === "confirmed"
@@ -82,6 +98,7 @@ async function generateConversationalReplyLlm(input: {
     systemPrompt: buildComposeChatPersonaPrompt({
       intentStage: stageForPrompt,
       draft: input.draft,
+      memoryNotesKo: input.memoryNotesKo,
     }),
     userText: formatComposeHistoryForLlm(input.history, input.newMessage),
     temperature: COMPOSE_CHAT_TEMPERATURE,
@@ -98,6 +115,7 @@ export async function generateConversationalReply(input: {
   history: ComposeIntentMessage[];
   newMessage: string;
   draft?: Partial<SellItemDraft>;
+  memoryNotesKo?: string | null;
 }): Promise<string> {
   const llm = await generateConversationalReplyLlm(input);
   if (llm) {
@@ -106,6 +124,7 @@ export async function generateConversationalReply(input: {
   return fallbackConversationalReply({
     intentStage: input.intentStage,
     newMessage: input.newMessage,
+    history: input.history,
     draft: input.draft,
   });
 }

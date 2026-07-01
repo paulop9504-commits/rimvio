@@ -10,6 +10,7 @@ import { copy } from "@/lib/copy/human-ko";
 import { resolveGlobeMapIntent } from "@/lib/globe/intent-supply/resolve-globe-map-intent";
 import { detectPortalIntentFromText } from "@/lib/portal/detect-portal-intent-from-text";
 import { readPortalComposeRunState } from "@/lib/portal/portal-compose-run-store";
+import { readActiveRunState } from "@/lib/context-run/run-state-store";
 
 function planPortalComposeIfEligible(
   bound: BoundSituation,
@@ -184,12 +185,16 @@ export function planContextRun(bound: BoundSituation): ContextRunPlan {
   }
 
   if (ingress.surface === "composer" && ingress.layerMode === "personal") {
+    const sessionGraphId =
+      readActiveRunState()?.graphId?.trim() ||
+      readPortalComposeRunState()?.graphId?.trim();
     return {
       kind: "portal_compose_run",
       portalIntentId: "offer",
       portalCategoryId: "used_goods",
       composeAmbientChat: true,
-      ...base,
+      graphId: sessionGraphId || graphId,
+      goalKo,
     };
   }
 

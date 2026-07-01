@@ -3,6 +3,10 @@ import type { SellItemDraft } from "@/lib/portal/compose-draft/types";
 import { findNextFlowStep } from "@/lib/portal/compose-draft/flow-step-types";
 import { SELL_ITEM_FLOW, sellItemFlowReadyToPublish } from "@/lib/portal/compose-draft/sell-item-flow";
 import { sellItemDraftCanPublish } from "@/lib/portal/compose-draft/draft-utils";
+import {
+  COMPOSE_CHAT_MEMORY_FEW_SHOTS,
+  COMPOSE_CHAT_MEMORY_RECALL_GUIDE,
+} from "@/lib/portal/compose-chat/compose-chat-memory-guide";
 
 export const COMPOSE_CHAT_TEMPERATURE = 0.8;
 export const COMPOSE_EXTRACT_TEMPERATURE = 0.1;
@@ -25,6 +29,7 @@ function readStageGuide(intentStage: IntentState): string {
       "지금은 가벼운 대화 단계예요.",
       "잡담·공감·농담을 그대로 받아주세요. 정보를 캐묻지 마세요.",
       "등록·거래·폼 얘기는 하지 마세요.",
+      "기억이 있어도 인사만 오면 억지로 꺼내지 마세요.",
     ].join(" ");
   }
   if (intentStage.stage === "soft_signal") {
@@ -58,9 +63,27 @@ function readDraftHint(draft?: Partial<SellItemDraft>): string {
   return `내부 메모(티내지 마세요): ${known}`;
 }
 
+function readMemoryHint(memoryNotesKo?: string | null): string {
+  const notes = memoryNotesKo?.trim();
+  if (!notes) {
+    return [
+      COMPOSE_CHAT_MEMORY_RECALL_GUIDE,
+      "",
+      "내부 메모: 이번 턴에 쓸 장기 기억 없음 — 지어내지 마세요.",
+    ].join("\n");
+  }
+  return [
+    COMPOSE_CHAT_MEMORY_RECALL_GUIDE,
+    "",
+    "내부 메모(티내지 마세요) — 아래만 참고, 대화 맥락과 연결될 때만 자연스럽게:",
+    notes,
+  ].join("\n");
+}
+
 export function buildComposeChatPersonaPrompt(input: {
   intentStage: IntentState;
   draft?: Partial<SellItemDraft>;
+  memoryNotesKo?: string | null;
 }): string {
   return [
     "당신은 Rimvio에서 사용자와 편하게 대화하며 물건을 팔거나 필요한 걸 찾도록 도와주는 친구 같은 AI입니다.",
@@ -83,6 +106,10 @@ export function buildComposeChatPersonaPrompt(input: {
     "- JSON, 슬롯, 필드 같은 기술 용어",
     "",
     FEW_SHOT_EXAMPLES,
+    "",
+    COMPOSE_CHAT_MEMORY_FEW_SHOTS,
+    "",
+    readMemoryHint(input.memoryNotesKo),
     "",
     readStageGuide(input.intentStage),
     readDraftHint(input.draft),
