@@ -73,7 +73,7 @@ import {
 import {
   syncPortalComposeClarifyToFeed,
 } from "@/lib/context-run/sync-portal-compose-to-feed";
-import { syncPortalComposeTurnToChat } from "@/lib/globe/chat/sync-portal-compose-to-chat";
+import { syncPortalComposeTurnToChat, syncPortalComposeClarifyToChat } from "@/lib/globe/chat/sync-portal-compose-to-chat";
 import { useIosPwaMemoryGuards } from "@/hooks/use-ios-pwa-memory-guards";
 import {
   iosPwaDiscoveryPinsDelayMs,
@@ -180,6 +180,10 @@ import { commitTextContextIngress } from "@/lib/context-run/commit-text-context"
 import { dispatchContextRun } from "@/lib/context-run/dispatch-context-run";
 import { commitMarketIntentQuickList } from "@/lib/globe/market/commit-market-intent-quick-list";
 import { buildMarketQuickListDraft } from "@/lib/globe/market/build-market-quick-list-draft";
+import {
+  resolveComposeSessionGraphId,
+  resolvePendingMarketComposeAction,
+} from "@/lib/portal/resolve-pending-market-compose";
 import type { MarketIntentDraft } from "@/lib/globe/market/market-intent-types";
 import type { MarketWizardStepId } from "@/lib/globe/market/market-intent-wizard-flow";
 import { submitTrendBridgeContributionFromEvent } from "@/lib/globe/trend-bridge/client/submit-trend-bridge-contribution";
@@ -1634,7 +1638,9 @@ function GlobeHomeBody() {
   );
 
   const runPendingMarketComposeAction = useCallback(async () => {
-    const pending = pendingMarketComposeRef.current;
+    const pending =
+      pendingMarketComposeRef.current ??
+      resolvePendingMarketComposeAction(resolveComposeSessionGraphId());
     if (!pending) {
       return;
     }
@@ -1662,7 +1668,9 @@ function GlobeHomeBody() {
   }, [launchMarketProjection, liveLocation?.lat, liveLocation?.lng, quickListMarket]);
 
   const runPendingMarketComposeWizardAction = useCallback(() => {
-    const pending = pendingMarketComposeRef.current;
+    const pending =
+      pendingMarketComposeRef.current ??
+      resolvePendingMarketComposeAction(resolveComposeSessionGraphId());
     if (!pending) {
       return;
     }
@@ -1686,7 +1694,7 @@ function GlobeHomeBody() {
   }, []);
 
   const runComposeDetailSlotFill = useCallback(async () => {
-    const graphId = readActiveRunState()?.graphId?.trim();
+    const graphId = resolveComposeSessionGraphId();
     if (!graphId) {
       runPendingMarketComposeWizardAction();
       return;
@@ -1710,10 +1718,14 @@ function GlobeHomeBody() {
         goalKo: result.state.accumulatedText,
         slotId: result.slotId,
       });
-      syncPortalComposeTurnToChat({
+      syncPortalComposeClarifyToChat({
         graphId,
         userText: "",
-        assistantText: result.questionKo,
+        questionKo: result.questionKo,
+        clarifyKind: result.clarifyKind,
+        slotId: result.slotId,
+        choices: result.choices,
+        categoryOptions: result.categoryOptions,
       });
       openGlobeChat();
       return;

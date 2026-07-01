@@ -88,6 +88,8 @@ export type GlobeContextIngestBarProps = {
   mapPromptMode?: boolean;
   /** Compact rounded-full pill (default on map prompt). */
   compactPill?: boolean;
+  /** Chat-only placeholder override (compose flow next step). */
+  chatPlaceholderOverride?: string | null;
 };
 
 /** Globe home — one frosted composer; photo action lives inside the + menu. */
@@ -119,6 +121,7 @@ export const GlobeContextIngestBar = forwardRef<
     onEateryDiscovery,
     mapPromptMode = true,
     compactPill: compactPillProp,
+    chatPlaceholderOverride,
   },
   ref,
 ) {
@@ -146,7 +149,7 @@ export const GlobeContextIngestBar = forwardRef<
   const attachHintId = forceAttachToTarget ? targetEventId?.trim() || null : null;
   const attachHintTitle = forceAttachToTarget ? targetTitle?.trim() || null : null;
   const inputPlaceholder = clarifyPlaceholder ?? (isChatPill
-    ? copy.globe.chatInputPlaceholder
+    ? chatPlaceholderOverride ?? copy.globe.chatInputPlaceholder
     : isDiscovery
       ? copy.globe.ingestDiscoveryPlaceholder
       : mapPromptMode

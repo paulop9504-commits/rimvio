@@ -722,8 +722,11 @@ export const copyEn: Copy = {
     chatScreenSubtitleFill: "One step at a time",
     chatEmptyTitle: "Start with words",
     chatEmptyBody: "One line is enough. Tap a chip or type below.",
-    chatWaitingLabel: "Answering now",
-    chatInputPlaceholder: "Your answer…",
+    chatWaitingLabel: "Next step",
+    chatInputPlaceholder: "Type your answer",
+    chatInputPlaceholderMedia: "Send photos or a short video with + on the left",
+    chatInputPlaceholderNote: "Add a note (or send “none”)",
+    chatInputPlaceholderPublish: "Tap “List in one line” on the card to publish",
     chatScreenCloseAria: "Back to map",
     intentSpectrumChat: "Chat",
     intentSpectrumSoft: "Intent",
@@ -741,9 +744,9 @@ export const copyEn: Copy = {
     },
     agentProgress: {
       flowBasicInfoActive: "Product details",
-      flowPhotoActive: "Receiving photos",
-      flowDescriptionActive: "Adding description",
-      flowSubmitActive: "Finishing listing",
+      flowPhotoActive: "Send photos/video with +",
+      flowDescriptionActive: "Add a short note",
+      flowSubmitActive: "Finish with “List in one line”",
       matchSearchTitle: "🔍 Finding people who match",
       matchStepRadius: "Nearby radius scan",
       matchStepInterest: "Interest matching",
@@ -1445,17 +1448,17 @@ export const copyEn: Copy = {
     categorySoonToast: "This field is coming soon",
     composeAskProduct: "What do you want to offer or find?",
     composeDraftIntentSellItem:
-      "Share the item, condition, and price in one line if you like. Empty fields can be edited on the card later.",
+      "Share item, condition, price, and meetup spot in one line. e.g. iPhone 15, ₩700k, good condition, Gyesan-dong",
     composeDraftIntentRent:
       "You can share property type, price, and location in one message.",
     composeDraftIntentHire: "Say what you are hiring for in one line.",
     composeDraftIntentSocial:
       "Share what you want to do together and where in one line.",
     composeDraftPartial:
-      "Got it. Empty fields can be edited directly on the card.",
-    composeDraftPartialResume: "Updated. You can edit the card directly.",
+      "Saved so far. Tap empty fields on the card below to fill them.",
+    composeDraftPartialResume: "Updated. Tap the card to fix anything wrong.",
     composeDraftReady:
-      "Core details are in. Refine on the card or continue with the button below.",
+      "Core details are in. Send photos/video with +, check the card, then tap “List in one line”.",
     composeDraftNeedPrice: (name: string) =>
       `What price for "${name}"? Then we can continue.`,
     composeDraftNeedProduct: "Which item is it? I will match it with the price.",
@@ -1463,10 +1466,12 @@ export const copyEn: Copy = {
       `"${label}" is coming soon. For now, describe a used-item listing in one line.`,
     composeDraftFieldOptional: "Optional",
     composeDraftFieldTap: "Tap to enter",
-    composeDraftNudgePhoto: "Nice! Could you send a few photos? I would love to see the condition 📸",
+    composeDraftNudgePhoto:
+      "Tap + on the left to send photos and a short video. Front, back, scratches, and battery screen help.",
     composeDraftNudgeDescription:
-      "Got the photos. A short note about box, charger, or battery helps too.",
-    composeDraftReadyToSubmit: "All set! Ready to publish now?",
+      "Photos received. Add box/charger or a short note, or tap “List in one line” on the card.",
+    composeDraftReadyToSubmit:
+      "Photos look good. Tap “List in one line” below the card to publish.",
     composeIntentChatPhoneAge:
       "Thinking of upgrading, or maybe selling the one you have now?",
     composeIntentChatDefault: "Got it. Feel free to keep chatting.",
@@ -1490,13 +1495,20 @@ export const copyEn: Copy = {
     slotAskPrice: "What price are you thinking?",
     slotAskPlace: "Where should the trade happen?",
     slotAskPlacePickup: "Where can pickup happen?",
-    slotAskNoteOptional: "Any last note? (Say “none” if not)",
+    slotAskNoteOptional: "Any extra note? Send “none” if not.",
     slotCategoryRecognized: (category: string, product: string) =>
       `"${product}" — we'll treat it as ${category}.`,
     slotCategoryConfirmAsk: (category: string, product: string) =>
       `Classify "${product}" as ${category}?`,
     slotCategoryPickAsk: "What kind of item is it?",
-    slotReviewReady: "Required fields are done. Review below.",
+    slotReviewReady:
+      "Text details are set. Send photos/video with + and check the card.",
+    slotReviewAskMedia:
+      "Text is ready. Tap + on the left to send photos and a short video. Front, back, scratches, and battery screen help. Tap the card to fix anything.",
+    slotReviewAskDescription:
+      "Photos received. Add box/charger or a note—or tap “List in one line” on the card.",
+    slotReviewConfirmPublish:
+      "Looks good. Tap “List in one line” to publish, or “Customize” for more fields.",
     composeAskTime: "When works for you?",
     composeAskTogetherTopic: "What do you want to do together?",
     composeAskJoinTopic: "Which event or gathering do you want to join?",

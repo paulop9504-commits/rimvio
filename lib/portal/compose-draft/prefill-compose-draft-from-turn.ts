@@ -25,7 +25,8 @@ function shouldPrefillFromTurn(input: {
   if (
     input.answerText?.trim() &&
     (input.pendingClarifyKind === "category_confirm" ||
-      input.pendingClarifyKind === "category_pick")
+      input.pendingClarifyKind === "category_pick" ||
+      input.pendingClarifyKind === "price_confirm")
   ) {
     return false;
   }
@@ -112,7 +113,10 @@ export async function prefillComposeDraftFromTurn(input: {
   let slotExtras = { ...input.slotExtras };
 
   if (input.schemaId === "sell_item") {
-    const rulesPatch = extractDraftSlotsRulesOnly(incoming);
+    const rulesPatch = mergeComposeDraft(
+      extractDraftSlotsRulesOnly(input.accumulatedText),
+      extractDraftSlotsRulesOnly(incoming),
+    );
     let patch = rulesPatch;
 
     if (shouldUseLlmPrefill(input)) {

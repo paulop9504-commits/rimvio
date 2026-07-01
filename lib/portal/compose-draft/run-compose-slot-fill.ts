@@ -8,6 +8,10 @@ import {
   parseCategoryPickResponse,
 } from "@/lib/portal/compose-draft/parse-category-response";
 import {
+  isPriceConfirmNo,
+  isPriceConfirmYes,
+} from "@/lib/portal/compose-draft/parse-compose-price-krw";
+import {
   isSlotFilled,
   mergeSlotExtrasIntoDraft,
   parseSlotAnswer,
@@ -27,11 +31,13 @@ import {
 } from "@/lib/portal/compose-draft/product-category-registry";
 import {
   readCategoryConfirmChoices,
+  readPriceConfirmChoices,
   readSlotChoices,
   resolveSlotChoiceLabel,
   type SlotChoiceOption,
 } from "@/lib/portal/compose-draft/slot-choice-registry";
 import { suggestProductCategoryHybrid } from "@/lib/portal/compose-draft/suggest-product-category";
+import { buildSlotReviewAssistantKo } from "@/lib/portal/compose-draft/build-slot-review-reply";
 import type { ComposeSchemaId, SellItemDraft } from "@/lib/portal/compose-draft/types";
 import type { PortalComposeRunState } from "@/lib/portal/portal-compose-run-store";
 
@@ -63,6 +69,17 @@ export type ComposeSlotFillResult = {
       skippedSlots: ComposeSlotId[];
       detailSlotFill: boolean;
       categoryOptions: readonly { id: ProductCategoryId; labelKo: string }[];
+    }
+  | {
+      kind: "price_confirm";
+      questionKo: string;
+      candidateKrw: number;
+      schemaId: ComposeSchemaId;
+      draft: Partial<SellItemDraft>;
+      slotExtras: SlotExtras;
+      skippedSlots: ComposeSlotId[];
+      detailSlotFill: boolean;
+      choices: readonly SlotChoiceOption[];
     }
   | {
       kind: "slot_question";
@@ -180,6 +197,8 @@ export async function runComposeSlotFillTurn(input: {
   const detailSlotFill = input.resumeState?.detailSlotFill ?? false;
   const pendingClarifyKind = input.resumeState?.pendingClarifyKind ?? "slot";
   const pendingSlotId = input.resumeState?.pendingSlotId as ComposeSlotId | null;
+  let pendingPriceConfirmKrw = input.resumeState?.pendingPriceConfirmKrw ?? null;
+  let priceParseJustFailed = false;
 
   let draft = { ...previousDraft };
   let slotExtras = { ...previousExtras };
@@ -203,6 +222,14 @@ export async function runComposeSlotFillTurn(input: {
       confirmedCategoryId = picked;
       proposedCategoryId = null;
     }
+  } else if (pendingClarifyKind === "price_confirm" && input.answerText?.trim()) {
+    const answer = input.answerText.trim();
+    if (isPriceConfirmYes(answer) && pendingPriceConfirmKrw != null) {
+      draft = mergeComposeDraft(draft, { priceKrw: pendingPriceConfirmKrw });
+      pendingPriceConfirmKrw = null;
+    } else if (isPriceConfirmNo(answer)) {
+      pendingPriceConfirmKrw = null;
+    }
   } else if (pendingClarifyKind === "slot" && pendingSlotId && input.answerText?.trim()) {
     const categoryForParse = confirmedCategoryId ?? "generic";
     const answerText = resolveSlotAnswerText({
@@ -215,6 +242,9 @@ export async function runComposeSlotFillTurn(input: {
     slotExtras = { ...slotExtras, ...parsed.extras };
     if (parsed.skipped) {
       skippedSlots.add(pendingSlotId);
+    }
+    if (pendingSlotId === "priceKrw" && parsed.draft.priceKrw == null) {
+      priceParseJustFailed = true;
     }
   }
 
@@ -232,7 +262,9 @@ export async function runComposeSlotFillTurn(input: {
   draft = prefilled.draft;
   slotExtras = prefilled.slotExtras;
 
-  draft = mergeSlotExtrasIntoDraft(draft, slotExtras);
+  if (confirmedCategoryId || categoryStatus === "confirmed") {
+    draft = mergeSlotExtrasIntoDraft(draft, slotExtras);
+  }
 
   const productNamed = Boolean(draft.productName?.trim());
 
@@ -303,6 +335,27 @@ export async function runComposeSlotFillTurn(input: {
 
   const categoryId = confirmedCategoryId ?? "generic";
 
+  if (pendingPriceConfirmKrw != null) {
+    return withCategoryMeta(
+      {
+        kind: "price_confirm",
+        questionKo: copy.portal.slotPriceConfirmAsk(pendingPriceConfirmKrw),
+        candidateKrw: pendingPriceConfirmKrw,
+        schemaId: input.schemaId,
+        draft,
+        slotExtras,
+        skippedSlots: [...skippedSlots],
+        detailSlotFill,
+        choices: readPriceConfirmChoices(),
+      },
+      {
+        categoryStatus: confirmedCategoryId ? "confirmed" : "unset",
+        confirmedCategoryId,
+        proposedCategoryId: null,
+      },
+    );
+  }
+
   const nextSlot = resolveNextSlot({
     categoryId,
     draft,
@@ -316,7 +369,7 @@ export async function runComposeSlotFillTurn(input: {
     return withCategoryMeta(
       {
         kind: "slot_review",
-        assistantKo: copy.portal.slotReviewReady,
+        assistantKo: buildSlotReviewAssistantKo(input.schemaId, publishDraft),
         categoryId,
         schemaId: input.schemaId,
         draft: publishDraft,
@@ -330,7 +383,10 @@ export async function runComposeSlotFillTurn(input: {
   }
 
   const schema = getProductCategorySchema(categoryId);
-  const questionKo = schema.questions[nextSlot] ?? copy.portal.slotAskProductName;
+  const questionKo =
+    nextSlot === "priceKrw" && priceParseJustFailed
+      ? copy.portal.slotPriceParseHint
+      : schema.questions[nextSlot] ?? copy.portal.slotAskProductName;
   const choices = readSlotChoices({ categoryId, slotId: nextSlot }) ?? undefined;
 
   return withCategoryMeta(
@@ -361,6 +417,9 @@ export function readComposeClarifyKind(result: ComposeSlotFillResult): ComposeCl
   if (result.kind === "category_pick") {
     return "category_pick";
   }
+  if (result.kind === "price_confirm") {
+    return "price_confirm";
+  }
   return "slot";
 }
 
@@ -368,7 +427,19 @@ export function readComposeClarifySlotId(result: ComposeSlotFillResult): string 
   if (result.kind === "slot_question") {
     return result.slotId;
   }
+  if (result.kind === "price_confirm") {
+    return "priceKrw";
+  }
   return CATEGORY_PENDING_SLOT;
+}
+
+export function readComposePendingPriceConfirmKrw(
+  result: ComposeSlotFillResult,
+): number | null {
+  if (result.kind === "price_confirm") {
+    return result.candidateKrw;
+  }
+  return null;
 }
 
 /** Enable optional slot questions after review card "자세히 맞추기". */

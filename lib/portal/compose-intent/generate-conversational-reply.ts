@@ -4,6 +4,8 @@ import type { ComposeIntentMessage, IntentState } from "@/lib/portal/compose-int
 import { parseMarketProductFromText } from "@/lib/globe/market/parse-market-product-from-text";
 import { isValidMarketProductName } from "@/lib/globe/market/sanitize-market-product-name";
 import type { SellItemDraft } from "@/lib/portal/compose-draft/types";
+import { findNextFlowStep } from "@/lib/portal/compose-draft/flow-step-types";
+import { SELL_ITEM_FLOW, sellItemFlowReadyToPublish } from "@/lib/portal/compose-draft/sell-item-flow";
 import {
   buildComposeChatPersonaPrompt,
   COMPOSE_CHAT_TEMPERATURE,
@@ -36,8 +38,22 @@ function fallbackConversationalReply(input: {
     return copy.portal.composeIntentSoftDefault;
   }
 
+  if (input.intentStage.stage === "confirmed" && input.draft) {
+    const next = findNextFlowStep(input.draft, SELL_ITEM_FLOW.slice(0, -1));
+    if (next?.slotKey === "photos") {
+      return copy.portal.composeDraftNudgePhoto;
+    }
+    if (next?.slotKey === "note") {
+      return copy.portal.composeDraftNudgeDescription;
+    }
+    if (sellItemFlowReadyToPublish(input.draft)) {
+      return copy.portal.composeDraftReadyToSubmit;
+    }
+    return copy.portal.composeDraftPartial;
+  }
+
   if (sellItemDraftCanPublishFallback(input.draft)) {
-    return copy.portal.composeDraftReadyToSubmit;
+    return copy.portal.composeDraftNudgePhoto;
   }
   return copy.portal.composeDraftPartial;
 }

@@ -735,8 +735,11 @@ export const copy = {
     chatScreenSubtitleFill: "하나씩 맞출게요",
     chatEmptyTitle: "말로 시작해요",
     chatEmptyBody: "한 줄이면 돼요. 칩을 누르거나 직접 입력하세요.",
-    chatWaitingLabel: "지금 묻는 것",
-    chatInputPlaceholder: "답변 입력…",
+    chatWaitingLabel: "지금 할 일",
+    chatInputPlaceholder: "답변을 입력하세요",
+    chatInputPlaceholderMedia: "사진·동영상은 왼쪽 ＋ 버튼으로 보내 주세요",
+    chatInputPlaceholderNote: "추가 설명이 있으면 입력하세요 (없으면 「없음」)",
+    chatInputPlaceholderPublish: "맞으면 카드 아래 「한 줄로 내놓기」를 눌러 주세요",
     chatScreenCloseAria: "지도로 돌아가기",
     intentSpectrumChat: "대화",
     intentSpectrumSoft: "의도 포착",
@@ -754,9 +757,9 @@ export const copy = {
     },
     agentProgress: {
       flowBasicInfoActive: "상품 정보 입력",
-      flowPhotoActive: "사진 받는 중",
-      flowDescriptionActive: "상품 설명 받는 중",
-      flowSubmitActive: "등록 마무리 중",
+      flowPhotoActive: "사진·동영상을 ＋로 보내 주세요",
+      flowDescriptionActive: "추가 설명 입력 중",
+      flowSubmitActive: "「한 줄로 내놓기」로 등록 마무리",
       matchSearchTitle: "🔍 조건에 맞는 사람 찾는 중",
       matchStepRadius: "근처 반경 검색",
       matchStepInterest: "관심사 매칭 분석",
@@ -1457,16 +1460,16 @@ export const copy = {
     categorySoonToast: "이 분야는 준비 중이에요",
     composeAskProduct: "무엇을 내놓거나 구할까요?",
     composeDraftIntentSellItem:
-      "어떤 물건인지, 상태·희망 가격까지 한 번에 적어주셔도 돼요. 빈 칸은 나중에 카드에서 바로 고칠 수 있어요.",
+      "어떤 물건인지, 상태·희망 가격·거래 장소를 한 줄로 말해 주세요. 예: 아이폰 15, 70만원, 상태 좋음, 계산동",
     composeDraftIntentRent:
       "매물 종류, 가격, 위치를 한 번에 말씀해 주셔도 돼요.",
     composeDraftIntentHire: "무엇을 구하는지 한 줄로 말해 주세요.",
     composeDraftIntentSocial: "무엇을 함께할지, 어디서인지 한 번에 말해 주셔도 돼요.",
     composeDraftPartial:
-      "이렇게 받아뒀어요. 빈 칸은 카드에서 바로 고칠 수 있어요.",
-    composeDraftPartialResume: "반영했어요. 카드에서 바로 고칠 수 있어요.",
+      "여기까지 받아뒀어요. 빈 칸은 아래 카드를 탭해서 채워 주세요.",
+    composeDraftPartialResume: "반영했어요. 틀린 내용은 카드를 탭해서 고쳐 주세요.",
     composeDraftReady:
-      "핵심은 채워졌어요. 카드에서 다듬거나 아래 버튼으로 이어가면 돼요.",
+      "핵심 정보는 채웠어요. ＋로 사진·동영상을 보내 주시고, 카드에서 확인한 뒤 「한 줄로 내놓기」를 눌러 주세요.",
     composeDraftNeedPrice: (name: string) =>
       `「${name}」 가격만 더 알려주시면 바로 이어갈게요.`,
     composeDraftNeedProduct: "어떤 물건인지 알려주시면 가격이랑 맞춰볼게요.",
@@ -1474,10 +1477,12 @@ export const copy = {
       `「${label}」 맞춤은 준비 중이에요. 지금은 중고거래 문장으로 말해 주시면 바로 받아둘게요.`,
     composeDraftFieldOptional: "선택",
     composeDraftFieldTap: "탭해서 입력",
-    composeDraftNudgePhoto: "좋아요! 사진 있으면 몇 장 보내주실래요? 상태 보고 싶어서요 📸",
+    composeDraftNudgePhoto:
+      "아래 왼쪽 ＋ 버튼을 눌러 사진·짧은 동영상을 보내 주세요. 정면·후면·흠집·배터리 화면이 보이면 좋아요.",
     composeDraftNudgeDescription:
-      "사진 잘 받았어요. 간단한 설명이나 박스·충전기 포함 여부도 적어주셔도 돼요.",
-    composeDraftReadyToSubmit: "다 됐어요! 지금 바로 등록할까요?",
+      "사진 받았어요. 박스·충전기 포함 여부나 추가 설명이 있으면 한 줄로 적어 주세요. 바로 등록하려면 카드 아래 「한 줄로 내놓기」를 눌러 주세요.",
+    composeDraftReadyToSubmit:
+      "사진까지 확인했어요. 아래 「한 줄로 내놓기」를 눌러 등록을 마무리해 주세요.",
     composeIntentChatPhoneAge:
       "아, 바꾸고 싶으신 거예요? 아니면 지금 쓰시는 거 팔 생각도 있으세요?",
     composeIntentChatDefault: "그렇군요. 편하게 이어서 말씀해 주세요.",
@@ -1499,15 +1504,32 @@ export const copy = {
     slotAskClothingCondition: "착용 횟수나 세탁 여부를 알려주세요.",
     slotAskFurnitureCondition: "크기나 조립 여부, 상태를 알려주세요.",
     slotAskPrice: "가격은 얼마로 생각하세요?",
+    slotPriceParseHint:
+      "가격을 다시 알려주세요. 예: 70만원, 700000, 백만원 — 숫자만 쓰면 만원 단위로 받아요.",
+    slotPriceConfirmAsk: (krw: number) => {
+      const man = krw / 10_000;
+      if (Number.isInteger(man) && man >= 1 && man <= 999) {
+        return `${man}만원(${krw.toLocaleString("ko-KR")}원) 맞나요?`;
+      }
+      return `${krw.toLocaleString("ko-KR")}원 맞나요?`;
+    },
     slotAskPlace: "거래 장소는 어디로 할까요?",
     slotAskPlacePickup: "픽업 가능한 장소를 알려주세요.",
-    slotAskNoteOptional: "마지막으로 메모 남기실 내용 있으세요? (없으면 ‘없음’)",
+    slotAskNoteOptional:
+      "추가 메모가 있으면 적어 주세요. 없으면 「없음」이라고 보내 주세요.",
     slotCategoryRecognized: (category: string, product: string) =>
       `「${product}」 — ${category}으로 맞출게요.`,
     slotCategoryConfirmAsk: (category: string, product: string) =>
       `「${product}」을 ${category}으로 분류할까요?`,
     slotCategoryPickAsk: "어떤 종류의 물건인가요?",
-    slotReviewReady: "필수 항목은 다 채웠어요. 아래 내용 확인해 주세요.",
+    slotReviewReady:
+      "글 정보는 맞춰뒀어요. ＋로 사진·동영상을 보내 주시고, 카드에서 확인해 주세요.",
+    slotReviewAskMedia:
+      "글은 다 맞춰뒀어요. 이제 왼쪽 ＋ 버튼으로 사진·짧은 동영상을 보내 주세요. 정면·후면·흠집·배터리 화면이 보이면 좋아요. 카드 내용이 틀리면 탭해서 고칠 수 있어요.",
+    slotReviewAskDescription:
+      "사진 받았어요. 박스·충전기 포함 여부나 추가 설명이 있으면 한 줄로 적어 주세요. 없으면 카드 아래 「한 줄로 내놓기」를 눌러 주세요.",
+    slotReviewConfirmPublish:
+      "내용을 확인했어요. 맞으면 「한 줄로 내놓기」로 등록하고, 더 맞추려면 「자세히 맞추기」를 눌러 주세요.",
     composeAskTime: "언제쯤이 좋을까요?",
     composeAskTogetherTopic: "무엇을 함께할까요?",
     composeAskJoinTopic: "어떤 행사·모임에 참여할까요?",

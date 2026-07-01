@@ -1,3 +1,5 @@
+import type { ComposeClarifyKind } from "@/lib/portal/compose-draft/product-category-types";
+
 export type GlobeChatTextMessage = {
   id: string;
   role: "user" | "assistant";
@@ -38,7 +40,7 @@ export type GlobeChatSlotPromptMessage = {
   role: "assistant";
   kind: "slot_prompt";
   text: string;
-  clarifyKind: "slot" | "category_confirm" | "category_pick";
+  clarifyKind: ComposeClarifyKind;
   slotId: string;
   choices?: readonly { id: string; labelKo: string }[];
   categoryOptions?: readonly { id: string; labelKo: string }[];

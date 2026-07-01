@@ -32,6 +32,7 @@ import {
   beginComposeDetailSlotFill,
   readComposeClarifyKind,
   readComposeClarifySlotId,
+  readComposePendingPriceConfirmKrw,
   runComposeSlotFillTurn,
 } from "@/lib/portal/compose-draft/run-compose-slot-fill";
 import type { ComposeSchemaId, SellItemDraft } from "@/lib/portal/compose-draft/types";
@@ -127,6 +128,7 @@ function buildState(input: {
   slotExtras?: PortalComposeRunState["slotExtras"];
   skippedSlots?: PortalComposeRunState["skippedSlots"];
   detailSlotFill?: boolean;
+  pendingPriceConfirmKrw?: number | null;
 }): PortalComposeRunState {
   return {
     graphId: input.graphId,
@@ -150,6 +152,7 @@ function buildState(input: {
     slotExtras: input.slotExtras ?? null,
     skippedSlots: input.skippedSlots ?? null,
     detailSlotFill: input.detailSlotFill ?? false,
+    pendingPriceConfirmKrw: input.pendingPriceConfirmKrw ?? null,
     updatedAt: new Date().toISOString(),
   };
 }
@@ -261,7 +264,8 @@ async function resolveComposeMarketTurn(input: {
   if (
     slotTurn.kind === "category_confirm" ||
     slotTurn.kind === "category_pick" ||
-    slotTurn.kind === "slot_question"
+    slotTurn.kind === "slot_question" ||
+    slotTurn.kind === "price_confirm"
   ) {
     return {
       kind: "clarify",
@@ -269,7 +273,8 @@ async function resolveComposeMarketTurn(input: {
       slotId: clarifySlotId,
       clarifyKind,
       choices:
-        slotTurn.kind === "category_confirm"
+        slotTurn.kind === "category_confirm" ||
+        slotTurn.kind === "price_confirm"
           ? slotTurn.choices
           : slotTurn.kind === "slot_question"
             ? slotTurn.choices
@@ -280,9 +285,14 @@ async function resolveComposeMarketTurn(input: {
         ...baseStateInput,
         status: "waiting_slot",
         pendingSlotId:
-          slotTurn.kind === "slot_question" ? slotTurn.slotId : "__category__",
+          slotTurn.kind === "slot_question"
+            ? slotTurn.slotId
+            : slotTurn.kind === "price_confirm"
+              ? "priceKrw"
+              : "__category__",
         composeDraft: slotTurn.draft,
         skippedSlots: slotTurn.skippedSlots,
+        pendingPriceConfirmKrw: readComposePendingPriceConfirmKrw(slotTurn),
         askedCount: (input.resumeState?.askedCount ?? 0) + 1,
       }),
     };

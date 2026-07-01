@@ -29,4 +29,8 @@ export type ProductCategorySchema = {
 
 export type ProductCategoryStatus = "unset" | "proposed" | "confirmed" | "picking";
 
-export type ComposeClarifyKind = "slot" | "category_confirm" | "category_pick";
+export type ComposeClarifyKind =
+  | "slot"
+  | "category_confirm"
+  | "category_pick"
+  | "price_confirm";

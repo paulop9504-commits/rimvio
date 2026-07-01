@@ -5,6 +5,7 @@ import {
   parseCategoryPickResponse,
 } from "../lib/portal/compose-draft/parse-category-response";
 import { parseSlotAnswer } from "../lib/portal/compose-draft/parse-slot-answer";
+import { parseComposePriceKrw } from "../lib/portal/compose-draft/parse-compose-price-krw";
 import { runComposeSlotFillTurn } from "../lib/portal/compose-draft/run-compose-slot-fill";
 
 async function main() {
@@ -55,6 +56,109 @@ async function main() {
 
   const priceAnswer = parseSlotAnswer("priceKrw", "80만원");
   assert.equal(priceAnswer.draft.priceKrw, 800_000);
+
+  assert.equal(parseComposePriceKrw("700000").ok, true);
+  assert.equal(parseComposePriceKrw("백만원").ok, true);
+  assert.equal(parseComposePriceKrw("70만언").ok, true);
+
+  const barePrice = await runComposeSlotFillTurn({
+    resumeState: {
+      graphId: "composer:price-bare",
+      intentId: "offer",
+      categoryId: "used_goods",
+      composeSeed: "아이폰",
+      accumulatedText: "아이폰15프로",
+      eventId: "evt-price",
+      pendingSlotId: "priceKrw",
+      askedCount: 1,
+      status: "waiting_slot",
+      composeSchemaId: "sell_item",
+      composeDraft: {
+        productName: "아이폰15프로",
+        condition: "좋음",
+        placeLabel: "서울",
+      },
+      productCategoryId: "smartphone",
+      productCategoryStatus: "confirmed",
+      pendingClarifyKind: "slot",
+      updatedAt: new Date().toISOString(),
+    },
+    message: "700000",
+    answerText: "700000",
+    schemaId: "sell_item",
+    graphId: "composer:price-bare",
+    accumulatedText: "아이폰15프로",
+  });
+  assert.equal(barePrice.kind, "slot_review");
+  if (barePrice.kind === "slot_review") {
+    assert.equal(barePrice.draft.priceKrw, 700_000);
+  }
+
+  const shorthandSeven = await runComposeSlotFillTurn({
+    resumeState: {
+      graphId: "composer:price-7",
+      intentId: "offer",
+      categoryId: "used_goods",
+      composeSeed: "아이폰",
+      accumulatedText: "아이폰15프로",
+      eventId: "evt-7",
+      pendingSlotId: "priceKrw",
+      askedCount: 1,
+      status: "waiting_slot",
+      composeSchemaId: "sell_item",
+      composeDraft: {
+        productName: "아이폰15프로",
+        condition: "좋음",
+        placeLabel: "서울",
+      },
+      productCategoryId: "smartphone",
+      productCategoryStatus: "confirmed",
+      pendingClarifyKind: "slot",
+      updatedAt: new Date().toISOString(),
+    },
+    message: "7",
+    answerText: "7",
+    schemaId: "sell_item",
+    graphId: "composer:price-7",
+    accumulatedText: "아이폰15프로",
+  });
+  assert.equal(shorthandSeven.kind, "slot_review");
+  if (shorthandSeven.kind === "slot_review") {
+    assert.equal(shorthandSeven.draft.priceKrw, 70_000);
+  }
+
+  const shorthandPrice = await runComposeSlotFillTurn({
+    resumeState: {
+      graphId: "composer:price-70",
+      intentId: "offer",
+      categoryId: "used_goods",
+      composeSeed: "아이폰",
+      accumulatedText: "아이폰15프로",
+      eventId: "evt-70",
+      pendingSlotId: "priceKrw",
+      askedCount: 1,
+      status: "waiting_slot",
+      composeSchemaId: "sell_item",
+      composeDraft: {
+        productName: "아이폰15프로",
+        condition: "좋음",
+        placeLabel: "서울",
+      },
+      productCategoryId: "smartphone",
+      productCategoryStatus: "confirmed",
+      pendingClarifyKind: "slot",
+      updatedAt: new Date().toISOString(),
+    },
+    message: "70",
+    answerText: "70",
+    schemaId: "sell_item",
+    graphId: "composer:price-70",
+    accumulatedText: "아이폰15프로",
+  });
+  assert.equal(shorthandPrice.kind, "slot_review");
+  if (shorthandPrice.kind === "slot_review") {
+    assert.equal(shorthandPrice.draft.priceKrw, 700_000);
+  }
 
   const stepPrice = await runComposeSlotFillTurn({
     resumeState: {

@@ -9,24 +9,7 @@ import type { ComposeSchemaId, SellItemDraft } from "@/lib/portal/compose-draft/
 import { buildMarketIntentFromComposeDraft } from "@/lib/portal/compose-draft/draft-to-market-intent";
 import { sellItemDraftToComposeText } from "@/lib/portal/compose-draft/draft-to-market-intent";
 
-function parsePriceInput(raw: string): number | null {
-  const trimmed = raw.trim();
-  if (!trimmed) {
-    return null;
-  }
-  const man = trimmed.match(/^(\d+(?:\.\d+)?)\s*만/u);
-  if (man?.[1]) {
-    return Math.round(Number.parseFloat(man[1]) * 10_000);
-  }
-  const digits = trimmed.replace(/[^\d]/gu, "");
-  if (!digits) {
-    return null;
-  }
-  const value = Number.parseInt(digits, 10);
-  return Number.isFinite(value) && value >= 10_000 ? value : null;
-}
-
-export function patchComposeDraftField(input: {
+import { parseComposePriceKrwOrNull } from "@/lib/portal/compose-draft/parse-compose-price-krw";(input: {
   graphId: string;
   fieldId: keyof SellItemDraft;
   rawValue: string;
@@ -40,7 +23,7 @@ export function patchComposeDraftField(input: {
   const draft: Partial<SellItemDraft> = { ...(state.composeDraft ?? {}) };
 
   if (input.fieldId === "priceKrw") {
-    draft.priceKrw = parsePriceInput(input.rawValue);
+    draft.priceKrw = parseComposePriceKrwOrNull(input.rawValue);
   } else if (input.fieldId === "productName") {
     draft.productName = input.rawValue.trim() || null;
   } else if (input.fieldId === "condition") {

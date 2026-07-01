@@ -22,6 +22,8 @@ import { readActiveRunState } from "@/lib/context-run/run-state-store";
 import { copy } from "@/lib/copy/human-ko";
 import { findMarketIntentByEventId } from "@/lib/globe/market/market-alignment-store";
 import { sellItemDraftCanPublish } from "@/lib/portal/compose-draft/draft-utils";
+import { findNextFlowStep } from "@/lib/portal/compose-draft/flow-step-types";
+import { SELL_ITEM_FLOW } from "@/lib/portal/compose-draft/sell-item-flow";
 import {
   buildMatchAgentTasks,
   matchAgentTasksComplete,
@@ -181,6 +183,30 @@ export function GlobeChatScreen({
   }, [messages]);
 
   const answerHint = useMemo(() => readPendingAnswerHint(messages), [messages]);
+  const chatPlaceholderOverride = useMemo(() => {
+    if (
+      composeState?.status === "waiting_slot" ||
+      composeState?.status === "conversing" ||
+      composeState?.status === "drafting"
+    ) {
+      return null;
+    }
+    if (composeState?.composeSchemaId !== "sell_item") {
+      return null;
+    }
+    const draft = composeState.composeDraft ?? {};
+    const next = findNextFlowStep(draft, SELL_ITEM_FLOW.slice(0, -1));
+    if (next?.slotKey === "photos") {
+      return copy.globe.chatInputPlaceholderMedia;
+    }
+    if (next?.slotKey === "note") {
+      return copy.globe.chatInputPlaceholderNote;
+    }
+    if (composeState.status === "ready" && sellItemDraftCanPublish(draft)) {
+      return copy.globe.chatInputPlaceholderPublish;
+    }
+    return null;
+  }, [composeState]);
   const headerSubtitle = readChatHeaderSubtitle(composeState);
   const showEmptyState = messages.length === 0 && !showDraftCard;
 
@@ -304,7 +330,8 @@ export function GlobeChatScreen({
                       <GlobeChatSlotChips
                         choices={chipChoices}
                         variant={
-                          message.clarifyKind === "category_confirm"
+                          message.clarifyKind === "category_confirm" ||
+                          message.clarifyKind === "price_confirm"
                             ? "confirm"
                             : message.clarifyKind === "category_pick"
                               ? "category"
@@ -383,6 +410,7 @@ export function GlobeChatScreen({
               {...ingest}
               mapPromptMode={false}
               compactPill
+              chatPlaceholderOverride={chatPlaceholderOverride}
               className="w-full"
             />
           </div>

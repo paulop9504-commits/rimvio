@@ -34,6 +34,7 @@ export type PortalComposeRunState = {
   slotExtras?: Partial<Record<string, string>> | null;
   skippedSlots?: string[] | null;
   detailSlotFill?: boolean;
+  pendingPriceConfirmKrw?: number | null;
   updatedAt: string;
 };
 

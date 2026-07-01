@@ -69,6 +69,10 @@ export function readCategoryConfirmChoices(): readonly SlotChoiceOption[] {
   return CATEGORY_CONFIRM_CHOICES;
 }
 
+export function readPriceConfirmChoices(): readonly SlotChoiceOption[] {
+  return CATEGORY_CONFIRM_CHOICES;
+}
+
 export function resolveSlotChoiceLabel(
   choices: readonly SlotChoiceOption[],
   answer: string,
