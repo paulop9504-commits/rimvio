@@ -102,14 +102,12 @@ function NavTabButton({
   onNavigate,
   onCapture,
   className,
-  showLabel = false,
 }: {
   tab: NavTab;
   active: boolean;
   onNavigate: (href: string) => void;
   onCapture: () => void;
   className?: string;
-  showLabel?: boolean;
 }) {
   const activatedRef = useRef(false);
 
@@ -160,8 +158,7 @@ function NavTabButton({
         activate();
       }}
       className={cn(
-        "rimvio-bottom-nav-tab relative z-10 flex w-full min-w-0 flex-col items-center justify-center gap-1 border-0 bg-transparent p-0 transition-transform active:scale-[0.97] touch-manipulation",
-        showLabel ? "min-h-[3.25rem] py-1" : "h-11 w-11",
+        "rimvio-bottom-nav-tab relative z-[1] flex size-12 shrink-0 items-center justify-center border-0 bg-transparent p-0 transition-transform active:scale-[0.94] touch-manipulation",
         className,
       )}
     >
@@ -174,25 +171,13 @@ function NavTabButton({
         <NavTabIcon icon={tab.icon} active={active} />
         {tab.badge != null && tab.badge > 0 ? (
           <span
-            className="absolute -right-1 -top-0.5 flex size-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-[#3182f6] px-0.5 text-[9px] font-bold leading-none text-white"
+            className="absolute -right-0.5 -top-0.5 flex size-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-[#3182f6] px-0.5 text-[9px] font-bold leading-none text-white shadow-[0_2px_6px_rgba(49,130,246,0.45)]"
             aria-hidden
           >
             {tab.badge > 9 ? "9+" : tab.badge}
           </span>
         ) : null}
       </span>
-      {showLabel ? (
-        <span
-          className={cn(
-            "pointer-events-none max-w-full truncate text-[11px] leading-none tracking-[-0.01em]",
-            active && !isCapture
-              ? "font-bold text-[#1c1c1e]"
-              : "font-medium text-[#9ca3af]",
-          )}
-        >
-          {tab.label}
-        </span>
-      ) : null}
     </button>
   );
 }
@@ -217,7 +202,6 @@ function MobileNavLinks({
           active={tab.isActive(pathname)}
           onNavigate={onNavigate}
           onCapture={onCapture}
-          showLabel
         />
       ))}
     </>
@@ -291,7 +275,12 @@ function BottomNavGrid({
   onCapture: () => void;
 }) {
   return (
-    <div className="rimvio-bottom-nav-pill" role="tablist" aria-label="Primary tabs">
+    <div
+      className="rimvio-bottom-nav-pill"
+      role="tablist"
+      aria-label="Primary tabs"
+      data-rimvio-bottom-nav-pill
+    >
       <MobileNavLinks
         tabs={tabs}
         pathname={pathname}

@@ -131,6 +131,7 @@ export const GlobeContextIngestBar = forwardRef<
   const isDiscovery = layerMode === "discovery";
   const isPill = compactPillProp ?? (mapPromptMode && !isDiscovery);
   const isChatPill = isPill && !mapPromptMode;
+  const isLightPill = isPill && !isDiscovery;
 
   const finish = useCallback(
     (eventId: string, line: string, options?: { needsPlaceVerify?: boolean }) => {
@@ -414,37 +415,53 @@ export const GlobeContextIngestBar = forwardRef<
   return (
     <div
       className={cn("w-full", isPill && "relative", className)}
-      data-globe-map-intent-prompt={mapPromptMode && !isDiscovery ? true : undefined}
+      data-globe-map-intent-prompt={
+        mapPromptMode && !isDiscovery && !isLightPill ? true : undefined
+      }
+      data-globe-prompt-tone={isLightPill ? "light" : undefined}
       data-globe-ingest-compact={isPill ? "pill" : undefined}
     >
       <div
         className={cn(
           isPill ? "relative rounded-full backdrop-blur-xl" : "overflow-hidden rounded-[1.35rem] backdrop-blur-xl",
-          mapPromptMode && !isDiscovery
-            ? "bg-[#121316]/88 shadow-[0_8px_28px_rgba(0,0,0,0.35)] ring-1 ring-white/14"
-            : isChatPill
-              ? "bg-white/10 shadow-[0_6px_24px_rgba(0,0,0,0.28)] ring-1 ring-white/14"
+          isLightPill
+            ? "rimvio-globe-prompt-pill--light ring-1 ring-[color-mix(in_oklch,#ffc9c4_50%,#e8ebee_50%)]"
+            : mapPromptMode && !isDiscovery
+              ? "bg-[#121316]/88 shadow-[0_8px_28px_rgba(0,0,0,0.35)] ring-1 ring-white/14"
               : "bg-white/92 shadow-[0_8px_32px_rgba(2,32,71,0.12)] ring-1 ring-black/[0.06]",
         )}
       >
         {menuOpen && !isDiscovery ? (
           isPill ? (
             <div
-              className="absolute bottom-full left-0 right-0 z-10 mb-2 overflow-hidden rounded-2xl bg-[#121316]/96 shadow-[0_12px_40px_rgba(0,0,0,0.45)] ring-1 ring-white/14 backdrop-blur-xl"
+              className={cn(
+                "absolute bottom-full left-0 right-0 z-10 mb-2 overflow-hidden rounded-2xl backdrop-blur-xl",
+                isLightPill
+                  ? "bg-white shadow-[0_12px_36px_rgba(2,32,71,0.14)] ring-1 ring-black/[0.06]"
+                  : "bg-[#121316]/96 shadow-[0_12px_40px_rgba(0,0,0,0.45)] ring-1 ring-white/14",
+              )}
               data-globe-ingest-photo-popover
             >
               <button
                 type="button"
                 disabled={marketComposeBusy}
                 onClick={() => photoRef.current?.click()}
-                className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors active:bg-white/6"
+                className={cn(
+                  "flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors",
+                  isLightPill ? "active:bg-black/[0.04]" : "active:bg-white/6",
+                )}
                 data-globe-ingest-photo-action
               >
                 <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
                   <ImagePlus className="size-4" aria-hidden />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[13px] font-semibold text-white/92">
+                  <span
+                    className={cn(
+                      "block text-[13px] font-semibold",
+                      isLightPill ? "text-[#191f28]" : "text-white/92",
+                    )}
+                  >
                     {copy.globe.ingestPhotoActionTitle}
                   </span>
                 </span>
@@ -477,7 +494,7 @@ export const GlobeContextIngestBar = forwardRef<
           onSubmit={(event) => void submitText(event)}
           className={cn(
             "flex items-center",
-            isPill ? "gap-1 px-1.5 py-1" : "gap-2 px-2 py-2",
+            isPill ? "gap-1.5 px-2 py-1.5" : "gap-2 px-2 py-2",
           )}
         >
           {!isDiscovery ? (
@@ -488,7 +505,7 @@ export const GlobeContextIngestBar = forwardRef<
             className={cn(
               rimvioIconBtnClass(menuOpen ? "primary" : "ghost"),
               isPill ? "size-8 shrink-0 rounded-full" : "size-10 shrink-0 rounded-xl",
-              isChatPill && !menuOpen && "text-white/75 hover:text-white",
+              isLightPill && !menuOpen && "text-[#4e5968] hover:text-[#191f28]",
             )}
             aria-label={menuOpen ? copy.globe.ingestMenuCloseAria : copy.globe.ingestMenuOpenAria}
             aria-expanded={menuOpen}
@@ -512,10 +529,10 @@ export const GlobeContextIngestBar = forwardRef<
               disabled={marketComposeBusy}
               className={cn(
                 "min-w-0 flex-1 bg-transparent text-[14px] outline-none",
-                mapPromptMode && !isDiscovery
-                  ? "px-1 text-white placeholder:text-white/42"
-                  : isChatPill
-                    ? "px-1 text-white placeholder:text-white/40"
+                isLightPill
+                  ? "px-0.5 text-[#191f28] placeholder:text-[#8b95a1]"
+                  : mapPromptMode && !isDiscovery
+                    ? "px-1 text-white placeholder:text-white/42"
                     : "px-1 text-[#191f28] placeholder:text-[#8b95a1]",
               )}
               data-globe-map-intent-prompt-input
@@ -551,8 +568,13 @@ export const GlobeContextIngestBar = forwardRef<
             type="submit"
             disabled={busy || !text.trim()}
             className={cn(
-              rimvioIconBtnClass("primary"),
-              isPill ? "size-8 shrink-0 rounded-full disabled:opacity-35" : "size-10 shrink-0 rounded-xl disabled:opacity-35",
+              isLightPill
+                ? "rimvio-globe-prompt-pill-send size-8 shrink-0 rounded-full transition-colors"
+                : rimvioIconBtnClass("primary"),
+              !isLightPill && isPill && "size-8 shrink-0 rounded-full",
+              !isLightPill && !isPill && "size-10 shrink-0 rounded-xl",
+              isLightPill ? "" : "disabled:opacity-35",
+              !isLightPill && isPill && "disabled:opacity-35",
             )}
             aria-label={copy.globe.ingestSendAria}
           >

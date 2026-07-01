@@ -231,7 +231,7 @@ export function GlobeChatScreen({
 
         <div
           ref={scrollRef}
-          className="min-h-0 flex-1 overflow-y-auto px-4 py-3"
+          className="min-h-0 flex-1 overflow-y-auto px-4 py-3 pb-6"
           data-globe-chat-messages
         >
           <div className="mx-auto flex w-full max-w-lg flex-col gap-3">
@@ -367,23 +367,25 @@ export function GlobeChatScreen({
         </div>
 
         <div
-          className={cn(
-            "shrink-0 border-t border-white/8 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2",
-          )}
+          className="relative z-[2] shrink-0 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2"
+          data-globe-chat-composer
         >
-          {answerHint ? (
-            <GlobeChatAnswerHint
-              questionKo={answerHint}
-              className="mx-auto mb-2 max-w-[min(100%,20rem)] rounded-2xl bg-white/6 px-3 py-2 ring-1 ring-white/10"
+          <div className="mx-auto w-full max-w-[min(100%,20rem)] space-y-2">
+            {answerHint ? (
+              <GlobeChatAnswerHint
+                questionKo={answerHint}
+                tone="light"
+                className="rounded-2xl bg-white px-3.5 py-2.5 shadow-[0_6px_20px_rgba(0,0,0,0.12)] ring-1 ring-black/[0.05]"
+              />
+            ) : null}
+            <GlobeContextIngestBar
+              ref={ingestRef}
+              {...ingest}
+              mapPromptMode={false}
+              compactPill
+              className="w-full"
             />
-          ) : null}
-          <GlobeContextIngestBar
-            ref={ingestRef}
-            {...ingest}
-            mapPromptMode={false}
-            compactPill
-            className="mx-auto w-full max-w-[min(100%,20rem)]"
-          />
+          </div>
         </div>
       </motion.div>
     </AnimatePresence>

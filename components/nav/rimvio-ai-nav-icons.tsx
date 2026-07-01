@@ -64,7 +64,7 @@ function NavIconShell({
   return (
     <motion.svg
       viewBox="0 0 24 24"
-      className={cn("size-[22px]", className)}
+      className={cn("size-[27px]", className)}
       fill="none"
       aria-hidden
       initial={false}
