@@ -62,36 +62,20 @@
   background: color-mix(in oklch, var(--muted) 85%, black);
 }
 
-/* Floating bottom nav — active icon pill (pastel per tab) */
+/* Bottom nav — active icon circle (neutral beige, reference mock) */
 .rimvio-bottom-nav-icon-pill {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 3.375rem;
+  width: 2.75rem;
   height: 2.75rem;
   border-radius: 9999px;
   transition:
-    background-color 0.22s ease,
-    box-shadow 0.22s ease,
+    background-color 0.2s ease,
     transform 0.15s ease;
 }
 
 .rimvio-bottom-nav-icon-pill--active {
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
-}
-
-.rimvio-bottom-nav-tab[data-nav-href="/"] .rimvio-bottom-nav-icon-pill--active {
-  background: linear-gradient(
-    145deg,
-    color-mix(in oklch, #e0f2fe 88%, white),
-    color-mix(in oklch, #bae6fd 42%, white)
-  );
-}
-
-.rimvio-bottom-nav-tab[data-nav-href="/peers"] .rimvio-bottom-nav-icon-pill--active {
-  background: linear-gradient(
-    145deg,
-    color-mix(in oklch, #ede9fe 90%, white),
-    color-mix(in oklch, #ddd6fe 48%, white)
-  );
+  background: #ebe6dc;
+  box-shadow: none;
 }

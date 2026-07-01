@@ -36,6 +36,7 @@ import {
 } from "@/lib/external-context-ask";
 import { resolveExperienceRunTurn } from "@/lib/experience-run";
 import { buildMarketQuickListDraft } from "@/lib/globe/market/build-market-quick-list-draft";
+import { dispatchGlobeIntentSupplyClear } from "@/lib/globe/intent-supply/globe-intent-supply-bridge";
 import { runGlobeMapIntentSupply } from "@/lib/globe/intent-supply/run-globe-map-intent-supply";
 import { parseMentionForContract } from "@/lib/context-run/plan-mention-contract";
 import {
@@ -67,7 +68,10 @@ import {
 } from "@/lib/portal/portal-compose-run-store";
 import { detectPortalIntentFromText } from "@/lib/portal/detect-portal-intent-from-text";
 import { resolvePortalComposeRunTurn } from "@/lib/portal/resolve-portal-compose-run-turn";
-import { syncPortalComposeTurnToChat } from "@/lib/globe/chat/sync-portal-compose-to-chat";
+import {
+  syncPortalComposeClarifyToChat,
+  syncPortalComposeTurnToChat,
+} from "@/lib/globe/chat/sync-portal-compose-to-chat";
 import { sellItemDraftToComposeText } from "@/lib/portal/compose-draft/draft-to-market-intent";
 import type { PortalIntentId } from "@/lib/portal/portal-types";
 
@@ -96,6 +100,9 @@ export async function dispatchContextRun(
 
   if (ingress.kind === "text" && ingress.layerMode === "personal") {
     dispatchExecutionFeedGoal({ graphId: runGraphId, goalKo: runGoalKo });
+  }
+  if (plan.kind !== "map_intent_supply" && plan.kind !== "mention_contract") {
+    dispatchGlobeIntentSupplyClear();
   }
   ensureRunState({ graphId: runGraphId, goal: runGoalKo });
 
@@ -162,10 +169,7 @@ async function executeContextRunPlan(
           : null;
       const runGraphId = plan.graphId ?? pending?.graphId ?? activeRun?.graphId ?? graphId;
 
-      let resolvedEventId =
-        pending?.eventId?.trim() ||
-        eventId?.trim() ||
-        "";
+      let resolvedEventId = pending?.eventId?.trim() || "";
 
       if (
         !resolvedEventId &&
@@ -235,13 +239,21 @@ async function executeContextRunPlan(
         writePortalComposeRunState(result.state);
         const composeText =
           sellItemDraftToComposeText(result.draft) || result.state.accumulatedText;
-        syncComposeDraftToFeed({
-          graphId: runGraphId,
-          goalKo: bound.goalKo,
-          assistantKo: result.assistantKo,
-          schemaId: result.schemaId,
-          draft: result.draft,
-        });
+        if (result.canPublish) {
+          syncComposeDraftToFeed({
+            graphId: runGraphId,
+            goalKo: bound.goalKo,
+            assistantKo: result.assistantKo,
+            schemaId: result.schemaId,
+            draft: result.draft,
+          });
+        } else {
+          syncComposeIntentToFeed({
+            graphId: runGraphId,
+            goalKo: bound.goalKo,
+            assistantKo: result.assistantKo,
+          });
+        }
         syncPortalComposeTurnToChat({
           graphId: runGraphId,
           userText: plan.resumePortalRun ? bound.goalKo : bound.goalKo,
@@ -267,10 +279,14 @@ async function executeContextRunPlan(
           goalKo: bound.goalKo,
           slotId: result.slotId,
         });
-        syncPortalComposeTurnToChat({
+        syncPortalComposeClarifyToChat({
           graphId: runGraphId,
           userText: bound.goalKo,
-          assistantText: result.questionKo,
+          questionKo: result.questionKo,
+          clarifyKind: result.clarifyKind,
+          slotId: result.slotId,
+          choices: result.choices,
+          categoryOptions: result.categoryOptions,
         });
         handlers.onPortalComposeClarify?.({
           questionKo: result.questionKo,
@@ -417,13 +433,21 @@ async function executeContextRunPlan(
         writePortalComposeRunState(result.state);
         const mergedText =
           sellItemDraftToComposeText(result.draft) || result.state.accumulatedText;
-        syncComposeDraftToFeed({
-          graphId: runGraphId,
-          goalKo: composeText,
-          assistantKo: result.assistantKo,
-          schemaId: result.schemaId,
-          draft: result.draft,
-        });
+        if (result.canPublish) {
+          syncComposeDraftToFeed({
+            graphId: runGraphId,
+            goalKo: composeText,
+            assistantKo: result.assistantKo,
+            schemaId: result.schemaId,
+            draft: result.draft,
+          });
+        } else {
+          syncComposeIntentToFeed({
+            graphId: runGraphId,
+            goalKo: composeText,
+            assistantKo: result.assistantKo,
+          });
+        }
         syncPortalComposeTurnToChat({
           graphId: runGraphId,
           userText: composeText,
@@ -447,6 +471,15 @@ async function executeContextRunPlan(
           questionKo: result.questionKo,
           goalKo: composeText,
           slotId: result.slotId,
+        });
+        syncPortalComposeClarifyToChat({
+          graphId: runGraphId,
+          userText: composeText,
+          questionKo: result.questionKo,
+          clarifyKind: result.clarifyKind,
+          slotId: result.slotId,
+          choices: result.choices,
+          categoryOptions: result.categoryOptions,
         });
         handlers.onPortalComposeClarify?.({
           questionKo: result.questionKo,
@@ -542,6 +575,11 @@ async function executeContextRunPlan(
 
       if (supply?.status === "supplied") {
         const { ack } = supply;
+        syncPortalComposeTurnToChat({
+          graphId,
+          userText: bound.goalKo,
+          assistantText: ack.summaryKo,
+        });
         if (supply.lodgingEventId) {
           handlers.onLodgingDiscovery?.({
             eventId: supply.lodgingEventId,
@@ -721,6 +759,11 @@ async function executeContextRunPlan(
 
       if (runResult.kind === "clarify") {
         syncExperienceRunClarifyToFeed(runResult, bound.goalKo);
+        syncPortalComposeTurnToChat({
+          graphId,
+          userText: bound.goalKo,
+          assistantText: runResult.questionKo,
+        });
         handlers.onExperienceRunClarify?.(runResult);
         return {
           graphId,
@@ -732,6 +775,15 @@ async function executeContextRunPlan(
 
       if (runResult.kind === "summary") {
         syncExperienceRunSummaryToFeed(runResult.summary, bound.goalKo);
+        const assistantText =
+          runResult.summary.meaningLineKo?.trim() ||
+          runResult.summary.bodyKo.trim() ||
+          runResult.summary.titleKo;
+        syncPortalComposeTurnToChat({
+          graphId,
+          userText: bound.goalKo,
+          assistantText,
+        });
         handlers.onExperienceRunSummary?.(runResult);
         return {
           graphId,

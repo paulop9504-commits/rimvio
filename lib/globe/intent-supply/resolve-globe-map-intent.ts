@@ -17,6 +17,10 @@ const RECALL_PERSON_HINT = /(?:랑|와|과|이랑|하고|친구|동료|who)/iu;
 const CONTEXT_CONNECT_SIGNAL =
   /(?:맥락\s*(?:연결|저장|남기)|지도에\s*(?:연결|표시|남기)|(?:흔적|기록)\s*(?:남기|저장)|connect\s+context)/iu;
 
+export function isExplicitContextConnectMessage(message: string): boolean {
+  return CONTEXT_CONNECT_SIGNAL.test(message.trim());
+}
+
 /** Deterministic NL intent for globe map prompt — no LLM. */
 export function resolveGlobeMapIntent(message: string): GlobeMapIntent {
   const text = message.trim();
@@ -53,7 +57,7 @@ export function resolveGlobeMapIntent(message: string): GlobeMapIntent {
     return { kind: "people_recall", supplyTarget: "memory" };
   }
 
-  if (CONTEXT_CONNECT_SIGNAL.test(text)) {
+  if (isExplicitContextConnectMessage(text)) {
     return { kind: "context_connect", supplyTarget: "context" };
   }
 

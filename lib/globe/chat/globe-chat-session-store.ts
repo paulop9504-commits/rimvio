@@ -3,6 +3,7 @@ import type {
   GlobeChatMessage,
   GlobeChatResourceCompleteMessage,
   GlobeChatSession,
+  GlobeChatSlotPromptMessage,
   GlobeChatTextMessage,
 } from "@/lib/globe/chat/globe-chat-session-types";
 
@@ -46,6 +47,32 @@ export function readGlobeChatSession(graphId: string | null | undefined): GlobeC
     return null;
   }
   return sessions.get(graphId.trim()) ?? null;
+}
+
+export function appendGlobeChatSlotPromptMessage(input: {
+  graphId: string;
+  text: string;
+  clarifyKind: GlobeChatSlotPromptMessage["clarifyKind"];
+  slotId: string;
+  choices?: readonly { id: string; labelKo: string }[];
+  categoryOptions?: readonly { id: string; labelKo: string }[];
+}): GlobeChatSlotPromptMessage {
+  const session = ensureSession(input.graphId);
+  const message: GlobeChatSlotPromptMessage = {
+    id: nextId(),
+    role: "assistant",
+    kind: "slot_prompt",
+    text: input.text.trim(),
+    clarifyKind: input.clarifyKind,
+    slotId: input.slotId,
+    choices: input.choices,
+    categoryOptions: input.categoryOptions,
+    createdAt: new Date().toISOString(),
+  };
+  session.messages = [...session.messages, message];
+  session.updatedAt = message.createdAt;
+  emit(input.graphId);
+  return message;
 }
 
 export function appendGlobeChatTextMessage(input: {

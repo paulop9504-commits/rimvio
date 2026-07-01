@@ -1,8 +1,8 @@
-import { buildComposerGraphId } from "@/lib/context-run/resolve-globe-composer-surface";
 import {
   dispatchExecutionFeedArtifact,
   dispatchExecutionFeedStep,
 } from "@/lib/context-run/execution-feed-bridge";
+import { resolveActiveComposerGraphId } from "@/lib/context-run/resolve-active-composer-graph-id";
 import type {
   GlobeMapIntentSupplyAck,
   GlobeMapIntentSupplyPending,
@@ -14,7 +14,7 @@ export function syncIntentSupplyPendingToFeed(
   pending: GlobeMapIntentSupplyPending,
   goalKo: string,
 ): void {
-  const graphId = buildComposerGraphId(null, goalKo);
+  const graphId = resolveActiveComposerGraphId(goalKo);
   dispatchExecutionFeedStep({
     graphId,
     stepId: STEP_CONNECT,
@@ -41,7 +41,7 @@ export function syncIntentSupplyAckToFeed(
   ack: GlobeMapIntentSupplyAck,
   goalKo: string,
 ): void {
-  const graphId = buildComposerGraphId(ack.eventId, goalKo);
+  const graphId = resolveActiveComposerGraphId(goalKo);
   dispatchExecutionFeedStep({
     graphId,
     stepId: STEP_CONNECT,

@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils";
 
 export type GlobeContextIngestBarHandle = {
   openPhotoPicker: () => void;
+  submitComposerText: (value: string) => Promise<void>;
 };
 
 export type GlobeContextIngestBarProps = {
@@ -85,6 +86,8 @@ export type GlobeContextIngestBarProps = {
   }) => void;
   /** Map-native prompt — frosted dark bar over globe. */
   mapPromptMode?: boolean;
+  /** Compact rounded-full pill (default on map prompt). */
+  compactPill?: boolean;
 };
 
 /** Globe home — one frosted composer; photo action lives inside the + menu. */
@@ -115,6 +118,7 @@ export const GlobeContextIngestBar = forwardRef<
     onLodgingDiscovery,
     onEateryDiscovery,
     mapPromptMode = true,
+    compactPill: compactPillProp,
   },
   ref,
 ) {
@@ -125,13 +129,8 @@ export const GlobeContextIngestBar = forwardRef<
   const photoRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const isDiscovery = layerMode === "discovery";
-
-  useImperativeHandle(ref, () => ({
-    openPhotoPicker: () => {
-      setMenuOpen(true);
-      window.setTimeout(() => photoRef.current?.click(), 0);
-    },
-  }));
+  const isPill = compactPillProp ?? (mapPromptMode && !isDiscovery);
+  const isChatPill = isPill && !mapPromptMode;
 
   const finish = useCallback(
     (eventId: string, line: string, options?: { needsPlaceVerify?: boolean }) => {
@@ -145,13 +144,15 @@ export const GlobeContextIngestBar = forwardRef<
 
   const attachHintId = forceAttachToTarget ? targetEventId?.trim() || null : null;
   const attachHintTitle = forceAttachToTarget ? targetTitle?.trim() || null : null;
-  const inputPlaceholder = clarifyPlaceholder ?? (isDiscovery
-    ? copy.globe.ingestDiscoveryPlaceholder
-    : mapPromptMode
-      ? copy.globe.mapIntentPromptPlaceholder
-      : attachHintTitle
-        ? copy.globe.ingestAttachPlaceholder(attachHintTitle)
-        : copy.globe.ingestDefaultPlaceholder);
+  const inputPlaceholder = clarifyPlaceholder ?? (isChatPill
+    ? copy.globe.chatInputPlaceholder
+    : isDiscovery
+      ? copy.globe.ingestDiscoveryPlaceholder
+      : mapPromptMode
+        ? copy.globe.mapIntentPromptPlaceholder
+        : attachHintTitle
+          ? copy.globe.ingestAttachPlaceholder(attachHintTitle)
+          : copy.globe.ingestDefaultPlaceholder);
   const marketComposeBusy = busy || marketRoleBusy;
 
   const tryQuickListMarket = useCallback(
@@ -333,9 +334,9 @@ export const GlobeContextIngestBar = forwardRef<
   );
 
   const submitText = useCallback(
-    async (event?: FormEvent) => {
+    async (event?: FormEvent, overrideValue?: string) => {
       event?.preventDefault();
-      const value = text.trim();
+      const value = (overrideValue ?? text).trim();
       if (!value || busy) {
         return;
       }
@@ -398,17 +399,58 @@ export const GlobeContextIngestBar = forwardRef<
     ],
   );
 
+  useImperativeHandle(
+    ref,
+    () => ({
+      openPhotoPicker: () => {
+        setMenuOpen(true);
+        window.setTimeout(() => photoRef.current?.click(), 0);
+      },
+      submitComposerText: (value: string) => submitText(undefined, value),
+    }),
+    [submitText],
+  );
+
   return (
-    <div className={cn("w-full", className)} data-globe-map-intent-prompt>
+    <div
+      className={cn("w-full", isPill && "relative", className)}
+      data-globe-map-intent-prompt={mapPromptMode && !isDiscovery ? true : undefined}
+      data-globe-ingest-compact={isPill ? "pill" : undefined}
+    >
       <div
         className={cn(
-          "overflow-hidden rounded-[1.35rem] backdrop-blur-xl",
+          isPill ? "relative rounded-full backdrop-blur-xl" : "overflow-hidden rounded-[1.35rem] backdrop-blur-xl",
           mapPromptMode && !isDiscovery
-            ? "bg-[#121316]/82 shadow-[0_12px_40px_rgba(0,0,0,0.38)] ring-1 ring-white/12"
-            : "bg-white/92 shadow-[0_8px_32px_rgba(2,32,71,0.12)] ring-1 ring-black/[0.06]",
+            ? "bg-[#121316]/88 shadow-[0_8px_28px_rgba(0,0,0,0.35)] ring-1 ring-white/14"
+            : isChatPill
+              ? "bg-white/10 shadow-[0_6px_24px_rgba(0,0,0,0.28)] ring-1 ring-white/14"
+              : "bg-white/92 shadow-[0_8px_32px_rgba(2,32,71,0.12)] ring-1 ring-black/[0.06]",
         )}
       >
         {menuOpen && !isDiscovery ? (
+          isPill ? (
+            <div
+              className="absolute bottom-full left-0 right-0 z-10 mb-2 overflow-hidden rounded-2xl bg-[#121316]/96 shadow-[0_12px_40px_rgba(0,0,0,0.45)] ring-1 ring-white/14 backdrop-blur-xl"
+              data-globe-ingest-photo-popover
+            >
+              <button
+                type="button"
+                disabled={marketComposeBusy}
+                onClick={() => photoRef.current?.click()}
+                className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors active:bg-white/6"
+                data-globe-ingest-photo-action
+              >
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+                  <ImagePlus className="size-4" aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[13px] font-semibold text-white/92">
+                    {copy.globe.ingestPhotoActionTitle}
+                  </span>
+                </span>
+              </button>
+            </div>
+          ) : (
           <button
             type="button"
             disabled={marketComposeBusy}
@@ -428,11 +470,15 @@ export const GlobeContextIngestBar = forwardRef<
               </span>
             </span>
           </button>
+          )
         ) : null}
 
         <form
           onSubmit={(event) => void submitText(event)}
-          className="flex items-center gap-2 px-2 py-2"
+          className={cn(
+            "flex items-center",
+            isPill ? "gap-1 px-1.5 py-1" : "gap-2 px-2 py-2",
+          )}
         >
           {!isDiscovery ? (
           <button
@@ -441,19 +487,40 @@ export const GlobeContextIngestBar = forwardRef<
             onClick={() => setMenuOpen((open) => !open)}
             className={cn(
               rimvioIconBtnClass(menuOpen ? "primary" : "ghost"),
-              "size-10 shrink-0 rounded-xl",
+              isPill ? "size-8 shrink-0 rounded-full" : "size-10 shrink-0 rounded-xl",
+              isChatPill && !menuOpen && "text-white/75 hover:text-white",
             )}
             aria-label={menuOpen ? copy.globe.ingestMenuCloseAria : copy.globe.ingestMenuOpenAria}
             aria-expanded={menuOpen}
           >
             {menuOpen ? (
-              <X className="size-5" aria-hidden />
+              <X className={isPill ? "size-4" : "size-5"} aria-hidden />
             ) : (
-              <Plus className="size-5" aria-hidden />
+              <Plus className={isPill ? "size-4" : "size-5"} aria-hidden />
             )}
           </button>
           ) : null}
 
+          {isPill ? (
+            <input
+              ref={inputRef}
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+              onFocus={onComposeFocus}
+              onBlur={onComposeBlur}
+              placeholder={inputPlaceholder}
+              disabled={marketComposeBusy}
+              className={cn(
+                "min-w-0 flex-1 bg-transparent text-[14px] outline-none",
+                mapPromptMode && !isDiscovery
+                  ? "px-1 text-white placeholder:text-white/42"
+                  : isChatPill
+                    ? "px-1 text-white placeholder:text-white/40"
+                    : "px-1 text-[#191f28] placeholder:text-[#8b95a1]",
+              )}
+              data-globe-map-intent-prompt-input
+            />
+          ) : (
           <div
             className={cn(
               rimvioComposerFieldClass,
@@ -478,20 +545,21 @@ export const GlobeContextIngestBar = forwardRef<
               data-globe-map-intent-prompt-input
             />
           </div>
+          )}
 
           <button
             type="submit"
             disabled={busy || !text.trim()}
             className={cn(
               rimvioIconBtnClass("primary"),
-              "size-10 shrink-0 rounded-xl disabled:opacity-35",
+              isPill ? "size-8 shrink-0 rounded-full disabled:opacity-35" : "size-10 shrink-0 rounded-xl disabled:opacity-35",
             )}
             aria-label={copy.globe.ingestSendAria}
           >
             {busy ? (
-              <Loader2 className="size-5 animate-spin" aria-hidden />
+              <Loader2 className={isPill ? "size-4 animate-spin" : "size-5 animate-spin"} aria-hidden />
             ) : (
-              <SendHorizontal className="size-5" aria-hidden />
+              <SendHorizontal className={isPill ? "size-4" : "size-5"} aria-hidden />
             )}
           </button>
         </form>

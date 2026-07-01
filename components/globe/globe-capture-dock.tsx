@@ -127,7 +127,10 @@ export const GlobeCaptureDock = forwardRef<GlobeContextIngestBarHandle, GlobeCap
         ) : null}
 
         {!photoActive && !composeHidden ? (
-          <div className="pointer-events-none mx-auto flex w-full max-w-lg flex-col gap-2">
+          <div
+            className="pointer-events-none mx-auto flex w-full max-w-[min(100%,20rem)] flex-col gap-2"
+            data-globe-ingest-compact="pill"
+          >
             {composeAccessory ? (
               <div className="pointer-events-auto">{composeAccessory}</div>
             ) : null}

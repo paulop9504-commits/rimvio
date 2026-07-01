@@ -7,7 +7,7 @@ import {
   dispatchExecutionFeedArtifact,
   dispatchExecutionFeedStep,
 } from "@/lib/context-run/execution-feed-bridge";
-import { buildComposerGraphId } from "@/lib/context-run/resolve-globe-composer-surface";
+import { resolveActiveComposerGraphId } from "@/lib/context-run/resolve-active-composer-graph-id";
 
 const STEP_RUN = "experience_run";
 
@@ -15,7 +15,7 @@ export function syncExperienceRunClarifyToFeed(
   clarify: ExperienceRunClarify,
   goalKo: string,
 ): void {
-  const graphId = buildComposerGraphId(null, goalKo);
+  const graphId = resolveActiveComposerGraphId(goalKo);
 
   dispatchExecutionFeedStep({
     graphId,
@@ -40,7 +40,7 @@ export function syncExperienceRunSummaryToFeed(
   summary: ExperienceRunSummary,
   goalKo: string,
 ): void {
-  const graphId = buildComposerGraphId(summary.eventId, goalKo);
+  const graphId = resolveActiveComposerGraphId(goalKo);
 
   for (const step of summary.steps) {
     if (step.status === "skipped") {

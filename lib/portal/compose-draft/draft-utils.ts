@@ -17,6 +17,36 @@ export function mergeComposeDraft(
   };
 }
 
+/** Prefill pass — never overwrite fields the user already filled. */
+export function mergeComposeDraftIfEmpty(
+  base: Partial<SellItemDraft>,
+  patch: Partial<SellItemDraft>,
+): Partial<SellItemDraft> {
+  const next: Partial<SellItemDraft> = { ...base };
+  if (!base.productName?.trim() && patch.productName?.trim()) {
+    next.productName = patch.productName.trim();
+  }
+  if ((base.priceKrw == null || base.priceKrw < 10_000) && patch.priceKrw != null && patch.priceKrw >= 10_000) {
+    next.priceKrw = patch.priceKrw;
+  }
+  if (!base.condition?.trim() && patch.condition?.trim()) {
+    next.condition = patch.condition.trim();
+  }
+  if (!base.placeLabel?.trim() && patch.placeLabel?.trim()) {
+    next.placeLabel = patch.placeLabel.trim();
+  }
+  if (!base.note?.trim() && patch.note?.trim()) {
+    next.note = patch.note.trim();
+  }
+  if (!(base.photos?.length ?? 0) && patch.photos?.length) {
+    next.photos = patch.photos;
+  }
+  if (!base.role && (patch.role === "listing" || patch.role === "seeking")) {
+    next.role = patch.role;
+  }
+  return next;
+}
+
 const COMPOSE_DRAFT_VALUE_KEYS: Array<keyof SellItemDraft> = [
   "productName",
   "priceKrw",

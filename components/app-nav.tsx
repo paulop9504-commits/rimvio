@@ -10,8 +10,13 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
-import { Globe, Plus, Sparkles, Users } from "lucide-react";
 import { CaptureSheet } from "@/components/globe/capture-sheet";
+import {
+  RimvioNavChatIcon,
+  RimvioNavFieldIcon,
+  RimvioNavGlobeIcon,
+  RimvioNavRecordIcon,
+} from "@/components/nav/rimvio-ai-nav-icons";
 import { useCopy } from "@/hooks/use-copy";
 import { useFieldNavBadge } from "@/hooks/use-field-nav-badge";
 import { useFieldSheet } from "@/components/field/field-sheet-provider";
@@ -45,12 +50,8 @@ function isGlobePath(pathname: string): boolean {
   );
 }
 
-const NAV_ICON_CLASS = "size-[22px] shrink-0 pointer-events-none";
-const NAV_ICON_STROKE = 2;
-const NAV_ICON_STROKE_ACTIVE = 2.35;
-const NAV_CAPTURE_ICON_CLASS = "size-[22px] shrink-0 pointer-events-none";
 const NAV_ICON_SLOT =
-  "rimvio-bottom-nav-slot pointer-events-none select-none";
+  "rimvio-bottom-nav-slot pointer-events-none select-none flex items-center justify-center";
 
 function NavIconSlot({ children }: { children: ReactNode }) {
   return (
@@ -67,52 +68,29 @@ function NavTabIcon({
   icon: NavTab["icon"];
   active: boolean;
 }) {
-  const inactiveTone = "text-[#94a3b8]/75";
-  const stroke = active ? NAV_ICON_STROKE_ACTIVE : NAV_ICON_STROKE;
   switch (icon) {
     case "globe":
       return (
         <NavIconSlot>
-          <Globe
-            className={cn(
-              NAV_ICON_CLASS,
-              active ? "text-[#0284c7] fill-sky-200/55" : inactiveTone,
-            )}
-            strokeWidth={stroke}
-          />
+          <RimvioNavGlobeIcon active={active} />
         </NavIconSlot>
       );
     case "field":
       return (
         <NavIconSlot>
-          <Sparkles
-            className={cn(
-              NAV_ICON_CLASS,
-              active ? "text-[#3182f6] fill-sky-100/70" : inactiveTone,
-            )}
-            strokeWidth={stroke}
-          />
+          <RimvioNavFieldIcon active={active} />
         </NavIconSlot>
       );
     case "people":
       return (
         <NavIconSlot>
-          <Users
-            className={cn(
-              NAV_ICON_CLASS,
-              active ? "text-[#7c3aed] fill-violet-200/50" : inactiveTone,
-            )}
-            strokeWidth={stroke}
-          />
+          <RimvioNavChatIcon active={active} />
         </NavIconSlot>
       );
     case "capture":
       return (
         <NavIconSlot>
-          <Plus
-            className={cn(NAV_CAPTURE_ICON_CLASS, "text-[#f472b6]/85")}
-            strokeWidth={stroke}
-          />
+          <RimvioNavRecordIcon active={active} />
         </NavIconSlot>
       );
   }
@@ -182,25 +160,21 @@ function NavTabButton({
         activate();
       }}
       className={cn(
-        "rimvio-bottom-nav-tab relative z-10 flex shrink-0 flex-col items-center justify-center gap-0.5 border-0 bg-transparent p-0 transition-transform active:scale-95 touch-manipulation",
-        showLabel ? "h-auto min-h-11 w-[3.75rem] py-0.5" : "h-11 w-11",
-        tab.action === "capture" && "active:[&_.rimvio-bottom-nav-icon-pill]:bg-rose-100/70",
+        "rimvio-bottom-nav-tab relative z-10 flex w-full min-w-0 flex-col items-center justify-center gap-1 border-0 bg-transparent p-0 transition-transform active:scale-[0.97] touch-manipulation",
+        showLabel ? "min-h-[3.25rem] py-1" : "h-11 w-11",
         className,
       )}
     >
       <span
         className={cn(
-          "rimvio-bottom-nav-icon-pill pointer-events-none relative",
+          "rimvio-bottom-nav-icon-pill pointer-events-none relative flex items-center justify-center",
           active && !isCapture && "rimvio-bottom-nav-icon-pill--active",
         )}
       >
         <NavTabIcon icon={tab.icon} active={active} />
         {tab.badge != null && tab.badge > 0 ? (
           <span
-            className={cn(
-              "absolute -right-0.5 -top-0.5 flex size-4 min-w-4 items-center justify-center rounded-full px-0.5 text-[9px] font-extrabold leading-none tabular-nums",
-              active ? "bg-[#3182f6] text-white" : "bg-[#3182f6] text-white shadow-sm",
-            )}
+            className="absolute -right-1 -top-0.5 flex size-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-[#3182f6] px-0.5 text-[9px] font-bold leading-none text-white"
             aria-hidden
           >
             {tab.badge > 9 ? "9+" : tab.badge}
@@ -210,8 +184,10 @@ function NavTabButton({
       {showLabel ? (
         <span
           className={cn(
-            "pointer-events-none max-w-full truncate text-[10px] font-semibold leading-none",
-            active && !isCapture ? "text-[#191f28]" : "text-[#8b95a1]",
+            "pointer-events-none max-w-full truncate text-[11px] leading-none tracking-[-0.01em]",
+            active && !isCapture
+              ? "font-bold text-[#1c1c1e]"
+              : "font-medium text-[#9ca3af]",
           )}
         >
           {tab.label}
@@ -315,7 +291,7 @@ function BottomNavGrid({
   onCapture: () => void;
 }) {
   return (
-    <div className="rimvio-bottom-nav-pill" role="tablist">
+    <div className="rimvio-bottom-nav-pill" role="tablist" aria-label="Primary tabs">
       <MobileNavLinks
         tabs={tabs}
         pathname={pathname}
@@ -331,11 +307,13 @@ function PortaledBottomNavBar({
   pathname,
   onNavigate,
   onCapture,
+  fieldSheetOpen,
 }: {
   tabs: NavTab[];
   pathname: string;
   onNavigate: (href: string) => void;
   onCapture: () => void;
+  fieldSheetOpen: boolean;
 }) {
   if (typeof document === "undefined") {
     return null;
@@ -347,6 +325,8 @@ function PortaledBottomNavBar({
       aria-label="Primary"
       data-testid="rimvio-bottom-nav"
       data-rimvio-bottom-nav-portal
+      data-field-sheet-blocked={fieldSheetOpen ? "true" : undefined}
+      style={fieldSheetOpen ? { pointerEvents: "none", visibility: "hidden" } : undefined}
     >
       <BottomNavGrid
         tabs={tabs}
@@ -393,7 +373,9 @@ export function AppNav({ placement }: AppNavProps) {
           closeFieldSheet();
           return;
         }
-        openFieldDashboardFromBottomNav({ tab: fieldSuggestedTab });
+        openFieldDashboardFromBottomNav({
+          tab: fieldSuggestedTab ?? "discovery",
+        });
         return;
       }
 
@@ -457,6 +439,7 @@ export function AppNav({ placement }: AppNavProps) {
           pathname={pathname}
           onNavigate={navigate}
           onCapture={() => setCaptureOpen(true)}
+          fieldSheetOpen={fieldSheetOpen}
         />
       )}
       <CaptureSheet open={captureOpen} onOpenChange={setCaptureOpen} />

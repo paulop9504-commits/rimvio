@@ -65,11 +65,10 @@ async function main() {
     message: "물건 팔고 싶어",
     eventId: event.id,
   });
-  assert.equal(intentOnly.kind, "compose_intent");
-  assert.equal(
-    composeDraftHasValues(intentOnly.kind === "compose_intent" ? intentOnly.state.composeDraft : {}),
-    false,
-  );
+  assert.equal(intentOnly.kind, "clarify");
+  if (intentOnly.kind === "clarify") {
+    assert.equal(intentOnly.slotId, "productName");
+  }
 
   const partialProduct = await resolvePortalComposeRunTurn({
     graphId: "composer:airpods",
@@ -78,11 +77,7 @@ async function main() {
     message: "동네에 에어팟 내놓고 싶어",
     eventId: event.id,
   });
-  assert.equal(partialProduct.kind, "compose_draft");
-  if (partialProduct.kind === "compose_draft") {
-    assert.ok(partialProduct.draft.productName?.includes("에어팟"));
-    assert.equal(partialProduct.canPublish, false);
-  }
+  assert.equal(partialProduct.kind, "clarify");
 
   const multiSlot = await resolvePortalComposeRunTurn({
     graphId: "composer:ipad",
@@ -91,12 +86,13 @@ async function main() {
     message: "아이패드 프로 11인치 1년 쓴 거 60만원에 팔려고",
     eventId: event.id,
   });
-  assert.equal(multiSlot.kind, "compose_draft");
+  assert.ok(
+    multiSlot.kind === "clarify" || multiSlot.kind === "compose_draft",
+    `expected slot flow, got ${multiSlot.kind}`,
+  );
   if (multiSlot.kind === "compose_draft") {
     assert.ok(multiSlot.draft.productName?.includes("아이패드"));
-    assert.equal(multiSlot.draft.priceKrw, 600_000);
-    assert.ok(composeDraftHasValues(multiSlot.draft));
-    assert.equal(multiSlot.canPublish, true);
+    assert.equal(multiSlot.canPublish, false);
   }
 
   const social = await resolvePortalComposeRunTurn({

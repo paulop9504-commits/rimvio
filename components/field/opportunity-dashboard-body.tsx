@@ -35,6 +35,8 @@ export type OpportunityDashboardBodyProps = {
   initialTab?: FieldDashboardTab | null;
   highlightTradeId?: string | null;
   ingressGeneration?: number;
+  /** Globe pin staging — off in sheet (globe suspended, saves iOS memory). */
+  enableGlobePinReveal?: boolean;
   mineCount?: number;
   headerRight?: ReactNode;
   headerClassName?: string;
@@ -72,6 +74,7 @@ export function OpportunityDashboardBody({
   initialTab = null,
   highlightTradeId = null,
   ingressGeneration = 0,
+  enableGlobePinReveal = true,
   mineCount = 0,
   headerRight,
   headerClassName,
@@ -123,14 +126,14 @@ export function OpportunityDashboardBody({
   );
 
   useEffect(() => {
-    if (tab !== "discovery" || discoveryRows.length === 0) {
+    if (!enableGlobePinReveal || tab !== "discovery" || discoveryRows.length === 0) {
       return;
     }
     return runStagedFieldDiscoveryPinReveal({
       rows: discoveryRows,
       contextId: selectedContextId,
     });
-  }, [discoveryRevealKey, discoveryRows, selectedContextId, tab]);
+  }, [discoveryRevealKey, discoveryRows, enableGlobePinReveal, selectedContextId, tab]);
 
   return (
     <div
@@ -169,15 +172,15 @@ export function OpportunityDashboardBody({
       </header>
 
       <div className={cn("relative min-h-0 flex-1 overflow-hidden", FIELD_DASHBOARD_CANVAS)}>
-        <AnimatePresence mode="wait" initial={false}>
+        <AnimatePresence mode="sync" initial={false}>
           {tab === "trades" ? (
             <motion.div
               key="trades-panel"
               role="tabpanel"
-              initial={{ opacity: 0, x: -12 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 12 }}
-              transition={{ duration: 0.22, ease: "easeOut" }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
               className="absolute inset-0 flex min-h-0 flex-col"
             >
               <MarketActiveTradesSection
@@ -192,10 +195,10 @@ export function OpportunityDashboardBody({
             <motion.div
               key="mine-panel"
               role="tabpanel"
-              initial={{ opacity: 0, x: 12 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -12 }}
-              transition={{ duration: 0.22, ease: "easeOut" }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
               className="absolute inset-0 flex min-h-0 flex-col"
             >
               <FieldExternalMinePanel
@@ -208,10 +211,10 @@ export function OpportunityDashboardBody({
             <motion.div
               key="discovery-panel"
               role="tabpanel"
-              initial={{ opacity: 0, x: 12 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -12 }}
-              transition={{ duration: 0.22, ease: "easeOut" }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
               className="absolute inset-0 flex min-h-0 flex-col"
             >
               <OpportunityDiscoveryFloor

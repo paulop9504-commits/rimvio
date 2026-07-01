@@ -18,6 +18,7 @@ import { formatComposeHistoryForLlm } from "@/lib/portal/compose-chat/format-com
 
 const CONDITION_SIGNAL =
   /(?:(\d+)\s*년\s*(?:쓴|사용|됨)|새\s*것|새거|미개봉|거의\s*새|중고|상태\s*(?:좋|양호|최상|하))/iu;
+const BATTERY_SIGNAL = /(?:배터리|성능)\s*(\d{1,3})\s*%?/iu;
 
 const VAGUE_PRODUCT_NAME = /^(?:물건|물품|상품|제품|것|거)$/iu;
 
@@ -43,11 +44,20 @@ function sanitizeExtractedProductName(name: string | undefined | null): string |
 }
 
 function parseConditionFromText(text: string): string | null {
+  const battery = text.match(BATTERY_SIGNAL);
+  if (battery) {
+    return text.trim();
+  }
   const match = text.match(CONDITION_SIGNAL);
   if (!match) {
     return null;
   }
   return match[0].trim();
+}
+
+/** Rules-only slot extraction — no LLM (chip answers, fast prefill). */
+export function extractDraftSlotsRulesOnly(text: string): Partial<SellItemDraft> {
+  return extractSellItemDraftRules(text);
 }
 
 function extractSellItemDraftRules(text: string): Partial<SellItemDraft> {

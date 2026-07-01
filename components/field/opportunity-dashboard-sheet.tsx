@@ -204,6 +204,7 @@ export function OpportunityDashboardSheet({
         initialTab={dashboardTab}
         highlightTradeId={highlightTradeId}
         ingressGeneration={ingressGeneration}
+        enableGlobePinReveal={false}
         mineCount={mineCount}
         headerClassName="pt-0"
         headerRight={
@@ -254,6 +255,7 @@ export function OpportunityDashboardSheet({
           className={sheetPanelClass}
           data-opportunity-dashboard-sheet
           data-opportunity-dashboard-sheet-ios-pwa
+          onPointerDown={(event) => event.stopPropagation()}
         >
           {sheetChrome}
         </div>
@@ -285,6 +287,7 @@ export function OpportunityDashboardSheet({
             transition={{ type: "spring", stiffness: 380, damping: 34 }}
             className={sheetPanelClass}
             data-opportunity-dashboard-sheet
+            onPointerDown={(event) => event.stopPropagation()}
           >
             {sheetChrome}
           </motion.div>

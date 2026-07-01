@@ -95,6 +95,20 @@ export function FieldSheetProvider({ children }: { children: ReactNode }) {
   }, [open]);
 
   useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+    if (open) {
+      document.body.dataset.rimvioFieldSheetOpen = "true";
+    } else {
+      delete document.body.dataset.rimvioFieldSheetOpen;
+    }
+    return () => {
+      delete document.body.dataset.rimvioFieldSheetOpen;
+    };
+  }, [open]);
+
+  useEffect(() => {
     return bindLegacyOpenFieldSheet(applyOpen);
   }, [applyOpen]);
 

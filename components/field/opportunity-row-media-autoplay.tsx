@@ -6,6 +6,7 @@ import {
   buildMarketListingMediaItems,
   type MarketListingMediaItem,
 } from "@/lib/globe/market/market-listing-media";
+import { isConstrainedMobileDevice } from "@/lib/platform/device";
 import { cn } from "@/lib/utils";
 
 function resolveMediaItems(input: {
@@ -45,10 +46,18 @@ export function OpportunityRowMediaAutoplay({
   const [visible, setVisible] = useState(false);
   const [index, setIndex] = useState(0);
 
-  const items = useMemo(
-    () => resolveMediaItems({ photoUrl, videoUrl, detail }),
-    [detail, photoUrl, videoUrl],
-  );
+  const items = useMemo(() => {
+    const resolved = resolveMediaItems({ photoUrl, videoUrl, detail });
+    if (!isConstrainedMobileDevice()) {
+      return resolved;
+    }
+    const photos = resolved.filter((item) => item.kind === "photo");
+    if (photos.length > 0) {
+      return [photos[0]!];
+    }
+    const photo = photoUrl?.trim();
+    return photo ? [{ kind: "photo" as const, url: photo }] : [];
+  }, [detail, photoUrl, videoUrl]);
 
   const current = items[index] ?? null;
 

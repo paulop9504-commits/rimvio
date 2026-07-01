@@ -3,19 +3,25 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
+import { ComposeIntentSpectrumBar } from "@/components/globe/chat/compose-intent-spectrum-bar";
 import { FlowStatusBar } from "@/components/globe/chat/flow-status-bar";
+import { GlobeChatAnswerHint } from "@/components/globe/chat/globe-chat-answer-hint";
 import { GlobeChatCompletionCard } from "@/components/globe/chat/globe-chat-completion-card";
+import { GlobeChatEmptyState } from "@/components/globe/chat/globe-chat-empty-state";
+import { GlobeChatSlotChips } from "@/components/globe/chat/globe-chat-slot-chips";
 import { GlobeComposeDraftCard } from "@/components/globe/execution-feed/globe-compose-draft-card";
 import { AgentProgressList } from "@/components/ui/agent-progress-list";
 import {
   GlobeContextIngestBar,
+  type GlobeContextIngestBarHandle,
   type GlobeContextIngestBarProps,
 } from "@/components/globe/globe-context-ingest-bar";
 import { useGlobeChatSession } from "@/hooks/use-globe-chat-session";
 import { useGlobeExecutionFeed } from "@/hooks/use-globe-execution-feed";
+import { readActiveRunState } from "@/lib/context-run/run-state-store";
 import { copy } from "@/lib/copy/human-ko";
 import { findMarketIntentByEventId } from "@/lib/globe/market/market-alignment-store";
-import { composeDraftHasValues } from "@/lib/portal/compose-draft/draft-utils";
+import { sellItemDraftCanPublish } from "@/lib/portal/compose-draft/draft-utils";
 import {
   buildMatchAgentTasks,
   matchAgentTasksComplete,
@@ -23,6 +29,8 @@ import {
 import { resolveResourceStatus } from "@/lib/resource/resolve-resource-status";
 import { SELL_ITEM_FLOW } from "@/lib/portal/compose-draft/sell-item-flow";
 import { readPortalComposeRunState } from "@/lib/portal/portal-compose-run-store";
+import { resetGlobeComposeChatSession } from "@/lib/portal/reset-globe-compose-chat";
+import type { GlobeChatMessage } from "@/lib/globe/chat/globe-chat-session-types";
 import { cn } from "@/lib/utils";
 
 export type GlobeChatScreenProps = {
@@ -42,6 +50,44 @@ export type GlobeChatScreenProps = {
     anchorLng: number;
   }) => void;
 };
+
+function readChatHeaderSubtitle(
+  composeState: ReturnType<typeof readPortalComposeRunState>,
+): string {
+  const stage = composeState?.intentStage?.stage;
+  if (stage === "soft_signal") {
+    return copy.globe.chatScreenSubtitleSoft;
+  }
+  if (
+    stage === "confirmed" &&
+    (composeState?.status === "waiting_slot" || composeState?.pendingClarifyKind)
+  ) {
+    return copy.globe.chatScreenSubtitleFill;
+  }
+  return copy.globe.chatScreenSubtitleChat;
+}
+
+function readPendingAnswerHint(messages: readonly GlobeChatMessage[]): string | null {
+  const last = messages[messages.length - 1];
+  if (last?.kind === "slot_prompt") {
+    const hasChips =
+      (last.choices?.length ?? 0) > 0 || (last.categoryOptions?.length ?? 0) > 0;
+    if (hasChips) {
+      return null;
+    }
+    return last.text.trim() || null;
+  }
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message?.kind === "slot_prompt") {
+      return message.text.trim() || null;
+    }
+    if (message?.role === "assistant" && message.kind === "text") {
+      return message.text.trim() || null;
+    }
+  }
+  return null;
+}
 
 function draftCardHasValues(
   artifact: import("@/lib/context-run/execution-feed-types").ExecutionFeedArtifact | null,
@@ -63,19 +109,44 @@ export function GlobeChatScreen({
   onViewOuterGlobe,
 }: GlobeChatScreenProps) {
   const { state: feedState } = useGlobeExecutionFeed();
-  const graphId = feedState.run?.graphId ?? "";
+  const graphId =
+    feedState.run?.graphId?.trim() ||
+    readActiveRunState()?.graphId?.trim() ||
+    "";
   const { messages } = useGlobeChatSession(graphId);
   const composeState = readPortalComposeRunState(graphId);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const ingestRef = useRef<GlobeContextIngestBarHandle>(null);
   const [highlightBar, setHighlightBar] = useState(false);
 
   const artifact = feedState.run?.artifact ?? null;
-  const showDraftCard = artifact?.kind === "compose_draft" && draftCardHasValues(artifact);
+  const flowDraft = composeState?.composeDraft ?? {};
+  const showDraftCard =
+    open &&
+    composeState?.status === "ready" &&
+    artifact?.kind === "compose_draft" &&
+    draftCardHasValues(artifact) &&
+    sellItemDraftCanPublish(flowDraft);
   const showFlowBar =
     open &&
     composeState?.intentStage?.stage === "confirmed" &&
     composeState?.composeSchemaId === "sell_item" &&
     composeState.composeDraft != null;
+  const showIntentSpectrum =
+    open &&
+    composeState?.intentStage != null &&
+    composeState.intentStage.stage !== "chatting";
+
+  const submitChipAnswer = (answer: string) => {
+    void ingestRef.current?.submitComposerText(answer);
+  };
+
+  const handleResetComposeChat = () => {
+    if (!graphId.trim()) {
+      return;
+    }
+    resetGlobeComposeChatSession(graphId);
+  };
 
   useEffect(() => {
     if (!open) {
@@ -93,8 +164,6 @@ export function GlobeChatScreen({
     return () => window.clearTimeout(timer);
   }, [composeState?.composeDraft?.status]);
 
-  const flowDraft = composeState?.composeDraft ?? {};
-
   const chatMatchTasks = useMemo(() => {
     for (let index = messages.length - 1; index >= 0; index -= 1) {
       const message = messages[index];
@@ -110,6 +179,10 @@ export function GlobeChatScreen({
     }
     return null;
   }, [messages]);
+
+  const answerHint = useMemo(() => readPendingAnswerHint(messages), [messages]);
+  const headerSubtitle = readChatHeaderSubtitle(composeState);
+  const showEmptyState = messages.length === 0 && !showDraftCard;
 
   if (!open) {
     return null;
@@ -127,7 +200,10 @@ export function GlobeChatScreen({
         data-globe-chat-screen
       >
         <header className="flex shrink-0 items-center justify-between border-b border-white/8 px-4 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
-          <p className="text-[13px] font-semibold text-white/90">{copy.globe.chatScreenTitle}</p>
+          <div className="min-w-0">
+            <p className="text-[13px] font-semibold text-white/90">{copy.globe.chatScreenTitle}</p>
+            <p className="mt-0.5 text-[11px] text-white/45">{headerSubtitle}</p>
+          </div>
           <button
             type="button"
             onClick={onClose}
@@ -137,6 +213,13 @@ export function GlobeChatScreen({
             <X className="size-4" aria-hidden />
           </button>
         </header>
+
+        {showIntentSpectrum && composeState?.intentStage ? (
+          <ComposeIntentSpectrumBar
+            intentStage={composeState.intentStage}
+            onReset={handleResetComposeChat}
+          />
+        ) : null}
 
         {showFlowBar ? (
           <FlowStatusBar
@@ -152,6 +235,7 @@ export function GlobeChatScreen({
           data-globe-chat-messages
         >
           <div className="mx-auto flex w-full max-w-lg flex-col gap-3">
+            {showEmptyState ? <GlobeChatEmptyState /> : null}
             {messages.map((message) => {
               if (message.kind === "resource_complete") {
                 return (
@@ -206,6 +290,38 @@ export function GlobeChatScreen({
                   </div>
                 );
               }
+              if (message.kind === "slot_prompt") {
+                const chipChoices =
+                  message.clarifyKind === "category_pick"
+                    ? message.categoryOptions ?? []
+                    : message.choices ?? [];
+                return (
+                  <div key={message.id} className="flex justify-start">
+                    <div className="max-w-[92%] rounded-[1rem] rounded-bl-md bg-[#121316]/92 px-3 py-2.5 ring-1 ring-white/14">
+                      <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-white/92">
+                        {message.text}
+                      </p>
+                      <GlobeChatSlotChips
+                        choices={chipChoices}
+                        variant={
+                          message.clarifyKind === "category_confirm"
+                            ? "confirm"
+                            : message.clarifyKind === "category_pick"
+                              ? "category"
+                              : "slot"
+                        }
+                        onSelect={(choice) => {
+                          const answer =
+                            message.clarifyKind === "category_pick"
+                              ? choice.id
+                              : choice.labelKo;
+                          submitChipAnswer(answer);
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              }
               if (message.role === "user") {
                 return (
                   <div key={message.id} className="flex justify-end">
@@ -237,7 +353,7 @@ export function GlobeChatScreen({
               </div>
             ) : null}
 
-            {showDraftCard && artifact?.composeDraft && composeDraftHasValues(flowDraft) ? (
+            {showDraftCard && artifact?.composeDraft ? (
               <GlobeComposeDraftCard
                 graphId={graphId}
                 composeDraft={artifact.composeDraft}
@@ -255,10 +371,18 @@ export function GlobeChatScreen({
             "shrink-0 border-t border-white/8 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2",
           )}
         >
+          {answerHint ? (
+            <GlobeChatAnswerHint
+              questionKo={answerHint}
+              className="mx-auto mb-2 max-w-[min(100%,20rem)] rounded-2xl bg-white/6 px-3 py-2 ring-1 ring-white/10"
+            />
+          ) : null}
           <GlobeContextIngestBar
+            ref={ingestRef}
             {...ingest}
             mapPromptMode={false}
-            className="mx-auto w-full max-w-lg"
+            compactPill
+            className="mx-auto w-full max-w-[min(100%,20rem)]"
           />
         </div>
       </motion.div>

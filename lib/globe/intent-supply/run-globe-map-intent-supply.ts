@@ -14,7 +14,10 @@ import {
   dispatchGlobeIntentSupplyPending,
 } from "@/lib/globe/intent-supply/globe-intent-supply-bridge";
 import type { GlobeMapIntentSupplyResult } from "@/lib/globe/intent-supply/globe-map-intent-types";
-import { resolveGlobeMapIntent } from "@/lib/globe/intent-supply/resolve-globe-map-intent";
+import {
+  isExplicitContextConnectMessage,
+  resolveGlobeMapIntent,
+} from "@/lib/globe/intent-supply/resolve-globe-map-intent";
 import { runGlobeLodgingDiscovery } from "@/lib/globe/lodging/run-globe-lodging-discovery";
 import { runGlobeEateryDiscovery } from "@/lib/globe/eatery/run-globe-eatery-discovery";
 import { copy } from "@/lib/copy/human-ko";
@@ -163,6 +166,10 @@ export async function runGlobeMapIntentSupply(
     } satisfies Parameters<typeof dispatchGlobeIntentSupplyAck>[0];
     dispatchGlobeIntentSupplyAck(ack);
     return { status: "supplied", ack, foodEventId: discovery.eventId };
+  }
+
+  if (intent.kind === "context_connect" && !isExplicitContextConnectMessage(message)) {
+    return null;
   }
 
   const event = findLifeEventCandidate(eventId);

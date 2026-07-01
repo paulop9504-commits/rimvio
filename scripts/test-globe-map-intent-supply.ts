@@ -36,9 +36,30 @@ const supplyPlan = planContextRun({
     text: "작년에 갔던 곳 기억나",
     surface: "composer",
     layerMode: "personal",
+    contextEventId: "evt-germany-dwell",
   },
 });
 
 assert.equal(supplyPlan.kind, "map_intent_supply");
+if (supplyPlan.kind === "map_intent_supply") {
+  assert.equal(supplyPlan.supplyInput?.contextEventId, null);
+}
+
+const connectPlan = planContextRun({
+  graphId: "graph-connect",
+  goalKo: "지도에 맥락 연결해줘",
+  ingress: {
+    kind: "text",
+    text: "지도에 맥락 연결해줘",
+    surface: "composer",
+    layerMode: "personal",
+    contextEventId: "evt-germany-dwell",
+  },
+});
+
+assert.equal(connectPlan.kind, "map_intent_supply");
+if (connectPlan.kind === "map_intent_supply") {
+  assert.equal(connectPlan.supplyInput?.contextEventId, "evt-germany-dwell");
+}
 
 console.log("test-globe-map-intent-supply: ok");

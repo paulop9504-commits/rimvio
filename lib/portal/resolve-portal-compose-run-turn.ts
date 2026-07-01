@@ -15,19 +15,25 @@ import { generateConversationalReply } from "@/lib/portal/compose-intent/generat
 import type { IntentState } from "@/lib/portal/compose-intent/intent-state-types";
 import {
   composeDraftHasValues,
-  mergeComposeDraft,
   sellItemDraftCanPublish,
 } from "@/lib/portal/compose-draft/draft-utils";
 import {
   buildMarketIntentFromComposeDraft,
   sellItemDraftToComposeText,
 } from "@/lib/portal/compose-draft/draft-to-market-intent";
-import { extractDraftSlots } from "@/lib/portal/compose-draft/extract-draft-slots";
 import {
   detectComposeSchemaFromText,
   getComposeSchema,
 } from "@/lib/portal/compose-draft/schema-registry";
 import { buildComposeIntentReply } from "@/lib/portal/compose-draft/build-compose-assistant-reply";
+import type { ComposeClarifyKind } from "@/lib/portal/compose-draft/product-category-types";
+import type { SlotChoiceOption } from "@/lib/portal/compose-draft/slot-choice-registry";
+import {
+  beginComposeDetailSlotFill,
+  readComposeClarifyKind,
+  readComposeClarifySlotId,
+  runComposeSlotFillTurn,
+} from "@/lib/portal/compose-draft/run-compose-slot-fill";
 import type { ComposeSchemaId, SellItemDraft } from "@/lib/portal/compose-draft/types";
 
 export const PORTAL_COMPOSE_MAX_QUESTIONS = 3;
@@ -43,6 +49,9 @@ export type PortalComposeRunClarify = {
   kind: "clarify";
   questionKo: string;
   slotId: string;
+  clarifyKind: ComposeClarifyKind;
+  choices?: readonly SlotChoiceOption[];
+  categoryOptions?: readonly { id: string; labelKo: string }[];
   state: PortalComposeRunState;
 };
 
@@ -111,6 +120,13 @@ function buildState(input: {
   socialSlots?: Partial<Record<PortalSocialSlotId, string>>;
   pendingSlotId?: string | null;
   askedCount?: number;
+  productCategoryId?: PortalComposeRunState["productCategoryId"];
+  productCategoryStatus?: PortalComposeRunState["productCategoryStatus"];
+  proposedCategoryId?: PortalComposeRunState["proposedCategoryId"];
+  pendingClarifyKind?: PortalComposeRunState["pendingClarifyKind"];
+  slotExtras?: PortalComposeRunState["slotExtras"];
+  skippedSlots?: PortalComposeRunState["skippedSlots"];
+  detailSlotFill?: boolean;
 }): PortalComposeRunState {
   return {
     graphId: input.graphId,
@@ -127,6 +143,13 @@ function buildState(input: {
     marketDraft: input.marketDraft ?? null,
     intentStage: input.intentStage ?? null,
     socialSlots: input.socialSlots,
+    productCategoryId: input.productCategoryId ?? null,
+    productCategoryStatus: input.productCategoryStatus ?? "unset",
+    proposedCategoryId: input.proposedCategoryId ?? null,
+    pendingClarifyKind: input.pendingClarifyKind ?? "slot",
+    slotExtras: input.slotExtras ?? null,
+    skippedSlots: input.skippedSlots ?? null,
+    detailSlotFill: input.detailSlotFill ?? false,
     updatedAt: new Date().toISOString(),
   };
 }
@@ -206,31 +229,67 @@ async function resolveComposeMarketTurn(input: {
     detectComposeSchemaFromText(accumulated) ??
     "sell_item";
 
-  const previousDraft = input.resumeState?.composeDraft ?? {};
-  const historyMessages = history.map((message) => ({
-    role: message.role,
-    text: message.text,
-  }));
+  const slotTurn = await runComposeSlotFillTurn({
+    resumeState: input.resumeState ?? null,
+    message: incoming,
+    answerText: input.answerText,
+    schemaId,
+    graphId: input.graphId,
+    accumulatedText: accumulated,
+  });
 
-  const [assistantKo, extracted] = await Promise.all([
-    generateConversationalReply({
-      intentStage,
-      history,
-      newMessage: incoming,
-      draft: previousDraft,
-    }),
-    extractDraftSlots({
-      schemaId,
-      history: historyMessages,
-      currentDraft: previousDraft,
-      newMessage: incoming,
-    }),
-  ]);
+  const clarifyKind = readComposeClarifyKind(slotTurn);
+  const clarifySlotId = readComposeClarifySlotId(slotTurn);
 
-  const composeDraft = mergeComposeDraft(previousDraft, extracted);
+  const baseStateInput = {
+    graphId: input.graphId,
+    intentId: input.intentId,
+    categoryId: input.categoryId,
+    composeSeed: input.resumeState?.composeSeed ?? input.composeText.trim(),
+    accumulatedText: accumulated,
+    eventId: input.eventId,
+    composeSchemaId: schemaId,
+    intentStage,
+    productCategoryId: slotTurn.productCategoryId,
+    productCategoryStatus: slotTurn.productCategoryStatus,
+    proposedCategoryId: slotTurn.proposedCategoryId,
+    pendingClarifyKind: clarifyKind,
+    slotExtras: slotTurn.slotExtras,
+    detailSlotFill: slotTurn.detailSlotFill,
+  };
 
-  const composeText =
-    sellItemDraftToComposeText(composeDraft) || accumulated;
+  if (
+    slotTurn.kind === "category_confirm" ||
+    slotTurn.kind === "category_pick" ||
+    slotTurn.kind === "slot_question"
+  ) {
+    return {
+      kind: "clarify",
+      questionKo: slotTurn.questionKo,
+      slotId: clarifySlotId,
+      clarifyKind,
+      choices:
+        slotTurn.kind === "category_confirm"
+          ? slotTurn.choices
+          : slotTurn.kind === "slot_question"
+            ? slotTurn.choices
+            : undefined,
+      categoryOptions:
+        slotTurn.kind === "category_pick" ? slotTurn.categoryOptions : undefined,
+      state: buildState({
+        ...baseStateInput,
+        status: "waiting_slot",
+        pendingSlotId:
+          slotTurn.kind === "slot_question" ? slotTurn.slotId : "__category__",
+        composeDraft: slotTurn.draft,
+        skippedSlots: slotTurn.skippedSlots,
+        askedCount: (input.resumeState?.askedCount ?? 0) + 1,
+      }),
+    };
+  }
+
+  const composeDraft = slotTurn.draft;
+  const composeText = sellItemDraftToComposeText(composeDraft) || accumulated;
 
   const marketDraft = buildMarketIntentFromComposeDraft({
     eventId: input.eventId,
@@ -246,32 +305,16 @@ async function resolveComposeMarketTurn(input: {
     throw new Error("Failed to build market draft");
   }
 
-  const baseState = {
-    graphId: input.graphId,
-    intentId: input.intentId,
-    categoryId: input.categoryId,
-    composeSeed: input.resumeState?.composeSeed ?? input.composeText.trim(),
-    accumulatedText: accumulated,
-    eventId: input.eventId,
-    composeSchemaId: schemaId,
+  const canPublish = slotTurn.canPublish;
+
+  const reviewState = buildState({
+    ...baseStateInput,
+    status: canPublish ? "ready" : "drafting",
+    pendingSlotId: null,
     composeDraft,
     marketDraft,
-    intentStage,
-  };
-
-  if (!composeDraftHasValues(composeDraft)) {
-    return {
-      kind: "compose_intent",
-      assistantKo,
-      schemaId,
-      state: buildState({
-        ...baseState,
-        status: "drafting",
-      }),
-    };
-  }
-
-  const canPublish = sellItemDraftCanPublish(composeDraft);
+    skippedSlots: slotTurn.skippedSlots,
+  });
 
   if (
     canPublish &&
@@ -291,13 +334,12 @@ async function resolveComposeMarketTurn(input: {
     })!;
     return {
       kind: "compose_draft",
-      assistantKo,
+      assistantKo: slotTurn.assistantKo,
       schemaId,
       draft: composeDraft,
       canPublish: true,
       state: buildState({
-        ...baseState,
-        status: "ready",
+        ...reviewState,
         marketDraft: quickDraft,
       }),
     };
@@ -305,14 +347,11 @@ async function resolveComposeMarketTurn(input: {
 
   return {
     kind: "compose_draft",
-    assistantKo,
+    assistantKo: slotTurn.assistantKo,
     schemaId,
     draft: composeDraft,
     canPublish,
-    state: buildState({
-      ...baseState,
-      status: canPublish ? "ready" : "drafting",
-    }),
+    state: reviewState,
   };
 }
 
@@ -352,6 +391,7 @@ function resolveSocialTurn(input: {
       kind: "clarify",
       questionKo: next.questionKo,
       slotId: next.slotId,
+      clarifyKind: "slot",
       state: buildState({
         graphId: input.graphId,
         intentId: input.intentId,

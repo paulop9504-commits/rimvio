@@ -173,7 +173,8 @@ export function planContextRun(bound: BoundSituation): ContextRunPlan {
       kind: "map_intent_supply",
       supplyInput: {
         message: text,
-        contextEventId: ingress.contextEventId,
+        contextEventId:
+          mapIntent.kind === "context_connect" ? ingress.contextEventId : null,
         lat: ingress.lat,
         lng: ingress.lng,
         layerMode: ingress.layerMode,

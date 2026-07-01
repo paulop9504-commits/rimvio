@@ -17,6 +17,7 @@ import {
   syncIntentSupplyPendingToFeed,
 } from "@/lib/context-run/sync-intent-supply-to-feed";
 import { subscribeContextRunWatcher } from "@/lib/context-run/watcher-reconstruct";
+import { resolveGlobeMapIntent } from "@/lib/globe/intent-supply/resolve-globe-map-intent";
 import {
   subscribeGlobeIntentSupplyAck,
   subscribeGlobeIntentSupplyClear,
@@ -34,7 +35,7 @@ export function useGlobeExecutionFeed() {
   useEffect(() => {
     return subscribeGlobeIntentSupplyPending((pending) => {
       const goalKo = readLastComposerGoalKo();
-      if (!goalKo) {
+      if (!goalKo || resolveGlobeMapIntent(goalKo).kind === "unknown") {
         return;
       }
       syncIntentSupplyPendingToFeed(pending, goalKo);
@@ -44,7 +45,10 @@ export function useGlobeExecutionFeed() {
   useEffect(() => {
     return subscribeGlobeIntentSupplyAck((ack) => {
       const goalKo = readLastComposerGoalKo();
-      syncIntentSupplyAckToFeed(ack, goalKo || ack.summaryKo);
+      if (!goalKo || resolveGlobeMapIntent(goalKo).kind === "unknown") {
+        return;
+      }
+      syncIntentSupplyAckToFeed(ack, goalKo);
     });
   }, []);
 

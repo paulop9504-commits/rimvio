@@ -33,10 +33,23 @@ export type GlobeChatResourceCompleteMessage = {
   createdAt: string;
 };
 
+export type GlobeChatSlotPromptMessage = {
+  id: string;
+  role: "assistant";
+  kind: "slot_prompt";
+  text: string;
+  clarifyKind: "slot" | "category_confirm" | "category_pick";
+  slotId: string;
+  choices?: readonly { id: string; labelKo: string }[];
+  categoryOptions?: readonly { id: string; labelKo: string }[];
+  createdAt: string;
+};
+
 export type GlobeChatMessage =
   | GlobeChatTextMessage
   | GlobeChatImageMessage
-  | GlobeChatResourceCompleteMessage;
+  | GlobeChatResourceCompleteMessage
+  | GlobeChatSlotPromptMessage;
 
 export type GlobeChatSession = {
   graphId: string;

@@ -1,5 +1,10 @@
 import type { IntentState } from "@/lib/portal/compose-intent/intent-state-types";
 import type { MarketIntentDraft } from "@/lib/globe/market/market-intent-types";
+import type {
+  ComposeClarifyKind,
+  ProductCategoryId,
+  ProductCategoryStatus,
+} from "@/lib/portal/compose-draft/product-category-types";
 import type { SellItemDraft } from "@/lib/portal/compose-draft/types";
 import type { ComposeSchemaId } from "@/lib/portal/compose-draft/types";
 import type { PortalSocialSlotId } from "@/lib/portal/portal-social-slots";
@@ -22,6 +27,13 @@ export type PortalComposeRunState = {
   composeDraft?: Partial<SellItemDraft> | null;
   marketDraft?: MarketIntentDraft | null;
   socialSlots?: Partial<Record<PortalSocialSlotId, string>>;
+  productCategoryId?: ProductCategoryId | null;
+  productCategoryStatus?: ProductCategoryStatus;
+  proposedCategoryId?: ProductCategoryId | null;
+  pendingClarifyKind?: ComposeClarifyKind | null;
+  slotExtras?: Partial<Record<string, string>> | null;
+  skippedSlots?: string[] | null;
+  detailSlotFill?: boolean;
   updatedAt: string;
 };
 

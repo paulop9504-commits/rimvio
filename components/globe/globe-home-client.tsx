@@ -58,13 +58,22 @@ import {
   openFieldDashboardIngress,
   parseFieldDashboardIngressFromSearchParams,
 } from "@/lib/nav/field-dashboard-ingress";
+import { finishContextRun } from "@/lib/context-run/execution-feed-lifecycle";
+import { readActiveRunState } from "@/lib/context-run/run-state-store";
 import { syncMarketQuickListDoneToFeed } from "@/lib/context-run/sync-market-compose-to-feed";
 import { buildComposerGraphId } from "@/lib/context-run/resolve-globe-composer-surface";
 import {
   markComposeDraftSubmitted,
   syncResourceCompleteToChat,
 } from "@/lib/globe/chat/sync-resource-complete-to-chat";
-import { finishContextRun } from "@/lib/context-run/execution-feed-lifecycle";
+import { resumeComposeDetailSlotFill } from "@/lib/portal/resume-compose-detail-slot-fill";
+import {
+  writePortalComposeRunState,
+} from "@/lib/portal/portal-compose-run-store";
+import {
+  syncPortalComposeClarifyToFeed,
+} from "@/lib/context-run/sync-portal-compose-to-feed";
+import { syncPortalComposeTurnToChat } from "@/lib/globe/chat/sync-portal-compose-to-chat";
 import { useIosPwaMemoryGuards } from "@/hooks/use-ios-pwa-memory-guards";
 import {
   iosPwaDiscoveryPinsDelayMs,
@@ -1672,15 +1681,56 @@ function GlobeHomeBody() {
     pendingMarketComposeRef.current = null;
   }, [launchMarketProjection, liveLocation?.lat, liveLocation?.lng]);
 
+  const openGlobeChat = useCallback(() => {
+    setGlobeChatOpen(true);
+  }, []);
+
+  const runComposeDetailSlotFill = useCallback(async () => {
+    const graphId = readActiveRunState()?.graphId?.trim();
+    if (!graphId) {
+      runPendingMarketComposeWizardAction();
+      return;
+    }
+    const result = await resumeComposeDetailSlotFill({
+      graphId,
+      liveLat: liveLocation?.lat ?? null,
+      liveLng: liveLocation?.lng ?? null,
+    });
+    if (!result) {
+      runPendingMarketComposeWizardAction();
+      return;
+    }
+    if ("state" in result) {
+      writePortalComposeRunState(result.state);
+    }
+    if (result.kind === "clarify") {
+      syncPortalComposeClarifyToFeed({
+        graphId,
+        questionKo: result.questionKo,
+        goalKo: result.state.accumulatedText,
+        slotId: result.slotId,
+      });
+      syncPortalComposeTurnToChat({
+        graphId,
+        userText: "",
+        assistantText: result.questionKo,
+      });
+      openGlobeChat();
+      return;
+    }
+    runPendingMarketComposeWizardAction();
+  }, [
+    liveLocation?.lat,
+    liveLocation?.lng,
+    openGlobeChat,
+    runPendingMarketComposeWizardAction,
+  ]);
+
   useEffect(() => {
     if (portalOpen || marketConfirmOpen) {
       setGlobeChatOpen(false);
     }
   }, [portalOpen, marketConfirmOpen]);
-
-  const openGlobeChat = useCallback(() => {
-    setGlobeChatOpen(true);
-  }, []);
 
   useEffect(() => {
     return subscribeGlobePortalOpen((request) => {
@@ -2163,7 +2213,7 @@ function GlobeHomeBody() {
         ingest={{
           targetEventId: activeCluster?.eventId ?? null,
           targetTitle: activeCluster?.title ?? null,
-          forceAttachToTarget: Boolean(activeCluster?.eventId),
+          forceAttachToTarget: false,
           onPhotoDraftReady: beginPhotoIngestFlow,
           onAttached: (eventId, options) => {
             const params = new URLSearchParams(window.location.search);
@@ -2200,7 +2250,6 @@ function GlobeHomeBody() {
           layerMode,
           onDiscoveryMarketBrowse,
           onComposeFocus: () => {
-            openGlobeChat();
             memoryRecallComposeRef.current?.onFocus();
           },
           onComposeBlur: () => memoryRecallComposeRef.current?.onBlur(),
@@ -2211,13 +2260,13 @@ function GlobeHomeBody() {
         open={globeChatOpen && !portalOpen && !marketConfirmOpen}
         onClose={() => setGlobeChatOpen(false)}
         onArtifactPrimaryAction={() => void runPendingMarketComposeAction()}
-        onArtifactSecondaryAction={runPendingMarketComposeWizardAction}
+        onArtifactSecondaryAction={() => void runComposeDetailSlotFill()}
         onViewInnerGlobe={focusResourceOnInnerGlobe}
         onViewOuterGlobe={focusResourceOnOuterGlobe}
         ingest={{
           targetEventId: activeCluster?.eventId ?? null,
           targetTitle: activeCluster?.title ?? null,
-          forceAttachToTarget: Boolean(activeCluster?.eventId),
+          forceAttachToTarget: false,
           onPhotoDraftReady: beginPhotoIngestFlow,
           onAttached: (eventId, options) => {
             const params = new URLSearchParams(window.location.search);

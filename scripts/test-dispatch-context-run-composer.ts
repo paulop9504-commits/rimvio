@@ -26,11 +26,20 @@ assert.equal(marketBare.portalIntentId, "offer");
 const marketMention = planFor("@중고 맥북");
 assert.equal(marketMention.kind, "portal_compose_run");
 
+const genericMemo = planFor("점심에 김치찌개 먹음");
+assert.equal(genericMemo.kind, "portal_compose_run");
+if (genericMemo.kind === "portal_compose_run") {
+  assert.equal(genericMemo.composeAmbientChat, true);
+}
+
+const ambientHi = planFor("ㅎㅇ");
+assert.equal(ambientHi.kind, "portal_compose_run");
+if (ambientHi.kind === "portal_compose_run") {
+  assert.equal(ambientHi.composeAmbientChat, true);
+}
+
 const urlAction = planFor("https://maps.google.com");
-assert.ok(
-  urlAction.kind === "external_url" || urlAction.kind === "map_intent_supply",
-  `unexpected url plan: ${urlAction.kind}`,
-);
+assert.equal(urlAction.kind, "portal_compose_run");
 
 const lodging = planFor("호텔 추천해줘");
 assert.equal(lodging.kind, "experience_run");
@@ -40,9 +49,6 @@ assert.equal(trip.kind, "experience_run");
 
 const eatery = planFor("강남 맛집 추천");
 assert.equal(eatery.kind, "experience_run");
-
-const genericMemo = planFor("점심에 김치찌개 먹음");
-assert.equal(genericMemo.kind, "map_intent_supply");
 
 const mealMention = planFor("@식사 강남역");
 assert.equal(mealMention.kind, "mention_contract");

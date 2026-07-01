@@ -154,7 +154,7 @@ export function OpportunityDiscoveryFloor({
                 tone="neighbor"
                 className="border-b border-[#f2f4f6] px-4 pb-2 pt-2.5"
               />
-              <AnimatePresence mode="wait" initial={false}>
+              <AnimatePresence mode="sync" initial={false}>
                 <motion.ul
                   key={selectedContextId ?? "none"}
                   initial={{ opacity: 0 }}
@@ -162,18 +162,16 @@ export function OpportunityDiscoveryFloor({
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.15, ease: "easeOut" }}
                 >
-                  <AnimatePresence mode="popLayout" initial={false}>
-                    {rows.map((row, index) => (
-                      <OpportunityRowItem
-                        key={row.listingId}
-                        row={row}
-                        scoreAria={field.rowScoreAria}
-                        previewFallback={field.tradeCta}
-                        onPress={() => onRowPress(row)}
-                        className={index === rows.length - 1 ? "border-b-0" : undefined}
-                      />
-                    ))}
-                  </AnimatePresence>
+                  {rows.map((row, index) => (
+                    <OpportunityRowItem
+                      key={row.listingId}
+                      row={row}
+                      scoreAria={field.rowScoreAria}
+                      previewFallback={field.tradeCta}
+                      onPress={() => onRowPress(row)}
+                      className={index === rows.length - 1 ? "border-b-0" : undefined}
+                    />
+                  ))}
                 </motion.ul>
               </AnimatePresence>
             </div>

@@ -41,7 +41,7 @@ export function OpportunityDashboardTabBar({
       <div
         role="tablist"
         aria-label={field.dashboardTabAria}
-        className="grid grid-cols-3 gap-1 rounded-xl bg-[#eef1f4] p-1"
+        className="grid grid-cols-3 gap-1 rounded-xl bg-[#eef1f4] p-1 touch-manipulation"
       >
         {tabs.map((tab) => {
           const active = value === tab.id;
@@ -51,7 +51,11 @@ export function OpportunityDashboardTabBar({
               type="button"
               role="tab"
               aria-selected={active}
-              onClick={() => onChange(tab.id)}
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation();
+                onChange(tab.id);
+              }}
               className={cn(
                 "relative z-[1] min-h-[44px] rounded-[10px] transition-colors duration-200",
                 active ? "text-[#191f28]" : "text-[#6b7684] active:opacity-80",
