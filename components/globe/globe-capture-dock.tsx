@@ -48,6 +48,7 @@ export type GlobeCaptureDockProps = {
   stackAboveCompose?: ReactNode;
   /** Chrome directly above the prompt bar (e.g. recall pill beside + column). */
   composeAccessory?: ReactNode;
+  onExecutionFeedPrimaryAction?: () => void;
   ingest: GlobeContextIngestBarProps;
 };
 
@@ -63,6 +64,7 @@ export const GlobeCaptureDock = forwardRef<GlobeContextIngestBarHandle, GlobeCap
       composeHidden = false,
       stackAboveCompose,
       composeAccessory,
+      onExecutionFeedPrimaryAction,
       ingest,
     },
     ref,
@@ -135,7 +137,10 @@ export const GlobeCaptureDock = forwardRef<GlobeContextIngestBarHandle, GlobeCap
             {composeAccessory ? (
               <div className="pointer-events-auto">{composeAccessory}</div>
             ) : null}
-            <GlobeExecutionFeed className="pointer-events-auto" />
+            <GlobeExecutionFeed
+              className="pointer-events-auto"
+              onArtifactPrimaryAction={onExecutionFeedPrimaryAction}
+            />
             <GlobeContextIngestBar
               ref={ref}
               {...ingest}

@@ -25,6 +25,7 @@ import {
 } from "@/lib/context-run/resolve-globe-composer-surface";
 import { resolvePrimarySurface } from "@/lib/context-run/surface-resolver";
 import {
+  syncMarketComposeStartToFeed,
   syncMarketQuickListStartToFeed,
 } from "@/lib/context-run/sync-market-compose-to-feed";
 import { ingestGlobeContextFromFiles } from "@/lib/feed/ingest-globe-context-capture";
@@ -63,6 +64,10 @@ import {
 import { detectPortalIntentFromText } from "@/lib/portal/detect-portal-intent-from-text";
 import { resolvePortalComposeRunTurn } from "@/lib/portal/resolve-portal-compose-run-turn";
 import type { PortalIntentId } from "@/lib/portal/portal-types";
+
+function isComposerTextIngress(ingress: ContextRunIngress): boolean {
+  return ingress.kind === "text" && ingress.surface === "composer";
+}
 
 /**
  * Single ingress for Context Run Engine (composer + capture sheet text).
@@ -210,6 +215,14 @@ async function executeContextRunPlan(
           composeText: result.composeText,
           eventId: result.eventId,
         });
+        if (isComposerTextIngress(ingress)) {
+          handlers.onMarketComposeFeedReady?.({
+            kind: "quick_list",
+            eventId: result.eventId,
+            composeText: result.composeText,
+          });
+          return { graphId, status: "done", planKind: plan.kind };
+        }
         const quickListed = await handlers.tryQuickListMarket(result.composeText);
         if (quickListed) {
           handlers.onAttached?.(result.eventId);
@@ -220,6 +233,19 @@ async function executeContextRunPlan(
       }
 
       if (result.kind === "launch_wizard") {
+        syncMarketComposeStartToFeed({
+          composeText: result.composeText,
+          eventId: result.eventId,
+        });
+        if (isComposerTextIngress(ingress)) {
+          handlers.onMarketComposeFeedReady?.({
+            kind: "wizard",
+            draft: result.draft,
+            eventId: result.eventId,
+            composeText: result.composeText,
+          });
+          return { graphId, status: "done", planKind: plan.kind };
+        }
         handlers.onLaunchMarketProjection?.({
           draft: result.draft,
           eventId: result.eventId,
@@ -248,6 +274,14 @@ async function executeContextRunPlan(
     case "market_quick_list": {
       const composeText = plan.composeText?.trim() ?? bound.goalKo;
       syncMarketQuickListStartToFeed({ composeText, eventId });
+      if (isComposerTextIngress(ingress)) {
+        handlers.onMarketComposeFeedReady?.({
+          kind: "quick_list",
+          eventId: eventId?.trim() || "",
+          composeText,
+        });
+        return { graphId, status: "done", planKind: plan.kind, surface };
+      }
       const quickListed = await handlers.tryQuickListMarket(composeText);
       if (quickListed) {
         return { graphId, status: "done", planKind: plan.kind, surface };
@@ -302,6 +336,18 @@ async function executeContextRunPlan(
       }
       clearPortalComposeRunState(runGraphId);
       if (result.kind === "quick_list_ready") {
+        syncMarketQuickListStartToFeed({
+          composeText: result.composeText,
+          eventId: result.eventId,
+        });
+        if (isComposerTextIngress(ingress)) {
+          handlers.onMarketComposeFeedReady?.({
+            kind: "quick_list",
+            eventId: result.eventId,
+            composeText: result.composeText,
+          });
+          return { graphId, status: "done", planKind: plan.kind };
+        }
         const quickListed = await handlers.tryQuickListMarket(result.composeText);
         if (quickListed) {
           handlers.onAttached?.(result.eventId);
@@ -321,6 +367,19 @@ async function executeContextRunPlan(
         return { graphId, status: "done", planKind: plan.kind };
       }
       if (result.kind === "launch_wizard") {
+        syncMarketComposeStartToFeed({
+          composeText: result.composeText,
+          eventId: result.eventId,
+        });
+        if (isComposerTextIngress(ingress)) {
+          handlers.onMarketComposeFeedReady?.({
+            kind: "wizard",
+            draft: result.draft,
+            eventId: result.eventId,
+            composeText: result.composeText,
+          });
+          return { graphId, status: "done", planKind: plan.kind };
+        }
         handlers.onLaunchMarketProjection?.({
           draft: result.draft,
           eventId: result.eventId,

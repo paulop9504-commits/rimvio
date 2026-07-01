@@ -59,6 +59,12 @@ export type GlobeContextIngestBarProps = {
     eventId: string;
     composeText: string;
   }) => void;
+  onMarketComposeFeedReady?: (input: {
+    kind: "wizard" | "quick_list";
+    draft?: import("@/lib/globe/market/market-intent-types").MarketIntentDraft;
+    eventId: string;
+    composeText: string;
+  }) => void;
   onOpenMarketManage?: () => void;
   marketRoleBusy?: boolean;
   layerMode?: GlobeLayerMode;
@@ -94,6 +100,7 @@ export const GlobeContextIngestBar = forwardRef<
     onOpenPortal,
     onQuickListMarket,
     onLaunchMarketProjection,
+    onMarketComposeFeedReady,
     onOpenMarketManage,
     marketRoleBusy = false,
     layerMode = "personal",
@@ -188,6 +195,9 @@ export const GlobeContextIngestBar = forwardRef<
       onLaunchMarketProjection: (input) => {
         onLaunchMarketProjection?.(input);
       },
+      onMarketComposeFeedReady: (input) => {
+        onMarketComposeFeedReady?.(input);
+      },
       toastSuccess: (message) => toast.success(message, { duration: 7000 }),
       toastMessage: (message) => toast.message(message),
     }),
@@ -198,6 +208,7 @@ export const GlobeContextIngestBar = forwardRef<
       onEateryDiscovery,
       onLodgingDiscovery,
       onLaunchMarketProjection,
+      onMarketComposeFeedReady,
       onOpenPortal,
       tryQuickListMarket,
     ],

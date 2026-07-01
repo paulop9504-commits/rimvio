@@ -152,6 +152,13 @@ export type ContextRunEffectHandlers = {
     eventId: string;
     composeText: string;
   }) => void;
+  /** Composer — keep market prep in Execution Feed chat; sheet opens on CTA only. */
+  onMarketComposeFeedReady?: (input: {
+    kind: "wizard" | "quick_list";
+    draft?: MarketIntentDraft;
+    eventId: string;
+    composeText: string;
+  }) => void;
 };
 
 export type ContextRunTurnResult = {

@@ -745,6 +745,8 @@ export const copy = {
       marketPortalHint: "아래 한 줄로 이어갈게요",
       marketProductSummary: (name: string) => `「${name}」 맞춤을 준비 중이에요`,
       marketQuickListSummary: (name: string) => `「${name}」 조건으로 밖 지구에 올릴게요`,
+      marketFeedQuickListCta: "한 줄로 내놓기",
+      marketFeedWizardCta: "자세히 맞추기",
       marketPlaceLabel: "거래 장소",
       runClarifyStep: "맥락 확인",
       runClarifyTitle: "한 가지만 더",

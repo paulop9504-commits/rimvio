@@ -163,6 +163,7 @@ import {
 import { commitTextContextIngress } from "@/lib/context-run/commit-text-context";
 import { dispatchContextRun } from "@/lib/context-run/dispatch-context-run";
 import { commitMarketIntentQuickList } from "@/lib/globe/market/commit-market-intent-quick-list";
+import { buildMarketQuickListDraft } from "@/lib/globe/market/build-market-quick-list-draft";
 import type { MarketIntentDraft } from "@/lib/globe/market/market-intent-types";
 import type { MarketWizardStepId } from "@/lib/globe/market/market-intent-wizard-flow";
 import { submitTrendBridgeContributionFromEvent } from "@/lib/globe/trend-bridge/client/submit-trend-bridge-contribution";
@@ -218,6 +219,12 @@ function GlobeHomeBody() {
   const [marketTradeBusy, setMarketTradeBusy] = useState(false);
   const [marketFocusEventId, setMarketFocusEventId] = useState<string | null>(null);
   const [marketIntentRevision, setMarketIntentRevision] = useState(0);
+  const pendingMarketComposeRef = useRef<{
+    kind: "wizard" | "quick_list";
+    draft?: MarketIntentDraft;
+    eventId: string;
+    composeText: string;
+  } | null>(null);
   const liveLocation = useLiveLocationSnapshot();
   useEffect(
     () => subscribeMarketIntents(() => setMarketIntentRevision((value) => value + 1)),
@@ -1565,6 +1572,47 @@ function GlobeHomeBody() {
     [],
   );
 
+  const onMarketComposeFeedReady = useCallback(
+    (input: {
+      kind: "wizard" | "quick_list";
+      draft?: MarketIntentDraft;
+      eventId: string;
+      composeText: string;
+    }) => {
+      pendingMarketComposeRef.current = input;
+      setPortalComposeText(input.composeText);
+    },
+    [],
+  );
+
+  const runPendingMarketComposeAction = useCallback(async () => {
+    const pending = pendingMarketComposeRef.current;
+    if (!pending) {
+      return;
+    }
+    if (pending.kind === "wizard") {
+      const draft =
+        pending.draft ??
+        buildMarketQuickListDraft({
+          text: pending.composeText,
+          eventId: pending.eventId,
+          liveLat: liveLocation?.lat ?? null,
+          liveLng: liveLocation?.lng ?? null,
+        });
+      if (!draft) {
+        return;
+      }
+      launchMarketProjection({ draft, eventId: pending.eventId });
+      pendingMarketComposeRef.current = null;
+      return;
+    }
+    await quickListMarket({
+      composeText: pending.composeText,
+      eventId: pending.eventId,
+    });
+    pendingMarketComposeRef.current = null;
+  }, [launchMarketProjection, liveLocation?.lat, liveLocation?.lng, quickListMarket]);
+
   useEffect(() => {
     return subscribeGlobePortalOpen((request) => {
       void openPortal({
@@ -1937,6 +1985,7 @@ function GlobeHomeBody() {
       <GlobeCaptureDock
         ref={ingestBarRef}
         composeHidden={portalOpen || marketConfirmOpen}
+        onExecutionFeedPrimaryAction={() => void runPendingMarketComposeAction()}
         composeAccessory={
           !confirmOpen && !sheetOpen && layerMode === "personal" ? (
             <GlobeComposeAccessoryBar
@@ -2077,6 +2126,7 @@ function GlobeHomeBody() {
             launchMarketProjection({ draft, eventId });
             setPortalComposeText(composeText);
           },
+          onMarketComposeFeedReady: onMarketComposeFeedReady,
           onOpenMarketManage: () => openFieldDashboardIngress({ tab: "mine" }),
           marketRoleBusy: marketTradeBusy,
           layerMode,

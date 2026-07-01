@@ -14,6 +14,7 @@ export type GlobeExecutionArtifactCardProps = {
   expanded?: boolean;
   className?: string;
   onTabChange?: (tabId: string) => void;
+  onPrimaryAction?: () => void;
 };
 
 function SourceIcon({ icon }: { icon?: "globe" | "map" | "hub" | "field" | "memory" }) {
@@ -39,6 +40,7 @@ export function GlobeExecutionArtifactCard({
   expanded = true,
   className,
   onTabChange,
+  onPrimaryAction,
 }: GlobeExecutionArtifactCardProps) {
   if (!expanded && pill?.status === "done") {
     return (
@@ -200,6 +202,17 @@ export function GlobeExecutionArtifactCard({
 
       {artifact.bodyKo && !artifact.summaryLineKo ? (
         <p className="line-clamp-3 text-[10px] leading-snug text-white/78">{artifact.bodyKo}</p>
+      ) : null}
+
+      {artifact.primaryActionLabelKo && onPrimaryAction ? (
+        <button
+          type="button"
+          onClick={onPrimaryAction}
+          className="mt-0.5 w-full rounded-xl bg-white/14 px-3 py-2.5 text-[13px] font-semibold text-white ring-1 ring-white/16 transition-colors active:bg-white/22"
+          data-globe-execution-artifact-primary-action
+        >
+          {artifact.primaryActionLabelKo}
+        </button>
       ) : null}
     </div>
   );

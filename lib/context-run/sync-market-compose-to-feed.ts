@@ -51,6 +51,7 @@ function pushMarketArtifact(input: {
   summaryLineKo?: string | null;
   quickList?: boolean;
   activeTabId?: string;
+  primaryActionLabelKo?: string | null;
 }) {
   const progress = marketWizardProgress(input.role, input.activeStep, {
     skipRole: true,
@@ -75,6 +76,7 @@ function pushMarketArtifact(input: {
         { id: "prep", labelKo: copy.globe.executionFeed.marketTabPrep },
       ],
       activeTabId: input.activeTabId ?? "checklist",
+      primaryActionLabelKo: input.primaryActionLabelKo ?? null,
       metrics: [
         {
           id: "progress",
@@ -125,6 +127,7 @@ export function syncMarketComposeStartToFeed(input: {
     summaryLineKo: product
       ? copy.globe.executionFeed.marketProductSummary(product)
       : copy.globe.executionFeed.marketPortalHint,
+    primaryActionLabelKo: copy.globe.executionFeed.marketFeedWizardCta,
   });
 
   return graphId;
@@ -173,6 +176,7 @@ export function syncMarketWizardStepToFeed(input: {
     summaryLineKo: product
       ? copy.globe.executionFeed.marketProductSummary(product)
       : copy.globe.executionFeed.marketPortalHint,
+    primaryActionLabelKo: copy.globe.executionFeed.marketFeedWizardCta,
   });
 
   return graphId;
@@ -205,6 +209,7 @@ export function syncMarketQuickListStartToFeed(input: {
       ? copy.globe.executionFeed.marketQuickListSummary(product)
       : null,
     quickList: true,
+    primaryActionLabelKo: copy.globe.executionFeed.marketFeedQuickListCta,
   });
 }
 

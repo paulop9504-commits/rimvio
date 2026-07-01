@@ -53,6 +53,13 @@ const dock = readFileSync(join(root, "components/globe/globe-capture-dock.tsx"),
 assert.ok(dock.includes("GlobeExecutionFeed"), "execution feed mounts above composer");
 assert.ok(!dock.includes("GlobeMapIntentPromptRail"), "legacy rail replaced");
 
+const feed = readFileSync(
+  join(root, "components/globe/execution-feed/globe-execution-feed.tsx"),
+  "utf8",
+);
+assert.ok(feed.includes('data-globe-execution-feed-mode="chat"'), "composer feed uses chat mode");
+assert.ok(feed.includes("GlobeComposeChatThread"), "chat thread renders above composer");
+
 const ingest = readFileSync(
   join(root, "components/globe/globe-context-ingest-bar.tsx"),
   "utf8",
@@ -61,6 +68,7 @@ assert.ok(
   ingest.includes("dispatchContextRun"),
   "composer must route through dispatchContextRun",
 );
+
 const dispatchRun = readFileSync(
   join(root, "lib/context-run/dispatch-context-run.ts"),
   "utf8",
@@ -68,6 +76,10 @@ const dispatchRun = readFileSync(
 assert.ok(
   dispatchRun.includes("dispatchExecutionFeedGoal"),
   "dispatchContextRun must push goal to feed for personal layer",
+);
+assert.ok(
+  dispatchRun.includes("onMarketComposeFeedReady"),
+  "composer market turns defer sheet to feed chat",
 );
 
 dispatchExecutionFeedClear();
