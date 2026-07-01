@@ -86,8 +86,6 @@ function hintForSlotId(
       return tapOrType(copy.globe.chatActionPills.place);
     case "note":
       return tapOrType(copy.globe.chatActionPills.note);
-    case "photos":
-      return textOnly(copy.globe.chatActionHintPhotos);
     default:
       return null;
   }
