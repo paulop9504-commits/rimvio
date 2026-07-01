@@ -150,6 +150,40 @@ const eslintConfig = defineConfig([
     },
   },
   {
+    files: ["components/globe/globe-flat-map-stage.tsx"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@/components/globe/execution-feed/globe-execution-artifact-card",
+              message: "Map stage must stay clean — cards live in GlobeChatScreen only.",
+            },
+            {
+              name: "@/components/globe/execution-feed/globe-execution-feed",
+              message: "Map stage must stay clean — chat lives in GlobeChatScreen only.",
+            },
+            {
+              name: "@/components/globe/globe-prep-checklist-card",
+              message: "Map stage must stay clean — no checklist on map.",
+            },
+            {
+              name: "@/components/globe/globe-market-intent-wizard-sheet",
+              message: "Wizard is Field/chat-owned — not on map stage.",
+            },
+          ],
+          patterns: [
+            {
+              group: ["**/globe-compose-draft-card", "**/globe-execution-artifact-card"],
+              message: "Map stage must not import compose cards or checklists.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["components/field/**/*.{ts,tsx}"],
     rules: {
       "no-restricted-imports": [

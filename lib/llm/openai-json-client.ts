@@ -42,6 +42,46 @@ export async function callOpenAiTextJson(input: {
   return payload.choices?.[0]?.message?.content?.trim() ?? null;
 }
 
+/** Plain-text chat completion — persona replies (not JSON). */
+export async function callOpenAiText(input: {
+  systemPrompt: string;
+  userText: string;
+  temperature?: number;
+  maxTokens?: number;
+}): Promise<string | null> {
+  if (!isOpenAiConfigured()) {
+    return null;
+  }
+
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${openAiApiKey()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: openAiVisionModel(),
+      temperature: input.temperature ?? 0.8,
+      max_tokens: input.maxTokens ?? 120,
+      messages: [
+        { role: "system", content: input.systemPrompt },
+        { role: "user", content: input.userText },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`openai_failed:${response.status}:${detail.slice(0, 240)}`);
+  }
+
+  const payload = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+
+  return payload.choices?.[0]?.message?.content?.trim() ?? null;
+}
+
 export async function callOpenAiVisionJson(input: {
   systemPrompt: string;
   userText?: string;

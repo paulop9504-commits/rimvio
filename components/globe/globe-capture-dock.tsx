@@ -1,15 +1,14 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { forwardRef } from "react";
 import { GlobeContextIngestBar, type GlobeContextIngestBarHandle, type GlobeContextIngestBarProps } from "@/components/globe/globe-context-ingest-bar";
-import { GlobeExecutionFeed } from "@/components/globe/execution-feed/globe-execution-feed";
 import { GlobePhotoPlaceWalkthrough } from "@/components/globe/globe-photo-place-walkthrough";
 import { GlobePhotoIngestProgressStrip } from "@/components/globe/globe-photo-ingest-progress-strip";
 import { GlobePlaceVerifyCard } from "@/components/globe/globe-place-verify-card";
 import type { GlobePhotoIngestDraft } from "@/lib/globe/prepare-globe-photo-ingest-draft";
 import type { PhotoIngestFileItem } from "@/lib/globe/photo-ingest-file-progress";
 import { cn } from "@/lib/utils";
+import type { ReactNode } from "react";
 
 export type GlobeCaptureDockProps = {
   className?: string;
@@ -42,17 +41,13 @@ export type GlobeCaptureDockProps = {
   placeVerifyEventId: string | null;
   onPlaceVerifyDismiss: () => void;
   onPlaceVerifyConfirmed: () => void;
-  /** Hide composer while a full-screen bottom sheet owns the flow (e.g. market wizard). */
   composeHidden?: boolean;
-  /** Alignment cards, trade dock, pulse — stacked above ingest in one column. */
   stackAboveCompose?: ReactNode;
-  /** Chrome directly above the prompt bar (e.g. recall pill beside + column). */
   composeAccessory?: ReactNode;
-  onExecutionFeedPrimaryAction?: () => void;
   ingest: GlobeContextIngestBarProps;
 };
 
-/** Single bottom stack — photo confirm OR ingest, never both cluttering the map. */
+/** Map bottom stack — prompt bar only; chat/cards live in GlobeChatScreen. */
 export const GlobeCaptureDock = forwardRef<GlobeContextIngestBarHandle, GlobeCaptureDockProps>(
   function GlobeCaptureDock(
     {
@@ -64,7 +59,6 @@ export const GlobeCaptureDock = forwardRef<GlobeContextIngestBarHandle, GlobeCap
       composeHidden = false,
       stackAboveCompose,
       composeAccessory,
-      onExecutionFeedPrimaryAction,
       ingest,
     },
     ref,
@@ -137,10 +131,6 @@ export const GlobeCaptureDock = forwardRef<GlobeContextIngestBarHandle, GlobeCap
             {composeAccessory ? (
               <div className="pointer-events-auto">{composeAccessory}</div>
             ) : null}
-            <GlobeExecutionFeed
-              className="pointer-events-auto"
-              onArtifactPrimaryAction={onExecutionFeedPrimaryAction}
-            />
             <GlobeContextIngestBar
               ref={ref}
               {...ingest}

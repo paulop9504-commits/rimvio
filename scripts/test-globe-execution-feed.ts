@@ -50,15 +50,18 @@ state = readExecutionFeedState();
 assert.equal(state.run?.expandedPillId, "intent_connect");
 
 const dock = readFileSync(join(root, "components/globe/globe-capture-dock.tsx"), "utf8");
-assert.ok(dock.includes("GlobeExecutionFeed"), "execution feed mounts above composer");
+assert.ok(dock.includes("GlobeContextIngestBar"), "execution feed / prompt mounts above composer");
+assert.ok(!dock.includes("GlobeExecutionFeed"), "inline feed removed from map dock");
 assert.ok(!dock.includes("GlobeMapIntentPromptRail"), "legacy rail replaced");
+
+const chatHome = readFileSync(join(root, "components/globe/globe-home-client.tsx"), "utf8");
+assert.ok(chatHome.includes("GlobeChatScreen"), "fullscreen chat mounted from home");
 
 const feed = readFileSync(
   join(root, "components/globe/execution-feed/globe-execution-feed.tsx"),
   "utf8",
 );
-assert.ok(feed.includes('data-globe-execution-feed-mode="chat"'), "composer feed uses chat mode");
-assert.ok(feed.includes("GlobeComposeChatThread"), "chat thread renders above composer");
+assert.ok(feed.includes("GlobeComposeDraftCard"), "compose draft card component exists");
 
 const ingest = readFileSync(
   join(root, "components/globe/globe-context-ingest-bar.tsx"),
@@ -78,8 +81,8 @@ assert.ok(
   "dispatchContextRun must push goal to feed for personal layer",
 );
 assert.ok(
-  dispatchRun.includes("onMarketComposeFeedReady"),
-  "composer market turns defer sheet to feed chat",
+  dispatchRun.includes("syncComposeDraftToFeed"),
+  "composer market turns use compose draft feed sync",
 );
 
 dispatchExecutionFeedClear();

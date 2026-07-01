@@ -4,7 +4,9 @@ import assert from "node:assert/strict";
 import { bindSituation } from "../lib/context-run/bind-situation";
 import { planContextRun } from "../lib/context-run/plan-context-run";
 import type { ContextRunIngress } from "../lib/context-run/ingress-types";
+import { composeDraftHasValues } from "../lib/portal/compose-draft/draft-utils";
 import { detectPortalIntentFromText } from "../lib/portal/detect-portal-intent-from-text";
+import { detectComposeSchemaFromText } from "../lib/portal/compose-draft/schema-registry";
 import {
   resetPortalComposeRunStoreForTests,
   writePortalComposeRunState,
@@ -23,70 +25,110 @@ function planFor(text: string, surface: "composer" | "capture_sheet" = "composer
   return planContextRun(bindSituation(ingress));
 }
 
-resetPortalComposeRunStoreForTests();
+async function main() {
+  resetPortalComposeRunStoreForTests();
 
-const offer = detectPortalIntentFromText("동네에 에어팟 내놓고 싶어");
-assert.ok(offer);
-assert.equal(offer?.intentId, "offer");
+  const offer = detectPortalIntentFromText("동네에 에어팟 내놓고 싶어");
+  assert.ok(offer);
+  assert.equal(offer?.intentId, "offer");
 
-const seek = detectPortalIntentFromText("맥북 구해요");
-assert.equal(seek?.intentId, "seek");
+  const seek = detectPortalIntentFromText("맥북 구해요");
+  assert.equal(seek?.intentId, "seek");
 
-const together = detectPortalIntentFromText("주말에 러닝 같이 할 사람");
-assert.equal(together?.intentId, "together");
-assert.equal(together?.categoryId, "sport");
+  const together = detectPortalIntentFromText("주말에 러닝 같이 할 사람");
+  assert.equal(together?.intentId, "together");
+  assert.equal(together?.categoryId, "sport");
 
-const join = detectPortalIntentFromText("이번 주말 공연 참여하고 싶어");
-assert.equal(join?.intentId, "join");
+  const join = detectPortalIntentFromText("이번 주말 공연 참여하고 싶어");
+  assert.equal(join?.intentId, "join");
 
-assert.equal(planFor("아이폰 팔고 싶어").kind, "portal_compose_run");
-assert.equal(planFor("주말 스터디 같이해요", "capture_sheet").kind, "portal_compose_run");
-assert.equal(planFor("호텔 추천해줘").kind, "experience_run");
+  assert.equal(detectComposeSchemaFromText("아이패드 팔고 싶어"), "sell_item");
+  assert.equal(detectComposeSchemaFromText("방 좀 놓으려고"), "rent_property");
 
-const event = commitEventUpsert({
-  id: "ec-portal-run-test",
-  title: "에어팟 내놓기",
-  category: "custom",
-  source: "message",
-  lifecycle: "draft",
-  confidence: 0.8,
-});
+  assert.equal(planFor("아이폰 팔고 싶어").kind, "portal_compose_run");
+  assert.equal(planFor("주말 스터디 같이해요", "capture_sheet").kind, "portal_compose_run");
+  assert.equal(planFor("호텔 추천해줘").kind, "experience_run");
 
-const clarify = resolvePortalComposeRunTurn({
-  graphId: "composer:test",
-  intentId: "offer",
-  categoryId: "used_goods",
-  message: "동네에 에어팟 내놓고 싶어",
-  eventId: event.id,
-});
-assert.equal(clarify.kind, "clarify");
-assert.ok(clarify.kind === "clarify" && clarify.questionKo.length > 0);
+  const event = commitEventUpsert({
+    id: "ec-portal-run-test",
+    title: "에어팟 내놓기",
+    category: "custom",
+    source: "message",
+    lifecycle: "draft",
+    confidence: 0.8,
+  });
 
-const social = resolvePortalComposeRunTurn({
-  graphId: "composer:social",
-  intentId: "together",
-  categoryId: "sport",
-  message: "러닝 같이",
-  eventId: event.id,
-});
-assert.equal(social.kind, "clarify");
+  const intentOnly = await resolvePortalComposeRunTurn({
+    graphId: "composer:test",
+    intentId: "offer",
+    categoryId: "used_goods",
+    message: "물건 팔고 싶어",
+    eventId: event.id,
+  });
+  assert.equal(intentOnly.kind, "compose_intent");
+  assert.equal(
+    composeDraftHasValues(intentOnly.kind === "compose_intent" ? intentOnly.state.composeDraft : {}),
+    false,
+  );
 
-writePortalComposeRunState({
-  graphId: "composer:핸드폰 판매",
-  intentId: "offer",
-  categoryId: "used_goods",
-  composeSeed: "핸드폰 판매",
-  accumulatedText: "핸드폰 판매",
-  eventId: event.id,
-  pendingSlotId: "product",
-  askedCount: 1,
-  status: "waiting_slot",
-  updatedAt: new Date().toISOString(),
-});
+  const partialProduct = await resolvePortalComposeRunTurn({
+    graphId: "composer:airpods",
+    intentId: "offer",
+    categoryId: "used_goods",
+    message: "동네에 에어팟 내놓고 싶어",
+    eventId: event.id,
+  });
+  assert.equal(partialProduct.kind, "compose_draft");
+  if (partialProduct.kind === "compose_draft") {
+    assert.ok(partialProduct.draft.productName?.includes("에어팟"));
+    assert.equal(partialProduct.canPublish, false);
+  }
 
-const resumePlan = planFor("아이폰 15 프로", "capture_sheet");
-assert.equal(resumePlan.kind, "portal_compose_run");
-assert.equal(resumePlan.resumePortalRun, true);
-assert.equal(resumePlan.graphId, "composer:핸드폰 판매");
+  const multiSlot = await resolvePortalComposeRunTurn({
+    graphId: "composer:ipad",
+    intentId: "offer",
+    categoryId: "used_goods",
+    message: "아이패드 프로 11인치 1년 쓴 거 60만원에 팔려고",
+    eventId: event.id,
+  });
+  assert.equal(multiSlot.kind, "compose_draft");
+  if (multiSlot.kind === "compose_draft") {
+    assert.ok(multiSlot.draft.productName?.includes("아이패드"));
+    assert.equal(multiSlot.draft.priceKrw, 600_000);
+    assert.ok(composeDraftHasValues(multiSlot.draft));
+    assert.equal(multiSlot.canPublish, true);
+  }
 
-console.log("test-portal-compose-run: ok");
+  const social = await resolvePortalComposeRunTurn({
+    graphId: "composer:social",
+    intentId: "together",
+    categoryId: "sport",
+    message: "러닝 같이",
+    eventId: event.id,
+  });
+  assert.equal(social.kind, "clarify");
+
+  writePortalComposeRunState({
+    graphId: "composer:핸드폰 판매",
+    intentId: "offer",
+    categoryId: "used_goods",
+    composeSeed: "핸드폰 판매",
+    accumulatedText: "핸드폰 판매",
+    eventId: event.id,
+    pendingSlotId: null,
+    askedCount: 0,
+    status: "drafting",
+    composeSchemaId: "sell_item",
+    composeDraft: {},
+    updatedAt: new Date().toISOString(),
+  });
+
+  const resumePlan = planFor("아이폰 15 프로 80만원", "capture_sheet");
+  assert.equal(resumePlan.kind, "portal_compose_run");
+  assert.equal(resumePlan.resumePortalRun, true);
+  assert.equal(resumePlan.graphId, "composer:핸드폰 판매");
+
+  console.log("test-portal-compose-run: ok");
+}
+
+void main();

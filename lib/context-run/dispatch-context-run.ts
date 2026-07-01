@@ -50,6 +50,10 @@ import {
   syncExperienceRunSummaryToFeed,
 } from "@/lib/context-run/sync-experience-run-to-feed";
 import {
+  syncComposeDraftToFeed,
+  syncComposeIntentToFeed,
+} from "@/lib/context-run/sync-compose-draft-to-feed";
+import {
   syncPortalComposeClarifyToFeed,
   syncPortalComposeSocialSummaryToFeed,
   syncPortalComposeStartToFeed,
@@ -63,6 +67,8 @@ import {
 } from "@/lib/portal/portal-compose-run-store";
 import { detectPortalIntentFromText } from "@/lib/portal/detect-portal-intent-from-text";
 import { resolvePortalComposeRunTurn } from "@/lib/portal/resolve-portal-compose-run-turn";
+import { syncPortalComposeTurnToChat } from "@/lib/globe/chat/sync-portal-compose-to-chat";
+import { sellItemDraftToComposeText } from "@/lib/portal/compose-draft/draft-to-market-intent";
 import type { PortalIntentId } from "@/lib/portal/portal-types";
 
 function isComposerTextIngress(ingress: ContextRunIngress): boolean {
@@ -159,8 +165,15 @@ async function executeContextRunPlan(
       let resolvedEventId =
         pending?.eventId?.trim() ||
         eventId?.trim() ||
-        (ingress.kind === "text" ? ingress.contextEventId?.trim() : "") ||
         "";
+
+      if (
+        !resolvedEventId &&
+        !plan.composeAmbientChat &&
+        ingress.kind === "text"
+      ) {
+        resolvedEventId = ingress.contextEventId?.trim() ?? "";
+      }
 
       if (!resolvedEventId) {
         const seed = plan.resumePortalRun
@@ -171,14 +184,10 @@ async function executeContextRunPlan(
       }
 
       if (!plan.resumePortalRun) {
-        syncPortalComposeStartToFeed({
-          graphId: runGraphId,
-          goalKo: bound.goalKo,
-          intentId,
-        });
+        // Goal sync happens in compose_intent / compose_draft feed handlers.
       }
 
-      const result = resolvePortalComposeRunTurn({
+      const result = await resolvePortalComposeRunTurn({
         graphId: runGraphId,
         intentId,
         categoryId: plan.portalCategoryId ?? pending?.categoryId ?? null,
@@ -192,6 +201,63 @@ async function executeContextRunPlan(
         answerText: plan.resumePortalRun ? bound.goalKo : null,
       });
 
+      if (result.kind === "compose_converse") {
+        writePortalComposeRunState(result.state);
+        syncComposeIntentToFeed({
+          graphId: runGraphId,
+          goalKo: bound.goalKo,
+          assistantKo: result.assistantKo,
+        });
+        syncPortalComposeTurnToChat({
+          graphId: runGraphId,
+          userText: bound.goalKo,
+          assistantText: result.assistantKo,
+        });
+        return { graphId, status: "done", planKind: plan.kind };
+      }
+
+      if (result.kind === "compose_intent") {
+        writePortalComposeRunState(result.state);
+        syncComposeIntentToFeed({
+          graphId: runGraphId,
+          goalKo: bound.goalKo,
+          assistantKo: result.assistantKo,
+        });
+        syncPortalComposeTurnToChat({
+          graphId: runGraphId,
+          userText: bound.goalKo,
+          assistantText: result.assistantKo,
+        });
+        return { graphId, status: "done", planKind: plan.kind };
+      }
+
+      if (result.kind === "compose_draft") {
+        writePortalComposeRunState(result.state);
+        const composeText =
+          sellItemDraftToComposeText(result.draft) || result.state.accumulatedText;
+        syncComposeDraftToFeed({
+          graphId: runGraphId,
+          goalKo: bound.goalKo,
+          assistantKo: result.assistantKo,
+          schemaId: result.schemaId,
+          draft: result.draft,
+        });
+        syncPortalComposeTurnToChat({
+          graphId: runGraphId,
+          userText: plan.resumePortalRun ? bound.goalKo : bound.goalKo,
+          assistantText: result.assistantKo,
+        });
+        if (isComposerTextIngress(ingress) && result.canPublish) {
+          handlers.onMarketComposeFeedReady?.({
+            kind: "quick_list",
+            eventId: result.state.eventId,
+            composeText,
+            draft: result.state.marketDraft ?? undefined,
+          });
+        }
+        return { graphId, status: "done", planKind: plan.kind };
+      }
+
       if (result.kind === "clarify") {
         writePortalComposeRunState(result.state);
         touchRunStateNode(`portal:${result.slotId}`);
@@ -200,6 +266,11 @@ async function executeContextRunPlan(
           questionKo: result.questionKo,
           goalKo: bound.goalKo,
           slotId: result.slotId,
+        });
+        syncPortalComposeTurnToChat({
+          graphId: runGraphId,
+          userText: bound.goalKo,
+          assistantText: result.questionKo,
         });
         handlers.onPortalComposeClarify?.({
           questionKo: result.questionKo,
@@ -305,12 +376,7 @@ async function executeContextRunPlan(
         resolvedEventId = outcome.result.event.id;
       }
       const runGraphId = buildComposerGraphId(resolvedEventId, composeText);
-      syncPortalComposeStartToFeed({
-        graphId: runGraphId,
-        goalKo: composeText,
-        intentId,
-      });
-      const result = resolvePortalComposeRunTurn({
+      const result = await resolvePortalComposeRunTurn({
         graphId: runGraphId,
         intentId,
         categoryId: detected?.categoryId ?? null,
@@ -319,6 +385,60 @@ async function executeContextRunPlan(
         liveLat: ingress.kind === "text" ? ingress.lat : null,
         liveLng: ingress.kind === "text" ? ingress.lng : null,
       });
+      if (result.kind === "compose_converse") {
+        writePortalComposeRunState(result.state);
+        syncComposeIntentToFeed({
+          graphId: runGraphId,
+          goalKo: composeText,
+          assistantKo: result.assistantKo,
+        });
+        syncPortalComposeTurnToChat({
+          graphId: runGraphId,
+          userText: composeText,
+          assistantText: result.assistantKo,
+        });
+        return { graphId, status: "done", planKind: plan.kind };
+      }
+      if (result.kind === "compose_intent") {
+        writePortalComposeRunState(result.state);
+        syncComposeIntentToFeed({
+          graphId: runGraphId,
+          goalKo: composeText,
+          assistantKo: result.assistantKo,
+        });
+        syncPortalComposeTurnToChat({
+          graphId: runGraphId,
+          userText: composeText,
+          assistantText: result.assistantKo,
+        });
+        return { graphId, status: "done", planKind: plan.kind };
+      }
+      if (result.kind === "compose_draft") {
+        writePortalComposeRunState(result.state);
+        const mergedText =
+          sellItemDraftToComposeText(result.draft) || result.state.accumulatedText;
+        syncComposeDraftToFeed({
+          graphId: runGraphId,
+          goalKo: composeText,
+          assistantKo: result.assistantKo,
+          schemaId: result.schemaId,
+          draft: result.draft,
+        });
+        syncPortalComposeTurnToChat({
+          graphId: runGraphId,
+          userText: composeText,
+          assistantText: result.assistantKo,
+        });
+        if (isComposerTextIngress(ingress) && result.canPublish) {
+          handlers.onMarketComposeFeedReady?.({
+            kind: "quick_list",
+            eventId: result.state.eventId,
+            composeText: mergedText,
+            draft: result.state.marketDraft ?? undefined,
+          });
+        }
+        return { graphId, status: "done", planKind: plan.kind };
+      }
       if (result.kind === "clarify") {
         writePortalComposeRunState(result.state);
         touchRunStateNode(`portal:${result.slotId}`);

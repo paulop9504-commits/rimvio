@@ -1,4 +1,7 @@
+import type { IntentState } from "@/lib/portal/compose-intent/intent-state-types";
 import type { MarketIntentDraft } from "@/lib/globe/market/market-intent-types";
+import type { SellItemDraft } from "@/lib/portal/compose-draft/types";
+import type { ComposeSchemaId } from "@/lib/portal/compose-draft/types";
 import type { PortalSocialSlotId } from "@/lib/portal/portal-social-slots";
 import type { PortalCategoryId, PortalIntentId } from "@/lib/portal/portal-types";
 
@@ -13,7 +16,10 @@ export type PortalComposeRunState = {
   eventId: string;
   pendingSlotId: string | null;
   askedCount: number;
-  status: "waiting_slot" | "ready";
+  status: "waiting_slot" | "conversing" | "drafting" | "ready";
+  intentStage?: IntentState | null;
+  composeSchemaId?: ComposeSchemaId | null;
+  composeDraft?: Partial<SellItemDraft> | null;
   marketDraft?: MarketIntentDraft | null;
   socialSlots?: Partial<Record<PortalSocialSlotId, string>>;
   updatedAt: string;

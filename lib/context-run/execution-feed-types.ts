@@ -25,7 +25,23 @@ export type ExecutionFeedArtifactKind =
   | "widget"
   | "checklist"
   | "metric_strip"
-  | "summary";
+  | "summary"
+  | "compose_draft";
+
+export type ExecutionFeedComposeDraftField = {
+  id: string;
+  labelKo: string;
+  valueKo: string;
+  required: boolean;
+  inputType: "text" | "number" | "textarea";
+};
+
+export type ExecutionFeedComposeDraft = {
+  schemaId: string;
+  schemaLabelKo: string;
+  fields: readonly ExecutionFeedComposeDraftField[];
+  canPublish: boolean;
+};
 
 export type ExecutionFeedMetric = {
   id: string;
@@ -67,6 +83,7 @@ export type ExecutionFeedArtifact = {
   activeTabId?: string | null;
   primaryActionLabelKo?: string | null;
   secondaryActionLabelKo?: string | null;
+  composeDraft?: ExecutionFeedComposeDraft | null;
 };
 
 export type ExecutionFeedItem = {

@@ -716,6 +716,28 @@ export const copyEn: Copy = {
     resumeContextDismiss: "Dismiss",
     ingestDefaultPlaceholder: "Place · memo · @market · @navigate",
     mapIntentPromptPlaceholder: "Stays · food · memory — say it, see it on the map",
+    chatScreenTitle: "Compose chat",
+    chatScreenCloseAria: "Back to map",
+    chatImageUploading: "Sending…",
+    chatImageFailed: "Tap to retry",
+    chatCompletion: {
+      title: "Listed!",
+      body: "All set — saved on your globe and posted to the outer globe.",
+      innerGlobeLine: "📍 Saved on your personal globe",
+      outerGlobeLine: "🌍 Live on the outer globe for trading",
+      viewInnerCta: "View on my globe",
+      viewOuterCta: "View on outer globe",
+    },
+    agentProgress: {
+      flowBasicInfoActive: "Product details",
+      flowPhotoActive: "Receiving photos",
+      flowDescriptionActive: "Adding description",
+      flowSubmitActive: "Finishing listing",
+      matchSearchTitle: "🔍 Finding people who match",
+      matchStepRadius: "Nearby radius scan",
+      matchStepInterest: "Interest matching",
+      matchStepSchedule: "Scheduling prep",
+    },
     executionFeed: {
       goalEyebrow: "Intent",
       summaryEyebrow: "Summary",
@@ -1237,6 +1259,14 @@ export const copyEn: Copy = {
       dashboardTabTradesHint: "Schedule · meet · en route",
       dashboardTabDiscoveryHint: "Live neighbor listings for you",
       dashboardTabMineHint: "Monitor what you posted to seek or offer",
+      resourceStatusEyebrow: "AI activity",
+      resourceStatusViews: (count: number) => `👀 ${count} views`,
+      resourceStatusInquiries: (count: number) =>
+        count > 0 ? `💬 ${count} inquiries (AI responding)` : "💬 No inquiries yet",
+      resourceStatusMatches: (count: number) => `🎯 ${count} potential matches`,
+      resourceStatusMatchLine: (name: string, hint: string) => `- ${name} (${hint})`,
+      resourceStatusChatCta: "Continue chat with match",
+      resourceStatusNoMatches: "Still looking for good matches",
       mineEmptyTitle: "Nothing posted on the outer globe yet",
       mineEmptyBody: "Use @market on the globe to seek or offer — manage here",
       tradesEmptyTitle: "Nothing in progress",
@@ -1403,6 +1433,38 @@ export const copyEn: Copy = {
     categoryEvent: "Events",
     categorySoonToast: "This field is coming soon",
     composeAskProduct: "What do you want to offer or find?",
+    composeDraftIntentSellItem:
+      "Share the item, condition, and price in one line if you like. Empty fields can be edited on the card later.",
+    composeDraftIntentRent:
+      "You can share property type, price, and location in one message.",
+    composeDraftIntentHire: "Say what you are hiring for in one line.",
+    composeDraftIntentSocial:
+      "Share what you want to do together and where in one line.",
+    composeDraftPartial:
+      "Got it. Empty fields can be edited directly on the card.",
+    composeDraftPartialResume: "Updated. You can edit the card directly.",
+    composeDraftReady:
+      "Core details are in. Refine on the card or continue with the button below.",
+    composeDraftNeedPrice: (name: string) =>
+      `What price for "${name}"? Then we can continue.`,
+    composeDraftNeedProduct: "Which item is it? I will match it with the price.",
+    composeDraftSchemaSoon: (label: string) =>
+      `"${label}" is coming soon. For now, describe a used-item listing in one line.`,
+    composeDraftFieldOptional: "Optional",
+    composeDraftFieldTap: "Tap to enter",
+    composeDraftNudgePhoto: "Nice! Could you send a few photos? I would love to see the condition 📸",
+    composeDraftNudgeDescription:
+      "Got the photos. A short note about box, charger, or battery helps too.",
+    composeDraftReadyToSubmit: "All set! Ready to publish now?",
+    composeIntentChatPhoneAge:
+      "Thinking of upgrading, or maybe selling the one you have now?",
+    composeIntentChatDefault: "Got it. Feel free to keep chatting.",
+    composeIntentSoftDefault:
+      "No rush. If you want to list it later, just say the word.",
+    composeIntentSoftProductHint: (product: string) =>
+      `"${product}" — share the condition and I can ballpark the price. Say when you want to list.`,
+    composeIntentSoftPriceHint: (product: string) =>
+      `For "${product}", it depends on condition. Tell me the model and shape it is in.`,
     composeAskPlace: "Where should the trade or meetup happen?",
     composeAskTime: "When works for you?",
     composeAskTogetherTopic: "What do you want to do together?",

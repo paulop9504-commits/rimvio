@@ -22,6 +22,7 @@ import {
 import { canQuickListMarketCompose } from "@/lib/globe/market/build-market-quick-list-draft";
 import { dispatchContextRun } from "@/lib/context-run/dispatch-context-run";
 import { readActiveRunState } from "@/lib/context-run/run-state-store";
+import { ingestComposeChatPhoto } from "@/lib/globe/chat/globe-chat-session-bridge";
 import type { ContextRunEffectHandlers } from "@/lib/context-run/ingress-types";
 import { readPortalComposeRunState } from "@/lib/portal/portal-compose-run-store";
 import {
@@ -71,6 +72,7 @@ export type GlobeContextIngestBarProps = {
   onDiscoveryMarketBrowse?: () => void;
   onComposeFocus?: () => void;
   onComposeBlur?: () => void;
+  onComposeOpen?: () => void;
   userLat?: number | null;
   userLng?: number | null;
   onLodgingDiscovery?: (input: {
@@ -107,6 +109,7 @@ export const GlobeContextIngestBar = forwardRef<
     onDiscoveryMarketBrowse,
     onComposeFocus,
     onComposeBlur,
+    onComposeOpen,
     userLat = null,
     userLng = null,
     onLodgingDiscovery,
@@ -220,6 +223,26 @@ export const GlobeContextIngestBar = forwardRef<
         return;
       }
       const files = Array.from(fileList);
+      const activeGraph = readActiveRunState()?.graphId;
+      const composeSession = activeGraph
+        ? readPortalComposeRunState(activeGraph)
+        : null;
+      if (composeSession?.composeSchemaId && composeSession.intentStage?.stage === "confirmed" && !isDiscovery) {
+        setBusy(true);
+        try {
+          for (const file of files) {
+            await ingestComposeChatPhoto({ graphId: composeSession.graphId, file });
+          }
+          setMenuOpen(false);
+        } finally {
+          setBusy(false);
+          if (photoRef.current) {
+            photoRef.current.value = "";
+          }
+        }
+        return;
+      }
+
       setBusy(true);
       const toastId = toast.loading(
         files.length === 1
@@ -318,6 +341,7 @@ export const GlobeContextIngestBar = forwardRef<
       }
 
       setBusy(true);
+      onComposeOpen?.();
       try {
         const result = await dispatchContextRun(
           {
@@ -343,7 +367,11 @@ export const GlobeContextIngestBar = forwardRef<
             const pending = activeGraph
               ? readPortalComposeRunState(activeGraph)
               : null;
-            if (pending?.status !== "waiting_slot") {
+            if (
+              pending?.status !== "waiting_slot" &&
+              pending?.status !== "drafting" &&
+              pending?.status !== "conversing"
+            ) {
               setClarifyPlaceholder(null);
             }
           }
@@ -366,6 +394,7 @@ export const GlobeContextIngestBar = forwardRef<
       text,
       userLat,
       userLng,
+      onComposeOpen,
     ],
   );
 

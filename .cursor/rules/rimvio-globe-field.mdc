@@ -1,0 +1,48 @@
+---
+description: Globe = condition creation · Field = condition execution (Rimvio core split)
+globs:
+  - lib/context-run/**
+  - lib/globe/intent-supply/**
+  - lib/portal/compose-intent/**
+  - lib/portal/resolve-portal-compose-run-turn.ts
+  - components/globe/**
+  - components/field/**
+  - lib/resource/**
+---
+
+# Globe ↔ Field (conditions architecture)
+
+**One line:** Globe defines *what you want* (conditions). Field shows *how wants get fulfilled* (match · action · execute).
+
+| Surface | Role | UI |
+|---------|------|-----|
+| **Globe** | Condense intent → conditions | Chat only (create). Map = pins only (result). No checklist/card on map. |
+| **Field** | Match conditions · run state machine | Buttons · trades tab · ResourceStatus. Zero friction after confirm. |
+
+## Globe (condition creation)
+
+- Chat is the **only** creation ingress (`dispatchContextRun` → `portal_compose_run` / compose converse).
+- Intent spectrum: `chatting` → `soft_signal` → `confirmed` — **no draft until confirmed**.
+- Slot fill + persona reply = completing the condition set; photos use message pipeline.
+- `map_intent_supply` / `context_connect` only when NL intent is **explicit** (lodging · food · recall · connect signal) — never default for greetings or unknown text.
+
+## Field (condition execution)
+
+- Matching = comparing embedded conditions.
+- Dashboard = monitor in-flight matches (views · inquiries · candidates).
+- Post-confirm: **buttons + state machine** (schedule · confirm · depart) — not chat round-trips for yes/no.
+- No new resource creation on Field — view + enter existing chat/trade pipelines only.
+
+## Classifier (every new feature)
+
+1. **Creates or refines intent/conditions?** → Globe (chat).
+2. **Operates on existing conditions (match · execute · monitor)?** → Field (button / FSM).
+
+**Answer is effectively one (Yes)?** → button. **Multiple directions?** → chat.
+
+## PR reject
+
+- Unknown composer text → `context_connect` or auto-bind active map cluster.
+- Execution-step confirmations re-opened as AI chat on Globe.
+- Draft card / checklist on `globe-flat-map-stage`.
+- Field surfaces that create new resources (only chat creates).

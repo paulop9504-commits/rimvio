@@ -2,6 +2,7 @@ import {
   isBareMarketComposeInput,
   isMarketComposeInput,
 } from "@/lib/globe/market/detect-market-compose-input";
+import { detectAmbientMarketInterest } from "@/lib/portal/compose-intent/classify-compose-intent";
 import { normalizeMarketIntentFromText } from "@/lib/globe/market/normalize-market-intent-from-text";
 import type { PortalCategoryId, PortalIntentId } from "@/lib/portal/portal-types";
 
@@ -88,6 +89,13 @@ export function detectPortalIntentFromText(raw: string): DetectedPortalIntent | 
     return {
       intentId: "together",
       categoryId: inferTogetherCategory(text),
+    };
+  }
+
+  if (detectAmbientMarketInterest(text)) {
+    return {
+      intentId: "offer",
+      categoryId: "used_goods",
     };
   }
 

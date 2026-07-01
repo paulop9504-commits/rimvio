@@ -7,6 +7,7 @@ import {
   isMarketComposeInput,
 } from "@/lib/globe/market/detect-market-compose-input";
 import { copy } from "@/lib/copy/human-ko";
+import { resolveGlobeMapIntent } from "@/lib/globe/intent-supply/resolve-globe-map-intent";
 import { detectPortalIntentFromText } from "@/lib/portal/detect-portal-intent-from-text";
 import { readPortalComposeRunState } from "@/lib/portal/portal-compose-run-store";
 
@@ -18,7 +19,11 @@ function planPortalComposeIfEligible(
   const base = { graphId: bound.graphId, goalKo: bound.goalKo };
   const pending = readPortalComposeRunState();
 
-  if (pending?.status === "waiting_slot") {
+  if (
+    pending?.status === "waiting_slot" ||
+    pending?.status === "drafting" ||
+    pending?.status === "conversing"
+  ) {
     return {
       kind: "portal_compose_run",
       portalIntentId: pending.intentId,
@@ -162,17 +167,32 @@ export function planContextRun(bound: BoundSituation): ContextRunPlan {
     return { kind: "experience_run", ...base };
   }
 
-  return {
-    kind: "map_intent_supply",
-    supplyInput: {
-      message: text,
-      contextEventId: ingress.contextEventId,
-      lat: ingress.lat,
-      lng: ingress.lng,
-      layerMode: ingress.layerMode,
-    },
-    ...base,
-  };
+  const mapIntent = resolveGlobeMapIntent(text);
+  if (mapIntent.kind !== "unknown") {
+    return {
+      kind: "map_intent_supply",
+      supplyInput: {
+        message: text,
+        contextEventId: ingress.contextEventId,
+        lat: ingress.lat,
+        lng: ingress.lng,
+        layerMode: ingress.layerMode,
+      },
+      ...base,
+    };
+  }
+
+  if (ingress.surface === "composer" && ingress.layerMode === "personal") {
+    return {
+      kind: "portal_compose_run",
+      portalIntentId: "offer",
+      portalCategoryId: "used_goods",
+      composeAmbientChat: true,
+      ...base,
+    };
+  }
+
+  return planTextIngestFallback(bound);
 }
 
 /** Fallback when map supply does not attach resources — plain context memo. */

@@ -18,6 +18,8 @@ import { GlobeEateryDiscoveryStage } from "@/components/globe/globe-eatery-disco
 import { GlobeEateryFocusSheet } from "@/components/globe/globe-eatery-focus-sheet";
 import { useGlobeLodgingDiscoverySession } from "@/hooks/use-globe-lodging-discovery-session";
 import { useGlobeEateryDiscoverySession } from "@/hooks/use-globe-eatery-discovery-session";
+import { GlobeChatScreen } from "@/components/globe/chat/globe-chat-screen";
+import { PersonalGlobeSheet } from "@/components/globe/personal-globe-sheet";
 import { GlobeCaptureDock } from "@/components/globe/globe-capture-dock";
 import { GlobeComposeAccessoryBar } from "@/components/globe/globe-compose-accessory-bar";
 import {
@@ -57,6 +59,11 @@ import {
   parseFieldDashboardIngressFromSearchParams,
 } from "@/lib/nav/field-dashboard-ingress";
 import { syncMarketQuickListDoneToFeed } from "@/lib/context-run/sync-market-compose-to-feed";
+import { buildComposerGraphId } from "@/lib/context-run/resolve-globe-composer-surface";
+import {
+  markComposeDraftSubmitted,
+  syncResourceCompleteToChat,
+} from "@/lib/globe/chat/sync-resource-complete-to-chat";
 import { finishContextRun } from "@/lib/context-run/execution-feed-lifecycle";
 import { useIosPwaMemoryGuards } from "@/hooks/use-ios-pwa-memory-guards";
 import {
@@ -210,6 +217,8 @@ function GlobeHomeBody() {
     useState<MarketWizardStepId | undefined>(undefined);
   const [marketPortalLaunch, setMarketPortalLaunch] = useState(false);
   const [portalOpen, setPortalOpen] = useState(false);
+  const [globeChatOpen, setGlobeChatOpen] = useState(false);
+  const [personalGlobeOpen, setPersonalGlobeOpen] = useState(false);
   const [portalEvent, setPortalEvent] = useState<EventCandidate | null>(null);
   const [portalComposeText, setPortalComposeText] = useState<string | undefined>();
   const [portalSource, setPortalSource] = useState<PortalOpenSource>("composer");
@@ -1503,6 +1512,33 @@ function GlobeHomeBody() {
     [activeCluster?.eventId, openPortal],
   );
 
+  const focusResourceOnInnerGlobe = useCallback(
+    (input: { eventId: string; anchorLat: number; anchorLng: number }) => {
+      setGlobeChatOpen(false);
+      setLayerMode("personal");
+      setMarketFocusEventId(input.eventId);
+      globeRef.current?.flyToPin(input.anchorLat, input.anchorLng, "street", {
+        pinViewportY: 0.58,
+      });
+      focusContextByEventId(input.eventId, { openSheet: false });
+      setPersonalGlobeOpen(true);
+    },
+    [focusContextByEventId, setLayerMode],
+  );
+
+  const focusResourceOnOuterGlobe = useCallback(
+    (input: { eventId: string; anchorLat: number; anchorLng: number }) => {
+      setGlobeChatOpen(false);
+      setLayerMode("discovery");
+      setMarketFocusEventId(input.eventId);
+      globeRef.current?.flyToPin(input.anchorLat, input.anchorLng, "street", {
+        pinViewportY: 0.58,
+      });
+      focusContextByEventId(input.eventId, { openSheet: false });
+    },
+    [focusContextByEventId, setLayerMode],
+  );
+
   const quickListMarket = useCallback(
     async (input: {
       composeText: string;
@@ -1527,6 +1563,9 @@ function GlobeHomeBody() {
         if (!saved) {
           return false;
         }
+        const graphId = buildComposerGraphId(saved.eventId, input.composeText.trim());
+        syncResourceCompleteToChat({ graphId, record: saved });
+        markComposeDraftSubmitted(graphId);
         syncMarketQuickListDoneToFeed({
           composeText: input.composeText,
           eventId: saved.eventId,
@@ -1612,6 +1651,36 @@ function GlobeHomeBody() {
     });
     pendingMarketComposeRef.current = null;
   }, [launchMarketProjection, liveLocation?.lat, liveLocation?.lng, quickListMarket]);
+
+  const runPendingMarketComposeWizardAction = useCallback(() => {
+    const pending = pendingMarketComposeRef.current;
+    if (!pending) {
+      return;
+    }
+    const draft =
+      pending.draft ??
+      buildMarketQuickListDraft({
+        text: pending.composeText,
+        eventId: pending.eventId,
+        liveLat: liveLocation?.lat ?? null,
+        liveLng: liveLocation?.lng ?? null,
+      });
+    if (!draft) {
+      return;
+    }
+    launchMarketProjection({ draft, eventId: pending.eventId });
+    pendingMarketComposeRef.current = null;
+  }, [launchMarketProjection, liveLocation?.lat, liveLocation?.lng]);
+
+  useEffect(() => {
+    if (portalOpen || marketConfirmOpen) {
+      setGlobeChatOpen(false);
+    }
+  }, [portalOpen, marketConfirmOpen]);
+
+  const openGlobeChat = useCallback(() => {
+    setGlobeChatOpen(true);
+  }, []);
 
   useEffect(() => {
     return subscribeGlobePortalOpen((request) => {
@@ -1985,7 +2054,6 @@ function GlobeHomeBody() {
       <GlobeCaptureDock
         ref={ingestBarRef}
         composeHidden={portalOpen || marketConfirmOpen}
-        onExecutionFeedPrimaryAction={() => void runPendingMarketComposeAction()}
         composeAccessory={
           !confirmOpen && !sheetOpen && layerMode === "personal" ? (
             <GlobeComposeAccessoryBar
@@ -2092,6 +2160,60 @@ function GlobeHomeBody() {
         onPlaceVerifyConfirmed={() => {
           toast.success(copy.globe.placeVerifyConfirmedToast);
         }}
+        ingest={{
+          targetEventId: activeCluster?.eventId ?? null,
+          targetTitle: activeCluster?.title ?? null,
+          forceAttachToTarget: Boolean(activeCluster?.eventId),
+          onPhotoDraftReady: beginPhotoIngestFlow,
+          onAttached: (eventId, options) => {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get("recallEvent") !== eventId) {
+              params.set("recallEvent", eventId);
+              const next = `${window.location.pathname}?${params.toString()}`;
+              window.history.replaceState(null, "", next);
+            }
+            void focusContextOnMap(eventId, options);
+          },
+          userLat: liveLocation?.lat ?? null,
+          userLng: liveLocation?.lng ?? null,
+          onLodgingDiscovery: ({ eventId }) => {
+            void focusContextOnMap(eventId);
+          },
+          onEateryDiscovery: ({ eventId }) => {
+            void focusContextOnMap(eventId);
+          },
+          onOpenPortal: (input) => {
+            void openPortal({
+              eventId: input.eventId,
+              composeText: input.composeText,
+              source: "composer",
+            });
+          },
+          onQuickListMarket: (input) => quickListMarket(input),
+          onLaunchMarketProjection: ({ draft, eventId, composeText }) => {
+            launchMarketProjection({ draft, eventId });
+            setPortalComposeText(composeText);
+          },
+          onMarketComposeFeedReady: onMarketComposeFeedReady,
+          onOpenMarketManage: () => openFieldDashboardIngress({ tab: "mine" }),
+          marketRoleBusy: marketTradeBusy,
+          layerMode,
+          onDiscoveryMarketBrowse,
+          onComposeFocus: () => {
+            openGlobeChat();
+            memoryRecallComposeRef.current?.onFocus();
+          },
+          onComposeBlur: () => memoryRecallComposeRef.current?.onBlur(),
+          onComposeOpen: openGlobeChat,
+        }}
+      />
+      <GlobeChatScreen
+        open={globeChatOpen && !portalOpen && !marketConfirmOpen}
+        onClose={() => setGlobeChatOpen(false)}
+        onArtifactPrimaryAction={() => void runPendingMarketComposeAction()}
+        onArtifactSecondaryAction={runPendingMarketComposeWizardAction}
+        onViewInnerGlobe={focusResourceOnInnerGlobe}
+        onViewOuterGlobe={focusResourceOnOuterGlobe}
         ingest={{
           targetEventId: activeCluster?.eventId ?? null,
           targetTitle: activeCluster?.title ?? null,
@@ -2325,6 +2447,11 @@ function GlobeHomeBody() {
           setSettingsOpen(false);
           setGlobeGuideOpen(true);
         }}
+      />
+      <PersonalGlobeSheet
+        open={personalGlobeOpen}
+        onOpenChange={setPersonalGlobeOpen}
+        viewer={{ isOwner: true }}
       />
       <GlobeContextShareSheet
         open={shareSheetOpen}

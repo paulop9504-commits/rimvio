@@ -99,6 +99,8 @@ export type ContextRunPlan = {
   portalIntentId?: PortalIntentId;
   portalCategoryId?: PortalCategoryId | null;
   resumePortalRun?: boolean;
+  /** Personal composer — greet / ambiguous text → chat only; do not bind active map cluster. */
+  composeAmbientChat?: boolean;
 };
 
 export type ContextRunEffectHandlers = {

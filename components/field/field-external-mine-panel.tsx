@@ -2,6 +2,7 @@
 
 import { MapPin } from "lucide-react";
 import { toast } from "sonner";
+import { FieldResourceStatusCard } from "@/components/field/field-resource-status-card";
 import { MarketIntentOwnershipChip } from "@/components/market/market-intent-ownership-chip";
 import { useCopy } from "@/hooks/use-copy";
 import { useMarketManageIntents } from "@/hooks/use-market-manage-intents";
@@ -112,6 +113,7 @@ function MineIntentRow({
           {copy.globe.marketManageEndCta}
         </button>
       </div>
+      <FieldResourceStatusCard record={record} className="mt-2.5" />
     </div>
   );
 }

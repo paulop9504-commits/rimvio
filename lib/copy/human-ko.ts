@@ -729,6 +729,28 @@ export const copy = {
     resumeContextDismiss: "닫기",
     ingestDefaultPlaceholder: "장소 · 메모 · 팔기 · @길찾기",
     mapIntentPromptPlaceholder: "숙소 · 맛집 · 팔기 · 기억 — 말하면 지도에 연결해요",
+    chatScreenTitle: "맞춤 대화",
+    chatScreenCloseAria: "지도로 돌아가기",
+    chatImageUploading: "보내는 중…",
+    chatImageFailed: "다시 보내기",
+    chatCompletion: {
+      title: "등록 완료!",
+      body: "다 됐어요! 내 지구랑 외부 지구에 올라갔어요.",
+      innerGlobeLine: "📍 내 지구에도 기록됐어요",
+      outerGlobeLine: "🌍 외부 지구(거래)에도 올라갔어요",
+      viewInnerCta: "내 지구에서 보기",
+      viewOuterCta: "외부에서 보기",
+    },
+    agentProgress: {
+      flowBasicInfoActive: "상품 정보 입력",
+      flowPhotoActive: "사진 받는 중",
+      flowDescriptionActive: "상품 설명 받는 중",
+      flowSubmitActive: "등록 마무리 중",
+      matchSearchTitle: "🔍 조건에 맞는 사람 찾는 중",
+      matchStepRadius: "근처 반경 검색",
+      matchStepInterest: "관심사 매칭 분석",
+      matchStepSchedule: "시간대 조율 준비",
+    },
     executionFeed: {
       goalEyebrow: "의도",
       summaryEyebrow: "한 줄 요약",
@@ -1247,6 +1269,14 @@ export const copy = {
       dashboardTabTradesHint: "외부 사람과 약속 · 대화 · 이동",
       dashboardTabDiscoveryHint: "이웃이 올린 자원 실시간 탐색",
       dashboardTabMineHint: "내가 뿌린 구하기·내놓기 모니터",
+      resourceStatusEyebrow: "AI 활동 현황",
+      resourceStatusViews: (count: number) => `👀 조회수 ${count}명`,
+      resourceStatusInquiries: (count: number) =>
+        count > 0 ? `💬 문의 ${count}건 (AI가 응대중)` : "💬 문의 아직 없어요",
+      resourceStatusMatches: (count: number) => `🎯 관심 매칭 ${count}명 발견됨`,
+      resourceStatusMatchLine: (name: string, hint: string) => `- ${name} (${hint})`,
+      resourceStatusChatCta: "매칭된 사람과 대화 이어가기",
+      resourceStatusNoMatches: "아직 맞는 후보를 찾는 중이에요",
       mineEmptyTitle: "밖 지구에 올린 맥락이 없어요",
       mineEmptyBody: "지구에서 @중고로 내놓거나 구하기를 올리면 여기서 관리해요",
       tradesEmptyTitle: "진행 중인 약속이 없어요",
@@ -1415,6 +1445,37 @@ export const copy = {
     categoryEvent: "이벤트",
     categorySoonToast: "이 분야는 준비 중이에요",
     composeAskProduct: "무엇을 내놓거나 구할까요?",
+    composeDraftIntentSellItem:
+      "어떤 물건인지, 상태·희망 가격까지 한 번에 적어주셔도 돼요. 빈 칸은 나중에 카드에서 바로 고칠 수 있어요.",
+    composeDraftIntentRent:
+      "매물 종류, 가격, 위치를 한 번에 말씀해 주셔도 돼요.",
+    composeDraftIntentHire: "무엇을 구하는지 한 줄로 말해 주세요.",
+    composeDraftIntentSocial: "무엇을 함께할지, 어디서인지 한 번에 말해 주셔도 돼요.",
+    composeDraftPartial:
+      "이렇게 받아뒀어요. 빈 칸은 카드에서 바로 고칠 수 있어요.",
+    composeDraftPartialResume: "반영했어요. 카드에서 바로 고칠 수 있어요.",
+    composeDraftReady:
+      "핵심은 채워졌어요. 카드에서 다듬거나 아래 버튼으로 이어가면 돼요.",
+    composeDraftNeedPrice: (name: string) =>
+      `「${name}」 가격만 더 알려주시면 바로 이어갈게요.`,
+    composeDraftNeedProduct: "어떤 물건인지 알려주시면 가격이랑 맞춰볼게요.",
+    composeDraftSchemaSoon: (label: string) =>
+      `「${label}」 맞춤은 준비 중이에요. 지금은 중고거래 문장으로 말해 주시면 바로 받아둘게요.`,
+    composeDraftFieldOptional: "선택",
+    composeDraftFieldTap: "탭해서 입력",
+    composeDraftNudgePhoto: "좋아요! 사진 있으면 몇 장 보내주실래요? 상태 보고 싶어서요 📸",
+    composeDraftNudgeDescription:
+      "사진 잘 받았어요. 간단한 설명이나 박스·충전기 포함 여부도 적어주셔도 돼요.",
+    composeDraftReadyToSubmit: "다 됐어요! 지금 바로 등록할까요?",
+    composeIntentChatPhoneAge:
+      "아, 바꾸고 싶으신 거예요? 아니면 지금 쓰시는 거 팔 생각도 있으세요?",
+    composeIntentChatDefault: "그렇군요. 편하게 이어서 말씀해 주세요.",
+    composeIntentSoftDefault:
+      "괜찮아요, 천천히 생각해 보셔도 돼요. 올려보고 싶으시면 말씀해 주세요.",
+    composeIntentSoftProductHint: (product: string) =>
+      `「${product}」이시군요. 시세나 상태 같이 말해 주시면 대충 감 잡아 드릴게요. 올려보고 싶으시면 그때 맞춰 드릴게요.`,
+    composeIntentSoftPriceHint: (product: string) =>
+      `「${product}」 상태에 따라 달라요. 모델이랑 컨디션 알려주시면 시세 감 잡아 드릴게요.`,
     composeAskPlace: "어디 근처에서 거래·만남할까요?",
     composeAskTime: "언제쯤이 좋을까요?",
     composeAskTogetherTopic: "무엇을 함께할까요?",

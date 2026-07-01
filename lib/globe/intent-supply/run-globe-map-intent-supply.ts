@@ -62,6 +62,10 @@ export async function runGlobeMapIntentSupply(
 
   const intent = resolveGlobeMapIntent(message);
 
+  if (intent.kind === "unknown") {
+    return null;
+  }
+
   if (intent.kind === "market_compose") {
     return { status: "pass", pass: "market" };
   }

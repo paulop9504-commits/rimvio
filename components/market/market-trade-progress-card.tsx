@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Calendar, Car, Check, ImageIcon, MapPin, Navigation } from "lucide-react";
+import { Calendar, Car, ImageIcon, MapPin, Navigation } from "lucide-react";
 import { toast } from "sonner";
 import { MarketCompletionTraceSheet } from "@/components/market/market-completion-trace-sheet";
+import { AgentProgressList } from "@/components/ui/agent-progress-list";
 import { MarketTradeCancelReservationPanel } from "@/components/market/market-trade-cancel-reservation-panel";
 import { MarketListingMediaRowThumb } from "@/components/market/market-listing-media-thumb";
 import { useCopy } from "@/hooks/use-copy";
@@ -32,6 +33,7 @@ import {
 } from "@/lib/resolvers/deep-links";
 import { openHrefWithFallback } from "@/lib/actions/open-with-fallback";
 import { rimvioCompactPrimaryCtaClass } from "@/lib/design/rimvio-ontology";
+import { tradeProgressStepsToAgentTasks } from "@/lib/globe/market/trade-progress-steps-to-agent-tasks";
 import { cn } from "@/lib/utils";
 
 export type MarketTradeProgressCardProps = {
@@ -39,32 +41,6 @@ export type MarketTradeProgressCardProps = {
   onUpdated?: (session: MarketTradeSessionView) => void;
   className?: string;
 };
-
-function StepIcon({ stepId, state }: { stepId: string; state: string }) {
-  const active = state === "active";
-  const done = state === "done";
-  const base = cn(
-    "flex size-7 items-center justify-center rounded-full border-2 text-[11px] font-bold",
-    done && "border-[#22c55e] bg-[#22c55e] text-white",
-    active && "border-[#22c55e] bg-white text-[#22c55e]",
-    !done && !active && "border-[#e5e8eb] bg-white text-[#b0b8c1]",
-  );
-  if (stepId === "before_departure" && (active || done)) {
-    return (
-      <span className={base} aria-hidden>
-        <Car className="size-3.5" />
-      </span>
-    );
-  }
-  if (done || (active && stepId === "done")) {
-    return (
-      <span className={base} aria-hidden>
-        <Check className="size-3.5" />
-      </span>
-    );
-  }
-  return <span className={base} aria-hidden />;
-}
 
 export function MarketTradeProgressCard({
   session,
@@ -461,31 +437,12 @@ export function MarketTradeProgressCard({
         ) : null}
 
         {showProgress && !schedulingActive ? (
-          <div className="mt-4">
-            <div className="flex items-center justify-between gap-1">
-              {session.progressSteps.map((step) => (
-                <div key={step.id} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-                  <StepIcon stepId={step.id} state={step.state} />
-                  <span
-                    className={cn(
-                      "truncate text-center text-[10px] font-medium",
-                      step.state === "active" ? "text-[#22c55e]" : "text-[#8b95a1]",
-                    )}
-                  >
-                    {step.labelKo}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <div className="relative mt-1 h-0.5 rounded-full bg-[#e5e8eb]">
-              <div
-                className="absolute inset-y-0 left-0 rounded-full bg-[#22c55e] transition-all"
-                style={{
-                  width: `${Math.max(25, (session.progressSteps.findIndex((s) => s.state === "active") + 1) * 25)}%`,
-                }}
-              />
-            </div>
-          </div>
+          <AgentProgressList
+            className="mt-4"
+            variant="light"
+            layout="horizontal"
+            tasks={tradeProgressStepsToAgentTasks(session.progressSteps)}
+          />
         ) : null}
 
         {(session.showNavigate || session.showDepart || session.isEnRoute) && (
