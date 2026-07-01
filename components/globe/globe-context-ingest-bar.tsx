@@ -20,11 +20,8 @@ import {
   GLOBE_CONTEXT_MEDIA_ACCEPT,
 } from "@/lib/feed/ingest-globe-context-capture";
 import { canQuickListMarketCompose } from "@/lib/globe/market/build-market-quick-list-draft";
-import { finishContextRun } from "@/lib/context-run/execution-feed-lifecycle";
 import { dispatchContextRun } from "@/lib/context-run/dispatch-context-run";
 import { readActiveRunState } from "@/lib/context-run/run-state-store";
-import { runGlobeComposerAction } from "@/lib/globe/run-globe-composer-action";
-import { dispatchOpenCaptureSheet } from "@/lib/nav/open-capture-sheet-bridge";
 import type { ContextRunEffectHandlers } from "@/lib/context-run/ingress-types";
 import { readPortalComposeRunState } from "@/lib/portal/portal-compose-run-store";
 import {
@@ -306,19 +303,6 @@ export const GlobeContextIngestBar = forwardRef<
       event?.preventDefault();
       const value = text.trim();
       if (!value || busy) {
-        return;
-      }
-
-      if (
-        !isDiscovery &&
-        !forceAttachToTarget &&
-        runGlobeComposerAction(value)?.kind !== "url"
-      ) {
-        finishContextRun();
-        dispatchOpenCaptureSheet({ seedText: value, source: "composer" });
-        setText("");
-        setMenuOpen(false);
-        setClarifyPlaceholder(null);
         return;
       }
 

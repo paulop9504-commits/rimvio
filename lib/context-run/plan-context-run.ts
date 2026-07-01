@@ -1,6 +1,5 @@
 import type { BoundSituation, ContextRunIngress, ContextRunPlan } from "@/lib/context-run/ingress-types";
 import { resolveMentionContractPlan } from "@/lib/context-run/plan-mention-contract";
-import { readActiveRunState } from "@/lib/context-run/run-state-store";
 import { classifyExperienceRunIntent } from "@/lib/experience-run/classify-experience-run-intent";
 import { runGlobeComposerAction } from "@/lib/globe/run-globe-composer-action";
 import {
@@ -17,10 +16,7 @@ function planPortalComposeIfEligible(
   ingress: Extract<ContextRunIngress, { kind: "text" }>,
 ): ContextRunPlan | null {
   const base = { graphId: bound.graphId, goalKo: bound.goalKo };
-  const activeRun = readActiveRunState();
-  const pending = activeRun
-    ? readPortalComposeRunState(activeRun.graphId)
-    : null;
+  const pending = readPortalComposeRunState();
 
   if (pending?.status === "waiting_slot") {
     return {
@@ -28,7 +24,8 @@ function planPortalComposeIfEligible(
       portalIntentId: pending.intentId,
       portalCategoryId: pending.categoryId,
       resumePortalRun: true,
-      ...base,
+      graphId: pending.graphId,
+      goalKo: bound.goalKo,
     };
   }
 

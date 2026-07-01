@@ -31,6 +31,8 @@ import type {
 } from "@/lib/personal-context-ask";
 import { ingestScreenshot } from "@/lib/share/ingest-screenshot";
 import { dispatchGlobeMarketProjectionLaunch } from "@/lib/portal/globe-market-projection-bridge";
+import { requestGlobeMarketQuickList } from "@/lib/portal/globe-market-quick-list-bridge";
+import { canQuickListMarketCompose } from "@/lib/globe/market/build-market-quick-list-draft";
 import { dispatchContextRun } from "@/lib/context-run/dispatch-context-run";
 import { consumeCaptureSheetSeedText } from "@/lib/nav/open-capture-sheet-bridge";
 import { cn } from "@/lib/utils";
@@ -295,7 +297,27 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
           {
             openPortal: async () => {},
             openFieldDiscovery: () => {},
-            tryQuickListMarket: async () => false,
+            tryQuickListMarket: async (composeText) => {
+              if (!onGlobeHome || !canQuickListMarketCompose(composeText)) {
+                return false;
+              }
+              const listed = await requestGlobeMarketQuickList({ composeText });
+              if (listed) {
+                setMessages((prev) => [
+                  ...prev.filter((m) => m.id !== assistantId || m.role === "user"),
+                  {
+                    id: assistantId,
+                    role: "assistant",
+                    text: copy.globe.executionFeed.marketQuickListSummary(
+                      composeText.trim().slice(0, 24),
+                    ),
+                    scope,
+                  },
+                ]);
+                window.setTimeout(() => close(), 480);
+              }
+              return listed;
+            },
             navigateUrl: (url, label) => {
               window.location.assign(url);
               toast.success(`${label} 여는 중…`);
@@ -342,9 +364,18 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
               ]);
             },
             onLaunchMarketProjection: (input) => {
+              setMessages((prev) => [
+                ...prev.filter((m) => m.id !== assistantId || m.role === "user"),
+                {
+                  id: assistantId,
+                  role: "assistant",
+                  text: copy.portal.composeRunWizardChecklist,
+                  scope,
+                },
+              ]);
               if (onGlobeHome) {
                 dispatchGlobeMarketProjectionLaunch(input);
-                close();
+                window.setTimeout(() => close(), 320);
                 return;
               }
               toast.message(copy.portal.composeRunWizardChecklist);

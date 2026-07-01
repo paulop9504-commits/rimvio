@@ -174,6 +174,10 @@ import type { PortalOpenSource } from "@/lib/portal/portal-types";
 import type { PortalIntentId } from "@/lib/portal/portal-types";
 import { subscribeGlobePortalOpen } from "@/lib/portal/globe-portal-open-bridge";
 import { subscribeGlobeMarketProjectionLaunch } from "@/lib/portal/globe-market-projection-bridge";
+import {
+  subscribeGlobeMarketQuickListRequest,
+  dispatchGlobeMarketQuickListResult,
+} from "@/lib/portal/globe-market-quick-list-bridge";
 import { isExternalPinCluster } from "@/lib/globe/merge-globe-pin-clusters";
 import type { GlobeLayerMode } from "@/lib/globe/globe-layer-mode";
 import { projectBridgeGhostClusters } from "@/lib/experience-bridge/project-bridge-ghost-clusters";
@@ -1580,6 +1584,19 @@ function GlobeHomeBody() {
       }
     });
   }, [launchMarketProjection]);
+
+  useEffect(() => {
+    return subscribeGlobeMarketQuickListRequest(async (request) => {
+      const success = await quickListMarket({
+        composeText: request.composeText,
+        eventId: request.eventId,
+      });
+      dispatchGlobeMarketQuickListResult({
+        requestId: request.requestId,
+        success,
+      });
+    });
+  }, [quickListMarket]);
 
   const trendBridgeAnchorLat =
     activeCluster?.lat ?? liveLocation?.lat ?? null;

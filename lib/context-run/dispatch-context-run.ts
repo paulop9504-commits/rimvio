@@ -75,15 +75,18 @@ export async function dispatchContextRun(
   const bound = bindSituation(ingress);
   const { graphId, goalKo } = bound;
 
-  if (ingress.kind === "text" && ingress.layerMode === "personal") {
-    dispatchExecutionFeedGoal({ graphId, goalKo });
-  }
-  ensureRunState({ graphId, goal: goalKo });
-
   const plan = planContextRun(bound);
   if (plan.kind === "noop") {
     return { graphId, status: "noop", planKind: "noop" };
   }
+
+  const runGraphId = plan.graphId ?? graphId;
+  const runGoalKo = plan.goalKo ?? goalKo;
+
+  if (ingress.kind === "text" && ingress.layerMode === "personal") {
+    dispatchExecutionFeedGoal({ graphId: runGraphId, goalKo: runGoalKo });
+  }
+  ensureRunState({ graphId: runGraphId, goal: runGoalKo });
 
   try {
     return await executeContextRunPlan(bound, plan, handlers);
@@ -141,10 +144,12 @@ async function executeContextRunPlan(
       }
 
       const activeRun = readActiveRunState();
-      const pending = activeRun
-        ? readPortalComposeRunState(activeRun.graphId)
-        : null;
-      const runGraphId = pending?.graphId ?? activeRun?.graphId ?? graphId;
+      const pending = plan.resumePortalRun
+        ? readPortalComposeRunState(plan.graphId)
+        : activeRun
+          ? readPortalComposeRunState(activeRun.graphId)
+          : null;
+      const runGraphId = plan.graphId ?? pending?.graphId ?? activeRun?.graphId ?? graphId;
 
       let resolvedEventId =
         pending?.eventId?.trim() ||

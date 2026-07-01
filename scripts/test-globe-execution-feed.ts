@@ -50,7 +50,7 @@ state = readExecutionFeedState();
 assert.equal(state.run?.expandedPillId, "intent_connect");
 
 const dock = readFileSync(join(root, "components/globe/globe-capture-dock.tsx"), "utf8");
-assert.ok(!dock.includes("GlobeExecutionFeed"), "composer chat lives in CaptureSheet");
+assert.ok(dock.includes("GlobeExecutionFeed"), "execution feed mounts above composer");
 assert.ok(!dock.includes("GlobeMapIntentPromptRail"), "legacy rail replaced");
 
 const ingest = readFileSync(

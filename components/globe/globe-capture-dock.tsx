@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { forwardRef } from "react";
 import { GlobeContextIngestBar, type GlobeContextIngestBarHandle, type GlobeContextIngestBarProps } from "@/components/globe/globe-context-ingest-bar";
+import { GlobeExecutionFeed } from "@/components/globe/execution-feed/globe-execution-feed";
 import { GlobePhotoPlaceWalkthrough } from "@/components/globe/globe-photo-place-walkthrough";
 import { GlobePhotoIngestProgressStrip } from "@/components/globe/globe-photo-ingest-progress-strip";
 import { GlobePlaceVerifyCard } from "@/components/globe/globe-place-verify-card";
@@ -130,10 +131,11 @@ export const GlobeCaptureDock = forwardRef<GlobeContextIngestBarHandle, GlobeCap
         ) : null}
 
         {!photoActive && !composeHidden ? (
-          <div className="pointer-events-none mx-auto w-full max-w-lg">
+          <div className="pointer-events-none mx-auto flex w-full max-w-lg flex-col gap-2">
             {composeAccessory ? (
               <div className="pointer-events-auto">{composeAccessory}</div>
             ) : null}
+            <GlobeExecutionFeed className="pointer-events-auto" />
             <GlobeContextIngestBar
               ref={ref}
               {...ingest}

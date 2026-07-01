@@ -5,7 +5,10 @@ import { bindSituation } from "../lib/context-run/bind-situation";
 import { planContextRun } from "../lib/context-run/plan-context-run";
 import type { ContextRunIngress } from "../lib/context-run/ingress-types";
 import { detectPortalIntentFromText } from "../lib/portal/detect-portal-intent-from-text";
-import { resetPortalComposeRunStoreForTests } from "../lib/portal/portal-compose-run-store";
+import {
+  resetPortalComposeRunStoreForTests,
+  writePortalComposeRunState,
+} from "../lib/portal/portal-compose-run-store";
 import { resolvePortalComposeRunTurn } from "../lib/portal/resolve-portal-compose-run-turn";
 import { commitEventUpsert } from "../lib/source-of-truth/commit-truth";
 
@@ -67,5 +70,23 @@ const social = resolvePortalComposeRunTurn({
   eventId: event.id,
 });
 assert.equal(social.kind, "clarify");
+
+writePortalComposeRunState({
+  graphId: "composer:핸드폰 판매",
+  intentId: "offer",
+  categoryId: "used_goods",
+  composeSeed: "핸드폰 판매",
+  accumulatedText: "핸드폰 판매",
+  eventId: event.id,
+  pendingSlotId: "product",
+  askedCount: 1,
+  status: "waiting_slot",
+  updatedAt: new Date().toISOString(),
+});
+
+const resumePlan = planFor("아이폰 15 프로", "capture_sheet");
+assert.equal(resumePlan.kind, "portal_compose_run");
+assert.equal(resumePlan.resumePortalRun, true);
+assert.equal(resumePlan.graphId, "composer:핸드폰 판매");
 
 console.log("test-portal-compose-run: ok");
