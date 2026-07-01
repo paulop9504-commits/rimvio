@@ -1,4 +1,4 @@
-import { callOpenAiText } from "@/lib/llm/openai-json-client";
+import { callLlmText } from "@/lib/llm/text-llm-client";
 import { copy } from "@/lib/copy/human-ko";
 import type { ComposeIntentMessage, IntentState } from "@/lib/portal/compose-intent/intent-state-types";
 import { parseMarketProductFromText } from "@/lib/globe/market/parse-market-product-from-text";
@@ -94,7 +94,7 @@ async function generateConversationalReplyLlm(input: {
       ? confirmedStage
       : input.intentStage;
 
-  return callOpenAiText({
+  return callLlmText({
     systemPrompt: buildComposeChatPersonaPrompt({
       intentStage: stageForPrompt,
       draft: input.draft,

@@ -4,7 +4,7 @@ import {
   isOpenAiConfigured,
 } from "@/lib/llm/openai-config";
 
-export async function callOpenAiTextJson(input: {
+export async function callOpenAiTextJsonDirect(input: {
   systemPrompt: string;
   userText: string;
   temperature?: number;
@@ -51,7 +51,7 @@ export async function callOpenAiTextJson(input: {
 }
 
 /** Plain-text chat completion — persona replies (not JSON). */
-export async function callOpenAiText(input: {
+export async function callOpenAiTextDirect(input: {
   systemPrompt: string;
   userText: string;
   temperature?: number;
@@ -149,4 +149,23 @@ export async function callOpenAiVisionJson(input: {
   };
 
   return payload.choices?.[0]?.message?.content?.trim() ?? "";
+}
+
+/** @deprecated Prefer callLlmTextJson — OpenAI-only. */
+export async function callOpenAiTextJson(input: {
+  systemPrompt: string;
+  userText: string;
+  temperature?: number;
+}): Promise<string | null> {
+  return callOpenAiTextJsonDirect(input);
+}
+
+/** @deprecated Prefer callLlmText — OpenAI-only. */
+export async function callOpenAiText(input: {
+  systemPrompt: string;
+  userText: string;
+  temperature?: number;
+  maxTokens?: number;
+}): Promise<string | null> {
+  return callOpenAiTextDirect(input);
 }

@@ -1,4 +1,4 @@
-import { callOpenAiTextJson } from "@/lib/llm/openai-json-client";
+import { callLlmTextJson } from "@/lib/llm/text-llm-client";
 import { mergeComposeDraft } from "@/lib/portal/compose-draft/draft-utils";
 import { parseComposeOneTurn } from "@/lib/portal/compose-draft/parse-compose-one-turn";
 import { getComposeSchema } from "@/lib/portal/compose-draft/schema-registry";
@@ -60,7 +60,7 @@ async function extractSellItemDraftSlotsLlm(input: {
 
   const historyBlock = formatComposeHistoryForLlm(input.history, input.newMessage);
 
-  const raw = await callOpenAiTextJson({
+  const raw = await callLlmTextJson({
     systemPrompt: [
       buildComposeExtractSystemPrompt(fieldList),
       "Current draft:",

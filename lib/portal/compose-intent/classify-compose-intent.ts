@@ -1,4 +1,4 @@
-import { callOpenAiTextJson } from "@/lib/llm/openai-json-client";
+import { callLlmTextJson } from "@/lib/llm/text-llm-client";
 import type { ComposeSchemaId } from "@/lib/portal/compose-draft/types";
 import type {
   ComposeIntentMessage,
@@ -112,7 +112,7 @@ async function classifyComposeIntentLlm(input: {
   newMessage: string;
   previousStage: IntentState | null;
 }): Promise<IntentState | null> {
-  const raw = await callOpenAiTextJson({
+  const raw = await callLlmTextJson({
     systemPrompt: [
       "Classify Korean chat intent for a marketplace assistant.",
       'Return JSON: { "stage": "chatting"|"soft_signal"|"confirmed", "possibleIntent"?: "sell_item", "resourceType"?: "sell_item" }.',

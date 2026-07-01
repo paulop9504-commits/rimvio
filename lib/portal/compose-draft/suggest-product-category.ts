@@ -1,4 +1,4 @@
-import { callOpenAiTextJson } from "@/lib/llm/openai-json-client";
+import { callLlmTextJson } from "@/lib/llm/text-llm-client";
 import {
   classifyProductCategory,
   getProductCategorySchema,
@@ -23,7 +23,7 @@ async function suggestCategoryLlm(
   productName: string,
   context?: string,
 ): Promise<ProductCategoryId | null> {
-  const raw = await callOpenAiTextJson({
+  const raw = await callLlmTextJson({
     systemPrompt: [
       "Classify Korean marketplace product into one category.",
       `Return JSON: { "categoryId": ${LLM_IDS.map((id) => `"${id}"`).join("|")} }`,
