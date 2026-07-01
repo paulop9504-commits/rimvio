@@ -732,6 +732,8 @@ export const copyEn: Copy = {
       marketPortalHint: "Continue below in one line",
       marketProductSummary: (name: string) => `Preparing 「${name}」`,
       marketQuickListSummary: (name: string) => `Listing 「${name}」 on the outer globe`,
+      marketFeedQuickListCta: "List in one line",
+      marketFeedWizardCta: "Customize details",
       marketPlaceLabel: "Meet-up place",
       runClarifyStep: "Context check",
       runClarifyTitle: "One more thing",
