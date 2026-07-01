@@ -32,6 +32,7 @@ import { resolveResourceStatus } from "@/lib/resource/resolve-resource-status";
 import { readPortalComposeRunState } from "@/lib/portal/portal-compose-run-store";
 import { resetGlobeComposeChatSession } from "@/lib/portal/reset-globe-compose-chat";
 import type { GlobeChatMessage } from "@/lib/globe/chat/globe-chat-session-types";
+import { globeChatLight } from "@/lib/design/globe-chat-light-theme";
 import { cn } from "@/lib/utils";
 
 export type GlobeChatScreenProps = {
@@ -217,22 +218,34 @@ export function GlobeChatScreen({
     <AnimatePresence>
       <motion.div
         key="globe-chat-screen"
-        className="fixed inset-0 z-[60] flex flex-col bg-[#0b0c0f]"
+        className={cn("fixed inset-0 z-[60] flex flex-col", globeChatLight.screen)}
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
         transition={{ type: "spring", damping: 32, stiffness: 340 }}
         data-globe-chat-screen
+        data-globe-chat-tone="light"
       >
-        <header className="flex shrink-0 items-center justify-between border-b border-white/8 px-4 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
+        <header
+          className={cn(
+            "flex shrink-0 items-center justify-between px-4 pb-2.5 pt-[max(0.75rem,env(safe-area-inset-top))]",
+            globeChatLight.headerBorder,
+            "border-b bg-white/80 backdrop-blur-md",
+          )}
+        >
           <div className="min-w-0">
-            <p className="text-[13px] font-semibold text-white/90">{copy.globe.chatScreenTitle}</p>
-            <p className="mt-0.5 text-[11px] text-white/45">{headerSubtitle}</p>
+            <p className={cn("text-[15px] font-semibold tracking-[-0.01em]", globeChatLight.title)}>
+              {copy.globe.chatScreenTitle}
+            </p>
+            <p className={cn("mt-0.5 text-[12px]", globeChatLight.subtitle)}>{headerSubtitle}</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="flex size-9 items-center justify-center rounded-full bg-white/8 text-white ring-1 ring-white/12"
+            className={cn(
+              "flex size-9 items-center justify-center rounded-full transition-colors",
+              globeChatLight.closeBtn,
+            )}
             aria-label={copy.globe.chatScreenCloseAria}
           >
             <X className="size-4" aria-hidden />
@@ -243,6 +256,7 @@ export function GlobeChatScreen({
           <ComposeIntentSpectrumBar
             intentStage={composeState.intentStage}
             onReset={handleResetComposeChat}
+            tone="light"
           />
         ) : null}
 
@@ -251,6 +265,7 @@ export function GlobeChatScreen({
             draft={flowDraft}
             flow={SELL_ITEM_FLOW}
             highlightComplete={highlightBar}
+            tone="light"
           />
         ) : null}
 
@@ -259,7 +274,7 @@ export function GlobeChatScreen({
           className="min-h-0 flex-1 overflow-y-auto px-4 py-3 pb-6"
           data-globe-chat-messages
         >
-          <div className="mx-auto flex w-full max-w-lg flex-col gap-3">
+          <div className="mx-auto flex w-full max-w-lg flex-col gap-3.5">
             {showEmptyState ? <GlobeChatEmptyState /> : null}
             {messages.map((message) => {
               if (message.kind === "resource_complete") {
@@ -267,6 +282,7 @@ export function GlobeChatScreen({
                   <div key={message.id} className="flex justify-start">
                     <GlobeChatCompletionCard
                       message={message}
+                      tone="light"
                       onViewInnerGlobe={
                         onViewInnerGlobe
                           ? () =>
@@ -294,7 +310,7 @@ export function GlobeChatScreen({
               if (message.kind === "image") {
                 return (
                   <div key={message.id} className="flex justify-end">
-                    <div className="relative max-w-[72%] overflow-hidden rounded-[1rem] ring-1 ring-white/12">
+                    <div className="relative max-w-[72%] overflow-hidden rounded-[1rem] shadow-[0_2px_10px_rgba(0,0,0,0.1)] ring-1 ring-black/[0.06]">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={message.remoteUrl ?? message.localUrl}
@@ -322,12 +338,11 @@ export function GlobeChatScreen({
                     : message.choices ?? [];
                 return (
                   <div key={message.id} className="flex justify-start">
-                    <div className="max-w-[92%] rounded-[1rem] rounded-bl-md bg-[#121316]/92 px-3 py-2.5 ring-1 ring-white/14">
-                      <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-white/92">
-                        {message.text}
-                      </p>
+                    <div className={cn("max-w-[92%]", globeChatLight.aiBubble)}>
+                      <p className="whitespace-pre-wrap">{message.text}</p>
                       <GlobeChatSlotChips
                         choices={chipChoices}
+                        tone="light"
                         variant={
                           message.clarifyKind === "category_confirm" ||
                           message.clarifyKind === "price_confirm"
@@ -351,7 +366,7 @@ export function GlobeChatScreen({
               if (message.role === "user") {
                 return (
                   <div key={message.id} className="flex justify-end">
-                    <p className="max-w-[88%] whitespace-pre-wrap rounded-[1rem] rounded-br-md bg-white/14 px-3 py-2 text-[13px] leading-relaxed text-white ring-1 ring-white/12">
+                    <p className={cn("max-w-[88%] whitespace-pre-wrap", globeChatLight.userBubble)}>
                       {message.text}
                     </p>
                   </div>
@@ -359,7 +374,7 @@ export function GlobeChatScreen({
               }
               return (
                 <div key={message.id} className="flex justify-start">
-                  <p className="max-w-[92%] whitespace-pre-wrap rounded-[1rem] rounded-bl-md bg-[#121316]/92 px-3 py-2.5 text-[13px] leading-relaxed text-white/92 ring-1 ring-white/14">
+                  <p className={cn("max-w-[92%] whitespace-pre-wrap", globeChatLight.aiBubble)}>
                     {message.text}
                   </p>
                 </div>
@@ -368,11 +383,11 @@ export function GlobeChatScreen({
 
             {chatMatchTasks ? (
               <div className="flex justify-start">
-                <div className="max-w-[92%] rounded-[1rem] rounded-bl-md bg-[#121316]/92 px-3 py-2.5 ring-1 ring-white/14">
+                <div className={cn("max-w-[92%]", globeChatLight.cardSurface)}>
                   <AgentProgressList
                     titleKo={copy.globe.agentProgress.matchSearchTitle}
                     tasks={chatMatchTasks}
-                    variant="dark"
+                    variant="light"
                     layout="vertical"
                   />
                 </div>
@@ -383,6 +398,7 @@ export function GlobeChatScreen({
               <GlobeComposeDraftCard
                 graphId={graphId}
                 composeDraft={artifact.composeDraft}
+                tone="light"
                 primaryActionLabelKo={artifact.primaryActionLabelKo}
                 secondaryActionLabelKo={artifact.secondaryActionLabelKo}
                 onPrimaryAction={onArtifactPrimaryAction}
@@ -393,7 +409,10 @@ export function GlobeChatScreen({
         </div>
 
         <div
-          className="relative z-[2] shrink-0 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2"
+          className={cn(
+            "relative z-[2] shrink-0 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2.5",
+            globeChatLight.composerBar,
+          )}
           data-globe-chat-composer
         >
           <div className="mx-auto w-full max-w-[min(100%,20rem)] space-y-2">
@@ -401,7 +420,7 @@ export function GlobeChatScreen({
               <GlobeChatAnswerHint
                 questionKo={answerHint}
                 tone="light"
-                className="rounded-2xl bg-white px-3.5 py-2.5 shadow-[0_6px_20px_rgba(0,0,0,0.12)] ring-1 ring-black/[0.05]"
+                className="rounded-2xl bg-white px-3.5 py-2.5 shadow-[0_2px_10px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.05]"
               />
             ) : null}
             <GlobeContextIngestBar

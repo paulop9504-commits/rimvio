@@ -9,6 +9,7 @@ export type ComposeIntentSpectrumBarProps = {
   intentStage: IntentState;
   onReset: () => void;
   className?: string;
+  tone?: "dark" | "light";
 };
 
 const STAGES = [
@@ -32,17 +33,20 @@ export function ComposeIntentSpectrumBar({
   intentStage,
   onReset,
   className,
+  tone = "dark",
 }: ComposeIntentSpectrumBarProps) {
   if (intentStage.stage === "chatting") {
     return null;
   }
 
   const activeIndex = readActiveIndex(intentStage.stage);
+  const light = tone === "light";
 
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center gap-2 border-b border-white/8 px-3 py-1.5",
+        "flex shrink-0 items-center gap-2 px-3 py-2",
+        light ? "border-b border-black/[0.06] bg-white/70" : "border-b border-white/8",
         className,
       )}
       data-compose-intent-spectrum
@@ -55,20 +59,32 @@ export function ComposeIntentSpectrumBar({
               <span
                 className={cn(
                   "size-1.5 shrink-0 rounded-full transition-colors",
-                  active ? "bg-[#34c759]" : "bg-white/20",
+                  active ? "bg-[#34c759]" : light ? "bg-[#d1d6db]" : "bg-white/20",
                 )}
                 aria-hidden
               />
               <span
                 className={cn(
                   "truncate text-[10px] font-medium",
-                  active ? "text-white/88" : "text-white/35",
+                  active
+                    ? light
+                      ? "text-[#191f28]"
+                      : "text-white/88"
+                    : light
+                      ? "text-[#b0b8c1]"
+                      : "text-white/35",
                 )}
               >
                 {stage.labelKo}
               </span>
               {index < STAGES.length - 1 ? (
-                <span className="mx-0.5 h-px min-w-[6px] flex-1 bg-white/12" aria-hidden />
+                <span
+                  className={cn(
+                    "mx-0.5 h-px min-w-[6px] flex-1",
+                    light ? "bg-black/[0.06]" : "bg-white/12",
+                  )}
+                  aria-hidden
+                />
               ) : null}
             </div>
           );
@@ -77,7 +93,12 @@ export function ComposeIntentSpectrumBar({
       <button
         type="button"
         onClick={onReset}
-        className="flex size-6 shrink-0 items-center justify-center rounded-full bg-white/8 text-white/70 ring-1 ring-white/10"
+        className={cn(
+          "flex size-6 shrink-0 items-center justify-center rounded-full ring-1 transition-colors",
+          light
+            ? "bg-white text-[#8b95a1] ring-black/[0.06] hover:bg-[#f5f6f8]"
+            : "bg-white/8 text-white/70 ring-white/10",
+        )}
         aria-label={copy.globe.intentSpectrumResetAria}
       >
         <X className="size-3" aria-hidden />
