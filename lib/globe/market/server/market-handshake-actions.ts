@@ -92,6 +92,11 @@ export async function acceptListingMarketHandshake(
 
   await patchMarketHandshake(supabase, handshake.id, { tradeStatus: "chat" });
 
+  const { scheduleAgentCoordinationBootstrap } = await import(
+    "@/lib/globe/market/coordination/server/agent-coordination-room-server"
+  );
+  scheduleAgentCoordinationBootstrap(supabase, handshake.id);
+
   return { threadId, handshakeId: handshake.id };
 }
 
@@ -140,6 +145,11 @@ export async function startBuyerMarketHandshakeChat(
     threadId: handshake.threadId,
     buyerStartedAtIso: new Date().toISOString(),
   });
+
+  const { scheduleAgentCoordinationBootstrap } = await import(
+    "@/lib/globe/market/coordination/server/agent-coordination-room-server"
+  );
+  scheduleAgentCoordinationBootstrap(supabase, handshake.id);
 
   return { threadId: handshake.threadId };
 }

@@ -1,16 +1,26 @@
-import { geminiApiKey, geminiVisionModel } from "@/lib/locate/gemini-config";
+import {
+  geminiApiKey,
+  geminiChatThinkingBudget,
+  geminiGenerationConfig,
+  geminiJsonMaxOutputTokens,
+  geminiTextMaxOutputTokens,
+  geminiVisionModel,
+} from "@/lib/locate/gemini-config";
 
 function readGeminiText(payload: {
   candidates?: Array<{
     content?: { parts?: Array<{ text?: string }> };
+    finishReason?: string;
   }>;
-}): string | null {
+}): { text: string | null; truncated: boolean } {
+  const candidate = payload.candidates?.[0];
   const text =
-    payload.candidates?.[0]?.content?.parts
+    candidate?.content?.parts
       ?.map((part) => part.text ?? "")
       .join("")
       .trim() ?? "";
-  return text || null;
+  const truncated = candidate?.finishReason === "MAX_TOKENS";
+  return { text: text || null, truncated };
 }
 
 async function callGeminiGenerateContent(input: {
@@ -19,10 +29,11 @@ async function callGeminiGenerateContent(input: {
   temperature?: number;
   maxOutputTokens?: number;
   jsonMode?: boolean;
-}): Promise<string | null> {
+  thinkingBudget?: number | null;
+}): Promise<{ text: string | null; truncated: boolean }> {
   const apiKey = geminiApiKey();
   if (!apiKey) {
-    return null;
+    return { text: null, truncated: false };
   }
 
   const model = geminiVisionModel();
@@ -41,11 +52,12 @@ async function callGeminiGenerateContent(input: {
             parts: [{ text: input.userText }],
           },
         ],
-        generationConfig: {
-          temperature: input.temperature ?? 0.8,
-          maxOutputTokens: input.maxOutputTokens ?? 120,
-          ...(input.jsonMode ? { responseMimeType: "application/json" } : {}),
-        },
+        generationConfig: geminiGenerationConfig({
+          temperature: input.temperature,
+          maxOutputTokens: input.maxOutputTokens,
+          jsonMode: input.jsonMode,
+          thinkingBudget: input.thinkingBudget,
+        }),
       }),
     });
 
@@ -54,14 +66,14 @@ async function callGeminiGenerateContent(input: {
       console.error(
         `[gemini-text] generateContent failed ${response.status}: ${detail.slice(0, 240)}`,
       );
-      return null;
+      return { text: null, truncated: false };
     }
 
     const payload = (await response.json()) as Parameters<typeof readGeminiText>[0];
     return readGeminiText(payload);
   } catch (error) {
     console.error("[gemini-text] request failed", error);
-    return null;
+    return { text: null, truncated: false };
   }
 }
 
@@ -71,25 +83,30 @@ export async function callGeminiText(input: {
   temperature?: number;
   maxTokens?: number;
 }): Promise<string | null> {
-  return callGeminiGenerateContent({
+  const result = await callGeminiGenerateContent({
     systemPrompt: input.systemPrompt,
     userText: input.userText,
     temperature: input.temperature,
-    maxOutputTokens: input.maxTokens ?? 120,
+    maxOutputTokens: input.maxTokens ?? geminiTextMaxOutputTokens(),
     jsonMode: false,
+    thinkingBudget: geminiChatThinkingBudget(),
   });
+  return result.text;
 }
 
 export async function callGeminiTextJson(input: {
   systemPrompt: string;
   userText: string;
   temperature?: number;
+  maxTokens?: number;
 }): Promise<string | null> {
-  return callGeminiGenerateContent({
+  const result = await callGeminiGenerateContent({
     systemPrompt: input.systemPrompt,
     userText: input.userText,
     temperature: input.temperature ?? 0.1,
-    maxOutputTokens: 512,
+    maxOutputTokens: input.maxTokens ?? geminiJsonMaxOutputTokens(),
     jsonMode: true,
+    thinkingBudget: null,
   });
+  return result.text;
 }

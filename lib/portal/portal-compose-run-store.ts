@@ -1,4 +1,14 @@
 import type { IntentState } from "@/lib/portal/compose-intent/intent-state-types";
+import type {
+  DescriptionDraftStatus,
+  MarketMacroStage,
+  ProductTaxonomyLeafId,
+  ProductTaxonomyStatus,
+} from "@/lib/portal/compose-draft/product-taxonomy-registry";
+import type {
+  MarketCategoryId,
+  MarketIntentRole,
+} from "@/lib/globe/market/market-intent-types";
 import type { MarketIntentDraft } from "@/lib/globe/market/market-intent-types";
 import type {
   ComposeClarifyKind,
@@ -22,19 +32,27 @@ export type PortalComposeRunState = {
   pendingSlotId: string | null;
   askedCount: number;
   status: "waiting_slot" | "conversing" | "drafting" | "ready";
+  macroStage?: MarketMacroStage;
   intentStage?: IntentState | null;
+  marketRole?: MarketIntentRole | null;
   composeSchemaId?: ComposeSchemaId | null;
   composeDraft?: Partial<SellItemDraft> | null;
   marketDraft?: MarketIntentDraft | null;
   socialSlots?: Partial<Record<PortalSocialSlotId, string>>;
+  taxonomyStatus?: ProductTaxonomyStatus;
+  taxonomyLeafId?: ProductTaxonomyLeafId | null;
+  taxonomyCandidateIds?: ProductTaxonomyLeafId[] | null;
   productCategoryId?: ProductCategoryId | null;
   productCategoryStatus?: ProductCategoryStatus;
   proposedCategoryId?: ProductCategoryId | null;
+  marketCategoryId?: MarketCategoryId | null;
   pendingClarifyKind?: ComposeClarifyKind | null;
   slotExtras?: Partial<Record<string, string>> | null;
   skippedSlots?: string[] | null;
   detailSlotFill?: boolean;
   pendingPriceConfirmKrw?: number | null;
+  descriptionStatus?: DescriptionDraftStatus;
+  descriptionDraftKo?: string | null;
   updatedAt: string;
 };
 

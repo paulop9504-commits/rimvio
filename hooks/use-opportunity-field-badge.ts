@@ -17,14 +17,16 @@ import {
   listOpportunityPills,
   type OpportunityFieldCopy,
 } from "@/lib/globe/opportunity-field";
+import { shouldSkipGlobeFetch } from "@/lib/globe/globe-fetch-min-interval";
 
 export type OpportunityFieldBadgeCounts = {
   matchedCount: number;
   browseCount: number;
 };
 
-const PASSIVE_POLL_MS = 60_000;
+const PASSIVE_POLL_MS = 90_000;
 const DEFAULT_RADIUS_KM = 15;
+const DISCOVERY_FETCH_MIN_MS = 60_000;
 
 function mergeOwnIntents(
   local: readonly MarketIntentRecord[],
@@ -95,6 +97,9 @@ export function useOpportunityFieldBadge(input: {
 
   useEffect(() => {
     if (!input.enabled) {
+      return;
+    }
+    if (shouldSkipGlobeFetch("field:opportunity-discovery", DISCOVERY_FETCH_MIN_MS)) {
       return;
     }
     let cancelled = false;

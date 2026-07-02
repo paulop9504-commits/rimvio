@@ -79,7 +79,6 @@ export function useGlobeAnimationPower(input: {
       root.addEventListener(eventName, markActive, { passive: true });
     }
     controls.addEventListener("start", markActive);
-    controls.addEventListener("change", markActive);
     controls.addEventListener("end", onControlEnd);
     document.addEventListener("visibilitychange", onVisibility);
 
@@ -98,7 +97,6 @@ export function useGlobeAnimationPower(input: {
         root.removeEventListener(eventName, markActive);
       }
       controls.removeEventListener("start", markActive);
-      controls.removeEventListener("change", markActive);
       controls.removeEventListener("end", onControlEnd);
       document.removeEventListener("visibilitychange", onVisibility);
       applyGlobeAnimationPower(globe, "full");

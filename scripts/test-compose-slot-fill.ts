@@ -4,9 +4,11 @@ import {
   parseCategoryConfirmResponse,
   parseCategoryPickResponse,
 } from "../lib/portal/compose-draft/parse-category-response";
+import { buildCategoryPickShortlist } from "../lib/portal/compose-draft/suggest-product-category";
 import { parseSlotAnswer } from "../lib/portal/compose-draft/parse-slot-answer";
 import { parseComposePriceKrw } from "../lib/portal/compose-draft/parse-compose-price-krw";
 import { runComposeSlotFillTurn } from "../lib/portal/compose-draft/run-compose-slot-fill";
+import { readSellItemDescriptionStage } from "../lib/portal/compose-draft/sell-item-flow";
 
 async function main() {
   assert.equal(classifyProductCategory("아이폰15프로"), "smartphone");
@@ -14,6 +16,17 @@ async function main() {
   assert.equal(parseCategoryConfirmResponse("맞아요"), "yes");
   assert.equal(parseCategoryConfirmResponse("아니요"), "no");
   assert.equal(parseCategoryPickResponse("스마트폰"), "smartphone");
+  assert.equal(parseCategoryPickResponse("기타"), "generic");
+
+  const shortlist = buildCategoryPickShortlist({
+    productName: "아이패드 프로",
+    context: "태블릿 같은데 확실하진 않아요",
+  });
+  assert.ok(shortlist.length <= 4);
+  assert.deepEqual(
+    shortlist.map((item) => item.categoryId),
+    ["smartphone", "laptop", "generic"],
+  );
 
   const first = await runComposeSlotFillTurn({
     resumeState: null,
@@ -223,6 +236,66 @@ async function main() {
     assert.equal(categoryFlow.productCategoryStatus, "confirmed");
   }
 
+  const categoryConfirmPrompt = await runComposeSlotFillTurn({
+    resumeState: {
+      graphId: "composer:iphone-confirm",
+      intentId: "offer",
+      categoryId: "used_goods",
+      composeSeed: "아이폰15프로",
+      accumulatedText: "아이폰15프로",
+      eventId: "evt-confirm",
+      pendingSlotId: null,
+      askedCount: 0,
+      status: "drafting",
+      composeSchemaId: "sell_item",
+      composeDraft: { productName: "아이폰15프로" },
+      updatedAt: new Date().toISOString(),
+    },
+    message: "아이폰15프로",
+    schemaId: "sell_item",
+    graphId: "composer:iphone-confirm",
+    accumulatedText: "아이폰15프로",
+  });
+  assert.equal(categoryConfirmPrompt.kind, "category_confirm");
+  if (categoryConfirmPrompt.kind === "category_confirm") {
+    assert.match(categoryConfirmPrompt.questionKo, /휴대폰 쪽 스마트폰/u);
+    assert.doesNotMatch(categoryConfirmPrompt.questionKo, /분류/u);
+  }
+
+  const categoryPickPrompt = await runComposeSlotFillTurn({
+    resumeState: {
+      graphId: "composer:pick",
+      intentId: "offer",
+      categoryId: "used_goods",
+      composeSeed: "아이패드 프로",
+      accumulatedText: "아이패드 프로",
+      eventId: "evt-pick",
+      pendingSlotId: "__category__",
+      pendingClarifyKind: "category_confirm",
+      proposedCategoryId: "smartphone",
+      productCategoryStatus: "proposed",
+      askedCount: 1,
+      status: "waiting_slot",
+      composeSchemaId: "sell_item",
+      composeDraft: { productName: "아이패드 프로" },
+      updatedAt: new Date().toISOString(),
+    },
+    message: "아니요",
+    answerText: "아니요",
+    schemaId: "sell_item",
+    graphId: "composer:pick",
+    accumulatedText: "아이패드 프로",
+  });
+  assert.equal(categoryPickPrompt.kind, "category_pick");
+  if (categoryPickPrompt.kind === "category_pick") {
+    assert.ok(categoryPickPrompt.categoryOptions.length <= 4);
+    assert.deepEqual(
+      categoryPickPrompt.categoryOptions.map((item) => item.id),
+      ["smartphone", "laptop", "generic"],
+    );
+    assert.match(categoryPickPrompt.questionKo, /기타/u);
+  }
+
   const oneTurnCombo = await runComposeSlotFillTurn({
     resumeState: {
       graphId: "composer:combo",
@@ -285,6 +358,31 @@ async function main() {
     assert.equal(skipReask.draft.condition, "사용감 있음");
     assert.notEqual(skipReask.draft.productName, undefined);
   }
+
+  const descriptionReady = readSellItemDescriptionStage({
+    draft: {
+      productName: "아이폰15프로",
+      priceKrw: 800_000,
+      condition: "배터리 92%",
+      placeLabel: "대전 둔산동",
+      photos: ["local:1"],
+    },
+  });
+  assert.equal(descriptionReady.macroStage, "description_ready");
+  assert.equal(descriptionReady.descriptionStatus, "ready");
+
+  const descriptionEdited = readSellItemDescriptionStage({
+    draft: {
+      productName: "아이폰15프로",
+      priceKrw: 800_000,
+      condition: "배터리 92%",
+      placeLabel: "대전 둔산동",
+      photos: ["local:1"],
+      note: "박스 있고 상태 좋아요.",
+    },
+  });
+  assert.equal(descriptionEdited.macroStage, "publish_review");
+  assert.equal(descriptionEdited.descriptionStatus, "edited");
 
   console.log("test-compose-slot-fill: ok");
 }

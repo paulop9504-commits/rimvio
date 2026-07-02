@@ -1,48 +1,31 @@
 ---
-description: Globe = condition creation · Field = condition execution (Rimvio core split)
-globs:
-  - lib/context-run/**
-  - lib/globe/intent-supply/**
-  - lib/portal/compose-intent/**
-  - lib/portal/resolve-portal-compose-run-turn.ts
-  - components/globe/**
-  - components/field/**
-  - lib/resource/**
+description: Rimvio UX Constitution — Globe=conditions · Field=execution (PR classifier)
+alwaysApply: true
 ---
 
-# Globe ↔ Field (conditions architecture)
+# Rimvio UX Constitution
 
-**One line:** Globe defines *what you want* (conditions). Field shows *how wants get fulfilled* (match · action · execute).
+**Canonical:** `docs/RIMVIO_UX_CONSTITUTION.md`
 
-| Surface | Role | UI |
-|---------|------|-----|
-| **Globe** | Condense intent → conditions | Chat only (create). Map = pins only (result). No checklist/card on map. |
-| **Field** | Match conditions · run state machine | Buttons · trades tab · ResourceStatus. Zero friction after confirm. |
+## 분류기 (한 줄 — 모든 기능·PR·태스크)
 
-## Globe (condition creation)
+> **이 순간 답이 사실상 하나(Yes)뿐인가?**
 
-- Chat is the **only** creation ingress (`dispatchContextRun` → `portal_compose_run` / compose converse).
-- Intent spectrum: `chatting` → `soft_signal` → `confirmed` — **no draft until confirmed**.
-- Slot fill + persona reply = completing the condition set; photos use message pipeline.
-- `map_intent_supply` / `context_connect` only when NL intent is **explicit** (lodging · food · recall · connect signal) — never default for greetings or unknown text.
+| | |
+|---|---|
+| **예** | → **Field** 버튼 / 상태머신 (`MarketTradeProgressCard`, trades tab) |
+| **아니오** | → **Globe** 채팅 (`portal_compose_run`, `compose_converse`) — **기존 파이프라인 재사용, 새 UI 금지** |
 
-## Field (condition execution)
+자연어가 필요 없어지면 채팅을 강제하지 않는다.
 
-- Matching = comparing embedded conditions.
-- Dashboard = monitor in-flight matches (views · inquiries · candidates).
-- Post-confirm: **buttons + state machine** (schedule · confirm · depart) — not chat round-trips for yes/no.
-- No new resource creation on Field — view + enter existing chat/trade pipelines only.
+## 두 표면
 
-## Classifier (every new feature)
-
-1. **Creates or refines intent/conditions?** → Globe (chat).
-2. **Operates on existing conditions (match · execute · monitor)?** → Field (button / FSM).
-
-**Answer is effectively one (Yes)?** → button. **Multiple directions?** → chat.
+- **Globe** — 조건 생성. 채팅만. 지도=핀만. `chatting`→`soft_signal`→`confirmed` 후 draft.
+- **Field** — 조건 실행·매칭·모니터. 버튼+FSM. 새 자원 생성 금지.
 
 ## PR reject
 
-- Unknown composer text → `context_connect` or auto-bind active map cluster.
-- Execution-step confirmations re-opened as AI chat on Globe.
-- Draft card / checklist on `globe-flat-map-stage`.
-- Field surfaces that create new resources (only chat creates).
+- Unknown text → `context_connect` / cluster auto-bind
+- Post-confirm yes/no in Globe chat
+- Draft/checklist on map · Field resource creation UI
+- Persona + slot extraction in one LLM call

@@ -16,6 +16,8 @@ function main() {
   const needsNote = buildSlotReviewAssistantKo("sell_item", {
     productName: "아이폰15",
     priceKrw: 700_000,
+    condition: "상태 좋음",
+    placeLabel: "계산동",
     photos: ["local:1"],
     note: "",
   });
@@ -24,6 +26,8 @@ function main() {
   const ready = buildSlotReviewAssistantKo("sell_item", {
     productName: "아이폰15",
     priceKrw: 700_000,
+    condition: "상태 좋음",
+    placeLabel: "계산동",
     photos: ["local:1"],
     note: "박스 있음",
   });

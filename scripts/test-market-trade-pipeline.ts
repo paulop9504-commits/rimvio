@@ -2,10 +2,12 @@ import assert from "node:assert/strict";
 
 import { filterOpportunityRowsExcludingActiveTrades } from "../lib/globe/opportunity-field/filter-rows-excluding-active-trades";
 import {
+  findMarketTradeSessionForPair,
   hasActiveMarketTradeForListing,
   isExplicitMarketTradePipeline,
   isMarketListingReservedForOthers,
   isMarketTradePipelineActive,
+  isNonTerminalMarketTradeStatus,
   normalizeMarketTradeStatus,
   shouldIncludeInActiveMarketTradeList,
 } from "../lib/globe/market/market-trade-pipeline";
@@ -224,6 +226,24 @@ assert.deepEqual(
   ),
   ["listing-b"],
   "confirmed meet hides listing for everyone",
+);
+
+assert.equal(isNonTerminalMarketTradeStatus("chat"), true);
+assert.equal(isNonTerminalMarketTradeStatus("completed"), false);
+assert.equal(
+  findMarketTradeSessionForPair(
+    [
+      sessionStub({
+        handshakeId: "hs-1",
+        listingIntentId: "listing-a",
+        seekingIntentId: seeking1,
+        tradeStatus: "chat",
+      }),
+    ],
+    "listing-a",
+    seeking1,
+  )?.handshakeId,
+  "hs-1",
 );
 
 console.log("test-market-trade-pipeline: ok");

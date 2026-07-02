@@ -11,6 +11,7 @@ import {
 } from "react";
 import Globe from "globe.gl";
 import type { GlobeInstance } from "globe.gl";
+import { createGestureUpdateCoalescer } from "@/lib/globe/coalesce-gesture-updates";
 import { GLOBE_OVERVIEW_POINT_OF_VIEW } from "@/lib/experience-graph/globe-overview-view";
 import { createGlobe3dPinElement, createGlobe3dClusterPinElement, createGlobe3dDotPinElement, createGlobe3dMarketPinElement } from "@/lib/globe/create-globe-3d-pin-element";
 import { createGlobeLodgingMarkerElement } from "@/lib/globe/create-globe-lodging-marker-element";
@@ -318,7 +319,25 @@ export const RimvioGlobe3D = memo(
         return;
       }
 
+      const relocateMoveCoalescer = createGestureUpdateCoalescer<{
+        pinId: string;
+        lat: number;
+        lng: number;
+      }>((coords) => {
+        relocatePreviewRef.current = coords;
+        const rows = (globe.htmlElementsData() as GlobeHtmlMapElement[]).map(
+          (element) => {
+            if (!isClassifiedGlobePin(element) || element.id !== coords.pinId) {
+              return element;
+            }
+            return { ...element, lat: coords.lat, lng: coords.lng };
+          },
+        );
+        globe.htmlElementsData(rows);
+      });
+
       const finishRelocate = (event: PointerEvent) => {
+        relocateMoveCoalescer.flushNow();
         const pinId = relocatingPinIdRef.current;
         if (!pinId) {
           return;
@@ -364,26 +383,18 @@ export const RimvioGlobe3D = memo(
         if (!coords) {
           return;
         }
-        relocatePreviewRef.current = {
+        relocateMoveCoalescer.push({
           pinId: relocatingPinId,
           lat: coords.lat,
           lng: coords.lng,
-        };
-        const rows = (globe.htmlElementsData() as GlobeHtmlMapElement[]).map(
-          (element) => {
-            if (!isClassifiedGlobePin(element) || element.id !== relocatingPinId) {
-              return element;
-            }
-            return { ...element, lat: coords.lat, lng: coords.lng };
-          },
-        );
-        globe.htmlElementsData(rows);
+        });
       };
 
       window.addEventListener("pointermove", onMove, { passive: false });
       window.addEventListener("pointerup", finishRelocate, { passive: false });
       window.addEventListener("pointercancel", finishRelocate, { passive: false });
       return () => {
+        relocateMoveCoalescer.cancel();
         window.removeEventListener("pointermove", onMove);
         window.removeEventListener("pointerup", finishRelocate);
         window.removeEventListener("pointercancel", finishRelocate);
@@ -728,21 +739,26 @@ export const RimvioGlobe3D = memo(
         flushDeferredGlobeVisuals();
       });
 
-      const warmthSyncTimer: ReturnType<typeof setTimeout> | null = null;
+      const warmthSyncTimer: { current: ReturnType<typeof setTimeout> | null } = {
+        current: null,
+      };
       let lastWarmthSyncAt = 0;
 
       const scheduleWarmthSync = () => {
         if (gestureActiveRef.current) {
           return;
         }
-        if (warmthSyncTimer != null) {
+        if (warmthSyncTimer.current != null) {
           return;
         }
-        if (performance.now() - lastWarmthSyncAt < 80) {
-          return;
-        }
-        lastWarmthSyncAt = performance.now();
-        syncContextWarmthRef.current();
+        warmthSyncTimer.current = setTimeout(() => {
+          warmthSyncTimer.current = null;
+          if (performance.now() - lastWarmthSyncAt < 80) {
+            return;
+          }
+          lastWarmthSyncAt = performance.now();
+          syncContextWarmthRef.current();
+        }, 48);
       };
 
       const syncOverviewTexture = (altitude: number) => {
@@ -898,8 +914,8 @@ export const RimvioGlobe3D = memo(
         if (textureFilterTimer != null) {
           clearTimeout(textureFilterTimer);
         }
-        if (warmthSyncTimer != null) {
-          clearTimeout(warmthSyncTimer);
+        if (warmthSyncTimer.current != null) {
+          clearTimeout(warmthSyncTimer.current);
         }
         if (zoomRaf != null) {
           cancelAnimationFrame(zoomRaf);

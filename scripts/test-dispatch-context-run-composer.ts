@@ -38,6 +38,9 @@ if (ambientHi.kind === "portal_compose_run") {
   assert.equal(ambientHi.composeAmbientChat, true);
 }
 
+const recallPerson = planFor("정성이랑 어디 갔어");
+assert.equal(recallPerson.kind, "personal_context_ask");
+
 const urlAction = planFor("https://maps.google.com");
 assert.equal(urlAction.kind, "portal_compose_run");
 

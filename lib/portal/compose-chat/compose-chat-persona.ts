@@ -1,7 +1,6 @@
 import type { IntentState } from "@/lib/portal/compose-intent/intent-state-types";
 import type { SellItemDraft } from "@/lib/portal/compose-draft/types";
-import { findNextFlowStep } from "@/lib/portal/compose-draft/flow-step-types";
-import { SELL_ITEM_FLOW, sellItemFlowReadyToPublish } from "@/lib/portal/compose-draft/sell-item-flow";
+import { findNextSellItemFlowStep, findNextSellItemTextSlot, sellItemFlowReadyToPublish } from "@/lib/portal/compose-draft/sell-item-flow";
 import { sellItemDraftCanPublish } from "@/lib/portal/compose-draft/draft-utils";
 import {
   COMPOSE_CHAT_MEMORY_FEW_SHOTS,
@@ -53,12 +52,16 @@ function readDraftHint(draft?: Partial<SellItemDraft>): string {
     return "";
   }
   const known = JSON.stringify(draft);
-  const next = findNextFlowStep(draft, SELL_ITEM_FLOW.slice(0, -1));
+  const nextTextSlot = findNextSellItemTextSlot(draft);
+  const next = findNextSellItemFlowStep(draft);
   if (sellItemDraftCanPublish(draft) && sellItemFlowReadyToPublish(draft)) {
     return `내부 메모(티내지 마세요): 이미 알고 있는 정보 ${known}. 등록 제안해도 좋아요.`;
   }
+  if (nextTextSlot) {
+    return `내부 메모(티내지 마세요): 이미 알고 있는 정보 ${known}. 아직 비어 있는 글 슬롯: ${nextTextSlot}. 설문 말고 대화로 하나만.`;
+  }
   if (next) {
-    return `내부 메모(티내지 마세요): 이미 알고 있는 정보 ${known}. 부족한 쪽: ${next.slotKey}. 설문 말고 대화로 하나만.`;
+    return `내부 메모(티내지 마세요): 이미 알고 있는 정보 ${known}. 다음 행동: ${next.slotKey}. 사진 단계면 왼쪽 ＋로 사진·짧은 동영상을 요청하세요.`;
   }
   return `내부 메모(티내지 마세요): ${known}`;
 }

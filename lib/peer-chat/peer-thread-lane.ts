@@ -1,6 +1,6 @@
 import { isBridgeContextThreadId } from "@/lib/peer-chat/bridge-context-thread";
 
-export type PeerChatLane = "all" | "friend" | "group" | "context" | "alignment";
+export type PeerChatLane = "all" | "friend" | "group" | "context" | "alignment" | "ai";
 
 export type PeerThreadLaneKind = "friend" | "group" | "context" | "alignment";
 
@@ -26,6 +26,9 @@ export function peerThreadMatchesLane(
   lane: PeerChatLane,
   kind: PeerThreadLaneKind,
 ): boolean {
+  if (lane === "ai") {
+    return false;
+  }
   if (lane === "all") {
     return true;
   }

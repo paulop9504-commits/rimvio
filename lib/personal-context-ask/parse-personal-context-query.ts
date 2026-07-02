@@ -143,6 +143,13 @@ function extractPersonNeedles(query: string): string[] {
     needles.add(normalizeMeaningPerson(bareName[1]));
   }
 
+  for (const match of query.matchAll(/(?:with|and)\s+([A-Za-z가-힣]{2,16})\b/giu)) {
+    const name = normalizeMeaningPerson(match[1] ?? "");
+    if (name.length >= 2) {
+      needles.add(name);
+    }
+  }
+
   return [...needles];
 }
 
@@ -238,6 +245,12 @@ function detectIntent(
   }
   if (/마지막|만난\s*곳|어디서\s*만/u.test(query) && personNeedles.length > 0) {
     return "last_meet_place";
+  }
+  if (
+    personNeedles.length > 0 &&
+    /(?:어디\s*(?:갔|가|다녀)|갔던\s*곳|다녀온\s*곳|where\s+(?:did|we))/iu.test(query)
+  ) {
+    return "bridge_context";
   }
   if (/맛집|식당|레스토랑|카페|밥\s*먹/u.test(query) && personNeedles.length > 0) {
     return "place_with_person";

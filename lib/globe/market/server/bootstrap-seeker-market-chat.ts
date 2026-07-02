@@ -101,6 +101,11 @@ async function eagerOpenSeekerMarketThread(
     await patchMarketHandshake(supabase, handshake.id, { tradeStatus: "chat" });
   }
 
+  const { scheduleAgentCoordinationBootstrap } = await import(
+    "@/lib/globe/market/coordination/server/agent-coordination-room-server"
+  );
+  scheduleAgentCoordinationBootstrap(supabase, handshake.id);
+
   return dm.threadId;
 }
 
@@ -271,6 +276,11 @@ export async function bootstrapSeekerMarketChat(
       body: trimmedMessage,
     });
   }
+
+  const { scheduleAgentCoordinationBootstrap } = await import(
+    "@/lib/globe/market/coordination/server/agent-coordination-room-server"
+  );
+  scheduleAgentCoordinationBootstrap(supabase, handshake.id);
 
   return { threadId: threadId!, handshakeId: handshake.id, alreadyCompleted };
 }

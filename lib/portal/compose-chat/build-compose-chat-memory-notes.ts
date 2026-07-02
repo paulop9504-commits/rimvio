@@ -1,4 +1,7 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
+import { readPinContextNote } from "@/lib/globe/pin-context-note";
+import { resolveContextPlaceLabel } from "@/lib/globe/context-hub/resolve-context-place-label";
+import { buildRecallEventSnapshot } from "@/lib/recall/recall-event-snapshot";
 
 const STOP = new Set([
   "그리고",
@@ -26,7 +29,15 @@ function tokenizeContext(text: string): string[] {
 }
 
 function readEventBlob(event: EventCandidate): string {
-  return [event.title, event.place ?? "", event.description ?? ""]
+  const snapshot = buildRecallEventSnapshot(event);
+  const note = readPinContextNote(event);
+  return [
+    event.title,
+    resolveContextPlaceLabel(event),
+    event.description ?? "",
+    snapshot.people.join(" "),
+    note ?? "",
+  ]
     .join(" ")
     .toLowerCase();
 }
@@ -81,9 +92,14 @@ function scoreEventRelevance(event: EventCandidate, contextText: string): number
 }
 
 function formatMemoryLine(event: EventCandidate): string {
+  const snapshot = buildRecallEventSnapshot(event);
   const parts = [event.title.trim()];
-  if (event.place?.trim()) {
-    parts.push(`장소 ${event.place.trim()}`);
+  const place = resolveContextPlaceLabel(event);
+  if (place.trim()) {
+    parts.push(`장소 ${place.trim()}`);
+  }
+  if (snapshot.people.length > 0) {
+    parts.push(`함께 ${snapshot.people.join(", ")}`);
   }
   if (event.datetime?.trim()) {
     parts.push(`시점 ${event.datetime.trim().slice(0, 10)}`);

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Sparkles, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { PeerAlignmentSlotGrid } from "@/components/peer-chat/peer-alignment-slot-grid";
+import { PeerAiCoordinationList } from "@/components/peer-chat/peer-ai-coordination-list";
 import { PeerHubEmptyState } from "@/components/peer-chat/peer-hub-empty-state";
 import { PeerChatLanePills } from "@/components/peer-chat/peer-chat-lane-pills";
 import { PeerFriendsTopBar } from "@/components/peer-chat/peer-friends-top-bar";
@@ -26,6 +27,7 @@ import {
 } from "@/lib/peer-chat/peer-thread-lane";
 import { PEERS_CHAT_LIST } from "@/lib/peer-chat/peers-chat-list-density";
 import { dedupeAlignmentChatsByThread } from "@/lib/peer-chat/dedupe-alignment-chats";
+import { useAgentNegotiationRooms } from "@/hooks/use-agent-negotiation-rooms";
 import {
   extractOtherUserIdFromDmThread,
   isDmThreadId,
@@ -45,6 +47,7 @@ export type PeerFriendsRailProps = {
   rows: readonly ArchiveChatRow[];
   groups?: readonly GroupThreadListItem[];
   alignmentChats?: readonly AlignmentChatListItem[];
+  initialLane?: PeerChatLane;
   onAddFriend: () => void;
   onCreateGroup?: () => void;
   className?: string;
@@ -108,6 +111,7 @@ export function PeerFriendsRail({
   rows,
   groups = [],
   alignmentChats = [],
+  initialLane = "friend",
   onAddFriend,
   onCreateGroup,
   className,
@@ -121,9 +125,14 @@ export function PeerFriendsRail({
   const [searchQuery, setSearchQuery] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileKey, setProfileKey] = useState(0);
-  const [lane, setLane] = useState<PeerChatLane>("friend");
+  const [lane, setLane] = useState<PeerChatLane>(initialLane);
+  const { activeCount: aiCoordinationCount } = useAgentNegotiationRooms();
   const [selectedAlignmentCategory, setSelectedAlignmentCategory] =
     useState<PortalCategoryId | null>(null);
+
+  useEffect(() => {
+    setLane(initialLane);
+  }, [initialLane]);
 
   useEffect(() => {
     if (lane !== "alignment") {
@@ -240,6 +249,7 @@ export function PeerFriendsRail({
       group: groups.length,
       context: 0,
       alignment: dedupedAlignmentChats.length,
+      ai: aiCoordinationCount,
     };
     for (const row of displayRows) {
       if (row.laneKind === "friend") {
@@ -249,7 +259,7 @@ export function PeerFriendsRail({
       }
     }
     return counts;
-  }, [displayRows, groups.length, dedupedAlignmentChats.length]);
+  }, [displayRows, groups.length, dedupedAlignmentChats.length, aiCoordinationCount]);
 
   const filteredGroups = useMemo(
     () =>
@@ -301,10 +311,13 @@ export function PeerFriendsRail({
     dedupedAlignmentChats.length === 0 &&
     !searchQuery.trim();
 
+  const showAiLane = lane === "ai" && !searchQuery.trim();
+
   const showList =
-    filteredGroups.length > 0 ||
-    filteredRows.length > 0 ||
-    showCreateGroup;
+    !showAiLane &&
+    (filteredGroups.length > 0 ||
+      filteredRows.length > 0 ||
+      showCreateGroup);
 
   return (
     <section
@@ -369,7 +382,9 @@ export function PeerFriendsRail({
       ) : null}
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-white">
-        {showAlignmentEmpty ? (
+        {showAiLane ? (
+          <PeerAiCoordinationList />
+        ) : showAlignmentEmpty ? (
           <div className="flex flex-col items-center gap-4 px-8 py-16 text-center">
             <span className="flex size-16 items-center justify-center rounded-3xl bg-gradient-to-br from-[#e8f3ff] to-[#f4f9ff] text-3xl shadow-sm ring-1 ring-[#3182f6]/10">
               <Sparkles className="size-7 text-[#3182f6]" aria-hidden />

@@ -11,6 +11,7 @@ import { resolveGlobeMapIntent } from "@/lib/globe/intent-supply/resolve-globe-m
 import { detectPortalIntentFromText } from "@/lib/portal/detect-portal-intent-from-text";
 import { readPortalComposeRunState } from "@/lib/portal/portal-compose-run-store";
 import { readActiveRunState } from "@/lib/context-run/run-state-store";
+import { planPersonalRecallAskIfEligible } from "@/lib/context-run/plan-personal-recall-ask";
 
 function planPortalComposeIfEligible(
   bound: BoundSituation,
@@ -116,6 +117,11 @@ export function planContextRun(bound: BoundSituation): ContextRunPlan {
   const portalPlan = planPortalComposeIfEligible(bound, text, ingress);
   if (portalPlan) {
     return portalPlan;
+  }
+
+  const recallPlan = planPersonalRecallAskIfEligible(bound, text);
+  if (recallPlan) {
+    return recallPlan;
   }
 
   if (ingress.surface === "capture_sheet") {

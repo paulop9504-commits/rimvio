@@ -1,13 +1,12 @@
 import { copy } from "@/lib/copy/human-ko";
 import type { GlobeChatMessage } from "@/lib/globe/chat/globe-chat-session-types";
 import { sellItemDraftCanPublish } from "@/lib/portal/compose-draft/draft-utils";
-import { findNextFlowStep } from "@/lib/portal/compose-draft/flow-step-types";
 import type {
   ComposeClarifyKind,
   ComposeSlotId,
   ProductCategoryId,
 } from "@/lib/portal/compose-draft/product-category-types";
-import { SELL_ITEM_FLOW } from "@/lib/portal/compose-draft/sell-item-flow";
+import { findNextSellItemFlowStep, readSellItemFlowOptionsFromComposeState } from "@/lib/portal/compose-draft/sell-item-flow";
 import type { PortalComposeRunState } from "@/lib/portal/portal-compose-run-store";
 
 export type GlobeChatActionHintPill = {
@@ -98,16 +97,24 @@ function hintFromComposeState(state: PortalComposeRunState | null): GlobeChatAct
 
   const categoryId = state.productCategoryId ?? state.proposedCategoryId ?? null;
   const draft = state.composeDraft ?? {};
+  const flowOptions = readSellItemFlowOptionsFromComposeState(state);
+  const nextFlow = findNextSellItemFlowStep(draft, flowOptions);
 
-  if (state.status === "ready" && state.composeSchemaId === "sell_item") {
-    const next = findNextFlowStep(draft, SELL_ITEM_FLOW.slice(0, -1));
-    if (next?.slotKey === "photos") {
+  if (state.composeSchemaId === "sell_item") {
+    if (nextFlow?.slotKey === "photos") {
       return textOnly(copy.globe.chatActionHintPhotos);
     }
-    if (next?.slotKey === "note") {
+    if (state.macroStage === "description_ready" && state.descriptionDraftKo?.trim()) {
+      return textOnly(copy.globe.chatActionHintDescriptionDraft);
+    }
+    if (nextFlow?.slotKey === "note") {
       return tapOrType(copy.globe.chatActionPills.note);
     }
-    if (sellItemDraftCanPublish(draft)) {
+    if (
+      state.status === "ready" &&
+      sellItemDraftCanPublish(draft) &&
+      nextFlow?.slotKey === "status"
+    ) {
       return textOnly(copy.globe.chatActionHintPublish);
     }
   }
@@ -124,22 +131,11 @@ function hintFromComposeState(state: PortalComposeRunState | null): GlobeChatAct
   }
 
   if (state.intentStage?.stage === "soft_signal") {
-    return tapOrType(copy.globe.chatActionPills.softSell);
+    return withPills(copy.globe.chatActionHintSoftConfirm, copy.globe.chatActionPills.softConfirm);
   }
 
   if (state.intentStage?.stage === "chatting") {
     return tapOrType(copy.globe.chatActionPills.chatting);
-  }
-
-  if (
-    state.intentStage?.stage === "confirmed" ||
-    state.status === "drafting" ||
-    state.status === "conversing" ||
-    state.status === "waiting_slot"
-  ) {
-    if (state.composeSchemaId === "sell_item") {
-      return tapOrType(copy.globe.chatActionPills.softSell);
-    }
   }
 
   return null;

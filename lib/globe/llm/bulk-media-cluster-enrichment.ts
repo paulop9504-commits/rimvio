@@ -3,7 +3,7 @@ import type {
   BulkMediaClusterEnrichmentResult,
   BulkMediaClusterWireSummary,
 } from "@/lib/feed/bulk-media-spacetime-types";
-import { geminiApiKey, geminiVisionModel, isGeminiConfigured } from "@/lib/locate/gemini-config";
+import { geminiApiKey, geminiJsonMaxOutputTokens, geminiVisionModel, isGeminiConfigured } from "@/lib/locate/gemini-config";
 import { callOpenAiTextJson } from "@/lib/llm/openai-json-client";
 import { isOpenAiConfigured } from "@/lib/llm/openai-config";
 import { captureVisionProvider } from "@/lib/locate/vision-provider-config";
@@ -104,6 +104,7 @@ async function callGeminiBulkClusterJson(userBlock: string): Promise<string | nu
       ],
       generationConfig: {
         temperature: 0.15,
+        maxOutputTokens: geminiJsonMaxOutputTokens(),
         responseMimeType: "application/json",
       },
     }),
@@ -159,6 +160,7 @@ async function callGeminiBulkClusterVision(input: {
       ],
       generationConfig: {
         temperature: 0.15,
+        maxOutputTokens: geminiJsonMaxOutputTokens(),
         responseMimeType: "application/json",
       },
     }),

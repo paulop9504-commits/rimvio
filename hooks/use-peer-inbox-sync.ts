@@ -1,29 +1,35 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { tryCreateClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { shouldSkipGlobeFetch } from "@/lib/globe/globe-fetch-min-interval";
 
-const PEER_INBOX_POLL_MS = 10_000;
+const PEER_INBOX_POLL_MS = 25_000;
 const PEER_MESSAGES_TABLE = "peer_messages";
+const MIN_REFRESH_MS = 8_000;
 
 /** Background inbox refresh — list preview + unread without opening each room. */
 export function usePeerInboxSync(input: {
   enabled: boolean;
   onRefresh: () => void | Promise<void>;
 }): void {
-  const { enabled, onRefresh } = input;
+  const onRefreshRef = useRef(input.onRefresh);
+  onRefreshRef.current = input.onRefresh;
 
   useEffect(() => {
-    if (!enabled || typeof window === "undefined") {
+    if (!input.enabled || typeof window === "undefined") {
       return;
     }
 
     const refresh = () => {
-      void onRefresh();
+      if (shouldSkipGlobeFetch("peer:inbox-sync", MIN_REFRESH_MS)) {
+        return;
+      }
+      void onRefreshRef.current();
     };
 
-    refresh();
+    const initialTimer = window.setTimeout(refresh, 1_500);
 
     const timer = window.setInterval(() => {
       if (document.visibilityState === "visible") {
@@ -40,13 +46,14 @@ export function usePeerInboxSync(input: {
     document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
+      window.clearTimeout(initialTimer);
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [enabled, onRefresh]);
+  }, [input.enabled]);
 
   useEffect(() => {
-    if (!enabled || !isSupabaseConfigured() || typeof window === "undefined") {
+    if (!input.enabled || !isSupabaseConfigured() || typeof window === "undefined") {
       return;
     }
 
@@ -54,6 +61,17 @@ export function usePeerInboxSync(input: {
     if (!supabase) {
       return;
     }
+
+    let debounceTimer: number | null = null;
+    const onInsert = () => {
+      if (debounceTimer !== null) {
+        window.clearTimeout(debounceTimer);
+      }
+      debounceTimer = window.setTimeout(() => {
+        debounceTimer = null;
+        void onRefreshRef.current();
+      }, 1_200);
+    };
 
     const channel = supabase
       .channel("peer-inbox-messages")
@@ -64,14 +82,15 @@ export function usePeerInboxSync(input: {
           schema: "public",
           table: PEER_MESSAGES_TABLE,
         },
-        () => {
-          void onRefresh();
-        },
+        onInsert,
       )
       .subscribe();
 
     return () => {
+      if (debounceTimer !== null) {
+        window.clearTimeout(debounceTimer);
+      }
       void supabase.removeChannel(channel);
     };
-  }, [enabled, onRefresh]);
+  }, [input.enabled]);
 }

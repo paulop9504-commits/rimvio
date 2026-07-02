@@ -8,6 +8,10 @@ import {
 import type { ComposeSchemaId, SellItemDraft } from "@/lib/portal/compose-draft/types";
 import { buildMarketIntentFromComposeDraft } from "@/lib/portal/compose-draft/draft-to-market-intent";
 import { sellItemDraftToComposeText } from "@/lib/portal/compose-draft/draft-to-market-intent";
+import {
+  readSellItemDescriptionStage,
+  readSellItemFlowOptionsFromComposeState,
+} from "@/lib/portal/compose-draft/sell-item-flow";
 
 import { parseComposePriceKrwOrNull } from "@/lib/portal/compose-draft/parse-compose-price-krw";
 
@@ -55,11 +59,22 @@ export function patchComposeDraftField(input: {
     existing: state.marketDraft,
   });
 
+  const descriptionStage =
+    schemaId === "sell_item"
+      ? readSellItemDescriptionStage({
+          draft,
+          flowOptions: readSellItemFlowOptionsFromComposeState(state),
+          descriptionDraftKo: state.descriptionDraftKo,
+        })
+      : null;
+
   writePortalComposeRunState({
     ...state,
     composeDraft: draft,
     marketDraft,
     accumulatedText: composeText,
+    macroStage: descriptionStage?.macroStage ?? state.macroStage,
+    descriptionStatus: descriptionStage?.descriptionStatus ?? state.descriptionStatus,
     updatedAt: new Date().toISOString(),
   });
 

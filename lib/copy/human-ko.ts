@@ -1,7 +1,35 @@
 /** 사용자-facing 카피 — L1 Story Layer. @see docs/RIMVIO_STORY_LAYER.md */
 
+import {
+  AGENT_NEGOTIATION_FOCUS_DEFER_MESSAGE_EN,
+  AGENT_NEGOTIATION_FOCUS_DEFER_MESSAGE_KO,
+} from "@/lib/globe/market/coordination/agent-coordination-focus-copy";
 import { RIMVIO } from "@/lib/brand/rimvio";
 import { STORY_L0, STORY_L1_NOUNS, STORY_L1_VERBS } from "@/lib/copy/story-layer";
+
+/** 첫 실행·빈 화면 탭 예시 — capture sheet · 지구 · 채팅 공통 */
+const STARTER_PILLS_PERSONAL = [
+  {
+    id: "friend-memory",
+    labelKo: "친구와 제주",
+    submitKo: "민수랑 제주 갔던 날 떠올려줘",
+  },
+  {
+    id: "schedule-week",
+    labelKo: "이번 주 약속",
+    submitKo: "이번 주 약속 뭐 있어?",
+  },
+  {
+    id: "sell-phone",
+    labelKo: "중고 팔기",
+    submitKo: "아이폰 15 프로 팔고 싶어요",
+  },
+  {
+    id: "recent-trace",
+    labelKo: "그때 거기",
+    submitKo: "최근에 남긴 흔적 보여줘",
+  },
+] as const;
 
 export const copy = {
   brand: {
@@ -40,6 +68,11 @@ export const copy = {
       "친구 탭은 대화에서, 실행 탭은 링크·@명령에서. 다른 앱이 아니에요.",
     story3Title: "링크는 Shorts처럼",
     story3Body: "공유한 URL이 Action Dock 카드로 바뀝니다.",
+  },
+  starterExamples: {
+    sectionLabel: "이렇게 시작해 보세요",
+    personal: STARTER_PILLS_PERSONAL,
+    peersGlobeLink: "지구에서 기억 떠올리기",
   },
   nav: {
     feed: "피드",
@@ -190,11 +223,7 @@ export const copy = {
       heroDiscovery: "무엇을 찾아볼까요?",
       placeholderPersonal: "기억 · 사람 · 일정 물어보기",
       placeholderDiscovery: "맞춤 · 모임 · 장소 찾기",
-      capturePillsPersonal: [
-        { id: "memory", labelKo: "기억 떠올리기", submitKo: "오늘 떠올릴 기억 있어" },
-        { id: "schedule", labelKo: "오늘 일정", submitKo: "오늘 일정 알려줘" },
-        { id: "sell", labelKo: "팔기", submitKo: "핸드폰 팔고 싶어요" },
-      ],
+      capturePillsPersonal: STARTER_PILLS_PERSONAL,
       capturePillsDiscovery: [
         { id: "nearby", labelKo: "이 근처", submitKo: "이 근처 뭐 있어?" },
         { id: "align", labelKo: "맞춤 찾기", submitKo: "맞춤 찾아줘" },
@@ -742,14 +771,21 @@ export const copy = {
     chatScreenTitle: "맞춤 대화",
     chatScreenSubtitleChat: "말해보세요",
     chatScreenSubtitleSoft: "의도 파악 중",
+    chatScreenSubtitleCategory: "어떤 물건인지 먼저 맞출게요",
     chatScreenSubtitleFill: "하나씩 맞출게요",
+    chatScreenSubtitleDescription: "설명은 마지막에 다듬을게요",
+    chatScreenSubtitleReview: "거의 다 됐어요",
     chatEmptyTitle: "말로 시작해요",
     chatEmptyBody: "한 줄이면 돼요. 예시를 누르거나 직접 입력하세요.",
+    chatSummaryTitle: "지금까지 맞춘 것",
+    chatSummaryRoleListing: "판매",
+    chatSummaryRoleSeeking: "구매",
     chatWaitingLabel: "지금 할 일",
     chatActionHintTapOrType: "예시를 누르거나 직접 입력하세요.",
     chatActionHintChatting: "무엇을 도와드릴까요?",
     chatActionHintSoftSell:
       "예시: 70만원, 상태 사용감 있음 — 이렇게 한 줄로 적어 주세요.",
+    chatActionHintSoftConfirm: "먼저 판매 상황인지 맞출게요.",
     chatActionHintProductName: "예: 아이폰 15 프로 128GB",
     chatActionHintStorage: "예: 128GB, 256GB",
     chatActionHintCpuRam: "예: M2 · 16GB · 512GB SSD",
@@ -764,11 +800,17 @@ export const copy = {
     chatActionHintPlace: "예: 강남역 근처, 직거래",
     chatActionHintNote: "예: 박스·충전기 포함 (없으면 「없음」)",
     chatActionHintPhotos: "왼쪽 ＋ 버튼으로 사진·짧은 동영상을 보내 주세요.",
+    chatActionHintDescriptionDraft: "설명 초안은 준비됐어요. 그대로 쓰거나 다듬어도 돼요.",
     chatActionHintPublish: "카드 내용 확인 후 「한 줄로 내놓기」를 눌러 주세요.",
     chatActionPills: {
       chatting: [
         { id: "sell-phone", labelKo: "핸드폰 팔아요" },
         { id: "price-check", labelKo: "시세 알려줘" },
+      ],
+      softConfirm: [
+        { id: "yes", labelKo: "맞아요", submitKo: "맞아요" },
+        { id: "price-only", labelKo: "시세만 볼래요", submitKo: "시세만 볼래요" },
+        { id: "thinking", labelKo: "아직 고민 중", submitKo: "아직 고민 중이에요" },
       ],
       softSell: [
         { id: "combo", labelKo: "70만원, 사용감 있음" },
@@ -1346,8 +1388,18 @@ export const copy = {
       chatCta: "채팅하기",
       scheduleCta: "일정 맞추기",
       scheduleViewCta: "일정 보기",
+      coordinationCta: "자동으로 맞춰보기",
+      coordinationCtaHint: "가격·일정을 대신 맞춰요",
+      coordinationViewCta: "맞춤 진행 보기",
+      coordinationSoonToast: "곧 이 경로로 자동 맞춤을 시작할 수 있어요.",
+      coordinationStartCta: "AI 협상 시작",
+      coordinationOpenCta: "AI 협상 보기",
+      coordinationInlineSlotHint: "탭 한 번으로 답하면 조율이 이어져요",
+      coordinationProgressHeadline: "AI가 조건을 맞추는 중이에요",
+      coordinationProposalHeadline: "조율안이 도착했어요",
+      coordinationViewRoomCta: "조율 보기",
       loginRequiredTitle: "로그인이 필요해요",
-      loginRequiredBody: "채팅과 일정 맞추기는 로그인 후 이용할 수 있어요.",
+      loginRequiredBody: "채팅·일정·자동 맞춤은 로그인 후 이용할 수 있어요.",
       actionUnavailable: "지금은 연결할 수 없어요. 잠시 후 다시 시도해 주세요.",
       tradeInitFail: "일정을 시작하지 못했어요. Supabase 13~16번 SQL을 적용했는지 확인해 주세요.",
       handshakeAlreadyCompleted: "이미 완료된 맞춤이에요",
@@ -1415,6 +1467,44 @@ export const copy = {
       cardFilmHeroBadge: "대표",
       cardStoryTitle: "상품 맥락",
       cardStoryEmpty: "설명이 없어요 · 대화로 물어보세요",
+    },
+    coordination: {
+      readOnlyBadge: "읽기 전용",
+      typingHint: "조율 중…",
+      stateNegotiating: "AI 조율 중",
+      stateWaitingYou: "내 답이 필요해요",
+      statePaused: "잠시 멈춤",
+      stateAgreed: "합의안 도착",
+      stateStuck: "합의 어려움",
+      stateApproved: "승인 완료",
+      pausedHint: "답하면 바로 이어갈 수 있어요",
+      customAnswerPlaceholder: "직접 입력",
+      answerCta: "답하기",
+      summaryTitle: "조율안 요약",
+      summaryPrice: "가격",
+      summaryTime: "시간",
+      summaryPlace: "장소",
+      approveCta: "이대로 승인",
+      approveSuccessToast: "양쪽 승인 완료 · 거래 탭에서 약속을 이어가세요",
+      approveWaitingPeerToast: "승인했어요 · 상대 확인을 기다리는 중이에요",
+      waitingPeerApproval: "승인했어요 · 상대 확인 중",
+      attentionSlotNeeded: (title: string) => `${title} · 내 답이 필요해요`,
+      attentionProposalReady: (title: string) => `${title} · 조율안이 도착했어요`,
+      attentionPeerApproved: (title: string) => `${title} · 상대가 승인했어요`,
+      attentionFullyApproved: (title: string) => `${title} · 조율이 완료됐어요`,
+      attentionOpenRoom: "조율 보기",
+      attentionReviewCta: "확인하기",
+      attentionOpenTrades: "거래 보기",
+      stuckBody: "조건이 맞지 않아요. 직접 대화로 이어가 보세요.",
+      openPeerChatCta: "채팅하기",
+      roomTitle: "AI 조율",
+      listEyebrow: "자동 맞춤",
+      listEmptyTitle: "진행 중인 AI 조율이 없어요",
+      listEmptyBody: "밖 지구 매물에서 자동 맞춤을 시작하면 여기에 모여요",
+      listEmptyCta: "밖 지구로",
+      waitingPeer: "상대 확인 중",
+      focusDeferSystemLog: AGENT_NEGOTIATION_FOCUS_DEFER_MESSAGE_KO,
+      focusDeferPausedHint: "집중이 끝나면 조율을 이어갈게요",
     },
     marketTradeSectionTitle: "진행 중 거래",
     marketTradeSectionHint: "약속 · 일정 · 이동",
@@ -1585,7 +1675,7 @@ export const copy = {
     composeDraftFieldOptional: "선택",
     composeDraftFieldTap: "탭해서 입력",
     composeDraftNudgePhoto:
-      "아래 왼쪽 ＋ 버튼을 눌러 사진·짧은 동영상을 보내 주세요. 정면·후면·흠집·배터리 화면이 보이면 좋아요.",
+      "아래 왼쪽 ＋ 버튼을 눌러 사진·짧은 동영상을 보내 주세요. 구매자가 상태를 바로 이해하기 쉬워져요. 정면·후면·흠집·배터리 화면이 보이면 좋아요.",
     composeDraftNudgeDescription:
       "사진 받았어요. 박스·충전기 포함 여부나 추가 설명이 있으면 한 줄로 적어 주세요. 바로 등록하려면 카드 아래 「한 줄로 내놓기」를 눌러 주세요.",
     composeDraftReadyToSubmit:
@@ -1609,10 +1699,14 @@ export const copy = {
     slotAskStorage: "용량을 선택해 주세요.",
     slotAskCpuRam: "CPU·RAM·SSD 사양을 알려주세요.",
     slotAskClothingSize: "사이즈가 어떻게 되나요?",
-    slotAskCondition: "상태는 어느 정도인가요? (배터리 성능, 외관 스크래치 등)",
-    slotAskLaptopCondition: "사용 시간이나 액정·외관 상태는 어떤가요?",
-    slotAskClothingCondition: "착용 횟수나 세탁 여부를 알려주세요.",
-    slotAskFurnitureCondition: "크기나 조립 여부, 상태를 알려주세요.",
+    slotAskCondition:
+      "상태는 어느 정도인가요? 구매자가 제일 먼저 보는 부분이에요. (배터리 성능, 외관 스크래치 등)",
+    slotAskLaptopCondition:
+      "사용 시간이나 액정·외관 상태는 어떤가요? 구매자가 먼저 확인하는 부분이에요.",
+    slotAskClothingCondition:
+      "착용 횟수나 세탁 여부를 알려주세요. 입은 느낌을 가장 빨리 판단하는 정보예요.",
+    slotAskFurnitureCondition:
+      "크기나 조립 여부, 상태를 알려주세요. 옮기기 쉬운지 같이 보이게 맞출게요.",
     slotAskPrice: "가격은 얼마로 생각하세요?",
     slotPriceParseHint:
       "가격을 다시 알려주세요. 예: 70만원, 700000, 백만원 — 숫자만 쓰면 만원 단위로 받아요.",
@@ -1623,21 +1717,25 @@ export const copy = {
       }
       return `${krw.toLocaleString("ko-KR")}원 맞나요?`;
     },
-    slotAskPlace: "거래 장소는 어디로 할까요?",
-    slotAskPlacePickup: "픽업 가능한 장소를 알려주세요.",
+    slotAskPlace: "거래 장소는 어디로 할까요? 가까운 분께 보이게 맞출게요.",
+    slotAskPlacePickup:
+      "픽업 가능한 장소를 알려주세요. 가져가기 쉬운 분께 먼저 보이게 할게요.",
     slotAskNoteOptional:
       "추가 메모가 있으면 적어 주세요. 없으면 「없음」이라고 보내 주세요.",
     slotCategoryRecognized: (category: string, product: string) =>
       `「${product}」 — ${category}으로 맞출게요.`,
     slotCategoryConfirmAsk: (category: string, product: string) =>
-      `「${product}」을 ${category}으로 분류할까요?`,
-    slotCategoryPickAsk: "어떤 종류의 물건인가요?",
+      `「${product}」을 ${category}으로 보면 될까요?`,
+    slotCategoryPickAsk: "가까운 쪽만 골라 주세요. 아니면 「기타」를 눌러도 돼요.",
+    slotTransitionAfterCategoryConfirm: "좋아요. 그럼 하나씩 맞출게요.",
     slotReviewReady:
       "글 정보는 맞춰뒀어요. ＋로 사진·동영상을 보내 주시고, 카드에서 확인해 주세요.",
     slotReviewAskMedia:
-      "글은 다 맞춰뒀어요. 이제 왼쪽 ＋ 버튼으로 사진·짧은 동영상을 보내 주세요. 정면·후면·흠집·배터리 화면이 보이면 좋아요. 카드 내용이 틀리면 탭해서 고칠 수 있어요.",
+      "글은 다 맞춰뒀어요. 이제 왼쪽 ＋ 버튼으로 사진·짧은 동영상을 보내 주세요. 구매자가 상태를 바로 보기 쉬워져요. 정면·후면·흠집·배터리 화면이 보이면 좋아요. 카드 내용이 틀리면 탭해서 고칠 수 있어요.",
     slotReviewAskDescription:
       "사진 받았어요. 박스·충전기 포함 여부나 추가 설명이 있으면 한 줄로 적어 주세요. 없으면 카드 아래 「한 줄로 내놓기」를 눌러 주세요.",
+    slotReviewDescriptionDraftReady: (draft: string) =>
+      `사진 받았어요. 설명은 이렇게 시작해도 좋아요.\n「${draft}」\n그대로 보내거나, 다듬어서 적어 주세요.`,
     slotReviewConfirmPublish:
       "내용을 확인했어요. 맞으면 「한 줄로 내놓기」로 등록하고, 더 맞추려면 「자세히 맞추기」를 눌러 주세요.",
     composeAskTime: "언제쯤이 좋을까요?",
@@ -1714,7 +1812,7 @@ export const copy = {
     emptyGlobeLink: "지구에서 흔적 남기기",
     emptyTitle: "친구와 대화해 보세요",
     emptyBody:
-      "QR · 연락처 · 번호로 친구를 추가하면 카톡처럼 대화를 시작할 수 있어요.",
+      "QR · 연락처 · 번호로 친구를 추가하면 카톡처럼 대화를 시작할 수 있어요. 아래 예시처럼 일정·길찾기 버튼이 붙어요.",
     emptyAddCta: "친구 추가",
     demoTitle: "예시 대화 (읽기 전용)",
     demoHint: "친구를 추가하면 실제 DM·AI 렌즈를 쓸 수 있어요",
@@ -1796,6 +1894,15 @@ export const copy = {
         group: "단톡",
         context: "맥락",
         alignment: "맞춤",
+        ai: "자동 맞춤",
+      },
+      aiCoordination: {
+        listPreviewNegotiating: "AI 조율 중",
+        listPreviewWaitingYou: "내 답 필요",
+        listPreviewPaused: "잠시 멈춤",
+        listPreviewAgreed: "합의안 도착",
+        listPreviewStuck: "직접 대화 필요",
+        listPreviewApproved: "승인 완료",
       },
       alignmentSlots: {
         eyebrow: "참여 중",

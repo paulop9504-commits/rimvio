@@ -2,6 +2,8 @@
 
 import assert from "node:assert/strict";
 import type { EventCandidate } from "../lib/events/event-candidate";
+import { bindSituation } from "../lib/context-run/bind-situation";
+import { planContextRun } from "../lib/context-run/plan-context-run";
 import { GLOBE_CONTEXT_NOTE_KEY } from "../lib/globe/pin-context-note";
 import { parsePersonalContextQuery } from "../lib/personal-context-ask/parse-personal-context-query";
 import { resolvePersonalContextAsk } from "../lib/personal-context-ask/resolve-personal-context-ask";
@@ -179,6 +181,21 @@ assert.equal(photoParsed.target, "photo");
 assert.equal(photoParsed.responseFocus, "photos");
 assert.ok(photoParsed.personNeedles.includes("정성"));
 assert.ok(photoParsed.placeNeedles.includes("상하이"));
+
+const whereWithPerson = parsePersonalContextQuery("정성이랑 어디 갔어", now);
+assert.equal(whereWithPerson.intent, "bridge_context");
+assert.ok(whereWithPerson.personNeedles.includes("정성"));
+
+const whereAskPlan = planContextRun(
+  bindSituation({
+    kind: "text",
+    text: "정성이랑 어디 갔어",
+    surface: "capture_sheet",
+    layerMode: "personal",
+    contextEventId: null,
+  }),
+);
+assert.equal(whereAskPlan.kind, "personal_context_ask");
 
 const photoResult = resolvePersonalContextAsk({
   query: "정성이랑 상하이에서 찍은 사진좀 꺼내줘",

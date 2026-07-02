@@ -1,4 +1,7 @@
 import { NORTH_STAR, RIMVIO } from "@/lib/brand/rimvio";
+import {
+  AGENT_NEGOTIATION_FOCUS_DEFER_MESSAGE_EN,
+} from "@/lib/globe/market/coordination/agent-coordination-focus-copy";
 import { STORY_L0 } from "@/lib/copy/story-layer";
 import type { Copy } from "@/lib/i18n/types";
 
@@ -36,6 +39,32 @@ export const copyEn: Copy = {
       "Friends tab for chat actions; Operate tab for links and @commands. Same app.",
     story3Title: "Links like Shorts",
     story3Body: "Shared URLs become Action Dock cards.",
+  },
+  starterExamples: {
+    sectionLabel: "Try starting like this",
+    personal: [
+      {
+        id: "friend-memory",
+        labelKo: "Trip with a friend",
+        submitKo: "Help me recall the day I went to Jeju with Minsu",
+      },
+      {
+        id: "schedule-week",
+        labelKo: "This week",
+        submitKo: "What do I have scheduled this week?",
+      },
+      {
+        id: "sell-phone",
+        labelKo: "Sell something",
+        submitKo: "I want to sell my iPhone 15 Pro",
+      },
+      {
+        id: "recent-trace",
+        labelKo: "Recent traces",
+        submitKo: "Show my recent traces",
+      },
+    ],
+    peersGlobeLink: "Recall a memory on the globe",
   },
   nav: {
     feed: "Feed",
@@ -184,9 +213,26 @@ export const copyEn: Copy = {
       placeholderPersonal: "Memories · people · schedule",
       placeholderDiscovery: "Align · meetups · places",
       capturePillsPersonal: [
-        { id: "memory", labelKo: "Recall a memory", submitKo: "What should I remember today?" },
-        { id: "schedule", labelKo: "Today's schedule", submitKo: "What's on my schedule today?" },
-        { id: "sell", labelKo: "Sell", submitKo: "I want to sell my phone" },
+        {
+          id: "friend-memory",
+          labelKo: "Trip with a friend",
+          submitKo: "Help me recall the day I went to Jeju with Minsu",
+        },
+        {
+          id: "schedule-week",
+          labelKo: "This week",
+          submitKo: "What do I have scheduled this week?",
+        },
+        {
+          id: "sell-phone",
+          labelKo: "Sell something",
+          submitKo: "I want to sell my iPhone 15 Pro",
+        },
+        {
+          id: "recent-trace",
+          labelKo: "Recent traces",
+          submitKo: "Show my recent traces",
+        },
       ],
       capturePillsDiscovery: [
         { id: "nearby", labelKo: "Nearby", submitKo: "What's nearby?" },
@@ -729,14 +775,21 @@ export const copyEn: Copy = {
     chatScreenTitle: "Compose chat",
     chatScreenSubtitleChat: "Say it",
     chatScreenSubtitleSoft: "Reading intent",
+    chatScreenSubtitleCategory: "Let me place the item first",
     chatScreenSubtitleFill: "One step at a time",
+    chatScreenSubtitleDescription: "We will polish the description last",
+    chatScreenSubtitleReview: "Almost there",
     chatEmptyTitle: "Start with words",
     chatEmptyBody: "One line is enough. Tap an example or type below.",
+    chatSummaryTitle: "What we have so far",
+    chatSummaryRoleListing: "Selling",
+    chatSummaryRoleSeeking: "Buying",
     chatWaitingLabel: "Next step",
     chatActionHintTapOrType: "Tap an example or type below.",
     chatActionHintChatting: "What can I help with?",
     chatActionHintSoftSell:
       "Example: 700,000 won, light wear — write it in one line like that.",
+    chatActionHintSoftConfirm: "Let me first confirm the selling situation.",
     chatActionHintProductName: "e.g. iPhone 15 Pro 128GB",
     chatActionHintStorage: "e.g. 128GB, 256GB",
     chatActionHintCpuRam: "e.g. M2 · 16GB · 512GB SSD",
@@ -751,11 +804,17 @@ export const copyEn: Copy = {
     chatActionHintPlace: "e.g. near Gangnam Station, in person",
     chatActionHintNote: "e.g. box and charger included (or send “none”)",
     chatActionHintPhotos: "Send photos or a short video with + on the left.",
+    chatActionHintDescriptionDraft: "The draft description is ready. You can use it as-is or refine it.",
     chatActionHintPublish: "Check the card, then tap “List in one line”.",
     chatActionPills: {
       chatting: [
         { id: "sell-phone", labelKo: "Sell my phone" },
         { id: "price-check", labelKo: "What’s it worth?" },
+      ],
+      softConfirm: [
+        { id: "yes", labelKo: "Yes", submitKo: "Yes" },
+        { id: "price-only", labelKo: "Price check only", submitKo: "Price check only" },
+        { id: "thinking", labelKo: "Still thinking", submitKo: "I am still thinking" },
       ],
       softSell: [
         { id: "combo", labelKo: "700,000 won, light wear" },
@@ -1336,8 +1395,18 @@ export const copyEn: Copy = {
       chatCta: "Chat",
       scheduleCta: "Schedule meetup",
       scheduleViewCta: "View schedule",
+      coordinationCta: "Auto-match terms",
+      coordinationCtaHint: "Price and meetup, handled for you",
+      coordinationViewCta: "View auto-match",
+      coordinationSoonToast: "Auto-match from here is coming soon.",
+      coordinationStartCta: "Start AI negotiation",
+      coordinationOpenCta: "Open AI negotiation",
+      coordinationInlineSlotHint: "Tap a chip to continue matching",
+      coordinationProgressHeadline: "AI is matching terms",
+      coordinationProposalHeadline: "A proposal is ready",
+      coordinationViewRoomCta: "View coordination",
       loginRequiredTitle: "Sign in required",
-      loginRequiredBody: "Chat and scheduling need a signed-in account.",
+      loginRequiredBody: "Chat, scheduling, and auto-match need a signed-in account.",
       actionUnavailable: "Cannot connect right now. Try again shortly.",
       tradeInitFail: "Could not start scheduling. Apply Supabase SQL 13–16.",
       handshakeAlreadyCompleted: "This match is already complete",
@@ -1405,6 +1474,44 @@ export const copyEn: Copy = {
       cardFilmHeroBadge: "Main",
       cardStoryTitle: "About this item",
       cardStoryEmpty: "No description yet · ask in chat",
+    },
+    coordination: {
+      readOnlyBadge: "Read-only",
+      typingHint: "Matching…",
+      stateNegotiating: "Auto-matching",
+      stateWaitingYou: "Your answer needed",
+      statePaused: "Paused",
+      stateAgreed: "Terms ready",
+      stateStuck: "No agreement",
+      stateApproved: "Approved",
+      pausedHint: "Answer to resume",
+      customAnswerPlaceholder: "Type your answer",
+      answerCta: "Submit",
+      summaryTitle: "Proposed terms",
+      summaryPrice: "Price",
+      summaryTime: "Time",
+      summaryPlace: "Place",
+      approveCta: "Approve terms",
+      approveSuccessToast: "Both approved · continue in Trades",
+      approveWaitingPeerToast: "Approved · waiting on them",
+      waitingPeerApproval: "Approved · waiting on them",
+      attentionSlotNeeded: (title: string) => `${title} · your answer needed`,
+      attentionProposalReady: (title: string) => `${title} · terms are ready`,
+      attentionPeerApproved: (title: string) => `${title} · they approved`,
+      attentionFullyApproved: (title: string) => `${title} · match complete`,
+      attentionOpenRoom: "View match",
+      attentionReviewCta: "Review",
+      attentionOpenTrades: "Open trades",
+      stuckBody: "Terms did not align. Continue in direct chat.",
+      openPeerChatCta: "Open chat",
+      roomTitle: "Auto-match",
+      listEyebrow: "Auto-match",
+      listEmptyTitle: "No auto-match in progress",
+      listEmptyBody: "Start auto-match from an outer-globe listing",
+      listEmptyCta: "Outer globe",
+      waitingPeer: "Waiting on them",
+      focusDeferSystemLog: AGENT_NEGOTIATION_FOCUS_DEFER_MESSAGE_EN,
+      focusDeferPausedHint: "Matching resumes when focus ends",
     },
     marketTradeSectionTitle: "Trades in progress",
     marketTradeSectionHint: "Schedule · meet · en route",
@@ -1618,14 +1725,17 @@ export const copyEn: Copy = {
     slotCategoryRecognized: (category: string, product: string) =>
       `"${product}" — we'll treat it as ${category}.`,
     slotCategoryConfirmAsk: (category: string, product: string) =>
-      `Classify "${product}" as ${category}?`,
-    slotCategoryPickAsk: "What kind of item is it?",
+      `Would it make sense to treat "${product}" as ${category}?`,
+    slotCategoryPickAsk: "Pick the closest match, or tap “Other”.",
+    slotTransitionAfterCategoryConfirm: "Got it. Let’s fill it in one step at a time.",
     slotReviewReady:
       "Text details are set. Send photos/video with + and check the card.",
     slotReviewAskMedia:
       "Text is ready. Tap + on the left to send photos and a short video. Front, back, scratches, and battery screen help. Tap the card to fix anything.",
     slotReviewAskDescription:
       "Photos received. Add box/charger or a note—or tap “List in one line” on the card.",
+    slotReviewDescriptionDraftReady: (draft: string) =>
+      `Photos received. You can start with this description:\n"${draft}"\nSend it as-is or edit it.`,
     slotReviewConfirmPublish:
       "Looks good. Tap “List in one line” to publish, or “Customize” for more fields.",
     composeAskTime: "When works for you?",
@@ -1703,7 +1813,7 @@ export const copyEn: Copy = {
     emptyGlobeLink: "Leave a trace on the globe",
     emptyTitle: "Chat with friends",
     emptyBody:
-      "Add friends via QR, contacts, or phone — start chatting like Kakao.",
+      "Add friends via QR, contacts, or phone — chat like Kakao. See the sample below for schedule & navigate buttons.",
     emptyAddCta: "Add friend",
     demoTitle: "Sample chat (read-only)",
     demoHint: "Add friends to use real DMs and AI Lens",
@@ -1785,6 +1895,15 @@ export const copyEn: Copy = {
         group: "Groups",
         context: "Context",
         alignment: "Align",
+        ai: "Auto-match",
+      },
+      aiCoordination: {
+        listPreviewNegotiating: "Auto-matching",
+        listPreviewWaitingYou: "Your answer needed",
+        listPreviewPaused: "Paused",
+        listPreviewAgreed: "Terms ready",
+        listPreviewStuck: "Continue in chat",
+        listPreviewApproved: "Approved",
       },
       alignmentSlots: {
         eyebrow: "Active",

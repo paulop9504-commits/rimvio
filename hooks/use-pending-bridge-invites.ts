@@ -10,13 +10,15 @@ import { toBridgeFetchError } from "@/lib/experience-bridge/bridge-fetch-error";
 import { EXPERIENCE_BRIDGE_UPDATED } from "@/lib/experience-bridge/local-bridge-store";
 import { useAuth } from "@/hooks/use-auth";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { shouldSkipGlobeFetch } from "@/lib/globe/globe-fetch-min-interval";
 
 export type PendingBridgeInvite = {
   state: ExperienceBridgeState;
   invite: ExperienceBridgeParticipant;
 };
 
-const POLL_MS = 12_000;
+const POLL_MS = 30_000;
+const MIN_INVITE_FETCH_MS = 20_000;
 
 export function usePendingBridgeInvites(enabled = true) {
   const { user, configured } = useAuth();
@@ -30,6 +32,9 @@ export function usePendingBridgeInvites(enabled = true) {
     if (!enabled || !remote) {
       setInvites([]);
       setError(null);
+      return;
+    }
+    if (shouldSkipGlobeFetch("bridge:pending-invites", MIN_INVITE_FETCH_MS)) {
       return;
     }
     setLoading(true);

@@ -68,6 +68,9 @@ async function main() {
   assert.equal(intentOnly.kind, "clarify");
   if (intentOnly.kind === "clarify") {
     assert.equal(intentOnly.slotId, "productName");
+    assert.equal(intentOnly.state.macroStage, "slot_fill");
+    assert.equal(intentOnly.state.descriptionStatus, "idle");
+    assert.equal(intentOnly.state.descriptionDraftKo ?? null, null);
   }
 
   const partialProduct = await resolvePortalComposeRunTurn({
@@ -93,6 +96,128 @@ async function main() {
   if (multiSlot.kind === "compose_draft") {
     assert.ok(multiSlot.draft.productName?.includes("아이패드"));
     assert.equal(multiSlot.canPublish, false);
+  }
+
+  const categoryTransition = await resolvePortalComposeRunTurn({
+    graphId: "composer:category-transition",
+    intentId: "offer",
+    categoryId: "used_goods",
+    message: "아이폰15프로",
+    answerText: "맞아요",
+    eventId: event.id,
+    resumeState: {
+      graphId: "composer:category-transition",
+      intentId: "offer",
+      categoryId: "used_goods",
+      composeSeed: "아이폰15프로",
+      accumulatedText: "아이폰15프로",
+      eventId: event.id,
+      pendingSlotId: "__category__",
+      askedCount: 1,
+      status: "waiting_slot",
+      macroStage: "category_scope",
+      intentStage: { stage: "confirmed", resourceType: "sell_item" },
+      marketRole: "listing",
+      composeSchemaId: "sell_item",
+      composeDraft: { productName: "아이폰15프로" },
+      productCategoryStatus: "proposed",
+      proposedCategoryId: "smartphone",
+      pendingClarifyKind: "category_confirm",
+      updatedAt: new Date().toISOString(),
+    },
+  });
+  assert.equal(categoryTransition.kind, "clarify");
+  if (categoryTransition.kind === "clarify") {
+    assert.match(categoryTransition.questionKo, /하나씩 맞출게요/u);
+    assert.match(categoryTransition.questionKo, /용량|상태|가격|거래/u);
+    assert.equal(categoryTransition.state.macroStage, "slot_fill");
+  }
+
+  const descriptionReady = await resolvePortalComposeRunTurn({
+    graphId: "composer:description-ready",
+    intentId: "offer",
+    categoryId: "used_goods",
+    message: "아이폰 15 판매",
+    eventId: event.id,
+    resumeState: {
+      graphId: "composer:description-ready",
+      intentId: "offer",
+      categoryId: "used_goods",
+      composeSeed: "아이폰 15 판매",
+      accumulatedText: "아이폰 15 판매",
+      eventId: event.id,
+      pendingSlotId: null,
+      askedCount: 4,
+      status: "ready",
+      macroStage: "slot_fill",
+      intentStage: { stage: "confirmed", resourceType: "sell_item" },
+      marketRole: "listing",
+      composeSchemaId: "sell_item",
+      composeDraft: {
+        productName: "아이폰 15",
+        priceKrw: 700_000,
+        condition: "상태 좋음",
+        placeLabel: "계산동",
+        photos: ["local:1"],
+      },
+      productCategoryId: "smartphone",
+      productCategoryStatus: "confirmed",
+      proposedCategoryId: null,
+      slotExtras: { storage: "256GB" },
+      skippedSlots: [],
+      detailSlotFill: false,
+      taxonomyStatus: "confirmed",
+      taxonomyLeafId: "digital.phone.smartphone",
+      taxonomyCandidateIds: ["digital.phone.smartphone"],
+      marketCategoryId: "market.phone",
+      descriptionStatus: "idle",
+      descriptionDraftKo: null,
+      updatedAt: new Date().toISOString(),
+    },
+  });
+  assert.equal(descriptionReady.kind, "compose_draft");
+  if (descriptionReady.kind === "compose_draft") {
+    assert.ok(
+      descriptionReady.state.macroStage === "description_ready" ||
+        descriptionReady.state.macroStage === "publish_review",
+    );
+    assert.ok(
+      descriptionReady.state.descriptionStatus === "generated" ||
+        descriptionReady.state.descriptionStatus === "edited",
+    );
+    if (descriptionReady.state.descriptionDraftKo) {
+      assert.match(descriptionReady.state.descriptionDraftKo, /아이폰 15/u);
+      assert.match(descriptionReady.state.descriptionDraftKo, /700,000원|70만원/u);
+    }
+  }
+
+  const publishReview = await resolvePortalComposeRunTurn({
+    graphId: "composer:description-ready",
+    intentId: "offer",
+    categoryId: "used_goods",
+    message: "아이폰 15 판매",
+    answerText: "박스 없이 본체만 있어요",
+    eventId: event.id,
+    resumeState: {
+      ...(descriptionReady.kind === "compose_draft" ? descriptionReady.state : null)!,
+      status: "waiting_slot",
+      detailSlotFill: true,
+      pendingClarifyKind: "slot",
+      pendingSlotId: "note",
+    },
+  });
+  assert.equal(publishReview.kind, "compose_draft");
+  if (publishReview.kind === "compose_draft") {
+    assert.equal(publishReview.state.macroStage, "publish_review");
+    assert.equal(publishReview.state.descriptionStatus, "edited");
+    assert.ok(
+      publishReview.state.composeDraft?.note?.includes("박스 없이 본체만"),
+      "manual note should land in publish review draft",
+    );
+    assert.equal(
+      publishReview.state.descriptionDraftKo,
+      descriptionReady.kind === "compose_draft" ? descriptionReady.state.descriptionDraftKo : null,
+    );
   }
 
   const social = await resolvePortalComposeRunTurn({

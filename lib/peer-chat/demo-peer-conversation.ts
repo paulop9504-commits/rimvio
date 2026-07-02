@@ -2,7 +2,7 @@ import type { PeerMessage } from "@/lib/context/peer-message-types";
 
 export const DEMO_PEER_THREAD_ID = "rimvio-demo-peer-preview";
 
-/** 읽기 전용 예시 DM — 허브·온보딩 미리보기용 */
+/** 읽기 전용 예시 DM — 허브·온보딩 미리보기용 (AI 렌즈 버블 노출) */
 export const DEMO_PEER_MESSAGES: readonly PeerMessage[] = [
   {
     id: "demo-1",
@@ -16,7 +16,7 @@ export const DEMO_PEER_MESSAGES: readonly PeerMessage[] = [
     id: "demo-2",
     peerThreadId: DEMO_PEER_THREAD_ID,
     author: "me",
-    body: "좋아!",
+    body: "좋아! 영화 뭐 볼까?",
     sentAt: "2026-06-01T10:01:00.000Z",
     messageType: "human",
   },
@@ -28,7 +28,23 @@ export const DEMO_PEER_MESSAGES: readonly PeerMessage[] = [
     sentAt: "2026-06-01T10:02:00.000Z",
     messageType: "human",
   },
+  {
+    id: "demo-4",
+    peerThreadId: DEMO_PEER_THREAD_ID,
+    author: "me",
+    body: "ㅇㅋ 가자",
+    sentAt: "2026-06-01T10:03:00.000Z",
+    messageType: "human",
+  },
+  {
+    id: "demo-5",
+    peerThreadId: DEMO_PEER_THREAD_ID,
+    author: "peer",
+    body: "예매 링크 보낼게 https://cgv.co.kr/movies",
+    sentAt: "2026-06-01T10:04:00.000Z",
+    messageType: "human",
+  },
 ] as const;
 
 /** 렌즈·날짜 파싱 데모용 기준일 (수요일) */
-export const DEMO_LENS_REFERENCE_DATE = new Date(2026, 5, 4);
+export const DEMO_LENS_REFERENCE_DATE = new Date(2026, 5, 3);

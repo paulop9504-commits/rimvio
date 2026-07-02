@@ -11,6 +11,11 @@ export type CategorySuggestion = {
   labelKo: string;
 };
 
+export type CategoryCandidateOption = {
+  categoryId: ProductCategoryId;
+  labelKo: string;
+};
+
 const LLM_IDS: ProductCategoryId[] = [
   "smartphone",
   "laptop",
@@ -70,4 +75,55 @@ export async function suggestProductCategoryHybrid(input: {
     source: llmId ? "llm" : "rule",
     labelKo: getProductCategorySchema(categoryId).labelKo,
   };
+}
+
+function pushUnique(
+  list: CategoryCandidateOption[],
+  categoryId: ProductCategoryId,
+): void {
+  if (list.some((item) => item.categoryId === categoryId)) {
+    return;
+  }
+  list.push({
+    categoryId,
+    labelKo: categoryId === "generic" ? "기타" : getProductCategorySchema(categoryId).labelKo,
+  });
+}
+
+export function buildCategoryPickShortlist(input: {
+  productName: string;
+  context?: string;
+  preferredCategoryId?: ProductCategoryId | null;
+}): CategoryCandidateOption[] {
+  const text = [input.productName.trim(), input.context?.trim()].filter(Boolean).join(" ");
+  const shortlist: CategoryCandidateOption[] = [];
+
+  if (input.preferredCategoryId && input.preferredCategoryId !== "generic") {
+    pushUnique(shortlist, input.preferredCategoryId);
+  }
+
+  const ruleId = classifyProductCategory(text);
+  if (ruleId !== "generic") {
+    pushUnique(shortlist, ruleId);
+  }
+
+  if (/(?:아이패드|ipad|태블릿|tablet)/iu.test(text)) {
+    pushUnique(shortlist, "smartphone");
+    pushUnique(shortlist, "laptop");
+  } else if (/(?:아이폰|iphone|갤럭시|galaxy|핸드폰|스마트폰)/iu.test(text)) {
+    pushUnique(shortlist, "smartphone");
+    pushUnique(shortlist, "laptop");
+  } else if (/(?:맥북|macbook|노트북|그램|laptop)/iu.test(text)) {
+    pushUnique(shortlist, "laptop");
+    pushUnique(shortlist, "smartphone");
+  } else if (/(?:가방|운동화|신발|자켓|코트|셔츠|바지|의류|옷)/iu.test(text)) {
+    pushUnique(shortlist, "clothing");
+    pushUnique(shortlist, "furniture");
+  } else if (/(?:책상|의자|소파|침대|테이블|선반|가구)/iu.test(text)) {
+    pushUnique(shortlist, "furniture");
+    pushUnique(shortlist, "clothing");
+  }
+
+  pushUnique(shortlist, "generic");
+  return shortlist.slice(0, 4);
 }

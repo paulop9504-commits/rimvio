@@ -10,7 +10,7 @@ import { useCopy } from "@/hooks/use-copy";
 import { useActiveMarketTrades } from "@/hooks/use-active-market-trades";
 import { useMarketManageIntents } from "@/hooks/use-market-manage-intents";
 import { useOpportunityDashboard } from "@/hooks/use-opportunity-dashboard";
-import { hasActiveMarketTradeForListing } from "@/lib/globe/market/market-trade-pipeline";
+import { findMarketTradeSessionForPair, hasActiveMarketTradeForListing } from "@/lib/globe/market/market-trade-pipeline";
 import { filterOpportunityRowsExcludingActiveTrades } from "@/lib/globe/opportunity-field/filter-rows-excluding-active-trades";
 import type { OpportunityRow } from "@/lib/globe/opportunity-field";
 
@@ -81,6 +81,11 @@ export function OpportunityFieldPageClient() {
       tradeSeeking.id,
       resolvedTradePairs,
     );
+    const activeTradeSession = findMarketTradeSessionForPair(
+      tradeSessions,
+      detailRow.listing.id,
+      tradeSeeking.id,
+    );
 
     return (
       <div
@@ -107,11 +112,17 @@ export function OpportunityFieldPageClient() {
           seeking={tradeSeeking}
           neighborBadge={field.neighborListingBadge}
           hasActiveTrade={hasActiveTrade}
+          activeTradeSession={activeTradeSession}
           className="min-h-0 flex-1"
           navigate={(href) => router.push(href)}
           onBeforeNavigate={() => setDetailRow(null)}
           onChatOpened={() => setDetailRow(null)}
           onScheduleStarted={() => {
+            setDetailRow(null);
+            void refreshTrades();
+            setFocusTradesToken((value) => value + 1);
+          }}
+          onCoordinationStarted={() => {
             setDetailRow(null);
             void refreshTrades();
             setFocusTradesToken((value) => value + 1);

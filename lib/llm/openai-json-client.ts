@@ -71,7 +71,7 @@ export async function callOpenAiTextDirect(input: {
       body: JSON.stringify({
         model: openAiVisionModel(),
         temperature: input.temperature ?? 0.8,
-        max_tokens: input.maxTokens ?? 120,
+        max_tokens: input.maxTokens ?? 2048,
         messages: [
           { role: "system", content: input.systemPrompt },
           { role: "user", content: input.userText },

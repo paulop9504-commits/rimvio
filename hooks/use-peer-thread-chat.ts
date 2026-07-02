@@ -56,9 +56,11 @@ import { normalizePeerSyncError } from "@/lib/peer-chat/normalize-peer-sync-erro
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { tryCreateClient } from "@/lib/supabase/client";
 import { usePeerReadReceipt } from "@/hooks/use-peer-read-receipt";
+import { shouldSkipGlobeFetch } from "@/lib/globe/globe-fetch-min-interval";
 
 const PEER_MESSAGES_TABLE = "peer_messages";
-const PEER_MESSAGES_POLL_MS = 6_000;
+const PEER_MESSAGES_POLL_MS = 15_000;
+const PEER_PULL_MIN_MS = 5_000;
 
 function initialMessages(
   threadId: string,
@@ -196,6 +198,15 @@ export function usePeerThreadChat(policy: PeerThreadPolicyInput) {
 
   const pullRemoteMessages = useCallback(async () => {
     if (!useCloud) {
+      return;
+    }
+    if (
+      typeof document !== "undefined" &&
+      document.visibilityState === "hidden"
+    ) {
+      return;
+    }
+    if (shouldSkipGlobeFetch(`peer:messages:${threadId}`, PEER_PULL_MIN_MS)) {
       return;
     }
     try {

@@ -20,7 +20,7 @@ import {
 import { useCopy } from "@/hooks/use-copy";
 import { useFieldNavBadge } from "@/hooks/use-field-nav-badge";
 import { useFieldSheet } from "@/components/field/field-sheet-provider";
-import { subscribeOpenCaptureSheet } from "@/lib/nav/open-capture-sheet-bridge";
+import { subscribeOpenCaptureSheet, publishCaptureSheetOpen } from "@/lib/nav/open-capture-sheet-bridge";
 import { openFieldDashboardFromBottomNav } from "@/lib/nav/field-dashboard-ingress";
 import { GRID } from "@/lib/ui/responsive-grid";
 import { cn } from "@/lib/utils";
@@ -341,6 +341,10 @@ export function AppNav({ placement }: AppNavProps) {
   useEffect(() => {
     return subscribeOpenCaptureSheet(() => setCaptureOpen(true));
   }, []);
+
+  useEffect(() => {
+    publishCaptureSheetOpen(captureOpen);
+  }, [captureOpen]);
 
   useEffect(() => {
     router.prefetch("/peers");

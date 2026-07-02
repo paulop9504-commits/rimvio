@@ -1,6 +1,5 @@
 import { copy } from "@/lib/copy/human-ko";
-import { findNextFlowStep } from "@/lib/portal/compose-draft/flow-step-types";
-import { SELL_ITEM_FLOW } from "@/lib/portal/compose-draft/sell-item-flow";
+import { findNextSellItemFlowStep } from "@/lib/portal/compose-draft/sell-item-flow";
 import type { ComposeSchemaId, SellItemDraft } from "@/lib/portal/compose-draft/types";
 
 /** Slot review assistant line — lead to the very next action (media, note, publish). */
@@ -12,7 +11,7 @@ export function buildSlotReviewAssistantKo(
     return copy.portal.slotReviewReady;
   }
 
-  const next = findNextFlowStep(draft, SELL_ITEM_FLOW.slice(0, -1));
+  const next = findNextSellItemFlowStep(draft);
   if (next?.slotKey === "photos") {
     return copy.portal.slotReviewAskMedia;
   }

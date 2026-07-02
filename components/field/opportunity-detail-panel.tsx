@@ -15,6 +15,7 @@ import {
 import { buildMarketListingMediaItems } from "@/lib/globe/market/market-listing-media";
 import type { OpportunityRow } from "@/lib/globe/opportunity-field";
 import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
+import type { MarketTradeSessionView } from "@/lib/globe/market/market-trade-types";
 import { RIMVIO_TYPE } from "@/lib/design/rimvio-ontology";
 import { cn } from "@/lib/utils";
 
@@ -25,9 +26,11 @@ export type OpportunityDetailPanelProps = {
   seeking: MarketIntentRecord;
   neighborBadge: string;
   hasActiveTrade?: boolean;
+  activeTradeSession?: MarketTradeSessionView | null;
   onBeforeNavigate?: () => void;
   onChatOpened?: () => void;
   onScheduleStarted?: () => void;
+  onCoordinationStarted?: () => void;
   onListingReserved?: () => void;
   navigate: (href: string) => void;
   className?: string;
@@ -40,9 +43,11 @@ export function OpportunityDetailPanel({
   seeking,
   neighborBadge,
   hasActiveTrade = false,
+  activeTradeSession = null,
   onBeforeNavigate,
   onChatOpened,
   onScheduleStarted,
+  onCoordinationStarted,
   onListingReserved,
   navigate,
   className,
@@ -132,11 +137,14 @@ export function OpportunityDetailPanel({
         seeking={seeking}
         matchIntentId={row.listing.id}
         peerDisplayName={card.productName}
+        listingPriceLine={card.priceLine}
         hasActiveTrade={hasActiveTrade}
+        activeTradeSession={activeTradeSession}
         navigate={navigate}
         onBeforeNavigate={onBeforeNavigate}
         onChatOpened={onChatOpened}
         onScheduleStarted={onScheduleStarted}
+        onCoordinationStarted={onCoordinationStarted}
         onListingReserved={onListingReserved}
       />
     </div>

@@ -52,5 +52,8 @@ export function parseCategoryPickResponse(text: string): ProductCategoryId | nul
       return id;
     }
   }
+  if (trimmed === "기타" || trimmed === "기타에요" || trimmed === "기타예요") {
+    return "generic";
+  }
   return null;
 }

@@ -154,6 +154,9 @@ import {
 } from "@/lib/globe/photo-ingest-file-progress";
 import { retryGlobePhotoIngestFile } from "@/lib/globe/retry-globe-photo-ingest-file";
 import { validateIngestMediaFiles } from "@/lib/globe/validate-ingest-media-files";
+import {
+  subscribeCaptureSheetOpen,
+} from "@/lib/nav/open-capture-sheet-bridge";
 import { resolveContextTriggerOpenOptions } from "@/lib/globe/context-triggers/resolve-context-trigger-open-options";
 import type { GlobeContextTrigger } from "@/lib/globe/context-triggers/globe-context-trigger-types";
 import {
@@ -303,6 +306,9 @@ function GlobeHomeBody() {
   useEffect(() => {
     return subscribeFieldSheetOpenState(setFieldSheetOpen);
   }, []);
+  useEffect(() => {
+    return subscribeCaptureSheetOpen(setCaptureSheetOpen);
+  }, []);
   const fieldOverlayOpen = fieldSheetOpen;
   const [layerSwitchSuspend, setLayerSwitchSuspend] = useState(false);
   const iosPwaGuards = useIosPwaMemoryGuards();
@@ -311,6 +317,7 @@ function GlobeHomeBody() {
   const [poolAttachIds, setPoolAttachIds] = useState<string[]>([]);
   const [poolSuggestedStart, setPoolSuggestedStart] = useState<string | null>(null);
   const [shareSheetOpen, setShareSheetOpen] = useState(false);
+  const [captureSheetOpen, setCaptureSheetOpen] = useState(false);
   const [shareEventId, setShareEventId] = useState<string | null>(null);
   const [activeCluster, setActiveCluster] = useState<PinCluster | null>(null);
   const lodgingDiscovery = useGlobeLodgingDiscoverySession({
@@ -673,10 +680,6 @@ function GlobeHomeBody() {
     const id = activeCluster?.eventId?.trim();
     return Boolean(id && isBridgeLinkedEventId(id));
   }, [activeCluster?.eventId]);
-
-  useBridgeMediaSync({
-    priorityEventId: activeCluster?.eventId ?? null,
-  });
 
   const activeContextMediaReel = useMemo(() => {
     void mediaStoreRevision;
@@ -1786,6 +1789,7 @@ function GlobeHomeBody() {
 
   const globeRenderSuspended =
     sheetOpen ||
+    captureSheetOpen ||
     hubDetailOpen ||
     portalOpen ||
     marketConfirmOpen ||
@@ -1799,6 +1803,11 @@ function GlobeHomeBody() {
     bridgeGhostOpen ||
     shareSheetOpen ||
     layerSwitchSuspend;
+
+  useBridgeMediaSync({
+    enabled: Boolean(user?.id) && !globeRenderSuspended,
+    priorityEventId: activeCluster?.eventId ?? null,
+  });
 
   const trendBridgeRollup = useTrendBridgeRollup({
     active: trendBridgeLayerActive && !globeRenderSuspended,

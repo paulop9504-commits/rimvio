@@ -87,6 +87,7 @@ import {
 import Link from "next/link";
 import { copy } from "@/lib/copy/human-ko";
 import { dispatchOpenCaptureSheet } from "@/lib/nav/open-capture-sheet-bridge";
+import { RimvioStarterExampleChips } from "@/components/rimvio-starter-example-chips";
 import { cn } from "@/lib/utils";
 
 function useGlobeEventSnapshot() {
@@ -732,6 +733,7 @@ const RimvioGlobeHubBody = memo(
               >
                 {copy.globe.emptyFirstPeersLink}
               </Link>
+              <RimvioStarterExampleChips className="mt-1 w-full" />
             </div>
           )
         ) : null}

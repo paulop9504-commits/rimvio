@@ -1,4 +1,4 @@
-import { geminiApiKey, geminiVisionModel } from "@/lib/locate/gemini-config";
+import { geminiApiKey, geminiJsonMaxOutputTokens, geminiVisionModel } from "@/lib/locate/gemini-config";
 import { callOpenAiVisionJson } from "@/lib/llm/openai-json-client";
 import {
   captureVisionProvider,
@@ -291,6 +291,7 @@ async function callGeminiVision(input: {
       ],
       generationConfig: {
         temperature: 0.2,
+        maxOutputTokens: geminiJsonMaxOutputTokens(),
         responseMimeType: "application/json",
       },
     }),

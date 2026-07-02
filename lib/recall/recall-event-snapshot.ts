@@ -1,6 +1,7 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { readFeedCaptureFragments } from "@/lib/feed/feed-capture-metadata";
 import { deriveExperienceSlotHeadline } from "@/lib/feed/derive-experience-slot-headline";
+import { resolveContextPlaceLabel } from "@/lib/globe/context-hub/resolve-context-place-label";
 import { readPinContextNote } from "@/lib/globe/pin-context-note";
 import { readPlanContextFromEvent } from "@/lib/plan-context/plan-context-metadata";
 import { inferPlanMode } from "@/lib/plan-context/resolve-plan-signal-gate";
@@ -121,7 +122,7 @@ export function buildRecallEventSnapshot(
   now = new Date(),
 ): RecallEventSnapshot {
   const plan = readPlanContextFromEvent(event);
-  const placeRaw = plan?.place ?? event.place ?? null;
+  const placeRaw = resolveContextPlaceLabel(event);
   const place = placeRaw ? normalizeMeaningPlace(placeRaw) : null;
   const city = place;
   const atIso = event.datetime ?? event.createdAt;

@@ -33,6 +33,11 @@ export async function initializeMarketTradeSession(
     preferredMeetDateKey: null,
     schedulingExpiresAtIso: expiresAt,
   });
+
+  const { scheduleAgentCoordinationBootstrap } = await import(
+    "@/lib/globe/market/coordination/server/agent-coordination-room-server"
+  );
+  scheduleAgentCoordinationBootstrap(supabase, handshakeId);
 }
 
 /** Best-effort — chat must not fail when trade SQL migrations are pending. */

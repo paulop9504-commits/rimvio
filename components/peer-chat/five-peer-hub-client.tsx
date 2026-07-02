@@ -45,11 +45,27 @@ import {
 } from "@/lib/life-read-model";
 import { useAuth } from "@/hooks/use-auth";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import type { PeerChatLane } from "@/lib/peer-chat/peer-thread-lane";
+
+function resolvePeerHubInitialLane(value: string | null): PeerChatLane {
+  if (
+    value === "ai" ||
+    value === "alignment" ||
+    value === "context" ||
+    value === "group" ||
+    value === "friend" ||
+    value === "all"
+  ) {
+    return value;
+  }
+  return "friend";
+}
 
 export function FivePeerHubClient() {
   const copy = useCopy();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const initialLane = resolvePeerHubInitialLane(searchParams.get("lane"));
   const { user, configured } = useAuth();
   const usePhoneChat = Boolean(configured && user && isSupabaseConfigured());
 
@@ -206,6 +222,7 @@ export function FivePeerHubClient() {
         rows={friendRailRows}
         groups={groupThreads}
         alignmentChats={alignmentChats}
+        initialLane={initialLane}
         onAddFriend={() => setFriendAddOpen(true)}
         onCreateGroup={() => setGroupSheetOpen(true)}
         className="min-h-0 flex-1"

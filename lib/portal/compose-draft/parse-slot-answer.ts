@@ -189,7 +189,7 @@ export function mergeSlotExtrasIntoDraft(
   return next;
 }
 
-function stripAutoMergedSlotExtraNote(note: string | null | undefined): string {
+export function stripAutoMergedSlotExtraNote(note: string | null | undefined): string {
   if (!note?.trim()) {
     return "";
   }
@@ -199,10 +199,14 @@ function stripAutoMergedSlotExtraNote(note: string | null | undefined): string {
     .filter(
       (line) =>
         line.length > 0 &&
-        !/^용량\s+.+\s*·\s*사양\s+.+\s*·\s*사이즈\s+/u.test(line),
+        !/^(?:용량|사양|사이즈)\s+/u.test(line),
     )
     .join("\n")
     .trim();
+}
+
+export function hasMeaningfulSellItemDescription(note: string | null | undefined): boolean {
+  return stripAutoMergedSlotExtraNote(note).length > 0;
 }
 
 export function isSlotFilled(

@@ -23,9 +23,9 @@ import { copy } from "@/lib/copy/human-ko";
 import { findMarketIntentByEventId } from "@/lib/globe/market/market-alignment-store";
 import { sellItemDraftCanPublish } from "@/lib/portal/compose-draft/draft-utils";
 import { buildGlobeChatActionHint } from "@/lib/portal/compose-draft/build-globe-chat-action-hint";
+import { readProductTaxonomyConfirmLabelKo } from "@/lib/portal/compose-draft/product-taxonomy-registry";
 import { readPillSubmitText } from "@/components/globe/globe-action-pill-guide";
-import { findNextFlowStep } from "@/lib/portal/compose-draft/flow-step-types";
-import { SELL_ITEM_FLOW } from "@/lib/portal/compose-draft/sell-item-flow";
+import { SELL_ITEM_FLOW, findNextSellItemFlowStep, readSellItemFlowOptionsFromComposeState, resolveSellItemFlow } from "@/lib/portal/compose-draft/sell-item-flow";
 import {
   buildMatchAgentTasks,
   matchAgentTasksComplete,
@@ -58,6 +58,16 @@ export type GlobeChatScreenProps = {
 function readChatHeaderSubtitle(
   composeState: ReturnType<typeof readPortalComposeRunState>,
 ): string {
+  const macroStage = composeState?.macroStage;
+  if (macroStage === "category_scope") {
+    return copy.globe.chatScreenSubtitleCategory;
+  }
+  if (macroStage === "description_ready") {
+    return copy.globe.chatScreenSubtitleDescription;
+  }
+  if (macroStage === "publish_review") {
+    return copy.globe.chatScreenSubtitleReview;
+  }
   const stage = composeState?.intentStage?.stage;
   if (stage === "soft_signal") {
     return copy.globe.chatScreenSubtitleSoft;
@@ -78,6 +88,50 @@ function draftCardHasValues(
     return false;
   }
   return artifact.composeDraft.fields.some((field) => field.valueKo.trim().length > 0);
+}
+
+function formatPriceKrw(priceKrw: number | null | undefined): string | null {
+  if (priceKrw == null || !Number.isFinite(priceKrw)) {
+    return null;
+  }
+  return `${priceKrw.toLocaleString("ko-KR")}원`;
+}
+
+function readComposeSummaryItems(
+  composeState: ReturnType<typeof readPortalComposeRunState>,
+): string[] {
+  if (!composeState) {
+    return [];
+  }
+  const items: string[] = [];
+  const roleLabel =
+    composeState.marketRole === "listing"
+      ? copy.globe.chatSummaryRoleListing
+      : composeState.marketRole === "seeking"
+        ? copy.globe.chatSummaryRoleSeeking
+        : null;
+  if (roleLabel) {
+    items.push(roleLabel);
+  }
+  const categoryLabel = readProductTaxonomyConfirmLabelKo(
+    composeState.productCategoryId ?? composeState.proposedCategoryId ?? null,
+  );
+  if (categoryLabel) {
+    items.push(categoryLabel);
+  }
+  const productName = composeState.composeDraft?.productName?.trim();
+  if (productName) {
+    items.push(productName);
+  }
+  const priceLabel = formatPriceKrw(composeState.composeDraft?.priceKrw);
+  if (priceLabel) {
+    items.push(priceLabel);
+  }
+  const placeLabel = composeState.composeDraft?.placeLabel?.trim();
+  if (placeLabel) {
+    items.push(placeLabel);
+  }
+  return items;
 }
 
 /** Fullscreen Globe chat — sole creation surface for compose flows. */
@@ -171,23 +225,25 @@ export function GlobeChatScreen({
       }),
     [composeState, messages],
   );
-  const chatPlaceholderOverride = useMemo(() => {
-    if (
-      composeState?.status === "waiting_slot" ||
-      composeState?.status === "conversing" ||
-      composeState?.status === "drafting"
-    ) {
-      return null;
+  const sellItemFlow = useMemo(() => {
+    if (composeState?.composeSchemaId !== "sell_item") {
+      return SELL_ITEM_FLOW;
     }
+    return resolveSellItemFlow(readSellItemFlowOptionsFromComposeState(composeState));
+  }, [composeState]);
+
+  const chatPlaceholderOverride = useMemo(() => {
     if (composeState?.composeSchemaId !== "sell_item") {
       return null;
     }
     const draft = composeState.composeDraft ?? {};
-    const next = findNextFlowStep(draft, SELL_ITEM_FLOW.slice(0, -1));
-    if (next?.slotKey === "photos") {
+    const flowOptions = readSellItemFlowOptionsFromComposeState(composeState);
+    const next = findNextSellItemFlowStep(draft, flowOptions);
+
+    if (next?.slotKey === "photos" && !composeState.pendingSlotId) {
       return copy.globe.chatInputPlaceholderMedia;
     }
-    if (next?.slotKey === "note") {
+    if (next?.slotKey === "note" && !composeState.pendingSlotId) {
       return copy.globe.chatInputPlaceholderNote;
     }
     if (composeState.status === "ready" && sellItemDraftCanPublish(draft)) {
@@ -197,6 +253,7 @@ export function GlobeChatScreen({
   }, [composeState]);
   const headerSubtitle = readChatHeaderSubtitle(composeState);
   const showEmptyState = messages.length === 0 && !showDraftCard;
+  const summaryItems = useMemo(() => readComposeSummaryItems(composeState), [composeState]);
 
   if (!open) {
     return null;
@@ -251,10 +308,30 @@ export function GlobeChatScreen({
         {showFlowBar ? (
           <FlowStatusBar
             draft={flowDraft}
-            flow={SELL_ITEM_FLOW}
+            flow={sellItemFlow}
             highlightComplete={highlightBar}
             tone="light"
           />
+        ) : null}
+
+        {summaryItems.length > 0 ? (
+          <div className="shrink-0 border-b border-black/[0.05] bg-[#fbfbfc] px-4 py-2.5">
+            <div className="mx-auto flex w-full max-w-lg flex-col gap-1">
+              <p className="text-[11px] font-medium text-[#8b95a1]">
+                {copy.globe.chatSummaryTitle}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {summaryItems.map((item) => (
+                  <span
+                    key={item}
+                    className="rounded-full bg-white px-2.5 py-1 text-[12px] text-[#191f28] ring-1 ring-black/[0.06]"
+                  >
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
         ) : null}
 
         <div

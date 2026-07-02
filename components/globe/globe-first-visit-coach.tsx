@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import { copy } from "@/lib/copy/human-ko";
 import {
-  hasSeenGlobeGuide,
   markGlobeGuideSeen,
 } from "@/lib/onboarding/globe-first-visit-onboarding";
 import { cn } from "@/lib/utils";
@@ -59,16 +58,6 @@ export function GlobeFirstVisitCoach({
     },
     [controlled, onOpenChange],
   );
-
-  useEffect(() => {
-    if (controlled) {
-      return;
-    }
-    if (!hasSeenGlobeGuide()) {
-      const timer = window.setTimeout(() => setInternalOpen(true), 700);
-      return () => window.clearTimeout(timer);
-    }
-  }, [controlled]);
 
   useEffect(() => {
     if (open) {

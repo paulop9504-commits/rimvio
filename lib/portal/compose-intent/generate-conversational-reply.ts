@@ -4,8 +4,7 @@ import type { ComposeIntentMessage, IntentState } from "@/lib/portal/compose-int
 import { parseMarketProductFromText } from "@/lib/globe/market/parse-market-product-from-text";
 import { isValidMarketProductName } from "@/lib/globe/market/sanitize-market-product-name";
 import type { SellItemDraft } from "@/lib/portal/compose-draft/types";
-import { findNextFlowStep } from "@/lib/portal/compose-draft/flow-step-types";
-import { SELL_ITEM_FLOW, sellItemFlowReadyToPublish } from "@/lib/portal/compose-draft/sell-item-flow";
+import { findNextSellItemFlowStep, sellItemFlowReadyToPublish } from "@/lib/portal/compose-draft/sell-item-flow";
 import {
   buildComposeChatPersonaPrompt,
   COMPOSE_CHAT_TEMPERATURE,
@@ -54,7 +53,7 @@ function fallbackConversationalReply(input: {
   }
 
   if (input.intentStage.stage === "confirmed" && input.draft) {
-    const next = findNextFlowStep(input.draft, SELL_ITEM_FLOW.slice(0, -1));
+    const next = findNextSellItemFlowStep(input.draft);
     if (next?.slotKey === "photos") {
       return copy.portal.composeDraftNudgePhoto;
     }
@@ -102,7 +101,6 @@ async function generateConversationalReplyLlm(input: {
     }),
     userText: formatComposeHistoryForLlm(input.history, input.newMessage),
     temperature: COMPOSE_CHAT_TEMPERATURE,
-    maxTokens: 120,
   });
 }
 

@@ -5,10 +5,12 @@ import {
   alignGlobeContextPlaces,
   type AlignGlobeContextPlacesResult,
 } from "@/lib/globe/align-globe-context-places";
+import { shouldSkipGlobeFetch } from "@/lib/globe/globe-fetch-min-interval";
 
-const DEFAULT_INTERVAL_MS = 10 * 60 * 1000;
-const INITIAL_DELAY_MS = 2_500;
-/** ~150m — ignore GPS jitter; avoids N× place-candidates per tick. */
+const DEFAULT_INTERVAL_MS = 30 * 60 * 1000;
+const INITIAL_DELAY_MS = 12_000;
+const MIN_RUN_GAP_MS = 25 * 60 * 1000;
+/** ~150m — ignore GPS jitter; alignment does not re-run on every tick. */
 const MIN_MOVE_METERS = 150;
 
 function haversineMeters(
@@ -37,18 +39,25 @@ export function useGlobeContextPlaceAlignment(input: {
   const onAlignedRef = useRef(input.onAligned);
   const coordsRef = useRef<{ lat: number; lng: number } | null>(null);
   const lastAlignedRef = useRef<{ lat: number; lng: number } | null>(null);
+  const userLatRef = useRef(input.userLat);
+  const userLngRef = useRef(input.userLng);
 
+  userLatRef.current = input.userLat;
+  userLngRef.current = input.userLng;
   onAlignedRef.current = input.onAligned;
 
   const run = useCallback(async () => {
     if (runningRef.current) {
       return;
     }
+    if (shouldSkipGlobeFetch("globe:align-context-places", MIN_RUN_GAP_MS)) {
+      return;
+    }
     runningRef.current = true;
     try {
       const result = await alignGlobeContextPlaces({
-        userLat: coordsRef.current?.lat ?? input.userLat,
-        userLng: coordsRef.current?.lng ?? input.userLng,
+        userLat: coordsRef.current?.lat ?? userLatRef.current,
+        userLng: coordsRef.current?.lng ?? userLngRef.current,
       });
       if (coordsRef.current) {
         lastAlignedRef.current = { ...coordsRef.current };
@@ -57,7 +66,7 @@ export function useGlobeContextPlaceAlignment(input: {
     } finally {
       runningRef.current = false;
     }
-  }, [input.userLat, input.userLng]);
+  }, []);
 
   useEffect(() => {
     const lat = input.userLat;

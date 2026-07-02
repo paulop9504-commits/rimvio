@@ -24,6 +24,10 @@ import {
 } from "@/lib/life-read-model";
 
 const MIN_COORD_SHIFT_M = 80;
+const MAX_ALIGN_TARGETS_PER_RUN = 6;
+const PLACE_GEOCODE_MIN_MS = 6 * 60 * 60 * 1000;
+
+const geocodedPlaceAt = new Map<string, number>();
 
 function haversineMeters(
   lat1: number,
@@ -38,6 +42,28 @@ function haversineMeters(
     Math.sin(dLat / 2) ** 2 +
     Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
   return 6_371_000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function needsPlaceGeocode(event: EventCandidate, placeLabel: string): boolean {
+  const label = placeLabel.trim();
+  if (!label) {
+    return false;
+  }
+  const cachedAt = geocodedPlaceAt.get(`${event.id}:${label}`) ?? 0;
+  if (Date.now() - cachedAt < PLACE_GEOCODE_MIN_MS) {
+    return false;
+  }
+  const current = readGlobeContextCardCoords(event);
+  if (
+    current.placeLabel.trim() === label &&
+    Number.isFinite(current.lat) &&
+    Number.isFinite(current.lng) &&
+    !(current.lat === 0 && current.lng === 0)
+  ) {
+    geocodedPlaceAt.set(`${event.id}:${label}`, Date.now());
+    return false;
+  }
+  return true;
 }
 
 function shouldAlignGlobeContext(event: EventCandidate): boolean {
@@ -145,12 +171,20 @@ export async function alignGlobeContextPlaces(input?: {
 }): Promise<AlignGlobeContextPlacesResult> {
   const targets = listLifeEventCandidates().filter(shouldAlignGlobeContext);
   let updated = 0;
+  let geocodeBudget = MAX_ALIGN_TARGETS_PER_RUN;
 
   for (const event of targets) {
     const placeLabel = resolveGlobeContextPlaceLabel(event);
     if (!placeLabel.trim()) {
       continue;
     }
+    if (!needsPlaceGeocode(event, placeLabel)) {
+      continue;
+    }
+    if (geocodeBudget <= 0) {
+      break;
+    }
+    geocodeBudget -= 1;
 
     const resolved = await fetchGlobeContextPlaceGeocode({
       place: placeLabel,
@@ -164,6 +198,7 @@ export async function alignGlobeContextPlaces(input?: {
     if (applyResolvedPlace(event, resolved)) {
       updated += 1;
     }
+    geocodedPlaceAt.set(`${event.id}:${placeLabel.trim()}`, Date.now());
   }
 
   if (updated > 0) {

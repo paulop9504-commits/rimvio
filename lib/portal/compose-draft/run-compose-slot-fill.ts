@@ -26,9 +26,9 @@ import type {
 import { prefillComposeDraftFromTurn } from "@/lib/portal/compose-draft/prefill-compose-draft-from-turn";
 import {
   getProductCategorySchema,
-  listPickableProductCategories,
   listSlotsForMode,
 } from "@/lib/portal/compose-draft/product-category-registry";
+import { readProductTaxonomyConfirmLabelKo } from "@/lib/portal/compose-draft/product-taxonomy-registry";
 import {
   readCategoryConfirmChoices,
   readPriceConfirmChoices,
@@ -37,6 +37,7 @@ import {
   type SlotChoiceOption,
 } from "@/lib/portal/compose-draft/slot-choice-registry";
 import { suggestProductCategoryHybrid } from "@/lib/portal/compose-draft/suggest-product-category";
+import { buildCategoryPickShortlist } from "@/lib/portal/compose-draft/suggest-product-category";
 import { buildSlotReviewAssistantKo } from "@/lib/portal/compose-draft/build-slot-review-reply";
 import type { ComposeSchemaId, SellItemDraft } from "@/lib/portal/compose-draft/types";
 import type { PortalComposeRunState } from "@/lib/portal/portal-compose-run-store";
@@ -142,10 +143,18 @@ function resolveNextSlot(input: {
   return null;
 }
 
-function buildCategoryPickOptions(): readonly { id: ProductCategoryId; labelKo: string }[] {
-  return listPickableProductCategories().map((id) => ({
-    id,
-    labelKo: getProductCategorySchema(id).labelKo,
+function buildCategoryPickOptions(input: {
+  productName: string;
+  context?: string;
+  proposedCategoryId?: ProductCategoryId | null;
+}): readonly { id: ProductCategoryId; labelKo: string }[] {
+  return buildCategoryPickShortlist({
+    productName: input.productName,
+    context: input.context,
+    preferredCategoryId: input.proposedCategoryId ?? null,
+  }).map((item) => ({
+    id: item.categoryId,
+    labelKo: item.labelKo,
   }));
 }
 
@@ -270,6 +279,11 @@ export async function runComposeSlotFillTurn(input: {
 
   if (productNamed && categoryStatus !== "confirmed") {
     if (categoryStatus === "picking") {
+      const pickOptions = buildCategoryPickOptions({
+        productName: draft.productName!.trim(),
+        context: incoming,
+        proposedCategoryId,
+      });
       return withCategoryMeta(
         {
           kind: "category_pick",
@@ -279,7 +293,7 @@ export async function runComposeSlotFillTurn(input: {
           slotExtras,
           skippedSlots: [...skippedSlots],
           detailSlotFill,
-          categoryOptions: buildCategoryPickOptions(),
+          categoryOptions: pickOptions,
         },
         { categoryStatus, confirmedCategoryId, proposedCategoryId },
       );
@@ -287,15 +301,17 @@ export async function runComposeSlotFillTurn(input: {
 
     if (categoryStatus === "proposed" && proposedCategoryId) {
       const schema = getProductCategorySchema(proposedCategoryId);
+      const confirmLabelKo =
+        readProductTaxonomyConfirmLabelKo(proposedCategoryId) ?? schema.labelKo;
       return withCategoryMeta(
         {
           kind: "category_confirm",
           questionKo: copy.portal.slotCategoryConfirmAsk(
-            schema.labelKo,
+            confirmLabelKo,
             draft.productName!.trim(),
           ),
           suggestedCategoryId: proposedCategoryId,
-          suggestedLabelKo: schema.labelKo,
+          suggestedLabelKo: confirmLabelKo,
           schemaId: input.schemaId,
           draft,
           slotExtras,
@@ -313,15 +329,17 @@ export async function runComposeSlotFillTurn(input: {
     });
     proposedCategoryId = suggestion.categoryId;
     categoryStatus = "proposed";
+    const confirmLabelKo =
+      readProductTaxonomyConfirmLabelKo(suggestion.categoryId) ?? suggestion.labelKo;
     return withCategoryMeta(
       {
         kind: "category_confirm",
         questionKo: copy.portal.slotCategoryConfirmAsk(
-          suggestion.labelKo,
+          confirmLabelKo,
           draft.productName!.trim(),
         ),
         suggestedCategoryId: suggestion.categoryId,
-        suggestedLabelKo: suggestion.labelKo,
+        suggestedLabelKo: confirmLabelKo,
         schemaId: input.schemaId,
         draft,
         slotExtras,

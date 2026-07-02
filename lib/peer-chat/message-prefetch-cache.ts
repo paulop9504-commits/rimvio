@@ -1,7 +1,9 @@
 import type { PeerMessage } from "@/lib/context/peer-message-types";
 import { fetchPeerMessages } from "@/lib/peer-chat/peer-chat-client";
+import { shouldSkipGlobeFetch } from "@/lib/globe/globe-fetch-min-interval";
 
 const TTL_MS = 30_000;
+const PREFETCH_MIN_MS = 12_000;
 
 type Entry = {
   messages: PeerMessage[];
@@ -14,6 +16,9 @@ const inflight = new Map<string, Promise<PeerMessage[]>>();
 /** 친구 목록에서 방 들어가기 전 미리 불러오기 */
 export function prefetchPeerMessages(threadId: string): void {
   if (typeof window === "undefined" || cache.has(threadId) || inflight.has(threadId)) {
+    return;
+  }
+  if (shouldSkipGlobeFetch(`peer:prefetch:${threadId}`, PREFETCH_MIN_MS)) {
     return;
   }
   const promise = fetchPeerMessages(threadId, { markRead: false })

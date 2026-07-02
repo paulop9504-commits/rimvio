@@ -41,9 +41,9 @@ function main() {
     ],
   });
   assert.ok(soft);
-  assert.equal(soft.bodyKo, copy.globe.chatActionHintTapOrType);
+  assert.equal(soft.bodyKo, copy.globe.chatActionHintSoftConfirm);
   assert.equal(soft.pills.length, 3);
-  assert.equal(soft.pills[0]?.labelKo, "70만원, 사용감 있음");
+  assert.equal(soft.pills[0]?.labelKo, "맞아요");
 
   const priceSlot = buildGlobeChatActionHint({
     composeState: {

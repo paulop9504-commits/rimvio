@@ -13,7 +13,7 @@ import { useActiveMarketTrades } from "@/hooks/use-active-market-trades";
 import { useMarketManageIntents } from "@/hooks/use-market-manage-intents";
 import { useOpportunityDashboard } from "@/hooks/use-opportunity-dashboard";
 import { filterOpportunityRowsExcludingActiveTrades } from "@/lib/globe/opportunity-field/filter-rows-excluding-active-trades";
-import { hasActiveMarketTradeForListing } from "@/lib/globe/market/market-trade-pipeline";
+import { findMarketTradeSessionForPair, hasActiveMarketTradeForListing } from "@/lib/globe/market/market-trade-pipeline";
 import {
   rimvioFieldDashboardSheetClass,
   rimvioSheetBackdropClass,
@@ -167,11 +167,21 @@ export function OpportunityDashboardSheet({
             tradeSeeking.id,
             resolvedTradePairs,
           )}
+          activeTradeSession={findMarketTradeSessionForPair(
+            tradeSessions,
+            detailRow.listing.id,
+            tradeSeeking.id,
+          )}
           className="min-h-0 flex-1"
           onBeforeNavigate={() => onOpenChange(false)}
           navigate={(href) => router.push(href)}
           onChatOpened={() => setDetailRow(null)}
           onScheduleStarted={() => {
+            setDetailRow(null);
+            void refreshTrades();
+            setFocusTradesToken((value) => value + 1);
+          }}
+          onCoordinationStarted={() => {
             setDetailRow(null);
             void refreshTrades();
             setFocusTradesToken((value) => value + 1);

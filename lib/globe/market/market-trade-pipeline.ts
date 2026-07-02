@@ -150,3 +150,29 @@ export function hasActiveMarketTradeForListing(
       pair.seekingIntentId === seekingIntentId,
   );
 }
+
+export function isNonTerminalMarketTradeStatus(
+  status: MarketTradeStatus | string | null | undefined,
+): boolean {
+  const normalized = normalizeMarketTradeStatus(
+    typeof status === "string" ? status : status ?? null,
+  );
+  return !(MARKET_TRADE_TERMINAL_STATUSES as readonly string[]).includes(normalized);
+}
+
+/** Active handshake session for listing + seeking (chat or scheduling pipeline). */
+export function findMarketTradeSessionForPair(
+  sessions: readonly MarketTradeSessionView[],
+  listingIntentId: string,
+  seekingIntentId: string,
+): MarketTradeSessionView | null {
+  return (
+    sessions.find(
+      (session) =>
+        session.listingIntentId === listingIntentId &&
+        session.seekingIntentId === seekingIntentId &&
+        isNonTerminalMarketTradeStatus(session.tradeStatus) &&
+        session.phase !== "completed",
+    ) ?? null
+  );
+}

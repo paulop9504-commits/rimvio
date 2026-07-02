@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Calendar, Car, ImageIcon, MapPin, Navigation } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Calendar, Car, ImageIcon, MapPin, Navigation, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { MarketCompletionTraceSheet } from "@/components/market/market-completion-trace-sheet";
 import { AgentProgressList } from "@/components/ui/agent-progress-list";
@@ -34,6 +35,18 @@ import {
 import { openHrefWithFallback } from "@/lib/actions/open-with-fallback";
 import { rimvioCompactPrimaryCtaClass } from "@/lib/design/rimvio-ontology";
 import { tradeProgressStepsToAgentTasks } from "@/lib/globe/market/trade-progress-steps-to-agent-tasks";
+import {
+  agentNegotiationRoomPath,
+  applyCoordinationCalendarBusyToRoom,
+  approveAgentNegotiationRoom,
+  getAgentNegotiationRoom,
+  loadAgentNegotiationRoomRemote,
+  submitAgentNegotiationSlotAnswer,
+  subscribeAgentNegotiationRooms,
+} from "@/lib/globe/market/coordination/agent-negotiation-store";
+import { fetchCoordinationCalendarBusyIntervals } from "@/lib/globe/market/coordination/client/read-coordination-calendar-busy";
+import { viewerHasApprovedCoordination } from "@/lib/globe/market/coordination/detect-agent-coordination-attention";
+import type { AgentNegotiationRoomRecord } from "@/lib/globe/market/coordination/agent-negotiation-types";
 import { cn } from "@/lib/utils";
 
 export type MarketTradeProgressCardProps = {
@@ -49,6 +62,8 @@ export function MarketTradeProgressCard({
 }: MarketTradeProgressCardProps) {
   const copy = useCopy();
   const globe = copy.globe;
+  const field = globe.field;
+  const router = useRouter();
   const liveLocation = useLiveLocationSnapshot();
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [departBusy, setDepartBusy] = useState(false);
@@ -58,9 +73,42 @@ export function MarketTradeProgressCard({
   const [completionTrace, setCompletionTrace] = useState<MarketCompletionTraceDraft | null>(null);
   const [completionSheetOpen, setCompletionSheetOpen] = useState(false);
   const [completionPinBusy, setCompletionPinBusy] = useState(false);
+  const [coordinationRoom, setCoordinationRoom] = useState<AgentNegotiationRoomRecord | null>(
+    () => getAgentNegotiationRoom(session.handshakeId),
+  );
+  const [coordinationBusy, setCoordinationBusy] = useState(false);
+  const [slotChipBusy, setSlotChipBusy] = useState<string | null>(null);
+  const [coordinationBusyIntervals, setCoordinationBusyIntervals] = useState<
+    Awaited<ReturnType<typeof fetchCoordinationCalendarBusyIntervals>>
+  >([]);
 
   const isSeeking = session.viewerRole === "seeking";
   const badgeTone = isSeeking ? "bg-[#7c3aed] text-white" : "bg-[#3182f6] text-white";
+
+  useEffect(() => {
+    const syncRoom = () => {
+      const room = getAgentNegotiationRoom(session.handshakeId);
+      if (room) {
+        setCoordinationRoom(
+          applyCoordinationCalendarBusyToRoom(room, coordinationBusyIntervals),
+        );
+      }
+    };
+    syncRoom();
+    const unsub = subscribeAgentNegotiationRooms(syncRoom);
+    void loadAgentNegotiationRoomRemote(session.handshakeId).then((room) => {
+      if (room) {
+        setCoordinationRoom(
+          applyCoordinationCalendarBusyToRoom(room, coordinationBusyIntervals),
+        );
+      }
+    });
+    return unsub;
+  }, [session.handshakeId, coordinationBusyIntervals]);
+
+  useEffect(() => {
+    void fetchCoordinationCalendarBusyIntervals().then(setCoordinationBusyIntervals);
+  }, [session.handshakeId]);
 
   useEffect(() => {
     const dateKey = session.preferredMeetDateKey?.trim();
@@ -286,6 +334,80 @@ export function MarketTradeProgressCard({
     session.tradeStatus === "buyer_picked_day" ||
     session.tradeStatus === "seller_proposed";
 
+  const coordinationUi = globe.coordination;
+  const showCoordinationSection =
+    Boolean(coordinationRoom) &&
+    session.tradeStatus !== "completed" &&
+    session.tradeStatus !== "cancelled" &&
+    session.tradeStatus !== "expired" &&
+    coordinationRoom?.state !== "APPROVED";
+  const coordinationProposalReady =
+    coordinationRoom?.state === "AGREED" && Boolean(coordinationRoom.proposal);
+  const coordinationViewerApproved = coordinationRoom
+    ? viewerHasApprovedCoordination(coordinationRoom)
+    : false;
+  const coordinationNeedsViewerSlot =
+    (coordinationRoom?.state === "WAITING_USER_INPUT" ||
+      coordinationRoom?.state === "PAUSED") &&
+    coordinationRoom.pendingQuestion?.ownerRole === session.viewerRole;
+
+  const onCoordinationSlotChip = useCallback(
+    (value: string) => {
+      const question = coordinationRoom?.pendingQuestion;
+      if (!question || slotChipBusy) {
+        return;
+      }
+      setSlotChipBusy(value);
+      void submitAgentNegotiationSlotAnswer({
+        handshakeId: session.handshakeId,
+        slotKey: question.slotKey,
+        valueKo: value,
+      })
+        .then((next) => {
+          if (next) {
+            setCoordinationRoom(next);
+          }
+        })
+        .finally(() => {
+          setSlotChipBusy(null);
+        });
+    },
+    [coordinationRoom?.pendingQuestion, session.handshakeId, slotChipBusy],
+  );
+
+  const onOpenCoordinationRoom = () => {
+    router.push(agentNegotiationRoomPath(session.handshakeId));
+  };
+
+  const onApproveCoordination = async () => {
+    if (coordinationBusy || !coordinationProposalReady || coordinationViewerApproved) {
+      return;
+    }
+    setCoordinationBusy(true);
+    try {
+      const next = await approveAgentNegotiationRoom(session.handshakeId);
+      if (next) {
+        setCoordinationRoom(next);
+        if (next.state === "APPROVED") {
+          toast.success(coordinationUi.approveSuccessToast);
+        } else {
+          toast.success(coordinationUi.approveWaitingPeerToast);
+        }
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : coordinationUi.approveCta,
+      );
+    } finally {
+      setCoordinationBusy(false);
+    }
+  };
+
+  const statusHeadlineKo =
+    coordinationProposalReady && !coordinationViewerApproved
+      ? field.coordinationProposalHeadline
+      : session.statusHeadlineKo;
+
   return (
     <>
       <article
@@ -300,7 +422,7 @@ export function MarketTradeProgressCard({
             {session.roleBadgeKo}
           </span>
           <div className="text-right">
-            <p className="text-[13px] font-semibold text-[#191f28]">{session.statusHeadlineKo}</p>
+            <p className="text-[13px] font-semibold text-[#191f28]">{statusHeadlineKo}</p>
             {session.statusSublineKo ? (
               <p className="mt-0.5 text-[12px] text-[#6b7684]">{session.statusSublineKo}</p>
             ) : null}
@@ -325,6 +447,110 @@ export function MarketTradeProgressCard({
             <p className="mt-0.5 text-[14px] font-semibold text-[#191f28]">{session.priceLine}</p>
           </div>
         </div>
+
+        {showCoordinationSection ? (
+          <div className="mt-3 space-y-2 rounded-xl bg-[#f8f9fb] px-3 py-3" data-market-trade-coordination>
+            {coordinationProposalReady && coordinationRoom?.proposal ? (
+              <>
+                <p className="text-[13px] font-semibold text-[#191f28]">
+                  {field.coordinationProposalHeadline}
+                </p>
+                <div className="space-y-1 text-[13px] text-[#4e5968]">
+                  <p>
+                    {coordinationUi.summaryPrice}: {coordinationRoom.proposal.priceKo}
+                  </p>
+                  <p>
+                    {coordinationUi.summaryTime}: {coordinationRoom.proposal.meetTimeKo}
+                  </p>
+                  {coordinationRoom.proposal.meetPlaceKo ? (
+                    <p>
+                      {coordinationUi.summaryPlace}: {coordinationRoom.proposal.meetPlaceKo}
+                    </p>
+                  ) : null}
+                </div>
+                {coordinationViewerApproved ? (
+                  <p className="text-[12px] font-medium text-[#6b7684]">
+                    {coordinationUi.waitingPeerApproval}
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={coordinationBusy}
+                    onClick={() => void onApproveCoordination()}
+                    className={cn(rimvioCompactPrimaryCtaClass(), "w-full disabled:opacity-50")}
+                    data-market-trade-coordination-approve
+                  >
+                    {coordinationBusy ? "…" : coordinationUi.approveCta}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={onOpenCoordinationRoom}
+                  className="w-full rounded-xl bg-white py-2.5 text-[13px] font-semibold text-[#3182f6] ring-1 ring-[#3182f6]/20"
+                >
+                  {field.coordinationViewRoomCta}
+                </button>
+              </>
+            ) : coordinationNeedsViewerSlot ? (
+              <>
+                <p className="text-[13px] font-semibold text-[#191f28]">
+                  {coordinationRoom?.pendingQuestion?.questionKo ?? coordinationUi.stateWaitingYou}
+                </p>
+                <p className="text-[12px] text-[#6b7684]">{field.coordinationInlineSlotHint}</p>
+                {coordinationRoom?.pendingQuestion?.chips?.length ? (
+                  <div
+                    className="flex flex-wrap gap-2 pt-1"
+                    data-market-trade-coordination-slot
+                  >
+                    {coordinationRoom.pendingQuestion.chips.map((chip) => (
+                      <button
+                        key={chip}
+                        type="button"
+                        disabled={slotChipBusy !== null}
+                        onClick={() => onCoordinationSlotChip(chip)}
+                        className="rounded-full bg-[#2563eb] px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50"
+                      >
+                        {slotChipBusy === chip ? "…" : chip}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={onOpenCoordinationRoom}
+                  className="w-full rounded-xl bg-white py-2.5 text-[13px] font-semibold text-[#3182f6] ring-1 ring-black/[0.06]"
+                >
+                  {field.coordinationViewRoomCta}
+                </button>
+              </>
+            ) : coordinationRoom?.state === "NEGOTIATING" ? (
+              <>
+                <p className="flex items-center gap-2 text-[13px] font-medium text-[#4e5968]">
+                  <Sparkles className="size-4 shrink-0 text-[#3182f6]" aria-hidden />
+                  {field.coordinationProgressHeadline}
+                </p>
+                <button
+                  type="button"
+                  onClick={onOpenCoordinationRoom}
+                  className="w-full rounded-xl bg-white py-2.5 text-[13px] font-semibold text-[#3182f6] ring-1 ring-black/[0.06]"
+                >
+                  {field.coordinationViewRoomCta}
+                </button>
+              </>
+            ) : coordinationRoom?.state === "STUCK" || coordinationRoom?.state === "PAUSED" ? (
+              <>
+                <p className="text-[13px] text-[#4e5968]">{coordinationUi.stuckBody}</p>
+                <button
+                  type="button"
+                  onClick={onOpenCoordinationRoom}
+                  className="w-full rounded-xl bg-white py-2.5 text-[13px] font-semibold text-[#3182f6] ring-1 ring-black/[0.06]"
+                >
+                  {field.coordinationViewRoomCta}
+                </button>
+              </>
+            ) : null}
+          </div>
+        ) : null}
 
         {session.showPickDay ? (
           <div className="mt-3 space-y-2 rounded-xl bg-[#f8f9fb] px-3 py-3">

@@ -41,3 +41,42 @@ export function subscribeOpenCaptureSheet(
   window.addEventListener(CAPTURE_SHEET_OPEN_EVENT, handler);
   return () => window.removeEventListener(CAPTURE_SHEET_OPEN_EVENT, handler);
 }
+
+/** Global capture sheet open state — globe can suspend WebGL while sheet is up. */
+export const CAPTURE_SHEET_STATE_EVENT = "rimvio:capture-sheet-state";
+
+let captureSheetOpen = false;
+
+export function publishCaptureSheetOpen(open: boolean): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  if (captureSheetOpen === open) {
+    return;
+  }
+  captureSheetOpen = open;
+  window.dispatchEvent(
+    new CustomEvent<{ open: boolean }>(CAPTURE_SHEET_STATE_EVENT, {
+      detail: { open },
+    }),
+  );
+}
+
+export function readCaptureSheetOpen(): boolean {
+  return captureSheetOpen;
+}
+
+export function subscribeCaptureSheetOpen(
+  listener: (open: boolean) => void,
+): () => void {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+  const handler = (event: Event) => {
+    const open = (event as CustomEvent<{ open: boolean }>).detail?.open ?? false;
+    listener(open);
+  };
+  window.addEventListener(CAPTURE_SHEET_STATE_EVENT, handler);
+  listener(captureSheetOpen);
+  return () => window.removeEventListener(CAPTURE_SHEET_STATE_EVENT, handler);
+}

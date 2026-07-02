@@ -84,7 +84,11 @@ export async function openMarketChatForListing(input: {
   onBeforeNavigate?: () => void;
   skipNavigate?: boolean;
   onThreadReady?: (threadId: string) => void;
-}): Promise<{ threadId: string; alreadyCompleted: boolean }> {
+}): Promise<{
+  threadId: string;
+  handshakeId: string;
+  alreadyCompleted: boolean;
+}> {
   const { openMarketChatRemote } = await import(
     "@/lib/globe/market/client/sync-market-intent-remote"
   );
@@ -107,6 +111,7 @@ export async function openMarketChatForListing(input: {
   }
   return {
     threadId: result.threadId,
+    handshakeId: result.handshakeId,
     alreadyCompleted: result.alreadyCompleted === true,
   };
 }

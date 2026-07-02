@@ -45,6 +45,7 @@ export async function generateComposeNudgeMessage(input: {
   history?: ComposeIntentMessage[];
   historyKo?: string;
   isResume?: boolean;
+  descriptionDraftKo?: string | null;
 }): Promise<string> {
   if (!composeDraftHasValues(input.draft)) {
     return buildComposeIntentReply(input.schemaId);
@@ -61,6 +62,10 @@ export async function generateComposeNudgeMessage(input: {
 
   if (sellItemFlowReadyToPublish(input.draft) && isFlowComplete(input.draft, flow.slice(0, -1))) {
     return copy.portal.composeDraftReadyToSubmit;
+  }
+
+  if (input.descriptionDraftKo?.trim() && findNextFlowStep(input.draft, flow.slice(0, -1))?.slotKey === "note") {
+    return copy.portal.slotReviewDescriptionDraftReady(input.descriptionDraftKo.trim());
   }
 
   const history: ComposeIntentMessage[] =

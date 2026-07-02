@@ -172,6 +172,11 @@ export async function classifyComposeIntent(input: {
     previousStage,
     contextText,
   });
+
+  if (rule.stage === "confirmed" || rule.stage === "chatting") {
+    return rule;
+  }
+
   const llm = await classifyComposeIntentLlm({
     history: input.history,
     newMessage: input.newMessage,
@@ -182,13 +187,10 @@ export async function classifyComposeIntent(input: {
     return rule;
   }
 
-  if (rule.stage === "confirmed") {
-    return rule;
-  }
-  if (llm.stage === "confirmed" && rule.stage !== "chatting") {
+  if (llm.stage === "confirmed" && rule.stage === "soft_signal") {
     return llm;
   }
-  if (llm.stage === "soft_signal" && rule.stage === "chatting") {
+  if (llm.stage === "soft_signal") {
     return llm;
   }
   return rule;
