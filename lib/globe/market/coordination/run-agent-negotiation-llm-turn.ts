@@ -67,6 +67,7 @@ Schema:
 
 Rules:
 - Never invent prices or times not grounded in filledSlots or priceLine.
+- filledSlots are authoritative — never request_slot for keys already present.
 - If price bounds are missing, use request_slot (min_price_krw → listing, max_price_krw → seeking).
 - If meet_time_label is missing, request_slot before propose. scheduleContext lists listing availability + calendar busy windows when present.
 - propose only when price + meet time are known from filledSlots.

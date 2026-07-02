@@ -262,6 +262,7 @@ export async function bootstrapAgentNegotiationFromSession(
     | "priceLine"
     | "viewerRole"
     | "availabilityPreset"
+    | "preferredMeetAtIso"
   >,
   peerDisplayName = "상대",
 ): Promise<AgentNegotiationRoomRecord> {
@@ -274,6 +275,7 @@ export async function bootstrapAgentNegotiationFromSession(
     peerDisplayName,
     viewerRole: session.viewerRole,
     availabilityPreset: session.availabilityPreset,
+    preferredMeetAtIso: session.preferredMeetAtIso,
     calendarBusyIntervals: patchContext.calendarBusyIntervals.map((wire) => ({
       startMs: new Date(wire.start).getTime(),
       endMs: new Date(wire.end).getTime(),

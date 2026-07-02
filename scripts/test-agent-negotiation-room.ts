@@ -12,6 +12,7 @@ const room = createAgentNegotiationRoom({
   priceLine: "800,000원",
   peerDisplayName: "민수",
   viewerRole: "seeking",
+  prefillSlots: {},
 });
 
 let current = room;

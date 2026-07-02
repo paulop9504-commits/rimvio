@@ -13,6 +13,11 @@ import {
   buildPriceSlotChips,
   type AgentNegotiationSlotChipContext,
 } from "@/lib/globe/market/coordination/agent-negotiation-slot-chips";
+import { AGENT_NEGOTIATION_PREFILL_LOADED_KO } from "@/lib/globe/market/coordination/agent-coordination-prefill-copy";
+import {
+  buildAgentNegotiationPrefillSlots,
+  countAgentNegotiationPrefillSlots,
+} from "@/lib/globe/market/coordination/build-agent-negotiation-prefill-slots";
 import type { MarketIntentRole } from "@/lib/globe/market/market-intent-types";
 import { invertMarketIntentRole } from "@/lib/globe/market/market-intent-role";
 
@@ -113,10 +118,44 @@ function injectedLabel(room: AgentNegotiationRoomRecord, slotKey: AgentNegotiati
   return room.viewerRole === "seeking" ? "구매자가 답함" : "판매자가 답함";
 }
 
+function hasPriceSlotFilled(
+  filledSlots: AgentNegotiationRoomRecord["filledSlots"],
+): boolean {
+  return Boolean(
+    filledSlots.min_price_krw?.trim() || filledSlots.max_price_krw?.trim(),
+  );
+}
+
 export function createAgentNegotiationRoom(
   input: StartAgentNegotiationRoomInput,
 ): AgentNegotiationRoomRecord {
   const at = nowIso();
+  const prefillSlots =
+    input.prefillSlots !== undefined
+      ? input.prefillSlots
+      : buildAgentNegotiationPrefillSlots({
+          priceLine: input.priceLine,
+          availabilityPreset: input.availabilityPreset,
+          calendarBusyIntervals: input.calendarBusyIntervals,
+          priceMinKrw: input.priceMinKrw,
+          priceMaxKrw: input.priceMaxKrw,
+          preferredMeetAtIso: input.preferredMeetAtIso,
+        });
+  const filledSlots = { ...prefillSlots };
+  const log: AgentNegotiationLogEntry[] = [
+    {
+      type: "system",
+      text: "AI 조율을 시작했어요. 이 창은 읽기 전용이에요.",
+      atIso: at,
+    },
+  ];
+  if (countAgentNegotiationPrefillSlots(filledSlots) > 0) {
+    log.push({
+      type: "system",
+      text: AGENT_NEGOTIATION_PREFILL_LOADED_KO,
+      atIso: at,
+    });
+  }
   return {
     handshakeId: input.handshakeId,
     threadId: input.threadId,
@@ -129,14 +168,8 @@ export function createAgentNegotiationRoom(
     priceMinKrw: input.priceMinKrw,
     priceMaxKrw: input.priceMaxKrw,
     state: "NEGOTIATING",
-    log: [
-      {
-        type: "system",
-        text: "AI 조율을 시작했어요. 이 창은 읽기 전용이에요.",
-        atIso: at,
-      },
-    ],
-    filledSlots: {},
+    log,
+    filledSlots,
     pendingQuestion: null,
     proposal: null,
     turnCount: 0,
@@ -223,7 +256,7 @@ export function advanceAgentNegotiationTurn(
     const counter =
       listingPrice != null ? formatKrw(listingPrice) : "조건 확인이 필요해요";
     log.push(pushAgentLog(paused, "peer", `${counter} 기준이에요.`));
-  } else if (nextTurn === 3 && !paused.filledSlots.min_price_krw && !paused.filledSlots.max_price_krw) {
+  } else if (nextTurn === 3 && !hasPriceSlotFilled(paused.filledSlots)) {
     log.push(pushAgentLog(paused, "self", "가격 확인이 필요해요."));
     pendingQuestion = buildPriceQuestion(paused.viewerRole, listingPrice, slotContext);
     state = "WAITING_USER_INPUT";

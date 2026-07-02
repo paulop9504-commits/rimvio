@@ -1529,6 +1529,7 @@ export const copyEn: Copy = {
       waitingPeer: "Waiting on them",
       focusDeferSystemLog: "They are busy right now. We will pick this up shortly.",
       focusDeferPausedHint: "Matching resumes when focus ends",
+      prefillLoadedSystemLog: "Loaded terms that were already set.",
     },
     marketTradeSectionTitle: "Trades in progress",
     marketTradeSectionHint: "Schedule · meet · en route",

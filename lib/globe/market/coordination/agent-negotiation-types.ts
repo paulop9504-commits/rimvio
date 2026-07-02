@@ -77,6 +77,9 @@ export type StartAgentNegotiationRoomInput = AgentNegotiationSlotChipContext & {
   priceLine: string;
   peerDisplayName: string;
   viewerRole: MarketIntentRole;
+  preferredMeetAtIso?: string | null;
+  /** Caller override; otherwise derived at room creation from listing + handshake. */
+  prefillSlots?: Partial<Record<AgentNegotiationSlotKey, string>>;
 };
 
 export const AGENT_NEGOTIATION_MAX_TURNS = 8;

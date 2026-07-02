@@ -1521,6 +1521,7 @@ export const copy = {
       waitingPeer: "상대 확인 중",
       focusDeferSystemLog: "주인이 업무 중이에요. 잠시 후 다시 맞춰볼게요.",
       focusDeferPausedHint: "집중이 끝나면 조율을 이어갈게요",
+      prefillLoadedSystemLog: "이미 맞춰진 조건을 불러왔어요",
     },
     marketTradeSectionTitle: "진행 중 거래",
     marketTradeSectionHint: "약속 · 일정 · 이동",

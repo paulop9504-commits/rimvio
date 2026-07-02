@@ -66,16 +66,33 @@ function slotOwnerForKey(slotKey: AgentNegotiationSlotKey): MarketIntentRole {
   return "seeking";
 }
 
+function hasPriceSlotFilled(room: AgentNegotiationRoomRecord): boolean {
+  return Boolean(
+    room.filledSlots.min_price_krw?.trim() ||
+      room.filledSlots.max_price_krw?.trim(),
+  );
+}
+
 function missingRequiredSlot(
   room: AgentNegotiationRoomRecord,
 ): AgentNegotiationSlotKey | null {
-  if (!room.filledSlots.min_price_krw && !room.filledSlots.max_price_krw) {
+  if (!hasPriceSlotFilled(room)) {
     return "min_price_krw";
   }
-  if (!room.filledSlots.meet_time_label) {
+  if (!room.filledSlots.meet_time_label?.trim()) {
     return "meet_time_label";
   }
   return null;
+}
+
+function isSlotAlreadyFilled(
+  room: AgentNegotiationRoomRecord,
+  slotKey: AgentNegotiationSlotKey,
+): boolean {
+  if (slotKey === "min_price_krw" || slotKey === "max_price_krw") {
+    return hasPriceSlotFilled(room);
+  }
+  return Boolean(room.filledSlots.meet_time_label?.trim());
 }
 
 function buildSlotQuestion(
@@ -185,6 +202,13 @@ export function applyAgentNegotiationLlmTurn(
         action: "message",
         speakerRole: turn.speakerRole,
         messageKo: turn.messageKo ?? "조건을 정리해 볼게요.",
+      });
+    }
+    if (isSlotAlreadyFilled(room, missing)) {
+      return applyAgentNegotiationLlmTurn(room, {
+        action: "message",
+        speakerRole: turn.speakerRole,
+        messageKo: turn.messageKo ?? "이미 맞춰진 조건을 확인했어요.",
       });
     }
     if (turn.messageKo) {

@@ -33,6 +33,7 @@ const seeded = createAgentNegotiationRoom({
   priceLine: "650,000원",
   peerDisplayName: "상대",
   viewerRole: "seeking",
+  prefillSlots: {},
 });
 
 const capped = runBootstrapTickLoop(seeded, AGENT_COORDINATION_BOOTSTRAP_MAX_TICKS);

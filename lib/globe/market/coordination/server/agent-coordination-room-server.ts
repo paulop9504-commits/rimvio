@@ -25,6 +25,7 @@ import { findMarketHandshakeById } from "@/lib/globe/market/server/market-alignm
 import { findMarketIntentById } from "@/lib/globe/market/server/upsert-market-intent";
 import { fetchPeerPublicProfileByUserId } from "@/lib/peer-chat/peer-public-profile";
 import { runAgentNegotiationLlmTurn } from "@/lib/globe/market/coordination/run-agent-negotiation-llm-turn";
+import { buildAgentNegotiationPrefillSlots } from "@/lib/globe/market/coordination/build-agent-negotiation-prefill-slots";
 import { commitAgentCoordinationApprovalToHandshake } from "@/lib/globe/market/coordination/server/commit-agent-coordination-approval";
 import {
   AGENT_COORDINATION_BOOTSTRAP_MAX_TICKS,
@@ -405,6 +406,51 @@ function isHandshakeEligibleForCoordinationBootstrap(
   ).includes(tradeStatus);
 }
 
+function buildCoordinationRoomStartInput(
+  handshake: MarketHandshakeRecord,
+  meta: Pick<
+    StartAgentNegotiationRoomInput,
+    | "productTitle"
+    | "priceLine"
+    | "threadId"
+    | "availabilityPreset"
+    | "priceMinKrw"
+    | "priceMaxKrw"
+    | "calendarBusyIntervals"
+  >,
+  peerDisplayName: string,
+  overrides?: Partial<
+    Pick<StartAgentNegotiationRoomInput, "preferredMeetAtIso" | "prefillSlots">
+  >,
+): StartAgentNegotiationRoomInput {
+  const preferredMeetAtIso =
+    overrides?.preferredMeetAtIso ?? handshake.preferredMeetAtIso;
+  const prefillSlots =
+    overrides?.prefillSlots ??
+    buildAgentNegotiationPrefillSlots({
+      priceLine: meta.priceLine,
+      availabilityPreset: meta.availabilityPreset,
+      calendarBusyIntervals: meta.calendarBusyIntervals,
+      priceMinKrw: meta.priceMinKrw,
+      priceMaxKrw: meta.priceMaxKrw,
+      preferredMeetAtIso,
+    });
+  return {
+    handshakeId: handshake.id,
+    threadId: meta.threadId ?? null,
+    productTitle: meta.productTitle,
+    priceLine: meta.priceLine,
+    peerDisplayName,
+    viewerRole: ENGINE_VIEWER_ROLE,
+    availabilityPreset: meta.availabilityPreset,
+    priceMinKrw: meta.priceMinKrw,
+    priceMaxKrw: meta.priceMaxKrw,
+    calendarBusyIntervals: meta.calendarBusyIntervals,
+    preferredMeetAtIso,
+    prefillSlots,
+  };
+}
+
 async function ensureAgentCoordinationRoomForHandshake(
   supabase: SupabaseClient,
   handshake: MarketHandshakeRecord,
@@ -414,14 +460,9 @@ async function ensureAgentCoordinationRoomForHandshake(
     return existing;
   }
   const meta = await resolveListingMeta(supabase, handshake);
-  const created = createAgentNegotiationRoom({
-    handshakeId: handshake.id,
-    threadId: meta.threadId ?? null,
-    productTitle: meta.productTitle,
-    priceLine: meta.priceLine,
-    peerDisplayName: "상대",
-    viewerRole: ENGINE_VIEWER_ROLE,
-  });
+  const created = createAgentNegotiationRoom(
+    buildCoordinationRoomStartInput(handshake, meta, "상대"),
+  );
   return saveEngineRoom(supabase, handshake.id, created, {
     product_title: meta.productTitle,
     price_line: meta.priceLine,
@@ -530,18 +571,12 @@ export async function startAgentCoordinationRoomForUser(
 
   const meta = await resolveListingMeta(supabase, handshake, input);
   const created = mergeCalendarBusyIntoRoom(
-    createAgentNegotiationRoom({
-      handshakeId: input.handshakeId,
-      threadId: meta.threadId ?? null,
-      productTitle: meta.productTitle,
-      priceLine: meta.priceLine,
-      peerDisplayName,
-      viewerRole: ENGINE_VIEWER_ROLE,
-      availabilityPreset: meta.availabilityPreset,
-      priceMinKrw: meta.priceMinKrw,
-      priceMaxKrw: meta.priceMaxKrw,
-      calendarBusyIntervals: meta.calendarBusyIntervals,
-    }),
+    createAgentNegotiationRoom(
+      buildCoordinationRoomStartInput(handshake, meta, peerDisplayName, {
+        preferredMeetAtIso: input.preferredMeetAtIso,
+        prefillSlots: input.prefillSlots,
+      }),
+    ),
     meta.calendarBusyIntervals,
   );
   const saved = await saveEngineRoom(supabase, input.handshakeId, created, {
