@@ -595,6 +595,26 @@ export const copyEn: Copy = {
       `${product} · ${price} · aligned at ${place}`,
     marketCompletionTraceTitleListing: (product: string, price: string, place: string) =>
       `${product} · ${price} · handed over at ${place}`,
+    marketSellPriceRecallLine: (input: {
+      product: string;
+      price: string;
+      when: string | null;
+      role: "seeking" | "listing";
+    }) => {
+      const whenPrefix = input.when ? `${input.when} ` : "";
+      if (input.role === "listing") {
+        return `${whenPrefix}You sold ${input.product} for ${input.price}`;
+      }
+      return `${whenPrefix}You matched ${input.product} for ${input.price}`;
+    },
+    marketTradeRecallSummary: (input: {
+      product: string;
+      price: string;
+      when: string | null;
+    }) => {
+      const whenPrefix = input.when ? `${input.when} · ` : "";
+      return `${whenPrefix}${input.product} trade · ${input.price}`;
+    },
     marketAlignPriorityHint: (labels: readonly string[]) =>
       labels.length > 0 ? `Aligned on ${labels.join(" · ")}` : "Aligned trace",
     marketAlignHeadlineSeeking: (title: string, place: string) =>

@@ -16,6 +16,7 @@ import {
   buildMarketCompletionTraceDraft,
   resolveRealizedPriceKrw,
 } from "@/lib/globe/market/build-market-completion-trace-draft";
+import { readNegotiationTraceContextForHandshake } from "@/lib/globe/market/server/read-negotiation-trace-context";
 import { completeDmFriendAdd } from "@/lib/peer-chat/dm-friend-add-server";
 import { insertPeerMessage } from "@/lib/peer-chat/server-peer-chat";
 import { fetchPeerPublicProfileByUserId } from "@/lib/peer-chat/peer-public-profile";
@@ -223,6 +224,12 @@ export async function confirmMarketHandshakeComplete(
   );
 
   if (handshake.phase === "completed") {
+    const negotiation = await readNegotiationTraceContextForHandshake(supabase, {
+      handshake,
+      productName: listingIntent.detail.productName || listingIntent.title,
+      priceLine,
+      viewerRole,
+    });
     const trace = buildMarketCompletionTraceDraft({
       handshake,
       viewerRole,
@@ -232,6 +239,7 @@ export async function confirmMarketHandshakeComplete(
       placeLabel: listingIntent.placeLabel,
       lat: listingIntent.anchorLat,
       lng: listingIntent.anchorLng,
+      negotiation,
     });
     return {
       completed: true,
@@ -323,6 +331,13 @@ export async function confirmMarketHandshakeComplete(
     });
   }
 
+  const negotiation = await readNegotiationTraceContextForHandshake(supabase, {
+    handshake: patched,
+    productName: listingIntent.detail.productName || listingIntent.title,
+    priceLine,
+    viewerRole,
+  });
+
   const trace = buildMarketCompletionTraceDraft({
     handshake: patched,
     viewerRole,
@@ -332,6 +347,7 @@ export async function confirmMarketHandshakeComplete(
     placeLabel: listingIntent.placeLabel,
     lat: listingIntent.anchorLat,
     lng: listingIntent.anchorLng,
+    negotiation,
   });
 
   return {

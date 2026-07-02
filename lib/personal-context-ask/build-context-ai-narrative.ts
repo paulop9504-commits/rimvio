@@ -2,6 +2,7 @@ import {
   joinKoreanAnd,
   withGwaJosa,
 } from "@/lib/personal-context-ask/enrich-bridge-context-facts";
+import { formatPersonalContextReply } from "@/lib/personal-context-ask/format-personal-context-reply";
 import type {
   ParsedPersonalContextQuery,
   PersonalContextAskRecallContext,
@@ -422,6 +423,22 @@ export function buildContextAiNarrative(input: {
   const { parsed, hits, totalPhotoCount, recallContext } = input;
   if (hits.length === 0) {
     return { narrativeKo: "", summaryKo: "" };
+  }
+
+  if (
+    parsed.intent === "sell_price_recall" ||
+    parsed.intent === "market_trade_recall"
+  ) {
+    const summaryKo = formatPersonalContextReply({
+      parsed,
+      hits,
+      kind: "bridges",
+      now: new Date(),
+    });
+    return {
+      narrativeKo: summaryKo,
+      summaryKo,
+    };
   }
 
   const paragraphs =

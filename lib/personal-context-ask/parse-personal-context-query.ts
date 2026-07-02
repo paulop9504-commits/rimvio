@@ -104,6 +104,28 @@ const QUERY_STOP_WORDS = new Set([
   "동영상",
   "했지",
   "했어",
+  "얼마",
+  "얼마에",
+  "가격",
+  "팔았",
+  "팔았지",
+  "팔았어",
+  "넘겼",
+  "넘겼지",
+  "거래",
+  "맞춤",
+  "구했",
+  "샀",
+  "구매",
+  "판매",
+  "팔아",
+  "팔았나",
+  "얼마였",
+  "얼마였지",
+  "얼마였어",
+  "얼마지",
+  "중고",
+  "물건",
 ]);
 
 function stripPlaceParticle(token: string): string {
@@ -153,10 +175,15 @@ function extractPersonNeedles(query: string): string[] {
   return [...needles];
 }
 
-function extractPlaceNeedles(query: string, personNeedles: readonly string[]): string[] {
+function extractPlaceNeedles(
+  query: string,
+  personNeedles: readonly string[],
+  productNeedles: readonly string[],
+): string[] {
   const needles = new Set<string>();
   const lowered = query.toLowerCase();
   const personSet = new Set(personNeedles.map((needle) => needle.toLowerCase()));
+  const productSet = new Set(productNeedles.map((needle) => needle.toLowerCase()));
 
   for (const token of TRAVEL_PLACE_TOKENS) {
     if (lowered.includes(token.toLowerCase())) {
@@ -175,10 +202,43 @@ function extractPlaceNeedles(query: string, personNeedles: readonly string[]): s
     if (personSet.has(loweredToken)) {
       continue;
     }
+    if (productSet.has(loweredToken)) {
+      continue;
+    }
     if (FAMILY_PERSON_TOKENS.includes(token as (typeof FAMILY_PERSON_TOKENS)[number])) {
       continue;
     }
     if (personNeedles.some((person) => loweredToken.startsWith(person.toLowerCase()))) {
+      continue;
+    }
+    needles.add(token);
+  }
+
+  return [...needles];
+}
+
+const MARKET_PRODUCT_SIGNAL =
+  /(?:얼마|가격|팔았|넘겼|넘김|맞춤|거래|구했|샀|구매|판매|중고)/u;
+
+function extractProductNeedles(
+  query: string,
+  personNeedles: readonly string[],
+): string[] {
+  if (!MARKET_PRODUCT_SIGNAL.test(query)) {
+    return [];
+  }
+  const needles = new Set<string>();
+  const personSet = new Set(personNeedles.map((needle) => needle.toLowerCase()));
+
+  const tokens = query
+    .replace(/[?!.,]/gu, " ")
+    .split(/\s+/u)
+    .map((part) => stripPlaceParticle(part.trim()))
+    .filter((part) => part.length >= 2 && !QUERY_STOP_WORDS.has(part));
+
+  for (const token of tokens) {
+    const lowered = token.toLowerCase();
+    if (personSet.has(lowered)) {
       continue;
     }
     needles.add(token);
@@ -238,8 +298,21 @@ function detectIntent(
   query: string,
   personNeedles: readonly string[],
   placeNeedles: readonly string[],
+  productNeedles: readonly string[],
   year: number | null,
 ): PersonalContextQueryIntent {
+  if (
+    /팔았|넘겼|넘김|판매했|팔았지|얼마에\s*팔|얼마에\s*넘/u.test(query) &&
+    /얼마|가격/u.test(query)
+  ) {
+    return "sell_price_recall";
+  }
+  if (
+    /맞춤|거래|넘김|구했|샀|구매했/u.test(query) &&
+    (productNeedles.length > 0 || /얼마|가격/u.test(query))
+  ) {
+    return "market_trade_recall";
+  }
   if (/일정|스케줄|약속/u.test(query) && /이번\s*주|다음\s*주/u.test(query)) {
     return "schedule_week";
   }
@@ -277,11 +350,18 @@ export function parsePersonalContextQuery(
 ): ParsedPersonalContextQuery {
   const query = raw.trim();
   const personNeedles = extractPersonNeedles(query);
-  const placeNeedles = extractPlaceNeedles(query, personNeedles);
+  const productNeedles = extractProductNeedles(query, personNeedles);
+  const placeNeedles = extractPlaceNeedles(query, personNeedles, productNeedles);
   const year = readYear(query, now.getFullYear());
   const target = readTarget(query);
   const responseFocus = readResponseFocus(query, target);
-  const intent = detectIntent(query, personNeedles, placeNeedles, year);
+  const intent = detectIntent(
+    query,
+    personNeedles,
+    placeNeedles,
+    productNeedles,
+    year,
+  );
 
   return {
     raw: query,
@@ -290,6 +370,7 @@ export function parsePersonalContextQuery(
     responseFocus,
     personNeedles,
     placeNeedles,
+    productNeedles,
     year,
     weekOffset: readWeekOffset(query),
     foodRelated: /맛집|식당|레스토랑|카페|밥\s*먹/u.test(query),

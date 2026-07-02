@@ -6,6 +6,8 @@ export type PersonalContextQueryIntent =
   | "frequent_person"
   | "bridge_context"
   | "photo_recall"
+  | "sell_price_recall"
+  | "market_trade_recall"
   | "general";
 
 export type PersonalContextQueryTarget = "photo" | "general";
@@ -23,6 +25,7 @@ export type ParsedPersonalContextQuery = {
   responseFocus: PersonalContextResponseFocus;
   personNeedles: readonly string[];
   placeNeedles: readonly string[];
+  productNeedles: readonly string[];
   year: number | null;
   weekOffset: 0 | 1 | null;
   foodRelated: boolean;
@@ -51,6 +54,10 @@ export type PersonalContextBridgeHit = {
   contextKind: string | null;
   spotLabels: readonly string[];
   periodEndIso: string | null;
+  marketProductName?: string | null;
+  marketPriceLine?: string | null;
+  marketRealizedPriceKrw?: number | null;
+  marketRole?: "seeking" | "listing" | null;
 };
 
 export type PersonalContextAskRecallContext = {

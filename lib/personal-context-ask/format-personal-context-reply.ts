@@ -1,3 +1,4 @@
+import { copy } from "@/lib/copy/human-ko";
 import type {
   ParsedPersonalContextQuery,
   PersonalContextAskKind,
@@ -117,6 +118,31 @@ function formatPhotoRecall(
   return `저장된 사진 ${countLabel}을 찾았어요`;
 }
 
+function formatMarketTradeRecall(
+  hits: readonly PersonalContextBridgeHit[],
+  parsed: ParsedPersonalContextQuery,
+  now: Date,
+): string {
+  const top = hits[0]!;
+  const product = top.marketProductName ?? parsed.productNeedles[0] ?? top.title;
+  const price =
+    top.marketPriceLine ??
+    (top.marketRealizedPriceKrw !== null && top.marketRealizedPriceKrw !== undefined
+      ? `${Math.round(top.marketRealizedPriceKrw / 10_000)}만원`
+      : "가격 기록");
+  const when = formatKoDate(top.atIso, now) || null;
+
+  if (parsed.intent === "sell_price_recall") {
+    return copy.globe.marketSellPriceRecallLine({
+      product,
+      price,
+      when,
+      role: top.marketRole === "seeking" ? "seeking" : "listing",
+    });
+  }
+  return copy.globe.marketTradeRecallSummary({ product, price, when });
+}
+
 function formatGeneral(hits: readonly PersonalContextBridgeHit[]): string {
   const n = hits.length;
   return n === 1
@@ -152,6 +178,9 @@ export function formatPersonalContextReply(input: {
       return formatPlaceWithPerson(hits, parsed, now);
     case "frequent_person":
       return formatFrequent(hits);
+    case "sell_price_recall":
+    case "market_trade_recall":
+      return formatMarketTradeRecall(hits, parsed, now);
     default:
       return formatGeneral(hits);
   }

@@ -8,6 +8,9 @@ import {
 const PERSON_PLACE_RECALL_RE =
   /(?:어디|갔|다녀|만난|여행|trip|went|where)/iu;
 
+const MARKET_RECALL_RE =
+  /(?:얼마|가격|팔았|넘겼|넘김|맞춤|거래|구했|샀|구매)/iu;
+
 /** Recall-shaped personal ask — reads stored globe context (EventCandidate SSOT). */
 export function planPersonalRecallAskIfEligible(
   bound: BoundSituation,
@@ -20,6 +23,18 @@ export function planPersonalRecallAskIfEligible(
   if (ingress.surface !== "capture_sheet" && ingress.surface !== "composer") {
     return null;
   }
+
+  const parsed = parsePersonalContextQuery(text);
+  if (
+    parsed.intent === "sell_price_recall" ||
+    parsed.intent === "market_trade_recall"
+  ) {
+    return {
+      kind: "personal_context_ask",
+      graphId: bound.graphId,
+      goalKo: bound.goalKo,
+    };
+  }
   if (detectPortalIntentFromText(text)) {
     return null;
   }
@@ -27,12 +42,12 @@ export function planPersonalRecallAskIfEligible(
     return null;
   }
 
-  const parsed = parsePersonalContextQuery(text);
   const recallShaped =
     parsed.intent !== "general" ||
     (parsed.personNeedles.length > 0 &&
       (PERSON_PLACE_RECALL_RE.test(text) || parsed.placeNeedles.length > 0)) ||
-    (parsed.personNeedles.length > 0 && parsed.target === "photo");
+    (parsed.personNeedles.length > 0 && parsed.target === "photo") ||
+    (parsed.productNeedles.length > 0 && MARKET_RECALL_RE.test(text));
 
   if (!recallShaped) {
     return null;

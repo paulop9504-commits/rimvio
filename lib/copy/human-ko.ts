@@ -587,6 +587,26 @@ export const copy = {
       `${product} · ${price} · ${place}에서 맞춤`,
     marketCompletionTraceTitleListing: (product: string, price: string, place: string) =>
       `${product} · ${price} · ${place}에서 넘김`,
+    marketSellPriceRecallLine: (input: {
+      product: string;
+      price: string;
+      when: string | null;
+      role: "seeking" | "listing";
+    }) => {
+      const whenPrefix = input.when ? `${input.when} ` : "";
+      if (input.role === "listing") {
+        return `${whenPrefix}${input.product}을 ${input.price}에 넘겼어요`;
+      }
+      return `${whenPrefix}${input.product}을 ${input.price}에 맞췄어요`;
+    },
+    marketTradeRecallSummary: (input: {
+      product: string;
+      price: string;
+      when: string | null;
+    }) => {
+      const whenPrefix = input.when ? `${input.when} · ` : "";
+      return `${whenPrefix}${input.product} 맞춤 · ${input.price}`;
+    },
     marketAlignPriorityHint: (labels: readonly string[]) =>
       labels.length > 0 ? `${labels.join(" · ")} 맞는 흔적` : "맞는 흔적",
     marketHandshakeListingHeadline: (title: string, place: string) =>

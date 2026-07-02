@@ -1,4 +1,5 @@
 import { copy } from "@/lib/copy/human-ko";
+import type { NegotiationTraceContext } from "@/lib/globe/market/build-negotiation-trace-context";
 import type {
   MarketCompletionTraceDraft,
   MarketHandshakeRecord,
@@ -19,12 +20,14 @@ export function buildMarketCompletionTraceDraft(input: {
   placeLabel: string;
   lat: number;
   lng: number;
+  negotiation?: NegotiationTraceContext | null;
 }): MarketCompletionTraceDraft {
   const place = input.placeLabel.trim() || "근처";
+  const priceLine = input.negotiation?.priceLine?.trim() || input.priceLine;
   const title =
     input.viewerRole === "seeking"
-      ? copy.globe.marketCompletionTraceTitleSeeking(input.productName, input.priceLine, place)
-      : copy.globe.marketCompletionTraceTitleListing(input.productName, input.priceLine, place);
+      ? copy.globe.marketCompletionTraceTitleSeeking(input.productName, priceLine, place)
+      : copy.globe.marketCompletionTraceTitleListing(input.productName, priceLine, place);
 
   return {
     handshakeId: input.handshake.id,
@@ -33,8 +36,16 @@ export function buildMarketCompletionTraceDraft(input: {
     placeLabel: place,
     lat: input.lat,
     lng: input.lng,
-    priceLine: input.priceLine,
+    priceLine,
     role: input.viewerRole,
+    atIso: input.handshake.completedAtIso,
+    productName: input.negotiation?.productName ?? input.productName,
+    realizedPriceKrw:
+      input.negotiation?.realizedPriceKrw ?? input.handshake.realizedPriceKrw,
+    negotiationSummaryKo: input.negotiation?.negotiationSummaryKo,
+    coordinationLogSummary: input.negotiation?.coordinationLogSummary,
+    proposal: input.negotiation?.proposal ?? null,
+    filledSlots: input.negotiation?.filledSlots ?? {},
   };
 }
 

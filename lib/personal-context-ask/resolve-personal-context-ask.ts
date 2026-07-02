@@ -20,6 +20,7 @@ import {
 } from "@/lib/personal-context-ask/format-personal-context-reply";
 import { enrichAskRecallContext } from "@/lib/personal-context-ask/enrich-ask-recall-context";
 import { pickAskPrimaryHit } from "@/lib/personal-context-ask/pick-ask-primary-hit";
+import { resolveMarketTradeRecall } from "@/lib/personal-context-ask/resolve-market-trade-recall";
 import {
   buildRecallEventSnapshot,
   type RecallEventSnapshot,
@@ -310,6 +311,7 @@ function resolveHits(
   snapshots: RecallEventSnapshot[],
   parsed: ParsedPersonalContextQuery,
   now: Date,
+  events: readonly EventCandidate[],
 ): PersonalContextBridgeHit[] {
   if (shouldUseUnifiedBridgeSearch(parsed)) {
     return resolveBridgeContextSearch(snapshots, parsed);
@@ -326,6 +328,9 @@ function resolveHits(
       return resolvePlaceWithPerson(snapshots, parsed);
     case "frequent_person":
       return resolveFrequentPerson(snapshots);
+    case "sell_price_recall":
+    case "market_trade_recall":
+      return resolveMarketTradeRecall(snapshots, events, parsed);
     default:
       return resolveGeneral(snapshots, parsed);
   }
@@ -359,7 +364,7 @@ export function resolvePersonalContextAsk(input: {
   const snapshots = input.events.map((event) =>
     buildRecallEventSnapshot(event, now),
   );
-  const rawHits = resolveHits(snapshots, parsed, now);
+  const rawHits = resolveHits(snapshots, parsed, now, input.events);
   const enriched = enrichHitsWithMedia(rawHits, input.events);
 
   if (enriched.length === 0) {

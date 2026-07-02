@@ -57,6 +57,18 @@ export type MarketCompletionTraceDraft = {
   lng: number;
   priceLine: string;
   role: MarketIntentRole;
+  atIso?: string | null;
+  productName?: string;
+  realizedPriceKrw?: number | null;
+  negotiationSummaryKo?: string;
+  coordinationLogSummary?: string;
+  proposal?: import("@/lib/globe/market/coordination/agent-negotiation-types").AgentNegotiationProposal | null;
+  filledSlots?: Partial<
+    Record<
+      import("@/lib/globe/market/coordination/agent-negotiation-types").AgentNegotiationSlotKey,
+      string
+    >
+  >;
 };
 
 export type MarketHandshakeContext = {

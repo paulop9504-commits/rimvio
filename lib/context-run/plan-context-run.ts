@@ -114,14 +114,14 @@ export function planContextRun(bound: BoundSituation): ContextRunPlan {
     return { kind: "noop", ...base };
   }
 
-  const portalPlan = planPortalComposeIfEligible(bound, text, ingress);
-  if (portalPlan) {
-    return portalPlan;
-  }
-
   const recallPlan = planPersonalRecallAskIfEligible(bound, text);
   if (recallPlan) {
     return recallPlan;
+  }
+
+  const portalPlan = planPortalComposeIfEligible(bound, text, ingress);
+  if (portalPlan) {
+    return portalPlan;
   }
 
   if (ingress.surface === "capture_sheet") {

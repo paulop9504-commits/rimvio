@@ -2,6 +2,10 @@ import type { EventCandidate } from "@/lib/events/event-candidate";
 import { readFeedCaptureFragments } from "@/lib/feed/feed-capture-metadata";
 import { deriveExperienceSlotHeadline } from "@/lib/feed/derive-experience-slot-headline";
 import { resolveContextPlaceLabel } from "@/lib/globe/context-hub/resolve-context-place-label";
+import {
+  marketCompletionSearchBlob,
+  readMarketCompletionMeta,
+} from "@/lib/globe/market/market-completion-metadata";
 import { readPinContextNote } from "@/lib/globe/pin-context-note";
 import { readPlanContextFromEvent } from "@/lib/plan-context/plan-context-metadata";
 import { inferPlanMode } from "@/lib/plan-context/resolve-plan-signal-gate";
@@ -29,6 +33,11 @@ export type RecallEventSnapshot = {
   hourBucket: number | null;
   planMode: PlanMode | null;
   noteTokens: readonly string[];
+  marketCompletion: boolean;
+  marketProductName: string | null;
+  marketPriceLine: string | null;
+  marketRealizedPriceKrw: number | null;
+  marketTokens: readonly string[];
 };
 
 export function tokenizeContextNote(note: string | null | undefined): string[] {
@@ -138,6 +147,10 @@ export function buildRecallEventSnapshot(
 
   const meta = event.metadata ?? {};
   const timeShape = readTimeShape(atIso);
+  const marketMeta = readMarketCompletionMeta(event);
+  const marketTokens = marketMeta
+    ? tokenizeContextNote(marketCompletionSearchBlob(marketMeta))
+    : [];
 
   return {
     eventId: event.id,
@@ -157,7 +170,12 @@ export function buildRecallEventSnapshot(
     dayOfWeek: timeShape.dayOfWeek,
     hourBucket: timeShape.hourBucket,
     planMode: plan ? inferPlanMode(plan) : null,
-    noteTokens: tokenizeContextNote(readPinContextNote(event)),
+    noteTokens: [...tokenizeContextNote(readPinContextNote(event)), ...marketTokens],
+    marketCompletion: Boolean(marketMeta),
+    marketProductName: marketMeta?.productName ?? null,
+    marketPriceLine: marketMeta?.priceLine ?? null,
+    marketRealizedPriceKrw: marketMeta?.realizedPriceKrw ?? null,
+    marketTokens,
   };
 }
 
