@@ -1,6 +1,6 @@
 # Rimvio 출시 체크리스트
 
-> **경로:** `c:\Users\userguest\Desktop\new-project`  
+> **경로:** `D:/rimvio` (repository root)  
 > **한 줄:** PWA Share Target → `/now` → 액션 버튼 → Feed
 
 ---
@@ -8,7 +8,7 @@
 ## 1. 로컬 백업 (지금)
 
 ```powershell
-cd c:\Users\userguest\Desktop\new-project
+cd D:/rimvio
 npm run backup
 ```
 
@@ -25,7 +25,7 @@ npm run verify:release
 ## 2. Git 백업
 
 ```powershell
-cd c:\Users\userguest\Desktop\new-project
+cd D:/rimvio
 git init
 git add .
 git commit -m "Rimvio v0.1 — launch snapshot"

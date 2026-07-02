@@ -2,7 +2,7 @@
 
 > **목적:** 이 문서만 읽고도 Rimvio 코드베이스의 구조, 흐름, 규칙, 미완성 항목을 파악할 수 있게 한다.
 >
-> **프로젝트 경로:** `c:\Users\userguest\Desktop\new-project`
+> **프로젝트 경로:** `D:/rimvio` (repository root)
 >
 > **Git:** [rimvio](https://github.com/paulop9504-dotcom/rimvio.git) — **Silent Ghost(`ghostsilence-programmer`)와 별개 repo·런타임·규칙**
 >
@@ -47,7 +47,7 @@ PWA — Share Target API (manifest.ts)
 
 **실행:**
 ```bash
-cd c:\Users\userguest\Desktop\new-project
+cd D:/rimvio
 npm install
 npm run dev   # http://localhost:3000
 npx tsc --noEmit   # 타입 체크
