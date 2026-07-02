@@ -1,5 +1,11 @@
 import type { PrePipelineProbe } from "@/lib/action-chat/orchestrator/routing/pre-pipeline-probe-types";
 import {
+  eventReviewDateProbe,
+  ocrScheduleProbe,
+} from "@/lib/action-chat/orchestrator/routing/probes/event-review-probes";
+import { frustrationEscapeProbe } from "@/lib/action-chat/orchestrator/routing/probes/frustration-escape-probe";
+import { globalReplanProbe } from "@/lib/action-chat/orchestrator/routing/probes/global-replan-probe";
+import {
   contentPolicyProbe,
   killSwitchProbe,
   piiSecurityProbe,
@@ -12,4 +18,8 @@ export const PRE_PIPELINE_PROBE_ORDER: readonly PrePipelineProbe[] = [
   piiSecurityProbe,
   contentPolicyProbe,
   sessionCorrectionProbe,
+  frustrationEscapeProbe,
+  globalReplanProbe,
+  eventReviewDateProbe,
+  ocrScheduleProbe,
 ];

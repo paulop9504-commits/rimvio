@@ -6,19 +6,53 @@ import { refreshFinalize, type OrchestratorPipelineContext } from "@/lib/action-
 import type { Phase1Outcome } from "@/lib/action-chat/orchestrator/pipeline-types";
 import { runPhase1Tier } from "@/lib/action-chat/orchestrator/tier-runner";
 import type { Phase1TierRunner } from "@/lib/action-chat/orchestrator/tier-runner";
-import { TIER_0_KILL_SWITCH_RUNNERS } from "@/lib/action-chat/orchestrator/tiers/tier-0-kill-switch";
-import { TIER_1_SECURITY_RUNNERS } from "@/lib/action-chat/orchestrator/tiers/tier-1-security";
-import { TIER_2_CORRECTION_RUNNERS } from "@/lib/action-chat/orchestrator/tiers/tier-2-correction";
 import { TIER_3_WORKFLOW_RUNNERS } from "@/lib/action-chat/orchestrator/tiers/tier-3-workflow";
 import { TIER_4_REGISTRY_RUNNERS } from "@/lib/action-chat/orchestrator/tiers/tier-4-registry";
 import { TIER_5_DETERMINISTIC_RUNNERS } from "@/lib/action-chat/orchestrator/tiers/tier-5-deterministic";
 import { orchestrateShadowDashboard } from "@/lib/notification-shadow/orchestrate-shadow-dashboard";
+import {
+  buildAffirmativeConfirmReminderResult,
+  historyAwaitingConfirmReply,
+} from "@/lib/action-chat/resolve-affirmative-confirm";
+import { isUserConfirmingActions } from "@/lib/action-chat/action-confidence";
+import { hasPendingEventReview } from "@/lib/event-kernel/review/infer-approval-action";
+import { orchestrateGuardrail } from "@/lib/safety/orchestrate-guardrail";
 
-/** Linear tier tree (phase 1) — order is the decision tree. */
-const PRE_EVENT_TIER_TREE = [
-  ...TIER_0_KILL_SWITCH_RUNNERS,
-  ...TIER_1_SECURITY_RUNNERS,
-  ...TIER_2_CORRECTION_RUNNERS,
+/** Probes already ran kill switch, PII, content policy, session correction in phase 0. */
+const PRE_EVENT_TIER_TREE: Phase1TierRunner[] = [
+  {
+    tier: 0,
+    label: "KillSwitch",
+    detail: "AffirmativeConfirmGuard",
+    run: (ctx) => {
+      if (!isUserConfirmingActions(ctx.message)) {
+        return null;
+      }
+      if (hasPendingEventReview()) {
+        return null;
+      }
+      if (
+        historyAwaitingConfirmReply({
+          history: ctx.input.history,
+          userMessage: ctx.message,
+        })
+      ) {
+        return buildAffirmativeConfirmReminderResult();
+      }
+      return null;
+    },
+  },
+  {
+    tier: 1,
+    label: "Security",
+    detail: "Guardrail",
+    run: async (ctx) =>
+      orchestrateGuardrail({
+        message: ctx.message,
+        referenceDate: ctx.context.currentDate,
+        existingSchedule: ctx.context.existingSchedule,
+      }),
+  },
 ];
 
 const POST_EVENT_WORKFLOW_TREE = [

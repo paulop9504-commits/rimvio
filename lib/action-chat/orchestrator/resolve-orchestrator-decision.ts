@@ -9,8 +9,6 @@ import { parseFindPlaceIntent } from "@/lib/context-resolver/discovery/parse-fin
 import { orchestratePlaceRecommendation } from "@/lib/context-resolver/discovery/orchestrate-place-recommendation";
 import { toMealDiscoveryQuery } from "@/lib/event-kernel/execution-planner/to-meal-discovery-query";
 import { orchestrateContextualMealRecommendation } from "@/lib/event-os/contextual-recommendation/orchestrate-contextual-meal";
-import { orchestrateOcrScheduleCandidates } from "@/lib/event-kernel/review/orchestrate-ocr-schedule-candidates";
-import { orchestrateViaReviewExecutionQueue } from "@/lib/event-os/resolve-review-execution-orchestrator";
 import { eventKernelOSIsTerminal } from "@/lib/event-kernel";
 import { resolveContractActionFromMessage } from "@/lib/event-kernel/slot-filling/resolve-contract-action-from-message";
 import { orchestrateVitalityStateIntent } from "@/lib/vitality-state/orchestrate-vitality-state-intent";
@@ -31,23 +29,20 @@ import {
   isContextDriftInput,
   resolveContextDrift,
 } from "@/lib/action-chat/routing-patches/context-drift-resolver";
-import {
-  isGlobalReplanInput,
-  orchestrateGlobalReplan,
-} from "@/lib/action-chat/routing-patches/scheduling-global-replan";
 import { tryChatAxisEarlyRoute } from "@/lib/action-chat/routing-patches/chat-axis-router";
 import { orchestrateAdaptiveSimplifyRoute } from "@/lib/action-chat/adaptive-behavior/orchestrate-adaptive-behavior";
 import { buildSimplifyContextClarify } from "@/lib/action-chat/adaptive-behavior/build-simplify-reply";
 import { adaptiveMetadataFields } from "@/lib/action-chat/adaptive-behavior/resolve-adaptive-behavior";
 import {
-  orchestrateFrustrationEscape,
   orchestrateActiveListeningRoute,
   orchestrateImpossibleConstraintRoute,
   orchestrateProactiveAssumptionRoute,
 } from "@/lib/action-chat/adaptive-behavior/ux-guards/orchestrate-ux-guards";
-import { inferFallbackRecovery } from "@/lib/action-chat/fallback-recovery/infer-fallback-recovery";
-import type { FallbackRecoveryCandidate } from "@/lib/action-chat/fallback-recovery/types";
-import { orchestrateFallbackRecovery } from "@/lib/action-chat/fallback-recovery/apply-fallback-recovery";
+import { runPrePipelineProbes } from "@/lib/action-chat/orchestrator/routing/run-pre-pipeline-probes";
+import {
+  MEAL_OR_VITALITY,
+  shouldSkipVitalityForRecovery,
+} from "@/lib/action-chat/orchestrator/routing/probes/shared";
 import {
   orchestrateContextualPivotRoute,
   orchestrateCrossDomainCraftRoute,
@@ -59,22 +54,12 @@ import {
   tryTravelTripAnnouncement,
 } from "@/lib/action-chat/try-travel-trip-announcement";
 import { orchestrateStudyContext } from "@/lib/contextual-aux/study/orchestrate-study-context";
+import { orchestrateFallbackRecovery } from "@/lib/action-chat/fallback-recovery/apply-fallback-recovery";
+import { inferFallbackRecovery } from "@/lib/action-chat/fallback-recovery/infer-fallback-recovery";
 import type {
   EarlyOrchestratorDecision,
   OrchestratorPipelineBase,
 } from "@/lib/action-chat/orchestrator/orchestrator-pipeline-base";
-import { runPrePipelineProbes } from "@/lib/action-chat/orchestrator/routing/run-pre-pipeline-probes";
-
-const MEAL_OR_VITALITY = /(?:먹|맛집|배고|카페|피곤|힘들|지쳤|쉬고)/iu;
-
-const RECOVERY_PRIMARY_SKIP_VITALITY = new Set<FallbackRecoveryCandidate>([
-  "career_planning",
-  "education_planning",
-]);
-
-function shouldSkipVitalityForRecovery(message: string): boolean {
-  return RECOVERY_PRIMARY_SKIP_VITALITY.has(inferFallbackRecovery(message).primary);
-}
 
 export async function resolveOrchestratorEarlyDecision(
   base: OrchestratorPipelineBase,
@@ -94,59 +79,6 @@ export async function resolveOrchestratorEarlyDecision(
   const probed = await runPrePipelineProbes(base);
   if (probed) {
     return probed;
-  }
-
-  if (base.adaptive.ux.frustrationEscape) {
-    return {
-      tier: 3 as const,
-      label: "FrustrationEscape",
-      detail: "UX_circuit_breaker",
-      terminal: "EARLY_RETURN",
-      partial: orchestrateFrustrationEscape(base.adaptive),
-      applyPresentation: true,
-    };
-  }
-
-  if (isGlobalReplanInput(base.message)) {
-    const replan = orchestrateGlobalReplan({
-      message: base.message,
-      referenceDate: base.context.currentDate,
-      existingSchedule: base.context.existingSchedule ?? [],
-    });
-    return {
-      tier: 4 as const,
-      label: "GlobalReplan",
-      detail: "PATCH3_scheduling_override",
-      terminal: "EARLY_RETURN",
-      partial: replan,
-    };
-  }
-
-  const eventReviewDateResolution = orchestrateViaReviewExecutionQueue({
-    message: base.message,
-  });
-  if (eventReviewDateResolution) {
-    return {
-      tier: 4 as const,
-      label: "EventReviewDateResolution",
-      detail: "ocr_review_dates",
-      terminal: "EARLY_RETURN",
-      partial: eventReviewDateResolution,
-    };
-  }
-
-  const ocrSchedule = orchestrateOcrScheduleCandidates({
-    composerContext: base.input.composerContext,
-    referenceDate: base.context.currentDate,
-  });
-  if (ocrSchedule) {
-    return {
-      tier: 5 as const,
-      label: "OcrScheduleExtract",
-      detail: "composer_attachment",
-      terminal: "EARLY_RETURN",
-      partial: ocrSchedule,
-    };
   }
 
   if (!shouldSkipVitalityForRecovery(base.message) && isVitalityStateUtterance(base.message)) {
