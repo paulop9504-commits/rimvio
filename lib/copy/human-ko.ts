@@ -1,9 +1,5 @@
 /** 사용자-facing 카피 — L1 Story Layer. @see docs/RIMVIO_STORY_LAYER.md */
 
-import {
-  AGENT_NEGOTIATION_FOCUS_DEFER_MESSAGE_EN,
-  AGENT_NEGOTIATION_FOCUS_DEFER_MESSAGE_KO,
-} from "@/lib/globe/market/coordination/agent-coordination-focus-copy";
 import { RIMVIO } from "@/lib/brand/rimvio";
 import { STORY_L0, STORY_L1_NOUNS, STORY_L1_VERBS } from "@/lib/copy/story-layer";
 
@@ -1503,7 +1499,7 @@ export const copy = {
       listEmptyBody: "밖 지구 매물에서 자동 맞춤을 시작하면 여기에 모여요",
       listEmptyCta: "밖 지구로",
       waitingPeer: "상대 확인 중",
-      focusDeferSystemLog: AGENT_NEGOTIATION_FOCUS_DEFER_MESSAGE_KO,
+      focusDeferSystemLog: "주인이 업무 중이에요. 잠시 후 다시 맞춰볼게요.",
       focusDeferPausedHint: "집중이 끝나면 조율을 이어갈게요",
     },
     marketTradeSectionTitle: "진행 중 거래",

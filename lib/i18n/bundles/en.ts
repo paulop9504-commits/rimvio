@@ -1,7 +1,4 @@
 import { NORTH_STAR, RIMVIO } from "@/lib/brand/rimvio";
-import {
-  AGENT_NEGOTIATION_FOCUS_DEFER_MESSAGE_EN,
-} from "@/lib/globe/market/coordination/agent-coordination-focus-copy";
 import { STORY_L0 } from "@/lib/copy/story-layer";
 import type { Copy } from "@/lib/i18n/types";
 
@@ -1510,7 +1507,7 @@ export const copyEn: Copy = {
       listEmptyBody: "Start auto-match from an outer-globe listing",
       listEmptyCta: "Outer globe",
       waitingPeer: "Waiting on them",
-      focusDeferSystemLog: AGENT_NEGOTIATION_FOCUS_DEFER_MESSAGE_EN,
+      focusDeferSystemLog: "They are busy right now. We will pick this up shortly.",
       focusDeferPausedHint: "Matching resumes when focus ends",
     },
     marketTradeSectionTitle: "Trades in progress",
