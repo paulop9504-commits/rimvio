@@ -1,5 +1,8 @@
+import type { CalendarEventChip } from "@/lib/calendar/calendar-view-types";
 import { composeUnifiedCalendarOverlay } from "@/lib/calendar/compose-unified-calendar-overlay";
 import { projectKnowledgeCalendarChips } from "@/lib/calendar/project-knowledge-calendar-chips";
+import type { EventCalendarRow } from "@/lib/events/project-event-calendar";
+import { projectEventCalendarChips } from "@/lib/events/project-event-calendar";
 import type { KnowledgeEntity } from "@/lib/knowledge/knowledge-entity-types";
 import { buildMeetTimeQuestion } from "@/lib/globe/market/coordination/agent-negotiation-room-engine";
 import type { AgentNegotiationRoomRecord } from "@/lib/globe/market/coordination/agent-negotiation-types";
@@ -49,13 +52,40 @@ export function parseCalendarBusyIntervalWire(
   return intervals.sort((left, right) => left.startMs - right.startMs);
 }
 
+function busyIntervalsFromCalendarChips(
+  chips: readonly CalendarEventChip[],
+): CalendarBusyInterval[] {
+  return extractCalendarBusyIntervalsFromOverlayRows(
+    chips.map((chip) => ({
+      id: chip.id,
+      event: chip,
+      overlayActions: [],
+    })),
+  );
+}
+
+/** Unified overlay — Event SSOT (Google Calendar sync) + knowledge calendar container. */
+export function buildCoordinationCalendarBusy(input: {
+  knowledgeEntities: readonly KnowledgeEntity[];
+  eventCalendarRows?: readonly EventCalendarRow[];
+  now?: Date;
+}): CalendarBusyInterval[] {
+  const now = input.now ?? new Date();
+  const eventChips = projectEventCalendarChips(input.eventCalendarRows ?? [], now);
+  const knowledgeChips = projectKnowledgeCalendarChips(input.knowledgeEntities, now);
+  // Compose validates the shared calendar pipeline; busy uses every timed chip start.
+  void composeUnifiedCalendarOverlay(eventChips, knowledgeChips, now);
+  return busyIntervalsFromCalendarChips([...eventChips, ...knowledgeChips]);
+}
+
 export function buildCalendarBusyFromKnowledgeEntities(
   entities: readonly KnowledgeEntity[],
   now = new Date(),
 ): CalendarBusyInterval[] {
   const knowledgeChips = projectKnowledgeCalendarChips(entities, now);
   const overlayRows = composeUnifiedCalendarOverlay([], knowledgeChips, now);
-  return extractCalendarBusyIntervalsFromOverlayRows(overlayRows);
+  void overlayRows;
+  return busyIntervalsFromCalendarChips(knowledgeChips);
 }
 
 export function mergeCalendarBusyIntoRoom(

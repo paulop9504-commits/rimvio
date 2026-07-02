@@ -103,9 +103,11 @@ function applyLocalCoordinationContext(
   return next;
 }
 
-async function readCoordinationPatchContext() {
+async function readCoordinationPatchContext(options?: { refreshGoogle?: boolean }) {
   const [busyIntervals, focusActive] = await Promise.all([
-    fetchCoordinationCalendarBusyIntervals(),
+    fetchCoordinationCalendarBusyIntervals(new Date(), {
+      refreshGoogle: options?.refreshGoogle,
+    }),
     refreshUserFocusDeferringNegotiation(),
   ]);
   return {
@@ -216,7 +218,9 @@ export async function loadAgentNegotiationRoomRemote(
 export async function startAgentNegotiationRoom(
   input: StartAgentNegotiationRoomInput,
 ): Promise<AgentNegotiationRoomRecord> {
-  const patchContext = await readCoordinationPatchContext();
+  const patchContext = await readCoordinationPatchContext({
+    refreshGoogle: !input.calendarBusyIntervals?.length,
+  });
   const startInput: StartAgentNegotiationRoomInput = {
     ...input,
     calendarBusyIntervals:
@@ -266,7 +270,7 @@ export async function bootstrapAgentNegotiationFromSession(
   >,
   peerDisplayName = "상대",
 ): Promise<AgentNegotiationRoomRecord> {
-  const patchContext = await readCoordinationPatchContext();
+  const patchContext = await readCoordinationPatchContext({ refreshGoogle: true });
   return startAgentNegotiationRoom({
     handshakeId: session.handshakeId,
     threadId: session.threadId,

@@ -47,6 +47,8 @@ import {
 import { fetchCoordinationCalendarBusyIntervals } from "@/lib/globe/market/coordination/client/read-coordination-calendar-busy";
 import { viewerHasApprovedCoordination } from "@/lib/globe/market/coordination/detect-agent-coordination-attention";
 import type { AgentNegotiationRoomRecord } from "@/lib/globe/market/coordination/agent-negotiation-types";
+import { EVENT_CANDIDATES_UPDATED } from "@/lib/life-read-model/candidates-updated";
+import { KNOWLEDGE_ENTITY_UPDATED } from "@/lib/knowledge/knowledge-entity-db";
 import { cn } from "@/lib/utils";
 
 export type MarketTradeProgressCardProps = {
@@ -107,7 +109,25 @@ export function MarketTradeProgressCard({
   }, [session.handshakeId, coordinationBusyIntervals]);
 
   useEffect(() => {
-    void fetchCoordinationCalendarBusyIntervals().then(setCoordinationBusyIntervals);
+    let cancelled = false;
+    const refreshBusy = (refreshGoogle = false) => {
+      void fetchCoordinationCalendarBusyIntervals(new Date(), { refreshGoogle }).then(
+        (intervals) => {
+          if (!cancelled) {
+            setCoordinationBusyIntervals(intervals);
+          }
+        },
+      );
+    };
+    refreshBusy(true);
+    const onCalendarChange = () => refreshBusy(false);
+    window.addEventListener(KNOWLEDGE_ENTITY_UPDATED, onCalendarChange);
+    window.addEventListener(EVENT_CANDIDATES_UPDATED, onCalendarChange);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(KNOWLEDGE_ENTITY_UPDATED, onCalendarChange);
+      window.removeEventListener(EVENT_CANDIDATES_UPDATED, onCalendarChange);
+    };
   }, [session.handshakeId]);
 
   useEffect(() => {
