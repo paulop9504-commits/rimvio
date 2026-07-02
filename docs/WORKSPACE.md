@@ -7,18 +7,18 @@ Rimvio and **Silent Ghost** (`ghostsilence-programmer`) are **separate repos**. 
 1. **File → Open Workspace from File…**
 2. Select:
    ```
-   c:\Users\userguest\Desktop\new-project\rimvio.code-workspace
+   D:/rimvio/rimvio.code-workspace
    ```
 
 Or from terminal:
 
 ```powershell
-cursor "c:\Users\userguest\Desktop\new-project\rimvio.code-workspace"
+cursor "D:/rimvio/rimvio.code-workspace"
 ```
 
 **Applies:** `.cursor/rules/rimvio-*.mdc`  
 **Dev:** `npm run dev` → http://localhost:3000  
-**Tests:** `npm test` in `new-project`
+**Tests:** `npm test` at repository root
 
 ## Both projects (multi-root)
 
@@ -28,7 +28,7 @@ c:\Users\userguest\Desktop\rimvio-and-silent-ghost.code-workspace
 
 | Folder | Port | Rules |
 |--------|------|--------|
-| **Rimvio** (`new-project`) | 3000 | `rimvio-*.mdc` |
+| **Rimvio** (`D:/rimvio`) | 3000 | `rimvio-*.mdc` |
 | **Silent Ghost** (`ghostsilence-programmer`) | 38471 bridge | `engine-site-separation`, etc. |
 
 When editing a file, match the **folder name** — do not apply Silent Ghost truth-log patterns to Rimvio chat/orchestrator.

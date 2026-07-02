@@ -6,7 +6,7 @@
 ## 1. Prepare
 
 ```powershell
-cd c:\Users\userguest\Desktop\new-project
+cd D:/rimvio
 npm run store:icons
 npm run store:screenshots
 $env:CAPACITOR_SERVER_URL="https://rimvio.app"
