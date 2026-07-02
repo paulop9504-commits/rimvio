@@ -15,6 +15,16 @@ import type { OrchestratorResult } from "@/lib/action-chat/orchestrator-types";
 import type { OrchestratorPipelineContext } from "@/lib/action-chat/orchestrator/pipeline-context";
 import type { Phase3Outcome } from "@/lib/action-chat/orchestrator/pipeline-types";
 
+function resolveByRules(ctx: OrchestratorPipelineContext): OrchestratorResult {
+  return orchestrateByRules({
+    ...ctx.scoped,
+    history: ctx.input.history,
+    masterContext: ctx.context,
+    intentRoute: ctx.route,
+    userDefinedActions: ctx.userDefinedActions,
+  });
+}
+
 function buildDynamicContextBlock(ctx: OrchestratorPipelineContext): string | null {
   return [
     ctx.enrichment.shadowContextBlock,
@@ -51,13 +61,7 @@ export async function runPhase3Resolve(
     ctx.trace.terminal("FINAL_RETURN");
     return {
       phase: 3,
-      result: orchestrateByRules({
-        ...ctx.scoped,
-        history: ctx.input.history,
-        masterContext: ctx.context,
-        intentRoute: ctx.route,
-        userDefinedActions: ctx.userDefinedActions,
-      }),
+      result: resolveByRules(ctx),
     };
   }
 
@@ -133,13 +137,7 @@ export async function runPhase3Resolve(
       ctx.trace.terminal("FINAL_RETURN");
       return {
         phase: 3,
-        result: orchestrateByRules({
-          ...ctx.scoped,
-          history: ctx.input.history,
-          masterContext: ctx.context,
-          intentRoute: ctx.route,
-          userDefinedActions: ctx.userDefinedActions,
-        }),
+        result: resolveByRules(ctx),
       };
     }
 
@@ -165,13 +163,7 @@ export async function runPhase3Resolve(
         ctx.trace.terminal("FINAL_RETURN");
         return {
           phase: 3,
-          result: orchestrateByRules({
-            ...ctx.scoped,
-            history: ctx.input.history,
-            masterContext: ctx.context,
-            intentRoute: ctx.route,
-            userDefinedActions: ctx.userDefinedActions,
-          }),
+          result: resolveByRules(ctx),
         };
       }
 
@@ -197,13 +189,7 @@ export async function runPhase3Resolve(
       ctx.trace.terminal("FINAL_RETURN");
       return {
         phase: 3,
-        result: orchestrateByRules({
-          ...ctx.scoped,
-          history: ctx.input.history,
-          masterContext: ctx.context,
-          intentRoute: ctx.route,
-          userDefinedActions: ctx.userDefinedActions,
-        }),
+        result: resolveByRules(ctx),
       };
     }
 
@@ -222,13 +208,7 @@ export async function runPhase3Resolve(
     ctx.trace.terminal("FINAL_RETURN");
     return {
       phase: 3,
-      result: orchestrateByRules({
-        ...ctx.scoped,
-        history: ctx.input.history,
-        masterContext: ctx.context,
-        intentRoute: ctx.route,
-        userDefinedActions: ctx.userDefinedActions,
-      }),
+      result: resolveByRules(ctx),
     };
   }
 }
