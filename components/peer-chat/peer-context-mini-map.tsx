@@ -52,17 +52,17 @@ export function PeerContextMiniMap({ eventId, title, className }: PeerContextMin
       target="_blank"
       rel="noopener noreferrer"
       className={cn(
-        "mx-3 mb-2 flex items-center gap-2 rounded-2xl bg-[#f2f4f6]/90 px-3 py-2",
-        "text-[12px] font-medium text-[#4e5968] ring-1 ring-black/[0.05] active:bg-[#e8eaed]",
+        "mx-3 mb-2 flex items-center gap-2 rounded-2xl bg-muted/90 px-3 py-2",
+        "text-[12px] font-medium text-muted-foreground ring-1 ring-black/[0.05] active:bg-muted",
         className,
       )}
       data-peer-context-mini-map
     >
       <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm">
-        <MapPin className="size-4 text-[#3182f6]" aria-hidden />
+        <MapPin className="size-4 text-primary" aria-hidden />
       </span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
-      <span className="shrink-0 text-[11px] font-semibold text-[#3182f6]">
+      <span className="shrink-0 text-[11px] font-semibold text-primary">
         {copy.globe.contextTriggerOpenHint}
       </span>
     </a>

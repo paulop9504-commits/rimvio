@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { ActionCard } from "@/components/action-card";
 import {
   RIMVIO_TYPE,
+  rimvioEmptyStateClass,
   rimvioHeroCtaClass,
   rimvioSurfaceCardClass,
 } from "@/lib/design/rimvio-ontology";
@@ -23,12 +24,13 @@ import {
   dismissLinkId,
   readDismissedIds,
 } from "@/lib/local-links/now-session";
-import { copy } from "@/lib/copy/human-ko";
+import { useCopy } from "@/hooks/use-copy";
 import { PulseMainActionSurface } from "@/components/pulse/pulse-main-action-surface";
 import { MarketAlignmentSummary } from "@/components/market/market-alignment-summary";
 import { StackGlobePickupCard } from "@/components/stack/stack-globe-pickup-card";
 
 export function ActionStackList() {
+  const copy = useCopy();
   const { activeLinks, archivedLinks } = useRealtimeLinks();
   const [dismissed, setDismissed] = useState(() => readDismissedIds());
   const { notifications, totalCount: inboxCount } = useGlobeInbox(true);
@@ -61,7 +63,7 @@ export function ActionStackList() {
 
     dismissLinkId(topLink.id);
     setDismissed((current) => new Set([...current, topLink.id]));
-    toast("👀 Done", { description: topLink.title });
+    toast(copy.stack.doneToast, { description: topLink.title });
   };
 
   if (!topLink && !topInboxNotification) {
@@ -73,17 +75,19 @@ export function ActionStackList() {
           className="mb-6 w-full max-w-sm text-left"
         />
         <MarketAlignmentSummary enabled className="mb-4 w-full max-w-sm text-left" />
-        <p className="text-4xl">👀</p>
-        <p className={cn("mt-4", RIMVIO_TYPE.headline)}>All clear</p>
-        <p className={cn("mt-2 max-w-[16rem]", RIMVIO_TYPE.caption)}>
-          Share a link from another app — your next action appears here.
-        </p>
+        <div className={cn(rimvioEmptyStateClass(), "w-full max-w-sm")}>
+          <p className="text-4xl">👀</p>
+          <p className={cn("mt-4", RIMVIO_TYPE.headline)}>{copy.stack.emptyTitle}</p>
+          <p className={cn("mt-2 max-w-[16rem] mx-auto", RIMVIO_TYPE.caption)}>
+            {copy.stack.emptyHint}
+          </p>
+        </div>
         {archivedLinks.length > 0 ? (
           <Link
             href="/archive"
             className="mt-6 text-xs text-muted-foreground underline-offset-4 hover:underline"
           >
-            👀 보관함 {archivedLinks.length}개
+            {copy.inbox.archiveLink(archivedLinks.length)}
           </Link>
         ) : null}
       </div>
@@ -169,27 +173,27 @@ export function ActionStackList() {
             className={cn(rimvioHeroCtaClass(), "mx-4 mt-2 shrink-0")}
           >
             <ChevronUp className="mr-2 size-4" strokeWidth={2.5} aria-hidden />
-            Done · next
+            {copy.stack.doneCta}
           </button>
 
           <div className="mt-3 flex items-center justify-between px-5 text-xs text-muted-foreground">
             {remaining > 0 ? (
-              <span>{remaining} more in stack</span>
+              <span>{copy.stack.remaining(remaining)}</span>
             ) : (
-              <span>Stack clear after this</span>
+              <span>{copy.stack.clearAfterThis}</span>
             )}
             <Link
               href="/inbox"
               className="underline-offset-4 transition-colors hover:text-foreground hover:underline"
             >
-              All links →
+              {copy.stack.allLinks} →
             </Link>
           </div>
 
           {archivedLinks.length > 0 ? (
             <p className="mt-2 text-center text-xs text-muted-foreground/80">
               <Link href="/archive" className="hover:underline">
-                👀 보관함 {archivedLinks.length}개
+                {copy.inbox.archiveLink(archivedLinks.length)}
               </Link>
             </p>
           ) : null}

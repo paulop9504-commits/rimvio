@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Camera, ImageUp, Link2, Loader2, X } from "lucide-react";
+import { Camera, ImageUp, Link2, X } from "lucide-react";
+import { Shimmer } from "@/components/ui/shimmer";
 import { InboxLinkInput } from "@/components/inbox-link-input";
 import { useCopy } from "@/hooks/use-copy";
 import type { CaptureIntent } from "@/lib/capture/capture-intent-types";
@@ -211,7 +212,7 @@ export function FeedLinkAddSheet({
                 >
                   {screenshotBusy ? (
                     <>
-                      <Loader2 className="size-4 animate-spin" />
+                      <Shimmer className="size-4 rounded-full" aria-hidden />
                       {copy.feed.screenshotProcessing}
                       {screenshotProgress > 0 ? ` ${screenshotProgress}%` : ""}
                     </>
@@ -273,7 +274,7 @@ export function FeedLinkAddSheet({
                 >
                   {screenshotBusy ? (
                     <>
-                      <Loader2 className="size-4 animate-spin" />
+                      <Shimmer className="size-4 rounded-full" aria-hidden />
                       {copy.feed.screenshotProcessing}
                       {screenshotProgress > 0 ? ` ${screenshotProgress}%` : ""}
                     </>

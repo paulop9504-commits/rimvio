@@ -2038,6 +2038,7 @@ export const copyEn: Copy = {
     emptyShareHint: "Share from other apps — we'll turn it into action buttons",
     swipeToRoom: "Swipe left to add to Together",
     linkAddPill: "Add link",
+    actionPanelFinding: "Finding actions…",
     capturePill: "Add",
     remotePill: "Remote",
     captureSheetTitle: "Link or screenshot",
@@ -2578,8 +2579,19 @@ export const copyEn: Copy = {
     modeNews: "News · summary",
     modeOpen: "Just open",
   },
+  stack: {
+    emptyTitle: "All clear",
+    emptyHint: "Share a link from another app — your next action appears here.",
+    doneCta: "Done · next",
+    doneToast: "Done",
+    remaining: (n: number) => `${n} more in stack`,
+    clearAfterThis: "Stack clear after this",
+    allLinks: "All links",
+  },
   archive: {
     subtitle: "Links taking a quiet break",
+    emptyTitle: "Archive is empty",
+    backHome: "Back home",
   },
   app: {
     tagline: RIMVIO.tagline,

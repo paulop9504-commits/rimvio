@@ -16,6 +16,10 @@ import { useRealtimeLinks } from "@/hooks/use-realtime-links";
 import { useCopy } from "@/hooks/use-copy";
 import { IOS } from "@/lib/ui/ios-surface";
 import {
+  rimvioHeroCtaClass,
+  rimvioSecondaryCtaClass,
+} from "@/lib/design/rimvio-ontology";
+import {
   normalizeLinkCategory,
   type InboxFilterValue,
 } from "@/lib/categories/types";
@@ -281,7 +285,7 @@ function ActionFeedListInner() {
                     {copy.inbox.select}
                   </button>
                   <span className="text-xs tabular-nums text-muted-foreground">
-                    {filteredLinks.length}�?                  </span>
+                    {`${filteredLinks.length}개`}</span>
                 </div>
               </>
             )}
@@ -305,9 +309,8 @@ function ActionFeedListInner() {
               type="button"
               onClick={() => void sendLinks(filteredLinks)}
               className={cn(
-                "mt-[var(--space-u)] flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-2.5",
-                "bg-rimvio-neon-purple/10 text-sm font-medium text-rimvio-neon-cyan",
-                "transition-colors active:bg-rimvio-neon-purple/15"
+                rimvioSecondaryCtaClass(),
+                "mt-[var(--space-u)] w-full gap-2 py-2.5 text-sm",
               )}
             >
               <Send className="size-4" strokeWidth={2} />
@@ -382,7 +385,7 @@ function ActionFeedListInner() {
             <button
               type="button"
               onClick={() => openSelectedLinks(selectedLinks)}
-              className="flex items-center justify-center gap-2 rounded-full border border-border bg-background py-3 text-sm font-semibold active:bg-muted/40"
+              className={cn(rimvioSecondaryCtaClass(), "gap-2 py-3 text-sm")}
             >
               <ExternalLink className="size-4" />
               {copy.inbox.openSelected}
@@ -390,7 +393,7 @@ function ActionFeedListInner() {
             <button
               type="button"
               onClick={() => moveSelectedToFeed(selectedLinks)}
-              className="flex items-center justify-center gap-2 rounded-full border border-border bg-background py-3 text-sm font-semibold active:bg-muted/40"
+              className={cn(rimvioSecondaryCtaClass(), "gap-2 py-3 text-sm")}
             >
               <Sparkles className="size-4" />
               {copy.inbox.moveToFeed}
@@ -398,7 +401,7 @@ function ActionFeedListInner() {
             <button
               type="button"
               onClick={() => void sendLinks(selectedLinks)}
-              className="flex items-center justify-center gap-2 rounded-full bg-rimvio-neon-purple py-3 text-sm font-semibold text-white active:opacity-90"
+              className={cn(rimvioHeroCtaClass(), "gap-2 py-3 text-sm")}
             >
               <Send className="size-4" />
               {copy.inbox.sendBulk(selectedLinks.length)}
@@ -406,7 +409,7 @@ function ActionFeedListInner() {
             <button
               type="button"
               onClick={() => openRoomPicker(selectedLinks)}
-              className="flex items-center justify-center gap-2 rounded-full border border-border bg-background py-3 text-sm font-semibold active:bg-muted/40"
+              className={cn(rimvioSecondaryCtaClass(), "gap-2 py-3 text-sm")}
             >
               <Users className="size-4" />
               {copy.inbox.sendToRoom}
