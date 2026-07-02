@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 import { AgentCoordinationAttentionMount } from "@/components/market/agent-coordination-attention-mount";
+import { CoordinationMountErrorBoundary } from "@/components/market/coordination-mount-error-boundary";
 import { AuthGate } from "@/components/auth-gate";
 import { Providers } from "@/components/providers";
 import type { AppLocale } from "@/lib/i18n/types";
@@ -16,7 +17,9 @@ type RootShellProps = {
 export function RootShell({ children, initialLocale }: RootShellProps) {
   return (
     <Providers initialLocale={initialLocale}>
-      <AgentCoordinationAttentionMount />
+      <CoordinationMountErrorBoundary>
+        <AgentCoordinationAttentionMount />
+      </CoordinationMountErrorBoundary>
       <Suspense fallback={null}>
         <AuthGate>{children}</AuthGate>
       </Suspense>

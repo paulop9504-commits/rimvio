@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { AppShell } from "@/components/app-shell";
 import { FivePeerHubClient } from "@/components/peer-chat/five-peer-hub-client";
+import { PeerChatRouteShimmer } from "@/components/peer-chat/peer-chat-route-shimmer";
 import { getServerCopy } from "@/lib/i18n/server-locale";
 
 export default async function FivePeerHubPage() {
@@ -14,7 +15,7 @@ export default async function FivePeerHubPage() {
       fullBleed
       iosSurface
     >
-      <Suspense fallback={null}>
+      <Suspense fallback={<PeerChatRouteShimmer variant="hub" />}>
         <FivePeerHubClient />
       </Suspense>
     </AppShell>

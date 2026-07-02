@@ -34,6 +34,7 @@ import { readPinnedRoster } from "@/lib/context/peer-thread-settings-store";
 import { isBridgeContextThreadId } from "@/lib/peer-chat/bridge-context-thread";
 import { cn } from "@/lib/utils";
 import { AiLensToggle } from "@/components/peer-chat/ai-lens-toggle";
+import { PeerChatRouteShimmer } from "@/components/peer-chat/peer-chat-route-shimmer";
 import { PeerChatThreadShell } from "@/components/peer-chat/peer-chat-thread-shell";
 import { PeerThreadChatPanel } from "@/components/peer-chat/peer-thread-chat-panel";
 import { GroupInfoSheet } from "@/components/peer-chat/group-info-sheet";
@@ -452,7 +453,7 @@ function PeerThreadRoomBody({ peerThreadId }: PeerThreadRoomClientProps) {
 
 export function PeerThreadRoomClient({ peerThreadId }: PeerThreadRoomClientProps) {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PeerChatRouteShimmer variant="thread" />}>
       <PeerThreadRoomBody peerThreadId={peerThreadId} />
     </Suspense>
   );

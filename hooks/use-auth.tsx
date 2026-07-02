@@ -47,6 +47,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     let active = true;
 
+    const loadingTimeout = window.setTimeout(() => {
+      if (active) {
+        setLoading(false);
+      }
+    }, 8_000);
+
     void supabase.auth.getUser().then((result) => {
       if (active) {
         setUser(result?.data?.user ?? null);
@@ -62,6 +68,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     return () => {
       active = false;
+      window.clearTimeout(loadingTimeout);
       subscription?.unsubscribe();
     };
   }, [supabase]);

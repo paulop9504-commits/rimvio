@@ -61,6 +61,8 @@ export const PROFILE_SETUP_BYPASS_PREFIXES = [
   "/feed",
   "/globe",
   "/search",
+  /** Peer hub + DM threads — must not blank behind profile gate on mobile PWA. */
+  "/peers",
 ] as const;
 
 export function isProfileSetupBypassPath(pathname: string): boolean {

@@ -138,7 +138,6 @@ export function PeerThreadChatPanel({
   const imageInputRef = useRef<HTMLInputElement>(null);
   const composerBusy = aiBusy || imageBusy;
   const scrollBehaviorRef = useRef<ScrollBehavior>("auto");
-  const [messagesVisible, setMessagesVisible] = useState(false);
   const {
     handleLensSelect,
     mapPicker,
@@ -160,7 +159,6 @@ export function PeerThreadChatPanel({
 
   useEffect(() => {
     scrollBehaviorRef.current = "auto";
-    setMessagesVisible(messages.length > 0);
     setQuickRepliesVisible(true);
   }, [threadId]);
 
@@ -168,16 +166,13 @@ export function PeerThreadChatPanel({
     if (messagesHydrating && messages.length === 0) {
       return;
     }
-    if (messages.length > 0 && !messagesHydrating && !messagesVisible) {
-      requestAnimationFrame(() => setMessagesVisible(true));
-    }
     if (messages.length > 0) {
       bottomRef.current?.scrollIntoView({
         behavior: scrollBehaviorRef.current,
       });
       scrollBehaviorRef.current = "smooth";
     }
-  }, [messages.length, aiBusy, messagesHydrating, threadId, messagesVisible]);
+  }, [messages.length, aiBusy, messagesHydrating, threadId]);
 
   const showSkeleton = messagesHydrating && messages.length === 0;
   const showEmptyHint =
@@ -453,12 +448,6 @@ export function PeerThreadChatPanel({
           <ul
             className={cn(
               "divide-y divide-border rounded-xl border border-border bg-background mx-3 my-3",
-              messagesHydrating
-                ? "opacity-100"
-                : cn(
-                    "transition-opacity duration-200",
-                    messagesVisible ? "opacity-100" : "opacity-0",
-                  ),
             )}
           >
             {messages
@@ -476,12 +465,6 @@ export function PeerThreadChatPanel({
             className={cn(
               "flex flex-col",
               simple ? DM_CHAT.listGap : "gap-3",
-              messagesHydrating
-                ? "opacity-100"
-                : cn(
-                    "transition-opacity duration-200",
-                    messagesVisible ? "opacity-100" : "opacity-0",
-                  ),
             )}
           >
             {visibleMessages.map((message, index) => (
