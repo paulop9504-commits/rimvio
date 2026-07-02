@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { useCopy } from "@/hooks/use-copy";
 import {
@@ -12,9 +12,11 @@ import { readUserFocusDeferringNegotiationSync } from "@/lib/globe/market/coordi
 
 export function useAgentCoordinationAttention(): void {
   const copy = useCopy();
-  const ui = copy.globe.coordination;
+  const uiRef = useRef(copy.globe.coordination);
+  uiRef.current = copy.globe.coordination;
 
   useEffect(() => {
+    const ui = uiRef.current;
     return subscribeAgentCoordinationAttention((event) => {
       if (event.kind === "slot_needed" && readUserFocusDeferringNegotiationSync()) {
         return;
@@ -51,5 +53,5 @@ export function useAgentCoordinationAttention(): void {
           break;
       }
     });
-  }, [ui]);
+  }, []);
 }
