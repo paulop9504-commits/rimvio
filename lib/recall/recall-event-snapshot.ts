@@ -220,5 +220,10 @@ export function buildRecallAnchorSnapshot(
     hourBucket: timeShape.hourBucket,
     planMode: anchor.planMode ?? null,
     noteTokens: tokenizeContextNote(anchor.contextNote),
+    marketCompletion: false,
+    marketProductName: null,
+    marketPriceLine: null,
+    marketRealizedPriceKrw: null,
+    marketTokens: [],
   };
 }
