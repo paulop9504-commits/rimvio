@@ -20,7 +20,10 @@ export function useBridgeMediaSync(input?: {
 }) {
   const enabled = input?.enabled ?? true;
   const priorityEventIdRef = useRef(input?.priorityEventId?.trim() || null);
-  priorityEventIdRef.current = input?.priorityEventId?.trim() || null;
+
+  useEffect(() => {
+    priorityEventIdRef.current = input?.priorityEventId?.trim() || null;
+  }, [input?.priorityEventId]);
 
   const { user, configured } = useAuth();
   const remote = configured && isSupabaseConfigured() && Boolean(user?.id);
@@ -47,7 +50,7 @@ export function useBridgeMediaSync(input?: {
     } finally {
       syncingRef.current = false;
     }
-  }, [enabled, remote, user?.id]);
+  }, [enabled, remote, user]);
 
   useEffect(() => {
     if (!remote || !enabled) {

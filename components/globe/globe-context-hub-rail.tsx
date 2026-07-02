@@ -416,7 +416,7 @@ export function GlobeContextHubRail({
         setBusy(false);
       }
     },
-    [activeEventId, authUserId, busy, lat, lng, panel?.services, rankedResources],
+    [activeEventId, authUserId, busy, lat, lng, panel, rankedResources],
   );
 
   const hasLodgingResources = rankedResources.some(
@@ -557,10 +557,6 @@ export function GlobeContextHubRail({
     dispatchGlobeMarketHubConnect({ eventId });
   }, [activeEventId]);
 
-  if (!visible || !panel) {
-    return null;
-  }
-
   const showCarousel = rankedResources.length > 0;
   const emptyDockOffer = useMemo(() => {
     if (!panel || showCarousel) {
@@ -576,6 +572,10 @@ export function GlobeContextHubRail({
       ) ?? null
     );
   }, [panel, showCarousel]);
+
+  if (!visible || !panel) {
+    return null;
+  }
 
   if (presentation === "dock" && !showCarousel && !emptyDockOffer) {
     return null;

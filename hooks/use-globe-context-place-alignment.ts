@@ -42,9 +42,11 @@ export function useGlobeContextPlaceAlignment(input: {
   const userLatRef = useRef(input.userLat);
   const userLngRef = useRef(input.userLng);
 
-  userLatRef.current = input.userLat;
-  userLngRef.current = input.userLng;
-  onAlignedRef.current = input.onAligned;
+  useEffect(() => {
+    userLatRef.current = input.userLat;
+    userLngRef.current = input.userLng;
+    onAlignedRef.current = input.onAligned;
+  }, [input.userLat, input.userLng, input.onAligned]);
 
   const run = useCallback(async () => {
     if (runningRef.current) {

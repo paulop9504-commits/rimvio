@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
   }
 
   let inventory = await fetchPlacesLodgingNearby({ lat, lng, maxResults });
-  let source: "google_places" | "mock" = inventory.length > 0 ? "google_places" : "mock";
+  const source: "google_places" | "mock" = inventory.length > 0 ? "google_places" : "mock";
 
   if (inventory.length === 0) {
     inventory = resolveLodgingMockNearUser({ lat, lng }).slice(0, maxResults);

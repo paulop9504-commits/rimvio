@@ -221,6 +221,7 @@ export function ContextOpsDashboard() {
   const [tab, setTab] = useState<DashboardTab>("graph");
   const [graphQuery, setGraphQuery] = useState("");
   const [expandedStreamId, setExpandedStreamId] = useState<string | null>(null);
+  const [mountedAt] = useState(() => Date.now());
 
   const behavior = useMemo(() => {
     const saveHistory = readSaveTrajectory();
@@ -269,7 +270,7 @@ export function ContextOpsDashboard() {
 
   const builtAgoSec = Math.max(
     0,
-    Math.round((Date.now() - Date.parse(snapshot.builtAt)) / 1000),
+    Math.round((mountedAt - Date.parse(snapshot.builtAt)) / 1000),
   );
   const recallDisplay =
     kpis.recallHitRatePct != null ? `${kpis.recallHitRatePct}%` : "—";

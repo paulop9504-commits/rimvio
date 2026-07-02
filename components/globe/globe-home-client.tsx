@@ -303,6 +303,7 @@ function GlobeHomeBody() {
   );
   const [globeInboxOpen, setGlobeInboxOpen] = useState(false);
   const [fieldSheetOpen, setFieldSheetOpen] = useState(false);
+  const [captureSheetOpen, setCaptureSheetOpen] = useState(false);
   useEffect(() => {
     return subscribeFieldSheetOpenState(setFieldSheetOpen);
   }, []);
@@ -317,7 +318,6 @@ function GlobeHomeBody() {
   const [poolAttachIds, setPoolAttachIds] = useState<string[]>([]);
   const [poolSuggestedStart, setPoolSuggestedStart] = useState<string | null>(null);
   const [shareSheetOpen, setShareSheetOpen] = useState(false);
-  const [captureSheetOpen, setCaptureSheetOpen] = useState(false);
   const [shareEventId, setShareEventId] = useState<string | null>(null);
   const [activeCluster, setActiveCluster] = useState<PinCluster | null>(null);
   const lodgingDiscovery = useGlobeLodgingDiscoverySession({
@@ -940,7 +940,9 @@ function GlobeHomeBody() {
     setSheetOpen(true);
   }, [markPinPress, user?.id]);
 
-  openMapMediaBridgeRef.current = openMapMediaBridge;
+  useEffect(() => {
+    openMapMediaBridgeRef.current = openMapMediaBridge;
+  }, [openMapMediaBridge]);
 
   const focusContextByEventId = useCallback(
     async (
@@ -966,7 +968,10 @@ function GlobeHomeBody() {
     [openContextCluster],
   );
   const focusContextByEventIdRef = useRef(focusContextByEventId);
-  focusContextByEventIdRef.current = focusContextByEventId;
+
+  useEffect(() => {
+    focusContextByEventIdRef.current = focusContextByEventId;
+  }, [focusContextByEventId]);
 
   useEffect(() => {
     return subscribeGlobeContextHubOpen((detail) => {
@@ -1118,10 +1123,12 @@ function GlobeHomeBody() {
 
   const pinCoordOverrides = useMemo(() => pinDragOverrides, [pinDragOverrides]);
 
-  activeClusterRef.current = activeCluster;
-  contextTapPhaseRef.current = contextTapPhase;
-  stackClustersRef.current = stackClusters;
-  sheetOpenRef.current = sheetOpen;
+  useEffect(() => {
+    activeClusterRef.current = activeCluster;
+    contextTapPhaseRef.current = contextTapPhase;
+    stackClustersRef.current = stackClusters;
+    sheetOpenRef.current = sheetOpen;
+  }, [activeCluster, contextTapPhase, stackClusters, sheetOpen]);
 
   useGlobeContextPlaceAlignment({
     userLat: liveLocation?.lat ?? null,
@@ -1514,7 +1521,7 @@ function GlobeHomeBody() {
         setMarketTradeBusy(false);
       }
     },
-    [activeCluster?.eventId, marketTradeBusy],
+    [activeCluster, marketTradeBusy, copy],
   );
 
   const onPortalIntentPeekSelect = useCallback(
@@ -1612,7 +1619,7 @@ function GlobeHomeBody() {
         setMarketTradeBusy(false);
       }
     },
-    [focusContextByEventId, liveLocation?.lat, liveLocation?.lng, marketTradeBusy],
+    [focusContextByEventId, liveLocation, marketTradeBusy, copy],
   );
 
   const launchMarketProjection = useCallback(

@@ -115,7 +115,7 @@ async function readCoordinationPatchContext() {
   };
 }
 
-function useRemoteCoordination(): boolean {
+function isRemoteCoordinationEnabled(): boolean {
   return isSupabaseConfigured();
 }
 
@@ -176,7 +176,7 @@ function emitCoordinationAttention(rooms: readonly AgentNegotiationRoomRecord[])
 }
 
 export async function refreshAgentNegotiationRoomsFromRemote(): Promise<void> {
-  if (!useRemoteCoordination()) {
+  if (!isRemoteCoordinationEnabled()) {
     remoteListCache = null;
     remoteRoomsSnapshot = {};
     return;
@@ -197,7 +197,7 @@ export async function refreshAgentNegotiationRoomsFromRemote(): Promise<void> {
 export async function loadAgentNegotiationRoomRemote(
   handshakeId: string,
 ): Promise<AgentNegotiationRoomRecord | null> {
-  if (!useRemoteCoordination()) {
+  if (!isRemoteCoordinationEnabled()) {
     return getAgentNegotiationRoom(handshakeId);
   }
   try {
@@ -226,7 +226,7 @@ export async function startAgentNegotiationRoom(
         endMs: new Date(wire.end).getTime(),
       })),
   };
-  if (useRemoteCoordination()) {
+  if (isRemoteCoordinationEnabled()) {
     try {
       const room = await patchAgentCoordinationRoomRemote({
         handshakeId: input.handshakeId,
@@ -285,7 +285,7 @@ export async function runAgentNegotiationTurn(
   handshakeId: string,
 ): Promise<AgentNegotiationRoomRecord | null> {
   const patchContext = await readCoordinationPatchContext();
-  if (useRemoteCoordination()) {
+  if (isRemoteCoordinationEnabled()) {
     try {
       const room = await patchAgentCoordinationRoomRemote({
         handshakeId,
@@ -320,7 +320,7 @@ export async function syncAgentCoordinationFocusState(): Promise<void> {
     return;
   }
   const resumeHandshakeIds: string[] = [];
-  if (useRemoteCoordination()) {
+  if (isRemoteCoordinationEnabled()) {
     await Promise.all(
       rooms.map(async (room) => {
         const wasFocusPaused = isFocusDeferPaused(
@@ -398,7 +398,7 @@ export async function submitAgentNegotiationSlotAnswer(input: {
   slotKey: AgentNegotiationSlotKey;
   valueKo: string;
 }): Promise<AgentNegotiationRoomRecord | null> {
-  if (useRemoteCoordination()) {
+  if (isRemoteCoordinationEnabled()) {
     try {
       const room = await patchAgentCoordinationRoomRemote({
         handshakeId: input.handshakeId,
@@ -423,7 +423,7 @@ export async function submitAgentNegotiationSlotAnswer(input: {
 export async function approveAgentNegotiationRoom(
   handshakeId: string,
 ): Promise<AgentNegotiationRoomRecord | null> {
-  if (useRemoteCoordination()) {
+  if (isRemoteCoordinationEnabled()) {
     try {
       const room = await patchAgentCoordinationRoomRemote({
         handshakeId,

@@ -320,7 +320,7 @@ export async function getAgentCoordinationRoomForUser(
     return null;
   }
   const peerDisplayName = await resolvePeerDisplayName(supabase, handshake, userId);
-  let engineRoom = refreshAgentNegotiationPauseState(snapshotToEngineRoom(row));
+  const engineRoom = refreshAgentNegotiationPauseState(snapshotToEngineRoom(row));
   if (engineRoom.state !== row.state) {
     const saved = await saveEngineRoom(supabase, handshakeId, engineRoom);
     return projectCoordinationRoomForViewer({

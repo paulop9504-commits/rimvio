@@ -309,7 +309,9 @@ const RimvioGlobeHubBody = memo(
     const lodgingDiscoveryReveal = useGlobeLodgingDiscoveryReveal(focusedContextEventId);
     const eateryDiscoveryReveal = useGlobeEateryDiscoveryReveal(focusedContextEventId);
     const displayViewerRef = useRef<{ lat: number; lng: number } | null>(null);
-    const [displayViewerRevision, setDisplayViewerRevision] = useState(0);
+    const [displayViewer, setDisplayViewer] = useState<{ lat: number; lng: number } | null>(
+      null,
+    );
 
     useEffect(() => {
       const lat = liveLocation?.lat;
@@ -326,8 +328,9 @@ const RimvioGlobeHubBody = memo(
         return;
       }
       const timer = window.setTimeout(() => {
-        displayViewerRef.current = { lat, lng };
-        setDisplayViewerRevision((value) => value + 1);
+        const next = { lat, lng };
+        displayViewerRef.current = next;
+        setDisplayViewer(next);
       }, 600);
       return () => window.clearTimeout(timer);
     }, [liveLocation?.lat, liveLocation?.lng]);
@@ -339,8 +342,8 @@ const RimvioGlobeHubBody = memo(
         focusedEventId: focusedContextEventId,
         expandedPinId,
         lodgingFocusStageOpen: mapMediaFocusOpen,
-        viewerLat: displayViewerRef.current?.lat ?? liveLocation?.lat ?? null,
-        viewerLng: displayViewerRef.current?.lng ?? liveLocation?.lng ?? null,
+        viewerLat: displayViewer?.lat ?? liveLocation?.lat ?? null,
+        viewerLng: displayViewer?.lng ?? liveLocation?.lng ?? null,
       });
       const withOverrides = applyPinCoordOverrides(
         withDisplay,
@@ -356,7 +359,7 @@ const RimvioGlobeHubBody = memo(
       eventsById,
       expandedPinId,
       mapMediaFocusOpen,
-      displayViewerRevision,
+      displayViewer,
       liveLocation?.lat,
       liveLocation?.lng,
       pinCoordOverrides,
@@ -810,7 +813,10 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
   const { graph } = useExperienceGraph(ready ? eventsById : undefined);
   const recallOpenedRef = useRef(false);
   const onClustersSnapshotRef = useRef(onClustersSnapshot);
-  onClustersSnapshotRef.current = onClustersSnapshot;
+
+  useEffect(() => {
+    onClustersSnapshotRef.current = onClustersSnapshot;
+  }, [onClustersSnapshot]);
 
   const clusters = useMemo(() => {
     if (!ready) {

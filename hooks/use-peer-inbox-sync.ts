@@ -15,7 +15,10 @@ export function usePeerInboxSync(input: {
   onRefresh: () => void | Promise<void>;
 }): void {
   const onRefreshRef = useRef(input.onRefresh);
-  onRefreshRef.current = input.onRefresh;
+
+  useEffect(() => {
+    onRefreshRef.current = input.onRefresh;
+  }, [input.onRefresh]);
 
   useEffect(() => {
     if (!input.enabled || typeof window === "undefined") {

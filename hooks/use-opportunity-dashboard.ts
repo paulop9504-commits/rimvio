@@ -80,7 +80,10 @@ export function useOpportunityDashboard(input: {
   const loadedOnceRef = useRef(false);
   const hadLocationRef = useRef(false);
   const liveLocationRef = useRef(liveLocation);
-  liveLocationRef.current = liveLocation;
+
+  useEffect(() => {
+    liveLocationRef.current = liveLocation;
+  }, [liveLocation]);
 
   const fieldCopy = useMemo<OpportunityFieldCopy>(
     () => ({
