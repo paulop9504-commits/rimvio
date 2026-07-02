@@ -5,6 +5,7 @@ import { MessageCircle, UserPlus } from "lucide-react";
 import { DemoPeerRoomPreview } from "@/components/peer-chat/demo-peer-room-preview";
 import { RimvioStarterExampleChips } from "@/components/rimvio-starter-example-chips";
 import { useCopy } from "@/hooks/use-copy";
+import { RIMVIO_TYPE } from "@/lib/design/rimvio-ontology";
 import { cn } from "@/lib/utils";
 
 type PeerHubEmptyStateProps = {
@@ -24,13 +25,13 @@ export function PeerHubEmptyState({
       aria-label={copy.peers.emptyTitle}
     >
       <div className="flex flex-col items-center px-4 py-8 text-center">
-        <span className="mb-5 flex size-[4.5rem] items-center justify-center rounded-[1.75rem] bg-[#f2f4f6] text-[#3182f6] shadow-sm ring-1 ring-[#02204708]">
+        <span className="mb-5 flex size-[4.5rem] items-center justify-center rounded-[1.75rem] bg-muted text-primary shadow-sm ring-1 ring-primary/10">
           <MessageCircle className="size-9 stroke-[1.5]" aria-hidden />
         </span>
-        <h2 className="text-[18px] font-semibold tracking-tight text-[#191f28]">
+        <h2 className={cn("text-[18px] tracking-tight", RIMVIO_TYPE.headline)}>
           {copy.peers.emptyTitle}
         </h2>
-        <p className="mt-2 max-w-[18rem] text-[14px] leading-relaxed text-[#6b7684]">
+        <p className={cn("mt-2 max-w-[18rem] text-[14px] leading-relaxed", RIMVIO_TYPE.caption)}>
           {copy.peers.emptyBody}
         </p>
         <button
@@ -43,7 +44,7 @@ export function PeerHubEmptyState({
         </button>
         <Link
           href="/"
-          className="mt-4 py-2 text-[13px] font-medium text-[#3182f6] active:opacity-70"
+          className="mt-4 py-2 text-[13px] font-medium text-primary active:opacity-70"
         >
           {copy.peers.emptyGlobeLink}
         </Link>

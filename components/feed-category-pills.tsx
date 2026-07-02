@@ -2,7 +2,8 @@
 
 import { useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { LayoutGrid, Loader2, Plus, Zap, type LucideIcon } from "lucide-react";
+import { LayoutGrid, Plus, Zap, type LucideIcon } from "lucide-react";
+import { Shimmer } from "@/components/ui/shimmer";
 import {
   type FeedCategoryFilter,
   FEED_CATEGORY_PILLS,
@@ -272,10 +273,7 @@ export function FeedCategoryPills({
                       )}
                     >
                       {remoteLoading ? (
-                        <Loader2
-                          className="size-[1.2rem] animate-spin text-rimvio-neon-cyan"
-                          strokeWidth={2.2}
-                        />
+                        <Shimmer className="size-[1.2rem] rounded-full" />
                       ) : (
                         <Zap
                           className="size-[1.2rem] text-rimvio-neon-cyan"

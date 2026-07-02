@@ -244,13 +244,7 @@ export function ActionCard({ link, index = 0 }: ActionCardProps) {
         ease: [0.22, 1, 0.36, 1],
       }}
     >
-      <Card
-        className={cn(
-          "gap-0 overflow-hidden rounded-3xl border-0 bg-card shadow-sm",
-          "transition-[transform,box-shadow] duration-200",
-          "hover:shadow-md active:scale-[0.985] active:shadow-sm"
-        )}
-      >
+      <Card className="gap-0 overflow-hidden">
         <CardContent className="p-4 pb-3">
           <button
             type="button"

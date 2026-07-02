@@ -2036,6 +2036,7 @@ export const copy = {
     emptyShareHint: "다른 앱에서 공유해도 바로 실행 버튼으로 바뀌어요",
     swipeToRoom: "왼쪽으로 밀면 함께하기에 추가",
     linkAddPill: "링크 추가",
+    actionPanelFinding: "찾는 중…",
     capturePill: "담기",
     remotePill: "리모컨",
     captureSheetTitle: "링크 · 사진 담기",
@@ -2577,8 +2578,19 @@ export const copy = {
     modeNews: "뉴스·요약",
     modeOpen: "그냥 열기",
   },
+  stack: {
+    emptyTitle: "지금은 비어 있어요",
+    emptyHint: "다른 앱에서 링크를 공유하면 다음 행동이 여기에 쌓여요",
+    doneCta: "완료 · 다음",
+    doneToast: "완료",
+    remaining: (n: number) => `스택에 ${n}개 더`,
+    clearAfterThis: "이걸 마치면 스택이 비워져요",
+    allLinks: "전체 링크 보기",
+  },
   archive: {
     subtitle: "잠시 쉬어 가는 링크",
+    emptyTitle: "보관함이 비어 있어요",
+    backHome: "메인으로",
   },
   app: {
     tagline: RIMVIO.tagline,

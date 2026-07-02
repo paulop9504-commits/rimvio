@@ -1,7 +1,8 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
 import { RimvioActionButton } from "@/components/ui/rimvio-action-button";
+import { Shimmer } from "@/components/ui/shimmer";
+import { useCopy } from "@/hooks/use-copy";
 import { cleanFeedActionLabel } from "@/lib/feed/feed-display";
 import type { AppLocale } from "@/lib/i18n/types";
 import type { LinkActionItem } from "@/types/database";
@@ -42,6 +43,7 @@ export function FeedActionPanel({
   variant = "stack",
   rankingWhy = null,
 }: FeedActionPanelProps) {
+  const copy = useCopy();
   const showTitle =
     Boolean(title?.trim()) &&
     title?.trim().toLowerCase() !== signalLine?.trim().toLowerCase();
@@ -85,15 +87,26 @@ export function FeedActionPanel({
         {loading ? (
           <div
             className={cn(
-              "mx-auto flex w-[var(--golden-major)] max-w-full items-center justify-center gap-2",
-              "rounded-[var(--space-phi)] px-[var(--space-phi2)] py-[var(--space-phi)] text-[14px] font-medium",
-              isOverlay
-                ? "bg-rimvio-surface/15 text-white backdrop-blur-md"
-                : "bg-rimvio-neon-purple/10 text-rimvio-neon-cyan"
+              "mx-auto w-[var(--golden-major)] max-w-full space-y-2",
+              isOverlay && "px-1",
             )}
+            aria-busy
+            aria-label={copy.feed.actionPanelFinding}
           >
-            <Loader2 className="size-4 animate-spin" />
-            찾는 중…
+            <Shimmer
+              className={cn(
+                "h-11 w-full rounded-[var(--space-phi)]",
+                isOverlay && "bg-white/20",
+              )}
+            />
+            <p
+              className={cn(
+                "text-center text-[12px] font-medium",
+                isOverlay ? "text-white/80" : "text-muted-foreground",
+              )}
+            >
+              {copy.feed.actionPanelFinding}
+            </p>
           </div>
         ) : showPrimary ? (
           <>

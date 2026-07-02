@@ -2,6 +2,7 @@
 
 import { ChevronRight } from "lucide-react";
 import { formatPeerChatDateDividerLabel } from "@/lib/peer-chat/peer-chat-date-divider";
+import { RIMVIO_TYPE } from "@/lib/design/rimvio-ontology";
 import { cn } from "@/lib/utils";
 
 type PeerChatDateDividerProps = {
@@ -28,7 +29,12 @@ export function PeerChatDateDivider({
       aria-label={label}
       data-rimvio-chat-date-divider
     >
-      <span className="inline-flex items-center gap-0.5 rounded-full bg-black/[0.06] px-3 py-1 text-[12px] font-medium leading-none text-[#6B6B6B]">
+      <span
+        className={cn(
+          "inline-flex items-center gap-0.5 rounded-full bg-foreground/[0.06] px-3 py-1 leading-none",
+          RIMVIO_TYPE.caption,
+        )}
+      >
         {label}
         <ChevronRight className="size-3 shrink-0 opacity-45" aria-hidden />
       </span>

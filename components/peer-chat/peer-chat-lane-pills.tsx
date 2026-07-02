@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Sparkles } from "lucide-react";
 import { useCopy } from "@/hooks/use-copy";
 import type { PeerChatLane } from "@/lib/peer-chat/peer-thread-lane";
+import { rimvioChromeClass } from "@/lib/design/rimvio-ontology";
 import { cn } from "@/lib/utils";
 
 const LANES: readonly PeerChatLane[] = [
@@ -34,7 +35,7 @@ export function PeerChatLanePills({
   return (
     <div
       className={cn(
-        "shrink-0 border-b border-[#f2f4f6] bg-white/95 backdrop-blur-sm",
+        rimvioChromeClass("shrink-0 border-b"),
         className,
       )}
     >
@@ -60,11 +61,11 @@ export function PeerChatLanePills({
                 "relative shrink-0 rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition-all duration-200",
                 active
                   ? isAi
-                    ? "text-white shadow-[0_4px_14px_rgba(49,130,246,0.35)]"
-                    : "text-white shadow-[0_4px_14px_rgba(25,31,40,0.18)]"
+                    ? "text-primary-foreground shadow-[0_4px_14px_rgba(0,113,227,0.35)]"
+                    : "text-primary-foreground shadow-[0_4px_14px_rgba(0,0,0,0.18)]"
                   : isAi
-                    ? "bg-[#eef6ff] text-[#2563eb] active:scale-[0.97]"
-                    : "bg-[#f2f4f6] text-[#4e5968] active:scale-[0.97]",
+                    ? "bg-primary/10 text-primary active:scale-[0.97]"
+                    : "bg-muted text-muted-foreground active:scale-[0.97]",
               )}
             >
               {active ? (
@@ -73,8 +74,8 @@ export function PeerChatLanePills({
                   className={cn(
                     "absolute inset-0 rounded-full",
                     isAi
-                      ? "bg-gradient-to-b from-[#3b8bfd] to-[#2563eb]"
-                      : "bg-[#191f28]",
+                      ? "bg-gradient-to-b from-primary to-primary"
+                      : "bg-foreground",
                   )}
                   transition={{ type: "spring", stiffness: 420, damping: 34 }}
                 />
@@ -86,7 +87,9 @@ export function PeerChatLanePills({
                   <span
                     className={cn(
                       "min-w-[18px] rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none tabular-nums",
-                      active ? "bg-white/20 text-white" : "bg-white text-[#3182f6]",
+                      active
+                        ? "bg-primary-foreground/20 text-primary-foreground"
+                        : "bg-card text-primary",
                     )}
                   >
                     {count > 99 ? "99+" : count}

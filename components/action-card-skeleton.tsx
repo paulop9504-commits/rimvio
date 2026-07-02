@@ -7,7 +7,7 @@ type ActionCardSkeletonProps = {
 
 export function ActionCardSkeleton() {
   return (
-    <Card className="gap-0 overflow-hidden rounded-3xl border-0 bg-card shadow-sm">
+    <Card className="gap-0 overflow-hidden">
       <CardContent className="p-4 pb-3">
         <div className="flex items-start gap-3.5">
           <div className="relative shrink-0">

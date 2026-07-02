@@ -2,6 +2,7 @@
 
 import type { SurfaceAction } from "@/lib/surface-engine/surface-contract";
 import type { SurfaceActionFeedbackPhase } from "@/hooks/use-surface-action-feedback";
+import { rimvioHeroCtaClass } from "@/lib/design/rimvio-ontology";
 import { cn } from "@/lib/utils";
 
 export type PrimaryActionButtonProps = {
@@ -34,10 +35,9 @@ export function PrimaryActionButton({
         disabled={loading}
         aria-busy={loading}
         className={cn(
-          "w-full rounded-xl px-4 py-3 text-[15px] font-medium text-white transition-colors",
-          success && "bg-emerald-600",
-          error && "bg-red-600/90",
-          !success && !error && "bg-rimvio-ink",
+          rimvioHeroCtaClass(),
+          success && "bg-emerald-600 shadow-none",
+          error && "bg-destructive shadow-none",
           loading && "opacity-80",
           className,
         )}

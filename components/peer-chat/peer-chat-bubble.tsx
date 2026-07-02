@@ -194,7 +194,7 @@ export function PeerChatBubble({
           className={cn(
             "whitespace-pre-wrap break-words px-2.5 py-1.5",
             simple
-              ? cn(DM_CHAT.bubbleText, isMe ? "text-white" : "text-[#262626]")
+              ? cn(DM_CHAT.bubbleText, isMe ? "text-primary-foreground" : "text-foreground")
               : cn("text-[15px]", isMe ? "text-white" : "text-foreground"),
             isMe
               ? simple
