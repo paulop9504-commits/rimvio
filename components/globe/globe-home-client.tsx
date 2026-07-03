@@ -6,10 +6,8 @@ import { AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { RimvioGlobeHubClient } from "@/components/experience/rimvio-globe-hub-client";
-import { GlobeContextControlDock } from "@/components/globe/globe-context-control-dock";
-import { GlobeLayerModeToggle } from "@/components/globe/globe-layer-mode-toggle";
-import { GlobeContextHubRail } from "@/components/globe/globe-context-hub-rail";
 import { GlobeContextHubDetailSheet } from "@/components/globe/globe-context-hub-detail-sheet";
+import { GlobeHomeLeftChrome } from "@/components/globe/globe-home-left-chrome";
 import { GlobeUtilityMenu } from "@/components/globe/globe-utility-menu";
 import { GlobeContextMapVideoStage } from "@/components/globe/globe-context-map-video-stage";
 import { GlobeLodgingFocusStage } from "@/components/globe/globe-lodging-focus-stage";
@@ -26,10 +24,10 @@ import {
   GlobeHomeMemoryRecallPanel,
   GlobeHomeMemoryRecallProvider,
   GlobeHomeMemoryRecallToggleAnchor,
+  GlobeHomeRecallOneLiner,
 } from "@/components/globe/globe-home-memory-dock";
 import { GlobePortalIntentPeekPanel } from "@/components/globe/globe-portal-intent-peek";
 import { GlobePhotoIngestUndoBar } from "@/components/globe/globe-photo-ingest-undo-bar";
-import { GlobeTrendBridgePulseChip } from "@/components/globe/globe-trend-bridge-pulse-chip";
 import { GlobeTrendBridgeLayer } from "@/components/globe/globe-trend-bridge-layer";
 import type { GlobeContextIngestBarHandle } from "@/components/globe/globe-context-ingest-bar";
 import { GlobeFirstVisitCoach } from "@/components/globe/globe-first-visit-coach";
@@ -51,7 +49,6 @@ import { subscribeGlobePhotoIngest } from "@/lib/globe/globe-photo-ingest-bridge
 import { setLiveLocationPowerMode } from "@/lib/location-ping/live-location-service";
 import { usePersonalGlobePinSync } from "@/hooks/use-personal-globe-pin-sync";
 import { useGlobeLayerMode } from "@/hooks/use-globe-layer-mode";
-import { useOpportunityFieldBadge } from "@/hooks/use-opportunity-field-badge";
 import { subscribeFieldFlyToIntent, subscribeFieldSheetOpenState } from "@/lib/nav/field-sheet-bridge";
 import {
   clearFieldDashboardSearchParams,
@@ -75,9 +72,6 @@ import {
 } from "@/lib/context-run/sync-portal-compose-to-feed";
 import { syncPortalComposeTurnToChat, syncPortalComposeClarifyToChat } from "@/lib/globe/chat/sync-portal-compose-to-chat";
 import { useIosPwaMemoryGuards } from "@/hooks/use-ios-pwa-memory-guards";
-import {
-  iosPwaDiscoveryPinsDelayMs,
-} from "@/lib/platform/ios-pwa-memory";
 import { useGlobeInbox } from "@/hooks/use-globe-inbox";
 import { useMediaPool } from "@/hooks/use-media-pool";
 import { useGlobeTripArrival } from "@/hooks/use-globe-trip-arrival";
@@ -313,7 +307,6 @@ function GlobeHomeBody() {
   const fieldOverlayOpen = fieldSheetOpen;
   const [layerSwitchSuspend, setLayerSwitchSuspend] = useState(false);
   const iosPwaGuards = useIosPwaMemoryGuards();
-  const [discoveryBadgeReady, setDiscoveryBadgeReady] = useState(false);
   const [mediaPoolOpen, setMediaPoolOpen] = useState(false);
   const [poolAttachIds, setPoolAttachIds] = useState<string[]>([]);
   const [poolSuggestedStart, setPoolSuggestedStart] = useState<string | null>(null);
@@ -331,28 +324,6 @@ function GlobeHomeBody() {
     userLat: liveLocation?.lat ?? null,
     userLng: liveLocation?.lng ?? null,
     contextEventId: activeCluster?.eventId ?? null,
-  });
-  useEffect(() => {
-    if (!iosPwaGuards) {
-      setDiscoveryBadgeReady(layerMode === "discovery");
-      return;
-    }
-    if (layerMode !== "discovery") {
-      setDiscoveryBadgeReady(false);
-      return;
-    }
-    setDiscoveryBadgeReady(false);
-    const timer = window.setTimeout(
-      () => setDiscoveryBadgeReady(true),
-      iosPwaDiscoveryPinsDelayMs(),
-    );
-    return () => window.clearTimeout(timer);
-  }, [iosPwaGuards, layerMode]);
-
-  const { matchedCount: fieldMatchCount } = useOpportunityFieldBadge({
-    enabled:
-      layerMode === "discovery" && !fieldOverlayOpen && discoveryBadgeReady,
-    primaryEventId: activeCluster?.eventId ?? null,
   });
   const [placeVerifyEventId, setPlaceVerifyEventId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -486,20 +457,9 @@ function GlobeHomeBody() {
     (mode: GlobeLayerMode) => {
       if (iosPwaGuards) {
         setLayerSwitchSuspend(true);
-        setDiscoveryBadgeReady(false);
         window.setTimeout(() => {
           setLayerSwitchSuspend(false);
-          if (mode === "discovery") {
-            window.setTimeout(
-              () => setDiscoveryBadgeReady(true),
-              iosPwaDiscoveryPinsDelayMs(),
-            );
-          }
         }, 500);
-      } else if (mode === "discovery") {
-        setDiscoveryBadgeReady(true);
-      } else {
-        setDiscoveryBadgeReady(false);
       }
       setLayerMode(mode);
       clearActiveContext();
@@ -1868,6 +1828,7 @@ function GlobeHomeBody() {
   return (
     <div
       className="relative flex h-full min-h-0 flex-1 flex-col"
+      data-surface="globe-home"
       onDragEnter={(event) => {
         if (layerMode === "discovery" || confirmOpen) {
           return;
@@ -1917,6 +1878,7 @@ function GlobeHomeBody() {
           </p>
         </div>
       ) : null}
+      {/* —— L1 Globe stage (pins · recall) —— */}
       <RimvioGlobeHubClient
         globeRef={globeRef}
         className="h-full min-h-0 flex-1"
@@ -2019,76 +1981,35 @@ function GlobeHomeBody() {
         lng={liveLocation?.lng ?? null}
         viewerUserId={user?.id ?? null}
       />
-      <div className="pointer-events-none absolute left-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20 flex max-h-[calc(100%-var(--rimvio-globe-ingest-offset)-5.5rem)] flex-col items-start gap-1.5">
-        {!mapMediaFocusOpen ? (
-          <>
-            <div className="pointer-events-auto">
-              <GlobeLayerModeToggle
-                mode={layerMode}
-                onModeChange={onLayerModeChange}
-              />
-            </div>
-            {layerMode === "discovery" ? (
-              <p
-                className="pointer-events-none max-w-[11rem] px-1 text-[11px] font-medium leading-snug text-muted-foreground"
-                data-globe-layer-mode-hint
-              >
-                {copy.globe.layerModeDiscoveryHint}
-              </p>
-            ) : null}
-            {layerMode === "personal" ? (
-            <div className="pointer-events-auto">
-              <GlobeContextControlDock
-                timeFilter={timeFilter}
-                onTimeFilterChange={setTimeFilter}
-                peopleFilter={peopleFilter}
-                onPeopleFilterChange={setPeopleFilter}
-                peerOptions={peerOptions}
-                onCreate={openPhotoPicker}
-                onList={() => setListOpen(true)}
-                onManage={() => setManageOpen(true)}
-                onFlyToHere={
-                  liveLocation
-                    ? () =>
-                        globeRef.current?.flyToPin(
-                          liveLocation.lat,
-                          liveLocation.lng,
-                          "neighborhood",
-                        )
-                    : undefined
-                }
-              />
-            </div>
-            ) : null}
-            {layerMode === "personal" && !hubEventId ? (
-              <GlobeTrendBridgePulseChip
-                className="pointer-events-auto"
-                enabled={trendBridgeSettings.enabled}
-                activeBridgeId={trendBridgeSettings.activeBridgeId}
-                pulseIntent={trendBridgeSettings.pulseIntent}
-                onToggle={onTrendBridgeModeChange}
-                onBridgeSelect={onTrendBridgeSelect}
-                onPulseIntentChange={onTrendBridgePulseIntentChange}
-              />
-            ) : null}
-          </>
-        ) : null}
-        {hubEventId &&
-        !hubDetailOpen &&
-        !suppressMapHubRail ? (
-          <GlobeContextHubRail
-            className="pointer-events-auto"
-            visible={!globeRenderSuspended}
-            activeEventId={hubEventId}
-            lat={liveLocation?.lat ?? null}
-            lng={liveLocation?.lng ?? null}
-            authUserId={user?.id ?? null}
-            layout="dock"
-            variant="compact"
-            globeRef={globeRef}
-          />
-        ) : null}
-      </div>
+      <GlobeHomeLeftChrome
+        mapMediaFocusOpen={mapMediaFocusOpen}
+        layerMode={layerMode}
+        onLayerModeChange={onLayerModeChange}
+        timeFilter={timeFilter}
+        onTimeFilterChange={setTimeFilter}
+        peopleFilter={peopleFilter}
+        onPeopleFilterChange={setPeopleFilter}
+        peerOptions={peerOptions}
+        onCreatePhoto={openPhotoPicker}
+        onOpenList={() => setListOpen(true)}
+        onOpenManage={() => setManageOpen(true)}
+        liveLat={liveLocation?.lat ?? null}
+        liveLng={liveLocation?.lng ?? null}
+        globeRef={globeRef}
+        hubEventId={hubEventId}
+        hubDetailOpen={hubDetailOpen}
+        suppressMapHubRail={suppressMapHubRail}
+        globeRenderSuspended={globeRenderSuspended}
+        authUserId={user?.id ?? null}
+        trendBridge={{
+          enabled: trendBridgeSettings.enabled,
+          activeBridgeId: trendBridgeSettings.activeBridgeId,
+          pulseIntent: trendBridgeSettings.pulseIntent,
+          onToggle: onTrendBridgeModeChange,
+          onBridgeSelect: onTrendBridgeSelect,
+          onPulseIntentChange: onTrendBridgePulseIntentChange,
+        }}
+      />
       <GlobeContextHubDetailSheet
         open={hubDetailOpen}
         onOpenChange={setHubDetailOpen}
@@ -2099,22 +2020,19 @@ function GlobeHomeBody() {
         visible={Boolean(hubEventId)}
         globeRef={globeRef}
       />
+      {/* —— Overlay chrome (utility · filters) —— */}
       {!mapMediaFocusOpen ? (
       <div className="pointer-events-none absolute right-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20">
         <GlobeUtilityMenu
           mediaPoolCount={mediaPoolCount}
           inboxCount={globeInboxCount}
           marketManageCount={marketManageCount}
-          showFieldEntry
-          fieldMatchCount={fieldMatchCount}
           onOpenMediaPool={() => setMediaPoolOpen(true)}
           onOpenInbox={() => setGlobeInboxOpen(true)}
-          onOpenMarketManage={() => openFieldDashboardIngress({ tab: "mine" })}
-          onOpenField={() =>
-            openFieldDashboardIngress({
-              tab: "discovery",
-              highlightTradeId: null,
-            })
+          onOpenMarketManage={
+            marketManageCount > 0
+              ? () => openFieldDashboardIngress({ tab: "mine" })
+              : undefined
           }
           onOpenSettings={() => setSettingsOpen(true)}
           className="pointer-events-auto"
@@ -2131,6 +2049,7 @@ function GlobeHomeBody() {
         onActivateTrigger={onMemoryTriggerPress}
         onResumeSession={onResumeSession}
       >
+      {/* —— L2 Capture dock (compose · ingest) —— */}
       <GlobeCaptureDock
         ref={ingestBarRef}
         composeHidden={portalOpen || marketConfirmOpen}
@@ -2146,6 +2065,11 @@ function GlobeHomeBody() {
         }
         stackAboveCompose={
           <>
+            {!confirmOpen && !sheetOpen && layerMode === "personal" ? (
+              <div className="flex w-full justify-center px-2 pb-1">
+                <GlobeHomeRecallOneLiner />
+              </div>
+            ) : null}
             {pulseMainActionEnabled ? (
               <MarketAlignmentSummary
                 enabled={pulseMainActionEnabled}

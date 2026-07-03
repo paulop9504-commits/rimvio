@@ -1,5 +1,7 @@
 "use client";
 
+import { isGlobeHomePath as resolveGlobeHomePath } from "@/lib/surface-registry";
+
 export const GLOBE_PHOTO_INGEST_REQUEST = "rimvio-globe-photo-ingest-request";
 
 export type GlobePhotoIngestRequestDetail = {
@@ -47,6 +49,5 @@ export function subscribeGlobePhotoIngest(
 }
 
 export function isGlobeHomePath(pathname: string): boolean {
-  const path = pathname.trim() || "/";
-  return path === "/" || path.startsWith("/globe");
+  return resolveGlobeHomePath(pathname);
 }

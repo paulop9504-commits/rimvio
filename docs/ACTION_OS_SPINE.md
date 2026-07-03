@@ -1,22 +1,32 @@
-# Action OS Spine — Active Focus & Frozen Backlog
+# Action OS Spine — Synaptic Loop (Active Focus & Frozen Backlog)
 
-> **Status:** locked 2026-06-02  
-> **Rule:** `.cursor/rules/action-os-spine.mdc`
+> **Status:** locked 2026-06-02 · reframed 2026-07 (synaptic product truth)  
+> **Rule:** `.cursor/rules/action-os-spine.mdc`  
+> **Constitution:** [RIMVIO_CONSTITUTION.md](./RIMVIO_CONSTITUTION.md) · **Synaptic layer:** [RIMVIO_SYNAPTIC_LAYER.md](./RIMVIO_SYNAPTIC_LAYER.md)
 
 ---
 
-## One spine (only this loop)
+## Synaptic spine (only this loop)
+
+Context axes are **synaptic ingress**. `@` registry locks **re-executable contracts**. Prep surface is where **fired edges** land as MAIN. Archive rollup **strengthens or weakens** edge priority — not passive recall storage.
 
 ```
-Context (calendar · notification · chat · link)
-    → @ Action Contract Registry (intent lock)
-        → Proactive prep surface (MAIN 1 + AUX)
-            → Archive fold + telemetry
-                → Learning rollup → MAIN ranking
+Context (calendar · notification · chat · link)     ← synaptic ingress (4 axes)
+    → @ Action Contract Registry (intent lock)       ← re-execution contracts
+        → Proactive prep surface (MAIN 1 + AUX)      ← fired edge surfaces here
+            → Archive fold + telemetry               ← edge plasticity signals
+                → Learning rollup → MAIN ranking     ← synaptic priority
 ```
 
 All active work must fit this loop. Nothing else ships until the vertical slice is end-to-end.
 
+### Synaptic law
+
+1. **Connections fire → MAIN surfaces** — recall is a trigger edge; when context matches, prep MAIN/AUX re-executes via `@`, not a photo timeline.
+2. **Four ingress axes only** — calendar, notification, chat, link wire new edges; no fifth `sourceRef` family.
+3. **Registry before execution** — every re-run path goes through `@` contract / EventCandidate; no parallel action stores.
+4. **Plasticity from behavior** — fold, dismiss, execute, ignore → rollup adjusts next MAIN order (`lib/archive/learning-rollup-store`).
+5. **Projection read for live prep** — archive fold writes telemetry; live suggestions = EventCandidate + rollup scores, not archive UI reads.
 ---
 
 ## Active pillars (in order)
@@ -42,8 +52,8 @@ Push back until spine vertical slice ships:
 
 | Item | Notes |
 |------|--------|
-| **Life Replay / archive UI** | Archive store exists; no past-view UI or replay timeline |
-| **Server-side archive sync** | Client-only archive/rollup for now |
+| **Life Replay / archive UI** | Archive store + rollup exist for **edge plasticity**; no past-view UI, replay timeline, or passive memory browser — triggers fire on prep, not in archive scroll |
+| **Server-side archive sync** | Client-only archive/rollup for now — see `docs/adr/002-archive-sync-frozen.md` |
 | **Screen ambient / vision context** | No Astra-style screen reading |
 | **New ingest path (5th axis)** | Four context axes are enough — no new `sourceRef` families |
 | **Domain LLM action candidate expansion** | Freeze until `@` registry maps `featureId` → contract |

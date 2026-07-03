@@ -22,8 +22,17 @@ export const STORY_L0 = {
     ko: "흔적을 남기세요.",
   },
   lifeMapped: {
-    en: "Your life. Mapped by moments.",
-    ko: "당신의 삶, 순간들로 그려지다.",
+    en: "Where you were. Who you were with. Back when it matters.",
+    ko: "그때 거기, 함께한 사람 — 맞을 때 다시.",
+  },
+  memoryOs: {
+    en: "Not forgotten links — lived context that comes back.",
+    ko: "잊어버린 링크가 아니라, 살아본 맥락이 다시 떠오르는 OS",
+  },
+  /** Product mission — synaptic connect → re-execute (not passive recall). */
+  mission: {
+    en: "When context connects, Rimvio runs it again.",
+    ko: "맥락이 연결되면, Rimvio가 다시 실행한다.",
   },
 } as const;
 
@@ -35,6 +44,7 @@ export const STORY_L1_VERBS = {
   remember: "기억",
   recallThere: "그때 거기",
   continue: "이어가기",
+  reExecute: "다시 실행",
   attach: "담기",
   create: "만들기",
 } as const;
@@ -72,6 +82,11 @@ export const STORY_L2 = {
   pioneer: "Pioneer",
   meaning: "Meaning",
   visibility: "Visibility",
+  /** Synaptic product framing — L2 PRD only; not L1 user copy */
+  synapticConnection: "Synaptic connection",
+  synapticGraph: "Synaptic context graph",
+  triggerEdge: "Trigger edge",
+  reExecute: "Re-execute",
 } as const;
 
 /** L3 — engineering anchors (code search terms). */
@@ -136,12 +151,14 @@ export function buildStoryLayerPromptHeader(surface: "globe" | "feed" | "peers" 
   const l0 =
     surface === "globe"
       ? `${STORY_L0.personal.en} / ${STORY_L0.personal.ko}`
-      : "Your Life, Operable. — conversation is ingress, not the product.";
+      : "Your Life, Operable. — personal memory OS; conversation is ingress, not the product.";
 
   return [
     "# Story Layer (user-facing language)",
     `- L0: ${l0}`,
+    `- Mission: ${STORY_L0.mission.ko} / ${STORY_L0.mission.en}`,
     `- L1 verbs: ${Object.values(STORY_L1_VERBS).join(" · ")}`,
+    `- Synaptic layer: context edges strengthen on use; recall triggers @ re-execution — docs/RIMVIO_SYNAPTIC_LAYER.md`,
     `- Never say in UI: ${STORY_FORBIDDEN_USER_FACING.slice(0, 6).join(", ")}…`,
     `- Implement as L3 (Globe): PinEntity projection + EventCandidate truth; no Post model, no like counts.`,
     `- Hub · Resource (locked): docs/GLOBE_HUB_RESOURCE.md — Hub factory/transactions; Resource rank → MAIN slot.`,

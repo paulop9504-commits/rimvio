@@ -115,8 +115,10 @@ function NowBridge() {
 
 export function NowPageClient() {
   return (
-    <Suspense fallback={<NowLoadingShimmer />}>
-      <NowBridge />
-    </Suspense>
+    <div data-surface="now">
+      <Suspense fallback={<NowLoadingShimmer />}>
+        <NowBridge />
+      </Suspense>
+    </div>
   );
 }

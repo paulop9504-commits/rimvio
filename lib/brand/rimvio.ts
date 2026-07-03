@@ -3,17 +3,18 @@ export const NORTH_STAR = {
   slogan: "Your Life, Operable.",
   /** Canonical product definition (KO) — docs/RIMVIO_CONSTITUTION.md */
   experienceOsDefinitionKo:
-    "사용자의 경험 데이터를 시간·장소·사람·행동 단위로 구조화하고, 축적된 맥락을 기반으로 다음 행동을 제안·실행하는 Experience OS",
+    "어디에 있었는지·누구와 있었는지를 기억하고, 맞을 때 맥락과 함께 다시 떠올려 한 번에 이어주는 개인 기억 OS",
   experienceOsHumanKo:
-    "하루 동안 남겨진 사진, 위치, 대화를 기억하고, 다음에 하고 싶을 일을 가장 편하게 이어주는 앱",
+    "잊어버린 링크가 아니라, 살아본 맥락이 다시 떠오르는 앱",
   experienceOsDefinitionEn:
-    "An Experience OS that structures life across time, place, people, and action — then suggests and runs the next step from accumulated context.",
+    "A personal memory OS that remembers where you were and who you were with — recalls it with context when it matters, then offers one tap to act.",
   experienceOsHumanEn:
-    "Remembers today's photos, location, and conversations — and picks up what you want to do next.",
-  taglineKo:
-    "하루의 사진·위치·대화를 기억하고, 다음 일을 이어주는 Experience OS",
+    "Not forgotten links — lived context that resurfaces when it matters, with one tap to follow through.",
+  taglineKo: "잊어버린 링크가 아니라, 살아본 맥락이 다시 떠오르는 OS",
+  taglineEn:
+    "Remembers where you were, who you were with — brings it back when it matters.",
   systemMission:
-    "You are Rimvio, an Experience OS. Structure context by time, place, people, and action; suggest and execute the next meaningful step from accumulated context — not open-ended chat.",
+    "You are Rimvio, a personal memory OS. Anchor lived moments on the globe (place), tie them to people (peer), recall with context at the right moment — then offer one tap to act. Not a bookmark app, chatbot, map app, or todo list. Conversation is ingress, not the product.",
   loading: "[생각중...]",
   loadingDock: "Making your life Operable…",
   sessionConnected: (personaLabel: string) =>
@@ -25,11 +26,12 @@ export function buildNorthStarPromptHeader() {
   return [
     "# North Star (immutable mission)",
     NORTH_STAR.systemMission,
-    `- Product soul: "${NORTH_STAR.slogan}" — **Experience OS**; conversation is ingress, not the product.`,
+    `- Product soul: "${NORTH_STAR.slogan}" — **synaptic Experience OS**; recall triggers re-execution, not passive memory. Conversation is ingress, not the product.`,
     `- Definition: ${NORTH_STAR.experienceOsDefinitionEn}`,
-    "- Context-first: photos, location, chat → experience node → @ action. Operable > conversational.",
+    "- Memory-first: place (Globe) · people (Peer) · recall with context → one tap to act. MEANING + RECALL moat, not generic chat.",
     "- OS, not app: coordinate relationships, work, and routine as one continuous life surface.",
     `- Korean anchor: ${NORTH_STAR.taglineKo}`,
+    `- English anchor: ${NORTH_STAR.taglineEn}`,
   ].join("\n");
 }
 
@@ -43,7 +45,7 @@ export const RIMVIO = {
   northStarKo: NORTH_STAR.taglineKo,
   /** Primary user-facing tagline */
   tagline: NORTH_STAR.taglineKo,
-  taglineShort: "말하면 실행",
+  taglineShort: "맞을 때 다시 떠오르기",
   /** Link share remains an ingress channel, not product identity */
   ingressTagline: "링크·사진 공유로도 시작할 수 있어요",
   domain: "rimvio.com",

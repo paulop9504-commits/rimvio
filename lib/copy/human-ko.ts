@@ -1,6 +1,6 @@
 /** 사용자-facing 카피 — L1 Story Layer. @see docs/RIMVIO_STORY_LAYER.md */
 
-import { RIMVIO } from "@/lib/brand/rimvio";
+import { NORTH_STAR, RIMVIO } from "@/lib/brand/rimvio";
 import { STORY_L0, STORY_L1_NOUNS, STORY_L1_VERBS } from "@/lib/copy/story-layer";
 
 /** 첫 실행·빈 화면 탭 예시 — capture sheet · 지구 · 채팅 공통 */
@@ -36,34 +36,31 @@ export const copy = {
     northStar: RIMVIO.northStar,
   },
   product: {
-    definition:
-      "사용자의 경험 데이터를 시간·장소·사람·행동 단위로 구조화하고, 축적된 맥락을 기반으로 다음 행동을 제안·실행하는 Experience OS",
-    definitionHuman:
-      "하루 동안 남겨진 사진, 위치, 대화를 기억하고, 다음에 하고 싶을 일을 가장 편하게 이어주는 앱",
-    oneLiner:
-      "하루의 사진·위치·대화를 기억하고, 다음 일을 이어주는 앱",
+    definition: NORTH_STAR.experienceOsDefinitionKo,
+    definitionHuman: NORTH_STAR.experienceOsHumanKo,
+    oneLiner: "그때 거기, 함께한 사람 — 맞을 때 다시 떠오르는 OS",
     oneLinerSub:
-      "경험이 쌓이면 맛집·길찾기·@실행이 맥락 안에서 열려요 · 자동 실행 없음",
-    feedContext: "공유한 링크를 실행 카드로",
+      "지구에 남긴 흔적 · 친구와의 맥락 · 맞을 때 회상 — 필요하면 한 번에 이어가기",
+    feedContext: "공유한 링크도 살아본 맥락에 담기",
     peersContext:
-      "대화에서 실행 버튼이 붙어요 · 프로필 길게 누르면 AI 렌즈",
-    feedPeerTalkRoomHint: "대화에서 일정·장소를 잡아줘요",
+      "기억은 사람과 함께 묶여요 · 대화에서 한 번에 이어가기",
+    feedPeerTalkRoomHint: "친구와의 대화에서 일정·장소를 다시 이어가요",
     feedPeerTalkRoomLink: "ROOM 열기",
-    feedPeerTalkStartedToast: "피드에서 대화 중 · 실행은 친구 ROOM에서",
+    feedPeerTalkStartedToast: "지구에서 대화 중 · 실행은 친구 ROOM에서",
     howToUseTitle: "Rimvio 쓰는 법",
-    howToUseSub: "1분이면 @톡 · 실행 · 친구 버블이 정리돼요",
+    howToUseSub: "1분이면 지구 · 친구 · 회상이 정리돼요",
     howToUseCta: "사용 설명서 보기",
     lensCoachOn: "AI 렌즈 켜짐",
     lensCoachSub: "상대 말에 실행 버튼이 붙어요 · 탭할 때만 실행",
-    storyEyebrow: "Rimvio 한 장 요약",
-    story1Title: "친구 대화 → 실행 버튼",
+    storyEyebrow: "기억이 다시 떠오르는 OS",
+    story1Title: "지구 — 그때 거기",
     story1Body:
-      "AI 렌즈가 상대 말에 일정·길찾기를 붙여요. 자동 실행 없음 · 탭할 때만.",
-    story2Title: "친구 · 실행 — 같은 OS",
+      "지나간 순간이 장소에 흔적으로 남아요. 다시 그 근처에 오면 맥락과 함께 떠올라요.",
+    story2Title: "친구 — 함께한 맥락",
     story2Body:
-      "친구 탭은 대화에서, 실행 탭은 링크·@명령에서. 다른 앱이 아니에요.",
-    story3Title: "링크는 Shorts처럼",
-    story3Body: "공유한 URL이 Action Dock 카드로 바뀝니다.",
+      "기억은 파일이 아니라 사람과 묶여요. 민수와 제주, 그날의 대화까지 한곳에.",
+    story3Title: "회상 — 맞을 때 한 번에",
+    story3Body: "떠오른 맥락에서 길찾기·예약·@실행을 한 탭으로 이어가요.",
   },
   starterExamples: {
     sectionLabel: "이렇게 시작해 보세요",
@@ -73,7 +70,7 @@ export const copy = {
   nav: {
     feed: "피드",
     globe: "지구",
-    people: "채팅",
+    people: "친구",
     capture: "기록",
     field: "맞춤",
     search: "검색",
@@ -131,7 +128,7 @@ export const copy = {
     storyPersonal: STORY_L0.personal.ko,
     storyLaunch: STORY_L0.launchFilm.ko,
     title: "지구",
-    subtitle: "당신이 지나간 순간이 여기 남아요",
+    subtitle: "지나간 순간이 장소와 사람과 함께 여기 남아요",
     sharedTitle: "함께하는 지구",
     sharedSubtitle: "친구와 남긴 흔적을 이어서 볼 수 있어요",
     leaveTrace: STORY_L1_VERBS.leaveTrace,
@@ -145,7 +142,7 @@ export const copy = {
     stackPickerShowAll: (overflow: number) => `외 ${overflow}개 · 전체 보기`,
     hubEmpty: "흔적이 쌓이면 여기에 나타나요",
     emptyFirstTitle: "그때 거기, 여기서 시작해요",
-    emptyFirstBody: "사진을 남기거나 친구와 대화하면 지구가 채워져요",
+    emptyFirstBody: "사진이나 친구와의 시간이 쌓이면, 맞을 때 다시 떠올라요",
     emptyFirstCta: "첫 흔적 남기기",
     emptyFirstPeersLink: "친구 추가하기",
     guide: {
@@ -154,10 +151,10 @@ export const copy = {
       subtitle: "대화와 흔적이 한곳에 모여요",
       step1Title: "왜 림비오인가요",
       step1Body:
-        "카톡처럼 친구와 대화하고, 지나간 장소는 지구에 흔적으로 남아요.",
+        "북마크 앱도, 지도 앱도 아니에요. 살아본 순간을 장소·사람과 묶어 두었다가, 맞을 때 다시 떠올려요.",
       step2Title: "먼저 이렇게 시작해요",
       step2Body:
-        "채팅 탭에서 친구를 추가하거나, 아래 ＋로 첫 사진을 남기면 돼요.",
+        "친구 탭에서 사람을 추가하거나, 아래 ＋로 첫 사진을 남기면 돼요.",
       step3Title: "확대·이동",
       step3Body:
         "한 손가락으로 돌리기 · 두 손가락 핀치로 가까이·멀리. 가운데를 기준으로 확대돼요.",
@@ -193,14 +190,14 @@ export const copy = {
     layerModeDiscovery: "밖 지구",
     layerModeDiscoveryHint: "함께 쓰는 곳 · 다른 사람의 흔적",
     layerModePersonalEmpty: "흔적이 쌓이면 여기에 나타나요",
-    contextAiHeroPersonal: "오늘은 무엇을 떠올려볼까요?",
+    contextAiHeroPersonal: "오늘은 어떤 순간이 떠올라요?",
     contextAiHeroDiscovery: "밖 지구에서 맞는 흔적을 찾아볼까요?",
     contextAiHeroHint: "내 사진으로 돌아가는 순간",
-    contextTriggerEyebrow: "기억 트리거",
+    contextTriggerEyebrow: "맥락 트리거",
     contextTriggerOpenHint: "탭해서 열어보기",
-    contextTriggerBodyTimeRecall: (place: string) => `${place} · 그때가 떠올라요`,
+    contextTriggerBodyTimeRecall: (place: string) => `${place} · 그때 맥락이 다시 열려요`,
     contextTriggerBodyTravelMoments: (count: number) => `사진 ${count}장 · 그 순간으로`,
-    contextTriggerBodyTravelRecall: "그때의 풍경을 다시 만나요",
+    contextTriggerBodyTravelRecall: "그때 맥락을 다시 실행해요",
     contextTriggerTitlePerson: (name: string) => `최근 가장 많이 만난 사람: ${name}`,
     contextTriggerBodyPersonRecall: (name: string) => `${name}와 함께한 날들`,
     contextTriggerBodyPlaceRecall: "그날의 맥락이 남아 있어요",
@@ -209,15 +206,15 @@ export const copy = {
     contextTriggerDiscoveryTitle: "맞는 거래 흔적 찾기",
     contextTriggerDiscoveryBody: "@중고 한 줄이면 조건 비교를 시작해요",
     contextTriggerDiscoveryCta: "둘러보기",
-    contextTriggerCtaExploreMemory: "추억 탐색하기",
+    contextTriggerCtaExploreMemory: "그때 거기 열기",
     contextTriggerCtaRestoreTalk: "대화 내용 복원하기",
     contextTriggerCtaCheckPlace: "위치 확인하기",
-    contextAiComposerPlaceholder: "기억 · 사람 · 일정 물어보기",
+    contextAiComposerPlaceholder: "맥락 · 사람 · 일정 · @ 실행",
     askSheet: {
       ariaLabel: "지구에게 물어보기",
-      heroPersonal: "오늘은 무엇을 떠올려볼까요?",
+      heroPersonal: "오늘은 어떤 순간이 떠올라요?",
       heroDiscovery: "무엇을 찾아볼까요?",
-      placeholderPersonal: "기억 · 사람 · 일정 물어보기",
+      placeholderPersonal: "맥락 · 사람 · 일정 · @ 실행",
       placeholderDiscovery: "맞춤 · 모임 · 장소 찾기",
       capturePillsPersonal: STARTER_PILLS_PERSONAL,
       capturePillsDiscovery: [
@@ -777,6 +774,8 @@ export const copy = {
     photoIngestUndoAction: "되돌리기",
     photoIngestUndone: "방금 남긴 흔적을 되돌렸어요",
     memoryRecallEyebrow: "그때 거기",
+    /** Floor 1 one-liner — always visible above compose when recall exists */
+    homeRecallOneLiner: (line: string) => line,
     memoryRecallToggleExpand: "그때 거기 펼치기",
     memoryRecallToggleCollapse: "그때 거기 접기",
     resumeContextEyebrow: "이어하기",
@@ -965,11 +964,11 @@ export const copy = {
     intentSupplyChipTrajectory: (cluster: string) => `↗ ${cluster} 맥락`,
     intentSupplyChipLodging: "🏨 숙소",
     intentSupplyChipFood: "🍽 맛집",
-    intentSupplyChipRecall: "🕰 흔적 회상",
+    intentSupplyChipRecall: "🕰 맥락 트리거",
     intentSupplyChipContext: "🔗 맥락",
     intentSupplyLabelLodging: "숙소 탐색",
     intentSupplyLabelFood: "맛집 탐색",
-    intentSupplyLabelRecall: "기억 회상",
+    intentSupplyLabelRecall: "맥락 트리거",
     intentSupplyLabelContext: "맥락 연결",
     intentSupplyLabelMarket: "내놓기 · 구하기",
     intentSupplyLabelNavigation: "길찾기",
@@ -1787,7 +1786,7 @@ export const copy = {
     title: "수집",
     subtitle: "사진·링크·메모 → 오늘 경험에 자동으로 붙기",
     emptyHint: "여행·만남 일정을 잡아두면 더 정확해요",
-    emptySubhint: "사진·링크·메모를 올리면 Feed 경험 노드에 모여요",
+    emptySubhint: "사진·링크·메모를 올리면 지구 경험 노드에 모여요",
     placeholder: "사진·링크·메모 · 민수 제주처럼 관련 경험 찾기",
     ingressHint: "사진·링크·메모 올리기 · 민수·제주로 관련 경험 검색",
     ingressEyebrow: "수집",
@@ -1795,22 +1794,22 @@ export const copy = {
     ingressPhoto: "사진·영상 — 촬영 또는 앨범",
     ingressLink: "링크 붙여넣기",
     ingressMemo: "짧은 메모·일정 메모",
-    aiDeferredHint: "맛집·길찾기는 피드에서 경험을 고른 뒤 @로 실행해요",
-    feedLink: "피드에서 경험 보기",
+    aiDeferredHint: "맛집·길찾기는 지구에서 경험을 고른 뒤 @로 실행해요",
+    feedLink: "지구에서 경험 보기",
     blockedGenericQuery: "여기는 담는 곳이에요",
-    blockedGenericQuerySub: "피드에서 경험을 고른 뒤 맛집·길찾기를 물어보세요",
+    blockedGenericQuerySub: "지구에서 경험을 고른 뒤 맛집·길찾기를 물어보세요",
     run: {
       eyebrow: "경험 맥락 실행",
       fallbackTitle: "선택한 경험",
-      contextLine: (feature: string) => `@${feature} — 피드에서 이어서 실행`,
-      backToFeed: "피드로 돌아가기",
+      contextLine: (feature: string) => `@${feature} — 지구에서 이어서 실행`,
+      backToFeed: "지구로 돌아가기",
       placeholder: "@명령 입력 · 이 경험 맥락",
     },
     contextSearch: {
       eyebrow: "관련 맥락",
       titleForQuery: (query: string) => `「${query}」 관련 경험`,
       empty: "아직 맞는 경험이 없어요. 사진·메모를 올리면 다음부터 찾을 수 있어요.",
-      openOnFeed: "피드에서 이어 보기",
+      openOnFeed: "지구에서 이어 보기",
       clear: "검색 닫기",
       peoplePrefix: "사람",
       experiencePrefix: "경험",
@@ -1818,7 +1817,7 @@ export const copy = {
       experienceButton: (n: number) => `경험 ${n}`,
       ingressHint: "민수(사람) · 제주(경험)… 축별로 쌓인 경험을 검색해요",
       timingHint:
-        "여행·만남·@ 실행을 앞두고 관련 추억을 찾을 때 쓰세요 · 대화 중엔 조용히 쌓아요",
+        "여행·만남·@ 실행을 앞두고 관련 맥락을 연결할 때 쓰세요 · 대화 중엔 조용히 쌓아요",
     },
   },
   peers: {
@@ -2105,7 +2104,7 @@ export const copy = {
   },
   coaching: {
     openMany: (n: number) =>
-      `인박스 ${n}개 — 하나만 실행해도 훨씬 가벼워집니다`,
+      `맞을 때 떠오를 기억 ${n}개 — 하나만 이어도 충분해요`,
     workEvening: (pct: number, growthLabel: string) =>
       `오늘 일 ${pct}% — ${growthLabel} 링크는 내일 아침으로 미뤄도 괜찮아요`,
     workDay: (pct: number) =>
@@ -2200,8 +2199,8 @@ export const copy = {
     newLinkSaved: "저장되었습니다",
   },
   auth: {
-    loginTagline: "경험은 남기고, 실행은 한 번에",
-    loginPrompt: "Google로 시작해, 당신의 맥락을 지구 위에서 이어가세요.",
+    loginTagline: "그때 거기를 기억하고, 맞을 때 한 번에",
+    loginPrompt: "Google로 시작해, 살아본 맥락을 지구 위에서 이어가세요.",
     googleLogin: "Google로 시작하기",
     googleContinue: "Google로 계속하기",
     loggedInAs: (name: string) =>
@@ -2240,9 +2239,8 @@ export const copy = {
       "로그인 후 이름·Rimvio ID만 정하면 친구·실행 탭을 바로 쓸 수 있어요",
     googleCardFoot: "Human decides · 실행은 항상 내가 탭할 때만",
     loading: "프로필 불러오는 중…",
-    introTitle: "Rimvio는 Experience OS예요",
-    introBody:
-      "하루의 사진·위치·대화를 기억하고, 쌓인 맥락으로 다음 일을 이어줘요.",
+    introTitle: "Rimvio는 개인 기억 OS예요",
+    introBody: NORTH_STAR.experienceOsHumanKo,
     introTapHint: "자동 실행 없음 · 탭할 때만 실행",
     introCta: "프로필 만들기",
     welcomeTitle: "Google 연결 완료",
@@ -2449,9 +2447,9 @@ export const copy = {
   welcome: {
     headline: RIMVIO.northStar,
     northStar: RIMVIO.northStarKo,
-    body: `${RIMVIO.name}는 대화가 아니라 `,
-    bodyStrong: "실행",
-    bodyEnd: "입니다. 말·링크·사진을 Action Dock으로 바꿔 드립니다",
+    body: `${RIMVIO.name}는 북마크 앱도 챗봇도 아니에요. `,
+    bodyStrong: "기억",
+    bodyEnd: "이 맞을 때 맥락과 함께 다시 떠오르고, 한 번에 이어갈 수 있어요",
     pwaOk: "홈 화면에 추가되어 실행 중입니다",
     privacyTitle: "개인정보 · 입력 분석",
     privacyBody:
@@ -2477,7 +2475,7 @@ export const copy = {
     iosStep3Body: "에 붙여넣기 → Action Dock으로 이어집니다",
     desktopSection: "데스크톱",
     desktopMid: "에 링크를 붙여넣거나",
-    desktopEnd: "로 Experience OS를 체험해 보세요",
+    desktopEnd: "로 개인 기억 OS를 체험해 보세요",
     tryDemo: "체험하기",
   },
   manual: {
@@ -2501,11 +2499,11 @@ export const copy = {
     calendarBody: "일정을 말하거나 링크에 시간을 정하면 타임라인에 쌓여요. 헤더 📅 아이콘으로 확인합니다.",
     poolTitle: "리소스풀",
     poolBody: "메모·링크·사진을 저장소에 모아둡니다. @메모 로 저장하거나 헤더 📁 아이콘으로 열어요.",
-    tagline: "대화가 아니라 실행 — 말한 것을 바로 행동으로 바꿉니다.",
+    tagline: "잊어버린 링크가 아니라, 살아본 맥락이 다시 떠오르는 OS",
     tryCta: "실행 화면에서 바로 써보기",
     introTitle: "처음이시면 설명서부터 읽어보세요",
     introBody:
-      "림비오는 챗봇이 아니라 실행 OS예요. 1분만 읽으면 @호출·칩 실행·피드·대화·관계 버블을 바로 쓸 수 있어요.",
+      "림비오는 개인 기억 OS예요. 1분만 읽으면 지구·친구·회상을 바로 쓸 수 있어요.",
     readManualCta: "설명서 읽기",
     skipIntroCta: "바로 써볼게요",
     feedBannerText: "아직 설명서를 안 읽으셨어요.",

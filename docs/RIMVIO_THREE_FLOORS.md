@@ -2,6 +2,8 @@
 
 > **SSOT:** Main-screen architecture — **Replay → Context → Action**. Not search-first, not chat-first.
 >
+> **Home route (2026-07):** `/` = **Globe** (`GlobeHomeClient`). Legacy `/feed` redirects to `/`. Three Floors replay lives on Globe — not a separate Feed tab.
+>
 > **Related:** [RIMVIO_EXPERIENCE_LAYERS.md](./RIMVIO_EXPERIENCE_LAYERS.md) (data intelligence) · [RIMVIO_CONSTITUTION.md](./RIMVIO_CONSTITUTION.md)
 
 ---
@@ -26,11 +28,11 @@ Rimvio's moat is not `@길찾기`. It is **life replay + context exploration** t
 
 ---
 
-## The stack (immutable top → bottom on Feed)
+## The stack (immutable top → bottom on Globe home)
 
 ```text
 ┌─────────────────────────────────────┐
-│  1층 REPLAY   — Feed hero           │
+│  1층 REPLAY   — Globe hero           │
 │  🌍 핑 · ▶ 쇼츠 · 한 줄 캡션         │
 ├─────────────────────────────────────┤
 │  2층 CONTEXT  — explore, don't chat │
@@ -45,7 +47,7 @@ Rimvio's moat is not `@길찾기`. It is **life replay + context exploration** t
 
 ---
 
-## Floor 1 — Replay (Feed)
+## Floor 1 — Replay (Globe)
 
 **User feels:** *"내 삶이 다시 재생된다."*
 
@@ -61,7 +63,7 @@ Rimvio's moat is not `@길찾기`. It is **life replay + context exploration** t
 - ❌ Chat thread as home
 - ❌ Generic recommendation list as home
 
-**Ingress stays secondary:** Search tab = **수집** (capture). ROOM = chat + execute-on-tap. Neither replaces Floor 1.
+**Ingress stays secondary:** Capture = bottom-nav ＋ sheet or `/search` hub (`rimvio:search`). ROOM = chat + execute-on-tap. Neither replaces Floor 1. Legacy **Feed** tab semantics live on Globe home (replay) — not `/feed` as home.
 
 **Code (2026-06):** `FeedExperienceRecallHero` · `SpatialGlobeStage` + `classifiedPins` · `ExperienceRecallShortsStage` · `buildExperienceRecallCaption`
 
@@ -82,7 +84,7 @@ Rimvio's moat is not `@길찾기`. It is **life replay + context exploration** t
 
 **UX:** Compact summary + tiny buttons (`사람 N` · `경험 N`) → inline related experience list. Tap → switch recall on Floor 1.
 
-**Timing law:** Context surfaces on Feed and before trip / `@` — not spammed inside casual ROOM chat.
+**Timing law:** Context surfaces on Globe home and before trip / `@` — not spammed inside casual ROOM chat.
 
 **Code (2026-06):** `FeedRelatedContextStrip` · `resolve-slot-related-context` · Search `context_search` (optional active lookup) · `splitContextSearchQuery` (people vs experience)
 

@@ -12,7 +12,7 @@ export type AiIntentCategory =
   | "CURIOSITY";
 
 const HARD_ACTION_OS =
-  /https?:\/\/|맛집|길\s*찾|네비|일정\s*잡|예약|010[-\s]?\d{4}|(?:역|동|구)\s*(?:근처|맛집)|카페\s*추천|식당\s*추천|(?:\d{1,3}\s*시간\s*(?:뒤|후)|\d{1,3}\s*분\s*(?:뒤|후)).*(?:여행|출장|오사카|제주|도쿄)|(?:여행(?:간|감|가)|출장).*(?:오사카|제주|도쿄|공항)/iu;
+  /https?:\/\/|맛집|길\s*찾|네비|일정\s*잡|예약|010[-\s]?\d{4}|(?:역|동|구)\s*(?:근처|맛집)|카페\s*추천|식당\s*추천|(?:\d{1,3}\s*시간\s*(?:뒤|후)|\d{1,3}\s*분\s*(?:뒤|후)).*(?:여행|출장|오사카|제주|도쿄)|(?:여행(?:간|감|가)|출장).*(?:오사카|제주|도쿄|공항)|(?:위치|지도|어디(?:에|서|야)?)\s*(?:알려|찾|검색|보여)|(?:알려|찾아)\s*(?:줘|줄).*(?:위치|지도|어디)/iu;
 
 const MEAL_FOOD_HINT =
   /(?:먹(?:을|지|을까|지\?)?|맛집|배달|점심|저녁|아침|식사|메뉴|끼니|음식|치킨|시킬까|브런치|야식|배고(?:파|프|픈|픈데))/iu;
@@ -40,6 +40,12 @@ const HOUSING_IN_COMPOUND =
 
 function hasInfoShapeInMessage(message: string): boolean {
   return INFO.test(message) || /^이거\s/u.test(message);
+}
+
+/** Deterministic action-OS shapes — defer before conversational / Tiki-Taka stubs. */
+export function isHardActionOsUtterance(message: string): boolean {
+  const trimmed = message.trim();
+  return Boolean(trimmed) && HARD_ACTION_OS.test(trimmed);
 }
 
 /** Classify common AI-chat question shapes. Returns null when message is action-OS scoped. */

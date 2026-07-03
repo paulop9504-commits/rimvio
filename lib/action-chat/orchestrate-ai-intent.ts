@@ -2,6 +2,8 @@ import {
 
   classifyAiIntentUtterance,
 
+  isHardActionOsUtterance,
+
   type AiIntentCategory,
 
 } from "@/lib/action-chat/classify-ai-intent-utterance";
@@ -146,6 +148,10 @@ export function orchestrateAiIntent(
   message: string,
   options?: OrchestrateAiIntentOptions
 ): OrchestratorResult | null {
+
+  if (isHardActionOsUtterance(message)) {
+    return null;
+  }
 
   const adaptive = options?.adaptive;
   const semantic = analyzeSemanticRouting(message);

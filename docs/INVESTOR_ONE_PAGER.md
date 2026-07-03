@@ -1,6 +1,6 @@
 # Rimvio (림비오) — 사업소개
 
-**Your Life, Operable.** · 당신의 모든 일상을 OS로 만듭니다.
+**Your Life, Operable.** · 잊어버린 링크가 아니라, 살아본 맥락이 다시 떠오르는 OS.
 
 | | |
 |---|---|
@@ -19,26 +19,27 @@
 
 ## 2. 솔루션 — Rimvio
 
-**챗봇이 아닌 개인 Action OS.**  
-말하기 · 링크 공유 · 사진 캡처 → **Action Dock** → 1~2탭 실행.
+**북마크 앱·챗봇·지도 앱·할 일 목록이 아닌 개인 기억 OS.**  
+어디에 있었는지(Globe) · 누구와 있었는지(Peer) · 맞을 때 맥락과 함께 다시 떠오름(RECALL) → 필요하면 1탭 실행.
 
 ```
-Intent → Action Dock → Execute
+FACT → EXPERIENCE → MEANING → RECALL → ACTION
 ```
 
 | 진입 | 사용자 경험 |
 |------|----------------|
 | 공유 (Share Target) | 3초 내 Top 1 행동 (재생·지도·구매 등) |
-| Feed | Shorts형 한 장씩 — 스크롤 부담 최소 |
+| 지구 (홈 `/`) | Globe replay — 핀·쇼츠·한 줄 캡션 (Feed 탭 아님) |
+| `/search` 허브 | 수집 · composer (`rimvio:search`) |
 | 말하기 / 트리거 | 학습된 NL → 자동 실행 (확장) |
 
 ## 3. 차별점
 
 | 기존 | Rimvio |
 |------|--------|
-| 대화형 AI | **Operable** — 실행 버튼·Dock |
-| 북마크/리더 | intent → **Action** |
-| 단일 기능 앱 | **OS 레이어** — 일정·관계·루틴 조율 |
+| 북마크·인박스 | **살아본 맥락** — 장소·사람과 묶인 기억 |
+| 대화형 AI | **RECALL** — 맞을 때 맥락과 함께 다시 떠오름 |
+| 지도·할 일 앱 | **개인 기억 OS** — 회상 후 1탭 실행 |
 
 - 도메인별 **Enricher** (YouTube·지도·커머스·Figma·이슈 트래커 등)
 - 행동 로그·개인화·DEOS 결정 파이프라인 (확장 설계)
@@ -52,7 +53,7 @@ Intent → Action Dock → Execute
 
 1. 유튜브 · 지도 · 쇼핑 링크를 Rimvio로 공유  
 2. `/now` — Primary Action 1개 (거대 실행 pill)  
-3. 탭 → 외부 앱 실행 · 또는 Feed에 저장
+3. 탭 → 외부 앱 실행 · 또는 지구 홈에 흔적 저장
 
 ## 6. 기술·진행 상황
 

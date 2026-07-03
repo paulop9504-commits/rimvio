@@ -95,6 +95,7 @@
     "test:surface-engine": "npx tsx scripts/test-surface-engine.ts",
     "test:surface-memory": "npx tsx scripts/test-surface-memory.ts",
     "test:synaptic": "npx tsx scripts/test-synaptic-layer.ts",
+    "test:synaptic-framing": "npx tsx scripts/test-synaptic-product-framing.ts",
     "test:surface-ux-copy": "npx tsx scripts/test-surface-ux-copy.ts",
     "test:surface-ignore-ux": "npx tsx scripts/test-surface-ignore-ux.ts",
     "test:inside-out-p0": "npx tsx scripts/test-inside-out-p0.ts",

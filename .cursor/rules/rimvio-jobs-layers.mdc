@@ -15,17 +15,24 @@ alwaysApply: true
 - **No scroll guilt** — 전체 스크롤은 `/inbox` deep link
 - **1–2 Tap Rule** — Primary action은 풀-width 히어로 버튼
 
-## L1 Surface (화면 계층) — **코드 기준 (2026-06)**
+## L1 Surface (화면 계층) — **SSOT: `lib/surface-registry/rimvio-surface-ia.ts`**
 
-| Route | Surface | 역할 |
-|-------|---------|------|
-| `/` | **Feed (Shorts)** | 세로 스와이프 홈 Feed |
-| `/stack` | **Stack** | 다음 행동 1장 + ghost stack |
-| `/now` | **Now** | Share 직후 Action sheet |
-| `/inbox` | **Inbox** | 전체 목록 (secondary) |
-| `/archive` | **Archive** | 만료·완료 |
+| Route | Nav | Surface | 역할 |
+|-------|-----|---------|------|
+| `/` | 지구 | **Globe (home)** | 지구본 · 핀 · recall (Three Floors 1층) |
+| `/field` | 맞춤 | **Field** | 맞춤 sheet ingress (bottom nav — no page) |
+| `/peers` | 친구 | **People** | 친구 · ROOM 대화 |
+| (sheet) | 기록 | **Capture** | ＋ sheet — 사진 · 링크 · 메모 |
+| `/search` | — | **Capture hub** | 수집 · composer (`rimvio:search`) |
+| `/now` | — | **Now** | Share 직후 Action sheet |
+| `/stack` | — | **Stack** (dev) | 다음 행동 1장 + ghost stack |
+| `/inbox` | — | **Inbox** | 전체 목록 (secondary) |
 
-**금지:** `/stack`에 카드 피드 3개 이상 나열. `/` Feed는 Shorts UX.
+**Dev-only (404 in production):** `/stack` · `/demo` · `/metrics` — `requireDevPage()`
+
+**Legacy redirects:** `RIMVIO_REDIRECTS` — `/feed` → `/` · `/chat` → `/search` · `/archive` → `/?filter=archive` · `/globe` → `/`
+
+**금지:** `/stack`에 카드 피드 3개 이상 나열. 홈(`/`)은 Globe-first — Feed 슬롯 UX는 `/feed` 리다이렉트 뒤 recall deep link만.
 
 ## L2 Interaction (행동 계층)
 
@@ -59,19 +66,22 @@ alwaysApply: true
 공유 → /share (invisible)
      → /now?url=… (persist: false, enrich preview)
      → Primary CTA or Done
-     → persist: true (background) → / Feed or /stack
+     → persist: true (background) → / (Globe) or /stack
 ```
 
 ## 파일 맵
 
 ```
+lib/surface-registry/rimvio-surface-ia.ts
 lib/layers/index.ts
 lib/local-links/now-session.ts
 lib/action-chat/orchestrator/run-orchestrator-pipeline.ts
 components/action-stack-list.tsx
 components/now-action-focus.tsx
 app/now/page.tsx
-app/page.tsx              — Feed (Shorts)
+app/page.tsx              — Globe home (GlobeHomeClient)
+app/search/page.tsx       — Capture / search hub
+app/peers/page.tsx        — People tab
 app/stack/page.tsx
 ```
 

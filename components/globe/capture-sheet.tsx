@@ -513,6 +513,7 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
               exit={{ y: "100%" }}
               transition={{ type: "spring", stiffness: 400, damping: 36 }}
               data-capture-sheet
+              data-surface="capture-sheet"
               data-capture-sheet-mode={showTriggerRail ? "memory-triggers" : "ask"}
             >
               <div

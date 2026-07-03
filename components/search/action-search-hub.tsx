@@ -83,7 +83,7 @@ export function ActionSearchHub() {
   }, [contextEventId, contextQuery]);
 
   return (
-    <>
+    <div data-surface="capture-hub" className="flex min-h-0 flex-1 flex-col">
       <ActionChatFeed
         variant="conversation"
         scopeKind="search"
@@ -115,6 +115,6 @@ export function ActionSearchHub() {
         onCreatePlan={createPlanTarget}
         onDismiss={dismissTargetSheet}
       />
-    </>
+    </div>
   );
 }

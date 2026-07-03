@@ -27,10 +27,10 @@ Each layer **reads from** the layer below and **never replaces** it. Upper layer
 | **FACT** | What happened? | (invisible — raw record) |
 | **EXPERIENCE** | What was that day/situation? | "아 오늘 이런 하루였네" |
 | **MEANING** | Why does it matter to *me*? | "제주 = 민수와의 추억" |
-| **RECALL** | When should we surface it? | "민수와 마지막 제주 이후 2년이 지났어요" |
-| **ACTION** | What should I do next? | "그때 흑돼지집 다시 갈까요?" → 길찾기 |
+| **RECALL** | When does the **trigger edge** fire? | "제주 도착 → 민수와 마지막 제주 이후 2년" — context match, not nostalgia dump |
+| **ACTION** | What **re-executes**? | "그때 흑돼지집 다시 갈까요?" → `@길찾기` via contract registry |
 
-**Rimvio moat:** Execution (ACTION) is commodity. **MEANING + RECALL** are time-compounding assets — relationships, taste, seasonality, repetition — that only this user's history can produce.
+**Rimvio moat:** Execution (ACTION) is commodity. **MEANING + RECALL** are time-compounding **synaptic connections** — edges between people, place, calendar, and links that only this user's graph can produce. When an edge fires, Rimvio **re-executes**; it does not passively remind.
 
 **UI expression (Three Floors on Feed):** [RIMVIO_THREE_FLOORS.md](./RIMVIO_THREE_FLOORS.md) — Replay (핑·쇼츠·한 줄) → Context (사람·경험·장소·시간) → Action (길찾기·일정·@).
 
@@ -122,16 +122,24 @@ EventCandidate + feedCaptures + plan context = Experience Node
 
 ## L4 — RECALL
 
-**Role:** Pull the right **meaning** at the right **moment** — first emotional beat.
+**Role:** **Trigger edge** — when incoming context matches stored synaptic connections, the edge **fires** and surfaces the linked meaning. Not "remind user of old stuff"; **match → fire → prep for re-execution**.
+
+**Synapse metaphor:**
+
+```text
+[민수]──[제주]──[흑돼지집]     dormant edges in graph
+         │
+    GPS: 제주 도착  ──►  TRIGGER FIRES  ──►  recall line + MAIN slot candidate
+```
 
 **Examples:**
 
-| Trigger | Recall copy |
-|---------|-------------|
+| Context match (trigger) | Edge fires (recall copy) |
+|-------------------------|--------------------------|
 | 제주 도착 (GPS) | "민수와 마지막 제주 여행 이후 2년이 지났어요." |
 | 비 오는 날 + place | "작년 장마철에도 이 카페에 자주 왔네요." |
 
-**Law:** Recall is a **projection** — never owns truth. Context triggers (place, weather, calendar, time-since) rank existing Meaning — do not invent memories.
+**Law:** Recall is a **projection** — never owns truth. Context matches (place, weather, calendar, time-since, notification) **fire edges** that rank existing Meaning — do not invent memories or dump unrelated photos.
 
 **Code (2026-06):** `lib/recall/` · Feed/Globe recall hero · spatial media sync · `resolve-gps-arrival-recall.ts` · recall spam gate.
 
@@ -178,16 +186,16 @@ Users can also **search** stacked experiences before a trip or `@` run:
 
 ## L5 — ACTION
 
-**Role:** Recall must not dead-end. Connect memory → **operable next step**.
+**Role:** **Re-execution** — when a trigger edge fires, ACTION runs the situation again via `@` contract registry, Context Run, prep surface (MAIN + AUX), and derived Task Graph. Recall must not dead-end in nostalgia.
 
 **Examples:**
 
-| Recall / Experience | Action |
-|---------------------|--------|
+| Trigger fired / Experience | Re-execution |
+|--------------------------|--------------|
 | "민수랑 제주 Day2" | "그때 흑돼지집 다시 갈까요?" → `@길찾기` |
 | "작년 이맘때 등산" | 근처 등산 코스 → `@` / navigate |
 
-**Law:** ACTION opens **after** Experience is selected and (where required) verified. Generic 맛집/길찾기 without context = blocked (Search = 수집구).
+**Law:** ACTION opens **after** Experience is selected and (where required) verified. Generic 맛집/길찾기 without context = blocked (Search = 수집구). Re-execution uses the same `@` spine as proactive prep — no parallel action stores.
 
 **Code (2026-06):** `feed-experience-run-chips.tsx` · `feed-verify-recommendation-gate.ts` · `run=mention` Search path · `@` registry · execution adapters.
 
@@ -205,9 +213,9 @@ RECALL      △
 ACTION      ✓
 ```
 
-**Gap:** We know *what the user did*. We do not yet fully know *why it mattered* — so recall feels thin and actions can still feel "helpful assistant" instead of "it remembers my life."
+**Gap:** We know *what the user did*. Synaptic edges (MEANING) are still thin — triggers fire weakly and re-execution can feel "helpful assistant" instead of "context connected, Rimvio ran it again."
 
-**12-month bet:** Competitive edge is not chat or execution engines. It is how well we compound **FACT → EXPERIENCE → MEANING → RECALL**. ACTION stays thin — capabilities are replaceable.
+**12-month bet:** Competitive edge is not chat or execution engines. It is how well we compound **synaptic connections** across FACT → EXPERIENCE → MEANING → RECALL (trigger edges). ACTION stays thin — capabilities are replaceable.
 
 ---
 
@@ -217,7 +225,7 @@ Macro phases for **experience intelligence**. Execution enrichers (Share, `@`, e
 
 | Phase | Name | Strengthens | User feels |
 |-------|------|-------------|------------|
-| **1** | **Memory Recovery** | EXPERIENCE + RECALL | "흩어진 사진·톡·prep가 **한 Event/Bridge**로 묶이고, **맞는 순간**에 다시 떠오른다" |
+| **1** | **Memory Recovery** | EXPERIENCE + RECALL (trigger edges) | "흩어진 사진·톡·prep가 **한 Event/Bridge**로 묶이고, **맥락이 맞을 때** 트리거가 걸려 다시 실행된다" |
 | **2** | **MEANING micro-surfaces** | MEANING (projection) | "검색 전에 **지금 맥락**과 연결된 사람·장소·시간 관계가 보인다" |
 | **3** | **Collective flow** (opt-in) | Anonymized stats only | "내 raw 데이터가 아니라 **익명·집계**된 흐름 통찰" |
 

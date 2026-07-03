@@ -163,6 +163,12 @@ export function ActionChatFeed({
   const router = useRouter();
   const isSlot = variant === "slot";
   const isConversation = variant === "conversation";
+  const surfaceMarker =
+    scopeKind === "search"
+      ? "capture-hub-composer"
+      : isSlot
+        ? "action-slot"
+        : "action-chat";
   const isSearchMentionRun = Boolean(
     isConversation && scopeKind === "search" && searchExecution,
   );
@@ -520,6 +526,7 @@ export function ActionChatFeed({
       <div
         data-action-chat-root
         data-action-chat-variant={variant}
+        data-surface={surfaceMarker}
         className={cn(
           "action-shell flex h-full min-h-0 flex-1 flex-col overflow-hidden",
           isSlot && "action-shell--slot",

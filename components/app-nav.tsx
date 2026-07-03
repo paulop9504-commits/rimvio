@@ -22,6 +22,7 @@ import { useFieldNavBadge } from "@/hooks/use-field-nav-badge";
 import { useFieldSheet } from "@/components/field/field-sheet-provider";
 import { subscribeOpenCaptureSheet, publishCaptureSheetOpen } from "@/lib/nav/open-capture-sheet-bridge";
 import { openFieldDashboardFromBottomNav } from "@/lib/nav/field-dashboard-ingress";
+import { isPrimaryNavGlobePath } from "@/lib/layers";
 import { GRID } from "@/lib/ui/responsive-grid";
 import { cn } from "@/lib/utils";
 
@@ -39,16 +40,6 @@ type NavTab = {
   icon: "globe" | "field" | "people" | "capture";
   badge?: number;
 };
-
-function isGlobePath(pathname: string): boolean {
-  return (
-    pathname === "/" ||
-    pathname === "/feed" ||
-    pathname.startsWith("/feed/") ||
-    pathname === "/globe" ||
-    pathname.startsWith("/globe/")
-  );
-}
 
 const NAV_ICON_SLOT =
   "rimvio-bottom-nav-slot pointer-events-none select-none flex items-center justify-center";
@@ -249,7 +240,11 @@ function SideNavRail({
   onCapture: () => void;
 }) {
   return (
-    <nav className={cn(GRID.navSide, "hidden lg:flex")} aria-label="Primary">
+    <nav
+      className={cn(GRID.navSide, "hidden lg:flex")}
+      aria-label="Primary"
+      data-surface="primary-nav"
+    >
       <div className="flex flex-col items-center gap-[var(--space-phi2)]">
         <SideNavLinks
           tabs={tabs}
@@ -313,6 +308,7 @@ function PortaledBottomNavBar({
       className={cn(GRID.navBottomFrame, "rimvio-bottom-nav-shell lg:hidden")}
       aria-label="Primary"
       data-testid="rimvio-bottom-nav"
+      data-surface="primary-nav"
       data-rimvio-bottom-nav-portal
       data-field-sheet-blocked={fieldSheetOpen ? "true" : undefined}
       style={fieldSheetOpen ? { pointerEvents: "none", visibility: "hidden" } : undefined}
@@ -373,7 +369,7 @@ export function AppNav({ placement }: AppNavProps) {
       }
 
       const isSame =
-        (href === "/" && isGlobePath(pathname)) ||
+        (href === "/" && isPrimaryNavGlobePath(pathname)) ||
         pathname === href ||
         pathname.startsWith(`${href}/`);
       if (isSame) {
@@ -390,7 +386,7 @@ export function AppNav({ placement }: AppNavProps) {
       {
         href: "/",
         label: copy.nav.globe,
-        isActive: (p) => isGlobePath(p),
+        isActive: (p) => isPrimaryNavGlobePath(p),
         icon: "globe",
       },
       {

@@ -230,6 +230,54 @@ export function GlobeHomeMemoryRecallPanel({ className }: { className?: string }
   );
 }
 
+/** Floor 1 recall line — visible when panel collapsed (not buried behind toggle). */
+export function GlobeHomeRecallOneLiner({ className }: { className?: string }) {
+  const ctx = useMemoryRecallContext();
+  if (!ctx?.hasContent || ctx.panelOpen) {
+    return null;
+  }
+
+  const line =
+    ctx.showResume && ctx.resume
+      ? ctx.resume.title?.trim() || ctx.resume.placeLabel?.trim() || copy.globe.resumeContextCta
+      : ctx.recallTriggers[0]?.body?.trim() ||
+        ctx.recallTriggers[0]?.title?.trim() ||
+        null;
+
+  if (!line) {
+    return null;
+  }
+
+  const activate = () => {
+    if (ctx.showResume && ctx.resume) {
+      ctx.onResumeSession(ctx.resume);
+      return;
+    }
+    const trigger = ctx.recallTriggers[0];
+    if (trigger) {
+      ctx.onActivateTrigger(trigger);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={activate}
+      className={cn(
+        "pointer-events-auto max-w-[min(100%,18rem)] truncate rounded-full bg-white/92 px-3 py-1.5 text-left text-[12px] font-semibold text-foreground shadow-[0_4px_14px_rgba(2,32,71,0.1)] ring-1 ring-black/[0.06] backdrop-blur-md active:scale-[0.98]",
+        className,
+      )}
+      data-globe-home-recall-one-liner
+      aria-label={`${copy.globe.memoryRecallEyebrow}: ${line}`}
+    >
+      <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+        {copy.globe.memoryRecallEyebrow}
+      </span>
+      <span className="ml-1.5 text-foreground">{copy.globe.homeRecallOneLiner(line)}</span>
+    </button>
+  );
+}
+
 /** Pill — left-aligned above prompt, same column as the + button. */
 export function GlobeHomeMemoryRecallToggleAnchor({
   className,

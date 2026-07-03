@@ -4,13 +4,15 @@ Rimvio is **not** a chatbot, calendar, messenger, note-taking app, or generic AI
 
 **Rimvio is an Experience OS.**
 
-Rimvio structures user experience data across **time · place · people · action**, and suggests and executes next actions from **accumulated context**.
+Rimvio is a **synaptic context graph** — facts and resources (people, place, calendar, links, notifications) connect like neural edges. When context matches, **connections fire** and Rimvio **re-executes** the next action — not a passive dump of old photos.
 
-Rimvio remembers photos, location, and conversations from the day, and is the app that most seamlessly continues what the user wants to do next.
+Rimvio wires scattered resources into **one operable situation**, then runs again via `@` contracts, Context Run, prep surface, and Task Graph.
 
-**Mission:** Turn lived context into the next meaningful action — not open-ended chat.
+**Mission:** When context connects, re-execute the next meaningful action — not open-ended chat, not passive resurfacing.
 
-**Why Rimvio exists (2026-06):** Reduce **cognitive dissonance** — the gap between what the user lived (Memories), what the world is doing now (Pulse, opt-in aggregate), and what they do next (@ Action). **Time saved** is the felt result; the map is for confirmation, not endless browsing.
+**One-liner (KO):** 맥락이 연결되면, Rimvio가 다시 실행한다.
+
+**Why Rimvio exists (2026-06):** Reduce **cognitive dissonance** — the gap between what the user lived (connected context), what the world is doing now (Pulse, opt-in aggregate), and what they do next (@ re-execution). **Time saved** is the felt result; the map confirms the situation, not endless browsing.
 
 ---
 
@@ -22,9 +24,11 @@ Users should **not** search for tools — tools should arrive when useful.
 
 Users should **not** organize resources — resources should gather around the situation.
 
-Users should **not** remember every next step — the system should surface useful actions.
+Users should **not** remember every next step — **trigger edges** should fire and **re-execute** when context matches.
 
-**Rimvio AI is not a conversational AI — it derives and executes Task Graphs from truth.**
+**Rimvio is not a passive memory OS that resurfaces when time is right.** Recall is a **trigger edge**; ACTION is **re-execution** via `@` registry and Context Run.
+
+**Rimvio AI is not a conversational AI — it derives and re-executes Task Graphs from truth when synaptic context matches.**
 
 **Users create context only; Rimvio executes that context and projects it—personal globe (내 지구) and external globe (밖 지구)—in the most appropriate surface. Projection is read-only; Commit is truth.**
 
@@ -57,15 +61,17 @@ Full spec + examples + code map: **`docs/RIMVIO_EXPERIENCE_LAYERS.md`**
 |-------|----------|
 | **FACT** | Photos, GPS, links, chat, events — what happened |
 | **EXPERIENCE** | Bundled node the user understands ("민수랑 제주 Day2") |
-| **MEANING** | Why it matters *to this user* (patterns, relationships, seasons) |
-| **RECALL** | Right memory at the right moment — first emotional beat |
-| **ACTION** | Memory → operable next step (`@`, navigate) — not generic AI |
+| **MEANING** | Synaptic weights — why edges matter *to this user* (patterns, relationships, seasons) |
+| **RECALL** | **Trigger edge** — fires when context matches (place, time, people, calendar) — not passive photo dump |
+| **ACTION** | **Re-execution** — scattered resources → one operable situation via `@`, Context Run, prep surface |
 
 **2026-06 maturity:** FACT ✓ · EXPERIENCE ✓ · MEANING △ · RECALL △ · ACTION ✓.  
-**Moat:** MEANING + RECALL compound over time; ACTION is replaceable.  
+**Moat:** MEANING + RECALL compound as **synaptic connections** that strengthen with use; ACTION (capabilities) is replaceable.
+
+**Synaptic layer (engineering):** `docs/RIMVIO_SYNAPTIC_LAYER.md` · **Active spine:** `docs/ACTION_OS_SPINE.md`  
 **Macro roadmap:** Phase 1 Memory Recovery → Phase 2 MEANING micro-surfaces → Phase 3 collective (opt-in, separate UI) — **`docs/RIMVIO_EXPERIENCE_LAYERS.md` § Product roadmap**.
 
-**Main screen (Three Floors — UI stack on Feed):** **`docs/RIMVIO_THREE_FLOORS.md`**
+**Main screen (Three Floors — Globe home at `/`):** **`docs/RIMVIO_THREE_FLOORS.md`**
 
 **Globe four-layer model (Internal · Hub · Portal · External):** **`docs/RIMVIO_GLOBE_ARCHITECTURE.md`**
 
@@ -75,7 +81,7 @@ Full spec + examples + code map: **`docs/RIMVIO_EXPERIENCE_LAYERS.md`**
 3층 ACTION   — 길찾기 · 일정 · 공유 · @ (weak until invited)
 ```
 
-Future Feed hero: **not** search · chat · recommendation lists — **replay + context first**. Mature competitor = human memory, not AI apps.
+Future Globe home hero: **not** search · chat · recommendation lists — **replay + context first**. Mature competitor = human memory, not AI apps.
 
 **Execution chain (single-turn orchestrator — same Experience node):**
 
