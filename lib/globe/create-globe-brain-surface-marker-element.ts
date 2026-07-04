@@ -1,4 +1,10 @@
 import type { BrainSurfaceProjectionCandidate } from "@/lib/situation-projection/brain-surface-types";
+import {
+  resolveBrainSurfaceMarkerMediaKind,
+  resolveBrainSurfaceMarkerThumbnail,
+} from "@/lib/globe/brain-surface-marker-media";
+import { sanitizeMapMarkerSupportLabel } from "@/lib/globe/resolve-context-resource-map-markers";
+import { prependGlobeDiscoveryPillThumbnail } from "@/lib/globe/globe-map-callout-element";
 
 export type GlobeBrainSurfaceMarkerHandlers = {
   onPress: (candidateId: string) => void;
@@ -51,12 +57,42 @@ function readCalloutOffset(candidate: BrainSurfaceProjectionCandidate): {
   return { x, y };
 }
 
+function mapMarkerBadgeLabel(
+  candidate: BrainSurfaceProjectionCandidate,
+): string | null {
+  if (candidate.anchorKind !== "inferred_place") {
+    return null;
+  }
+  const raw = candidate.badgeLabelKo?.trim();
+  if (!raw || /노드$/u.test(raw)) {
+    return null;
+  }
+  return raw;
+}
+
+function mapMarkerDetailLabel(
+  candidate: BrainSurfaceProjectionCandidate,
+): string | null {
+  const detail = sanitizeMapMarkerSupportLabel(candidate.previewBody?.trim());
+  if (!detail || detail === candidate.label.trim()) {
+    if (candidate.anchorKind === "inferred_place" && candidate.confidenceLabelKo) {
+      return candidate.confidenceLabelKo;
+    }
+    return null;
+  }
+  return detail;
+}
+
 function buildDiscoveryPill(
   candidate: BrainSurfaceProjectionCandidate,
 ): HTMLSpanElement {
   const pill = document.createElement("span");
   pill.className = "rimvio-globe-lodging-marker__discovery-pill";
-  if (candidate.markerThumbnailUrl?.trim()) {
+  const thumbUrl = resolveBrainSurfaceMarkerThumbnail({
+    family: candidate.family,
+    thumbnailUrl: candidate.markerThumbnailUrl,
+  });
+  if (thumbUrl) {
     pill.classList.add("rimvio-globe-brain-surface-marker__media-pill");
   }
   const markerStyle = candidate.markerStyle ?? "dashed";
@@ -72,29 +108,25 @@ function buildDiscoveryPill(
     pill.style.opacity = String(0.82 + (candidate.confidence ?? 0.5) * 0.18);
   }
 
-  const thumbUrl = candidate.markerThumbnailUrl?.trim();
-  if (thumbUrl) {
-    const mediaShell = document.createElement("span");
-    mediaShell.className = "rimvio-globe-brain-surface-marker__thumb-shell";
-    const image = document.createElement("img");
-    image.src = thumbUrl;
-    image.alt = "";
-    image.className = "rimvio-globe-brain-surface-marker__thumb";
-    image.draggable = false;
-    mediaShell.appendChild(image);
-    if (candidate.markerMediaKind === "video") {
-      const play = document.createElement("span");
-      play.className = "rimvio-globe-brain-surface-marker__play";
-      play.textContent = "▶";
-      mediaShell.appendChild(play);
-    }
-    pill.appendChild(mediaShell);
+  const thumbUrlResolved = thumbUrl;
+  if (thumbUrlResolved) {
+    prependGlobeDiscoveryPillThumbnail(pill, {
+      thumbnailUrl: thumbUrlResolved,
+      fallbackGlyph: fallbackGlyph(candidate.family),
+      showPlay:
+        candidate.markerMediaKind === "video" ||
+        resolveBrainSurfaceMarkerMediaKind({
+          family: candidate.family,
+          embedUrl: candidate.embedUrl,
+        }) === "video",
+    });
   }
 
-  if (candidate.badgeLabelKo) {
+  const badgeLabel = mapMarkerBadgeLabel(candidate);
+  if (badgeLabel) {
     const badge = document.createElement("span");
     badge.className = "rimvio-globe-lodging-marker__ontology-badge";
-    badge.textContent = candidate.badgeLabelKo;
+    badge.textContent = badgeLabel;
     pill.appendChild(badge);
   }
 
@@ -103,46 +135,12 @@ function buildDiscoveryPill(
   name.textContent = candidate.label;
   pill.appendChild(name);
 
-  if (
-    candidate.markerThumbnailUrl &&
-    (candidate.family === "eatery" || candidate.family === "lodging")
-  ) {
+  const detailLabel = mapMarkerDetailLabel(candidate);
+  if (detailLabel) {
     const detail = document.createElement("span");
     detail.className = "rimvio-globe-lodging-marker__discovery-price";
-    detail.textContent = candidate.previewBody?.trim() || candidate.label;
+    detail.textContent = detailLabel;
     pill.appendChild(detail);
-  } else if (candidate.family === "memo") {
-    const memo = document.createElement("span");
-    memo.className = "rimvio-globe-lodging-marker__discovery-price";
-    memo.textContent = "메모";
-    pill.appendChild(memo);
-  } else if (candidate.family === "media") {
-    const media = document.createElement("span");
-    media.className = "rimvio-globe-lodging-marker__discovery-price";
-    media.textContent = "영상";
-    pill.appendChild(media);
-  } else if (candidate.family === "trace_place") {
-    const trace = document.createElement("span");
-    trace.className = "rimvio-globe-lodging-marker__discovery-price";
-    trace.textContent = candidate.confidenceLabelKo
-      ? `추정 ${candidate.confidenceLabelKo}`
-      : "추정";
-    pill.appendChild(trace);
-  } else if (candidate.family === "info") {
-    const info = document.createElement("span");
-    info.className = "rimvio-globe-lodging-marker__discovery-price";
-    info.textContent = "정보";
-    pill.appendChild(info);
-  } else if (candidate.family === "event") {
-    const event = document.createElement("span");
-    event.className = "rimvio-globe-lodging-marker__discovery-price";
-    event.textContent = "행사";
-    pill.appendChild(event);
-  } else if (candidate.anchorKind === "inferred_place" && candidate.confidenceLabelKo) {
-    const inferred = document.createElement("span");
-    inferred.className = "rimvio-globe-lodging-marker__discovery-price";
-    inferred.textContent = candidate.confidenceLabelKo;
-    pill.appendChild(inferred);
   }
 
   return pill;

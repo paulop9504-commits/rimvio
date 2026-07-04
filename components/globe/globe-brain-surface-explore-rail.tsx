@@ -1,11 +1,14 @@
 "use client";
 
 import type { BrainSurfaceProjectionCandidate } from "@/lib/situation-projection/brain-surface-types";
+import type { BrainSurfaceDisclosureStage } from "@/lib/globe/brain-surface-progressive-disclosure";
+import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
 export type GlobeBrainSurfaceExploreRailProps = {
   candidates: readonly BrainSurfaceProjectionCandidate[];
   activeCandidateId?: string | null;
+  disclosureStage?: BrainSurfaceDisclosureStage;
   onSelect: (candidateId: string) => void;
   className?: string;
 };
@@ -50,12 +53,20 @@ function familyAccentClass(family: BrainSurfaceProjectionCandidate["family"]): s
 export function GlobeBrainSurfaceExploreRail({
   candidates,
   activeCandidateId,
+  disclosureStage = "core",
   onSelect,
   className,
 }: GlobeBrainSurfaceExploreRailProps) {
   if (candidates.length === 0) {
     return null;
   }
+
+  const stageLabel =
+    disclosureStage === "core"
+      ? copy.globe.contextGuideDisclosureCore
+      : disclosureStage === "related"
+        ? copy.globe.contextGuideDisclosureRelated
+        : copy.globe.contextGuideDisclosureDetail;
 
   return (
     <div
@@ -64,12 +75,20 @@ export function GlobeBrainSurfaceExploreRail({
         className,
       )}
       data-globe-brain-surface-explore-rail
+      data-disclosure-stage={disclosureStage}
     >
       <div className="mx-auto max-w-[min(100%,28rem)] px-3">
         <div className="rounded-[1.25rem] border border-white/70 bg-white/82 p-2 shadow-[0_12px_40px_rgba(15,23,42,0.14)] backdrop-blur-xl ring-1 ring-black/[0.04]">
-          <p className="px-1 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">
-            이어 볼 것
-          </p>
+          <div className="flex items-center justify-between gap-2 px-1 pb-1.5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">
+              {stageLabel}
+            </p>
+            {disclosureStage !== "core" ? (
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-semibold text-slate-600 ring-1 ring-slate-200/80">
+                {candidates.length}
+              </span>
+            ) : null}
+          </div>
           <div className="flex gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {candidates.map((candidate) => {
               const active = candidate.id === activeCandidateId;

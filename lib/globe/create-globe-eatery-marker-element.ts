@@ -1,8 +1,10 @@
 import type { GlobeEateryMapMarker } from "@/lib/globe/eatery/eatery-globe-marker-types";
 import {
   mountGlobeMapCalloutPill,
+  prependGlobeDiscoveryPillThumbnail,
   readGlobeMapCalloutOffset,
 } from "@/lib/globe/globe-map-callout-element";
+import { resolveBrainSurfaceMarkerThumbnail } from "@/lib/globe/brain-surface-marker-media";
 
 export type GlobeEateryMarkerHandlers = {
   onPress: (resourceId: string, carouselIndex: number) => void;
@@ -44,7 +46,17 @@ export function createGlobeEateryMarkerElement(
     if (marker.virtualCandidate) {
       pill.style.border = "1px dashed rgba(15, 23, 42, 0.28)";
     }
-    if (marker.ontologyBadgeLabel) {
+    const thumbUrl = resolveBrainSurfaceMarkerThumbnail({
+      family: "eatery",
+      thumbnailUrl: marker.thumbnailUrl,
+    });
+    if (thumbUrl) {
+      prependGlobeDiscoveryPillThumbnail(pill, {
+        thumbnailUrl: thumbUrl,
+        fallbackGlyph: "맛",
+      });
+    }
+    if (marker.ontologyBadgeLabel && !/노드$/u.test(marker.ontologyBadgeLabel)) {
       const badge = document.createElement("span");
       badge.className = "rimvio-globe-lodging-marker__ontology-badge";
       badge.textContent = marker.ontologyBadgeLabel;

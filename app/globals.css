@@ -3913,6 +3913,19 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   object-fit: cover;
 }
 
+.rimvio-globe-brain-surface-marker__thumb-fallback {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, #e2e8f0 0%, #cbd5e1 100%);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #475569;
+}
+
 .rimvio-globe-brain-surface-marker__play {
   position: absolute;
   right: 0.28rem;

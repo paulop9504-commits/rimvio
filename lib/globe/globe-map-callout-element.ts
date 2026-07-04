@@ -52,6 +52,35 @@ function buildCalloutStem(offsetX: number, offsetY: number): SVGSVGElement {
   return svg;
 }
 
+export function prependGlobeDiscoveryPillThumbnail(
+  pill: HTMLElement,
+  input: { thumbnailUrl: string; fallbackGlyph: string; showPlay?: boolean },
+): void {
+  pill.classList.add("rimvio-globe-brain-surface-marker__media-pill");
+  const mediaShell = document.createElement("span");
+  mediaShell.className = "rimvio-globe-brain-surface-marker__thumb-shell";
+  const image = document.createElement("img");
+  image.src = input.thumbnailUrl;
+  image.alt = "";
+  image.className = "rimvio-globe-brain-surface-marker__thumb";
+  image.draggable = false;
+  image.addEventListener("error", () => {
+    image.remove();
+    const fallback = document.createElement("span");
+    fallback.className = "rimvio-globe-brain-surface-marker__thumb-fallback";
+    fallback.textContent = input.fallbackGlyph;
+    mediaShell.appendChild(fallback);
+  });
+  mediaShell.appendChild(image);
+  if (input.showPlay) {
+    const play = document.createElement("span");
+    play.className = "rimvio-globe-brain-surface-marker__play";
+    play.textContent = "▶";
+    mediaShell.appendChild(play);
+  }
+  pill.prepend(mediaShell);
+}
+
 /** Radial callout wrapper — shared by lodging, eatery, brain surface pills. */
 export function mountGlobeMapCalloutPill(
   root: HTMLElement,
