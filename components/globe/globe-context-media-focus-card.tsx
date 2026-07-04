@@ -85,6 +85,15 @@ export function GlobeContextMediaFocusCard({
 
         <button
           type="button"
+          onPointerDown={(event) => {
+            event.stopPropagation();
+          }}
+          onTouchStart={(event) => {
+            event.stopPropagation();
+          }}
+          onTouchEnd={(event) => {
+            event.stopPropagation();
+          }}
           onClick={(event) => {
             event.stopPropagation();
             onClose();

@@ -444,6 +444,8 @@ function GlobeHomeBody() {
   const [mapMediaFocusOpen, setMapMediaFocusOpen] = useState(false);
   const [contextTapPhase, setContextTapPhase] =
     useState<ContextMapTapPhase>("awaiting_replay");
+  const [mapMediaReplayDismissedEventId, setMapMediaReplayDismissedEventId] =
+    useState<string | null>(null);
   const contextTapPhaseRef = useRef<ContextMapTapPhase>("awaiting_replay");
   const clustersRef = useRef<readonly PinCluster[]>([]);
   const autoBrainSurfaceLaunchKeyRef = useRef<string | null>(null);
@@ -644,6 +646,7 @@ function GlobeHomeBody() {
 
     if (phase === "awaiting_replay") {
       if (hasMedia) {
+        setMapMediaReplayDismissedEventId(null);
         setContextTapPhase("media_open");
       } else {
         openMapMediaBridgeRef.current?.();
@@ -652,6 +655,7 @@ function GlobeHomeBody() {
     }
 
     if (phase === "media_open") {
+      setMapMediaReplayDismissedEventId(eventId);
       setContextTapPhase("awaiting_replay");
       globeRef.current?.clearPinViewportBias();
     }
@@ -1039,12 +1043,17 @@ function GlobeHomeBody() {
     });
   }, [activeCluster, activeContextEvent]);
 
+  const mapMediaReplaySuppressed =
+    Boolean(activeCluster?.eventId) &&
+    mapMediaReplayDismissedEventId === activeCluster?.eventId;
+
   const showMapVideoReplay = Boolean(
     activeCluster?.eventId &&
       !sheetOpen &&
       !stackClusters?.length &&
       contextMapTapPhaseAllowsMediaReplay(contextTapPhase) &&
-      contextHasMapMedia,
+      contextHasMapMedia &&
+      !mapMediaReplaySuppressed,
   );
 
   /** Map stays clean while a context is focused — hub lives in the pin sheet. */
@@ -1053,6 +1062,10 @@ function GlobeHomeBody() {
   );
 
   const dismissMapMediaReplay = useCallback(() => {
+    const eventId = activeClusterRef.current?.eventId?.trim() ?? null;
+    if (eventId) {
+      setMapMediaReplayDismissedEventId(eventId);
+    }
     setContextTapPhase("awaiting_replay");
     globeRef.current?.clearPinViewportBias();
   }, []);
@@ -1101,11 +1114,8 @@ function GlobeHomeBody() {
       setBrainSurfaceActiveCandidateId(null);
       setBrainSurfaceDetailMode(false);
       setBrainProjectionEventId(null);
-      if (activeCluster?.eventId === eventId && contextHasMapMedia) {
-        setContextTapPhase("media_open");
-      }
     },
-    [activeCluster?.eventId, activeContextEvent, activeContextMediaGuides, contextHasMapMedia],
+    [activeContextEvent, activeContextMediaGuides],
   );
 
   const handleBrainSurfaceMarkerPress = useCallback(
@@ -1915,6 +1925,10 @@ function GlobeHomeBody() {
     stackClustersRef.current = stackClusters;
     sheetOpenRef.current = sheetOpen;
   }, [activeCluster, contextTapPhase, stackClusters, sheetOpen]);
+
+  useEffect(() => {
+    setMapMediaReplayDismissedEventId(null);
+  }, [activeCluster?.eventId]);
 
   useGlobeContextPlaceAlignment({
     userLat: liveLocation?.lat ?? null,
@@ -2949,7 +2963,7 @@ function GlobeHomeBody() {
           className="bottom-[calc(var(--rimvio-globe-ingest-offset,5.5rem)+0.75rem)]"
         />
       ) : null}
-      {contextTapPhase === "awaiting_replay" &&
+      {mapMediaReplaySuppressed &&
       contextHasMapMedia &&
       !sheetOpen &&
       !mapMediaFocusOpen &&
@@ -2963,7 +2977,10 @@ function GlobeHomeBody() {
             bottom: "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 0.75rem)",
           }}
           data-globe-context-guide-replay-chip
-          onClick={() => setContextTapPhase("media_open")}
+          onClick={() => {
+            setMapMediaReplayDismissedEventId(null);
+            setContextTapPhase("media_open");
+          }}
         >
           {copy.globe.contextGuideReplayChip}
         </button>
