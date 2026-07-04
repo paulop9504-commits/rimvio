@@ -19,6 +19,7 @@ import { entityFromPlaceLabel } from "@/lib/ontology/entity-adapters";
 import { asRimvioEntityId } from "@/lib/ontology/entity-types";
 import type { FeedCaptureMediaTextSignal } from "@/lib/ontology/feed-capture-wire";
 import { inferMediaGuidePlaceCandidates } from "@/lib/ontology/media-guide-place-inference";
+import { discoverProactiveTravelYoutubeGuides } from "@/lib/ontology/discover-proactive-travel-youtube-guides";
 import type {
   MediaGuideMoment,
   MediaGuideNode,
@@ -580,11 +581,21 @@ export async function resolveMediaGuideNodesForEvent(
       }),
   );
 
-  return guides
-    .filter((guide): guide is MediaGuideNode => Boolean(guide))
-    .sort(
-      (left, right) =>
-        right.relevanceScore - left.relevanceScore ||
-        right.updatedAt.localeCompare(left.updatedAt),
-    );
+  const captureGuides = guides.filter((guide): guide is MediaGuideNode => Boolean(guide));
+  const captureUrls = new Set(captureGuides.map((guide) => guide.canonicalUrl));
+  const proactiveGuides =
+    captureGuides.some((guide) => guide.sourceKind === "youtube")
+      ? []
+      : await discoverProactiveTravelYoutubeGuides(event);
+
+  const merged = [
+    ...captureGuides,
+    ...proactiveGuides.filter((guide) => !captureUrls.has(guide.canonicalUrl)),
+  ];
+
+  return merged.sort(
+    (left, right) =>
+      right.relevanceScore - left.relevanceScore ||
+      right.updatedAt.localeCompare(left.updatedAt),
+  );
 }

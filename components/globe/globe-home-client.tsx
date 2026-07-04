@@ -201,6 +201,7 @@ import {
   projectBrainSurfaceBatch,
 } from "@/lib/situation-projection/project-brain-surface-batch";
 import { ensureTravelBrainMicroInventory } from "@/lib/situation-projection/ensure-travel-brain-micro-inventory";
+import { refreshContextMediaGuidesForEvent } from "@/lib/globe/media/refresh-context-media-guides";
 import type {
   BrainSurfaceCandidateFamily,
   BrainSurfaceProjectionBatch,
@@ -1102,11 +1103,14 @@ function GlobeHomeBody() {
         lat: activeClusterRef.current?.lat ?? null,
         lng: activeClusterRef.current?.lng ?? null,
       });
+      const mediaGuides = await refreshContextMediaGuidesForEvent(
+        findLifeEventCandidate(eventId) ?? event,
+      );
       let manifest = readProjectionManifestForAnchor(eventId);
       if (!manifest) {
         return;
       }
-      const missingGuides = activeContextMediaGuides.filter(
+      const missingGuides = mediaGuides.filter(
         (guide) =>
           !manifest?.nodes.some(
             (node) =>
@@ -1117,15 +1121,15 @@ function GlobeHomeBody() {
       if (missingGuides.length > 0) {
         manifest =
           patchMediaGuidesToProjection({
-            event,
+            event: findLifeEventCandidate(eventId) ?? event,
             guides: missingGuides,
-            maxGuides: missingGuides.length,
+            maxGuides: Math.min(missingGuides.length, 3),
           }) ?? manifest;
       }
       const batch = projectBrainSurfaceBatch({
         event: findLifeEventCandidate(eventId) ?? event,
         manifest,
-        guides: activeContextMediaGuides,
+        guides: mediaGuides,
       });
       if (!batch) {
         return;
@@ -1138,7 +1142,7 @@ function GlobeHomeBody() {
       setBrainSurfaceDetailMode(false);
       setBrainProjectionEventId(null);
     },
-    [activeContextEvent, activeContextMediaGuides],
+    [activeContextEvent],
   );
 
   const handleBrainSurfaceMarkerPress = useCallback(

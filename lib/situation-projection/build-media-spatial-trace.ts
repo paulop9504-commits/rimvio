@@ -1,4 +1,5 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
+import { resolveBrainSurfaceMarkerMediaKind, resolveBrainSurfaceMarkerThumbnail } from "@/lib/globe/brain-surface-marker-media";
 import type { MediaGuideNode } from "@/lib/ontology/media-guide-types";
 import type {
   BrainSurfaceCandidateFamily,
@@ -312,6 +313,14 @@ export function buildMediaSpatialTraceCandidates(input: {
       searchQuery: null,
       sourceGuideNodeId: guide.guideNodeId,
       revealOrder,
+      markerThumbnailUrl: resolveBrainSurfaceMarkerThumbnail({
+        family: "media",
+        thumbnailUrl: guide.thumbnailUrl,
+      }),
+      markerMediaKind: resolveBrainSurfaceMarkerMediaKind({
+        family: "media",
+        embedUrl: guide.embedUrl,
+      }),
       virtualCandidate: true,
       memoCommitDraft: null,
     });

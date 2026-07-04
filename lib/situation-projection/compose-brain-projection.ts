@@ -450,7 +450,7 @@ export function patchMediaGuidesToProjection(input: {
   guides: readonly MediaGuideNode[];
   maxGuides?: number;
 }): SituationProjectionManifest | null {
-  const rows = input.guides.slice(0, input.maxGuides ?? 2);
+  const rows = input.guides.slice(0, input.maxGuides ?? 3);
   let patched: SituationProjectionManifest | null = null;
   for (const guide of rows) {
     patched = patchMediaGuideCandidatesToProjection({

@@ -47,6 +47,14 @@ export function useContextMediaGuides(
       return;
     }
 
+    const cachedYoutube = queryMediaGuidesForEvent(event.id, { max }).filter(
+      (guide) => guide.sourceKind === "youtube",
+    );
+    if (cachedYoutube.length >= 2) {
+      setLoading(false);
+      return;
+    }
+
     const controller = new AbortController();
     let cancelled = false;
     setLoading(true);

@@ -326,6 +326,37 @@ export async function fetchYouTubeOfficialVideo(
   return mapVideoItem(payload?.items?.[0] ?? {});
 }
 
+export async function searchYouTubeVideos(input: {
+  query: string;
+  regionCode?: string | null;
+  relevanceLanguage?: string | null;
+  maxResults?: number;
+}): Promise<YouTubeOfficialSearchResult[]> {
+  const apiKey = resolveYouTubeDataApiKey();
+  if (!apiKey) {
+    return [];
+  }
+  const query = normalizeText(input.query);
+  if (!query) {
+    return [];
+  }
+  const maxResults = Math.min(Math.max(input.maxResults ?? 3, 1), 5);
+  const payload = await fetchYouTubeDataJson<
+    YouTubeApiListResponse<YouTubeSearchItem>
+  >(apiKey, "search", {
+    part: "snippet",
+    q: query,
+    type: "video",
+    maxResults,
+    safeSearch: "moderate",
+    regionCode: input.regionCode ?? undefined,
+    relevanceLanguage: input.relevanceLanguage ?? undefined,
+  });
+  return (payload?.items ?? [])
+    .map(mapSearchItem)
+    .filter((row): row is YouTubeOfficialSearchResult => row != null);
+}
+
 export async function resolveYouTubeOfficialVideoBundle(
   input: {
     rawUrl: string;
