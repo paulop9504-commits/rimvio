@@ -1,5 +1,14 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { resolveStableContextPlaceAnchor } from "@/lib/context-instance/build-context-instance";
+import {
+  resolveBrainSurfaceMarkerMediaKind,
+  resolveBrainSurfaceMarkerThumbnail,
+} from "@/lib/globe/brain-surface-marker-media";
+import { resolveContextPlaceLabel } from "@/lib/globe/context-hub/resolve-context-place-label";
+import {
+  buildAreaCuriosityHook,
+  buildAreaCuriosityPreview,
+} from "@/lib/globe/infer-area-curiosity-hook";
 import { buildMediaSpatialTraceCandidates } from "@/lib/situation-projection/build-media-spatial-trace";
 import { buildOntologySurfaceKnowledge } from "@/lib/situation-projection/build-ontology-surface-knowledge";
 import { queryMediaGuideByGuideNodeId } from "@/lib/ontology/media-guide-store";
@@ -158,6 +167,32 @@ function buildNodeBody(
   );
 }
 
+function isInventoryBackedResourceNode(node: GhostProjectionNode): boolean {
+  return Boolean(
+    node.placeId?.trim() &&
+      node.lat != null &&
+      node.lng != null &&
+      Number.isFinite(node.lat) &&
+      Number.isFinite(node.lng),
+  );
+}
+
+function buildMicroResourcePreviewBody(node: GhostProjectionNode): string {
+  const parts: string[] = [];
+  const cuisine = normalizeText(node.cuisineHint);
+  if (cuisine) {
+    parts.push(cuisine);
+  }
+  if (node.rating != null && Number.isFinite(node.rating)) {
+    parts.push(`★ ${node.rating.toFixed(1)}`);
+  }
+  const reason = normalizeText(node.playbookReasonKo);
+  if (reason && !parts.includes(reason)) {
+    parts.push(reason);
+  }
+  return parts.join(" · ") || reason || node.label;
+}
+
 function buildNodeCandidate(input: {
   event: EventCandidate;
   node: GhostProjectionNode;
@@ -173,14 +208,26 @@ function buildNodeCandidate(input: {
   const guide = input.node.sourceGuideNodeId
     ? queryMediaGuideByGuideNodeId(input.node.sourceGuideNodeId)
     : null;
+  const areaLabel = resolveContextPlaceLabel(input.event) || input.node.label;
   const previewTitle =
     family === "media"
       ? normalizeText(guide?.title) || normalizeText(input.node.sourceGuideTitle) || input.node.label
       : input.node.label;
-  const previewBody =
-    family === "media"
-      ? normalizeText(guide?.whyRelevantKo) || buildNodeBody(input.event, input.node)
-      : buildNodeBody(input.event, input.node);
+  const nodeBody = buildNodeBody(input.event, input.node);
+  const microResource =
+    isInventoryBackedResourceNode(input.node) &&
+    (family === "eatery" || family === "lodging");
+  const previewBody = microResource
+    ? buildMicroResourcePreviewBody(input.node)
+    : family === "media"
+      ? normalizeText(guide?.whyRelevantKo) || nodeBody
+      : buildAreaCuriosityPreview({
+          areaLabel,
+          lat: input.lat,
+          lng: input.lng,
+          family,
+          detailLine: nodeBody,
+        });
   const openUrl =
     normalizeText(guide?.openUrl) ||
     normalizeText(input.node.sourceGuideUrl) ||
@@ -192,6 +239,14 @@ function buildNodeCandidate(input: {
       : null;
   const isMediaInferred = input.node.candidateOrigin === "media_inferred";
   const confidence = input.node.candidateConfidence ?? null;
+  const markerThumbnailUrl = resolveBrainSurfaceMarkerThumbnail({
+    family,
+    thumbnailUrl:
+      normalizeText(input.node.previewImageUrl) ||
+      guide?.thumbnailUrl ||
+      null,
+  });
+  const markerMediaKind = resolveBrainSurfaceMarkerMediaKind({ family, embedUrl });
 
   return {
     id: `brain-surface:${input.event.id}:${input.node.id}`,
@@ -215,7 +270,7 @@ function buildNodeCandidate(input: {
     label: input.node.label,
     previewTitle,
     previewBody,
-    placeLabel: input.node.label,
+    placeLabel: areaLabel,
     lat: input.lat,
     lng: input.lng,
     accent: presentation.discoveryAccent,
@@ -244,6 +299,8 @@ function buildNodeCandidate(input: {
     searchQuery: normalizeText(input.node.searchQuery) || null,
     sourceGuideNodeId: normalizeText(input.node.sourceGuideNodeId) || null,
     revealOrder: input.revealOrder,
+    markerThumbnailUrl,
+    markerMediaKind,
     virtualCandidate: true,
     memoCommitDraft: null,
   };
@@ -270,25 +327,21 @@ function buildMemoLabel(input: {
   event: EventCandidate;
   node: GhostProjectionNode;
   baseFamily: BrainSurfaceProjectionCandidate["family"];
+  lat: number;
+  lng: number;
 }): string | null {
-  const relation = normalizeText(input.node.relationReasonKo);
-  const hints = input.node.situationalHintsKo ?? [];
-  const companion =
-    input.event.metadata?.travelBrainCompanionMode === "couple" ||
-    input.event.metadata?.travelCompanionMode === "couple";
-  if (input.baseFamily === "eatery") {
-    if (hints.includes("늦은 시간")) {
-      return "늦게 가도 한 끼 이어지기 좋은 동네";
-    }
-    return "맛집이 많은 동네";
-  }
-  if (input.baseFamily === "lodging") {
-    return "머물기 편한 동네";
-  }
-  if (companion || /야경|산책|밤/u.test(relation)) {
-    return "밤에 걸으면 좋은 곳";
-  }
-  return "꼭 가봐야 할 동네";
+  const areaLabel =
+    resolveContextPlaceLabel(input.event) ||
+    normalizeText(input.event.place) ||
+    normalizeText(input.node.label) ||
+    "이 근처";
+  return buildAreaCuriosityHook({
+    areaLabel,
+    lat: input.lat,
+    lng: input.lng,
+    family: "memo",
+    nodeLabel: input.node.label,
+  });
 }
 
 function buildMemoCandidate(input: {
@@ -304,11 +357,22 @@ function buildMemoCandidate(input: {
     return null;
   }
   const presentation = resolveProjectionNodePresentation(input.node);
-  const previewBody =
+  const detailLine =
     normalizeText(input.node.relationReasonKo) ||
     normalizeText(input.node.playbookReasonKo) ||
     normalizeText(input.event.place) ||
     null;
+  const previewBody = buildAreaCuriosityPreview({
+    areaLabel: resolveContextPlaceLabel(input.event) || input.node.label,
+    lat: input.lat,
+    lng: input.lng,
+    family: input.baseFamily,
+    detailLine,
+  });
+  const markerThumbnailUrl = resolveBrainSurfaceMarkerThumbnail({
+    family: "memo",
+    thumbnailUrl: null,
+  });
   return {
     id: `brain-surface:${input.event.id}:memo:${input.node.id}`,
     eventId: input.event.id,
@@ -319,7 +383,7 @@ function buildMemoCandidate(input: {
     label: memoLabel,
     previewTitle: memoLabel,
     previewBody,
-    placeLabel: input.node.label,
+    placeLabel: resolveContextPlaceLabel(input.event) || input.node.label,
     lat: input.lat,
     lng: input.lng,
     accent: presentation.discoveryAccent,
@@ -335,6 +399,8 @@ function buildMemoCandidate(input: {
     searchQuery: normalizeText(input.node.searchQuery) || null,
     sourceGuideNodeId: normalizeText(input.node.sourceGuideNodeId) || null,
     revealOrder: input.revealOrder,
+    markerThumbnailUrl,
+    markerMediaKind: "image",
     virtualCandidate: true,
     memoCommitDraft: buildMemoDraft({
       event: input.event,
@@ -437,6 +503,17 @@ export function projectBrainSurfaceBatch(input: {
             : node.candidateOrigin === "media_inferred"
               ? "media"
               : null);
+    if (
+      family &&
+      (family === "eatery" || family === "lodging") &&
+      !isInventoryBackedResourceNode(node) &&
+      sourceNodes.some(
+        (peer) =>
+          peer.axisId === node.axisId && isInventoryBackedResourceNode(peer),
+      )
+    ) {
+      continue;
+    }
     const familyIndex = family
       ? (familyNodeCounts.get(family) ?? 0)
       : 0;
@@ -462,10 +539,8 @@ export function projectBrainSurfaceBatch(input: {
     pushCandidate(baseCandidate);
 
     if (
-      node.axisId === "place" ||
-      node.axisId === "eatery" ||
-      node.axisId === "lodging" ||
-      node.candidateOrigin === "media_inferred"
+      (node.axisId === "place" || node.candidateOrigin === "media_inferred") &&
+      !isInventoryBackedResourceNode(node)
     ) {
       const memo = buildMemoCandidate({
         event: input.event,

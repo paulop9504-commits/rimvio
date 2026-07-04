@@ -14,6 +14,7 @@ import type {
 import type { GhostProjectionNode } from "@/lib/situation-projection/types";
 
 const MAX_TRAVEL_ITEMS_PER_AXIS = 3;
+const MAX_TRAVEL_MICRO_RESOURCE_ITEMS = 4;
 const MAX_TRAVEL_ACTIVITY_ITEMS = 2;
 
 function buildGhostNode(input: {
@@ -37,6 +38,9 @@ function buildGhostNode(input: {
   surfacePlacement?: GhostProjectionNode["surfacePlacement"];
   semanticTypeLabelKo?: string | null;
   relationLabelKo?: string | null;
+  cuisineHint?: string | null;
+  previewImageUrl?: string | null;
+  rating?: number | null;
 }): GhostProjectionNode {
   const semantic = describeGhostProjectionNodeSemantic({
     axisId: input.axisId,
@@ -68,6 +72,9 @@ function buildGhostNode(input: {
     ontologyRole: semantic.ontologyRole,
     relationLabelKo: input.relationLabelKo ?? semantic.relationLabelKo,
     relationReasonKo: semantic.relationReasonKo,
+    cuisineHint: input.cuisineHint ?? null,
+    previewImageUrl: input.previewImageUrl ?? null,
+    rating: input.rating ?? null,
   };
 }
 
@@ -348,18 +355,8 @@ function buildLodgingGhosts(
       (left, right) =>
         scoreLodgingRowForTravel(right, travel) - scoreLodgingRowForTravel(left, travel),
     )
-    .slice(0, 2);
+    .slice(0, MAX_TRAVEL_MICRO_RESOURCE_ITEMS);
   if (inventory.length > 0) {
-    const preferredQuery =
-      slots.lodging_priority.value === "station"
-        ? `${destination} 역세권 숙소`
-        : slots.lodging_priority.value === "price"
-          ? `${destination} 가성비 숙소`
-          : slots.lodging_priority.value === "aesthetic"
-            ? `${destination} 감성 숙소`
-            : slots.lodging_priority.value === "quiet"
-              ? `${destination} 조용한 숙소`
-              : `${destination} 가족 편한 숙소`;
     return finalizeTravelAxisGhosts("lodging", [
       ...inventory.map((row) =>
         buildGhostNode({
@@ -369,10 +366,10 @@ function buildLodgingGhosts(
           playbookReasonKo:
             row.partnerLabel?.trim() ||
             (slots.lodging_priority.value === "station"
-              ? "이동 부담을 줄이는 숙소 축"
+              ? "이동 부담을 줄이는 숙소"
               : slots.lodging_priority.value === "family"
-                ? "동행자 편의를 우선하는 숙소 축"
-                : "지금 상황에 맞는 숙소 후보"),
+                ? "동행자 편의를 우선하는 숙소"
+                : "지금 상황에 맞는 숙소"),
           featureId: "lodging",
           actionKind: "context_run",
           hubServiceId: "lodging",
@@ -380,37 +377,14 @@ function buildLodgingGhosts(
           placeId: row.placeId,
           lat: row.lat,
           lng: row.lng,
+          previewImageUrl: row.images[0] ?? null,
+          cuisineHint: row.partnerLabel?.trim() || null,
           stayWindow: row.stayWindow ?? stayWindow,
           inferred: true,
           surfacePlacement: row.lat != null && row.lng != null ? "map_anchor" : "root_branch",
         }),
       ),
-      buildGhostNode({
-        axisId: "lodging",
-        id: "ghost:lodging:preferred",
-        label:
-          slots.lodging_priority.value === "station"
-            ? "역세권 중심"
-            : slots.lodging_priority.value === "price"
-              ? "예산 맞춤"
-              : slots.lodging_priority.value === "aesthetic"
-                ? "감성 숙소"
-                : slots.lodging_priority.value === "quiet"
-                  ? "조용한 숙소"
-                  : "가족 편한 숙소",
-        playbookReasonKo:
-          slots.arrival_energy.value !== "fresh"
-            ? "첫날 피로와 공항 이동을 덜어 줄 숙소 축"
-            : "숙소 기준을 바로 반영해 좁히기",
-        featureId: "lodging",
-        actionKind: "context_run",
-        hubServiceId: "lodging",
-        searchQuery: preferredQuery,
-        stayWindow,
-        inferred: true,
-        surfacePlacement: "root_branch",
-      }),
-    ], travel);
+    ], travel, MAX_TRAVEL_MICRO_RESOURCE_ITEMS);
   }
 
   const fallbackEntries =
@@ -472,18 +446,8 @@ function buildEateryGhosts(
       (left, right) =>
         scoreEateryRowForTravel(right, travel) - scoreEateryRowForTravel(left, travel),
     )
-    .slice(0, 2);
+    .slice(0, MAX_TRAVEL_MICRO_RESOURCE_ITEMS);
   if (inventory.length > 0) {
-    const biasQuery =
-      slots.food_bias.value === "local"
-        ? `${destination} 로컬 맛집`
-        : slots.food_bias.value === "landmark"
-          ? `${destination} 유명 맛집`
-          : slots.food_bias.value === "cafe"
-            ? `${destination} 카페`
-            : slots.food_bias.value === "late_night"
-              ? `${destination} 야식 맛집`
-              : `${destination} 가성비 맛집`;
     return finalizeTravelAxisGhosts("eatery", [
       ...inventory.map((row) =>
         buildGhostNode({
@@ -494,7 +458,7 @@ function buildEateryGhosts(
             row.specialReasonKo ??
             row.cuisineHint ??
             row.categoryLabel ??
-            "이 맥락과 이어지는 맛집 후보",
+            "이 맥락과 이어지는 맛집",
           featureId: "eatery_search",
           actionKind: "context_run",
           hubServiceId: "eatery",
@@ -503,35 +467,14 @@ function buildEateryGhosts(
           lat: row.lat,
           lng: row.lng,
           mapsUrl: row.mapsUrl ?? null,
+          previewImageUrl: row.images[0] ?? null,
+          cuisineHint: row.cuisineHint ?? row.categoryLabel ?? null,
+          rating: row.rating ?? null,
           inferred: true,
           surfacePlacement: row.lat != null && row.lng != null ? "map_anchor" : "root_branch",
         }),
       ),
-      buildGhostNode({
-        axisId: "eatery",
-        id: "ghost:eatery:bias",
-        label:
-          slots.food_bias.value === "local"
-            ? "로컬 한 끼"
-            : slots.food_bias.value === "landmark"
-              ? "검증된 한 끼"
-              : slots.food_bias.value === "cafe"
-                ? "쉬는 카페"
-                : slots.food_bias.value === "late_night"
-                  ? "야식 한 끼"
-                  : "가성비 식사",
-        playbookReasonKo:
-          slots.meal_timing_pattern.value === "late_night"
-            ? "늦은 도착 뒤 바로 이어질 식사 축"
-            : "먹거리 취향을 바로 반영해 좁히기",
-        featureId: "eatery_search",
-        actionKind: "context_run",
-        hubServiceId: "eatery",
-        searchQuery: biasQuery,
-        inferred: true,
-        surfacePlacement: "root_branch",
-      }),
-    ], travel);
+    ], travel, MAX_TRAVEL_MICRO_RESOURCE_ITEMS);
   }
 
   const fallbackEntries =

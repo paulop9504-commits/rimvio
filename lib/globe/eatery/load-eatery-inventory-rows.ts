@@ -3,7 +3,7 @@ import type { EventCandidate } from "@/lib/events/event-candidate";
 import {
   serializeCanonicalPlaceProfile,
 } from "@/lib/globe/canonical-place-profile";
-import { resolveEateryMockNearUser } from "@/lib/globe/eatery/eatery-mock-inventory";
+import { resolveEateryMockNearOrigin } from "@/lib/globe/eatery/resolve-eatery-mock-inventory";
 import type { ContextEateryInventoryRow } from "@/lib/globe/eatery/eatery-resource-types";
 import { filterLodgingRowsWithinRadius } from "@/lib/globe/lodging/project-lodging-discovery-session";
 import { LODGING_DISCOVERY_RADIUS_M } from "@/lib/globe/lodging/lodging-discovery-constants";
@@ -197,7 +197,11 @@ export async function loadEateryInventoryRows(input: {
     return { rows: [], source: "mock" };
   }
 
-  const mockRows = resolveEateryMockNearUser({ lat: originLat, lng: originLng });
+  const mockRows = resolveEateryMockNearOrigin({
+    lat: originLat,
+    lng: originLng,
+    anchorLabel,
+  });
   const filteredMock = filterLodgingRowsWithinRadius({
     rows: mockRows,
     lat: originLat,

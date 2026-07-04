@@ -200,12 +200,14 @@ import { resolveProjectionNodeTap } from "@/lib/situation-projection/resolve-pro
 import {
   projectBrainSurfaceBatch,
 } from "@/lib/situation-projection/project-brain-surface-batch";
+import { ensureTravelBrainMicroInventory } from "@/lib/situation-projection/ensure-travel-brain-micro-inventory";
 import type {
   BrainSurfaceCandidateFamily,
   BrainSurfaceProjectionBatch,
   BrainSurfaceProjectionCandidate,
 } from "@/lib/situation-projection/brain-surface-types";
 import { prioritizeBrainSurfaceCandidatesForFocus } from "@/lib/situation-projection/brain-surface-focus";
+import { layoutBrainSurfaceCalloutMarkers } from "@/lib/globe/layout-brain-surface-callout-markers";
 import {
   buildMediaSpatialTraceTourStops,
   buildMediaSpatialTraceTourStopsFromGuide,
@@ -784,30 +786,46 @@ function GlobeHomeBody() {
           ? "eatery"
           : null;
 
-  const projectedBrainSurfaceCandidates = useMemo(
-    () =>
-      prioritizeBrainSurfaceCandidatesForFocus({
-        candidates: visibleBrainSurfaceCandidates,
-        focusedFamily:
-          brainSurfaceMode === "focused"
-            ? brainSurfaceFocusedFamily
-            : passiveBrainSurfaceFamily,
-        activeCandidateId: brainSurfaceActiveCandidateId,
-        gravityMode:
-          brainSurfaceMode === "focused"
-            ? "focused"
-            : passiveBrainSurfaceFamily
-              ? "pinned"
-              : null,
-      }),
-    [
-      brainSurfaceActiveCandidateId,
-      brainSurfaceFocusedFamily,
-      brainSurfaceMode,
-      passiveBrainSurfaceFamily,
-      visibleBrainSurfaceCandidates,
-    ],
-  );
+  const projectedBrainSurfaceCandidates = useMemo(() => {
+    const prioritized = prioritizeBrainSurfaceCandidatesForFocus({
+      candidates: visibleBrainSurfaceCandidates,
+      focusedFamily:
+        brainSurfaceMode === "focused"
+          ? brainSurfaceFocusedFamily
+          : passiveBrainSurfaceFamily,
+      activeCandidateId: brainSurfaceActiveCandidateId,
+      gravityMode:
+        brainSurfaceMode === "focused"
+          ? "focused"
+          : passiveBrainSurfaceFamily
+            ? "pinned"
+            : null,
+    });
+    const hubLat = activeCluster?.lat;
+    const hubLng = activeCluster?.lng;
+    if (
+      prioritized.length === 0 ||
+      hubLat == null ||
+      hubLng == null ||
+      !Number.isFinite(hubLat) ||
+      !Number.isFinite(hubLng)
+    ) {
+      return prioritized;
+    }
+    return layoutBrainSurfaceCalloutMarkers({
+      candidates: prioritized,
+      hubLat,
+      hubLng,
+    });
+  }, [
+    activeCluster?.lat,
+    activeCluster?.lng,
+    brainSurfaceActiveCandidateId,
+    brainSurfaceFocusedFamily,
+    brainSurfaceMode,
+    passiveBrainSurfaceFamily,
+    visibleBrainSurfaceCandidates,
+  ]);
 
   const brainSurfaceCandidatesById = useMemo(() => {
     const map = new Map<string, BrainSurfaceProjectionCandidate>();
@@ -1071,7 +1089,7 @@ function GlobeHomeBody() {
   }, []);
 
   const launchBrainSurfaceProjection = useCallback(
-    (eventId: string) => {
+    async (eventId: string) => {
       const event =
         (activeContextEvent?.id === eventId ? activeContextEvent : null) ??
         findLifeEventCandidate(eventId) ??
@@ -1079,6 +1097,11 @@ function GlobeHomeBody() {
       if (!event) {
         return;
       }
+      await ensureTravelBrainMicroInventory({
+        event,
+        lat: activeClusterRef.current?.lat ?? null,
+        lng: activeClusterRef.current?.lng ?? null,
+      });
       let manifest = readProjectionManifestForAnchor(eventId);
       if (!manifest) {
         return;
@@ -1100,7 +1123,7 @@ function GlobeHomeBody() {
           }) ?? manifest;
       }
       const batch = projectBrainSurfaceBatch({
-        event,
+        event: findLifeEventCandidate(eventId) ?? event,
         manifest,
         guides: activeContextMediaGuides,
       });

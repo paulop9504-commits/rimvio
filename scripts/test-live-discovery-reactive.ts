@@ -14,6 +14,7 @@ import type { GlobeLodgingDiscoverySession } from "../lib/globe/lodging/project-
 const eaterySession: GlobeEateryDiscoverySession = {
   eventId: "ev-eatery-reactive",
   areaLabel: "오사카",
+  areaSubtitle: "역 주변과 골목의 리듬이 달라요",
   radiusM: 1500,
   searching: false,
   userLat: 34.667,

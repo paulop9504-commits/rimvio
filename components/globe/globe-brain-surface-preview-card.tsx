@@ -110,6 +110,21 @@ export function GlobeBrainSurfacePreviewCard({
             />
           </div>
         </div>
+      ) : candidate.markerThumbnailUrl ? (
+        <div className="px-4 pb-3">
+          <div className="relative overflow-hidden rounded-[1rem] border border-white/10 bg-black/40">
+            <img
+              src={candidate.markerThumbnailUrl}
+              alt=""
+              className="aspect-[4/3] w-full object-cover"
+            />
+            {candidate.markerMediaKind === "video" ? (
+              <span className="absolute bottom-2 right-2 rounded-full bg-black/55 px-2 py-1 text-[10px] font-semibold text-white ring-1 ring-white/20">
+                ▶ 영상
+              </span>
+            ) : null}
+          </div>
+        </div>
       ) : null}
 
       {candidate.previewBody ? (

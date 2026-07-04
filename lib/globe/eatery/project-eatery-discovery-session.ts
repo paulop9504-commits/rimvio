@@ -8,6 +8,7 @@ import {
 } from "@/lib/globe/lodging/lodging-discovery-constants";
 import type { ScoredEateryRecommendation } from "@/lib/globe/eatery/score-eatery-recommendations";
 import { resolveLodgingDiscoveryAreaLabel } from "@/lib/globe/lodging/project-lodging-discovery-session";
+import { buildAreaCuriosityHook } from "@/lib/globe/infer-area-curiosity-hook";
 
 export type GlobeEateryDiscoveryCard = {
   resourceId: string;
@@ -29,6 +30,7 @@ export type GlobeEateryDiscoveryCard = {
 export type GlobeEateryDiscoverySession = {
   eventId: string;
   areaLabel: string;
+  areaSubtitle: string | null;
   radiusM: number;
   searching: boolean;
   userLat: number | null;
@@ -173,13 +175,21 @@ export function projectEateryDiscoverySession(input: {
     };
   });
 
+  const areaLabel = resolveLodgingDiscoveryAreaLabel({
+    lat: input.userLat ?? null,
+    lng: input.userLng ?? null,
+    eventPlace: input.eventPlace,
+  });
+  const areaSubtitle = buildAreaCuriosityHook({
+    areaLabel: input.eventPlace?.trim() || areaLabel,
+    lat: input.userLat ?? null,
+    lng: input.userLng ?? null,
+  });
+
   return {
     eventId: input.eventId,
-    areaLabel: resolveLodgingDiscoveryAreaLabel({
-      lat: input.userLat ?? null,
-      lng: input.userLng ?? null,
-      eventPlace: input.eventPlace,
-    }),
+    areaLabel,
+    areaSubtitle,
     radiusM: input.radiusM ?? LODGING_DISCOVERY_RADIUS_M,
     searching: input.searching ?? false,
     userLat: input.userLat ?? null,

@@ -102,6 +102,22 @@ function isCandidateTooFar(
   return distanceKm > maxKm;
 }
 
+const KR_NAME_IN_JP_PATTERN =
+  /(한식|곱창|국밥|삼겹|족발|망원|홍대|강남|명동|서울|부산|대전|대구|인천|제주)/u;
+
+function isCandidateRegionMismatch(
+  candidate: RestaurantSearchCandidate,
+  countryBias: RestaurantSearchCountryBias,
+): boolean {
+  if (countryBias !== "jp") {
+    return false;
+  }
+  const blob = [candidate.name, candidate.address, candidate.cuisineHint, candidate.categoryLabel]
+    .filter(Boolean)
+    .join(" ");
+  return KR_NAME_IN_JP_PATTERN.test(blob);
+}
+
 function hasLocalityMatch(
   candidate: RestaurantSearchCandidate,
   placeProfile: CanonicalPlaceProfile | null | undefined,
@@ -619,6 +635,9 @@ export async function searchRestaurants(
   }).filter((candidate) => passesExcludes(candidate, intent.excludeKeywords));
   candidates = candidates.filter((candidate) => {
     if (!isCanonicalPlaceCountryCompatible(placeProfile, candidate.address ?? candidate.name)) {
+      return false;
+    }
+    if (isCandidateRegionMismatch(candidate, countryBias)) {
       return false;
     }
     if (isCandidateTooFar(candidate, origin, radiusM)) {

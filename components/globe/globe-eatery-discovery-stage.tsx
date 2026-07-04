@@ -48,6 +48,7 @@ export function GlobeEateryDiscoveryStage({
   return (
     <GlobeDiscoveryFeedStage
       areaLabel={session.areaLabel}
+      areaSubtitle={session.areaSubtitle}
       radiusM={session.radiusM}
       searching={session.searching}
       signalChips={session.signalChips}

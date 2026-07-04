@@ -74,6 +74,11 @@ export type BrainSurfaceProjectionCandidate = {
   markerScale?: number;
   markerOpacity?: number;
   zIndexBoost?: number;
+  /** Pixel offset from hub anchor — pill fans out, stem draws to dot. */
+  calloutOffsetX?: number | null;
+  calloutOffsetY?: number | null;
+  markerThumbnailUrl?: string | null;
+  markerMediaKind?: "image" | "video" | null;
   virtualCandidate: true;
   memoCommitDraft?: BrainSurfaceMemoCommitDraft | null;
 };

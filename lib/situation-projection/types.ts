@@ -155,6 +155,9 @@ export type GhostProjectionNode = {
   candidateSearchProfile?: MediaGuideCandidateSearchProfile | null;
   situationalHintsKo?: readonly string[];
   cuisineHint?: string | null;
+  /** Place-backed ghost — hero image for map marker. */
+  previewImageUrl?: string | null;
+  rating?: number | null;
 };
 
 export type ProjectionNode = SolidProjectionNode | GhostProjectionNode;

@@ -36,41 +36,29 @@ function confidenceGlow(confidence: number | null | undefined): string {
   return `0 ${spread}px ${spread + 14}px rgba(120, 196, 255, ${alpha.toFixed(2)})`;
 }
 
-export function createGlobeBrainSurfaceMarkerElement(
-  candidate: BrainSurfaceProjectionCandidate,
-  handlers: GlobeBrainSurfaceMarkerHandlers,
-): HTMLElement {
-  const root = document.createElement("button");
-  root.type = "button";
-  root.className = "rimvio-globe-lodging-marker rimvio-globe-brain-surface-marker";
-  root.dataset.brainSurfaceCandidate = candidate.id;
-  root.dataset.brainSurfaceFamily = candidate.family;
-  root.dataset.discoveryAccent = candidate.accent;
-  root.classList.add("rimvio-globe-lodging-marker--discovery");
-  root.classList.add("rimvio-globe-lodging-marker--main");
-  if (candidate.anchorKind) {
-    root.dataset.brainSurfaceAnchorKind = candidate.anchorKind;
+function readCalloutOffset(candidate: BrainSurfaceProjectionCandidate): {
+  x: number;
+  y: number;
+} | null {
+  const x = candidate.calloutOffsetX;
+  const y = candidate.calloutOffsetY;
+  if (x == null || y == null || !Number.isFinite(x) || !Number.isFinite(y)) {
+    return null;
   }
-  const baseZIndex =
-    candidate.family === "media"
-      ? 8
-      : candidate.family === "trace_place"
-        ? 7
-        : candidate.family === "event"
-          ? 6
-          : 5;
-  root.style.zIndex = String(baseZIndex + (candidate.zIndexBoost ?? 0));
-  root.style.opacity = String(candidate.markerOpacity ?? 1);
-  root.style.transform = `scale(${candidate.markerScale ?? 1})`;
-  root.style.transformOrigin = "center bottom";
-  root.style.transition =
-    "left 280ms cubic-bezier(0.22, 1, 0.36, 1), top 280ms cubic-bezier(0.22, 1, 0.36, 1), transform 220ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms ease, filter 220ms ease";
-  if (candidate.virtualCandidate) {
-    root.dataset.virtualCandidate = "true";
+  if (x === 0 && y === 0) {
+    return null;
   }
+  return { x, y };
+}
 
+function buildDiscoveryPill(
+  candidate: BrainSurfaceProjectionCandidate,
+): HTMLSpanElement {
   const pill = document.createElement("span");
   pill.className = "rimvio-globe-lodging-marker__discovery-pill";
+  if (candidate.markerThumbnailUrl?.trim()) {
+    pill.classList.add("rimvio-globe-brain-surface-marker__media-pill");
+  }
   const markerStyle = candidate.markerStyle ?? "dashed";
   pill.style.border =
     markerStyle === "solid"
@@ -82,6 +70,25 @@ export function createGlobeBrainSurfaceMarkerElement(
   }
   if (candidate.anchorKind === "inferred_place") {
     pill.style.opacity = String(0.82 + (candidate.confidence ?? 0.5) * 0.18);
+  }
+
+  const thumbUrl = candidate.markerThumbnailUrl?.trim();
+  if (thumbUrl) {
+    const mediaShell = document.createElement("span");
+    mediaShell.className = "rimvio-globe-brain-surface-marker__thumb-shell";
+    const image = document.createElement("img");
+    image.src = thumbUrl;
+    image.alt = "";
+    image.className = "rimvio-globe-brain-surface-marker__thumb";
+    image.draggable = false;
+    mediaShell.appendChild(image);
+    if (candidate.markerMediaKind === "video") {
+      const play = document.createElement("span");
+      play.className = "rimvio-globe-brain-surface-marker__play";
+      play.textContent = "▶";
+      mediaShell.appendChild(play);
+    }
+    pill.appendChild(mediaShell);
   }
 
   if (candidate.badgeLabelKo) {
@@ -96,7 +103,15 @@ export function createGlobeBrainSurfaceMarkerElement(
   name.textContent = candidate.label;
   pill.appendChild(name);
 
-  if (candidate.family === "memo") {
+  if (
+    candidate.markerThumbnailUrl &&
+    (candidate.family === "eatery" || candidate.family === "lodging")
+  ) {
+    const detail = document.createElement("span");
+    detail.className = "rimvio-globe-lodging-marker__discovery-price";
+    detail.textContent = candidate.previewBody?.trim() || candidate.label;
+    pill.appendChild(detail);
+  } else if (candidate.family === "memo") {
     const memo = document.createElement("span");
     memo.className = "rimvio-globe-lodging-marker__discovery-price";
     memo.textContent = "메모";
@@ -130,10 +145,98 @@ export function createGlobeBrainSurfaceMarkerElement(
     pill.appendChild(inferred);
   }
 
-  root.appendChild(pill);
+  return pill;
+}
+
+function buildCalloutStem(offsetX: number, offsetY: number): SVGSVGElement {
+  const padding = 24;
+  const minX = Math.min(0, offsetX) - padding;
+  const minY = Math.min(0, offsetY) - padding;
+  const maxX = Math.max(0, offsetX) + padding;
+  const maxY = Math.max(0, offsetY) + padding;
+  const width = maxX - minX;
+  const height = maxY - minY;
+  const startX = -minX;
+  const startY = -minY;
+  const endX = startX + offsetX;
+  const endY = startY + offsetY;
+
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "rimvio-globe-brain-surface-marker__stem");
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.setAttribute("width", String(width));
+  svg.setAttribute("height", String(height));
+  svg.style.left = `${minX}px`;
+  svg.style.top = `${minY}px`;
+
+  const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  line.setAttribute("x1", String(startX));
+  line.setAttribute("y1", String(startY));
+  line.setAttribute("x2", String(endX));
+  line.setAttribute("y2", String(endY));
+  line.setAttribute("stroke", "rgba(255,255,255,0.42)");
+  line.setAttribute("stroke-width", "1.5");
+  line.setAttribute("stroke-linecap", "round");
+  line.setAttribute("stroke-dasharray", "4 4");
+  svg.appendChild(line);
+  return svg;
+}
+
+export function createGlobeBrainSurfaceMarkerElement(
+  candidate: BrainSurfaceProjectionCandidate,
+  handlers: GlobeBrainSurfaceMarkerHandlers,
+): HTMLElement {
+  const root = document.createElement("button");
+  root.type = "button";
+  root.className = "rimvio-globe-lodging-marker rimvio-globe-brain-surface-marker";
+  root.dataset.brainSurfaceCandidate = candidate.id;
+  root.dataset.brainSurfaceFamily = candidate.family;
+  root.dataset.discoveryAccent = candidate.accent;
+  root.classList.add("rimvio-globe-lodging-marker--discovery");
+  root.classList.add("rimvio-globe-lodging-marker--main");
+  if (candidate.anchorKind) {
+    root.dataset.brainSurfaceAnchorKind = candidate.anchorKind;
+  }
+  const baseZIndex =
+    candidate.family === "media"
+      ? 8
+      : candidate.family === "trace_place"
+        ? 7
+        : candidate.family === "event"
+          ? 6
+          : 5;
+  root.style.zIndex = String(baseZIndex + (candidate.zIndexBoost ?? 0));
+  root.style.opacity = String(candidate.markerOpacity ?? 1);
+  root.style.transform = `scale(${candidate.markerScale ?? 1})`;
+  root.style.transformOrigin = "center bottom";
+  root.style.transition =
+    "left 280ms cubic-bezier(0.22, 1, 0.36, 1), top 280ms cubic-bezier(0.22, 1, 0.36, 1), transform 220ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms ease, filter 220ms ease";
+  if (candidate.virtualCandidate) {
+    root.dataset.virtualCandidate = "true";
+  }
+
+  const callout = readCalloutOffset(candidate);
+  if (callout) {
+    root.classList.add("rimvio-globe-brain-surface-marker--callout");
+    root.style.setProperty("--callout-x", `${callout.x}px`);
+    root.style.setProperty("--callout-y", `${callout.y}px`);
+
+    const field = document.createElement("span");
+    field.className = "rimvio-globe-brain-surface-marker__callout-field";
+    field.appendChild(buildCalloutStem(callout.x, callout.y));
+
+    const pill = buildDiscoveryPill(candidate);
+    pill.classList.add("rimvio-globe-brain-surface-marker__callout-pill");
+    field.appendChild(pill);
+    root.appendChild(field);
+  } else {
+    const pill = buildDiscoveryPill(candidate);
+    root.appendChild(pill);
+  }
 
   const dot = document.createElement("span");
   dot.className = "rimvio-globe-lodging-marker__dot";
+  const markerStyle = candidate.markerStyle ?? "dashed";
   if (markerStyle === "dashed") {
     dot.style.borderStyle = "dashed";
   }

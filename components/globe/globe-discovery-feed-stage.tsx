@@ -39,6 +39,7 @@ type GlobeDiscoveryFeedDataAttrs = {
 
 type GlobeDiscoveryFeedStageProps<T extends GlobeDiscoveryFeedStageItem> = {
   areaLabel: string;
+  areaSubtitle?: string | null;
   radiusM: number;
   searching: boolean;
   signalChips: readonly string[];
@@ -338,6 +339,7 @@ function ProgressiveDiscoveryFeedPanel<T extends GlobeDiscoveryFeedStageItem>({
 
 export function GlobeDiscoveryFeedStage<T extends GlobeDiscoveryFeedStageItem>({
   areaLabel,
+  areaSubtitle = null,
   radiusM,
   searching,
   signalChips,
@@ -378,8 +380,13 @@ export function GlobeDiscoveryFeedStage<T extends GlobeDiscoveryFeedStageItem>({
         {...headerDataProps}
       >
         <div className="flex min-w-0 items-center gap-2">
-          <span className={cn("size-2 shrink-0 rounded-full", accentGlowClassName)} />
-          <p className="truncate text-[12px] font-semibold text-white">{areaLabel}</p>
+          <span className={cn("size-2 shrink-0 rounded-full self-start mt-1", accentGlowClassName)} />
+          <div className="min-w-0">
+            <p className="truncate text-[12px] font-semibold text-white">{areaLabel}</p>
+            {areaSubtitle?.trim() ? (
+              <p className="truncate text-[10px] font-medium text-white/62">{areaSubtitle}</p>
+            ) : null}
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/85">

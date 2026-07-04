@@ -3861,6 +3861,81 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   min-width: 3.5rem;
 }
 
+.rimvio-globe-brain-surface-marker--callout {
+  width: 0;
+  min-width: 0;
+  overflow: visible;
+}
+
+.rimvio-globe-brain-surface-marker__callout-field {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.rimvio-globe-brain-surface-marker__stem {
+  position: absolute;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.rimvio-globe-brain-surface-marker__callout-pill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(calc(-50% + var(--callout-x, 0px)), calc(-100% + var(--callout-y, 0px)));
+  pointer-events: auto;
+  max-width: 8.5rem;
+  white-space: normal;
+}
+
+.rimvio-globe-brain-surface-marker__media-pill {
+  min-width: 5.5rem;
+  padding: 0.28rem;
+}
+
+.rimvio-globe-brain-surface-marker__thumb-shell {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 0.45rem;
+  margin-bottom: 0.2rem;
+}
+
+.rimvio-globe-brain-surface-marker__thumb {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.rimvio-globe-brain-surface-marker__play {
+  position: absolute;
+  right: 0.28rem;
+  bottom: 0.28rem;
+  display: flex;
+  width: 1.15rem;
+  height: 1.15rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.58);
+  font-size: 0.48rem;
+  color: #fff;
+  line-height: 1;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.22);
+}
+
+.rimvio-globe-brain-surface-marker--callout .rimvio-globe-lodging-marker__dot {
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+}
+
 .rimvio-globe-lodging-marker__discovery-pill {
   display: flex;
   flex-direction: column;

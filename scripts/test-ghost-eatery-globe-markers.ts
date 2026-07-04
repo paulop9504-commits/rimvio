@@ -51,6 +51,7 @@ assert.equal(markers[0]?.virtualCandidate, true);
 assert.equal(markers[0]?.lat, 34.667);
 assert.equal(markers[0]?.lng, 135.501);
 assert.equal(markers[0]?.ontologyBadgeLabel, "맛집 노드");
-assert.match(markers[0]?.discoveryPriceLabel ?? "", /오사카 여행 · 식사 동선/);
+assert.equal(markers[0]?.discoveryPriceLabel, "오코노미야키");
+assert.equal(markers[0]?.label, "난바 로컬 식당");
 
 console.log("test-ghost-eatery-globe-markers: ok");
