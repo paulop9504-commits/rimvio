@@ -378,7 +378,10 @@ async function buildYouTubeGuide(input: {
     trustLabelKo: trust.trustLabelKo,
     canonicalUrl: official?.video.canonicalUrl ?? normalizedUrl,
     openUrl: buildYouTubeOpenUrl(input.url, primaryMoment?.seconds ?? startSeconds),
-    embedUrl: buildYouTubeEmbedUrl(videoId, primaryMoment?.seconds ?? startSeconds),
+    embedUrl:
+      official?.video.embeddable === true
+        ? buildYouTubeEmbedUrl(videoId, primaryMoment?.seconds ?? startSeconds)
+        : null,
     thumbnailUrl:
       official?.video.thumbnailUrl ??
       oembed?.thumbnail_url ??
@@ -590,7 +593,11 @@ export async function resolveMediaGuideNodesForEvent(
 
   const merged = [
     ...captureGuides,
-    ...proactiveGuides.filter((guide) => !captureUrls.has(guide.canonicalUrl)),
+    ...proactiveGuides.filter(
+      (guide) =>
+        !captureUrls.has(guide.canonicalUrl) &&
+        (guide.sourceKind !== "youtube" || Boolean(guide.embedUrl?.trim())),
+    ),
   ];
 
   return merged.sort(

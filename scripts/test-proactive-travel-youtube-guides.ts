@@ -21,6 +21,14 @@ globalThis.fetch = async (input) => {
       JSON.stringify({
         items: [
           {
+            id: { videoId: "blocked-vlog" },
+            snippet: {
+              title: "도쿄 여행 (embed blocked)",
+              description: "도쿄",
+              channelTitle: "Blocked",
+            },
+          },
+          {
             id: { videoId: "tokyo-vlog-1" },
             snippet: {
               title: "도쿄 여행 브이로그",
@@ -43,6 +51,18 @@ globalThis.fetch = async (input) => {
       { status: 200, headers: { "Content-Type": "application/json" } },
     );
   }
+  if (url.includes("/youtube/v3/videos") && url.includes("part=status")) {
+    return new Response(
+      JSON.stringify({
+        items: [
+          { id: "blocked-vlog", status: { embeddable: false } },
+          { id: "tokyo-vlog-1", status: { embeddable: true } },
+          { id: "tokyo-vlog-2", status: { embeddable: true } },
+        ],
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+  }
   if (url.includes("/youtube/v3/videos")) {
     return new Response(
       JSON.stringify({
@@ -56,6 +76,7 @@ globalThis.fetch = async (input) => {
               publishedAt: "2026-06-01T00:00:00Z",
             },
             contentDetails: { duration: "PT8M12S" },
+            status: { embeddable: true },
           },
         ],
       }),
@@ -90,6 +111,7 @@ void discoverProactiveTravelYoutubeGuides(event).then((guides) => {
   assert.ok(guides.length >= 1, "should discover at least one proactive youtube guide");
   assert.match(guides[0]?.guideNodeId ?? "", /proactive-yt:tokyo-vlog-1/);
   assert.equal(guides[0]?.embedUrl, "https://www.youtube.com/embed/tokyo-vlog-1");
+  assert.doesNotMatch(JSON.stringify(guides), /blocked-vlog/);
   assert.match(guides[0]?.whyRelevantKo ?? "", /도쿄/);
   console.log("test-proactive-travel-youtube-guides: ok");
 }).finally(() => {

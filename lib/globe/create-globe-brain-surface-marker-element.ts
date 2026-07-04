@@ -62,8 +62,8 @@ function buildDiscoveryPill(
   const markerStyle = candidate.markerStyle ?? "dashed";
   pill.style.border =
     markerStyle === "solid"
-      ? "1px solid rgba(255,255,255,0.82)"
-      : "1px dashed rgba(255,255,255,0.62)";
+      ? "1px solid rgba(15, 23, 42, 0.1)"
+      : "1px dashed rgba(15, 23, 42, 0.24)";
   pill.style.boxShadow = confidenceGlow(candidate.confidence);
   if ((candidate.focusPriority ?? 0) >= 80) {
     pill.style.boxShadow = `${confidenceGlow(candidate.confidence)}, 0 14px 32px rgba(0,0,0,0.34)`;

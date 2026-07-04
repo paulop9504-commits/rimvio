@@ -57,6 +57,10 @@ export function useMediaSpatialTraceTour(input: {
       return;
     }
 
+    if (input.advancePaused) {
+      return;
+    }
+
     input.globeRef.current?.flyToPin(stop.lat, stop.lng, TOUR_FLY_LEVEL, {
       pinViewportY: TOUR_PIN_VIEWPORT_Y,
     });

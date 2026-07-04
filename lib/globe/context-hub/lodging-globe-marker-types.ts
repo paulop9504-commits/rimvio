@@ -24,6 +24,8 @@ export type GlobeLodgingMapMarker = {
   ontologyBadgeLabel?: string | null;
   anchorLabel?: string | null;
   relationMemoKo?: string | null;
+  calloutOffsetX?: number | null;
+  calloutOffsetY?: number | null;
 };
 
 export function isGlobeLodgingMapMarker(

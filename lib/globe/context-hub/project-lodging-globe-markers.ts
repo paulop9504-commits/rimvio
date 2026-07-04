@@ -9,6 +9,10 @@ import type { GlobeDetailLevel } from "@/lib/globe/globe-zoom-levels";
 import { buildProjectionNodeExplanation } from "@/lib/situation-projection/projection-node-explanation";
 import { resolveProjectionNodePresentation } from "@/lib/situation-projection/projection-node-presentation";
 import type { GhostProjectionNode, SituationProjectionManifest } from "@/lib/situation-projection/types";
+import {
+  sanitizeMapMarkerSupportLabel,
+  sanitizeOntologyMapBadgeLabel,
+} from "@/lib/globe/resolve-context-resource-map-markers";
 
 const LODGING_MARKER_ZOOM_LEVELS = new Set<GlobeDetailLevel>([
   "city",
@@ -88,7 +92,9 @@ export function projectLodgingGlobeMarkers(input: {
     const stayBadgeLabel = formatLodgingStayBadgeLabel(
       payload?.stayWindow ?? ghost?.stayWindow ?? null,
     );
-    const supportDetail = payload?.partnerLabel?.trim() || entry.resource.shortLabel?.trim() || null;
+    const supportDetail = sanitizeMapMarkerSupportLabel(
+      payload?.partnerLabel?.trim() || entry.resource.shortLabel?.trim() || null,
+    );
     const supportLabel = [stayBadgeLabel, supportDetail].filter(Boolean).join(" · ") || null;
     const explanation =
       ghost && input.manifest && input.event
@@ -116,7 +122,9 @@ export function projectLodgingGlobeMarkers(input: {
       stayBadgeLabel,
       discoveryAccent: presentation?.discoveryAccent ?? "blue",
       virtualCandidate: ghost?.virtual === true || undefined,
-      ontologyBadgeLabel: presentation?.markerBadgeLabelKo ?? null,
+      ontologyBadgeLabel: sanitizeOntologyMapBadgeLabel(
+        presentation?.markerBadgeLabelKo ?? null,
+      ),
       anchorLabel,
       relationMemoKo: explanation?.memoKo ?? null,
       ...(popInDelayMs != null ? { popInDelayMs } : {}),

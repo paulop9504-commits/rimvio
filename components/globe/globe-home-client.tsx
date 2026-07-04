@@ -454,6 +454,9 @@ function GlobeHomeBody() {
   const contextTapPhaseRef = useRef<ContextMapTapPhase>("awaiting_replay");
   const clustersRef = useRef<readonly PinCluster[]>([]);
   const autoBrainSurfaceLaunchKeyRef = useRef<string | null>(null);
+  const brainSurfaceBatchRef = useRef<BrainSurfaceProjectionBatch | null>(null);
+  const brainSurfaceActiveCandidateIdRef = useRef<string | null>(null);
+  const brainSurfaceLaunchInFlightRef = useRef<string | null>(null);
 
   useEffect(() => {
     return subscribeGlobeMapMediaFocus((detail) => {
@@ -745,6 +748,24 @@ function GlobeHomeBody() {
     max: 4,
   });
 
+  useEffect(() => {
+    brainSurfaceBatchRef.current = brainSurfaceBatch;
+  }, [brainSurfaceBatch]);
+
+  useEffect(() => {
+    brainSurfaceActiveCandidateIdRef.current = brainSurfaceActiveCandidateId;
+  }, [brainSurfaceActiveCandidateId]);
+
+  useEffect(() => {
+    autoBrainSurfaceLaunchKeyRef.current = null;
+  }, [activeContextEvent?.id]);
+
+  useEffect(() => {
+    if (!brainSurfaceBatch) {
+      autoBrainSurfaceLaunchKeyRef.current = null;
+    }
+  }, [brainSurfaceBatch]);
+
   const brainSurfaceAction = useGlobeContextBrainActions(activeContextEvent, {
     onActionHandled: () => {
       setBrainSurfaceActiveCandidateId(null);
@@ -845,7 +866,10 @@ function GlobeHomeBody() {
     return prioritized
       .filter((candidate) => {
         if (candidate.virtualCandidate && !candidate.markerThumbnailUrl?.trim()) {
-          return candidate.embedUrl?.trim() || candidate.anchorKind === "video_root";
+          if (candidate.embedUrl?.trim() || candidate.anchorKind === "video_root") {
+            return true;
+          }
+          return false;
         }
         return true;
       })
@@ -886,13 +910,19 @@ function GlobeHomeBody() {
     activeContextProjectionManifest?.nodes,
   ]);
 
-  const activeBrainSurfaceGuide = useMemo(
-    () =>
-      activeBrainSurfaceCandidate?.sourceGuideNodeId
-        ? queryMediaGuideByGuideNodeId(activeBrainSurfaceCandidate.sourceGuideNodeId)
-        : null,
-    [activeBrainSurfaceCandidate?.sourceGuideNodeId],
-  );
+  const activeBrainSurfaceGuide = useMemo(() => {
+    const guideId = activeBrainSurfaceCandidate?.sourceGuideNodeId?.trim();
+    if (!guideId) {
+      return null;
+    }
+    return (
+      activeContextMediaGuides.find((guide) => guide.guideNodeId === guideId) ??
+      queryMediaGuideByGuideNodeId(guideId)
+    );
+  }, [
+    activeBrainSurfaceCandidate?.sourceGuideNodeId,
+    activeContextMediaGuides,
+  ]);
 
   const activeVideoInferredPlaceCount = useMemo(() => {
     const candidate = activeBrainSurfaceCandidate;
@@ -1131,6 +1161,14 @@ function GlobeHomeBody() {
 
   const launchBrainSurfaceProjection = useCallback(
     async (eventId: string) => {
+      if (brainSurfaceBatchRef.current?.eventId === eventId) {
+        return;
+      }
+      if (brainSurfaceLaunchInFlightRef.current === eventId) {
+        return;
+      }
+      brainSurfaceLaunchInFlightRef.current = eventId;
+      try {
       const event =
         (activeContextEvent?.id === eventId ? activeContextEvent : null) ??
         findLifeEventCandidate(eventId) ??
@@ -1183,6 +1221,11 @@ function GlobeHomeBody() {
       setBrainSurfaceActiveCandidateId(null);
       setBrainSurfaceDetailMode(false);
       setBrainProjectionEventId(null);
+      } finally {
+        if (brainSurfaceLaunchInFlightRef.current === eventId) {
+          brainSurfaceLaunchInFlightRef.current = null;
+        }
+      }
     },
     [activeContextEvent],
   );
@@ -1344,6 +1387,9 @@ function GlobeHomeBody() {
     if (spatialTraceTourSuppressedRef.current) {
       return;
     }
+    if (spatialTraceTourAdvancePaused) {
+      return;
+    }
     if (brainSurfaceLaunchToken <= 0) {
       return;
     }
@@ -1359,8 +1405,20 @@ function GlobeHomeBody() {
     brainSurfaceBatch?.eventId,
     brainSurfaceLaunchToken,
     brainSurfaceVisible,
+    spatialTraceTourAdvancePaused,
     spatialTraceTourStops,
     startSpatialTraceTour,
+  ]);
+
+  useEffect(() => {
+    if (!spatialTraceTourAdvancePaused || !spatialTraceTourRunning) {
+      return;
+    }
+    stopSpatialTraceTour();
+  }, [
+    spatialTraceTourAdvancePaused,
+    spatialTraceTourRunning,
+    stopSpatialTraceTour,
   ]);
 
   useEffect(() => {
@@ -1405,6 +1463,71 @@ function GlobeHomeBody() {
 
   useEffect(() => {
     if (
+      !brainSurfaceVisible ||
+      !brainSurfaceBatch ||
+      !activeContextEvent ||
+      !activeContextProjectionManifest ||
+      activeContextMediaGuides.length === 0
+    ) {
+      return;
+    }
+    if (brainSurfaceBatch.eventId !== activeContextEvent.id) {
+      return;
+    }
+
+    const nextBatch = projectBrainSurfaceBatch({
+      event: activeContextEvent,
+      manifest: activeContextProjectionManifest,
+      guides: activeContextMediaGuides,
+    });
+    if (!nextBatch) {
+      return;
+    }
+
+    const videoSignature = (batch: BrainSurfaceProjectionBatch) =>
+      batch.candidates
+        .filter((candidate) => candidate.anchorKind === "video_root")
+        .map(
+          (candidate) =>
+            `${candidate.sourceGuideNodeId}:${candidate.embedUrl ?? ""}`,
+        )
+        .join("|");
+
+    if (
+      videoSignature(brainSurfaceBatch) === videoSignature(nextBatch) &&
+      brainSurfaceBatch.candidates.length === nextBatch.candidates.length
+    ) {
+      return;
+    }
+
+    const prevActiveId = brainSurfaceActiveCandidateIdRef.current;
+    const prevActive = prevActiveId
+      ? brainSurfaceBatch.candidates.find((candidate) => candidate.id === prevActiveId)
+      : null;
+
+    setBrainSurfaceBatch(nextBatch);
+
+    if (prevActive) {
+      const nextActive =
+        nextBatch.candidates.find(
+          (candidate) =>
+            candidate.sourceGuideNodeId === prevActive.sourceGuideNodeId &&
+            candidate.anchorKind === prevActive.anchorKind,
+        ) ?? null;
+      if (nextActive && nextActive.id !== prevActiveId) {
+        setBrainSurfaceActiveCandidateId(nextActive.id);
+      }
+    }
+  }, [
+    activeContextEvent,
+    activeContextMediaGuides,
+    activeContextProjectionManifest,
+    brainSurfaceBatch,
+    brainSurfaceVisible,
+  ]);
+
+  useEffect(() => {
+    if (
       !activeContextEvent ||
       !activeContextProjectionManifest ||
       layerMode !== "personal" ||
@@ -1422,10 +1545,11 @@ function GlobeHomeBody() {
     if (travelUi && travelUi.stage !== "ready") {
       return;
     }
-    const guideSignature = activeContextMediaGuides
-      .map((guide) => guide.guideNodeId)
-      .join("|");
-    const launchKey = `${activeContextEvent.id}:${activeContextProjectionManifest.composedAt}:${guideSignature}`;
+    const launchKey = activeContextEvent.id;
+    if (brainSurfaceBatch?.eventId === activeContextEvent.id) {
+      autoBrainSurfaceLaunchKeyRef.current = launchKey;
+      return;
+    }
     if (autoBrainSurfaceLaunchKeyRef.current === launchKey) {
       return;
     }
@@ -1433,9 +1557,9 @@ function GlobeHomeBody() {
     launchBrainSurfaceProjection(activeContextEvent.id);
   }, [
     activeContextEvent,
-    activeContextMediaGuides,
     activeContextProjectionManifest,
     brainProjectionEventId,
+    brainSurfaceBatch?.eventId,
     confirmOpen,
     hubDetailOpen,
     layerMode,
@@ -2898,7 +3022,7 @@ function GlobeHomeBody() {
           }}
           className={
             activeBrainSurfaceCandidate
-              ? "bottom-[calc(var(--rimvio-globe-ingest-offset,5.5rem)+0.35rem)] opacity-0 pointer-events-none"
+              ? "pointer-events-none bottom-[calc(var(--rimvio-globe-ingest-offset,5.5rem)+0.35rem)] opacity-0"
               : "bottom-[calc(var(--rimvio-globe-ingest-offset,5.5rem)+0.35rem)]"
           }
         />

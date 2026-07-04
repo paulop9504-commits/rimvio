@@ -119,15 +119,21 @@ export function usePersonalVault(enabled = true): PersonalVaultState {
   }, [enabled, refresh, user?.id, vaultAvailable]);
 
   useEffect(() => {
+    if (!enabled || !user?.id || !vaultAvailable) {
+      return;
+    }
     void refresh();
-  }, [refresh]);
+  }, [enabled, refresh, user?.id, vaultAvailable]);
 
   useEffect(() => {
     if (!enabled || !user?.id || !vaultAvailable) {
       return;
     }
+    if (vault) {
+      return;
+    }
     void ensure();
-  }, [enabled, ensure, user?.id, vaultAvailable]);
+  }, [enabled, ensure, user?.id, vault, vaultAvailable]);
 
   return {
     ready: Boolean(user?.id && vault),

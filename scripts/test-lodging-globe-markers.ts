@@ -103,8 +103,11 @@ function run() {
   assert.equal(markers[0]?.isMain, true);
   assert.ok(markers.every((row) => row.markerKind === "lodging"));
   assert.ok(markers.every((row) => Number.isFinite(row.lat) && Number.isFinite(row.lng)));
-  const projectedMarker = markers.find((row) => row.ontologyBadgeLabel === "숙소 노드");
-  assert.ok(projectedMarker, "at least one lodging marker is decorated as an ontology node");
+  const projectedMarker = markers.find((row) =>
+    (row.discoveryShortLabel ?? "").includes("대전역"),
+  );
+  assert.ok(projectedMarker, "daejeon lodging marker is decorated on the map");
+  assert.equal(projectedMarker?.ontologyBadgeLabel, "숙소");
   assert.equal(projectedMarker?.virtualCandidate, true);
   assert.match(projectedMarker?.discoveryPriceLabel ?? "", /대전역 도보/u);
   assert.match(

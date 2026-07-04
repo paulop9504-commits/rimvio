@@ -77,6 +77,9 @@ async function main() {
               contentDetails: {
                 duration: "PT9M5S",
               },
+              status: {
+                embeddable: true,
+              },
             },
           ],
         });

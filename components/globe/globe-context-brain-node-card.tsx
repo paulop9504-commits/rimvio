@@ -6,7 +6,8 @@ import { copy } from "@/lib/copy/human-ko";
 import type { MediaGuideNode } from "@/lib/ontology/media-guide-types";
 import type { ProjectionNodePresentation } from "@/lib/situation-projection/projection-node-presentation";
 import type { ProjectionNode } from "@/lib/situation-projection/types";
-import { cn } from "@/lib/utils";
+import { GlobeBrainSurfaceYoutubeEmbed } from "@/components/globe/globe-brain-surface-youtube-embed";
+import { extractYouTubeVideoId } from "@/lib/enrichers/youtube-url";
 
 type GlobeContextBrainNodeCardAction = {
   label: string;
@@ -117,6 +118,24 @@ function pickGuideProvider(guide: MediaGuideNode | null | undefined): string | n
   );
 }
 
+function buildStableEmbedSrc(embedUrl: string | null | undefined): string | null {
+  const raw = embedUrl?.trim();
+  if (!raw) {
+    return null;
+  }
+  try {
+    const url = new URL(raw);
+    url.searchParams.set("autoplay", "1");
+    url.searchParams.set("mute", "0");
+    url.searchParams.set("playsinline", "1");
+    url.searchParams.set("rel", "0");
+    url.searchParams.set("enablejsapi", "1");
+    return url.toString();
+  } catch {
+    return raw;
+  }
+}
+
 export function GlobeContextBrainNodeCard({
   contextTitle,
   node,
@@ -141,6 +160,11 @@ export function GlobeContextBrainNodeCard({
     memoBody?.trim() ||
     null;
   const showHero = Boolean(mediaGuide?.embedUrl || guideThumbnail);
+  const embedSrc = buildStableEmbedSrc(mediaGuide?.embedUrl);
+  const embedKey =
+    (mediaGuide?.embedUrl ? extractYouTubeVideoId(mediaGuide.embedUrl) : null) ??
+    mediaGuide?.guideNodeId ??
+    node.id;
   const relationLine =
     node.kind === "ghost"
       ? node.relationReasonKo?.trim() || node.relationLabelKo?.trim() || null
@@ -157,15 +181,12 @@ export function GlobeContextBrainNodeCard({
     >
       {showHero ? (
         <div className="relative overflow-hidden border-b border-white/10 bg-[#05070b]">
-          {mediaGuide?.embedUrl ? (
-            <iframe
-              title={mediaGuide.title}
-              src={mediaGuide.embedUrl}
-              className="h-[min(44vw,16rem)] min-h-[13rem] w-full bg-black"
-              loading="lazy"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-              referrerPolicy="strict-origin-when-cross-origin"
+          {embedSrc ? (
+            <GlobeBrainSurfaceYoutubeEmbed
+              videoKey={embedKey}
+              embedSrc={embedSrc}
+              title={mediaGuide?.title ?? "영상"}
+              className="h-[min(44vw,16rem)] min-h-[13rem] w-full border-0 bg-black"
             />
           ) : guideThumbnail ? (
             <>

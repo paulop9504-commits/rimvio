@@ -42,6 +42,8 @@ export type YouTubeOfficialVideo = {
   publishedAt: string | null;
   durationSeconds: number | null;
   liveBroadcastContent: string | null;
+  /** false when the owner disabled embedding on other sites */
+  embeddable: boolean;
   tags: readonly string[];
   thumbnails: YouTubeThumbnailSet;
   thumbnailUrl: string | null;
@@ -98,6 +100,10 @@ type YouTubeVideoItem = {
   };
   contentDetails?: {
     duration?: string;
+  };
+  status?: {
+    embeddable?: boolean;
+    privacyStatus?: string;
   };
 };
 
@@ -255,6 +261,7 @@ function mapVideoItem(item: YouTubeVideoItem): YouTubeOfficialVideo | null {
     publishedAt: normalizeText(item.snippet?.publishedAt),
     durationSeconds: parseYouTubeIsoDurationSeconds(item.contentDetails?.duration),
     liveBroadcastContent: normalizeText(item.snippet?.liveBroadcastContent),
+    embeddable: item.status ? item.status.embeddable === true : false,
     tags: (item.snippet?.tags ?? [])
       .map((tag) => normalizeText(tag))
       .filter((tag): tag is string => Boolean(tag)),
@@ -319,11 +326,40 @@ export async function fetchYouTubeOfficialVideo(
     apiKey,
     "videos",
     {
-      part: "snippet,contentDetails",
+      part: "snippet,contentDetails,status",
       id: videoId,
     },
   );
   return mapVideoItem(payload?.items?.[0] ?? {});
+}
+
+/** Batch-check which video IDs allow iframe embed (YouTube Data API status.embeddable). */
+export async function pickEmbeddableYouTubeVideoIds(
+  videoIds: readonly string[],
+): Promise<Set<string>> {
+  const apiKey = resolveYouTubeDataApiKey();
+  const ids = [...new Set(videoIds.map((id) => normalizeText(id)).filter(Boolean))];
+  if (!apiKey || ids.length === 0) {
+    return new Set();
+  }
+
+  const embeddable = new Set<string>();
+  for (let offset = 0; offset < ids.length; offset += 50) {
+    const chunk = ids.slice(offset, offset + 50);
+    const payload = await fetchYouTubeDataJson<
+      YouTubeApiListResponse<YouTubeVideoItem>
+    >(apiKey, "videos", {
+      part: "status",
+      id: chunk.join(","),
+    });
+    for (const item of payload?.items ?? []) {
+      const videoId = normalizeText(item.id);
+      if (videoId && item.status?.embeddable === true) {
+        embeddable.add(videoId);
+      }
+    }
+  }
+  return embeddable;
 }
 
 export async function searchYouTubeVideos(input: {
@@ -340,7 +376,7 @@ export async function searchYouTubeVideos(input: {
   if (!query) {
     return [];
   }
-  const maxResults = Math.min(Math.max(input.maxResults ?? 3, 1), 5);
+  const maxResults = Math.min(Math.max(input.maxResults ?? 3, 1), 15);
   const payload = await fetchYouTubeDataJson<
     YouTubeApiListResponse<YouTubeSearchItem>
   >(apiKey, "search", {
@@ -385,7 +421,7 @@ export async function resolveYouTubeOfficialVideoBundle(
   const videoPayload = await fetchYouTubeDataJson<
     YouTubeApiListResponse<YouTubeVideoItem>
   >(apiKey, "videos", {
-    part: "snippet,contentDetails",
+    part: "snippet,contentDetails,status",
     id: videoId,
   });
   const video = mapVideoItem(videoPayload?.items?.[0] ?? {});

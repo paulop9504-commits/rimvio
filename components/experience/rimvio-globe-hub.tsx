@@ -74,6 +74,7 @@ import { isLodgingHubEnabled } from "@/lib/globe/context-hub/read-lodging-resour
 import { isEateryHubEnabled } from "@/lib/globe/eatery/read-eatery-resource-inventory";
 import { readPinnedEateryResourceId } from "@/lib/globe/eatery/pin-eatery-selection-to-context";
 import { projectLodgingGlobeMarkers } from "@/lib/globe/context-hub/project-lodging-globe-markers";
+import { resolveContextResourceMapMarkers } from "@/lib/globe/resolve-context-resource-map-markers";
 import { projectEateryGlobeMarkers } from "@/lib/globe/eatery/project-eatery-globe-markers";
 import { projectContextHubGlobeAnchor } from "@/lib/globe/context-hub/project-context-hub-globe-anchor";
 import { dispatchGlobeContextHubOpen } from "@/lib/globe/context-hub/globe-context-hub-open-bridge";
@@ -432,7 +433,7 @@ const RimvioGlobeHubBody = memo(
         manifest: readProjectionManifestForAnchor(eventId),
       });
       if (!mapMediaFocusOpen) {
-        return raw.map((marker) => {
+        const decorated = raw.map((marker) => {
           const card = lodgingDiscoveryCards?.[marker.resourceId];
           if (!card) {
             return marker;
@@ -448,11 +449,30 @@ const RimvioGlobeHubBody = memo(
             discoveryAccent: card.accent,
           };
         });
+        const cluster = clusters.find((row) => row.eventId === eventId);
+        const meta = event.metadata as Record<string, unknown> | undefined;
+        const hubLat =
+          cluster?.lat ??
+          (typeof meta?.globePlaceLat === "number" ? meta.globePlaceLat : null) ??
+          liveLocation?.lat ??
+          null;
+        const hubLng =
+          cluster?.lng ??
+          (typeof meta?.globePlaceLng === "number" ? meta.globePlaceLng : null) ??
+          liveLocation?.lng ??
+          null;
+        return resolveContextResourceMapMarkers({
+          markers: decorated,
+          hubLat,
+          hubLng,
+          stagedDiscoveryCount: lodgingDiscoveryReveal.visibleResourceIds.size,
+        });
       }
       return [];
     }, [
       activeLodgingResourceId,
       bridgeRevision,
+      clusters,
       eventsById,
       focusedContextEventId,
       liveLocation?.lat,
@@ -513,7 +533,7 @@ const RimvioGlobeHubBody = memo(
         ...projectionGhostMarkers.filter((marker) => !seenResourceIds.has(marker.resourceId)),
       ];
       if (!mapMediaFocusOpen) {
-        return merged.map((marker) => {
+        const decorated = merged.map((marker) => {
           const card = eateryDiscoveryCards?.[marker.resourceId];
           if (!card) {
             return marker;
@@ -525,11 +545,30 @@ const RimvioGlobeHubBody = memo(
             discoveryAccent: card.accent,
           };
         });
+        const cluster = clusters.find((row) => row.eventId === eventId);
+        const meta = event.metadata as Record<string, unknown> | undefined;
+        const hubLat =
+          cluster?.lat ??
+          (typeof meta?.globePlaceLat === "number" ? meta.globePlaceLat : null) ??
+          liveLocation?.lat ??
+          null;
+        const hubLng =
+          cluster?.lng ??
+          (typeof meta?.globePlaceLng === "number" ? meta.globePlaceLng : null) ??
+          liveLocation?.lng ??
+          null;
+        return resolveContextResourceMapMarkers({
+          markers: decorated,
+          hubLat,
+          hubLng,
+          stagedDiscoveryCount: eateryDiscoveryReveal.visibleResourceIds.size,
+        });
       }
       return [];
     }, [
       activeEateryResourceId,
       bridgeRevision,
+      clusters,
       projectionRevision,
       eventsById,
       focusedContextEventId,

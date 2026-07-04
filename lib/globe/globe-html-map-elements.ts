@@ -42,6 +42,7 @@ export function mergeGlobeHtmlElements(input: {
   const merged: GlobeHtmlMapElement[] = [...input.pins];
   if (input.showBrainSurfaceMarkers && input.brainSurfaceMarkers.length > 0) {
     merged.push(...input.brainSurfaceMarkers);
+    return merged;
   }
   if (input.showHubAnchors && input.hubAnchors.length > 0) {
     merged.push(...input.hubAnchors);

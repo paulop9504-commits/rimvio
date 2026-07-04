@@ -49,21 +49,28 @@ const micro = stub({
   markerThumbnailUrl: "https://example.com/hotel.jpg",
   family: "lodging",
 });
-const video = stub({
-  id: "video",
-  anchorKind: "video_root",
-  embedUrl: "https://www.youtube.com/embed/x",
-  family: "media",
+const inferred = stub({
+  id: "inferred",
+  anchorKind: "inferred_place",
+  label: "신주쿠",
+  virtualCandidate: true,
 });
 
-const result = resolveBrainSurfaceMapMarkers({
-  candidates: [macro, micro, video],
-  activeCandidateId: null,
-});
+assert.deepEqual(
+  resolveBrainSurfaceMapMarkers({ candidates: [macro, micro, inferred], activeCandidateId: null }),
+  [],
+);
 
-assert.equal(result.some((row) => row.id === "macro"), false);
-assert.equal(result.some((row) => row.id === "video"), false);
-assert.equal(result.some((row) => row.id === "micro"), true);
-assert.equal(result[0]?.calloutOffsetX, undefined);
+assert.deepEqual(
+  resolveBrainSurfaceMapMarkers({ candidates: [macro, micro], activeCandidateId: "macro" }),
+  [],
+);
+
+const selected = resolveBrainSurfaceMapMarkers({
+  candidates: [macro, micro],
+  activeCandidateId: "micro",
+});
+assert.equal(selected.length, 1);
+assert.equal(selected[0]?.id, "micro");
 
 console.log("test-resolve-brain-surface-map-markers: ok");

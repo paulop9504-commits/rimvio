@@ -8,6 +8,10 @@ import { shouldRenderLodgingGlobeMarkers } from "@/lib/globe/context-hub/project
 import { buildProjectionNodeExplanation } from "@/lib/situation-projection/projection-node-explanation";
 import { resolveProjectionNodePresentation } from "@/lib/situation-projection/projection-node-presentation";
 import type { GhostProjectionNode, SituationProjectionManifest } from "@/lib/situation-projection/types";
+import {
+  sanitizeMapMarkerSupportLabel,
+  sanitizeOntologyMapBadgeLabel,
+} from "@/lib/globe/resolve-context-resource-map-markers";
 
 function isGhostEateryNode(node: unknown): node is GhostProjectionNode {
   return (
@@ -73,11 +77,12 @@ export function projectEateryGlobeMarkers(input: {
       const isMain = entry.resource.resourceId === activeId;
       const ghost = payload?.placeId ? ghostByPlaceId.get(payload.placeId.trim()) ?? null : null;
       const presentation = ghost ? resolveProjectionNodePresentation(ghost) : null;
-      const supportDetail =
+      const supportDetail = sanitizeMapMarkerSupportLabel(
         payload?.cuisineHint?.trim() ||
-        payload?.categoryLabel?.trim() ||
-        entry.resource.shortLabel?.trim() ||
-        null;
+          payload?.categoryLabel?.trim() ||
+          entry.resource.shortLabel?.trim() ||
+          null,
+      );
       const explanation =
         ghost && input.manifest && input.event
           ? buildProjectionNodeExplanation({
@@ -104,7 +109,9 @@ export function projectEateryGlobeMarkers(input: {
         ...(payload?.virtualCandidate === true || ghost?.virtual === true
           ? { virtualCandidate: true }
           : {}),
-        ontologyBadgeLabel: presentation?.markerBadgeLabelKo ?? null,
+        ontologyBadgeLabel: sanitizeOntologyMapBadgeLabel(
+          presentation?.markerBadgeLabelKo ?? null,
+        ),
         anchorLabel,
         relationMemoKo: explanation?.memoKo ?? null,
         ...(popInDelayMs != null ? { popInDelayMs } : {}),

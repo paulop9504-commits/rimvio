@@ -17,6 +17,8 @@ export type GlobeEateryMapMarker = {
   ontologyBadgeLabel?: string | null;
   anchorLabel?: string | null;
   relationMemoKo?: string | null;
+  calloutOffsetX?: number | null;
+  calloutOffsetY?: number | null;
 };
 
 export function isGlobeEateryMapMarker(value: unknown): value is GlobeEateryMapMarker {

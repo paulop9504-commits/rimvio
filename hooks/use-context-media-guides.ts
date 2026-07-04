@@ -41,14 +41,18 @@ export function useContextMediaGuides(
       setLoading(false);
       return;
     }
-    setGuides(queryMediaGuidesForEvent(event.id, { max }));
+    setGuides(
+      queryMediaGuidesForEvent(event.id, { max }).filter(
+        (guide) => guide.sourceKind !== "youtube" || Boolean(guide.embedUrl?.trim()),
+      ),
+    );
     if (!enabled) {
       setLoading(false);
       return;
     }
 
     const cachedYoutube = queryMediaGuidesForEvent(event.id, { max }).filter(
-      (guide) => guide.sourceKind === "youtube",
+      (guide) => guide.sourceKind === "youtube" && Boolean(guide.embedUrl?.trim()),
     );
     if (cachedYoutube.length >= 2) {
       setLoading(false);
@@ -75,7 +79,9 @@ export function useContextMediaGuides(
         if (cancelled) {
           return;
         }
-        const nextGuides = Array.isArray(payload.guides) ? payload.guides : [];
+        const nextGuides = (Array.isArray(payload.guides) ? payload.guides : []).filter(
+          (guide) => guide.sourceKind !== "youtube" || Boolean(guide.embedUrl?.trim()),
+        );
         replaceMediaGuidesForExperience({
           experienceEntityId: asRimvioEntityId("experience", event.id),
           guides: nextGuides,

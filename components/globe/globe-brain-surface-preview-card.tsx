@@ -8,7 +8,7 @@ import { GlobeMediaGuideMapExpandButton } from "@/components/globe/globe-media-g
 import { formatSpatialTraceLine } from "@/lib/situation-projection/build-media-spatial-trace";
 import { extractYouTubeVideoId } from "@/lib/enrichers/youtube-url";
 import { copy } from "@/lib/copy/human-ko";
-import { cn } from "@/lib/utils";
+import { GlobeBrainSurfaceYoutubeEmbed } from "@/components/globe/globe-brain-surface-youtube-embed";
 
 function buildStableEmbedSrc(embedUrl: string | null): string | null {
   if (!embedUrl) {
@@ -128,30 +128,39 @@ export function GlobeBrainSurfacePreviewCard({
 
       {embedSrc ? (
         <div className="bg-slate-950 px-0 pb-0 pt-0">
-          <iframe
-            key={embedKey}
-            src={embedSrc}
+          <GlobeBrainSurfaceYoutubeEmbed
+            videoKey={embedKey}
+            embedSrc={embedSrc}
             title={candidate.previewTitle}
-            allow="autoplay; encrypted-media; picture-in-picture"
-            allowFullScreen
-            className="aspect-video w-full border-0"
           />
         </div>
-      ) : candidate.markerThumbnailUrl ? (
+      ) : candidate.markerThumbnailUrl || candidate.openUrl ? (
         <div className="px-4 pb-3 pt-3">
-          <div className="relative overflow-hidden rounded-[1rem] border border-slate-200/80 bg-slate-100">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={candidate.markerThumbnailUrl}
-              alt=""
-              className="aspect-[4/3] w-full object-cover"
-            />
-            {candidate.markerMediaKind === "video" ? (
-              <span className="absolute bottom-2 right-2 rounded-full bg-black/55 px-2 py-1 text-[10px] font-semibold text-white">
-                ▶ 영상
-              </span>
-            ) : null}
-          </div>
+          {candidate.markerThumbnailUrl ? (
+            <div className="relative overflow-hidden rounded-[1rem] border border-slate-200/80 bg-slate-100">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={candidate.markerThumbnailUrl}
+                alt=""
+                className="aspect-video w-full object-cover"
+              />
+              {candidate.markerMediaKind === "video" ? (
+                <span className="absolute bottom-2 right-2 rounded-full bg-black/55 px-2 py-1 text-[10px] font-semibold text-white">
+                  ▶ 영상
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+          {candidate.openUrl ? (
+            <a
+              href={candidate.openUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-2 flex w-full items-center justify-center rounded-full bg-[#0071e3] py-2.5 text-[12px] font-semibold text-white active:scale-[0.98]"
+            >
+              YouTube에서 보기
+            </a>
+          ) : null}
         </div>
       ) : null}
 

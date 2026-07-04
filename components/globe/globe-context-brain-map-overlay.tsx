@@ -348,14 +348,14 @@ export function GlobeContextBrainMapOverlay({
     if (!projectionReady || !eventId) {
       return;
     }
-    const launchKey = `${eventId}:${manifest?.composedAt ?? "0"}`;
+    const launchKey = eventId;
     if (launchedProjectionKeyRef.current === launchKey) {
       return;
     }
     launchedProjectionKeyRef.current = launchKey;
     onProjectionReady?.(eventId);
     onClose();
-  }, [eventId, manifest?.composedAt, onClose, onProjectionReady, projectionReady]);
+  }, [eventId, onClose, onProjectionReady, projectionReady]);
 
   const anchorLayout = useGlobePinScreenAnchor({
     globeRef,

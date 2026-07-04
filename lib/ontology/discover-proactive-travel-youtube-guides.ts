@@ -6,6 +6,7 @@ import { isYouTubeDomain } from "@/lib/enrichers/youtube-url";
 import { normalizeInputUrl } from "@/lib/enrichers/fetch-page-metadata";
 import {
   fetchYouTubeOfficialVideo,
+  pickEmbeddableYouTubeVideoIds,
   searchYouTubeVideos,
   type YouTubeOfficialSearchResult,
 } from "@/lib/media/youtube-data-api";
@@ -141,6 +142,9 @@ async function buildGuideFromSearchResult(input: {
     return null;
   }
   const officialVideo = await fetchYouTubeOfficialVideo({ videoId });
+  if (officialVideo && !officialVideo.embeddable) {
+    return null;
+  }
   const title = normalizeText(officialVideo?.title ?? input.result.title) || "YouTube";
   const description = normalizeText(officialVideo?.description ?? input.result.description);
   const thumbnailUrl =
@@ -160,7 +164,7 @@ async function buildGuideFromSearchResult(input: {
     trustLabelKo: "영상",
     canonicalUrl,
     openUrl: canonicalUrl,
-    embedUrl: buildYouTubeEmbedUrl(videoId),
+    embedUrl: officialVideo?.embeddable ? buildYouTubeEmbedUrl(videoId) : null,
     thumbnailUrl,
     description,
     providerName: normalizeText(officialVideo?.channelTitle ?? input.result.channelTitle),
@@ -245,17 +249,27 @@ export async function discoverProactiveTravelYoutubeGuides(
     query,
     regionCode: resolveYoutubeRegionCode(region),
     relevanceLanguage: resolveYoutubeRelevanceLanguage(region),
-    maxResults: PROACTIVE_YOUTUBE_LIMIT + 2,
+    maxResults: 12,
   });
 
-  const filtered = results.filter((result) =>
+  const embeddableIds = await pickEmbeddableYouTubeVideoIds(
+    results.map((result) => result.videoId),
+  );
+  const embeddableResults = results.filter((result) =>
+    embeddableIds.has(result.videoId),
+  );
+
+  const filtered = embeddableResults.filter((result) =>
     matchesPlaceInBlob(
       `${result.title ?? ""} ${result.description ?? ""}`,
       relatedPlaceLabel,
     ),
   );
 
-  const picked = (filtered.length > 0 ? filtered : results).slice(0, PROACTIVE_YOUTUBE_LIMIT);
+  const picked = (filtered.length > 0 ? filtered : embeddableResults).slice(
+    0,
+    PROACTIVE_YOUTUBE_LIMIT,
+  );
   const guides = await Promise.all(
     picked.map((result) =>
       buildGuideFromSearchResult({

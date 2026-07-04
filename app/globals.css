@@ -4003,11 +4003,14 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   flex-direction: column;
   align-items: flex-start;
   gap: 0.12rem;
-  border-radius: 0.65rem;
-  background: rgba(18, 20, 24, 0.88);
-  padding: 0.35rem 0.55rem 0.3rem;
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.94);
+  padding: 0.38rem 0.58rem 0.34rem;
+  box-shadow:
+    0 4px 16px rgba(15, 23, 42, 0.1),
+    0 0 0 1px rgba(15, 23, 42, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
 }
 
 .rimvio-globe-lodging-marker__ontology-badge {
@@ -4015,26 +4018,26 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.62);
+  color: rgba(71, 85, 105, 0.82);
 }
 
 .rimvio-globe-lodging-marker__discovery-name {
   font-size: 0.62rem;
   font-weight: 700;
-  color: #fff;
+  color: #0f172a;
   letter-spacing: -0.01em;
 }
 
 .rimvio-globe-lodging-marker__stay-badge {
   font-size: 0.55rem;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.9);
+  color: #334155;
 }
 
 .rimvio-globe-lodging-marker__discovery-price {
   font-size: 0.58rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.82);
+  color: #475569;
 }
 
 .rimvio-globe-lodging-marker--discovery[data-discovery-accent="green"] .rimvio-globe-lodging-marker__dot {

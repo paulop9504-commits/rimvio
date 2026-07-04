@@ -1,4 +1,8 @@
 import type { GlobeLodgingMapMarker } from "@/lib/globe/context-hub/lodging-globe-marker-types";
+import {
+  mountGlobeMapCalloutPill,
+  readGlobeMapCalloutOffset,
+} from "@/lib/globe/globe-map-callout-element";
 
 export type GlobeLodgingMarkerHandlers = {
   onPress: (resourceId: string, carouselIndex: number) => void;
@@ -32,7 +36,7 @@ export function createGlobeLodgingMarkerElement(
     const pill = document.createElement("span");
     pill.className = "rimvio-globe-lodging-marker__discovery-pill";
     if (marker.virtualCandidate) {
-      pill.style.border = "1px dashed rgba(255,255,255,0.55)";
+      pill.style.border = "1px dashed rgba(15, 23, 42, 0.28)";
     }
     if (marker.ontologyBadgeLabel) {
       const badge = document.createElement("span");
@@ -56,7 +60,12 @@ export function createGlobeLodgingMarkerElement(
       price.textContent = marker.discoveryPriceLabel;
       pill.appendChild(price);
     }
-    root.appendChild(pill);
+    const callout = readGlobeMapCalloutOffset(marker);
+    if (callout) {
+      mountGlobeMapCalloutPill(root, pill, callout);
+    } else {
+      root.appendChild(pill);
+    }
     const dot = document.createElement("span");
     dot.className = "rimvio-globe-lodging-marker__dot";
     root.appendChild(dot);
