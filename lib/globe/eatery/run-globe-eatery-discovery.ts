@@ -26,13 +26,16 @@ import { writeEateryRecommendReasons } from "@/lib/globe/eatery/eatery-recommend
 import { computeLodgingDiscoveryBounds } from "@/lib/globe/lodging/compute-lodging-discovery-bounds";
 import { dispatchGlobeLodgingDiscoveryClose } from "@/lib/globe/lodging/globe-lodging-discovery-bridge";
 import { LODGING_DISCOVERY_RADIUS_M } from "@/lib/globe/lodging/lodging-discovery-constants";
-import { resolveContextLodgingSearchCoords } from "@/lib/globe/context-hub/resolve-context-lodging-search-coords";
+import { resolveContextDiscoverySearchCoords } from "@/lib/globe/context-hub/resolve-context-discovery-search-coords";
 import { composeBrainProjectionManifest } from "@/lib/situation-projection/compose-brain-projection";
 import { copy } from "@/lib/copy/human-ko";
 
 export type RunGlobeEateryDiscoveryInput = {
   message: string;
   contextEventId?: string | null;
+  /** Map cluster / focused pin — wins over travel title anchor. */
+  pinLat?: number | null;
+  pinLng?: number | null;
   lat?: number | null;
   lng?: number | null;
   searching?: boolean;
@@ -83,27 +86,25 @@ export async function runGlobeEateryDiscovery(
     message: input.message,
     lat: input.lat,
     lng: input.lng,
-    preferUserLocation: true,
+    preferUserLocation: false,
     surface: "composer",
     layerMode: "discovery",
   });
   const radiusM = input.radiusM ?? LODGING_DISCOVERY_RADIUS_M;
-  const origin =
-    context.location.searchOrigin ??
-    resolveContextLodgingSearchCoords(event, {
-      lat: input.lat,
-      lng: input.lng,
-      preferUserLocation: true,
-    }) ??
-    (input.lat != null && input.lng != null ? { lat: input.lat, lng: input.lng } : null);
+  const origin = resolveContextDiscoverySearchCoords(event, {
+    pinLat: input.pinLat,
+    pinLng: input.pinLng,
+    viewerLat: input.lat,
+    viewerLng: input.lng,
+  });
 
   const loaded = await loadEateryInventoryRows({
     event,
     message: input.message,
-    lat: origin?.lat ?? null,
-    lng: origin?.lng ?? null,
+    lat: origin.lat,
+    lng: origin.lng,
     maxResults: GLOBE_DISCOVERY_FETCH_LIMIT,
-    preferUserLocation: true,
+    preferUserLocation: false,
     radiusM,
   });
 
@@ -114,8 +115,8 @@ export async function runGlobeEateryDiscovery(
   const scored = scoreEateryRecommendations({
     rows: loaded.rows,
     unifiedContext,
-    lat: origin?.lat ?? null,
-    lng: origin?.lng ?? null,
+    lat: origin.lat,
+    lng: origin.lng,
     context,
   });
 
@@ -149,8 +150,8 @@ export async function runGlobeEateryDiscovery(
     eventId,
     scored,
     unifiedContext,
-    userLat: origin?.lat ?? null,
-    userLng: origin?.lng ?? null,
+    userLat: origin.lat,
+    userLng: origin.lng,
     eventPlace: context.location.areaLabel ?? context.location.anchor.label ?? event.place,
     searching: input.searching ?? false,
     radiusM,
@@ -170,10 +171,7 @@ export async function runGlobeEateryDiscovery(
   );
 
   const bounds = computeLodgingDiscoveryBounds({
-    user:
-      origin?.lat != null && origin?.lng != null
-        ? { lat: origin.lat, lng: origin.lng }
-        : null,
+    user: { lat: origin.lat, lng: origin.lng },
     lodging: sortedRows.map((row) => ({ lat: row.lat, lng: row.lng })),
     radiusM,
   });

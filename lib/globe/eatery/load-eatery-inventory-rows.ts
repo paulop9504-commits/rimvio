@@ -176,19 +176,21 @@ export async function loadEateryInventoryRows(input: {
   const originLat = searchOrigin?.lat ?? null;
   const originLng = searchOrigin?.lng ?? null;
 
-  if (rows.length > 0) {
+  if (rows.length > 0 && originLat != null && originLng != null) {
     const filtered = filterLodgingRowsWithinRadius({
       rows,
       lat: originLat,
       lng: originLng,
       radiusM,
     });
-    if (filtered.length > 0 || originLat == null || originLng == null) {
+    if (filtered.length > 0) {
       return {
-        rows: filtered.length > 0 ? filtered : rows,
+        rows: filtered,
         source,
       };
     }
+  } else if (rows.length > 0 && (originLat == null || originLng == null)) {
+    return { rows, source };
   }
 
   if (originLat == null || originLng == null) {

@@ -1317,6 +1317,8 @@ export const copy = {
     departureHubSkip: "나중에 할게요",
     contextMapTapMediaHint: "맥락을 한 번 더 탭하면 사진·동영상이 지도 위에 떠요",
     contextMapTapOpenHint: "한 번 더 탭하면 이 맥락을 열어요",
+    contextGuideReplayChip: "영상 이어 보기",
+    contextGuideCaptureHint: "유튜브·링크를 맥락에 담으면 지도에서 이어 볼 수 있어요",
     contextMapTapBridgeHint: "사진·동영상을 탭하면 맥락 브릿지가 열려요",
     departureHubConnected: (airport: string) => `${airport} 출발 허브를 연결했어요`,
     departureHubConnectFail: "출발 허브를 연결하지 못했어요",

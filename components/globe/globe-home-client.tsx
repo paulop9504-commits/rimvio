@@ -1101,8 +1101,11 @@ function GlobeHomeBody() {
       setBrainSurfaceActiveCandidateId(null);
       setBrainSurfaceDetailMode(false);
       setBrainProjectionEventId(null);
+      if (activeCluster?.eventId === eventId && contextHasMapMedia) {
+        setContextTapPhase("media_open");
+      }
     },
-    [activeContextEvent, activeContextMediaGuides],
+    [activeCluster?.eventId, activeContextEvent, activeContextMediaGuides, contextHasMapMedia],
   );
 
   const handleBrainSurfaceMarkerPress = useCallback(
@@ -1746,8 +1749,10 @@ function GlobeHomeBody() {
         void runGlobeEateryDiscovery({
           message: fallbackQuery,
           contextEventId: anchorEventId,
-          lat: cluster?.lat ?? liveLocation?.lat ?? null,
-          lng: cluster?.lng ?? liveLocation?.lng ?? null,
+          pinLat: cluster?.lat ?? null,
+          pinLng: cluster?.lng ?? null,
+          lat: liveLocation?.lat ?? null,
+          lng: liveLocation?.lng ?? null,
           searching: true,
         }).then((outcome) => {
           if (!outcome) {
@@ -2943,6 +2948,25 @@ function GlobeHomeBody() {
           onSkip={() => stopSpatialTraceTour()}
           className="bottom-[calc(var(--rimvio-globe-ingest-offset,5.5rem)+0.75rem)]"
         />
+      ) : null}
+      {contextTapPhase === "awaiting_replay" &&
+      contextHasMapMedia &&
+      !sheetOpen &&
+      !mapMediaFocusOpen &&
+      !brainProjectionVisible &&
+      !confirmOpen &&
+      activeCluster?.eventId ? (
+        <button
+          type="button"
+          className="pointer-events-auto absolute left-1/2 z-[19] -translate-x-1/2 rounded-full bg-[#0f172a]/78 px-4 py-2 text-[12px] font-semibold text-white shadow-[0_10px_24px_rgba(0,0,0,0.28)] backdrop-blur-xl ring-1 ring-white/12 active:scale-[0.98]"
+          style={{
+            bottom: "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 0.75rem)",
+          }}
+          data-globe-context-guide-replay-chip
+          onClick={() => setContextTapPhase("media_open")}
+        >
+          {copy.globe.contextGuideReplayChip}
+        </button>
       ) : null}
       {contextTapPhase === "awaiting_replay" &&
       hubEventId &&

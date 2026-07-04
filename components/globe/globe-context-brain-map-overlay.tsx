@@ -307,9 +307,9 @@ export function GlobeContextBrainMapOverlay({
       node.lng != null,
   );
   const visibleGraphNodeIds = new Set(graphNodes.map((node) => node.id));
-  const projectionReady =
-    Boolean(visible && eventId && mapAnchoredNodes.length > 0) &&
-    (travelUi == null || travelUi.stage === "ready");
+  const travelSetupComplete =
+    !activeTravelQuestion && (travelUi == null || travelUi.stage === "ready");
+  const projectionReady = Boolean(visible && eventId && travelSetupComplete);
   const pills = (manifest?.pills ?? []).filter((pill) => {
     if (travelUi?.stage !== "preparing") {
       return true;

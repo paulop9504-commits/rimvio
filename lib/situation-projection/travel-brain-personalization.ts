@@ -861,13 +861,16 @@ function questionTitle(
 function buildQuestionCandidates(state: TravelBrainState): TravelBrainQuestion[] {
   const slot = state.slots;
   const candidates: Array<TravelBrainQuestion | null> = [];
-  const push = (
-    slotId: TravelBrainQuestion["slotId"],
-    confidence: number,
+  const push = <T extends TravelBrainQuestion["slotId"]>(
+    slotId: T,
+    brainSlot: TravelBrainSlot<T>,
     impact: number,
     requiredWhen: boolean,
   ) => {
-    const shouldAsk = confidence < 0.8 || requiredWhen;
+    if (brainSlot.source === "learned") {
+      return;
+    }
+    const shouldAsk = brainSlot.confidence < 0.8 || requiredWhen;
     if (!shouldAsk) {
       return;
     }
@@ -883,19 +886,19 @@ function buildQuestionCandidates(state: TravelBrainState): TravelBrainQuestion[]
 
   push(
     "companion_mode",
-    slot.companion_mode.confidence,
+    slot.companion_mode,
     slot.must_keep_reservation.value === "none" ? 0.99 : 0.94,
     slot.companion_mode.source !== "learned" && slot.companion_mode.value === "solo",
   );
   push(
     "content_intent",
-    slot.content_intent.confidence,
+    slot.content_intent,
     slot.shopping_intent.value === "shopping" ? 0.97 : 0.95,
     slot.content_intent.value === "mixed",
   );
   push(
     "budget_band",
-    slot.budget_band.confidence,
+    slot.budget_band,
     slot.companion_mode.value !== "solo" || slot.arrival_energy.value !== "fresh" ? 0.93 : 0.9,
     slot.decision_confidence.value === "exploring" || slot.must_keep_reservation.value === "none",
   );

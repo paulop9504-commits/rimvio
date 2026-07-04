@@ -1329,6 +1329,8 @@ export const copyEn: Copy = {
     departureHubSkip: "Not now",
     contextMapTapMediaHint: "Tap the context again to replay photos and video on the map",
     contextMapTapOpenHint: "Tap again to open this context",
+    contextGuideReplayChip: "Continue watching",
+    contextGuideCaptureHint: "Add a YouTube link to this context to watch on the map",
     contextMapTapBridgeHint: "Tap the photo or video to open the context bridge",
     departureHubConnected: (airport: string) => `Departure hub set · ${airport}`,
     departureHubConnectFail: "Couldn't connect departure hub",

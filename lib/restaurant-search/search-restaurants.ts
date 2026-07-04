@@ -97,7 +97,9 @@ function isCandidateTooFar(
     return false;
   }
   const distanceKm = haversineKm(origin.lat, origin.lng, candidate.lat, candidate.lng);
-  return distanceKm > Math.max(25, (radiusM / 1000) * 5);
+  const radiusKm = Math.max(radiusM / 1000, 0.35);
+  const maxKm = Math.max(radiusKm * 2, 0.8);
+  return distanceKm > maxKm;
 }
 
 function hasLocalityMatch(
