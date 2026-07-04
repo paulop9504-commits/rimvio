@@ -6,7 +6,10 @@ import { AnimatePresence, motion } from "framer-motion";
 import { CheckSquare, ListChecks, Square, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useExperienceGraph } from "@/hooks/use-experience-graph";
-import { deleteGlobeContexts } from "@/lib/globe/delete-globe-context";
+import {
+  deleteGlobeContexts,
+  resolveGlobeContextDeleteIntent,
+} from "@/lib/globe/delete-globe-context";
 import {
   listGlobeManageContexts,
   summarizeGlobeManageContexts,
@@ -36,6 +39,54 @@ function mediaLine(entry: GlobeManageContextEntry): string | null {
     parts.push(`동영상 ${entry.videoCount}`);
   }
   return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+function describeManageDeleteSelection(input: {
+  detachLocal: number;
+  deleteUpstream: number;
+  blocked: number;
+  total: number;
+}): { label: string; confirm: string | null; actionable: boolean } {
+  const { detachLocal, deleteUpstream, blocked, total } = input;
+  if (total === 0) {
+    return { label: "맥락을 선택하세요", confirm: null, actionable: false };
+  }
+  if (blocked === total) {
+    return { label: "삭제할 수 없어요", confirm: null, actionable: false };
+  }
+  const blockedLine =
+    blocked > 0 ? `\n삭제할 수 없는 ${blocked}개는 건너뛰어요.` : "";
+  if (detachLocal === total - blocked && deleteUpstream === 0) {
+    return {
+      label:
+        total === 1
+          ? "내 지구본에서만 숨기기"
+          : `내 지구본에서만 숨기기 · ${total}개`,
+      confirm:
+        total === 1
+          ? "선택한 맥락을 내 지구본에서만 숨길까요?\n원본 쪽 순간은 그대로 남아요." +
+            blockedLine
+          : `선택한 맥락 ${total}개를 내 지구본에서만 숨길까요?\n원본 쪽 순간은 그대로 남아요.${blockedLine}`,
+      actionable: true,
+    };
+  }
+  if (deleteUpstream === total - blocked && detachLocal === 0) {
+    return {
+      label: total === 1 ? "원본 삭제" : `원본 삭제 · ${total}개`,
+      confirm:
+        total === 1
+          ? "선택한 맥락 원본을 지울까요?\n내 지구본에서도 함께 사라져요." +
+            blockedLine
+          : `선택한 맥락 ${total}개 원본을 지울까요?\n내 지구본에서도 함께 사라져요.${blockedLine}`,
+      actionable: true,
+    };
+  }
+  return {
+    label: `숨기기/삭제 · ${total}개`,
+    confirm:
+      `선택한 맥락 ${total}개를 처리할까요?\n받아 둔 맥락은 내 지구본에서만 숨기고, 원본은 원본으로 지워요.${blockedLine}`,
+    actionable: true,
+  };
 }
 
 export function GlobeContextManageSheet({
@@ -88,6 +139,28 @@ export function GlobeContextManageSheet({
     () => summarizeGlobeManageContexts(entries),
     [entries],
   );
+  const deleteSelection = useMemo(() => {
+    let detachLocal = 0;
+    let deleteUpstream = 0;
+    let blocked = 0;
+    for (const eventId of selected) {
+      const event = eventsById.get(eventId) ?? null;
+      const intent = resolveGlobeContextDeleteIntent(event);
+      if (intent === "detach_local") {
+        detachLocal += 1;
+      } else if (intent === "delete_upstream") {
+        deleteUpstream += 1;
+      } else {
+        blocked += 1;
+      }
+    }
+    return describeManageDeleteSelection({
+      detachLocal,
+      deleteUpstream,
+      blocked,
+      total: selected.size,
+    });
+  }, [eventsById, selected]);
 
   const allSelected = entries.length > 0 && selected.size === entries.length;
   const someSelected = selected.size > 0;
@@ -124,30 +197,34 @@ export function GlobeContextManageSheet({
   };
 
   const handleDelete = async () => {
-    if (!someSelected || deleting) {
+    if (!someSelected || deleting || !deleteSelection.actionable) {
       return;
     }
     const ids = [...selected];
-    const confirmed = window.confirm(
-      ids.length === 1
-        ? "선택한 맥락을 지구본에서 지울까요?\n핀과 목록에서 사라지며, 사진·기록은 기기에 남아요."
-        : `선택한 맥락 ${ids.length}개를 지구본에서 지울까요?\n핀과 목록에서 사라지며, 사진·기록은 기기에 남아요.`,
-    );
+    const confirmed = deleteSelection.confirm
+      ? window.confirm(deleteSelection.confirm)
+      : false;
     if (!confirmed) {
       return;
     }
 
     setDeleting(true);
     try {
-      const { deleted } = deleteGlobeContexts(ids);
+      const { deleted } = await deleteGlobeContexts(ids);
       if (deleted === 0) {
         toast.error("맥락을 지우지 못했어요");
         return;
       }
       toast.success(
-        deleted === 1
-          ? "맥락 1개를 지구본에서 지웠어요"
-          : `맥락 ${deleted}개를 지구본에서 지웠어요`,
+        deleteSelection.label.startsWith("내 지구본에서만 숨기기")
+          ? deleted === 1
+            ? "내 지구본에서만 숨겼어요"
+            : `${deleted}개를 내 지구본에서만 숨겼어요`
+          : deleteSelection.label.startsWith("원본 삭제")
+            ? deleted === 1
+              ? "원본을 지웠어요"
+              : `원본 ${deleted}개를 지웠어요`
+            : `맥락 ${deleted}개를 처리했어요`,
       );
       onDeleted?.(ids);
       setSelected(new Set());
@@ -300,11 +377,11 @@ export function GlobeContextManageSheet({
             <div className="shrink-0 border-t border-border px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
               <button
                 type="button"
-                disabled={!someSelected || deleting}
+                disabled={!someSelected || deleting || !deleteSelection.actionable}
                 onClick={() => void handleDelete()}
                 className={cn(
                   "flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-[14px] font-semibold",
-                  someSelected
+                  someSelected && deleteSelection.actionable
                     ? "bg-destructive text-destructive-foreground active:scale-[0.99]"
                     : "bg-muted text-muted-foreground",
                 )}
@@ -313,7 +390,7 @@ export function GlobeContextManageSheet({
                 {deleting
                   ? "지우는 중…"
                   : someSelected
-                    ? `선택 삭제 · ${selected.size}개`
+                    ? deleteSelection.label
                     : "맥락을 선택하세요"}
               </button>
             </div>

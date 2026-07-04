@@ -1,4 +1,5 @@
 import { marketCategoriesCompatible } from "@/lib/globe/market/market-category-registry";
+import { resolveMarketIntentExposureAnchor } from "@/lib/globe/market/market-intent-exposure";
 import { isMarketProductTitleMatchForSeeking } from "@/lib/globe/market/match-market-product-title";
 import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
 import { haversineKm } from "@/lib/globe/trend-bridge/server/trend-bridge-geo";
@@ -19,11 +20,13 @@ export function isListingCandidateForSeeking(
   if (!isMarketProductTitleMatchForSeeking(seeking, listing)) {
     return false;
   }
+  const seekingAnchor = resolveMarketIntentExposureAnchor(seeking);
+  const listingAnchor = resolveMarketIntentExposureAnchor(listing);
   const distanceKm = haversineKm(
-    seeking.anchorLat,
-    seeking.anchorLng,
-    listing.anchorLat,
-    listing.anchorLng,
+    seekingAnchor.lat,
+    seekingAnchor.lng,
+    listingAnchor.lat,
+    listingAnchor.lng,
   );
   const allowed = Math.min(seeking.radiusKm, listing.radiusKm);
   return distanceKm <= allowed;
@@ -35,6 +38,8 @@ export function resolveViewerDistanceKm(input: {
   lat: number | null;
   lng: number | null;
 }): number {
+  const seekingAnchor = resolveMarketIntentExposureAnchor(input.seeking);
+  const listingAnchor = resolveMarketIntentExposureAnchor(input.listing);
   if (
     input.lat != null &&
     input.lng != null &&
@@ -44,14 +49,14 @@ export function resolveViewerDistanceKm(input: {
     return haversineKm(
       input.lat,
       input.lng,
-      input.listing.anchorLat,
-      input.listing.anchorLng,
+      listingAnchor.lat,
+      listingAnchor.lng,
     );
   }
   return haversineKm(
-    input.seeking.anchorLat,
-    input.seeking.anchorLng,
-    input.listing.anchorLat,
-    input.listing.anchorLng,
+    seekingAnchor.lat,
+    seekingAnchor.lng,
+    listingAnchor.lat,
+    listingAnchor.lng,
   );
 }

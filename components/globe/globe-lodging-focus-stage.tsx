@@ -2,12 +2,20 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
+import { toast } from "sonner";
+import { GlobeContextQuickPinButton } from "@/components/globe/globe-context-quick-pin-button";
 import { GlobeLodgingHubFocusCard } from "@/components/globe/globe-lodging-hub-focus-card";
+import { GlobePredictedExperienceCard } from "@/components/globe/globe-predicted-experience-card";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
+import { publishBridgePinnedContextItem } from "@/lib/experience-bridge/publish-bridge-pinned-context-item";
+import { isBridgeLinkedEventId } from "@/lib/experience-bridge/stamp-bridge-event-metadata";
 import { useActiveContextWeather } from "@/hooks/use-active-context-weather";
 import { listContextHubServicesForEvent } from "@/lib/globe/context-hub/context-hub-service-catalog";
+import { pinLodgingSelectionToContext, readPinnedLodgingResourceId } from "@/lib/globe/context-hub/pin-lodging-selection-to-context";
 import { resolveLodgingSituationalLabel } from "@/lib/globe/context-hub/resolve-lodging-situational-label";
+import { formatLodgingStayWindowLabel } from "@/lib/globe/context-hub/lodging-stay-window";
 import { buildLodgingDynamicTags } from "@/lib/globe/lodging/build-lodging-dynamic-tags";
+import { buildLodgingPredictedExperienceCard } from "@/lib/globe/predicted-experience/build-predicted-experience-card";
 import {
   dispatchGlobeLodgingFocus,
   dispatchGlobeLodgingFocusStage,
@@ -15,6 +23,7 @@ import {
   type GlobeLodgingFocusDetail,
 } from "@/lib/globe/context-hub/globe-lodging-marker-bridge";
 import { dispatchGlobeContextHubOpen } from "@/lib/globe/context-hub/globe-context-hub-open-bridge";
+import { formatLodgingStayBadgeLabel } from "@/lib/globe/context-hub/lodging-stay-window";
 import { readLodgingPayloadFromResource } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import { readLodgingRecommendReason } from "@/lib/globe/lodging/lodging-recommendation-reason-store";
 import { MAP_FOCUS_PIN_VIEWPORT_Y } from "@/lib/globe/map-anchored-overlay-layout";
@@ -64,7 +73,7 @@ export function GlobeLodgingFocusStage({
   lat = null,
   lng = null,
   globeRef,
-  viewerUserId = null,
+  viewerUserId: _viewerUserId = null,
   className,
 }: GlobeLodgingFocusStageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -73,6 +82,7 @@ export function GlobeLodgingFocusStage({
   const [focus, setFocus] = useState<GlobeLodgingFocusDetail | null>(null);
   const [mediaIndex, setMediaIndex] = useState(0);
   const [revision, setRevision] = useState(0);
+  const [pinBusy, setPinBusy] = useState(false);
 
   useEffect(() => {
     const bump = () => setRevision((value) => value + 1);
@@ -107,10 +117,13 @@ export function GlobeLodgingFocusStage({
   }, [open]);
 
   useEffect(() => {
-    setOpen(false);
-    setFocus(null);
+    const resetTimer = window.setTimeout(() => {
+      setOpen(false);
+      setFocus(null);
+    }, 0);
     dispatchGlobeLodgingFocusStage(false);
     globeRef?.current?.clearPinViewportBias();
+    return () => window.clearTimeout(resetTimer);
   }, [contextEventId, globeRef]);
 
   const eventId = contextEventId?.trim() ?? "";
@@ -124,7 +137,7 @@ export function GlobeLodgingFocusStage({
     );
   }, [eventId, revision]);
 
-  const { tempC } = useActiveContextWeather({
+  const { tempC, prepLine } = useActiveContextWeather({
     event: activeEvent,
     enabled: open && Boolean(activeEvent),
   });
@@ -166,12 +179,10 @@ export function GlobeLodgingFocusStage({
 
   const entry = lodgingIndex >= 0 ? lodgingRanked[lodgingIndex] : null;
   const payload = entry ? readLodgingPayloadFromResource(entry.resource) : null;
-  const recommendReason = useMemo(() => {
-    if (!eventId || !payload?.placeId) {
-      return null;
-    }
-    return readLodgingRecommendReason(eventId, payload.placeId);
-  }, [eventId, payload?.placeId, revision]);
+  const recommendReason =
+    eventId && payload?.placeId
+      ? readLodgingRecommendReason(eventId, payload.placeId)
+      : null;
   const anchorLat = entry?.resource.spacetime.lat ?? null;
   const anchorLng = entry?.resource.spacetime.lng ?? null;
 
@@ -202,6 +213,16 @@ export function GlobeLodgingFocusStage({
       tempC,
     });
   }, [activeEvent, anchorLat, anchorLng, lat, lng, tempC]);
+  const stayWindowLabel = useMemo(
+    () => formatLodgingStayWindowLabel(payload?.stayWindow),
+    [payload?.stayWindow],
+  );
+  const pinnedResourceId = useMemo(
+    () => readPinnedLodgingResourceId(activeEvent),
+    [activeEvent],
+  );
+  const isPinned = Boolean(entry && pinnedResourceId === entry.resource.resourceId);
+  const bridgeShared = Boolean(eventId && isBridgeLinkedEventId(eventId));
 
   useEffect(() => {
     if (!open || anchorLat == null || anchorLng == null) {
@@ -227,6 +248,11 @@ export function GlobeLodgingFocusStage({
     }
     return payload.images;
   }, [payload]);
+  const currentMedia = mediaSlides[mediaIndex] ?? null;
+  const isVideo =
+    currentMedia != null &&
+    (currentMedia === payload?.videoUrl ||
+      /\.(mp4|webm|mov)(\?|$)/i.test(currentMedia));
 
   const goToLodgingIndex = useCallback(
     (nextLodgingIndex: number) => {
@@ -293,6 +319,62 @@ export function GlobeLodgingFocusStage({
     dismiss();
   }, [dismiss, entry, eventId, fullRanked, lodgingIndex]);
 
+  const handlePinToContext = useCallback(() => {
+    if (
+      !eventId ||
+      !entry ||
+      !payload ||
+      anchorLat == null ||
+      anchorLng == null
+    ) {
+      return;
+    }
+    setPinBusy(true);
+    void (async () => {
+      try {
+        const pinnedEvent = pinLodgingSelectionToContext({
+          eventId,
+          row: {
+            placeId: payload.placeId,
+            name: payload.name,
+            lat: anchorLat,
+            lng: anchorLng,
+            images: payload.images,
+            videoUrl: payload.videoUrl ?? null,
+            priceKrw: payload.priceKrw ?? null,
+            partnerLabel: payload.partnerLabel ?? null,
+            address: payload.address ?? null,
+            mapsUrl: payload.mapsUrl ?? null,
+            provider: payload.provider ?? null,
+            photoSource: payload.photoSource ?? null,
+            photoConfidence: payload.photoConfidence ?? null,
+            stayWindow: payload.stayWindow ?? null,
+            checkInIso: payload.stayWindow?.checkInIso ?? null,
+            checkOutIso: payload.stayWindow?.checkOutIso ?? null,
+          },
+          previewUrl: currentMedia,
+        });
+        if (bridgeShared) {
+          await publishBridgePinnedContextItem(pinnedEvent);
+        }
+        setRevision((value) => value + 1);
+        toast.success(
+          bridgeShared
+            ? copy.globe.contextQuickPinSharedToast(payload.name)
+            : copy.globe.contextQuickPinToast(payload.name),
+        );
+      } catch (caught) {
+        toast.error(
+          caught instanceof Error && caught.message.trim()
+            ? caught.message.trim()
+            : copy.globe.ingestAttachFail,
+        );
+      } finally {
+        setPinBusy(false);
+      }
+    })();
+  }, [anchorLat, anchorLng, bridgeShared, currentMedia, entry, eventId, payload]);
+
   if (!open || !entry || !payload) {
     return (
       <div
@@ -304,15 +386,23 @@ export function GlobeLodgingFocusStage({
   }
 
   const priceLabel = formatPriceKrw(payload.priceKrw);
+  const stayBadgeLabel = formatLodgingStayBadgeLabel(payload.stayWindow ?? null);
   const priceLine = [priceLabel, payload.partnerLabel?.trim() || null]
     .filter(Boolean)
     .join(" · ");
-  const currentMedia = mediaSlides[mediaIndex] ?? null;
-  const isVideo =
-    currentMedia != null &&
-    (currentMedia === payload.videoUrl ||
-      /\.(mp4|webm|mov)(\?|$)/i.test(currentMedia));
-
+  const predictedExperience = buildLodgingPredictedExperienceCard({
+    title: entry.resource.label,
+    situationalLabel,
+    stayWindowLabel,
+    stayWindow: payload.stayWindow ?? null,
+    dynamicTags,
+    recommendReason: recommendReason?.reasonKo ?? null,
+    recommendReasons: recommendReason?.matchReasons ?? [],
+    weatherPrepLine: prepLine,
+    tempC,
+    priceKrw: payload.priceKrw ?? null,
+    partnerLabel: payload.partnerLabel ?? null,
+  });
   return (
     <div
       ref={containerRef}
@@ -338,9 +428,11 @@ export function GlobeLodgingFocusStage({
           <GlobeLodgingHubFocusCard
             className="w-full"
             title={entry.resource.label}
+            stayBadgeLabel={stayBadgeLabel}
             priceLine={priceLine || null}
             placeLabel={contextPlace}
             situationalLabel={situationalLabel}
+            stayWindowLabel={stayWindowLabel}
             dynamicTags={dynamicTags}
             recommendReason={recommendReason?.reasonKo ?? null}
             recommendReasons={recommendReason?.matchReasons ?? []}
@@ -355,6 +447,25 @@ export function GlobeLodgingFocusStage({
             }}
             onClose={dismiss}
             closeAriaLabel={copy.globe.lodgingFocusCloseAria}
+            topAction={
+              <GlobeContextQuickPinButton
+                label={
+                  isPinned
+                    ? bridgeShared
+                      ? copy.globe.contextQuickPinSharedDone
+                      : copy.globe.contextQuickPinDone
+                    : bridgeShared
+                      ? copy.globe.contextQuickPinSharedCta
+                      : copy.globe.contextQuickPinCta
+                }
+                pinned={isPinned}
+                busy={pinBusy}
+                onClick={handlePinToContext}
+              />
+            }
+            predictedExperience={
+              <GlobePredictedExperienceCard model={predictedExperience} tone="light" />
+            }
             footer={
               lodgingRanked.length > 1 ? (
                 <p className="text-[11px] font-normal text-[#86868b]">

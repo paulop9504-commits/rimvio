@@ -10,15 +10,29 @@ import { GlobeContextHubDetailSheet } from "@/components/globe/globe-context-hub
 import { GlobeHomeLeftChrome } from "@/components/globe/globe-home-left-chrome";
 import { GlobeUtilityMenu } from "@/components/globe/globe-utility-menu";
 import { GlobeContextMapVideoStage } from "@/components/globe/globe-context-map-video-stage";
+import { GlobeContextBrainMapOverlay } from "@/components/globe/globe-context-brain-map-overlay";
+import { GlobeContextBrainNodeCard } from "@/components/globe/globe-context-brain-node-card";
+import { GlobeBrainSurfacePreviewCard } from "@/components/globe/globe-brain-surface-preview-card";
+import { GlobeSpatialTraceTourChip } from "@/components/globe/globe-spatial-trace-tour-chip";
 import { GlobeLodgingFocusStage } from "@/components/globe/globe-lodging-focus-stage";
 import { GlobeLodgingDiscoveryStage } from "@/components/globe/globe-lodging-discovery-stage";
 import { GlobeEateryDiscoveryStage } from "@/components/globe/globe-eatery-discovery-stage";
 import { GlobeEateryFocusSheet } from "@/components/globe/globe-eatery-focus-sheet";
 import { useGlobeLodgingDiscoverySession } from "@/hooks/use-globe-lodging-discovery-session";
 import { useGlobeEateryDiscoverySession } from "@/hooks/use-globe-eatery-discovery-session";
+import { useBrainSurfaceProjectionReveal } from "@/hooks/use-brain-surface-projection-reveal";
+import { useMediaSpatialTraceTour } from "@/hooks/use-media-spatial-trace-tour";
+import { useContextMediaGuides } from "@/hooks/use-context-media-guides";
+import { useGlobeContextBrainActions } from "@/hooks/use-globe-context-brain-actions";
+import { useWorkQueue } from "@/hooks/use-work-queue";
+import { usePriorityStrip } from "@/hooks/use-priority-strip";
 import { GlobeChatScreen } from "@/components/globe/chat/globe-chat-screen";
 import { PersonalGlobeSheet } from "@/components/globe/personal-globe-sheet";
 import { GlobeCaptureDock } from "@/components/globe/globe-capture-dock";
+import { GlobePriorityStrip } from "@/components/globe/globe-priority-strip";
+import { GlobeTicketQrViewer } from "@/components/globe/globe-ticket-qr-viewer";
+import { GlobeWorkQueueSheet } from "@/components/globe/globe-work-queue-sheet";
+import type { PriorityStripPayload } from "@/lib/globe/priority-strip";
 import { GlobeComposeAccessoryBar } from "@/components/globe/globe-compose-accessory-bar";
 import {
   GlobeHomeMemoryRecallPanel,
@@ -65,8 +79,11 @@ import {
 } from "@/lib/globe/chat/sync-resource-complete-to-chat";
 import { resumeComposeDetailSlotFill } from "@/lib/portal/resume-compose-detail-slot-fill";
 import {
+  readPortalComposeRunState,
   writePortalComposeRunState,
 } from "@/lib/portal/portal-compose-run-store";
+import { completeWorkQueueItem } from "@/lib/work-queue";
+import type { WorkQueueItem } from "@/lib/work-queue";
 import {
   syncPortalComposeClarifyToFeed,
 } from "@/lib/context-run/sync-portal-compose-to-feed";
@@ -93,6 +110,7 @@ import {
   revertGlobeContextPinToCardPlace,
   resolveGlobeContextCardPinCluster,
 } from "@/lib/globe/globe-context-card-coords";
+import { commitBrainSurfaceMemoPin } from "@/lib/globe/commit-brain-surface-memo-pin";
 import type { GlobeContextTimeFilter } from "@/lib/globe/globe-context-time-filter";
 import type { GlobeDetailLevel } from "@/lib/globe/globe-zoom-levels";
 import {
@@ -164,6 +182,34 @@ import {
 } from "@/lib/globe/globe-resume-session";
 import type { GlobePhotoIngestDraft } from "@/lib/globe/prepare-globe-photo-ingest-draft";
 import { copy } from "@/lib/copy/human-ko";
+import { expandMediaGuideOnMap, pickPrimaryExpandableMediaGuide } from "@/lib/globe/expand-media-guide-on-map";
+import { queryMediaGuideByGuideNodeId } from "@/lib/ontology/media-guide-store";
+import { readPinnedLodgingResourceId } from "@/lib/globe/context-hub/pin-lodging-selection-to-context";
+import { readPinnedEateryResourceId } from "@/lib/globe/eatery/pin-eatery-selection-to-context";
+import {
+  commitKnowledgeToProjection,
+  patchMediaGuidesToProjection,
+} from "@/lib/situation-projection/compose-brain-projection";
+import { buildProjectionNodeExplanation } from "@/lib/situation-projection/projection-node-explanation";
+import { resolveProjectionNodePresentation } from "@/lib/situation-projection/projection-node-presentation";
+import {
+  readProjectionManifestForAnchor,
+  subscribeProjectionStore,
+} from "@/lib/situation-projection/projection-store";
+import { resolveProjectionNodeTap } from "@/lib/situation-projection/resolve-projection-node-tap";
+import {
+  projectBrainSurfaceBatch,
+} from "@/lib/situation-projection/project-brain-surface-batch";
+import type {
+  BrainSurfaceCandidateFamily,
+  BrainSurfaceProjectionBatch,
+  BrainSurfaceProjectionCandidate,
+} from "@/lib/situation-projection/brain-surface-types";
+import { prioritizeBrainSurfaceCandidatesForFocus } from "@/lib/situation-projection/brain-surface-focus";
+import {
+  buildMediaSpatialTraceTourStops,
+  buildMediaSpatialTraceTourStopsFromGuide,
+} from "@/lib/situation-projection/build-media-spatial-trace-tour";
 import { resolveRimvioHonorific } from "@/lib/copy/rimvio-honorific";
 import { getTrendBridgeFeature } from "@/lib/globe/trend-bridge/trend-bridge-feature-registry";
 import { findMarketIntentByEventId } from "@/lib/globe/market/market-alignment-store";
@@ -187,6 +233,12 @@ import type { MarketWizardStepId } from "@/lib/globe/market/market-intent-wizard
 import { submitTrendBridgeContributionFromEvent } from "@/lib/globe/trend-bridge/client/submit-trend-bridge-contribution";
 import { subscribeGlobeContextHubOpen } from "@/lib/globe/context-hub/globe-context-hub-open-bridge";
 import { subscribeGlobeAskBridgeFocus } from "@/lib/globe/globe-ask-bridge-focus";
+import {
+  subscribeGlobeBrainContextRunRequest,
+} from "@/lib/globe/brain/globe-brain-context-run-bridge";
+import {
+  subscribeGlobeBrainProjectionRequest,
+} from "@/lib/globe/brain/globe-brain-projection-bridge";
 import { RimvioPortalSheet } from "@/components/portal/rimvio-portal-sheet";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import type { PortalOpenSource } from "@/lib/portal/portal-types";
@@ -201,6 +253,10 @@ import { isExternalPinCluster } from "@/lib/globe/merge-globe-pin-clusters";
 import type { GlobeLayerMode } from "@/lib/globe/globe-layer-mode";
 import { projectBridgeGhostClusters } from "@/lib/experience-bridge/project-bridge-ghost-clusters";
 import type { PendingBridgeInvite } from "@/hooks/use-pending-bridge-invites";
+import type { GlobeKnowledgePlacementPending } from "@/lib/globe/globe-knowledge-placement-pending";
+import { readGlobeKnowledgePlacementPending } from "@/lib/globe/globe-knowledge-placement-pending";
+import { runGlobeEateryDiscovery } from "@/lib/globe/eatery/run-globe-eatery-discovery";
+import { runGlobeLodgingDiscovery } from "@/lib/globe/lodging/run-globe-lodging-discovery";
 
 const PIN_REVERT_MS = 1_100;
 /** Pin tap and globe click fire together — ignore the follow-up globe press. */
@@ -211,6 +267,7 @@ function GlobeHomeBody() {
   const { user } = useAuth();
   const rimvioHonorific = resolveRimvioHonorific(user);
   const recallEventId = searchParams.get("recallEvent");
+  const surfaceRef = useRef<HTMLDivElement>(null);
   const globeRef = useRef<RimvioGlobeHubHandle>(null);
   const ingestBarRef = useRef<GlobeContextIngestBarHandle>(null);
   const memoryRecallComposeRef = useRef<{
@@ -229,6 +286,11 @@ function GlobeHomeBody() {
   const [marketPortalLaunch, setMarketPortalLaunch] = useState(false);
   const [portalOpen, setPortalOpen] = useState(false);
   const [globeChatOpen, setGlobeChatOpen] = useState(false);
+  const [workQueueOpen, setWorkQueueOpen] = useState(false);
+  const { items: workQueueItems, refresh: refreshWorkQueue } = useWorkQueue();
+  const [priorityQrOpen, setPriorityQrOpen] = useState(false);
+  const [priorityQrSrc, setPriorityQrSrc] = useState<string | null>(null);
+  const [priorityQrTitle, setPriorityQrTitle] = useState<string | null>(null);
   const [personalGlobeOpen, setPersonalGlobeOpen] = useState(false);
   const [portalEvent, setPortalEvent] = useState<EventCandidate | null>(null);
   const [portalComposeText, setPortalComposeText] = useState<string | undefined>();
@@ -326,6 +388,23 @@ function GlobeHomeBody() {
     contextEventId: activeCluster?.eventId ?? null,
   });
   const [placeVerifyEventId, setPlaceVerifyEventId] = useState<string | null>(null);
+  const [knowledgePlacementPending, setKnowledgePlacementPending] =
+    useState<GlobeKnowledgePlacementPending | null>(() =>
+      typeof window === "undefined" ? null : readGlobeKnowledgePlacementPending(),
+    );
+  const [brainProjectionEventId, setBrainProjectionEventId] = useState<string | null>(null);
+  const [brainSurfaceBatch, setBrainSurfaceBatch] =
+    useState<BrainSurfaceProjectionBatch | null>(null);
+  const [brainSurfaceLaunchToken, setBrainSurfaceLaunchToken] = useState(0);
+  const [brainSurfaceMode, setBrainSurfaceMode] = useState<"spread" | "focused">("spread");
+  const [brainSurfaceFocusedFamily, setBrainSurfaceFocusedFamily] =
+    useState<BrainSurfaceCandidateFamily | null>(null);
+  const [brainSurfaceActiveCandidateId, setBrainSurfaceActiveCandidateId] =
+    useState<string | null>(null);
+  const [brainSurfaceDetailMode, setBrainSurfaceDetailMode] = useState(false);
+  const [brainSurfaceCommitPending, setBrainSurfaceCommitPending] = useState(false);
+  const [mapVideoPlaying, setMapVideoPlaying] = useState(false);
+  const spatialTraceTourSessionRef = useRef<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [pinSheetInitialPage, setPinSheetInitialPage] =
     useState<PinMediaContextPage>("media");
@@ -360,16 +439,24 @@ function GlobeHomeBody() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [stackClusters, setStackClusters] = useState<PinCluster[] | null>(null);
   const [mediaStoreRevision, setMediaStoreRevision] = useState(0);
+  const [projectionRevision, setProjectionRevision] = useState(0);
   const [hubDetailOpen, setHubDetailOpen] = useState(false);
   const [mapMediaFocusOpen, setMapMediaFocusOpen] = useState(false);
   const [contextTapPhase, setContextTapPhase] =
     useState<ContextMapTapPhase>("awaiting_replay");
   const contextTapPhaseRef = useRef<ContextMapTapPhase>("awaiting_replay");
   const clustersRef = useRef<readonly PinCluster[]>([]);
+  const autoBrainSurfaceLaunchKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     return subscribeGlobeMapMediaFocus((detail) => {
       setMapMediaFocusOpen(detail.open);
+    });
+  }, []);
+
+  useEffect(() => {
+    return subscribeProjectionStore(() => {
+      setProjectionRevision((value) => value + 1);
     });
   }, []);
 
@@ -636,6 +723,282 @@ function GlobeHomeBody() {
     );
   }, [activeCluster?.eventId, mediaStoreRevision]);
 
+  const activeContextProjectionManifest = useMemo(() => {
+    void projectionRevision;
+    if (!activeContextEvent) {
+      return null;
+    }
+    return readProjectionManifestForAnchor(activeContextEvent.id);
+  }, [activeContextEvent, projectionRevision]);
+
+  const { guides: activeContextMediaGuides } = useContextMediaGuides(activeContextEvent, {
+    enabled: layerMode === "personal",
+    max: 4,
+  });
+
+  const brainSurfaceAction = useGlobeContextBrainActions(activeContextEvent, {
+    onActionHandled: () => {
+      setBrainSurfaceActiveCandidateId(null);
+      setBrainSurfaceDetailMode(false);
+    },
+  });
+
+  const brainSurfaceVisible = Boolean(
+    brainSurfaceBatch &&
+      activeCluster?.eventId === brainSurfaceBatch.eventId &&
+      !brainProjectionEventId &&
+      layerMode === "personal" &&
+      !sheetOpen &&
+      !hubDetailOpen &&
+      !mapMediaFocusOpen &&
+      !confirmOpen &&
+      !portalOpen &&
+      !marketConfirmOpen,
+  );
+
+  const { visibleCandidates: visibleBrainSurfaceCandidates } =
+    useBrainSurfaceProjectionReveal({
+      focusedEventId: activeCluster?.eventId ?? null,
+      batch: brainSurfaceVisible ? brainSurfaceBatch : null,
+      launchToken: brainSurfaceLaunchToken,
+    });
+
+  const pinnedLodgingResourceId = useMemo(
+    () => readPinnedLodgingResourceId(activeContextEvent),
+    [activeContextEvent],
+  );
+  const pinnedEateryResourceId = useMemo(
+    () => readPinnedEateryResourceId(activeContextEvent),
+    [activeContextEvent],
+  );
+  const passiveBrainSurfaceFamily =
+    brainSurfaceMode === "focused"
+      ? null
+      : pinnedLodgingResourceId
+        ? "lodging"
+        : pinnedEateryResourceId
+          ? "eatery"
+          : null;
+
+  const projectedBrainSurfaceCandidates = useMemo(
+    () =>
+      prioritizeBrainSurfaceCandidatesForFocus({
+        candidates: visibleBrainSurfaceCandidates,
+        focusedFamily:
+          brainSurfaceMode === "focused"
+            ? brainSurfaceFocusedFamily
+            : passiveBrainSurfaceFamily,
+        activeCandidateId: brainSurfaceActiveCandidateId,
+        gravityMode:
+          brainSurfaceMode === "focused"
+            ? "focused"
+            : passiveBrainSurfaceFamily
+              ? "pinned"
+              : null,
+      }),
+    [
+      brainSurfaceActiveCandidateId,
+      brainSurfaceFocusedFamily,
+      brainSurfaceMode,
+      passiveBrainSurfaceFamily,
+      visibleBrainSurfaceCandidates,
+    ],
+  );
+
+  const brainSurfaceCandidatesById = useMemo(() => {
+    const map = new Map<string, BrainSurfaceProjectionCandidate>();
+    for (const candidate of brainSurfaceBatch?.candidates ?? []) {
+      map.set(candidate.id, candidate);
+    }
+    return map;
+  }, [brainSurfaceBatch?.candidates]);
+
+  const activeBrainSurfaceCandidate =
+    (brainSurfaceActiveCandidateId
+      ? brainSurfaceCandidatesById.get(brainSurfaceActiveCandidateId) ?? null
+      : null) ?? null;
+
+  const activeBrainSurfaceNode = useMemo(() => {
+    if (!activeContextEvent || !activeBrainSurfaceCandidate?.nodeId) {
+      return null;
+    }
+    return (
+      activeContextProjectionManifest?.nodes.find(
+        (node) => node.id === activeBrainSurfaceCandidate.nodeId,
+      ) ?? null
+    );
+  }, [
+    activeBrainSurfaceCandidate?.nodeId,
+    activeContextEvent,
+    activeContextProjectionManifest?.nodes,
+  ]);
+
+  const activeBrainSurfaceGuide = useMemo(
+    () =>
+      activeBrainSurfaceCandidate?.sourceGuideNodeId
+        ? queryMediaGuideByGuideNodeId(activeBrainSurfaceCandidate.sourceGuideNodeId)
+        : null,
+    [activeBrainSurfaceCandidate?.sourceGuideNodeId],
+  );
+
+  const activeVideoInferredPlaceCount = useMemo(() => {
+    const candidate = activeBrainSurfaceCandidate;
+    if (!candidate) {
+      return 0;
+    }
+    if (candidate.anchorKind === "video_root" && brainSurfaceBatch) {
+      const clusterId = candidate.clusterId;
+      if (clusterId) {
+        return brainSurfaceBatch.candidates.filter(
+          (row) => row.clusterId === clusterId && row.anchorKind === "inferred_place",
+        ).length;
+      }
+    }
+    return activeBrainSurfaceGuide?.inferredPlaceCandidates.length ?? 0;
+  }, [activeBrainSurfaceCandidate, activeBrainSurfaceGuide, brainSurfaceBatch]);
+
+  const showActiveVideoExpandMap = Boolean(
+    activeBrainSurfaceCandidate?.anchorKind === "video_root" &&
+      (activeVideoInferredPlaceCount > 0 ||
+        (activeBrainSurfaceCandidate.spatialTraceItems?.length ?? 0) > 0),
+  );
+
+  const spatialTraceTourGuideId = useMemo(() => {
+    if (activeBrainSurfaceCandidate?.sourceGuideNodeId?.trim()) {
+      return activeBrainSurfaceCandidate.sourceGuideNodeId.trim();
+    }
+    const videoRoot = brainSurfaceBatch?.candidates.find(
+      (candidate) => candidate.anchorKind === "video_root",
+    );
+    return videoRoot?.sourceGuideNodeId?.trim() ?? null;
+  }, [activeBrainSurfaceCandidate?.sourceGuideNodeId, brainSurfaceBatch?.candidates]);
+
+  const spatialTraceTourStops = useMemo(() => {
+    if (brainSurfaceVisible && brainSurfaceBatch && spatialTraceTourGuideId) {
+      const fromBatch = buildMediaSpatialTraceTourStops({
+        batch: brainSurfaceBatch,
+        guideNodeId: spatialTraceTourGuideId,
+      });
+      if (fromBatch.length > 0) {
+        return fromBatch;
+      }
+    }
+    if (mapVideoPlaying && activeContextMediaGuides.length > 0) {
+      const guide = pickPrimaryExpandableMediaGuide(activeContextMediaGuides);
+      if (guide) {
+        return buildMediaSpatialTraceTourStopsFromGuide(guide);
+      }
+    }
+    return [];
+  }, [
+    activeContextMediaGuides,
+    brainSurfaceBatch,
+    brainSurfaceVisible,
+    mapVideoPlaying,
+    spatialTraceTourGuideId,
+  ]);
+
+  const brainSurfaceVideoPreviewVisible = useMemo(
+    () =>
+      Boolean(
+        brainSurfaceVisible &&
+          activeBrainSurfaceCandidate?.embedUrl &&
+          activeBrainSurfaceCandidate.anchorKind === "video_root" &&
+          (!brainSurfaceDetailMode || !activeBrainSurfaceNode),
+      ),
+    [
+      activeBrainSurfaceCandidate?.anchorKind,
+      activeBrainSurfaceCandidate?.embedUrl,
+      activeBrainSurfaceNode,
+      brainSurfaceDetailMode,
+      brainSurfaceVisible,
+    ],
+  );
+
+  const {
+    activeStop: spatialTraceTourActiveStop,
+    isRunning: spatialTraceTourRunning,
+    stopIndex: spatialTraceTourStopIndex,
+    stopCount: spatialTraceTourStopCount,
+    startTour: startSpatialTraceTour,
+    stopTour: stopSpatialTraceTour,
+  } = useMediaSpatialTraceTour({
+    globeRef,
+    stops: spatialTraceTourStops,
+    onStopChange: (stop) => {
+      if (stop?.candidateId) {
+        setBrainSurfaceActiveCandidateId(stop.candidateId);
+        return;
+      }
+      if (!stop) {
+        setBrainSurfaceActiveCandidateId(null);
+      }
+    },
+  });
+
+  const activeBrainSurfacePresentation = activeBrainSurfaceNode
+    ? resolveProjectionNodePresentation(activeBrainSurfaceNode)
+    : null;
+  const activeBrainSurfaceExplanation =
+    activeBrainSurfaceNode && activeContextEvent
+      ? buildProjectionNodeExplanation({
+          node: activeBrainSurfaceNode,
+          manifest: readProjectionManifestForAnchor(activeContextEvent.id),
+          event: activeContextEvent,
+        })
+      : null;
+  const activeBrainSurfaceManifest = activeContextProjectionManifest;
+  const activeBrainSurfacePill =
+    activeBrainSurfaceNode?.kind === "ghost"
+      ? (activeBrainSurfaceManifest?.pills.find(
+          (pill) =>
+            pill.linkedNodeId === activeBrainSurfaceNode.id ||
+            pill.ghostAxisId === activeBrainSurfaceNode.axisId,
+        ) ?? null)
+      : null;
+  const discoveryEventId = useMemo(
+    () =>
+      eateryDiscovery.session?.eventId ??
+      lodgingDiscovery.session?.eventId ??
+      null,
+    [eateryDiscovery.session?.eventId, lodgingDiscovery.session?.eventId],
+  );
+
+  const {
+    payload: priorityPayload,
+    chooseLearn: choosePriorityLearn,
+    dismissLearn: dismissPriorityLearn,
+  } = usePriorityStrip({
+    event: activeContextEvent,
+    lat: liveLocation?.lat ?? null,
+    lng: liveLocation?.lng ?? null,
+    workQueue: workQueueItems,
+    discoveryEventId,
+  });
+
+  const onPriorityMainAction = useCallback(
+    (payload: Extract<PriorityStripPayload, { kind: "main_action" }>) => {
+      if (payload.actionKind === "show_qr" || payload.qrSrc) {
+        setPriorityQrSrc(payload.qrSrc ?? payload.href);
+        setPriorityQrTitle(payload.titleKo);
+        setPriorityQrOpen(true);
+        return;
+      }
+      if (payload.href) {
+        if (payload.actionKind === "internal_route") {
+          window.location.assign(payload.href);
+          return;
+        }
+        window.open(payload.href, "_blank", "noopener,noreferrer");
+        return;
+      }
+      if (payload.eventId) {
+        setHubDetailOpen(true);
+      }
+    },
+    [],
+  );
+
   const bridgeMediaDeletable = useMemo(() => {
     const id = activeCluster?.eventId?.trim();
     return Boolean(id && isBridgeLinkedEventId(id));
@@ -685,12 +1048,342 @@ function GlobeHomeBody() {
   );
 
   /** Map stays clean while a context is focused — hub lives in the pin sheet. */
-  const suppressMapHubRail = Boolean(hubEventId || mapMediaFocusOpen);
+  const suppressMapHubRail = Boolean(
+    hubEventId || mapMediaFocusOpen || brainSurfaceVisible,
+  );
 
   const dismissMapMediaReplay = useCallback(() => {
     setContextTapPhase("awaiting_replay");
     globeRef.current?.clearPinViewportBias();
   }, []);
+
+  const launchBrainSurfaceProjection = useCallback(
+    (eventId: string) => {
+      const event =
+        (activeContextEvent?.id === eventId ? activeContextEvent : null) ??
+        findLifeEventCandidate(eventId) ??
+        recoverGlobeContextEventFromPin(eventId);
+      if (!event) {
+        return;
+      }
+      let manifest = readProjectionManifestForAnchor(eventId);
+      if (!manifest) {
+        return;
+      }
+      const missingGuides = activeContextMediaGuides.filter(
+        (guide) =>
+          !manifest?.nodes.some(
+            (node) =>
+              node.kind === "ghost" &&
+              (node.sourceGuideNodeId?.trim() ?? "") === guide.guideNodeId,
+          ),
+      );
+      if (missingGuides.length > 0) {
+        manifest =
+          patchMediaGuidesToProjection({
+            event,
+            guides: missingGuides,
+            maxGuides: missingGuides.length,
+          }) ?? manifest;
+      }
+      const batch = projectBrainSurfaceBatch({
+        event,
+        manifest,
+        guides: activeContextMediaGuides,
+      });
+      if (!batch) {
+        return;
+      }
+      setBrainSurfaceBatch(batch);
+      setBrainSurfaceLaunchToken((value) => value + 1);
+      setBrainSurfaceMode("spread");
+      setBrainSurfaceFocusedFamily(null);
+      setBrainSurfaceActiveCandidateId(null);
+      setBrainSurfaceDetailMode(false);
+      setBrainProjectionEventId(null);
+    },
+    [activeContextEvent, activeContextMediaGuides],
+  );
+
+  const handleBrainSurfaceMarkerPress = useCallback(
+    (candidateId: string) => {
+      const candidate = brainSurfaceCandidatesById.get(candidateId);
+      if (!candidate) {
+        return;
+      }
+      if (
+        brainSurfaceMode !== "focused" ||
+        brainSurfaceFocusedFamily !== candidate.family
+      ) {
+        setBrainSurfaceMode("focused");
+        setBrainSurfaceFocusedFamily(candidate.family);
+      }
+      if (brainSurfaceActiveCandidateId === candidateId) {
+        setBrainSurfaceDetailMode(true);
+        return;
+      }
+      setBrainSurfaceActiveCandidateId(candidateId);
+      setBrainSurfaceDetailMode(true);
+      globeRef.current?.flyToPin(candidate.lat, candidate.lng, "street", {
+        pinViewportY: 0.66,
+      });
+    },
+    [
+      brainSurfaceActiveCandidateId,
+      brainSurfaceCandidatesById,
+      brainSurfaceFocusedFamily,
+      brainSurfaceMode,
+    ],
+  );
+
+  const handleBrainSurfacePrimaryAction = useCallback(() => {
+    if (!activeContextEvent || !activeBrainSurfaceCandidate) {
+      return;
+    }
+    if (activeBrainSurfaceNode) {
+      brainSurfaceAction(
+        resolveProjectionNodeTap({
+          node: activeBrainSurfaceNode,
+          event: activeContextEvent,
+        }),
+      );
+      return;
+    }
+    if (activeBrainSurfaceCandidate.openUrl) {
+      window.open(activeBrainSurfaceCandidate.openUrl, "_blank", "noopener,noreferrer");
+      setBrainSurfaceActiveCandidateId(null);
+      setBrainSurfaceDetailMode(false);
+      return;
+    }
+    if (activeBrainSurfaceCandidate.mapsUrl) {
+      window.open(activeBrainSurfaceCandidate.mapsUrl, "_blank", "noopener,noreferrer");
+      setBrainSurfaceActiveCandidateId(null);
+      setBrainSurfaceDetailMode(false);
+    }
+  }, [
+    activeBrainSurfaceCandidate,
+    activeBrainSurfaceNode,
+    activeContextEvent,
+    brainSurfaceAction,
+  ]);
+
+  const handleBrainSurfaceMemoCommit = useCallback(async () => {
+    if (!brainSurfaceBatch || !activeBrainSurfaceCandidate?.memoCommitDraft) {
+      return;
+    }
+    setBrainSurfaceCommitPending(true);
+    try {
+      const saved = await commitBrainSurfaceMemoPin({
+        anchorEventId: brainSurfaceBatch.eventId,
+        draft: activeBrainSurfaceCandidate.memoCommitDraft,
+      });
+      toast.success(`${saved.place?.trim() || saved.title.trim()}에 메모 남겼어요`);
+      setBrainSurfaceActiveCandidateId(null);
+      setBrainSurfaceDetailMode(false);
+    } catch (error) {
+      console.error(error);
+      toast.error("메모를 지도에 남기지 못했어요");
+    } finally {
+      setBrainSurfaceCommitPending(false);
+    }
+  }, [activeBrainSurfaceCandidate?.memoCommitDraft, brainSurfaceBatch]);
+
+  const handleExpandActiveVideoInferredMap = useCallback(() => {
+    if (!activeContextEvent || !activeBrainSurfaceCandidate) {
+      return;
+    }
+
+    if (!brainSurfaceVisible && activeBrainSurfaceCandidate.sourceGuideNodeId) {
+      const guide = queryMediaGuideByGuideNodeId(
+        activeBrainSurfaceCandidate.sourceGuideNodeId,
+      );
+      if (guide) {
+        const ok = expandMediaGuideOnMap({ event: activeContextEvent, guide });
+        if (!ok) {
+          toast.error(copy.common.tryAgain);
+          return;
+        }
+        setBrainSurfaceActiveCandidateId(null);
+        setBrainSurfaceDetailMode(false);
+        return;
+      }
+    }
+
+    const clusterId = activeBrainSurfaceCandidate.clusterId;
+    const inferredInCluster =
+      clusterId && brainSurfaceBatch
+        ? brainSurfaceBatch.candidates.filter(
+            (row) => row.clusterId === clusterId && row.anchorKind === "inferred_place",
+          )
+        : [];
+
+    const focusFamily: BrainSurfaceCandidateFamily =
+      inferredInCluster.find((row) => row.family === "eatery")?.family ??
+      inferredInCluster[0]?.family ??
+      "trace_place";
+
+    setBrainSurfaceMode("focused");
+    setBrainSurfaceFocusedFamily(focusFamily);
+    setBrainSurfaceDetailMode(true);
+
+    const focusTarget = inferredInCluster[0];
+    if (focusTarget) {
+      setBrainSurfaceActiveCandidateId(focusTarget.id);
+      globeRef.current?.flyToPin(focusTarget.lat, focusTarget.lng, "neighborhood");
+      return;
+    }
+
+    setBrainSurfaceActiveCandidateId(activeBrainSurfaceCandidate.id);
+  }, [
+    activeBrainSurfaceCandidate,
+    activeContextEvent,
+    brainSurfaceBatch,
+    brainSurfaceVisible,
+  ]);
+
+  useEffect(() => {
+    if (!mapVideoPlaying || spatialTraceTourStops.length === 0) {
+      return;
+    }
+    const sessionKey = `map:${activeCluster?.eventId ?? ""}:${spatialTraceTourStops
+      .map((stop) => stop.id)
+      .join("|")}`;
+    if (spatialTraceTourSessionRef.current === sessionKey) {
+      return;
+    }
+    spatialTraceTourSessionRef.current = sessionKey;
+    startSpatialTraceTour();
+  }, [activeCluster?.eventId, mapVideoPlaying, spatialTraceTourStops, startSpatialTraceTour]);
+
+  useEffect(() => {
+    if (!brainSurfaceVisible || spatialTraceTourStops.length === 0) {
+      return;
+    }
+    const embedPlaying = brainSurfaceVideoPreviewVisible;
+    if (!embedPlaying && brainSurfaceLaunchToken <= 0) {
+      return;
+    }
+    const sessionKey = `brain:${brainSurfaceBatch?.eventId ?? ""}:${brainSurfaceLaunchToken}:${embedPlaying ? "embed" : "launch"}:${spatialTraceTourStops
+      .map((stop) => stop.id)
+      .join("|")}`;
+    if (spatialTraceTourSessionRef.current === sessionKey) {
+      return;
+    }
+    spatialTraceTourSessionRef.current = sessionKey;
+    startSpatialTraceTour();
+  }, [
+    brainSurfaceBatch?.eventId,
+    brainSurfaceLaunchToken,
+    brainSurfaceVideoPreviewVisible,
+    brainSurfaceVisible,
+    spatialTraceTourStops,
+    startSpatialTraceTour,
+  ]);
+
+  useEffect(() => {
+    if (!spatialTraceTourRunning) {
+      return;
+    }
+    if (!mapVideoPlaying && !brainSurfaceVisible) {
+      stopSpatialTraceTour();
+    }
+  }, [brainSurfaceVisible, mapVideoPlaying, spatialTraceTourRunning, stopSpatialTraceTour]);
+
+  const handleBrainSurfaceConnect = useCallback(() => {
+    if (!activeContextEvent || !activeBrainSurfaceNode || activeBrainSurfaceNode.kind !== "ghost") {
+      return;
+    }
+    const promoted = commitKnowledgeToProjection({
+      anchorEventId: activeContextEvent.id,
+      ghostNodeId: activeBrainSurfaceNode.id,
+      pillId: activeBrainSurfacePill?.id ?? null,
+    });
+    if (!promoted) {
+      toast.error("이 연결을 남기지 못했어요");
+      return;
+    }
+    toast.success(copy.globe.contextBrainConnected(activeBrainSurfaceNode.label));
+    const nextBatch = projectBrainSurfaceBatch({
+      event: activeContextEvent,
+      manifest: promoted,
+      guides: activeContextMediaGuides,
+    });
+    setBrainSurfaceBatch(nextBatch);
+    setBrainSurfaceMode("spread");
+    setBrainSurfaceFocusedFamily(null);
+    setBrainSurfaceActiveCandidateId(null);
+    setBrainSurfaceDetailMode(false);
+  }, [
+    activeBrainSurfaceNode,
+    activeBrainSurfacePill?.id,
+    activeContextEvent,
+    activeContextMediaGuides,
+  ]);
+
+  useEffect(() => {
+    if (
+      !activeContextEvent ||
+      !activeContextProjectionManifest ||
+      layerMode !== "personal" ||
+      brainProjectionEventId ||
+      sheetOpen ||
+      hubDetailOpen ||
+      mapMediaFocusOpen ||
+      confirmOpen ||
+      portalOpen ||
+      marketConfirmOpen
+    ) {
+      return;
+    }
+    const travelUi = activeContextProjectionManifest.travelBrain?.ui ?? null;
+    if (travelUi && travelUi.stage !== "ready") {
+      return;
+    }
+    const guideSignature = activeContextMediaGuides
+      .map((guide) => guide.guideNodeId)
+      .join("|");
+    const launchKey = `${activeContextEvent.id}:${activeContextProjectionManifest.composedAt}:${guideSignature}`;
+    if (autoBrainSurfaceLaunchKeyRef.current === launchKey) {
+      return;
+    }
+    autoBrainSurfaceLaunchKeyRef.current = launchKey;
+    launchBrainSurfaceProjection(activeContextEvent.id);
+  }, [
+    activeContextEvent,
+    activeContextMediaGuides,
+    activeContextProjectionManifest,
+    brainProjectionEventId,
+    confirmOpen,
+    hubDetailOpen,
+    layerMode,
+    launchBrainSurfaceProjection,
+    mapMediaFocusOpen,
+    marketConfirmOpen,
+    portalOpen,
+    sheetOpen,
+  ]);
+
+  useEffect(() => {
+    if (brainSurfaceVisible) {
+      return;
+    }
+    setBrainSurfaceMode("spread");
+    setBrainSurfaceFocusedFamily(null);
+    setBrainSurfaceActiveCandidateId(null);
+    setBrainSurfaceDetailMode(false);
+  }, [brainSurfaceVisible]);
+
+  useEffect(() => {
+    const eventId = activeCluster?.eventId?.trim() ?? null;
+    if (!brainSurfaceBatch || !eventId || brainSurfaceBatch.eventId === eventId) {
+      return;
+    }
+    setBrainSurfaceBatch(null);
+    setBrainSurfaceMode("spread");
+    setBrainSurfaceFocusedFamily(null);
+    setBrainSurfaceActiveCandidateId(null);
+    setBrainSurfaceDetailMode(false);
+  }, [activeCluster?.eventId, brainSurfaceBatch]);
 
   useEffect(() => {
     const refresh = () => setPeerOptionsRevision((value) => value + 1);
@@ -860,6 +1553,19 @@ function GlobeHomeBody() {
       if (Date.now() - lastPinPressAtRef.current < GLOBE_PIN_PRESS_SUPPRESS_MS) {
         return;
       }
+      if (
+        brainSurfaceVisible &&
+        (brainSurfaceMode === "focused" ||
+          brainSurfaceActiveCandidateId != null ||
+          brainSurfaceDetailMode)
+      ) {
+        setBrainSurfaceMode("spread");
+        setBrainSurfaceFocusedFamily(null);
+        setBrainSurfaceActiveCandidateId(null);
+        setBrainSurfaceDetailMode(false);
+        globeRef.current?.clearPinViewportBias();
+        return;
+      }
       const nearby = resolveNearbyAt(coords.lat, coords.lng);
       if (nearby.length === 0) {
         clearActiveContext();
@@ -867,7 +1573,15 @@ function GlobeHomeBody() {
       }
       applyNearbyContexts(nearby);
     },
-    [applyNearbyContexts, clearActiveContext, resolveNearbyAt],
+    [
+      applyNearbyContexts,
+      brainSurfaceActiveCandidateId,
+      brainSurfaceDetailMode,
+      brainSurfaceMode,
+      brainSurfaceVisible,
+      clearActiveContext,
+      resolveNearbyAt,
+    ],
   );
 
   const onSheetOpenChange = useCallback(
@@ -970,6 +1684,96 @@ function GlobeHomeBody() {
     });
   }, []);
 
+  useEffect(() => {
+    return subscribeGlobeBrainProjectionRequest((detail) => {
+      const eventId = detail.anchorEventId.trim();
+      if (!eventId) {
+        return;
+      }
+      setSheetOpen(false);
+      setHubDetailOpen(false);
+      setContextTapPhase("awaiting_replay");
+      setBrainProjectionEventId(eventId);
+      if (activeClusterRef.current?.eventId?.trim() === eventId) {
+        return;
+      }
+      void focusContextByEventIdRef.current(eventId, {
+        openSheet: false,
+        mapTap: true,
+      });
+    });
+  }, []);
+
+  useEffect(() => {
+    return subscribeGlobeBrainContextRunRequest((detail) => {
+      if (detail.ghostAxisId !== "eatery" && detail.ghostAxisId !== "lodging") {
+        return;
+      }
+      const anchorEventId = detail.anchorEventId.trim();
+      if (!anchorEventId) {
+        return;
+      }
+      setBrainProjectionEventId(null);
+      setSheetOpen(false);
+      setHubDetailOpen(false);
+      void focusContextByEventIdRef.current(anchorEventId, {
+        openSheet: false,
+        mapTap: true,
+      }).then((cluster) => {
+        const event =
+          findLifeEventCandidate(anchorEventId) ?? recoverGlobeContextEventFromPin(anchorEventId);
+        const fallbackQuery =
+          detail.searchQuery?.trim() ||
+          event?.place?.trim() ||
+          event?.title?.trim() ||
+          (detail.ghostAxisId === "lodging" ? "숙소 찾기" : "맛집 찾기");
+        if (detail.ghostAxisId === "lodging") {
+          toast.message(copy.globe.lodgingDiscoveryLoading);
+          void runGlobeLodgingDiscovery({
+            message: fallbackQuery,
+            contextEventId: anchorEventId,
+            lat: cluster?.lat ?? liveLocation?.lat ?? null,
+            lng: cluster?.lng ?? liveLocation?.lng ?? null,
+            searching: true,
+          }).then((outcome) => {
+            if (!outcome) {
+              toast.error(copy.globe.lodgingDiscoveryEmpty);
+            }
+          });
+          return;
+        }
+        toast.message(copy.globe.eateryDiscoveryLoading);
+        void runGlobeEateryDiscovery({
+          message: fallbackQuery,
+          contextEventId: anchorEventId,
+          lat: cluster?.lat ?? liveLocation?.lat ?? null,
+          lng: cluster?.lng ?? liveLocation?.lng ?? null,
+          searching: true,
+        }).then((outcome) => {
+          if (!outcome) {
+            toast.error(copy.globe.eateryDiscoveryEmpty);
+          }
+        });
+      });
+    });
+  }, [liveLocation?.lat, liveLocation?.lng]);
+
+  useEffect(() => {
+    if (!brainProjectionEventId) {
+      return;
+    }
+    if (sheetOpen || hubDetailOpen || mapMediaFocusOpen) {
+      setBrainProjectionEventId(null);
+    }
+  }, [brainProjectionEventId, hubDetailOpen, mapMediaFocusOpen, sheetOpen]);
+
+  useEffect(() => {
+    const activeEventId = activeCluster?.eventId?.trim() || null;
+    if (brainProjectionEventId && activeEventId !== brainProjectionEventId) {
+      setBrainProjectionEventId(null);
+    }
+  }, [activeCluster?.eventId, brainProjectionEventId]);
+
   useGlobeTripArrival(
     {
       onArrival: ({ lat, lng, recallEventId, recallLine, placeLabel }) => {
@@ -1026,10 +1830,27 @@ function GlobeHomeBody() {
     [focusContextByEventId],
   );
 
+  const onKnowledgePlacementPending = useCallback((pending: GlobeKnowledgePlacementPending) => {
+    setKnowledgePlacementPending(pending);
+  }, []);
+
+  const onKnowledgePlacementDismiss = useCallback(() => {
+    setKnowledgePlacementPending(null);
+  }, []);
+
+  const onKnowledgePlacementConfirmed = useCallback(
+    (input: { anchorEventId: string; knowledgeBoxLabel: string }) => {
+      setKnowledgePlacementPending(null);
+      void focusContextOnMap(input.anchorEventId);
+    },
+    [focusContextOnMap],
+  );
+
   const onRecallEventId = useCallback(
     (eventId: string) => {
       setListOpen(false);
       setManageOpen(false);
+      setBrainProjectionEventId(null);
       focusContextByEventId(eventId);
     },
     [focusContextByEventId],
@@ -1162,6 +1983,7 @@ function GlobeHomeBody() {
 
   const onStackSelect = useCallback(
     (cluster: PinCluster) => {
+      setBrainProjectionEventId(null);
       openContextCluster(cluster);
     },
     [openContextCluster],
@@ -1170,6 +1992,7 @@ function GlobeHomeBody() {
   const openContextByEventId = useCallback(
     (eventId: string) => {
       setListOpen(false);
+      setBrainProjectionEventId(null);
       focusContextByEventId(eventId, { openSheet: true });
     },
     [focusContextByEventId],
@@ -1213,8 +2036,17 @@ function GlobeHomeBody() {
     if (files.length === 0) {
       return;
     }
+    const validated = validateIngestMediaFiles(files);
+    if (!validated.ok) {
+      toast.error(validated.message);
+      return;
+    }
+    if (validated.skippedCount > 0) {
+      toast.message(copy.globe.photoIngestSkippedUnsupported(validated.skippedCount));
+    }
+    const mediaFiles = validated.files;
     revokePhotoIngestPreviewUrls(photoFileProgressRef.current);
-    const progressItems = buildPhotoIngestFileItems(files);
+    const progressItems = buildPhotoIngestFileItems(mediaFiles);
     photoFileProgressRef.current = progressItems;
     setPhotoFileProgress(progressItems);
     setConfirmDraft(null);
@@ -1222,7 +2054,7 @@ function GlobeHomeBody() {
     setConfirmPreparing(true);
     setConfirmOpen(true);
     try {
-      const draft = await prepareGlobePhotoIngestDraft(files, {
+      const draft = await prepareGlobePhotoIngestDraft(mediaFiles, {
         onFileStart: (index) => {
           setPhotoFileProgress((rows) => {
             const next = patchPhotoIngestFileItem(rows, index, { status: "reading" });
@@ -1665,6 +2497,42 @@ function GlobeHomeBody() {
     setGlobeChatOpen(true);
   }, []);
 
+  const handleWorkSurfaceClassified = useCallback(
+    (_classification: import("@/lib/work-queue/classify-globe-work-surface").GlobeWorkSurfaceClassification) => {
+      /* Hint shown on composer strip inside GlobeContextIngestBar */
+    },
+    [],
+  );
+
+  const resumeWorkQueueItem = useCallback(
+    (item: WorkQueueItem) => {
+      setWorkQueueOpen(false);
+      if (item.kind === "portal_compose") {
+        openGlobeChat();
+        const state = readPortalComposeRunState(item.graphId);
+        if ((item.status === "ready_media" || item.needsMedia) && state?.marketDraft) {
+          launchMarketProjection({
+            draft: state.marketDraft,
+            eventId: state.eventId,
+          });
+        }
+        return;
+      }
+      if (item.kind === "travel_context") {
+        openGlobeChat();
+      }
+    },
+    [launchMarketProjection, openGlobeChat],
+  );
+
+  const dismissWorkQueueItem = useCallback(
+    (item: WorkQueueItem) => {
+      completeWorkQueueItem(item.id);
+      refreshWorkQueue();
+    },
+    [refreshWorkQueue],
+  );
+
   const runComposeDetailSlotFill = useCallback(async () => {
     const graphId = resolveComposeSessionGraphId();
     if (!graphId) {
@@ -1817,6 +2685,7 @@ function GlobeHomeBody() {
 
   const onResumeSession = useCallback(
     (session: GlobeResumeSession) => {
+      setBrainProjectionEventId(null);
       void focusContextByEventId(session.eventId, {
         openSheet: session.kind === "market",
         mapTap: session.kind === "context",
@@ -1825,8 +2694,22 @@ function GlobeHomeBody() {
     [focusContextByEventId],
   );
 
+  const brainProjectionVisible = Boolean(
+    brainProjectionEventId &&
+      activeContextEvent?.id === brainProjectionEventId &&
+      activeCluster?.eventId === brainProjectionEventId &&
+      layerMode === "personal" &&
+      !sheetOpen &&
+      !hubDetailOpen &&
+      !mapMediaFocusOpen &&
+      !confirmOpen &&
+      !portalOpen &&
+      !marketConfirmOpen,
+  );
+
   return (
     <div
+      ref={surfaceRef}
       className="relative flex h-full min-h-0 flex-1 flex-col"
       data-surface="globe-home"
       onDragEnter={(event) => {
@@ -1902,12 +2785,104 @@ function GlobeHomeBody() {
         layerMode={layerMode}
         lodgingDiscoveryCards={lodgingDiscovery.cardByResourceId}
         eateryDiscoveryCards={eateryDiscovery.cardByResourceId}
+        brainSurfaceMarkers={brainSurfaceVisible ? projectedBrainSurfaceCandidates : []}
+        onBrainSurfaceMarkerPress={handleBrainSurfaceMarkerPress}
       />
+      <GlobeContextBrainMapOverlay
+        visible={brainProjectionVisible}
+        event={activeContextEvent}
+        anchorLat={activeCluster?.lat ?? null}
+        anchorLng={activeCluster?.lng ?? null}
+        globeRef={globeRef}
+        containerRef={surfaceRef}
+        onClose={() => setBrainProjectionEventId(null)}
+        onProjectionReady={launchBrainSurfaceProjection}
+      />
+      {activeBrainSurfaceCandidate &&
+      (!brainSurfaceDetailMode || !activeBrainSurfaceNode) ? (
+        <GlobeBrainSurfacePreviewCard
+          candidate={activeBrainSurfaceCandidate}
+          detailMode={brainSurfaceDetailMode}
+          onClose={() => {
+            setBrainSurfaceActiveCandidateId(null);
+            setBrainSurfaceDetailMode(false);
+          }}
+          onPromoteDetail={() => setBrainSurfaceDetailMode(true)}
+          onOpenPrimary={handleBrainSurfacePrimaryAction}
+          onOpenMap={
+            activeBrainSurfaceCandidate.mapsUrl
+              ? () =>
+                  window.open(
+                    activeBrainSurfaceCandidate.mapsUrl!,
+                    "_blank",
+                    "noopener,noreferrer",
+                  )
+              : null
+          }
+          onExpandInferredMap={
+            showActiveVideoExpandMap ? handleExpandActiveVideoInferredMap : null
+          }
+          inferredPlaceCount={
+            activeVideoInferredPlaceCount > 0 ? activeVideoInferredPlaceCount : undefined
+          }
+          onCommitMemo={
+            activeBrainSurfaceCandidate.memoCommitDraft
+              ? handleBrainSurfaceMemoCommit
+              : null
+          }
+          committingMemo={brainSurfaceCommitPending}
+        />
+      ) : null}
+      {brainSurfaceDetailMode &&
+      activeBrainSurfaceNode &&
+      activeBrainSurfacePresentation &&
+      activeContextEvent ? (
+        <GlobeContextBrainNodeCard
+          contextTitle={
+            activeContextEvent.place?.trim() || activeContextEvent.title.trim() || "맥락"
+          }
+          node={activeBrainSurfaceNode}
+          presentation={activeBrainSurfacePresentation}
+          memoBody={activeBrainSurfaceExplanation?.memoKo ?? null}
+          factors={activeBrainSurfaceExplanation?.factorsKo ?? []}
+          mediaGuide={activeBrainSurfaceGuide}
+          primaryAction={{
+            label:
+              activeBrainSurfaceCandidate?.family === "media"
+                ? copy.globe.contextGuideOpenVideo
+                : copy.globe.contextGuideOpenPage,
+            onClick: handleBrainSurfacePrimaryAction,
+          }}
+          secondaryAction={
+            activeBrainSurfaceNode?.kind === "ghost"
+              ? {
+                  label: copy.globe.contextBrainConnectCta,
+                  onClick: handleBrainSurfaceConnect,
+                }
+              : activeBrainSurfaceCandidate?.mapsUrl
+                ? {
+                    label: copy.globe.contextBrainNodeMapCta,
+                    onClick: () =>
+                      window.open(
+                        activeBrainSurfaceCandidate.mapsUrl!,
+                        "_blank",
+                        "noopener,noreferrer",
+                      ),
+                  }
+                : null
+          }
+          onClose={() => {
+            setBrainSurfaceActiveCandidateId(null);
+            setBrainSurfaceDetailMode(false);
+          }}
+        />
+      ) : null}
       {lodgingDiscovery.session && !eateryDiscovery.session ? (
         <GlobeLodgingDiscoveryStage
           session={lodgingDiscovery.session}
           globeRef={globeRef}
           onDismiss={lodgingDiscovery.dismiss}
+          activeResourceId={lodgingDiscovery.projectedResourceId}
         />
       ) : null}
       {eateryDiscovery.session ? (
@@ -1915,6 +2890,7 @@ function GlobeHomeBody() {
           session={eateryDiscovery.session}
           globeRef={globeRef}
           onDismiss={eateryDiscovery.dismiss}
+          activeResourceId={eateryDiscovery.projectedResourceId}
         />
       ) : null}
       <GlobeEateryFocusSheet eventId={activeCluster?.eventId ?? null} />
@@ -1957,7 +2933,17 @@ function GlobeHomeBody() {
           setMediaStoreRevision((value) => value + 1);
           toast.success("삭제했어요");
         }}
+        onPlaybackActiveChange={setMapVideoPlaying}
       />
+      {spatialTraceTourRunning && spatialTraceTourActiveStop ? (
+        <GlobeSpatialTraceTourChip
+          stop={spatialTraceTourActiveStop}
+          stopIndex={spatialTraceTourStopIndex}
+          stopCount={spatialTraceTourStopCount}
+          onSkip={() => stopSpatialTraceTour()}
+          className="bottom-[calc(var(--rimvio-globe-ingest-offset,5.5rem)+0.75rem)]"
+        />
+      ) : null}
       {contextTapPhase === "awaiting_replay" &&
       hubEventId &&
       !contextHasMapMedia &&
@@ -1999,6 +2985,7 @@ function GlobeHomeBody() {
         hubEventId={hubEventId}
         hubDetailOpen={hubDetailOpen}
         suppressMapHubRail={suppressMapHubRail}
+        suppressBrainStrip={brainSurfaceVisible}
         globeRenderSuspended={globeRenderSuspended}
         authUserId={user?.id ?? null}
         trendBridge={{
@@ -2020,7 +3007,23 @@ function GlobeHomeBody() {
         visible={Boolean(hubEventId)}
         globeRef={globeRef}
       />
-      {/* —— Overlay chrome (utility · filters) —— */}
+      {/* —— Overlay chrome (priority strip · utility) —— */}
+      {!mapMediaFocusOpen && layerMode === "personal" && !confirmOpen && !sheetOpen ? (
+        <div className="pointer-events-none absolute inset-x-0 top-[max(0.5rem,env(safe-area-inset-top))] z-20 flex justify-center px-12">
+          <div className="flex w-full max-w-[22rem] flex-col items-center gap-2">
+            <GlobePriorityStrip
+              payload={priorityPayload}
+              onMainAction={onPriorityMainAction}
+              onLearnChoice={choosePriorityLearn}
+              onLearnLater={dismissPriorityLearn}
+              onOpenQueue={() => setWorkQueueOpen(true)}
+            />
+            <div className="pointer-events-auto flex w-full justify-center">
+              <GlobeHomeRecallOneLiner />
+            </div>
+          </div>
+        </div>
+      ) : null}
       {!mapMediaFocusOpen ? (
       <div className="pointer-events-none absolute right-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20">
         <GlobeUtilityMenu
@@ -2065,11 +3068,6 @@ function GlobeHomeBody() {
         }
         stackAboveCompose={
           <>
-            {!confirmOpen && !sheetOpen && layerMode === "personal" ? (
-              <div className="flex w-full justify-center px-2 pb-1">
-                <GlobeHomeRecallOneLiner />
-              </div>
-            ) : null}
             {pulseMainActionEnabled ? (
               <MarketAlignmentSummary
                 enabled={pulseMainActionEnabled}
@@ -2130,6 +3128,7 @@ function GlobeHomeBody() {
             needsPlaceVerify,
             ok = true,
             undoPayload,
+            knowledgePlacementPending: walkthroughPending,
           }) => {
             if (ok === false) {
               toast.error(toastLine);
@@ -2147,6 +3146,9 @@ function GlobeHomeBody() {
             }
             setMediaStoreRevision((value) => value + 1);
             toast.success(copy.globe.memoriesFootprintSaved(rimvioHonorific));
+            if (walkthroughPending) {
+              setKnowledgePlacementPending(walkthroughPending);
+            }
             if (eventId) {
               if (trendBridgeSettings.enabled) {
                 void submitTrendBridgeContributionFromEvent({ eventId }).then(() => {
@@ -2164,6 +3166,9 @@ function GlobeHomeBody() {
         onPlaceVerifyConfirmed={() => {
           toast.success(copy.globe.placeVerifyConfirmedToast);
         }}
+        knowledgePlacementPending={knowledgePlacementPending}
+        onKnowledgePlacementDismiss={onKnowledgePlacementDismiss}
+        onKnowledgePlacementConfirmed={onKnowledgePlacementConfirmed}
         ingest={{
           targetEventId: activeCluster?.eventId ?? null,
           targetTitle: activeCluster?.title ?? null,
@@ -2208,7 +3213,23 @@ function GlobeHomeBody() {
           },
           onComposeBlur: () => memoryRecallComposeRef.current?.onBlur(),
           onComposeOpen: openGlobeChat,
+          onWorkSurfaceClassified: handleWorkSurfaceClassified,
+          onWorkQueueChanged: refreshWorkQueue,
+          onKnowledgePlacementPending,
         }}
+      />
+      <GlobeWorkQueueSheet
+        items={workQueueItems}
+        open={workQueueOpen}
+        onOpenChange={setWorkQueueOpen}
+        onResume={resumeWorkQueueItem}
+        onDismiss={dismissWorkQueueItem}
+      />
+      <GlobeTicketQrViewer
+        open={priorityQrOpen}
+        onOpenChange={setPriorityQrOpen}
+        qrSrc={priorityQrSrc}
+        title={priorityQrTitle}
       />
       <GlobeChatScreen
         open={globeChatOpen && !portalOpen && !marketConfirmOpen}
@@ -2258,6 +3279,9 @@ function GlobeHomeBody() {
           onDiscoveryMarketBrowse,
           onComposeFocus: () => memoryRecallComposeRef.current?.onFocus(),
           onComposeBlur: () => memoryRecallComposeRef.current?.onBlur(),
+          onWorkSurfaceClassified: handleWorkSurfaceClassified,
+          onWorkQueueChanged: refreshWorkQueue,
+          onKnowledgePlacementPending,
         }}
       />
       </GlobeHomeMemoryRecallProvider>

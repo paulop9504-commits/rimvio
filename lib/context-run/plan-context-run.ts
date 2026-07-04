@@ -1,4 +1,5 @@
 import type { BoundSituation, ContextRunIngress, ContextRunPlan } from "@/lib/context-run/ingress-types";
+import { classifyGlobeAiIntentFallback } from "@/lib/context-run/classify-globe-ai-intent";
 import { resolveMentionContractPlan } from "@/lib/context-run/plan-mention-contract";
 import { classifyExperienceRunIntent } from "@/lib/experience-run/classify-experience-run-intent";
 import { runGlobeComposerAction } from "@/lib/globe/run-globe-composer-action";
@@ -10,7 +11,6 @@ import { copy } from "@/lib/copy/human-ko";
 import { resolveGlobeMapIntent } from "@/lib/globe/intent-supply/resolve-globe-map-intent";
 import { detectPortalIntentFromText } from "@/lib/portal/detect-portal-intent-from-text";
 import { readPortalComposeRunState } from "@/lib/portal/portal-compose-run-store";
-import { readActiveRunState } from "@/lib/context-run/run-state-store";
 import { planPersonalRecallAskIfEligible } from "@/lib/context-run/plan-personal-recall-ask";
 
 function planPortalComposeIfEligible(
@@ -191,17 +191,11 @@ export function planContextRun(bound: BoundSituation): ContextRunPlan {
   }
 
   if (ingress.surface === "composer" && ingress.layerMode === "personal") {
-    const sessionGraphId =
-      readActiveRunState()?.graphId?.trim() ||
-      readPortalComposeRunState()?.graphId?.trim();
-    return {
-      kind: "portal_compose_run",
-      portalIntentId: "offer",
-      portalCategoryId: "used_goods",
-      composeAmbientChat: true,
-      graphId: sessionGraphId || graphId,
-      goalKo,
-    };
+    const fallback = classifyGlobeAiIntentFallback(text);
+    if (fallback.kind === "text_ingest") {
+      return planTextIngestFallback(bound);
+    }
+    return planPersonalContextAskFallback(bound);
   }
 
   return planTextIngestFallback(bound);

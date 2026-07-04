@@ -1,4 +1,7 @@
-import { isGlobeContextIngestMediaFile } from "@/lib/feed/ingest-globe-context-media";
+import {
+  inferGlobeContextIngestMediaKind,
+  partitionGlobeContextIngestMediaFiles,
+} from "@/lib/feed/ingest-globe-context-media";
 import { resolveGlobeMediaPickMax } from "@/lib/globe/globe-media-ingest-limits";
 import { isConstrainedMobileDevice } from "@/lib/platform/device";
 
@@ -8,20 +11,20 @@ const MAX_DESKTOP_PHOTO_BYTES = 96 * 1024 * 1024;
 const MAX_DESKTOP_VIDEO_BYTES = 512 * 1024 * 1024;
 
 export type IngestMediaValidationResult =
-  | { ok: true; files: File[] }
+  | { ok: true; files: File[]; skippedCount: number }
   | { ok: false; message: string };
 
 /** Client-side guard — size, count, MIME before heavy EXIF/ffmpeg work. */
 export function validateIngestMediaFiles(
   files: readonly File[],
 ): IngestMediaValidationResult {
-  const media = files.filter(isGlobeContextIngestMediaFile);
-  if (media.length === 0) {
+  const { accepted, rejected } = partitionGlobeContextIngestMediaFiles(files);
+  if (accepted.length === 0) {
     return { ok: false, message: "올릴 수 있는 사진·동영상이 없어요" };
   }
 
   const pickMax = resolveGlobeMediaPickMax();
-  if (media.length > pickMax) {
+  if (accepted.length > pickMax) {
     return {
       ok: false,
       message: `한 번에 ${pickMax}개까지 선택할 수 있어요`,
@@ -32,8 +35,9 @@ export function validateIngestMediaFiles(
   const maxPhotoBytes = mobile ? MAX_MOBILE_PHOTO_BYTES : MAX_DESKTOP_PHOTO_BYTES;
   const maxVideoBytes = mobile ? MAX_MOBILE_VIDEO_BYTES : MAX_DESKTOP_VIDEO_BYTES;
 
-  for (const file of media) {
-    if (file.type.startsWith("video/") && file.size > maxVideoBytes) {
+  for (const file of accepted) {
+    const kind = inferGlobeContextIngestMediaKind(file);
+    if (kind === "video" && file.size > maxVideoBytes) {
       return {
         ok: false,
         message: mobile
@@ -41,7 +45,7 @@ export function validateIngestMediaFiles(
           : "동영상이 너무 커요 · 더 짧거나 작은 파일을 골라 주세요",
       };
     }
-    if (file.type.startsWith("image/") && file.size > maxPhotoBytes) {
+    if (kind === "photo" && file.size > maxPhotoBytes) {
       return {
         ok: false,
         message: mobile
@@ -51,5 +55,5 @@ export function validateIngestMediaFiles(
     }
   }
 
-  return { ok: true, files: [...media] };
+  return { ok: true, files: [...accepted], skippedCount: rejected.length };
 }

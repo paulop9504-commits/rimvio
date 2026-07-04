@@ -112,8 +112,9 @@ assert.ok(
   topNodes.some((node) => node.label === "민수" && node.kind === "person"),
   "민수 should be a top person node",
 );
+const topPlaces = topMeaningNodes(graph, { limit: 5, kind: "place" });
 assert.ok(
-  topNodes.some((node) => node.label === "제주" && node.kind === "place"),
+  topPlaces.some((node) => node.label === "제주" && node.kind === "place"),
   "제주 should be a top place node",
 );
 

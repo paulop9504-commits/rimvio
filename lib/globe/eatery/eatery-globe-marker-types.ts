@@ -13,6 +13,10 @@ export type GlobeEateryMapMarker = {
   discoveryShortLabel?: string | null;
   discoveryPriceLabel?: string | null;
   discoveryAccent?: "green" | "blue" | "orange" | "purple";
+  virtualCandidate?: boolean;
+  ontologyBadgeLabel?: string | null;
+  anchorLabel?: string | null;
+  relationMemoKo?: string | null;
 };
 
 export function isGlobeEateryMapMarker(value: unknown): value is GlobeEateryMapMarker {

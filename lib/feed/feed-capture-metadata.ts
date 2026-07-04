@@ -286,6 +286,23 @@ export function appendFeedCaptureFragment(
   return next;
 }
 
+/**
+ * Drop all globe-visible capture fragments while leaving unrelated event metadata intact.
+ * Keys are explicitly set to undefined so EventCandidate merge-upserts delete prior values.
+ */
+export function clearFeedCaptureMetadata(
+  metadata: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+  return {
+    ...(metadata ?? {}),
+    [FEED_CAPTURES_META_KEY]: undefined,
+    [FEED_CAPTURE_STATS_META_KEY]: undefined,
+    [FEED_CAPTURE_PENDING_VERIFY_META_KEY]: undefined,
+    [FEED_CAPTURE_VERIFIED_AT_META_KEY]: undefined,
+    gpsDwellMinutes: undefined,
+  };
+}
+
 export function removeFeedCaptureFragment(
   metadata: Record<string, unknown> | undefined,
   fragmentId: string,

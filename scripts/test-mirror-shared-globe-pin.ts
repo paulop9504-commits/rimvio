@@ -3,6 +3,10 @@ import type { PeerGlobePinPayload } from "../lib/peer-chat/globe-pin-types";
 import { mirrorSharedGlobePinToPersonalGlobe } from "../lib/peer-chat/mirror-shared-globe-pin-to-personal";
 import { findPersonalGlobePinByEventId } from "../lib/globe/personal-globe-pin-store";
 import { findLifeEventCandidate } from "../lib/life-read-model";
+import {
+  readMirrorAudit,
+  readMirrorProvenance,
+} from "../lib/globe/mirror-provenance";
 import { resolveEventGlobeCoords } from "../lib/globe/resolve-event-globe-coords";
 
 const payload: PeerGlobePinPayload = {
@@ -29,6 +33,15 @@ const event = findLifeEventCandidate(pin.eventId);
 assert.ok(event);
 assert.equal(event?.metadata?.planPeerThreadId, "peer:test-thread");
 assert.equal(event?.metadata?.sharedGlobePinId, "test-pin-1");
+assert.equal(
+  readMirrorProvenance(event?.metadata)?.projectionMode,
+  "shared_mirrored",
+);
+assert.equal(
+  readMirrorProvenance(event?.metadata)?.origin.originalAuthorDisplayName,
+  "나",
+);
+assert.equal(readMirrorAudit(event?.metadata).length, 1);
 
 const coords = resolveEventGlobeCoords(event!);
 assert.equal(coords.lat, 36.3);

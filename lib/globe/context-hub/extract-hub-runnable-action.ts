@@ -28,7 +28,7 @@ export function extractHubRunnableAction(
     };
   }
 
-  if (row.handoffHref && row.serviceId === "ai_search") {
+  if (row.handoffHref && (row.serviceId === "ai_search" || row.serviceId === "eatery")) {
     return {
       href: row.handoffHref,
       label,

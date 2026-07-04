@@ -1,4 +1,8 @@
-import { isSupabaseConfigured } from "@/lib/supabase/config";
+import {
+  isSupabaseConfigured,
+  resolvePublicSupabaseAnonKey,
+  resolvePublicSupabaseUrl,
+} from "@/lib/supabase/config";
 import { isNaverSearchConfigured } from "@/lib/naver/config";
 import { mkdir, writeFile, unlink } from "node:fs/promises";
 import path from "node:path";
@@ -35,12 +39,12 @@ async function probeSupabase() {
     return false;
   }
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const url = resolvePublicSupabaseUrl();
   if (!url) {
     return false;
   }
 
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const anonKey = resolvePublicSupabaseAnonKey();
   if (!anonKey) {
     return false;
   }

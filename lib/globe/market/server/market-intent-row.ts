@@ -98,6 +98,19 @@ export function readDetailJson(raw: Record<string, unknown> | null | undefined):
       : [],
     videoCount: typeof raw.videoCount === "number" ? raw.videoCount : 0,
     publishedExternal: raw.publishedExternal === true,
+    exposureMode: raw.exposureMode === "live" ? "live" : "fixed",
+    liveExposureLat:
+      typeof raw.liveExposureLat === "number" && Number.isFinite(raw.liveExposureLat)
+        ? raw.liveExposureLat
+        : null,
+    liveExposureLng:
+      typeof raw.liveExposureLng === "number" && Number.isFinite(raw.liveExposureLng)
+        ? raw.liveExposureLng
+        : null,
+    liveExposurePlaceLabel:
+      typeof raw.liveExposurePlaceLabel === "string" ? raw.liveExposurePlaceLabel : "",
+    liveExposureCapturedAtIso:
+      typeof raw.liveExposureCapturedAtIso === "string" ? raw.liveExposureCapturedAtIso : null,
   };
 }
 
@@ -123,6 +136,11 @@ export function marketIntentDetailToJson(detail: MarketIntentDetail): Record<str
     videoUrls: detail.videoUrls ?? [],
     videoCount: detail.videoCount ?? 0,
     publishedExternal: isMarketIntentPublishedExternal(detail),
+    exposureMode: detail.exposureMode ?? "fixed",
+    liveExposureLat: detail.liveExposureLat ?? null,
+    liveExposureLng: detail.liveExposureLng ?? null,
+    liveExposurePlaceLabel: detail.liveExposurePlaceLabel ?? "",
+    liveExposureCapturedAtIso: detail.liveExposureCapturedAtIso ?? null,
   };
 }
 

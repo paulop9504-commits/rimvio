@@ -27,22 +27,22 @@ const marketMention = planFor("@중고 맥북");
 assert.equal(marketMention.kind, "portal_compose_run");
 
 const genericMemo = planFor("점심에 김치찌개 먹음");
-assert.equal(genericMemo.kind, "portal_compose_run");
-if (genericMemo.kind === "portal_compose_run") {
-  assert.equal(genericMemo.composeAmbientChat, true);
-}
+assert.equal(genericMemo.kind, "text_ingest");
 
 const ambientHi = planFor("ㅎㅇ");
-assert.equal(ambientHi.kind, "portal_compose_run");
-if (ambientHi.kind === "portal_compose_run") {
-  assert.equal(ambientHi.composeAmbientChat, true);
-}
+assert.equal(ambientHi.kind, "personal_context_ask");
 
 const recallPerson = planFor("정성이랑 어디 갔어");
 assert.equal(recallPerson.kind, "personal_context_ask");
 
 const urlAction = planFor("https://maps.google.com");
-assert.equal(urlAction.kind, "portal_compose_run");
+assert.equal(urlAction.kind, "text_ingest");
+
+const summaryAsk = planFor("지난 제주 기록 정리해줘");
+assert.equal(summaryAsk.kind, "personal_context_ask");
+
+const compareAsk = planFor("여유 있게 가는 거랑 빡빡하게 가는 거 비교해줘");
+assert.equal(compareAsk.kind, "personal_context_ask");
 
 const lodging = planFor("호텔 추천해줘");
 assert.equal(lodging.kind, "experience_run");

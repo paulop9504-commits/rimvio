@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { fetchPlacesLodgingNearby } from "@/lib/globe/context-hub/fetch-places-lodging-nearby";
 import { loadLodgingInventoryRows } from "@/lib/globe/context-hub/load-lodging-inventory-rows";
+import { selectPreferredLodgingImage } from "@/lib/globe/lodging/lodging-photo-fidelity";
 import { isGooglePlacesConfigured } from "@/lib/locate/google-places-config";
 import { upsertEventCandidate } from "@/lib/events/event-store";
 import type { EventCandidate } from "@/lib/events/event-candidate";
@@ -52,6 +53,21 @@ async function run() {
   if (isGooglePlacesConfigured()) {
     assert.ok(nearby.length >= 1);
     assert.ok(nearby.every((row) => row.placeId && row.name && row.lat && row.lng));
+    assert.ok(
+      nearby.every((row) => row.provider === "google_places"),
+      "google lodging rows should keep provider identity",
+    );
+    assert.ok(
+      nearby.every((row) => row.mapsUrl?.includes("google.com/maps")),
+      "google lodging rows should keep an exact maps URL",
+    );
+    assert.ok(
+      nearby.every((row) => {
+        const preferred = selectPreferredLodgingImage(row);
+        return row.images.length === 0 ? preferred === null : preferred === row.images[0];
+      }),
+      "preferred lodging image should come from the verified provider photo bundle",
+    );
   } else {
     assert.equal(nearby.length, 0);
   }

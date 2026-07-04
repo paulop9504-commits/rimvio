@@ -2,18 +2,22 @@ import { haversineKm } from "@/lib/feed/spacetime-fit";
 import type { ContextLodgingInventoryRow } from "@/lib/globe/context-hub/lodging-resource-types";
 import type { UnifiedExperienceContext } from "@/lib/experience-context/unified-experience-context-types";
 import { copy } from "@/lib/copy/human-ko";
+import { buildGoogleMapsPlaceHref } from "@/lib/resolvers/deep-links";
 import {
   LODGING_DISCOVERY_ACCENT_COLORS,
   LODGING_DISCOVERY_RADIUS_M,
   type LodgingDiscoveryAccent,
 } from "@/lib/globe/lodging/lodging-discovery-constants";
+import { selectPreferredLodgingImage } from "@/lib/globe/lodging/lodging-photo-fidelity";
 import type { ScoredLodgingRecommendation } from "@/lib/globe/lodging/score-lodging-recommendations";
 import { resolvePlaceLabelNearCoords } from "@/lib/location-ping/format-place-label";
 
 export type GlobeLodgingDiscoveryCard = {
   resourceId: string;
   placeId: string;
+  rankIndex: number;
   title: string;
+  addressLine: string | null;
   shortLabel: string;
   distanceM: number | null;
   priceKrw: number | null;
@@ -23,6 +27,7 @@ export type GlobeLodgingDiscoveryCard = {
   lat: number;
   lng: number;
   thumbnailUrl: string | null;
+  navigationHref: string;
 };
 
 export type GlobeLodgingDiscoverySession = {
@@ -93,6 +98,19 @@ function computePeoplePlacePct(hasMatch: boolean, placeId: string): number | nul
     hash = (hash + char.charCodeAt(0) * 7) % 13;
   }
   return 88 + hash;
+}
+
+function resolveLodgingNavigationHref(row: ContextLodgingInventoryRow): string {
+  const mapsUrl = row.mapsUrl?.trim();
+  if (mapsUrl) {
+    return mapsUrl;
+  }
+  return buildGoogleMapsPlaceHref({
+    lat: row.lat,
+    lng: row.lng,
+    placeId: row.provider === "google_places" ? row.placeId : null,
+    placeLabel: row.name,
+  });
 }
 
 export function resolveLodgingDiscoveryAreaLabel(input: {
@@ -173,7 +191,9 @@ export function projectLodgingDiscoverySession(input: {
     return {
       resourceId: input.resourceIdByPlaceId[row.placeId] ?? `${input.eventId}:lodging:${row.placeId}`,
       placeId: row.placeId,
+      rankIndex: index,
       title: row.name,
+      addressLine: row.address?.trim() || null,
       shortLabel: extractShortLabel(row.name),
       distanceM,
       priceKrw: row.priceKrw ?? null,
@@ -187,7 +207,8 @@ export function projectLodgingDiscoverySession(input: {
       accent: LODGING_DISCOVERY_ACCENT_COLORS[index % LODGING_DISCOVERY_ACCENT_COLORS.length]!,
       lat: row.lat,
       lng: row.lng,
-      thumbnailUrl: row.images[0] ?? null,
+      thumbnailUrl: selectPreferredLodgingImage(row),
+      navigationHref: resolveLodgingNavigationHref(row),
     };
   });
 
@@ -208,12 +229,14 @@ export function projectLodgingDiscoverySession(input: {
   };
 }
 
-export function filterLodgingRowsWithinRadius(input: {
-  rows: readonly ContextLodgingInventoryRow[];
+export function filterLodgingRowsWithinRadius<
+  TRow extends Pick<ContextLodgingInventoryRow, "lat" | "lng">,
+>(input: {
+  rows: readonly TRow[];
   lat: number | null;
   lng: number | null;
   radiusM: number;
-}): ContextLodgingInventoryRow[] {
+}): TRow[] {
   if (input.lat == null || input.lng == null) {
     return [...input.rows];
   }

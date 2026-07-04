@@ -1,0 +1,21 @@
+# Situation Projection Layer
+
+**Canonical:** `docs/RIMVIO_SITUATION_PROJECTION_LAYER.md` · **Code:** `lib/situation-projection/`
+
+## Stack position
+
+`RECALL → SITUATION PROJECTION → ACTION` (Experience layers L4.5)
+
+## Immutable laws
+
+1. **Solid** = EventCandidate + entity graph evidence only
+2. **Ghost** = playbook axes, `virtual: true`, `rimvio.situation-projection.v1` only
+3. **Never** `upsertEntityEdge` from ghost nodes
+4. **LLM** = layout / `surfaceKind` / copy — not truth writer
+5. **Promote** ghost → solid only via `commit-truth`
+
+## PR reject
+
+- Ghost edges in `rimvio.entity-graph.v1`
+- LLM-invented axes outside `SITUATION_GHOST_PLAYBOOKS`
+- Situation map as Globe home scroll feed (3+ ghost cards)

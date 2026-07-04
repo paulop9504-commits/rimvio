@@ -40,6 +40,8 @@ import { formatPinDateLabel } from "@/lib/globe/format-pin-date-label";
 import { resolveGlobeContextPlaceLabel } from "@/lib/globe/globe-context-card-coords";
 import { buildPhotoIngestUndoPayload } from "@/lib/globe/globe-photo-ingest-undo";
 import type { GlobePhotoIngestUndoPayload } from "@/lib/globe/globe-photo-ingest-undo";
+import type { GlobeKnowledgePlacementPending } from "@/lib/globe/globe-knowledge-placement-pending";
+import { maybeOfferKnowledgePlacementAfterCapture } from "@/lib/globe/offer-knowledge-placement-after-capture";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 
 export type GlobePhotoPlaceWalkthroughProps = {
@@ -64,6 +66,7 @@ export type GlobePhotoPlaceWalkthroughProps = {
     needsPlaceVerify?: boolean;
     ok?: boolean;
     undoPayload?: GlobePhotoIngestUndoPayload | null;
+    knowledgePlacementPending?: GlobeKnowledgePlacementPending | null;
   }) => void;
 };
 
@@ -183,6 +186,7 @@ export function GlobePhotoPlaceWalkthrough({
     toastLine: string;
     needsPlaceVerify: boolean;
     undoPayload?: GlobePhotoIngestUndoPayload | null;
+    knowledgePlacementPending?: GlobeKnowledgePlacementPending | null;
   } | null>(null);
   const [workingDraft, setWorkingDraft] = useState<GlobePhotoIngestDraft | null>(null);
   const [dateInput, setDateInput] = useState("");
@@ -230,6 +234,7 @@ export function GlobePhotoPlaceWalkthrough({
       needsPlaceVerify: committedShare.needsPlaceVerify,
       ok: true,
       undoPayload: committedShare.undoPayload ?? null,
+      knowledgePlacementPending: committedShare.knowledgePlacementPending ?? null,
     });
     onDismiss();
   }, [committedShare, onConfirmed, onDismiss]);
@@ -240,6 +245,7 @@ export function GlobePhotoPlaceWalkthrough({
       toastLine: string;
       needsPlaceVerify: boolean;
       undoPayload?: GlobePhotoIngestUndoPayload | null;
+      knowledgePlacementPending?: GlobeKnowledgePlacementPending | null;
     }) => {
       if (!configured || !user?.id) {
         onConfirmed?.({
@@ -248,6 +254,7 @@ export function GlobePhotoPlaceWalkthrough({
           needsPlaceVerify: summary.needsPlaceVerify,
           ok: true,
           undoPayload: summary.undoPayload ?? null,
+          knowledgePlacementPending: summary.knowledgePlacementPending ?? null,
         });
         onDismiss();
         return;
@@ -366,7 +373,8 @@ export function GlobePhotoPlaceWalkthrough({
               title: nextDraft.candidates[0]?.title,
               userLat: nextDraft.clusters[0]?.anchor.lat,
               userLng: nextDraft.clusters[0]?.anchor.lng,
-              force: false,
+              // Photo walkthrough manual place text should override any provisional GPS anchor.
+              force: true,
             }),
             new Promise<null>((resolve) => {
               window.setTimeout(() => resolve(null), 18_000);
@@ -382,6 +390,11 @@ export function GlobePhotoPlaceWalkthrough({
         toastLine: summary.toastLine,
         needsPlaceVerify,
         undoPayload: buildPhotoIngestUndoPayload(summary.outcomes ?? []),
+        knowledgePlacementPending:
+          maybeOfferKnowledgePlacementAfterCapture({
+            files: nextDraft.mediaFiles,
+            summary,
+          }) ?? undefined,
       });
     },
     [attachTarget, goToSharePeopleStep, onCommitFileIndexProgress, onCommitProgress, onConfirmed, onDismiss],

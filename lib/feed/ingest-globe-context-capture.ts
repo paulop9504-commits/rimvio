@@ -192,6 +192,7 @@ export async function ingestGlobeContextFromFiles(
     exifPinned: summary.exifPinned,
     poolStaged: summary.poolStaged,
     lastError: summary.lastError,
+    outcomes: summary.outcomes,
   };
 }
 

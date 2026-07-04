@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import type { RankedContextResource } from "@/lib/globe/resource/map-hub-service-to-resource";
+import { formatLodgingStayBadgeLabel } from "@/lib/globe/context-hub/lodging-stay-window";
 import { readLodgingPayloadFromResource } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import { copy } from "@/lib/copy/human-ko";
 
@@ -40,6 +41,7 @@ export function GlobeLodgingMapStrip({
       {lodgingEntries.map(({ entry, index }) => {
         const payload = readLodgingPayloadFromResource(entry.resource);
         const thumb = payload?.images[0] ?? null;
+        const stayBadgeLabel = formatLodgingStayBadgeLabel(payload?.stayWindow ?? null);
         const active = index === activeIndex;
         return (
           <button
@@ -69,6 +71,11 @@ export function GlobeLodgingMapStrip({
             <span className="truncate px-1.5 py-1 text-[10px] font-semibold text-foreground">
               {entry.resource.label}
             </span>
+            {stayBadgeLabel ? (
+              <span className="truncate px-1.5 pb-1 text-[9px] font-medium text-muted-foreground">
+                {stayBadgeLabel}
+              </span>
+            ) : null}
           </button>
         );
       })}

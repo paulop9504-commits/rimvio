@@ -16,6 +16,7 @@ import { GLOBE_OVERVIEW_POINT_OF_VIEW } from "@/lib/experience-graph/globe-overv
 import { createGlobe3dPinElement, createGlobe3dClusterPinElement, createGlobe3dDotPinElement, createGlobe3dMarketPinElement } from "@/lib/globe/create-globe-3d-pin-element";
 import { createGlobeLodgingMarkerElement } from "@/lib/globe/create-globe-lodging-marker-element";
 import { createGlobeEateryMarkerElement } from "@/lib/globe/create-globe-eatery-marker-element";
+import { createGlobeBrainSurfaceMarkerElement } from "@/lib/globe/create-globe-brain-surface-marker-element";
 import { createGlobeContextHubAnchorElement } from "@/lib/globe/create-globe-context-hub-anchor-element";
 import { createGlobe3dViewerPinElement } from "@/lib/globe/create-globe-3d-viewer-pin-element";
 import { accuracyMetersToRingDegrees } from "@/lib/globe/accuracy-ring-degrees";
@@ -55,6 +56,7 @@ import { shouldRenderLodgingGlobeMarkers } from "@/lib/globe/context-hub/project
 import { shouldRenderEateryGlobeMarkers } from "@/lib/globe/eatery/project-eatery-globe-markers";
 import { shouldRenderContextHubGlobeAnchor } from "@/lib/globe/context-hub/project-context-hub-globe-anchor";
 import {
+  isBrainSurfaceProjectionCandidate,
   isClassifiedGlobePin,
   mergeGlobeHtmlElements,
   readGlobeHtmlLat,
@@ -68,6 +70,7 @@ import { syncGlobeContextWarmthLayer } from "@/lib/globe/sync-globe-context-warm
 import { screenPointToGlobeCoords } from "@/lib/globe/screen-point-to-globe-coords";
 import { resolveGlobeOffsetForPinViewportY } from "@/lib/globe/map-anchored-overlay-layout";
 import { cn } from "@/lib/utils";
+import type { BrainSurfaceProjectionCandidate } from "@/lib/situation-projection/brain-surface-types";
 
 const FLY_MS = 1400;
 
@@ -176,6 +179,9 @@ export type RimvioGlobe3DProps = {
   /** Ranked eatery markers — View only; no fetch. */
   eateryMarkers?: readonly GlobeEateryMapMarker[];
   onEateryMarkerPress?: (resourceId: string, carouselIndex: number) => void;
+  /** Temporary brain-complete candidates layered over the globe. */
+  brainSurfaceMarkers?: readonly BrainSurfaceProjectionCandidate[];
+  onBrainSurfaceMarkerPress?: (candidateId: string) => void;
   /** Connected context hub opener — map pill, not pin info sheet. */
   hubAnchors?: readonly GlobeContextHubMapAnchor[];
   onContextHubAnchorPress?: (contextEventId: string) => void;
@@ -207,6 +213,8 @@ export const RimvioGlobe3D = memo(
       onLodgingMarkerPress,
       eateryMarkers = [],
       onEateryMarkerPress,
+      brainSurfaceMarkers = [],
+      onBrainSurfaceMarkerPress,
       hubAnchors = [],
       onContextHubAnchorPress,
       className,
@@ -219,6 +227,7 @@ export const RimvioGlobe3D = memo(
     const onPinPressRef = useRef(onPinPress);
     const onLodgingMarkerPressRef = useRef(onLodgingMarkerPress);
     const onEateryMarkerPressRef = useRef(onEateryMarkerPress);
+    const onBrainSurfaceMarkerPressRef = useRef(onBrainSurfaceMarkerPress);
     const onContextHubAnchorPressRef = useRef(onContextHubAnchorPress);
     const onPinRelocateRef = useRef(onPinRelocate);
     const pinRelocateEnabledRef = useRef(pinRelocateEnabled);
@@ -230,6 +239,7 @@ export const RimvioGlobe3D = memo(
     const pinsRef = useRef(pins);
     const lodgingMarkersRef = useRef(lodgingMarkers);
     const eateryMarkersRef = useRef(eateryMarkers);
+    const brainSurfaceMarkersRef = useRef(brainSurfaceMarkers);
     const hubAnchorsRef = useRef(hubAnchors);
     const tripArcsRef = useRef(tripArcs);
     const contextWarmthPointsRef = useRef(contextWarmthPoints);
@@ -405,6 +415,7 @@ export const RimvioGlobe3D = memo(
     onPinPressRef.current = onPinPress;
     onLodgingMarkerPressRef.current = onLodgingMarkerPress;
     onEateryMarkerPressRef.current = onEateryMarkerPress;
+    onBrainSurfaceMarkerPressRef.current = onBrainSurfaceMarkerPress;
     onContextHubAnchorPressRef.current = onContextHubAnchorPress;
     onPinRelocateRef.current = onPinRelocate;
     pinRelocateEnabledRef.current = pinRelocateEnabled;
@@ -416,6 +427,7 @@ export const RimvioGlobe3D = memo(
     pinsRef.current = pins;
     lodgingMarkersRef.current = lodgingMarkers;
     eateryMarkersRef.current = eateryMarkers;
+    brainSurfaceMarkersRef.current = brainSurfaceMarkers;
     hubAnchorsRef.current = hubAnchors;
     tripArcsRef.current = tripArcs;
     contextWarmthPointsRef.current = contextWarmthPoints;
@@ -437,9 +449,11 @@ export const RimvioGlobe3D = memo(
           pins: pinsRef.current,
           lodgingMarkers: lodgingMarkersRef.current,
           eateryMarkers: eateryMarkersRef.current,
+          brainSurfaceMarkers: brainSurfaceMarkersRef.current,
           hubAnchors: hubAnchorsRef.current,
           showLodgingMarkers: showLodging,
           showEateryMarkers: showEatery,
+          showBrainSurfaceMarkers: brainSurfaceMarkersRef.current.length > 0,
           showHubAnchors,
         }),
       );
@@ -588,9 +602,11 @@ export const RimvioGlobe3D = memo(
             pins: pinsRef.current,
             lodgingMarkers: lodgingMarkersRef.current,
             eateryMarkers: eateryMarkersRef.current,
+            brainSurfaceMarkers: brainSurfaceMarkersRef.current,
             hubAnchors: hubAnchorsRef.current,
             showLodgingMarkers: shouldRenderLodgingGlobeMarkers(warmthDetailRef.current),
             showEateryMarkers: shouldRenderEateryGlobeMarkers(warmthDetailRef.current),
+            showBrainSurfaceMarkers: brainSurfaceMarkersRef.current.length > 0,
             showHubAnchors: shouldRenderContextHubGlobeAnchor(warmthDetailRef.current),
           }),
         )
@@ -620,6 +636,12 @@ export const RimvioGlobe3D = memo(
             return createGlobeEateryMarkerElement(row, {
               onPress: (resourceId, carouselIndex) =>
                 onEateryMarkerPressRef.current?.(resourceId, carouselIndex),
+            });
+          }
+          if (isBrainSurfaceProjectionCandidate(row)) {
+            return createGlobeBrainSurfaceMarkerElement(row, {
+              onPress: (candidateId) =>
+                onBrainSurfaceMarkerPressRef.current?.(candidateId),
             });
           }
           if (row.pinShape === "viewer") {

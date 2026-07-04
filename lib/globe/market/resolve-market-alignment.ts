@@ -2,6 +2,7 @@ import {
   marketCategoriesCompatible,
   marketCategoryLabelKo,
 } from "@/lib/globe/market/market-category-registry";
+import { resolveMarketIntentExposureAnchor } from "@/lib/globe/market/market-intent-exposure";
 import { getCategoryPriorityMatrix } from "@/lib/globe/market/market-priority-matrix";
 import { scoreWeightedMarketAlignment } from "@/lib/globe/market/score-weighted-market-alignment";
 import type {
@@ -24,11 +25,13 @@ function withinRadius(
   a: MarketIntentRecord,
   b: MarketIntentRecord,
 ): boolean {
+  const aAnchor = resolveMarketIntentExposureAnchor(a);
+  const bAnchor = resolveMarketIntentExposureAnchor(b);
   const distanceKm = haversineKm(
-    a.anchorLat,
-    a.anchorLng,
-    b.anchorLat,
-    b.anchorLng,
+    aAnchor.lat,
+    aAnchor.lng,
+    bAnchor.lat,
+    bAnchor.lng,
   );
   const allowed = Math.min(a.radiusKm, b.radiusKm);
   return distanceKm <= allowed;
@@ -103,11 +106,13 @@ export function resolveMarketAlignment(input: {
         continue;
       }
 
+      const selfAnchor = resolveMarketIntentExposureAnchor(self);
+      const otherAnchor = resolveMarketIntentExposureAnchor(other);
       const distanceKm = haversineKm(
-        self.anchorLat,
-        self.anchorLng,
-        other.anchorLat,
-        other.anchorLng,
+        selfAnchor.lat,
+        selfAnchor.lng,
+        otherAnchor.lat,
+        otherAnchor.lng,
       );
 
       if (!best || weighted.total > best.weighted.total) {
@@ -122,6 +127,7 @@ export function resolveMarketAlignment(input: {
 
   const { self, other, weighted, distanceKm } = best;
   const match = other;
+  const matchAnchor = resolveMarketIntentExposureAnchor(match);
   const category = marketCategoryLabelKo(match.categoryId);
   const priceLine =
     match.priceMinKrw !== null && match.priceMaxKrw !== null
@@ -132,8 +138,8 @@ export function resolveMarketAlignment(input: {
 
   const headline =
     self.role === "seeking"
-      ? input.copy.headlineSeeking(match.title, match.placeLabel || "근처")
-      : input.copy.headlineListing(match.title, match.placeLabel || "근처");
+      ? input.copy.headlineSeeking(match.title, matchAnchor.placeLabel || "근처")
+      : input.copy.headlineListing(match.title, matchAnchor.placeLabel || "근처");
 
   return {
     selfIntentId: self.id,
@@ -148,9 +154,9 @@ export function resolveMarketAlignment(input: {
       priceLine,
     ),
     ctaLabel: input.copy.cta,
-    matchLat: match.anchorLat,
-    matchLng: match.anchorLng,
-    matchPlaceLabel: match.placeLabel,
+    matchLat: matchAnchor.lat,
+    matchLng: matchAnchor.lng,
+    matchPlaceLabel: matchAnchor.placeLabel,
     distanceKm,
     categoryId: match.categoryId,
     sourceRef: "market:alignment_v1.2",

@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useGlobeExperienceSettings } from "@/hooks/use-globe-experience-settings";
+import { useMarketLiveExposureSync } from "@/hooks/use-market-live-exposure-sync";
 import { useGpsBackgroundEventIngest } from "@/hooks/use-gps-background-event-ingest";
 import { useGpsPingRecorder } from "@/hooks/use-gps-ping-recorder";
 import { useGpsTrackingEnabled } from "@/hooks/use-gps-tracking-enabled";
@@ -14,6 +15,7 @@ export function GpsPingBootstrap() {
   const { settings } = useGlobeExperienceSettings();
   useGpsPingRecorder(enabled);
   useGpsBackgroundEventIngest(enabled && settings.gpsDwellIngest);
+  useMarketLiveExposureSync(enabled);
 
   useEffect(() => {
     void hydrateGpsPingStore();

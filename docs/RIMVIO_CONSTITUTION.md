@@ -52,7 +52,7 @@ Full stack: **`docs/CONTEXT_RUN_ENGINE.md`** · Globe UX: **`docs/GLOBE_EXECUTIO
 **Experience layers (build in order — do not skip):**
 
 ```
-FACT → EXPERIENCE → MEANING → RECALL → ACTION
+FACT → EXPERIENCE → MEANING → RECALL → SITUATION PROJECTION → ACTION
 ```
 
 Full spec + examples + code map: **`docs/RIMVIO_EXPERIENCE_LAYERS.md`**
@@ -63,12 +63,13 @@ Full spec + examples + code map: **`docs/RIMVIO_EXPERIENCE_LAYERS.md`**
 | **EXPERIENCE** | Bundled node the user understands ("민수랑 제주 Day2") |
 | **MEANING** | Synaptic weights — why edges matter *to this user* (patterns, relationships, seasons) |
 | **RECALL** | **Trigger edge** — fires when context matches (place, time, people, calendar) — not passive photo dump |
+| **SITUATION PROJECTION** | Solid + ghost situation map — AI layout, Commit promotes truth |
 | **ACTION** | **Re-execution** — scattered resources → one operable situation via `@`, Context Run, prep surface |
 
 **2026-06 maturity:** FACT ✓ · EXPERIENCE ✓ · MEANING △ · RECALL △ · ACTION ✓.  
 **Moat:** MEANING + RECALL compound as **synaptic connections** that strengthen with use; ACTION (capabilities) is replaceable.
 
-**Synaptic layer (engineering):** `docs/RIMVIO_SYNAPTIC_LAYER.md` · **Active spine:** `docs/ACTION_OS_SPINE.md`  
+**Synaptic layer (engineering):** `docs/RIMVIO_SYNAPTIC_LAYER.md` · **Situation projection:** `docs/RIMVIO_SITUATION_PROJECTION_LAYER.md` · **Active spine:** `docs/ACTION_OS_SPINE.md`  
 **Macro roadmap:** Phase 1 Memory Recovery → Phase 2 MEANING micro-surfaces → Phase 3 collective (opt-in, separate UI) — **`docs/RIMVIO_EXPERIENCE_LAYERS.md` § Product roadmap**.
 
 **Main screen (Three Floors — Globe home at `/`):** **`docs/RIMVIO_THREE_FLOORS.md`**

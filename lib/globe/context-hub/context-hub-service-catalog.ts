@@ -9,11 +9,13 @@ import type { DepartureHubOption } from "@/lib/globe/suggest-departure-hub-optio
 import { suggestDepartureHubOptions } from "@/lib/globe/suggest-departure-hub-options";
 import { readPlanContextFromEvent } from "@/lib/plan-context/plan-context-metadata";
 import { buildContextHubAiSearchHandoff } from "@/lib/globe/context-hub/build-context-hub-ai-search-handoff";
+import { buildContextHubEateryHandoff } from "@/lib/globe/context-hub/build-context-hub-eatery-handoff";
 import {
   isTicketLikeContext,
   readContextTicketArtifact,
 } from "@/lib/globe/context-hub/read-context-ticket-artifact";
 import { isLodgingHubEnabled } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
+import { isEateryHubEnabled } from "@/lib/globe/eatery/read-eatery-resource-inventory";
 import { isBridgeSharedEvent } from "@/lib/globe/is-bridge-shared-event";
 import { findPersonalGlobePinByEventId } from "@/lib/globe/personal-globe-pin-store";
 import { findMarketIntentByEventId } from "@/lib/globe/market/market-alignment-store";
@@ -52,6 +54,13 @@ export const CONTEXT_HUB_SERVICE_CATALOG: readonly ContextHubServiceDef[] = [
     kind: null,
     labelKo: "숙소",
     shortLabelKo: "숙소",
+    implemented: true,
+  },
+  {
+    id: "eatery",
+    kind: null,
+    labelKo: "맛집",
+    shortLabelKo: "맛집",
     implemented: true,
   },
   {
@@ -127,6 +136,8 @@ function isServiceOffered(serviceId: ContextHubServiceId, event: EventCandidate)
       return shouldOfferDepartureHub(event);
     case "lodging":
       return isTravelContext(event);
+    case "eatery":
+      return isTravelContext(event) || isEateryHubEnabled(event);
     case "rental_car":
       return isTravelContext(event);
     case "market":
@@ -173,6 +184,10 @@ export function listContextHubServicesForEvent(
       def.id === "ai_search" && offered
         ? buildContextHubAiSearchHandoff(event)
         : null;
+    const eateryHandoff =
+      def.id === "eatery" && offered
+        ? buildContextHubEateryHandoff(event)
+        : null;
 
     const ticketUrl = ticketArtifact?.actionUrl ?? null;
     const ticketBrand = ticketUrl ? detectTicketBrand(ticketUrl, "") : null;
@@ -188,6 +203,8 @@ export function listContextHubServicesForEvent(
           ? Boolean(ticketArtifact?.actionUrl || ticketArtifact?.qrPreviewUrl)
           : def.id === "lodging"
             ? isLodgingHubEnabled(event)
+              : def.id === "eatery"
+                ? isEateryHubEnabled(event)
             : def.id === "market"
               ? Boolean(marketIntent?.active)
             : def.id === "ai_search"
@@ -213,10 +230,14 @@ export function listContextHubServicesForEvent(
       handoffHref:
         def.id === "ticket" && ticketArtifact?.qrPreviewUrl
           ? ticketArtifact.qrPreviewUrl
+          : def.id === "eatery"
+            ? eateryHandoff?.href ?? null
           : aiHandoff?.href ?? null,
       handoffLabelKo:
         def.id === "ticket" && ticketArtifact?.qrPreviewUrl
           ? "QR 보기"
+          : def.id === "eatery"
+            ? eateryHandoff?.actionLabelKo ?? null
           : def.id === "market" && marketIntent?.active
             ? marketProduct || (marketIntent.role === "seeking" ? "구하는 중" : "내놓는 중")
           : aiHandoff?.actionLabelKo ?? null,

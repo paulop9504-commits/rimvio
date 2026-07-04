@@ -31,6 +31,7 @@ import {
   syncMarketQuickListStartToFeed,
 } from "@/lib/context-run/sync-market-compose-to-feed";
 import { ingestGlobeContextFromFiles } from "@/lib/feed/ingest-globe-context-capture";
+import { maybeOfferKnowledgePlacementAfterCapture } from "@/lib/globe/offer-knowledge-placement-after-capture";
 import { ingestPastedLinks } from "@/lib/share/inbox-paste";
 import {
   fetchExternalContextSourcesClient,
@@ -76,6 +77,13 @@ import {
 } from "@/lib/globe/chat/sync-portal-compose-to-chat";
 import { sellItemDraftToComposeText } from "@/lib/portal/compose-draft/draft-to-market-intent";
 import type { PortalIntentId } from "@/lib/portal/portal-types";
+import { classifyGlobeWorkSurface } from "@/lib/work-queue/classify-globe-work-surface";
+import { syncWorkQueueFromActiveRuns } from "@/lib/work-queue/sync-work-queue-from-runs";
+
+function refreshWorkQueue(handlers: ContextRunEffectHandlers): void {
+  syncWorkQueueFromActiveRuns();
+  handlers.onWorkQueueChanged?.();
+}
 
 function isComposerTextIngress(ingress: ContextRunIngress): boolean {
   return ingress.kind === "text" && ingress.surface === "composer";
@@ -115,6 +123,18 @@ export async function dispatchContextRun(
     dispatchGlobeIntentSupplyClear();
   }
   ensureRunState({ graphId: runGraphId, goal: runGoalKo });
+
+  if (
+    ingress.kind === "text" &&
+    ingress.layerMode === "personal" &&
+    ingress.text.trim() &&
+    !("resumePortalRun" in plan && plan.resumePortalRun)
+  ) {
+    const classified = classifyGlobeWorkSurface(ingress.text);
+    if (classified) {
+      handlers.onWorkSurfaceClassified?.(classified);
+    }
+  }
 
   if (isComposerTextIngress(ingress) && ingress.kind === "text") {
     const trimmed = ingress.text.trim();
@@ -287,7 +307,19 @@ async function executeContextRunPlan(
             composeText,
             draft: result.state.marketDraft ?? undefined,
           });
+        } else if (
+          isComposerTextIngress(ingress) &&
+          result.state.marketDraft &&
+          !result.canPublish
+        ) {
+          handlers.onMarketComposeFeedReady?.({
+            kind: "wizard",
+            eventId: result.state.eventId,
+            composeText,
+            draft: result.state.marketDraft,
+          });
         }
+        refreshWorkQueue(handlers);
         return { graphId, status: "done", planKind: plan.kind };
       }
 
@@ -313,6 +345,7 @@ async function executeContextRunPlan(
           questionKo: result.questionKo,
           slotId: result.slotId,
         });
+        refreshWorkQueue(handlers);
         return { graphId, status: "done", planKind: plan.kind };
       }
 
@@ -481,7 +514,19 @@ async function executeContextRunPlan(
             composeText: mergedText,
             draft: result.state.marketDraft ?? undefined,
           });
+        } else if (
+          isComposerTextIngress(ingress) &&
+          result.state.marketDraft &&
+          !result.canPublish
+        ) {
+          handlers.onMarketComposeFeedReady?.({
+            kind: "wizard",
+            eventId: result.state.eventId,
+            composeText: mergedText,
+            draft: result.state.marketDraft,
+          });
         }
+        refreshWorkQueue(handlers);
         return { graphId, status: "done", planKind: plan.kind };
       }
       if (result.kind === "clarify") {
@@ -506,6 +551,7 @@ async function executeContextRunPlan(
           questionKo: result.questionKo,
           slotId: result.slotId,
         });
+        refreshWorkQueue(handlers);
         return { graphId, status: "done", planKind: plan.kind };
       }
       clearPortalComposeRunState(runGraphId);
@@ -737,6 +783,15 @@ async function executeContextRunPlan(
         onFilePrepare: handlers.onPhotoFilePrepare,
       });
       handlers.onPhotoIngested?.(summary);
+      if (summary.succeeded > 0) {
+        const pending = maybeOfferKnowledgePlacementAfterCapture({
+          files: photoInput.files,
+          summary,
+        });
+        if (pending) {
+          handlers.onKnowledgePlacementPending?.(pending);
+        }
+      }
       return { graphId, status: "done", planKind: plan.kind };
     }
     case "photo_walkthrough": {
@@ -786,6 +841,7 @@ async function executeContextRunPlan(
           assistantText: runResult.questionKo,
         });
         handlers.onExperienceRunClarify?.(runResult);
+        refreshWorkQueue(handlers);
         return {
           graphId,
           status: "done",
@@ -806,6 +862,7 @@ async function executeContextRunPlan(
           assistantText,
         });
         handlers.onExperienceRunSummary?.(runResult);
+        refreshWorkQueue(handlers);
         return {
           graphId,
           status: "done",

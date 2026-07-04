@@ -2,6 +2,7 @@
 
 export type ExperienceRunProfile =
   | "business_trip"
+  | "leisure_travel"
   | "lodging_search"
   | "eatery_search"
   | "recall_only";
@@ -43,6 +44,8 @@ export type ExperienceRunClarify = {
   questionKo: string;
   profile: ExperienceRunProfile;
   seedMessage: string;
+  pendingSlot?: import("@/lib/experience-run/travel-context-slots").TravelSlotName | null;
+  offerGps?: boolean;
 };
 
 export type ExperienceRunResult =
@@ -59,4 +62,6 @@ export type PendingSituationLock = {
   seedMessage: string;
   destination: string | null;
   askedAt: string;
+  pendingSlot?: import("@/lib/experience-run/travel-context-slots").TravelSlotName | null;
+  filledSlots?: import("@/lib/experience-run/travel-context-slots").TravelFilledSlots;
 };

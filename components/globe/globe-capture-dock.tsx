@@ -9,6 +9,8 @@ import { GlobeContextIngestBar, type GlobeContextIngestBarHandle, type GlobeCont
 import { GlobePhotoPlaceWalkthrough } from "@/components/globe/globe-photo-place-walkthrough";
 import { GlobePhotoIngestProgressStrip } from "@/components/globe/globe-photo-ingest-progress-strip";
 import { GlobePlaceVerifyCard } from "@/components/globe/globe-place-verify-card";
+import { GlobeKnowledgePlacementConfirmCard } from "@/components/globe/globe-knowledge-placement-confirm-card";
+import type { GlobeKnowledgePlacementPending } from "@/lib/globe/globe-knowledge-placement-pending";
 import { buildMapIntentPills } from "@/lib/globe/build-map-intent-pills";
 import type { GlobePhotoIngestDraft } from "@/lib/globe/prepare-globe-photo-ingest-draft";
 import type { PhotoIngestFileItem } from "@/lib/globe/photo-ingest-file-progress";
@@ -41,18 +43,25 @@ export type GlobeCaptureDockProps = {
       needsPlaceVerify?: boolean;
       ok?: boolean;
       undoPayload?: import("@/lib/globe/globe-photo-ingest-undo").GlobePhotoIngestUndoPayload | null;
+      knowledgePlacementPending?: GlobeKnowledgePlacementPending | null;
     }) => void;
   };
   placeVerifyEventId: string | null;
   onPlaceVerifyDismiss: () => void;
   onPlaceVerifyConfirmed: () => void;
+  knowledgePlacementPending?: GlobeKnowledgePlacementPending | null;
+  onKnowledgePlacementDismiss?: () => void;
+  onKnowledgePlacementConfirmed?: (input: {
+    anchorEventId: string;
+    knowledgeBoxLabel: string;
+  }) => void;
   composeHidden?: boolean;
   stackAboveCompose?: ReactNode;
   composeAccessory?: ReactNode;
   ingest: GlobeContextIngestBarProps;
 };
 
-/** Map bottom stack — prompt bar only; chat/cards live in GlobeChatScreen. */
+/** Map bottom stack ??prompt bar only; chat/cards live in GlobeChatScreen. */
 export const GlobeCaptureDock = forwardRef<GlobeContextIngestBarHandle, GlobeCaptureDockProps>(
   function GlobeCaptureDock(
     {
@@ -61,6 +70,9 @@ export const GlobeCaptureDock = forwardRef<GlobeContextIngestBarHandle, GlobeCap
       placeVerifyEventId,
       onPlaceVerifyDismiss,
       onPlaceVerifyConfirmed,
+      knowledgePlacementPending,
+      onKnowledgePlacementDismiss,
+      onKnowledgePlacementConfirmed,
       composeHidden = false,
       stackAboveCompose,
       composeAccessory,
@@ -73,6 +85,8 @@ export const GlobeCaptureDock = forwardRef<GlobeContextIngestBarHandle, GlobeCap
 
     const photoActive = photoFlow.open;
     const showPlaceVerify = Boolean(placeVerifyEventId) && !photoActive;
+    const showKnowledgePlacement =
+      Boolean(knowledgePlacementPending) && !photoActive && !showPlaceVerify;
     const mapPills = buildMapIntentPills(ingest.layerMode ?? "personal");
 
     return (
@@ -114,9 +128,24 @@ export const GlobeCaptureDock = forwardRef<GlobeContextIngestBarHandle, GlobeCap
           )}
           data-globe-capture-dock
           data-globe-capture-mode={
-            photoActive ? "photo" : showPlaceVerify ? "verify" : "compose"
+            photoActive
+              ? "photo"
+              : showPlaceVerify
+                ? "verify"
+                : showKnowledgePlacement
+                  ? "knowledge_placement"
+                  : "compose"
           }
         >
+        {showKnowledgePlacement && knowledgePlacementPending ? (
+          <GlobeKnowledgePlacementConfirmCard
+            pending={knowledgePlacementPending}
+            className="pointer-events-auto mx-auto w-full max-w-lg"
+            onDismiss={onKnowledgePlacementDismiss}
+            onConfirmed={onKnowledgePlacementConfirmed}
+          />
+        ) : null}
+
         {showPlaceVerify ? (
           <GlobePlaceVerifyCard
             eventId={placeVerifyEventId}
@@ -140,9 +169,6 @@ export const GlobeCaptureDock = forwardRef<GlobeContextIngestBarHandle, GlobeCap
             className="pointer-events-none mx-auto flex w-full max-w-[min(100%,20rem)] flex-col gap-1"
             data-globe-ingest-compact="pill"
           >
-            {composeAccessory ? (
-              <div className="pointer-events-auto">{composeAccessory}</div>
-            ) : null}
             <GlobeActionPillGuide
               pills={mapPills}
               variant="inline"
@@ -159,6 +185,9 @@ export const GlobeCaptureDock = forwardRef<GlobeContextIngestBarHandle, GlobeCap
               {...ingest}
               className="pointer-events-auto relative inset-auto bottom-auto w-full"
             />
+            {composeAccessory ? (
+              <div className="pointer-events-auto pt-0.5">{composeAccessory}</div>
+            ) : null}
           </div>
         ) : null}
         </div>

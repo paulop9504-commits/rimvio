@@ -13,6 +13,9 @@ export function createGlobeEateryMarkerElement(
   root.type = "button";
   root.className = "rimvio-globe-lodging-marker";
   root.dataset.globeEateryMarker = marker.resourceId;
+  if (marker.virtualCandidate) {
+    root.dataset.virtualCandidate = "true";
+  }
   if (marker.isMain) {
     root.classList.add("rimvio-globe-lodging-marker--main");
   }
@@ -20,7 +23,12 @@ export function createGlobeEateryMarkerElement(
     root.classList.add("rimvio-globe-lodging-marker--popin");
     root.style.animationDelay = `${marker.popInDelayMs}ms`;
   }
-  root.setAttribute("aria-label", marker.label);
+  root.setAttribute(
+    "aria-label",
+    marker.anchorLabel
+      ? `${marker.anchorLabel}에 연결된 ${marker.label}`
+      : marker.label,
+  );
 
   if (marker.discoveryShortLabel) {
     root.classList.add("rimvio-globe-lodging-marker--discovery");
@@ -29,6 +37,15 @@ export function createGlobeEateryMarkerElement(
     }
     const pill = document.createElement("span");
     pill.className = "rimvio-globe-lodging-marker__discovery-pill";
+    if (marker.virtualCandidate) {
+      pill.style.border = "1px dashed rgba(255,255,255,0.55)";
+    }
+    if (marker.ontologyBadgeLabel) {
+      const badge = document.createElement("span");
+      badge.className = "rimvio-globe-lodging-marker__ontology-badge";
+      badge.textContent = marker.ontologyBadgeLabel;
+      pill.appendChild(badge);
+    }
     const name = document.createElement("span");
     name.className = "rimvio-globe-lodging-marker__discovery-name";
     name.textContent = marker.discoveryShortLabel;
@@ -54,6 +71,9 @@ export function createGlobeEateryMarkerElement(
 
   const card = document.createElement("span");
   card.className = "rimvio-globe-lodging-marker__card";
+  if (marker.virtualCandidate) {
+    card.style.outline = "1px dashed rgba(255,255,255,0.42)";
+  }
 
   if (marker.thumbnailUrl) {
     const image = document.createElement("img");

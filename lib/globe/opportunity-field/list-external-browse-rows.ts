@@ -3,6 +3,7 @@ import {
   marketListingConditionLabelKo,
 } from "@/lib/globe/market/market-intent-detail";
 import { formatMarketPriceLine } from "@/lib/globe/market/format-market-price-line";
+import { resolveMarketIntentExposureAnchor } from "@/lib/globe/market/market-intent-exposure";
 import { pickMarketListingThumbUrls } from "@/lib/globe/market/market-listing-media";
 import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
 import { haversineKm } from "@/lib/globe/trend-bridge/server/trend-bridge-geo";
@@ -81,6 +82,7 @@ export function listExternalBrowseRows(input: {
   const rows: OpportunityRow[] = [];
   for (const listing of listings) {
     const listingDetail = listing.detail ?? DEFAULT_MARKET_INTENT_DETAIL;
+    const exposureAnchor = resolveMarketIntentExposureAnchor(listing);
     const distanceKm =
       input.userState.lat != null &&
       input.userState.lng != null &&
@@ -89,8 +91,8 @@ export function listExternalBrowseRows(input: {
         ? haversineKm(
             input.userState.lat,
             input.userState.lng,
-            listing.anchorLat,
-            listing.anchorLng,
+            exposureAnchor.lat,
+            exposureAnchor.lng,
           )
         : null;
 

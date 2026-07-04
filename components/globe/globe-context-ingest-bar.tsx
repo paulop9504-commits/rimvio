@@ -11,14 +11,14 @@ import {
 import {
   ImagePlus,
   Loader2,
+  Mic,
   Plus,
   SendHorizontal,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import {
-  GLOBE_CONTEXT_MEDIA_ACCEPT,
-} from "@/lib/feed/ingest-globe-context-capture";
+import { GLOBE_CONTEXT_MEDIA_ACCEPT } from "@/lib/feed/ingest-globe-context-capture";
+import { validateIngestMediaFiles } from "@/lib/globe/validate-ingest-media-files";
 import { canQuickListMarketCompose } from "@/lib/globe/market/build-market-quick-list-draft";
 import { dispatchContextRun } from "@/lib/context-run/dispatch-context-run";
 import { readActiveRunState } from "@/lib/context-run/run-state-store";
@@ -32,6 +32,15 @@ import {
 import type { GlobeLayerMode } from "@/lib/globe/globe-layer-mode";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
+import { GlobeContextTravelGpsChip } from "@/components/globe/globe-context-travel-gps-chip";
+import { GlobeComposerHintStrip } from "@/components/globe/globe-composer-hint-strip";
+import { useAskSpeechRecognition } from "@/hooks/use-ask-speech-recognition";
+import { useComposerHint } from "@/hooks/use-composer-hint";
+import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
+import {
+  softenComposerStatusLine,
+  softenComposerSuccessLine,
+} from "@/lib/globe/composer-hint-copy";
 
 export type GlobeContextIngestBarHandle = {
   openPhotoPicker: () => void;
@@ -90,6 +99,13 @@ export type GlobeContextIngestBarProps = {
   compactPill?: boolean;
   /** Chat-only placeholder override (compose flow next step). */
   chatPlaceholderOverride?: string | null;
+  onWorkSurfaceClassified?: (
+    classification: import("@/lib/work-queue/classify-globe-work-surface").GlobeWorkSurfaceClassification,
+  ) => void;
+  onWorkQueueChanged?: () => void;
+  onKnowledgePlacementPending?: (
+    pending: import("@/lib/globe/globe-knowledge-placement-pending").GlobeKnowledgePlacementPending,
+  ) => void;
 };
 
 /** Globe home — one frosted composer; photo action lives inside the + menu. */
@@ -108,7 +124,7 @@ export const GlobeContextIngestBar = forwardRef<
     onQuickListMarket,
     onLaunchMarketProjection,
     onMarketComposeFeedReady,
-    onOpenMarketManage,
+    onOpenMarketManage: _onOpenMarketManage,
     marketRoleBusy = false,
     layerMode = "personal",
     onDiscoveryMarketBrowse,
@@ -122,6 +138,9 @@ export const GlobeContextIngestBar = forwardRef<
     mapPromptMode = true,
     compactPill: compactPillProp,
     chatPlaceholderOverride,
+    onWorkSurfaceClassified,
+    onWorkQueueChanged,
+    onKnowledgePlacementPending,
   },
   ref,
 ) {
@@ -129,8 +148,12 @@ export const GlobeContextIngestBar = forwardRef<
   const [menuOpen, setMenuOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [clarifyPlaceholder, setClarifyPlaceholder] = useState<string | null>(null);
+  const [offerTravelGps, setOfferTravelGps] = useState(false);
+  const { hint: composerHint, showHint: showComposerHint, clearHint: clearComposerHint } =
+    useComposerHint();
   const photoRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const liveLocation = useLiveLocationSnapshot();
   const isDiscovery = layerMode === "discovery";
   const isPill = compactPillProp ?? (mapPromptMode && !isDiscovery);
   const isChatPill = isPill && !mapPromptMode;
@@ -138,12 +161,15 @@ export const GlobeContextIngestBar = forwardRef<
 
   const finish = useCallback(
     (eventId: string, line: string, options?: { needsPlaceVerify?: boolean }) => {
-      toast.success(line);
+      showComposerHint(softenComposerSuccessLine(line), {
+        tone: "success",
+        durationMs: 3000,
+      });
       onAttached?.(eventId, options);
       setText("");
       setMenuOpen(false);
     },
-    [onAttached],
+    [onAttached, showComposerHint],
   );
 
   const attachHintId = forceAttachToTarget ? targetEventId?.trim() || null : null;
@@ -179,7 +205,7 @@ export const GlobeContextIngestBar = forwardRef<
       tryQuickListMarket,
       navigateUrl: (url, label) => {
         window.location.assign(url);
-        toast.success(`${label} 여는 중…`);
+        showComposerHint(`${label} 여는 중…`, { durationMs: 2500 });
       },
       onLodgingDiscovery,
       onEateryDiscovery,
@@ -188,16 +214,25 @@ export const GlobeContextIngestBar = forwardRef<
         finish(eventId, toastLine, { needsPlaceVerify });
       },
       onExperienceRunClarify: (runResult) => {
-        toast.message(runResult.questionKo, { duration: 8000 });
+        const question = softenComposerStatusLine(runResult.questionKo);
+        showComposerHint(question, { durationMs: 0 });
+        setClarifyPlaceholder(question);
+        setOfferTravelGps(runResult.offerGps === true);
+        window.setTimeout(() => inputRef.current?.focus(), 0);
       },
       onExperienceRunSummary: (runResult) => {
         if (runResult.summary.eventId) {
           onAttached?.(runResult.summary.eventId);
         }
-        toast.success(runResult.summary.titleKo, { duration: 7000 });
+        showComposerHint(softenComposerSuccessLine(runResult.summary.titleKo), {
+          tone: "success",
+          durationMs: 4000,
+        });
       },
       onPortalComposeClarify: ({ questionKo }) => {
-        setClarifyPlaceholder(questionKo);
+        const question = softenComposerStatusLine(questionKo);
+        showComposerHint(question, { durationMs: 0 });
+        setClarifyPlaceholder(question);
         window.setTimeout(() => inputRef.current?.focus(), 0);
       },
       onLaunchMarketProjection: (input) => {
@@ -206,18 +241,40 @@ export const GlobeContextIngestBar = forwardRef<
       onMarketComposeFeedReady: (input) => {
         onMarketComposeFeedReady?.(input);
       },
-      toastSuccess: (message) => toast.success(message, { duration: 7000 }),
-      toastMessage: (message) => toast.message(message),
+      toastSuccess: (message) =>
+        showComposerHint(softenComposerSuccessLine(message), {
+          tone: "success",
+          durationMs: 4000,
+        }),
+      toastMessage: (message) =>
+        showComposerHint(softenComposerStatusLine(message), { durationMs: 5000 }),
+      onWorkSurfaceClassified: (classification) => {
+        showComposerHint(
+          classification.surface === "outer"
+            ? copy.globe.composerHint.workOuter
+            : copy.globe.composerHint.workInner,
+          { durationMs: 4000 },
+        );
+        onWorkSurfaceClassified?.(classification);
+      },
+      onWorkQueueChanged: () => {
+        onWorkQueueChanged?.();
+      },
+      onKnowledgePlacementPending,
     }),
     [
       finish,
       onAttached,
       onDiscoveryMarketBrowse,
       onEateryDiscovery,
+      onKnowledgePlacementPending,
       onLodgingDiscovery,
       onLaunchMarketProjection,
       onMarketComposeFeedReady,
       onOpenPortal,
+      onWorkQueueChanged,
+      onWorkSurfaceClassified,
+      showComposerHint,
       tryQuickListMarket,
     ],
   );
@@ -228,6 +285,18 @@ export const GlobeContextIngestBar = forwardRef<
         return;
       }
       const files = Array.from(fileList);
+      const validated = validateIngestMediaFiles(files);
+      if (!validated.ok) {
+        toast.error(validated.message);
+        if (photoRef.current) {
+          photoRef.current.value = "";
+        }
+        return;
+      }
+      if (validated.skippedCount > 0) {
+        toast.message(copy.globe.photoIngestSkippedUnsupported(validated.skippedCount));
+      }
+      const mediaFiles = validated.files;
       const activeGraph = readActiveRunState()?.graphId;
       const composeSession = activeGraph
         ? readPortalComposeRunState(activeGraph)
@@ -235,7 +304,7 @@ export const GlobeContextIngestBar = forwardRef<
       if (composeSession?.composeSchemaId && composeSession.intentStage?.stage === "confirmed" && !isDiscovery) {
         setBusy(true);
         try {
-          for (const file of files) {
+          for (const file of mediaFiles) {
             await ingestComposeChatPhoto({ graphId: composeSession.graphId, file });
           }
           setMenuOpen(false);
@@ -250,15 +319,15 @@ export const GlobeContextIngestBar = forwardRef<
 
       setBusy(true);
       const toastId = toast.loading(
-        files.length === 1
+        mediaFiles.length === 1
           ? copy.globe.ingestUploadingOne
-          : copy.globe.ingestUploadingMany(files.length),
+          : copy.globe.ingestUploadingMany(mediaFiles.length),
       );
       try {
         await dispatchContextRun(
           {
             kind: "photo",
-            files,
+            files: mediaFiles,
             surface: "composer",
             layerMode: isDiscovery ? "discovery" : "personal",
             mode: onPhotoDraftReady ? "walkthrough" : "direct",
@@ -286,6 +355,7 @@ export const GlobeContextIngestBar = forwardRef<
             onPhotoFilePrepare: (line) => {
               toast.loading(line, { id: toastId });
             },
+            onKnowledgePlacementPending,
             onPhotoIngested: (summary) => {
               if (summary.succeeded === 0) {
                 toast.error(summary.toastLine, { id: toastId });
@@ -333,18 +403,84 @@ export const GlobeContextIngestBar = forwardRef<
       forceAttachToTarget,
       isDiscovery,
       onAttached,
+      onKnowledgePlacementPending,
       onPhotoDraftReady,
     ],
   );
 
-  const submitText = useCallback(
-    async (event?: FormEvent, overrideValue?: string) => {
-      event?.preventDefault();
-      const value = (overrideValue ?? text).trim();
-      if (!value || busy) {
+  const submitGpsOrigin = useCallback(async () => {
+    if (busy) {
+      return;
+    }
+    const lat = liveLocation?.lat ?? userLat;
+    const lng = liveLocation?.lng ?? userLng;
+    setBusy(true);
+    onComposeOpen?.();
+    try {
+      const result = await dispatchContextRun(
+        {
+          kind: "text",
+          text: copy.globe.travelContext.gpsOriginLabel,
+          surface: "composer",
+          layerMode: isDiscovery ? "discovery" : "personal",
+          contextEventId: attachHintId,
+          lat,
+          lng,
+        },
+        contextRunHandlers(),
+      );
+
+      if (result.status === "error") {
+        showComposerHint(result.errorMessage ?? copy.globe.ingestAttachFail, {
+          tone: "error",
+          durationMs: 5000,
+        });
         return;
       }
 
+      if (result.status === "done") {
+        if (result.experienceRun?.kind === "summary") {
+          setOfferTravelGps(false);
+          setClarifyPlaceholder(null);
+        }
+        setText("");
+        setMenuOpen(false);
+      }
+    } catch (caught) {
+      const message =
+        caught instanceof Error ? caught.message : copy.globe.ingestAttachFail;
+      showComposerHint(message, { tone: "error", durationMs: 5000 });
+    } finally {
+      setBusy(false);
+    }
+  }, [
+    attachHintId,
+    busy,
+    contextRunHandlers,
+    isDiscovery,
+    liveLocation?.lat,
+    liveLocation?.lng,
+    onComposeOpen,
+    showComposerHint,
+    userLat,
+    userLng,
+  ]);
+
+  const submitText = useCallback(
+    async (event?: FormEvent, overrideValue?: string) => {
+      event?.preventDefault();
+      if (busy) {
+        return;
+      }
+      const value = (overrideValue ?? text).trim();
+      if (!value) {
+        if (offerTravelGps) {
+          await submitGpsOrigin();
+        }
+        return;
+      }
+
+      clearComposerHint();
       setBusy(true);
       onComposeOpen?.();
       try {
@@ -355,14 +491,17 @@ export const GlobeContextIngestBar = forwardRef<
             surface: "composer",
             layerMode: isDiscovery ? "discovery" : "personal",
             contextEventId: attachHintId,
-            lat: userLat,
-            lng: userLng,
+            lat: userLat ?? liveLocation?.lat ?? null,
+            lng: userLng ?? liveLocation?.lng ?? null,
           },
           contextRunHandlers(),
         );
 
         if (result.status === "error") {
-          toast.error(result.errorMessage ?? copy.globe.ingestAttachFail);
+          showComposerHint(result.errorMessage ?? copy.globe.ingestAttachFail, {
+            tone: "error",
+            durationMs: 5000,
+          });
           return;
         }
 
@@ -380,13 +519,17 @@ export const GlobeContextIngestBar = forwardRef<
               setClarifyPlaceholder(null);
             }
           }
+          if (result.experienceRun?.kind === "summary") {
+            setOfferTravelGps(false);
+            setClarifyPlaceholder(null);
+          }
           setText("");
           setMenuOpen(false);
         }
       } catch (caught) {
         const message =
           caught instanceof Error ? caught.message : copy.globe.ingestAttachFail;
-        toast.error(message);
+        showComposerHint(message, { tone: "error", durationMs: 5000 });
       } finally {
         setBusy(false);
       }
@@ -394,14 +537,54 @@ export const GlobeContextIngestBar = forwardRef<
     [
       attachHintId,
       busy,
+      clearComposerHint,
       contextRunHandlers,
       isDiscovery,
+      liveLocation?.lat,
+      liveLocation?.lng,
+      offerTravelGps,
+      onComposeOpen,
+      showComposerHint,
+      submitGpsOrigin,
       text,
       userLat,
       userLng,
-      onComposeOpen,
     ],
   );
+
+  const submitTextRef = useRef(submitText);
+  submitTextRef.current = submitText;
+
+  const { listening: voiceListening, phase: voicePhase, start: toggleVoice, supported: voiceSupported } =
+    useAskSpeechRecognition({
+      onInterimTranscript: (transcript) => {
+        setText(transcript);
+      },
+      onPauseHint: () => {
+        showComposerHint(copy.globe.composerHint.voiceContinue, { durationMs: 4000 });
+      },
+      onFinalTranscript: (transcript) => {
+        const trimmed = transcript.trim();
+        if (!trimmed) {
+          return;
+        }
+        setText(trimmed);
+        void submitTextRef.current(undefined, trimmed);
+      },
+      onError: (code) => {
+        if (code === "unsupported") {
+          showComposerHint(copy.globe.composerHint.voiceUnsupported, {
+            tone: "error",
+            durationMs: 4000,
+          });
+          return;
+        }
+        showComposerHint(copy.globe.composerHint.voiceFailed, {
+          tone: "error",
+          durationMs: 4000,
+        });
+      },
+    });
 
   useImperativeHandle(
     ref,
@@ -424,6 +607,13 @@ export const GlobeContextIngestBar = forwardRef<
       data-globe-prompt-tone={isLightPill ? "light" : undefined}
       data-globe-ingest-compact={isPill ? "pill" : undefined}
     >
+      <GlobeComposerHintStrip
+        text={composerHint?.text ?? null}
+        tone={composerHint?.tone}
+        mapDark={mapPromptMode && !isDiscovery && !isLightPill}
+        lightPill={isLightPill}
+        className={isPill ? "mb-1" : "mb-1.5"}
+      />
       <div
         className={cn(
           isPill ? "relative rounded-full backdrop-blur-xl" : "overflow-hidden rounded-[1.35rem] backdrop-blur-xl",
@@ -493,10 +683,20 @@ export const GlobeContextIngestBar = forwardRef<
           )
         ) : null}
 
+        {offerTravelGps && !isDiscovery ? (
+          <div className={cn(isPill ? "px-2 pb-1" : "px-2 pb-1.5")}>
+            <GlobeContextTravelGpsChip
+              busy={marketComposeBusy}
+              tone={isLightPill ? "light" : "dark"}
+              onApplyGps={() => void submitGpsOrigin()}
+            />
+          </div>
+        ) : null}
+
         <form
           onSubmit={(event) => void submitText(event)}
           className={cn(
-            "flex items-center",
+            "group flex items-center",
             isPill ? "gap-1.5 px-2 py-1.5" : "gap-2 px-2 py-2",
           )}
         >
@@ -567,9 +767,45 @@ export const GlobeContextIngestBar = forwardRef<
           </div>
           )}
 
+          {!isDiscovery ? (
+            <button
+              type="button"
+              disabled={marketComposeBusy || !voiceSupported}
+              onClick={() => {
+                if (!voiceSupported) {
+                  showComposerHint(copy.globe.composerHint.voiceUnsupported, {
+                    tone: "error",
+                    durationMs: 4000,
+                  });
+                  return;
+                }
+                toggleVoice();
+              }}
+              className={cn(
+                rimvioIconBtnClass(voiceListening ? "primary" : "ghost"),
+                isPill ? "size-8 shrink-0 rounded-full" : "size-10 shrink-0 rounded-xl",
+                isLightPill && !voiceListening && "text-[#4e5968] hover:text-[#191f28]",
+                !voiceListening &&
+                  "transition lg:pointer-events-none lg:opacity-0 group-hover:lg:pointer-events-auto group-hover:lg:opacity-100 group-focus-within:lg:pointer-events-auto group-focus-within:lg:opacity-100",
+                !voiceSupported && "opacity-40",
+              )}
+              aria-label={
+                voiceListening
+                  ? voicePhase === "pause_hint"
+                    ? copy.globe.composerHint.voiceContinue
+                    : copy.globe.askSheet.voiceListening
+                  : copy.globe.askSheet.voiceAria
+              }
+              aria-pressed={voiceListening}
+              data-globe-ingest-voice-trigger
+            >
+              <Mic className={isPill ? "size-4" : "size-5"} aria-hidden />
+            </button>
+          ) : null}
+
           <button
             type="submit"
-            disabled={busy || !text.trim()}
+            disabled={busy || (!text.trim() && !offerTravelGps)}
             className={cn(
               isLightPill
                 ? "rimvio-globe-prompt-pill-send size-8 shrink-0 rounded-full transition-colors"

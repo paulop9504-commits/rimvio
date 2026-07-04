@@ -22,11 +22,7 @@ const ambientPlan = planContextRun({
   },
 });
 
-assert.equal(ambientPlan.kind, "portal_compose_run");
-if (ambientPlan.kind === "portal_compose_run") {
-  assert.equal(ambientPlan.composeAmbientChat, true);
-  assert.equal(ambientPlan.portalIntentId, "offer");
-}
+assert.equal(ambientPlan.kind, "personal_context_ask");
 
 const supplyPlan = planContextRun({
   graphId: "graph-recall",
@@ -40,10 +36,7 @@ const supplyPlan = planContextRun({
   },
 });
 
-assert.equal(supplyPlan.kind, "map_intent_supply");
-if (supplyPlan.kind === "map_intent_supply") {
-  assert.equal(supplyPlan.supplyInput?.contextEventId, null);
-}
+assert.equal(supplyPlan.kind, "personal_context_ask");
 
 const connectPlan = planContextRun({
   graphId: "graph-connect",

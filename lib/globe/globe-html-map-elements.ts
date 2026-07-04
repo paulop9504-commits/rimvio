@@ -11,12 +11,14 @@ import {
   isGlobeEateryMapMarker,
   type GlobeEateryMapMarker,
 } from "@/lib/globe/eatery/eatery-globe-marker-types";
+import type { BrainSurfaceProjectionCandidate } from "@/lib/situation-projection/brain-surface-types";
 
 export type GlobeHtmlMapElement =
   | ClassifiedGlobePin
   | GlobeLodgingMapMarker
   | GlobeEateryMapMarker
-  | GlobeContextHubMapAnchor;
+  | GlobeContextHubMapAnchor
+  | BrainSurfaceProjectionCandidate;
 
 export function readGlobeHtmlLat(element: GlobeHtmlMapElement): number {
   return element.lat;
@@ -31,11 +33,16 @@ export function mergeGlobeHtmlElements(input: {
   lodgingMarkers: readonly GlobeLodgingMapMarker[];
   eateryMarkers: readonly GlobeEateryMapMarker[];
   hubAnchors: readonly GlobeContextHubMapAnchor[];
+  brainSurfaceMarkers: readonly BrainSurfaceProjectionCandidate[];
   showLodgingMarkers: boolean;
   showEateryMarkers: boolean;
   showHubAnchors: boolean;
+  showBrainSurfaceMarkers: boolean;
 }): GlobeHtmlMapElement[] {
   const merged: GlobeHtmlMapElement[] = [...input.pins];
+  if (input.showBrainSurfaceMarkers && input.brainSurfaceMarkers.length > 0) {
+    merged.push(...input.brainSurfaceMarkers);
+  }
   if (input.showHubAnchors && input.hubAnchors.length > 0) {
     merged.push(...input.hubAnchors);
   }
@@ -52,8 +59,15 @@ export function isClassifiedGlobePin(
   element: GlobeHtmlMapElement,
 ): element is ClassifiedGlobePin {
   return (
+    !("eventId" in element && "family" in element && "virtualCandidate" in element) &&
     !isGlobeLodgingMapMarker(element) &&
     !isGlobeEateryMapMarker(element) &&
     !isGlobeContextHubMapAnchor(element)
   );
+}
+
+export function isBrainSurfaceProjectionCandidate(
+  element: GlobeHtmlMapElement,
+): element is BrainSurfaceProjectionCandidate {
+  return "eventId" in element && "family" in element && "virtualCandidate" in element;
 }

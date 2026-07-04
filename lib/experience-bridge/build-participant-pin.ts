@@ -12,13 +12,14 @@ import { findLifeEventCandidate } from "@/lib/life-read-model";
 export function ensureBridgeParticipantPin(input: {
   bridge: ExperienceBridgeSnapshot;
   peerThreadId?: string | null;
+  participantUserId?: string | null;
 }): PersonalGlobePin {
   const threadId =
     input.peerThreadId?.trim() ||
     input.bridge.peerThreadId?.trim() ||
     null;
 
-  const event: EventCandidate = {
+  const eventSeed: EventCandidate = {
     ...input.bridge.eventSnapshot,
     metadata: {
       ...input.bridge.eventSnapshot.metadata,
@@ -31,19 +32,13 @@ export function ensureBridgeParticipantPin(input: {
     },
   };
 
-  if (!findLifeEventCandidate(event.id)) {
-    stampBridgeEventMetadata({
-      event,
-      bridge: input.bridge,
-      role: "participant",
-    });
-  } else {
-    stampBridgeEventMetadata({
-      event: findLifeEventCandidate(event.id)!,
-      bridge: input.bridge,
-      role: "participant",
-    });
-  }
+  const existingEvent = findLifeEventCandidate(eventSeed.id);
+  const event = stampBridgeEventMetadata({
+    event: existingEvent ?? eventSeed,
+    bridge: input.bridge,
+    role: "participant",
+    participantUserId: input.participantUserId,
+  });
 
   createPersonalGlobePinFromEvent({
     event,

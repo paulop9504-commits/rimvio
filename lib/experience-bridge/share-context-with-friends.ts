@@ -38,8 +38,9 @@ export async function shareGlobeContextWithFriends(input: {
   }
 
   const primaryThreadId = friends[0]!.peerThreadId.trim();
-  const { event: shareEvent, uploadWarnings } =
+  const { event: hydratedShareEvent, uploadWarnings } =
     await hydrateBridgeEventSnapshotForShare(input.event);
+  let shareEvent = hydratedShareEvent;
   if (uploadWarnings.length > 0) {
     toast.message(
       uploadWarnings.length === 1
@@ -53,10 +54,11 @@ export async function shareGlobeContextWithFriends(input: {
     hostDisplayName: input.hostDisplayName,
   });
   writeLocalBridgeState(bootstrap.state);
-  stampBridgeEventMetadata({
+  shareEvent = stampBridgeEventMetadata({
     event: shareEvent,
     bridge: bootstrap.state.bridge,
     role: "host",
+    hostDisplayName: input.hostDisplayName,
   });
 
   await publishBridgeEventCaptureContributions({

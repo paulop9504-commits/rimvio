@@ -14,11 +14,13 @@ import {
 } from "@/lib/events/event-store";
 import { validateEventCandidateWire } from "@/lib/events/schema-lock/event-schema";
 import { scheduleLifeEventVaultSync } from "@/lib/materialize/schedule-life-event-vault-sync";
+import { materializeEntityEdges } from "@/lib/ontology/materialize-entity-edges";
 
 export function commitEventUpsert(
   input: EventCandidateUpsertInput,
 ): EventCandidate {
   const committed = storeUpsert(input);
+  materializeEntityEdges(committed);
   scheduleLifeEventVaultSync(committed);
   return committed;
 }
@@ -29,6 +31,9 @@ export function commitEventLifecycle(
 ): EventCandidate | null {
   const committed = storeTransition(id, lifecycle);
   if (committed) {
+    if (committed.lifecycle !== "archived") {
+      materializeEntityEdges(committed);
+    }
     scheduleLifeEventVaultSync(committed);
   }
   return committed;

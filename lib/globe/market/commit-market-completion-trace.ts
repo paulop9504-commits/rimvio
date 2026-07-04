@@ -22,6 +22,8 @@ export function commitMarketCompletionTrace(input: {
     metadata: {
       [MARKET_COMPLETION_META_KEY]: {
         handshakeId: input.trace.handshakeId,
+        seekingUserId: input.trace.seekingUserId,
+        listingUserId: input.trace.listingUserId,
         role: input.trace.role,
         priceLine: input.trace.priceLine,
         productName: input.trace.productName,

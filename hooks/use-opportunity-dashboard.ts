@@ -7,6 +7,10 @@ import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
 import { useRegionalProfile } from "@/hooks/use-regional-profile";
 import { fetchOwnMarketIntentsRemote } from "@/lib/globe/market/client/sync-market-intent-remote";
 import {
+  readMarketIntentExposureMode,
+  resolveMarketIntentExposureAnchor,
+} from "@/lib/globe/market/market-intent-exposure";
+import {
   listAllMarketIntents,
   mergeOwnMarketIntents,
   subscribeMarketIntents,
@@ -48,6 +52,25 @@ function movedMeters(
     return 0;
   }
   return haversineKm(from.lat, from.lng, to.lat, to.lng) * 1000;
+}
+
+function resolveDiscoveryCoords(input: {
+  selectedSeeking: MarketIntentRecord | null;
+  liveLocation: ReturnType<typeof useLiveLocationSnapshot>;
+}): { lat: number | null; lng: number | null; followsLiveGps: boolean } {
+  if (input.selectedSeeking) {
+    const anchor = resolveMarketIntentExposureAnchor(input.selectedSeeking);
+    return {
+      lat: anchor.lat,
+      lng: anchor.lng,
+      followsLiveGps: readMarketIntentExposureMode(input.selectedSeeking.detail) === "live",
+    };
+  }
+  return {
+    lat: input.liveLocation?.lat ?? null,
+    lng: input.liveLocation?.lng ?? null,
+    followsLiveGps: true,
+  };
 }
 
 export function useOpportunityDashboard(input: {
@@ -102,6 +125,17 @@ export function useOpportunityDashboard(input: {
     setRevision((value) => value + 1);
   }, []);
 
+  const resolveSelectedSeeking = useCallback(() => {
+    void revision;
+    const merged = mergeOwnIntents(listAllMarketIntents(), remoteRows);
+    const publishedSeekings = filterPublishedMarketIntents(
+      merged.filter((row) => row.role === "seeking"),
+    );
+    return selectedContextId
+      ? publishedSeekings.find((row) => row.eventId === selectedContextId) ?? null
+      : null;
+  }, [remoteRows, revision, selectedContextId]);
+
   useEffect(() => subscribeMarketIntents(refresh), [refresh]);
 
   useEffect(() => {
@@ -150,8 +184,11 @@ export function useOpportunityDashboard(input: {
 
     void (async () => {
       const snapshot = liveLocationRef.current;
-      const lat = snapshot?.lat ?? null;
-      const lng = snapshot?.lng ?? null;
+      const selectedSeeking = resolveSelectedSeeking();
+      const { lat, lng } = resolveDiscoveryCoords({
+        selectedSeeking,
+        liveLocation: snapshot,
+      });
       const [remote, discovery] = await Promise.all([
         user?.id ? fetchOwnMarketIntentsRemote() : Promise.resolve([]),
         fetchPool(lat, lng),
@@ -173,11 +210,14 @@ export function useOpportunityDashboard(input: {
     return () => {
       cancelled = true;
     };
-  }, [fetchPool, input.open, revision, user?.id]);
+  }, [fetchPool, input.open, resolveSelectedSeeking, revision, user?.id]);
 
   /** GPS fix after first paint — refresh in place without skeleton. */
   useEffect(() => {
     if (!input.open || !hydrated || liveLocation?.lat == null || liveLocation?.lng == null) {
+      return;
+    }
+    if (resolveSelectedSeeking()) {
       return;
     }
     if (hadLocationRef.current) {
@@ -187,7 +227,7 @@ export function useOpportunityDashboard(input: {
     lastGpsRef.current = { lat: liveLocation.lat, lng: liveLocation.lng };
     lastDiscoveryGpsRef.current = { lat: liveLocation.lat, lng: liveLocation.lng };
     refresh();
-  }, [hydrated, input.open, liveLocation?.lat, liveLocation?.lng, refresh]);
+  }, [hydrated, input.open, liveLocation?.lat, liveLocation?.lng, refresh, resolveSelectedSeeking]);
 
   useEffect(() => {
     if (!input.open) {
@@ -201,12 +241,21 @@ export function useOpportunityDashboard(input: {
     if (!input.open || liveLocation?.lat == null || liveLocation?.lng == null) {
       return;
     }
+    const selectedSeeking = resolveSelectedSeeking();
+    const selectedExposureMode = selectedSeeking
+      ? readMarketIntentExposureMode(selectedSeeking.detail)
+      : null;
     const next = { lat: liveLocation.lat, lng: liveLocation.lng };
     const fromLast = lastGpsRef.current;
     const moveM = movedMeters(fromLast, next);
     lastGpsRef.current = next;
 
     if (moveM < OPPORTUNITY_RESCORE_MOVE_M) {
+      return;
+    }
+
+    if (selectedSeeking && selectedExposureMode !== "live") {
+      setRevision((value) => value + 1);
       return;
     }
 
@@ -226,6 +275,7 @@ export function useOpportunityDashboard(input: {
     liveLocation?.capturedAtIso,
     liveLocation?.lat,
     liveLocation?.lng,
+    resolveSelectedSeeking,
   ]);
 
   const seekings = useMemo(() => {

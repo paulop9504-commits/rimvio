@@ -17,6 +17,8 @@ MEANING
  ↓
 RECALL
  ↓
+SITUATION PROJECTION   ← solid + ghost map (read-only manifest)
+ ↓
 ACTION
 ```
 
@@ -28,6 +30,7 @@ Each layer **reads from** the layer below and **never replaces** it. Upper layer
 | **EXPERIENCE** | What was that day/situation? | "아 오늘 이런 하루였네" |
 | **MEANING** | Why does it matter to *me*? | "제주 = 민수와의 추억" |
 | **RECALL** | When does the **trigger edge** fire? | "제주 도착 → 민수와 마지막 제주 이후 2년" — context match, not nostalgia dump |
+| **SITUATION PROJECTION** | What’s **missing** & how to show it? | "어머니 치료 맥락 · 보험·일정 축이 비어 있네" (점선 지도) |
 | **ACTION** | What **re-executes**? | "그때 흑돼지집 다시 갈까요?" → `@길찾기` via contract registry |
 
 **Rimvio moat:** Execution (ACTION) is commodity. **MEANING + RECALL** are time-compounding **synaptic connections** — edges between people, place, calendar, and links that only this user's graph can produce. When an edge fires, Rimvio **re-executes**; it does not passively remind.
@@ -184,6 +187,33 @@ Users can also **search** stacked experiences before a trip or `@` run:
 
 ---
 
+## L4.5 — SITUATION PROJECTION
+
+**Role:** After a recall edge fires, **compose** committed **solid** anchors with playbook **ghost** axes into a read-only situation map. AI may change **layout and surface kind**; only **Commit** promotes ghost → solid.
+
+**Spec:** [RIMVIO_SITUATION_PROJECTION_LAYER.md](./RIMVIO_SITUATION_PROJECTION_LAYER.md) · ADR [004](./adr/004-situation-projection-layer.md)
+
+**Example (caregiving):**
+
+```text
+[solid] 어머니 · ○○병원     ← EventCandidate + entity graph
+   ┊ (virtual link)
+[ghost] 보험 · 일정 · 비용   ← playbook — user has not committed yet
+```
+
+**Law:**
+
+- Ghost never in `rimvio.entity-graph.v1`
+- Manifest store: `rimvio.situation-projection.v1`
+- Globe home ≠ ghost feed — prep 1-card or secondary situation-map sheet
+- LLM: layout/copy only — not truth writer
+
+**Code (2026-07):** `lib/situation-projection/` · `composeSituationProjectionManifest` · playbooks · `projection-store`
+
+**Maturity:** △ **Foundation** — types + deterministic compose; UI sheet deferred.
+
+---
+
 ## L5 — ACTION
 
 **Role:** **Re-execution** — when a trigger edge fires, ACTION runs the situation again via `@` contract registry, Context Run, prep surface (MAIN + AUX), and derived Task Graph. Recall must not dead-end in nostalgia.
@@ -206,11 +236,12 @@ Users can also **search** stacked experiences before a trip or `@` run:
 ## Current snapshot (2026-06)
 
 ```text
-FACT        ✓
-EXPERIENCE  ✓
-MEANING     △
-RECALL      △
-ACTION      ✓
+FACT                 ✓
+EXPERIENCE           ✓
+MEANING              △
+RECALL               △
+SITUATION PROJECTION △
+ACTION               ✓
 ```
 
 **Gap:** We know *what the user did*. Synaptic edges (MEANING) are still thin — triggers fire weakly and re-execution can feel "helpful assistant" instead of "context connected, Rimvio ran it again."

@@ -146,6 +146,7 @@ function pickAutoResolved(input: {
     ...resolved,
     label: input.parsed.displayLabel || resolved.label,
     placeName: input.parsed.displayLabel || resolved.placeName,
+    formattedAddress: resolved.formattedAddress ?? null,
     confirmed: true,
   };
 }
@@ -156,6 +157,7 @@ function buildApproximateFallback(
   return {
     label: overseas.label,
     placeName: overseas.label,
+    formattedAddress: `${overseas.label}, ${overseas.countryLabel}`,
     lat: overseas.lat,
     lng: overseas.lng,
     confirmed: true,
@@ -248,6 +250,7 @@ export async function resolveManualContextPlaceCandidates(input: {
       autoResolved = {
         label: parsed.displayLabel,
         placeName: parsed.displayLabel,
+        formattedAddress: parsed.displayLabel,
         lat: fallback.lat,
         lng: fallback.lng,
         confirmed: true,
@@ -275,6 +278,7 @@ export async function resolveManualContextPlaceCandidates(input: {
 export type ManualContextResolvedPlace = {
   label: string;
   placeName: string;
+  formattedAddress?: string | null;
   lat: number;
   lng: number;
   confirmed: boolean;
@@ -290,6 +294,7 @@ export function suggestionToResolvedPlace(
   return {
     label: suggestion.label.trim() || suggestion.place_name,
     placeName: suggestion.place_name.trim() || suggestion.label.trim(),
+    formattedAddress: suggestion.address?.trim() || null,
     lat: suggestion.lat,
     lng: suggestion.lng,
     confirmed: true,

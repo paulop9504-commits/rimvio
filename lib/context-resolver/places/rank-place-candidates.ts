@@ -36,6 +36,10 @@ function buildReason(input: {
     parts.push("평점 높음");
   }
 
+  if (input.place.description?.trim()) {
+    parts.push(input.place.description.trim());
+  }
+
   parts.push(`${input.travelMinutes}분 거리 · ${input.arriveClock} 도착 예상`);
 
   return parts.join(", ");

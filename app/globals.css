@@ -3864,8 +3864,8 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
 .rimvio-globe-lodging-marker__discovery-pill {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.1rem;
+  align-items: flex-start;
+  gap: 0.12rem;
   border-radius: 0.65rem;
   background: rgba(18, 20, 24, 0.88);
   padding: 0.35rem 0.55rem 0.3rem;
@@ -3873,11 +3873,25 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
+.rimvio-globe-lodging-marker__ontology-badge {
+  font-size: 0.48rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.62);
+}
+
 .rimvio-globe-lodging-marker__discovery-name {
   font-size: 0.62rem;
   font-weight: 700;
   color: #fff;
   letter-spacing: -0.01em;
+}
+
+.rimvio-globe-lodging-marker__stay-badge {
+  font-size: 0.55rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .rimvio-globe-lodging-marker__discovery-price {

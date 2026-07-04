@@ -104,6 +104,10 @@ import {
   shouldShowPortalMarketSuggestion,
 } from "@/lib/portal/portal-market-suggestion-policy";
 import { resolvePortalMarketSuggestionFromEvent } from "@/lib/portal/resolve-portal-market-suggestion";
+import { GlobeContextProvenanceChip } from "@/components/globe/globe-context-provenance-chip";
+import { GlobeContextProvenanceSheet } from "@/components/globe/globe-context-provenance-sheet";
+import { projectMirrorProvenanceSummary } from "@/lib/globe/mirror-provenance";
+import { readPinContextNote } from "@/lib/globe/pin-context-note";
 
 export type PinOpenSheetProps = {
   open: boolean;
@@ -132,6 +136,7 @@ export function PinOpenSheet({
   const [sheetPage, setSheetPage] = useState<PinMediaContextPage>("media");
   const [authorFilter, setAuthorFilter] = useState<string | null>(null);
   const [mediaPoolOpen, setMediaPoolOpen] = useState(false);
+  const [provenanceOpen, setProvenanceOpen] = useState(false);
   const [talkOpening, setTalkOpening] = useState(false);
   const [mediaArrivalHint, setMediaArrivalHint] = useState<BridgeMediaArrivalHint | null>(
     null,
@@ -435,7 +440,7 @@ export function PinOpenSheet({
       return null;
     }
     return recoverGlobeContextEventFromPin(cluster.eventId);
-  }, [event, cluster?.eventId]);
+  }, [event, cluster]);
 
   const portalMarketSuggestion = useMemo(() => {
     void marketRevision;
@@ -548,6 +553,11 @@ export function PinOpenSheet({
     setAuthorFilter(null);
   }, [open, cluster?.eventId, initialPage]);
 
+  const closePinSheet = () => {
+    setProvenanceOpen(false);
+    onOpenChange(false);
+  };
+
   const openedBehaviorRef = useRef<string | null>(null);
   useEffect(() => {
     const eventId = cluster?.eventId?.trim();
@@ -597,7 +607,7 @@ export function PinOpenSheet({
             : {
                 label: copy.globe.utilityMenuPeers,
                 onClick: () => {
-                  onOpenChange(false);
+                  closePinSheet();
                   router.push("/peers");
                 },
               },
@@ -605,7 +615,7 @@ export function PinOpenSheet({
         return;
       }
 
-      onOpenChange(false);
+      closePinSheet();
       router.push(
         buildExperienceRoomHref({
           peerThreadId,
@@ -658,7 +668,7 @@ export function PinOpenSheet({
         });
         dismissPortalMarketSuggestion({ eventId: portalMarketSuggestion.eventId });
         setPortalSuggestVisible(false);
-        onOpenChange(false);
+        closePinSheet();
       } catch (caught) {
         toast.error(
           caught instanceof Error ? caught.message : copy.globe.ingestAttachFail,
@@ -700,6 +710,17 @@ export function PinOpenSheet({
         className="mb-3"
       />
     ) : null;
+
+  const provenanceSummary = useMemo(
+    () =>
+      projectMirrorProvenanceSummary({
+        event: shareEvent ?? event,
+        viewerUserId: user?.id,
+      }),
+    [event, shareEvent, user?.id],
+  );
+  const noteText = readPinContextNote(event);
+  const canEditContextFields = provenanceSummary?.editMode !== "read_only";
 
   if (!mounted) {
     return null;
@@ -767,7 +788,7 @@ export function PinOpenSheet({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className={cn(rimvioSheetBackdropClass(), "z-[10061]")}
-            onClick={() => onOpenChange(false)}
+            onClick={closePinSheet}
           />
           <motion.aside
             role="dialog"
@@ -802,10 +823,17 @@ export function PinOpenSheet({
                       {hero.place}
                     </p>
                   ) : null}
+                  {provenanceSummary ? (
+                    <GlobeContextProvenanceChip
+                      summary={provenanceSummary}
+                      onPress={() => setProvenanceOpen(true)}
+                      className="mt-2"
+                    />
+                  ) : null}
                   {cluster?.eventId ? (
                     <GlobeContextLineageChip
                       eventId={cluster.eventId}
-                      className="mt-2"
+                      className={provenanceSummary ? "mt-1.5" : "mt-2"}
                     />
                   ) : null}
                 </div>
@@ -816,7 +844,7 @@ export function PinOpenSheet({
                 />
                 <button
                   type="button"
-                  onClick={() => onOpenChange(false)}
+                  onClick={closePinSheet}
                   className={rimvioSheetCloseBtnClass("bg-muted/80")}
                   aria-label="닫기"
                 >
@@ -934,14 +962,24 @@ export function PinOpenSheet({
                         label="장소"
                         value={hero.place}
                         onPress={() => setEditKind("place")}
+                        editable={canEditContextFields}
                       />
                       <PinContextTappableField
                         label="경험 제목"
                         value={hero.title}
                         onPress={() => setEditKind("title")}
+                        editable={canEditContextFields}
+                      />
+                      <PinContextTappableField
+                        label="한 줄 메모"
+                        value={noteText || "메모 남기기"}
+                        onPress={() => setEditKind("note")}
+                        editable={canEditContextFields}
                       />
                       <p className="px-2 text-[11px] text-muted-foreground">
-                        틀린 이름은 탭해서 바로 고쳐요
+                        {canEditContextFields
+                          ? "틀린 이름이나 메모는 탭해서 바로 고쳐요"
+                          : "이 순간은 보기만 할 수 있어요"}
                       </p>
                       <PinPulseContextStrip
                         honorific={rimvioHonorific}
@@ -1041,7 +1079,7 @@ export function PinOpenSheet({
               <button
                 type="button"
                 className={rimvioSecondaryCtaClass()}
-                onClick={() => onOpenChange(false)}
+                onClick={closePinSheet}
                 data-pin-open-close
               >
                 닫기
@@ -1063,7 +1101,7 @@ export function PinOpenSheet({
                   : editKind === "place"
                     ? hero.place
                     : editKind === "note"
-                      ? event?.metadata?.globeContextNote?.toString() ?? ""
+                      ? noteText
                       : ""
               }
               onSave={async (next) => {
@@ -1122,6 +1160,16 @@ export function PinOpenSheet({
               }
               onCreateContext={() => {
                 setMediaPoolOpen(false);
+              }}
+            />
+
+            <GlobeContextProvenanceSheet
+              open={provenanceOpen}
+              onOpenChange={setProvenanceOpen}
+              summary={provenanceSummary}
+              onDeleted={() => {
+                setProvenanceOpen(false);
+                onOpenChange(false);
               }}
             />
           </motion.aside>

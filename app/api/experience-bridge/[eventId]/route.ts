@@ -2,7 +2,6 @@ import { NextResponse, type NextRequest } from "next/server";
 import { requireAuthUser } from "@/lib/auth/api-auth";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import {
-  acceptBridgeInvite,
   buildBridgeSnapshot,
   buildHostParticipant,
   canReadBridgeExperience,
@@ -11,6 +10,11 @@ import {
   inviteBridgeParticipantForDirectDelivery,
   mergeBridgeTimeline,
 } from "@/lib/experience-bridge";
+import {
+  applyPinnedContextItemMetadata,
+  readPinnedContextItem,
+} from "@/lib/globe/context-pinned-item";
+import { upsertMirrorProvenanceMetadata } from "@/lib/globe/mirror-provenance";
 import {
   fetchExperienceBridgeState,
   updateBridgeEventSnapshot,
@@ -137,7 +141,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 }
 
 type BridgePostBody = {
-  action?: "bootstrap" | "invite";
+  action?: "bootstrap" | "invite" | "pin_item";
   primaryEvent?: EventCandidate;
   peerThreadId?: string;
   hostDisplayName?: string;
@@ -191,6 +195,84 @@ export async function POST(request: NextRequest, context: RouteContext) {
         hostParticipant,
       });
       return NextResponse.json({ state });
+    }
+
+    if (action === "pin_item") {
+      if (!isEventCandidate(body.primaryEvent) || body.primaryEvent.id !== key) {
+        return NextResponse.json(
+          { error: "primaryEvent with matching id required." },
+          { status: 400 },
+        );
+      }
+
+      const state = await fetchExperienceBridgeState(supabase, key);
+      if (!state) {
+        return NextResponse.json({ error: "Bridge not found." }, { status: 404 });
+      }
+      if (
+        !canReadBridgeExperience({
+          viewerUserId: userId,
+          participants: state.participants,
+          hostUserId: state.bridge.hostUserId,
+        })
+      ) {
+        return NextResponse.json({ error: "Bridge access denied." }, { status: 403 });
+      }
+
+      const pinnedItem = readPinnedContextItem(body.primaryEvent);
+      if (!pinnedItem) {
+        return NextResponse.json({ error: "Pinned context item required." }, { status: 400 });
+      }
+
+      const nowIso = new Date().toISOString();
+      const actor =
+        state.participants.find((row) => row.userId === userId) ??
+        state.participants.find((row) => row.role === "host") ??
+        null;
+      const metadata = upsertMirrorProvenanceMetadata({
+        metadata: applyPinnedContextItemMetadata({
+          metadata: state.bridge.eventSnapshot.metadata,
+          item: pinnedItem,
+        }),
+        patch: {
+          sync: {
+            state: "synced",
+            lastSyncedAtIso: nowIso,
+          },
+        },
+        audit: {
+          action: "local_context_edited",
+          actor: {
+            userId,
+            displayName: actor?.displayName ?? null,
+            role: actor?.role ?? null,
+          },
+          subject: {
+            eventId: key,
+            nodeId: pinnedItem.resourceId,
+          },
+          refs: {
+            bridgeId: key,
+            ...(state.bridge.peerThreadId?.trim()
+              ? { peerThreadId: state.bridge.peerThreadId.trim() }
+              : {}),
+          },
+          diff: [`resource:${pinnedItem.kind}`, `pinned:${pinnedItem.resourceId}`],
+        },
+        nowIso,
+      });
+
+      const nextEvent: EventCandidate = {
+        ...state.bridge.eventSnapshot,
+        metadata,
+        updatedAt: nowIso,
+      };
+      await updateBridgeEventSnapshot(resolveServiceRoleOrUserClient(supabase), nextEvent);
+      const refreshed = await fetchExperienceBridgeState(supabase, key);
+      if (!refreshed) {
+        return NextResponse.json({ error: "Bridge refresh failed." }, { status: 500 });
+      }
+      return NextResponse.json({ state: toBridgeStateWire(refreshed) });
     }
 
     const participantUserId = body.participantUserId?.trim();

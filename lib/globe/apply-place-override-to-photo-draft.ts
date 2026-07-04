@@ -63,8 +63,9 @@ export function applyPlaceOverrideToPhotoDraft(
     anchor: {
       ...cluster.anchor,
       placeLabel: known?.label ?? label,
-      lat: lat ?? cluster.anchor.lat,
-      lng: lng ?? cluster.anchor.lng,
+      // Manual place text must not silently inherit the viewer's current GPS.
+      lat,
+      lng,
       hasGps: lat !== null && lng !== null,
     },
   }));

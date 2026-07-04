@@ -50,6 +50,8 @@ export type MarketHandshakeRecord = {
 
 export type MarketCompletionTraceDraft = {
   handshakeId: string;
+  seekingUserId: string;
+  listingUserId: string;
   eventId: string;
   title: string;
   placeLabel: string;

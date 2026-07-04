@@ -3,16 +3,38 @@ import { haversineKm } from "@/lib/feed/spacetime-fit";
 import type {
   ContextLodgingInventoryRow,
   LodgingResourcePayload,
+  LodgingStayWindow,
 } from "@/lib/globe/context-hub/lodging-resource-types";
 import {
   CONTEXT_LODGING_HUB_ENABLED_META_KEY,
   CONTEXT_LODGING_INVENTORY_META_KEY,
 } from "@/lib/globe/context-hub/lodging-resource-types";
+import { buildLodgingStayWindow } from "@/lib/globe/context-hub/lodging-stay-window";
 import { resolveContextLodgingDestinationAnchor } from "@/lib/globe/context-hub/resolve-context-lodging-search-coords";
 import type { ContextResource } from "@/lib/globe/resource/types";
 import { readPlanContextFromEvent } from "@/lib/plan-context/plan-context-metadata";
+import { buildGoogleMapsPlaceHref } from "@/lib/resolvers/deep-links";
 
 const LODGING_ANCHOR_TOLERANCE_KM = 30;
+
+function parseStayWindowValue(value: unknown): LodgingStayWindow | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const row = value as Record<string, unknown>;
+  const confidence: LodgingStayWindow["confidence"] =
+    row.confidence === "confirmed" ||
+    row.confidence === "estimated" ||
+    row.confidence === "open"
+      ? row.confidence
+      : undefined;
+  return {
+    checkInIso: typeof row.checkInIso === "string" ? row.checkInIso : null,
+    checkOutIso: typeof row.checkOutIso === "string" ? row.checkOutIso : null,
+    nights: typeof row.nights === "number" ? row.nights : null,
+    confidence,
+  };
+}
 
 function readInventoryRows(value: unknown): ContextLodgingInventoryRow[] {
   if (!Array.isArray(value)) {
@@ -43,8 +65,28 @@ function readInventoryRows(value: unknown): ContextLodgingInventoryRow[] {
       videoUrl: typeof row.videoUrl === "string" ? row.videoUrl : null,
       priceKrw: typeof row.priceKrw === "number" ? row.priceKrw : null,
       partnerLabel: typeof row.partnerLabel === "string" ? row.partnerLabel : null,
+      address: typeof row.address === "string" ? row.address : null,
+      mapsUrl: typeof row.mapsUrl === "string" ? row.mapsUrl : null,
+      provider:
+        row.provider === "google_places" || row.provider === "mock"
+          ? row.provider
+          : null,
+      photoSource:
+        row.photoSource === "google_places_details" ||
+        row.photoSource === "google_places_nearby" ||
+        row.photoSource === "mock"
+          ? row.photoSource
+          : null,
+      photoConfidence:
+        row.photoConfidence === "exact_place_id" ||
+        row.photoConfidence === "strong_identity" ||
+        row.photoConfidence === "nearby_identity" ||
+        row.photoConfidence === "mock"
+          ? row.photoConfidence
+          : null,
       checkInIso: typeof row.checkInIso === "string" ? row.checkInIso : null,
       checkOutIso: typeof row.checkOutIso === "string" ? row.checkOutIso : null,
+      stayWindow: parseStayWindowValue(row.stayWindow),
     });
   }
   return rows;
@@ -73,6 +115,26 @@ export function readLodgingPayloadFromResource(
     videoUrl: typeof row.videoUrl === "string" ? row.videoUrl : null,
     priceKrw: typeof row.priceKrw === "number" ? row.priceKrw : null,
     partnerLabel: typeof row.partnerLabel === "string" ? row.partnerLabel : null,
+    address: typeof row.address === "string" ? row.address : null,
+    mapsUrl: typeof row.mapsUrl === "string" ? row.mapsUrl : null,
+    provider:
+      row.provider === "google_places" || row.provider === "mock"
+        ? row.provider
+        : null,
+    photoSource:
+      row.photoSource === "google_places_details" ||
+      row.photoSource === "google_places_nearby" ||
+      row.photoSource === "mock"
+        ? row.photoSource
+        : null,
+    photoConfidence:
+      row.photoConfidence === "exact_place_id" ||
+      row.photoConfidence === "strong_identity" ||
+      row.photoConfidence === "nearby_identity" ||
+      row.photoConfidence === "mock"
+        ? row.photoConfidence
+        : null,
+    stayWindow: parseStayWindowValue(row.stayWindow),
   };
 }
 
@@ -114,6 +176,7 @@ export function mapLodgingRowToContextResource(
   row: ContextLodgingInventoryRow,
 ): ContextResource {
   const plan = readPlanContextFromEvent(event);
+  const stayWindow = buildLodgingStayWindow({ event, row });
   const payload: LodgingResourcePayload = {
     placeId: row.placeId,
     name: row.name,
@@ -121,6 +184,12 @@ export function mapLodgingRowToContextResource(
     videoUrl: row.videoUrl ?? null,
     priceKrw: row.priceKrw ?? null,
     partnerLabel: row.partnerLabel ?? null,
+    address: row.address ?? null,
+    mapsUrl: row.mapsUrl ?? null,
+    provider: row.provider ?? null,
+    photoSource: row.photoSource ?? null,
+    photoConfidence: row.photoConfidence ?? null,
+    stayWindow,
   };
 
   return {
@@ -134,12 +203,17 @@ export function mapLodgingRowToContextResource(
       lat: row.lat,
       lng: row.lng,
       placeLabel: row.name,
-      validFromIso: row.checkInIso ?? plan?.windowStartIso ?? event.datetime ?? null,
-      validUntilIso: row.checkOutIso ?? plan?.windowEndIso ?? null,
+      validFromIso: stayWindow?.checkInIso ?? row.checkInIso ?? plan?.windowStartIso ?? event.datetime ?? null,
+      validUntilIso: stayWindow?.checkOutIso ?? row.checkOutIso ?? plan?.windowEndIso ?? null,
     },
     action: {
       kind: "open_url",
-      href: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(row.name)}&query_place_id=${encodeURIComponent(row.placeId)}`,
+      href: buildGoogleMapsPlaceHref({
+        lat: row.lat,
+        lng: row.lng,
+        placeId: row.placeId,
+        placeLabel: row.name,
+      }),
       labelKo: "예매",
     },
     createdAtIso: event.updatedAt ?? event.createdAt,

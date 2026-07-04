@@ -13,6 +13,10 @@ import type {
   ExperienceBridgeTimelineItem,
 } from "@/lib/experience-bridge/experience-bridge-types";
 import type { ExperienceWindow } from "@/lib/experience-window/experience-window-types";
+import {
+  MIRROR_AUDIT_META_KEY,
+  MIRROR_PROVENANCE_META_KEY,
+} from "@/lib/globe/mirror-provenance-types";
 
 const PUBLIC_CAPTURE_KEYS = new Set([
   "id",
@@ -50,10 +54,19 @@ export function toPublicBridgeEventSnapshot(
     "globePlaceConfirmed",
     "experienceBridgeHost",
     "experienceBridgeParticipant",
+    "sharedGlobeId",
+    "sharedGlobePinId",
   ] as const) {
     if (meta[key] !== undefined) {
       publicMeta[key] = meta[key];
     }
+  }
+
+  if (meta[MIRROR_PROVENANCE_META_KEY] !== undefined) {
+    publicMeta[MIRROR_PROVENANCE_META_KEY] = meta[MIRROR_PROVENANCE_META_KEY];
+  }
+  if (meta[MIRROR_AUDIT_META_KEY] !== undefined) {
+    publicMeta[MIRROR_AUDIT_META_KEY] = meta[MIRROR_AUDIT_META_KEY];
   }
 
   return {

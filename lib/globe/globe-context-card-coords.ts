@@ -3,6 +3,13 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { resolvePlaceCoordinates } from "@/lib/experience-graph/resolve-place-coordinates";
 import {
+  buildCanonicalPlaceProfile,
+  readCanonicalPlaceProfileFromEvent,
+  stampCanonicalPlaceProfile,
+  type CanonicalPlaceProfile,
+} from "@/lib/globe/canonical-place-profile";
+import { invalidateEateryContextStateForPlaceShift } from "@/lib/globe/eatery/invalidate-eatery-context-state";
+import {
   findPersonalGlobePinByEventId,
   upsertPersonalGlobePin,
 } from "@/lib/globe/personal-globe-pin-store";
@@ -26,8 +33,10 @@ export type GlobeContextCardCoords = {
 
 export function resolveGlobeContextPlaceLabel(event: EventCandidate): string {
   const meta = event.metadata ?? {};
+  const profile = readCanonicalPlaceProfileFromEvent(event);
   const plan = readPlanContextFromEvent(event);
   return (
+    profile?.label?.trim() ||
     (typeof meta.globePlaceCardLabel === "string" && meta.globePlaceCardLabel.trim()) ||
     (typeof meta.globePlaceLabel === "string" && meta.globePlaceLabel.trim()) ||
     plan?.place?.trim() ||
@@ -65,7 +74,13 @@ export function readGlobeContextCardCoords(
 export function syncGlobeContextCardCoords(
   event: EventCandidate,
   placeLabel?: string,
-  resolved?: { lat: number; lng: number; label: string },
+  resolved?: {
+    lat: number;
+    lng: number;
+    label: string;
+    formattedAddress?: string | null;
+    placeProfile?: CanonicalPlaceProfile | null;
+  },
 ): EventCandidate {
   const label = (placeLabel ?? resolveGlobeContextPlaceLabel(event)).trim();
   if (!label) {
@@ -78,7 +93,20 @@ export function syncGlobeContextCardCoords(
       const hit = resolvePlaceCoordinates(label);
       return { lat: hit.lat, lng: hit.lng, label: hit.label.trim() || label };
     })();
-  const meta = event.metadata ?? {};
+  const placeProfile =
+    resolved?.placeProfile ??
+    buildCanonicalPlaceProfile({
+      lat: geocoded.lat,
+      lng: geocoded.lng,
+      label: geocoded.label.trim() || label,
+      formattedAddress: resolved?.formattedAddress ?? null,
+      anchorSource: "manual_geocode",
+      confidence: 0.9,
+    });
+  const meta = invalidateEateryContextStateForPlaceShift({
+    event,
+    nextProfile: placeProfile,
+  });
   const { globePlaceMovedAt: _removed, ...restMeta } = meta;
 
   return commitEventUpsert({
@@ -92,7 +120,7 @@ export function syncGlobeContextCardCoords(
     containerId: event.containerId,
     confidence: event.confidence,
     metadata: {
-      ...restMeta,
+      ...stampCanonicalPlaceProfile(restMeta, placeProfile),
       globePlaceCardLat: geocoded.lat,
       globePlaceCardLng: geocoded.lng,
       globePlaceCardLabel: geocoded.label.trim() || label,

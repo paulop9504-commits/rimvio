@@ -8,6 +8,8 @@ import type { MarketIntentRole } from "@/lib/globe/market/market-intent-types";
 
 export type MarketCompletionMeta = {
   handshakeId: string;
+  seekingUserId?: string;
+  listingUserId?: string;
   role: MarketIntentRole;
   priceLine: string;
   productName?: string;
@@ -58,6 +60,10 @@ export function readMarketCompletionMeta(
   const row = raw as Record<string, unknown>;
   const handshakeId =
     typeof row.handshakeId === "string" ? row.handshakeId.trim() : "";
+  const seekingUserId =
+    typeof row.seekingUserId === "string" ? row.seekingUserId.trim() : "";
+  const listingUserId =
+    typeof row.listingUserId === "string" ? row.listingUserId.trim() : "";
   const role = row.role === "seeking" || row.role === "listing" ? row.role : null;
   const priceLine = typeof row.priceLine === "string" ? row.priceLine.trim() : "";
   if (!handshakeId || !role || !priceLine) {
@@ -73,6 +79,8 @@ export function readMarketCompletionMeta(
 
   return {
     handshakeId,
+    ...(seekingUserId ? { seekingUserId } : {}),
+    ...(listingUserId ? { listingUserId } : {}),
     role,
     priceLine,
     productName:

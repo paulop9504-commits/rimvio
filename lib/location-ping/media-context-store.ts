@@ -145,6 +145,18 @@ export async function patchMediaSpacetimeOriginRef(
   await saveMediaSpacetimeContext({ ...hit, originRef: ref });
 }
 
+export async function clearMediaSpacetimeOriginRef(contextId: string): Promise<void> {
+  const id = contextId.trim();
+  if (!id) {
+    return;
+  }
+  const hit = memoryContexts.find((row) => row.id === id);
+  if (!hit || hit.originRef == null) {
+    return;
+  }
+  await saveMediaSpacetimeContext({ ...hit, originRef: null });
+}
+
 export async function deleteMediaSpacetimeContext(contextId: string): Promise<void> {
   const id = contextId.trim();
   if (!id) {

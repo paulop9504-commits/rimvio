@@ -1,6 +1,7 @@
 "use client";
 
 import type { BulkMediaSpacetimePeek } from "@/lib/feed/bulk-media-spacetime-types";
+import { inferGlobeContextIngestMediaKind } from "@/lib/feed/ingest-globe-context-media";
 import { mapWithConcurrency } from "@/lib/async/map-with-concurrency";
 import { resolveGlobeMediaPeekConcurrency } from "@/lib/globe/globe-media-ingest-limits";
 import { resolvePlaceLabelNearCoords } from "@/lib/location-ping/format-place-label";
@@ -8,15 +9,7 @@ import { listRecentGpsPings } from "@/lib/location-ping/gps-ping-store";
 import { resolveCaptureSpacetime } from "@/lib/location-ping/resolve-capture-spacetime";
 
 function inferMediaKind(file: File): BulkMediaSpacetimePeek["mediaKind"] {
-  const type = file.type.trim().toLowerCase();
-  if (type.startsWith("video/")) {
-    return "video";
-  }
-  const name = file.name.trim().toLowerCase();
-  if (/\.(mp4|mov|m4v|webm|mkv|avi|3gp|3g2|qt|mpeg|mpg)$/iu.test(name)) {
-    return "video";
-  }
-  return "photo";
+  return inferGlobeContextIngestMediaKind(file);
 }
 
 async function peekOneFile(

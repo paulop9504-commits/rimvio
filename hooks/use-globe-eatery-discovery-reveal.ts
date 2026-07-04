@@ -5,6 +5,7 @@ import {
   subscribeGlobeEateryDiscoveryReveal,
   subscribeGlobeEateryDiscoveryStart,
 } from "@/lib/globe/eatery/globe-eatery-discovery-bridge";
+import { subscribeGlobeEateryFocus } from "@/lib/globe/eatery/globe-eatery-focus-bridge";
 
 export type GlobeEateryDiscoveryRevealState = {
   eventId: string | null;
@@ -48,6 +49,30 @@ export function useGlobeEateryDiscoveryReveal(
       });
     });
   }, []);
+
+  useEffect(() => {
+    const eventId = focusedEventId?.trim() ?? null;
+    if (!eventId) {
+      return;
+    }
+    return subscribeGlobeEateryFocus((detail) => {
+      if (!detail.resourceId.startsWith(`${eventId}:`)) {
+        return;
+      }
+      setState((prev) => {
+        if (prev.eventId !== eventId) {
+          return prev;
+        }
+        const visibleResourceIds = new Set(prev.visibleResourceIds);
+        visibleResourceIds.add(detail.resourceId);
+        const popInDelays = new Map(prev.popInDelays);
+        if (!popInDelays.has(detail.resourceId)) {
+          popInDelays.set(detail.resourceId, 0);
+        }
+        return { ...prev, visibleResourceIds, popInDelays };
+      });
+    });
+  }, [focusedEventId]);
 
   useEffect(() => {
     const eventId = focusedEventId?.trim() ?? null;

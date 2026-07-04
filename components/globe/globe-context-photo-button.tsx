@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { ImagePlus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { GLOBE_CONTEXT_MEDIA_ACCEPT } from "@/lib/feed/ingest-globe-context-capture";
+import { validateIngestMediaFiles } from "@/lib/globe/validate-ingest-media-files";
 import { dispatchContextRun } from "@/lib/context-run/dispatch-context-run";
 import { cn } from "@/lib/utils";
 import { copy } from "@/lib/copy/human-ko";
@@ -34,17 +35,29 @@ export function GlobeContextPhotoButton({
       return;
     }
     const files = Array.from(fileList);
+    const validated = validateIngestMediaFiles(files);
+    if (!validated.ok) {
+      toast.error(validated.message);
+      if (inputRef.current) {
+        inputRef.current.value = "";
+      }
+      return;
+    }
+    if (validated.skippedCount > 0) {
+      toast.message(copy.globe.photoIngestSkippedUnsupported(validated.skippedCount));
+    }
+    const mediaFiles = validated.files;
     setBusy(true);
     const toastId = toast.loading(
-      files.length === 1
+      mediaFiles.length === 1
         ? "올리는 중…"
-        : `사진·동영상 ${files.length}개 올리는 중… 0/${files.length}`,
+        : `사진·동영상 ${mediaFiles.length}개 올리는 중… 0/${mediaFiles.length}`,
     );
     try {
       await dispatchContextRun(
         {
           kind: "photo",
-          files,
+          files: mediaFiles,
           surface: "composer",
           layerMode: "personal",
           mode: "direct",

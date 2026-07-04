@@ -31,10 +31,25 @@ export function createGlobeLodgingMarkerElement(
     }
     const pill = document.createElement("span");
     pill.className = "rimvio-globe-lodging-marker__discovery-pill";
+    if (marker.virtualCandidate) {
+      pill.style.border = "1px dashed rgba(255,255,255,0.55)";
+    }
+    if (marker.ontologyBadgeLabel) {
+      const badge = document.createElement("span");
+      badge.className = "rimvio-globe-lodging-marker__ontology-badge";
+      badge.textContent = marker.ontologyBadgeLabel;
+      pill.appendChild(badge);
+    }
     const name = document.createElement("span");
     name.className = "rimvio-globe-lodging-marker__discovery-name";
     name.textContent = marker.discoveryShortLabel;
     pill.appendChild(name);
+    if (marker.stayBadgeLabel) {
+      const stay = document.createElement("span");
+      stay.className = "rimvio-globe-lodging-marker__stay-badge";
+      stay.textContent = marker.stayBadgeLabel;
+      pill.appendChild(stay);
+    }
     if (marker.discoveryPriceLabel) {
       const price = document.createElement("span");
       price.className = "rimvio-globe-lodging-marker__discovery-price";
@@ -77,6 +92,9 @@ export function createGlobeLodgingMarkerElement(
 
   const card = document.createElement("span");
   card.className = "rimvio-globe-lodging-marker__card";
+  if (marker.virtualCandidate) {
+    card.style.outline = "1px dashed rgba(255,255,255,0.42)";
+  }
 
   if (marker.thumbnailUrl) {
     const image = document.createElement("img");

@@ -2,8 +2,12 @@ import {
   Client,
   Language,
 } from "@googlemaps/google-maps-services-js";
+import {
+  resolveGoogleLodgingPhotoBundle,
+} from "@/lib/globe/lodging/lodging-photo-fidelity";
 import { googlePlacesApiKey, isGooglePlacesConfigured } from "@/lib/locate/google-places-config";
 import type { ContextLodgingInventoryRow } from "@/lib/globe/context-hub/lodging-resource-types";
+import { buildGoogleMapsPlaceHref } from "@/lib/resolvers/deep-links";
 
 const client = new Client({});
 
@@ -33,26 +37,78 @@ function buildPlacePhotoUrl(photoReference: string, key: string): string {
   return `https://maps.googleapis.com/maps/api/place/photo?${params.toString()}`;
 }
 
-async function readLodgingPhotoUrl(
-  placeId: string,
-  key: string,
-): Promise<string | null> {
+async function readLodgingDetails(input: {
+  placeId: string;
+  key: string;
+}): Promise<{
+  placeId: string | null;
+  name: string | null;
+  lat: number | null;
+  lng: number | null;
+  address: string | null;
+  mapsUrl: string | null;
+  photoUrls: string[];
+}> {
   try {
     const response = await client.placeDetails({
       params: {
-        place_id: placeId,
-        fields: ["photo"],
+        place_id: input.placeId,
+        fields: ["formatted_address", "geometry", "name", "photo", "place_id", "url"],
         language: Language.ko,
-        key,
+        key: input.key,
       },
     });
-    const photoRef = response.data.result?.photos?.[0]?.photo_reference;
-    if (!photoRef) {
-      return null;
+    const result = response.data.result;
+    if (!result) {
+      return {
+        placeId: null,
+        name: null,
+        lat: null,
+        lng: null,
+        address: null,
+        mapsUrl: null,
+        photoUrls: [],
+      };
     }
-    return buildPlacePhotoUrl(photoRef, key);
+    const lat = result.geometry?.location?.lat;
+    const lng = result.geometry?.location?.lng;
+    const placeId = result.place_id?.trim() ?? null;
+    const name = result.name?.trim() ?? null;
+    const resolvedLat =
+      typeof lat === "number" && Number.isFinite(lat) ? lat : null;
+    const resolvedLng =
+      typeof lng === "number" && Number.isFinite(lng) ? lng : null;
+    return {
+      placeId,
+      name,
+      lat: resolvedLat,
+      lng: resolvedLng,
+      address: result.formatted_address?.trim() ?? null,
+      mapsUrl:
+        placeId && resolvedLat != null && resolvedLng != null
+          ? buildGoogleMapsPlaceHref({
+              lat: resolvedLat,
+              lng: resolvedLng,
+              placeId,
+              placeLabel: name,
+            })
+          : result.url?.trim() ?? null,
+      photoUrls: (result.photos ?? [])
+        .map((photo) => photo.photo_reference)
+        .filter((photoReference): photoReference is string => Boolean(photoReference?.trim()))
+        .slice(0, 4)
+        .map((photoReference) => buildPlacePhotoUrl(photoReference, input.key)),
+    };
   } catch {
-    return null;
+    return {
+      placeId: null,
+      name: null,
+      lat: null,
+      lng: null,
+      address: null,
+      mapsUrl: null,
+      photoUrls: [],
+    };
   }
 }
 
@@ -112,7 +168,17 @@ export async function fetchPlacesLodgingNearby(
           priceKrw: priceKrwFromGoogleLevel(result.price_level),
           partnerLabel: "google_places",
           images: [] as string[],
+          address: result.vicinity?.trim() ?? null,
+          mapsUrl: buildGoogleMapsPlaceHref({
+            lat,
+            lng,
+            placeId,
+            placeLabel: name,
+          }),
+          provider: "google_places" as const,
           videoUrl: null,
+          photoSource: null,
+          photoConfidence: null,
         } as ContextLodgingInventoryRow;
       })
       .filter((row): row is ContextLodgingInventoryRow => row !== null)
@@ -124,10 +190,34 @@ export async function fetchPlacesLodgingNearby(
 
     const withPhotos = await Promise.all(
       candidates.map(async (row) => {
-        const photoUrl = await readLodgingPhotoUrl(row.placeId, key);
+        const nearbyPhotoReference = response.data.results
+          ?.find((result) => result.place_id?.trim() === row.placeId)
+          ?.photos?.[0]?.photo_reference;
+        const details = await readLodgingDetails({
+          placeId: row.placeId,
+          key,
+        });
+        const photo = resolveGoogleLodgingPhotoBundle({
+          nearby: {
+            placeId: row.placeId,
+            name: row.name,
+            lat: row.lat,
+            lng: row.lng,
+            address: row.address ?? null,
+            mapsUrl: row.mapsUrl ?? null,
+            nearbyPhotoUrls: nearbyPhotoReference
+              ? [buildPlacePhotoUrl(nearbyPhotoReference, key)]
+              : [],
+          },
+          details,
+        });
         return {
           ...row,
-          images: photoUrl ? [photoUrl] : [],
+          images: photo.images,
+          address: photo.address,
+          mapsUrl: photo.mapsUrl,
+          photoSource: photo.photoSource,
+          photoConfidence: photo.photoConfidence,
         };
       }),
     );

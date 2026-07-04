@@ -135,6 +135,22 @@ export async function inviteExperienceBridgeRemote(input: {
   return result;
 }
 
+export async function updateExperienceBridgePinnedItemRemote(input: {
+  event: EventCandidate;
+}): Promise<{ state: ExperienceBridgeState }> {
+  const endpoint = `${resolveAppOrigin()}/api/experience-bridge/${encodeURIComponent(input.event.id)}`;
+  const result = await fetchJsonUncached<{ state: ExperienceBridgeState }>(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: "pin_item",
+      primaryEvent: input.event,
+    }),
+  });
+  invalidateBridgeApiCache(input.event.id);
+  return result;
+}
+
 export async function acceptExperienceBridgeRemote(eventId: string): Promise<{
   state: ExperienceBridgeState;
   pinSpec: { bridge: ExperienceBridgeState["bridge"]; peerThreadId: string | null };

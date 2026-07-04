@@ -10,6 +10,7 @@ import {
 import type { PinCluster } from "@/lib/globe/pin-cluster-types";
 import type { PersonalGlobePin } from "@/lib/globe/personal-globe-pin-types";
 import type { PinEntity } from "@/lib/globe/pin-entity";
+import { readMirrorProvenance } from "@/lib/globe/mirror-provenance";
 import { formatPinDateLabel } from "@/lib/globe/format-pin-date-label";
 import {
   readPinDomainId,
@@ -62,6 +63,7 @@ export function projectPinEntityFromCluster(
     startedAtIso: cluster.startedAtIso,
     slots: inferred ? { ...slots, _inferredDomainId: inferred } : slots,
     recallLine: cluster.recallLine,
+    mirrorProvenance: readMirrorProvenance(metadata),
   };
 }
 

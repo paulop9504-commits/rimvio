@@ -104,6 +104,7 @@ export function rankContextResources(input: {
       (row) =>
         row.offered &&
         row.serviceId !== "lodging" &&
+        row.serviceId !== "eatery" &&
         row.serviceId !== "ai_search" &&
         row.implemented,
     )

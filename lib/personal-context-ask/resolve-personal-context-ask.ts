@@ -17,6 +17,7 @@ import type {
 import {
   formatEmptyReply,
   formatExternalSoonReply,
+  formatStarterReply,
 } from "@/lib/personal-context-ask/format-personal-context-reply";
 import { enrichAskRecallContext } from "@/lib/personal-context-ask/enrich-ask-recall-context";
 import { pickAskPrimaryHit } from "@/lib/personal-context-ask/pick-ask-primary-hit";
@@ -27,6 +28,8 @@ import {
 } from "@/lib/recall/recall-event-snapshot";
 
 const MAX_HITS = 5;
+const LOW_SIGNAL_GENERAL_RE =
+  /^(?:ㅎㅇ|하이|안녕|안뇽|hello|hi|hey|yo|뭐하지|도와줘)(?:[.!?~\s]*)$/iu;
 
 function personMatches(snapshot: RecallEventSnapshot, needles: readonly string[]): boolean {
   if (needles.length === 0) {
@@ -103,6 +106,26 @@ function enrichHitsWithMedia(
 
 function sumPhotoCount(hits: readonly PersonalContextBridgeHit[]): number {
   return hits.reduce((sum, hit) => sum + hit.photoCount, 0);
+}
+
+function isLowSignalGeneralQuery(
+  query: string,
+  parsed: ParsedPersonalContextQuery,
+): boolean {
+  if (parsed.intent !== "general") {
+    return false;
+  }
+  if (
+    parsed.personNeedles.length > 0 ||
+    parsed.placeNeedles.length > 0 ||
+    parsed.productNeedles.length > 0 ||
+    parsed.year !== null ||
+    parsed.weekOffset !== null
+  ) {
+    return false;
+  }
+  const compact = query.replace(/\s+/gu, "");
+  return LOW_SIGNAL_GENERAL_RE.test(query) || compact.length <= 3;
 }
 
 function sortByTimeDesc(
@@ -368,7 +391,9 @@ export function resolvePersonalContextAsk(input: {
   const enriched = enrichHitsWithMedia(rawHits, input.events);
 
   if (enriched.length === 0) {
-    const empty = formatEmptyReply();
+    const empty = isLowSignalGeneralQuery(input.query, parsed)
+      ? formatStarterReply()
+      : formatEmptyReply();
     return {
       kind: "empty",
       intent: parsed.intent,

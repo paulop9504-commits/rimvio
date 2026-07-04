@@ -20,6 +20,7 @@ export async function completeBridgeInviteAccept(input: {
   ensureBridgeParticipantPin({
     bridge: input.state.bridge,
     peerThreadId: input.peerThreadId,
+    participantUserId: input.viewerUserId,
   });
   writeLocalBridgeState(input.state);
   await syncBridgeSharedMediaFromRemote(eventId, input.viewerUserId);

@@ -2,6 +2,7 @@
 
 import assert from "node:assert/strict";
 import { DEFAULT_MARKET_INTENT_DETAIL } from "../lib/globe/market/market-intent-detail";
+import { resolveMarketIntentExposureAnchor } from "../lib/globe/market/market-intent-exposure";
 import type { MarketIntentRecord } from "../lib/globe/market/market-intent-types";
 import { buildUserStateV1 } from "../lib/globe/opportunity-field/build-user-state";
 import {
@@ -143,6 +144,51 @@ function main() {
     copy: COPY,
   });
   assert.equal(filtered.length, 0);
+
+  const farFixedSeeking = phoneIntent({
+    id: "mi-live",
+    eventId: "ev-live",
+    role: "seeking",
+    anchorLat: 37.4979,
+    anchorLng: 127.0276,
+    placeLabel: "강남역",
+    detail: {
+      ...seeking.detail,
+      exposureMode: "fixed",
+    },
+  });
+  const fixedRows = listOpportunityRows({
+    seeking: farFixedSeeking,
+    pool: [listing],
+    userState,
+    copy: COPY,
+  });
+  assert.equal(fixedRows.length, 0);
+
+  const liveSeeking = {
+    ...farFixedSeeking,
+    detail: {
+      ...farFixedSeeking.detail,
+      exposureMode: "live",
+      liveExposureLat: listing.anchorLat,
+      liveExposureLng: listing.anchorLng,
+      liveExposurePlaceLabel: "성수동",
+      liveExposureCapturedAtIso: new Date().toISOString(),
+    },
+  };
+  const liveAnchor = resolveMarketIntentExposureAnchor(liveSeeking);
+  assert.equal(liveSeeking.anchorLat, 37.4979);
+  assert.equal(liveSeeking.anchorLng, 127.0276);
+  assert.equal(liveAnchor.lat, listing.anchorLat);
+  assert.equal(liveAnchor.lng, listing.anchorLng);
+
+  const liveRows = listOpportunityRows({
+    seeking: liveSeeking,
+    pool: [listing],
+    userState,
+    copy: COPY,
+  });
+  assert.equal(liveRows.length, 1);
 
   console.log("test-score-marketplace-opportunity: ok");
 }

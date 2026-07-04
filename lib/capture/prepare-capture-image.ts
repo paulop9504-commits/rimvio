@@ -1,4 +1,5 @@
 import { BRIDGE_PHOTO_MAX_BYTES } from "@/lib/experience-bridge/bridge-media-constants";
+import { inferGlobeContextIngestMediaKind } from "@/lib/feed/ingest-globe-context-media";
 
 import { isConstrainedMobileDevice } from "@/lib/platform/device";
 
@@ -45,11 +46,20 @@ function canvasToJpegBlob(canvas: HTMLCanvasElement, quality: number) {
 
 /** Downscale large photos before upload — prevents hang on slow networks / API. */
 export async function prepareCaptureImageForUpload(file: File): Promise<File> {
-  if (typeof window === "undefined" || !file.type.startsWith("image/")) {
+  if (typeof window === "undefined") {
+    return file;
+  }
+  if (inferGlobeContextIngestMediaKind(file) !== "photo") {
     return file;
   }
 
-  if (file.size <= MAX_UPLOAD_BYTES && !file.type.includes("heic")) {
+  const type = file.type.trim().toLowerCase();
+  const name = file.name.trim().toLowerCase();
+  const heicLike =
+    type.includes("heic") ||
+    type.includes("heif") ||
+    /\.heic$|\.heif$/iu.test(name);
+  if (file.size <= MAX_UPLOAD_BYTES && !heicLike) {
     try {
       const image = await loadImageFromFile(file);
       const longest = Math.max(image.naturalWidth, image.naturalHeight);

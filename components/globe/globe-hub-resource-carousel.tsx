@@ -2,8 +2,18 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { motion, useMotionValue, animate, type PanInfo } from "framer-motion";
-import { Car, ChevronDown, Hotel, Plane, ShoppingBag, Sparkles, Ticket } from "lucide-react";
+import {
+  Car,
+  ChevronDown,
+  Hotel,
+  Plane,
+  ShoppingBag,
+  Sparkles,
+  Ticket,
+  UtensilsCrossed,
+} from "lucide-react";
 import type { ContextHubServiceId } from "@/lib/globe/context-hub/context-hub-service-catalog";
+import { formatLodgingStayBadgeLabel } from "@/lib/globe/context-hub/lodging-stay-window";
 import { GlobeLodgingMediaHero } from "@/components/globe/globe-lodging-media-hero";
 import { readLodgingPayloadFromResource } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import type { RankedContextResource } from "@/lib/globe/resource/map-hub-service-to-resource";
@@ -15,6 +25,7 @@ const SERVICE_ICON: Record<ContextHubServiceId, typeof Plane> = {
   ticket: Ticket,
   flight: Plane,
   lodging: Hotel,
+  eatery: UtensilsCrossed,
   rental_car: Car,
   market: ShoppingBag,
   ai_search: Sparkles,
@@ -45,6 +56,18 @@ export type GlobeHubResourceCarouselProps = {
 };
 
 function resolveResourceSubtitle(entry: RankedContextResource): string {
+  if (entry.resource.kind === "lodging_voucher") {
+    const payload = readLodgingPayloadFromResource(entry.resource);
+    const stayBadgeLabel = formatLodgingStayBadgeLabel(payload?.stayWindow ?? null);
+    const trailing =
+      entry.resource.shortLabel ??
+      payload?.partnerLabel?.trim() ??
+      null;
+    const lodgingSubtitle = [stayBadgeLabel, trailing].filter(Boolean).join(" · ");
+    if (lodgingSubtitle) {
+      return lodgingSubtitle;
+    }
+  }
   const row = entry.hubRow;
   if (!row.implemented) {
     return copy.globe.contextHubServiceSoon;
@@ -219,7 +242,7 @@ export function GlobeHubResourceCarousel({
   return (
     <aside
       className={cn(
-        "pointer-events-auto overflow-hidden backdrop-blur-xl",
+        "group/globe-hub-card pointer-events-auto overflow-hidden backdrop-blur-xl",
         sleekMain
           ? cn(
               "rounded-[1.15rem] bg-[#f5f5f7] shadow-[0_16px_44px_rgba(0,0,0,0.22)] ring-1 ring-white/20",
@@ -247,7 +270,7 @@ export function GlobeHubResourceCarousel({
           <button
             type="button"
             onClick={onExpand}
-            className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted/60 active:bg-muted"
+            className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted/60 transition lg:opacity-0 lg:pointer-events-none group-hover/globe-hub-card:lg:opacity-100 group-hover/globe-hub-card:lg:pointer-events-auto group-focus-within/globe-hub-card:lg:opacity-100 group-focus-within/globe-hub-card:lg:pointer-events-auto active:bg-muted"
             aria-label={copy.globe.contextHubExpandAria}
             data-globe-hub-rail-expand
           >
@@ -272,7 +295,7 @@ export function GlobeHubResourceCarousel({
           <button
             type="button"
             onClick={onExpand}
-            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted/60 active:bg-muted"
+            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted/60 transition lg:opacity-0 lg:pointer-events-none group-hover/globe-hub-card:lg:opacity-100 group-hover/globe-hub-card:lg:pointer-events-auto group-focus-within/globe-hub-card:lg:opacity-100 group-focus-within/globe-hub-card:lg:pointer-events-auto active:bg-muted"
             aria-label={copy.globe.contextHubExpandAria}
             data-globe-hub-rail-expand
           >
@@ -292,7 +315,7 @@ export function GlobeHubResourceCarousel({
           <button
             type="button"
             onClick={onExpand}
-            className="absolute right-4 top-4 z-[2] flex size-8 items-center justify-center rounded-full bg-white/90 text-[#86868b] shadow-sm backdrop-blur-md active:scale-95"
+            className="absolute right-4 top-4 z-[2] flex size-8 items-center justify-center rounded-full bg-white/90 text-[#86868b] shadow-sm backdrop-blur-md transition lg:opacity-0 lg:pointer-events-none group-hover/globe-hub-card:lg:opacity-100 group-hover/globe-hub-card:lg:pointer-events-auto group-focus-within/globe-hub-card:lg:opacity-100 group-focus-within/globe-hub-card:lg:pointer-events-auto active:scale-95"
             aria-label={copy.globe.contextHubExpandAria}
             data-globe-hub-rail-expand
           >

@@ -1,5 +1,4 @@
 import { haversineKm } from "@/lib/feed/spacetime-fit";
-import type { ContextEateryInventoryRow } from "@/lib/globe/eatery/eatery-resource-types";
 import type { UnifiedExperienceContext } from "@/lib/experience-context/unified-experience-context-types";
 import { copy } from "@/lib/copy/human-ko";
 import {
@@ -13,8 +12,10 @@ import { resolveLodgingDiscoveryAreaLabel } from "@/lib/globe/lodging/project-lo
 export type GlobeEateryDiscoveryCard = {
   resourceId: string;
   placeId: string;
+  rankIndex: number;
   title: string;
   shortLabel: string;
+  providerLabel: string | null;
   distanceM: number | null;
   priceLabel: string | null;
   score100: number;
@@ -152,8 +153,10 @@ export function projectEateryDiscoverySession(input: {
     return {
       resourceId: input.resourceIdByPlaceId[row.placeId] ?? `${input.eventId}:eatery:${row.placeId}`,
       placeId: row.placeId,
+      rankIndex: index,
       title: row.name,
       shortLabel: extractShortLabel(row.name),
+      providerLabel: row.providerLabel?.trim() || null,
       distanceM,
       priceLabel: row.cuisineHint?.trim() || formatPriceLevel(row.priceLevel),
       score100: normalizeScore100(entry.score, maxRaw, minRaw),

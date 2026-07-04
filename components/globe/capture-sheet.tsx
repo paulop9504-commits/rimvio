@@ -16,7 +16,9 @@ import { CaptureSheetMemoryTriggerStage } from "@/components/globe/capture-sheet
 import { GlobeContextAiOrb } from "@/components/globe/globe-context-ai-orb";
 import { GlobeLayerModeToggle } from "@/components/globe/globe-layer-mode-toggle";
 import { PersonalContextAskReply } from "@/components/globe/personal-context-ask-reply";
+import { GlobeComposerHintStrip } from "@/components/globe/globe-composer-hint-strip";
 import { useAskSpeechRecognition } from "@/hooks/use-ask-speech-recognition";
+import { useComposerHint } from "@/hooks/use-composer-hint";
 import { useGlobeContextTriggers } from "@/hooks/use-globe-context-triggers";
 import { useGlobeLayerMode } from "@/hooks/use-globe-layer-mode";
 import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
@@ -89,23 +91,33 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
   const photoInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const isPersonal = layerMode === "personal";
+  const { hint: composerHint, showHint: showComposerHint } = useComposerHint();
 
-  const { listening: voiceListening, start: toggleVoiceInput, supported: voiceSupported } =
+  const { listening: voiceListening, phase: voicePhase, start: toggleVoiceInput, supported: voiceSupported } =
     useAskSpeechRecognition({
       locale,
       enabled: open && !busy,
+      onInterimTranscript: (transcript) => {
+        setDraft(transcript);
+      },
+      onPauseHint: () => {
+        showComposerHint(copy.globe.composerHint.voiceContinue, { durationMs: 4000 });
+      },
       onFinalTranscript: (transcript) => {
-        setDraft((prev) => {
-          const base = prev.trim();
-          return base ? `${base} ${transcript}` : transcript;
-        });
+        setDraft(transcript.trim());
       },
       onError: (code) => {
         if (code === "unsupported") {
-          toast.message(ask.voiceUnsupported);
+          showComposerHint(copy.globe.composerHint.voiceUnsupported, {
+            tone: "error",
+            durationMs: 4000,
+          });
           return;
         }
-        toast.message(ask.voiceFailed);
+        showComposerHint(copy.globe.composerHint.voiceFailed, {
+          tone: "error",
+          durationMs: 4000,
+        });
       },
     });
 
@@ -693,15 +705,16 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 8 }}
-                      className="mb-2 flex justify-center gap-2"
+                      className="mb-2 flex flex-wrap justify-center gap-2"
                     >
-                      {(
-                        [
-                          { id: "photo", label: ask.photo, icon: Camera },
-                          { id: "link", label: ask.link, icon: Link2 },
-                          { id: "memo", label: ask.memo, icon: StickyNote },
-                        ] as const
-                      ).map((tile) => {
+                      {([
+                        { id: "photo", label: ask.photo, icon: Camera },
+                        { id: "link", label: ask.link, icon: Link2 },
+                        { id: "memo", label: ask.memo, icon: StickyNote },
+                        ...(voiceSupported
+                          ? [{ id: "voice", label: ask.voiceAria, icon: Mic }]
+                          : []),
+                      ] as const).map((tile) => {
                         const Icon = tile.icon;
                         return (
                           <button
@@ -713,7 +726,14 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
                                 photoInputRef.current?.click();
                                 return;
                               }
-                              setAttachMode(tile.id);
+                              if (tile.id === "voice") {
+                                setAttachMode("closed");
+                                toggleVoiceInput();
+                                return;
+                              }
+                              if (tile.id === "link" || tile.id === "memo") {
+                                setAttachMode(tile.id);
+                              }
                             }}
                           >
                             <Icon className="size-4 text-[#6b7684]" aria-hidden />
@@ -766,6 +786,13 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
                   </div>
                 ) : null}
 
+                <GlobeComposerHintStrip
+                  text={composerHint?.text ?? null}
+                  tone={composerHint?.tone}
+                  lightPill
+                  className="mb-1.5"
+                />
+
                 <div
                   className={cn(
                     "flex items-end gap-2 rounded-[28px] bg-white py-2 pl-2 pr-2 ring-1",
@@ -798,28 +825,24 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
                     placeholder={placeholder}
                     className="max-h-28 min-h-[2.5rem] flex-1 resize-none bg-transparent py-2 text-[16px] leading-snug text-[#191f28] outline-none placeholder:text-[#8b95a1]"
                   />
-                  <button
-                    type="button"
-                    aria-label={ask.voiceAria}
-                    aria-pressed={voiceListening}
-                    disabled={busy || !voiceSupported}
-                    onClick={() => {
-                      if (!voiceSupported) {
-                        toast.message(ask.voiceUnsupported);
-                        return;
+                  {voiceListening ? (
+                    <button
+                      type="button"
+                      aria-label={
+                        voicePhase === "pause_hint"
+                          ? copy.globe.composerHint.voiceContinue
+                          : ask.voiceListening
                       }
-                      toggleVoiceInput();
-                    }}
-                    className={cn(
-                      "flex size-10 shrink-0 items-center justify-center rounded-full active:bg-[#f2f4f6]",
-                      voiceListening
-                        ? "bg-[#fee2e2] text-[#ef4444] ring-2 ring-[#ef4444]/30"
-                        : "text-[#6b7684]",
-                      !voiceSupported && "opacity-40",
-                    )}
-                  >
-                    <Mic className="size-5" strokeWidth={2} aria-hidden />
-                  </button>
+                      aria-pressed
+                      disabled={busy}
+                      onClick={() => {
+                        toggleVoiceInput();
+                      }}
+                      className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#fee2e2] text-[#ef4444] ring-2 ring-[#ef4444]/30 active:bg-[#fecaca]"
+                    >
+                      <Mic className="size-5" strokeWidth={2} aria-hidden />
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     aria-label={ask.sendAria}

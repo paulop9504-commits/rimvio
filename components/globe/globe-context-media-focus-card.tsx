@@ -2,7 +2,14 @@
 
 import type { ReactNode } from "react";
 import { X } from "lucide-react";
+import { GlobeMediaGuideMapExpandButton } from "@/components/globe/globe-media-guide-map-expand-button";
 import { cn } from "@/lib/utils";
+
+export type GlobeContextMediaFocusCardFooterAction = {
+  label: string;
+  onClick: () => void;
+  candidateCount?: number;
+};
 
 export type GlobeContextMediaFocusCardProps = {
   title: string;
@@ -12,6 +19,7 @@ export type GlobeContextMediaFocusCardProps = {
   hero: ReactNode;
   className?: string;
   onHeroPress?: () => void;
+  footerAction?: GlobeContextMediaFocusCardFooterAction | null;
   onTouchStart?: (event: React.TouchEvent) => void;
   onTouchMove?: (event: React.TouchEvent) => void;
   onTouchEnd?: (event: React.TouchEvent) => void;
@@ -26,6 +34,7 @@ export function GlobeContextMediaFocusCard({
   hero,
   className,
   onHeroPress,
+  footerAction = null,
   onTouchStart,
   onTouchMove,
   onTouchEnd,
@@ -97,6 +106,17 @@ export function GlobeContextMediaFocusCard({
           ) : null}
         </div>
       </div>
+
+      {footerAction ? (
+        <div className="border-t border-white/10 bg-[#141416] px-2.5 py-2">
+          <GlobeMediaGuideMapExpandButton
+            variant="bar"
+            label={footerAction.label}
+            candidateCount={footerAction.candidateCount}
+            onClick={footerAction.onClick}
+          />
+        </div>
+      ) : null}
     </article>
   );
 }

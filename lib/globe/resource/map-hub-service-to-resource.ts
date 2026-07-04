@@ -23,6 +23,8 @@ function mapServiceIdToKind(serviceId: ContextHubServiceRow["serviceId"]): Conte
       return "flight";
     case "lodging":
       return "lodging_voucher";
+    case "eatery":
+      return "ai_handoff";
     case "rental_car":
       return "rental_car";
     case "ai_search":

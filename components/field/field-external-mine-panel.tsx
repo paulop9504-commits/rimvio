@@ -1,10 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { FieldResourceStatusCard } from "@/components/field/field-resource-status-card";
+import { SettingsToggle } from "@/components/settings/settings-toggle";
 import { MarketIntentOwnershipChip } from "@/components/market/market-intent-ownership-chip";
 import { useCopy } from "@/hooks/use-copy";
+import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
 import { useMarketManageIntents } from "@/hooks/use-market-manage-intents";
 import { useRegionalProfile } from "@/hooks/use-regional-profile";
 import {
@@ -13,6 +16,12 @@ import {
 } from "@/components/field/field-dashboard-layout";
 import { RIMVIO_TYPE, rimvioEmptyStateClass, rimvioGhostCtaClass } from "@/lib/design/rimvio-ontology";
 import { marketCategoryLabelKo } from "@/lib/globe/market/market-category-registry";
+import {
+  readMarketIntentExposureMode,
+  resolveMarketIntentExposureAnchor,
+  isMarketIntentLiveExposureEligible,
+} from "@/lib/globe/market/market-intent-exposure";
+import { setMarketIntentExposureMode } from "@/lib/globe/market/market-intent-exposure-actions";
 import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
 import { isMarketIntentPublishedExternal } from "@/lib/globe/market/market-intent-detail";
 import { formatMarketPriceLine } from "@/lib/globe/market/format-market-price-line";
@@ -31,19 +40,38 @@ function MineIntentRow({
   onFlyTo,
   onEnd,
   onPublish,
+  onExposureModeChange,
+  exposureBusy = false,
 }: {
   record: MarketIntentRecord;
   onFlyTo: () => void;
   onEnd: () => void;
   onPublish: () => void;
+  onExposureModeChange: (checked: boolean) => void;
+  exposureBusy?: boolean;
 }) {
   const copy = useCopy();
   const { profile } = useRegionalProfile();
   const published = isMarketIntentPublishedExternal(record.detail);
+  const exposureEligible = isMarketIntentLiveExposureEligible(record);
+  const exposureMode = readMarketIntentExposureMode(record.detail);
+  const exposureOn = exposureMode === "live";
+  const exposureAnchor = resolveMarketIntentExposureAnchor(record);
+  const placeLabel =
+    formatMarketPlaceLabel(record.placeLabel) || copy.globe.marketIntentPrefillHint;
+  const livePlaceLabel =
+    formatMarketPlaceLabel(exposureAnchor.placeLabel) || placeLabel;
   const title =
     record.detail.productName.trim() ||
     record.title.trim() ||
     copy.globe.marketTradePlaceProductFallback;
+  const exposureBody = exposureOn
+    ? exposureAnchor.source === "live"
+      ? record.role === "listing"
+        ? copy.globe.marketManageExposureLiveBodyListing
+        : copy.globe.marketManageExposureLiveBodySeeking
+      : copy.globe.marketManageExposureWaitingGps
+    : copy.globe.marketManageExposureFixedCaption(placeLabel);
 
   return (
     <div
@@ -113,6 +141,31 @@ function MineIntentRow({
           {copy.globe.marketManageEndCta}
         </button>
       </div>
+      {exposureEligible ? (
+        <div className="mt-2.5 rounded-2xl bg-[#f8f9fb] px-3 py-3 ring-1 ring-[#eef1f4]">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-[12px] font-semibold text-[#191f28]">
+                {copy.globe.marketManageExposureToggle}
+              </p>
+              <p className="mt-1 text-[12px] leading-relaxed text-[#4e5968]">
+                {exposureBody}
+              </p>
+              {exposureOn ? (
+                <p className="mt-1 text-[10px] text-[#8b95a1]">
+                  {livePlaceLabel}
+                </p>
+              ) : null}
+            </div>
+            <SettingsToggle
+              checked={exposureOn}
+              disabled={exposureBusy}
+              onCheckedChange={onExposureModeChange}
+              aria-label={copy.globe.marketManageExposureToggle}
+            />
+          </div>
+        </div>
+      ) : null}
       <FieldResourceStatusCard record={record} className="mt-2.5" />
     </div>
   );
@@ -126,6 +179,8 @@ function RoleBlock({
   onFlyTo,
   onEnd,
   onPublish,
+  onExposureModeChange,
+  exposureBusyMap,
 }: {
   title: string;
   pillClass: string;
@@ -134,6 +189,8 @@ function RoleBlock({
   onFlyTo: (record: MarketIntentRecord) => void;
   onEnd: (record: MarketIntentRecord) => void;
   onPublish: (record: MarketIntentRecord) => void;
+  onExposureModeChange: (record: MarketIntentRecord, checked: boolean) => void;
+  exposureBusyMap: Record<string, boolean>;
 }) {
   return (
     <section className="space-y-3" data-field-mine-section={title}>
@@ -156,6 +213,8 @@ function RoleBlock({
               onFlyTo={() => onFlyTo(record)}
               onEnd={() => onEnd(record)}
               onPublish={() => onPublish(record)}
+              onExposureModeChange={(checked) => onExposureModeChange(record, checked)}
+              exposureBusy={exposureBusyMap[record.eventId] === true}
             />
           ))}
         </div>
@@ -172,7 +231,9 @@ export function FieldExternalMinePanel({
 }: FieldExternalMinePanelProps) {
   const copy = useCopy();
   const field = copy.globe.field;
+  const liveLocation = useLiveLocationSnapshot();
   const { listings, seekings, loading, endIntent } = useMarketManageIntents(enabled);
+  const [exposureBusyMap, setExposureBusyMap] = useState<Record<string, boolean>>({});
 
   const handleEnd = (record: MarketIntentRecord) => {
     void endIntent(record.eventId).then(() => {
@@ -185,6 +246,20 @@ export function FieldExternalMinePanel({
       if (saved) {
         toast.success(copy.globe.marketManagePublishedToast);
       }
+    });
+  };
+
+  const handleExposureModeChange = (
+    record: MarketIntentRecord,
+    checked: boolean,
+  ) => {
+    setExposureBusyMap((current) => ({ ...current, [record.eventId]: true }));
+    void setMarketIntentExposureMode({
+      eventId: record.eventId,
+      mode: checked ? "live" : "fixed",
+      snapshot: checked ? liveLocation : null,
+    }).finally(() => {
+      setExposureBusyMap((current) => ({ ...current, [record.eventId]: false }));
     });
   };
 
@@ -233,6 +308,8 @@ export function FieldExternalMinePanel({
           onFlyTo={(record) => onFlyToIntent?.(record)}
           onEnd={handleEnd}
           onPublish={handlePublish}
+          onExposureModeChange={handleExposureModeChange}
+          exposureBusyMap={exposureBusyMap}
         />
         <RoleBlock
           title={copy.globe.marketManageListingSection}
@@ -242,6 +319,8 @@ export function FieldExternalMinePanel({
           onFlyTo={(record) => onFlyToIntent?.(record)}
           onEnd={handleEnd}
           onPublish={handlePublish}
+          onExposureModeChange={handleExposureModeChange}
+          exposureBusyMap={exposureBusyMap}
         />
       </div>
     </div>

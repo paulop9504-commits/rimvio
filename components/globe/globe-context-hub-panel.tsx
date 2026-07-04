@@ -3,13 +3,18 @@
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { HubServiceSlot } from "@/components/globe/globe-context-hub-service-slot";
+import { GlobeContextBrainStrip } from "@/components/globe/globe-context-brain-strip";
+import { GlobeContextGuideSection } from "@/components/globe/globe-context-guide-section";
+import { GlobeHubServiceList } from "@/components/globe/globe-hub-service-list";
 import { GlobeContextTicketConnectSheet } from "@/components/globe/globe-context-ticket-connect-sheet";
 import { GlobeTicketQrViewer } from "@/components/globe/globe-ticket-qr-viewer";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { connectDepartureHubToContext } from "@/lib/globe/connect-departure-hub-to-context";
 import { enableLodgingHubForContext } from "@/lib/globe/context-hub/enable-lodging-hub-for-context";
-import { listContextHubServicesForEvent } from "@/lib/globe/context-hub/context-hub-service-catalog";
+import {
+  listContextHubServicesForEvent,
+  type ContextHubServiceId,
+} from "@/lib/globe/context-hub/context-hub-service-catalog";
 import { rankContextHubServices } from "@/lib/globe/context-hub/rank-context-hub-services";
 import {
   foldContextHubLearning,
@@ -23,7 +28,10 @@ import {
 import { isTicketQrViewerHref } from "@/lib/globe/ticket-scan-surface";
 import { resolveSemanticMainHintForEvent } from "@/lib/semantic/resolve-semantic-main-hint-for-event";
 import { dispatchGlobeMarketHubConnect } from "@/lib/globe/context-hub/globe-market-hub-bridge";
+import { expandMediaGuideOnMap } from "@/lib/globe/expand-media-guide-on-map";
 import { copy } from "@/lib/copy/human-ko";
+import { useContextMediaGuides } from "@/hooks/use-context-media-guides";
+import type { MediaGuideNode } from "@/lib/ontology/media-guide-types";
 
 export type GlobeContextHubPanelProps = {
   event: EventCandidate;
@@ -50,13 +58,16 @@ export function GlobeContextHubPanel({
   const router = useRouter();
   const [revision, setRevision] = useState(0);
   const [busy, setBusy] = useState(false);
-  const [connectServiceId, setConnectServiceId] = useState<string | null>(null);
+  const [connectServiceId, setConnectServiceId] = useState<ContextHubServiceId | null>(null);
   const [ticketConnectOpen, setTicketConnectOpen] = useState(false);
   const [qrViewer, setQrViewer] = useState<{
     src: string;
     title: string;
     subtitle?: string;
   } | null>(null);
+  const { guides: mediaGuides, loading: mediaGuidesLoading } = useContextMediaGuides(event, {
+    max: 3,
+  });
 
   const panel = useMemo(() => {
     void revision;
@@ -66,7 +77,11 @@ export function GlobeContextHubPanel({
 
   const semanticHint = useMemo(
     () => resolveSemanticMainHintForEvent(event),
-    [event, revision],
+    [event],
+  );
+  const flightService = useMemo(
+    () => panel?.services.find((row) => row.serviceId === "flight") ?? null,
+    [panel],
   );
 
   const serviceRows = useMemo(
@@ -146,9 +161,8 @@ export function GlobeContextHubPanel({
           homeRegionHint,
         });
         const label =
-          panel?.services
-            .find((row) => row.serviceId === "flight")
-            ?.flightOptions.find((row) => row.id === airportId)?.shortLabelKo ?? airportId;
+          flightService?.flightOptions.find((row) => row.id === airportId)?.shortLabelKo ??
+          airportId;
         toast.success(copy.globe.departureHubConnected(label));
         recordContextHubTelemetry({ event, kind: "clicked", label: airportId });
         foldContextHubLearning(event);
@@ -164,7 +178,7 @@ export function GlobeContextHubPanel({
         setBusy(false);
       }
     },
-    [busy, bump, event, homeRegionHint, panel?.services],
+    [busy, bump, event, flightService, homeRegionHint],
   );
 
   const handleConnectLodging = useCallback(async () => {
@@ -196,9 +210,65 @@ export function GlobeContextHubPanel({
     dispatchGlobeMarketHubConnect({ eventId: event.id });
   }, [event]);
 
-  if (!panel || serviceRows.length === 0) {
+  const handleExpandGuideMap = useCallback(
+    (guide: MediaGuideNode) => {
+      const ok = expandMediaGuideOnMap({ event, guide });
+      if (!ok) {
+        toast.error(copy.common.tryAgain);
+      }
+    },
+    [event],
+  );
+
+  if (!panel) {
     return null;
   }
+
+  const hubSection =
+    serviceRows.length > 0 ? (
+      <>
+        <div>
+          <p className="text-[12px] font-semibold text-primary">
+            {copy.globe.contextHubEyebrow}
+          </p>
+          <p className="mt-0.5 text-[14px] font-semibold text-foreground">
+            {copy.globe.contextHubSectionTitle}
+          </p>
+          <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
+            {copy.globe.contextHubSectionBody}
+          </p>
+        </div>
+
+        <GlobeHubServiceList
+          rows={serviceRows}
+          busy={busy}
+          connectServiceId={connectServiceId}
+          initialVisibleCount={2}
+          onToggleConnect={(row) => {
+            if (row.serviceId === "ticket") {
+              setTicketConnectOpen(true);
+              return;
+            }
+            if (row.serviceId === "lodging") {
+              void handleConnectLodging();
+              return;
+            }
+            if (row.serviceId === "market") {
+              handleConnectMarket();
+              return;
+            }
+            setConnectServiceId((current) =>
+              current === row.serviceId ? null : row.serviceId,
+            );
+          }}
+          onConnectFlight={(airportId) => void handleConnectFlight(airportId)}
+          onConnectLodging={() => void handleConnectLodging()}
+          onConnectMarket={handleConnectMarket}
+          onOpenAction={handleOpenAction}
+          onOpenHandoff={handleOpenHandoff}
+        />
+      </>
+    ) : null;
 
   return (
     <>
@@ -220,50 +290,13 @@ export function GlobeContextHubPanel({
         subtitle={qrViewer?.subtitle ?? null}
       />
       <section className="space-y-2.5" data-globe-context-hub-panel>
-        <div>
-          <p className="text-[12px] font-semibold text-primary">
-            {copy.globe.contextHubEyebrow}
-          </p>
-          <p className="mt-0.5 text-[14px] font-semibold text-foreground">
-            {copy.globe.contextHubSectionTitle}
-          </p>
-          <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
-            {copy.globe.contextHubSectionBody}
-          </p>
-        </div>
-
-        <ul className="space-y-2">
-          {serviceRows.map((row) => (
-            <HubServiceSlot
-              key={row.serviceId}
-              row={row}
-              connectOpen={connectServiceId === row.serviceId}
-              busy={busy}
-              onToggleConnect={() => {
-                if (row.serviceId === "ticket") {
-                  setTicketConnectOpen(true);
-                  return;
-                }
-                if (row.serviceId === "lodging") {
-                  void handleConnectLodging();
-                  return;
-                }
-                if (row.serviceId === "market") {
-                  handleConnectMarket();
-                  return;
-                }
-                setConnectServiceId((current) =>
-                  current === row.serviceId ? null : row.serviceId,
-                );
-              }}
-              onConnectFlight={(airportId) => void handleConnectFlight(airportId)}
-              onConnectLodging={() => void handleConnectLodging()}
-              onConnectMarket={handleConnectMarket}
-              onOpenAction={handleOpenAction}
-              onOpenHandoff={handleOpenHandoff}
-            />
-          ))}
-        </ul>
+        <GlobeContextBrainStrip event={event} />
+        <GlobeContextGuideSection
+          guides={mediaGuides}
+          loading={mediaGuidesLoading}
+          onExpandGuideMap={handleExpandGuideMap}
+        />
+        {hubSection}
       </section>
     </>
   );

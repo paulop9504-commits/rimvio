@@ -7,6 +7,14 @@ import {
 } from "@/lib/action-chat/try-travel-trip-announcement";
 import type { ExperienceRunProfile } from "@/lib/experience-run/experience-run-types";
 import { resolveRunPlaceFromText } from "@/lib/experience-run/resolve-run-place-from-text";
+import {
+  isBusinessTravelMessage,
+  isLeisureTravelMessage,
+  nextTravelSlot,
+  parseTravelSlotsFromMessage,
+  questionForTravelSlot,
+  travelProfileForMessage,
+} from "@/lib/experience-run/travel-context-slots";
 
 const BUSINESS_TRIP =
   /(?:출장|business\s*trip|biz\s*trip|워크|업무\s*여행|미팅|회의)/iu;
@@ -19,7 +27,7 @@ export type ExperienceRunIntent = {
 };
 
 function isBusinessTripMessage(message: string): boolean {
-  return BUSINESS_TRIP.test(message) || isTravelTripAnnouncement(message);
+  return isBusinessTravelMessage(message);
 }
 
 export function extractRunDestination(message: string): string | null {
@@ -39,10 +47,48 @@ export function extractRunDestination(message: string): string | null {
 }
 
 /** Infer whether CaptureSheet should run an agent pipeline (not plain recall ask). */
-export function classifyExperienceRunIntent(message: string): ExperienceRunIntent | null {
+export function classifyExperienceRunIntent(
+  message: string,
+  referenceDate?: string,
+): ExperienceRunIntent | null {
   const text = message.trim();
   if (!text) {
     return null;
+  }
+
+  const travelProfile = travelProfileForMessage(text);
+  const travelSignal =
+    Boolean(travelProfile) ||
+    isBusinessTripMessage(text) ||
+    isLeisureTravelMessage(text) ||
+    isTravelTripAnnouncement(text);
+
+  if (travelSignal && detectEaterySearchIntent(text)) {
+    const profile =
+      travelProfile ??
+      (BUSINESS_TRIP.test(text) ? "business_trip" : "leisure_travel");
+    if (profile === "business_trip") {
+      const destination = extractRunDestination(text);
+      return {
+        profile,
+        destination,
+        needsClarify: !destination && !RUN_PLACE_HINT.test(text),
+        clarifyPromptKo: !destination
+          ? copy.globe.experienceRun.clarifyBusinessTripPlace
+          : null,
+      };
+    }
+    const ref = referenceDate ?? new Date().toISOString().slice(0, 10);
+    const slots = parseTravelSlotsFromMessage(text, ref);
+    const destination = slots.destination ?? extractRunDestination(text);
+    const mergedSlots = { ...slots, destination: destination ?? slots.destination };
+    const missing = nextTravelSlot(mergedSlots);
+    return {
+      profile,
+      destination: destination ?? null,
+      needsClarify: Boolean(missing),
+      clarifyPromptKo: missing ? questionForTravelSlot(missing, mergedSlots) : null,
+    };
   }
 
   if (detectLodgingSearchIntent(text)) {
@@ -69,20 +115,48 @@ export function classifyExperienceRunIntent(message: string): ExperienceRunInten
     };
   }
 
-  if (!isBusinessTripMessage(text)) {
-    return null;
+  if (!travelSignal) {
+    if (!isTravelTripAnnouncement(text)) {
+      return null;
+    }
   }
 
-  const destination = extractRunDestination(text);
-  const needsClarify = destination == null;
+  const profile =
+    travelProfile ??
+    (BUSINESS_TRIP.test(text) ? "business_trip" : "leisure_travel");
+
+  if (profile === "business_trip") {
+    const destination = extractRunDestination(text);
+    return {
+      profile,
+      destination,
+      needsClarify: !destination && !RUN_PLACE_HINT.test(text),
+      clarifyPromptKo: !destination
+        ? copy.globe.experienceRun.clarifyBusinessTripPlace
+        : null,
+    };
+  }
+
+  const ref = referenceDate ?? new Date().toISOString().slice(0, 10);
+  const slots = parseTravelSlotsFromMessage(text, ref);
+  const destination = slots.destination ?? extractRunDestination(text);
+  const mergedSlots = { ...slots, destination: destination ?? slots.destination };
+  const missing = nextTravelSlot(mergedSlots);
+
+  if (missing) {
+    return {
+      profile,
+      destination: destination ?? null,
+      needsClarify: true,
+      clarifyPromptKo: questionForTravelSlot(missing, mergedSlots),
+    };
+  }
 
   return {
-    profile: "business_trip",
-    destination,
-    needsClarify,
-    clarifyPromptKo: needsClarify
-      ? copy.globe.experienceRun.clarifyBusinessTripPlace
-      : null,
+    profile,
+    destination: destination ?? null,
+    needsClarify: false,
+    clarifyPromptKo: null,
   };
 }
 

@@ -12,6 +12,11 @@ export { ensureTripContextEvent } from "@/lib/experience-run/ensure-trip-context
 export { resolveExperienceRunTurn } from "@/lib/experience-run/resolve-experience-run-turn";
 export { runBusinessTripExperienceRun } from "@/lib/experience-run/run-business-trip-experience-run";
 export {
+  parseTravelSlotsFromMessage,
+  nextTravelSlot,
+  travelProfileForMessage,
+} from "@/lib/experience-run/travel-context-slots";
+export {
   clearPendingSituationLock,
   readPendingSituationLock,
   writePendingSituationLock,

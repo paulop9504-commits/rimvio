@@ -11,6 +11,10 @@ import {
   resetEventCandidatesForTests,
 } from "../lib/events/event-store";
 import { commitEventUpsert } from "../lib/source-of-truth/commit-truth";
+import { formatDateKey } from "../lib/schedule/day-schedule";
+
+const dateKey = formatDateKey();
+const scheduleAt = `${dateKey}T12:00:00`;
 
 resetEventCandidatesForTests([]);
 commitEventUpsert({
@@ -18,7 +22,7 @@ commitEventUpsert({
   category: "schedule",
   source: "message",
   lifecycle: "scheduled",
-  datetime: "2026-06-05T12:00:00",
+  datetime: scheduleAt,
   confidence: 0.9,
 });
 
@@ -27,7 +31,7 @@ const wire = events.map(toEventCandidateWire);
 
 const staleSchedule = [{ time: "09:00", task: "잘못된 일정" }];
 const ctx = masterContextFromApiPayload({
-  currentDate: "2026-06-05",
+  currentDate: dateKey,
   trustLevel: 1,
   eventCandidates: wire,
   existingSchedule: staleSchedule,
@@ -39,7 +43,7 @@ assert.equal(ctx.existingSchedule[0]?.task, "점심 약속");
 hydrateEventStoreFromTruthWire([]);
 assert.equal(listEventCandidates().length, 0);
 
-const projected = buildTruthProjections(events, "2026-06-05");
+const projected = buildTruthProjections(events, dateKey);
 assert.equal(projected.allReminders[0]?.title, "점심 약속");
 
 resetEventCandidatesForTests([]);

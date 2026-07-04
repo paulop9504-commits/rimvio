@@ -34,6 +34,27 @@ export function buildKakaoMapSearchWebHref(query: string) {
   return `http://m.map.kakao.com/scheme/search?q=${q}`;
 }
 
+/** Kakao Map exact place open — center the real POI coordinates, not current GPS. */
+export function buildKakaoMapPlaceHref(input: {
+  lat: number;
+  lng: number;
+  placeLabel?: string | null;
+}) {
+  return `kakaomap://look?p=${input.lat},${input.lng}`;
+}
+
+export function buildKakaoMapPlaceWebHref(input: {
+  lat: number;
+  lng: number;
+  placeLabel?: string | null;
+}) {
+  const label = input.placeLabel?.trim();
+  if (label) {
+    return `https://map.kakao.com/link/map/${encodeURIComponent(label)},${input.lat},${input.lng}`;
+  }
+  return `https://map.kakao.com/link/map/${input.lat},${input.lng}`;
+}
+
 /** Kakao Map route deeplink — ep is lat,lng (Kakao mobile scheme). */
 export function buildKakaoMapRouteHref(input: {
   lat: number;
@@ -179,6 +200,46 @@ export function buildGoogleMapsDirectionHref(
 export function buildGoogleMapsSearchHref(query: string) {
   const resolved = resolveSearchQuery({ text: query });
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(resolved.trim())}`;
+}
+
+export function buildGoogleMapsPlaceHref(input: {
+  lat?: number | null;
+  lng?: number | null;
+  placeId?: string | null;
+  placeLabel?: string | null;
+}) {
+  const lat =
+    typeof input.lat === "number" && Number.isFinite(input.lat) ? input.lat : null;
+  const lng =
+    typeof input.lng === "number" && Number.isFinite(input.lng) ? input.lng : null;
+  const placeId = input.placeId?.trim() || null;
+  const placeLabel = input.placeLabel?.trim() || null;
+
+  if (lat != null && lng != null) {
+    const params = new URLSearchParams({
+      api: "1",
+      query: `${lat},${lng}`,
+    });
+    if (placeId) {
+      params.set("query_place_id", placeId);
+    }
+    return `https://www.google.com/maps/search/?${params.toString()}`;
+  }
+
+  if (placeId) {
+    const params = new URLSearchParams({
+      api: "1",
+      query: placeLabel ?? "place",
+      query_place_id: placeId,
+    });
+    return `https://www.google.com/maps/search/?${params.toString()}`;
+  }
+
+  if (placeLabel) {
+    return buildGoogleMapsSearchHref(placeLabel);
+  }
+
+  return "https://www.google.com/maps";
 }
 
 /** Expand deeplink search seed → ranked query (intent resolver, not URL parser). */

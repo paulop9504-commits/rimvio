@@ -23,16 +23,11 @@ import type {
   MediaSpacetimeContext,
   MediaSpacetimeOrigin,
 } from "@/lib/location-ping/types";
+import { inferGlobeContextIngestMediaKind } from "@/lib/feed/ingest-globe-context-media";
 import { boostGpsPingForUploadBatch } from "@/lib/location-ping/upload-gps-boost";
 
 function inferMediaKind(file: File): MediaSpacetimeContext["mediaKind"] {
-  if (file.type.startsWith("video/")) {
-    return "video";
-  }
-  if (file.type.startsWith("image/")) {
-    return "photo";
-  }
-  return "other";
+  return inferGlobeContextIngestMediaKind(file);
 }
 
 /** Sample GPS immediately before upload so the nearest ping is fresh. */

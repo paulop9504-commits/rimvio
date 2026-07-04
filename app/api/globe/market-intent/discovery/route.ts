@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { resolveMarketIntentExposureAnchor } from "@/lib/globe/market/market-intent-exposure";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { listActiveMarketIntentsForMatching } from "@/lib/globe/market/server/upsert-market-intent";
 import { listReservedListingIntentIds } from "@/lib/globe/market/server/find-listing-reserved-handshake";
@@ -45,7 +46,13 @@ export async function GET(request: NextRequest) {
             if (reservedListingIds.has(row.id)) {
               return false;
             }
-            const distance = haversineKm(lat, lng, row.anchorLat, row.anchorLng);
+            const exposureAnchor = resolveMarketIntentExposureAnchor(row);
+            const distance = haversineKm(
+              lat,
+              lng,
+              exposureAnchor.lat,
+              exposureAnchor.lng,
+            );
             const reach = Math.max(row.radiusKm, radiusKm);
             return distance <= reach;
           })

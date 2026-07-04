@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { X } from "lucide-react";
+import { CalendarRange, X } from "lucide-react";
 import type { GlobeMapProductFocusAction } from "@/components/globe/globe-map-product-focus-card";
 import type { LodgingDynamicTags } from "@/lib/globe/lodging/lodging-dynamic-tag-types";
 import { copy } from "@/lib/copy/human-ko";
@@ -9,9 +9,11 @@ import { cn } from "@/lib/utils";
 
 export type GlobeLodgingHubFocusCardProps = {
   title: string;
+  stayBadgeLabel?: string | null;
   priceLine?: string | null;
   placeLabel?: string | null;
   situationalLabel?: string | null;
+  stayWindowLabel?: string | null;
   dynamicTags?: LodgingDynamicTags | null;
   recommendReason?: string | null;
   recommendReasons?: readonly string[];
@@ -20,6 +22,8 @@ export type GlobeLodgingHubFocusCardProps = {
   onClose: () => void;
   closeAriaLabel: string;
   hero: ReactNode;
+  topAction?: ReactNode;
+  predictedExperience?: ReactNode;
   footer?: ReactNode;
   className?: string;
   onTouchStart?: (event: React.TouchEvent) => void;
@@ -47,9 +51,11 @@ function pickTransitPills(tags: LodgingDynamicTags | null | undefined): {
 /** Lodging hub focus — hero-first with situational pills from dynamic tags. */
 export function GlobeLodgingHubFocusCard({
   title,
+  stayBadgeLabel,
   priceLine,
   placeLabel,
   situationalLabel,
+  stayWindowLabel,
   dynamicTags,
   recommendReason = null,
   recommendReasons = [],
@@ -58,6 +64,8 @@ export function GlobeLodgingHubFocusCard({
   onClose,
   closeAriaLabel,
   hero,
+  topAction,
+  predictedExperience,
   footer,
   className,
   onTouchStart,
@@ -91,20 +99,21 @@ export function GlobeLodgingHubFocusCard({
           <X className="size-3.5" aria-hidden />
         </button>
 
-        {transitLead || transitTrail ? (
+        {topAction || transitLead || transitTrail ? (
           <div className="pointer-events-none absolute inset-x-1.5 top-1.5 z-[3] flex items-start justify-between gap-1.5 pr-8">
-            {transitLead ? (
-              <span className="max-w-[48%] truncate rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-md">
-                {transitLead}
-              </span>
-            ) : (
-              <span aria-hidden />
-            )}
+            <div className="flex min-w-0 max-w-[66%] flex-col items-start gap-1.5">
+              {topAction ? <div className="pointer-events-auto">{topAction}</div> : null}
+              {transitLead ? (
+                <span className="max-w-full truncate rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-md">
+                  {transitLead}
+                </span>
+              ) : null}
+            </div>
             {transitTrail ? (
               <span className="max-w-[48%] truncate rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-md">
                 {transitTrail}
               </span>
-            ) : null}
+            ) : <span aria-hidden />}
           </div>
         ) : null}
 
@@ -112,6 +121,13 @@ export function GlobeLodgingHubFocusCard({
           <h2 className="line-clamp-2 text-[17px] font-bold leading-tight tracking-tight text-white">
             {title}
           </h2>
+          {stayBadgeLabel ? (
+            <p className="mt-1">
+              <span className="inline-flex max-w-full truncate rounded-full bg-white/16 px-2 py-0.5 text-[10px] font-semibold text-white/96 ring-1 ring-white/14">
+                {stayBadgeLabel}
+              </span>
+            </p>
+          ) : null}
           {priceLine ? (
             <p className="mt-0.5 text-[12px] font-medium text-white/90">{priceLine}</p>
           ) : null}
@@ -128,6 +144,18 @@ export function GlobeLodgingHubFocusCard({
           </div>
         ) : null}
       </div>
+
+      {stayWindowLabel ? (
+        <div className="relative z-[1] px-2 pt-4">
+          <div className="inline-flex max-w-full items-center gap-2 rounded-[0.85rem] bg-[#eef3ff] px-2.5 py-2 text-[12px] font-medium text-[#1d1d1f] shadow-sm ring-1 ring-[#d8e4ff]">
+            <span className="flex shrink-0 items-center gap-1 text-[#4a72c9]">
+              <CalendarRange className="size-3.5" aria-hidden />
+              <span className="text-[11px] font-semibold">{copy.globe.lodgingStayWindowTitle}</span>
+            </span>
+            <span className="min-w-0 truncate">{stayWindowLabel}</span>
+          </div>
+        </div>
+      ) : null}
 
       {contextLine ? (
         <div className="relative z-[1] px-2 pt-4">
@@ -154,6 +182,8 @@ export function GlobeLodgingHubFocusCard({
       ) : (
         <div className={cn(situationalLabel ? "pt-1.5" : "pt-0")} aria-hidden />
       )}
+
+      {predictedExperience ? <div className="px-2 pt-3">{predictedExperience}</div> : null}
 
       <div className="flex items-center justify-center gap-1.5 px-2.5 pb-2.5 pt-2">
         <HubFocusAction action={primaryAction} />

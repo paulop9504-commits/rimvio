@@ -7,11 +7,11 @@ import type {
   ExperienceRunSummary,
 } from "@/lib/experience-run/experience-run-types";
 import { dispatchGlobeContextHubOpen } from "@/lib/globe/context-hub/globe-context-hub-open-bridge";
+import { resolveContextLodgingSearchCoords } from "@/lib/globe/context-hub/resolve-context-lodging-search-coords";
 import { detectEaterySearchIntent } from "@/lib/globe/eatery/detect-eatery-search-intent";
 import { runGlobeEateryDiscovery } from "@/lib/globe/eatery/run-globe-eatery-discovery";
 import { detectLodgingSearchIntent } from "@/lib/globe/lodging/detect-lodging-search-intent";
 import { runGlobeLodgingDiscovery } from "@/lib/globe/lodging/run-globe-lodging-discovery";
-import { resolveRunPlaceFromText } from "@/lib/experience-run/resolve-run-place-from-text";
 import { copy } from "@/lib/copy/human-ko";
 
 export type RunBusinessTripExperienceInput = {
@@ -20,6 +20,7 @@ export type RunBusinessTripExperienceInput = {
   lat?: number | null;
   lng?: number | null;
   referenceDate?: string;
+  travelSlots?: import("@/lib/experience-run/travel-context-slots").TravelFilledSlots | null;
 };
 
 function step(
@@ -46,9 +47,6 @@ export async function runBusinessTripExperienceRun(
   input: RunBusinessTripExperienceInput,
 ): Promise<ExperienceRunSummary> {
   const runId = `run-${Date.now()}`;
-  const placeAnchor = resolveRunPlaceFromText(input.message);
-  const lat = input.lat ?? placeAnchor?.lat ?? null;
-  const lng = input.lng ?? placeAnchor?.lng ?? null;
 
   const steps: ExperienceRunStep[] = [
     step("context_event", "running", copy.globe.experienceRun.stepContext),
@@ -58,8 +56,17 @@ export async function runBusinessTripExperienceRun(
     message: input.message,
     referenceDate: input.referenceDate,
     profile: input.profile,
+    travelSlots: input.travelSlots ?? null,
   });
   steps[0] = step("context_event", "done", copy.globe.experienceRun.stepContext);
+
+  const searchOrigin = resolveContextLodgingSearchCoords(event, {
+    lat: input.lat,
+    lng: input.lng,
+    preferUserLocation: true,
+  });
+  const lat = searchOrigin?.lat ?? null;
+  const lng = searchOrigin?.lng ?? null;
 
   dispatchGlobeContextHubOpen({
     contextEventId: event.id,

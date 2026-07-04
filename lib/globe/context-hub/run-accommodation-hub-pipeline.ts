@@ -3,6 +3,7 @@ import {
   defaultMasterOrchestratorContext,
 } from "@/lib/experience-context/read-client-master-orchestrator-context";
 import { buildUnifiedExperienceContext } from "@/lib/experience-context/build-unified-experience-context";
+import { buildContextInstance } from "@/lib/context-instance/build-context-instance";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import {
   EVENT_SERVICE_TYPE_ACCOMMODATION,
@@ -102,6 +103,15 @@ export async function runAccommodationHubPipeline(
     message,
     masterContext,
   });
+  const context = buildContextInstance({
+    event,
+    message,
+    lat: input.lat,
+    lng: input.lng,
+    preferUserLocation: true,
+    surface: "composer",
+    layerMode: "discovery",
+  });
 
   const radiusM = input.radiusM ?? LODGING_DISCOVERY_RADIUS_M;
   const loaded = await loadAccommodationSearchInventory({
@@ -121,6 +131,7 @@ export async function runAccommodationHubPipeline(
     unifiedContext,
     lat: input.lat,
     lng: input.lng,
+    context,
   });
 
   const resourceIdByPlaceId: Record<string, string> = {};

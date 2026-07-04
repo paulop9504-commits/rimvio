@@ -1,4 +1,5 @@
 import { normalizeYouTubeUrl } from "@/lib/enrichers/youtube-url";
+import { fetchYouTubeOfficialVideo } from "@/lib/media/youtube-data-api";
 
 const FETCH_TIMEOUT_MS = 10_000;
 const MAX_HTML_BYTES = 384 * 1024;
@@ -43,6 +44,11 @@ export function parseYouTubeDurationFromHtml(html: string) {
 }
 
 export async function fetchYouTubeDurationSeconds(rawUrl: string) {
+  const official = await fetchYouTubeOfficialVideo({ rawUrl });
+  if (official?.durationSeconds) {
+    return official.durationSeconds;
+  }
+
   const watchUrl = normalizeYouTubeUrl(rawUrl);
 
   try {

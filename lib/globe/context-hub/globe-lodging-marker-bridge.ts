@@ -4,25 +4,62 @@ import { dispatchGlobeMapMediaFocus } from "@/lib/globe/globe-map-media-focus-br
 
 export const GLOBE_LODGING_FOCUS = "rimvio:globe-lodging-focus";
 export const GLOBE_LODGING_FOCUS_STAGE = "rimvio:globe-lodging-focus-stage";
+const recentFocusedLodgingByEventId = new Map<string, string>();
 
 export type GlobeLodgingFocusDetail = {
   resourceId: string;
   carouselIndex: number;
   /** map_marker opens full focus stage; carousel/strip sync markers only. */
-  source?: "map_marker" | "carousel" | "strip";
+  source?: "map_marker" | "carousel" | "strip" | "discovery_card";
 };
 
 export type GlobeLodgingFocusStageDetail = {
   open: boolean;
 };
 
+function extractEventIdFromLodgingResourceId(resourceId: string): string | null {
+  const marker = ":lodging:";
+  const index = resourceId.lastIndexOf(marker);
+  if (index <= 0) {
+    return null;
+  }
+  const eventId = resourceId.slice(0, index).trim();
+  return eventId || null;
+}
+
+function rememberRecentLodgingFocus(resourceId: string): void {
+  const eventId = extractEventIdFromLodgingResourceId(resourceId);
+  if (!eventId) {
+    return;
+  }
+  recentFocusedLodgingByEventId.set(eventId, resourceId);
+  if (recentFocusedLodgingByEventId.size <= 24) {
+    return;
+  }
+  const firstKey = recentFocusedLodgingByEventId.keys().next().value;
+  if (typeof firstKey === "string") {
+    recentFocusedLodgingByEventId.delete(firstKey);
+  }
+}
+
 export function dispatchGlobeLodgingFocus(detail: GlobeLodgingFocusDetail): void {
   if (typeof window === "undefined") {
     return;
   }
+  rememberRecentLodgingFocus(detail.resourceId);
   window.dispatchEvent(
     new CustomEvent<GlobeLodgingFocusDetail>(GLOBE_LODGING_FOCUS, { detail }),
   );
+}
+
+export function readRecentGlobeLodgingFocusResourceId(
+  eventId: string | null | undefined,
+): string | null {
+  const key = eventId?.trim();
+  if (!key) {
+    return null;
+  }
+  return recentFocusedLodgingByEventId.get(key) ?? null;
 }
 
 export function subscribeGlobeLodgingFocus(

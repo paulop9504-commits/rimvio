@@ -54,6 +54,10 @@ if VISION=$(prompt_secret "GOOGLE_CLOUD_VISION_API_KEY"); then
   add_env "GOOGLE_CLOUD_VISION_API_KEY" "$VISION"
 fi
 
+if YOUTUBE=$(prompt_secret "YOUTUBE_DATA_API_KEY"); then
+  add_env "YOUTUBE_DATA_API_KEY" "$YOUTUBE"
+fi
+
 if PLACES=$(prompt_secret "GOOGLE_PLACES_API_KEY"); then
   add_env "GOOGLE_PLACES_API_KEY" "$PLACES"
 fi

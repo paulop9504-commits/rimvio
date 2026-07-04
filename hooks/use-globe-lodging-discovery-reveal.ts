@@ -5,6 +5,7 @@ import {
   subscribeGlobeLodgingDiscoveryReveal,
   subscribeGlobeLodgingDiscoveryStart,
 } from "@/lib/globe/lodging/globe-lodging-discovery-bridge";
+import { subscribeGlobeLodgingFocus } from "@/lib/globe/context-hub/globe-lodging-marker-bridge";
 
 export type GlobeLodgingDiscoveryRevealState = {
   eventId: string | null;
@@ -48,6 +49,30 @@ export function useGlobeLodgingDiscoveryReveal(
       });
     });
   }, []);
+
+  useEffect(() => {
+    const eventId = focusedEventId?.trim() ?? null;
+    if (!eventId) {
+      return;
+    }
+    return subscribeGlobeLodgingFocus((detail) => {
+      if (!detail.resourceId.startsWith(`${eventId}:`)) {
+        return;
+      }
+      setState((prev) => {
+        if (prev.eventId !== eventId) {
+          return prev;
+        }
+        const visibleResourceIds = new Set(prev.visibleResourceIds);
+        visibleResourceIds.add(detail.resourceId);
+        const popInDelays = new Map(prev.popInDelays);
+        if (!popInDelays.has(detail.resourceId)) {
+          popInDelays.set(detail.resourceId, 0);
+        }
+        return { ...prev, visibleResourceIds, popInDelays };
+      });
+    });
+  }, [focusedEventId]);
 
   useEffect(() => {
     const eventId = focusedEventId?.trim() ?? null;

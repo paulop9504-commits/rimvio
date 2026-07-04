@@ -46,15 +46,50 @@ async function resolveOrigin(): Promise<{ lat: number; lng: number }> {
 }
 
 async function loadCandidates(input: {
+  message: string;
+  category: "restaurant" | "cafe" | "activity";
   naverQuery: string;
   criteria: ReturnType<typeof buildPlaceDiscoveryCriteria>;
   origin: { lat: number; lng: number };
+  anchorLabel?: string | null;
   fetchMultiplier?: number;
 }): Promise<PlaceCandidate[]> {
   const display = Math.max(
     input.criteria.max_results * (input.fetchMultiplier ?? 2),
     input.fetchMultiplier && input.fetchMultiplier >= 4 ? 15 : 8
   );
+
+  if (input.category === "restaurant") {
+    const { searchRestaurants } = await import("@/lib/restaurant-search");
+    const result = await searchRestaurants({
+      query: input.message,
+      anchorLabel: input.anchorLabel ?? null,
+      origin: input.origin,
+      maxResults: display,
+      radiusM: input.criteria.radius_m,
+    });
+    return result.candidates.map((candidate) => ({
+      place_id: candidate.placeId,
+      name: candidate.name,
+      address: candidate.address,
+      lat: candidate.lat,
+      lng: candidate.lng,
+      rating: candidate.rating ?? 0,
+      open_now: candidate.openNow ?? true,
+      vibes:
+        candidate.description && /조용|한적|quiet/u.test(candidate.description)
+          ? ["quiet"]
+          : candidate.description && /활기|핫플|lively/u.test(candidate.description)
+            ? ["lively"]
+            : ["unknown"],
+      phone: candidate.phone,
+      maps_url: candidate.mapsUrl,
+      thumbnail_url: candidate.images[0] ?? null,
+      photo_urls: [...candidate.images],
+      naver_category: candidate.categoryLabel ?? null,
+      description: candidate.specialReasonKo ?? candidate.description ?? null,
+    }));
+  }
 
   if (isNaverSearchConfigured()) {
     const fromNaver = await fetchNaverLocalPlaceCandidates({
@@ -94,9 +129,12 @@ export async function orchestratePlaceRecommendation(
   const criteria = buildPlaceDiscoveryCriteria(event);
   const origin = options?.origin ?? (await resolveOrigin());
   const rawCandidates = await loadCandidates({
+    message: enriched,
+    category: event.category,
     naverQuery: event.naverQuery,
     criteria,
     origin,
+    anchorLabel: event.anchor,
     fetchMultiplier: event.category === "restaurant" || event.category === "cafe" ? 4 : 2,
   });
 

@@ -1,5 +1,6 @@
 import { formatPinDateLabel } from "@/lib/globe/format-pin-date-label";
 import { marketCategoryLabelKo } from "@/lib/globe/market/market-category-registry";
+import { resolveMarketIntentExposureAnchor } from "@/lib/globe/market/market-intent-exposure";
 import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
 import type { PinCluster } from "@/lib/globe/pin-cluster-types";
 
@@ -22,6 +23,7 @@ function formatMarketPriceLine(record: MarketIntentRecord): string {
 export function projectPinClusterFromMarketIntent(
   record: MarketIntentRecord,
 ): PinCluster {
+  const exposureAnchor = resolveMarketIntentExposureAnchor(record);
   const title =
     record.detail.productName.trim() ||
     record.title.trim() ||
@@ -32,9 +34,9 @@ export function projectPinClusterFromMarketIntent(
     pinId: `mkt:${record.id}`,
     eventId: `mkt:${record.id}`,
     title,
-    placeLabel: record.placeLabel,
-    lat: record.anchorLat,
-    lng: record.anchorLng,
+    placeLabel: exposureAnchor.placeLabel,
+    lat: exposureAnchor.lat,
+    lng: exposureAnchor.lng,
     dateLabel: formatPinDateLabel(record.confirmedAtIso),
     startedAtIso: record.confirmedAtIso,
     evidence: {

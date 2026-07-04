@@ -147,6 +147,11 @@ const REVEAL_INTERVAL_MS = 380;
 export function runStagedEateryPinReveal(
   detail: GlobeEateryDiscoveryStartDetail,
 ): () => void {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+  const setRevealInterval = window.setInterval.bind(window);
+  const clearRevealInterval = window.clearInterval.bind(window);
   const intervalMs = detail.intervalMs ?? REVEAL_INTERVAL_MS;
   const ids = [...detail.resourceIds];
   let index = 0;
@@ -164,11 +169,11 @@ export function runStagedEateryPinReveal(
     });
     index += 1;
     if (index >= ids.length) {
-      window.clearInterval(timer);
+      clearRevealInterval(timer);
     }
   };
 
   tick();
-  const timer = window.setInterval(tick, intervalMs);
-  return () => window.clearInterval(timer);
+  const timer = setRevealInterval(tick, intervalMs);
+  return () => clearRevealInterval(timer);
 }

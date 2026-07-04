@@ -5,6 +5,7 @@ import {
   CONTEXT_EATERY_RECOMMEND_SCORES_META_KEY,
   type EateryRecommendScoreWire,
 } from "@/lib/globe/eatery/eatery-resource-types";
+import { readPinnedEateryResourceId } from "@/lib/globe/eatery/pin-eatery-selection-to-context";
 import type { ContextResource } from "@/lib/globe/resource/types";
 import type { RankedContextResource } from "@/lib/globe/resource/map-hub-service-to-resource";
 
@@ -87,6 +88,7 @@ export function rankEateryResources(input: {
   const lat = input.lat ?? null;
   const lng = input.lng ?? null;
   const recommendScores = readRecommendScores(input.event);
+  const pinnedResourceId = readPinnedEateryResourceId(input.event);
 
   return input.resources
     .map((resource) => {
@@ -100,7 +102,9 @@ export function rankEateryResources(input: {
       return {
         resource,
         hubRow,
-        rankScore: scoreEateryByGps({ resource, lat, lng, recommendBonus }),
+        rankScore:
+          scoreEateryByGps({ resource, lat, lng, recommendBonus }) +
+          (pinnedResourceId === resource.resourceId ? 220 : 0),
       };
     })
     .sort((left, right) => {

@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
+import { ContextMediaVideoSoundButton } from "@/components/globe/context-media-video-sound-button";
 import { GlobeContextMediaFocusCard } from "@/components/globe/globe-context-media-focus-card";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { useGlobeMapMediaCardSize } from "@/hooks/use-globe-map-media-card-size";
 import { useGlobePinScreenAnchor } from "@/hooks/use-globe-pin-screen-anchor";
 import { useGlobeContextVideoSound } from "@/hooks/use-globe-context-video-sound";
+import { useContextMediaGuides } from "@/hooks/use-context-media-guides";
 import { useMediaBlobUrl } from "@/hooks/use-media-blob-url";
 import type { GlobeContextTimelineEntry } from "@/lib/globe/list-globe-context-timeline";
 import { resolveGlobeContextNavigationStep } from "@/lib/globe/list-globe-context-navigation-order";
@@ -24,6 +26,7 @@ import {
   GLOBE_MAP_FOCUS_PIN_ANCHOR_OFFSET_PX,
   resolveGlobeMapFocusHeroShellStyle,
 } from "@/lib/globe/globe-map-focus-hero-layout";
+import { clampGlobeMapMediaCardWidth } from "@/lib/globe/globe-map-media-card-size";
 import { useMediaIntrinsicSize } from "@/hooks/use-media-intrinsic-size";
 import {
   EVENT_CANDIDATES_UPDATED,
@@ -33,11 +36,19 @@ import {
   hydrateMediaContextStore,
   MEDIA_SPACETIME_UPDATED,
 } from "@/lib/location-ping/media-context-store";
+import {
+  countExpandableMediaGuideCandidates,
+  expandMediaGuidesOnMap,
+  pickPrimaryExpandableMediaGuide,
+} from "@/lib/globe/expand-media-guide-on-map";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 const SWIPE_MIN_PX = 44;
 const TAP_MAX_PX = 14;
+const VIDEO_CARD_WIDTH_BOOST_PX = 48;
+const VIDEO_POP_DURATION_MS = 260;
 
 export type GlobeContextMapVideoStageProps = {
   eventId: string | null | undefined;
@@ -53,6 +64,7 @@ export type GlobeContextMapVideoStageProps = {
   viewerUserId?: string | null;
   deletable?: boolean;
   onMediaDeleted?: () => void;
+  onPlaybackActiveChange?: (playing: boolean) => void;
   className?: string;
 };
 
@@ -60,14 +72,10 @@ function MapMediaSlide({
   item,
   playing,
   onPlayingChange,
-  toggleSoundRef,
-  onSoundOnChange,
 }: {
   item: ContextMediaReelItem;
   playing: boolean;
   onPlayingChange: (playing: boolean) => void;
-  toggleSoundRef: RefObject<(() => void) | null>;
-  onSoundOnChange?: (soundOn: boolean) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const { size, reset, onImageLoad, onVideoMetadata } = useMediaIntrinsicSize();
@@ -90,17 +98,10 @@ function MapMediaSlide({
     src,
     isVideo,
     playing,
-    soundByDefault: false,
+    // Map replay opens from an explicit pin tap, so audio can start immediately.
+    soundByDefault: true,
     onPlayFailed: () => onPlayingChange(false),
   });
-
-  useEffect(() => {
-    toggleSoundRef.current = toggleSound;
-  }, [toggleSound, toggleSoundRef]);
-
-  useEffect(() => {
-    onSoundOnChange?.(soundOn);
-  }, [onSoundOnChange, soundOn]);
 
   useEffect(() => {
     const el = videoRef.current;
@@ -128,6 +129,19 @@ function MapMediaSlide({
           preload="metadata"
           onLoadedMetadata={onVideoMetadata}
         />
+        <div className="pointer-events-none absolute inset-x-0 bottom-3 z-[4] flex justify-end px-3">
+          <ContextMediaVideoSoundButton
+            soundOn={soundOn}
+            variant="pill"
+            className="pointer-events-auto"
+            onToggleSound={() => {
+              toggleSound();
+              if (!playing) {
+                onPlayingChange(true);
+              }
+            }}
+          />
+        </div>
       </div>
     );
   }
@@ -177,15 +191,16 @@ export function GlobeContextMapVideoStage({
   viewerUserId,
   deletable = false,
   onMediaDeleted,
+  onPlaybackActiveChange,
   className,
 }: GlobeContextMapVideoStageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const suppressHeroClickRef = useRef(false);
-  const toggleVideoSoundRef = useRef<(() => void) | null>(null);
   const [revision, setRevision] = useState(0);
   const [mediaIndex, setMediaIndex] = useState(0);
   const [playing, setPlaying] = useState(true);
+  const [videoPopActive, setVideoPopActive] = useState(false);
   const {
     widthPx,
     pinchActiveRef,
@@ -226,9 +241,6 @@ export function GlobeContextMapVideoStage({
     containerRef,
   });
   const pinAnchored = pinLayout?.onScreen === true;
-  const cardWidthPx = pinAnchored
-    ? Math.max(widthPx, pinLayout.widthPx)
-    : widthPx;
 
   const activeEvent = useMemo(() => {
     const key = eventId?.trim();
@@ -237,6 +249,41 @@ export function GlobeContextMapVideoStage({
     }
     return findLifeEventCandidate(key) ?? recoverGlobeContextEventFromPin(key);
   }, [eventId]);
+
+  const { guides: mediaGuides } = useContextMediaGuides(activeEvent, {
+    enabled: visible && Boolean(activeEvent),
+    max: 3,
+  });
+
+  const expandableGuide = useMemo(
+    () => pickPrimaryExpandableMediaGuide(mediaGuides),
+    [mediaGuides],
+  );
+
+  const expandableCandidateCount = useMemo(
+    () => countExpandableMediaGuideCandidates(mediaGuides),
+    [mediaGuides],
+  );
+
+  const handleExpandGuideMap = useCallback(() => {
+    if (!activeEvent) {
+      return;
+    }
+    const ok = expandMediaGuidesOnMap({ event: activeEvent, guides: mediaGuides });
+    if (!ok) {
+      toast.error(copy.common.tryAgain);
+      return;
+    }
+  }, [activeEvent, mediaGuides]);
+
+  const mapVideoFooterAction =
+    expandableGuide && expandableCandidateCount > 0
+      ? {
+          label: copy.globe.contextGuideExpandMap,
+          candidateCount: expandableCandidateCount,
+          onClick: handleExpandGuideMap,
+        }
+      : null;
 
   const contextTitle = useMemo(() => {
     if (!activeEvent) {
@@ -255,6 +302,10 @@ export function GlobeContextMapVideoStage({
   }, [eventId]);
 
   useEffect(() => {
+    onPlaybackActiveChange?.(visible && playing && reel.length > 0);
+  }, [onPlaybackActiveChange, playing, reel.length, visible]);
+
+  useEffect(() => {
     if (mediaIndex >= reel.length) {
       setMediaIndex(Math.max(0, reel.length - 1));
     }
@@ -269,6 +320,25 @@ export function GlobeContextMapVideoStage({
   }, [reel.length, visible]);
 
   const currentItem = reel[mediaIndex] ?? null;
+  const boostedWidthPx =
+    currentItem?.kind === "video"
+      ? clampGlobeMapMediaCardWidth(widthPx + VIDEO_CARD_WIDTH_BOOST_PX)
+      : widthPx;
+  const cardWidthPx = pinAnchored
+    ? Math.max(boostedWidthPx, pinLayout.widthPx)
+    : boostedWidthPx;
+
+  useEffect(() => {
+    if (currentItem?.kind !== "video" || !visible) {
+      setVideoPopActive(false);
+      return;
+    }
+    setVideoPopActive(true);
+    const timer = window.setTimeout(() => {
+      setVideoPopActive(false);
+    }, VIDEO_POP_DURATION_MS);
+    return () => window.clearTimeout(timer);
+  }, [currentItem?.id, currentItem?.kind, visible]);
 
   const openHeroBridge = useCallback(() => {
     (onHeroPress ?? onOpenDetails)?.();
@@ -375,7 +445,6 @@ export function GlobeContextMapVideoStage({
           item={currentItem}
           playing={playing}
           onPlayingChange={setPlaying}
-          toggleSoundRef={toggleVideoSoundRef}
         />
       ) : null}
 
@@ -422,7 +491,10 @@ export function GlobeContextMapVideoStage({
 
       {pinAnchored && pinLayout ? (
         <div
-          className="pointer-events-auto absolute z-[1]"
+          className={cn(
+            "pointer-events-auto absolute z-[1] transition-[width,transform] duration-300 ease-out",
+            videoPopActive && "scale-[1.04]",
+          )}
           style={{
             left: pinLayout.x,
             top: pinLayout.y,
@@ -439,6 +511,7 @@ export function GlobeContextMapVideoStage({
             onClose={dismiss}
             closeAriaLabel={copy.globe.contextMediaFocusCloseAria}
             onHeroPress={handleHeroPress}
+            footerAction={mapVideoFooterAction}
             onTouchStart={mergeCardTouchStart}
             onTouchMove={mergeCardTouchMove}
             onTouchEnd={mergeCardTouchEnd}
@@ -456,8 +529,9 @@ export function GlobeContextMapVideoStage({
         >
           <div
             className={cn(
-              "pointer-events-auto",
+              "pointer-events-auto transition-[width,transform] duration-300 ease-out",
               GLOBE_MAP_FOCUS_CARD_MAX_WIDTH_CLASS,
+              videoPopActive && "scale-[1.04]",
             )}
             style={{ width: cardWidthPx }}
             data-globe-map-media-card-width={cardWidthPx}
@@ -469,6 +543,7 @@ export function GlobeContextMapVideoStage({
               onClose={dismiss}
               closeAriaLabel={copy.globe.contextMediaFocusCloseAria}
               onHeroPress={handleHeroPress}
+              footerAction={mapVideoFooterAction}
               onTouchStart={mergeCardTouchStart}
               onTouchMove={mergeCardTouchMove}
               onTouchEnd={mergeCardTouchEnd}

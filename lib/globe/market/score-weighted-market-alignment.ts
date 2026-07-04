@@ -3,6 +3,7 @@
  */
 
 import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
+import { resolveMarketIntentExposureAnchor } from "@/lib/globe/market/market-intent-exposure";
 import {
   getCategoryPriorityMatrix,
   getWeightedPrioritySlots,
@@ -123,7 +124,9 @@ function textOverlapScore(
 }
 
 function distanceScore(a: MarketIntentRecord, b: MarketIntentRecord): number {
-  const distanceKm = haversineKm(a.anchorLat, a.anchorLng, b.anchorLat, b.anchorLng);
+  const aAnchor = resolveMarketIntentExposureAnchor(a);
+  const bAnchor = resolveMarketIntentExposureAnchor(b);
+  const distanceKm = haversineKm(aAnchor.lat, aAnchor.lng, bAnchor.lat, bAnchor.lng);
   const allowed = Math.min(a.radiusKm, b.radiusKm);
   if (distanceKm > allowed) {
     return 0;

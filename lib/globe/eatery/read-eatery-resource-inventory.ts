@@ -35,8 +35,26 @@ function readInventoryRows(value: unknown): ContextEateryInventoryRow[] {
       lat,
       lng,
       images,
+      address: typeof row.address === "string" ? row.address : null,
       cuisineHint: typeof row.cuisineHint === "string" ? row.cuisineHint : null,
       priceLevel: typeof row.priceLevel === "number" ? row.priceLevel : null,
+      rating: typeof row.rating === "number" ? row.rating : null,
+      openNow: typeof row.openNow === "boolean" ? row.openNow : null,
+      mapsUrl: typeof row.mapsUrl === "string" ? row.mapsUrl : null,
+      provider:
+        row.provider === "google_places" ||
+        row.provider === "naver_local" ||
+        row.provider === "mock" ||
+        row.provider === "multi_provider"
+          ? row.provider
+          : null,
+      providerLabel: typeof row.providerLabel === "string" ? row.providerLabel : null,
+      categoryLabel: typeof row.categoryLabel === "string" ? row.categoryLabel : null,
+      specialReasonKo:
+        typeof row.specialReasonKo === "string" ? row.specialReasonKo : null,
+      specialScore: typeof row.specialScore === "number" ? row.specialScore : null,
+      searchScore: typeof row.searchScore === "number" ? row.searchScore : null,
+      virtualCandidate: row.virtualCandidate === true ? true : undefined,
     });
   }
   return rows;
@@ -62,8 +80,26 @@ export function readEateryPayloadFromResource(
     placeId,
     name,
     images,
+    address: typeof row.address === "string" ? row.address : null,
     cuisineHint: typeof row.cuisineHint === "string" ? row.cuisineHint : null,
     priceLevel: typeof row.priceLevel === "number" ? row.priceLevel : null,
+    rating: typeof row.rating === "number" ? row.rating : null,
+    openNow: typeof row.openNow === "boolean" ? row.openNow : null,
+    mapsUrl: typeof row.mapsUrl === "string" ? row.mapsUrl : null,
+    provider:
+      row.provider === "google_places" ||
+      row.provider === "naver_local" ||
+      row.provider === "mock" ||
+      row.provider === "multi_provider"
+        ? row.provider
+        : null,
+    providerLabel: typeof row.providerLabel === "string" ? row.providerLabel : null,
+    categoryLabel: typeof row.categoryLabel === "string" ? row.categoryLabel : null,
+    specialReasonKo:
+      typeof row.specialReasonKo === "string" ? row.specialReasonKo : null,
+    specialScore: typeof row.specialScore === "number" ? row.specialScore : null,
+    searchScore: typeof row.searchScore === "number" ? row.searchScore : null,
+    virtualCandidate: row.virtualCandidate === true ? true : undefined,
   };
 }
 
@@ -96,8 +132,19 @@ export function mapEateryRowToContextResource(
     placeId: row.placeId,
     name: row.name,
     images: row.images,
+    address: row.address ?? null,
     cuisineHint: row.cuisineHint ?? null,
     priceLevel: row.priceLevel ?? null,
+    rating: row.rating ?? null,
+    openNow: row.openNow ?? null,
+    mapsUrl: row.mapsUrl ?? null,
+    provider: row.provider ?? null,
+    providerLabel: row.providerLabel ?? null,
+    categoryLabel: row.categoryLabel ?? null,
+    specialReasonKo: row.specialReasonKo ?? null,
+    specialScore: row.specialScore ?? null,
+    searchScore: row.searchScore ?? null,
+    virtualCandidate: row.virtualCandidate === true ? true : undefined,
   };
 
   return {
@@ -116,7 +163,9 @@ export function mapEateryRowToContextResource(
     },
     action: {
       kind: "open_url",
-      href: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(row.name)}&query_place_id=${encodeURIComponent(row.placeId)}`,
+      href:
+        row.mapsUrl?.trim() ||
+        `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(row.name)}&query_place_id=${encodeURIComponent(row.placeId)}`,
       labelKo: "길찾기",
     },
     createdAtIso: event.updatedAt ?? event.createdAt,

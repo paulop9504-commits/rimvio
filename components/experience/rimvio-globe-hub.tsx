@@ -72,6 +72,7 @@ import { subscribeGlobeMapMediaFocus } from "@/lib/globe/globe-map-media-focus-b
 import { listContextHubServicesForEvent } from "@/lib/globe/context-hub/context-hub-service-catalog";
 import { isLodgingHubEnabled } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import { isEateryHubEnabled } from "@/lib/globe/eatery/read-eatery-resource-inventory";
+import { readPinnedEateryResourceId } from "@/lib/globe/eatery/pin-eatery-selection-to-context";
 import { projectLodgingGlobeMarkers } from "@/lib/globe/context-hub/project-lodging-globe-markers";
 import { projectEateryGlobeMarkers } from "@/lib/globe/eatery/project-eatery-globe-markers";
 import { projectContextHubGlobeAnchor } from "@/lib/globe/context-hub/project-context-hub-globe-anchor";
@@ -89,6 +90,12 @@ import { copy } from "@/lib/copy/human-ko";
 import { dispatchOpenCaptureSheet } from "@/lib/nav/open-capture-sheet-bridge";
 import { RimvioStarterExampleChips } from "@/components/rimvio-starter-example-chips";
 import { cn } from "@/lib/utils";
+import { projectGhostEateryGlobeMarkers } from "@/lib/situation-projection/project-ghost-eatery-globe-markers";
+import {
+  readProjectionManifestForAnchor,
+  subscribeProjectionStore,
+} from "@/lib/situation-projection/projection-store";
+import type { BrainSurfaceProjectionCandidate } from "@/lib/situation-projection/brain-surface-types";
 
 function useGlobeEventSnapshot() {
   const [ready, setReady] = useState(false);
@@ -173,6 +180,8 @@ export type RimvioGlobeHubProps = {
   showInteractionHint?: boolean;
   /** personal = 내 지구 · discovery = 밖 지구 (external traces only). */
   layerMode?: GlobeLayerMode;
+  brainSurfaceMarkers?: readonly BrainSurfaceProjectionCandidate[];
+  onBrainSurfaceMarkerPress?: (candidateId: string) => void;
 };
 
 type RimvioGlobeHubBodyProps = {
@@ -206,6 +215,8 @@ type RimvioGlobeHubBodyProps = {
   layerMode?: GlobeLayerMode;
   lodgingDiscoveryCards?: Readonly<Record<string, GlobeLodgingDiscoveryCard>> | null;
   eateryDiscoveryCards?: Readonly<Record<string, GlobeEateryDiscoveryCard>> | null;
+  brainSurfaceMarkers?: readonly BrainSurfaceProjectionCandidate[];
+  onBrainSurfaceMarkerPress?: (candidateId: string) => void;
 };
 
 const RimvioGlobeHubBody = memo(
@@ -231,6 +242,8 @@ const RimvioGlobeHubBody = memo(
       layerMode = "personal",
       lodgingDiscoveryCards = null,
       eateryDiscoveryCards = null,
+      brainSurfaceMarkers = [],
+      onBrainSurfaceMarkerPress,
     },
     ref,
   ) {
@@ -312,6 +325,13 @@ const RimvioGlobeHubBody = memo(
     const [displayViewer, setDisplayViewer] = useState<{ lat: number; lng: number } | null>(
       null,
     );
+    const [projectionRevision, setProjectionRevision] = useState(0);
+
+    useEffect(() => {
+      return subscribeProjectionStore(() => {
+        setProjectionRevision((value) => value + 1);
+      });
+    }, []);
 
     useEffect(() => {
       const lat = liveLocation?.lat;
@@ -398,6 +418,7 @@ const RimvioGlobeHubBody = memo(
         lng: liveLocation?.lng ?? null,
       });
       const raw = projectLodgingGlobeMarkers({
+        event,
         ranked,
         activeResourceId: activeLodgingResourceId,
         visibleResourceIds:
@@ -408,6 +429,7 @@ const RimvioGlobeHubBody = memo(
           lodgingDiscoveryReveal.popInDelays.size > 0
             ? lodgingDiscoveryReveal.popInDelays
             : null,
+        manifest: readProjectionManifestForAnchor(eventId),
       });
       if (!mapMediaFocusOpen) {
         return raw.map((marker) => {
@@ -442,17 +464,28 @@ const RimvioGlobeHubBody = memo(
     ]);
     const eateryGlobeMarkers = useMemo(() => {
       void bridgeRevision;
+      void projectionRevision;
       const eventId = focusedContextEventId?.trim();
       if (!eventId) {
         return [];
       }
       const event = eventsById.get(eventId);
-      if (!event || !isEateryHubEnabled(event)) {
+      if (!event) {
         return [];
+      }
+      const effectiveActiveEateryResourceId =
+        activeEateryResourceId ?? readPinnedEateryResourceId(event);
+      const projectionGhostMarkers = projectGhostEateryGlobeMarkers({
+        event,
+        manifest: readProjectionManifestForAnchor(eventId),
+        activeResourceId: effectiveActiveEateryResourceId,
+      });
+      if (!isEateryHubEnabled(event)) {
+        return mapMediaFocusOpen ? [] : projectionGhostMarkers;
       }
       const panel = listContextHubServicesForEvent(event);
       if (!panel) {
-        return [];
+        return mapMediaFocusOpen ? [] : projectionGhostMarkers;
       }
       const ranked = rankContextResources({
         event,
@@ -461,8 +494,9 @@ const RimvioGlobeHubBody = memo(
         lng: liveLocation?.lng ?? null,
       });
       const raw = projectEateryGlobeMarkers({
+        event,
         ranked,
-        activeResourceId: activeEateryResourceId,
+        activeResourceId: effectiveActiveEateryResourceId,
         visibleResourceIds:
           eateryDiscoveryReveal.visibleResourceIds.size > 0
             ? eateryDiscoveryReveal.visibleResourceIds
@@ -471,9 +505,15 @@ const RimvioGlobeHubBody = memo(
           eateryDiscoveryReveal.popInDelays.size > 0
             ? eateryDiscoveryReveal.popInDelays
             : null,
+        manifest: readProjectionManifestForAnchor(eventId),
       });
+      const seenResourceIds = new Set(raw.map((marker) => marker.resourceId));
+      const merged = [
+        ...raw,
+        ...projectionGhostMarkers.filter((marker) => !seenResourceIds.has(marker.resourceId)),
+      ];
       if (!mapMediaFocusOpen) {
-        return raw.map((marker) => {
+        return merged.map((marker) => {
           const card = eateryDiscoveryCards?.[marker.resourceId];
           if (!card) {
             return marker;
@@ -490,6 +530,7 @@ const RimvioGlobeHubBody = memo(
     }, [
       activeEateryResourceId,
       bridgeRevision,
+      projectionRevision,
       eventsById,
       focusedContextEventId,
       liveLocation?.lat,
@@ -694,6 +735,8 @@ const RimvioGlobeHubBody = memo(
               source: "map_marker",
             });
           }}
+          brainSurfaceMarkers={brainSurfaceMarkers}
+          onBrainSurfaceMarkerPress={onBrainSurfaceMarkerPress}
           hubAnchors={
             mapMediaFocusOpen || !contextHubAnchor ? [] : [contextHubAnchor]
           }
@@ -771,6 +814,8 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
   layerMode = "personal",
   lodgingDiscoveryCards = null,
   eateryDiscoveryCards = null,
+  brainSurfaceMarkers = [],
+  onBrainSurfaceMarkerPress,
 }: RimvioGlobeHubProps) {
   const { ready, eventsById, personalPinRevision } = useGlobeEventSnapshot();
   const liveLocation = useLiveLocationSnapshot();
@@ -935,6 +980,8 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
       layerMode={layerMode}
       lodgingDiscoveryCards={lodgingDiscoveryCards}
       eateryDiscoveryCards={eateryDiscoveryCards}
+      brainSurfaceMarkers={brainSurfaceMarkers}
+      onBrainSurfaceMarkerPress={onBrainSurfaceMarkerPress}
     />
   );
 });

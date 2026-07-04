@@ -4,6 +4,7 @@
  */
 
 import type { PinDomainId } from "@/lib/globe/pin-domain-registry";
+import type { MirrorProvenanceV1 } from "@/lib/globe/mirror-provenance-types";
 
 /** internal = personal trace (P1 default). external = shared discovery (Phase 2). */
 export type PinScope = "internal" | "external";
@@ -40,6 +41,7 @@ export type PinEntity = {
   /** Domain registry slot payload (price, rent, …). */
   slots: Readonly<Record<string, unknown>>;
   recallLine: string | null;
+  mirrorProvenance?: MirrorProvenanceV1 | null;
 };
 
 /** EventCandidate.metadata keys for universal pin. */

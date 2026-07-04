@@ -101,6 +101,20 @@ export function saveMarketIntent(record: MarketIntentRecord): MarketIntentRecord
   return record;
 }
 
+export function updateMarketIntent(
+  eventId: string,
+  updater: (record: MarketIntentRecord) => MarketIntentRecord,
+): MarketIntentRecord | null {
+  const current = findMarketIntentByEventId(eventId);
+  if (!current) {
+    return null;
+  }
+  const next = normalizeMarketIntentRecord(updater(current));
+  saveMarketIntent(next);
+  stampMarketIntentOnEvent(next);
+  return next;
+}
+
 export function deactivateMarketIntent(eventId: string): void {
   const rows = readAll().map((row) =>
     row.eventId === eventId.trim() ? { ...row, active: false } : row,

@@ -18,7 +18,12 @@ export type GlobeLodgingMapMarker = {
   discoveryShortLabel?: string | null;
   /** Discovery mode — price pill on map. */
   discoveryPriceLabel?: string | null;
+  stayBadgeLabel?: string | null;
   discoveryAccent?: "green" | "blue" | "orange" | "purple";
+  virtualCandidate?: boolean;
+  ontologyBadgeLabel?: string | null;
+  anchorLabel?: string | null;
+  relationMemoKo?: string | null;
 };
 
 export function isGlobeLodgingMapMarker(

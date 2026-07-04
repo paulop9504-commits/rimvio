@@ -9,6 +9,7 @@ import {
 } from "@/lib/experience-bridge/merge-bridge-shared-media";
 import type { ExperienceBridgeContribution } from "@/lib/experience-bridge/experience-bridge-types";
 import type { EventCandidate } from "@/lib/events/event-candidate";
+import { mergePinnedContextItemFromRemote } from "@/lib/globe/context-pinned-item";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 import { stampBridgeEventMetadata } from "@/lib/experience-bridge/stamp-bridge-event-metadata";
 import {
@@ -93,6 +94,15 @@ export async function syncBridgeSharedMediaFromRemote(
   });
   if (urlMerged) {
     event = urlMerged;
+    changed = true;
+  }
+
+  const pinnedMerged = mergePinnedContextItemFromRemote({
+    event,
+    remoteEvent: remote.state.bridge.eventSnapshot,
+  });
+  if (pinnedMerged) {
+    event = pinnedMerged;
     changed = true;
   }
 

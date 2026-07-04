@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { GLOBE_DISCOVERY_FETCH_LIMIT } from "@/lib/globe/discovery/globe-discovery-feed";
 import { fetchPlacesLodgingNearby } from "@/lib/globe/context-hub/fetch-places-lodging-nearby";
 
 export const runtime = "nodejs";
@@ -18,7 +19,10 @@ export async function GET(request: NextRequest) {
   const lat = parseCoord(params.get("lat"));
   const lng = parseCoord(params.get("lng"));
   const maxRaw = parseCoord(params.get("max"));
-  const maxResults = maxRaw != null ? Math.min(Math.max(Math.round(maxRaw), 1), 8) : 5;
+  const maxResults =
+    maxRaw != null
+      ? Math.min(Math.max(Math.round(maxRaw), 1), GLOBE_DISCOVERY_FETCH_LIMIT)
+      : GLOBE_DISCOVERY_FETCH_LIMIT;
 
   if (lat == null || lng == null) {
     return NextResponse.json({ error: "lat_lng_required" }, { status: 400 });

@@ -5,6 +5,8 @@ import { resolvePlaceCoordinates } from "@/lib/experience-graph/resolve-place-co
 import { fetchGlobeContextPlaceGeocode } from "@/lib/globe/align-globe-context-places";
 import { syncGlobeContextCardCoords } from "@/lib/globe/globe-context-card-coords";
 import { globeContextHasConfirmedPlace } from "@/lib/globe/apply-globe-context-place-coords";
+import { buildCanonicalPlaceProfile } from "@/lib/globe/canonical-place-profile";
+import { classifyOverseasManualPlace } from "@/lib/globe/classify-overseas-manual-place";
 import {
   stampGlobePlacePendingVerify,
   type GlobePlaceVerifySource,
@@ -104,6 +106,15 @@ export async function geocodeAndSyncGlobeContextPlace(input: {
       lat: apiResolved.lat,
       lng: apiResolved.lng,
       label: resolvedLabel,
+      formattedAddress: apiResolved.formattedAddress ?? null,
+      placeProfile: buildCanonicalPlaceProfile({
+        lat: apiResolved.lat,
+        lng: apiResolved.lng,
+        label: resolvedLabel,
+        formattedAddress: apiResolved.formattedAddress ?? null,
+        anchorSource: "manual_geocode",
+        confidence: 0.97,
+      }),
     });
     syncPersonalGlobePinFromEvent(event.id);
     return { ...empty, event };
@@ -115,6 +126,13 @@ export async function geocodeAndSyncGlobeContextPlace(input: {
       lat: poi.lat,
       lng: poi.lng,
       label: poi.label,
+      placeProfile: buildCanonicalPlaceProfile({
+        lat: poi.lat,
+        lng: poi.lng,
+        label: poi.label,
+        anchorSource: "known_place",
+        confidence: 0.88,
+      }),
     });
     syncPersonalGlobePinFromEvent(event.id);
     return { ...empty, event };
@@ -126,6 +144,13 @@ export async function geocodeAndSyncGlobeContextPlace(input: {
       lat: neighborhood.lat,
       lng: neighborhood.lng,
       label: neighborhood.label,
+      placeProfile: buildCanonicalPlaceProfile({
+        lat: neighborhood.lat,
+        lng: neighborhood.lng,
+        label: neighborhood.label,
+        anchorSource: "known_place",
+        confidence: 0.92,
+      }),
     });
     syncPersonalGlobePinFromEvent(event.id);
     return { ...empty, event };
@@ -137,6 +162,13 @@ export async function geocodeAndSyncGlobeContextPlace(input: {
       lat: metroDistrict.lat,
       lng: metroDistrict.lng,
       label: metroDistrict.label,
+      placeProfile: buildCanonicalPlaceProfile({
+        lat: metroDistrict.lat,
+        lng: metroDistrict.lng,
+        label: metroDistrict.label,
+        anchorSource: "known_place",
+        confidence: 0.9,
+      }),
     });
     syncPersonalGlobePinFromEvent(event.id);
     return { ...empty, event };
@@ -148,18 +180,30 @@ export async function geocodeAndSyncGlobeContextPlace(input: {
       lat: knownCity.lat,
       lng: knownCity.lng,
       label: knownCity.label,
+      placeProfile: buildCanonicalPlaceProfile({
+        lat: knownCity.lat,
+        lng: knownCity.lng,
+        label: knownCity.label,
+        anchorSource: "known_place",
+        confidence: 0.84,
+      }),
     });
     syncPersonalGlobePinFromEvent(event.id);
     return { ...empty, event };
   }
 
   const fallback = resolvePlaceCoordinates(label);
-  const lowConfidence = isLowConfidencePlaceResolve({
-    label,
-    apiConfirmed: false,
-    knownLabel: knownCity?.label ?? null,
-    fallbackLabel: fallback.label,
-  });
+  const overseas = classifyOverseasManualPlace(label);
+  const lowConfidence =
+    overseas ||
+    (fallback.label !== "한국" && fallback.label.trim() !== label.trim())
+      ? false
+      : isLowConfidencePlaceResolve({
+          label,
+          apiConfirmed: false,
+          knownLabel: knownCity?.label ?? null,
+          fallbackLabel: fallback.label,
+        });
 
   if (lowConfidence) {
     const userLat = input.userLat;
@@ -174,6 +218,13 @@ export async function geocodeAndSyncGlobeContextPlace(input: {
         lat: userLat,
         lng: userLng,
         label,
+        placeProfile: buildCanonicalPlaceProfile({
+          lat: userLat,
+          lng: userLng,
+          label,
+          anchorSource: "gps_live",
+          confidence: 0.4,
+        }),
       });
       event = stampGlobePlacePendingVerify(event, {
         source: "low_confidence",
@@ -195,6 +246,13 @@ export async function geocodeAndSyncGlobeContextPlace(input: {
         lat: gps.lat,
         lng: gps.lng,
         label: placeLabel,
+        placeProfile: buildCanonicalPlaceProfile({
+          lat: gps.lat,
+          lng: gps.lng,
+          label: placeLabel,
+          anchorSource: "gps_live",
+          confidence: 0.35,
+        }),
       });
       event = stampGlobePlacePendingVerify(event, {
         source: "gps",
@@ -215,6 +273,13 @@ export async function geocodeAndSyncGlobeContextPlace(input: {
       lat: fallback.lat,
       lng: fallback.lng,
       label: fallback.label.trim() || label,
+      placeProfile: buildCanonicalPlaceProfile({
+        lat: fallback.lat,
+        lng: fallback.lng,
+        label: fallback.label.trim() || label,
+        anchorSource: "known_place",
+        confidence: lowConfidence ? 0.45 : 0.72,
+      }),
     });
     if (lowConfidence) {
       event = stampGlobePlacePendingVerify(event, {

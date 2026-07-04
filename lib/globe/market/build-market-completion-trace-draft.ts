@@ -31,6 +31,8 @@ export function buildMarketCompletionTraceDraft(input: {
 
   return {
     handshakeId: input.handshake.id,
+    seekingUserId: input.handshake.seekingUserId,
+    listingUserId: input.handshake.listingUserId,
     eventId: marketCompletionEventId(input.handshake.id, input.viewerUserId),
     title,
     placeLabel: place,

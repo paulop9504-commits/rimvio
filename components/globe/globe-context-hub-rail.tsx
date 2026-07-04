@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { GlobeContextGardenSummary } from "@/components/globe/globe-context-garden-summary";
 import { GlobePlacePrefillCard } from "@/components/globe/globe-place-prefill-card";
 import { GlobePrepChecklistCard } from "@/components/globe/globe-prep-checklist-card";
+import { GlobeHubServiceList } from "@/components/globe/globe-hub-service-list";
 import { GlobeHubResourceCarousel } from "@/components/globe/globe-hub-resource-carousel";
 import { GlobeLodgingMapStrip } from "@/components/globe/globe-lodging-map-strip";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
@@ -51,7 +52,7 @@ import {
 import { PERSONAL_GLOBE_PINS_UPDATED } from "@/lib/globe/personal-globe-pin-store";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
-import { HubServiceSlot } from "@/components/globe/globe-context-hub-service-slot";
+import { GlobeContextBrainStrip } from "@/components/globe/globe-context-brain-strip";
 import { emitTransactionConvertedTelemetry } from "@/hooks/use-hub-resource-curation-telemetry";
 import { useActiveContextWeather } from "@/hooks/use-active-context-weather";
 import { useContextGardenOrganizer } from "@/hooks/use-context-garden-organizer";
@@ -558,6 +559,7 @@ export function GlobeContextHubRail({
   }, [activeEventId]);
 
   const showCarousel = rankedResources.length > 0;
+  const showBrainStrip = presentation === "detail";
   const emptyDockOffer = useMemo(() => {
     if (!panel || showCarousel) {
       return null;
@@ -626,6 +628,7 @@ export function GlobeContextHubRail({
       <>
         {ticketSheets}
         <div className={cn("flex flex-col gap-1.5", className)}>
+          {showBrainStrip && activeEvent ? <GlobeContextBrainStrip event={activeEvent} /> : null}
           <GlobeHubResourceCarousel
             ranked={rankedResources}
             index={Math.min(carouselIndex, rankedResources.length - 1)}
@@ -711,6 +714,7 @@ export function GlobeContextHubRail({
     <>
       {ticketSheets}
       <div className={cn("flex flex-col gap-3", className)}>
+        {showBrainStrip && activeEvent ? <GlobeContextBrainStrip event={activeEvent} /> : null}
         <GlobePlacePrefillCard activeEventId={activeEventId} lat={lat} lng={lng} />
         <GlobePrepChecklistCard activeEventId={activeEventId} />
         <GlobeContextGardenSummary summary={gardenSummary} />
@@ -778,43 +782,39 @@ export function GlobeContextHubRail({
         </button>
       </div>
 
-      <ul className="space-y-1.5 px-2 pb-2">
-        {browseRows.map((row) => (
-          <HubServiceSlot
-            key={row.serviceId}
-            row={row}
-            connectOpen={connectServiceId === row.serviceId}
-            busy={busy}
-            emphasized={
-              rankedResources[carouselIndex]?.hubRow.serviceId === row.serviceId
+      <div className="px-2 pb-2">
+        <GlobeHubServiceList
+          rows={browseRows}
+          busy={busy}
+          connectServiceId={connectServiceId}
+          emphasizedServiceId={rankedResources[carouselIndex]?.hubRow.serviceId ?? null}
+          initialVisibleCount={presentation === "detail" ? 3 : 2}
+          onToggleConnect={(row) => {
+            if (row.serviceId === "ticket") {
+              setTicketConnectOpen(true);
+              return;
             }
-            onToggleConnect={() => {
-              if (row.serviceId === "ticket") {
-                setTicketConnectOpen(true);
-                return;
-              }
-              if (row.serviceId === "lodging") {
-                void handleConnectLodging();
-                return;
-              }
-              if (row.serviceId === "market") {
-                handleConnectMarket();
-                return;
-              }
-              setConnectServiceId((current) =>
-                current === row.serviceId ? null : row.serviceId,
-              );
-            }}
-            onConnectFlight={(airportId) => void handleConnectFlight(airportId)}
-            onConnectLodging={() => void handleConnectLodging()}
-            onConnectMarket={handleConnectMarket}
-            onOpenAction={(url, label) => handleOpenAction(url, label)}
-            onOpenHandoff={(href, label, internalRoute) =>
-              handleOpenHandoff(href, label, internalRoute)
+            if (row.serviceId === "lodging") {
+              void handleConnectLodging();
+              return;
             }
-          />
-        ))}
-      </ul>
+            if (row.serviceId === "market") {
+              handleConnectMarket();
+              return;
+            }
+            setConnectServiceId((current) =>
+              current === row.serviceId ? null : row.serviceId,
+            );
+          }}
+          onConnectFlight={(airportId) => void handleConnectFlight(airportId)}
+          onConnectLodging={() => void handleConnectLodging()}
+          onConnectMarket={handleConnectMarket}
+          onOpenAction={(url, label) => handleOpenAction(url, label)}
+          onOpenHandoff={(href, label, internalRoute) =>
+            handleOpenHandoff(href, label, internalRoute)
+          }
+        />
+      </div>
     </aside>
       </div>
     </>

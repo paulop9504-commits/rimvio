@@ -1,6 +1,6 @@
 import type { ContextEateryInventoryRow } from "@/lib/globe/eatery/eatery-resource-types";
 
-/** Demo eateries near user — screenshot / Hongdae parity. */
+/** Demo eateries near user — keep labels region-neutral when providers fail. */
 export function resolveEateryMockNearUser(input: {
   lat: number;
   lng: number;
@@ -11,7 +11,7 @@ export function resolveEateryMockNearUser(input: {
   return [
     {
       placeId: "fd-hongdae-gopchang",
-      name: "홍대 곱창골목",
+      name: "로컬 곱창집",
       lat: input.lat + mLat(95),
       lng: input.lng + mLng(70),
       images: [
@@ -22,7 +22,7 @@ export function resolveEateryMockNearUser(input: {
     },
     {
       placeId: "fd-hongdae-ramen",
-      name: "신촌 라멘집",
+      name: "동네 라멘집",
       lat: input.lat + mLat(210),
       lng: input.lng - mLng(120),
       images: [
@@ -33,7 +33,7 @@ export function resolveEateryMockNearUser(input: {
     },
     {
       placeId: "fd-hongdae-brunch",
-      name: "연남 브런치 카페",
+      name: "브런치 카페",
       lat: input.lat - mLat(160),
       lng: input.lng + mLng(200),
       images: [
@@ -44,7 +44,7 @@ export function resolveEateryMockNearUser(input: {
     },
     {
       placeId: "fd-hongdae-kbbq",
-      name: "망원 한식당",
+      name: "골목 한식당",
       lat: input.lat - mLat(280),
       lng: input.lng - mLng(90),
       images: [

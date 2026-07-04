@@ -1,5 +1,6 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { haversineKm } from "@/lib/feed/spacetime-fit";
+import { readPinnedLodgingResourceId } from "@/lib/globe/context-hub/pin-lodging-selection-to-context";
 import {
   CONTEXT_LODGING_RECOMMEND_SCORES_META_KEY,
   type LodgingRecommendScoreWire,
@@ -102,6 +103,7 @@ export function rankLodgingResources(input: {
   const lat = input.lat ?? null;
   const lng = input.lng ?? null;
   const recommendScores = readRecommendScores(input.event);
+  const pinnedResourceId = readPinnedLodgingResourceId(input.event);
 
   return input.resources
     .map((resource) => {
@@ -115,7 +117,9 @@ export function rankLodgingResources(input: {
       return {
         resource,
         hubRow,
-        rankScore: scoreLodgingByGps({ resource, lat, lng, recommendBonus }),
+        rankScore:
+          scoreLodgingByGps({ resource, lat, lng, recommendBonus }) +
+          (pinnedResourceId === resource.resourceId ? 220 : 0),
       };
     })
     .sort((left, right) => {

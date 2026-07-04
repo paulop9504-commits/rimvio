@@ -1,6 +1,7 @@
 "use client";
 
-import type { RefObject } from "react";
+import { useMemo, type RefObject } from "react";
+import { GlobeContextBrainStrip } from "@/components/globe/globe-context-brain-strip";
 import { GlobeContextControlDock } from "@/components/globe/globe-context-control-dock";
 import { GlobeContextHubRail } from "@/components/globe/globe-context-hub-rail";
 import { GlobeLayerModeToggle } from "@/components/globe/globe-layer-mode-toggle";
@@ -11,6 +12,7 @@ import type { GlobeContextPeopleFilter } from "@/lib/globe/globe-context-people-
 import type { GlobeContextTimeFilter } from "@/lib/globe/globe-context-time-filter";
 import type { GlobeLayerMode } from "@/lib/globe/globe-layer-mode";
 import type { GlobeContextPeerOption } from "@/lib/globe/list-globe-context-peer-options";
+import { findLifeEventCandidate } from "@/lib/life-read-model";
 
 export type GlobeHomeLeftChromeProps = {
   mapMediaFocusOpen: boolean;
@@ -30,6 +32,7 @@ export type GlobeHomeLeftChromeProps = {
   hubEventId: string | null;
   hubDetailOpen: boolean;
   suppressMapHubRail: boolean;
+  suppressBrainStrip?: boolean;
   globeRenderSuspended: boolean;
   authUserId: string | null;
   trendBridge: {
@@ -61,10 +64,16 @@ export function GlobeHomeLeftChrome({
   hubEventId,
   hubDetailOpen,
   suppressMapHubRail,
+  suppressBrainStrip = false,
   globeRenderSuspended,
   authUserId,
   trendBridge,
 }: GlobeHomeLeftChromeProps) {
+  const hubEvent = useMemo(() => {
+    const eventId = hubEventId?.trim();
+    return eventId ? findLifeEventCandidate(eventId) : null;
+  }, [hubEventId]);
+
   return (
     <div className="pointer-events-none absolute left-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20 flex max-h-[calc(100%-var(--rimvio-globe-ingest-offset)-5.5rem)] flex-col items-start gap-1.5">
       {!mapMediaFocusOpen ? (
@@ -113,18 +122,29 @@ export function GlobeHomeLeftChrome({
           ) : null}
         </>
       ) : null}
-      {hubEventId && !hubDetailOpen && !suppressMapHubRail ? (
-        <GlobeContextHubRail
-          className="pointer-events-auto"
-          visible={!globeRenderSuspended}
-          activeEventId={hubEventId}
-          lat={liveLat}
-          lng={liveLng}
-          authUserId={authUserId}
-          layout="dock"
-          variant="compact"
-          globeRef={globeRef}
-        />
+      {hubEventId && !hubDetailOpen ? (
+        <>
+          {hubEvent && !globeRenderSuspended && !suppressBrainStrip ? (
+            <GlobeContextBrainStrip
+              event={hubEvent}
+              variant="corner-pill"
+              className="pointer-events-auto"
+            />
+          ) : null}
+          {!suppressMapHubRail ? (
+            <GlobeContextHubRail
+              className="pointer-events-auto"
+              visible={!globeRenderSuspended}
+              activeEventId={hubEventId}
+              lat={liveLat}
+              lng={liveLng}
+              authUserId={authUserId}
+              layout="dock"
+              variant="compact"
+              globeRef={globeRef}
+            />
+          ) : null}
+        </>
       ) : null}
     </div>
   );

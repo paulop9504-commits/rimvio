@@ -18,6 +18,7 @@ import {
   isYouTubeShortsUrl,
   normalizeYouTubeUrl,
 } from "@/lib/enrichers/youtube-url";
+import { fetchYouTubeOfficialVideo } from "@/lib/media/youtube-data-api";
 import type { EnrichedLink, Enricher, EnricherContext } from "@/lib/enrichers/types";
 import type { LinkActionItem } from "@/types/database";
 
@@ -190,15 +191,18 @@ export const youtubeEnricher: Enricher = {
     _context: EnricherContext
   ): Promise<EnrichedLink> {
     const normalizedUrl = normalizeYouTubeUrl(rawUrl);
-    const [oembed, metadata, scrapedDescription] = await Promise.all([
+    const [oembed, metadata, scrapedDescription, officialVideo] = await Promise.all([
       fetchYouTubeOEmbed(rawUrl),
       fetchPageMetadata(normalizedUrl),
       fetchYouTubeDescription(rawUrl),
+      fetchYouTubeOfficialVideo({ rawUrl }),
     ]);
 
-    const title = oembed?.title ?? metadata.title;
-    const image = oembed?.thumbnail_url ?? metadata.image;
-    const description = scrapedDescription ?? metadata.description;
+    const title = officialVideo?.title ?? oembed?.title ?? metadata.title;
+    const image =
+      officialVideo?.thumbnailUrl ?? oembed?.thumbnail_url ?? metadata.image;
+    const description =
+      officialVideo?.description ?? scrapedDescription ?? metadata.description;
 
     const normalized = withDomainFallback(
       { url: normalizedUrl, domain: "youtube.com", title, image, description, phone: metadata.phone },

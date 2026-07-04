@@ -1,3 +1,4 @@
+import { inferGlobeContextIngestMediaKind } from "@/lib/feed/ingest-globe-context-media";
 import { isConstrainedMobileDevice } from "@/lib/platform/device";
 
 export type PhotoIngestFileStatus =
@@ -18,20 +19,17 @@ export type PhotoIngestFileItem = {
 };
 
 function inferIsVideo(file: File): boolean {
-  if (file.type.startsWith("video/")) {
-    return true;
-  }
-  return /\.(mp4|mov|m4v|webm|mkv|avi|3gp|3g2|qt|mpeg|mpg)$/iu.test(
-    file.name.trim().toLowerCase(),
-  );
+  return inferGlobeContextIngestMediaKind(file) === "video";
 }
 
 export function buildPhotoIngestFileItems(files: readonly File[]): PhotoIngestFileItem[] {
   const allowPreview = !isConstrainedMobileDevice();
   return files.map((file, index) => {
     const isVideo = inferIsVideo(file);
+    const type = file.type.trim().toLowerCase();
     const canPreview =
-      allowPreview && (file.type.startsWith("image/") || isVideo);
+      allowPreview &&
+      (type.startsWith("image/") || isVideo || inferGlobeContextIngestMediaKind(file) === "photo");
     return {
       key: `${file.name}:${file.size}:${file.lastModified}:${index}`,
       fileName: file.name.trim() || (isVideo ? `동영상 ${index + 1}` : `사진 ${index + 1}`),

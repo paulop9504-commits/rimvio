@@ -2,6 +2,7 @@ import {
   readClientMasterOrchestratorContext,
   defaultMasterOrchestratorContext,
 } from "@/lib/experience-context/read-client-master-orchestrator-context";
+import { buildContextInstance } from "@/lib/context-instance/build-context-instance";
 import { buildUnifiedExperienceContext } from "@/lib/experience-context/build-unified-experience-context";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 import { commitLodgingInventoryToEvent } from "@/lib/globe/context-hub/commit-lodging-inventory";
@@ -10,6 +11,7 @@ import type { LodgingRecommendScoreWire } from "@/lib/globe/context-hub/lodging-
 import { mapLodgingRowToContextResource } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import { computeLodgingDiscoveryBounds } from "@/lib/globe/lodging/compute-lodging-discovery-bounds";
 import { detectLodgingSearchIntent } from "@/lib/globe/lodging/detect-lodging-search-intent";
+import { GLOBE_DISCOVERY_FETCH_LIMIT } from "@/lib/globe/discovery/globe-discovery-feed";
 import {
   dispatchGlobeLodgingDiscoverySession,
   dispatchGlobeLodgingDiscoveryStart,
@@ -24,6 +26,7 @@ import {
   type GlobeLodgingDiscoverySession,
 } from "@/lib/globe/lodging/project-lodging-discovery-session";
 import { scoreLodgingRecommendations } from "@/lib/globe/lodging/score-lodging-recommendations";
+import { resolveContextLodgingSearchCoords } from "@/lib/globe/context-hub/resolve-context-lodging-search-coords";
 import { copy } from "@/lib/copy/human-ko";
 
 export type RunGlobeLodgingDiscoveryInput = {
@@ -71,8 +74,6 @@ export async function runGlobeLodgingDiscovery(
     return null;
   }
 
-  dispatchGlobeEateryDiscoveryClose();
-
   const masterContext =
     typeof window !== "undefined"
       ? readClientMasterOrchestratorContext()
@@ -83,13 +84,30 @@ export async function runGlobeLodgingDiscovery(
     masterContext,
   });
 
+  const context = buildContextInstance({
+    event,
+    message: input.message,
+    lat: input.lat,
+    lng: input.lng,
+    preferUserLocation: true,
+    surface: "composer",
+    layerMode: "discovery",
+  });
   const radiusM = input.radiusM ?? LODGING_DISCOVERY_RADIUS_M;
+  const origin =
+    context.location.searchOrigin ??
+    resolveContextLodgingSearchCoords(event, {
+      lat: input.lat,
+      lng: input.lng,
+      preferUserLocation: true,
+    }) ??
+    (input.lat != null && input.lng != null ? { lat: input.lat, lng: input.lng } : null);
 
   const loaded = await loadLodgingInventoryRows({
     event,
-    lat: input.lat,
-    lng: input.lng,
-    maxResults: 5,
+    lat: origin?.lat ?? null,
+    lng: origin?.lng ?? null,
+    maxResults: GLOBE_DISCOVERY_FETCH_LIMIT,
     preferUserLocation: true,
     radiusM,
   });
@@ -101,8 +119,9 @@ export async function runGlobeLodgingDiscovery(
   const scored = scoreLodgingRecommendations({
     rows: loaded.rows,
     unifiedContext,
-    lat: input.lat,
-    lng: input.lng,
+    lat: origin?.lat ?? null,
+    lng: origin?.lng ?? null,
+    context,
   });
 
   const resourceIdByPlaceId: Record<string, string> = {};
@@ -131,9 +150,9 @@ export async function runGlobeLodgingDiscovery(
     eventId,
     scored,
     unifiedContext,
-    userLat: input.lat,
-    userLng: input.lng,
-    eventPlace: event.place,
+    userLat: origin?.lat ?? null,
+    userLng: origin?.lng ?? null,
+    eventPlace: context.location.areaLabel ?? context.location.anchor.label ?? event.place,
     searching: input.searching ?? false,
     radiusM,
     resourceIdByPlaceId,
@@ -153,13 +172,14 @@ export async function runGlobeLodgingDiscovery(
 
   const bounds = computeLodgingDiscoveryBounds({
     user:
-      input.lat != null && input.lng != null
-        ? { lat: input.lat, lng: input.lng }
+      origin?.lat != null && origin?.lng != null
+        ? { lat: origin.lat, lng: origin.lng }
         : null,
     lodging: sortedRows.map((row) => ({ lat: row.lat, lng: row.lng })),
     radiusM,
   });
 
+  dispatchGlobeEateryDiscoveryClose();
   dispatchGlobeLodgingDiscoverySession(session);
   dispatchGlobeLodgingDiscoveryStart({ eventId, resourceIds });
   runStagedLodgingPinReveal({ eventId, resourceIds });

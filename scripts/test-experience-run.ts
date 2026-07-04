@@ -38,6 +38,12 @@ assert.ok(vagueEatery);
 assert.equal(vagueEatery.profile, "eatery_search");
 assert.equal(vagueEatery.needsClarify, true);
 
+const travelEatery = classifyExperienceRunIntent("오사카 여행 가는데 난바 근처 맛집 추천해줘");
+assert.ok(travelEatery);
+assert.equal(travelEatery.profile, "leisure_travel");
+assert.equal(travelEatery.destination, "오사카");
+assert.equal(travelEatery.needsClarify, true);
+
 const recall = classifyExperienceRunIntent("민수랑 저번에 어디 갔었지");
 assert.equal(recall, null);
 

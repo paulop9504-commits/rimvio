@@ -59,19 +59,60 @@ export const GLOBE_CONTEXT_MEDIA_ACCEPT = "image/*,video/*";
 const VIDEO_EXT =
   /\.(mp4|mov|m4v|webm|mkv|avi|3gp|3g2|qt|mpeg|mpg)$/iu;
 
+const IMAGE_EXT =
+  /\.(jpe?g|png|gif|webp|heic|heif|bmp|avif|tiff?|jfif|dng)$/iu;
+
+const NON_MEDIA_EXT =
+  /\.(pdf|zip|rar|7z|txt|docx?|xlsx?|pptx?|csv|json|xml|html?|mp3|wav|aac|m4a)$/iu;
+
+/** Photo vs video — extension fallback for empty / octet-stream mobile picks. */
+export function inferGlobeContextIngestMediaKind(
+  file: File,
+): "photo" | "video" {
+  const type = file.type.trim().toLowerCase();
+  if (type.startsWith("video/")) {
+    return "video";
+  }
+  const name = file.name.trim().toLowerCase();
+  if (VIDEO_EXT.test(name)) {
+    return "video";
+  }
+  return "photo";
+}
+
 export function isGlobeContextIngestMediaFile(file: File): boolean {
   const type = file.type.trim().toLowerCase();
   if (type.startsWith("image/") || type.startsWith("video/")) {
     return true;
   }
-  if (!type) {
-    const name = file.name.trim().toLowerCase();
-    return (
-      /\.(jpe?g|png|gif|webp|heic|heif|bmp|avif)$/iu.test(name) ||
-      VIDEO_EXT.test(name)
-    );
+  const name = file.name.trim().toLowerCase();
+  if (IMAGE_EXT.test(name) || VIDEO_EXT.test(name)) {
+    return true;
+  }
+  // PWA / mobile album picks often ship numeric names with empty MIME.
+  if (!type || type === "application/octet-stream") {
+    if (NON_MEDIA_EXT.test(name)) {
+      return false;
+    }
+    return true;
   }
   return false;
+}
+
+export function partitionGlobeContextIngestMediaFiles(files: readonly File[]): {
+  accepted: File[];
+  rejected: File[];
+} {
+  const accepted: File[] = [];
+  const rejected: File[] = [];
+  for (const file of files) {
+    if (isGlobeContextIngestMediaFile(file)) {
+      accepted.push(file);
+    } else {
+      rejected.push(file);
+    }
+  }
+  return { accepted, rejected };
 }
 
 function mediaNoun(kind: FeedCaptureFragment["kind"]): string {
@@ -293,14 +334,13 @@ function applyBulkClusterPlaceToContext(
   hint?: BulkClusterIngestHint | null,
 ): MediaSpacetimeContext {
   const placeLabel = hint?.placeLabel?.trim();
-  const lat =
-    typeof hint?.anchorLat === "number" && Number.isFinite(hint.anchorLat)
-      ? hint.anchorLat
-      : context.lat;
-  const lng =
-    typeof hint?.anchorLng === "number" && Number.isFinite(hint.anchorLng)
-      ? hint.anchorLng
-      : context.lng;
+  const hasExplicitAnchor =
+    typeof hint?.anchorLat === "number" &&
+    Number.isFinite(hint.anchorLat) &&
+    typeof hint?.anchorLng === "number" &&
+    Number.isFinite(hint.anchorLng);
+  const lat = hasExplicitAnchor ? hint!.anchorLat! : placeLabel ? null : context.lat;
+  const lng = hasExplicitAnchor ? hint!.anchorLng! : placeLabel ? null : context.lng;
   if (!placeLabel) {
     if (lat !== context.lat || lng !== context.lng) {
       return { ...context, lat, lng };
@@ -530,6 +570,7 @@ function buildBulkToast(input: {
   total: number;
   succeeded: number;
   failed: number;
+  skipped?: number;
   attached: number;
   separated: number;
   pinsCreated: number;
@@ -576,6 +617,9 @@ function buildBulkToast(input: {
   }
   if (input.failed > 0) {
     parts.push(`${input.failed}개 실패`);
+  }
+  if ((input.skipped ?? 0) > 0) {
+    parts.push(`${input.skipped}개 형식 제외`);
   }
   return parts.join(" · ");
 }
@@ -835,10 +879,31 @@ export async function ingestGlobeContextMediaBulk(input: {
 }): Promise<
   GlobeBulkMediaIngestSummary & { outcomes: GlobeContextMediaIngestResult[] }
 > {
-  const mediaFiles = await sortMediaFilesByCaptureTime(
-    input.files.filter(isGlobeContextIngestMediaFile),
-  );
+  const { accepted, rejected } = partitionGlobeContextIngestMediaFiles(input.files);
+  const skipped = rejected.length;
+  const mediaFiles = await sortMediaFilesByCaptureTime(accepted);
   const total = mediaFiles.length;
+
+  if (total === 0) {
+    return {
+      total: 0,
+      succeeded: 0,
+      failed: skipped > 0 ? skipped : 0,
+      attached: 0,
+      separated: 0,
+      pinsCreated: 0,
+      exifPinned: 0,
+      poolStaged: 0,
+      lastEventId: null,
+      toastLine:
+        skipped > 0
+          ? copy.globe.photoIngestSkippedUnsupported(skipped)
+          : "올릴 사진·동영상이 없어요",
+      lastSuggestedPlaceName: null,
+      lastError: skipped > 0 ? copy.globe.photoIngestSkippedUnsupported(skipped) : null,
+      outcomes: [],
+    };
+  }
 
   if (total >= 2 && !input.forceAttachToHint && !input.hintEventId?.trim()) {
     const clustered = await ingestGlobeContextMediaBulkClustered({
@@ -869,6 +934,7 @@ export async function ingestGlobeContextMediaBulk(input: {
         total,
         succeeded,
         failed: clustered.failed,
+        skipped,
         attached: clustered.attached,
         separated: clustered.separated,
         pinsCreated: clustered.pinsCreated,
@@ -1009,6 +1075,7 @@ export async function ingestGlobeContextMediaBulk(input: {
       total,
       succeeded,
       failed,
+      skipped,
       attached,
       separated,
       pinsCreated,

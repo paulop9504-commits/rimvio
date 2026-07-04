@@ -197,3 +197,7 @@ export function formatPhotoEmptyReply(): string {
 export function formatEmptyReply(): string {
   return "저장된 맥락에서 찾지 못했어요 · 흔적을 남기면 다음부터 답할 수 있어요";
 }
+
+export function formatStarterReply(): string {
+  return "짧게 말해 주세요 · 오사카 일정, 난바 맛집, 정성이랑 어디 갔어처럼 바로 도와드릴게요";
+}

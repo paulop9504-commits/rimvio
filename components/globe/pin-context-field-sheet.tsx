@@ -11,7 +11,13 @@ export type PinContextFieldKind = "place" | "title" | "note";
 
 const FIELD_COPY: Record<
   PinContextFieldKind,
-  { label: string; placeholder: string; hint: string; multiline?: boolean }
+  {
+    label: string;
+    placeholder: string;
+    hint: string;
+    multiline?: boolean;
+    allowEmpty?: boolean;
+  }
 > = {
   place: {
     label: "장소",
@@ -28,6 +34,7 @@ const FIELD_COPY: Record<
     placeholder: "예: 여기서 점심 먹음",
     hint: "친구와 함께 기억할 메모",
     multiline: true,
+    allowEmpty: true,
   },
 };
 
@@ -65,7 +72,7 @@ export function PinContextFieldSheet({
 
   const handleSave = async () => {
     const trimmed = draft.trim();
-    if (!trimmed) {
+    if (!trimmed && !copy.allowEmpty) {
       return;
     }
     if (trimmed === value.trim()) {
@@ -160,7 +167,7 @@ export function PinContextFieldSheet({
 
             <MainActionButton
               type="button"
-              disabled={busy || !draft.trim()}
+              disabled={busy || (!draft.trim() && !copy.allowEmpty)}
               onClick={() => void handleSave()}
               className="mt-3 w-full"
             >

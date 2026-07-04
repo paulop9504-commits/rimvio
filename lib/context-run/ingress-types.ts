@@ -1,12 +1,14 @@
 import type { ComposerDecisionPhase } from "@/lib/context-run/execution-decision";
 import type { ContextRunSurfaceResolutionFull } from "@/lib/context-run/surface-resolver";
 import type { ExternalContextAskResult } from "@/lib/external-context-ask";
-import type { ExperienceRunResult } from "@/lib/experience-run/experience-run-types";
+import type { GlobeWorkSurfaceClassification } from "@/lib/work-queue/classify-globe-work-surface";
 import type { GlobeMapIntentSupplyResult } from "@/lib/globe/intent-supply/globe-map-intent-types";
 import type { PersonalContextAskResult } from "@/lib/personal-context-ask/personal-context-ask-types";
 import type { GlobeBulkMediaIngestSummary } from "@/lib/feed/ingest-globe-context-media";
+import type { GlobeKnowledgePlacementPending } from "@/lib/globe/globe-knowledge-placement-pending";
 import type { PortalCategoryId, PortalIntentId } from "@/lib/portal/portal-types";
 import type { MarketIntentDraft } from "@/lib/globe/market/market-intent-types";
+import type { ExperienceRunResult } from "@/lib/experience-run";
 
 export type ContextRunIngress =
   | {
@@ -99,7 +101,7 @@ export type ContextRunPlan = {
   portalIntentId?: PortalIntentId;
   portalCategoryId?: PortalCategoryId | null;
   resumePortalRun?: boolean;
-  /** Personal composer — greet / ambiguous text → chat only; do not bind active map cluster. */
+  /** Personal composer ??greet / ambiguous text ??chat only; do not bind active map cluster. */
   composeAmbientChat?: boolean;
 };
 
@@ -141,6 +143,7 @@ export type ContextRunEffectHandlers = {
   onExternalContextAskError?: () => void;
   onPhotoWalkthrough?: (files: File[]) => void | Promise<void>;
   onPhotoIngested?: (summary: GlobeBulkMediaIngestSummary) => void;
+  onKnowledgePlacementPending?: (pending: GlobeKnowledgePlacementPending) => void;
   onPhotoIngestProgress?: (done: number, total: number) => void;
   onPhotoFilePrepare?: (message: string) => void;
   onShareIngested?: () => void;
@@ -154,13 +157,15 @@ export type ContextRunEffectHandlers = {
     eventId: string;
     composeText: string;
   }) => void;
-  /** Composer — keep market prep in Execution Feed chat; sheet opens on CTA only. */
+  /** Composer ??keep market prep in Execution Feed chat; sheet opens on CTA only. */
   onMarketComposeFeedReady?: (input: {
     kind: "wizard" | "quick_list";
     draft?: MarketIntentDraft;
     eventId: string;
     composeText: string;
   }) => void;
+  onWorkSurfaceClassified?: (classification: GlobeWorkSurfaceClassification) => void;
+  onWorkQueueChanged?: () => void;
 };
 
 export type ContextRunTurnResult = {

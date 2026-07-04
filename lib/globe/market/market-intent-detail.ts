@@ -6,6 +6,7 @@ export type MarketListingConditionId =
   | "for_parts";
 
 export type MarketMeetPreferenceId = "nearby" | "flexible" | "pickup_only";
+export type MarketIntentExposureMode = "fixed" | "live";
 
 import type { MarketAvailabilityPreset } from "@/lib/globe/market/market-availability-preset";
 import { DEFAULT_MARKET_AVAILABILITY_PRESET } from "@/lib/globe/market/market-availability-preset";
@@ -67,6 +68,13 @@ export type MarketIntentDetail = {
   videoCount?: number;
   /** Portal gate — true only after explicit 외부 공개 on review or manage. */
   publishedExternal?: boolean;
+  /** Nearby discovery anchor behavior — canonical trade anchor stays untouched. */
+  exposureMode?: MarketIntentExposureMode;
+  /** Live exposure anchor for mobile/external contexts. */
+  liveExposureLat?: number | null;
+  liveExposureLng?: number | null;
+  liveExposurePlaceLabel?: string;
+  liveExposureCapturedAtIso?: string | null;
 };
 
 export function isMarketIntentPublishedExternal(
@@ -105,6 +113,11 @@ export const DEFAULT_MARKET_INTENT_DETAIL: MarketIntentDetail = {
   prioritySlots: {},
   prioritySchemaVersion: "market.v1.2",
   memoryRecord: { ...DEFAULT_MARKET_MEMORY_RECORD },
+  exposureMode: "fixed",
+  liveExposureLat: null,
+  liveExposureLng: null,
+  liveExposurePlaceLabel: "",
+  liveExposureCapturedAtIso: null,
 };
 
 export function marketListingConditionLabelKo(

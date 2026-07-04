@@ -3,6 +3,7 @@ export type ContextHubServiceId =
   | "ticket"
   | "flight"
   | "lodging"
+  | "eatery"
   | "rental_car"
   | "market"
   | "ai_search";

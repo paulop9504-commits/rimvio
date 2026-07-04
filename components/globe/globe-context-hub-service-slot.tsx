@@ -1,7 +1,16 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Car, Hotel, Plane, Plus, ShoppingBag, Sparkles, Ticket } from "lucide-react";
+import {
+  Car,
+  Hotel,
+  Plane,
+  Plus,
+  ShoppingBag,
+  Sparkles,
+  Ticket,
+  UtensilsCrossed,
+} from "lucide-react";
 import type {
   ContextHubServiceId,
   ContextHubServiceRow,
@@ -14,6 +23,7 @@ const SERVICE_ICON: Record<ContextHubServiceId, typeof Plane> = {
   ticket: Ticket,
   flight: Plane,
   lodging: Hotel,
+  eatery: UtensilsCrossed,
   rental_car: Car,
   market: ShoppingBag,
   ai_search: Sparkles,
