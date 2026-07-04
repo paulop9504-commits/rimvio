@@ -3936,6 +3936,68 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   flex-shrink: 0;
 }
 
+.rimvio-globe-brain-surface-marker .rimvio-globe-lodging-marker__discovery-pill {
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.94);
+  padding: 0.32rem 0.55rem 0.28rem;
+  box-shadow:
+    0 4px 14px rgba(15, 23, 42, 0.12),
+    0 0 0 1px rgba(15, 23, 42, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+}
+
+.rimvio-globe-brain-surface-marker[data-brain-surface-accent="orange"]
+  .rimvio-globe-lodging-marker__discovery-pill {
+  box-shadow:
+    0 4px 14px rgba(234, 88, 12, 0.14),
+    0 0 0 1px rgba(251, 146, 60, 0.28);
+}
+
+.rimvio-globe-brain-surface-marker[data-brain-surface-accent="blue"]
+  .rimvio-globe-lodging-marker__discovery-pill {
+  box-shadow:
+    0 4px 14px rgba(37, 99, 235, 0.14),
+    0 0 0 1px rgba(96, 165, 250, 0.28);
+}
+
+.rimvio-globe-brain-surface-marker[data-brain-surface-accent="purple"]
+  .rimvio-globe-lodging-marker__discovery-pill {
+  box-shadow:
+    0 4px 14px rgba(124, 58, 237, 0.14),
+    0 0 0 1px rgba(167, 139, 250, 0.28);
+}
+
+.rimvio-globe-brain-surface-marker[data-brain-surface-accent="green"]
+  .rimvio-globe-lodging-marker__discovery-pill {
+  box-shadow:
+    0 4px 14px rgba(22, 163, 74, 0.14),
+    0 0 0 1px rgba(74, 222, 128, 0.28);
+}
+
+.rimvio-globe-brain-surface-marker .rimvio-globe-lodging-marker__ontology-badge {
+  color: rgba(71, 85, 105, 0.88);
+}
+
+.rimvio-globe-brain-surface-marker .rimvio-globe-lodging-marker__discovery-name {
+  font-size: 0.64rem;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.rimvio-globe-brain-surface-marker .rimvio-globe-lodging-marker__discovery-price {
+  font-size: 0.56rem;
+  font-weight: 600;
+  color: rgba(71, 85, 105, 0.88);
+}
+
+.rimvio-globe-brain-surface-marker .rimvio-globe-lodging-marker__dot {
+  border: 2px solid #fff;
+  background: #0071e3;
+  box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.22);
+}
+
 .rimvio-globe-lodging-marker__discovery-pill {
   display: flex;
   flex-direction: column;

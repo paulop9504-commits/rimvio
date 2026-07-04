@@ -5,7 +5,7 @@ import type { RefObject } from "react";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import type { MediaSpatialTraceTourStop } from "@/lib/situation-projection/build-media-spatial-trace-tour";
 
-const TOUR_STEP_MS = 4_200;
+const TOUR_STEP_MS = 8_500;
 const TOUR_FLY_LEVEL = "street" as const;
 const TOUR_PIN_VIEWPORT_Y = 0.62;
 
@@ -17,6 +17,7 @@ export type MediaSpatialTraceTourState = {
 export function useMediaSpatialTraceTour(input: {
   globeRef: RefObject<RimvioGlobeHubHandle | null>;
   stops: readonly MediaSpatialTraceTourStop[];
+  advancePaused?: boolean;
   onStopChange?: (
     stop: MediaSpatialTraceTourStop | null,
     index: number,
@@ -28,9 +29,12 @@ export function useMediaSpatialTraceTour(input: {
   });
   const onStopChangeRef = useRef(input.onStopChange);
   onStopChangeRef.current = input.onStopChange;
+  const lastNotifiedStopIdRef = useRef<string | null>(null);
+  const stopsKey = input.stops.map((stop) => stop.id).join("|");
 
   const stopTour = useCallback(() => {
     setState({ running: false, stopIndex: -1 });
+    lastNotifiedStopIdRef.current = null;
     onStopChangeRef.current?.(null, -1);
   }, []);
 
@@ -38,6 +42,7 @@ export function useMediaSpatialTraceTour(input: {
     if (input.stops.length === 0) {
       return false;
     }
+    lastNotifiedStopIdRef.current = null;
     setState({ running: true, stopIndex: 0 });
     return true;
   }, [input.stops.length]);
@@ -55,7 +60,15 @@ export function useMediaSpatialTraceTour(input: {
     input.globeRef.current?.flyToPin(stop.lat, stop.lng, TOUR_FLY_LEVEL, {
       pinViewportY: TOUR_PIN_VIEWPORT_Y,
     });
-    onStopChangeRef.current?.(stop, state.stopIndex);
+
+    if (lastNotifiedStopIdRef.current !== stop.id) {
+      lastNotifiedStopIdRef.current = stop.id;
+      onStopChangeRef.current?.(stop, state.stopIndex);
+    }
+
+    if (input.advancePaused) {
+      return;
+    }
 
     const timer = window.setTimeout(() => {
       setState((current) => {
@@ -64,6 +77,7 @@ export function useMediaSpatialTraceTour(input: {
         }
         const nextIndex = current.stopIndex + 1;
         if (nextIndex >= input.stops.length) {
+          lastNotifiedStopIdRef.current = null;
           onStopChangeRef.current?.(null, -1);
           return { running: false, stopIndex: -1 };
         }
@@ -74,7 +88,15 @@ export function useMediaSpatialTraceTour(input: {
     return () => {
       window.clearTimeout(timer);
     };
-  }, [input.globeRef, input.stops, state.running, state.stopIndex, stopTour]);
+  }, [
+    input.advancePaused,
+    input.globeRef,
+    input.stops,
+    state.running,
+    state.stopIndex,
+    stopTour,
+    stopsKey,
+  ]);
 
   useEffect(() => {
     if (!state.running) {

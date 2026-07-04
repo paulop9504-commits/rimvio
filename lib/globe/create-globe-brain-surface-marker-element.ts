@@ -191,6 +191,7 @@ export function createGlobeBrainSurfaceMarkerElement(
   root.className = "rimvio-globe-lodging-marker rimvio-globe-brain-surface-marker";
   root.dataset.brainSurfaceCandidate = candidate.id;
   root.dataset.brainSurfaceFamily = candidate.family;
+  root.dataset.brainSurfaceAccent = candidate.accent;
   root.dataset.discoveryAccent = candidate.accent;
   root.classList.add("rimvio-globe-lodging-marker--discovery");
   root.classList.add("rimvio-globe-lodging-marker--main");

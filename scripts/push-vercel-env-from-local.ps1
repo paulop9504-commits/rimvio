@@ -49,6 +49,24 @@ Write-Host "=== Rimvio Vercel env push ===" -ForegroundColor Cyan
 Write-Host "Production APP_URL override: $prodUrl"
 Write-Host ""
 
+function Read-EnvValue([string]$key) {
+  $line = Select-String -Path $envFile -Pattern "^$([regex]::Escape($key))=" | Select-Object -First 1
+  if (-not $line) { return $null }
+  $value = ($line.Line -split "=", 2)[1].Trim().Trim('"').Trim("'")
+  if ([string]::IsNullOrWhiteSpace($value)) { return $null }
+  return $value
+}
+
+$placesKey = Read-EnvValue "GOOGLE_PLACES_API_KEY"
+if (-not $placesKey) {
+  $placesKey = Read-EnvValue "GOOGLE_MAPS_API_KEY"
+}
+$youtubeKey = Read-EnvValue "YOUTUBE_DATA_API_KEY"
+if (-not $youtubeKey -and $placesKey) {
+  Write-Host "YOUTUBE_DATA_API_KEY missing — mirroring GOOGLE Places/Maps key" -ForegroundColor Yellow
+  Add-Content -Path $envFile -Value "YOUTUBE_DATA_API_KEY=$placesKey"
+}
+
 foreach ($key in $keys) {
   if ($skip -contains $key) { continue }
 
