@@ -10,7 +10,7 @@ function stub(partial: Partial<BrainSurfaceProjectionCandidate>): BrainSurfacePr
     eventId: "evt",
     nodeId: null,
     family: "eatery",
-    clusterId: null,
+    clusterId: "media:guide-1",
     focusAffinityFamilies: [],
     label: "label",
     previewTitle: "title",
@@ -29,9 +29,9 @@ function stub(partial: Partial<BrainSurfaceProjectionCandidate>): BrainSurfacePr
     embedUrl: null,
     mapsUrl: null,
     searchQuery: null,
-    sourceGuideNodeId: null,
+    sourceGuideNodeId: "guide-1",
     revealOrder: 0,
-    virtualCandidate: false,
+    virtualCandidate: true,
     memoCommitDraft: null,
     ...partial,
   };
@@ -42,18 +42,21 @@ const macro = stub({
   label: "가성비 숙소",
   virtualCandidate: true,
   family: "lodging",
+  anchorKind: null,
 });
 const micro = stub({
   id: "micro",
   label: "사쿠라 호텔",
   markerThumbnailUrl: "https://example.com/hotel.jpg",
   family: "lodging",
+  anchorKind: "inferred_place",
 });
 const inferred = stub({
   id: "inferred",
   anchorKind: "inferred_place",
-  label: "신주쿠",
-  virtualCandidate: true,
+  label: "신주쿠 라멘",
+  markerThumbnailUrl: "https://example.com/ramen.jpg",
+  family: "eatery",
 });
 
 assert.deepEqual(
@@ -72,5 +75,18 @@ const selected = resolveBrainSurfaceMapMarkers({
 });
 assert.equal(selected.length, 1);
 assert.equal(selected[0]?.id, "micro");
+
+const shadow = resolveBrainSurfaceMapMarkers({
+  candidates: [macro, inferred],
+  shadowExpanded: true,
+  videoClusterId: "media:guide-1",
+  hubLat: 35.68,
+  hubLng: 139.76,
+  activeCandidateId: "inferred",
+});
+assert.equal(shadow.length, 1);
+assert.equal(shadow[0]?.id, "inferred");
+assert.ok(shadow[0]?.calloutOffsetX != null);
+assert.equal(macro.clusterId, shadow[0]?.clusterId);
 
 console.log("test-resolve-brain-surface-map-markers: ok");

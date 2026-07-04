@@ -406,6 +406,9 @@ function GlobeHomeBody() {
   const [brainSurfaceActiveCandidateId, setBrainSurfaceActiveCandidateId] =
     useState<string | null>(null);
   const [brainSurfaceDetailMode, setBrainSurfaceDetailMode] = useState(false);
+  const [brainSurfaceShadowExpanded, setBrainSurfaceShadowExpanded] = useState(false);
+  const [brainSurfaceHighlightedInferredId, setBrainSurfaceHighlightedInferredId] =
+    useState<string | null>(null);
   const [brainSurfaceCommitPending, setBrainSurfaceCommitPending] = useState(false);
   const [mapVideoPlaying, setMapVideoPlaying] = useState(false);
   const spatialTraceTourSessionRef = useRef<string | null>(null);
@@ -811,44 +814,72 @@ function GlobeHomeBody() {
           : null;
 
   const projectedBrainSurfaceCandidates = useMemo(() => {
-    const prioritized = prioritizeBrainSurfaceCandidatesForFocus({
-      candidates: visibleBrainSurfaceCandidates,
-      focusedFamily:
-        brainSurfaceMode === "focused"
-          ? brainSurfaceFocusedFamily
-          : passiveBrainSurfaceFamily,
-      activeCandidateId: brainSurfaceActiveCandidateId,
-      gravityMode:
-        brainSurfaceMode === "focused"
-          ? "focused"
-          : passiveBrainSurfaceFamily
-            ? "pinned"
-            : null,
-    });
+    const videoClusterId =
+      activeBrainSurfaceCandidate?.anchorKind === "video_root"
+        ? activeBrainSurfaceCandidate.clusterId
+        : activeBrainSurfaceCandidate?.parentGuideNodeId
+          ? `media:${activeBrainSurfaceCandidate.parentGuideNodeId}`
+          : activeBrainSurfaceCandidate?.sourceGuideNodeId
+            ? `media:${activeBrainSurfaceCandidate.sourceGuideNodeId}`
+            : null;
+
+    const sourceCandidates = brainSurfaceShadowExpanded
+      ? (brainSurfaceBatch?.candidates ?? visibleBrainSurfaceCandidates)
+      : visibleBrainSurfaceCandidates;
+
+    const prioritized = brainSurfaceShadowExpanded
+      ? sourceCandidates
+      : prioritizeBrainSurfaceCandidatesForFocus({
+          candidates: visibleBrainSurfaceCandidates,
+          focusedFamily:
+            brainSurfaceMode === "focused"
+              ? brainSurfaceFocusedFamily
+              : passiveBrainSurfaceFamily,
+          activeCandidateId: brainSurfaceActiveCandidateId,
+          gravityMode:
+            brainSurfaceMode === "focused"
+              ? "focused"
+              : passiveBrainSurfaceFamily
+                ? "pinned"
+                : null,
+        });
+
     const hubLat = activeCluster?.lat;
     const hubLng = activeCluster?.lng;
-    if (
-      prioritized.length === 0 ||
-      hubLat == null ||
-      hubLng == null ||
-      !Number.isFinite(hubLat) ||
-      !Number.isFinite(hubLng)
-    ) {
-      return prioritized;
-    }
+
     return resolveBrainSurfaceMapMarkers({
       candidates: prioritized,
-      activeCandidateId: brainSurfaceActiveCandidateId,
+      activeCandidateId: brainSurfaceHighlightedInferredId ?? brainSurfaceActiveCandidateId,
+      shadowExpanded: brainSurfaceShadowExpanded,
+      videoClusterId,
+      hubLat,
+      hubLng,
     });
   }, [
+    activeBrainSurfaceCandidate,
+    activeCluster?.lat,
+    activeCluster?.lng,
     brainSurfaceActiveCandidateId,
+    brainSurfaceBatch?.candidates,
     brainSurfaceFocusedFamily,
+    brainSurfaceHighlightedInferredId,
     brainSurfaceMode,
+    brainSurfaceShadowExpanded,
     passiveBrainSurfaceFamily,
     visibleBrainSurfaceCandidates,
   ]);
 
   const brainSurfaceExploreRailCandidates = useMemo(() => {
+    if (brainSurfaceShadowExpanded && activeBrainSurfaceCandidate?.clusterId) {
+      return (brainSurfaceBatch?.candidates ?? [])
+        .filter(
+          (candidate) =>
+            candidate.clusterId === activeBrainSurfaceCandidate.clusterId &&
+            candidate.anchorKind === "inferred_place",
+        )
+        .slice(0, 12);
+    }
+
     const prioritized = prioritizeBrainSurfaceCandidatesForFocus({
       candidates: visibleBrainSurfaceCandidates,
       focusedFamily:
@@ -875,9 +906,12 @@ function GlobeHomeBody() {
       })
       .slice(0, 12);
   }, [
+    activeBrainSurfaceCandidate?.clusterId,
     brainSurfaceActiveCandidateId,
+    brainSurfaceBatch?.candidates,
     brainSurfaceFocusedFamily,
     brainSurfaceMode,
+    brainSurfaceShadowExpanded,
     passiveBrainSurfaceFamily,
     visibleBrainSurfaceCandidates,
   ]);
@@ -1000,6 +1034,8 @@ function GlobeHomeBody() {
     spatialTraceTourSuppressedRef.current = true;
     spatialTraceTourSessionRef.current = null;
     stopSpatialTraceTour();
+    setBrainSurfaceShadowExpanded(false);
+    setBrainSurfaceHighlightedInferredId(null);
     setBrainSurfaceActiveCandidateId(null);
     setBrainSurfaceDetailMode(false);
   }, [stopSpatialTraceTour]);
@@ -1236,6 +1272,13 @@ function GlobeHomeBody() {
       if (!candidate) {
         return;
       }
+      if (brainSurfaceShadowExpanded && candidate.anchorKind === "inferred_place") {
+        setBrainSurfaceHighlightedInferredId(candidateId);
+        globeRef.current?.flyToPin(candidate.lat, candidate.lng, "street", {
+          pinViewportY: 0.58,
+        });
+        return;
+      }
       if (
         brainSurfaceMode !== "focused" ||
         brainSurfaceFocusedFamily !== candidate.family
@@ -1314,56 +1357,57 @@ function GlobeHomeBody() {
   }, [activeBrainSurfaceCandidate?.memoCommitDraft, brainSurfaceBatch]);
 
   const handleExpandActiveVideoInferredMap = useCallback(() => {
-    if (!activeContextEvent || !activeBrainSurfaceCandidate) {
+    if (!activeContextEvent || !activeBrainSurfaceCandidate || !brainSurfaceBatch) {
       return;
     }
 
-    if (!brainSurfaceVisible && activeBrainSurfaceCandidate.sourceGuideNodeId) {
-      const guide = queryMediaGuideByGuideNodeId(
-        activeBrainSurfaceCandidate.sourceGuideNodeId,
-      );
-      if (guide) {
-        const ok = expandMediaGuideOnMap({ event: activeContextEvent, guide });
-        if (!ok) {
-          toast.error(copy.common.tryAgain);
-          return;
+    const clusterId = activeBrainSurfaceCandidate.clusterId?.trim() ?? null;
+    const inferredInCluster = clusterId
+      ? brainSurfaceBatch.candidates.filter(
+          (row) =>
+            row.clusterId === clusterId && row.anchorKind === "inferred_place",
+        )
+      : [];
+
+    if (inferredInCluster.length === 0) {
+      if (activeBrainSurfaceCandidate.sourceGuideNodeId) {
+        const guide = queryMediaGuideByGuideNodeId(
+          activeBrainSurfaceCandidate.sourceGuideNodeId,
+        );
+        if (guide) {
+          const ok = expandMediaGuideOnMap({ event: activeContextEvent, guide });
+          if (!ok) {
+            toast.error(copy.common.tryAgain);
+          }
         }
-        setBrainSurfaceActiveCandidateId(null);
-        setBrainSurfaceDetailMode(false);
-        return;
       }
-    }
-
-    const clusterId = activeBrainSurfaceCandidate.clusterId;
-    const inferredInCluster =
-      clusterId && brainSurfaceBatch
-        ? brainSurfaceBatch.candidates.filter(
-            (row) => row.clusterId === clusterId && row.anchorKind === "inferred_place",
-          )
-        : [];
-
-    const focusFamily: BrainSurfaceCandidateFamily =
-      inferredInCluster.find((row) => row.family === "eatery")?.family ??
-      inferredInCluster[0]?.family ??
-      "trace_place";
-
-    setBrainSurfaceMode("focused");
-    setBrainSurfaceFocusedFamily(focusFamily);
-    setBrainSurfaceDetailMode(true);
-
-    const focusTarget = inferredInCluster[0];
-    if (focusTarget) {
-      setBrainSurfaceActiveCandidateId(focusTarget.id);
-      globeRef.current?.flyToPin(focusTarget.lat, focusTarget.lng, "neighborhood");
       return;
     }
 
-    setBrainSurfaceActiveCandidateId(activeBrainSurfaceCandidate.id);
+    spatialTraceTourSuppressedRef.current = true;
+    spatialTraceTourSessionRef.current = null;
+    stopSpatialTraceTour();
+
+    setBrainSurfaceShadowExpanded(true);
+    setBrainSurfaceDetailMode(false);
+    setBrainSurfaceMode("spread");
+    setBrainSurfaceFocusedFamily(null);
+    setBrainSurfaceHighlightedInferredId(inferredInCluster[0]?.id ?? null);
+
+    const hubLat = activeCluster?.lat ?? activeBrainSurfaceCandidate.lat;
+    const hubLng = activeCluster?.lng ?? activeBrainSurfaceCandidate.lng;
+    if (Number.isFinite(hubLat) && Number.isFinite(hubLng)) {
+      globeRef.current?.flyToPin(hubLat, hubLng, "neighborhood", {
+        pinViewportY: 0.52,
+      });
+    }
   }, [
     activeBrainSurfaceCandidate,
+    activeCluster?.lat,
+    activeCluster?.lng,
     activeContextEvent,
     brainSurfaceBatch,
-    brainSurfaceVisible,
+    stopSpatialTraceTour,
   ]);
 
   useEffect(() => {
@@ -1578,6 +1622,8 @@ function GlobeHomeBody() {
     setBrainSurfaceFocusedFamily(null);
     setBrainSurfaceActiveCandidateId(null);
     setBrainSurfaceDetailMode(false);
+    setBrainSurfaceShadowExpanded(false);
+    setBrainSurfaceHighlightedInferredId(null);
   }, [brainSurfaceVisible]);
 
   useEffect(() => {
@@ -1590,6 +1636,8 @@ function GlobeHomeBody() {
     setBrainSurfaceFocusedFamily(null);
     setBrainSurfaceActiveCandidateId(null);
     setBrainSurfaceDetailMode(false);
+    setBrainSurfaceShadowExpanded(false);
+    setBrainSurfaceHighlightedInferredId(null);
   }, [activeCluster?.eventId, brainSurfaceBatch]);
 
   useEffect(() => {
@@ -3014,14 +3062,21 @@ function GlobeHomeBody() {
       {brainSurfaceVisible && brainSurfaceExploreRailCandidates.length > 0 ? (
         <GlobeBrainSurfaceExploreRail
           candidates={brainSurfaceExploreRailCandidates}
-          activeCandidateId={brainSurfaceActiveCandidateId}
+          activeCandidateId={
+            brainSurfaceHighlightedInferredId ?? brainSurfaceActiveCandidateId
+          }
           onSelect={(candidateId) => {
-            spatialTraceTourSuppressedRef.current = false;
-            setBrainSurfaceActiveCandidateId(candidateId);
+            setBrainSurfaceHighlightedInferredId(candidateId);
             setBrainSurfaceDetailMode(false);
+            const selected = brainSurfaceCandidatesById.get(candidateId);
+            if (selected && Number.isFinite(selected.lat) && Number.isFinite(selected.lng)) {
+              globeRef.current?.flyToPin(selected.lat, selected.lng, "street", {
+                pinViewportY: 0.58,
+              });
+            }
           }}
           className={
-            activeBrainSurfaceCandidate
+            activeBrainSurfaceCandidate && !brainSurfaceShadowExpanded
               ? "pointer-events-none bottom-[calc(var(--rimvio-globe-ingest-offset,5.5rem)+0.35rem)] opacity-0"
               : "bottom-[calc(var(--rimvio-globe-ingest-offset,5.5rem)+0.35rem)]"
           }
@@ -3058,7 +3113,9 @@ function GlobeHomeBody() {
           }
           committingMemo={brainSurfaceCommitPending}
           tourStop={
-            spatialTraceTourRunning ? spatialTraceTourActiveStop : null
+            !brainSurfaceShadowExpanded && spatialTraceTourRunning
+              ? spatialTraceTourActiveStop
+              : null
           }
           tourStopIndex={spatialTraceTourStopIndex}
           tourStopCount={spatialTraceTourStopCount}

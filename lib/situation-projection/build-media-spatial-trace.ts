@@ -381,6 +381,14 @@ export function buildMediaSpatialTraceCandidates(input: {
         searchQuery: place.searchProfile.query,
         sourceGuideNodeId: guide.guideNodeId,
         revealOrder,
+        markerThumbnailUrl: resolveBrainSurfaceMarkerThumbnail({
+          family,
+          thumbnailUrl: null,
+        }),
+        markerMediaKind: resolveBrainSurfaceMarkerMediaKind({
+          family,
+          embedUrl: null,
+        }),
         virtualCandidate: true,
         memoCommitDraft: null,
       });
