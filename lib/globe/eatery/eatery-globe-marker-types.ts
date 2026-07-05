@@ -19,6 +19,8 @@ export type GlobeEateryMapMarker = {
   relationMemoKo?: string | null;
   calloutOffsetX?: number | null;
   calloutOffsetY?: number | null;
+  /** Context Condition AI — emerald delegate pin. */
+  contextConditionPin?: boolean;
 };
 
 export function isGlobeEateryMapMarker(value: unknown): value is GlobeEateryMapMarker {

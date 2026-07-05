@@ -53,6 +53,9 @@ import {
   syncExperienceRunClarifyToFeed,
   syncExperienceRunSummaryToFeed,
 } from "@/lib/context-run/sync-experience-run-to-feed";
+import { syncGlobeIngressCompileToFeed } from "@/lib/context-run/sync-globe-ingress-to-feed";
+import { ensureTripContextEvent } from "@/lib/experience-run/ensure-trip-context-event";
+import { classifyExperienceRunIntent } from "@/lib/experience-run/classify-experience-run-intent";
 import {
   syncComposeDraftToFeed,
   syncComposeIntentToFeed,
@@ -824,6 +827,45 @@ async function executeContextRunPlan(
         handlers.onGpsDwellConfirmOpen?.(eventId);
       }
       return { graphId, status: "done", planKind: plan.kind };
+    }
+    case "globe_ingress": {
+      const compiled = plan.globeIngress;
+      if (!compiled) {
+        return executeContextRunPlan(
+          bound,
+          planPersonalContextAskFallback(bound),
+          handlers,
+        );
+      }
+      const ingressText = bound.ingress;
+      const existingContextId =
+        ingressText.kind === "text" ? ingressText.contextEventId : null;
+      const classified = classifyExperienceRunIntent(bound.goalKo);
+      const event = ensureTripContextEvent({
+        message: bound.goalKo,
+        existingEventId: existingContextId ?? compiled.context.contextId,
+        profile: classified?.profile,
+      });
+
+      syncGlobeIngressCompileToFeed(compiled, bound.goalKo);
+      const assistantText =
+        compiled.blueprint.resourcePlan.nextQuestion?.promptKo?.trim() ||
+        compiled.bridge.pathLabels.join(" → ");
+      syncPortalComposeTurnToChat({
+        graphId,
+        userText: bound.goalKo,
+        assistantText,
+      });
+
+      handlers.onGlobeIngressCompiled?.({ compiled, eventId: event.id });
+      handlers.onAttached?.(event.id);
+      refreshWorkQueue(handlers);
+      return {
+        graphId,
+        status: "done",
+        planKind: plan.kind,
+        globeIngress: compiled,
+      };
     }
     case "experience_run": {
       const ingressText = bound.ingress;

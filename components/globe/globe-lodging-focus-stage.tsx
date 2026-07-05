@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { toast } from "sonner";
+import { GlobeContextConditionPinBar } from "@/components/globe/globe-context-condition-pin-bar";
+import { GlobeLodgingAgentAskBar } from "@/components/globe/globe-lodging-agent-ask-bar";
 import { GlobeContextQuickPinButton } from "@/components/globe/globe-context-quick-pin-button";
 import { GlobeLodgingHubFocusCard } from "@/components/globe/globe-lodging-hub-focus-card";
 import { GlobePredictedExperienceCard } from "@/components/globe/globe-predicted-experience-card";
@@ -27,6 +29,7 @@ import { formatLodgingStayBadgeLabel } from "@/lib/globe/context-hub/lodging-sta
 import { readLodgingPayloadFromResource } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import { readLodgingRecommendReason } from "@/lib/globe/lodging/lodging-recommendation-reason-store";
 import { MAP_FOCUS_PIN_VIEWPORT_Y } from "@/lib/globe/map-anchored-overlay-layout";
+import { computeLodgingDiscoveryBounds } from "@/lib/globe/lodging/compute-lodging-discovery-bounds";
 import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
 import type { RankedContextResource } from "@/lib/globe/resource/map-hub-service-to-resource";
 import {
@@ -41,6 +44,7 @@ import {
   hydrateMediaContextStore,
   MEDIA_SPACETIME_UPDATED,
 } from "@/lib/location-ping/media-context-store";
+import { readPeerContacts } from "@/lib/context/peer-contact-store";
 import { copy } from "@/lib/copy/human-ko";
 import {
   GLOBE_MAP_FOCUS_CARD_MAX_WIDTH_CLASS,
@@ -467,7 +471,96 @@ export function GlobeLodgingFocusStage({
               <GlobePredictedExperienceCard model={predictedExperience} tone="light" />
             }
             footer={
-              lodgingRanked.length > 1 ? (
+              anchorLat != null &&
+              anchorLng != null &&
+              payload?.placeId &&
+              activeEvent ? (
+                <div className="space-y-3">
+                  <GlobeLodgingAgentAskBar
+                    event={activeEvent}
+                    row={{
+                      placeId: payload.placeId,
+                      name: payload.name,
+                      lat: anchorLat,
+                      lng: anchorLng,
+                      images: payload.images,
+                      videoUrl: payload.videoUrl ?? null,
+                      priceKrw: payload.priceKrw ?? null,
+                      partnerLabel: payload.partnerLabel ?? null,
+                      address: payload.address ?? null,
+                      mapsUrl: payload.mapsUrl ?? null,
+                      provider: payload.provider ?? null,
+                      photoSource: payload.photoSource ?? null,
+                      photoConfidence: payload.photoConfidence ?? null,
+                      stayWindow: payload.stayWindow ?? null,
+                      checkInIso: payload.stayWindow?.checkInIso ?? null,
+                      checkOutIso: payload.stayWindow?.checkOutIso ?? null,
+                    }}
+                    resourceId={entry.resource.resourceId}
+                    userDisplayName={
+                      readPeerContacts()[0]?.displayName?.trim() || "여행자"
+                    }
+                    onTurnComplete={(result) => {
+                      if (result.mapPins.length === 0) {
+                        return;
+                      }
+                      const bounds = computeLodgingDiscoveryBounds({
+                        user:
+                          lat != null && lng != null
+                            ? { lat, lng }
+                            : null,
+                        lodging: result.mapPins.map((pin) => ({
+                          lat: pin.lat,
+                          lng: pin.lng,
+                        })),
+                      });
+                      if (!bounds) {
+                        return;
+                      }
+                      globeRef?.current?.flyToDiscoveryBounds({
+                        centerLat: bounds.centerLat,
+                        centerLng: bounds.centerLng,
+                        altitude: bounds.altitude,
+                        pinViewportY: MAP_FOCUS_PIN_VIEWPORT_Y,
+                      });
+                    }}
+                  />
+                  <GlobeContextConditionPinBar
+                    contextEventId={eventId}
+                    anchorPlaceId={payload.placeId}
+                    anchorPlaceName={entry.resource.label}
+                    anchorLat={anchorLat}
+                    anchorLng={anchorLng}
+                    anchorPriceKrw={payload.priceKrw ?? null}
+                    onPinned={(outcome) => {
+                      if (outcome.pinPoints.length === 0) {
+                        return;
+                      }
+                      const bounds = computeLodgingDiscoveryBounds({
+                        user:
+                          lat != null && lng != null
+                            ? { lat, lng }
+                            : null,
+                        lodging: outcome.pinPoints,
+                      });
+                      if (!bounds) {
+                        return;
+                      }
+                      globeRef?.current?.flyToDiscoveryBounds({
+                        centerLat: bounds.centerLat,
+                        centerLng: bounds.centerLng,
+                        altitude: bounds.altitude,
+                        pinViewportY: MAP_FOCUS_PIN_VIEWPORT_Y,
+                      });
+                    }}
+                  />
+                  {lodgingRanked.length > 1 ? (
+                    <p className="text-[11px] font-normal text-[#86868b]">
+                      {copy.globe.lodgingFocusSwipeHint}
+                    </p>
+                  ) : null}
+                </div>
+              ) : lodgingRanked.length > 1 ? (
                 <p className="text-[11px] font-normal text-[#86868b]">
                   {copy.globe.lodgingFocusSwipeHint}
                 </p>

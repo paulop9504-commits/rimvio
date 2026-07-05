@@ -1,6 +1,9 @@
+import { RECALL_MIN_INTERVAL_MS } from "@/lib/recall/recall-types";
+
 const STORAGE_KEY = "rimvio-gps-arrival-recall.v1";
-const COOLDOWN_MS = 12 * 60 * 60 * 1000;
 const MAX_PER_DAY = 2;
+const PLACE_COOLDOWN_MS = RECALL_MIN_INTERVAL_MS;
+const GLOBAL_COOLDOWN_MS = RECALL_MIN_INTERVAL_MS;
 
 type RecallSessionEntry = {
   placeKey: string;
@@ -78,7 +81,7 @@ export function canSurfaceGpsArrivalRecall(
   }
 
   const lastMs = Date.parse(lastForPlace.shownAtIso);
-  return !Number.isNaN(lastMs) && nowMs - lastMs >= COOLDOWN_MS;
+  return !Number.isNaN(lastMs) && nowMs - lastMs >= PLACE_COOLDOWN_MS;
 }
 
 export function markGpsArrivalRecallShown(placeKey: string, now = new Date()) {

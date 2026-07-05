@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { toast } from "sonner";
+import { GlobeContextConditionPinBar } from "@/components/globe/globe-context-condition-pin-bar";
 import { GlobeContextQuickPinButton } from "@/components/globe/globe-context-quick-pin-button";
 import { GlobePredictedExperienceCard } from "@/components/globe/globe-predicted-experience-card";
 import { useActiveContextWeather } from "@/hooks/use-active-context-weather";
@@ -310,6 +311,17 @@ export function GlobeEateryFocusSheet({ eventId, className }: GlobeEateryFocusSh
         >
           {copy.globe.eateryFocusNavigate}
         </button>
+        {eventId && row ? (
+          <div className="mt-3 rounded-[0.95rem] bg-white/[0.04] p-2 ring-1 ring-white/8">
+            <GlobeContextConditionPinBar
+              contextEventId={eventId}
+              anchorPlaceId={row.placeId}
+              anchorPlaceName={row.name}
+              anchorLat={row.lat}
+              anchorLng={row.lng}
+            />
+          </div>
+        ) : null}
       </div>
     </div>
   );

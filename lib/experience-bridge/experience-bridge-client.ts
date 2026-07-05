@@ -151,6 +151,38 @@ export async function updateExperienceBridgePinnedItemRemote(input: {
   return result;
 }
 
+export async function updateExperienceBridgePlanningTruthRemote(input: {
+  event: EventCandidate;
+}): Promise<{ state: ExperienceBridgeState }> {
+  const endpoint = `${resolveAppOrigin()}/api/experience-bridge/${encodeURIComponent(input.event.id)}`;
+  const result = await fetchJsonUncached<{ state: ExperienceBridgeState }>(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: "planning_truth",
+      primaryEvent: input.event,
+    }),
+  });
+  invalidateBridgeApiCache(input.event.id);
+  return result;
+}
+
+export async function updateExperienceBridgePlanningProposalRemote(input: {
+  event: EventCandidate;
+}): Promise<{ state: ExperienceBridgeState }> {
+  const endpoint = `${resolveAppOrigin()}/api/experience-bridge/${encodeURIComponent(input.event.id)}`;
+  const result = await fetchJsonUncached<{ state: ExperienceBridgeState }>(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: "planning_proposal",
+      primaryEvent: input.event,
+    }),
+  });
+  invalidateBridgeApiCache(input.event.id);
+  return result;
+}
+
 export async function acceptExperienceBridgeRemote(eventId: string): Promise<{
   state: ExperienceBridgeState;
   pinSpec: { bridge: ExperienceBridgeState["bridge"]; peerThreadId: string | null };

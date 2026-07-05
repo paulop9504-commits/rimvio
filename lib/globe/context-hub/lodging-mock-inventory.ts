@@ -185,6 +185,82 @@ const LODGING_MOCK_TEMPLATES: readonly LodgingMockTemplate[] = [
   },
 ];
 
+const JAPAN_LODGING_TEMPLATES: readonly LodgingMockTemplate[] = [
+  {
+    id: "jp-shinjuku",
+    name: "新宿ステイ",
+    dLat: 0.012,
+    dLng: -0.008,
+    priceKrw: 125_000,
+    image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=640&q=80",
+  },
+  {
+    id: "jp-shibuya",
+    name: "渋谷ビューホテル",
+    dLat: -0.009,
+    dLng: 0.014,
+    priceKrw: 142_000,
+    image: "https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=640&q=80",
+  },
+  {
+    id: "jp-ginza",
+    name: "銀座シティホテル",
+    dLat: 0.006,
+    dLng: 0.019,
+    priceKrw: 168_000,
+    image: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=640&q=80",
+  },
+  {
+    id: "jp-asakusa",
+    name: "浅草ゲストハウス",
+    dLat: 0.018,
+    dLng: -0.016,
+    priceKrw: 78_000,
+    image: "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=640&q=80",
+  },
+  {
+    id: "jp-ikebukuro",
+    name: "池袋レジデンス",
+    dLat: -0.014,
+    dLng: -0.011,
+    priceKrw: 96_000,
+    image: "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=640&q=80",
+  },
+];
+
+function isJapanTravelPlace(placeLabel: string, anchor: { lat: number; lng: number }): boolean {
+  if (
+    /東京|tokyo|오사카|osaka|교토|kyoto|후쿠오카|fukuoka|일본|japan|신주쿠|shinjuku|시부야|shibuya|나라|nara|홋카이도|hokkaido|삿포로|sapporo|나고야|nagoya/iu.test(
+      placeLabel,
+    )
+  ) {
+    return true;
+  }
+  return (
+    anchor.lat >= 33.5 &&
+    anchor.lat <= 43.5 &&
+    anchor.lng >= 129 &&
+    anchor.lng <= 146
+  );
+}
+
+function mapLodgingMockTemplates(
+  templates: readonly LodgingMockTemplate[],
+  anchor: { lat: number; lng: number },
+  placeIdPrefix: string,
+): readonly ContextLodgingInventoryRow[] {
+  return templates.map((template, index) => ({
+    placeId: `${placeIdPrefix}:${template.id}:${anchor.lat.toFixed(3)}:${index}`,
+    name: template.name,
+    lat: anchor.lat + template.dLat,
+    lng: anchor.lng + template.dLng,
+    priceKrw: template.priceKrw,
+    partnerLabel: "demo",
+    images: [template.image],
+    videoUrl: null,
+  }));
+}
+
 /** Hub factory mock — spread around context destination, not hardcoded 대전. */
 export function resolveLodgingMockForPlace(
   placeLabel: string,
@@ -193,6 +269,10 @@ export function resolveLodgingMockForPlace(
   const place = placeLabel.trim();
   if (/대전|유성|신탄진|kaist|카이스트/iu.test(place)) {
     return DAEJEON_LODGING_MOCK;
+  }
+
+  if (isJapanTravelPlace(place, anchor)) {
+    return mapLodgingMockTemplates(JAPAN_LODGING_TEMPLATES, anchor, "jp");
   }
 
   const prefix = place.slice(0, 12) || "숙소";

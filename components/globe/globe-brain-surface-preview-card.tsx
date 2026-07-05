@@ -4,6 +4,7 @@ import { useMemo, type ReactNode } from "react";
 import { ExternalLink, MapPinned, X } from "lucide-react";
 import type { BrainSurfaceProjectionCandidate } from "@/lib/situation-projection/brain-surface-types";
 import type { MediaSpatialTraceTourStop } from "@/lib/situation-projection/build-media-spatial-trace-tour";
+import { GlobeMapFocusMediaShell } from "@/components/globe/globe-map-focus-media-shell";
 import { GlobeBrainSurfaceVideoChip } from "@/components/globe/globe-brain-surface-video-chip";
 import { GlobeBrainSurfaceFloatingFrame } from "@/components/globe/globe-brain-surface-floating-frame";
 import { GlobeMediaGuideMapExpandButton } from "@/components/globe/globe-media-guide-map-expand-button";
@@ -12,24 +13,6 @@ import { extractYouTubeVideoId } from "@/lib/enrichers/youtube-url";
 import { copy } from "@/lib/copy/human-ko";
 import { textsOverlap } from "@/lib/globe/brain-surface-card-copy";
 import { cn } from "@/lib/utils";
-import { GlobeBrainSurfaceYoutubeEmbed } from "@/components/globe/globe-brain-surface-youtube-embed";
-
-function buildStableEmbedSrc(embedUrl: string | null): string | null {
-  if (!embedUrl) {
-    return null;
-  }
-  try {
-    const url = new URL(embedUrl);
-    url.searchParams.set("autoplay", "1");
-    url.searchParams.set("mute", "0");
-    url.searchParams.set("playsinline", "1");
-    url.searchParams.set("rel", "0");
-    url.searchParams.set("enablejsapi", "1");
-    return url.toString();
-  } catch {
-    return embedUrl;
-  }
-}
 
 function normalizeCompareText(value: string | null | undefined): string {
   return value?.trim().replace(/\s+/gu, " ").toLowerCase() ?? "";
@@ -138,10 +121,7 @@ export function GlobeBrainSurfacePreviewCard({
   tourStopIndex = 0,
   tourStopCount = 0,
 }: GlobeBrainSurfacePreviewCardProps) {
-  const embedSrc = useMemo(
-    () => buildStableEmbedSrc(candidate.embedUrl),
-    [candidate.embedUrl],
-  );
+  const embedUrl = candidate.embedUrl?.trim() || null;
   const embedKey = useMemo(
     () =>
       (candidate.embedUrl
@@ -150,7 +130,7 @@ export function GlobeBrainSurfacePreviewCard({
     [candidate.embedUrl, candidate.id],
   );
   const isVideoSplit =
-    candidate.anchorKind === "video_root" && Boolean(embedSrc) && !detailMode;
+    candidate.anchorKind === "video_root" && Boolean(embedUrl) && !detailMode;
   const showPreviewBody =
     !isRedundantPreviewBody(candidate.previewTitle, candidate.previewBody) &&
     Boolean(candidate.previewBody?.trim());
@@ -179,9 +159,14 @@ export function GlobeBrainSurfacePreviewCard({
     return (
       <>
         <GlobeBrainSurfaceVideoChip
-          embedSrc={embedSrc!}
+          embedSrc={embedUrl!}
           embedKey={embedKey}
           title={candidate.previewTitle}
+          caption={candidate.previewBody}
+          eyebrow={candidate.placeLabel}
+          lat={candidate.lat}
+          lng={candidate.lng}
+          thumbnailUrl={candidate.markerThumbnailUrl}
           onClose={onClose}
         />
 
@@ -283,13 +268,19 @@ export function GlobeBrainSurfacePreviewCard({
         </button>
       </div>
 
-      {embedSrc && detailMode ? (
-        <div className="bg-slate-950 px-0 pb-0 pt-0">
-          <GlobeBrainSurfaceYoutubeEmbed
-            videoKey={embedKey}
-            embedSrc={embedSrc}
+      {embedUrl && detailMode ? (
+        <div className="px-3 pb-2 pt-2">
+          <GlobeMapFocusMediaShell
             title={candidate.previewTitle}
-            className="aspect-video max-h-[9rem] w-full border-0"
+            caption={candidate.previewBody}
+            eyebrow={candidate.placeLabel}
+            lat={candidate.lat}
+            lng={candidate.lng}
+            thumbnailUrl={candidate.markerThumbnailUrl}
+            youtubeEmbedUrl={embedUrl}
+            youtubeVideoKey={embedKey}
+            showMetadataOverlay={false}
+            className="w-full"
           />
         </div>
       ) : candidate.markerThumbnailUrl || candidate.openUrl ? (

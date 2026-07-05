@@ -1056,6 +1056,12 @@ export const copy = {
       queueTitle: (title: string, count: number) =>
         count > 1 ? `${title} · 외 ${count - 1}` : title,
     },
+    realitySurface: {
+      eyebrow: "지금 흐름",
+      phaseActive: (label: string) => `${label} · 준비 중`,
+      nextStep: "다음",
+      destinationConfirmed: (label: string) => `${label} · 목적지 잡았어요`,
+    },
     composerHint: {
       saved: "저장했어요",
       voiceContinue: "더 말해 주세요",
@@ -1189,6 +1195,25 @@ export const copy = {
     bridgeJourneyEmpty: "톡·사진이 쌓이면 시간순으로 이어져요",
     bridgeJourneyChatOpen: "톡에서 이어하기",
     bridgeJourneyMediaOpen: "순간 보기",
+    bridgePlanningCommitLine: (author: string, destination: string, path: string) =>
+      `${author}님이 ${destination}으로 정했어요 · ${path}`,
+    bridgePlanningProposalLine: (author: string, destination: string) =>
+      `${author}님이 ${destination} 제안`,
+    bridgePlanningProposalAccept: "함께 정하기",
+    bridgePlanningProposalReject: "넘기기",
+    bridgePlanningProposalSubmitted: (destination: string) =>
+      `${destination} · 호스트에게 제안했어요`,
+    bridgePlanningProposalUpdated: (destination: string) =>
+      `${destination} · 제안을 바꿨어요`,
+    bridgePlanningProposalRejectedHost: "제안을 넘겼어요",
+    bridgePlanningProposalAcceptedMember: (destination: string) =>
+      `${destination} · 함께 정해졌어요`,
+    bridgePlanningProposalRejectedMember: (destination: string) =>
+      `${destination} 제안은 넘어갔어요`,
+    bridgePlanningHostCommittedMember: (destination: string) =>
+      `${destination} · 함께 여행 목적지가 정해졌어요`,
+    bridgePlanningProposalQueueHint: (count: number) =>
+      `${count}명이 목적지를 제안했어요`,
     contextTalkEmpty: "이 경험에 대한 이야기를 남겨 보세요",
     contextTalkScrollHint: "스크롤하면 지도 맥락이 따라와요",
     contextTalkMediaPin: "그때 거기",
@@ -1378,6 +1403,16 @@ export const copy = {
     brainSurfaceConnectCta: "연결 보기",
     brainSurfaceConnectTitle: "이 맥락과 연결된 것",
     brainSurfaceStoryCloseAria: "닫기",
+    brainSurfaceOntologyNodeDragHint: "길게 눌러 끌어 배치",
+    threeFloors: {
+      steps: {
+        replay: "흔적",
+        context: "맥락",
+        action: "행동",
+      },
+      surfaceGlobe: "Globe",
+      surfaceField: "Field",
+    },
     contextHubAdd: "허브 추가",
     contextHubRemove: (label: string) => `${label} 허브 빼기`,
     contextHubDisconnected: (label: string) => `${label} 허브를 뺐어요`,
@@ -1535,6 +1570,31 @@ export const copy = {
     lodgingFocusSwipeHint: "옆으로 밀어 다른 숙소 보기",
     lodgingFocusBook: "예매",
     lodgingFocusDetails: "자세히 보기",
+    contextConditionPinPlaceholder: "주변 호텔·맛집 찾아줘",
+    contextConditionPinSubmit: "꽂기",
+    contextConditionPinBusy: "맞추는 중",
+    contextConditionPinDone: "{n}곳 지도에 꽂았어요",
+    contextConditionPinLodgingDone: "호텔 {n}곳 지도에 꽂았어요",
+    contextConditionPinEateryDone: "맛집 {n}곳 지도에 꽂았어요",
+    contextConditionPinEmpty: "지금은 맞는 곳을 못 찾았어요",
+    contextConditionPinDismiss: "전부 지우기",
+    contextConditionPinBadge: "맞춤",
+    contextConditionPanelEyebrow: "맥락 조건",
+    /** Container AI — user-facing (L1). Internal: Context Condition module. */
+    containerAiEyebrow: "여행 어시스턴트",
+    containerAiPhaseBlocked: (phase: string) =>
+      `현재는 ${phase} 단계예요. 먼저 목적지를 정하면 숙소를 추천할 수 있어요.`,
+    containerAiStayReady: "호텔을 고르는 단계예요.",
+    contextConditionPanelHint: "주변 호텔·맛집을 말하면 지도에 바로 꽂아요.",
+    contextConditionPanelCloseAria: "맥락 조건 창 닫기",
+    contextConditionPanelDragLabel: "맥락 조건 창 이동",
+    contextConditionPanelRequiresContext: "먼저 지구에서 맥락을 선택해 주세요",
+    lodgingAgentHint: "이 숙소 가이드에게 근처 카페·맛집·시설을 물어보세요.",
+    lodgingAgentPlaceholder: "근처 카페 찾아줘",
+    lodgingAgentSubmit: "물어보기",
+    lodgingAgentBusy: "찾는 중",
+    lodgingAgentBadge: "가이드",
+    lodgingAgentEmpty: "지금은 답을 못 찾았어요",
     lodgingStayWindowTitle: "머무는 일정",
     contextMediaFocusCloseAria: "기록 닫기",
     contextMediaFocusFallbackTitle: "그때 거기",

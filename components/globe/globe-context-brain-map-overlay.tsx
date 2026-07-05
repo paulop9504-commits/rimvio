@@ -19,6 +19,11 @@ import {
   type GlobeContextVideoScreenLayout,
 } from "@/lib/globe/resolve-globe-context-video-layout";
 import { layoutScreenAnchoredNodeOffsets } from "@/lib/globe/resolve-non-overlapping-callout-offsets";
+import {
+  nudgeMapAnchorDragOffsets,
+  resolveMapAnchorDragOffset,
+} from "@/lib/globe/nudge-map-anchor-drag-offsets";
+import { useNodeDragOffsets } from "@/hooks/use-ontology-graph-node-drag";
 import { recordPersonaSignal } from "@/lib/persona";
 import type { PersonaLearnChoice } from "@/lib/persona/types";
 import {
@@ -348,6 +353,42 @@ export function GlobeContextBrainMapOverlay({
       .filter((row): row is NonNullable<typeof row> => row != null);
     return layoutScreenAnchoredNodeOffsets(boxes);
   }, [anchoredLayouts, mapAnchoredNodes]);
+
+  const mapAnchorDrag = useNodeDragOffsets({
+    scopeKey: `${eventId ?? "none"}:${mapNodeKey}`,
+    onNodeTap: (nodeId) => setSelectedNodeId(nodeId),
+    onDragEnd: (_nodeId, _offset, allUserOffsets) => {
+      const dragBoxes = mapAnchoredNodes
+        .map((node) => {
+          const anchor = anchoredLayouts[node.id];
+          if (!anchor) {
+            return null;
+          }
+          const auto = mapAnchorScreenOffsets[node.id] ?? { dx: 0, dy: 0 };
+          const user = allUserOffsets[node.id] ?? { dx: 0, dy: 0 };
+          const focus = node.emphasis === "focus";
+          const main = node.emphasis === "main";
+          const width = clamp(
+            Math.round(anchor.widthPx * (focus ? 1.06 : main ? 0.98 : 0.9)),
+            108,
+            196,
+          );
+          return {
+            id: node.id,
+            anchorX: anchor.x,
+            anchorY: anchor.y,
+            autoDx: auto.dx,
+            autoDy: auto.dy,
+            userDx: user.dx,
+            userDy: user.dy,
+            width,
+            height: 72,
+          };
+        })
+        .filter((row): row is NonNullable<typeof row> => row != null);
+      return nudgeMapAnchorDragOffsets(dragBoxes);
+    },
+  });
 
   useEffect(() => {
     if (!visible) {
@@ -892,7 +933,10 @@ export function GlobeContextBrainMapOverlay({
               if (!anchor) {
                 return null;
               }
-              const offset = mapAnchorScreenOffsets[node.id] ?? { dx: 0, dy: 0 };
+              const offset = resolveMapAnchorDragOffset(
+                mapAnchorScreenOffsets[node.id] ?? { dx: 0, dy: 0 },
+                mapAnchorDrag.userOffsets[node.id],
+              );
               const focus = node.emphasis === "focus";
               const selected = selectedNodeId === node.id;
               const cardX = anchor.x + offset.dx;
@@ -925,7 +969,10 @@ export function GlobeContextBrainMapOverlay({
           if (!anchor) {
             return null;
           }
-          const offset = mapAnchorScreenOffsets[node.id] ?? { dx: 0, dy: 0 };
+          const offset = resolveMapAnchorDragOffset(
+            mapAnchorScreenOffsets[node.id] ?? { dx: 0, dy: 0 },
+            mapAnchorDrag.userOffsets[node.id],
+          );
           const pill = findPillForNode(node, pills);
           const nodeAction = resolveProjectionNodeTap({ node, event });
           const tappable = Boolean(nodeAction || pill);
@@ -935,6 +982,9 @@ export function GlobeContextBrainMapOverlay({
           const main = node.emphasis === "main";
           const mediaCandidate = node.candidateOrigin === "media_inferred";
           const selected = selectedNodeId === node.id;
+          const dragging = mapAnchorDrag.draggingNodeId === node.id;
+          const armed = mapAnchorDrag.armedNodeId === node.id;
+          const dragBinding = mapAnchorDrag.bindNode(node.id);
           const width = clamp(
             Math.round(anchor.widthPx * (focus ? 1.06 : main ? 0.98 : 0.9)),
             108,
@@ -946,11 +996,9 @@ export function GlobeContextBrainMapOverlay({
               type="button"
               aria-pressed={selectedNodeId === node.id}
               tabIndex={0}
-              onClick={() => {
-                setSelectedNodeId(node.id);
-              }}
+              {...dragBinding}
               className={cn(
-                "pointer-events-auto absolute z-[25] flex -translate-x-1/2 -translate-y-full flex-col items-start rounded-[1rem] px-3 py-2 text-left text-white shadow-[0_18px_44px_rgba(0,0,0,0.28)] backdrop-blur-xl transition-transform",
+                "pointer-events-auto absolute z-[25] flex -translate-x-1/2 -translate-y-full touch-none flex-col items-start rounded-[1rem] px-3 py-2 text-left text-white shadow-[0_18px_44px_rgba(0,0,0,0.28)] backdrop-blur-xl select-none",
                 focus
                   ? mediaCandidate
                     ? `border border-dashed ring-1 ${accent.focusShell} opacity-92`
@@ -961,7 +1009,9 @@ export function GlobeContextBrainMapOverlay({
                       : `border ${accent.mainShell}`
                     : `border ${accent.ghostShell} opacity-88`,
                 selected && "ring-2 ring-white/70",
-                tappable && "active:scale-[0.97]",
+                dragging && "z-[28] scale-[1.03] cursor-grabbing ring-2 ring-[#0071e3]/40",
+                armed && !dragging && "scale-[1.02] ring-2 ring-white/28",
+                !dragging && !armed && tappable && "active:scale-[0.97]",
                 !tappable && "cursor-default",
               )}
               style={{
@@ -969,7 +1019,9 @@ export function GlobeContextBrainMapOverlay({
                 top: anchor.y - 8 + offset.dy,
                 width,
               }}
+              aria-label={`${node.label} — ${copy.globe.brainSurfaceOntologyNodeDragHint}`}
               data-globe-context-brain-map-anchor-node={node.id}
+              data-globe-context-brain-map-anchor-dragging={dragging ? "true" : "false"}
             >
               <span className="flex items-center gap-1.5">
                 <span

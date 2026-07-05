@@ -7,6 +7,8 @@
 
 Rimvio has multiple graph-like modules (`lib/meaning/`, `lib/experience-graph/`, `lib/people-graph/`, `lib/knowledge/`, `lib/synaptic/`) without a single L0 write SSOT. `MeaningGraph` is rebuilt on every read; durable edges lack commit-time audit trail.
 
+**Design stance (vs analysis ontology):** Entity Graph exists to **fire recall and gate re-execution** — not for analyst exploration. See `docs/RIMVIO_ONTOLOGY_LAYER.md` § Thesis.
+
 ## Decision
 
 1. **Entity Graph** lives in `lib/ontology/` as **L0 Substrate** (`rimvio.entity-graph.v1` localStorage).

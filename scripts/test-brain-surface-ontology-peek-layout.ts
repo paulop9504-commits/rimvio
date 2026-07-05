@@ -17,6 +17,14 @@ const three = layoutBrainSurfaceOntologyPeek({
 });
 assert.equal(three.nodes.length, 3);
 assert.ok(three.nodes.every((node) => node.centerY > three.mediaHeight));
+const external = layoutBrainSurfaceOntologyPeek({
+  satellites: [{ id: "a" } as never],
+  width: 300,
+  mediaExternal: true,
+});
+assert.equal(external.mediaHeight, 0);
+assert.equal(external.rootStem.y, 0);
+assert.ok(external.nodes[0]!.centerY > 0);
 const spread = Math.hypot(
   three.nodes[2]!.centerX - three.nodes[0]!.centerX,
   three.nodes[2]!.centerY - three.nodes[0]!.centerY,

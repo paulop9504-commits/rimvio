@@ -4167,6 +4167,10 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   background: #34c759;
 }
 
+.rimvio-globe-lodging-marker--context-condition.rimvio-globe-lodging-marker--discovery {
+  filter: drop-shadow(0 0 7px rgba(52, 199, 89, 0.42));
+}
+
 .rimvio-globe-lodging-marker--discovery[data-discovery-accent="blue"] .rimvio-globe-lodging-marker__dot {
   background: #3182f6;
 }

@@ -10,6 +10,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { CaptureSheet } from "@/components/globe/capture-sheet";
 import {
   RimvioNavChatIcon,
@@ -22,6 +23,11 @@ import { useFieldNavBadge } from "@/hooks/use-field-nav-badge";
 import { useFieldSheet } from "@/components/field/field-sheet-provider";
 import { subscribeOpenCaptureSheet, publishCaptureSheetOpen } from "@/lib/nav/open-capture-sheet-bridge";
 import { openFieldDashboardFromBottomNav } from "@/lib/nav/field-dashboard-ingress";
+import {
+  readGlobeTouchedContextEventId,
+  subscribeGlobeContextConditionPanel,
+  toggleGlobeContextConditionPanel,
+} from "@/lib/globe/context-condition-ai/globe-context-condition-panel-bridge";
 import { isPrimaryNavGlobePath } from "@/lib/layers";
 import { GRID } from "@/lib/ui/responsive-grid";
 import { cn } from "@/lib/utils";
@@ -332,7 +338,14 @@ export function AppNav({ placement }: AppNavProps) {
   const { open: fieldSheetOpen, closeFieldSheet } = useFieldSheet();
   const { total: fieldNavBadge, suggestedTab: fieldSuggestedTab } = useFieldNavBadge();
   const [captureOpen, setCaptureOpen] = useState(false);
+  const [contextConditionPanelOpen, setContextConditionPanelOpen] = useState(false);
   const lastNavRef = useRef<{ href: string; at: number } | null>(null);
+
+  useEffect(() => {
+    return subscribeGlobeContextConditionPanel((detail) => {
+      setContextConditionPanelOpen(detail.open);
+    });
+  }, []);
 
   useEffect(() => {
     return subscribeOpenCaptureSheet(() => setCaptureOpen(true));
@@ -358,6 +371,15 @@ export function AppNav({ placement }: AppNavProps) {
       lastNavRef.current = { href, at: now };
 
       if (href === "/field") {
+        if (isPrimaryNavGlobePath(pathname)) {
+          const contextEventId = readGlobeTouchedContextEventId();
+          if (contextEventId) {
+            toggleGlobeContextConditionPanel(contextEventId);
+            return;
+          }
+          toast.message(copy.globe.contextConditionPanelRequiresContext);
+          return;
+        }
         if (fieldSheetOpen) {
           closeFieldSheet();
           return;
@@ -378,7 +400,7 @@ export function AppNav({ placement }: AppNavProps) {
 
       router.push(href);
     },
-    [closeFieldSheet, fieldSheetOpen, fieldSuggestedTab, pathname, router],
+    [closeFieldSheet, copy.globe.contextConditionPanelRequiresContext, fieldSheetOpen, fieldSuggestedTab, pathname, router],
   );
 
   const tabs = useMemo<NavTab[]>(
@@ -394,7 +416,10 @@ export function AppNav({ placement }: AppNavProps) {
         label: copy.nav.field,
         badge: fieldNavBadge > 0 ? fieldNavBadge : undefined,
         isActive: (p) =>
-          fieldSheetOpen || p === "/field" || p.startsWith("/field/"),
+          (isPrimaryNavGlobePath(p) && contextConditionPanelOpen) ||
+          fieldSheetOpen ||
+          p === "/field" ||
+          p.startsWith("/field/"),
         icon: "field",
       },
       {
@@ -410,7 +435,7 @@ export function AppNav({ placement }: AppNavProps) {
         icon: "capture",
       },
     ],
-    [copy, fieldNavBadge, fieldSheetOpen],
+    [copy, fieldNavBadge, fieldSheetOpen, contextConditionPanelOpen],
   );
 
   const navChrome = (

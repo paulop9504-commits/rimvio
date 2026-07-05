@@ -7,7 +7,7 @@ export type GlobeContextAiOrbProps = {
   size?: "sm" | "lg";
 };
 
-/** Decorative context orb — ask sheet hero accent. */
+/** Decorative orb — Personal Context AI ask sheet only (not Context Condition AI). */
 export function GlobeContextAiOrb({ className, size = "sm" }: GlobeContextAiOrbProps) {
   const large = size === "lg";
   return (

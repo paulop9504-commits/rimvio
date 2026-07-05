@@ -28,6 +28,7 @@ export const GHOST_AXIS_IDS = [
   "eatery",
   "info",
   "ticket",
+  "transit",
   "people",
   "records",
   "insurance",
@@ -70,6 +71,7 @@ export const PROJECTION_SEMANTIC_TYPES = [
   "schedule",
   "place",
   "flight",
+  "transit",
   "lodging",
   "eatery",
   "info",
@@ -145,7 +147,7 @@ export type GhostProjectionNode = {
   ontologyRole?: ProjectionOntologyRole;
   relationLabelKo?: string | null;
   relationReasonKo?: string | null;
-  candidateOrigin?: "media_inferred" | null;
+  candidateOrigin?: "media_inferred" | "lodging_agent" | null;
   candidateBadgeKo?: string | null;
   candidateConfidence?: number | null;
   sourceGuideNodeId?: string | null;

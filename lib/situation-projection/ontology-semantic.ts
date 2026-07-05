@@ -52,6 +52,11 @@ const GHOST_AXIS_META: Record<GhostAxisId, ProjectionSemanticPreset> = {
     semanticTypeLabelKo: "티켓",
     relationLabelKo: "입장 준비",
   },
+  transit: {
+    semanticType: "transit",
+    semanticTypeLabelKo: "교통",
+    relationLabelKo: "이동 축",
+  },
   people: {
     semanticType: "people",
     semanticTypeLabelKo: "사람",

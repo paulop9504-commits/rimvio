@@ -10,6 +10,12 @@ import {
 import type { ExperienceBridgeContribution } from "@/lib/experience-bridge/experience-bridge-types";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { mergePinnedContextItemFromRemote } from "@/lib/globe/context-pinned-item";
+import { mergeBridgePlanningTruthFromRemote } from "@/lib/bridge-planning";
+import { mergeBridgePlanningProposalFromRemote } from "@/lib/bridge-planning/merge-bridge-planning-proposal";
+import {
+  notifyBridgePlanningSyncFeedback,
+  resolveBridgePlanningSyncFeedback,
+} from "@/lib/bridge-planning/planning-sync-feedback";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 import { stampBridgeEventMetadata } from "@/lib/experience-bridge/stamp-bridge-event-metadata";
 import {
@@ -60,8 +66,8 @@ export async function syncBridgeSharedMediaFromRemote(
   try {
   const viewerId = await resolveBridgeSyncViewerUserId(viewerUserId);
   const local = findLifeEventCandidate(key);
-  let event =
-    local ?? remote.state.bridge.eventSnapshot;
+  const beforeEvent = local ?? remote.state.bridge.eventSnapshot;
+  let event = beforeEvent;
   let changed = false;
 
   if (viewerId) {
@@ -106,6 +112,24 @@ export async function syncBridgeSharedMediaFromRemote(
     changed = true;
   }
 
+  const planningMerged = mergeBridgePlanningTruthFromRemote({
+    event,
+    remoteEvent: remote.state.bridge.eventSnapshot,
+  });
+  if (planningMerged) {
+    event = planningMerged;
+    changed = true;
+  }
+
+  const proposalMerged = mergeBridgePlanningProposalFromRemote({
+    event,
+    remoteEvent: remote.state.bridge.eventSnapshot,
+  });
+  if (proposalMerged) {
+    event = proposalMerged;
+    changed = true;
+  }
+
   const contributionMerged = mergeBridgeContributionsIntoEvent({
     event,
     contributions,
@@ -114,6 +138,17 @@ export async function syncBridgeSharedMediaFromRemote(
   if (contributionMerged) {
     event = contributionMerged;
     changed = true;
+  }
+
+  if (changed && viewerId) {
+    const feedback = resolveBridgePlanningSyncFeedback({
+      viewerUserId: viewerId,
+      beforeEvent,
+      afterEvent: event,
+    });
+    if (feedback) {
+      notifyBridgePlanningSyncFeedback(feedback);
+    }
   }
 
   return changed ? event : null;

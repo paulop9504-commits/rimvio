@@ -37,6 +37,9 @@ export function createGlobeEateryMarkerElement(
       : marker.label,
   );
 
+  if (marker.contextConditionPin) {
+    root.classList.add("rimvio-globe-lodging-marker--context-condition");
+  }
   if (marker.discoveryShortLabel) {
     root.classList.add("rimvio-globe-lodging-marker--discovery");
     if (marker.discoveryAccent) {

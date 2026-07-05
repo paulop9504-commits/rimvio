@@ -28,6 +28,10 @@ import { GlobeContextShareFriendsPanel } from "@/components/globe/globe-context-
 import { RecentConversationStrip } from "@/components/experience/recent-conversation-strip";
 import { ExperienceBridgeJourneyTimeline } from "@/components/globe/experience-bridge-journey-timeline";
 import type { ExperienceBridgeTimelineItem } from "@/lib/experience-bridge/experience-bridge-types";
+import { acceptBridgePlanningProposal } from "@/lib/bridge-planning/accept-bridge-planning-proposal";
+import { rejectBridgePlanningProposal } from "@/lib/bridge-planning/reject-bridge-planning-proposal";
+import { readBridgePlanningProposal } from "@/lib/bridge-planning/planning-history";
+import { countBridgePlanningProposals } from "@/lib/bridge-planning/planning-sync-feedback";
 import type { ExperienceWindow } from "@/lib/experience-window/experience-window-types";
 import type { ExperienceConversationProjection } from "@/lib/globe/experience-conversation-types";
 import { copy } from "@/lib/copy/human-ko";
@@ -152,6 +156,49 @@ export function BridgeContextPanel({
     [event, allEvents, reelItems, volume, viewerUserId],
   );
 
+  const planningProposalCount = useMemo(
+    () => countBridgePlanningProposals(event),
+    [event],
+  );
+
+  const hasPlanningProposal = planningProposalCount > 0;
+
+  const acceptPlanningProposal = async () => {
+    if (!viewerUserId?.trim() || !isBridgeHost) {
+      return;
+    }
+    try {
+      await acceptBridgePlanningProposal({
+        event,
+        hostUserId: viewerUserId,
+      });
+      toast.success(copy.globe.realitySurface.destinationConfirmed("목적지"));
+      onHubUpdated?.();
+    } catch (caught) {
+      toast.error(
+        caught instanceof Error ? caught.message : copy.globe.bridgeShareFail,
+      );
+    }
+  };
+
+  const rejectPlanningProposal = async () => {
+    if (!viewerUserId?.trim() || !isBridgeHost) {
+      return;
+    }
+    try {
+      await rejectBridgePlanningProposal({
+        event,
+        hostUserId: viewerUserId,
+      });
+      toast.message(copy.globe.bridgePlanningProposalRejectedHost);
+      onHubUpdated?.();
+    } catch (caught) {
+      toast.error(
+        caught instanceof Error ? caught.message : copy.globe.bridgeShareFail,
+      );
+    }
+  };
+
   const poolMatchCount = useMemo(
     () => countEventMediaPoolMatches(event),
     [event, reelItems.length],
@@ -236,12 +283,22 @@ export function BridgeContextPanel({
       </div>
 
       {journeyTimeline.length > 0 || experienceWindow ? (
-        <ExperienceBridgeJourneyTimeline
+        <>
+          {isBridgeHost && planningProposalCount > 1 ? (
+            <p className="px-0.5 text-[12px] font-medium text-primary/80">
+              {copy.globe.bridgePlanningProposalQueueHint(planningProposalCount)}
+            </p>
+          ) : null}
+          <ExperienceBridgeJourneyTimeline
           timeline={journeyTimeline}
           experienceWindow={experienceWindow}
           onOpenTalk={onOpenTalk}
           onOpenMedia={onShowFilteredMedia}
+          onAcceptPlanningProposal={() => void acceptPlanningProposal()}
+          onRejectPlanningProposal={() => void rejectPlanningProposal()}
+          showPlanningProposalAccept={Boolean(isBridgeHost && hasPlanningProposal)}
         />
+        </>
       ) : null}
 
       {people.length > 0 ? (

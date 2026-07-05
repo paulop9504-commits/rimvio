@@ -1,4 +1,7 @@
-import { RECALL_COOLDOWN_MS, RECALL_MAX_PER_DAY } from "@/lib/recall/recall-types";
+import {
+  RECALL_MIN_INTERVAL_MS,
+  RECALL_SAME_EVENT_COOLDOWN_MS,
+} from "@/lib/recall/recall-types";
 
 const STORAGE_KEY = "rimvio-recall-engine.v2";
 
@@ -38,13 +41,7 @@ function writeEntries(entries: RecallShownEntry[]) {
   }
 }
 
-function dayStartMs(now: Date): number {
-  const day = new Date(now);
-  day.setHours(0, 0, 0, 0);
-  return day.getTime();
-}
-
-/** Daily nostalgia spam 금지 — max 1 recall / day + cooldown. */
+/** Proactive recall — max once per RECALL_MIN_INTERVAL (5 days) + per-event cooldown. */
 export function canSurfaceRecallCandidate(
   candidateId: string,
   eventId: string,
@@ -57,43 +54,31 @@ export function canSurfaceRecallCandidate(
   }
 
   const nowMs = now.getTime();
-  const todayStart = dayStartMs(now);
   const entries = readEntries().filter((entry) => {
     const ms = Date.parse(entry.shownAtIso);
-    return !Number.isNaN(ms) && ms >= todayStart - 7 * 86_400_000;
+    return !Number.isNaN(ms) && nowMs - ms < RECALL_SAME_EVENT_COOLDOWN_MS * 2;
   });
 
-  const todayCount = entries.filter((entry) => {
-    const ms = Date.parse(entry.shownAtIso);
-    return !Number.isNaN(ms) && ms >= todayStart;
-  }).length;
-
-  if (todayCount >= RECALL_MAX_PER_DAY) {
-    return false;
-  }
-
-  const recent = entries
-    .sort(
-      (left, right) =>
-        Date.parse(right.shownAtIso) - Date.parse(left.shownAtIso),
-    )[0];
+  const recent = entries.sort(
+    (left, right) => Date.parse(right.shownAtIso) - Date.parse(left.shownAtIso),
+  )[0];
 
   if (recent) {
     const lastMs = Date.parse(recent.shownAtIso);
-    if (!Number.isNaN(lastMs) && nowMs - lastMs < RECALL_COOLDOWN_MS) {
+    if (!Number.isNaN(lastMs) && nowMs - lastMs < RECALL_MIN_INTERVAL_MS) {
       return false;
     }
   }
 
-  const sameEventThisWeek = entries.some((entry) => {
+  const sameEventRecently = entries.some((entry) => {
     if (entry.eventId !== pastEventId) {
       return false;
     }
     const ms = Date.parse(entry.shownAtIso);
-    return !Number.isNaN(ms) && nowMs - ms < 7 * 86_400_000;
+    return !Number.isNaN(ms) && nowMs - ms < RECALL_SAME_EVENT_COOLDOWN_MS;
   });
 
-  return !sameEventThisWeek;
+  return !sameEventRecently;
 }
 
 export function markRecallCandidateShown(

@@ -12,6 +12,10 @@ import { resolveGlobeMapIntent } from "@/lib/globe/intent-supply/resolve-globe-m
 import { detectPortalIntentFromText } from "@/lib/portal/detect-portal-intent-from-text";
 import { readPortalComposeRunState } from "@/lib/portal/portal-compose-run-store";
 import { planPersonalRecallAskIfEligible } from "@/lib/context-run/plan-personal-recall-ask";
+import {
+  compileGlobeIngress,
+  isGlobeIngressEligible,
+} from "@/lib/globe-ingress";
 
 function planPortalComposeIfEligible(
   bound: BoundSituation,
@@ -164,6 +168,21 @@ export function planContextRun(bound: BoundSituation): ContextRunPlan {
   const mentionContract = resolveMentionContractPlan(text);
   if (mentionContract) {
     return { ...mentionContract, ...base };
+  }
+
+  if (
+    ingress.surface === "composer" &&
+    ingress.layerMode === "personal" &&
+    isGlobeIngressEligible(text)
+  ) {
+    return {
+      kind: "globe_ingress",
+      globeIngress: compileGlobeIngress({
+        text,
+        existingContextId: ingress.contextEventId,
+      }),
+      ...base,
+    };
   }
 
   if (

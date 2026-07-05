@@ -2,9 +2,29 @@
 
 Rimvio is **not** a chatbot, calendar, messenger, note-taking app, or generic AI agent.
 
-**Rimvio is an Experience OS.**
+**Rimvio is an Experience OS** — a **Context Operating System**.
 
 Rimvio is a **synaptic context graph** — facts and resources (people, place, calendar, links, notifications) connect like neural edges. When context matches, **connections fire** and Rimvio **re-executes** the next action — not a passive dump of old photos.
+
+---
+
+## Article 0 — Context OS kernel law
+
+> **Reality is never modified without an explicit Commit.**  
+> **Intent never mutates Reality.**  
+> **Blueprint never executes.**  
+> **Execution never decides.**  
+> **Humans own the final authority.**
+
+These four lines plus human authority hold for travel, trade, medical, finance, smart home, and every future container.
+
+**Execution Space law:** Globe AI designs the **stage** (Spatial Execution Graph) before domain search. Geography stays **hypothesis** or **unresolved** until the user confirms — never AI-picked destination.
+
+**Mantras:** AI recommends · Humans decide · **AI prepares · Humans approve · Reality commits.**
+
+Full five-layer spec: **`docs/RIMVIO_CONTEXT_OS_ARCHITECTURE.md`** · wire **`lib/context-blueprint/`**
+
+---
 
 Rimvio wires scattered resources into **one operable situation**, then runs again via `@` contracts, Context Run, prep surface, and Task Graph.
 
@@ -161,6 +181,23 @@ Learn from actions (clicked, dismissed, completed, ignored, approved) — not pr
 
 Rimvio assists, recommends, explains, and ranks. **The user decides.** The system must never silently take meaningful actions.
 
+### 11. Action ontology, not analysis ontology
+
+Rimvio’s graph is **not** an analyst workbench (Palantir-class Objects · Links · Properties for investigation). It is a **dynamic agent structure**: when recall edges fire, Rimvio **re-executes** via `@` contracts, Hub pipelines, Field FSM, and Context Condition AI — then writes back through Commit.
+
+- **Static analysis graph** → human reads dashboard, acts outside the system.
+- **Rimvio action graph** → context match → delegate execution → progress → truth.
+
+Full contrast + code map: **`docs/RIMVIO_ONTOLOGY_LAYER.md`** § Thesis.
+
+### 12. Context OS five layers (locked)
+
+See **Article 0** above. Globe AI **Architect** → **Context Blueprint** → **Domain Executor** → **Context Condition AI** → **Commit**.
+
+**Owner Rule:** Only the owner layer may mutate its own objects. **Forbidden Dependencies** and **State machine** in **`docs/RIMVIO_CONTEXT_OS_ARCHITECTURE.md`**.
+
+Globe AI never executes domain logic. Blueprint never executes. Domain AI never recreates containers. Nothing irreversible without Commit.
+
 ---
 
 ## Architecture Law
@@ -227,6 +264,7 @@ The experience should feel like: *“The system already understands what I need 
 | §3 Surfaces | `lib/surface-engine/` + `useSurfaceEngine` → FEED/CHAT/CALENDAR; UI render-only (`components/surface/`) |
 | §4 Capabilities | `lib/capability-registry/` (WHAT) + `lib/execution/` (HOW) — provider URIs only in execution adapters |
 | §8 Execution | `lib/execution/` — queue, lifecycle, adapters; UI never executes providers directly |
-| §8 Execution | Dispatchers / deep links — no SSOT ownership |
+| §10 User agency | Recommend · rank · explain — user confirms meaningful actions |
+| §11 Action ontology | `lib/ontology/` + situation projection + `@` registry — not graph explorer |
 
 See also: `docs/RIMVIO_SYSTEM_AUDIT.md`, `docs/ORCHESTRATOR_OS_LAYERS.md`, `docs/RIMVIO_CAPITAL_OS.md`, `.cursor/rules/rimvio-jobs-layers.mdc`.

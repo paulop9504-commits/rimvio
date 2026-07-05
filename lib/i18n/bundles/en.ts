@@ -1063,6 +1063,12 @@ export const copyEn: Copy = {
       queueTitle: (title: string, count: number) =>
         count > 1 ? `${title} · +${count - 1}` : title,
     },
+    realitySurface: {
+      eyebrow: "Current flow",
+      phaseActive: (label: string) => `${label} · in progress`,
+      nextStep: "Next",
+      destinationConfirmed: (label: string) => `${label} · destination set`,
+    },
     composerHint: {
       saved: "Saved",
       voiceContinue: "Keep talking",
@@ -1202,6 +1208,25 @@ export const copyEn: Copy = {
     bridgeJourneyEmpty: "Chat and photos stack here in time order",
     bridgeJourneyChatOpen: "Continue in chat",
     bridgeJourneyMediaOpen: "View moment",
+    bridgePlanningCommitLine: (author: string, destination: string, path: string) =>
+      `${author} set ${destination} · ${path}`,
+    bridgePlanningProposalLine: (author: string, destination: string) =>
+      `${author} suggested ${destination}`,
+    bridgePlanningProposalAccept: "Go together",
+    bridgePlanningProposalReject: "Skip",
+    bridgePlanningProposalSubmitted: (destination: string) =>
+      `${destination} · sent to host`,
+    bridgePlanningProposalUpdated: (destination: string) =>
+      `${destination} · proposal updated`,
+    bridgePlanningProposalRejectedHost: "Skipped the proposal",
+    bridgePlanningProposalAcceptedMember: (destination: string) =>
+      `${destination} · agreed together`,
+    bridgePlanningProposalRejectedMember: (destination: string) =>
+      `${destination} proposal was skipped`,
+    bridgePlanningHostCommittedMember: (destination: string) =>
+      `${destination} · trip destination set together`,
+    bridgePlanningProposalQueueHint: (count: number) =>
+      `${count} people suggested destinations`,
     contextTalkEmpty: "Leave a note about this experience",
     contextTalkScrollHint: "Scroll — the map context follows",
     contextTalkMediaPin: "That place",
@@ -1350,6 +1375,16 @@ export const copyEn: Copy = {
     brainSurfaceConnectCta: "View connections",
     brainSurfaceConnectTitle: "Connected to this context",
     brainSurfaceStoryCloseAria: "Close",
+    brainSurfaceOntologyNodeDragHint: "Press and hold to drag",
+    threeFloors: {
+      steps: {
+        replay: "Trace",
+        context: "Context",
+        action: "Action",
+      },
+      surfaceGlobe: "Globe",
+      surfaceField: "Field",
+    },
     contextGuideRelatedTitle: "Related clips",
     contextGardenSummaryEyebrow: "Now",
     prepChecklistEyebrow: "Prep",
@@ -1573,6 +1608,30 @@ export const copyEn: Copy = {
     lodgingFocusSwipeHint: "Swipe for other stays",
     lodgingFocusBook: "Book",
     lodgingFocusDetails: "View details",
+    contextConditionPinPlaceholder: "Pin similar stays and food nearby",
+    contextConditionPinSubmit: "Pin",
+    contextConditionPinBusy: "Matching…",
+    contextConditionPinDone: "Pinned {n} places on the map",
+    contextConditionPinLodgingDone: "Pinned {n} stays on the map",
+    contextConditionPinEateryDone: "Pinned {n} eateries on the map",
+    contextConditionPinEmpty: "Could not find a fit right now",
+    contextConditionPinDismiss: "Remove all",
+    contextConditionPinBadge: "Fit",
+    contextConditionPanelEyebrow: "Context condition",
+    containerAiEyebrow: "Trip assistant",
+    containerAiPhaseBlocked: (phase: string) =>
+      `${phase} comes first. Set a destination before stay recommendations.`,
+    containerAiStayReady: "Time to pick a stay.",
+    contextConditionPanelHint: "Say similar stays, food, or nearby places — they pin on the map right away.",
+    contextConditionPanelCloseAria: "Close context condition panel",
+    contextConditionPanelDragLabel: "Move context condition panel",
+    contextConditionPanelRequiresContext: "Select a context on the globe first",
+    lodgingAgentHint: "Ask this stay guide for nearby cafés, food, and places.",
+    lodgingAgentPlaceholder: "Find a café nearby",
+    lodgingAgentSubmit: "Ask",
+    lodgingAgentBusy: "Searching…",
+    lodgingAgentBadge: "Guide",
+    lodgingAgentEmpty: "Could not find an answer right now",
     lodgingStayWindowTitle: "Stay window",
     contextMediaFocusCloseAria: "Close memory",
     contextMediaFocusFallbackTitle: "That place",

@@ -1,16 +1,16 @@
-/**
- * Rimvio runtime orchestration — platform bootstrap, realtime ticks, command ingress.
- */
 export {
-  bootstrapRimvioRuntime,
-  publishPlatformFrame,
-  dispatchCapability as platformDispatchCapability,
-} from "@/lib/platform/rimvio-platform";
+  composeRuntime,
+  composeRuntimeId,
+  RUNTIME_STATUSES,
+  type ComposeRuntimeInput,
+  type RimvioRuntime,
+  type RuntimeStatus,
+} from "@/lib/runtime/types";
+
+export type { ContainerRuntime, ContainerRuntimeStatus } from "@/lib/container-runtime/types";
 
 export {
-  processRealtimeTick,
-  buildRealtimeSurfaceFrame,
-  readRealtimeState,
-} from "@/lib/realtime";
-
-export { routeRimvioCommand } from "@/lib/command-router";
+  composeContainerRuntime,
+  composeContainerRuntimeId,
+  CONTAINER_RUNTIME_STATUSES,
+} from "@/lib/container-runtime/types";

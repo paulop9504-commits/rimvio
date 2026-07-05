@@ -7,7 +7,7 @@ import type { MediaGuideNode } from "@/lib/ontology/media-guide-types";
 import type { ProjectionNodePresentation } from "@/lib/situation-projection/projection-node-presentation";
 import type { ProjectionNode } from "@/lib/situation-projection/types";
 import type { MediaSpatialTraceTourStop } from "@/lib/situation-projection/build-media-spatial-trace-tour";
-import { GlobeBrainSurfaceYoutubeEmbed } from "@/components/globe/globe-brain-surface-youtube-embed";
+import { GlobeMapFocusMediaShell } from "@/components/globe/globe-map-focus-media-shell";
 import { extractYouTubeVideoId } from "@/lib/enrichers/youtube-url";
 import {
   dedupeFactorChips,
@@ -132,23 +132,6 @@ function pickGuideProvider(guide: MediaGuideNode | null | undefined): string | n
   );
 }
 
-function buildStableEmbedSrc(embedUrl: string | null | undefined): string | null {
-  const raw = embedUrl?.trim();
-  if (!raw) {
-    return null;
-  }
-  try {
-    const url = new URL(raw);
-    url.searchParams.set("autoplay", "1");
-    url.searchParams.set("mute", "0");
-    url.searchParams.set("playsinline", "1");
-    url.searchParams.set("rel", "0");
-    url.searchParams.set("enablejsapi", "1");
-    return url.toString();
-  } catch {
-    return raw;
-  }
-}
 
 function GlobeContextBrainTourStrip({
   stop,
@@ -216,23 +199,26 @@ export function GlobeContextBrainNodeCard({
   const relatedVideos = mediaGuide?.youtubeOfficial?.relatedSearchResults.slice(0, 2) ?? [];
   const isMediaInferredGhost =
     node.kind === "ghost" && node.candidateOrigin === "media_inferred";
+  const ghostNode = node.kind === "ghost" ? node : null;
+  const candidateBadgeKo = ghostNode?.candidateBadgeKo ?? null;
+  const sourceGuideTitle = ghostNode?.sourceGuideTitle ?? null;
   const { headline, guideTitleLine } = pickCardHeadline({
     nodeLabel: node.label,
-    guideTitle: mediaGuide?.title ?? node.sourceGuideTitle ?? null,
+    guideTitle: mediaGuide?.title ?? sourceGuideTitle,
     isMediaInferredGhost,
   });
   const primaryReason = pickPrimaryReason({
     headline,
-    guideTitle: mediaGuide?.title ?? node.sourceGuideTitle ?? null,
+    guideTitle: mediaGuide?.title ?? sourceGuideTitle,
     whyRelevantKo: mediaGuide?.whyRelevantKo ?? null,
     relationReasonKo: node.relationReasonKo ?? null,
-    playbookReasonKo: node.playbookReasonKo ?? null,
-    snippetKo: node.sourceGuideSnippetKo ?? null,
+    playbookReasonKo: node.kind === "ghost" ? node.playbookReasonKo ?? null : null,
+    snippetKo: node.kind === "ghost" ? node.sourceGuideSnippetKo ?? null : null,
     memoBody,
   });
   const factorChips = dedupeFactorChips(
     factors,
-    [headline, guideTitleLine, primaryReason, contextTitle, presentation.categoryLabelKo],
+    [headline, guideTitleLine ?? "", primaryReason ?? "", contextTitle, presentation.categoryLabelKo],
     3,
   );
   const momentChips =
@@ -244,14 +230,14 @@ export function GlobeContextBrainNodeCard({
           !factorChips.some((factor) => factor.includes(chip) || chip.includes(factor)) &&
           !primaryReason?.includes(chip),
       ) ?? [];
-  const embedSrc = buildStableEmbedSrc(mediaGuide?.embedUrl);
   const embedKey =
     (mediaGuide?.embedUrl ? extractYouTubeVideoId(mediaGuide.embedUrl) : null) ??
     mediaGuide?.guideNodeId ??
     node.id;
   const docked = variant === "dock";
   const embedded = variant === "embedded";
-  const videoInMapStage = (docked || embedded) && videoDetached && Boolean(embedSrc);
+  const videoInMapStage =
+    (docked || embedded) && videoDetached && Boolean(mediaGuide?.embedUrl?.trim());
   const showHero =
     Boolean(mediaGuide?.embedUrl || guideThumbnail) && !videoInMapStage;
   const dockMediaCompact = videoInMapStage || embedded;
@@ -323,33 +309,15 @@ export function GlobeContextBrainNodeCard({
 
       {showHero ? (
         <div className="px-3 pt-3">
-          {embedSrc ? (
-            <div className="overflow-hidden rounded-[0.85rem] bg-slate-950 ring-1 ring-slate-900/10">
-              <GlobeBrainSurfaceYoutubeEmbed
-                videoKey={embedKey}
-                embedSrc={embedSrc}
-                title={mediaGuide?.title ?? "영상"}
-                className="aspect-video max-h-[10.25rem] w-full border-0"
-              />
-            </div>
-          ) : guideThumbnail ? (
-            <div className="relative overflow-hidden rounded-[0.85rem] bg-slate-100 ring-1 ring-slate-200/80">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={guideThumbnail}
-                alt=""
-                className="aspect-video max-h-[10.25rem] w-full object-cover"
-                loading="lazy"
-              />
-              {mediaGuide?.sourceKind === "youtube" ? (
-                <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/12 text-white">
-                  <span className="flex size-10 items-center justify-center rounded-full bg-black/40 backdrop-blur-md">
-                    <Play className="size-4 fill-white/80" aria-hidden />
-                  </span>
-                </span>
-              ) : null}
-            </div>
-          ) : null}
+          <GlobeMapFocusMediaShell
+            title={headline}
+            caption={guideTitleLine}
+            thumbnailUrl={guideThumbnail}
+            youtubeEmbedUrl={mediaGuide?.embedUrl ?? null}
+            youtubeVideoKey={embedKey}
+            showMetadataOverlay={false}
+            className="w-full"
+          />
         </div>
       ) : (
         <div className="flex items-center gap-2 px-3 pt-3">
@@ -370,16 +338,16 @@ export function GlobeContextBrainNodeCard({
       <div className={cn("space-y-3 px-3 pb-3", dockMediaCompact ? "pt-2" : "pt-3")}>
         {!dockMediaCompact &&
         (shouldShowContextBadge(contextTitle, presentation.categoryLabelKo) ||
-          shouldShowCandidateBadge(node.candidateBadgeKo, presentation.categoryLabelKo)) ? (
+          shouldShowCandidateBadge(candidateBadgeKo, presentation.categoryLabelKo)) ? (
           <div className="flex flex-wrap items-center gap-1.5">
             {shouldShowContextBadge(contextTitle, presentation.categoryLabelKo) ? (
               <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200/80">
                 {contextTitle}
               </span>
             ) : null}
-            {shouldShowCandidateBadge(node.candidateBadgeKo, presentation.categoryLabelKo) ? (
+            {shouldShowCandidateBadge(candidateBadgeKo, presentation.categoryLabelKo) ? (
               <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-600 ring-1 ring-slate-200/80">
-                {node.candidateBadgeKo}
+                {candidateBadgeKo}
               </span>
             ) : null}
           </div>

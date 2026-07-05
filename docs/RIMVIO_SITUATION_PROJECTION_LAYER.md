@@ -1,7 +1,8 @@
 # Rimvio Situation Projection Layer
 
 > **Status:** locked 2026-07  
-> **Stack position:** `RECALL → **SITUATION PROJECTION** → ACTION`  
+> **Stack position:** `RECALL → **REALITY SURFACE** → ACTION` (Situation Projection is one engine inside Reality Surface)  
+> **UX SSOT:** `docs/RIMVIO_REALITY_SURFACE.md`  
 > **Constitution:** [RIMVIO_CONSTITUTION.md](./RIMVIO_CONSTITUTION.md) · **Experience stack:** [RIMVIO_EXPERIENCE_LAYERS.md](./RIMVIO_EXPERIENCE_LAYERS.md)  
 > **Code SSOT:** `lib/situation-projection/`
 

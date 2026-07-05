@@ -14,6 +14,13 @@ import {
   applyPinnedContextItemMetadata,
   readPinnedContextItem,
 } from "@/lib/globe/context-pinned-item";
+import {
+  applyBridgePlanningTruthToEvent,
+  readBridgePlanningTruth,
+  readBridgePlanningProposalQueue,
+  clearBridgePlanningProposalMetadata,
+  setBridgePlanningProposalQueueMetadata,
+} from "@/lib/bridge-planning";
 import { upsertMirrorProvenanceMetadata } from "@/lib/globe/mirror-provenance";
 import {
   fetchExperienceBridgeState,
@@ -141,7 +148,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 }
 
 type BridgePostBody = {
-  action?: "bootstrap" | "invite" | "pin_item";
+  action?: "bootstrap" | "invite" | "pin_item" | "planning_truth" | "planning_proposal";
   primaryEvent?: EventCandidate;
   peerThreadId?: string;
   hostDisplayName?: string;
@@ -268,6 +275,181 @@ export async function POST(request: NextRequest, context: RouteContext) {
         updatedAt: nowIso,
       };
       await updateBridgeEventSnapshot(resolveServiceRoleOrUserClient(supabase), nextEvent);
+      const refreshed = await fetchExperienceBridgeState(supabase, key);
+      if (!refreshed) {
+        return NextResponse.json({ error: "Bridge refresh failed." }, { status: 500 });
+      }
+      return NextResponse.json({ state: toBridgeStateWire(refreshed) });
+    }
+
+    if (action === "planning_truth") {
+      if (!isEventCandidate(body.primaryEvent) || body.primaryEvent.id !== key) {
+        return NextResponse.json(
+          { error: "primaryEvent with matching id required." },
+          { status: 400 },
+        );
+      }
+
+      const state = await fetchExperienceBridgeState(supabase, key);
+      if (!state) {
+        return NextResponse.json({ error: "Bridge not found." }, { status: 404 });
+      }
+      if (state.bridge.hostUserId !== userId) {
+        return NextResponse.json(
+          { error: "Only host can commit planning truth." },
+          { status: 403 },
+        );
+      }
+
+      const planningTruth = readBridgePlanningTruth(body.primaryEvent);
+      if (!planningTruth) {
+        return NextResponse.json(
+          { error: "bridgePlanningTruthV1 required on primaryEvent." },
+          { status: 400 },
+        );
+      }
+
+      const nowIso = new Date().toISOString();
+      const actor =
+        state.participants.find((row) => row.userId === userId) ??
+        state.participants.find((row) => row.role === "host") ??
+        null;
+      const nextEvent = applyBridgePlanningTruthToEvent({
+        event: body.primaryEvent,
+        truth: planningTruth,
+      });
+      const metadata = upsertMirrorProvenanceMetadata({
+        metadata: clearBridgePlanningProposalMetadata(
+          (nextEvent.metadata ?? {}) as Record<string, unknown>,
+        ),
+        patch: {
+          sync: {
+            state: "synced",
+            lastSyncedAtIso: nowIso,
+          },
+        },
+        audit: {
+          action: "local_context_edited",
+          actor: {
+            userId,
+            displayName: actor?.displayName ?? null,
+            role: actor?.role ?? null,
+          },
+          subject: {
+            eventId: key,
+            nodeId: key,
+          },
+          refs: {
+            bridgeId: key,
+            ...(state.bridge.peerThreadId?.trim()
+              ? { peerThreadId: state.bridge.peerThreadId.trim() }
+              : {}),
+          },
+          diff: [
+            `planning:destination:${planningTruth.destination.label}`,
+            `planning:revision:${planningTruth.revision}`,
+          ],
+        },
+        nowIso,
+      });
+
+      const snapshotEvent: EventCandidate = {
+        ...nextEvent,
+        metadata,
+        updatedAt: nowIso,
+      };
+      await updateBridgeEventSnapshot(
+        resolveServiceRoleOrUserClient(supabase),
+        snapshotEvent,
+      );
+      const refreshed = await fetchExperienceBridgeState(supabase, key);
+      if (!refreshed) {
+        return NextResponse.json({ error: "Bridge refresh failed." }, { status: 500 });
+      }
+      return NextResponse.json({ state: toBridgeStateWire(refreshed) });
+    }
+
+    if (action === "planning_proposal") {
+      if (!isEventCandidate(body.primaryEvent) || body.primaryEvent.id !== key) {
+        return NextResponse.json(
+          { error: "primaryEvent with matching id required." },
+          { status: 400 },
+        );
+      }
+
+      const state = await fetchExperienceBridgeState(supabase, key);
+      if (!state) {
+        return NextResponse.json({ error: "Bridge not found." }, { status: 404 });
+      }
+      if (
+        !canReadBridgeExperience({
+          viewerUserId: userId,
+          participants: state.participants,
+          hostUserId: state.bridge.hostUserId,
+        })
+      ) {
+        return NextResponse.json({ error: "Bridge access denied." }, { status: 403 });
+      }
+
+      const queue = readBridgePlanningProposalQueue(body.primaryEvent);
+      const isHost = state.bridge.hostUserId === userId;
+
+      if (isHost) {
+        const incomingQueue = readBridgePlanningProposalQueue(body.primaryEvent);
+        if (incomingQueue.some((row) => row.proposedByUserId === userId)) {
+          return NextResponse.json(
+            { error: "Host should commit planning truth, not propose." },
+            { status: 403 },
+          );
+        }
+
+        const nowIso = new Date().toISOString();
+        const snapshotEvent: EventCandidate = {
+          ...state.bridge.eventSnapshot,
+          metadata: setBridgePlanningProposalQueueMetadata(
+            {
+              ...(state.bridge.eventSnapshot.metadata ?? {}) as Record<string, unknown>,
+              ...(body.primaryEvent.metadata ?? {}) as Record<string, unknown>,
+            },
+            incomingQueue,
+          ),
+          updatedAt: nowIso,
+        };
+        await updateBridgeEventSnapshot(
+          resolveServiceRoleOrUserClient(supabase),
+          snapshotEvent,
+        );
+        const refreshed = await fetchExperienceBridgeState(supabase, key);
+        if (!refreshed) {
+          return NextResponse.json({ error: "Bridge refresh failed." }, { status: 500 });
+        }
+        return NextResponse.json({ state: toBridgeStateWire(refreshed) });
+      }
+
+      const memberProposal = queue.find((row) => row.proposedByUserId === userId);
+      if (!memberProposal) {
+        return NextResponse.json(
+          { error: "bridgePlanningProposalQueueV1 required on primaryEvent." },
+          { status: 400 },
+        );
+      }
+
+      const nowIso = new Date().toISOString();
+      const snapshotEvent: EventCandidate = {
+        ...state.bridge.eventSnapshot,
+        metadata: setBridgePlanningProposalQueueMetadata(
+          {
+            ...(state.bridge.eventSnapshot.metadata ?? {}) as Record<string, unknown>,
+            ...(body.primaryEvent.metadata ?? {}) as Record<string, unknown>,
+          },
+          queue,
+        ),
+        updatedAt: nowIso,
+      };
+      await updateBridgeEventSnapshot(
+        resolveServiceRoleOrUserClient(supabase),
+        snapshotEvent,
+      );
       const refreshed = await fetchExperienceBridgeState(supabase, key);
       if (!refreshed) {
         return NextResponse.json({ error: "Bridge refresh failed." }, { status: 500 });

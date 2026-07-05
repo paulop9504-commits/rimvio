@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageCircle, Sparkles } from "lucide-react";
+import { MapPin, MessageCircle, Sparkles } from "lucide-react";
 import type { ExperienceBridgeTimelineItem } from "@/lib/experience-bridge/experience-bridge-types";
 import type { ExperienceWindow } from "@/lib/experience-window/experience-window-types";
 import {
@@ -20,6 +20,9 @@ export type ExperienceBridgeJourneyTimelineProps = {
   experienceWindow?: ExperienceWindow | null;
   onOpenTalk?: () => void;
   onOpenMedia?: () => void;
+  onAcceptPlanningProposal?: () => void;
+  onRejectPlanningProposal?: () => void;
+  showPlanningProposalAccept?: boolean;
   className?: string;
 };
 
@@ -53,10 +56,16 @@ function TimelineRow({
   item,
   onOpenTalk,
   onOpenMedia,
+  onAcceptPlanningProposal,
+  onRejectPlanningProposal,
+  showPlanningProposalAccept,
 }: {
   item: ExperienceBridgeTimelineItem;
   onOpenTalk?: () => void;
   onOpenMedia?: () => void;
+  onAcceptPlanningProposal?: () => void;
+  onRejectPlanningProposal?: () => void;
+  showPlanningProposalAccept?: boolean;
 }) {
   const occurred = formatTimelineOccurredLabel(item.capturedAtIso);
 
@@ -78,6 +87,54 @@ function TimelineRow({
             <p className="text-[11px] text-muted-foreground">{occurred}</p>
           ) : null}
         </div>
+      </div>
+    );
+  }
+
+  if (item.kind === "planning_commit" || item.kind === "planning_proposal") {
+    const isProposal = item.kind === "planning_proposal";
+    return (
+      <div
+        className={cn(
+          "rounded-xl border px-3 py-2.5",
+          isProposal
+            ? "border-primary/20 bg-primary/5"
+            : "border-border/60 bg-muted/30",
+          RIMVIO_RADIUS.lg,
+        )}
+        data-bridge-journey-planning={item.kind}
+      >
+        <div className="flex items-start gap-2">
+          <MapPin className="mt-0.5 size-4 shrink-0 text-primary/80" aria-hidden />
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-medium leading-snug text-foreground">
+              {item.body?.trim() || item.authorDisplayName}
+            </p>
+            {occurred ? (
+              <p className="mt-0.5 text-[11px] text-muted-foreground">{occurred}</p>
+            ) : null}
+          </div>
+        </div>
+        {isProposal && showPlanningProposalAccept && item.planningProposalIsHead && onAcceptPlanningProposal ? (
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              onClick={onAcceptPlanningProposal}
+              className="min-w-0 flex-1 rounded-full bg-primary px-3 py-1.5 text-[12px] font-semibold text-primary-foreground active:opacity-90"
+            >
+              {copy.globe.bridgePlanningProposalAccept}
+            </button>
+            {onRejectPlanningProposal ? (
+              <button
+                type="button"
+                onClick={onRejectPlanningProposal}
+                className="shrink-0 rounded-full border border-border/70 bg-background px-3 py-1.5 text-[12px] font-semibold text-muted-foreground active:bg-muted/60"
+              >
+                {copy.globe.bridgePlanningProposalReject}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -155,6 +212,9 @@ export function ExperienceBridgeJourneyTimeline({
   experienceWindow,
   onOpenTalk,
   onOpenMedia,
+  onAcceptPlanningProposal,
+  onRejectPlanningProposal,
+  showPlanningProposalAccept = false,
   className,
 }: ExperienceBridgeJourneyTimelineProps) {
   const groups = groupBridgeTimelineByPhase(timeline);
@@ -209,6 +269,9 @@ export function ExperienceBridgeJourneyTimeline({
                   item={item}
                   onOpenTalk={onOpenTalk}
                   onOpenMedia={onOpenMedia}
+                  onAcceptPlanningProposal={onAcceptPlanningProposal}
+                  onRejectPlanningProposal={onRejectPlanningProposal}
+                  showPlanningProposalAccept={showPlanningProposalAccept}
                 />
               ))}
             </div>

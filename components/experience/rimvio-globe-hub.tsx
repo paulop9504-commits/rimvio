@@ -59,6 +59,18 @@ import {
   projectPinClustersFromGraph,
 } from "@/lib/globe/project-pin-clusters";
 import { projectGlobeTripArcs } from "@/lib/globe/project-trip-leg-arcs";
+import type { GlobeTripArc } from "@/lib/globe/project-trip-leg-arcs";
+import {
+  decorateEateryMarkersWithContextCondition,
+  decorateLodgingMarkersWithContextCondition,
+} from "@/lib/globe/context-condition-ai/decorate-context-condition-globe-markers";
+import {
+  mergeContextConditionEateryMarkers,
+  mergeContextConditionLodgingMarkers,
+  projectContextConditionEateryGlobeMarkers,
+  projectContextConditionLodgingGlobeMarkers,
+} from "@/lib/globe/context-condition-ai/project-context-condition-globe-markers";
+import { readContextConditionPinBatches } from "@/lib/globe/context-condition-ai/context-condition-batch-metadata";
 import { applyFocusedHubGlobePins } from "@/lib/globe/context-hub/apply-focused-hub-globe-visuals";
 import {
   dispatchGlobeLodgingFocus,
@@ -92,6 +104,10 @@ import { dispatchOpenCaptureSheet } from "@/lib/nav/open-capture-sheet-bridge";
 import { RimvioStarterExampleChips } from "@/components/rimvio-starter-example-chips";
 import { cn } from "@/lib/utils";
 import { projectGhostEateryGlobeMarkers } from "@/lib/situation-projection/project-ghost-eatery-globe-markers";
+import {
+  mergeLodgingAgentGlobeMarkers,
+  projectLodgingAgentGlobeMarkers,
+} from "@/lib/globe/lodging-agent/project-lodging-agent-globe-markers";
 import {
   readProjectionManifestForAnchor,
   subscribeProjectionStore,
@@ -175,6 +191,8 @@ export type RimvioGlobeHubProps = {
   renderSuspended?: boolean;
   /** Selected context — draw hub connector arc on the globe. */
   focusedContextEventId?: string | null;
+  /** Reality Surface bridge path arcs — projection only. */
+  realityBridgeArcs?: readonly GlobeTripArc[];
   /** Hub map anchor press — opens Hub detail, not pin info sheet. */
   onContextHubAnchorPress?: (contextEventId: string) => void;
   /** Pinch/drag coach on the globe canvas — off when capture dock is shown. */
@@ -211,6 +229,7 @@ type RimvioGlobeHubBodyProps = {
   onDetailLevelChange?: (level: GlobeDetailLevel) => void;
   renderSuspended?: boolean;
   focusedContextEventId?: string | null;
+  realityBridgeArcs?: readonly GlobeTripArc[];
   onContextHubAnchorPress?: (contextEventId: string) => void;
   showInteractionHint?: boolean;
   layerMode?: GlobeLayerMode;
@@ -238,6 +257,7 @@ const RimvioGlobeHubBody = memo(
       onDetailLevelChange,
       renderSuspended = false,
       focusedContextEventId = null,
+      realityBridgeArcs = [],
       onContextHubAnchorPress,
       showInteractionHint = true,
       layerMode = "personal",
@@ -388,15 +408,19 @@ const RimvioGlobeHubBody = memo(
       focusedContextEventId,
     ]);
     const tripArcs = useMemo(
-      () =>
-        projectGlobeTripArcs({
+      () => {
+        const eventArcs = projectGlobeTripArcs({
           eventsById,
           clusters,
           focusedEventId: focusedContextEventId,
-          // Arc only while a hubbed context is selected — never ambient “all trips”.
           showBackgroundTripArcs: false,
-        }),
-      [eventsById, clusters, focusedContextEventId],
+        });
+        if (realityBridgeArcs.length > 0) {
+          return [...realityBridgeArcs, ...eventArcs];
+        }
+        return eventArcs;
+      },
+      [eventsById, clusters, focusedContextEventId, realityBridgeArcs],
     );
     const lodgingGlobeMarkers = useMemo(() => {
       void bridgeRevision;
@@ -405,70 +429,90 @@ const RimvioGlobeHubBody = memo(
         return [];
       }
       const event = eventsById.get(eventId);
-      if (!event || !isLodgingHubEnabled(event)) {
+      if (!event) {
         return [];
       }
-      const panel = listContextHubServicesForEvent(event);
-      if (!panel) {
+      const cluster = clusters.find((row) => row.eventId === eventId);
+      const meta = event.metadata as Record<string, unknown> | undefined;
+      const hubLat =
+        cluster?.lat ??
+        (typeof meta?.globePlaceLat === "number" ? meta.globePlaceLat : null) ??
+        liveLocation?.lat ??
+        null;
+      const hubLng =
+        cluster?.lng ??
+        (typeof meta?.globePlaceLng === "number" ? meta.globePlaceLng : null) ??
+        liveLocation?.lng ??
+        null;
+      const contextConditionMarkers = projectContextConditionLodgingGlobeMarkers({
+        event,
+      });
+      const hasContextConditionLodging =
+        contextConditionMarkers.length > 0 ||
+        readContextConditionPinBatches(event).some(
+          (batch) => batch.lodgingPlaceIds.length > 0,
+        );
+
+      if (!isLodgingHubEnabled(event) && !hasContextConditionLodging) {
         return [];
       }
-      const ranked = rankContextResources({
-        event,
-        services: panel.services,
-        lat: liveLocation?.lat ?? null,
-        lng: liveLocation?.lng ?? null,
-      });
-      const raw = projectLodgingGlobeMarkers({
-        event,
-        ranked,
-        activeResourceId: activeLodgingResourceId,
-        visibleResourceIds:
-          lodgingDiscoveryReveal.visibleResourceIds.size > 0
-            ? lodgingDiscoveryReveal.visibleResourceIds
-            : null,
-        popInDelays:
-          lodgingDiscoveryReveal.popInDelays.size > 0
-            ? lodgingDiscoveryReveal.popInDelays
-            : null,
-        manifest: readProjectionManifestForAnchor(eventId),
-      });
-      if (!mapMediaFocusOpen) {
-        const decorated = raw.map((marker) => {
-          const card = lodgingDiscoveryCards?.[marker.resourceId];
-          if (!card) {
-            return marker;
-          }
-          const priceLabel =
-            card.priceKrw != null
-              ? `₩${Math.round(card.priceKrw).toLocaleString("ko-KR")}`
-              : null;
-          return {
-            ...marker,
-            discoveryShortLabel: card.shortLabel,
-            discoveryPriceLabel: priceLabel,
-            discoveryAccent: card.accent,
-          };
-        });
-        const cluster = clusters.find((row) => row.eventId === eventId);
-        const meta = event.metadata as Record<string, unknown> | undefined;
-        const hubLat =
-          cluster?.lat ??
-          (typeof meta?.globePlaceLat === "number" ? meta.globePlaceLat : null) ??
-          liveLocation?.lat ??
-          null;
-        const hubLng =
-          cluster?.lng ??
-          (typeof meta?.globePlaceLng === "number" ? meta.globePlaceLng : null) ??
-          liveLocation?.lng ??
-          null;
-        return resolveContextResourceMapMarkers({
-          markers: decorated,
-          hubLat,
-          hubLng,
-          stagedDiscoveryCount: lodgingDiscoveryReveal.visibleResourceIds.size,
-        });
+      if (mapMediaFocusOpen) {
+        return [];
       }
-      return [];
+
+      let hubMarkers: ReturnType<typeof projectLodgingGlobeMarkers> = [];
+      if (isLodgingHubEnabled(event)) {
+        const panel = listContextHubServicesForEvent(event);
+        if (panel) {
+          const ranked = rankContextResources({
+            event,
+            services: panel.services,
+            lat: liveLocation?.lat ?? null,
+            lng: liveLocation?.lng ?? null,
+          });
+          const raw = projectLodgingGlobeMarkers({
+            event,
+            ranked,
+            activeResourceId: activeLodgingResourceId,
+            visibleResourceIds:
+              lodgingDiscoveryReveal.visibleResourceIds.size > 0
+                ? lodgingDiscoveryReveal.visibleResourceIds
+                : null,
+            popInDelays:
+              lodgingDiscoveryReveal.popInDelays.size > 0
+                ? lodgingDiscoveryReveal.popInDelays
+                : null,
+            manifest: readProjectionManifestForAnchor(eventId),
+          });
+          hubMarkers = raw.map((marker) => {
+            const card = lodgingDiscoveryCards?.[marker.resourceId];
+            if (!card) {
+              return marker;
+            }
+            const priceLabel =
+              card.priceKrw != null
+                ? `₩${Math.round(card.priceKrw).toLocaleString("ko-KR")}`
+                : null;
+            return {
+              ...marker,
+              discoveryShortLabel: card.shortLabel,
+              discoveryPriceLabel: priceLabel,
+              discoveryAccent: card.accent,
+            };
+          });
+        }
+      }
+
+      const withContextCondition = decorateLodgingMarkersWithContextCondition(
+        mergeContextConditionLodgingMarkers(hubMarkers, contextConditionMarkers),
+        event,
+      );
+      return resolveContextResourceMapMarkers({
+        markers: withContextCondition,
+        hubLat,
+        hubLng,
+        stagedDiscoveryCount: lodgingDiscoveryReveal.visibleResourceIds.size,
+      });
     }, [
       activeLodgingResourceId,
       bridgeRevision,
@@ -500,12 +544,25 @@ const RimvioGlobeHubBody = memo(
         manifest: readProjectionManifestForAnchor(eventId),
         activeResourceId: effectiveActiveEateryResourceId,
       });
+      const lodgingAgentMarkers = projectLodgingAgentGlobeMarkers({
+        event,
+        manifest: readProjectionManifestForAnchor(eventId),
+        activeResourceId: effectiveActiveEateryResourceId,
+      });
       if (!isEateryHubEnabled(event)) {
-        return mapMediaFocusOpen ? [] : projectionGhostMarkers;
+        const ghosts = mergeLodgingAgentGlobeMarkers(
+          projectionGhostMarkers,
+          lodgingAgentMarkers,
+        );
+        return mapMediaFocusOpen ? [] : ghosts;
       }
       const panel = listContextHubServicesForEvent(event);
       if (!panel) {
-        return mapMediaFocusOpen ? [] : projectionGhostMarkers;
+        const ghosts = mergeLodgingAgentGlobeMarkers(
+          projectionGhostMarkers,
+          lodgingAgentMarkers,
+        );
+        return mapMediaFocusOpen ? [] : ghosts;
       }
       const ranked = rankContextResources({
         event,
@@ -528,10 +585,15 @@ const RimvioGlobeHubBody = memo(
         manifest: readProjectionManifestForAnchor(eventId),
       });
       const seenResourceIds = new Set(raw.map((marker) => marker.resourceId));
-      const merged = [
-        ...raw,
-        ...projectionGhostMarkers.filter((marker) => !seenResourceIds.has(marker.resourceId)),
-      ];
+      const merged = mergeLodgingAgentGlobeMarkers(
+        [
+          ...raw,
+          ...projectionGhostMarkers.filter(
+            (marker) => !seenResourceIds.has(marker.resourceId),
+          ),
+        ],
+        lodgingAgentMarkers,
+      );
       if (!mapMediaFocusOpen) {
         const decorated = merged.map((marker) => {
           const card = eateryDiscoveryCards?.[marker.resourceId];
@@ -557,8 +619,12 @@ const RimvioGlobeHubBody = memo(
           (typeof meta?.globePlaceLng === "number" ? meta.globePlaceLng : null) ??
           liveLocation?.lng ??
           null;
+        const withContextCondition = decorateEateryMarkersWithContextCondition(
+          decorated,
+          event,
+        );
         return resolveContextResourceMapMarkers({
-          markers: decorated,
+          markers: withContextCondition,
           hubLat,
           hubLng,
           stagedDiscoveryCount: eateryDiscoveryReveal.visibleResourceIds.size,
@@ -855,6 +921,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
   eateryDiscoveryCards = null,
   brainSurfaceMarkers = [],
   onBrainSurfaceMarkerPress,
+  realityBridgeArcs = [],
 }: RimvioGlobeHubProps) {
   const { ready, eventsById, personalPinRevision } = useGlobeEventSnapshot();
   const liveLocation = useLiveLocationSnapshot();
@@ -1014,6 +1081,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
       )}
       renderSuspended={renderSuspended}
       focusedContextEventId={focusedContextEventId}
+      realityBridgeArcs={realityBridgeArcs}
       onContextHubAnchorPress={onContextHubAnchorPress}
       showInteractionHint={showInteractionHint}
       layerMode={layerMode}

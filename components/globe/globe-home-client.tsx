@@ -14,12 +14,10 @@ import { GlobeContextBrainMapOverlay } from "@/components/globe/globe-context-br
 import { GlobeContextBrainNodeCard } from "@/components/globe/globe-context-brain-node-card";
 import { GlobeBrainSurfaceExploreRail } from "@/components/globe/globe-brain-surface-explore-rail";
 import { GlobeBrainSurfaceOntologyPeek } from "@/components/globe/globe-brain-surface-ontology-peek";
-import {
-  buildBrainSurfaceEmbedSrc,
-  GlobeBrainSurfaceVideoChip,
-} from "@/components/globe/globe-brain-surface-video-chip";
+import { GlobeBrainSurfaceVideoChip } from "@/components/globe/globe-brain-surface-video-chip";
 import { GlobeBrainSurfaceFloatingFrame } from "@/components/globe/globe-brain-surface-floating-frame";
 import { GlobeSpatialTraceTourChip } from "@/components/globe/globe-spatial-trace-tour-chip";
+import { GlobeContextConditionPromptFrame } from "@/components/globe/globe-context-condition-prompt-frame";
 import { GlobeLodgingFocusStage } from "@/components/globe/globe-lodging-focus-stage";
 import { GlobeLodgingDiscoveryStage } from "@/components/globe/globe-lodging-discovery-stage";
 import { GlobeEateryDiscoveryStage } from "@/components/globe/globe-eatery-discovery-stage";
@@ -33,10 +31,26 @@ import { useContextMediaGuides } from "@/hooks/use-context-media-guides";
 import { useGlobeContextBrainActions } from "@/hooks/use-globe-context-brain-actions";
 import { useWorkQueue } from "@/hooks/use-work-queue";
 import { usePriorityStrip } from "@/hooks/use-priority-strip";
+import { useRealitySurfaceProjection } from "@/hooks/use-reality-surface-projection";
+import { projectBridgeMapArcs } from "@/lib/reality-surface";
+import { resolveTripContextAnchor } from "@/lib/experience-run/resolve-trip-context-anchor";
+import {
+  canCommitBridgePlanningTruth,
+  canProposeBridgePlanningTruth,
+  commitBridgePlanningTruth,
+  composeRealitySurfaceFromBridgeTruth,
+  proposeBridgePlanningTruth,
+  readBridgePlanningProposalForUser,
+  readBridgePlanningTruth,
+  seedBridgePlanningTruthFromIngress,
+} from "@/lib/bridge-planning";
+import type { OperatorChoiceChip } from "@/components/globe/globe-operator-choice-chips";
+import type { RealitySurfaceSession } from "@/lib/reality-surface";
 import { GlobeChatScreen } from "@/components/globe/chat/globe-chat-screen";
 import { PersonalGlobeSheet } from "@/components/globe/personal-globe-sheet";
 import { GlobeCaptureDock } from "@/components/globe/globe-capture-dock";
 import { GlobePriorityStrip } from "@/components/globe/globe-priority-strip";
+import { GlobeRealitySurfaceStrip } from "@/components/globe/globe-reality-surface-strip";
 import { GlobeTicketQrViewer } from "@/components/globe/globe-ticket-qr-viewer";
 import { GlobeWorkQueueSheet } from "@/components/globe/globe-work-queue-sheet";
 import type { PriorityStripPayload } from "@/lib/globe/priority-strip";
@@ -103,6 +117,7 @@ import { useTrendBridge } from "@/hooks/use-trend-bridge";
 import { useTrendBridgeRollup } from "@/hooks/use-trend-bridge-rollup";
 import { useGlobeContextPlaceAlignment } from "@/hooks/use-globe-context-place-alignment";
 import { useBridgeMediaSync } from "@/hooks/use-bridge-media-sync";
+import { useBridgePlanningSyncFeedback } from "@/hooks/use-bridge-planning-sync-feedback";
 import { useAuth } from "@/hooks/use-auth";
 import { isBridgeLinkedEventId } from "@/lib/experience-bridge/stamp-bridge-event-metadata";
 import { focusGlobeContextOnMap } from "@/lib/globe/focus-globe-context-on-map";
@@ -112,12 +127,17 @@ import {
 } from "@/lib/globe/globe-location-prompt-budget";
 import { runSilentPassiveLocationResolves } from "@/lib/globe/passive-context/run-silent-passive-location-resolves";
 import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
+import { commitBrainSurfaceMemoPin } from "@/lib/globe/commit-brain-surface-memo-pin";
 import { attachPoolMediaBatch } from "@/lib/media-pool/attach-pool-media-to-event";
 import {
   revertGlobeContextPinToCardPlace,
   resolveGlobeContextCardPinCluster,
 } from "@/lib/globe/globe-context-card-coords";
-import { commitBrainSurfaceMemoPin } from "@/lib/globe/commit-brain-surface-memo-pin";
+import {
+  closeGlobeContextConditionPanel,
+  publishGlobeTouchedContext,
+  subscribeGlobeContextConditionPanel,
+} from "@/lib/globe/context-condition-ai/globe-context-condition-panel-bridge";
 import type { GlobeContextTimeFilter } from "@/lib/globe/globe-context-time-filter";
 import type { GlobeDetailLevel } from "@/lib/globe/globe-zoom-levels";
 import {
@@ -149,6 +169,13 @@ import {
   resolveInitialContextMapTapPhase,
   type ContextMapTapPhase,
 } from "@/lib/globe/context-map-tap-phase";
+import {
+  resolveGlobeThreeFloorsStage,
+  resolveRimvioUxSurfaceMode,
+  shouldSuppressGlobePriorityChrome,
+} from "@/lib/globe/resolve-globe-three-floors-stage";
+import { resolveBrainSurfaceClosureLine } from "@/lib/globe/resolve-brain-surface-closure-line";
+import { GlobeThreeFloorsStrip } from "@/components/globe/globe-three-floors-strip";
 import type { PinMediaContextPage } from "@/components/globe/pin-open-media-context-pager";
 import {
   EVENT_CANDIDATES_UPDATED,
@@ -463,6 +490,7 @@ function GlobeHomeBody() {
   const [mediaStoreRevision, setMediaStoreRevision] = useState(0);
   const [projectionRevision, setProjectionRevision] = useState(0);
   const [hubDetailOpen, setHubDetailOpen] = useState(false);
+  const [contextConditionPanelOpen, setContextConditionPanelOpen] = useState(false);
   const [mapMediaFocusOpen, setMapMediaFocusOpen] = useState(false);
   const [contextTapPhase, setContextTapPhase] =
     useState<ContextMapTapPhase>("awaiting_replay");
@@ -509,6 +537,25 @@ function GlobeHomeBody() {
   useEffect(() => {
     setHubDetailOpen(false);
   }, [hubEventId]);
+
+  useEffect(() => {
+    publishGlobeTouchedContext({
+      eventId: activeCluster?.eventId ?? null,
+      placeLabel: activeCluster?.placeLabel ?? null,
+      lat: activeCluster?.lat ?? null,
+      lng: activeCluster?.lng ?? null,
+    });
+    if (!activeCluster?.eventId) {
+      setContextConditionPanelOpen(false);
+      closeGlobeContextConditionPanel();
+    }
+  }, [activeCluster]);
+
+  useEffect(() => {
+    return subscribeGlobeContextConditionPanel((detail) => {
+      setContextConditionPanelOpen(detail.open);
+    });
+  }, []);
 
   const detailLevelRef = useRef<GlobeDetailLevel>("space");
   const lastPinPressAtRef = useRef(0);
@@ -1122,6 +1169,212 @@ function GlobeHomeBody() {
     discoveryEventId,
   });
 
+  const {
+    projection: realitySurfaceProjection,
+    activeEventId: realitySurfaceEventId,
+    setFromGlobeIngress,
+    clearSession: clearRealitySurfaceSession,
+    gateOperatorMessage,
+    advanceDestination,
+    tryAdvanceDestinationFromMessage,
+  } = useRealitySurfaceProjection();
+
+  const visibleRealitySurfaceProjection = useMemo(() => {
+    const clusterId = activeCluster?.eventId?.trim() ?? null;
+    if (!clusterId) {
+      return null;
+    }
+
+    const bridgeTruth =
+      activeContextEvent?.id === clusterId
+        ? readBridgePlanningTruth(activeContextEvent)
+        : null;
+    if (bridgeTruth) {
+      return composeRealitySurfaceFromBridgeTruth({
+        eventId: clusterId,
+        truth: bridgeTruth,
+        goalKo: activeContextEvent?.title ?? null,
+      });
+    }
+
+    if (clusterId !== realitySurfaceEventId) {
+      return null;
+    }
+    return realitySurfaceProjection;
+  }, [
+    activeCluster?.eventId,
+    activeContextEvent,
+    realitySurfaceEventId,
+    realitySurfaceProjection,
+  ]);
+
+  const realityBridgeArcs = useMemo(() => {
+    const eventId = activeCluster?.eventId?.trim() ?? null;
+    if (!eventId || !visibleRealitySurfaceProjection) {
+      return [];
+    }
+    return projectBridgeMapArcs({
+      eventId,
+      projection: visibleRealitySurfaceProjection,
+      userLat: liveLocation?.lat ?? null,
+      userLng: liveLocation?.lng ?? null,
+    });
+  }, [
+    activeCluster?.eventId,
+    liveLocation?.lat,
+    liveLocation?.lng,
+    visibleRealitySurfaceProjection,
+  ]);
+
+  const commitPlanningTruthIfHost = useCallback(
+    async (input: {
+      session: RealitySurfaceSession;
+      destinationLabel: string;
+    }) => {
+      if (!activeContextEvent?.id || !user?.id) {
+        return;
+      }
+      const projection = input.session.projection;
+      const pathLabels = projection.bridge?.pathLabels ?? [];
+      const pinnedLegIndex = projection.bridge?.activeLegIndex ?? 0;
+      const goalKo = projection.context?.goalKo ?? activeContextEvent.title;
+
+      if (canCommitBridgePlanningTruth(activeContextEvent)) {
+        await commitBridgePlanningTruth({
+          event: activeContextEvent,
+          updatedByUserId: user.id,
+          destinationLabel: input.destinationLabel,
+          pathLabels,
+          pinnedLegIndex,
+          goalKo,
+          flowStrokeStyle: projection.flow?.strokeStyle,
+        });
+        return;
+      }
+
+      if (canProposeBridgePlanningTruth(activeContextEvent)) {
+        const displayName =
+          (typeof user.user_metadata?.full_name === "string"
+            ? user.user_metadata.full_name
+            : null) ??
+          user.email ??
+          null;
+        const hadOwnProposal = Boolean(
+          readBridgePlanningProposalForUser(activeContextEvent, user.id),
+        );
+        await proposeBridgePlanningTruth({
+          event: activeContextEvent,
+          proposedByUserId: user.id,
+          proposedByDisplayName: displayName,
+          destinationLabel: input.destinationLabel,
+          pathLabels,
+        });
+        toast.message(
+          hadOwnProposal
+            ? copy.globe.bridgePlanningProposalUpdated(input.destinationLabel)
+            : copy.globe.bridgePlanningProposalSubmitted(input.destinationLabel),
+        );
+      }
+    },
+    [activeContextEvent, user],
+  );
+
+  const flyGlobeToDestination = useCallback((destinationLabel: string) => {
+    const anchor = resolveTripContextAnchor(destinationLabel);
+    if (!anchor) {
+      return;
+    }
+    globeRef.current?.flyToPin(anchor.lat, anchor.lng, "city");
+  }, []);
+
+  useEffect(() => {
+    const clusterId = activeCluster?.eventId?.trim() ?? null;
+    if (realitySurfaceEventId && clusterId !== realitySurfaceEventId) {
+      clearRealitySurfaceSession();
+    }
+  }, [activeCluster?.eventId, clearRealitySurfaceSession, realitySurfaceEventId]);
+
+  const gateOperatorBeforeDispatch = useCallback(
+    (message: string) => {
+      if (activeCluster?.eventId?.trim() !== realitySurfaceEventId) {
+        return null;
+      }
+      return gateOperatorMessage(message);
+    },
+    [activeCluster?.eventId, gateOperatorMessage, realitySurfaceEventId],
+  );
+
+  const handleTryAdvanceDestinationFromMessage = useCallback(
+    (message: string) => {
+      if (activeCluster?.eventId?.trim() !== realitySurfaceEventId) {
+        return null;
+      }
+      const result = tryAdvanceDestinationFromMessage(message);
+      if (!result) {
+        return null;
+      }
+      flyGlobeToDestination(result.destination);
+      void commitPlanningTruthIfHost({
+        session: result.session,
+        destinationLabel: result.destination,
+      });
+      return result.destination;
+    },
+    [
+      activeCluster?.eventId,
+      commitPlanningTruthIfHost,
+      flyGlobeToDestination,
+      realitySurfaceEventId,
+      tryAdvanceDestinationFromMessage,
+    ],
+  );
+
+  const onOperatorDestinationChoice = useCallback(
+    (choice: OperatorChoiceChip) => {
+      if (activeCluster?.eventId?.trim() !== realitySurfaceEventId) {
+        return;
+      }
+      const advanced = advanceDestination(choice.label);
+      if (advanced) {
+        flyGlobeToDestination(choice.label);
+        void commitPlanningTruthIfHost({
+          session: advanced,
+          destinationLabel: choice.label,
+        });
+      }
+    },
+    [
+      activeCluster?.eventId,
+      advanceDestination,
+      commitPlanningTruthIfHost,
+      flyGlobeToDestination,
+      realitySurfaceEventId,
+    ],
+  );
+
+  const onGlobeIngressCompiled = useCallback(
+    (input: {
+      compiled: import("@/lib/globe-ingress/types").GlobeIngressCompileResult;
+      eventId: string;
+    }) => {
+      setFromGlobeIngress(input);
+      if (
+        !activeContextEvent?.id ||
+        activeContextEvent.id !== input.eventId ||
+        !user?.id ||
+        !isBridgeLinkedEventId(input.eventId)
+      ) {
+        return;
+      }
+      void seedBridgePlanningTruthFromIngress({
+        event: activeContextEvent,
+        compiled: input.compiled,
+        updatedByUserId: user.id,
+      });
+    },
+    [activeContextEvent, setFromGlobeIngress, user?.id],
+  );
+
   const onPriorityMainAction = useCallback(
     (payload: Extract<PriorityStripPayload, { kind: "main_action" }>) => {
       if (payload.actionKind === "show_qr" || payload.qrSrc) {
@@ -1465,39 +1718,6 @@ function GlobeHomeBody() {
     spatialTraceTourSessionRef.current = sessionKey;
     startSpatialTraceTour();
   }, [activeCluster?.eventId, brainSurfaceVisible, mapVideoPlaying, spatialTraceTourStops, startSpatialTraceTour]);
-
-  useEffect(() => {
-    if (!brainSurfaceVisible || spatialTraceTourStops.length === 0) {
-      return;
-    }
-    if (brainSurfaceVisible) {
-      return;
-    }
-    if (spatialTraceTourSuppressedRef.current) {
-      return;
-    }
-    if (spatialTraceTourAdvancePaused) {
-      return;
-    }
-    if (brainSurfaceLaunchToken <= 0) {
-      return;
-    }
-    const sessionKey = `brain:${brainSurfaceBatch?.eventId ?? ""}:${brainSurfaceLaunchToken}:${spatialTraceTourStops
-      .map((stop) => stop.id)
-      .join("|")}`;
-    if (spatialTraceTourSessionRef.current === sessionKey) {
-      return;
-    }
-    spatialTraceTourSessionRef.current = sessionKey;
-    startSpatialTraceTour();
-  }, [
-    brainSurfaceBatch?.eventId,
-    brainSurfaceLaunchToken,
-    brainSurfaceVisible,
-    spatialTraceTourAdvancePaused,
-    spatialTraceTourStops,
-    startSpatialTraceTour,
-  ]);
 
   useEffect(() => {
     if (!spatialTraceTourAdvancePaused || !spatialTraceTourRunning) {
@@ -2950,6 +3170,8 @@ function GlobeHomeBody() {
     priorityEventId: activeCluster?.eventId ?? null,
   });
 
+  useBridgePlanningSyncFeedback(Boolean(user?.id) && !globeRenderSuspended);
+
   const trendBridgeRollup = useTrendBridgeRollup({
     active: trendBridgeLayerActive && !globeRenderSuspended,
     bridgeId: trendBridgeSettings.activeBridgeId,
@@ -3026,14 +3248,51 @@ function GlobeHomeBody() {
       activeBrainSurfacePresentation &&
       activeContextEvent,
   );
-  const detailDockVideoEmbedSrc = useMemo(
-    () => buildBrainSurfaceEmbedSrc(activeBrainSurfaceGuide?.embedUrl),
-    [activeBrainSurfaceGuide?.embedUrl],
-  );
+  const detailDockVideoEmbedSrc = activeBrainSurfaceGuide?.embedUrl?.trim() ?? null;
   const detailDockVideoEmbedKey = useMemo(() => {
     const raw = activeBrainSurfaceGuide?.embedUrl;
     return (raw ? extractYouTubeVideoId(raw) : null) ?? activeBrainSurfaceGuide?.guideNodeId ?? "detail-video";
   }, [activeBrainSurfaceGuide?.embedUrl, activeBrainSurfaceGuide?.guideNodeId]);
+
+  const fieldExecutionOpen = Boolean(marketConfirmOpen || portalOpen);
+
+  const threeFloorsStage = useMemo(
+    () =>
+      resolveGlobeThreeFloorsStage({
+        showMapVideoReplay,
+        brainSurfaceVisible,
+        brainSurfaceDisclosureStage,
+        showOntologyPeek: showBrainSurfaceOntologyPeek,
+        fieldExecutionOpen,
+      }),
+    [
+      brainSurfaceDisclosureStage,
+      brainSurfaceVisible,
+      fieldExecutionOpen,
+      showBrainSurfaceOntologyPeek,
+      showMapVideoReplay,
+    ],
+  );
+
+  const rimvioUxSurfaceMode = useMemo(
+    () => resolveRimvioUxSurfaceMode({ fieldExecutionOpen }),
+    [fieldExecutionOpen],
+  );
+
+  const suppressGlobePriorityChrome = shouldSuppressGlobePriorityChrome({
+    showMapVideoReplay,
+    showOntologyPeek: showBrainSurfaceOntologyPeek,
+    brainSurfaceVisible,
+    fieldExecutionOpen,
+  });
+
+  const brainSurfaceClosureLine = useMemo(
+    () =>
+      activeBrainSurfaceCandidate
+        ? resolveBrainSurfaceClosureLine(activeBrainSurfaceCandidate)
+        : null,
+    [activeBrainSurfaceCandidate],
+  );
 
   useEffect(() => {
     if (!showBrainSurfaceDetailChrome || !activeBrainSurfaceCandidate) {
@@ -3129,6 +3388,7 @@ function GlobeHomeBody() {
         bridgeGhostClusters={bridgeGhostClusters}
         renderSuspended={globeRenderSuspended}
         focusedContextEventId={activeCluster?.eventId ?? null}
+        realityBridgeArcs={realityBridgeArcs}
         showInteractionHint={false}
         layerMode={layerMode}
         lodgingDiscoveryCards={lodgingDiscovery.cardByResourceId}
@@ -3182,6 +3442,11 @@ function GlobeHomeBody() {
           embedSrc={detailDockVideoEmbedSrc}
           embedKey={detailDockVideoEmbedKey}
           title={activeBrainSurfaceGuide?.title ?? activeBrainSurfaceCandidate?.previewTitle ?? "영상"}
+          caption={activeBrainSurfaceCandidate?.previewBody}
+          eyebrow={activeBrainSurfaceCandidate?.placeLabel}
+          lat={activeBrainSurfaceCandidate?.lat}
+          lng={activeBrainSurfaceCandidate?.lng}
+          thumbnailUrl={activeBrainSurfaceGuide?.thumbnailUrl ?? activeBrainSurfaceCandidate?.markerThumbnailUrl}
           onClose={dismissBrainSurfacePreview}
         />
       ) : null}
@@ -3318,6 +3583,7 @@ function GlobeHomeBody() {
       !brainSurfaceVisible &&
       !showBrainSurfacePreviewChrome &&
       !showBrainSurfaceDetailChrome &&
+      !showMapVideoReplay &&
       !activeBrainSurfaceCandidate?.embedUrl ? (
         <GlobeSpatialTraceTourChip
           stop={spatialTraceTourActiveStop}
@@ -3367,6 +3633,28 @@ function GlobeHomeBody() {
           {copy.globe.contextMapTapOpenHint}
         </p>
       ) : null}
+      <GlobeContextConditionPromptFrame
+        open={
+          contextConditionPanelOpen &&
+          Boolean(activeContextEvent) &&
+          activeCluster?.lat != null &&
+          activeCluster?.lng != null
+        }
+        event={activeContextEvent}
+        anchorPlaceId={`context-center:${activeContextEvent?.id ?? "unknown"}`}
+        anchorPlaceName={
+          activeCluster?.placeLabel?.trim() ||
+          activeContextEvent?.place?.trim() ||
+          activeContextEvent?.title.trim() ||
+          copy.globe.contextConditionPanelEyebrow
+        }
+        anchorLat={activeCluster?.lat ?? 0}
+        anchorLng={activeCluster?.lng ?? 0}
+        userLat={liveLocation?.lat ?? null}
+        userLng={liveLocation?.lng ?? null}
+        globeRef={globeRef}
+        onClose={() => closeGlobeContextConditionPanel()}
+      />
       <GlobeLodgingFocusStage
         globeRef={globeRef}
         contextEventId={hubEventId}
@@ -3418,16 +3706,29 @@ function GlobeHomeBody() {
       {!mapMediaFocusOpen && layerMode === "personal" && !confirmOpen && !sheetOpen ? (
         <div className="pointer-events-none absolute inset-x-0 top-[max(0.5rem,env(safe-area-inset-top))] z-20 flex justify-center px-12">
           <div className="flex w-full max-w-[22rem] flex-col items-center gap-2">
-            <GlobePriorityStrip
-              payload={priorityPayload}
-              onMainAction={onPriorityMainAction}
-              onLearnChoice={choosePriorityLearn}
-              onLearnLater={dismissPriorityLearn}
-              onOpenQueue={() => setWorkQueueOpen(true)}
-            />
-            <div className="pointer-events-auto flex w-full justify-center">
-              <GlobeHomeRecallOneLiner />
-            </div>
+            {suppressGlobePriorityChrome ? (
+              <GlobeThreeFloorsStrip
+                stage={threeFloorsStage}
+                surfaceMode={rimvioUxSurfaceMode}
+                closureLine={
+                  showBrainSurfaceOntologyPeek ? brainSurfaceClosureLine : null
+                }
+              />
+            ) : (
+              <>
+                <GlobePriorityStrip
+                  payload={priorityPayload}
+                  onMainAction={onPriorityMainAction}
+                  onLearnChoice={choosePriorityLearn}
+                  onLearnLater={dismissPriorityLearn}
+                  onOpenQueue={() => setWorkQueueOpen(true)}
+                />
+                <GlobeRealitySurfaceStrip projection={visibleRealitySurfaceProjection} />
+                <div className="pointer-events-auto flex w-full justify-center">
+                  <GlobeHomeRecallOneLiner />
+                </div>
+              </>
+            )}
           </div>
         </div>
       ) : null}
@@ -3623,6 +3924,10 @@ function GlobeHomeBody() {
           onWorkSurfaceClassified: handleWorkSurfaceClassified,
           onWorkQueueChanged: refreshWorkQueue,
           onKnowledgePlacementPending,
+          onGlobeIngressCompiled,
+          gateOperatorBeforeDispatch,
+          tryAdvanceDestinationFromMessage: handleTryAdvanceDestinationFromMessage,
+          onOperatorDestinationChoice,
         }}
       />
       <GlobeWorkQueueSheet
@@ -3689,6 +3994,10 @@ function GlobeHomeBody() {
           onWorkSurfaceClassified: handleWorkSurfaceClassified,
           onWorkQueueChanged: refreshWorkQueue,
           onKnowledgePlacementPending,
+          onGlobeIngressCompiled,
+          gateOperatorBeforeDispatch,
+          tryAdvanceDestinationFromMessage: handleTryAdvanceDestinationFromMessage,
+          onOperatorDestinationChoice,
         }}
       />
       </GlobeHomeMemoryRecallProvider>

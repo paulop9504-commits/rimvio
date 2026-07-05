@@ -44,7 +44,9 @@ export type ExperienceBridgeTimelineKind =
   | "shared_pin_photo"
   | "shared_pin_video"
   | "chat_message"
-  | "bridge_prep_marker";
+  | "bridge_prep_marker"
+  | "planning_commit"
+  | "planning_proposal";
 
 export type ExperienceBridgeTimelineItem = {
   id: string;
@@ -60,6 +62,8 @@ export type ExperienceBridgeTimelineItem = {
   body?: string;
   /** View-only for non-owner media in shared bridge UI. */
   viewOnly: boolean;
+  /** Host review queue — accept/reject only on head proposal row. */
+  planningProposalIsHead?: boolean;
 };
 
 export type ExperienceBridgeContribution = {

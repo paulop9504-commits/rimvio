@@ -1,8 +1,9 @@
 "use client";
 
-import { X } from "lucide-react";
-import { GlobeBrainSurfaceFloatingFrame } from "@/components/globe/globe-brain-surface-floating-frame";
-import { GlobeBrainSurfaceYoutubeEmbed } from "@/components/globe/globe-brain-surface-youtube-embed";
+import { GlobeMapFocusMediaShell } from "@/components/globe/globe-map-focus-media-shell";
+import {
+  GLOBE_MAP_FOCUS_CARD_MAX_WIDTH_CLASS,
+} from "@/lib/globe/globe-map-focus-hero-layout";
 import { cn } from "@/lib/utils";
 
 export function buildBrainSurfaceEmbedSrc(
@@ -29,70 +30,67 @@ export type GlobeBrainSurfaceVideoChipProps = {
   embedSrc: string;
   embedKey: string;
   title: string;
+  caption?: string | null;
+  eyebrow?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  thumbnailUrl?: string | null;
   onClose?: (() => void) | null;
   className?: string;
   placement?: "float" | "inline";
   userAdjustable?: boolean;
 };
 
-const VIDEO_CHIP_BODY = "relative flex h-full min-h-0 flex-col bg-slate-950";
-
 export function GlobeBrainSurfaceVideoChip({
   embedSrc,
   embedKey,
   title,
+  caption,
+  eyebrow,
+  lat,
+  lng,
+  thumbnailUrl,
   onClose = null,
   className,
   placement = "float",
-  userAdjustable = true,
 }: GlobeBrainSurfaceVideoChipProps) {
-  const body = (
-    <div className={VIDEO_CHIP_BODY}>
-      <GlobeBrainSurfaceYoutubeEmbed
-        videoKey={embedKey}
-        embedSrc={embedSrc}
-        title={title}
-        className="h-full min-h-0 w-full flex-1 border-0 object-cover"
-      />
-      {onClose ? (
-        <button
-          type="button"
-          onPointerDown={(event) => event.stopPropagation()}
-          onClick={(event) => {
-            event.stopPropagation();
-            onClose();
-          }}
-          className="absolute right-1 top-1 z-[2] flex size-6 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-md active:scale-[0.97]"
-          aria-label="닫기"
-        >
-          <X className="size-3" aria-hidden />
-        </button>
-      ) : null}
-    </div>
+  const shell = (
+    <GlobeMapFocusMediaShell
+      title={title}
+      caption={caption}
+      eyebrow={eyebrow}
+      lat={lat}
+      lng={lng}
+      thumbnailUrl={thumbnailUrl}
+      youtubeEmbedUrl={embedSrc}
+      youtubeVideoKey={embedKey}
+      autoPlay
+      onClose={onClose ?? undefined}
+      className={cn(
+        placement === "float" ? GLOBE_MAP_FOCUS_CARD_MAX_WIDTH_CLASS : "w-full",
+        className,
+      )}
+    />
   );
 
-  if (placement === "inline" || !userAdjustable) {
+  if (placement === "inline") {
     return (
-      <div
-        className={cn("relative overflow-hidden rounded-[1rem]", className)}
-        data-globe-brain-surface-video-chip
-      >
-        <div className="aspect-video max-h-[7.25rem] w-[min(13.5rem,calc(100vw-2rem))]">
-          {body}
-        </div>
+      <div data-globe-brain-surface-video-chip className={className}>
+        {shell}
       </div>
     );
   }
 
   return (
-    <GlobeBrainSurfaceFloatingFrame
-      frameId="brain-surface-video"
-      dragLabel="영상 프레임 이동"
-      className={className}
-      bodyClassName="overflow-hidden p-0"
-      shellClassName="overflow-hidden rounded-[1rem] shadow-[0_12px_32px_rgba(15,23,42,0.24)] ring-1 ring-white/18"
+    <div
+      className={cn(
+        "pointer-events-auto absolute inset-x-0 z-[32] flex justify-center px-3",
+        className,
+      )}
+      style={{ top: "min(18vh, 7.5rem)" }}
+      data-globe-brain-surface-video-chip
     >
-      {body}
-    </GlobeBrainSurfaceFloatingFrame>
+      {shell}
+    </div>
   );
 }

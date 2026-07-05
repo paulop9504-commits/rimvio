@@ -9,6 +9,7 @@ import type { GlobeKnowledgePlacementPending } from "@/lib/globe/globe-knowledge
 import type { PortalCategoryId, PortalIntentId } from "@/lib/portal/portal-types";
 import type { MarketIntentDraft } from "@/lib/globe/market/market-intent-types";
 import type { ExperienceRunResult } from "@/lib/experience-run";
+import type { GlobeIngressCompileResult } from "@/lib/globe-ingress/types";
 
 export type ContextRunIngress =
   | {
@@ -59,6 +60,7 @@ export type ContextRunPlanKind =
   | "map_intent_supply"
   | "text_ingest"
   | "experience_run"
+  | "globe_ingress"
   | "personal_context_ask"
   | "external_context_ask"
   | "photo_ingest"
@@ -103,6 +105,8 @@ export type ContextRunPlan = {
   resumePortalRun?: boolean;
   /** Personal composer ??greet / ambiguous text ??chat only; do not bind active map cluster. */
   composeAmbientChat?: boolean;
+  /** Globe Ingress compiler output — Intent → Context → Bridge → Runtime → Blueprint */
+  globeIngress?: GlobeIngressCompileResult;
 };
 
 export type ContextRunEffectHandlers = {
@@ -138,6 +142,10 @@ export type ContextRunEffectHandlers = {
   onExperienceRunSummary?: (
     result: Extract<ExperienceRunResult, { kind: "summary" }>,
   ) => void;
+  onGlobeIngressCompiled?: (input: {
+    compiled: GlobeIngressCompileResult;
+    eventId: string;
+  }) => void;
   onPersonalContextAsk?: (result: PersonalContextAskResult) => void;
   onExternalContextAsk?: (result: ExternalContextAskResult) => void;
   onExternalContextAskError?: () => void;
@@ -175,6 +183,7 @@ export type ContextRunTurnResult = {
   surface?: ContextRunSurfaceResolutionFull;
   supply?: GlobeMapIntentSupplyResult | null;
   experienceRun?: ExperienceRunResult;
+  globeIngress?: GlobeIngressCompileResult;
   personalAsk?: PersonalContextAskResult;
   externalAsk?: ExternalContextAskResult;
   errorMessage?: string;

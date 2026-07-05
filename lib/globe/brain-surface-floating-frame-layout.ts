@@ -6,7 +6,8 @@ export type GlobeInfoFrameId =
   | "brain-surface-preview"
   | "brain-surface-detail"
   | "brain-map-node"
-  | "context-media-focus";
+  | "context-media-focus"
+  | "context-condition-prompt";
 
 export type GlobeInfoFrameLayout = {
   left: number;
@@ -27,7 +28,7 @@ export type GlobeInfoFramePreset = {
   maxHeight: number;
   defaultWidth: number;
   defaultHeight: number;
-  defaultBand: "top" | "bottom" | "center";
+  defaultBand: "top" | "bottom" | "center" | "center-left";
   tone: "dark" | "light";
   /** When set, height follows width (e.g. 16/9 video). */
   aspectRatio?: number | null;
@@ -98,6 +99,16 @@ export const GLOBE_INFO_FRAME_PRESETS: Record<GlobeInfoFrameId, GlobeInfoFramePr
     defaultHeight: 360,
     defaultBand: "center",
     tone: "dark",
+  },
+  "context-condition-prompt": {
+    minWidth: 260,
+    maxWidth: 420,
+    minHeight: 220,
+    maxHeight: 560,
+    defaultWidth: 320,
+    defaultHeight: 380,
+    defaultBand: "center-left",
+    tone: "light",
   },
 };
 
@@ -191,14 +202,18 @@ export function resolveDefaultGlobeInfoFrameLayout(
     : clampGlobeInfoFrameHeight(preset.defaultHeight, preset, viewport.height);
 
   let top = readSafeAreaTopPx();
+  let left = Math.round((viewport.width - width) / 2);
   if (preset.defaultBand === "bottom") {
     top = Math.round(viewport.height - GLOBE_INFO_FRAME_BOTTOM_INSET_PX - height);
   } else if (preset.defaultBand === "center") {
     top = Math.round((viewport.height - height) / 2);
+  } else if (preset.defaultBand === "center-left") {
+    top = Math.round((viewport.height - height) / 2 - 24);
+    left = Math.round(Math.max(12, viewport.width * 0.05));
   }
 
   return {
-    left: Math.round((viewport.width - width) / 2),
+    left,
     top,
     width,
     height,

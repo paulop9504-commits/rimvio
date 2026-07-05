@@ -53,8 +53,16 @@ export type RecallAnchor = {
 /** Minimum confidence to surface. */
 export const RECALL_MIN_CONFIDENCE = 45;
 
-/** Max recalls surfaced per calendar day — daily nostalgia spam 금지. */
+/** Proactive recall — rare enough to feel special, not a daily chore. */
+export const RECALL_MIN_INTERVAL_DAYS = 5;
+
+export const RECALL_MIN_INTERVAL_MS = RECALL_MIN_INTERVAL_DAYS * 86_400_000;
+
+/** Same past experience — do not resurface within this window. */
+export const RECALL_SAME_EVENT_COOLDOWN_MS = RECALL_MIN_INTERVAL_MS;
+
+/** @deprecated Use RECALL_MIN_INTERVAL_MS — kept for imports. */
 export const RECALL_MAX_PER_DAY = 1;
 
-/** Cooldown between any recall surfaces. */
-export const RECALL_COOLDOWN_MS = 12 * 60 * 60 * 1000;
+/** @deprecated Use RECALL_MIN_INTERVAL_MS — kept for imports. */
+export const RECALL_COOLDOWN_MS = RECALL_MIN_INTERVAL_MS;

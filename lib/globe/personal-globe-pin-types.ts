@@ -11,7 +11,8 @@ export type PersonalGlobePinMarketRole = "listing" | "seeking";
 
 export type PersonalGlobePinSource =
   | "experience"
-  | "accommodation_search";
+  | "accommodation_search"
+  | "context_condition_ai";
 
 export type PersonalGlobePin = {
   pinId: string;
@@ -30,6 +31,10 @@ export type PersonalGlobePin = {
   visibility?: GlobeContextVisibility;
   /** Projection origin — accommodation_search = Hub Rail pipeline. */
   source?: PersonalGlobePinSource;
+  /** Context Condition AI batch — dismiss removes all pins in batch. */
+  contextConditionBatchId?: string | null;
+  /** Context Condition AI pin kind for map chrome. */
+  contextConditionKind?: "lodging" | "eatery" | null;
   /** Parent context when this pin is a search result child. */
   parentContextEventId?: string | null;
 };

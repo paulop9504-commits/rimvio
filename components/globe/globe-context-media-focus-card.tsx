@@ -1,15 +1,11 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { X } from "lucide-react";
+import { GlobeMapFocusMediaShell } from "@/components/globe/globe-map-focus-media-shell";
 import { GlobeMediaGuideMapExpandButton } from "@/components/globe/globe-media-guide-map-expand-button";
-import { cn } from "@/lib/utils";
+import type { GlobeContextMediaFocusCardFooterAction } from "@/components/globe/globe-context-media-focus-card-types";
 
-export type GlobeContextMediaFocusCardFooterAction = {
-  label: string;
-  onClick: () => void;
-  candidateCount?: number;
-};
+export type { GlobeContextMediaFocusCardFooterAction } from "@/components/globe/globe-context-media-focus-card-types";
 
 export type GlobeContextMediaFocusCardProps = {
   title: string;
@@ -25,7 +21,7 @@ export type GlobeContextMediaFocusCardProps = {
   onTouchEnd?: (event: React.TouchEvent) => void;
 };
 
-/** Map replay — media only; tap hero opens bridge. No footer chrome. */
+/** Map replay — frameless media bubble; metadata on gradient overlay. */
 export function GlobeContextMediaFocusCard({
   title,
   recallCaption,
@@ -39,93 +35,28 @@ export function GlobeContextMediaFocusCard({
   onTouchMove,
   onTouchEnd,
 }: GlobeContextMediaFocusCardProps) {
-  const caption = recallCaption?.trim() || null;
-
   return (
-    <article
-      className={cn(
-        "overflow-hidden rounded-xl bg-[#1d1d1f] shadow-[0_16px_40px_rgba(0,0,0,0.28)] ring-1 ring-white/10",
-        className,
-      )}
-      data-globe-context-media-focus-card
+    <GlobeMapFocusMediaShell
+      title={title}
+      caption={recallCaption}
+      mediaSlot={hero}
+      onClose={onClose}
+      closeAriaLabel={closeAriaLabel}
+      onHeroPress={onHeroPress}
+      className={className}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
-    >
-      <div className="relative">
-        <div
-          className={cn(
-            "relative overflow-hidden bg-[#141416]",
-            onHeroPress && "cursor-pointer",
-          )}
-          role={onHeroPress ? "button" : undefined}
-          tabIndex={onHeroPress ? 0 : undefined}
-          aria-label={onHeroPress ? title : undefined}
-          onClick={
-            onHeroPress
-              ? (event) => {
-                  event.stopPropagation();
-                  onHeroPress();
-                }
-              : undefined
-          }
-          onKeyDown={
-            onHeroPress
-              ? (event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    onHeroPress();
-                  }
-                }
-              : undefined
-          }
-        >
-          {hero}
-        </div>
-
-        <button
-          type="button"
-          onPointerDown={(event) => {
-            event.stopPropagation();
-          }}
-          onTouchStart={(event) => {
-            event.stopPropagation();
-          }}
-          onTouchEnd={(event) => {
-            event.stopPropagation();
-          }}
-          onClick={(event) => {
-            event.stopPropagation();
-            onClose();
-          }}
-          className="absolute right-1.5 top-1.5 z-[4] flex size-7 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-md active:scale-95"
-          aria-label={closeAriaLabel}
-        >
-          <X className="size-3.5" aria-hidden />
-        </button>
-
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] bg-gradient-to-t from-black/75 via-black/30 to-transparent px-2.5 pb-2 pt-10">
-          <h2 className="line-clamp-2 text-[16px] font-bold leading-tight tracking-tight text-white">
-            {title}
-          </h2>
-          {caption ? (
-            <p className="mt-0.5 line-clamp-2 text-[12px] font-medium leading-snug text-white/85">
-              {caption}
-            </p>
-          ) : null}
-        </div>
-      </div>
-
-      {footerAction ? (
-        <div className="border-t border-white/10 bg-[#141416] px-2.5 py-2">
+      footerAction={
+        footerAction ? (
           <GlobeMediaGuideMapExpandButton
             variant="bar"
             label={footerAction.label}
             candidateCount={footerAction.candidateCount}
             onClick={footerAction.onClick}
           />
-        </div>
-      ) : null}
-    </article>
+        ) : null
+      }
+    />
   );
 }

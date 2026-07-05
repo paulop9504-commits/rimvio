@@ -60,3 +60,24 @@ export function readEateryRecommendReason(
     return null;
   }
 }
+
+export function readEateryRecommendReasonsForEvent(
+  eventId: string,
+): Record<string, EateryRecommendScoreWire> {
+  if (typeof window === "undefined") {
+    return {};
+  }
+  try {
+    const raw = window.sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      return {};
+    }
+    const parsed = JSON.parse(raw) as Record<
+      string,
+      Record<string, EateryRecommendScoreWire>
+    >;
+    return parsed[eventId] ?? {};
+  } catch {
+    return {};
+  }
+}

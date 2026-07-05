@@ -1,0 +1,108 @@
+---
+description: Rimvio Context OS — layer owners, forbidden deps, state machine
+alwaysApply: true
+---
+
+# Rimvio Context OS — Five Layers
+
+**Canonical:** `docs/RIMVIO_CANONICAL_VOCABULARY_V2.md` · `docs/RIMVIO_GLOBE_INGRESS.md` · ADR 005 · 009 · 010  
+**Wire:** `lib/globe-ingress/` · `lib/context-os/` · `lib/runtime/` · `lib/context-blueprint/` · `lib/operator/`
+
+## Globe Ingress (creation path)
+
+Single unidirectional compiler: **Intent → Context → Bridge → Runtime → Blueprint**
+
+- SSOT: `compileGlobeIngress()` in `lib/globe-ingress/`
+- Planner: `planContextRun` → `globe_ingress` (travel trip frame; not lodging/eatery-only)
+- Forbidden: Blueprint→Runtime re-entry · Bridge→Intent · Context→Runtime skip
+
+## Article 0
+
+- Reality is never modified without explicit **Commit**
+- Intent never mutates Reality
+- Blueprint never executes
+- Execution never decides
+- **Humans own final authority**
+
+## Layer Owner Rule
+
+**Only the owner layer may mutate its own objects.**
+
+| L | Owns |
+|---|------|
+| L1 | Intent |
+| L2 | Context Contract (Blueprint) |
+| L3 | Domain Execution |
+| L4 | Runtime Reaction |
+| L5 | Reality Mutation |
+
+## Forbidden Dependencies
+
+| L | May | Never |
+|---|-----|-------|
+| **L1** | Call L2 · dispatch L3 (event/interface) | Import L3 impl · domain search · Ghost Pins · booking APIs |
+| **L2** | — (pure data) | Import anything · execute |
+| **L3** | Read L2 | Mutate L2 · call Globe AI · Commit without approval |
+| **L4** | Read L2 · read truth | Create Blueprint · dispatch L3 · mutate L2 |
+| **L5** | Read prepared execution | Create execution · decide Intent |
+
+## State machine
+
+`intent → blueprint_created → executing → execution_prepared → waiting_approval → committed → observed → reacted`
+
+Know which state before adding code. See `CONTEXT_RUN_TRANSITIONS`.
+
+## L2 sub-contracts (one SSOT) — Method 2
+
+`ContextBlueprint` v5 = **Intent** + `executionGraph` + `spatialTargets` + `temporalTargets` + **Resources** + **Executors**.
+
+Per node: **Execution → Spatial Target → Resources → Actions**.
+
+**Travel MVP:** `spatialPlan` map projection still OK until derived from `spatialTargets`.
+
+## Vocabulary v2 (1 object = 1 responsibility)
+
+**Globe UX = Reality Surface** — `docs/RIMVIO_REALITY_SURFACE.md`
+
+| Term | OS / Layer | Forbidden on Surface |
+|------|-----|-----------|
+| **Reality Surface** | Compositor UX | Blueprint · Commit internals |
+| **Context** | File content (SSOT) | Runtime/Flow SSOT storage |
+| **Bridge** | File identity (graph) | Execution |
+| **Runtime** | Process | word **Container** |
+| **Blueprint** | Process spec | **globe render** |
+| **Flow** | Scheduler state | user "Execution Graph" label |
+| **Operator** | user AI | **internals** on globe |
+| **Commit** | System call | **globe root** auto-mutate |
+
+IDs: `contextId` · `bridgeId` · `runtimeId` — see `lib/context-os/vocabulary-v2.ts`
+
+## Bridge vs Container (v1 archive)
+
+See `docs/RIMVIO_BRIDGE_VS_CONTAINER.md` — superseded by v2 Runtime model.
+
+## Container AI (Operator — user sees one AI)
+
+- **Globe AI** = Architect (L1) — Intent · Blueprint · Container **create**
+- **Container AI** = Operator — reads Execution Graph every turn · routes internal modules
+- User label: **Trip Assistant** — never "Context Condition AI" in UI copy
+- Internal modules: Travel Brain · Execution Graph Reader · Context Condition AI · Domain AI Router · Ghost Pins · Action Composer
+- Gate: Prepare + "주변 호텔" → block · offer destination chips
+
+See `docs/RIMVIO_CONTAINER_AI.md` · `lib/container-ai/gate-container-ai-request.ts`
+
+**Mantras:** AI recommends · Humans decide · **AI prepares · Humans approve · Reality commits.**
+
+## Execution Space (core OS primitive)
+
+Globe creates **Execution Space** first — NOT "search Osaka".
+
+`resolution`: confirmed | hypothesis | unresolved — **never confirm destination user did not state.**
+
+See `docs/RIMVIO_CONTEXT_OS_ARCHITECTURE.md` § Execution Space.
+
+## PR gate
+
+Owner? Forbidden cross-mutate? Valid state transition? Commit + approvalPolicy?
+
+**Cross-layer = reject.**

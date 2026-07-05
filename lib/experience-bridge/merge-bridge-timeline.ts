@@ -13,6 +13,7 @@ import {
 } from "@/lib/experience-window";
 import type { ExperienceWindow } from "@/lib/experience-window/experience-window-types";
 import { projectPeerMessagesToTimeline } from "@/lib/experience-window/project-peer-messages-timeline";
+import { buildBridgePlanningTimelineItems } from "@/lib/bridge-planning/build-bridge-planning-timeline";
 import { parseIsoMs } from "@/lib/feed/spacetime-fit";
 import { resolveEventGlobeCoords } from "@/lib/globe/resolve-event-globe-coords";
 import type { PeerMessageRow } from "@/lib/peer-chat/types";
@@ -168,11 +169,19 @@ export function mergeBridgeTimeline(input: {
     hostName,
   });
 
+  const fromPlanning = buildBridgePlanningTimelineItems({
+    event,
+    participants: input.participants,
+    hostUserId,
+    hostName,
+  });
+
   const merged = [
     ...fromCaptures,
     ...fromPins,
     ...fromContributions,
     ...fromChat,
+    ...fromPlanning,
     ...(prepMarker ? [prepMarker] : []),
   ].sort(
     (left, right) =>

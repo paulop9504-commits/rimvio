@@ -34,6 +34,10 @@ import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 import { GlobeContextTravelGpsChip } from "@/components/globe/globe-context-travel-gps-chip";
 import { GlobeComposerHintStrip } from "@/components/globe/globe-composer-hint-strip";
+import {
+  GlobeOperatorChoiceChips,
+  type OperatorChoiceChip,
+} from "@/components/globe/globe-operator-choice-chips";
 import { useAskSpeechRecognition } from "@/hooks/use-ask-speech-recognition";
 import { useComposerHint } from "@/hooks/use-composer-hint";
 import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
@@ -106,6 +110,17 @@ export type GlobeContextIngestBarProps = {
   onKnowledgePlacementPending?: (
     pending: import("@/lib/globe/globe-knowledge-placement-pending").GlobeKnowledgePlacementPending,
   ) => void;
+  onGlobeIngressCompiled?: (input: {
+    compiled: import("@/lib/globe-ingress/types").GlobeIngressCompileResult;
+    eventId: string;
+  }) => void;
+  /** Operator gate — block dispatch when phase forbids request (Blueprint stays off UI). */
+  gateOperatorBeforeDispatch?: (
+    message: string,
+  ) => import("@/lib/container-ai/types").ContainerAIGateOutcome | null;
+  /** Pure destination confirm — advance flow without dispatch. */
+  tryAdvanceDestinationFromMessage?: (message: string) => string | null;
+  onOperatorDestinationChoice?: (choice: OperatorChoiceChip) => void;
 };
 
 /** Globe home — one frosted composer; photo action lives inside the + menu. */
@@ -141,6 +156,10 @@ export const GlobeContextIngestBar = forwardRef<
     onWorkSurfaceClassified,
     onWorkQueueChanged,
     onKnowledgePlacementPending,
+    onGlobeIngressCompiled,
+    gateOperatorBeforeDispatch,
+    tryAdvanceDestinationFromMessage,
+    onOperatorDestinationChoice,
   },
   ref,
 ) {
@@ -148,6 +167,10 @@ export const GlobeContextIngestBar = forwardRef<
   const [menuOpen, setMenuOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [clarifyPlaceholder, setClarifyPlaceholder] = useState<string | null>(null);
+  const [operatorChoices, setOperatorChoices] = useState<{
+    reasonKo: string;
+    choices: OperatorChoiceChip[];
+  } | null>(null);
   const [offerTravelGps, setOfferTravelGps] = useState(false);
   const { hint: composerHint, showHint: showComposerHint, clearHint: clearComposerHint } =
     useComposerHint();
@@ -261,12 +284,24 @@ export const GlobeContextIngestBar = forwardRef<
         onWorkQueueChanged?.();
       },
       onKnowledgePlacementPending,
+      onGlobeIngressCompiled: ({ compiled, eventId }) => {
+        onGlobeIngressCompiled?.({ compiled, eventId });
+        onAttached?.(eventId);
+        const nextHint =
+          compiled.blueprint.resourcePlan.nextQuestion?.promptKo?.trim() ||
+          compiled.bridge.pathLabels.join(" → ");
+        showComposerHint(softenComposerSuccessLine(nextHint), {
+          tone: "success",
+          durationMs: 4000,
+        });
+      },
     }),
     [
       finish,
       onAttached,
       onDiscoveryMarketBrowse,
       onEateryDiscovery,
+      onGlobeIngressCompiled,
       onKnowledgePlacementPending,
       onLodgingDiscovery,
       onLaunchMarketProjection,
@@ -484,6 +519,37 @@ export const GlobeContextIngestBar = forwardRef<
       setBusy(true);
       onComposeOpen?.();
       try {
+        const advancedDestination = tryAdvanceDestinationFromMessage?.(value);
+        if (advancedDestination) {
+          showComposerHint(
+            softenComposerSuccessLine(
+              copy.globe.realitySurface.destinationConfirmed(advancedDestination),
+            ),
+            { tone: "success", durationMs: 4000 },
+          );
+          setOperatorChoices(null);
+          setClarifyPlaceholder(null);
+          setText("");
+          setMenuOpen(false);
+          return;
+        }
+
+        const operatorGate = gateOperatorBeforeDispatch?.(value);
+        if (operatorGate && !operatorGate.allowed) {
+          const question = softenComposerStatusLine(operatorGate.reasonKo);
+          showComposerHint(question, { durationMs: 0 });
+          setClarifyPlaceholder(question);
+          setOperatorChoices({
+            reasonKo: operatorGate.reasonKo,
+            choices: operatorGate.destinationChoices.length
+              ? [...operatorGate.destinationChoices]
+              : [...operatorGate.quickActions],
+          });
+          window.setTimeout(() => inputRef.current?.focus(), 0);
+          return;
+        }
+        setOperatorChoices(null);
+
         const result = await dispatchContextRun(
           {
             kind: "text",
@@ -539,6 +605,7 @@ export const GlobeContextIngestBar = forwardRef<
       busy,
       clearComposerHint,
       contextRunHandlers,
+      gateOperatorBeforeDispatch,
       isDiscovery,
       liveLocation?.lat,
       liveLocation?.lng,
@@ -547,9 +614,20 @@ export const GlobeContextIngestBar = forwardRef<
       showComposerHint,
       submitGpsOrigin,
       text,
+      tryAdvanceDestinationFromMessage,
       userLat,
       userLng,
     ],
+  );
+
+  const handleOperatorChoice = useCallback(
+    (choice: OperatorChoiceChip) => {
+      setOperatorChoices(null);
+      setClarifyPlaceholder(null);
+      clearComposerHint();
+      onOperatorDestinationChoice?.(choice);
+    },
+    [clearComposerHint, onOperatorDestinationChoice],
   );
 
   const submitTextRef = useRef(submitText);
@@ -614,6 +692,16 @@ export const GlobeContextIngestBar = forwardRef<
         lightPill={isLightPill}
         className={isPill ? "mb-1" : "mb-1.5"}
       />
+      {operatorChoices ? (
+        <GlobeOperatorChoiceChips
+          reasonKo={operatorChoices.reasonKo}
+          choices={operatorChoices.choices}
+          onSelect={handleOperatorChoice}
+          mapDark={mapPromptMode && !isDiscovery && !isLightPill}
+          lightPill={isLightPill}
+          className={isPill ? "mb-1" : "mb-1.5"}
+        />
+      ) : null}
       <div
         className={cn(
           isPill ? "relative rounded-full backdrop-blur-xl" : "overflow-hidden rounded-[1.35rem] backdrop-blur-xl",
