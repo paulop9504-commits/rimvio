@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, type RefObject } from "react";
+import { useState, useMemo, type RefObject } from "react";
+import { GlobeContainerSpaceButton } from "@/components/globe/globe-container-space-button";
+import { GlobeContainerSpaceSidebar } from "@/components/globe/globe-container-space-sidebar";
 import { GlobeContextBrainStrip } from "@/components/globe/globe-context-brain-strip";
 import { GlobeContextControlDock } from "@/components/globe/globe-context-control-dock";
 import { GlobeContextHubRail } from "@/components/globe/globe-context-hub-rail";
@@ -12,6 +14,7 @@ import type { GlobeContextPeopleFilter } from "@/lib/globe/globe-context-people-
 import type { GlobeContextTimeFilter } from "@/lib/globe/globe-context-time-filter";
 import type { GlobeLayerMode } from "@/lib/globe/globe-layer-mode";
 import type { GlobeContextPeerOption } from "@/lib/globe/list-globe-context-peer-options";
+import type { GlobeContextTimelineEntry } from "@/lib/globe/list-globe-context-timeline";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 
 export type GlobeHomeLeftChromeProps = {
@@ -26,6 +29,8 @@ export type GlobeHomeLeftChromeProps = {
   onCreatePhoto: () => void;
   onOpenList: () => void;
   onOpenManage: () => void;
+  onSelectContext?: (entry: GlobeContextTimelineEntry) => void;
+  onNewContext?: () => void;
   liveLat: number | null;
   liveLng: number | null;
   globeRef: RefObject<RimvioGlobeHubHandle | null>;
@@ -58,6 +63,8 @@ export function GlobeHomeLeftChrome({
   onCreatePhoto,
   onOpenList,
   onOpenManage,
+  onSelectContext,
+  onNewContext,
   liveLat,
   liveLng,
   globeRef,
@@ -69,6 +76,8 @@ export function GlobeHomeLeftChrome({
   authUserId,
   trendBridge,
 }: GlobeHomeLeftChromeProps) {
+  const [containerSpaceOpen, setContainerSpaceOpen] = useState(false);
+
   const hubEvent = useMemo(() => {
     const eventId = hubEventId?.trim();
     return eventId ? findLifeEventCandidate(eventId) : null;
@@ -78,6 +87,12 @@ export function GlobeHomeLeftChrome({
     <div className="pointer-events-none absolute left-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20 flex max-h-[calc(100%-var(--rimvio-globe-ingest-offset)-5.5rem)] flex-col items-start gap-1.5">
       {!mapMediaFocusOpen ? (
         <>
+          <div className="pointer-events-auto">
+            <GlobeContainerSpaceButton
+              open={containerSpaceOpen}
+              onPress={() => setContainerSpaceOpen((open) => !open)}
+            />
+          </div>
           <div className="pointer-events-auto">
             <GlobeLayerModeToggle mode={layerMode} onModeChange={onLayerModeChange} />
           </div>
@@ -122,6 +137,13 @@ export function GlobeHomeLeftChrome({
           ) : null}
         </>
       ) : null}
+      <GlobeContainerSpaceSidebar
+        open={containerSpaceOpen}
+        onOpenChange={setContainerSpaceOpen}
+        activeEventId={hubEventId}
+        onSelect={(entry) => onSelectContext?.(entry)}
+        onNewContext={onNewContext}
+      />
       {hubEventId && !hubDetailOpen ? (
         <>
           {hubEvent && !globeRenderSuspended && !suppressBrainStrip ? (

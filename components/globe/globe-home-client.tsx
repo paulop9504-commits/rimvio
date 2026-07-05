@@ -3674,6 +3674,8 @@ function GlobeHomeBody() {
         onCreatePhoto={openPhotoPicker}
         onOpenList={() => setListOpen(true)}
         onOpenManage={() => setManageOpen(true)}
+        onSelectContext={openContextEntry}
+        onNewContext={() => setPortalOpen(true)}
         liveLat={liveLocation?.lat ?? null}
         liveLng={liveLocation?.lng ?? null}
         globeRef={globeRef}
