@@ -3024,6 +3024,22 @@ function GlobeHomeBody() {
       !marketConfirmOpen,
   );
 
+  const showBrainSurfacePreviewChrome = Boolean(
+    brainSurfaceVisible &&
+      activeBrainSurfaceCandidate &&
+      (!brainSurfaceDetailMode || !activeBrainSurfaceNode) &&
+      !brainSurfaceShadowExpanded,
+  );
+  const showBrainSurfaceDetailChrome = Boolean(
+    brainSurfaceDetailMode &&
+      activeBrainSurfaceNode &&
+      activeBrainSurfacePresentation &&
+      activeContextEvent,
+  );
+  const brainSurfaceNodeCardBottom = brainSurfaceShadowExpanded
+    ? "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 5rem)"
+    : "max(7rem, calc(env(safe-area-inset-bottom) + 5.75rem))";
+
   return (
     <div
       ref={surfaceRef}
@@ -3184,29 +3200,29 @@ function GlobeHomeBody() {
           onTourSkip={dismissBrainSurfacePreview}
         />
       ) : null}
-      {brainSurfaceDetailMode &&
-      activeBrainSurfaceNode &&
-      activeBrainSurfacePresentation &&
-      activeContextEvent ? (
+      {showBrainSurfaceDetailChrome ? (
         <div
-          className="pointer-events-none absolute inset-x-0 z-[31] flex justify-center px-3"
-          style={{
-            bottom: brainSurfaceShadowExpanded
-              ? "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 5rem)"
-              : "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 0.85rem)",
-          }}
+          className="pointer-events-none absolute inset-x-0 z-[31]"
+          style={{ bottom: brainSurfaceNodeCardBottom }}
           data-globe-brain-surface-node-inspector
         >
           <GlobeContextBrainNodeCard
-            className="pointer-events-auto max-h-[min(52vh,32rem)]"
+            className="pointer-events-auto absolute bottom-0 left-1/2 max-h-[min(52vh,32rem)] -translate-x-1/2"
             contextTitle={
-              activeContextEvent.place?.trim() || activeContextEvent.title.trim() || "맥락"
+              activeContextEvent!.place?.trim() || activeContextEvent!.title.trim() || "맥락"
             }
-            node={activeBrainSurfaceNode}
-            presentation={activeBrainSurfacePresentation}
+            node={activeBrainSurfaceNode!}
+            presentation={activeBrainSurfacePresentation!}
             memoBody={activeBrainSurfaceExplanation?.memoKo ?? null}
             factors={activeBrainSurfaceExplanation?.factorsKo ?? []}
             mediaGuide={activeBrainSurfaceGuide}
+            tourStop={
+              !brainSurfaceShadowExpanded && spatialTraceTourRunning
+                ? spatialTraceTourActiveStop
+                : null
+            }
+            tourStopIndex={spatialTraceTourStopIndex}
+            tourStopCount={spatialTraceTourStopCount}
             primaryAction={{
               label:
                 activeBrainSurfaceCandidate?.family === "media"
@@ -3296,6 +3312,8 @@ function GlobeHomeBody() {
       />
       {spatialTraceTourRunning &&
       spatialTraceTourActiveStop &&
+      !showBrainSurfacePreviewChrome &&
+      !showBrainSurfaceDetailChrome &&
       !activeBrainSurfaceCandidate?.embedUrl ? (
         <GlobeSpatialTraceTourChip
           stop={spatialTraceTourActiveStop}

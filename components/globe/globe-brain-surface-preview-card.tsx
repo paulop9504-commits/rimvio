@@ -134,6 +134,10 @@ export function GlobeBrainSurfacePreviewCard({
         ),
   );
 
+  const tourMeta = tourStop
+    ? [tourStop.inferenceLabelKo, tourStop.confidenceLabelKo].filter(Boolean).join(" · ")
+    : "";
+
   if (isVideoCompact) {
     return (
       <div
@@ -142,6 +146,29 @@ export function GlobeBrainSurfacePreviewCard({
         data-detail-mode="false"
         data-compact-video="true"
       >
+        {tourStop ? (
+          <div className="border-b border-slate-200/70 px-2.5 py-2">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-700/80">
+              {copy.globe.spatialTraceTourEyebrow}
+              {tourStopCount > 1 ? (
+                <span className="ml-1.5 text-sky-600/70">
+                  {copy.globe.spatialTraceTourProgress(tourStopIndex + 1, tourStopCount)}
+                </span>
+              ) : null}
+            </p>
+            <p className="mt-1 line-clamp-2 text-[12px] font-semibold leading-snug text-slate-900">
+              {tourStop.labelKo}
+            </p>
+            {tourStop.detailKo ? (
+              <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-slate-600">
+                {tourStop.detailKo}
+              </p>
+            ) : null}
+            {tourMeta ? (
+              <p className="mt-1 text-[10px] font-medium text-sky-700">{tourMeta}</p>
+            ) : null}
+          </div>
+        ) : null}
         <div className="flex items-center justify-between gap-2 px-2.5 py-2">
           <div className="flex min-w-0 flex-wrap items-center gap-1">
             <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700 ring-1 ring-slate-200/80">
@@ -214,6 +241,29 @@ export function GlobeBrainSurfacePreviewCard({
       data-globe-brain-surface-preview
       data-detail-mode={detailMode ? "true" : "false"}
     >
+      {tourStop ? (
+        <div className="border-b border-slate-200/70 px-3 py-2.5">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-700/80">
+            {copy.globe.spatialTraceTourEyebrow}
+            {tourStopCount > 1 ? (
+              <span className="ml-1.5 text-sky-600/70">
+                {copy.globe.spatialTraceTourProgress(tourStopIndex + 1, tourStopCount)}
+              </span>
+            ) : null}
+          </p>
+          <p className="mt-1 line-clamp-2 text-[13px] font-semibold leading-snug text-slate-900">
+            {tourStop.labelKo}
+          </p>
+          {tourStop.detailKo ? (
+            <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-slate-600">
+              {tourStop.detailKo}
+            </p>
+          ) : null}
+          {tourMeta ? (
+            <p className="mt-1 text-[10px] font-medium text-sky-700">{tourMeta}</p>
+          ) : null}
+        </div>
+      ) : null}
       <div className="flex items-start justify-between gap-3 border-b border-slate-200/70 px-4 pb-3 pt-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">

@@ -6,8 +6,10 @@ import { copy } from "@/lib/copy/human-ko";
 import type { MediaGuideNode } from "@/lib/ontology/media-guide-types";
 import type { ProjectionNodePresentation } from "@/lib/situation-projection/projection-node-presentation";
 import type { ProjectionNode } from "@/lib/situation-projection/types";
+import type { MediaSpatialTraceTourStop } from "@/lib/situation-projection/build-media-spatial-trace-tour";
 import { GlobeBrainSurfaceYoutubeEmbed } from "@/components/globe/globe-brain-surface-youtube-embed";
 import { extractYouTubeVideoId } from "@/lib/enrichers/youtube-url";
+import { cn } from "@/lib/utils";
 
 type GlobeContextBrainNodeCardAction = {
   label: string;
@@ -23,42 +25,42 @@ export type GlobeContextBrainNodeCardProps = {
   mediaGuide?: MediaGuideNode | null;
   primaryAction?: GlobeContextBrainNodeCardAction | null;
   secondaryAction?: GlobeContextBrainNodeCardAction | null;
+  tourStop?: MediaSpatialTraceTourStop | null;
+  tourStopIndex?: number;
+  tourStopCount?: number;
   onClose: () => void;
   className?: string;
 };
 
-function resolveAccentClasses(
-  accent: ProjectionNodePresentation["discoveryAccent"],
-) {
+const GLOBE_CARD_SHELL =
+  "w-[min(24rem,calc(100vw-1.5rem))] overflow-hidden rounded-[1.15rem] border border-white/85 bg-white/94 text-slate-900 shadow-[0_16px_40px_rgba(15,23,42,0.14)] backdrop-blur-2xl ring-1 ring-black/[0.04]";
+
+function resolveAccentClasses(accent: ProjectionNodePresentation["discoveryAccent"]) {
   switch (accent) {
     case "green":
       return {
-        iconWrap: "bg-[#123725] text-[#6ee7b7]",
-        chip: "bg-[#10271b] text-[#8cf0c7] ring-[#34c759]/18",
-        subtleChip: "bg-white/10 text-white/72 ring-white/10",
-        cardRing: "ring-[#34c759]/18",
+        iconWrap: "bg-emerald-50 text-emerald-700",
+        chip: "bg-emerald-50 text-emerald-800 ring-emerald-200/80",
+        subtleChip: "bg-slate-100 text-slate-700 ring-slate-200/80",
       };
     case "orange":
       return {
-        iconWrap: "bg-[#3a2612] text-[#ffb869]",
-        chip: "bg-[#2b1a0f] text-[#ffc98e] ring-[#ff9500]/18",
-        subtleChip: "bg-white/10 text-white/72 ring-white/10",
-        cardRing: "ring-[#ff9500]/18",
+        iconWrap: "bg-orange-50 text-orange-700",
+        chip: "bg-orange-50 text-orange-800 ring-orange-200/80",
+        subtleChip: "bg-slate-100 text-slate-700 ring-slate-200/80",
       };
     case "purple":
       return {
-        iconWrap: "bg-[#2d1d3d] text-[#e6ccff]",
-        chip: "bg-[#23152f] text-[#e6ccff] ring-[#bf5af2]/18",
-        subtleChip: "bg-white/10 text-white/72 ring-white/10",
-        cardRing: "ring-[#bf5af2]/18",
+        iconWrap: "bg-violet-50 text-violet-700",
+        chip: "bg-violet-50 text-violet-800 ring-violet-200/80",
+        subtleChip: "bg-slate-100 text-slate-700 ring-slate-200/80",
       };
     case "blue":
     default:
       return {
-        iconWrap: "bg-[#11263d] text-[#8fd1ff]",
-        chip: "bg-[#0b1f36] text-[#b6dcff] ring-[#3182f6]/18",
-        subtleChip: "bg-white/10 text-white/72 ring-white/10",
-        cardRing: "ring-[#3182f6]/18",
+        iconWrap: "bg-sky-50 text-sky-700",
+        chip: "bg-sky-50 text-sky-800 ring-sky-200/80",
+        subtleChip: "bg-slate-100 text-slate-700 ring-slate-200/80",
       };
   }
 }
@@ -136,6 +138,42 @@ function buildStableEmbedSrc(embedUrl: string | null | undefined): string | null
   }
 }
 
+function GlobeContextBrainTourStrip({
+  stop,
+  stopIndex,
+  stopCount,
+}: {
+  stop: MediaSpatialTraceTourStop;
+  stopIndex: number;
+  stopCount: number;
+}) {
+  const meta = [stop.inferenceLabelKo, stop.confidenceLabelKo]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    <div className="border-b border-slate-200/70 px-3 py-2.5">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-700/80">
+        {copy.globe.spatialTraceTourEyebrow}
+        {stopCount > 1 ? (
+          <span className="ml-1.5 text-sky-600/70">
+            {copy.globe.spatialTraceTourProgress(stopIndex + 1, stopCount)}
+          </span>
+        ) : null}
+      </p>
+      <p className="mt-1 line-clamp-2 text-[13px] font-semibold leading-snug text-slate-900">
+        {stop.labelKo}
+      </p>
+      {stop.detailKo ? (
+        <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-slate-600">
+          {stop.detailKo}
+        </p>
+      ) : null}
+      {meta ? <p className="mt-1 text-[10px] font-medium text-sky-700">{meta}</p> : null}
+    </div>
+  );
+}
+
 export function GlobeContextBrainNodeCard({
   contextTitle,
   node,
@@ -145,6 +183,9 @@ export function GlobeContextBrainNodeCard({
   mediaGuide = null,
   primaryAction = null,
   secondaryAction = null,
+  tourStop = null,
+  tourStopIndex = 0,
+  tourStopCount = 0,
   onClose,
   className,
 }: GlobeContextBrainNodeCardProps) {
@@ -172,105 +213,92 @@ export function GlobeContextBrainNodeCard({
 
   return (
     <div
-      className={cn(
-        "max-h-[min(58vh,34rem)] w-full max-w-[min(100%,26rem)] overflow-y-auto overflow-x-hidden rounded-[1.35rem] border border-white/12 bg-[#0f172a]/88 text-white shadow-[0_22px_52px_rgba(0,0,0,0.36)] backdrop-blur-xl",
-        className,
-      )}
+      className={cn(GLOBE_CARD_SHELL, "max-h-[min(52vh,32rem)] overflow-y-auto", className)}
       data-globe-context-brain-node-card
       data-globe-context-brain-node-kind={node.kind}
     >
+      {tourStop ? (
+        <GlobeContextBrainTourStrip
+          stop={tourStop}
+          stopIndex={tourStopIndex}
+          stopCount={tourStopCount}
+        />
+      ) : null}
+
+      <div className="flex items-start justify-between gap-3 border-b border-slate-200/70 px-3 pb-3 pt-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1", accent.chip)}>
+              {presentation.categoryLabelKo}
+            </span>
+            {mediaGuide ? (
+              <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-800 ring-1 ring-violet-200/80">
+                {mediaGuide.sourceLabelKo}
+              </span>
+            ) : null}
+          </div>
+          <p className="mt-1.5 line-clamp-2 text-[15px] font-semibold leading-snug text-slate-900">
+            {mediaGuide?.title || node.label}
+          </p>
+          {guideProvider || guidePublishedAt || guideDuration ? (
+            <p className="mt-1 text-[11px] text-slate-500">
+              {[guideProvider, guidePublishedAt, guideDuration].filter(Boolean).join(" · ")}
+            </p>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="shrink-0 rounded-full bg-slate-100 p-1.5 text-slate-600 active:scale-[0.97]"
+          aria-label={copy.globe.contextBrainNodeClose}
+        >
+          <X className="size-4" aria-hidden />
+        </button>
+      </div>
+
       {showHero ? (
-        <div className="relative overflow-hidden border-b border-white/10 bg-[#05070b]">
+        <div className="px-3 pt-3">
           {embedSrc ? (
-            <GlobeBrainSurfaceYoutubeEmbed
-              videoKey={embedKey}
-              embedSrc={embedSrc}
-              title={mediaGuide?.title ?? "영상"}
-              className="h-[min(44vw,16rem)] min-h-[13rem] w-full border-0 bg-black"
-            />
+            <div className="overflow-hidden rounded-[0.85rem] bg-slate-950 ring-1 ring-slate-900/10">
+              <GlobeBrainSurfaceYoutubeEmbed
+                videoKey={embedKey}
+                embedSrc={embedSrc}
+                title={mediaGuide?.title ?? "영상"}
+                className="aspect-video max-h-[10.25rem] w-full border-0"
+              />
+            </div>
           ) : guideThumbnail ? (
-            <>
+            <div className="relative overflow-hidden rounded-[0.85rem] bg-slate-100 ring-1 ring-slate-200/80">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={guideThumbnail}
                 alt=""
-                className="h-[min(44vw,16rem)] min-h-[13rem] w-full object-cover"
+                className="aspect-video max-h-[10.25rem] w-full object-cover"
                 loading="lazy"
               />
               {mediaGuide?.sourceKind === "youtube" ? (
-                <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/16 text-white">
-                  <span className="flex size-12 items-center justify-center rounded-full bg-black/45 backdrop-blur-md">
-                    <Play className="size-5 fill-white/80" aria-hidden />
+                <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/12 text-white">
+                  <span className="flex size-10 items-center justify-center rounded-full bg-black/40 backdrop-blur-md">
+                    <Play className="size-4 fill-white/80" aria-hidden />
                   </span>
                 </span>
               ) : null}
-            </>
-          ) : null}
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="absolute right-2 top-2 z-[3] flex size-8 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-md active:scale-[0.96]"
-            aria-label={copy.globe.contextBrainNodeClose}
-          >
-            <X className="size-4" aria-hidden />
-          </button>
-
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] bg-gradient-to-t from-black/85 via-black/40 to-transparent px-3 pb-3 pt-14">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className={cn("rounded-full px-2 py-1 text-[10px] font-semibold ring-1", accent.chip)}>
-                {presentation.categoryLabelKo}
-              </span>
-              {mediaGuide ? (
-                <span className="rounded-full bg-white/12 px-2 py-1 text-[10px] font-semibold text-white/88 ring-1 ring-white/10">
-                  {mediaGuide.sourceLabelKo}
-                </span>
-              ) : null}
-              {mediaGuide?.primaryMoment ? (
-                <span className="rounded-full bg-[#2d2316] px-2 py-1 text-[10px] font-semibold text-[#ffd59a] ring-1 ring-[#f59e0b]/18">
-                  {mediaGuide.primaryMoment.chipLabelKo}
-                </span>
-              ) : null}
             </div>
-            <p className="mt-2 line-clamp-2 text-[16px] font-bold leading-tight tracking-tight text-white">
-              {mediaGuide?.title || node.label}
-            </p>
-            <p className="mt-1 line-clamp-2 text-[12px] font-medium text-white/82">
-              {node.label}
-            </p>
-            {guideProvider || guidePublishedAt || guideDuration ? (
-              <p className="mt-1 text-[11px] text-white/68">
-                {[guideProvider, guidePublishedAt, guideDuration].filter(Boolean).join(" · ")}
-              </p>
-            ) : null}
-          </div>
+          ) : null}
         </div>
       ) : (
-        <div className="flex items-start justify-between gap-3 px-3 pb-0 pt-3">
+        <div className="flex items-center gap-2 px-3 pt-3">
+          <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-full", accent.iconWrap)}>
+            <ProjectionNodeIcon token={presentation.iconToken} className="size-4" />
+          </span>
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-full", accent.iconWrap)}>
-                <ProjectionNodeIcon token={presentation.iconToken} className="size-4" />
-              </span>
-              <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/62">
-                  {presentation.categoryLabelKo}
-                </p>
-                <p className="truncate text-[11px] text-white/74">{presentation.axisLabelKo}</p>
-              </div>
-            </div>
-            <p className="mt-2 line-clamp-2 text-[16px] font-semibold leading-snug text-white">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+              {presentation.axisLabelKo}
+            </p>
+            <p className="line-clamp-2 text-[14px] font-semibold leading-snug text-slate-900">
               {node.label}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/8 text-white/70 active:bg-white/14"
-            aria-label={copy.globe.contextBrainNodeClose}
-          >
-            <X className="size-4" aria-hidden />
-          </button>
         </div>
       )}
 
@@ -279,39 +307,39 @@ export function GlobeContextBrainNodeCard({
           <span className={cn("rounded-full px-2 py-1 text-[10px] font-semibold ring-1", accent.subtleChip)}>
             {copy.globe.contextBrainNodeContextLabel}
           </span>
-          <span className="rounded-full bg-white/6 px-2 py-1 text-[10px] font-medium text-white/78 ring-1 ring-white/8">
+          <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200/80">
             {contextTitle}
           </span>
           {node.kind === "ghost" && node.candidateBadgeKo ? (
-            <span className="rounded-full bg-white/6 px-2 py-1 text-[10px] font-medium text-white/70 ring-1 ring-white/8">
+            <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-600 ring-1 ring-slate-200/80">
               {node.candidateBadgeKo}
             </span>
           ) : null}
         </div>
 
         {relationLine ? (
-          <p className="text-[11px] leading-snug text-white/60">{relationLine}</p>
+          <p className="text-[11px] leading-snug text-slate-600">{relationLine}</p>
         ) : null}
 
         {sourceLine ? (
-          <div className="rounded-[1rem] border border-[#e8d3a8]/38 bg-[#fff7e7]/10 p-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#f0d7ab]">
+          <div className="rounded-[1rem] border border-slate-200/80 bg-slate-50 p-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">
               {copy.globe.contextBrainNodeReasonLabel}
             </p>
-            <p className="mt-1 text-[12px] leading-relaxed text-white/84">{sourceLine}</p>
+            <p className="mt-1 text-[12px] leading-relaxed text-slate-700">{sourceLine}</p>
           </div>
         ) : null}
 
         {mediaGuide?.moments.length ? (
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/52">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">
               {copy.globe.contextBrainNodeSourceLabel}
             </p>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {mediaGuide.moments.slice(0, 3).map((moment) => (
                 <span
                   key={`${mediaGuide.guideNodeId}:${moment.seconds}`}
-                  className="rounded-full bg-white/8 px-2.5 py-1 text-[10px] font-semibold text-white/84 ring-1 ring-white/10"
+                  className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-700 ring-1 ring-slate-200/80"
                 >
                   {moment.chipLabelKo}
                 </span>
@@ -322,7 +350,7 @@ export function GlobeContextBrainNodeCard({
 
         {relatedVideos.length > 0 ? (
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/52">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">
               {copy.globe.contextBrainNodeRelatedTitle}
             </p>
             <div className="mt-2 space-y-1.5">
@@ -332,10 +360,10 @@ export function GlobeContextBrainNodeCard({
                   href={result.canonicalUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-2 rounded-[0.9rem] border border-white/10 bg-white/[0.04] px-2.5 py-2 active:scale-[0.99]"
+                  className="flex items-center gap-2 rounded-[0.9rem] border border-slate-200/80 bg-slate-50 px-2.5 py-2 active:scale-[0.99]"
                 >
                   {result.thumbnailUrl ? (
-                    <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-[0.7rem] border border-white/10 bg-white/5">
+                    <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-[0.7rem] border border-slate-200/80 bg-white">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={result.thumbnailUrl}
@@ -343,22 +371,22 @@ export function GlobeContextBrainNodeCard({
                         className="h-full w-full object-cover"
                         loading="lazy"
                       />
-                      <span className="absolute inset-0 flex items-center justify-center bg-black/18 text-white">
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/12 text-white">
                         <Play className="size-3.5 fill-white/80" aria-hidden />
                       </span>
                     </div>
                   ) : null}
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[11px] font-medium text-white/84">
+                    <p className="truncate text-[11px] font-medium text-slate-800">
                       {result.title || mediaGuide?.title || node.label}
                     </p>
-                    <p className="mt-0.5 truncate text-[10px] text-white/48">
+                    <p className="mt-0.5 truncate text-[10px] text-slate-500">
                       {[result.channelTitle, formatPublishedAt(result.publishedAt)]
                         .filter(Boolean)
                         .join(" · ")}
                     </p>
                   </div>
-                  <ExternalLink className="size-3.5 shrink-0 text-white/42" aria-hidden />
+                  <ExternalLink className="size-3.5 shrink-0 text-slate-400" aria-hidden />
                 </a>
               ))}
             </div>
@@ -370,7 +398,7 @@ export function GlobeContextBrainNodeCard({
             {factors.map((factor) => (
               <span
                 key={factor}
-                className="rounded-full bg-white/8 px-2 py-1 text-[10px] font-semibold text-white/74 ring-1 ring-white/10"
+                className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-700 ring-1 ring-slate-200/80"
               >
                 {factor}
               </span>
@@ -379,20 +407,17 @@ export function GlobeContextBrainNodeCard({
         ) : null}
 
         {primaryAction || secondaryAction ? (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {primaryAction ? (
               <button
                 type="button"
                 onClick={primaryAction.onClick}
-                className={cn(
-                  "flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-[1rem] bg-white px-3 py-3 text-[13px] font-semibold text-[#0f172a] active:scale-[0.99]",
-                  !secondaryAction && "w-full",
-                )}
+                className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-full bg-[#0071e3] px-3 py-2 text-[11px] font-semibold text-white active:scale-[0.98]"
               >
                 {mediaGuide?.sourceKind === "youtube" ? (
-                  <Play className="size-4" aria-hidden />
+                  <Play className="size-3.5" aria-hidden />
                 ) : (
-                  <ExternalLink className="size-4" aria-hidden />
+                  <ExternalLink className="size-3.5" aria-hidden />
                 )}
                 {primaryAction.label}
               </button>
@@ -401,12 +426,9 @@ export function GlobeContextBrainNodeCard({
               <button
                 type="button"
                 onClick={secondaryAction.onClick}
-                className={cn(
-                  "flex min-h-11 items-center justify-center gap-1.5 rounded-[1rem] border border-white/14 bg-white/8 px-3 py-3 text-[13px] font-semibold text-white active:scale-[0.99]",
-                  primaryAction ? "w-[8.25rem]" : "flex-1",
-                )}
+                className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full bg-slate-100 px-3 py-2 text-[11px] font-semibold text-slate-800 ring-1 ring-slate-200/80 active:scale-[0.98]"
               >
-                <MapPinned className="size-4" aria-hidden />
+                <MapPinned className="size-3.5" aria-hidden />
                 {secondaryAction.label}
               </button>
             ) : null}
