@@ -4,7 +4,7 @@ import { classifyOverseasManualPlace } from "@/lib/globe/classify-overseas-manua
 import { matchKoreaKnownNeighborhood } from "@/lib/globe/korea-known-neighborhoods";
 import { matchKoreaKnownPlace } from "@/lib/globe/korea-known-places";
 import { matchKoreaMetroDistrict } from "@/lib/globe/korea-metro-districts";
-import { inferCountryCodeFromCoords } from "@/lib/globe/infer-area-curiosity-hook";
+import { inferCountryCodeFromCoords } from "@/lib/globe/geo-region-from-coords";
 import { normalizePlaceLabel } from "@/lib/globe/normalize-place-label";
 import { type CountryCode, isCountryCode } from "@/lib/links/spark-locale";
 import { readPlanContextFromEvent } from "@/lib/plan-context/plan-context-metadata";

@@ -436,6 +436,29 @@ function buildLodgingGhosts(
   ), travel);
 }
 
+function buildOverseasEateryFallbackEntries(destination: string) {
+  return [
+    {
+      id: "local",
+      label: "로컬 식당",
+      query: `${destination} local restaurant`,
+      reasonKo: "현지 식당부터 찾아볼게요",
+    },
+    {
+      id: "cafe",
+      label: "카페",
+      query: `${destination} cafe`,
+      reasonKo: "동선 중간 쉬어 가기",
+    },
+    {
+      id: "nearby",
+      label: "근처 식사",
+      query: `${destination} restaurant`,
+      reasonKo: "지금 동네 기준으로 찾아볼게요",
+    },
+  ];
+}
+
 function buildEateryGhosts(
   event: EventCandidate,
   travel: TravelBrainProjection,
@@ -481,12 +504,9 @@ function buildEateryGhosts(
   const anchor = resolveStableContextPlaceAnchor(event);
   const overseas =
     anchor.profile.countryCode != null && anchor.profile.countryCode !== "KR";
-  if (overseas) {
-    return [];
-  }
-
-  const fallbackEntries =
-    slots.food_bias.value === "local"
+  const fallbackEntries = overseas
+    ? buildOverseasEateryFallbackEntries(destination)
+    : slots.food_bias.value === "local"
       ? [
           { id: "local", label: "로컬 맛집", query: `${destination} 로컬 맛집`, reasonKo: "현지 감도가 높은 식사부터 보기" },
           { id: "night", label: "야식 가능", query: `${destination} 야식 맛집`, reasonKo: "금요일 저녁·늦은 도착에도 이어지게" },

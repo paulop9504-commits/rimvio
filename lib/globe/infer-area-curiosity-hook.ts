@@ -1,41 +1,13 @@
 import type { BrainSurfaceCandidateFamily } from "@/lib/situation-projection/brain-surface-types";
+import { inferMapRegionFromCoords } from "@/lib/globe/geo-region-from-coords";
 
 export type MapRegionBias = "kr" | "jp" | "global";
 
-/** Bounding-box country hint from map coordinates — wins over ambiguous labels. */
-export function inferCountryCodeFromCoords(
-  lat: number,
-  lng: number,
-): "KR" | "JP" | null {
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-    return null;
-  }
-  const inKorea =
-    lat >= 33 &&
-    lat <= 39.5 &&
-    lng >= 124 &&
-    lng <= 132.5;
-  if (inKorea) {
-    return "KR";
-  }
-  const inJapan =
-    lat >= 24 &&
-    lat <= 46.5 &&
-    lng >= 122 &&
-    lng <= 154;
-  if (inJapan) {
-    return "JP";
-  }
-  return null;
-}
-
-export function isCoordInKorea(lat: number, lng: number): boolean {
-  return inferCountryCodeFromCoords(lat, lng) === "KR";
-}
-
-export function isCoordInJapan(lat: number, lng: number): boolean {
-  return inferCountryCodeFromCoords(lat, lng) === "JP";
-}
+export {
+  inferCountryCodeFromCoords,
+  isCoordInJapan,
+  isCoordInKorea,
+} from "@/lib/globe/geo-region-from-coords";
 
 export function inferMapRegionBias(input: {
   lat?: number | null;
@@ -45,12 +17,9 @@ export function inferMapRegionBias(input: {
   const lat = input.lat;
   const lng = input.lng;
   if (lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng)) {
-    const coordCountry = inferCountryCodeFromCoords(lat, lng);
-    if (coordCountry === "KR") {
-      return "kr";
-    }
-    if (coordCountry === "JP") {
-      return "jp";
+    const coordRegion = inferMapRegionFromCoords(lat, lng);
+    if (coordRegion) {
+      return coordRegion;
     }
   }
 
@@ -77,6 +46,10 @@ function matchAreaHook(areaLabel: string, hooks: Record<string, string>): string
   }
   return hooks.default ?? null;
 }
+
+const GLOBAL_AREA_HOOKS: Record<string, string> = {
+  default: "한 블록만 정해도 동선이 갈라져요",
+};
 
 const KR_AREA_HOOKS: Record<string, string> = {
   default: "골목 하나만 잡아도 동선이 갈라져요",
@@ -145,8 +118,8 @@ export function buildAreaCuriosityHook(input: {
       ? matchAreaHook(areaLabel, JP_AREA_HOOKS)
       : region === "kr"
         ? matchAreaHook(areaLabel, KR_AREA_HOOKS)
-        : matchAreaHook(areaLabel, KR_AREA_HOOKS);
-  return familyHook(input.family, region) ?? regional ?? KR_AREA_HOOKS.default!;
+        : matchAreaHook(areaLabel, GLOBAL_AREA_HOOKS);
+  return familyHook(input.family, region) ?? regional ?? GLOBAL_AREA_HOOKS.default!;
 }
 
 export function buildAreaCuriosityPreview(input: {

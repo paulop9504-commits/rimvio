@@ -215,6 +215,7 @@ import {
   resolveBrainSurfaceDisclosureStage,
 } from "@/lib/globe/brain-surface-progressive-disclosure";
 import { filterVisibleBrainSurfaceCandidates } from "@/lib/globe/brain-surface-marker-media";
+import { filterBrainSurfaceShadowExpandPins } from "@/lib/globe/brain-surface-shadow-expand";
 import { computeLodgingDiscoveryBounds } from "@/lib/globe/lodging/compute-lodging-discovery-bounds";
 import {
   buildMediaSpatialTraceTourStopsFromGuide,
@@ -945,18 +946,24 @@ function GlobeHomeBody() {
 
   const brainSurfaceExploreRailCandidates = useMemo(() => {
     if (brainSurfaceShadowExpanded && activeBrainSurfaceCandidate?.clusterId) {
-      return (brainSurfaceBatch?.candidates ?? [])
-        .filter(
-          (candidate) =>
-            candidate.clusterId === activeBrainSurfaceCandidate.clusterId &&
-            candidate.anchorKind === "inferred_place",
-        )
-        .slice(0, 12);
+      const clusterId = activeBrainSurfaceCandidate.clusterId;
+      const guideId =
+        activeBrainSurfaceCandidate.sourceGuideNodeId?.trim() ??
+        activeBrainSurfaceCandidate.parentGuideNodeId?.trim() ??
+        null;
+      return filterVisibleBrainSurfaceCandidates(
+        filterBrainSurfaceShadowExpandPins(brainSurfaceBatch?.candidates ?? [], {
+          clusterId,
+          guideId,
+        }),
+      ).slice(0, 12);
     }
 
     return disclosedBrainSurfaceCandidates.slice(0, 12);
   }, [
     activeBrainSurfaceCandidate?.clusterId,
+    activeBrainSurfaceCandidate?.parentGuideNodeId,
+    activeBrainSurfaceCandidate?.sourceGuideNodeId,
     brainSurfaceBatch?.candidates,
     brainSurfaceShadowExpanded,
     disclosedBrainSurfaceCandidates,
@@ -984,8 +991,15 @@ function GlobeHomeBody() {
     if (candidate.anchorKind === "video_root" && brainSurfaceBatch) {
       const clusterId = candidate.clusterId;
       if (clusterId) {
-        return brainSurfaceBatch.candidates.filter(
-          (row) => row.clusterId === clusterId && row.anchorKind === "inferred_place",
+        const guideId =
+          candidate.sourceGuideNodeId?.trim() ??
+          candidate.parentGuideNodeId?.trim() ??
+          null;
+        return filterVisibleBrainSurfaceCandidates(
+          filterBrainSurfaceShadowExpandPins(brainSurfaceBatch.candidates, {
+            clusterId,
+            guideId,
+          }),
         ).length;
       }
     }
@@ -1388,21 +1402,9 @@ function GlobeHomeBody() {
       null;
     const inferredInCluster = clusterId
       ? filterVisibleBrainSurfaceCandidates(
-          brainSurfaceBatch.candidates.filter((row) => {
-            if (
-              row.anchorKind === "inferred_place" &&
-              row.clusterId === clusterId
-            ) {
-              return true;
-            }
-            if (
-              guideId &&
-              row.sourceGuideNodeId === guideId &&
-              (row.family === "lodging" || row.family === "eatery")
-            ) {
-              return true;
-            }
-            return false;
+          filterBrainSurfaceShadowExpandPins(brainSurfaceBatch.candidates, {
+            clusterId,
+            guideId,
           }),
         )
       : [];

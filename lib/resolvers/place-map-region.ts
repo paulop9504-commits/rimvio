@@ -1,10 +1,7 @@
+import { isCoordInKorea } from "@/lib/globe/geo-region-from-coords";
+
 /** Korea bounding box — domestic map apps (Kakao/Naver) are useful here. */
-const KOREA_BOUNDS = {
-  minLat: 33.0,
-  maxLat: 38.85,
-  minLng: 124.4,
-  maxLng: 132.2,
-} as const;
+export { isCoordInKorea };
 
 const DOMESTIC_PLACE_HINT =
   /서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충청|전라|경상|제주|강남|홍대|명동|이태원|한국|대한민국|\bkorea\b|\bseoul\b|\bbusan\b|\bjeju\b|\bincheon\b|\bgyeonggi\b|\bdaegu\b|\bdajeon\b|\bgwangju\b/i;
@@ -41,15 +38,6 @@ export function parseGoogleMapCoords(
   }
 
   return null;
-}
-
-export function isCoordInKorea(lat: number, lng: number): boolean {
-  return (
-    lat >= KOREA_BOUNDS.minLat &&
-    lat <= KOREA_BOUNDS.maxLat &&
-    lng >= KOREA_BOUNDS.minLng &&
-    lng <= KOREA_BOUNDS.maxLng
-  );
 }
 
 export function isDomesticMapPlace(input: {

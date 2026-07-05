@@ -53,4 +53,18 @@ const setagayaProfile = buildCanonicalPlaceProfile({
 assert.equal(setagayaProfile.countryCode, "JP");
 assert.equal(setagayaProfile.searchHints.providerBias, "google_places");
 
+const fukuokaBias = inferMapRegionBias({
+  lat: 33.5904,
+  lng: 130.4017,
+  areaLabel: "대전 출발 후쿠오카",
+});
+assert.equal(fukuokaBias, "jp", "Fukuoka coords must not fall into KR label bias");
+
+const fukuokaMock = resolveEateryMockNearOrigin({
+  lat: 33.5904,
+  lng: 130.4017,
+  anchorLabel: "인천 출발",
+});
+assert.equal(fukuokaMock.length, 0, "Fukuoka must never receive KR mock eateries");
+
 console.log("test-overseas-eatery-region: ok");

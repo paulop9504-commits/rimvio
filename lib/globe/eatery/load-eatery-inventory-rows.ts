@@ -21,6 +21,7 @@ export type EateryInventorySource =
 export type LoadedEateryInventory = {
   rows: ContextEateryInventoryRow[];
   source: EateryInventorySource;
+  followupQuestionKo?: string | null;
 };
 
 function buildFallbackEateryQuery(input: {
@@ -84,11 +85,12 @@ async function fetchEateryInventoryFromApi(input: {
   }
   const response = await fetch(`/api/globe/eatery-inventory?${params.toString()}`);
   if (!response.ok) {
-    return { rows: [], source: "mock" };
+    return { rows: [], source: "google_places" };
   }
   const body = (await response.json()) as {
     inventory?: ContextEateryInventoryRow[];
     source?: EateryInventorySource;
+    followupQuestionKo?: string | null;
   };
   return {
     rows: Array.isArray(body.inventory) ? body.inventory : [],
@@ -98,7 +100,8 @@ async function fetchEateryInventoryFromApi(input: {
       body.source === "multi_provider" ||
       body.source === "mock"
         ? body.source
-        : "mock",
+        : "google_places",
+    followupQuestionKo: body.followupQuestionKo ?? null,
   };
 }
 

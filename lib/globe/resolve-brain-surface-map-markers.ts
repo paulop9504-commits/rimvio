@@ -5,6 +5,9 @@ import {
   type BrainSurfaceDisclosureStage,
 } from "@/lib/globe/brain-surface-progressive-disclosure";
 import { filterVisibleBrainSurfaceCandidates } from "@/lib/globe/brain-surface-marker-media";
+import {
+  matchBrainSurfaceShadowExpandPin,
+} from "@/lib/globe/brain-surface-shadow-expand";
 import { layoutGeoGroupedCalloutMarkers } from "@/lib/globe/layout-geo-grouped-callout-markers";
 import type { BrainSurfaceProjectionCandidate } from "@/lib/situation-projection/brain-surface-types";
 
@@ -32,21 +35,7 @@ function isShadowExpandedMapPin(
   clusterId: string,
   guideId: string | null,
 ): boolean {
-  if (!hasRealCoords(candidate)) {
-    return false;
-  }
-  if (candidate.anchorKind === "inferred_place" && candidate.clusterId === clusterId) {
-    return true;
-  }
-  if (
-    guideId &&
-    candidate.sourceGuideNodeId === guideId &&
-    (candidate.family === "lodging" || candidate.family === "eatery") &&
-    candidate.markerThumbnailUrl?.trim()
-  ) {
-    return true;
-  }
-  return false;
+  return matchBrainSurfaceShadowExpandPin(candidate, { clusterId, guideId });
 }
 
 function styleCalloutMarkers(

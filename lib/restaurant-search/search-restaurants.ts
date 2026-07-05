@@ -4,7 +4,7 @@ import {
   isCanonicalPlaceCountryCompatible,
   type CanonicalPlaceProfile,
 } from "@/lib/globe/canonical-place-profile";
-import { isCoordInKorea } from "@/lib/globe/infer-area-curiosity-hook";
+import { inferCountryCodeFromCoords, isCoordInKorea } from "@/lib/globe/geo-region-from-coords";
 import { googlePlacesApiKey, isGooglePlacesConfigured } from "@/lib/locate/google-places-config";
 import { isNaverSearchConfigured } from "@/lib/naver/config";
 import { fetchNaverLocalPlaceCandidates } from "@/lib/naver/local-to-place-candidate";
@@ -163,10 +163,11 @@ export function resolveRestaurantCountryBias(
   }
   const origin = input.origin;
   if (origin) {
-    if (origin.lat >= 30 && origin.lat <= 46 && origin.lng >= 129 && origin.lng <= 146) {
+    const fromCoords = inferCountryCodeFromCoords(origin.lat, origin.lng);
+    if (fromCoords === "JP") {
       return "jp" as const;
     }
-    if (origin.lat >= 33 && origin.lat <= 39.5 && origin.lng >= 124 && origin.lng <= 132.5) {
+    if (fromCoords === "KR") {
       return "kr" as const;
     }
   }
@@ -510,7 +511,7 @@ async function searchGooglePlaces(input: {
   const nearbyKeyword =
     input.countryBias === "kr"
       ? input.query
-      : input.intent.cuisine?.trim() || undefined;
+      : input.query.trim() || input.intent.cuisine?.trim() || undefined;
 
   for (const type of GOOGLE_RESTAURANT_TYPES) {
     try {
@@ -620,9 +621,9 @@ export async function searchRestaurants(
   const preferredSource = pickPreferredSource({ providerBias, countryBias });
   const originInKorea = origin ? isCoordInKorea(origin.lat, origin.lng) : false;
   const shouldUseNaver =
+    countryBias === "kr" &&
     originInKorea &&
-    (providerBias === "naver_local" ||
-      (providerBias === "global" && countryBias !== "jp"));
+    (providerBias === "naver_local" || providerBias === "global");
 
   const [naverCandidates, googleCandidates] = await Promise.all([
     shouldUseNaver ? searchNaverLocal({
