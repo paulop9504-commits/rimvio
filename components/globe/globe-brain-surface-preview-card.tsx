@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { ExternalLink, MapPinned, X } from "lucide-react";
 import type { BrainSurfaceProjectionCandidate } from "@/lib/situation-projection/brain-surface-types";
 import type { MediaSpatialTraceTourStop } from "@/lib/situation-projection/build-media-spatial-trace-tour";
+import { GlobeBrainSurfaceVideoChip } from "@/components/globe/globe-brain-surface-video-chip";
+import { GlobeBrainSurfaceFloatingFrame } from "@/components/globe/globe-brain-surface-floating-frame";
 import { GlobeMediaGuideMapExpandButton } from "@/components/globe/globe-media-guide-map-expand-button";
 import { formatSpatialTraceLine } from "@/lib/situation-projection/build-media-spatial-trace";
 import { extractYouTubeVideoId } from "@/lib/enrichers/youtube-url";
@@ -56,11 +58,17 @@ function isRedundantPreviewBody(
 
 function compactVideoTitle(title: string): string {
   const trimmed = title.trim();
-  if (trimmed.length <= 42) {
+  if (trimmed.length <= 36) {
     return trimmed;
   }
-  return `${trimmed.slice(0, 41).trimEnd()}…`;
+  return `${trimmed.slice(0, 35).trimEnd()}…`;
 }
+
+const INFO_SHELL =
+  "overflow-hidden rounded-b-[1.1rem] rounded-t-none border border-t-0 border-white/85 bg-white/94 text-slate-900 shadow-[0_14px_36px_rgba(15,23,42,0.12)] backdrop-blur-2xl ring-1 ring-black/[0.04]";
+
+const PREVIEW_SHELL =
+  "overflow-hidden rounded-b-[1.15rem] rounded-t-none border border-t-0 border-white/85 bg-white/94 text-slate-900 shadow-[0_16px_40px_rgba(15,23,42,0.14)] backdrop-blur-2xl ring-1 ring-black/[0.04]";
 
 export type GlobeBrainSurfacePreviewCardProps = {
   candidate: BrainSurfaceProjectionCandidate;
@@ -79,6 +87,42 @@ export type GlobeBrainSurfacePreviewCardProps = {
   onTourSkip?: (() => void) | null;
 };
 
+function GlobeBrainSurfaceInfoFrame({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <GlobeBrainSurfaceFloatingFrame
+      frameId="brain-surface-info"
+      dragLabel="정보 프레임 이동"
+      shellClassName={cn(INFO_SHELL, className)}
+      bodyClassName="p-0"
+    >
+      {children}
+    </GlobeBrainSurfaceFloatingFrame>
+  );
+}
+
+function GlobeBrainSurfacePreviewFrame({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  return (
+    <GlobeBrainSurfaceFloatingFrame
+      frameId="brain-surface-preview"
+      dragLabel="미리보기 이동"
+      shellClassName={PREVIEW_SHELL}
+      bodyClassName="p-0"
+    >
+      {children}
+    </GlobeBrainSurfaceFloatingFrame>
+  );
+}
+
 export function GlobeBrainSurfacePreviewCard({
   candidate,
   detailMode = false,
@@ -93,7 +137,6 @@ export function GlobeBrainSurfacePreviewCard({
   tourStop = null,
   tourStopIndex = 0,
   tourStopCount = 0,
-  onTourSkip = null,
 }: GlobeBrainSurfacePreviewCardProps) {
   const embedSrc = useMemo(
     () => buildStableEmbedSrc(candidate.embedUrl),
@@ -106,10 +149,8 @@ export function GlobeBrainSurfacePreviewCard({
         : null) ?? candidate.id,
     [candidate.embedUrl, candidate.id],
   );
-  const isVideoCompact =
-    !detailMode &&
-    candidate.anchorKind === "video_root" &&
-    Boolean(embedSrc);
+  const isVideoSplit =
+    candidate.anchorKind === "video_root" && Boolean(embedSrc) && !detailMode;
   const showPreviewBody =
     !isRedundantPreviewBody(candidate.previewTitle, candidate.previewBody) &&
     Boolean(candidate.previewBody?.trim());
@@ -123,208 +164,143 @@ export function GlobeBrainSurfacePreviewCard({
           ? "가이드 열기"
           : "상세 열기");
 
-  const shellClass = cn(
-    "pointer-events-auto absolute left-1/2 z-[31] -translate-x-1/2 overflow-hidden rounded-[1.15rem] border border-white/85 bg-white/94 text-slate-900 shadow-[0_16px_40px_rgba(15,23,42,0.14)] backdrop-blur-2xl ring-1 ring-black/[0.04]",
-    isVideoCompact
-      ? "bottom-[max(6.75rem,calc(env(safe-area-inset-bottom)+5.5rem))] w-[min(18rem,calc(100vw-1.25rem))]"
-      : cn(
-          "w-[min(24rem,calc(100vw-1.5rem))]",
-          detailMode
-            ? "bottom-[max(6.4rem,calc(env(safe-area-inset-bottom)+5.25rem))]"
-            : "bottom-[max(7rem,calc(env(safe-area-inset-bottom)+5.75rem))]",
-        ),
-  );
-
   const tourMeta = tourStop
     ? [tourStop.inferenceLabelKo, tourStop.confidenceLabelKo].filter(Boolean).join(" · ")
     : "";
   const tourLabelVisible = Boolean(
     tourStop && !textsOverlap(tourStop.labelKo, candidate.previewTitle),
   );
+  const infoHeadline =
+    tourStop && tourLabelVisible
+      ? tourStop.labelKo
+      : compactVideoTitle(candidate.previewTitle);
 
-  if (isVideoCompact) {
+  if (isVideoSplit) {
     return (
-      <div
-        className={shellClass}
-        data-globe-brain-surface-preview
-        data-detail-mode="false"
-        data-compact-video="true"
-      >
-        {tourStop ? (
-          <div className="border-b border-slate-200/70 px-2.5 py-2">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-700/80">
-              {copy.globe.spatialTraceTourEyebrow}
-              {tourStopCount > 1 ? (
-                <span className="ml-1.5 text-sky-600/70">
-                  {copy.globe.spatialTraceTourProgress(tourStopIndex + 1, tourStopCount)}
+      <>
+        <GlobeBrainSurfaceVideoChip
+          embedSrc={embedSrc!}
+          embedKey={embedKey}
+          title={candidate.previewTitle}
+          onClose={onClose}
+        />
+
+        <GlobeBrainSurfaceInfoFrame>
+          {tourStop ? (
+            <div className="flex items-center justify-between gap-2 border-b border-slate-200/70 px-3 py-2">
+              <p className="text-[10px] font-semibold text-sky-700">
+                {copy.globe.spatialTraceTourEyebrow}
+                {tourStopCount > 1 ? (
+                  <span className="ml-1 text-sky-600/75">
+                    {copy.globe.spatialTraceTourProgress(tourStopIndex + 1, tourStopCount)}
+                  </span>
+                ) : null}
+              </p>
+              {tourMeta ? (
+                <span className="truncate text-[10px] font-medium text-sky-700/80">
+                  {tourMeta}
                 </span>
               ) : null}
-            </p>
-            <p className="mt-1 line-clamp-2 text-[12px] font-semibold leading-snug text-slate-900">
-              {tourLabelVisible ? tourStop!.labelKo : candidate.previewTitle}
-            </p>
-            {tourLabelVisible && tourStop!.detailKo ? (
-              <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-slate-600">
-                {tourStop!.detailKo}
-              </p>
-            ) : !tourLabelVisible && tourStop!.detailKo ? (
-              <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-slate-600">
-                {tourStop!.detailKo}
-              </p>
-            ) : null}
-            {tourMeta ? (
-              <p className="mt-1 text-[10px] font-medium text-sky-700">{tourMeta}</p>
-            ) : null}
-          </div>
-        ) : null}
-        <div className="flex items-center justify-between gap-2 px-2.5 py-2">
-          <div className="flex min-w-0 flex-wrap items-center gap-1">
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700 ring-1 ring-slate-200/80">
-              {candidate.placeLabel}
-            </span>
-            <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-800 ring-1 ring-violet-200/80">
-              YouTube
-            </span>
-          </div>
-          <button
-            type="button"
-            onPointerDown={(event) => event.stopPropagation()}
-            onClick={(event) => {
-              event.stopPropagation();
-              onClose();
-            }}
-            className="shrink-0 rounded-full bg-slate-100 p-1 text-slate-600 active:scale-[0.97]"
-            aria-label="닫기"
-          >
-            <X className="size-3.5" aria-hidden />
-          </button>
-        </div>
-
-        <div className="px-2">
-          <p className="mb-1.5 line-clamp-1 px-0.5 text-[12px] font-semibold leading-snug text-slate-900">
-            {compactVideoTitle(candidate.previewTitle)}
-          </p>
-          <div className="overflow-hidden rounded-[0.85rem] bg-slate-950 ring-1 ring-slate-900/10">
-            <GlobeBrainSurfaceYoutubeEmbed
-              videoKey={embedKey}
-              embedSrc={embedSrc!}
-              title={candidate.previewTitle}
-              className="aspect-video max-h-[10.25rem] w-full border-0"
-            />
-          </div>
-        </div>
-
-        {showPreviewBody ? (
-          <p className="line-clamp-2 px-3 pt-2 text-[11px] leading-relaxed text-slate-600">
-            {candidate.previewBody}
-          </p>
-        ) : null}
-
-        <div className="flex flex-wrap items-center gap-1.5 px-2.5 py-2.5">
-          {onExpandInferredMap ? (
-            <GlobeMediaGuideMapExpandButton
-              variant="pill"
-              label={copy.globe.contextGuideExpandMap}
-              candidateCount={inferredPlaceCount}
-              onClick={onExpandInferredMap}
-            />
+            </div>
           ) : null}
-          {onOpenPrimary && candidate.openUrl ? (
+
+          <div className="px-3 pt-2.5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-slate-500">
+              {candidate.placeLabel}
+            </p>
+            <p className="mt-1 line-clamp-1 text-[13px] font-semibold leading-snug text-slate-900">
+              {infoHeadline}
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-1.5 px-2.5 pb-2.5 pt-2">
+            {onExpandInferredMap ? (
+              <GlobeMediaGuideMapExpandButton
+                variant="bar"
+                label={copy.globe.contextGuideExpandMap}
+                candidateCount={inferredPlaceCount}
+                onClick={onExpandInferredMap}
+              />
+            ) : null}
             <button
               type="button"
-              onClick={onOpenPrimary}
-              className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-700 ring-1 ring-slate-200/80 active:scale-[0.98]"
+              onClick={onPromoteDetail}
+              className={cn(
+                "flex w-full items-center justify-center rounded-[0.85rem] px-3 py-2.5 text-[12px] font-semibold active:scale-[0.98]",
+                onExpandInferredMap
+                  ? "bg-slate-100 text-slate-800 ring-1 ring-slate-200/80"
+                  : "bg-[#0071e3] text-white shadow-[0_8px_20px_rgba(0,113,227,0.28)]",
+              )}
             >
-              YouTube에서 보기
+              {copy.globe.contextGuideDisclosureDetail}
             </button>
-          ) : null}
-        </div>
-      </div>
+          </div>
+        </GlobeBrainSurfaceInfoFrame>
+      </>
     );
   }
 
-  return (
-    <div
-      className={shellClass}
-      data-globe-brain-surface-preview
-      data-detail-mode={detailMode ? "true" : "false"}
-    >
+  const previewBody = (
+    <>
       {tourStop ? (
-        <div className="border-b border-slate-200/70 px-3 py-2.5">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-700/80">
+        <div className="border-b border-slate-200/70 px-3 py-2">
+          <p className="text-[10px] font-semibold text-sky-700">
             {copy.globe.spatialTraceTourEyebrow}
             {tourStopCount > 1 ? (
-              <span className="ml-1.5 text-sky-600/70">
+              <span className="ml-1 text-sky-600/75">
                 {copy.globe.spatialTraceTourProgress(tourStopIndex + 1, tourStopCount)}
               </span>
             ) : null}
           </p>
-          <p className="mt-1 line-clamp-2 text-[13px] font-semibold leading-snug text-slate-900">
-            {tourLabelVisible ? tourStop!.labelKo : candidate.previewTitle}
-          </p>
-          {tourLabelVisible && tourStop!.detailKo ? (
-            <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-slate-600">
-              {tourStop!.detailKo}
+          {tourLabelVisible ? (
+            <p className="mt-1 line-clamp-1 text-[12px] font-semibold text-slate-900">
+              {tourStop!.labelKo}
             </p>
-          ) : !tourLabelVisible && tourStop!.detailKo ? (
-            <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-slate-600">
-              {tourStop!.detailKo}
-            </p>
-          ) : null}
-          {tourMeta ? (
-            <p className="mt-1 text-[10px] font-medium text-sky-700">{tourMeta}</p>
           ) : null}
         </div>
       ) : null}
-      <div className="flex items-start justify-between gap-3 border-b border-slate-200/70 px-4 pb-3 pt-4">
+
+      <div className="flex items-start justify-between gap-3 border-b border-slate-200/70 px-3 pb-2.5 pt-3">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">
-              {candidate.placeLabel}
-            </p>
-            {candidate.sourceLabelKo ? (
-              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 ring-1 ring-slate-200/80">
-                {candidate.sourceLabelKo.split("·")[0]?.trim()}
-              </span>
-            ) : null}
-          </div>
-          <p className="mt-1 line-clamp-2 text-[15px] font-semibold leading-snug text-slate-900">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-slate-500">
+            {candidate.placeLabel}
+          </p>
+          <p className="mt-1 line-clamp-2 text-[14px] font-semibold leading-snug text-slate-900">
             {candidate.previewTitle}
           </p>
         </div>
         <button
           type="button"
-          onPointerDown={(event) => {
-            event.stopPropagation();
-          }}
+          onPointerDown={(event) => event.stopPropagation()}
           onClick={(event) => {
             event.stopPropagation();
             onClose();
           }}
-          className="rounded-full bg-slate-100 p-1.5 text-slate-600 active:scale-[0.97]"
+          className="shrink-0 rounded-full bg-slate-100 p-1.5 text-slate-600 active:scale-[0.97]"
           aria-label="닫기"
         >
           <X className="size-4" aria-hidden />
         </button>
       </div>
 
-      {embedSrc ? (
+      {embedSrc && detailMode ? (
         <div className="bg-slate-950 px-0 pb-0 pt-0">
           <GlobeBrainSurfaceYoutubeEmbed
             videoKey={embedKey}
             embedSrc={embedSrc}
             title={candidate.previewTitle}
+            className="aspect-video max-h-[9rem] w-full border-0"
           />
         </div>
       ) : candidate.markerThumbnailUrl || candidate.openUrl ? (
-        <div className="px-4 pb-3 pt-3">
+        <div className="px-3 pb-2 pt-2">
           {candidate.markerThumbnailUrl ? (
-            <div className="relative overflow-hidden rounded-[1rem] border border-slate-200/80 bg-slate-100">
+            <div className="relative overflow-hidden rounded-[0.85rem] border border-slate-200/80 bg-slate-100">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={candidate.markerThumbnailUrl}
                 alt=""
-                className="aspect-video w-full object-cover"
+                className="aspect-video max-h-[9rem] w-full object-cover"
               />
               {candidate.markerMediaKind === "video" ? (
                 <span className="absolute bottom-2 right-2 rounded-full bg-black/55 px-2 py-1 text-[10px] font-semibold text-white">
@@ -333,26 +309,11 @@ export function GlobeBrainSurfacePreviewCard({
               ) : null}
             </div>
           ) : null}
-          {candidate.openUrl ? (
-            <a
-              href={candidate.openUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-2 inline-flex items-center rounded-full bg-slate-100 px-3 py-1.5 text-[11px] font-semibold text-slate-800 ring-1 ring-slate-200/80"
-            >
-              YouTube에서 보기
-            </a>
-          ) : null}
         </div>
       ) : null}
 
-      {showPreviewBody ? (
-        <p
-          className={cn(
-            "px-4 text-[12px] leading-relaxed text-slate-600",
-            detailMode ? "pb-3 pt-3" : "pb-2 pt-3",
-          )}
-        >
+      {showPreviewBody && detailMode ? (
+        <p className="line-clamp-2 px-3 pb-2 pt-2 text-[11px] leading-relaxed text-slate-600">
           {candidate.previewBody}
         </p>
       ) : null}
@@ -360,7 +321,7 @@ export function GlobeBrainSurfacePreviewCard({
       {detailMode &&
       candidate.spatialTraceItems &&
       candidate.spatialTraceItems.length > 0 ? (
-        <div className="px-4 pb-3">
+        <div className="px-3 pb-3">
           <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">
             {copy.globe.spatialTraceTitle}
           </p>
@@ -378,10 +339,10 @@ export function GlobeBrainSurfacePreviewCard({
       ) : null}
 
       {!detailMode ? (
-        <div className="flex flex-wrap gap-1.5 px-3 pb-3">
+        <div className="flex flex-col gap-1.5 px-2.5 pb-2.5">
           {onExpandInferredMap ? (
             <GlobeMediaGuideMapExpandButton
-              variant="pill"
+              variant="bar"
               label={copy.globe.contextGuideExpandMap}
               candidateCount={inferredPlaceCount}
               onClick={onExpandInferredMap}
@@ -390,13 +351,18 @@ export function GlobeBrainSurfacePreviewCard({
           <button
             type="button"
             onClick={onPromoteDetail}
-            className="inline-flex items-center rounded-full bg-[#0071e3] px-3 py-1.5 text-[11px] font-semibold text-white active:scale-[0.98]"
+            className={cn(
+              "flex w-full items-center justify-center rounded-[0.85rem] px-3 py-2.5 text-[12px] font-semibold active:scale-[0.98]",
+              onExpandInferredMap
+                ? "bg-slate-100 text-slate-800 ring-1 ring-slate-200/80"
+                : "bg-[#0071e3] text-white",
+            )}
           >
-            자세히
+            {copy.globe.contextGuideDisclosureDetail}
           </button>
         </div>
       ) : (
-        <div className="flex flex-wrap gap-1.5 px-3 pb-4">
+        <div className="flex flex-wrap gap-1.5 px-3 pb-3">
           <button
             type="button"
             onClick={onOpenPrimary}
@@ -427,6 +393,10 @@ export function GlobeBrainSurfacePreviewCard({
           ) : null}
         </div>
       )}
-    </div>
+    </>
+  );
+
+  return (
+    <GlobeBrainSurfacePreviewFrame>{previewBody}</GlobeBrainSurfacePreviewFrame>
   );
 }

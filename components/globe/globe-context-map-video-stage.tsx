@@ -4,8 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { ContextMediaVideoSoundButton } from "@/components/globe/context-media-video-sound-button";
 import { GlobeContextMediaFocusCard } from "@/components/globe/globe-context-media-focus-card";
+import { GlobeBrainSurfaceFloatingFrame } from "@/components/globe/globe-brain-surface-floating-frame";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
-import { useGlobeMapMediaCardSize } from "@/hooks/use-globe-map-media-card-size";
 import { useGlobePinScreenAnchor } from "@/hooks/use-globe-pin-screen-anchor";
 import { useGlobeContextVideoSound } from "@/hooks/use-globe-context-video-sound";
 import { useContextMediaGuides } from "@/hooks/use-context-media-guides";
@@ -20,13 +20,11 @@ import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-conte
 import { resolveExperienceVolumeForEvent } from "@/lib/globe/resolve-globe-context-primary-video";
 import { dispatchGlobeMapMediaFocus } from "@/lib/globe/globe-map-media-focus-bridge";
 import {
-  GLOBE_MAP_FOCUS_CARD_MAX_WIDTH_CLASS,
   GLOBE_MAP_FOCUS_HERO_MEDIA_INTERACTIVE_CLASS,
   GLOBE_MAP_FOCUS_HERO_SHELL_CLASS,
   GLOBE_MAP_FOCUS_PIN_ANCHOR_OFFSET_PX,
   resolveGlobeMapFocusHeroShellStyle,
 } from "@/lib/globe/globe-map-focus-hero-layout";
-import { clampGlobeMapMediaCardWidth } from "@/lib/globe/globe-map-media-card-size";
 import { useMediaIntrinsicSize } from "@/hooks/use-media-intrinsic-size";
 import {
   EVENT_CANDIDATES_UPDATED,
@@ -47,7 +45,6 @@ import { toast } from "sonner";
 
 const SWIPE_MIN_PX = 44;
 const TAP_MAX_PX = 14;
-const VIDEO_CARD_WIDTH_BOOST_PX = 48;
 const VIDEO_POP_DURATION_MS = 260;
 
 export type GlobeContextMapVideoStageProps = {
@@ -201,14 +198,6 @@ export function GlobeContextMapVideoStage({
   const [mediaIndex, setMediaIndex] = useState(0);
   const [playing, setPlaying] = useState(true);
   const [videoPopActive, setVideoPopActive] = useState(false);
-  const {
-    widthPx,
-    pinchActiveRef,
-    isResizing,
-    onCardTouchStart,
-    onCardTouchMove,
-    onCardTouchEnd,
-  } = useGlobeMapMediaCardSize();
 
   useEffect(() => {
     const bump = () => setRevision((value) => value + 1);
@@ -320,13 +309,6 @@ export function GlobeContextMapVideoStage({
   }, [reel.length, visible]);
 
   const currentItem = reel[mediaIndex] ?? null;
-  const boostedWidthPx =
-    currentItem?.kind === "video"
-      ? clampGlobeMapMediaCardWidth(widthPx + VIDEO_CARD_WIDTH_BOOST_PX)
-      : widthPx;
-  const cardWidthPx = pinAnchored
-    ? Math.max(boostedWidthPx, pinLayout.widthPx)
-    : boostedWidthPx;
 
   useEffect(() => {
     if (currentItem?.kind !== "video" || !visible) {
@@ -398,7 +380,6 @@ export function GlobeContextMapVideoStage({
 
   const mergeCardTouchStart = (event: React.TouchEvent) => {
     event.stopPropagation();
-    onCardTouchStart(event);
     if (event.touches.length === 1) {
       const touch = event.touches[0];
       if (touch) {
@@ -409,16 +390,10 @@ export function GlobeContextMapVideoStage({
 
   const mergeCardTouchMove = (event: React.TouchEvent) => {
     event.stopPropagation();
-    onCardTouchMove(event);
   };
 
   const mergeCardTouchEnd = (event: React.TouchEvent) => {
     event.stopPropagation();
-    onCardTouchEnd(event);
-    if (pinchActiveRef.current || isResizing()) {
-      touchStartRef.current = null;
-      return;
-    }
     const start = touchStartRef.current;
     const touch = event.changedTouches[0];
     touchStartRef.current = null;
@@ -471,6 +446,37 @@ export function GlobeContextMapVideoStage({
     </>
   );
 
+  const focusCard = (
+    <GlobeContextMediaFocusCard
+      className="h-full w-full"
+      title={contextTitle}
+      recallCaption={subtitle}
+      onClose={dismiss}
+      closeAriaLabel={copy.globe.contextMediaFocusCloseAria}
+      onHeroPress={handleHeroPress}
+      footerAction={mapVideoFooterAction}
+      onTouchStart={mergeCardTouchStart}
+      onTouchMove={mergeCardTouchMove}
+      onTouchEnd={mergeCardTouchEnd}
+      hero={mediaHero}
+    />
+  );
+
+  const adjustableFrame = (
+    <GlobeBrainSurfaceFloatingFrame
+      frameId="context-media-focus"
+      dragLabel="미디어 카드 이동"
+      floating={!pinAnchored}
+      className={cn(
+        videoPopActive && "scale-[1.04] transition-transform duration-300",
+      )}
+      shellClassName="overflow-hidden rounded-b-xl rounded-t-none bg-[#1d1d1f] ring-1 ring-white/10 shadow-[0_16px_40px_rgba(0,0,0,0.28)]"
+      bodyClassName="overflow-hidden p-0"
+    >
+      {focusCard}
+    </GlobeBrainSurfaceFloatingFrame>
+  );
+
   return (
     <div
       ref={containerRef}
@@ -491,66 +497,18 @@ export function GlobeContextMapVideoStage({
 
       {pinAnchored && pinLayout ? (
         <div
-          className={cn(
-            "pointer-events-auto absolute z-[1] transition-[width,transform] duration-300 ease-out",
-            videoPopActive && "scale-[1.04]",
-          )}
+          className="pointer-events-auto absolute z-[1]"
           style={{
             left: pinLayout.x,
             top: pinLayout.y,
-            width: cardWidthPx,
             transform: `translate(-50%, calc(-100% - ${GLOBE_MAP_FOCUS_PIN_ANCHOR_OFFSET_PX}px))`,
           }}
           data-globe-context-map-video-anchor
-          data-globe-map-media-card-width={cardWidthPx}
         >
-          <GlobeContextMediaFocusCard
-            className="w-full"
-            title={contextTitle}
-            recallCaption={subtitle}
-            onClose={dismiss}
-            closeAriaLabel={copy.globe.contextMediaFocusCloseAria}
-            onHeroPress={handleHeroPress}
-            footerAction={mapVideoFooterAction}
-            onTouchStart={mergeCardTouchStart}
-            onTouchMove={mergeCardTouchMove}
-            onTouchEnd={mergeCardTouchEnd}
-            hero={mediaHero}
-          />
+          {adjustableFrame}
         </div>
       ) : (
-        <div
-          className="pointer-events-none absolute inset-x-0 z-[1] flex min-h-0 flex-col items-center justify-center overflow-y-auto overscroll-contain px-3 py-1"
-          style={{
-            top: "max(2.5rem, env(safe-area-inset-top))",
-            bottom: "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 0.5rem)",
-          }}
-          data-globe-context-map-video-anchor
-        >
-          <div
-            className={cn(
-              "pointer-events-auto transition-[width,transform] duration-300 ease-out",
-              GLOBE_MAP_FOCUS_CARD_MAX_WIDTH_CLASS,
-              videoPopActive && "scale-[1.04]",
-            )}
-            style={{ width: cardWidthPx }}
-            data-globe-map-media-card-width={cardWidthPx}
-          >
-            <GlobeContextMediaFocusCard
-              className="w-full"
-              title={contextTitle}
-              recallCaption={subtitle}
-              onClose={dismiss}
-              closeAriaLabel={copy.globe.contextMediaFocusCloseAria}
-              onHeroPress={handleHeroPress}
-              footerAction={mapVideoFooterAction}
-              onTouchStart={mergeCardTouchStart}
-              onTouchMove={mergeCardTouchMove}
-              onTouchEnd={mergeCardTouchEnd}
-              hero={mediaHero}
-            />
-          </div>
-        </div>
+        adjustableFrame
       )}
     </div>
   );

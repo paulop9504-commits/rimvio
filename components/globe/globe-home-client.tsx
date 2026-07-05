@@ -14,6 +14,11 @@ import { GlobeContextBrainMapOverlay } from "@/components/globe/globe-context-br
 import { GlobeContextBrainNodeCard } from "@/components/globe/globe-context-brain-node-card";
 import { GlobeBrainSurfaceExploreRail } from "@/components/globe/globe-brain-surface-explore-rail";
 import { GlobeBrainSurfacePreviewCard } from "@/components/globe/globe-brain-surface-preview-card";
+import {
+  buildBrainSurfaceEmbedSrc,
+  GlobeBrainSurfaceVideoChip,
+} from "@/components/globe/globe-brain-surface-video-chip";
+import { GlobeBrainSurfaceFloatingFrame } from "@/components/globe/globe-brain-surface-floating-frame";
 import { GlobeSpatialTraceTourChip } from "@/components/globe/globe-spatial-trace-tour-chip";
 import { GlobeLodgingFocusStage } from "@/components/globe/globe-lodging-focus-stage";
 import { GlobeLodgingDiscoveryStage } from "@/components/globe/globe-lodging-discovery-stage";
@@ -22,6 +27,7 @@ import { GlobeEateryFocusSheet } from "@/components/globe/globe-eatery-focus-she
 import { useGlobeLodgingDiscoverySession } from "@/hooks/use-globe-lodging-discovery-session";
 import { useGlobeEateryDiscoverySession } from "@/hooks/use-globe-eatery-discovery-session";
 import { useBrainSurfaceProjectionReveal } from "@/hooks/use-brain-surface-projection-reveal";
+import { extractYouTubeVideoId } from "@/lib/enrichers/youtube-url";
 import { useMediaSpatialTraceTour } from "@/hooks/use-media-spatial-trace-tour";
 import { useContextMediaGuides } from "@/hooks/use-context-media-guides";
 import { useGlobeContextBrainActions } from "@/hooks/use-globe-context-brain-actions";
@@ -3040,6 +3046,14 @@ function GlobeHomeBody() {
       activeBrainSurfacePresentation &&
       activeContextEvent,
   );
+  const detailDockVideoEmbedSrc = useMemo(
+    () => buildBrainSurfaceEmbedSrc(activeBrainSurfaceGuide?.embedUrl),
+    [activeBrainSurfaceGuide?.embedUrl],
+  );
+  const detailDockVideoEmbedKey = useMemo(() => {
+    const raw = activeBrainSurfaceGuide?.embedUrl;
+    return (raw ? extractYouTubeVideoId(raw) : null) ?? activeBrainSurfaceGuide?.guideNodeId ?? "detail-video";
+  }, [activeBrainSurfaceGuide?.embedUrl, activeBrainSurfaceGuide?.guideNodeId]);
 
   useEffect(() => {
     if (!showBrainSurfaceDetailChrome || !activeBrainSurfaceCandidate) {
@@ -3050,7 +3064,7 @@ function GlobeHomeBody() {
       return;
     }
     globeRef.current?.flyToPin(lat, lng, "street", {
-      pinViewportY: BRAIN_SURFACE_DOCK_PIN_VIEWPORT_Y,
+      pinViewportY: 0.5,
     });
   }, [
     activeBrainSurfaceCandidate,
@@ -3060,12 +3074,7 @@ function GlobeHomeBody() {
   return (
     <div
       ref={surfaceRef}
-      className={cn(
-        "relative h-full min-h-0 flex-1",
-        showBrainSurfaceDetailChrome
-          ? "grid grid-rows-[minmax(0,1fr)_min(46vh,21rem)]"
-          : "flex flex-col",
-      )}
+      className="relative flex h-full min-h-0 flex-1 flex-col"
       data-surface="globe-home"
       onDragEnter={(event) => {
         if (layerMode === "discovery" || confirmOpen) {
@@ -3118,10 +3127,7 @@ function GlobeHomeBody() {
       ) : null}
       {/* —— L1 Globe stage (pins · recall) —— */}
       <div
-        className={cn(
-          "relative min-h-0 overflow-hidden",
-          showBrainSurfaceDetailChrome ? "min-h-0" : "flex h-full min-h-0 flex-1 flex-col",
-        )}
+        className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden"
         data-globe-map-stage
       >
       <RimvioGlobeHubClient
@@ -3162,6 +3168,7 @@ function GlobeHomeBody() {
       />
       {brainSurfaceVisible &&
       !showBrainSurfaceDetailChrome &&
+      !showBrainSurfacePreviewChrome &&
       brainSurfaceExploreRailCandidates.length > 0 ? (
         <GlobeBrainSurfaceExploreRail
           candidates={brainSurfaceExploreRailCandidates}
@@ -3188,6 +3195,14 @@ function GlobeHomeBody() {
               ? "pointer-events-none bottom-[calc(var(--rimvio-globe-ingest-offset,5.5rem)+0.35rem)] opacity-0"
               : "bottom-[calc(var(--rimvio-globe-ingest-offset,5.5rem)+0.35rem)]"
           }
+        />
+      ) : null}
+      {showBrainSurfaceDetailChrome && detailDockVideoEmbedSrc ? (
+        <GlobeBrainSurfaceVideoChip
+          embedSrc={detailDockVideoEmbedSrc}
+          embedKey={detailDockVideoEmbedKey}
+          title={activeBrainSurfaceGuide?.title ?? activeBrainSurfaceCandidate?.previewTitle ?? "영상"}
+          onClose={dismissBrainSurfacePreview}
         />
       ) : null}
       {activeBrainSurfaceCandidate &&
@@ -3231,15 +3246,16 @@ function GlobeHomeBody() {
           onTourSkip={dismissBrainSurfacePreview}
         />
       ) : null}
-      </div>
       {showBrainSurfaceDetailChrome ? (
-        <div
-          className="relative z-[31] min-h-0 overflow-hidden border-t border-slate-200/85 bg-[#f2f5fa] px-3 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-2"
-          data-globe-brain-surface-dock
+        <GlobeBrainSurfaceFloatingFrame
+          frameId="brain-surface-detail"
+          dragLabel="상세 정보 이동"
+          shellClassName="overflow-hidden rounded-b-[1rem] rounded-t-none border border-t-0 border-white/85 bg-white/94 text-slate-900 shadow-[0_16px_40px_rgba(15,23,42,0.14)] backdrop-blur-2xl ring-1 ring-black/[0.04]"
+          bodyClassName="p-0"
         >
           <GlobeContextBrainNodeCard
-            variant="dock"
-            className="mx-auto"
+            variant="embedded"
+            videoDetached={Boolean(detailDockVideoEmbedSrc)}
             contextTitle={
               activeContextEvent!.place?.trim() || activeContextEvent!.title.trim() || "맥락"
             }
@@ -3282,8 +3298,9 @@ function GlobeHomeBody() {
             }
             onClose={dismissBrainSurfacePreview}
           />
-        </div>
+        </GlobeBrainSurfaceFloatingFrame>
       ) : null}
+      </div>
       {lodgingDiscovery.session && !eateryDiscovery.session ? (
         <GlobeLodgingDiscoveryStage
           session={lodgingDiscovery.session}
@@ -3382,7 +3399,8 @@ function GlobeHomeBody() {
       !contextHasMapMedia &&
       !sheetOpen &&
       !mapMediaFocusOpen &&
-      !confirmOpen ? (
+      !confirmOpen &&
+      !showBrainSurfacePreviewChrome ? (
         <p
           className="pointer-events-none absolute inset-x-6 z-[19] text-center text-[11px] font-medium text-white/90 drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]"
           style={{

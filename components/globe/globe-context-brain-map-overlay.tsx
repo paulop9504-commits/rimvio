@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Brain, X } from "lucide-react";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { GlobeContextBrainNodeCard } from "@/components/globe/globe-context-brain-node-card";
+import { GlobeBrainSurfaceFloatingFrame } from "@/components/globe/globe-brain-surface-floating-frame";
 import { GlobeContextBrainPills } from "@/components/globe/globe-context-brain-pills";
 import { ProjectionNodeIcon } from "@/components/globe/projection-node-icon";
 import { useContextMediaGuides } from "@/hooks/use-context-media-guides";
@@ -644,23 +645,17 @@ export function GlobeContextBrainMapOverlay({
   return (
     <AnimatePresence>
       <motion.div
-        className={cn(
-          "pointer-events-none absolute inset-0 z-[24]",
-          showBottomInspector && "flex min-h-0 flex-col",
-        )}
+        className="pointer-events-none absolute inset-0 z-[24]"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.18, ease: "easeOut" }}
         data-globe-context-brain-map-overlay
         data-globe-context-brain-display-mode={displayMode}
-        data-globe-context-brain-map-split={showBottomInspector ? "dock" : "overlay"}
+        data-globe-context-brain-map-split="overlay"
       >
         <div
-          className={cn(
-            "relative min-h-0",
-            showBottomInspector ? "flex-1 overflow-hidden" : "absolute inset-0",
-          )}
+          className="absolute inset-0 min-h-0"
           data-globe-context-brain-map-stage
         >
         <motion.div
@@ -1106,18 +1101,15 @@ export function GlobeContextBrainMapOverlay({
         </div>
 
         {showBottomInspector && selectedNode && selectedPresentation ? (
-          <motion.div
-            className="pointer-events-auto shrink-0 border-t border-slate-200/85 bg-[#f2f5fa] px-3 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-2"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
-            transition={{ duration: 0.18, ease: "easeOut" }}
-            data-globe-context-brain-node-inspector
-            data-globe-context-brain-node-dock
+          <GlobeBrainSurfaceFloatingFrame
+            frameId="brain-map-node"
+            dragLabel="노드 정보 이동"
+            zIndex={26}
+            shellClassName="overflow-hidden rounded-b-[1rem] rounded-t-none border border-t-0 border-white/85 bg-white/94 text-slate-900 shadow-[0_16px_40px_rgba(15,23,42,0.14)] backdrop-blur-2xl ring-1 ring-black/[0.04]"
+            bodyClassName="p-0"
           >
             <GlobeContextBrainNodeCard
-              variant="dock"
-              className="mx-auto"
+              variant="embedded"
               contextTitle={contextTitle}
               node={selectedNode}
               presentation={selectedPresentation}
@@ -1145,7 +1137,7 @@ export function GlobeContextBrainMapOverlay({
               }
               onClose={() => setSelectedNodeId(null)}
             />
-          </motion.div>
+          </GlobeBrainSurfaceFloatingFrame>
         ) : null}
       </motion.div>
     </AnimatePresence>

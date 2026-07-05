@@ -11,6 +11,10 @@ import {
 import { readFeedCaptureFragments } from "@/lib/feed/feed-capture-metadata";
 import { readMediaContextMemorySnapshot } from "@/lib/location-ping/media-context-store";
 import { buildGlobeContextMediaRecallCaption } from "@/lib/globe/build-context-media-recall-caption";
+import {
+  mediaMatchesEventPlaceRegion,
+  resolveCaptureRegionProbe,
+} from "@/lib/globe/filter-context-media-for-place-region";
 
 export type ContextMediaReelItem = {
   id: string;
@@ -56,11 +60,11 @@ function isLocalEventMedia(
 }
 
 function appendFromMediaStore(
-  eventId: string,
+  event: EventCandidate,
   push: (item: ContextMediaReelDraft) => void,
   skipMediaIds: ReadonlySet<string>,
 ): void {
-  const key = eventId.trim();
+  const key = event.id.trim();
   if (!key) {
     return;
   }
@@ -74,6 +78,16 @@ function appendFromMediaStore(
       continue;
     }
     if (row.mediaKind !== "photo" && row.mediaKind !== "video") {
+      continue;
+    }
+    if (
+      !mediaMatchesEventPlaceRegion(event, {
+        placeLabel: row.placeLabel ?? null,
+        label: null,
+        lat: row.lat ?? null,
+        lng: row.lng ?? null,
+      })
+    ) {
       continue;
     }
     push({
@@ -144,6 +158,19 @@ export function projectContextMediaReel(input: {
     if (row.kind !== "photo" && row.kind !== "video") {
       continue;
     }
+    if (
+      input.event &&
+      !mediaMatchesEventPlaceRegion(
+        input.event,
+        resolveCaptureRegionProbe({
+          placeLabel: row.placeLabel,
+          label: row.label,
+          mediaContextId: row.mediaContextId,
+        }),
+      )
+    ) {
+      continue;
+    }
     const mediaContextId = row.mediaContextId?.trim() || null;
     const imageUrl = isUsableBridgeMediaUrl(row.url) ? row.url!.trim() : null;
     const allowLocalBlob = bridgeShared
@@ -192,8 +219,8 @@ export function projectContextMediaReel(input: {
     }
   }
 
-  if (eventId && shouldAppendMediaStoreForBridgeReel(bridgeShared)) {
-    appendFromMediaStore(eventId, push, linkedMediaIds);
+  if (eventId && input.event && shouldAppendMediaStoreForBridgeReel(bridgeShared)) {
+    appendFromMediaStore(input.event, push, linkedMediaIds);
   }
 
   // Do not project volume spatial media into the pin reel — spacetime matching

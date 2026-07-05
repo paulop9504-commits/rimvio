@@ -1,6 +1,10 @@
 import { isUsableBridgeMediaUrl } from "@/lib/experience-bridge/bridge-media-url";
 import { readFeedCaptureFragments } from "@/lib/feed/feed-capture-metadata";
 import type { EventCandidate } from "@/lib/events/event-candidate";
+import {
+  mediaMatchesEventPlaceRegion,
+  resolveCaptureRegionProbe,
+} from "@/lib/globe/filter-context-media-for-place-region";
 
 export type BridgePreviewMedia = {
   url: string;
@@ -20,6 +24,18 @@ export function projectBridgePreviewMedia(
   const rows: BridgePreviewMedia[] = [];
   for (const row of readFeedCaptureFragments(event)) {
     if (row.kind !== "photo" && row.kind !== "video") {
+      continue;
+    }
+    if (
+      !mediaMatchesEventPlaceRegion(
+        event,
+        resolveCaptureRegionProbe({
+          placeLabel: row.placeLabel,
+          label: row.label,
+          mediaContextId: row.mediaContextId,
+        }),
+      )
+    ) {
       continue;
     }
     const url = isUsableBridgeMediaUrl(row.url) ? row.url!.trim() : "";

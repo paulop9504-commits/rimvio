@@ -38,8 +38,10 @@ export type GlobeContextBrainNodeCardProps = {
   tourStopCount?: number;
   onClose: () => void;
   className?: string;
-  /** float = centered overlay card · dock = bottom split panel */
-  variant?: "float" | "dock";
+  /** float = centered overlay · dock = legacy bottom panel · embedded = inside floating frame */
+  variant?: "float" | "dock" | "embedded";
+  /** dock + YouTube: embed renders in map stage, card stays info-only */
+  videoDetached?: boolean;
 };
 
 const GLOBE_CARD_SHELL =
@@ -204,6 +206,7 @@ export function GlobeContextBrainNodeCard({
   onClose,
   className,
   variant = "float",
+  videoDetached = false,
 }: GlobeContextBrainNodeCardProps) {
   const accent = resolveAccentClasses(presentation.discoveryAccent);
   const guideThumbnail = pickGuideThumbnail(mediaGuide);
@@ -241,23 +244,30 @@ export function GlobeContextBrainNodeCard({
           !factorChips.some((factor) => factor.includes(chip) || chip.includes(factor)) &&
           !primaryReason?.includes(chip),
       ) ?? [];
-  const showHero = Boolean(mediaGuide?.embedUrl || guideThumbnail);
   const embedSrc = buildStableEmbedSrc(mediaGuide?.embedUrl);
   const embedKey =
     (mediaGuide?.embedUrl ? extractYouTubeVideoId(mediaGuide.embedUrl) : null) ??
     mediaGuide?.guideNodeId ??
     node.id;
-
   const docked = variant === "dock";
+  const embedded = variant === "embedded";
+  const videoInMapStage = (docked || embedded) && videoDetached && Boolean(embedSrc);
+  const showHero =
+    Boolean(mediaGuide?.embedUrl || guideThumbnail) && !videoInMapStage;
+  const dockMediaCompact = videoInMapStage || embedded;
 
   return (
     <div
       className={cn(
-        GLOBE_CARD_SHELL,
-        docked
-          ? "max-h-[min(44vh,20rem)] w-full max-w-none overflow-y-auto rounded-[1rem] shadow-none ring-0"
-          : "max-h-[min(52vh,32rem)] overflow-y-auto",
-        className,
+        embedded
+          ? cn("w-full text-slate-900", className)
+          : cn(
+              GLOBE_CARD_SHELL,
+              docked
+                ? "max-h-[min(44vh,20rem)] w-full max-w-none overflow-y-auto rounded-[1rem] shadow-none ring-0"
+                : "max-h-[min(52vh,32rem)] overflow-y-auto",
+              className,
+            ),
       )}
       data-globe-context-brain-node-card
       data-globe-context-brain-node-variant={variant}
@@ -276,21 +286,26 @@ export function GlobeContextBrainNodeCard({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1", accent.chip)}>
-              {presentation.categoryLabelKo}
+              {dockMediaCompact ? contextTitle : presentation.categoryLabelKo}
             </span>
-            {mediaGuide ? (
+            {mediaGuide && !dockMediaCompact ? (
               <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-800 ring-1 ring-violet-200/80">
                 {mediaGuide.sourceLabelKo}
               </span>
             ) : null}
           </div>
-          <p className="mt-1.5 line-clamp-2 text-[15px] font-semibold leading-snug text-slate-900">
+          <p
+            className={cn(
+              "mt-1.5 font-semibold leading-snug text-slate-900",
+              dockMediaCompact ? "line-clamp-1 text-[13px]" : "line-clamp-2 text-[15px]",
+            )}
+          >
             {headline}
           </p>
-          {guideTitleLine ? (
+          {!dockMediaCompact && guideTitleLine ? (
             <p className="mt-1 line-clamp-1 text-[11px] text-slate-500">{guideTitleLine}</p>
           ) : null}
-          {guideProvider || guidePublishedAt || guideDuration ? (
+          {!dockMediaCompact && (guideProvider || guidePublishedAt || guideDuration) ? (
             <p className="mt-1 text-[11px] text-slate-500">
               {[guideProvider, guidePublishedAt, guideDuration].filter(Boolean).join(" · ")}
             </p>
@@ -352,9 +367,10 @@ export function GlobeContextBrainNodeCard({
         </div>
       )}
 
-      <div className="space-y-3 px-3 pb-3 pt-3">
-        {shouldShowContextBadge(contextTitle, presentation.categoryLabelKo) ||
-        shouldShowCandidateBadge(node.candidateBadgeKo, presentation.categoryLabelKo) ? (
+      <div className={cn("space-y-3 px-3 pb-3", dockMediaCompact ? "pt-2" : "pt-3")}>
+        {!dockMediaCompact &&
+        (shouldShowContextBadge(contextTitle, presentation.categoryLabelKo) ||
+          shouldShowCandidateBadge(node.candidateBadgeKo, presentation.categoryLabelKo)) ? (
           <div className="flex flex-wrap items-center gap-1.5">
             {shouldShowContextBadge(contextTitle, presentation.categoryLabelKo) ? (
               <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200/80">
@@ -369,16 +385,18 @@ export function GlobeContextBrainNodeCard({
           </div>
         ) : null}
 
-        {primaryReason ? (
+        {primaryReason && !dockMediaCompact ? (
           <div className="rounded-[1rem] border border-slate-200/80 bg-slate-50 p-3">
             <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">
               {copy.globe.contextBrainNodeReasonLabel}
             </p>
             <p className="mt-1 text-[12px] leading-relaxed text-slate-700">{primaryReason}</p>
           </div>
+        ) : primaryReason && dockMediaCompact ? (
+          <p className="line-clamp-2 text-[11px] leading-relaxed text-slate-600">{primaryReason}</p>
         ) : null}
 
-        {momentChips.length > 0 ? (
+        {!dockMediaCompact && momentChips.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
             {momentChips.map((chip) => (
               <span
@@ -391,7 +409,7 @@ export function GlobeContextBrainNodeCard({
           </div>
         ) : null}
 
-        {!showHero && relatedVideos.length > 0 ? (
+        {!dockMediaCompact && !showHero && relatedVideos.length > 0 ? (
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">
               {copy.globe.contextBrainNodeRelatedTitle}
@@ -436,7 +454,7 @@ export function GlobeContextBrainNodeCard({
           </div>
         ) : null}
 
-        {factorChips.length > 0 ? (
+        {!dockMediaCompact && factorChips.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
             {factorChips.map((factor) => (
               <span
@@ -450,12 +468,17 @@ export function GlobeContextBrainNodeCard({
         ) : null}
 
         {primaryAction || secondaryAction ? (
-          <div className="flex flex-wrap gap-1.5">
+          <div className={cn(dockMediaCompact ? "flex flex-col gap-1.5" : "flex flex-wrap gap-1.5")}>
             {primaryAction ? (
               <button
                 type="button"
                 onClick={primaryAction.onClick}
-                className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-full bg-[#0071e3] px-3 py-2 text-[11px] font-semibold text-white active:scale-[0.98]"
+                className={cn(
+                  "inline-flex min-h-10 items-center justify-center gap-1.5 bg-[#0071e3] px-3 py-2.5 text-[12px] font-semibold text-white active:scale-[0.98]",
+                  dockMediaCompact
+                    ? "w-full rounded-[0.85rem] shadow-[0_8px_20px_rgba(0,113,227,0.28)]"
+                    : "flex-1 rounded-full",
+                )}
               >
                 {mediaGuide?.sourceKind === "youtube" ? (
                   <Play className="size-3.5" aria-hidden />
@@ -469,7 +492,10 @@ export function GlobeContextBrainNodeCard({
               <button
                 type="button"
                 onClick={secondaryAction.onClick}
-                className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full bg-slate-100 px-3 py-2 text-[11px] font-semibold text-slate-800 ring-1 ring-slate-200/80 active:scale-[0.98]"
+                className={cn(
+                  "inline-flex min-h-10 items-center justify-center gap-1.5 bg-slate-100 px-3 py-2.5 text-[12px] font-semibold text-slate-800 ring-1 ring-slate-200/80 active:scale-[0.98]",
+                  dockMediaCompact ? "w-full rounded-[0.85rem]" : "rounded-full",
+                )}
               >
                 <MapPinned className="size-3.5" aria-hidden />
                 {secondaryAction.label}

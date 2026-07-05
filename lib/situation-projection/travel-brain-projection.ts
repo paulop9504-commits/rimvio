@@ -6,6 +6,7 @@ import { buildLodgingStayWindow } from "@/lib/globe/context-hub/lodging-stay-win
 import { readLodgingInventoryRows } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import { resolveContextLodgingDestinationAnchor } from "@/lib/globe/context-hub/resolve-context-lodging-search-coords";
 import { readEateryInventoryRows } from "@/lib/globe/eatery/read-eatery-resource-inventory";
+import { mediaMatchesEventPlaceRegion } from "@/lib/globe/filter-context-media-for-place-region";
 import { suggestDepartureHubOptions } from "@/lib/globe/suggest-departure-hub-options";
 import { describeGhostProjectionNodeSemantic } from "@/lib/situation-projection/ontology-semantic";
 import type {
@@ -352,6 +353,14 @@ function buildLodgingGhosts(
   const slots = travel.state.slots;
   const stayWindow = buildLodgingStayWindow({ event });
   const inventory = [...readLodgingInventoryRows(event)]
+    .filter((row) =>
+      mediaMatchesEventPlaceRegion(event, {
+        placeLabel: row.name,
+        label: row.address,
+        lat: row.lat,
+        lng: row.lng,
+      }),
+    )
     .sort(
       (left, right) =>
         scoreLodgingRowForTravel(right, travel) - scoreLodgingRowForTravel(left, travel),
@@ -466,6 +475,14 @@ function buildEateryGhosts(
   const destination = resolveTravelDestination(event);
   const slots = travel.state.slots;
   const inventory = [...readEateryInventoryRows(event)]
+    .filter((row) =>
+      mediaMatchesEventPlaceRegion(event, {
+        placeLabel: row.name,
+        label: row.address,
+        lat: row.lat,
+        lng: row.lng,
+      }),
+    )
     .sort(
       (left, right) =>
         scoreEateryRowForTravel(right, travel) - scoreEateryRowForTravel(left, travel),
