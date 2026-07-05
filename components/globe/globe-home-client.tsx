@@ -3144,7 +3144,8 @@ function GlobeHomeBody() {
         />
       ) : null}
       {activeBrainSurfaceCandidate &&
-      (!brainSurfaceDetailMode || !activeBrainSurfaceNode) ? (
+      (!brainSurfaceDetailMode || !activeBrainSurfaceNode) &&
+      !brainSurfaceShadowExpanded ? (
         <GlobeBrainSurfacePreviewCard
           candidate={activeBrainSurfaceCandidate}
           detailMode={brainSurfaceDetailMode}
@@ -3187,42 +3188,53 @@ function GlobeHomeBody() {
       activeBrainSurfaceNode &&
       activeBrainSurfacePresentation &&
       activeContextEvent ? (
-        <GlobeContextBrainNodeCard
-          contextTitle={
-            activeContextEvent.place?.trim() || activeContextEvent.title.trim() || "맥락"
-          }
-          node={activeBrainSurfaceNode}
-          presentation={activeBrainSurfacePresentation}
-          memoBody={activeBrainSurfaceExplanation?.memoKo ?? null}
-          factors={activeBrainSurfaceExplanation?.factorsKo ?? []}
-          mediaGuide={activeBrainSurfaceGuide}
-          primaryAction={{
-            label:
-              activeBrainSurfaceCandidate?.family === "media"
-                ? copy.globe.contextGuideOpenVideo
-                : copy.globe.contextGuideOpenPage,
-            onClick: handleBrainSurfacePrimaryAction,
+        <div
+          className="pointer-events-none absolute inset-x-0 z-[31] flex justify-center px-3"
+          style={{
+            bottom: brainSurfaceShadowExpanded
+              ? "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 5rem)"
+              : "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 0.85rem)",
           }}
-          secondaryAction={
-            activeBrainSurfaceNode?.kind === "ghost"
-              ? {
-                  label: copy.globe.contextBrainConnectCta,
-                  onClick: handleBrainSurfaceConnect,
-                }
-              : activeBrainSurfaceCandidate?.mapsUrl
+          data-globe-brain-surface-node-inspector
+        >
+          <GlobeContextBrainNodeCard
+            className="pointer-events-auto max-h-[min(52vh,32rem)]"
+            contextTitle={
+              activeContextEvent.place?.trim() || activeContextEvent.title.trim() || "맥락"
+            }
+            node={activeBrainSurfaceNode}
+            presentation={activeBrainSurfacePresentation}
+            memoBody={activeBrainSurfaceExplanation?.memoKo ?? null}
+            factors={activeBrainSurfaceExplanation?.factorsKo ?? []}
+            mediaGuide={activeBrainSurfaceGuide}
+            primaryAction={{
+              label:
+                activeBrainSurfaceCandidate?.family === "media"
+                  ? copy.globe.contextGuideOpenVideo
+                  : copy.globe.contextGuideOpenPage,
+              onClick: handleBrainSurfacePrimaryAction,
+            }}
+            secondaryAction={
+              activeBrainSurfaceNode?.kind === "ghost"
                 ? {
-                    label: copy.globe.contextBrainNodeMapCta,
-                    onClick: () =>
-                      window.open(
-                        activeBrainSurfaceCandidate.mapsUrl!,
-                        "_blank",
-                        "noopener,noreferrer",
-                      ),
+                    label: copy.globe.contextBrainConnectCta,
+                    onClick: handleBrainSurfaceConnect,
                   }
-                : null
-          }
-          onClose={dismissBrainSurfacePreview}
-        />
+                : activeBrainSurfaceCandidate?.mapsUrl
+                  ? {
+                      label: copy.globe.contextBrainNodeMapCta,
+                      onClick: () =>
+                        window.open(
+                          activeBrainSurfaceCandidate.mapsUrl!,
+                          "_blank",
+                          "noopener,noreferrer",
+                        ),
+                    }
+                  : null
+            }
+            onClose={dismissBrainSurfacePreview}
+          />
+        </div>
       ) : null}
       {lodgingDiscovery.session && !eateryDiscovery.session ? (
         <GlobeLodgingDiscoveryStage

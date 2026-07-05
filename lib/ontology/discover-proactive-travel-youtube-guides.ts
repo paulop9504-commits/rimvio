@@ -142,7 +142,7 @@ async function buildGuideFromSearchResult(input: {
     return null;
   }
   const officialVideo = await fetchYouTubeOfficialVideo({ videoId });
-  if (officialVideo && !officialVideo.embeddable) {
+  if (!officialVideo?.embeddable) {
     return null;
   }
   const title = normalizeText(officialVideo?.title ?? input.result.title) || "YouTube";
@@ -164,7 +164,7 @@ async function buildGuideFromSearchResult(input: {
     trustLabelKo: "영상",
     canonicalUrl,
     openUrl: canonicalUrl,
-    embedUrl: officialVideo?.embeddable ? buildYouTubeEmbedUrl(videoId) : null,
+    embedUrl: buildYouTubeEmbedUrl(videoId),
     thumbnailUrl,
     description,
     providerName: normalizeText(officialVideo?.channelTitle ?? input.result.channelTitle),

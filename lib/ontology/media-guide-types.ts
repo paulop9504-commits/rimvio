@@ -132,7 +132,7 @@ export type MediaGuideNode = {
   updatedAt: string;
 };
 
-export const MEDIA_GUIDE_SNAPSHOT_VERSION = 1 as const;
+export const MEDIA_GUIDE_SNAPSHOT_VERSION = 2 as const;
 
 export type MediaGuideSnapshot = {
   version: typeof MEDIA_GUIDE_SNAPSHOT_VERSION;

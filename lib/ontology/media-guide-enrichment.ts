@@ -20,6 +20,7 @@ import { asRimvioEntityId } from "@/lib/ontology/entity-types";
 import type { FeedCaptureMediaTextSignal } from "@/lib/ontology/feed-capture-wire";
 import { inferMediaGuidePlaceCandidates } from "@/lib/ontology/media-guide-place-inference";
 import { discoverProactiveTravelYoutubeGuides } from "@/lib/ontology/discover-proactive-travel-youtube-guides";
+import { filterPlayableMediaGuides } from "@/lib/ontology/playable-youtube-media-guide";
 import type {
   MediaGuideMoment,
   MediaGuideNode,
@@ -438,6 +439,10 @@ async function buildYouTubeGuide(input: {
     mediaTextSignals: [...(input.mediaTextSignals ?? []), ...officialSearchSignals],
   });
 
+  if (!baseGuide.embedUrl?.trim()) {
+    return null;
+  }
+
   return {
     ...baseGuide,
     inferredPlaceCandidates,
@@ -584,21 +589,19 @@ export async function resolveMediaGuideNodesForEvent(
       }),
   );
 
-  const captureGuides = guides.filter((guide): guide is MediaGuideNode => Boolean(guide));
+  const captureGuides = filterPlayableMediaGuides(
+    guides.filter((guide): guide is MediaGuideNode => Boolean(guide)),
+  );
   const captureUrls = new Set(captureGuides.map((guide) => guide.canonicalUrl));
   const proactiveGuides =
     captureGuides.some((guide) => guide.sourceKind === "youtube")
       ? []
       : await discoverProactiveTravelYoutubeGuides(event);
 
-  const merged = [
+  const merged = filterPlayableMediaGuides([
     ...captureGuides,
-    ...proactiveGuides.filter(
-      (guide) =>
-        !captureUrls.has(guide.canonicalUrl) &&
-        (guide.sourceKind !== "youtube" || Boolean(guide.embedUrl?.trim())),
-    ),
-  ];
+    ...proactiveGuides.filter((guide) => !captureUrls.has(guide.canonicalUrl)),
+  ]);
 
   return merged.sort(
     (left, right) =>
