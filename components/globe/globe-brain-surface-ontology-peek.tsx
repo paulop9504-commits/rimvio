@@ -31,6 +31,21 @@ function familyLabel(family: BrainSurfaceProjectionCandidate["family"]): string 
   }
 }
 
+function familyAccent(family: BrainSurfaceProjectionCandidate["family"]): string {
+  switch (family) {
+    case "eatery":
+      return "bg-orange-500";
+    case "lodging":
+      return "bg-emerald-500";
+    case "media":
+      return "bg-violet-500";
+    case "trace_place":
+      return "bg-sky-500";
+    default:
+      return "bg-slate-400";
+  }
+}
+
 export type GlobeBrainSurfaceOntologyPeekProps = {
   anchor: BrainSurfaceProjectionCandidate;
   related: readonly BrainSurfaceProjectionCandidate[];
@@ -62,7 +77,7 @@ export function GlobeBrainSurfaceOntologyPeek({
   const hasVideo = Boolean(embedSrc);
 
   const satellites = useMemo(
-    () => related.filter((row) => row.id !== anchor.id),
+    () => related.filter((row) => row.id !== anchor.id).slice(0, 8),
     [anchor.id, related],
   );
 
@@ -70,8 +85,8 @@ export function GlobeBrainSurfaceOntologyPeek({
     () =>
       layoutBrainSurfaceOntologyPeek({
         satellites,
-        width: 280,
-        mediaHeight: hasVideo || thumb ? 118 : 88,
+        width: 300,
+        mediaHeight: hasVideo || thumb ? 112 : 84,
       }),
     [hasVideo, satellites, thumb],
   );
@@ -79,18 +94,18 @@ export function GlobeBrainSurfaceOntologyPeek({
   return (
     <div
       className={cn(
-        "pointer-events-auto absolute inset-x-0 z-[31] flex justify-center px-3",
+        "pointer-events-auto absolute inset-x-0 z-[31] flex justify-center px-2",
         className,
       )}
       style={{
-        bottom: "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 0.45rem)",
+        bottom: "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 0.4rem)",
       }}
       data-globe-brain-surface-ontology-peek
     >
-      <div className="w-full max-w-[17.5rem] overflow-hidden rounded-[1.25rem] border border-white/85 bg-white/97 shadow-[0_16px_40px_rgba(15,23,42,0.15)] backdrop-blur-2xl ring-1 ring-black/[0.04]">
-        <div className="relative" style={{ height: layout.height }}>
+      <div className="w-full max-w-[18.75rem] overflow-hidden rounded-[1.2rem] border border-white/88 bg-white/98 shadow-[0_14px_36px_rgba(15,23,42,0.14)] backdrop-blur-2xl ring-1 ring-black/[0.04]">
+        <div className="relative bg-slate-50/80" style={{ height: layout.height }}>
           <div
-            className="absolute inset-x-0 top-0 overflow-hidden bg-slate-950"
+            className="absolute inset-x-0 top-0 overflow-hidden rounded-t-[1.2rem] bg-slate-950"
             style={{ height: layout.mediaHeight }}
           >
             {playing && embedSrc ? (
@@ -113,8 +128,8 @@ export function GlobeBrainSurfaceOntologyPeek({
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={thumb} alt="" className="h-full w-full object-cover" />
                 {hasVideo ? (
-                  <span className="absolute inset-0 flex items-center justify-center bg-black/20">
-                    <span className="flex size-10 items-center justify-center rounded-full bg-black/50 text-base text-white">
+                  <span className="absolute inset-0 flex items-center justify-center bg-black/18">
+                    <span className="flex size-9 items-center justify-center rounded-full bg-black/48 text-sm text-white">
                       ▶
                     </span>
                   </span>
@@ -128,7 +143,7 @@ export function GlobeBrainSurfaceOntologyPeek({
             <button
               type="button"
               onClick={onClose}
-              className="absolute right-2 top-2 z-[2] flex size-7 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-md active:scale-95"
+              className="absolute right-2 top-2 z-[2] flex size-7 items-center justify-center rounded-full bg-black/42 text-white backdrop-blur-md active:scale-95"
               aria-label={copy.globe.brainSurfaceStoryCloseAria}
             >
               <X className="size-3.5" aria-hidden />
@@ -145,19 +160,26 @@ export function GlobeBrainSurfaceOntologyPeek({
                 data-globe-brain-surface-ontology-links
               >
                 {layout.nodes.map((node) => {
+                  const row = satellites.find((item) => item.id === node.candidateId);
                   const active = node.candidateId === activeRelatedId;
-                  const inferred = satellites.find((row) => row.id === node.candidateId)
-                    ?.anchorKind === "inferred_place";
+                  const virtual = row?.virtualCandidate === true;
+                  const inferred = row?.anchorKind === "inferred_place";
                   return (
                     <line
                       key={`stem:${node.candidateId}`}
                       x1={layout.rootStem.x}
                       y1={layout.rootStem.y}
                       x2={node.centerX}
-                      y2={node.centerY - node.height / 2 + 4}
-                      stroke={active ? "rgba(0,113,227,0.82)" : "rgba(100,116,139,0.38)"}
-                      strokeWidth={active ? 2.2 : 1.4}
-                      strokeDasharray={inferred ? "4 3" : undefined}
+                      y2={node.centerY - node.height / 2 + 6}
+                      stroke={
+                        active
+                          ? "rgba(0,113,227,0.78)"
+                          : virtual
+                            ? "rgba(148,163,184,0.42)"
+                            : "rgba(100,116,139,0.36)"
+                      }
+                      strokeWidth={active ? 2 : 1.25}
+                      strokeDasharray={inferred || virtual ? "4 3" : undefined}
                     />
                   );
                 })}
@@ -170,16 +192,20 @@ export function GlobeBrainSurfaceOntologyPeek({
                 }
                 const active = row.id === activeRelatedId;
                 const nodeThumb = row.markerThumbnailUrl?.trim();
+                const compact = !nodeThumb || row.virtualCandidate;
                 return (
                   <button
                     key={row.id}
                     type="button"
                     onClick={() => onSelectRelated(row.id)}
                     className={cn(
-                      "pointer-events-auto absolute z-[2] flex flex-col overflow-hidden rounded-[0.8rem] border bg-white text-left shadow-sm active:scale-[0.98]",
+                      "pointer-events-auto absolute z-[2] flex flex-col overflow-hidden text-left active:scale-[0.98]",
+                      compact
+                        ? "items-center justify-center rounded-[0.9rem] border bg-white px-1.5 py-1.5 shadow-[0_4px_14px_rgba(15,23,42,0.08)]"
+                        : "rounded-[0.85rem] border bg-white shadow-[0_4px_14px_rgba(15,23,42,0.1)]",
                       active
-                        ? "border-[#0071e3]/45 ring-2 ring-[#0071e3]/22"
-                        : "border-slate-200/90",
+                        ? "border-[#0071e3]/50 ring-2 ring-[#0071e3]/20"
+                        : "border-slate-200/85",
                     )}
                     style={{
                       left: node.centerX - node.width / 2,
@@ -189,29 +215,37 @@ export function GlobeBrainSurfaceOntologyPeek({
                     }}
                     data-globe-brain-surface-ontology-node={row.id}
                   >
-                    <div className="relative h-[2.65rem] w-full shrink-0 bg-slate-100">
-                      {nodeThumb ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={nodeThumb}
-                          alt=""
-                          className="h-full w-full object-cover"
-                          loading="lazy"
+                    {compact ? (
+                      <>
+                        <span
+                          className={cn(
+                            "size-1.5 rounded-full",
+                            familyAccent(row.family),
+                          )}
                         />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-slate-500">
+                        <p className="mt-1 line-clamp-2 w-full text-center text-[9px] font-semibold leading-tight text-slate-800">
+                          {row.label}
+                        </p>
+                        <p className="mt-0.5 text-[8px] font-medium text-slate-500">
                           {familyLabel(row.family)}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <div className="relative h-[2.15rem] w-full shrink-0 bg-slate-100">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={nodeThumb}
+                            alt=""
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                          />
                         </div>
-                      )}
-                      {row.anchorKind === "inferred_place" ? (
-                        <span className="absolute left-1 top-1 rounded-full bg-sky-600/88 px-1 py-0.5 text-[7px] font-bold uppercase tracking-wide text-white">
-                          추론
-                        </span>
-                      ) : null}
-                    </div>
-                    <p className="line-clamp-2 flex-1 px-1.5 py-1 text-[9px] font-semibold leading-tight text-slate-800">
-                      {row.label}
-                    </p>
+                        <p className="line-clamp-2 flex-1 px-1.5 py-1 text-[9px] font-semibold leading-tight text-slate-800">
+                          {row.label}
+                        </p>
+                      </>
+                    )}
                   </button>
                 );
               })}

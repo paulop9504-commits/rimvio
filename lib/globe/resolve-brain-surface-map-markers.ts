@@ -5,6 +5,7 @@ import {
   type BrainSurfaceDisclosureStage,
 } from "@/lib/globe/brain-surface-progressive-disclosure";
 import { filterVisibleBrainSurfaceCandidates } from "@/lib/globe/brain-surface-marker-media";
+import { filterBrainSurfaceMapPinCandidates } from "@/lib/globe/brain-surface-map-pin-visibility";
 import {
   matchBrainSurfaceShadowExpandPin,
 } from "@/lib/globe/brain-surface-shadow-expand";
@@ -119,7 +120,9 @@ export function resolveBrainSurfaceMapMarkers(input: {
   const pool = visibleCandidates(input.candidates);
 
   if (stage === "core") {
-    const core = pickCoreBrainSurfaceCandidates(pool).filter(hasRealCoords);
+    const core = filterBrainSurfaceMapPinCandidates(
+      pickCoreBrainSurfaceCandidates(pool).filter(hasRealCoords),
+    );
     if (core.length === 0) {
       return [];
     }
@@ -182,12 +185,12 @@ export function resolveBrainSurfaceMapMarkers(input: {
 
   if (active.anchorKind === "video_root") {
     if (input.storySpread) {
-      const related = resolveRelatedBrainSurfaceCandidates({
-        active,
-        candidates: pool,
-      })
-        .filter(hasRealCoords)
-        .filter((row) => row.anchorKind === "inferred_place" || isMicroPlacePin(row));
+      const related = filterBrainSurfaceMapPinCandidates(
+        resolveRelatedBrainSurfaceCandidates({
+          active,
+          candidates: pool,
+        }).filter(hasRealCoords),
+      );
       return styleStoryMarkers(related, activeId);
     }
     const hub = resolveHubCoords({
@@ -214,10 +217,12 @@ export function resolveBrainSurfaceMapMarkers(input: {
   }).filter(hasRealCoords);
 
   if (input.storySpread) {
-    const mapPins = related.filter(
-      (row) => row.anchorKind !== "video_root" && row.virtualCandidate !== true,
-    );
-    return styleStoryMarkers(mapPins.length > 0 ? mapPins : [active], activeId);
+    const mapPins = filterBrainSurfaceMapPinCandidates(related);
+    const visible =
+      mapPins.length > 0
+        ? mapPins
+        : filterBrainSurfaceMapPinCandidates([active]);
+    return styleStoryMarkers(visible, activeId);
   }
 
   if (related.length === 1 && isMicroPlacePin(active)) {

@@ -73,7 +73,8 @@ const core = resolveBrainSurfaceMapMarkers({
   hubLat: 35.68,
   hubLng: 139.76,
 });
-assert.equal(core.length, 2);
+assert.equal(core.length, 1);
+assert.equal(core[0]?.id, "video");
 assert.ok(core.every((row) => row.calloutOffsetX != null));
 
 const story = resolveBrainSurfaceMapMarkers({
@@ -84,7 +85,7 @@ const story = resolveBrainSurfaceMapMarkers({
   hubLat: 35.68,
   hubLng: 139.76,
 });
-assert.ok(story.length >= 2);
+assert.ok(story.length >= 1);
 assert.ok(story.every((row) => row.markerStyle === "story"));
 assert.ok(story.every((row) => row.calloutOffsetX == null));
 const activeStory = story.find((row) => row.id === "video");

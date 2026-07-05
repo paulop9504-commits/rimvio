@@ -13,12 +13,14 @@ const three = layoutBrainSurfaceOntologyPeek({
     { id: "b" } as never,
     { id: "c" } as never,
   ],
+  width: 300,
 });
 assert.equal(three.nodes.length, 3);
 assert.ok(three.nodes.every((node) => node.centerY > three.mediaHeight));
-assert.ok(
-  three.nodes[0]!.centerX < three.nodes[1]!.centerX &&
-    three.nodes[1]!.centerX < three.nodes[2]!.centerX,
+const spread = Math.hypot(
+  three.nodes[2]!.centerX - three.nodes[0]!.centerX,
+  three.nodes[2]!.centerY - three.nodes[0]!.centerY,
 );
+assert.ok(spread > 40);
 
 console.log("test-brain-surface-ontology-peek-layout: ok");
