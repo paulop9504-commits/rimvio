@@ -123,8 +123,8 @@ export function GlobeBrainSurfaceConnectSheet({
             })}
           </div>
         ) : (
-          <p className="px-3 py-3 text-[12px] leading-relaxed text-slate-600">
-            {anchor.previewBody?.trim() || anchor.placeLabel}
+          <p className="px-3 py-3 text-[12px] leading-relaxed text-slate-500">
+            {copy.globe.brainSurfaceConnectTitle}
           </p>
         )}
 

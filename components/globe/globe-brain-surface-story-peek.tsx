@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { X } from "lucide-react";
 import { GlobeBrainSurfaceYoutubeEmbed } from "@/components/globe/globe-brain-surface-youtube-embed";
 import { buildBrainSurfaceEmbedSrc } from "@/components/globe/globe-brain-surface-video-chip";
@@ -21,46 +22,56 @@ export function GlobeBrainSurfaceStoryPeek({
   onConnect,
   className,
 }: GlobeBrainSurfaceStoryPeekProps) {
+  const [playing, setPlaying] = useState(false);
   const embedSrc = buildBrainSurfaceEmbedSrc(candidate.embedUrl);
   const embedKey =
     (candidate.embedUrl ? extractYouTubeVideoId(candidate.embedUrl) : null) ??
     candidate.id;
   const thumb = candidate.markerThumbnailUrl?.trim();
+  const hasVideo = Boolean(embedSrc);
 
   return (
     <div
       className={cn(
-        "pointer-events-auto absolute inset-x-0 z-[31] flex justify-center px-4",
+        "pointer-events-auto absolute inset-x-0 z-[31] flex justify-center px-3",
         className,
       )}
       style={{
-        bottom: "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 0.65rem)",
+        bottom: "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 0.5rem)",
       }}
       data-globe-brain-surface-story-peek
     >
-      <div className="w-full max-w-[20rem] overflow-hidden rounded-[1.35rem] border border-white/80 bg-white/96 shadow-[0_18px_44px_rgba(15,23,42,0.16)] backdrop-blur-2xl ring-1 ring-black/[0.04]">
+      <div className="w-full max-w-[22rem] overflow-hidden rounded-[1.2rem] border border-white/85 bg-white/97 shadow-[0_14px_36px_rgba(15,23,42,0.14)] backdrop-blur-2xl ring-1 ring-black/[0.04]">
         <div className="relative bg-slate-950">
-          {embedSrc ? (
+          {playing && embedSrc ? (
             <GlobeBrainSurfaceYoutubeEmbed
               videoKey={embedKey}
               embedSrc={embedSrc}
               title={candidate.previewTitle}
-              className="aspect-[4/5] max-h-[14rem] w-full border-0"
+              className="aspect-video max-h-[10.5rem] w-full border-0"
             />
           ) : thumb ? (
-            <div className="relative aspect-[4/5] max-h-[14rem] w-full overflow-hidden">
+            <button
+              type="button"
+              onClick={() => hasVideo && setPlaying(true)}
+              className={cn(
+                "relative block aspect-video max-h-[10.5rem] w-full overflow-hidden",
+                hasVideo && "cursor-pointer active:opacity-95",
+              )}
+              aria-label={hasVideo ? candidate.previewTitle : candidate.label}
+            >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={thumb} alt="" className="h-full w-full object-cover" />
-              {candidate.markerMediaKind === "video" ? (
-                <span className="absolute inset-0 flex items-center justify-center bg-black/18 text-white">
-                  <span className="flex size-11 items-center justify-center rounded-full bg-black/45 text-lg">
+              {hasVideo ? (
+                <span className="absolute inset-0 flex items-center justify-center bg-black/22">
+                  <span className="flex size-10 items-center justify-center rounded-full bg-black/50 text-base text-white">
                     ▶
                   </span>
                 </span>
               ) : null}
-            </div>
+            </button>
           ) : (
-            <div className="flex aspect-[4/5] max-h-[14rem] w-full items-center justify-center bg-gradient-to-br from-slate-800 to-slate-950 text-[13px] font-semibold text-white/80">
+            <div className="flex aspect-video max-h-[10.5rem] w-full items-center justify-center bg-gradient-to-br from-slate-800 to-slate-950 px-4 text-center text-[13px] font-semibold text-white/85">
               {candidate.label}
             </div>
           )}
@@ -74,17 +85,17 @@ export function GlobeBrainSurfaceStoryPeek({
           </button>
         </div>
 
-        <div className="px-3.5 pb-3.5 pt-3">
+        <div className="px-3.5 pb-3 pt-2.5">
           <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">
             {candidate.placeLabel}
           </p>
-          <p className="mt-1 line-clamp-1 text-[14px] font-semibold leading-snug text-slate-900">
+          <p className="mt-0.5 line-clamp-1 text-[14px] font-semibold leading-snug text-slate-900">
             {candidate.label}
           </p>
           <button
             type="button"
             onClick={onConnect}
-            className="mt-3 flex w-full items-center justify-center rounded-full bg-[#0071e3] px-4 py-2.5 text-[13px] font-semibold text-white shadow-[0_8px_20px_rgba(0,113,227,0.28)] active:scale-[0.98]"
+            className="mt-2.5 flex w-full items-center justify-center rounded-full bg-[#0071e3] px-4 py-2.5 text-[13px] font-semibold text-white shadow-[0_8px_20px_rgba(0,113,227,0.28)] active:scale-[0.98]"
             data-globe-brain-surface-connect-cta
           >
             {copy.globe.brainSurfaceConnectCta}

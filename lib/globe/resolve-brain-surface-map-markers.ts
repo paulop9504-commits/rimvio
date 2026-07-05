@@ -38,6 +38,23 @@ function isShadowExpandedMapPin(
   return matchBrainSurfaceShadowExpandPin(candidate, { clusterId, guideId });
 }
 
+function styleStoryMarkers(
+  markers: BrainSurfaceProjectionCandidate[],
+  activeId: string | null,
+): BrainSurfaceProjectionCandidate[] {
+  return markers.slice(0, 8).map((candidate, index) => ({
+    ...candidate,
+    markerStyle: "story" as const,
+    calloutOffsetX: undefined,
+    calloutOffsetY: undefined,
+    focusPriority:
+      activeId === candidate.id ? 100 : Math.max(72 - index * 3, 36),
+    markerScale: activeId === candidate.id ? 1.14 : 1,
+    markerOpacity: 1,
+    zIndexBoost: activeId === candidate.id ? 8 : 5,
+  }));
+}
+
 function styleCalloutMarkers(
   markers: BrainSurfaceProjectionCandidate[],
   activeId: string | null,
@@ -107,17 +124,7 @@ export function resolveBrainSurfaceMapMarkers(input: {
       return [];
     }
     if (input.storySpread) {
-      return core.slice(0, 8).map((candidate, index) => ({
-        ...candidate,
-        markerStyle: "story",
-        calloutOffsetX: undefined,
-        calloutOffsetY: undefined,
-        focusPriority:
-          activeId === candidate.id ? 100 : Math.max(72 - index * 3, 36),
-        markerScale: activeId === candidate.id ? 1.14 : 1,
-        markerOpacity: 1,
-        zIndexBoost: activeId === candidate.id ? 8 : 5,
-      }));
+      return styleStoryMarkers(core, activeId);
     }
     const hub = resolveHubCoords({
       hubLat: input.hubLat,
@@ -174,6 +181,15 @@ export function resolveBrainSurfaceMapMarkers(input: {
   }
 
   if (active.anchorKind === "video_root") {
+    if (input.storySpread) {
+      const related = resolveRelatedBrainSurfaceCandidates({
+        active,
+        candidates: pool,
+      })
+        .filter(hasRealCoords)
+        .filter((row) => row.anchorKind === "inferred_place" || isMicroPlacePin(row));
+      return styleStoryMarkers(related, activeId);
+    }
     const hub = resolveHubCoords({
       hubLat: input.hubLat,
       hubLng: input.hubLng,
@@ -196,6 +212,13 @@ export function resolveBrainSurfaceMapMarkers(input: {
     active,
     candidates: pool,
   }).filter(hasRealCoords);
+
+  if (input.storySpread) {
+    const mapPins = related.filter(
+      (row) => row.anchorKind !== "video_root" && row.virtualCandidate !== true,
+    );
+    return styleStoryMarkers(mapPins.length > 0 ? mapPins : [active], activeId);
+  }
 
   if (related.length === 1 && isMicroPlacePin(active)) {
     return [
