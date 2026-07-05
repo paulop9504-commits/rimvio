@@ -634,13 +634,6 @@ export function GlobeContextBrainMapOverlay({
     : pills.length > 0
       ? "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 4.6rem)"
       : "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 1.2rem)";
-  const inspectorBottom = activeTravelQuestion
-    ? pills.length > 0
-      ? "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 13.9rem)"
-      : "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 9rem)"
-    : pills.length > 0
-      ? "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 8.2rem)"
-      : "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 4.4rem)";
   const showProjectionGraph = !activeTravelQuestion;
   const showBottomInspector = Boolean(selectedNode) && showProjectionGraph;
 
@@ -651,14 +644,25 @@ export function GlobeContextBrainMapOverlay({
   return (
     <AnimatePresence>
       <motion.div
-        className="pointer-events-none absolute inset-0 z-[24]"
+        className={cn(
+          "pointer-events-none absolute inset-0 z-[24]",
+          showBottomInspector && "flex min-h-0 flex-col",
+        )}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.18, ease: "easeOut" }}
         data-globe-context-brain-map-overlay
         data-globe-context-brain-display-mode={displayMode}
+        data-globe-context-brain-map-split={showBottomInspector ? "dock" : "overlay"}
       >
+        <div
+          className={cn(
+            "relative min-h-0",
+            showBottomInspector ? "flex-1 overflow-hidden" : "absolute inset-0",
+          )}
+          data-globe-context-brain-map-stage
+        >
         <motion.div
           className={cn(
             "absolute",
@@ -1030,47 +1034,6 @@ export function GlobeContextBrainMapOverlay({
           </motion.div>
         ) : null}
 
-        {showBottomInspector && selectedNode && selectedPresentation ? (
-          <motion.div
-            className="pointer-events-auto absolute inset-x-0 z-[25] flex justify-center px-3"
-            style={{ bottom: inspectorBottom }}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
-            transition={{ duration: 0.18, ease: "easeOut" }}
-            data-globe-context-brain-node-inspector
-          >
-            <GlobeContextBrainNodeCard
-              contextTitle={contextTitle}
-              node={selectedNode}
-              presentation={selectedPresentation}
-              memoBody={selectedMemoBody}
-              factors={selectedFactors}
-              mediaGuide={selectedGuide}
-              primaryAction={
-                selectedAction && selectedAction.kind !== "coming_soon" && selectedActionLabel
-                  ? {
-                      label:
-                        selectedGuide?.sourceKind === "youtube"
-                          ? copy.globe.contextGuideOpenVideo
-                          : selectedActionLabel,
-                      onClick: handleSelectedAction,
-                    }
-                  : null
-              }
-              secondaryAction={
-                selectedNode.kind === "ghost" && selectedNode.mapsUrl?.trim()
-                  ? {
-                      label: copy.globe.contextBrainNodeMapCta,
-                      onClick: handleSelectedMapAction,
-                    }
-                  : null
-              }
-              onClose={() => setSelectedNodeId(null)}
-            />
-          </motion.div>
-        ) : null}
-
         {showProjectionGraph && pills.length > 0 ? (
           <motion.div
             className="pointer-events-auto absolute inset-x-0 z-[25] flex justify-center px-3"
@@ -1138,6 +1101,50 @@ export function GlobeContextBrainMapOverlay({
                 ))}
               </div>
             </div>
+          </motion.div>
+        ) : null}
+        </div>
+
+        {showBottomInspector && selectedNode && selectedPresentation ? (
+          <motion.div
+            className="pointer-events-auto shrink-0 border-t border-slate-200/85 bg-[#f2f5fa] px-3 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-2"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            data-globe-context-brain-node-inspector
+            data-globe-context-brain-node-dock
+          >
+            <GlobeContextBrainNodeCard
+              variant="dock"
+              className="mx-auto"
+              contextTitle={contextTitle}
+              node={selectedNode}
+              presentation={selectedPresentation}
+              memoBody={selectedMemoBody}
+              factors={selectedFactors}
+              mediaGuide={selectedGuide}
+              primaryAction={
+                selectedAction && selectedAction.kind !== "coming_soon" && selectedActionLabel
+                  ? {
+                      label:
+                        selectedGuide?.sourceKind === "youtube"
+                          ? copy.globe.contextGuideOpenVideo
+                          : selectedActionLabel,
+                      onClick: handleSelectedAction,
+                    }
+                  : null
+              }
+              secondaryAction={
+                selectedNode.kind === "ghost" && selectedNode.mapsUrl?.trim()
+                  ? {
+                      label: copy.globe.contextBrainNodeMapCta,
+                      onClick: handleSelectedMapAction,
+                    }
+                  : null
+              }
+              onClose={() => setSelectedNodeId(null)}
+            />
           </motion.div>
         ) : null}
       </motion.div>

@@ -217,7 +217,7 @@ function buildMediaGuideCandidateGhosts(guide: MediaGuideNode): GhostProjectionN
     semanticTypeLabelKo: candidate.semanticTypeLabelKo,
     ontologyRole: "projected",
     relationLabelKo: "미디어 후보",
-    relationReasonKo: `${guide.title} · ${candidate.whyCandidateKo}`,
+    relationReasonKo: candidate.whyCandidateKo,
     candidateOrigin: "media_inferred",
     candidateBadgeKo: "미디어 후보",
     candidateConfidence: candidate.confidence,

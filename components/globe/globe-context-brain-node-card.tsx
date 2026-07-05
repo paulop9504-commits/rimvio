@@ -9,6 +9,14 @@ import type { ProjectionNode } from "@/lib/situation-projection/types";
 import type { MediaSpatialTraceTourStop } from "@/lib/situation-projection/build-media-spatial-trace-tour";
 import { GlobeBrainSurfaceYoutubeEmbed } from "@/components/globe/globe-brain-surface-youtube-embed";
 import { extractYouTubeVideoId } from "@/lib/enrichers/youtube-url";
+import {
+  dedupeFactorChips,
+  pickCardHeadline,
+  pickPrimaryReason,
+  shouldShowCandidateBadge,
+  shouldShowContextBadge,
+  textsOverlap,
+} from "@/lib/globe/brain-surface-card-copy";
 import { cn } from "@/lib/utils";
 
 type GlobeContextBrainNodeCardAction = {
@@ -30,6 +38,8 @@ export type GlobeContextBrainNodeCardProps = {
   tourStopCount?: number;
   onClose: () => void;
   className?: string;
+  /** float = centered overlay card · dock = bottom split panel */
+  variant?: "float" | "dock";
 };
 
 const GLOBE_CARD_SHELL =
@@ -142,14 +152,17 @@ function GlobeContextBrainTourStrip({
   stop,
   stopIndex,
   stopCount,
+  headline,
 }: {
   stop: MediaSpatialTraceTourStop;
   stopIndex: number;
   stopCount: number;
+  headline: string;
 }) {
   const meta = [stop.inferenceLabelKo, stop.confidenceLabelKo]
     .filter(Boolean)
     .join(" · ");
+  const labelVisible = !textsOverlap(stop.labelKo, headline);
 
   return (
     <div className="border-b border-slate-200/70 px-3 py-2.5">
@@ -161,9 +174,11 @@ function GlobeContextBrainTourStrip({
           </span>
         ) : null}
       </p>
-      <p className="mt-1 line-clamp-2 text-[13px] font-semibold leading-snug text-slate-900">
-        {stop.labelKo}
-      </p>
+      {labelVisible ? (
+        <p className="mt-1 line-clamp-2 text-[13px] font-semibold leading-snug text-slate-900">
+          {stop.labelKo}
+        </p>
+      ) : null}
       {stop.detailKo ? (
         <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-slate-600">
           {stop.detailKo}
@@ -188,6 +203,7 @@ export function GlobeContextBrainNodeCard({
   tourStopCount = 0,
   onClose,
   className,
+  variant = "float",
 }: GlobeContextBrainNodeCardProps) {
   const accent = resolveAccentClasses(presentation.discoveryAccent);
   const guideThumbnail = pickGuideThumbnail(mediaGuide);
@@ -195,26 +211,56 @@ export function GlobeContextBrainNodeCard({
   const guidePublishedAt = formatPublishedAt(mediaGuide?.youtubeOfficial?.publishedAt ?? null);
   const guideDuration = formatDuration(mediaGuide?.durationSeconds ?? null);
   const relatedVideos = mediaGuide?.youtubeOfficial?.relatedSearchResults.slice(0, 2) ?? [];
-  const sourceLine =
-    mediaGuide?.whyRelevantKo?.trim() ||
-    (node.kind === "ghost" ? node.sourceGuideSnippetKo?.trim() || node.playbookReasonKo?.trim() : null) ||
-    memoBody?.trim() ||
-    null;
+  const isMediaInferredGhost =
+    node.kind === "ghost" && node.candidateOrigin === "media_inferred";
+  const { headline, guideTitleLine } = pickCardHeadline({
+    nodeLabel: node.label,
+    guideTitle: mediaGuide?.title ?? node.sourceGuideTitle ?? null,
+    isMediaInferredGhost,
+  });
+  const primaryReason = pickPrimaryReason({
+    headline,
+    guideTitle: mediaGuide?.title ?? node.sourceGuideTitle ?? null,
+    whyRelevantKo: mediaGuide?.whyRelevantKo ?? null,
+    relationReasonKo: node.relationReasonKo ?? null,
+    playbookReasonKo: node.playbookReasonKo ?? null,
+    snippetKo: node.sourceGuideSnippetKo ?? null,
+    memoBody,
+  });
+  const factorChips = dedupeFactorChips(
+    factors,
+    [headline, guideTitleLine, primaryReason, contextTitle, presentation.categoryLabelKo],
+    3,
+  );
+  const momentChips =
+    mediaGuide?.moments
+      .slice(0, 3)
+      .map((moment) => moment.chipLabelKo)
+      .filter(
+        (chip) =>
+          !factorChips.some((factor) => factor.includes(chip) || chip.includes(factor)) &&
+          !primaryReason?.includes(chip),
+      ) ?? [];
   const showHero = Boolean(mediaGuide?.embedUrl || guideThumbnail);
   const embedSrc = buildStableEmbedSrc(mediaGuide?.embedUrl);
   const embedKey =
     (mediaGuide?.embedUrl ? extractYouTubeVideoId(mediaGuide.embedUrl) : null) ??
     mediaGuide?.guideNodeId ??
     node.id;
-  const relationLine =
-    node.kind === "ghost"
-      ? node.relationReasonKo?.trim() || node.relationLabelKo?.trim() || null
-      : node.relationReasonKo?.trim() || node.relationLabelKo?.trim() || null;
+
+  const docked = variant === "dock";
 
   return (
     <div
-      className={cn(GLOBE_CARD_SHELL, "max-h-[min(52vh,32rem)] overflow-y-auto", className)}
+      className={cn(
+        GLOBE_CARD_SHELL,
+        docked
+          ? "max-h-[min(44vh,20rem)] w-full max-w-none overflow-y-auto rounded-[1rem] shadow-none ring-0"
+          : "max-h-[min(52vh,32rem)] overflow-y-auto",
+        className,
+      )}
       data-globe-context-brain-node-card
+      data-globe-context-brain-node-variant={variant}
       data-globe-context-brain-node-kind={node.kind}
     >
       {tourStop ? (
@@ -222,6 +268,7 @@ export function GlobeContextBrainNodeCard({
           stop={tourStop}
           stopIndex={tourStopIndex}
           stopCount={tourStopCount}
+          headline={headline}
         />
       ) : null}
 
@@ -238,8 +285,11 @@ export function GlobeContextBrainNodeCard({
             ) : null}
           </div>
           <p className="mt-1.5 line-clamp-2 text-[15px] font-semibold leading-snug text-slate-900">
-            {mediaGuide?.title || node.label}
+            {headline}
           </p>
+          {guideTitleLine ? (
+            <p className="mt-1 line-clamp-1 text-[11px] text-slate-500">{guideTitleLine}</p>
+          ) : null}
           {guideProvider || guidePublishedAt || guideDuration ? (
             <p className="mt-1 text-[11px] text-slate-500">
               {[guideProvider, guidePublishedAt, guideDuration].filter(Boolean).join(" · ")}
@@ -303,52 +353,45 @@ export function GlobeContextBrainNodeCard({
       )}
 
       <div className="space-y-3 px-3 pb-3 pt-3">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className={cn("rounded-full px-2 py-1 text-[10px] font-semibold ring-1", accent.subtleChip)}>
-            {copy.globe.contextBrainNodeContextLabel}
-          </span>
-          <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200/80">
-            {contextTitle}
-          </span>
-          {node.kind === "ghost" && node.candidateBadgeKo ? (
-            <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-600 ring-1 ring-slate-200/80">
-              {node.candidateBadgeKo}
-            </span>
-          ) : null}
-        </div>
-
-        {relationLine ? (
-          <p className="text-[11px] leading-snug text-slate-600">{relationLine}</p>
+        {shouldShowContextBadge(contextTitle, presentation.categoryLabelKo) ||
+        shouldShowCandidateBadge(node.candidateBadgeKo, presentation.categoryLabelKo) ? (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {shouldShowContextBadge(contextTitle, presentation.categoryLabelKo) ? (
+              <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200/80">
+                {contextTitle}
+              </span>
+            ) : null}
+            {shouldShowCandidateBadge(node.candidateBadgeKo, presentation.categoryLabelKo) ? (
+              <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-600 ring-1 ring-slate-200/80">
+                {node.candidateBadgeKo}
+              </span>
+            ) : null}
+          </div>
         ) : null}
 
-        {sourceLine ? (
+        {primaryReason ? (
           <div className="rounded-[1rem] border border-slate-200/80 bg-slate-50 p-3">
             <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">
               {copy.globe.contextBrainNodeReasonLabel}
             </p>
-            <p className="mt-1 text-[12px] leading-relaxed text-slate-700">{sourceLine}</p>
+            <p className="mt-1 text-[12px] leading-relaxed text-slate-700">{primaryReason}</p>
           </div>
         ) : null}
 
-        {mediaGuide?.moments.length ? (
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">
-              {copy.globe.contextBrainNodeSourceLabel}
-            </p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {mediaGuide.moments.slice(0, 3).map((moment) => (
-                <span
-                  key={`${mediaGuide.guideNodeId}:${moment.seconds}`}
-                  className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-700 ring-1 ring-slate-200/80"
-                >
-                  {moment.chipLabelKo}
-                </span>
-              ))}
-            </div>
+        {momentChips.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {momentChips.map((chip) => (
+              <span
+                key={chip}
+                className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-700 ring-1 ring-slate-200/80"
+              >
+                {chip}
+              </span>
+            ))}
           </div>
         ) : null}
 
-        {relatedVideos.length > 0 ? (
+        {!showHero && relatedVideos.length > 0 ? (
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">
               {copy.globe.contextBrainNodeRelatedTitle}
@@ -393,9 +436,9 @@ export function GlobeContextBrainNodeCard({
           </div>
         ) : null}
 
-        {factors.length > 0 ? (
+        {factorChips.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
-            {factors.map((factor) => (
+            {factorChips.map((factor) => (
               <span
                 key={factor}
                 className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-700 ring-1 ring-slate-200/80"

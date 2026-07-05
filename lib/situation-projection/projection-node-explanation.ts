@@ -522,9 +522,6 @@ export function buildProjectionNodeExplanation(input: {
     input.node.kind === "ghost" && input.node.candidateOrigin === "media_inferred"
       ? unique(
           [
-            input.node.sourceGuideTitle?.trim()
-              ? `${input.node.sourceGuideTitle.trim()}에서 뽑음`
-              : null,
             input.node.candidateConfidence != null
               ? `후보 신뢰 ${Math.round(input.node.candidateConfidence * 100)}%`
               : null,

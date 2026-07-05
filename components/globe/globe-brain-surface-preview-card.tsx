@@ -8,6 +8,7 @@ import { GlobeMediaGuideMapExpandButton } from "@/components/globe/globe-media-g
 import { formatSpatialTraceLine } from "@/lib/situation-projection/build-media-spatial-trace";
 import { extractYouTubeVideoId } from "@/lib/enrichers/youtube-url";
 import { copy } from "@/lib/copy/human-ko";
+import { textsOverlap } from "@/lib/globe/brain-surface-card-copy";
 import { cn } from "@/lib/utils";
 import { GlobeBrainSurfaceYoutubeEmbed } from "@/components/globe/globe-brain-surface-youtube-embed";
 
@@ -137,6 +138,9 @@ export function GlobeBrainSurfacePreviewCard({
   const tourMeta = tourStop
     ? [tourStop.inferenceLabelKo, tourStop.confidenceLabelKo].filter(Boolean).join(" · ")
     : "";
+  const tourLabelVisible = Boolean(
+    tourStop && !textsOverlap(tourStop.labelKo, candidate.previewTitle),
+  );
 
   if (isVideoCompact) {
     return (
@@ -157,11 +161,15 @@ export function GlobeBrainSurfacePreviewCard({
               ) : null}
             </p>
             <p className="mt-1 line-clamp-2 text-[12px] font-semibold leading-snug text-slate-900">
-              {tourStop.labelKo}
+              {tourLabelVisible ? tourStop!.labelKo : candidate.previewTitle}
             </p>
-            {tourStop.detailKo ? (
+            {tourLabelVisible && tourStop!.detailKo ? (
               <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-slate-600">
-                {tourStop.detailKo}
+                {tourStop!.detailKo}
+              </p>
+            ) : !tourLabelVisible && tourStop!.detailKo ? (
+              <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-slate-600">
+                {tourStop!.detailKo}
               </p>
             ) : null}
             {tourMeta ? (
@@ -252,11 +260,15 @@ export function GlobeBrainSurfacePreviewCard({
             ) : null}
           </p>
           <p className="mt-1 line-clamp-2 text-[13px] font-semibold leading-snug text-slate-900">
-            {tourStop.labelKo}
+            {tourLabelVisible ? tourStop!.labelKo : candidate.previewTitle}
           </p>
-          {tourStop.detailKo ? (
+          {tourLabelVisible && tourStop!.detailKo ? (
             <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-slate-600">
-              {tourStop.detailKo}
+              {tourStop!.detailKo}
+            </p>
+          ) : !tourLabelVisible && tourStop!.detailKo ? (
+            <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-slate-600">
+              {tourStop!.detailKo}
             </p>
           ) : null}
           {tourMeta ? (

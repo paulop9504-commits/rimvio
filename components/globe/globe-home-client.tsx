@@ -183,6 +183,7 @@ import {
 } from "@/lib/globe/globe-resume-session";
 import type { GlobePhotoIngestDraft } from "@/lib/globe/prepare-globe-photo-ingest-draft";
 import { copy } from "@/lib/copy/human-ko";
+import { cn } from "@/lib/utils";
 import { expandMediaGuideOnMap, pickPrimaryExpandableMediaGuide } from "@/lib/globe/expand-media-guide-on-map";
 import { queryMediaGuideByGuideNodeId } from "@/lib/ontology/media-guide-store";
 import { readPinnedLodgingResourceId } from "@/lib/globe/context-hub/pin-lodging-selection-to-context";
@@ -216,6 +217,7 @@ import {
 } from "@/lib/globe/brain-surface-progressive-disclosure";
 import { filterVisibleBrainSurfaceCandidates } from "@/lib/globe/brain-surface-marker-media";
 import { filterBrainSurfaceShadowExpandPins } from "@/lib/globe/brain-surface-shadow-expand";
+import { BRAIN_SURFACE_DOCK_PIN_VIEWPORT_Y } from "@/lib/globe/brain-surface-dock-layout";
 import { computeLodgingDiscoveryBounds } from "@/lib/globe/lodging/compute-lodging-discovery-bounds";
 import {
   buildMediaSpatialTraceTourStopsFromGuide,
@@ -1274,8 +1276,10 @@ function GlobeHomeBody() {
       }
       if (brainSurfaceShadowExpanded && candidate.anchorKind === "inferred_place") {
         setBrainSurfaceHighlightedInferredId(candidateId);
+        setBrainSurfaceActiveCandidateId(candidateId);
+        setBrainSurfaceDetailMode(true);
         globeRef.current?.flyToPin(candidate.lat, candidate.lng, "street", {
-          pinViewportY: 0.58,
+          pinViewportY: BRAIN_SURFACE_DOCK_PIN_VIEWPORT_Y,
         });
         return;
       }
@@ -3036,14 +3040,32 @@ function GlobeHomeBody() {
       activeBrainSurfacePresentation &&
       activeContextEvent,
   );
-  const brainSurfaceNodeCardBottom = brainSurfaceShadowExpanded
-    ? "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 5rem)"
-    : "max(7rem, calc(env(safe-area-inset-bottom) + 5.75rem))";
+
+  useEffect(() => {
+    if (!showBrainSurfaceDetailChrome || !activeBrainSurfaceCandidate) {
+      return;
+    }
+    const { lat, lng } = activeBrainSurfaceCandidate;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return;
+    }
+    globeRef.current?.flyToPin(lat, lng, "street", {
+      pinViewportY: BRAIN_SURFACE_DOCK_PIN_VIEWPORT_Y,
+    });
+  }, [
+    activeBrainSurfaceCandidate,
+    showBrainSurfaceDetailChrome,
+  ]);
 
   return (
     <div
       ref={surfaceRef}
-      className="relative flex h-full min-h-0 flex-1 flex-col"
+      className={cn(
+        "relative h-full min-h-0 flex-1",
+        showBrainSurfaceDetailChrome
+          ? "grid grid-rows-[minmax(0,1fr)_min(46vh,21rem)]"
+          : "flex flex-col",
+      )}
       data-surface="globe-home"
       onDragEnter={(event) => {
         if (layerMode === "discovery" || confirmOpen) {
@@ -3095,6 +3117,13 @@ function GlobeHomeBody() {
         </div>
       ) : null}
       {/* —— L1 Globe stage (pins · recall) —— */}
+      <div
+        className={cn(
+          "relative min-h-0 overflow-hidden",
+          showBrainSurfaceDetailChrome ? "min-h-0" : "flex h-full min-h-0 flex-1 flex-col",
+        )}
+        data-globe-map-stage
+      >
       <RimvioGlobeHubClient
         globeRef={globeRef}
         className="h-full min-h-0 flex-1"
@@ -3131,7 +3160,9 @@ function GlobeHomeBody() {
         onClose={() => setBrainProjectionEventId(null)}
         onProjectionReady={launchBrainSurfaceProjection}
       />
-      {brainSurfaceVisible && brainSurfaceExploreRailCandidates.length > 0 ? (
+      {brainSurfaceVisible &&
+      !showBrainSurfaceDetailChrome &&
+      brainSurfaceExploreRailCandidates.length > 0 ? (
         <GlobeBrainSurfaceExploreRail
           candidates={brainSurfaceExploreRailCandidates}
           activeCandidateId={
@@ -3200,14 +3231,15 @@ function GlobeHomeBody() {
           onTourSkip={dismissBrainSurfacePreview}
         />
       ) : null}
+      </div>
       {showBrainSurfaceDetailChrome ? (
         <div
-          className="pointer-events-none absolute inset-x-0 z-[31]"
-          style={{ bottom: brainSurfaceNodeCardBottom }}
-          data-globe-brain-surface-node-inspector
+          className="relative z-[31] min-h-0 overflow-hidden border-t border-slate-200/85 bg-[#f2f5fa] px-3 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-2"
+          data-globe-brain-surface-dock
         >
           <GlobeContextBrainNodeCard
-            className="pointer-events-auto absolute bottom-0 left-1/2 max-h-[min(52vh,32rem)] -translate-x-1/2"
+            variant="dock"
+            className="mx-auto"
             contextTitle={
               activeContextEvent!.place?.trim() || activeContextEvent!.title.trim() || "맥락"
             }
