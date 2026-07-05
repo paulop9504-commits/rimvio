@@ -4,6 +4,7 @@ import {
   isCanonicalPlaceCountryCompatible,
   type CanonicalPlaceProfile,
 } from "@/lib/globe/canonical-place-profile";
+import { isCoordInKorea } from "@/lib/globe/infer-area-curiosity-hook";
 import { googlePlacesApiKey, isGooglePlacesConfigured } from "@/lib/locate/google-places-config";
 import { isNaverSearchConfigured } from "@/lib/naver/config";
 import { fetchNaverLocalPlaceCandidates } from "@/lib/naver/local-to-place-candidate";
@@ -495,6 +496,8 @@ async function searchGooglePlaces(input: {
   radiusM: number;
   openNowOnly: boolean;
   language: Language;
+  countryBias: RestaurantSearchCountryBias;
+  intent: RestaurantSearchIntent;
 }): Promise<RestaurantSearchCandidate[]> {
   if (!isGooglePlacesConfigured()) {
     return [];
@@ -504,6 +507,10 @@ async function searchGooglePlaces(input: {
     return [];
   }
   const byPlaceId = new Map<string, RestaurantSearchCandidate>();
+  const nearbyKeyword =
+    input.countryBias === "kr"
+      ? input.query
+      : input.intent.cuisine?.trim() || undefined;
 
   for (const type of GOOGLE_RESTAURANT_TYPES) {
     try {
@@ -513,7 +520,7 @@ async function searchGooglePlaces(input: {
           radius: input.radiusM,
           type,
           language: input.language,
-          keyword: input.query,
+          ...(nearbyKeyword ? { keyword: nearbyKeyword } : {}),
           opennow: input.openNowOnly,
           key,
         },
@@ -597,7 +604,12 @@ export async function searchRestaurants(
   const radiusM = input.radiusM ?? 2800;
   const origin = input.origin;
   const placeProfile = input.placeProfile ?? null;
-  const language = countryBias === "jp" ? Language.ja : Language.ko;
+  const language =
+    countryBias === "jp"
+      ? Language.ja
+      : countryBias === "kr"
+        ? Language.ko
+        : Language.en;
   const providerQuery = buildAnchoredSearchQuery({
     query,
     anchorLabel: input.anchorLabel,
@@ -606,9 +618,11 @@ export async function searchRestaurants(
   const naverQuery = providerQuery;
   const providerBias = placeProfile?.searchHints.providerBias ?? "global";
   const preferredSource = pickPreferredSource({ providerBias, countryBias });
+  const originInKorea = origin ? isCoordInKorea(origin.lat, origin.lng) : false;
   const shouldUseNaver =
-    providerBias === "naver_local" ||
-    (providerBias === "global" && countryBias !== "jp");
+    originInKorea &&
+    (providerBias === "naver_local" ||
+      (providerBias === "global" && countryBias !== "jp"));
 
   const [naverCandidates, googleCandidates] = await Promise.all([
     shouldUseNaver ? searchNaverLocal({
@@ -623,6 +637,8 @@ export async function searchRestaurants(
           radiusM,
           openNowOnly: intent.openNowOnly,
           language,
+          countryBias,
+          intent,
         })
       : Promise.resolve<RestaurantSearchCandidate[]>([]),
   ]);

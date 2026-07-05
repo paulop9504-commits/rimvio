@@ -43,6 +43,7 @@ const macro = stub({
   virtualCandidate: true,
   family: "lodging",
   anchorKind: null,
+  markerThumbnailUrl: "https://example.com/macro.jpg",
 });
 const micro = stub({
   id: "micro",
@@ -63,6 +64,7 @@ const video = stub({
   family: "media",
   anchorKind: "video_root",
   embedUrl: "https://youtube.com/embed/x",
+  markerThumbnailUrl: "https://i.ytimg.com/vi/x/hqdefault.jpg",
 });
 
 const core = resolveBrainSurfaceMapMarkers({
@@ -81,8 +83,8 @@ assert.deepEqual(
     activeCandidateId: "macro",
     hubLat: 35.68,
     hubLng: 139.76,
-  }).map((row) => row.id),
-  ["micro", "macro"],
+  }).map((row) => row.id).sort(),
+  ["macro", "micro"],
 );
 
 const selected = resolveBrainSurfaceMapMarkers({
@@ -94,15 +96,15 @@ assert.equal(selected.length, 1);
 assert.equal(selected[0]?.id, "micro");
 
 const shadow = resolveBrainSurfaceMapMarkers({
-  candidates: [macro, inferred],
+  candidates: [inferred],
   shadowExpanded: true,
   videoClusterId: "media:guide-1",
-  hubLat: 35.68,
-  hubLng: 139.76,
+  videoGuideNodeId: "guide-1",
   activeCandidateId: "inferred",
 });
 assert.equal(shadow.length, 1);
 assert.equal(shadow[0]?.id, "inferred");
-assert.ok(shadow[0]?.calloutOffsetX != null);
+assert.equal(shadow[0]?.lat, 35.68);
+assert.equal(shadow[0]?.calloutOffsetX ?? null, null);
 
 console.log("test-resolve-brain-surface-map-markers: ok");

@@ -4,7 +4,7 @@ import {
   prependGlobeDiscoveryPillThumbnail,
   readGlobeMapCalloutOffset,
 } from "@/lib/globe/globe-map-callout-element";
-import { resolveBrainSurfaceMarkerThumbnail } from "@/lib/globe/brain-surface-marker-media";
+import { sanitizeMapMarkerSupportLabel } from "@/lib/globe/resolve-context-resource-map-markers";
 
 export type GlobeLodgingMarkerHandlers = {
   onPress: (resourceId: string, carouselIndex: number) => void;
@@ -40,25 +40,27 @@ export function createGlobeLodgingMarkerElement(
     if (marker.virtualCandidate) {
       pill.style.border = "1px dashed rgba(15, 23, 42, 0.28)";
     }
-    const thumbUrl = resolveBrainSurfaceMarkerThumbnail({
-      family: "lodging",
-      thumbnailUrl: marker.thumbnailUrl,
-    });
+    const thumbUrl = marker.thumbnailUrl?.trim();
     if (thumbUrl) {
       prependGlobeDiscoveryPillThumbnail(pill, {
         thumbnailUrl: thumbUrl,
         fallbackGlyph: "숙",
       });
     }
-    if (marker.ontologyBadgeLabel && !/노드$/u.test(marker.ontologyBadgeLabel)) {
+    const badgeLabel = marker.ontologyBadgeLabel?.trim();
+    if (
+      badgeLabel &&
+      badgeLabel !== "숙소" &&
+      !/노드$/u.test(badgeLabel)
+    ) {
       const badge = document.createElement("span");
       badge.className = "rimvio-globe-lodging-marker__ontology-badge";
-      badge.textContent = marker.ontologyBadgeLabel;
+      badge.textContent = badgeLabel;
       pill.appendChild(badge);
     }
     const name = document.createElement("span");
     name.className = "rimvio-globe-lodging-marker__discovery-name";
-    name.textContent = marker.discoveryShortLabel;
+    name.textContent = marker.discoveryShortLabel ?? marker.label;
     pill.appendChild(name);
     if (marker.stayBadgeLabel) {
       const stay = document.createElement("span");
@@ -66,10 +68,11 @@ export function createGlobeLodgingMarkerElement(
       stay.textContent = marker.stayBadgeLabel;
       pill.appendChild(stay);
     }
-    if (marker.discoveryPriceLabel) {
+    const priceLabel = sanitizeMapMarkerSupportLabel(marker.discoveryPriceLabel);
+    if (priceLabel) {
       const price = document.createElement("span");
       price.className = "rimvio-globe-lodging-marker__discovery-price";
-      price.textContent = marker.discoveryPriceLabel;
+      price.textContent = priceLabel;
       pill.appendChild(price);
     }
     const callout = readGlobeMapCalloutOffset(marker);

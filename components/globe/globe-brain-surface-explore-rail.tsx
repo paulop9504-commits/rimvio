@@ -93,6 +93,9 @@ export function GlobeBrainSurfaceExploreRail({
             {candidates.map((candidate) => {
               const active = candidate.id === activeCandidateId;
               const thumb = candidate.markerThumbnailUrl?.trim();
+              if (!thumb && candidate.anchorKind !== "video_root") {
+                return null;
+              }
               return (
                 <button
                   key={candidate.id}

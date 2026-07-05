@@ -4,6 +4,8 @@ import {
   resolveRelatedBrainSurfaceCandidates,
   type BrainSurfaceDisclosureStage,
 } from "@/lib/globe/brain-surface-progressive-disclosure";
+import { filterVisibleBrainSurfaceCandidates } from "@/lib/globe/brain-surface-marker-media";
+import { layoutGeoGroupedCalloutMarkers } from "@/lib/globe/layout-geo-grouped-callout-markers";
 import type { BrainSurfaceProjectionCandidate } from "@/lib/situation-projection/brain-surface-types";
 
 function hasRealCoords(candidate: BrainSurfaceProjectionCandidate): boolean {
@@ -19,15 +21,32 @@ function isMicroPlacePin(candidate: BrainSurfaceProjectionCandidate): boolean {
   );
 }
 
-function isVideoInferredPlace(
+function visibleCandidates(
+  candidates: readonly BrainSurfaceProjectionCandidate[],
+): BrainSurfaceProjectionCandidate[] {
+  return filterVisibleBrainSurfaceCandidates(candidates);
+}
+
+function isShadowExpandedMapPin(
   candidate: BrainSurfaceProjectionCandidate,
   clusterId: string,
+  guideId: string | null,
 ): boolean {
-  return (
-    candidate.clusterId === clusterId &&
-    candidate.anchorKind === "inferred_place" &&
-    hasRealCoords(candidate)
-  );
+  if (!hasRealCoords(candidate)) {
+    return false;
+  }
+  if (candidate.anchorKind === "inferred_place" && candidate.clusterId === clusterId) {
+    return true;
+  }
+  if (
+    guideId &&
+    candidate.sourceGuideNodeId === guideId &&
+    (candidate.family === "lodging" || candidate.family === "eatery") &&
+    candidate.markerThumbnailUrl?.trim()
+  ) {
+    return true;
+  }
+  return false;
 }
 
 function styleCalloutMarkers(
@@ -64,43 +83,35 @@ export function resolveBrainSurfaceMapMarkers(input: {
   activeCandidateId?: string | null;
   shadowExpanded?: boolean;
   videoClusterId?: string | null;
+  videoGuideNodeId?: string | null;
   hubLat?: number | null;
   hubLng?: number | null;
 }): BrainSurfaceProjectionCandidate[] {
   const stage = input.disclosureStage ?? "related";
   const activeId = input.activeCandidateId?.trim() ?? null;
   const clusterId = input.videoClusterId?.trim() ?? null;
+  const guideId = input.videoGuideNodeId?.trim() ?? null;
 
   if (input.shadowExpanded && clusterId) {
-    const inferred = input.candidates.filter((row) =>
-      isVideoInferredPlace(row, clusterId),
+    const inferred = visibleCandidates(
+      input.candidates.filter((row) =>
+        isShadowExpandedMapPin(row, clusterId, guideId),
+      ),
     );
     if (inferred.length === 0) {
       return [];
     }
 
-    const hub = resolveHubCoords({
-      hubLat: input.hubLat,
-      hubLng: input.hubLng,
-      fallback:
-        inferred.find((row) => row.anchorKind === "video_root") ?? inferred[0]!,
-    });
-    if (!hub) {
-      return inferred.slice(0, 6);
-    }
-
     return styleCalloutMarkers(
-      layoutBrainSurfaceCalloutMarkers({
-        candidates: inferred.slice(0, 6),
-        hubLat: hub.lat,
-        hubLng: hub.lng,
-      }),
+      layoutGeoGroupedCalloutMarkers(inferred.slice(0, 6)),
       activeId,
     );
   }
 
+  const pool = visibleCandidates(input.candidates);
+
   if (stage === "core") {
-    const core = pickCoreBrainSurfaceCandidates(input.candidates).filter(hasRealCoords);
+    const core = pickCoreBrainSurfaceCandidates(pool).filter(hasRealCoords);
     if (core.length === 0) {
       return [];
     }
@@ -126,7 +137,7 @@ export function resolveBrainSurfaceMapMarkers(input: {
     if (!activeId) {
       return [];
     }
-    const active = input.candidates.find((row) => row.id === activeId);
+    const active = pool.find((row) => row.id === activeId);
     if (!active || !hasRealCoords(active)) {
       return [];
     }
@@ -153,7 +164,7 @@ export function resolveBrainSurfaceMapMarkers(input: {
     return [];
   }
 
-  const active = input.candidates.find((row) => row.id === activeId);
+  const active = pool.find((row) => row.id === activeId);
   if (!active || !hasRealCoords(active)) {
     return [];
   }
@@ -179,7 +190,7 @@ export function resolveBrainSurfaceMapMarkers(input: {
 
   const related = resolveRelatedBrainSurfaceCandidates({
     active,
-    candidates: input.candidates,
+    candidates: pool,
   }).filter(hasRealCoords);
 
   if (related.length === 1 && isMicroPlacePin(active)) {

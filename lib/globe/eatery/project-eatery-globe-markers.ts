@@ -12,6 +12,15 @@ import {
   sanitizeMapMarkerSupportLabel,
   sanitizeOntologyMapBadgeLabel,
 } from "@/lib/globe/resolve-context-resource-map-markers";
+import { hasExplicitMarkerThumbnail } from "@/lib/globe/brain-surface-marker-media";
+
+function extractMapPillLabel(label: string): string {
+  const trimmed = label.trim().replace(/\s+/gu, " ");
+  if (trimmed.length <= 22) {
+    return trimmed;
+  }
+  return `${trimmed.slice(0, 21).trimEnd()}…`;
+}
 
 function isGhostEateryNode(node: unknown): node is GhostProjectionNode {
   return (
@@ -20,11 +29,6 @@ function isGhostEateryNode(node: unknown): node is GhostProjectionNode {
     (node as GhostProjectionNode).kind === "ghost" &&
     (node as GhostProjectionNode).axisId === "eatery"
   );
-}
-
-function extractShortLabel(label: string): string {
-  const first = label.trim().split(/\s+/u)[0]?.trim();
-  return first && first.length <= 8 ? first : label.trim().slice(0, 6);
 }
 
 export function shouldRenderEateryGlobeMarkers(detailLevel: GlobeDetailLevel): boolean {
@@ -74,6 +78,10 @@ export function projectEateryGlobeMarkers(input: {
       }
 
       const payload = readEateryPayloadFromResource(entry.resource);
+      const imageUrl = payload?.images[0] ?? null;
+      if (!hasExplicitMarkerThumbnail(imageUrl)) {
+        return null;
+      }
       const isMain = entry.resource.resourceId === activeId;
       const ghost = payload?.placeId ? ghostByPlaceId.get(payload.placeId.trim()) ?? null : null;
       const presentation = ghost ? resolveProjectionNodePresentation(ghost) : null;
@@ -102,8 +110,8 @@ export function projectEateryGlobeMarkers(input: {
         lng,
         carouselIndex: carouselIndex >= 0 ? carouselIndex : 0,
         isMain,
-        thumbnailUrl: payload?.images[0] ?? null,
-        discoveryShortLabel: extractShortLabel(entry.resource.label),
+        thumbnailUrl: imageUrl,
+        discoveryShortLabel: extractMapPillLabel(entry.resource.label),
         discoveryPriceLabel: supportDetail,
         discoveryAccent: presentation?.discoveryAccent ?? "orange",
         ...(payload?.virtualCandidate === true || ghost?.virtual === true

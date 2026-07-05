@@ -281,8 +281,11 @@ async function run() {
       fallbackHarness.requests.length >= 1,
       "loader should request inventory near Osaka first",
     );
-    assertRowsNearAnchor(loaded.rows, anchor, "mock fallback");
-    assertNoSeoulNeighborhoodLeak(loaded.rows, "mock fallback");
+    assert.equal(
+      loaded.rows.length,
+      0,
+      "overseas contexts should not inject KR mock eateries when provider returns empty",
+    );
   } finally {
     fallbackHarness.restore();
   }
@@ -305,12 +308,10 @@ async function run() {
       "loader should still query provider near Osaka before applying distance guard",
     );
     assert.equal(
-      loaded.source,
-      "mock",
-      "far-away provider rows should fall back instead of leaking onto the globe",
+      loaded.rows.length,
+      0,
+      "far-away provider rows should be dropped without overseas mock fallback",
     );
-    assertRowsNearAnchor(loaded.rows, anchor, "distance-guard fallback");
-    assertNoSeoulNeighborhoodLeak(loaded.rows, "distance-guard fallback");
   } finally {
     farResultHarness.restore();
   }

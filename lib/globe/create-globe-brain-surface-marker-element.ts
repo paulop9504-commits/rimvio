@@ -1,7 +1,6 @@
 import type { BrainSurfaceProjectionCandidate } from "@/lib/situation-projection/brain-surface-types";
 import {
   resolveBrainSurfaceMarkerMediaKind,
-  resolveBrainSurfaceMarkerThumbnail,
 } from "@/lib/globe/brain-surface-marker-media";
 import { sanitizeMapMarkerSupportLabel } from "@/lib/globe/resolve-context-resource-map-markers";
 import { prependGlobeDiscoveryPillThumbnail } from "@/lib/globe/globe-map-callout-element";
@@ -88,13 +87,6 @@ function buildDiscoveryPill(
 ): HTMLSpanElement {
   const pill = document.createElement("span");
   pill.className = "rimvio-globe-lodging-marker__discovery-pill";
-  const thumbUrl = resolveBrainSurfaceMarkerThumbnail({
-    family: candidate.family,
-    thumbnailUrl: candidate.markerThumbnailUrl,
-  });
-  if (thumbUrl) {
-    pill.classList.add("rimvio-globe-brain-surface-marker__media-pill");
-  }
   const markerStyle = candidate.markerStyle ?? "dashed";
   pill.style.border =
     markerStyle === "solid"
@@ -107,11 +99,10 @@ function buildDiscoveryPill(
   if (candidate.anchorKind === "inferred_place") {
     pill.style.opacity = String(0.82 + (candidate.confidence ?? 0.5) * 0.18);
   }
-
-  const thumbUrlResolved = thumbUrl;
-  if (thumbUrlResolved) {
+  const thumbUrl = candidate.markerThumbnailUrl?.trim();
+  if (thumbUrl) {
     prependGlobeDiscoveryPillThumbnail(pill, {
-      thumbnailUrl: thumbUrlResolved,
+      thumbnailUrl: thumbUrl,
       fallbackGlyph: fallbackGlyph(candidate.family),
       showPlay:
         candidate.markerMediaKind === "video" ||

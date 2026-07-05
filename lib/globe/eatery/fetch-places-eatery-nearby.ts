@@ -3,8 +3,9 @@ import {
   Language,
 } from "@googlemaps/google-maps-services-js";
 import { haversineKm } from "@/lib/feed/spacetime-fit";
-import { googlePlacesApiKey, isGooglePlacesConfigured } from "@/lib/locate/google-places-config";
+import { inferMapRegionBias } from "@/lib/globe/infer-area-curiosity-hook";
 import type { ContextEateryInventoryRow } from "@/lib/globe/eatery/eatery-resource-types";
+import { googlePlacesApiKey, isGooglePlacesConfigured } from "@/lib/locate/google-places-config";
 
 const client = new Client({});
 
@@ -40,6 +41,9 @@ export async function fetchPlacesEateryNearby(input: {
   const maxResults = input.maxResults ?? DEFAULT_MAX_RESULTS;
   const radiusM = input.radiusM ?? DEFAULT_RADIUS_M;
   const byPlaceId = new Map<string, ContextEateryInventoryRow>();
+  const region = inferMapRegionBias({ lat: input.lat, lng: input.lng });
+  const language =
+    region === "jp" ? Language.ja : region === "kr" ? Language.ko : Language.en;
 
   for (const type of EATERY_TYPES) {
     try {
@@ -48,7 +52,7 @@ export async function fetchPlacesEateryNearby(input: {
           location: { lat: input.lat, lng: input.lng },
           radius: radiusM,
           type,
-          language: Language.ko,
+          language,
           key,
         },
       });

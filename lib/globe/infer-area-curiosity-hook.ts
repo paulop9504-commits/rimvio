@@ -2,22 +2,13 @@ import type { BrainSurfaceCandidateFamily } from "@/lib/situation-projection/bra
 
 export type MapRegionBias = "kr" | "jp" | "global";
 
-export function inferMapRegionBias(input: {
-  lat?: number | null;
-  lng?: number | null;
-  areaLabel?: string | null;
-}): MapRegionBias {
-  const label = input.areaLabel?.trim() ?? "";
-  if (/(도쿄|東京|tokyo|오사카|大阪|osaka|교토|kyoto|후쿠오카|fukuoka|삿포로|sapporo|일본|japan)/iu.test(label)) {
-    return "jp";
-  }
-  if (/(서울|부산|대전|대구|광주|인천|제주|한국|korea)/iu.test(label)) {
-    return "kr";
-  }
-  const lat = input.lat;
-  const lng = input.lng;
-  if (lat == null || lng == null || !Number.isFinite(lat) || !Number.isFinite(lng)) {
-    return "global";
+/** Bounding-box country hint from map coordinates — wins over ambiguous labels. */
+export function inferCountryCodeFromCoords(
+  lat: number,
+  lng: number,
+): "KR" | "JP" | null {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return null;
   }
   const inKorea =
     lat >= 33 &&
@@ -25,7 +16,7 @@ export function inferMapRegionBias(input: {
     lng >= 124 &&
     lng <= 132.5;
   if (inKorea) {
-    return "kr";
+    return "KR";
   }
   const inJapan =
     lat >= 24 &&
@@ -33,7 +24,42 @@ export function inferMapRegionBias(input: {
     lng >= 122 &&
     lng <= 154;
   if (inJapan) {
+    return "JP";
+  }
+  return null;
+}
+
+export function isCoordInKorea(lat: number, lng: number): boolean {
+  return inferCountryCodeFromCoords(lat, lng) === "KR";
+}
+
+export function isCoordInJapan(lat: number, lng: number): boolean {
+  return inferCountryCodeFromCoords(lat, lng) === "JP";
+}
+
+export function inferMapRegionBias(input: {
+  lat?: number | null;
+  lng?: number | null;
+  areaLabel?: string | null;
+}): MapRegionBias {
+  const lat = input.lat;
+  const lng = input.lng;
+  if (lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng)) {
+    const coordCountry = inferCountryCodeFromCoords(lat, lng);
+    if (coordCountry === "KR") {
+      return "kr";
+    }
+    if (coordCountry === "JP") {
+      return "jp";
+    }
+  }
+
+  const label = input.areaLabel?.trim() ?? "";
+  if (/(도쿄|東京|tokyo|오사카|大阪|osaka|교토|kyoto|후쿠오카|fukuoka|삿포로|sapporo|세타가야|setagaya|일본|japan)/iu.test(label)) {
     return "jp";
+  }
+  if (/(서울|부산|대전|대구|광주|인천|제주|한국|korea)/iu.test(label)) {
+    return "kr";
   }
   return "global";
 }

@@ -4,6 +4,7 @@ import { classifyOverseasManualPlace } from "@/lib/globe/classify-overseas-manua
 import { matchKoreaKnownNeighborhood } from "@/lib/globe/korea-known-neighborhoods";
 import { matchKoreaKnownPlace } from "@/lib/globe/korea-known-places";
 import { matchKoreaMetroDistrict } from "@/lib/globe/korea-metro-districts";
+import { inferCountryCodeFromCoords } from "@/lib/globe/infer-area-curiosity-hook";
 import { normalizePlaceLabel } from "@/lib/globe/normalize-place-label";
 import { type CountryCode, isCountryCode } from "@/lib/links/spark-locale";
 import { readPlanContextFromEvent } from "@/lib/plan-context/plan-context-metadata";
@@ -313,6 +314,25 @@ export function buildCanonicalPlaceProfile(
     });
     district = district ?? parsed.district;
     neighborhood = neighborhood ?? parsed.neighborhood;
+  }
+
+  const coordCountry = inferCountryCodeFromCoords(input.lat, input.lng);
+  if (coordCountry) {
+    const coordAnchoredSources: CanonicalPlaceAnchorSource[] = [
+      "explicit_destination",
+      "manual_geocode",
+      "known_place",
+      "gps_live",
+      "gps_dwell",
+      "event_pin",
+      "legacy_globe_place",
+    ];
+    if (!countryCode || coordAnchoredSources.includes(input.anchorSource)) {
+      countryCode = coordCountry;
+      if (!countryName || countryName === COUNTRY_LABELS.KR) {
+        countryName = COUNTRY_LABELS[coordCountry];
+      }
+    }
   }
 
   countryName = resolveCountryName(countryCode, countryName);

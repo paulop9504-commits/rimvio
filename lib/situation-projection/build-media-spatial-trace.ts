@@ -269,6 +269,9 @@ export function buildMediaSpatialTraceCandidates(input: {
   let revealOrder = input.startRevealOrder;
 
   for (const [guideIndex, guide] of input.guides.entries()) {
+    if (!normalizeText(guide.embedUrl)) {
+      continue;
+    }
     const clusterId = `media:${guide.guideNodeId}`;
     const traceItems = buildMediaSpatialTraceItems(guide);
     const videoCoords = buildOrbitCoords({
@@ -313,10 +316,7 @@ export function buildMediaSpatialTraceCandidates(input: {
       searchQuery: null,
       sourceGuideNodeId: guide.guideNodeId,
       revealOrder,
-      markerThumbnailUrl: resolveBrainSurfaceMarkerThumbnail({
-        family: "media",
-        thumbnailUrl: guide.thumbnailUrl,
-      }),
+      markerThumbnailUrl: normalizeText(guide.thumbnailUrl) || null,
       markerMediaKind: resolveBrainSurfaceMarkerMediaKind({
         family: "media",
         embedUrl: guide.embedUrl,
@@ -329,6 +329,12 @@ export function buildMediaSpatialTraceCandidates(input: {
     for (const [placeIndex, place] of guide.inferredPlaceCandidates
       .slice(0, 4)
       .entries()) {
+      const placeThumbnail = normalizeText(
+        (place as { thumbnailUrl?: string | null }).thumbnailUrl,
+      );
+      if (!placeThumbnail) {
+        continue;
+      }
       const family = familyForInferredPlace(place.semanticType);
       const coords =
         typeof place.lat === "number" &&
@@ -381,14 +387,8 @@ export function buildMediaSpatialTraceCandidates(input: {
         searchQuery: place.searchProfile.query,
         sourceGuideNodeId: guide.guideNodeId,
         revealOrder,
-        markerThumbnailUrl: resolveBrainSurfaceMarkerThumbnail({
-          family,
-          thumbnailUrl: null,
-        }),
-        markerMediaKind: resolveBrainSurfaceMarkerMediaKind({
-          family,
-          embedUrl: null,
-        }),
+        markerThumbnailUrl: placeThumbnail,
+        markerMediaKind: "image" as const,
         virtualCandidate: true,
         memoCommitDraft: null,
       });

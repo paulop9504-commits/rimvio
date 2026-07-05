@@ -1,4 +1,5 @@
 import { resolveBrainSurfaceCalloutOffset } from "@/lib/globe/layout-brain-surface-callout-markers";
+import { hasExplicitMarkerThumbnail } from "@/lib/globe/brain-surface-marker-media";
 
 export type GlobeMapCalloutMarker = {
   lat: number;
@@ -14,6 +15,8 @@ const INFRA_PARTNER_LABELS = new Set([
   "naver_local",
   "multi_provider",
 ]);
+
+const COORD_GROUP_PRECISION = 3;
 
 /** Hide infra provider ids from map pill copy. */
 export function sanitizeMapMarkerSupportLabel(
@@ -38,9 +41,78 @@ export function sanitizeOntologyMapBadgeLabel(
   return cleaned || null;
 }
 
+function coordGroupKey(lat: number, lng: number): string {
+  return `${lat.toFixed(COORD_GROUP_PRECISION)},${lng.toFixed(COORD_GROUP_PRECISION)}`;
+}
+
+function applyRadialAtHub<
+  T extends GlobeMapCalloutMarker & { resourceId: string },
+>(input: {
+  markers: readonly T[];
+  hubLat: number;
+  hubLng: number;
+  maxRadial: number;
+}): T[] {
+  const radial = [...input.markers]
+    .sort((left, right) => Number(right.isMain) - Number(left.isMain))
+    .slice(0, input.maxRadial);
+
+  return radial.map((marker, index) => {
+    const offset = resolveBrainSurfaceCalloutOffset(index, radial.length);
+    return {
+      ...marker,
+      lat: input.hubLat,
+      lng: input.hubLng,
+      calloutOffsetX: offset.x,
+      calloutOffsetY: offset.y,
+    };
+  });
+}
+
+function applyRadialAtCoordGroups<
+  T extends GlobeMapCalloutMarker & { resourceId: string },
+>(markers: readonly T[], maxRadial: number): T[] {
+  const groups = new Map<string, T[]>();
+  for (const marker of markers) {
+    const key = coordGroupKey(marker.lat, marker.lng);
+    const bucket = groups.get(key) ?? [];
+    bucket.push(marker);
+    groups.set(key, bucket);
+  }
+
+  const laidOut: T[] = [];
+  for (const group of groups.values()) {
+    if (group.length <= 1) {
+      const solo = group[0];
+      if (solo) {
+        laidOut.push({ ...solo, calloutOffsetX: null, calloutOffsetY: null });
+      }
+      continue;
+    }
+
+    const sorted = group.sort(
+      (left, right) => Number(right.isMain) - Number(left.isMain),
+    );
+    const hubLat = sorted[0]!.lat;
+    const hubLng = sorted[0]!.lng;
+    laidOut.push(
+      ...applyRadialAtHub({
+        markers: sorted,
+        hubLat,
+        hubLng,
+        maxRadial,
+      }),
+    );
+  }
+
+  return laidOut.sort(
+    (left, right) => Number(right.isMain) - Number(left.isMain),
+  );
+}
+
 /**
- * Map pins for hub resources — default 1 focused pin; staged discovery fans out
- * radially from the context hub so pills never stack unreadably.
+ * Map pins for hub resources — multiple markers fan out with callout stems
+ * from the context hub (or shared coordinate) so pills never stack unreadably.
  */
 export function resolveContextResourceMapMarkers<
   T extends GlobeMapCalloutMarker & { resourceId: string },
@@ -48,7 +120,7 @@ export function resolveContextResourceMapMarkers<
   markers: readonly T[];
   hubLat?: number | null;
   hubLng?: number | null;
-  /** When > 1, radial callout layout at hub (lodging/eatery discovery reveal). */
+  /** @deprecated Radial layout applies whenever marker count > 1. */
   stagedDiscoveryCount?: number;
   maxRadial?: number;
 }): T[] {
@@ -56,34 +128,35 @@ export function resolveContextResourceMapMarkers<
     return [];
   }
 
-  const sorted = [...input.markers].sort(
-    (left, right) => Number(right.isMain) - Number(left.isMain),
-  );
+  const withPhoto = input.markers.filter((marker) => {
+    const row = marker as { thumbnailUrl?: string | null };
+    return hasExplicitMarkerThumbnail(row.thumbnailUrl);
+  });
 
-  const stagedCount = input.stagedDiscoveryCount ?? 0;
-  const hubLat = input.hubLat;
-  const hubLng = input.hubLng;
-  const useRadial =
-    stagedCount > 1 &&
-    Number.isFinite(hubLat) &&
-    Number.isFinite(hubLng);
-
-  if (!useRadial) {
-    const focus = sorted.find((row) => row.isMain) ?? sorted[0];
-    return focus ? [{ ...focus, calloutOffsetX: null, calloutOffsetY: null }] : [];
+  if (withPhoto.length === 0) {
+    return [];
   }
 
-  const maxRadial = Math.min(input.maxRadial ?? 3, sorted.length);
-  const radial = sorted.slice(0, maxRadial);
+  const sorted = [...withPhoto].sort(
+    (left, right) => Number(right.isMain) - Number(left.isMain),
+  );
+  const maxRadial = Math.min(input.maxRadial ?? 6, sorted.length);
 
-  return radial.map((marker, index) => {
-    const offset = resolveBrainSurfaceCalloutOffset(index, radial.length);
-    return {
-      ...marker,
-      lat: hubLat as number,
-      lng: hubLng as number,
-      calloutOffsetX: offset.x,
-      calloutOffsetY: offset.y,
-    };
-  });
+  if (sorted.length === 1) {
+    const focus = sorted[0]!;
+    return [{ ...focus, calloutOffsetX: null, calloutOffsetY: null }];
+  }
+
+  const hubLat = input.hubLat;
+  const hubLng = input.hubLng;
+  if (Number.isFinite(hubLat) && Number.isFinite(hubLng)) {
+    return applyRadialAtHub({
+      markers: sorted,
+      hubLat: hubLat as number,
+      hubLng: hubLng as number,
+      maxRadial,
+    });
+  }
+
+  return applyRadialAtCoordGroups(sorted, maxRadial);
 }

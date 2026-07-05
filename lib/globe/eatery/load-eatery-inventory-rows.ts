@@ -5,6 +5,10 @@ import {
 } from "@/lib/globe/canonical-place-profile";
 import { resolveEateryMockNearOrigin } from "@/lib/globe/eatery/resolve-eatery-mock-inventory";
 import type { ContextEateryInventoryRow } from "@/lib/globe/eatery/eatery-resource-types";
+import {
+  inferMapRegionBias,
+  isCoordInKorea,
+} from "@/lib/globe/infer-area-curiosity-hook";
 import { filterLodgingRowsWithinRadius } from "@/lib/globe/lodging/project-lodging-discovery-session";
 import { LODGING_DISCOVERY_RADIUS_M } from "@/lib/globe/lodging/lodging-discovery-constants";
 
@@ -23,8 +27,24 @@ function buildFallbackEateryQuery(input: {
   anchorLabel: string | null;
   eventTitle: string;
   mealMoment: "breakfast" | "brunch" | "lunch" | "dinner" | "late_night" | null;
+  region: ReturnType<typeof inferMapRegionBias>;
 }): string {
   const area = input.anchorLabel?.trim() || input.eventTitle.trim() || "근처";
+  if (input.region === "jp") {
+    const meal =
+      input.mealMoment === "late_night"
+        ? "late night"
+        : input.mealMoment === "dinner"
+          ? "dinner"
+          : input.mealMoment === "lunch"
+            ? "lunch"
+            : input.mealMoment === "brunch"
+              ? "brunch"
+              : input.mealMoment === "breakfast"
+                ? "breakfast"
+                : null;
+    return `${area} ${meal ? `${meal} ` : ""}restaurant`.trim();
+  }
   const meal =
     input.mealMoment === "late_night"
       ? "야식"
@@ -111,12 +131,18 @@ export async function loadEateryInventoryRows(input: {
     input.event.place?.trim() ||
     input.event.title.trim() ||
     null;
+  const region = inferMapRegionBias({
+    lat: searchOrigin?.lat,
+    lng: searchOrigin?.lng,
+    areaLabel: anchorLabel,
+  });
   const query =
     input.message?.trim() ||
     buildFallbackEateryQuery({
       anchorLabel,
       eventTitle: input.event.title,
       mealMoment: context.title.searchBias.mealMoment,
+      region,
     });
 
   if (searchOrigin) {
@@ -194,6 +220,10 @@ export async function loadEateryInventoryRows(input: {
   }
 
   if (originLat == null || originLng == null) {
+    return { rows: [], source: "mock" };
+  }
+
+  if (!isCoordInKorea(originLat, originLng)) {
     return { rows: [], source: "mock" };
   }
 

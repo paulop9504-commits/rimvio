@@ -1,8 +1,8 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { resolveStableContextPlaceAnchor } from "@/lib/context-instance/build-context-instance";
 import {
+  filterVisibleBrainSurfaceCandidates,
   resolveBrainSurfaceMarkerMediaKind,
-  resolveBrainSurfaceMarkerThumbnail,
 } from "@/lib/globe/brain-surface-marker-media";
 import { resolveContextPlaceLabel } from "@/lib/globe/context-hub/resolve-context-place-label";
 import {
@@ -237,15 +237,23 @@ function buildNodeCandidate(input: {
     family === "media" || input.node.candidateOrigin === "media_inferred"
       ? normalizeText(guide?.embedUrl) || null
       : null;
+  if (family === "media" && !embedUrl) {
+    return null;
+  }
   const isMediaInferred = input.node.candidateOrigin === "media_inferred";
   const confidence = input.node.candidateConfidence ?? null;
-  const markerThumbnailUrl = resolveBrainSurfaceMarkerThumbnail({
-    family,
-    thumbnailUrl:
-      normalizeText(input.node.previewImageUrl) ||
-      guide?.thumbnailUrl ||
-      null,
-  });
+  const rawThumbnail =
+    normalizeText(input.node.previewImageUrl) ||
+    (family === "media" ? normalizeText(guide?.thumbnailUrl) : null) ||
+    null;
+  if (
+    (family === "lodging" || family === "eatery" || family === "trace_place") &&
+    !microResource &&
+    !rawThumbnail
+  ) {
+    return null;
+  }
+  const markerThumbnailUrl = rawThumbnail;
   const markerMediaKind = resolveBrainSurfaceMarkerMediaKind({ family, embedUrl });
 
   return {
@@ -344,7 +352,7 @@ function buildMemoLabel(input: {
   });
 }
 
-function buildMemoCandidate(input: {
+function buildMemoCandidate(_input: {
   event: EventCandidate;
   node: GhostProjectionNode;
   baseFamily: BrainSurfaceProjectionCandidate["family"];
@@ -352,64 +360,7 @@ function buildMemoCandidate(input: {
   lng: number;
   revealOrder: number;
 }): BrainSurfaceProjectionCandidate | null {
-  const memoLabel = buildMemoLabel(input);
-  if (!memoLabel) {
-    return null;
-  }
-  const presentation = resolveProjectionNodePresentation(input.node);
-  const detailLine =
-    normalizeText(input.node.relationReasonKo) ||
-    normalizeText(input.node.playbookReasonKo) ||
-    normalizeText(input.event.place) ||
-    null;
-  const previewBody = buildAreaCuriosityPreview({
-    areaLabel: resolveContextPlaceLabel(input.event) || input.node.label,
-    lat: input.lat,
-    lng: input.lng,
-    family: input.baseFamily,
-    detailLine,
-  });
-  const markerThumbnailUrl = resolveBrainSurfaceMarkerThumbnail({
-    family: "memo",
-    thumbnailUrl: null,
-  });
-  return {
-    id: `brain-surface:${input.event.id}:memo:${input.node.id}`,
-    eventId: input.event.id,
-    nodeId: null,
-    family: "memo",
-    clusterId: `memo:${input.baseFamily}`,
-    focusAffinityFamilies: defaultFocusAffinity(input.baseFamily),
-    label: memoLabel,
-    previewTitle: memoLabel,
-    previewBody,
-    placeLabel: resolveContextPlaceLabel(input.event) || input.node.label,
-    lat: input.lat,
-    lng: input.lng,
-    accent: presentation.discoveryAccent,
-    badgeLabelKo: "메모 후보",
-    relationMemoKo: previewBody,
-    sourceLabelKo: null,
-    validityLabelKo: null,
-    evidenceKind: "projection",
-    primaryActionLabelKo: "연결 열기",
-    openUrl: null,
-    embedUrl: null,
-    mapsUrl: normalizeText(input.node.mapsUrl) || null,
-    searchQuery: normalizeText(input.node.searchQuery) || null,
-    sourceGuideNodeId: normalizeText(input.node.sourceGuideNodeId) || null,
-    revealOrder: input.revealOrder,
-    markerThumbnailUrl,
-    markerMediaKind: "image",
-    virtualCandidate: true,
-    memoCommitDraft: buildMemoDraft({
-      event: input.event,
-      placeLabel: input.node.label,
-      note: memoLabel,
-      lat: input.lat,
-      lng: input.lng,
-    }),
-  };
+  return null;
 }
 
 function candidateSignature(candidate: BrainSurfaceProjectionCandidate): string {
@@ -586,10 +537,12 @@ export function projectBrainSurfaceBatch(input: {
 
   return {
     eventId: input.event.id,
-    candidates: candidates.map((candidate, index) => ({
-      ...candidate,
-      revealOrder: index,
-    })),
+    candidates: filterVisibleBrainSurfaceCandidates(
+      candidates.map((candidate, index) => ({
+        ...candidate,
+        revealOrder: index,
+      })),
+    ),
     createdAt: new Date().toISOString(),
     trigger: "brain_complete",
   };

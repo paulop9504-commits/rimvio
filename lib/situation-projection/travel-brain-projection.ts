@@ -1,4 +1,5 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
+import { resolveStableContextPlaceAnchor } from "@/lib/context-instance/build-context-instance";
 import { buildContextHubFlightBooking } from "@/lib/globe/context-hub/build-context-hub-flight-booking-url";
 import { readContextTicketArtifact } from "@/lib/globe/context-hub/read-context-ticket-artifact";
 import { buildLodgingStayWindow } from "@/lib/globe/context-hub/lodging-stay-window";
@@ -475,6 +476,13 @@ function buildEateryGhosts(
         }),
       ),
     ], travel, MAX_TRAVEL_MICRO_RESOURCE_ITEMS);
+  }
+
+  const anchor = resolveStableContextPlaceAnchor(event);
+  const overseas =
+    anchor.profile.countryCode != null && anchor.profile.countryCode !== "KR";
+  if (overseas) {
+    return [];
   }
 
   const fallbackEntries =

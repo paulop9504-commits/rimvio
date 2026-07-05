@@ -214,8 +214,9 @@ import {
   filterBrainSurfaceCandidatesForDisclosure,
   resolveBrainSurfaceDisclosureStage,
 } from "@/lib/globe/brain-surface-progressive-disclosure";
+import { filterVisibleBrainSurfaceCandidates } from "@/lib/globe/brain-surface-marker-media";
+import { computeLodgingDiscoveryBounds } from "@/lib/globe/lodging/compute-lodging-discovery-bounds";
 import {
-  buildMediaSpatialTraceTourStops,
   buildMediaSpatialTraceTourStopsFromGuide,
 } from "@/lib/situation-projection/build-media-spatial-trace-tour";
 import { resolveRimvioHonorific } from "@/lib/copy/rimvio-honorific";
@@ -864,10 +865,12 @@ function GlobeHomeBody() {
   const disclosedBrainSurfaceCandidates = useMemo(
     () =>
       filterBrainSurfaceCandidatesForDisclosure({
-        candidates: visibleBrainSurfaceCandidates,
+        candidates: filterVisibleBrainSurfaceCandidates(visibleBrainSurfaceCandidates),
         stage: brainSurfaceDisclosureStage,
         activeCandidate: activeBrainSurfaceCandidate,
-        allCandidates: brainSurfaceBatch?.candidates ?? [],
+        allCandidates: filterVisibleBrainSurfaceCandidates(
+          brainSurfaceBatch?.candidates ?? [],
+        ),
       }),
     [
       activeBrainSurfaceCandidate,
@@ -917,6 +920,10 @@ function GlobeHomeBody() {
       activeCandidateId: brainSurfaceHighlightedInferredId ?? brainSurfaceActiveCandidateId,
       shadowExpanded: brainSurfaceShadowExpanded,
       videoClusterId,
+      videoGuideNodeId:
+        activeBrainSurfaceCandidate?.sourceGuideNodeId ??
+        activeBrainSurfaceCandidate?.parentGuideNodeId ??
+        null,
       hubLat,
       hubLng,
     });
@@ -999,29 +1006,14 @@ function GlobeHomeBody() {
   }, [brainSurfaceBatch?.candidates]);
 
   const spatialTraceTourStops = useMemo(() => {
-    if (brainSurfaceVisible && brainSurfaceBatch && spatialTraceTourGuideId) {
-      const fromBatch = buildMediaSpatialTraceTourStops({
-        batch: brainSurfaceBatch,
-        guideNodeId: spatialTraceTourGuideId,
-      });
-      if (fromBatch.length > 0) {
-        return fromBatch;
-      }
-    }
     if (mapVideoPlaying && activeContextMediaGuides.length > 0) {
       const guide = pickPrimaryExpandableMediaGuide(activeContextMediaGuides);
-      if (guide) {
+      if (guide?.embedUrl?.trim()) {
         return buildMediaSpatialTraceTourStopsFromGuide(guide);
       }
     }
     return [];
-  }, [
-    activeContextMediaGuides,
-    brainSurfaceBatch,
-    brainSurfaceVisible,
-    mapVideoPlaying,
-    spatialTraceTourGuideId,
-  ]);
+  }, [activeContextMediaGuides, mapVideoPlaying]);
 
   const spatialTraceTourAdvancePaused = Boolean(
     activeBrainSurfaceCandidate?.embedUrl &&
@@ -1390,10 +1382,28 @@ function GlobeHomeBody() {
     }
 
     const clusterId = activeBrainSurfaceCandidate.clusterId?.trim() ?? null;
+    const guideId =
+      activeBrainSurfaceCandidate.sourceGuideNodeId?.trim() ??
+      activeBrainSurfaceCandidate.parentGuideNodeId?.trim() ??
+      null;
     const inferredInCluster = clusterId
-      ? brainSurfaceBatch.candidates.filter(
-          (row) =>
-            row.clusterId === clusterId && row.anchorKind === "inferred_place",
+      ? filterVisibleBrainSurfaceCandidates(
+          brainSurfaceBatch.candidates.filter((row) => {
+            if (
+              row.anchorKind === "inferred_place" &&
+              row.clusterId === clusterId
+            ) {
+              return true;
+            }
+            if (
+              guideId &&
+              row.sourceGuideNodeId === guideId &&
+              (row.family === "lodging" || row.family === "eatery")
+            ) {
+              return true;
+            }
+            return false;
+          }),
         )
       : [];
 
@@ -1422,12 +1432,25 @@ function GlobeHomeBody() {
     setBrainSurfaceFocusedFamily(null);
     setBrainSurfaceHighlightedInferredId(inferredInCluster[0]?.id ?? null);
 
-    const hubLat = activeCluster?.lat ?? activeBrainSurfaceCandidate.lat;
-    const hubLng = activeCluster?.lng ?? activeBrainSurfaceCandidate.lng;
-    if (Number.isFinite(hubLat) && Number.isFinite(hubLng)) {
-      globeRef.current?.flyToPin(hubLat, hubLng, "neighborhood", {
+    const bounds = computeLodgingDiscoveryBounds({
+      user: null,
+      lodging: inferredInCluster.map((row) => ({ lat: row.lat, lng: row.lng })),
+      radiusM: 1200,
+    });
+    if (bounds) {
+      globeRef.current?.flyToDiscoveryBounds({
+        centerLat: bounds.centerLat,
+        centerLng: bounds.centerLng,
+        altitude: bounds.altitude,
         pinViewportY: 0.52,
       });
+    } else {
+      const first = inferredInCluster[0];
+      if (first && Number.isFinite(first.lat) && Number.isFinite(first.lng)) {
+        globeRef.current?.flyToPin(first.lat, first.lng, "street", {
+          pinViewportY: 0.52,
+        });
+      }
     }
   }, [
     activeBrainSurfaceCandidate,
@@ -1454,6 +1477,9 @@ function GlobeHomeBody() {
 
   useEffect(() => {
     if (!brainSurfaceVisible || spatialTraceTourStops.length === 0) {
+      return;
+    }
+    if (brainSurfaceVisible) {
       return;
     }
     if (spatialTraceTourSuppressedRef.current) {

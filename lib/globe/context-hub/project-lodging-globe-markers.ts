@@ -13,6 +13,7 @@ import {
   sanitizeMapMarkerSupportLabel,
   sanitizeOntologyMapBadgeLabel,
 } from "@/lib/globe/resolve-context-resource-map-markers";
+import { hasExplicitMarkerThumbnail } from "@/lib/globe/brain-surface-marker-media";
 
 const LODGING_MARKER_ZOOM_LEVELS = new Set<GlobeDetailLevel>([
   "city",
@@ -38,9 +39,12 @@ function isGhostLodgingNode(
   );
 }
 
-function extractShortLabel(label: string): string {
-  const first = label.trim().split(/\s+/u)[0]?.trim();
-  return first && first.length <= 8 ? first : label.trim().slice(0, 6);
+function extractMapPillLabel(label: string): string {
+  const trimmed = label.trim().replace(/\s+/gu, " ");
+  if (trimmed.length <= 22) {
+    return trimmed;
+  }
+  return `${trimmed.slice(0, 21).trimEnd()}…`;
 }
 
 /** Ranked lodging inventory → globe View markers (no fetch). */
@@ -86,6 +90,10 @@ export function projectLodgingGlobeMarkers(input: {
     }
 
     const payload = readLodgingPayloadFromResource(entry.resource);
+    const imageUrl = payload ? selectPreferredLodgingImage(payload) : null;
+    if (!hasExplicitMarkerThumbnail(imageUrl)) {
+      continue;
+    }
     const isMain = entry.resource.resourceId === activeId;
     const ghost = payload?.placeId ? ghostByPlaceId.get(payload.placeId.trim()) ?? null : null;
     const presentation = ghost ? resolveProjectionNodePresentation(ghost) : null;
@@ -116,8 +124,8 @@ export function projectLodgingGlobeMarkers(input: {
       lng,
       carouselIndex: carouselIndex >= 0 ? carouselIndex : 0,
       isMain,
-      thumbnailUrl: payload ? selectPreferredLodgingImage(payload) : null,
-      discoveryShortLabel: extractShortLabel(entry.resource.label),
+      thumbnailUrl: imageUrl,
+      discoveryShortLabel: extractMapPillLabel(entry.resource.label),
       discoveryPriceLabel: supportDetail,
       stayBadgeLabel,
       discoveryAccent: presentation?.discoveryAccent ?? "blue",

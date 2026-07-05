@@ -34,6 +34,13 @@ export function resolveContextDiscoverySearchCoords(
     layerMode: "discovery",
   });
 
+  if (
+    context.travel.overseas &&
+    context.movement.relationToAnchor === "remote_from_anchor"
+  ) {
+    return { lat: anchor.lat, lng: anchor.lng };
+  }
+
   return (
     context.location.searchOrigin ?? {
       lat: anchor.lat,

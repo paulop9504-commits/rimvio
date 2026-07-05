@@ -3867,6 +3867,15 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   overflow: visible;
 }
 
+.rimvio-globe-lodging-marker.rimvio-globe-brain-surface-marker--callout {
+  width: 0;
+  min-width: 0;
+  overflow: visible;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
 .rimvio-globe-brain-surface-marker__callout-field {
   position: absolute;
   left: 0;

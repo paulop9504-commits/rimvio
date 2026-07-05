@@ -1,5 +1,8 @@
 import type { ContextEateryInventoryRow } from "@/lib/globe/eatery/eatery-resource-types";
-import { inferMapRegionBias } from "@/lib/globe/infer-area-curiosity-hook";
+import {
+  inferMapRegionBias,
+  isCoordInKorea,
+} from "@/lib/globe/infer-area-curiosity-hook";
 
 function mLat(meters: number): number {
   return meters / 111_320;
@@ -85,6 +88,9 @@ export function resolveEateryMockNearOrigin(input: {
   lng: number;
   anchorLabel?: string | null;
 }): readonly ContextEateryInventoryRow[] {
+  if (!isCoordInKorea(input.lat, input.lng)) {
+    return [];
+  }
   const region = inferMapRegionBias({
     lat: input.lat,
     lng: input.lng,

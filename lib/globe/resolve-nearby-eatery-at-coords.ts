@@ -3,6 +3,7 @@ import {
   Language,
 } from "@googlemaps/google-maps-services-js";
 import { haversineKm } from "@/lib/feed/spacetime-fit";
+import { inferMapRegionBias } from "@/lib/globe/infer-area-curiosity-hook";
 import { googlePlacesApiKey, isGooglePlacesConfigured } from "@/lib/locate/google-places-config";
 
 const client = new Client({});
@@ -44,6 +45,9 @@ export async function resolveNearbyEateryAtCoords(input: {
   }
 
   let best: NearbyEateryCandidate | null = null;
+  const region = inferMapRegionBias({ lat: input.lat, lng: input.lng });
+  const language =
+    region === "jp" ? Language.ja : region === "kr" ? Language.ko : Language.en;
 
   for (const type of EATERY_TYPES) {
     try {
@@ -52,7 +56,7 @@ export async function resolveNearbyEateryAtCoords(input: {
           location: { lat: input.lat, lng: input.lng },
           radius: NEARBY_RADIUS_M,
           type,
-          language: Language.ko,
+          language,
           key,
         },
       });
