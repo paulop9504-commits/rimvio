@@ -17,6 +17,7 @@ import {
   resolveGlobeContextVideoScreenLayout,
   type GlobeContextVideoScreenLayout,
 } from "@/lib/globe/resolve-globe-context-video-layout";
+import { layoutScreenAnchoredNodeOffsets } from "@/lib/globe/resolve-non-overlapping-callout-offsets";
 import { recordPersonaSignal } from "@/lib/persona";
 import type { PersonaLearnChoice } from "@/lib/persona/types";
 import {
@@ -317,6 +318,35 @@ export function GlobeContextBrainMapOverlay({
     return pill.actionKind === "knowledge_capture" || pill.emphasis === "focus" || pill.emphasis === "main";
   });
   const mapNodeKey = mapAnchoredNodes.map((node) => node.id).join("|");
+
+  const mapAnchorScreenOffsets = useMemo(() => {
+    const boxes = mapAnchoredNodes
+      .map((node) => {
+        const anchor = anchoredLayouts[node.id];
+        if (!anchor) {
+          return null;
+        }
+        const focus = node.emphasis === "focus";
+        const main = node.emphasis === "main";
+        const width = clamp(
+          Math.round(anchor.widthPx * (focus ? 1.06 : main ? 0.98 : 0.9)),
+          108,
+          196,
+        );
+        const priority =
+          node.emphasis === "focus" ? 100 : node.emphasis === "main" ? 70 : 40;
+        return {
+          id: node.id,
+          x: anchor.x,
+          y: anchor.y - 8,
+          width,
+          height: 72,
+          priority,
+        };
+      })
+      .filter((row): row is NonNullable<typeof row> => row != null);
+    return layoutScreenAnchoredNodeOffsets(boxes);
+  }, [anchoredLayouts, mapAnchoredNodes]);
 
   useEffect(() => {
     if (!visible) {
@@ -855,15 +885,18 @@ export function GlobeContextBrainMapOverlay({
               if (!anchor) {
                 return null;
               }
+              const offset = mapAnchorScreenOffsets[node.id] ?? { dx: 0, dy: 0 };
               const focus = node.emphasis === "focus";
               const selected = selectedNodeId === node.id;
+              const cardX = anchor.x + offset.dx;
+              const cardY = anchor.y - 8 + offset.dy;
               return (
                 <line
                   key={`anchor-link:${node.id}`}
                   x1={rootScreenCenter.x}
                   y1={rootScreenCenter.y}
-                  x2={anchor.x}
-                  y2={anchor.y - Math.max(32, anchor.widthPx * 0.32)}
+                  x2={cardX}
+                  y2={cardY - Math.max(28, anchor.widthPx * 0.22)}
                   stroke={
                     selected
                       ? "rgba(125,193,255,0.92)"
@@ -885,6 +918,7 @@ export function GlobeContextBrainMapOverlay({
           if (!anchor) {
             return null;
           }
+          const offset = mapAnchorScreenOffsets[node.id] ?? { dx: 0, dy: 0 };
           const pill = findPillForNode(node, pills);
           const nodeAction = resolveProjectionNodeTap({ node, event });
           const tappable = Boolean(nodeAction || pill);
@@ -924,8 +958,8 @@ export function GlobeContextBrainMapOverlay({
                 !tappable && "cursor-default",
               )}
               style={{
-                left: anchor.x,
-                top: anchor.y - 8,
+                left: anchor.x + offset.dx,
+                top: anchor.y - 8 + offset.dy,
                 width,
               }}
               data-globe-context-brain-map-anchor-node={node.id}

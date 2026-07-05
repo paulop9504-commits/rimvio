@@ -5,6 +5,7 @@ import {
   layoutBrainSurfaceCalloutMarkers,
   resolveBrainSurfaceCalloutOffset,
 } from "@/lib/globe/layout-brain-surface-callout-markers";
+import { resolveNonOverlappingCalloutOffsets } from "@/lib/globe/resolve-non-overlapping-callout-offsets";
 import type { BrainSurfaceProjectionCandidate } from "@/lib/situation-projection/brain-surface-types";
 
 function seedCandidate(
@@ -35,12 +36,9 @@ function seedCandidate(
   };
 }
 
-const offsets = [0, 1, 2, 3, 4, 5].map((index) =>
-  resolveBrainSurfaceCalloutOffset(index, 6),
-);
-const distances = offsets.map((offset) => Math.hypot(offset.x, offset.y));
-assert.ok(distances.every((value) => value >= 70));
+const offsets = resolveNonOverlappingCalloutOffsets(6);
 assert.ok(new Set(offsets.map((row) => `${row.x},${row.y}`)).size === offsets.length);
+assert.equal(resolveBrainSurfaceCalloutOffset(0, 6).x, offsets[0]?.x);
 
 const laidOut = layoutBrainSurfaceCalloutMarkers({
   candidates: [

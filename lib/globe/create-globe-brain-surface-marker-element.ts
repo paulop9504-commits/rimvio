@@ -41,6 +41,10 @@ function confidenceGlow(confidence: number | null | undefined): string {
   return `0 ${spread}px ${spread + 14}px rgba(120, 196, 255, ${alpha.toFixed(2)})`;
 }
 
+function indexZBoostFromCallout(callout: { x: number; y: number }): number {
+  return Math.round(Math.hypot(callout.x, callout.y) / 18);
+}
+
 function readCalloutOffset(candidate: BrainSurfaceProjectionCandidate): {
   x: number;
   y: number;
@@ -82,11 +86,35 @@ function mapMarkerDetailLabel(
   return detail;
 }
 
+function familyCategoryLabel(
+  family: BrainSurfaceProjectionCandidate["family"],
+): string {
+  switch (family) {
+    case "media":
+      return "영상";
+    case "eatery":
+      return "맛집";
+    case "lodging":
+      return "숙소";
+    case "trace_place":
+      return "장소";
+    case "info":
+      return "정보";
+    case "event":
+      return "행사";
+    case "memo":
+      return "메모";
+    default:
+      return "맥락";
+  }
+}
+
 function buildDiscoveryPill(
   candidate: BrainSurfaceProjectionCandidate,
 ): HTMLSpanElement {
   const pill = document.createElement("span");
   pill.className = "rimvio-globe-lodging-marker__discovery-pill";
+  pill.dataset.brainSurfaceFamily = candidate.family;
   const markerStyle = candidate.markerStyle ?? "dashed";
   pill.style.border =
     markerStyle === "solid"
@@ -113,7 +141,8 @@ function buildDiscoveryPill(
     });
   }
 
-  const badgeLabel = mapMarkerBadgeLabel(candidate);
+  const badgeLabel =
+    mapMarkerBadgeLabel(candidate) ?? familyCategoryLabel(candidate.family);
   if (badgeLabel) {
     const badge = document.createElement("span");
     badge.className = "rimvio-globe-lodging-marker__ontology-badge";
@@ -210,6 +239,7 @@ export function createGlobeBrainSurfaceMarkerElement(
     root.classList.add("rimvio-globe-brain-surface-marker--callout");
     root.style.setProperty("--callout-x", `${callout.x}px`);
     root.style.setProperty("--callout-y", `${callout.y}px`);
+    root.style.zIndex = String(20 + indexZBoostFromCallout(callout));
 
     const field = document.createElement("span");
     field.className = "rimvio-globe-brain-surface-marker__callout-field";

@@ -89,7 +89,7 @@ export function GlobeBrainSurfaceExploreRail({
               </span>
             ) : null}
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {candidates.map((candidate) => {
               const active = candidate.id === activeCandidateId;
               const thumb = candidate.markerThumbnailUrl?.trim();
@@ -102,7 +102,7 @@ export function GlobeBrainSurfaceExploreRail({
                   type="button"
                   onClick={() => onSelect(candidate.id)}
                   className={cn(
-                    "flex w-[7.25rem] shrink-0 flex-col overflow-hidden rounded-[0.95rem] border text-left shadow-sm transition active:scale-[0.98]",
+                    "flex w-[7.25rem] shrink-0 snap-start flex-col overflow-hidden rounded-[0.95rem] border text-left shadow-sm transition active:scale-[0.98]",
                     familyAccentClass(candidate.family),
                     active
                       ? "ring-2 ring-[#0071e3]/35 ring-offset-1 ring-offset-white/80"

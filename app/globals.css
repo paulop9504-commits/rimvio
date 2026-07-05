@@ -3896,8 +3896,31 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   top: 0;
   transform: translate(calc(-50% + var(--callout-x, 0px)), calc(-100% + var(--callout-y, 0px)));
   pointer-events: auto;
-  max-width: 8.5rem;
+  min-width: 7.25rem;
+  max-width: 9.75rem;
   white-space: normal;
+  border-left-width: 3px;
+  border-left-style: solid;
+}
+
+.rimvio-globe-brain-surface-marker__callout-pill[data-brain-surface-family="eatery"] {
+  border-left-color: #ff9500;
+}
+
+.rimvio-globe-brain-surface-marker__callout-pill[data-brain-surface-family="lodging"] {
+  border-left-color: #0071e3;
+}
+
+.rimvio-globe-brain-surface-marker__callout-pill[data-brain-surface-family="trace_place"] {
+  border-left-color: #34c759;
+}
+
+.rimvio-globe-brain-surface-marker__callout-pill[data-brain-surface-family="media"] {
+  border-left-color: #bf5af2;
+}
+
+.rimvio-globe-brain-surface-marker__callout-pill[data-brain-surface-family="info"] {
+  border-left-color: #30b0c7;
 }
 
 .rimvio-globe-brain-surface-marker__media-pill {
