@@ -3426,7 +3426,7 @@ function GlobeHomeBody() {
       {/* —— L2 Capture dock (compose · ingest) —— */}
       <GlobeCaptureDock
         ref={ingestBarRef}
-        composeHidden={portalOpen || marketConfirmOpen}
+        composeHidden={portalOpen || marketConfirmOpen || brainProjectionVisible}
         composeAccessory={
           !confirmOpen && !sheetOpen && layerMode === "personal" ? (
             <GlobeComposeAccessoryBar

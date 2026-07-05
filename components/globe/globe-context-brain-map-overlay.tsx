@@ -622,6 +622,11 @@ export function GlobeContextBrainMapOverlay({
         ? { x: anchorLayout.x, y: anchorLayout.y - GRAPH_ANCHOR_GAP_PX }
         : null;
   const rootNodeId = rootLayoutNode?.id ?? null;
+  const questionStripBottom = activeTravelQuestion
+    ? "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 1rem)"
+    : pills.length > 0
+      ? "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 4.6rem)"
+      : "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 1.2rem)";
   const filterBottom = activeTravelQuestion
     ? pills.length > 0
       ? "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 9.8rem)"
@@ -655,7 +660,10 @@ export function GlobeContextBrainMapOverlay({
         data-globe-context-brain-display-mode={displayMode}
       >
         <motion.div
-          className="absolute"
+          className={cn(
+            "absolute",
+            activeTravelQuestion && "pointer-events-none",
+          )}
           style={{
             left: graphBox.left,
             top: graphBox.top,
@@ -1086,11 +1094,9 @@ export function GlobeContextBrainMapOverlay({
         ) : null}
         {activeTravelQuestion ? (
           <motion.div
-            className="pointer-events-auto absolute inset-x-0 z-[25] flex justify-center px-3"
+            className="pointer-events-auto absolute inset-x-0 z-[34] flex justify-center px-3"
             style={{
-              bottom: pills.length > 0
-                ? "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 5.6rem)"
-                : "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 1rem)",
+              bottom: questionStripBottom,
             }}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
