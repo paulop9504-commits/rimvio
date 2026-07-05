@@ -13,7 +13,8 @@ import { GlobeContextMapVideoStage } from "@/components/globe/globe-context-map-
 import { GlobeContextBrainMapOverlay } from "@/components/globe/globe-context-brain-map-overlay";
 import { GlobeContextBrainNodeCard } from "@/components/globe/globe-context-brain-node-card";
 import { GlobeBrainSurfaceExploreRail } from "@/components/globe/globe-brain-surface-explore-rail";
-import { GlobeBrainSurfacePreviewCard } from "@/components/globe/globe-brain-surface-preview-card";
+import { GlobeBrainSurfaceStoryPeek } from "@/components/globe/globe-brain-surface-story-peek";
+import { GlobeBrainSurfaceConnectSheet } from "@/components/globe/globe-brain-surface-connect-sheet";
 import {
   buildBrainSurfaceEmbedSrc,
   GlobeBrainSurfaceVideoChip,
@@ -219,7 +220,7 @@ import { prioritizeBrainSurfaceCandidatesForFocus } from "@/lib/situation-projec
 import { resolveBrainSurfaceMapMarkers } from "@/lib/globe/resolve-brain-surface-map-markers";
 import {
   filterBrainSurfaceCandidatesForDisclosure,
-  resolveBrainSurfaceDisclosureStage,
+  resolveRelatedBrainSurfaceCandidates,
 } from "@/lib/globe/brain-surface-progressive-disclosure";
 import { filterVisibleBrainSurfaceCandidates } from "@/lib/globe/brain-surface-marker-media";
 import { filterBrainSurfaceShadowExpandPins } from "@/lib/globe/brain-surface-shadow-expand";
@@ -420,6 +421,7 @@ function GlobeHomeBody() {
   const [brainSurfaceActiveCandidateId, setBrainSurfaceActiveCandidateId] =
     useState<string | null>(null);
   const [brainSurfaceDetailMode, setBrainSurfaceDetailMode] = useState(false);
+  const [brainSurfaceConnectOpen, setBrainSurfaceConnectOpen] = useState(false);
   const [brainSurfaceShadowExpanded, setBrainSurfaceShadowExpanded] = useState(false);
   const [brainSurfaceHighlightedInferredId, setBrainSurfaceHighlightedInferredId] =
     useState<string | null>(null);
@@ -855,21 +857,20 @@ function GlobeHomeBody() {
     activeContextProjectionManifest?.nodes,
   ]);
 
-  const brainSurfaceDisclosureStage = useMemo(
-    () =>
-      resolveBrainSurfaceDisclosureStage({
-        activeCandidateId: brainSurfaceActiveCandidateId,
-        shadowExpanded: brainSurfaceShadowExpanded,
-        detailMode: brainSurfaceDetailMode,
-        hasActiveNode: Boolean(activeBrainSurfaceNode),
-      }),
-    [
-      activeBrainSurfaceNode,
-      brainSurfaceActiveCandidateId,
-      brainSurfaceDetailMode,
-      brainSurfaceShadowExpanded,
-    ],
-  );
+  const brainSurfaceDisclosureStage = useMemo(() => {
+    if (brainSurfaceConnectOpen && activeBrainSurfaceCandidate) {
+      if (brainSurfaceDetailMode && activeBrainSurfaceNode) {
+        return "detail" as const;
+      }
+      return "related" as const;
+    }
+    return "core" as const;
+  }, [
+    activeBrainSurfaceCandidate,
+    activeBrainSurfaceNode,
+    brainSurfaceConnectOpen,
+    brainSurfaceDetailMode,
+  ]);
 
   const disclosedBrainSurfaceCandidates = useMemo(
     () =>
@@ -935,6 +936,7 @@ function GlobeHomeBody() {
         null,
       hubLat,
       hubLng,
+      storySpread: !brainSurfaceConnectOpen && !brainSurfaceShadowExpanded,
     });
   }, [
     activeBrainSurfaceCandidate,
@@ -942,6 +944,7 @@ function GlobeHomeBody() {
     activeCluster?.lng,
     brainSurfaceActiveCandidateId,
     brainSurfaceBatch?.candidates,
+    brainSurfaceConnectOpen,
     brainSurfaceDisclosureStage,
     brainSurfaceFocusedFamily,
     brainSurfaceHighlightedInferredId,
@@ -949,6 +952,22 @@ function GlobeHomeBody() {
     brainSurfaceShadowExpanded,
     disclosedBrainSurfaceCandidates,
     passiveBrainSurfaceFamily,
+    visibleBrainSurfaceCandidates,
+  ]);
+
+  const brainSurfaceConnectRelated = useMemo(() => {
+    if (!activeBrainSurfaceCandidate) {
+      return [] as BrainSurfaceProjectionCandidate[];
+    }
+    return resolveRelatedBrainSurfaceCandidates({
+      active: activeBrainSurfaceCandidate,
+      candidates: filterVisibleBrainSurfaceCandidates(
+        brainSurfaceBatch?.candidates ?? visibleBrainSurfaceCandidates,
+      ),
+    });
+  }, [
+    activeBrainSurfaceCandidate,
+    brainSurfaceBatch?.candidates,
     visibleBrainSurfaceCandidates,
   ]);
 
@@ -1063,9 +1082,26 @@ function GlobeHomeBody() {
     setBrainSurfaceHighlightedInferredId(null);
     setBrainSurfaceActiveCandidateId(null);
     setBrainSurfaceDetailMode(false);
+    setBrainSurfaceConnectOpen(false);
     setBrainSurfaceMode("spread");
     setBrainSurfaceFocusedFamily(null);
   }, [stopSpatialTraceTour]);
+
+  const handleBrainSurfaceConnectOpen = useCallback(() => {
+    if (!activeBrainSurfaceCandidate) {
+      return;
+    }
+    setBrainSurfaceConnectOpen(true);
+    setBrainSurfaceDetailMode(false);
+    setBrainSurfaceShadowExpanded(false);
+    setBrainSurfaceHighlightedInferredId(null);
+    globeRef.current?.flyToPin(
+      activeBrainSurfaceCandidate.lat,
+      activeBrainSurfaceCandidate.lng,
+      "neighborhood",
+      { pinViewportY: 0.56 },
+    );
+  }, [activeBrainSurfaceCandidate]);
 
   const activeBrainSurfacePresentation = activeBrainSurfaceNode
     ? resolveProjectionNodePresentation(activeBrainSurfaceNode)
@@ -1262,6 +1298,7 @@ function GlobeHomeBody() {
       setBrainSurfaceFocusedFamily(null);
       setBrainSurfaceActiveCandidateId(null);
       setBrainSurfaceDetailMode(false);
+      setBrainSurfaceConnectOpen(false);
       setBrainSurfaceShadowExpanded(false);
       setBrainSurfaceHighlightedInferredId(null);
       setBrainProjectionEventId(null);
@@ -1290,19 +1327,7 @@ function GlobeHomeBody() {
         return;
       }
 
-      const stage = resolveBrainSurfaceDisclosureStage({
-        activeCandidateId: brainSurfaceActiveCandidateId,
-        shadowExpanded: brainSurfaceShadowExpanded,
-        detailMode: brainSurfaceDetailMode,
-        hasActiveNode: Boolean(
-          candidate.nodeId &&
-            activeContextProjectionManifest?.nodes.some(
-              (node) => node.id === candidate.nodeId,
-            ),
-        ),
-      });
-
-      if (stage === "core") {
+      if (!brainSurfaceConnectOpen) {
         setBrainSurfaceMode("spread");
         setBrainSurfaceFocusedFamily(null);
         setBrainSurfaceShadowExpanded(false);
@@ -1315,35 +1340,22 @@ function GlobeHomeBody() {
         return;
       }
 
-      if (stage === "related") {
-        if (brainSurfaceActiveCandidateId === candidateId) {
-          setBrainSurfaceDetailMode(true);
-          return;
-        }
-        if (
-          brainSurfaceMode !== "focused" ||
-          brainSurfaceFocusedFamily !== candidate.family
-        ) {
-          setBrainSurfaceMode("focused");
-          setBrainSurfaceFocusedFamily(candidate.family);
-        }
-        setBrainSurfaceActiveCandidateId(candidateId);
-        setBrainSurfaceDetailMode(false);
-        globeRef.current?.flyToPin(candidate.lat, candidate.lng, "street", {
-          pinViewportY: 0.66,
-        });
+      if (brainSurfaceActiveCandidateId === candidateId) {
+        setBrainSurfaceDetailMode(true);
         return;
       }
-
-      setBrainSurfaceDetailMode(true);
+      setBrainSurfaceMode("focused");
+      setBrainSurfaceFocusedFamily(candidate.family);
+      setBrainSurfaceActiveCandidateId(candidateId);
+      setBrainSurfaceDetailMode(false);
+      globeRef.current?.flyToPin(candidate.lat, candidate.lng, "street", {
+        pinViewportY: 0.66,
+      });
     },
     [
-      activeContextProjectionManifest?.nodes,
       brainSurfaceActiveCandidateId,
       brainSurfaceCandidatesById,
-      brainSurfaceDetailMode,
-      brainSurfaceFocusedFamily,
-      brainSurfaceMode,
+      brainSurfaceConnectOpen,
       brainSurfaceShadowExpanded,
     ],
   );
@@ -3034,12 +3046,22 @@ function GlobeHomeBody() {
       !marketConfirmOpen,
   );
 
-  const showBrainSurfacePreviewChrome = Boolean(
+  const showBrainSurfaceStoryPeek = Boolean(
     brainSurfaceVisible &&
       activeBrainSurfaceCandidate &&
-      (!brainSurfaceDetailMode || !activeBrainSurfaceNode) &&
-      !brainSurfaceShadowExpanded,
+      !brainSurfaceDetailMode &&
+      !brainSurfaceShadowExpanded &&
+      !brainSurfaceConnectOpen,
   );
+  const showBrainSurfaceConnectChrome = Boolean(
+    brainSurfaceVisible &&
+      activeBrainSurfaceCandidate &&
+      !brainSurfaceDetailMode &&
+      !brainSurfaceShadowExpanded &&
+      brainSurfaceConnectOpen,
+  );
+  const showBrainSurfacePreviewChrome =
+    showBrainSurfaceStoryPeek || showBrainSurfaceConnectChrome;
   const showBrainSurfaceDetailChrome = Boolean(
     brainSurfaceDetailMode &&
       activeBrainSurfaceNode &&
@@ -3205,45 +3227,29 @@ function GlobeHomeBody() {
           onClose={dismissBrainSurfacePreview}
         />
       ) : null}
-      {activeBrainSurfaceCandidate &&
-      (!brainSurfaceDetailMode || !activeBrainSurfaceNode) &&
-      !brainSurfaceShadowExpanded ? (
-        <GlobeBrainSurfacePreviewCard
+      {showBrainSurfaceStoryPeek && activeBrainSurfaceCandidate ? (
+        <GlobeBrainSurfaceStoryPeek
           candidate={activeBrainSurfaceCandidate}
-          detailMode={brainSurfaceDetailMode}
           onClose={dismissBrainSurfacePreview}
-          onPromoteDetail={() => setBrainSurfaceDetailMode(true)}
-          onOpenPrimary={handleBrainSurfacePrimaryAction}
-          onOpenMap={
-            activeBrainSurfaceCandidate.mapsUrl
-              ? () =>
-                  window.open(
-                    activeBrainSurfaceCandidate.mapsUrl!,
-                    "_blank",
-                    "noopener,noreferrer",
-                  )
-              : null
-          }
-          onExpandInferredMap={
+          onConnect={handleBrainSurfaceConnectOpen}
+        />
+      ) : null}
+      {showBrainSurfaceConnectChrome && activeBrainSurfaceCandidate ? (
+        <GlobeBrainSurfaceConnectSheet
+          anchor={activeBrainSurfaceCandidate}
+          related={brainSurfaceConnectRelated}
+          activeRelatedId={brainSurfaceActiveCandidateId}
+          onSelectRelated={(candidateId) => handleBrainSurfaceMarkerPress(candidateId)}
+          onExpandMap={
             showActiveVideoExpandMap ? handleExpandActiveVideoInferredMap : null
           }
           inferredPlaceCount={
             activeVideoInferredPlaceCount > 0 ? activeVideoInferredPlaceCount : undefined
           }
-          onCommitMemo={
-            activeBrainSurfaceCandidate.memoCommitDraft
-              ? handleBrainSurfaceMemoCommit
-              : null
+          onOpenDetail={
+            activeBrainSurfaceNode ? () => setBrainSurfaceDetailMode(true) : null
           }
-          committingMemo={brainSurfaceCommitPending}
-          tourStop={
-            !brainSurfaceShadowExpanded && spatialTraceTourRunning
-              ? spatialTraceTourActiveStop
-              : null
-          }
-          tourStopIndex={spatialTraceTourStopIndex}
-          tourStopCount={spatialTraceTourStopCount}
-          onTourSkip={dismissBrainSurfacePreview}
+          onClose={() => setBrainSurfaceConnectOpen(false)}
         />
       ) : null}
       {showBrainSurfaceDetailChrome ? (

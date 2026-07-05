@@ -76,6 +76,21 @@ const core = resolveBrainSurfaceMapMarkers({
 assert.equal(core.length, 2);
 assert.ok(core.every((row) => row.calloutOffsetX != null));
 
+const story = resolveBrainSurfaceMapMarkers({
+  candidates: [macro, micro, inferred, video],
+  disclosureStage: "core",
+  storySpread: true,
+  activeCandidateId: "video",
+  hubLat: 35.68,
+  hubLng: 139.76,
+});
+assert.ok(story.length >= 2);
+assert.ok(story.every((row) => row.markerStyle === "story"));
+assert.ok(story.every((row) => row.calloutOffsetX == null));
+const activeStory = story.find((row) => row.id === "video");
+assert.ok(activeStory);
+assert.ok((activeStory?.focusPriority ?? 0) >= 100);
+
 assert.deepEqual(
   resolveBrainSurfaceMapMarkers({
     candidates: [macro, micro],

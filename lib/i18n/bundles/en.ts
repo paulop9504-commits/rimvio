@@ -1344,6 +1344,12 @@ export const copyEn: Copy = {
     contextGuideCandidateCount: (count: number) =>
       `${count} place candidate${count === 1 ? "" : "s"}`,
     contextGuideExpandMap: "Spread on map",
+    contextGuideDisclosureCore: "Core",
+    contextGuideDisclosureRelated: "Connected",
+    contextGuideDisclosureDetail: "Details",
+    brainSurfaceConnectCta: "View connections",
+    brainSurfaceConnectTitle: "Connected to this context",
+    brainSurfaceStoryCloseAria: "Close",
     contextGuideRelatedTitle: "Related clips",
     contextGardenSummaryEyebrow: "Now",
     prepChecklistEyebrow: "Prep",

@@ -75,6 +75,8 @@ export function resolveBrainSurfaceMapMarkers(input: {
   videoGuideNodeId?: string | null;
   hubLat?: number | null;
   hubLng?: number | null;
+  /** Instagram-style — core pins at real coords, no callout orbit. */
+  storySpread?: boolean;
 }): BrainSurfaceProjectionCandidate[] {
   const stage = input.disclosureStage ?? "related";
   const activeId = input.activeCandidateId?.trim() ?? null;
@@ -103,6 +105,19 @@ export function resolveBrainSurfaceMapMarkers(input: {
     const core = pickCoreBrainSurfaceCandidates(pool).filter(hasRealCoords);
     if (core.length === 0) {
       return [];
+    }
+    if (input.storySpread) {
+      return core.slice(0, 8).map((candidate, index) => ({
+        ...candidate,
+        markerStyle: "story",
+        calloutOffsetX: undefined,
+        calloutOffsetY: undefined,
+        focusPriority:
+          activeId === candidate.id ? 100 : Math.max(72 - index * 3, 36),
+        markerScale: activeId === candidate.id ? 1.14 : 1,
+        markerOpacity: 1,
+        zIndexBoost: activeId === candidate.id ? 8 : 5,
+      }));
     }
     const hub = resolveHubCoords({
       hubLat: input.hubLat,

@@ -109,6 +109,54 @@ function familyCategoryLabel(
   }
 }
 
+function buildStoryThumbnail(
+  candidate: BrainSurfaceProjectionCandidate,
+): HTMLSpanElement {
+  const ring = document.createElement("span");
+  ring.className = "rimvio-globe-brain-surface-marker__story-ring";
+
+  const shell = document.createElement("span");
+  shell.className = "rimvio-globe-brain-surface-marker__story-shell";
+
+  const thumbUrl = candidate.markerThumbnailUrl?.trim();
+  if (thumbUrl) {
+    const image = document.createElement("img");
+    image.src = thumbUrl;
+    image.alt = "";
+    image.className = "rimvio-globe-brain-surface-marker__story-thumb";
+    image.draggable = false;
+    image.addEventListener("error", () => {
+      image.remove();
+      const fallback = document.createElement("span");
+      fallback.className = "rimvio-globe-brain-surface-marker__story-fallback";
+      fallback.textContent = fallbackGlyph(candidate.family);
+      shell.appendChild(fallback);
+    });
+    shell.appendChild(image);
+  } else {
+    const fallback = document.createElement("span");
+    fallback.className = "rimvio-globe-brain-surface-marker__story-fallback";
+    fallback.textContent = fallbackGlyph(candidate.family);
+    shell.appendChild(fallback);
+  }
+
+  if (
+    candidate.markerMediaKind === "video" ||
+    resolveBrainSurfaceMarkerMediaKind({
+      family: candidate.family,
+      embedUrl: candidate.embedUrl,
+    }) === "video"
+  ) {
+    const play = document.createElement("span");
+    play.className = "rimvio-globe-brain-surface-marker__story-play";
+    play.textContent = "▶";
+    shell.appendChild(play);
+  }
+
+  ring.appendChild(shell);
+  return ring;
+}
+
 function buildDiscoveryPill(
   candidate: BrainSurfaceProjectionCandidate,
 ): HTMLSpanElement {
@@ -232,6 +280,26 @@ export function createGlobeBrainSurfaceMarkerElement(
     "left 280ms cubic-bezier(0.22, 1, 0.36, 1), top 280ms cubic-bezier(0.22, 1, 0.36, 1), transform 220ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms ease, filter 220ms ease";
   if (candidate.virtualCandidate) {
     root.dataset.virtualCandidate = "true";
+  }
+
+  const isStoryMarker = candidate.markerStyle === "story";
+  if (isStoryMarker) {
+    root.classList.add("rimvio-globe-brain-surface-marker--story");
+    if ((candidate.focusPriority ?? 0) >= 100) {
+      root.classList.add("rimvio-globe-brain-surface-marker--story-active");
+    }
+    root.appendChild(buildStoryThumbnail(candidate));
+    const dot = document.createElement("span");
+    dot.className = "rimvio-globe-lodging-marker__dot rimvio-globe-brain-surface-marker__story-dot";
+    root.appendChild(dot);
+    root.setAttribute("aria-label", candidate.label.trim() || candidate.placeLabel);
+    root.addEventListener("pointerdown", (event) => event.stopPropagation());
+    root.addEventListener("click", (event) => {
+      event.stopPropagation();
+      event.preventDefault();
+      handlers.onPress(candidate.id);
+    });
+    return root;
   }
 
   const callout = readCalloutOffset(candidate);
