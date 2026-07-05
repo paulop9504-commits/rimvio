@@ -10,6 +10,8 @@ export type DepartureHubOption = DepartureHubAirport & {
   reasonKo: string;
 };
 
+const BUSAN_HOME =
+  /(?:부산|경남|울산|창원|김해|busan|gimhae)/iu;
 const CHUNGCHEONG_HOME =
   /(?:대전|세종|청주|충청|충북|충남|천안|아산|공주|유성|둔산|daejeon|cheongju)/iu;
 const METRO_HOME = /(?:서울|경기|수원|성남|고양|용인|강남|인천|김포|seoul|gyeonggi)/iu;
@@ -24,7 +26,10 @@ function rankAirports(input: {
   const overseas = classifyOverseasManualPlace(dest);
 
   if (overseas?.isOverseas) {
-    return ["icn", "gmp", "cjj"];
+    if (BUSAN_HOME.test(home)) {
+      return ["pus", "icn", "gmp", "cjj"];
+    }
+    return ["icn", "gmp", "cjj", "pus"];
   }
   if (JEJU_DEST.test(dest)) {
     if (CHUNGCHEONG_HOME.test(home)) {
@@ -55,6 +60,8 @@ function reasonFor(id: DepartureHubAirportId, recommended: boolean): string {
       return "수도권 국내선";
     case "icn":
       return "국제선·전 노선";
+    case "pus":
+      return "부산·경남 국제선";
     default:
       return "";
   }

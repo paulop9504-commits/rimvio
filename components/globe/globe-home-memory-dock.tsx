@@ -47,6 +47,8 @@ function useMemoryRecallContext() {
   return ctx;
 }
 
+export { useMemoryRecallContext };
+
 export type GlobeHomeMemoryRecallProviderProps = {
   enabled: boolean;
   layerMode: GlobeLayerMode;

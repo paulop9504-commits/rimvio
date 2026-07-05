@@ -12,6 +12,7 @@ export type GlobeGpsPanelProps = {
   onFlyToHere?: () => void;
   /** Render inside GlobeContextControlDock — no outer card chrome. */
   embedded?: boolean;
+  theme?: "light" | "dark";
 };
 
 function collapsedSummary(input: {
@@ -39,7 +40,9 @@ export function GlobeGpsPanel({
   className,
   onFlyToHere,
   embedded = false,
+  theme = "light",
 }: GlobeGpsPanelProps) {
+  const dark = theme === "dark";
   const { enabled, setEnabled } = useGpsTrackingEnabled();
   const snapshot = useLiveLocationSnapshot();
   const [expanded, setExpanded] = useState(false);
@@ -56,8 +59,12 @@ export function GlobeGpsPanel({
     <div
       className={cn(
         embedded
-          ? "border-t border-border/60"
-          : "w-[min(100%,11.25rem)] rounded-2xl border border-[#0220470f] bg-white/95 shadow-sm backdrop-blur-md",
+          ? dark
+            ? "border-t border-white/8"
+            : "border-t border-border/60"
+          : dark
+            ? "w-[min(100%,11.25rem)] rounded-2xl border border-white/10 bg-[#0a0f18]/95 shadow-sm backdrop-blur-md"
+            : "w-[min(100%,11.25rem)] rounded-2xl border border-[#0220470f] bg-white/95 shadow-sm backdrop-blur-md",
         className,
       )}
       data-globe-gps-panel
@@ -80,7 +87,13 @@ export function GlobeGpsPanel({
         <span
           className={cn(
             "min-w-0 flex-1 truncate text-[10px] font-semibold",
-            enabled ? "text-[#191f28]" : "text-[#6b7684]",
+            dark
+              ? enabled
+                ? "text-white/90"
+                : "text-white/50"
+              : enabled
+                ? "text-[#191f28]"
+                : "text-[#6b7684]",
           )}
         >
           {summary}
@@ -97,16 +110,28 @@ export function GlobeGpsPanel({
       {expanded ? (
         <div
           className={cn(
-            "space-y-2 border-t border-[#02204708] pt-1.5",
+            "space-y-2 border-t pt-1.5",
+            dark ? "border-white/8" : "border-[#02204708]",
             embedded ? "px-2.5 pb-2.5" : "px-2 pb-2",
           )}
         >
-          <div className="flex rounded-xl bg-[#f2f4f6] p-0.5">
+          <div
+            className={cn(
+              "flex rounded-xl p-0.5",
+              dark ? "bg-white/[0.06]" : "bg-[#f2f4f6]",
+            )}
+          >
             <button
               type="button"
               className={cn(
                 "flex-1 rounded-[10px] py-1 text-[10px] font-bold transition",
-                enabled ? "bg-white text-[#3182f6] shadow-sm" : "text-[#8b95a1]",
+                enabled
+                  ? dark
+                    ? "bg-[#3b82f6] text-white shadow-sm"
+                    : "bg-white text-[#3182f6] shadow-sm"
+                  : dark
+                    ? "text-white/45"
+                    : "text-[#8b95a1]",
               )}
               aria-pressed={enabled}
               onClick={() => setEnabled(true)}
@@ -117,7 +142,13 @@ export function GlobeGpsPanel({
               type="button"
               className={cn(
                 "flex-1 rounded-[10px] py-1 text-[10px] font-bold transition",
-                !enabled ? "bg-white text-[#191f28] shadow-sm" : "text-[#8b95a1]",
+                !enabled
+                  ? dark
+                    ? "bg-white/12 text-white shadow-sm"
+                    : "bg-white text-[#191f28] shadow-sm"
+                  : dark
+                    ? "text-white/45"
+                    : "text-[#8b95a1]",
               )}
               aria-pressed={!enabled}
               onClick={() => setEnabled(false)}
@@ -127,27 +158,55 @@ export function GlobeGpsPanel({
           </div>
 
           {!enabled ? (
-            <p className="text-[10px] font-semibold text-[#6b7684]">Privacy Mode</p>
+            <p
+              className={cn(
+                "text-[10px] font-semibold",
+                dark ? "text-white/45" : "text-[#6b7684]",
+              )}
+            >
+              Privacy Mode
+            </p>
           ) : waiting ? (
-            <p className="text-[10px] font-semibold text-[#8b95a1]">● 위치 확인 중…</p>
+            <p
+              className={cn(
+                "text-[10px] font-semibold",
+                dark ? "text-white/45" : "text-[#8b95a1]",
+              )}
+            >
+              ● 위치 확인 중…
+            </p>
           ) : snapshot ? (
             <div className="space-y-0.5">
               <p className="text-[10px] font-bold text-[#3182f6]">● 여기</p>
-              <p className="text-[10px] text-[#6b7684]">
-                <span className="font-semibold text-[#8b95a1]">장소</span>{" "}
-                <span className="font-semibold text-[#191f28]">{snapshot.placeLabel}</span>
+              <p className={cn("text-[10px]", dark ? "text-white/55" : "text-[#6b7684]")}>
+                <span className={cn("font-semibold", dark ? "text-white/40" : "text-[#8b95a1]")}>
+                  장소
+                </span>{" "}
+                <span className={cn("font-semibold", dark ? "text-white/90" : "text-[#191f28]")}>
+                  {snapshot.placeLabel}
+                </span>
               </p>
-              <p className="text-[10px] text-[#6b7684]">
-                <span className="font-semibold text-[#8b95a1]">맥락</span>{" "}
-                <span className="font-semibold text-[#191f28]">{snapshot.contextLabel}</span>
+              <p className={cn("text-[10px]", dark ? "text-white/55" : "text-[#6b7684]")}>
+                <span className={cn("font-semibold", dark ? "text-white/40" : "text-[#8b95a1]")}>
+                  맥락
+                </span>{" "}
+                <span className={cn("font-semibold", dark ? "text-white/90" : "text-[#191f28]")}>
+                  {snapshot.contextLabel}
+                </span>
               </p>
-              <p className="text-[10px] text-[#6b7684]">
-                <span className="font-semibold text-[#8b95a1]">시간</span>{" "}
-                <span className="font-semibold text-[#191f28]">{snapshot.timeLabel}</span>
+              <p className={cn("text-[10px]", dark ? "text-white/55" : "text-[#6b7684]")}>
+                <span className={cn("font-semibold", dark ? "text-white/40" : "text-[#8b95a1]")}>
+                  시간
+                </span>{" "}
+                <span className={cn("font-semibold", dark ? "text-white/90" : "text-[#191f28]")}>
+                  {snapshot.timeLabel}
+                </span>
               </p>
               {formatGpsAccuracyLabel(snapshot.accuracyM) ? (
-                <p className="text-[10px] text-[#6b7684]">
-                  <span className="font-semibold text-[#8b95a1]">정확도</span>{" "}
+                <p className={cn("text-[10px]", dark ? "text-white/55" : "text-[#6b7684]")}>
+                  <span className={cn("font-semibold", dark ? "text-white/40" : "text-[#8b95a1]")}>
+                    정확도
+                  </span>{" "}
                   <span className="font-semibold text-[#3182f6]">
                     {formatGpsAccuracyLabel(snapshot.accuracyM)}
                   </span>

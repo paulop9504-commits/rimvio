@@ -4,10 +4,9 @@ import { useState, useMemo, type RefObject } from "react";
 import { GlobeContainerSpaceButton } from "@/components/globe/globe-container-space-button";
 import { GlobeContainerSpaceSidebar } from "@/components/globe/globe-container-space-sidebar";
 import { GlobeContextBrainStrip } from "@/components/globe/globe-context-brain-strip";
-import { GlobeContextControlDock } from "@/components/globe/globe-context-control-dock";
 import { GlobeContextHubRail } from "@/components/globe/globe-context-hub-rail";
 import { GlobeLayerModeToggle } from "@/components/globe/globe-layer-mode-toggle";
-import { GlobeTrendBridgePulseChip } from "@/components/globe/globe-trend-bridge-pulse-chip";
+import { useMemoryRecallContext } from "@/components/globe/globe-home-memory-dock";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { copy } from "@/lib/copy/human-ko";
 import type { GlobeContextPeopleFilter } from "@/lib/globe/globe-context-people-filter";
@@ -31,6 +30,16 @@ export type GlobeHomeLeftChromeProps = {
   onOpenManage: () => void;
   onSelectContext?: (entry: GlobeContextTimelineEntry) => void;
   onNewContext?: () => void;
+  onPortalPeekToggle: () => void;
+  inboxCount: number;
+  mediaPoolCount: number;
+  marketManageCount: number;
+  workQueueCount: number;
+  onOpenInbox: () => void;
+  onOpenMediaPool: () => void;
+  onOpenMarketManage?: () => void;
+  onOpenSettings: () => void;
+  onOpenWorkQueue: () => void;
   liveLat: number | null;
   liveLng: number | null;
   globeRef: RefObject<RimvioGlobeHubHandle | null>;
@@ -50,7 +59,7 @@ export type GlobeHomeLeftChromeProps = {
   };
 };
 
-/** Top-left globe controls — layer mode · filters · trend pulse · hub rail. */
+/** Top-left globe — sidebar trigger + layer toggle + context hub rail only. */
 export function GlobeHomeLeftChrome({
   mapMediaFocusOpen,
   layerMode,
@@ -65,6 +74,16 @@ export function GlobeHomeLeftChrome({
   onOpenManage,
   onSelectContext,
   onNewContext,
+  onPortalPeekToggle,
+  inboxCount,
+  mediaPoolCount,
+  marketManageCount,
+  workQueueCount,
+  onOpenInbox,
+  onOpenMediaPool,
+  onOpenMarketManage,
+  onOpenSettings,
+  onOpenWorkQueue,
   liveLat,
   liveLng,
   globeRef,
@@ -77,6 +96,7 @@ export function GlobeHomeLeftChrome({
   trendBridge,
 }: GlobeHomeLeftChromeProps) {
   const [containerSpaceOpen, setContainerSpaceOpen] = useState(false);
+  const memoryRecall = useMemoryRecallContext();
 
   const hubEvent = useMemo(() => {
     const eventId = hubEventId?.trim();
@@ -104,37 +124,6 @@ export function GlobeHomeLeftChrome({
               {copy.globe.layerModeDiscoveryHint}
             </p>
           ) : null}
-          {layerMode === "personal" ? (
-            <div className="pointer-events-auto">
-              <GlobeContextControlDock
-                timeFilter={timeFilter}
-                onTimeFilterChange={onTimeFilterChange}
-                peopleFilter={peopleFilter}
-                onPeopleFilterChange={onPeopleFilterChange}
-                peerOptions={peerOptions}
-                onCreate={onCreatePhoto}
-                onList={onOpenList}
-                onManage={onOpenManage}
-                onFlyToHere={
-                  liveLat != null && liveLng != null
-                    ? () =>
-                        globeRef.current?.flyToPin(liveLat, liveLng, "neighborhood")
-                    : undefined
-                }
-              />
-            </div>
-          ) : null}
-          {layerMode === "personal" && !hubEventId ? (
-            <GlobeTrendBridgePulseChip
-              className="pointer-events-auto"
-              enabled={trendBridge.enabled}
-              activeBridgeId={trendBridge.activeBridgeId}
-              pulseIntent={trendBridge.pulseIntent}
-              onToggle={trendBridge.onToggle}
-              onBridgeSelect={trendBridge.onBridgeSelect}
-              onPulseIntentChange={trendBridge.onPulseIntentChange}
-            />
-          ) : null}
         </>
       ) : null}
       <GlobeContainerSpaceSidebar
@@ -143,6 +132,40 @@ export function GlobeHomeLeftChrome({
         activeEventId={hubEventId}
         onSelect={(entry) => onSelectContext?.(entry)}
         onNewContext={onNewContext}
+        layerMode={layerMode}
+        timeFilter={timeFilter}
+        onTimeFilterChange={onTimeFilterChange}
+        peopleFilter={peopleFilter}
+        onPeopleFilterChange={onPeopleFilterChange}
+        peerOptions={peerOptions}
+        onCreatePhoto={onCreatePhoto}
+        onOpenList={onOpenList}
+        onOpenManage={onOpenManage}
+        onFlyToHere={
+          liveLat != null && liveLng != null
+            ? () => globeRef.current?.flyToPin(liveLat, liveLng, "neighborhood")
+            : undefined
+        }
+        inboxCount={inboxCount}
+        mediaPoolCount={mediaPoolCount}
+        marketManageCount={marketManageCount}
+        workQueueCount={workQueueCount}
+        onOpenInbox={onOpenInbox}
+        onOpenMediaPool={onOpenMediaPool}
+        onOpenMarketManage={onOpenMarketManage}
+        onOpenSettings={onOpenSettings}
+        onOpenWorkQueue={onOpenWorkQueue}
+        onPortalPeekToggle={onPortalPeekToggle}
+        memoryRecall={
+          memoryRecall?.hasContent
+            ? {
+                hasContent: true,
+                open: memoryRecall.panelOpen,
+                onToggle: memoryRecall.onToggle,
+              }
+            : null
+        }
+        trendBridge={trendBridge}
       />
       {hubEventId && !hubDetailOpen ? (
         <>

@@ -19,6 +19,9 @@ function resolveAirportCoord(label: string): BridgeLegCoord | null {
   if (hay.includes("인천") || hay === "공항") {
     return { label, ...ICN_COORDS };
   }
+  if (hay.includes("김해") || hay.includes("gimhae")) {
+    return { label, lat: 35.1796, lng: 128.9382 };
+  }
   if (hay.includes("간사이") || hay.includes("kansai")) {
     return { label, lat: 34.4347, lng: 135.2441 };
   }

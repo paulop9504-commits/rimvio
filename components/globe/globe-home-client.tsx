@@ -8,7 +8,6 @@ import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-
 import { RimvioGlobeHubClient } from "@/components/experience/rimvio-globe-hub-client";
 import { GlobeContextHubDetailSheet } from "@/components/globe/globe-context-hub-detail-sheet";
 import { GlobeHomeLeftChrome } from "@/components/globe/globe-home-left-chrome";
-import { GlobeUtilityMenu } from "@/components/globe/globe-utility-menu";
 import { GlobeContextMapVideoStage } from "@/components/globe/globe-context-map-video-stage";
 import { GlobeContextBrainMapOverlay } from "@/components/globe/globe-context-brain-map-overlay";
 import { GlobeContextBrainNodeCard } from "@/components/globe/globe-context-brain-node-card";
@@ -45,6 +44,9 @@ import {
   seedBridgePlanningTruthFromIngress,
 } from "@/lib/bridge-planning";
 import type { OperatorChoiceChip } from "@/components/globe/globe-operator-choice-chips";
+import type { TripSituationRouterChip } from "@/lib/globe/trip-situation-router";
+import { resolveTripSituationRouter } from "@/lib/globe/trip-situation-router";
+import { getDepartureHubAirport } from "@/lib/globe/departure-hub-airports";
 import type { RealitySurfaceSession } from "@/lib/reality-surface";
 import { GlobeChatScreen } from "@/components/globe/chat/globe-chat-screen";
 import { PersonalGlobeSheet } from "@/components/globe/personal-globe-sheet";
@@ -54,11 +56,9 @@ import { GlobeRealitySurfaceStrip } from "@/components/globe/globe-reality-surfa
 import { GlobeTicketQrViewer } from "@/components/globe/globe-ticket-qr-viewer";
 import { GlobeWorkQueueSheet } from "@/components/globe/globe-work-queue-sheet";
 import type { PriorityStripPayload } from "@/lib/globe/priority-strip";
-import { GlobeComposeAccessoryBar } from "@/components/globe/globe-compose-accessory-bar";
 import {
   GlobeHomeMemoryRecallPanel,
   GlobeHomeMemoryRecallProvider,
-  GlobeHomeMemoryRecallToggleAnchor,
   GlobeHomeRecallOneLiner,
 } from "@/components/globe/globe-home-memory-dock";
 import { GlobePortalIntentPeekPanel } from "@/components/globe/globe-portal-intent-peek";
@@ -1170,14 +1170,18 @@ function GlobeHomeBody() {
   });
 
   const {
+    session: realitySurfaceSession,
     projection: realitySurfaceProjection,
     activeEventId: realitySurfaceEventId,
     setFromGlobeIngress,
     clearSession: clearRealitySurfaceSession,
     gateOperatorMessage,
     advanceDestination,
+    confirmDepartureHub,
     tryAdvanceDestinationFromMessage,
   } = useRealitySurfaceProjection();
+
+  const [departureHubPickerOpen, setDepartureHubPickerOpen] = useState(false);
 
   const visibleRealitySurfaceProjection = useMemo(() => {
     const clusterId = activeCluster?.eventId?.trim() ?? null;
@@ -1289,24 +1293,36 @@ function GlobeHomeBody() {
 
   useEffect(() => {
     const clusterId = activeCluster?.eventId?.trim() ?? null;
-    if (realitySurfaceEventId && clusterId !== realitySurfaceEventId) {
+    if (realitySurfaceEventId && clusterId && clusterId !== realitySurfaceEventId) {
       clearRealitySurfaceSession();
+      setDepartureHubPickerOpen(false);
     }
   }, [activeCluster?.eventId, clearRealitySurfaceSession, realitySurfaceEventId]);
 
+  const realitySurfaceRoutingAllowed = useCallback(() => {
+    if (!realitySurfaceEventId) {
+      return false;
+    }
+    const clusterId = activeCluster?.eventId?.trim() ?? null;
+    if (!clusterId) {
+      return true;
+    }
+    return clusterId === realitySurfaceEventId;
+  }, [activeCluster?.eventId, realitySurfaceEventId]);
+
   const gateOperatorBeforeDispatch = useCallback(
     (message: string) => {
-      if (activeCluster?.eventId?.trim() !== realitySurfaceEventId) {
+      if (!realitySurfaceRoutingAllowed()) {
         return null;
       }
       return gateOperatorMessage(message);
     },
-    [activeCluster?.eventId, gateOperatorMessage, realitySurfaceEventId],
+    [gateOperatorMessage, realitySurfaceRoutingAllowed],
   );
 
   const handleTryAdvanceDestinationFromMessage = useCallback(
     (message: string) => {
-      if (activeCluster?.eventId?.trim() !== realitySurfaceEventId) {
+      if (!realitySurfaceRoutingAllowed()) {
         return null;
       }
       const result = tryAdvanceDestinationFromMessage(message);
@@ -1321,22 +1337,26 @@ function GlobeHomeBody() {
       return result.destination;
     },
     [
-      activeCluster?.eventId,
       commitPlanningTruthIfHost,
       flyGlobeToDestination,
-      realitySurfaceEventId,
+      realitySurfaceRoutingAllowed,
       tryAdvanceDestinationFromMessage,
     ],
   );
 
   const onOperatorDestinationChoice = useCallback(
     (choice: OperatorChoiceChip) => {
-      if (activeCluster?.eventId?.trim() !== realitySurfaceEventId) {
+      if (!realitySurfaceRoutingAllowed()) {
         return;
       }
       const advanced = advanceDestination(choice.label);
       if (advanced) {
         flyGlobeToDestination(choice.label);
+        syncPortalComposeTurnToChat({
+          graphId: ensureGlobeChatGraphId(),
+          userText: choice.label,
+          assistantText: copy.globe.realitySurface.destinationConfirmed(choice.label),
+        });
         void commitPlanningTruthIfHost({
           session: advanced,
           destinationLabel: choice.label,
@@ -1344,12 +1364,88 @@ function GlobeHomeBody() {
       }
     },
     [
-      activeCluster?.eventId,
       advanceDestination,
       commitPlanningTruthIfHost,
       flyGlobeToDestination,
-      realitySurfaceEventId,
+      realitySurfaceRoutingAllowed,
     ],
+  );
+
+  const tripSituationRouter = useMemo(
+    () =>
+      resolveTripSituationRouter({
+        layerMode,
+        suppressed:
+          portalOpen ||
+          marketConfirmOpen ||
+          confirmOpen ||
+          brainProjectionVisible,
+        session: realitySurfaceSession,
+        viewerLat: liveLocation?.lat ?? null,
+        viewerLng: liveLocation?.lng ?? null,
+        departurePickerOpen: departureHubPickerOpen,
+      }),
+    [
+      brainProjectionVisible,
+      confirmOpen,
+      departureHubPickerOpen,
+      layerMode,
+      liveLocation?.lat,
+      liveLocation?.lng,
+      marketConfirmOpen,
+      portalOpen,
+      realitySurfaceSession,
+    ],
+  );
+
+  const applyDepartureHubSelection = useCallback(
+    (chip: TripSituationRouterChip) => {
+      if (!chip.departureHubId) {
+        return;
+      }
+      const hub = getDepartureHubAirport(chip.departureHubId);
+      const advanced = confirmDepartureHub({
+        hub,
+        homeLabel: chip.homeLabel?.trim() || "집",
+        homeLat: liveLocation?.lat ?? null,
+        homeLng: liveLocation?.lng ?? null,
+      });
+      if (!advanced) {
+        return;
+      }
+      setDepartureHubPickerOpen(false);
+      syncPortalComposeTurnToChat({
+        graphId: ensureGlobeChatGraphId(),
+        userText: chip.label,
+        assistantText: copy.globe.tripSituationRouter.departureConfirmed(hub.shortLabelKo),
+      });
+    },
+    [
+      confirmDepartureHub,
+      liveLocation?.lat,
+      liveLocation?.lng,
+    ],
+  );
+
+  const onTripSituationSelect = useCallback(
+    (chip: TripSituationRouterChip) => {
+      if (chip.action === "destination") {
+        onOperatorDestinationChoice({ id: chip.id, label: chip.label });
+        return;
+      }
+      if (chip.action === "departure_other") {
+        setDepartureHubPickerOpen(true);
+        return;
+      }
+      if (chip.action === "departure_confirm" || chip.action === "departure_hub") {
+        applyDepartureHubSelection(chip);
+        return;
+      }
+      void ingestBarRef.current?.submitComposerText(
+        chip.submitText?.trim() || chip.label,
+      );
+    },
+    [applyDepartureHubSelection, onOperatorDestinationChoice],
   );
 
   const onGlobeIngressCompiled = useCallback(
@@ -3311,6 +3407,15 @@ function GlobeHomeBody() {
   ]);
 
   return (
+    <GlobeHomeMemoryRecallProvider
+      enabled={!globeRenderSuspended}
+      layerMode={layerMode}
+      activeEventId={activeCluster?.eventId ?? null}
+      globeDismissToken={globeMemoryDismissToken}
+      registerComposeHandlers={registerMemoryRecallComposeHandlers}
+      onActivateTrigger={onMemoryTriggerPress}
+      onResumeSession={onResumeSession}
+    >
     <div
       ref={surfaceRef}
       className="relative flex h-full min-h-0 flex-1 flex-col"
@@ -3676,6 +3781,20 @@ function GlobeHomeBody() {
         onOpenManage={() => setManageOpen(true)}
         onSelectContext={openContextEntry}
         onNewContext={() => setPortalOpen(true)}
+        onPortalPeekToggle={togglePortalPeek}
+        inboxCount={globeInboxCount}
+        mediaPoolCount={mediaPoolCount}
+        marketManageCount={marketManageCount}
+        workQueueCount={workQueueItems.length}
+        onOpenInbox={() => setGlobeInboxOpen(true)}
+        onOpenMediaPool={() => setMediaPoolOpen(true)}
+        onOpenMarketManage={
+          marketManageCount > 0
+            ? () => openFieldDashboardIngress({ tab: "mine" })
+            : undefined
+        }
+        onOpenSettings={() => setSettingsOpen(true)}
+        onOpenWorkQueue={() => setWorkQueueOpen(true)}
         liveLat={liveLocation?.lat ?? null}
         liveLng={liveLocation?.lng ?? null}
         globeRef={globeRef}
@@ -3704,9 +3823,9 @@ function GlobeHomeBody() {
         visible={Boolean(hubEventId)}
         globeRef={globeRef}
       />
-      {/* —— Overlay chrome (priority strip · utility) —— */}
+      {/* —— Overlay chrome (priority strip) —— */}
       {!mapMediaFocusOpen && layerMode === "personal" && !confirmOpen && !sheetOpen ? (
-        <div className="pointer-events-none absolute inset-x-0 top-[max(0.5rem,env(safe-area-inset-top))] z-20 flex justify-center px-12">
+        <div className="pointer-events-none absolute inset-x-0 top-[max(0.5rem,env(safe-area-inset-top))] z-20 flex justify-center px-6">
           <div className="flex w-full max-w-[22rem] flex-col items-center gap-2">
             {suppressGlobePriorityChrome ? (
               <GlobeThreeFloorsStrip
@@ -3735,47 +3854,12 @@ function GlobeHomeBody() {
         </div>
       ) : null}
       {!mapMediaFocusOpen ? (
-      <div className="pointer-events-none absolute right-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20">
-        <GlobeUtilityMenu
-          mediaPoolCount={mediaPoolCount}
-          inboxCount={globeInboxCount}
-          marketManageCount={marketManageCount}
-          onOpenMediaPool={() => setMediaPoolOpen(true)}
-          onOpenInbox={() => setGlobeInboxOpen(true)}
-          onOpenMarketManage={
-            marketManageCount > 0
-              ? () => openFieldDashboardIngress({ tab: "mine" })
-              : undefined
-          }
-          onOpenSettings={() => setSettingsOpen(true)}
-          className="pointer-events-auto"
-        />
-      </div>
-      ) : null}
-      {!mapMediaFocusOpen ? (
-      <GlobeHomeMemoryRecallProvider
-        enabled={!globeRenderSuspended}
-        layerMode={layerMode}
-        activeEventId={activeCluster?.eventId ?? null}
-        globeDismissToken={globeMemoryDismissToken}
-        registerComposeHandlers={registerMemoryRecallComposeHandlers}
-        onActivateTrigger={onMemoryTriggerPress}
-        onResumeSession={onResumeSession}
-      >
+      <>
       {/* —— L2 Capture dock (compose · ingest) —— */}
       <GlobeCaptureDock
         ref={ingestBarRef}
         composeHidden={portalOpen || marketConfirmOpen || brainProjectionVisible}
-        composeAccessory={
-          !confirmOpen && !sheetOpen && layerMode === "personal" ? (
-            <GlobeComposeAccessoryBar
-              portalPeekOpen={portalPeekOpen}
-              onPortalPeekToggle={togglePortalPeek}
-            >
-              <GlobeHomeMemoryRecallToggleAnchor embedded />
-            </GlobeComposeAccessoryBar>
-          ) : null
-        }
+        suppressMapIntentPills={Boolean(tripSituationRouter)}
         stackAboveCompose={
           <>
             {pulseMainActionEnabled ? (
@@ -3880,7 +3964,7 @@ function GlobeHomeBody() {
         onKnowledgePlacementDismiss={onKnowledgePlacementDismiss}
         onKnowledgePlacementConfirmed={onKnowledgePlacementConfirmed}
         ingest={{
-          targetEventId: activeCluster?.eventId ?? null,
+          targetEventId: activeCluster?.eventId ?? realitySurfaceEventId ?? null,
           targetTitle: activeCluster?.title ?? null,
           forceAttachToTarget: false,
           onPhotoDraftReady: beginPhotoIngestFlow,
@@ -3930,6 +4014,8 @@ function GlobeHomeBody() {
           gateOperatorBeforeDispatch,
           tryAdvanceDestinationFromMessage: handleTryAdvanceDestinationFromMessage,
           onOperatorDestinationChoice,
+          tripSituationRouter,
+          onTripSituationSelect,
         }}
       />
       <GlobeWorkQueueSheet
@@ -3953,7 +4039,7 @@ function GlobeHomeBody() {
         onViewInnerGlobe={focusResourceOnInnerGlobe}
         onViewOuterGlobe={focusResourceOnOuterGlobe}
         ingest={{
-          targetEventId: activeCluster?.eventId ?? null,
+          targetEventId: activeCluster?.eventId ?? realitySurfaceEventId ?? null,
           targetTitle: activeCluster?.title ?? null,
           forceAttachToTarget: false,
           onPhotoDraftReady: beginPhotoIngestFlow,
@@ -4000,9 +4086,11 @@ function GlobeHomeBody() {
           gateOperatorBeforeDispatch,
           tryAdvanceDestinationFromMessage: handleTryAdvanceDestinationFromMessage,
           onOperatorDestinationChoice,
+          tripSituationRouter,
+          onTripSituationSelect,
         }}
       />
-      </GlobeHomeMemoryRecallProvider>
+      </>
       ) : null}
       <GlobeMediaPoolSheet
         open={mediaPoolOpen}
@@ -4226,6 +4314,7 @@ function GlobeHomeBody() {
         ) : null}
       </AnimatePresence>
     </div>
+    </GlobeHomeMemoryRecallProvider>
   );
 }
 

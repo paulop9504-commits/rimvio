@@ -22,8 +22,11 @@ export {
 } from "@/lib/reality-surface/project-globe-ingress";
 export {
   advanceRealitySurfaceDestination,
+  advanceRealitySurfaceDepartureHub,
+  blueprintNeedsDepartureConfirm,
   blueprintNeedsDestination,
   patchTravelBlueprintForDestination,
+  patchTravelBlueprintForDepartureHub,
   resolveDestinationFromMessage,
   DESTINATION_CHOICE_LABELS,
 } from "@/lib/reality-surface/advance-ingress-flow";

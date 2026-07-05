@@ -4,13 +4,16 @@ import { useCallback, useMemo, useState } from "react";
 import { gateOperatorRequest } from "@/lib/operator";
 import type { GlobeIngressCompileResult } from "@/lib/globe-ingress/types";
 import {
+  advanceRealitySurfaceDepartureHub,
   advanceRealitySurfaceDestination,
+  blueprintNeedsDepartureConfirm,
   blueprintNeedsDestination,
   composeRealitySurfaceFromGlobeIngress,
   resolveDestinationFromMessage,
   type RealitySurfaceProjectionBundle,
   type RealitySurfaceSession,
 } from "@/lib/reality-surface";
+import type { DepartureHubAirport } from "@/lib/globe/departure-hub-airports";
 
 export type UseRealitySurfaceProjectionResult = {
   session: RealitySurfaceSession | null;
@@ -21,6 +24,12 @@ export type UseRealitySurfaceProjectionResult = {
     eventId: string;
   }) => void;
   advanceDestination: (destinationLabel: string) => RealitySurfaceSession | null;
+  confirmDepartureHub: (input: {
+    hub: DepartureHubAirport;
+    homeLabel: string;
+    homeLat?: number | null;
+    homeLng?: number | null;
+  }) => RealitySurfaceSession | null;
   tryAdvanceDestinationFromMessage: (
     message: string,
   ) => { destination: string; session: RealitySurfaceSession } | null;
@@ -55,6 +64,35 @@ export function useRealitySurfaceProjection(): UseRealitySurfaceProjectionResult
     });
     return advanced;
   }, []);
+
+  const confirmDepartureHub = useCallback(
+    (input: {
+      hub: DepartureHubAirport;
+      homeLabel: string;
+      homeLat?: number | null;
+      homeLng?: number | null;
+    }) => {
+      let advanced: RealitySurfaceSession | null = null;
+      setSession((current) => {
+        if (!current) {
+          return current;
+        }
+        if (!blueprintNeedsDepartureConfirm(current.operatorBlueprint)) {
+          return current;
+        }
+        advanced = advanceRealitySurfaceDepartureHub({
+          session: current,
+          hub: input.hub,
+          homeLabel: input.homeLabel,
+          homeLat: input.homeLat,
+          homeLng: input.homeLng,
+        });
+        return advanced;
+      });
+      return advanced;
+    },
+    [],
+  );
 
   const tryAdvanceDestinationFromMessage = useCallback(
     (message: string) => {
@@ -101,6 +139,7 @@ export function useRealitySurfaceProjection(): UseRealitySurfaceProjectionResult
     activeEventId: session?.eventId ?? null,
     setFromGlobeIngress,
     advanceDestination,
+    confirmDepartureHub,
     tryAdvanceDestinationFromMessage,
     clearSession,
     gateOperatorMessage,

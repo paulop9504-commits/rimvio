@@ -77,4 +77,24 @@ const bind = bindSituation({
 assert.ok(bind.graphId.startsWith("composer:"));
 assert.equal(bind.goalKo, "테스트");
 
+const bindTurn1 = bindSituation({
+  kind: "text",
+  text: "오사카 여행",
+  surface: "composer",
+  layerMode: "personal",
+  contextEventId: "evt-trip",
+});
+const bindTurn2 = bindSituation({
+  kind: "text",
+  text: "오사카",
+  surface: "composer",
+  layerMode: "personal",
+  contextEventId: "evt-trip",
+});
+assert.equal(
+  bindTurn1.graphId,
+  bindTurn2.graphId,
+  "composer follow-up must reuse the same graphId",
+);
+
 console.log("test-dispatch-context-run-composer: ok");

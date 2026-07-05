@@ -1,6 +1,6 @@
 /** Korea departure hubs — linked to destination context for flight booking. */
 
-export type DepartureHubAirportId = "cjj" | "gmp" | "icn";
+export type DepartureHubAirportId = "cjj" | "gmp" | "icn" | "pus";
 
 export type DepartureHubAirport = {
   id: DepartureHubAirportId;
@@ -39,6 +39,15 @@ export const DEPARTURE_HUB_AIRPORTS: readonly DepartureHubAirport[] = [
     regionHintKo: "국제선 · 장거리",
     lat: 37.4602,
     lng: 126.4407,
+  },
+  {
+    id: "pus",
+    iata: "PUS",
+    labelKo: "김해국제공항",
+    shortLabelKo: "김해공항",
+    regionHintKo: "부산·경남 — 국제·국내선",
+    lat: 35.1796,
+    lng: 128.9382,
   },
 ] as const;
 

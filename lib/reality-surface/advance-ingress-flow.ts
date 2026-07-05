@@ -7,6 +7,7 @@ import type { ExecutionGraphNode } from "@/lib/context-blueprint/execution-graph
 import { composeExecutionGraph } from "@/lib/context-blueprint/execution-graph";
 import { composePhysicalSpatialTarget } from "@/lib/context-blueprint/spatial-target";
 import type { ContextBlueprint } from "@/lib/context-blueprint/types";
+import type { DepartureHubAirport } from "@/lib/globe/departure-hub-airports";
 import { resolveTripContextAnchor } from "@/lib/experience-run/resolve-trip-context-anchor";
 import type { RealitySurfaceSession } from "@/lib/reality-surface/project-globe-ingress";
 import { composeRealitySurfaceFromBlueprint } from "@/lib/reality-surface/project-globe-ingress";
@@ -82,6 +83,10 @@ export function blueprintNeedsDestination(blueprint: ContextBlueprint): boolean 
   return blueprint.resourcePlan.emptySlots.includes("destination");
 }
 
+export function blueprintNeedsDepartureConfirm(blueprint: ContextBlueprint): boolean {
+  return blueprint.resourcePlan.emptySlots.includes("departure_hub");
+}
+
 /** Resolve destination label from chip tap or composer text. */
 export function resolveDestinationFromMessage(message: string): string | null {
   const text = message.trim();
@@ -146,9 +151,10 @@ export function patchTravelBlueprintForDestination(
     },
   ];
 
-  const emptySlots = blueprint.resourcePlan.emptySlots.filter(
-    (slot) => slot !== "destination",
-  );
+  const emptySlots = [
+    ...blueprint.resourcePlan.emptySlots.filter((slot) => slot !== "destination"),
+    "departure_hub",
+  ];
 
   return {
     ...blueprint,
@@ -161,8 +167,8 @@ export function patchTravelBlueprintForDestination(
       knownTruth,
       emptySlots,
       nextQuestion: {
-        slotId: "lodging_place",
-        promptKo: `${label}에서 묵을 곳을 찾을까요?`,
+        slotId: "departure_hub",
+        promptKo: `${label} · 출발 공항을 확인할게요`,
       },
     },
     constraints: {
@@ -190,6 +196,132 @@ export function advanceRealitySurfaceDestination(input: {
   const bridgePathLabels = patchBridgePathLabels(
     input.session.projection.bridge?.pathLabels ?? [],
     destinationLabel,
+  );
+
+  return composeRealitySurfaceFromBlueprint({
+    eventId: input.session.eventId,
+    goalKo: input.session.projection.context?.goalKo ?? blueprint.goal,
+    bridgePathLabels,
+    blueprint,
+    runtimeId: input.session.projection.runtime?.runtimeId ?? blueprint.runtimeId,
+  });
+}
+
+function patchBridgeDepartureLabel(
+  pathLabels: readonly string[],
+  departureAirportLabel: string,
+): string[] {
+  if (pathLabels.length === 0) {
+    return ["집", departureAirportLabel, "목적지", "호텔"];
+  }
+  return pathLabels.map((label, index) => {
+    if (index === 1 || label === "공항" || label.includes("공항")) {
+      return departureAirportLabel;
+    }
+    return label;
+  });
+}
+
+export function patchTravelBlueprintForDepartureHub(
+  blueprint: ContextBlueprint,
+  input: {
+    hub: DepartureHubAirport;
+    homeLabel: string;
+    homeLat?: number | null;
+    homeLng?: number | null;
+  },
+): ContextBlueprint {
+  const hub = input.hub;
+  const homeLabel = input.homeLabel.trim() || "집";
+  const spatialTargets = blueprint.spatialTargets
+    ? {
+        ...blueprint.spatialTargets,
+        byNodeId: {
+          ...blueprint.spatialTargets.byNodeId,
+          prepare: composePhysicalSpatialTarget({
+            label: homeLabel,
+            resolution: "confirmed",
+            lat: input.homeLat ?? null,
+            lng: input.homeLng ?? null,
+          }),
+          departure: composePhysicalSpatialTarget({
+            label: hub.labelKo,
+            resolution: "confirmed",
+            lat: hub.lat,
+            lng: hub.lng,
+            zoneId: `${hub.id}-airport`,
+          }),
+          return: composePhysicalSpatialTarget({
+            label: hub.labelKo,
+            resolution: "hypothesis",
+            lat: hub.lat,
+            lng: hub.lng,
+            zoneId: `${hub.id}-airport`,
+          }),
+        },
+      }
+    : blueprint.spatialTargets;
+
+  const knownTruth = [
+    ...blueprint.resourcePlan.knownTruth.filter(
+      (row) => row.slotId !== "departure_hub" && row.slotId !== "origin_location",
+    ),
+    {
+      slotId: "departure_hub",
+      value: hub.shortLabelKo,
+      source: "user_stated" as const,
+      confidence: 0.95,
+    },
+    {
+      slotId: "origin_location",
+      value: homeLabel,
+      source: "user_stated" as const,
+      confidence: 0.9,
+    },
+  ];
+
+  const emptySlots = blueprint.resourcePlan.emptySlots.filter(
+    (slot) => slot !== "departure_hub",
+  );
+  const destinationLabel =
+    blueprint.resourcePlan.knownTruth.find((row) => row.slotId === "destination")?.value ??
+    blueprint.constraints.destination?.label ??
+    "여행";
+
+  return {
+    ...blueprint,
+    spatialTargets,
+    resourcePlan: {
+      ...blueprint.resourcePlan,
+      knownTruth,
+      emptySlots,
+      nextQuestion: {
+        slotId: "lodging_place",
+        promptKo: `${destinationLabel}에서 묵을 곳을 찾을까요?`,
+      },
+    },
+  };
+}
+
+export function advanceRealitySurfaceDepartureHub(input: {
+  session: RealitySurfaceSession;
+  hub: DepartureHubAirport;
+  homeLabel: string;
+  homeLat?: number | null;
+  homeLng?: number | null;
+}): RealitySurfaceSession {
+  const blueprint = patchTravelBlueprintForDepartureHub(
+    input.session.operatorBlueprint,
+    {
+      hub: input.hub,
+      homeLabel: input.homeLabel,
+      homeLat: input.homeLat,
+      homeLng: input.homeLng,
+    },
+  );
+  const bridgePathLabels = patchBridgeDepartureLabel(
+    input.session.projection.bridge?.pathLabels ?? [],
+    input.hub.shortLabelKo,
   );
 
   return composeRealitySurfaceFromBlueprint({

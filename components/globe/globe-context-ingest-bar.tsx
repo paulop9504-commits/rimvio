@@ -22,6 +22,8 @@ import { validateIngestMediaFiles } from "@/lib/globe/validate-ingest-media-file
 import { canQuickListMarketCompose } from "@/lib/globe/market/build-market-quick-list-draft";
 import { dispatchContextRun } from "@/lib/context-run/dispatch-context-run";
 import { readActiveRunState } from "@/lib/context-run/run-state-store";
+import { ensureGlobeChatGraphId } from "@/lib/globe/chat/ensure-globe-chat-graph-id";
+import { syncPortalComposeTurnToChat } from "@/lib/globe/chat/sync-portal-compose-to-chat";
 import { ingestComposeChatPhoto } from "@/lib/globe/chat/globe-chat-session-bridge";
 import type { ContextRunEffectHandlers } from "@/lib/context-run/ingress-types";
 import { readPortalComposeRunState } from "@/lib/portal/portal-compose-run-store";
@@ -121,6 +123,11 @@ export type GlobeContextIngestBarProps = {
   /** Pure destination confirm — advance flow without dispatch. */
   tryAdvanceDestinationFromMessage?: (message: string) => string | null;
   onOperatorDestinationChoice?: (choice: OperatorChoiceChip) => void;
+  /** 2-tap trip router — idle → destination → domain chips above compose. */
+  tripSituationRouter?: import("@/lib/globe/trip-situation-router").TripSituationRouterState | null;
+  onTripSituationSelect?: (
+    chip: import("@/lib/globe/trip-situation-router").TripSituationRouterChip,
+  ) => void;
 };
 
 /** Globe home — one frosted composer; photo action lives inside the + menu. */
@@ -160,6 +167,8 @@ export const GlobeContextIngestBar = forwardRef<
     gateOperatorBeforeDispatch,
     tryAdvanceDestinationFromMessage,
     onOperatorDestinationChoice,
+    tripSituationRouter,
+    onTripSituationSelect,
   },
   ref,
 ) {
@@ -196,6 +205,7 @@ export const GlobeContextIngestBar = forwardRef<
   );
 
   const attachHintId = forceAttachToTarget ? targetEventId?.trim() || null : null;
+  const routingContextEventId = targetEventId?.trim() || null;
   const attachHintTitle = forceAttachToTarget ? targetTitle?.trim() || null : null;
   const inputPlaceholder = clarifyPlaceholder ?? (isChatPill
     ? chatPlaceholderOverride ?? copy.globe.chatInputPlaceholder
@@ -521,12 +531,19 @@ export const GlobeContextIngestBar = forwardRef<
       try {
         const advancedDestination = tryAdvanceDestinationFromMessage?.(value);
         if (advancedDestination) {
-          showComposerHint(
-            softenComposerSuccessLine(
-              copy.globe.realitySurface.destinationConfirmed(advancedDestination),
-            ),
-            { tone: "success", durationMs: 4000 },
+          const confirmLine = softenComposerSuccessLine(
+            copy.globe.realitySurface.destinationConfirmed(advancedDestination),
           );
+          const graphId = ensureGlobeChatGraphId();
+          syncPortalComposeTurnToChat({
+            graphId,
+            userText: value,
+            assistantText: confirmLine,
+          });
+          showComposerHint(confirmLine, {
+            tone: "success",
+            durationMs: 4000,
+          });
           setOperatorChoices(null);
           setClarifyPlaceholder(null);
           setText("");
@@ -556,7 +573,7 @@ export const GlobeContextIngestBar = forwardRef<
             text: value,
             surface: "composer",
             layerMode: isDiscovery ? "discovery" : "personal",
-            contextEventId: attachHintId,
+            contextEventId: routingContextEventId,
             lat: userLat ?? liveLocation?.lat ?? null,
             lng: userLng ?? liveLocation?.lng ?? null,
           },
@@ -630,6 +647,21 @@ export const GlobeContextIngestBar = forwardRef<
     [clearComposerHint, onOperatorDestinationChoice],
   );
 
+  const handleTripSituationSelect = useCallback(
+    (choice: OperatorChoiceChip) => {
+      const chip = tripSituationRouter?.choices.find((row) => row.id === choice.id);
+      if (!chip) {
+        return;
+      }
+      clearComposerHint();
+      onTripSituationSelect?.(chip);
+    },
+    [clearComposerHint, onTripSituationSelect, tripSituationRouter?.choices],
+  );
+
+  const situationRouterVisible =
+    Boolean(tripSituationRouter?.choices.length) && !operatorChoices && !busy;
+
   const submitTextRef = useRef(submitText);
   submitTextRef.current = submitText;
 
@@ -692,7 +724,19 @@ export const GlobeContextIngestBar = forwardRef<
         lightPill={isLightPill}
         className={isPill ? "mb-1" : "mb-1.5"}
       />
-      {operatorChoices ? (
+      {situationRouterVisible && tripSituationRouter ? (
+        <GlobeOperatorChoiceChips
+          reasonKo={tripSituationRouter.reasonKo}
+          choices={tripSituationRouter.choices.map((row) => ({
+            id: row.id,
+            label: row.label,
+          }))}
+          onSelect={handleTripSituationSelect}
+          mapDark={mapPromptMode && !isDiscovery && !isLightPill}
+          lightPill={isLightPill}
+          className={isPill ? "mb-1" : "mb-1.5"}
+        />
+      ) : operatorChoices ? (
         <GlobeOperatorChoiceChips
           reasonKo={operatorChoices.reasonKo}
           choices={operatorChoices.choices}

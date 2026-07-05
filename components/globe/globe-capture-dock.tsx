@@ -59,6 +59,8 @@ export type GlobeCaptureDockProps = {
   stackAboveCompose?: ReactNode;
   composeAccessory?: ReactNode;
   ingest: GlobeContextIngestBarProps;
+  /** Hide generic map pills when trip situation router is active. */
+  suppressMapIntentPills?: boolean;
 };
 
 /** Map bottom stack ??prompt bar only; chat/cards live in GlobeChatScreen. */
@@ -77,6 +79,7 @@ export const GlobeCaptureDock = forwardRef<GlobeContextIngestBarHandle, GlobeCap
       stackAboveCompose,
       composeAccessory,
       ingest,
+      suppressMapIntentPills = false,
     },
     ref,
   ) {
@@ -169,17 +172,19 @@ export const GlobeCaptureDock = forwardRef<GlobeContextIngestBarHandle, GlobeCap
             className="pointer-events-none mx-auto flex w-full max-w-[min(100%,20rem)] flex-col gap-1"
             data-globe-ingest-compact="pill"
           >
-            <GlobeActionPillGuide
-              pills={mapPills}
-              variant="inline"
-              showLabel={false}
-              tone="dark"
-              chipVariant="confirm"
-              className="pointer-events-auto"
-              onPillSelect={(pill) => {
-                void ingestRef.current?.submitComposerText(readPillSubmitText(pill));
-              }}
-            />
+            {!suppressMapIntentPills ? (
+              <GlobeActionPillGuide
+                pills={mapPills}
+                variant="inline"
+                showLabel={false}
+                tone="dark"
+                chipVariant="confirm"
+                className="pointer-events-auto"
+                onPillSelect={(pill) => {
+                  void ingestRef.current?.submitComposerText(readPillSubmitText(pill));
+                }}
+              />
+            ) : null}
             <GlobeContextIngestBar
               ref={ingestRef}
               {...ingest}

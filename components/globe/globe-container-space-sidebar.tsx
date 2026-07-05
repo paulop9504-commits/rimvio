@@ -4,8 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Plus, Search, SquarePen, X } from "lucide-react";
+import { GlobeContainerSpaceFilters } from "@/components/globe/globe-container-space-filters";
+import { GlobeContainerSpaceToolbar } from "@/components/globe/globe-container-space-toolbar";
+import { GlobeTrendBridgePulseChip } from "@/components/globe/globe-trend-bridge-pulse-chip";
 import type { GlobeContextTimelineEntry } from "@/lib/globe/list-globe-context-timeline";
 import { listGlobeContextTimeline } from "@/lib/globe/list-globe-context-timeline";
+import type { GlobeLayerMode } from "@/lib/globe/globe-layer-mode";
+import type { GlobeContextTimeFilter } from "@/lib/globe/globe-context-time-filter";
+import type { GlobeContextPeopleFilter } from "@/lib/globe/globe-context-people-filter";
+import type { GlobeContextPeerOption } from "@/lib/globe/list-globe-context-peer-options";
 import {
   EVENT_CANDIDATES_UPDATED,
   listLifeEventCandidates,
@@ -20,6 +27,39 @@ export type GlobeContainerSpaceSidebarProps = {
   activeEventId?: string | null;
   onSelect: (entry: GlobeContextTimelineEntry) => void;
   onNewContext?: () => void;
+  layerMode?: GlobeLayerMode;
+  timeFilter?: GlobeContextTimeFilter;
+  onTimeFilterChange?: (filter: GlobeContextTimeFilter) => void;
+  peopleFilter?: GlobeContextPeopleFilter;
+  onPeopleFilterChange?: (filter: GlobeContextPeopleFilter) => void;
+  peerOptions?: readonly GlobeContextPeerOption[];
+  onCreatePhoto?: () => void;
+  onOpenList?: () => void;
+  onOpenManage?: () => void;
+  onFlyToHere?: () => void;
+  inboxCount?: number;
+  mediaPoolCount?: number;
+  marketManageCount?: number;
+  workQueueCount?: number;
+  onOpenInbox?: () => void;
+  onOpenMediaPool?: () => void;
+  onOpenMarketManage?: () => void;
+  onOpenSettings?: () => void;
+  onOpenWorkQueue?: () => void;
+  onPortalPeekToggle?: () => void;
+  memoryRecall?: {
+    hasContent: boolean;
+    open: boolean;
+    onToggle: () => void;
+  } | null;
+  trendBridge?: {
+    enabled: boolean;
+    activeBridgeId: string | null;
+    pulseIntent: "align" | "avoid";
+    onToggle: (enabled: boolean) => void;
+    onBridgeSelect: (bridgeId: string) => void;
+    onPulseIntentChange: (intent: "align" | "avoid") => void;
+  } | null;
 };
 
 function contextAccent(title: string): string {
@@ -85,6 +125,28 @@ export function GlobeContainerSpaceSidebar({
   activeEventId = null,
   onSelect,
   onNewContext,
+  layerMode = "personal",
+  timeFilter = "all",
+  onTimeFilterChange,
+  peopleFilter = null,
+  onPeopleFilterChange,
+  peerOptions = [],
+  onCreatePhoto,
+  onOpenList,
+  onOpenManage,
+  onFlyToHere,
+  inboxCount = 0,
+  mediaPoolCount = 0,
+  marketManageCount = 0,
+  workQueueCount = 0,
+  onOpenInbox,
+  onOpenMediaPool,
+  onOpenMarketManage,
+  onOpenSettings,
+  onOpenWorkQueue,
+  onPortalPeekToggle,
+  memoryRecall = null,
+  trendBridge = null,
 }: GlobeContainerSpaceSidebarProps) {
   const [mounted, setMounted] = useState(false);
   const [revision, setRevision] = useState(0);
@@ -158,6 +220,12 @@ export function GlobeContainerSpaceSidebar({
     onOpenChange(false);
   };
 
+  const closeAfter = () => onOpenChange(false);
+
+  const showPersonalTools = layerMode === "personal";
+  const showTrendBridge =
+    showPersonalTools && !activeEventId?.trim() && trendBridge != null;
+
   if (!mounted) {
     return null;
   }
@@ -225,6 +293,63 @@ export function GlobeContainerSpaceSidebar({
                 />
               </label>
             </div>
+
+            {showPersonalTools &&
+            onCreatePhoto &&
+            onOpenList &&
+            onOpenManage &&
+            onOpenInbox &&
+            onOpenMediaPool &&
+            onOpenSettings &&
+            onOpenWorkQueue &&
+            onPortalPeekToggle ? (
+              <div className="shrink-0 border-b border-white/8 px-3 pb-3">
+                <GlobeContainerSpaceToolbar
+                  onCreatePhoto={onCreatePhoto}
+                  onOpenList={onOpenList}
+                  onOpenManage={onOpenManage}
+                  onPortalPeekToggle={onPortalPeekToggle}
+                  inboxCount={inboxCount}
+                  mediaPoolCount={mediaPoolCount}
+                  marketManageCount={marketManageCount}
+                  workQueueCount={workQueueCount}
+                  onOpenInbox={onOpenInbox}
+                  onOpenMediaPool={onOpenMediaPool}
+                  onOpenMarketManage={onOpenMarketManage}
+                  onOpenSettings={onOpenSettings}
+                  onOpenWorkQueue={onOpenWorkQueue}
+                  onAfterAction={closeAfter}
+                  memoryRecall={memoryRecall}
+                />
+              </div>
+            ) : null}
+
+            {showPersonalTools && onTimeFilterChange ? (
+              <div className="shrink-0 border-b border-white/8 py-3">
+                <GlobeContainerSpaceFilters
+                  timeFilter={timeFilter}
+                  onTimeFilterChange={onTimeFilterChange}
+                  peopleFilter={peopleFilter}
+                  onPeopleFilterChange={onPeopleFilterChange}
+                  peerOptions={peerOptions}
+                  onFlyToHere={onFlyToHere}
+                />
+              </div>
+            ) : null}
+
+            {showTrendBridge && trendBridge ? (
+              <div className="shrink-0 border-b border-white/8 px-3 py-3">
+                <GlobeTrendBridgePulseChip
+                  enabled={trendBridge.enabled}
+                  activeBridgeId={trendBridge.activeBridgeId}
+                  pulseIntent={trendBridge.pulseIntent}
+                  onToggle={trendBridge.onToggle}
+                  onBridgeSelect={trendBridge.onBridgeSelect}
+                  onPulseIntentChange={trendBridge.onPulseIntentChange}
+                  className="max-w-none"
+                />
+              </div>
+            ) : null}
 
             <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3 [scrollbar-width:thin]">
               {pinned ? (
