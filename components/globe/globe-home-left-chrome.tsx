@@ -29,6 +29,7 @@ export type GlobeHomeLeftChromeProps = {
   onOpenList: () => void;
   onOpenManage: () => void;
   onSelectContext?: (entry: GlobeContextTimelineEntry) => void;
+  onContextsDeleted?: (eventIds: string[]) => void;
   onNewContext?: () => void;
   onPortalPeekToggle: () => void;
   inboxCount: number;
@@ -73,6 +74,7 @@ export function GlobeHomeLeftChrome({
   onOpenList,
   onOpenManage,
   onSelectContext,
+  onContextsDeleted,
   onNewContext,
   onPortalPeekToggle,
   inboxCount,
@@ -131,6 +133,7 @@ export function GlobeHomeLeftChrome({
         onOpenChange={setContainerSpaceOpen}
         activeEventId={hubEventId}
         onSelect={(entry) => onSelectContext?.(entry)}
+        onDeleted={onContextsDeleted}
         onNewContext={onNewContext}
         layerMode={layerMode}
         timeFilter={timeFilter}

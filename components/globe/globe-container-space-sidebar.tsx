@@ -3,10 +3,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Plus, Search, SquarePen, X } from "lucide-react";
+import { Plus, Search, SquarePen, Trash2, X, CheckSquare, Square } from "lucide-react";
+import { toast } from "sonner";
 import { GlobeContainerSpaceFilters } from "@/components/globe/globe-container-space-filters";
 import { GlobeContainerSpaceToolbar } from "@/components/globe/globe-container-space-toolbar";
 import { GlobeTrendBridgePulseChip } from "@/components/globe/globe-trend-bridge-pulse-chip";
+import {
+  describeGlobeContextDeleteSelection,
+  toastLineForGlobeContextDelete,
+} from "@/lib/globe/describe-globe-context-delete-selection";
+import {
+  deleteGlobeContexts,
+  resolveGlobeContextDeleteIntent,
+} from "@/lib/globe/delete-globe-context";
 import type { GlobeContextTimelineEntry } from "@/lib/globe/list-globe-context-timeline";
 import { listGlobeContextTimeline } from "@/lib/globe/list-globe-context-timeline";
 import type { GlobeLayerMode } from "@/lib/globe/globe-layer-mode";
@@ -15,6 +24,7 @@ import type { GlobeContextPeopleFilter } from "@/lib/globe/globe-context-people-
 import type { GlobeContextPeerOption } from "@/lib/globe/list-globe-context-peer-options";
 import {
   EVENT_CANDIDATES_UPDATED,
+  findLifeEventCandidate,
   listLifeEventCandidates,
 } from "@/lib/life-read-model";
 import { PERSONAL_GLOBE_PINS_UPDATED } from "@/lib/globe/personal-globe-pin-store";
@@ -26,6 +36,7 @@ export type GlobeContainerSpaceSidebarProps = {
   onOpenChange: (open: boolean) => void;
   activeEventId?: string | null;
   onSelect: (entry: GlobeContextTimelineEntry) => void;
+  onDeleted?: (eventIds: string[]) => void;
   onNewContext?: () => void;
   layerMode?: GlobeLayerMode;
   timeFilter?: GlobeContextTimeFilter;
@@ -79,33 +90,60 @@ function flattenRecentEntries(
 function SidebarRow({
   entry,
   active,
+  selectMode,
+  selected,
   onSelect,
+  onToggleSelect,
 }: {
   entry: GlobeContextTimelineEntry;
   active?: boolean;
+  selectMode?: boolean;
+  selected?: boolean;
   onSelect: (entry: GlobeContextTimelineEntry) => void;
+  onToggleSelect?: (eventId: string) => void;
 }) {
+  const handleClick = () => {
+    if (selectMode) {
+      onToggleSelect?.(entry.eventId);
+      return;
+    }
+    onSelect(entry);
+  };
+
   return (
     <button
       type="button"
-      onClick={() => onSelect(entry)}
+      onClick={handleClick}
       data-globe-container-space-item={entry.eventId}
+      data-globe-container-space-selected={selectMode && selected ? "true" : undefined}
       className={cn(
         "flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-colors",
-        active
-          ? "bg-white/10 text-white"
-          : "text-white/85 hover:bg-white/[0.06] active:bg-white/10",
+        selectMode && selected
+          ? "bg-[#ff6b4a]/15 text-white ring-1 ring-[#ff6b4a]/35"
+          : active
+            ? "bg-white/10 text-white"
+            : "text-white/85 hover:bg-white/[0.06] active:bg-white/10",
       )}
     >
-      <span
-        className={cn(
-          "flex size-8 shrink-0 items-center justify-center rounded-lg text-[13px] font-semibold",
-          active ? "bg-[#ff6b4a]/90 text-white" : "bg-white/10 text-white/90",
-        )}
-        aria-hidden
-      >
-        {contextAccent(entry.title)}
-      </span>
+      {selectMode ? (
+        <span className="flex size-8 shrink-0 items-center justify-center" aria-hidden>
+          {selected ? (
+            <CheckSquare className="size-[18px] text-[#ff6b4a]" />
+          ) : (
+            <Square className="size-[18px] text-white/40" />
+          )}
+        </span>
+      ) : (
+        <span
+          className={cn(
+            "flex size-8 shrink-0 items-center justify-center rounded-lg text-[13px] font-semibold",
+            active ? "bg-[#ff6b4a]/90 text-white" : "bg-white/10 text-white/90",
+          )}
+          aria-hidden
+        >
+          {contextAccent(entry.title)}
+        </span>
+      )}
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[14px] font-medium leading-snug">
           {entry.title}
@@ -124,6 +162,7 @@ export function GlobeContainerSpaceSidebar({
   onOpenChange,
   activeEventId = null,
   onSelect,
+  onDeleted,
   onNewContext,
   layerMode = "personal",
   timeFilter = "all",
@@ -151,6 +190,9 @@ export function GlobeContainerSpaceSidebar({
   const [mounted, setMounted] = useState(false);
   const [revision, setRevision] = useState(0);
   const [query, setQuery] = useState("");
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -172,6 +214,8 @@ export function GlobeContainerSpaceSidebar({
   useEffect(() => {
     if (!open) {
       setQuery("");
+      setSelectMode(false);
+      setSelected(new Set());
       return;
     }
     const prev = document.body.style.overflow;
@@ -209,6 +253,82 @@ export function GlobeContainerSpaceSidebar({
   }, [activeEventId, recent]);
 
   const stripEntries = useMemo(() => recent.slice(0, 4), [recent]);
+
+  const deleteSelection = useMemo(() => {
+    let detachLocal = 0;
+    let deleteUpstream = 0;
+    let blocked = 0;
+    for (const eventId of selected) {
+      const intent = resolveGlobeContextDeleteIntent(findLifeEventCandidate(eventId));
+      if (intent === "detach_local") {
+        detachLocal += 1;
+      } else if (intent === "delete_upstream") {
+        deleteUpstream += 1;
+      } else {
+        blocked += 1;
+      }
+    }
+    return describeGlobeContextDeleteSelection({
+      detachLocal,
+      deleteUpstream,
+      blocked,
+      total: selected.size,
+    });
+  }, [selected]);
+
+  const someSelected = selected.size > 0;
+  const listEntries = useMemo(() => {
+    const rows = filteredRecent.filter((row) => row.eventId !== pinned?.eventId);
+    if (!pinned || query.trim()) {
+      return rows;
+    }
+    return rows;
+  }, [filteredRecent, pinned, query]);
+
+  const toggleSelect = (eventId: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(eventId)) {
+        next.delete(eventId);
+      } else {
+        next.add(eventId);
+      }
+      return next;
+    });
+  };
+
+  const handleDeleteSelected = async () => {
+    if (!someSelected || deleting || !deleteSelection.actionable) {
+      return;
+    }
+    const ids = [...selected];
+    const confirmed = deleteSelection.confirm
+      ? window.confirm(deleteSelection.confirm)
+      : false;
+    if (!confirmed) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      const { deleted } = await deleteGlobeContexts(ids);
+      if (deleted === 0) {
+        toast.error(copy.globe.containerSpaceDeleteFail);
+        return;
+      }
+      toast.success(
+        toastLineForGlobeContextDelete({
+          deleted,
+          deleteLabel: deleteSelection.label,
+        }),
+      );
+      onDeleted?.(ids);
+      setSelected(new Set());
+      setSelectMode(false);
+      setRevision((value) => value + 1);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const handleSelect = (entry: GlobeContextTimelineEntry) => {
     onSelect(entry);
@@ -259,16 +379,43 @@ export function GlobeContainerSpaceSidebar({
                 <p className="text-[17px] font-semibold tracking-tight">
                   {copy.globe.containerSpaceTitle}
                 </p>
-                <button
-                  type="button"
-                  onClick={() => onOpenChange(false)}
-                  className="flex size-9 items-center justify-center rounded-full text-white/70 active:bg-white/10"
-                  aria-label={copy.globe.containerSpaceCloseAria}
-                >
-                  <X className="size-5" aria-hidden />
-                </button>
+                <div className="flex items-center gap-1">
+                  {filteredRecent.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectMode) {
+                          setSelectMode(false);
+                          setSelected(new Set());
+                          return;
+                        }
+                        setSelectMode(true);
+                      }}
+                      className={cn(
+                        "rounded-full px-2.5 py-1.5 text-[12px] font-semibold transition-colors",
+                        selectMode
+                          ? "bg-white/12 text-white"
+                          : "text-white/55 active:bg-white/10",
+                      )}
+                      data-globe-container-space-select-toggle
+                    >
+                      {selectMode
+                        ? copy.globe.containerSpaceSelectDone
+                        : copy.globe.containerSpaceSelect}
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => onOpenChange(false)}
+                    className="flex size-9 items-center justify-center rounded-full text-white/70 active:bg-white/10"
+                    aria-label={copy.globe.containerSpaceCloseAria}
+                  >
+                    <X className="size-5" aria-hidden />
+                  </button>
+                </div>
               </div>
 
+              {!selectMode ? (
               <button
                 type="button"
                 onClick={handleNew}
@@ -278,6 +425,11 @@ export function GlobeContainerSpaceSidebar({
                 <SquarePen className="size-4 shrink-0 text-white/80" aria-hidden />
                 {copy.globe.containerSpaceNewContext}
               </button>
+              ) : (
+                <p className="mt-3 px-1 text-[12px] leading-relaxed text-white/50">
+                  {copy.globe.containerSpaceSelectHint}
+                </p>
+              )}
 
               <label className="relative mt-2.5 block">
                 <Search
@@ -360,7 +512,10 @@ export function GlobeContainerSpaceSidebar({
                   <SidebarRow
                     entry={pinned}
                     active
+                    selectMode={selectMode}
+                    selected={selected.has(pinned.eventId)}
                     onSelect={handleSelect}
+                    onToggleSelect={toggleSelect}
                   />
                 </section>
               ) : null}
@@ -380,13 +535,14 @@ export function GlobeContainerSpaceSidebar({
                   </p>
                 ) : (
                   <div className="space-y-0.5">
-                    {filteredRecent
-                      .filter((row) => row.eventId !== pinned?.eventId)
-                      .map((entry) => (
+                    {listEntries.map((entry) => (
                         <SidebarRow
                           key={entry.eventId}
                           entry={entry}
+                          selectMode={selectMode}
+                          selected={selected.has(entry.eventId)}
                           onSelect={handleSelect}
+                          onToggleSelect={toggleSelect}
                         />
                       ))}
                   </div>
@@ -395,7 +551,7 @@ export function GlobeContainerSpaceSidebar({
             </div>
 
             <div className="shrink-0 border-t border-white/8 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
-              {stripEntries.length > 0 ? (
+              {!selectMode && stripEntries.length > 0 ? (
                 <div className="mb-3 flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {stripEntries.map((entry) => {
                     const active = entry.eventId === activeEventId;
@@ -418,6 +574,27 @@ export function GlobeContainerSpaceSidebar({
                   })}
                 </div>
               ) : null}
+              {selectMode ? (
+                <button
+                  type="button"
+                  disabled={!someSelected || deleting || !deleteSelection.actionable}
+                  onClick={() => void handleDeleteSelected()}
+                  className={cn(
+                    "flex w-full items-center justify-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-semibold shadow-lg transition-opacity",
+                    someSelected && deleteSelection.actionable
+                      ? "bg-[#ef4444] text-white active:opacity-90"
+                      : "bg-white/10 text-white/40",
+                  )}
+                  data-globe-container-space-delete
+                >
+                  <Trash2 className="size-4 shrink-0" aria-hidden />
+                  {deleting
+                    ? copy.globe.containerSpaceDeleting
+                    : someSelected
+                      ? deleteSelection.label
+                      : copy.globe.containerSpaceSelectPrompt}
+                </button>
+              ) : (
               <div className="flex items-center justify-between gap-2">
                 <button
                   type="button"
@@ -429,6 +606,7 @@ export function GlobeContainerSpaceSidebar({
                   {copy.globe.containerSpaceComposeCta}
                 </button>
               </div>
+              )}
             </div>
           </motion.aside>
         </>

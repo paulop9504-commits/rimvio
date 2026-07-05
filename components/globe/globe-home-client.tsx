@@ -2659,6 +2659,33 @@ function GlobeHomeBody() {
     [openContextByEventId],
   );
 
+  const handleContextsDeleted = useCallback(
+    (eventIds: string[]) => {
+      if (activeCluster && eventIds.includes(activeCluster.eventId)) {
+        setSheetOpen(false);
+        setActiveCluster(null);
+      }
+      if (realitySurfaceEventId && eventIds.includes(realitySurfaceEventId)) {
+        clearRealitySurfaceSession();
+        setDepartureHubPickerOpen(false);
+      }
+      const params = new URLSearchParams(window.location.search);
+      const recall = params.get("recallEvent");
+      if (recall && eventIds.includes(recall)) {
+        params.delete("recallEvent");
+        const next = params.toString()
+          ? `${window.location.pathname}?${params.toString()}`
+          : window.location.pathname;
+        window.history.replaceState(null, "", next);
+      }
+    },
+    [
+      activeCluster,
+      clearRealitySurfaceSession,
+      realitySurfaceEventId,
+    ],
+  );
+
   const onDiscoveryMarketBrowse = useCallback(() => {
     openFieldDashboardIngress({ tab: "discovery" });
     const marketPin = clustersRef.current.find(
@@ -3804,6 +3831,7 @@ function GlobeHomeBody() {
         onOpenList={() => setListOpen(true)}
         onOpenManage={() => setManageOpen(true)}
         onSelectContext={openContextEntry}
+        onContextsDeleted={handleContextsDeleted}
         onNewContext={() => setPortalOpen(true)}
         onPortalPeekToggle={togglePortalPeek}
         inboxCount={globeInboxCount}
@@ -4227,21 +4255,7 @@ function GlobeHomeBody() {
         open={manageOpen}
         onOpenChange={setManageOpen}
         onOpenContext={openProjectedContext}
-        onDeleted={(eventIds) => {
-          if (activeCluster && eventIds.includes(activeCluster.eventId)) {
-            setSheetOpen(false);
-            setActiveCluster(null);
-          }
-          const params = new URLSearchParams(window.location.search);
-          const recall = params.get("recallEvent");
-          if (recall && eventIds.includes(recall)) {
-            params.delete("recallEvent");
-            const next = params.toString()
-              ? `${window.location.pathname}?${params.toString()}`
-              : window.location.pathname;
-            window.history.replaceState(null, "", next);
-          }
-        }}
+        onDeleted={handleContextsDeleted}
       />
       <ExperienceBridgeGhostSheet
         open={bridgeGhostOpen}
