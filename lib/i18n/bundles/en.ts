@@ -1085,6 +1085,13 @@ export const copyEn: Copy = {
       spawnTrip: "Start trip",
       spawnTripSubmit: "Trip next week",
       needsDestination: "Where first?",
+      contextCreated: (title: string) => `Added 「${title}」 to your globe`,
+      nextStepPickDestination: "Next · pick a destination (Osaka · Tokyo · Fukuoka)",
+      nextStepConfirmDeparture: (airport: string) =>
+        `Next · confirm departing from ${airport}`,
+      nextStepPickDeparture: "Next · pick your departure airport",
+      nextStepPickDomain: (destination: string) =>
+        `Next · find stay or food in ${destination}`,
       departureConfirmHigh: (airport: string) => `Depart from ${airport}?`,
       departureAskOpen: "Which airport?",
       departureConfirmYes: "Yes",

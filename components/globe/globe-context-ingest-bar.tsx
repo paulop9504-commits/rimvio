@@ -24,6 +24,7 @@ import { dispatchContextRun } from "@/lib/context-run/dispatch-context-run";
 import { readActiveRunState } from "@/lib/context-run/run-state-store";
 import { ensureGlobeChatGraphId } from "@/lib/globe/chat/ensure-globe-chat-graph-id";
 import { syncPortalComposeTurnToChat } from "@/lib/globe/chat/sync-portal-compose-to-chat";
+import { composeTripFlowChatAssistantLine } from "@/lib/globe/trip-situation-router/build-trip-flow-chat-lines";
 import { ingestComposeChatPhoto } from "@/lib/globe/chat/globe-chat-session-bridge";
 import type { ContextRunEffectHandlers } from "@/lib/context-run/ingress-types";
 import { readPortalComposeRunState } from "@/lib/portal/portal-compose-run-store";
@@ -120,7 +121,7 @@ export type GlobeContextIngestBarProps = {
   gateOperatorBeforeDispatch?: (
     message: string,
   ) => import("@/lib/container-ai/types").ContainerAIGateOutcome | null;
-  /** Pure destination confirm — advance flow without dispatch. */
+  /** Pure destination confirm — returns assistant chat line (headline + next step). */
   tryAdvanceDestinationFromMessage?: (message: string) => string | null;
   onOperatorDestinationChoice?: (choice: OperatorChoiceChip) => void;
   /** 2-tap trip router — idle → destination → domain chips above compose. */
@@ -529,20 +530,17 @@ export const GlobeContextIngestBar = forwardRef<
       setBusy(true);
       onComposeOpen?.();
       try {
-        const advancedDestination = tryAdvanceDestinationFromMessage?.(value);
-        if (advancedDestination) {
-          const confirmLine = softenComposerSuccessLine(
-            copy.globe.realitySurface.destinationConfirmed(advancedDestination),
-          );
+        const advancedAssistantText = tryAdvanceDestinationFromMessage?.(value);
+        if (advancedAssistantText) {
           const graphId = ensureGlobeChatGraphId();
           syncPortalComposeTurnToChat({
             graphId,
             userText: value,
-            assistantText: confirmLine,
+            assistantText: advancedAssistantText,
           });
-          showComposerHint(confirmLine, {
+          showComposerHint(softenComposerSuccessLine(advancedAssistantText), {
             tone: "success",
-            durationMs: 4000,
+            durationMs: 5000,
           });
           setOperatorChoices(null);
           setClarifyPlaceholder(null);

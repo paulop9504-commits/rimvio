@@ -1078,6 +1078,14 @@ export const copy = {
       spawnTrip: "여행 시작",
       spawnTripSubmit: "다음 주 여행",
       needsDestination: "어디부터 시작할까요?",
+      contextCreated: (title: string) => `「${title}」 맥락을 지구에 붙였어요`,
+      nextStepPickDestination:
+        "다음 · 목적지를 골라 주세요 (오사카 · 도쿄 · 후쿠오카)",
+      nextStepConfirmDeparture: (airport: string) =>
+        `다음 · ${airport}에서 출발하는지 확인해 주세요`,
+      nextStepPickDeparture: "다음 · 출발 공항을 골라 주세요",
+      nextStepPickDomain: (destination: string) =>
+        `다음 · ${destination}에서 숙소나 맛집을 골라 보세요`,
       departureConfirmHigh: (airport: string) => `${airport}에서 출발하시나요?`,
       departureAskOpen: "어느 공항에서 출발할까요?",
       departureConfirmYes: "맞아요",

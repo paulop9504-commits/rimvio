@@ -44,8 +44,11 @@ import {
   seedBridgePlanningTruthFromIngress,
 } from "@/lib/bridge-planning";
 import type { OperatorChoiceChip } from "@/components/globe/globe-operator-choice-chips";
-import type { TripSituationRouterChip } from "@/lib/globe/trip-situation-router";
-import { resolveTripSituationRouter } from "@/lib/globe/trip-situation-router";
+import { composeTripFlowChatAssistantLine } from "@/lib/globe/trip-situation-router/build-trip-flow-chat-lines";
+import {
+  resolveTripSituationRouter,
+  type TripSituationRouterChip,
+} from "@/lib/globe/trip-situation-router";
 import { getDepartureHubAirport } from "@/lib/globe/departure-hub-airports";
 import type { RealitySurfaceSession } from "@/lib/reality-surface";
 import { GlobeChatScreen } from "@/components/globe/chat/globe-chat-screen";
@@ -1334,11 +1337,19 @@ function GlobeHomeBody() {
         session: result.session,
         destinationLabel: result.destination,
       });
-      return result.destination;
+      return composeTripFlowChatAssistantLine({
+        headline: copy.globe.realitySurface.destinationConfirmed(result.destination),
+        blueprint: result.session.operatorBlueprint,
+        destinationLabel: result.destination,
+        viewerLat: liveLocation?.lat ?? null,
+        viewerLng: liveLocation?.lng ?? null,
+      });
     },
     [
       commitPlanningTruthIfHost,
       flyGlobeToDestination,
+      liveLocation?.lat,
+      liveLocation?.lng,
       realitySurfaceRoutingAllowed,
       tryAdvanceDestinationFromMessage,
     ],
@@ -1355,7 +1366,13 @@ function GlobeHomeBody() {
         syncPortalComposeTurnToChat({
           graphId: ensureGlobeChatGraphId(),
           userText: choice.label,
-          assistantText: copy.globe.realitySurface.destinationConfirmed(choice.label),
+          assistantText: composeTripFlowChatAssistantLine({
+            headline: copy.globe.realitySurface.destinationConfirmed(choice.label),
+            blueprint: advanced.operatorBlueprint,
+            destinationLabel: choice.label,
+            viewerLat: liveLocation?.lat ?? null,
+            viewerLng: liveLocation?.lng ?? null,
+          }),
         });
         void commitPlanningTruthIfHost({
           session: advanced,
@@ -1367,6 +1384,8 @@ function GlobeHomeBody() {
       advanceDestination,
       commitPlanningTruthIfHost,
       flyGlobeToDestination,
+      liveLocation?.lat,
+      liveLocation?.lng,
       realitySurfaceRoutingAllowed,
     ],
   );
@@ -1417,7 +1436,12 @@ function GlobeHomeBody() {
       syncPortalComposeTurnToChat({
         graphId: ensureGlobeChatGraphId(),
         userText: chip.label,
-        assistantText: copy.globe.tripSituationRouter.departureConfirmed(hub.shortLabelKo),
+        assistantText: composeTripFlowChatAssistantLine({
+          headline: copy.globe.tripSituationRouter.departureConfirmed(hub.shortLabelKo),
+          blueprint: advanced.operatorBlueprint,
+          viewerLat: liveLocation?.lat ?? null,
+          viewerLng: liveLocation?.lng ?? null,
+        }),
       });
     },
     [

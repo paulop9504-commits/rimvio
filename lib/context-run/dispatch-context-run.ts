@@ -54,7 +54,7 @@ import {
   syncExperienceRunSummaryToFeed,
 } from "@/lib/context-run/sync-experience-run-to-feed";
 import { syncGlobeIngressCompileToFeed } from "@/lib/context-run/sync-globe-ingress-to-feed";
-import { ensureTripContextEvent } from "@/lib/experience-run/ensure-trip-context-event";
+import { buildTripIngressCreatedChatAssistantLine } from "@/lib/globe/trip-situation-router/build-trip-flow-chat-lines";
 import { classifyExperienceRunIntent } from "@/lib/experience-run/classify-experience-run-intent";
 import {
   syncComposeDraftToFeed,
@@ -848,9 +848,10 @@ async function executeContextRunPlan(
       });
 
       syncGlobeIngressCompileToFeed(compiled, bound.goalKo);
-      const assistantText =
-        compiled.blueprint.resourcePlan.nextQuestion?.promptKo?.trim() ||
-        compiled.bridge.pathLabels.join(" → ");
+      const assistantText = buildTripIngressCreatedChatAssistantLine({
+        eventTitle: event.title,
+        blueprint: compiled.blueprint,
+      });
       syncPortalComposeTurnToChat({
         graphId,
         userText: bound.goalKo,
