@@ -20,6 +20,12 @@ import { asRimvioEntityId } from "@/lib/ontology/entity-types";
 import type { FeedCaptureMediaTextSignal } from "@/lib/ontology/feed-capture-wire";
 import { inferMediaGuidePlaceCandidates } from "@/lib/ontology/media-guide-place-inference";
 import { discoverProactiveTravelYoutubeGuides } from "@/lib/ontology/discover-proactive-travel-youtube-guides";
+import {
+  compareTrustedMediaGuides,
+  filterTrustedMediaGuides,
+  meetsTrustedYoutubeViewGate,
+  MIN_TRUSTED_PUBLIC_PAGE_RELEVANCE,
+} from "@/lib/ontology/media-guide-quality-gate";
 import { filterPlayableMediaGuides } from "@/lib/ontology/playable-youtube-media-guide";
 import type {
   MediaGuideMoment,
@@ -333,6 +339,13 @@ async function buildYouTubeGuide(input: {
   const durationSeconds =
     official?.video.durationSeconds ?? (await fetchYouTubeDurationSeconds(input.url));
 
+  if (
+    official &&
+    !meetsTrustedYoutubeViewGate(official.video.viewCount, { requireKnown: true })
+  ) {
+    return null;
+  }
+
   const title =
     resolveBestTitle({
       metadataTitle: official?.video.title ?? oembed?.title ?? metadata.title,
@@ -408,6 +421,7 @@ async function buildYouTubeGuide(input: {
           channelUrl: official.channel?.canonicalUrl ?? null,
           publishedAt: official.video.publishedAt,
           liveBroadcastContent: official.video.liveBroadcastContent,
+          viewCount: official.video.viewCount,
           tags: official.video.tags,
           thumbnails: official.video.thumbnails,
           relatedSearchResults: official.relatedSearchResults.map((result) => ({
@@ -493,6 +507,12 @@ async function buildPublicPageGuide(input: {
     trustLevel: trust.trustLevel,
     sourceKind: "public_page",
   });
+  if (
+    trust.trustLevel === "public" &&
+    relevanceScore < MIN_TRUSTED_PUBLIC_PAGE_RELEVANCE
+  ) {
+    return null;
+  }
   const relatedPlaceEntityId = input.relatedPlaceLabel
     ? entityFromPlaceLabel(input.relatedPlaceLabel).entityId
     : null;
@@ -589,8 +609,10 @@ export async function resolveMediaGuideNodesForEvent(
       }),
   );
 
-  const captureGuides = filterPlayableMediaGuides(
-    guides.filter((guide): guide is MediaGuideNode => Boolean(guide)),
+  const captureGuides = filterTrustedMediaGuides(
+    filterPlayableMediaGuides(
+      guides.filter((guide): guide is MediaGuideNode => Boolean(guide)),
+    ),
   );
   const captureUrls = new Set(captureGuides.map((guide) => guide.canonicalUrl));
   const proactiveGuides =
@@ -598,14 +620,12 @@ export async function resolveMediaGuideNodesForEvent(
       ? []
       : await discoverProactiveTravelYoutubeGuides(event);
 
-  const merged = filterPlayableMediaGuides([
-    ...captureGuides,
-    ...proactiveGuides.filter((guide) => !captureUrls.has(guide.canonicalUrl)),
-  ]);
-
-  return merged.sort(
-    (left, right) =>
-      right.relevanceScore - left.relevanceScore ||
-      right.updatedAt.localeCompare(left.updatedAt),
+  const merged = filterTrustedMediaGuides(
+    filterPlayableMediaGuides([
+      ...captureGuides,
+      ...proactiveGuides.filter((guide) => !captureUrls.has(guide.canonicalUrl)),
+    ]),
   );
+
+  return merged.sort(compareTrustedMediaGuides);
 }

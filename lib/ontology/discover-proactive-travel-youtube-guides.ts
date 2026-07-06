@@ -6,10 +6,14 @@ import { isYouTubeDomain } from "@/lib/enrichers/youtube-url";
 import { normalizeInputUrl } from "@/lib/enrichers/fetch-page-metadata";
 import {
   fetchYouTubeOfficialVideo,
-  pickEmbeddableYouTubeVideoIds,
+  fetchYouTubeVideoQualityByIds,
   searchYouTubeVideos,
   type YouTubeOfficialSearchResult,
 } from "@/lib/media/youtube-data-api";
+import {
+  meetsTrustedYoutubeViewGate,
+  MIN_TRUSTED_YOUTUBE_VIEW_COUNT,
+} from "@/lib/ontology/media-guide-quality-gate";
 import { entityFromPlaceLabel } from "@/lib/ontology/entity-adapters";
 import { asRimvioEntityId } from "@/lib/ontology/entity-types";
 import { inferMediaGuidePlaceCandidates } from "@/lib/ontology/media-guide-place-inference";
@@ -145,6 +149,13 @@ async function buildGuideFromSearchResult(input: {
   if (!officialVideo?.embeddable) {
     return null;
   }
+  if (
+    !meetsTrustedYoutubeViewGate(officialVideo.viewCount, {
+      requireKnown: true,
+    })
+  ) {
+    return null;
+  }
   const title = normalizeText(officialVideo?.title ?? input.result.title) || "YouTube";
   const description = normalizeText(officialVideo?.description ?? input.result.description);
   const thumbnailUrl =
@@ -181,6 +192,7 @@ async function buildGuideFromSearchResult(input: {
             : null,
           publishedAt: officialVideo.publishedAt,
           liveBroadcastContent: officialVideo.liveBroadcastContent,
+          viewCount: officialVideo.viewCount,
           tags: officialVideo.tags,
           thumbnails: officialVideo.thumbnails,
           relatedSearchResults: [],
@@ -193,7 +205,18 @@ async function buildGuideFromSearchResult(input: {
     relatedPlaceLabel: input.relatedPlaceLabel,
     relatedCaptureId: null,
     whyRelevantKo: buildWhyRelevantKo(input.relatedPlaceLabel, title),
-    relevanceScore: matchesPlaceInBlob(`${title} ${description}`, input.relatedPlaceLabel) ? 78 : 68,
+    relevanceScore: matchesPlaceInBlob(`${title} ${description}`, input.relatedPlaceLabel)
+      ? Math.min(
+          88,
+          78 +
+            Math.min(
+              10,
+              Math.log10(
+                Math.max(officialVideo.viewCount ?? MIN_TRUSTED_YOUTUBE_VIEW_COUNT, 1),
+              ),
+            ),
+        )
+      : 68,
   };
 
   const inferredPlaceCandidates = inferMediaGuidePlaceCandidates({
@@ -252,12 +275,16 @@ export async function discoverProactiveTravelYoutubeGuides(
     maxResults: 12,
   });
 
-  const embeddableIds = await pickEmbeddableYouTubeVideoIds(
+  const embeddableIds = await fetchYouTubeVideoQualityByIds(
     results.map((result) => result.videoId),
   );
-  const embeddableResults = results.filter((result) =>
-    embeddableIds.has(result.videoId),
-  );
+  const embeddableResults = results.filter((result) => {
+    const quality = embeddableIds.get(result.videoId);
+    if (!quality?.embeddable) {
+      return false;
+    }
+    return meetsTrustedYoutubeViewGate(quality.viewCount, { requireKnown: true });
+  });
 
   const filtered = embeddableResults.filter((result) =>
     matchesPlaceInBlob(

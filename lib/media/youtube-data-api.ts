@@ -44,6 +44,7 @@ export type YouTubeOfficialVideo = {
   liveBroadcastContent: string | null;
   /** false when the owner disabled embedding on other sites */
   embeddable: boolean;
+  viewCount: number | null;
   tags: readonly string[];
   thumbnails: YouTubeThumbnailSet;
   thumbnailUrl: string | null;
@@ -104,6 +105,9 @@ type YouTubeVideoItem = {
   status?: {
     embeddable?: boolean;
     privacyStatus?: string;
+  };
+  statistics?: {
+    viewCount?: string;
   };
 };
 
@@ -245,6 +249,11 @@ async function fetchYouTubeDataJson<T>(
   }
 }
 
+function parseViewCount(value: string | null | undefined): number | null {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
 function mapVideoItem(item: YouTubeVideoItem): YouTubeOfficialVideo | null {
   const videoId = normalizeText(item.id);
   if (!videoId) {
@@ -262,6 +271,7 @@ function mapVideoItem(item: YouTubeVideoItem): YouTubeOfficialVideo | null {
     durationSeconds: parseYouTubeIsoDurationSeconds(item.contentDetails?.duration),
     liveBroadcastContent: normalizeText(item.snippet?.liveBroadcastContent),
     embeddable: item.status ? item.status.embeddable === true : false,
+    viewCount: parseViewCount(item.statistics?.viewCount),
     tags: (item.snippet?.tags ?? [])
       .map((tag) => normalizeText(tag))
       .filter((tag): tag is string => Boolean(tag)),
@@ -326,11 +336,51 @@ export async function fetchYouTubeOfficialVideo(
     apiKey,
     "videos",
     {
-      part: "snippet,contentDetails,status",
+      part: "snippet,contentDetails,status,statistics",
       id: videoId,
     },
   );
   return mapVideoItem(payload?.items?.[0] ?? {});
+}
+
+export type YouTubeVideoQualityRow = {
+  videoId: string;
+  embeddable: boolean;
+  viewCount: number | null;
+};
+
+/** Batch embed + view-count gate for search candidates. */
+export async function fetchYouTubeVideoQualityByIds(
+  videoIds: readonly string[],
+): Promise<Map<string, YouTubeVideoQualityRow>> {
+  const apiKey = resolveYouTubeDataApiKey();
+  const ids = [...new Set(videoIds.map((id) => normalizeText(id)).filter(Boolean))];
+  const out = new Map<string, YouTubeVideoQualityRow>();
+  if (!apiKey || ids.length === 0) {
+    return out;
+  }
+
+  for (let offset = 0; offset < ids.length; offset += 50) {
+    const chunk = ids.slice(offset, offset + 50);
+    const payload = await fetchYouTubeDataJson<
+      YouTubeApiListResponse<YouTubeVideoItem>
+    >(apiKey, "videos", {
+      part: "status,statistics",
+      id: chunk.join(","),
+    });
+    for (const item of payload?.items ?? []) {
+      const videoId = normalizeText(item.id);
+      if (!videoId) {
+        continue;
+      }
+      out.set(videoId, {
+        videoId,
+        embeddable: item.status?.embeddable === true,
+        viewCount: parseViewCount(item.statistics?.viewCount),
+      });
+    }
+  }
+  return out;
 }
 
 /** Batch-check which video IDs allow iframe embed (YouTube Data API status.embeddable). */
@@ -349,7 +399,7 @@ export async function pickEmbeddableYouTubeVideoIds(
     const payload = await fetchYouTubeDataJson<
       YouTubeApiListResponse<YouTubeVideoItem>
     >(apiKey, "videos", {
-      part: "status",
+      part: "status,statistics",
       id: chunk.join(","),
     });
     for (const item of payload?.items ?? []) {
@@ -421,7 +471,7 @@ export async function resolveYouTubeOfficialVideoBundle(
   const videoPayload = await fetchYouTubeDataJson<
     YouTubeApiListResponse<YouTubeVideoItem>
   >(apiKey, "videos", {
-    part: "snippet,contentDetails,status",
+    part: "snippet,contentDetails,status,statistics",
     id: videoId,
   });
   const video = mapVideoItem(videoPayload?.items?.[0] ?? {});

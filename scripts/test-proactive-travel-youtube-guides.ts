@@ -55,9 +55,21 @@ globalThis.fetch = async (input) => {
     return new Response(
       JSON.stringify({
         items: [
-          { id: "blocked-vlog", status: { embeddable: false } },
-          { id: "tokyo-vlog-1", status: { embeddable: true } },
-          { id: "tokyo-vlog-2", status: { embeddable: true } },
+          {
+            id: "blocked-vlog",
+            status: { embeddable: false },
+            statistics: { viewCount: "900000" },
+          },
+          {
+            id: "tokyo-vlog-1",
+            status: { embeddable: true },
+            statistics: { viewCount: "850000" },
+          },
+          {
+            id: "tokyo-vlog-2",
+            status: { embeddable: true },
+            statistics: { viewCount: "12000" },
+          },
         ],
       }),
       { status: 200, headers: { "Content-Type": "application/json" } },
@@ -77,6 +89,7 @@ globalThis.fetch = async (input) => {
             },
             contentDetails: { duration: "PT8M12S" },
             status: { embeddable: true },
+            statistics: { viewCount: "850000" },
           },
         ],
       }),

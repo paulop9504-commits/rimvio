@@ -80,6 +80,9 @@ async function main() {
               status: {
                 embeddable: true,
               },
+              statistics: {
+                viewCount: "450000",
+              },
             },
           ],
         });
@@ -137,6 +140,7 @@ async function main() {
     assert.equal(bundle?.apiKeySource, "YOUTUBE_DATA_API_KEY");
     assert.equal(bundle?.video.title, "교토 야식 라멘");
     assert.equal(bundle?.video.durationSeconds, 545);
+    assert.equal(bundle?.video.viewCount, 450_000);
     assert.equal(bundle?.channel?.canonicalUrl, "https://www.youtube.com/@kyotowalk");
     assert.equal(bundle?.relatedSearchResults.length, 1);
     assert.equal(

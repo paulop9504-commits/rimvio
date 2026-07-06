@@ -94,6 +94,7 @@ export type MediaGuideYouTubeOfficial = {
   channelUrl: string | null;
   publishedAt: string | null;
   liveBroadcastContent: string | null;
+  viewCount?: number | null;
   tags: readonly string[];
   thumbnails: MediaGuideYouTubeThumbnailSet;
   relatedSearchResults: readonly MediaGuideYouTubeSearchResult[];

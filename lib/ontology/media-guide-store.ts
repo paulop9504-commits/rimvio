@@ -6,6 +6,7 @@ import {
   type MediaGuideSnapshot,
 } from "@/lib/ontology/media-guide-types";
 import { filterPlayableMediaGuides } from "@/lib/ontology/playable-youtube-media-guide";
+import { filterTrustedMediaGuides } from "@/lib/ontology/media-guide-quality-gate";
 
 const STORAGE_KEY = "rimvio.media-guides.v1";
 
@@ -112,7 +113,7 @@ export function replaceMediaGuidesForExperience(input: {
     ...current.guides.filter(
       (guide) => guide.relatedExperienceEntityId !== input.experienceEntityId,
     ),
-    ...filterPlayableMediaGuides(input.guides),
+    ...filterTrustedMediaGuides(filterPlayableMediaGuides(input.guides)),
   ];
   return writeMediaGuideSnapshot({
     version: MEDIA_GUIDE_SNAPSHOT_VERSION,
@@ -128,11 +129,13 @@ export function queryMediaGuidesForEntity(
   const snapshot = readMediaGuideSnapshot();
   const max = options?.max ?? Number.POSITIVE_INFINITY;
   return sortGuides(
-    filterPlayableMediaGuides(
-      snapshot.guides.filter(
-        (guide) =>
-          guide.relatedExperienceEntityId === entityId ||
-          guide.relatedPlaceEntityId === entityId,
+    filterTrustedMediaGuides(
+      filterPlayableMediaGuides(
+        snapshot.guides.filter(
+          (guide) =>
+            guide.relatedExperienceEntityId === entityId ||
+            guide.relatedPlaceEntityId === entityId,
+        ),
       ),
     ),
   ).slice(0, max);
