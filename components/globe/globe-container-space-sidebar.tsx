@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -57,7 +57,9 @@ export type GlobeContainerSpaceSidebarProps = {
   onSelect: (entry: GlobeContextTimelineEntry) => void;
   onFlyToRuntime?: (lat: number, lng: number) => void;
   /** Sidebar agent flow — pick one context to bind Container AI. */
-  onAgentContextPick?: (entry: GlobeContextTimelineEntry) => void;
+  onAgentContextPick?: (
+    entry: GlobeContextTimelineEntry,
+  ) => void | Promise<void>;
   onDeleted?: (eventIds: string[]) => void;
   onNewContext?: () => void;
   layerMode?: GlobeLayerMode;
@@ -266,6 +268,8 @@ export function GlobeContainerSpaceSidebar({
   const [detailEntry, setDetailEntry] = useState<GlobeContextTimelineEntry | null>(
     null,
   );
+  const pendingAgentBindRef = useRef(false);
+  const agentPressBusyRef = useRef(false);
 
   const toggleSection = (key: SidebarSectionKey) => {
     setSections((prev) => {
@@ -287,9 +291,24 @@ export function GlobeContainerSpaceSidebar({
   }, []);
 
   useEffect(() => {
-    if (!open && readGlobeContextAgentSession().phase === "arming") {
-      cancelGlobeContextAgentArm();
+    if (!open) {
+      if (
+        readGlobeContextAgentSession().phase === "arming" &&
+        !pendingAgentBindRef.current
+      ) {
+        cancelGlobeContextAgentArm();
+      }
+      setQuery("");
+      setSelectMode(false);
+      setSelected(new Set());
+      setDetailEntry(null);
+      return;
     }
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
   }, [open]);
 
   useEffect(() => {
@@ -302,21 +321,6 @@ export function GlobeContainerSpaceSidebar({
     return () => {
       window.removeEventListener(EVENT_CANDIDATES_UPDATED, bump);
       window.removeEventListener(PERSONAL_GLOBE_PINS_UPDATED, bump);
-    };
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) {
-      setQuery("");
-      setSelectMode(false);
-      setSelected(new Set());
-      setDetailEntry(null);
-      return;
-    }
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
     };
   }, [open]);
 
@@ -428,16 +432,31 @@ export function GlobeContainerSpaceSidebar({
   const isAgentArming =
     agentPickMode || readGlobeContextAgentSession().phase === "arming";
 
-  const handleSelect = (entry: GlobeContextTimelineEntry) => {
-    if (readGlobeContextAgentSession().phase === "arming" || agentPickMode) {
+  const commitContextAgentBind = useCallback(
+    async (entry: GlobeContextTimelineEntry) => {
+      const eventId = entry.eventId.trim();
+      if (!eventId || !onAgentContextPick || agentPressBusyRef.current) {
+        return;
+      }
+      agentPressBusyRef.current = true;
+      pendingAgentBindRef.current = true;
       setAgentPickMode(false);
       setDetailEntry(null);
-      const eventId = entry.eventId.trim();
-      if (eventId) {
-        bindGlobeContextAgent(eventId);
+      bindGlobeContextAgent(eventId);
+      try {
+        await onAgentContextPick(entry);
+      } finally {
+        pendingAgentBindRef.current = false;
+        agentPressBusyRef.current = false;
+        onOpenChange(false);
       }
-      onAgentContextPick?.(entry);
-      onOpenChange(false);
+    },
+    [onAgentContextPick, onOpenChange],
+  );
+
+  const handleSelect = (entry: GlobeContextTimelineEntry) => {
+    if (readGlobeContextAgentSession().phase === "arming" || agentPickMode) {
+      void commitContextAgentBind(entry);
       return;
     }
     if (selectMode) {
@@ -453,7 +472,10 @@ export function GlobeContainerSpaceSidebar({
     return eventId ? findLifeEventCandidate(eventId) : null;
   }, [detailEntry?.eventId, revision]);
 
-  const handleAgentPress = () => {
+  const handleAgentPress = useCallback(async () => {
+    if (agentPressBusyRef.current) {
+      return;
+    }
     if (isAgentArming) {
       cancelGlobeContextAgentArm();
       setAgentPickMode(false);
@@ -465,19 +487,19 @@ export function GlobeContainerSpaceSidebar({
     setSelectMode(false);
     setSelected(new Set());
     if (detailEntry) {
-      setAgentPickMode(false);
-      const eventId = detailEntry.eventId.trim();
-      if (eventId) {
-        bindGlobeContextAgent(eventId);
-      }
-      onAgentContextPick(detailEntry);
-      onOpenChange(false);
+      await commitContextAgentBind(detailEntry);
       return;
     }
     setDetailEntry(null);
     armGlobeContextAgent();
     setAgentPickMode(true);
-  };
+    toast.message(copy.globe.containerSpaceAgentPickHint);
+  }, [
+    commitContextAgentBind,
+    detailEntry,
+    isAgentArming,
+    onAgentContextPick,
+  ]);
 
   const agentCtaLabel = detailEntry
     ? copy.globe.containerSpaceAgentBindDetail
@@ -486,7 +508,37 @@ export function GlobeContainerSpaceSidebar({
       : copy.globe.containerSpaceAgentCta;
 
   const showAgentCta = Boolean(onAgentContextPick) && !selectMode;
-  const agentCtaDisabled = !detailEntry && recent.length === 0;
+  const agentCtaDisabled =
+    !detailEntry && recent.length === 0 && listEntries.length === 0 && !pinned;
+
+  const renderAgentCta = (className?: string) => {
+    if (!showAgentCta) {
+      return null;
+    }
+    return (
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          void handleAgentPress();
+        }}
+        onPointerDown={(event) => event.stopPropagation()}
+        disabled={agentCtaDisabled}
+        className={cn(
+          "flex min-h-11 w-full touch-manipulation items-center gap-2 rounded-full px-3.5 py-2.5 text-left text-[14px] font-semibold ring-1 transition-colors active:scale-[0.99]",
+          isAgentArming
+            ? "bg-white/12 text-white ring-white/20"
+            : "bg-[#0071e3]/20 text-[#9fd0ff] ring-[#0071e3]/35 active:bg-[#0071e3]/28",
+          agentCtaDisabled && "pointer-events-none opacity-40",
+          className,
+        )}
+        data-globe-container-space-agent
+      >
+        <Sparkles className="size-4 shrink-0" aria-hidden />
+        {agentCtaLabel}
+      </button>
+    );
+  };
 
   const handleNew = () => {
     onNewContext?.();
@@ -544,6 +596,8 @@ export function GlobeContainerSpaceSidebar({
             transition={{ type: "spring", stiffness: 380, damping: 36 }}
             className="fixed bottom-0 left-0 top-0 z-[10041] flex w-[min(88vw,19.5rem)] flex-col bg-[#0a0f18] text-white shadow-2xl ring-1 ring-white/10"
             data-globe-container-space-sidebar
+            onClick={(event) => event.stopPropagation()}
+            onPointerDown={(event) => event.stopPropagation()}
           >
             <div className="shrink-0 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
               <div className="flex items-center justify-between gap-2">
@@ -627,24 +681,7 @@ export function GlobeContainerSpaceSidebar({
                 </p>
               )}
 
-              {showAgentCta ? (
-                <button
-                  type="button"
-                  onClick={handleAgentPress}
-                  disabled={agentCtaDisabled}
-                  className={cn(
-                    "mt-2 flex w-full items-center gap-2 rounded-full px-3.5 py-2.5 text-left text-[14px] font-semibold ring-1 transition-colors active:scale-[0.99]",
-                    isAgentArming
-                      ? "bg-white/12 text-white ring-white/20"
-                      : "bg-[#0071e3]/20 text-[#9fd0ff] ring-[#0071e3]/35 active:bg-[#0071e3]/28",
-                    agentCtaDisabled && "pointer-events-none opacity-40",
-                  )}
-                  data-globe-container-space-agent
-                >
-                  <Sparkles className="size-4 shrink-0" aria-hidden />
-                  {agentCtaLabel}
-                </button>
-              ) : null}
+              {renderAgentCta("mt-2")}
 
               {!detailEntry ? (
               <label className="relative mt-2.5 block">
@@ -759,12 +796,23 @@ export function GlobeContainerSpaceSidebar({
             ) : null}
 
             <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3 [scrollbar-width:thin]">
-              {detailEntry && detailEvent ? (
-                <GlobeContextRuntimePanel
-                  event={detailEvent}
-                  onFlyTo={onFlyToRuntime}
-                  onChanged={() => setRevision((value) => value + 1)}
-                />
+              {detailEntry ? (
+                detailEvent ? (
+                  <GlobeContextRuntimePanel
+                    event={detailEvent}
+                    onFlyTo={onFlyToRuntime}
+                    onChanged={() => setRevision((value) => value + 1)}
+                  />
+                ) : (
+                  <p className="px-2 py-8 text-center text-[13px] leading-relaxed text-white/45">
+                    {copy.globe.containerSpaceRuntimeEmpty.split("\n").map((line, index) => (
+                      <span key={line}>
+                        {index > 0 ? <br /> : null}
+                        {line}
+                      </span>
+                    ))}
+                  </p>
+                )
               ) : (
                 <>
               {pinned ? (
@@ -861,6 +909,8 @@ export function GlobeContainerSpaceSidebar({
                       ? deleteSelection.label
                       : copy.globe.containerSpaceSelectPrompt}
                 </button>
+              ) : detailEntry || isAgentArming ? (
+                renderAgentCta()
               ) : !detailEntry ? (
               <div className="flex items-center justify-between gap-2">
                 <button
