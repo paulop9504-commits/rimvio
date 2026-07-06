@@ -6,9 +6,12 @@ import type { RefObject } from "react";
 import { toast } from "sonner";
 import { GlobeBrainSurfaceFloatingFrame } from "@/components/globe/globe-brain-surface-floating-frame";
 import { GlobeContextAgentConditionQuestions } from "@/components/globe/globe-context-agent-condition-questions";
+import { GlobeContextAgentPreflightBubble } from "@/components/globe/globe-context-agent-preflight-bubble";
 import { GlobeContextAgentProcessStrip } from "@/components/globe/globe-context-agent-process-strip";
 import { GlobeContextAgentRecommendationList } from "@/components/globe/globe-context-agent-recommendation-list";
 import { GlobeContextConditionOrb } from "@/components/globe/globe-context-condition-orb";
+import { GlobeContextAgentSpatialPatchPreview } from "@/components/globe/globe-context-agent-spatial-patch-preview";
+import { GlobeContextActionInjectionCard } from "@/components/globe/globe-context-action-injection-card";
 import { GlobeContextAgentRefineChips } from "@/components/globe/globe-context-agent-refine-chips";
 import { GlobeContextConditionPinBar, type GlobeContextConditionPinBarHandle } from "@/components/globe/globe-context-condition-pin-bar";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
@@ -30,14 +33,38 @@ import type {
 } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
 import {
   readContextAgentRuntimeState,
+  readContextAgentSessionState,
+  resolveContextAgentWorkPhaseLabel,
   subscribeContextAgentRuntime,
+  subscribeContextAgentSession,
+  setContextAgentSessionPhase,
   isGlobeContextAgentBound,
   type ContextAgentRuntimeState,
+  type ContextAgentSessionState,
 } from "@/lib/globe/context-agent";
-import { resolveContextAgentZeroPrompt } from "@/lib/globe/context-agent/resolve-context-agent-zero-prompt";
+import type { SpatialPatchPreview } from "@/lib/globe/context-condition-ai/spatial-patch-types";
+import {
+  confirmContextActionInjection,
+  dismissContextActionInjection,
+  markContextActionInjectionExecuted,
+  publishContextActionInjection,
+  readContextActionInjection,
+  subscribeContextActionInjection,
+  clearContextActionInjection,
+} from "@/lib/globe/context-action-injection";
+import type { ContextActionInjection } from "@/lib/globe/context-action-injection/types";
+import {
+  buildContextAgentPreflightBriefing,
+  resolveContextAgentZeroPrompt,
+} from "@/lib/globe/context-agent";
+import { fetchWeatherForecastClient } from "@/lib/context-resolver/weather/fetch-weather-forecast-client";
+import { resolveBridgeContextWeatherTarget } from "@/lib/globe/resolve-bridge-context-weather-target";
+import type { WeatherContext } from "@/lib/context-resolver/types";
 import { buildTravelBrainState } from "@/lib/situation-projection/travel-brain-personalization";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 import { cn } from "@/lib/utils";
+
+const PREFLIGHT_READ_MS = 2800;
 
 export type GlobeContextConditionPromptFrameProps = {
   open: boolean;
@@ -54,20 +81,14 @@ export type GlobeContextConditionPromptFrameProps = {
   className?: string;
 };
 
-function resolveStatusLabel(runtime: ContextAgentRuntimeState): string {
-  if (runtime.lifecycle === "idle") {
-    return copy.globe.contextAgentStatusIdle;
-  }
-  switch (runtime.processPhase) {
-    case "exploring":
-      return copy.globe.contextAgentStatusExplore;
-    case "analyzing":
-      return copy.globe.contextAgentStatusAnalyze;
-    case "optimizing":
-      return copy.globe.contextAgentStatusPin;
-    default:
-      return copy.globe.contextAgentStatusBusy;
-  }
+function resolveStatusLabel(
+  runtime: ContextAgentRuntimeState,
+  session: ContextAgentSessionState,
+): string {
+  return resolveContextAgentWorkPhaseLabel(
+    session.workPhase,
+    runtime.processPhase,
+  );
 }
 
 /** Context-bound execution layer — state machine + condition pin bar (not generic chat). */
@@ -90,6 +111,14 @@ export function GlobeContextConditionPromptFrame({
   const [runtime, setRuntime] = useState<ContextAgentRuntimeState>(() =>
     readContextAgentRuntimeState(),
   );
+  const [agentSession, setAgentSession] = useState<ContextAgentSessionState>(() =>
+    readContextAgentSessionState(),
+  );
+  const [patchPreview, setPatchPreview] = useState<SpatialPatchPreview | null>(
+    null,
+  );
+  const [actionInjection, setActionInjection] =
+    useState<ContextActionInjection | null>(() => readContextActionInjection());
   const [questions, setQuestions] = useState<readonly LocalDiscoveryQuestion[]>([]);
   const [recommendations, setRecommendations] = useState<
     readonly ContextConditionRecommendation[]
@@ -100,6 +129,8 @@ export function GlobeContextConditionPromptFrame({
   const pinBarRef = useRef<GlobeContextConditionPinBarHandle>(null);
   const zeroPromptRanRef = useRef(false);
   const [situationLine, setSituationLine] = useState<string | null>(null);
+  const [preflightLine, setPreflightLine] = useState<string | null>(null);
+  const [weatherContext, setWeatherContext] = useState<WeatherContext | null>(null);
   const [refineBusy, setRefineBusy] = useState(false);
   const [pickBusyPlaceId, setPickBusyPlaceId] = useState<string | null>(null);
   const [pinnedRevision, setPinnedRevision] = useState(0);
@@ -113,7 +144,9 @@ export function GlobeContextConditionPromptFrame({
     }
     zeroPromptRanRef.current = false;
     setSituationLine(null);
-    setBodyExpanded(false);
+    setPreflightLine(null);
+    setWeatherContext(null);
+    setBodyExpanded(true);
     setQuestions([]);
     const batch = readContextConditionLastBatch(event.id);
     setLastSummary(batch?.summaryKo ?? null);
@@ -130,9 +163,56 @@ export function GlobeContextConditionPromptFrame({
     );
     if ((batch?.recommendations?.length ?? 0) > 0) {
       setBodyExpanded(true);
+      setContextAgentSessionPhase("awaiting_human");
     }
     setActiveSpec(batch?.spec ?? null);
-  }, [anchorLat, anchorLng, event, open]);
+    if (event) {
+      const briefing = buildContextAgentPreflightBriefing({
+        event,
+        anchorPlaceName,
+      });
+      setPreflightLine(briefing.briefingLineKo);
+      setSituationLine(briefing.briefingLineKo);
+    }
+  }, [anchorLat, anchorLng, anchorPlaceName, event, open]);
+
+  useEffect(() => {
+    if (!open || !event) {
+      return;
+    }
+    const target = resolveBridgeContextWeatherTarget(event);
+    if (!target) {
+      return;
+    }
+    let cancelled = false;
+    void fetchWeatherForecastClient({
+      location: target.location,
+      targetIso: target.targetIso,
+      eventDate: target.eventDate,
+      eventTimeSource: target.eventTimeSource,
+    }).then((payload) => {
+      if (cancelled) {
+        return;
+      }
+      setWeatherContext(payload?.weather ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [event, open]);
+
+  useEffect(() => {
+    if (!open || !event) {
+      return;
+    }
+    const briefing = buildContextAgentPreflightBriefing({
+      event,
+      anchorPlaceName,
+      weather: weatherContext,
+    });
+    setPreflightLine(briefing.briefingLineKo);
+    setSituationLine(briefing.briefingLineKo);
+  }, [anchorPlaceName, event, open, weatherContext]);
 
   useEffect(() => {
     if (!open || !event || zeroPromptRanRef.current) {
@@ -147,16 +227,19 @@ export function GlobeContextConditionPromptFrame({
     }
 
     zeroPromptRanRef.current = true;
+    setContextAgentSessionPhase("briefing");
     const zero = resolveContextAgentZeroPrompt({
       event,
       anchorPlaceName,
+      weather: weatherContext,
     });
-    setSituationLine(zero.situationLineKo);
+    setSituationLine(zero.preflightBriefingKo);
+    setPreflightLine(zero.preflightBriefingKo);
     setBodyExpanded(true);
 
     void (async () => {
       await new Promise<void>((resolve) => {
-        window.setTimeout(resolve, 0);
+        window.setTimeout(resolve, PREFLIGHT_READ_MS);
       });
       setRefineBusy(true);
       try {
@@ -169,6 +252,14 @@ export function GlobeContextConditionPromptFrame({
 
   useEffect(() => {
     return subscribeContextAgentRuntime(setRuntime);
+  }, []);
+
+  useEffect(() => {
+    return subscribeContextAgentSession(setAgentSession);
+  }, []);
+
+  useEffect(() => {
+    return subscribeContextActionInjection(setActionInjection);
   }, []);
 
   const travelLines = useMemo(() => {
@@ -200,6 +291,7 @@ export function GlobeContextConditionPromptFrame({
           eventId: event.id,
           recommendation: item,
         });
+        setContextAgentSessionPhase("pinned");
         setPinnedRevision((value) => value + 1);
         toast.success(copy.globe.contextQuickPinToast(item.title));
         globeRef?.current?.flyToPin(item.lat, item.lng, "city", {
@@ -221,6 +313,7 @@ export function GlobeContextConditionPromptFrame({
     setLastSummary(outcome.summaryKo);
     setRecommendations(outcome.recommendations);
     setActiveSpec(outcome.spec);
+    setContextAgentSessionPhase("awaiting_human");
     setBodyExpanded(true);
     if (outcome.pinPoints.length === 0) {
       return;
@@ -259,15 +352,57 @@ export function GlobeContextConditionPromptFrame({
     },
   });
 
+  const handleConfirmActionInjection = () => {
+    if (!actionInjection) {
+      return;
+    }
+    const confirmed = confirmContextActionInjection(actionInjection);
+    publishContextActionInjection(confirmed);
+    setActionInjection(confirmed);
+    setContextAgentSessionPhase("awaiting_human");
+  };
+
+  const handleRejectActionInjection = () => {
+    if (!actionInjection) {
+      return;
+    }
+    const dismissed = dismissContextActionInjection(actionInjection);
+    clearContextActionInjection();
+    setActionInjection(null);
+    void dismissed;
+  };
+
+  const handleExecuteActionInjection = () => {
+    if (!actionInjection) {
+      return;
+    }
+    const executed = markContextActionInjectionExecuted(actionInjection);
+    publishContextActionInjection(executed);
+    setActionInjection(executed);
+    toast.success(copy.globe.contextActionInjectedEyebrow);
+  };
+
   const showRefineChips = recommendations.length > 0;
-  const chipsDisabled = refineBusy || runtime.lifecycle === "busy";
+  const chipsDisabled =
+    refineBusy ||
+    runtime.lifecycle === "busy" ||
+    agentSession.workPhase === "scouting" ||
+    agentSession.workPhase === "replanning";
+  const showPreflightChat =
+    Boolean(preflightLine) &&
+    recommendations.length === 0 &&
+    questions.length === 0 &&
+    agentSession.workPhase === "briefing";
 
   if (!open || !event) {
     return null;
   }
 
-  const statusLabel = resolveStatusLabel(runtime);
-  const showProcessStrip = runtime.lifecycle === "busy" && runtime.processPhase != null;
+  const statusLabel = resolveStatusLabel(runtime, agentSession);
+  const showProcessStrip =
+    (runtime.lifecycle === "busy" && runtime.processPhase != null) ||
+    agentSession.workPhase === "scouting" ||
+    agentSession.workPhase === "replanning";
 
   return (
     <GlobeBrainSurfaceFloatingFrame
@@ -350,26 +485,35 @@ export function GlobeContextConditionPromptFrame({
           </div>
         ) : null}
 
-        {situationLine && recommendations.length === 0 && questions.length === 0 ? (
-          <div className="border-b border-black/[0.05] px-3 py-2.5">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[#86868b]">
-              {copy.globe.localDiscoverySituationEyebrow}
-            </p>
-            <p className="mt-1 text-[12px] leading-relaxed text-[#1d1d1f]">
-              {situationLine}
-            </p>
+        {showPreflightChat ? (
+          <div className="min-h-[7.5rem] flex-1 overflow-y-auto overscroll-contain px-3 py-3">
+            <GlobeContextAgentPreflightBubble briefingLine={preflightLine ?? ""} />
+            {refineBusy || runtime.lifecycle === "busy" ? (
+              <p className="mt-3 px-1 text-[11px] leading-relaxed text-[#86868b]">
+                {copy.globe.contextAgentPreflightScoutSoon}
+              </p>
+            ) : null}
           </div>
-        ) : null}
-
-        {bodyExpanded ? (
+        ) : bodyExpanded ? (
           <div
             className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-3 py-3"
             data-globe-context-condition-conversation
           >
-            {situationLine ? (
-              <p className="rounded-xl bg-[#0071e3]/8 px-2.5 py-2 text-[11px] leading-relaxed text-[#1d1d1f]">
-                {situationLine}
-              </p>
+            {preflightLine ? (
+              <GlobeContextAgentPreflightBubble briefingLine={preflightLine} />
+            ) : null}
+            {patchPreview ? (
+              <GlobeContextAgentSpatialPatchPreview preview={patchPreview} />
+            ) : null}
+            {actionInjection &&
+            actionInjection.phase !== "dismissed" &&
+            actionInjection.phase !== "executed" ? (
+              <GlobeContextActionInjectionCard
+                injection={actionInjection}
+                onConfirm={handleConfirmActionInjection}
+                onReject={handleRejectActionInjection}
+                onExecute={handleExecuteActionInjection}
+              />
             ) : null}
             {recommendations.length > 0 ? (
               <GlobeContextAgentRecommendationList
@@ -403,9 +547,9 @@ export function GlobeContextConditionPromptFrame({
               </p>
             ) : null}
           </div>
-        ) : questions.length === 0 ? (
+        ) : questions.length === 0 && !showPreflightChat ? (
           <p className="px-3 py-2 text-[11px] leading-relaxed text-[#86868b]">
-            {situationLine ??
+            {preflightLine ??
               (recommendations.length > 0
                 ? copy.globe.localDiscoveryRefineHint
                 : copy.globe.contextAgentComposeHint)}
@@ -433,6 +577,8 @@ export function GlobeContextConditionPromptFrame({
             onPinned={handlePinned}
             onQuestionsChange={setQuestions}
             onRecommendationsChange={setRecommendations}
+            onPatchPreviewChange={setPatchPreview}
+            onActionInjectionChange={setActionInjection}
             registerQuestionHandler={(handler) => {
               questionHandlerRef.current = handler;
             }}

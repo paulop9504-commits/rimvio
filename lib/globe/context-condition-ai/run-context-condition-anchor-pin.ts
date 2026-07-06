@@ -29,6 +29,8 @@ import { LOCAL_DISCOVERY_RECOMMEND_CAP } from "@/lib/globe/context-condition-ai/
 import { pickTopLocalDiscoveryRows } from "@/lib/globe/context-condition-ai/pick-top-local-discovery-rows";
 import { buildContextConditionDiscoveryOverlay } from "@/lib/globe/context-condition-ai/build-context-condition-discovery-overlay";
 import { publishContextConditionDiscoveryOverlay } from "@/lib/globe/context-condition-ai/context-condition-discovery-overlay-bridge";
+import { resolveSpatialPatchKeptRows } from "@/lib/globe/context-condition-ai/resolve-spatial-patch-kept-rows";
+import type { SpatialPatchPlan } from "@/lib/globe/context-condition-ai/spatial-patch-types";
 import { buildTravelBrainState } from "@/lib/situation-projection/travel-brain-personalization";
 
 export type { ContextConditionAnchorPinOutcome } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
@@ -42,6 +44,8 @@ export type ContextConditionAnchorPinInput = {
   anchorPriceKrw?: number | null;
   message?: string | null;
   spec: LocalDiscoveryActionSpec;
+  patchPlan?: SpatialPatchPlan | null;
+  keptRecommendations?: readonly ContextConditionRecommendation[];
   onProcessPhase?: (phase: import("@/lib/globe/context-agent/context-agent-runtime-state").ContextAgentProcessPhase) => void;
 };
 
@@ -170,10 +174,23 @@ export async function runContextConditionAnchorPin(
     lng: input.anchorLng,
   });
 
+  const patchScope = input.patchPlan?.scope ?? "all";
   const wantsLodging =
-    spec.resourceTypes.includes("hotel") && intent.lodgingSimilar !== false;
+    patchScope !== "eatery_only" &&
+    spec.resourceTypes.includes("hotel") &&
+    intent.lodgingSimilar !== false;
   const wantsEatery =
-    spec.resourceTypes.includes("restaurant") && intent.eateryNearby !== false;
+    patchScope !== "lodging_only" &&
+    spec.resourceTypes.includes("restaurant") &&
+    intent.eateryNearby !== false;
+
+  const keptRows =
+    input.keptRecommendations && input.keptRecommendations.length > 0
+      ? resolveSpatialPatchKeptRows({
+          event,
+          kept: input.keptRecommendations,
+        })
+      : null;
 
   let lodgingRows: Awaited<
     ReturnType<typeof loadLodgingInventoryRows>
@@ -242,7 +259,13 @@ export async function runContextConditionAnchorPin(
     return null;
   }
 
-  const picked = pickTopLocalDiscoveryRows({ lodgingScored, eateryScored });
+  const picked = pickTopLocalDiscoveryRows({
+    lodgingScored: [
+      ...(keptRows?.lodgingScored ?? []),
+      ...lodgingScored,
+    ],
+    eateryScored: [...(keptRows?.eateryScored ?? []), ...eateryScored],
+  });
   lodgingScored = picked.lodgingScored;
   eateryScored = picked.eateryScored;
   lodgingRows = picked.lodgingRows;

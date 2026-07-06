@@ -7,11 +7,14 @@ import {
   resolveLocalDiscoveryAction,
 } from "../lib/globe/context-condition-ai/resolve-local-discovery-action";
 import { resolveContextAgentZeroPrompt } from "../lib/globe/context-agent/resolve-context-agent-zero-prompt";
+import { buildContextAgentPreflightBriefing } from "../lib/globe/context-agent/build-context-agent-preflight-briefing";
 import type { EventCandidate } from "../lib/events/event-candidate";
 import { buildContextConditionDiscoveryOverlay } from "../lib/globe/context-condition-ai/build-context-condition-discovery-overlay";
 import { evaluateContextConditionAutoReplan } from "../lib/globe/context-condition-ai/evaluate-context-condition-auto-replan";
 import { discoveryRadiusMetersToRingDegrees } from "../lib/globe/discovery-radius-ring-degrees";
 import { readContextConditionPinnedPlaceIds } from "../lib/globe/context-condition-ai/pin-context-condition-recommendation";
+import { planSpatialPatch, buildSpatialPatchPreview } from "../lib/globe/context-condition-ai/plan-spatial-patch";
+import { canTransitionContextAgentWorkPhase } from "../lib/globe/context-agent/context-agent-work-phase";
 import { CONTEXT_EATERY_PINNED_RESOURCE_ID_META_KEY } from "../lib/globe/eatery/eatery-resource-types";
 import { CONTEXT_LODGING_PINNED_RESOURCE_ID_META_KEY } from "../lib/globe/context-pinned-item";
 
@@ -74,8 +77,19 @@ const zero = resolveContextAgentZeroPrompt({
   anchorPlaceName: "오사카",
   now: new Date("2026-07-06T18:30:00+09:00"),
 });
-assert.match(zero.situationLineKo, /저녁 시간/);
+assert.match(zero.situationLineKo, /오사카/);
+assert.match(zero.preflightBriefingKo, /오사카/);
 assert.match(zero.triggerMessage, /저녁/);
+
+const preflight = buildContextAgentPreflightBriefing({
+  event: mockEvent,
+  anchorPlaceName: "오사카",
+  now: new Date("2026-07-06T18:30:00+09:00"),
+  weather: { condition: "rain", summary: "비", temp_c: 22, precipitation_chance: 0.8 },
+});
+assert.match(preflight.briefingLineKo, /오사카/);
+assert.match(preflight.briefingLineKo, /비 예보/);
+assert.match(preflight.briefingLineKo, /숙소 아직 안 고름/);
 
 const overlay = buildContextConditionDiscoveryOverlay({
   contextEventId: "ev-test",
@@ -115,5 +129,54 @@ const pinnedEvent = {
 const pinned = readContextConditionPinnedPlaceIds(pinnedEvent);
 assert.equal(pinned.lodging, "hotel-abc");
 assert.equal(pinned.eatery, "ramen-1");
+
+const patchPlan = planSpatialPatch({
+  message: "숙소는 그대로 두고 맛집만 더 좋은 데로 바꿔줘",
+  currentSpec: baseSpec,
+  previousRecommendations: [
+    {
+      kind: "lodging",
+      title: "Hotel A",
+      reasonKo: "a",
+      rank: 1,
+      placeId: "h1",
+      lat: 1,
+      lng: 1,
+    },
+    {
+      kind: "eatery",
+      title: "Eat A",
+      reasonKo: "b",
+      rank: 2,
+      placeId: "e1",
+      lat: 1,
+      lng: 1,
+    },
+  ],
+});
+assert.equal(patchPlan.scope, "eatery_only");
+assert.deepEqual(patchPlan.keepKinds, ["lodging"]);
+assert.deepEqual(patchPlan.replaceKinds, ["eatery"]);
+
+const patchPreview = buildSpatialPatchPreview({
+  plan: patchPlan,
+  previousRecommendations: [
+    {
+      kind: "lodging",
+      title: "Hotel A",
+      reasonKo: "a",
+      rank: 1,
+      placeId: "h1",
+      lat: 1,
+      lng: 1,
+    },
+  ],
+});
+assert.equal(patchPreview.kept.length, 1);
+assert.equal(patchPreview.kept[0]?.placeId, "h1");
+
+assert.equal(canTransitionContextAgentWorkPhase("briefing", "scouting"), true);
+assert.equal(canTransitionContextAgentWorkPhase("scouting", "deciding"), true);
+assert.equal(canTransitionContextAgentWorkPhase("idle", "deciding"), false);
 
 console.log("test-context-agent-mvp: ok");

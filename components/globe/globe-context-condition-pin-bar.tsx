@@ -11,6 +11,9 @@ import { toast } from "sonner";
 import { GlobeContextConditionOrb } from "@/components/globe/globe-context-condition-orb";
 import { copy } from "@/lib/copy/human-ko";
 import {
+  buildSpatialPatchPreview,
+  planSpatialPatch,
+  readContextConditionPinnedPlaceIds,
   clearContextConditionLastBatch,
   readContextConditionLastBatch,
   runContextConditionAnchorPin,
@@ -19,24 +22,33 @@ import {
   type ContextConditionAnchorPinOutcome,
 } from "@/lib/globe/context-condition-ai";
 import {
+  buildContextActionInjection,
+  publishContextActionInjection,
+  resolveContextActionIntent,
+} from "@/lib/globe/context-action-injection";
+import type { ContextActionInjection } from "@/lib/globe/context-action-injection/types";
+import {
   clearContextConditionPending,
   readContextConditionPending,
   writeContextConditionPending,
 } from "@/lib/globe/context-condition-ai/context-condition-pending-spec-store";
 import type {
+  ContextConditionRecommendation,
   LocalDiscoveryQuestion,
   LocalDiscoveryQuestionChoice,
 } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
 import {
   applyQuestionChoice,
   isLocalDiscoveryRefinement,
-  refineLocalDiscoverySpec,
   resolveLocalDiscoveryAction,
 } from "@/lib/globe/context-condition-ai/resolve-local-discovery-action";
 import {
   beginContextAgentWork,
   finishContextAgentWork,
   setContextAgentProcessPhase,
+  setContextAgentSessionPatchPreview,
+  setContextAgentSessionPhase,
+  setContextAgentSessionSpec,
 } from "@/lib/globe/context-agent";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 import { buildTravelBrainState } from "@/lib/situation-projection/travel-brain-personalization";
@@ -61,6 +73,10 @@ export type GlobeContextConditionPinBarProps = {
   onRecommendationsChange?: (
     items: ContextConditionAnchorPinOutcome["recommendations"],
   ) => void;
+  onPatchPreviewChange?: (
+    preview: import("@/lib/globe/context-condition-ai/spatial-patch-types").SpatialPatchPreview | null,
+  ) => void;
+  onActionInjectionChange?: (injection: ContextActionInjection | null) => void;
   registerQuestionHandler?: (
     handler: (choice: LocalDiscoveryQuestionChoice) => void,
   ) => void;
@@ -108,6 +124,8 @@ export const GlobeContextConditionPinBar = forwardRef<
   onPinned,
   onQuestionsChange,
   onRecommendationsChange,
+  onPatchPreviewChange,
+  onActionInjectionChange,
   registerQuestionHandler,
   className,
   },
@@ -122,19 +140,75 @@ export const GlobeContextConditionPinBar = forwardRef<
     ContextConditionAnchorPinOutcome["spec"] | null
   >(null);
 
+  const [lastRecommendations, setLastRecommendations] = useState<
+    readonly ContextConditionRecommendation[]
+  >([]);
+
+  function wireRecommendations(
+    batch: ContextConditionLastBatchWire | null,
+  ): ContextConditionRecommendation[] {
+    return (batch?.recommendations ?? []).map((row, index) => ({
+      kind: row.kind,
+      title: row.title,
+      reasonKo: row.reasonKo,
+      rank: index + 1,
+      placeId: row.placeId ?? `${row.kind}-${index}`,
+      lat: row.lat ?? anchorLat,
+      lng: row.lng ?? anchorLng,
+    }));
+  }
+
   useEffect(() => {
     const batch = readContextConditionLastBatch(contextEventId);
     setLastBatch(batch);
     setLastSpec(batch?.spec ?? null);
+    const wired = wireRecommendations(batch);
+    setLastRecommendations(wired);
+    onRecommendationsChange?.(wired);
     const pending = readContextConditionPending(contextEventId);
     onQuestionsChange?.(pending?.questions ?? []);
-  }, [contextEventId, onQuestionsChange]);
+  }, [anchorLat, anchorLng, contextEventId, onQuestionsChange, onRecommendationsChange]);
+
+  const tryPublishActionInjection = useCallback(
+    async (triggerMessage: string): Promise<boolean> => {
+      const event = findLifeEventCandidate(contextEventId);
+      if (!event) {
+        return false;
+      }
+      const pinned = readContextConditionPinnedPlaceIds(event);
+      const pinnedResourceKind = pinned.lodging
+        ? "lodging"
+        : pinned.eatery
+          ? "eatery"
+          : null;
+      const intent = resolveContextActionIntent({
+        message: triggerMessage,
+        pinnedResourceKind,
+      });
+      if (!intent) {
+        return false;
+      }
+      const built = buildContextActionInjection({ event, intent });
+      if (!built) {
+        toast.message(copy.globe.contextActionPinFirstHint);
+        return true;
+      }
+      publishContextActionInjection(built);
+      onActionInjectionChange?.(built);
+      setMessage("");
+      return true;
+    },
+    [contextEventId, onActionInjectionChange],
+  );
 
   const executeWithSpec = useCallback(
     async (input: {
       triggerMessage: string;
       spec: ContextConditionAnchorPinOutcome["spec"];
+      patchPlan?: ReturnType<typeof planSpatialPatch> | null;
+      keptRecommendations?: readonly ContextConditionRecommendation[];
     }) => {
+      setContextAgentSessionPhase("scouting");
       beginContextAgentWork("exploring");
       const outcome = await runContextConditionAnchorPin({
         contextEventId,
@@ -145,10 +219,14 @@ export const GlobeContextConditionPinBar = forwardRef<
         anchorPriceKrw,
         message: input.triggerMessage,
         spec: input.spec,
+        patchPlan: input.patchPlan ?? null,
+        keptRecommendations: input.keptRecommendations,
         onProcessPhase: setContextAgentProcessPhase,
       });
       if (!outcome) {
         toast.message(copy.globe.contextConditionPinEmpty);
+        setContextAgentSessionPatchPreview(null);
+        onPatchPreviewChange?.(null);
         return null;
       }
       const wire: ContextConditionLastBatchWire = {
@@ -162,14 +240,22 @@ export const GlobeContextConditionPinBar = forwardRef<
           kind: row.kind,
           title: row.title,
           reasonKo: row.reasonKo,
+          placeId: row.placeId,
+          lat: row.lat,
+          lng: row.lng,
         })),
       };
       setLastBatch(wire);
       setLastSpec(outcome.spec);
+      setLastRecommendations(outcome.recommendations);
       setMessage("");
       onQuestionsChange?.([]);
       onRecommendationsChange?.(outcome.recommendations);
       clearContextConditionPending(contextEventId);
+      setContextAgentSessionSpec(outcome.spec);
+      setContextAgentSessionPhase("deciding");
+      setContextAgentSessionPatchPreview(null);
+      onPatchPreviewChange?.(null);
       toast.success(outcome.summaryKo);
       onPinned?.(outcome);
       return outcome;
@@ -181,6 +267,7 @@ export const GlobeContextConditionPinBar = forwardRef<
       anchorPlaceName,
       anchorPriceKrw,
       contextEventId,
+      onPatchPreviewChange,
       onPinned,
       onQuestionsChange,
       onRecommendationsChange,
@@ -209,6 +296,7 @@ export const GlobeContextConditionPinBar = forwardRef<
       });
 
       if (resolved.status === "questions") {
+        setContextAgentSessionPhase("collecting_context");
         writeContextConditionPending(contextEventId, {
           triggerMessage,
           questions: resolved.questions,
@@ -235,9 +323,32 @@ export const GlobeContextConditionPinBar = forwardRef<
     }
     setBusy(true);
     try {
-      if (lastSpec && isLocalDiscoveryRefinement(text)) {
-        const nextSpec = refineLocalDiscoverySpec(lastSpec, text);
-        await executeWithSpec({ triggerMessage: text, spec: nextSpec });
+      if (text && (await tryPublishActionInjection(text))) {
+        return;
+      }
+      if (lastSpec && (isLocalDiscoveryRefinement(text) || lastRecommendations.length > 0)) {
+        const event = findLifeEventCandidate(contextEventId);
+        const pinned = readContextConditionPinnedPlaceIds(event);
+        const patchPlan = planSpatialPatch({
+          message: text,
+          currentSpec: lastSpec,
+          previousRecommendations: lastRecommendations,
+          pinnedPlaceIds: pinned,
+        });
+        const preview = buildSpatialPatchPreview({
+          plan: patchPlan,
+          previousRecommendations: lastRecommendations,
+          pinnedPlaceIds: pinned,
+        });
+        setContextAgentSessionPhase("replanning");
+        setContextAgentSessionPatchPreview(preview);
+        onPatchPreviewChange?.(preview);
+        await executeWithSpec({
+          triggerMessage: text,
+          spec: patchPlan.nextSpec,
+          patchPlan,
+          keptRecommendations: preview.kept,
+        });
         return;
       }
 
@@ -255,8 +366,11 @@ export const GlobeContextConditionPinBar = forwardRef<
     contextEventId,
     executeWithSpec,
     lastSpec,
+    lastRecommendations,
     message,
+    onPatchPreviewChange,
     resolveAndMaybeExecute,
+    tryPublishActionInjection,
   ]);
 
   const submitTrigger = useCallback(
@@ -267,13 +381,16 @@ export const GlobeContextConditionPinBar = forwardRef<
       }
       setBusy(true);
       try {
+        if (await tryPublishActionInjection(text)) {
+          return;
+        }
         await resolveAndMaybeExecute(text);
       } finally {
         setBusy(false);
         finishContextAgentWork();
       }
     },
-    [busy, resolveAndMaybeExecute],
+    [busy, resolveAndMaybeExecute, tryPublishActionInjection],
   );
 
   const submitRefinement = useCallback(
@@ -284,14 +401,41 @@ export const GlobeContextConditionPinBar = forwardRef<
       }
       setBusy(true);
       try {
-        const nextSpec = refineLocalDiscoverySpec(lastSpec, text);
-        await executeWithSpec({ triggerMessage: text, spec: nextSpec });
+        const event = findLifeEventCandidate(contextEventId);
+        const pinned = readContextConditionPinnedPlaceIds(event);
+        const patchPlan = planSpatialPatch({
+          message: text,
+          currentSpec: lastSpec,
+          previousRecommendations: lastRecommendations,
+          pinnedPlaceIds: pinned,
+        });
+        const preview = buildSpatialPatchPreview({
+          plan: patchPlan,
+          previousRecommendations: lastRecommendations,
+          pinnedPlaceIds: pinned,
+        });
+        setContextAgentSessionPhase("replanning");
+        setContextAgentSessionPatchPreview(preview);
+        onPatchPreviewChange?.(preview);
+        await executeWithSpec({
+          triggerMessage: text,
+          spec: patchPlan.nextSpec,
+          patchPlan,
+          keptRecommendations: preview.kept,
+        });
       } finally {
         setBusy(false);
         finishContextAgentWork();
       }
     },
-    [busy, executeWithSpec, lastSpec],
+    [
+      busy,
+      contextEventId,
+      executeWithSpec,
+      lastRecommendations,
+      lastSpec,
+      onPatchPreviewChange,
+    ],
   );
 
   useImperativeHandle(
@@ -345,8 +489,12 @@ export const GlobeContextConditionPinBar = forwardRef<
     clearContextConditionLastBatch(contextEventId);
     setLastBatch(null);
     setLastSpec(null);
+    setLastRecommendations([]);
     onRecommendationsChange?.([]);
-  }, [contextEventId, lastBatch, onRecommendationsChange]);
+    onPatchPreviewChange?.(null);
+    setContextAgentSessionPatchPreview(null);
+    setContextAgentSessionPhase("briefing");
+  }, [contextEventId, lastBatch, onPatchPreviewChange, onRecommendationsChange]);
 
   return (
     <div

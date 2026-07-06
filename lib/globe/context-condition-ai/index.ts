@@ -101,3 +101,14 @@ export {
   refineLocalDiscoverySpec,
   resolveLocalDiscoveryAction,
 } from "@/lib/globe/context-condition-ai/resolve-local-discovery-action";
+export {
+  buildSpatialPatchPreview,
+  planSpatialPatch,
+} from "@/lib/globe/context-condition-ai/plan-spatial-patch";
+export { resolveSpatialPatchKeptRows } from "@/lib/globe/context-condition-ai/resolve-spatial-patch-kept-rows";
+export type {
+  SpatialPatchPlan,
+  SpatialPatchPreview,
+  SpatialPatchScope,
+  SpatialResourceKind,
+} from "@/lib/globe/context-condition-ai/spatial-patch-types";

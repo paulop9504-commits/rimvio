@@ -1,13 +1,13 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { resolveLocalDiscoveryAction } from "@/lib/globe/context-condition-ai/resolve-local-discovery-action";
 import type { LocalDiscoveryActionSpec } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
-import {
-  buildTravelBrainState,
-  type TravelBrainState,
-} from "@/lib/situation-projection/travel-brain-personalization";
+import type { WeatherContext } from "@/lib/context-resolver/types";
+import { buildContextAgentPreflightBriefing } from "@/lib/globe/context-agent/build-context-agent-preflight-briefing";
+import { buildTravelBrainState } from "@/lib/situation-projection/travel-brain-personalization";
 
 export type ContextAgentZeroPromptOutcome = {
   situationLineKo: string;
+  preflightBriefingKo: string;
   triggerMessage: string;
   shouldAutoExecute: boolean;
   spec: LocalDiscoveryActionSpec | null;
@@ -54,45 +54,22 @@ function resolveDefaultTrigger(hourLocal: number): string {
   return "근처 맛집이랑 숙소 찾아줘";
 }
 
-function budgetLabelKo(value: string): string | null {
-  if (value === "value") {
-    return "가성비";
-  }
-  if (value === "premium") {
-    return "넉넉한 예산";
-  }
-  if (value === "balanced") {
-    return "보통 예산";
-  }
-  return null;
-}
-
-function mobilityLabelKo(value: string): string | null {
-  if (value === "walk") {
-    return "도보";
-  }
-  if (value === "transit") {
-    return "대중교통";
-  }
-  if (value === "taxi" || value === "mixed") {
-    return "차량";
-  }
-  return null;
-}
-
-/** Bound 맥락 AI — situation line + optional zero-prompt auto placement. */
+/** Bound 맥락 AI — preflight briefing + optional zero-prompt auto placement. */
 export function resolveContextAgentZeroPrompt(input: {
   event: EventCandidate;
   anchorPlaceName: string;
   now?: Date;
+  weather?: WeatherContext | null;
 }): ContextAgentZeroPromptOutcome {
   const travelBrain = buildTravelBrainState(input.event);
-  const hourLocal = (input.now ?? new Date()).getHours();
+  const now = input.now ?? new Date();
+  const hourLocal = now.getHours();
   const triggerMessage = resolveDefaultTrigger(hourLocal);
-  const situationLineKo = buildSituationLine({
-    travelBrain,
+  const preflight = buildContextAgentPreflightBriefing({
+    event: input.event,
     anchorPlaceName: input.anchorPlaceName,
-    hourLocal,
+    now,
+    weather: input.weather,
   });
 
   const resolved = resolveLocalDiscoveryAction({
@@ -120,47 +97,10 @@ export function resolveContextAgentZeroPrompt(input: {
     resolved.status === "ready" && (slotConfidenceReady || travelBrain.slots.budget_band.source === "learned");
 
   return {
-    situationLineKo,
+    situationLineKo: preflight.briefingLineKo,
+    preflightBriefingKo: preflight.briefingLineKo,
     triggerMessage,
     shouldAutoExecute,
     spec: resolved.status === "ready" ? resolved.spec : null,
   };
-}
-
-function buildSituationLine(input: {
-  travelBrain: TravelBrainState;
-  anchorPlaceName: string;
-  hourLocal: number;
-}): string {
-  const cues: string[] = [];
-  if (input.hourLocal >= 17 && input.hourLocal <= 22) {
-    cues.push("저녁 시간이라");
-  } else if (input.hourLocal >= 11 && input.hourLocal <= 14) {
-    cues.push("점심 시간이라");
-  } else if (input.hourLocal >= 6 && input.hourLocal <= 10) {
-    cues.push("아침 시간이라");
-  }
-
-  const mobility = mobilityLabelKo(input.travelBrain.slots.mobility_style.value);
-  if (
-    mobility &&
-    input.travelBrain.slots.mobility_style.confidence >= CONFIDENCE_AUTO
-  ) {
-    cues.push(`${mobility} 기준으로`);
-  }
-
-  const budget = budgetLabelKo(input.travelBrain.slots.budget_band.value);
-  if (
-    budget &&
-    (input.travelBrain.slots.budget_band.confidence >= CONFIDENCE_AUTO ||
-      input.travelBrain.slots.budget_band.source === "learned")
-  ) {
-    cues.push(budget);
-  }
-
-  const place = input.anchorPlaceName.trim() || "이 근처";
-  if (cues.length === 0) {
-    return `${place} 근처 후보를 지도에 꽂아둘게요.`;
-  }
-  return `${cues.join(" · ")} — ${place} 근처 후보를 지도에 꽂아둘게요.`;
 }
