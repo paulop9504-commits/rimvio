@@ -210,6 +210,7 @@ export const copy = {
     containerSpaceAgentArming: "취소",
     containerSpaceAgentPickHint:
       "어시스턴트를 적용할 맥락 하나를 선택해 주세요.",
+    containerSpaceAgentBindDetail: "이 맥락에 어시스턴트",
     containerSpaceSectionExpand: (title: string) => `${title} 펼치기`,
     containerSpaceSectionCollapse: (title: string) => `${title} 접기`,
     containerSpaceRuntimeBack: "맥락 목록",

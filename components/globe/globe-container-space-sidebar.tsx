@@ -150,6 +150,7 @@ function SidebarRow({
   active,
   selectMode,
   selected,
+  agentPickMode,
   onSelect,
   onToggleSelect,
 }: {
@@ -157,6 +158,7 @@ function SidebarRow({
   active?: boolean;
   selectMode?: boolean;
   selected?: boolean;
+  agentPickMode?: boolean;
   onSelect: (entry: GlobeContextTimelineEntry) => void;
   onToggleSelect?: (eventId: string) => void;
 }) {
@@ -178,6 +180,8 @@ function SidebarRow({
         "flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-colors",
         selectMode && selected
           ? "bg-[#ff6b4a]/15 text-white ring-1 ring-[#ff6b4a]/35"
+          : agentPickMode
+            ? "text-white ring-1 ring-[#0071e3]/40 hover:bg-[#0071e3]/15 active:bg-[#0071e3]/20"
           : active
             ? "bg-white/10 text-white"
             : "text-white/85 hover:bg-white/[0.06] active:bg-white/10",
@@ -254,6 +258,7 @@ export function GlobeContainerSpaceSidebar({
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [deleting, setDeleting] = useState(false);
   const [agentArming, setAgentArming] = useState(false);
+  const [agentPickMode, setAgentPickMode] = useState(false);
   const [sections, setSections] = useState<SidebarSectionState>(() =>
     readSidebarSections(),
   );
@@ -276,6 +281,7 @@ export function GlobeContainerSpaceSidebar({
   useEffect(() => {
     return subscribeGlobeContextAgent((detail) => {
       setAgentArming(detail.phase === "arming");
+      setAgentPickMode(detail.phase === "arming");
     });
   }, []);
 
@@ -418,8 +424,12 @@ export function GlobeContainerSpaceSidebar({
     }
   };
 
+  const isAgentArming =
+    agentPickMode || readGlobeContextAgentSession().phase === "arming";
+
   const handleSelect = (entry: GlobeContextTimelineEntry) => {
-    if (readGlobeContextAgentSession().phase === "arming") {
+    if (readGlobeContextAgentSession().phase === "arming" || agentPickMode) {
+      setAgentPickMode(false);
       setDetailEntry(null);
       onAgentContextPick?.(entry);
       onOpenChange(false);
@@ -439,15 +449,35 @@ export function GlobeContainerSpaceSidebar({
   }, [detailEntry?.eventId, revision]);
 
   const handleAgentPress = () => {
-    if (readGlobeContextAgentSession().phase === "arming") {
+    if (isAgentArming) {
       cancelGlobeContextAgentArm();
+      setAgentPickMode(false);
+      return;
+    }
+    if (!onAgentContextPick) {
       return;
     }
     setSelectMode(false);
     setSelected(new Set());
+    if (detailEntry) {
+      setAgentPickMode(false);
+      onAgentContextPick(detailEntry);
+      onOpenChange(false);
+      return;
+    }
     setDetailEntry(null);
     armGlobeContextAgent();
+    setAgentPickMode(true);
   };
+
+  const agentCtaLabel = detailEntry
+    ? copy.globe.containerSpaceAgentBindDetail
+    : isAgentArming
+      ? copy.globe.containerSpaceAgentArming
+      : copy.globe.containerSpaceAgentCta;
+
+  const showAgentCta = Boolean(onAgentContextPick) && !selectMode;
+  const agentCtaDisabled = !detailEntry && recent.length === 0;
 
   const handleNew = () => {
     onNewContext?.();
@@ -533,7 +563,7 @@ export function GlobeContainerSpaceSidebar({
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
-                  {filteredRecent.length > 0 && !agentArming && !detailEntry ? (
+                  {filteredRecent.length > 0 && !isAgentArming && !detailEntry ? (
                     <button
                       type="button"
                       onClick={() => {
@@ -568,7 +598,7 @@ export function GlobeContainerSpaceSidebar({
                 </div>
               </div>
 
-              {!selectMode && !agentArming && !detailEntry ? (
+              {!selectMode && !isAgentArming && !detailEntry ? (
               <button
                 type="button"
                 onClick={handleNew}
@@ -578,7 +608,7 @@ export function GlobeContainerSpaceSidebar({
                 <SquarePen className="size-4 shrink-0 text-white/80" aria-hidden />
                 {copy.globe.containerSpaceNewContext}
               </button>
-              ) : agentArming ? (
+              ) : isAgentArming ? (
                 <p className="mt-3 px-1 text-[12px] leading-relaxed text-[#7eb6ff]">
                   {copy.globe.containerSpaceAgentPickHint}
                 </p>
@@ -588,24 +618,22 @@ export function GlobeContainerSpaceSidebar({
                 </p>
               )}
 
-              {!selectMode && !detailEntry ? (
+              {showAgentCta ? (
                 <button
                   type="button"
                   onClick={handleAgentPress}
-                  disabled={filteredRecent.length === 0}
+                  disabled={agentCtaDisabled}
                   className={cn(
                     "mt-2 flex w-full items-center gap-2 rounded-full px-3.5 py-2.5 text-left text-[14px] font-semibold ring-1 transition-colors active:scale-[0.99]",
-                    agentArming
+                    isAgentArming
                       ? "bg-white/12 text-white ring-white/20"
                       : "bg-[#0071e3]/20 text-[#9fd0ff] ring-[#0071e3]/35 active:bg-[#0071e3]/28",
-                    filteredRecent.length === 0 && "pointer-events-none opacity-40",
+                    agentCtaDisabled && "pointer-events-none opacity-40",
                   )}
                   data-globe-container-space-agent
                 >
                   <Sparkles className="size-4 shrink-0" aria-hidden />
-                  {agentArming
-                    ? copy.globe.containerSpaceAgentArming
-                    : copy.globe.containerSpaceAgentCta}
+                  {agentCtaLabel}
                 </button>
               ) : null}
 
@@ -740,6 +768,7 @@ export function GlobeContainerSpaceSidebar({
                     active
                     selectMode={selectMode}
                     selected={selected.has(pinned.eventId)}
+                    agentPickMode={isAgentArming}
                     onSelect={handleSelect}
                     onToggleSelect={toggleSelect}
                   />
@@ -767,6 +796,7 @@ export function GlobeContainerSpaceSidebar({
                           entry={entry}
                           selectMode={selectMode}
                           selected={selected.has(entry.eventId)}
+                          agentPickMode={isAgentArming}
                           onSelect={handleSelect}
                           onToggleSelect={toggleSelect}
                         />
