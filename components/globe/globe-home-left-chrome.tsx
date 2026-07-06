@@ -2,6 +2,7 @@
 
 import { useState, useMemo, type RefObject } from "react";
 import { GlobeContainerSpaceButton } from "@/components/globe/globe-container-space-button";
+import { GlobeContextAgentMapButton } from "@/components/globe/globe-context-agent-map-button";
 import { GlobeContainerSpaceSidebar } from "@/components/globe/globe-container-space-sidebar";
 import { GlobeContextBrainStrip } from "@/components/globe/globe-context-brain-strip";
 import { GlobeContextHubRail } from "@/components/globe/globe-context-hub-rail";
@@ -30,6 +31,8 @@ export type GlobeHomeLeftChromeProps = {
   onOpenManage: () => void;
   onSelectContext?: (entry: GlobeContextTimelineEntry) => void;
   onAgentContextPick?: (entry: GlobeContextTimelineEntry) => void;
+  contextAgentArming?: boolean;
+  onToggleContextAgentArm?: () => void;
   onContextsDeleted?: (eventIds: string[]) => void;
   onNewContext?: () => void;
   onPortalPeekToggle: () => void;
@@ -76,6 +79,8 @@ export function GlobeHomeLeftChrome({
   onOpenManage,
   onSelectContext,
   onAgentContextPick,
+  contextAgentArming = false,
+  onToggleContextAgentArm,
   onContextsDeleted,
   onNewContext,
   onPortalPeekToggle,
@@ -117,6 +122,14 @@ export function GlobeHomeLeftChrome({
               onPress={() => setContainerSpaceOpen((open) => !open)}
             />
           </div>
+          {onToggleContextAgentArm ? (
+            <div className="pointer-events-auto">
+              <GlobeContextAgentMapButton
+                arming={contextAgentArming}
+                onPress={onToggleContextAgentArm}
+              />
+            </div>
+          ) : null}
           <div className="pointer-events-auto">
             <GlobeLayerModeToggle mode={layerMode} onModeChange={onLayerModeChange} />
           </div>

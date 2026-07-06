@@ -155,7 +155,9 @@ import {
 } from "@/lib/globe/context-condition-ai/context-condition-discovery-overlay-bridge";
 import type { ContextConditionDiscoveryOverlay } from "@/lib/globe/context-condition-ai/context-condition-discovery-overlay-types";
 import {
+  armGlobeContextAgent,
   bindGlobeContextAgent,
+  cancelGlobeContextAgentArm,
   clearGlobeContextAgent,
   readGlobeContextAgentSession,
   resetContextAgentRuntime,
@@ -651,6 +653,7 @@ function GlobeHomeBody() {
 
   const detailLevelRef = useRef<GlobeDetailLevel>("space");
   const lastPinPressAtRef = useRef(0);
+  const bindContextAgentToEventIdRef = useRef<(eventId: string) => void>(() => {});
 
   const onClustersSnapshot = useCallback((clusters: readonly PinCluster[]) => {
     clustersRef.current = clusters;
@@ -858,6 +861,30 @@ function GlobeHomeBody() {
 
   const applyNearbyContexts = useCallback(
     (nearby: readonly PinCluster[], flyCluster?: PinCluster | null) => {
+      if (readGlobeContextAgentSession().phase === "arming") {
+        if (nearby.length === 0) {
+          return;
+        }
+        if (flyCluster) {
+          globeRef.current?.flyToPin(flyCluster.lat, flyCluster.lng, "neighborhood");
+        }
+        if (nearby.length === 1) {
+          const cluster = nearby[0]!;
+          if (
+            !isExternalPinCluster(cluster) &&
+            cluster.variant !== "bridge_ghost" &&
+            cluster.eventId?.trim()
+          ) {
+            void bindContextAgentToEventIdRef.current(cluster.eventId.trim());
+          }
+          return;
+        }
+        setStackClusters([...nearby]);
+        setActiveCluster(null);
+        setSheetOpen(false);
+        return;
+      }
+
       if (nearby.length === 0) {
         if (activeClusterRef.current != null) {
           clearActiveContext();
@@ -2275,6 +2302,16 @@ function GlobeHomeBody() {
   const onPinPress = useCallback(
     (cluster: PinCluster) => {
       markPinPress();
+      if (readGlobeContextAgentSession().phase === "arming") {
+        if (
+          !isExternalPinCluster(cluster) &&
+          cluster.variant !== "bridge_ghost" &&
+          cluster.eventId?.trim()
+        ) {
+          bindContextAgentToEventIdRef.current(cluster.eventId.trim());
+        }
+        return;
+      }
       if (isExternalPinCluster(cluster)) {
         globeRef.current?.flyToPin(cluster.lat, cluster.lng, "neighborhood");
         const author = cluster.authorDisplayName?.trim();
@@ -2432,6 +2469,31 @@ function GlobeHomeBody() {
     [openContextCluster],
   );
   const focusContextByEventIdRef = useRef(focusContextByEventId);
+
+  const bindContextAgentToEventId = useCallback(
+    async (eventId: string) => {
+      const key = eventId.trim();
+      if (!key) {
+        return;
+      }
+      dismissCompetingGlobeSurfaces();
+      bindGlobeContextAgent(key);
+      setStackClusters(null);
+      await focusContextByEventId(key, {
+        openSheet: false,
+        mapTap: false,
+      });
+      openGlobeContextConditionPanel(key);
+      window.setTimeout(() => ingestBarRef.current?.focusComposer(), 120);
+    },
+    [dismissCompetingGlobeSurfaces, focusContextByEventId],
+  );
+
+  useEffect(() => {
+    bindContextAgentToEventIdRef.current = (eventId) => {
+      void bindContextAgentToEventId(eventId);
+    };
+  }, [bindContextAgentToEventId]);
 
   useEffect(() => {
     focusContextByEventIdRef.current = focusContextByEventId;
@@ -2788,6 +2850,12 @@ function GlobeHomeBody() {
 
   const onStackSelect = useCallback(
     (cluster: PinCluster) => {
+      if (readGlobeContextAgentSession().phase === "arming") {
+        if (cluster.eventId?.trim()) {
+          bindContextAgentToEventIdRef.current(cluster.eventId.trim());
+        }
+        return;
+      }
       setBrainProjectionEventId(null);
       openContextCluster(cluster);
     },
@@ -2820,16 +2888,9 @@ function GlobeHomeBody() {
 
   const bindContextAgentToEntry = useCallback(
     async (entry: GlobeContextTimelineEntry) => {
-      dismissCompetingGlobeSurfaces();
-      bindGlobeContextAgent(entry.eventId);
-      await focusContextByEventId(entry.eventId, {
-        openSheet: false,
-        mapTap: false,
-      });
-      openGlobeContextConditionPanel(entry.eventId);
-      window.setTimeout(() => ingestBarRef.current?.focusComposer(), 120);
+      await bindContextAgentToEventId(entry.eventId);
     },
-    [dismissCompetingGlobeSurfaces, focusContextByEventId],
+    [bindContextAgentToEventId],
   );
 
   const dismissContextAgentPanel = useCallback(() => {
@@ -2837,6 +2898,22 @@ function GlobeHomeBody() {
     clearGlobeContextAgent();
     resetContextAgentRuntime();
   }, []);
+
+  const toggleContextAgentArm = useCallback(() => {
+    if (readGlobeContextAgentSession().phase === "arming") {
+      cancelGlobeContextAgentArm();
+      setStackClusters(null);
+      return;
+    }
+    if (readGlobeContextAgentSession().phase === "bound") {
+      dismissContextAgentPanel();
+      return;
+    }
+    dismissCompetingGlobeSurfaces();
+    setStackClusters(null);
+    armGlobeContextAgent();
+    toast.message(copy.globe.containerSpaceAgentPickHint);
+  }, [dismissCompetingGlobeSurfaces, dismissContextAgentPanel]);
 
   const handleContextsDeleted = useCallback(
     (eventIds: string[]) => {
@@ -3884,6 +3961,7 @@ function GlobeHomeBody() {
       <GlobeContextStackPicker
         clusters={stackClusters ?? []}
         visible={Boolean(stackClusters && stackClusters.length > 1)}
+        agentPickMode={contextAgentSession.phase === "arming"}
         onSelect={onStackSelect}
         onDismiss={clearActiveContext}
         onShowAll={() => {
@@ -4021,6 +4099,12 @@ function GlobeHomeBody() {
         onOpenManage={() => setManageOpen(true)}
         onSelectContext={openContextEntry}
         onAgentContextPick={bindContextAgentToEntry}
+        contextAgentArming={contextAgentSession.phase === "arming"}
+        onToggleContextAgentArm={
+          layerMode === "personal" && !mapMediaFocusOpen
+            ? toggleContextAgentArm
+            : undefined
+        }
         onContextsDeleted={handleContextsDeleted}
         onNewContext={() => setPortalOpen(true)}
         onPortalPeekToggle={togglePortalPeek}

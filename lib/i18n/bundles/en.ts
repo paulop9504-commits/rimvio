@@ -203,6 +203,8 @@ export const copyEn: Copy = {
     containerSpaceAgentArming: "Cancel",
     containerSpaceAgentPickHint: "Choose one context to attach the assistant.",
     containerSpaceAgentBindDetail: "Assistant for this context",
+    contextAgentMapButtonAria: "Context assistant",
+    contextAgentStackPickSubtitle: "Choose a context to attach the assistant",
     containerSpaceSectionExpand: (title: string) => `Expand ${title}`,
     containerSpaceSectionCollapse: (title: string) => `Collapse ${title}`,
     containerSpaceRuntimeBack: "Context list",

@@ -211,6 +211,8 @@ export const copy = {
     containerSpaceAgentPickHint:
       "어시스턴트를 적용할 맥락 하나를 선택해 주세요.",
     containerSpaceAgentBindDetail: "이 맥락에 어시스턴트",
+    contextAgentMapButtonAria: "맥락 어시스턴트",
+    contextAgentStackPickSubtitle: "어시스턴트를 붙일 맥락을 고르세요",
     containerSpaceSectionExpand: (title: string) => `${title} 펼치기`,
     containerSpaceSectionCollapse: (title: string) => `${title} 접기`,
     containerSpaceRuntimeBack: "맥락 목록",

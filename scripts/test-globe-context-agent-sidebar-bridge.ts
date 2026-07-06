@@ -38,7 +38,23 @@ function simulateCloseWithoutPickCancelsArm() {
   assert.equal(readGlobeContextAgentSession().boundEventId, null);
 }
 
+function simulateSidebarPickBindsBeforeClose() {
+  clearGlobeContextAgent();
+  armGlobeContextAgent();
+  assert.equal(readGlobeContextAgentSession().phase, "arming");
+
+  bindGlobeContextAgent("ev-trip-2");
+  assert.equal(readGlobeContextAgentSession().phase, "bound");
+
+  if (readGlobeContextAgentSession().phase === "arming") {
+    cancelGlobeContextAgentArm();
+  }
+  assert.equal(readGlobeContextAgentSession().phase, "bound");
+  assert.equal(readGlobeContextAgentSession().boundEventId, "ev-trip-2");
+}
+
 simulateSidebarCloseWhileArming();
 simulateCloseWithoutPickCancelsArm();
+simulateSidebarPickBindsBeforeClose();
 
 console.log("test-globe-context-agent-sidebar-bridge: ok");

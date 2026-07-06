@@ -9,11 +9,13 @@ import {
   GLOBE_CONTEXT_STACK_VISIBLE_MAX,
 } from "@/lib/globe/resolve-globe-contexts-near-tap";
 import type { PinCluster } from "@/lib/globe/pin-cluster-types";
+import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
 export type GlobeContextStackPickerProps = {
   clusters: readonly PinCluster[];
   visible?: boolean;
+  agentPickMode?: boolean;
   onSelect: (cluster: PinCluster) => void;
   onDismiss: () => void;
   onShowAll?: () => void;
@@ -83,6 +85,7 @@ function StackRow({
 export function GlobeContextStackPicker({
   clusters,
   visible = true,
+  agentPickMode = false,
   onSelect,
   onDismiss,
   onShowAll,
@@ -118,7 +121,9 @@ export function GlobeContextStackPicker({
                   이 근처 맥락
                 </div>
                 <p className="mt-0.5 text-[12px] text-muted-foreground">
-                  {clusters.length}개 · 하나를 골라 보세요
+                  {agentPickMode
+                    ? copy.globe.contextAgentStackPickSubtitle
+                    : `${clusters.length}개 · 하나를 골라 보세요`}
                 </p>
               </div>
               <button

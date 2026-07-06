@@ -43,6 +43,7 @@ import { PERSONAL_GLOBE_PINS_UPDATED } from "@/lib/globe/personal-globe-pin-stor
 import { copy } from "@/lib/copy/human-ko";
 import {
   armGlobeContextAgent,
+  bindGlobeContextAgent,
   cancelGlobeContextAgentArm,
   readGlobeContextAgentSession,
   subscribeGlobeContextAgent,
@@ -431,6 +432,10 @@ export function GlobeContainerSpaceSidebar({
     if (readGlobeContextAgentSession().phase === "arming" || agentPickMode) {
       setAgentPickMode(false);
       setDetailEntry(null);
+      const eventId = entry.eventId.trim();
+      if (eventId) {
+        bindGlobeContextAgent(eventId);
+      }
       onAgentContextPick?.(entry);
       onOpenChange(false);
       return;
@@ -461,6 +466,10 @@ export function GlobeContainerSpaceSidebar({
     setSelected(new Set());
     if (detailEntry) {
       setAgentPickMode(false);
+      const eventId = detailEntry.eventId.trim();
+      if (eventId) {
+        bindGlobeContextAgent(eventId);
+      }
       onAgentContextPick(detailEntry);
       onOpenChange(false);
       return;
