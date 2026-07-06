@@ -103,10 +103,10 @@ export const GLOBE_INFO_FRAME_PRESETS: Record<GlobeInfoFrameId, GlobeInfoFramePr
   "context-condition-prompt": {
     minWidth: 260,
     maxWidth: 420,
-    minHeight: 220,
+    minHeight: 168,
     maxHeight: 560,
-    defaultWidth: 320,
-    defaultHeight: 380,
+    defaultWidth: 288,
+    defaultHeight: 228,
     defaultBand: "center-left",
     tone: "light",
   },

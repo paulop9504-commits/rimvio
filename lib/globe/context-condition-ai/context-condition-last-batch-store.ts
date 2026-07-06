@@ -1,10 +1,19 @@
 const STORAGE_PREFIX = "rimvio.context-condition-last-batch.";
 
+import type { LocalDiscoveryActionSpec } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
+
 export type ContextConditionLastBatchWire = {
   batchId: string;
   count: number;
   summaryKo: string;
   atIso: string;
+  radiusM?: number;
+  spec?: LocalDiscoveryActionSpec | null;
+  recommendations?: readonly {
+    kind: "lodging" | "eatery";
+    title: string;
+    reasonKo: string;
+  }[];
 };
 
 export function readContextConditionLastBatch(

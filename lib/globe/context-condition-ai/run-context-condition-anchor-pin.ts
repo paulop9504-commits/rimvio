@@ -10,18 +10,28 @@ import {
   classifyContextConditionAnchorRequest,
   filterLodgingRowsForContextCondition,
 } from "@/lib/globe/context-condition-ai/classify-context-condition-anchor-request";
+import type {
+  ContextConditionAnchorPinOutcome,
+  ContextConditionRecommendation,
+  LocalDiscoveryActionSpec,
+  LocalDiscoveryBudget,
+  LocalDiscoveryVibe,
+} from "@/lib/globe/context-condition-ai/local-discovery-action-types";
 import { commitContextConditionHubBatch } from "@/lib/globe/context-condition-ai/commit-context-condition-hub-batch";
 import { writeContextConditionLastBatch } from "@/lib/globe/context-condition-ai/context-condition-last-batch-store";
 import { syncContextConditionPins } from "@/lib/globe/context-condition-ai/sync-context-condition-pins";
 import { loadLodgingInventoryRows } from "@/lib/globe/context-hub/load-lodging-inventory-rows";
+import type { ContextLodgingInventoryRow } from "@/lib/globe/context-hub/lodging-resource-types";
 import { loadEateryInventoryRows } from "@/lib/globe/eatery/load-eatery-inventory-rows";
 import { scoreEateryRecommendations } from "@/lib/globe/eatery/score-eatery-recommendations";
-import { LODGING_DISCOVERY_RADIUS_M } from "@/lib/globe/lodging/lodging-discovery-constants";
 import { scoreLodgingRecommendations } from "@/lib/globe/lodging/score-lodging-recommendations";
-import {
-  buildTravelBrainState,
-  type TravelFoodBias,
-} from "@/lib/situation-projection/travel-brain-personalization";
+import { LOCAL_DISCOVERY_RECOMMEND_CAP } from "@/lib/globe/context-condition-ai/local-discovery-limits";
+import { pickTopLocalDiscoveryRows } from "@/lib/globe/context-condition-ai/pick-top-local-discovery-rows";
+import { buildContextConditionDiscoveryOverlay } from "@/lib/globe/context-condition-ai/build-context-condition-discovery-overlay";
+import { publishContextConditionDiscoveryOverlay } from "@/lib/globe/context-condition-ai/context-condition-discovery-overlay-bridge";
+import { buildTravelBrainState } from "@/lib/situation-projection/travel-brain-personalization";
+
+export type { ContextConditionAnchorPinOutcome } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
 
 export type ContextConditionAnchorPinInput = {
   contextEventId: string;
@@ -31,69 +41,98 @@ export type ContextConditionAnchorPinInput = {
   anchorLng: number;
   anchorPriceKrw?: number | null;
   message?: string | null;
+  spec: LocalDiscoveryActionSpec;
+  onProcessPhase?: (phase: import("@/lib/globe/context-agent/context-agent-runtime-state").ContextAgentProcessPhase) => void;
 };
 
-export type ContextConditionAnchorPinOutcome = {
-  batchId: string;
-  lodgingCount: number;
-  eateryCount: number;
-  summaryKo: string;
-  pinPoints: readonly { lat: number; lng: number }[];
-};
+function filterLodgingByBudget(
+  rows: readonly ContextLodgingInventoryRow[],
+  budget: LocalDiscoveryBudget,
+): ContextLodgingInventoryRow[] {
+  const priced = rows.filter(
+    (row) => row.priceKrw != null && Number.isFinite(row.priceKrw),
+  );
+  if (priced.length === 0) {
+    return [...rows];
+  }
+  const sorted = [...priced].sort((a, b) => (a.priceKrw ?? 0) - (b.priceKrw ?? 0));
+  if (budget === "low") {
+    return sorted.slice(0, Math.max(4, Math.ceil(sorted.length * 0.4)));
+  }
+  if (budget === "high") {
+    return sorted.slice(-Math.max(4, Math.ceil(sorted.length * 0.4)));
+  }
+  const start = Math.floor(sorted.length * 0.25);
+  return sorted.slice(start, start + Math.max(4, Math.ceil(sorted.length * 0.5)));
+}
 
 function resolveContextConditionEateryQuery(input: {
   userMessage?: string | null;
   anchorName: string;
-  foodBias?: TravelFoodBias | null;
+  vibe: LocalDiscoveryVibe;
 }): string {
   if (input.userMessage?.trim()) {
     return input.userMessage.trim();
   }
   const area = input.anchorName.trim() || "근처";
-  switch (input.foodBias) {
+  switch (input.vibe) {
     case "local":
       return `${area} 현지 맛집`;
-    case "landmark":
-      return `${area} 유명 맛집`;
-    case "cafe":
-      return `${area} 카페`;
-    case "late_night":
-      return `${area} 야식`;
-    case "value":
-      return `${area} 가성비 식당`;
+    case "quiet":
+      return `${area} 조용한 식당`;
+    case "hot":
+      return `${area} 핫플 맛집`;
+    case "popular":
     default:
-      return `${area} 맛집`;
+      return `${area} 인기 맛집`;
   }
 }
 
 function buildSummaryKo(input: {
   lodgingCount: number;
   eateryCount: number;
+  radiusM: number;
 }): string {
-  const { lodgingCount, eateryCount } = input;
+  const { lodgingCount, eateryCount, radiusM } = input;
   const total = lodgingCount + eateryCount;
   if (total <= 0) {
     return copy.globe.contextConditionPinEmpty;
   }
+  const radiusLine = copy.globe.localDiscoveryPlacedSummary(radiusM, total);
   if (lodgingCount > 0 && eateryCount === 0) {
-    return copy.globe.contextConditionPinLodgingDone.replace(
-      "{n}",
-      String(lodgingCount),
-    );
+    return `${copy.globe.contextConditionPinLodgingDone.replace("{n}", String(lodgingCount))} · ${radiusLine}`;
   }
   if (eateryCount > 0 && lodgingCount === 0) {
-    return copy.globe.contextConditionPinEateryDone.replace(
-      "{n}",
-      String(eateryCount),
-    );
+    return `${copy.globe.contextConditionPinEateryDone.replace("{n}", String(eateryCount))} · ${radiusLine}`;
   }
-  return copy.globe.contextConditionPinDone.replace("{n}", String(total));
+  return `${copy.globe.contextConditionPinDone.replace("{n}", String(total))} · ${radiusLine}`;
 }
 
-/**
- * Context Condition AI — locked anchor + condition expression → immediate map pins.
- * Not Globe AI composer · not Personal Context AI recall ask.
- */
+function buildRecommendations(input: {
+  lodgingScored: ReturnType<typeof scoreLodgingRecommendations>;
+  eateryScored: ReturnType<typeof scoreEateryRecommendations>;
+}): ContextConditionRecommendation[] {
+  const rows: ContextConditionRecommendation[] = [];
+  for (const [index, row] of input.lodgingScored.entries()) {
+    rows.push({
+      kind: "lodging",
+      title: row.row.name?.trim() || row.row.placeId,
+      reasonKo: row.reasonKo,
+      rank: index + 1,
+    });
+  }
+  for (const [index, row] of input.eateryScored.entries()) {
+    rows.push({
+      kind: "eatery",
+      title: row.row.name?.trim() || row.row.placeId,
+      reasonKo: row.reasonKo,
+      rank: index + 1,
+    });
+  }
+  return rows.slice(0, LOCAL_DISCOVERY_RECOMMEND_CAP);
+}
+
+/** Structured spec → map placement (pins + ranked overlay reasons). */
 export async function runContextConditionAnchorPin(
   input: ContextConditionAnchorPinInput,
 ): Promise<ContextConditionAnchorPinOutcome | null> {
@@ -103,9 +142,12 @@ export async function runContextConditionAnchorPin(
     return null;
   }
 
+  const spec = input.spec;
   const intent = classifyContextConditionAnchorRequest(input.message);
-  const travelBrain = buildTravelBrainState(event);
+  input.onProcessPhase?.("exploring");
+  buildTravelBrainState(event);
   const batchId = `ctxcond-${Date.now()}`;
+  const radiusM = spec.radiusM;
 
   const masterContext =
     typeof window !== "undefined"
@@ -122,6 +164,11 @@ export async function runContextConditionAnchorPin(
     lng: input.anchorLng,
   });
 
+  const wantsLodging =
+    spec.resourceTypes.includes("hotel") && intent.lodgingSimilar !== false;
+  const wantsEatery =
+    spec.resourceTypes.includes("restaurant") && intent.eateryNearby !== false;
+
   let lodgingRows: Awaited<
     ReturnType<typeof loadLodgingInventoryRows>
   >["rows"] = [];
@@ -132,17 +179,18 @@ export async function runContextConditionAnchorPin(
   let eateryScored: ReturnType<typeof scoreEateryRecommendations> = [];
   let eaterySource: string | null = null;
 
-  if (intent.lodgingSimilar) {
+  if (wantsLodging) {
+    input.onProcessPhase?.("analyzing");
     const loaded = await loadLodgingInventoryRows({
       event,
       lat: input.anchorLat,
       lng: input.anchorLng,
-      maxResults: 12,
-      radiusM: LODGING_DISCOVERY_RADIUS_M,
+      maxResults: 14,
+      radiusM,
     });
     lodgingSource = loaded.source;
     const filtered = filterLodgingRowsForContextCondition({
-      rows: loaded.rows,
+      rows: filterLodgingByBudget(loaded.rows, spec.budget),
       anchorPlaceId: input.anchorPlaceId,
       anchorPriceKrw: input.anchorPriceKrw,
       lodgingMode: intent.lodgingMode,
@@ -158,11 +206,12 @@ export async function runContextConditionAnchorPin(
     lodgingRows = lodgingScored.map((row) => row.row);
   }
 
-  if (intent.eateryNearby) {
+  if (wantsEatery) {
+    input.onProcessPhase?.("analyzing");
     const eateryQuery = resolveContextConditionEateryQuery({
       userMessage: input.message,
       anchorName: input.anchorPlaceName,
-      foodBias: travelBrain.slots.food_bias.value,
+      vibe: spec.vibe,
     });
     const loaded = await loadEateryInventoryRows({
       event,
@@ -170,7 +219,7 @@ export async function runContextConditionAnchorPin(
       lat: input.anchorLat,
       lng: input.anchorLng,
       maxResults: 10,
-      radiusM: LODGING_DISCOVERY_RADIUS_M,
+      radiusM,
     });
     eaterySource = loaded.source;
     eateryScored = scoreEateryRecommendations({
@@ -187,6 +236,17 @@ export async function runContextConditionAnchorPin(
     return null;
   }
 
+  const picked = pickTopLocalDiscoveryRows({ lodgingScored, eateryScored });
+  lodgingScored = picked.lodgingScored;
+  eateryScored = picked.eateryScored;
+  lodgingRows = picked.lodgingRows;
+  eateryRows = picked.eateryRows;
+
+  if (lodgingRows.length === 0 && eateryRows.length === 0) {
+    return null;
+  }
+
+  input.onProcessPhase?.("optimizing");
   const committedEvent = commitContextConditionHubBatch({
     event,
     batchId,
@@ -210,6 +270,8 @@ export async function runContextConditionAnchorPin(
     ...eateryRows.map((row) => ({ lat: row.lat, lng: row.lng })),
   ];
 
+  const recommendations = buildRecommendations({ lodgingScored, eateryScored });
+
   const outcome: ContextConditionAnchorPinOutcome = {
     batchId,
     lodgingCount: lodgingRows.length,
@@ -217,8 +279,12 @@ export async function runContextConditionAnchorPin(
     summaryKo: buildSummaryKo({
       lodgingCount: lodgingRows.length,
       eateryCount: eateryRows.length,
+      radiusM,
     }),
     pinPoints,
+    radiusM,
+    recommendations,
+    spec,
   };
 
   writeContextConditionLastBatch(contextEventId, {
@@ -226,7 +292,35 @@ export async function runContextConditionAnchorPin(
     count: lodgingRows.length + eateryRows.length,
     summaryKo: outcome.summaryKo,
     atIso: new Date().toISOString(),
+    recommendations: recommendations.map((row) => ({
+      kind: row.kind,
+      title: row.title,
+      reasonKo: row.reasonKo,
+    })),
+    radiusM,
+    spec,
   });
+
+  publishContextConditionDiscoveryOverlay(
+    buildContextConditionDiscoveryOverlay({
+      contextEventId,
+      anchorLat: input.anchorLat,
+      anchorLng: input.anchorLng,
+      outcome,
+      pinRows: [
+        ...lodgingRows.map((row) => ({
+          lat: row.lat,
+          lng: row.lng,
+          placeId: row.placeId,
+        })),
+        ...eateryRows.map((row) => ({
+          lat: row.lat,
+          lng: row.lng,
+          placeId: row.placeId,
+        })),
+      ],
+    }),
+  );
 
   return outcome;
 }

@@ -17,6 +17,7 @@ import { GlobeBrainSurfaceVideoChip } from "@/components/globe/globe-brain-surfa
 import { GlobeBrainSurfaceFloatingFrame } from "@/components/globe/globe-brain-surface-floating-frame";
 import { GlobeSpatialTraceTourChip } from "@/components/globe/globe-spatial-trace-tour-chip";
 import { GlobeContextConditionPromptFrame } from "@/components/globe/globe-context-condition-prompt-frame";
+import { GlobeContextAgentConnector } from "@/components/globe/globe-context-agent-connector";
 import { GlobeLodgingFocusStage } from "@/components/globe/globe-lodging-focus-stage";
 import { GlobeLodgingDiscoveryStage } from "@/components/globe/globe-lodging-discovery-stage";
 import { GlobeEateryDiscoveryStage } from "@/components/globe/globe-eatery-discovery-stage";
@@ -138,9 +139,23 @@ import {
 } from "@/lib/globe/globe-context-card-coords";
 import {
   closeGlobeContextConditionPanel,
+  openGlobeContextConditionPanel,
   publishGlobeTouchedContext,
   subscribeGlobeContextConditionPanel,
 } from "@/lib/globe/context-condition-ai/globe-context-condition-panel-bridge";
+import {
+  readContextConditionDiscoveryOverlay,
+  subscribeContextConditionDiscoveryOverlay,
+} from "@/lib/globe/context-condition-ai/context-condition-discovery-overlay-bridge";
+import type { ContextConditionDiscoveryOverlay } from "@/lib/globe/context-condition-ai/context-condition-discovery-overlay-types";
+import {
+  bindGlobeContextAgent,
+  clearGlobeContextAgent,
+  readGlobeContextAgentSession,
+  resetContextAgentRuntime,
+  subscribeGlobeContextAgent,
+  type GlobeContextAgentDetail,
+} from "@/lib/globe/context-agent";
 import type { GlobeContextTimeFilter } from "@/lib/globe/globe-context-time-filter";
 import type { GlobeDetailLevel } from "@/lib/globe/globe-zoom-levels";
 import {
@@ -494,6 +509,13 @@ function GlobeHomeBody() {
   const [projectionRevision, setProjectionRevision] = useState(0);
   const [hubDetailOpen, setHubDetailOpen] = useState(false);
   const [contextConditionPanelOpen, setContextConditionPanelOpen] = useState(false);
+  const [contextAgentSession, setContextAgentSession] = useState<GlobeContextAgentDetail>(
+    () => readGlobeContextAgentSession(),
+  );
+  const [contextConditionDiscoveryOverlay, setContextConditionDiscoveryOverlay] =
+    useState<ContextConditionDiscoveryOverlay | null>(() =>
+      readContextConditionDiscoveryOverlay(),
+    );
   const [mapMediaFocusOpen, setMapMediaFocusOpen] = useState(false);
   const [contextTapPhase, setContextTapPhase] =
     useState<ContextMapTapPhase>("awaiting_replay");
@@ -505,6 +527,10 @@ function GlobeHomeBody() {
   const brainSurfaceBatchRef = useRef<BrainSurfaceProjectionBatch | null>(null);
   const brainSurfaceActiveCandidateIdRef = useRef<string | null>(null);
   const brainSurfaceLaunchInFlightRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    return subscribeContextConditionDiscoveryOverlay(setContextConditionDiscoveryOverlay);
+  }, []);
 
   useEffect(() => {
     return subscribeGlobeMapMediaFocus((detail) => {
@@ -551,14 +577,46 @@ function GlobeHomeBody() {
     if (!activeCluster?.eventId) {
       setContextConditionPanelOpen(false);
       closeGlobeContextConditionPanel();
+      clearGlobeContextAgent();
     }
   }, [activeCluster]);
 
   useEffect(() => {
-    return subscribeGlobeContextConditionPanel((detail) => {
-      setContextConditionPanelOpen(detail.open);
+    return subscribeGlobeContextAgent((detail) => {
+      setContextAgentSession(detail);
     });
   }, []);
+
+  useEffect(() => {
+    return subscribeGlobeContextConditionPanel((detail) => {
+      setContextConditionPanelOpen(detail.open);
+      if (detail.open && detail.eventId?.trim()) {
+        bindGlobeContextAgent(detail.eventId.trim());
+        return;
+      }
+      if (!detail.open) {
+        clearGlobeContextAgent();
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    const clusterId = activeCluster?.eventId?.trim() ?? null;
+    if (
+      contextAgentSession.phase !== "bound" ||
+      !contextAgentSession.boundEventId ||
+      !clusterId ||
+      clusterId === contextAgentSession.boundEventId
+    ) {
+      return;
+    }
+    bindGlobeContextAgent(clusterId);
+    openGlobeContextConditionPanel(clusterId);
+  }, [
+    activeCluster?.eventId,
+    contextAgentSession.boundEventId,
+    contextAgentSession.phase,
+  ]);
 
   const detailLevelRef = useRef<GlobeDetailLevel>("space");
   const lastPinPressAtRef = useRef(0);
@@ -1388,6 +1446,19 @@ function GlobeHomeBody() {
       liveLocation?.lng,
       realitySurfaceRoutingAllowed,
     ],
+  );
+
+  const brainProjectionVisible = Boolean(
+    brainProjectionEventId &&
+      activeContextEvent?.id === brainProjectionEventId &&
+      activeCluster?.eventId === brainProjectionEventId &&
+      layerMode === "personal" &&
+      !sheetOpen &&
+      !hubDetailOpen &&
+      !mapMediaFocusOpen &&
+      !confirmOpen &&
+      !portalOpen &&
+      !marketConfirmOpen,
   );
 
   const tripSituationRouter = useMemo(
@@ -2659,6 +2730,21 @@ function GlobeHomeBody() {
     [openContextByEventId],
   );
 
+  const bindContextAgentToEntry = useCallback(
+    async (entry: GlobeContextTimelineEntry) => {
+      bindGlobeContextAgent(entry.eventId);
+      await focusContextByEventId(entry.eventId, { openSheet: false });
+      openGlobeContextConditionPanel(entry.eventId);
+    },
+    [focusContextByEventId],
+  );
+
+  const dismissContextAgentPanel = useCallback(() => {
+    closeGlobeContextConditionPanel();
+    clearGlobeContextAgent();
+    resetContextAgentRuntime();
+  }, []);
+
   const handleContextsDeleted = useCallback(
     (eventIds: string[]) => {
       if (activeCluster && eventIds.includes(activeCluster.eventId)) {
@@ -2668,6 +2754,12 @@ function GlobeHomeBody() {
       if (realitySurfaceEventId && eventIds.includes(realitySurfaceEventId)) {
         clearRealitySurfaceSession();
         setDepartureHubPickerOpen(false);
+      }
+      if (
+        contextAgentSession.boundEventId &&
+        eventIds.includes(contextAgentSession.boundEventId)
+      ) {
+        dismissContextAgentPanel();
       }
       const params = new URLSearchParams(window.location.search);
       const recall = params.get("recallEvent");
@@ -2682,6 +2774,8 @@ function GlobeHomeBody() {
     [
       activeCluster,
       clearRealitySurfaceSession,
+      contextAgentSession.boundEventId,
+      dismissContextAgentPanel,
       realitySurfaceEventId,
     ],
   );
@@ -3369,19 +3463,6 @@ function GlobeHomeBody() {
     [focusContextByEventId],
   );
 
-  const brainProjectionVisible = Boolean(
-    brainProjectionEventId &&
-      activeContextEvent?.id === brainProjectionEventId &&
-      activeCluster?.eventId === brainProjectionEventId &&
-      layerMode === "personal" &&
-      !sheetOpen &&
-      !hubDetailOpen &&
-      !mapMediaFocusOpen &&
-      !confirmOpen &&
-      !portalOpen &&
-      !marketConfirmOpen,
-  );
-
   const showBrainSurfaceOntologyPeek = Boolean(
     brainSurfaceVisible &&
       activeBrainSurfaceCandidate &&
@@ -3551,6 +3632,7 @@ function GlobeHomeBody() {
         eateryDiscoveryCards={eateryDiscovery.cardByResourceId}
         brainSurfaceMarkers={brainSurfaceVisible ? projectedBrainSurfaceCandidates : []}
         onBrainSurfaceMarkerPress={handleBrainSurfaceMarkerPress}
+        contextConditionDiscoveryOverlay={contextConditionDiscoveryOverlay}
       />
       <GlobeContextBrainMapOverlay
         visible={brainProjectionVisible}
@@ -3809,7 +3891,18 @@ function GlobeHomeBody() {
         userLat={liveLocation?.lat ?? null}
         userLng={liveLocation?.lng ?? null}
         globeRef={globeRef}
-        onClose={() => closeGlobeContextConditionPanel()}
+        onClose={dismissContextAgentPanel}
+      />
+      <GlobeContextAgentConnector
+        visible={
+          contextConditionPanelOpen &&
+          contextAgentSession.phase === "bound" &&
+          activeCluster?.lat != null &&
+          activeCluster?.lng != null
+        }
+        globeRef={globeRef}
+        pinLat={activeCluster?.lat ?? null}
+        pinLng={activeCluster?.lng ?? null}
       />
       <GlobeLodgingFocusStage
         globeRef={globeRef}
@@ -3831,6 +3924,7 @@ function GlobeHomeBody() {
         onOpenList={() => setListOpen(true)}
         onOpenManage={() => setManageOpen(true)}
         onSelectContext={openContextEntry}
+        onAgentContextPick={bindContextAgentToEntry}
         onContextsDeleted={handleContextsDeleted}
         onNewContext={() => setPortalOpen(true)}
         onPortalPeekToggle={togglePortalPeek}

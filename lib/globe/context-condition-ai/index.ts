@@ -55,3 +55,45 @@ export {
   listContextConditionPins,
   syncContextConditionPins,
 } from "@/lib/globe/context-condition-ai/sync-context-condition-pins";
+export {
+  clearContextConditionPending,
+  readContextConditionPending,
+  writeContextConditionPending,
+} from "@/lib/globe/context-condition-ai/context-condition-pending-spec-store";
+export {
+  buildContextConditionDiscoveryOverlay,
+  resolveLocalDiscoveryRouteArcAltitude,
+} from "@/lib/globe/context-condition-ai/build-context-condition-discovery-overlay";
+export {
+  clearContextConditionDiscoveryOverlay,
+  publishContextConditionDiscoveryOverlay,
+  readContextConditionDiscoveryOverlay,
+  subscribeContextConditionDiscoveryOverlay,
+} from "@/lib/globe/context-condition-ai/context-condition-discovery-overlay-bridge";
+export type {
+  ContextConditionDiscoveryOverlay,
+  ContextConditionDiscoveryRing,
+} from "@/lib/globe/context-condition-ai/context-condition-discovery-overlay-types";
+export { evaluateContextConditionAutoReplan } from "@/lib/globe/context-condition-ai/evaluate-context-condition-auto-replan";
+export type {
+  ContextConditionAutoReplanOutcome,
+  ContextConditionAutoReplanTrigger,
+} from "@/lib/globe/context-condition-ai/evaluate-context-condition-auto-replan";
+export type {
+  ContextConditionRecommendation,
+  LocalDiscoveryActionSpec,
+  LocalDiscoveryQuestion,
+  LocalDiscoveryQuestionChoice,
+  ResolveLocalDiscoveryActionResult,
+} from "@/lib/globe/context-condition-ai/local-discovery-action-types";
+export {
+  LOCAL_DISCOVERY_PIN_CAP,
+  LOCAL_DISCOVERY_RECOMMEND_CAP,
+} from "@/lib/globe/context-condition-ai/local-discovery-limits";
+export { pickTopLocalDiscoveryRows } from "@/lib/globe/context-condition-ai/pick-top-local-discovery-rows";
+export {
+  applyQuestionChoice,
+  isLocalDiscoveryRefinement,
+  refineLocalDiscoverySpec,
+  resolveLocalDiscoveryAction,
+} from "@/lib/globe/context-condition-ai/resolve-local-discovery-action";

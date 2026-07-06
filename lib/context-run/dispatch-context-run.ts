@@ -37,7 +37,7 @@ import {
   fetchExternalContextSourcesClient,
   resolveExternalContextAsk,
 } from "@/lib/external-context-ask";
-import { resolveExperienceRunTurn } from "@/lib/experience-run";
+import { resolveExperienceRunTurn, ensureTripContextEvent } from "@/lib/experience-run";
 import { buildMarketQuickListDraft } from "@/lib/globe/market/build-market-quick-list-draft";
 import { dispatchGlobeIntentSupplyClear } from "@/lib/globe/intent-supply/globe-intent-supply-bridge";
 import { runGlobeMapIntentSupply } from "@/lib/globe/intent-supply/run-globe-map-intent-supply";

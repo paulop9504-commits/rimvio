@@ -193,6 +193,8 @@ export type RimvioGlobeHubProps = {
   focusedContextEventId?: string | null;
   /** Reality Surface bridge path arcs — projection only. */
   realityBridgeArcs?: readonly GlobeTripArc[];
+  /** 맥락 AI placement — radius ring + POI route on globe. */
+  contextConditionDiscoveryOverlay?: import("@/lib/globe/context-condition-ai/context-condition-discovery-overlay-types").ContextConditionDiscoveryOverlay | null;
   /** Hub map anchor press — opens Hub detail, not pin info sheet. */
   onContextHubAnchorPress?: (contextEventId: string) => void;
   /** Pinch/drag coach on the globe canvas — off when capture dock is shown. */
@@ -230,6 +232,7 @@ type RimvioGlobeHubBodyProps = {
   renderSuspended?: boolean;
   focusedContextEventId?: string | null;
   realityBridgeArcs?: readonly GlobeTripArc[];
+  contextConditionDiscoveryOverlay?: import("@/lib/globe/context-condition-ai/context-condition-discovery-overlay-types").ContextConditionDiscoveryOverlay | null;
   onContextHubAnchorPress?: (contextEventId: string) => void;
   showInteractionHint?: boolean;
   layerMode?: GlobeLayerMode;
@@ -258,6 +261,7 @@ const RimvioGlobeHubBody = memo(
       renderSuspended = false,
       focusedContextEventId = null,
       realityBridgeArcs = [],
+      contextConditionDiscoveryOverlay = null,
       onContextHubAnchorPress,
       showInteractionHint = true,
       layerMode = "personal",
@@ -415,12 +419,20 @@ const RimvioGlobeHubBody = memo(
           focusedEventId: focusedContextEventId,
           showBackgroundTripArcs: false,
         });
+        const discoveryArcs = contextConditionDiscoveryOverlay?.routeArcs ?? [];
+        const merged = [...discoveryArcs, ...eventArcs];
         if (realityBridgeArcs.length > 0) {
-          return [...realityBridgeArcs, ...eventArcs];
+          return [...realityBridgeArcs, ...merged];
         }
-        return eventArcs;
+        return merged;
       },
-      [eventsById, clusters, focusedContextEventId, realityBridgeArcs],
+      [
+        eventsById,
+        clusters,
+        focusedContextEventId,
+        realityBridgeArcs,
+        contextConditionDiscoveryOverlay,
+      ],
     );
     const lodgingGlobeMarkers = useMemo(() => {
       void bridgeRevision;
@@ -806,6 +818,7 @@ const RimvioGlobeHubBody = memo(
           ref={innerGlobeRef}
           pins={globePins}
           tripArcs={tripArcs}
+          contextConditionDiscoveryOverlay={contextConditionDiscoveryOverlay}
           viewerLocation={
             gpsEnabled && liveLocation
               ? {
@@ -922,6 +935,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
   brainSurfaceMarkers = [],
   onBrainSurfaceMarkerPress,
   realityBridgeArcs = [],
+  contextConditionDiscoveryOverlay = null,
 }: RimvioGlobeHubProps) {
   const { ready, eventsById, personalPinRevision } = useGlobeEventSnapshot();
   const liveLocation = useLiveLocationSnapshot();
@@ -1082,6 +1096,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
       renderSuspended={renderSuspended}
       focusedContextEventId={focusedContextEventId}
       realityBridgeArcs={realityBridgeArcs}
+      contextConditionDiscoveryOverlay={contextConditionDiscoveryOverlay}
       onContextHubAnchorPress={onContextHubAnchorPress}
       showInteractionHint={showInteractionHint}
       layerMode={layerMode}

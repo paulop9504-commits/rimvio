@@ -8,6 +8,7 @@ import {
   upsertPersonalGlobePin,
 } from "@/lib/globe/personal-globe-pin-store";
 import { pruneContextConditionHubBatch } from "@/lib/globe/context-condition-ai/prune-context-condition-hub-batch";
+import { clearContextConditionDiscoveryOverlay } from "@/lib/globe/context-condition-ai/context-condition-discovery-overlay-bridge";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 
 function contextConditionPinEventId(input: {
@@ -52,6 +53,7 @@ export function dismissContextConditionPinBatch(input: {
     removePersonalGlobePinByEventId(pin.eventId);
   }
   pruneContextConditionHubBatch(input);
+  clearContextConditionDiscoveryOverlay(input.contextEventId);
   return pins.length;
 }
 

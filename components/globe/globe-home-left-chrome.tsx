@@ -29,6 +29,7 @@ export type GlobeHomeLeftChromeProps = {
   onOpenList: () => void;
   onOpenManage: () => void;
   onSelectContext?: (entry: GlobeContextTimelineEntry) => void;
+  onAgentContextPick?: (entry: GlobeContextTimelineEntry) => void;
   onContextsDeleted?: (eventIds: string[]) => void;
   onNewContext?: () => void;
   onPortalPeekToggle: () => void;
@@ -74,6 +75,7 @@ export function GlobeHomeLeftChrome({
   onOpenList,
   onOpenManage,
   onSelectContext,
+  onAgentContextPick,
   onContextsDeleted,
   onNewContext,
   onPortalPeekToggle,
@@ -133,6 +135,7 @@ export function GlobeHomeLeftChrome({
         onOpenChange={setContainerSpaceOpen}
         activeEventId={hubEventId}
         onSelect={(entry) => onSelectContext?.(entry)}
+        onAgentContextPick={onAgentContextPick}
         onDeleted={onContextsDeleted}
         onNewContext={onNewContext}
         layerMode={layerMode}

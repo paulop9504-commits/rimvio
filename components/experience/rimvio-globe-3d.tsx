@@ -20,6 +20,9 @@ import { createGlobeBrainSurfaceMarkerElement } from "@/lib/globe/create-globe-b
 import { createGlobeContextHubAnchorElement } from "@/lib/globe/create-globe-context-hub-anchor-element";
 import { createGlobe3dViewerPinElement } from "@/lib/globe/create-globe-3d-viewer-pin-element";
 import { accuracyMetersToRingDegrees } from "@/lib/globe/accuracy-ring-degrees";
+import { discoveryRadiusMetersToRingDegrees } from "@/lib/globe/discovery-radius-ring-degrees";
+import { resolveLocalDiscoveryRouteArcAltitude } from "@/lib/globe/context-condition-ai/build-context-condition-discovery-overlay";
+import type { ContextConditionDiscoveryOverlay } from "@/lib/globe/context-condition-ai/context-condition-discovery-overlay-types";
 import { GLOBE_TILE_MAX_ZOOM } from "@/lib/globe/globe-tile-constants";
 import { globeTileEngineUrl } from "@/lib/globe/globe-tile-engine-url";
 import { applyRimvioGlobeTileTextureFiltering } from "@/lib/globe/apply-rimvio-globe-tile-texture-filtering";
@@ -141,6 +144,8 @@ export type RimvioGlobe3DHandle = {
 export type RimvioGlobe3DProps = {
   pins: readonly ClassifiedGlobePin[];
   tripArcs?: readonly GlobeTripArc[];
+  /** Context Condition AI — search radius ring + POI walk route. */
+  contextConditionDiscoveryOverlay?: ContextConditionDiscoveryOverlay | null;
   /** Soft trace-density wash — overview/region only. */
   contextWarmthPoints?: readonly GlobeContextWarmthPoint[];
   contextWarmthEnabled?: boolean;
@@ -194,6 +199,7 @@ export const RimvioGlobe3D = memo(
     {
       pins,
       tripArcs = [],
+      contextConditionDiscoveryOverlay = null,
       contextWarmthPoints = [],
       contextWarmthEnabled = false,
       viewerLocation = null,
@@ -691,7 +697,13 @@ export const RimvioGlobe3D = memo(
         .arcEndLat((arc: object) => (arc as GlobeTripArc).endLat)
         .arcEndLng((arc: object) => (arc as GlobeTripArc).endLng)
         .arcColor((arc: object) => (arc as GlobeTripArc).color)
-        .arcAltitude((arc: object) => resolveTripArcAltitude(arc as GlobeTripArc))
+        .arcAltitude((arc: object) => {
+          const row = arc as GlobeTripArc;
+          if (row.id.startsWith("ctxcond-route:")) {
+            return resolveLocalDiscoveryRouteArcAltitude(row);
+          }
+          return resolveTripArcAltitude(row);
+        })
         .arcStroke((arc: object) =>
           (arc as GlobeTripArc).emphasis === "focused"
             ? GLOBE_TOSS_THEME.tripArcFocusedStroke
@@ -702,7 +714,11 @@ export const RimvioGlobe3D = memo(
         .ringLat((row: object) => (row as { lat: number }).lat)
         .ringLng((row: object) => (row as { lng: number }).lng)
         .ringMaxRadius((row: object) => (row as { maxR: number }).maxR)
-        .ringColor(() => GLOBE_TOSS_THEME.viewerRingStroke)
+        .ringColor((row: object) =>
+          (row as { kind?: string }).kind === "discovery"
+            ? "rgba(49, 130, 246, 0.38)"
+            : GLOBE_TOSS_THEME.viewerRingStroke,
+        )
         .ringAltitude(0.001)
         .ringPropagationSpeed(0)
         .ringRepeatPeriod(0)
@@ -1027,21 +1043,40 @@ export const RimvioGlobe3D = memo(
       if (!globe) {
         return;
       }
-      if (!viewerLocation || clampGpsAccuracyMeters(viewerLocation.accuracyM) == null) {
-        globe.ringsData([]);
-        return;
-      }
-      globe.ringsData([
-        {
+      const rings: Array<{
+        lat: number;
+        lng: number;
+        maxR: number;
+        kind: "viewer" | "discovery";
+      }> = [];
+
+      if (
+        viewerLocation &&
+        clampGpsAccuracyMeters(viewerLocation.accuracyM) != null
+      ) {
+        rings.push({
           lat: viewerLocation.lat,
           lng: viewerLocation.lng,
           maxR: accuracyMetersToRingDegrees(
             viewerLocation.lat,
             viewerLocation.accuracyM,
           ),
-        },
-      ]);
-    }, [viewerLocation]);
+          kind: "viewer",
+        });
+      }
+
+      if (contextConditionDiscoveryOverlay?.ring) {
+        const ring = contextConditionDiscoveryOverlay.ring;
+        rings.push({
+          lat: ring.lat,
+          lng: ring.lng,
+          maxR: discoveryRadiusMetersToRingDegrees(ring.lat, ring.radiusM),
+          kind: "discovery",
+        });
+      }
+
+      globe.ringsData(rings);
+    }, [contextConditionDiscoveryOverlay, viewerLocation]);
 
     useEffect(() => {
       const root = rootRef.current;

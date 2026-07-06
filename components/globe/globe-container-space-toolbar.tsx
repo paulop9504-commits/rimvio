@@ -52,6 +52,8 @@ export type GlobeContainerSpaceToolbarProps = {
     open: boolean;
     onToggle: () => void;
   } | null;
+  /** When false, section title is rendered by the sidebar accordion. */
+  showSectionTitle?: boolean;
   className?: string;
 };
 
@@ -119,6 +121,7 @@ export function GlobeContainerSpaceToolbar({
   onOpenWorkQueue,
   onAfterAction,
   memoryRecall = null,
+  showSectionTitle = true,
   className,
 }: GlobeContainerSpaceToolbarProps) {
   const router = useRouter();
@@ -212,9 +215,11 @@ export function GlobeContainerSpaceToolbar({
 
   return (
     <section className={cn("px-1", className)} data-globe-container-space-toolbar>
-      <p className="mb-1.5 px-2 text-[11px] font-semibold uppercase tracking-wide text-white/40">
-        {copy.globe.containerSpaceToolsSection}
-      </p>
+      {showSectionTitle ? (
+        <p className="mb-1.5 px-2 text-[11px] font-semibold uppercase tracking-wide text-white/40">
+          {copy.globe.containerSpaceToolsSection}
+        </p>
+      ) : null}
       <div className="grid grid-cols-4 gap-0.5">
         {items.map((item) => {
           const active =

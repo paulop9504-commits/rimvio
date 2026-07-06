@@ -10,7 +10,7 @@ function readDestinationFromBlueprint(blueprint: ContextBlueprint): string | nul
   const fromTruth = blueprint.resourcePlan.knownTruth.find(
     (row) => row.slotId === "destination",
   )?.value;
-  if (fromTruth?.trim()) {
+  if (typeof fromTruth === "string" && fromTruth.trim()) {
     return fromTruth.trim();
   }
   return blueprint.constraints.destination?.label?.trim() ?? null;

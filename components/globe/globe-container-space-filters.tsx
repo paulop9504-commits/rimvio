@@ -18,6 +18,7 @@ export type GlobeContainerSpaceFiltersProps = {
   onPeopleFilterChange?: (value: string | null) => void;
   peerOptions?: readonly GlobeContextPeerOption[];
   onFlyToHere?: () => void;
+  showSectionTitle?: boolean;
   className?: string;
 };
 
@@ -29,6 +30,7 @@ export function GlobeContainerSpaceFilters({
   onPeopleFilterChange,
   peerOptions = [],
   onFlyToHere,
+  showSectionTitle = true,
   className,
 }: GlobeContainerSpaceFiltersProps) {
   const hasActiveFilters = timeFilter !== "all" || Boolean(peopleFilter?.trim());
@@ -39,9 +41,11 @@ export function GlobeContainerSpaceFilters({
       data-globe-container-space-filters
       data-globe-container-space-filters-active={hasActiveFilters ? "true" : "false"}
     >
-      <p className="mb-1.5 px-1 text-[11px] font-semibold uppercase tracking-wide text-white/40">
-        {copy.globe.containerSpaceFiltersSection}
-      </p>
+      {showSectionTitle ? (
+        <p className="mb-1.5 px-1 text-[11px] font-semibold uppercase tracking-wide text-white/40">
+          {copy.globe.containerSpaceFiltersSection}
+        </p>
+      ) : null}
 
       <div className="rounded-xl bg-white/[0.04] p-2 ring-1 ring-white/8">
         <div className="flex rounded-full bg-white/[0.06] p-0.5 ring-1 ring-white/8">

@@ -8,7 +8,78 @@
 
 ## One line
 
-**Globe AI designs the container. Container AI operates it. The user sees one AI.**
+**Globe AI is the OS compiler — it designs how life flows. 맥락 AI is the OS runtime — it lives that flow in the real world.**
+
+Product shorthand: **Globe AI designs the container. 맥락 AI operates it. The user sees one AI inside a container.**
+
+---
+
+## Globe AI vs 맥락 AI (locked product definition)
+
+| | **Globe AI (L1 Architect)** | **맥락 AI (Execution Runtime)** |
+|---|---|---|
+| **Metaphor** | OS **Compiler** | OS **Runtime** |
+| **Core role** | Designs **how life flows** for real-world action | **Executes** an already-built structure in reality |
+| **Creates** | Structure (Graph · Blueprint · Container) | Map state · recommendations · replans |
+| **Unit** | Whole trip / project | **Current moment** · active stage |
+| **Time** | Future design | **Real-time** |
+| **Output** | Execution Graph · Blueprint · policy constraints | Map · pins · actions |
+| **Persona** | System architect | **Reality operator** — not a “thinking chatbot”, a **moving** engine |
+
+### Globe AI — what it actually does
+
+Not weak “Intent → structure”. It **compiles** intent into executable life flow:
+
+```text
+Intent
+  → Execution Graph generation
+  → Domain decomposition (travel · trade · schedule · …)
+  → Stage design (Prepare → Move → Stay → Return · …)
+  → Container + Runtime spawn
+  → Policy / constraints (budget · time · risk · approval gates)
+```
+
+**Question it answers:** *How should this life flow be structured?* — not *what hotel should I pick?*
+
+**Hard forbidden (system collapse if violated):** pin creation · search · recommendation · UI intervention · domain execution · Commit.
+
+**Code:** `lib/context-run/` · `lib/context-blueprint/` · Globe ingress (`compileGlobeIngress`).
+
+### 맥락 AI — what it actually does
+
+**Not** “Operator + Condition + UI”. **Correct definition:**
+
+> **맥락 AI = Execution Runtime + UI + Replanning Engine**
+
+```text
+Read Execution Graph → judge current stage
+  → ask 1–2 condition questions if slots are thin
+  → map placement (pins = results)
+  → generate recommendations + reasons
+  → real-time replan on refinement (“cheaper” · “quieter”)
+```
+
+**Question it answers:** *What do I do **right now** in this container?*
+
+**Hard forbidden:** Blueprint creation · Container creation · whole-structure rewrite · auto-Commit.
+
+**Internal modules** (developer-only names): Travel Brain · Execution Graph Reader · Context Condition AI · Domain AI Router · Ghost Pin Generator · Action Composer.
+
+**Code:** `lib/container-ai/` · `lib/globe/context-agent/` · `lib/globe/context-condition-ai/` · `GlobeContextConditionPromptFrame`.
+
+### Why this split is the product moat
+
+Legacy AI: one model plans + executes + recommends in one blob.
+
+Rimvio: **design and execution are separated** — same separation as OS compiler vs runtime.
+
+```text
+L1 Globe AI (Compiler)  →  designs flow
+Runtime + Operator      →  lives flow   ← user-facing: 맥락 AI / Trip Assistant
+L2 Blueprint            →  pure contract (data only — not “Context AI”)
+```
+
+**L2 Blueprint is not 맥락 AI.** Blueprint is immutable contract data; 맥락 AI **reads** L2 and **runs** against it.
 
 ---
 
@@ -57,10 +128,10 @@ L5 Commit (Reality)
 
 | Role | Metaphor | Owns |
 |------|----------|------|
-| **Globe AI** | **Architect** | Intent · Container selection · Blueprint compose · initial dispatch |
-| **Container AI** | **Operator** | Current container UX · route user message to internal modules · gate by Execution Graph |
+| **Globe AI** | **Compiler / Architect** | Execution Graph · domain decomposition · stage design · Container spawn · policy constraints · initial dispatch |
+| **맥락 AI** (Container AI / Trip Assistant) | **Runtime / Operator** | Execution Runtime + UI + Replanning · stage gate · condition questions · map placement · live refinement |
 | **Domain AI** | **Specialist Execute** | Lodging search · transit · trade · medical APIs · Ghost Pin prep |
-| **Context Condition AI** | **React** (internal) | Distance · similar price · anchor condition · reactive pin batch |
+| **Context Condition AI** | **React** (internal) | Distance · similar price · anchor condition · reactive pin batch — invoked by 맥락 AI only |
 | **Commit** | **Reality** | Book · pay · calendar · irreversible mutation after approval |
 
 ---
@@ -150,13 +221,14 @@ Container AI → Context Condition AI (distance filter) → pins
 
 ## vs Globe AI (forbidden collapse)
 
-| | Globe AI | Container AI |
+| | Globe AI (Compiler) | 맥락 AI (Runtime) |
 |---|----------|--------------|
 | When | No container · new Intent | Container exists · user inside trip/trade/medical |
-| Creates Blueprint | ✓ | ✗ (read only) |
+| Creates Blueprint / Graph | ✓ | ✗ (read only) |
+| Creates pins / search / recommend | ✗ | ✓ (via internal modules) |
 | Open composer `/search` | ✓ | ✗ |
-| Execution Graph gate | compose | **read + enforce** |
-| User label | (none — system) | Trip Assistant |
+| Execution Graph | compose skeleton | **read + enforce + replan** |
+| User label | (none — system) | Trip Assistant · **맥락 어시스턴트** |
 
 ---
 
