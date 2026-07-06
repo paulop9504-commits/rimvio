@@ -152,6 +152,9 @@ export function GlobeHomeLeftChrome({
             ? () => globeRef.current?.flyToPin(liveLat, liveLng, "neighborhood")
             : undefined
         }
+        onFlyToRuntime={(lat, lng) =>
+          globeRef.current?.flyToPin(lat, lng, "neighborhood")
+        }
         inboxCount={inboxCount}
         mediaPoolCount={mediaPoolCount}
         marketManageCount={marketManageCount}

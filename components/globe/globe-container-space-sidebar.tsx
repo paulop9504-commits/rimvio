@@ -3,7 +3,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Plus, Search, SquarePen, Trash2, X, CheckSquare, Square, Sparkles } from "lucide-react";
+import {
+  ChevronLeft,
+  Plus,
+  Search,
+  SquarePen,
+  Trash2,
+  X,
+  CheckSquare,
+  Square,
+  Sparkles,
+} from "lucide-react";
+import { GlobeContextRuntimePanel } from "@/components/globe/globe-context-runtime-panel";
 import { toast } from "sonner";
 import { GlobeContainerSpaceFilters } from "@/components/globe/globe-container-space-filters";
 import { GlobeContainerSpaceSidebarSection } from "@/components/globe/globe-container-space-sidebar-section";
@@ -33,6 +44,7 @@ import { copy } from "@/lib/copy/human-ko";
 import {
   armGlobeContextAgent,
   cancelGlobeContextAgentArm,
+  readGlobeContextAgentSession,
   subscribeGlobeContextAgent,
 } from "@/lib/globe/context-agent";
 import { cn } from "@/lib/utils";
@@ -42,6 +54,7 @@ export type GlobeContainerSpaceSidebarProps = {
   onOpenChange: (open: boolean) => void;
   activeEventId?: string | null;
   onSelect: (entry: GlobeContextTimelineEntry) => void;
+  onFlyToRuntime?: (lat: number, lng: number) => void;
   /** Sidebar agent flow — pick one context to bind Container AI. */
   onAgentContextPick?: (entry: GlobeContextTimelineEntry) => void;
   onDeleted?: (eventIds: string[]) => void;
@@ -207,6 +220,7 @@ export function GlobeContainerSpaceSidebar({
   onOpenChange,
   activeEventId = null,
   onSelect,
+  onFlyToRuntime,
   onAgentContextPick,
   onDeleted,
   onNewContext,
@@ -243,6 +257,9 @@ export function GlobeContainerSpaceSidebar({
   const [sections, setSections] = useState<SidebarSectionState>(() =>
     readSidebarSections(),
   );
+  const [detailEntry, setDetailEntry] = useState<GlobeContextTimelineEntry | null>(
+    null,
+  );
 
   const toggleSection = (key: SidebarSectionKey) => {
     setSections((prev) => {
@@ -263,10 +280,10 @@ export function GlobeContainerSpaceSidebar({
   }, []);
 
   useEffect(() => {
-    if (!open && agentArming) {
+    if (!open && readGlobeContextAgentSession().phase === "arming") {
       cancelGlobeContextAgentArm();
     }
-  }, [agentArming, open]);
+  }, [open]);
 
   useEffect(() => {
     if (!open || typeof window === "undefined") {
@@ -286,6 +303,7 @@ export function GlobeContainerSpaceSidebar({
       setQuery("");
       setSelectMode(false);
       setSelected(new Set());
+      setDetailEntry(null);
       return;
     }
     const prev = document.body.style.overflow;
@@ -401,22 +419,33 @@ export function GlobeContainerSpaceSidebar({
   };
 
   const handleSelect = (entry: GlobeContextTimelineEntry) => {
-    if (agentArming) {
+    if (readGlobeContextAgentSession().phase === "arming") {
+      setDetailEntry(null);
       onAgentContextPick?.(entry);
       onOpenChange(false);
       return;
     }
+    if (selectMode) {
+      return;
+    }
     onSelect(entry);
-    onOpenChange(false);
+    setDetailEntry(entry);
   };
 
+  const detailEvent = useMemo(() => {
+    void revision;
+    const eventId = detailEntry?.eventId?.trim();
+    return eventId ? findLifeEventCandidate(eventId) : null;
+  }, [detailEntry?.eventId, revision]);
+
   const handleAgentPress = () => {
-    if (agentArming) {
+    if (readGlobeContextAgentSession().phase === "arming") {
       cancelGlobeContextAgentArm();
       return;
     }
     setSelectMode(false);
     setSelected(new Set());
+    setDetailEntry(null);
     armGlobeContextAgent();
   };
 
@@ -479,11 +508,32 @@ export function GlobeContainerSpaceSidebar({
           >
             <div className="shrink-0 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-[17px] font-semibold tracking-tight">
-                  {copy.globe.containerSpaceTitle}
-                </p>
+                <div className="flex min-w-0 items-center gap-1">
+                  {detailEntry ? (
+                    <button
+                      type="button"
+                      onClick={() => setDetailEntry(null)}
+                      className="flex size-9 shrink-0 items-center justify-center rounded-full text-white/70 active:bg-white/10"
+                      aria-label={copy.globe.containerSpaceRuntimeBack}
+                    >
+                      <ChevronLeft className="size-5" aria-hidden />
+                    </button>
+                  ) : null}
+                  <div className="min-w-0">
+                    <p className="truncate text-[17px] font-semibold tracking-tight">
+                      {detailEntry
+                        ? copy.globe.containerSpaceRuntimeTitle
+                        : copy.globe.containerSpaceTitle}
+                    </p>
+                    {detailEntry ? (
+                      <p className="truncate text-[12px] text-white/45">
+                        {detailEntry.title}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
                 <div className="flex items-center gap-1">
-                  {filteredRecent.length > 0 && !agentArming ? (
+                  {filteredRecent.length > 0 && !agentArming && !detailEntry ? (
                     <button
                       type="button"
                       onClick={() => {
@@ -518,7 +568,7 @@ export function GlobeContainerSpaceSidebar({
                 </div>
               </div>
 
-              {!selectMode && !agentArming ? (
+              {!selectMode && !agentArming && !detailEntry ? (
               <button
                 type="button"
                 onClick={handleNew}
@@ -538,7 +588,7 @@ export function GlobeContainerSpaceSidebar({
                 </p>
               )}
 
-              {!selectMode ? (
+              {!selectMode && !detailEntry ? (
                 <button
                   type="button"
                   onClick={handleAgentPress}
@@ -559,6 +609,7 @@ export function GlobeContainerSpaceSidebar({
                 </button>
               ) : null}
 
+              {!detailEntry ? (
               <label className="relative mt-2.5 block">
                 <Search
                   className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-white/35"
@@ -572,9 +623,10 @@ export function GlobeContainerSpaceSidebar({
                   className="w-full rounded-full border-0 bg-white/[0.06] py-2 pl-9 pr-3 text-[13px] text-white placeholder:text-white/35 outline-none ring-1 ring-white/8 focus:ring-white/20"
                 />
               </label>
+              ) : null}
             </div>
 
-            {showPersonalTools &&
+            {!detailEntry && showPersonalTools &&
             onCreatePhoto &&
             onOpenList &&
             onOpenManage &&
@@ -617,7 +669,7 @@ export function GlobeContainerSpaceSidebar({
               </GlobeContainerSpaceSidebarSection>
             ) : null}
 
-            {showPersonalTools && onTimeFilterChange ? (
+            {showPersonalTools && !detailEntry && onTimeFilterChange ? (
               <GlobeContainerSpaceSidebarSection
                 sectionId="filters"
                 title={copy.globe.containerSpaceFiltersSection}
@@ -643,7 +695,7 @@ export function GlobeContainerSpaceSidebar({
               </GlobeContainerSpaceSidebarSection>
             ) : null}
 
-            {showTrendBridge && trendBridge ? (
+            {showTrendBridge && !detailEntry && trendBridge ? (
               <GlobeContainerSpaceSidebarSection
                 sectionId="trend"
                 title={copy.globe.trendBridgePulseChipLabel}
@@ -670,6 +722,14 @@ export function GlobeContainerSpaceSidebar({
             ) : null}
 
             <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3 [scrollbar-width:thin]">
+              {detailEntry && detailEvent ? (
+                <GlobeContextRuntimePanel
+                  event={detailEvent}
+                  onFlyTo={onFlyToRuntime}
+                  onChanged={() => setRevision((value) => value + 1)}
+                />
+              ) : (
+                <>
               {pinned ? (
                 <section className="mb-4 px-1" data-globe-container-space-pinned>
                   <p className="mb-1.5 px-2 text-[11px] font-semibold uppercase tracking-wide text-white/40">
@@ -714,10 +774,12 @@ export function GlobeContainerSpaceSidebar({
                   </div>
                 )}
               </section>
+                </>
+              )}
             </div>
 
             <div className="shrink-0 border-t border-white/8 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
-              {!selectMode && stripEntries.length > 0 ? (
+              {!detailEntry && !selectMode && stripEntries.length > 0 ? (
                 <div className="mb-3 flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {stripEntries.map((entry) => {
                     const active = entry.eventId === activeEventId;
@@ -760,7 +822,7 @@ export function GlobeContainerSpaceSidebar({
                       ? deleteSelection.label
                       : copy.globe.containerSpaceSelectPrompt}
                 </button>
-              ) : (
+              ) : !detailEntry ? (
               <div className="flex items-center justify-between gap-2">
                 <button
                   type="button"
@@ -772,7 +834,7 @@ export function GlobeContainerSpaceSidebar({
                   {copy.globe.containerSpaceComposeCta}
                 </button>
               </div>
-              )}
+              ) : null}
             </div>
           </motion.aside>
         </>
