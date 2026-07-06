@@ -530,20 +530,38 @@ export function GlobeContextConditionPromptFrame({
               <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#86868b]">
                 {copy.globe.containerAiEyebrow}
               </p>
+              {isGlobeContextAgentBound(event.id) ? (
+                <div
+                  className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-[#0071e3]/10 px-2 py-0.5 ring-1 ring-[#0071e3]/20"
+                  data-globe-context-agent-connected
+                >
+                  <span
+                    className="size-1.5 shrink-0 rounded-full bg-[#0071e3]"
+                    aria-hidden
+                  />
+                  <span className="text-[10px] font-semibold text-[#0071e3]">
+                    {copy.globe.contextAgentConnectedBadge}
+                  </span>
+                </div>
+              ) : null}
               <p className="truncate text-[14px] font-semibold text-[#1d1d1f]">
                 {anchorPlaceName}
               </p>
               <p
                 className={cn(
                   "mt-0.5 truncate text-[11px]",
-                  runtime.lifecycle === "busy"
-                    ? "font-medium text-[#0071e3]"
-                    : "text-[#86868b]",
+                  isGlobeContextAgentBound(event.id)
+                    ? "text-[#0071e3]/85"
+                    : runtime.lifecycle === "busy"
+                      ? "font-medium text-[#0071e3]"
+                      : "text-[#86868b]",
                 )}
                 data-globe-context-agent-status
                 data-globe-context-agent-lifecycle={runtime.lifecycle}
               >
-                {statusLabel}
+                {isGlobeContextAgentBound(event.id)
+                  ? copy.globe.contextAgentConnectedHint
+                  : statusLabel}
               </p>
             </div>
           </div>

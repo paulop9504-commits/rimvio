@@ -630,6 +630,8 @@ function GlobeHomeBody() {
   }, [activeCluster, clustersRevision, contextAgentBoundEventId]);
 
   const contextAgentFocusLocked = Boolean(contextAgentBoundEventId);
+  const contextAgentSurfacesActive =
+    contextAgentSession.phase === "arming" || contextAgentSession.phase === "bound";
 
   const dismissCompetingGlobeSurfaces = useCallback(() => {
     setSheetOpen(false);
@@ -1735,7 +1737,8 @@ function GlobeHomeBody() {
       contextMapTapPhaseAllowsMediaReplay(contextTapPhase) &&
       contextHasMapMedia &&
       !mapMediaReplaySuppressed &&
-      !brainSurfaceVisible,
+      !brainSurfaceVisible &&
+      !contextAgentSurfacesActive,
   );
 
   /** Map stays clean while a context is focused — hub lives in the pin sheet. */
@@ -2369,6 +2372,9 @@ function GlobeHomeBody() {
 
   const onGlobePress = useCallback(
     (coords: { lat: number; lng: number }) => {
+      if (readGlobeContextAgentSession().phase === "arming") {
+        return;
+      }
       setGlobeMemoryDismissToken((token) => token + 1);
       setPortalPeekOpen(false);
       if (pinDragActiveRef.current) {
@@ -2470,6 +2476,44 @@ function GlobeHomeBody() {
   );
   const focusContextByEventIdRef = useRef(focusContextByEventId);
 
+  const anchorContextForAgentBind = useCallback(async (eventId: string) => {
+    const key = eventId.trim();
+    if (!key) {
+      return null;
+    }
+    const result = await focusGlobeContextOnMap(key);
+    if (!result?.cluster) {
+      toast.error("맥락을 찾지 못했어요");
+      return null;
+    }
+    const cluster = result.cluster;
+    setStackClusters(null);
+    setActiveCluster(cluster);
+    setSheetOpen(false);
+    setHubDetailOpen(false);
+    setMapMediaReplayDismissedEventId(key);
+    setContextTapPhase("awaiting_replay");
+
+    const event =
+      findLifeEventCandidate(key) ?? recoverGlobeContextEventFromPin(key);
+    if (event) {
+      writeGlobeResumeSession({
+        eventId: key,
+        title: cluster.title?.trim() || event.title,
+        placeLabel: cluster.placeLabel?.trim() || event.place,
+        kind: "context",
+      });
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("recallEvent") !== key) {
+      params.set("recallEvent", key);
+      const next = `${window.location.pathname}?${params.toString()}`;
+      window.history.replaceState(null, "", next);
+    }
+    return cluster;
+  }, []);
+
   const bindContextAgentToEventId = useCallback(
     async (eventId: string) => {
       const key = eventId.trim();
@@ -2479,14 +2523,10 @@ function GlobeHomeBody() {
       dismissCompetingGlobeSurfaces();
       bindGlobeContextAgent(key);
       setStackClusters(null);
-      await focusContextByEventId(key, {
-        openSheet: false,
-        mapTap: false,
-      });
+      await anchorContextForAgentBind(key);
       openGlobeContextConditionPanel(key);
-      window.setTimeout(() => ingestBarRef.current?.focusComposer(), 120);
     },
-    [dismissCompetingGlobeSurfaces, focusContextByEventId],
+    [anchorContextForAgentBind, dismissCompetingGlobeSurfaces],
   );
 
   useEffect(() => {
@@ -3806,6 +3846,7 @@ function GlobeHomeBody() {
         brainSurfaceMarkers={brainSurfaceVisible ? projectedBrainSurfaceCandidates : []}
         onBrainSurfaceMarkerPress={handleBrainSurfaceMarkerPress}
         contextConditionDiscoveryOverlay={contextConditionDiscoveryOverlay}
+        contextAgentPickMode={contextAgentSession.phase === "arming"}
       />
       <GlobeContextBrainMapOverlay
         visible={brainProjectionVisible}
@@ -4012,6 +4053,7 @@ function GlobeHomeBody() {
       !brainProjectionVisible &&
       !brainSurfaceVisible &&
       !confirmOpen &&
+      !contextAgentSurfacesActive &&
       activeCluster?.eventId ? (
         <button
           type="button"
@@ -4028,13 +4070,27 @@ function GlobeHomeBody() {
           {copy.globe.contextGuideReplayChip}
         </button>
       ) : null}
+      {contextAgentSession.phase === "arming" &&
+      layerMode === "personal" &&
+      !mapMediaFocusOpen ? (
+        <p
+          className="pointer-events-none absolute inset-x-6 z-[19] text-center text-[11px] font-medium text-[#9fd0ff] drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]"
+          style={{
+            top: "max(3.75rem, calc(env(safe-area-inset-top) + 2.75rem))",
+          }}
+          data-globe-context-agent-arming-hint
+        >
+          {copy.globe.contextAgentArmingGlobeHint}
+        </p>
+      ) : null}
       {contextTapPhase === "awaiting_replay" &&
       hubEventId &&
       !contextHasMapMedia &&
       !sheetOpen &&
       !mapMediaFocusOpen &&
       !confirmOpen &&
-      !showBrainSurfacePreviewChrome ? (
+      !showBrainSurfacePreviewChrome &&
+      !contextAgentSurfacesActive ? (
         <p
           className="pointer-events-none absolute inset-x-6 z-[19] text-center text-[11px] font-medium text-white/90 drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]"
           style={{

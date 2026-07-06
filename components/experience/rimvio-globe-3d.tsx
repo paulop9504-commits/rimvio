@@ -190,6 +190,8 @@ export type RimvioGlobe3DProps = {
   /** Connected context hub opener — map pill, not pin info sheet. */
   hubAnchors?: readonly GlobeContextHubMapAnchor[];
   onContextHubAnchorPress?: (contextEventId: string) => void;
+  /** 맥락 어시스턴트 pick — pins yield pan/zoom until tap. */
+  contextAgentPickMode?: boolean;
   className?: string;
 };
 
@@ -223,11 +225,13 @@ export const RimvioGlobe3D = memo(
       onBrainSurfaceMarkerPress,
       hubAnchors = [],
       onContextHubAnchorPress,
+      contextAgentPickMode = false,
       className,
     },
     ref,
   ) {
     const rootRef = useRef<HTMLDivElement>(null);
+    const contextAgentPickModeRef = useRef(contextAgentPickMode);
     const shellRef = useRef<HTMLDivElement>(null);
     const globeRef = useRef<GlobeInstance | null>(null);
     const onPinPressRef = useRef(onPinPress);
@@ -438,6 +442,7 @@ export const RimvioGlobe3D = memo(
     tripArcsRef.current = tripArcs;
     contextWarmthPointsRef.current = contextWarmthPoints;
     contextWarmthEnabledRef.current = contextWarmthEnabled;
+    contextAgentPickModeRef.current = contextAgentPickMode;
 
     const syncContextWarmthRef = useRef(() => {});
     const syncHtmlElementsRef = useRef(() => {});
@@ -655,26 +660,42 @@ export const RimvioGlobe3D = memo(
               clampGpsAccuracyMeters(viewerLocationRef.current?.accuracyM ?? null),
             );
           }
+          const pickMode = contextAgentPickModeRef.current;
+          const pickOptions = pickMode ? { gesturePassthrough: true } : undefined;
           if (row.pinShape === "cluster") {
-            return createGlobe3dClusterPinElement(row, {
-              onPress: (pinId) => onPinPressRef.current?.(pinId),
-              lockControls: () => lockGlobeControlsRef.current(),
-              unlockControls: () => unlockGlobeControlsRef.current(),
-            });
+            return createGlobe3dClusterPinElement(
+              row,
+              {
+                onPress: (pinId) => onPinPressRef.current?.(pinId),
+                lockControls: () => lockGlobeControlsRef.current(),
+                unlockControls: () => unlockGlobeControlsRef.current(),
+              },
+              pickOptions,
+            );
           }
           if (row.pinShape === "dot") {
-            return createGlobe3dDotPinElement(row, row.id === activePinIdRef.current, {
-              onPress: (pinId) => onPinPressRef.current?.(pinId),
-              lockControls: () => lockGlobeControlsRef.current(),
-              unlockControls: () => unlockGlobeControlsRef.current(),
-            });
+            return createGlobe3dDotPinElement(
+              row,
+              row.id === activePinIdRef.current,
+              {
+                onPress: (pinId) => onPinPressRef.current?.(pinId),
+                lockControls: () => lockGlobeControlsRef.current(),
+                unlockControls: () => unlockGlobeControlsRef.current(),
+              },
+              pickOptions,
+            );
           }
           if (row.pinShape === "market") {
-            return createGlobe3dMarketPinElement(row, row.id === activePinIdRef.current, {
-              onPress: (pinId) => onPinPressRef.current?.(pinId),
-              lockControls: () => lockGlobeControlsRef.current(),
-              unlockControls: () => unlockGlobeControlsRef.current(),
-            });
+            return createGlobe3dMarketPinElement(
+              row,
+              row.id === activePinIdRef.current,
+              {
+                onPress: (pinId) => onPinPressRef.current?.(pinId),
+                lockControls: () => lockGlobeControlsRef.current(),
+                unlockControls: () => unlockGlobeControlsRef.current(),
+              },
+              pickOptions,
+            );
           }
           return createGlobe3dPinElement(
             row,
@@ -688,6 +709,7 @@ export const RimvioGlobe3D = memo(
             {
               relocateEnabled: pinRelocateEnabledRef.current,
               popout: row.id === expandedPinIdRef.current,
+              ...pickOptions,
             },
           );
         })
@@ -1008,7 +1030,7 @@ export const RimvioGlobe3D = memo(
         return;
       }
       syncHtmlElementsRef.current();
-    }, [pins, lodgingMarkers, eateryMarkers, hubAnchors, globeReady]);
+    }, [pins, lodgingMarkers, eateryMarkers, hubAnchors, globeReady, contextAgentPickMode]);
 
     useEffect(() => {
       const globe = globeRef.current;

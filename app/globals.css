@@ -3588,6 +3588,20 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   box-shadow: 0 2px 8px rgba(27, 100, 218, 0.45);
 }
 
+.rimvio-globe-3d-pin--agent-pick .rimvio-globe-3d-pin__card,
+.rimvio-globe-3d-pin--agent-pick .rimvio-globe-3d-pin__card--cluster,
+.rimvio-globe-3d-pin--agent-pick .rimvio-globe-3d-pin__card--market {
+  box-shadow:
+    0 0 0 2px rgba(0, 113, 227, 0.5),
+    0 10px 24px rgba(0, 113, 227, 0.18);
+}
+
+.rimvio-globe-3d-pin--agent-pick .rimvio-globe-3d-pin__dot,
+.rimvio-globe-3d-pin--agent-pick .rimvio-globe-3d-pin__dot-only {
+  background: #0071e3;
+  box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.2);
+}
+
 .rimvio-globe-3d-pin__title {
   display: -webkit-box;
   overflow: hidden;

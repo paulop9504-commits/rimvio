@@ -203,6 +203,8 @@ export type RimvioGlobeHubProps = {
   layerMode?: GlobeLayerMode;
   brainSurfaceMarkers?: readonly BrainSurfaceProjectionCandidate[];
   onBrainSurfaceMarkerPress?: (candidateId: string) => void;
+  /** 맥락 어시스턴트 pick — globe pan/zoom stays live on pins. */
+  contextAgentPickMode?: boolean;
 };
 
 type RimvioGlobeHubBodyProps = {
@@ -240,6 +242,8 @@ type RimvioGlobeHubBodyProps = {
   eateryDiscoveryCards?: Readonly<Record<string, GlobeEateryDiscoveryCard>> | null;
   brainSurfaceMarkers?: readonly BrainSurfaceProjectionCandidate[];
   onBrainSurfaceMarkerPress?: (candidateId: string) => void;
+  /** 맥락 어시스턴트 pick — globe pan/zoom stays live on pins. */
+  contextAgentPickMode?: boolean;
 };
 
 const RimvioGlobeHubBody = memo(
@@ -269,6 +273,7 @@ const RimvioGlobeHubBody = memo(
       eateryDiscoveryCards = null,
       brainSurfaceMarkers = [],
       onBrainSurfaceMarkerPress,
+      contextAgentPickMode = false,
     },
     ref,
   ) {
@@ -863,6 +868,7 @@ const RimvioGlobeHubBody = memo(
             onContextHubAnchorPress?.(contextEventId);
           }}
           showInteractionHint={showInteractionHint}
+          contextAgentPickMode={contextAgentPickMode}
         />
 
         {clusters.length === 0 ? (
@@ -936,6 +942,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
   onBrainSurfaceMarkerPress,
   realityBridgeArcs = [],
   contextConditionDiscoveryOverlay = null,
+  contextAgentPickMode = false,
 }: RimvioGlobeHubProps) {
   const { ready, eventsById, personalPinRevision } = useGlobeEventSnapshot();
   const liveLocation = useLiveLocationSnapshot();
@@ -1104,6 +1111,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
       eateryDiscoveryCards={eateryDiscoveryCards}
       brainSurfaceMarkers={brainSurfaceMarkers}
       onBrainSurfaceMarkerPress={onBrainSurfaceMarkerPress}
+      contextAgentPickMode={contextAgentPickMode}
     />
   );
 });

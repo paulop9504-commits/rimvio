@@ -167,8 +167,9 @@ function bindGlobe3dPinPress(
   root: HTMLElement,
   pinId: string,
   handlers: Globe3dPinInteractionHandlers,
-  options?: { relocateEnabled?: boolean },
+  options?: { relocateEnabled?: boolean; gesturePassthrough?: boolean },
 ): void {
+  const gesturePassthrough = options?.gesturePassthrough === true;
   let session: PinPressSession | null = null;
 
   const clearSession = () => {
@@ -197,7 +198,9 @@ function bindGlobe3dPinPress(
       return;
     }
 
-    handlers.unlockControls?.();
+    if (!gesturePassthrough) {
+      handlers.unlockControls?.();
+    }
 
     if (!suppressTap && !moved) {
       event.stopPropagation();
@@ -235,10 +238,11 @@ function bindGlobe3dPinPress(
       if (event.button !== 0 || session) {
         return;
       }
-      event.stopPropagation();
-      event.preventDefault();
-
-      handlers.lockControls?.();
+      if (!gesturePassthrough) {
+        event.stopPropagation();
+        event.preventDefault();
+        handlers.lockControls?.();
+      }
 
       session = {
         pointerId: event.pointerId,
@@ -280,11 +284,14 @@ function bindGlobe3dPinPress(
 export function createGlobe3dClusterPinElement(
   pin: ClassifiedGlobePin,
   handlers: Globe3dPinInteractionHandlers,
+  options?: { gesturePassthrough?: boolean },
 ): HTMLElement {
   const root = document.createElement("button");
   root.type = "button";
   root.dataset.globePinId = pin.id;
-  root.className = "rimvio-globe-3d-pin rimvio-globe-3d-pin--cluster";
+  root.className = `rimvio-globe-3d-pin rimvio-globe-3d-pin--cluster${
+    options?.gesturePassthrough ? " rimvio-globe-3d-pin--agent-pick" : ""
+  }`;
   root.setAttribute("aria-label", pin.label);
 
   const card = document.createElement("span");
@@ -307,7 +314,10 @@ export function createGlobe3dClusterPinElement(
   dot.setAttribute("aria-hidden", "true");
   root.appendChild(dot);
 
-  bindGlobe3dPinPress(root, pin.id, handlers, { relocateEnabled: false });
+  bindGlobe3dPinPress(root, pin.id, handlers, {
+    relocateEnabled: false,
+    gesturePassthrough: options?.gesturePassthrough,
+  });
 
   return root;
 }
@@ -316,11 +326,14 @@ export function createGlobe3dDotPinElement(
   pin: ClassifiedGlobePin,
   active: boolean,
   handlers: Globe3dPinInteractionHandlers,
+  options?: { gesturePassthrough?: boolean },
 ): HTMLElement {
   const root = document.createElement("button");
   root.type = "button";
   root.dataset.globePinId = pin.id;
-  root.className = `rimvio-globe-3d-pin rimvio-globe-3d-pin--dot${active ? " rimvio-globe-3d-pin--active" : ""}${pin.hubFocusMuted ? " rimvio-globe-3d-pin--hub-muted" : ""}`;
+  root.className = `rimvio-globe-3d-pin rimvio-globe-3d-pin--dot${active ? " rimvio-globe-3d-pin--active" : ""}${pin.hubFocusMuted ? " rimvio-globe-3d-pin--hub-muted" : ""}${
+    options?.gesturePassthrough ? " rimvio-globe-3d-pin--agent-pick" : ""
+  }`;
   root.setAttribute(
     "aria-label",
     pin.slot?.experienceTitle?.trim() || pin.label.trim() || "맥락",
@@ -331,7 +344,10 @@ export function createGlobe3dDotPinElement(
   dot.setAttribute("aria-hidden", "true");
   root.appendChild(dot);
 
-  bindGlobe3dPinPress(root, pin.id, handlers, { relocateEnabled: false });
+  bindGlobe3dPinPress(root, pin.id, handlers, {
+    relocateEnabled: false,
+    gesturePassthrough: options?.gesturePassthrough,
+  });
 
   return root;
 }
@@ -340,6 +356,7 @@ export function createGlobe3dMarketPinElement(
   pin: ClassifiedGlobePin,
   active: boolean,
   handlers: Globe3dPinInteractionHandlers,
+  options?: { gesturePassthrough?: boolean },
 ): HTMLElement {
   const role = pin.marketRole ?? pin.slot?.marketRole ?? "listing";
   const roleLabel = marketGlobePinRoleLabelKo(role);
@@ -349,7 +366,9 @@ export function createGlobe3dMarketPinElement(
   root.type = "button";
   root.dataset.globePinId = pin.id;
   root.dataset.globeMarketRole = role;
-  root.className = `rimvio-globe-3d-pin rimvio-globe-3d-pin--market rimvio-globe-3d-pin--market-${role}${active ? " rimvio-globe-3d-pin--active" : ""}`;
+  root.className = `rimvio-globe-3d-pin rimvio-globe-3d-pin--market rimvio-globe-3d-pin--market-${role}${active ? " rimvio-globe-3d-pin--active" : ""}${
+    options?.gesturePassthrough ? " rimvio-globe-3d-pin--agent-pick" : ""
+  }`;
   root.setAttribute("aria-label", `${title} · ${roleLabel}`);
 
   const card = document.createElement("span");
@@ -372,7 +391,10 @@ export function createGlobe3dMarketPinElement(
   dot.setAttribute("aria-hidden", "true");
   root.appendChild(dot);
 
-  bindGlobe3dPinPress(root, pin.id, handlers, { relocateEnabled: false });
+  bindGlobe3dPinPress(root, pin.id, handlers, {
+    relocateEnabled: false,
+    gesturePassthrough: options?.gesturePassthrough,
+  });
 
   return root;
 }
@@ -381,12 +403,18 @@ export function createGlobe3dPinElement(
   pin: ClassifiedGlobePin,
   active: boolean,
   handlers: Globe3dPinInteractionHandlers,
-  options?: { relocateEnabled?: boolean; popout?: boolean },
+  options?: {
+    relocateEnabled?: boolean;
+    popout?: boolean;
+    gesturePassthrough?: boolean;
+  },
 ): HTMLElement {
   const root = document.createElement("button");
   root.type = "button";
   root.dataset.globePinId = pin.id;
-  root.className = `rimvio-globe-3d-pin${pin.tripLeg === "departure" ? " rimvio-globe-3d-pin--departure" : ""}${active ? " rimvio-globe-3d-pin--active" : ""}${options?.popout ? " rimvio-globe-3d-pin--popout" : ""}${pin.hubFocusMuted ? " rimvio-globe-3d-pin--hub-muted" : ""}${!pin.hubFocusMuted && pin.emphasis === "primary" && pin.tripLeg ? " rimvio-globe-3d-pin--hub-neighbor" : ""}`;
+  root.className = `rimvio-globe-3d-pin${pin.tripLeg === "departure" ? " rimvio-globe-3d-pin--departure" : ""}${active ? " rimvio-globe-3d-pin--active" : ""}${options?.popout ? " rimvio-globe-3d-pin--popout" : ""}${pin.hubFocusMuted ? " rimvio-globe-3d-pin--hub-muted" : ""}${!pin.hubFocusMuted && pin.emphasis === "primary" && pin.tripLeg ? " rimvio-globe-3d-pin--hub-neighbor" : ""}${
+    options?.gesturePassthrough ? " rimvio-globe-3d-pin--agent-pick" : ""
+  }`;
   const peerLabel = pin.peers?.map((peer) => peer.displayName).join(", ");
   root.setAttribute(
     "aria-label",
@@ -433,10 +461,12 @@ export function createGlobe3dPinElement(
   dot.setAttribute("aria-hidden", "true");
   root.appendChild(dot);
 
-  const relocateEnabled = canRelocatePin(pin, options?.relocateEnabled !== false);
+  const relocateEnabled =
+    !options?.gesturePassthrough && canRelocatePin(pin, options?.relocateEnabled !== false);
 
   bindGlobe3dPinPress(root, pin.id, handlers, {
     relocateEnabled,
+    gesturePassthrough: options?.gesturePassthrough,
   });
 
   return root;
