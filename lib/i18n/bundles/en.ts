@@ -208,6 +208,8 @@ export const copyEn: Copy = {
     contextAgentArmingGlobeHint: "Move the map, then tap a context",
     contextAgentConnectedBadge: "Connected to context",
     contextAgentConnectedHint: "I'll match from this context",
+    contextAgentInterpretationEyebrow: "What I understood",
+    contextAgentInterpretationSteps: "Plan order",
     containerSpaceSectionExpand: (title: string) => `Expand ${title}`,
     containerSpaceSectionCollapse: (title: string) => `Collapse ${title}`,
     containerSpaceRuntimeBack: "Context list",

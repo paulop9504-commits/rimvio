@@ -6,6 +6,7 @@ import type { RefObject } from "react";
 import { toast } from "sonner";
 import { GlobeBrainSurfaceFloatingFrame } from "@/components/globe/globe-brain-surface-floating-frame";
 import { GlobeContextAgentConditionQuestions } from "@/components/globe/globe-context-agent-condition-questions";
+import { GlobeContextAgentInterpretationPanel } from "@/components/globe/globe-context-agent-interpretation-panel";
 import { GlobeContextAgentPreflightBubble } from "@/components/globe/globe-context-agent-preflight-bubble";
 import { GlobeContextAgentProcessStrip } from "@/components/globe/globe-context-agent-process-strip";
 import { GlobeContextAgentRecommendationList } from "@/components/globe/globe-context-agent-recommendation-list";
@@ -37,7 +38,10 @@ import {
   resolveContextAgentWorkPhaseLabel,
   subscribeContextAgentRuntime,
   subscribeContextAgentSession,
+  subscribeContextAgentInterpretation,
+  readContextAgentInterpretationForEvent,
   setContextAgentSessionPhase,
+  type ContextAgentInterpretation,
   isGlobeContextAgentBound,
   type ContextAgentRuntimeState,
   type ContextAgentSessionState,
@@ -145,6 +149,9 @@ export function GlobeContextConditionPromptFrame({
   const zeroPromptRanRef = useRef(false);
   const [situationLine, setSituationLine] = useState<string | null>(null);
   const [preflightLine, setPreflightLine] = useState<string | null>(null);
+  const [interpretation, setInterpretation] = useState<ContextAgentInterpretation | null>(
+    null,
+  );
   const [weatherContext, setWeatherContext] = useState<WeatherContext | null>(null);
   const [refineBusy, setRefineBusy] = useState(false);
   const [pickBusyPlaceId, setPickBusyPlaceId] = useState<string | null>(null);
@@ -160,6 +167,7 @@ export function GlobeContextConditionPromptFrame({
     zeroPromptRanRef.current = false;
     setSituationLine(null);
     setPreflightLine(null);
+    setInterpretation(null);
     setWeatherContext(null);
     setBodyExpanded(true);
     setQuestions([]);
@@ -313,6 +321,17 @@ export function GlobeContextConditionPromptFrame({
   useEffect(() => {
     return subscribeContextAgentSession(setAgentSession);
   }, []);
+
+  useEffect(() => {
+    if (!open || !event) {
+      return;
+    }
+    const syncInterpretation = () => {
+      setInterpretation(readContextAgentInterpretationForEvent(event.id));
+    };
+    syncInterpretation();
+    return subscribeContextAgentInterpretation(syncInterpretation);
+  }, [event, open]);
 
   useEffect(() => {
     return subscribeContextActionInjection(setActionInjection);
@@ -629,6 +648,7 @@ export function GlobeContextConditionPromptFrame({
             {preflightLine ? (
               <GlobeContextAgentPreflightBubble briefingLine={preflightLine} />
             ) : null}
+            <GlobeContextAgentInterpretationPanel interpretation={interpretation} />
             {patchPreview ? (
               <GlobeContextAgentSpatialPatchPreview preview={patchPreview} />
             ) : null}

@@ -50,3 +50,11 @@ export {
   buildContextAgentPreflightBriefing,
   type ContextAgentPreflightBriefing,
 } from "@/lib/globe/context-agent/build-context-agent-preflight-briefing";
+export {
+  clearContextAgentInterpretation,
+  publishContextAgentInterpretation,
+  readContextAgentInterpretation,
+  readContextAgentInterpretationForEvent,
+  subscribeContextAgentInterpretation,
+  type ContextAgentInterpretation,
+} from "@/lib/globe/context-agent/context-agent-interpretation-store";

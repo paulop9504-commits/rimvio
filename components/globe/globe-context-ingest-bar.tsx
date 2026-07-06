@@ -21,6 +21,7 @@ import { GLOBE_CONTEXT_MEDIA_ACCEPT } from "@/lib/feed/ingest-globe-context-capt
 import { validateIngestMediaFiles } from "@/lib/globe/validate-ingest-media-files";
 import { canQuickListMarketCompose } from "@/lib/globe/market/build-market-quick-list-draft";
 import { dispatchContextRun } from "@/lib/context-run/dispatch-context-run";
+import { interpretMessyForGlobeComposer } from "@/lib/messy-prompt-interpreter/adapters/globe-composer-adapter";
 import { readActiveRunState } from "@/lib/context-run/run-state-store";
 import { ensureGlobeChatGraphId } from "@/lib/globe/chat/ensure-globe-chat-graph-id";
 import { syncPortalComposeTurnToChat } from "@/lib/globe/chat/sync-portal-compose-to-chat";
@@ -566,10 +567,23 @@ export const GlobeContextIngestBar = forwardRef<
         }
         setOperatorChoices(null);
 
+        const interpreted = await interpretMessyForGlobeComposer({
+          messyInput: value,
+          contextEventId: routingContextEventId,
+          lat: userLat ?? liveLocation?.lat ?? null,
+          lng: userLng ?? liveLocation?.lng ?? null,
+        });
+        if (interpreted.understandingKo) {
+          showComposerHint(interpreted.understandingKo, {
+            tone: "neutral",
+            durationMs: 4500,
+          });
+        }
+
         const result = await dispatchContextRun(
           {
             kind: "text",
-            text: value,
+            text: interpreted.dispatchText,
             surface: "composer",
             layerMode: isDiscovery ? "discovery" : "personal",
             contextEventId: routingContextEventId,

@@ -52,6 +52,7 @@ import {
 } from "@/lib/globe/context-agent";
 import { refreshExperienceScenarioFromOutcome } from "@/lib/globe/experience-simulation";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
+import { interpretMessyForContextAgent } from "@/lib/messy-prompt-interpreter/adapters/context-agent-adapter";
 import { buildTravelBrainState } from "@/lib/situation-projection/travel-brain-personalization";
 import { cn } from "@/lib/utils";
 
@@ -284,10 +285,19 @@ export const GlobeContextConditionPinBar = forwardRef<
 
   const resolveAndMaybeExecute = useCallback(
     async (triggerMessage: string, answers?: Record<string, string>) => {
+      const interpreted = await interpretMessyForContextAgent({
+        messyInput: triggerMessage,
+        contextEventId,
+        anchorPlaceName,
+        anchorLat,
+        anchorLng,
+      });
+      const pipelineMessage = interpreted.refinedMessage;
+
       const event = findLifeEventCandidate(contextEventId);
       const travelBrain = event ? buildTravelBrainState(event) : null;
       const resolved = resolveLocalDiscoveryAction({
-        message: triggerMessage,
+        message: pipelineMessage,
         answers,
         mobilityConfidence: travelBrain?.slots.mobility_style.confidence,
         budgetConfidence: travelBrain?.slots.budget_band.confidence,
@@ -316,9 +326,16 @@ export const GlobeContextConditionPinBar = forwardRef<
         return null;
       }
 
-      return executeWithSpec({ triggerMessage, spec: resolved.spec });
+      return executeWithSpec({ triggerMessage: pipelineMessage, spec: resolved.spec });
     },
-    [contextEventId, executeWithSpec, onQuestionsChange],
+    [
+      anchorLat,
+      anchorLng,
+      anchorPlaceName,
+      contextEventId,
+      executeWithSpec,
+      onQuestionsChange,
+    ],
   );
 
   const handleSubmit = useCallback(async () => {

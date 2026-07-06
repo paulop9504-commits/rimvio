@@ -216,6 +216,8 @@ export const copy = {
     contextAgentArmingGlobeHint: "지도를 움직인 뒤 맥락을 탭하세요",
     contextAgentConnectedBadge: "맥락에 연결됨",
     contextAgentConnectedHint: "이 맥락을 기준으로 맞춰 드릴게요",
+    contextAgentInterpretationEyebrow: "이해한 내용",
+    contextAgentInterpretationSteps: "맞춤 순서",
     containerSpaceSectionExpand: (title: string) => `${title} 펼치기`,
     containerSpaceSectionCollapse: (title: string) => `${title} 접기`,
     containerSpaceRuntimeBack: "맥락 목록",
