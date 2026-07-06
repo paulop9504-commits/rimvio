@@ -221,6 +221,7 @@ export const copy = {
     contextAgentFrameExpand: "맥락 설명 펼치기",
     contextAgentFrameCollapse: "맥락 설명 접기",
     contextAgentComposeHint: "아래 맞춤 입력으로도 이어갈 수 있어요",
+    contextAgentLockedToContext: "맥락 어시스턴트를 먼저 닫으면 다른 맥락을 볼 수 있어요",
     localDiscoveryAskTransport: "이동은 어떻게 하실 예정인가요?",
     localDiscoveryTransportWalk: "도보",
     localDiscoveryTransportCar: "차량",

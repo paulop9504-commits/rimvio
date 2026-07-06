@@ -126,6 +126,12 @@ import { useAuth } from "@/hooks/use-auth";
 import { isBridgeLinkedEventId } from "@/lib/experience-bridge/stamp-bridge-event-metadata";
 import { focusGlobeContextOnMap } from "@/lib/globe/focus-globe-context-on-map";
 import {
+  isGlobeContextSwitchBlocked,
+  shouldAutoLaunchBrainSurface,
+  shouldOpenGlobeBridgeSheet,
+  shouldOpenGlobeHubDetail,
+} from "@/lib/globe/globe-focus-surface-policy";
+import {
   canOfferGlobeLocationPrompt,
   markGlobeLocationPromptOffered,
 } from "@/lib/globe/globe-location-prompt-budget";
@@ -505,6 +511,7 @@ function GlobeHomeBody() {
   const [manageOpen, setManageOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [stackClusters, setStackClusters] = useState<PinCluster[] | null>(null);
+  const [clustersRevision, setClustersRevision] = useState(0);
   const [mediaStoreRevision, setMediaStoreRevision] = useState(0);
   const [projectionRevision, setProjectionRevision] = useState(0);
   const [hubDetailOpen, setHubDetailOpen] = useState(false);
@@ -568,18 +575,28 @@ function GlobeHomeBody() {
   }, [hubEventId]);
 
   useEffect(() => {
+    const boundEventId =
+      contextAgentSession.phase === "bound"
+        ? contextAgentSession.boundEventId?.trim() || null
+        : null;
+    const eventId = activeCluster?.eventId?.trim() ?? boundEventId;
+    const anchorCluster =
+      activeCluster ??
+      (boundEventId ? resolveGlobeContextCardPinCluster(boundEventId) : null);
+
     publishGlobeTouchedContext({
-      eventId: activeCluster?.eventId ?? null,
-      placeLabel: activeCluster?.placeLabel ?? null,
-      lat: activeCluster?.lat ?? null,
-      lng: activeCluster?.lng ?? null,
+      eventId,
+      placeLabel: anchorCluster?.placeLabel ?? null,
+      lat: anchorCluster?.lat ?? null,
+      lng: anchorCluster?.lng ?? null,
     });
-    if (!activeCluster?.eventId) {
+
+    if (!eventId && contextAgentSession.phase !== "bound") {
       setContextConditionPanelOpen(false);
       closeGlobeContextConditionPanel();
       clearGlobeContextAgent();
     }
-  }, [activeCluster]);
+  }, [activeCluster, contextAgentSession]);
 
   useEffect(() => {
     return subscribeGlobeContextAgent((detail) => {
@@ -587,42 +604,57 @@ function GlobeHomeBody() {
     });
   }, []);
 
+  const contextAgentBoundEventId =
+    contextAgentSession.phase === "bound"
+      ? contextAgentSession.boundEventId?.trim() || null
+      : null;
+
+  const contextAgentAnchorCluster = useMemo((): PinCluster | null => {
+    void clustersRevision;
+    if (!contextAgentBoundEventId) {
+      return null;
+    }
+    const activeId = activeCluster?.eventId?.trim();
+    if (activeId === contextAgentBoundEventId && activeCluster) {
+      return activeCluster;
+    }
+    const fromGlobe = clustersRef.current.find(
+      (cluster) => cluster.eventId?.trim() === contextAgentBoundEventId,
+    );
+    if (fromGlobe) {
+      return fromGlobe;
+    }
+    return resolveGlobeContextCardPinCluster(contextAgentBoundEventId);
+  }, [activeCluster, clustersRevision, contextAgentBoundEventId]);
+
+  const contextAgentFocusLocked = Boolean(contextAgentBoundEventId);
+
+  const dismissCompetingGlobeSurfaces = useCallback(() => {
+    setSheetOpen(false);
+    setHubDetailOpen(false);
+    setBrainProjectionEventId(null);
+    setBrainSurfaceBatch(null);
+    setPortalOpen(false);
+    setGlobeChatOpen(false);
+    setBridgeGhostOpen(false);
+  }, []);
+
   useEffect(() => {
     return subscribeGlobeContextConditionPanel((detail) => {
       setContextConditionPanelOpen(detail.open);
       if (detail.open && detail.eventId?.trim()) {
         bindGlobeContextAgent(detail.eventId.trim());
-        return;
-      }
-      if (!detail.open) {
-        clearGlobeContextAgent();
+        dismissCompetingGlobeSurfaces();
       }
     });
-  }, []);
-
-  useEffect(() => {
-    const clusterId = activeCluster?.eventId?.trim() ?? null;
-    if (
-      contextAgentSession.phase !== "bound" ||
-      !contextAgentSession.boundEventId ||
-      !clusterId ||
-      clusterId === contextAgentSession.boundEventId
-    ) {
-      return;
-    }
-    bindGlobeContextAgent(clusterId);
-    openGlobeContextConditionPanel(clusterId);
-  }, [
-    activeCluster?.eventId,
-    contextAgentSession.boundEventId,
-    contextAgentSession.phase,
-  ]);
+  }, [dismissCompetingGlobeSurfaces]);
 
   const detailLevelRef = useRef<GlobeDetailLevel>("space");
   const lastPinPressAtRef = useRef(0);
 
   const onClustersSnapshot = useCallback((clusters: readonly PinCluster[]) => {
     clustersRef.current = clusters;
+    setClustersRevision((value) => value + 1);
   }, []);
 
   const onDetailLevelChange = useCallback((level: GlobeDetailLevel) => {
@@ -643,7 +675,21 @@ function GlobeHomeBody() {
     }, PIN_REVERT_MS);
   }, []);
 
-  const clearActiveContext = useCallback(() => {
+  const clearActiveContext = useCallback((options?: { force?: boolean }) => {
+    const session = readGlobeContextAgentSession();
+    if (!options?.force && session.phase === "bound" && session.boundEventId) {
+      setSheetOpen(false);
+      setHubDetailOpen(false);
+      setPinSheetInitialPage("media");
+      return;
+    }
+
+    if (options?.force && session.phase === "bound") {
+      closeGlobeContextConditionPanel();
+      clearGlobeContextAgent();
+      resetContextAgentRuntime();
+    }
+
     const eventId =
       draggedEventIdRef.current?.trim() || activeCluster?.eventId?.trim() || null;
     const hadDragPreview = pinDragActiveRef.current;
@@ -684,7 +730,10 @@ function GlobeHomeBody() {
         }, 500);
       }
       setLayerMode(mode);
-      clearActiveContext();
+      closeGlobeContextConditionPanel();
+      clearGlobeContextAgent();
+      resetContextAgentRuntime();
+      clearActiveContext({ force: true });
       setHubDetailOpen(false);
       setListOpen(false);
       setManageOpen(false);
@@ -702,11 +751,17 @@ function GlobeHomeBody() {
         sheetPage?: PinOpenInitialPage;
       },
     ) => {
+      const eventId = cluster.eventId?.trim();
+      if (eventId && isGlobeContextSwitchBlocked(eventId)) {
+        globeRef.current?.flyToPin(cluster.lat, cluster.lng, "neighborhood");
+        toast.message(copy.globe.contextAgentLockedToContext);
+        return;
+      }
+
       globeRef.current?.flyToPin(cluster.lat, cluster.lng, "neighborhood");
       setStackClusters(null);
       setActiveCluster(cluster);
 
-      const eventId = cluster.eventId?.trim();
       const event = eventId
         ? findLifeEventCandidate(eventId) ??
           recoverGlobeContextEventFromPin(eventId)
@@ -736,7 +791,10 @@ function GlobeHomeBody() {
           resolveInitialContextMapTapPhase(event, { hasMapMedia }),
         );
       } else {
-        const openSheet = options?.openSheet !== false;
+        let openSheet = options?.openSheet !== false;
+        if (!shouldOpenGlobeBridgeSheet()) {
+          openSheet = false;
+        }
         if (openSheet) {
           setPinSheetInitialPage(options?.sheetPage ?? "media");
         }
@@ -851,14 +909,22 @@ function GlobeHomeBody() {
   }, [peerOptionsRevision]);
 
   const activeContextEvent = useMemo(() => {
-    const eventId = activeCluster?.eventId?.trim();
+    const eventId =
+      contextAgentBoundEventId ?? activeCluster?.eventId?.trim() ?? null;
     if (!eventId) {
       return null;
     }
     return (
       findLifeEventCandidate(eventId) ?? recoverGlobeContextEventFromPin(eventId)
     );
-  }, [activeCluster?.eventId, mediaStoreRevision]);
+  }, [
+    activeCluster?.eventId,
+    contextAgentBoundEventId,
+    mediaStoreRevision,
+  ]);
+
+  const contextAgentPanelCluster =
+    contextAgentAnchorCluster ?? activeCluster;
 
   const activeContextProjectionManifest = useMemo(() => {
     void projectionRevision;
@@ -902,13 +968,15 @@ function GlobeHomeBody() {
     brainSurfaceBatch &&
       activeCluster?.eventId === brainSurfaceBatch.eventId &&
       !brainProjectionEventId &&
+      !contextAgentFocusLocked &&
       layerMode === "personal" &&
       !sheetOpen &&
       !hubDetailOpen &&
       !mapMediaFocusOpen &&
       !confirmOpen &&
       !portalOpen &&
-      !marketConfirmOpen,
+      !marketConfirmOpen &&
+      !contextConditionPanelOpen,
   );
 
   const { visibleCandidates: visibleBrainSurfaceCandidates } =
@@ -1645,7 +1713,10 @@ function GlobeHomeBody() {
 
   /** Map stays clean while a context is focused — hub lives in the pin sheet. */
   const suppressMapHubRail = Boolean(
-    hubEventId || mapMediaFocusOpen || brainSurfaceVisible,
+    hubEventId ||
+      mapMediaFocusOpen ||
+      brainSurfaceVisible ||
+      contextAgentFocusLocked,
   );
 
   const dismissMapMediaReplay = useCallback(() => {
@@ -2032,6 +2103,9 @@ function GlobeHomeBody() {
       !activeContextProjectionManifest ||
       layerMode !== "personal" ||
       brainProjectionEventId ||
+      contextAgentFocusLocked ||
+      contextConditionPanelOpen ||
+      !shouldAutoLaunchBrainSurface() ||
       sheetOpen ||
       hubDetailOpen ||
       mapMediaFocusOpen ||
@@ -2058,6 +2132,8 @@ function GlobeHomeBody() {
   }, [
     activeContextEvent,
     activeContextProjectionManifest,
+    contextAgentFocusLocked,
+    contextConditionPanelOpen,
     brainProjectionEventId,
     brainSurfaceBatch?.eventId,
     confirmOpen,
@@ -2307,6 +2383,9 @@ function GlobeHomeBody() {
   );
 
   const openMapMediaBridge = useCallback(() => {
+    if (!shouldOpenGlobeBridgeSheet()) {
+      return;
+    }
     markPinPress();
     const eventId = activeClusterRef.current?.eventId?.trim();
     if (!eventId) {
@@ -2361,6 +2440,15 @@ function GlobeHomeBody() {
   useEffect(() => {
     return subscribeGlobeContextHubOpen((detail) => {
       const eventId = detail.contextEventId.trim();
+      if (!shouldOpenGlobeHubDetail()) {
+        setSheetOpen(false);
+        setHubDetailOpen(false);
+        void focusContextByEventIdRef.current(eventId, {
+          openSheet: false,
+          mapTap: false,
+        });
+        return;
+      }
       setSheetOpen(false);
       setHubDetailOpen(true);
       if (activeClusterRef.current?.eventId?.trim() !== eventId) {
@@ -2372,10 +2460,10 @@ function GlobeHomeBody() {
   useEffect(() => {
     return subscribeGlobeAskBridgeFocus((detail) => {
       const mode = detail.mode ?? "bridge";
-      if (mode === "map") {
+      if (mode === "map" || !shouldOpenGlobeBridgeSheet()) {
         void focusContextByEventIdRef.current(detail.eventId, {
           openSheet: false,
-          mapTap: true,
+          mapTap: mode === "map",
         });
         return;
       }
@@ -2732,11 +2820,16 @@ function GlobeHomeBody() {
 
   const bindContextAgentToEntry = useCallback(
     async (entry: GlobeContextTimelineEntry) => {
+      dismissCompetingGlobeSurfaces();
       bindGlobeContextAgent(entry.eventId);
-      await focusContextByEventId(entry.eventId, { openSheet: false });
+      await focusContextByEventId(entry.eventId, {
+        openSheet: false,
+        mapTap: false,
+      });
       openGlobeContextConditionPanel(entry.eventId);
+      window.setTimeout(() => ingestBarRef.current?.focusComposer(), 120);
     },
-    [focusContextByEventId],
+    [dismissCompetingGlobeSurfaces, focusContextByEventId],
   );
 
   const dismissContextAgentPanel = useCallback(() => {
@@ -3353,6 +3446,9 @@ function GlobeHomeBody() {
 
   useEffect(() => {
     return subscribeGlobePortalOpen((request) => {
+      if (!shouldOpenGlobeHubDetail()) {
+        return;
+      }
       void openPortal({
         eventId: request.eventId,
         composeText: request.composeText,
@@ -3875,19 +3971,19 @@ function GlobeHomeBody() {
         open={
           contextConditionPanelOpen &&
           Boolean(activeContextEvent) &&
-          activeCluster?.lat != null &&
-          activeCluster?.lng != null
+          contextAgentPanelCluster?.lat != null &&
+          contextAgentPanelCluster?.lng != null
         }
         event={activeContextEvent}
         anchorPlaceId={`context-center:${activeContextEvent?.id ?? "unknown"}`}
         anchorPlaceName={
-          activeCluster?.placeLabel?.trim() ||
+          contextAgentPanelCluster?.placeLabel?.trim() ||
           activeContextEvent?.place?.trim() ||
           activeContextEvent?.title.trim() ||
           copy.globe.contextConditionPanelEyebrow
         }
-        anchorLat={activeCluster?.lat ?? 0}
-        anchorLng={activeCluster?.lng ?? 0}
+        anchorLat={contextAgentPanelCluster?.lat ?? 0}
+        anchorLng={contextAgentPanelCluster?.lng ?? 0}
         userLat={liveLocation?.lat ?? null}
         userLng={liveLocation?.lng ?? null}
         globeRef={globeRef}
@@ -3897,12 +3993,12 @@ function GlobeHomeBody() {
         visible={
           contextConditionPanelOpen &&
           contextAgentSession.phase === "bound" &&
-          activeCluster?.lat != null &&
-          activeCluster?.lng != null
+          contextAgentPanelCluster?.lat != null &&
+          contextAgentPanelCluster?.lng != null
         }
         globeRef={globeRef}
-        pinLat={activeCluster?.lat ?? null}
-        pinLng={activeCluster?.lng ?? null}
+        pinLat={contextAgentPanelCluster?.lat ?? null}
+        pinLng={contextAgentPanelCluster?.lng ?? null}
       />
       <GlobeLodgingFocusStage
         globeRef={globeRef}
@@ -4110,8 +4206,15 @@ function GlobeHomeBody() {
         onKnowledgePlacementDismiss={onKnowledgePlacementDismiss}
         onKnowledgePlacementConfirmed={onKnowledgePlacementConfirmed}
         ingest={{
-          targetEventId: activeCluster?.eventId ?? realitySurfaceEventId ?? null,
-          targetTitle: activeCluster?.title ?? null,
+          targetEventId:
+            contextAgentBoundEventId ??
+            activeCluster?.eventId ??
+            realitySurfaceEventId ??
+            null,
+          targetTitle:
+            contextAgentPanelCluster?.title ??
+            activeCluster?.title ??
+            null,
           forceAttachToTarget: false,
           onPhotoDraftReady: beginPhotoIngestFlow,
           onAttached: (eventId, options) => {
@@ -4185,8 +4288,15 @@ function GlobeHomeBody() {
         onViewInnerGlobe={focusResourceOnInnerGlobe}
         onViewOuterGlobe={focusResourceOnOuterGlobe}
         ingest={{
-          targetEventId: activeCluster?.eventId ?? realitySurfaceEventId ?? null,
-          targetTitle: activeCluster?.title ?? null,
+          targetEventId:
+            contextAgentBoundEventId ??
+            activeCluster?.eventId ??
+            realitySurfaceEventId ??
+            null,
+          targetTitle:
+            contextAgentPanelCluster?.title ??
+            activeCluster?.title ??
+            null,
           forceAttachToTarget: false,
           onPhotoDraftReady: beginPhotoIngestFlow,
           onAttached: (eventId, options) => {

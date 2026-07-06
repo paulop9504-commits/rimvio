@@ -52,6 +52,7 @@ import {
 export type GlobeContextIngestBarHandle = {
   openPhotoPicker: () => void;
   submitComposerText: (value: string) => Promise<void>;
+  focusComposer: () => void;
 };
 
 export type GlobeContextIngestBarProps = {
@@ -702,6 +703,9 @@ export const GlobeContextIngestBar = forwardRef<
         window.setTimeout(() => photoRef.current?.click(), 0);
       },
       submitComposerText: (value: string) => submitText(undefined, value),
+      focusComposer: () => {
+        window.setTimeout(() => inputRef.current?.focus(), 0);
+      },
     }),
     [submitText],
   );

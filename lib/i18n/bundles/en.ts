@@ -213,6 +213,7 @@ export const copyEn: Copy = {
     contextAgentFrameExpand: "Expand context details",
     contextAgentFrameCollapse: "Collapse context details",
     contextAgentComposeHint: "You can also continue in the compose bar below",
+    contextAgentLockedToContext: "Close Trip Assistant first to switch context",
     localDiscoveryAskTransport: "How will you get around?",
     localDiscoveryTransportWalk: "On foot",
     localDiscoveryTransportCar: "By car",
