@@ -1033,6 +1033,23 @@ export const RimvioGlobe3D = memo(
     }, [pins, lodgingMarkers, eateryMarkers, hubAnchors, globeReady, contextAgentPickMode]);
 
     useEffect(() => {
+      shellRef.current?.setAttribute(
+        "data-globe-context-agent-pick",
+        contextAgentPickMode ? "true" : "false",
+      );
+      if (!contextAgentPickMode) {
+        return;
+      }
+      pinPressLockRef.current = false;
+      controlsBlockedRef.current = Boolean(relocatingPinIdRef.current);
+      suppressGlobeClickUntilRef.current = 0;
+      const globe = globeRef.current;
+      if (globe && !relocatingPinIdRef.current) {
+        globe.controls().enabled = true;
+      }
+    }, [contextAgentPickMode, globeReady]);
+
+    useEffect(() => {
       const globe = globeRef.current;
       if (!globe) {
         return;

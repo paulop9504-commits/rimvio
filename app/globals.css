@@ -3602,6 +3602,14 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.2);
 }
 
+/* Agent pick — pins yield pan/zoom; bind via globe tap hit-test. */
+.rimvio-globe-space[data-globe-context-agent-pick="true"] .rimvio-globe-3d-pin,
+.rimvio-globe-space[data-globe-context-agent-pick="true"] .rimvio-globe-lodging-marker,
+.rimvio-globe-space[data-globe-context-agent-pick="true"] .rimvio-globe-brain-surface-marker,
+.rimvio-globe-space[data-globe-context-agent-pick="true"] .rimvio-globe-context-hub-anchor {
+  pointer-events: none !important;
+}
+
 .rimvio-globe-3d-pin__title {
   display: -webkit-box;
   overflow: hidden;

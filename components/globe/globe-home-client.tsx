@@ -2373,6 +2373,8 @@ function GlobeHomeBody() {
   const onGlobePress = useCallback(
     (coords: { lat: number; lng: number }) => {
       if (readGlobeContextAgentSession().phase === "arming") {
+        const nearby = resolveNearbyAt(coords.lat, coords.lng);
+        applyNearbyContexts(nearby);
         return;
       }
       setGlobeMemoryDismissToken((token) => token + 1);
