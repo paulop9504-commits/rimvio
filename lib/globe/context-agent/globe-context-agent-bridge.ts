@@ -3,6 +3,7 @@ import {
   resetContextAgentSession,
 } from "@/lib/globe/context-agent/context-agent-session-store";
 import { clearContextActionInjection } from "@/lib/globe/context-action-injection";
+import { clearExperienceSimulation } from "@/lib/globe/experience-simulation";
 
 export type GlobeContextAgentPhase = "idle" | "arming" | "bound";
 
@@ -69,6 +70,7 @@ export function clearGlobeContextAgent(): void {
   emit({ phase: "idle", boundEventId: null });
   resetContextAgentSession();
   clearContextActionInjection();
+  clearExperienceSimulation();
 }
 
 export function subscribeGlobeContextAgent(

@@ -11,4 +11,7 @@ export type ContextConditionDiscoveryOverlay = {
   batchId: string;
   ring: ContextConditionDiscoveryRing;
   routeArcs: readonly GlobeTripArc[];
+  /** Active simulation leg — thicker arc on globe. */
+  playbackLegIndex?: number | null;
+  scenarioBranchId?: string | null;
 };

@@ -50,6 +50,7 @@ import {
   setContextAgentSessionPhase,
   setContextAgentSessionSpec,
 } from "@/lib/globe/context-agent";
+import { refreshExperienceScenarioFromOutcome } from "@/lib/globe/experience-simulation";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 import { buildTravelBrainState } from "@/lib/situation-projection/travel-brain-personalization";
 import { cn } from "@/lib/utils";
@@ -258,6 +259,13 @@ export const GlobeContextConditionPinBar = forwardRef<
       onPatchPreviewChange?.(null);
       toast.success(outcome.summaryKo);
       onPinned?.(outcome);
+      refreshExperienceScenarioFromOutcome({
+        contextEventId,
+        anchorTitle: anchorPlaceName,
+        anchorLat,
+        anchorLng,
+        outcome,
+      });
       return outcome;
     },
     [

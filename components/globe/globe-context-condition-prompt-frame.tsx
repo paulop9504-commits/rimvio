@@ -62,6 +62,18 @@ import { resolveBridgeContextWeatherTarget } from "@/lib/globe/resolve-bridge-co
 import type { WeatherContext } from "@/lib/context-resolver/types";
 import { buildTravelBrainState } from "@/lib/situation-projection/travel-brain-personalization";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
+import { GlobeExperienceTimelineStrip } from "@/components/globe/globe-experience-timeline-strip";
+import { useExperienceSimulationPlayback } from "@/hooks/use-experience-simulation-playback";
+import {
+  buildExperienceScenarioFromOutcome,
+  publishExperienceScenario,
+  readExperienceSimulationState,
+  resolveActiveSimulationNode,
+  setExperienceSimulationBranch,
+  setExperienceSimulationPlayback,
+  subscribeExperienceSimulation,
+  type ExperienceSimulationState,
+} from "@/lib/globe/experience-simulation";
 import { cn } from "@/lib/utils";
 
 const PREFLIGHT_READ_MS = 2800;
@@ -119,6 +131,9 @@ export function GlobeContextConditionPromptFrame({
   );
   const [actionInjection, setActionInjection] =
     useState<ContextActionInjection | null>(() => readContextActionInjection());
+  const [simulation, setSimulation] = useState<ExperienceSimulationState>(() =>
+    readExperienceSimulationState(),
+  );
   const [questions, setQuestions] = useState<readonly LocalDiscoveryQuestion[]>([]);
   const [recommendations, setRecommendations] = useState<
     readonly ContextConditionRecommendation[]
@@ -166,6 +181,47 @@ export function GlobeContextConditionPromptFrame({
       setContextAgentSessionPhase("awaiting_human");
     }
     setActiveSpec(batch?.spec ?? null);
+    if (event && batch?.count && batch.count > 0) {
+      const wired = (batch.recommendations ?? []).map((row, index) => ({
+        kind: row.kind,
+        title: row.title,
+        reasonKo: row.reasonKo,
+        rank: index + 1,
+        placeId: row.placeId ?? `${row.kind}-${index}`,
+        lat: row.lat ?? anchorLat,
+        lng: row.lng ?? anchorLng,
+      }));
+      const scenario = buildExperienceScenarioFromOutcome({
+        contextEventId: event.id,
+        anchorTitle: anchorPlaceName,
+        anchorLat,
+        anchorLng,
+        outcome: {
+          batchId: batch.batchId,
+          lodgingCount: wired.filter((row) => row.kind === "lodging").length,
+          eateryCount: wired.filter((row) => row.kind === "eatery").length,
+          summaryKo: batch.summaryKo,
+          pinPoints: wired.map((row) => ({ lat: row.lat, lng: row.lng })),
+          radiusM: batch.radiusM ?? 800,
+          recommendations: wired,
+          spec: batch.spec ?? {
+            version: 1,
+            resourceTypes: ["restaurant", "hotel"],
+            transport: "walk",
+            budget: "medium",
+            vibe: "popular",
+            lodgingKind: "any",
+            radiusM: batch.radiusM ?? 800,
+          },
+        },
+      });
+      if (scenario) {
+        publishExperienceScenario({
+          scenario,
+          radiusM: batch.radiusM ?? 800,
+        });
+      }
+    }
     if (event) {
       const briefing = buildContextAgentPreflightBriefing({
         event,
@@ -262,6 +318,44 @@ export function GlobeContextConditionPromptFrame({
     return subscribeContextActionInjection(setActionInjection);
   }, []);
 
+  useEffect(() => {
+    return subscribeExperienceSimulation(setSimulation);
+  }, []);
+
+  useExperienceSimulationPlayback();
+
+  const lastSimulationFocusRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!open || !event || !simulation.scenario) {
+      return;
+    }
+    if (simulation.scenario.contextEventId !== event.id) {
+      return;
+    }
+    const target = resolveActiveSimulationNode(
+      simulation.scenario,
+      simulation.playback.cursorIndex,
+    );
+    if (!target || !globeRef?.current) {
+      return;
+    }
+    const focusKey = `${simulation.scenario.activeBranchId}:${simulation.playback.cursorIndex}:${target.placeId}`;
+    if (lastSimulationFocusRef.current === focusKey) {
+      return;
+    }
+    lastSimulationFocusRef.current = focusKey;
+    globeRef.current.flyToPin(target.lat, target.lng, "city", {
+      pinViewportY: MAP_FOCUS_PIN_VIEWPORT_Y,
+    });
+  }, [
+    event,
+    globeRef,
+    open,
+    simulation.playback.cursorIndex,
+    simulation.scenario,
+  ]);
+
   const travelLines = useMemo(() => {
     if (!event) {
       return [] as string[];
@@ -315,6 +409,21 @@ export function GlobeContextConditionPromptFrame({
     setActiveSpec(outcome.spec);
     setContextAgentSessionPhase("awaiting_human");
     setBodyExpanded(true);
+    if (event) {
+      const scenario = buildExperienceScenarioFromOutcome({
+        contextEventId: event.id,
+        anchorTitle: anchorPlaceName,
+        anchorLat,
+        anchorLng,
+        outcome,
+      });
+      if (scenario) {
+        publishExperienceScenario({
+          scenario,
+          radiusM: outcome.radiusM,
+        });
+      }
+    }
     if (outcome.pinPoints.length === 0) {
       return;
     }
@@ -545,6 +654,26 @@ export function GlobeContextConditionPromptFrame({
               <p className="rounded-xl bg-emerald-50 px-2.5 py-2 text-[11px] font-medium text-emerald-900">
                 {lastSummary}
               </p>
+            ) : null}
+            {simulation.scenario &&
+            simulation.scenario.contextEventId === event.id ? (
+              <GlobeExperienceTimelineStrip
+                scenario={simulation.scenario}
+                playback={simulation.playback}
+                itineraryDiff={simulation.itineraryDiff}
+                onBranchChange={setExperienceSimulationBranch}
+                onTogglePlay={() => {
+                  setExperienceSimulationPlayback({
+                    playing: !simulation.playback.playing,
+                  });
+                }}
+                onScrub={(cursorIndex) => {
+                  setExperienceSimulationPlayback({
+                    playing: false,
+                    cursorIndex,
+                  });
+                }}
+              />
             ) : null}
           </div>
         ) : questions.length === 0 && !showPreflightChat ? (
