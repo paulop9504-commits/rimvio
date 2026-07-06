@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, X } from "lucide-react";
 import type { RefObject } from "react";
+import { toast } from "sonner";
 import { GlobeBrainSurfaceFloatingFrame } from "@/components/globe/globe-brain-surface-floating-frame";
 import { GlobeContextAgentConditionQuestions } from "@/components/globe/globe-context-agent-condition-questions";
 import { GlobeContextAgentProcessStrip } from "@/components/globe/globe-context-agent-process-strip";
@@ -18,6 +19,8 @@ import { computeLodgingDiscoveryBounds } from "@/lib/globe/lodging/compute-lodgi
 import { MAP_FOCUS_PIN_VIEWPORT_Y } from "@/lib/globe/map-anchored-overlay-layout";
 import {
   readContextConditionLastBatch,
+  pinContextConditionRecommendation,
+  readContextConditionPinnedPlaceIds,
   type ContextConditionAnchorPinOutcome,
 } from "@/lib/globe/context-condition-ai";
 import type {
@@ -33,6 +36,7 @@ import {
 } from "@/lib/globe/context-agent";
 import { resolveContextAgentZeroPrompt } from "@/lib/globe/context-agent/resolve-context-agent-zero-prompt";
 import { buildTravelBrainState } from "@/lib/situation-projection/travel-brain-personalization";
+import { findLifeEventCandidate } from "@/lib/life-read-model";
 import { cn } from "@/lib/utils";
 
 export type GlobeContextConditionPromptFrameProps = {
@@ -97,6 +101,8 @@ export function GlobeContextConditionPromptFrame({
   const zeroPromptRanRef = useRef(false);
   const [situationLine, setSituationLine] = useState<string | null>(null);
   const [refineBusy, setRefineBusy] = useState(false);
+  const [pickBusyPlaceId, setPickBusyPlaceId] = useState<string | null>(null);
+  const [pinnedRevision, setPinnedRevision] = useState(0);
   const [activeSpec, setActiveSpec] = useState<
     import("@/lib/globe/context-condition-ai/local-discovery-action-types").LocalDiscoveryActionSpec | null
   >(null);
@@ -117,13 +123,16 @@ export function GlobeContextConditionPromptFrame({
         title: row.title,
         reasonKo: row.reasonKo,
         rank: index + 1,
+        placeId: row.placeId ?? `${row.kind}-${index}`,
+        lat: row.lat ?? anchorLat,
+        lng: row.lng ?? anchorLng,
       })),
     );
     if ((batch?.recommendations?.length ?? 0) > 0) {
       setBodyExpanded(true);
     }
     setActiveSpec(batch?.spec ?? null);
-  }, [event, open]);
+  }, [anchorLat, anchorLng, event, open]);
 
   useEffect(() => {
     if (!open || !event || zeroPromptRanRef.current) {
@@ -173,6 +182,40 @@ export function GlobeContextConditionPromptFrame({
       state.slots.lodging_priority.reasonKo,
     ].filter(Boolean);
   }, [event]);
+
+  const pinnedByKind = useMemo(() => {
+    void pinnedRevision;
+    const freshEvent = event ? findLifeEventCandidate(event.id) ?? event : null;
+    return readContextConditionPinnedPlaceIds(freshEvent);
+  }, [event, pinnedRevision]);
+
+  const handlePickRecommendation = (item: ContextConditionRecommendation) => {
+    if (!event) {
+      return;
+    }
+    setPickBusyPlaceId(item.placeId);
+    void (async () => {
+      try {
+        pinContextConditionRecommendation({
+          eventId: event.id,
+          recommendation: item,
+        });
+        setPinnedRevision((value) => value + 1);
+        toast.success(copy.globe.contextQuickPinToast(item.title));
+        globeRef?.current?.flyToPin(item.lat, item.lng, "city", {
+          pinViewportY: MAP_FOCUS_PIN_VIEWPORT_Y,
+        });
+      } catch (caught) {
+        toast.error(
+          caught instanceof Error && caught.message.trim()
+            ? caught.message.trim()
+            : copy.globe.ingestAttachFail,
+        );
+      } finally {
+        setPickBusyPlaceId(null);
+      }
+    })();
+  };
 
   const handlePinned = (outcome: ContextConditionAnchorPinOutcome) => {
     setLastSummary(outcome.summaryKo);
@@ -329,7 +372,12 @@ export function GlobeContextConditionPromptFrame({
               </p>
             ) : null}
             {recommendations.length > 0 ? (
-              <GlobeContextAgentRecommendationList items={recommendations} />
+              <GlobeContextAgentRecommendationList
+                items={recommendations}
+                pinnedByKind={pinnedByKind}
+                pickBusyPlaceId={pickBusyPlaceId}
+                onPick={handlePickRecommendation}
+              />
             ) : (
               <>
                 <p className="text-[12px] leading-relaxed text-[#515154]">

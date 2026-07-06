@@ -72,6 +72,9 @@ export type ContextConditionRecommendation = {
   readonly title: string;
   readonly reasonKo: string;
   readonly rank: number;
+  readonly placeId: string;
+  readonly lat: number;
+  readonly lng: number;
 };
 
 export type ContextConditionAnchorPinOutcome = {

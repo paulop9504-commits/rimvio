@@ -119,6 +119,9 @@ function buildRecommendations(input: {
       title: row.row.name?.trim() || row.row.placeId,
       reasonKo: row.reasonKo,
       rank: index + 1,
+      placeId: row.row.placeId,
+      lat: row.row.lat,
+      lng: row.row.lng,
     });
   }
   for (const [index, row] of input.eateryScored.entries()) {
@@ -127,6 +130,9 @@ function buildRecommendations(input: {
       title: row.row.name?.trim() || row.row.placeId,
       reasonKo: row.reasonKo,
       rank: index + 1,
+      placeId: row.row.placeId,
+      lat: row.row.lat,
+      lng: row.row.lng,
     });
   }
   return rows.slice(0, LOCAL_DISCOVERY_RECOMMEND_CAP);
@@ -296,6 +302,9 @@ export async function runContextConditionAnchorPin(
       kind: row.kind,
       title: row.title,
       reasonKo: row.reasonKo,
+      placeId: row.placeId,
+      lat: row.lat,
+      lng: row.lng,
     })),
     radiusM,
     spec,

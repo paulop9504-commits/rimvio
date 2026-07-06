@@ -13,6 +13,9 @@ export type ContextConditionLastBatchWire = {
     kind: "lodging" | "eatery";
     title: string;
     reasonKo: string;
+    placeId?: string;
+    lat?: number;
+    lng?: number;
   }[];
 };
 

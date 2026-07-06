@@ -11,6 +11,9 @@ import type { EventCandidate } from "../lib/events/event-candidate";
 import { buildContextConditionDiscoveryOverlay } from "../lib/globe/context-condition-ai/build-context-condition-discovery-overlay";
 import { evaluateContextConditionAutoReplan } from "../lib/globe/context-condition-ai/evaluate-context-condition-auto-replan";
 import { discoveryRadiusMetersToRingDegrees } from "../lib/globe/discovery-radius-ring-degrees";
+import { readContextConditionPinnedPlaceIds } from "../lib/globe/context-condition-ai/pin-context-condition-recommendation";
+import { CONTEXT_EATERY_PINNED_RESOURCE_ID_META_KEY } from "../lib/globe/eatery/eatery-resource-types";
+import { CONTEXT_LODGING_PINNED_RESOURCE_ID_META_KEY } from "../lib/globe/context-pinned-item";
 
 const baseSpec = {
   version: 1 as const,
@@ -101,5 +104,16 @@ const replan = evaluateContextConditionAutoReplan({
   weather: { condition: "rain", summary: "비" },
 });
 assert.equal(replan?.trigger, "weather_rain");
+
+const pinnedEvent = {
+  ...mockEvent,
+  metadata: {
+    [CONTEXT_LODGING_PINNED_RESOURCE_ID_META_KEY]: "ev-test:lodging:hotel-abc",
+    [CONTEXT_EATERY_PINNED_RESOURCE_ID_META_KEY]: "ev-test:eatery:ramen-1",
+  },
+} as EventCandidate;
+const pinned = readContextConditionPinnedPlaceIds(pinnedEvent);
+assert.equal(pinned.lodging, "hotel-abc");
+assert.equal(pinned.eatery, "ramen-1");
 
 console.log("test-context-agent-mvp: ok");

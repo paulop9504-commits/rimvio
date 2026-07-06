@@ -246,6 +246,7 @@ export const copy = {
     localDiscoveryRefineQuieter: "더 조용하게",
     localDiscoveryRefineCloser: "더 가까이",
     localDiscoverySituationEyebrow: "지금 상황",
+    localDiscoveryPickCta: "이걸로",
     layerModePersonalEmpty: "흔적이 쌓이면 여기에 나타나요",
     contextAiHeroPersonal: "오늘은 어떤 순간이 떠올라요?",
     contextAiHeroDiscovery: "밖 지구에서 맞는 흔적을 찾아볼까요?",

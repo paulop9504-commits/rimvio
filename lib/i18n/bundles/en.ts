@@ -238,6 +238,7 @@ export const copyEn: Copy = {
     localDiscoveryRefineQuieter: "Quieter",
     localDiscoveryRefineCloser: "Closer",
     localDiscoverySituationEyebrow: "Right now",
+    localDiscoveryPickCta: "This one",
     layerModePersonalEmpty: "Traces show up here as they stack",
     contextAiHeroPersonal: "What moment comes back today?",
     contextAiHeroDiscovery: "Find aligned traces on the outer globe?",

@@ -79,6 +79,10 @@ export type {
   ContextConditionAutoReplanOutcome,
   ContextConditionAutoReplanTrigger,
 } from "@/lib/globe/context-condition-ai/evaluate-context-condition-auto-replan";
+export {
+  pinContextConditionRecommendation,
+  readContextConditionPinnedPlaceIds,
+} from "@/lib/globe/context-condition-ai/pin-context-condition-recommendation";
 export type {
   ContextConditionRecommendation,
   LocalDiscoveryActionSpec,
