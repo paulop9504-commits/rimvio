@@ -734,10 +734,7 @@ export function GlobeContextConditionPromptFrame({
     recommendations.length > 0 &&
     cicadaSurfaceMode === "discussion" &&
     !palantirPrimaryPinned;
-  const visibleThread =
-    cicadaSurfaceMode === "globe_primary"
-      ? composeThread.slice(-2)
-      : composeThread;
+  const compactBrief = composeThread.length >= 2;
   const pipelineLabel =
     cicadaPhase !== "idle"
       ? resolveCicadaAgentPhaseLabel(cicadaPhase)
@@ -804,13 +801,19 @@ export function GlobeContextConditionPromptFrame({
         ) : null}
 
         {palantirWorkspace ? (
-          <div className="space-y-2 border-b border-black/[0.05] px-3 py-2">
-            {ontologyHistoryResumeLabel ? (
+          <div
+            className={cn(
+              "shrink-0 border-b border-black/[0.05] px-3",
+              compactBrief ? "space-y-1 py-1" : "space-y-2 py-2",
+            )}
+          >
+            {ontologyHistoryResumeLabel && !compactBrief ? (
               <GlobePalantirOntologyHistoryHint labelKo={ontologyHistoryResumeLabel} />
             ) : null}
             <GlobePalantirOperatorBrief
               snapshot={palantirWorkspace}
               onOpenPrimary={openPalantirPrimaryReel}
+              compact={compactBrief}
             />
             {palantirCommitAction && questions.length === 0 && !showBusyStatus ? (
               <GlobePalantirOperatorCommitRail
@@ -818,6 +821,7 @@ export function GlobeContextConditionPromptFrame({
                 pinned={palantirPrimaryPinned}
                 busy={commitBusy || chipsDisabled}
                 onCommit={handlePalantirCommit}
+                compact={compactBrief}
               />
             ) : null}
           </div>
@@ -855,17 +859,18 @@ export function GlobeContextConditionPromptFrame({
         ) : null}
 
         <div
-          className={cn(
-            "min-h-0 space-y-2 overflow-y-auto overscroll-contain px-3 py-2.5",
-            cicadaSurfaceMode === "globe_primary" ? "max-h-[26vh] shrink-0" : "flex-1",
-          )}
-          data-globe-context-condition-conversation
+          className="flex min-h-0 flex-1 flex-col overflow-hidden"
+          data-globe-context-condition-workspace
         >
-          <GlobeAssistantComposeThread
-            turns={visibleThread}
-            typewriterTurnId={typewriterTurnId}
-            onTypewriterComplete={() => setTypewriterTurnId(null)}
-          />
+          <div
+            className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-3 py-2"
+            data-globe-context-condition-conversation
+          >
+            <GlobeAssistantComposeThread
+              turns={composeThread}
+              typewriterTurnId={typewriterTurnId}
+              onTypewriterComplete={() => setTypewriterTurnId(null)}
+            />
           {composeThread.length === 0 && recommendations.length === 0 ? (
             <p className="px-1 text-[12px] leading-relaxed text-[#86868b]">
               {copy.globe.contextAgentComposeHint}
@@ -892,13 +897,15 @@ export function GlobeContextConditionPromptFrame({
         </div>
 
         {showRefineChips ? (
-          <div className="shrink-0 border-t border-black/[0.05] px-3 py-1.5">
+          <div className="shrink-0 border-t border-black/[0.05] px-3 py-1">
             <GlobeContextAgentRefineChips
               disabled={chipsDisabled}
               onSelect={handleRefine}
+              compact
             />
           </div>
         ) : null}
+        </div>
 
         <div className="shrink-0 border-t border-black/[0.05] px-3 py-2">
           <GlobeContextConditionPinBar

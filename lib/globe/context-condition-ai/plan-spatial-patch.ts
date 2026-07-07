@@ -1,4 +1,5 @@
 import { copy } from "@/lib/copy/human-ko";
+import { classifyContextConditionAnchorRequest } from "@/lib/globe/context-condition-ai/classify-context-condition-anchor-request";
 import type {
   ContextConditionRecommendation,
   LocalDiscoveryActionSpec,
@@ -67,6 +68,13 @@ function resolveScope(input: PlanSpatialPatchInput): SpatialPatchScope {
     return explicit;
   }
   const kinds = hasBothKinds(input.previousRecommendations ?? []);
+  const intent = classifyContextConditionAnchorRequest(input.message);
+  if (intent.lodgingSimilar && !intent.eateryNearby && kinds.eatery && !kinds.lodging) {
+    return "lodging_only";
+  }
+  if (intent.eateryNearby && !intent.lodgingSimilar && kinds.lodging && !kinds.eatery) {
+    return "eatery_only";
+  }
   if (kinds.lodging && kinds.eatery) {
     return "all";
   }

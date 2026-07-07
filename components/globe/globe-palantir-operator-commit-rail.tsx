@@ -11,6 +11,7 @@ export type GlobePalantirOperatorCommitRailProps = {
   pinned?: boolean;
   busy?: boolean;
   onCommit: () => void;
+  compact?: boolean;
   className?: string;
 };
 
@@ -20,6 +21,7 @@ export function GlobePalantirOperatorCommitRail({
   pinned = false,
   busy = false,
   onCommit,
+  compact = false,
   className,
 }: GlobePalantirOperatorCommitRailProps) {
   return (
@@ -28,8 +30,9 @@ export function GlobePalantirOperatorCommitRail({
       disabled={busy || pinned}
       onClick={onCommit}
       className={cn(
-        rimvioHeroCtaClass,
-        "w-full",
+        compact
+          ? "flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#1d1d1f] px-3 py-2 text-[11px] font-semibold text-white active:scale-[0.99] disabled:opacity-45"
+          : cn(rimvioHeroCtaClass, "w-full"),
         pinned && "bg-[#0071e3] opacity-90",
         className,
       )}

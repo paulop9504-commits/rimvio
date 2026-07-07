@@ -7,6 +7,7 @@ import {
   resolveLocalDiscoveryAction,
 } from "../lib/globe/context-condition-ai/resolve-local-discovery-action";
 import { isAlternatePlaceSearch } from "../lib/globe/context-condition-ai/is-alternate-place-search";
+import { isCrossDomainDiscoverySearch } from "../lib/globe/context-condition-ai/is-cross-domain-discovery-search";
 import { parseCuisineCandidates } from "../lib/globe/context-condition-ai/parse-cuisine-candidates";
 import { resolveCicadaAgentPhase } from "../lib/globe/context-agent/resolve-cicada-agent-phase";
 import { resolveContextAgentZeroPrompt } from "../lib/globe/context-agent/resolve-context-agent-zero-prompt";
@@ -56,7 +57,20 @@ assert.equal(cheaper.budget, "low");
 
 assert.equal(isLocalDiscoveryRefinement("더 가까운 곳"), true);
 assert.equal(isLocalDiscoveryRefinement("다른 곳"), true);
+assert.equal(isLocalDiscoveryRefinement("주변 호텔"), false);
+assert.equal(isLocalDiscoveryRefinement("근처 맛집"), false);
 assert.equal(isAlternatePlaceSearch("다른 곳 보여줘"), true);
+
+const eateryOnly = [{ kind: "eatery" as const, title: "A", reasonKo: "r", rank: 1, placeId: "e1", lat: 1, lng: 1 }];
+assert.equal(isCrossDomainDiscoverySearch("주변 호텔", eateryOnly), true);
+assert.equal(isCrossDomainDiscoverySearch("더 가까운 곳", eateryOnly), false);
+
+const lodgingPatch = planSpatialPatch({
+  message: "주변 호텔",
+  currentSpec: { ...baseSpec, resourceTypes: ["restaurant"] },
+  previousRecommendations: eateryOnly,
+});
+assert.equal(lodgingPatch.scope, "lodging_only");
 
 const multiCuisine = resolveLocalDiscoveryAction({
   message: "피자집, 치킨집, 스시집 찾고 싶어",

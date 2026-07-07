@@ -20,6 +20,7 @@ export const CONTEXT_AGENT_REFINE_CHIPS: readonly GlobeContextAgentRefineChip[] 
 export type GlobeContextAgentRefineChipsProps = {
   onSelect: (message: string) => void;
   disabled?: boolean;
+  compact?: boolean;
   className?: string;
 };
 
@@ -27,11 +28,16 @@ export type GlobeContextAgentRefineChipsProps = {
 export function GlobeContextAgentRefineChips({
   onSelect,
   disabled = false,
+  compact = false,
   className,
 }: GlobeContextAgentRefineChipsProps) {
   return (
     <div
-      className={cn("flex flex-wrap gap-1.5", className)}
+      className={cn(
+        "flex gap-1.5 overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        compact ? "flex-nowrap" : "flex-wrap",
+        className,
+      )}
       data-globe-context-agent-refine-chips
     >
       {CONTEXT_AGENT_REFINE_CHIPS.map((chip) => (
@@ -40,7 +46,9 @@ export function GlobeContextAgentRefineChips({
           type="button"
           disabled={disabled}
           onClick={() => onSelect(chip.message)}
-          className={rimvioAssistantRefineChipClass()}
+          className={rimvioAssistantRefineChipClass(
+            compact ? "shrink-0 px-2 py-1 text-[10px]" : undefined,
+          )}
           data-globe-context-agent-refine-chip={chip.id}
         >
           {chip.label}

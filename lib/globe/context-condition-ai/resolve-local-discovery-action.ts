@@ -316,6 +316,14 @@ export function refineLocalDiscoverySpec(
   });
 }
 
+function isLodgingKindRefinement(text: string): boolean {
+  const kind = parseLodgingKind(text);
+  if (!kind) {
+    return false;
+  }
+  return !/주변|근처|찾|검색|추천|배치|nearby|search/iu.test(text);
+}
+
 export function isLocalDiscoveryRefinement(message: string): boolean {
   const text = message.trim();
   if (!text) {
@@ -326,7 +334,7 @@ export function isLocalDiscoveryRefinement(message: string): boolean {
       parseTransport(text) ||
       parseBudget(text) ||
       parseVibe(text) ||
-      parseLodgingKind(text) ||
+      isLodgingKindRefinement(text) ||
       /더\s*싸|더\s*조용|더\s*가까|더\s*근처|가까운/iu.test(text),
   );
 }

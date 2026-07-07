@@ -40,6 +40,7 @@ import {
   isLocalDiscoveryRefinement,
   resolveLocalDiscoveryAction,
 } from "@/lib/globe/context-condition-ai/resolve-local-discovery-action";
+import { isCrossDomainDiscoverySearch } from "@/lib/globe/context-condition-ai/is-cross-domain-discovery-search";
 import {
   beginContextAgentWork,
   finishContextAgentWork,
@@ -265,6 +266,11 @@ export const GlobeContextConditionPinBar = forwardRef<
         },
       });
       if (!outcome) {
+        appendContextAgentComposeTurn(contextEventId, {
+          role: "assistant",
+          kind: "text",
+          text: copy.globe.contextConditionPinEmpty,
+        });
         toast.message(copy.globe.contextConditionPinEmpty);
         return null;
       }
@@ -498,6 +504,7 @@ export const GlobeContextConditionPinBar = forwardRef<
       if (
         lastSpec &&
         lastRecommendations.length > 0 &&
+        !isCrossDomainDiscoverySearch(text, lastRecommendations) &&
         isLocalDiscoveryRefinement(text) &&
         (await runPalantirRefine(text))
       ) {
@@ -505,9 +512,13 @@ export const GlobeContextConditionPinBar = forwardRef<
       }
 
       const pending = readContextConditionPending(contextEventId);
+      const crossDomain = isCrossDomainDiscoverySearch(text, lastRecommendations);
+      if (crossDomain) {
+        clearContextConditionPending(contextEventId);
+      }
       await resolveAndMaybeExecute(
         text || pending?.triggerMessage || "",
-        pending?.answers,
+        crossDomain ? undefined : pending?.answers,
       );
     } finally {
       setBusy(false);
