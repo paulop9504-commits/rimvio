@@ -4033,6 +4033,8 @@ function GlobeHomeBody() {
           lng={activeBrainSurfaceCandidate?.lng}
           thumbnailUrl={activeBrainSurfaceGuide?.thumbnailUrl ?? activeBrainSurfaceCandidate?.markerThumbnailUrl}
           onClose={dismissBrainSurfacePreview}
+          placement="pin"
+          globeRef={globeRef}
         />
       ) : null}
       {showBrainSurfaceOntologyPeek && activeBrainSurfaceCandidate ? (
@@ -4040,6 +4042,7 @@ function GlobeHomeBody() {
           key={activeBrainSurfaceCandidate.id}
           anchor={activeBrainSurfaceCandidate}
           related={brainSurfaceConnectRelated}
+          mediaGuide={activeBrainSurfaceGuide}
           activeRelatedId={brainSurfaceActiveCandidateId}
           onSelectRelated={(candidateId) => handleBrainSurfaceMarkerPress(candidateId)}
           onExpandMap={
@@ -4052,6 +4055,7 @@ function GlobeHomeBody() {
             activeBrainSurfaceNode ? () => setBrainSurfaceDetailMode(true) : null
           }
           onClose={dismissBrainSurfacePreview}
+          globeRef={globeRef}
         />
       ) : null}
       {showBrainSurfaceDetailChrome ? (

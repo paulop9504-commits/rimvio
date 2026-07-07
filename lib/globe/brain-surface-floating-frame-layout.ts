@@ -28,7 +28,7 @@ export type GlobeInfoFramePreset = {
   maxHeight: number;
   defaultWidth: number;
   defaultHeight: number;
-  defaultBand: "top" | "bottom" | "center" | "center-left";
+  defaultBand: "top" | "bottom" | "center" | "center-left" | "center-right";
   tone: "dark" | "light";
   /** When set, height follows width (e.g. 16/9 video). */
   aspectRatio?: number | null;
@@ -57,7 +57,7 @@ export const GLOBE_INFO_FRAME_PRESETS: Record<GlobeInfoFrameId, GlobeInfoFramePr
     maxHeight: 360,
     defaultWidth: 304,
     defaultHeight: 148,
-    defaultBand: "bottom",
+    defaultBand: "center-right",
     tone: "light",
   },
   "brain-surface-preview": {
@@ -210,6 +210,9 @@ export function resolveDefaultGlobeInfoFrameLayout(
   } else if (preset.defaultBand === "center-left") {
     top = Math.round((viewport.height - height) / 2 - 24);
     left = Math.round(Math.max(12, viewport.width * 0.05));
+  } else if (preset.defaultBand === "center-right") {
+    top = Math.round((viewport.height - height) / 2 - 24);
+    left = Math.round(Math.max(12, viewport.width - width - Math.max(12, viewport.width * 0.05)));
   }
 
   return {

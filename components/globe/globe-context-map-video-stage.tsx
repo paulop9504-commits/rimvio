@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { ContextMediaVideoSoundButton } from "@/components/globe/context-media-video-sound-button";
-import { GlobeContextMediaFocusCard } from "@/components/globe/globe-context-media-focus-card";
+import { GlobeMapFocusMediaContextPanel } from "@/components/globe/globe-map-focus-media-context-panel";
+import { GlobeMapFocusMediaShell } from "@/components/globe/globe-map-focus-media-shell";
 import { GlobeBrainSurfaceFloatingFrame } from "@/components/globe/globe-brain-surface-floating-frame";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { useGlobePinScreenAnchor } from "@/hooks/use-globe-pin-screen-anchor";
@@ -18,8 +19,10 @@ import {
 } from "@/lib/globe/project-context-media-reel";
 import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
 import { resolveExperienceVolumeForEvent } from "@/lib/globe/resolve-globe-context-primary-video";
+import { buildPersonalReplayMapFocusPanelContent } from "@/lib/globe/build-map-focus-media-context-panel";
 import { dispatchGlobeMapMediaFocus } from "@/lib/globe/globe-map-media-focus-bridge";
 import {
+  GLOBE_MAP_FOCUS_CARD_MAX_WIDTH_CLASS,
   GLOBE_MAP_FOCUS_HERO_MEDIA_INTERACTIVE_CLASS,
   GLOBE_MAP_FOCUS_HERO_SHELL_CLASS,
   GLOBE_MAP_FOCUS_PIN_ANCHOR_OFFSET_PX,
@@ -372,11 +375,52 @@ export function GlobeContextMapVideoStage({
     onDismiss?.();
   }, [onDismiss]);
 
+  const subtitle = currentItem?.recallCaption?.trim() || null;
+
+  const panelContent = useMemo(
+    () =>
+      buildPersonalReplayMapFocusPanelContent({
+        contextPlaceLabel: contextTitle,
+        recallCaption: subtitle,
+        mediaGuide: expandableGuide,
+        canExpandMap: Boolean(mapVideoFooterAction),
+        expandCandidateCount: expandableCandidateCount,
+        canOpenBridge: Boolean(onHeroPress ?? onOpenDetails),
+      }),
+    [
+      contextTitle,
+      subtitle,
+      expandableGuide,
+      mapVideoFooterAction,
+      expandableCandidateCount,
+      onHeroPress,
+      onOpenDetails,
+    ],
+  );
+
+  const handlePanelPrimaryAction = useCallback(() => {
+    const action = panelContent.primaryAction;
+    if (!action) {
+      return;
+    }
+    if (action.kind === "expand_map") {
+      mapVideoFooterAction?.onClick();
+      return;
+    }
+    if (action.kind === "open_bridge") {
+      openHeroBridge();
+    }
+  }, [mapVideoFooterAction, openHeroBridge, panelContent.primaryAction]);
+
+  const handlePanelSecondaryAction = useCallback(() => {
+    if (panelContent.secondaryAction?.kind === "open_bridge") {
+      openHeroBridge();
+    }
+  }, [openHeroBridge, panelContent.secondaryAction]);
+
   if (!visible || reel.length === 0) {
     return null;
   }
-
-  const subtitle = currentItem?.recallCaption?.trim() || null;
 
   const mergeCardTouchStart = (event: React.TouchEvent) => {
     event.stopPropagation();
@@ -447,35 +491,55 @@ export function GlobeContextMapVideoStage({
   );
 
   const focusCard = (
-    <GlobeContextMediaFocusCard
-      className="h-full w-full"
+    <GlobeMapFocusMediaShell
+      className={GLOBE_MAP_FOCUS_CARD_MAX_WIDTH_CLASS}
+      variant="frameless"
+      showMetadataOverlay={false}
       title={contextTitle}
-      recallCaption={subtitle}
+      caption={subtitle}
+      mediaSlot={mediaHero}
       onClose={dismiss}
       closeAriaLabel={copy.globe.contextMediaFocusCloseAria}
       onHeroPress={handleHeroPress}
-      footerAction={mapVideoFooterAction}
       onTouchStart={mergeCardTouchStart}
       onTouchMove={mergeCardTouchMove}
       onTouchEnd={mergeCardTouchEnd}
-      hero={mediaHero}
     />
   );
 
-  const adjustableFrame = (
-    <GlobeBrainSurfaceFloatingFrame
-      frameId="context-media-focus"
-      dragLabel="미디어 카드 이동"
-      floating={!pinAnchored}
+  const contextPanel = (
+    <div
       className={cn(
-        videoPopActive && "scale-[1.04] transition-transform duration-300",
+        "pointer-events-auto absolute z-[2]",
+        pinAnchored
+          ? "right-2 max-[380px]:inset-x-2"
+          : "inset-x-2 flex justify-center",
       )}
-      shellClassName="overflow-hidden rounded-b-xl rounded-t-none bg-[#1d1d1f] ring-1 ring-white/10 shadow-[0_16px_40px_rgba(0,0,0,0.28)]"
-      bodyClassName="overflow-hidden p-0"
+      style={{
+        bottom: "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 0.4rem)",
+        maxWidth: pinAnchored ? "min(22rem, calc(100vw - 1rem))" : undefined,
+      }}
     >
-      {focusCard}
-    </GlobeBrainSurfaceFloatingFrame>
+      <GlobeBrainSurfaceFloatingFrame
+        frameId="brain-surface-info"
+        dragLabel="맥락 정보 이동"
+        floating={false}
+        shellClassName="overflow-hidden rounded-b-[1rem] rounded-t-none border border-t-0 border-white/85 bg-transparent text-slate-900 shadow-none ring-0"
+        bodyClassName="p-0"
+        className={pinAnchored ? "w-full" : "w-full max-w-[22rem]"}
+      >
+        <GlobeMapFocusMediaContextPanel
+          content={panelContent}
+          onClose={dismiss}
+          closeAriaLabel={copy.globe.contextMediaFocusCloseAria}
+          onPrimaryAction={handlePanelPrimaryAction}
+          onSecondaryAction={handlePanelSecondaryAction}
+        />
+      </GlobeBrainSurfaceFloatingFrame>
+    </div>
   );
+
+  const adjustableFrame = focusCard;
 
   return (
     <div
@@ -496,19 +560,41 @@ export function GlobeContextMapVideoStage({
       ) : null}
 
       {pinAnchored && pinLayout ? (
-        <div
-          className="pointer-events-auto absolute z-[1]"
-          style={{
-            left: pinLayout.x,
-            top: pinLayout.y,
-            transform: `translate(-50%, calc(-100% - ${GLOBE_MAP_FOCUS_PIN_ANCHOR_OFFSET_PX}px))`,
-          }}
-          data-globe-context-map-video-anchor
-        >
-          {adjustableFrame}
-        </div>
+        <>
+          <div
+            className="pointer-events-auto absolute z-[1]"
+            style={{
+              left: pinLayout.x,
+              top: pinLayout.y,
+              transform: `translate(-50%, calc(-100% - ${GLOBE_MAP_FOCUS_PIN_ANCHOR_OFFSET_PX}px))`,
+            }}
+            data-globe-context-map-video-anchor
+          >
+            <div
+              className={cn(
+                videoPopActive && "scale-[1.04] transition-transform duration-300",
+              )}
+            >
+              {adjustableFrame}
+            </div>
+          </div>
+          {contextPanel}
+        </>
       ) : (
-        adjustableFrame
+        <>
+          <GlobeBrainSurfaceFloatingFrame
+            frameId="context-media-focus"
+            dragLabel="미디어 카드 이동"
+            className={cn(
+              videoPopActive && "scale-[1.04] transition-transform duration-300",
+            )}
+            shellClassName="overflow-hidden rounded-b-xl rounded-t-none bg-transparent shadow-none ring-0"
+            bodyClassName="overflow-hidden p-0"
+          >
+            {adjustableFrame}
+          </GlobeBrainSurfaceFloatingFrame>
+          {contextPanel}
+        </>
       )}
     </div>
   );

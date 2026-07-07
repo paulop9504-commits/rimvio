@@ -26,6 +26,7 @@ export type GlobeMapFocusMediaShellProps = {
   thumbnailUrl?: string | null;
   youtubeEmbedUrl?: string | null;
   youtubeVideoKey?: string | null;
+  youtubeStartSeconds?: number | null;
   nativeVideoSrc?: string | null;
   imageSrc?: string | null;
   /** Pre-built media slot (map replay reel). Skips built-in media rendering. */
@@ -34,6 +35,8 @@ export type GlobeMapFocusMediaShellProps = {
   autoPlay?: boolean;
   soundByDefault?: boolean;
   showMetadataOverlay?: boolean;
+  /** card = legacy chrome · frameless = video-only on map */
+  variant?: "card" | "frameless";
   onClose?: () => void;
   closeAriaLabel?: string;
   onHeroPress?: () => void;
@@ -127,10 +130,12 @@ function YoutubeThumbLayer({
   thumbnailUrl,
   title,
   onPlay,
+  frameless = false,
 }: {
   thumbnailUrl: string | null;
   title: string;
   onPlay: () => void;
+  frameless?: boolean;
 }) {
   const shellStyle = resolveMediaAspectStyle({ intrinsic: null, hasYoutube: true });
 
@@ -146,8 +151,10 @@ function YoutubeThumbLayer({
         // eslint-disable-next-line @next/next/no-img-element
         <img src={thumbnailUrl} alt="" className={GLOBE_MAP_FOCUS_HERO_MEDIA_CLASS} />
       ) : (
-        <div className="flex h-full min-h-[9rem] w-full items-center justify-center bg-gradient-to-br from-slate-800 to-slate-950 px-4 text-center text-[13px] font-semibold text-white/88">
-          {title}
+        <div className="flex h-full min-h-[9rem] w-full items-center justify-center bg-gradient-to-br from-slate-800 to-slate-950">
+          {!frameless ? (
+            <p className="px-4 text-center text-[13px] font-semibold text-white/88">{title}</p>
+          ) : null}
         </div>
       )}
       <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/18">
@@ -169,12 +176,14 @@ export function GlobeMapFocusMediaShell({
   thumbnailUrl,
   youtubeEmbedUrl,
   youtubeVideoKey,
+  youtubeStartSeconds = null,
   nativeVideoSrc,
   imageSrc,
   mediaSlot,
   autoPlay = false,
   soundByDefault = false,
   showMetadataOverlay = true,
+  variant = "card",
   onClose,
   closeAriaLabel = "닫기",
   onHeroPress,
@@ -184,11 +193,15 @@ export function GlobeMapFocusMediaShell({
   onTouchMove,
   onTouchEnd,
 }: GlobeMapFocusMediaShellProps) {
+  const frameless = variant === "frameless";
+  const metadataOnVideo = showMetadataOverlay && !frameless;
   const [youtubePlaying, setYoutubePlaying] = useState(
     autoPlay && Boolean(youtubeEmbedUrl?.trim()),
   );
   const { size, reset, onImageLoad } = useMediaIntrinsicSize();
-  const embedSrc = youtubePlaying ? buildBrainSurfaceEmbedSrc(youtubeEmbedUrl) : null;
+  const embedSrc = youtubePlaying
+    ? buildBrainSurfaceEmbedSrc(youtubeEmbedUrl, youtubeStartSeconds)
+    : null;
   const embedKey = youtubeVideoKey?.trim() || "youtube";
   const thumb = thumbnailUrl?.trim() || null;
   const image = imageSrc?.trim() || null;
@@ -204,7 +217,7 @@ export function GlobeMapFocusMediaShell({
   useEffect(() => {
     reset();
     setYoutubePlaying(autoPlay && Boolean(youtubeEmbedUrl?.trim()));
-  }, [autoPlay, reset, youtubeEmbedUrl, youtubeVideoKey, native, image, thumb]);
+  }, [autoPlay, reset, youtubeEmbedUrl, youtubeVideoKey, youtubeStartSeconds, native, image, thumb]);
 
   const shellStyle = resolveMediaAspectStyle({
     intrinsic: size,
@@ -236,6 +249,7 @@ export function GlobeMapFocusMediaShell({
         thumbnailUrl={thumb}
         title={title}
         onPlay={() => setYoutubePlaying(true)}
+        frameless={frameless}
       />
     );
   } else if (image) {
@@ -270,7 +284,9 @@ export function GlobeMapFocusMediaShell({
         className={cn(GLOBE_MAP_FOCUS_HERO_SHELL_CLASS, "flex min-h-[9rem] items-center justify-center")}
         style={shellStyle}
       >
-        <p className="px-4 text-center text-[13px] font-semibold text-white/88">{title}</p>
+        {!frameless ? (
+          <p className="px-4 text-center text-[13px] font-semibold text-white/88">{title}</p>
+        ) : null}
       </div>
     );
   }
@@ -278,10 +294,13 @@ export function GlobeMapFocusMediaShell({
   return (
     <article
       className={cn(
-        "overflow-hidden rounded-xl bg-[#1d1d1f] shadow-[0_16px_40px_rgba(0,0,0,0.28)] ring-1 ring-white/10",
+        frameless
+          ? "overflow-visible"
+          : "overflow-hidden rounded-xl bg-[#1d1d1f] shadow-[0_16px_40px_rgba(0,0,0,0.28)] ring-1 ring-white/10",
         className,
       )}
       data-globe-map-focus-media-shell
+      data-globe-map-focus-media-variant={variant}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
@@ -289,7 +308,10 @@ export function GlobeMapFocusMediaShell({
       <div className="relative">
         <div
           className={cn(
-            "relative overflow-hidden bg-[#141416]",
+            "relative overflow-hidden",
+            frameless
+              ? "rounded-[0.85rem] bg-black/20 shadow-[0_14px_36px_rgba(0,0,0,0.32)] ring-1 ring-white/16"
+              : "bg-[#141416]",
             onHeroPress && "cursor-pointer",
           )}
           role={onHeroPress ? "button" : undefined}
@@ -334,7 +356,7 @@ export function GlobeMapFocusMediaShell({
           </button>
         ) : null}
 
-        {showMetadataOverlay ? (
+        {metadataOnVideo ? (
           <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[3] bg-gradient-to-t from-black/78 via-black/34 to-transparent px-2.5 pb-2 pt-12">
             {eyebrowLine ? (
               <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/62">
@@ -356,7 +378,7 @@ export function GlobeMapFocusMediaShell({
         ) : null}
       </div>
 
-      {footerAction ? (
+      {!frameless && footerAction ? (
         <div className="border-t border-white/10 bg-[#141416] px-2.5 py-2">{footerAction}</div>
       ) : null}
     </article>

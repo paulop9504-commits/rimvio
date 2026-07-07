@@ -1634,6 +1634,19 @@ export const copy = {
     brainSurfaceConnectTitle: "이 맥락과 연결된 것",
     brainSurfaceStoryCloseAria: "닫기",
     brainSurfaceOntologyNodeDragHint: "길게 눌러 끌어 배치",
+    mapFocusMediaContextPanelEyebrow: "맥락 정보",
+    mapFocusMediaWhyHereSection: "왜 여기",
+    mapFocusMediaSceneSection: "지금 이 장면",
+    mapFocusMediaConnectionsSection: "이어지는 곳",
+    mapFocusMediaActionsSection: "바로 할 것",
+    mapFocusMediaWhyHereDefault: "이 맥락 옆에 붙여 둔 참고예요",
+    mapFocusMediaWhyHerePlaceFallback: (place: string) => `${place} 맥락과 이어지는 장면이에요`,
+    mapFocusMediaSpatialTraceSummary: (count: number) =>
+      `영상에서 나온 ${count}곳이 지도에 펼쳐졌어요`,
+    mapFocusMediaInferredPlacesSummary: (count: number) =>
+      `영상에서 찾은 장소 후보 ${count}곳`,
+    mapFocusMediaPlayMoment: (timeLabel: string) => `${timeLabel}부터 보기`,
+    mapFocusMediaOpenBridge: "맥락 이어 보기",
     threeFloors: {
       steps: {
         replay: "흔적",

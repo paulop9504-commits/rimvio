@@ -1603,7 +1603,21 @@ export const copyEn: Copy = {
     brainSurfaceConnectCta: "View connections",
     brainSurfaceConnectTitle: "Connected to this context",
     brainSurfaceStoryCloseAria: "Close",
-    brainSurfaceOntologyNodeDragHint: "Press and hold to drag",
+    brainSurfaceOntologyNodeDragHint: "Press and drag to reposition",
+    mapFocusMediaContextPanelEyebrow: "Context",
+    mapFocusMediaWhyHereSection: "Why here",
+    mapFocusMediaSceneSection: "This scene",
+    mapFocusMediaConnectionsSection: "Connected",
+    mapFocusMediaActionsSection: "Next up",
+    mapFocusMediaWhyHereDefault: "Reference saved beside this context",
+    mapFocusMediaWhyHerePlaceFallback: (place: string) =>
+      `A scene that connects with your ${place} context`,
+    mapFocusMediaSpatialTraceSummary: (count: number) =>
+      `${count} places from the video are on the map`,
+    mapFocusMediaInferredPlacesSummary: (count: number) =>
+      `${count} place candidates from the video`,
+    mapFocusMediaPlayMoment: (timeLabel: string) => `Play from ${timeLabel}`,
+    mapFocusMediaOpenBridge: "Open context",
     threeFloors: {
       steps: {
         replay: "Trace",
