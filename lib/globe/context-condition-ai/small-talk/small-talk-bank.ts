@@ -87,6 +87,12 @@ export const SMALL_TALK_BANK: Record<SmallTalkTopic, SmallTalkBankEntry> = {
     contextRequirements: ["tone"],
     responseStrategy: "리듬을 맞춰 짧게 받고, 편하게 말 걸도록 열린 질문 한마디를 붙여라.",
   },
+  slang_unknown: {
+    patterns: ["ㅁㅊ", "어쩌구절믜", "낯선 신조어/초성"],
+    contextRequirements: ["tone", "history", "persona"],
+    responseStrategy:
+      "모르는 신조어면 아는 척하지 말고 솔직히 인정하라. 문맥/말투/이모지로 분위기만 공감한 뒤, 무슨 뜻인지 자연스럽게 물어 기억해두겠다고 하라(피드백 학습).",
+  },
 };
 
 export function readSmallTalkStrategy(topic: SmallTalkTopic): SmallTalkBankEntry {

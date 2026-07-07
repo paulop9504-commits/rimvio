@@ -2,10 +2,10 @@
  * Small-talk reply generator — the public entry both AI surfaces call once an
  * input is classified as Chat.
  *
- * Pipeline: detect topic → extract the 5 variable groups → ask the LLM composer
- * (context-aware) → fall back to the deterministic composer when no provider is
- * configured or the call fails. Either way the reply reflects the situation and
- * ends with an open question.
+ * Pipeline: (feedback loop) capture a pending slang definition → detect topic
+ * (personal memory + lexicon) → extract the 5 variable groups → LLM composer
+ * (context-aware, slang-fluent) → deterministic composer fallback. Slang we
+ * don't know is admitted and asked about, then learned for next time.
  */
 import {
   resolveSmallTalk,
@@ -17,12 +17,35 @@ import {
 } from "@/lib/globe/context-condition-ai/small-talk/small-talk-context";
 import { composeSmallTalkReply } from "@/lib/globe/context-condition-ai/small-talk/compose-small-talk-reply";
 import { readSmallTalkStrategy } from "@/lib/globe/context-condition-ai/small-talk/small-talk-bank";
+import { extractUnknownSlangTerm } from "@/lib/globe/context-condition-ai/small-talk/slang-lexicon";
+import {
+  clearPendingSlangLearn,
+  lookupSlangInText,
+  readPendingSlangLearn,
+  rememberSlang,
+  setPendingSlangLearn,
+} from "@/lib/globe/context-condition-ai/small-talk/slang-memory-store";
 
 export type SmallTalkGeneration = {
   readonly replyKo: string;
   readonly topic: SmallTalkTopic;
-  readonly source: "llm" | "deterministic";
+  readonly source: "llm" | "deterministic" | "learned";
 };
+
+/** Topics that mean "the user changed subject", not "here's the definition". */
+const NON_DEFINITION_TOPICS: ReadonlySet<SmallTalkTopic> = new Set([
+  "greeting",
+  "thanks",
+  "farewell",
+  "ack",
+  "filler",
+  "slang_unknown",
+]);
+
+function summarize(text: string): string {
+  const t = text.trim();
+  return t.length <= 40 ? t : `${t.slice(0, 40)}…`;
+}
 
 export async function generateSmallTalkReply(input: {
   text: string;
@@ -31,16 +54,48 @@ export async function generateSmallTalkReply(input: {
   history?: readonly SmallTalkTurn[];
   recentSearchKo?: string | null;
   now?: Date;
+  scopeId?: string | null;
 }): Promise<SmallTalkGeneration> {
-  const detected = resolveSmallTalk({
-    text: input.text,
-    region: input.region,
-    now: input.now,
-  });
-  const topic: SmallTalkTopic = detected?.topic ?? "catch_up";
+  const text = input.text.trim();
+  const scopeId = input.scopeId?.trim() || null;
+
+  // --- Feedback loop: was the previous turn a "what does X mean?" question? ---
+  if (scopeId) {
+    const pendingTerm = readPendingSlangLearn(scopeId);
+    if (pendingTerm) {
+      const detectedForDef = resolveSmallTalk({ text, region: input.region, now: input.now });
+      const isDefinition =
+        text.length > 0 && !(detectedForDef && NON_DEFINITION_TOPICS.has(detectedForDef.topic));
+      clearPendingSlangLearn(scopeId);
+      if (isDefinition) {
+        rememberSlang({ key: pendingTerm, value: text, contextKo: "user_taught" });
+        return {
+          replyKo: `아, "${pendingTerm}"가 그런 뜻이군요! 기억해둘게요 🙂 다음엔 바로 알아들을게요. 그래서 오늘은 뭐가 궁금해요?`,
+          topic: "catch_up",
+          source: "learned",
+        };
+      }
+      // Not a definition — fall through and treat as a fresh message.
+    }
+  }
+
+  const detected = resolveSmallTalk({ text, region: input.region, now: input.now });
+  const learned = lookupSlangInText(text);
+
+  // If we've already learned this term, never ask again — treat as normal chat.
+  let topic: SmallTalkTopic =
+    detected?.topic ?? (learned ? "catch_up" : "catch_up");
+  if (topic === "slang_unknown" && learned) {
+    topic = "catch_up";
+  }
+
+  // Unknown slang → remember to ask; queue this term for the next turn.
+  if (topic === "slang_unknown" && scopeId) {
+    setPendingSlangLearn(scopeId, extractUnknownSlangTerm(text));
+  }
 
   const context = extractSmallTalkContext({
-    text: input.text,
+    text,
     region: input.region,
     weatherKo: input.weatherKo,
     history: input.history,
@@ -56,10 +111,11 @@ export async function generateSmallTalkReply(input: {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          text: input.text.trim(),
+          text,
           topic,
           strategy: readSmallTalkStrategy(topic).responseStrategy,
           context,
+          knownSlangKo: learned ? `${learned.key}=${learned.value}` : null,
         }),
       });
       if (response.ok) {
@@ -71,6 +127,15 @@ export async function generateSmallTalkReply(input: {
     } catch {
       /* fall through to deterministic */
     }
+  }
+
+  // Deterministic path: if we know the slang, weave the meaning in.
+  if (learned && topic === "catch_up") {
+    return {
+      replyKo: `아, ${learned.key}(${summarize(learned.value)}) 말이죠 🙂 ${deterministic}`,
+      topic,
+      source: "deterministic",
+    };
   }
 
   return { replyKo: deterministic, topic, source: "deterministic" };

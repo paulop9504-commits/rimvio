@@ -206,6 +206,7 @@ async function executeContextRunPlan(
       const small = await generateSmallTalkReply({
         text: currentText || bound.goalKo,
         history,
+        scopeId: graphId,
       });
       appendGlobeChatTextMessage({
         graphId,

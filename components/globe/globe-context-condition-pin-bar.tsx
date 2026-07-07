@@ -673,6 +673,7 @@ export const GlobeContextConditionPinBar = forwardRef<
             region: anchorPlaceName,
             history: rawTurns.map((turn) => ({ role: turn.role, text: turn.text })),
             recentSearchKo: lastSpec?.activityFocus ?? null,
+            scopeId: contextEventId,
           });
           appendContextAgentComposeTurn(contextEventId, {
             role: "assistant",

@@ -89,6 +89,10 @@ const QUESTIONS: Record<SmallTalkTopic, { formal: readonly string[]; casual: rea
     formal: ["편하게 말 걸어줘요, 뭐 궁금한 거 있어요?"],
     casual: ["편하게 말 걸어, 뭐 궁금한 거 있어?"],
   },
+  slang_unknown: {
+    formal: ["어떤 뜻인지 알려주면 기억해둘게요, 어떤 상황에서 써요?", "무슨 뜻인지 궁금해요, 알려줄래요?"],
+    casual: ["무슨 뜻이야? 알려주면 기억해둘게 🙂", "그거 어떤 뜻이야? 궁금한데!"],
+  },
 };
 
 function buildOpener(topic: SmallTalkTopic, context: SmallTalkContext): string {
@@ -138,6 +142,11 @@ function buildOpener(topic: SmallTalkTopic, context: SmallTalkContext): string {
       return "좋아요.";
     case "filler":
       return "ㅎㅎ 좋네요.";
+    case "slang_unknown":
+      return pick(
+        ["오, 그건 저도 처음 들어봐요.", "그거 요즘 유행하는 말인가 봐요."],
+        context.variantSeed,
+      );
   }
 }
 

@@ -11,6 +11,11 @@
  * same clean turn — so it feels intelligent without auto-dropping pins.
  */
 
+import {
+  detectSlangTopic,
+  looksLikeUnknownSlang,
+} from "@/lib/globe/context-condition-ai/small-talk/slang-lexicon";
+
 export type SmallTalkTopic =
   | "greeting"
   | "thanks"
@@ -23,7 +28,8 @@ export type SmallTalkTopic =
   | "mood_down"
   | "catch_up"
   | "ack"
-  | "filler";
+  | "filler"
+  | "slang_unknown";
 
 export type SmallTalkReply = {
   readonly replyKo: string;
@@ -77,6 +83,24 @@ const CATCH_UP =
 const ACK =
   /^(ㅇㅋ|오케이|오키|ok|okay|굿|good|좋아|좋아요|나이스|nice|ㄱㄱ|고고|ㅇㅇ|응|넵|넹|알겠|알았|👍)/iu;
 const FILLER = /^(ㅋ+|ㅎ+|😂|🤣|😊|🙂|헐|와+|우와|대박|음+|흠+)$/u;
+const EMOJI_NEG = /😤|😡|🤬|😭|😢|😞|😩|😥|ㅠㅠ|ㅜㅜ/u;
+const EMOJI_POS = /😂|🤣|😄|😆|😊|🥳|😍|🤩/u;
+
+const SLANG_TOPIC_REPLY: Record<SmallTalkTopic, string> = {
+  greeting: "반가워요 🙂",
+  thanks: "천만에요!",
+  farewell: "네, 또 봐요!",
+  capability: "제가 도울 수 있어요 🙂",
+  weather: "날씨가 그렇죠.",
+  time_state: "오늘 하루도 고생 많았어요.",
+  food: "뭔가 당기는 시간이죠 😋",
+  mood_up: "오, 좋은데요! 😄 무슨 좋은 일이에요?",
+  mood_down: "저런.. 무슨 일 있었어요? 🥺",
+  catch_up: "오 그래요? 🙂",
+  ack: "👍 인정이요!",
+  filler: "ㅎㅎ 그쵸.",
+  slang_unknown: "그거 요즘 쓰는 말이에요? 무슨 뜻인지 알려주면 잘 기억해둘게요 🙂 어떤 상황에서 쓰는 거예요?",
+};
 
 function regionPhrase(region?: string | null): string {
   const trimmed = region?.trim();
@@ -259,11 +283,31 @@ export function resolveSmallTalk(input: {
     return { topic: "catch_up", replyKo: "오랜만에 이런 얘기 좋네요 🙂 요즘 어떻게 지내요?" };
   }
 
+  // 6) Known slang — respond by the mapped mood/intent (킹받네 → 위로).
+  const slang = detectSlangTopic(text);
+  if (slang) {
+    return { topic: slang.topic, replyKo: SLANG_TOPIC_REPLY[slang.topic] };
+  }
+
   if (ACK.test(text)) {
     return { topic: "ack", replyKo: "👍 준비됐어요. 어떤 곳 찾아볼까요?" };
   }
   if (FILLER.test(text)) {
     return { topic: "filler", replyKo: "ㅎㅎ 필요한 거 있으면 편하게 말해줘요 🙂" };
   }
+
+  // 7) Emotion from emoji even when the words are opaque (킹아정😤 → 위로).
+  if (EMOJI_NEG.test(text)) {
+    return { topic: "mood_down", replyKo: SLANG_TOPIC_REPLY.mood_down };
+  }
+  if (EMOJI_POS.test(text)) {
+    return { topic: "mood_up", replyKo: SLANG_TOPIC_REPLY.mood_up };
+  }
+
+  // 8) Unknown neologism (초성 뭉치) — admit it and ask, so we can learn it.
+  if (looksLikeUnknownSlang(text)) {
+    return { topic: "slang_unknown", replyKo: SLANG_TOPIC_REPLY.slang_unknown };
+  }
+
   return null;
 }
