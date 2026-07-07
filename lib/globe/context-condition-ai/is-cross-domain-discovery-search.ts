@@ -1,5 +1,6 @@
 import { classifyContextConditionAnchorRequest } from "@/lib/globe/context-condition-ai/classify-context-condition-anchor-request";
 import { parseCuisineCandidates } from "@/lib/globe/context-condition-ai/parse-cuisine-candidates";
+import { resolveLocalDiscoveryDomain } from "@/lib/globe/context-condition-ai/resolve-local-discovery-domain";
 import type { ContextConditionRecommendation } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
 
 const LODGING_HINT =
@@ -60,6 +61,25 @@ export function isFollowUpDiscoveryTurn(
 ): boolean {
   const text = message.trim();
   if (!text || previousRecommendations.length === 0) {
+    return false;
+  }
+
+  // Domain switch = fresh intent, never a follow-up. A message that introduces a
+  // NEW discovery domain (activity/amenity) not present in the current batch must
+  // NOT ride the previous (often auto-briefed cafe/hotel) results — otherwise the
+  // convergence engine is skipped and "놀거리" degrades into a literal keyword
+  // search that pins cafes/hotels. Let it restart so convergence can run.
+  const domain = resolveLocalDiscoveryDomain(text);
+  if (
+    domain === "activity" &&
+    !previousRecommendations.some((row) => row.kind === "activity")
+  ) {
+    return false;
+  }
+  if (
+    domain === "amenity" &&
+    !previousRecommendations.some((row) => row.kind === "amenity")
+  ) {
     return false;
   }
 

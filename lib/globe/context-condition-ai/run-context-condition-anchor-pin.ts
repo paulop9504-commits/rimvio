@@ -19,6 +19,7 @@ import type {
   LocalDiscoveryVibe,
 } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
 import { commitContextConditionHubBatch } from "@/lib/globe/context-condition-ai/commit-context-condition-hub-batch";
+import { verifyDiscoveryResults } from "@/lib/globe/context-condition-ai/discovery-guard/verify-discovery-results";
 import { writeContextConditionLastBatch } from "@/lib/globe/context-condition-ai/context-condition-last-batch-store";
 import { syncContextConditionPins } from "@/lib/globe/context-condition-ai/sync-context-condition-pins";
 import { loadLodgingInventoryRows } from "@/lib/globe/context-hub/load-lodging-inventory-rows";
@@ -35,6 +36,15 @@ import type { SpatialPatchPlan } from "@/lib/globe/context-condition-ai/spatial-
 import { buildTravelBrainState } from "@/lib/situation-projection/travel-brain-personalization";
 
 export type { ContextConditionAnchorPinOutcome } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
+
+/** Broad activity with no focus/chip cluster → reconstruct real attractions. */
+const DEFAULT_ACTIVITY_CLUSTER = [
+  "관광명소",
+  "테마파크",
+  "전망대",
+  "박물관",
+  "공원",
+] as const;
 
 export type ContextConditionAnchorPinInput = {
   contextEventId: string;
@@ -295,13 +305,21 @@ export async function runContextConditionAnchorPin(
       radiusM,
     });
     eaterySource = loaded.source;
-    eateryScored = scoreEateryRecommendations({
+    const scored = scoreEateryRecommendations({
       rows: loaded.rows,
       unifiedContext,
       lat: input.anchorLat,
       lng: input.anchorLng,
       context: contextInstance,
-    }).slice(0, 4);
+    });
+    // Category integrity (flexible): drop clearly off-domain rows (a hotel in a
+    // food search) but keep adjacent picks so results stay rich.
+    const guarded = verifyDiscoveryResults({
+      domain: "eatery",
+      items: scored,
+      focusTokens: (spec.eateryFocus ?? "").split(/[\s·,]+/u),
+    });
+    eateryScored = (guarded.kept.length > 0 ? guarded.kept : scored).slice(0, 4);
     eateryRows = eateryScored.map((row) => row.row);
   }
 
@@ -324,11 +342,18 @@ export async function runContextConditionAnchorPin(
     // Trigger → cluster: a chip answer activates related nodes (도파민 →
     // 테마파크·놀이공원·포토스팟). Multi-query them + the focus and merge, so the
     // map shows one reconstructed context (유니버설 + 주변 놀거리), not one keyword.
-    const cluster = isAmenity
+    const chipCluster = isAmenity
       ? []
       : (spec.activityCluster ?? [])
           .map((node) => node.trim())
           .filter((node) => node.length > 0);
+    // Safety net: a broad "놀거리" with no focus and no chip cluster (e.g. the
+    // convergence cap was hit) would search the literal keyword and return junk.
+    // Reconstruct a real attraction context so retrieval pulls actual landmarks.
+    const cluster =
+      !isAmenity && chipCluster.length === 0 && !focus
+        ? DEFAULT_ACTIVITY_CLUSTER
+        : chipCluster;
     const queries = Array.from(
       new Set([activityQuery, ...cluster.map((node) => withArea(node))]),
     ).slice(0, 4);
@@ -366,7 +391,7 @@ export async function runContextConditionAnchorPin(
     const focusMatch = isAmenity
       ? null
       : [focusTail, ...cluster].filter(Boolean).join(" ") || null;
-    eateryScored = scoreEateryRecommendations({
+    const activityScored = scoreEateryRecommendations({
       rows: mergedRows,
       unifiedContext,
       lat: input.anchorLat,
@@ -378,34 +403,17 @@ export async function runContextConditionAnchorPin(
       focusMatch,
     }).slice(0, cluster.length > 0 ? 6 : 4);
 
-    // Relevance threshold (Search Filter): a chip-driven focus is high intent.
-    // If nothing in the results actually matches the focus/cluster, don't force
-    // an off-topic pin (e.g. "유니버설" → &ISLAND café) — return no-fit so the
-    // assistant answers conversationally instead of pinning junk.
-    if (!isAmenity && focus && focusMatch) {
-      const focusTokens = focusMatch
-        .toLowerCase()
-        .split(/[\s·,]+/u)
-        .map((token) => token.trim())
-        .filter((token) => token.length >= 2);
-      const anyRelevant =
-        focusTokens.length === 0 ||
-        eateryScored.some((entry) => {
-          const blob = [
-            entry.row.name,
-            entry.row.categoryLabel,
-            entry.row.cuisineHint,
-            entry.row.address,
-          ]
-            .filter(Boolean)
-            .join(" ")
-            .toLowerCase();
-          return focusTokens.some((token) => blob.includes(token));
-        });
-      if (!anyRelevant) {
-        eateryScored = [];
-      }
-    }
+    // Category Integrity Guard (strict): an activity/amenity search must never
+    // pin a café/hotel. Drop rows whose true category contradicts the domain —
+    // this covers broad "놀거리" (no focus) too, where the old focus-only filter
+    // never ran. When the guard empties everything, leave eateryScored empty so
+    // the caller answers conversationally instead of pinning junk.
+    const guarded = verifyDiscoveryResults({
+      domain: isAmenity ? "amenity" : "activity",
+      items: activityScored,
+      focusTokens: (focusMatch ?? "").split(/[\s·,]+/u),
+    });
+    eateryScored = guarded.kept;
     eateryRows = eateryScored.map((row) => row.row);
   }
 

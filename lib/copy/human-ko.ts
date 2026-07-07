@@ -1848,6 +1848,10 @@ export const copy = {
     contextConditionPinLodgingDone: "호텔 {n}곳 지도에 꽂았어요",
     contextConditionPinEateryDone: "맛집 {n}곳 지도에 꽂았어요",
     contextConditionPinEmpty: "지금은 맞는 곳을 못 찾았어요",
+    contextConditionGuardEmptyActivity:
+      "딱 맞는 놀거리를 바로 못 찾았어요. 어떤 걸 원하시는지 알려주시면 맞게 찾아드릴게요.",
+    contextConditionGuardEmptyAmenity:
+      "이 근처에서는 못 찾았어요. 범위를 조금 넓혀서 다시 찾아볼까요?",
     contextConditionNextHopPrompt: "이어서 좁혀볼까요?",
     contextConditionPinDismiss: "전부 지우기",
     contextConditionPinBadge: "맞춤",

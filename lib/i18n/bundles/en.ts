@@ -1885,6 +1885,10 @@ export const copyEn: Copy = {
     contextConditionPinLodgingDone: "Pinned {n} stays on the map",
     contextConditionPinEateryDone: "Pinned {n} eateries on the map",
     contextConditionPinEmpty: "Could not find a fit right now",
+    contextConditionGuardEmptyActivity:
+      "Couldn't find a matching activity right away. Tell me what you're after and I'll find the right fit.",
+    contextConditionGuardEmptyAmenity:
+      "Couldn't find one nearby. Want me to widen the search a bit?",
     contextConditionNextHopPrompt: "Want to narrow it down further?",
     contextConditionPinDismiss: "Remove all",
     contextConditionPinBadge: "Fit",

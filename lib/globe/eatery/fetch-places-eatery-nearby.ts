@@ -79,6 +79,12 @@ export async function fetchPlacesEateryNearby(input: {
         const photoRef = result.photos?.[0]?.photo_reference;
         const images = photoRef ? [buildPlacePhotoUrl(photoRef, key)] : [];
 
+        // Carry the Google Places type (+ secondary types) as the provider
+        // category so the Discovery Category Integrity Guard can classify rows.
+        const providerCategory =
+          result.types && result.types.length > 0
+            ? result.types.slice(0, 3).join(" ")
+            : type;
         const row: ContextEateryInventoryRow = {
           placeId,
           name,
@@ -86,6 +92,8 @@ export async function fetchPlacesEateryNearby(input: {
           lng,
           images,
           cuisineHint: type === "cafe" ? "카페" : null,
+          categoryLabel: providerCategory,
+          provider: "google_places",
           priceLevel: result.price_level ?? null,
         };
 

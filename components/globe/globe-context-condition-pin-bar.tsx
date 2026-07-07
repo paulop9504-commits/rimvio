@@ -262,6 +262,8 @@ export const GlobeContextConditionPinBar = forwardRef<
       patchPlan?: ReturnType<typeof planSpatialPatch> | null;
       keptRecommendations?: readonly ContextConditionRecommendation[];
       excludePlaceIds?: readonly string[];
+      /** Strict domains handle empty results conversationally — skip generic toast. */
+      suppressEmptyMessage?: boolean;
     }) => {
       // Category-switch cleanup: an activity/eatery search must not leave stale
       // hotel pins behind. Close the separate lodging discovery session and drop
@@ -313,12 +315,14 @@ export const GlobeContextConditionPinBar = forwardRef<
         },
       });
       if (!outcome) {
-        appendContextAgentComposeTurn(contextEventId, {
-          role: "assistant",
-          kind: "text",
-          text: copy.globe.contextConditionPinEmpty,
-        });
-        toast.message(copy.globe.contextConditionPinEmpty);
+        if (!input.suppressEmptyMessage) {
+          appendContextAgentComposeTurn(contextEventId, {
+            role: "assistant",
+            kind: "text",
+            text: copy.globe.contextConditionPinEmpty,
+          });
+          toast.message(copy.globe.contextConditionPinEmpty);
+        }
         return null;
       }
       appendContextAgentComposeTurn(contextEventId, {
@@ -458,6 +462,61 @@ export const GlobeContextConditionPinBar = forwardRef<
     ],
   );
 
+  const emitStrictDomainEmptyFollowup = useCallback(
+    async (
+      spec: ContextConditionAnchorPinOutcome["spec"],
+      triggerMessage: string,
+    ) => {
+      if (spec.resourceTypes.includes("amenity")) {
+        appendContextAgentComposeTurn(contextEventId, {
+          role: "assistant",
+          kind: "text",
+          text: copy.globe.contextConditionGuardEmptyAmenity,
+        });
+        setContextAgentSessionPhase("awaiting_human");
+        return;
+      }
+      // Activity: customer-service reply + LLM-authored convergence chips so the
+      // user re-narrows instead of hitting a wall.
+      const convergence = assessIntentConvergence({
+        message: triggerMessage,
+        answers: {},
+        askedAxisIds: [],
+      });
+      if (convergence.shouldAsk) {
+        const { question, askedAxisId } = await buildConvergenceQuestion({
+          intentType: convergence.intentType,
+          topAxis: convergence.topAxis,
+          candidateAxes: convergence.candidateAxes,
+          query: triggerMessage,
+          region: anchorPlaceName,
+        });
+        appendContextAgentComposeTurn(contextEventId, {
+          role: "assistant",
+          kind: "text",
+          text: `${copy.globe.contextConditionGuardEmptyActivity} ${question.promptKo}`,
+        });
+        writeContextConditionPending(contextEventId, {
+          triggerMessage,
+          questions: [question],
+          answers: {},
+          spec: null,
+          updatedAtIso: new Date().toISOString(),
+          askedConvergenceAxes: [askedAxisId],
+        });
+        onQuestionsChange?.([question]);
+        return;
+      }
+      appendContextAgentComposeTurn(contextEventId, {
+        role: "assistant",
+        kind: "text",
+        text: copy.globe.contextConditionGuardEmptyActivity,
+      });
+      setContextAgentSessionPhase("awaiting_human");
+    },
+    [anchorPlaceName, contextEventId, onQuestionsChange],
+  );
+
   const resolveAndMaybeExecute = useCallback(
     async (triggerMessage: string, answers?: Record<string, string>) => {
       const interpreted = await interpretMessyForContextAgent({
@@ -584,10 +643,21 @@ export const GlobeContextConditionPinBar = forwardRef<
 
       beginContextAgentWork("exploring");
       setContextAgentSessionPhase("scouting");
+      // Strict domains (activity/amenity) may come back empty because the
+      // Category Integrity Guard rejected off-domain junk. Don't dead-end with a
+      // generic "no fit" — answer conversationally and offer convergence chips.
+      const strictDomain =
+        resolved.spec.resourceTypes.includes("activity") ||
+        resolved.spec.resourceTypes.includes("amenity");
       const outcome = await executeWithSpec({
         triggerMessage: pipelineMessage,
         spec: resolved.spec,
+        suppressEmptyMessage: strictDomain,
       });
+      if (!outcome && strictDomain) {
+        await emitStrictDomainEmptyFollowup(resolved.spec, pipelineMessage);
+        return null;
+      }
 
       // Deepen once: results become the next trigger. After a cluster activity
       // search, offer ONE tidy row of deeper facets (테마파크 · 포토스팟 · 야경).
@@ -629,6 +699,7 @@ export const GlobeContextConditionPinBar = forwardRef<
       anchorLng,
       anchorPlaceName,
       contextEventId,
+      emitStrictDomainEmptyFollowup,
       executeWithSpec,
       lastRecommendations,
       lastSpec,
