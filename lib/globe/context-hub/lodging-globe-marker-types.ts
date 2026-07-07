@@ -30,6 +30,10 @@ export type GlobeLodgingMapMarker = {
   calloutOffsetY?: number | null;
   /** Context Condition AI — emerald delegate pin. */
   contextConditionPin?: boolean;
+  /** Living operation signal — 검색 중 · 예약 중 … */
+  operationSignalLabel?: string | null;
+  operationSignalTone?: "amber" | "blue" | "green" | "red" | "muted" | null;
+  operationSignalPulse?: boolean;
 };
 
 export function isGlobeLodgingMapMarker(

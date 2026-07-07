@@ -41,6 +41,10 @@ import {
   MEDIA_SPACETIME_UPDATED,
 } from "@/lib/location-ping/media-context-store";
 import { copy } from "@/lib/copy/human-ko";
+import {
+  beginLodgingResourceBooking,
+  markLodgingResourceComparing,
+} from "@/lib/resource-operation";
 
 const SWIPE_MIN_PX = 44;
 
@@ -53,6 +57,7 @@ export type GlobeResourceReelDetailProps = {
   globeRef?: RefObject<RimvioGlobeHubHandle | null>;
   onDismiss: () => void;
   onSelectItem: (item: GlobeResourceReelItem) => void;
+  resumeIntent?: "book" | "pay" | null;
 };
 
 function formatPriceKrw(value: number | null | undefined): string | null {
@@ -76,8 +81,10 @@ export function GlobeResourceReelDetail({
   globeRef,
   onDismiss,
   onSelectItem,
+  resumeIntent = null,
 }: GlobeResourceReelDetailProps) {
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const resumeBookOnceRef = useRef(false);
   const [revision, setRevision] = useState(0);
   const [pinBusy, setPinBusy] = useState(false);
 
@@ -219,6 +226,59 @@ export function GlobeResourceReelDetail({
   const swipeHint = items.length > 1 ? copy.globe.resourceReelSwipeHint : null;
   const bridgeShared = isBridgeLinkedEventId(contextEventId);
 
+  const runLodgingBook = useCallback(() => {
+    if (item.kind !== "lodging" || !lodgingEntry) {
+      return;
+    }
+    beginLodgingResourceBooking(item.resourceId);
+    markLodgingResourceComparing({
+      contextEventId,
+      resourceId: item.resourceId,
+      label: lodgingEntry.resource.label,
+      lat: anchorLat,
+      lng: anchorLng,
+    });
+    const href = lodgingEntry.resource.action?.href?.trim();
+    if (href) {
+      window.open(href, "_blank", "noopener,noreferrer");
+      return;
+    }
+    dispatchGlobeContextHubOpen({
+      contextEventId,
+      source: "lodging_focus",
+    });
+    onDismiss();
+  }, [
+    anchorLat,
+    anchorLng,
+    contextEventId,
+    item.kind,
+    item.resourceId,
+    lodgingEntry,
+    onDismiss,
+  ]);
+
+  useEffect(() => {
+    if (resumeIntent !== "book" && resumeIntent !== "pay") {
+      resumeBookOnceRef.current = false;
+      return;
+    }
+    if (item.kind !== "lodging" || !lodgingEntry || !lodgingPayload) {
+      return;
+    }
+    if (resumeBookOnceRef.current) {
+      return;
+    }
+    resumeBookOnceRef.current = true;
+    runLodgingBook();
+  }, [
+    item.kind,
+    lodgingEntry,
+    lodgingPayload,
+    resumeIntent,
+    runLodgingBook,
+  ]);
+
   if (item.kind === "lodging" && lodgingEntry && lodgingPayload) {
     const recommendReason = readLodgingRecommendReason(contextEventId, lodgingPayload.placeId);
     const pinnedResourceId = readPinnedLodgingResourceId(activeEvent);
@@ -305,18 +365,7 @@ export function GlobeResourceReelDetail({
         }
         onClose={onDismiss}
         closeAriaLabel={copy.globe.resourceReelCloseAria}
-        onPrimaryAction={() => {
-          const href = lodgingEntry.resource.action?.href?.trim();
-          if (href) {
-            window.open(href, "_blank", "noopener,noreferrer");
-            return;
-          }
-          dispatchGlobeContextHubOpen({
-            contextEventId,
-            source: "lodging_focus",
-          });
-          onDismiss();
-        }}
+        onPrimaryAction={runLodgingBook}
         primaryActionLabel={copy.globe.lodgingFocusBook}
         swipeHint={swipeHint}
         {...touchHandlers}

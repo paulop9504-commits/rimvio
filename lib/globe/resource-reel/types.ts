@@ -35,4 +35,6 @@ export type GlobeResourceReelFocusDetail = {
   carouselIndex?: number;
   surface: GlobeResourceReelSurface;
   source: GlobeResourceReelSource;
+  /** Resume in-progress book/pay without bridge detour. */
+  resumeIntent?: "book" | "pay" | null;
 };

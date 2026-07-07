@@ -330,6 +330,7 @@ import type { PendingBridgeInvite } from "@/hooks/use-pending-bridge-invites";
 import type { GlobeKnowledgePlacementPending } from "@/lib/globe/globe-knowledge-placement-pending";
 import { readGlobeKnowledgePlacementPending } from "@/lib/globe/globe-knowledge-placement-pending";
 import { runGlobeEateryDiscovery } from "@/lib/globe/eatery/run-globe-eatery-discovery";
+import { subscribeLodgingDiscoveryResourceOperations } from "@/lib/resource-operation";
 import { runGlobeLodgingDiscovery } from "@/lib/globe/lodging/run-globe-lodging-discovery";
 
 const PIN_REVERT_MS = 1_100;
@@ -567,6 +568,8 @@ function GlobeHomeBody() {
       setMapMediaFocusOpen(detail.open);
     });
   }, []);
+
+  useEffect(() => subscribeLodgingDiscoveryResourceOperations(), []);
 
   useEffect(() => {
     return subscribeProjectionStore(() => {

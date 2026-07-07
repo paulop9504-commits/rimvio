@@ -29,6 +29,26 @@ function bindLodgingMarkerPress(
   });
 }
 
+function appendLodgingOperationSignalBadge(
+  root: HTMLElement,
+  marker: GlobeLodgingMapMarker,
+): void {
+  const label = marker.operationSignalLabel?.trim();
+  if (!label) {
+    return;
+  }
+  const badge = document.createElement("span");
+  badge.className = "rimvio-globe-lodging-marker__operation-signal";
+  if (marker.operationSignalTone) {
+    badge.dataset.operationSignalTone = marker.operationSignalTone;
+  }
+  if (marker.operationSignalPulse) {
+    badge.dataset.operationSignalPulse = "true";
+  }
+  badge.textContent = label;
+  root.appendChild(badge);
+}
+
 export function createGlobeLodgingMarkerElement(
   marker: GlobeLodgingMapMarker,
   handlers: GlobeLodgingMarkerHandlers,
@@ -72,6 +92,7 @@ export function createGlobeLodgingMarkerElement(
     }
     root.appendChild(shell);
     attachLodgingMarkerDot(root);
+    appendLodgingOperationSignalBadge(root, marker);
     bindLodgingMarkerPress(root, marker, handlers);
     return root;
   }
@@ -104,6 +125,7 @@ export function createGlobeLodgingMarkerElement(
     }
     root.appendChild(card);
     attachLodgingMarkerDot(root);
+    appendLodgingOperationSignalBadge(root, marker);
     bindLodgingMarkerPress(root, marker, handlers);
     return root;
   }
@@ -118,6 +140,7 @@ export function createGlobeLodgingMarkerElement(
     chip.textContent = marker.mapHintLine?.trim() || marker.label;
     root.appendChild(chip);
     attachLodgingMarkerDot(root);
+    appendLodgingOperationSignalBadge(root, marker);
     bindLodgingMarkerPress(root, marker, handlers);
     return root;
   }
@@ -151,6 +174,7 @@ export function createGlobeLodgingMarkerElement(
     const dot = document.createElement("span");
     dot.className = "rimvio-globe-lodging-marker__dot";
     root.appendChild(dot);
+    appendLodgingOperationSignalBadge(root, marker);
     root.addEventListener("pointerdown", (event) => event.stopPropagation());
     root.addEventListener("click", (event) => {
       event.stopPropagation();
@@ -217,6 +241,7 @@ export function createGlobeLodgingMarkerElement(
     const dot = document.createElement("span");
     dot.className = "rimvio-globe-lodging-marker__dot";
     root.appendChild(dot);
+    appendLodgingOperationSignalBadge(root, marker);
     root.addEventListener("pointerdown", (event) => event.stopPropagation());
     root.addEventListener("click", (event) => {
       event.stopPropagation();
@@ -244,6 +269,7 @@ export function createGlobeLodgingMarkerElement(
       event.preventDefault();
       handlers.onPress(marker.resourceId, marker.carouselIndex);
     });
+    appendLodgingOperationSignalBadge(root, marker);
     return root;
   }
 
@@ -286,5 +312,6 @@ export function createGlobeLodgingMarkerElement(
     handlers.onPress(marker.resourceId, marker.carouselIndex);
   });
 
+  appendLodgingOperationSignalBadge(root, marker);
   return root;
 }

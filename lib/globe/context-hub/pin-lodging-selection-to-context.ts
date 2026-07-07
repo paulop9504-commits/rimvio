@@ -10,6 +10,7 @@ import type { ContextLodgingInventoryRow } from "@/lib/globe/context-hub/lodging
 import { upsertMirrorProvenanceMetadata } from "@/lib/globe/mirror-provenance";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 import { commitEventUpsert } from "@/lib/source-of-truth/commit-truth";
+import { markLodgingResourceSelected } from "@/lib/resource-operation";
 
 function buildLodgingResourceId(eventId: string, placeId: string): string {
   return `${eventId}:lodging:${placeId}`;
@@ -35,6 +36,11 @@ export function pinLodgingSelectionToContext(input: {
     throw new Error("event_not_found");
   }
   const resourceId = buildLodgingResourceId(event.id, input.row.placeId);
+  markLodgingResourceSelected({
+    contextEventId: event.id,
+    resourceId,
+    label: input.row.name,
+  });
   const stamp = new Date().toISOString();
   const pinnedItem = buildContextPinnedItem({
     kind: "lodging",

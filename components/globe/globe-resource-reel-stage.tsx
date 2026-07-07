@@ -36,6 +36,7 @@ type ReelState = {
   surface: GlobeResourceReelSurface;
   contextEventId: string;
   activeResourceId: string | null;
+  resumeIntent: "book" | "pay" | null;
 };
 
 const CLOSED_STATE: ReelState = {
@@ -43,6 +44,7 @@ const CLOSED_STATE: ReelState = {
   surface: "list",
   contextEventId: "",
   activeResourceId: null,
+  resumeIntent: null,
 };
 
 export function GlobeResourceReelStage({
@@ -72,6 +74,7 @@ export function GlobeResourceReelStage({
         surface: detail.surface,
         contextEventId: eventId,
         activeResourceId: detail.resourceId?.trim() || null,
+        resumeIntent: detail.resumeIntent ?? null,
       });
     });
   }, []);
@@ -191,6 +194,7 @@ export function GlobeResourceReelStage({
           globeRef={globeRef}
           onDismiss={dismiss}
           onSelectItem={openDetail}
+          resumeIntent={state.resumeIntent}
         />
       </div>
       {items.length > 1 ? (

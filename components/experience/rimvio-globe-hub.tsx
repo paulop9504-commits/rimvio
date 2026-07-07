@@ -18,6 +18,7 @@ import { useGpsTrackingEnabled } from "@/hooks/use-gps-tracking-enabled";
 import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
 import { useGlobeFieldDiscoveryReveal, filterFieldRevealIntents, filterFieldRevealPlaceClusters } from "@/hooks/use-globe-field-discovery-reveal";
 import { useGlobeLodgingDiscoveryReveal } from "@/hooks/use-globe-lodging-discovery-reveal";
+import { useResourceOperationRevision } from "@/hooks/use-resource-operation-revision";
 import { useGlobeEateryDiscoveryReveal } from "@/hooks/use-globe-eatery-discovery-reveal";
 import { useGlobePinsPlatformExternal } from "@/hooks/use-globe-pins-platform-external";
 import { useMarketDiscoveryPins } from "@/hooks/use-market-discovery-pins";
@@ -101,6 +102,14 @@ import { isLodgingHubEnabled } from "@/lib/globe/context-hub/read-lodging-resour
 import { isEateryHubEnabled } from "@/lib/globe/eatery/read-eatery-resource-inventory";
 import { readPinnedEateryResourceId } from "@/lib/globe/eatery/pin-eatery-selection-to-context";
 import { projectLodgingGlobeMarkers } from "@/lib/globe/context-hub/project-lodging-globe-markers";
+import {
+  dispatchGlobeResourceReelFocus,
+} from "@/lib/globe/resource-reel/globe-resource-reel-bridge";
+import {
+  applyLodgingOperationSignal,
+  markLodgingResourceComparing,
+  resolveResourceOperationResume,
+} from "@/lib/resource-operation";
 import { resolveContextResourceMapMarkers } from "@/lib/globe/resolve-context-resource-map-markers";
 import { projectEateryGlobeMarkers } from "@/lib/globe/eatery/project-eatery-globe-markers";
 import { projectContextHubGlobeAnchor } from "@/lib/globe/context-hub/project-context-hub-globe-anchor";
@@ -384,6 +393,7 @@ const RimvioGlobeHubBody = memo(
     const { enabled: gpsEnabled } = useGpsTrackingEnabled();
     const liveLocation = useLiveLocationSnapshot();
     const lodgingDiscoveryReveal = useGlobeLodgingDiscoveryReveal(focusedContextEventId);
+    const resourceOperationRevision = useResourceOperationRevision();
     const eateryDiscoveryReveal = useGlobeEateryDiscoveryReveal(focusedContextEventId);
     const displayViewerRef = useRef<{ lat: number; lng: number } | null>(null);
     const [displayViewer, setDisplayViewer] = useState<{ lat: number; lng: number } | null>(
@@ -592,7 +602,7 @@ const RimvioGlobeHubBody = memo(
         hubLng,
         layoutAtHub: contextConditionMarkers.length === 0,
         stagedDiscoveryCount: lodgingDiscoveryReveal.visibleResourceIds.size,
-      });
+      }).map(applyLodgingOperationSignal);
     }, [
       activeLodgingResourceId,
       bridgeRevision,
@@ -608,6 +618,7 @@ const RimvioGlobeHubBody = memo(
       ontologyFacetRevision,
       layerPolicy,
       layerPolicyRevision,
+      resourceOperationRevision,
     ]);
     const eateryGlobeMarkers = useMemo(() => {
       void bridgeRevision;
@@ -917,6 +928,34 @@ const RimvioGlobeHubBody = memo(
           renderSuspended={renderSuspended}
           lodgingMarkers={lodgingGlobeMarkers}
           onLodgingMarkerPress={(resourceId, carouselIndex) => {
+            const resume = resolveResourceOperationResume(resourceId);
+            if (resume?.intent === "book" || resume?.intent === "pay") {
+              dispatchGlobeResourceReelFocus({
+                contextEventId: resume.contextEventId,
+                resourceId: resume.resourceId,
+                kind: "lodging",
+                carouselIndex,
+                surface: "detail",
+                source: "map_marker",
+                resumeIntent: resume.intent,
+              });
+              return;
+            }
+            const marker = lodgingGlobeMarkers.find((row) => row.resourceId === resourceId);
+            const contextEventId =
+              resume?.contextEventId ??
+              (resourceId.includes(":lodging:")
+                ? resourceId.slice(0, resourceId.lastIndexOf(":lodging:")).trim()
+                : "");
+            if (contextEventId) {
+              markLodgingResourceComparing({
+                contextEventId,
+                resourceId,
+                label: marker?.label ?? "숙소",
+                lat: marker?.lat,
+                lng: marker?.lng,
+              });
+            }
             const scoutFocus = resolveContextAgentGlobeMarkerFocus({ resourceId });
             dispatchGlobeLodgingFocus({
               resourceId,

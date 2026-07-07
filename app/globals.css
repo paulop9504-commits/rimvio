@@ -4273,6 +4273,58 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   touch-action: manipulation;
 }
 
+.rimvio-globe-lodging-marker__operation-signal {
+  order: -1;
+  max-width: 7.5rem;
+  border-radius: 999px;
+  padding: 0.14rem 0.45rem;
+  font-size: 0.56rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+  white-space: nowrap;
+  box-shadow:
+    0 4px 12px rgba(15, 23, 42, 0.16),
+    0 0 0 1px rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(8px);
+}
+
+.rimvio-globe-lodging-marker__operation-signal[data-operation-signal-tone="amber"] {
+  background: rgba(255, 251, 235, 0.96);
+  color: #b45309;
+}
+
+.rimvio-globe-lodging-marker__operation-signal[data-operation-signal-tone="blue"] {
+  background: rgba(239, 246, 255, 0.96);
+  color: #1d4ed8;
+}
+
+.rimvio-globe-lodging-marker__operation-signal[data-operation-signal-tone="green"] {
+  background: rgba(236, 253, 245, 0.96);
+  color: #047857;
+}
+
+.rimvio-globe-lodging-marker__operation-signal[data-operation-signal-tone="red"] {
+  background: rgba(254, 242, 242, 0.96);
+  color: #b91c1c;
+}
+
+.rimvio-globe-lodging-marker__operation-signal[data-operation-signal-pulse="true"] {
+  animation: rimvio-resource-operation-signal-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes rimvio-resource-operation-signal-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.82;
+    transform: scale(0.98);
+  }
+}
+
 .rimvio-globe-lodging-marker__card {
   display: block;
   overflow: hidden;
