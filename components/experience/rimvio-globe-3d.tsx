@@ -120,6 +120,16 @@ export type RimvioGlobe3DHandle = {
     >,
     options?: GlobeFlyToPinOptions,
   ) => void;
+  /** Instant POV — no fly animation (context agent bind). */
+  snapToPin: (
+    lat: number,
+    lng: number,
+    level?: Extract<
+      GlobeDetailLevel,
+      "region" | "city" | "neighborhood" | "street" | "pin"
+    >,
+    options?: GlobeFlyToPinOptions,
+  ) => void;
   flyToDiscoveryBounds: (input: {
     centerLat: number;
     centerLng: number;
@@ -509,6 +519,18 @@ export const RimvioGlobe3D = memo(
         globe.pointOfView(
           { lat, lng, altitude: altitudeForGlobeDetailLevel(level) },
           FLY_MS,
+        );
+        applyGlobePinViewportBias(globe, root, options?.pinViewportY);
+      },
+      snapToPin(lat, lng, level = "street", options?) {
+        const globe = globeRef.current;
+        const root = rootRef.current;
+        if (!globe) {
+          return;
+        }
+        globe.pointOfView(
+          { lat, lng, altitude: altitudeForGlobeDetailLevel(level) },
+          0,
         );
         applyGlobePinViewportBias(globe, root, options?.pinViewportY);
       },

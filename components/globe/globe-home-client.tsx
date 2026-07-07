@@ -164,6 +164,7 @@ import {
   subscribeGlobeContextAgent,
   type GlobeContextAgentDetail,
 } from "@/lib/globe/context-agent";
+import { snapGlobeToContextAgentAnchor } from "@/lib/globe/context-agent/snap-globe-to-context-agent-anchor";
 import type { GlobeContextTimeFilter } from "@/lib/globe/globe-context-time-filter";
 import type { GlobeDetailLevel } from "@/lib/globe/globe-zoom-levels";
 import {
@@ -671,6 +672,14 @@ function GlobeHomeBody() {
     });
   }, [dismissCompetingGlobeSurfaces]);
 
+  useEffect(() => {
+    if (!contextAgentSurfacesActive) {
+      return;
+    }
+    setSheetOpen(false);
+    setHubDetailOpen(false);
+  }, [contextAgentSurfacesActive]);
+
   const detailLevelRef = useRef<GlobeDetailLevel>("space");
   const lastPinPressAtRef = useRef(0);
   const bindContextAgentToEventIdRef = useRef<(eventId: string) => void>(() => {});
@@ -780,12 +789,14 @@ function GlobeHomeBody() {
         return;
       }
       if (eventId && isGlobeContextSwitchBlocked(eventId)) {
-        globeRef.current?.flyToPin(cluster.lat, cluster.lng, "neighborhood");
+        snapGlobeToContextAgentAnchor(globeRef, cluster);
         toast.message(copy.globe.contextAgentLockedToContext);
         return;
       }
 
-      globeRef.current?.flyToPin(cluster.lat, cluster.lng, "neighborhood");
+      if (readGlobeContextAgentSession().phase !== "bound") {
+        globeRef.current?.flyToPin(cluster.lat, cluster.lng, "neighborhood");
+      }
       setStackClusters(null);
       setActiveCluster(cluster);
 
@@ -2551,6 +2562,7 @@ function GlobeHomeBody() {
       return null;
     }
     const cluster = result.cluster;
+    snapGlobeToContextAgentAnchor(globeRef, cluster);
     setStackClusters(null);
     setActiveCluster(cluster);
     setSheetOpen(false);
@@ -2587,13 +2599,18 @@ function GlobeHomeBody() {
       dismissCompetingGlobeSurfaces();
       bindGlobeContextAgent(key);
       setStackClusters(null);
+      const previewCluster =
+        resolveGlobeContextPinCluster(key) ?? resolveGlobeContextCardPinCluster(key);
+      if (previewCluster) {
+        snapGlobeToContextAgentAnchor(globeRef, previewCluster);
+      }
+      openGlobeContextConditionPanel(key);
       const event =
         findLifeEventCandidate(key) ?? recoverGlobeContextEventFromPin(key);
       if (event && isLodgingInventoryMisanchored(event)) {
         clearContextConditionLastBatch(key);
       }
       await anchorContextForAgentBind(key);
-      openGlobeContextConditionPanel(key);
     },
     [anchorContextForAgentBind, dismissCompetingGlobeSurfaces],
   );
@@ -2852,7 +2869,11 @@ function GlobeHomeBody() {
         if (prev.lat === next.lat && prev.lng === next.lng) {
           return prev;
         }
-        globeRef.current?.flyToPin(next.lat, next.lng, "neighborhood");
+        if (readGlobeContextAgentSession().phase === "bound") {
+          snapGlobeToContextAgentAnchor(globeRef, next);
+        } else {
+          globeRef.current?.flyToPin(next.lat, next.lng, "neighborhood");
+        }
         return next;
       });
     };
@@ -4249,14 +4270,17 @@ function GlobeHomeBody() {
         onAgentContextPick={bindContextAgentToEntry}
         contextAgentArming={contextAgentSession.phase === "arming"}
         onContextAgentBind={
-          hubEventId && contextAgentSession.phase !== "idle"
+          hubEventId
             ? () => {
-                if (contextAgentSession.phase === "arming") {
-                  void bindContextAgentToEventId(hubEventId);
+                if (
+                  contextAgentSession.phase === "bound" &&
+                  contextAgentSession.boundEventId === hubEventId
+                ) {
+                  dismissCompetingGlobeSurfaces();
+                  openGlobeContextConditionPanel(hubEventId);
                   return;
                 }
-                dismissCompetingGlobeSurfaces();
-                openGlobeContextConditionPanel(hubEventId);
+                void bindContextAgentToEventId(hubEventId);
               }
             : undefined
         }
@@ -4638,7 +4662,7 @@ function GlobeHomeBody() {
         }}
       />
       <PinOpenSheet
-        open={sheetOpen}
+        open={sheetOpen && shouldOpenGlobeBridgeSheet()}
         onOpenChange={onSheetOpenChange}
         cluster={activeCluster}
         initialPage={pinSheetInitialPage}

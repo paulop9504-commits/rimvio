@@ -10,6 +10,9 @@ import {
   RIMVIO_SURFACE,
 } from "@/lib/design/rimvio-ontology";
 
+/** Above PinOpenSheet (`z-[10062]`) while assistant is active. */
+export const RIMVIO_ASSISTANT_FRAME_Z_INDEX = 10070;
+
 export const RIMVIO_ASSISTANT = {
   ink: RIMVIO_INK,
   action: RIMVIO_ACTION,

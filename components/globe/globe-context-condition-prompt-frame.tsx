@@ -103,6 +103,7 @@ import {
 } from "@/lib/globe/spatial-semantic";
 import { cn } from "@/lib/utils";
 import {
+  RIMVIO_ASSISTANT_FRAME_Z_INDEX,
   rimvioAssistantFrameShellClass,
   rimvioAssistantTitleClass,
 } from "@/lib/design/globe-assistant-surface";
@@ -752,7 +753,7 @@ export function GlobeContextConditionPromptFrame({
   return (
     <GlobeBrainSurfaceFloatingFrame
       frameId="context-condition-prompt"
-      zIndex={34}
+      zIndex={RIMVIO_ASSISTANT_FRAME_Z_INDEX}
       dragLabel={copy.globe.contextConditionPanelDragLabel}
       className={cn(className)}
       shellClassName={rimvioAssistantFrameShellClass()}
