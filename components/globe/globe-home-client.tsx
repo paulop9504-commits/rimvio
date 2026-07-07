@@ -3968,7 +3968,9 @@ function GlobeHomeBody() {
         pinCoordOverrides={pinCoordOverrides}
         bridgeGhostClusters={bridgeGhostClusters}
         renderSuspended={globeRenderSuspended}
-        focusedContextEventId={activeCluster?.eventId ?? null}
+        focusedContextEventId={
+          contextAgentBoundEventId ?? activeCluster?.eventId ?? null
+        }
         realityBridgeArcs={realityBridgeArcs}
         showInteractionHint={false}
         layerMode={layerMode}

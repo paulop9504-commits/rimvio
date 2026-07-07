@@ -160,6 +160,7 @@ function useGlobeEventSnapshot() {
 export type RimvioGlobeHubHandle = {
   flyToPin: RimvioGlobe3DHandle["flyToPin"];
   snapToPin: RimvioGlobe3DHandle["snapToPin"];
+  snapToDiscoveryBounds: RimvioGlobe3DHandle["snapToDiscoveryBounds"];
   flyToDiscoveryBounds: RimvioGlobe3DHandle["flyToDiscoveryBounds"];
   clearPinViewportBias: RimvioGlobe3DHandle["clearPinViewportBias"];
   resetToOverview: () => void;
@@ -768,6 +769,9 @@ const RimvioGlobeHubBody = memo(
       },
       snapToPin(lat, lng, level, options) {
         innerGlobeRef.current?.snapToPin(lat, lng, level, options);
+      },
+      snapToDiscoveryBounds(input) {
+        innerGlobeRef.current?.snapToDiscoveryBounds(input);
       },
       flyToDiscoveryBounds(input) {
         innerGlobeRef.current?.flyToDiscoveryBounds(input);

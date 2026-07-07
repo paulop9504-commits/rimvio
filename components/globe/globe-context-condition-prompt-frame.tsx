@@ -45,7 +45,9 @@ import {
   isGlobeContextAgentBound,
   type ContextAgentRuntimeState,
   type ContextAgentSessionState,
+  publishContextAgentGlobeMarkerFocus,
 } from "@/lib/globe/context-agent";
+import { snapGlobeToContextConditionScout } from "@/lib/globe/context-agent/snap-globe-to-context-agent-anchor";
 import {
   confirmContextActionInjection,
   dismissContextActionInjection,
@@ -74,10 +76,6 @@ import {
   resolveCicadaAgentPhaseLabel,
 } from "@/lib/globe/context-agent/resolve-cicada-agent-phase";
 import { subscribeContextAgentGlobeMarkerFocus } from "@/lib/globe/context-agent/context-agent-globe-marker-focus";
-import {
-  buildResourceReelResourceId,
-  dispatchGlobeResourceReelFocus,
-} from "@/lib/globe/resource-reel";
 import { resolveCicadaAssistantSurfaceMode } from "@/lib/globe/context-agent/resolve-cicada-assistant-surface-mode";
 import {
   applyPalantirOperatorAfterScout,
@@ -339,7 +337,10 @@ export function GlobeContextConditionPromptFrame({
       });
       publishFocusGlobeProjection({
         contextEventId: event.id,
-        visiblePlaceIds: [detail.placeId],
+        visiblePlaceIds:
+          recommendations.length > 0
+            ? recommendations.map((row) => row.placeId)
+            : [detail.placeId],
       });
       const override = applyPalantirOperatorPlaceOverride({
         contextEventId: event.id,
@@ -354,19 +355,7 @@ export function GlobeContextConditionPromptFrame({
         text: override?.briefKo || detail.insightKo,
       });
       setComposeThread(readContextAgentComposeThread(event.id));
-      dispatchGlobeResourceReelFocus({
-        contextEventId: event.id,
-        resourceId: buildResourceReelResourceId({
-          contextEventId: event.id,
-          kind: detail.kind,
-          placeId: detail.placeId,
-        }),
-        kind: detail.kind,
-        carouselIndex: 0,
-        surface: "detail",
-        source: "map_marker",
-      });
-      globeRef?.current?.flyToPin(detail.lat, detail.lng, "neighborhood", {
+      globeRef?.current?.snapToPin(detail.lat, detail.lng, "street", {
         pinViewportY: MAP_FOCUS_PIN_VIEWPORT_Y,
       });
     });
@@ -462,11 +451,12 @@ export function GlobeContextConditionPromptFrame({
       setComposeThread(readContextAgentComposeThread(event.id));
     }
 
-    if (outcome.recommendations.length > 0) {
-      dispatchGlobeResourceReelFocus({
-        contextEventId: event.id,
-        surface: "list",
-        source: "scout_complete",
+    if (globeRef) {
+      snapGlobeToContextConditionScout(globeRef, {
+        anchorLat,
+        anchorLng,
+        recommendations: outcome.recommendations,
+        radiusM: outcome.radiusM,
       });
     }
   };
@@ -637,7 +627,7 @@ export function GlobeContextConditionPromptFrame({
     lastFlownPlaceRef.current = placeId;
     const row = recommendations.find((item) => item.placeId === placeId);
     if (row) {
-      globeRef?.current?.flyToPin(row.lat, row.lng, "neighborhood", {
+      globeRef?.current?.snapToPin(row.lat, row.lng, "street", {
         pinViewportY: MAP_FOCUS_PIN_VIEWPORT_Y,
       });
     }
@@ -654,51 +644,32 @@ export function GlobeContextConditionPromptFrame({
     });
     const row = recommendations.find((item) => item.placeId === placeId);
     if (row) {
-      dispatchGlobeResourceReelFocus({
-        contextEventId: event.id,
-        resourceId: buildResourceReelResourceId({
-          contextEventId: event.id,
-          kind: row.kind,
-          placeId: row.placeId,
-        }),
-        kind: row.kind,
-        carouselIndex: 0,
-        surface: "detail",
-        source: "chat",
-      });
-      globeRef?.current?.flyToPin(row.lat, row.lng, "neighborhood", {
+      globeRef?.current?.snapToPin(row.lat, row.lng, "street", {
         pinViewportY: MAP_FOCUS_PIN_VIEWPORT_Y,
       });
     }
   };
 
-  const openPalantirPrimaryReel = () => {
+  const openPalantirPrimaryOnMap = () => {
     if (!event || !palantirWorkspace?.primaryPlaceId) {
       return;
     }
     const placeId = palantirWorkspace.primaryPlaceId;
     const row = recommendations.find((item) => item.placeId === placeId);
     if (!row) {
-      dispatchGlobeResourceReelFocus({
-        contextEventId: event.id,
-        surface: "list",
-        source: "palantir_brief",
-      });
       return;
     }
-    dispatchGlobeResourceReelFocus({
+    publishContextAgentGlobeMarkerFocus({
       contextEventId: event.id,
-      resourceId: buildResourceReelResourceId({
-        contextEventId: event.id,
-        kind: row.kind,
-        placeId: row.placeId,
-      }),
+      placeId: row.placeId,
       kind: row.kind,
-      carouselIndex: 0,
-      surface: "detail",
-      source: "palantir_brief",
+      lat: row.lat,
+      lng: row.lng,
+      title: row.title,
+      insightKo: row.reasonKo,
+      source: "map_marker",
     });
-    globeRef?.current?.flyToPin(row.lat, row.lng, "neighborhood", {
+    globeRef?.current?.snapToPin(row.lat, row.lng, "street", {
       pinViewportY: MAP_FOCUS_PIN_VIEWPORT_Y,
     });
   };
@@ -813,7 +784,7 @@ export function GlobeContextConditionPromptFrame({
             ) : null}
             <GlobePalantirOperatorBrief
               snapshot={palantirWorkspace}
-              onOpenPrimary={openPalantirPrimaryReel}
+              onOpenPrimary={openPalantirPrimaryOnMap}
               compact={compactBrief}
             />
             {palantirCommitAction && questions.length === 0 && !showBusyStatus ? (

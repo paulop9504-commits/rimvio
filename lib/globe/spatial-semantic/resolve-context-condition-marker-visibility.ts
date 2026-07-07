@@ -27,7 +27,7 @@ export function filterContextConditionMarkersByPlaceIds<
     policy.visiblePlaceIds.map((placeId) => placeId.trim()).filter(Boolean),
   );
   if (visible.size === 0) {
-    return [];
+    return [...markers];
   }
   return markers.filter((marker) => {
     const placeId = placeIdFromContextConditionMarkerId(marker.id);

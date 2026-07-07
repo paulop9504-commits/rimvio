@@ -177,11 +177,12 @@ function publishPalantirProjection(input: {
   historyKind: PalantirOntologyHistoryKind;
 }): PalantirWorkspaceSnapshot {
   const projectedPlaceIds = input.projected.map((row) => row.placeId);
+  const allPlaceIds = input.recommendations.map((row) => row.placeId);
   const primary = input.projected[0]!;
 
   publishFocusGlobeProjection({
     contextEventId: input.contextEventId,
-    visiblePlaceIds: projectedPlaceIds,
+    visiblePlaceIds: allPlaceIds,
   });
   publishGeoOntologyFacetState({
     contextEventId: input.contextEventId,

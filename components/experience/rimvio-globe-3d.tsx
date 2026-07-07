@@ -130,6 +130,12 @@ export type RimvioGlobe3DHandle = {
     >,
     options?: GlobeFlyToPinOptions,
   ) => void;
+  snapToDiscoveryBounds: (input: {
+    centerLat: number;
+    centerLng: number;
+    altitude: number;
+    pinViewportY?: number;
+  }) => void;
   flyToDiscoveryBounds: (input: {
     centerLat: number;
     centerLng: number;
@@ -533,6 +539,22 @@ export const RimvioGlobe3D = memo(
           0,
         );
         applyGlobePinViewportBias(globe, root, options?.pinViewportY);
+      },
+      snapToDiscoveryBounds(input) {
+        const globe = globeRef.current;
+        const root = rootRef.current;
+        if (!globe) {
+          return;
+        }
+        globe.pointOfView(
+          {
+            lat: input.centerLat,
+            lng: input.centerLng,
+            altitude: input.altitude,
+          },
+          0,
+        );
+        applyGlobePinViewportBias(globe, root, input.pinViewportY ?? 0.62);
       },
       flyToDiscoveryBounds(input) {
         const globe = globeRef.current;

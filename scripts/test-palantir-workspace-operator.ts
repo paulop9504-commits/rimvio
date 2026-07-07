@@ -62,6 +62,6 @@ assert.equal(snapshot!.activeFacetId, "distance");
 assert.deepEqual(snapshot!.projectedPlaceIds, ["p1", "p2", "p3"]);
 assert.equal(readPalantirWorkspaceSnapshot(contextId)?.batchId, "batch-1");
 assert.equal(readGlobeProjectionLayerPolicy().mode, "focus");
-assert.equal(readGlobeProjectionLayerPolicy().visiblePlaceIds.length, 3);
+assert.equal(readGlobeProjectionLayerPolicy().visiblePlaceIds.length, 5);
 
 console.log("test-palantir-workspace-operator: ok");

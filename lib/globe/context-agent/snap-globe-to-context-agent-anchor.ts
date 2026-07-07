@@ -1,5 +1,6 @@
 import type { RefObject } from "react";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
+import { computeLodgingDiscoveryBounds } from "@/lib/globe/lodging/compute-lodging-discovery-bounds";
 import { MAP_FOCUS_PIN_VIEWPORT_Y } from "@/lib/globe/map-anchored-overlay-layout";
 
 /** 1:1 context assistant — street-scale, pin biased for chat frame. */
@@ -13,6 +14,36 @@ export function snapGlobeToContextAgentAnchor(
     return;
   }
   globeRef.current?.snapToPin(input.lat, input.lng, CONTEXT_AGENT_GLOBE_DETAIL_LEVEL, {
+    pinViewportY: MAP_FOCUS_PIN_VIEWPORT_Y,
+  });
+}
+
+/** Scout complete — fit all result pins on map (no fly animation). */
+export function snapGlobeToContextConditionScout(
+  globeRef: RefObject<RimvioGlobeHubHandle | null>,
+  input: {
+    anchorLat: number;
+    anchorLng: number;
+    recommendations: readonly { lat: number; lng: number }[];
+    radiusM?: number;
+  },
+): void {
+  const bounds = computeLodgingDiscoveryBounds({
+    user: { lat: input.anchorLat, lng: input.anchorLng },
+    lodging: input.recommendations,
+    radiusM: input.radiusM,
+  });
+  if (!bounds) {
+    snapGlobeToContextAgentAnchor(globeRef, {
+      lat: input.anchorLat,
+      lng: input.anchorLng,
+    });
+    return;
+  }
+  globeRef.current?.snapToDiscoveryBounds({
+    centerLat: bounds.centerLat,
+    centerLng: bounds.centerLng,
+    altitude: bounds.altitude,
     pinViewportY: MAP_FOCUS_PIN_VIEWPORT_Y,
   });
 }

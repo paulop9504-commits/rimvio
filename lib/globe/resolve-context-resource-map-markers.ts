@@ -131,7 +131,13 @@ export function resolveContextResourceMapMarkers<
   }
 
   const withPhoto = input.markers.filter((marker) => {
-    const row = marker as { thumbnailUrl?: string | null };
+    const row = marker as {
+      thumbnailUrl?: string | null;
+      contextConditionPin?: boolean;
+    };
+    if (row.contextConditionPin) {
+      return true;
+    }
     return hasExplicitMarkerThumbnail(row.thumbnailUrl);
   });
 
