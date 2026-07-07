@@ -52,6 +52,7 @@ export type BoundSituation = {
 
 export type ContextRunPlanKind =
   | "noop"
+  | "small_talk"
   | "discovery_browse"
   | "discovery_hint"
   | "external_url"
@@ -107,6 +108,8 @@ export type ContextRunPlan = {
   composeAmbientChat?: boolean;
   /** Globe Ingress compiler output — Intent → Context → Bridge → Runtime → Blueprint */
   globeIngress?: GlobeIngressCompileResult;
+  /** Small talk (greeting/thanks/chit-chat) — short conversational reply, no search. */
+  smallTalkReplyKo?: string;
 };
 
 export type ContextRunEffectHandlers = {

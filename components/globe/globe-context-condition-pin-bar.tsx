@@ -44,6 +44,11 @@ import { assessIntentConvergence } from "@/lib/globe/context-condition-ai/intent
 import { buildConvergenceQuestion } from "@/lib/globe/context-condition-ai/intent-convergence/build-convergence-question";
 import { buildActivityNextHopQuestion } from "@/lib/globe/context-condition-ai/intent-convergence/build-next-hop-question";
 import {
+  resolveSmallTalk,
+  smallTalkFallbackReply,
+} from "@/lib/globe/context-condition-ai/resolve-small-talk";
+import { classifyInput } from "@/lib/globe/context-condition-ai/dispatch/classify-input";
+import {
   isFollowUpDiscoveryTurn,
 } from "@/lib/globe/context-condition-ai/is-cross-domain-discovery-search";
 import {
@@ -53,7 +58,10 @@ import {
   setContextAgentSessionPhase,
   setContextAgentSessionSpec,
 } from "@/lib/globe/context-agent";
-import { appendContextAgentComposeTurn } from "@/lib/globe/assistant";
+import {
+  appendContextAgentComposeTurn,
+  readContextAgentComposeThread,
+} from "@/lib/globe/assistant";
 import {
   applyPalantirOperatorFacetRefine,
   buildClarifyingOntologyGraph,
@@ -644,8 +652,40 @@ export const GlobeContextConditionPinBar = forwardRef<
     }
     setBusy(true);
     try {
-      if (text && (await tryPublishActionInjection(text))) {
-        return;
+      // Dispatcher: every typed input is classified (Chat | Search | Task) by a
+      // lightweight LLM first, with deterministic fallback. Only Search flows into
+      // the convergence/retrieval pipeline — Chat gets a short reply, Task tries
+      // the action executor. This is what stops "ㅎㅇ" from forcing a place search.
+      if (text) {
+        const history = readContextAgentComposeThread(contextEventId)
+          .slice(-6)
+          .map((turn) => `${turn.role}: ${turn.text}`);
+        const classification = await classifyInput({
+          text,
+          region: anchorPlaceName,
+          history,
+          hasActiveResults: lastRecommendations.length > 0,
+        });
+        if (classification.category === "chat") {
+          const reply =
+            resolveSmallTalk({ text, region: anchorPlaceName }) ??
+            smallTalkFallbackReply(anchorPlaceName);
+          appendContextAgentComposeTurn(contextEventId, {
+            role: "assistant",
+            kind: "text",
+            text: reply.replyKo,
+          });
+          setMessage("");
+          setContextAgentSessionPhase("awaiting_human");
+          return;
+        }
+        if (classification.category === "task") {
+          // If it's a real action, the executor handles it; otherwise fall
+          // through to search rather than dead-ending.
+          if (await tryPublishActionInjection(text)) {
+            return;
+          }
+        }
       }
       if (
         lastSpec &&
@@ -671,6 +711,7 @@ export const GlobeContextConditionPinBar = forwardRef<
       finishContextAgentWork();
     }
   }, [
+    anchorPlaceName,
     busy,
     contextEventId,
     lastSpec,

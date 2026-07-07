@@ -377,6 +377,35 @@ export async function runContextConditionAnchorPin(
       distanceWeight: isAmenity ? 1 : 0.1,
       focusMatch,
     }).slice(0, cluster.length > 0 ? 6 : 4);
+
+    // Relevance threshold (Search Filter): a chip-driven focus is high intent.
+    // If nothing in the results actually matches the focus/cluster, don't force
+    // an off-topic pin (e.g. "유니버설" → &ISLAND café) — return no-fit so the
+    // assistant answers conversationally instead of pinning junk.
+    if (!isAmenity && focus && focusMatch) {
+      const focusTokens = focusMatch
+        .toLowerCase()
+        .split(/[\s·,]+/u)
+        .map((token) => token.trim())
+        .filter((token) => token.length >= 2);
+      const anyRelevant =
+        focusTokens.length === 0 ||
+        eateryScored.some((entry) => {
+          const blob = [
+            entry.row.name,
+            entry.row.categoryLabel,
+            entry.row.cuisineHint,
+            entry.row.address,
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+          return focusTokens.some((token) => blob.includes(token));
+        });
+      if (!anyRelevant) {
+        eateryScored = [];
+      }
+    }
     eateryRows = eateryScored.map((row) => row.row);
   }
 

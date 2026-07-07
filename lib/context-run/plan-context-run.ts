@@ -12,6 +12,7 @@ import { resolveGlobeMapIntent } from "@/lib/globe/intent-supply/resolve-globe-m
 import { detectPortalIntentFromText } from "@/lib/portal/detect-portal-intent-from-text";
 import { readPortalComposeRunState } from "@/lib/portal/portal-compose-run-store";
 import { planPersonalRecallAskIfEligible } from "@/lib/context-run/plan-personal-recall-ask";
+import { resolveSmallTalk } from "@/lib/globe/context-condition-ai/resolve-small-talk";
 import {
   compileGlobeIngress,
   isGlobeIngressEligible,
@@ -126,6 +127,23 @@ export function planContextRun(bound: BoundSituation): ContextRunPlan {
   const portalPlan = planPortalComposeIfEligible(bound, text, ingress);
   if (portalPlan) {
     return portalPlan;
+  }
+
+  // Small talk lane: a greeting/thanks/chit-chat on the composer gets a short
+  // conversational reply instead of being forced into a search/ingest. Mirrors
+  // the context assistant's dispatcher; deterministic, no LLM. Runs after active
+  // multi-turn flows (recall/portal) so those keep priority, and real requests
+  // (search cues present) fall through to the normal planner below.
+  if (ingress.surface === "composer") {
+    const smallTalk = resolveSmallTalk({ text });
+    if (smallTalk) {
+      return {
+        kind: "small_talk",
+        smallTalkReplyKo: smallTalk.replyKo,
+        composeAmbientChat: true,
+        ...base,
+      };
+    }
   }
 
   if (ingress.surface === "capture_sheet") {

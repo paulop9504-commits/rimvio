@@ -30,7 +30,17 @@ const genericMemo = planFor("점심에 김치찌개 먹음");
 assert.equal(genericMemo.kind, "text_ingest");
 
 const ambientHi = planFor("ㅎㅇ");
-assert.equal(ambientHi.kind, "personal_context_ask");
+assert.equal(ambientHi.kind, "small_talk");
+assert.ok(
+  (ambientHi.smallTalkReplyKo ?? "").length > 0,
+  "small talk must carry a reply",
+);
+
+const thanks = planFor("고마워");
+assert.equal(thanks.kind, "small_talk");
+
+const capability = planFor("너 뭐 할 수 있어?");
+assert.equal(capability.kind, "small_talk");
 
 const recallPerson = planFor("정성이랑 어디 갔어");
 assert.equal(recallPerson.kind, "personal_context_ask");
@@ -48,7 +58,7 @@ const lodging = planFor("호텔 추천해줘");
 assert.equal(lodging.kind, "experience_run");
 
 const trip = planFor("부산 출장");
-assert.equal(trip.kind, "experience_run");
+assert.equal(trip.kind, "globe_ingress");
 
 const eatery = planFor("강남 맛집 추천");
 assert.equal(eatery.kind, "experience_run");

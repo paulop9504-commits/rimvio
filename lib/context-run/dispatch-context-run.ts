@@ -183,6 +183,16 @@ async function executeContextRunPlan(
     : undefined;
 
   switch (plan.kind) {
+    case "small_talk": {
+      // Chat lane: reply conversationally, run no search/ingest. The user turn
+      // was already appended above; add the short assistant reply.
+      appendGlobeChatTextMessage({
+        graphId,
+        role: "assistant",
+        text: plan.smallTalkReplyKo ?? "네, 편하게 말해줘요 🙂",
+      });
+      return { graphId, status: "done", planKind: plan.kind };
+    }
     case "discovery_browse": {
       handlers.openFieldDiscovery();
       return { graphId, status: "done", planKind: plan.kind, surface };
