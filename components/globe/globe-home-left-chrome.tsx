@@ -32,6 +32,7 @@ export type GlobeHomeLeftChromeProps = {
   onSelectContext?: (entry: GlobeContextTimelineEntry) => void;
   onAgentContextPick?: (entry: GlobeContextTimelineEntry) => void;
   contextAgentArming?: boolean;
+  onContextAgentBind?: () => void;
   onToggleContextAgentArm?: () => void;
   onContextsDeleted?: (eventIds: string[]) => void;
   onNewContext?: () => void;
@@ -80,6 +81,7 @@ export function GlobeHomeLeftChrome({
   onSelectContext,
   onAgentContextPick,
   contextAgentArming = false,
+  onContextAgentBind,
   onToggleContextAgentArm,
   onContextsDeleted,
   onNewContext,
@@ -195,6 +197,7 @@ export function GlobeHomeLeftChrome({
             <GlobeContextBrainStrip
               event={hubEvent}
               variant="corner-pill"
+              onContextAgentBind={onContextAgentBind}
               className="pointer-events-auto"
             />
           ) : null}

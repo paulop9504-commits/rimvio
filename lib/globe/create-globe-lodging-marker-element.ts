@@ -10,6 +10,25 @@ export type GlobeLodgingMarkerHandlers = {
   onPress: (resourceId: string, carouselIndex: number) => void;
 };
 
+function attachLodgingMarkerDot(root: HTMLElement): void {
+  const dot = document.createElement("span");
+  dot.className = "rimvio-globe-lodging-marker__dot";
+  root.appendChild(dot);
+}
+
+function bindLodgingMarkerPress(
+  root: HTMLElement,
+  marker: GlobeLodgingMapMarker,
+  handlers: GlobeLodgingMarkerHandlers,
+): void {
+  root.addEventListener("pointerdown", (event) => event.stopPropagation());
+  root.addEventListener("click", (event) => {
+    event.stopPropagation();
+    event.preventDefault();
+    handlers.onPress(marker.resourceId, marker.carouselIndex);
+  });
+}
+
 export function createGlobeLodgingMarkerElement(
   marker: GlobeLodgingMapMarker,
   handlers: GlobeLodgingMarkerHandlers,
@@ -29,6 +48,117 @@ export function createGlobeLodgingMarkerElement(
     root.style.animationDelay = `${marker.popInDelayMs}ms`;
   }
   root.setAttribute("aria-label", marker.label);
+
+  if (marker.displayVariant === "price_pill") {
+    root.classList.add("rimvio-globe-lodging-marker--price-pill");
+    if (marker.isMain) {
+      root.classList.add("rimvio-globe-lodging-marker--price-pill-main");
+    }
+    const shell = document.createElement("span");
+    shell.className = "rimvio-globe-lodging-marker__price-pill-shell";
+    const pill = document.createElement("span");
+    pill.className = "rimvio-globe-lodging-marker__price-pill";
+    pill.textContent =
+      marker.discoveryPriceLabel?.trim() ||
+      marker.mapHintLine?.trim() ||
+      marker.label.trim().slice(0, 12);
+    shell.appendChild(pill);
+    const hint = marker.mapHintLine?.trim();
+    if (hint && hint !== pill.textContent) {
+      const line = document.createElement("span");
+      line.className = "rimvio-globe-lodging-marker__price-pill-hint";
+      line.textContent = hint;
+      shell.appendChild(line);
+    }
+    root.appendChild(shell);
+    attachLodgingMarkerDot(root);
+    bindLodgingMarkerPress(root, marker, handlers);
+    return root;
+  }
+
+  if (marker.displayVariant === "preview_chip") {
+    root.classList.add("rimvio-globe-lodging-marker--preview-chip");
+    if (marker.isMain) {
+      root.classList.add("rimvio-globe-lodging-marker--preview-chip-main");
+    }
+    const card = document.createElement("span");
+    card.className = "rimvio-globe-lodging-marker__preview-chip";
+    const thumbUrl = marker.thumbnailUrl?.trim();
+    if (thumbUrl) {
+      const image = document.createElement("img");
+      image.src = thumbUrl;
+      image.alt = "";
+      image.className = "rimvio-globe-lodging-marker__preview-chip-thumb";
+      image.draggable = false;
+      card.appendChild(image);
+    }
+    const line = document.createElement("span");
+    line.className = "rimvio-globe-lodging-marker__preview-chip-line";
+    line.textContent = marker.mapHintLine?.trim() || marker.label;
+    card.appendChild(line);
+    if (marker.discoveryPriceLabel?.trim()) {
+      const price = document.createElement("span");
+      price.className = "rimvio-globe-lodging-marker__preview-chip-price";
+      price.textContent = marker.discoveryPriceLabel.trim();
+      card.appendChild(price);
+    }
+    root.appendChild(card);
+    attachLodgingMarkerDot(root);
+    bindLodgingMarkerPress(root, marker, handlers);
+    return root;
+  }
+
+  if (marker.displayVariant === "reason_chip") {
+    root.classList.add("rimvio-globe-lodging-marker--reason-chip");
+    if (marker.isMain) {
+      root.classList.add("rimvio-globe-lodging-marker--reason-chip-main");
+    }
+    const chip = document.createElement("span");
+    chip.className = "rimvio-globe-lodging-marker__reason-chip";
+    chip.textContent = marker.mapHintLine?.trim() || marker.label;
+    root.appendChild(chip);
+    attachLodgingMarkerDot(root);
+    bindLodgingMarkerPress(root, marker, handlers);
+    return root;
+  }
+
+  if (marker.displayVariant === "map_node") {
+    root.classList.add("rimvio-globe-lodging-marker--map-node");
+    if (marker.discoveryAccent) {
+      root.dataset.discoveryAccent = marker.discoveryAccent;
+    }
+    const shell = document.createElement("span");
+    shell.className = "rimvio-globe-lodging-marker__map-node-shell";
+    const thumbUrl = marker.thumbnailUrl?.trim();
+    if (thumbUrl) {
+      const image = document.createElement("img");
+      image.src = thumbUrl;
+      image.alt = "";
+      image.className = "rimvio-globe-lodging-marker__map-node-thumb";
+      image.draggable = false;
+      shell.appendChild(image);
+    } else {
+      const fallback = document.createElement("span");
+      fallback.className = "rimvio-globe-lodging-marker__map-node-fallback";
+      fallback.textContent = "숙";
+      shell.appendChild(fallback);
+    }
+    const name = document.createElement("span");
+    name.className = "rimvio-globe-lodging-marker__map-node-label";
+    name.textContent = marker.label;
+    shell.appendChild(name);
+    root.appendChild(shell);
+    const dot = document.createElement("span");
+    dot.className = "rimvio-globe-lodging-marker__dot";
+    root.appendChild(dot);
+    root.addEventListener("pointerdown", (event) => event.stopPropagation());
+    root.addEventListener("click", (event) => {
+      event.stopPropagation();
+      event.preventDefault();
+      handlers.onPress(marker.resourceId, marker.carouselIndex);
+    });
+    return root;
+  }
 
   if (marker.contextConditionPin) {
     root.classList.add("rimvio-globe-lodging-marker--context-condition");

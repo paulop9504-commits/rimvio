@@ -11,7 +11,9 @@ export type GlobeLodgingMapMarker = {
   isMain: boolean;
   thumbnailUrl: string | null;
   /** Collapsed presentation while lodging focus card is open. */
-  displayVariant?: "default" | "situational_label";
+  displayVariant?: "default" | "situational_label" | "map_node" | "price_pill" | "preview_chip" | "reason_chip";
+  /** Map scout one-liner — price, reason, or caption under preview. */
+  mapHintLine?: string | null;
   /** Staged discovery pop-in delay (ms). */
   popInDelayMs?: number;
   /** Discovery mode — short map pill label. */

@@ -32,6 +32,10 @@ import {
 } from "@/lib/resource/build-match-agent-tasks";
 import { resolveResourceStatus } from "@/lib/resource/resolve-resource-status";
 import { readPortalComposeRunState } from "@/lib/portal/portal-compose-run-store";
+import {
+  resolveGlobeChatPipelinePhase,
+  resolveGlobeComposePipelineLabel,
+} from "@/lib/globe/assistant";
 import { readGlobeChatGraphId } from "@/lib/globe/chat/ensure-globe-chat-graph-id";
 import { resetGlobeComposeChatSession } from "@/lib/portal/reset-globe-compose-chat";
 import { globeChatLight } from "@/lib/design/globe-chat-light-theme";
@@ -251,7 +255,13 @@ export function GlobeChatScreen({
     }
     return null;
   }, [composeState]);
-  const headerSubtitle = readChatHeaderSubtitle(composeState);
+  const headerSubtitle = useMemo(() => {
+    const pipeline = resolveGlobeChatPipelinePhase(composeState);
+    if (pipeline !== "idle") {
+      return resolveGlobeComposePipelineLabel(pipeline);
+    }
+    return readChatHeaderSubtitle(composeState);
+  }, [composeState]);
   const showEmptyState = messages.length === 0 && !showDraftCard;
   const summaryItems = useMemo(() => readComposeSummaryItems(composeState), [composeState]);
 

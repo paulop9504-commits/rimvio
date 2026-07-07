@@ -1,6 +1,9 @@
 const STORAGE_PREFIX = "rimvio.context-condition-last-batch.";
 
 import type { LocalDiscoveryActionSpec } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
+import { haversineKm } from "@/lib/feed/spacetime-fit";
+
+const BATCH_ANCHOR_TOLERANCE_KM = 40;
 
 export type ContextConditionLastBatchWire = {
   batchId: string;
@@ -18,6 +21,25 @@ export type ContextConditionLastBatchWire = {
     lng?: number;
   }[];
 };
+
+export function isContextConditionLastBatchMisanchored(
+  batch: ContextConditionLastBatchWire | null | undefined,
+  anchorLat: number,
+  anchorLng: number,
+): boolean {
+  const rows = batch?.recommendations ?? [];
+  if (rows.length === 0) {
+    return false;
+  }
+  return rows.some((row) => {
+    if (row.lat == null || row.lng == null) {
+      return false;
+    }
+    return (
+      haversineKm(row.lat, row.lng, anchorLat, anchorLng) > BATCH_ANCHOR_TOLERANCE_KM
+    );
+  });
+}
 
 export function readContextConditionLastBatch(
   contextEventId: string,

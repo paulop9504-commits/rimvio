@@ -1,30 +1,31 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, X } from "lucide-react";
+import { X } from "lucide-react";
 import type { RefObject } from "react";
 import { toast } from "sonner";
 import { GlobeBrainSurfaceFloatingFrame } from "@/components/globe/globe-brain-surface-floating-frame";
+import { GlobeAssistantComposeThread } from "@/components/globe/globe-assistant-compose-thread";
 import { GlobeContextAgentConditionQuestions } from "@/components/globe/globe-context-agent-condition-questions";
-import { GlobeContextAgentInterpretationPanel } from "@/components/globe/globe-context-agent-interpretation-panel";
-import { GlobeContextAgentPreflightBubble } from "@/components/globe/globe-context-agent-preflight-bubble";
+import { GlobePalantirOperatorBrief } from "@/components/globe/globe-palantir-operator-brief";
+import { GlobePalantirOperatorCommitRail } from "@/components/globe/globe-palantir-operator-commit-rail";
+import { GlobePalantirOntologyHistoryHint } from "@/components/globe/globe-palantir-ontology-history-hint";
+import { GlobeContextAgentOntologyGraph } from "@/components/globe/globe-context-agent-ontology-graph";
 import { GlobeContextAgentProcessStrip } from "@/components/globe/globe-context-agent-process-strip";
-import { GlobeContextAgentRecommendationList } from "@/components/globe/globe-context-agent-recommendation-list";
-import { GlobeContextConditionOrb } from "@/components/globe/globe-context-condition-orb";
-import { GlobeContextAgentSpatialPatchPreview } from "@/components/globe/globe-context-agent-spatial-patch-preview";
-import { GlobeContextActionInjectionCard } from "@/components/globe/globe-context-action-injection-card";
 import { GlobeContextAgentRefineChips } from "@/components/globe/globe-context-agent-refine-chips";
+import { GlobeContextActionInjectionCard } from "@/components/globe/globe-context-action-injection-card";
 import { GlobeContextConditionPinBar, type GlobeContextConditionPinBarHandle } from "@/components/globe/globe-context-condition-pin-bar";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { useContextConditionAutoReplan } from "@/hooks/use-context-condition-auto-replan";
 import { copy } from "@/lib/copy/human-ko";
-import { computeLodgingDiscoveryBounds } from "@/lib/globe/lodging/compute-lodging-discovery-bounds";
 import { MAP_FOCUS_PIN_VIEWPORT_Y } from "@/lib/globe/map-anchored-overlay-layout";
 import {
   readContextConditionLastBatch,
-  pinContextConditionRecommendation,
   readContextConditionPinnedPlaceIds,
+  isContextConditionLastBatchMisanchored,
+  clearContextConditionLastBatch,
+  clearContextConditionPending,
   type ContextConditionAnchorPinOutcome,
 } from "@/lib/globe/context-condition-ai";
 import type {
@@ -35,18 +36,16 @@ import type {
 import {
   readContextAgentRuntimeState,
   readContextAgentSessionState,
-  resolveContextAgentWorkPhaseLabel,
   subscribeContextAgentRuntime,
   subscribeContextAgentSession,
   subscribeContextAgentInterpretation,
   readContextAgentInterpretationForEvent,
+  clearContextAgentInterpretation,
   setContextAgentSessionPhase,
-  type ContextAgentInterpretation,
   isGlobeContextAgentBound,
   type ContextAgentRuntimeState,
   type ContextAgentSessionState,
 } from "@/lib/globe/context-agent";
-import type { SpatialPatchPreview } from "@/lib/globe/context-condition-ai/spatial-patch-types";
 import {
   confirmContextActionInjection,
   dismissContextActionInjection,
@@ -57,37 +56,54 @@ import {
   clearContextActionInjection,
 } from "@/lib/globe/context-action-injection";
 import type { ContextActionInjection } from "@/lib/globe/context-action-injection/types";
-import {
-  buildContextAgentPreflightBriefing,
-  prefetchContextAgentSurroundings,
-  readContextAgentPrefetch,
-  resolveContextAgentZeroPrompt,
-  subscribeContextAgentPrefetch,
-} from "@/lib/globe/context-agent";
-import type { WeatherContext } from "@/lib/context-resolver/types";
-import { buildTravelBrainState } from "@/lib/situation-projection/travel-brain-personalization";
+import { prefetchContextAgentSurroundings } from "@/lib/globe/context-agent";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
-import { GlobeExperienceTimelineStrip } from "@/components/globe/globe-experience-timeline-strip";
-import { useExperienceSimulationPlayback } from "@/hooks/use-experience-simulation-playback";
 import {
-  buildExperienceScenarioFromOutcome,
-  publishExperienceScenario,
-  readExperienceSimulationState,
-  resolveActiveSimulationNode,
-  setExperienceSimulationBranch,
-  setExperienceSimulationPlayback,
-  subscribeExperienceSimulation,
-  type ExperienceSimulationState,
-} from "@/lib/globe/experience-simulation";
+  appendContextAgentComposeTurn,
+  clearContextAgentComposeThread,
+  CONTEXT_AGENT_ASK_FIRST,
+  readContextAgentComposeThread,
+  resolveContextAgentPipelinePhase,
+  resolveGlobeComposePipelineLabel,
+  subscribeContextAgentComposeThread,
+  type ContextAgentComposeTurn,
+} from "@/lib/globe/assistant";
+import { isAlternatePlaceSearch } from "@/lib/globe/context-condition-ai/is-alternate-place-search";
+import {
+  resolveCicadaAgentPhase,
+  resolveCicadaAgentPhaseLabel,
+} from "@/lib/globe/context-agent/resolve-cicada-agent-phase";
+import { subscribeContextAgentGlobeMarkerFocus } from "@/lib/globe/context-agent/context-agent-globe-marker-focus";
+import {
+  buildResourceReelResourceId,
+  dispatchGlobeResourceReelFocus,
+} from "@/lib/globe/resource-reel";
+import { resolveCicadaAssistantSurfaceMode } from "@/lib/globe/context-agent/resolve-cicada-assistant-surface-mode";
+import {
+  applyPalantirOperatorAfterScout,
+  applyPalantirOperatorPlaceOverride,
+  clearGeoOntologyGraph,
+  clearPalantirWorkspaceSnapshot,
+  highlightGeoOntologyPlace,
+  publishContextOnlyGlobeProjection,
+  publishFocusGlobeProjection,
+  readGeoOntologyFacetState,
+  readGeoOntologyGraph,
+  readPalantirWorkspaceSnapshot,
+  resetGlobeProjectionLayerPolicy,
+  isPalantirOntologyDevSurfaceEnabled,
+  executePalantirCommit,
+  resolvePalantirCommitAction,
+  restorePalantirOntologyHead,
+  subscribeGeoOntologyFacetState,
+  subscribeGeoOntologyGraph,
+  subscribePalantirWorkspaceSnapshot,
+  type GeoOntologyGraph,
+  type PalantirWorkspaceSnapshot,
+} from "@/lib/globe/spatial-semantic";
 import { cn } from "@/lib/utils";
 import {
-  rimvioAssistantConnectedBadgeClass,
-  rimvioAssistantConnectedDotClass,
-  rimvioAssistantConnectedLabelClass,
-  rimvioAssistantEyebrowClass,
   rimvioAssistantFrameShellClass,
-  rimvioAssistantMetaClass,
-  rimvioAssistantStatusActiveClass,
   rimvioAssistantTitleClass,
 } from "@/lib/design/globe-assistant-surface";
 
@@ -106,17 +122,7 @@ export type GlobeContextConditionPromptFrameProps = {
   className?: string;
 };
 
-function resolveStatusLabel(
-  runtime: ContextAgentRuntimeState,
-  session: ContextAgentSessionState,
-): string {
-  return resolveContextAgentWorkPhaseLabel(
-    session.workPhase,
-    runtime.processPhase,
-  );
-}
-
-/** Context-bound execution layer — state machine + condition pin bar (not generic chat). */
+/** Context-bound execution layer — talk thread + globe apply (Cursor-style). */
 export function GlobeContextConditionPromptFrame({
   open,
   event,
@@ -131,22 +137,14 @@ export function GlobeContextConditionPromptFrame({
   onClose,
   className,
 }: GlobeContextConditionPromptFrameProps) {
-  const [lastSummary, setLastSummary] = useState<string | null>(null);
-  const [bodyExpanded, setBodyExpanded] = useState(false);
   const [runtime, setRuntime] = useState<ContextAgentRuntimeState>(() =>
     readContextAgentRuntimeState(),
   );
   const [agentSession, setAgentSession] = useState<ContextAgentSessionState>(() =>
     readContextAgentSessionState(),
   );
-  const [patchPreview, setPatchPreview] = useState<SpatialPatchPreview | null>(
-    null,
-  );
   const [actionInjection, setActionInjection] =
     useState<ContextActionInjection | null>(() => readContextActionInjection());
-  const [simulation, setSimulation] = useState<ExperienceSimulationState>(() =>
-    readExperienceSimulationState(),
-  );
   const [questions, setQuestions] = useState<readonly LocalDiscoveryQuestion[]>([]);
   const [recommendations, setRecommendations] = useState<
     readonly ContextConditionRecommendation[]
@@ -155,200 +153,134 @@ export function GlobeContextConditionPromptFrame({
     (choice: LocalDiscoveryQuestionChoice) => void
   >(() => {});
   const pinBarRef = useRef<GlobeContextConditionPinBarHandle>(null);
-  const zeroPromptRanRef = useRef(false);
-  const zeroPromptTriggerRef = useRef<string | null>(null);
-  const [preflightRevealComplete, setPreflightRevealComplete] = useState(false);
-  const [situationLine, setSituationLine] = useState<string | null>(null);
-  const [preflightLine, setPreflightLine] = useState<string | null>(null);
-  const [interpretation, setInterpretation] = useState<ContextAgentInterpretation | null>(
-    null,
-  );
-  const [weatherContext, setWeatherContext] = useState<WeatherContext | null>(null);
+  const prefetchStartedRef = useRef(false);
   const [refineBusy, setRefineBusy] = useState(false);
-  const [pickBusyPlaceId, setPickBusyPlaceId] = useState<string | null>(null);
+  const [commitBusy, setCommitBusy] = useState(false);
   const [pinnedRevision, setPinnedRevision] = useState(0);
   const [activeSpec, setActiveSpec] = useState<
     import("@/lib/globe/context-condition-ai/local-discovery-action-types").LocalDiscoveryActionSpec | null
   >(null);
+  const [ontologyGraph, setOntologyGraph] = useState<GeoOntologyGraph | null>(null);
+  const [ontologyFacetRevision, setOntologyFacetRevision] = useState(0);
+  const [palantirWorkspaceRevision, setPalantirWorkspaceRevision] = useState(0);
+  const [ontologyHistoryResumeLabel, setOntologyHistoryResumeLabel] = useState<
+    string | null
+  >(null);
+  const [ontologyExpanded, setOntologyExpanded] = useState(false);
+  const [composeThread, setComposeThread] = useState<readonly ContextAgentComposeTurn[]>([]);
+  const [typewriterTurnId, setTypewriterTurnId] = useState<string | null>(null);
+  const lastFlownPlaceRef = useRef<string | null>(null);
+  const lastInterpretationRef = useRef<string | null>(null);
+  const ontologyDevSurface = isPalantirOntologyDevSurfaceEnabled();
+
+  useEffect(() => {
+    if (!open) {
+      resetGlobeProjectionLayerPolicy();
+    }
+  }, [open]);
 
   useEffect(() => {
     if (!open || !event) {
       return;
     }
-    zeroPromptRanRef.current = false;
-    zeroPromptTriggerRef.current = null;
-    setPreflightRevealComplete(false);
-    setSituationLine(null);
-    setPreflightLine(null);
-    setInterpretation(null);
-    setWeatherContext(null);
-    setBodyExpanded(true);
+    prefetchStartedRef.current = false;
     setQuestions([]);
-    const batch = readContextConditionLastBatch(event.id);
-    setLastSummary(batch?.summaryKo ?? null);
-    setRecommendations(
-      (batch?.recommendations ?? []).map((row, index) => ({
-        kind: row.kind,
-        title: row.title,
-        reasonKo: row.reasonKo,
-        rank: index + 1,
-        placeId: row.placeId ?? `${row.kind}-${index}`,
-        lat: row.lat ?? anchorLat,
-        lng: row.lng ?? anchorLng,
-      })),
-    );
+    lastInterpretationRef.current = null;
+    setTypewriterTurnId(null);
+    lastFlownPlaceRef.current = null;
+
+    const restored = restorePalantirOntologyHead(event.id);
+    setOntologyHistoryResumeLabel(restored?.labelKo ?? null);
+    if (restored) {
+      setOntologyGraph(readGeoOntologyGraph(event.id));
+      setPalantirWorkspaceRevision((value) => value + 1);
+      setOntologyFacetRevision((value) => value + 1);
+    } else {
+      publishContextOnlyGlobeProjection(event.id);
+    }
+
+    const rawBatch = readContextConditionLastBatch(event.id);
+    const batch =
+      rawBatch &&
+      isContextConditionLastBatchMisanchored(rawBatch, anchorLat, anchorLng)
+        ? (clearContextConditionLastBatch(event.id), null)
+        : rawBatch;
+
     if ((batch?.recommendations?.length ?? 0) > 0) {
-      setBodyExpanded(true);
-      setContextAgentSessionPhase("awaiting_human");
-    }
-    setActiveSpec(batch?.spec ?? null);
-    if (event && batch?.count && batch.count > 0) {
-      const wired = (batch.recommendations ?? []).map((row, index) => ({
-        kind: row.kind,
-        title: row.title,
-        reasonKo: row.reasonKo,
-        rank: index + 1,
-        placeId: row.placeId ?? `${row.kind}-${index}`,
-        lat: row.lat ?? anchorLat,
-        lng: row.lng ?? anchorLng,
-      }));
-      const scenario = buildExperienceScenarioFromOutcome({
-        contextEventId: event.id,
-        anchorTitle: anchorPlaceName,
-        anchorLat,
-        anchorLng,
-        outcome: {
-          batchId: batch.batchId,
-          lodgingCount: wired.filter((row) => row.kind === "lodging").length,
-          eateryCount: wired.filter((row) => row.kind === "eatery").length,
-          summaryKo: batch.summaryKo,
-          pinPoints: wired.map((row) => ({ lat: row.lat, lng: row.lng })),
-          radiusM: batch.radiusM ?? 800,
-          recommendations: wired,
-          spec: batch.spec ?? {
-            version: 1,
-            resourceTypes: ["restaurant", "hotel"],
-            transport: "walk",
-            budget: "medium",
-            vibe: "popular",
-            lodgingKind: "any",
-            radiusM: batch.radiusM ?? 800,
-          },
-        },
-      });
-      if (scenario) {
-        publishExperienceScenario({
-          scenario,
-          radiusM: batch.radiusM ?? 800,
-        });
+      if (!restored) {
+        clearContextAgentComposeThread(event.id);
+        setComposeThread([]);
+      } else {
+        setComposeThread(readContextAgentComposeThread(event.id));
       }
+      setRecommendations(
+        (batch?.recommendations ?? []).map((row, index) => ({
+          kind: row.kind,
+          title: row.title,
+          reasonKo: row.reasonKo,
+          rank: index + 1,
+          placeId: row.placeId ?? `${row.kind}-${index}`,
+          lat: row.lat ?? anchorLat,
+          lng: row.lng ?? anchorLng,
+        })),
+      );
+      setActiveSpec(batch?.spec ?? null);
+      setContextAgentSessionPhase("awaiting_human");
+      if (batch && !restored) {
+        const triggerMessage =
+          [...readContextAgentComposeThread(event.id)]
+            .reverse()
+            .find((turn) => turn.role === "user")?.text ?? "";
+        applyPalantirOperatorAfterScout({
+          contextEventId: event.id,
+          anchorPlaceName,
+          triggerMessage,
+          outcome: {
+            batchId: batch.batchId,
+            radiusM: batch.radiusM ?? 500,
+            recommendations: (batch.recommendations ?? []).map((row, index) => ({
+              kind: row.kind,
+              title: row.title,
+              reasonKo: row.reasonKo,
+              rank: index + 1,
+              placeId: row.placeId ?? `${row.kind}-${index}`,
+              lat: row.lat ?? anchorLat,
+              lng: row.lng ?? anchorLng,
+            })),
+            spec: batch.spec ?? {
+              version: 1,
+              resourceTypes: ["restaurant"],
+              transport: "walk",
+              budget: "medium",
+              vibe: "popular",
+              lodgingKind: "any",
+              radiusM: batch.radiusM ?? 500,
+            },
+          },
+        });
+        setPalantirWorkspaceRevision((value) => value + 1);
+      }
+      return;
     }
-    if (event) {
-      const briefing = buildContextAgentPreflightBriefing({
-        event,
-        anchorPlaceName,
-      });
-      setPreflightLine(briefing.briefingLineKo);
-      setSituationLine(briefing.briefingLineKo);
+
+    if (!restored) {
+      clearContextAgentComposeThread(event.id);
+      setComposeThread([]);
+      setRecommendations([]);
+      setActiveSpec(null);
+    }
+
+    if (CONTEXT_AGENT_ASK_FIRST) {
+      clearContextAgentInterpretation(event.id);
+      clearContextConditionPending(event.id);
+      if (!restored) {
+        clearGeoOntologyGraph(event.id);
+        clearPalantirWorkspaceSnapshot(event.id);
+        setOntologyGraph(null);
+        setContextAgentSessionPhase("idle");
+      }
     }
   }, [anchorLat, anchorLng, anchorPlaceName, event, open]);
-
-  useEffect(() => {
-    if (!open || !event) {
-      return;
-    }
-    const cached = readContextAgentPrefetch(event.id);
-    if (cached?.weather) {
-      setWeatherContext(cached.weather);
-    }
-
-    const syncPrefetch = (snapshot: ReturnType<typeof readContextAgentPrefetch>) => {
-      if (!snapshot || snapshot.eventId !== event.id) {
-        return;
-      }
-      if (snapshot.weather) {
-        setWeatherContext(snapshot.weather);
-      }
-    };
-    syncPrefetch(cached);
-
-    void prefetchContextAgentSurroundings({
-      event,
-      anchorLat,
-      anchorLng,
-      userLat,
-      userLng,
-    }).then((snapshot) => {
-      if (snapshot.weather) {
-        setWeatherContext(snapshot.weather);
-      }
-    });
-
-    return subscribeContextAgentPrefetch((snapshot) => {
-      syncPrefetch(snapshot);
-    });
-  }, [anchorLat, anchorLng, event, open, userLat, userLng]);
-
-  useEffect(() => {
-    if (!open || !event) {
-      return;
-    }
-    const briefing = buildContextAgentPreflightBriefing({
-      event,
-      anchorPlaceName,
-      weather: weatherContext,
-    });
-    setPreflightLine(briefing.briefingLineKo);
-    setSituationLine(briefing.briefingLineKo);
-  }, [anchorPlaceName, event, open, weatherContext]);
-
-  useEffect(() => {
-    if (!open || !event || zeroPromptRanRef.current) {
-      return;
-    }
-    if (!isGlobeContextAgentBound(event.id)) {
-      return;
-    }
-    const batch = readContextConditionLastBatch(event.id);
-    if (batch?.count && batch.count > 0) {
-      return;
-    }
-
-    zeroPromptRanRef.current = true;
-    setContextAgentSessionPhase("briefing");
-    const zero = resolveContextAgentZeroPrompt({
-      event,
-      anchorPlaceName,
-      weather: weatherContext,
-    });
-    zeroPromptTriggerRef.current = zero.triggerMessage;
-    setSituationLine(zero.preflightBriefingKo);
-    setPreflightLine(zero.preflightBriefingKo);
-    setBodyExpanded(true);
-  }, [anchorPlaceName, event, open, weatherContext]);
-
-  useEffect(() => {
-    if (!open || !event || !preflightRevealComplete) {
-      return;
-    }
-    if (!isGlobeContextAgentBound(event.id)) {
-      return;
-    }
-    const triggerMessage = zeroPromptTriggerRef.current?.trim();
-    if (!triggerMessage) {
-      return;
-    }
-    const batch = readContextConditionLastBatch(event.id);
-    if (batch?.count && batch.count > 0) {
-      return;
-    }
-
-    zeroPromptTriggerRef.current = null;
-    setRefineBusy(true);
-    void pinBarRef.current?.submitTrigger(triggerMessage).finally(() => {
-      setRefineBusy(false);
-    });
-  }, [event, open, preflightRevealComplete]);
 
   useEffect(() => {
     return subscribeContextAgentRuntime(setRuntime);
@@ -359,69 +291,126 @@ export function GlobeContextConditionPromptFrame({
   }, []);
 
   useEffect(() => {
+    if (!open || !event || !ontologyDevSurface) {
+      return;
+    }
+    const syncGraph = () => {
+      setOntologyGraph(readGeoOntologyGraph(event.id));
+    };
+    syncGraph();
+    return subscribeGeoOntologyGraph((eventId) => {
+      if (eventId === event.id) {
+        syncGraph();
+      }
+    });
+  }, [event, open, ontologyDevSurface]);
+
+  useEffect(() => {
+    return subscribePalantirWorkspaceSnapshot((eventId) => {
+      if (event?.id === eventId) {
+        setPalantirWorkspaceRevision((value) => value + 1);
+      }
+    });
+  }, [event?.id]);
+
+  useEffect(() => {
+    if (!open || !event || !ontologyDevSurface) {
+      return;
+    }
+    return subscribeGeoOntologyFacetState((eventId) => {
+      if (eventId === event.id) {
+        setOntologyFacetRevision((value) => value + 1);
+      }
+    });
+  }, [event, open, ontologyDevSurface]);
+
+  useEffect(() => {
+    if (!open || !event) {
+      return;
+    }
+    return subscribeContextAgentGlobeMarkerFocus((detail) => {
+      if (detail.contextEventId !== event.id) {
+        return;
+      }
+      highlightGeoOntologyPlace({
+        contextEventId: event.id,
+        placeId: detail.placeId,
+      });
+      publishFocusGlobeProjection({
+        contextEventId: event.id,
+        visiblePlaceIds: [detail.placeId],
+      });
+      const override = applyPalantirOperatorPlaceOverride({
+        contextEventId: event.id,
+        placeId: detail.placeId,
+        recommendations,
+      });
+      setOntologyHistoryResumeLabel(null);
+      lastFlownPlaceRef.current = null;
+      appendContextAgentComposeTurn(event.id, {
+        role: "assistant",
+        kind: "text",
+        text: override?.briefKo || detail.insightKo,
+      });
+      setComposeThread(readContextAgentComposeThread(event.id));
+      dispatchGlobeResourceReelFocus({
+        contextEventId: event.id,
+        resourceId: buildResourceReelResourceId({
+          contextEventId: event.id,
+          kind: detail.kind,
+          placeId: detail.placeId,
+        }),
+        kind: detail.kind,
+        carouselIndex: 0,
+        surface: "detail",
+        source: "map_marker",
+      });
+      globeRef?.current?.flyToPin(detail.lat, detail.lng, "neighborhood", {
+        pinViewportY: MAP_FOCUS_PIN_VIEWPORT_Y,
+      });
+    });
+  }, [event, globeRef, open, recommendations]);
+
+  useEffect(() => {
     if (!open || !event) {
       return;
     }
     const syncInterpretation = () => {
-      setInterpretation(readContextAgentInterpretationForEvent(event.id));
+      const next = readContextAgentInterpretationForEvent(event.id);
+      const line = next?.understandingKo.trim() ?? "";
+      if (!line || lastInterpretationRef.current === line) {
+        return;
+      }
+      lastInterpretationRef.current = line;
+      appendContextAgentComposeTurn(event.id, {
+        role: "assistant",
+        kind: "text",
+        text: line,
+      });
+      setComposeThread(readContextAgentComposeThread(event.id));
     };
     syncInterpretation();
     return subscribeContextAgentInterpretation(syncInterpretation);
   }, [event, open]);
 
   useEffect(() => {
+    if (!open || !event) {
+      return;
+    }
+    const syncThread = () => {
+      setComposeThread(readContextAgentComposeThread(event.id));
+    };
+    syncThread();
+    return subscribeContextAgentComposeThread((eventId) => {
+      if (eventId === event.id) {
+        syncThread();
+      }
+    });
+  }, [event, open]);
+
+  useEffect(() => {
     return subscribeContextActionInjection(setActionInjection);
   }, []);
-
-  useEffect(() => {
-    return subscribeExperienceSimulation(setSimulation);
-  }, []);
-
-  useExperienceSimulationPlayback();
-
-  const lastSimulationFocusRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!open || !event || !simulation.scenario) {
-      return;
-    }
-    if (simulation.scenario.contextEventId !== event.id) {
-      return;
-    }
-    const target = resolveActiveSimulationNode(
-      simulation.scenario,
-      simulation.playback.cursorIndex,
-    );
-    if (!target || !globeRef?.current) {
-      return;
-    }
-    const focusKey = `${simulation.scenario.activeBranchId}:${simulation.playback.cursorIndex}:${target.placeId}`;
-    if (lastSimulationFocusRef.current === focusKey) {
-      return;
-    }
-    lastSimulationFocusRef.current = focusKey;
-    globeRef.current.flyToPin(target.lat, target.lng, "city", {
-      pinViewportY: MAP_FOCUS_PIN_VIEWPORT_Y,
-    });
-  }, [
-    event,
-    globeRef,
-    open,
-    simulation.playback.cursorIndex,
-    simulation.scenario,
-  ]);
-
-  const travelLines = useMemo(() => {
-    if (!event) {
-      return [] as string[];
-    }
-    const state = buildTravelBrainState(event);
-    return [
-      state.slots.budget_band.reasonKo,
-      state.slots.food_bias.reasonKo,
-      state.slots.lodging_priority.reasonKo,
-    ].filter(Boolean);
-  }, [event]);
 
   const pinnedByKind = useMemo(() => {
     void pinnedRevision;
@@ -429,74 +418,56 @@ export function GlobeContextConditionPromptFrame({
     return readContextConditionPinnedPlaceIds(freshEvent);
   }, [event, pinnedRevision]);
 
-  const handlePickRecommendation = (item: ContextConditionRecommendation) => {
-    if (!event) {
-      return;
-    }
-    setPickBusyPlaceId(item.placeId);
-    void (async () => {
-      try {
-        pinContextConditionRecommendation({
-          eventId: event.id,
-          recommendation: item,
-        });
-        setContextAgentSessionPhase("pinned");
-        setPinnedRevision((value) => value + 1);
-        toast.success(copy.globe.contextQuickPinToast(item.title));
-        globeRef?.current?.flyToPin(item.lat, item.lng, "city", {
-          pinViewportY: MAP_FOCUS_PIN_VIEWPORT_Y,
-        });
-      } catch (caught) {
-        toast.error(
-          caught instanceof Error && caught.message.trim()
-            ? caught.message.trim()
-            : copy.globe.ingestAttachFail,
-        );
-      } finally {
-        setPickBusyPlaceId(null);
-      }
-    })();
+  const lastUserComposeLine = useMemo(
+    () =>
+      [...composeThread].reverse().find((turn) => turn.role === "user")?.text ?? "",
+    [composeThread],
+  );
+
+  const handlePalantirOperatorUpdate = () => {
+    setOntologyHistoryResumeLabel(null);
+    lastFlownPlaceRef.current = null;
   };
 
   const handlePinned = (outcome: ContextConditionAnchorPinOutcome) => {
-    setLastSummary(outcome.summaryKo);
     setRecommendations(outcome.recommendations);
     setActiveSpec(outcome.spec);
     setContextAgentSessionPhase("awaiting_human");
-    setBodyExpanded(true);
-    if (event) {
-      const scenario = buildExperienceScenarioFromOutcome({
-        contextEventId: event.id,
-        anchorTitle: anchorPlaceName,
-        anchorLat,
-        anchorLng,
-        outcome,
+    setOntologyHistoryResumeLabel(null);
+    lastFlownPlaceRef.current = null;
+
+    if (!event) {
+      return;
+    }
+
+    const triggerMessage =
+      [...readContextAgentComposeThread(event.id)]
+        .reverse()
+        .find((turn) => turn.role === "user")?.text ?? "";
+
+    const snapshot = applyPalantirOperatorAfterScout({
+      contextEventId: event.id,
+      anchorPlaceName,
+      triggerMessage,
+      outcome,
+    });
+
+    if (snapshot?.briefKo) {
+      appendContextAgentComposeTurn(event.id, {
+        role: "assistant",
+        kind: "text",
+        text: snapshot.briefKo,
       });
-      if (scenario) {
-        publishExperienceScenario({
-          scenario,
-          radiusM: outcome.radiusM,
-        });
-      }
+      setComposeThread(readContextAgentComposeThread(event.id));
     }
-    if (outcome.pinPoints.length === 0) {
-      return;
+
+    if (outcome.recommendations.length > 0) {
+      dispatchGlobeResourceReelFocus({
+        contextEventId: event.id,
+        surface: "list",
+        source: "scout_complete",
+      });
     }
-    const bounds = computeLodgingDiscoveryBounds({
-      user:
-        userLat != null && userLng != null ? { lat: userLat, lng: userLng } : null,
-      lodging: outcome.pinPoints,
-      radiusM: outcome.radiusM,
-    });
-    if (!bounds) {
-      return;
-    }
-    globeRef?.current?.flyToDiscoveryBounds({
-      centerLat: bounds.centerLat,
-      centerLng: bounds.centerLng,
-      altitude: bounds.altitude,
-      pinViewportY: MAP_FOCUS_PIN_VIEWPORT_Y,
-    });
   };
 
   const handleRefine = (message: string) => {
@@ -546,27 +517,240 @@ export function GlobeContextConditionPromptFrame({
     toast.success(copy.globe.contextActionInjectedEyebrow);
   };
 
-  const showRefineChips = recommendations.length > 0;
+  const handleUserCompose = (text: string) => {
+    if (!event) {
+      return;
+    }
+    const line = text.trim();
+    if (!line) {
+      return;
+    }
+    if (!prefetchStartedRef.current) {
+      prefetchStartedRef.current = true;
+      void prefetchContextAgentSurroundings({
+        event,
+        anchorLat,
+        anchorLng,
+        userLat,
+        userLng,
+      });
+    }
+    appendContextAgentComposeTurn(event.id, { role: "user", text: line });
+    setComposeThread(readContextAgentComposeThread(event.id));
+  };
+
+  const ontologyFacet = useMemo(() => {
+    void ontologyFacetRevision;
+    if (!event) {
+      return readGeoOntologyFacetState("");
+    }
+    return readGeoOntologyFacetState(event.id);
+  }, [event, ontologyFacetRevision]);
+
+  useEffect(() => {
+    if (!open) {
+      lastFlownPlaceRef.current = null;
+    }
+  }, [open]);
+
+  const palantirWorkspace = useMemo((): PalantirWorkspaceSnapshot | null => {
+    void palantirWorkspaceRevision;
+    if (!event) {
+      return null;
+    }
+    return readPalantirWorkspaceSnapshot(event.id);
+  }, [event, palantirWorkspaceRevision]);
+
+  const palantirPrimaryRecommendation = useMemo(() => {
+    const placeId = palantirWorkspace?.primaryPlaceId;
+    if (!placeId) {
+      return null;
+    }
+    return recommendations.find((row) => row.placeId === placeId) ?? null;
+  }, [palantirWorkspace?.primaryPlaceId, recommendations]);
+
+  const palantirCommitAction = useMemo(() => {
+    if (!palantirPrimaryRecommendation) {
+      return null;
+    }
+    return resolvePalantirCommitAction({
+      recommendation: palantirPrimaryRecommendation,
+      anchorPlaceName,
+      triggerMessage: lastUserComposeLine,
+      eventDatetime: event?.datetime ?? null,
+    });
+  }, [
+    anchorPlaceName,
+    event?.datetime,
+    lastUserComposeLine,
+    palantirPrimaryRecommendation,
+  ]);
+
+  const palantirPrimaryPinned = useMemo(() => {
+    if (!palantirPrimaryRecommendation || !event) {
+      return false;
+    }
+    const pinned = pinnedByKind;
+    return palantirPrimaryRecommendation.kind === "lodging"
+      ? pinned.lodging === palantirPrimaryRecommendation.placeId
+      : pinned.eatery === palantirPrimaryRecommendation.placeId;
+  }, [event, palantirPrimaryRecommendation, pinnedByKind]);
+
+  const handlePalantirCommit = () => {
+    if (!event || !palantirPrimaryRecommendation || palantirPrimaryPinned) {
+      return;
+    }
+    setCommitBusy(true);
+    try {
+      const outcome = executePalantirCommit({
+        contextEventId: event.id,
+        recommendation: palantirPrimaryRecommendation,
+        anchorPlaceName,
+        triggerMessage: lastUserComposeLine,
+        eventDatetime: event.datetime ?? null,
+      });
+      setContextAgentSessionPhase("pinned");
+      setPinnedRevision((value) => value + 1);
+      appendContextAgentComposeTurn(event.id, {
+        role: "assistant",
+        kind: "text",
+        text: copy.globe.palantirCommitDone,
+      });
+      setComposeThread(readContextAgentComposeThread(event.id));
+      toast.success(outcome.action.labelKo);
+    } catch {
+      toast.message(copy.globe.palantirCommitFailed);
+    } finally {
+      setCommitBusy(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!open || !event || !palantirWorkspace?.primaryPlaceId) {
+      return;
+    }
+    const placeId = palantirWorkspace.primaryPlaceId;
+    if (lastFlownPlaceRef.current === placeId) {
+      return;
+    }
+    lastFlownPlaceRef.current = placeId;
+    const row = recommendations.find((item) => item.placeId === placeId);
+    if (row) {
+      globeRef?.current?.flyToPin(row.lat, row.lng, "neighborhood", {
+        pinViewportY: MAP_FOCUS_PIN_VIEWPORT_Y,
+      });
+    }
+  }, [event, globeRef, open, palantirWorkspace?.primaryPlaceId, recommendations]);
+
+  const handleSelectOntologyPlace = (placeId: string) => {
+    if (!event) {
+      return;
+    }
+    applyPalantirOperatorPlaceOverride({
+      contextEventId: event.id,
+      placeId,
+      recommendations,
+    });
+    const row = recommendations.find((item) => item.placeId === placeId);
+    if (row) {
+      dispatchGlobeResourceReelFocus({
+        contextEventId: event.id,
+        resourceId: buildResourceReelResourceId({
+          contextEventId: event.id,
+          kind: row.kind,
+          placeId: row.placeId,
+        }),
+        kind: row.kind,
+        carouselIndex: 0,
+        surface: "detail",
+        source: "chat",
+      });
+      globeRef?.current?.flyToPin(row.lat, row.lng, "neighborhood", {
+        pinViewportY: MAP_FOCUS_PIN_VIEWPORT_Y,
+      });
+    }
+  };
+
+  const openPalantirPrimaryReel = () => {
+    if (!event || !palantirWorkspace?.primaryPlaceId) {
+      return;
+    }
+    const placeId = palantirWorkspace.primaryPlaceId;
+    const row = recommendations.find((item) => item.placeId === placeId);
+    if (!row) {
+      dispatchGlobeResourceReelFocus({
+        contextEventId: event.id,
+        surface: "list",
+        source: "palantir_brief",
+      });
+      return;
+    }
+    dispatchGlobeResourceReelFocus({
+      contextEventId: event.id,
+      resourceId: buildResourceReelResourceId({
+        contextEventId: event.id,
+        kind: row.kind,
+        placeId: row.placeId,
+      }),
+      kind: row.kind,
+      carouselIndex: 0,
+      surface: "detail",
+      source: "palantir_brief",
+    });
+    globeRef?.current?.flyToPin(row.lat, row.lng, "neighborhood", {
+      pinViewportY: MAP_FOCUS_PIN_VIEWPORT_Y,
+    });
+  };
+
   const chipsDisabled =
     refineBusy ||
     runtime.lifecycle === "busy" ||
     agentSession.workPhase === "scouting" ||
     agentSession.workPhase === "replanning";
-  const showPreflightChat =
-    Boolean(preflightLine) &&
-    recommendations.length === 0 &&
-    questions.length === 0 &&
-    agentSession.workPhase === "briefing";
-
   if (!open || !event) {
     return null;
   }
 
-  const statusLabel = resolveStatusLabel(runtime, agentSession);
-  const showProcessStrip =
-    (runtime.lifecycle === "busy" && runtime.processPhase != null) ||
+  const pipelinePhase = resolveContextAgentPipelinePhase({
+    workPhase: agentSession.workPhase,
+    processPhase: runtime.processPhase,
+    lifecycle: runtime.lifecycle,
+  });
+  const lastUserLine = lastUserComposeLine;
+  const hasPinnedSelection = Boolean(pinnedByKind.lodging || pinnedByKind.eatery);
+  const cicadaPhase = resolveCicadaAgentPhase({
+    workPhase: agentSession.workPhase,
+    processPhase: runtime.processPhase,
+    lifecycle: runtime.lifecycle,
+    hasPendingQuestions: questions.length > 0,
+    alternateSearch: isAlternatePlaceSearch(lastUserLine),
+    hasGlobeResults: recommendations.length > 0,
+  });
+  const cicadaSurfaceMode = resolveCicadaAssistantSurfaceMode({
+    phase: cicadaPhase,
+    pinned: hasPinnedSelection || agentSession.workPhase === "pinned",
+  });
+  const showRefineChips =
+    recommendations.length > 0 &&
+    cicadaSurfaceMode === "discussion" &&
+    !palantirPrimaryPinned;
+  const visibleThread =
+    cicadaSurfaceMode === "globe_primary"
+      ? composeThread.slice(-2)
+      : composeThread;
+  const pipelineLabel =
+    cicadaPhase !== "idle"
+      ? resolveCicadaAgentPhaseLabel(cicadaPhase)
+      : resolveGlobeComposePipelineLabel(pipelinePhase);
+  const showBusyStatus =
+    refineBusy ||
+    runtime.lifecycle === "busy" ||
     agentSession.workPhase === "scouting" ||
     agentSession.workPhase === "replanning";
+  const processPhase =
+    runtime.processPhase ??
+    (agentSession.workPhase === "scouting" ? "exploring" : null) ??
+    (agentSession.workPhase === "replanning" ? "optimizing" : null);
 
   return (
     <GlobeBrainSurfaceFloatingFrame
@@ -577,86 +761,41 @@ export function GlobeContextConditionPromptFrame({
       shellClassName={rimvioAssistantFrameShellClass()}
       bodyClassName="flex min-h-0 flex-col"
     >
-      <div className="flex min-h-0 flex-1 flex-col">
-        <div className="flex items-start justify-between gap-2 border-b border-black/[0.05] px-3 py-2.5">
-          <div className="flex min-w-0 items-start gap-2">
-            <GlobeContextConditionOrb size="md" />
-            <div className="min-w-0">
-              <p className={rimvioAssistantEyebrowClass()}>
-                {copy.globe.containerAiEyebrow}
-              </p>
-              {isGlobeContextAgentBound(event.id) ? (
-                <div
-                  className={cn("mt-1", rimvioAssistantConnectedBadgeClass())}
-                  data-globe-context-agent-connected
-                >
-                  <span className={rimvioAssistantConnectedDotClass()} aria-hidden />
-                  <span className={rimvioAssistantConnectedLabelClass()}>
-                    {copy.globe.contextAgentConnectedBadge}
-                  </span>
-                </div>
-              ) : null}
-              <p className={cn("truncate", rimvioAssistantTitleClass())}>
-                {anchorPlaceName}
-              </p>
-              <p
-                className={cn(
-                  "mt-0.5 truncate text-[11px]",
-                  isGlobeContextAgentBound(event.id)
-                    ? rimvioAssistantStatusActiveClass()
-                    : runtime.lifecycle === "busy"
-                      ? rimvioAssistantStatusActiveClass()
-                      : rimvioAssistantMetaClass(),
-                )}
-                data-globe-context-agent-status
-                data-globe-context-agent-lifecycle={runtime.lifecycle}
-              >
-                {isGlobeContextAgentBound(event.id)
-                  ? copy.globe.contextAgentConnectedHint
-                  : statusLabel}
-              </p>
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-0.5">
-            <button
-              type="button"
-              onClick={() => setBodyExpanded((value) => !value)}
-              className="flex size-7 items-center justify-center rounded-full bg-black/[0.05] text-[#515154] active:scale-95"
-              aria-label={
-                bodyExpanded
-                  ? copy.globe.contextAgentFrameCollapse
-                  : copy.globe.contextAgentFrameExpand
-              }
-              aria-expanded={bodyExpanded}
-              data-globe-context-agent-body-toggle
+      <div
+        className="flex min-h-0 flex-1 flex-col"
+        data-cicada-agent-phase={cicadaPhase}
+        data-cicada-assistant-surface={cicadaSurfaceMode}
+      >
+        <div className="flex items-center justify-between gap-2 border-b border-black/[0.05] px-3 py-2">
+          <div
+            className="min-w-0"
+            data-globe-context-agent-connected={
+              isGlobeContextAgentBound(event.id) ? "true" : undefined
+            }
+          >
+            <p className={cn("truncate", rimvioAssistantTitleClass())}>
+              {anchorPlaceName}
+            </p>
+            <p
+              className="mt-0.5 truncate text-[11px] text-[#86868b]"
+              data-globe-context-agent-status
+              data-globe-context-agent-lifecycle={runtime.lifecycle}
             >
-              <ChevronDown
-                className={cn(
-                  "size-3.5 transition-transform duration-200",
-                  bodyExpanded && "rotate-180",
-                )}
-                aria-hidden
-              />
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex size-7 items-center justify-center rounded-full bg-black/[0.05] text-[#515154] active:scale-95"
-              aria-label={copy.globe.contextConditionPanelCloseAria}
-            >
-              <X className="size-3.5" aria-hidden />
-            </button>
+              {pipelineLabel}
+            </p>
           </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex size-7 shrink-0 items-center justify-center rounded-full bg-black/[0.05] text-[#515154] active:scale-95"
+            aria-label={copy.globe.contextConditionPanelCloseAria}
+          >
+            <X className="size-3.5" aria-hidden />
+          </button>
         </div>
 
-        {showProcessStrip ? (
-          <div className="border-b border-black/[0.05] px-3 py-2.5">
-            <GlobeContextAgentProcessStrip activePhase={runtime.processPhase} />
-          </div>
-        ) : null}
-
         {questions.length > 0 ? (
-          <div className="border-b border-black/[0.05] px-3 py-2.5">
+          <div className="border-b border-black/[0.05] px-3 py-2">
             <GlobeContextAgentConditionQuestions
               questions={questions}
               onSelect={(choice) => questionHandlerRef.current(choice)}
@@ -664,106 +803,96 @@ export function GlobeContextConditionPromptFrame({
           </div>
         ) : null}
 
-        {showPreflightChat ? (
-          <div className="min-h-[7.5rem] flex-1 overflow-y-auto overscroll-contain px-3 py-3">
-            <GlobeContextAgentPreflightBubble
-              briefingLine={preflightLine ?? ""}
-              onRevealComplete={() => setPreflightRevealComplete(true)}
+        {palantirWorkspace ? (
+          <div className="space-y-2 border-b border-black/[0.05] px-3 py-2">
+            {ontologyHistoryResumeLabel ? (
+              <GlobePalantirOntologyHistoryHint labelKo={ontologyHistoryResumeLabel} />
+            ) : null}
+            <GlobePalantirOperatorBrief
+              snapshot={palantirWorkspace}
+              onOpenPrimary={openPalantirPrimaryReel}
             />
-            {refineBusy || runtime.lifecycle === "busy" ? (
-              <p className="mt-3 px-1 text-[11px] leading-relaxed text-[#86868b]">
-                {copy.globe.contextAgentPreflightScoutSoon}
-              </p>
-            ) : null}
-          </div>
-        ) : bodyExpanded ? (
-          <div
-            className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-3 py-3"
-            data-globe-context-condition-conversation
-          >
-            {preflightLine ? (
-              <GlobeContextAgentPreflightBubble
-                briefingLine={preflightLine}
-                onRevealComplete={() => setPreflightRevealComplete(true)}
-              />
-            ) : null}
-            <GlobeContextAgentInterpretationPanel interpretation={interpretation} />
-            {patchPreview ? (
-              <GlobeContextAgentSpatialPatchPreview preview={patchPreview} />
-            ) : null}
-            {actionInjection &&
-            actionInjection.phase !== "dismissed" &&
-            actionInjection.phase !== "executed" ? (
-              <GlobeContextActionInjectionCard
-                injection={actionInjection}
-                onConfirm={handleConfirmActionInjection}
-                onReject={handleRejectActionInjection}
-                onExecute={handleExecuteActionInjection}
-              />
-            ) : null}
-            {recommendations.length > 0 ? (
-              <GlobeContextAgentRecommendationList
-                items={recommendations}
-                pinnedByKind={pinnedByKind}
-                pickBusyPlaceId={pickBusyPlaceId}
-                onPick={handlePickRecommendation}
-              />
-            ) : (
-              <>
-                <p className="text-[12px] leading-relaxed text-[#515154]">
-                  {copy.globe.contextConditionPanelHint}
-                </p>
-                {travelLines.length > 0 ? (
-                  <ul className="space-y-1.5">
-                    {travelLines.map((line) => (
-                      <li
-                        key={line}
-                        className="rounded-xl bg-[#f5f5f7] px-2.5 py-2 text-[11px] leading-relaxed text-[#515154]"
-                      >
-                        {line}
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-              </>
-            )}
-            {lastSummary ? (
-              <p className="rounded-xl bg-emerald-50 px-2.5 py-2 text-[11px] font-medium text-emerald-900">
-                {lastSummary}
-              </p>
-            ) : null}
-            {simulation.scenario &&
-            simulation.scenario.contextEventId === event.id ? (
-              <GlobeExperienceTimelineStrip
-                scenario={simulation.scenario}
-                playback={simulation.playback}
-                itineraryDiff={simulation.itineraryDiff}
-                onBranchChange={setExperienceSimulationBranch}
-                onTogglePlay={() => {
-                  setExperienceSimulationPlayback({
-                    playing: !simulation.playback.playing,
-                  });
-                }}
-                onScrub={(cursorIndex) => {
-                  setExperienceSimulationPlayback({
-                    playing: false,
-                    cursorIndex,
-                  });
-                }}
+            {palantirCommitAction && questions.length === 0 && !showBusyStatus ? (
+              <GlobePalantirOperatorCommitRail
+                action={palantirCommitAction}
+                pinned={palantirPrimaryPinned}
+                busy={commitBusy || chipsDisabled}
+                onCommit={handlePalantirCommit}
               />
             ) : null}
           </div>
-        ) : questions.length === 0 && !showPreflightChat ? (
-          <p className="px-3 py-2 text-[11px] leading-relaxed text-[#86868b]">
-            {preflightLine ??
-              (recommendations.length > 0
-                ? copy.globe.localDiscoveryRefineHint
-                : copy.globe.contextAgentComposeHint)}
-          </p>
         ) : null}
 
+        {ontologyDevSurface && ontologyGraph ? (
+          <div className="border-b border-black/[0.05] px-3 py-2">
+            <button
+              type="button"
+              onClick={() => setOntologyExpanded((value) => !value)}
+              className="text-[11px] font-medium text-[#0071e3] active:opacity-70"
+              data-palantir-ontology-toggle
+            >
+              {ontologyExpanded
+                ? copy.globe.palantirOntologyCollapse
+                : copy.globe.palantirOntologyExpand}
+            </button>
+            {ontologyExpanded ? (
+              <div className="mt-2">
+                <GlobeContextAgentOntologyGraph
+                  graph={ontologyGraph}
+                  activeFacetId={ontologyFacet.activeFacetId}
+                  highlightedPlaceId={ontologyFacet.highlightedPlaceId}
+                  compact={false}
+                  onSelectPlace={handleSelectOntologyPlace}
+                />
+              </div>
+            ) : null}
+            {cicadaPhase === "clarifying" ? (
+              <p className="mt-1.5 text-[11px] leading-relaxed text-[#86868b]">
+                {copy.globe.geoOntologyClarifyPriority}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        <div
+          className={cn(
+            "min-h-0 space-y-2 overflow-y-auto overscroll-contain px-3 py-2.5",
+            cicadaSurfaceMode === "globe_primary" ? "max-h-[26vh] shrink-0" : "flex-1",
+          )}
+          data-globe-context-condition-conversation
+        >
+          <GlobeAssistantComposeThread
+            turns={visibleThread}
+            typewriterTurnId={typewriterTurnId}
+            onTypewriterComplete={() => setTypewriterTurnId(null)}
+          />
+          {composeThread.length === 0 && recommendations.length === 0 ? (
+            <p className="px-1 text-[12px] leading-relaxed text-[#86868b]">
+              {copy.globe.contextAgentComposeHint}
+            </p>
+          ) : null}
+          {cicadaSurfaceMode === "globe_primary" && recommendations.length > 0 ? (
+            <p className="px-1 text-[11px] leading-relaxed text-[#86868b]">
+              {copy.globe.cicadaAgentGlobePrimaryHint}
+            </p>
+          ) : null}
+          {actionInjection &&
+          actionInjection.phase !== "dismissed" &&
+          actionInjection.phase !== "executed" ? (
+            <GlobeContextActionInjectionCard
+              injection={actionInjection}
+              onConfirm={handleConfirmActionInjection}
+              onReject={handleRejectActionInjection}
+              onExecute={handleExecuteActionInjection}
+            />
+          ) : null}
+          {showBusyStatus && processPhase ? (
+            <GlobeContextAgentProcessStrip activePhase={processPhase} />
+          ) : null}
+        </div>
+
         {showRefineChips ? (
-          <div className="shrink-0 border-t border-black/[0.05] px-3 py-2">
+          <div className="shrink-0 border-t border-black/[0.05] px-3 py-1.5">
             <GlobeContextAgentRefineChips
               disabled={chipsDisabled}
               onSelect={handleRefine}
@@ -771,7 +900,7 @@ export function GlobeContextConditionPromptFrame({
           </div>
         ) : null}
 
-        <div className="shrink-0 border-t border-black/[0.05] px-3 py-2.5">
+        <div className="shrink-0 border-t border-black/[0.05] px-3 py-2">
           <GlobeContextConditionPinBar
             ref={pinBarRef}
             contextEventId={event.id}
@@ -781,9 +910,11 @@ export function GlobeContextConditionPromptFrame({
             anchorLng={anchorLng}
             anchorPriceKrw={anchorPriceKrw}
             onPinned={handlePinned}
+            onPalantirOperatorUpdate={handlePalantirOperatorUpdate}
+            onUserCompose={handleUserCompose}
+            hydrateFromBatch={!CONTEXT_AGENT_ASK_FIRST}
             onQuestionsChange={setQuestions}
             onRecommendationsChange={setRecommendations}
-            onPatchPreviewChange={setPatchPreview}
             onActionInjectionChange={setActionInjection}
             registerQuestionHandler={(handler) => {
               questionHandlerRef.current = handler;

@@ -12,7 +12,14 @@ import type {
   ResolveLocalDiscoveryActionInput,
   ResolveLocalDiscoveryActionResult,
 } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
+import { isAlternatePlaceSearch } from "@/lib/globe/context-condition-ai/is-alternate-place-search";
 import { copy } from "@/lib/copy/human-ko";
+import {
+  parseCuisineCandidates,
+  parseSingleCuisineFocus,
+  resolveCuisineFocusQuery,
+  type CuisineCandidate,
+} from "@/lib/globe/context-condition-ai/parse-cuisine-candidates";
 
 const CONFIDENCE_SKIP = 0.58;
 
@@ -147,12 +154,26 @@ function resolveResourceTypes(input: {
   return types;
 }
 
+function buildMenuFocusQuestion(cuisines: readonly CuisineCandidate[]): LocalDiscoveryQuestion {
+  return {
+    slot: "menuFocus",
+    promptKo: copy.globe.localDiscoveryAskMenuFocus,
+    choices: cuisines.map((row) => ({
+      id: `menu-${row.id}`,
+      label: row.labelKo,
+      slot: "menuFocus" as const,
+      value: row.id,
+    })),
+  };
+}
+
 function composeSpec(input: {
   resourceTypes: readonly LocalDiscoveryResourceType[];
   transport: LocalDiscoveryTransport;
   budget: LocalDiscoveryBudget;
   vibe: LocalDiscoveryVibe;
   lodgingKind: LocalDiscoveryLodgingKind;
+  eateryFocus?: string | null;
 }): LocalDiscoveryActionSpec {
   return {
     version: 1,
@@ -162,6 +183,7 @@ function composeSpec(input: {
     vibe: input.vibe,
     lodgingKind: input.lodgingKind,
     radiusM: radiusForTransport(input.transport),
+    ...(input.eateryFocus?.trim() ? { eateryFocus: input.eateryFocus.trim() } : {}),
   };
 }
 
@@ -171,8 +193,10 @@ export function resolveLocalDiscoveryAction(
 ): ResolveLocalDiscoveryActionResult {
   const text = input.message.trim();
   const intent = classifyContextConditionAnchorRequest(text);
+  const cuisineCandidates = parseCuisineCandidates(text);
   const wantsLodging = input.wantsLodging ?? intent.lodgingSimilar;
-  const wantsEatery = input.wantsEatery ?? intent.eateryNearby;
+  const wantsEatery =
+    input.wantsEatery ?? intent.eateryNearby ?? cuisineCandidates.length > 0;
   const resourceTypes = resolveResourceTypes({ wantsLodging, wantsEatery });
 
   const answers: LocalDiscoveryPendingAnswers = { ...(input.answers ?? {}) };
@@ -201,15 +225,27 @@ export function resolveLocalDiscoveryAction(
     input.inferredLodgingKind ??
     (wantsLodging ? "any" : "any");
 
+  const menuFocusId =
+    answers.menuFocus ??
+    (cuisineCandidates.length === 1 ? cuisineCandidates[0]?.id : null) ??
+    null;
+  const eateryFocus =
+    resolveCuisineFocusQuery(menuFocusId) ?? parseSingleCuisineFocus(text);
+
   const partial: Partial<LocalDiscoveryActionSpec> = {
     resourceTypes,
     lodgingKind,
+    ...(eateryFocus ? { eateryFocus } : {}),
     ...(transport != null ? { transport } : {}),
     ...(budget != null ? { budget } : {}),
     ...(vibe != null ? { vibe } : {}),
   };
 
   const questions: LocalDiscoveryQuestion[] = [];
+
+  if (wantsEatery && cuisineCandidates.length > 1 && !menuFocusId) {
+    questions.push(buildMenuFocusQuestion(cuisineCandidates));
+  }
 
   if (
     !transport &&
@@ -250,6 +286,7 @@ export function resolveLocalDiscoveryAction(
       budget: budget ?? "medium",
       vibe: vibe ?? "popular",
       lodgingKind: lodgingKind ?? "any",
+      eateryFocus,
     }),
     answers,
   };
@@ -285,7 +322,8 @@ export function isLocalDiscoveryRefinement(message: string): boolean {
     return false;
   }
   return Boolean(
-    parseTransport(text) ||
+    isAlternatePlaceSearch(text) ||
+      parseTransport(text) ||
       parseBudget(text) ||
       parseVibe(text) ||
       parseLodgingKind(text) ||

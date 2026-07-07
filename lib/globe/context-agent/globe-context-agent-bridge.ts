@@ -3,7 +3,7 @@ import {
   resetContextAgentSession,
 } from "@/lib/globe/context-agent/context-agent-session-store";
 import { clearContextActionInjection } from "@/lib/globe/context-action-injection";
-import { clearExperienceSimulation } from "@/lib/globe/experience-simulation";
+import { clearContextAgentComposeThread } from "@/lib/globe/assistant";
 
 export type GlobeContextAgentPhase = "idle" | "arming" | "bound";
 
@@ -67,10 +67,13 @@ export function bindGlobeContextAgent(eventId: string): void {
 }
 
 export function clearGlobeContextAgent(): void {
+  const boundId = session.boundEventId;
   emit({ phase: "idle", boundEventId: null });
   resetContextAgentSession();
   clearContextActionInjection();
-  clearExperienceSimulation();
+  if (boundId) {
+    clearContextAgentComposeThread(boundId);
+  }
 }
 
 export function subscribeGlobeContextAgent(

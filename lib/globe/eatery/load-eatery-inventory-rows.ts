@@ -3,6 +3,7 @@ import type { EventCandidate } from "@/lib/events/event-candidate";
 import {
   serializeCanonicalPlaceProfile,
 } from "@/lib/globe/canonical-place-profile";
+import { resolveInventorySearchOrigin } from "@/lib/globe/context-hub/resolve-inventory-search-origin";
 import { resolveEateryMockNearOrigin } from "@/lib/globe/eatery/resolve-eatery-mock-inventory";
 import type { ContextEateryInventoryRow } from "@/lib/globe/eatery/eatery-resource-types";
 import {
@@ -123,13 +124,14 @@ export async function loadEateryInventoryRows(input: {
     lng: input.lng,
     preferUserLocation: input.preferUserLocation,
   });
-  const searchOrigin = context.location.searchOrigin;
+  const searchOrigin = resolveInventorySearchOrigin(input);
   const placeProfile = context.location.anchor.profile;
   const serializedProfile = serializeCanonicalPlaceProfile(placeProfile);
   let rows: ContextEateryInventoryRow[] = [];
   let source: EateryInventorySource = "mock";
   const anchorLabel =
-    context.location.areaLabel ||
+    context.travel.destinationLabel ||
+    context.location.anchor.label?.trim() ||
     placeProfile.label?.trim() ||
     input.event.place?.trim() ||
     input.event.title.trim() ||

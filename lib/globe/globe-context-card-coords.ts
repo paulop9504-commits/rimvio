@@ -20,6 +20,8 @@ import { resolveGlobeContextPinCluster } from "@/lib/globe/resolve-globe-context
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 import { readPlanContextFromEvent } from "@/lib/plan-context/plan-context-metadata";
 import { commitEventUpsert } from "@/lib/source-of-truth/commit-truth";
+import { classifyOverseasManualPlace } from "@/lib/globe/classify-overseas-manual-place";
+import { isCoordInKorea } from "@/lib/globe/geo-region-from-coords";
 
 function readFiniteCoord(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
@@ -51,22 +53,35 @@ export function readGlobeContextCardCoords(
   event: EventCandidate,
 ): GlobeContextCardCoords {
   const meta = event.metadata ?? {};
+  const placeLabel = resolveGlobeContextPlaceLabel(event);
+  const destinationHint =
+    event.place?.trim() ||
+    readPlanContextFromEvent(event)?.place?.trim() ||
+    placeLabel;
+
   const cardLat = readFiniteCoord(meta.globePlaceCardLat);
   const cardLng = readFiniteCoord(meta.globePlaceCardLng);
   if (cardLat !== null && cardLng !== null) {
+    const overseas = classifyOverseasManualPlace(destinationHint);
+    if (overseas && isCoordInKorea(cardLat, cardLng)) {
+      return {
+        lat: overseas.lat,
+        lng: overseas.lng,
+        placeLabel: overseas.label,
+      };
+    }
     return {
       lat: cardLat,
       lng: cardLng,
-      placeLabel: resolveGlobeContextPlaceLabel(event),
+      placeLabel,
     };
   }
 
-  const label = resolveGlobeContextPlaceLabel(event);
-  const geocoded = resolvePlaceCoordinates(label);
+  const geocoded = resolvePlaceCoordinates(destinationHint);
   return {
     lat: geocoded.lat,
     lng: geocoded.lng,
-    placeLabel: geocoded.label.trim() || label,
+    placeLabel: geocoded.label.trim() || placeLabel,
   };
 }
 

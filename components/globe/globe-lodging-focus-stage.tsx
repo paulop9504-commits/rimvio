@@ -14,6 +14,7 @@ import { isBridgeLinkedEventId } from "@/lib/experience-bridge/stamp-bridge-even
 import { useActiveContextWeather } from "@/hooks/use-active-context-weather";
 import { listContextHubServicesForEvent } from "@/lib/globe/context-hub/context-hub-service-catalog";
 import { pinLodgingSelectionToContext, readPinnedLodgingResourceId } from "@/lib/globe/context-hub/pin-lodging-selection-to-context";
+import { listLodgingResourcesForEvent } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import { resolveLodgingSituationalLabel } from "@/lib/globe/context-hub/resolve-lodging-situational-label";
 import { formatLodgingStayWindowLabel } from "@/lib/globe/context-hub/lodging-stay-window";
 import { buildLodgingDynamicTags } from "@/lib/globe/lodging/build-lodging-dynamic-tags";
@@ -36,6 +37,7 @@ import {
   filterLodgingRankedResources,
   rankContextResources,
 } from "@/lib/globe/resource/rank-context-resources";
+import { rankLodgingResources } from "@/lib/globe/resource/rank-lodging-resources";
 import {
   EVENT_CANDIDATES_UPDATED,
   findLifeEventCandidate,
@@ -152,12 +154,20 @@ export function GlobeLodgingFocusStage({
       return [] as RankedContextResource[];
     }
     const panel = listContextHubServicesForEvent(activeEvent);
-    if (!panel) {
-      return [] as RankedContextResource[];
+    if (panel) {
+      const ranked = rankContextResources({
+        event: activeEvent,
+        services: panel.services,
+        lat,
+        lng,
+      });
+      if (ranked.length > 0) {
+        return ranked;
+      }
     }
-    return rankContextResources({
+    return rankLodgingResources({
       event: activeEvent,
-      services: panel.services,
+      resources: listLodgingResourcesForEvent(activeEvent),
       lat,
       lng,
     });

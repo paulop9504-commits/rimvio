@@ -6,6 +6,9 @@ import {
   refineLocalDiscoverySpec,
   resolveLocalDiscoveryAction,
 } from "../lib/globe/context-condition-ai/resolve-local-discovery-action";
+import { isAlternatePlaceSearch } from "../lib/globe/context-condition-ai/is-alternate-place-search";
+import { parseCuisineCandidates } from "../lib/globe/context-condition-ai/parse-cuisine-candidates";
+import { resolveCicadaAgentPhase } from "../lib/globe/context-agent/resolve-cicada-agent-phase";
 import { resolveContextAgentZeroPrompt } from "../lib/globe/context-agent/resolve-context-agent-zero-prompt";
 import { buildContextAgentPreflightBriefing } from "../lib/globe/context-agent/build-context-agent-preflight-briefing";
 import type { EventCandidate } from "../lib/events/event-candidate";
@@ -52,6 +55,96 @@ const cheaper = refineLocalDiscoverySpec(baseSpec, "조금 더 싸게");
 assert.equal(cheaper.budget, "low");
 
 assert.equal(isLocalDiscoveryRefinement("더 가까운 곳"), true);
+assert.equal(isLocalDiscoveryRefinement("다른 곳"), true);
+assert.equal(isAlternatePlaceSearch("다른 곳 보여줘"), true);
+
+const multiCuisine = resolveLocalDiscoveryAction({
+  message: "피자집, 치킨집, 스시집 찾고 싶어",
+  mobilityConfidence: 0.9,
+  budgetConfidence: 0.9,
+  foodConfidence: 0.9,
+  lodgingConfidence: 0.9,
+  inferredTransport: "walk",
+  inferredBudget: "medium",
+  wantsEatery: true,
+  wantsLodging: false,
+});
+assert.equal(multiCuisine.status, "questions");
+assert.equal(multiCuisine.questions[0]?.slot, "menuFocus");
+assert.equal(parseCuisineCandidates("피자집, 치킨집, 스시집").length, 3);
+
+const pizzaReady = resolveLocalDiscoveryAction({
+  message: "피자집",
+  answers: { menuFocus: "pizza" },
+  mobilityConfidence: 0.9,
+  budgetConfidence: 0.9,
+  foodConfidence: 0.9,
+  lodgingConfidence: 0.9,
+  inferredTransport: "walk",
+  inferredBudget: "medium",
+  wantsEatery: true,
+  wantsLodging: false,
+});
+assert.equal(pizzaReady.status, "ready");
+if (pizzaReady.status === "ready") {
+  assert.equal(pizzaReady.spec.eateryFocus, "피자");
+}
+
+assert.equal(
+  resolveCicadaAgentPhase({
+    workPhase: "collecting_context",
+    processPhase: null,
+    lifecycle: "idle",
+    hasPendingQuestions: true,
+    alternateSearch: false,
+    hasGlobeResults: false,
+  }),
+  "clarifying",
+);
+assert.equal(
+  resolveCicadaAgentPhase({
+    workPhase: "scouting",
+    processPhase: "analyzing",
+    lifecycle: "busy",
+    hasPendingQuestions: false,
+    alternateSearch: false,
+    hasGlobeResults: false,
+  }),
+  "searching",
+);
+assert.equal(
+  resolveCicadaAgentPhase({
+    workPhase: "scouting",
+    processPhase: "optimizing",
+    lifecycle: "busy",
+    hasPendingQuestions: false,
+    alternateSearch: false,
+    hasGlobeResults: false,
+  }),
+  "visualizing",
+);
+assert.equal(
+  resolveCicadaAgentPhase({
+    workPhase: "replanning",
+    processPhase: "exploring",
+    lifecycle: "busy",
+    hasPendingQuestions: false,
+    alternateSearch: true,
+    hasGlobeResults: true,
+  }),
+  "searching",
+);
+assert.equal(
+  resolveCicadaAgentPhase({
+    workPhase: "awaiting_human",
+    processPhase: null,
+    lifecycle: "idle",
+    hasPendingQuestions: false,
+    alternateSearch: false,
+    hasGlobeResults: true,
+  }),
+  "visualizing",
+);
 
 const resolved = resolveLocalDiscoveryAction({
   message: "근처 맛집 찾아줘",

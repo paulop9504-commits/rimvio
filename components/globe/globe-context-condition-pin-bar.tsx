@@ -8,16 +8,14 @@ import {
   useState,
 } from "react";
 import { toast } from "sonner";
-import { GlobeContextConditionOrb } from "@/components/globe/globe-context-condition-orb";
 import { copy } from "@/lib/copy/human-ko";
 import {
-  buildSpatialPatchPreview,
-  planSpatialPatch,
   readContextConditionPinnedPlaceIds,
   clearContextConditionLastBatch,
   readContextConditionLastBatch,
   runContextConditionAnchorPin,
   dismissContextConditionPinBatch,
+  planSpatialPatch,
   type ContextConditionLastBatchWire,
   type ContextConditionAnchorPinOutcome,
 } from "@/lib/globe/context-condition-ai";
@@ -46,11 +44,19 @@ import {
   beginContextAgentWork,
   finishContextAgentWork,
   setContextAgentProcessPhase,
-  setContextAgentSessionPatchPreview,
   setContextAgentSessionPhase,
   setContextAgentSessionSpec,
 } from "@/lib/globe/context-agent";
-import { refreshExperienceScenarioFromOutcome } from "@/lib/globe/experience-simulation";
+import { appendContextAgentComposeTurn } from "@/lib/globe/assistant";
+import {
+  applyPalantirOperatorFacetRefine,
+  buildClarifyingOntologyGraph,
+  buildContextDiscoveryOntologyGraph,
+  publishGeoOntologyGraph,
+  readPalantirWorkspaceSnapshot,
+  resolvePalantirExcludePlaceIds,
+  resolvePalantirRefineIntent,
+} from "@/lib/globe/spatial-semantic";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 import { interpretMessyForContextAgent } from "@/lib/messy-prompt-interpreter/adapters/context-agent-adapter";
 import { buildTravelBrainState } from "@/lib/situation-projection/travel-brain-personalization";
@@ -71,12 +77,13 @@ export type GlobeContextConditionPinBarProps = {
   anchorLng: number;
   anchorPriceKrw?: number | null;
   onPinned?: (outcome: ContextConditionAnchorPinOutcome) => void;
+  onPalantirOperatorUpdate?: () => void;
+  onUserCompose?: (message: string) => void;
+  /** When false, opening the frame does not restore last pin batch into the UI. */
+  hydrateFromBatch?: boolean;
   onQuestionsChange?: (questions: readonly LocalDiscoveryQuestion[]) => void;
   onRecommendationsChange?: (
     items: ContextConditionAnchorPinOutcome["recommendations"],
-  ) => void;
-  onPatchPreviewChange?: (
-    preview: import("@/lib/globe/context-condition-ai/spatial-patch-types").SpatialPatchPreview | null,
   ) => void;
   onActionInjectionChange?: (injection: ContextActionInjection | null) => void;
   registerQuestionHandler?: (
@@ -124,9 +131,11 @@ export const GlobeContextConditionPinBar = forwardRef<
   anchorLng,
   anchorPriceKrw = null,
   onPinned,
+  onPalantirOperatorUpdate,
+  onUserCompose,
+  hydrateFromBatch = true,
   onQuestionsChange,
   onRecommendationsChange,
-  onPatchPreviewChange,
   onActionInjectionChange,
   registerQuestionHandler,
   className,
@@ -161,6 +170,13 @@ export const GlobeContextConditionPinBar = forwardRef<
   }
 
   useEffect(() => {
+    if (!hydrateFromBatch) {
+      setLastBatch(null);
+      setLastSpec(null);
+      setLastRecommendations([]);
+      onQuestionsChange?.([]);
+      return;
+    }
     const batch = readContextConditionLastBatch(contextEventId);
     setLastBatch(batch);
     setLastSpec(batch?.spec ?? null);
@@ -169,7 +185,14 @@ export const GlobeContextConditionPinBar = forwardRef<
     onRecommendationsChange?.(wired);
     const pending = readContextConditionPending(contextEventId);
     onQuestionsChange?.(pending?.questions ?? []);
-  }, [anchorLat, anchorLng, contextEventId, onQuestionsChange, onRecommendationsChange]);
+  }, [
+    anchorLat,
+    anchorLng,
+    contextEventId,
+    hydrateFromBatch,
+    onQuestionsChange,
+    onRecommendationsChange,
+  ]);
 
   const tryPublishActionInjection = useCallback(
     async (triggerMessage: string): Promise<boolean> => {
@@ -209,9 +232,15 @@ export const GlobeContextConditionPinBar = forwardRef<
       spec: ContextConditionAnchorPinOutcome["spec"];
       patchPlan?: ReturnType<typeof planSpatialPatch> | null;
       keptRecommendations?: readonly ContextConditionRecommendation[];
+      excludePlaceIds?: readonly string[];
     }) => {
       setContextAgentSessionPhase("scouting");
       beginContextAgentWork("exploring");
+      appendContextAgentComposeTurn(contextEventId, {
+        role: "assistant",
+        kind: "build_log",
+        text: copy.globe.geoOntologyBuildMapping,
+      });
       const outcome = await runContextConditionAnchorPin({
         contextEventId,
         anchorPlaceId,
@@ -223,14 +252,34 @@ export const GlobeContextConditionPinBar = forwardRef<
         spec: input.spec,
         patchPlan: input.patchPlan ?? null,
         keptRecommendations: input.keptRecommendations,
-        onProcessPhase: setContextAgentProcessPhase,
+        excludePlaceIds: input.excludePlaceIds,
+        onProcessPhase: (phase) => {
+          setContextAgentProcessPhase(phase);
+          if (phase === "optimizing") {
+            appendContextAgentComposeTurn(contextEventId, {
+              role: "assistant",
+              kind: "build_log",
+              text: copy.globe.geoOntologyBuildSpatial,
+            });
+          }
+        },
       });
       if (!outcome) {
         toast.message(copy.globe.contextConditionPinEmpty);
-        setContextAgentSessionPatchPreview(null);
-        onPatchPreviewChange?.(null);
         return null;
       }
+      appendContextAgentComposeTurn(contextEventId, {
+        role: "assistant",
+        kind: "build_log",
+        text: copy.globe.geoOntologyBuildResolve,
+      });
+      publishGeoOntologyGraph(
+        buildContextDiscoveryOntologyGraph({
+          contextEventId,
+          anchorPlaceName,
+          outcome,
+        }),
+      );
       const wire: ContextConditionLastBatchWire = {
         batchId: outcome.batchId,
         count: outcome.lodgingCount + outcome.eateryCount,
@@ -256,17 +305,8 @@ export const GlobeContextConditionPinBar = forwardRef<
       clearContextConditionPending(contextEventId);
       setContextAgentSessionSpec(outcome.spec);
       setContextAgentSessionPhase("deciding");
-      setContextAgentSessionPatchPreview(null);
-      onPatchPreviewChange?.(null);
       toast.success(outcome.summaryKo);
       onPinned?.(outcome);
-      refreshExperienceScenarioFromOutcome({
-        contextEventId,
-        anchorTitle: anchorPlaceName,
-        anchorLat,
-        anchorLng,
-        outcome,
-      });
       return outcome;
     },
     [
@@ -276,17 +316,96 @@ export const GlobeContextConditionPinBar = forwardRef<
       anchorPlaceName,
       anchorPriceKrw,
       contextEventId,
-      onPatchPreviewChange,
       onPinned,
       onQuestionsChange,
       onRecommendationsChange,
     ],
   );
 
+  const runPalantirRefine = useCallback(
+    async (refineMessage: string): Promise<boolean> => {
+      const text = refineMessage.trim();
+      if (!text || !lastSpec || lastRecommendations.length === 0) {
+        return false;
+      }
+
+      const event = findLifeEventCandidate(contextEventId);
+      const pinned = readContextConditionPinnedPlaceIds(event);
+      const intent = resolvePalantirRefineIntent({
+        message: text,
+        currentSpec: lastSpec,
+        previousRecommendations: lastRecommendations,
+        pinnedPlaceIds: pinned,
+      });
+      if (!intent) {
+        return false;
+      }
+
+      if (intent.kind === "facet_rerank") {
+        const snapshot = applyPalantirOperatorFacetRefine({
+          contextEventId,
+          facetId: intent.facetId,
+          recommendations: lastRecommendations,
+          spec: lastSpec,
+          radiusM: lastBatch?.radiusM ?? lastSpec.radiusM,
+          batchId: lastBatch?.batchId ?? null,
+        });
+        if (snapshot?.briefKo) {
+          appendContextAgentComposeTurn(contextEventId, {
+            role: "assistant",
+            kind: "text",
+            text: snapshot.briefKo,
+          });
+        }
+        onPalantirOperatorUpdate?.();
+        setContextAgentSessionPhase("awaiting_human");
+        return true;
+      }
+
+      if (intent.kind === "alternate_scout") {
+        const focus = lastSpec.eateryFocus?.trim();
+        appendContextAgentComposeTurn(contextEventId, {
+          role: "assistant",
+          kind: "text",
+          text: focus
+            ? copy.globe.cicadaAgentSearchingSummaryFocus(focus)
+            : copy.globe.cicadaAgentSearchingSummary,
+        });
+        setContextAgentSessionPhase("replanning");
+        await executeWithSpec({
+          triggerMessage: text,
+          spec: lastSpec,
+          excludePlaceIds: resolvePalantirExcludePlaceIds({
+            recommendations: lastRecommendations,
+            projectedPlaceIds:
+              readPalantirWorkspaceSnapshot(contextEventId)?.projectedPlaceIds,
+          }),
+        });
+        return true;
+      }
+
+      setContextAgentSessionPhase("replanning");
+      await executeWithSpec({
+        triggerMessage: text,
+        spec: intent.nextSpec,
+        patchPlan: intent.patchPlan,
+        keptRecommendations: intent.keptRecommendations,
+      });
+      return true;
+    },
+    [
+      contextEventId,
+      executeWithSpec,
+      lastBatch?.batchId,
+      lastBatch?.radiusM,
+      lastRecommendations,
+      lastSpec,
+      onPalantirOperatorUpdate,
+    ],
+  );
+
   const resolveAndMaybeExecute = useCallback(
     async (triggerMessage: string, answers?: Record<string, string>) => {
-      beginContextAgentWork("exploring");
-      setContextAgentSessionPhase("scouting");
       const interpreted = await interpretMessyForContextAgent({
         messyInput: triggerMessage,
         contextEventId,
@@ -317,6 +436,24 @@ export const GlobeContextConditionPinBar = forwardRef<
 
       if (resolved.status === "questions") {
         setContextAgentSessionPhase("collecting_context");
+        const menuQuestion = resolved.questions.find((row) => row.slot === "menuFocus");
+        const clarifyText = menuQuestion
+          ? `${copy.globe.cicadaAgentClarifyIntro} ${menuQuestion.promptKo}`
+          : resolved.questions[0]?.promptKo ?? copy.globe.cicadaAgentClarifyIntro;
+        appendContextAgentComposeTurn(contextEventId, {
+          role: "assistant",
+          kind: "text",
+          text: clarifyText,
+        });
+        publishGeoOntologyGraph(
+          buildClarifyingOntologyGraph({
+            contextEventId,
+            anchorPlaceName,
+            themeKo:
+              resolved.questions.find((row) => row.slot === "menuFocus")?.choices[0]
+                ?.label ?? copy.globe.geoOntologyRootEatery,
+          }),
+        );
         writeContextConditionPending(contextEventId, {
           triggerMessage,
           questions: resolved.questions,
@@ -328,6 +465,8 @@ export const GlobeContextConditionPinBar = forwardRef<
         return null;
       }
 
+      beginContextAgentWork("exploring");
+      setContextAgentSessionPhase("scouting");
       return executeWithSpec({ triggerMessage: pipelineMessage, spec: resolved.spec });
     },
     [
@@ -348,34 +487,20 @@ export const GlobeContextConditionPinBar = forwardRef<
     if (!text && !lastSpec) {
       return;
     }
+    if (text) {
+      onUserCompose?.(text);
+    }
     setBusy(true);
     try {
       if (text && (await tryPublishActionInjection(text))) {
         return;
       }
-      if (lastSpec && (isLocalDiscoveryRefinement(text) || lastRecommendations.length > 0)) {
-        const event = findLifeEventCandidate(contextEventId);
-        const pinned = readContextConditionPinnedPlaceIds(event);
-        const patchPlan = planSpatialPatch({
-          message: text,
-          currentSpec: lastSpec,
-          previousRecommendations: lastRecommendations,
-          pinnedPlaceIds: pinned,
-        });
-        const preview = buildSpatialPatchPreview({
-          plan: patchPlan,
-          previousRecommendations: lastRecommendations,
-          pinnedPlaceIds: pinned,
-        });
-        setContextAgentSessionPhase("replanning");
-        setContextAgentSessionPatchPreview(preview);
-        onPatchPreviewChange?.(preview);
-        await executeWithSpec({
-          triggerMessage: text,
-          spec: patchPlan.nextSpec,
-          patchPlan,
-          keptRecommendations: preview.kept,
-        });
+      if (
+        lastSpec &&
+        lastRecommendations.length > 0 &&
+        isLocalDiscoveryRefinement(text) &&
+        (await runPalantirRefine(text))
+      ) {
         return;
       }
 
@@ -391,12 +516,12 @@ export const GlobeContextConditionPinBar = forwardRef<
   }, [
     busy,
     contextEventId,
-    executeWithSpec,
     lastSpec,
     lastRecommendations,
     message,
-    onPatchPreviewChange,
+    onUserCompose,
     resolveAndMaybeExecute,
+    runPalantirRefine,
     tryPublishActionInjection,
   ]);
 
@@ -406,6 +531,7 @@ export const GlobeContextConditionPinBar = forwardRef<
       if (!text || busy) {
         return;
       }
+      onUserCompose?.(text);
       setBusy(true);
       try {
         if (await tryPublishActionInjection(text)) {
@@ -417,7 +543,7 @@ export const GlobeContextConditionPinBar = forwardRef<
         finishContextAgentWork();
       }
     },
-    [busy, resolveAndMaybeExecute, tryPublishActionInjection],
+    [busy, onUserCompose, resolveAndMaybeExecute, tryPublishActionInjection],
   );
 
   const submitRefinement = useCallback(
@@ -426,43 +552,16 @@ export const GlobeContextConditionPinBar = forwardRef<
       if (!text || busy || !lastSpec) {
         return;
       }
+      onUserCompose?.(text);
       setBusy(true);
       try {
-        const event = findLifeEventCandidate(contextEventId);
-        const pinned = readContextConditionPinnedPlaceIds(event);
-        const patchPlan = planSpatialPatch({
-          message: text,
-          currentSpec: lastSpec,
-          previousRecommendations: lastRecommendations,
-          pinnedPlaceIds: pinned,
-        });
-        const preview = buildSpatialPatchPreview({
-          plan: patchPlan,
-          previousRecommendations: lastRecommendations,
-          pinnedPlaceIds: pinned,
-        });
-        setContextAgentSessionPhase("replanning");
-        setContextAgentSessionPatchPreview(preview);
-        onPatchPreviewChange?.(preview);
-        await executeWithSpec({
-          triggerMessage: text,
-          spec: patchPlan.nextSpec,
-          patchPlan,
-          keptRecommendations: preview.kept,
-        });
+        await runPalantirRefine(text);
       } finally {
         setBusy(false);
         finishContextAgentWork();
       }
     },
-    [
-      busy,
-      contextEventId,
-      executeWithSpec,
-      lastRecommendations,
-      lastSpec,
-      onPatchPreviewChange,
-    ],
+    [busy, lastSpec, onUserCompose, runPalantirRefine],
   );
 
   useImperativeHandle(
@@ -518,18 +617,15 @@ export const GlobeContextConditionPinBar = forwardRef<
     setLastSpec(null);
     setLastRecommendations([]);
     onRecommendationsChange?.([]);
-    onPatchPreviewChange?.(null);
-    setContextAgentSessionPatchPreview(null);
     setContextAgentSessionPhase("briefing");
-  }, [contextEventId, lastBatch, onPatchPreviewChange, onRecommendationsChange]);
+  }, [contextEventId, lastBatch, onRecommendationsChange]);
 
   return (
     <div
-      className={cn("space-y-2", className)}
+      className={cn(className)}
       data-globe-context-condition-pin-bar
     >
-      <div className="flex items-center gap-2 rounded-2xl bg-white/90 p-2 shadow-sm ring-1 ring-black/[0.04]">
-        <GlobeContextConditionOrb size="sm" />
+      <div className="flex items-center gap-2 rounded-xl bg-[#f5f5f7] px-3 py-2 ring-1 ring-black/[0.04]">
         <input
           type="text"
           value={message}
@@ -548,28 +644,21 @@ export const GlobeContextConditionPinBar = forwardRef<
         <button
           type="button"
           onClick={() => void handleSubmit()}
-          disabled={busy}
-          className="shrink-0 rounded-full bg-[#1d1d1f] px-3 py-1.5 text-[12px] font-semibold text-white active:scale-[0.98] disabled:opacity-50"
+          disabled={busy || !message.trim()}
+          className="shrink-0 rounded-lg bg-[#1d1d1f] px-2.5 py-1 text-[11px] font-semibold text-white active:scale-[0.98] disabled:opacity-40"
         >
-          {busy
-            ? copy.globe.contextConditionPinBusy
-            : copy.globe.contextConditionPinSubmit}
+          {busy ? "…" : copy.globe.contextConditionPinSubmit}
         </button>
       </div>
 
       {lastBatch ? (
-        <div className="flex items-center justify-between gap-2 px-0.5">
-          <p className="text-[11px] font-medium text-[#515154]">
-            {lastBatch.summaryKo}
-          </p>
-          <button
-            type="button"
-            onClick={handleDismissBatch}
-            className="shrink-0 text-[11px] font-semibold text-[#ff6b4a] active:opacity-70"
-          >
-            {copy.globe.contextConditionPinDismiss}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={handleDismissBatch}
+          className="mt-1.5 px-0.5 text-[10px] font-medium text-[#86868b] active:text-[#ff6b4a]"
+        >
+          {copy.globe.contextConditionPinDismiss}
+        </button>
       ) : null}
     </div>
   );

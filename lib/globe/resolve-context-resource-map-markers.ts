@@ -120,6 +120,8 @@ export function resolveContextResourceMapMarkers<
   markers: readonly T[];
   hubLat?: number | null;
   hubLng?: number | null;
+  /** When false, pins stay at inventory coordinates (scout / operator). */
+  layoutAtHub?: boolean;
   /** @deprecated Radial layout applies whenever marker count > 1. */
   stagedDiscoveryCount?: number;
   maxRadial?: number;
@@ -147,15 +149,18 @@ export function resolveContextResourceMapMarkers<
     return [{ ...focus, calloutOffsetX: null, calloutOffsetY: null }];
   }
 
-  const hubLat = input.hubLat;
-  const hubLng = input.hubLng;
-  if (Number.isFinite(hubLat) && Number.isFinite(hubLng)) {
-    return applyRadialAtHub({
-      markers: sorted,
-      hubLat: hubLat as number,
-      hubLng: hubLng as number,
-      maxRadial,
-    });
+  const layoutAtHub = input.layoutAtHub !== false;
+  if (layoutAtHub) {
+    const hubLat = input.hubLat;
+    const hubLng = input.hubLng;
+    if (Number.isFinite(hubLat) && Number.isFinite(hubLng)) {
+      return applyRadialAtHub({
+        markers: sorted,
+        hubLat: hubLat as number,
+        hubLng: hubLng as number,
+        maxRadial,
+      });
+    }
   }
 
   return applyRadialAtCoordGroups(sorted, maxRadial);

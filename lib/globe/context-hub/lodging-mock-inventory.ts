@@ -267,7 +267,10 @@ export function resolveLodgingMockForPlace(
   anchor: { lat: number; lng: number },
 ): readonly ContextLodgingInventoryRow[] {
   const place = placeLabel.trim();
-  if (/대전|유성|신탄진|kaist|카이스트/iu.test(place)) {
+  if (
+    /대전|유성|신탄진|kaist|카이스트/iu.test(place) &&
+    !isJapanTravelPlace(place, anchor)
+  ) {
     return DAEJEON_LODGING_MOCK;
   }
 

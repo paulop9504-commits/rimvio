@@ -1,6 +1,7 @@
 /** Sync globe lodging markers ↔ hub carousel without coupling components. */
 
 import { dispatchGlobeMapMediaFocus } from "@/lib/globe/globe-map-media-focus-bridge";
+import { forwardLodgingFocusToResourceReel } from "@/lib/globe/resource-reel/globe-resource-reel-bridge";
 
 export const GLOBE_LODGING_FOCUS = "rimvio:globe-lodging-focus";
 export const GLOBE_LODGING_FOCUS_STAGE = "rimvio:globe-lodging-focus-stage";
@@ -50,6 +51,7 @@ export function dispatchGlobeLodgingFocus(detail: GlobeLodgingFocusDetail): void
   window.dispatchEvent(
     new CustomEvent<GlobeLodgingFocusDetail>(GLOBE_LODGING_FOCUS, { detail }),
   );
+  forwardLodgingFocusToResourceReel(detail);
 }
 
 export function readRecentGlobeLodgingFocusResourceId(

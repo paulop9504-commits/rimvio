@@ -80,6 +80,21 @@ import {
   dispatchGlobeEateryFocus,
   subscribeGlobeEateryFocus,
 } from "@/lib/globe/eatery/globe-eatery-focus-bridge";
+import { subscribeGeoOntologyFacetState } from "@/lib/globe/spatial-semantic/geo-ontology-graph-store";
+import { filterPinClustersForLayerPolicy } from "@/lib/globe/spatial-semantic/filter-pin-clusters-for-layer-policy";
+import {
+  readGlobeProjectionLayerPolicy,
+  subscribeGlobeProjectionLayerPolicy,
+} from "@/lib/globe/spatial-semantic/globe-projection-layer-policy";
+import {
+  filterContextConditionMarkersByPlaceIds,
+  shouldProjectContextConditionMarkers,
+  shouldShowContextConditionDiscoveryOverlay,
+} from "@/lib/globe/spatial-semantic/resolve-context-condition-marker-visibility";
+import {
+  publishContextAgentGlobeMarkerFocus,
+  resolveContextAgentGlobeMarkerFocus,
+} from "@/lib/globe/context-agent/context-agent-globe-marker-focus";
 import { subscribeGlobeMapMediaFocus } from "@/lib/globe/globe-map-media-focus-bridge";
 import { listContextHubServicesForEvent } from "@/lib/globe/context-hub/context-hub-service-catalog";
 import { isLodgingHubEnabled } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
@@ -289,10 +304,22 @@ const RimvioGlobeHubBody = memo(
     );
     const [mapMediaFocusOpen, setMapMediaFocusOpen] = useState(false);
     const [expandedPinId, setExpandedPinId] = useState<string | null>(null);
+    const [ontologyFacetRevision, setOntologyFacetRevision] = useState(0);
+    const [layerPolicyRevision, setLayerPolicyRevision] = useState(0);
     useEffect(() => {
       const bump = () => setBridgeRevision((value) => value + 1);
       window.addEventListener(EXPERIENCE_BRIDGE_UPDATED, bump);
       return () => window.removeEventListener(EXPERIENCE_BRIDGE_UPDATED, bump);
+    }, []);
+    useEffect(() => {
+      return subscribeGeoOntologyFacetState(() => {
+        setOntologyFacetRevision((value) => value + 1);
+      });
+    }, []);
+    useEffect(() => {
+      return subscribeGlobeProjectionLayerPolicy(() => {
+        setLayerPolicyRevision((value) => value + 1);
+      });
     }, []);
     useEffect(() => {
       return subscribeGlobeLodgingFocus((detail) => {
@@ -416,6 +443,24 @@ const RimvioGlobeHubBody = memo(
       detailLevel,
       focusedContextEventId,
     ]);
+    const layerPolicy = useMemo(() => {
+      void layerPolicyRevision;
+      return readGlobeProjectionLayerPolicy();
+    }, [layerPolicyRevision]);
+    const gatedDiscoveryOverlay = useMemo(() => {
+      if (!contextConditionDiscoveryOverlay) {
+        return null;
+      }
+      if (
+        !shouldShowContextConditionDiscoveryOverlay(
+          layerPolicy,
+          focusedContextEventId,
+        )
+      ) {
+        return null;
+      }
+      return contextConditionDiscoveryOverlay;
+    }, [contextConditionDiscoveryOverlay, focusedContextEventId, layerPolicy]);
     const tripArcs = useMemo(
       () => {
         const eventArcs = projectGlobeTripArcs({
@@ -424,7 +469,7 @@ const RimvioGlobeHubBody = memo(
           focusedEventId: focusedContextEventId,
           showBackgroundTripArcs: false,
         });
-        const discoveryArcs = contextConditionDiscoveryOverlay?.routeArcs ?? [];
+        const discoveryArcs = gatedDiscoveryOverlay?.routeArcs ?? [];
         const merged = [...discoveryArcs, ...eventArcs];
         if (realityBridgeArcs.length > 0) {
           return [...realityBridgeArcs, ...merged];
@@ -436,11 +481,12 @@ const RimvioGlobeHubBody = memo(
         clusters,
         focusedContextEventId,
         realityBridgeArcs,
-        contextConditionDiscoveryOverlay,
+        gatedDiscoveryOverlay,
       ],
     );
     const lodgingGlobeMarkers = useMemo(() => {
       void bridgeRevision;
+      void layerPolicyRevision;
       const eventId = focusedContextEventId?.trim();
       if (!eventId) {
         return [];
@@ -461,9 +507,17 @@ const RimvioGlobeHubBody = memo(
         (typeof meta?.globePlaceLng === "number" ? meta.globePlaceLng : null) ??
         liveLocation?.lng ??
         null;
-      const contextConditionMarkers = projectContextConditionLodgingGlobeMarkers({
-        event,
-      });
+      const contextConditionMarkers = shouldProjectContextConditionMarkers(
+        layerPolicy,
+        eventId,
+      )
+        ? filterContextConditionMarkersByPlaceIds(
+            projectContextConditionLodgingGlobeMarkers({
+              event,
+            }),
+            layerPolicy,
+          )
+        : [];
       const hasContextConditionLodging =
         contextConditionMarkers.length > 0 ||
         readContextConditionPinBatches(event).some(
@@ -528,6 +582,7 @@ const RimvioGlobeHubBody = memo(
         markers: withContextCondition,
         hubLat,
         hubLng,
+        layoutAtHub: contextConditionMarkers.length === 0,
         stagedDiscoveryCount: lodgingDiscoveryReveal.visibleResourceIds.size,
       });
     }, [
@@ -542,6 +597,9 @@ const RimvioGlobeHubBody = memo(
       lodgingDiscoveryReveal.visibleResourceIds,
       lodgingDiscoveryCards,
       mapMediaFocusOpen,
+      ontologyFacetRevision,
+      layerPolicy,
+      layerPolicyRevision,
     ]);
     const eateryGlobeMarkers = useMemo(() => {
       void bridgeRevision;
@@ -661,6 +719,7 @@ const RimvioGlobeHubBody = memo(
       eateryDiscoveryReveal.visibleResourceIds,
       eateryDiscoveryCards,
       mapMediaFocusOpen,
+      ontologyFacetRevision,
     ]);
     const contextHubAnchor = useMemo(() => {
       const eventId = focusedContextEventId?.trim();
@@ -823,7 +882,7 @@ const RimvioGlobeHubBody = memo(
           ref={innerGlobeRef}
           pins={globePins}
           tripArcs={tripArcs}
-          contextConditionDiscoveryOverlay={contextConditionDiscoveryOverlay}
+          contextConditionDiscoveryOverlay={gatedDiscoveryOverlay}
           viewerLocation={
             gpsEnabled && liveLocation
               ? {
@@ -844,19 +903,27 @@ const RimvioGlobeHubBody = memo(
           renderSuspended={renderSuspended}
           lodgingMarkers={lodgingGlobeMarkers}
           onLodgingMarkerPress={(resourceId, carouselIndex) => {
+            const scoutFocus = resolveContextAgentGlobeMarkerFocus({ resourceId });
             dispatchGlobeLodgingFocus({
               resourceId,
               carouselIndex,
               source: "map_marker",
             });
+            if (scoutFocus) {
+              publishContextAgentGlobeMarkerFocus(scoutFocus);
+            }
           }}
           eateryMarkers={eateryGlobeMarkers}
           onEateryMarkerPress={(resourceId, carouselIndex) => {
+            const scoutFocus = resolveContextAgentGlobeMarkerFocus({ resourceId });
             dispatchGlobeEateryFocus({
               resourceId,
               carouselIndex,
               source: "map_marker",
             });
+            if (scoutFocus) {
+              publishContextAgentGlobeMarkerFocus(scoutFocus);
+            }
           }}
           brainSurfaceMarkers={brainSurfaceMarkers}
           onBrainSurfaceMarkerPress={onBrainSurfaceMarkerPress}
@@ -947,6 +1014,12 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
   const { ready, eventsById, personalPinRevision } = useGlobeEventSnapshot();
   const liveLocation = useLiveLocationSnapshot();
   const iosPwaGuards = useIosPwaMemoryGuards();
+  const [layerPolicyRevision, setLayerPolicyRevision] = useState(0);
+  useEffect(() => {
+    return subscribeGlobeProjectionLayerPolicy(() => {
+      setLayerPolicyRevision((value) => value + 1);
+    });
+  }, []);
   const [discoveryPinsReady, setDiscoveryPinsReady] = useState(
     () => layerMode !== "discovery",
   );
@@ -1020,14 +1093,20 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
     const fieldRevealIntents = filterFieldRevealIntents(fieldDiscoveryReveal);
     const fieldRevealPlaces = filterFieldRevealPlaceClusters(fieldDiscoveryReveal);
     if (fieldRevealIntents.length === 0 && fieldRevealPlaces.length === 0) {
-      return base;
+      return filterPinClustersForLayerPolicy(
+        base,
+        readGlobeProjectionLayerPolicy(),
+      );
     }
     const existingPinIds = new Set(base.map((cluster) => cluster.pinId));
     const marketOverlay = projectMarketDiscoveryPinClusters(fieldRevealIntents);
     const extra = [...marketOverlay, ...fieldRevealPlaces].filter(
       (cluster) => !existingPinIds.has(cluster.pinId),
     );
-    return [...base, ...extra];
+    return filterPinClustersForLayerPolicy(
+      [...base, ...extra],
+      readGlobeProjectionLayerPolicy(),
+    );
   }, [
     ready,
     graph.volumes,
@@ -1040,6 +1119,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
     externalTraces,
     marketDiscoveryIntents,
     fieldDiscoveryReveal,
+    layerPolicyRevision,
   ]);
 
   const displayClusters = clusters;

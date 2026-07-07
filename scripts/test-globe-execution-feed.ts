@@ -57,11 +57,11 @@ assert.ok(!dock.includes("GlobeMapIntentPromptRail"), "legacy rail replaced");
 const chatHome = readFileSync(join(root, "components/globe/globe-home-client.tsx"), "utf8");
 assert.ok(chatHome.includes("GlobeChatScreen"), "fullscreen chat mounted from home");
 
-const feed = readFileSync(
-  join(root, "components/globe/execution-feed/globe-execution-feed.tsx"),
+const draft = readFileSync(
+  join(root, "components/globe/execution-feed/globe-compose-draft-card.tsx"),
   "utf8",
 );
-assert.ok(feed.includes("GlobeComposeDraftCard"), "compose draft card component exists");
+assert.ok(draft.includes("GlobeComposeDraftCard"), "compose draft card component exists");
 
 const ingest = readFileSync(
   join(root, "components/globe/globe-context-ingest-bar.tsx"),

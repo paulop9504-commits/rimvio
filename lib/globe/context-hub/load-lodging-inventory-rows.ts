@@ -1,6 +1,7 @@
 import { buildContextInstance } from "@/lib/context-instance/build-context-instance";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { fetchPlacesLodgingNearby } from "@/lib/globe/context-hub/fetch-places-lodging-nearby";
+import { resolveInventorySearchOrigin } from "@/lib/globe/context-hub/resolve-inventory-search-origin";
 import { resolveLodgingMockForPlace, resolveLodgingMockNearUser } from "@/lib/globe/context-hub/lodging-mock-inventory";
 import type { ContextLodgingInventoryRow } from "@/lib/globe/context-hub/lodging-resource-types";
 import { buildLodgingStayWindow } from "@/lib/globe/context-hub/lodging-stay-window";
@@ -66,7 +67,7 @@ export async function loadLodgingInventoryRows(input: {
     lng: input.lng,
     preferUserLocation: input.preferUserLocation,
   });
-  const searchOrigin = context.location.searchOrigin;
+  const searchOrigin = resolveInventorySearchOrigin(input);
   let rows: ContextLodgingInventoryRow[] = [];
 
   if (searchOrigin) {
@@ -99,8 +100,9 @@ export async function loadLodgingInventoryRows(input: {
   }
 
   const place =
-    context.location.areaLabel ??
+    context.travel.destinationLabel ??
     context.location.anchor.label ??
+    context.location.areaLabel ??
     input.event.place?.trim() ??
     input.event.title.trim();
   const anchor = searchOrigin ?? { lat: context.location.anchor.lat, lng: context.location.anchor.lng };

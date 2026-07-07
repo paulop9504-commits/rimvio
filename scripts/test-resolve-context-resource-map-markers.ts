@@ -69,4 +69,15 @@ const stacked = resolveContextResourceMapMarkers({
 assert.equal(stacked.length, 2);
 assert.ok(stacked.every((row) => row.calloutOffsetX != null));
 
+const geographic = resolveContextResourceMapMarkers({
+  markers,
+  hubLat: 35.68,
+  hubLng: 139.76,
+  layoutAtHub: false,
+});
+assert.equal(geographic.length, 2);
+assert.ok(geographic.some((row) => row.resourceId === "a" && row.lat === 35.68));
+assert.ok(geographic.some((row) => row.resourceId === "b" && row.lat === 35.681));
+assert.ok(geographic.every((row) => row.calloutOffsetX == null));
+
 console.log("test-resolve-context-resource-map-markers: ok");

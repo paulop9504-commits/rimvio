@@ -18,10 +18,8 @@ import { GlobeBrainSurfaceFloatingFrame } from "@/components/globe/globe-brain-s
 import { GlobeSpatialTraceTourChip } from "@/components/globe/globe-spatial-trace-tour-chip";
 import { GlobeContextConditionPromptFrame } from "@/components/globe/globe-context-condition-prompt-frame";
 import { GlobeContextAgentConnector } from "@/components/globe/globe-context-agent-connector";
-import { GlobeLodgingFocusStage } from "@/components/globe/globe-lodging-focus-stage";
-import { GlobeLodgingDiscoveryStage } from "@/components/globe/globe-lodging-discovery-stage";
-import { GlobeEateryDiscoveryStage } from "@/components/globe/globe-eatery-discovery-stage";
-import { GlobeEateryFocusSheet } from "@/components/globe/globe-eatery-focus-sheet";
+import { GlobeResourceReelStage } from "@/components/globe/globe-resource-reel-stage";
+import { dispatchGlobeResourceReelFocus } from "@/lib/globe/resource-reel";
 import { useGlobeLodgingDiscoverySession } from "@/hooks/use-globe-lodging-discovery-session";
 import { useGlobeEateryDiscoverySession } from "@/hooks/use-globe-eatery-discovery-session";
 import { useBrainSurfaceProjectionReveal } from "@/hooks/use-brain-surface-projection-reveal";
@@ -149,6 +147,8 @@ import {
   publishGlobeTouchedContext,
   subscribeGlobeContextConditionPanel,
 } from "@/lib/globe/context-condition-ai/globe-context-condition-panel-bridge";
+import { clearContextConditionLastBatch } from "@/lib/globe/context-condition-ai/context-condition-last-batch-store";
+import { isLodgingInventoryMisanchored } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import {
   readContextConditionDiscoveryOverlay,
   subscribeContextConditionDiscoveryOverlay,
@@ -458,6 +458,24 @@ function GlobeHomeBody() {
     userLng: liveLocation?.lng ?? null,
     contextEventId: activeCluster?.eventId ?? null,
   });
+  const discoveryReelSessionKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const session = eateryDiscovery.session ?? lodgingDiscovery.session;
+    if (!session || session.searching || session.items.length === 0) {
+      return;
+    }
+    const key = `${session.eventId}:${session.items.map((row) => row.resourceId).join("|")}`;
+    if (discoveryReelSessionKeyRef.current === key) {
+      return;
+    }
+    discoveryReelSessionKeyRef.current = key;
+    dispatchGlobeResourceReelFocus({
+      contextEventId: session.eventId,
+      surface: "list",
+      source: "discovery_card",
+    });
+  }, [eateryDiscovery.session, lodgingDiscovery.session]);
   const [placeVerifyEventId, setPlaceVerifyEventId] = useState<string | null>(null);
   const [knowledgePlacementPending, setKnowledgePlacementPending] =
     useState<GlobeKnowledgePlacementPending | null>(() =>
@@ -757,6 +775,10 @@ function GlobeHomeBody() {
       },
     ) => {
       const eventId = cluster.eventId?.trim();
+      if (eventId && readGlobeContextAgentSession().phase === "arming") {
+        bindContextAgentToEventIdRef.current(eventId);
+        return;
+      }
       if (eventId && isGlobeContextSwitchBlocked(eventId)) {
         globeRef.current?.flyToPin(cluster.lat, cluster.lng, "neighborhood");
         toast.message(copy.globe.contextAgentLockedToContext);
@@ -831,6 +853,17 @@ function GlobeHomeBody() {
       return;
     }
 
+    const agentSession = readGlobeContextAgentSession();
+    if (agentSession.phase === "arming") {
+      bindContextAgentToEventIdRef.current(eventId);
+      return;
+    }
+    if (!shouldOpenGlobeBridgeSheet()) {
+      dismissCompetingGlobeSurfaces();
+      openGlobeContextConditionPanel(eventId);
+      return;
+    }
+
     const event =
       findLifeEventCandidate(eventId) ?? recoverGlobeContextEventFromPin(eventId);
     const volume = resolveExperienceVolumeForEvent(eventId);
@@ -855,7 +888,7 @@ function GlobeHomeBody() {
       setContextTapPhase("awaiting_replay");
       globeRef.current?.clearPinViewportBias();
     }
-  }, [clearActiveContext]);
+  }, [clearActiveContext, dismissCompetingGlobeSurfaces]);
 
   const markPinPress = useCallback(() => {
     lastPinPressAtRef.current = Date.now();
@@ -954,6 +987,26 @@ function GlobeHomeBody() {
 
   const contextAgentPanelCluster =
     contextAgentAnchorCluster ?? activeCluster;
+
+  const contextAgentAnchorCoords = useMemo(() => {
+    const cluster = contextAgentPanelCluster;
+    if (cluster?.lat != null && cluster?.lng != null) {
+      return { lat: cluster.lat, lng: cluster.lng };
+    }
+    const eventId = contextAgentBoundEventId ?? activeCluster?.eventId?.trim();
+    if (!eventId) {
+      return null;
+    }
+    const cardCluster = resolveGlobeContextCardPinCluster(eventId);
+    if (cardCluster?.lat != null && cardCluster?.lng != null) {
+      return { lat: cardCluster.lat, lng: cardCluster.lng };
+    }
+    return null;
+  }, [
+    activeCluster?.eventId,
+    contextAgentBoundEventId,
+    contextAgentPanelCluster,
+  ]);
 
   const activeContextProjectionManifest = useMemo(() => {
     void projectionRevision;
@@ -2133,7 +2186,7 @@ function GlobeHomeBody() {
       !activeContextProjectionManifest ||
       layerMode !== "personal" ||
       brainProjectionEventId ||
-      contextAgentFocusLocked ||
+      contextAgentSurfacesActive ||
       contextConditionPanelOpen ||
       !shouldAutoLaunchBrainSurface() ||
       sheetOpen ||
@@ -2162,7 +2215,7 @@ function GlobeHomeBody() {
   }, [
     activeContextEvent,
     activeContextProjectionManifest,
-    contextAgentFocusLocked,
+    contextAgentSurfacesActive,
     contextConditionPanelOpen,
     brainProjectionEventId,
     brainSurfaceBatch?.eventId,
@@ -2462,6 +2515,15 @@ function GlobeHomeBody() {
         sheetPage?: PinOpenInitialPage;
       },
     ) => {
+      const key = eventId.trim();
+      if (!key) {
+        return null;
+      }
+      if (readGlobeContextAgentSession().phase === "arming") {
+        bindContextAgentToEventIdRef.current(key);
+        const result = await focusGlobeContextOnMap(key);
+        return result?.cluster ?? null;
+      }
       const result = await focusGlobeContextOnMap(eventId);
       if (!result) {
         toast.error("맥락을 찾지 못했어요");
@@ -2525,6 +2587,11 @@ function GlobeHomeBody() {
       dismissCompetingGlobeSurfaces();
       bindGlobeContextAgent(key);
       setStackClusters(null);
+      const event =
+        findLifeEventCandidate(key) ?? recoverGlobeContextEventFromPin(key);
+      if (event && isLodgingInventoryMisanchored(event)) {
+        clearContextConditionLastBatch(key);
+      }
       await anchorContextForAgentBind(key);
       openGlobeContextConditionPanel(key);
     },
@@ -2753,6 +2820,10 @@ function GlobeHomeBody() {
 
   const onRecallEventId = useCallback(
     (eventId: string) => {
+      if (readGlobeContextAgentSession().phase === "arming") {
+        bindContextAgentToEventIdRef.current(eventId);
+        return;
+      }
       setListOpen(false);
       setManageOpen(false);
       setBrainProjectionEventId(null);
@@ -2892,25 +2963,31 @@ function GlobeHomeBody() {
 
   const onStackSelect = useCallback(
     (cluster: PinCluster) => {
+      const eventId = cluster.eventId?.trim();
+      if (!eventId) {
+        return;
+      }
       if (readGlobeContextAgentSession().phase === "arming") {
-        if (cluster.eventId?.trim()) {
-          bindContextAgentToEventIdRef.current(cluster.eventId.trim());
-        }
+        void bindContextAgentToEventId(eventId);
         return;
       }
       setBrainProjectionEventId(null);
       openContextCluster(cluster);
     },
-    [openContextCluster],
+    [bindContextAgentToEventId, openContextCluster],
   );
 
   const openContextByEventId = useCallback(
     (eventId: string) => {
+      if (readGlobeContextAgentSession().phase === "arming") {
+        void bindContextAgentToEventId(eventId);
+        return;
+      }
       setListOpen(false);
       setBrainProjectionEventId(null);
       focusContextByEventId(eventId, { openSheet: true });
     },
-    [focusContextByEventId],
+    [bindContextAgentToEventId, focusContextByEventId],
   );
 
   const openProjectedContext = useCallback(
@@ -2923,9 +3000,13 @@ function GlobeHomeBody() {
 
   const openContextEntry = useCallback(
     (entry: GlobeContextTimelineEntry) => {
+      if (readGlobeContextAgentSession().phase === "arming") {
+        void bindContextAgentToEventId(entry.eventId);
+        return;
+      }
       openContextByEventId(entry.eventId);
     },
-    [openContextByEventId],
+    [bindContextAgentToEventId, openContextByEventId],
   );
 
   const bindContextAgentToEntry = useCallback(
@@ -2951,11 +3032,38 @@ function GlobeHomeBody() {
       dismissContextAgentPanel();
       return;
     }
+    const activeId = activeCluster?.eventId?.trim();
+    if (activeId) {
+      void bindContextAgentToEventId(activeId);
+      return;
+    }
     dismissCompetingGlobeSurfaces();
-    setStackClusters(null);
+
+    const nearbyStack = stackClustersRef.current ?? [];
+    if (nearbyStack.length === 1) {
+      const eventId = nearbyStack[0]?.eventId?.trim();
+      if (eventId) {
+        void bindContextAgentToEventId(eventId);
+        return;
+      }
+    }
+
+    if (nearbyStack.length <= 1) {
+      setStackClusters(null);
+    }
+
     armGlobeContextAgent();
-    toast.message(copy.globe.containerSpaceAgentPickHint);
-  }, [dismissCompetingGlobeSurfaces, dismissContextAgentPanel]);
+    toast.message(
+      nearbyStack.length > 1
+        ? copy.globe.contextAgentStackPickSubtitle
+        : copy.globe.containerSpaceAgentPickHint,
+    );
+  }, [
+    activeCluster?.eventId,
+    bindContextAgentToEventId,
+    dismissCompetingGlobeSurfaces,
+    dismissContextAgentPanel,
+  ]);
 
   const handleContextsDeleted = useCallback(
     (eventIds: string[]) => {
@@ -3974,23 +4082,12 @@ function GlobeHomeBody() {
         </GlobeBrainSurfaceFloatingFrame>
       ) : null}
       </div>
-      {lodgingDiscovery.session && !eateryDiscovery.session ? (
-        <GlobeLodgingDiscoveryStage
-          session={lodgingDiscovery.session}
-          globeRef={globeRef}
-          onDismiss={lodgingDiscovery.dismiss}
-          activeResourceId={lodgingDiscovery.projectedResourceId}
-        />
-      ) : null}
-      {eateryDiscovery.session ? (
-        <GlobeEateryDiscoveryStage
-          session={eateryDiscovery.session}
-          globeRef={globeRef}
-          onDismiss={eateryDiscovery.dismiss}
-          activeResourceId={eateryDiscovery.projectedResourceId}
-        />
-      ) : null}
-      <GlobeEateryFocusSheet eventId={activeCluster?.eventId ?? null} />
+      <GlobeResourceReelStage
+        globeRef={globeRef}
+        contextEventId={hubEventId}
+        lat={liveLocation?.lat ?? null}
+        lng={liveLocation?.lng ?? null}
+      />
       <GlobeTrendBridgeLayer
         visible={trendBridgeLayerActive && !globeRenderSuspended}
         bridgeId={trendBridgeSettings.activeBridgeId}
@@ -4082,7 +4179,9 @@ function GlobeHomeBody() {
           }}
           data-globe-context-agent-arming-hint
         >
-          {copy.globe.contextAgentArmingGlobeHint}
+          {stackClusters && stackClusters.length > 1
+            ? copy.globe.contextAgentStackPickSubtitle
+            : copy.globe.contextAgentArmingGlobeHint}
         </p>
       ) : null}
       {contextTapPhase === "awaiting_replay" &&
@@ -4107,8 +4206,7 @@ function GlobeHomeBody() {
         open={
           contextConditionPanelOpen &&
           Boolean(activeContextEvent) &&
-          contextAgentPanelCluster?.lat != null &&
-          contextAgentPanelCluster?.lng != null
+          contextAgentAnchorCoords != null
         }
         event={activeContextEvent}
         anchorPlaceId={`context-center:${activeContextEvent?.id ?? "unknown"}`}
@@ -4118,8 +4216,8 @@ function GlobeHomeBody() {
           activeContextEvent?.title.trim() ||
           copy.globe.contextConditionPanelEyebrow
         }
-        anchorLat={contextAgentPanelCluster?.lat ?? 0}
-        anchorLng={contextAgentPanelCluster?.lng ?? 0}
+        anchorLat={contextAgentAnchorCoords?.lat ?? 0}
+        anchorLng={contextAgentAnchorCoords?.lng ?? 0}
         userLat={liveLocation?.lat ?? null}
         userLng={liveLocation?.lng ?? null}
         globeRef={globeRef}
@@ -4129,19 +4227,11 @@ function GlobeHomeBody() {
         visible={
           contextConditionPanelOpen &&
           contextAgentSession.phase === "bound" &&
-          contextAgentPanelCluster?.lat != null &&
-          contextAgentPanelCluster?.lng != null
+          contextAgentAnchorCoords != null
         }
         globeRef={globeRef}
-        pinLat={contextAgentPanelCluster?.lat ?? null}
-        pinLng={contextAgentPanelCluster?.lng ?? null}
-      />
-      <GlobeLodgingFocusStage
-        globeRef={globeRef}
-        contextEventId={hubEventId}
-        lat={liveLocation?.lat ?? null}
-        lng={liveLocation?.lng ?? null}
-        viewerUserId={user?.id ?? null}
+        pinLat={contextAgentAnchorCoords?.lat ?? null}
+        pinLng={contextAgentAnchorCoords?.lng ?? null}
       />
       <GlobeHomeLeftChrome
         mapMediaFocusOpen={mapMediaFocusOpen}
@@ -4158,6 +4248,18 @@ function GlobeHomeBody() {
         onSelectContext={openContextEntry}
         onAgentContextPick={bindContextAgentToEntry}
         contextAgentArming={contextAgentSession.phase === "arming"}
+        onContextAgentBind={
+          hubEventId && contextAgentSession.phase !== "idle"
+            ? () => {
+                if (contextAgentSession.phase === "arming") {
+                  void bindContextAgentToEventId(hubEventId);
+                  return;
+                }
+                dismissCompetingGlobeSurfaces();
+                openGlobeContextConditionPanel(hubEventId);
+              }
+            : undefined
+        }
         onToggleContextAgentArm={
           layerMode === "personal" && !mapMediaFocusOpen
             ? toggleContextAgentArm

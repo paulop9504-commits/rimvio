@@ -1,19 +1,8 @@
 "use client";
 
 import { copy } from "@/lib/copy/human-ko";
-import {
-  rimvioAssistantEyebrowClass,
-  rimvioAssistantProcessBadgeClass,
-  rimvioAssistantProcessStepClass,
-} from "@/lib/design/globe-assistant-surface";
 import type { ContextAgentProcessPhase } from "@/lib/globe/context-agent/context-agent-runtime-state";
 import { cn } from "@/lib/utils";
-
-const PHASES: readonly ContextAgentProcessPhase[] = [
-  "exploring",
-  "analyzing",
-  "optimizing",
-];
 
 function phaseLabel(phase: ContextAgentProcessPhase): string {
   switch (phase) {
@@ -34,7 +23,7 @@ export type GlobeContextAgentProcessStripProps = {
   className?: string;
 };
 
-/** Cursor-style process visibility — exploring → analyzing → optimizing. */
+/** Cursor-style — single active status line while working. */
 export function GlobeContextAgentProcessStrip({
   activePhase,
   visible = true,
@@ -44,37 +33,20 @@ export function GlobeContextAgentProcessStrip({
     return null;
   }
 
-  const activeIndex = PHASES.indexOf(activePhase);
-
   return (
-    <div
-      className={cn("space-y-1.5", className)}
+    <p
+      className={cn(
+        "flex items-center gap-1.5 text-[11px] font-medium text-[#86868b]",
+        className,
+      )}
       data-globe-context-agent-process
       data-globe-context-agent-process-phase={activePhase}
     >
-      <p className={rimvioAssistantEyebrowClass("tracking-[0.06em]")}>
-        {copy.globe.contextAgentProcessEyebrow}
-      </p>
-      <ol className="flex flex-col gap-1">
-        {PHASES.map((phase, index) => {
-          const done = index < activeIndex;
-          const active = index === activeIndex;
-          const state = done ? "done" : active ? "active" : "pending";
-          return (
-            <li
-              key={phase}
-              className={rimvioAssistantProcessStepClass(state)}
-              data-globe-context-agent-process-step={phase}
-              data-globe-context-agent-process-step-active={active ? "true" : undefined}
-            >
-              <span className={rimvioAssistantProcessBadgeClass(state)} aria-hidden>
-                {done ? "✓" : index + 1}
-              </span>
-              <span>{phaseLabel(phase)}</span>
-            </li>
-          );
-        })}
-      </ol>
-    </div>
+      <span
+        className="size-1.5 shrink-0 animate-pulse rounded-full bg-[#0071e3]/70"
+        aria-hidden
+      />
+      <span>{phaseLabel(activePhase)}</span>
+    </p>
   );
 }

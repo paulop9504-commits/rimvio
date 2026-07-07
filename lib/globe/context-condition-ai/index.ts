@@ -18,6 +18,7 @@ export {
 } from "@/lib/globe/context-condition-ai/context-condition-batch-metadata";
 export {
   clearContextConditionLastBatch,
+  isContextConditionLastBatchMisanchored,
   readContextConditionLastBatch,
   writeContextConditionLastBatch,
   type ContextConditionLastBatchWire,

@@ -262,7 +262,7 @@ export function BridgeContextPanel({
     environment.trafficLine?.trim() ||
     null;
   const showEnvLine =
-    Boolean(envLine) &&
+    envLine != null &&
     !recall.primary.includes(envLine.slice(0, 6)) &&
     recall.primary.length < 48;
 

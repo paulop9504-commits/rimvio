@@ -1,5 +1,11 @@
 import { readGlobeContextAgentSession } from "@/lib/globe/context-agent";
 
+/** 맥락 어시스턴트 arming or bound — block bridge / hub / brain takeover. */
+export function isGlobeContextAgentSurfacesActive(): boolean {
+  const session = readGlobeContextAgentSession();
+  return session.phase === "arming" || session.phase === "bound";
+}
+
 /** 맥락 어시스턴트 bound — one surface at a time until user dismisses with X. */
 export function isGlobeContextAgentFocusLocked(): boolean {
   const session = readGlobeContextAgentSession();
@@ -15,15 +21,15 @@ export function readGlobeContextAgentBoundEventId(): string | null {
 }
 
 export function shouldAutoLaunchBrainSurface(): boolean {
-  return !isGlobeContextAgentFocusLocked();
+  return !isGlobeContextAgentSurfacesActive();
 }
 
 export function shouldOpenGlobeBridgeSheet(): boolean {
-  return !isGlobeContextAgentFocusLocked();
+  return !isGlobeContextAgentSurfacesActive();
 }
 
 export function shouldOpenGlobeHubDetail(): boolean {
-  return !isGlobeContextAgentFocusLocked();
+  return !isGlobeContextAgentSurfacesActive();
 }
 
 /** Block switching to another context while agent is bound to one. */

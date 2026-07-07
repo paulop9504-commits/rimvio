@@ -19,12 +19,14 @@ export type LocalDiscoveryActionSpec = {
   readonly lodgingKind: LocalDiscoveryLodgingKind;
   /** Search radius in meters — derived from transport. */
   readonly radiusM: number;
+  /** Eatery cuisine focus — e.g. 피자, 스시 (from menu disambiguation). */
+  readonly eateryFocus?: string | null;
 };
 
 export type LocalDiscoveryQuestionChoice = {
   readonly id: string;
   readonly label: string;
-  readonly slot: "transport" | "budget" | "vibe" | "lodgingKind";
+  readonly slot: "transport" | "budget" | "vibe" | "lodgingKind" | "menuFocus";
   readonly value: string;
 };
 

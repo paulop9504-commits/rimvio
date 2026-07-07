@@ -55,6 +55,21 @@ export {
   subscribeContextAgentPrefetch,
   type ContextAgentPrefetchSnapshot,
 } from "@/lib/globe/context-agent/context-agent-prefetch-store";
+export {
+  resolveCicadaAgentPhase,
+  resolveCicadaAgentPhaseLabel,
+  type CicadaAgentPhase,
+} from "@/lib/globe/context-agent/resolve-cicada-agent-phase";
+export {
+  resolveCicadaAssistantSurfaceMode,
+  type CicadaAssistantSurfaceMode,
+} from "@/lib/globe/context-agent/resolve-cicada-assistant-surface-mode";
+export {
+  publishContextAgentGlobeMarkerFocus,
+  resolveContextAgentGlobeMarkerFocus,
+  subscribeContextAgentGlobeMarkerFocus,
+  type ContextAgentGlobeMarkerFocusDetail,
+} from "@/lib/globe/context-agent/context-agent-globe-marker-focus";
 export { prefetchContextAgentSurroundings } from "@/lib/globe/context-agent/prefetch-context-agent-surroundings";
 export {
   clearContextAgentInterpretation,

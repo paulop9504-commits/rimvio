@@ -1,5 +1,6 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { copy } from "@/lib/copy/human-ko";
+import { resolveBrainSurfaceMarkerThumbnail } from "@/lib/globe/brain-surface-marker-media";
 import type { GlobeLodgingMapMarker } from "@/lib/globe/context-hub/lodging-globe-marker-types";
 import { readLodgingInventoryRows } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import { selectPreferredLodgingImage } from "@/lib/globe/lodging/lodging-photo-fidelity";
@@ -9,7 +10,11 @@ import {
 } from "@/lib/globe/context-condition-ai/context-condition-batch-metadata";
 import type { GlobeEateryMapMarker } from "@/lib/globe/eatery/eatery-globe-marker-types";
 import { readEateryInventoryRows } from "@/lib/globe/eatery/read-eatery-resource-inventory";
-import { resolveBrainSurfaceMarkerThumbnail } from "@/lib/globe/brain-surface-marker-media";
+import { readContextConditionLastBatch } from "@/lib/globe/context-condition-ai/context-condition-last-batch-store";
+import { resolveContextLodgingMarkerPresentation } from "@/lib/globe/context-condition-ai/resolve-context-lodging-marker-presentation";
+import { readLodgingRecommendReason } from "@/lib/globe/lodging/lodging-recommendation-reason-store";
+import { resolveStableContextPlaceAnchor } from "@/lib/context-instance/build-context-instance";
+import { haversineKm } from "@/lib/feed/spacetime-fit";
 
 function extractMapPillLabel(label: string): string {
   const trimmed = label.trim().replace(/\s+/gu, " ");
@@ -48,6 +53,9 @@ export function projectContextConditionLodgingGlobeMarkers(input: {
   const rows = readLodgingInventoryRows(input.event).filter((row) =>
     placeIds.has(row.placeId),
   );
+  const anchor = resolveStableContextPlaceAnchor(input.event);
+  const anchorLat = anchor.lat;
+  const anchorLng = anchor.lng;
   return rows.map((row, index) => {
     const thumbnailUrl =
       selectPreferredLodgingImage(row) ??
@@ -55,6 +63,22 @@ export function projectContextConditionLodgingGlobeMarkers(input: {
         family: "lodging",
         thumbnailUrl: row.images[0] ?? null,
       });
+    const batchReason = readContextConditionLastBatch(input.event.id)?.recommendations?.find(
+      (rec) => rec.kind === "lodging" && rec.placeId === row.placeId,
+    );
+    const scoredReason = readLodgingRecommendReason(input.event.id, row.placeId);
+    const distanceKm =
+      anchorLat != null && anchorLng != null
+        ? haversineKm(anchorLat, anchorLng, row.lat, row.lng)
+        : null;
+    const presentation = resolveContextLodgingMarkerPresentation({
+      reasonKo: batchReason?.reasonKo ?? scoredReason?.reasonKo ?? null,
+      matchReasons: scoredReason?.matchReasons,
+      priceKrw: row.priceKrw,
+      thumbnailUrl,
+      distanceKm,
+      rankIndex: index,
+    });
     return {
       markerKind: "lodging" as const,
       id: `ctxcond:lodging:${batch.batchId}:${row.placeId}`,
@@ -65,11 +89,11 @@ export function projectContextConditionLodgingGlobeMarkers(input: {
       carouselIndex: index,
       isMain: index === 0,
       thumbnailUrl,
-      discoveryShortLabel: extractMapPillLabel(row.name),
-      discoveryPriceLabel: formatPriceKrw(row.priceKrw),
+      displayVariant: presentation.displayVariant,
+      mapHintLine: presentation.mapHintLine,
+      discoveryPriceLabel: presentation.discoveryPriceLabel,
       discoveryAccent: "green" as const,
       contextConditionPin: true,
-      ontologyBadgeLabel: copy.globe.contextConditionPinBadge,
       popInDelayMs: index * 140,
     };
   });

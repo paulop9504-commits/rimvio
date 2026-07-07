@@ -19,6 +19,8 @@ export type GlobeContextBrainStripProps = {
   event: EventCandidate;
   tone?: "light" | "dark";
   variant?: "card" | "corner-pill";
+  /** When set, primary tap binds context agent instead of opening brain sheet. */
+  onContextAgentBind?: () => void;
   className?: string;
 };
 
@@ -27,6 +29,7 @@ export function GlobeContextBrainStrip({
   event,
   tone = "light",
   variant = "card",
+  onContextAgentBind,
   className,
 }: GlobeContextBrainStripProps) {
   const { manifest, pills, openBrain, tapPill } = useContextBrainManifest(event);
@@ -74,6 +77,10 @@ export function GlobeContextBrainStrip({
   );
 
   const handleOpenBrain = useCallback(() => {
+    if (onContextAgentBind) {
+      onContextAgentBind();
+      return;
+    }
     let projection = openBrain();
     if (!projection) {
       return;
@@ -94,7 +101,7 @@ export function GlobeContextBrainStrip({
       return;
     }
     dispatchGlobeBrainProjectionRequest({ anchorEventId: projection.anchorEventId });
-  }, [event, guides, guidesLoading, openBrain]);
+  }, [event, guides, guidesLoading, onContextAgentBind, openBrain]);
 
   const showPills = Boolean(manifest && pills.length > 0);
   const cornerPill = variant === "corner-pill";

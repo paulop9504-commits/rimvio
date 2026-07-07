@@ -1,7 +1,7 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { fetchWeatherForecastClient } from "@/lib/context-resolver/weather/fetch-weather-forecast-client";
 import { commitLodgingInventoryToEvent } from "@/lib/globe/context-hub/commit-lodging-inventory";
-import { readLodgingInventoryRows } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
+import { readLodgingInventoryRows, isLodgingInventoryMisanchored } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import { loadLodgingInventoryRows } from "@/lib/globe/context-hub/load-lodging-inventory-rows";
 import { resolveContextDiscoverySearchCoords } from "@/lib/globe/context-hub/resolve-context-discovery-search-coords";
 import { commitEateryInventoryToEvent } from "@/lib/globe/eatery/commit-eatery-inventory";
@@ -67,7 +67,8 @@ export async function prefetchContextAgentSurroundings(input: {
             eventTimeSource: weatherTarget.eventTimeSource,
           })
         : Promise.resolve(null),
-      readLodgingInventoryRows(input.event).length >= MIN_LODGING_ROWS
+      readLodgingInventoryRows(input.event).length >= MIN_LODGING_ROWS &&
+      !isLodgingInventoryMisanchored(input.event)
         ? Promise.resolve(null)
         : loadLodgingInventoryRows({
             event: input.event,

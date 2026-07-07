@@ -11,6 +11,7 @@ export type GlobeContextAgentRefineChip = {
 };
 
 export const CONTEXT_AGENT_REFINE_CHIPS: readonly GlobeContextAgentRefineChip[] = [
+  { id: "alternate", label: copy.globe.localDiscoveryRefineAlternate, message: "다른 곳 보여줘" },
   { id: "cheaper", label: copy.globe.localDiscoveryRefineCheaper, message: "조금 더 싸게" },
   { id: "quieter", label: copy.globe.localDiscoveryRefineQuieter, message: "더 조용한 곳" },
   { id: "closer", label: copy.globe.localDiscoveryRefineCloser, message: "더 가까운 곳" },

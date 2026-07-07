@@ -1,5 +1,7 @@
 /** Sync globe eatery markers ↔ discovery cards without coupling components. */
 
+import { forwardEateryFocusToResourceReel } from "@/lib/globe/resource-reel/globe-resource-reel-bridge";
+
 export const GLOBE_EATERY_FOCUS = "rimvio:globe-eatery-focus";
 
 export type GlobeEateryFocusDetail = {
@@ -15,6 +17,7 @@ export function dispatchGlobeEateryFocus(detail: GlobeEateryFocusDetail): void {
   window.dispatchEvent(
     new CustomEvent<GlobeEateryFocusDetail>(GLOBE_EATERY_FOCUS, { detail }),
   );
+  forwardEateryFocusToResourceReel(detail);
 }
 
 export function subscribeGlobeEateryFocus(

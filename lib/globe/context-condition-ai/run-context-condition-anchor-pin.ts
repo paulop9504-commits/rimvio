@@ -46,6 +46,7 @@ export type ContextConditionAnchorPinInput = {
   spec: LocalDiscoveryActionSpec;
   patchPlan?: SpatialPatchPlan | null;
   keptRecommendations?: readonly ContextConditionRecommendation[];
+  excludePlaceIds?: readonly string[];
   onProcessPhase?: (phase: import("@/lib/globe/context-agent/context-agent-runtime-state").ContextAgentProcessPhase) => void;
 };
 
@@ -74,7 +75,12 @@ function resolveContextConditionEateryQuery(input: {
   userMessage?: string | null;
   anchorName: string;
   vibe: LocalDiscoveryVibe;
+  eateryFocus?: string | null;
 }): string {
+  if (input.eateryFocus?.trim()) {
+    const area = input.anchorName.trim() || "근처";
+    return `${area} ${input.eateryFocus.trim()}`;
+  }
   if (input.userMessage?.trim()) {
     return input.userMessage.trim();
   }
@@ -96,11 +102,15 @@ function buildSummaryKo(input: {
   lodgingCount: number;
   eateryCount: number;
   radiusM: number;
+  eateryFocus?: string | null;
 }): string {
-  const { lodgingCount, eateryCount, radiusM } = input;
+  const { lodgingCount, eateryCount, radiusM, eateryFocus } = input;
   const total = lodgingCount + eateryCount;
   if (total <= 0) {
     return copy.globe.contextConditionPinEmpty;
+  }
+  if (eateryCount > 0 && lodgingCount === 0 && eateryFocus?.trim()) {
+    return copy.globe.cicadaAgentVisualizeSummary(eateryFocus.trim(), eateryCount);
   }
   const radiusLine = copy.globe.localDiscoveryPlacedSummary(radiusM, total);
   if (lodgingCount > 0 && eateryCount === 0) {
@@ -235,6 +245,7 @@ export async function runContextConditionAnchorPin(
       userMessage: input.message,
       anchorName: input.anchorPlaceName,
       vibe: spec.vibe,
+      eateryFocus: spec.eateryFocus,
     });
     const loaded = await loadEateryInventoryRows({
       event,
@@ -252,6 +263,22 @@ export async function runContextConditionAnchorPin(
       lng: input.anchorLng,
       context: contextInstance,
     }).slice(0, 4);
+    eateryRows = eateryScored.map((row) => row.row);
+  }
+
+  if (lodgingRows.length === 0 && eateryRows.length === 0) {
+    return null;
+  }
+
+  const exclude = new Set(
+    (input.excludePlaceIds ?? [])
+      .map((placeId) => placeId.trim())
+      .filter((placeId) => placeId.length > 0),
+  );
+  if (exclude.size > 0) {
+    lodgingScored = lodgingScored.filter((row) => !exclude.has(row.row.placeId));
+    eateryScored = eateryScored.filter((row) => !exclude.has(row.row.placeId));
+    lodgingRows = lodgingScored.map((row) => row.row);
     eateryRows = eateryScored.map((row) => row.row);
   }
 
@@ -309,6 +336,7 @@ export async function runContextConditionAnchorPin(
       lodgingCount: lodgingRows.length,
       eateryCount: eateryRows.length,
       radiusM,
+      eateryFocus: spec.eateryFocus,
     }),
     pinPoints,
     radiusM,
