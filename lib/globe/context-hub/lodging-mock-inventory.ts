@@ -1,5 +1,75 @@
 import type { ContextLodgingInventoryRow } from "@/lib/globe/context-hub/lodging-resource-types";
 
+// Verified-good Unsplash lodging shots (already shipped in this repo). Rotated per
+// hotel so every listing shows a real multi-photo gallery without broken-image risk.
+const LODGING_SHOT_HOTEL = "photo-1566073771259-6a8506099945";
+const LODGING_SHOT_ROOM = "photo-1611892440504-42a792e24d32";
+const LODGING_SHOT_SUITE = "photo-1582719478250-c89cae4dc85b";
+const LODGING_SHOT_VIEW = "photo-1520250497591-112f2f40a3f4";
+const LODGING_SHOT_LOUNGE = "photo-1578683010236-d716f9a3f461";
+
+// Stable public sample MP4s (Google demo bucket) — guaranteed to autoplay as a
+// short room-tour clip for the demo gallery. Swapped for real listing video in prod.
+const LODGING_TOUR_VIDEOS: readonly string[] = [
+  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
+  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
+  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
+];
+
+function lodgingTourVideo(index: number): string {
+  return LODGING_TOUR_VIDEOS[index % LODGING_TOUR_VIDEOS.length]!;
+}
+
+function lodgingShot(id: string): string {
+  return `https://images.unsplash.com/${id}?w=960&q=80`;
+}
+
+function buildLodgingGallery(order: readonly string[]): readonly string[] {
+  return order.map(lodgingShot);
+}
+
+const LODGING_GALLERY_A = buildLodgingGallery([
+  LODGING_SHOT_HOTEL,
+  LODGING_SHOT_ROOM,
+  LODGING_SHOT_SUITE,
+  LODGING_SHOT_VIEW,
+  LODGING_SHOT_LOUNGE,
+]);
+
+const LODGING_GALLERY_B = buildLodgingGallery([
+  LODGING_SHOT_ROOM,
+  LODGING_SHOT_LOUNGE,
+  LODGING_SHOT_HOTEL,
+  LODGING_SHOT_SUITE,
+  LODGING_SHOT_VIEW,
+]);
+
+const LODGING_GALLERY_C = buildLodgingGallery([
+  LODGING_SHOT_VIEW,
+  LODGING_SHOT_SUITE,
+  LODGING_SHOT_ROOM,
+  LODGING_SHOT_HOTEL,
+  LODGING_SHOT_LOUNGE,
+]);
+
+const LODGING_GALLERY_D = buildLodgingGallery([
+  LODGING_SHOT_SUITE,
+  LODGING_SHOT_HOTEL,
+  LODGING_SHOT_VIEW,
+  LODGING_SHOT_LOUNGE,
+  LODGING_SHOT_ROOM,
+]);
+
+const LODGING_GALLERY_E = buildLodgingGallery([
+  LODGING_SHOT_LOUNGE,
+  LODGING_SHOT_VIEW,
+  LODGING_SHOT_HOTEL,
+  LODGING_SHOT_ROOM,
+  LODGING_SHOT_SUITE,
+]);
+
 /** Demo inventory — Hongdae / Mapo regression + screenshot parity. */
 export function resolveLodgingMockNearUser(input: {
   lat: number;
@@ -22,10 +92,8 @@ export function resolveLodgingMockNearUser(input: {
         lng: input.lng + mLng(85),
         priceKrw: 65_000,
         partnerLabel: "demo",
-        images: [
-          "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=640&q=80",
-        ],
-        videoUrl: null,
+        images: [...LODGING_GALLERY_C],
+        videoUrl: lodgingTourVideo(0),
       },
       {
         placeId: "hh-han-river",
@@ -34,10 +102,8 @@ export function resolveLodgingMockNearUser(input: {
         lng: input.lng - mLng(140),
         priceKrw: 95_000,
         partnerLabel: "demo",
-        images: [
-          "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=640&q=80",
-        ],
-        videoUrl: null,
+        images: [...LODGING_GALLERY_D],
+        videoUrl: lodgingTourVideo(1),
       },
       {
         placeId: "hh-myeongdong",
@@ -46,10 +112,8 @@ export function resolveLodgingMockNearUser(input: {
         lng: input.lng + mLng(320),
         priceKrw: 120_000,
         partnerLabel: "demo",
-        images: [
-          "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=640&q=80",
-        ],
-        videoUrl: null,
+        images: [...LODGING_GALLERY_A],
+        videoUrl: lodgingTourVideo(2),
       },
       {
         placeId: "hh-gangnam",
@@ -58,10 +122,8 @@ export function resolveLodgingMockNearUser(input: {
         lng: input.lng - mLng(60),
         priceKrw: 89_000,
         partnerLabel: "demo",
-        images: [
-          "https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=640&q=80",
-        ],
-        videoUrl: null,
+        images: [...LODGING_GALLERY_B],
+        videoUrl: lodgingTourVideo(3),
       },
     ];
   }
@@ -78,10 +140,8 @@ export const DAEJEON_LODGING_MOCK: readonly ContextLodgingInventoryRow[] = [
     lng: 127.2983,
     priceKrw: 89000,
     partnerLabel: "demo",
-    images: [
-      "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=640&q=80",
-    ],
-    videoUrl: null,
+    images: [...LODGING_GALLERY_A],
+    videoUrl: lodgingTourVideo(0),
   },
   {
     placeId: "dj-station-central",
@@ -90,10 +150,8 @@ export const DAEJEON_LODGING_MOCK: readonly ContextLodgingInventoryRow[] = [
     lng: 127.4347,
     priceKrw: 72000,
     partnerLabel: "demo",
-    images: [
-      "https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=640&q=80",
-    ],
-    videoUrl: null,
+    images: [...LODGING_GALLERY_B],
+    videoUrl: lodgingTourVideo(1),
   },
   {
     placeId: "dj-kaist-inn",
@@ -102,10 +160,8 @@ export const DAEJEON_LODGING_MOCK: readonly ContextLodgingInventoryRow[] = [
     lng: 127.3604,
     priceKrw: 54000,
     partnerLabel: "demo",
-    images: [
-      "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=640&q=80",
-    ],
-    videoUrl: null,
+    images: [...LODGING_GALLERY_C],
+    videoUrl: lodgingTourVideo(2),
   },
   {
     placeId: "dj-expo-lake",
@@ -114,10 +170,8 @@ export const DAEJEON_LODGING_MOCK: readonly ContextLodgingInventoryRow[] = [
     lng: 127.4121,
     priceKrw: 98000,
     partnerLabel: "demo",
-    images: [
-      "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=640&q=80",
-    ],
-    videoUrl: null,
+    images: [...LODGING_GALLERY_D],
+    videoUrl: lodgingTourVideo(3),
   },
   {
     placeId: "dj-sintanjin-rest",
@@ -126,10 +180,8 @@ export const DAEJEON_LODGING_MOCK: readonly ContextLodgingInventoryRow[] = [
     lng: 127.3055,
     priceKrw: 61000,
     partnerLabel: "demo",
-    images: [
-      "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=640&q=80",
-    ],
-    videoUrl: null,
+    images: [...LODGING_GALLERY_E],
+    videoUrl: lodgingTourVideo(4),
   },
 ];
 
@@ -139,7 +191,7 @@ type LodgingMockTemplate = {
   dLat: number;
   dLng: number;
   priceKrw: number;
-  image: string;
+  images: readonly string[];
 };
 
 const LODGING_MOCK_TEMPLATES: readonly LodgingMockTemplate[] = [
@@ -149,7 +201,7 @@ const LODGING_MOCK_TEMPLATES: readonly LodgingMockTemplate[] = [
     dLat: 0.018,
     dLng: -0.012,
     priceKrw: 89000,
-    image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=640&q=80",
+    images: LODGING_GALLERY_A,
   },
   {
     id: "central",
@@ -157,7 +209,7 @@ const LODGING_MOCK_TEMPLATES: readonly LodgingMockTemplate[] = [
     dLat: -0.008,
     dLng: 0.022,
     priceKrw: 72000,
-    image: "https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=640&q=80",
+    images: LODGING_GALLERY_B,
   },
   {
     id: "guest",
@@ -165,7 +217,7 @@ const LODGING_MOCK_TEMPLATES: readonly LodgingMockTemplate[] = [
     dLat: 0.012,
     dLng: 0.008,
     priceKrw: 54000,
-    image: "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=640&q=80",
+    images: LODGING_GALLERY_C,
   },
   {
     id: "view",
@@ -173,7 +225,7 @@ const LODGING_MOCK_TEMPLATES: readonly LodgingMockTemplate[] = [
     dLat: 0.025,
     dLng: 0.015,
     priceKrw: 98000,
-    image: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=640&q=80",
+    images: LODGING_GALLERY_D,
   },
   {
     id: "rest",
@@ -181,7 +233,7 @@ const LODGING_MOCK_TEMPLATES: readonly LodgingMockTemplate[] = [
     dLat: -0.015,
     dLng: -0.018,
     priceKrw: 61000,
-    image: "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=640&q=80",
+    images: LODGING_GALLERY_E,
   },
 ];
 
@@ -192,7 +244,7 @@ const JAPAN_LODGING_TEMPLATES: readonly LodgingMockTemplate[] = [
     dLat: 0.012,
     dLng: -0.008,
     priceKrw: 125_000,
-    image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=640&q=80",
+    images: LODGING_GALLERY_A,
   },
   {
     id: "jp-shibuya",
@@ -200,7 +252,7 @@ const JAPAN_LODGING_TEMPLATES: readonly LodgingMockTemplate[] = [
     dLat: -0.009,
     dLng: 0.014,
     priceKrw: 142_000,
-    image: "https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=640&q=80",
+    images: LODGING_GALLERY_D,
   },
   {
     id: "jp-ginza",
@@ -208,7 +260,7 @@ const JAPAN_LODGING_TEMPLATES: readonly LodgingMockTemplate[] = [
     dLat: 0.006,
     dLng: 0.019,
     priceKrw: 168_000,
-    image: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=640&q=80",
+    images: LODGING_GALLERY_B,
   },
   {
     id: "jp-asakusa",
@@ -216,7 +268,7 @@ const JAPAN_LODGING_TEMPLATES: readonly LodgingMockTemplate[] = [
     dLat: 0.018,
     dLng: -0.016,
     priceKrw: 78_000,
-    image: "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=640&q=80",
+    images: LODGING_GALLERY_C,
   },
   {
     id: "jp-ikebukuro",
@@ -224,7 +276,7 @@ const JAPAN_LODGING_TEMPLATES: readonly LodgingMockTemplate[] = [
     dLat: -0.014,
     dLng: -0.011,
     priceKrw: 96_000,
-    image: "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=640&q=80",
+    images: LODGING_GALLERY_E,
   },
 ];
 
@@ -256,8 +308,8 @@ function mapLodgingMockTemplates(
     lng: anchor.lng + template.dLng,
     priceKrw: template.priceKrw,
     partnerLabel: "demo",
-    images: [template.image],
-    videoUrl: null,
+    images: [...template.images],
+    videoUrl: lodgingTourVideo(index),
   }));
 }
 
@@ -286,7 +338,7 @@ export function resolveLodgingMockForPlace(
     lng: anchor.lng + template.dLng,
     priceKrw: template.priceKrw,
     partnerLabel: "demo",
-    images: [template.image],
-    videoUrl: null,
+    images: [...template.images],
+    videoUrl: lodgingTourVideo(index),
   }));
 }

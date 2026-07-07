@@ -96,7 +96,7 @@ async function readLodgingDetails(input: {
       photoUrls: (result.photos ?? [])
         .map((photo) => photo.photo_reference)
         .filter((photoReference): photoReference is string => Boolean(photoReference?.trim()))
-        .slice(0, 4)
+        .slice(0, 8)
         .map((photoReference) => buildPlacePhotoUrl(photoReference, input.key)),
     };
   } catch {
@@ -190,9 +190,17 @@ export async function fetchPlacesLodgingNearby(
 
     const withPhotos = await Promise.all(
       candidates.map(async (row) => {
-        const nearbyPhotoReference = response.data.results
-          ?.find((result) => result.place_id?.trim() === row.placeId)
-          ?.photos?.[0]?.photo_reference;
+        const nearbyPhotoUrls = (
+          response.data.results?.find(
+            (result) => result.place_id?.trim() === row.placeId,
+          )?.photos ?? []
+        )
+          .map((photo) => photo.photo_reference)
+          .filter((photoReference): photoReference is string =>
+            Boolean(photoReference?.trim()),
+          )
+          .slice(0, 6)
+          .map((photoReference) => buildPlacePhotoUrl(photoReference, key));
         const details = await readLodgingDetails({
           placeId: row.placeId,
           key,
@@ -205,9 +213,7 @@ export async function fetchPlacesLodgingNearby(
             lng: row.lng,
             address: row.address ?? null,
             mapsUrl: row.mapsUrl ?? null,
-            nearbyPhotoUrls: nearbyPhotoReference
-              ? [buildPlacePhotoUrl(nearbyPhotoReference, key)]
-              : [],
+            nearbyPhotoUrls,
           },
           details,
         });

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { RefObject } from "react";
 import { GlobeResourceReelListPanel } from "@/components/globe/globe-resource-reel-list-panel";
 import { GlobeResourceReelDetail } from "@/components/globe/globe-resource-reel-detail";
+import { GlobeResourceVideoBranch } from "@/components/globe/globe-resource-video-branch";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { MAP_FOCUS_PIN_VIEWPORT_Y } from "@/lib/globe/map-anchored-overlay-layout";
 import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
@@ -197,6 +198,25 @@ export function GlobeResourceReelStage({
           resumeIntent={state.resumeIntent}
         />
       </div>
+      {activeItem.kind === "lodging" || activeItem.kind === "eatery" ? (
+        <div
+          className="pointer-events-none absolute z-[1] flex items-center"
+          style={{
+            top: "max(3.5rem, calc(env(safe-area-inset-top) + 2rem))",
+            bottom: "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 0.5rem)",
+            left: "min(calc(100% - 10rem), 20.5rem)",
+          }}
+        >
+          <GlobeResourceVideoBranch
+            key={activeItem.resourceId}
+            name={activeItem.title}
+            place={areaLabel}
+            kind={activeItem.kind}
+            lat={activeItem.lat}
+            lng={activeItem.lng}
+          />
+        </div>
+      ) : null}
       {items.length > 1 ? (
         <button
           type="button"

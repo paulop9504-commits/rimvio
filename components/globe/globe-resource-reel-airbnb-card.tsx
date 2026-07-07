@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { X } from "lucide-react";
+import { useRef, useState, type ReactNode } from "react";
+import { ChevronLeft, ChevronRight, Play, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { copy } from "@/lib/copy/human-ko";
+
+const MEDIA_SWIPE_MIN_PX = 32;
 
 export type GlobeResourceReelAirbnbCardProps = {
   title: string;
@@ -42,29 +44,70 @@ export function GlobeResourceReelAirbnbCard({
   onTouchStart,
   onTouchEnd,
 }: GlobeResourceReelAirbnbCardProps) {
+  const trimmedVideo = videoUrl?.trim() ?? "";
   const slides =
-    videoUrl != null && videoUrl.trim()
-      ? [videoUrl.trim(), ...images]
+    trimmedVideo.length > 0
+      ? [trimmedVideo, ...images]
       : images.length > 0
-        ? images
+        ? [...images]
         : [];
   const [mediaIndex, setMediaIndex] = useState(0);
-  const current = slides[mediaIndex] ?? null;
+  const mediaTouchRef = useRef<{ x: number; y: number } | null>(null);
+  const safeIndex = Math.min(mediaIndex, Math.max(0, slides.length - 1));
+  const current = slides[safeIndex] ?? null;
   const isVideo =
     current != null &&
-    (current === videoUrl || /\.(mp4|webm|mov)(\?|$)/i.test(current));
+    (current === trimmedVideo || /\.(mp4|webm|mov)(\?|$)/i.test(current));
+
+  const goToSlide = (next: number) => {
+    if (slides.length === 0) {
+      return;
+    }
+    const clamped = ((next % slides.length) + slides.length) % slides.length;
+    setMediaIndex(clamped);
+  };
+
+  const handleMediaTouchStart = (event: React.TouchEvent) => {
+    event.stopPropagation();
+    const touch = event.changedTouches[0] ?? event.touches[0];
+    if (!touch) {
+      return;
+    }
+    mediaTouchRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleMediaTouchEnd = (event: React.TouchEvent) => {
+    event.stopPropagation();
+    const start = mediaTouchRef.current;
+    const touch = event.changedTouches[0];
+    mediaTouchRef.current = null;
+    if (!start || !touch || slides.length <= 1) {
+      return;
+    }
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    if (Math.abs(dx) < MEDIA_SWIPE_MIN_PX || Math.abs(dx) <= Math.abs(dy)) {
+      return;
+    }
+    goToSlide(dx > 0 ? safeIndex - 1 : safeIndex + 1);
+  };
 
   return (
     <article
       className={cn(
-        "w-[min(100vw-1.5rem,17.5rem)] overflow-hidden rounded-[1.1rem] bg-white shadow-[0_8px_28px_rgba(0,0,0,0.18)] ring-1 ring-black/[0.06]",
+        "w-[min(100vw-1.5rem,19rem)] overflow-hidden rounded-[1.25rem] bg-white shadow-[0_12px_36px_rgba(0,0,0,0.22)] ring-1 ring-black/[0.06]",
         className,
       )}
       data-globe-resource-reel-airbnb-card
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
-      <div className="relative aspect-[4/3] bg-[#f4f4f5]">
+      <div
+        className="relative aspect-[4/5] bg-[#f4f4f5]"
+        onTouchStart={handleMediaTouchStart}
+        onTouchEnd={handleMediaTouchEnd}
+        data-globe-resource-reel-gallery
+      >
         {isVideo && current ? (
           <video
             key={current}
@@ -84,20 +127,34 @@ export function GlobeResourceReelAirbnbCard({
           </div>
         )}
 
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/35 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/45 to-transparent" />
+
         <button
           type="button"
           onClick={(event) => {
             event.stopPropagation();
             onClose();
           }}
-          className="absolute right-1.5 top-1.5 z-[4] flex size-7 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-md active:scale-95"
+          className="absolute right-2 top-2 z-[4] flex size-8 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-md active:scale-95"
           aria-label={closeAriaLabel}
         >
-          <X className="size-3.5" aria-hidden />
+          <X className="size-4" aria-hidden />
         </button>
 
+        {isVideo ? (
+          <span className="absolute left-2 top-2 z-[3] inline-flex items-center gap-1 rounded-full bg-black/50 px-2 py-1 text-[11px] font-semibold text-white backdrop-blur-md">
+            <Play className="size-3 fill-white" aria-hidden />
+            {copy.globe.resourceReelVideoChip}
+          </span>
+        ) : slides.length > 1 ? (
+          <span className="absolute left-2 top-2 z-[3] rounded-full bg-black/50 px-2 py-1 text-[11px] font-semibold text-white backdrop-blur-md">
+            {copy.globe.resourceReelPhotoCount(safeIndex + 1, slides.length)}
+          </span>
+        ) : null}
+
         {topAction ? (
-          <div className="pointer-events-none absolute inset-x-1.5 top-1.5 z-[3] pr-8">
+          <div className="pointer-events-none absolute inset-x-2 top-11 z-[3] pr-9">
             <div className="pointer-events-auto inline-flex max-w-[calc(100%-2rem)]">
               {topAction}
             </div>
@@ -105,23 +162,48 @@ export function GlobeResourceReelAirbnbCard({
         ) : null}
 
         {slides.length > 1 ? (
-          <div className="pointer-events-none absolute inset-x-0 bottom-2.5 flex justify-center gap-1">
-            {slides.map((slide, index) => (
-              <button
-                key={`${slide}:${index}`}
-                type="button"
-                aria-label={`${index + 1}`}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setMediaIndex(index);
-                }}
-                className={cn(
-                  "pointer-events-auto size-1.5 rounded-full",
-                  index === mediaIndex ? "bg-white" : "bg-white/55",
-                )}
-              />
-            ))}
-          </div>
+          <>
+            <button
+              type="button"
+              aria-label={copy.globe.resourceReelPrevPhoto}
+              onClick={(event) => {
+                event.stopPropagation();
+                goToSlide(safeIndex - 1);
+              }}
+              className="absolute left-1.5 top-1/2 z-[4] flex size-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-[#222] shadow-md backdrop-blur-md active:scale-95"
+            >
+              <ChevronLeft className="size-4" aria-hidden />
+            </button>
+            <button
+              type="button"
+              aria-label={copy.globe.resourceReelNextPhoto}
+              onClick={(event) => {
+                event.stopPropagation();
+                goToSlide(safeIndex + 1);
+              }}
+              className="absolute right-1.5 top-1/2 z-[4] flex size-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-[#222] shadow-md backdrop-blur-md active:scale-95"
+            >
+              <ChevronRight className="size-4" aria-hidden />
+            </button>
+
+            <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
+              {slides.map((slide, index) => (
+                <button
+                  key={`${slide}:${index}`}
+                  type="button"
+                  aria-label={`${index + 1}`}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setMediaIndex(index);
+                  }}
+                  className={cn(
+                    "pointer-events-auto h-1.5 rounded-full transition-all",
+                    index === safeIndex ? "w-4 bg-white" : "w-1.5 bg-white/55",
+                  )}
+                />
+              ))}
+            </div>
+          </>
         ) : null}
       </div>
 
