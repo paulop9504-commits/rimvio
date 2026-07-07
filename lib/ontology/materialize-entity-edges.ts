@@ -7,7 +7,7 @@ import {
   type MeaningEdgeBucket,
 } from "@/lib/meaning/ingest-meaning-edge-buckets";
 import { scoreMeaningEdge } from "@/lib/meaning/score-meaning-edge";
-import { projectBridgeNode } from "@/lib/experience-graph/project-experience-subgraph";
+import { projectBridgeNode } from "@/lib/ontology/project-event-experience-nodes";
 import { entityEdgeId } from "@/lib/ontology/entity-edge-id";
 import {
   entityEdgeFromMeaningBucket,

@@ -1,7 +1,7 @@
 import { buildContextInstance } from "@/lib/context-instance/build-context-instance";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { readFeedCaptureFragments } from "@/lib/events/read-feed-capture-fragments";
-import { inferMapRegionBias } from "@/lib/globe/infer-area-curiosity-hook";
+import { inferMapRegionBias } from "@/lib/ontology/infer-map-region-bias";
 import { isYouTubeDomain } from "@/lib/enrichers/youtube-url";
 import { normalizeInputUrl } from "@/lib/enrichers/fetch-page-metadata";
 import {

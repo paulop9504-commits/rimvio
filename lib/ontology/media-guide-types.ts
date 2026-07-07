@@ -1,8 +1,7 @@
 import type { RimvioEntityId } from "@/lib/ontology/entity-types";
-import type {
-  CanonicalPlaceCountryBias,
-  CanonicalPlaceProviderBias,
-} from "@/lib/globe/canonical-place-profile";
+
+export type MediaGuideCountryBias = "kr" | "jp" | "global";
+export type MediaGuideProviderBias = "naver_local" | "google_places" | "global";
 
 export const MEDIA_GUIDE_SOURCE_KINDS = ["youtube", "public_page"] as const;
 
@@ -39,8 +38,8 @@ export type MediaGuideCandidateSource = (typeof MEDIA_GUIDE_CANDIDATE_SOURCES)[n
 export type MediaGuideCandidateSearchProfile = {
   query: string;
   areaLabel: string | null;
-  countryBias: CanonicalPlaceCountryBias;
-  providerBias: CanonicalPlaceProviderBias;
+  countryBias: MediaGuideCountryBias;
+  providerBias: MediaGuideProviderBias;
   searchLocale: string;
   anchorLabel: string;
   anchorLat: number;

@@ -4,8 +4,10 @@
  */
 
 import type { EventCandidate } from "@/lib/events/event-candidate";
-import { readMarketCompletionMeta } from "@/lib/globe/market/market-completion-metadata";
-import type { MarketHandshakeRecord } from "@/lib/globe/market/market-handshake-types";
+import {
+  readOntologyMarketCompletionPartners,
+  type OntologyMarketHandshakeWire,
+} from "@/lib/ontology/market-entity-edge-wire";
 import { EXPERIENCE_BRIDGE_META_KEYS } from "@/lib/ontology/experience-bridge-meta-keys";
 import { isBridgeSharedEvent } from "@/lib/ontology/is-bridge-shared-event";
 import { entityEdgeId } from "@/lib/ontology/entity-edge-id";
@@ -80,7 +82,7 @@ export function buildTradePartnerEdge(input: {
 
 /** (B) Market handshake complete — Supabase SSOT outside EventCandidate; persists to personal graph. */
 export function materializeMarketEdge(
-  handshake: MarketHandshakeRecord,
+  handshake: OntologyMarketHandshakeWire,
   options?: { eventId?: string | null; atIso?: string; persist?: boolean },
 ): EntityEdge | null {
   if (handshake.phase !== "completed") {
@@ -107,7 +109,7 @@ export function materializeMarketEdgeFromCompletionEvent(
   event: EventCandidate,
   atIso: string,
 ): EntityEdge | null {
-  const meta = readMarketCompletionMeta(event);
+  const meta = readOntologyMarketCompletionPartners(event);
   if (!meta?.seekingUserId || !meta.listingUserId) {
     return null;
   }

@@ -1,12 +1,11 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
-import type { PinEntity } from "@/lib/globe/pin-entity";
 import type { KnowledgeEntity } from "@/lib/knowledge/knowledge-entity-types";
 import {
   normalizeMeaningPerson,
   normalizeMeaningPlace,
 } from "@/lib/meaning/meaning-node-id";
 import { collectEventPeople } from "@/lib/people-graph/collect-event-people";
-import { projectExperienceSubgraph } from "@/lib/experience-graph/project-experience-subgraph";
+import { projectExperienceSubgraph } from "@/lib/ontology/project-event-experience-nodes";
 import type {
   BridgeNode,
   ExperienceNode,
@@ -21,6 +20,14 @@ import {
   type RimvioEntity,
   type ThreadEntity,
 } from "@/lib/ontology/entity-types";
+
+export type OntologyExperiencePinWire = {
+  eventId: string;
+  title: string;
+  location: { placeLabel?: string | null };
+  startedAtIso?: string | null;
+  createdAtIso: string;
+};
 
 export function entityFromExperienceNode(experience: ExperienceNode): ExperienceEntity {
   return {
@@ -88,7 +95,7 @@ export function entityFromBridgeNode(bridge: BridgeNode): ThreadEntity | null {
   };
 }
 
-/** EventCandidate ??graph entities (adapters only ??no schema mutation). */
+/** EventCandidate → graph entities (adapters only — no schema mutation). */
 export function entitiesFromEventCandidate(event: EventCandidate): RimvioEntity[] {
   const subgraph = projectExperienceSubgraph(event);
   const entities: RimvioEntity[] = [
@@ -123,8 +130,8 @@ export function entitiesFromEventCandidate(event: EventCandidate): RimvioEntity[
   return entities;
 }
 
-/** Pin projection ??experience entity via linked event id. */
-export function entityFromPinEntity(pin: PinEntity): ExperienceEntity {
+/** Pin projection → experience entity via linked event id. */
+export function entityFromPinEntity(pin: OntologyExperiencePinWire): ExperienceEntity {
   return {
     objectKind: "experience",
     id: pin.eventId,

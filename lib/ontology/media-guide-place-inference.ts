@@ -1,7 +1,7 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { buildContextInstance } from "@/lib/context-instance/build-context-instance";
 import { resolveTripContextAnchor } from "@/lib/experience-run/resolve-trip-context-anchor";
-import { parseManualContextPlaceText } from "@/lib/globe/parse-manual-context-place-text";
+import { shortenExplicitPlacePhrase } from "@/lib/ontology/shorten-explicit-place-phrase";
 import type { FeedCaptureMediaTextSignal } from "@/lib/ontology/feed-capture-wire";
 import type {
   MediaGuideCandidateSource,
@@ -284,19 +284,21 @@ function buildExplicitPlacePhrase(text: string): string | null {
     return cleaned;
   }
 
-  const parsed = parseManualContextPlaceText(cleaned);
-  const displayLabel = normalizeText(parsed.displayLabel);
-  if (
-    displayLabel &&
-    displayLabel.length <= 24 &&
-    displayLabel !== cleaned &&
-    !STOPWORD_SIGNAL.test(displayLabel) &&
-    (!ACTIVITY_SIGNAL.test(cleaned) ||
-      PLACE_SUFFIX_SIGNAL.test(displayLabel) ||
-      cleaned.length <= displayLabel.length + 4) &&
-    isUsableExplicitPhrase(displayLabel)
-  ) {
-    return displayLabel;
+  const shortened = shortenExplicitPlacePhrase(cleaned);
+  if (shortened) {
+    const displayLabel = normalizeText(shortened);
+    if (
+      displayLabel &&
+      displayLabel.length <= 24 &&
+      displayLabel !== cleaned &&
+      !STOPWORD_SIGNAL.test(displayLabel) &&
+      (!ACTIVITY_SIGNAL.test(cleaned) ||
+        PLACE_SUFFIX_SIGNAL.test(displayLabel) ||
+        cleaned.length <= displayLabel.length + 4) &&
+      isUsableExplicitPhrase(displayLabel)
+    ) {
+      return displayLabel;
+    }
   }
   const explicitTripAnchor = resolveTripContextAnchor(cleaned);
   if (
