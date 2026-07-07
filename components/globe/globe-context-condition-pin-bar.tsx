@@ -40,7 +40,9 @@ import {
   isLocalDiscoveryRefinement,
   resolveLocalDiscoveryAction,
 } from "@/lib/globe/context-condition-ai/resolve-local-discovery-action";
-import { isCrossDomainDiscoverySearch } from "@/lib/globe/context-condition-ai/is-cross-domain-discovery-search";
+import {
+  isFollowUpDiscoveryTurn,
+} from "@/lib/globe/context-condition-ai/is-cross-domain-discovery-search";
 import {
   beginContextAgentWork,
   finishContextAgentWork,
@@ -423,9 +425,27 @@ export const GlobeContextConditionPinBar = forwardRef<
 
       const event = findLifeEventCandidate(contextEventId);
       const travelBrain = event ? buildTravelBrainState(event) : null;
+      const followUpTurn =
+        lastRecommendations.length > 0 &&
+        isFollowUpDiscoveryTurn(pipelineMessage, lastRecommendations);
+      const mergedAnswers: Record<string, string> = {
+        ...(followUpTurn && lastSpec
+          ? {
+              transport: lastSpec.transport,
+              budget: lastSpec.budget,
+              vibe: lastSpec.vibe,
+              ...(lastSpec.lodgingKind !== "any"
+                ? { lodgingKind: lastSpec.lodgingKind }
+                : {}),
+            }
+          : {}),
+        ...(answers ?? {}),
+      };
       const resolved = resolveLocalDiscoveryAction({
         message: pipelineMessage,
-        answers,
+        answers: mergedAnswers,
+        followUpTurn,
+        previousSpec: lastSpec,
         mobilityConfidence: travelBrain?.slots.mobility_style.confidence,
         budgetConfidence: travelBrain?.slots.budget_band.confidence,
         foodConfidence: travelBrain?.slots.food_bias.confidence,
@@ -442,10 +462,15 @@ export const GlobeContextConditionPinBar = forwardRef<
 
       if (resolved.status === "questions") {
         setContextAgentSessionPhase("collecting_context");
+        const resourceQuestion = resolved.questions.find(
+          (row) => row.slot === "resourceFocus",
+        );
         const menuQuestion = resolved.questions.find((row) => row.slot === "menuFocus");
-        const clarifyText = menuQuestion
-          ? `${copy.globe.cicadaAgentClarifyIntro} ${menuQuestion.promptKo}`
-          : resolved.questions[0]?.promptKo ?? copy.globe.cicadaAgentClarifyIntro;
+        const clarifyText = resourceQuestion
+          ? resourceQuestion.promptKo
+          : menuQuestion
+            ? `${copy.globe.cicadaAgentClarifyIntro} ${menuQuestion.promptKo}`
+            : resolved.questions[0]?.promptKo ?? copy.globe.cicadaAgentClarifyIntro;
         appendContextAgentComposeTurn(contextEventId, {
           role: "assistant",
           kind: "text",
@@ -481,6 +506,8 @@ export const GlobeContextConditionPinBar = forwardRef<
       anchorPlaceName,
       contextEventId,
       executeWithSpec,
+      lastRecommendations,
+      lastSpec,
       onQuestionsChange,
     ],
   );
@@ -504,7 +531,7 @@ export const GlobeContextConditionPinBar = forwardRef<
       if (
         lastSpec &&
         lastRecommendations.length > 0 &&
-        !isCrossDomainDiscoverySearch(text, lastRecommendations) &&
+        !isFollowUpDiscoveryTurn(text, lastRecommendations) &&
         isLocalDiscoveryRefinement(text) &&
         (await runPalantirRefine(text))
       ) {
@@ -512,13 +539,13 @@ export const GlobeContextConditionPinBar = forwardRef<
       }
 
       const pending = readContextConditionPending(contextEventId);
-      const crossDomain = isCrossDomainDiscoverySearch(text, lastRecommendations);
-      if (crossDomain) {
+      const followUp = isFollowUpDiscoveryTurn(text, lastRecommendations);
+      if (followUp) {
         clearContextConditionPending(contextEventId);
       }
       await resolveAndMaybeExecute(
         text || pending?.triggerMessage || "",
-        crossDomain ? undefined : pending?.answers,
+        followUp ? undefined : pending?.answers,
       );
     } finally {
       setBusy(false);

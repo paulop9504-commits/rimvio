@@ -13,6 +13,7 @@ import type {
   ResolveLocalDiscoveryActionResult,
 } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
 import { isAlternatePlaceSearch } from "@/lib/globe/context-condition-ai/is-alternate-place-search";
+import { isAmbiguousDiscoveryIntent } from "@/lib/globe/context-condition-ai/is-cross-domain-discovery-search";
 import { copy } from "@/lib/copy/human-ko";
 import {
   parseCuisineCandidates,
@@ -137,6 +138,69 @@ function buildLodgingKindQuestion(): LocalDiscoveryQuestion {
   };
 }
 
+function buildResourceFocusQuestion(): LocalDiscoveryQuestion {
+  return {
+    slot: "resourceFocus",
+    promptKo: copy.globe.localDiscoveryAskResourceFocus,
+    choices: [
+      {
+        id: "resource-restaurant",
+        label: copy.globe.localDiscoveryResourceRestaurant,
+        slot: "resourceFocus",
+        value: "restaurant",
+      },
+      {
+        id: "resource-hotel",
+        label: copy.globe.localDiscoveryResourceHotel,
+        slot: "resourceFocus",
+        value: "hotel",
+      },
+      {
+        id: "resource-both",
+        label: copy.globe.localDiscoveryResourceBoth,
+        slot: "resourceFocus",
+        value: "both",
+      },
+    ],
+  };
+}
+
+const CLARIFY_QUESTION_PRIORITY: readonly LocalDiscoveryQuestion["slot"][] = [
+  "resourceFocus",
+  "menuFocus",
+  "lodgingKind",
+  "vibe",
+  "transport",
+  "budget",
+];
+
+function pickClarifyingQuestions(
+  questions: readonly LocalDiscoveryQuestion[],
+): LocalDiscoveryQuestion[] {
+  for (const slot of CLARIFY_QUESTION_PRIORITY) {
+    const match = questions.find((row) => row.slot === slot);
+    if (match) {
+      return [match];
+    }
+  }
+  return questions.slice(0, 1);
+}
+
+function resolveWantsFromResourceFocus(
+  focus: string | undefined,
+): { wantsLodging: boolean; wantsEatery: boolean } | null {
+  if (focus === "restaurant") {
+    return { wantsLodging: false, wantsEatery: true };
+  }
+  if (focus === "hotel") {
+    return { wantsLodging: true, wantsEatery: false };
+  }
+  if (focus === "both") {
+    return { wantsLodging: true, wantsEatery: true };
+  }
+  return null;
+}
+
 function resolveResourceTypes(input: {
   wantsLodging: boolean;
   wantsEatery: boolean;
@@ -194,36 +258,53 @@ export function resolveLocalDiscoveryAction(
   const text = input.message.trim();
   const intent = classifyContextConditionAnchorRequest(text);
   const cuisineCandidates = parseCuisineCandidates(text);
-  const wantsLodging = input.wantsLodging ?? intent.lodgingSimilar;
-  const wantsEatery =
-    input.wantsEatery ?? intent.eateryNearby ?? cuisineCandidates.length > 0;
-  const resourceTypes = resolveResourceTypes({ wantsLodging, wantsEatery });
-
   const answers: LocalDiscoveryPendingAnswers = { ...(input.answers ?? {}) };
+  const resourceFocus = answers.resourceFocus;
+  const focusWants = resolveWantsFromResourceFocus(resourceFocus);
+  let wantsLodging =
+    focusWants?.wantsLodging ?? input.wantsLodging ?? intent.lodgingSimilar;
+  let wantsEatery =
+    focusWants?.wantsEatery ??
+    input.wantsEatery ??
+    intent.eateryNearby ??
+    cuisineCandidates.length > 0;
+  const followUpTurn = input.followUpTurn === true;
+  const previousSpec = input.previousSpec ?? null;
 
-  const transport =
+  let transport =
     (answers.transport as LocalDiscoveryTransport | undefined) ??
     parseTransport(text) ??
     input.inferredTransport ??
     null;
 
-  const budget =
+  let budget =
     (answers.budget as LocalDiscoveryBudget | undefined) ??
     parseBudget(text) ??
     input.inferredBudget ??
     null;
 
-  const vibe =
+  let vibe =
     (answers.vibe as LocalDiscoveryVibe | undefined) ??
     parseVibe(text) ??
     input.inferredVibe ??
     null;
 
-  const lodgingKind =
+  let lodgingKind =
     (answers.lodgingKind as LocalDiscoveryLodgingKind | undefined) ??
     parseLodgingKind(text) ??
     input.inferredLodgingKind ??
     (wantsLodging ? "any" : "any");
+
+  if (followUpTurn && previousSpec) {
+    transport = transport ?? previousSpec.transport;
+    budget = budget ?? previousSpec.budget;
+    vibe = vibe ?? previousSpec.vibe;
+    if (!parseLodgingKind(text) && !answers.lodgingKind) {
+      lodgingKind = previousSpec.lodgingKind;
+    }
+  }
+
+  const resourceTypes = resolveResourceTypes({ wantsLodging, wantsEatery });
 
   const menuFocusId =
     answers.menuFocus ??
@@ -243,17 +324,29 @@ export function resolveLocalDiscoveryAction(
 
   const questions: LocalDiscoveryQuestion[] = [];
 
+  if (isAmbiguousDiscoveryIntent(text) && !resourceFocus) {
+    questions.push(buildResourceFocusQuestion());
+  }
+
   if (wantsEatery && cuisineCandidates.length > 1 && !menuFocusId) {
     questions.push(buildMenuFocusQuestion(cuisineCandidates));
   }
 
+  const skipMobilityBudgetQuestions =
+    followUpTurn && !parseTransport(text) && !parseBudget(text);
+
   if (
+    !skipMobilityBudgetQuestions &&
     !transport &&
     (input.mobilityConfidence ?? 0) < CONFIDENCE_SKIP
   ) {
     questions.push(buildTransportQuestion());
   }
-  if (!budget && (input.budgetConfidence ?? 0) < CONFIDENCE_SKIP) {
+  if (
+    !skipMobilityBudgetQuestions &&
+    !budget &&
+    (input.budgetConfidence ?? 0) < CONFIDENCE_SKIP
+  ) {
     questions.push(buildBudgetQuestion());
   }
   if (!vibe && wantsEatery && (input.foodConfidence ?? 0) < CONFIDENCE_SKIP) {
@@ -270,9 +363,10 @@ export function resolveLocalDiscoveryAction(
   }
 
   if (questions.length > 0) {
+    const prioritized = pickClarifyingQuestions(questions);
     return {
       status: "questions",
-      questions,
+      questions: prioritized,
       answers,
       partial,
     };
@@ -327,6 +421,14 @@ function isLodgingKindRefinement(text: string): boolean {
 export function isLocalDiscoveryRefinement(message: string): boolean {
   const text = message.trim();
   if (!text) {
+    return false;
+  }
+  const intent = classifyContextConditionAnchorRequest(text);
+  const hasNewSearchCue = /주변|근처|찾|검색|추천|배치|nearby|search/iu.test(text);
+  if (hasNewSearchCue && (intent.lodgingSimilar || intent.eateryNearby)) {
+    return false;
+  }
+  if (isAmbiguousDiscoveryIntent(text)) {
     return false;
   }
   return Boolean(

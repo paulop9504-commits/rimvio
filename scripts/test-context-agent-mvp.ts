@@ -7,7 +7,7 @@ import {
   resolveLocalDiscoveryAction,
 } from "../lib/globe/context-condition-ai/resolve-local-discovery-action";
 import { isAlternatePlaceSearch } from "../lib/globe/context-condition-ai/is-alternate-place-search";
-import { isCrossDomainDiscoverySearch } from "../lib/globe/context-condition-ai/is-cross-domain-discovery-search";
+import { isCrossDomainDiscoverySearch, isAmbiguousDiscoveryIntent, isFollowUpDiscoveryTurn } from "../lib/globe/context-condition-ai/is-cross-domain-discovery-search";
 import { parseCuisineCandidates } from "../lib/globe/context-condition-ai/parse-cuisine-candidates";
 import { resolveCicadaAgentPhase } from "../lib/globe/context-agent/resolve-cicada-agent-phase";
 import { resolveContextAgentZeroPrompt } from "../lib/globe/context-agent/resolve-context-agent-zero-prompt";
@@ -64,6 +64,50 @@ assert.equal(isAlternatePlaceSearch("다른 곳 보여줘"), true);
 const eateryOnly = [{ kind: "eatery" as const, title: "A", reasonKo: "r", rank: 1, placeId: "e1", lat: 1, lng: 1 }];
 assert.equal(isCrossDomainDiscoverySearch("주변 호텔", eateryOnly), true);
 assert.equal(isCrossDomainDiscoverySearch("더 가까운 곳", eateryOnly), false);
+assert.equal(isFollowUpDiscoveryTurn("주변 호텔", eateryOnly), true);
+assert.equal(isFollowUpDiscoveryTurn("더 가까운 곳", eateryOnly), false);
+assert.equal(isAmbiguousDiscoveryIntent("뭐 있어?"), true);
+assert.equal(isAmbiguousDiscoveryIntent("주변 호텔"), false);
+
+const ambiguousFocus = resolveLocalDiscoveryAction({
+  message: "뭐 있어?",
+  mobilityConfidence: 0.9,
+  budgetConfidence: 0.9,
+  foodConfidence: 0.9,
+  lodgingConfidence: 0.9,
+});
+assert.equal(ambiguousFocus.status, "questions");
+assert.equal(ambiguousFocus.questions[0]?.slot, "resourceFocus");
+
+const hotelAfterAmbiguous = resolveLocalDiscoveryAction({
+  message: "뭐 있어?",
+  answers: { resourceFocus: "hotel" },
+  mobilityConfidence: 0.9,
+  budgetConfidence: 0.9,
+  foodConfidence: 0.9,
+  lodgingConfidence: 0.9,
+  inferredTransport: "walk",
+  inferredBudget: "medium",
+});
+assert.equal(hotelAfterAmbiguous.status, "ready");
+if (hotelAfterAmbiguous.status === "ready") {
+  assert.deepEqual(hotelAfterAmbiguous.spec.resourceTypes, ["hotel"]);
+}
+
+const followUpHotel = resolveLocalDiscoveryAction({
+  message: "주변 호텔",
+  followUpTurn: true,
+  previousSpec: { ...baseSpec, resourceTypes: ["restaurant"], eateryFocus: "라멘" },
+  mobilityConfidence: 0.2,
+  budgetConfidence: 0.2,
+  foodConfidence: 0.9,
+  lodgingConfidence: 0.9,
+});
+assert.equal(followUpHotel.status, "ready");
+if (followUpHotel.status === "ready") {
+  assert.deepEqual(followUpHotel.spec.resourceTypes, ["hotel"]);
+  assert.equal(followUpHotel.spec.transport, "walk");
+}
 
 const lodgingPatch = planSpatialPatch({
   message: "주변 호텔",

@@ -26,7 +26,13 @@ export type LocalDiscoveryActionSpec = {
 export type LocalDiscoveryQuestionChoice = {
   readonly id: string;
   readonly label: string;
-  readonly slot: "transport" | "budget" | "vibe" | "lodgingKind" | "menuFocus";
+  readonly slot:
+    | "transport"
+    | "budget"
+    | "vibe"
+    | "lodgingKind"
+    | "menuFocus"
+    | "resourceFocus";
   readonly value: string;
 };
 
@@ -54,6 +60,9 @@ export type ResolveLocalDiscoveryActionInput = {
   inferredLodgingKind?: LocalDiscoveryLodgingKind | null;
   wantsLodging?: boolean;
   wantsEatery?: boolean;
+  /** Prior scout in this session — inherit transport/budget on follow-up. */
+  previousSpec?: LocalDiscoveryActionSpec | null;
+  followUpTurn?: boolean;
 };
 
 export type ResolveLocalDiscoveryActionResult =
