@@ -277,6 +277,8 @@ import {
 } from "@/lib/globe/brain-surface-progressive-disclosure";
 import { filterVisibleBrainSurfaceCandidates } from "@/lib/globe/brain-surface-marker-media";
 import { filterBrainSurfaceShadowExpandPins } from "@/lib/globe/brain-surface-shadow-expand";
+import { buildBrainSurfaceSpatialTraceArcs } from "@/lib/globe/brain-surface-spatial-trace";
+import type { GlobeTripArc } from "@/lib/globe/project-trip-leg-arcs";
 import { BRAIN_SURFACE_DOCK_PIN_VIEWPORT_Y } from "@/lib/globe/brain-surface-dock-layout";
 import { computeLodgingDiscoveryBounds } from "@/lib/globe/lodging/compute-lodging-discovery-bounds";
 import {
@@ -1219,6 +1221,38 @@ function GlobeHomeBody() {
     passiveBrainSurfaceFamily,
     visibleBrainSurfaceCandidates,
   ]);
+
+  const brainSurfaceTraceArcs = useMemo((): readonly GlobeTripArc[] => {
+    if (!brainSurfaceShadowExpanded || !activeBrainSurfaceCandidate?.clusterId) {
+      return [];
+    }
+    const root = projectedBrainSurfaceCandidates.find(
+      (row) => row.anchorKind === "video_root",
+    );
+    if (!root) {
+      return [];
+    }
+    const places = projectedBrainSurfaceCandidates.filter(
+      (row) => row.anchorKind === "inferred_place",
+    );
+    return buildBrainSurfaceSpatialTraceArcs({
+      root,
+      places,
+      clusterId: activeBrainSurfaceCandidate.clusterId,
+    });
+  }, [
+    activeBrainSurfaceCandidate?.clusterId,
+    brainSurfaceShadowExpanded,
+    projectedBrainSurfaceCandidates,
+  ]);
+
+  const brainSurfaceTracePlaces = useMemo(
+    () =>
+      brainSurfaceShadowExpanded
+        ? projectedBrainSurfaceCandidates.filter((row) => row.markerStyle === "trace")
+        : [],
+    [brainSurfaceShadowExpanded, projectedBrainSurfaceCandidates],
+  );
 
   const brainSurfaceConnectRelated = useMemo(() => {
     if (!activeBrainSurfaceCandidate) {
@@ -3030,6 +3064,19 @@ function GlobeHomeBody() {
     [bindContextAgentToEventId, openContextByEventId],
   );
 
+  /** Sidebar preview — fly to context without opening bridge sheet. */
+  const previewContextEntry = useCallback(
+    (entry: GlobeContextTimelineEntry) => {
+      if (readGlobeContextAgentSession().phase === "arming") {
+        void bindContextAgentToEventId(entry.eventId);
+        return;
+      }
+      setBrainProjectionEventId(null);
+      void focusContextByEventId(entry.eventId, { openSheet: false });
+    },
+    [bindContextAgentToEventId, focusContextByEventId],
+  );
+
   const bindContextAgentToEntry = useCallback(
     async (entry: GlobeContextTimelineEntry) => {
       await bindContextAgentToEventId(entry.eventId);
@@ -3977,6 +4024,7 @@ function GlobeHomeBody() {
         lodgingDiscoveryCards={lodgingDiscovery.cardByResourceId}
         eateryDiscoveryCards={eateryDiscovery.cardByResourceId}
         brainSurfaceMarkers={brainSurfaceVisible ? projectedBrainSurfaceCandidates : []}
+        brainSurfaceTraceArcs={brainSurfaceTraceArcs}
         onBrainSurfaceMarkerPress={handleBrainSurfaceMarkerPress}
         contextConditionDiscoveryOverlay={contextConditionDiscoveryOverlay}
         contextAgentPickMode={contextAgentSession.phase === "arming"}
@@ -4056,6 +4104,8 @@ function GlobeHomeBody() {
           }
           onClose={dismissBrainSurfacePreview}
           globeRef={globeRef}
+          mapExpanded={brainSurfaceShadowExpanded}
+          tracePlaces={brainSurfaceTracePlaces}
         />
       ) : null}
       {showBrainSurfaceDetailChrome ? (
@@ -4272,7 +4322,7 @@ function GlobeHomeBody() {
         onCreatePhoto={openPhotoPicker}
         onOpenList={() => setListOpen(true)}
         onOpenManage={() => setManageOpen(true)}
-        onSelectContext={openContextEntry}
+        onSelectContext={previewContextEntry}
         onAgentContextPick={bindContextAgentToEntry}
         contextAgentArming={contextAgentSession.phase === "arming"}
         onContextAgentBind={

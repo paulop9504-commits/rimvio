@@ -9,7 +9,11 @@ import { filterBrainSurfaceMapPinCandidates } from "@/lib/globe/brain-surface-ma
 import {
   matchBrainSurfaceShadowExpandPin,
 } from "@/lib/globe/brain-surface-shadow-expand";
-import { layoutGeoGroupedCalloutMarkers } from "@/lib/globe/layout-geo-grouped-callout-markers";
+import {
+  pickBrainSurfaceSpatialTracePlaces,
+  resolveBrainSurfaceSpatialTraceRoot,
+  styleBrainSurfaceSpatialTraceMarkers,
+} from "@/lib/globe/brain-surface-spatial-trace";
 import type { BrainSurfaceProjectionCandidate } from "@/lib/situation-projection/brain-surface-types";
 
 function hasRealCoords(candidate: BrainSurfaceProjectionCandidate): boolean {
@@ -102,19 +106,42 @@ export function resolveBrainSurfaceMapMarkers(input: {
   const guideId = input.videoGuideNodeId?.trim() ?? null;
 
   if (input.shadowExpanded && clusterId) {
-    const inferred = visibleCandidates(
-      input.candidates.filter((row) =>
-        isShadowExpandedMapPin(row, clusterId, guideId),
-      ),
+    const pool = input.candidates;
+    const inferred = pool.filter(
+      (row) =>
+        isShadowExpandedMapPin(row, clusterId, guideId) &&
+        row.anchorKind === "inferred_place" &&
+        hasRealCoords(row),
     );
-    if (inferred.length === 0) {
-      return [];
+    const root = pool.find(
+      (row) =>
+        row.anchorKind === "video_root" &&
+        row.clusterId === clusterId &&
+        (!guideId ||
+          row.sourceGuideNodeId === guideId ||
+          row.parentGuideNodeId === guideId),
+    );
+    if (!root) {
+      if (inferred.length === 0) {
+        return [];
+      }
+      return styleBrainSurfaceSpatialTraceMarkers(inferred.slice(0, 4), activeId);
     }
 
-    return styleCalloutMarkers(
-      layoutGeoGroupedCalloutMarkers(inferred.slice(0, 6)),
-      activeId,
-    );
+    const traceRoot = resolveBrainSurfaceSpatialTraceRoot({
+      root,
+      hubLat: input.hubLat,
+      hubLng: input.hubLng,
+    });
+    const tracePlaces = pickBrainSurfaceSpatialTracePlaces({
+      root: traceRoot,
+      inferred,
+    });
+    const chain = [traceRoot, ...tracePlaces];
+    if (chain.length === 0) {
+      return [];
+    }
+    return styleBrainSurfaceSpatialTraceMarkers(chain, activeId);
   }
 
   const pool = visibleCandidates(input.candidates);

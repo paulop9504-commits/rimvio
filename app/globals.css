@@ -4143,6 +4143,54 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   margin-top: 0.08rem;
 }
 
+.rimvio-globe-brain-surface-marker--trace {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 0.28rem;
+  width: auto;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+.rimvio-globe-brain-surface-marker--trace .rimvio-globe-lodging-marker__discovery-pill,
+.rimvio-globe-brain-surface-marker--trace .rimvio-globe-lodging-marker__fallback {
+  display: none;
+}
+
+.rimvio-globe-brain-surface-marker__trace-label {
+  max-width: 6.5rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  padding: 0.18rem 0.5rem;
+  font-size: 0.58rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #0f172a;
+  text-align: center;
+  box-shadow:
+    0 4px 14px rgba(15, 23, 42, 0.14),
+    0 0 0 1px rgba(15, 23, 42, 0.06);
+  backdrop-filter: blur(10px);
+}
+
+.rimvio-globe-brain-surface-marker__trace-dot {
+  width: 0.52rem;
+  height: 0.52rem;
+  border: 2px solid #fff;
+  background: #0071e3;
+  box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.24);
+}
+
+.rimvio-globe-brain-surface-marker__trace-dot--root {
+  width: 0.62rem;
+  height: 0.62rem;
+  background: #7c3aed;
+  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.24);
+}
+
 .rimvio-globe-lodging-marker__discovery-pill {
   display: flex;
   flex-direction: column;

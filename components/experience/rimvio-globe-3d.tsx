@@ -765,7 +765,10 @@ export const RimvioGlobe3D = memo(
         .arcColor((arc: object) => (arc as GlobeTripArc).color)
         .arcAltitude((arc: object) => {
           const row = arc as GlobeTripArc;
-          if (row.id.startsWith("ctxcond-route:")) {
+          if (
+            row.id.startsWith("ctxcond-route:") ||
+            row.id.startsWith("brain-trace:")
+          ) {
             return resolveLocalDiscoveryRouteArcAltitude(row);
           }
           return resolveTripArcAltitude(row);

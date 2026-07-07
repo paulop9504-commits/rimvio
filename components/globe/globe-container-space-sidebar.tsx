@@ -284,26 +284,25 @@ export function GlobeContainerSpaceSidebar({
   }, []);
 
   useEffect(() => {
-    return subscribeGlobeContextAgent((detail) => {
+    const syncAgentSession = (detail: ReturnType<typeof readGlobeContextAgentSession>) => {
       setAgentArming(detail.phase === "arming");
       setAgentPickMode(detail.phase === "arming");
-    });
+    };
+    syncAgentSession(readGlobeContextAgentSession());
+    return subscribeGlobeContextAgent(syncAgentSession);
   }, []);
 
   useEffect(() => {
     if (!open) {
-      if (
-        readGlobeContextAgentSession().phase === "arming" &&
-        !pendingAgentBindRef.current
-      ) {
-        cancelGlobeContextAgentArm();
-      }
       setQuery("");
       setSelectMode(false);
       setSelected(new Set());
       setDetailEntry(null);
       return;
     }
+    const session = readGlobeContextAgentSession();
+    setAgentArming(session.phase === "arming");
+    setAgentPickMode(session.phase === "arming");
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
@@ -443,27 +442,27 @@ export function GlobeContainerSpaceSidebar({
       setAgentPickMode(false);
       setDetailEntry(null);
       bindGlobeContextAgent(eventId);
+      onOpenChange(false);
       try {
         await onAgentContextPick(entry);
       } finally {
         pendingAgentBindRef.current = false;
         agentPressBusyRef.current = false;
-        onOpenChange(false);
       }
     },
     [onAgentContextPick, onOpenChange],
   );
 
   const handleSelect = (entry: GlobeContextTimelineEntry) => {
-    if (readGlobeContextAgentSession().phase === "arming" || agentPickMode) {
+    if (isAgentArming) {
       void commitContextAgentBind(entry);
       return;
     }
     if (selectMode) {
       return;
     }
-    onSelect(entry);
     setDetailEntry(entry);
+    onSelect(entry);
   };
 
   const detailEvent = useMemo(() => {
@@ -493,7 +492,6 @@ export function GlobeContainerSpaceSidebar({
     setDetailEntry(null);
     armGlobeContextAgent();
     setAgentPickMode(true);
-    toast.message(copy.globe.containerSpaceAgentPickHint);
   }, [
     commitContextAgentBind,
     detailEntry,
@@ -673,7 +671,7 @@ export function GlobeContainerSpaceSidebar({
               </button>
               ) : isAgentArming ? (
                 <p className="mt-3 px-1 text-[12px] leading-relaxed text-[#7eb6ff]">
-                  {copy.globe.containerSpaceAgentPickHint}
+                  {copy.globe.containerSpaceAgentSidebarPickHint}
                 </p>
               ) : (
                 <p className="mt-3 px-1 text-[12px] leading-relaxed text-white/50">

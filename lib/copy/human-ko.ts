@@ -210,6 +210,7 @@ export const copy = {
     containerSpaceAgentArming: "취소",
     containerSpaceAgentPickHint:
       "어시스턴트를 적용할 맥락 하나를 선택해 주세요.",
+    containerSpaceAgentSidebarPickHint: "아래 맥락을 탭하면 바로 연결돼요",
     containerSpaceAgentBindDetail: "이 맥락에 어시스턴트",
     contextAgentMapButtonAria: "맥락 어시스턴트",
     contextAgentStackPickSubtitle: "어시스턴트를 붙일 맥락을 고르세요",

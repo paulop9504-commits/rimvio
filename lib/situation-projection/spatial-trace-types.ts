@@ -34,7 +34,7 @@ export const BRAIN_SURFACE_ANCHOR_KINDS = [
 export type BrainSurfaceAnchorKind =
   (typeof BRAIN_SURFACE_ANCHOR_KINDS)[number];
 
-export const BRAIN_SURFACE_MARKER_STYLES = ["solid", "dashed", "story"] as const;
+export const BRAIN_SURFACE_MARKER_STYLES = ["solid", "dashed", "story", "trace"] as const;
 
 export type BrainSurfaceMarkerStyle =
   (typeof BRAIN_SURFACE_MARKER_STYLES)[number];

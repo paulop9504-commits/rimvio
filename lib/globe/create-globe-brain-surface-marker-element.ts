@@ -302,6 +302,30 @@ export function createGlobeBrainSurfaceMarkerElement(
     return root;
   }
 
+  const isTraceMarker = candidate.markerStyle === "trace";
+  if (isTraceMarker) {
+    root.classList.add("rimvio-globe-brain-surface-marker--trace");
+    const label = document.createElement("span");
+    label.className = "rimvio-globe-brain-surface-marker__trace-label";
+    label.textContent = candidate.label.trim() || familyCategoryLabel(candidate.family);
+    root.appendChild(label);
+    const dot = document.createElement("span");
+    dot.className =
+      "rimvio-globe-lodging-marker__dot rimvio-globe-brain-surface-marker__trace-dot";
+    if (candidate.anchorKind === "video_root") {
+      dot.classList.add("rimvio-globe-brain-surface-marker__trace-dot--root");
+    }
+    root.appendChild(dot);
+    root.setAttribute("aria-label", `${candidate.placeLabel} · ${candidate.label}`);
+    root.addEventListener("pointerdown", (event) => event.stopPropagation());
+    root.addEventListener("click", (event) => {
+      event.stopPropagation();
+      event.preventDefault();
+      handlers.onPress(candidate.id);
+    });
+    return root;
+  }
+
   const callout = readCalloutOffset(candidate);
   if (callout) {
     root.classList.add("rimvio-globe-brain-surface-marker--callout");

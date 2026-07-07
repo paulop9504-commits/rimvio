@@ -58,6 +58,8 @@ const inferred = stub({
   label: "신주쿠 라멘",
   markerThumbnailUrl: "https://example.com/ramen.jpg",
   family: "eatery",
+  confidence: 0.84,
+  inferenceLabelKo: "영상 12분대",
 });
 const video = stub({
   id: "video",
@@ -112,15 +114,18 @@ assert.equal(selected.length, 1);
 assert.equal(selected[0]?.id, "micro");
 
 const shadow = resolveBrainSurfaceMapMarkers({
-  candidates: [inferred],
+  candidates: [video, inferred],
   shadowExpanded: true,
   videoClusterId: "media:guide-1",
   videoGuideNodeId: "guide-1",
+  hubLat: 35.68,
+  hubLng: 139.76,
   activeCandidateId: "inferred",
 });
-assert.equal(shadow.length, 1);
-assert.equal(shadow[0]?.id, "inferred");
-assert.equal(shadow[0]?.lat, 35.68);
+assert.equal(shadow.length, 2);
+assert.equal(shadow[0]?.id, "video");
+assert.equal(shadow[1]?.id, "inferred");
+assert.ok(shadow.every((row) => row.markerStyle === "trace"));
 assert.equal(shadow[0]?.calloutOffsetX ?? null, null);
 
 console.log("test-resolve-brain-surface-map-markers: ok");

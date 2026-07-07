@@ -220,6 +220,8 @@ export type RimvioGlobeHubProps = {
   layerMode?: GlobeLayerMode;
   brainSurfaceMarkers?: readonly BrainSurfaceProjectionCandidate[];
   onBrainSurfaceMarkerPress?: (candidateId: string) => void;
+  /** Video spatial trace — hub lines between root and inferred places. */
+  brainSurfaceTraceArcs?: readonly GlobeTripArc[];
   /** 맥락 어시스턴트 pick — globe pan/zoom stays live on pins. */
   contextAgentPickMode?: boolean;
 };
@@ -259,6 +261,8 @@ type RimvioGlobeHubBodyProps = {
   eateryDiscoveryCards?: Readonly<Record<string, GlobeEateryDiscoveryCard>> | null;
   brainSurfaceMarkers?: readonly BrainSurfaceProjectionCandidate[];
   onBrainSurfaceMarkerPress?: (candidateId: string) => void;
+  /** Video spatial trace — hub lines between root and inferred places. */
+  brainSurfaceTraceArcs?: readonly GlobeTripArc[];
   /** 맥락 어시스턴트 pick — globe pan/zoom stays live on pins. */
   contextAgentPickMode?: boolean;
 };
@@ -290,6 +294,7 @@ const RimvioGlobeHubBody = memo(
       eateryDiscoveryCards = null,
       brainSurfaceMarkers = [],
       onBrainSurfaceMarkerPress,
+      brainSurfaceTraceArcs = [],
       contextAgentPickMode = false,
     },
     ref,
@@ -472,7 +477,7 @@ const RimvioGlobeHubBody = memo(
           showBackgroundTripArcs: false,
         });
         const discoveryArcs = gatedDiscoveryOverlay?.routeArcs ?? [];
-        const merged = [...discoveryArcs, ...eventArcs];
+        const merged = [...brainSurfaceTraceArcs, ...discoveryArcs, ...eventArcs];
         if (realityBridgeArcs.length > 0) {
           return [...realityBridgeArcs, ...merged];
         }
@@ -484,6 +489,7 @@ const RimvioGlobeHubBody = memo(
         focusedContextEventId,
         realityBridgeArcs,
         gatedDiscoveryOverlay,
+        brainSurfaceTraceArcs,
       ],
     );
     const lodgingGlobeMarkers = useMemo(() => {
@@ -1015,6 +1021,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
   eateryDiscoveryCards = null,
   brainSurfaceMarkers = [],
   onBrainSurfaceMarkerPress,
+  brainSurfaceTraceArcs = [],
   realityBridgeArcs = [],
   contextConditionDiscoveryOverlay = null,
   contextAgentPickMode = false,
@@ -1199,6 +1206,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
       eateryDiscoveryCards={eateryDiscoveryCards}
       brainSurfaceMarkers={brainSurfaceMarkers}
       onBrainSurfaceMarkerPress={onBrainSurfaceMarkerPress}
+      brainSurfaceTraceArcs={brainSurfaceTraceArcs}
       contextAgentPickMode={contextAgentPickMode}
     />
   );
