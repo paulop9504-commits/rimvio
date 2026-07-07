@@ -106,6 +106,10 @@ function buildOpener(topic: SmallTalkTopic, context: SmallTalkContext): string {
       return hi;
     }
     case "weather": {
+      if (status.weatherKo) {
+        const where = status.regionKo ? `${status.regionKo}은 ` : "지금 ";
+        return `${where}${status.weatherKo}네요.`;
+      }
       const bySeason: Record<string, string> = {
         summer: "여름이라 그런지 날씨 얘기가 절로 나오죠.",
         winter: "겨울이라 날씨에 더 신경 쓰이죠.",

@@ -32,6 +32,36 @@ export type SmallTalkGeneration = {
   readonly source: "llm" | "deterministic" | "learned";
 };
 
+/** Short KO weather line for the small-talk `status.weatherKo` slot. */
+async function fetchWeatherKo(region: string): Promise<string | null> {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  try {
+    const response = await fetch(
+      `/api/context/weather?location=${encodeURIComponent(region)}`,
+    );
+    if (!response.ok) {
+      return null;
+    }
+    const w = (await response.json()) as {
+      summary?: unknown;
+      condition_label?: unknown;
+      temp_c?: unknown;
+    };
+    const label =
+      (typeof w.summary === "string" && w.summary.trim()) ||
+      (typeof w.condition_label === "string" && w.condition_label.trim()) ||
+      "";
+    if (!label) {
+      return null;
+    }
+    return typeof w.temp_c === "number" ? `${label} ${w.temp_c}도` : label;
+  } catch {
+    return null;
+  }
+}
+
 /** Topics that mean "the user changed subject", not "here's the definition". */
 const NON_DEFINITION_TOPICS: ReadonlySet<SmallTalkTopic> = new Set([
   "greeting",
@@ -94,10 +124,16 @@ export async function generateSmallTalkReply(input: {
     setPendingSlangLearn(scopeId, extractUnknownSlangTerm(text));
   }
 
+  // Real-time weather for the anchor region — keyless Open-Meteo under the hood.
+  const region = input.region?.trim() || null;
+  const weatherKo =
+    input.weatherKo?.trim() ||
+    (region ? await fetchWeatherKo(region) : null);
+
   const context = extractSmallTalkContext({
     text,
     region: input.region,
-    weatherKo: input.weatherKo,
+    weatherKo,
     history: input.history,
     recentSearchKo: input.recentSearchKo,
     now: input.now,
