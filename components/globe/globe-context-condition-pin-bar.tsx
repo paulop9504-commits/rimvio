@@ -43,10 +43,7 @@ import {
 import { assessIntentConvergence } from "@/lib/globe/context-condition-ai/intent-convergence/assess-intent-convergence";
 import { buildConvergenceQuestion } from "@/lib/globe/context-condition-ai/intent-convergence/build-convergence-question";
 import { buildActivityNextHopQuestion } from "@/lib/globe/context-condition-ai/intent-convergence/build-next-hop-question";
-import {
-  resolveSmallTalk,
-  smallTalkFallbackReply,
-} from "@/lib/globe/context-condition-ai/resolve-small-talk";
+import { generateSmallTalkReply } from "@/lib/globe/context-condition-ai/small-talk/generate-small-talk-reply";
 import { classifyInput } from "@/lib/globe/context-condition-ai/dispatch/classify-input";
 import {
   isFollowUpDiscoveryTurn,
@@ -657,7 +654,8 @@ export const GlobeContextConditionPinBar = forwardRef<
       // the convergence/retrieval pipeline — Chat gets a short reply, Task tries
       // the action executor. This is what stops "ㅎㅇ" from forcing a place search.
       if (text) {
-        const history = readContextAgentComposeThread(contextEventId)
+        const rawTurns = readContextAgentComposeThread(contextEventId).slice(-8);
+        const history = rawTurns
           .slice(-6)
           .map((turn) => `${turn.role}: ${turn.text}`);
         const classification = await classifyInput({
@@ -667,13 +665,19 @@ export const GlobeContextConditionPinBar = forwardRef<
           hasActiveResults: lastRecommendations.length > 0,
         });
         if (classification.category === "chat") {
-          const reply =
-            resolveSmallTalk({ text, region: anchorPlaceName }) ??
-            smallTalkFallbackReply(anchorPlaceName);
+          // Context-aware small talk: extract time/status/history/tone/persona
+          // variables and compose a situational, question-ending reply (LLM when
+          // available, deterministic composer otherwise).
+          const small = await generateSmallTalkReply({
+            text,
+            region: anchorPlaceName,
+            history: rawTurns.map((turn) => ({ role: turn.role, text: turn.text })),
+            recentSearchKo: lastSpec?.activityFocus ?? null,
+          });
           appendContextAgentComposeTurn(contextEventId, {
             role: "assistant",
             kind: "text",
-            text: reply.replyKo,
+            text: small.replyKo,
           });
           setMessage("");
           setContextAgentSessionPhase("awaiting_human");

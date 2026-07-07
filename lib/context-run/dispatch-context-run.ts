@@ -19,7 +19,11 @@ import {
   planTextIngestFallback,
 } from "@/lib/context-run/plan-context-run";
 import { ensureRunState, touchRunStateNode } from "@/lib/context-run/run-state-store";
-import { appendGlobeChatTextMessage } from "@/lib/globe/chat/globe-chat-session-store";
+import {
+  appendGlobeChatTextMessage,
+  readGlobeChatMessages,
+} from "@/lib/globe/chat/globe-chat-session-store";
+import { generateSmallTalkReply } from "@/lib/globe/context-condition-ai/small-talk/generate-small-talk-reply";
 import { ensureGlobeChatGraphId } from "@/lib/globe/chat/ensure-globe-chat-graph-id";
 import {
   buildComposerGraphId,
@@ -184,12 +188,29 @@ async function executeContextRunPlan(
 
   switch (plan.kind) {
     case "small_talk": {
-      // Chat lane: reply conversationally, run no search/ingest. The user turn
-      // was already appended above; add the short assistant reply.
+      // Chat lane: reply conversationally, run no search/ingest. Compose a
+      // context-aware reply (time/status/history/tone/persona → situational line
+      // + open question), LLM when available, deterministic otherwise. The user
+      // turn was already appended above.
+      const priorTurns = readGlobeChatMessages(graphId)
+        .filter((m): m is Extract<typeof m, { kind: "text" }> => m.kind === "text")
+        .map((m) => ({ role: m.role, text: m.text }));
+      // Drop the just-appended current user turn so history reflects the past.
+      const currentText = ingress.kind === "text" ? ingress.text.trim() : "";
+      const history =
+        priorTurns.length > 0 &&
+        priorTurns[priorTurns.length - 1]?.role === "user" &&
+        priorTurns[priorTurns.length - 1]?.text === currentText
+          ? priorTurns.slice(0, -1)
+          : priorTurns;
+      const small = await generateSmallTalkReply({
+        text: currentText || bound.goalKo,
+        history,
+      });
       appendGlobeChatTextMessage({
         graphId,
         role: "assistant",
-        text: plan.smallTalkReplyKo ?? "네, 편하게 말해줘요 🙂",
+        text: small.replyKo || plan.smallTalkReplyKo || "네, 편하게 말해줘요 🙂",
       });
       return { graphId, status: "done", planKind: plan.kind };
     }

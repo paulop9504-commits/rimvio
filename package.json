@@ -49,7 +49,7 @@
     "test:context-run-surface": "npx tsx scripts/test-context-run-surface.ts",
     "test:context-run-decision-surface": "npx tsx scripts/test-context-run-decision-surface.ts",
     "test:dispatch-context-run-composer": "npx tsx scripts/test-dispatch-context-run-composer.ts",
-    "test:small-talk": "npx tsx scripts/test-resolve-small-talk.ts",
+    "test:small-talk": "npx tsx scripts/test-resolve-small-talk.ts && npx tsx scripts/test-small-talk-context.ts",
     "test:mention-context-run": "npx tsx scripts/test-mention-context-run.ts",
     "test:spine-mention-prep-e2e": "npx tsx scripts/test-spine-mention-prep-e2e.ts",
     "test:portal-compose-run": "npx tsx scripts/test-portal-compose-run.ts",
