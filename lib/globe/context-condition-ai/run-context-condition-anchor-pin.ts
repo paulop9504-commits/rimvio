@@ -5,6 +5,7 @@ import {
 } from "@/lib/experience-context/read-client-master-orchestrator-context";
 import { buildUnifiedExperienceContext } from "@/lib/experience-context/build-unified-experience-context";
 import { copy } from "@/lib/copy/human-ko";
+import { toReadablePlaceLabel } from "@/lib/globe/readable-place-label";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 import {
   classifyContextConditionAnchorRequest,
@@ -71,20 +72,38 @@ function filterLodgingByBudget(
   return sorted.slice(start, start + Math.max(4, Math.ceil(sorted.length * 0.5)));
 }
 
+/** Strip command/filler tails so the local search query stays a clean noun. */
+function stripSearchCommandNoise(text: string): string {
+  return text
+    .replace(
+      /(?:찾아\s*줘|찾아줘|찾아|찾기|추천\s*해\s*줘|추천해줘|추천|검색\s*해\s*줘|검색|알려\s*줘|알려줘|좀|해\s*줘|해줘|보여\s*줘|보여줘)/giu,
+      "",
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function resolveContextConditionEateryQuery(input: {
   userMessage?: string | null;
   anchorName: string;
   vibe: LocalDiscoveryVibe;
   eateryFocus?: string | null;
 }): string {
+  const area = input.anchorName.trim() || "근처";
   if (input.eateryFocus?.trim()) {
-    const area = input.anchorName.trim() || "근처";
     return `${area} ${input.eateryFocus.trim()}`;
   }
-  if (input.userMessage?.trim()) {
-    return input.userMessage.trim();
+  const raw = input.userMessage?.trim();
+  if (raw) {
+    // Cafe intent must search cafes, not generic restaurants.
+    if (/카페|커피|coffee|cafe/iu.test(raw)) {
+      return `${area} 카페`;
+    }
+    const cleaned = stripSearchCommandNoise(raw);
+    if (cleaned.length >= 2) {
+      return cleaned;
+    }
   }
-  const area = input.anchorName.trim() || "근처";
   switch (input.vibe) {
     case "local":
       return `${area} 현지 맛집`;
@@ -103,11 +122,16 @@ function buildSummaryKo(input: {
   eateryCount: number;
   radiusM: number;
   eateryFocus?: string | null;
+  activityLabelKo?: string | null;
 }): string {
   const { lodgingCount, eateryCount, radiusM, eateryFocus } = input;
   const total = lodgingCount + eateryCount;
   if (total <= 0) {
     return copy.globe.contextConditionPinEmpty;
+  }
+  // activity/amenity results ride the eatery channel — label them correctly.
+  if (input.activityLabelKo?.trim() && eateryCount > 0 && lodgingCount === 0) {
+    return `${input.activityLabelKo.trim()} ${eateryCount}곳을 지도에 표시했어요`;
   }
   if (eateryCount > 0 && lodgingCount === 0 && eateryFocus?.trim()) {
     return copy.globe.cicadaAgentVisualizeSummary(eateryFocus.trim(), eateryCount);
@@ -125,12 +149,14 @@ function buildSummaryKo(input: {
 function buildRecommendations(input: {
   lodgingScored: ReturnType<typeof scoreLodgingRecommendations>;
   eateryScored: ReturnType<typeof scoreEateryRecommendations>;
+  /** When set, eatery-channel rows are activity/amenity places, not restaurants. */
+  activityKind?: "activity" | "amenity" | null;
 }): ContextConditionRecommendation[] {
   const rows: ContextConditionRecommendation[] = [];
   for (const [index, row] of input.lodgingScored.entries()) {
     rows.push({
       kind: "lodging",
-      title: row.row.name?.trim() || row.row.placeId,
+      title: toReadablePlaceLabel(row.row.name) || row.row.placeId,
       reasonKo: row.reasonKo,
       rank: index + 1,
       placeId: row.row.placeId,
@@ -138,10 +164,11 @@ function buildRecommendations(input: {
       lng: row.row.lng,
     });
   }
+  const eateryKind = input.activityKind ?? "eatery";
   for (const [index, row] of input.eateryScored.entries()) {
     rows.push({
-      kind: "eatery",
-      title: row.row.name?.trim() || row.row.placeId,
+      kind: eateryKind,
+      title: toReadablePlaceLabel(row.row.name) || row.row.placeId,
       reasonKo: row.reasonKo,
       rank: index + 1,
       placeId: row.row.placeId,
@@ -185,14 +212,26 @@ export async function runContextConditionAnchorPin(
   });
 
   const patchScope = input.patchPlan?.scope ?? "all";
+  const activityKind: "activity" | "amenity" | null =
+    spec.resourceTypes.includes("amenity")
+      ? "amenity"
+      : spec.resourceTypes.includes("activity")
+        ? "activity"
+        : null;
+  const wantsActivity = activityKind !== null && patchScope !== "lodging_only";
   const wantsLodging =
+    !wantsActivity &&
     patchScope !== "eatery_only" &&
     spec.resourceTypes.includes("hotel") &&
     intent.lodgingSimilar !== false;
   const wantsEatery =
+    !wantsActivity &&
     patchScope !== "lodging_only" &&
     spec.resourceTypes.includes("restaurant") &&
     intent.eateryNearby !== false;
+  const activityLabelKo = wantsActivity
+    ? spec.activityFocus?.trim() || (activityKind === "amenity" ? "장소" : "놀거리")
+    : null;
 
   const keptRows =
     input.keptRecommendations && input.keptRecommendations.length > 0
@@ -266,6 +305,81 @@ export async function runContextConditionAnchorPin(
     eateryRows = eateryScored.map((row) => row.row);
   }
 
+  if (wantsActivity) {
+    input.onProcessPhase?.("analyzing");
+    const area = input.anchorPlaceName.trim() || "근처";
+    const focus = spec.activityFocus?.trim();
+    // activityFocus from a convergence chip already carries the region — avoid
+    // prepending it twice (e.g. "오사카 오사카 테마파크").
+    const withArea = (term: string): string =>
+      term.includes(area) ? term : `${area} ${term}`.trim();
+    const activityQuery = focus
+      ? withArea(focus)
+      : `${area} ${activityKind === "amenity" ? "장소" : "놀거리"}`;
+    // Amenities (약국·편의점) are truly nearby; activities/landmarks (유니버설 등)
+    // are city-wide and can sit far from the lodging anchor. Don't clip them.
+    const isAmenity = activityKind === "amenity";
+    const activityRadiusM = isAmenity ? radiusM : 50000;
+
+    // Trigger → cluster: a chip answer activates related nodes (도파민 →
+    // 테마파크·놀이공원·포토스팟). Multi-query them + the focus and merge, so the
+    // map shows one reconstructed context (유니버설 + 주변 놀거리), not one keyword.
+    const cluster = isAmenity
+      ? []
+      : (spec.activityCluster ?? [])
+          .map((node) => node.trim())
+          .filter((node) => node.length > 0);
+    const queries = Array.from(
+      new Set([activityQuery, ...cluster.map((node) => withArea(node))]),
+    ).slice(0, 4);
+
+    const loadedBatches = await Promise.all(
+      queries.map((query) =>
+        loadEateryInventoryRows({
+          event,
+          message: query,
+          lat: input.anchorLat,
+          lng: input.anchorLng,
+          maxResults: 12,
+          radiusM: activityRadiusM,
+        }),
+      ),
+    );
+    const mergedById = new Map<string, (typeof loadedBatches)[number]["rows"][number]>();
+    for (const batch of loadedBatches) {
+      for (const row of batch.rows) {
+        if (!mergedById.has(row.placeId)) {
+          mergedById.set(row.placeId, row);
+        }
+      }
+    }
+    const mergedRows = [...mergedById.values()];
+    eaterySource =
+      loadedBatches.find((batch) => batch.source && batch.source !== "mock")
+        ?.source ??
+      loadedBatches[0]?.source ??
+      null;
+
+    // Focus tokens minus the region word (so "오사카" doesn't match every row),
+    // plus cluster nodes — any related node in the name boosts relevance.
+    const focusTail = focus ? focus.replace(area, "").trim() || focus : null;
+    const focusMatch = isAmenity
+      ? null
+      : [focusTail, ...cluster].filter(Boolean).join(" ") || null;
+    eateryScored = scoreEateryRecommendations({
+      rows: mergedRows,
+      unifiedContext,
+      lat: input.anchorLat,
+      lng: input.anchorLng,
+      context: contextInstance,
+      // Landmark discovery: relevance over proximity so a far exact match
+      // (유니버설 스튜디오) outranks a nearby unrelated café.
+      distanceWeight: isAmenity ? 1 : 0.1,
+      focusMatch,
+    }).slice(0, cluster.length > 0 ? 6 : 4);
+    eateryRows = eateryScored.map((row) => row.row);
+  }
+
   if (lodgingRows.length === 0 && eateryRows.length === 0) {
     return null;
   }
@@ -326,7 +440,11 @@ export async function runContextConditionAnchorPin(
     ...eateryRows.map((row) => ({ lat: row.lat, lng: row.lng })),
   ];
 
-  const recommendations = buildRecommendations({ lodgingScored, eateryScored });
+  const recommendations = buildRecommendations({
+    lodgingScored,
+    eateryScored,
+    activityKind,
+  });
 
   const outcome: ContextConditionAnchorPinOutcome = {
     batchId,
@@ -337,6 +455,7 @@ export async function runContextConditionAnchorPin(
       eateryCount: eateryRows.length,
       radiusM,
       eateryFocus: spec.eateryFocus,
+      activityLabelKo,
     }),
     pinPoints,
     radiusM,

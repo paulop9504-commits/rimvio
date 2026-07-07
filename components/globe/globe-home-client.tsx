@@ -11,7 +11,6 @@ import { GlobeHomeLeftChrome } from "@/components/globe/globe-home-left-chrome";
 import { GlobeContextMapVideoStage } from "@/components/globe/globe-context-map-video-stage";
 import { GlobeContextBrainMapOverlay } from "@/components/globe/globe-context-brain-map-overlay";
 import { GlobeContextBrainNodeCard } from "@/components/globe/globe-context-brain-node-card";
-import { GlobeBrainSurfaceExploreRail } from "@/components/globe/globe-brain-surface-explore-rail";
 import { GlobeBrainSurfaceOntologyPeek } from "@/components/globe/globe-brain-surface-ontology-peek";
 import { GlobeBrainSurfaceVideoChip } from "@/components/globe/globe-brain-surface-video-chip";
 import { GlobeBrainSurfaceFloatingFrame } from "@/components/globe/globe-brain-surface-floating-frame";
@@ -135,6 +134,7 @@ import {
 } from "@/lib/globe/globe-location-prompt-budget";
 import { runSilentPassiveLocationResolves } from "@/lib/globe/passive-context/run-silent-passive-location-resolves";
 import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
+import { materializeGlobeContextAnchorEventFromCluster } from "@/lib/globe/materialize-globe-context-anchor-event";
 import { commitBrainSurfaceMemoPin } from "@/lib/globe/commit-brain-surface-memo-pin";
 import { attachPoolMediaBatch } from "@/lib/media-pool/attach-pool-media-to-event";
 import {
@@ -1271,31 +1271,6 @@ function GlobeHomeBody() {
     activeBrainSurfaceCandidate,
     brainSurfaceBatch?.candidates,
     visibleBrainSurfaceCandidates,
-  ]);
-
-  const brainSurfaceExploreRailCandidates = useMemo(() => {
-    if (brainSurfaceShadowExpanded && activeBrainSurfaceCandidate?.clusterId) {
-      const clusterId = activeBrainSurfaceCandidate.clusterId;
-      const guideId =
-        activeBrainSurfaceCandidate.sourceGuideNodeId?.trim() ??
-        activeBrainSurfaceCandidate.parentGuideNodeId?.trim() ??
-        null;
-      return filterVisibleBrainSurfaceCandidates(
-        filterBrainSurfaceShadowExpandPins(brainSurfaceBatch?.candidates ?? [], {
-          clusterId,
-          guideId,
-        }),
-      ).slice(0, 12);
-    }
-
-    return disclosedBrainSurfaceCandidates.slice(0, 12);
-  }, [
-    activeBrainSurfaceCandidate?.clusterId,
-    activeBrainSurfaceCandidate?.parentGuideNodeId,
-    activeBrainSurfaceCandidate?.sourceGuideNodeId,
-    brainSurfaceBatch?.candidates,
-    brainSurfaceShadowExpanded,
-    disclosedBrainSurfaceCandidates,
   ]);
 
   const activeBrainSurfaceGuide = useMemo(() => {
@@ -2637,13 +2612,22 @@ function GlobeHomeBody() {
       bindGlobeContextAgent(key);
       setStackClusters(null);
       const previewCluster =
-        resolveGlobeContextPinCluster(key) ?? resolveGlobeContextCardPinCluster(key);
+        resolveGlobeContextPinCluster(key) ??
+        resolveGlobeContextCardPinCluster(key) ??
+        clustersRef.current.find((cluster) => cluster.eventId?.trim() === key) ??
+        null;
+      // Any context must be connectable — if the tapped pin has no backing
+      // event/pin (GPS dwell · media cluster · pruned), rebuild one from the
+      // cluster so anchoring never hard-fails with "맥락을 찾지 못했어요".
+      let event =
+        findLifeEventCandidate(key) ?? recoverGlobeContextEventFromPin(key);
+      if (!event && previewCluster) {
+        event = materializeGlobeContextAnchorEventFromCluster(previewCluster);
+      }
       if (previewCluster) {
         snapGlobeToContextAgentAnchor(globeRef, previewCluster);
       }
       openGlobeContextConditionPanel(key);
-      const event =
-        findLifeEventCandidate(key) ?? recoverGlobeContextEventFromPin(key);
       if (event && isLodgingInventoryMisanchored(event)) {
         clearContextConditionLastBatch(key);
       }
@@ -4042,37 +4026,6 @@ function GlobeHomeBody() {
         onClose={() => setBrainProjectionEventId(null)}
         onProjectionReady={launchBrainSurfaceProjection}
       />
-      {brainSurfaceVisible &&
-      !showBrainSurfaceDetailChrome &&
-      !showBrainSurfacePreviewChrome &&
-      brainSurfaceExploreRailCandidates.length > 0 ? (
-        <GlobeBrainSurfaceExploreRail
-          candidates={brainSurfaceExploreRailCandidates}
-          activeCandidateId={
-            brainSurfaceHighlightedInferredId ?? brainSurfaceActiveCandidateId
-          }
-          disclosureStage={
-            brainSurfaceShadowExpanded ? "related" : brainSurfaceDisclosureStage
-          }
-          onSelect={(candidateId) => {
-            if (brainSurfaceDisclosureStage === "core") {
-              handleBrainSurfaceMarkerPress(candidateId);
-              return;
-            }
-            setBrainSurfaceHighlightedInferredId(null);
-            setBrainSurfaceDetailMode(false);
-            handleBrainSurfaceMarkerPress(candidateId);
-          }}
-          className={
-            brainSurfaceDisclosureStage === "detail" ||
-            (brainSurfaceDisclosureStage === "related" &&
-              activeBrainSurfaceCandidate?.anchorKind === "video_root" &&
-              !brainSurfaceShadowExpanded)
-              ? "pointer-events-none bottom-[calc(var(--rimvio-globe-ingest-offset,5.5rem)+0.35rem)] opacity-0"
-              : "bottom-[calc(var(--rimvio-globe-ingest-offset,5.5rem)+0.35rem)]"
-          }
-        />
-      ) : null}
       {showBrainSurfaceDetailChrome && detailDockVideoEmbedSrc ? (
         <GlobeBrainSurfaceVideoChip
           embedSrc={detailDockVideoEmbedSrc}

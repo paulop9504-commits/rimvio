@@ -13,7 +13,7 @@ export type ContextConditionLastBatchWire = {
   radiusM?: number;
   spec?: LocalDiscoveryActionSpec | null;
   recommendations?: readonly {
-    kind: "lodging" | "eatery";
+    kind: "lodging" | "eatery" | "activity" | "amenity";
     title: string;
     reasonKo: string;
     placeId?: string;

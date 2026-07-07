@@ -1885,6 +1885,7 @@ export const copyEn: Copy = {
     contextConditionPinLodgingDone: "Pinned {n} stays on the map",
     contextConditionPinEateryDone: "Pinned {n} eateries on the map",
     contextConditionPinEmpty: "Could not find a fit right now",
+    contextConditionNextHopPrompt: "Want to narrow it down further?",
     contextConditionPinDismiss: "Remove all",
     contextConditionPinBadge: "Fit",
     contextConditionPanelEyebrow: "Context condition",

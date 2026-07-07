@@ -125,7 +125,9 @@ function keptRecommendations(input: {
   }
   const pinned = input.pinnedPlaceIds;
   return input.previousRecommendations.filter((row) => {
-    if (!keep.includes(row.kind)) {
+    // activity/amenity share the eatery spatial channel for patch scoping.
+    const spatialKind = row.kind === "lodging" ? "lodging" : "eatery";
+    if (!keep.includes(spatialKind)) {
       return false;
     }
     if (row.kind === "lodging" && pinned?.lodging) {

@@ -6,6 +6,10 @@ import {
   isActivityDiscoveryQuery,
   isDiscoveryPhrase,
 } from "@/lib/context-resolver/discovery/extract-activity-keyword";
+import {
+  extractPlaceAmenityKeyword,
+  isPlaceAmenityQuery,
+} from "@/lib/context-resolver/discovery/extract-place-amenity-keyword";
 import type { FindPlaceIntent, PlaceDiscoveryCriteria, PlaceVibe } from "@/lib/context-resolver/places/types";
 import { diningSearchLabel } from "@/lib/context-resolver/places/filter-restaurant-candidates";
 
@@ -15,7 +19,7 @@ export type FindCafeEvent = {
   raw_message: string;
 };
 
-export type PlaceDiscoveryCategory = "cafe" | "restaurant" | "activity";
+export type PlaceDiscoveryCategory = "cafe" | "restaurant" | "activity" | "amenity";
 
 export type FindPlaceEvent = {
   intent: FindPlaceIntent;
@@ -23,6 +27,8 @@ export type FindPlaceEvent = {
   vibe: PlaceVibe;
   cuisine: string | null;
   activity: string | null;
+  /** Everyday-amenity keyword (약국·편의점·은행 …) when category === "amenity". */
+  amenity: string | null;
   naverQuery: string;
   anchor: string | null;
   raw_message: string;
@@ -76,6 +82,7 @@ export function isPlaceRecommendationQuery(message: string): boolean {
     BARE_DINING_SEARCH.test(trimmed) ||
     RECOMMEND_THEN_DINING.test(trimmed) ||
     ANCHOR_DINING.test(trimmed) ||
+    isPlaceAmenityQuery(trimmed) ||
     (extractCuisineKeyword(trimmed) !== null &&
       /추천|찾|알려|골라|해\s*줘|검색/u.test(trimmed))
   );
@@ -123,6 +130,12 @@ function buildNaverQuery(
   const anchor = extractAnchor(message);
   const cuisine = extractCuisineKeyword(message);
   const activity = extractActivityKeyword(message);
+
+  if (category === "amenity") {
+    const amenity = extractPlaceAmenityKeyword(message);
+    const label = amenity?.naverLabel ?? "가까운 곳";
+    return anchor ? `${anchor} ${label}` : label;
+  }
 
   if (category === "activity") {
     const label = activityNaverSearchLabel(activity);
@@ -197,6 +210,8 @@ export function parseFindPlaceIntent(message: string): FindPlaceEvent | null {
         !isCafeOnlyCuisine(cuisineKeyword) &&
         /추천|찾|알려|골라|해\s*줘/u.test(trimmed)));
 
+  const amenityMatch = extractPlaceAmenityKeyword(trimmed);
+
   let category: PlaceDiscoveryCategory = "cafe";
   if (activity || isActivityDiscoveryQuery(trimmed)) {
     category = "activity";
@@ -204,6 +219,8 @@ export function parseFindPlaceIntent(message: string): FindPlaceEvent | null {
     category = "restaurant";
   } else if (wantsCafe) {
     category = "cafe";
+  } else if (amenityMatch) {
+    category = "amenity";
   }
 
   const cafeEvent = category === "cafe" ? parseFindCafeIntent(trimmed) : null;
@@ -214,6 +231,7 @@ export function parseFindPlaceIntent(message: string): FindPlaceEvent | null {
     vibe: cafeEvent?.vibe ?? "unknown",
     cuisine: category === "restaurant" ? cuisineKeyword : null,
     activity: category === "activity" ? activity : null,
+    amenity: category === "amenity" ? amenityMatch?.keyword ?? null : null,
     naverQuery: buildNaverQuery(trimmed, category),
     anchor: extractAnchor(trimmed),
     raw_message: trimmed,
@@ -239,7 +257,7 @@ export function buildPlaceDiscoveryCriteria(event: FindPlaceEvent): PlaceDiscove
     intent: event.intent,
     query: event.naverQuery,
     category: event.category,
-    cuisine_keyword: event.cuisine ?? event.activity,
+    cuisine_keyword: event.cuisine ?? event.activity ?? event.amenity,
     vibe: event.vibe,
     only_open_now: false,
     min_rating: 0,

@@ -17,7 +17,6 @@ import { GlobeContextActionInjectionCard } from "@/components/globe/globe-contex
 import { GlobeContextConditionPinBar, type GlobeContextConditionPinBarHandle } from "@/components/globe/globe-context-condition-pin-bar";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import type { EventCandidate } from "@/lib/events/event-candidate";
-import { useContextConditionAutoReplan } from "@/hooks/use-context-condition-auto-replan";
 import { copy } from "@/lib/copy/human-ko";
 import { MAP_FOCUS_PIN_VIEWPORT_Y } from "@/lib/globe/map-anchored-overlay-layout";
 import {
@@ -156,7 +155,7 @@ export function GlobeContextConditionPromptFrame({
   const [refineBusy, setRefineBusy] = useState(false);
   const [commitBusy, setCommitBusy] = useState(false);
   const [pinnedRevision, setPinnedRevision] = useState(0);
-  const [activeSpec, setActiveSpec] = useState<
+  const [, setActiveSpec] = useState<
     import("@/lib/globe/context-condition-ai/local-discovery-action-types").LocalDiscoveryActionSpec | null
   >(null);
   const [ontologyGraph, setOntologyGraph] = useState<GeoOntologyGraph | null>(null);
@@ -205,7 +204,7 @@ export function GlobeContextConditionPromptFrame({
         ? (clearContextConditionLastBatch(event.id), null)
         : rawBatch;
 
-    if ((batch?.recommendations?.length ?? 0) > 0) {
+    if (!CONTEXT_AGENT_ASK_FIRST && (batch?.recommendations?.length ?? 0) > 0) {
       if (!restored) {
         clearContextAgentComposeThread(event.id);
         setComposeThread([]);
@@ -273,9 +272,12 @@ export function GlobeContextConditionPromptFrame({
       clearContextAgentInterpretation(event.id);
       clearContextConditionPending(event.id);
       if (!restored) {
+        clearContextConditionLastBatch(event.id);
         clearGeoOntologyGraph(event.id);
         clearPalantirWorkspaceSnapshot(event.id);
         setOntologyGraph(null);
+        setRecommendations([]);
+        setPalantirWorkspaceRevision((value) => value + 1);
         setContextAgentSessionPhase("idle");
       }
     }
@@ -468,16 +470,6 @@ export function GlobeContextConditionPromptFrame({
     });
   };
 
-  useContextConditionAutoReplan({
-    enabled: open && Boolean(event) && isGlobeContextAgentBound(event?.id),
-    event,
-    anchorPlaceName,
-    spec: activeSpec,
-    onReplan: async (message) => {
-      await pinBarRef.current?.submitRefinement(message);
-    },
-  });
-
   const handleConfirmActionInjection = () => {
     if (!actionInjection) {
       return;
@@ -662,7 +654,8 @@ export function GlobeContextConditionPromptFrame({
     publishContextAgentGlobeMarkerFocus({
       contextEventId: event.id,
       placeId: row.placeId,
-      kind: row.kind,
+      // activity/amenity ride the eatery marker channel on the globe.
+      kind: row.kind === "lodging" ? "lodging" : "eatery",
       lat: row.lat,
       lng: row.lng,
       title: row.title,

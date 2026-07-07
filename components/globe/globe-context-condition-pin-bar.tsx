@@ -40,6 +40,9 @@ import {
   isLocalDiscoveryRefinement,
   resolveLocalDiscoveryAction,
 } from "@/lib/globe/context-condition-ai/resolve-local-discovery-action";
+import { assessIntentConvergence } from "@/lib/globe/context-condition-ai/intent-convergence/assess-intent-convergence";
+import { buildConvergenceQuestion } from "@/lib/globe/context-condition-ai/intent-convergence/build-convergence-question";
+import { buildActivityNextHopQuestion } from "@/lib/globe/context-condition-ai/intent-convergence/build-next-hop-question";
 import {
   isFollowUpDiscoveryTurn,
 } from "@/lib/globe/context-condition-ai/is-cross-domain-discovery-search";
@@ -60,6 +63,7 @@ import {
   resolvePalantirExcludePlaceIds,
   resolvePalantirRefineIntent,
 } from "@/lib/globe/spatial-semantic";
+import { dispatchGlobeLodgingDiscoveryClose } from "@/lib/globe/lodging/globe-lodging-discovery-bridge";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 import { interpretMessyForContextAgent } from "@/lib/messy-prompt-interpreter/adapters/context-agent-adapter";
 import { buildTravelBrainState } from "@/lib/situation-projection/travel-brain-personalization";
@@ -106,6 +110,23 @@ function mapMobility(value: string | undefined): "walk" | "car" | "transit" | nu
     return value;
   }
   return null;
+}
+
+/** Coarse resource category of a spec — used to purge stale off-category pins. */
+function specResourceCategory(
+  spec: ContextConditionAnchorPinOutcome["spec"],
+): "lodging" | "eatery" | "activity" | "amenity" {
+  const types = spec.resourceTypes;
+  if (types.includes("amenity")) {
+    return "amenity";
+  }
+  if (types.includes("activity")) {
+    return "activity";
+  }
+  if (types.includes("hotel") && !types.includes("restaurant")) {
+    return "lodging";
+  }
+  return "eatery";
 }
 
 function mapBudget(value: string | undefined): "low" | "medium" | "high" | null {
@@ -237,6 +258,25 @@ export const GlobeContextConditionPinBar = forwardRef<
       keptRecommendations?: readonly ContextConditionRecommendation[];
       excludePlaceIds?: readonly string[];
     }) => {
+      // Category-switch cleanup: an activity/eatery search must not leave stale
+      // hotel pins behind. Close the separate lodging discovery session and drop
+      // the previous batch when the resource category changes (fresh scout only).
+      const nextCategory = specResourceCategory(input.spec);
+      if (nextCategory !== "lodging") {
+        dispatchGlobeLodgingDiscoveryClose();
+      }
+      if (!input.patchPlan && lastBatch) {
+        const prevCategory = lastBatch.spec
+          ? specResourceCategory(lastBatch.spec)
+          : null;
+        if (prevCategory && prevCategory !== nextCategory) {
+          dismissContextConditionPinBatch({
+            contextEventId,
+            batchId: lastBatch.batchId,
+          });
+          clearContextConditionLastBatch(contextEventId);
+        }
+      }
       setContextAgentSessionPhase("scouting");
       beginContextAgentWork("exploring");
       appendContextAgentComposeTurn(contextEventId, {
@@ -324,6 +364,7 @@ export const GlobeContextConditionPinBar = forwardRef<
       anchorPlaceName,
       anchorPriceKrw,
       contextEventId,
+      lastBatch,
       onPinned,
       onQuestionsChange,
       onRecommendationsChange,
@@ -441,6 +482,46 @@ export const GlobeContextConditionPinBar = forwardRef<
           : {}),
         ...(answers ?? {}),
       };
+
+      // Intent Convergence Engine — before searching, converge an ambiguous
+      // request ("놀거리"·"카페"·"데이트") into a concrete intent with the fewest
+      // questions. High confidence (qualifier present / already answered) → skip.
+      // The LLM only authors chip copy; chips reuse the existing question channel.
+      const pendingConvergence = readContextConditionPending(contextEventId);
+      const askedAxisIds = pendingConvergence?.askedConvergenceAxes ?? [];
+      const priorHops = pendingConvergence?.convergenceHops ?? 0;
+      const convergence = assessIntentConvergence({
+        message: pipelineMessage,
+        answers: mergedAnswers,
+        askedAxisIds,
+        followUpTurn,
+      });
+      if (convergence.shouldAsk) {
+        setContextAgentSessionPhase("collecting_context");
+        const { question, askedAxisId } = await buildConvergenceQuestion({
+          intentType: convergence.intentType,
+          topAxis: convergence.topAxis,
+          candidateAxes: convergence.candidateAxes,
+          query: pipelineMessage,
+          region: anchorPlaceName,
+        });
+        appendContextAgentComposeTurn(contextEventId, {
+          role: "assistant",
+          kind: "text",
+          text: question.promptKo,
+        });
+        writeContextConditionPending(contextEventId, {
+          triggerMessage,
+          questions: [question],
+          answers: mergedAnswers,
+          spec: null,
+          updatedAtIso: new Date().toISOString(),
+          askedConvergenceAxes: [...askedAxisIds, askedAxisId],
+        });
+        onQuestionsChange?.([question]);
+        return null;
+      }
+
       const resolved = resolveLocalDiscoveryAction({
         message: pipelineMessage,
         answers: mergedAnswers,
@@ -498,7 +579,45 @@ export const GlobeContextConditionPinBar = forwardRef<
 
       beginContextAgentWork("exploring");
       setContextAgentSessionPhase("scouting");
-      return executeWithSpec({ triggerMessage: pipelineMessage, spec: resolved.spec });
+      const outcome = await executeWithSpec({
+        triggerMessage: pipelineMessage,
+        spec: resolved.spec,
+      });
+
+      // Deepen once: results become the next trigger. After a cluster activity
+      // search, offer ONE tidy row of deeper facets (테마파크 · 포토스팟 · 야경).
+      // Capped at a single hop so the chat stays clean — no runaway drill-down.
+      const activityCluster = resolved.spec.activityCluster ?? [];
+      if (
+        outcome &&
+        priorHops < 1 &&
+        resolved.spec.resourceTypes.includes("activity") &&
+        activityCluster.length > 0
+      ) {
+        const nextHop = buildActivityNextHopQuestion({
+          region: anchorPlaceName,
+          cluster: activityCluster,
+          promptKo: copy.globe.contextConditionNextHopPrompt,
+        });
+        if (nextHop) {
+          appendContextAgentComposeTurn(contextEventId, {
+            role: "assistant",
+            kind: "text",
+            text: nextHop.promptKo,
+          });
+          writeContextConditionPending(contextEventId, {
+            triggerMessage: pipelineMessage,
+            questions: [nextHop],
+            answers: {},
+            spec: null,
+            updatedAtIso: new Date().toISOString(),
+            convergenceHops: priorHops + 1,
+            convergenceNextHop: true,
+          });
+          onQuestionsChange?.([nextHop]);
+        }
+      }
+      return outcome;
     },
     [
       anchorLat,

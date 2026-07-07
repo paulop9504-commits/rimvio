@@ -1,6 +1,10 @@
 /** Natural language → structured local discovery action (placement engine input). */
 
-export type LocalDiscoveryResourceType = "restaurant" | "hotel";
+export type LocalDiscoveryResourceType =
+  | "restaurant"
+  | "hotel"
+  | "activity"
+  | "amenity";
 
 export type LocalDiscoveryTransport = "walk" | "car" | "transit";
 
@@ -21,6 +25,14 @@ export type LocalDiscoveryActionSpec = {
   readonly radiusM: number;
   /** Eatery cuisine focus — e.g. 피자, 스시 (from menu disambiguation). */
   readonly eateryFocus?: string | null;
+  /** Activity focus query — e.g. "실내 액티비티", "유니버설 스튜디오" (from clarify chip). */
+  readonly activityFocus?: string | null;
+  /**
+   * Activity node cluster — the answer as a *trigger* that activates related
+   * nodes (도파민 → 테마파크·놀이공원·포토스팟·야경). Retrieval multi-queries these
+   * and merges into one reconstructed context, instead of a single keyword.
+   */
+  readonly activityCluster?: readonly string[] | null;
 };
 
 export type LocalDiscoveryQuestionChoice = {
@@ -32,8 +44,12 @@ export type LocalDiscoveryQuestionChoice = {
     | "vibe"
     | "lodgingKind"
     | "menuFocus"
-    | "resourceFocus";
+    | "resourceFocus"
+    | "activityFocus"
+    | "activityCluster";
   readonly value: string;
+  /** Related nodes this choice activates (trigger → cluster). Multi-query source. */
+  readonly cluster?: readonly string[];
 };
 
 export type LocalDiscoveryQuestion = {
@@ -79,7 +95,7 @@ export type ResolveLocalDiscoveryActionResult =
     };
 
 export type ContextConditionRecommendation = {
-  readonly kind: "lodging" | "eatery";
+  readonly kind: "lodging" | "eatery" | "activity" | "amenity";
   readonly title: string;
   readonly reasonKo: string;
   readonly rank: number;

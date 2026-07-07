@@ -47,7 +47,7 @@ async function resolveOrigin(): Promise<{ lat: number; lng: number }> {
 
 async function loadCandidates(input: {
   message: string;
-  category: "restaurant" | "cafe" | "activity";
+  category: "restaurant" | "cafe" | "activity" | "amenity";
   naverQuery: string;
   criteria: ReturnType<typeof buildPlaceDiscoveryCriteria>;
   origin: { lat: number; lng: number };
@@ -149,7 +149,9 @@ export async function orchestratePlaceRecommendation(
     const label =
       event.category === "activity"
         ? "놀거리"
-        : event.cuisine ?? (event.category === "restaurant" ? "맛집" : "카페");
+        : event.category === "amenity"
+          ? event.amenity ?? "가까운 곳"
+          : event.cuisine ?? (event.category === "restaurant" ? "맛집" : "카페");
     const where = event.anchor ? `${event.anchor} 근처 ` : "";
     return {
       summary: `${where}${label}을 찾지 못했어요. 검색어를 조금 바꿔볼까요?`,
@@ -230,7 +232,9 @@ export async function orchestratePlaceRecommendation(
   const categoryLabel =
     event.category === "activity"
       ? "놀거리"
-      : event.cuisine ?? (event.category === "restaurant" ? "맛집" : "카페");
+      : event.category === "amenity"
+        ? event.amenity ?? "가까운 곳"
+        : event.cuisine ?? (event.category === "restaurant" ? "맛집" : "카페");
 
   const { wire, actions } = compilePlaceDiscovery(placeContext, {
     categoryLabel,

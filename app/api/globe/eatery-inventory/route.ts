@@ -28,7 +28,9 @@ export async function GET(request: NextRequest) {
     maxRaw != null
       ? Math.min(Math.max(Math.round(maxRaw), 1), GLOBE_DISCOVERY_FETCH_LIMIT)
       : GLOBE_DISCOVERY_FETCH_LIMIT;
-  const radiusM = radiusRaw != null ? Math.min(Math.max(Math.round(radiusRaw), 100), 2000) : 500;
+  // Cap allows city-wide activity/landmark discovery (유니버설 등); nearby eatery
+  // /lodging callers still pass their own small radius, so they're unaffected.
+  const radiusM = radiusRaw != null ? Math.min(Math.max(Math.round(radiusRaw), 100), 50000) : 500;
 
   if (!query || lat == null || lng == null) {
     return NextResponse.json({ error: "query_lat_lng_required" }, { status: 400 });

@@ -9,6 +9,7 @@ import {
 } from "@/lib/globe/personal-globe-pin-store";
 import { pruneContextConditionHubBatch } from "@/lib/globe/context-condition-ai/prune-context-condition-hub-batch";
 import { clearContextConditionDiscoveryOverlay } from "@/lib/globe/context-condition-ai/context-condition-discovery-overlay-bridge";
+import { toReadablePlaceLabel } from "@/lib/globe/readable-place-label";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 
 function contextConditionPinEventId(input: {
@@ -80,8 +81,8 @@ export function syncContextConditionPins(input: {
       eventId,
       lat: row.lat,
       lng: row.lng,
-      placeLabel: row.name,
-      experienceTitle: row.name,
+      placeLabel: toReadablePlaceLabel(row.name) || row.name,
+      experienceTitle: toReadablePlaceLabel(row.name) || row.name,
       photoCount: row.images.length,
       videoCount: row.videoUrl ? 1 : 0,
       createdAtIso: nowIso,
@@ -108,8 +109,8 @@ export function syncContextConditionPins(input: {
       eventId,
       lat: row.lat,
       lng: row.lng,
-      placeLabel: row.name,
-      experienceTitle: row.name,
+      placeLabel: toReadablePlaceLabel(row.name) || row.name,
+      experienceTitle: toReadablePlaceLabel(row.name) || row.name,
       photoCount: row.images.length,
       videoCount: 0,
       createdAtIso: nowIso,

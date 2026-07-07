@@ -160,9 +160,23 @@ export function scoreEateryRecommendations(input: {
   lat?: number | null;
   lng?: number | null;
   context?: ContextInstance;
+  /**
+   * Scale the proximity bonus. Activity/landmark discovery ("유니버설 스튜디오")
+   * is city-wide, so distance must not bury a far but exact match — pass a small
+   * weight (e.g. 0.1). Nearby needs (eatery/amenity) keep the default 1.
+   */
+  distanceWeight?: number;
+  /** Boost rows whose name/category matches this focus (e.g. "유니버설 스튜디오"). */
+  focusMatch?: string | null;
 }): ScoredEateryRecommendation[] {
   const lat = input.lat ?? null;
   const lng = input.lng ?? null;
+  const distanceWeight = input.distanceWeight ?? 1;
+  const focusTokens = (input.focusMatch ?? "")
+    .toLowerCase()
+    .split(/[\s·,]+/u)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 2);
   const trajectory = input.unifiedContext.behaviorKernel.state.trajectory;
   const travelTrajectory =
     trajectory.dominant_cluster === "travel" && trajectory.strength >= 0.15;
@@ -180,7 +194,16 @@ export function scoreEateryRecommendations(input: {
       score += 35;
     }
     const { bonus, distanceKm } = scoreDistance(lat, lng, row);
-    score += bonus;
+    score += bonus * distanceWeight;
+    if (focusTokens.length > 0) {
+      const focusBlob = [row.name, row.categoryLabel, row.cuisineHint, row.address]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      if (focusTokens.some((token) => focusBlob.includes(token))) {
+        score += 200;
+      }
+    }
     const titleBias = scoreTitleBias({
       row,
       context: input.context,

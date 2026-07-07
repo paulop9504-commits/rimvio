@@ -15,7 +15,7 @@ export type GeoOntologyNode = {
   readonly labelKo: string;
   readonly facetId?: GeoOntologyFacetId;
   readonly placeId?: string;
-  readonly kindTag?: "lodging" | "eatery";
+  readonly kindTag?: "lodging" | "eatery" | "activity" | "amenity";
 };
 
 export type GeoOntologyEdge = {

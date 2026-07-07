@@ -10,6 +10,12 @@ export type ContextConditionPendingWire = {
   readonly answers: LocalDiscoveryPendingAnswers;
   readonly spec: LocalDiscoveryActionSpec | null;
   readonly updatedAtIso: string;
+  /** Intent Convergence Engine — axes already asked this session (turn cap). */
+  readonly askedConvergenceAxes?: readonly string[];
+  /** Deepening depth already offered (next-hop chips). Caps runaway drill-down. */
+  readonly convergenceHops?: number;
+  /** Marks a next-hop (deepening) question so its choices don't re-offer hops. */
+  readonly convergenceNextHop?: boolean;
 };
 
 const STORAGE_PREFIX = "rimvio-context-condition-pending";

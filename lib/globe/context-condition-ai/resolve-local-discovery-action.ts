@@ -14,6 +14,11 @@ import type {
 } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
 import { isAlternatePlaceSearch } from "@/lib/globe/context-condition-ai/is-alternate-place-search";
 import { isAmbiguousDiscoveryIntent } from "@/lib/globe/context-condition-ai/is-cross-domain-discovery-search";
+import {
+  parseActivitySpecificFocus,
+  parseAmenityFocus,
+  resolveLocalDiscoveryDomain,
+} from "@/lib/globe/context-condition-ai/resolve-local-discovery-domain";
 import { copy } from "@/lib/copy/human-ko";
 import {
   parseCuisineCandidates,
@@ -23,6 +28,9 @@ import {
 } from "@/lib/globe/context-condition-ai/parse-cuisine-candidates";
 
 const CONFIDENCE_SKIP = 0.58;
+
+/** Delimiter for the activity node cluster stored in the (string-only) answers map. */
+export const ACTIVITY_CLUSTER_DELIMITER = "·";
 
 function radiusForTransport(transport: LocalDiscoveryTransport): number {
   switch (transport) {
@@ -238,7 +246,10 @@ function composeSpec(input: {
   vibe: LocalDiscoveryVibe;
   lodgingKind: LocalDiscoveryLodgingKind;
   eateryFocus?: string | null;
+  activityFocus?: string | null;
+  activityCluster?: readonly string[] | null;
 }): LocalDiscoveryActionSpec {
+  const cluster = input.activityCluster?.filter((node) => node.trim().length > 0);
   return {
     version: 1,
     resourceTypes: input.resourceTypes,
@@ -248,7 +259,59 @@ function composeSpec(input: {
     lodgingKind: input.lodgingKind,
     radiusM: radiusForTransport(input.transport),
     ...(input.eateryFocus?.trim() ? { eateryFocus: input.eateryFocus.trim() } : {}),
+    ...(input.activityFocus?.trim()
+      ? { activityFocus: input.activityFocus.trim() }
+      : {}),
+    ...(cluster && cluster.length > 0 ? { activityCluster: cluster } : {}),
   };
+}
+
+/**
+ * Activity/amenity queries use a generic place loader — never fall back to the
+ * hotel channel. Clarify chips (broad "놀거리") are asked upstream in the pin bar.
+ */
+function resolveDiscoveryDomainSpec(input: {
+  text: string;
+  answers: LocalDiscoveryPendingAnswers;
+  previousSpec: LocalDiscoveryActionSpec | null;
+}): LocalDiscoveryActionSpec | null {
+  // A converged chip (activityFocus) is a concrete place query — route it
+  // through the generic activity loader regardless of the original wording
+  // (e.g. cafe/date convergence produces a full query, not an activity keyword).
+  const convergedFocus = input.answers.activityFocus?.trim();
+  const domain = convergedFocus ? "activity" : resolveLocalDiscoveryDomain(input.text);
+  if (!domain) {
+    return null;
+  }
+  const activityCluster = input.answers.activityCluster
+    ?.split(ACTIVITY_CLUSTER_DELIMITER)
+    .map((node) => node.trim())
+    .filter((node) => node.length > 0);
+  const activityFocus =
+    convergedFocus ||
+    (domain === "amenity"
+      ? parseAmenityFocus(input.text)
+      : parseActivitySpecificFocus(input.text)) ||
+    null;
+  const transport =
+    (input.answers.transport as LocalDiscoveryTransport | undefined) ??
+    parseTransport(input.text) ??
+    input.previousSpec?.transport ??
+    "walk";
+  const budget =
+    (input.answers.budget as LocalDiscoveryBudget | undefined) ??
+    parseBudget(input.text) ??
+    input.previousSpec?.budget ??
+    "medium";
+  return composeSpec({
+    resourceTypes: [domain],
+    transport,
+    budget,
+    vibe: parseVibe(input.text) ?? input.previousSpec?.vibe ?? "popular",
+    lodgingKind: "any",
+    activityFocus,
+    activityCluster: domain === "activity" ? activityCluster : null,
+  });
 }
 
 /** Trigger → structured context. Questions when slots are ambiguous. */
@@ -256,9 +319,19 @@ export function resolveLocalDiscoveryAction(
   input: ResolveLocalDiscoveryActionInput,
 ): ResolveLocalDiscoveryActionResult {
   const text = input.message.trim();
+  const answers: LocalDiscoveryPendingAnswers = { ...(input.answers ?? {}) };
+
+  const domainSpec = resolveDiscoveryDomainSpec({
+    text,
+    answers,
+    previousSpec: input.previousSpec ?? null,
+  });
+  if (domainSpec) {
+    return { status: "ready", spec: domainSpec, answers };
+  }
+
   const intent = classifyContextConditionAnchorRequest(text);
   const cuisineCandidates = parseCuisineCandidates(text);
-  const answers: LocalDiscoveryPendingAnswers = { ...(input.answers ?? {}) };
   const resourceFocus = answers.resourceFocus;
   const focusWants = resolveWantsFromResourceFocus(resourceFocus);
   let wantsLodging =
@@ -445,8 +518,14 @@ export function applyQuestionChoice(input: {
   answers: LocalDiscoveryPendingAnswers;
   choice: LocalDiscoveryQuestionChoice;
 }): LocalDiscoveryPendingAnswers {
+  const cluster = input.choice.cluster?.filter((node) => node.trim().length > 0);
   return {
     ...input.answers,
     [input.choice.slot]: input.choice.value,
+    // A chip answer is a trigger: carry its activated node cluster so retrieval
+    // can multi-query the reconstructed context, not just the single keyword.
+    ...(cluster && cluster.length > 0
+      ? { activityCluster: cluster.join(ACTIVITY_CLUSTER_DELIMITER) }
+      : {}),
   };
 }
