@@ -1,20 +1,30 @@
 "use client";
 
 import { GlobeContextConditionOrb } from "@/components/globe/globe-context-condition-orb";
+import { GlobeTypewriterText } from "@/components/globe/globe-typewriter-text";
+import {
+  rimvioAssistantBodyClass,
+  rimvioAssistantEyebrowClass,
+  rimvioAssistantSpeechBubbleClass,
+  rimvioAssistantTypewriterCursorClass,
+} from "@/lib/design/globe-assistant-surface";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
 export type GlobeContextAgentPreflightBubbleProps = {
   briefingLine: string;
   className?: string;
+  onRevealComplete?: () => void;
 };
 
 /** Empty chat — assistant speaks first with dot briefing. */
 export function GlobeContextAgentPreflightBubble({
   briefingLine,
   className,
+  onRevealComplete,
 }: GlobeContextAgentPreflightBubbleProps) {
   const line = briefingLine.trim();
+
   if (!line) {
     return null;
   }
@@ -25,12 +35,17 @@ export function GlobeContextAgentPreflightBubble({
       data-globe-context-agent-preflight
     >
       <GlobeContextConditionOrb size="sm" className="mt-0.5 shrink-0" />
-      <div className="min-w-0 flex-1 rounded-[1rem] rounded-tl-md bg-[#f5f5f7] px-3 py-2.5 ring-1 ring-black/[0.04]">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[#86868b]">
+      <div className={cn("min-w-0 flex-1", rimvioAssistantSpeechBubbleClass())}>
+        <p className={rimvioAssistantEyebrowClass()}>
           {copy.globe.contextAgentPreflightEyebrow}
         </p>
-        <p className="mt-1 text-[13px] font-medium leading-relaxed text-[#1d1d1f]">
-          {line}
+        <p className={cn("mt-1", rimvioAssistantBodyClass())}>
+          <GlobeTypewriterText
+            text={line}
+            cps={46}
+            onComplete={onRevealComplete}
+            cursorClassName={rimvioAssistantTypewriterCursorClass()}
+          />
         </p>
       </div>
     </div>

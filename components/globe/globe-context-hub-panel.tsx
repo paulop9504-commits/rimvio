@@ -40,6 +40,8 @@ export type GlobeContextHubPanelProps = {
   lat?: number | null;
   lng?: number | null;
   onUpdated?: () => void;
+  /** Bridge embed — service list only, no brain/guide chrome. */
+  minimal?: boolean;
 };
 
 function openExternalHref(href: string) {
@@ -54,6 +56,7 @@ export function GlobeContextHubPanel({
   lat = null,
   lng = null,
   onUpdated,
+  minimal = false,
 }: GlobeContextHubPanelProps) {
   const router = useRouter();
   const [revision, setRevision] = useState(0);
@@ -226,25 +229,12 @@ export function GlobeContextHubPanel({
 
   const hubSection =
     serviceRows.length > 0 ? (
-      <>
-        <div>
-          <p className="text-[12px] font-semibold text-primary">
-            {copy.globe.contextHubEyebrow}
-          </p>
-          <p className="mt-0.5 text-[14px] font-semibold text-foreground">
-            {copy.globe.contextHubSectionTitle}
-          </p>
-          <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
-            {copy.globe.contextHubSectionBody}
-          </p>
-        </div>
-
-        <GlobeHubServiceList
-          rows={serviceRows}
-          busy={busy}
-          connectServiceId={connectServiceId}
-          initialVisibleCount={2}
-          onToggleConnect={(row) => {
+      <GlobeHubServiceList
+        rows={serviceRows}
+        busy={busy}
+        connectServiceId={connectServiceId}
+        initialVisibleCount={2}
+        onToggleConnect={(row) => {
             if (row.serviceId === "ticket") {
               setTicketConnectOpen(true);
               return;
@@ -267,7 +257,6 @@ export function GlobeContextHubPanel({
           onOpenAction={handleOpenAction}
           onOpenHandoff={handleOpenHandoff}
         />
-      </>
     ) : null;
 
   return (
@@ -290,12 +279,14 @@ export function GlobeContextHubPanel({
         subtitle={qrViewer?.subtitle ?? null}
       />
       <section className="space-y-2.5" data-globe-context-hub-panel>
-        <GlobeContextBrainStrip event={event} />
-        <GlobeContextGuideSection
-          guides={mediaGuides}
-          loading={mediaGuidesLoading}
-          onExpandGuideMap={handleExpandGuideMap}
-        />
+        {!minimal ? <GlobeContextBrainStrip event={event} /> : null}
+        {!minimal ? (
+          <GlobeContextGuideSection
+            guides={mediaGuides}
+            loading={mediaGuidesLoading}
+            onExpandGuideMap={handleExpandGuideMap}
+          />
+        ) : null}
         {hubSection}
       </section>
     </>

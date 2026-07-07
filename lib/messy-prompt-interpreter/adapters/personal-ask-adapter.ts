@@ -3,31 +3,28 @@ import { refineMessageForPipeline } from "@/lib/messy-prompt-interpreter/refine-
 import { shouldInterpretMessyInput } from "@/lib/messy-prompt-interpreter/should-interpret-messy-input";
 import type { InterpretAndExecuteResult } from "@/lib/messy-prompt-interpreter/types";
 
-export type GlobeComposerInterpretInput = {
+export type PersonalAskInterpretInput = {
   messyInput: string;
-  contextEventId?: string | null;
+  scope?: "personal" | "discovery";
   lat?: number | null;
   lng?: number | null;
   useLlm?: boolean;
   onUnderstanding?: (line: string, stage: "rules" | "llm") => void;
 };
 
-export type GlobeComposerInterpretResult = {
-  dispatchText: string;
+export type PersonalAskInterpretResult = {
+  refinedMessage: string;
   understandingKo: string | null;
   interpretation: InterpretAndExecuteResult | null;
 };
 
-function buildGlobeSituation(
-  input: GlobeComposerInterpretInput,
+function buildPersonalAskSituation(
+  input: PersonalAskInterpretInput,
 ): Record<string, string | number | boolean | null> {
   const situation: Record<string, string | number | boolean | null> = {
-    surface: "globe_composer",
+    surface: "personal_ask",
+    scope: input.scope ?? "personal",
   };
-  const eventId = input.contextEventId?.trim();
-  if (eventId) {
-    situation.contextEventId = eventId;
-  }
   if (typeof input.lat === "number" && Number.isFinite(input.lat)) {
     situation.userLat = input.lat;
   }
@@ -37,21 +34,21 @@ function buildGlobeSituation(
   return situation;
 }
 
-/** Globe composer — messy NL → refined dispatch text + optional understanding line. */
-export async function interpretMessyForGlobeComposer(
-  input: GlobeComposerInterpretInput,
-): Promise<GlobeComposerInterpretResult> {
+/** Capture ask sheet — messy NL → refined recall query. */
+export async function interpretMessyForPersonalAsk(
+  input: PersonalAskInterpretInput,
+): Promise<PersonalAskInterpretResult> {
   const trimmed = input.messyInput.trim();
   if (!shouldInterpretMessyInput(trimmed)) {
     return {
-      dispatchText: trimmed,
+      refinedMessage: trimmed,
       understandingKo: null,
       interpretation: null,
     };
   }
 
   const interpretation = await interpretMessyPromptHybrid(trimmed, {
-    situation: buildGlobeSituation(input),
+    situation: buildPersonalAskSituation(input),
     useLlm: input.useLlm,
     onStage: (stageResult, stage) => {
       const line = stageResult.plan.understandingKo.trim();
@@ -61,12 +58,12 @@ export async function interpretMessyForGlobeComposer(
     },
   });
 
-  const dispatchText = refineMessageForPipeline(trimmed, interpretation);
+  const refinedMessage = refineMessageForPipeline(trimmed, interpretation);
   const understandingKo =
-    dispatchText !== trimmed ? interpretation.plan.understandingKo.trim() : null;
+    refinedMessage !== trimmed ? interpretation.plan.understandingKo.trim() : null;
 
   return {
-    dispatchText,
+    refinedMessage,
     understandingKo,
     interpretation,
   };

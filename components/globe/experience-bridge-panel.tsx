@@ -15,7 +15,6 @@ import { ExperienceBridgePreviewCollage } from "@/components/globe/experience-br
 import { ExperienceBridgeParticipantsStrip } from "@/components/globe/experience-bridge-participants-strip";
 import { copy } from "@/lib/copy/human-ko";
 import {
-  RIMVIO_TYPE,
   rimvioCompactPrimaryCtaClass,
   rimvioGhostCtaClass,
   rimvioSurfaceCardClass,
@@ -171,14 +170,7 @@ export function ExperienceBridgePanel({
     >
       <ExperienceBridgePreviewCollage media={previewMedia} className="rounded-none ring-0" />
 
-      <div className="space-y-4 p-4">
-        <div className="space-y-2">
-          <p className={RIMVIO_TYPE.eyebrow}>{copy.globe.bridgeMediaEyebrow}</p>
-          <p className={RIMVIO_TYPE.body}>
-            같은 여행 · 각자 지도 · 한 타임라인. Rimvio 안에서만 함께 봐요.
-          </p>
-        </div>
-
+      <div className="space-y-3 p-4">
         {reelItems.length > 0 ? (
           <ExperienceBridgeParticipantsStrip items={reelItems} />
         ) : null}
@@ -219,9 +211,7 @@ export function ExperienceBridgePanel({
         ) : null}
 
         {canInvite && inviteCandidates.length > 0 ? (
-          <div className="space-y-2">
-            <p className="text-[12px] font-semibold text-muted-foreground">초대하기</p>
-            <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2">
               {inviteCandidates.map((member) => (
                 <button
                   key={member.userId}
@@ -233,7 +223,6 @@ export function ExperienceBridgePanel({
                   + {member.displayName}
                 </button>
               ))}
-            </div>
           </div>
         ) : null}
 
@@ -257,12 +246,6 @@ export function ExperienceBridgePanel({
           >
             공유 보기에서 나가기
           </button>
-        ) : null}
-
-        {reelItems.length > 0 ? (
-          <p className="text-center text-[11px] text-muted-foreground">
-            {copy.globe.bridgeMediaSwipeHint(reelItems.length)}
-          </p>
         ) : null}
       </div>
     </section>

@@ -1,13 +1,14 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { RIMVIO_ACTION } from "@/lib/design/rimvio-ontology";
 
 export type GlobeContextAiOrbProps = {
   className?: string;
   size?: "sm" | "lg";
 };
 
-/** Decorative orb — Personal Context AI ask sheet only (not Context Condition AI). */
+/** Personal recall ask orb — cool blue family, harmonized with 맥락 AI. */
 export function GlobeContextAiOrb({ className, size = "sm" }: GlobeContextAiOrbProps) {
   const large = size === "lg";
   return (
@@ -21,31 +22,34 @@ export function GlobeContextAiOrb({ className, size = "sm" }: GlobeContextAiOrbP
       data-globe-context-ai-orb
       data-globe-context-ai-orb-size={size}
     >
-      <div className="absolute inset-0 rounded-full bg-[#ff6b4a]/18 blur-2xl" />
-      <div className="absolute inset-[8%] rounded-full bg-gradient-to-br from-cyan-300/30 via-sky-400/12 to-indigo-700/25 blur-[1px]" />
-      <div className="absolute inset-[10%] rounded-full bg-gradient-to-tr from-white/14 via-cyan-200/10 to-transparent ring-1 ring-white/25 backdrop-blur-md" />
-      <div className="absolute inset-[22%] rounded-full border border-white/12" />
-      <div className="absolute inset-[36%] rounded-full border border-cyan-100/15" />
+      <div
+        className="absolute inset-0 rounded-full blur-2xl"
+        style={{ backgroundColor: `${RIMVIO_ACTION.primary}18` }}
+      />
+      <div className="absolute inset-[8%] rounded-full bg-gradient-to-br from-sky-300/28 via-[#0071e3]/14 to-indigo-600/22 blur-[1px]" />
+      <div className="absolute inset-[10%] rounded-full bg-gradient-to-tr from-white/16 via-sky-100/12 to-transparent ring-1 ring-white/25 backdrop-blur-md" />
+      <div className="absolute inset-[22%] rounded-full border border-white/14" />
+      <div className="absolute inset-[36%] rounded-full border border-[#0071e3]/12" />
       <div
         className={cn(
-          "absolute rounded-full bg-amber-200 shadow-[0_0_14px_rgba(251,191,36,0.95)]",
+          "absolute rounded-full bg-sky-200 shadow-[0_0_14px_rgba(90,200,250,0.85)]",
           large ? "left-[24%] top-[28%] size-2.5" : "left-[22%] top-[30%] size-2",
         )}
       />
       <div
         className={cn(
-          "absolute rounded-full bg-orange-300 shadow-[0_0_10px_rgba(251,146,60,0.85)]",
+          "absolute rounded-full bg-[#0071e3]/80 shadow-[0_0_10px_rgba(0,113,227,0.75)]",
           large ? "right-[26%] top-[34%] size-2" : "right-[24%] top-[42%] size-1.5",
         )}
       />
       <div
         className={cn(
-          "absolute rounded-full bg-rose-300/90 shadow-[0_0_8px_rgba(251,113,133,0.8)]",
+          "absolute rounded-full bg-indigo-300/90 shadow-[0_0_8px_rgba(129,140,248,0.7)]",
           large ? "bottom-[30%] left-[40%] size-1.5" : "bottom-[28%] left-[38%] size-1",
         )}
       />
       <svg
-        className="absolute inset-[18%] text-white/20"
+        className="absolute inset-[18%] text-white/22"
         viewBox="0 0 100 100"
         aria-hidden
       >

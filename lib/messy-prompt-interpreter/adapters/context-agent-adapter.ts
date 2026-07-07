@@ -1,4 +1,4 @@
-import { interpretMessyPrompt } from "@/lib/messy-prompt-interpreter/interpret-messy-prompt";
+import { interpretMessyPromptHybrid } from "@/lib/messy-prompt-interpreter/interpret-messy-prompt-hybrid";
 import { refineMessageForPipeline } from "@/lib/messy-prompt-interpreter/refine-message-for-pipeline";
 import { shouldInterpretMessyInput } from "@/lib/messy-prompt-interpreter/should-interpret-messy-input";
 import type { InterpretAndExecuteResult } from "@/lib/messy-prompt-interpreter/types";
@@ -10,6 +10,7 @@ export type ContextAgentInterpretInput = {
   anchorPlaceName?: string | null;
   anchorLat?: number | null;
   anchorLng?: number | null;
+  useLlm?: boolean;
 };
 
 export type ContextAgentInterpretResult = {
@@ -38,6 +39,26 @@ function buildContextSituation(
   return situation;
 }
 
+function publishInterpretationStage(
+  input: ContextAgentInterpretInput,
+  interpretation: InterpretAndExecuteResult,
+  originalMessage: string,
+): void {
+  const refinedMessage = refineMessageForPipeline(originalMessage, interpretation);
+  const understandingKo = interpretation.plan.understandingKo.trim();
+  if (!understandingKo || refinedMessage === originalMessage) {
+    return;
+  }
+  publishContextAgentInterpretation({
+    eventId: input.contextEventId,
+    originalMessage,
+    refinedMessage,
+    understandingKo,
+    visualization: interpretation.visualization,
+    atIso: new Date().toISOString(),
+  });
+}
+
 /** Context-bound agent — messy NL → refined trigger for local discovery pipeline. */
 export async function interpretMessyForContextAgent(
   input: ContextAgentInterpretInput,
@@ -51,25 +72,18 @@ export async function interpretMessyForContextAgent(
     };
   }
 
-  const interpretation = await interpretMessyPrompt(trimmed, {
-    situation: buildContextSituation(input),
-    useLlm: false,
+  const situation = buildContextSituation(input);
+  const interpretation = await interpretMessyPromptHybrid(trimmed, {
+    situation,
+    useLlm: input.useLlm,
+    onStage: (stageResult) => {
+      publishInterpretationStage(input, stageResult, trimmed);
+    },
   });
 
   const refinedMessage = refineMessageForPipeline(trimmed, interpretation);
   const understandingKo =
     refinedMessage !== trimmed ? interpretation.plan.understandingKo.trim() : null;
-
-  if (understandingKo) {
-    publishContextAgentInterpretation({
-      eventId: input.contextEventId,
-      originalMessage: trimmed,
-      refinedMessage,
-      understandingKo,
-      visualization: interpretation.visualization,
-      atIso: new Date().toISOString(),
-    });
-  }
 
   return {
     refinedMessage,

@@ -35,6 +35,8 @@ export {
 } from "@/lib/messy-prompt-interpreter/interpreter-executors";
 export { interpretAndExecute } from "@/lib/messy-prompt-interpreter/interpret-and-execute";
 export { interpretMessyPrompt } from "@/lib/messy-prompt-interpreter/interpret-messy-prompt";
+export { interpretMessyPromptHybrid } from "@/lib/messy-prompt-interpreter/interpret-messy-prompt-hybrid";
+export { fetchMessyPromptInterpretationClient } from "@/lib/messy-prompt-interpreter/fetch-messy-prompt-interpretation-client";
 export { refineMessageForPipeline } from "@/lib/messy-prompt-interpreter/refine-message-for-pipeline";
 export { shouldInterpretMessyInput } from "@/lib/messy-prompt-interpreter/should-interpret-messy-input";
 export {
@@ -47,3 +49,8 @@ export {
   type ContextAgentInterpretInput,
   type ContextAgentInterpretResult,
 } from "@/lib/messy-prompt-interpreter/adapters/context-agent-adapter";
+export {
+  interpretMessyForPersonalAsk,
+  type PersonalAskInterpretInput,
+  type PersonalAskInterpretResult,
+} from "@/lib/messy-prompt-interpreter/adapters/personal-ask-adapter";

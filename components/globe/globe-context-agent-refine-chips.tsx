@@ -1,6 +1,7 @@
 "use client";
 
 import { copy } from "@/lib/copy/human-ko";
+import { rimvioAssistantRefineChipClass } from "@/lib/design/globe-assistant-surface";
 import { cn } from "@/lib/utils";
 
 export type GlobeContextAgentRefineChip = {
@@ -38,7 +39,7 @@ export function GlobeContextAgentRefineChips({
           type="button"
           disabled={disabled}
           onClick={() => onSelect(chip.message)}
-          className="rounded-full bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#1d1d1f] ring-1 ring-black/[0.06] active:scale-[0.98] active:bg-[#0071e3]/10 active:text-[#0071e3] disabled:opacity-45"
+          className={rimvioAssistantRefineChipClass()}
           data-globe-context-agent-refine-chip={chip.id}
         >
           {chip.label}

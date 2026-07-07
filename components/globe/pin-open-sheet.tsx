@@ -520,12 +520,7 @@ export function PinOpenSheet({
       return [role, cluster.title, cluster.placeLabel].filter(Boolean).join(" · ");
     }
     if (isBridgeContext) {
-      const parts = [copy.globe.bridgeContextRecallEyebrow];
-      if (people.length > 0) {
-        parts.push(`함께 ${people.length}명`);
-      }
-      parts.push(copy.globe.bridgeContextActionsEyebrow);
-      return parts.join(" · ");
+      return hero?.place?.trim() || hero?.title?.trim() || cluster?.placeLabel?.trim() || "";
     }
     const parts: string[] = [];
     if (moments.length > 0) {
@@ -757,19 +752,12 @@ export function PinOpenSheet({
           className={rimvioTalkRowClass()}
         >
           <MessageCircle className="size-5 shrink-0 text-primary" aria-hidden />
-          <span className="min-w-0 flex-1">
-            <span className={cn("block", RIMVIO_TYPE.body, "font-semibold")}>
-              {talkOpening
-                ? copy.globe.bridgeContextTalkOpening
-                : canOpenTalk
-                  ? copy.globe.bridgeContextTalkCta
-                  : copy.globe.bridgeContextTalkStartCta}
-            </span>
-            <span className={cn("block", RIMVIO_TYPE.caption)}>
-              {canOpenTalk
-                ? copy.globe.bridgeContextTalkPreviewEmpty
-                : copy.globe.bridgeContextTalkStartHint}
-            </span>
+          <span className="min-w-0 flex-1 truncate text-[15px] font-semibold">
+            {talkOpening
+              ? copy.globe.bridgeContextTalkOpening
+              : canOpenTalk
+                ? copy.globe.bridgeContextTalkCta
+                : copy.globe.bridgeContextTalkStartCta}
           </span>
         </button>
       ) : null}
@@ -818,19 +806,19 @@ export function PinOpenSheet({
                   >
                     {hero.title}
                   </p>
-                  {!isBridgeContext || sheetPage === "context" ? (
+                  {!isBridgeContext ? (
                     <p className={cn("mt-0.5 line-clamp-1", RIMVIO_TYPE.caption)}>
                       {hero.place}
                     </p>
                   ) : null}
-                  {provenanceSummary ? (
+                  {!isBridgeContext && provenanceSummary ? (
                     <GlobeContextProvenanceChip
                       summary={provenanceSummary}
                       onPress={() => setProvenanceOpen(true)}
                       className="mt-2"
                     />
                   ) : null}
-                  {cluster?.eventId ? (
+                  {!isBridgeContext && cluster?.eventId ? (
                     <GlobeContextLineageChip
                       eventId={cluster.eventId}
                       className={provenanceSummary ? "mt-1.5" : "mt-2"}

@@ -59,10 +59,11 @@ import {
 import type { ContextActionInjection } from "@/lib/globe/context-action-injection/types";
 import {
   buildContextAgentPreflightBriefing,
+  prefetchContextAgentSurroundings,
+  readContextAgentPrefetch,
   resolveContextAgentZeroPrompt,
+  subscribeContextAgentPrefetch,
 } from "@/lib/globe/context-agent";
-import { fetchWeatherForecastClient } from "@/lib/context-resolver/weather/fetch-weather-forecast-client";
-import { resolveBridgeContextWeatherTarget } from "@/lib/globe/resolve-bridge-context-weather-target";
 import type { WeatherContext } from "@/lib/context-resolver/types";
 import { buildTravelBrainState } from "@/lib/situation-projection/travel-brain-personalization";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
@@ -79,8 +80,16 @@ import {
   type ExperienceSimulationState,
 } from "@/lib/globe/experience-simulation";
 import { cn } from "@/lib/utils";
-
-const PREFLIGHT_READ_MS = 2800;
+import {
+  rimvioAssistantConnectedBadgeClass,
+  rimvioAssistantConnectedDotClass,
+  rimvioAssistantConnectedLabelClass,
+  rimvioAssistantEyebrowClass,
+  rimvioAssistantFrameShellClass,
+  rimvioAssistantMetaClass,
+  rimvioAssistantStatusActiveClass,
+  rimvioAssistantTitleClass,
+} from "@/lib/design/globe-assistant-surface";
 
 export type GlobeContextConditionPromptFrameProps = {
   open: boolean;
@@ -147,6 +156,8 @@ export function GlobeContextConditionPromptFrame({
   >(() => {});
   const pinBarRef = useRef<GlobeContextConditionPinBarHandle>(null);
   const zeroPromptRanRef = useRef(false);
+  const zeroPromptTriggerRef = useRef<string | null>(null);
+  const [preflightRevealComplete, setPreflightRevealComplete] = useState(false);
   const [situationLine, setSituationLine] = useState<string | null>(null);
   const [preflightLine, setPreflightLine] = useState<string | null>(null);
   const [interpretation, setInterpretation] = useState<ContextAgentInterpretation | null>(
@@ -165,6 +176,8 @@ export function GlobeContextConditionPromptFrame({
       return;
     }
     zeroPromptRanRef.current = false;
+    zeroPromptTriggerRef.current = null;
+    setPreflightRevealComplete(false);
     setSituationLine(null);
     setPreflightLine(null);
     setInterpretation(null);
@@ -244,26 +257,37 @@ export function GlobeContextConditionPromptFrame({
     if (!open || !event) {
       return;
     }
-    const target = resolveBridgeContextWeatherTarget(event);
-    if (!target) {
-      return;
+    const cached = readContextAgentPrefetch(event.id);
+    if (cached?.weather) {
+      setWeatherContext(cached.weather);
     }
-    let cancelled = false;
-    void fetchWeatherForecastClient({
-      location: target.location,
-      targetIso: target.targetIso,
-      eventDate: target.eventDate,
-      eventTimeSource: target.eventTimeSource,
-    }).then((payload) => {
-      if (cancelled) {
+
+    const syncPrefetch = (snapshot: ReturnType<typeof readContextAgentPrefetch>) => {
+      if (!snapshot || snapshot.eventId !== event.id) {
         return;
       }
-      setWeatherContext(payload?.weather ?? null);
-    });
-    return () => {
-      cancelled = true;
+      if (snapshot.weather) {
+        setWeatherContext(snapshot.weather);
+      }
     };
-  }, [event, open]);
+    syncPrefetch(cached);
+
+    void prefetchContextAgentSurroundings({
+      event,
+      anchorLat,
+      anchorLng,
+      userLat,
+      userLng,
+    }).then((snapshot) => {
+      if (snapshot.weather) {
+        setWeatherContext(snapshot.weather);
+      }
+    });
+
+    return subscribeContextAgentPrefetch((snapshot) => {
+      syncPrefetch(snapshot);
+    });
+  }, [anchorLat, anchorLng, event, open, userLat, userLng]);
 
   useEffect(() => {
     if (!open || !event) {
@@ -297,22 +321,34 @@ export function GlobeContextConditionPromptFrame({
       anchorPlaceName,
       weather: weatherContext,
     });
+    zeroPromptTriggerRef.current = zero.triggerMessage;
     setSituationLine(zero.preflightBriefingKo);
     setPreflightLine(zero.preflightBriefingKo);
     setBodyExpanded(true);
+  }, [anchorPlaceName, event, open, weatherContext]);
 
-    void (async () => {
-      await new Promise<void>((resolve) => {
-        window.setTimeout(resolve, PREFLIGHT_READ_MS);
-      });
-      setRefineBusy(true);
-      try {
-        await pinBarRef.current?.submitTrigger(zero.triggerMessage);
-      } finally {
-        setRefineBusy(false);
-      }
-    })();
-  }, [anchorPlaceName, event, open]);
+  useEffect(() => {
+    if (!open || !event || !preflightRevealComplete) {
+      return;
+    }
+    if (!isGlobeContextAgentBound(event.id)) {
+      return;
+    }
+    const triggerMessage = zeroPromptTriggerRef.current?.trim();
+    if (!triggerMessage) {
+      return;
+    }
+    const batch = readContextConditionLastBatch(event.id);
+    if (batch?.count && batch.count > 0) {
+      return;
+    }
+
+    zeroPromptTriggerRef.current = null;
+    setRefineBusy(true);
+    void pinBarRef.current?.submitTrigger(triggerMessage).finally(() => {
+      setRefineBusy(false);
+    });
+  }, [event, open, preflightRevealComplete]);
 
   useEffect(() => {
     return subscribeContextAgentRuntime(setRuntime);
@@ -538,7 +574,7 @@ export function GlobeContextConditionPromptFrame({
       zIndex={34}
       dragLabel={copy.globe.contextConditionPanelDragLabel}
       className={cn(className)}
-      shellClassName="overflow-hidden rounded-[1.15rem] bg-white/82 shadow-[0_18px_48px_rgba(15,23,42,0.14)] ring-1 ring-black/[0.05] backdrop-blur-xl"
+      shellClassName={rimvioAssistantFrameShellClass()}
       bodyClassName="flex min-h-0 flex-col"
     >
       <div className="flex min-h-0 flex-1 flex-col">
@@ -546,34 +582,31 @@ export function GlobeContextConditionPromptFrame({
           <div className="flex min-w-0 items-start gap-2">
             <GlobeContextConditionOrb size="md" />
             <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#86868b]">
+              <p className={rimvioAssistantEyebrowClass()}>
                 {copy.globe.containerAiEyebrow}
               </p>
               {isGlobeContextAgentBound(event.id) ? (
                 <div
-                  className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-[#0071e3]/10 px-2 py-0.5 ring-1 ring-[#0071e3]/20"
+                  className={cn("mt-1", rimvioAssistantConnectedBadgeClass())}
                   data-globe-context-agent-connected
                 >
-                  <span
-                    className="size-1.5 shrink-0 rounded-full bg-[#0071e3]"
-                    aria-hidden
-                  />
-                  <span className="text-[10px] font-semibold text-[#0071e3]">
+                  <span className={rimvioAssistantConnectedDotClass()} aria-hidden />
+                  <span className={rimvioAssistantConnectedLabelClass()}>
                     {copy.globe.contextAgentConnectedBadge}
                   </span>
                 </div>
               ) : null}
-              <p className="truncate text-[14px] font-semibold text-[#1d1d1f]">
+              <p className={cn("truncate", rimvioAssistantTitleClass())}>
                 {anchorPlaceName}
               </p>
               <p
                 className={cn(
                   "mt-0.5 truncate text-[11px]",
                   isGlobeContextAgentBound(event.id)
-                    ? "text-[#0071e3]/85"
+                    ? rimvioAssistantStatusActiveClass()
                     : runtime.lifecycle === "busy"
-                      ? "font-medium text-[#0071e3]"
-                      : "text-[#86868b]",
+                      ? rimvioAssistantStatusActiveClass()
+                      : rimvioAssistantMetaClass(),
                 )}
                 data-globe-context-agent-status
                 data-globe-context-agent-lifecycle={runtime.lifecycle}
@@ -633,7 +666,10 @@ export function GlobeContextConditionPromptFrame({
 
         {showPreflightChat ? (
           <div className="min-h-[7.5rem] flex-1 overflow-y-auto overscroll-contain px-3 py-3">
-            <GlobeContextAgentPreflightBubble briefingLine={preflightLine ?? ""} />
+            <GlobeContextAgentPreflightBubble
+              briefingLine={preflightLine ?? ""}
+              onRevealComplete={() => setPreflightRevealComplete(true)}
+            />
             {refineBusy || runtime.lifecycle === "busy" ? (
               <p className="mt-3 px-1 text-[11px] leading-relaxed text-[#86868b]">
                 {copy.globe.contextAgentPreflightScoutSoon}
@@ -646,7 +682,10 @@ export function GlobeContextConditionPromptFrame({
             data-globe-context-condition-conversation
           >
             {preflightLine ? (
-              <GlobeContextAgentPreflightBubble briefingLine={preflightLine} />
+              <GlobeContextAgentPreflightBubble
+                briefingLine={preflightLine}
+                onRevealComplete={() => setPreflightRevealComplete(true)}
+              />
             ) : null}
             <GlobeContextAgentInterpretationPanel interpretation={interpretation} />
             {patchPreview ? (

@@ -4,6 +4,7 @@ import { useEffect, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { useGlobePinScreenAnchor } from "@/hooks/use-globe-pin-screen-anchor";
+import { RIMVIO_ACTION, RIMVIO_INK } from "@/lib/design/rimvio-ontology";
 import {
   readGlobeInfoFrameLayout,
   type GlobeInfoFrameLayout,
@@ -79,8 +80,8 @@ export function GlobeContextAgentConnector({
     >
       <defs>
         <linearGradient id="rimvio-context-agent-link" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#0071e3" stopOpacity="0.55" />
-          <stop offset="100%" stopColor="#86868b" stopOpacity="0.35" />
+          <stop offset="0%" stopColor={RIMVIO_ACTION.primary} stopOpacity="0.55" />
+          <stop offset="100%" stopColor={RIMVIO_INK.secondary} stopOpacity="0.35" />
         </linearGradient>
       </defs>
       <line
@@ -93,8 +94,8 @@ export function GlobeContextAgentConnector({
         strokeDasharray="5 4"
         strokeLinecap="round"
       />
-      <circle cx={pinAnchor.x} cy={pinAnchor.y} r={4} fill="#0071e3" fillOpacity={0.85} />
-      <circle cx={framePoint.x} cy={framePoint.y} r={3.5} fill="#86868b" fillOpacity={0.7} />
+      <circle cx={pinAnchor.x} cy={pinAnchor.y} r={4} fill={RIMVIO_ACTION.primary} fillOpacity={0.85} />
+      <circle cx={framePoint.x} cy={framePoint.y} r={3.5} fill={RIMVIO_INK.secondary} fillOpacity={0.7} />
     </svg>,
     document.body,
   );

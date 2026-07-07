@@ -253,3 +253,5 @@ export function rimvioNowSecondaryChipClass(className?: string) {
     className,
   );
 }
+
+export * from "@/lib/design/globe-assistant-surface";

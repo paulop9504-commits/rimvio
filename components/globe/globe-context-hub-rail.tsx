@@ -692,14 +692,8 @@ export function GlobeContextHubRail({
             <EmptyIcon className="size-5" aria-hidden />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-[#0071e3]">
-              {copy.globe.mainActionEyebrow}
-            </span>
-            <span className="mt-0.5 block truncate text-[14px] font-semibold text-[#1d1d1f]">
+            <span className="block truncate text-[14px] font-semibold text-[#1d1d1f]">
               {emptyDockOffer.labelKo}
-            </span>
-            <span className="mt-0.5 block text-[12px] text-[#86868b]">
-              {copy.globe.contextHubEmptyDockLine}
             </span>
           </span>
           <span className="shrink-0 rounded-full bg-[#0071e3] px-3.5 py-2 text-[12px] font-semibold text-white">
@@ -715,10 +709,14 @@ export function GlobeContextHubRail({
       {ticketSheets}
       <div className={cn("flex flex-col gap-3", className)}>
         {showBrainStrip && activeEvent ? <GlobeContextBrainStrip event={activeEvent} /> : null}
-        <GlobePlacePrefillCard activeEventId={activeEventId} lat={lat} lng={lng} />
-        <GlobePrepChecklistCard activeEventId={activeEventId} />
-        <GlobeContextGardenSummary summary={gardenSummary} />
-        {weatherPrepLine ? (
+        {presentation !== "detail" ? (
+          <GlobePlacePrefillCard activeEventId={activeEventId} lat={lat} lng={lng} />
+        ) : null}
+        {presentation !== "detail" ? (
+          <GlobePrepChecklistCard activeEventId={activeEventId} />
+        ) : null}
+        {gardenSummary ? <GlobeContextGardenSummary summary={gardenSummary} /> : null}
+        {weatherPrepLine && !showCarousel ? (
           <p className="px-0.5 text-[11px] font-medium text-muted-foreground">{weatherPrepLine}</p>
         ) : null}
         {showCarousel ? (
@@ -755,34 +753,27 @@ export function GlobeContextHubRail({
       data-globe-context-hub-rail-expanded="true"
       aria-label={copy.globe.contextHubRailTitle}
     >
-      <div className="flex items-start gap-2 px-3 py-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#0071e3]">
-            {copy.globe.contextHubEyebrow}
-          </p>
-          <p className="text-[15px] font-semibold leading-tight text-[#1d1d1f]">
-            {copy.globe.contextHubExpandAria}
-          </p>
-          <p
-            className="mt-0.5 truncate text-[12px] font-medium text-[#86868b]"
-            title={panel.contextPlace}
+      {presentation !== "detail" ? (
+        <div className="flex items-start gap-2 px-3 py-3">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[15px] font-semibold leading-tight text-[#1d1d1f]">
+              {panel.contextPlace}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setExpanded(false)}
+            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/90 shadow-sm active:scale-95"
+            aria-expanded
+            aria-label={copy.globe.contextHubCollapseAria}
+            data-globe-hub-rail-collapse
           >
-            {copy.globe.contextHubRailForContext(panel.contextPlace)}
-          </p>
+            <ChevronDown className="size-4 rotate-180 text-[#86868b]" aria-hidden />
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => setExpanded(false)}
-          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/90 shadow-sm active:scale-95"
-          aria-expanded
-          aria-label={copy.globe.contextHubCollapseAria}
-          data-globe-hub-rail-collapse
-        >
-          <ChevronDown className="size-4 rotate-180 text-[#86868b]" aria-hidden />
-        </button>
-      </div>
+      ) : null}
 
-      <div className="px-2 pb-2">
+      <div className={cn("px-2 pb-2", presentation === "detail" && "pt-1")}>
         <GlobeHubServiceList
           rows={browseRows}
           busy={busy}

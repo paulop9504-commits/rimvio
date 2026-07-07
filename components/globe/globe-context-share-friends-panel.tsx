@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Loader2, Share2, UserRound } from "lucide-react";
+import { Loader2, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { PeerProfileAvatar } from "@/components/peer-chat/peer-profile-avatar";
 import { useAuth } from "@/hooks/use-auth";
@@ -108,40 +108,19 @@ export function GlobeContextShareFriendsPanel({
 
   return (
     <section
-      className={cn(
-        "overflow-hidden rounded-[1.25rem] border border-border/80 bg-gradient-to-b from-card to-muted/30 shadow-sm",
-        className,
-      )}
+      className={cn("overflow-hidden rounded-[1.25rem] bg-muted/25", className)}
       data-globe-context-share-panel
     >
-      <div className="flex items-start gap-3 border-b border-border/60 px-4 py-3.5">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-primary">
-          <Share2 className="size-4" aria-hidden />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-[14px] font-semibold text-foreground">
-            {copy.globe.bridgeShareSectionTitle}
-          </p>
-          <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
-            {copy.globe.bridgeShareSectionHint}
-          </p>
-        </div>
-      </div>
-
-      <div className="px-4 py-3">
+      <div className="px-3 py-3">
         {fetching ? (
-          <p className="flex items-center gap-2 py-4 text-[13px] text-muted-foreground">
+          <p className="flex items-center justify-center gap-2 py-3 text-[12px] text-muted-foreground">
             <Loader2 className="size-4 animate-spin" aria-hidden />
-            {copy.globe.bridgeShareRailLoading}
           </p>
         ) : visible.length === 0 ? (
-          <div className="rounded-xl bg-background/70 px-3 py-4 text-center">
-            <p className="text-[12px] leading-relaxed text-muted-foreground">
-              {copy.globe.bridgeShareNoFriends}
-            </p>
+          <div className="rounded-xl bg-background/70 px-3 py-3 text-center">
             <Link
               href="/peers"
-              className="mt-3 inline-flex h-9 items-center justify-center rounded-full bg-primary px-4 text-[13px] font-semibold text-primary-foreground active:opacity-90"
+              className="inline-flex h-9 items-center justify-center rounded-full bg-primary px-4 text-[13px] font-semibold text-primary-foreground active:opacity-90"
             >
               {copy.globe.bridgeShareAddFriendsCta}
             </Link>

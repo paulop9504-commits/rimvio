@@ -80,15 +80,9 @@ export function GlobeContextHubDetailSheet({
         >
           <header className="flex shrink-0 items-center gap-3 px-4 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#0071e3]">
-                {copy.globe.mainActionEyebrow}
-              </p>
               <h1 className="truncate text-[20px] font-semibold leading-tight text-[#1d1d1f]">
                 {headerTitle}
               </h1>
-              <p className="mt-0.5 text-[13px] text-[#86868b]">
-                {copy.globe.contextHubDetailBody}
-              </p>
             </div>
             <button
               type="button"

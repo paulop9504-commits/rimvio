@@ -2,6 +2,11 @@
 
 import type { ContextConditionRecommendation } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
 import { copy } from "@/lib/copy/human-ko";
+import {
+  rimvioAssistantEyebrowClass,
+  rimvioAssistantMetaClass,
+  rimvioAssistantTitleClass,
+} from "@/lib/design/globe-assistant-surface";
 import { cn } from "@/lib/utils";
 
 export type GlobeContextAgentRecommendationListProps = {
@@ -35,7 +40,7 @@ export function GlobeContextAgentRecommendationList({
 
   return (
     <div className={cn("space-y-2", className)} data-globe-context-agent-recommendations>
-      <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[#86868b]">
+      <p className={rimvioAssistantEyebrowClass("tracking-[0.06em]")}>
         {copy.globe.localDiscoveryRecommendEyebrow}
       </p>
       <ul className="space-y-1.5">
@@ -58,7 +63,7 @@ export function GlobeContextAgentRecommendationList({
               data-globe-context-agent-recommendation-kind={item.kind}
               data-globe-context-agent-recommendation-pinned={isPinned ? "true" : "false"}
             >
-              <p className="truncate text-[12px] font-semibold text-[#1d1d1f]">
+              <p className={cn("truncate text-[12px]", rimvioAssistantTitleClass())}>
                 <span className="mr-1.5 inline-flex size-4 items-center justify-center rounded-full bg-[#1d1d1f] text-[9px] font-bold text-white">
                   {RECOMMEND_LABELS[index]}
                 </span>
@@ -95,7 +100,7 @@ export function GlobeContextAgentRecommendationList({
           );
         })}
       </ul>
-      <p className="text-[10px] leading-relaxed text-[#86868b]">
+      <p className={rimvioAssistantMetaClass("text-[10px]")}>
         {copy.globe.localDiscoveryRefineHint}
       </p>
     </div>

@@ -285,6 +285,8 @@ export const GlobeContextConditionPinBar = forwardRef<
 
   const resolveAndMaybeExecute = useCallback(
     async (triggerMessage: string, answers?: Record<string, string>) => {
+      beginContextAgentWork("exploring");
+      setContextAgentSessionPhase("scouting");
       const interpreted = await interpretMessyForContextAgent({
         messyInput: triggerMessage,
         contextEventId,

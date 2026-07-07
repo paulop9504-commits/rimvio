@@ -7,6 +7,8 @@ import type {
   PersonalContextAskRecallContext,
   PersonalContextResponseFocus,
 } from "@/lib/personal-context-ask";
+import { GlobeTypewriterText } from "@/components/globe/globe-typewriter-text";
+import { rimvioAssistantNarrativeClass } from "@/lib/design/globe-assistant-surface";
 import { pickAskPrimaryHit } from "@/lib/personal-context-ask/pick-ask-primary-hit";
 import { PersonalContextAskPhotoThumb } from "@/components/globe/personal-context-ask-photo-thumb";
 import { PersonalContextAskContinuity } from "@/components/globe/personal-context-ask-continuity";
@@ -139,9 +141,9 @@ export function PersonalContextAskReply({
         {narrative.split("\n\n").map((paragraph, index) => (
           <p
             key={`${index}-${paragraph.slice(0, 12)}`}
-            className="whitespace-pre-wrap text-[15px] leading-relaxed text-[#191f28]"
+            className={rimvioAssistantNarrativeClass()}
           >
-            {paragraph}
+            <GlobeTypewriterText text={paragraph} cps={index === 0 ? 50 : 58} />
           </p>
         ))}
       </div>

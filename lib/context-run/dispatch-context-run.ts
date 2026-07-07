@@ -49,6 +49,7 @@ import { evaluateContractGate } from "@/lib/event-kernel/slot-filling/contract-g
 import { runGlobeComposerAction } from "@/lib/globe/run-globe-composer-action";
 import { listLifeEventCandidates } from "@/lib/life-read-model";
 import { resolvePersonalContextAsk } from "@/lib/personal-context-ask";
+import { interpretMessyForPersonalAsk } from "@/lib/messy-prompt-interpreter/adapters/personal-ask-adapter";
 import {
   syncExperienceRunClarifyToFeed,
   syncExperienceRunSummaryToFeed,
@@ -921,8 +922,19 @@ async function executeContextRunPlan(
       );
     }
     case "personal_context_ask": {
+      let query = bound.goalKo;
+      if (
+        bound.ingress.kind === "text" &&
+        bound.ingress.surface !== "capture_sheet"
+      ) {
+        const interpreted = await interpretMessyForPersonalAsk({
+          messyInput: bound.goalKo,
+          scope: "personal",
+        });
+        query = interpreted.refinedMessage;
+      }
       const personal = resolvePersonalContextAsk({
-        query: bound.goalKo,
+        query,
         events: listLifeEventCandidates(),
         scope: "personal",
       });

@@ -2,7 +2,6 @@
 
 import { PeerProfileAvatar } from "@/components/peer-chat/peer-profile-avatar";
 import type { ContextMediaReelItem } from "@/lib/globe/project-context-media-reel";
-import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
 export type BridgeParticipantRow = {
@@ -57,35 +56,24 @@ export function ExperienceBridgeParticipantsStrip({
 
   return (
     <div
-      className={cn(
-        "flex items-center gap-3 rounded-2xl border border-white/10 bg-gradient-to-r from-white/10 via-white/5 to-transparent px-3.5 py-2.5 backdrop-blur-xl",
-        className,
-      )}
+      className={cn("flex items-center gap-2", className)}
       data-experience-bridge-participants
     >
-      <div className="flex -space-x-2.5">
+      <div className="flex -space-x-2">
         {visible.map((row) => (
           <PeerProfileAvatar
             key={row.userId}
             displayName={row.displayName}
             avatarUrl={row.avatarUrl}
             size="sm"
-            className="size-9 ring-2 ring-black/40"
+            className="size-8 ring-2 ring-background"
           />
         ))}
         {overflow > 0 ? (
-          <span className="flex size-9 items-center justify-center rounded-full bg-black/50 text-[11px] font-bold text-white ring-2 ring-black/40">
+          <span className="flex size-8 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-muted-foreground ring-2 ring-background">
             +{overflow}
           </span>
         ) : null}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-white/55">
-          {copy.globe.bridgeMediaEyebrow}
-        </p>
-        <p className="truncate text-[13px] font-semibold text-white">
-          {copy.globe.bridgeParticipantsLine(visible.map((row) => row.displayName))}
-        </p>
       </div>
     </div>
   );

@@ -260,9 +260,13 @@ export const GlobeContextIngestBar = forwardRef<
         if (runResult.summary.eventId) {
           onAttached?.(runResult.summary.eventId);
         }
-        showComposerHint(softenComposerSuccessLine(runResult.summary.titleKo), {
+        const line =
+          runResult.summary.meaningLineKo?.trim() ||
+          runResult.summary.bodyKo.trim() ||
+          runResult.summary.titleKo;
+        showComposerHint(softenComposerSuccessLine(line), {
           tone: "success",
-          durationMs: 4000,
+          durationMs: 5000,
         });
       },
       onPortalComposeClarify: ({ questionKo }) => {
@@ -572,6 +576,9 @@ export const GlobeContextIngestBar = forwardRef<
           contextEventId: routingContextEventId,
           lat: userLat ?? liveLocation?.lat ?? null,
           lng: userLng ?? liveLocation?.lng ?? null,
+          onUnderstanding: (line) => {
+            showComposerHint(line, { tone: "neutral", durationMs: 0 });
+          },
         });
         if (interpreted.understandingKo) {
           showComposerHint(interpreted.understandingKo, {

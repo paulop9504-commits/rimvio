@@ -96,18 +96,17 @@ function BridgeToolButton({
     <button
       type="button"
       onClick={onPress}
-      className="flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-xl py-1.5 active:bg-muted/80"
+      aria-label={label}
+      title={label}
+      className="flex min-w-0 flex-1 items-center justify-center rounded-xl py-2 active:bg-muted/80"
     >
-      <span className="relative flex size-8 items-center justify-center rounded-full bg-muted text-foreground">
+      <span className="relative flex size-9 items-center justify-center rounded-full bg-muted text-foreground">
         {icon}
         {badge != null && badge > 0 ? (
           <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
             {badge > 9 ? "9+" : badge}
           </span>
         ) : null}
-      </span>
-      <span className="max-w-full truncate text-[10px] font-medium text-muted-foreground">
-        {label}
       </span>
     </button>
   );
@@ -262,34 +261,24 @@ export function BridgeContextPanel({
     environment.weatherLine?.trim() ||
     environment.trafficLine?.trim() ||
     null;
+  const showEnvLine =
+    Boolean(envLine) &&
+    !recall.primary.includes(envLine.slice(0, 6)) &&
+    recall.primary.length < 48;
 
   return (
     <div className={cn("space-y-3 pb-0.5", className)} data-bridge-context-panel>
-      <div className="space-y-0.5 px-0.5">
+      <div className="px-0.5">
         <p className="text-[16px] font-semibold leading-snug tracking-tight text-foreground">
           {recall.primary}
         </p>
-        {recall.secondary ? (
-          <p className="text-[13px] text-muted-foreground">{recall.secondary}</p>
-        ) : null}
-        {envLine ? (
-          <p className="text-[12px] font-medium text-muted-foreground/90">{envLine}</p>
-        ) : null}
-        {recall.dateLabel ? (
-          <p className="pt-0.5 text-[11px] font-semibold text-primary/75">
-            {recall.dateLabel}
-          </p>
+        {showEnvLine ? (
+          <p className="mt-1 text-[12px] text-muted-foreground">{envLine}</p>
         ) : null}
       </div>
 
       {journeyTimeline.length > 0 || experienceWindow ? (
-        <>
-          {isBridgeHost && planningProposalCount > 1 ? (
-            <p className="px-0.5 text-[12px] font-medium text-primary/80">
-              {copy.globe.bridgePlanningProposalQueueHint(planningProposalCount)}
-            </p>
-          ) : null}
-          <ExperienceBridgeJourneyTimeline
+        <ExperienceBridgeJourneyTimeline
           timeline={journeyTimeline}
           experienceWindow={experienceWindow}
           onOpenTalk={onOpenTalk}
@@ -298,7 +287,6 @@ export function BridgeContextPanel({
           onRejectPlanningProposal={() => void rejectPlanningProposal()}
           showPlanningProposalAccept={Boolean(isBridgeHost && hasPlanningProposal)}
         />
-        </>
       ) : null}
 
       {people.length > 0 ? (
@@ -326,6 +314,7 @@ export function BridgeContextPanel({
                 key={row.userId}
                 type="button"
                 onClick={() => selectAuthor(row.userId)}
+                aria-label={row.displayName}
                 className="flex shrink-0 flex-col items-center gap-0.5"
               >
                 <PeerProfileAvatar
@@ -337,9 +326,6 @@ export function BridgeContextPanel({
                     selected ? "ring-primary" : "ring-transparent",
                   )}
                 />
-                <span className="max-w-[3.25rem] truncate text-[9px] font-medium text-foreground">
-                  {row.displayName}
-                </span>
               </button>
             );
           })}
@@ -398,11 +384,10 @@ export function BridgeContextPanel({
       <button
         type="button"
         onClick={() => setHubOpen((value) => !value)}
-        className="flex w-full items-center justify-between rounded-2xl px-1 py-1 text-left active:opacity-80"
+        className="flex w-full items-center justify-center rounded-2xl py-1 active:opacity-80"
+        aria-expanded={hubOpen}
+        aria-label={hubOpen ? copy.globe.contextHubCollapseAria : copy.globe.contextHubExpandAria}
       >
-        <span className="text-[12px] font-semibold text-muted-foreground">
-          {copy.globe.mainActionEyebrow}
-        </span>
         <ChevronDown
           className={cn(
             "size-4 text-muted-foreground transition",
@@ -416,6 +401,7 @@ export function BridgeContextPanel({
           event={event}
           destinationLabel={hero.place}
           onUpdated={onHubUpdated}
+          minimal
         />
       ) : null}
 

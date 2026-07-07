@@ -11,7 +11,7 @@ export type InterpretMessyPromptOptions = Pick<
 
 /**
  * Shared interpret-only entry — normalize → intent → IR → plan (no executor).
- * Client surfaces default to rules-only (`useLlm: false`).
+ * Browser surfaces use interpretMessyPromptHybrid for rules + optional server LLM.
  */
 export async function interpretMessyPrompt(
   messyInput: string,

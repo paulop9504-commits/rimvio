@@ -51,6 +51,12 @@ export {
   type ContextAgentPreflightBriefing,
 } from "@/lib/globe/context-agent/build-context-agent-preflight-briefing";
 export {
+  readContextAgentPrefetch,
+  subscribeContextAgentPrefetch,
+  type ContextAgentPrefetchSnapshot,
+} from "@/lib/globe/context-agent/context-agent-prefetch-store";
+export { prefetchContextAgentSurroundings } from "@/lib/globe/context-agent/prefetch-context-agent-surroundings";
+export {
   clearContextAgentInterpretation,
   publishContextAgentInterpretation,
   readContextAgentInterpretation,

@@ -39,7 +39,17 @@ import { ingestScreenshot } from "@/lib/share/ingest-screenshot";
 import { dispatchGlobeMarketProjectionLaunch } from "@/lib/portal/globe-market-projection-bridge";
 import { requestGlobeMarketQuickList } from "@/lib/portal/globe-market-quick-list-bridge";
 import { canQuickListMarketCompose } from "@/lib/globe/market/build-market-quick-list-draft";
+import { GlobeTypewriterText } from "@/components/globe/globe-typewriter-text";
+import {
+  rimvioAssistantAiBubbleMutedClass,
+  rimvioAssistantHeroHintClass,
+  rimvioAssistantHeroTitleClass,
+  rimvioAssistantSheetGlowClass,
+  rimvioAssistantSheetShellClass,
+  rimvioAssistantUserBubbleClass,
+} from "@/lib/design/globe-assistant-surface";
 import { dispatchContextRun } from "@/lib/context-run/dispatch-context-run";
+import { interpretMessyForPersonalAsk } from "@/lib/messy-prompt-interpreter/adapters/personal-ask-adapter";
 import { consumeCaptureSheetSeedText } from "@/lib/nav/open-capture-sheet-bridge";
 import { cn } from "@/lib/utils";
 
@@ -301,10 +311,31 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
 
     void (async () => {
       try {
+        const interpreted = await interpretMessyForPersonalAsk({
+          messyInput: text,
+          scope,
+          lat: liveLocation?.lat ?? null,
+          lng: liveLocation?.lng ?? null,
+          onUnderstanding: (line) => {
+            showComposerHint(line, { tone: "neutral", durationMs: 0 });
+            setMessages((prev) =>
+              prev.map((message) =>
+                message.id === assistantId
+                  ? {
+                      ...message,
+                      text: line,
+                      loading: false,
+                    }
+                  : message,
+              ),
+            );
+          },
+        });
+
         await dispatchContextRun(
           {
             kind: "text",
-            text,
+            text: interpreted.refinedMessage,
             surface: "capture_sheet",
             layerMode: scope,
             lat: liveLocation?.lat ?? null,
@@ -461,6 +492,7 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
     liveLocation?.lat,
     liveLocation?.lng,
     onGlobeHome,
+    showComposerHint,
   ]);
 
   const sendAsk = useCallback(() => {
@@ -519,7 +551,10 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
             <motion.div
               role="dialog"
               aria-label={ask.ariaLabel}
-              className="rimvio-sheet-over-nav-panel fixed inset-x-0 bottom-0 mx-auto flex h-[min(92dvh,780px)] w-full max-w-lg flex-col overflow-hidden rounded-t-[28px] bg-[#fafafa] shadow-[0_-12px_48px_rgba(15,23,42,0.12)]"
+              className={cn(
+                "rimvio-sheet-over-nav-panel fixed inset-x-0 bottom-0 mx-auto h-[min(92dvh,780px)] w-full max-w-lg",
+                rimvioAssistantSheetShellClass(),
+              )}
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
@@ -528,13 +563,10 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
               data-surface="capture-sheet"
               data-capture-sheet-mode={showTriggerRail ? "memory-triggers" : "ask"}
             >
-              <div
-                className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#ede9fe]/35 via-[#e0f2fe]/20 to-transparent"
-                aria-hidden
-              />
+              <div className={rimvioAssistantSheetGlowClass()} />
 
               <div className="relative shrink-0 px-5 pt-3">
-                <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[#191f28]/12" aria-hidden />
+                <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[#1d1d1f]/12" aria-hidden />
                 <div className="flex items-center justify-between gap-3">
                   <GlobeLayerModeToggle
                     mode={layerMode}
@@ -561,10 +593,10 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
                     <div className="flex min-h-full flex-col py-4">
                       <div className="flex shrink-0 flex-col items-center px-2 pt-2">
                         <GlobeContextAiOrb size="lg" />
-                        <p className="mt-5 max-w-[17rem] text-center text-[22px] font-bold leading-snug tracking-tight text-[#191f28]">
+                        <p className={cn("mt-5 max-w-[17rem]", rimvioAssistantHeroTitleClass())}>
                           {hero}
                         </p>
-                        <p className="mt-2 text-center text-[15px] font-medium text-[#ff6b4a]/90">
+                        <p className={cn("mt-2", rimvioAssistantHeroHintClass())}>
                           {copy.globe.contextAiHeroHint}
                         </p>
                       </div>
@@ -575,14 +607,14 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
                           className="mt-auto pt-6"
                         />
                       ) : (
-                        <p className="mt-auto px-2 pb-6 text-center text-[14px] leading-relaxed text-[#8b95a1]">
+                        <p className="mt-auto px-2 pb-6 text-center text-[14px] leading-relaxed text-[#86868b]">
                           {copy.globe.layerModePersonalEmpty}
                         </p>
                       )}
                     </div>
                   ) : (
                     <div className="flex min-h-full items-center justify-center px-2 py-12">
-                      <p className="max-w-[16rem] text-center text-[22px] font-medium leading-snug tracking-tight text-[#191f28]">
+                      <p className={cn("max-w-[16rem]", rimvioAssistantHeroTitleClass())}>
                         {hero}
                       </p>
                     </div>
@@ -604,9 +636,7 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
                           )}
                         >
                           {message.role === "user" ? (
-                            <p className="max-w-[85%] whitespace-pre-wrap rounded-[20px] rounded-br-md bg-[#191f28] px-4 py-2.5 text-[15px] leading-relaxed text-white">
-                              {message.text}
-                            </p>
+                            <p className={rimvioAssistantUserBubbleClass()}>{message.text}</p>
                           ) : message.loading ? (
                             <div className="max-w-[92%] space-y-2 rounded-[20px] rounded-bl-md bg-white px-4 py-3 shadow-sm ring-1 ring-black/[0.04]">
                               <div className="h-4 w-[88%] animate-pulse rounded-md bg-[#e5e8eb]" />
@@ -667,8 +697,8 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
                               />
                             </div>
                           ) : (
-                            <p className="max-w-[85%] whitespace-pre-wrap rounded-[20px] rounded-bl-md bg-white px-4 py-2.5 text-[15px] leading-relaxed text-[#4e5968] shadow-sm ring-1 ring-black/[0.04]">
-                              {message.text}
+                            <p className={rimvioAssistantAiBubbleMutedClass()}>
+                              <GlobeTypewriterText text={message.text} cps={46} />
                             </p>
                           )}
                         </div>
