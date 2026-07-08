@@ -12,6 +12,7 @@ import type {
   ConvergenceAxis,
   ConvergenceIntentType,
 } from "@/lib/globe/context-condition-ai/intent-convergence/intent-convergence-schema";
+import { extractLandmarkHintsFromText } from "@/lib/globe/discovery-lens/extract-landmark-hints";
 
 type LlmChoice = {
   readonly id: string;
@@ -50,15 +51,21 @@ function questionFromAxis(
   return {
     slot: "activityFocus",
     promptKo: axis.promptKo,
-    choices: axis.chips.map((chip) => ({
-      id: chip.id,
-      label: chip.blurbKo ? `${chip.labelKo} · ${chip.blurbKo}` : chip.labelKo,
-      slot: "activityFocus",
-      value: `${area} ${chip.refinedQueryTail}`.trim(),
-      ...(chip.nodeCluster && chip.nodeCluster.length > 0
-        ? { cluster: chip.nodeCluster }
-        : {}),
-    })),
+    choices: axis.chips.map((chip) => {
+      const landmarks = extractLandmarkHintsFromText(
+        `${chip.labelKo} ${chip.blurbKo ?? ""}`,
+      );
+      return {
+        id: chip.id,
+        label: chip.blurbKo ? `${chip.labelKo} · ${chip.blurbKo}` : chip.labelKo,
+        slot: "activityFocus" as const,
+        value: `${area} ${chip.refinedQueryTail}`.trim(),
+        ...(chip.nodeCluster && chip.nodeCluster.length > 0
+          ? { cluster: chip.nodeCluster }
+          : {}),
+        ...(landmarks.length > 0 ? { landmarks } : {}),
+      };
+    }),
   };
 }
 
@@ -149,17 +156,23 @@ export async function buildConvergenceQuestion(input: {
       question: {
         slot: "activityFocus",
         promptKo,
-        choices: choices.map((choice) => ({
-          id: choice.id,
-          label: choice.blurbKo
-            ? `${choice.labelKo} · ${choice.blurbKo}`
-            : choice.labelKo,
-          slot: "activityFocus",
-          value: choice.refinedQuery,
-          ...(choice.nodeCluster && choice.nodeCluster.length > 0
-            ? { cluster: choice.nodeCluster }
-            : {}),
-        })),
+        choices: choices.map((choice) => {
+          const landmarks = extractLandmarkHintsFromText(
+            `${choice.labelKo} ${choice.blurbKo ?? ""}`,
+          );
+          return {
+            id: choice.id,
+            label: choice.blurbKo
+              ? `${choice.labelKo} · ${choice.blurbKo}`
+              : choice.labelKo,
+            slot: "activityFocus" as const,
+            value: choice.refinedQuery,
+            ...(choice.nodeCluster && choice.nodeCluster.length > 0
+              ? { cluster: choice.nodeCluster }
+              : {}),
+            ...(landmarks.length > 0 ? { landmarks } : {}),
+          };
+        }),
       },
       askedAxisId: axisId,
     };

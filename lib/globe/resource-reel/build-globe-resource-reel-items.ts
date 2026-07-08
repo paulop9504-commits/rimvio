@@ -14,6 +14,11 @@ import {
   activitySubtypeActionLabel,
   activitySubtypeNoun,
 } from "@/lib/globe/place/activity-subtype-presentation";
+import {
+  buildGlobeResourceReelItemsFromLensPrefetch,
+  readActiveDiscoveryLens,
+  readDiscoveryLensSession,
+} from "@/lib/globe/discovery-lens";
 
 function formatPriceKrw(value: number | null | undefined): string | null {
   if (value == null || !Number.isFinite(value)) {
@@ -158,6 +163,19 @@ export function buildGlobeResourceReelItems(
 ): GlobeResourceReelItem[] {
   if (!event) {
     return [];
+  }
+
+  const lensSession = readDiscoveryLensSession(event.id);
+  const activeLens = readActiveDiscoveryLens(lensSession);
+  if (
+    activeLens?.prefetch?.status === "ready" &&
+    activeLens.prefetch.items.length > 0
+  ) {
+    return buildGlobeResourceReelItemsFromLensPrefetch({
+      contextEventId: event.id,
+      lensLabel: activeLens.labelKo,
+      bundle: activeLens.prefetch,
+    });
   }
 
   const batch = readContextConditionLastBatch(event.id);

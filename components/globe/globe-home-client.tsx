@@ -155,6 +155,12 @@ import {
 } from "@/lib/globe/context-condition-ai/context-condition-discovery-overlay-bridge";
 import type { ContextConditionDiscoveryOverlay } from "@/lib/globe/context-condition-ai/context-condition-discovery-overlay-types";
 import {
+  handleDiscoveryLensGlobePress,
+  readDiscoveryLensSession,
+  subscribeDiscoveryLensSession,
+  type DiscoveryLensSession,
+} from "@/lib/globe/discovery-lens";
+import {
   armGlobeContextAgent,
   bindGlobeContextAgent,
   cancelGlobeContextAgentArm,
@@ -537,6 +543,7 @@ function GlobeHomeBody() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [stackClusters, setStackClusters] = useState<PinCluster[] | null>(null);
   const [clustersRevision, setClustersRevision] = useState(0);
+  const [globeClusters, setGlobeClusters] = useState<readonly PinCluster[]>([]);
   const [mediaStoreRevision, setMediaStoreRevision] = useState(0);
   const [projectionRevision, setProjectionRevision] = useState(0);
   const [hubDetailOpen, setHubDetailOpen] = useState(false);
@@ -548,6 +555,11 @@ function GlobeHomeBody() {
     useState<ContextConditionDiscoveryOverlay | null>(() =>
       readContextConditionDiscoveryOverlay(),
     );
+  const [discoveryLensSession, setDiscoveryLensSession] =
+    useState<DiscoveryLensSession | null>(() => {
+      const eventId = readGlobeContextAgentSession().boundEventId?.trim();
+      return eventId ? readDiscoveryLensSession(eventId) : null;
+    });
   const [mapMediaFocusOpen, setMapMediaFocusOpen] = useState(false);
   const [contextTapPhase, setContextTapPhase] =
     useState<ContextMapTapPhase>("awaiting_replay");
@@ -562,6 +574,10 @@ function GlobeHomeBody() {
 
   useEffect(() => {
     return subscribeContextConditionDiscoveryOverlay(setContextConditionDiscoveryOverlay);
+  }, []);
+
+  useEffect(() => {
+    return subscribeDiscoveryLensSession(setDiscoveryLensSession);
   }, []);
 
   useEffect(() => {
@@ -645,14 +661,14 @@ function GlobeHomeBody() {
     if (activeId === contextAgentBoundEventId && activeCluster) {
       return activeCluster;
     }
-    const fromGlobe = clustersRef.current.find(
+    const fromGlobe = globeClusters.find(
       (cluster) => cluster.eventId?.trim() === contextAgentBoundEventId,
     );
     if (fromGlobe) {
       return fromGlobe;
     }
     return resolveGlobeContextCardPinCluster(contextAgentBoundEventId);
-  }, [activeCluster, clustersRevision, contextAgentBoundEventId]);
+  }, [activeCluster, clustersRevision, contextAgentBoundEventId, globeClusters]);
 
   const contextAgentFocusLocked = Boolean(contextAgentBoundEventId);
   const contextAgentSurfacesActive =
@@ -692,6 +708,7 @@ function GlobeHomeBody() {
 
   const onClustersSnapshot = useCallback((clusters: readonly PinCluster[]) => {
     clustersRef.current = clusters;
+    setGlobeClusters(clusters);
     setClustersRevision((value) => value + 1);
   }, []);
 
@@ -1125,7 +1142,7 @@ function GlobeHomeBody() {
       ) ?? null
     );
   }, [
-    activeBrainSurfaceCandidate?.nodeId,
+    activeBrainSurfaceCandidate,
     activeContextEvent,
     activeContextProjectionManifest?.nodes,
   ]);
@@ -1245,7 +1262,7 @@ function GlobeHomeBody() {
       clusterId: activeBrainSurfaceCandidate.clusterId,
     });
   }, [
-    activeBrainSurfaceCandidate?.clusterId,
+    activeBrainSurfaceCandidate,
     brainSurfaceShadowExpanded,
     projectedBrainSurfaceCandidates,
   ]);
@@ -1737,7 +1754,7 @@ function GlobeHomeBody() {
         updatedByUserId: user.id,
       });
     },
-    [activeContextEvent, setFromGlobeIngress, user?.id],
+    [activeContextEvent, setFromGlobeIngress, user],
   );
 
   const onPriorityMainAction = useCallback(
@@ -2454,6 +2471,24 @@ function GlobeHomeBody() {
         applyNearbyContexts(nearby);
         return;
       }
+      const lensEventId =
+        contextAgentBoundEventId?.trim() ??
+        activeClusterRef.current?.eventId?.trim();
+      if (
+        contextConditionPanelOpen &&
+        lensEventId &&
+        readDiscoveryLensSession(lensEventId)?.lenses.length
+      ) {
+        if (
+          handleDiscoveryLensGlobePress({
+            contextEventId: lensEventId,
+            lat: coords.lat,
+            lng: coords.lng,
+          })
+        ) {
+          return;
+        }
+      }
       setGlobeMemoryDismissToken((token) => token + 1);
       setPortalPeekOpen(false);
       if (pinDragActiveRef.current) {
@@ -2490,6 +2525,8 @@ function GlobeHomeBody() {
       clearActiveContext,
       dismissBrainSurfacePreview,
       resolveNearbyAt,
+      contextConditionPanelOpen,
+      contextAgentBoundEventId,
     ],
   );
 
@@ -4012,6 +4049,7 @@ function GlobeHomeBody() {
         brainSurfaceTraceArcs={brainSurfaceTraceArcs}
         onBrainSurfaceMarkerPress={handleBrainSurfaceMarkerPress}
         contextConditionDiscoveryOverlay={contextConditionDiscoveryOverlay}
+        discoveryLensSession={discoveryLensSession}
         contextAgentPickMode={contextAgentSession.phase === "arming"}
       />
       <GlobeContextBrainMapOverlay

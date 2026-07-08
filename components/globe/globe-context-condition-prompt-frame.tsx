@@ -15,6 +15,7 @@ import { GlobeContextAgentProcessStrip } from "@/components/globe/globe-context-
 import { GlobeContextAgentRefineChips } from "@/components/globe/globe-context-agent-refine-chips";
 import { GlobeContextActionInjectionCard } from "@/components/globe/globe-context-action-injection-card";
 import { GlobeContextConditionPinBar, type GlobeContextConditionPinBarHandle } from "@/components/globe/globe-context-condition-pin-bar";
+import { GlobeDiscoveryLensBar } from "@/components/globe/globe-discovery-lens-bar";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { copy } from "@/lib/copy/human-ko";
@@ -99,6 +100,12 @@ import {
   type GeoOntologyGraph,
   type PalantirWorkspaceSnapshot,
 } from "@/lib/globe/spatial-semantic";
+import {
+  readDiscoveryLensSession,
+  subscribeDiscoveryLensSession,
+  type DiscoveryLensId,
+  type DiscoveryLensSession,
+} from "@/lib/globe/discovery-lens";
 import { cn } from "@/lib/utils";
 import {
   RIMVIO_ASSISTANT_FRAME_Z_INDEX,
@@ -151,6 +158,10 @@ export function GlobeContextConditionPromptFrame({
   const questionHandlerRef = useRef<
     (choice: LocalDiscoveryQuestionChoice) => void
   >(() => {});
+  const lensHandlerRef = useRef<(lensId: DiscoveryLensId) => void>(() => {});
+  const [lensSession, setLensSession] = useState<DiscoveryLensSession | null>(
+    () => (event ? readDiscoveryLensSession(event.id) : null),
+  );
   const pinBarRef = useRef<GlobeContextConditionPinBarHandle>(null);
   const prefetchStartedRef = useRef(false);
   const [refineBusy, setRefineBusy] = useState(false);
@@ -177,6 +188,18 @@ export function GlobeContextConditionPromptFrame({
       resetGlobeProjectionLayerPolicy();
     }
   }, [open]);
+
+  useEffect(() => {
+    if (!open || !event) {
+      return;
+    }
+    return subscribeDiscoveryLensSession((session) => {
+      if (session && session.contextEventId !== event.id) {
+        return;
+      }
+      setLensSession(session);
+    });
+  }, [event, open]);
 
   useEffect(() => {
     if (!open || !event) {
@@ -788,6 +811,15 @@ export function GlobeContextConditionPromptFrame({
           </div>
         ) : null}
 
+        {lensSession && lensSession.lenses.length > 0 ? (
+          <div className="border-b border-black/[0.05] px-3 py-2">
+            <GlobeDiscoveryLensBar
+              session={lensSession}
+              onSelect={(lensId) => lensHandlerRef.current(lensId)}
+            />
+          </div>
+        ) : null}
+
         {palantirWorkspace ? (
           <div
             className={cn(
@@ -914,6 +946,10 @@ export function GlobeContextConditionPromptFrame({
             registerQuestionHandler={(handler) => {
               questionHandlerRef.current = handler;
             }}
+            registerLensHandler={(handler) => {
+              lensHandlerRef.current = handler;
+            }}
+            onLensSessionChange={setLensSession}
           />
         </div>
       </div>

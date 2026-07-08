@@ -1843,6 +1843,16 @@ export const copyEn: Copy = {
     resourceReelOpenCta: "Open",
     resourceReelRadiusLabel: "Nearby",
     resourceReelFoundLabel: (count: number) => `${count} places`,
+    resourceReelFilterAll: "All",
+    resourceReelFilterActivity: "Activities",
+    resourceReelFilterEatery: "Eateries",
+    resourceReelFilterLodging: "Stays",
+    resourceReelFilterAmenity: "Amenities",
+    resourceReelFilterAppliedAll: "Showing all picks again.",
+    resourceReelFilterAppliedActivity: "Showing activities only.",
+    resourceReelFilterAppliedEatery: "Showing eateries only.",
+    resourceReelFilterAppliedLodging: "Showing stays only.",
+    resourceReelFilterAppliedAmenity: "Showing amenities only.",
     resourceReelSearchBadge: "Discovery",
     resourceReelSearching: "Searching",
     resourceReelBriefTapHint: "Tap for details",
@@ -1934,6 +1944,53 @@ export const copyEn: Copy = {
     contextConditionPinEmpty: "Could not find a fit right now",
     contextConditionGuardEmptyActivity:
       "Couldn't find a matching activity right away. Tell me what you're after and I'll find the right fit.",
+    discoveryLensBarHint: "Pick a lens to explore this area",
+    discoveryLensPrefetching: "Gathering places for each lens…",
+    discoveryLensPickHint: "Which area should I search? Tap a ring on the map",
+    discoveryLensReasonFamily: "great with kids",
+    discoveryLensReasonCouple: "great for two",
+    discoveryLensReasonFriends: "fun with friends",
+    discoveryLensReasonSolo: "good for solo",
+    discoveryLensReasonShopping: "great for shopping",
+    discoveryLensReasonMuseum: "great for culture",
+    discoveryLensReasonPark: "great to unwind",
+    discoveryLensReasonGeneral: "matching your vibe",
+    discoveryLensSpawnedWhy: (input: {
+      reasonKo: string;
+      placeLabels: string;
+      lensIds: string;
+      count: number;
+    }) =>
+      `I pinned ${input.count} ${input.reasonKo} areas on the map: ${input.placeLabels}. Tap ${input.lensIds} to explore.`,
+    discoveryLensPrefetchReady: (input: {
+      labelKo: string;
+      count: number;
+      activity: number;
+      eatery: number;
+      lodging: number;
+    }) => {
+      const parts: string[] = [];
+      if (input.activity > 0) {
+        parts.push(`${input.activity} activities`);
+      }
+      if (input.eatery > 0) {
+        parts.push(`${input.eatery} eateries`);
+      }
+      if (input.lodging > 0) {
+        parts.push(`${input.lodging} stays`);
+      }
+      const summary = parts.length > 0 ? parts.join(" · ") : `${input.count} places`;
+      return `Around ${input.labelKo}: ${summary} ready below.`;
+    },
+    discoveryLensPrefetchEmpty: (labelKo: string) =>
+      `No strong matches near ${labelKo} yet. Move the ring or pick another area.`,
+    discoveryLensLodgingPick: (labels: string) =>
+      `Which area should I search for stays? Tap a ring: ${labels}.`,
+    discoveryLensPickArea: (labels: string) =>
+      `Which area should I explore? Tap a ring: ${labels}.`,
+    discoveryLensSpawned: (labels: string) =>
+      `Lenses ready: ${labels}. Pick one to explore.`,
+    discoveryLensMoved: "Lens moved — searching this area again.",
     contextConditionGuardEmptyAmenity:
       "Couldn't find one nearby. Want me to widen the search a bit?",
     contextConditionNextHopPrompt: "Want to narrow it down further?",

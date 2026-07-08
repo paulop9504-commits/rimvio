@@ -10,9 +10,16 @@ import { MAP_FOCUS_PIN_VIEWPORT_Y } from "@/lib/globe/map-anchored-overlay-layou
 import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
 import { buildGlobeResourceReelItems } from "@/lib/globe/resource-reel/build-globe-resource-reel-items";
 import {
+  filterGlobeResourceReelItems,
+  resolveResourceReelKindFilter,
+  type ResourceReelKindFilter,
+} from "@/lib/globe/resource-reel/resource-reel-kind-filter";
+import {
   dispatchGlobeResourceReelStage,
   subscribeGlobeResourceReelFocus,
+  subscribeGlobeResourceReelKindFilter,
 } from "@/lib/globe/resource-reel/globe-resource-reel-bridge";
+import { subscribeDiscoveryLensSession } from "@/lib/globe/discovery-lens";
 import type {
   GlobeResourceReelItem,
   GlobeResourceReelSurface,
@@ -57,12 +64,44 @@ export function GlobeResourceReelStage({
 }: GlobeResourceReelStageProps) {
   const [revision, setRevision] = useState(0);
   const [state, setState] = useState<ReelState>(CLOSED_STATE);
+  const [kindFilter, setKindFilter] = useState<ResourceReelKindFilter>("all");
 
   useEffect(() => {
     const bump = () => setRevision((value) => value + 1);
     window.addEventListener(EVENT_CANDIDATES_UPDATED, bump);
     return () => window.removeEventListener(EVENT_CANDIDATES_UPDATED, bump);
   }, []);
+
+  useEffect(() => {
+    return subscribeDiscoveryLensSession(() => {
+      setRevision((value) => value + 1);
+    });
+  }, []);
+
+  useEffect(() => {
+    return subscribeGlobeResourceReelKindFilter((detail) => {
+      const eventId = detail.contextEventId.trim();
+      if (!eventId) {
+        return;
+      }
+      setKindFilter(detail.kindFilter);
+      setState((current) => {
+        if (current.open && current.contextEventId === eventId) {
+          return { ...current, surface: "list", activeResourceId: null };
+        }
+        if (!current.open && contextEventId?.trim() === eventId) {
+          return {
+            open: true,
+            surface: "list",
+            contextEventId: eventId,
+            activeResourceId: null,
+            resumeIntent: null,
+          };
+        }
+        return current;
+      });
+    });
+  }, [contextEventId]);
 
   useEffect(() => {
     return subscribeGlobeResourceReelFocus((detail) => {
@@ -81,6 +120,7 @@ export function GlobeResourceReelStage({
   }, []);
 
   useEffect(() => {
+    setKindFilter("all");
     setState(CLOSED_STATE);
     dispatchGlobeResourceReelStage(false);
     globeRef?.current?.clearPinViewportBias();
@@ -110,15 +150,30 @@ export function GlobeResourceReelStage({
     [activeEvent, revision],
   );
 
+  const resolvedKindFilter = useMemo(
+    () => resolveResourceReelKindFilter(items, kindFilter),
+    [items, kindFilter],
+  );
+
+  const filteredItems = useMemo(
+    () => filterGlobeResourceReelItems(items, resolvedKindFilter),
+    [items, resolvedKindFilter],
+  );
+
   const activeItem = useMemo(() => {
     if (!state.activeResourceId) {
-      return items[0] ?? null;
+      return filteredItems[0] ?? null;
     }
-    return items.find((row) => row.resourceId === state.activeResourceId) ?? items[0] ?? null;
-  }, [items, state.activeResourceId]);
+    return (
+      filteredItems.find((row) => row.resourceId === state.activeResourceId) ??
+      filteredItems[0] ??
+      null
+    );
+  }, [filteredItems, state.activeResourceId]);
 
   const dismiss = useCallback(() => {
     globeRef?.current?.clearPinViewportBias();
+    setKindFilter("all");
     setState(CLOSED_STATE);
   }, [globeRef]);
 
@@ -138,7 +193,10 @@ export function GlobeResourceReelStage({
   );
 
   const areaLabel =
-    activeEvent?.place?.trim() || activeEvent?.title?.trim() || copy.globe.resourceReelAreaFallback;
+    activeEvent?.place?.trim() ||
+    activeEvent?.title?.trim() ||
+    items[0]?.secondaryLine?.trim() ||
+    copy.globe.resourceReelAreaFallback;
 
   if (!state.open || items.length === 0) {
     return (
@@ -154,7 +212,10 @@ export function GlobeResourceReelStage({
       <GlobeResourceReelListPanel
         className={className}
         areaLabel={areaLabel}
-        items={items}
+        items={filteredItems}
+        allItems={items}
+        kindFilter={resolvedKindFilter}
+        onKindFilterChange={setKindFilter}
         activeResourceId={state.activeResourceId}
         onItemPress={openDetail}
         onDismiss={dismiss}
@@ -188,7 +249,7 @@ export function GlobeResourceReelStage({
       >
         <GlobeResourceReelDetail
           item={activeItem}
-          items={items}
+          items={filteredItems}
           contextEventId={state.contextEventId}
           lat={lat}
           lng={lng}
@@ -217,7 +278,7 @@ export function GlobeResourceReelStage({
           />
         </div>
       ) : null}
-      {items.length > 1 ? (
+      {filteredItems.length > 1 ? (
         <button
           type="button"
           onClick={() =>
