@@ -543,6 +543,7 @@ function GlobeHomeBody() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [stackClusters, setStackClusters] = useState<PinCluster[] | null>(null);
   const [clustersRevision, setClustersRevision] = useState(0);
+  const [globeClusters, setGlobeClusters] = useState<readonly PinCluster[]>([]);
   const [mediaStoreRevision, setMediaStoreRevision] = useState(0);
   const [projectionRevision, setProjectionRevision] = useState(0);
   const [hubDetailOpen, setHubDetailOpen] = useState(false);
@@ -660,14 +661,14 @@ function GlobeHomeBody() {
     if (activeId === contextAgentBoundEventId && activeCluster) {
       return activeCluster;
     }
-    const fromGlobe = clustersRef.current.find(
+    const fromGlobe = globeClusters.find(
       (cluster) => cluster.eventId?.trim() === contextAgentBoundEventId,
     );
     if (fromGlobe) {
       return fromGlobe;
     }
     return resolveGlobeContextCardPinCluster(contextAgentBoundEventId);
-  }, [activeCluster, clustersRevision, contextAgentBoundEventId]);
+  }, [activeCluster, clustersRevision, contextAgentBoundEventId, globeClusters]);
 
   const contextAgentFocusLocked = Boolean(contextAgentBoundEventId);
   const contextAgentSurfacesActive =
@@ -707,6 +708,7 @@ function GlobeHomeBody() {
 
   const onClustersSnapshot = useCallback((clusters: readonly PinCluster[]) => {
     clustersRef.current = clusters;
+    setGlobeClusters(clusters);
     setClustersRevision((value) => value + 1);
   }, []);
 
@@ -1140,7 +1142,7 @@ function GlobeHomeBody() {
       ) ?? null
     );
   }, [
-    activeBrainSurfaceCandidate?.nodeId,
+    activeBrainSurfaceCandidate,
     activeContextEvent,
     activeContextProjectionManifest?.nodes,
   ]);
@@ -1260,7 +1262,7 @@ function GlobeHomeBody() {
       clusterId: activeBrainSurfaceCandidate.clusterId,
     });
   }, [
-    activeBrainSurfaceCandidate?.clusterId,
+    activeBrainSurfaceCandidate,
     brainSurfaceShadowExpanded,
     projectedBrainSurfaceCandidates,
   ]);
@@ -1752,7 +1754,7 @@ function GlobeHomeBody() {
         updatedByUserId: user.id,
       });
     },
-    [activeContextEvent, setFromGlobeIngress, user?.id],
+    [activeContextEvent, setFromGlobeIngress, user],
   );
 
   const onPriorityMainAction = useCallback(

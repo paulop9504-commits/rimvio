@@ -120,6 +120,7 @@ export function GlobeResourceReelStage({
   }, []);
 
   useEffect(() => {
+    setKindFilter("all");
     setState(CLOSED_STATE);
     dispatchGlobeResourceReelStage(false);
     globeRef?.current?.clearPinViewportBias();
@@ -159,16 +160,6 @@ export function GlobeResourceReelStage({
     [items, resolvedKindFilter],
   );
 
-  useEffect(() => {
-    setKindFilter((current) => resolveResourceReelKindFilter(items, current));
-  }, [items]);
-
-  useEffect(() => {
-    if (!state.open) {
-      setKindFilter("all");
-    }
-  }, [state.open]);
-
   const activeItem = useMemo(() => {
     if (!state.activeResourceId) {
       return filteredItems[0] ?? null;
@@ -182,6 +173,7 @@ export function GlobeResourceReelStage({
 
   const dismiss = useCallback(() => {
     globeRef?.current?.clearPinViewportBias();
+    setKindFilter("all");
     setState(CLOSED_STATE);
   }, [globeRef]);
 

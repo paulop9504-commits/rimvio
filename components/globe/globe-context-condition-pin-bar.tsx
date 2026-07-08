@@ -208,7 +208,7 @@ export const GlobeContextConditionPinBar = forwardRef<
 ) {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  const [lensSession, setLensSession] = useState<DiscoveryLensSession | null>(
+  const [, setLensSession] = useState<DiscoveryLensSession | null>(
     () => readDiscoveryLensSession(contextEventId),
   );
   const lastTriggerRef = useRef<string>("");
