@@ -32,6 +32,7 @@ import {
 } from "@/lib/globe/context-condition-ai/context-condition-pending-spec-store";
 import type {
   ContextConditionRecommendation,
+  LocalDiscoveryPendingAnswers,
   LocalDiscoveryQuestion,
   LocalDiscoveryQuestionChoice,
 } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
@@ -471,6 +472,8 @@ export const GlobeContextConditionPinBar = forwardRef<
     async (
       spec: ContextConditionAnchorPinOutcome["spec"],
       triggerMessage: string,
+      answers: LocalDiscoveryPendingAnswers,
+      askedAxisIds: readonly string[],
     ) => {
       if (spec.resourceTypes.includes("amenity")) {
         appendContextAgentComposeTurn(contextEventId, {
@@ -485,8 +488,8 @@ export const GlobeContextConditionPinBar = forwardRef<
       // user re-narrows instead of hitting a wall.
       const convergence = assessIntentConvergence({
         message: triggerMessage,
-        answers: {},
-        askedAxisIds: [],
+        answers,
+        askedAxisIds,
       });
       if (convergence.shouldAsk) {
         const { question, askedAxisId } = await buildConvergenceQuestion({
@@ -504,10 +507,10 @@ export const GlobeContextConditionPinBar = forwardRef<
         writeContextConditionPending(contextEventId, {
           triggerMessage,
           questions: [question],
-          answers: {},
+          answers,
           spec: null,
           updatedAtIso: new Date().toISOString(),
-          askedConvergenceAxes: [askedAxisId],
+          askedConvergenceAxes: [...askedAxisIds, askedAxisId],
         });
         onQuestionsChange?.([question]);
         return;
@@ -517,6 +520,7 @@ export const GlobeContextConditionPinBar = forwardRef<
         kind: "text",
         text: copy.globe.contextConditionGuardEmptyActivity,
       });
+      onQuestionsChange?.([]);
       setContextAgentSessionPhase("awaiting_human");
     },
     [anchorPlaceName, contextEventId, onQuestionsChange],
@@ -660,7 +664,12 @@ export const GlobeContextConditionPinBar = forwardRef<
         suppressEmptyMessage: strictDomain,
       });
       if (!outcome && strictDomain) {
-        await emitStrictDomainEmptyFollowup(resolved.spec, pipelineMessage);
+        await emitStrictDomainEmptyFollowup(
+          resolved.spec,
+          pipelineMessage,
+          mergedAnswers,
+          askedAxisIds,
+        );
         return null;
       }
 
@@ -860,7 +869,8 @@ export const GlobeContextConditionPinBar = forwardRef<
         return;
       }
       const pending = readContextConditionPending(contextEventId);
-      const triggerMessage = pending?.triggerMessage ?? message.trim();
+      const triggerMessage =
+        choice.slot === "activityFocus" ? choice.value : pending?.triggerMessage ?? message.trim();
       if (!triggerMessage) {
         return;
       }

@@ -28,6 +28,14 @@ export function snapGlobeToContextConditionScout(
     radiusM?: number;
   },
 ): void {
+  if (input.recommendations.length === 1) {
+    const single = input.recommendations[0]!;
+    snapGlobeToContextAgentAnchor(globeRef, {
+      lat: single.lat,
+      lng: single.lng,
+    });
+    return;
+  }
   const bounds = computeLodgingDiscoveryBounds({
     user: { lat: input.anchorLat, lng: input.anchorLng },
     lodging: input.recommendations,

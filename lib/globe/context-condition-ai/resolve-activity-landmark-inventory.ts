@@ -3,6 +3,7 @@
 import { fetchGlobeContextPlaceGeocode } from "@/lib/globe/align-globe-context-places";
 import { classifyPlaceCategory } from "@/lib/globe/context-condition-ai/discovery-guard/classify-place-category";
 import type { ContextEateryInventoryRow } from "@/lib/globe/eatery/eatery-resource-types";
+import { findPlacesByName } from "@/lib/locate/google-places-find";
 
 /** Concrete attraction the user picked — not a generic "놀거리" bucket. */
 const EXPLICIT_LANDMARK =
@@ -48,30 +49,64 @@ export async function resolveActivityLandmarkInventoryRow(input: {
     userLat: input.lat ?? null,
     userLng: input.lng ?? null,
   });
+
   if (
-    !resolved ||
-    !Number.isFinite(resolved.lat) ||
-    !Number.isFinite(resolved.lng)
+    resolved &&
+    Number.isFinite(resolved.lat) &&
+    Number.isFinite(resolved.lng)
   ) {
+    const name = resolved.placeName?.trim() || resolved.label?.trim() || query;
+    const placeId =
+      resolved.mapsUrl?.trim() ||
+      `landmark:${name.replace(/\s+/gu, "-").toLowerCase()}:${resolved.lat.toFixed(5)},${resolved.lng.toFixed(5)}`;
+
+    return {
+      placeId,
+      name,
+      lat: resolved.lat,
+      lng: resolved.lng,
+      images: [],
+      address: resolved.formattedAddress ?? null,
+      categoryLabel: landmarkCategoryLabel(name),
+      provider: "google_places",
+      providerLabel: "Google Places",
+      mapsUrl: resolved.mapsUrl ?? null,
+      cuisineHint: null,
+      specialReasonKo: "명소로 찾았어요",
+      virtualCandidate: true,
+    };
+  }
+
+  const fallback = await findPlacesByName({
+    placeName: query,
+    userLat: input.lat ?? null,
+    userLng: input.lng ?? null,
+    maxResults: 1,
+  });
+  const picked = fallback[0];
+  if (!picked) {
     return null;
   }
 
-  const name = resolved.placeName?.trim() || resolved.label?.trim() || query;
+  const mapsUrl = picked.google_place_id
+    ? `https://www.google.com/maps/place/?q=place_id:${picked.google_place_id}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(picked.place_name)}`;
+  const name = picked.place_name.trim() || query;
   const placeId =
-    resolved.mapsUrl?.trim() ||
-    `landmark:${name.replace(/\s+/gu, "-").toLowerCase()}:${resolved.lat.toFixed(5)},${resolved.lng.toFixed(5)}`;
+    picked.google_place_id?.trim() ||
+    `landmark:${name.replace(/\s+/gu, "-").toLowerCase()}:${picked.lat.toFixed(5)},${picked.lng.toFixed(5)}`;
 
   return {
     placeId,
     name,
-    lat: resolved.lat,
-    lng: resolved.lng,
+    lat: picked.lat,
+    lng: picked.lng,
     images: [],
-    address: resolved.formattedAddress ?? null,
+    address: picked.formatted_address ?? null,
     categoryLabel: landmarkCategoryLabel(name),
     provider: "google_places",
     providerLabel: "Google Places",
-    mapsUrl: resolved.mapsUrl ?? null,
+    mapsUrl,
     cuisineHint: null,
     specialReasonKo: "명소로 찾았어요",
     virtualCandidate: true,
