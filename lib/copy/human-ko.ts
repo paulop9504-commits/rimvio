@@ -1806,6 +1806,16 @@ export const copy = {
     resourceReelOpenCta: "열기",
     resourceReelRadiusLabel: "근처",
     resourceReelFoundLabel: (count: number) => `${count}곳`,
+    resourceReelFilterAll: "전체",
+    resourceReelFilterActivity: "놀거리",
+    resourceReelFilterEatery: "맛집",
+    resourceReelFilterLodging: "숙소",
+    resourceReelFilterAmenity: "편의",
+    resourceReelFilterAppliedAll: "전체 후보로 다시 볼게요.",
+    resourceReelFilterAppliedActivity: "놀거리만 골라서 보여드릴게요.",
+    resourceReelFilterAppliedEatery: "맛집만 골라서 보여드릴게요.",
+    resourceReelFilterAppliedLodging: "숙소만 골라서 볼게요.",
+    resourceReelFilterAppliedAmenity: "편의시설만 골라서 볼게요.",
     resourceReelSearchBadge: "발견",
     resourceReelSearching: "찾는 중",
     resourceReelBriefTapHint: "탭해서 자세히",
@@ -1897,6 +1907,53 @@ export const copy = {
     contextConditionPinEmpty: "지금은 맞는 곳을 못 찾았어요",
     contextConditionGuardEmptyActivity:
       "딱 맞는 놀거리를 바로 못 찾았어요. 어떤 걸 원하시는지 알려주시면 맞게 찾아드릴게요.",
+    discoveryLensBarHint: "렌즈를 골라 이 주변을 볼게요",
+    discoveryLensPrefetching: "렌즈마다 주변 자원을 모으는 중이에요",
+    discoveryLensPickHint: "어디 주변을 볼까요? 원을 눌러 주세요",
+    discoveryLensReasonFamily: "아이와 함께 가기 좋은",
+    discoveryLensReasonCouple: "둘이 가기 좋은",
+    discoveryLensReasonFriends: "친구와 놀기 좋은",
+    discoveryLensReasonSolo: "혼자 가기 좋은",
+    discoveryLensReasonShopping: "쇼핑하기 좋은",
+    discoveryLensReasonMuseum: "문화·전시 보기 좋은",
+    discoveryLensReasonPark: "여유롭게 쉬기 좋은",
+    discoveryLensReasonGeneral: "이 주제에 맞는",
+    discoveryLensSpawnedWhy: (input: {
+      reasonKo: string;
+      placeLabels: string;
+      lensIds: string;
+      count: number;
+    }) =>
+      `${input.reasonKo} 곳 ${input.count}군데를 지도에 잡아뒀어요. ${input.placeLabels} — ${input.lensIds} 중 하나 골라 보세요.`,
+    discoveryLensPrefetchReady: (input: {
+      labelKo: string;
+      count: number;
+      activity: number;
+      eatery: number;
+      lodging: number;
+    }) => {
+      const parts: string[] = [];
+      if (input.activity > 0) {
+        parts.push(`놀거리 ${input.activity}`);
+      }
+      if (input.eatery > 0) {
+        parts.push(`맛집 ${input.eatery}`);
+      }
+      if (input.lodging > 0) {
+        parts.push(`숙소 ${input.lodging}`);
+      }
+      const summary = parts.length > 0 ? parts.join(" · ") : `${input.count}곳`;
+      return `${input.labelKo} 주변 ${summary} 후보를 모아뒀어요. 아래에서 볼 수 있어요.`;
+    },
+    discoveryLensPrefetchEmpty: (labelKo: string) =>
+      `${labelKo} 주변에서는 아직 맞는 후보를 못 찾았어요. 원을 옮기거나 다른 곳을 골라 주세요.`,
+    discoveryLensLodgingPick: (labels: string) =>
+      `${labels} 중 어디 주변 숙소를 볼까요? 지도에서 원을 눌러 주세요.`,
+    discoveryLensPickArea: (labels: string) =>
+      `${labels} 중 어디 주변을 볼까요? 지도에서 원을 눌러 주세요.`,
+    discoveryLensSpawned: (labels: string) =>
+      `${labels} 렌즈를 깔아뒀어요. 골라 보세요.`,
+    discoveryLensMoved: "렌즈를 옮겼어요. 이 주변으로 다시 볼게요.",
     contextConditionGuardEmptyAmenity:
       "이 근처에서는 못 찾았어요. 범위를 조금 넓혀서 다시 찾아볼까요?",
     contextConditionNextHopPrompt: "이어서 좁혀볼까요?",

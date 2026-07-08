@@ -21,6 +21,8 @@ import { createGlobeContextHubAnchorElement } from "@/lib/globe/create-globe-con
 import { createGlobe3dViewerPinElement } from "@/lib/globe/create-globe-3d-viewer-pin-element";
 import { accuracyMetersToRingDegrees } from "@/lib/globe/accuracy-ring-degrees";
 import { discoveryRadiusMetersToRingDegrees } from "@/lib/globe/discovery-radius-ring-degrees";
+import { buildDiscoveryLensLabelRows } from "@/lib/globe/discovery-lens/build-discovery-lens-label-rows";
+import type { DiscoveryLensLabelRow } from "@/lib/globe/discovery-lens/build-discovery-lens-label-rows";
 import { resolveLocalDiscoveryRouteArcAltitude } from "@/lib/globe/context-condition-ai/build-context-condition-discovery-overlay";
 import type { ContextConditionDiscoveryOverlay } from "@/lib/globe/context-condition-ai/context-condition-discovery-overlay-types";
 import { GLOBE_TILE_MAX_ZOOM } from "@/lib/globe/globe-tile-constants";
@@ -162,6 +164,8 @@ export type RimvioGlobe3DProps = {
   tripArcs?: readonly GlobeTripArc[];
   /** Context Condition AI — search radius ring + POI walk route. */
   contextConditionDiscoveryOverlay?: ContextConditionDiscoveryOverlay | null;
+  /** Discovery lens POV rings (a/b/c). */
+  discoveryLensSession?: import("@/lib/globe/discovery-lens/types").DiscoveryLensSession | null;
   /** Soft trace-density wash — overview/region only. */
   contextWarmthPoints?: readonly GlobeContextWarmthPoint[];
   contextWarmthEnabled?: boolean;
@@ -218,6 +222,7 @@ export const RimvioGlobe3D = memo(
       pins,
       tripArcs = [],
       contextConditionDiscoveryOverlay = null,
+      discoveryLensSession = null,
       contextWarmthPoints = [],
       contextWarmthEnabled = false,
       viewerLocation = null,
@@ -273,6 +278,7 @@ export const RimvioGlobe3D = memo(
     const warmthAltitudeRef = useRef<number>(GLOBE_OVERVIEW_POINT_OF_VIEW.altitude);
     const warmthDetailRef = useRef<GlobeDetailLevel>("space");
     const viewerLocationRef = useRef(viewerLocation);
+    const discoveryLensSessionRef = useRef(discoveryLensSession);
     const overviewTextureUrlRef = useRef<string | null>(null);
     const [globeReady, setGlobeReady] = useState(false);
     const { textureUrl: overviewTextureUrl } = useGlobeOverviewTexture();
@@ -459,6 +465,7 @@ export const RimvioGlobe3D = memo(
     contextWarmthPointsRef.current = contextWarmthPoints;
     contextWarmthEnabledRef.current = contextWarmthEnabled;
     contextAgentPickModeRef.current = contextAgentPickMode;
+    discoveryLensSessionRef.current = discoveryLensSession;
 
     const syncContextWarmthRef = useRef(() => {});
     const syncHtmlElementsRef = useRef(() => {});
@@ -484,7 +491,12 @@ export const RimvioGlobe3D = memo(
           showHubAnchors,
         }),
       );
-      globe.labelsData([]);
+      globe.labelsData(
+        buildDiscoveryLensLabelRows(
+          discoveryLensSessionRef.current,
+          warmthDetailRef.current,
+        ),
+      );
       applyGlobePinUiScale(root, pinUiScaleRef.current);
       shellRef.current?.setAttribute(
         "data-globe-lodging-markers",
@@ -652,6 +664,20 @@ export const RimvioGlobe3D = memo(
         .atmosphereColor(GLOBE_TOSS_THEME.atmosphere)
         .atmosphereAltitude(GLOBE_TOSS_THEME.atmosphereAltitude)
         .labelsData([])
+        .labelLat((row: object) => (row as DiscoveryLensLabelRow).lat)
+        .labelLng((row: object) => (row as DiscoveryLensLabelRow).lng)
+        .labelText((row: object) => (row as DiscoveryLensLabelRow).text)
+        .labelSize((row: object) =>
+          (row as DiscoveryLensLabelRow).active ? 1.15 : 0.9,
+        )
+        .labelColor((row: object) =>
+          (row as DiscoveryLensLabelRow).active
+            ? "rgba(0, 113, 227, 0.95)"
+            : "rgba(29, 29, 31, 0.72)",
+        )
+        .labelDotRadius(0.22)
+        .labelDotOrientation("right")
+        .labelAltitude(0.002)
         .htmlElementsData(
           mergeGlobeHtmlElements({
             pins: pinsRef.current,
@@ -783,11 +809,19 @@ export const RimvioGlobe3D = memo(
         .ringLat((row: object) => (row as { lat: number }).lat)
         .ringLng((row: object) => (row as { lng: number }).lng)
         .ringMaxRadius((row: object) => (row as { maxR: number }).maxR)
-        .ringColor((row: object) =>
-          (row as { kind?: string }).kind === "discovery"
-            ? "rgba(49, 130, 246, 0.38)"
-            : GLOBE_TOSS_THEME.viewerRingStroke,
-        )
+        .ringColor((row: object) => {
+          const kind = (row as { kind?: string }).kind;
+          if (kind === "lens_active") {
+            return "rgba(0, 113, 227, 0.42)";
+          }
+          if (kind === "lens_idle") {
+            return "rgba(0, 113, 227, 0.16)";
+          }
+          if (kind === "discovery") {
+            return "rgba(49, 130, 246, 0.38)";
+          }
+          return GLOBE_TOSS_THEME.viewerRingStroke;
+        })
         .ringAltitude(0.001)
         .ringPropagationSpeed(0)
         .ringRepeatPeriod(0)
@@ -1133,7 +1167,7 @@ export const RimvioGlobe3D = memo(
         lat: number;
         lng: number;
         maxR: number;
-        kind: "viewer" | "discovery";
+        kind: "viewer" | "discovery" | "lens_active" | "lens_idle";
       }> = [];
 
       if (
@@ -1151,7 +1185,19 @@ export const RimvioGlobe3D = memo(
         });
       }
 
-      if (contextConditionDiscoveryOverlay?.ring) {
+      if (discoveryLensSession?.lenses.length) {
+        for (const lens of discoveryLensSession.lenses) {
+          rings.push({
+            lat: lens.center.lat,
+            lng: lens.center.lng,
+            maxR: discoveryRadiusMetersToRingDegrees(lens.center.lat, lens.radiusM),
+            kind:
+              lens.id === discoveryLensSession.activeLensId
+                ? "lens_active"
+                : "lens_idle",
+          });
+        }
+      } else if (contextConditionDiscoveryOverlay?.ring) {
         const ring = contextConditionDiscoveryOverlay.ring;
         rings.push({
           lat: ring.lat,
@@ -1162,7 +1208,21 @@ export const RimvioGlobe3D = memo(
       }
 
       globe.ringsData(rings);
-    }, [contextConditionDiscoveryOverlay, viewerLocation]);
+    }, [contextConditionDiscoveryOverlay, discoveryLensSession, viewerLocation]);
+
+    useEffect(() => {
+      discoveryLensSessionRef.current = discoveryLensSession;
+      const globe = globeRef.current;
+      if (!globe) {
+        return;
+      }
+      globe.labelsData(
+        buildDiscoveryLensLabelRows(
+          discoveryLensSession,
+          warmthDetailRef.current,
+        ),
+      );
+    }, [discoveryLensSession]);
 
     useEffect(() => {
       const root = rootRef.current;

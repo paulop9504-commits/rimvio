@@ -222,6 +222,7 @@ export type RimvioGlobeHubProps = {
   realityBridgeArcs?: readonly GlobeTripArc[];
   /** 맥락 AI placement — radius ring + POI route on globe. */
   contextConditionDiscoveryOverlay?: import("@/lib/globe/context-condition-ai/context-condition-discovery-overlay-types").ContextConditionDiscoveryOverlay | null;
+  discoveryLensSession?: import("@/lib/globe/discovery-lens/types").DiscoveryLensSession | null;
   /** Hub map anchor press — opens Hub detail, not pin info sheet. */
   onContextHubAnchorPress?: (contextEventId: string) => void;
   /** Pinch/drag coach on the globe canvas — off when capture dock is shown. */
@@ -264,6 +265,7 @@ type RimvioGlobeHubBodyProps = {
   focusedContextEventId?: string | null;
   realityBridgeArcs?: readonly GlobeTripArc[];
   contextConditionDiscoveryOverlay?: import("@/lib/globe/context-condition-ai/context-condition-discovery-overlay-types").ContextConditionDiscoveryOverlay | null;
+  discoveryLensSession?: import("@/lib/globe/discovery-lens/types").DiscoveryLensSession | null;
   onContextHubAnchorPress?: (contextEventId: string) => void;
   showInteractionHint?: boolean;
   layerMode?: GlobeLayerMode;
@@ -297,6 +299,7 @@ const RimvioGlobeHubBody = memo(
       focusedContextEventId = null,
       realityBridgeArcs = [],
       contextConditionDiscoveryOverlay = null,
+      discoveryLensSession = null,
       onContextHubAnchorPress,
       showInteractionHint = true,
       layerMode = "personal",
@@ -930,6 +933,7 @@ const RimvioGlobeHubBody = memo(
           pins={globePins}
           tripArcs={tripArcs}
           contextConditionDiscoveryOverlay={gatedDiscoveryOverlay}
+          discoveryLensSession={discoveryLensSession}
           viewerLocation={
             gpsEnabled && liveLocation
               ? {
@@ -1085,6 +1089,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
   brainSurfaceTraceArcs = [],
   realityBridgeArcs = [],
   contextConditionDiscoveryOverlay = null,
+  discoveryLensSession = null,
   contextAgentPickMode = false,
 }: RimvioGlobeHubProps) {
   const { ready, eventsById, personalPinRevision } = useGlobeEventSnapshot();
@@ -1260,6 +1265,7 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
       focusedContextEventId={focusedContextEventId}
       realityBridgeArcs={realityBridgeArcs}
       contextConditionDiscoveryOverlay={contextConditionDiscoveryOverlay}
+      discoveryLensSession={discoveryLensSession}
       onContextHubAnchorPress={onContextHubAnchorPress}
       showInteractionHint={showInteractionHint}
       layerMode={layerMode}

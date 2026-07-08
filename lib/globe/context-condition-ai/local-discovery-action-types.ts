@@ -60,6 +60,8 @@ export type LocalDiscoveryQuestionChoice = {
   readonly value: string;
   /** Related nodes this choice activates (trigger → cluster). Multi-query source. */
   readonly cluster?: readonly string[];
+  /** Named places → discovery lens spawn (e.g. 디즈니 · 우에노). */
+  readonly landmarks?: readonly string[];
 };
 
 export type LocalDiscoveryQuestion = {

@@ -1,13 +1,21 @@
 "use client";
 
+import { useMemo } from "react";
 import { X } from "lucide-react";
 import type { GlobeResourceReelItem } from "@/lib/globe/resource-reel/types";
+import {
+  buildResourceReelKindFilters,
+  type ResourceReelKindFilter,
+} from "@/lib/globe/resource-reel/resource-reel-kind-filter";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
 export type GlobeResourceReelListPanelProps = {
   areaLabel: string;
   items: readonly GlobeResourceReelItem[];
+  allItems?: readonly GlobeResourceReelItem[];
+  kindFilter?: ResourceReelKindFilter;
+  onKindFilterChange?: (kind: ResourceReelKindFilter) => void;
   activeResourceId?: string | null;
   onItemPress: (item: GlobeResourceReelItem) => void;
   onDismiss: () => void;
@@ -22,11 +30,21 @@ function formatRating(score100: number): string {
 export function GlobeResourceReelListPanel({
   areaLabel,
   items,
+  allItems,
+  kindFilter = "all",
+  onKindFilterChange,
   activeResourceId = null,
   onItemPress,
   onDismiss,
   className,
 }: GlobeResourceReelListPanelProps) {
+  const sourceItems = allItems ?? items;
+  const kindFilters = useMemo(
+    () => buildResourceReelKindFilters(sourceItems),
+    [sourceItems],
+  );
+  const showKindFilters = kindFilters.length > 2 && onKindFilterChange;
+
   return (
     <div
       className={cn("pointer-events-none absolute inset-x-0 z-[30]", className)}
@@ -53,6 +71,39 @@ export function GlobeResourceReelListPanel({
             <X className="size-4" aria-hidden />
           </button>
         </div>
+
+        {showKindFilters ? (
+          <div className="flex gap-1.5 overflow-x-auto px-3 pb-2.5 pt-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {kindFilters.map((chip) => {
+              const active = chip.id === kindFilter;
+              return (
+                <button
+                  key={chip.id}
+                  type="button"
+                  onClick={() => onKindFilterChange(chip.id)}
+                  className={cn(
+                    "shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold transition active:scale-[0.98]",
+                    active
+                      ? "bg-[#1d1d1f] text-white"
+                      : "bg-[#f5f5f7] text-[#1d1d1f] ring-1 ring-black/[0.05]",
+                  )}
+                  aria-pressed={active}
+                  data-globe-resource-reel-kind-filter={chip.id}
+                >
+                  {chip.label}
+                  <span
+                    className={cn(
+                      "ml-1 tabular-nums",
+                      active ? "text-white/75" : "text-[#86868b]",
+                    )}
+                  >
+                    {chip.count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
 
         <div className="flex gap-2.5 overflow-x-auto overscroll-contain px-3 py-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {items.map((item) => {

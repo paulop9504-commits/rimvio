@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useRef,
   useState,
 } from "react";
 import { toast } from "sonner";
@@ -75,6 +76,34 @@ import { findLifeEventCandidate } from "@/lib/life-read-model";
 import { interpretMessyForContextAgent } from "@/lib/messy-prompt-interpreter/adapters/context-agent-adapter";
 import { buildTravelBrainState } from "@/lib/situation-projection/travel-brain-personalization";
 import { cn } from "@/lib/utils";
+import {
+  applyLensCommand,
+  lensPickPromptKo,
+  publishDiscoveryLensAction,
+  readDiscoveryLensSession,
+  setActiveDiscoveryLens,
+  subscribeDiscoveryLensAction,
+  subscribeDiscoveryLensSession,
+  type DiscoveryLensId,
+  type DiscoveryLensSession,
+} from "@/lib/globe/discovery-lens";
+import { buildDiscoveryLensSpawnAnnouncement } from "@/lib/globe/discovery-lens/build-discovery-lens-announcements";
+import {
+  isLodgingDiscoveryMessage,
+  maybeSpawnDiscoveryLensesFromChoice,
+  resolveDiscoveryOriginForContext,
+} from "@/lib/globe/discovery-lens/integrate-context-agent-lens";
+import {
+  prefetchAllDiscoveryLenses,
+  prefetchDiscoveryLensById,
+} from "@/lib/globe/discovery-lens/prefetch-all-discovery-lenses";
+import {
+  dispatchGlobeResourceReelFocus,
+  dispatchGlobeResourceReelKindFilter,
+} from "@/lib/globe/resource-reel/globe-resource-reel-bridge";
+import { parseResourceReelKindFilter } from "@/lib/globe/resource-reel/parse-resource-reel-kind-filter";
+import { resourceReelKindFilterReplyKo } from "@/lib/globe/resource-reel/resource-reel-kind-filter-reply";
+import { markDiscoveryLensPickPending } from "@/lib/globe/discovery-lens/spawn-discovery-lenses";
 
 export type GlobeContextConditionPinBarHandle = {
   submitTrigger: (message: string) => Promise<void>;
@@ -103,6 +132,8 @@ export type GlobeContextConditionPinBarProps = {
   registerQuestionHandler?: (
     handler: (choice: LocalDiscoveryQuestionChoice) => void,
   ) => void;
+  onLensSessionChange?: (session: DiscoveryLensSession | null) => void;
+  registerLensHandler?: (handler: (lensId: DiscoveryLensId) => void) => void;
   className?: string;
 };
 
@@ -169,12 +200,18 @@ export const GlobeContextConditionPinBar = forwardRef<
   onRecommendationsChange,
   onActionInjectionChange,
   registerQuestionHandler,
+  onLensSessionChange,
+  registerLensHandler,
   className,
   },
   ref,
 ) {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [lensSession, setLensSession] = useState<DiscoveryLensSession | null>(
+    () => readDiscoveryLensSession(contextEventId),
+  );
+  const lastTriggerRef = useRef<string>("");
   const [lastBatch, setLastBatch] = useState<ContextConditionLastBatchWire | null>(
     null,
   );
@@ -185,6 +222,18 @@ export const GlobeContextConditionPinBar = forwardRef<
   const [lastRecommendations, setLastRecommendations] = useState<
     readonly ContextConditionRecommendation[]
   >([]);
+  const lastSpecRef = useRef<ContextConditionAnchorPinOutcome["spec"] | null>(null);
+  lastSpecRef.current = lastSpec;
+
+  useEffect(() => {
+    return subscribeDiscoveryLensSession((session) => {
+      if (session && session.contextEventId !== contextEventId) {
+        return;
+      }
+      setLensSession(session);
+      onLensSessionChange?.(session);
+    });
+  }, [contextEventId, onLensSessionChange]);
 
   function wireRecommendations(
     batch: ContextConditionLastBatchWire | null,
@@ -303,6 +352,7 @@ export const GlobeContextConditionPinBar = forwardRef<
         patchPlan: input.patchPlan ?? null,
         keptRecommendations: input.keptRecommendations,
         excludePlaceIds: input.excludePlaceIds,
+        discoveryOrigin: resolveDiscoveryOriginForContext(contextEventId),
         onProcessPhase: (phase) => {
           setContextAgentProcessPhase(phase);
           if (phase === "optimizing") {
@@ -385,6 +435,63 @@ export const GlobeContextConditionPinBar = forwardRef<
       onRecommendationsChange,
     ],
   );
+
+  useEffect(() => {
+    return subscribeDiscoveryLensAction(({ contextEventId: eventId, action }) => {
+      if (eventId !== contextEventId) {
+        return;
+      }
+      const activeLensId = readDiscoveryLensSession(contextEventId)?.activeLensId;
+      if (action.type === "move_active" || action.type === "resize_active") {
+        if (activeLensId) {
+          void prefetchDiscoveryLensById({
+            contextEventId,
+            lensId: activeLensId,
+          }).then(({ announceKo }) => {
+            if (announceKo) {
+              appendContextAgentComposeTurn(contextEventId, {
+                role: "assistant",
+                kind: "text",
+                text: announceKo,
+              });
+            }
+          });
+        }
+      } else if (action.type === "activate") {
+        void prefetchDiscoveryLensById({
+          contextEventId,
+          lensId: action.lensId as DiscoveryLensId,
+        }).then(({ announceKo }) => {
+          if (announceKo) {
+            appendContextAgentComposeTurn(contextEventId, {
+              role: "assistant",
+              kind: "text",
+              text: announceKo,
+            });
+          }
+        });
+      }
+      const rescout =
+        action.type === "activate"
+          ? action.rescout
+          : action.type === "move_active" || action.type === "resize_active"
+            ? action.rescout
+            : false;
+      if (!rescout) {
+        return;
+      }
+      const spec = lastSpecRef.current;
+      const trigger = lastTriggerRef.current;
+      if (!spec || !trigger) {
+        return;
+      }
+      void executeWithSpec({
+        triggerMessage: trigger,
+        spec,
+        suppressEmptyMessage: true,
+      });
+    });
+  }, [contextEventId, executeWithSpec]);
 
   const runPalantirRefine = useCallback(
     async (refineMessage: string): Promise<boolean> => {
@@ -650,6 +757,34 @@ export const GlobeContextConditionPinBar = forwardRef<
         return null;
       }
 
+      lastTriggerRef.current = pipelineMessage;
+      setLastSpec(resolved.spec);
+
+      const lensSessionNow = readDiscoveryLensSession(contextEventId);
+      const wantsLodging =
+        resolved.spec.resourceTypes.includes("hotel") ||
+        isLodgingDiscoveryMessage(pipelineMessage);
+      if (
+        wantsLodging &&
+        lensSessionNow &&
+        lensSessionNow.lenses.length >= 2
+      ) {
+        markDiscoveryLensPickPending({
+          session: lensSessionNow,
+          pendingSearchKind: "lodging",
+        });
+        const pickKo = lensPickPromptKo(readDiscoveryLensSession(contextEventId));
+        if (pickKo) {
+          appendContextAgentComposeTurn(contextEventId, {
+            role: "assistant",
+            kind: "text",
+            text: pickKo,
+          });
+        }
+        setContextAgentSessionPhase("awaiting_human");
+        return null;
+      }
+
       beginContextAgentWork("exploring");
       setContextAgentSessionPhase("scouting");
       // Strict domains (activity/amenity) may come back empty because the
@@ -739,6 +874,45 @@ export const GlobeContextConditionPinBar = forwardRef<
       // the convergence/retrieval pipeline — Chat gets a short reply, Task tries
       // the action executor. This is what stops "ㅎㅇ" from forcing a place search.
       if (text) {
+        const lensResult = await applyLensCommand({
+          contextEventId,
+          text,
+          region: anchorPlaceName,
+        });
+        if (lensResult.handled) {
+          const activeLensId = readDiscoveryLensSession(contextEventId)?.activeLensId;
+          if (activeLensId) {
+            void prefetchDiscoveryLensById({
+              contextEventId,
+              lensId: activeLensId,
+            });
+          }
+          if (lensResult.replyKo) {
+            appendContextAgentComposeTurn(contextEventId, {
+              role: "assistant",
+              kind: "text",
+              text: lensResult.replyKo,
+            });
+          }
+          setMessage("");
+          return;
+        }
+
+        const reelKindFilter = parseResourceReelKindFilter(text);
+        if (reelKindFilter !== null) {
+          dispatchGlobeResourceReelKindFilter({
+            contextEventId,
+            kindFilter: reelKindFilter,
+          });
+          appendContextAgentComposeTurn(contextEventId, {
+            role: "assistant",
+            kind: "text",
+            text: resourceReelKindFilterReplyKo(reelKindFilter),
+          });
+          setMessage("");
+          return;
+        }
+
         const rawTurns = readContextAgentComposeThread(contextEventId).slice(-8);
         const history = rawTurns
           .slice(-6)
@@ -880,18 +1054,71 @@ export const GlobeContextConditionPinBar = forwardRef<
       });
       setBusy(true);
       try {
+        const spawned = await maybeSpawnDiscoveryLensesFromChoice({
+          contextEventId,
+          choice,
+          region: anchorPlaceName,
+          hintLat: anchorLat,
+          hintLng: anchorLng,
+        });
+        if (spawned) {
+          appendContextAgentComposeTurn(contextEventId, {
+            role: "assistant",
+            kind: "text",
+            text: buildDiscoveryLensSpawnAnnouncement({
+              session: spawned,
+              choice,
+            }),
+          });
+          const prefetchKo = await prefetchAllDiscoveryLenses({ contextEventId });
+          if (prefetchKo) {
+            appendContextAgentComposeTurn(contextEventId, {
+              role: "assistant",
+              kind: "text",
+              text: prefetchKo,
+            });
+          }
+        }
         await resolveAndMaybeExecute(triggerMessage, answers);
       } finally {
         setBusy(false);
         finishContextAgentWork();
       }
     },
-    [busy, contextEventId, message, resolveAndMaybeExecute],
+    [anchorLat, anchorLng, anchorPlaceName, busy, contextEventId, message, resolveAndMaybeExecute],
+  );
+
+  const activateDiscoveryLens = useCallback(
+    (lensId: DiscoveryLensId) => {
+      const session = readDiscoveryLensSession(contextEventId);
+      if (!session) {
+        return;
+      }
+      setActiveDiscoveryLens({ session, lensId });
+      publishDiscoveryLensAction(contextEventId, {
+        type: "activate",
+        lensId,
+        rescout: true,
+      });
+      const active = session.lenses.find((row) => row.id === lensId);
+      if (active?.prefetch?.status === "ready" && active.prefetch.items.length > 0) {
+        dispatchGlobeResourceReelFocus({
+          contextEventId,
+          surface: "list",
+          source: "scout_complete",
+        });
+      }
+    },
+    [contextEventId],
   );
 
   useEffect(() => {
     registerQuestionHandler?.(handleQuestionChoice);
   }, [handleQuestionChoice, registerQuestionHandler]);
+
+  useEffect(() => {
+    registerLensHandler?.(activateDiscoveryLens);
+  }, [activateDiscoveryLens, registerLensHandler]);
 
   const handleDismissBatch = useCallback(() => {
     if (!lastBatch) {

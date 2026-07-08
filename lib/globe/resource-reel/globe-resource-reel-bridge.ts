@@ -152,6 +152,42 @@ export function subscribeGlobeResourceReelStage(
   return () => window.removeEventListener(GLOBE_RESOURCE_REEL_STAGE, handler);
 }
 
+export const GLOBE_RESOURCE_REEL_KIND_FILTER =
+  "rimvio:globe-resource-reel-kind-filter";
+
+export type GlobeResourceReelKindFilterDetail = {
+  contextEventId: string;
+  kindFilter: import("@/lib/globe/resource-reel/resource-reel-kind-filter").ResourceReelKindFilter;
+};
+
+export function dispatchGlobeResourceReelKindFilter(
+  detail: GlobeResourceReelKindFilterDetail,
+): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.dispatchEvent(
+    new CustomEvent<GlobeResourceReelKindFilterDetail>(
+      GLOBE_RESOURCE_REEL_KIND_FILTER,
+      { detail },
+    ),
+  );
+}
+
+export function subscribeGlobeResourceReelKindFilter(
+  listener: (detail: GlobeResourceReelKindFilterDetail) => void,
+): () => void {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+  const handler = (event: Event) => {
+    listener((event as CustomEvent<GlobeResourceReelKindFilterDetail>).detail);
+  };
+  window.addEventListener(GLOBE_RESOURCE_REEL_KIND_FILTER, handler);
+  return () =>
+    window.removeEventListener(GLOBE_RESOURCE_REEL_KIND_FILTER, handler);
+}
+
 export function buildResourceReelResourceId(input: {
   contextEventId: string;
   kind: GlobeResourceReelKind;
