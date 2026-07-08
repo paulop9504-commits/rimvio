@@ -174,6 +174,7 @@ import {
 import type { GlobeContextTimelineEntry } from "@/lib/globe/list-globe-context-timeline";
 import type { GlobeManageContextEntry } from "@/lib/globe/list-globe-manage-contexts";
 import type { PinCluster } from "@/lib/globe/pin-cluster-types";
+import { listConnectableGlobeContextPinClusters } from "@/lib/globe/list-connectable-globe-context-pin-clusters";
 import { resolveGlobeContextPinCluster } from "@/lib/globe/resolve-globe-context-pin-cluster";
 import { listGlobeContextPeerOptions } from "@/lib/globe/list-globe-context-peer-options";
 import type { GlobeContextPeopleFilter } from "@/lib/globe/globe-context-people-filter";
@@ -617,7 +618,7 @@ function GlobeHomeBody() {
       lng: anchorCluster?.lng ?? null,
     });
 
-    if (!eventId && contextAgentSession.phase !== "bound") {
+    if (!eventId && contextAgentSession.phase === "idle") {
       setContextConditionPanelOpen(false);
       closeGlobeContextConditionPanel();
       clearGlobeContextAgent();
@@ -3095,24 +3096,21 @@ function GlobeHomeBody() {
     dismissCompetingGlobeSurfaces();
 
     const nearbyStack = stackClustersRef.current ?? [];
-    if (nearbyStack.length === 1) {
-      const eventId = nearbyStack[0]?.eventId?.trim();
-      if (eventId) {
-        void bindContextAgentToEventId(eventId);
-        return;
-      }
-    }
-
-    if (nearbyStack.length <= 1) {
-      setStackClusters(null);
-    }
-
-    armGlobeContextAgent();
-    toast.message(
+    const connectable =
       nearbyStack.length > 1
-        ? copy.globe.contextAgentStackPickSubtitle
-        : copy.globe.containerSpaceAgentPickHint,
-    );
+        ? nearbyStack
+        : listConnectableGlobeContextPinClusters();
+
+    if (connectable.length >= 1) {
+      armGlobeContextAgent();
+      setStackClusters([...connectable]);
+      setActiveCluster(null);
+      setSheetOpen(false);
+      toast.message(copy.globe.contextAgentStackPickSubtitle);
+      return;
+    }
+
+    toast.message(copy.globe.containerSpaceAgentPickHint);
   }, [
     activeCluster?.eventId,
     bindContextAgentToEventId,
@@ -4133,10 +4131,23 @@ function GlobeHomeBody() {
       />
       <GlobeContextStackPicker
         clusters={stackClusters ?? []}
-        visible={Boolean(stackClusters && stackClusters.length > 1)}
+        visible={Boolean(
+          stackClusters &&
+            stackClusters.length > 0 &&
+            (contextAgentSession.phase === "arming"
+              ? true
+              : stackClusters.length > 1),
+        )}
         agentPickMode={contextAgentSession.phase === "arming"}
         onSelect={onStackSelect}
-        onDismiss={clearActiveContext}
+        onDismiss={() => {
+          if (readGlobeContextAgentSession().phase === "arming") {
+            cancelGlobeContextAgentArm();
+            setStackClusters(null);
+            return;
+          }
+          clearActiveContext();
+        }}
         onShowAll={() => {
           setStackClusters(null);
           setListOpen(true);

@@ -118,12 +118,16 @@ export function GlobeContextStackPicker({
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-primary">
                   <MapPin className="size-3.5 shrink-0" aria-hidden />
-                  이 근처 맥락
+                  {agentPickMode
+                    ? copy.globe.containerSpaceAgentCta
+                    : "이 근처 맥락"}
                 </div>
                 <p className="mt-0.5 text-[12px] text-muted-foreground">
                   {agentPickMode
                     ? copy.globe.contextAgentStackPickSubtitle
-                    : `${clusters.length}개 · 하나를 골라 보세요`}
+                    : clusters.length === 1
+                      ? "하나를 골라 보세요"
+                      : `${clusters.length}개 · 하나를 골라 보세요`}
                 </p>
               </div>
               <button
