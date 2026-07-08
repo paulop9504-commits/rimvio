@@ -1856,6 +1856,8 @@ export const copyEn: Copy = {
     resourceReelFilterAppliedEatery: "Showing eateries only.",
     resourceReelFilterAppliedLodging: "Showing stays only.",
     resourceReelFilterAppliedAmenity: "Showing amenities only.",
+    resourceReelFilterEmptyList: (kindLabel: string) =>
+      `No ${kindLabel.toLowerCase()} here — ask in chat to find some.`,
     resourceReelSearchBadge: "Discovery",
     resourceReelSearching: "Searching",
     resourceReelBriefTapHint: "Tap for details",
@@ -1947,6 +1949,8 @@ export const copyEn: Copy = {
     contextConditionPinEmpty: "Could not find a fit right now",
     contextConditionGuardEmptyActivity:
       "Couldn't find a matching activity right away. Tell me what you're after and I'll find the right fit.",
+    scoutContractViolationToast:
+      "Results didn't match what we were looking for. I'll search again.",
     discoveryLensBarHint: "Pick a lens to explore this area",
     discoveryLensPrefetching: "Gathering places for each lens…",
     discoveryLensPickHint: "Which area should I search? Tap a ring on the map",

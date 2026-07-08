@@ -7,10 +7,41 @@ import { readDiscoveryLensSession } from "@/lib/globe/discovery-lens/lens-sessio
 import type { LocalDiscoveryQuestionChoice } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
 import { extractLandmarkHintsFromChoice } from "@/lib/globe/discovery-lens/extract-landmark-hints";
 import { spawnDiscoveryLenses } from "@/lib/globe/discovery-lens/spawn-discovery-lenses";
+import {
+  readScoutContract,
+  readScoutSelectedAnchor,
+} from "@/lib/globe/contracts";
 
 export function resolveDiscoveryOriginForContext(
   contextEventId: string,
 ): DiscoverySearchOrigin | null {
+  const contract = readScoutContract(contextEventId);
+  const anchor = contract?.lens.anchorRef;
+  if (
+    anchor &&
+    Number.isFinite(anchor.lat) &&
+    Number.isFinite(anchor.lng) &&
+    contract
+  ) {
+    return {
+      lat: anchor.lat,
+      lng: anchor.lng,
+      regionLabel: anchor.title?.trim() || contract.category,
+      radiusM: contract.lens.radiusM,
+      lensId: contract.lens.lensId ?? null,
+    };
+  }
+  const selected = readScoutSelectedAnchor(contextEventId);
+  if (selected && Number.isFinite(selected.lat) && Number.isFinite(selected.lng)) {
+    const radiusM = contract?.lens.radiusM ?? 1500;
+    return {
+      lat: selected.lat,
+      lng: selected.lng,
+      regionLabel: selected.title?.trim() || selected.placeId,
+      radiusM,
+      lensId: contract?.lens.lensId ?? null,
+    };
+  }
   const session = readDiscoveryLensSession(contextEventId);
   const active = readActiveDiscoveryLens(session);
   if (!active) {

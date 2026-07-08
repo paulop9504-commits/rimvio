@@ -1819,6 +1819,8 @@ export const copy = {
     resourceReelFilterAppliedEatery: "맛집만 골라서 보여드릴게요.",
     resourceReelFilterAppliedLodging: "숙소만 골라서 볼게요.",
     resourceReelFilterAppliedAmenity: "편의시설만 골라서 볼게요.",
+    resourceReelFilterEmptyList: (kindLabel: string) =>
+      `목록에 ${kindLabel}이 없어요. 채팅으로 찾아 주세요.`,
     resourceReelSearchBadge: "발견",
     resourceReelSearching: "찾는 중",
     resourceReelBriefTapHint: "탭해서 자세히",
@@ -1910,6 +1912,8 @@ export const copy = {
     contextConditionPinEmpty: "지금은 맞는 곳을 못 찾았어요",
     contextConditionGuardEmptyActivity:
       "딱 맞는 놀거리를 바로 못 찾았어요. 어떤 걸 원하시는지 알려주시면 맞게 찾아드릴게요.",
+    scoutContractViolationToast:
+      "찾은 결과가 방금 고른 조건과 안 맞아요. 다시 찾아볼게요.",
     discoveryLensBarHint: "렌즈를 골라 이 주변을 볼게요",
     discoveryLensPrefetching: "렌즈마다 주변 자원을 모으는 중이에요",
     discoveryLensPickHint: "어디 주변을 볼까요? 원을 눌러 주세요",

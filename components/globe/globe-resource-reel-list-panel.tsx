@@ -10,6 +10,21 @@ import {
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
+function kindFilterLabel(kind: ResourceReelKindFilter): string {
+  switch (kind) {
+    case "activity":
+      return copy.globe.resourceReelFilterActivity;
+    case "eatery":
+      return copy.globe.resourceReelFilterEatery;
+    case "lodging":
+      return copy.globe.resourceReelFilterLodging;
+    case "amenity":
+      return copy.globe.resourceReelFilterAmenity;
+    case "all":
+      return copy.globe.resourceReelFilterAll;
+  }
+}
+
 export type GlobeResourceReelListPanelProps = {
   areaLabel: string;
   items: readonly GlobeResourceReelItem[];
@@ -106,73 +121,82 @@ export function GlobeResourceReelListPanel({
         ) : null}
 
         <div className="flex gap-2.5 overflow-x-auto overscroll-contain px-3 py-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {items.map((item) => {
-            const active = item.resourceId === activeResourceId;
-            return (
-              <button
-                key={item.resourceId}
-                type="button"
-                onClick={() => onItemPress(item)}
-                className={cn(
-                  "w-[9.5rem] shrink-0 overflow-hidden rounded-[0.95rem] bg-white text-left ring-1 active:scale-[0.99]",
-                  active
-                    ? "ring-[#222] shadow-md"
-                    : "ring-black/[0.08] shadow-sm",
-                )}
-                data-globe-resource-reel-list-card={item.resourceId}
-              >
-                <div className="relative aspect-[4/3] bg-[#f4f4f5]">
-                  {item.thumbnailUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={item.thumbnailUrl}
-                      alt=""
-                      className="size-full object-cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="flex size-full items-center justify-center text-[11px] text-[#86868b]">
-                      {item.kind === "lodging"
-                        ? "숙"
-                        : item.kind === "activity"
-                          ? item.activitySubtype === "shopping"
-                            ? "쇼"
-                            : item.activitySubtype === "museum"
-                              ? "박"
-                              : item.activitySubtype === "park"
-                                ? "공"
-                                : item.activitySubtype === "nightlife"
-                                  ? "야"
-                                  : item.activitySubtype === "photo_spot"
-                                    ? "포"
-                                    : "놀"
-                          : item.kind === "amenity"
-                            ? "편"
-                            : "맛"}
-                    </div>
+          {items.length === 0 ? (
+            <p
+              className="w-full px-1 py-4 text-center text-[12px] leading-snug text-[#717171]"
+              data-globe-resource-reel-filter-empty
+            >
+              {copy.globe.resourceReelFilterEmptyList(kindFilterLabel(kindFilter))}
+            </p>
+          ) : (
+            items.map((item) => {
+              const active = item.resourceId === activeResourceId;
+              return (
+                <button
+                  key={item.resourceId}
+                  type="button"
+                  onClick={() => onItemPress(item)}
+                  className={cn(
+                    "w-[9.5rem] shrink-0 overflow-hidden rounded-[0.95rem] bg-white text-left ring-1 active:scale-[0.99]",
+                    active
+                      ? "ring-[#222] shadow-md"
+                      : "ring-black/[0.08] shadow-sm",
                   )}
-                  {item.secondaryLine ? (
-                    <span className="absolute bottom-1.5 left-1.5 rounded-md bg-white/95 px-1.5 py-0.5 text-[10px] font-semibold text-[#222] shadow-sm">
-                      {item.secondaryLine}
-                    </span>
-                  ) : null}
-                </div>
-                <div className="space-y-0.5 px-2 py-2">
-                  <div className="flex items-start justify-between gap-1">
-                    <p className="line-clamp-2 text-[12px] font-semibold leading-snug text-[#222]">
-                      {item.title}
-                    </p>
-                    <span className="shrink-0 text-[10px] font-medium text-[#222]">
-                      {formatRating(item.score100)}
-                    </span>
+                  data-globe-resource-reel-list-card={item.resourceId}
+                >
+                  <div className="relative aspect-[4/3] bg-[#f4f4f5]">
+                    {item.thumbnailUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={item.thumbnailUrl}
+                        alt=""
+                        className="size-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="flex size-full items-center justify-center text-[11px] text-[#86868b]">
+                        {item.kind === "lodging"
+                          ? "숙"
+                          : item.kind === "activity"
+                            ? item.activitySubtype === "shopping"
+                              ? "쇼"
+                              : item.activitySubtype === "museum"
+                                ? "박"
+                                : item.activitySubtype === "park"
+                                  ? "공"
+                                  : item.activitySubtype === "nightlife"
+                                    ? "야"
+                                    : item.activitySubtype === "photo_spot"
+                                      ? "포"
+                                      : "놀"
+                            : item.kind === "amenity"
+                              ? "편"
+                              : "맛"}
+                      </div>
+                    )}
+                    {item.secondaryLine ? (
+                      <span className="absolute bottom-1.5 left-1.5 rounded-md bg-white/95 px-1.5 py-0.5 text-[10px] font-semibold text-[#222] shadow-sm">
+                        {item.secondaryLine}
+                      </span>
+                    ) : null}
                   </div>
-                  <p className="line-clamp-2 text-[10px] leading-snug text-[#717171]">
-                    {item.detailReasonLine}
-                  </p>
-                </div>
-              </button>
-            );
-          })}
+                  <div className="space-y-0.5 px-2 py-2">
+                    <div className="flex items-start justify-between gap-1">
+                      <p className="line-clamp-2 text-[12px] font-semibold leading-snug text-[#222]">
+                        {item.title}
+                      </p>
+                      <span className="shrink-0 text-[10px] font-medium text-[#222]">
+                        {formatRating(item.score100)}
+                      </span>
+                    </div>
+                    <p className="line-clamp-2 text-[10px] leading-snug text-[#717171]">
+                      {item.detailReasonLine}
+                    </p>
+                  </div>
+                </button>
+              );
+            })
+          )}
         </div>
       </div>
     </div>
