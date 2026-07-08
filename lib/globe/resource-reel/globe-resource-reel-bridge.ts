@@ -32,6 +32,16 @@ function extractEventIdFromResourceId(resourceId: string): string | null {
   if (eateryIndex > 0) {
     return resourceId.slice(0, eateryIndex).trim() || null;
   }
+  const activityMarker = ":activity:";
+  const activityIndex = resourceId.lastIndexOf(activityMarker);
+  if (activityIndex > 0) {
+    return resourceId.slice(0, activityIndex).trim() || null;
+  }
+  const amenityMarker = ":amenity:";
+  const amenityIndex = resourceId.lastIndexOf(amenityMarker);
+  if (amenityIndex > 0) {
+    return resourceId.slice(0, amenityIndex).trim() || null;
+  }
   return null;
 }
 

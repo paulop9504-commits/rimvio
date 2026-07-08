@@ -23,6 +23,7 @@ import { readEateryRecommendReasonsForEvent } from "@/lib/globe/eatery/eatery-re
 import { commitEventUpsert } from "@/lib/source-of-truth/commit-truth";
 import type { ScoredLodgingRecommendation } from "@/lib/globe/lodging/score-lodging-recommendations";
 import type { ScoredEateryRecommendation } from "@/lib/globe/eatery/score-eatery-recommendations";
+import type { LocalDiscoveryActivitySubtype } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
 
 export type CommitContextConditionHubBatchInput = {
   event: EventCandidate;
@@ -33,6 +34,8 @@ export type CommitContextConditionHubBatchInput = {
   eateryScored: readonly ScoredEateryRecommendation[];
   lodgingSource?: string | null;
   eaterySource?: string | null;
+  eateryKind?: "eatery" | "activity" | "amenity" | null;
+  activitySubtype?: LocalDiscoveryActivitySubtype | null;
   now?: Date;
 };
 
@@ -97,6 +100,8 @@ export function commitContextConditionHubBatch(
     batchId: input.batchId,
     lodgingPlaceIds: input.lodgingRows.map((row) => row.placeId),
     eateryPlaceIds: input.eateryRows.map((row) => row.placeId),
+    eateryKind: input.eateryKind ?? "eatery",
+    activitySubtype: input.activitySubtype ?? null,
     atIso: nowIso,
   };
   const metadata = appendContextConditionPinBatch(event, batch);

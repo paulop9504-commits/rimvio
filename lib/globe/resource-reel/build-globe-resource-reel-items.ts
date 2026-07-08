@@ -9,6 +9,11 @@ import { buildResourceReelResourceId } from "@/lib/globe/resource-reel/globe-res
 import type { GlobeResourceReelItem } from "@/lib/globe/resource-reel/types";
 import { copy } from "@/lib/copy/human-ko";
 import { buildGoogleMapsPlaceHref } from "@/lib/resolvers/deep-links";
+import type { LocalDiscoveryActivitySubtype } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
+import {
+  activitySubtypeActionLabel,
+  activitySubtypeNoun,
+} from "@/lib/globe/place/activity-subtype-presentation";
 
 function formatPriceKrw(value: number | null | undefined): string | null {
   if (value == null || !Number.isFinite(value)) {
@@ -29,7 +34,7 @@ function accentForItem(
   index: number,
 ): GlobeResourceReelItem["accent"] {
   if (index === 0) {
-    return kind === "lodging" ? "green" : "orange";
+    return kind === "lodging" ? "green" : kind === "amenity" ? "blue" : "orange";
   }
   if (index === 1) {
     return "blue";
@@ -37,7 +42,7 @@ function accentForItem(
   if (index === 2) {
     return "purple";
   }
-  return kind === "lodging" ? "green" : "orange";
+  return kind === "lodging" ? "green" : kind === "amenity" ? "blue" : "orange";
 }
 
 function pushLodgingItem(input: {
@@ -87,6 +92,8 @@ function pushLodgingItem(input: {
 
 function pushEateryItem(input: {
   event: EventCandidate;
+  kind?: GlobeResourceReelItem["kind"];
+  activitySubtype?: LocalDiscoveryActivitySubtype | null;
   placeId: string;
   title: string;
   index: number;
@@ -104,23 +111,30 @@ function pushEateryItem(input: {
     readEateryRecommendReason(input.event.id, row.placeId)?.reasonKo ||
     copy.globe.eateryReasonFallback;
   const meta = [
+    input.kind === "activity"
+      ? activitySubtypeNoun(input.activitySubtype ?? "general")
+      : input.kind === "amenity"
+        ? "편의"
+        : null,
     typeof row.rating === "number" ? `평점 ${row.rating.toFixed(1)}` : null,
     row.openNow == null ? null : row.openNow ? "영업 중" : "영업 종료",
   ]
     .filter(Boolean)
     .join(" · ");
+  const kind = input.kind ?? "eatery";
   return {
     resourceId: buildResourceReelResourceId({
       contextEventId: input.event.id,
-      kind: "eatery",
+      kind,
       placeId: row.placeId,
     }),
-    kind: "eatery",
+    kind,
+    activitySubtype: kind === "activity" ? (input.activitySubtype ?? null) : null,
     placeId: row.placeId,
     title: row.name,
     score100: scoreFromRank(input.index, input.total),
     detailReasonLine: reason,
-    accent: accentForItem("eatery", input.index),
+    accent: accentForItem(kind, input.index),
     thumbnailUrl: row.images[0] ?? null,
     lat: row.lat,
     lng: row.lng,
@@ -129,7 +143,12 @@ function pushEateryItem(input: {
     actionHref:
       row.mapsUrl?.trim() ||
       `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(row.name)}&query_place_id=${encodeURIComponent(row.placeId)}`,
-    actionLabel: copy.globe.eateryFocusNavigate,
+    actionLabel:
+      kind === "activity"
+        ? activitySubtypeActionLabel(input.activitySubtype ?? "general")
+        : kind === "amenity"
+          ? "길찾기"
+          : copy.globe.eateryFocusNavigate,
   };
 }
 
@@ -169,6 +188,8 @@ export function buildGlobeResourceReelItems(
             })
           : pushEateryItem({
               event,
+              kind: rec.kind,
+              activitySubtype: rec.activitySubtype ?? null,
               placeId,
               title: rec.title,
               index,
@@ -206,6 +227,7 @@ export function buildGlobeResourceReelItems(
   for (const row of eateryRows) {
     const built = pushEateryItem({
       event,
+      kind: "eatery",
       placeId: row.placeId,
       title: row.name,
       index,

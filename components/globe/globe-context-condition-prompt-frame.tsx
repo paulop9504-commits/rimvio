@@ -75,6 +75,7 @@ import {
   resolveCicadaAgentPhaseLabel,
 } from "@/lib/globe/context-agent/resolve-cicada-agent-phase";
 import { subscribeContextAgentGlobeMarkerFocus } from "@/lib/globe/context-agent/context-agent-globe-marker-focus";
+import { buildContextAgentMarkerActionHint } from "@/lib/globe/context-agent/context-agent-globe-marker-focus";
 import { resolveCicadaAssistantSurfaceMode } from "@/lib/globe/context-agent/resolve-cicada-assistant-surface-mode";
 import {
   applyPalantirOperatorAfterScout,
@@ -356,6 +357,13 @@ export function GlobeContextConditionPromptFrame({
         kind: "text",
         text: override?.briefKo || detail.insightKo,
       });
+      if (!override?.briefKo && detail.actionHintKo?.trim()) {
+        appendContextAgentComposeTurn(event.id, {
+          role: "assistant",
+          kind: "text",
+          text: detail.actionHintKo.trim(),
+        });
+      }
       setComposeThread(readContextAgentComposeThread(event.id));
       globeRef?.current?.snapToPin(detail.lat, detail.lng, "street", {
         pinViewportY: MAP_FOCUS_PIN_VIEWPORT_Y,
@@ -651,15 +659,30 @@ export function GlobeContextConditionPromptFrame({
     if (!row) {
       return;
     }
+    const focusKind =
+      row.kind === "lodging"
+        ? "lodging"
+        : row.kind === "activity" || row.kind === "amenity"
+          ? row.kind
+          : "eatery";
+    const activitySubtype =
+      focusKind === "activity" ? (row.activitySubtype ?? null) : null;
     publishContextAgentGlobeMarkerFocus({
       contextEventId: event.id,
       placeId: row.placeId,
-      // activity/amenity ride the eatery marker channel on the globe.
-      kind: row.kind === "lodging" ? "lodging" : "eatery",
+      kind: focusKind,
+      activitySubtype,
       lat: row.lat,
       lng: row.lng,
       title: row.title,
       insightKo: row.reasonKo,
+      actionHintKo:
+        focusKind === "activity"
+          ? buildContextAgentMarkerActionHint({
+              kind: "activity",
+              activitySubtype,
+            })
+          : null,
       source: "map_marker",
     });
     globeRef?.current?.snapToPin(row.lat, row.lng, "street", {

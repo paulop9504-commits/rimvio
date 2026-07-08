@@ -81,7 +81,23 @@ export function GlobeResourceReelListPanel({
                     />
                   ) : (
                     <div className="flex size-full items-center justify-center text-[11px] text-[#86868b]">
-                      {item.kind === "lodging" ? "숙" : "맛"}
+                      {item.kind === "lodging"
+                        ? "숙"
+                        : item.kind === "activity"
+                          ? item.activitySubtype === "shopping"
+                            ? "쇼"
+                            : item.activitySubtype === "museum"
+                              ? "박"
+                              : item.activitySubtype === "park"
+                                ? "공"
+                                : item.activitySubtype === "nightlife"
+                                  ? "야"
+                                  : item.activitySubtype === "photo_spot"
+                                    ? "포"
+                                    : "놀"
+                          : item.kind === "amenity"
+                            ? "편"
+                            : "맛"}
                     </div>
                   )}
                   {item.secondaryLine ? (

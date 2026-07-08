@@ -31,6 +31,7 @@ import {
 import { rankLodgingResources } from "@/lib/globe/resource/rank-lodging-resources";
 import { listLodgingResourcesForEvent } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import type { GlobeResourceReelItem } from "@/lib/globe/resource-reel/types";
+import { activitySubtypeActionLabel } from "@/lib/globe/place/activity-subtype-presentation";
 import { MAP_FOCUS_PIN_VIEWPORT_Y } from "@/lib/globe/map-anchored-overlay-layout";
 import {
   EVENT_CANDIDATES_UPDATED,
@@ -151,7 +152,12 @@ export function GlobeResourceReelDetail({
     : null;
 
   const eateryRow = useMemo(() => {
-    if (item.kind !== "eatery" || !activeEvent) {
+    if (
+      (item.kind !== "eatery" &&
+        item.kind !== "activity" &&
+        item.kind !== "amenity") ||
+      !activeEvent
+    ) {
       return null;
     }
     return (
@@ -373,7 +379,13 @@ export function GlobeResourceReelDetail({
     );
   }
 
-  if (item.kind === "eatery" && eateryRow && activeEvent) {
+  if (
+    (item.kind === "eatery" ||
+      item.kind === "activity" ||
+      item.kind === "amenity") &&
+    eateryRow &&
+    activeEvent
+  ) {
     const reason = readEateryRecommendReason(contextEventId, eateryRow.placeId);
     const pinnedResourceId = readPinnedEateryResourceId(activeEvent);
     const isPinned = pinnedResourceId === item.resourceId;
@@ -387,6 +399,16 @@ export function GlobeResourceReelDetail({
       contextTitle: activeEvent.title ?? null,
     });
     const primaryAction = infraActions.find((row) => row.tone === "primary") ?? infraActions[0];
+    const subtypeActionLabel =
+      item.kind === "activity"
+        ? activitySubtypeActionLabel(item.activitySubtype ?? "general")
+        : item.kind === "amenity"
+          ? copy.globe.eateryFocusNavigate
+          : null;
+    const primaryActionLabel =
+      item.kind === "activity" || item.kind === "amenity"
+        ? (subtypeActionLabel ?? item.actionLabel ?? copy.globe.eateryFocusNavigate)
+        : (primaryAction?.label ?? copy.globe.eateryFocusNavigate);
 
     return (
       <GlobeResourceReelAirbnbCard
@@ -454,12 +476,13 @@ export function GlobeResourceReelDetail({
         onClose={onDismiss}
         closeAriaLabel={copy.globe.resourceReelCloseAria}
         onPrimaryAction={() => {
-          if (!primaryAction?.href) {
+          const href = primaryAction?.href ?? item.actionHref;
+          if (!href) {
             return;
           }
-          window.open(primaryAction.href, "_blank", "noopener,noreferrer");
+          window.open(href, "_blank", "noopener,noreferrer");
         }}
-        primaryActionLabel={primaryAction?.label ?? copy.globe.eateryFocusNavigate}
+        primaryActionLabel={primaryActionLabel}
         swipeHint={swipeHint}
         {...touchHandlers}
       />

@@ -10,6 +10,14 @@ function placeIdFromHubResourceId(resourceId: string): string | null {
   if (lodging >= 0) {
     return resourceId.slice(lodging + ":lodging:".length).trim() || null;
   }
+  const activity = resourceId.lastIndexOf(":activity:");
+  if (activity >= 0) {
+    return resourceId.slice(activity + ":activity:".length).trim() || null;
+  }
+  const amenity = resourceId.lastIndexOf(":amenity:");
+  if (amenity >= 0) {
+    return resourceId.slice(amenity + ":amenity:".length).trim() || null;
+  }
   const eatery = resourceId.lastIndexOf(":eatery:");
   if (eatery >= 0) {
     return resourceId.slice(eatery + ":eatery:".length).trim() || null;

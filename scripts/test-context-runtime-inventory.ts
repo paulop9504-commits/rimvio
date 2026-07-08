@@ -75,6 +75,24 @@ upsertPersonalGlobePin({
   parentContextEventId: eventId,
 });
 
+upsertPersonalGlobePin({
+  pinId: `pgpin:${eventId}:ctxcond:batch2:activity:place-mall`,
+  eventId: `${eventId}:ctxcond:batch2:activity:place-mall`,
+  lat: 33.47,
+  lng: 126.94,
+  placeLabel: "제주 아울렛",
+  experienceTitle: "제주 아울렛",
+  photoCount: 0,
+  videoCount: 0,
+  createdAtIso: "2026-07-03T00:00:00.000Z",
+  acl: { viewerPeerThreadIds: [] },
+  source: "context_condition_ai",
+  contextConditionBatchId: "batch2",
+  contextConditionKind: "activity",
+  contextConditionActivitySubtype: "shopping",
+  parentContextEventId: eventId,
+});
+
 const guide: MediaGuideNode = {
   guideNodeId: "guide:test",
   title: "제주 맛집 브이로그",
@@ -108,9 +126,16 @@ replaceMediaGuidesForExperience({
 
 const inventory = listContextRuntimeInventory(event);
 assert.ok(inventory);
-assert.equal(inventory!.totalCount, 4);
+assert.equal(inventory!.totalCount, 5);
 assert.equal(inventory!.sections.find((row) => row.key === "pinned")?.items.length, 1);
-assert.equal(inventory!.sections.find((row) => row.key === "pins")?.items.length, 2);
+assert.equal(inventory!.sections.find((row) => row.key === "pins")?.items.length, 3);
 assert.equal(inventory!.sections.find((row) => row.key === "media")?.items.length, 1);
+assert.equal(
+  inventory!.sections
+    .find((row) => row.key === "pins")
+    ?.items.find((row) => row.label === "제주 아울렛")
+    ?.subtitle,
+  "쇼핑 탐색",
+);
 
 console.log("test-context-runtime-inventory: ok");

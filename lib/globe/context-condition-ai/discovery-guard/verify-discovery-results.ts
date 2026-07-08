@@ -67,7 +67,9 @@ function categoryScore(
         category === "theme_park" ||
         category === "park" ||
         category === "museum" ||
-        category === "shopping"
+        category === "shopping" ||
+        category === "nightlife" ||
+        category === "photo_spot"
       ) {
         return 1;
       }

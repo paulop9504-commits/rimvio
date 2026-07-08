@@ -255,12 +255,59 @@ export const copy = {
     cicadaAgentMarkerInsightFallback: (
       title: string,
       area: string,
-      kind: "lodging" | "eatery",
+      kind: "lodging" | "eatery" | "activity" | "amenity",
+      activitySubtype?:
+        | "general"
+        | "shopping"
+        | "museum"
+        | "park"
+        | "nightlife"
+        | "photo_spot"
+        | null,
     ) =>
       kind === "lodging"
         ? `${title} · ${area} 숙소 후보`
-        : `${title} · ${area} 맛집 후보`,
+        : kind === "activity"
+          ? `${title} · ${area} ${
+              activitySubtype === "shopping"
+                ? "쇼핑 후보"
+                : activitySubtype === "museum"
+                  ? "박물관·미술관 후보"
+                  : activitySubtype === "park"
+                    ? "공원·산책 후보"
+                    : activitySubtype === "nightlife"
+                      ? "야경·나이트라이프 후보"
+                      : activitySubtype === "photo_spot"
+                        ? "포토 스팟 후보"
+                        : "놀거리 후보"
+            }`
+          : kind === "amenity"
+            ? `${title} · ${area} 편의 장소 후보`
+            : `${title} · ${area} 맛집 후보`,
     cicadaAgentGlobePrimaryHint: "지도에 표시된 후보만 보세요 · 말로 바꿀 수 있어요",
+    activitySubtypeGeneral: "놀거리",
+    activitySubtypeShopping: "쇼핑",
+    activitySubtypeMuseum: "박물관·미술관",
+    activitySubtypePark: "공원·산책",
+    activitySubtypeNightlife: "야경·나이트라이프",
+    activitySubtypePhotoSpot: "포토 스팟",
+    activitySubtypeBadgeShopping: "쇼핑",
+    activitySubtypeBadgeMuseum: "박물관",
+    activitySubtypeBadgePark: "공원",
+    activitySubtypeBadgeNightlife: "야경",
+    activitySubtypeBadgePhotoSpot: "포토",
+    activitySubtypeActionGeneral: "길찾기",
+    activitySubtypeActionShopping: "매장 길찾기",
+    activitySubtypeActionMuseum: "관람 길찾기",
+    activitySubtypeActionPark: "산책 길찾기",
+    activitySubtypeActionNightlife: "야경 길찾기",
+    activitySubtypeActionPhotoSpot: "포토스팟 길찾기",
+    activitySubtypeChatHintGeneral: "지도에서 길찾기로 바로 이동할 수 있어요",
+    activitySubtypeChatHintShopping: "매장 동선이면 네비로 바로 갈 수 있어요",
+    activitySubtypeChatHintMuseum: "관람 동선이면 길찾기로 바로 이동할 수 있어요",
+    activitySubtypeChatHintPark: "산책 동선이면 길찾기로 바로 이동할 수 있어요",
+    activitySubtypeChatHintNightlife: "야경 동선이면 길찾기로 바로 이동할 수 있어요",
+    activitySubtypeChatHintPhotoSpot: "사진 찍을 자리까지 길찾기로 바로 이동할 수 있어요",
     geoOntologyRootEatery: "맛집",
     geoOntologyRootLodging: "숙소",
     geoOntologyContextChain: (place: string, theme: string) => `${place} · ${theme}`,

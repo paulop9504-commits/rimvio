@@ -247,12 +247,59 @@ export const copyEn: Copy = {
     cicadaAgentMarkerInsightFallback: (
       title: string,
       area: string,
-      kind: "lodging" | "eatery",
+      kind: "lodging" | "eatery" | "activity" | "amenity",
+      activitySubtype?:
+        | "general"
+        | "shopping"
+        | "museum"
+        | "park"
+        | "nightlife"
+        | "photo_spot"
+        | null,
     ) =>
       kind === "lodging"
         ? `${title} · stay option near ${area}`
-        : `${title} · food option near ${area}`,
+        : kind === "activity"
+          ? `${title} · ${
+              activitySubtype === "shopping"
+                ? "shopping"
+                : activitySubtype === "museum"
+                  ? "museum"
+                  : activitySubtype === "park"
+                    ? "park"
+                    : activitySubtype === "nightlife"
+                      ? "nightlife"
+                      : activitySubtype === "photo_spot"
+                        ? "photo spot"
+                        : "things to do"
+            } near ${area}`
+          : kind === "amenity"
+            ? `${title} · amenity near ${area}`
+            : `${title} · food option near ${area}`,
     cicadaAgentGlobePrimaryHint: "Only projected candidates on the globe · say to change",
+    activitySubtypeGeneral: "Things to do",
+    activitySubtypeShopping: "Shopping",
+    activitySubtypeMuseum: "Museum",
+    activitySubtypePark: "Park",
+    activitySubtypeNightlife: "Nightlife",
+    activitySubtypePhotoSpot: "Photo spot",
+    activitySubtypeBadgeShopping: "Shop",
+    activitySubtypeBadgeMuseum: "Museum",
+    activitySubtypeBadgePark: "Park",
+    activitySubtypeBadgeNightlife: "Night",
+    activitySubtypeBadgePhotoSpot: "Photo",
+    activitySubtypeActionGeneral: "Directions",
+    activitySubtypeActionShopping: "Store directions",
+    activitySubtypeActionMuseum: "Museum directions",
+    activitySubtypeActionPark: "Walk directions",
+    activitySubtypeActionNightlife: "Night directions",
+    activitySubtypeActionPhotoSpot: "Photo spot directions",
+    activitySubtypeChatHintGeneral: "You can go now with directions on the map",
+    activitySubtypeChatHintShopping: "Open directions when you're ready to shop",
+    activitySubtypeChatHintMuseum: "Open directions when you're ready to visit",
+    activitySubtypeChatHintPark: "Open directions when you're ready to walk",
+    activitySubtypeChatHintNightlife: "Open directions when you're ready for the night view",
+    activitySubtypeChatHintPhotoSpot: "Open directions when you're ready for the photo spot",
     geoOntologyRootEatery: "Food",
     geoOntologyRootLodging: "Stay",
     geoOntologyContextChain: (place: string, theme: string) => `${place} · ${theme}`,

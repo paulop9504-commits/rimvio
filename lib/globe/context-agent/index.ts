@@ -65,6 +65,9 @@ export {
   type CicadaAssistantSurfaceMode,
 } from "@/lib/globe/context-agent/resolve-cicada-assistant-surface-mode";
 export {
+  buildContextAgentMarkerActionHint,
+  buildContextAgentMarkerChatLines,
+  buildContextAgentMarkerInsight,
   publishContextAgentGlobeMarkerFocus,
   resolveContextAgentGlobeMarkerFocus,
   subscribeContextAgentGlobeMarkerFocus,

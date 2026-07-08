@@ -1,22 +1,7 @@
+import type { PlaceResourcePayload } from "@/lib/globe/place/place-resource-types";
+
 /** Eatery Resource — map discovery supply (L3). */
-export type EateryResourcePayload = {
-  placeId: string;
-  name: string;
-  images: readonly string[];
-  address?: string | null;
-  cuisineHint?: string | null;
-  priceLevel?: number | null;
-  rating?: number | null;
-  openNow?: boolean | null;
-  mapsUrl?: string | null;
-  provider?: "google_places" | "naver_local" | "mock" | "multi_provider" | null;
-  providerLabel?: string | null;
-  categoryLabel?: string | null;
-  specialReasonKo?: string | null;
-  specialScore?: number | null;
-  searchScore?: number | null;
-  virtualCandidate?: true;
-};
+export type EateryResourcePayload = PlaceResourcePayload;
 
 export const CONTEXT_EATERY_HUB_ENABLED_META_KEY = "contextEateryHubEnabled";
 export const CONTEXT_EATERY_INVENTORY_META_KEY = "contextEateryInventory";

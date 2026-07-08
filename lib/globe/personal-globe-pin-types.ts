@@ -1,4 +1,5 @@
 import type { GlobeContextVisibility } from "@/lib/globe/globe-context-visibility";
+import type { LocalDiscoveryActivitySubtype } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
 
 /** Owner-local globe pin — experience entry on personal earth (not ROOM shared). */
 
@@ -34,7 +35,9 @@ export type PersonalGlobePin = {
   /** Context Condition AI batch — dismiss removes all pins in batch. */
   contextConditionBatchId?: string | null;
   /** Context Condition AI pin kind for map chrome. */
-  contextConditionKind?: "lodging" | "eatery" | null;
+  contextConditionKind?: "lodging" | "eatery" | "activity" | "amenity" | null;
+  /** Activity subtype when this search result is an activity child. */
+  contextConditionActivitySubtype?: LocalDiscoveryActivitySubtype | null;
   /** Parent context when this pin is a search result child. */
   parentContextEventId?: string | null;
 };

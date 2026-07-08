@@ -1,4 +1,10 @@
-export type GlobeResourceReelKind = "lodging" | "eatery";
+import type { LocalDiscoveryActivitySubtype } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
+
+export type GlobeResourceReelKind =
+  | "lodging"
+  | "eatery"
+  | "activity"
+  | "amenity";
 
 export type GlobeResourceReelSurface = "list" | "detail";
 
@@ -14,6 +20,7 @@ export type GlobeResourceReelSource =
 export type GlobeResourceReelItem = {
   resourceId: string;
   kind: GlobeResourceReelKind;
+  activitySubtype?: LocalDiscoveryActivitySubtype | null;
   placeId: string;
   title: string;
   score100: number;

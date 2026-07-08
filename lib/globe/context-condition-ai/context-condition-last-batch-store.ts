@@ -1,7 +1,7 @@
-const STORAGE_PREFIX = "rimvio.context-condition-last-batch.";
-
 import type { LocalDiscoveryActionSpec } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
 import { haversineKm } from "@/lib/feed/spacetime-fit";
+
+const STORAGE_PREFIX = "rimvio.context-condition-last-batch.";
 
 const BATCH_ANCHOR_TOLERANCE_KM = 40;
 
@@ -14,6 +14,7 @@ export type ContextConditionLastBatchWire = {
   spec?: LocalDiscoveryActionSpec | null;
   recommendations?: readonly {
     kind: "lodging" | "eatery" | "activity" | "amenity";
+    activitySubtype?: LocalDiscoveryActionSpec["activitySubtype"];
     title: string;
     reasonKo: string;
     placeId?: string;

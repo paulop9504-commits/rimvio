@@ -2,7 +2,7 @@
 
 import { fetchGlobeContextPlaceGeocode } from "@/lib/globe/align-globe-context-places";
 import { classifyPlaceCategory } from "@/lib/globe/context-condition-ai/discovery-guard/classify-place-category";
-import type { ContextEateryInventoryRow } from "@/lib/globe/eatery/eatery-resource-types";
+import type { ContextPlaceInventoryRow } from "@/lib/globe/place/place-resource-types";
 import { findPlacesByName } from "@/lib/locate/google-places-find";
 
 /** Concrete attraction the user picked — not a generic "놀거리" bucket. */
@@ -38,7 +38,7 @@ export async function resolveActivityLandmarkInventoryRow(input: {
   query: string;
   lat?: number | null;
   lng?: number | null;
-}): Promise<ContextEateryInventoryRow | null> {
+}): Promise<ContextPlaceInventoryRow | null> {
   const query = input.query.trim();
   if (!query || !isExplicitActivityLandmarkQuery(query)) {
     return null;

@@ -14,6 +14,14 @@ export type LocalDiscoveryVibe = "quiet" | "popular" | "local" | "hot";
 
 export type LocalDiscoveryLodgingKind = "hotel" | "airbnb" | "any";
 
+export type LocalDiscoveryActivitySubtype =
+  | "general"
+  | "shopping"
+  | "museum"
+  | "park"
+  | "nightlife"
+  | "photo_spot";
+
 export type LocalDiscoveryActionSpec = {
   readonly version: 1;
   readonly resourceTypes: readonly LocalDiscoveryResourceType[];
@@ -27,6 +35,8 @@ export type LocalDiscoveryActionSpec = {
   readonly eateryFocus?: string | null;
   /** Activity focus query — e.g. "실내 액티비티", "유니버설 스튜디오" (from clarify chip). */
   readonly activityFocus?: string | null;
+  /** Activity subtype — narrows scoring/guard/query behavior inside activity. */
+  readonly activitySubtype?: LocalDiscoveryActivitySubtype | null;
   /**
    * Activity node cluster — the answer as a *trigger* that activates related
    * nodes (도파민 → 테마파크·놀이공원·포토스팟·야경). Retrieval multi-queries these
@@ -96,6 +106,7 @@ export type ResolveLocalDiscoveryActionResult =
 
 export type ContextConditionRecommendation = {
   readonly kind: "lodging" | "eatery" | "activity" | "amenity";
+  readonly activitySubtype?: LocalDiscoveryActivitySubtype | null;
   readonly title: string;
   readonly reasonKo: string;
   readonly rank: number;

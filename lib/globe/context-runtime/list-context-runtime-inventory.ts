@@ -2,6 +2,8 @@ import type { EventCandidate } from "@/lib/events/event-candidate";
 import { readPinnedContextItem } from "@/lib/globe/context-pinned-item";
 import { listPersonalGlobePins } from "@/lib/globe/personal-globe-pin-store";
 import { queryMediaGuidesForEvent } from "@/lib/ontology/media-guide-store";
+import type { LocalDiscoveryActivitySubtype } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
+import { activitySubtypeNoun } from "@/lib/globe/place/activity-subtype-presentation";
 import type {
   ContextRuntimeInventory,
   ContextRuntimeItem,
@@ -11,12 +13,22 @@ import type {
 function pinSubtitle(input: {
   source?: string | null;
   kind?: string | null;
+  activitySubtype?: LocalDiscoveryActivitySubtype | null;
   photoCount?: number;
   videoCount?: number;
 }): string | null {
   const parts: string[] = [];
+  const activityLabel = `${activitySubtypeNoun(input.activitySubtype ?? "general")} 탐색`;
   if (input.source === "context_condition_ai") {
-    parts.push(input.kind === "eatery" ? "맛집 탐색" : "숙소 탐색");
+    parts.push(
+      input.kind === "lodging"
+        ? "숙소 탐색"
+        : input.kind === "activity"
+          ? activityLabel
+          : input.kind === "amenity"
+            ? "편의 장소 탐색"
+            : "맛집 탐색",
+    );
   } else if (input.source === "accommodation_search") {
     parts.push("숙소 탐색");
   }
@@ -34,9 +46,23 @@ function buildPinnedItem(
 ): ContextRuntimeItem {
   return {
     id: `pinned:${pinned.resourceId}`,
-    kind: pinned.kind === "lodging" ? "pinned_lodging" : "pinned_eatery",
+    kind:
+      pinned.kind === "lodging"
+        ? "pinned_lodging"
+        : pinned.kind === "activity"
+          ? "pinned_activity"
+          : pinned.kind === "amenity"
+            ? "pinned_amenity"
+            : "pinned_eatery",
     label: pinned.label,
-    subtitle: pinned.kind === "lodging" ? "확정 숙소" : "확정 맛집",
+    subtitle:
+      pinned.kind === "lodging"
+        ? "확정 숙소"
+        : pinned.kind === "activity"
+          ? "확정 놀거리"
+          : pinned.kind === "amenity"
+            ? "확정 편의 장소"
+            : "확정 맛집",
     lat: pinned.lat ?? null,
     lng: pinned.lng ?? null,
     previewUrl: pinned.previewUrl ?? null,
@@ -85,6 +111,7 @@ function buildGlobePinItem(
     subtitle: pinSubtitle({
       source: pin.source,
       kind: pin.contextConditionKind,
+      activitySubtype: pin.contextConditionActivitySubtype,
       photoCount: pin.photoCount,
       videoCount: pin.videoCount,
     }),

@@ -26,6 +26,9 @@ import { loadLodgingInventoryRows } from "@/lib/globe/context-hub/load-lodging-i
 import type { ContextLodgingInventoryRow } from "@/lib/globe/context-hub/lodging-resource-types";
 import { loadEateryInventoryRows } from "@/lib/globe/eatery/load-eatery-inventory-rows";
 import type { ContextEateryInventoryRow } from "@/lib/globe/eatery/eatery-resource-types";
+import { loadPlaceInventoryRows } from "@/lib/globe/place/load-place-inventory-rows";
+import type { ContextPlaceInventoryRow } from "@/lib/globe/place/place-resource-types";
+import { scorePlaceRecommendations } from "@/lib/globe/place/score-place-recommendations";
 import { scoreEateryRecommendations } from "@/lib/globe/eatery/score-eatery-recommendations";
 import { scoreLodgingRecommendations } from "@/lib/globe/lodging/score-lodging-recommendations";
 import { LOCAL_DISCOVERY_RECOMMEND_CAP } from "@/lib/globe/context-condition-ai/local-discovery-limits";
@@ -172,6 +175,7 @@ function buildRecommendations(input: {
   eateryScored: ReturnType<typeof scoreEateryRecommendations>;
   /** When set, eatery-channel rows are activity/amenity places, not restaurants. */
   activityKind?: "activity" | "amenity" | null;
+  activitySubtype?: LocalDiscoveryActionSpec["activitySubtype"];
 }): ContextConditionRecommendation[] {
   const rows: ContextConditionRecommendation[] = [];
   for (const [index, row] of input.lodgingScored.entries()) {
@@ -189,6 +193,7 @@ function buildRecommendations(input: {
   for (const [index, row] of input.eateryScored.entries()) {
     rows.push({
       kind: eateryKind,
+      activitySubtype: eateryKind === "activity" ? (input.activitySubtype ?? null) : null,
       title: toReadablePlaceLabel(row.row.name) || row.row.placeId,
       reasonKo: row.reasonKo,
       rank: index + 1,
@@ -253,6 +258,7 @@ export async function runContextConditionAnchorPin(
   const activityLabelKo = wantsActivity
     ? spec.activityFocus?.trim() || (activityKind === "amenity" ? "장소" : "놀거리")
     : null;
+  const activitySubtype = spec.activitySubtype ?? "general";
 
   const keptRows =
     input.keptRecommendations && input.keptRecommendations.length > 0
@@ -390,17 +396,27 @@ export async function runContextConditionAnchorPin(
       ? []
       : await Promise.all(
           queries.map((query) =>
-            loadEateryInventoryRows({
-              event,
-              message: query,
-              lat: input.anchorLat,
-              lng: input.anchorLng,
-              maxResults: isLandmarkScout ? 4 : 12,
-              radiusM: activityRadiusM,
-            }),
+            wantsActivity
+              ? loadPlaceInventoryRows({
+                  event,
+                  domain: activityKind ?? "activity",
+                  query,
+                  lat: input.anchorLat,
+                  lng: input.anchorLng,
+                  maxResults: isLandmarkScout ? 4 : 12,
+                  radiusM: activityRadiusM,
+                })
+              : loadEateryInventoryRows({
+                  event,
+                  message: query,
+                  lat: input.anchorLat,
+                  lng: input.anchorLng,
+                  maxResults: isLandmarkScout ? 4 : 12,
+                  radiusM: activityRadiusM,
+                }),
           ),
         );
-    const mergedById = new Map<string, ContextEateryInventoryRow>();
+    const mergedById = new Map<string, ContextPlaceInventoryRow>();
     for (const batch of loadedBatches) {
       for (const row of batch.rows) {
         if (!mergedById.has(row.placeId)) {
@@ -427,16 +443,13 @@ export async function runContextConditionAnchorPin(
     const focusMatch = isAmenity
       ? null
       : [focusTail, ...cluster].filter(Boolean).join(" ") || null;
-    const activityScored = scoreEateryRecommendations({
+    const activityScored = scorePlaceRecommendations({
+      domain: isAmenity ? "amenity" : "activity",
       rows: mergedRows,
-      unifiedContext,
       lat: input.anchorLat,
       lng: input.anchorLng,
-      context: contextInstance,
-      // Landmark discovery: relevance over proximity so a far exact match
-      // (유니버설 스튜디오) outranks a nearby unrelated café.
-      distanceWeight: isAmenity ? 1 : 0.1,
       focusMatch,
+      activitySubtype,
     }).slice(0, isLandmarkScout ? 1 : cluster.length > 0 ? 6 : 4);
 
     // Category Integrity Guard (strict): an activity/amenity search must never
@@ -451,14 +464,13 @@ export async function runContextConditionAnchorPin(
     });
     eateryScored = guarded.kept;
     if (eateryScored.length === 0 && resolvedLandmark) {
-      eateryScored = scoreEateryRecommendations({
+      eateryScored = scorePlaceRecommendations({
+        domain: isAmenity ? "amenity" : "activity",
         rows: [resolvedLandmark],
-        unifiedContext,
         lat: input.anchorLat,
         lng: input.anchorLng,
-        context: contextInstance,
-        distanceWeight: 0.05,
         focusMatch: focusTail,
+        activitySubtype,
       });
     }
     eateryRows = eateryScored.map((row) => row.row);
@@ -515,6 +527,8 @@ export async function runContextConditionAnchorPin(
     eateryScored,
     lodgingSource,
     eaterySource,
+    eateryKind: activityKind ?? "eatery",
+    activitySubtype: activityKind === "activity" ? activitySubtype : null,
   });
 
   syncContextConditionPins({
@@ -522,6 +536,8 @@ export async function runContextConditionAnchorPin(
     batchId,
     lodgingRows,
     eateryRows,
+    eateryKind: activityKind ?? "eatery",
+    activitySubtype: activityKind === "activity" ? activitySubtype : null,
   });
 
   const pinPoints = [
@@ -533,6 +549,7 @@ export async function runContextConditionAnchorPin(
     lodgingScored,
     eateryScored,
     activityKind,
+    activitySubtype: activityKind === "activity" ? activitySubtype : null,
   });
 
   const outcome: ContextConditionAnchorPinOutcome = {
@@ -559,6 +576,7 @@ export async function runContextConditionAnchorPin(
     atIso: new Date().toISOString(),
     recommendations: recommendations.map((row) => ({
       kind: row.kind,
+      activitySubtype: row.activitySubtype ?? null,
       title: row.title,
       reasonKo: row.reasonKo,
       placeId: row.placeId,

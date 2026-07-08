@@ -1,9 +1,14 @@
 import { copy } from "@/lib/copy/human-ko";
 import type { GlobeLodgingMapMarker } from "@/lib/globe/context-hub/lodging-globe-marker-types";
-import { listContextConditionPlaceIdsForContext } from "@/lib/globe/context-condition-ai/context-condition-batch-metadata";
+import {
+  listContextConditionPlaceIdsForContext,
+  readContextConditionPinBatches,
+} from "@/lib/globe/context-condition-ai/context-condition-batch-metadata";
 import type { GlobeEateryMapMarker } from "@/lib/globe/eatery/eatery-globe-marker-types";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { readGeoOntologyFacetState } from "@/lib/globe/spatial-semantic/geo-ontology-graph-store";
+import type { LocalDiscoveryActivitySubtype } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
+import { activitySubtypeBadgeLabel } from "@/lib/globe/place/activity-subtype-presentation";
 
 function lodgingPlaceIdFromResourceId(resourceId: string): string | null {
   const index = resourceId.lastIndexOf(":lodging:");
@@ -14,11 +19,31 @@ function lodgingPlaceIdFromResourceId(resourceId: string): string | null {
 }
 
 function eateryPlaceIdFromResourceId(resourceId: string): string | null {
+  const activityIndex = resourceId.lastIndexOf(":activity:");
+  if (activityIndex >= 0) {
+    return resourceId.slice(activityIndex + ":activity:".length).trim() || null;
+  }
+  const amenityIndex = resourceId.lastIndexOf(":amenity:");
+  if (amenityIndex >= 0) {
+    return resourceId.slice(amenityIndex + ":amenity:".length).trim() || null;
+  }
   const index = resourceId.lastIndexOf(":eatery:");
   if (index < 0) {
     return null;
   }
   return resourceId.slice(index + ":eatery:".length).trim() || null;
+}
+
+function activitySubtypeForPlace(
+  event: EventCandidate,
+  placeId: string,
+): LocalDiscoveryActivitySubtype | null {
+  for (const batch of readContextConditionPinBatches(event)) {
+    if (batch.eateryKind === "activity" && batch.eateryPlaceIds.includes(placeId)) {
+      return batch.activitySubtype ?? null;
+    }
+  }
+  return null;
 }
 
 export function decorateLodgingMarkersWithContextCondition(
@@ -80,10 +105,12 @@ export function decorateEateryMarkersWithContextCondition(
   if (!event) {
     return [...markers];
   }
-  const placeIds = listContextConditionPlaceIdsForContext(event).eatery;
+  const placeIdsForContext = listContextConditionPlaceIdsForContext(event);
+  const placeIds = placeIdsForContext.eatery;
   if (placeIds.size === 0) {
     return [...markers];
   }
+  const activityPlaceIds = placeIdsForContext.activity;
   return markers.map((marker) => {
     const placeId = eateryPlaceIdFromResourceId(marker.resourceId);
     if (!placeId || !placeIds.has(placeId)) {
@@ -99,12 +126,15 @@ export function decorateEateryMarkersWithContextCondition(
       facet.rankedPlaceIds.length > 0 &&
       rank > 2 &&
       facet.highlightedPlaceId !== placeId;
+    const isActivity = activityPlaceIds.has(placeId);
     return {
       ...marker,
       contextConditionPin: true,
       discoveryAccent: emphasized ? "orange" : muted ? "blue" : "orange",
       discoveryShortLabel: marker.discoveryShortLabel ?? marker.label,
-      ontologyBadgeLabel: copy.globe.contextConditionPinBadge,
+      ontologyBadgeLabel: isActivity
+        ? activitySubtypeBadgeLabel(activitySubtypeForPlace(event, placeId))
+        : copy.globe.contextConditionPinBadge,
       popInDelayMs: marker.popInDelayMs ?? 0,
       isMain: rank === 0 || marker.isMain,
       carouselIndex: rank >= 0 ? rank : marker.carouselIndex,

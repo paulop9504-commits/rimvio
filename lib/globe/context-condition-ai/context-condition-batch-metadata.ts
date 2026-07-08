@@ -1,4 +1,5 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
+import type { LocalDiscoveryActivitySubtype } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
 
 export const CONTEXT_CONDITION_PIN_BATCHES_META_KEY = "contextConditionPinBatches";
 
@@ -6,6 +7,8 @@ export type ContextConditionPinBatchRecord = {
   batchId: string;
   lodgingPlaceIds: readonly string[];
   eateryPlaceIds: readonly string[];
+  eateryKind?: "eatery" | "activity" | "amenity";
+  activitySubtype?: LocalDiscoveryActivitySubtype | null;
   atIso: string;
 };
 
@@ -36,6 +39,14 @@ export function readContextConditionPinBatches(
       eateryPlaceIds: normalizePlaceIds(
         (row as ContextConditionPinBatchRecord).eateryPlaceIds,
       ),
+      eateryKind:
+        (row as ContextConditionPinBatchRecord).eateryKind === "activity" ||
+        (row as ContextConditionPinBatchRecord).eateryKind === "amenity"
+          ? (row as ContextConditionPinBatchRecord).eateryKind
+          : "eatery",
+      activitySubtype: normalizeActivitySubtype(
+        (row as ContextConditionPinBatchRecord).activitySubtype,
+      ),
       atIso:
         typeof (row as ContextConditionPinBatchRecord).atIso === "string"
           ? (row as ContextConditionPinBatchRecord).atIso
@@ -43,6 +54,19 @@ export function readContextConditionPinBatches(
     });
   }
   return batches;
+}
+
+function normalizeActivitySubtype(
+  value: unknown,
+): LocalDiscoveryActivitySubtype | null {
+  return value === "general" ||
+    value === "shopping" ||
+    value === "museum" ||
+    value === "park" ||
+    value === "nightlife" ||
+    value === "photo_spot"
+    ? value
+    : null;
 }
 
 function normalizePlaceIds(value: unknown): string[] {
@@ -97,29 +121,41 @@ export function findContextConditionPinBatch(
 
 export function listContextConditionPlaceIdsForContext(
   event: EventCandidate | null | undefined,
-): { lodging: Set<string>; eatery: Set<string> } {
+): {
+  lodging: Set<string>;
+  eatery: Set<string>;
+  activity: Set<string>;
+  amenity: Set<string>;
+} {
   const lodging = new Set<string>();
   const eatery = new Set<string>();
+  const activity = new Set<string>();
+  const amenity = new Set<string>();
   for (const batch of readContextConditionPinBatches(event)) {
     for (const placeId of batch.lodgingPlaceIds) {
       lodging.add(placeId);
     }
     for (const placeId of batch.eateryPlaceIds) {
       eatery.add(placeId);
+      if (batch.eateryKind === "activity") {
+        activity.add(placeId);
+      } else if (batch.eateryKind === "amenity") {
+        amenity.add(placeId);
+      }
     }
   }
-  return { lodging, eatery };
+  return { lodging, eatery, activity, amenity };
 }
 
 export function parseContextConditionPinPlaceId(eventId: string): {
-  kind: "lodging" | "eatery";
+  kind: "lodging" | "eatery" | "activity" | "amenity";
   placeId: string;
 } | null {
-  const match = eventId.match(/:ctxcond:[^:]+:(lodging|eatery):([^:]+)$/u);
+  const match = eventId.match(/:ctxcond:[^:]+:(lodging|eatery|activity|amenity):([^:]+)$/u);
   if (!match) {
     return null;
   }
-  const kind = match[1] as "lodging" | "eatery";
+  const kind = match[1] as "lodging" | "eatery" | "activity" | "amenity";
   const placeId = match[2]?.trim() ?? "";
   if (!placeId) {
     return null;

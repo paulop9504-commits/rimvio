@@ -1,6 +1,7 @@
 import { classifyContextConditionAnchorRequest } from "@/lib/globe/context-condition-ai/classify-context-condition-anchor-request";
 import type {
   LocalDiscoveryActionSpec,
+  LocalDiscoveryActivitySubtype,
   LocalDiscoveryBudget,
   LocalDiscoveryLodgingKind,
   LocalDiscoveryPendingAnswers,
@@ -15,7 +16,9 @@ import type {
 import { isAlternatePlaceSearch } from "@/lib/globe/context-condition-ai/is-alternate-place-search";
 import { isAmbiguousDiscoveryIntent } from "@/lib/globe/context-condition-ai/is-cross-domain-discovery-search";
 import {
+  parseActivityFocusDetail,
   parseActivitySpecificFocus,
+  parseActivitySubtype,
   parseAmenityFocus,
   resolveLocalDiscoveryDomain,
 } from "@/lib/globe/context-condition-ai/resolve-local-discovery-domain";
@@ -247,6 +250,7 @@ function composeSpec(input: {
   lodgingKind: LocalDiscoveryLodgingKind;
   eateryFocus?: string | null;
   activityFocus?: string | null;
+  activitySubtype?: LocalDiscoveryActivitySubtype | null;
   activityCluster?: readonly string[] | null;
 }): LocalDiscoveryActionSpec {
   const cluster = input.activityCluster?.filter((node) => node.trim().length > 0);
@@ -262,6 +266,7 @@ function composeSpec(input: {
     ...(input.activityFocus?.trim()
       ? { activityFocus: input.activityFocus.trim() }
       : {}),
+    ...(input.activitySubtype ? { activitySubtype: input.activitySubtype } : {}),
     ...(cluster && cluster.length > 0 ? { activityCluster: cluster } : {}),
   };
 }
@@ -287,12 +292,23 @@ function resolveDiscoveryDomainSpec(input: {
     ?.split(ACTIVITY_CLUSTER_DELIMITER)
     .map((node) => node.trim())
     .filter((node) => node.length > 0);
+  const focusDetail =
+    domain === "activity"
+      ? parseActivityFocusDetail(convergedFocus || input.text)
+      : null;
   const activityFocus =
     convergedFocus ||
     (domain === "amenity"
       ? parseAmenityFocus(input.text)
-      : parseActivitySpecificFocus(input.text)) ||
+      : focusDetail?.focus ?? parseActivitySpecificFocus(input.text)) ||
     null;
+  const activitySubtype =
+    domain === "activity"
+      ? focusDetail?.subtype ??
+        parseActivitySubtype(convergedFocus) ??
+        parseActivitySubtype(input.text) ??
+        "general"
+      : null;
   const transport =
     (input.answers.transport as LocalDiscoveryTransport | undefined) ??
     parseTransport(input.text) ??
@@ -310,6 +326,7 @@ function resolveDiscoveryDomainSpec(input: {
     vibe: parseVibe(input.text) ?? input.previousSpec?.vibe ?? "popular",
     lodgingKind: "any",
     activityFocus,
+    activitySubtype,
     activityCluster: domain === "activity" ? activityCluster : null,
   });
 }

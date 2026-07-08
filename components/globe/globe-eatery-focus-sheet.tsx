@@ -64,8 +64,19 @@ export function GlobeEateryFocusSheet({ eventId, className }: GlobeEateryFocusSh
     if (!focus || !eventId) {
       return null;
     }
-    const placeId = focus.resourceId.split(":eatery:")[1];
-    return rows.find((entry) => entry.placeId === placeId || `${eventId}:eatery:${entry.placeId}` === focus.resourceId) ?? null;
+    const placeId =
+      focus.resourceId.split(":activity:")[1] ??
+      focus.resourceId.split(":amenity:")[1] ??
+      focus.resourceId.split(":eatery:")[1];
+    return (
+      rows.find(
+        (entry) =>
+          entry.placeId === placeId ||
+          `${eventId}:eatery:${entry.placeId}` === focus.resourceId ||
+          `${eventId}:activity:${entry.placeId}` === focus.resourceId ||
+          `${eventId}:amenity:${entry.placeId}` === focus.resourceId,
+      ) ?? null
+    );
   }, [eventId, focus, rows]);
 
   const reason = row && eventId ? readEateryRecommendReason(eventId, row.placeId) : null;

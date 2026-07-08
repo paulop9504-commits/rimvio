@@ -3,6 +3,8 @@ import type { PersonalGlobePinSource } from "@/lib/globe/personal-globe-pin-type
 export type ContextRuntimeItemKind =
   | "pinned_lodging"
   | "pinned_eatery"
+  | "pinned_activity"
+  | "pinned_amenity"
   | "globe_pin"
   | "media_guide";
 

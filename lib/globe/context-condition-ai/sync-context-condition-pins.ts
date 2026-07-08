@@ -1,5 +1,6 @@
 import type { ContextEateryInventoryRow } from "@/lib/globe/eatery/eatery-resource-types";
 import type { ContextLodgingInventoryRow } from "@/lib/globe/context-hub/lodging-resource-types";
+import type { LocalDiscoveryActivitySubtype } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
 import { GLOBE_CONTEXT_VISIBILITY_PRIVATE } from "@/lib/globe/globe-context-visibility";
 import type { PersonalGlobePin } from "@/lib/globe/personal-globe-pin-types";
 import {
@@ -15,7 +16,7 @@ import type { EventCandidate } from "@/lib/events/event-candidate";
 function contextConditionPinEventId(input: {
   contextEventId: string;
   batchId: string;
-  kind: "lodging" | "eatery";
+  kind: "lodging" | "eatery" | "activity" | "amenity";
   placeId: string;
 }): string {
   return `${input.contextEventId.trim()}:ctxcond:${input.batchId}:${input.kind}:${input.placeId.trim()}`;
@@ -63,6 +64,8 @@ export function syncContextConditionPins(input: {
   batchId: string;
   lodgingRows?: readonly ContextLodgingInventoryRow[];
   eateryRows?: readonly ContextEateryInventoryRow[];
+  eateryKind?: "eatery" | "activity" | "amenity" | null;
+  activitySubtype?: LocalDiscoveryActivitySubtype | null;
   now?: Date;
 }): PersonalGlobePin[] {
   const contextEventId = input.contextEvent.id.trim();
@@ -98,10 +101,11 @@ export function syncContextConditionPins(input: {
   }
 
   for (const row of input.eateryRows ?? []) {
+    const eateryKind = input.eateryKind ?? "eatery";
     const eventId = contextConditionPinEventId({
       contextEventId,
       batchId: input.batchId,
-      kind: "eatery",
+      kind: eateryKind,
       placeId: row.placeId,
     });
     const pin: PersonalGlobePin = {
@@ -118,7 +122,9 @@ export function syncContextConditionPins(input: {
       visibility: GLOBE_CONTEXT_VISIBILITY_PRIVATE,
       source: "context_condition_ai",
       contextConditionBatchId: input.batchId,
-      contextConditionKind: "eatery",
+      contextConditionKind: eateryKind,
+      contextConditionActivitySubtype:
+        eateryKind === "activity" ? (input.activitySubtype ?? null) : null,
       parentContextEventId: contextEventId,
     };
     upsertPersonalGlobePin(pin);

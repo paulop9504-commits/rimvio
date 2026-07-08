@@ -19,6 +19,8 @@ export type PlaceCategory =
   | "museum"
   | "park"
   | "shopping"
+  | "nightlife"
+  | "photo_spot"
   | "attraction"
   | "amenity"
   | "unknown";
@@ -51,6 +53,14 @@ const MATCHERS: readonly Matcher[] = [
   {
     category: "shopping",
     re: /쇼핑|아울렛|아웃렛|백화점|몰\b|상점가|시장|면세점|편집샵|아케이드|shopping|outlet|mall|department\s*store|market|arcade|duty\s*free|百貨店|商店街|市場/iu,
+  },
+  {
+    category: "nightlife",
+    re: /야경|나이트\s*라이프|나이트라이프|클럽|라운지|루프탑|재즈바|칵테일\s*바|night\s*life|nightlife|night\s*club|club\b|lounge|rooftop|jazz\s*bar|cocktail\s*bar|live\s*music|夜景|ナイトクラブ|ルーフトップ/iu,
+  },
+  {
+    category: "photo_spot",
+    re: /포토\s*스팟|포토스팟|사진\s*명소|인생샷|뷰포인트|전망\s*포인트|인스타\s*스팟|instagrammable|photo\s*spot|view\s*point|viewpoint|scenic\s*point|observation\s*deck|景色|撮影スポット/iu,
   },
   {
     category: "cafe",

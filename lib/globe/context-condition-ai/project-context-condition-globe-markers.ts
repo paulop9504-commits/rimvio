@@ -15,6 +15,7 @@ import { resolveContextLodgingMarkerPresentation } from "@/lib/globe/context-con
 import { readLodgingRecommendReason } from "@/lib/globe/lodging/lodging-recommendation-reason-store";
 import { resolveStableContextPlaceAnchor } from "@/lib/context-instance/build-context-instance";
 import { haversineKm } from "@/lib/feed/spacetime-fit";
+import { activitySubtypeBadgeLabel } from "@/lib/globe/place/activity-subtype-presentation";
 
 function extractMapPillLabel(label: string): string {
   const trimmed = label.trim().replace(/\s+/gu, " ");
@@ -111,6 +112,8 @@ export function projectContextConditionEateryGlobeMarkers(input: {
   const rows = readEateryInventoryRows(input.event).filter((row) =>
     placeIds.has(row.placeId),
   );
+  const discoveryKind = batch.eateryKind ?? "eatery";
+  const activitySubtype = discoveryKind === "activity" ? (batch.activitySubtype ?? null) : null;
   return rows.map((row, index) => {
     const thumbnailUrl = resolveBrainSurfaceMarkerThumbnail({
       family: "eatery",
@@ -118,8 +121,8 @@ export function projectContextConditionEateryGlobeMarkers(input: {
     });
     return {
       markerKind: "eatery" as const,
-      id: `ctxcond:eatery:${batch.batchId}:${row.placeId}`,
-      resourceId: `${input.event.id}:eatery:${row.placeId}`,
+      id: `ctxcond:${discoveryKind}:${batch.batchId}:${row.placeId}`,
+      resourceId: `${input.event.id}:${discoveryKind}:${row.placeId}`,
       label: row.name,
       lat: row.lat,
       lng: row.lng,
@@ -130,7 +133,10 @@ export function projectContextConditionEateryGlobeMarkers(input: {
       discoveryPriceLabel: row.priceLevel != null ? `Lv ${row.priceLevel}` : null,
       discoveryAccent: "green" as const,
       contextConditionPin: true,
-      ontologyBadgeLabel: copy.globe.contextConditionPinBadge,
+      ontologyBadgeLabel:
+        discoveryKind === "activity"
+          ? activitySubtypeBadgeLabel(activitySubtype)
+          : copy.globe.contextConditionPinBadge,
       popInDelayMs: index * 140,
     };
   });

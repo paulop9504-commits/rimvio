@@ -40,6 +40,75 @@ assert.equal(converged.status, "ready");
 if (converged.status === "ready") {
   assert.equal(converged.spec.activityFocus, "도쿄 디즈니랜드");
   assert.ok(converged.spec.resourceTypes.includes("activity"));
+  assert.equal(converged.spec.activitySubtype, "general");
 }
+
+const museum = resolveLocalDiscoveryAction({
+  message: "도쿄 박물관 추천",
+});
+assert.equal(museum.status, "ready");
+if (museum.status === "ready") {
+  assert.equal(museum.spec.activitySubtype, "museum");
+  assert.equal(museum.spec.activityFocus, "박물관·미술관");
+}
+
+const shopping = resolveLocalDiscoveryAction({
+  message: "오사카 쇼핑할 곳",
+});
+assert.equal(shopping.status, "ready");
+if (shopping.status === "ready") {
+  assert.equal(shopping.spec.activitySubtype, "shopping");
+}
+
+assert.equal(
+  classifyPlaceCategory({
+    name: "Shibuya Sky",
+    categoryLabel: "photo_spot",
+    cuisineHint: null,
+    address: "Tokyo",
+  }),
+  "photo_spot",
+);
+assert.equal(
+  classifyPlaceCategory({
+    name: "Tokyo Rooftop Bar",
+    categoryLabel: "nightlife",
+    cuisineHint: null,
+    address: "Tokyo",
+  }),
+  "nightlife",
+);
+
+const photoGuard = verifyDiscoveryResults({
+  domain: "activity",
+  items: [
+    {
+      row: {
+        name: "Shibuya Sky",
+        categoryLabel: "photo_spot",
+        cuisineHint: null,
+        address: "Tokyo",
+      },
+    },
+  ],
+  focusTokens: ["시부야", "사진"],
+});
+assert.equal(photoGuard.kept.length, 1);
+
+const nightlifeGuard = verifyDiscoveryResults({
+  domain: "activity",
+  items: [
+    {
+      row: {
+        name: "Tokyo Rooftop Bar",
+        categoryLabel: "nightlife",
+        cuisineHint: null,
+        address: "Tokyo",
+      },
+    },
+  ],
+  focusTokens: ["도쿄", "야경"],
+});
+assert.equal(nightlifeGuard.kept.length, 1);
 
 console.log("test-activity-landmark-inventory: ok");

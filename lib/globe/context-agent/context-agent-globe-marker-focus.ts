@@ -7,13 +7,18 @@ import { parseContextConditionResourceId } from "@/lib/globe/context-agent/parse
 import { readLodgingInventoryRows } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import { readEateryInventoryRows } from "@/lib/globe/eatery/read-eatery-resource-inventory";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
+import type { LocalDiscoveryActivitySubtype } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
+import { activitySubtypeChatActionHint } from "@/lib/globe/place/activity-subtype-presentation";
 
 export type ContextAgentGlobeMarkerFocusDetail = {
   readonly contextEventId: string;
-  readonly kind: "lodging" | "eatery";
+  readonly kind: "lodging" | "eatery" | "activity" | "amenity";
+  readonly activitySubtype?: LocalDiscoveryActivitySubtype | null;
   readonly placeId: string;
   readonly title: string;
   readonly insightKo: string;
+  /** Follow-up CTA line for activity subtypes (chat compose). */
+  readonly actionHintKo?: string | null;
   readonly lat: number;
   readonly lng: number;
   readonly source: "map_marker";
@@ -21,7 +26,11 @@ export type ContextAgentGlobeMarkerFocusDetail = {
 
 const EVENT_NAME = "rimvio-context-agent-globe-marker-focus";
 
-function isScoutPlaceId(event: EventCandidate, kind: "lodging" | "eatery", placeId: string): boolean {
+function isScoutPlaceId(
+  event: EventCandidate,
+  kind: "lodging" | "eatery" | "activity" | "amenity",
+  placeId: string,
+): boolean {
   const batch = readContextConditionLastBatch(event.id);
   if (batch?.recommendations?.some((row) => row.placeId === placeId && row.kind === kind)) {
     return true;
@@ -39,7 +48,8 @@ function isScoutPlaceId(event: EventCandidate, kind: "lodging" | "eatery", place
 
 export function buildContextAgentMarkerInsight(input: {
   title: string;
-  kind: "lodging" | "eatery";
+  kind: "lodging" | "eatery" | "activity" | "amenity";
+  activitySubtype?: LocalDiscoveryActivitySubtype | null;
   reasonKo?: string | null;
   anchorPlaceName?: string | null;
 }): string {
@@ -49,7 +59,35 @@ export function buildContextAgentMarkerInsight(input: {
     return copy.globe.cicadaAgentMarkerInsight(title, reason);
   }
   const area = input.anchorPlaceName?.trim() || "근처";
-  return copy.globe.cicadaAgentMarkerInsightFallback(title, area, input.kind);
+  return copy.globe.cicadaAgentMarkerInsightFallback(
+    title,
+    area,
+    input.kind,
+    input.activitySubtype ?? null,
+  );
+}
+
+export function buildContextAgentMarkerActionHint(input: {
+  kind: "lodging" | "eatery" | "activity" | "amenity";
+  activitySubtype?: LocalDiscoveryActivitySubtype | null;
+}): string | null {
+  if (input.kind !== "activity") {
+    return null;
+  }
+  return activitySubtypeChatActionHint(input.activitySubtype ?? "general");
+}
+
+export function buildContextAgentMarkerChatLines(input: {
+  title: string;
+  kind: "lodging" | "eatery" | "activity" | "amenity";
+  activitySubtype?: LocalDiscoveryActivitySubtype | null;
+  reasonKo?: string | null;
+  anchorPlaceName?: string | null;
+}): { insightKo: string; actionHintKo: string | null } {
+  return {
+    insightKo: buildContextAgentMarkerInsight(input),
+    actionHintKo: buildContextAgentMarkerActionHint(input),
+  };
 }
 
 /** Globe marker tap → chat insight (context-switching). */
@@ -76,17 +114,22 @@ export function resolveContextAgentGlobeMarkerFocus(input: {
     if (!row) {
       return null;
     }
+    const title = row.name?.trim() || recommendation?.title || parsed.placeId;
+    const chat = buildContextAgentMarkerChatLines({
+      title,
+      kind: "lodging",
+      activitySubtype: null,
+      reasonKo: recommendation?.reasonKo,
+      anchorPlaceName: input.anchorPlaceName,
+    });
     return {
       contextEventId: parsed.contextEventId,
       kind: "lodging",
+      activitySubtype: null,
       placeId: parsed.placeId,
-      title: row.name?.trim() || recommendation?.title || parsed.placeId,
-      insightKo: buildContextAgentMarkerInsight({
-        title: row.name?.trim() || recommendation?.title || parsed.placeId,
-        kind: "lodging",
-        reasonKo: recommendation?.reasonKo,
-        anchorPlaceName: input.anchorPlaceName,
-      }),
+      title,
+      insightKo: chat.insightKo,
+      actionHintKo: chat.actionHintKo,
       lat: row.lat,
       lng: row.lng,
       source: "map_marker",
@@ -97,17 +140,28 @@ export function resolveContextAgentGlobeMarkerFocus(input: {
   if (!row) {
     return null;
   }
+  const activitySubtype =
+    parsed.kind === "activity"
+      ? (recommendation?.activitySubtype ??
+        batch?.spec?.activitySubtype ??
+        null)
+      : null;
+  const title = row.name?.trim() || recommendation?.title || parsed.placeId;
+  const chat = buildContextAgentMarkerChatLines({
+    title,
+    kind: parsed.kind,
+    activitySubtype,
+    reasonKo: recommendation?.reasonKo,
+    anchorPlaceName: input.anchorPlaceName,
+  });
   return {
     contextEventId: parsed.contextEventId,
-    kind: "eatery",
+    kind: parsed.kind,
+    activitySubtype,
     placeId: parsed.placeId,
-    title: row.name?.trim() || recommendation?.title || parsed.placeId,
-    insightKo: buildContextAgentMarkerInsight({
-      title: row.name?.trim() || recommendation?.title || parsed.placeId,
-      kind: "eatery",
-      reasonKo: recommendation?.reasonKo,
-      anchorPlaceName: input.anchorPlaceName,
-    }),
+    title,
+    insightKo: chat.insightKo,
+    actionHintKo: chat.actionHintKo,
     lat: row.lat,
     lng: row.lng,
     source: "map_marker",
