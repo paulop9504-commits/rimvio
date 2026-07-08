@@ -29,6 +29,10 @@ import { scoreEateryRecommendations } from "@/lib/globe/eatery/score-eatery-reco
 import { scoreLodgingRecommendations } from "@/lib/globe/lodging/score-lodging-recommendations";
 import { LOCAL_DISCOVERY_RECOMMEND_CAP } from "@/lib/globe/context-condition-ai/local-discovery-limits";
 import { pickTopLocalDiscoveryRows } from "@/lib/globe/context-condition-ai/pick-top-local-discovery-rows";
+import {
+  isExplicitActivityLandmarkQuery,
+  resolveActivityLandmarkInventoryRow,
+} from "@/lib/globe/context-condition-ai/resolve-activity-landmark-inventory";
 import { buildContextConditionDiscoveryOverlay } from "@/lib/globe/context-condition-ai/build-context-condition-discovery-overlay";
 import { publishContextConditionDiscoveryOverlay } from "@/lib/globe/context-condition-ai/context-condition-discovery-overlay-bridge";
 import { resolveSpatialPatchKeptRows } from "@/lib/globe/context-condition-ai/resolve-spatial-patch-kept-rows";
@@ -384,6 +388,24 @@ export async function runContextConditionAnchorPin(
         }
       }
     }
+
+    const landmarkQuery = [focus, activityQuery].find((query) =>
+      isExplicitActivityLandmarkQuery(query),
+    );
+    let resolvedLandmark: Awaited<
+      ReturnType<typeof resolveActivityLandmarkInventoryRow>
+    > = null;
+    if (landmarkQuery) {
+      resolvedLandmark = await resolveActivityLandmarkInventoryRow({
+        query: landmarkQuery,
+        lat: input.anchorLat,
+        lng: input.anchorLng,
+      });
+      if (resolvedLandmark) {
+        mergedById.set(resolvedLandmark.placeId, resolvedLandmark);
+      }
+    }
+
     const mergedRows = [...mergedById.values()];
     eaterySource =
       loadedBatches.find((batch) => batch.source && batch.source !== "mock")
@@ -420,6 +442,17 @@ export async function runContextConditionAnchorPin(
       focusTokens: (focusMatch ?? "").split(/[\s·,]+/u),
     });
     eateryScored = guarded.kept;
+    if (eateryScored.length === 0 && resolvedLandmark) {
+      eateryScored = scoreEateryRecommendations({
+        rows: [resolvedLandmark],
+        unifiedContext,
+        lat: input.anchorLat,
+        lng: input.anchorLng,
+        context: contextInstance,
+        distanceWeight: 0.05,
+        focusMatch: focusTail,
+      });
+    }
     eateryRows = eateryScored.map((row) => row.row);
   }
 
