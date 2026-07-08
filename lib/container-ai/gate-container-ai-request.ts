@@ -1,12 +1,15 @@
 /**
  * Container AI — gate user requests against active Execution Graph node.
  * e.g. Prepare + "주변 호텔" → blocked, offer destination choices.
+ * Travel onboarding: one-shot parallel exception when destination confirmed +
+ * first-visit + date range (never while Ingress destination is unresolved).
  * @see docs/RIMVIO_CONTAINER_AI.md
  */
 
 import type { ContextBlueprint } from "@/lib/context-blueprint/types";
 import type { ContainerAIGateOutcome } from "@/lib/container-ai/types";
 import { readContainerAIContext } from "@/lib/container-ai/read-container-ai-context";
+import { evaluateOnboardingParallelException } from "@/lib/container-ai/evaluate-onboarding-parallel-exception";
 
 const LODGING_HINT =
   /주변|호텔|숙소|hotel|lodging|stay|숙박|宿|ホテル/iu;
@@ -59,6 +62,8 @@ export function gateContainerAIRequest(input: {
   blueprint: ContextBlueprint;
   userMessage: string;
   activeNodeId?: string | null;
+  /** Explicit destination commit (not Ingress hypothesis). */
+  destinationConfirmed?: boolean;
 }): ContainerAIGateOutcome {
   const message = input.userMessage.trim();
   if (!message) {
@@ -71,6 +76,27 @@ export function gateContainerAIRequest(input: {
   });
   if (!ctx) {
     return { allowed: true, routeModule: "context_condition_ai", domainExecutor: "lodging" };
+  }
+
+  // Broad-scope parallel — before lodging/eatery early block so a full trip
+  // declaration is not reduced to destination chips only. Narrow stays single-tool.
+  const onboarding = evaluateOnboardingParallelException({
+    blueprint: input.blueprint,
+    userMessage: message,
+    activeNodeId: input.activeNodeId,
+    destinationConfirmed: input.destinationConfirmed,
+  });
+  if (onboarding.allowed) {
+    return {
+      allowed: true,
+      routeModule: "domain_ai_router",
+      domainExecutor: "travel",
+      onboardingParallel: {
+        source: onboarding.source,
+        parallelNodeIds: onboarding.parallelNodeIds,
+        destinationLabel: onboarding.destinationLabel,
+      },
+    };
   }
 
   const wantsLodging = isLodgingRequest(message);

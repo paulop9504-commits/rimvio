@@ -21,6 +21,7 @@ import {
   type TemporalTargets,
 } from "@/lib/context-blueprint/temporal-targets";
 import { composeContextBlueprint, type ContextBlueprint } from "@/lib/context-blueprint/types";
+import { composeEmptyNodeResourceState } from "@/lib/context-blueprint/node-resource-state";
 
 export function composeTravelTripExecutionGraph(): ExecutionGraph {
   return composeExecutionGraph({
@@ -92,6 +93,10 @@ export function composeTravelTripExecutionGraph(): ExecutionGraph {
         ],
         assignedExecutor: "transit",
         status: "pending",
+        resourceState: composeEmptyNodeResourceState({
+          dateDependent: true,
+          anchorRef: null,
+        }),
       },
       {
         id: "arrival",
@@ -132,6 +137,10 @@ export function composeTravelTripExecutionGraph(): ExecutionGraph {
         ],
         assignedExecutor: "lodging",
         status: "blocked",
+        resourceState: composeEmptyNodeResourceState({
+          dateDependent: true,
+          anchorRef: "destination",
+        }),
       },
       {
         id: "explore",
@@ -149,6 +158,10 @@ export function composeTravelTripExecutionGraph(): ExecutionGraph {
         ],
         assignedExecutor: "eatery",
         status: "blocked",
+        resourceState: composeEmptyNodeResourceState({
+          dateDependent: false,
+          anchorRef: "destination",
+        }),
       },
       {
         id: "return",

@@ -18,6 +18,7 @@ import { GlobeContextConditionPinBar, type GlobeContextConditionPinBarHandle } f
 import { GlobeDiscoveryLensBar } from "@/components/globe/globe-discovery-lens-bar";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import type { EventCandidate } from "@/lib/events/event-candidate";
+import type { ContextBlueprint } from "@/lib/context-blueprint/types";
 import { copy } from "@/lib/copy/human-ko";
 import { MAP_FOCUS_PIN_VIEWPORT_Y } from "@/lib/globe/map-anchored-overlay-layout";
 import {
@@ -128,6 +129,9 @@ export type GlobeContextConditionPromptFrameProps = {
   anchorPriceKrw?: number | null;
   userLat?: number | null;
   userLng?: number | null;
+  /** TravelTrip Blueprint for broad parallel onboarding (optional). */
+  operatorBlueprint?: ContextBlueprint | null;
+  destinationConfirmed?: boolean;
   globeRef?: RefObject<RimvioGlobeHubHandle | null>;
   onClose: () => void;
   className?: string;
@@ -144,6 +148,8 @@ export function GlobeContextConditionPromptFrame({
   anchorPriceKrw = null,
   userLat = null,
   userLng = null,
+  operatorBlueprint = null,
+  destinationConfirmed = false,
   globeRef,
   onClose,
   className,
@@ -984,6 +990,8 @@ export function GlobeContextConditionPromptFrame({
           <GlobeContextConditionPinBar
             ref={pinBarRef}
             contextEventId={event.id}
+            operatorBlueprint={operatorBlueprint}
+            destinationConfirmed={destinationConfirmed}
             anchorPlaceId={anchorPlaceId}
             anchorPlaceName={anchorPlaceName}
             anchorLat={anchorLat}
