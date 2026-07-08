@@ -288,6 +288,7 @@ export const copyEn: Copy = {
     activitySubtypeBadgePark: "Park",
     activitySubtypeBadgeNightlife: "Night",
     activitySubtypeBadgePhotoSpot: "Photo",
+    activitySubtypeBadgeGeneral: "Activity",
     activitySubtypeActionGeneral: "Directions",
     activitySubtypeActionShopping: "Store directions",
     activitySubtypeActionMuseum: "Museum directions",
@@ -302,6 +303,8 @@ export const copyEn: Copy = {
     activitySubtypeChatHintPhotoSpot: "Open directions when you're ready for the photo spot",
     geoOntologyRootEatery: "Food",
     geoOntologyRootLodging: "Stay",
+    geoOntologyRootActivity: "Activities",
+    geoOntologyRootAmenity: "Amenities",
     geoOntologyContextChain: (place: string, theme: string) => `${place} · ${theme}`,
     geoOntologyFacetDistance: (transport: string) =>
       transport === "walk" ? "Distance · walk" : transport === "car" ? "Distance · car" : "Distance · transit",
@@ -1961,7 +1964,7 @@ export const copyEn: Copy = {
       lensIds: string;
       count: number;
     }) =>
-      `I pinned ${input.count} ${input.reasonKo} areas on the map: ${input.placeLabels}. Tap ${input.lensIds} to explore.`,
+      `Placing ${input.count} ${input.reasonKo} lenses and finding activities around them now — ${input.placeLabels}.`,
     discoveryLensPrefetchReady: (input: {
       labelKo: string;
       count: number;

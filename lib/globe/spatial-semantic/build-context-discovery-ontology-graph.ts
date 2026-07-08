@@ -1,5 +1,6 @@
 import { copy } from "@/lib/copy/human-ko";
 import type { ContextConditionAnchorPinOutcome } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
+import { activitySubtypeNoun } from "@/lib/globe/place/activity-subtype-presentation";
 import type {
   GeoOntologyEdge,
   GeoOntologyGraph,
@@ -20,9 +21,14 @@ function facetLabel(
     case "vibe":
       return copy.globe.geoOntologyFacetVibe(spec.vibe);
     case "category":
-      return spec.eateryFocus?.trim()
-        ? copy.globe.geoOntologyFacetCategory(spec.eateryFocus.trim())
-        : copy.globe.geoOntologyFacetCategoryDefault;
+      return spec.activityFocus?.trim()
+        ? copy.globe.geoOntologyFacetCategory(
+            activitySubtypeNoun(spec.activitySubtype) ||
+              spec.activityFocus.trim(),
+          )
+        : spec.eateryFocus?.trim()
+          ? copy.globe.geoOntologyFacetCategory(spec.eateryFocus.trim())
+          : copy.globe.geoOntologyFacetCategoryDefault;
     default:
       return facetId;
   }
@@ -37,9 +43,30 @@ export function buildContextDiscoveryOntologyGraph(input: {
   const contextEventId = input.contextEventId.trim();
   const anchor = input.anchorPlaceName.trim() || copy.globe.contextConditionPanelEyebrow;
   const spec = input.outcome.spec;
-  const theme =
-    spec.eateryFocus?.trim() ||
-    (input.outcome.eateryCount > 0 ? copy.globe.geoOntologyRootEatery : copy.globe.geoOntologyRootLodging);
+  const theme = (() => {
+    if (spec.activityFocus?.trim() || spec.resourceTypes.includes("activity")) {
+      return (
+        activitySubtypeNoun(spec.activitySubtype) ||
+        copy.globe.geoOntologyRootActivity
+      );
+    }
+    if (spec.resourceTypes.includes("amenity")) {
+      return copy.globe.geoOntologyRootAmenity;
+    }
+    if (spec.eateryFocus?.trim()) {
+      return spec.eateryFocus.trim();
+    }
+    if (input.outcome.eateryCount > 0) {
+      const anyActivity = input.outcome.recommendations.some(
+        (row) => row.kind === "activity",
+      );
+      if (anyActivity) {
+        return copy.globe.geoOntologyRootActivity;
+      }
+      return copy.globe.geoOntologyRootEatery;
+    }
+    return copy.globe.geoOntologyRootLodging;
+  })();
 
   const nodes: GeoOntologyNode[] = [
     {

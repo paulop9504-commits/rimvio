@@ -116,7 +116,7 @@ export function projectContextConditionEateryGlobeMarkers(input: {
   const activitySubtype = discoveryKind === "activity" ? (batch.activitySubtype ?? null) : null;
   return rows.map((row, index) => {
     const thumbnailUrl = resolveBrainSurfaceMarkerThumbnail({
-      family: "eatery",
+      family: discoveryKind === "activity" ? "info" : "eatery",
       thumbnailUrl: row.images[0] ?? null,
     });
     return {

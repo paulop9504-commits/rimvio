@@ -18,6 +18,41 @@ export function snapGlobeToContextAgentAnchor(
   });
 }
 
+/** Lens spawn — frame all POV rings so the map confirms the choice immediately. */
+export function flyGlobeToDiscoveryLenses(
+  globeRef: RefObject<RimvioGlobeHubHandle | null> | null | undefined,
+  input: {
+    lenses: readonly { center: { lat: number; lng: number }; radiusM: number }[];
+  },
+): void {
+  if (!globeRef || input.lenses.length === 0) {
+    return;
+  }
+  const points = input.lenses.map((lens) => ({
+    lat: lens.center.lat,
+    lng: lens.center.lng,
+  }));
+  const maxRadiusM = Math.max(...input.lenses.map((lens) => lens.radiusM), 1500);
+  const bounds = computeLodgingDiscoveryBounds({
+    user: null,
+    lodging: points,
+    radiusM: maxRadiusM,
+  });
+  if (!bounds) {
+    const first = points[0]!;
+    globeRef.current?.flyToPin(first.lat, first.lng, "city", {
+      pinViewportY: MAP_FOCUS_PIN_VIEWPORT_Y,
+    });
+    return;
+  }
+  globeRef.current?.flyToDiscoveryBounds({
+    centerLat: bounds.centerLat,
+    centerLng: bounds.centerLng,
+    altitude: bounds.altitude,
+    pinViewportY: MAP_FOCUS_PIN_VIEWPORT_Y,
+  });
+}
+
 /** Scout complete — fit all result pins on map (no fly animation). */
 export function snapGlobeToContextConditionScout(
   globeRef: RefObject<RimvioGlobeHubHandle | null>,

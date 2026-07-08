@@ -1,5 +1,6 @@
 "use client";
 
+import type { RefObject } from "react";
 import {
   forwardRef,
   useCallback,
@@ -9,7 +10,9 @@ import {
   useState,
 } from "react";
 import { toast } from "sonner";
+import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { copy } from "@/lib/copy/human-ko";
+import { flyGlobeToDiscoveryLenses } from "@/lib/globe/context-agent/snap-globe-to-context-agent-anchor";
 import {
   readContextConditionPinnedPlaceIds,
   clearContextConditionLastBatch,
@@ -119,6 +122,7 @@ export type GlobeContextConditionPinBarProps = {
   anchorLat: number;
   anchorLng: number;
   anchorPriceKrw?: number | null;
+  globeRef?: RefObject<RimvioGlobeHubHandle | null>;
   onPinned?: (outcome: ContextConditionAnchorPinOutcome) => void;
   onPalantirOperatorUpdate?: () => void;
   onUserCompose?: (message: string) => void;
@@ -192,6 +196,7 @@ export const GlobeContextConditionPinBar = forwardRef<
   anchorLat,
   anchorLng,
   anchorPriceKrw = null,
+  globeRef,
   onPinned,
   onPalantirOperatorUpdate,
   onUserCompose,
@@ -420,6 +425,13 @@ export const GlobeContextConditionPinBar = forwardRef<
       setContextAgentSessionPhase("deciding");
       toast.success(outcome.summaryKo);
       onPinned?.(outcome);
+      if (outcome.recommendations.length > 0) {
+        dispatchGlobeResourceReelFocus({
+          contextEventId,
+          surface: "list",
+          source: "scout_complete",
+        });
+      }
       return outcome;
     },
     [
@@ -1054,6 +1066,8 @@ export const GlobeContextConditionPinBar = forwardRef<
       });
       setBusy(true);
       try {
+        // Natural path: choice → lens rings → scout activities immediately.
+        // Prefetch fills the reel in parallel; do not block map pins on it.
         const spawned = await maybeSpawnDiscoveryLensesFromChoice({
           contextEventId,
           choice,
@@ -1070,14 +1084,20 @@ export const GlobeContextConditionPinBar = forwardRef<
               choice,
             }),
           });
-          const prefetchKo = await prefetchAllDiscoveryLenses({ contextEventId });
-          if (prefetchKo) {
-            appendContextAgentComposeTurn(contextEventId, {
-              role: "assistant",
-              kind: "text",
-              text: prefetchKo,
-            });
-          }
+          flyGlobeToDiscoveryLenses(globeRef, { lenses: spawned.lenses });
+          void prefetchAllDiscoveryLenses({ contextEventId }).then((prefetchKo) => {
+            if (!prefetchKo) {
+              return;
+            }
+            // Only soft-confirm if scout has not already closed the loop.
+            if (!readContextConditionLastBatch(contextEventId)) {
+              appendContextAgentComposeTurn(contextEventId, {
+                role: "assistant",
+                kind: "text",
+                text: prefetchKo,
+              });
+            }
+          });
         }
         await resolveAndMaybeExecute(triggerMessage, answers);
       } finally {
@@ -1085,7 +1105,16 @@ export const GlobeContextConditionPinBar = forwardRef<
         finishContextAgentWork();
       }
     },
-    [anchorLat, anchorLng, anchorPlaceName, busy, contextEventId, message, resolveAndMaybeExecute],
+    [
+      anchorLat,
+      anchorLng,
+      anchorPlaceName,
+      busy,
+      contextEventId,
+      globeRef,
+      message,
+      resolveAndMaybeExecute,
+    ],
   );
 
   const activateDiscoveryLens = useCallback(

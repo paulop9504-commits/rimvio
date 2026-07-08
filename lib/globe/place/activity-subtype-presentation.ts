@@ -37,8 +37,9 @@ export function activitySubtypeBadgeLabel(
       return copy.globe.activitySubtypeBadgeNightlife;
     case "photo_spot":
       return copy.globe.activitySubtypeBadgePhotoSpot;
+    case "general":
     default:
-      return copy.globe.contextConditionPinBadge;
+      return copy.globe.activitySubtypeBadgeGeneral;
   }
 }
 

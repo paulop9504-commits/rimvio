@@ -744,6 +744,9 @@ const RimvioGlobeHubBody = memo(
           markers: hubFiltered,
           hubLat,
           hubLng,
+          // Scout results keep inventory lat/lng (same as lodging) — don't
+          // collapse every activity/eatery pill onto the context hub.
+          layoutAtHub: contextConditionEateryMarkers.length === 0,
           stagedDiscoveryCount: eateryDiscoveryReveal.visibleResourceIds.size,
         });
       }
