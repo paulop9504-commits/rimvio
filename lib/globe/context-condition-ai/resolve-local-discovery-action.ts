@@ -385,6 +385,7 @@ export function resolveLocalDiscoveryAction(
     null;
   const eateryFocus =
     resolveCuisineFocusQuery(menuFocusId) ?? parseSingleCuisineFocus(text);
+  const hasNarrowEateryFocus = Boolean(eateryFocus?.trim());
 
   const partial: Partial<LocalDiscoveryActionSpec> = {
     resourceTypes,
@@ -406,7 +407,8 @@ export function resolveLocalDiscoveryAction(
   }
 
   const skipMobilityBudgetQuestions =
-    followUpTurn && !parseTransport(text) && !parseBudget(text);
+    (followUpTurn && !parseTransport(text) && !parseBudget(text)) ||
+    hasNarrowEateryFocus;
 
   if (
     !skipMobilityBudgetQuestions &&
@@ -422,7 +424,12 @@ export function resolveLocalDiscoveryAction(
   ) {
     questions.push(buildBudgetQuestion());
   }
-  if (!vibe && wantsEatery && (input.foodConfidence ?? 0) < CONFIDENCE_SKIP) {
+  if (
+    !vibe &&
+    wantsEatery &&
+    !hasNarrowEateryFocus &&
+    (input.foodConfidence ?? 0) < CONFIDENCE_SKIP
+  ) {
     questions.push(buildVibeQuestion());
   }
   if (

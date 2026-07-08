@@ -105,9 +105,15 @@ function resolveContextConditionEateryQuery(input: {
   }
   const raw = input.userMessage?.trim();
   if (raw) {
-    // Cafe intent must search cafes, not generic restaurants.
+    // Cafe / beverage intent must search cafes, not generic restaurants or hotels.
     if (/카페|커피|coffee|cafe/iu.test(raw)) {
       return `${area} 카페`;
+    }
+    if (/음료|음료수|드링크|drink|beverage|목말|갈증/iu.test(raw)) {
+      return `${area} 카페 음료`;
+    }
+    if (/주스|juice|스무디|smoothie/iu.test(raw)) {
+      return `${area} 주스 카페`;
     }
     const cleaned = stripSearchCommandNoise(raw);
     if (cleaned.length >= 2) {

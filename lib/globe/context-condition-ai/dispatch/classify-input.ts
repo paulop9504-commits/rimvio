@@ -20,12 +20,19 @@ export type InputClassification = {
 const TASK_CUE =
   /요약|번역|일정|캘린더|알림|리마인|메일|이메일|메모|저장해|추가해|만들어|정리해|공유해|보내줘|예약해|schedule|remind|translate|summari|email/iu;
 
+/** Drink / cafe cravings after small talk — always search, never hotel. */
+const BEVERAGE_SEARCH =
+  /^(?:음료|음료수|드링크|drink|beverage|커피|coffee|카페|cafe|주스|juice|스무디|smoothie|디저트|dessert)$/iu;
+
 function deterministicClassify(
   text: string,
   region?: string | null,
 ): InputClassification {
   if (resolveSmallTalk({ text, region })) {
     return { category: "chat", reasoning: "결정론: 스몰토크 패턴", source: "deterministic" };
+  }
+  if (BEVERAGE_SEARCH.test(text.trim())) {
+    return { category: "search", reasoning: "결정론: 음료·카페 검색", source: "deterministic" };
   }
   if (TASK_CUE.test(text)) {
     return { category: "task", reasoning: "결정론: 작업 지시어", source: "deterministic" };
@@ -42,6 +49,9 @@ export async function classifyInput(input: {
   const text = input.text.trim();
   if (!text) {
     return { category: "chat", reasoning: null, source: "deterministic" };
+  }
+  if (BEVERAGE_SEARCH.test(text)) {
+    return { category: "search", reasoning: "결정론: 음료·카페 검색", source: "deterministic" };
   }
   try {
     const response = await fetch("/api/globe/intent-dispatch", {

@@ -34,6 +34,21 @@ function testClassifyIntent() {
     eateryNearby: false,
     lodgingMode: "nearby",
   });
+  assert.deepEqual(classifyContextConditionAnchorRequest("음료"), {
+    lodgingSimilar: false,
+    eateryNearby: true,
+    lodgingMode: null,
+  });
+  assert.deepEqual(classifyContextConditionAnchorRequest("음료수"), {
+    lodgingSimilar: false,
+    eateryNearby: true,
+    lodgingMode: null,
+  });
+  assert.deepEqual(classifyContextConditionAnchorRequest("커피"), {
+    lodgingSimilar: false,
+    eateryNearby: true,
+    lodgingMode: null,
+  });
 }
 
 function testFilterLodgingNearby() {

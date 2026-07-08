@@ -13,8 +13,11 @@ const LODGING_NEARBY_HINT =
   /주변|근처|nearby|찾|검색|추천|배치|꽂|pin|探|近く/iu;
 const LODGING_SIMILAR_PRICE_HINT = /비슷한|같은\s*가격|비슷한\s*가격|similar\s*price/iu;
 const EATERY_HINT =
-  /맛집|먹을|식당|밥|brunch|lunch|dinner|food|eatery|restaurant|카페|ラーメン|食/iu;
+  /맛집|먹을|식당|밥|brunch|lunch|dinner|food|eatery|restaurant|카페|ラーメン|食|음료|음료수|드링크|drink|beverage|커피|coffee|주스|juice|스무디|smoothie|티하우스|tea\s*house|디저트|dessert|베이커리|bakery|목말|갈증/iu;
 const BOTH_HINT = /꽂|배치|찾|추천|주변|nearby|pin/iu;
+/** Short food-adjacent nouns after small talk — never route to lodging. */
+const FOOD_ADJACENT_HINT =
+  /^(?:음료|음료수|드링크|drink|beverage|커피|coffee|카페|cafe|차|주스|juice|스무디|smoothie|디저트|dessert|베이커리|bakery|간식|snack)$/iu;
 
 /** Parse anchor prompt into lodging/eatery condition axes — no Globe composer routing. */
 export function classifyContextConditionAnchorRequest(
@@ -34,9 +37,13 @@ export function classifyContextConditionAnchorRequest(
         ? "nearby"
         : null;
   if (!lodgingSimilar && !eateryNearby) {
-    return BOTH_HINT.test(text)
-      ? { lodgingSimilar: true, eateryNearby: true, lodgingMode: "nearby" }
-      : { lodgingSimilar: true, eateryNearby: true, lodgingMode: "nearby" };
+    if (BOTH_HINT.test(text)) {
+      return { lodgingSimilar: true, eateryNearby: true, lodgingMode: "nearby" };
+    }
+    if (FOOD_ADJACENT_HINT.test(text)) {
+      return { lodgingSimilar: false, eateryNearby: true, lodgingMode: null };
+    }
+    return { lodgingSimilar: true, eateryNearby: true, lodgingMode: "nearby" };
   }
   return { lodgingSimilar, eateryNearby, lodgingMode };
 }

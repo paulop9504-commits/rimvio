@@ -22,6 +22,19 @@ const CUISINE_CATALOG: readonly {
   { id: "sushi", labelKo: "스시", queryKo: "스시 초밥", pattern: /스시|초밥|sushi/iu },
   { id: "ramen", labelKo: "라멘", queryKo: "라멘", pattern: /라멘|ramen/iu },
   { id: "cafe", labelKo: "카페", queryKo: "카페", pattern: /카페|coffee|cafe/iu },
+  {
+    id: "beverage",
+    labelKo: "음료",
+    queryKo: "카페 음료",
+    pattern: /음료|음료수|드링크|drink|beverage/iu,
+  },
+  { id: "juice", labelKo: "주스", queryKo: "주스 카페", pattern: /주스|juice/iu },
+  {
+    id: "dessert",
+    labelKo: "디저트",
+    queryKo: "디저트 카페",
+    pattern: /디저트|dessert|베이커리|bakery/iu,
+  },
 ];
 
 export function parseCuisineCandidates(message: string): CuisineCandidate[] {
