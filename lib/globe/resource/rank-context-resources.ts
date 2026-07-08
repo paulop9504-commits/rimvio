@@ -12,6 +12,7 @@ import {
   type RankedContextResource,
 } from "@/lib/globe/resource/map-hub-service-to-resource";
 import { rankLodgingResources } from "@/lib/globe/resource/rank-lodging-resources";
+import { mergeCommittedIntoRanked } from "@/lib/globe/resource/merge-committed-resources";
 import type { ContextResource } from "@/lib/globe/resource/types";
 import { readPlanContextFromEvent } from "@/lib/plan-context/plan-context-metadata";
 
@@ -146,7 +147,22 @@ export function rankContextResources(input: {
         })
       : [];
 
-  const ranked = [...serviceRanked, ...lodgingRanked, ...eateryRanked].sort((left, right) => {
+  const merged = mergeCommittedIntoRanked({
+    event: input.event,
+    ranked: [...serviceRanked, ...lodgingRanked, ...eateryRanked],
+    services: input.services,
+    scoreFor: (resource, hubRow) =>
+      scoreResourceJit({
+        event: input.event,
+        resource,
+        hubRow,
+        nowIso,
+        lat,
+        lng,
+      }),
+  });
+
+  const ranked = merged.sort((left, right) => {
     const delta = right.rankScore - left.rankScore;
     if (delta !== 0) {
       return delta;

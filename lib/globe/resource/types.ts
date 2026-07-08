@@ -1,8 +1,10 @@
 /**
  * Context Resource — L3 SSOT for rankable executable units inside a Context.
- * @see docs/GLOBE_HUB_RESOURCE.md
+ * @see docs/GLOBE_HUB_RESOURCE.md — 3-Layer Storage Model
  *
  * Created by Hub factory; ranked by engine (not by Hub).
+ * Transaction history lives in HubActionRecord — not on this type.
+ * `action` here is MAIN CTA handoff only (≠ Action Log).
  */
 
 /** Normalized resource kinds emitted from Hub factory. */

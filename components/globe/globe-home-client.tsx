@@ -31,7 +31,7 @@ import { useGlobeContextBrainActions } from "@/hooks/use-globe-context-brain-act
 import { useWorkQueue } from "@/hooks/use-work-queue";
 import { usePriorityStrip } from "@/hooks/use-priority-strip";
 import { useRealitySurfaceProjection } from "@/hooks/use-reality-surface-projection";
-import { projectBridgeMapArcs } from "@/lib/reality-surface";
+import { blueprintNeedsDestination, projectBridgeMapArcs } from "@/lib/reality-surface";
 import { resolveTripContextAnchor } from "@/lib/experience-run/resolve-trip-context-anchor";
 import {
   canCommitBridgePlanningTruth,
@@ -4314,6 +4314,11 @@ function GlobeHomeBody() {
           contextAgentAnchorCoords != null
         }
         event={activeContextEvent}
+        operatorBlueprint={realitySurfaceSession?.operatorBlueprint ?? null}
+        destinationConfirmed={Boolean(
+          realitySurfaceSession?.operatorBlueprint &&
+            !blueprintNeedsDestination(realitySurfaceSession.operatorBlueprint),
+        )}
         anchorPlaceId={`context-center:${activeContextEvent?.id ?? "unknown"}`}
         anchorPlaceName={
           contextAgentPanelCluster?.placeLabel?.trim() ||

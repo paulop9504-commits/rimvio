@@ -1914,6 +1914,10 @@ export const copy = {
       "딱 맞는 놀거리를 바로 못 찾았어요. 어떤 걸 원하시는지 알려주시면 맞게 찾아드릴게요.",
     scoutContractViolationToast:
       "찾은 결과가 방금 고른 조건과 안 맞아요. 다시 찾아볼게요.",
+    onboardingParallelStart: (destination: string) =>
+      `${destination} 기준으로 숙소·놀거리를 한꺼번에 지도에 올려볼게요.`,
+    onboardingParallelDepartureHint:
+      "항공은 출발·도착만 정해 주면 이어서 맞춰 드릴게요.",
     discoveryLensBarHint: "렌즈를 골라 이 주변을 볼게요",
     discoveryLensPrefetching: "렌즈마다 주변 자원을 모으는 중이에요",
     discoveryLensPickHint: "어디 주변을 볼까요? 원을 눌러 주세요",

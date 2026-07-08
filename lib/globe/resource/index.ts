@@ -6,6 +6,63 @@ export type {
   ContextResourceSpacetime,
 } from "@/lib/globe/resource/types";
 
+export type {
+  HubAction,
+  HubActionApprovalPolicy,
+  HubActionCancelPayload,
+  HubActionPayload,
+  HubActionPayloadByType,
+  HubActionPurchasePayload,
+  HubActionRecord,
+  HubActionRecordBase,
+  HubActionReservePayload,
+  HubActionSearchPayload,
+  HubActionStatus,
+  HubActionType,
+} from "@/lib/globe/resource/hub-action-record";
+
+export {
+  createCancelAction,
+  createPurchaseAction,
+  createReserveAction,
+  createSearchAction,
+} from "@/lib/globe/resource/hub-action-record";
+
+export {
+  clearHubActionLog,
+  emitHubActionRecord,
+  emitSearchHubAction,
+  HUB_ACTION_LOG_EVENT,
+  mergeHubActionLogs,
+  readHubActionLog,
+  type HubActionEmitResult,
+} from "@/lib/globe/resource/hub-action-record-store";
+
+export {
+  CONTEXT_HUB_ACTION_LOG_META_KEY,
+  appendDurableHubActionLog,
+  clearDurableHubActionLog,
+  readDurableHubActionLog,
+  readHubActionLogFromEvent,
+} from "@/lib/globe/resource/context-hub-action-log-metadata";
+
+export {
+  emitHubActionOnInjectionConfirm,
+  emitHubActionOnInjectionExecuted,
+} from "@/lib/globe/resource/emit-hub-action-from-commit";
+
+export {
+  CONTEXT_COMMITTED_RESOURCES_META_KEY,
+  emitCommittedContextResource,
+  readCommittedContextResources,
+} from "@/lib/globe/resource/emit-committed-context-resource";
+
+export {
+  COMMITTED_RESOURCE_RANK_BOOST,
+  committedResourceIdSet,
+  mergeCommittedIntoRanked,
+} from "@/lib/globe/resource/merge-committed-resources";
+
 export {
   mapHubServiceRowToResource,
   type RankedContextResource,

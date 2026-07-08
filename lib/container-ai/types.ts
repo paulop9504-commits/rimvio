@@ -71,6 +71,15 @@ export type ContainerAIGateOutcome =
       readonly allowed: true;
       readonly routeModule: ContainerAIModule;
       readonly domainExecutor: string | null;
+      /**
+       * One-shot travel onboarding: parallel scout departure+stay+explore.
+       * Absent ⇒ normal single-tool turn.
+       */
+      readonly onboardingParallel?: {
+        readonly source: "onboarding_bootstrap";
+        readonly parallelNodeIds: readonly string[];
+        readonly destinationLabel: string;
+      } | null;
     }
   | {
       readonly allowed: false;

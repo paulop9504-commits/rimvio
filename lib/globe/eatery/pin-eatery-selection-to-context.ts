@@ -7,6 +7,8 @@ import {
   buildContextPinnedItem,
 } from "@/lib/globe/context-pinned-item";
 import { upsertMirrorProvenanceMetadata } from "@/lib/globe/mirror-provenance";
+import { mapEateryRowToContextResource } from "@/lib/globe/eatery/read-eatery-resource-inventory";
+import { emitCommittedContextResource } from "@/lib/globe/resource/emit-committed-context-resource";
 import { commitEventUpsert } from "@/lib/source-of-truth/commit-truth";
 import type { ContextEateryInventoryRow } from "@/lib/globe/eatery/eatery-resource-types";
 import {
@@ -71,7 +73,7 @@ export function pinEaterySelectionToContext(input: {
     },
     nowIso: stamp,
   });
-  return commitEventUpsert({
+  const pinned = commitEventUpsert({
     id: event.id,
     title: event.title,
     category: event.category,
@@ -84,5 +86,11 @@ export function pinEaterySelectionToContext(input: {
     lifecycleUpdatedAt: stamp,
     updatedAt: stamp,
     metadata,
+  });
+
+  // 3-layer: pin Commit → ContextResource file (not scout inventory).
+  return emitCommittedContextResource({
+    contextEventId: pinned.id,
+    resource: mapEateryRowToContextResource(pinned, input.row),
   });
 }

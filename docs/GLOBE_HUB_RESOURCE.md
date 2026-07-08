@@ -1,7 +1,7 @@
 # Globe Hub · Resource — Locked Definition
 
-> **Status:** locked 2026-06-15  
-> **Layer:** L2 Product spec · L3 code SSOT: `lib/globe/context-hub/hub-definition.ts`, `lib/globe/resource/types.ts`  
+> **Status:** locked 2026-06-15 · **3-layer storage** locked 2026-07-08  
+> **Layer:** L2 Product spec · L3 code SSOT: `lib/globe/context-hub/hub-definition.ts`, `lib/globe/resource/types.ts`, `lib/globe/resource/hub-action-record.ts`  
 > **UI copy:** L1 in `lib/copy/human-ko.ts` — never expose 「Hub」「Resource」「Transaction」 in hero/empty/toast.
 
 ---
@@ -12,7 +12,8 @@
 Context (맥락 — EventCandidate / pin)
   │
   ├─ Hub[]          pipeline · transaction · integration · factory · own View
-  │     └─ creates → Resource[]
+  │     ├─ creates → Resource[]          (확정 파일)
+  │     └─ appends → HubActionRecord[]   (작업 로그 · append-only)
   │
   └─ Ranking Engine (GPS · Now · spacetime · rollup)
         └─ MAIN slot = rank #1 Resource (Hero UI)
@@ -20,7 +21,47 @@ Context (맥락 — EventCandidate / pin)
 ```
 
 **Which context is active?** — user taps a context pin (`activeCluster`).  
-**Which resource is MAIN?** — per-context resource ranker (`rankContextResources`) — **not the Hub**.
+**Which resource is MAIN?** — per-context resource ranker (`rankContextResources`) — **not the Hub**.  
+**What is the action log?** — `HubActionRecord` (search → reserve → purchase → cancel); not `ContextResource.action` CTA.
+
+---
+
+## 3-Layer Storage Model: Context / Resource / Action Log
+
+### 계층 정의
+
+| 계층 | 엔티티 | 저장 여부 | 생성 시점 |
+|------|--------|-----------|-----------|
+| 맥락 (폴더) | `EventCandidate` (`contextId`) | 예, 의미 루트 | 사용자가 Context 최초 Commit |
+| 리소스 (파일) | `ContextResource` | 예, `contextEventId` FK | Hub factory가 Commit 성공·동기화 후 emit |
+| 행위 (작업 로그) | `HubActionRecord` | 예, append-only | search / reserve / purchase / cancel 발생 시 |
+
+### 이름 충돌 주의
+
+`lib/globe/context-action-injection`의 `ContextAction` / injection 타입은 **UI handoff 주입용**(예: `open_url` CTA)이며 이력 로그가 아니다.  
+새 이력 타입은 **`HubActionRecord`** 로 명명한다. **Action Log ≠ Action Injection**.
+
+### 규칙
+
+1. **search는 Commit 전 단계** — Ghost pin / scout batch / Operator Runtime 후보는 `ContextResource`가 아니다.  
+   `HubActionRecord(type: "search")`는 `resourceId: null`로 남을 수 있으며, Context에 가벼운 로그로 귀속되거나 Runtime 전용으로 취급한다.  
+   → **Reality Commit 전에는 Resource를 만들지 않는다.**
+2. **`ContextResource.action`은 유지** — MAIN에서 누르는 실행 포인터(CTA)이지 이력이 아니다. 이력은 `HubActionRecord`에 별도 저장.
+3. **append-only** — cancel / 실패는 Resource를 overwrite하지 않고 `HubActionRecord` 행을 추가한다. 이전 reserve를 무효화할 경우 `supersedesActionId`로 연결.
+4. **Capital.Settlement와 분리** — purchase 성공의 `externalRef` / 정산은 네임스페이스만 맞추고 Platform ledger와 섞지 않는다 (Phase 2 문서 별도).
+
+### 흐름
+
+```
+search (HubActionRecord, resourceId: null, Runtime 후보)
+  → user Commit → ContextResource 생성
+  → reserve (HubActionRecord, resourceId FK)
+  → purchase (HubActionRecord, 같은 resourceId, 별도 행)
+  → [optional] cancel (HubActionRecord, supersedesActionId = reserve/purchase actionId)
+```
+
+**L3:** `hub-action-record.ts` (create*) · `hub-action-record-store.ts` (`emitHubActionRecord`) · `context-hub-action-log-metadata.ts` (`contextHubActionLog` on EventCandidate).  
+Dual-write: session cache + durable metadata when Context exists. search / reserve / purchase / cancel Confirm→Execute wired.
 
 ---
 
@@ -109,12 +150,12 @@ See `ContextResource` — required: `resourceId`, `contextEventId`, `kind`, `sou
 
 ## 4. Story Layer mapping
 
-| Layer | Hub | Resource | MAIN |
-|-------|-----|----------|------|
-| **L0** | — | — | You were here. And it mattered. |
-| **L1 (KO)** | (avoid 「허브」in hero) · 설정/expand OK | 티켓 · 항공 · QR | **지금** · 이어가기 |
-| **L2** | Hub · Factory · Transaction | Resource · Spacetime rank | MAIN slot · JIT Action |
-| **L3** | `ContextHubDefinition`, `listContextHubServicesForEvent` | `ContextResource`, `rankContextResources` | `GlobeHubResourceCarousel`, index 0 · Phase 3: `MainNativeSurfacePayload` |
+| Layer | Hub | Resource | Action Log | MAIN |
+|-------|-----|----------|------------|------|
+| **L0** | — | — | — | You were here. And it mattered. |
+| **L1 (KO)** | (avoid 「허브」in hero) · 설정/expand OK | 티켓 · 항공 · QR | (no 「트랜잭션」 in hero) | **지금** · 이어가기 |
+| **L2** | Hub · Factory · Transaction | Resource · Spacetime rank | HubActionRecord timeline | MAIN slot · JIT Action |
+| **L3** | `ContextHubDefinition`, `listContextHubServicesForEvent` | `ContextResource`, `rankContextResources` | `HubActionRecord` (`hub-action-record.ts`) | `GlobeHubResourceCarousel`, index 0 · Phase 3: `MainNativeSurfacePayload` |
 
 ---
 
@@ -137,8 +178,17 @@ See `ContextResource` — required: `resourceId`, `contextEventId`, `kind`, `sou
 - [x] Lodging hub prototype (mock inventory · GPS rank · map strip)
 - [x] Globe lodging markers (View-only · ranked inventory)
 - [x] `places_lodging` ApiWakeup provider + sync stub
-- [ ] `ContextResource` SSOT + factory emit from Hub transactions
+- [x] `ContextResource` factory emit on pin Commit (`contextCommittedResources` · lodging/eatery)
+- [x] Committed resources boost MAIN in `rankContextResources` (`merge-committed-resources.ts`)
+- [x] Flight connect → committed Resource + `HubActionRecord(reserve)` (`connectDepartureHubToContext`)
+- [x] Single scout path emits `HubActionRecord(type: search)` (`runContextConditionAnchorPin`)
+- [x] `HubActionRecord` type scaffold (`hub-action-record.ts`)
+- [x] `emitHubActionRecord` append-only store + search emit from onboarding parallel
+- [x] reserve / purchase / cancel emit on Action Injection confirm → execute (`emit-hub-action-from-commit.ts`)
+- [x] Durable Action Log on EventCandidate metadata (`contextHubActionLog` · dual-write)
 - [ ] Hub expand = View only; no priority logic
+
+
 - [ ] Resource kinds: ticket, flight, lodging, rental, media_album, schedule (extend catalog)
 
 ---
@@ -304,3 +354,7 @@ rankContextResources revision
 - Resource without `spacetime` when validity/place matters
 - Carousel slides that switch Context
 - L1 hero copy: 「커머스」「API」「허브 파이프라인」
+- Naming Action Log as `ContextAction` (collides with action-injection handoff)
+- Folding search/reserve/purchase history into `ContextResource` / overwriting Resource on cancel
+- Emitting `ContextResource` from scout / Ghost pin before Reality Commit
+- Mixing `HubActionRecord.externalRef` into Platform ledger / Capital.Settlement without Phase 2 namespace

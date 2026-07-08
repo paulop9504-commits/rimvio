@@ -8,6 +8,8 @@ import {
 } from "@/lib/globe/context-pinned-item";
 import type { ContextLodgingInventoryRow } from "@/lib/globe/context-hub/lodging-resource-types";
 import { upsertMirrorProvenanceMetadata } from "@/lib/globe/mirror-provenance";
+import { mapLodgingRowToContextResource } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
+import { emitCommittedContextResource } from "@/lib/globe/resource/emit-committed-context-resource";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 import { commitEventUpsert } from "@/lib/source-of-truth/commit-truth";
 import { markLodgingResourceSelected } from "@/lib/resource-operation";
@@ -76,7 +78,7 @@ export function pinLodgingSelectionToContext(input: {
     nowIso: stamp,
   });
 
-  return commitEventUpsert({
+  const pinned = commitEventUpsert({
     id: event.id,
     title: event.title,
     category: event.category,
@@ -89,5 +91,11 @@ export function pinLodgingSelectionToContext(input: {
     lifecycleUpdatedAt: stamp,
     updatedAt: stamp,
     metadata,
+  });
+
+  // 3-layer: pin Commit → ContextResource file (not scout inventory).
+  return emitCommittedContextResource({
+    contextEventId: pinned.id,
+    resource: mapLodgingRowToContextResource(pinned, input.row),
   });
 }

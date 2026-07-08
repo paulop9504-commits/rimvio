@@ -67,6 +67,26 @@ Read Execution Graph → judge current stage
 
 **Code:** `lib/container-ai/` · `lib/globe/context-agent/` · `lib/globe/context-condition-ai/` · `GlobeContextConditionPromptFrame`.
 
+### Travel parallel exception (request **scope**, not first turn)
+
+Normal Operator turns keep **one tool**. Parallel (`departure`+`stay`+`explore`) opens when the **utterance is broad** — not because it is the Nth message.
+
+| Scope | Signals | Example |
+|-------|---------|---------|
+| **narrow** | Explicit category (맛집·숙소·항공만…) | `맛집 찾아줘`, `항공권만 찾아줘` |
+| **broad** | Delegation (`잘 부탁`·`초행`·`다 찾아`) **or** trip/destination with no category | `오사카 여행 갈거야`, `다낭도 갈까? 거기도 다 알아서` |
+
+Also required: destination **confirmed** (not Ingress `hypothesis` / `unresolved`).  
+Gate **re-opens** on later broad asks — no `onboarding_bootstrap_used` kill switch.
+
+Narrow → existing `LocalDiscoveryActionSpec` / Operator turn (one tool).
+
+`NodeResourceState` on those execution nodes: `empty → searching → filled → selected → locked`.  
+Date patch: `dateDependent` nodes only; `locked` → `availability_recheck` only (no silent replace).  
+`departure` has no `anchorRef` (OD pair) — whitelist in `assertNodeResourceAnchor`.
+
+Code: `classifyTravelRequestScope` · `evaluateOnboardingParallelException` · `node-resource-state.ts`.
+
 ### Why this split is the product moat
 
 Legacy AI: one model plans + executes + recommends in one blob.

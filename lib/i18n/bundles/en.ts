@@ -1951,6 +1951,10 @@ export const copyEn: Copy = {
       "Couldn't find a matching activity right away. Tell me what you're after and I'll find the right fit.",
     scoutContractViolationToast:
       "Results didn't match what we were looking for. I'll search again.",
+    onboardingParallelStart: (destination: string) =>
+      `I'll put stays and activities for ${destination} on the map together.`,
+    onboardingParallelDepartureHint:
+      "For flights, tell me departure and arrival when you're ready.",
     discoveryLensBarHint: "Pick a lens to explore this area",
     discoveryLensPrefetching: "Gathering places for each lens…",
     discoveryLensPickHint: "Which area should I search? Tap a ring on the map",

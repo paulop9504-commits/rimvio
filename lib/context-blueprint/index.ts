@@ -162,6 +162,21 @@ export {
 } from "@/lib/context-blueprint/execution-graph";
 
 export {
+  assertNodeResourceAnchor,
+  assertTravelRescoutAllowed,
+  composeEmptyNodeResourceState,
+  isNodeResourceLocked,
+  nodeRequiresResourceAnchor,
+  planTravelDateDependentRescout,
+  NODE_RESOURCE_STATUSES,
+  TRAVEL_ONBOARDING_PARALLEL_NODE_IDS,
+  type NodeResourceCandidate,
+  type NodeResourceState,
+  type NodeResourceStatus,
+  type TravelOnboardingParallelNodeId,
+} from "@/lib/context-blueprint/node-resource-state";
+
+export {
   composeFlow,
   FLOW_NODE_KINDS,
   FLOW_NODE_STATUSES,

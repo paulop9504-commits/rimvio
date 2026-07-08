@@ -6,12 +6,52 @@ import {
   formatContextActionTargetPriceLine,
 } from "@/lib/globe/context-action-injection/build-context-action-handoff";
 import type {
+  ContextActionCommitHints,
   ContextActionInjection,
   ContextActionIntent,
 } from "@/lib/globe/context-action-injection/types";
 import { readContextConditionPinnedPlaceIds } from "@/lib/globe/context-condition-ai/pin-context-condition-recommendation";
+import { buildLodgingStayWindow } from "@/lib/globe/context-hub/lodging-stay-window";
 import { readLodgingInventoryRows } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import { readEateryInventoryRows } from "@/lib/globe/eatery/read-eatery-resource-inventory";
+import {
+  emitHubActionOnInjectionConfirm,
+  emitHubActionOnInjectionExecuted,
+} from "@/lib/globe/resource/emit-hub-action-from-commit";
+
+function ymd(iso: string | null | undefined): string | null {
+  if (!iso?.trim()) {
+    return null;
+  }
+  const date = iso.slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null;
+}
+
+function lodgingCommitHints(input: {
+  event: EventCandidate;
+  placeId: string;
+  row: {
+    placeId: string;
+    priceKrw?: number | null;
+    checkInIso?: string | null;
+    checkOutIso?: string | null;
+  };
+}): ContextActionCommitHints {
+  const stay = buildLodgingStayWindow({ event: input.event, row: input.row });
+  const start =
+    ymd(input.row.checkInIso) ?? ymd(stay?.checkInIso) ?? undefined;
+  const end =
+    ymd(input.row.checkOutIso) ?? ymd(stay?.checkOutIso) ?? undefined;
+  return {
+    resourceId: `${input.event.id}:lodging:${input.placeId}`,
+    slot: start && end ? { start, end } : undefined,
+    amount:
+      typeof input.row.priceKrw === "number" && Number.isFinite(input.row.priceKrw)
+        ? input.row.priceKrw
+        : undefined,
+    currency: "KRW",
+  };
+}
 
 function confirmPromptKo(intent: ContextActionIntent, title: string): string {
   switch (intent.kind) {
@@ -47,6 +87,7 @@ export function buildContextActionInjection(input: {
   if (input.intent.kind === "refund") {
     return {
       id: `ctxact-${Date.now()}`,
+      contextEventId: input.event.id,
       phase: "awaiting_confirm",
       intent: input.intent,
       target: {
@@ -62,6 +103,9 @@ export function buildContextActionInjection(input: {
       confirmAcceptLabelKo: copy.globe.contextActionConfirmYes,
       confirmRejectLabelKo: copy.globe.contextActionConfirmNo,
       injectedAction: null,
+      commitHints: {
+        resourceId: `${input.event.id}:${input.intent.resourceKind}:${placeId}`,
+      },
     };
   }
 
@@ -75,6 +119,7 @@ export function buildContextActionInjection(input: {
     const title = row.name?.trim() || placeId;
     return {
       id: `ctxact-${Date.now()}`,
+      contextEventId: input.event.id,
       phase: "awaiting_confirm",
       intent: input.intent,
       target: {
@@ -95,6 +140,11 @@ export function buildContextActionInjection(input: {
         event: input.event,
         intent: input.intent,
       }),
+      commitHints: lodgingCommitHints({
+        event: input.event,
+        placeId,
+        row,
+      }),
     };
   }
 
@@ -107,6 +157,7 @@ export function buildContextActionInjection(input: {
   const title = row.name?.trim() || placeId;
   return {
     id: `ctxact-${Date.now()}`,
+    contextEventId: input.event.id,
     phase: "awaiting_confirm",
     intent: input.intent,
     target: {
@@ -123,12 +174,19 @@ export function buildContextActionInjection(input: {
       row,
       intent: input.intent,
     }),
+    commitHints: {
+      resourceId: `${input.event.id}:eatery:${placeId}`,
+      currency: "KRW",
+    },
   };
 }
 
 export function confirmContextActionInjection(
   injection: ContextActionInjection,
 ): ContextActionInjection {
+  // Action Log: pending reserve / purchase / cancel (≠ UI injection CTA).
+  void emitHubActionOnInjectionConfirm(injection);
+
   if (injection.intent.kind === "refund") {
     return {
       ...injection,
@@ -157,5 +215,7 @@ export function dismissContextActionInjection(
 export function markContextActionInjectionExecuted(
   injection: ContextActionInjection,
 ): ContextActionInjection {
+  // Action Log: success row after external handoff open (append-only).
+  void emitHubActionOnInjectionExecuted(injection);
   return { ...injection, phase: "executed" };
 }

@@ -22,8 +22,76 @@ import {
   TRIP_LEG_META_KEY,
   TRIP_REF_META_KEY,
 } from "@/lib/globe/trip-leg-metadata";
+import { emitCommittedContextResource } from "@/lib/globe/resource/emit-committed-context-resource";
+import { createReserveAction } from "@/lib/globe/resource/hub-action-record";
+import { emitHubActionRecord } from "@/lib/globe/resource/hub-action-record-store";
+import type { ContextResource } from "@/lib/globe/resource/types";
 import { readPlanContextFromEvent } from "@/lib/plan-context/plan-context-metadata";
 import { commitEventUpsert } from "@/lib/source-of-truth/commit-truth";
+
+function buildFlightResource(input: {
+  destination: EventCandidate;
+  airport: ReturnType<typeof getDepartureHubAirport>;
+  departWhen: string;
+}): ContextResource {
+  const stamp = new Date().toISOString();
+  return {
+    resourceId: `${input.destination.id}:flight:${input.airport.id}`,
+    contextEventId: input.destination.id,
+    kind: "flight",
+    sourceHubId: "flight",
+    label: `${input.airport.shortLabelKo} · 출발`,
+    shortLabel: input.airport.iata,
+    spacetime: {
+      lat: input.airport.lat,
+      lng: input.airport.lng,
+      placeLabel: input.airport.labelKo,
+      validFromIso: input.departWhen,
+      validUntilIso: null,
+    },
+    action: {
+      kind: "navigate",
+      href: `rimvio://hub/flight/${input.airport.id}`,
+      labelKo: "출발",
+    },
+    createdAtIso: stamp,
+    updatedAtIso: stamp,
+    metadata: {
+      airportId: input.airport.id,
+      iata: input.airport.iata,
+      committed: true,
+    },
+  };
+}
+
+function emitFlightConnectArtifacts(input: {
+  destination: EventCandidate;
+  airport: ReturnType<typeof getDepartureHubAirport>;
+  departWhen: string;
+}): EventCandidate {
+  const resource = buildFlightResource(input);
+  const destination = emitCommittedContextResource({
+    contextEventId: input.destination.id,
+    resource,
+  });
+  void emitHubActionRecord(
+    createReserveAction({
+      contextEventId: destination.id,
+      resourceId: resource.resourceId,
+      sourceHubId: "hub.flight",
+      approvalPolicy: "user_tap",
+      status: "success",
+      externalRef: input.airport.iata,
+      payload: {
+        slot: {
+          start: input.departWhen.slice(0, 10),
+          end: input.departWhen.slice(0, 10),
+        },
+      },
+    }),
+  );
+  return destination;
+}
 
 export type ConnectDepartureHubResult = {
   destinationEvent: EventCandidate;
@@ -56,11 +124,25 @@ export function connectDepartureHubToContext(input: {
     if (existingAirportId === input.airportId) {
       const hubEvent = findEventCandidate(existingDeparture.eventId);
       if (hubEvent) {
+        const airport = getDepartureHubAirport(input.airportId);
+        const departWhen =
+          hubEvent.datetime?.trim() ||
+          destination.datetime?.trim() ||
+          new Date().toISOString();
+        const destinationEvent = emitFlightConnectArtifacts({
+          destination,
+          airport,
+          departWhen,
+        });
         const pin = createPersonalGlobePinFromEvent({
           event: hubEvent,
           experienceTitle: `${existingDeparture.shortLabel} · 출발`,
         }).pin;
-        return { destinationEvent: destination, departureEvent: hubEvent, departurePin: pin };
+        return {
+          destinationEvent,
+          departureEvent: hubEvent,
+          departurePin: pin,
+        };
       }
     }
     disconnectContextHub({
@@ -141,5 +223,15 @@ export function connectDepartureHubToContext(input: {
     experienceTitle: destinationEvent.title,
   });
 
-  return { destinationEvent, departureEvent, departurePin };
+  const withFlight = emitFlightConnectArtifacts({
+    destination: destinationEvent,
+    airport,
+    departWhen,
+  });
+
+  return {
+    destinationEvent: withFlight,
+    departureEvent,
+    departurePin,
+  };
 }

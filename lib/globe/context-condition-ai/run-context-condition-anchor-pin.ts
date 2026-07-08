@@ -22,6 +22,7 @@ import { commitContextConditionHubBatch } from "@/lib/globe/context-condition-ai
 import { verifyDiscoveryResults } from "@/lib/globe/context-condition-ai/discovery-guard/verify-discovery-results";
 import { writeContextConditionLastBatch } from "@/lib/globe/context-condition-ai/context-condition-last-batch-store";
 import { syncContextConditionPins } from "@/lib/globe/context-condition-ai/sync-context-condition-pins";
+import { emitSearchHubAction } from "@/lib/globe/resource/hub-action-record-store";
 import { loadLodgingInventoryRows } from "@/lib/globe/context-hub/load-lodging-inventory-rows";
 import type { ContextLodgingInventoryRow } from "@/lib/globe/context-hub/lodging-resource-types";
 import { loadEateryInventoryRows } from "@/lib/globe/eatery/load-eatery-inventory-rows";
@@ -69,6 +70,11 @@ export type ContextConditionAnchorPinInput = {
   excludePlaceIds?: readonly string[];
   /** 1st-person POV — overrides anchor for search origin when set. */
   discoveryOrigin?: DiscoverySearchOrigin | null;
+  /**
+   * When true, skip HubActionRecord(search) emit — caller already logged
+   * (e.g. onboarding parallel wrapper).
+   */
+  skipSearchActionLog?: boolean;
   onProcessPhase?: (phase: import("@/lib/globe/context-agent/context-agent-runtime-state").ContextAgentProcessPhase) => void;
 };
 
@@ -249,6 +255,23 @@ export async function runContextConditionAnchorPin(
   const event = findLifeEventCandidate(contextEventId);
   if (!event) {
     return null;
+  }
+
+  // 3-layer: scout search log (resourceId null) — Resource only after pin Commit.
+  if (!input.skipSearchActionLog) {
+    void emitSearchHubAction({
+      contextEventId,
+      sourceHubId: "hub.local_discovery",
+      approvalPolicy: "user_tap",
+      payload: {
+        query: input.message?.trim() || input.anchorPlaceName,
+        filters: {
+          resourceTypes: [...input.spec.resourceTypes],
+          radiusM: input.discoveryOrigin?.radiusM ?? input.spec.radiusM,
+          patch: Boolean(input.patchPlan),
+        },
+      },
+    });
   }
 
   const spec = input.spec;

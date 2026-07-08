@@ -37,9 +37,20 @@ export type ContextActionInjectedButton = {
   readonly internalRoute: boolean;
 };
 
+/** Optional hints for HubActionRecord emit at confirm/execute (Action Log ≠ Injection). */
+export type ContextActionCommitHints = {
+  readonly resourceId: string;
+  readonly slot?: { start: string; end: string };
+  readonly guestCount?: number;
+  readonly amount?: number;
+  readonly currency?: string;
+};
+
 /** Injected action surface — button did not exist until intent + confirm. */
 export type ContextActionInjection = {
   readonly id: string;
+  /** Parent Context (folder) — required for HubActionRecord emit. */
+  readonly contextEventId: string;
   readonly phase: ContextActionInjectionPhase;
   readonly intent: ContextActionIntent;
   readonly target: ContextActionInjectionTarget;
@@ -47,4 +58,5 @@ export type ContextActionInjection = {
   readonly confirmAcceptLabelKo: string;
   readonly confirmRejectLabelKo: string;
   readonly injectedAction: ContextActionInjectedButton | null;
+  readonly commitHints?: ContextActionCommitHints | null;
 };

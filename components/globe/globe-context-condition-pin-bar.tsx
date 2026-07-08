@@ -17,6 +17,7 @@ import {
   readContextConditionPinnedPlaceIds,
   clearContextConditionLastBatch,
   readContextConditionLastBatch,
+  writeContextConditionLastBatch,
   runContextConditionAnchorPin,
   dismissContextConditionPinBatch,
   planSpatialPatch,
@@ -118,6 +119,11 @@ import {
   mapClassifyToOperatorTool,
   readOperatorTurnSsot,
 } from "@/lib/globe/operator-turn";
+import {
+  evaluateOnboardingParallelException,
+  runOnboardingParallelMapScouts,
+} from "@/lib/container-ai";
+import type { ContextBlueprint } from "@/lib/context-blueprint/types";
 
 export type GlobeContextConditionPinBarHandle = {
   submitTrigger: (message: string) => Promise<void>;
@@ -128,6 +134,10 @@ export type GlobeContextConditionPinBarHandle = {
 
 export type GlobeContextConditionPinBarProps = {
   contextEventId: string;
+  /** TravelTrip Blueprint for broad onboardingParallel gate (optional). */
+  operatorBlueprint?: ContextBlueprint | null;
+  /** Destination already committed (not Ingress hypothesis). */
+  destinationConfirmed?: boolean;
   anchorPlaceId: string;
   anchorPlaceName: string;
   anchorLat: number;
@@ -202,6 +212,8 @@ export const GlobeContextConditionPinBar = forwardRef<
 >(function GlobeContextConditionPinBar(
   {
   contextEventId,
+  operatorBlueprint = null,
+  destinationConfirmed = false,
   anchorPlaceId,
   anchorPlaceName,
   anchorLat,
@@ -320,6 +332,119 @@ export const GlobeContextConditionPinBar = forwardRef<
       return true;
     },
     [contextEventId, onActionInjectionChange],
+  );
+
+  const executeParallelOnboarding = useCallback(
+    async (input: {
+      triggerMessage: string;
+      parallelNodeIds: readonly string[];
+      destinationLabel: string;
+    }): Promise<ContextConditionAnchorPinOutcome | null> => {
+      dispatchGlobeLodgingDiscoveryClose();
+      if (lastBatch) {
+        dismissContextConditionPinBatch({
+          contextEventId,
+          batchId: lastBatch.batchId,
+        });
+        clearContextConditionLastBatch(contextEventId);
+      }
+      setContextAgentSessionPhase("scouting");
+      beginContextAgentWork("exploring");
+      appendContextAgentComposeTurn(contextEventId, {
+        role: "assistant",
+        kind: "text",
+        text: copy.globe.onboardingParallelStart(input.destinationLabel),
+      });
+      if (input.parallelNodeIds.includes("departure")) {
+        appendContextAgentComposeTurn(contextEventId, {
+          role: "assistant",
+          kind: "text",
+          text: copy.globe.onboardingParallelDepartureHint,
+        });
+      }
+
+      const result = await runOnboardingParallelMapScouts({
+        contextEventId,
+        triggerMessage: input.triggerMessage,
+        destinationLabel: input.destinationLabel,
+        parallelNodeIds: input.parallelNodeIds,
+        anchorPlaceId,
+        anchorPlaceName,
+        anchorLat,
+        anchorLng,
+        anchorPriceKrw,
+        discoveryOrigin: resolveDiscoveryOriginForContext(contextEventId),
+      });
+
+      const outcome = result.merged;
+      if (!outcome) {
+        appendContextAgentComposeTurn(contextEventId, {
+          role: "assistant",
+          kind: "text",
+          text: copy.globe.contextConditionPinEmpty,
+        });
+        toast.message(copy.globe.contextConditionPinEmpty);
+        return null;
+      }
+
+      publishGeoOntologyGraph(
+        buildContextDiscoveryOntologyGraph({
+          contextEventId,
+          anchorPlaceName,
+          outcome,
+        }),
+      );
+
+      const wire: ContextConditionLastBatchWire = {
+        batchId: outcome.batchId,
+        count: outcome.lodgingCount + outcome.eateryCount,
+        summaryKo: outcome.summaryKo,
+        atIso: new Date().toISOString(),
+        radiusM: outcome.radiusM,
+        spec: outcome.spec,
+        recommendations: outcome.recommendations.map((row) => ({
+          kind: row.kind,
+          activitySubtype: row.activitySubtype ?? null,
+          title: row.title,
+          reasonKo: row.reasonKo,
+          placeId: row.placeId,
+          lat: row.lat,
+          lng: row.lng,
+        })),
+      };
+      writeContextConditionLastBatch(contextEventId, wire);
+      setLastBatch(wire);
+      setLastSpec(outcome.spec);
+      setLastRecommendations(outcome.recommendations);
+      setMessage("");
+      onQuestionsChange?.([]);
+      onRecommendationsChange?.(outcome.recommendations);
+      clearContextConditionPending(contextEventId);
+      setContextAgentSessionSpec(outcome.spec);
+      setContextAgentSessionPhase("deciding");
+      toast.success(outcome.summaryKo);
+      onPinned?.(outcome);
+      if (outcome.recommendations.length > 0) {
+        dispatchGlobeResourceReelFocus({
+          contextEventId,
+          surface: "list",
+          source: "scout_complete",
+        });
+      }
+      return outcome;
+    },
+    [
+      anchorLat,
+      anchorLng,
+      anchorPlaceId,
+      anchorPlaceName,
+      anchorPriceKrw,
+      contextEventId,
+      lastBatch,
+      onPinned,
+      onQuestionsChange,
+      onRecommendationsChange,
+    ],
   );
 
   const executeWithSpec = useCallback(
@@ -1016,6 +1141,25 @@ export const GlobeContextConditionPinBar = forwardRef<
           return;
         }
 
+        if (plan.tool === "scout" || plan.tool === "defer_classify") {
+          // Broad travel onboarding → stay+explore (and departure announce) in parallel.
+          if (operatorBlueprint && text) {
+            const parallelGate = evaluateOnboardingParallelException({
+              blueprint: operatorBlueprint,
+              userMessage: text,
+              destinationConfirmed,
+            });
+            if (parallelGate.allowed) {
+              await executeParallelOnboarding({
+                triggerMessage: text,
+                parallelNodeIds: parallelGate.parallelNodeIds,
+                destinationLabel: parallelGate.destinationLabel,
+              });
+              return;
+            }
+          }
+        }
+
         if (plan.tool === "scout") {
           // fall through to scout / refine / resolve below
         } else if (plan.tool === "defer_classify") {
@@ -1082,10 +1226,13 @@ export const GlobeContextConditionPinBar = forwardRef<
     anchorPlaceName,
     busy,
     contextEventId,
+    destinationConfirmed,
+    executeParallelOnboarding,
     lastSpec,
     lastRecommendations,
     message,
     onUserCompose,
+    operatorBlueprint,
     resolveAndMaybeExecute,
     runPalantirRefine,
     tryPublishActionInjection,
@@ -1100,6 +1247,21 @@ export const GlobeContextConditionPinBar = forwardRef<
       onUserCompose?.(text);
       setBusy(true);
       try {
+        if (operatorBlueprint) {
+          const parallelGate = evaluateOnboardingParallelException({
+            blueprint: operatorBlueprint,
+            userMessage: text,
+            destinationConfirmed,
+          });
+          if (parallelGate.allowed) {
+            await executeParallelOnboarding({
+              triggerMessage: text,
+              parallelNodeIds: parallelGate.parallelNodeIds,
+              destinationLabel: parallelGate.destinationLabel,
+            });
+            return;
+          }
+        }
         if (await tryPublishActionInjection(text)) {
           return;
         }
@@ -1109,7 +1271,15 @@ export const GlobeContextConditionPinBar = forwardRef<
         finishContextAgentWork();
       }
     },
-    [busy, onUserCompose, resolveAndMaybeExecute, tryPublishActionInjection],
+    [
+      busy,
+      destinationConfirmed,
+      executeParallelOnboarding,
+      onUserCompose,
+      operatorBlueprint,
+      resolveAndMaybeExecute,
+      tryPublishActionInjection,
+    ],
   );
 
   const submitRefinement = useCallback(

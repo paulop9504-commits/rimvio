@@ -10,6 +10,7 @@ import type {
 } from "@/lib/context-blueprint/blueprint-constants";
 import type { ExecutionSpaceResolution } from "@/lib/context-blueprint/execution-space-slots";
 import type { ExecutionNodeAction } from "@/lib/context-blueprint/execution-node-action";
+import type { NodeResourceState } from "@/lib/context-blueprint/node-resource-state";
 
 /** Phase-oriented kinds — same graph shape across travel · trade · medical · work. */
 export const EXECUTION_NODE_KINDS = [
@@ -61,6 +62,11 @@ export type ExecutionGraphNode = {
   readonly actions: readonly ExecutionNodeAction[];
   readonly assignedExecutor: DomainExecutorId | null;
   readonly status: ExecutionNodeStatus;
+  /**
+   * Travel resource scout FSM (departure / stay / explore).
+   * Optional — trade/medical graphs omit this.
+   */
+  readonly resourceState?: NodeResourceState | null;
   /** @deprecated Method 1 — prefer resourceKinds on node */
   readonly capabilityIds?: readonly string[];
   /** @deprecated */
