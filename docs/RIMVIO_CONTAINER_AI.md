@@ -255,6 +255,16 @@ Article 0 unchanged.
 
 ---
 
+## Contract schema (툭 던짐 → 계약)
+
+Scout / filter / commit stubs / **Capital.Settlement (Phase 2)**:  
+**[`RIMVIO_CONTRACT_SCHEMA.md`](./RIMVIO_CONTRACT_SCHEMA.md)** · code `lib/globe/contracts/`.
+
+Every compose send: **READ SSOT → GATE one fixed tool → ACT** —  
+**[`RIMVIO_OPERATOR_TURN.md`](./RIMVIO_OPERATOR_TURN.md)** · `lib/globe/operator-turn/`.
+
+---
+
 ## Code map
 
 | Path | Role |
@@ -262,7 +272,9 @@ Article 0 unchanged.
 | `lib/container-ai/read-container-ai-context.ts` | Execution Graph Reader |
 | `lib/container-ai/gate-container-ai-request.ts` | Phase gate + module route |
 | `lib/globe/context-condition-ai/` | L4 react (internal) |
+| `lib/globe/contracts/` | Scout contract gate (B sprint) |
+| `lib/globe/operator-turn/` | Context SSOT + fixed tool gate |
 | `components/globe/globe-context-condition-prompt-frame.tsx` | Container AI UI shell (rename track) |
 | `lib/context-blueprint/examples/travel-trip-execution-graph.ts` | Reference graph |
 
-Tests: `npx tsx scripts/test-container-ai.ts`
+Tests: `npx tsx scripts/test-container-ai.ts` · `npx tsx scripts/test-scout-contract.ts` · `npx tsx scripts/test-operator-turn.ts`

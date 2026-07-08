@@ -31,7 +31,11 @@ function matchKind(text: string): GlobeResourceReelKind | "all" | null {
   return null;
 }
 
-/** NL → reel kind filter — requires an explicit narrow cue (e.g. 맛집만). */
+/**
+ * NL → reel kind filter.
+ * Only narrow/show cues (e.g. 맛집만, 전체로 보여줘) — bare 「맛집」 must scout,
+ * not re-filter trip inventory into a false “filtered” reply.
+ */
 export function parseResourceReelKindFilter(
   text: string,
 ): ResourceReelKindFilter | null {
@@ -48,11 +52,12 @@ export function parseResourceReelKindFilter(
   ) {
     return "all";
   }
-  if (!FILTER_CUE.test(raw) && !/^(맛집|숙소|놀거리|편의|호텔|식당)$/iu.test(raw)) {
+  // Require an explicit narrow cue. Bare domain words go to discovery scout.
+  if (!FILTER_CUE.test(raw)) {
     return null;
   }
   const kind = matchKind(raw);
-  if (!kind) {
+  if (!kind || kind === "all") {
     return null;
   }
   return kind;

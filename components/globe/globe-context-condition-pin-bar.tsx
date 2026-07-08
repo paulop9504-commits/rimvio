@@ -96,17 +96,28 @@ import {
   maybeSpawnDiscoveryLensesFromChoice,
   resolveDiscoveryOriginForContext,
 } from "@/lib/globe/discovery-lens/integrate-context-agent-lens";
-import {
-  prefetchAllDiscoveryLenses,
-  prefetchDiscoveryLensById,
-} from "@/lib/globe/discovery-lens/prefetch-all-discovery-lenses";
+import { prefetchAllDiscoveryLenses, prefetchDiscoveryLensById } from "@/lib/globe/discovery-lens/prefetch-all-discovery-lenses";
 import {
   dispatchGlobeResourceReelFocus,
   dispatchGlobeResourceReelKindFilter,
 } from "@/lib/globe/resource-reel/globe-resource-reel-bridge";
-import { parseResourceReelKindFilter } from "@/lib/globe/resource-reel/parse-resource-reel-kind-filter";
 import { resourceReelKindFilterReplyKo } from "@/lib/globe/resource-reel/resource-reel-kind-filter-reply";
 import { markDiscoveryLensPickPending } from "@/lib/globe/discovery-lens/spawn-discovery-lenses";
+import {
+  assertScoutContractGate,
+  primaryScoutViolationMessage,
+  readScoutContract,
+  readScoutSelectedAnchor,
+  scoutCategoryFromSpec,
+  withScoutOutputRef,
+  wrapScoutContract,
+  writeScoutContract,
+} from "@/lib/globe/contracts";
+import {
+  gateOperatorTurnSync,
+  mapClassifyToOperatorTool,
+  readOperatorTurnSsot,
+} from "@/lib/globe/operator-turn";
 
 export type GlobeContextConditionPinBarHandle = {
   submitTrigger: (message: string) => Promise<void>;
@@ -398,6 +409,36 @@ export const GlobeContextConditionPinBar = forwardRef<
           outcome,
         }),
       );
+
+      const activeContract = readScoutContract(contextEventId);
+      if (activeContract) {
+        const gate = assertScoutContractGate({
+          contract: activeContract,
+          outputKinds: outcome.recommendations.map((row) => row.kind),
+        });
+        if (!gate.ok) {
+          const messageKo =
+            primaryScoutViolationMessage(gate) ??
+            copy.globe.contextConditionPinEmpty;
+          dismissContextConditionPinBatch({
+            contextEventId,
+            batchId: outcome.batchId,
+          });
+          clearContextConditionLastBatch(contextEventId);
+          appendContextAgentComposeTurn(contextEventId, {
+            role: "assistant",
+            kind: "text",
+            text: messageKo,
+          });
+          toast.message(messageKo);
+          return null;
+        }
+        writeScoutContract(
+          contextEventId,
+          withScoutOutputRef(activeContract, outcome.batchId),
+        );
+      }
+
       const wire: ContextConditionLastBatchWire = {
         batchId: outcome.batchId,
         count: outcome.lodgingCount + outcome.eateryCount,
@@ -772,6 +813,46 @@ export const GlobeContextConditionPinBar = forwardRef<
       lastTriggerRef.current = pipelineMessage;
       setLastSpec(resolved.spec);
 
+      const priorContract = readScoutContract(contextEventId);
+      const selectedAnchor = readScoutSelectedAnchor(contextEventId);
+      const nextCategory = scoutCategoryFromSpec(resolved.spec);
+      const isChained =
+        Boolean(selectedAnchor) &&
+        (followUpTurn ||
+          (priorContract != null && priorContract.category !== nextCategory));
+      const chainIndex = isChained ? (priorContract?.chainIndex ?? 0) + 1 : 0;
+      const lensSessionForContract = readDiscoveryLensSession(contextEventId);
+      const scoutContract = wrapScoutContract({
+        contextEventId,
+        spec: resolved.spec,
+        chainIndex,
+        anchorRef: isChained && selectedAnchor
+          ? {
+              scoutId: selectedAnchor.scoutId,
+              placeId: selectedAnchor.placeId,
+              lat: selectedAnchor.lat,
+              lng: selectedAnchor.lng,
+              title: selectedAnchor.title ?? null,
+            }
+          : null,
+        lensId: lensSessionForContract?.activeLensId ?? null,
+      });
+      const preGate = assertScoutContractGate({ contract: scoutContract });
+      if (!preGate.ok) {
+        const messageKo =
+          primaryScoutViolationMessage(preGate) ??
+          copy.globe.contextConditionPinEmpty;
+        appendContextAgentComposeTurn(contextEventId, {
+          role: "assistant",
+          kind: "text",
+          text: messageKo,
+        });
+        toast.message(messageKo);
+        setContextAgentSessionPhase("awaiting_human");
+        return null;
+      }
+      writeScoutContract(contextEventId, scoutContract);
+
       const lensSessionNow = readDiscoveryLensSession(contextEventId);
       const wantsLodging =
         resolved.spec.resourceTypes.includes("hotel") ||
@@ -881,86 +962,97 @@ export const GlobeContextConditionPinBar = forwardRef<
     }
     setBusy(true);
     try {
-      // Dispatcher: every typed input is classified (Chat | Search | Task) by a
-      // lightweight LLM first, with deterministic fallback. Only Search flows into
-      // the convergence/retrieval pipeline — Chat gets a short reply, Task tries
-      // the action executor. This is what stops "ㅎㅇ" from forcing a place search.
+      // Operator turn: READ SSOT → GATE fixed tool → ACT (one tool).
+      // @see docs/RIMVIO_OPERATOR_TURN.md
       if (text) {
-        const lensResult = await applyLensCommand({
+        const composeTail = readContextAgentComposeThread(contextEventId)
+          .slice(-6)
+          .map((turn) => ({ role: turn.role, text: turn.text }));
+        const ssot = readOperatorTurnSsot({
           contextEventId,
-          text,
-          region: anchorPlaceName,
+          composeTail,
+          hasActiveSpec: lastSpec != null,
         });
-        if (lensResult.handled) {
-          const activeLensId = readDiscoveryLensSession(contextEventId)?.activeLensId;
-          if (activeLensId) {
-            void prefetchDiscoveryLensById({
-              contextEventId,
-              lensId: activeLensId,
-            });
+        let plan = gateOperatorTurnSync({ text, ssot });
+
+        if (plan.tool === "lens_command") {
+          const lensResult = await applyLensCommand({
+            contextEventId,
+            text,
+            region: anchorPlaceName,
+          });
+          if (lensResult.handled) {
+            const activeLensId = readDiscoveryLensSession(contextEventId)?.activeLensId;
+            if (activeLensId) {
+              void prefetchDiscoveryLensById({
+                contextEventId,
+                lensId: activeLensId,
+              });
+            }
+            if (lensResult.replyKo) {
+              appendContextAgentComposeTurn(contextEventId, {
+                role: "assistant",
+                kind: "text",
+                text: lensResult.replyKo,
+              });
+            }
+            setMessage("");
+            return;
           }
-          if (lensResult.replyKo) {
+          plan = gateOperatorTurnSync({ text, ssot, skipLens: true });
+        }
+
+        if (plan.tool === "filter_inventory") {
+          dispatchGlobeResourceReelKindFilter({
+            contextEventId,
+            kindFilter: plan.kindFilter,
+          });
+          appendContextAgentComposeTurn(contextEventId, {
+            role: "assistant",
+            kind: "text",
+            text: resourceReelKindFilterReplyKo(plan.kindFilter),
+          });
+          setMessage("");
+          return;
+        }
+
+        if (plan.tool === "scout") {
+          // fall through to scout / refine / resolve below
+        } else if (plan.tool === "defer_classify") {
+          const history = composeTail.map((turn) => `${turn.role}: ${turn.text}`);
+          const classification = await classifyInput({
+            text,
+            region: anchorPlaceName,
+            history,
+            hasActiveResults: lastRecommendations.length > 0,
+          });
+          const classified = mapClassifyToOperatorTool(classification.category);
+          if (classified.tool === "small_talk") {
+            const small = await generateSmallTalkReply({
+              text,
+              region: anchorPlaceName,
+              history: composeTail,
+              recentSearchKo: lastSpec?.activityFocus ?? null,
+              scopeId: contextEventId,
+            });
             appendContextAgentComposeTurn(contextEventId, {
               role: "assistant",
               kind: "text",
-              text: lensResult.replyKo,
+              text: small.replyKo,
             });
-          }
-          setMessage("");
-          return;
-        }
-
-        const reelKindFilter = parseResourceReelKindFilter(text);
-        if (reelKindFilter !== null) {
-          dispatchGlobeResourceReelKindFilter({
-            contextEventId,
-            kindFilter: reelKindFilter,
-          });
-          appendContextAgentComposeTurn(contextEventId, {
-            role: "assistant",
-            kind: "text",
-            text: resourceReelKindFilterReplyKo(reelKindFilter),
-          });
-          setMessage("");
-          return;
-        }
-
-        const rawTurns = readContextAgentComposeThread(contextEventId).slice(-8);
-        const history = rawTurns
-          .slice(-6)
-          .map((turn) => `${turn.role}: ${turn.text}`);
-        const classification = await classifyInput({
-          text,
-          region: anchorPlaceName,
-          history,
-          hasActiveResults: lastRecommendations.length > 0,
-        });
-        if (classification.category === "chat") {
-          // Context-aware small talk: extract time/status/history/tone/persona
-          // variables and compose a situational, question-ending reply (LLM when
-          // available, deterministic composer otherwise).
-          const small = await generateSmallTalkReply({
-            text,
-            region: anchorPlaceName,
-            history: rawTurns.map((turn) => ({ role: turn.role, text: turn.text })),
-            recentSearchKo: lastSpec?.activityFocus ?? null,
-            scopeId: contextEventId,
-          });
-          appendContextAgentComposeTurn(contextEventId, {
-            role: "assistant",
-            kind: "text",
-            text: small.replyKo,
-          });
-          setMessage("");
-          setContextAgentSessionPhase("awaiting_human");
-          return;
-        }
-        if (classification.category === "task") {
-          // If it's a real action, the executor handles it; otherwise fall
-          // through to search rather than dead-ending.
-          if (await tryPublishActionInjection(text)) {
+            setMessage("");
+            setContextAgentSessionPhase("awaiting_human");
             return;
           }
+          if (classified.tool === "task_injection") {
+            if (await tryPublishActionInjection(text)) {
+              return;
+            }
+            // fall through to scout rather than dead-ending
+          }
+        } else if (plan.tool === "noop") {
+          setMessage("");
+          return;
         }
       }
       if (

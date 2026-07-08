@@ -15,10 +15,12 @@ import type { DiscoveryLensSession } from "../lib/globe/discovery-lens/types";
 import {
   buildResourceReelKindFilters,
   filterGlobeResourceReelItems,
+  resolveResourceReelKindFilter,
   shouldExposeAmenityReelChip,
 } from "../lib/globe/resource-reel/resource-reel-kind-filter";
 import { parseResourceReelKindFilter } from "../lib/globe/resource-reel/parse-resource-reel-kind-filter";
 import type { GlobeResourceReelItem } from "../lib/globe/resource-reel/types";
+import { buildGlobeResourceReelItems } from "../lib/globe/resource-reel/build-globe-resource-reel-items";
 
 const examples = extractLandmarkHintsFromText(
   "아이와 가족 나들이 (예: 도쿄 디즈니랜드, 우에노 동물원, teamLab Borderless)",
@@ -52,6 +54,7 @@ assert.ok(north.lat > 35.68);
 const reel = buildGlobeResourceReelItemsFromLensPrefetch({
   contextEventId: "evt-1",
   lensLabel: "디즈니",
+  lensId: "a",
   bundle: {
     status: "ready",
     updatedAtIso: new Date().toISOString(),
@@ -69,6 +72,8 @@ const reel = buildGlobeResourceReelItemsFromLensPrefetch({
 });
 assert.equal(reel.length, 1);
 assert.equal(reel[0]?.kind, "activity");
+assert.equal(reel[0]?.contractSource?.sourceKind, "lens");
+assert.equal(reel[0]?.contractSource?.sourceId, "a");
 
 const mockSession: DiscoveryLensSession = {
   contextEventId: "evt-1",
@@ -176,11 +181,29 @@ assert.equal(shouldExposeAmenityReelChip({ counts: { activity: 2, eatery: 2, lod
 assert.equal(shouldExposeAmenityReelChip({ counts: { activity: 0, eatery: 0, lodging: 0, amenity: 2 } }), true);
 
 assert.equal(parseResourceReelKindFilter("맛집만"), "eatery");
+assert.equal(parseResourceReelKindFilter("맛집"), null);
 assert.equal(parseResourceReelKindFilter("맛집 찾아"), null);
+assert.equal(parseResourceReelKindFilter("놀거리"), null);
 assert.equal(parseResourceReelKindFilter("전체로 보여줘"), "all");
+assert.equal(resolveResourceReelKindFilter(reelItems, "eatery"), "eatery");
+assert.equal(resolveResourceReelKindFilter(reelItems, "amenity"), "amenity");
 assert.equal(shouldShowDiscoveryLensLabels("city"), false);
 assert.equal(shouldShowDiscoveryLensLabels("street"), true);
 assert.equal(buildDiscoveryLensLabelRows(mockSession, "region").length, 0);
 assert.equal(buildDiscoveryLensLabelRows(mockSession, "street").length, 3);
+
+// Discovery reel: no trip-inventory fallback when batch/lens absent.
+const bareEvent = {
+  id: "evt-inventory-only",
+  title: "여행 여행",
+  category: "travel" as const,
+  source: "user" as const,
+  lifecycle: "active" as const,
+  confidence: 1,
+  lifecycleUpdatedAt: new Date().toISOString(),
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+assert.equal(buildGlobeResourceReelItems(bareEvent).length, 0);
 
 console.log("test-discovery-lens: ok");

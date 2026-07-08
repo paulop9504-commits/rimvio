@@ -4,6 +4,7 @@
  * Observe context · react to truth/signal · anchor conditions → pins.
  * User-facing name: Trip Assistant / Operator surface.
  * @see docs/RIMVIO_CANONICAL_VOCABULARY_V2.md
+ * @see docs/RIMVIO_CONTRACT_SCHEMA.md — scout contract gate
  */
 export {
   classifyContextConditionAnchorRequest,

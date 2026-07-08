@@ -57,6 +57,7 @@ function pushLodgingItem(input: {
   index: number;
   total: number;
   reasonKo?: string | null;
+  batchId: string;
 }): GlobeResourceReelItem | null {
   const row = readLodgingInventoryRows(input.event).find(
     (entry) => entry.placeId === input.placeId,
@@ -92,6 +93,10 @@ function pushLodgingItem(input: {
       placeLabel: row.name,
     }),
     actionLabel: copy.globe.lodgingFocusBook,
+    contractSource: {
+      sourceKind: "batch",
+      sourceId: input.batchId,
+    },
   };
 }
 
@@ -104,6 +109,7 @@ function pushEateryItem(input: {
   index: number;
   total: number;
   reasonKo?: string | null;
+  batchId: string;
 }): GlobeResourceReelItem | null {
   const row = readEateryInventoryRows(input.event).find(
     (entry) => entry.placeId === input.placeId,
@@ -154,10 +160,17 @@ function pushEateryItem(input: {
         : kind === "amenity"
           ? "길찾기"
           : copy.globe.eateryFocusNavigate,
+    contractSource: {
+      sourceKind: "batch",
+      sourceId: input.batchId,
+    },
   };
 }
 
-/** Scout batch order first, then remaining inventory rows. */
+/**
+ * Discovery reel SSOT: active lens prefetch → last scout batch → empty.
+ * Trip lodging/eatery inventory must never fill this surface (@see RIMVIO_CONTRACT_SCHEMA.md).
+ */
 export function buildGlobeResourceReelItems(
   event: EventCandidate | null | undefined,
 ): GlobeResourceReelItem[] {
@@ -174,88 +187,97 @@ export function buildGlobeResourceReelItems(
     return buildGlobeResourceReelItemsFromLensPrefetch({
       contextEventId: event.id,
       lensLabel: activeLens.labelKo,
+      lensId: activeLens.id,
       bundle: activeLens.prefetch,
     });
   }
 
   const batch = readContextConditionLastBatch(event.id);
   const recommendations = batch?.recommendations ?? [];
+  if (recommendations.length === 0 || !batch?.batchId) {
+    return [];
+  }
+
   const items: GlobeResourceReelItem[] = [];
   const seen = new Set<string>();
+  const total = recommendations.length;
+  const batchId = batch.batchId;
 
-  if (recommendations.length > 0) {
-    const total = recommendations.length;
-    recommendations.forEach((rec, index) => {
-      const placeId = rec.placeId?.trim();
-      if (!placeId) {
-        return;
-      }
-      const key = `${rec.kind}:${placeId}`;
-      if (seen.has(key)) {
-        return;
-      }
-      const built =
-        rec.kind === "lodging"
-          ? pushLodgingItem({
-              event,
-              placeId,
-              title: rec.title,
-              index,
-              total,
-              reasonKo: rec.reasonKo,
-            })
-          : pushEateryItem({
-              event,
-              kind: rec.kind,
-              activitySubtype: rec.activitySubtype ?? null,
-              placeId,
-              title: rec.title,
-              index,
-              total,
-              reasonKo: rec.reasonKo,
-            });
-      if (built) {
-        seen.add(key);
-        items.push(built);
-      }
-    });
-    if (items.length > 0) {
-      return items;
+  recommendations.forEach((rec, index) => {
+    const placeId = rec.placeId?.trim();
+    if (!placeId) {
+      return;
     }
-  }
-
-  const lodgingRows = readLodgingInventoryRows(event);
-  const eateryRows = readEateryInventoryRows(event);
-  const total = lodgingRows.length + eateryRows.length;
-  let index = 0;
-
-  for (const row of lodgingRows) {
-    const built = pushLodgingItem({
-      event,
-      placeId: row.placeId,
-      title: row.name,
-      index,
-      total,
-    });
+    const key = `${rec.kind}:${placeId}`;
+    if (seen.has(key)) {
+      return;
+    }
+    const built =
+      rec.kind === "lodging"
+        ? pushLodgingItem({
+            event,
+            placeId,
+            title: rec.title,
+            index,
+            total,
+            reasonKo: rec.reasonKo,
+            batchId,
+          })
+        : pushEateryItem({
+            event,
+            kind: rec.kind,
+            activitySubtype: rec.activitySubtype ?? null,
+            placeId,
+            title: rec.title,
+            index,
+            total,
+            reasonKo: rec.reasonKo,
+            batchId,
+          }) ??
+          // Fallback: synthesize from batch wire when inventory mirror missing.
+          (Number.isFinite(rec.lat) && Number.isFinite(rec.lng)
+            ? {
+                resourceId: buildResourceReelResourceId({
+                  contextEventId: event.id,
+                  kind: rec.kind,
+                  placeId,
+                }),
+                kind: rec.kind,
+                activitySubtype:
+                  rec.kind === "activity" ? (rec.activitySubtype ?? null) : null,
+                placeId,
+                title: rec.title,
+                score100: scoreFromRank(index, total),
+                detailReasonLine: rec.reasonKo,
+                accent: accentForItem(rec.kind, index),
+                thumbnailUrl: null,
+                lat: rec.lat as number,
+                lng: rec.lng as number,
+                carouselIndex: index,
+                secondaryLine: null,
+                actionHref: buildGoogleMapsPlaceHref({
+                  lat: rec.lat as number,
+                  lng: rec.lng as number,
+                  placeId,
+                  placeLabel: rec.title,
+                }),
+                actionLabel:
+                  rec.kind === "activity"
+                    ? activitySubtypeActionLabel(rec.activitySubtype ?? "general")
+                    : rec.kind === "amenity"
+                      ? "길찾기"
+                      : copy.globe.eateryFocusNavigate,
+                contractSource: {
+                  sourceKind: "batch" as const,
+                  sourceId: batchId,
+                },
+              }
+            : null);
     if (built) {
+      seen.add(key);
       items.push(built);
-      index += 1;
     }
-  }
-  for (const row of eateryRows) {
-    const built = pushEateryItem({
-      event,
-      kind: "eatery",
-      placeId: row.placeId,
-      title: row.name,
-      index,
-      total,
-    });
-    if (built) {
-      items.push(built);
-      index += 1;
-    }
-  }
+  });
 
   return items;
 }

@@ -93,12 +93,14 @@ export function filterGlobeResourceReelItems(
   return items.filter((item) => item.kind === kindFilter);
 }
 
+/**
+ * Keep the requested filter even when the slice is empty.
+ * Silent widen-to-"all" used to show trip activities after a 「맛집만」 reply.
+ */
 export function resolveResourceReelKindFilter(
   items: readonly GlobeResourceReelItem[],
   kindFilter: ResourceReelKindFilter,
 ): ResourceReelKindFilter {
-  if (kindFilter === "all") {
-    return "all";
-  }
-  return items.some((item) => item.kind === kindFilter) ? kindFilter : "all";
+  void items;
+  return kindFilter;
 }

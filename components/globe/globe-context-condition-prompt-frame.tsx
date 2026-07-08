@@ -28,6 +28,7 @@ import {
   clearContextConditionPending,
   type ContextConditionAnchorPinOutcome,
 } from "@/lib/globe/context-condition-ai";
+import { writeScoutSelectedAnchor } from "@/lib/globe/contracts";
 import type {
   ContextConditionRecommendation,
   LocalDiscoveryQuestion,
@@ -357,6 +358,17 @@ export function GlobeContextConditionPromptFrame({
     (row: ContextConditionRecommendation) => {
       if (!event) {
         return;
+      }
+      const batch = readContextConditionLastBatch(event.id);
+      const scoutId = batch?.batchId?.trim();
+      if (scoutId && Number.isFinite(row.lat) && Number.isFinite(row.lng)) {
+        writeScoutSelectedAnchor(event.id, {
+          scoutId,
+          placeId: row.placeId,
+          lat: row.lat,
+          lng: row.lng,
+          title: row.title,
+        });
       }
       dispatchGlobePlaceOntologyFocus({
         contextEventId: event.id,

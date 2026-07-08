@@ -41,6 +41,7 @@ function formatPriceKrw(value: number | null | undefined): string | null {
 export function buildGlobeResourceReelItemsFromLensPrefetch(input: {
   contextEventId: string;
   lensLabel: string;
+  lensId: string;
   bundle: LensPrefetchBundle;
 }): GlobeResourceReelItem[] {
   if (input.bundle.status !== "ready" || input.bundle.items.length === 0) {
@@ -93,6 +94,10 @@ export function buildGlobeResourceReelItemsFromLensPrefetch(input: {
           : row.kind === "activity"
             ? activitySubtypeActionLabel(row.activitySubtype ?? "general")
             : copy.globe.eateryFocusNavigate,
+      contractSource: {
+        sourceKind: "lens",
+        sourceId: input.lensId,
+      },
     };
   });
 }

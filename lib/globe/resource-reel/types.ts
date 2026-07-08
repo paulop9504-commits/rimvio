@@ -17,6 +17,13 @@ export type GlobeResourceReelSource =
   | "palantir_brief"
   | "scout_complete";
 
+/** Provenance for scout contract SSOT gate — never trip inventory on Discovery reel. */
+export type GlobeResourceReelContractSource = {
+  sourceKind: "batch" | "lens";
+  /** batchId (scout_id) or DiscoveryLensId */
+  sourceId: string;
+};
+
 export type GlobeResourceReelItem = {
   resourceId: string;
   kind: GlobeResourceReelKind;
@@ -33,6 +40,7 @@ export type GlobeResourceReelItem = {
   secondaryLine?: string | null;
   actionHref?: string | null;
   actionLabel?: string | null;
+  contractSource?: GlobeResourceReelContractSource | null;
 };
 
 export type GlobeResourceReelFocusDetail = {

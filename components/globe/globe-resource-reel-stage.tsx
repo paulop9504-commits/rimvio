@@ -198,7 +198,9 @@ export function GlobeResourceReelStage({
     items[0]?.secondaryLine?.trim() ||
     copy.globe.resourceReelAreaFallback;
 
-  if (!state.open || items.length === 0) {
+  // Keep the panel open for an empty filtered slice (e.g. 맛집만) so we do not
+  // silently fall back to showing unrelated trip inventory.
+  if (!state.open || (items.length === 0 && filteredItems.length === 0)) {
     return (
       <div
         className={cn("pointer-events-none absolute inset-0 z-[21] overflow-hidden", className)}
