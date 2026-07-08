@@ -25,6 +25,7 @@ import { syncContextConditionPins } from "@/lib/globe/context-condition-ai/sync-
 import { loadLodgingInventoryRows } from "@/lib/globe/context-hub/load-lodging-inventory-rows";
 import type { ContextLodgingInventoryRow } from "@/lib/globe/context-hub/lodging-resource-types";
 import { loadEateryInventoryRows } from "@/lib/globe/eatery/load-eatery-inventory-rows";
+import type { ContextEateryInventoryRow } from "@/lib/globe/eatery/eatery-resource-types";
 import { scoreEateryRecommendations } from "@/lib/globe/eatery/score-eatery-recommendations";
 import { scoreLodgingRecommendations } from "@/lib/globe/lodging/score-lodging-recommendations";
 import { LOCAL_DISCOVERY_RECOMMEND_CAP } from "@/lib/globe/context-condition-ai/local-discovery-limits";
@@ -352,46 +353,28 @@ export async function runContextConditionAnchorPin(
     // Trigger → cluster: a chip answer activates related nodes (도파민 →
     // 테마파크·놀이공원·포토스팟). Multi-query them + the focus and merge, so the
     // map shows one reconstructed context (유니버설 + 주변 놀거리), not one keyword.
+    const landmarkQuery = [focus, activityQuery].find((query) =>
+      isExplicitActivityLandmarkQuery(query),
+    );
+    const isLandmarkScout = Boolean(landmarkQuery);
+
     const chipCluster = isAmenity
       ? []
       : (spec.activityCluster ?? [])
           .map((node) => node.trim())
           .filter((node) => node.length > 0);
-    // Safety net: a broad "놀거리" with no focus and no chip cluster (e.g. the
-    // convergence cap was hit) would search the literal keyword and return junk.
-    // Reconstruct a real attraction context so retrieval pulls actual landmarks.
     const cluster =
-      !isAmenity && chipCluster.length === 0 && !focus
-        ? DEFAULT_ACTIVITY_CLUSTER
-        : chipCluster;
-    const queries = Array.from(
-      new Set([activityQuery, ...cluster.map((node) => withArea(node))]),
-    ).slice(0, 4);
+      isLandmarkScout || isAmenity
+        ? []
+        : !isAmenity && chipCluster.length === 0 && !focus
+          ? DEFAULT_ACTIVITY_CLUSTER
+          : chipCluster;
+    const queries = isLandmarkScout
+      ? []
+      : Array.from(
+          new Set([activityQuery, ...cluster.map((node) => withArea(node))]),
+        ).slice(0, 4);
 
-    const loadedBatches = await Promise.all(
-      queries.map((query) =>
-        loadEateryInventoryRows({
-          event,
-          message: query,
-          lat: input.anchorLat,
-          lng: input.anchorLng,
-          maxResults: 12,
-          radiusM: activityRadiusM,
-        }),
-      ),
-    );
-    const mergedById = new Map<string, (typeof loadedBatches)[number]["rows"][number]>();
-    for (const batch of loadedBatches) {
-      for (const row of batch.rows) {
-        if (!mergedById.has(row.placeId)) {
-          mergedById.set(row.placeId, row);
-        }
-      }
-    }
-
-    const landmarkQuery = [focus, activityQuery].find((query) =>
-      isExplicitActivityLandmarkQuery(query),
-    );
     let resolvedLandmark: Awaited<
       ReturnType<typeof resolveActivityLandmarkInventoryRow>
     > = null;
@@ -401,15 +384,40 @@ export async function runContextConditionAnchorPin(
         lat: input.anchorLat,
         lng: input.anchorLng,
       });
-      if (resolvedLandmark) {
-        mergedById.set(resolvedLandmark.placeId, resolvedLandmark);
+    }
+
+    const loadedBatches = isLandmarkScout
+      ? []
+      : await Promise.all(
+          queries.map((query) =>
+            loadEateryInventoryRows({
+              event,
+              message: query,
+              lat: input.anchorLat,
+              lng: input.anchorLng,
+              maxResults: isLandmarkScout ? 4 : 12,
+              radiusM: activityRadiusM,
+            }),
+          ),
+        );
+    const mergedById = new Map<string, ContextEateryInventoryRow>();
+    for (const batch of loadedBatches) {
+      for (const row of batch.rows) {
+        if (!mergedById.has(row.placeId)) {
+          mergedById.set(row.placeId, row);
+        }
       }
+    }
+
+    if (resolvedLandmark) {
+      mergedById.set(resolvedLandmark.placeId, resolvedLandmark);
     }
 
     const mergedRows = [...mergedById.values()];
     eaterySource =
       loadedBatches.find((batch) => batch.source && batch.source !== "mock")
         ?.source ??
+      (resolvedLandmark ? "google_places" : null) ??
       loadedBatches[0]?.source ??
       null;
 
@@ -429,7 +437,7 @@ export async function runContextConditionAnchorPin(
       // (유니버설 스튜디오) outranks a nearby unrelated café.
       distanceWeight: isAmenity ? 1 : 0.1,
       focusMatch,
-    }).slice(0, cluster.length > 0 ? 6 : 4);
+    }).slice(0, isLandmarkScout ? 1 : cluster.length > 0 ? 6 : 4);
 
     // Category Integrity Guard (strict): an activity/amenity search must never
     // pin a café/hotel. Drop rows whose true category contradicts the domain —
@@ -476,12 +484,17 @@ export async function runContextConditionAnchorPin(
     return null;
   }
 
+  const activityLandmarkFocus =
+    spec.resourceTypes.includes("activity") &&
+    isExplicitActivityLandmarkQuery(spec.activityFocus ?? input.message);
+
   const picked = pickTopLocalDiscoveryRows({
     lodgingScored: [
       ...(keptRows?.lodgingScored ?? []),
       ...lodgingScored,
     ],
     eateryScored: [...(keptRows?.eateryScored ?? []), ...eateryScored],
+    cap: activityLandmarkFocus ? 1 : undefined,
   });
   lodgingScored = picked.lodgingScored;
   eateryScored = picked.eateryScored;

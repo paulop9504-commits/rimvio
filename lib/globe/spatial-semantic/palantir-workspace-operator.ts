@@ -182,7 +182,7 @@ function publishPalantirProjection(input: {
 
   publishFocusGlobeProjection({
     contextEventId: input.contextEventId,
-    visiblePlaceIds: allPlaceIds,
+    visiblePlaceIds: projectedPlaceIds,
   });
   publishGeoOntologyFacetState({
     contextEventId: input.contextEventId,

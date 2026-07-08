@@ -24,12 +24,19 @@ const TASK_CUE =
 const BEVERAGE_SEARCH =
   /^(?:음료|음료수|드링크|drink|beverage|커피|coffee|카페|cafe|주스|juice|스무디|smoothie|디저트|dessert)$/iu;
 
+/** Weather / temperature questions — chat with live weather, never place search. */
+const WEATHER_CHAT =
+  /(기온|온도|체감\s*온도|몇\s*도|temperature|temp\b|날씨\s*어때|날씨\s*알려|지금\s*날씨|현재\s*날씨|현재\s*기온)/iu;
+
 function deterministicClassify(
   text: string,
   region?: string | null,
 ): InputClassification {
   if (resolveSmallTalk({ text, region })) {
     return { category: "chat", reasoning: "결정론: 스몰토크 패턴", source: "deterministic" };
+  }
+  if (WEATHER_CHAT.test(text)) {
+    return { category: "chat", reasoning: "결정론: 날씨·기온 질문", source: "deterministic" };
   }
   if (BEVERAGE_SEARCH.test(text.trim())) {
     return { category: "search", reasoning: "결정론: 음료·카페 검색", source: "deterministic" };
@@ -52,6 +59,12 @@ export async function classifyInput(input: {
   }
   if (BEVERAGE_SEARCH.test(text)) {
     return { category: "search", reasoning: "결정론: 음료·카페 검색", source: "deterministic" };
+  }
+  if (WEATHER_CHAT.test(text)) {
+    return { category: "chat", reasoning: "결정론: 날씨·기온 질문", source: "deterministic" };
+  }
+  if (resolveSmallTalk({ text, region: input.region })) {
+    return { category: "chat", reasoning: "결정론: 스몰토크 패턴", source: "deterministic" };
   }
   try {
     const response = await fetch("/api/globe/intent-dispatch", {

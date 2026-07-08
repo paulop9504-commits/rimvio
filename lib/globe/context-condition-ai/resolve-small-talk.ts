@@ -60,6 +60,8 @@ const WEATHER_RAIN = /(비\s*와|비\s*온|비\s*오|비가|장마|소나기|우
 const WEATHER_SNOW = /(눈\s*와|눈\s*온|눈\s*오|폭설|함박눈)/iu;
 const WEATHER_AIR = /(미세먼지|초미세|공기|매연|황사)/iu;
 const WEATHER_ANY = /(날씨|맑네|맑다|흐리|습하|건조|바람\s*많|태풍)/iu;
+const WEATHER_TEMP =
+  /(기온|온도|체감\s*온도|몇\s*도|temperature|temp\b|날씨\s*어때|날씨\s*알려|지금\s*날씨|현재\s*날씨)/iu;
 
 const FOOD_HUNGRY = /(배\s*고|배고|출출|허기|야식)/iu;
 const FOOD_CRAVE = /(당기네|당긴|당겨|당김|땡기|입맛)/iu;
@@ -195,6 +197,14 @@ export function resolveSmallTalk(input: {
   }
 
   // 1) Weather — the classic ice-breaker.
+  if (WEATHER_TEMP.test(text)) {
+    return {
+      topic: "weather",
+      replyKo: region
+        ? `${region} 날씨 확인해볼게요.`
+        : "지금 날씨 확인해볼게요.",
+    };
+  }
   if (WEATHER_HOT.test(text)) {
     return {
       topic: "weather",

@@ -89,6 +89,7 @@ import {
 } from "@/lib/globe/spatial-semantic/globe-projection-layer-policy";
 import {
   filterContextConditionMarkersByPlaceIds,
+  filterHubMarkersByProjectionPolicy,
   shouldProjectContextConditionMarkers,
   shouldShowContextConditionDiscoveryOverlay,
 } from "@/lib/globe/spatial-semantic/resolve-context-condition-marker-visibility";
@@ -596,8 +597,13 @@ const RimvioGlobeHubBody = memo(
         mergeContextConditionLodgingMarkers(hubMarkers, contextConditionMarkers),
         event,
       );
-      return resolveContextResourceMapMarkers({
+      const hubFiltered = filterHubMarkersByProjectionPolicy({
         markers: withContextCondition,
+        policy: layerPolicy,
+        contextEventId: eventId,
+      });
+      return resolveContextResourceMapMarkers({
+        markers: hubFiltered,
         hubLat,
         hubLng,
         layoutAtHub: contextConditionMarkers.length === 0,
@@ -633,6 +639,15 @@ const RimvioGlobeHubBody = memo(
       }
       const effectiveActiveEateryResourceId =
         activeEateryResourceId ?? readPinnedEateryResourceId(event);
+      const contextConditionEateryMarkers = shouldProjectContextConditionMarkers(
+        layerPolicy,
+        eventId,
+      )
+        ? filterContextConditionMarkersByPlaceIds(
+            projectContextConditionEateryGlobeMarkers({ event }),
+            layerPolicy,
+          )
+        : [];
       const projectionGhostMarkers = projectGhostEateryGlobeMarkers({
         event,
         manifest: readProjectionManifestForAnchor(eventId),
@@ -714,11 +729,16 @@ const RimvioGlobeHubBody = memo(
           liveLocation?.lng ??
           null;
         const withContextCondition = decorateEateryMarkersWithContextCondition(
-          decorated,
+          mergeContextConditionEateryMarkers(decorated, contextConditionEateryMarkers),
           event,
         );
-        return resolveContextResourceMapMarkers({
+        const hubFiltered = filterHubMarkersByProjectionPolicy({
           markers: withContextCondition,
+          policy: layerPolicy,
+          contextEventId: eventId,
+        });
+        return resolveContextResourceMapMarkers({
+          markers: hubFiltered,
           hubLat,
           hubLng,
           stagedDiscoveryCount: eateryDiscoveryReveal.visibleResourceIds.size,
@@ -739,6 +759,8 @@ const RimvioGlobeHubBody = memo(
       eateryDiscoveryCards,
       mapMediaFocusOpen,
       ontologyFacetRevision,
+      layerPolicy,
+      layerPolicyRevision,
     ]);
     const contextHubAnchor = useMemo(() => {
       const eventId = focusedContextEventId?.trim();

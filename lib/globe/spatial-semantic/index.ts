@@ -37,6 +37,7 @@ export type {
 } from "@/lib/globe/spatial-semantic/globe-projection-layer-policy";
 export {
   filterContextConditionMarkersByPlaceIds,
+  filterHubMarkersByProjectionPolicy,
   shouldProjectContextConditionMarkers,
   shouldShowContextConditionDiscoveryOverlay,
 } from "@/lib/globe/spatial-semantic/resolve-context-condition-marker-visibility";

@@ -63,6 +63,7 @@ import {
   applyPalantirOperatorFacetRefine,
   buildClarifyingOntologyGraph,
   buildContextDiscoveryOntologyGraph,
+  publishContextOnlyGlobeProjection,
   publishGeoOntologyGraph,
   readPalantirWorkspaceSnapshot,
   resolvePalantirExcludePlaceIds,
@@ -273,16 +274,14 @@ export const GlobeContextConditionPinBar = forwardRef<
         dispatchGlobeLodgingDiscoveryClose();
       }
       if (!input.patchPlan && lastBatch) {
-        const prevCategory = lastBatch.spec
-          ? specResourceCategory(lastBatch.spec)
-          : null;
-        if (prevCategory && prevCategory !== nextCategory) {
-          dismissContextConditionPinBatch({
-            contextEventId,
-            batchId: lastBatch.batchId,
-          });
-          clearContextConditionLastBatch(contextEventId);
-        }
+        dismissContextConditionPinBatch({
+          contextEventId,
+          batchId: lastBatch.batchId,
+        });
+        clearContextConditionLastBatch(contextEventId);
+      }
+      if (nextCategory === "activity" || nextCategory === "amenity") {
+        publishContextOnlyGlobeProjection(contextEventId);
       }
       setContextAgentSessionPhase("scouting");
       beginContextAgentWork("exploring");
@@ -315,6 +314,12 @@ export const GlobeContextConditionPinBar = forwardRef<
         },
       });
       if (!outcome) {
+        if (
+          nextCategory === "activity" ||
+          nextCategory === "amenity"
+        ) {
+          publishContextOnlyGlobeProjection(contextEventId);
+        }
         if (!input.suppressEmptyMessage) {
           appendContextAgentComposeTurn(contextEventId, {
             role: "assistant",
