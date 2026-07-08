@@ -6,6 +6,7 @@
  * configured or the call fails, falls back to deterministic rules so routing
  * never dead-ends. The caller executes the matching processor.
  */
+import { isInstantPoiSearch } from "@/lib/globe/context-condition-ai/instant-poi-search";
 import { resolveSmallTalk } from "@/lib/globe/context-condition-ai/resolve-small-talk";
 
 export type DispatchCategory = "chat" | "search" | "task";
@@ -44,6 +45,13 @@ function deterministicClassify(
   if (TASK_CUE.test(text)) {
     return { category: "task", reasoning: "결정론: 작업 지시어", source: "deterministic" };
   }
+  if (isInstantPoiSearch(text)) {
+    return {
+      category: "search",
+      reasoning: "결정론: 즉시 POI(편의·약국 등)",
+      source: "deterministic",
+    };
+  }
   return { category: "search", reasoning: "결정론: 기본 검색", source: "deterministic" };
 }
 
@@ -56,6 +64,13 @@ export async function classifyInput(input: {
   const text = input.text.trim();
   if (!text) {
     return { category: "chat", reasoning: null, source: "deterministic" };
+  }
+  if (isInstantPoiSearch(text)) {
+    return {
+      category: "search",
+      reasoning: "결정론: 즉시 POI(편의·약국 등)",
+      source: "deterministic",
+    };
   }
   if (BEVERAGE_SEARCH.test(text)) {
     return { category: "search", reasoning: "결정론: 음료·카페 검색", source: "deterministic" };

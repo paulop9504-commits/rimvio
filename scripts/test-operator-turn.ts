@@ -59,6 +59,15 @@ assert.equal(
   "defer_classify",
 );
 
+const instantPoi = gateOperatorTurnSync({
+  text: "편의점",
+  ssot: emptySsot,
+});
+assert.equal(instantPoi.tool, "scout");
+if (instantPoi.tool === "scout") {
+  assert.equal(instantPoi.reason, "instant_poi_search");
+}
+
 assert.equal(mapClassifyToOperatorTool("chat").tool, "small_talk");
 assert.equal(mapClassifyToOperatorTool("task").tool, "task_injection");
 assert.equal(mapClassifyToOperatorTool("search").tool, "scout");

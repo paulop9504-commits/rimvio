@@ -47,6 +47,12 @@ import {
   resolveLocalDiscoveryAction,
 } from "@/lib/globe/context-condition-ai/resolve-local-discovery-action";
 import { assessIntentConvergence } from "@/lib/globe/context-condition-ai/intent-convergence/assess-intent-convergence";
+import {
+  INSTANT_POI_DEBOUNCE_MS,
+  isInstantPoiSearch,
+  matchesInstantPoiTyping,
+  resolveInstantPoiFocus,
+} from "@/lib/globe/context-condition-ai/instant-poi-search";
 import { buildConvergenceQuestion } from "@/lib/globe/context-condition-ai/intent-convergence/build-convergence-question";
 import { buildActivityNextHopQuestion } from "@/lib/globe/context-condition-ai/intent-convergence/build-next-hop-question";
 import { generateSmallTalkReply } from "@/lib/globe/context-condition-ai/small-talk/generate-small-talk-reply";
@@ -252,6 +258,8 @@ export const GlobeContextConditionPinBar = forwardRef<
   >([]);
   const lastSpecRef = useRef<ContextConditionAnchorPinOutcome["spec"] | null>(null);
   lastSpecRef.current = lastSpec;
+  const lastInstantPoiSearchRef = useRef<string>("");
+  const handleSubmitRef = useRef<() => Promise<void>>(async () => {});
 
   useEffect(() => {
     return subscribeDiscoveryLensSession((session) => {
@@ -476,11 +484,14 @@ export const GlobeContextConditionPinBar = forwardRef<
       }
       setContextAgentSessionPhase("scouting");
       beginContextAgentWork("exploring");
-      appendContextAgentComposeTurn(contextEventId, {
-        role: "assistant",
-        kind: "build_log",
-        text: copy.globe.geoOntologyBuildMapping,
-      });
+      const instantPoi = isInstantPoiSearch(input.triggerMessage);
+      if (!instantPoi) {
+        appendContextAgentComposeTurn(contextEventId, {
+          role: "assistant",
+          kind: "build_log",
+          text: copy.globe.geoOntologyBuildMapping,
+        });
+      }
       const outcome = await runContextConditionAnchorPin({
         contextEventId,
         anchorPlaceId,
@@ -496,7 +507,7 @@ export const GlobeContextConditionPinBar = forwardRef<
         discoveryOrigin: resolveDiscoveryOriginForContext(contextEventId),
         onProcessPhase: (phase) => {
           setContextAgentProcessPhase(phase);
-          if (phase === "optimizing") {
+          if (phase === "optimizing" && !instantPoi) {
             appendContextAgentComposeTurn(contextEventId, {
               role: "assistant",
               kind: "build_log",
@@ -522,11 +533,13 @@ export const GlobeContextConditionPinBar = forwardRef<
         }
         return null;
       }
-      appendContextAgentComposeTurn(contextEventId, {
-        role: "assistant",
-        kind: "build_log",
-        text: copy.globe.geoOntologyBuildResolve,
-      });
+      if (!instantPoi) {
+        appendContextAgentComposeTurn(contextEventId, {
+          role: "assistant",
+          kind: "build_log",
+          text: copy.globe.geoOntologyBuildResolve,
+        });
+      }
       publishGeoOntologyGraph(
         buildContextDiscoveryOntologyGraph({
           contextEventId,
@@ -1238,6 +1251,35 @@ export const GlobeContextConditionPinBar = forwardRef<
     tryPublishActionInjection,
   ]);
 
+  handleSubmitRef.current = handleSubmit;
+
+  /** Google Maps–like: debounced auto-search for 편의점·약국 등 while typing. */
+  useEffect(() => {
+    const trimmed = message.trim();
+    if (busy || !trimmed || !matchesInstantPoiTyping(message)) {
+      return;
+    }
+    if (!resolveInstantPoiFocus(trimmed)) {
+      return;
+    }
+    if (
+      typeof anchorLat !== "number" ||
+      typeof anchorLng !== "number" ||
+      !Number.isFinite(anchorLat) ||
+      !Number.isFinite(anchorLng)
+    ) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      if (lastInstantPoiSearchRef.current === trimmed) {
+        return;
+      }
+      lastInstantPoiSearchRef.current = trimmed;
+      void handleSubmitRef.current();
+    }, INSTANT_POI_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [message, busy, anchorLat, anchorLng]);
+
   const submitTrigger = useCallback(
     async (triggerMessage: string) => {
       const text = triggerMessage.trim();
@@ -1436,7 +1478,13 @@ export const GlobeContextConditionPinBar = forwardRef<
         <input
           type="text"
           value={message}
-          onChange={(event) => setMessage(event.target.value)}
+          onChange={(event) => {
+            const next = event.target.value;
+            setMessage(next);
+            if (!next.trim()) {
+              lastInstantPoiSearchRef.current = "";
+            }
+          }}
           onKeyDown={(event) => {
             if (event.key === "Enter") {
               event.preventDefault();

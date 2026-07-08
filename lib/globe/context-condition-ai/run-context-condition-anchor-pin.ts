@@ -20,6 +20,10 @@ import type {
 } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
 import { commitContextConditionHubBatch } from "@/lib/globe/context-condition-ai/commit-context-condition-hub-batch";
 import { verifyDiscoveryResults } from "@/lib/globe/context-condition-ai/discovery-guard/verify-discovery-results";
+import {
+  INSTANT_POI_MAX_RESULTS,
+  INSTANT_POI_PIN_CAP,
+} from "@/lib/globe/context-condition-ai/instant-poi-search";
 import { writeContextConditionLastBatch } from "@/lib/globe/context-condition-ai/context-condition-last-batch-store";
 import { syncContextConditionPins } from "@/lib/globe/context-condition-ai/sync-context-condition-pins";
 import { emitSearchHubAction } from "@/lib/globe/resource/hub-action-record-store";
@@ -421,8 +425,9 @@ export async function runContextConditionAnchorPin(
     const activityRadiusM = input.discoveryOrigin
       ? searchOrigin.radiusM
       : isAmenity
-        ? radiusM
+        ? Math.max(radiusM, spec.radiusM)
         : 50000;
+    const amenityMaxResults = INSTANT_POI_MAX_RESULTS;
 
     // Trigger → cluster: a chip answer activates related nodes (도파민 →
     // 테마파크·놀이공원·포토스팟). Multi-query them + the focus and merge, so the
@@ -471,7 +476,11 @@ export async function runContextConditionAnchorPin(
                   query,
                   lat: searchOrigin.lat,
                   lng: searchOrigin.lng,
-                  maxResults: isLandmarkScout ? 4 : 12,
+                  maxResults: isAmenity
+                    ? amenityMaxResults
+                    : isLandmarkScout
+                      ? 4
+                      : 12,
                   radiusM: activityRadiusM,
                 })
               : loadEateryInventoryRows({
@@ -518,7 +527,16 @@ export async function runContextConditionAnchorPin(
       lng: searchOrigin.lng,
       focusMatch,
       activitySubtype,
-    }).slice(0, isLandmarkScout ? 1 : cluster.length > 0 ? 6 : 4);
+    }).slice(
+      0,
+      isLandmarkScout
+        ? 1
+        : isAmenity
+          ? INSTANT_POI_PIN_CAP
+          : cluster.length > 0
+            ? 6
+            : 4,
+    );
 
     // Category Integrity Guard (strict): an activity/amenity search must never
     // pin a café/hotel. Drop rows whose true category contradicts the domain —
@@ -574,7 +592,12 @@ export async function runContextConditionAnchorPin(
       ...lodgingScored,
     ],
     eateryScored: [...(keptRows?.eateryScored ?? []), ...eateryScored],
-    cap: activityLandmarkFocus ? 1 : undefined,
+    cap:
+      activityKind === "amenity"
+        ? INSTANT_POI_PIN_CAP
+        : activityLandmarkFocus
+          ? 1
+          : undefined,
   });
   lodgingScored = picked.lodgingScored;
   eateryScored = picked.eateryScored;

@@ -49,7 +49,8 @@ export type OperatorTurnPlan =
       readonly reason:
         | "narrow_cue_without_slice"
         | "search_or_bare_domain"
-        | "classify_search";
+        | "classify_search"
+        | "instant_poi_search";
     }
   | {
       readonly tool: "defer_classify";

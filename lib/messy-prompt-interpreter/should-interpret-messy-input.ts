@@ -1,3 +1,4 @@
+import { isInstantPoiSearch } from "@/lib/globe/context-condition-ai/instant-poi-search";
 import { normalizeMessyInput } from "@/lib/messy-prompt-interpreter/normalize-messy-input";
 
 const MENTION_PREFIX = /^@\S/u;
@@ -8,6 +9,9 @@ const OPERATOR_PREFIX = /^(?:\/|#)/u;
 export function shouldInterpretMessyInput(raw: string): boolean {
   const trimmed = raw.trim();
   if (!trimmed) {
+    return false;
+  }
+  if (isInstantPoiSearch(trimmed)) {
     return false;
   }
   if (trimmed.length < 8) {

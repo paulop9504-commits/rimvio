@@ -3,6 +3,7 @@
  * @see docs/RIMVIO_OPERATOR_TURN.md
  */
 
+import { isInstantPoiSearch } from "@/lib/globe/context-condition-ai/instant-poi-search";
 import { parseLensCommand } from "@/lib/globe/discovery-lens/parse-lens-command";
 import { parseResourceReelKindFilter } from "@/lib/globe/resource-reel/parse-resource-reel-kind-filter";
 import {
@@ -37,6 +38,10 @@ export function gateOperatorTurnSync(input: {
     if (lens) {
       return { tool: "lens_command", reason: "nl_lens_candidate" };
     }
+  }
+
+  if (isInstantPoiSearch(text)) {
+    return { tool: "scout", reason: "instant_poi_search" };
   }
 
   const kindFilter = parseResourceReelKindFilter(text);

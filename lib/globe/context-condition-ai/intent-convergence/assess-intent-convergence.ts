@@ -6,6 +6,7 @@
  * question and which axis it should be. The LLM later authors the wording; this
  * layer owns the "should we ask, and about what" decision.
  */
+import { isInstantPoiSearch } from "@/lib/globe/context-condition-ai/instant-poi-search";
 import {
   convergenceSchemaFor,
   detectConvergenceIntent,
@@ -33,6 +34,9 @@ export function assessIntentConvergence(input: {
   askedAxisIds: readonly string[];
   followUpTurn?: boolean;
 }): IntentConvergenceAssessment {
+  if (isInstantPoiSearch(input.message)) {
+    return { shouldAsk: false, intentType: null };
+  }
   // A chosen chip already converged the intent → search now.
   if (input.answers.activityFocus?.trim()) {
     return { shouldAsk: false, intentType: null };

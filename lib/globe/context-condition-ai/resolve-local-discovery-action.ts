@@ -1,4 +1,8 @@
 import { classifyContextConditionAnchorRequest } from "@/lib/globe/context-condition-ai/classify-context-condition-anchor-request";
+import {
+  INSTANT_POI_RADIUS_M,
+  resolveInstantPoiFocus,
+} from "@/lib/globe/context-condition-ai/instant-poi-search";
 import type {
   LocalDiscoveryActionSpec,
   LocalDiscoveryActivitySubtype,
@@ -22,13 +26,13 @@ import {
   parseAmenityFocus,
   resolveLocalDiscoveryDomain,
 } from "@/lib/globe/context-condition-ai/resolve-local-discovery-domain";
-import { copy } from "@/lib/copy/human-ko";
 import {
   parseCuisineCandidates,
   parseSingleCuisineFocus,
   resolveCuisineFocusQuery,
   type CuisineCandidate,
 } from "@/lib/globe/context-condition-ai/parse-cuisine-candidates";
+import { copy } from "@/lib/copy/human-ko";
 
 const CONFIDENCE_SKIP = 0.58;
 
@@ -254,6 +258,8 @@ function composeSpec(input: {
   activityCluster?: readonly string[] | null;
 }): LocalDiscoveryActionSpec {
   const cluster = input.activityCluster?.filter((node) => node.trim().length > 0);
+  const amenityOnly =
+    input.resourceTypes.length === 1 && input.resourceTypes[0] === "amenity";
   return {
     version: 1,
     resourceTypes: input.resourceTypes,
@@ -261,7 +267,7 @@ function composeSpec(input: {
     budget: input.budget,
     vibe: input.vibe,
     lodgingKind: input.lodgingKind,
-    radiusM: radiusForTransport(input.transport),
+    radiusM: amenityOnly ? INSTANT_POI_RADIUS_M : radiusForTransport(input.transport),
     ...(input.eateryFocus?.trim() ? { eateryFocus: input.eateryFocus.trim() } : {}),
     ...(input.activityFocus?.trim()
       ? { activityFocus: input.activityFocus.trim() }
@@ -280,6 +286,30 @@ function resolveDiscoveryDomainSpec(input: {
   answers: LocalDiscoveryPendingAnswers;
   previousSpec: LocalDiscoveryActionSpec | null;
 }): LocalDiscoveryActionSpec | null {
+  const instantFocus = resolveInstantPoiFocus(input.text);
+  if (instantFocus) {
+    const transport =
+      (input.answers.transport as LocalDiscoveryTransport | undefined) ??
+      parseTransport(input.text) ??
+      input.previousSpec?.transport ??
+      "walk";
+    const budget =
+      (input.answers.budget as LocalDiscoveryBudget | undefined) ??
+      parseBudget(input.text) ??
+      input.previousSpec?.budget ??
+      "medium";
+    return composeSpec({
+      resourceTypes: ["amenity"],
+      transport,
+      budget,
+      vibe: parseVibe(input.text) ?? input.previousSpec?.vibe ?? "popular",
+      lodgingKind: "any",
+      activityFocus: instantFocus,
+      activitySubtype: null,
+      activityCluster: null,
+    });
+  }
+
   // A converged chip (activityFocus) is a concrete place query — route it
   // through the generic activity loader regardless of the original wording
   // (e.g. cafe/date convergence produces a full query, not an activity keyword).
@@ -299,7 +329,7 @@ function resolveDiscoveryDomainSpec(input: {
   const activityFocus =
     convergedFocus ||
     (domain === "amenity"
-      ? parseAmenityFocus(input.text)
+      ? resolveInstantPoiFocus(input.text) ?? parseAmenityFocus(input.text)
       : focusDetail?.focus ?? parseActivitySpecificFocus(input.text)) ||
     null;
   const activitySubtype =
