@@ -2,7 +2,9 @@ import { inferMapRegionBias, type MapRegionBias } from "@/lib/ontology/infer-map
 import {
   fetchYouTubeVideoQualityByIds,
   searchYouTubeVideos,
+  type YouTubeOfficialSearchResult,
 } from "@/lib/media/youtube-data-api";
+import type { AppLocale } from "@/lib/i18n/types";
 
 /** A short video node linked to a pinned place (꼬리에 꼬리 물기 — place → video). */
 export type PlaceReviewVideo = {
@@ -24,13 +26,17 @@ export type PlaceReviewVideoResult = {
 export type PlaceReviewKind = "lodging" | "eatery" | "place";
 
 const MAX_REVIEW_VIDEOS = 3;
+const SEARCH_POOL = 12;
+
+const HANGUL_RE = /[\uAC00-\uD7A3]/u;
+const KANA_RE = /[\u3040-\u30FF]/u;
 
 function normalizeText(value: string | null | undefined): string {
   return value?.trim().replace(/\s+/gu, " ") ?? "";
 }
 
-function reviewKeyword(kind: PlaceReviewKind, region: MapRegionBias): string {
-  if (region === "jp") {
+function reviewKeyword(kind: PlaceReviewKind, queryLang: "ko" | "ja" | "en"): string {
+  if (queryLang === "ja") {
     if (kind === "lodging") {
       return "ホテル ルームツアー";
     }
@@ -38,6 +44,15 @@ function reviewKeyword(kind: PlaceReviewKind, region: MapRegionBias): string {
       return "グルメ レビュー";
     }
     return "レビュー";
+  }
+  if (queryLang === "en") {
+    if (kind === "lodging") {
+      return "hotel room tour review";
+    }
+    if (kind === "eatery") {
+      return "restaurant review vlog";
+    }
+    return "review";
   }
   if (kind === "lodging") {
     return "호텔 룸투어 후기";
@@ -48,34 +63,108 @@ function reviewKeyword(kind: PlaceReviewKind, region: MapRegionBias): string {
   return "후기";
 }
 
+/**
+ * Audience language beats map region for review search.
+ * Korean app users get Korean-uploader-leaning results even on Osaka pins.
+ */
+export function resolvePlaceReviewQueryLang(input: {
+  audienceLocale?: AppLocale | string | null;
+  mapRegion: MapRegionBias;
+}): "ko" | "ja" | "en" {
+  const locale = (input.audienceLocale ?? "").trim().toLowerCase();
+  if (locale === "ko" || locale.startsWith("ko-")) {
+    return "ko";
+  }
+  if (locale === "ja" || locale.startsWith("ja-")) {
+    return "ja";
+  }
+  if (locale && locale !== "en" && !locale.startsWith("en-")) {
+    // Other UI locales still prefer English travel reviews over Japanese local feed
+    // when the pin is overseas; map-region JA only when audience is JP.
+    if (input.mapRegion === "jp") {
+      return "en";
+    }
+  }
+  if (input.mapRegion === "jp") {
+    return locale ? "en" : "ja";
+  }
+  if (input.mapRegion === "kr") {
+    return "ko";
+  }
+  return "en";
+}
+
+function regionCodeForAudience(queryLang: "ko" | "ja" | "en"): string | null {
+  if (queryLang === "ko") {
+    return "KR";
+  }
+  if (queryLang === "ja") {
+    return "JP";
+  }
+  return null;
+}
+
+function relevanceLanguage(queryLang: "ko" | "ja" | "en"): string | null {
+  if (queryLang === "en") {
+    return "en";
+  }
+  return queryLang;
+}
+
 function buildReviewSearchQuery(input: {
   name: string;
   place: string | null;
   kind: PlaceReviewKind;
-  region: MapRegionBias;
+  queryLang: "ko" | "ja" | "en";
 }): string {
   const name = normalizeText(input.name);
   const place = normalizeText(input.place);
   const base = [name, place].filter(Boolean).join(" ");
-  return `${base} ${reviewKeyword(input.kind, input.region)}`.trim();
+  return `${base} ${reviewKeyword(input.kind, input.queryLang)}`.trim();
 }
 
 function buildYouTubeSearchUrl(query: string): string {
   return `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
 }
 
-function regionCode(region: MapRegionBias): string | null {
-  if (region === "jp") {
-    return "JP";
+/** Prefer Hangul titles/channels when audience is Korean. */
+export function scoreKoreanAudienceMatch(row: {
+  title?: string | null;
+  channelTitle?: string | null;
+}): number {
+  const title = normalizeText(row.title);
+  const channel = normalizeText(row.channelTitle);
+  let score = 0;
+  if (HANGUL_RE.test(title)) {
+    score += 40;
   }
-  if (region === "kr") {
-    return "KR";
+  if (HANGUL_RE.test(channel)) {
+    score += 35;
   }
-  return null;
+  if (KANA_RE.test(title) && !HANGUL_RE.test(title)) {
+    score -= 20;
+  }
+  if (KANA_RE.test(channel) && !HANGUL_RE.test(channel)) {
+    score -= 15;
+  }
+  return score;
 }
 
-function relevanceLanguage(region: MapRegionBias): string | null {
-  return region === "jp" ? "ja" : "ko";
+function rankForAudience(
+  rows: readonly YouTubeOfficialSearchResult[],
+  queryLang: "ko" | "ja" | "en",
+): YouTubeOfficialSearchResult[] {
+  if (queryLang !== "ko") {
+    return [...rows];
+  }
+  return [...rows].sort((a, b) => {
+    const delta =
+      scoreKoreanAudienceMatch(b) - scoreKoreanAudienceMatch(a);
+    if (delta !== 0) {
+      return delta;
+    }
+    return 0;
+  });
 }
 
 /** Server-side: resolve top embeddable review/tour videos linked to a pinned place. */
@@ -85,26 +174,32 @@ export async function resolvePlaceReviewVideos(input: {
   kind?: PlaceReviewKind;
   lat?: number | null;
   lng?: number | null;
+  /** App UI locale — Korean users prefer Korean-uploaded reviews. */
+  audienceLocale?: AppLocale | string | null;
 }): Promise<PlaceReviewVideoResult> {
   const kind = input.kind ?? "place";
-  const region = inferMapRegionBias({
+  const mapRegion = inferMapRegionBias({
     lat: input.lat ?? null,
     lng: input.lng ?? null,
     areaLabel: input.place ?? input.name,
+  });
+  const queryLang = resolvePlaceReviewQueryLang({
+    audienceLocale: input.audienceLocale,
+    mapRegion,
   });
   const query = buildReviewSearchQuery({
     name: input.name,
     place: input.place ?? null,
     kind,
-    region,
+    queryLang,
   });
   const searchUrl = buildYouTubeSearchUrl(query);
 
   const results = await searchYouTubeVideos({
     query,
-    regionCode: regionCode(region),
-    relevanceLanguage: relevanceLanguage(region),
-    maxResults: 10,
+    regionCode: regionCodeForAudience(queryLang),
+    relevanceLanguage: relevanceLanguage(queryLang),
+    maxResults: SEARCH_POOL,
   });
   if (results.length === 0) {
     return { videos: [], searchUrl };
@@ -113,17 +208,16 @@ export async function resolvePlaceReviewVideos(input: {
   const quality = await fetchYouTubeVideoQualityByIds(
     results.map((row) => row.videoId),
   );
-  const videos: PlaceReviewVideo[] = results
-    .filter((row) => quality.get(row.videoId)?.embeddable)
-    .slice(0, MAX_REVIEW_VIDEOS)
-    .map((row) => ({
-      videoId: row.videoId,
-      title: normalizeText(row.title) || null,
-      channelTitle: normalizeText(row.channelTitle) || null,
-      thumbnailUrl: row.thumbnailUrl ?? null,
-      embedUrl: `https://www.youtube-nocookie.com/embed/${row.videoId}`,
-      watchUrl: row.canonicalUrl,
-    }));
+  const embeddable = results.filter((row) => quality.get(row.videoId)?.embeddable);
+  const ranked = rankForAudience(embeddable, queryLang);
+  const videos: PlaceReviewVideo[] = ranked.slice(0, MAX_REVIEW_VIDEOS).map((row) => ({
+    videoId: row.videoId,
+    title: normalizeText(row.title) || null,
+    channelTitle: normalizeText(row.channelTitle) || null,
+    thumbnailUrl: row.thumbnailUrl ?? null,
+    embedUrl: `https://www.youtube-nocookie.com/embed/${row.videoId}`,
+    watchUrl: row.canonicalUrl,
+  }));
 
   return { videos, searchUrl };
 }

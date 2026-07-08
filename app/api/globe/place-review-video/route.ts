@@ -35,6 +35,7 @@ export async function GET(request: Request) {
     kind: parseKind(url.searchParams.get("kind")),
     lat: parseNumber(url.searchParams.get("lat")),
     lng: parseNumber(url.searchParams.get("lng")),
+    audienceLocale: url.searchParams.get("locale"),
   });
 
   return NextResponse.json({ ok: true, ...result });

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Play, X } from "lucide-react";
 import type { PlaceReviewKind, PlaceReviewVideo } from "@/lib/globe/place-review-video";
+import { useAppLocale } from "@/hooks/use-copy";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
@@ -24,7 +25,9 @@ export type GlobeResourceVideoBranchProps = {
   className?: string;
 };
 
-function apiUrl(input: GlobeResourceVideoBranchProps): string {
+function apiUrl(
+  input: GlobeResourceVideoBranchProps & { locale: string },
+): string {
   const params = new URLSearchParams({ name: input.name });
   if (input.place?.trim()) {
     params.set("place", input.place.trim());
@@ -38,11 +41,15 @@ function apiUrl(input: GlobeResourceVideoBranchProps): string {
   if (input.lng != null && Number.isFinite(input.lng)) {
     params.set("lng", String(input.lng));
   }
+  if (input.locale.trim()) {
+    params.set("locale", input.locale.trim());
+  }
   return `/api/globe/place-review-video?${params.toString()}`;
 }
 
 export function GlobeResourceVideoBranch(props: GlobeResourceVideoBranchProps) {
   const { name, place = null, kind, lat = null, lng = null, className } = props;
+  const locale = useAppLocale();
   const [loading, setLoading] = useState(true);
   const [nodes, setNodes] = useState<BranchNode[]>([]);
   const [player, setPlayer] = useState<PlaceReviewVideo | null>(null);
@@ -54,7 +61,7 @@ export function GlobeResourceVideoBranch(props: GlobeResourceVideoBranchProps) {
     const controller = new AbortController();
     void (async () => {
       try {
-        const response = await fetch(apiUrl(props), {
+        const response = await fetch(apiUrl({ ...props, locale }), {
           signal: controller.signal,
         });
         if (!response.ok) {
@@ -94,7 +101,7 @@ export function GlobeResourceVideoBranch(props: GlobeResourceVideoBranchProps) {
       controller.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, place, kind, lat, lng]);
+  }, [name, place, kind, lat, lng, locale]);
 
   const count = loading ? 2 : nodes.length;
   if (count === 0) {
