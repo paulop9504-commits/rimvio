@@ -13,7 +13,11 @@ export function isExplicitActivityLandmarkQuery(
   text: string | null | undefined,
 ): boolean {
   const trimmed = text?.trim();
-  return Boolean(trimmed && EXPLICIT_LANDMARK.test(trimmed));
+  const GLOBAL_EXPLICIT_LANDMARK =
+    /landmark|monument|observatory|viewpoint|tower|cathedral|basilica|palace|castle|plaza|square|bridge|arena|pantheon|acropolis|parthenon|eiffel|louvre|notre\s*dame|sagrada|big\s*ben|buckingham|westminster|tower\s*bridge|times\s*square|central\s*park|statue\s*of\s*liberty|golden\s*gate|alcatraz|grand\s*canyon|machu\s*picchu|christ\s*the\s*redeemer|petra|angkor|taj\s*mahal|burj\s*khalifa|marina\s*bay\s*sands|opera\s*house|colosseum/iu;
+  return Boolean(
+    trimmed && (EXPLICIT_LANDMARK.test(trimmed) || GLOBAL_EXPLICIT_LANDMARK.test(trimmed)),
+  );
 }
 
 function landmarkCategoryLabel(name: string): string {

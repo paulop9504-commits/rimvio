@@ -27,13 +27,13 @@ const ACTIVITY_SPECIFIC: {
   { re: /수족관|아쿠아리움|aquarium/iu, focus: "수족관", subtype: "general" },
   { re: /동물원|zoo/iu, focus: "동물원", subtype: "general" },
   { re: /전망대|타워|전망|observatory|tower/iu, focus: "전망대", subtype: "photo_spot" },
-  { re: /미술관|박물관|museum|gallery|전시/iu, focus: "박물관·미술관", subtype: "museum" },
+  { re: /미술관|박물관|museum|gallery|exhibit|exhibition|art\s*museum|national\s*museum|modern\s*art/iu, focus: "박물관·미술관", subtype: "museum" },
   { re: /온천|스파|onsen|spa/iu, focus: "온천·스파", subtype: "general" },
   { re: /해변|바닷가|해수욕장|beach/iu, focus: "해변", subtype: "photo_spot" },
-  { re: /공원|park(?!ing)|정원|garden|산책/iu, focus: "공원", subtype: "park" },
-  { re: /쇼핑|아울렛|아웃렛|백화점|mall|shopping|outlet|market|상점가/iu, focus: "쇼핑", subtype: "shopping" },
-  { re: /야시장|야경|night\s*market|night\s*view|nightlife|night\s*life|club|루프탑|클럽/iu, focus: "야시장·야경", subtype: "nightlife" },
-  { re: /포토\s*스팟|포토스팟|사진\s*명소|인생샷|photo\s*spot|view\s*point|viewpoint/iu, focus: "포토스팟", subtype: "photo_spot" },
+  { re: /공원|park(?!ing)|정원|garden|arboretum|botanical|trail|hiking|walk(?:ing)?\s*path|promenade|산책/iu, focus: "공원", subtype: "park" },
+  { re: /쇼핑|아울렛|아웃렛|백화점|mall|shopping|outlet|market|bazaar|souq|store|shopping\s*street|상점가/iu, focus: "쇼핑", subtype: "shopping" },
+  { re: /야시장|야경|night\s*market|night\s*view|nightlife|night\s*life|club|rooftop|skybar|lounge|bar\b|pub\b|live\s*music|재즈바|루프탑|클럽/iu, focus: "야시장·야경", subtype: "nightlife" },
+  { re: /포토\s*스팟|포토스팟|사진\s*명소|인생샷|photo\s*spot|view\s*point|viewpoint|scenic|instagrammable|lookout/iu, focus: "포토스팟", subtype: "photo_spot" },
 ];
 
 /** Amenity intent — pharmacy/convenience/etc. Generic place loader. */

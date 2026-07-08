@@ -10,6 +10,8 @@ assert.equal(isExplicitActivityLandmarkQuery("도쿄 디즈니"), true);
 assert.equal(isExplicitActivityLandmarkQuery("도쿄 디즈니랜드"), true);
 assert.equal(isExplicitActivityLandmarkQuery("Tokyo Disney"), true);
 assert.equal(isExplicitActivityLandmarkQuery("유니버설 스튜디오"), true);
+assert.equal(isExplicitActivityLandmarkQuery("Eiffel Tower"), true);
+assert.equal(isExplicitActivityLandmarkQuery("Louvre Museum"), true);
 assert.equal(isExplicitActivityLandmarkQuery("놀거리"), false);
 assert.equal(isExplicitActivityLandmarkQuery("라멘"), false);
 
