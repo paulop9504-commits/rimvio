@@ -69,6 +69,7 @@ export async function GET(request: NextRequest) {
   });
   const preference = await resolvePlacePreference({ vibe: "unknown" });
   const withThumbnails = await attachPlaceThumbnails(raw, {
+    anchor: null,
     cuisine: query,
   });
   const ranked = enrichPlaceCandidates({
