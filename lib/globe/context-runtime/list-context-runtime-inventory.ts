@@ -46,23 +46,9 @@ function buildPinnedItem(
 ): ContextRuntimeItem {
   return {
     id: `pinned:${pinned.resourceId}`,
-    kind:
-      pinned.kind === "lodging"
-        ? "pinned_lodging"
-        : pinned.kind === "activity"
-          ? "pinned_activity"
-          : pinned.kind === "amenity"
-            ? "pinned_amenity"
-            : "pinned_eatery",
+    kind: pinned.kind === "lodging" ? "pinned_lodging" : "pinned_eatery",
     label: pinned.label,
-    subtitle:
-      pinned.kind === "lodging"
-        ? "확정 숙소"
-        : pinned.kind === "activity"
-          ? "확정 놀거리"
-          : pinned.kind === "amenity"
-            ? "확정 편의 장소"
-            : "확정 맛집",
+    subtitle: pinned.kind === "lodging" ? "확정 숙소" : "확정 맛집",
     lat: pinned.lat ?? null,
     lng: pinned.lng ?? null,
     previewUrl: pinned.previewUrl ?? null,
