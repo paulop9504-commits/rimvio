@@ -38,7 +38,7 @@ export async function maybeSpawnDiscoveryLensesFromChoice(input: {
           .map((node) => node.trim())
           .filter((node) => node.length >= 2)
           .slice(0, 3);
-  if (landmarks.length < 2) {
+  if (landmarks.length < 1) {
     return null;
   }
   return spawnDiscoveryLenses({

@@ -52,9 +52,10 @@ export function createGlobeEateryMarkerElement(
     }
     const thumbUrl = marker.thumbnailUrl?.trim();
     if (thumbUrl) {
+      const isActivity = marker.resourceId.includes(":activity:");
       prependGlobeDiscoveryPillThumbnail(pill, {
         thumbnailUrl: thumbUrl,
-        fallbackGlyph: "맛",
+        fallbackGlyph: isActivity ? "놀" : "맛",
       });
     }
     const badgeLabel = marker.ontologyBadgeLabel?.trim();

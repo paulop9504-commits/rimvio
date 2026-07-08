@@ -19,6 +19,8 @@ import { GlobeContextConditionPromptFrame } from "@/components/globe/globe-conte
 import { GlobeContextAgentConnector } from "@/components/globe/globe-context-agent-connector";
 import { GlobeResourceReelStage } from "@/components/globe/globe-resource-reel-stage";
 import { dispatchGlobeResourceReelFocus } from "@/lib/globe/resource-reel";
+import { subscribeGlobePlaceOntologyFocus } from "@/lib/globe/place-ontology/globe-place-ontology-focus-bridge";
+import { MAP_FOCUS_PIN_VIEWPORT_Y } from "@/lib/globe/map-anchored-overlay-layout";
 import { useGlobeLodgingDiscoverySession } from "@/hooks/use-globe-lodging-discovery-session";
 import { useGlobeEateryDiscoverySession } from "@/hooks/use-globe-eatery-discovery-session";
 import { useBrainSurfaceProjectionReveal } from "@/hooks/use-brain-surface-projection-reveal";
@@ -1854,10 +1856,12 @@ function GlobeHomeBody() {
 
   const launchBrainSurfaceProjection = useCallback(
     async (eventId: string) => {
-      if (brainSurfaceBatchRef.current?.eventId === eventId) {
+      if (brainSurfaceLaunchInFlightRef.current === eventId) {
         return;
       }
-      if (brainSurfaceLaunchInFlightRef.current === eventId) {
+      // Reuse in-memory batch when already projected for this context.
+      if (brainSurfaceBatchRef.current?.eventId === eventId) {
+        setBrainSurfaceLaunchToken((value) => value + 1);
         return;
       }
       brainSurfaceLaunchInFlightRef.current = eventId;
@@ -1927,6 +1931,25 @@ function GlobeHomeBody() {
     },
     [activeContextEvent, stopSpatialTraceTour],
   );
+
+  useEffect(() => {
+    return subscribeGlobePlaceOntologyFocus((detail) => {
+      const eventId = detail.contextEventId.trim();
+      if (!eventId) {
+        return;
+      }
+      void launchBrainSurfaceProjection(eventId).then(() => {
+        setBrainSurfaceShadowExpanded(true);
+        setBrainSurfaceMode("spread");
+        setBrainSurfaceFocusedFamily(null);
+      });
+      if (Number.isFinite(detail.lat) && Number.isFinite(detail.lng)) {
+        globeRef.current?.flyToPin(detail.lat, detail.lng, "street", {
+          pinViewportY: MAP_FOCUS_PIN_VIEWPORT_Y,
+        });
+      }
+    });
+  }, [launchBrainSurfaceProjection]);
 
   const handleBrainSurfaceMarkerPress = useCallback(
     (candidateId: string) => {

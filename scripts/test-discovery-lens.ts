@@ -103,7 +103,7 @@ const spawnKo = buildDiscoveryLensSpawnAnnouncement({
 });
 assert.match(spawnKo, /아이와 함께/u);
 assert.match(spawnKo, /디즈니/u);
-assert.match(spawnKo, /a · b · c/u);
+assert.match(spawnKo, /찾아볼게요/u);
 
 const prefetchKo = buildDiscoveryLensPrefetchReadyAnnouncement({
   lens: mockSession.lenses[0]!,

@@ -296,6 +296,7 @@ export const copy = {
     activitySubtypeBadgePark: "공원",
     activitySubtypeBadgeNightlife: "야경",
     activitySubtypeBadgePhotoSpot: "포토",
+    activitySubtypeBadgeGeneral: "놀거리",
     activitySubtypeActionGeneral: "길찾기",
     activitySubtypeActionShopping: "매장 길찾기",
     activitySubtypeActionMuseum: "관람 길찾기",
@@ -310,6 +311,8 @@ export const copy = {
     activitySubtypeChatHintPhotoSpot: "사진 찍을 자리까지 길찾기로 바로 이동할 수 있어요",
     geoOntologyRootEatery: "맛집",
     geoOntologyRootLodging: "숙소",
+    geoOntologyRootActivity: "놀거리",
+    geoOntologyRootAmenity: "편의",
     geoOntologyContextChain: (place: string, theme: string) => `${place} · ${theme}`,
     geoOntologyFacetDistance: (transport: string) =>
       transport === "walk" ? "거리 · 도보" : transport === "car" ? "거리 · 차량" : "거리 · 대중교통",
@@ -1924,7 +1927,7 @@ export const copy = {
       lensIds: string;
       count: number;
     }) =>
-      `${input.reasonKo} 곳 ${input.count}군데를 지도에 잡아뒀어요. ${input.placeLabels} — ${input.lensIds} 중 하나 골라 보세요.`,
+      `${input.reasonKo} 곳 ${input.count}군데에 렌즈를 깔고, 그 주변 놀거리를 바로 찾아볼게요. ${input.placeLabels}`,
     discoveryLensPrefetchReady: (input: {
       labelKo: string;
       count: number;

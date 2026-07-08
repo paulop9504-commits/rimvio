@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
 import type { RefObject } from "react";
 import { toast } from "sonner";
@@ -48,6 +48,10 @@ import {
   publishContextAgentGlobeMarkerFocus,
 } from "@/lib/globe/context-agent";
 import { snapGlobeToContextConditionScout } from "@/lib/globe/context-agent/snap-globe-to-context-agent-anchor";
+import {
+  dispatchGlobePlaceOntologyFocus,
+  recommendationKindToReelKind,
+} from "@/lib/globe/place-ontology/globe-place-ontology-focus-bridge";
 import {
   confirmContextActionInjection,
   dismissContextActionInjection,
@@ -349,6 +353,24 @@ export function GlobeContextConditionPromptFrame({
     });
   }, [event, open, ontologyDevSurface]);
 
+  const openPlaceOntologyResources = useCallback(
+    (row: ContextConditionRecommendation) => {
+      if (!event) {
+        return;
+      }
+      dispatchGlobePlaceOntologyFocus({
+        contextEventId: event.id,
+        placeId: row.placeId,
+        kind: recommendationKindToReelKind(row.kind),
+        lat: row.lat,
+        lng: row.lng,
+        title: row.title,
+        surface: "detail",
+      });
+    },
+    [event],
+  );
+
   useEffect(() => {
     if (!open || !event) {
       return;
@@ -391,8 +413,22 @@ export function GlobeContextConditionPromptFrame({
       globeRef?.current?.snapToPin(detail.lat, detail.lng, "street", {
         pinViewportY: MAP_FOCUS_PIN_VIEWPORT_Y,
       });
+      const focused = recommendations.find((row) => row.placeId === detail.placeId);
+      if (focused) {
+        openPlaceOntologyResources(focused);
+      } else {
+        dispatchGlobePlaceOntologyFocus({
+          contextEventId: event.id,
+          placeId: detail.placeId,
+          kind: recommendationKindToReelKind(detail.kind),
+          lat: detail.lat,
+          lng: detail.lng,
+          title: detail.title,
+          surface: "detail",
+        });
+      }
     });
-  }, [event, globeRef, open, recommendations]);
+  }, [event, globeRef, open, openPlaceOntologyResources, recommendations]);
 
   useEffect(() => {
     if (!open || !event) {
@@ -605,9 +641,11 @@ export function GlobeContextConditionPromptFrame({
       return false;
     }
     const pinned = pinnedByKind;
-    return palantirPrimaryRecommendation.kind === "lodging"
-      ? pinned.lodging === palantirPrimaryRecommendation.placeId
-      : pinned.eatery === palantirPrimaryRecommendation.placeId;
+    if (palantirPrimaryRecommendation.kind === "lodging") {
+      return pinned.lodging === palantirPrimaryRecommendation.placeId;
+    }
+    // Activity/amenity pins reuse the eatery inventory channel.
+    return pinned.eatery === palantirPrimaryRecommendation.placeId;
   }, [event, palantirPrimaryRecommendation, pinnedByKind]);
 
   const handlePalantirCommit = () => {
@@ -632,6 +670,7 @@ export function GlobeContextConditionPromptFrame({
       });
       setComposeThread(readContextAgentComposeThread(event.id));
       toast.success(outcome.action.labelKo);
+      openPlaceOntologyResources(palantirPrimaryRecommendation);
     } catch {
       toast.message(copy.globe.palantirCommitFailed);
     } finally {
@@ -670,6 +709,7 @@ export function GlobeContextConditionPromptFrame({
       globeRef?.current?.snapToPin(row.lat, row.lng, "street", {
         pinViewportY: MAP_FOCUS_PIN_VIEWPORT_Y,
       });
+      openPlaceOntologyResources(row);
     }
   };
 
@@ -711,6 +751,7 @@ export function GlobeContextConditionPromptFrame({
     globeRef?.current?.snapToPin(row.lat, row.lng, "street", {
       pinViewportY: MAP_FOCUS_PIN_VIEWPORT_Y,
     });
+    openPlaceOntologyResources(row);
   };
 
   const chipsDisabled =
@@ -936,6 +977,7 @@ export function GlobeContextConditionPromptFrame({
             anchorLat={anchorLat}
             anchorLng={anchorLng}
             anchorPriceKrw={anchorPriceKrw}
+            globeRef={globeRef}
             onPinned={handlePinned}
             onPalantirOperatorUpdate={handlePalantirOperatorUpdate}
             onUserCompose={handleUserCompose}
