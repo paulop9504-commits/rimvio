@@ -35,6 +35,8 @@ type LodgingPredictedExperienceInput = {
   tempC?: number | null;
   priceKrw?: number | null;
   partnerLabel?: string | null;
+  /** When true, priceKrw is the stay total (LiteAPI live rates), not per-night. */
+  priceIsStayTotal?: boolean;
 };
 
 type EateryPredictedExperienceInput = {
@@ -159,7 +161,11 @@ function buildLodgingProvenance(
             .map((chip) => chip.label)
             .join(" · ")}`
         : null,
-      input.priceKrw != null ? `가격대|1박 ${formatKrw(input.priceKrw)}` : null,
+      input.priceKrw != null
+        ? input.priceIsStayTotal
+          ? `가격|${formatKrw(input.priceKrw)}`
+          : `가격대|1박 ${formatKrw(input.priceKrw)}`
+        : null,
       input.partnerLabel ? `공급자|${input.partnerLabel}` : null,
       input.stayWindow?.confidence === "estimated" ? "시간 신뢰도|머무는 시간은 추정값이에요" : null,
     ],
