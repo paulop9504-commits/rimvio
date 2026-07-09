@@ -5,6 +5,8 @@ import {
   classifyPlaceCategory,
   type PlaceCategory,
 } from "@/lib/globe/context-condition-ai/discovery-guard/classify-place-category";
+import type { ExplorationPolicyKnobs } from "@/lib/globe/discovery-policy/apply-exploration-mode";
+import { explorationScoreBias } from "@/lib/globe/discovery-policy/exploration-score-bias";
 
 export type ScoredPlaceRecommendation = {
   row: ContextPlaceInventoryRow;
@@ -153,6 +155,7 @@ export function scorePlaceRecommendations(input: {
   lng?: number | null;
   focusMatch?: string | null;
   activitySubtype?: ActivitySubtype | null;
+  exploration?: ExplorationPolicyKnobs;
 }): ScoredPlaceRecommendation[] {
   const tokens = focusTokens(input.focusMatch);
   const activitySubtype = input.activitySubtype ?? "general";
@@ -168,7 +171,14 @@ export function scorePlaceRecommendations(input: {
     const ratingScore =
       typeof row.rating === "number" && Number.isFinite(row.rating) ? row.rating * 8 : 0;
     const openScore = row.openNow === true ? 12 : 0;
-    const score = 60 + categoryScore + distanceScore + focusScore + ratingScore + openScore;
+    let score = 60 + categoryScore + distanceScore + focusScore + ratingScore + openScore;
+    if (input.exploration) {
+      score += explorationScoreBias({
+        knobs: input.exploration,
+        rating: row.rating,
+        labels: [row.name, row.categoryLabel, row.specialReasonKo, row.address],
+      });
+    }
     const matchReasons = [
       row.specialReasonKo?.trim() || null,
       focusScore > 0 ? "선택한 장소 의도와 직접 맞아요" : null,

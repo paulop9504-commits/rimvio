@@ -4,6 +4,8 @@
  */
 
 import { isInstantPoiSearch } from "@/lib/globe/context-condition-ai/instant-poi-search";
+import { isInstantEaterySearch } from "@/lib/globe/context-condition-ai/instant-eatery-search";
+import { isLodgingBookingQuery } from "@/lib/globe/context-hub/lodging-booking-slots";
 import { parseLensCommand } from "@/lib/globe/discovery-lens/parse-lens-command";
 import { parseResourceReelKindFilter } from "@/lib/globe/resource-reel/parse-resource-reel-kind-filter";
 import {
@@ -42,6 +44,14 @@ export function gateOperatorTurnSync(input: {
 
   if (isInstantPoiSearch(text)) {
     return { tool: "scout", reason: "instant_poi_search" };
+  }
+
+  if (isInstantEaterySearch(text)) {
+    return { tool: "scout", reason: "instant_eatery_search" };
+  }
+
+  if (isLodgingBookingQuery(text)) {
+    return { tool: "scout", reason: "instant_lodging_search" };
   }
 
   const kindFilter = parseResourceReelKindFilter(text);

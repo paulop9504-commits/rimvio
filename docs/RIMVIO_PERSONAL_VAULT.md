@@ -2,7 +2,7 @@
 
 > **Status:** Phase 1 (2026-06) — foundation  
 > **Tenant model:** `auth.users.id` = tenant boundary (logical isolation + strict RLS)  
-> **SSOT locally:** EventCandidate remains client SSOT; vault = encrypted cloud mirror
+> **Related:** [RIMVIO_PERSONAL_VAULT.md](./RIMVIO_PERSONAL_VAULT.md) · [RIMVIO_IDENTITY_VAULT.md](./RIMVIO_IDENTITY_VAULT.md)  
 
 ---
 
@@ -54,6 +54,7 @@ Dev fallback mirrors integrations pattern (dev-only default).
 | `supabase/migrations/046_user_personal_vault.sql` | Tables · RLS · bucket |
 | `lib/vault/encrypt-vault-payload.ts` | Per-user AES-GCM |
 | `lib/vault/vault-server-store.ts` | DB + storage paths |
+| `lib/identity-vault/` | Travel credentials · Hub slot mapping |
 | `app/api/vault/route.ts` | ensure · list |
 | `app/api/vault/objects/route.ts` | upsert encrypted object |
 | `scripts/test-personal-vault.ts` | crypto + id regression |

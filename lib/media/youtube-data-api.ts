@@ -349,6 +349,17 @@ export type YouTubeVideoQualityRow = {
   viewCount: number | null;
 };
 
+export type YouTubeVideoPlaybackRow = {
+  videoId: string;
+  embeddable: boolean;
+  viewCount: number | null;
+  durationSeconds: number | null;
+  title: string | null;
+  description: string | null;
+  channelTitle: string | null;
+  thumbnailUrl: string | null;
+};
+
 /** Batch embed + view-count gate for search candidates. */
 export async function fetchYouTubeVideoQualityByIds(
   videoIds: readonly string[],
@@ -377,6 +388,46 @@ export async function fetchYouTubeVideoQualityByIds(
         videoId,
         embeddable: item.status?.embeddable === true,
         viewCount: parseViewCount(item.statistics?.viewCount),
+      });
+    }
+  }
+  return out;
+}
+
+/** Batch playback metadata — duration + snippet for lodging preview gate. */
+export async function fetchYouTubeVideoPlaybackByIds(
+  videoIds: readonly string[],
+): Promise<Map<string, YouTubeVideoPlaybackRow>> {
+  const apiKey = resolveYouTubeDataApiKey();
+  const ids = [...new Set(videoIds.map((id) => normalizeText(id)).filter(Boolean))];
+  const out = new Map<string, YouTubeVideoPlaybackRow>();
+  if (!apiKey || ids.length === 0) {
+    return out;
+  }
+
+  for (let offset = 0; offset < ids.length; offset += 50) {
+    const chunk = ids.slice(offset, offset + 50);
+    const payload = await fetchYouTubeDataJson<
+      YouTubeApiListResponse<YouTubeVideoItem>
+    >(apiKey, "videos", {
+      part: "snippet,contentDetails,status,statistics",
+      id: chunk.join(","),
+    });
+    for (const item of payload?.items ?? []) {
+      const mapped = mapVideoItem(item);
+      const videoId = mapped?.videoId;
+      if (!videoId || !mapped) {
+        continue;
+      }
+      out.set(videoId, {
+        videoId,
+        embeddable: mapped.embeddable,
+        viewCount: mapped.viewCount,
+        durationSeconds: mapped.durationSeconds,
+        title: mapped.title,
+        description: mapped.description,
+        channelTitle: mapped.channelTitle,
+        thumbnailUrl: mapped.thumbnailUrl,
       });
     }
   }

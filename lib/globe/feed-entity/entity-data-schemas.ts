@@ -1,0 +1,133 @@
+import type { DiscoveryEntityKind, EntityDataSchema } from "@/lib/globe/feed-entity/types";
+
+export const ENTITY_DATA_SCHEMAS: Record<DiscoveryEntityKind, EntityDataSchema> = {
+  hotel: {
+    entityKind: "hotel",
+    requiredData: [
+      "room_photos",
+      "location_info",
+      "price_range",
+      "reviews_by_category",
+      "amenities",
+      "breakfast_info",
+      "video_tour",
+    ],
+    extractionFocusKo: "시각적 정보와 위치, 시설 중심",
+    reviewCategories: ["cleanliness", "staff", "value", "noise", "comfort"],
+    priorityOrder: [
+      "room_photos",
+      "video_tour",
+      "location_info",
+      "price_range",
+      "reviews_by_category",
+      "amenities",
+      "breakfast_info",
+    ],
+  },
+  restaurant: {
+    entityKind: "restaurant",
+    requiredData: [
+      "food_photos",
+      "menu_with_prices",
+      "reviews_with_taste_rating",
+      "location_info",
+      "operation_hours",
+      "waiting_time",
+      "reservation_info",
+      "video_tour",
+    ],
+    extractionFocusKo: "음식 사진과 리뷰, 실용 정보 중심",
+    reviewCategories: [
+      "taste",
+      "value",
+      "service_speed",
+      "atmosphere",
+      "cleanliness",
+    ],
+    priorityOrder: [
+      "food_photos",
+      "video_tour",
+      "menu_with_prices",
+      "reviews_with_taste_rating",
+      "location_info",
+      "operation_hours",
+      "waiting_time",
+      "reservation_info",
+    ],
+  },
+  cafe: {
+    entityKind: "cafe",
+    requiredData: [
+      "drink_food_photos",
+      "interior_design",
+      "wifi_quality",
+      "noise_level",
+      "reviews_by_vibe",
+      "working_hours",
+      "seating_capacity",
+    ],
+    extractionFocusKo: "분위기 사진과 작업·휴식 적합성",
+    reviewCategories: ["ambiance", "wifi", "quiet", "comfort", "noise"],
+    priorityOrder: [
+      "drink_food_photos",
+      "interior_design",
+      "wifi_quality",
+      "noise_level",
+      "reviews_by_vibe",
+      "working_hours",
+      "seating_capacity",
+    ],
+  },
+  shopping: {
+    entityKind: "shopping",
+    requiredData: [
+      "product_photos",
+      "price_range",
+      "store_layout_photos",
+      "product_variety",
+      "reviews_by_value",
+      "location_info",
+      "payment_methods",
+    ],
+    extractionFocusKo: "상품 사진과 가격·동선 중심",
+    reviewCategories: ["value", "quality", "variety", "staff", "cleanliness"],
+    priorityOrder: [
+      "product_photos",
+      "price_range",
+      "product_variety",
+      "store_layout_photos",
+      "reviews_by_value",
+      "location_info",
+      "payment_methods",
+    ],
+  },
+  attraction: {
+    entityKind: "attraction",
+    requiredData: [
+      "attraction_photos",
+      "access_info",
+      "crowd_timing",
+      "ticket_info",
+      "reviews_by_category",
+      "location_info",
+      "video_tour",
+    ],
+    extractionFocusKo: "동선·혼잡도·입장 정보 중심",
+    reviewCategories: ["access", "crowd", "value", "atmosphere", "comfort"],
+    priorityOrder: [
+      "attraction_photos",
+      "video_tour",
+      "access_info",
+      "crowd_timing",
+      "ticket_info",
+      "reviews_by_category",
+      "location_info",
+    ],
+  },
+};
+
+export function readEntityDataSchema(
+  entityKind: DiscoveryEntityKind,
+): EntityDataSchema {
+  return ENTITY_DATA_SCHEMAS[entityKind];
+}

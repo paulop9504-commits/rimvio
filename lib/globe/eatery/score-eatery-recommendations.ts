@@ -7,6 +7,8 @@ import {
   type EateryRecommendReasonInput,
 } from "@/lib/globe/eatery/explain-eatery-recommendation-ko";
 import { findLatestPersonaSignal } from "@/lib/persona/persona-inference-store";
+import type { ExplorationPolicyKnobs } from "@/lib/globe/discovery-policy/apply-exploration-mode";
+import { explorationScoreBias } from "@/lib/globe/discovery-policy/exploration-score-bias";
 
 export type ScoredEateryRecommendation = {
   row: ContextEateryInventoryRow;
@@ -168,6 +170,7 @@ export function scoreEateryRecommendations(input: {
   distanceWeight?: number;
   /** Boost rows whose name/category matches this focus (e.g. "유니버설 스튜디오"). */
   focusMatch?: string | null;
+  exploration?: ExplorationPolicyKnobs;
 }): ScoredEateryRecommendation[] {
   const lat = input.lat ?? null;
   const lng = input.lng ?? null;
@@ -250,6 +253,19 @@ export function scoreEateryRecommendations(input: {
     }
     if (genericPreference?.value === "again" && row.specialReasonKo?.trim()) {
       score += 10;
+    }
+    if (input.exploration) {
+      score += explorationScoreBias({
+        knobs: input.exploration,
+        rating: row.rating,
+        labels: [
+          row.name,
+          row.categoryLabel,
+          row.cuisineHint,
+          row.specialReasonKo,
+          row.providerLabel,
+        ],
+      });
     }
 
     const reasonInput: EateryRecommendReasonInput = {

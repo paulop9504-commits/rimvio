@@ -6,7 +6,10 @@
  * question and which axis it should be. The LLM later authors the wording; this
  * layer owns the "should we ask, and about what" decision.
  */
+import { isInstantLodgingSearch } from "@/lib/globe/context-condition-ai/instant-lodging-search";
 import { isInstantPoiSearch } from "@/lib/globe/context-condition-ai/instant-poi-search";
+import { isInstantEaterySearch } from "@/lib/globe/context-condition-ai/instant-eatery-search";
+import { isBroadActivityQuery } from "@/lib/globe/context-condition-ai/resolve-local-discovery-domain";
 import {
   convergenceSchemaFor,
   detectConvergenceIntent,
@@ -36,6 +39,21 @@ export function assessIntentConvergence(input: {
 }): IntentConvergenceAssessment {
   if (isInstantPoiSearch(input.message)) {
     return { shouldAsk: false, intentType: null };
+  }
+  if (isInstantLodgingSearch(input.message)) {
+    return { shouldAsk: false, intentType: null };
+  }
+  if (isInstantEaterySearch(input.message)) {
+    return { shouldAsk: false, intentType: null };
+  }
+  // Broad "놀거리" / "갈만한 곳" — scout the default cluster immediately; do not
+  // loop on vibe chips before the first search attempt.
+  if (isBroadActivityQuery(input.message)) {
+    return { shouldAsk: false, intentType: "activity" };
+  }
+  const earlyIntent = detectConvergenceIntent(input.message);
+  if (earlyIntent === "outing") {
+    return { shouldAsk: false, intentType: "outing" };
   }
   // A chosen chip already converged the intent → search now.
   if (input.answers.activityFocus?.trim()) {

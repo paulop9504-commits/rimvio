@@ -13,22 +13,36 @@ import { GlobePalantirOntologyHistoryHint } from "@/components/globe/globe-palan
 import { GlobeContextAgentOntologyGraph } from "@/components/globe/globe-context-agent-ontology-graph";
 import { GlobeContextAgentProcessStrip } from "@/components/globe/globe-context-agent-process-strip";
 import { GlobeContextAgentRefineChips } from "@/components/globe/globe-context-agent-refine-chips";
+import { GlobeContextExplorationModeChips } from "@/components/globe/globe-context-exploration-mode-chips";
 import { GlobeContextActionInjectionCard } from "@/components/globe/globe-context-action-injection-card";
-import { GlobeContextConditionPinBar, type GlobeContextConditionPinBarHandle } from "@/components/globe/globe-context-condition-pin-bar";
+import { GlobeHubCheckoutSheet } from "@/components/globe/globe-hub-checkout-sheet";
+import { GlobeContextConditionPinBar, type GlobeContextConditionPinBarHandle, type IntakeSlotsSubmitInput } from "@/components/globe/globe-context-condition-pin-bar";
 import { GlobeDiscoveryLensBar } from "@/components/globe/globe-discovery-lens-bar";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import type { ContextBlueprint } from "@/lib/context-blueprint/types";
 import { copy } from "@/lib/copy/human-ko";
 import { MAP_FOCUS_PIN_VIEWPORT_Y } from "@/lib/globe/map-anchored-overlay-layout";
+import { hasScoutRevealPending } from "@/lib/globe/context-condition-ai/context-condition-scout-reveal-pending-store";
+import { revealContextConditionScout } from "@/lib/globe/context-condition-ai/reveal-context-condition-scout";
 import {
   readContextConditionLastBatch,
   readContextConditionPinnedPlaceIds,
+  pinContextConditionRecommendation,
   isContextConditionLastBatchMisanchored,
   clearContextConditionLastBatch,
   clearContextConditionPending,
   type ContextConditionAnchorPinOutcome,
 } from "@/lib/globe/context-condition-ai";
+import { dispatchIntelligentDiscoveryFeedOpen } from "@/lib/globe/intelligent-pin";
+import { useIntelligentDiscoveryFeedFocus } from "@/lib/globe/intelligent-pin/use-intelligent-discovery-feed-focus";
+import { isAlternatePlaceSearch } from "@/lib/globe/context-condition-ai/is-alternate-place-search";
+import {
+  readExplorationModeOverride,
+  resolveExplorationMode,
+  subscribeExplorationModeOverride,
+  type ExplorationMode,
+} from "@/lib/globe/discovery-policy";
 import { writeScoutSelectedAnchor } from "@/lib/globe/contracts";
 import type {
   ContextConditionRecommendation,
@@ -67,16 +81,23 @@ import type { ContextActionInjection } from "@/lib/globe/context-action-injectio
 import { prefetchContextAgentSurroundings } from "@/lib/globe/context-agent";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 import {
+  subscribeLodgingHubCheckoutOpen,
+  type HubLodgingCheckoutSession,
+} from "@/lib/globe/hub-checkout";
+import { resolveLodgingRoomCardStep } from "@/lib/globe/hub-checkout/resolve-lodging-hub-checkout-session";
+import { openIdentityVaultSettings } from "@/lib/identity-vault/open-identity-vault-settings-bridge";
+import {
   appendContextAgentComposeTurn,
+  appendLodgingRoomCardsComposeTurn,
   clearContextAgentComposeThread,
   CONTEXT_AGENT_ASK_FIRST,
+  markScoutFeedGateOpened,
   readContextAgentComposeThread,
   resolveContextAgentPipelinePhase,
   resolveGlobeComposePipelineLabel,
   subscribeContextAgentComposeThread,
   type ContextAgentComposeTurn,
 } from "@/lib/globe/assistant";
-import { isAlternatePlaceSearch } from "@/lib/globe/context-condition-ai/is-alternate-place-search";
 import {
   resolveCicadaAgentPhase,
   resolveCicadaAgentPhaseLabel,
@@ -114,6 +135,7 @@ import {
 } from "@/lib/globe/discovery-lens";
 import { cn } from "@/lib/utils";
 import {
+  RIMVIO_ASSISTANT_FEED_BACKDROP_Z_INDEX,
   RIMVIO_ASSISTANT_FRAME_Z_INDEX,
   rimvioAssistantFrameShellClass,
   rimvioAssistantTitleClass,
@@ -170,6 +192,9 @@ export function GlobeContextConditionPromptFrame({
     (choice: LocalDiscoveryQuestionChoice) => void
   >(() => {});
   const lensHandlerRef = useRef<(lensId: DiscoveryLensId) => void>(() => {});
+  const intakeSubmitRef = useRef<
+    ((input: IntakeSlotsSubmitInput) => Promise<void>) | null
+  >(null);
   const [lensSession, setLensSession] = useState<DiscoveryLensSession | null>(
     () => (event ? readDiscoveryLensSession(event.id) : null),
   );
@@ -177,8 +202,12 @@ export function GlobeContextConditionPromptFrame({
   const prefetchStartedRef = useRef(false);
   const [refineBusy, setRefineBusy] = useState(false);
   const [commitBusy, setCommitBusy] = useState(false);
+  const [pickBusyPlaceId, setPickBusyPlaceId] = useState<string | null>(null);
+  const [scoutFeedGateBusy, setScoutFeedGateBusy] = useState(false);
+  const discoveryFeedFocus = useIntelligentDiscoveryFeedFocus(event?.id);
   const [pinnedRevision, setPinnedRevision] = useState(0);
-  const [, setActiveSpec] = useState<
+  const [explorationRevision, setExplorationRevision] = useState(0);
+  const [activeSpec, setActiveSpec] = useState<
     import("@/lib/globe/context-condition-ai/local-discovery-action-types").LocalDiscoveryActionSpec | null
   >(null);
   const [ontologyGraph, setOntologyGraph] = useState<GeoOntologyGraph | null>(null);
@@ -190,6 +219,9 @@ export function GlobeContextConditionPromptFrame({
   const [ontologyExpanded, setOntologyExpanded] = useState(false);
   const [composeThread, setComposeThread] = useState<readonly ContextAgentComposeTurn[]>([]);
   const [typewriterTurnId, setTypewriterTurnId] = useState<string | null>(null);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [checkoutSession, setCheckoutSession] =
+    useState<HubLodgingCheckoutSession | null>(null);
   const lastFlownPlaceRef = useRef<string | null>(null);
   const lastInterpretationRef = useRef<string | null>(null);
   const ontologyDevSurface = isPalantirOntologyDevSurfaceEnabled();
@@ -495,6 +527,54 @@ export function GlobeContextConditionPromptFrame({
     return readContextConditionPinnedPlaceIds(freshEvent);
   }, [event, pinnedRevision]);
 
+  useEffect(() => {
+    return subscribeLodgingHubCheckoutOpen(({ session }) => {
+      setCheckoutSession(session);
+      setCheckoutOpen(true);
+    });
+  }, []);
+
+  const handlePickRecommendation = useCallback(
+    async (item: ContextConditionRecommendation) => {
+      if (!event) {
+        return;
+      }
+      setPickBusyPlaceId(item.placeId);
+      try {
+        pinContextConditionRecommendation({
+          eventId: event.id,
+          recommendation: item,
+        });
+        setPinnedRevision((value) => value + 1);
+        setContextAgentSessionPhase("pinned");
+        const pinLine = copy.globe.contextQuickPinToast(item.title);
+        appendContextAgentComposeTurn(event.id, {
+          role: "assistant",
+          kind: "globe_apply",
+          text: pinLine,
+        });
+        if (item.kind === "lodging") {
+          const freshEvent = findLifeEventCandidate(event.id) ?? event;
+          const step = resolveLodgingRoomCardStep(freshEvent, item.placeId);
+          if (step) {
+            appendLodgingRoomCardsComposeTurn(event.id, {
+              placeId: item.placeId,
+              resourceId: step.resourceId,
+              title: item.title,
+            });
+          }
+        }
+        setComposeThread(readContextAgentComposeThread(event.id));
+        toast.success(pinLine);
+      } catch {
+        toast.message(copy.globe.contextConditionPinEmpty);
+      } finally {
+        setPickBusyPlaceId(null);
+      }
+    },
+    [event],
+  );
+
   const lastUserComposeLine = useMemo(
     () =>
       [...composeThread].reverse().find((turn) => turn.role === "user")?.text ?? "",
@@ -538,7 +618,7 @@ export function GlobeContextConditionPromptFrame({
       setComposeThread(readContextAgentComposeThread(event.id));
     }
 
-    if (globeRef) {
+    if (globeRef && !hasScoutRevealPending(event.id)) {
       snapGlobeToContextConditionScout(globeRef, {
         anchorLat,
         anchorLng,
@@ -548,12 +628,74 @@ export function GlobeContextConditionPromptFrame({
     }
   };
 
+  const handleOpenScoutFeed = useCallback(
+    async (input: { turnId: string; batchId: string }) => {
+      if (!event) {
+        return;
+      }
+      setScoutFeedGateBusy(true);
+      try {
+        const lastBatch = readContextConditionLastBatch(event.id);
+        if (!lastBatch || lastBatch.batchId !== input.batchId) {
+          toast.message(copy.globe.contextConditionPinEmpty);
+          return;
+        }
+        revealContextConditionScout(event.id);
+        markScoutFeedGateOpened(event.id, input.turnId);
+        setComposeThread(readContextAgentComposeThread(event.id));
+        dispatchIntelligentDiscoveryFeedOpen({
+          contextEventId: event.id,
+          source: "scout_complete",
+        });
+        if (globeRef && lastBatch.recommendations && lastBatch.recommendations.length > 0) {
+          snapGlobeToContextConditionScout(globeRef, {
+            anchorLat,
+            anchorLng,
+            recommendations: lastBatch.recommendations.map((row, index) => ({
+              kind: row.kind,
+              activitySubtype: row.activitySubtype ?? null,
+              title: row.title,
+              reasonKo: row.reasonKo,
+              rank: index + 1,
+              placeId: row.placeId ?? "",
+              lat: row.lat ?? anchorLat,
+              lng: row.lng ?? anchorLng,
+            })),
+            radiusM: lastBatch.radiusM,
+          });
+        }
+        setContextAgentSessionPhase("awaiting_human");
+      } finally {
+        setScoutFeedGateBusy(false);
+      }
+    },
+    [anchorLat, anchorLng, event, globeRef],
+  );
+
   const handleRefine = (message: string) => {
     setRefineBusy(true);
     void pinBarRef.current?.submitRefinement(message).finally(() => {
       setRefineBusy(false);
     });
   };
+
+  const handleExplorationMode = (mode: ExplorationMode) => {
+    setRefineBusy(true);
+    void pinBarRef.current?.applyExplorationMode(mode).finally(() => {
+      setRefineBusy(false);
+    });
+  };
+
+  useEffect(() => {
+    if (!event?.id) {
+      return;
+    }
+    return subscribeExplorationModeOverride((eventId) => {
+      if (eventId === event.id) {
+        setExplorationRevision((value) => value + 1);
+      }
+    });
+  }, [event?.id]);
 
   const handleConfirmActionInjection = () => {
     if (!actionInjection) {
@@ -563,6 +705,14 @@ export function GlobeContextConditionPromptFrame({
     publishContextActionInjection(confirmed);
     setActionInjection(confirmed);
     setContextAgentSessionPhase("awaiting_human");
+    if (event) {
+      appendContextAgentComposeTurn(event.id, {
+        role: "assistant",
+        kind: "text",
+        text: copy.globe.contextActionInjectedEyebrow,
+      });
+      setComposeThread(readContextAgentComposeThread(event.id));
+    }
   };
 
   const handleRejectActionInjection = () => {
@@ -662,7 +812,12 @@ export function GlobeContextConditionPromptFrame({
     if (palantirPrimaryRecommendation.kind === "lodging") {
       return pinned.lodging === palantirPrimaryRecommendation.placeId;
     }
-    // Activity/amenity pins reuse the eatery inventory channel.
+    if (palantirPrimaryRecommendation.kind === "activity") {
+      return pinned.activity === palantirPrimaryRecommendation.placeId;
+    }
+    if (palantirPrimaryRecommendation.kind === "amenity") {
+      return pinned.amenity === palantirPrimaryRecommendation.placeId;
+    }
     return pinned.eatery === palantirPrimaryRecommendation.placeId;
   }, [event, palantirPrimaryRecommendation, pinnedByKind]);
 
@@ -712,6 +867,18 @@ export function GlobeContextConditionPromptFrame({
       });
     }
   }, [event, globeRef, open, palantirWorkspace?.primaryPlaceId, recommendations]);
+
+  const explorationMode = useMemo(() => {
+    void explorationRevision;
+    if (!event) {
+      return "convergent" as const;
+    }
+    return resolveExplorationMode({
+      message: lastUserComposeLine,
+      spec: activeSpec,
+      override: readExplorationModeOverride(event.id),
+    });
+  }, [activeSpec, event, explorationRevision, lastUserComposeLine]);
 
   const handleSelectOntologyPlace = (placeId: string) => {
     if (!event) {
@@ -787,7 +954,12 @@ export function GlobeContextConditionPromptFrame({
     lifecycle: runtime.lifecycle,
   });
   const lastUserLine = lastUserComposeLine;
-  const hasPinnedSelection = Boolean(pinnedByKind.lodging || pinnedByKind.eatery);
+  const hasPinnedSelection = Boolean(
+    pinnedByKind.lodging ||
+      pinnedByKind.eatery ||
+      pinnedByKind.activity ||
+      pinnedByKind.amenity,
+  );
   const cicadaPhase = resolveCicadaAgentPhase({
     workPhase: agentSession.workPhase,
     processPhase: runtime.processPhase,
@@ -818,18 +990,32 @@ export function GlobeContextConditionPromptFrame({
     runtime.processPhase ??
     (agentSession.workPhase === "scouting" ? "exploring" : null) ??
     (agentSession.workPhase === "replanning" ? "optimizing" : null);
+  const showExplorationChips =
+    Boolean(event) &&
+    questions.length === 0 &&
+    (recommendations.length > 0 || activeSpec != null) &&
+    !showBusyStatus;
 
   return (
     <GlobeBrainSurfaceFloatingFrame
       frameId="context-condition-prompt"
-      zIndex={RIMVIO_ASSISTANT_FRAME_Z_INDEX}
+      zIndex={
+        discoveryFeedFocus
+          ? RIMVIO_ASSISTANT_FEED_BACKDROP_Z_INDEX
+          : RIMVIO_ASSISTANT_FRAME_Z_INDEX
+      }
       dragLabel={copy.globe.contextConditionPanelDragLabel}
-      className={cn(className)}
+      className={cn(
+        className,
+        discoveryFeedFocus &&
+          "pointer-events-none invisible transition-[opacity,transform] duration-200",
+      )}
       shellClassName={rimvioAssistantFrameShellClass()}
       bodyClassName="flex min-h-0 flex-col"
     >
       <div
         className="flex min-h-0 flex-1 flex-col"
+        data-globe-assistant-feed-backdrop={discoveryFeedFocus ? "true" : undefined}
         data-cicada-agent-phase={cicadaPhase}
         data-cicada-assistant-surface={cicadaSurfaceMode}
       >
@@ -949,6 +1135,14 @@ export function GlobeContextConditionPromptFrame({
               turns={composeThread}
               typewriterTurnId={typewriterTurnId}
               onTypewriterComplete={() => setTypewriterTurnId(null)}
+              pinnedByKind={pinnedByKind}
+              pickBusyPlaceId={pickBusyPlaceId}
+              onPickRecommendation={handlePickRecommendation}
+              contextEventId={event?.id ?? null}
+              onOpenIdentitySettings={openIdentityVaultSettings}
+              onIntakeSubmit={(input) => void intakeSubmitRef.current?.(input)}
+              onOpenScoutFeed={(input) => void handleOpenScoutFeed(input)}
+              scoutFeedGateBusy={scoutFeedGateBusy}
             />
           {composeThread.length === 0 && recommendations.length === 0 ? (
             <p className="px-1 text-[12px] leading-relaxed text-[#86868b]">
@@ -974,6 +1168,16 @@ export function GlobeContextConditionPromptFrame({
             <GlobeContextAgentProcessStrip activePhase={processPhase} />
           ) : null}
         </div>
+
+        {showExplorationChips ? (
+          <div className="shrink-0 border-t border-black/[0.05] px-3 py-1.5">
+            <GlobeContextExplorationModeChips
+              mode={explorationMode}
+              disabled={chipsDisabled}
+              onSelect={handleExplorationMode}
+            />
+          </div>
+        ) : null}
 
         {showRefineChips ? (
           <div className="shrink-0 border-t border-black/[0.05] px-3 py-1">
@@ -1011,10 +1215,22 @@ export function GlobeContextConditionPromptFrame({
             registerLensHandler={(handler) => {
               lensHandlerRef.current = handler;
             }}
+            registerIntakeSubmitHandler={(handler) => {
+              intakeSubmitRef.current = handler;
+            }}
             onLensSessionChange={setLensSession}
           />
         </div>
       </div>
+      <GlobeHubCheckoutSheet
+        open={checkoutOpen}
+        session={checkoutSession}
+        onOpenChange={setCheckoutOpen}
+        onOpenIdentitySettings={openIdentityVaultSettings}
+        onComplete={() => {
+          toast.success(copy.globe.lodgingRoomCardReserveDone);
+        }}
+      />
     </GlobeBrainSurfaceFloatingFrame>
   );
 }

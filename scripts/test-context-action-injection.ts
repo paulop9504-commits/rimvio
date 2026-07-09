@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
-import { buildContextLodgingBookingHandoff } from "../lib/globe/context-action-injection/build-context-action-handoff";
+import {
+  buildContextLodgingBookingHandoff,
+  buildContextLodgingHubCheckoutHandoff,
+} from "../lib/globe/context-action-injection/build-context-action-handoff";
 import {
   resolveContextActionIntent,
   isContextActionIntentMessage,
@@ -43,5 +46,15 @@ const handoff = buildContextLodgingBookingHandoff({
 });
 assert.match(handoff.href, /maps\.google\.com/);
 assert.match(handoff.labelKo, /예약/);
+
+const hubHandoff = buildContextLodgingHubCheckoutHandoff({
+  intent: {
+    kind: "pay_lodging",
+    resourceKind: "lodging",
+    confidence: 1,
+  },
+});
+assert.equal(hubHandoff.href, "rimvio://hub/lodging-checkout");
+assert.match(hubHandoff.labelKo, /결제/);
 
 console.log("test-context-action-injection: ok");

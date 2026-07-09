@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   resolvePlaceReviewQueryLang,
   scoreKoreanAudienceMatch,
+  scorePlaceNameMatch,
 } from "../lib/globe/place-review-video";
 
 assert.equal(
@@ -35,6 +36,20 @@ assert.ok(
       title: "本家柴藤 うなぎ",
       channelTitle: "大阪グルメ旅",
     }),
+);
+
+assert.ok(
+  scorePlaceNameMatch({
+    placeName: "호텔 브라이튼 시티 오사카 기타하마",
+    title: "오사카 기타하마 호텔 브라이튼 룸투어",
+    channelTitle: "여행브이로그",
+  }) >
+    scorePlaceNameMatch({
+      placeName: "호텔 브라이튼 시티 오사카 기타하마",
+      title: "神戸ホテル ルームツアー",
+      channelTitle: "関西旅行",
+    }),
+  "hotel-specific title must outrank wrong-city lodging video",
 );
 
 console.log("test-place-review-korean-audience: ok");

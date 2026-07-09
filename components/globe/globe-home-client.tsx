@@ -18,6 +18,8 @@ import { GlobeSpatialTraceTourChip } from "@/components/globe/globe-spatial-trac
 import { GlobeContextConditionPromptFrame } from "@/components/globe/globe-context-condition-prompt-frame";
 import { GlobeContextAgentConnector } from "@/components/globe/globe-context-agent-connector";
 import { GlobeResourceReelStage } from "@/components/globe/globe-resource-reel-stage";
+import { GlobeIntelligentDiscoveryStage } from "@/components/globe/globe-intelligent-discovery-stage";
+import { useIntelligentDiscoveryFeedFocus } from "@/lib/globe/intelligent-pin/use-intelligent-discovery-feed-focus";
 import { dispatchGlobeResourceReelFocus } from "@/lib/globe/resource-reel";
 import { subscribeGlobePlaceOntologyFocus } from "@/lib/globe/place-ontology/globe-place-ontology-focus-bridge";
 import { MAP_FOCUS_PIN_VIEWPORT_Y } from "@/lib/globe/map-anchored-overlay-layout";
@@ -81,6 +83,7 @@ import {
 import { ExperienceBridgeGhostSheet } from "@/components/globe/experience-bridge-ghost-sheet";
 import { GlobeSettingsSheet } from "@/components/globe/globe-settings-sheet";
 import { GlobeLodgingCheckoutHost } from "@/components/globe/globe-lodging-checkout-host";
+import { MyProfileSheet } from "@/components/peer-chat/my-profile-sheet";
 import { PinOpenSheet } from "@/components/globe/pin-open-sheet";
 import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
 import { subscribeGlobeMapMediaFocus } from "@/lib/globe/globe-map-media-focus-bridge";
@@ -328,6 +331,19 @@ import type { EventCandidate } from "@/lib/events/event-candidate";
 import type { PortalOpenSource } from "@/lib/portal/portal-types";
 import type { PortalIntentId } from "@/lib/portal/portal-types";
 import { subscribeGlobePortalOpen } from "@/lib/portal/globe-portal-open-bridge";
+import { finalizeLodgingHubCheckoutFromPgReturn, finalizeLodgingHubCheckoutFromLiteApiReturn } from "@/lib/globe/hub-checkout";
+import {
+  clearHubPgPendingFinalize,
+  readHubPgPendingFinalize,
+} from "@/lib/globe/hub-checkout/pg/hub-pg-pending-session";
+import {
+  clearLiteApiPendingCheckout,
+  readLiteApiPendingCheckout,
+} from "@/lib/globe/hub-checkout/liteapi/liteapi-pending-checkout";
+import { buildLiteApiGuestPayload } from "@/lib/globe/context-hub/providers/liteapi/build-liteapi-guest-payload";
+import { readIdentityVaultBundleClient } from "@/lib/identity-vault/read-identity-vault-bundle-client";
+import { subscribeIdentityVaultSettingsOpen } from "@/lib/identity-vault/open-identity-vault-settings-bridge";
+import { subscribeOpenPaymentVaultSettings } from "@/lib/payment-vault/open-payment-vault-settings-bridge";
 import { subscribeGlobeMarketProjectionLaunch } from "@/lib/portal/globe-market-projection-bridge";
 import {
   subscribeGlobeMarketQuickListRequest,
@@ -544,6 +560,9 @@ function GlobeHomeBody() {
   const [listOpen, setListOpen] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [identityProfileOpen, setIdentityProfileOpen] = useState(false);
+  const [identityVaultFocus, setIdentityVaultFocus] = useState(false);
+  const [paymentVaultFocus, setPaymentVaultFocus] = useState(false);
   const [stackClusters, setStackClusters] = useState<PinCluster[] | null>(null);
   const [clustersRevision, setClustersRevision] = useState(0);
   const [globeClusters, setGlobeClusters] = useState<readonly PinCluster[]>([]);
@@ -1021,6 +1040,8 @@ function GlobeHomeBody() {
     contextAgentBoundEventId,
     mediaStoreRevision,
   ]);
+
+  const discoveryFeedFocus = useIntelligentDiscoveryFeedFocus(activeContextEvent?.id);
 
   const contextAgentPanelCluster =
     contextAgentAnchorCluster ?? activeCluster;
@@ -2338,6 +2359,119 @@ function GlobeHomeBody() {
       window.removeEventListener(EVENT_CANDIDATES_UPDATED, bump);
     };
   }, []);
+
+  useEffect(() => {
+    return subscribeIdentityVaultSettingsOpen(() => {
+      setIdentityVaultFocus(true);
+      setIdentityProfileOpen(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    return subscribeOpenPaymentVaultSettings(() => {
+      setPaymentVaultFocus(true);
+      setIdentityProfileOpen(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    const hubPg = searchParams.get("hub_pg");
+    if (hubPg !== "success") {
+      return;
+    }
+    const orderId = searchParams.get("order_id")?.trim();
+    const provider = searchParams.get("provider")?.trim() ?? "pg";
+    const pending = readHubPgPendingFinalize();
+    if (!pending || !orderId) {
+      return;
+    }
+    void (async () => {
+      const bundle = await readIdentityVaultBundleClient();
+      const result = await finalizeLodgingHubCheckoutFromPgReturn({
+        pending,
+        identityBundle: bundle,
+        externalRef: `${provider}:${orderId}`,
+        handoffHref: "",
+      });
+      clearHubPgPendingFinalize();
+      if (result.ok) {
+        toast.success(copy.hubCheckout.pgReturnDone);
+      } else {
+        toast.message(copy.hubCheckout.payFailed);
+      }
+    })();
+  }, [searchParams]);
+
+  useEffect(() => {
+    const hubLiteApi = searchParams.get("hub_liteapi");
+    if (hubLiteApi !== "return") {
+      return;
+    }
+    const sessionId = searchParams.get("session_id")?.trim();
+    const pending = readLiteApiPendingCheckout();
+    if (!pending) {
+      return;
+    }
+    if (sessionId && pending.sessionId !== sessionId) {
+      return;
+    }
+    void (async () => {
+      const bundle = await readIdentityVaultBundleClient();
+      const guest = buildLiteApiGuestPayload(bundle);
+      if (!guest) {
+        toast.error(copy.globe.lodgingRoomCardIdentityMissing);
+        clearLiteApiPendingCheckout();
+        return;
+      }
+      const bookResponse = await fetch("/api/hub/checkout/liteapi/book", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prebookId: pending.prebookId,
+          transactionId: pending.transactionId,
+          guest,
+        }),
+      });
+      if (!bookResponse.ok) {
+        toast.error(copy.hubCheckout.liteapiBookFailed);
+        clearLiteApiPendingCheckout();
+        return;
+      }
+      const booked = (await bookResponse.json()) as {
+        bookingId?: string;
+        hotelConfirmationCode?: string | null;
+      };
+      const bookingId = booked.bookingId?.trim();
+      if (!bookingId) {
+        toast.error(copy.hubCheckout.liteapiBookFailed);
+        clearLiteApiPendingCheckout();
+        return;
+      }
+      const result = await finalizeLodgingHubCheckoutFromLiteApiReturn({
+        contextEventId: pending.contextEventId,
+        resourceId: pending.resourceId,
+        identityBundle: bundle,
+        prebookId: pending.prebookId,
+        transactionId: pending.transactionId,
+        bookingId,
+        hotelConfirmationCode: booked.hotelConfirmationCode ?? null,
+      });
+      clearLiteApiPendingCheckout();
+      if (typeof window !== "undefined") {
+        window.history.replaceState({}, "", "/");
+      }
+      if (result.ok) {
+        toast.success(
+          booked.hotelConfirmationCode
+            ? copy.hubCheckout.liteapiReturnConfirm(booked.hotelConfirmationCode)
+            : copy.hubCheckout.liteapiReturnDone,
+        );
+      } else {
+        toast.message(copy.hubCheckout.liteapiBookFailed);
+      }
+    })();
+  }, [searchParams]);
 
   useEffect(() => {
     for (const invite of pendingBridgeInvites) {
@@ -4181,6 +4315,10 @@ function GlobeHomeBody() {
         lat={liveLocation?.lat ?? null}
         lng={liveLocation?.lng ?? null}
       />
+      <GlobeIntelligentDiscoveryStage
+        globeRef={globeRef}
+        contextEventId={hubEventId}
+      />
       <GlobeTrendBridgeLayer
         visible={trendBridgeLayerActive && !globeRenderSuspended}
         bridgeId={trendBridgeSettings.activeBridgeId}
@@ -4338,7 +4476,8 @@ function GlobeHomeBody() {
         visible={
           contextConditionPanelOpen &&
           contextAgentSession.phase === "bound" &&
-          contextAgentAnchorCoords != null
+          contextAgentAnchorCoords != null &&
+          !discoveryFeedFocus
         }
         globeRef={globeRef}
         pinLat={contextAgentAnchorCoords?.lat ?? null}
@@ -4881,6 +5020,18 @@ function GlobeHomeBody() {
           setSettingsOpen(false);
           setGlobeGuideOpen(true);
         }}
+      />
+      <MyProfileSheet
+        open={identityProfileOpen}
+        onOpenChange={(open) => {
+          setIdentityProfileOpen(open);
+          if (!open) {
+            setIdentityVaultFocus(false);
+            setPaymentVaultFocus(false);
+          }
+        }}
+        identityVaultFocus={identityVaultFocus}
+        paymentVaultFocus={paymentVaultFocus}
       />
       <PersonalGlobeSheet
         open={personalGlobeOpen}

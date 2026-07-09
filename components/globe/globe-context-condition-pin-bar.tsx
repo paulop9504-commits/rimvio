@@ -6,15 +6,18 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
 } from "react";
 import { toast } from "sonner";
+import { GlobeLodgingBookingSlotChips } from "@/components/globe/globe-lodging-booking-slot-chips";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { copy } from "@/lib/copy/human-ko";
 import { flyGlobeToDiscoveryLenses } from "@/lib/globe/context-agent/snap-globe-to-context-agent-anchor";
 import {
   readContextConditionPinnedPlaceIds,
+  pinContextConditionRecommendation,
   clearContextConditionLastBatch,
   readContextConditionLastBatch,
   writeContextConditionLastBatch,
@@ -47,12 +50,22 @@ import {
   resolveLocalDiscoveryAction,
 } from "@/lib/globe/context-condition-ai/resolve-local-discovery-action";
 import { assessIntentConvergence } from "@/lib/globe/context-condition-ai/intent-convergence/assess-intent-convergence";
+import { detectConvergenceIntent } from "@/lib/globe/context-condition-ai/intent-convergence/intent-convergence-schema";
 import {
   INSTANT_POI_DEBOUNCE_MS,
   isInstantPoiSearch,
   matchesInstantPoiTyping,
   resolveInstantPoiFocus,
 } from "@/lib/globe/context-condition-ai/instant-poi-search";
+import {
+  isInstantLodgingSearch,
+  requiresLodgingBookingSlots,
+} from "@/lib/globe/context-condition-ai/instant-lodging-search";
+import {
+  INSTANT_EATERY_DEBOUNCE_MS,
+  isInstantEaterySearch,
+  matchesInstantEateryTyping,
+} from "@/lib/globe/context-condition-ai/instant-eatery-search";
 import { buildConvergenceQuestion } from "@/lib/globe/context-condition-ai/intent-convergence/build-convergence-question";
 import { buildActivityNextHopQuestion } from "@/lib/globe/context-condition-ai/intent-convergence/build-next-hop-question";
 import { generateSmallTalkReply } from "@/lib/globe/context-condition-ai/small-talk/generate-small-talk-reply";
@@ -69,6 +82,9 @@ import {
 } from "@/lib/globe/context-agent";
 import {
   appendContextAgentComposeTurn,
+  appendScoutFeedGateTurn,
+  appendIntakeSlotsComposeTurn,
+  markIntakeSlotsComposeTurnSubmitted,
   readContextAgentComposeThread,
 } from "@/lib/globe/assistant";
 import {
@@ -85,6 +101,10 @@ import { dispatchGlobeLodgingDiscoveryClose } from "@/lib/globe/lodging/globe-lo
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 import { interpretMessyForContextAgent } from "@/lib/messy-prompt-interpreter/adapters/context-agent-adapter";
 import { buildTravelBrainState } from "@/lib/situation-projection/travel-brain-personalization";
+import {
+  writeExplorationModeOverride,
+  type ExplorationMode,
+} from "@/lib/globe/discovery-policy";
 import { cn } from "@/lib/utils";
 import {
   applyLensCommand,
@@ -99,15 +119,25 @@ import {
 } from "@/lib/globe/discovery-lens";
 import { buildDiscoveryLensSpawnAnnouncement } from "@/lib/globe/discovery-lens/build-discovery-lens-announcements";
 import {
+  ensureNeighborhoodLensForActivityScout,
+  ensureScoutAnchorFromDiscoveryPov,
   isLodgingDiscoveryMessage,
   maybeSpawnDiscoveryLensesFromChoice,
   resolveDiscoveryOriginForContext,
 } from "@/lib/globe/discovery-lens/integrate-context-agent-lens";
+import {
+  hasCompleteLodgingBookingSlots,
+  isLodgingBookingQuery,
+  readLodgingBookingSlots,
+  writeLodgingBookingSlots,
+} from "@/lib/globe/context-hub/lodging-booking-slots";
+import { buildLodgingBookingSlotChipLabels } from "@/lib/globe/context-hub/build-lodging-booking-slot-chip-labels";
 import { prefetchAllDiscoveryLenses, prefetchDiscoveryLensById } from "@/lib/globe/discovery-lens/prefetch-all-discovery-lenses";
 import {
-  dispatchGlobeResourceReelFocus,
   dispatchGlobeResourceReelKindFilter,
 } from "@/lib/globe/resource-reel/globe-resource-reel-bridge";
+import { buildScoutFeedGateEnrichment } from "@/lib/globe/context-condition-ai/build-scout-feed-gate-enrichment";
+import { clearScoutRevealPending } from "@/lib/globe/context-condition-ai/context-condition-scout-reveal-pending-store";
 import { resourceReelKindFilterReplyKo } from "@/lib/globe/resource-reel/resource-reel-kind-filter-reply";
 import { markDiscoveryLensPickPending } from "@/lib/globe/discovery-lens/spawn-discovery-lenses";
 import {
@@ -130,10 +160,31 @@ import {
   runOnboardingParallelMapScouts,
 } from "@/lib/container-ai";
 import type { ContextBlueprint } from "@/lib/context-blueprint/types";
+import { TRAVEL_ONBOARDING_PARALLEL_NODE_IDS } from "@/lib/context-blueprint/node-resource-state";
+import {
+  buildIntakeContext,
+  LODGING_INTAKE_DOMAIN_ID,
+  resolveIntakeOffer,
+  TRIP_INTAKE_DOMAIN_ID,
+} from "@/lib/intake";
+import { buildIntakeSheetFromOffer, buildLodgingIntakeEditOffer } from "@/lib/intake/build-intake-sheet-from-offer";
+import { parseLodgingIntakeSubmitValues } from "@/lib/intake/domains/lodging/build-lodging-intake-sheet-fields";
+import { parseTripIntakeSubmitValues } from "@/lib/intake/domains/trip/build-trip-intake-sheet-fields";
+import {
+  isBroadTripPackageMessage,
+  writeTripIntakeSlots,
+} from "@/lib/globe/trip-intake";
+
+export type IntakeSlotsSubmitInput = {
+  turnId: string;
+  domainId: string;
+  values: Record<string, string | number>;
+};
 
 export type GlobeContextConditionPinBarHandle = {
   submitTrigger: (message: string) => Promise<void>;
   submitRefinement: (message: string) => Promise<void>;
+  applyExplorationMode: (mode: ExplorationMode) => Promise<void>;
   hasLastBatch: () => boolean;
   hasActiveSpec: () => boolean;
 };
@@ -165,6 +216,9 @@ export type GlobeContextConditionPinBarProps = {
   ) => void;
   onLensSessionChange?: (session: DiscoveryLensSession | null) => void;
   registerLensHandler?: (handler: (lensId: DiscoveryLensId) => void) => void;
+  registerIntakeSubmitHandler?: (
+    handler: (input: IntakeSlotsSubmitInput) => Promise<void>,
+  ) => void;
   className?: string;
 };
 
@@ -196,6 +250,36 @@ function specResourceCategory(
     return "lodging";
   }
   return "eatery";
+}
+
+function publishScoutFeedGateTurn(input: {
+  contextEventId: string;
+  outcome: ContextConditionAnchorPinOutcome;
+  anchorPlaceName: string;
+  anchorLat: number;
+  anchorLng: number;
+  triggerMessage?: string;
+}): void {
+  if (input.outcome.recommendations.length === 0) {
+    return;
+  }
+  const enrichment = buildScoutFeedGateEnrichment({
+    anchorPlaceName: input.anchorPlaceName,
+    anchorLat: input.anchorLat,
+    anchorLng: input.anchorLng,
+    triggerMessage: input.triggerMessage,
+    outcome: input.outcome,
+  });
+  appendScoutFeedGateTurn(input.contextEventId, {
+    summaryKo: input.outcome.summaryKo,
+    count: input.outcome.recommendations.length,
+    batchId: input.outcome.batchId,
+    scoutKind: enrichment.scoutKind,
+    aiInsightKo: enrichment.aiInsightKo,
+    tipsKo: enrichment.tipsKo,
+    highlightTitles: enrichment.highlightTitles,
+    videoContext: enrichment.videoContext,
+  });
 }
 
 function mapBudget(value: string | undefined): "low" | "medium" | "high" | null {
@@ -236,6 +320,7 @@ export const GlobeContextConditionPinBar = forwardRef<
   registerQuestionHandler,
   onLensSessionChange,
   registerLensHandler,
+  registerIntakeSubmitHandler,
   className,
   },
   ref,
@@ -312,7 +397,7 @@ export const GlobeContextConditionPinBar = forwardRef<
 
   const tryPublishActionInjection = useCallback(
     async (triggerMessage: string): Promise<boolean> => {
-      const event = findLifeEventCandidate(contextEventId);
+      let event = findLifeEventCandidate(contextEventId);
       if (!event) {
         return false;
       }
@@ -329,14 +414,51 @@ export const GlobeContextConditionPinBar = forwardRef<
       if (!intent) {
         return false;
       }
+
+      const needsPin =
+        (intent.resourceKind === "lodging" && !pinned.lodging) ||
+        (intent.resourceKind === "eatery" && !pinned.eatery);
+      if (needsPin) {
+        const batch = readContextConditionLastBatch(contextEventId);
+        const candidate = batch?.recommendations?.find(
+          (row) => row.kind === intent.resourceKind,
+        );
+        if (candidate?.placeId) {
+          try {
+            pinContextConditionRecommendation({
+              eventId: contextEventId,
+              recommendation: {
+                kind: candidate.kind,
+                placeId: candidate.placeId,
+                title: candidate.title,
+              },
+            });
+            event = findLifeEventCandidate(contextEventId) ?? event;
+          } catch {
+            // fall through — build may still fail with pin-first hint
+          }
+        }
+      }
+
       const built = buildContextActionInjection({ event, intent });
       if (!built) {
         toast.message(copy.globe.contextActionPinFirstHint);
+        appendContextAgentComposeTurn(contextEventId, {
+          role: "assistant",
+          kind: "text",
+          text: copy.globe.contextActionPinFirstHint,
+        });
         return true;
       }
       publishContextActionInjection(built);
       onActionInjectionChange?.(built);
+      appendContextAgentComposeTurn(contextEventId, {
+        role: "assistant",
+        kind: "text",
+        text: copy.globe.contextActionInjectionAssistLine(built.target.title),
+      });
       setMessage("");
+      setContextAgentSessionPhase("awaiting_human");
       return true;
     },
     [contextEventId, onActionInjectionChange],
@@ -355,6 +477,7 @@ export const GlobeContextConditionPinBar = forwardRef<
           batchId: lastBatch.batchId,
         });
         clearContextConditionLastBatch(contextEventId);
+        clearScoutRevealPending(contextEventId);
       }
       setContextAgentSessionPhase("scouting");
       beginContextAgentWork("exploring");
@@ -395,14 +518,6 @@ export const GlobeContextConditionPinBar = forwardRef<
         return null;
       }
 
-      publishGeoOntologyGraph(
-        buildContextDiscoveryOntologyGraph({
-          contextEventId,
-          anchorPlaceName,
-          outcome,
-        }),
-      );
-
       const wire: ContextConditionLastBatchWire = {
         batchId: outcome.batchId,
         count: outcome.lodgingCount + outcome.eateryCount,
@@ -430,15 +545,15 @@ export const GlobeContextConditionPinBar = forwardRef<
       clearContextConditionPending(contextEventId);
       setContextAgentSessionSpec(outcome.spec);
       setContextAgentSessionPhase("deciding");
-      toast.success(outcome.summaryKo);
       onPinned?.(outcome);
-      if (outcome.recommendations.length > 0) {
-        dispatchGlobeResourceReelFocus({
-          contextEventId,
-          surface: "list",
-          source: "scout_complete",
-        });
-      }
+      publishScoutFeedGateTurn({
+        contextEventId,
+        outcome,
+        anchorPlaceName,
+        anchorLat,
+        anchorLng,
+        triggerMessage: input.triggerMessage,
+      });
       return outcome;
     },
     [
@@ -478,14 +593,19 @@ export const GlobeContextConditionPinBar = forwardRef<
           batchId: lastBatch.batchId,
         });
         clearContextConditionLastBatch(contextEventId);
+        clearScoutRevealPending(contextEventId);
       }
       if (nextCategory === "activity" || nextCategory === "amenity") {
         publishContextOnlyGlobeProjection(contextEventId);
       }
       setContextAgentSessionPhase("scouting");
       beginContextAgentWork("exploring");
-      const instantPoi = isInstantPoiSearch(input.triggerMessage);
-      if (!instantPoi) {
+      const instantScout =
+        isInstantPoiSearch(input.triggerMessage) ||
+        isInstantEaterySearch(input.triggerMessage) ||
+        isInstantLodgingSearch(input.triggerMessage) ||
+        isLodgingBookingQuery(input.triggerMessage);
+      if (!instantScout) {
         appendContextAgentComposeTurn(contextEventId, {
           role: "assistant",
           kind: "build_log",
@@ -505,9 +625,10 @@ export const GlobeContextConditionPinBar = forwardRef<
         keptRecommendations: input.keptRecommendations,
         excludePlaceIds: input.excludePlaceIds,
         discoveryOrigin: resolveDiscoveryOriginForContext(contextEventId),
+        deferMapReveal: true,
         onProcessPhase: (phase) => {
           setContextAgentProcessPhase(phase);
-          if (phase === "optimizing" && !instantPoi) {
+          if (phase === "optimizing" && !instantScout) {
             appendContextAgentComposeTurn(contextEventId, {
               role: "assistant",
               kind: "build_log",
@@ -533,21 +654,13 @@ export const GlobeContextConditionPinBar = forwardRef<
         }
         return null;
       }
-      if (!instantPoi) {
+      if (!instantScout) {
         appendContextAgentComposeTurn(contextEventId, {
           role: "assistant",
           kind: "build_log",
           text: copy.globe.geoOntologyBuildResolve,
         });
       }
-      publishGeoOntologyGraph(
-        buildContextDiscoveryOntologyGraph({
-          contextEventId,
-          anchorPlaceName,
-          outcome,
-        }),
-      );
-
       const activeContract = readScoutContract(contextEventId);
       if (activeContract) {
         const gate = assertScoutContractGate({
@@ -563,6 +676,7 @@ export const GlobeContextConditionPinBar = forwardRef<
             batchId: outcome.batchId,
           });
           clearContextConditionLastBatch(contextEventId);
+          clearScoutRevealPending(contextEventId);
           appendContextAgentComposeTurn(contextEventId, {
             role: "assistant",
             kind: "text",
@@ -602,15 +716,15 @@ export const GlobeContextConditionPinBar = forwardRef<
       clearContextConditionPending(contextEventId);
       setContextAgentSessionSpec(outcome.spec);
       setContextAgentSessionPhase("deciding");
-      toast.success(outcome.summaryKo);
       onPinned?.(outcome);
-      if (outcome.recommendations.length > 0) {
-        dispatchGlobeResourceReelFocus({
-          contextEventId,
-          surface: "list",
-          source: "scout_complete",
-        });
-      }
+      publishScoutFeedGateTurn({
+        contextEventId,
+        outcome,
+        anchorPlaceName,
+        anchorLat,
+        anchorLng,
+        triggerMessage: input.triggerMessage,
+      });
       return outcome;
     },
     [
@@ -782,37 +896,6 @@ export const GlobeContextConditionPinBar = forwardRef<
         setContextAgentSessionPhase("awaiting_human");
         return;
       }
-      // Activity: customer-service reply + LLM-authored convergence chips so the
-      // user re-narrows instead of hitting a wall.
-      const convergence = assessIntentConvergence({
-        message: triggerMessage,
-        answers,
-        askedAxisIds,
-      });
-      if (convergence.shouldAsk) {
-        const { question, askedAxisId } = await buildConvergenceQuestion({
-          intentType: convergence.intentType,
-          topAxis: convergence.topAxis,
-          candidateAxes: convergence.candidateAxes,
-          query: triggerMessage,
-          region: anchorPlaceName,
-        });
-        appendContextAgentComposeTurn(contextEventId, {
-          role: "assistant",
-          kind: "text",
-          text: `${copy.globe.contextConditionGuardEmptyActivity} ${question.promptKo}`,
-        });
-        writeContextConditionPending(contextEventId, {
-          triggerMessage,
-          questions: [question],
-          answers,
-          spec: null,
-          updatedAtIso: new Date().toISOString(),
-          askedConvergenceAxes: [...askedAxisIds, askedAxisId],
-        });
-        onQuestionsChange?.([question]);
-        return;
-      }
       appendContextAgentComposeTurn(contextEventId, {
         role: "assistant",
         kind: "text",
@@ -837,6 +920,12 @@ export const GlobeContextConditionPinBar = forwardRef<
 
       const event = findLifeEventCandidate(contextEventId);
       const travelBrain = event ? buildTravelBrainState(event) : null;
+      const lodgingSlots = readLodgingBookingSlots(event);
+      const lodgingFastPath =
+        isInstantLodgingSearch(pipelineMessage) ||
+        (isLodgingBookingQuery(pipelineMessage) &&
+          hasCompleteLodgingBookingSlots(lodgingSlots));
+      const eateryFastPath = isInstantEaterySearch(pipelineMessage);
       const followUpTurn =
         lastRecommendations.length > 0 &&
         isFollowUpDiscoveryTurn(pipelineMessage, lastRecommendations);
@@ -858,16 +947,21 @@ export const GlobeContextConditionPinBar = forwardRef<
       // request ("놀거리"·"카페"·"데이트") into a concrete intent with the fewest
       // questions. High confidence (qualifier present / already answered) → skip.
       // The LLM only authors chip copy; chips reuse the existing question channel.
+      const convergenceIntent = detectConvergenceIntent(pipelineMessage);
+      const skipConvergenceForBroadActivity =
+        convergenceIntent === "activity" || convergenceIntent === "outing";
       const pendingConvergence = readContextConditionPending(contextEventId);
       const askedAxisIds = pendingConvergence?.askedConvergenceAxes ?? [];
       const priorHops = pendingConvergence?.convergenceHops ?? 0;
-      const convergence = assessIntentConvergence({
-        message: pipelineMessage,
-        answers: mergedAnswers,
-        askedAxisIds,
-        followUpTurn,
-      });
-      if (convergence.shouldAsk) {
+      const convergence = lodgingFastPath || eateryFastPath || skipConvergenceForBroadActivity
+        ? { shouldAsk: false as const, intentType: convergenceIntent }
+        : assessIntentConvergence({
+            message: pipelineMessage,
+            answers: mergedAnswers,
+            askedAxisIds,
+            followUpTurn,
+          });
+      if (!lodgingFastPath && !eateryFastPath && convergence.shouldAsk) {
         setContextAgentSessionPhase("collecting_context");
         const { question, askedAxisId } = await buildConvergenceQuestion({
           intentType: convergence.intentType,
@@ -991,6 +1085,25 @@ export const GlobeContextConditionPinBar = forwardRef<
       }
       writeScoutContract(contextEventId, scoutContract);
 
+      const nearbyPov = resolveDiscoveryOriginForContext(contextEventId);
+      if (
+        nearbyPov &&
+        (nextCategory === "activity" || nextCategory === "amenity")
+      ) {
+        ensureScoutAnchorFromDiscoveryPov(contextEventId, nearbyPov);
+        if (nextCategory === "activity") {
+          ensureNeighborhoodLensForActivityScout(contextEventId, nearbyPov);
+          flyGlobeToDiscoveryLenses(globeRef, {
+            lenses: [
+              {
+                center: { lat: nearbyPov.lat, lng: nearbyPov.lng },
+                radiusM: nearbyPov.radiusM,
+              },
+            ],
+          });
+        }
+      }
+
       const lensSessionNow = readDiscoveryLensSession(contextEventId);
       const wantsLodging =
         resolved.spec.resourceTypes.includes("hotel") ||
@@ -1081,11 +1194,160 @@ export const GlobeContextConditionPinBar = forwardRef<
       contextEventId,
       emitStrictDomainEmptyFollowup,
       executeWithSpec,
+      globeRef,
       lastRecommendations,
       lastSpec,
       onQuestionsChange,
     ],
   );
+
+  const runTripTriggerAfterIntake = useCallback(
+    async (input: { triggerMessage: string; destinationLabel: string }) => {
+      const text = input.triggerMessage.trim();
+      if (!text) {
+        return;
+      }
+      if (operatorBlueprint && isBroadTripPackageMessage(text)) {
+        await executeParallelOnboarding({
+          triggerMessage: text,
+          parallelNodeIds: [...TRAVEL_ONBOARDING_PARALLEL_NODE_IDS],
+          destinationLabel: input.destinationLabel,
+        });
+        return;
+      }
+      await resolveAndMaybeExecute(text);
+    },
+    [executeParallelOnboarding, operatorBlueprint, resolveAndMaybeExecute],
+  );
+
+  const tryOpenIntakeForMessage = useCallback(
+    (text: string): boolean => {
+      const trimmed = text.trim();
+      if (!trimmed) {
+        return false;
+      }
+      const event = findLifeEventCandidate(contextEventId);
+      const offer = resolveIntakeOffer(
+        buildIntakeContext({
+          contextEventId,
+          message: trimmed,
+          event,
+          blueprint: operatorBlueprint,
+          destinationConfirmed,
+        }),
+      );
+      if (!offer) {
+        return false;
+      }
+      const sheet = buildIntakeSheetFromOffer(offer);
+      if (!sheet || sheet.fields.length === 0) {
+        return false;
+      }
+      appendIntakeSlotsComposeTurn(contextEventId, {
+        domainId: sheet.domainId,
+        hint: sheet.hint,
+        submitLabel: sheet.submitLabel,
+        pendingTrigger: trimmed,
+        fields: sheet.fields,
+      });
+      return true;
+    },
+    [contextEventId, destinationConfirmed, operatorBlueprint],
+  );
+
+  const openLodgingIntakeEditInThread = useCallback(() => {
+    const event = findLifeEventCandidate(contextEventId);
+    const slots = readLodgingBookingSlots(event);
+    const sheet = buildLodgingIntakeEditOffer(slots);
+    appendIntakeSlotsComposeTurn(contextEventId, {
+      domainId: sheet.domainId,
+      hint: sheet.hint,
+      submitLabel: sheet.submitLabel,
+      pendingTrigger: message.trim() || "숙소",
+      fields: sheet.fields,
+    });
+  }, [contextEventId, message]);
+
+  const runLodgingTriggerAfterSlotSave = useCallback(
+    async (triggerMessage: string) => {
+      const text = triggerMessage.trim();
+      if (!text) {
+        return;
+      }
+      setBusy(true);
+      try {
+        await resolveAndMaybeExecute(text);
+        setMessage("");
+      } finally {
+        setBusy(false);
+        finishContextAgentWork();
+      }
+    },
+    [resolveAndMaybeExecute],
+  );
+
+  const handleIntakeSlotsSubmit = useCallback(
+    async (input: IntakeSlotsSubmitInput) => {
+      const turn = readContextAgentComposeThread(contextEventId).find(
+        (row) => row.id === input.turnId,
+      );
+      const pendingTrigger =
+        turn?.role === "assistant" &&
+        turn.kind === "intake_slots" &&
+        turn.payload.status === "open"
+          ? turn.payload.pendingTrigger.trim()
+          : "";
+
+      if (input.domainId === TRIP_INTAKE_DOMAIN_ID) {
+        const parsed = parseTripIntakeSubmitValues(input.values);
+        writeTripIntakeSlots({
+          contextEventId,
+          ...parsed,
+        });
+        const summaryKo = copy.globe.tripIntakeComposeLine(parsed.destinationLabel);
+        markIntakeSlotsComposeTurnSubmitted(contextEventId, input.turnId, summaryKo);
+        const nextTrigger =
+          pendingTrigger || message.trim() || parsed.destinationLabel;
+        await runTripTriggerAfterIntake({
+          triggerMessage: nextTrigger,
+          destinationLabel: parsed.destinationLabel,
+        });
+        return;
+      }
+
+      if (input.domainId === LODGING_INTAKE_DOMAIN_ID) {
+        const parsed = parseLodgingIntakeSubmitValues(input.values);
+        const updated = writeLodgingBookingSlots({
+          contextEventId,
+          ...parsed,
+        });
+        const slots = readLodgingBookingSlots(updated);
+        const chipLabels = buildLodgingBookingSlotChipLabels(slots, updated);
+        const summaryKo = chipLabels.join(" · ");
+        markIntakeSlotsComposeTurnSubmitted(
+          contextEventId,
+          input.turnId,
+          summaryKo || copy.globe.lodgingSlotApply,
+        );
+        const nextTrigger =
+          pendingTrigger ||
+          message.trim() ||
+          updated.place?.trim() ||
+          "숙소";
+        await runLodgingTriggerAfterSlotSave(nextTrigger);
+      }
+    },
+    [
+      contextEventId,
+      message,
+      runLodgingTriggerAfterSlotSave,
+      runTripTriggerAfterIntake,
+    ],
+  );
+
+  useEffect(() => {
+    registerIntakeSubmitHandler?.(handleIntakeSlotsSubmit);
+  }, [handleIntakeSlotsSubmit, registerIntakeSubmitHandler]);
 
   const handleSubmit = useCallback(async () => {
     if (busy) {
@@ -1097,6 +1359,10 @@ export const GlobeContextConditionPinBar = forwardRef<
     }
     if (text) {
       onUserCompose?.(text);
+    }
+    if (text && tryOpenIntakeForMessage(text)) {
+      setMessage("");
+      return;
     }
     setBusy(true);
     try {
@@ -1248,18 +1514,35 @@ export const GlobeContextConditionPinBar = forwardRef<
     operatorBlueprint,
     resolveAndMaybeExecute,
     runPalantirRefine,
+    tryOpenIntakeForMessage,
     tryPublishActionInjection,
   ]);
 
   handleSubmitRef.current = handleSubmit;
 
-  /** Google Maps–like: debounced auto-search for 편의점·약국 등 while typing. */
+  /** Google Maps–like: debounced auto-search for instant POI / ready lodging while typing. */
   useEffect(() => {
     const trimmed = message.trim();
-    if (busy || !trimmed || !matchesInstantPoiTyping(message)) {
+    const currentEvent = findLifeEventCandidate(contextEventId);
+    const allowLodgingAutoSearch =
+      isInstantLodgingSearch(trimmed) ||
+      (isLodgingBookingQuery(trimmed) &&
+        hasCompleteLodgingBookingSlots(readLodgingBookingSlots(currentEvent)));
+    const allowEateryAutoSearch = isInstantEaterySearch(trimmed);
+    if (
+      busy ||
+      !trimmed ||
+      (!matchesInstantPoiTyping(message) &&
+        !allowLodgingAutoSearch &&
+        !matchesInstantEateryTyping(message))
+    ) {
       return;
     }
-    if (!resolveInstantPoiFocus(trimmed)) {
+    if (
+      !resolveInstantPoiFocus(trimmed) &&
+      !allowLodgingAutoSearch &&
+      !allowEateryAutoSearch
+    ) {
       return;
     }
     if (
@@ -1278,12 +1561,15 @@ export const GlobeContextConditionPinBar = forwardRef<
       void handleSubmitRef.current();
     }, INSTANT_POI_DEBOUNCE_MS);
     return () => window.clearTimeout(timer);
-  }, [message, busy, anchorLat, anchorLng]);
+  }, [message, busy, anchorLat, anchorLng, contextEventId]);
 
   const submitTrigger = useCallback(
     async (triggerMessage: string) => {
       const text = triggerMessage.trim();
       if (!text || busy) {
+        return;
+      }
+      if (tryOpenIntakeForMessage(text)) {
         return;
       }
       onUserCompose?.(text);
@@ -1315,11 +1601,13 @@ export const GlobeContextConditionPinBar = forwardRef<
     },
     [
       busy,
+      contextEventId,
       destinationConfirmed,
       executeParallelOnboarding,
       onUserCompose,
       operatorBlueprint,
       resolveAndMaybeExecute,
+      tryOpenIntakeForMessage,
       tryPublishActionInjection,
     ],
   );
@@ -1342,15 +1630,59 @@ export const GlobeContextConditionPinBar = forwardRef<
     [busy, lastSpec, onUserCompose, runPalantirRefine],
   );
 
+  const applyExplorationModeChoice = useCallback(
+    async (mode: ExplorationMode) => {
+      writeExplorationModeOverride(contextEventId, mode);
+      if (busy || !lastSpec) {
+        return;
+      }
+      const triggerMessage =
+        [...readContextAgentComposeThread(contextEventId)]
+          .reverse()
+          .find((turn) => turn.role === "user")?.text ??
+        (mode === "diffuse"
+          ? copy.globe.explorationModeDiffuseChip
+          : copy.globe.explorationModeConvergentChip);
+      const vibe = mode === "diffuse" ? ("local" as const) : ("popular" as const);
+      const nextSpec = { ...lastSpec, vibe };
+      const excludePlaceIds =
+        mode === "diffuse"
+          ? lastRecommendations.map((row) => row.placeId)
+          : undefined;
+      onUserCompose?.(triggerMessage);
+      setBusy(true);
+      beginContextAgentWork("exploring");
+      try {
+        await executeWithSpec({
+          triggerMessage,
+          spec: nextSpec,
+          excludePlaceIds,
+        });
+      } finally {
+        setBusy(false);
+        finishContextAgentWork();
+      }
+    },
+    [
+      busy,
+      contextEventId,
+      executeWithSpec,
+      lastRecommendations,
+      lastSpec,
+      onUserCompose,
+    ],
+  );
+
   useImperativeHandle(
     ref,
     () => ({
       submitTrigger,
       submitRefinement,
+      applyExplorationMode: applyExplorationModeChoice,
       hasLastBatch: () => lastBatch != null,
       hasActiveSpec: () => lastSpec != null,
     }),
-    [lastBatch, lastSpec, submitRefinement, submitTrigger],
+    [lastBatch, lastSpec, applyExplorationModeChoice, submitRefinement, submitTrigger],
   );
 
   const handleQuestionChoice = useCallback(
@@ -1433,14 +1765,6 @@ export const GlobeContextConditionPinBar = forwardRef<
         lensId,
         rescout: true,
       });
-      const active = session.lenses.find((row) => row.id === lensId);
-      if (active?.prefetch?.status === "ready" && active.prefetch.items.length > 0) {
-        dispatchGlobeResourceReelFocus({
-          contextEventId,
-          surface: "list",
-          source: "scout_complete",
-        });
-      }
     },
     [contextEventId],
   );
@@ -1462,6 +1786,7 @@ export const GlobeContextConditionPinBar = forwardRef<
       batchId: lastBatch.batchId,
     });
     clearContextConditionLastBatch(contextEventId);
+    clearScoutRevealPending(contextEventId);
     setLastBatch(null);
     setLastSpec(null);
     setLastRecommendations([]);
@@ -1469,11 +1794,35 @@ export const GlobeContextConditionPinBar = forwardRef<
     setContextAgentSessionPhase("briefing");
   }, [contextEventId, lastBatch, onRecommendationsChange]);
 
+  const lodgingSlotDefaults = readLodgingBookingSlots(findLifeEventCandidate(contextEventId));
+  const lodgingSlotChipLabels = useMemo(() => {
+    if (!lodgingSlotDefaults.checkInIso || !lodgingSlotDefaults.checkOutIso) {
+      return [];
+    }
+    return buildLodgingBookingSlotChipLabels(
+      lodgingSlotDefaults,
+      findLifeEventCandidate(contextEventId),
+    );
+  }, [
+    contextEventId,
+    lodgingSlotDefaults.checkInIso,
+    lodgingSlotDefaults.checkOutIso,
+    lodgingSlotDefaults.guestCount,
+    lodgingSlotDefaults.roomCount,
+  ]);
+
   return (
     <div
       className={cn(className)}
       data-globe-context-condition-pin-bar
     >
+      {lodgingSlotChipLabels.length > 0 ? (
+        <GlobeLodgingBookingSlotChips
+          className="mb-2"
+          chips={lodgingSlotChipLabels}
+          onEdit={openLodgingIntakeEditInThread}
+        />
+      ) : null}
       <div className="flex items-center gap-2 rounded-xl bg-[#f5f5f7] px-3 py-2 ring-1 ring-black/[0.04]">
         <input
           type="text"

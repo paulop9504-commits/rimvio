@@ -3,6 +3,7 @@
  * @see docs/RIMVIO_OPERATOR_TURN.md
  */
 
+import type { ExplorationMode } from "@/lib/globe/discovery-policy";
 import type { ScoutContract } from "@/lib/globe/contracts/scout-contract";
 import type { ScoutSelectedAnchorWire } from "@/lib/globe/contracts/scout-contract-store";
 import type { ContextConditionLastBatchWire } from "@/lib/globe/context-condition-ai/context-condition-last-batch-store";
@@ -32,6 +33,8 @@ export type OperatorTurnSsot = {
   readonly reelItemCount: number;
   readonly composeTail: readonly { role: string; text: string }[];
   readonly hasActiveSpec: boolean;
+  /** Scout distribution policy for this turn (deterministic). */
+  readonly explorationMode: ExplorationMode;
 };
 
 export type OperatorTurnPlan =
@@ -50,7 +53,9 @@ export type OperatorTurnPlan =
         | "narrow_cue_without_slice"
         | "search_or_bare_domain"
         | "classify_search"
-        | "instant_poi_search";
+        | "instant_poi_search"
+        | "instant_eatery_search"
+        | "instant_lodging_search";
     }
   | {
       readonly tool: "defer_classify";

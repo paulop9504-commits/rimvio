@@ -9,11 +9,7 @@ export type DiscoveryLensLabelRow = {
   active: boolean;
 };
 
-const LENS_LABEL_ZOOM_LEVELS = new Set<GlobeDetailLevel>([
-  "neighborhood",
-  "street",
-  "pin",
-]);
+const LENS_LABEL_ZOOM_LEVELS = new Set<GlobeDetailLevel>(["pin"]);
 
 export function shouldShowDiscoveryLensLabels(
   detailLevel: GlobeDetailLevel,
@@ -28,11 +24,13 @@ export function buildDiscoveryLensLabelRows(
   if (!session?.lenses.length || !shouldShowDiscoveryLensLabels(detailLevel)) {
     return [];
   }
-  return session.lenses.map((lens) => ({
+  return session.lenses
+    .filter((lens) => lens.id === session.activeLensId)
+    .map((lens) => ({
     id: `lens:${lens.id}`,
     lat: lens.center.lat,
     lng: lens.center.lng,
-    text: `${lens.id}. ${lens.labelKo}`,
+    text: lens.labelKo,
     active: lens.id === session.activeLensId,
   }));
 }

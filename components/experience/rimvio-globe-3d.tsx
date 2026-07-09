@@ -812,13 +812,13 @@ export const RimvioGlobe3D = memo(
         .ringColor((row: object) => {
           const kind = (row as { kind?: string }).kind;
           if (kind === "lens_active") {
-            return "rgba(0, 113, 227, 0.42)";
+            return "rgba(0, 113, 227, 0.18)";
           }
           if (kind === "lens_idle") {
-            return "rgba(0, 113, 227, 0.16)";
+            return "rgba(0, 113, 227, 0.08)";
           }
           if (kind === "discovery") {
-            return "rgba(49, 130, 246, 0.38)";
+            return "rgba(49, 130, 246, 0.14)";
           }
           return GLOBE_TOSS_THEME.viewerRingStroke;
         })

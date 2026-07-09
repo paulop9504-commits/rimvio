@@ -2,6 +2,7 @@
 
 import { copy } from "@/lib/copy/human-ko";
 import { rimvioHeroCtaClass } from "@/lib/design/rimvio-ontology";
+import { openLodgingHubCheckout } from "@/lib/globe/hub-checkout/open-lodging-hub-checkout-bridge";
 import type { ContextActionInjection } from "@/lib/globe/context-action-injection/types";
 import { cn } from "@/lib/utils";
 
@@ -67,6 +68,17 @@ export function GlobeContextActionInjectionCard({
           onClick={() => {
             const href = injection.injectedAction?.href;
             if (!href) {
+              return;
+            }
+            if (
+              injection.injectedAction.internalRoute &&
+              href === "rimvio://hub/lodging-checkout"
+            ) {
+              openLodgingHubCheckout({
+                contextEventId: injection.contextEventId,
+                placeId: injection.target.placeId,
+              });
+              onExecute?.();
               return;
             }
             if (injection.injectedAction.internalRoute) {
