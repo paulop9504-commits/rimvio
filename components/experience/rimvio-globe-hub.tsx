@@ -73,6 +73,7 @@ import {
 } from "@/lib/globe/context-condition-ai/project-context-condition-globe-markers";
 import { readContextConditionPinBatches } from "@/lib/globe/context-condition-ai/context-condition-batch-metadata";
 import { applyFocusedHubGlobePins } from "@/lib/globe/context-hub/apply-focused-hub-globe-visuals";
+import { enrichGlobePinRecallBadges } from "@/lib/globe/enrich-globe-pin-recall-badge";
 import {
   dispatchGlobeLodgingFocus,
   subscribeGlobeLodgingFocus,
@@ -103,6 +104,9 @@ import { isLodgingHubEnabled } from "@/lib/globe/context-hub/read-lodging-resour
 import { isEateryHubEnabled } from "@/lib/globe/eatery/read-eatery-resource-inventory";
 import { readPinnedEateryResourceId } from "@/lib/globe/eatery/pin-eatery-selection-to-context";
 import { projectLodgingGlobeMarkers } from "@/lib/globe/context-hub/project-lodging-globe-markers";
+import {
+  dispatchGlobePlaceOntologyFocus,
+} from "@/lib/globe/place-ontology/globe-place-ontology-focus-bridge";
 import {
   dispatchGlobeResourceReelFocus,
 } from "@/lib/globe/resource-reel/globe-resource-reel-bridge";
@@ -448,10 +452,13 @@ const RimvioGlobeHubBody = memo(
         pinCoordOverrides ?? new Map(),
       );
       const zoomed = projectGlobeZoomClusterPins(withOverrides, detailLevel);
-      return applyFocusedHubGlobePins(zoomed, {
-        focusedEventId: focusedContextEventId,
+      return enrichGlobePinRecallBadges(
+        applyFocusedHubGlobePins(zoomed, {
+          focusedEventId: focusedContextEventId,
+          eventsById,
+        }),
         eventsById,
-      });
+      );
     }, [
       classifiedPins,
       eventsById,
@@ -1005,6 +1012,15 @@ const RimvioGlobeHubBody = memo(
             });
             if (scoutFocus) {
               publishContextAgentGlobeMarkerFocus(scoutFocus);
+              dispatchGlobePlaceOntologyFocus({
+                contextEventId: scoutFocus.contextEventId,
+                placeId: scoutFocus.placeId,
+                kind: scoutFocus.kind,
+                lat: scoutFocus.lat,
+                lng: scoutFocus.lng,
+                title: scoutFocus.title,
+                surface: "detail",
+              });
             }
           }}
           brainSurfaceMarkers={brainSurfaceMarkers}

@@ -41,4 +41,6 @@ export type ClassifiedGlobePin = {
   sharedWith?: readonly GlobePinPeer[];
   /** Hub focus mode — soften pins outside the selected 1-hop pair. */
   hubFocusMuted?: boolean;
+  /** Confirmed lodging / flight recall count — destination pin badge. */
+  recallBadgeLabel?: string | null;
 };
