@@ -111,7 +111,7 @@ function relevanceLanguage(queryLang: "ko" | "ja" | "en"): string | null {
   return queryLang;
 }
 
-function buildReviewSearchQuery(input: {
+export function buildReviewSearchQuery(input: {
   name: string;
   place: string | null;
   kind: PlaceReviewKind;
@@ -119,8 +119,32 @@ function buildReviewSearchQuery(input: {
 }): string {
   const name = normalizeText(input.name);
   const place = normalizeText(input.place);
+  if (input.kind === "lodging") {
+    const locality = place && !place.includes(name) ? place : "";
+    return [name, locality, reviewKeyword(input.kind, input.queryLang)]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+  }
   const base = [name, place].filter(Boolean).join(" ");
   return `${base} ${reviewKeyword(input.kind, input.queryLang)}`.trim();
+}
+
+function rankForAudience(
+  rows: readonly YouTubeOfficialSearchResult[],
+  queryLang: "ko" | "ja" | "en",
+): YouTubeOfficialSearchResult[] {
+  if (queryLang !== "ko") {
+    return [...rows];
+  }
+  return [...rows].sort((a, b) => {
+    const delta =
+      scoreKoreanAudienceMatch(b) - scoreKoreanAudienceMatch(a);
+    if (delta !== 0) {
+      return delta;
+    }
+    return 0;
+  });
 }
 
 function buildYouTubeSearchUrl(query: string): string {
@@ -150,21 +174,79 @@ export function scoreKoreanAudienceMatch(row: {
   return score;
 }
 
-function rankForAudience(
-  rows: readonly YouTubeOfficialSearchResult[],
-  queryLang: "ko" | "ja" | "en",
-): YouTubeOfficialSearchResult[] {
-  if (queryLang !== "ko") {
-    return [...rows];
-  }
-  return [...rows].sort((a, b) => {
-    const delta =
-      scoreKoreanAudienceMatch(b) - scoreKoreanAudienceMatch(a);
-    if (delta !== 0) {
-      return delta;
-    }
+function tokenizePlaceName(name: string): string[] {
+  return normalizeText(name)
+    .split(/[\s·,、/|·\-]+/u)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 2);
+}
+
+/** Score how closely a video title/channel matches the pinned place name. */
+export function scorePlaceNameMatch(input: {
+  placeName: string;
+  title?: string | null;
+  channelTitle?: string | null;
+}): number {
+  const placeName = normalizeText(input.placeName);
+  if (!placeName) {
     return 0;
+  }
+  const blob = `${normalizeText(input.title)} ${normalizeText(input.channelTitle)}`.toLowerCase();
+  const normalizedPlace = placeName.toLowerCase();
+  if (blob.includes(normalizedPlace)) {
+    return 120;
+  }
+
+  let score = 0;
+  for (const token of tokenizePlaceName(normalizedPlace)) {
+    const lowered = token.toLowerCase();
+    if (lowered.length < 2) {
+      continue;
+    }
+    if (blob.includes(lowered)) {
+      score += lowered.length >= 4 ? 30 : 18;
+    }
+  }
+  return score;
+}
+
+function rankReviewResults(input: {
+  rows: readonly YouTubeOfficialSearchResult[];
+  queryLang: "ko" | "ja" | "en";
+  kind: PlaceReviewKind;
+  placeName: string;
+}): YouTubeOfficialSearchResult[] {
+  const scored = [...input.rows].sort((left, right) => {
+    const leftScore =
+      scorePlaceNameMatch({
+        placeName: input.placeName,
+        title: left.title,
+        channelTitle: left.channelTitle,
+      }) + scoreKoreanAudienceMatch(left);
+    const rightScore =
+      scorePlaceNameMatch({
+        placeName: input.placeName,
+        title: right.title,
+        channelTitle: right.channelTitle,
+      }) + scoreKoreanAudienceMatch(right);
+    return rightScore - leftScore;
   });
+
+  if (input.kind === "lodging" || input.kind === "eatery") {
+    const matched = scored.filter(
+      (row) =>
+        scorePlaceNameMatch({
+          placeName: input.placeName,
+          title: row.title,
+          channelTitle: row.channelTitle,
+        }) >= 18,
+    );
+    if (matched.length > 0) {
+      return matched;
+    }
+  }
+
+  return input.queryLang === "ko" ? rankForAudience(scored, input.queryLang) : scored;
 }
 
 /** Server-side: resolve top embeddable review/tour videos linked to a pinned place. */
@@ -209,7 +291,12 @@ export async function resolvePlaceReviewVideos(input: {
     results.map((row) => row.videoId),
   );
   const embeddable = results.filter((row) => quality.get(row.videoId)?.embeddable);
-  const ranked = rankForAudience(embeddable, queryLang);
+  const ranked = rankReviewResults({
+    rows: embeddable,
+    queryLang,
+    kind,
+    placeName: input.name,
+  });
   const videos: PlaceReviewVideo[] = ranked.slice(0, MAX_REVIEW_VIDEOS).map((row) => ({
     videoId: row.videoId,
     title: normalizeText(row.title) || null,
