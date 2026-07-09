@@ -1,15 +1,20 @@
 import { buildContextInstance } from "@/lib/context-instance/build-context-instance";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { fetchPlacesLodgingNearby } from "@/lib/globe/context-hub/fetch-places-lodging-nearby";
+import {
+  isLiteApiConfigured,
+  searchLiteApiLodgingNearby,
+} from "@/lib/globe/context-hub/providers/liteapi";
 import { resolveInventorySearchOrigin } from "@/lib/globe/context-hub/resolve-inventory-search-origin";
 import { resolveLodgingMockForPlace, resolveLodgingMockNearUser } from "@/lib/globe/context-hub/lodging-mock-inventory";
 import type { ContextLodgingInventoryRow } from "@/lib/globe/context-hub/lodging-resource-types";
+import { readLodgingBookingSlots } from "@/lib/globe/context-hub/lodging-booking-slots";
 import { buildLodgingStayWindow } from "@/lib/globe/context-hub/lodging-stay-window";
 import { LODGING_DISCOVERY_RADIUS_M } from "@/lib/globe/lodging/lodging-discovery-constants";
 import { filterLodgingRowsWithinRadius } from "@/lib/globe/lodging/project-lodging-discovery-session";
 import { readPlanContextFromEvent } from "@/lib/plan-context/plan-context-metadata";
 
-export type LodgingInventorySource = "google_places" | "mock";
+export type LodgingInventorySource = "liteapi" | "google_places" | "mock";
 
 export type LoadedLodgingInventory = {
   rows: ContextLodgingInventoryRow[];
@@ -35,12 +40,26 @@ async function fetchLodgingInventoryFromApi(input: {
   lat: number;
   lng: number;
   maxResults?: number;
+  event: EventCandidate;
 }): Promise<ContextLodgingInventoryRow[]> {
+  const plan = readPlanContextFromEvent(input.event);
+  const slots = readLodgingBookingSlots(input.event);
   const params = new URLSearchParams({
     lat: String(input.lat),
     lng: String(input.lng),
     max: String(input.maxResults ?? 5),
   });
+  const checkInIso = plan?.windowStartIso ?? input.event.datetime ?? null;
+  const checkOutIso = plan?.windowEndIso ?? null;
+  if (checkInIso?.trim()) {
+    params.set("checkIn", checkInIso.trim());
+  }
+  if (checkOutIso?.trim()) {
+    params.set("checkOut", checkOutIso.trim());
+  }
+  if (slots.guestCount != null && slots.guestCount > 0) {
+    params.set("guests", String(Math.round(slots.guestCount)));
+  }
   const response = await fetch(`/api/globe/lodging-inventory?${params.toString()}`);
   if (!response.ok) {
     return [];
@@ -76,8 +95,30 @@ export async function loadLodgingInventoryRows(input: {
         lat: searchOrigin.lat,
         lng: searchOrigin.lng,
         maxResults: input.maxResults,
+        event: input.event,
       });
     } else {
+      if (isLiteApiConfigured()) {
+        rows = await searchLiteApiLodgingNearby({
+          lat: searchOrigin.lat,
+          lng: searchOrigin.lng,
+          maxResults: input.maxResults,
+          checkInIso: readPlanContextFromEvent(input.event)?.windowStartIso ?? input.event.datetime,
+          checkOutIso: readPlanContextFromEvent(input.event)?.windowEndIso ?? null,
+        });
+        if (rows.length > 0) {
+          const filtered = filterLodgingRowsWithinRadius({
+            rows,
+            lat: searchOrigin.lat,
+            lng: searchOrigin.lng,
+            radiusM,
+          });
+          return {
+            rows: withStayWindow(input.event, filtered.length > 0 ? filtered : rows),
+            source: "liteapi",
+          };
+        }
+      }
       rows = await fetchPlacesLodgingNearby({
         lat: searchOrigin.lat,
         lng: searchOrigin.lng,

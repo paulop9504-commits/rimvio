@@ -5,10 +5,17 @@ import type { RefObject } from "react";
 import { toast } from "sonner";
 import { GlobeContextConditionPinBar } from "@/components/globe/globe-context-condition-pin-bar";
 import { GlobeLodgingAgentAskBar } from "@/components/globe/globe-lodging-agent-ask-bar";
+import { GlobeLodgingRoomCardList } from "@/components/globe/globe-lodging-room-card-list";
 import { GlobeContextQuickPinButton } from "@/components/globe/globe-context-quick-pin-button";
 import { GlobeLodgingHubFocusCard } from "@/components/globe/globe-lodging-hub-focus-card";
+import { GlobeLodgingYouTubePreviewEmbed } from "@/components/globe/lodging/globe-lodging-youtube-preview-embed";
+import { GlobeResourceVideoBranch } from "@/components/globe/globe-resource-video-branch";
 import { GlobePredictedExperienceCard } from "@/components/globe/globe-predicted-experience-card";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
+import {
+  readScoutContract,
+  writeScoutSelectedAnchor,
+} from "@/lib/globe/contracts";
 import { publishBridgePinnedContextItem } from "@/lib/experience-bridge/publish-bridge-pinned-context-item";
 import { isBridgeLinkedEventId } from "@/lib/experience-bridge/stamp-bridge-event-metadata";
 import { useActiveContextWeather } from "@/hooks/use-active-context-weather";
@@ -54,6 +61,8 @@ import {
   GLOBE_MAP_FOCUS_HERO_SHELL_CLASS,
 } from "@/lib/globe/globe-map-focus-hero-layout";
 import { cn } from "@/lib/utils";
+import { useAppLocale } from "@/hooks/use-copy";
+import type { LodgingYouTubePreview } from "@/lib/globe/lodging/lodging-youtube-preview-types";
 
 const SWIPE_MIN_PX = 44;
 
@@ -89,6 +98,10 @@ export function GlobeLodgingFocusStage({
   const [mediaIndex, setMediaIndex] = useState(0);
   const [revision, setRevision] = useState(0);
   const [pinBusy, setPinBusy] = useState(false);
+  const [youtubePreview, setYoutubePreview] = useState<LodgingYouTubePreview | null>(
+    null,
+  );
+  const locale = useAppLocale();
 
   useEffect(() => {
     const bump = () => setRevision((value) => value + 1);
@@ -247,6 +260,28 @@ export function GlobeLodgingFocusStage({
     });
   }, [anchorLat, anchorLng, globeRef, open, focus?.resourceId]);
 
+  useEffect(() => {
+    if (
+      !open ||
+      !payload?.placeId ||
+      anchorLat == null ||
+      anchorLng == null ||
+      !eventId
+    ) {
+      return;
+    }
+    const scoutId =
+      readScoutContract(eventId)?.contractId?.trim() ||
+      `lodging:${payload.placeId}`;
+    writeScoutSelectedAnchor(eventId, {
+      scoutId,
+      placeId: payload.placeId,
+      lat: anchorLat,
+      lng: anchorLng,
+      title: payload.name,
+    });
+  }, [anchorLat, anchorLng, eventId, open, payload]);
+
   const dismiss = useCallback(() => {
     globeRef?.current?.clearPinViewportBias();
     setOpen(false);
@@ -257,12 +292,61 @@ export function GlobeLodgingFocusStage({
     if (!payload) {
       return [];
     }
+    const slides: string[] = [];
     if (payload.videoUrl) {
-      return [payload.videoUrl, ...payload.images];
+      slides.push(payload.videoUrl);
     }
-    return payload.images;
+    slides.push(...payload.images);
+    return slides;
   }, [payload]);
-  const currentMedia = mediaSlides[mediaIndex] ?? null;
+
+  const totalMediaSlides =
+    (youtubePreview ? 1 : 0) + mediaSlides.length;
+
+  useEffect(() => {
+    if (!open || !payload?.name?.trim()) {
+      setYoutubePreview(null);
+      return;
+    }
+    let active = true;
+    const params = new URLSearchParams({ name: payload.name.trim() });
+    if (payload.address?.trim()) {
+      params.set("address", payload.address.trim());
+    }
+    if (anchorLat != null && Number.isFinite(anchorLat)) {
+      params.set("lat", String(anchorLat));
+    }
+    if (anchorLng != null && Number.isFinite(anchorLng)) {
+      params.set("lng", String(anchorLng));
+    }
+    if (locale.trim()) {
+      params.set("locale", locale.trim());
+    }
+    void fetch(`/api/globe/lodging-preview-video?${params.toString()}`, {
+      credentials: "same-origin",
+      cache: "no-store",
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((body: { preview?: LodgingYouTubePreview | null } | null) => {
+        if (!active) {
+          return;
+        }
+        setYoutubePreview(body?.preview ?? null);
+        setMediaIndex(0);
+      })
+      .catch(() => {
+        if (active) {
+          setYoutubePreview(null);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [anchorLat, anchorLng, locale, open, payload?.address, payload?.name]);
+
+  const showYoutubeHero = Boolean(youtubePreview && mediaIndex === 0);
+  const lodgingMediaIndex = mediaIndex - (youtubePreview ? 1 : 0);
+  const currentMedia = showYoutubeHero ? null : mediaSlides[lodgingMediaIndex] ?? null;
   const isVideo =
     currentMedia != null &&
     (currentMedia === payload?.videoUrl ||
@@ -416,7 +500,13 @@ export function GlobeLodgingFocusStage({
     tempC,
     priceKrw: payload.priceKrw ?? null,
     partnerLabel: payload.partnerLabel ?? null,
+    priceIsStayTotal: payload.provider === "liteapi",
   });
+  const reviewVideoPlace =
+    payload.address?.trim() || contextPlace || entry.resource.label;
+  const showReviewVideoBranch =
+    anchorLat != null && anchorLng != null && Boolean(payload.name.trim());
+
   return (
     <div
       ref={containerRef}
@@ -486,6 +576,13 @@ export function GlobeLodgingFocusStage({
               payload?.placeId &&
               activeEvent ? (
                 <div className="space-y-3">
+                  {isPinned ? (
+                    <GlobeLodgingRoomCardList
+                      contextEventId={eventId}
+                      resourceId={entry.resource.resourceId}
+                      payload={payload}
+                    />
+                  ) : null}
                   <GlobeLodgingAgentAskBar
                     event={activeEvent}
                     row={{
@@ -601,7 +698,15 @@ export function GlobeLodgingFocusStage({
             hero={
               <>
                 <div className={GLOBE_MAP_FOCUS_HERO_SHELL_CLASS}>
-                  {isVideo && currentMedia ? (
+                  {showYoutubeHero && youtubePreview ? (
+                    <GlobeLodgingYouTubePreviewEmbed
+                      key={youtubePreview.videoId}
+                      embedUrl={youtubePreview.embedUrl}
+                      title={youtubePreview.title}
+                      isShort={youtubePreview.isShort}
+                      className={GLOBE_MAP_FOCUS_HERO_MEDIA_CLASS}
+                    />
+                  ) : isVideo && currentMedia ? (
                     <video
                       key={currentMedia}
                       src={currentMedia}
@@ -627,11 +732,11 @@ export function GlobeLodgingFocusStage({
                   )}
                 </div>
 
-                {mediaSlides.length > 1 ? (
+                {totalMediaSlides > 1 ? (
                   <div className="absolute inset-x-0 bottom-2 z-[3] flex justify-center gap-1.5">
-                    {mediaSlides.map((slide, index) => (
+                    {Array.from({ length: totalMediaSlides }, (_, index) => (
                       <button
-                        key={`${slide}:${index}`}
+                        key={`lodging-media:${index}`}
                         type="button"
                         aria-label={`${index + 1}`}
                         onClick={(event) => {
@@ -651,6 +756,25 @@ export function GlobeLodgingFocusStage({
           />
         </div>
       </div>
+      {showReviewVideoBranch ? (
+        <div
+          className="pointer-events-none absolute z-[2] flex items-center"
+          style={{
+            top: "max(2.5rem, env(safe-area-inset-top))",
+            bottom: "calc(var(--rimvio-globe-ingest-offset, 5.5rem) + 0.5rem)",
+            left: "min(calc(100% - 10rem), 20.5rem)",
+          }}
+        >
+          <GlobeResourceVideoBranch
+            key={`${entry.resource.resourceId}:${reviewVideoPlace}`}
+            name={payload.name}
+            place={reviewVideoPlace}
+            kind="lodging"
+            lat={anchorLat}
+            lng={anchorLng}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

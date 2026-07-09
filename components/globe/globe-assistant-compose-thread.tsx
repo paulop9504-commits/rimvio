@@ -1,7 +1,15 @@
 "use client";
 
 import { GlobeTypewriterText } from "@/components/globe/globe-typewriter-text";
+import { GlobeScoutFeedGateComposeCard } from "@/components/globe/globe-scout-feed-gate-compose-card";
+import { GlobeContextScoutResultCard } from "@/components/globe/globe-context-scout-result-card";
+import { GlobeLodgingRoomCardList } from "@/components/globe/globe-lodging-room-card-list";
+import { GlobeIntakeSlotsComposeCard } from "@/components/globe/intake/globe-intake-slots-compose-card";
 import type { ContextAgentComposeTurn } from "@/lib/globe/assistant";
+import type { ContextConditionRecommendation } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
+import type { ContextConditionPinnedByKind } from "@/lib/globe/context-condition-ai/pin-context-condition-recommendation";
+import { resolveLodgingRoomCardStep } from "@/lib/globe/hub-checkout/resolve-lodging-hub-checkout-session";
+import { findLifeEventCandidate } from "@/lib/life-read-model";
 import {
   rimvioAssistantAiBubbleClass,
   rimvioAssistantMetaClass,
@@ -16,6 +24,18 @@ export type GlobeAssistantComposeThreadProps = {
   className?: string;
   typewriterTurnId?: string | null;
   onTypewriterComplete?: () => void;
+  pinnedByKind?: ContextConditionPinnedByKind;
+  pickBusyPlaceId?: string | null;
+  onPickRecommendation?: (item: ContextConditionRecommendation) => void;
+  contextEventId?: string | null;
+  onOpenIdentitySettings?: () => void;
+  onIntakeSubmit?: (input: {
+    turnId: string;
+    domainId: string;
+    values: Record<string, string | number>;
+  }) => void;
+  onOpenScoutFeed?: (input: { turnId: string; batchId: string }) => void;
+  scoutFeedGateBusy?: boolean;
 };
 
 /** Cursor-style thread — talk left, globe-apply right as diff line. */
@@ -24,6 +44,19 @@ export function GlobeAssistantComposeThread({
   className,
   typewriterTurnId = null,
   onTypewriterComplete,
+  pinnedByKind = {
+    lodging: null,
+    eatery: null,
+    activity: null,
+    amenity: null,
+  },
+  pickBusyPlaceId = null,
+  onPickRecommendation,
+  contextEventId = null,
+  onOpenIdentitySettings,
+  onIntakeSubmit,
+  onOpenScoutFeed,
+  scoutFeedGateBusy = false,
 }: GlobeAssistantComposeThreadProps) {
   if (turns.length === 0) {
     return null;
@@ -38,7 +71,12 @@ export function GlobeAssistantComposeThread({
         if (turn.role === "user") {
           return (
             <div key={turn.id} className="flex justify-end">
-              <p className={rimvioAssistantUserBubbleClass("max-w-[88%] text-[13px]")}>
+              <p
+                className={cn(
+                  rimvioAssistantUserBubbleClass("max-w-[88%] text-[13px]"),
+                  "bg-[#e8e8ed] text-[#1d1d1f] shadow-[0_1px_4px_rgba(0,0,0,0.05)] ring-1 ring-black/[0.04]",
+                )}
+              >
                 {turn.text}
               </p>
             </div>
@@ -71,6 +109,89 @@ export function GlobeAssistantComposeThread({
               >
                 {copy.globe.globeComposeGlobeApplyPrefix} {turn.text}
               </p>
+            </div>
+          );
+        }
+
+        if (turn.kind === "scout_feed_gate") {
+          return (
+            <div key={turn.id} className="flex justify-start">
+              <GlobeScoutFeedGateComposeCard
+                summaryKo={turn.payload.summaryKo}
+                count={turn.payload.count}
+                opened={turn.payload.status === "opened"}
+                busy={scoutFeedGateBusy}
+                aiInsightKo={turn.payload.aiInsightKo}
+                tipsKo={turn.payload.tipsKo}
+                highlightTitles={turn.payload.highlightTitles}
+                videoContext={turn.payload.videoContext}
+                onConfirm={() =>
+                  onOpenScoutFeed?.({
+                    turnId: turn.id,
+                    batchId: turn.payload.batchId,
+                  })
+                }
+              />
+            </div>
+          );
+        }
+
+        if (turn.kind === "scout_cards") {
+          const items: ContextConditionRecommendation[] = turn.payload.recommendations.map(
+            (row, index) => ({
+              kind: row.kind,
+              activitySubtype:
+                row.activitySubtype as ContextConditionRecommendation["activitySubtype"],
+              title: row.title,
+              reasonKo: row.reasonKo,
+              rank: index + 1,
+              placeId: row.placeId,
+              lat: row.lat,
+              lng: row.lng,
+            }),
+          );
+          return (
+            <div key={turn.id} className="flex justify-start">
+              <GlobeContextScoutResultCard
+                summaryKo={turn.payload.summaryKo}
+                items={items}
+                pinnedByKind={pinnedByKind}
+                pickBusyPlaceId={pickBusyPlaceId}
+                onPick={onPickRecommendation}
+              />
+            </div>
+          );
+        }
+
+        if (turn.kind === "intake_slots") {
+          return (
+            <div key={turn.id} className="flex justify-start">
+              <GlobeIntakeSlotsComposeCard
+                turnId={turn.id}
+                hint={turn.text}
+                payload={turn.payload}
+                onSubmit={onIntakeSubmit}
+              />
+            </div>
+          );
+        }
+
+        if (turn.kind === "lodging_room_cards" && contextEventId) {
+          const event = findLifeEventCandidate(contextEventId);
+          const step = event
+            ? resolveLodgingRoomCardStep(event, turn.payload.placeId)
+            : null;
+          if (!step) {
+            return null;
+          }
+          return (
+            <div key={turn.id} className="flex justify-start max-w-[92%]">
+              <GlobeLodgingRoomCardList
+                contextEventId={step.contextEventId}
+                resourceId={step.resourceId}
+                payload={step.payload}
+                onOpenIdentitySettings={onOpenIdentitySettings}
+              />
             </div>
           );
         }
