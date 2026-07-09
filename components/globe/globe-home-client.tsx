@@ -80,6 +80,7 @@ import {
 } from "@/components/globe/globe-media-pool-sheet";
 import { ExperienceBridgeGhostSheet } from "@/components/globe/experience-bridge-ghost-sheet";
 import { GlobeSettingsSheet } from "@/components/globe/globe-settings-sheet";
+import { GlobeLodgingCheckoutHost } from "@/components/globe/globe-lodging-checkout-host";
 import { PinOpenSheet } from "@/components/globe/pin-open-sheet";
 import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
 import { subscribeGlobeMapMediaFocus } from "@/lib/globe/globe-map-media-focus-bridge";
@@ -4872,6 +4873,7 @@ function GlobeHomeBody() {
           );
         }}
       />
+      <GlobeLodgingCheckoutHost />
       <GlobeSettingsSheet
         open={settingsOpen}
         onOpenChange={setSettingsOpen}

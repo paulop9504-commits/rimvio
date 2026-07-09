@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Zap, X } from "lucide-react";
@@ -16,6 +16,7 @@ import {
   executeLodgingHubCheckout,
   type HubLodgingCheckoutSession,
 } from "@/lib/globe/hub-checkout";
+import { resolveLiteApiPaymentTargetId, resolveLiteApiPaymentTargetSelector } from "@/lib/globe/hub-checkout/liteapi/resolve-liteapi-payment-target";
 import { assessExpressCheckoutReadiness } from "@/lib/payment-vault/assess-express-checkout-readiness";
 import { openPaymentVaultSettings } from "@/lib/payment-vault/open-payment-vault-settings-bridge";
 import { readPaymentVaultBundleClient } from "@/lib/payment-vault/read-payment-vault-bundle-client";
@@ -49,6 +50,7 @@ export function GlobeExpressCheckoutSheet({
   const [readiness, setReadiness] = useState<ExpressCheckoutReadiness | null>(null);
   const [step, setStep] = useState<"confirm" | "done">("confirm");
   const [handoffHref, setHandoffHref] = useState<string | null>(null);
+  const payInFlightRef = useRef(false);
 
   useEffect(() => {
     setMounted(true);
@@ -58,6 +60,7 @@ export function GlobeExpressCheckoutSheet({
     if (!open) {
       setStep("confirm");
       setBusy(false);
+      payInFlightRef.current = false;
       setHandoffHref(null);
       setReadiness(null);
       return;
@@ -82,11 +85,19 @@ export function GlobeExpressCheckoutSheet({
   }
 
   const isLiteApiCheckout = session.checkoutProvider === "liteapi";
+  const liteApiPaymentTargetId = resolveLiteApiPaymentTargetId(session.sessionId);
+  const liteApiPaymentTargetSelector = resolveLiteApiPaymentTargetSelector(
+    session.sessionId,
+  );
 
   const handleExpressPay = async () => {
+    if (busy || payInFlightRef.current) {
+      return;
+    }
     if (!readiness?.ready || !readiness.paymentMethod) {
       return;
     }
+    payInFlightRef.current = true;
     setBusy(true);
     try {
       const identityBundle = await readIdentityVaultBundleClient();
@@ -94,14 +105,19 @@ export function GlobeExpressCheckoutSheet({
         session,
         identityBundle,
         paymentMethod: readiness.paymentMethod,
+        paymentTargetSelector: isLiteApiCheckout
+          ? liteApiPaymentTargetSelector
+          : undefined,
       });
       if (!result.ok) {
         if (result.reason === "missing_identity") {
           toast.error(copy.hubCheckout.expressMissingIdentity);
           (onOpenIdentitySettings ?? openIdentityVaultSettings)();
+          payInFlightRef.current = false;
           return;
         }
         toast.error(result.pgMessage ?? copy.hubCheckout.payFailed);
+        payInFlightRef.current = false;
         return;
       }
       if (result.purchaseDeferred) {
@@ -110,9 +126,11 @@ export function GlobeExpressCheckoutSheet({
         );
         if (!isLiteApiCheckout) {
           onOpenChange(false);
+          payInFlightRef.current = false;
         }
         return;
       }
+      payInFlightRef.current = false;
       setHandoffHref(result.handoffHref);
       setStep("done");
       toast.success(copy.hubCheckout.payDone);
@@ -239,7 +257,7 @@ export function GlobeExpressCheckoutSheet({
 
                   {isLiteApiCheckout && readiness?.ready ? (
                     <div
-                      id="liteapi-payment-target"
+                      id={liteApiPaymentTargetId}
                       className="min-h-[120px] rounded-[1.25rem] bg-white p-3 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]"
                       data-liteapi-payment-target
                     />
