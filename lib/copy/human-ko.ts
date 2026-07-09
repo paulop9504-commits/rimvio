@@ -362,6 +362,8 @@ export const copy = {
     localDiscoveryVibePopular: "인기 많은 곳",
     localDiscoveryVibeLocal: "로컬 맛집",
     localDiscoveryVibeHot: "핫플",
+    explorationModeConvergentChip: "검증된 곳",
+    explorationModeDiffuseChip: "새로운 곳",
     localDiscoveryAskLodgingKind: "숙소는 어떤 형태가 좋을까요?",
     localDiscoveryAskResourceFocus: "무엇을 찾아볼까요?",
     localDiscoveryResourceRestaurant: "맛집",
@@ -423,6 +425,7 @@ export const copy = {
     contextActionConfirmYes: "맞아요",
     contextActionConfirmNo: "다른 곳",
     contextActionInjectBookLodging: "이 숙소 예약하기",
+    contextActionInjectBookLodgingAirbnb: "Airbnb에서 보기",
     contextActionInjectPayLodging: "이 숙소 결제하기",
     contextActionInjectBookEatery: "이 식당 예약하기",
     contextActionInjectPayEatery: "결제하기",
@@ -431,6 +434,8 @@ export const copy = {
     contextActionInjectionEyebrow: "확인",
     contextActionInjectedEyebrow: "다음 행동",
     contextActionPinFirstHint: "먼저 「이걸로」로 맥락에 맞춰 주세요",
+    contextActionInjectionAssistLine: (title: string) =>
+      `${title} — 아래에서 예약을 이어갈게요.`,
     experienceSimEyebrow: "이어가기",
     experienceSimBranchQuick: "빠른 루트",
     experienceSimBranchBalanced: "균형 루트",
@@ -1794,6 +1799,192 @@ export const copy = {
     discoveryFeedLoadingMore: "조금 더 이어서 보여주는 중",
     discoveryFeedComplete: "끝까지 둘러봤어요",
     discoveryFeedDismissCta: "닫기",
+    intelligentPinFeedTitle: "AI가 골라둔 곳",
+    intelligentPinFeedSubtitle: "내려보며 고르기 · 지도와 함께",
+    intelligentPinFeedCloseAria: "탐색 피드 닫기",
+    intelligentPinCategoryLodging: "숙소",
+    intelligentPinCategoryEatery: "맛집",
+    intelligentPinCategoryAmenity: "편의",
+    intelligentPinStatusExploring: "둘러보는 중",
+    intelligentPinStatusComparing: "비교 중",
+    intelligentPinStatusHolding: "잠시 홀드",
+    intelligentPinStatusPaying: "결제 진행 중",
+    intelligentPinStatusCommitted: "예약 완료",
+    intelligentPinFixPinCta: "맥락에 고정",
+    intelligentPinFixPinDone: "고정됨",
+    intelligentPinFixPinToast: (name: string) => `${name}을 이 맥락에 고정했어요`,
+    intelligentPinAiInsightPrefix: "맥락",
+    intelligentPinSwipePhotos: "옆으로 넘겨 사진 더 보기",
+    scoutFeedGateIntro: (count: number) => `${count}곳을 찾았어요.`,
+    scoutFeedGateConfirmCta: "확인하기",
+    scoutFeedGateOpened: "피드에서 둘러보는 중",
+    scoutFeedGateAreaFallback: "이 근처",
+    scoutFeedGateAiLabel: "맥락",
+    scoutFeedGateTipsLabel: "꿀팁",
+    scoutFeedGateVideosLabel: "관련 영상",
+    scoutFeedGateHighlightsLabel: "추천",
+    scoutFeedGateVideoQuery: (area: string) => `${area} 놀거리`,
+    scoutFeedGateAiInsight: (input: {
+      scoutKind: "lodging" | "eatery" | "activity" | "amenity" | "mixed";
+      areaLabel: string;
+      titles: readonly string[];
+      leadReason: string;
+    }) => {
+      const names = input.titles.filter(Boolean).slice(0, 3).join(" · ");
+      if (input.scoutKind === "activity" || input.scoutKind === "mixed") {
+        if (input.leadReason) {
+          return `${input.areaLabel}에서 ${names} 쪽이 동선이 좋아 보여요. ${input.leadReason}`;
+        }
+        return `${input.areaLabel}에서 ${names} 순으로 둘러보기 좋아요.`;
+      }
+      if (input.scoutKind === "lodging") {
+        return names
+          ? `${input.areaLabel} 숙소 후보 중 ${names}을 먼저 비교해 보세요.`
+          : `${input.areaLabel} 근처 숙소를 골라뒀어요.`;
+      }
+      if (input.scoutKind === "eatery") {
+        return names
+          ? `${input.areaLabel} 맛집 후보 — ${names}. ${input.leadReason || "피크 타임 전에 가면 대기가 덜해요."}`
+          : `${input.areaLabel} 근처 맛집을 골라뒀어요.`;
+      }
+      return names
+        ? `${input.areaLabel} 근처 ${names}을 확인해 보세요.`
+        : `${input.areaLabel} 근처 후보를 골라뒀어요.`;
+    },
+    scoutFeedGateTips: (input: {
+      scoutKind: "lodging" | "eatery" | "activity" | "amenity" | "mixed";
+      areaLabel: string;
+      triggerMessage: string;
+    }) => {
+      const area = input.areaLabel.trim() || "이 근처";
+      if (input.scoutKind === "activity" || input.scoutKind === "mixed") {
+        return [
+          `${area}은 오전·저녁으로 나눠 보면 동선이 짧아요.`,
+          "여권·교통카드 챙기고, 현금 소액 있으면 편해요.",
+          "확인하기를 누르면 지도와 피드에서 고를 수 있어요.",
+        ].join("\n");
+      }
+      if (input.scoutKind === "lodging") {
+        return [
+          "체크인·체크아웃 시간을 먼저 맞춰 보세요.",
+          "지도에서 거리·가격을 같이 비교할 수 있어요.",
+        ].join("\n");
+      }
+      if (input.scoutKind === "eatery") {
+        return [
+          "피크 타임 전·후가 대기가 덜한 편이에요.",
+          "피드에서 사진·후기 영상도 같이 볼 수 있어요.",
+        ].join("\n");
+      }
+      return `${area} 근처 후보를 지도와 피드에서 같이 볼 수 있어요.`;
+    },
+    feedEntityProfileLabel: "맥락 프로필",
+    feedEntityCompleteness: (percent: number) => `정보 ${percent}%`,
+    feedEntityReviewFocusLabel: "리뷰 포커스",
+    feedEntityPracticalTipsLabel: "꿀팁",
+    feedEntityPhotoCount: (count: number) => `사진 ${count}장`,
+    feedEntityNearMapPin: "지도 핀 기준 위치",
+    feedEntityOpenNow: "지금 영업 중",
+    feedEntityClosedNow: "영업 종료",
+    feedEntityVideoReady: "관련 영상 있음",
+    feedEntityVideoPending: "영상 수집 중",
+    feedEntityCollecting: "수집 중",
+    feedEntityAmbiancePhotos: "분위기 사진",
+    feedEntityRoomTypes: (count: number) => `객실 타입 ${count}종`,
+    feedEntityPriceLevel: (level: number) => `가격대 ${"₩".repeat(Math.min(level, 4))}`,
+    feedEntityRatingLabel: (rating: number) => `평점 ${rating.toFixed(1)}`,
+    feedEntitySlotLabel: (slotId: string) => {
+      const labels: Record<string, string> = {
+        room_photos: "객실 사진",
+        food_photos: "음식 사진",
+        drink_food_photos: "음료·디저트",
+        product_photos: "상품 사진",
+        attraction_photos: "현장 사진",
+        location_info: "위치",
+        access_info: "오는 길",
+        price_range: "가격",
+        menu_with_prices: "메뉴",
+        operation_hours: "영업시간",
+        working_hours: "운영시간",
+        waiting_time: "대기",
+        reservation_info: "예약",
+        reviews_by_category: "리뷰",
+        reviews_with_taste_rating: "맛 리뷰",
+        reviews_by_vibe: "분위기 리뷰",
+        reviews_by_value: "가성비 리뷰",
+        amenities: "시설",
+        breakfast_info: "조식",
+        interior_design: "인테리어",
+        wifi_quality: "와이파이",
+        noise_level: "소음",
+        seating_capacity: "좌석",
+        store_layout_photos: "매장 동선",
+        product_variety: "품목",
+        payment_methods: "결제",
+        crowd_timing: "혼잡도",
+        ticket_info: "입장권",
+        video_tour: "영상",
+      };
+      return labels[slotId] ?? slotId;
+    },
+    feedEntityReviewCategoryLabel: (categoryId: string) => {
+      const labels: Record<string, string> = {
+        cleanliness: "청결",
+        staff: "직원",
+        value: "가성비",
+        noise: "소음",
+        comfort: "편안함",
+        taste: "맛",
+        service_speed: "서빙",
+        atmosphere: "분위기",
+        ambiance: "무드",
+        wifi: "와이파이",
+        quiet: "조용함",
+        variety: "다양성",
+        quality: "품질",
+        access: "접근성",
+        crowd: "혼잡",
+      };
+      return labels[categoryId] ?? categoryId;
+    },
+    feedEntityPracticalTips: (
+      entityKind: "hotel" | "restaurant" | "cafe" | "attraction" | "shopping",
+      flags: { hasPhotos: boolean; hasVideo: boolean; hasPrice: boolean },
+    ) => {
+      if (entityKind === "hotel") {
+        return [
+          flags.hasPhotos ? "객실 사진을 먼저 확인해 보세요." : "공식 사진이 없으면 리뷰 영상을 참고하세요.",
+          flags.hasPrice ? "날짜별 가격을 비교해 보세요." : "체크인·체크아웃을 맞춘 뒤 가격을 볼 수 있어요.",
+          "역·관광지까지 도보 시간을 지도에서 확인하세요.",
+        ].join("\n");
+      }
+      if (entityKind === "restaurant") {
+        return [
+          flags.hasPhotos ? "대표 메뉴 사진이 있으면 입맛 판단이 빨라요." : "음식 사진은 리뷰 영상에서도 볼 수 있어요.",
+          "피크 타임 전·후가 대기가 덜한 편이에요.",
+          "현금만 받는지, 예약이 필요한지 영업 정보를 확인하세요.",
+        ].join("\n");
+      }
+      if (entityKind === "cafe") {
+        return [
+          "좌석·소음·와이파이는 분위기 사진과 리뷰를 같이 보세요.",
+          "작업용이면 콘센트·테이블 크기도 체크하세요.",
+          flags.hasVideo ? "영상으로 실제 혼잡도를 확인할 수 있어요." : "영상이 없으면 최근 리뷰를 참고하세요.",
+        ].join("\n");
+      }
+      if (entityKind === "shopping") {
+        return [
+          "영업시간·휴무일을 먼저 확인하세요.",
+          flags.hasPrice ? "가격대를 비슷한 매장과 비교해 보세요." : "면세·할인 정보는 현장 안내를 확인하세요.",
+          "호텔에서 도보·지하철 동선을 지도에서 볼 수 있어요.",
+        ].join("\n");
+      }
+      return [
+        "오전·저녁으로 나눠 보면 동선이 짧아져요.",
+        flags.hasVideo ? "입장·동선 영상을 먼저 보세요." : "혼잡 시간대는 리뷰를 참고하세요.",
+        "티켓·예약 필요 여부를 확인하세요.",
+      ].join("\n");
+    },
     resourceReelAreaFallback: "이 근처",
     resourceReelListSubtitle: "탭해서 자세히 보기",
     resourceReelCloseAria: "발견 닫기",
@@ -1872,6 +2063,7 @@ export const copy = {
     contextQuickPinCta: "맥락에 고정",
     contextQuickPinSharedCta: "함께 고정",
     contextQuickPinDone: "고정됨",
+    contextScoutCardPickHint: "탭하면 이 맥락에 고정해요",
     contextQuickPinSharedDone: "함께 고정됨",
     contextQuickPinToast: (name: string) => `${name}을 이 맥락에 고정했어요`,
     contextQuickPinSharedToast: (name: string) =>
@@ -1902,7 +2094,73 @@ export const copy = {
     lodgingFocusContextMedia: "이 맥락의 사진",
     lodgingFocusSwipeHint: "옆으로 밀어 다른 숙소 보기",
     lodgingFocusBook: "예매",
+    lodgingFocusReserve: "객실 고르고 예약 이어가기",
     lodgingFocusDetails: "자세히 보기",
+    lodgingSlotSheetTitle: "숙소 조건 먼저 맞출게요",
+    lodgingSlotSheetHint: "날짜와 인원을 한 번만 정하면 바로 숙소를 맞춰 드려요.",
+    lodgingSlotCheckIn: "체크인",
+    lodgingSlotCheckOut: "체크아웃",
+    lodgingSlotGuestCount: "성인 인원",
+    lodgingSlotRoomCount: "객실 수",
+    lodgingSlotApply: "이 조건으로 찾기",
+    lodgingSlotMissingToast: "날짜와 인원을 먼저 정하면 바로 숙소를 찾을게요.",
+    lodgingSlotGuestChip: (count: number) => `게스트 ${count}`,
+    lodgingSlotRoomChip: (count: number) => `객실 ${count}`,
+    lodgingSlotChipsEdit: "조건 수정",
+    lodgingSlotChipsEditAria: "숙소 날짜와 인원 조건 수정",
+    lodgingBookingRefundable: "무료 취소",
+    lodgingBookingNonRefundable: "환불 불가",
+    lodgingBookingRefundLimited: "환불 제한",
+    lodgingBookingLiveRate: "실시간 요금",
+    lodgingBookingRecommended: "추천",
+    lodgingBookingSchedule: "일정",
+    lodgingBookingGuests: "인원",
+    lodgingBookingTotal: "총액",
+    lodgingBookingTotalPay: "총 결제",
+    lodgingBookingSecurePay: "안전 결제",
+    lodgingBookingConfirmCode: "확인 번호",
+    tripIntakeSheetTitle: "여행 맞추기",
+    tripIntakeSheetHint: "비어 있는 것만 한 번 정하면 항공·숙소·놀거리를 같이 준비할게요.",
+    tripIntakeDestination: "목적지",
+    tripIntakeDestinationPlaceholder: "예: 오사카",
+    tripIntakeOrigin: "출발지",
+    tripIntakeOriginPlaceholder: "예: 인천 · 서울",
+    tripIntakeDepart: "출발일",
+    tripIntakeReturn: "귀국일",
+    tripIntakeGuestCount: "여행 인원",
+    tripIntakeBudget: "예산",
+    tripIntakeBudgetValue: "가성비",
+    tripIntakeBudgetBalanced: "보통",
+    tripIntakeBudgetPremium: "넉넉하게",
+    tripIntakeApply: "이 조건으로 준비하기",
+    tripIntakeMissingToast: "여행 조건을 먼저 맞추면 바로 준비할게요.",
+    tripIntakeComposeLine: (destination: string) =>
+      `${destination} 여행 조건을 맞췄어요. 이제 항공·숙소·놀거리를 같이 볼게요.`,
+    contextRecallBadge: (count: number) => `확정 ${count}건`,
+    contextRecallLodgingLeg: "숙소 확정",
+    contextRecallFlightLeg: "항공 확정",
+    hubActionLog: {
+      title: "맥락 기록",
+      hubLodging: "숙소",
+      hubFlight: "항공",
+      hubEatery: "식당",
+      hubGeneric: "맥락",
+      search: (hub: string) => `${hub} 찾기`,
+      reserve: (hub: string) => `${hub} 확보`,
+      purchase: (hub: string) => `${hub} 결제`,
+      cancel: (hub: string) => `${hub} 취소`,
+    },
+    lodgingRoomCardTitle: "객실 선택",
+    lodgingRoomCardHint: "맞춘 조건 기준 실시간 요금 · 바로 예약까지 이어져요.",
+    lodgingRoomCardHintEstimate: "예상 요금 · 파트너에서 최종 확인해 주세요.",
+    lodgingRoomCardEmptyLive: "지금 조건에 맞는 객실 요금이 없어요. 날짜나 인원을 바꿔 보세요.",
+    lodgingRoomCardEstimateSource: "예상 요금",
+    lodgingRoomCardEstimateOption: (index: number) => `예상 옵션 ${index}`,
+    lodgingRoomCardSelect: "이 객실로 예약",
+    lodgingRoomCardPhotoBadge: "객실",
+    lodgingRoomCardPinnedFirst: "먼저 이 숙소를 맥락에 고정해 주세요.",
+    lodgingRoomCardIdentityMissing: "여행 신원이 아직 비어 있어요. 설정에서 저장한 뒤 이어 주세요.",
+    lodgingRoomCardReserveDone: "객실을 잡아두고 예매 화면으로 이어갈게요.",
     contextConditionPinPlaceholder: "주변 맛집·숙소·약국·편의점 찾아줘",
     contextConditionPinSubmit: "꽂기",
     contextConditionPinBusy: "맞추는 중",
@@ -1918,9 +2176,9 @@ export const copy = {
       `${destination} 기준으로 숙소·놀거리를 한꺼번에 지도에 올려볼게요.`,
     onboardingParallelDepartureHint:
       "항공은 출발·도착만 정해 주면 이어서 맞춰 드릴게요.",
-    discoveryLensBarHint: "렌즈를 골라 이 주변을 볼게요",
-    discoveryLensPrefetching: "렌즈마다 주변 자원을 모으는 중이에요",
-    discoveryLensPickHint: "어디 주변을 볼까요? 원을 눌러 주세요",
+    discoveryLensBarHint: "지금 여행 맥락에 맞게, 이 근처를 대신 훑어볼게요.",
+    discoveryLensPrefetching: "각 렌즈마다 주변 후보를 모으는 중이에요 · 곧 정리해서 보여드릴게요.",
+    discoveryLensPickHint: "어디 주변을 먼저 볼까요? 어울리는 원을 하나 골라 주세요.",
     discoveryLensReasonFamily: "아이와 함께 가기 좋은",
     discoveryLensReasonCouple: "둘이 가기 좋은",
     discoveryLensReasonFriends: "친구와 놀기 좋은",
@@ -3291,6 +3549,88 @@ export const copy = {
     more: "더 보기",
     me: "나",
     tryAgain: "다시 시도해 주세요",
+  },
+  identityVault: {
+    settingsTitle: "여행 신원",
+    settingsHint: "한 번만 넣어 두면 항공·렌트·숙소 예매에 맞춰 드려요",
+    loading: "불러오는 중…",
+    saveCta: "여행 신원 저장",
+    saveDone: "여행 신원을 저장했어요",
+    saveMissingRequired: "이름·생년월일·연락처를 채워 주세요",
+    familyNameLabel: "영문 성",
+    givenNameLabel: "영문 이름",
+    legalNameKoLabel: "한글 이름 (선택)",
+    dateOfBirthLabel: "생년월일",
+    nationalityLabel: "국적",
+    phoneLabel: "휴대폰",
+    emailLabel: "이메일",
+    passportSectionShow: "여권 정보 추가 (항공·렌트)",
+    passportSectionHide: "여권 정보 접기",
+    passportNumberLabel: "여권 번호",
+    passportExpiryLabel: "만료일",
+    passportCountryLabel: "발급국",
+    applyChip: "저장된 신원 적용",
+    maskedLabelFallback: "여행자",
+    maskedLabelWithPassport: (name: string, maskedPassport: string) =>
+      `${name} · 여권 ${maskedPassport}`,
+    warnPassportExpired: "여권 만료일이 지났어요. 갱신 후 예매해 주세요",
+    warnPassportExpiringSoon: "여권 만료가 6개월 안이에요. 일정을 확인해 주세요",
+    warnPassportInvalidDate: "여권 만료일 형식을 확인해 주세요",
+    missingTraveler: "여행자 이름이 필요해요",
+    missingPassport: "여권 정보가 필요해요",
+    missingLicense: "운전면허 정보가 필요해요",
+    missingContact: "연락처가 필요해요",
+    sensitiveIdOptInTitle: "추가 신분 확인 (선택)",
+    sensitiveIdOptInHint: "이 예매에만 필요할 때만 따로 저장해요",
+  },
+  hubCheckout: {
+    eyebrow: "맥락 예매",
+    title: "예약 확인",
+    doneTitle: "예약 완료",
+    stepReview: "확인",
+    stepPay: "결제",
+    stepDone: "완료",
+    continuePay: "결제로 이어가기",
+    payMethodTitle: "결제 방법",
+    payCard: "카드",
+    payKakao: "카카오페이",
+    payToss: "토스페이",
+    confirmPay: (amount: string) => `${amount} 결제하기`,
+    payDone: "결제를 마쳤어요",
+    payFailed: "결제를 마치지 못했어요. 다시 시도해 주세요",
+    invalidAmount: "결제 금액을 확인할 수 없어요",
+    identityLine: (masked: string) => `예약자 · ${masked}`,
+    doneHint: "파트너 사이트에서 예약을 마무리할 수 있어요.",
+    partnerHandoff: "파트너에서 예약 마무리",
+    pgRedirect: "결제 화면으로 이어갈게요",
+    pgReturnDone: "결제를 마쳤어요",
+    liteapiPayTitle: "안전 결제",
+    liteapiPayHint: "카드 정보는 암호화되어 처리돼요. 결제 후 바로 예약이 확정됩니다.",
+    liteapiReturnDone: "숙소 예약이 확정됐어요",
+    liteapiReturnConfirm: (code: string) => `확인 번호: ${code}`,
+    liteapiBookFailed: "결제는 됐지만 예약 확정에 실패했어요. 고객센터에 문의해 주세요.",
+    secureNote: "결제 정보는 안전하게 암호화돼요",
+    doneSubtitle: "맥락에 예약이 저장됐어요. 확인 번호를 꼭 챙겨 주세요.",
+    expressTitle: "바로 결제",
+    expressPay: (amount: string) => `${amount} 바로 결제`,
+    expressHint: "저장된 신원·결제 수단으로 한 번에 이어가요",
+    expressMissingIdentity: "여행 신원을 먼저 저장해 주세요",
+    expressMissingPayment: "결제 수단을 먼저 저장해 주세요",
+    expressOtherPay: "다른 결제 방법",
+    expressPaymentLine: (label: string) => `결제 · ${label}`,
+  },
+  paymentVault: {
+    settingsTitle: "결제 수단",
+    settingsHint: "한 번 저장해 두면 다음 예약부터 바로 결제할 수 있어요",
+    methodCard: "카드",
+    methodCardMasked: (last4: string) => `카드 ·••• ${last4}`,
+    methodKakao: "카카오페이",
+    methodToss: "토스페이",
+    saveDone: "결제 수단을 저장했어요",
+    saveFailed: "결제 수단을 저장하지 못했어요",
+    cardLast4Label: "카드 끝 4자리 (선택)",
+    cardLast4Placeholder: "4242",
+    saveCta: "결제 수단 저장",
   },
 };
 

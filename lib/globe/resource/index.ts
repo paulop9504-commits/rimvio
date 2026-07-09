@@ -52,6 +52,11 @@ export {
 } from "@/lib/globe/resource/emit-hub-action-from-commit";
 
 export {
+  createPurchaseActionWithIdentity,
+  createReserveActionWithIdentity,
+} from "@/lib/globe/resource/emit-hub-action-with-identity";
+
+export {
   CONTEXT_COMMITTED_RESOURCES_META_KEY,
   emitCommittedContextResource,
   readCommittedContextResources,

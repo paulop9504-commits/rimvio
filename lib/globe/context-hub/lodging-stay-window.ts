@@ -56,10 +56,11 @@ export function buildLodgingStayWindow(input: {
   );
   const confidence =
     rowWindow?.confidence ?? plan?.windowConfidence ?? (checkOutIso ? "confirmed" : "open");
+  // Lodging checkout dates win over trip-wide planNights (e.g. 1-night book inside a 2-night trip).
   const nights =
     rowWindow?.nights ??
-    plan?.nights ??
-    deriveNights(checkInIso, checkOutIso);
+    deriveNights(checkInIso, checkOutIso) ??
+    plan?.nights;
 
   if (!checkInIso && !checkOutIso) {
     return null;

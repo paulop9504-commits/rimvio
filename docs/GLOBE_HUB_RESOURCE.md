@@ -60,7 +60,7 @@ search (HubActionRecord, resourceId: null, Runtime 후보)
   → [optional] cancel (HubActionRecord, supersedesActionId = reserve/purchase actionId)
 ```
 
-**L3:** `hub-action-record.ts` (create*) · `hub-action-record-store.ts` (`emitHubActionRecord`) · `context-hub-action-log-metadata.ts` (`contextHubActionLog` on EventCandidate).  
+**L3:** `hub-action-record.ts` (create*) · `hub-action-record-store.ts` (`emitHubActionRecord`) · `context-hub-action-log-metadata.ts` (`contextHubActionLog` on EventCandidate) · `lib/identity-vault/` (Hub slot refs on reserve/purchase).  
 Dual-write: session cache + durable metadata when Context exists. search / reserve / purchase / cancel Confirm→Execute wired.
 
 ---
