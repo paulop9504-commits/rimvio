@@ -11,7 +11,9 @@ export {
   markScoutFeedGateOpened,
   appendLodgingRoomCardsComposeTurn,
   appendIntakeSlotsComposeTurn,
+  appendOperatorAskChipsComposeTurn,
   markIntakeSlotsComposeTurnSubmitted,
+  markOperatorAskChipsTurnSubmitted,
   clearContextAgentComposeThread,
   readContextAgentComposeThread,
   subscribeContextAgentComposeThread,
@@ -20,5 +22,6 @@ export {
   type ScoutFeedGateComposePayload,
   type ScoutCardsComposePayload,
   type IntakeSlotsComposePayload,
+  type OperatorAskChipsComposePayload,
 } from "@/lib/globe/assistant/context-agent-compose-thread-store";
 export { CONTEXT_AGENT_ASK_FIRST } from "@/lib/globe/assistant/context-agent-ask-first";

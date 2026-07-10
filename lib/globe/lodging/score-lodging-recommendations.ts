@@ -7,6 +7,8 @@ import {
   type LodgingRecommendReasonInput,
 } from "@/lib/globe/lodging/explain-lodging-recommendation-ko";
 import { findLatestPersonaSignal } from "@/lib/persona/persona-inference-store";
+import type { EventCandidate } from "@/lib/events/event-candidate";
+import { scoreBusinessTripLodgingBias } from "@/lib/globe/lodging/score-business-trip-lodging-bias";
 
 export type ScoredLodgingRecommendation = {
   row: ContextLodgingInventoryRow;
@@ -152,6 +154,7 @@ export function scoreLodgingRecommendations(input: {
   lat?: number | null;
   lng?: number | null;
   context?: ContextInstance;
+  event?: EventCandidate | null;
 }): ScoredLodgingRecommendation[] {
   const lat = input.lat ?? null;
   const lng = input.lng ?? null;
@@ -179,6 +182,13 @@ export function scoreLodgingRecommendations(input: {
     });
     score += titleBias.delta;
     score += scorePrice(row.priceKrw);
+    const businessBias = scoreBusinessTripLodgingBias({
+      row,
+      event: input.event,
+      povLat: lat,
+      povLng: lng,
+    });
+    score += businessBias.delta;
     const lodgingBlob = [row.name, row.partnerLabel].filter(Boolean).join(" ");
     if (budgetBand?.value === "value" && row.priceKrw != null && row.priceKrw <= 120_000) {
       score += 18;
@@ -213,8 +223,8 @@ export function scoreLodgingRecommendations(input: {
     return {
       row,
       score,
-      reasonKo: titleBias.reasons[0] ?? explained.reasonKo,
-      matchReasons: [...titleBias.reasons, ...explained.matchReasons].slice(0, 3),
+      reasonKo: businessBias.reasons[0] ?? titleBias.reasons[0] ?? explained.reasonKo,
+      matchReasons: [...businessBias.reasons, ...titleBias.reasons, ...explained.matchReasons].slice(0, 3),
     };
   });
 
