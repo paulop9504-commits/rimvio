@@ -13,6 +13,9 @@ import {
 /** Above PinOpenSheet (`z-[10062]`) while assistant is active. */
 export const RIMVIO_ASSISTANT_FRAME_Z_INDEX = 10070;
 
+/** Discovery feed browsing — assistant retreats behind the feed. */
+export const RIMVIO_ASSISTANT_FEED_BACKDROP_Z_INDEX = 18;
+
 export const RIMVIO_ASSISTANT = {
   ink: RIMVIO_INK,
   action: RIMVIO_ACTION,

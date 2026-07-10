@@ -95,7 +95,10 @@ export async function GET(request: NextRequest) {
     mapsUrl: candidate.maps_url ?? null,
     provider: null,
     providerLabel: null,
-    categoryLabel: candidate.naver_category ?? criteria.category,
+    categoryLabel:
+      candidate.naver_category ??
+      candidate.google_types?.join(" ") ??
+      criteria.category,
     specialReasonKo: candidate.reason,
     specialScore: null,
     searchScore: null,

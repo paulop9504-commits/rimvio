@@ -96,6 +96,13 @@ export {
   LOCAL_DISCOVERY_PIN_CAP,
   LOCAL_DISCOVERY_RECOMMEND_CAP,
 } from "@/lib/globe/context-condition-ai/local-discovery-limits";
+export {
+  clearScoutRevealPending,
+  consumeScoutRevealPending,
+  hasScoutRevealPending,
+  writeScoutRevealPending,
+} from "@/lib/globe/context-condition-ai/context-condition-scout-reveal-pending-store";
+export { revealContextConditionScout } from "@/lib/globe/context-condition-ai/reveal-context-condition-scout";
 export { pickTopLocalDiscoveryRows } from "@/lib/globe/context-condition-ai/pick-top-local-discovery-rows";
 export {
   applyQuestionChoice,

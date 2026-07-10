@@ -4,8 +4,11 @@
  */
 
 import { isInstantPoiSearch } from "@/lib/globe/context-condition-ai/instant-poi-search";
+import { isInstantEaterySearch } from "@/lib/globe/context-condition-ai/instant-eatery-search";
+import { isLodgingBookingQuery } from "@/lib/globe/context-hub/lodging-booking-slots";
 import { parseLensCommand } from "@/lib/globe/discovery-lens/parse-lens-command";
 import { parseResourceReelKindFilter } from "@/lib/globe/resource-reel/parse-resource-reel-kind-filter";
+import { gateTripIntakeAskChips } from "@/lib/globe/operator-turn/gate-trip-intake-ask-chips";
 import {
   reelHasKindSlice,
 } from "@/lib/globe/operator-turn/read-operator-turn-ssot";
@@ -24,11 +27,25 @@ export function gateOperatorTurnSync(input: {
   ssot: OperatorTurnSsot;
   /** When true, skip lens parse (already tried / not handled). */
   skipLens?: boolean;
+  event?: import("@/lib/events/event-candidate").EventCandidate | null;
+  userLat?: number | null;
+  userLng?: number | null;
 }): OperatorTurnPlan {
   const text = input.text.trim();
   if (!text && !input.ssot.hasActiveSpec) {
     return { tool: "noop", reason: "empty_input" };
   }
+
+  const intakeAsk = gateTripIntakeAskChips({
+    text,
+    event: input.event,
+    userLat: input.userLat,
+    userLng: input.userLng,
+  });
+  if (intakeAsk) {
+    return intakeAsk;
+  }
+
   if (!text) {
     return { tool: "scout", reason: "search_or_bare_domain" };
   }
@@ -42,6 +59,14 @@ export function gateOperatorTurnSync(input: {
 
   if (isInstantPoiSearch(text)) {
     return { tool: "scout", reason: "instant_poi_search" };
+  }
+
+  if (isInstantEaterySearch(text)) {
+    return { tool: "scout", reason: "instant_eatery_search" };
+  }
+
+  if (isLodgingBookingQuery(text)) {
+    return { tool: "scout", reason: "instant_lodging_search" };
   }
 
   const kindFilter = parseResourceReelKindFilter(text);

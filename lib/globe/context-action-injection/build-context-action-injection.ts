@@ -3,6 +3,7 @@ import type { EventCandidate } from "@/lib/events/event-candidate";
 import {
   buildContextEateryBookingHandoff,
   buildContextLodgingBookingHandoff,
+  buildContextLodgingHubCheckoutHandoff,
   formatContextActionTargetPriceLine,
 } from "@/lib/globe/context-action-injection/build-context-action-handoff";
 import type {
@@ -12,7 +13,9 @@ import type {
 } from "@/lib/globe/context-action-injection/types";
 import { readContextConditionPinnedPlaceIds } from "@/lib/globe/context-condition-ai/pin-context-condition-recommendation";
 import { buildLodgingStayWindow } from "@/lib/globe/context-hub/lodging-stay-window";
+import { readLodgingBookingSlots } from "@/lib/globe/context-hub/lodging-booking-slots";
 import { readLodgingInventoryRows } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
+import { resolveLodgingRoomCardStep } from "@/lib/globe/hub-checkout/resolve-lodging-hub-checkout-session";
 import { readEateryInventoryRows } from "@/lib/globe/eatery/read-eatery-resource-inventory";
 import {
   emitHubActionOnInjectionConfirm,
@@ -117,6 +120,10 @@ export function buildContextActionInjection(input: {
       return null;
     }
     const title = row.name?.trim() || placeId;
+    const roomStep = resolveLodgingRoomCardStep(input.event, placeId);
+    const useHubCheckout =
+      roomStep != null &&
+      (input.intent.kind === "book_lodging" || input.intent.kind === "pay_lodging");
     return {
       id: `ctxact-${Date.now()}`,
       contextEventId: input.event.id,
@@ -135,11 +142,15 @@ export function buildContextActionInjection(input: {
       confirmPromptKo: confirmPromptKo(input.intent, title),
       confirmAcceptLabelKo: copy.globe.contextActionConfirmYes,
       confirmRejectLabelKo: copy.globe.contextActionConfirmNo,
-      injectedAction: buildContextLodgingBookingHandoff({
-        row,
-        event: input.event,
-        intent: input.intent,
-      }),
+      injectedAction: useHubCheckout
+        ? buildContextLodgingHubCheckoutHandoff({ intent: input.intent })
+        : buildContextLodgingBookingHandoff({
+            row,
+            event: input.event,
+            intent: input.intent,
+            contextEventId: input.event.id,
+            guestCount: readLodgingBookingSlots(input.event).guestCount ?? 1,
+          }),
       commitHints: lodgingCommitHints({
         event: input.event,
         placeId,

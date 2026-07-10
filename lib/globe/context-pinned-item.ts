@@ -17,7 +17,7 @@ export const CONTEXT_LODGING_PINNED_RESOURCE_ID_META_KEY =
 export const CONTEXT_LODGING_PINNED_PLACE_ID_META_KEY =
   "contextLodgingPinnedPlaceId";
 
-export type ContextPinnedItemKind = "eatery" | "lodging";
+export type ContextPinnedItemKind = "eatery" | "lodging" | "activity" | "amenity";
 
 export type ContextPinnedItemV1 = {
   version: 1;
@@ -51,9 +51,19 @@ export type LodgingPinnedContextItemInput = BasePinnedContextItemInput & {
   kind: "lodging";
 };
 
+export type ActivityPinnedContextItemInput = BasePinnedContextItemInput & {
+  kind: "activity";
+};
+
+export type AmenityPinnedContextItemInput = BasePinnedContextItemInput & {
+  kind: "amenity";
+};
+
 export type PinnedContextItemInput =
   | EateryPinnedContextItemInput
-  | LodgingPinnedContextItemInput;
+  | LodgingPinnedContextItemInput
+  | ActivityPinnedContextItemInput
+  | AmenityPinnedContextItemInput;
 
 const EATERY_PIN_KEYS = [
   "contextEateryPinnedAt",
@@ -126,7 +136,12 @@ export function readPinnedContextItem(
   }
   const row = raw as Record<string, unknown>;
   const kind = row.kind;
-  if (kind !== "eatery" && kind !== "lodging") {
+  if (
+    kind !== "eatery" &&
+    kind !== "lodging" &&
+    kind !== "activity" &&
+    kind !== "amenity"
+  ) {
     return null;
   }
   const resourceId = readTrimmedString(row.resourceId);
@@ -178,6 +193,10 @@ export function applyPinnedContextItemMetadata(input: {
     next.contextEateryPinnedPreviewUrl = input.item.previewUrl ?? null;
     next[CONTEXT_EATERY_PINNED_RESOURCE_ID_META_KEY] = input.item.resourceId;
     next[CONTEXT_EATERY_PINNED_PLACE_ID_META_KEY] = input.item.placeId;
+    return next;
+  }
+
+  if (input.item.kind === "activity" || input.item.kind === "amenity") {
     return next;
   }
 

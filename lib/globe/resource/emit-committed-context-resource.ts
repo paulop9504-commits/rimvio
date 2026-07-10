@@ -6,7 +6,7 @@
  */
 
 import type { EventCandidate } from "@/lib/events/event-candidate";
-import { findEventCandidate } from "@/lib/events/event-store";
+import { findLifeEventCandidate } from "@/lib/life-read-model";
 import type { ContextResource } from "@/lib/globe/resource/types";
 import { commitEventUpsert } from "@/lib/source-of-truth/commit-truth";
 
@@ -73,7 +73,7 @@ export function emitCommittedContextResource(input: {
   resource: ContextResource;
 }): EventCandidate {
   const contextEventId = input.contextEventId.trim();
-  const event = findEventCandidate(contextEventId);
+  const event = findLifeEventCandidate(contextEventId);
   if (!event) {
     throw new Error("context_event_not_found");
   }

@@ -6,10 +6,22 @@ export {
 } from "@/lib/globe/assistant/globe-compose-pipeline";
 export {
   appendContextAgentComposeTurn,
+  appendScoutFeedGateTurn,
+  appendScoutCardsComposeTurn,
+  markScoutFeedGateOpened,
+  appendLodgingRoomCardsComposeTurn,
+  appendIntakeSlotsComposeTurn,
+  appendOperatorAskChipsComposeTurn,
+  markIntakeSlotsComposeTurnSubmitted,
+  markOperatorAskChipsTurnSubmitted,
   clearContextAgentComposeThread,
   readContextAgentComposeThread,
   subscribeContextAgentComposeThread,
   type ContextAgentComposeTurn,
   type ContextAgentComposeTurnInput,
+  type ScoutFeedGateComposePayload,
+  type ScoutCardsComposePayload,
+  type IntakeSlotsComposePayload,
+  type OperatorAskChipsComposePayload,
 } from "@/lib/globe/assistant/context-agent-compose-thread-store";
 export { CONTEXT_AGENT_ASK_FIRST } from "@/lib/globe/assistant/context-agent-ask-first";

@@ -17,6 +17,7 @@ const emptySsot: OperatorTurnSsot = {
   reelItemCount: 0,
   composeTail: [],
   hasActiveSpec: false,
+  explorationMode: "convergent",
 };
 
 assert.ok(OPERATOR_FIXED_TOOLS.includes("scout"));
@@ -66,6 +67,24 @@ const instantPoi = gateOperatorTurnSync({
 assert.equal(instantPoi.tool, "scout");
 if (instantPoi.tool === "scout") {
   assert.equal(instantPoi.reason, "instant_poi_search");
+}
+
+const instantLodging = gateOperatorTurnSync({
+  text: "호텔",
+  ssot: emptySsot,
+});
+assert.equal(instantLodging.tool, "scout");
+if (instantLodging.tool === "scout") {
+  assert.equal(instantLodging.reason, "instant_lodging_search");
+}
+
+const instantEatery = gateOperatorTurnSync({
+  text: "초밥집 지도에 표시",
+  ssot: emptySsot,
+});
+assert.equal(instantEatery.tool, "scout");
+if (instantEatery.tool === "scout") {
+  assert.equal(instantEatery.reason, "instant_eatery_search");
 }
 
 assert.equal(mapClassifyToOperatorTool("chat").tool, "small_talk");

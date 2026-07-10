@@ -212,21 +212,6 @@ export function handleDiscoveryLensGlobePress(input: {
     return true;
   }
 
-  if (session.activeLensId) {
-    moveActiveDiscoveryLens({
-      session,
-      lat: input.lat,
-      lng: input.lng,
-    });
-    publishDiscoveryLensAction(input.contextEventId, {
-      type: "move_active",
-      lat: input.lat,
-      lng: input.lng,
-      rescout: true,
-    });
-    return true;
-  }
-
   return false;
 }
 

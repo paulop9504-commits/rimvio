@@ -9,6 +9,7 @@ import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-
 import { MAP_FOCUS_PIN_VIEWPORT_Y } from "@/lib/globe/map-anchored-overlay-layout";
 import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
 import { buildGlobeResourceReelItems } from "@/lib/globe/resource-reel/build-globe-resource-reel-items";
+import { resolveResourceReviewVideoContext } from "@/lib/globe/resource-reel/resolve-resource-review-video-context";
 import {
   filterGlobeResourceReelItems,
   resolveResourceReelKindFilter,
@@ -198,6 +199,26 @@ export function GlobeResourceReelStage({
     items[0]?.secondaryLine?.trim() ||
     copy.globe.resourceReelAreaFallback;
 
+  const reviewVideoContext = useMemo(() => {
+    if (!activeItem || !activeEvent) {
+      return null;
+    }
+    return resolveResourceReviewVideoContext({
+      event: activeEvent,
+      item: activeItem,
+      areaFallback: areaLabel,
+    });
+  }, [activeEvent, activeItem, areaLabel]);
+
+  useEffect(() => {
+    if (!state.open || state.surface !== "detail" || !activeItem) {
+      return;
+    }
+    globeRef?.current?.flyToPin(activeItem.lat, activeItem.lng, "neighborhood", {
+      pinViewportY: MAP_FOCUS_PIN_VIEWPORT_Y,
+    });
+  }, [activeItem, globeRef, state.open, state.surface]);
+
   // Keep the panel open for an empty filtered slice (e.g. 맛집만) so we do not
   // silently fall back to showing unrelated trip inventory.
   if (!state.open || (items.length === 0 && filteredItems.length === 0)) {
@@ -261,7 +282,8 @@ export function GlobeResourceReelStage({
           resumeIntent={state.resumeIntent}
         />
       </div>
-      {activeItem.kind === "lodging" || activeItem.kind === "eatery" ? (
+      {reviewVideoContext &&
+      (activeItem.kind === "lodging" || activeItem.kind === "eatery") ? (
         <div
           className="pointer-events-none absolute z-[1] flex items-center"
           style={{
@@ -271,12 +293,12 @@ export function GlobeResourceReelStage({
           }}
         >
           <GlobeResourceVideoBranch
-            key={activeItem.resourceId}
-            name={activeItem.title}
-            place={areaLabel}
-            kind={activeItem.kind}
-            lat={activeItem.lat}
-            lng={activeItem.lng}
+            key={`${activeItem.resourceId}:${reviewVideoContext.place}`}
+            name={reviewVideoContext.name}
+            place={reviewVideoContext.place}
+            kind={reviewVideoContext.kind}
+            lat={reviewVideoContext.lat}
+            lng={reviewVideoContext.lng}
           />
         </div>
       ) : null}

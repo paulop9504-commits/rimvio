@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, X } from "lucide-react";
@@ -18,6 +18,7 @@ import {
   type HubCheckoutPaymentMethod,
   type HubLodgingCheckoutSession,
 } from "@/lib/globe/hub-checkout";
+import { resolveLiteApiPaymentTargetId, resolveLiteApiPaymentTargetSelector } from "@/lib/globe/hub-checkout/liteapi/resolve-liteapi-payment-target";
 import { buildHubBookingIdentity } from "@/lib/identity-vault/build-hub-booking-identity";
 import { readIdentityVaultBundleClient } from "@/lib/identity-vault/read-identity-vault-bundle-client";
 import type { IdentitySlotId } from "@/lib/identity-vault/types";
@@ -73,6 +74,7 @@ export function GlobeHubCheckoutSheet({
   const [maskedIdentityKo, setMaskedIdentityKo] = useState<string | null>(null);
   const [handoffHref, setHandoffHref] = useState<string | null>(null);
   const [confirmationCode, setConfirmationCode] = useState<string | null>(null);
+  const payInFlightRef = useRef(false);
 
   useEffect(() => {
     setMounted(true);
@@ -82,6 +84,7 @@ export function GlobeHubCheckoutSheet({
     if (!open) {
       setStep("review");
       setBusy(false);
+      payInFlightRef.current = false;
       setPaymentMethod("in_app_card");
       setMaskedIdentityKo(null);
       setHandoffHref(null);
@@ -94,6 +97,10 @@ export function GlobeHubCheckoutSheet({
   }
 
   const isLiteApiCheckout = session.checkoutProvider === "liteapi";
+  const liteApiPaymentTargetId = resolveLiteApiPaymentTargetId(session.sessionId);
+  const liteApiPaymentTargetSelector = resolveLiteApiPaymentTargetSelector(
+    session.sessionId,
+  );
 
   const handleContinueToPay = async () => {
     const bundle = await readIdentityVaultBundleClient();
@@ -112,6 +119,10 @@ export function GlobeHubCheckoutSheet({
   };
 
   const handleConfirmPay = async () => {
+    if (busy || payInFlightRef.current) {
+      return;
+    }
+    payInFlightRef.current = true;
     setBusy(true);
     try {
       const bundle = await readIdentityVaultBundleClient();
@@ -119,6 +130,9 @@ export function GlobeHubCheckoutSheet({
         session,
         identityBundle: bundle,
         paymentMethod,
+        paymentTargetSelector: isLiteApiCheckout
+          ? liteApiPaymentTargetSelector
+          : undefined,
       });
       if (!result.ok) {
         if (result.reason === "missing_identity") {
@@ -129,13 +143,16 @@ export function GlobeHubCheckoutSheet({
           );
           onOpenIdentitySettings?.();
           setStep("review");
+          payInFlightRef.current = false;
           return;
         }
         if (result.reason === "pg_failed") {
           toast.error(result.pgMessage ?? copy.hubCheckout.payFailed);
+          payInFlightRef.current = false;
           return;
         }
         toast.error(copy.hubCheckout.payFailed);
+        payInFlightRef.current = false;
         return;
       }
       if (result.purchaseDeferred) {
@@ -144,9 +161,11 @@ export function GlobeHubCheckoutSheet({
         );
         if (!isLiteApiCheckout) {
           onOpenChange(false);
+          payInFlightRef.current = false;
         }
         return;
       }
+      payInFlightRef.current = false;
       setMaskedIdentityKo(result.maskedIdentityKo);
       setHandoffHref(result.handoffHref);
       setStep("done");
@@ -266,7 +285,7 @@ export function GlobeHubCheckoutSheet({
 
                   {isLiteApiCheckout ? (
                     <div
-                      id="liteapi-payment-target"
+                      id={liteApiPaymentTargetId}
                       className="min-h-[148px] rounded-[1.25rem] bg-white p-3 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]"
                       data-liteapi-payment-target
                     />

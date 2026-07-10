@@ -4,6 +4,7 @@
  */
 
 import { runHubPgCheckoutClient } from "@/lib/globe/hub-checkout/pg/run-hub-pg-checkout-client";
+import { resolveLiteApiPaymentTargetSelector } from "@/lib/globe/hub-checkout/liteapi/resolve-liteapi-payment-target";
 import { runLiteApiCheckoutClient } from "@/lib/globe/hub-checkout/liteapi/run-liteapi-checkout-client";
 import type { HubPgPendingFinalize } from "@/lib/globe/hub-checkout/pg/types";
 import {
@@ -137,6 +138,7 @@ export async function executeLodgingHubCheckout(input: {
   session: HubLodgingCheckoutSession;
   identityBundle: IdentityVaultBundle;
   paymentMethod: HubCheckoutPaymentMethod;
+  paymentTargetSelector?: string;
 }): Promise<ExecuteLodgingHubCheckoutResult> {
   const { session, identityBundle, paymentMethod } = input;
   if (!session.amountKrw || session.amountKrw <= 0) {
@@ -147,7 +149,9 @@ export async function executeLodgingHubCheckout(input: {
     const lite = await runLiteApiCheckoutClient({
       session,
       identityBundle,
-      paymentTargetSelector: "#liteapi-payment-target",
+      paymentTargetSelector:
+        input.paymentTargetSelector ??
+        resolveLiteApiPaymentTargetSelector(session.sessionId),
     });
     if (!lite.ok) {
       return {

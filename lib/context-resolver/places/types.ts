@@ -28,6 +28,7 @@ export type PlaceCandidate = {
   thumbnail_url?: string | null;
   photo_urls?: string[];
   naver_category?: string | null;
+  google_types?: string[] | null;
   description?: string | null;
 };
 

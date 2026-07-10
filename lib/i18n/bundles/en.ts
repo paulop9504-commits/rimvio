@@ -2122,14 +2122,32 @@ export const copyEn: Copy = {
     tripIntakeMissingToast: "Set your trip details first — then we'll get started.",
     tripIntakeComposeLine: (destination: string) =>
       `Trip details set for ${destination}. Prepping flights, stays, and things to do.`,
+    tripIntakeAskHint: "Pick one — we'll match a stay right away.",
+    tripIntakeAskChipApplied: (label: string) => `Got it — ${label}.`,
     contextRecallBadge: (count: number) =>
       `Confirmed ${count} item${count === 1 ? "" : "s"}`,
     contextRecallLodgingLeg: "Stay confirmed",
     contextRecallFlightLeg: "Flight confirmed",
+    hubActionLog: {
+      title: "Context log",
+      hubLodging: "Stay",
+      hubFlight: "Flight",
+      hubEatery: "Dining",
+      hubGeneric: "Context",
+      search: (hub: string) => `Search ${hub}`,
+      reserve: (hub: string) => `Hold ${hub}`,
+      purchase: (hub: string) => `Pay ${hub}`,
+      cancel: (hub: string) => `Cancel ${hub}`,
+    },
     lodgingRoomCardTitle: "Pick a room",
     lodgingRoomCardHint:
-      "Based on the stay you've matched, continue by choosing a room.",
+      "Live rates for your stay · book in one flow.",
+    lodgingRoomCardHintEstimate: "Estimated rate · confirm final price with the partner.",
+    lodgingRoomCardEmptyLive: "No room rates match right now. Try different dates or guests.",
+    lodgingRoomCardEstimateSource: "Estimated rate",
+    lodgingRoomCardEstimateOption: (index: number) => `Estimated option ${index}`,
     lodgingRoomCardSelect: "Continue with this room",
+    lodgingRoomCardPhotoBadge: "Room",
     lodgingRoomCardPinnedFirst: "Pin this stay to the context first.",
     lodgingRoomCardIdentityMissing:
       "Your travel identity isn't set yet. Save it in Settings, then continue.",

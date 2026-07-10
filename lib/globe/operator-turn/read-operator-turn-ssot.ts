@@ -13,6 +13,7 @@ import { findLifeEventCandidate } from "@/lib/life-read-model";
 import { buildGlobeResourceReelItems } from "@/lib/globe/resource-reel/build-globe-resource-reel-items";
 import type { OperatorTurnSsot } from "@/lib/globe/operator-turn/types";
 import type { GlobeResourceReelKind } from "@/lib/globe/resource-reel/types";
+import { resolveExplorationMode, readExplorationModeOverride } from "@/lib/globe/discovery-policy";
 
 export function readOperatorTurnSsot(input: {
   contextEventId: string;
@@ -25,6 +26,15 @@ export function readOperatorTurnSsot(input: {
   const reelKinds = [
     ...new Set(reelItems.map((row) => row.kind)),
   ] as GlobeResourceReelKind[];
+  const lastUserLine = [...(input.composeTail ?? [])]
+    .reverse()
+    .find((turn) => turn.role === "user")?.text;
+  const lastSpec = readContextConditionLastBatch(contextEventId)?.spec ?? null;
+  const explorationMode = resolveExplorationMode({
+    message: lastUserLine,
+    spec: lastSpec,
+    override: readExplorationModeOverride(contextEventId),
+  });
 
   return {
     contextEventId,
@@ -36,6 +46,7 @@ export function readOperatorTurnSsot(input: {
     reelItemCount: reelItems.length,
     composeTail: input.composeTail ?? [],
     hasActiveSpec: input.hasActiveSpec ?? false,
+    explorationMode,
   };
 }
 

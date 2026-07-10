@@ -38,6 +38,7 @@ every user turn:
 | `lastBatch` | `readContextConditionLastBatch` | `scout_id` ≡ `batchId` |
 | `reelItemCount` / kinds | `buildGlobeResourceReelItems` | filter_inventory eligibility |
 | `composeTail` | compose thread (last 6) | short dialogue only |
+| `explorationMode` | `resolveExplorationMode` | convergent vs diffuse scout policy — [`RIMVIO_EXPLORATION_POLICY.md`](./RIMVIO_EXPLORATION_POLICY.md) |
 
 Blueprint `readContainerAIContext` remains the **trip graph** gate (`gateContainerAIRequest`).  
 Operator turn SSOT is the **Globe discovery surface** gate — both may apply; graph block wins when present.

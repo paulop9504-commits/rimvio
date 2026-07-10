@@ -135,6 +135,7 @@ export const KOREA_KNOWN_NEIGHBORHOODS: readonly KoreaKnownPlace[] = [
   hood({ label: "여주 교동", city: "여주", name: "교동", lat: 37.295, lng: 127.645 }),
 
   // —— 부산 ——
+  hood({ label: "부산 서면", city: "부산", gu: "부산진구", name: "서면", lat: 35.1579, lng: 129.059, uniqueBare: true }),
   hood({ label: "부산 해운대 우동", city: "부산", gu: "해운대구", name: "우동", lat: 35.163, lng: 129.158 }),
   hood({ label: "부산 해운대 좌동", city: "부산", gu: "해운대구", name: "좌동", lat: 35.173, lng: 129.175 }),
   hood({ label: "부산 해운대 재송동", city: "부산", gu: "해운대구", name: "재송동", lat: 35.184, lng: 129.164 }),
