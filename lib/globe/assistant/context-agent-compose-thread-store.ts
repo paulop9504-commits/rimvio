@@ -51,6 +51,19 @@ export type ScoutFeedGateComposePayload = {
   readonly videoContext?: ScoutFeedGateVideoContextWire | null;
 };
 
+export type OperatorAskChipsComposePayload = {
+  readonly pendingTrigger: string;
+  readonly chips: readonly {
+    readonly id: string;
+    readonly labelKo: string;
+    readonly gapId: string;
+    readonly value: string;
+  }[];
+  readonly status: "open" | "submitted";
+  readonly selectedChipId?: string;
+  readonly selectedSummaryKo?: string;
+};
+
 export type ContextAgentComposeTurnInput =
   | {
       role: "user";
@@ -84,6 +97,12 @@ export type ContextAgentComposeTurnInput =
       kind: "scout_feed_gate";
       text: string;
       payload: ScoutFeedGateComposePayload;
+    }
+  | {
+      role: "assistant";
+      kind: "ask_chips";
+      text: string;
+      payload: OperatorAskChipsComposePayload;
     };
 
 export type ContextAgentComposeTurn =
@@ -130,6 +149,14 @@ export type ContextAgentComposeTurn =
       kind: "scout_feed_gate";
       text: string;
       payload: ScoutFeedGateComposePayload;
+      atIso: string;
+    }
+  | {
+      id: string;
+      role: "assistant";
+      kind: "ask_chips";
+      text: string;
+      payload: OperatorAskChipsComposePayload;
       atIso: string;
     };
 
@@ -197,6 +224,7 @@ export function appendContextAgentComposeTurn(
     last.kind !== "scout_cards" &&
     last.kind !== "scout_feed_gate" &&
     last.kind !== "intake_slots" &&
+    last.kind !== "ask_chips" &&
     last.text === row.text
   ) {
     return last;
@@ -270,6 +298,64 @@ export function appendIntakeSlotsComposeTurn(
       status: "open",
     },
   });
+}
+
+function hasOpenAskChipsTurn(eventId: string): boolean {
+  const rows = readContextAgentComposeThread(eventId);
+  return rows.some(
+    (row) =>
+      row.role === "assistant" &&
+      row.kind === "ask_chips" &&
+      row.payload.status === "open",
+  );
+}
+
+export function appendOperatorAskChipsComposeTurn(
+  eventId: string,
+  input: {
+    hint: string;
+    pendingTrigger: string;
+    chips: OperatorAskChipsComposePayload["chips"];
+  },
+): ContextAgentComposeTurn | null {
+  if (hasOpenAskChipsTurn(eventId)) {
+    return null;
+  }
+  return appendContextAgentComposeTurn(eventId, {
+    role: "assistant",
+    kind: "ask_chips",
+    text: input.hint,
+    payload: {
+      pendingTrigger: input.pendingTrigger,
+      chips: input.chips,
+      status: "open",
+    },
+  });
+}
+
+export function markOperatorAskChipsTurnSubmitted(
+  eventId: string,
+  turnId: string,
+  input: { chipId: string; summaryKo: string },
+): void {
+  const id = eventId.trim();
+  const rows = threads.get(id) ?? [];
+  const next = rows.map((row) => {
+    if (row.id !== turnId || row.role !== "assistant" || row.kind !== "ask_chips") {
+      return row;
+    }
+    return {
+      ...row,
+      payload: {
+        ...row.payload,
+        status: "submitted" as const,
+        selectedChipId: input.chipId,
+        selectedSummaryKo: input.summaryKo,
+      },
+    };
+  });
+  threads.set(id, next);
+  emit(id);
 }
 
 export function markIntakeSlotsComposeTurnSubmitted(
