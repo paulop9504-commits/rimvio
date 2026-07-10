@@ -71,7 +71,13 @@ export type OperatorTurnPlan =
     }
   | {
       readonly tool: "ask_chips";
-      readonly reason: "convergence_or_clarify";
+      readonly reason: "trip_intake_gap" | "convergence_or_clarify";
+      readonly chips: readonly {
+        readonly id: string;
+        readonly labelKo: string;
+        readonly gapId: string;
+        readonly value: string;
+      }>;
     }
   | {
       readonly tool: "noop";

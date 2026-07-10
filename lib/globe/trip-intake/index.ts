@@ -37,7 +37,13 @@ export {
 } from "@/lib/globe/trip-intake/should-open-trip-intake";
 
 export {
-  readTripIntakeComplete,
-  refreshTripIntakeEvent,
-  writeTripIntakeSlots,
-} from "@/lib/globe/trip-intake/write-trip-intake-slots";
+  buildTripIntakeAskChips,
+  resolveTripIntakeChipValue,
+  type TripIntakeAskChip,
+} from "@/lib/globe/trip-intake/build-trip-intake-ask-chips";
+
+export { applyTripIntakeAskChip } from "@/lib/globe/trip-intake/apply-trip-intake-ask-chip";
+
+export { writeTripIntakeSlots } from "@/lib/globe/trip-intake/write-trip-intake-slots";
+
+export { writeTripIntakePartial } from "@/lib/globe/trip-intake/write-trip-intake-partial";
