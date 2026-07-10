@@ -35,6 +35,7 @@ import {
   type ContextConditionAnchorPinOutcome,
 } from "@/lib/globe/context-condition-ai";
 import { commitOneShotLodgingMainOfferClient } from "@/lib/globe/lodging-prep";
+import { dispatchIntelligentDiscoveryFeedOpen } from "@/lib/globe/intelligent-pin";
 import { useIntelligentDiscoveryFeedFocus } from "@/lib/globe/intelligent-pin/use-intelligent-discovery-feed-focus";
 import { isAlternatePlaceSearch } from "@/lib/globe/context-condition-ai/is-alternate-place-search";
 import {

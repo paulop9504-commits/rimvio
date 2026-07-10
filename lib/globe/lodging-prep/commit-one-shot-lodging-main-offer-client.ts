@@ -13,9 +13,6 @@ import {
   type RunOneShotLodgingPrepResult,
 } from "@/lib/globe/lodging-prep/run-one-shot-lodging-prep-client";
 import { prepareLodgingHubCheckout } from "@/lib/globe/hub-checkout/prepare-lodging-hub-checkout";
-import { assessExpressCheckoutReadiness } from "@/lib/payment-vault/assess-express-checkout-readiness";
-import { readIdentityVaultBundleClient } from "@/lib/identity-vault/read-identity-vault-bundle-client";
-import { readPaymentVaultBundleClient } from "@/lib/payment-vault/read-payment-vault-bundle-client";
 
 export type CommitOneShotLodgingMainOfferResult = {
   readonly committed: boolean;
@@ -32,6 +29,7 @@ export function commitOneShotLodgingMainOfferClient(input: {
   userLat?: number | null;
   userLng?: number | null;
   prepResult?: RunOneShotLodgingPrepResult | null;
+  expressReady?: boolean;
 }): CommitOneShotLodgingMainOfferResult {
   const prep =
     input.prepResult?.plan ??
@@ -40,11 +38,7 @@ export function commitOneShotLodgingMainOfferClient(input: {
       event: input.event,
       userLat: input.userLat,
       userLng: input.userLng,
-      expressReady: assessExpressCheckoutReadiness({
-        hubId: "lodging",
-        identityBundle: readIdentityVaultBundleClient(),
-        paymentBundle: readPaymentVaultBundleClient(),
-      }).ready,
+      expressReady: input.expressReady,
     });
   if (!prep?.readyForScout) {
     return { committed: false, placeId: null, expressOpened: false };

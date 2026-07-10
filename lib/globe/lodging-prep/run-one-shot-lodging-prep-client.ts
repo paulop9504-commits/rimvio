@@ -10,9 +10,6 @@ import { writeContextSpatialTargetFromText } from "@/lib/globe/spatial/write-con
 import { writeTripIntakeSlots } from "@/lib/globe/trip-intake/write-trip-intake-slots";
 import { writeTripIntakePartial } from "@/lib/globe/trip-intake/write-trip-intake-partial";
 import type { TripIntakeState } from "@/lib/globe/trip-intake/types";
-import { assessExpressCheckoutReadiness } from "@/lib/payment-vault/assess-express-checkout-readiness";
-import { readIdentityVaultBundleClient } from "@/lib/identity-vault/read-identity-vault-bundle-client";
-import { readPaymentVaultBundleClient } from "@/lib/payment-vault/read-payment-vault-bundle-client";
 
 export type RunOneShotLodgingPrepResult = {
   readonly plan: OneShotLodgingPrepPlan;
@@ -46,13 +43,7 @@ export function runOneShotLodgingPrepClient(input: {
     userLat: input.userLat,
     userLng: input.userLng,
     now: input.now,
-    expressReady:
-      input.expressReady ??
-      assessExpressCheckoutReadiness({
-        hubId: "lodging",
-        identityBundle: readIdentityVaultBundleClient(),
-        paymentBundle: readPaymentVaultBundleClient(),
-      }).ready,
+    expressReady: input.expressReady,
   });
   if (!plan) {
     return null;

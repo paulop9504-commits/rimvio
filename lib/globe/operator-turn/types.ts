@@ -77,7 +77,7 @@ export type OperatorTurnPlan =
         readonly labelKo: string;
         readonly gapId: string;
         readonly value: string;
-      }>;
+      }[];
     }
   | {
       readonly tool: "noop";
