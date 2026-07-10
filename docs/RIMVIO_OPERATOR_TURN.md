@@ -70,7 +70,7 @@ Forbidden:
 | `small_talk` | classify → chat | short situational reply |
 | `task_injection` | classify → task / action intent | context action injection |
 | `scout` | search / bare domain / filter without slice | ScoutContract → anchor pin |
-| `ask_chips` | convergence / clarify (scout path) | pending questions only — no scout yet |
+| `ask_chips` | trip intake / experience gap | one-screen chips · partial slot write · no scout yet |
 
 **One tool per turn.** Chips that fire a new message start a **new** turn (still one tool).
 
@@ -82,6 +82,8 @@ LLM must **not** invent tools outside this table (no ReAct toolbox).
 
 ```text
 text empty → no-op
+lodging prep gap → ask_chips (trip_intake) STOP
+trip experience gap → ask_chips (trip_experience) STOP  ← docs/RIMVIO_TRIP_EXPERIENCE_DOMAIN.md
 try lens_command (caller: applyLensCommand) → if handled, STOP
 parseResourceReelKindFilter:
   hit + reel has slice → filter_inventory STOP

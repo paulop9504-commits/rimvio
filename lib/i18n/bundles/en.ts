@@ -2124,6 +2124,8 @@ export const copyEn: Copy = {
       `Trip details set for ${destination}. Prepping flights, stays, and things to do.`,
     tripIntakeAskHint: "Pick one — we'll match a stay right away.",
     tripIntakeAskChipApplied: (label: string) => `Got it — ${label}.`,
+    tripExperienceAskHint: "Pick a direction — we'll shape the trip from there.",
+    tripExperienceAskChipApplied: (label: string) => `Shaping it around ${label}.`,
     lodgingOneShotMainReady: "Picked a stay for your trip — confirm the room to continue.",
     contextRecallBadge: (count: number) =>
       `Confirmed ${count} item${count === 1 ? "" : "s"}`,

@@ -178,6 +178,11 @@ import {
   writeTripIntakeSlots,
   type TripIntakeGapId,
 } from "@/lib/globe/trip-intake";
+import {
+  applyTripExperienceAskChip,
+  isTripExperienceUtterance,
+  type TripExperienceGapId,
+} from "@/lib/globe/trip-experience";
 import { runOneShotLodgingPrepClient, isLodgingPrepUtterance } from "@/lib/globe/lodging-prep";
 
 export type IntakeSlotsSubmitInput = {
@@ -1320,25 +1325,53 @@ export const GlobeContextConditionPinBar = forwardRef<
       setBusy(true);
       try {
         const priorEvent = findLifeEventCandidate(contextEventId);
-        applyTripIntakeAskChip({
-          contextEventId,
-          event: priorEvent,
-          message: pendingTrigger,
-          chip: { gapId: input.gapId as TripIntakeGapId, value: input.value },
-          userLat,
-          userLng,
-        });
-        markOperatorAskChipsTurnSubmitted(contextEventId, input.turnId, {
-          chipId: input.chipId,
-          summaryKo: copy.globe.tripIntakeAskChipApplied(input.labelKo),
-        });
-        runOneShotLodgingPrepClient({
-          message: pendingTrigger,
-          contextEventId,
-          event: findLifeEventCandidate(contextEventId),
-          userLat,
-          userLng,
-        });
+        const turn = readContextAgentComposeThread(contextEventId).find(
+          (row) => row.id === input.turnId,
+        );
+        const chipDomain =
+          turn?.role === "assistant" &&
+          turn.kind === "ask_chips" &&
+          turn.payload.chipDomain
+            ? turn.payload.chipDomain
+            : "trip_intake";
+
+        if (chipDomain === "trip_experience") {
+          applyTripExperienceAskChip({
+            contextEventId,
+            event: priorEvent,
+            message: pendingTrigger,
+            chip: {
+              gapId: input.gapId as TripExperienceGapId,
+              value: input.value,
+            },
+            userLat,
+            userLng,
+          });
+          markOperatorAskChipsTurnSubmitted(contextEventId, input.turnId, {
+            chipId: input.chipId,
+            summaryKo: copy.globe.tripExperienceAskChipApplied(input.labelKo),
+          });
+        } else {
+          applyTripIntakeAskChip({
+            contextEventId,
+            event: priorEvent,
+            message: pendingTrigger,
+            chip: { gapId: input.gapId as TripIntakeGapId, value: input.value },
+            userLat,
+            userLng,
+          });
+          markOperatorAskChipsTurnSubmitted(contextEventId, input.turnId, {
+            chipId: input.chipId,
+            summaryKo: copy.globe.tripIntakeAskChipApplied(input.labelKo),
+          });
+          runOneShotLodgingPrepClient({
+            message: pendingTrigger,
+            contextEventId,
+            event: findLifeEventCandidate(contextEventId),
+            userLat,
+            userLng,
+          });
+        }
         await resolveAndMaybeExecute(pendingTrigger);
       } finally {
         setBusy(false);
@@ -1426,7 +1459,7 @@ export const GlobeContextConditionPinBar = forwardRef<
     if (text) {
       onUserCompose?.(text);
     }
-    if (text && !isLodgingPrepUtterance(text) && tryOpenIntakeForMessage(text)) {
+    if (text && !isLodgingPrepUtterance(text) && !isTripExperienceUtterance(text) && tryOpenIntakeForMessage(text)) {
       setMessage("");
       return;
     }
@@ -1454,7 +1487,12 @@ export const GlobeContextConditionPinBar = forwardRef<
 
         if (plan.tool === "ask_chips") {
           appendOperatorAskChipsComposeTurn(contextEventId, {
-            hint: copy.globe.tripIntakeAskHint,
+            chipDomain:
+              plan.reason === "trip_experience_gap" ? "trip_experience" : "trip_intake",
+            hint:
+              plan.reason === "trip_experience_gap"
+                ? copy.globe.tripExperienceAskHint
+                : copy.globe.tripIntakeAskHint,
             pendingTrigger: text,
             chips: plan.chips,
           });
@@ -1689,13 +1727,22 @@ export const GlobeContextConditionPinBar = forwardRef<
         });
         if (plan.tool === "ask_chips") {
           appendOperatorAskChipsComposeTurn(contextEventId, {
-            hint: copy.globe.tripIntakeAskHint,
+            chipDomain:
+              plan.reason === "trip_experience_gap" ? "trip_experience" : "trip_intake",
+            hint:
+              plan.reason === "trip_experience_gap"
+                ? copy.globe.tripExperienceAskHint
+                : copy.globe.tripIntakeAskHint,
             pendingTrigger: text,
             chips: plan.chips,
           });
           return;
         }
-        if (!isLodgingPrepUtterance(text) && tryOpenIntakeForMessage(text)) {
+        if (
+          !isLodgingPrepUtterance(text) &&
+          !isTripExperienceUtterance(text) &&
+          tryOpenIntakeForMessage(text)
+        ) {
           return;
         }
         if (operatorBlueprint) {

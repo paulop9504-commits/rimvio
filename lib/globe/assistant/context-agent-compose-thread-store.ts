@@ -52,6 +52,7 @@ export type ScoutFeedGateComposePayload = {
 };
 
 export type OperatorAskChipsComposePayload = {
+  readonly chipDomain: "trip_intake" | "trip_experience";
   readonly pendingTrigger: string;
   readonly chips: readonly {
     readonly id: string;
@@ -313,6 +314,7 @@ function hasOpenAskChipsTurn(eventId: string): boolean {
 export function appendOperatorAskChipsComposeTurn(
   eventId: string,
   input: {
+    chipDomain: OperatorAskChipsComposePayload["chipDomain"];
     hint: string;
     pendingTrigger: string;
     chips: OperatorAskChipsComposePayload["chips"];
@@ -326,6 +328,7 @@ export function appendOperatorAskChipsComposeTurn(
     kind: "ask_chips",
     text: input.hint,
     payload: {
+      chipDomain: input.chipDomain,
       pendingTrigger: input.pendingTrigger,
       chips: input.chips,
       status: "open",

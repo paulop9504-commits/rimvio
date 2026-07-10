@@ -9,6 +9,7 @@ import { isLodgingBookingQuery } from "@/lib/globe/context-hub/lodging-booking-s
 import { parseLensCommand } from "@/lib/globe/discovery-lens/parse-lens-command";
 import { parseResourceReelKindFilter } from "@/lib/globe/resource-reel/parse-resource-reel-kind-filter";
 import { gateTripIntakeAskChips } from "@/lib/globe/operator-turn/gate-trip-intake-ask-chips";
+import { gateTripExperienceAskChips } from "@/lib/globe/operator-turn/gate-trip-experience-ask-chips";
 import {
   reelHasKindSlice,
 } from "@/lib/globe/operator-turn/read-operator-turn-ssot";
@@ -44,6 +45,16 @@ export function gateOperatorTurnSync(input: {
   });
   if (intakeAsk) {
     return intakeAsk;
+  }
+
+  const experienceAsk = gateTripExperienceAskChips({
+    text,
+    event: input.event,
+    userLat: input.userLat,
+    userLng: input.userLng,
+  });
+  if (experienceAsk) {
+    return experienceAsk;
   }
 
   if (!text) {
