@@ -2,6 +2,8 @@ import { extractTravelDestination } from "@/lib/action-chat/try-travel-trip-anno
 import type { ContextBlueprint } from "@/lib/context-blueprint/types";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { readLodgingBookingSlots } from "@/lib/globe/context-hub/lodging-booking-slots";
+import { inferTripTemporalFromContext } from "@/lib/globe/trip-intake/infer-trip-temporal-from-context";
+import { mergeInferredTripTemporal } from "@/lib/globe/trip-intake/merge-inferred-trip-temporal";
 import {
   CONTEXT_TRIP_BUDGET_BAND_META_KEY,
   CONTEXT_TRIP_ORIGIN_LABEL_META_KEY,
@@ -15,6 +17,14 @@ import { buildTravelBrainState } from "@/lib/situation-projection/travel-brain-p
 
 function asTrimmed(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function asDateYmd(value: string | null | undefined): string | null {
+  if (!value?.trim()) {
+    return null;
+  }
+  const ymd = value.slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(ymd) ? ymd : null;
 }
 
 function asBudgetBand(value: unknown): TripBudgetBand | null {
@@ -35,6 +45,9 @@ export function readTripIntakeState(input: {
   event: EventCandidate | null | undefined;
   message?: string | null;
   blueprint?: ContextBlueprint | null;
+  userLat?: number | null;
+  userLng?: number | null;
+  now?: Date;
 }): TripIntakeState {
   const event = input.event;
   if (!event) {
@@ -69,12 +82,23 @@ export function readTripIntakeState(input: {
       ? travelBrain.slots.budget_band.value
       : null;
 
-  return {
-    destinationLabel,
-    originLabel,
-    checkInIso: lodgingSlots.checkInIso ?? plan?.windowStartIso ?? null,
-    checkOutIso: lodgingSlots.checkOutIso ?? plan?.windowEndIso ?? null,
-    guestCount: lodgingSlots.guestCount,
-    budgetBand: budgetFromMeta ?? budgetFromBrain,
-  };
+  return mergeInferredTripTemporal(
+    {
+      destinationLabel,
+      originLabel,
+      checkInIso:
+        asDateYmd(lodgingSlots.checkInIso) ?? asDateYmd(plan?.windowStartIso) ?? null,
+      checkOutIso:
+        asDateYmd(lodgingSlots.checkOutIso) ?? asDateYmd(plan?.windowEndIso) ?? null,
+      guestCount: lodgingSlots.guestCount,
+      budgetBand: budgetFromMeta ?? budgetFromBrain,
+    },
+    inferTripTemporalFromContext({
+      event,
+      message: input.message,
+      userLat: input.userLat,
+      userLng: input.userLng,
+      now: input.now,
+    }),
+  );
 }

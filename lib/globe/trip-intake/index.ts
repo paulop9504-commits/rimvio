@@ -22,6 +22,15 @@ export {
 export { readTripIntakeState } from "@/lib/globe/trip-intake/read-trip-intake-state";
 
 export {
+  inferTripTemporalFromContext,
+  isOnTripNowMessage,
+  type TripTemporalInference,
+  type TripTemporalInferenceSource,
+} from "@/lib/globe/trip-intake/infer-trip-temporal-from-context";
+
+export { mergeInferredTripTemporal } from "@/lib/globe/trip-intake/merge-inferred-trip-temporal";
+
+export {
   isBroadTripPackageMessage,
   readTripIntakeGaps,
   shouldOpenTripIntake,
