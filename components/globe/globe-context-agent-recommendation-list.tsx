@@ -1,19 +1,29 @@
 "use client";
 
 import type { ContextConditionRecommendation } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
+import type { ContextConditionPinnedByKind } from "@/lib/globe/context-condition-ai/pin-context-condition-recommendation";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
 export type GlobeContextAgentRecommendationListProps = {
   items: readonly ContextConditionRecommendation[];
-  pinnedByKind?: { lodging: string | null; eatery: string | null };
+  pinnedByKind?: ContextConditionPinnedByKind;
   pickBusyPlaceId?: string | null;
   onPick?: (item: ContextConditionRecommendation) => void;
   className?: string;
 };
 
 function kindEmoji(kind: ContextConditionRecommendation["kind"]): string {
-  return kind === "lodging" ? "🏨" : "🍜";
+  if (kind === "lodging") {
+    return "🏨";
+  }
+  if (kind === "activity") {
+    return "🎯";
+  }
+  if (kind === "amenity") {
+    return "🏪";
+  }
+  return "🍜";
 }
 
 const MAX_VISIBLE = 3;
@@ -21,7 +31,12 @@ const MAX_VISIBLE = 3;
 /** Ranked picks — tap row to pin (minimal). */
 export function GlobeContextAgentRecommendationList({
   items,
-  pinnedByKind = { lodging: null, eatery: null },
+  pinnedByKind = {
+    lodging: null,
+    eatery: null,
+    activity: null,
+    amenity: null,
+  },
   pickBusyPlaceId = null,
   onPick,
   className,
@@ -36,8 +51,7 @@ export function GlobeContextAgentRecommendationList({
   return (
     <ul className={cn("space-y-1", className)} data-globe-context-agent-recommendations>
       {visible.map((item) => {
-        const pinnedPlaceId =
-          item.kind === "lodging" ? pinnedByKind.lodging : pinnedByKind.eatery;
+        const pinnedPlaceId = pinnedByKind[item.kind] ?? null;
         const isPinned = pinnedPlaceId === item.placeId;
         const isBusy = pickBusyPlaceId === item.placeId;
         const disabled = isPinned || isBusy || Boolean(pickBusyPlaceId);

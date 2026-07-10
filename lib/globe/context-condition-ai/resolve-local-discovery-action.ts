@@ -3,6 +3,13 @@ import {
   INSTANT_POI_RADIUS_M,
   resolveInstantPoiFocus,
 } from "@/lib/globe/context-condition-ai/instant-poi-search";
+import {
+  isInstantLodgingSearch,
+} from "@/lib/globe/context-condition-ai/instant-lodging-search";
+import {
+  isInstantEaterySearch,
+  resolveInstantEateryFocus,
+} from "@/lib/globe/context-condition-ai/instant-eatery-search";
 import type {
   LocalDiscoveryActionSpec,
   LocalDiscoveryActivitySubtype,
@@ -307,6 +314,53 @@ function resolveDiscoveryDomainSpec(input: {
       activityFocus: instantFocus,
       activitySubtype: null,
       activityCluster: null,
+    });
+  }
+
+  if (isInstantLodgingSearch(input.text)) {
+    const transport =
+      (input.answers.transport as LocalDiscoveryTransport | undefined) ??
+      parseTransport(input.text) ??
+      input.previousSpec?.transport ??
+      "walk";
+    const budget =
+      (input.answers.budget as LocalDiscoveryBudget | undefined) ??
+      parseBudget(input.text) ??
+      input.previousSpec?.budget ??
+      "medium";
+    const lodgingKind =
+      (input.answers.lodgingKind as LocalDiscoveryLodgingKind | undefined) ??
+      parseLodgingKind(input.text) ??
+      input.previousSpec?.lodgingKind ??
+      "any";
+    return composeSpec({
+      resourceTypes: ["hotel"],
+      transport,
+      budget,
+      vibe: parseVibe(input.text) ?? input.previousSpec?.vibe ?? "popular",
+      lodgingKind,
+    });
+  }
+
+  if (isInstantEaterySearch(input.text)) {
+    const transport =
+      (input.answers.transport as LocalDiscoveryTransport | undefined) ??
+      parseTransport(input.text) ??
+      input.previousSpec?.transport ??
+      "walk";
+    const budget =
+      (input.answers.budget as LocalDiscoveryBudget | undefined) ??
+      parseBudget(input.text) ??
+      input.previousSpec?.budget ??
+      "medium";
+    const eateryFocus = resolveInstantEateryFocus(input.text);
+    return composeSpec({
+      resourceTypes: ["restaurant"],
+      transport,
+      budget,
+      vibe: parseVibe(input.text) ?? input.previousSpec?.vibe ?? "popular",
+      lodgingKind: "any",
+      ...(eateryFocus ? { eateryFocus } : {}),
     });
   }
 

@@ -64,6 +64,7 @@ import { useActiveContextWeather } from "@/hooks/use-active-context-weather";
 import { useContextGardenOrganizer } from "@/hooks/use-context-garden-organizer";
 import { useExecutionProfileStamp } from "@/hooks/use-execution-profile-stamp";
 import { useHubResourceSyncWorker } from "@/hooks/use-hub-resource-sync-worker";
+import { emitTransactionConvertedTelemetry } from "@/hooks/use-hub-resource-curation-telemetry";
 import { useAccommodationHubPipeline } from "@/hooks/use-accommodation-hub-pipeline";
 import { useMainNativeSurfaceSync } from "@/hooks/use-main-native-surface-sync";
 import { isTicketQrViewerHref } from "@/lib/globe/ticket-scan-surface";

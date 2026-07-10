@@ -7,6 +7,8 @@
  * never dead-ends. The caller executes the matching processor.
  */
 import { isInstantPoiSearch } from "@/lib/globe/context-condition-ai/instant-poi-search";
+import { isInstantEaterySearch } from "@/lib/globe/context-condition-ai/instant-eatery-search";
+import { isLodgingBookingQuery } from "@/lib/globe/context-hub/lodging-booking-slots";
 import { resolveSmallTalk } from "@/lib/globe/context-condition-ai/resolve-small-talk";
 
 export type DispatchCategory = "chat" | "search" | "task";
@@ -45,6 +47,20 @@ function deterministicClassify(
   if (TASK_CUE.test(text)) {
     return { category: "task", reasoning: "결정론: 작업 지시어", source: "deterministic" };
   }
+  if (isLodgingBookingQuery(text)) {
+    return {
+      category: "search",
+      reasoning: "결정론: 숙소 즉시 검색",
+      source: "deterministic",
+    };
+  }
+  if (isInstantEaterySearch(text)) {
+    return {
+      category: "search",
+      reasoning: "결정론: 즉시 맛집(음식점)",
+      source: "deterministic",
+    };
+  }
   if (isInstantPoiSearch(text)) {
     return {
       category: "search",
@@ -69,6 +85,20 @@ export async function classifyInput(input: {
     return {
       category: "search",
       reasoning: "결정론: 즉시 POI(편의·약국 등)",
+      source: "deterministic",
+    };
+  }
+  if (isInstantEaterySearch(text)) {
+    return {
+      category: "search",
+      reasoning: "결정론: 즉시 맛집(음식점)",
+      source: "deterministic",
+    };
+  }
+  if (isLodgingBookingQuery(text)) {
+    return {
+      category: "search",
+      reasoning: "결정론: 숙소 즉시 검색",
       source: "deterministic",
     };
   }

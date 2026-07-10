@@ -9,6 +9,68 @@ import type { PlaceCandidate, PlaceDiscoveryCriteria } from "@/lib/context-resol
 
 const client = new Client({});
 
+function mockActivityCandidates(input: {
+  lat: number;
+  lng: number;
+}): PlaceCandidate[] {
+  return [
+    {
+      place_id: "mock-park",
+      name: "근처 공원 산책로",
+      address: "현재 위치 도보 10분",
+      lat: input.lat + 0.002,
+      lng: input.lng + 0.001,
+      rating: 4.5,
+      open_now: true,
+      vibes: ["unknown"],
+      phone: null,
+      maps_url: null,
+      google_types: ["park", "tourist_attraction"],
+    },
+    {
+      place_id: "mock-attraction",
+      name: "근처 관광명소",
+      address: "현재 위치 도보 15분",
+      lat: input.lat + 0.003,
+      lng: input.lng - 0.0015,
+      rating: 4.4,
+      open_now: true,
+      vibes: ["unknown"],
+      phone: null,
+      maps_url: null,
+      google_types: ["tourist_attraction", "point_of_interest"],
+    },
+    {
+      place_id: "mock-museum",
+      name: "지역 박물관",
+      address: "현재 위치 도보 20분",
+      lat: input.lat - 0.002,
+      lng: input.lng + 0.002,
+      rating: 4.2,
+      open_now: true,
+      vibes: ["unknown"],
+      phone: null,
+      maps_url: null,
+      google_types: ["museum", "point_of_interest"],
+    },
+  ];
+}
+
+function resolveGooglePlacesKeyword(criteria: PlaceDiscoveryCriteria): string | undefined {
+  const query = criteria.query.trim();
+  if (!query) {
+    return undefined;
+  }
+  if (criteria.category === "activity") {
+    const stripped = query
+      .replace(/놀거리|놀\s*거리|즐길\s*거리/gu, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    return stripped || "관광명소";
+  }
+  return query;
+}
+
 function mockCandidates(input: {
   lat: number;
   lng: number;
@@ -85,7 +147,10 @@ export async function queryNearbyPlaces(input: {
   }
 
   if (candidates.length === 0) {
-    candidates = mockCandidates(input);
+    candidates =
+      input.criteria.category === "activity" || input.criteria.category === "amenity"
+        ? mockActivityCandidates(input)
+        : mockCandidates(input);
   }
 
   return filterPlaceCandidates(candidates, input.criteria);
@@ -126,7 +191,7 @@ async function queryGooglePlaces(input: {
         radius: input.criteria.radius_m,
         type: input.criteria.category === "cafe" ? "cafe" : "point_of_interest",
         opennow: input.criteria.only_open_now,
-        keyword: input.criteria.query,
+        keyword: resolveGooglePlacesKeyword(input.criteria),
         language: Language.ko,
         key,
       },
@@ -153,9 +218,10 @@ async function queryGooglePlaces(input: {
           maps_url: result.place_id
             ? `https://www.google.com/maps/place/?q=place_id:${result.place_id}`
             : null,
+          google_types: result.types?.map((type) => String(type)) ?? null,
         } satisfies PlaceCandidate;
       })
-      .filter((item): item is PlaceCandidate => item !== null);
+      .filter((item): item is NonNullable<typeof item> => item !== null);
   } catch {
     return [];
   }

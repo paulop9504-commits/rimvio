@@ -5,6 +5,7 @@ import { GlobeScoutFeedGateComposeCard } from "@/components/globe/globe-scout-fe
 import { GlobeContextScoutResultCard } from "@/components/globe/globe-context-scout-result-card";
 import { GlobeLodgingRoomCardList } from "@/components/globe/globe-lodging-room-card-list";
 import { GlobeIntakeSlotsComposeCard } from "@/components/globe/intake/globe-intake-slots-compose-card";
+import { GlobeOperatorAskChipsComposeCard } from "@/components/globe/globe-operator-ask-chips-compose-card";
 import type { ContextAgentComposeTurn } from "@/lib/globe/assistant";
 import type { ContextConditionRecommendation } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
 import type { ContextConditionPinnedByKind } from "@/lib/globe/context-condition-ai/pin-context-condition-recommendation";
@@ -34,6 +35,14 @@ export type GlobeAssistantComposeThreadProps = {
     domainId: string;
     values: Record<string, string | number>;
   }) => void;
+  onAskChipPick?: (input: {
+    turnId: string;
+    chipId: string;
+    gapId: string;
+    value: string;
+    labelKo: string;
+    pendingTrigger: string;
+  }) => void;
   onOpenScoutFeed?: (input: { turnId: string; batchId: string }) => void;
   scoutFeedGateBusy?: boolean;
 };
@@ -55,6 +64,7 @@ export function GlobeAssistantComposeThread({
   contextEventId = null,
   onOpenIdentitySettings,
   onIntakeSubmit,
+  onAskChipPick,
   onOpenScoutFeed,
   scoutFeedGateBusy = false,
 }: GlobeAssistantComposeThreadProps) {
@@ -171,6 +181,19 @@ export function GlobeAssistantComposeThread({
                 hint={turn.text}
                 payload={turn.payload}
                 onSubmit={onIntakeSubmit}
+              />
+            </div>
+          );
+        }
+
+        if (turn.kind === "ask_chips") {
+          return (
+            <div key={turn.id} className="flex justify-start">
+              <GlobeOperatorAskChipsComposeCard
+                turnId={turn.id}
+                hint={turn.text}
+                payload={turn.payload}
+                onPickChip={onAskChipPick}
               />
             </div>
           );

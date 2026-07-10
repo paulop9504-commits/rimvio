@@ -3686,6 +3686,19 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   color: #3182f6;
 }
 
+.rimvio-globe-3d-pin__recall-badge {
+  display: inline-flex;
+  align-self: flex-start;
+  border-radius: 9999px;
+  background: #34c759;
+  padding: 0.12rem 0.4rem;
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #fff;
+  box-shadow: 0 1px 4px rgba(52, 199, 89, 0.35);
+}
+
 .rimvio-globe-3d-pin__card--market {
   border-color: rgba(139, 149, 161, 0.28);
   background: rgba(242, 244, 246, 0.94);

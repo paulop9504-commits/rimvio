@@ -1,5 +1,4 @@
 import { findLifeEventCandidate } from "@/lib/life-read-model";
-import { dispatchGlobeResourceReelFocus } from "@/lib/globe/resource-reel/globe-resource-reel-bridge";
 import { buildDiscoveryLensPrefetchReadyAnnouncement } from "@/lib/globe/discovery-lens/build-discovery-lens-announcements";
 import {
   publishDiscoveryLensSession,
@@ -121,14 +120,6 @@ export async function prefetchAllDiscoveryLenses(input: {
     lens: active,
     bundle: active.prefetch,
   });
-
-  if (active.prefetch.status === "ready" && active.prefetch.items.length > 0) {
-    dispatchGlobeResourceReelFocus({
-      contextEventId: input.contextEventId,
-      surface: "list",
-      source: "scout_complete",
-    });
-  }
 
   return announceKo;
 }

@@ -108,7 +108,10 @@ function resolveLodgingNavigationHref(row: ContextLodgingInventoryRow): string {
   return buildGoogleMapsPlaceHref({
     lat: row.lat,
     lng: row.lng,
-    placeId: row.provider === "google_places" ? row.placeId : null,
+    placeId:
+      row.provider === "google_places" || row.provider === "liteapi"
+        ? row.placeId
+        : null,
     placeLabel: row.name,
   });
 }

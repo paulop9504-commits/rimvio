@@ -19,6 +19,7 @@ import type {
   LocalDiscoveryVibe,
 } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
 import { commitContextConditionHubBatch } from "@/lib/globe/context-condition-ai/commit-context-condition-hub-batch";
+import { classifyPlaceCategory } from "@/lib/globe/context-condition-ai/discovery-guard/classify-place-category";
 import { verifyDiscoveryResults } from "@/lib/globe/context-condition-ai/discovery-guard/verify-discovery-results";
 import {
   INSTANT_POI_MAX_RESULTS,
@@ -26,7 +27,9 @@ import {
 } from "@/lib/globe/context-condition-ai/instant-poi-search";
 import { writeContextConditionLastBatch } from "@/lib/globe/context-condition-ai/context-condition-last-batch-store";
 import { syncContextConditionPins } from "@/lib/globe/context-condition-ai/sync-context-condition-pins";
+import { writeScoutRevealPending } from "@/lib/globe/context-condition-ai/context-condition-scout-reveal-pending-store";
 import { emitSearchHubAction } from "@/lib/globe/resource/hub-action-record-store";
+import { logExplorationScoutScoreTelemetry } from "@/lib/globe/discovery-policy/log-exploration-score-telemetry";
 import { loadLodgingInventoryRows } from "@/lib/globe/context-hub/load-lodging-inventory-rows";
 import type { ContextLodgingInventoryRow } from "@/lib/globe/context-hub/lodging-resource-types";
 import { loadEateryInventoryRows } from "@/lib/globe/eatery/load-eatery-inventory-rows";
@@ -42,6 +45,13 @@ import {
   isExplicitActivityLandmarkQuery,
   resolveActivityLandmarkInventoryRow,
 } from "@/lib/globe/context-condition-ai/resolve-activity-landmark-inventory";
+import {
+  applyExplorationMode,
+  guardThresholdForDomain,
+  readExplorationModeOverride,
+  resolveExplorationMode,
+} from "@/lib/globe/discovery-policy";
+import { explorationScoreBias } from "@/lib/globe/discovery-policy/exploration-score-bias";
 import { buildContextConditionDiscoveryOverlay } from "@/lib/globe/context-condition-ai/build-context-condition-discovery-overlay";
 import { publishContextConditionDiscoveryOverlay } from "@/lib/globe/context-condition-ai/context-condition-discovery-overlay-bridge";
 import { resolveSpatialPatchKeptRows } from "@/lib/globe/context-condition-ai/resolve-spatial-patch-kept-rows";
@@ -54,10 +64,14 @@ export type { ContextConditionAnchorPinOutcome } from "@/lib/globe/context-condi
 /** Broad activity with no focus/chip cluster → reconstruct real attractions. */
 const DEFAULT_ACTIVITY_CLUSTER = [
   "관광명소",
+  "관광지",
+  "랜드마크",
   "테마파크",
   "전망대",
   "박물관",
   "공원",
+  "강변 산책",
+  "리버워크",
 ] as const;
 
 export type ContextConditionAnchorPinInput = {
@@ -80,6 +94,8 @@ export type ContextConditionAnchorPinInput = {
    */
   skipSearchActionLog?: boolean;
   onProcessPhase?: (phase: import("@/lib/globe/context-agent/context-agent-runtime-state").ContextAgentProcessPhase) => void;
+  /** Gate map pins until user confirms in chat (discovery feed opens on confirm). */
+  deferMapReveal?: boolean;
 };
 
 function resolveDiscoverySearchOrigin(input: {
@@ -222,6 +238,7 @@ function buildRecommendations(input: {
   /** When set, eatery-channel rows are activity/amenity places, not restaurants. */
   activityKind?: "activity" | "amenity" | null;
   activitySubtype?: LocalDiscoveryActionSpec["activitySubtype"];
+  recommendCap?: number;
 }): ContextConditionRecommendation[] {
   const rows: ContextConditionRecommendation[] = [];
   for (const [index, row] of input.lodgingScored.entries()) {
@@ -248,7 +265,7 @@ function buildRecommendations(input: {
       lng: row.row.lng,
     });
   }
-  return rows.slice(0, LOCAL_DISCOVERY_RECOMMEND_CAP);
+  return rows.slice(0, input.recommendCap ?? LOCAL_DISCOVERY_RECOMMEND_CAP);
 }
 
 /** Structured spec → map placement (pins + ranked overlay reasons). */
@@ -279,6 +296,15 @@ export async function runContextConditionAnchorPin(
   }
 
   const spec = input.spec;
+  const explorationMode = resolveExplorationMode({
+    message: input.message,
+    spec,
+    explicitLandmark: isExplicitActivityLandmarkQuery(
+      spec.activityFocus ?? input.message ?? "",
+    ),
+    override: readExplorationModeOverride(contextEventId),
+  });
+  const exploration = applyExplorationMode(explorationMode);
   const searchOrigin = resolveDiscoverySearchOrigin({
     anchorLat: input.anchorLat,
     anchorLng: input.anchorLng,
@@ -347,6 +373,7 @@ export async function runContextConditionAnchorPin(
     [];
   let eateryScored: ReturnType<typeof scoreEateryRecommendations> = [];
   let eaterySource: string | null = null;
+  let activityScoresForTelemetry: readonly number[] | undefined;
 
   if (wantsLodging) {
     input.onProcessPhase?.("analyzing");
@@ -371,6 +398,7 @@ export async function runContextConditionAnchorPin(
       lat: searchOrigin.lat,
       lng: searchOrigin.lng,
       context: contextInstance,
+      event,
     }).slice(0, intent.lodgingMode === "similar_price" ? 3 : 4);
     lodgingRows = lodgingScored.map((row) => row.row);
   }
@@ -388,7 +416,7 @@ export async function runContextConditionAnchorPin(
       message: eateryQuery,
       lat: searchOrigin.lat,
       lng: searchOrigin.lng,
-      maxResults: 10,
+      maxResults: exploration.eateryMaxResults,
       radiusM,
     });
     eaterySource = loaded.source;
@@ -398,6 +426,7 @@ export async function runContextConditionAnchorPin(
       lat: searchOrigin.lat,
       lng: searchOrigin.lng,
       context: contextInstance,
+      exploration: exploration,
     });
     // Category integrity (flexible): drop clearly off-domain rows (a hotel in a
     // food search) but keep adjacent picks so results stay rich.
@@ -405,22 +434,31 @@ export async function runContextConditionAnchorPin(
       domain: "eatery",
       items: scored,
       focusTokens: (spec.eateryFocus ?? "").split(/[\s·,]+/u),
+      guardThreshold: guardThresholdForDomain(exploration, "eatery"),
     });
-    eateryScored = (guarded.kept.length > 0 ? guarded.kept : scored).slice(0, 4);
+    eateryScored = (guarded.kept.length > 0 ? guarded.kept : scored).slice(
+      0,
+      exploration.eateryPresentCap,
+    );
     eateryRows = eateryScored.map((row) => row.row);
   }
 
   if (wantsActivity) {
     input.onProcessPhase?.("analyzing");
     const area = searchOrigin.regionLabel;
+    // Lens / hotel POV — keep Naver queries city-scoped; coords carry the radius.
+    const queryArea =
+      input.discoveryOrigin && input.anchorPlaceName.trim()
+        ? input.anchorPlaceName.trim()
+        : area;
     const focus = spec.activityFocus?.trim();
     // activityFocus from a convergence chip already carries the region — avoid
     // prepending it twice (e.g. "오사카 오사카 테마파크").
     const withArea = (term: string): string =>
-      term.includes(area) ? term : `${area} ${term}`.trim();
+      term.includes(queryArea) ? term : `${queryArea} ${term}`.trim();
     const activityQuery = focus
       ? withArea(focus)
-      : `${area} ${activityKind === "amenity" ? "장소" : "놀거리"}`;
+      : `${queryArea} ${activityKind === "amenity" ? "장소" : "놀거리"}`;
     const isAmenity = activityKind === "amenity";
     const activityRadiusM = input.discoveryOrigin
       ? searchOrigin.radiusM
@@ -452,7 +490,7 @@ export async function runContextConditionAnchorPin(
       ? []
       : Array.from(
           new Set([activityQuery, ...cluster.map((node) => withArea(node))]),
-        ).slice(0, 4);
+        ).slice(0, 8);
 
     let resolvedLandmark: Awaited<
       ReturnType<typeof resolveActivityLandmarkInventoryRow>
@@ -516,7 +554,7 @@ export async function runContextConditionAnchorPin(
 
     // Focus tokens minus the region word (so "오사카" doesn't match every row),
     // plus cluster nodes — any related node in the name boosts relevance.
-    const focusTail = focus ? focus.replace(area, "").trim() || focus : null;
+    const focusTail = focus ? focus.replace(queryArea, "").trim() || focus : null;
     const focusMatch = isAmenity
       ? null
       : [focusTail, ...cluster].filter(Boolean).join(" ") || null;
@@ -527,28 +565,53 @@ export async function runContextConditionAnchorPin(
       lng: searchOrigin.lng,
       focusMatch,
       activitySubtype,
+      exploration,
     }).slice(
       0,
       isLandmarkScout
-        ? 1
+        ? exploration.activityLandmarkPinCap
         : isAmenity
           ? INSTANT_POI_PIN_CAP
           : cluster.length > 0
-            ? 6
-            : 4,
+            ? exploration.activityPresentCap + 2
+            : exploration.activityPresentCap,
     );
 
     // Category Integrity Guard (strict): an activity/amenity search must never
-    // pin a café/hotel. Drop rows whose true category contradicts the domain —
-    // this covers broad "놀거리" (no focus) too, where the old focus-only filter
-    // never ran. When the guard empties everything, leave eateryScored empty so
-    // the caller answers conversationally instead of pinning junk.
+    // pin a café/hotel. When the strict pass empties, relax once (Google POI
+    // often lands as unknown) and finally keep hard-filtered rows — same pattern
+    // as eatery search, without re-asking the user in chat.
+    const guardDomain = isAmenity ? "amenity" : "activity";
+    const focusTokens = (focusMatch ?? "").split(/[\s·,]+/u);
     const guarded = verifyDiscoveryResults({
-      domain: isAmenity ? "amenity" : "activity",
+      domain: guardDomain,
       items: activityScored,
-      focusTokens: (focusMatch ?? "").split(/[\s·,]+/u),
+      focusTokens,
+      guardThreshold: guardThresholdForDomain(exploration, guardDomain),
     });
     eateryScored = guarded.kept;
+    if (eateryScored.length === 0 && activityScored.length > 0) {
+      const relaxed = verifyDiscoveryResults({
+        domain: guardDomain,
+        items: activityScored,
+        focusTokens,
+        guardThreshold: 0.52,
+      });
+      eateryScored =
+        relaxed.kept.length > 0
+          ? relaxed.kept
+          : activityScored
+              .filter((item) => {
+                const category = classifyPlaceCategory(item.row);
+                return (
+                  category !== "cafe" &&
+                  category !== "restaurant" &&
+                  category !== "lodging"
+                );
+              })
+              .slice(0, exploration.activityPresentCap);
+    }
+    activityScoresForTelemetry = eateryScored.map((row) => row.score);
     if (eateryScored.length === 0 && resolvedLandmark) {
       eateryScored = scorePlaceRecommendations({
         domain: isAmenity ? "amenity" : "activity",
@@ -557,6 +620,7 @@ export async function runContextConditionAnchorPin(
         lng: searchOrigin.lng,
         focusMatch: focusTail,
         activitySubtype,
+        exploration,
       });
     }
     eateryRows = eateryScored.map((row) => row.row);
@@ -596,8 +660,8 @@ export async function runContextConditionAnchorPin(
       activityKind === "amenity"
         ? INSTANT_POI_PIN_CAP
         : activityLandmarkFocus
-          ? 1
-          : undefined,
+          ? exploration.activityLandmarkPinCap
+          : exploration.pinCap,
   });
   lodgingScored = picked.lodgingScored;
   eateryScored = picked.eateryScored;
@@ -609,27 +673,6 @@ export async function runContextConditionAnchorPin(
   }
 
   input.onProcessPhase?.("optimizing");
-  const committedEvent = commitContextConditionHubBatch({
-    event,
-    batchId,
-    lodgingRows,
-    eateryRows,
-    lodgingScored,
-    eateryScored,
-    lodgingSource,
-    eaterySource,
-    eateryKind: activityKind ?? "eatery",
-    activitySubtype: activityKind === "activity" ? activitySubtype : null,
-  });
-
-  syncContextConditionPins({
-    contextEvent: committedEvent,
-    batchId,
-    lodgingRows,
-    eateryRows,
-    eateryKind: activityKind ?? "eatery",
-    activitySubtype: activityKind === "activity" ? activitySubtype : null,
-  });
 
   const pinPoints = [
     ...lodgingRows.map((row) => ({ lat: row.lat, lng: row.lng })),
@@ -641,6 +684,7 @@ export async function runContextConditionAnchorPin(
     eateryScored,
     activityKind,
     activitySubtype: activityKind === "activity" ? activitySubtype : null,
+    recommendCap: exploration.recommendCap,
   });
 
   const outcome: ContextConditionAnchorPinOutcome = {
@@ -660,6 +704,67 @@ export async function runContextConditionAnchorPin(
     spec,
   };
 
+  const committedEvent = commitContextConditionHubBatch({
+    event,
+    batchId,
+    lodgingRows,
+    eateryRows,
+    lodgingScored,
+    eateryScored,
+    lodgingSource,
+    eaterySource,
+    eateryKind: activityKind ?? "eatery",
+    activitySubtype: activityKind === "activity" ? activitySubtype : null,
+    deferMapReveal: input.deferMapReveal,
+  });
+
+  const deferMapReveal = Boolean(input.deferMapReveal);
+  if (deferMapReveal) {
+    writeScoutRevealPending(contextEventId, {
+      batch: {
+        batchId,
+        lodgingPlaceIds: lodgingRows.map((row) => row.placeId),
+        eateryPlaceIds: eateryRows.map((row) => row.placeId),
+        eateryKind: activityKind ?? "eatery",
+        activitySubtype: activityKind === "activity" ? activitySubtype : null,
+        atIso: new Date().toISOString(),
+      },
+      anchorPlaceName: searchOrigin.regionLabel,
+      searchOriginLat: searchOrigin.lat,
+      searchOriginLng: searchOrigin.lng,
+      outcome,
+    });
+  } else {
+    syncContextConditionPins({
+      contextEvent: committedEvent,
+      batchId,
+      lodgingRows,
+      eateryRows,
+      eateryKind: activityKind ?? "eatery",
+      activitySubtype: activityKind === "activity" ? activitySubtype : null,
+    });
+    publishContextConditionDiscoveryOverlay(
+      buildContextConditionDiscoveryOverlay({
+        contextEventId,
+        anchorLat: searchOrigin.lat,
+        anchorLng: searchOrigin.lng,
+        outcome,
+        pinRows: [
+          ...lodgingRows.map((row) => ({
+            lat: row.lat,
+            lng: row.lng,
+            placeId: row.placeId,
+          })),
+          ...eateryRows.map((row) => ({
+            lat: row.lat,
+            lng: row.lng,
+            placeId: row.placeId,
+          })),
+        ],
+      }),
+    );
+  }
+
   writeContextConditionLastBatch(contextEventId, {
     batchId,
     count: lodgingRows.length + eateryRows.length,
@@ -678,26 +783,16 @@ export async function runContextConditionAnchorPin(
     spec,
   });
 
-  publishContextConditionDiscoveryOverlay(
-    buildContextConditionDiscoveryOverlay({
-      contextEventId,
-      anchorLat: searchOrigin.lat,
-      anchorLng: searchOrigin.lng,
-      outcome,
-      pinRows: [
-        ...lodgingRows.map((row) => ({
-          lat: row.lat,
-          lng: row.lng,
-          placeId: row.placeId,
-        })),
-        ...eateryRows.map((row) => ({
-          lat: row.lat,
-          lng: row.lng,
-          placeId: row.placeId,
-        })),
-      ],
-    }),
-  );
+  logExplorationScoutScoreTelemetry({
+    contextEventId,
+    explorationMode,
+    batchId,
+    lodgingScores: lodgingScored.map((row) => row.score),
+    eateryScores: wantsActivity
+      ? undefined
+      : eateryScored.map((row) => row.score),
+    activityScores: wantsActivity ? activityScoresForTelemetry : undefined,
+  });
 
   return outcome;
 }

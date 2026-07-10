@@ -1,6 +1,9 @@
 import { copy } from "@/lib/copy/human-ko";
+import type { LocalDiscoveryLodgingKind } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
 import type { ContextLodgingInventoryRow } from "@/lib/globe/context-hub/lodging-resource-types";
 import { buildLodgingStayWindow } from "@/lib/globe/context-hub/lodging-stay-window";
+import { buildAirbnbLodgingSearchUrl } from "@/lib/globe/context-hub/providers/airbnb";
+import { resolveLodgingBookingProvider } from "@/lib/globe/context-hub/resolve-lodging-booking-provider";
 import type { ContextEateryInventoryRow } from "@/lib/globe/eatery/eatery-resource-types";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import type {
@@ -23,6 +26,21 @@ function ymdFromIso(iso: string | null | undefined): string | null {
   return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null;
 }
 
+/** In-app Hub checkout — pinned lodging with derived room offers. */
+export function buildContextLodgingHubCheckoutHandoff(input: {
+  intent: ContextActionIntent;
+}): ContextActionInjectedButton {
+  return {
+    actionTypeId: "hub.lodging_checkout",
+    labelKo:
+      input.intent.kind === "pay_lodging"
+        ? copy.globe.contextActionInjectPayLodging
+        : copy.globe.contextActionInjectBookLodging,
+    href: "rimvio://hub/lodging-checkout",
+    internalRoute: true,
+  };
+}
+
 /** External booking handoff — pinned lodging row → checkout entry URL. */
 export function buildContextLodgingBookingHandoff(input: {
   row: Pick<
@@ -31,6 +49,9 @@ export function buildContextLodgingBookingHandoff(input: {
   >;
   event?: EventCandidate | null;
   intent: ContextActionIntent;
+  lodgingKind?: LocalDiscoveryLodgingKind | null;
+  contextEventId?: string | null;
+  guestCount?: number | null;
 }): ContextActionInjectedButton {
   const stayWindow =
     input.event != null
@@ -42,14 +63,37 @@ export function buildContextLodgingBookingHandoff(input: {
     ymdFromIso(input.row.checkOutIso) ?? ymdFromIso(stayWindow?.checkOutIso);
   const name = input.row.name.trim() || "숙소";
   const mapsUrl = input.row.mapsUrl?.trim();
+  const bookingProvider = resolveLodgingBookingProvider({
+    lodgingKind: input.lodgingKind,
+    contextEventId: input.contextEventId ?? input.event?.id ?? null,
+  });
+  const labelKo =
+    input.intent.kind === "pay_lodging"
+      ? copy.globe.contextActionInjectPayLodging
+      : bookingProvider === "airbnb"
+        ? copy.globe.contextActionInjectBookLodgingAirbnb
+        : copy.globe.contextActionInjectBookLodging;
+
+  if (bookingProvider === "airbnb") {
+    return {
+      actionTypeId: "field.lodging_book_airbnb",
+      labelKo,
+      href: buildAirbnbLodgingSearchUrl({
+        query: name,
+        checkInYmd: checkIn,
+        checkOutYmd: checkOut,
+        adults: input.guestCount ?? 1,
+        lat: input.row.lat,
+        lng: input.row.lng,
+      }),
+      internalRoute: false,
+    };
+  }
 
   if (mapsUrl) {
     return {
       actionTypeId: "field.lodging_book",
-      labelKo:
-        input.intent.kind === "pay_lodging"
-          ? copy.globe.contextActionInjectPayLodging
-          : copy.globe.contextActionInjectBookLodging,
+      labelKo,
       href: mapsUrl,
       internalRoute: false,
     };
@@ -60,10 +104,7 @@ export function buildContextLodgingBookingHandoff(input: {
     .join(" ");
   return {
     actionTypeId: "field.lodging_book",
-    labelKo:
-      input.intent.kind === "pay_lodging"
-        ? copy.globe.contextActionInjectPayLodging
-        : copy.globe.contextActionInjectBookLodging,
+    labelKo,
     href: `https://www.google.com/travel/hotels?q=${encodeURIComponent(query)}`,
     internalRoute: false,
   };

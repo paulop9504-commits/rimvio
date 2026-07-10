@@ -74,7 +74,7 @@ function categoryScore(
         return 1;
       }
       if (category === "amenity") return 0.3;
-      return 0.4; // unknown — rescued only by a focus/name match below
+      return 0.58; // unknown — keep broad Google POI candidates in play
     case "eatery":
       if (category === "restaurant" || category === "cafe") return 1;
       // Adjacent categories enrich a food search rather than break it.
@@ -114,11 +114,13 @@ export function verifyDiscoveryResults<T extends { readonly row: GuardRow }>(inp
   domain: DiscoveryGuardDomain;
   items: readonly T[];
   focusTokens?: readonly string[];
+  /** Override per-domain threshold (Exploration Policy). */
+  guardThreshold?: number;
 }): DiscoveryGuardResult<T> {
   const focusTokens = (input.focusTokens ?? [])
     .map((token) => token.trim().toLowerCase())
     .filter((token) => token.length >= 2);
-  const threshold = DISCOVERY_GUARD_THRESHOLD[input.domain];
+  const threshold = input.guardThreshold ?? DISCOVERY_GUARD_THRESHOLD[input.domain];
 
   const kept: T[] = [];
   const removed: T[] = [];

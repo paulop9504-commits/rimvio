@@ -3,19 +3,19 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BedDouble } from "lucide-react";
 import { toast } from "sonner";
-import { GlobeExpressCheckoutSheet } from "@/components/globe/globe-express-checkout-sheet";
-import { GlobeHubCheckoutSheet } from "@/components/globe/globe-hub-checkout-sheet";
 import { GlobeLodgingRoomOfferCard } from "@/components/globe/lodging/globe-lodging-booking-ui";
 import { copy } from "@/lib/copy/human-ko";
 import {
   prepareLodgingHubCheckout,
   type HubLodgingCheckoutSession,
 } from "@/lib/globe/hub-checkout";
+import {
+  openLodgingCheckoutState,
+  subscribeLodgingCheckoutState,
+} from "@/lib/globe/hub-checkout/lodging-checkout-controller";
 import type { LodgingResourcePayload } from "@/lib/globe/context-hub/lodging-resource-types";
-import { openIdentityVaultSettings } from "@/lib/identity-vault/open-identity-vault-settings-bridge";
 import { readIdentityVaultBundleClient } from "@/lib/identity-vault/read-identity-vault-bundle-client";
 import { assessExpressCheckoutReadiness } from "@/lib/payment-vault/assess-express-checkout-readiness";
-import { openPaymentVaultSettings } from "@/lib/payment-vault/open-payment-vault-settings-bridge";
 import { readPaymentVaultBundleClient } from "@/lib/payment-vault/read-payment-vault-bundle-client";
 import type { ExpressCheckoutReadiness } from "@/lib/payment-vault/types";
 import { resolveLodgingOfferCoverUrl } from "@/lib/globe/context-hub/providers/liteapi/attach-liteapi-room-offer-images";
@@ -80,17 +80,14 @@ export function GlobeLodgingRoomCardList({
   resourceId,
   payload,
   className,
-  onOpenIdentitySettings,
-  onOpenPaymentSettings,
 }: GlobeLodgingRoomCardListProps) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null);
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [expressOpen, setExpressOpen] = useState(false);
-  const [checkoutSession, setCheckoutSession] =
-    useState<HubLodgingCheckoutSession | null>(null);
+  const [checkoutActive, setCheckoutActive] = useState(false);
   const [expressReadiness, setExpressReadiness] =
     useState<ExpressCheckoutReadiness | null>(null);
+
+  const ownerKey = `${contextEventId}:${resourceId}`;
 
   const offers = payload.roomOffers ?? [];
   const isLiveRate = payload.provider === "liteapi";
@@ -119,6 +116,23 @@ export function GlobeLodgingRoomCardList({
   useEffect(() => {
     void refreshExpressReadiness();
   }, [refreshExpressReadiness]);
+
+  useEffect(() => {
+    return subscribeLodgingCheckoutState((state) => {
+      if (!state) {
+        setSelectedOfferId(null);
+        setCheckoutActive(false);
+        return;
+      }
+      if (state.ownerKey === ownerKey) {
+        setSelectedOfferId(state.offerId);
+        setCheckoutActive(true);
+      } else {
+        setSelectedOfferId(null);
+        setCheckoutActive(false);
+      }
+    });
+  }, [ownerKey]);
 
   if (offers.length === 0) {
     if (payload.provider !== "liteapi") {
@@ -152,9 +166,12 @@ export function GlobeLodgingRoomCardList({
       toast.message(copy.hubCheckout.invalidAmount);
       return;
     }
-    setCheckoutSession(session);
-    setExpressOpen(false);
-    setCheckoutOpen(true);
+    openLodgingCheckoutState({
+      mode: "standard",
+      session,
+      ownerKey,
+      offerId: offer.id,
+    });
   };
 
   const openExpressCheckout = (
@@ -168,9 +185,12 @@ export function GlobeLodgingRoomCardList({
       toast.message(copy.hubCheckout.invalidAmount);
       return;
     }
-    setCheckoutSession(session);
-    setCheckoutOpen(false);
-    setExpressOpen(true);
+    openLodgingCheckoutState({
+      mode: "express",
+      session,
+      ownerKey,
+      offerId: offer.id,
+    });
   };
 
   return (
@@ -230,7 +250,7 @@ export function GlobeLodgingRoomCardList({
                 sourceLabel={offer.sourceLabelKo}
                 recommended={offer.id === recommendedId}
                 liveRate={isLiveRate}
-                selected={selectedOfferId === offer.id && (checkoutOpen || expressOpen)}
+                selected={selectedOfferId === offer.id && checkoutActive}
                 busy={busyId === offer.id}
                 expressReady={expressReady}
                 expressCtaLabel={expressLabel}
@@ -242,46 +262,6 @@ export function GlobeLodgingRoomCardList({
           })}
         </div>
       </section>
-
-      <GlobeExpressCheckoutSheet
-        open={expressOpen}
-        session={checkoutSession}
-        onOpenChange={(next) => {
-          setExpressOpen(next);
-          if (!next) {
-            setSelectedOfferId(null);
-          }
-        }}
-        onOpenIdentitySettings={onOpenIdentitySettings ?? openIdentityVaultSettings}
-        onOpenPaymentSettings={onOpenPaymentSettings ?? openPaymentVaultSettings}
-        onUseStandardCheckout={() => {
-          if (!checkoutSession) {
-            return;
-          }
-          setExpressOpen(false);
-          setCheckoutOpen(true);
-        }}
-        onComplete={() => {
-          toast.success(copy.globe.lodgingRoomCardReserveDone);
-          void refreshExpressReadiness();
-        }}
-      />
-
-      <GlobeHubCheckoutSheet
-        open={checkoutOpen}
-        session={checkoutSession}
-        onOpenChange={(next) => {
-          setCheckoutOpen(next);
-          if (!next) {
-            setSelectedOfferId(null);
-          }
-        }}
-        onOpenIdentitySettings={onOpenIdentitySettings ?? openIdentityVaultSettings}
-        onComplete={() => {
-          toast.success(copy.globe.lodgingRoomCardReserveDone);
-          void refreshExpressReadiness();
-        }}
-      />
     </>
   );
 }

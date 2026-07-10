@@ -21,6 +21,8 @@ declare global {
   }
 }
 
+const checkoutInFlightSessionIds = new Set<string>();
+
 function appOrigin(): string {
   if (typeof window === "undefined") {
     return "";
@@ -60,13 +62,28 @@ export async function runLiteApiCheckoutClient(input: {
   identityBundle: IdentityVaultBundle;
   paymentTargetSelector: string;
 }): Promise<LiteApiCheckoutClientResult> {
+  const sessionId = input.session.sessionId.trim();
+  if (checkoutInFlightSessionIds.has(sessionId)) {
+    return { ok: false, reason: "checkout_in_flight" };
+  }
+
   const offerId = input.session.liteapiOfferId?.trim();
   if (!offerId) {
     return { ok: false, reason: "missing_offer" };
   }
 
+  if (typeof document !== "undefined") {
+    const target = document.querySelector(input.paymentTargetSelector);
+    if (!target) {
+      return { ok: false, reason: "payment_target_missing" };
+    }
+  }
+
+  checkoutInFlightSessionIds.add(sessionId);
+
   const guest = buildLiteApiGuestPayload(input.identityBundle);
   if (!guest) {
+    checkoutInFlightSessionIds.delete(sessionId);
     return { ok: false, reason: "missing_identity" };
   }
 
@@ -89,6 +106,7 @@ export async function runLiteApiCheckoutClient(input: {
   });
 
   if (!prebookResponse.ok) {
+    checkoutInFlightSessionIds.delete(sessionId);
     return { ok: false, reason: "prebook_failed" };
   }
 
@@ -104,6 +122,7 @@ export async function runLiteApiCheckoutClient(input: {
   const secretKey = prebook.secretKey?.trim();
   if (!prebookId || !transactionId || !secretKey) {
     clearLiteApiPendingCheckout();
+    checkoutInFlightSessionIds.delete(sessionId);
     return { ok: false, reason: "prebook_incomplete" };
   }
 
@@ -119,10 +138,17 @@ export async function runLiteApiCheckoutClient(input: {
     atIso: new Date().toISOString(),
   });
 
-  await loadLiteApiPaymentScript();
+  try {
+    await loadLiteApiPaymentScript();
+  } catch {
+    clearLiteApiPendingCheckout();
+    checkoutInFlightSessionIds.delete(sessionId);
+    return { ok: false, reason: "payment_sdk_unavailable" };
+  }
   const PaymentCtor = window.LiteAPIPayment;
   if (!PaymentCtor) {
     clearLiteApiPendingCheckout();
+    checkoutInFlightSessionIds.delete(sessionId);
     return { ok: false, reason: "payment_sdk_unavailable" };
   }
 
