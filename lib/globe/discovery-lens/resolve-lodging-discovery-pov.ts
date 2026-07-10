@@ -2,6 +2,7 @@ import { readContextConditionLastBatch } from "@/lib/globe/context-condition-ai/
 import { readPinnedContextItem } from "@/lib/globe/context-pinned-item";
 import { DISCOVERY_LENS_DEFAULT_RADIUS_M } from "@/lib/globe/discovery-lens/constants";
 import type { DiscoverySearchOrigin } from "@/lib/globe/discovery-lens/types";
+import { readContextSpatialTargetFromEvent } from "@/lib/globe/spatial/write-context-spatial-target-from-text";
 import { readPalantirWorkspaceSnapshot } from "@/lib/globe/spatial-semantic/palantir-workspace-store";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 
@@ -52,6 +53,16 @@ export function resolveLodgingDiscoveryPov(
     return null;
   }
   const event = findLifeEventCandidate(key);
+  const spatialTarget = readContextSpatialTargetFromEvent(event);
+  if (spatialTarget) {
+    return {
+      lat: spatialTarget.lat,
+      lng: spatialTarget.lng,
+      regionLabel: spatialTarget.label,
+      radiusM: DISCOVERY_LENS_DEFAULT_RADIUS_M,
+      lensId: null,
+    };
+  }
   const pinned = readPinnedContextItem(event);
   if (
     pinned?.kind === "lodging" &&
