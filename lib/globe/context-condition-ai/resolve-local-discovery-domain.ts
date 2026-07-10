@@ -100,7 +100,7 @@ export function resolveLocalDiscoveryDomain(
   return null;
 }
 
-/** Broad activity with no specific focus — the panel should ask a clarify chip. */
+/** Broad activity with no specific focus — scout default cluster, do not ask first. */
 export function isBroadActivityQuery(text: string): boolean {
   const trimmed = text.trim();
   if (!trimmed) {

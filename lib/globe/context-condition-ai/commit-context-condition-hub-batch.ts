@@ -37,6 +37,8 @@ export type CommitContextConditionHubBatchInput = {
   eateryKind?: "eatery" | "activity" | "amenity" | null;
   activitySubtype?: LocalDiscoveryActivitySubtype | null;
   now?: Date;
+  /** Inventory only — defer map pin batch until user opens the discovery feed. */
+  deferMapReveal?: boolean;
 };
 
 /** Merge hub inventory + batch metadata so map markers and focus cards resolve. */
@@ -104,6 +106,24 @@ export function commitContextConditionHubBatch(
     activitySubtype: input.activitySubtype ?? null,
     atIso: nowIso,
   };
+
+  if (input.deferMapReveal) {
+    return commitEventUpsert({
+      id: event.id,
+      title: event.title,
+      category: event.category,
+      source: event.source,
+      lifecycle: event.lifecycle,
+      datetime: event.datetime,
+      place: event.place,
+      description: event.description,
+      metadata: event.metadata,
+      confidence: event.confidence,
+      lifecycleUpdatedAt: nowIso,
+      updatedAt: nowIso,
+    });
+  }
+
   const metadata = appendContextConditionPinBatch(event, batch);
 
   return commitEventUpsert({

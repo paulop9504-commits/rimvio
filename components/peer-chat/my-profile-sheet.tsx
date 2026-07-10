@@ -7,6 +7,8 @@ import { Share2, X } from "lucide-react";
 import { toast } from "sonner";
 import { FriendAddQrCard } from "@/components/peer-chat/friend-add-qr-card";
 import { RimvioAccountProfilePanel } from "@/components/rimvio-account-profile-panel";
+import { IdentityVaultSettingsPanel } from "@/components/settings/identity-vault-settings-panel";
+import { PaymentVaultSettingsPanel } from "@/components/settings/payment-vault-settings-panel";
 import { RimvioProfileDecorPanel } from "@/components/rimvio-profile-decor-panel";
 import { useAuth } from "@/hooks/use-auth";
 import { useCopy } from "@/hooks/use-copy";
@@ -22,12 +24,18 @@ type MyProfileSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSaved?: () => void;
+  /** Scroll/focus identity vault block when opened from checkout. */
+  identityVaultFocus?: boolean;
+  /** Scroll/focus payment vault block when opened from express checkout. */
+  paymentVaultFocus?: boolean;
 };
 
 export function MyProfileSheet({
   open,
   onOpenChange,
   onSaved,
+  identityVaultFocus = false,
+  paymentVaultFocus = false,
 }: MyProfileSheetProps) {
   const copy = useCopy();
   const ap = copy.settings.accountProfile;
@@ -44,6 +52,30 @@ export function MyProfileSheet({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!open || !identityVaultFocus) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      document
+        .querySelector("[data-identity-vault-settings]")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 280);
+    return () => window.clearTimeout(timer);
+  }, [open, identityVaultFocus]);
+
+  useEffect(() => {
+    if (!open || !paymentVaultFocus) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      document
+        .querySelector("[data-payment-vault-settings]")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 280);
+    return () => window.clearTimeout(timer);
+  }, [open, paymentVaultFocus]);
 
   useEffect(() => {
     if (!open) {
@@ -153,6 +185,14 @@ export function MyProfileSheet({
                 </p>
               </div>
             ) : null}
+            <IdentityVaultSettingsPanel
+              className="mb-4"
+              onSaved={() => onSaved?.()}
+            />
+            <PaymentVaultSettingsPanel
+              className="mb-4"
+              onSaved={() => onSaved?.()}
+            />
             <RimvioAccountProfilePanel
               variant="embedded"
               onSaved={() => {

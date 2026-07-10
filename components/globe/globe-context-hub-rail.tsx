@@ -9,6 +9,12 @@ import { GlobePrepChecklistCard } from "@/components/globe/globe-prep-checklist-
 import { GlobeHubServiceList } from "@/components/globe/globe-hub-service-list";
 import { GlobeHubResourceCarousel } from "@/components/globe/globe-hub-resource-carousel";
 import { GlobeLodgingMapStrip } from "@/components/globe/globe-lodging-map-strip";
+import { GlobeLodgingRoomCardList } from "@/components/globe/globe-lodging-room-card-list";
+import { GlobeContextRecallBadge } from "@/components/globe/globe-context-recall-badge";
+import { GlobeContextHubActionStrip } from "@/components/globe/globe-context-hub-action-strip";
+import { readPinnedLodgingResourceId } from "@/lib/globe/context-hub/pin-lodging-selection-to-context";
+import { readLodgingPayloadFromResource } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
+import { summarizeContextRecall } from "@/lib/globe/context-hub/summarize-context-recall";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { enableLodgingHubForContext } from "@/lib/globe/context-hub/enable-lodging-hub-for-context";
 import { runAccommodationHubPipeline } from "@/lib/globe/context-hub/run-accommodation-hub-pipeline";
@@ -53,11 +59,12 @@ import { PERSONAL_GLOBE_PINS_UPDATED } from "@/lib/globe/personal-globe-pin-stor
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 import { GlobeContextBrainStrip } from "@/components/globe/globe-context-brain-strip";
-import { emitTransactionConvertedTelemetry } from "@/hooks/use-hub-resource-curation-telemetry";
+import { readHubActionLog, HUB_ACTION_LOG_EVENT } from "@/lib/globe/resource/hub-action-record-store";
 import { useActiveContextWeather } from "@/hooks/use-active-context-weather";
 import { useContextGardenOrganizer } from "@/hooks/use-context-garden-organizer";
 import { useExecutionProfileStamp } from "@/hooks/use-execution-profile-stamp";
 import { useHubResourceSyncWorker } from "@/hooks/use-hub-resource-sync-worker";
+import { emitTransactionConvertedTelemetry } from "@/hooks/use-hub-resource-curation-telemetry";
 import { useAccommodationHubPipeline } from "@/hooks/use-accommodation-hub-pipeline";
 import { useMainNativeSurfaceSync } from "@/hooks/use-main-native-surface-sync";
 import { isTicketQrViewerHref } from "@/lib/globe/ticket-scan-surface";
@@ -142,10 +149,12 @@ export function GlobeContextHubRail({
     window.addEventListener(EVENT_CANDIDATES_UPDATED, bump);
     window.addEventListener(PERSONAL_GLOBE_PINS_UPDATED, bump);
     window.addEventListener(MARKET_INTENTS_UPDATED, bump);
+    window.addEventListener(HUB_ACTION_LOG_EVENT, bump);
     return () => {
       window.removeEventListener(EVENT_CANDIDATES_UPDATED, bump);
       window.removeEventListener(PERSONAL_GLOBE_PINS_UPDATED, bump);
       window.removeEventListener(MARKET_INTENTS_UPDATED, bump);
+      window.removeEventListener(HUB_ACTION_LOG_EVENT, bump);
     };
   }, []);
 
@@ -424,6 +433,43 @@ export function GlobeContextHubRail({
     (entry) => entry.resource.kind === "lodging_voucher",
   );
 
+  const pinnedDetailLodgingRoomStep = useMemo(() => {
+    if (presentation !== "detail" || !activeEvent) {
+      return null;
+    }
+    const pinnedId = readPinnedLodgingResourceId(activeEvent);
+    if (!pinnedId) {
+      return null;
+    }
+    const index = Math.min(carouselIndex, Math.max(0, rankedResources.length - 1));
+    const entry = rankedResources[index];
+    if (!entry || entry.resource.kind !== "lodging_voucher") {
+      return null;
+    }
+    if (entry.resource.resourceId !== pinnedId) {
+      return null;
+    }
+    const payload = readLodgingPayloadFromResource(entry.resource);
+    if (!payload?.roomOffers?.length) {
+      return null;
+    }
+    const eventId = activeEventId?.trim();
+    if (!eventId) {
+      return null;
+    }
+    return { eventId, resourceId: entry.resource.resourceId, payload };
+  }, [activeEvent, activeEventId, carouselIndex, presentation, rankedResources]);
+
+  const hubActionLog = useMemo(() => {
+    void revision;
+    const eventId = activeEventId?.trim();
+    return eventId ? readHubActionLog(eventId) : [];
+  }, [activeEventId, revision]);
+
+  const contextRecallSummary = useMemo(() => {
+    return summarizeContextRecall(activeEvent, hubActionLog);
+  }, [activeEvent, hubActionLog]);
+
   const flyToLodgingAtIndex = useCallback(
     (index: number) => {
       const entry = rankedResources[index];
@@ -629,6 +675,12 @@ export function GlobeContextHubRail({
         {ticketSheets}
         <div className={cn("flex flex-col gap-1.5", className)}>
           {showBrainStrip && activeEvent ? <GlobeContextBrainStrip event={activeEvent} /> : null}
+          {contextRecallSummary.confirmedCount > 0 ? (
+            <GlobeContextRecallBadge summary={contextRecallSummary} />
+          ) : null}
+          {hubActionLog.length > 0 ? (
+            <GlobeContextHubActionStrip log={hubActionLog} />
+          ) : null}
           <GlobeHubResourceCarousel
             ranked={rankedResources}
             index={Math.min(carouselIndex, rankedResources.length - 1)}
@@ -709,6 +761,12 @@ export function GlobeContextHubRail({
       {ticketSheets}
       <div className={cn("flex flex-col gap-3", className)}>
         {showBrainStrip && activeEvent ? <GlobeContextBrainStrip event={activeEvent} /> : null}
+        {contextRecallSummary.confirmedCount > 0 ? (
+          <GlobeContextRecallBadge summary={contextRecallSummary} />
+        ) : null}
+        {hubActionLog.length > 0 ? (
+          <GlobeContextHubActionStrip log={hubActionLog} />
+        ) : null}
         {presentation !== "detail" ? (
           <GlobePlacePrefillCard activeEventId={activeEventId} lat={lat} lng={lng} />
         ) : null}
@@ -741,6 +799,13 @@ export function GlobeContextHubRail({
             ranked={rankedResources}
             activeIndex={Math.min(carouselIndex, rankedResources.length - 1)}
             onSelectIndex={handleCarouselIndexChange}
+          />
+        ) : null}
+        {pinnedDetailLodgingRoomStep ? (
+          <GlobeLodgingRoomCardList
+            contextEventId={pinnedDetailLodgingRoomStep.eventId}
+            resourceId={pinnedDetailLodgingRoomStep.resourceId}
+            payload={pinnedDetailLodgingRoomStep.payload}
           />
         ) : null}
     <aside

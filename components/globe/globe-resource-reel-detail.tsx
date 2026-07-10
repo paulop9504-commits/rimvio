@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { toast } from "sonner";
 import { GlobeResourceReelAirbnbCard } from "@/components/globe/globe-resource-reel-airbnb-card";
+import { GlobeLodgingRoomCardList } from "@/components/globe/globe-lodging-room-card-list";
 import { GlobeContextQuickPinButton } from "@/components/globe/globe-context-quick-pin-button";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { publishBridgePinnedContextItem } from "@/lib/experience-bridge/publish-bridge-pinned-context-item";
@@ -293,32 +294,33 @@ export function GlobeResourceReelDetail({
     const placeLabel = activeEvent?.place?.trim() || null;
 
     return (
-      <GlobeResourceReelAirbnbCard
-        title={lodgingEntry.resource.label}
-        images={lodgingPayload.images}
-        videoUrl={lodgingPayload.videoUrl}
-        ratingLabel={formatMatchRating(item.score100)}
-        subtitle={
-          [placeLabel, recommendReason?.reasonKo ?? item.detailReasonLine]
-            .filter(Boolean)
-            .join(" · ") || null
-        }
-        specsLine={stayWindowLabel}
-        priceLabel={formatPriceKrw(lodgingPayload.priceKrw)}
-        topAction={
-          <GlobeContextQuickPinButton
-            label={
-              isPinned
-                ? bridgeShared
-                  ? copy.globe.contextQuickPinSharedDone
-                  : copy.globe.contextQuickPinDone
-                : bridgeShared
-                  ? copy.globe.contextQuickPinSharedCta
-                  : copy.globe.contextQuickPinCta
-            }
-            pinned={isPinned}
-            busy={pinBusy}
-            onClick={() => {
+      <div className="flex flex-col gap-3">
+        <GlobeResourceReelAirbnbCard
+          title={lodgingEntry.resource.label}
+          images={lodgingPayload.images}
+          videoUrl={lodgingPayload.videoUrl}
+          ratingLabel={formatMatchRating(item.score100)}
+          subtitle={
+            [placeLabel, recommendReason?.reasonKo ?? item.detailReasonLine]
+              .filter(Boolean)
+              .join(" · ") || null
+          }
+          specsLine={stayWindowLabel}
+          priceLabel={formatPriceKrw(lodgingPayload.priceKrw)}
+          topAction={
+            <GlobeContextQuickPinButton
+              label={
+                isPinned
+                  ? bridgeShared
+                    ? copy.globe.contextQuickPinSharedDone
+                    : copy.globe.contextQuickPinDone
+                  : bridgeShared
+                    ? copy.globe.contextQuickPinSharedCta
+                    : copy.globe.contextQuickPinCta
+              }
+              pinned={isPinned}
+              busy={pinBusy}
+              onClick={() => {
           if (!activeEvent || anchorLat == null || anchorLng == null || isPinned) {
             return;
           }
@@ -366,16 +368,24 @@ export function GlobeResourceReelDetail({
               setPinBusy(false);
             }
           })();
-            }}
+              }}
+            />
+          }
+          onClose={onDismiss}
+          closeAriaLabel={copy.globe.resourceReelCloseAria}
+          onPrimaryAction={runLodgingBook}
+          primaryActionLabel={copy.globe.lodgingFocusBook}
+          swipeHint={swipeHint}
+          {...touchHandlers}
+        />
+        {isPinned ? (
+          <GlobeLodgingRoomCardList
+            contextEventId={contextEventId}
+            resourceId={lodgingEntry.resource.resourceId}
+            payload={lodgingPayload}
           />
-        }
-        onClose={onDismiss}
-        closeAriaLabel={copy.globe.resourceReelCloseAria}
-        onPrimaryAction={runLodgingBook}
-        primaryActionLabel={copy.globe.lodgingFocusBook}
-        swipeHint={swipeHint}
-        {...touchHandlers}
-      />
+        ) : null}
+      </div>
     );
   }
 

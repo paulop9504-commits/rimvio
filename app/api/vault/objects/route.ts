@@ -79,6 +79,21 @@ export async function PUT(request: Request) {
   }
 
   try {
+    const { validateIdentityVaultPut } = await import(
+      "@/lib/identity-vault/validate-vault-put"
+    );
+    validateIdentityVaultPut(kind, body.payload);
+    const { validatePaymentVaultPut } = await import(
+      "@/lib/payment-vault/validate-payment-vault-put"
+    );
+    validatePaymentVaultPut(kind, body.payload);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "identity_vault_validation_failed";
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
+
+  try {
     const db = resolveVaultClient(supabase);
     const object = await upsertVaultObjectInline(db, userId, {
       objectKey,

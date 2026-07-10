@@ -19,11 +19,18 @@ export type HubActionSearchPayload = {
 export type HubActionReservePayload = {
   slot: { start: string; end: string };
   guestCount?: number;
+  /** Vault object_key refs only — no passport plaintext. */
+  identityRefs?: import("@/lib/identity-vault/types").HubIdentityRefs;
 };
 
 export type HubActionPurchasePayload = {
   amount: number;
   currency: string;
+  identityRefs?: import("@/lib/identity-vault/types").HubIdentityRefs;
+  /** Partner confirmation (e.g. LiteAPI hotel booking). */
+  confirmationCode?: string | null;
+  prebookId?: string;
+  transactionId?: string;
 };
 
 export type HubActionCancelPayload = {

@@ -115,6 +115,47 @@ export async function spawnDiscoveryLenses(input: {
   return session;
 }
 
+/** Known coords — skip geocode (hotel POV · pinned lodging). */
+export function spawnDiscoveryLensAtCoords(input: {
+  contextEventId: string;
+  labelKo: string;
+  lat: number;
+  lng: number;
+  radiusM?: number;
+  spawnedFrom?: string | null;
+}): DiscoveryLensSession | null {
+  if (!Number.isFinite(input.lat) || !Number.isFinite(input.lng)) {
+    return null;
+  }
+  const contextEventId = input.contextEventId.trim();
+  const existing = readDiscoveryLensSession(contextEventId);
+  if (existing?.lenses.length) {
+    return existing;
+  }
+  const labelKo = input.labelKo.trim();
+  if (!labelKo) {
+    return null;
+  }
+  const radiusM = input.radiusM ?? DISCOVERY_LENS_DEFAULT_RADIUS_M;
+  const lens: DiscoveryLens = {
+    id: DISCOVERY_LENS_IDS[0]!,
+    labelKo,
+    center: { lat: input.lat, lng: input.lng },
+    radiusM,
+    spawnedFrom: input.spawnedFrom ?? null,
+  };
+  const session: DiscoveryLensSession = {
+    contextEventId,
+    lenses: [lens],
+    activeLensId: lens.id,
+    updatedAtIso: new Date().toISOString(),
+    awaitingLensPick: false,
+    pendingSearchKind: null,
+  };
+  publishDiscoveryLensSession(session);
+  return session;
+}
+
 export function setActiveDiscoveryLens(input: {
   session: DiscoveryLensSession;
   lensId: DiscoveryLensId;

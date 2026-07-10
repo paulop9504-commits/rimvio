@@ -354,6 +354,8 @@ export const copyEn: Copy = {
     localDiscoveryVibePopular: "Popular",
     localDiscoveryVibeLocal: "Local spots",
     localDiscoveryVibeHot: "Trendy",
+    explorationModeConvergentChip: "Verified picks",
+    explorationModeDiffuseChip: "Something new",
     localDiscoveryAskLodgingKind: "What kind of stay?",
     localDiscoveryAskResourceFocus: "What should we look for?",
     localDiscoveryResourceRestaurant: "Restaurants",
@@ -415,6 +417,7 @@ export const copyEn: Copy = {
     contextActionConfirmYes: "Yes",
     contextActionConfirmNo: "Different place",
     contextActionInjectBookLodging: "Book this stay",
+    contextActionInjectBookLodgingAirbnb: "View on Airbnb",
     contextActionInjectPayLodging: "Pay for this stay",
     contextActionInjectBookEatery: "Reserve this place",
     contextActionInjectPayEatery: "Pay now",
@@ -423,6 +426,8 @@ export const copyEn: Copy = {
     contextActionInjectionEyebrow: "Confirm",
     contextActionInjectedEyebrow: "Next step",
     contextActionPinFirstHint: "Tap “This one” on a card first",
+    contextActionInjectionAssistLine: (title: string) =>
+      `${title} — confirm booking below.`,
     experienceSimEyebrow: "Continue flow",
     experienceSimBranchQuick: "Quick route",
     experienceSimBranchBalanced: "Balanced route",
@@ -1831,6 +1836,140 @@ export const copyEn: Copy = {
     discoveryFeedLoadingMore: "Loading a bit more",
     discoveryFeedComplete: "You've reached the end",
     discoveryFeedDismissCta: "Close",
+    intelligentPinFeedTitle: "AI picks nearby",
+    intelligentPinFeedSubtitle: "Scroll to explore · synced with map",
+    intelligentPinFeedCloseAria: "Close discovery feed",
+    intelligentPinCategoryLodging: "Stay",
+    intelligentPinCategoryEatery: "Food",
+    intelligentPinCategoryAmenity: "Amenity",
+    intelligentPinStatusExploring: "Browsing",
+    intelligentPinStatusComparing: "Comparing",
+    intelligentPinStatusHolding: "On hold",
+    intelligentPinStatusPaying: "Paying",
+    intelligentPinStatusCommitted: "Booked",
+    intelligentPinFixPinCta: "Fix to context",
+    intelligentPinFixPinDone: "Fixed",
+    intelligentPinFixPinToast: (name: string) => `Fixed ${name} to this context`,
+    intelligentPinAiInsightPrefix: "Context",
+    intelligentPinSwipePhotos: "Swipe for more photos",
+    scoutFeedGateIntro: (count: number) => `Found ${count} places.`,
+    scoutFeedGateConfirmCta: "View results",
+    scoutFeedGateOpened: "Browsing in feed",
+    scoutFeedGateAreaFallback: "Nearby",
+    scoutFeedGateAiLabel: "Context",
+    scoutFeedGateTipsLabel: "Tips",
+    scoutFeedGateVideosLabel: "Related videos",
+    scoutFeedGateHighlightsLabel: "Picks",
+    scoutFeedGateVideoQuery: (area: string) => `${area} things to do`,
+    scoutFeedGateAiInsight: (input: {
+      scoutKind: "lodging" | "eatery" | "activity" | "amenity" | "mixed";
+      areaLabel: string;
+      titles: readonly string[];
+      leadReason: string;
+    }) => {
+      const names = input.titles.filter(Boolean).slice(0, 3).join(" · ");
+      if (input.scoutKind === "activity" || input.scoutKind === "mixed") {
+        if (input.leadReason) {
+          return `Around ${input.areaLabel}, ${names} looks like a smooth route. ${input.leadReason}`;
+        }
+        return `Around ${input.areaLabel}, try ${names} in this order.`;
+      }
+      if (input.scoutKind === "lodging") {
+        return names
+          ? `Compare ${names} first among stays near ${input.areaLabel}.`
+          : `Shortlisted stays near ${input.areaLabel}.`;
+      }
+      if (input.scoutKind === "eatery") {
+        return names
+          ? `Eatery picks near ${input.areaLabel}: ${names}. ${input.leadReason || "Off-peak hours usually mean shorter waits."}`
+          : `Shortlisted eateries near ${input.areaLabel}.`;
+      }
+      return names
+        ? `Check ${names} near ${input.areaLabel}.`
+        : `Shortlisted places near ${input.areaLabel}.`;
+    },
+    scoutFeedGateTips: (input: {
+      scoutKind: "lodging" | "eatery" | "activity" | "amenity" | "mixed";
+      areaLabel: string;
+      triggerMessage: string;
+    }) => {
+      const area = input.areaLabel.trim() || "this area";
+      if (input.scoutKind === "activity" || input.scoutKind === "mixed") {
+        return [
+          `Split ${area} into morning and evening blocks for a shorter route.`,
+          "Bring ID and a transit card; a little cash helps.",
+          "Tap View results to browse on the map and feed.",
+        ].join("\n");
+      }
+      if (input.scoutKind === "lodging") {
+        return [
+          "Align check-in and check-out times first.",
+          "Compare distance and price together on the map.",
+        ].join("\n");
+      }
+      if (input.scoutKind === "eatery") {
+        return [
+          "Off-peak hours usually mean shorter waits.",
+          "Photos and review videos are in the feed too.",
+        ].join("\n");
+      }
+      return `Browse picks near ${area} on the map and feed.`;
+    },
+    feedEntityProfileLabel: "Context profile",
+    feedEntityCompleteness: (percent: number) => `${percent}% complete`,
+    feedEntityReviewFocusLabel: "Review focus",
+    feedEntityPracticalTipsLabel: "Tips",
+    feedEntityPhotoCount: (count: number) => `${count} photos`,
+    feedEntityNearMapPin: "Near map pin",
+    feedEntityOpenNow: "Open now",
+    feedEntityClosedNow: "Closed now",
+    feedEntityVideoReady: "Videos available",
+    feedEntityVideoPending: "Fetching videos",
+    feedEntityCollecting: "Collecting",
+    feedEntityAmbiancePhotos: "Ambiance photos",
+    feedEntityRoomTypes: (count: number) => `${count} room types`,
+    feedEntityPriceLevel: (level: number) => `Price ${"₩".repeat(Math.min(level, 4))}`,
+    feedEntityRatingLabel: (rating: number) => `Rating ${rating.toFixed(1)}`,
+    feedEntitySlotLabel: (slotId: string) => slotId.replaceAll("_", " "),
+    feedEntityReviewCategoryLabel: (categoryId: string) => categoryId.replaceAll("_", " "),
+    feedEntityPracticalTips: (
+      entityKind: "hotel" | "restaurant" | "cafe" | "attraction" | "shopping",
+      flags: { hasPhotos: boolean; hasVideo: boolean; hasPrice: boolean },
+    ) => {
+      if (entityKind === "hotel") {
+        return [
+          flags.hasPhotos ? "Check room photos first." : "Use review videos if official photos are missing.",
+          flags.hasPrice ? "Compare nightly rates." : "Set dates before comparing prices.",
+          "Check walk time to transit on the map.",
+        ].join("\n");
+      }
+      if (entityKind === "restaurant") {
+        return [
+          flags.hasPhotos ? "Food photos help you decide faster." : "Review videos often show dishes.",
+          "Off-peak hours usually mean shorter waits.",
+          "Check hours, cash-only policy, and reservations.",
+        ].join("\n");
+      }
+      if (entityKind === "cafe") {
+        return [
+          "Check seating, noise, and Wi‑Fi in photos and reviews.",
+          "For work sessions, check outlets and table size.",
+          flags.hasVideo ? "Videos show real crowd levels." : "Use recent reviews if no video.",
+        ].join("\n");
+      }
+      if (entityKind === "shopping") {
+        return [
+          "Confirm hours and closed days first.",
+          flags.hasPrice ? "Compare price range with similar stores." : "Check tax-free or discount info on site.",
+          "See walking or subway route from your hotel on the map.",
+        ].join("\n");
+      }
+      return [
+        "Split morning and evening blocks for a shorter route.",
+        flags.hasVideo ? "Watch entry and route videos first." : "Use reviews for crowd timing.",
+        "Check tickets and reservation requirements.",
+      ].join("\n");
+    },
     resourceReelAreaFallback: "Nearby",
     resourceReelListSubtitle: "Tap to see details",
     resourceReelCloseAria: "Close discovery",
@@ -1909,6 +2048,7 @@ export const copyEn: Copy = {
     contextQuickPinCta: "Pin to context",
     contextQuickPinSharedCta: "Pin together",
     contextQuickPinDone: "Pinned",
+    contextScoutCardPickHint: "Tap to pin into this context",
     contextQuickPinSharedDone: "Shared pin",
     contextQuickPinToast: (name: string) => `Pinned ${name} into this context`,
     contextQuickPinSharedToast: (name: string) =>
@@ -1940,6 +2080,78 @@ export const copyEn: Copy = {
     lodgingFocusSwipeHint: "Swipe for other stays",
     lodgingFocusBook: "Book",
     lodgingFocusDetails: "View details",
+    lodgingFocusReserve: "Pick a room and continue booking",
+    lodgingSlotSheetTitle: "Set your stay conditions first",
+    lodgingSlotSheetHint: "Once you set dates and guests, we'll match stays right away.",
+    lodgingSlotCheckIn: "Check-in",
+    lodgingSlotCheckOut: "Check-out",
+    lodgingSlotGuestCount: "Adult guests",
+    lodgingSlotRoomCount: "Rooms",
+    lodgingSlotApply: "Find with these conditions",
+    lodgingSlotMissingToast:
+      "Set dates and guests first, and we'll match stays right away.",
+    lodgingSlotGuestChip: (count: number) => `Guests ${count}`,
+    lodgingSlotRoomChip: (count: number) => `Rooms ${count}`,
+    lodgingSlotChipsEdit: "Edit conditions",
+    lodgingSlotChipsEditAria: "Edit stay dates and guest conditions",
+    lodgingBookingRefundable: "Free cancellation",
+    lodgingBookingNonRefundable: "Non-refundable",
+    lodgingBookingRefundLimited: "Limited refund",
+    lodgingBookingLiveRate: "Live rate",
+    lodgingBookingRecommended: "Recommended",
+    lodgingBookingSchedule: "Dates",
+    lodgingBookingGuests: "Guests",
+    lodgingBookingTotal: "Total",
+    lodgingBookingTotalPay: "Total due",
+    lodgingBookingSecurePay: "Secure pay",
+    lodgingBookingConfirmCode: "Confirmation",
+    tripIntakeSheetTitle: "Set up your trip",
+    tripIntakeSheetHint: "Fill what's missing once — we'll prep flights, stays, and things to do together.",
+    tripIntakeDestination: "Destination",
+    tripIntakeDestinationPlaceholder: "e.g. Osaka",
+    tripIntakeOrigin: "Origin",
+    tripIntakeOriginPlaceholder: "e.g. Incheon · Seoul",
+    tripIntakeDepart: "Depart",
+    tripIntakeReturn: "Return",
+    tripIntakeGuestCount: "Travelers",
+    tripIntakeBudget: "Budget",
+    tripIntakeBudgetValue: "Value",
+    tripIntakeBudgetBalanced: "Balanced",
+    tripIntakeBudgetPremium: "Premium",
+    tripIntakeApply: "Prepare with these details",
+    tripIntakeMissingToast: "Set your trip details first — then we'll get started.",
+    tripIntakeComposeLine: (destination: string) =>
+      `Trip details set for ${destination}. Prepping flights, stays, and things to do.`,
+    tripIntakeAskHint: "Pick one — we'll match a stay right away.",
+    tripIntakeAskChipApplied: (label: string) => `Got it — ${label}.`,
+    contextRecallBadge: (count: number) =>
+      `Confirmed ${count} item${count === 1 ? "" : "s"}`,
+    contextRecallLodgingLeg: "Stay confirmed",
+    contextRecallFlightLeg: "Flight confirmed",
+    hubActionLog: {
+      title: "Context log",
+      hubLodging: "Stay",
+      hubFlight: "Flight",
+      hubEatery: "Dining",
+      hubGeneric: "Context",
+      search: (hub: string) => `Search ${hub}`,
+      reserve: (hub: string) => `Hold ${hub}`,
+      purchase: (hub: string) => `Pay ${hub}`,
+      cancel: (hub: string) => `Cancel ${hub}`,
+    },
+    lodgingRoomCardTitle: "Pick a room",
+    lodgingRoomCardHint:
+      "Live rates for your stay · book in one flow.",
+    lodgingRoomCardHintEstimate: "Estimated rate · confirm final price with the partner.",
+    lodgingRoomCardEmptyLive: "No room rates match right now. Try different dates or guests.",
+    lodgingRoomCardEstimateSource: "Estimated rate",
+    lodgingRoomCardEstimateOption: (index: number) => `Estimated option ${index}`,
+    lodgingRoomCardSelect: "Continue with this room",
+    lodgingRoomCardPhotoBadge: "Room",
+    lodgingRoomCardPinnedFirst: "Pin this stay to the context first.",
+    lodgingRoomCardIdentityMissing:
+      "Your travel identity isn't set yet. Save it in Settings, then continue.",
+    lodgingRoomCardReserveDone: "We'll hold this room and continue to booking.",
     contextConditionPinPlaceholder: "Pin similar stays and food nearby",
     contextConditionPinSubmit: "Pin",
     contextConditionPinBusy: "Matching…",
@@ -3296,6 +3508,91 @@ export const copyEn: Copy = {
     more: "See more",
     me: "Me",
     tryAgain: "Please try again",
+  },
+  identityVault: {
+    settingsTitle: "Travel identity",
+    settingsHint: "Add it once — we'll match flights, rentals, and stays for you.",
+    loading: "Loading…",
+    saveCta: "Save travel identity",
+    saveDone: "Travel identity saved",
+    saveMissingRequired: "Please fill name, date of birth, and contact.",
+    familyNameLabel: "Family name (Roman)",
+    givenNameLabel: "Given name (Roman)",
+    legalNameKoLabel: "Legal name in Korean (optional)",
+    dateOfBirthLabel: "Date of birth",
+    nationalityLabel: "Nationality",
+    phoneLabel: "Phone",
+    emailLabel: "Email",
+    passportSectionShow: "Add passport (flights & rentals)",
+    passportSectionHide: "Hide passport",
+    passportNumberLabel: "Passport number",
+    passportExpiryLabel: "Expiry date",
+    passportCountryLabel: "Issuing country",
+    applyChip: "Apply saved identity",
+    maskedLabelFallback: "Traveler",
+    maskedLabelWithPassport: (name: string, maskedPassport: string) =>
+      `${name} · Passport ${maskedPassport}`,
+    warnPassportExpired:
+      "Your passport expiry date has passed. Please update it before booking.",
+    warnPassportExpiringSoon:
+      "Your passport expires within 6 months. Please check your schedule.",
+    warnPassportInvalidDate: "Please check the passport expiry date format.",
+    missingTraveler: "Traveler name is required",
+    missingPassport: "Passport information is required",
+    missingLicense: "Driver's license information is required",
+    missingContact: "Contact information is required",
+    sensitiveIdOptInTitle: "Additional identity check (optional)",
+    sensitiveIdOptInHint:
+      "Save separately only when it's needed for this booking.",
+  },
+  hubCheckout: {
+    eyebrow: "Context booking",
+    title: "Review before pay",
+    doneTitle: "Payment complete",
+    stepReview: "Review",
+    stepPay: "Pay",
+    stepDone: "Done",
+    continuePay: "Continue to payment",
+    payMethodTitle: "Payment method",
+    payCard: "Card",
+    payKakao: "Kakao Pay",
+    payToss: "Toss Pay",
+    confirmPay: (amount: string) => `Pay ${amount}`,
+    payDone: "Payment completed",
+    payFailed: "Payment could not be completed. Please try again.",
+    invalidAmount: "Could not verify the payment amount",
+    identityLine: (masked: string) => `Identity: ${masked}`,
+    doneHint: "You can finish the reservation on the partner site.",
+    partnerHandoff: "Finish on partner site",
+    pgRedirect: "Continuing to payment…",
+    pgReturnDone: "Payment completed",
+    liteapiPayTitle: "Secure stay payment",
+    liteapiPayHint: "Enter card details below to confirm your booking.",
+    liteapiReturnDone: "Your stay is confirmed",
+    liteapiReturnConfirm: (code: string) => `Confirmation: ${code}`,
+    liteapiBookFailed: "Payment went through but booking failed. Please contact support.",
+    secureNote: "Payment details are encrypted end to end.",
+    doneSubtitle: "Your booking is saved in context. Keep your confirmation code.",
+    expressTitle: "Pay now",
+    expressPay: (amount: string) => `Pay ${amount} now`,
+    expressHint: "Uses your saved identity and payment method in one step.",
+    expressMissingIdentity: "Save your travel identity first.",
+    expressMissingPayment: "Save a payment method first.",
+    expressOtherPay: "Other payment method",
+    expressPaymentLine: (label: string) => `Pay with ${label}`,
+  },
+  paymentVault: {
+    settingsTitle: "Payment method",
+    settingsHint: "Save once to pay in one tap on your next booking.",
+    methodCard: "Card",
+    methodCardMasked: (last4: string) => `Card ·••• ${last4}`,
+    methodKakao: "Kakao Pay",
+    methodToss: "Toss Pay",
+    saveDone: "Payment method saved.",
+    saveFailed: "Could not save payment method.",
+    cardLast4Label: "Last 4 digits (optional)",
+    cardLast4Placeholder: "4242",
+    saveCta: "Save payment method",
   },
 };
 

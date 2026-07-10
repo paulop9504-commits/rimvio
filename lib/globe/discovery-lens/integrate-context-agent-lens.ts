@@ -1,15 +1,22 @@
+import { readContextConditionLastBatch } from "@/lib/globe/context-condition-ai/context-condition-last-batch-store";
+import { DISCOVERY_LENS_DEFAULT_RADIUS_M } from "@/lib/globe/discovery-lens/constants";
 import type { DiscoverySearchOrigin } from "@/lib/globe/discovery-lens/types";
 import {
   discoveryOriginFromLens,
   readActiveDiscoveryLens,
 } from "@/lib/globe/discovery-lens/types";
 import { readDiscoveryLensSession } from "@/lib/globe/discovery-lens/lens-session-bridge";
+import { resolveLodgingDiscoveryPov } from "@/lib/globe/discovery-lens/resolve-lodging-discovery-pov";
 import type { LocalDiscoveryQuestionChoice } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
 import { extractLandmarkHintsFromChoice } from "@/lib/globe/discovery-lens/extract-landmark-hints";
-import { spawnDiscoveryLenses } from "@/lib/globe/discovery-lens/spawn-discovery-lenses";
+import {
+  spawnDiscoveryLensAtCoords,
+  spawnDiscoveryLenses,
+} from "@/lib/globe/discovery-lens/spawn-discovery-lenses";
 import {
   readScoutContract,
   readScoutSelectedAnchor,
+  writeScoutSelectedAnchor,
 } from "@/lib/globe/contracts";
 
 export function resolveDiscoveryOriginForContext(
@@ -33,7 +40,7 @@ export function resolveDiscoveryOriginForContext(
   }
   const selected = readScoutSelectedAnchor(contextEventId);
   if (selected && Number.isFinite(selected.lat) && Number.isFinite(selected.lng)) {
-    const radiusM = contract?.lens.radiusM ?? 1500;
+    const radiusM = contract?.lens.radiusM ?? DISCOVERY_LENS_DEFAULT_RADIUS_M;
     return {
       lat: selected.lat,
       lng: selected.lng,
@@ -44,10 +51,42 @@ export function resolveDiscoveryOriginForContext(
   }
   const session = readDiscoveryLensSession(contextEventId);
   const active = readActiveDiscoveryLens(session);
-  if (!active) {
-    return null;
+  if (active) {
+    return discoveryOriginFromLens(active);
   }
-  return discoveryOriginFromLens(active);
+  return resolveLodgingDiscoveryPov(contextEventId);
+}
+
+export function ensureScoutAnchorFromDiscoveryPov(
+  contextEventId: string,
+  pov: DiscoverySearchOrigin,
+): void {
+  const existing = readScoutSelectedAnchor(contextEventId);
+  if (existing) {
+    return;
+  }
+  const batch = readContextConditionLastBatch(contextEventId);
+  writeScoutSelectedAnchor(contextEventId, {
+    scoutId: batch?.batchId?.trim() || `pov:${contextEventId}`,
+    placeId: `pov:${pov.lat},${pov.lng}`,
+    lat: pov.lat,
+    lng: pov.lng,
+    title: pov.regionLabel,
+  });
+}
+
+export function ensureNeighborhoodLensForActivityScout(
+  contextEventId: string,
+  pov: DiscoverySearchOrigin,
+): void {
+  spawnDiscoveryLensAtCoords({
+    contextEventId,
+    labelKo: pov.regionLabel,
+    lat: pov.lat,
+    lng: pov.lng,
+    radiusM: pov.radiusM,
+    spawnedFrom: "근처",
+  });
 }
 
 export async function maybeSpawnDiscoveryLensesFromChoice(input: {

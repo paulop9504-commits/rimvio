@@ -15,3 +15,8 @@ export function mediaBlobVaultKey(mediaContextId: string): string {
 export function vaultSyncCursorKey(scope: string): string {
   return `sync_cursor:${scope.trim()}`;
 }
+
+export {
+  IDENTITY_VAULT_KEYS,
+  identityVaultKindForKey,
+} from "@/lib/identity-vault/vault-keys";

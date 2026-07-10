@@ -6,7 +6,7 @@
  */
 
 import type { EventCandidate } from "@/lib/events/event-candidate";
-import { findEventCandidate } from "@/lib/events/event-store";
+import { findLifeEventCandidate } from "@/lib/life-read-model";
 import type {
   HubAction,
   HubActionStatus,
@@ -106,7 +106,7 @@ export function readHubActionLogFromEvent(
 export function readDurableHubActionLog(
   contextEventId: string,
 ): HubAction[] {
-  const event = findEventCandidate(contextEventId.trim());
+  const event = findLifeEventCandidate(contextEventId.trim());
   return readHubActionLogFromEvent(event);
 }
 
@@ -124,7 +124,7 @@ export function appendDurableHubActionLog(input: {
   if (!contextEventId) {
     return null;
   }
-  const event = findEventCandidate(contextEventId);
+  const event = findLifeEventCandidate(contextEventId);
   if (!event) {
     return null;
   }
@@ -164,7 +164,7 @@ export function appendDurableHubActionLog(input: {
 export function clearDurableHubActionLog(
   contextEventId: string,
 ): EventCandidate | null {
-  const event = findEventCandidate(contextEventId.trim());
+  const event = findLifeEventCandidate(contextEventId.trim());
   if (!event) {
     return null;
   }

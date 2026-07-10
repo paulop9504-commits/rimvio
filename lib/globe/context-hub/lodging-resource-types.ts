@@ -1,5 +1,5 @@
 /** Lodging Resource payload — Hub factory emit (L3). */
-export type LodgingProviderId = "google_places" | "mock";
+export type LodgingProviderId = "google_places" | "mock" | "liteapi";
 
 export type LodgingStayWindow = {
   checkInIso?: string | null;
@@ -8,10 +8,30 @@ export type LodgingStayWindow = {
   confidence?: "confirmed" | "estimated" | "open";
 };
 
+export type LodgingRoomOffer = {
+  id: string;
+  title: string;
+  occupancyLabelKo: string;
+  priceKrw: number | null;
+  totalPriceKrw: number | null;
+  refundable: boolean;
+  roomCount: number;
+  guestCount: number;
+  sourceLabelKo: string;
+  /** LiteAPI offerId — prebook → payment → book */
+  providerOfferId?: string | null;
+  providerRateId?: string | null;
+  /** LiteAPI mappedRoomId — links to /data/hotel rooms[].photos */
+  mappedRoomId?: string | null;
+  /** Room-specific gallery (up to 3); property images used as fallback in UI */
+  imageUrls?: readonly string[];
+};
+
 export type LodgingPhotoSource =
   | "google_places_details"
   | "google_places_nearby"
-  | "mock";
+  | "mock"
+  | "liteapi";
 
 export type LodgingPhotoConfidence =
   | "exact_place_id"
@@ -32,6 +52,8 @@ export type LodgingResourcePayload = {
   photoSource?: LodgingPhotoSource | null;
   photoConfidence?: LodgingPhotoConfidence | null;
   stayWindow?: LodgingStayWindow | null;
+  roomOffers?: readonly LodgingRoomOffer[];
+  liteapiHotelId?: string | null;
 };
 
 export const CONTEXT_LODGING_HUB_ENABLED_META_KEY = "contextLodgingHubEnabled";

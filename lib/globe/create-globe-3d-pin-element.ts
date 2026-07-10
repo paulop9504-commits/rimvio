@@ -454,6 +454,14 @@ export function createGlobe3dPinElement(
           : "경험";
   card.appendChild(meta);
 
+  const recallBadge = pin.recallBadgeLabel?.trim();
+  if (recallBadge) {
+    const badge = document.createElement("span");
+    badge.className = "rimvio-globe-3d-pin__recall-badge";
+    badge.textContent = recallBadge;
+    card.appendChild(badge);
+  }
+
   root.appendChild(card);
 
   const dot = document.createElement("span");
