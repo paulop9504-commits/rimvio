@@ -16,7 +16,7 @@ import { GlobeContextAgentRefineChips } from "@/components/globe/globe-context-a
 import { GlobeContextExplorationModeChips } from "@/components/globe/globe-context-exploration-mode-chips";
 import { GlobeContextActionInjectionCard } from "@/components/globe/globe-context-action-injection-card";
 import { GlobeHubCheckoutSheet } from "@/components/globe/globe-hub-checkout-sheet";
-import { GlobeContextConditionPinBar, type GlobeContextConditionPinBarHandle, type IntakeSlotsSubmitInput } from "@/components/globe/globe-context-condition-pin-bar";
+import { GlobeContextConditionPinBar, type GlobeContextConditionPinBarHandle, type IntakeSlotsSubmitInput, type AskChipPickInput } from "@/components/globe/globe-context-condition-pin-bar";
 import { GlobeDiscoveryLensBar } from "@/components/globe/globe-discovery-lens-bar";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import type { EventCandidate } from "@/lib/events/event-candidate";
@@ -194,6 +194,9 @@ export function GlobeContextConditionPromptFrame({
   const lensHandlerRef = useRef<(lensId: DiscoveryLensId) => void>(() => {});
   const intakeSubmitRef = useRef<
     ((input: IntakeSlotsSubmitInput) => Promise<void>) | null
+  >(null);
+  const askChipPickRef = useRef<
+    ((input: AskChipPickInput) => Promise<void>) | null
   >(null);
   const [lensSession, setLensSession] = useState<DiscoveryLensSession | null>(
     () => (event ? readDiscoveryLensSession(event.id) : null),
@@ -1141,6 +1144,7 @@ export function GlobeContextConditionPromptFrame({
               contextEventId={event?.id ?? null}
               onOpenIdentitySettings={openIdentityVaultSettings}
               onIntakeSubmit={(input) => void intakeSubmitRef.current?.(input)}
+              onAskChipPick={(input) => void askChipPickRef.current?.(input)}
               onOpenScoutFeed={(input) => void handleOpenScoutFeed(input)}
               scoutFeedGateBusy={scoutFeedGateBusy}
             />
@@ -1200,6 +1204,8 @@ export function GlobeContextConditionPromptFrame({
             anchorPlaceName={anchorPlaceName}
             anchorLat={anchorLat}
             anchorLng={anchorLng}
+            userLat={userLat}
+            userLng={userLng}
             anchorPriceKrw={anchorPriceKrw}
             globeRef={globeRef}
             onPinned={handlePinned}
@@ -1217,6 +1223,9 @@ export function GlobeContextConditionPromptFrame({
             }}
             registerIntakeSubmitHandler={(handler) => {
               intakeSubmitRef.current = handler;
+            }}
+            registerAskChipPickHandler={(handler) => {
+              askChipPickRef.current = handler;
             }}
             onLensSessionChange={setLensSession}
           />

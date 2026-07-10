@@ -84,7 +84,9 @@ import {
   appendContextAgentComposeTurn,
   appendScoutFeedGateTurn,
   appendIntakeSlotsComposeTurn,
+  appendOperatorAskChipsComposeTurn,
   markIntakeSlotsComposeTurnSubmitted,
+  markOperatorAskChipsTurnSubmitted,
   readContextAgentComposeThread,
 } from "@/lib/globe/assistant";
 import {
@@ -172,13 +174,25 @@ import { parseLodgingIntakeSubmitValues } from "@/lib/intake/domains/lodging/bui
 import { parseTripIntakeSubmitValues } from "@/lib/intake/domains/trip/build-trip-intake-sheet-fields";
 import {
   isBroadTripPackageMessage,
+  applyTripIntakeAskChip,
   writeTripIntakeSlots,
+  type TripIntakeGapId,
 } from "@/lib/globe/trip-intake";
+import { runOneShotLodgingPrepClient } from "@/lib/globe/lodging-prep";
 
 export type IntakeSlotsSubmitInput = {
   turnId: string;
   domainId: string;
   values: Record<string, string | number>;
+};
+
+export type AskChipPickInput = {
+  turnId: string;
+  chipId: string;
+  gapId: string;
+  value: string;
+  labelKo: string;
+  pendingTrigger: string;
 };
 
 export type GlobeContextConditionPinBarHandle = {
@@ -199,6 +213,8 @@ export type GlobeContextConditionPinBarProps = {
   anchorPlaceName: string;
   anchorLat: number;
   anchorLng: number;
+  userLat?: number | null;
+  userLng?: number | null;
   anchorPriceKrw?: number | null;
   globeRef?: RefObject<RimvioGlobeHubHandle | null>;
   onPinned?: (outcome: ContextConditionAnchorPinOutcome) => void;
@@ -218,6 +234,9 @@ export type GlobeContextConditionPinBarProps = {
   registerLensHandler?: (handler: (lensId: DiscoveryLensId) => void) => void;
   registerIntakeSubmitHandler?: (
     handler: (input: IntakeSlotsSubmitInput) => Promise<void>,
+  ) => void;
+  registerAskChipPickHandler?: (
+    handler: (input: AskChipPickInput) => Promise<void>,
   ) => void;
   className?: string;
 };
@@ -308,6 +327,8 @@ export const GlobeContextConditionPinBar = forwardRef<
   anchorPlaceName,
   anchorLat,
   anchorLng,
+  userLat = null,
+  userLng = null,
   anchorPriceKrw = null,
   globeRef,
   onPinned,
@@ -321,6 +342,7 @@ export const GlobeContextConditionPinBar = forwardRef<
   onLensSessionChange,
   registerLensHandler,
   registerIntakeSubmitHandler,
+  registerAskChipPickHandler,
   className,
   },
   ref,
@@ -1286,6 +1308,46 @@ export const GlobeContextConditionPinBar = forwardRef<
     [resolveAndMaybeExecute],
   );
 
+  const handleAskChipPick = useCallback(
+    async (input: AskChipPickInput) => {
+      if (busy) {
+        return;
+      }
+      const pendingTrigger = input.pendingTrigger.trim();
+      if (!pendingTrigger) {
+        return;
+      }
+      setBusy(true);
+      try {
+        const priorEvent = findLifeEventCandidate(contextEventId);
+        applyTripIntakeAskChip({
+          contextEventId,
+          event: priorEvent,
+          message: pendingTrigger,
+          chip: { gapId: input.gapId as TripIntakeGapId, value: input.value },
+          userLat,
+          userLng,
+        });
+        markOperatorAskChipsTurnSubmitted(contextEventId, input.turnId, {
+          chipId: input.chipId,
+          summaryKo: copy.globe.tripIntakeAskChipApplied(input.labelKo),
+        });
+        runOneShotLodgingPrepClient({
+          message: pendingTrigger,
+          contextEventId,
+          event: findLifeEventCandidate(contextEventId),
+          userLat,
+          userLng,
+        });
+        await resolveAndMaybeExecute(pendingTrigger);
+      } finally {
+        setBusy(false);
+        finishContextAgentWork();
+      }
+    },
+    [busy, contextEventId, resolveAndMaybeExecute, userLat, userLng],
+  );
+
   const handleIntakeSlotsSubmit = useCallback(
     async (input: IntakeSlotsSubmitInput) => {
       const turn = readContextAgentComposeThread(contextEventId).find(
@@ -1349,6 +1411,10 @@ export const GlobeContextConditionPinBar = forwardRef<
     registerIntakeSubmitHandler?.(handleIntakeSlotsSubmit);
   }, [handleIntakeSlotsSubmit, registerIntakeSubmitHandler]);
 
+  useEffect(() => {
+    registerAskChipPickHandler?.(handleAskChipPick);
+  }, [handleAskChipPick, registerAskChipPickHandler]);
+
   const handleSubmit = useCallback(async () => {
     if (busy) {
       return;
@@ -1377,7 +1443,24 @@ export const GlobeContextConditionPinBar = forwardRef<
           composeTail,
           hasActiveSpec: lastSpec != null,
         });
-        let plan = gateOperatorTurnSync({ text, ssot });
+        const operatorEvent = findLifeEventCandidate(contextEventId);
+        let plan = gateOperatorTurnSync({
+          text,
+          ssot,
+          event: operatorEvent,
+          userLat,
+          userLng,
+        });
+
+        if (plan.tool === "ask_chips") {
+          appendOperatorAskChipsComposeTurn(contextEventId, {
+            hint: copy.globe.tripIntakeAskHint,
+            pendingTrigger: text,
+            chips: plan.chips,
+          });
+          setMessage("");
+          return;
+        }
 
         if (plan.tool === "lens_command") {
           const lensResult = await applyLensCommand({
@@ -1403,7 +1486,14 @@ export const GlobeContextConditionPinBar = forwardRef<
             setMessage("");
             return;
           }
-          plan = gateOperatorTurnSync({ text, ssot, skipLens: true });
+          plan = gateOperatorTurnSync({
+            text,
+            ssot,
+            skipLens: true,
+            event: operatorEvent,
+            userLat,
+            userLng,
+          });
         }
 
         if (plan.tool === "filter_inventory") {
@@ -1440,6 +1530,13 @@ export const GlobeContextConditionPinBar = forwardRef<
         }
 
         if (plan.tool === "scout") {
+          runOneShotLodgingPrepClient({
+            message: text,
+            contextEventId,
+            event: operatorEvent,
+            userLat,
+            userLng,
+          });
           // fall through to scout / refine / resolve below
         } else if (plan.tool === "defer_classify") {
           const history = composeTail.map((turn) => `${turn.role}: ${turn.text}`);
@@ -1516,6 +1613,8 @@ export const GlobeContextConditionPinBar = forwardRef<
     runPalantirRefine,
     tryOpenIntakeForMessage,
     tryPublishActionInjection,
+    userLat,
+    userLng,
   ]);
 
   handleSubmitRef.current = handleSubmit;

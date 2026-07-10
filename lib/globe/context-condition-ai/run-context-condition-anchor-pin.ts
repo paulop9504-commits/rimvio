@@ -398,6 +398,7 @@ export async function runContextConditionAnchorPin(
       lat: searchOrigin.lat,
       lng: searchOrigin.lng,
       context: contextInstance,
+      event,
     }).slice(0, intent.lodgingMode === "similar_price" ? 3 : 4);
     lodgingRows = lodgingScored.map((row) => row.row);
   }

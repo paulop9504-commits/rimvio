@@ -22,13 +22,28 @@ export {
 export { readTripIntakeState } from "@/lib/globe/trip-intake/read-trip-intake-state";
 
 export {
+  inferTripTemporalFromContext,
+  isOnTripNowMessage,
+  type TripTemporalInference,
+  type TripTemporalInferenceSource,
+} from "@/lib/globe/trip-intake/infer-trip-temporal-from-context";
+
+export { mergeInferredTripTemporal } from "@/lib/globe/trip-intake/merge-inferred-trip-temporal";
+
+export {
   isBroadTripPackageMessage,
   readTripIntakeGaps,
   shouldOpenTripIntake,
 } from "@/lib/globe/trip-intake/should-open-trip-intake";
 
 export {
-  readTripIntakeComplete,
-  refreshTripIntakeEvent,
-  writeTripIntakeSlots,
-} from "@/lib/globe/trip-intake/write-trip-intake-slots";
+  buildTripIntakeAskChips,
+  resolveTripIntakeChipValue,
+  type TripIntakeAskChip,
+} from "@/lib/globe/trip-intake/build-trip-intake-ask-chips";
+
+export { applyTripIntakeAskChip } from "@/lib/globe/trip-intake/apply-trip-intake-ask-chip";
+
+export { writeTripIntakeSlots } from "@/lib/globe/trip-intake/write-trip-intake-slots";
+
+export { writeTripIntakePartial } from "@/lib/globe/trip-intake/write-trip-intake-partial";
