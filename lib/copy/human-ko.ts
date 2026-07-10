@@ -2138,6 +2138,7 @@ export const copy = {
       `${destination} 여행 조건을 맞췄어요. 이제 항공·숙소·놀거리를 같이 볼게요.`,
     tripIntakeAskHint: "한 가지만 골라 주세요 — 바로 숙소를 맞출게요.",
     tripIntakeAskChipApplied: (label: string) => `${label}으로 맞출게요.`,
+    lodgingOneShotMainReady: "맞춘 조건으로 숙소를 골랐어요. 객실만 확인하면 바로 이어갈게요.",
     contextRecallBadge: (count: number) => `확정 ${count}건`,
     contextRecallLodgingLeg: "숙소 확정",
     contextRecallFlightLeg: "항공 확정",

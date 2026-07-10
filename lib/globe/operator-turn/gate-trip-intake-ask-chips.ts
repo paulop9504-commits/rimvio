@@ -1,20 +1,8 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
-import { isInstantLodgingSearch, requiresLodgingBookingSlots } from "@/lib/globe/context-condition-ai/instant-lodging-search";
+import { isLodgingPrepUtterance } from "@/lib/globe/lodging-prep/is-lodging-prep-utterance";
 import { planOneShotLodgingPrep } from "@/lib/globe/lodging-prep/plan-one-shot-lodging-prep";
 import type { OperatorTurnPlan } from "@/lib/globe/operator-turn/types";
 import { buildTripIntakeAskChips } from "@/lib/globe/trip-intake/build-trip-intake-ask-chips";
-
-function isLodgingPrepUtterance(text: string): boolean {
-  const trimmed = text.trim();
-  if (!trimmed) {
-    return false;
-  }
-  return (
-    requiresLodgingBookingSlots(trimmed) ||
-    isInstantLodgingSearch(trimmed) ||
-    /(?:숙소|호텔|lodging|hotel).{0,24}(?:준비|예약|잡|찾)/iu.test(trimmed)
-  );
-}
 
 /** Gate — ambiguous trip intake → ask_chips once before scout. */
 export function gateTripIntakeAskChips(input: {

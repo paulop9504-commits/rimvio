@@ -34,7 +34,7 @@ import {
   clearContextConditionPending,
   type ContextConditionAnchorPinOutcome,
 } from "@/lib/globe/context-condition-ai";
-import { dispatchIntelligentDiscoveryFeedOpen } from "@/lib/globe/intelligent-pin";
+import { commitOneShotLodgingMainOfferClient } from "@/lib/globe/lodging-prep";
 import { useIntelligentDiscoveryFeedFocus } from "@/lib/globe/intelligent-pin/use-intelligent-discovery-feed-focus";
 import { isAlternatePlaceSearch } from "@/lib/globe/context-condition-ai/is-alternate-place-search";
 import {
@@ -604,6 +604,25 @@ export function GlobeContextConditionPromptFrame({
       [...readContextAgentComposeThread(event.id)]
         .reverse()
         .find((turn) => turn.role === "user")?.text ?? "";
+
+    const oneShotMain = commitOneShotLodgingMainOfferClient({
+      contextEventId: event.id,
+      triggerMessage,
+      outcome,
+      event: findLifeEventCandidate(event.id) ?? event,
+      userLat,
+      userLng,
+    });
+    if (oneShotMain.committed) {
+      setPinnedRevision((value) => value + 1);
+      setContextAgentSessionPhase(oneShotMain.expressOpened ? "awaiting_human" : "pinned");
+      setComposeThread(readContextAgentComposeThread(event.id));
+      if (oneShotMain.expressOpened) {
+        toast.message(copy.hubCheckout.expressTitle);
+      } else {
+        toast.success(copy.globe.lodgingOneShotMainReady);
+      }
+    }
 
     const snapshot = applyPalantirOperatorAfterScout({
       contextEventId: event.id,

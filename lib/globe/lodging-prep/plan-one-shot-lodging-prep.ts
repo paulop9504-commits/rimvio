@@ -6,9 +6,9 @@ import {
   type TripIntakeGapId,
   type TripIntakeState,
 } from "@/lib/globe/trip-intake";
+import { isLodgingPrepUtterance } from "@/lib/globe/lodging-prep/is-lodging-prep-utterance";
 import { resolveSpatialTargetFromText } from "@/lib/globe/spatial/resolve-spatial-target-from-text";
 import type { ContextSpatialTargetWire } from "@/lib/globe/spatial/context-spatial-target-metadata";
-import { isInstantLodgingSearch, requiresLodgingBookingSlots } from "@/lib/globe/context-condition-ai/instant-lodging-search";
 
 export type OneShotLodgingPrepStep =
   | "parse_spatial"
@@ -28,15 +28,7 @@ export type OneShotLodgingPrepPlan = {
 };
 
 function isOneShotLodgingUtterance(message: string): boolean {
-  const text = message.trim();
-  if (!text) {
-    return false;
-  }
-  return (
-    requiresLodgingBookingSlots(text) ||
-    isInstantLodgingSearch(text) ||
-    /(?:숙소|호텔|lodging|hotel).{0,24}(?:준비|예약|잡|찾)/iu.test(text)
-  );
+  return isLodgingPrepUtterance(message);
 }
 
 function hasLodgingTemporalSlots(state: TripIntakeState): boolean {

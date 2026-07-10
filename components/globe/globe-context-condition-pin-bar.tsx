@@ -178,7 +178,7 @@ import {
   writeTripIntakeSlots,
   type TripIntakeGapId,
 } from "@/lib/globe/trip-intake";
-import { runOneShotLodgingPrepClient } from "@/lib/globe/lodging-prep";
+import { runOneShotLodgingPrepClient, isLodgingPrepUtterance } from "@/lib/globe/lodging-prep";
 
 export type IntakeSlotsSubmitInput = {
   turnId: string;
@@ -1426,7 +1426,7 @@ export const GlobeContextConditionPinBar = forwardRef<
     if (text) {
       onUserCompose?.(text);
     }
-    if (text && tryOpenIntakeForMessage(text)) {
+    if (text && !isLodgingPrepUtterance(text) && tryOpenIntakeForMessage(text)) {
       setMessage("");
       return;
     }
@@ -1668,12 +1668,36 @@ export const GlobeContextConditionPinBar = forwardRef<
       if (!text || busy) {
         return;
       }
-      if (tryOpenIntakeForMessage(text)) {
-        return;
-      }
       onUserCompose?.(text);
       setBusy(true);
       try {
+        const composeTail = readContextAgentComposeThread(contextEventId)
+          .slice(-6)
+          .map((turn) => ({ role: turn.role, text: turn.text }));
+        const ssot = readOperatorTurnSsot({
+          contextEventId,
+          composeTail,
+          hasActiveSpec: lastSpec != null,
+        });
+        const operatorEvent = findLifeEventCandidate(contextEventId);
+        const plan = gateOperatorTurnSync({
+          text,
+          ssot,
+          event: operatorEvent,
+          userLat,
+          userLng,
+        });
+        if (plan.tool === "ask_chips") {
+          appendOperatorAskChipsComposeTurn(contextEventId, {
+            hint: copy.globe.tripIntakeAskHint,
+            pendingTrigger: text,
+            chips: plan.chips,
+          });
+          return;
+        }
+        if (!isLodgingPrepUtterance(text) && tryOpenIntakeForMessage(text)) {
+          return;
+        }
         if (operatorBlueprint) {
           const parallelGate = evaluateOnboardingParallelException({
             blueprint: operatorBlueprint,
@@ -1692,6 +1716,15 @@ export const GlobeContextConditionPinBar = forwardRef<
         if (await tryPublishActionInjection(text)) {
           return;
         }
+        if (plan.tool === "scout" || isLodgingPrepUtterance(text)) {
+          runOneShotLodgingPrepClient({
+            message: text,
+            contextEventId,
+            event: operatorEvent,
+            userLat,
+            userLng,
+          });
+        }
         await resolveAndMaybeExecute(text);
       } finally {
         setBusy(false);
@@ -1703,11 +1736,14 @@ export const GlobeContextConditionPinBar = forwardRef<
       contextEventId,
       destinationConfirmed,
       executeParallelOnboarding,
+      lastSpec,
       onUserCompose,
       operatorBlueprint,
       resolveAndMaybeExecute,
       tryOpenIntakeForMessage,
       tryPublishActionInjection,
+      userLat,
+      userLng,
     ],
   );
 

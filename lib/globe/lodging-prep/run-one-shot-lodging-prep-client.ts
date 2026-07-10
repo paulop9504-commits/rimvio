@@ -1,16 +1,18 @@
 "use client";
 
 import type { EventCandidate } from "@/lib/events/event-candidate";
-import { writeLodgingBookingSlots } from "@/lib/globe/context-hub/lodging-booking-slots";
-import {
-  planOneShotLodgingPrep,
+import { planOneShotLodgingPrep,
   type OneShotLodgingPrepPlan,
 } from "@/lib/globe/lodging-prep/plan-one-shot-lodging-prep";
 import { openLodgingCheckoutState } from "@/lib/globe/hub-checkout/lodging-checkout-controller";
 import { prepareLodgingHubCheckout } from "@/lib/globe/hub-checkout/prepare-lodging-hub-checkout";
 import { writeContextSpatialTargetFromText } from "@/lib/globe/spatial/write-context-spatial-target-from-text";
 import { writeTripIntakeSlots } from "@/lib/globe/trip-intake/write-trip-intake-slots";
+import { writeTripIntakePartial } from "@/lib/globe/trip-intake/write-trip-intake-partial";
 import type { TripIntakeState } from "@/lib/globe/trip-intake/types";
+import { assessExpressCheckoutReadiness } from "@/lib/payment-vault/assess-express-checkout-readiness";
+import { readIdentityVaultBundleClient } from "@/lib/identity-vault/read-identity-vault-bundle-client";
+import { readPaymentVaultBundleClient } from "@/lib/payment-vault/read-payment-vault-bundle-client";
 
 export type RunOneShotLodgingPrepResult = {
   readonly plan: OneShotLodgingPrepPlan;
@@ -38,7 +40,20 @@ export function runOneShotLodgingPrepClient(input: {
   now?: Date;
   expressReady?: boolean;
 }): RunOneShotLodgingPrepResult | null {
-  const plan = planOneShotLodgingPrep(input);
+  const plan = planOneShotLodgingPrep({
+    message: input.message,
+    event: input.event,
+    userLat: input.userLat,
+    userLng: input.userLng,
+    now: input.now,
+    expressReady:
+      input.expressReady ??
+      assessExpressCheckoutReadiness({
+        hubId: "lodging",
+        identityBundle: readIdentityVaultBundleClient(),
+        paymentBundle: readPaymentVaultBundleClient(),
+      }).ready,
+  });
   if (!plan) {
     return null;
   }
@@ -67,17 +82,14 @@ export function runOneShotLodgingPrepClient(input: {
       guestCount: plan.intakeState.guestCount!,
       budgetBand: plan.intakeState.budgetBand ?? "balanced",
     });
-  } else if (
-    plan.intakeState.checkInIso &&
-    plan.intakeState.checkOutIso &&
-    plan.intakeState.guestCount
-  ) {
-    event = writeLodgingBookingSlots({
+  } else {
+    event = writeTripIntakePartial({
       contextEventId,
-      checkInIso: plan.intakeState.checkInIso,
-      checkOutIso: plan.intakeState.checkOutIso,
-      guestCount: plan.intakeState.guestCount,
-      roomCount: 1,
+      state: {
+        ...plan.intakeState,
+        guestCount: plan.intakeState.guestCount ?? 1,
+        budgetBand: plan.intakeState.budgetBand ?? "balanced",
+      },
     });
   }
 
