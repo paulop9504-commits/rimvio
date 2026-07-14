@@ -34,7 +34,7 @@ import {
   clearContextConditionPending,
   type ContextConditionAnchorPinOutcome,
 } from "@/lib/globe/context-condition-ai";
-import { recordEngineLifecycleClient } from "@/lib/engine/record-engine-lifecycle";
+import { runScoutQualityCoachAfterScout } from "@/lib/globe/discovery-quality";
 import { resolveDiscoveryEngineId } from "@/lib/engine/resolve-discovery-engine-id";
 import { commitOneShotLodgingMainOfferClient } from "@/lib/globe/lodging-prep";
 import {
@@ -620,14 +620,11 @@ export function GlobeContextConditionPromptFrame({
       userLng,
     });
     if (engineId) {
-      recordEngineLifecycleClient({
+      runScoutQualityCoachAfterScout({
         contextEventId: event.id,
         engineId,
-        kind: "scout_complete",
-        payload: {
-          batchId: outcome.batchId,
-          recommendationCount: outcome.recommendations.length,
-        },
+        outcome,
+        triggerMessage,
       });
     }
 
@@ -1153,7 +1150,13 @@ export function GlobeContextConditionPromptFrame({
   const processPhase =
     runtime.processPhase ??
     (agentSession.workPhase === "scouting" ? "exploring" : null) ??
-    (agentSession.workPhase === "replanning" ? "optimizing" : null);
+    (agentSession.workPhase === "replanning" ? "optimizing" : null) ??
+    (showBusyStatus ? ("analyzing" as const) : null);
+  const processStatusHint =
+    runtime.statusHintKo?.trim() ||
+    (showBusyStatus && !runtime.processPhase
+      ? copy.globe.contextAgentStatusBusy
+      : null);
   const showExplorationChips =
     Boolean(event) &&
     questions.length === 0 &&
@@ -1330,8 +1333,11 @@ export function GlobeContextConditionPromptFrame({
               onExecute={handleExecuteActionInjection}
             />
           ) : null}
-          {showBusyStatus && processPhase ? (
-            <GlobeContextAgentProcessStrip activePhase={processPhase} />
+          {showBusyStatus ? (
+            <GlobeContextAgentProcessStrip
+              activePhase={processPhase}
+              statusHintKo={processStatusHint}
+            />
           ) : null}
         </div>
 

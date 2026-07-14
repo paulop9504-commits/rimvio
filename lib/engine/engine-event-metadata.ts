@@ -5,6 +5,8 @@ export const CONTEXT_ENGINE_EVENTS_META_KEY = "contextEngineEventsV1" as const;
 export const RIMVIO_ENGINE_EVENT_KINDS = [
   "scout_complete",
   "scout_failed",
+  /** Soft fail — quality gate thin/empty; coach may replan (never Commit). */
+  "scout_insufficient",
   "main_selected",
   /** Ball to teammate — routes next soft turn; never Commits Reality. */
   "pass",

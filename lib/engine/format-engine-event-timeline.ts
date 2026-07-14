@@ -26,6 +26,9 @@ function engineEventLabel(event: RimvioEngineEventV1): string | null {
   if (event.kind === "field_ready") {
     return "맞춤으로 패스";
   }
+  if (event.kind === "scout_insufficient") {
+    return "후보 부족 — 재조합";
+  }
   const byEngine = copy.globe.engineEventTimeline[event.engineId];
   if (!byEngine) {
     return null;
@@ -43,12 +46,14 @@ export function engineEventPriority(event: RimvioEngineEventV1): number {
       return 2;
     case "scout_failed":
       return 3;
-    case "scout_complete":
+    case "scout_insufficient":
       return 4;
-    case "pass":
+    case "scout_complete":
       return 5;
-    default:
+    case "pass":
       return 6;
+    default:
+      return 7;
   }
 }
 

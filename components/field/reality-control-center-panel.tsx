@@ -117,14 +117,24 @@ function QueueRow({
   item,
   field,
   index,
+  hideContextLabel,
   onSelect,
 }: {
   item: RealityQueueItemV1;
   field: ReturnType<typeof useCopy>["globe"]["field"];
   index: number;
+  /** When true, parent context folder already shows the context name. */
+  hideContextLabel?: boolean;
   onSelect: (item: RealityQueueItemV1) => void;
 }) {
   const tone = statusTone(item.status);
+  const contextLabel = item.contextLabelKo?.trim() || null;
+  const rawDetail = item.detailKo?.trim() || null;
+  const detail = hideContextLabel
+    ? rawDetail && rawDetail !== contextLabel && rawDetail !== item.labelKo
+      ? rawDetail
+      : null
+    : rawDetail || contextLabel;
   return (
     <motion.li
       initial={{ opacity: 0, y: 8 }}
@@ -159,10 +169,8 @@ function QueueRow({
               {statusLabel(item.status, field)}
             </span>
           </div>
-          {item.detailKo || item.contextLabelKo ? (
-            <p className="mt-0.5 truncate text-[12px] text-[#8b95a1]">
-              {item.detailKo || item.contextLabelKo}
-            </p>
+          {detail ? (
+            <p className="mt-0.5 truncate text-[12px] text-[#8b95a1]">{detail}</p>
           ) : null}
           {item.amountLabel ? (
             <p className="mt-1 text-[12px] font-medium tabular-nums text-[#4e5968]">
@@ -546,29 +554,39 @@ export function RealityControlCenterPanel({
                 ) : null}
                 {(snapshot.folders.length > 0 ? snapshot.folders : [
                   {
+                    folderId: "other:pending",
                     domain: "other" as const,
                     labelKo: "Pending",
+                    domainLabelKo: "Pending",
+                    contextEventId: null,
                     items: snapshot.items,
                   },
                 ]).map((folder) => (
                   <div
-                    key={folder.domain}
+                    key={folder.folderId}
                     className="overflow-hidden rounded-[1.35rem] bg-white shadow-[0_8px_28px_rgba(15,23,42,0.06)] ring-1 ring-black/[0.04]"
-                    data-reality-queue-folder={folder.domain}
+                    data-reality-queue-folder={folder.folderId}
+                    data-reality-queue-folder-domain={folder.domain}
                   >
-                    <p className="border-b border-[#eef1f4] px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#8b95a1]">
-                      {folder.labelKo}
-                      {folder.items[0]?.contextLabelKo
-                        ? ` · ${folder.items[0].contextLabelKo}`
-                        : ""}
-                    </p>
-                    <ul className="divide-y divide-[#eef1f4]">
+                    <div className="border-b border-[#eef1f4] px-3.5 py-2.5">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#8b95a1]">
+                        {folder.domainLabelKo}
+                        <span className="ml-1.5 font-medium normal-case tracking-normal text-[#b0b8c1]">
+                          {folder.items.length}
+                        </span>
+                      </p>
+                      <p className="mt-0.5 truncate text-[14px] font-semibold tracking-tight text-[#191f28]">
+                        {folder.labelKo}
+                      </p>
+                    </div>
+                    <ul className="divide-y divide-[#eef1f4] border-l-2 border-[#e8ecf0] ml-3">
                       {folder.items.map((item, index) => (
                         <QueueRow
                           key={item.itemId}
                           item={item}
                           field={field}
                           index={index}
+                          hideContextLabel
                           onSelect={setSelectedItem}
                         />
                       ))}

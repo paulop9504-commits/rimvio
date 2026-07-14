@@ -412,6 +412,7 @@ function GlobeHomeBody() {
   );
   const [marketTradeBusy, setMarketTradeBusy] = useState(false);
   const [marketFocusEventId, setMarketFocusEventId] = useState<string | null>(null);
+  const [marketMounted, setMarketMounted] = useState(false);
   const [marketIntentRevision, setMarketIntentRevision] = useState(0);
   const pendingMarketComposeRef = useRef<{
     kind: "wizard" | "quick_list";
@@ -420,14 +421,20 @@ function GlobeHomeBody() {
     composeText: string;
   } | null>(null);
   const liveLocation = useLiveLocationSnapshot();
+  useEffect(() => {
+    setMarketMounted(true);
+  }, []);
   useEffect(
     () => subscribeMarketIntents(() => setMarketIntentRevision((value) => value + 1)),
     [],
   );
   const marketManageCount = useMemo(() => {
     void marketIntentRevision;
+    if (!marketMounted) {
+      return 0;
+    }
     return listActiveMarketIntents().length;
-  }, [marketIntentRevision]);
+  }, [marketIntentRevision, marketMounted]);
   const {
     settings: trendBridgeSettings,
     setEnabled: setTrendBridgeEnabled,
@@ -519,9 +526,10 @@ function GlobeHomeBody() {
   }, [eateryDiscovery.session, lodgingDiscovery.session]);
   const [placeVerifyEventId, setPlaceVerifyEventId] = useState<string | null>(null);
   const [knowledgePlacementPending, setKnowledgePlacementPending] =
-    useState<GlobeKnowledgePlacementPending | null>(() =>
-      typeof window === "undefined" ? null : readGlobeKnowledgePlacementPending(),
-    );
+    useState<GlobeKnowledgePlacementPending | null>(null);
+  useEffect(() => {
+    setKnowledgePlacementPending(readGlobeKnowledgePlacementPending());
+  }, []);
   const [brainProjectionEventId, setBrainProjectionEventId] = useState<string | null>(null);
   const [brainSurfaceBatch, setBrainSurfaceBatch] =
     useState<BrainSurfaceProjectionBatch | null>(null);

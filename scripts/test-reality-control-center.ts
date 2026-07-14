@@ -3,20 +3,28 @@ import { commitContextExecutionPlanFromApproval } from "@/lib/context-execution/
 import type { ContextExecutionPlanV1 } from "@/lib/context-execution/types";
 import { buildRealityCommitReceipt } from "@/lib/reality-queue/build-reality-commit-receipt";
 import { buildRealityControlSnapshot } from "@/lib/reality-queue/build-reality-control-snapshot";
+import { enqueueTravelPrepareOperations } from "@/lib/reality-queue/enqueue-travel-prepare-operations";
+import { reflectRealityOperation } from "@/lib/reality-queue/operation-actions";
+import {
+  clearPreparedRealityOperations,
+} from "@/lib/reality-queue/prepared-operations-store";
 import {
   clearRealityQueueHolds,
   holdRealityQueueItems,
   readRealityQueueHeldItemIds,
 } from "@/lib/reality-queue/reality-queue-hold-store";
+import { asQueueItem, type RealityQueueItemV1 } from "@/lib/reality-queue/types";
 import { parseFieldDashboardTab } from "@/lib/nav/field-dashboard-ingress";
 import type { MarketTradeSessionView } from "@/lib/globe/market/market-trade-types";
-import type { RealityQueueItemV1 } from "@/lib/reality-queue/types";
 
 assert.equal(parseFieldDashboardTab("discovery"), "queue");
 assert.equal(parseFieldDashboardTab("queue"), "queue");
 assert.equal(parseFieldDashboardTab("trades"), "trades");
 assert.equal(parseFieldDashboardTab("mine"), "mine");
 assert.equal(parseFieldDashboardTab("nope"), undefined);
+
+clearPreparedRealityOperations();
+clearRealityQueueHolds();
 
 const empty = buildRealityControlSnapshot({
   tradeSessions: [],
@@ -25,6 +33,7 @@ const empty = buildRealityControlSnapshot({
 });
 assert.equal(empty.version, 1);
 assert.equal(empty.items.length, 0);
+assert.equal(empty.folders.length, 0);
 assert.equal(empty.canCommit, false);
 assert.ok(empty.subtitleKo.length > 0);
 
@@ -47,10 +56,12 @@ const withTrade = buildRealityControlSnapshot({
 
 assert.equal(withTrade.items.length, 1);
 assert.equal(withTrade.items[0]?.kind, "trade");
+assert.equal(withTrade.items[0]?.type, "trade");
 assert.equal(withTrade.items[0]?.status, "ready");
 assert.equal(withTrade.items[0]?.amountLabel, "12만원");
 assert.equal(withTrade.impact.costLabel, "12만원");
 assert.equal(withTrade.canCommit, true);
+assert.equal(withTrade.folders[0]?.domain, "shopping");
 
 clearRealityQueueHolds();
 holdRealityQueueItems(["trade:hs-1"]);
@@ -94,27 +105,52 @@ assert.equal(committed.osPhase, "committed");
 assert.equal(committed.approval, "approved");
 assert.equal(committed.steps[0]?.status, "done");
 
+function stubItem(
+  partial: Pick<RealityQueueItemV1, "itemId" | "labelKo"> &
+    Partial<RealityQueueItemV1>,
+): RealityQueueItemV1 {
+  return asQueueItem({
+    operationId: partial.itemId,
+    type: partial.type ?? "other",
+    domain: partial.domain ?? "travel",
+    status: partial.status ?? "ready",
+    contextEventId: partial.contextEventId ?? "evt-osaka",
+    contextLabelKo: partial.detailKo ?? null,
+    labelKo: partial.labelKo,
+    createdBy: "ai_assistant",
+    preview: {
+      titleKo: partial.labelKo,
+      summaryKo: partial.detailKo ?? "",
+    },
+    needApproval: true,
+    dependsOnItemIds: [],
+    dependencyNoteKo: null,
+    undoAllowed: true,
+    expiresAtIso: null,
+    sourceRef: partial.sourceRef ?? null,
+    engineId: null,
+    kind: partial.kind ?? "execution_step",
+    detailKo: partial.detailKo ?? null,
+    amountLabel: partial.amountLabel ?? null,
+  });
+}
+
 const receiptItems: RealityQueueItemV1[] = [
-  {
+  stubItem({
     itemId: "step:ctx-1:s1",
     kind: "execution_step",
     status: "ready",
     labelKo: "숙소 확정",
     detailKo: "오사카",
-    amountLabel: null,
-    contextEventId: "evt-osaka",
     sourceRef: "s1",
-  },
-  {
+  }),
+  stubItem({
     itemId: "step:ctx-1:s2",
     kind: "execution_step",
     status: "ready",
     labelKo: "항공 준비",
-    detailKo: null,
-    amountLabel: null,
-    contextEventId: "evt-osaka",
     sourceRef: "s2",
-  },
+  }),
 ];
 
 const receipt = buildRealityCommitReceipt({
@@ -143,5 +179,48 @@ const fallbackReceipt = buildRealityCommitReceipt({
 assert.deepEqual(fallbackReceipt.lines, ["단계 2건 반영"]);
 assert.equal(fallbackReceipt.disclaimerKo, null);
 assert.equal(fallbackReceipt.contextEventId, null);
+
+// Shanghai prepare pack → Reality Queue Operations
+clearPreparedRealityOperations();
+const ops = enqueueTravelPrepareOperations({
+  contextEventId: "evt-shanghai",
+  contextLabelKo: "상하이 여행",
+  destinationLabelKo: "상하이",
+});
+assert.equal(ops.length, 5);
+assert.ok(ops.some((op) => op.kind === "lodging"));
+assert.ok(ops.some((op) => op.kind === "flight"));
+const lodging = ops.find((op) => op.kind === "lodging")!;
+assert.equal(lodging.preview.confidencePct, 93);
+assert.match(lodging.preview.diffToKo ?? "", /Hilton/u);
+assert.equal(lodging.status, "pending");
+
+const pendingSnap = buildRealityControlSnapshot({
+  events: [],
+  tradeSessions: [],
+  applyHolds: false,
+});
+assert.equal(pendingSnap.items.length, 5);
+assert.equal(pendingSnap.folders[0]?.domain, "travel");
+assert.equal(pendingSnap.folders.length, 1);
+assert.ok(pendingSnap.folders[0]?.labelKo);
+assert.equal(pendingSnap.folders[0]?.items.length, 5);
+assert.equal(pendingSnap.canCommit, false);
+
+const reflected = reflectRealityOperation(
+  asQueueItem(lodging),
+);
+assert.equal(reflected?.status, "ready");
+
+const afterReflect = buildRealityControlSnapshot({
+  events: [],
+  tradeSessions: [],
+  applyHolds: false,
+});
+assert.ok(afterReflect.items.some((i) => i.kind === "lodging" && i.status === "ready"));
+// other pending still block batch commit
+assert.equal(afterReflect.canCommit, false);
+
+clearPreparedRealityOperations();
 
 console.log("test-reality-control-center: ok");

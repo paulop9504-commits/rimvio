@@ -65,7 +65,10 @@ function rankHubIdsForDestination(input: {
     return overseas?.isOverseas ? ["pus", "icn", "gmp", "cjj"] : ["pus", "gmp", "icn", "cjj"];
   }
   if (input.homeKind === "chungcheong") {
-    return overseas?.isOverseas ? ["cjj", "icn", "gmp", "pus"] : ["cjj", "gmp", "icn", "pus"];
+    // Overseas: prefer ICN even from 충청 — CJJ is domestic/short-haul fallback.
+    return overseas?.isOverseas
+      ? ["icn", "cjj", "gmp", "pus"]
+      : ["cjj", "gmp", "icn", "pus"];
   }
   if (input.homeKind === "seoul") {
     return overseas?.isOverseas ? ["icn", "gmp", "cjj", "pus"] : ["gmp", "icn", "cjj", "pus"];

@@ -17,6 +17,7 @@ export {
   readContextAgentRuntimeState,
   resetContextAgentRuntime,
   setContextAgentProcessPhase,
+  setContextAgentStatusHint,
   subscribeContextAgentRuntime,
   type ContextAgentLifecycle,
   type ContextAgentProcessPhase,

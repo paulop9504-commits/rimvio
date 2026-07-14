@@ -49,6 +49,7 @@ export {
   CONTEXT_FIELD_HANDOFF_META_KEY,
   clearPendingFieldHandoff,
   queueEngineFieldHandoffAfterMain,
+  queueEngineFieldHandoffForHumanDecision,
   readPendingFieldHandoff,
   type EngineFieldHandoffPendingV1,
 } from "@/lib/engine/team-collab/field-handoff-queue";

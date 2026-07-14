@@ -70,6 +70,7 @@ export function queueEngineFieldHandoffAfterMain(input: {
   metadata?: Record<string, unknown> | null;
   fromEngineId: RimvioEngineId;
   tab?: FieldDashboardTab;
+  hintKo?: string;
   now?: Date;
 }): {
   metadata: Record<string, unknown>;
@@ -78,7 +79,7 @@ export function queueEngineFieldHandoffAfterMain(input: {
   const pending: EngineFieldHandoffPendingV1 = {
     fromEngineId: input.fromEngineId,
     tab: input.tab ?? "queue",
-    hintKo: "맞춤에서 확인할까요?",
+    hintKo: input.hintKo ?? "맞춤에서 확인할까요?",
     atIso: (input.now ?? new Date()).toISOString(),
   };
   return {
@@ -88,4 +89,20 @@ export function queueEngineFieldHandoffAfterMain(input: {
     }),
     pending,
   };
+}
+
+/** Budget exhausted / quality coach — same Field queue, human one-answer. */
+export function queueEngineFieldHandoffForHumanDecision(input: {
+  metadata?: Record<string, unknown> | null;
+  fromEngineId: RimvioEngineId;
+  tab?: FieldDashboardTab;
+  now?: Date;
+}): {
+  metadata: Record<string, unknown>;
+  pending: EngineFieldHandoffPendingV1;
+} {
+  return queueEngineFieldHandoffAfterMain({
+    ...input,
+    hintKo: "후보가 약해요 — 맞춤에서 직접 고를까요?",
+  });
 }

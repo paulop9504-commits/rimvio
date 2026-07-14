@@ -106,8 +106,14 @@ export type RealityImpactSummaryV1 = {
 };
 
 export type RealityOperationFolderV1 = {
+  /** Stable key — contextEventId or synthetic (no collision when multiple travel contexts). */
+  readonly folderId: string;
   readonly domain: RealityOperationDomain;
+  /** Context folder title — e.g. 「다음 주 여행」. */
   readonly labelKo: string;
+  /** Domain eyebrow — TRAVEL / SHOPPING. */
+  readonly domainLabelKo: string;
+  readonly contextEventId: string | null;
   readonly items: readonly RealityQueueItemV1[];
 };
 

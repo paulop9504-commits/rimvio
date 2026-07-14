@@ -831,6 +831,12 @@ export const GlobeContextConditionPinBar = forwardRef<
           kind: "build_log",
           text: copy.globe.geoOntologyBuildMapping,
         });
+      } else {
+        appendContextAgentComposeTurn(contextEventId, {
+          role: "assistant",
+          kind: "build_log",
+          text: copy.globe.contextAgentStatusExplore,
+        });
       }
       const outcome = await runContextConditionAnchorPin({
         contextEventId,
@@ -1597,6 +1603,7 @@ export const GlobeContextConditionPinBar = forwardRef<
         return;
       }
       setBusy(true);
+      beginContextAgentWork("analyzing", copy.globe.contextAgentStatusBusy);
       try {
         await resolveAndMaybeExecute(text);
         setMessage("");
@@ -1618,6 +1625,7 @@ export const GlobeContextConditionPinBar = forwardRef<
         return;
       }
       setBusy(true);
+      beginContextAgentWork("analyzing", copy.globe.contextAgentStatusBusy);
       try {
         const priorEvent = findLifeEventCandidate(contextEventId);
         const turn = readContextAgentComposeThread(contextEventId).find(
@@ -1888,6 +1896,7 @@ export const GlobeContextConditionPinBar = forwardRef<
       return;
     }
     setBusy(true);
+    beginContextAgentWork("analyzing", copy.globe.contextAgentStatusBusy);
     try {
       // Operator turn: READ SSOT → GATE fixed tool → ACT (one tool).
       // @see docs/RIMVIO_OPERATOR_TURN.md
@@ -2162,6 +2171,7 @@ export const GlobeContextConditionPinBar = forwardRef<
       }
       onUserCompose?.(text);
       setBusy(true);
+      beginContextAgentWork("analyzing", copy.globe.contextAgentStatusBusy);
       try {
         const composeTail = readContextAgentComposeThread(contextEventId)
           .slice(-6)
@@ -2327,6 +2337,14 @@ export const GlobeContextConditionPinBar = forwardRef<
         return;
       }
       const expressReady = detail.expressReady === true;
+      const progressKo =
+        detail.progressKo?.trim() || copy.globe.contextAgentStatusExplore;
+      beginContextAgentWork("exploring", progressKo);
+      appendContextAgentComposeTurn(detail.contextEventId, {
+        role: "assistant",
+        kind: "build_log",
+        text: progressKo,
+      });
       const runWhenIdle = () => {
         if (busyRef.current) {
           window.setTimeout(runWhenIdle, 48);
@@ -2346,6 +2364,7 @@ export const GlobeContextConditionPinBar = forwardRef<
       }
       onUserCompose?.(text);
       setBusy(true);
+      beginContextAgentWork("analyzing", copy.globe.contextAgentStatusAnalyze);
       try {
         await runPalantirRefine(text);
       } finally {
@@ -2427,6 +2446,7 @@ export const GlobeContextConditionPinBar = forwardRef<
         choice,
       });
       setBusy(true);
+      beginContextAgentWork("exploring", copy.globe.contextAgentStatusExplore);
       try {
         // Natural path: choice → lens rings → scout activities immediately.
         // Prefetch fills the reel in parallel; do not block map pins on it.

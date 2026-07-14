@@ -58,6 +58,14 @@ const busanHypothesis = inferDepartureHubHypothesis({
 assert.equal(busanHypothesis.hub.id, "pus");
 assert.equal(busanHypothesis.confidence, "high");
 
+const chungcheongOverseas = inferDepartureHubHypothesis({
+  destinationLabel: "후쿠오카",
+  viewerLat: 36.635,
+  viewerLng: 127.489,
+});
+assert.equal(chungcheongOverseas.hub.id, "icn");
+assert.equal(chungcheongOverseas.hub.shortLabelKo, "인천공항");
+
 const busanConfirm = resolveTripSituationRouter({
   layerMode: "personal",
   session: afterDest,

@@ -52,6 +52,17 @@ Players (Engines) ──pass──► ──assist──► ──field_ready─
 | Open | `openPendingFieldHandoffClient` → `openFieldDashboardIngress({ tab: "queue" })` |
 | Call sites | flight / transit / finance MAIN; lodging MAIN when express checkout did not open |
 
+### Scout quality coach (Cursor-like replan) ✅
+
+After every scout (handlePinned):
+
+1. **Quality gate** — `evaluateScoutQualityGate` (min 3 recommendations; budget via `contextScoutQualityBudgetV1`)
+2. **Merge** — `mergeDiscoveryRetryIntoActiveFeed` (same Discovery/Feed, keep batchId)
+3. **Insufficient** — `scout_insufficient` + pass queue replan (`widen_same` → `alternate_engine`) + `requestOperatorAutoRun`
+4. **Exhausted** — Field handoff human decision (`queueEngineFieldHandoffForHumanDecision`)
+
+**SSOT:** `lib/globe/discovery-quality/`
+
 ### Phase 3 — Multi Operator ✅
 
 **Goal:** Explicit roles Architect / Operator / Human — stamps + reuse trade dual-approval (no parallel chat OS).

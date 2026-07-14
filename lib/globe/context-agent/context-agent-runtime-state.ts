@@ -7,6 +7,8 @@ export type ContextAgentProcessPhase = "exploring" | "analyzing" | "optimizing";
 export type ContextAgentRuntimeState = {
   readonly lifecycle: ContextAgentLifecycle;
   readonly processPhase: ContextAgentProcessPhase | null;
+  /** Optional L1 status line — auto-run / intake / scout-retry progress. */
+  readonly statusHintKo: string | null;
 };
 
 export type ContextAgentRuntimeDetail = ContextAgentRuntimeState;
@@ -16,6 +18,7 @@ const GLOBE_CONTEXT_AGENT_RUNTIME_EVENT = "rimvio-globe-context-agent-runtime";
 let runtime: ContextAgentRuntimeState = {
   lifecycle: "idle",
   processPhase: null,
+  statusHintKo: null,
 };
 
 function emit(next: ContextAgentRuntimeState): void {
@@ -40,22 +43,40 @@ export function isContextAgentBusy(): boolean {
 
 export function beginContextAgentWork(
   processPhase: ContextAgentProcessPhase = "exploring",
+  statusHintKo?: string | null,
 ): void {
-  emit({ lifecycle: "busy", processPhase });
+  emit({
+    lifecycle: "busy",
+    processPhase,
+    statusHintKo: statusHintKo?.trim() || null,
+  });
 }
 
 export function setContextAgentProcessPhase(
   processPhase: ContextAgentProcessPhase,
+  statusHintKo?: string | null,
 ): void {
-  if (runtime.lifecycle !== "busy") {
-    emit({ lifecycle: "busy", processPhase });
-    return;
-  }
-  emit({ lifecycle: "busy", processPhase });
+  emit({
+    lifecycle: "busy",
+    processPhase,
+    statusHintKo:
+      statusHintKo !== undefined
+        ? statusHintKo?.trim() || null
+        : runtime.statusHintKo,
+  });
+}
+
+export function setContextAgentStatusHint(statusHintKo: string | null): void {
+  emit({
+    ...runtime,
+    lifecycle: runtime.lifecycle === "idle" ? "busy" : runtime.lifecycle,
+    processPhase: runtime.processPhase ?? "analyzing",
+    statusHintKo: statusHintKo?.trim() || null,
+  });
 }
 
 export function finishContextAgentWork(): void {
-  emit({ lifecycle: "idle", processPhase: null });
+  emit({ lifecycle: "idle", processPhase: null, statusHintKo: null });
 }
 
 export function resetContextAgentRuntime(): void {

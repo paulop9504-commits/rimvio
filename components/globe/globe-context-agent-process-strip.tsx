@@ -19,6 +19,8 @@ function phaseLabel(phase: ContextAgentProcessPhase): string {
 
 export type GlobeContextAgentProcessStripProps = {
   activePhase: ContextAgentProcessPhase | null;
+  /** Overrides phase label when set (auto-run / intake progress). */
+  statusHintKo?: string | null;
   visible?: boolean;
   className?: string;
 };
@@ -26,10 +28,16 @@ export type GlobeContextAgentProcessStripProps = {
 /** Cursor-style — single active status line while working. */
 export function GlobeContextAgentProcessStrip({
   activePhase,
+  statusHintKo = null,
   visible = true,
   className,
 }: GlobeContextAgentProcessStripProps) {
-  if (!visible || !activePhase) {
+  const hint = statusHintKo?.trim() || null;
+  const label =
+    hint ??
+    (activePhase ? phaseLabel(activePhase) : copy.globe.contextAgentStatusBusy);
+
+  if (!visible || (!activePhase && !hint)) {
     return null;
   }
 
@@ -40,13 +48,13 @@ export function GlobeContextAgentProcessStrip({
         className,
       )}
       data-globe-context-agent-process
-      data-globe-context-agent-process-phase={activePhase}
+      data-globe-context-agent-process-phase={activePhase ?? "busy"}
     >
       <span
         className="size-1.5 shrink-0 animate-pulse rounded-full bg-[#0071e3]/70"
         aria-hidden
       />
-      <span>{phaseLabel(activePhase)}</span>
+      <span>{label}</span>
     </p>
   );
 }

@@ -172,20 +172,56 @@ function buildItemsFromTrades(
 function buildFolders(
   items: readonly RealityQueueItemV1[],
 ): RealityOperationFolderV1[] {
-  const byDomain = new Map<RealityOperationDomain, RealityQueueItemV1[]>();
+  type Bucket = {
+    folderId: string;
+    domain: RealityOperationDomain;
+    labelKo: string;
+    contextEventId: string | null;
+    items: RealityQueueItemV1[];
+  };
+  const byKey = new Map<string, Bucket>();
+
   for (const item of items) {
+    const contextEventId = item.contextEventId?.trim() || null;
+    const contextLabel = item.contextLabelKo?.trim() || null;
     const domain = item.domain ?? "other";
-    const list = byDomain.get(domain) ?? [];
-    list.push(item);
-    byDomain.set(domain, list);
-  }
-  return DOMAIN_ORDER.filter((domain) => (byDomain.get(domain)?.length ?? 0) > 0).map(
-    (domain) => ({
+    const folderId = contextEventId
+      ? `ctx:${contextEventId}`
+      : contextLabel
+        ? `label:${domain}:${contextLabel}`
+        : `domain:${domain}:misc`;
+    const existing = byKey.get(folderId);
+    if (existing) {
+      existing.items.push(item);
+      continue;
+    }
+    byKey.set(folderId, {
+      folderId,
       domain,
-      labelKo: domainFolderLabelKo(domain),
-      items: byDomain.get(domain) ?? [],
-    }),
-  );
+      labelKo: contextLabel || domainFolderLabelKo(domain),
+      contextEventId,
+      items: [item],
+    });
+  }
+
+  const folders = [...byKey.values()].map((bucket) => ({
+    folderId: bucket.folderId,
+    domain: bucket.domain,
+    labelKo: bucket.labelKo,
+    domainLabelKo: domainFolderLabelKo(bucket.domain),
+    contextEventId: bucket.contextEventId,
+    items: bucket.items,
+  }));
+
+  folders.sort((left, right) => {
+    const domainDelta =
+      DOMAIN_ORDER.indexOf(left.domain) - DOMAIN_ORDER.indexOf(right.domain);
+    if (domainDelta !== 0) {
+      return domainDelta;
+    }
+    return left.labelKo.localeCompare(right.labelKo, "ko");
+  });
+  return folders;
 }
 
 function buildAgentChips(items: readonly RealityQueueItemV1[]): RealityAgentChipV1[] {
