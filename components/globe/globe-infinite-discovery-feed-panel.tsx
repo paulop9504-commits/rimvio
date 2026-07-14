@@ -15,6 +15,8 @@ import {
   hasMoreGlobeDiscoveryItems,
   resolveGlobeDiscoveryFeedStatus,
 } from "@/lib/globe/discovery/globe-discovery-feed";
+import { isScoutIntentConverged } from "@/lib/globe/discovery-policy";
+import { readContextConditionLastBatch } from "@/lib/globe/context-condition-ai/context-condition-last-batch-store";
 import { getInfiniteDiscoveryFeedStatusCopy } from "@/lib/globe/intelligent-pin/get-infinite-feed-status-copy";
 import { shouldUseDiscoveryVideoHero } from "@/lib/globe/intelligent-pin/should-use-discovery-video-hero";
 import {
@@ -169,14 +171,26 @@ export function GlobeInfiniteDiscoveryFeedPanel({
     [contextEventId],
   );
   const cardSeenAtRef = useRef<Map<string, number>>(new Map());
+  const intentConverged = useMemo(() => {
+    const batch = readContextConditionLastBatch(contextEventId);
+    return isScoutIntentConverged({
+      message: batch?.triggerMessage ?? null,
+    });
+  }, [contextEventId, cards]);
   const [visibleCount, setVisibleCount] = useState(() =>
-    getInitialGlobeDiscoveryRevealCount(cards.length),
+    getInitialGlobeDiscoveryRevealCount(cards.length, {
+      intentConverged: isScoutIntentConverged({
+        message: readContextConditionLastBatch(contextEventId)?.triggerMessage,
+      }),
+    }),
   );
   const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
-    setVisibleCount(getInitialGlobeDiscoveryRevealCount(cards.length));
-  }, [cards]);
+    setVisibleCount(
+      getInitialGlobeDiscoveryRevealCount(cards.length, { intentConverged }),
+    );
+  }, [cards, intentConverged]);
 
   useEffect(() => {
     return () => {
@@ -203,11 +217,15 @@ export function GlobeInfiniteDiscoveryFeedPanel({
     }
     setLoadingMore(true);
     loadMoreTimerRef.current = window.setTimeout(() => {
-      setVisibleCount((current) => getNextGlobeDiscoveryRevealCount(current, cards.length));
+      setVisibleCount((current) =>
+        getNextGlobeDiscoveryRevealCount(current, cards.length, {
+          intentConverged,
+        }),
+      );
       setLoadingMore(false);
       loadMoreTimerRef.current = null;
     }, 140);
-  }, [cards.length, hasMore, loadingMore]);
+  }, [cards.length, hasMore, intentConverged, loadingMore]);
 
   const recordCardScrollSignal = useCallback(
     (card: InfiniteDiscoveryFeedCard, dwellMs: number) => {

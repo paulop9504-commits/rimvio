@@ -68,6 +68,7 @@ import {
   resolveActivityLandmarkInventoryRow,
 } from "@/lib/globe/context-condition-ai/resolve-activity-landmark-inventory";
 import {
+  applyConvergedIntentCapBoost,
   applyExplorationMode,
   guardThresholdForDomain,
   readExplorationModeOverride,
@@ -342,7 +343,17 @@ export async function runContextConditionAnchorPin(
     ),
     override: readExplorationModeOverride(contextEventId),
   });
-  const exploration = applyExplorationMode(explorationMode);
+  const exploration = applyConvergedIntentCapBoost(
+    applyExplorationMode(explorationMode),
+    {
+      message: input.message,
+      eateryFocus:
+        spec.eateryFocus?.trim() ||
+        parseSingleCuisineFocus(input.message ?? "") ||
+        null,
+      activityFocus: spec.activityFocus,
+    },
+  );
   const searchOrigin = resolveDiscoverySearchOrigin({
     anchorLat: input.anchorLat,
     anchorLng: input.anchorLng,

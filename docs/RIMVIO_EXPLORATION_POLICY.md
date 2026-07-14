@@ -39,12 +39,26 @@ Do **not** label users “초심자/숙련자” in UI. Mode is **per turn / per
 | Knob | Convergent | Diffuse |
 |------|------------|---------|
 | `pinCap` | 3 | 5 |
-| `recommendCap` | 3 | 5 |
+| `recommendCap` | 8 | 8 |
 | Guard threshold (eatery) | 0.5 | 0.35 |
 | Guard threshold (activity/amenity) | 0.85 | 0.72 |
-| Eatery retrieval `maxResults` | 10 | 14 |
+| Eatery retrieval `maxResults` | 14 | 18 |
+| Eatery present cap | 6 | 8 |
 | Activity present cap | 4 | 6 |
 | Landmark pin cap | 1 | 3 |
+
+### Intent-converged boost (`applyConvergedIntentCapBoost`)
+
+When cuisine / brand / dish focus is locked (e.g.「초밥」「맥도날드」), surface budget expands on top of mode knobs:
+
+| Knob | Floor when converged |
+|------|----------------------|
+| `pinCap` | ≥ 6 |
+| `recommendCap` | ≥ 14 |
+| `eateryMaxResults` | ≥ 28 |
+| `eateryPresentCap` | ≥ 14 |
+| `feedInventoryCap` | ≥ 40 |
+| Feed initial reveal | 8 (vs 4) |
 
 Score temperature (`ratingWeight` / `noveltyWeight`) → `explorationScoreBias()` in eatery/place scorers (shipped).
 

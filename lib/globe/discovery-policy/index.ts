@@ -13,6 +13,11 @@ export {
 } from "@/lib/globe/discovery-policy/apply-exploration-mode";
 
 export {
+  applyConvergedIntentCapBoost,
+  isScoutIntentConverged,
+} from "@/lib/globe/discovery-policy/apply-converged-intent-cap-boost";
+
+export {
   clearExplorationModeOverride,
   readExplorationModeOverride,
   subscribeExplorationModeOverride,

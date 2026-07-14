@@ -2,9 +2,11 @@
 
 import assert from "node:assert/strict";
 import {
+  applyConvergedIntentCapBoost,
   applyExplorationMode,
   explorationScoreBias,
   guardThresholdForDomain,
+  isScoutIntentConverged,
   resolveExplorationMode,
 } from "../lib/globe/discovery-policy";
 import { DISCOVERY_GUARD_THRESHOLD } from "../lib/globe/context-condition-ai/discovery-guard/verify-discovery-results";
@@ -33,8 +35,10 @@ const diffuse = applyExplorationMode("diffuse");
 
 assert.equal(convergent.pinCap, 3);
 assert.equal(diffuse.pinCap, 5);
-assert.equal(convergent.eateryMaxResults, 10);
-assert.equal(diffuse.eateryMaxResults, 14);
+assert.equal(convergent.eateryMaxResults, 14);
+assert.equal(diffuse.eateryMaxResults, 18);
+assert.equal(convergent.eateryPresentCap, 6);
+assert.equal(diffuse.eateryPresentCap, 8);
 assert.equal(
   guardThresholdForDomain(convergent, "eatery"),
   DISCOVERY_GUARD_THRESHOLD.eatery,
@@ -78,6 +82,18 @@ assert.ok(
       rating: 4.5,
       labels: ["골목 로컬 식당"],
     }),
+);
+
+assert.ok(isScoutIntentConverged({ message: "초밥" }));
+assert.ok(!isScoutIntentConverged({ message: "주변 맛집" }));
+
+const boosted = applyConvergedIntentCapBoost(convergent, { message: "도쿄역 초밥" });
+assert.ok(boosted.eateryPresentCap >= 14);
+assert.ok(boosted.eateryMaxResults >= 28);
+assert.ok(boosted.pinCap >= 6);
+assert.equal(
+  applyConvergedIntentCapBoost(convergent, { message: "주변 맛집" }).eateryPresentCap,
+  convergent.eateryPresentCap,
 );
 
 console.log("test-exploration-policy: ok");

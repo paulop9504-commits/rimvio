@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+  GLOBE_DISCOVERY_CONVERGED_INITIAL_REVEAL_COUNT,
   GLOBE_DISCOVERY_FETCH_LIMIT,
   GLOBE_DISCOVERY_INITIAL_REVEAL_COUNT,
   GLOBE_DISCOVERY_REVEAL_STEP,
@@ -10,19 +11,28 @@ import {
 } from "@/lib/globe/discovery/globe-discovery-feed";
 
 function run() {
-  assert.equal(GLOBE_DISCOVERY_FETCH_LIMIT, 18);
+  assert.equal(GLOBE_DISCOVERY_FETCH_LIMIT, 28);
   assert.equal(GLOBE_DISCOVERY_INITIAL_REVEAL_COUNT, 4);
+  assert.equal(GLOBE_DISCOVERY_CONVERGED_INITIAL_REVEAL_COUNT, 8);
   assert.equal(GLOBE_DISCOVERY_REVEAL_STEP, 4);
   assert.ok(GLOBE_DISCOVERY_FETCH_LIMIT > GLOBE_DISCOVERY_INITIAL_REVEAL_COUNT);
 
   assert.equal(getInitialGlobeDiscoveryRevealCount(0), 0);
   assert.equal(getInitialGlobeDiscoveryRevealCount(2), 2);
   assert.equal(getInitialGlobeDiscoveryRevealCount(12), 4);
+  assert.equal(
+    getInitialGlobeDiscoveryRevealCount(12, { intentConverged: true }),
+    8,
+  );
 
   assert.equal(getNextGlobeDiscoveryRevealCount(0, 12), 4);
   assert.equal(getNextGlobeDiscoveryRevealCount(4, 12), 8);
   assert.equal(getNextGlobeDiscoveryRevealCount(8, 12), 12);
   assert.equal(getNextGlobeDiscoveryRevealCount(12, 12), 12);
+  assert.equal(
+    getNextGlobeDiscoveryRevealCount(8, 20, { intentConverged: true }),
+    14,
+  );
 
   assert.equal(hasMoreGlobeDiscoveryItems(4, 12), true);
   assert.equal(hasMoreGlobeDiscoveryItems(12, 12), false);
