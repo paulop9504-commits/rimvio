@@ -446,13 +446,24 @@ export function GlobeChatScreen({
                         tone="light"
                         variant={
                           message.clarifyKind === "category_confirm" ||
-                          message.clarifyKind === "price_confirm"
+                          message.clarifyKind === "price_confirm" ||
+                          message.clarifyKind === "context_create" ||
+                          message.clarifyKind === "context_anchor_move"
                             ? "confirm"
                             : message.clarifyKind === "category_pick"
                               ? "category"
                               : "slot"
                         }
                         onSelect={(choice) => {
+                          if (
+                            message.clarifyKind === "context_create" ||
+                            message.clarifyKind === "context_anchor_move" ||
+                            message.slotId === "context_create" ||
+                            message.slotId === "context_anchor_move"
+                          ) {
+                            submitChipAnswer(choice.id);
+                            return;
+                          }
                           const answer =
                             message.clarifyKind === "category_pick"
                               ? choice.id

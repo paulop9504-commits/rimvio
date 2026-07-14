@@ -8,6 +8,13 @@ import {
 } from "@/lib/globe/context-condition-ai/instant-lodging-search";
 import { parseMaxNightlyPriceKrw } from "@/lib/globe/context-condition-ai/filter-lodging-for-intent";
 import { parseLodgingKindFromText } from "@/lib/globe/domain-cues/lodging-domain-cues";
+import { parseLodgingStayTypeFromText } from "@/lib/globe/lodging/lodging-stay-types";
+import type { LodgingStayType } from "@/lib/globe/lodging/lodging-stay-types";
+import {
+  detectIntentRelationship,
+  lodgingKindFromIntentSlice,
+  lodgingStayTypeFromIntentSlice,
+} from "@/lib/intent-engine/detect-intent-relationship";
 import {
   isInstantEaterySearch,
   resolveInstantEateryFocus,
@@ -257,6 +264,7 @@ function composeSpec(input: {
   budget: LocalDiscoveryBudget;
   vibe: LocalDiscoveryVibe;
   lodgingKind: LocalDiscoveryLodgingKind;
+  lodgingStayType?: LodgingStayType | null;
   maxNightlyPriceKrw?: number | null;
   eateryFocus?: string | null;
   activityFocus?: string | null;
@@ -273,6 +281,9 @@ function composeSpec(input: {
     budget: input.budget,
     vibe: input.vibe,
     lodgingKind: input.lodgingKind,
+    ...(input.lodgingStayType
+      ? { lodgingStayType: input.lodgingStayType }
+      : {}),
     radiusM: amenityOnly ? INSTANT_POI_RADIUS_M : radiusForTransport(input.transport),
     ...(input.maxNightlyPriceKrw != null && input.maxNightlyPriceKrw > 0
       ? { maxNightlyPriceKrw: Math.round(input.maxNightlyPriceKrw) }
@@ -320,6 +331,10 @@ function resolveDiscoveryDomainSpec(input: {
   }
 
   if (isInstantLodgingSearch(input.text)) {
+    const stayType =
+      parseLodgingStayTypeFromText(input.text) ??
+      input.previousSpec?.lodgingStayType ??
+      null;
     const lodgingKind =
       (input.answers.lodgingKind as LocalDiscoveryLodgingKind | undefined) ??
       parseLodgingKind(input.text) ??
@@ -348,6 +363,7 @@ function resolveDiscoveryDomainSpec(input: {
       budget,
       vibe: parseVibe(input.text) ?? input.previousSpec?.vibe ?? "popular",
       lodgingKind,
+      lodgingStayType: stayType,
       maxNightlyPriceKrw,
     });
   }
@@ -484,16 +500,73 @@ export function resolveLocalDiscoveryAction(
     input.inferredLodgingKind ??
     (wantsLodging ? "any" : "any");
 
-  const maxNightlyPriceKrw =
-    parseMaxNightlyPriceKrw(text) ?? previousSpec?.maxNightlyPriceKrw ?? null;
+  let lodgingStayType: LodgingStayType | null =
+    parseLodgingStayTypeFromText(text);
 
-  if (followUpTurn && previousSpec) {
+  const priorTrigger =
+    typeof input.previousTriggerMessage === "string"
+      ? input.previousTriggerMessage
+      : null;
+  const relationship = detectIntentRelationship({
+    previousText: priorTrigger,
+    previousSlice:
+      previousSpec != null
+        ? {
+            domain: previousSpec.resourceTypes.includes("hotel")
+              ? "lodging"
+              : previousSpec.resourceTypes.includes("restaurant")
+                ? "eatery"
+                : "unknown",
+            kind:
+              previousSpec.lodgingStayType ??
+              (previousSpec.lodgingKind === "hostel"
+                ? "guesthouse"
+                : previousSpec.lodgingKind === "airbnb"
+                  ? "airbnb"
+                  : previousSpec.lodgingKind === "hotel"
+                    ? "hotel"
+                    : null),
+            destinationLabel: null,
+          }
+        : null,
+    nextText: text,
+  });
+
+  if (relationship.clearPriorDomainKinds) {
+    const fromRelationship = lodgingKindFromIntentSlice(relationship.next);
+    if (fromRelationship) {
+      lodgingKind = fromRelationship;
+    }
+    lodgingStayType =
+      lodgingStayTypeFromIntentSlice(relationship.next) ??
+      parseLodgingStayTypeFromText(text);
+  } else if (
+    relationship.mergeKinds &&
+    lodgingStayTypeFromIntentSlice(relationship.next)
+  ) {
+    lodgingStayType = lodgingStayTypeFromIntentSlice(relationship.next);
+  }
+
+  const maxNightlyPriceKrw = relationship.clearPriorDomainKinds
+    ? parseMaxNightlyPriceKrw(text)
+    : parseMaxNightlyPriceKrw(text) ?? previousSpec?.maxNightlyPriceKrw ?? null;
+
+  if (followUpTurn && previousSpec && !relationship.clearPriorDomainKinds) {
     transport = transport ?? previousSpec.transport;
     budget = budget ?? previousSpec.budget;
     vibe = vibe ?? previousSpec.vibe;
     if (!parseLodgingKind(text) && !answers.lodgingKind) {
       lodgingKind = previousSpec.lodgingKind;
     }
+    if (!parseLodgingStayTypeFromText(text) && previousSpec.lodgingStayType) {
+      lodgingStayType = previousSpec.lodgingStayType;
+    }
+  } else if (
+    followUpTurn &&
+    previousSpec &&
+    relationship.clearPriorDomainKinds
+  ) {
+    transport = transport ?? previousSpec.transport;
   }
 
   if (
@@ -516,6 +589,7 @@ export function resolveLocalDiscoveryAction(
   const partial: Partial<LocalDiscoveryActionSpec> = {
     resourceTypes,
     lodgingKind,
+    ...(lodgingStayType ? { lodgingStayType } : {}),
     ...(maxNightlyPriceKrw != null ? { maxNightlyPriceKrw } : {}),
     ...(eateryFocus ? { eateryFocus } : {}),
     ...(transport != null ? { transport } : {}),
@@ -587,6 +661,7 @@ export function resolveLocalDiscoveryAction(
       budget: budget ?? "medium",
       vibe: vibe ?? "popular",
       lodgingKind: lodgingKind ?? "any",
+      lodgingStayType,
       maxNightlyPriceKrw,
       eateryFocus,
     }),

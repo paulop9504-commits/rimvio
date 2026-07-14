@@ -4,8 +4,47 @@ import {
   dispatchExecutionFeedStep,
 } from "@/lib/context-run/execution-feed-bridge";
 import { resolveActiveComposerGraphId } from "@/lib/context-run/resolve-active-composer-graph-id";
+import { copy } from "@/lib/copy/human-ko";
 
 const STEP_INGRESS = "globe_ingress";
+
+const CREATE_PROGRESS_STEPS = [
+  { id: "intent", labelKey: "progressIntent" as const },
+  { id: "place", labelKey: "progressPlaceFeed" as const },
+  { id: "dates", labelKey: "progressDates" as const },
+  { id: "globe", labelKey: "progressGlobe" as const },
+  { id: "anchor", labelKey: "progressAnchorFeed" as const },
+] as const;
+
+/** During 「생성」— mark create lane running then done (sequential feed rows). */
+export function syncGlobeIngressCreatingProgressToFeed(
+  compiled: GlobeIngressCompileResult,
+  goalKo: string,
+): void {
+  const graphId = resolveActiveComposerGraphId(goalKo);
+  const c = copy.globe.contextAnchor;
+  for (const step of CREATE_PROGRESS_STEPS) {
+    const labelKo =
+      step.labelKey === "progressPlaceFeed"
+        ? c.progressPlaceFeed
+        : step.labelKey === "progressAnchorFeed"
+          ? c.progressAnchorFeed
+          : c[step.labelKey];
+    dispatchExecutionFeedStep({
+      graphId,
+      stepId: `${STEP_INGRESS}:create:${step.id}`,
+      labelKo,
+      status: "running",
+    });
+    dispatchExecutionFeedStep({
+      graphId,
+      stepId: `${STEP_INGRESS}:create:${step.id}`,
+      labelKo,
+      status: "done",
+      resultKo: compiled.context.goal.slice(0, 28),
+    });
+  }
+}
 
 export function syncGlobeIngressCompileToFeed(
   compiled: GlobeIngressCompileResult,

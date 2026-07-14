@@ -5,6 +5,8 @@ import {
   readLodgingInventoryRows,
   readLodgingPayloadFromResource,
 } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
+import { synthesizeCheckoutRoomOffer } from "@/lib/globe/context-hub/derive-lodging-room-offers";
+import { readLodgingBookingSlots } from "@/lib/globe/context-hub/lodging-booking-slots";
 import { prepareLodgingHubCheckout } from "@/lib/globe/hub-checkout/prepare-lodging-hub-checkout";
 import type { HubLodgingCheckoutSession } from "@/lib/globe/hub-checkout/types";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
@@ -33,13 +35,33 @@ export function resolveLodgingRoomCardStep(
   }
   const resource = mapLodgingRowToContextResource(event, row);
   const payload = readLodgingPayloadFromResource(resource);
-  if (!payload?.roomOffers?.length) {
+  if (!payload) {
+    return null;
+  }
+  if (payload.roomOffers && payload.roomOffers.length > 0) {
+    return {
+      contextEventId: event.id,
+      resourceId: resource.resourceId,
+      payload,
+    };
+  }
+  // Places / no-rate rows: synthesize one checkout offer so 예매 opens the card.
+  const slots = readLodgingBookingSlots(event);
+  const synthetic = synthesizeCheckoutRoomOffer({
+    row,
+    guestCount: slots.guestCount ?? 1,
+    roomCount: slots.roomCount ?? 1,
+  });
+  if (!synthetic) {
     return null;
   }
   return {
     contextEventId: event.id,
     resourceId: resource.resourceId,
-    payload,
+    payload: {
+      ...payload,
+      roomOffers: [synthetic],
+    },
   };
 }
 

@@ -20,3 +20,26 @@ export {
 } from "@/lib/globe-ingress/resolve-ingress-context-converge";
 
 export { tryEnterDomainRuntimeAfterIngress } from "@/lib/globe-ingress/try-enter-domain-runtime-after-ingress-client";
+
+export {
+  writePendingContextCreate,
+  readPendingContextCreate,
+  clearPendingContextCreate,
+  resetPendingContextCreateForTests,
+  type PendingContextCreateDraft,
+} from "@/lib/globe-ingress/pending-context-create-store";
+export { buildPendingContextCreateDraft } from "@/lib/globe-ingress/build-pending-context-create-draft";
+export { offerPendingContextCreate } from "@/lib/globe-ingress/offer-pending-context-create";
+export {
+  commitPendingContextCreate,
+  cancelPendingContextCreate,
+} from "@/lib/globe-ingress/commit-pending-context-create";
+export {
+  proposeContextAnchorMoveFromNl,
+  proposeContextAnchorMoveFromDrag,
+  tryResolvePendingContextAnchorMoveReply,
+} from "@/lib/globe-ingress/commit-context-anchor-move";
+export {
+  isContextAnchorMoveUtterance,
+  parseContextAnchorMoveTarget,
+} from "@/lib/globe-ingress/detect-context-anchor-move";

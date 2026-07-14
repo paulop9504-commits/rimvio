@@ -33,4 +33,8 @@ export type ComposeClarifyKind =
   | "slot"
   | "category_confirm"
   | "category_pick"
-  | "price_confirm";
+  | "price_confirm"
+  /** Travel Context Draft create gate —「생성」/「취소」 */
+  | "context_create"
+  /** Context Anchor move confirm —「확인」/「취소」 */
+  | "context_anchor_move";

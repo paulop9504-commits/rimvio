@@ -404,7 +404,7 @@ export function GlobeLodgingFocusStage({
     }
     // Fallback: hotel search for this property (not Google Maps place view).
     const href = entry?.resource.action?.href?.trim();
-    if (href && !/google\.com\/maps/iu.test(href)) {
+    if (href && !/google\.com\/maps/iu.test(href) && !href.startsWith("rimvio://")) {
       window.open(href, "_blank", "noopener,noreferrer");
       return;
     }
@@ -415,7 +415,9 @@ export function GlobeLodgingFocusStage({
         "_blank",
         "noopener,noreferrer",
       );
+      return;
     }
+    toast.message("예매 정보를 아직 준비하지 못했어요");
   }, [
     entry?.resource.action?.href,
     entry?.resource.label,

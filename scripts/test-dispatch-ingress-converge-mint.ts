@@ -1,7 +1,7 @@
 #!/usr/bin/env npx tsx
 /**
  * globe_ingress hub-null — Find before mint:
- * ask_chips skips mint · auto_attach reuses · create_new / forceNew mint.
+ * ask_chips when hits · create_new drafts (no Commit until 「생성」).
  */
 
 import assert from "node:assert/strict";
@@ -13,6 +13,7 @@ import { resolveIngressContextConverge } from "../lib/globe-ingress/resolve-ingr
 import type { IngressContextConvergeResult } from "../lib/globe-ingress/resolve-ingress-context-converge";
 import type { GlobeIngressCompileResult } from "../lib/globe-ingress/types";
 import { listLifeEventCandidates } from "../lib/life-read-model";
+import { resetPendingContextCreateForTests } from "../lib/globe-ingress/pending-context-create-store";
 
 const memory = new Map<string, string>();
 
@@ -108,9 +109,10 @@ function trackHandlers(): ContextRunEffectHandlers & { track: Track } {
 
 installStorage();
 
-async function caseCreateNewMints(): Promise<void> {
+async function caseCreateNewDrafts(): Promise<void> {
   memory.clear();
   resetEventCandidatesForTests([]);
+  resetPendingContextCreateForTests();
   const handlers = trackHandlers();
   const result = await dispatchContextRun(
     {
@@ -124,27 +126,24 @@ async function caseCreateNewMints(): Promise<void> {
   );
   assert.equal(result.status, "done");
   assert.equal(result.planKind, "globe_ingress");
-  assert.equal(handlers.track.chips, null, "create_new must not offer chips");
-  assert.ok(handlers.track.compiled, "create_new must mint + compile");
-  assert.ok(handlers.track.attached, "create_new must attach new event");
-  assert.equal(
-    handlers.track.compiled!.compiled.context.slots.find((s) => s.key === "destination")
-      ?.resolution,
-    "unresolved",
-  );
-  console.log("✓ create_new mints (hub-null empty store)");
+  assert.equal(handlers.track.chips, null, "create_new must not offer converge chips");
+  assert.equal(handlers.track.compiled, null, "draft until 「생성」");
+  assert.equal(handlers.track.attached, null);
+  assert.equal(listLifeEventCandidates().length, 0);
+  assert.ok(result.globeIngress);
+  console.log("✓ create_new offers draft (no mint)");
 }
 
-async function caseAutoAttachSkipsFreshMint(): Promise<void> {
+async function caseAskChipsOnHit(): Promise<void> {
   memory.clear();
-  const existing = japanTrip("evt-jp-1", "민수", 3);
-  resetEventCandidatesForTests([existing]);
+  resetPendingContextCreateForTests();
+  resetEventCandidatesForTests([japanTrip("evt-jp-1", "민수", 3)]);
   const converge = resolveIngressContextConverge({
     utterance: "일본 여행 가려고",
     events: listLifeEventCandidates(),
   });
-  assert.equal(converge.decision, "auto_attach");
-  assert.equal(converge.attachEventId, "evt-jp-1");
+  assert.equal(converge.decision, "ask_chips");
+  assert.ok(converge.hits.length >= 1);
 
   const beforeCount = listLifeEventCandidates().length;
   const handlers = trackHandlers();
@@ -159,39 +158,19 @@ async function caseAutoAttachSkipsFreshMint(): Promise<void> {
     handlers,
   );
   assert.equal(result.status, "done");
-  assert.equal(handlers.track.chips, null, "auto_attach must not offer chips");
-  assert.ok(handlers.track.compiled, "auto_attach still compiles onto existing");
-  assert.equal(handlers.track.attached, "evt-jp-1");
-  assert.equal(handlers.track.compiled!.eventId, "evt-jp-1");
-  assert.equal(
-    handlers.track.compiled!.compiled.context.contextId,
-    "evt-jp-1",
-    "compile must reuse existingContextId",
-  );
-  assert.equal(
-    listLifeEventCandidates().length,
-    beforeCount,
-    "auto_attach must not mint a second context row",
-  );
-  console.log("✓ auto_attach reuses existingContextId (no fresh mint)");
+  assert.ok(handlers.track.chips, "ask_chips must call onIngressConvergeChips");
+  assert.equal(handlers.track.compiled, null);
+  assert.equal(listLifeEventCandidates().length, beforeCount);
+  console.log("✓ ask_chips on related hit (no quiet auto-attach)");
 }
 
-async function caseAskChipsSkipsMint(): Promise<void> {
+async function caseAskChipsAmbiguous(): Promise<void> {
   memory.clear();
+  resetPendingContextCreateForTests();
   resetEventCandidatesForTests([
     japanTrip("evt-jp-a", "민수", 3),
     japanTrip("evt-jp-b", "지연", 4),
   ]);
-  const converge = resolveIngressContextConverge({
-    utterance: "일본 여행 가려고",
-    events: listLifeEventCandidates(),
-  });
-  assert.equal(
-    converge.decision,
-    "ask_chips",
-    `expected ask_chips for ambiguous peers, got ${converge.decision}`,
-  );
-
   const beforeIds = new Set(listLifeEventCandidates().map((e) => e.id));
   const handlers = trackHandlers();
   const result = await dispatchContextRun(
@@ -206,18 +185,19 @@ async function caseAskChipsSkipsMint(): Promise<void> {
   );
   assert.equal(result.status, "done");
   assert.equal(result.planKind, "globe_ingress");
-  assert.ok(handlers.track.chips, "ask_chips must call onIngressConvergeChips");
+  assert.ok(handlers.track.chips);
   assert.equal(handlers.track.chips!.decision, "ask_chips");
-  assert.equal(handlers.track.compiled, null, "ask_chips must skip mint/compile");
-  assert.equal(handlers.track.attached, null, "ask_chips must not attach");
+  assert.equal(handlers.track.compiled, null);
   const afterIds = new Set(listLifeEventCandidates().map((e) => e.id));
   assert.deepEqual([...afterIds].sort(), [...beforeIds].sort());
-  console.log("✓ ask_chips skips mint");
+  console.log("✓ ask_chips skips mint (ambiguous peers)");
 }
 
-async function caseForceNewMintsDespiteHit(): Promise<void> {
+async function caseForceNewDraftsDespiteHit(): Promise<void> {
   memory.clear();
+  resetPendingContextCreateForTests();
   resetEventCandidatesForTests([japanTrip("evt-jp-1", "민수", 3)]);
+  const beforeCount = listLifeEventCandidates().length;
   const handlers = trackHandlers();
   const result = await dispatchContextRun(
     {
@@ -232,25 +212,18 @@ async function caseForceNewMintsDespiteHit(): Promise<void> {
   );
   assert.equal(result.status, "done");
   assert.equal(handlers.track.chips, null, "forceNew must skip Find chips");
-  assert.ok(handlers.track.compiled, "forceNew must mint");
-  assert.ok(handlers.track.attached);
-  assert.notEqual(
-    handlers.track.compiled!.eventId,
-    "evt-jp-1",
-    "forceNew must not attach the Find hit",
-  );
-  assert.notEqual(
-    handlers.track.compiled!.compiled.context.contextId,
-    "evt-jp-1",
-  );
-  console.log("✓ forceNew mints despite Find hit");
+  assert.equal(handlers.track.compiled, null);
+  assert.equal(listLifeEventCandidates().length, beforeCount);
+  assert.ok(result.globeIngress);
+  assert.notEqual(result.globeIngress!.context.contextId, "evt-jp-1");
+  console.log("✓ forceNew drafts despite Find hit");
 }
 
 async function main(): Promise<void> {
-  await caseCreateNewMints();
-  await caseAutoAttachSkipsFreshMint();
-  await caseAskChipsSkipsMint();
-  await caseForceNewMintsDespiteHit();
+  await caseCreateNewDrafts();
+  await caseAskChipsOnHit();
+  await caseAskChipsAmbiguous();
+  await caseForceNewDraftsDespiteHit();
   console.log("\nAll dispatch ingress converge mint/skip tests passed.");
 }
 

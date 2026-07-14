@@ -8,6 +8,11 @@ import type {
   LocalDiscoveryLodgingKind,
 } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
 import type { ContextLodgingInventoryRow } from "@/lib/globe/context-hub/lodging-resource-types";
+import {
+  lodgingRowMatchesStayType,
+  resolveLodgingStaySearchKeyword,
+  type LodgingStayType,
+} from "@/lib/globe/lodging/lodging-stay-types";
 
 const HOSTEL_SIGNAL_RE =
   /게스트\s*하우스|게스트하우스|호스텔|hostel|guesthouse|guest\s*house|backpacker|유스\s*호스텔|youth\s*hostel|capsule|캡슐\s*호텔|도미토리|dormitory|민박|bnb|guest\s*house/iu;
@@ -96,18 +101,13 @@ export function parseMaxNightlyPriceKrw(text: string): number | null {
 export function resolveLodgingSearchKeyword(input: {
   lodgingKind: LocalDiscoveryLodgingKind;
   message?: string | null;
+  lodgingStayType?: LodgingStayType | null;
 }): string | null {
-  if (input.lodgingKind === "hostel") {
-    return "게스트하우스";
-  }
-  if (input.lodgingKind === "airbnb") {
-    return "민박";
-  }
-  const message = input.message?.trim() ?? "";
-  if (/게스트\s*하우스|게스트하우스|호스텔|hostel|guesthouse/iu.test(message)) {
-    return "게스트하우스";
-  }
-  return null;
+  return resolveLodgingStaySearchKeyword({
+    stayType: input.lodgingStayType,
+    lodgingKind: input.lodgingKind,
+    message: input.message,
+  });
 }
 
 function filterByMaxPrice(
@@ -142,8 +142,10 @@ export function filterLodgingRowsForIntent(input: {
   lodgingKind: LocalDiscoveryLodgingKind;
   budget: LocalDiscoveryBudget;
   maxNightlyPriceKrw?: number | null;
+  lodgingStayType?: LodgingStayType | null;
 }): ContextLodgingInventoryRow[] {
   let rows = [...input.rows];
+  const stayType = input.lodgingStayType ?? null;
   const cap =
     input.maxNightlyPriceKrw != null &&
     Number.isFinite(input.maxNightlyPriceKrw) &&
@@ -153,7 +155,14 @@ export function filterLodgingRowsForIntent(input: {
         ? HOSTEL_DEFAULT_MAX_NIGHTLY_KRW
         : null;
 
-  if (input.lodgingKind === "hostel") {
+  if (stayType) {
+    const typedHits = rows.filter((row) => lodgingRowMatchesStayType(row, stayType));
+    if (typedHits.length > 0) {
+      rows = typedHits;
+    } else if (input.lodgingKind === "hostel" || stayType === "capsule") {
+      rows = rows.filter((row) => !lodgingRowLooksLuxury(row));
+    }
+  } else if (input.lodgingKind === "hostel") {
     const hostelHits = rows.filter(lodgingRowMatchesHostelSignal);
     if (hostelHits.length > 0) {
       rows = hostelHits;

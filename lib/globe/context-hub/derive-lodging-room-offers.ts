@@ -61,7 +61,10 @@ export function deriveLodgingRoomOffers(input: {
   });
 }
 
-/** Prefer live LiteAPI rates; derive only for mock/dev when rates are absent. */
+/**
+ * Prefer live LiteAPI rates; derive only for mock/dev when rates are absent.
+ * Google Places has no rate API — derive stays empty for list UX.
+ */
 export function resolveLodgingRoomOffers(input: {
   row: ContextLodgingInventoryRow;
   guestCount: number;
@@ -80,4 +83,38 @@ export function resolveLodgingRoomOffers(input: {
     guestCount: input.guestCount,
     roomCount: input.roomCount,
   });
+}
+
+/**
+ * Checkout-only offer when list/inventory has no provider rates (Places et al.).
+ * Does not invent marketing rooms — one bookable line from known nightly price.
+ */
+export function synthesizeCheckoutRoomOffer(input: {
+  row: Pick<
+    ContextLodgingInventoryRow,
+    "placeId" | "name" | "priceKrw" | "stayWindow" | "partnerLabel"
+  >;
+  guestCount?: number;
+  roomCount?: number;
+}): LodgingRoomOffer | null {
+  const price = input.row.priceKrw;
+  if (price == null || !Number.isFinite(price) || price <= 0) {
+    return null;
+  }
+  const guestCount = Math.max(1, Math.round(input.guestCount ?? 1));
+  const roomCount = Math.max(1, Math.round(input.roomCount ?? 1));
+  const nights = computeNights(input.row.stayWindow);
+  const stayTotal = totalPrice(price, nights);
+  return {
+    id: `checkout-${input.row.placeId.trim() || "offer"}`,
+    title: input.row.name.trim() || copy.globe.lodgingRoomCardEstimateOption(1),
+    occupancyLabelKo: `성인 ${guestCount}명 · 객실 ${roomCount}개`,
+    priceKrw: Math.round(price),
+    totalPriceKrw: stayTotal,
+    refundable: true,
+    roomCount,
+    guestCount,
+    sourceLabelKo:
+      input.row.partnerLabel?.trim() || copy.globe.lodgingRoomCardEstimateSource,
+  };
 }

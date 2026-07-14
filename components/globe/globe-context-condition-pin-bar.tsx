@@ -90,7 +90,7 @@ import {
   readContextAgentComposeThread,
   supersedePriorScoutFeedGates,
 } from "@/lib/globe/assistant";
-import { writeActiveDiscoveryExecution } from "@/lib/globe/discovery-execution/read-active-discovery-execution";
+import { readActiveDiscoveryExecution, writeActiveDiscoveryExecution } from "@/lib/globe/discovery-execution/read-active-discovery-execution";
 import { clearDiscoveryLensSession } from "@/lib/globe/discovery-lens/lens-session-bridge";
 import {
   applyPalantirOperatorFacetRefine,
@@ -1310,6 +1310,10 @@ export const GlobeContextConditionPinBar = forwardRef<
         answers: mergedAnswers,
         followUpTurn,
         previousSpec: lastSpec,
+        previousTriggerMessage:
+          readActiveDiscoveryExecution(contextEventId)?.triggerMessage ??
+          lastBatch?.triggerMessage ??
+          null,
         mobilityConfidence: travelBrain?.slots.mobility_style.confidence,
         budgetConfidence: travelBrain?.slots.budget_band.confidence,
         foodConfidence: travelBrain?.slots.food_bias.confidence,

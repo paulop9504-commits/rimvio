@@ -76,3 +76,18 @@ export {
 } from "@/lib/globe/lodging/lodging-rank-mode-session-store";
 export type { ScoredLodgingRecommendation } from "@/lib/globe/lodging/score-lodging-recommendations";
 export { scoreLodgingRecommendations } from "@/lib/globe/lodging/score-lodging-recommendations";
+export {
+  LODGING_STAY_BRANCHES,
+  LODGING_STAY_TYPES,
+  LODGING_STAY_TYPE_CATALOG,
+  parseLodgingStayTypeFromText,
+  resolveLodgingStaySearchKeyword,
+  lodgingStayTypeToBand,
+  lodgingStayTypeBranch,
+  lodgingStayTypesConflict,
+  normalizeLodgingStayType,
+  listLodgingStayTypesByBranch,
+  type LodgingStayBranch,
+  type LodgingStayType,
+  type LodgingStayTypeEntry,
+} from "@/lib/globe/lodging/lodging-stay-types";

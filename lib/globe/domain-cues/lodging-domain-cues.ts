@@ -1,27 +1,31 @@
 /**
  * Lodging domain cue SSOT — every gate imports this.
- * Do not duplicate hostel/guesthouse lists in Container / prep / booking / ambiguity.
+ * Fine stay types: `lodging-stay-types.ts`. Do not duplicate cue lists.
  */
 
 import type { LocalDiscoveryLodgingKind } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
+import {
+  LODGING_STAY_ENTITY_RE,
+  defaultWidenSeedForStayType,
+  lodgingStayTypeToBand,
+  parseLodgingStayTypeFromText,
+  type LodgingStayType,
+} from "@/lib/globe/lodging/lodging-stay-types";
 
-/** Entity nouns only (no “find/nearby” verbs). */
-export const LODGING_ENTITY_SOURCE =
-  String.raw`호텔|숙소|숙박|게스트\s*하우스|게스트하우스|호스텔|료칸|민박|펜션|캡슐\s*호텔|motel|hostel|ryokan|hotel|lodging|guesthouse|guest\s*house|inn\b|stay\b|accommodation|宿|ホテル`;
-
-export const LODGING_ENTITY_RE = new RegExp(`(?:${LODGING_ENTITY_SOURCE})`, "iu");
-
-const HOSTEL_KIND_RE =
-  /게스트\s*하우스|게스트하우스|호스텔|hostel|guesthouse|guest\s*house|캡슐\s*호텔|capsule/iu;
-const AIRBNB_KIND_RE = /에어비|bnb|airbnb|민박/iu;
-const HOTEL_KIND_RE = /호텔|hotel|료칸|ryokan|펜션/iu;
+/** @deprecated Prefer LODGING_STAY_ENTITY_RE — kept for import stability. */
+export const LODGING_ENTITY_SOURCE = LODGING_STAY_ENTITY_RE.source;
+export const LODGING_ENTITY_RE = LODGING_STAY_ENTITY_RE;
 
 /** True when the utterance mentions a lodging entity (any kind). */
 export function hasLodgingDomainCue(text: string): boolean {
-  return LODGING_ENTITY_RE.test(text.trim());
+  return LODGING_STAY_ENTITY_RE.test(text.trim());
 }
 
-/** Kind for scout / inventory bias — hostel before hotel so 「게스트하우스호텔」 stays hostel. */
+export function parseLodgingStayType(text: string): LodgingStayType | null {
+  return parseLodgingStayTypeFromText(text);
+}
+
+/** Kind for scout / inventory bias (coarse band). */
 export function parseLodgingKindFromText(
   text: string,
 ): LocalDiscoveryLodgingKind | null {
@@ -29,25 +33,24 @@ export function parseLodgingKindFromText(
   if (!trimmed) {
     return null;
   }
-  if (AIRBNB_KIND_RE.test(trimmed)) {
-    return "airbnb";
+  const stay = parseLodgingStayTypeFromText(trimmed);
+  if (stay) {
+    return lodgingStayTypeToBand(stay);
   }
-  if (HOSTEL_KIND_RE.test(trimmed)) {
-    return "hostel";
-  }
-  if (HOTEL_KIND_RE.test(trimmed)) {
-    return "hotel";
-  }
-  if (LODGING_ENTITY_RE.test(trimmed)) {
+  if (/숙소|숙박|lodging|accommodation|stay/iu.test(trimmed)) {
     return "any";
   }
   return null;
 }
 
-/** Neutral widen seed — never hardcode Hilton-tier “호텔” when kind is unknown. */
+/** Neutral widen seed — preserve fine stay type wording when possible. */
 export function defaultLodgingWidenSeed(
   lodgingKind?: LocalDiscoveryLodgingKind | null,
+  stayType?: LodgingStayType | null,
 ): string {
+  if (stayType) {
+    return defaultWidenSeedForStayType(stayType);
+  }
   switch (lodgingKind) {
     case "hostel":
       return "게스트하우스 더 넓게 찾아줘";

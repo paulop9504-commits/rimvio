@@ -387,6 +387,7 @@ export async function runContextConditionAnchorPin(
     input.onProcessPhase?.("analyzing");
     const lodgingKeyword = resolveLodgingSearchKeyword({
       lodgingKind: spec.lodgingKind,
+      lodgingStayType: spec.lodgingStayType ?? null,
       message: input.message,
     });
     const loaded = await loadLodgingInventoryRows({
@@ -405,6 +406,7 @@ export async function runContextConditionAnchorPin(
     const intentFiltered = filterLodgingRowsForIntent({
       rows: loaded.rows,
       lodgingKind: spec.lodgingKind,
+      lodgingStayType: spec.lodgingStayType ?? null,
       budget: spec.budget,
       maxNightlyPriceKrw: spec.maxNightlyPriceKrw ?? null,
     });

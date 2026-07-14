@@ -1,13 +1,15 @@
 import type { KoreaKnownPlace } from "@/lib/globe/korea-known-places";
 import { matchKoreaKnownPlace } from "@/lib/globe/korea-known-places";
 import { normalizePlaceLabel } from "@/lib/globe/normalize-place-label";
+import { projectWorldGeoToPlaceFields } from "@/lib/reality-graph/project-to-place-profile";
 
 export type SpatialTargetFromText = {
   readonly label: string;
   readonly lat: number;
   readonly lng: number;
   readonly query: string;
-  readonly source: "known_registry" | "side_cue";
+  readonly source: "known_registry" | "side_cue" | "reality_graph";
+  readonly zoneId?: string;
 };
 
 const SIDE_CUE =
@@ -62,7 +64,7 @@ function toSpatialTarget(
   };
 }
 
-/** Sync spatial target — known city · neighborhood · POI registry. */
+/** Sync spatial target — known city · neighborhood · POI registry · Reality Graph. */
 export function resolveSpatialTargetFromText(
   text: string,
 ): SpatialTargetFromText | null {
@@ -85,6 +87,32 @@ export function resolveSpatialTargetFromText(
   const direct = matchKoreaKnownPlace(trimmed);
   if (direct) {
     return toSpatialTarget(direct, trimmed, "known_registry");
+  }
+
+  for (const fragment of extractSpatialFragments(trimmed)) {
+    const geo = projectWorldGeoToPlaceFields(fragment);
+    if (geo) {
+      return {
+        label: geo.label,
+        lat: geo.lat,
+        lng: geo.lng,
+        query: fragment,
+        source: "reality_graph",
+        zoneId: geo.zoneId,
+      };
+    }
+  }
+
+  const geoDirect = projectWorldGeoToPlaceFields(trimmed);
+  if (geoDirect) {
+    return {
+      label: geoDirect.label,
+      lat: geoDirect.lat,
+      lng: geoDirect.lng,
+      query: trimmed,
+      source: "reality_graph",
+      zoneId: geoDirect.zoneId,
+    };
   }
 
   return null;

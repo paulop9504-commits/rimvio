@@ -78,6 +78,12 @@ compileGlobeIngress({ text, existingContextId? }) => {
 
 Compiler is **pure** — no domain search, no Places API, no lodging inventory, no Commit.
 
+## Context create gate (Article 0)
+
+New Travel Context mint does **not** call `ensureTripContextEvent` until the user taps **「생성」**.
+
+See [RIMVIO_CONTEXT_ANCHOR.md](./RIMVIO_CONTEXT_ANCHOR.md) — Pending Draft → approve → Reality Commit → Context Globe + Anchor.
+
 ## Code SSOT
 
 | Artifact | Path |

@@ -103,9 +103,15 @@ import {
   type ContextAgentComposeTurn,
 } from "@/lib/globe/assistant";
 import {
+  enrichContextIntentBlueprintClient,
   isTripReviseUtterance,
+  needsIntentSlotLlmFill,
   startIntentExecutionTimelineWalk,
 } from "@/lib/intent-engine";
+import {
+  isResearchUtterance,
+  runContextResearchEngineClient,
+} from "@/lib/research-engine";
 import { applyScoutDomainCorrection } from "@/lib/globe/context-condition-ai/apply-scout-domain-correction";
 import {
   resolveCicadaAgentPhase,
@@ -894,6 +900,22 @@ export function GlobeContextConditionPromptFrame({
       intentTimelineWalkRef.current = startIntentExecutionTimelineWalk({
         contextEventId: event.id,
         profile: "trip_revise",
+      });
+    }
+    if (needsIntentSlotLlmFill({ text: line })) {
+      void enrichContextIntentBlueprintClient({
+        contextEventId: event.id,
+        text: line,
+      }).then(() => {
+        setComposeThread(readContextAgentComposeThread(event.id));
+      });
+    }
+    if (isResearchUtterance(line)) {
+      void runContextResearchEngineClient({
+        contextEventId: event.id,
+        text: line,
+      }).then(() => {
+        setComposeThread(readContextAgentComposeThread(event.id));
       });
     }
     setComposeThread(readContextAgentComposeThread(event.id));

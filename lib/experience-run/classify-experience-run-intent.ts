@@ -7,6 +7,7 @@ import {
 } from "@/lib/action-chat/try-travel-trip-announcement";
 import type { ExperienceRunProfile } from "@/lib/experience-run/experience-run-types";
 import { resolveRunPlaceFromText } from "@/lib/experience-run/resolve-run-place-from-text";
+import { classifyOverseasManualPlace } from "@/lib/globe/classify-overseas-manual-place";
 import {
   isBusinessTravelMessage,
   isLeisureTravelMessage,
@@ -31,13 +32,17 @@ function isBusinessTripMessage(message: string): boolean {
 }
 
 export function extractRunDestination(message: string): string | null {
-  const anchored = resolveRunPlaceFromText(message);
-  if (anchored) {
-    return anchored.placeLabel;
-  }
   const fromTrip = extractTravelDestination(message);
   if (fromTrip) {
     return fromTrip;
+  }
+  const overseas = classifyOverseasManualPlace(message);
+  if (overseas) {
+    return overseas.label;
+  }
+  const anchored = resolveRunPlaceFromText(message);
+  if (anchored) {
+    return anchored.placeLabel;
   }
   const cityTrip = message.match(/([가-힣]{2,10})\s+(?:출장|여행)/iu);
   if (cityTrip?.[1]) {

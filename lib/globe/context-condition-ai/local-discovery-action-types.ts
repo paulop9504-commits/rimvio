@@ -14,6 +14,10 @@ export type LocalDiscoveryVibe = "quiet" | "popular" | "local" | "hot";
 
 export type LocalDiscoveryLodgingKind = "hotel" | "airbnb" | "hostel" | "any";
 
+/** Fine lodging taxonomy — Intent Replace target (capsule vs guesthouse vs ryokan…). */
+export type LocalDiscoveryLodgingStayType =
+  import("@/lib/globe/lodging/lodging-stay-types").LodgingStayType;
+
 export type LocalDiscoveryActivitySubtype =
   | "general"
   | "shopping"
@@ -29,6 +33,8 @@ export type LocalDiscoveryActionSpec = {
   readonly budget: LocalDiscoveryBudget;
   readonly vibe: LocalDiscoveryVibe;
   readonly lodgingKind: LocalDiscoveryLodgingKind;
+  /** Fine stay type for search keyword + Intent Replace (optional). */
+  readonly lodgingStayType?: LocalDiscoveryLodgingStayType | null;
   /**
    * Hard nightly price ceiling (KRW) — e.g. "하루 3만원 미만" → 30000.
    * Applied after inventory load; never invents destinations.
@@ -96,6 +102,8 @@ export type ResolveLocalDiscoveryActionInput = {
   /** Prior scout in this session — inherit transport/budget on follow-up. */
   previousSpec?: LocalDiscoveryActionSpec | null;
   followUpTurn?: boolean;
+  /** Last user scout trigger — Intent Relationship (Replace vs Continue). */
+  previousTriggerMessage?: string | null;
 };
 
 export type ResolveLocalDiscoveryActionResult =

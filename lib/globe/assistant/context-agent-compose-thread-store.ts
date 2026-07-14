@@ -89,7 +89,7 @@ export type IntentExecutionTimelineLaneWire = {
 };
 
 export type IntentExecutionTimelinePayload = {
-  readonly profile: "trip_revise" | "generic";
+  readonly profile: "trip_revise" | "generic" | "research";
   readonly currentStage: string;
   readonly lanes: readonly IntentExecutionTimelineLaneWire[];
   readonly status: "running" | "waiting_approval" | "complete";

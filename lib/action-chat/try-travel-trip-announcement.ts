@@ -17,7 +17,7 @@ const TRIP_ANNOUNCE =
   /(?:여행(?:간|감|가|을|을\s*)?|출장|해외(?:여행)?|trip|abroad)/iu;
 
 const TRAVEL_DEST =
-  /(?:오사카|제주|도쿄|후쿠오카|삿포로|교토|타이pei|타이베이|방콕|싱가포르|파리|런던|뉴욕|LA|인천공항|김포공항|공항)/iu;
+  /(?:오사카|제주|도쿄|후쿠오카|삿포로|교토|상하이|상해|베이징|타이pei|타이베이|방콕|싱가포르|파리|런던|뉴욕|LA|인천공항|김포공항|공항)/iu;
 
 const TIMED =
   /(?:\d{1,3}\s*시간\s*(?:뒤|후|뒤에|후에)|\d{1,3}\s*분\s*(?:뒤|후|뒤에|후에)|내일|모레)/iu;
@@ -36,7 +36,7 @@ export function isTravelTripAnnouncement(message: string): boolean {
 
 export function extractTravelDestination(message: string): string | null {
   const destMatch = message.match(
-    /(?:오사카|제주|도쿄|후쿠오카|삿포로|교토|타이pei|타이베이|방콕|싱가포르|파리|런던|뉴욕|인천공항|김포공항)/iu,
+    /(?:오사카|제주|도쿄|후쿠오카|삿포로|교토|상하이|상해|베이징|타이pei|타이베이|방콕|싱가포르|파리|런던|뉴욕|인천공항|김포공항)/iu,
   );
   if (destMatch?.[0]) {
     return destMatch[0].trim();

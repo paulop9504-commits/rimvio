@@ -61,10 +61,29 @@ import {
 import { syncGlobeIngressCompileToFeed } from "@/lib/context-run/sync-globe-ingress-to-feed";
 import { buildTripIngressCreatedChatAssistantLine } from "@/lib/globe/trip-situation-router/build-trip-flow-chat-lines";
 import { classifyExperienceRunIntent } from "@/lib/experience-run/classify-experience-run-intent";
+import { resolveIngressContextConverge } from "@/lib/globe-ingress";
+import { buildPendingContextCreateDraft } from "@/lib/globe-ingress/build-pending-context-create-draft";
 import {
-  compileGlobeIngress,
-  resolveIngressContextConverge,
-} from "@/lib/globe-ingress";
+  cancelPendingContextCreate,
+  commitPendingContextCreate,
+} from "@/lib/globe-ingress/commit-pending-context-create";
+import {
+  CONTEXT_CREATE_CHOICE_CANCEL,
+  CONTEXT_CREATE_CHOICE_CREATE,
+  offerPendingContextCreate,
+} from "@/lib/globe-ingress/offer-pending-context-create";
+import {
+  isPendingContextCreateApprove,
+  isPendingContextCreateCancel,
+} from "@/lib/globe-ingress/detect-pending-context-create-reply";
+import { readPendingContextCreate } from "@/lib/globe-ingress/pending-context-create-store";
+import {
+  proposeContextAnchorMoveFromNl,
+  tryResolvePendingContextAnchorMoveReply,
+} from "@/lib/globe-ingress/commit-context-anchor-move";
+import { isContextAnchorMoveUtterance } from "@/lib/globe-ingress/detect-context-anchor-move";
+import { readPendingContextAnchorMove } from "@/lib/globe-ingress/pending-context-anchor-move-store";
+import { resolveActiveComposerGraphId } from "@/lib/context-run/resolve-active-composer-graph-id";
 import { copy } from "@/lib/copy/human-ko";
 import {
   syncComposeDraftToFeed,
@@ -119,6 +138,99 @@ export async function dispatchContextRun(
     ingress.layerMode === "personal"
   ) {
     ensureGlobeChatGraphId();
+  }
+
+  /** Context Anchor — pending create / move replies before planner. */
+  if (
+    isComposerTextIngress(ingress) &&
+    ingress.layerMode === "personal" &&
+    ingress.kind === "text"
+  ) {
+    const replyText = ingress.text.trim();
+    const replyGraphId = resolveActiveComposerGraphId(
+      replyText || bound.goalKo,
+    );
+    ensureRunState({ graphId: replyGraphId, goal: replyText || bound.goalKo });
+
+    if (readPendingContextCreate(replyGraphId)) {
+      appendGlobeChatTextMessage({
+        graphId: replyGraphId,
+        role: "user",
+        text: replyText,
+      });
+      if (
+        isPendingContextCreateCancel(replyText) ||
+        replyText === CONTEXT_CREATE_CHOICE_CANCEL
+      ) {
+        cancelPendingContextCreate({ graphId: replyGraphId });
+        return { graphId: replyGraphId, status: "done", planKind: "noop" };
+      }
+      if (
+        isPendingContextCreateApprove(replyText) ||
+        replyText === CONTEXT_CREATE_CHOICE_CREATE
+      ) {
+        const committed = commitPendingContextCreate({
+          graphId: replyGraphId,
+          handlers,
+        });
+        if (committed) {
+          refreshWorkQueue(handlers);
+          return {
+            graphId: replyGraphId,
+            status: "done",
+            planKind: "globe_ingress",
+            globeIngress: committed.compiled,
+          };
+        }
+      }
+      appendGlobeChatTextMessage({
+        graphId: replyGraphId,
+        role: "assistant",
+        text: copy.globe.contextAnchor.chipPrompt,
+      });
+      return { graphId: replyGraphId, status: "done", planKind: "noop" };
+    }
+
+    if (readPendingContextAnchorMove(replyGraphId)) {
+      appendGlobeChatTextMessage({
+        graphId: replyGraphId,
+        role: "user",
+        text: replyText,
+      });
+      const resolved = tryResolvePendingContextAnchorMoveReply({
+        graphId: replyGraphId,
+        text: replyText,
+      });
+      if (resolved.kind !== "none") {
+        if (resolved.kind === "committed") {
+          handlers.onAttached?.(resolved.event.id);
+          handlers.toastSuccess?.(
+            copy.globe.contextAnchor.moveCommitted(
+              resolved.event.metadata?.globePlaceLabel &&
+                typeof resolved.event.metadata.globePlaceLabel === "string"
+                ? resolved.event.metadata.globePlaceLabel
+                : "Anchor",
+            ),
+          );
+        }
+        return { graphId: replyGraphId, status: "done", planKind: "noop" };
+      }
+    }
+
+    const activeEventId = ingress.contextEventId?.trim();
+    if (activeEventId && isContextAnchorMoveUtterance(replyText)) {
+      appendGlobeChatTextMessage({
+        graphId: replyGraphId,
+        role: "user",
+        text: replyText,
+      });
+      proposeContextAnchorMoveFromNl({
+        graphId: replyGraphId,
+        eventId: activeEventId,
+        utterance: replyText,
+      });
+      return { graphId: replyGraphId, status: "done", planKind: "noop" };
+    }
   }
 
   const plan = planContextRun(bound);
@@ -901,68 +1013,50 @@ async function executeContextRunPlan(
             planKind: plan.kind,
           };
         }
+      }
 
-        if (
-          converge.decision === "auto_attach" &&
-          converge.attachEventId
-        ) {
-          compiled = compileGlobeIngress({
-            text: bound.goalKo,
-            existingContextId: converge.attachEventId,
-          });
-          const classifiedAttach = classifyExperienceRunIntent(bound.goalKo);
-          const event = ensureTripContextEvent({
-            message: bound.goalKo,
-            existingEventId: converge.attachEventId,
-            profile: classifiedAttach?.profile,
-          });
-          syncGlobeIngressCompileToFeed(compiled, bound.goalKo);
-          const why = converge.hits[0]?.meaningWhy?.trim();
-          const assistantText = why
-            ? `${copy.globe.tripSituationRouter.contextResumed(event.title)}\n${copy.globe.tripSituationRouter.convergeWhyPrefix} ${why}`
-            : copy.globe.tripSituationRouter.contextResumed(event.title);
-          syncPortalComposeTurnToChat({
-            graphId,
-            userText: bound.goalKo,
-            assistantText,
-          });
-          handlers.onGlobeIngressCompiled?.({ compiled, eventId: event.id });
-          handlers.onAttached?.(event.id);
-          handlers.toastSuccess?.(
-            why
-              ? `${copy.globe.tripSituationRouter.convergeWhyPrefix} ${why}`
-              : copy.globe.tripSituationRouter.contextResumed(event.title),
-          );
-          refreshWorkQueue(handlers);
-          return {
-            graphId,
-            status: "done",
-            planKind: plan.kind,
-            globeIngress: compiled,
-          };
-        }
+      // Mint path — Draft preview + 「생성」before Reality Commit (Article 0).
+      // Hub refresh (existingContextId) still commits immediately.
+      if (existingContextId?.trim()) {
+        const classified = classifyExperienceRunIntent(bound.goalKo);
+        const event = ensureTripContextEvent({
+          message: bound.goalKo,
+          existingEventId: existingContextId,
+          profile: classified?.profile,
+        });
+
+        syncGlobeIngressCompileToFeed(compiled, bound.goalKo);
+        const assistantText = buildTripIngressCreatedChatAssistantLine({
+          eventTitle: event.title,
+          blueprint: compiled.blueprint,
+        });
+        syncPortalComposeTurnToChat({
+          graphId,
+          userText: bound.goalKo,
+          assistantText,
+        });
+
+        handlers.onGlobeIngressCompiled?.({ compiled, eventId: event.id });
+        handlers.onAttached?.(event.id);
+        refreshWorkQueue(handlers);
+        return {
+          graphId,
+          status: "done",
+          planKind: plan.kind,
+          globeIngress: compiled,
+        };
       }
 
       const classified = classifyExperienceRunIntent(bound.goalKo);
-      const event = ensureTripContextEvent({
-        message: bound.goalKo,
-        existingEventId: existingContextId ?? compiled.context.contextId,
-        profile: classified?.profile,
+      const mintGraphId = resolveActiveComposerGraphId(bound.goalKo);
+      const draft = buildPendingContextCreateDraft({
+        graphId: mintGraphId,
+        utterance: bound.goalKo,
+        compiled,
+        profile: classified?.profile ?? null,
       });
-
-      syncGlobeIngressCompileToFeed(compiled, bound.goalKo);
-      const assistantText = buildTripIngressCreatedChatAssistantLine({
-        eventTitle: event.title,
-        blueprint: compiled.blueprint,
-      });
-      syncPortalComposeTurnToChat({
-        graphId,
-        userText: bound.goalKo,
-        assistantText,
-      });
-
-      handlers.onGlobeIngressCompiled?.({ compiled, eventId: event.id });
-      handlers.onAttached?.(event.id);
+      offerPendingContextCreate({ draft, skipUserEcho: true });
+      handlers.toastMessage?.(copy.globe.contextAnchor.chipPrompt);
       refreshWorkQueue(handlers);
       return {
         graphId,

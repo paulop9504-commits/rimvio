@@ -4,11 +4,12 @@ import type { EventCandidate } from "@/lib/events/event-candidate";
 import { readContextTicketArtifact } from "@/lib/globe/context-hub/read-context-ticket-artifact";
 import { isLodgingHubEnabled } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import { isEateryHubEnabled } from "@/lib/globe/eatery/read-eatery-resource-inventory";
+import { compileIntentBlueprint } from "@/lib/intent-engine/compile-intent-blueprint";
+import { readIntentBlueprintFromEvent } from "@/lib/intent-engine/intent-blueprint-metadata";
 import {
-  compileIntentBlueprint,
   projectIntentBlueprintToTravel,
   type TravelIntentProjection,
-} from "@/lib/intent-engine";
+} from "@/lib/intent-engine/project-to-travel-brain";
 import { findLatestPersonaSignal, type PersonaAxisId } from "@/lib/persona";
 import type { PersonaLearnChoice } from "@/lib/persona/types";
 import { findBrainQuestionFamilyAnswer } from "@/lib/situation-projection/brain-question-memory";
@@ -169,8 +170,13 @@ function mergeTravelIntentSuggestion<T extends TravelBrainSlotId>(
   return buildSlot(slotId, suggestion.value, "inferred", suggestion.confidence, suggestion.reasonKo);
 }
 
-function readTravelIntentProjection(blob: string): TravelIntentProjection {
-  return projectIntentBlueprintToTravel(compileIntentBlueprint({ text: blob }));
+function readTravelIntentProjection(
+  blob: string,
+  event: EventCandidate,
+): TravelIntentProjection {
+  const stamped = readIntentBlueprintFromEvent(event);
+  const blueprint = stamped ?? compileIntentBlueprint({ text: blob });
+  return projectIntentBlueprintToTravel(blueprint);
 }
 
 function normalizeText(value: string): string {
@@ -719,7 +725,7 @@ export function buildTravelBrainState(
 ): TravelBrainState {
   const context = buildContextInstance({ event });
   const blob = buildTravelTextBlob(event);
-  const intentTravel = readTravelIntentProjection(blob);
+  const intentTravel = readTravelIntentProjection(blob, event);
   const destinationLabel = context.travel.destinationLabel || event.place?.trim() || "여행";
   const nights = context.travel.nights;
   const startIso = context.time.startIso;

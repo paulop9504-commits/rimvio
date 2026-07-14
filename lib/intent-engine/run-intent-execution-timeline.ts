@@ -1,18 +1,25 @@
-import {
-  AUTO_ADVANCE_UNTIL_STAGE,
-  TRIP_REVISE_STAGE_PIPELINE,
-  nextStageInPipeline,
-  type AgentStage,
-  type IntentExecutionProfile,
-} from "@/lib/intent-engine/agent-stage";
-import { buildIntentExecutionTimeline } from "@/lib/intent-engine/build-intent-execution-timeline";
+import type { IntentExecutionProfile } from "@/lib/intent-engine/agent-stage";
 import { stageProgressKo } from "@/lib/intent-engine/agent-stage-copy";
+import { agentStageForResolutionPhase } from "@/lib/resolution/map-agent-stage";
+import {
+  buildResolutionTimeline,
+} from "@/lib/resolution/build-resolution-timeline";
+import {
+  RESOLUTION_WALK_PIPELINE,
+} from "@/lib/resolution/map-agent-stage";
+import {
+  runResolutionPipeline,
+} from "@/lib/resolution/run-resolution-pipeline";
+import type { ResolutionPhase } from "@/lib/resolution/types";
 import {
   appendContextAgentComposeTurn,
   patchContextAgentComposeTurn,
   readContextAgentComposeThread,
+  type IntentExecutionTimelinePayload,
 } from "@/lib/globe/assistant/context-agent-compose-thread-store";
-import type { IntentExecutionTimelinePayload } from "@/lib/globe/assistant/context-agent-compose-thread-store";
+import { findEventCandidate } from "@/lib/events/event-store";
+import { readIntentBlueprintFromEvent } from "@/lib/intent-engine/intent-blueprint-metadata";
+import { buildTravelBrainState } from "@/lib/situation-projection/travel-brain-personalization";
 
 const DEFAULT_STEP_MS = 420;
 
@@ -21,15 +28,64 @@ export type IntentExecutionWalkHandle = {
   stop: () => void;
 };
 
+function timelinePayloadFromResolution(input: {
+  profile: IntentExecutionProfile;
+  phase: ResolutionPhase;
+  text: string;
+  contextEventId: string;
+}): IntentExecutionTimelinePayload {
+  const event = findEventCandidate(input.contextEventId);
+  const brain = event ? buildTravelBrainState(event) : null;
+  const blueprint = event ? readIntentBlueprintFromEvent(event) : null;
+
+  const bundle = runResolutionPipeline({
+    text: input.text,
+    contextEventId: input.contextEventId,
+    destinationLabel: brain?.destinationLabel ?? event?.place ?? null,
+    companionMode: brain?.slots.companion_mode.value ?? null,
+    hasActivePlan: Boolean(event?.metadata?.executionPlan),
+    blueprint,
+  });
+
+  const snap = buildResolutionTimeline(bundle, input.phase);
+  const agentStage = agentStageForResolutionPhase(input.phase);
+
+  return {
+    profile: input.profile,
+    currentStage: agentStage,
+    lanes: snap.lanes.map((lane) => ({
+      id: lane.id,
+      titleKo: lane.titleKo,
+      status:
+        lane.status === "skipped"
+          ? "pending"
+          : lane.status === "waiting"
+            ? "waiting"
+            : lane.status === "in_progress"
+              ? "in_progress"
+              : lane.status === "done"
+                ? "done"
+                : "pending",
+      detailKo: lane.detailKo,
+      activeStage: lane.status === "in_progress" || lane.status === "waiting" ? agentStage : null,
+    })),
+    status:
+      input.phase === "execution" && snap.waitingApproval
+        ? "waiting_approval"
+        : "running",
+  };
+}
+
 /**
- * Append Execution Timeline turn and auto-advance stages until WAIT_APPROVAL.
- * Does not Commit — human gate only.
+ * Append Execution Timeline and walk Resolution phases until Execution / approval.
+ * Does not Commit Reality.
  */
 export function startIntentExecutionTimelineWalk(input: {
   contextEventId: string;
   profile?: IntentExecutionProfile;
   stepMs?: number;
-  onStage?: (stage: AgentStage) => void;
+  sourceText?: string;
+  onPhase?: (phase: ResolutionPhase) => void;
 }): IntentExecutionWalkHandle | null {
   const eventId = input.contextEventId.trim();
   if (!eventId || typeof window === "undefined") {
@@ -37,22 +93,33 @@ export function startIntentExecutionTimelineWalk(input: {
   }
 
   const profile = input.profile ?? "trip_revise";
-  const pipeline =
-    profile === "trip_revise" ? TRIP_REVISE_STAGE_PIPELINE : TRIP_REVISE_STAGE_PIPELINE;
   const stepMs = input.stepMs ?? DEFAULT_STEP_MS;
+  const event = findEventCandidate(eventId);
+  const sourceText =
+    input.sourceText?.trim() ||
+    (typeof event?.metadata?.sourceMessage === "string"
+      ? event.metadata.sourceMessage
+      : "") ||
+    event?.title ||
+    "여행 수정";
 
-  let stage: AgentStage = pipeline[0] ?? "UNDERSTAND_INTENT";
-  const snapshot = buildIntentExecutionTimeline({ currentStage: stage, profile });
+  const pipeline = RESOLUTION_WALK_PIPELINE;
+  let phaseIndex = 0;
+  let phase = pipeline[0]!;
+
+  const initialPayload = timelinePayloadFromResolution({
+    profile,
+    phase,
+    text: sourceText,
+    contextEventId: eventId,
+  });
+
   const turn = appendContextAgentComposeTurn(eventId, {
     role: "assistant",
     kind: "execution_timeline",
-    text: stageProgressKo(stage),
-    payload: {
-      profile,
-      currentStage: stage,
-      lanes: snapshot.lanes,
-      status: "running",
-    },
+    text: initialPayload.lanes.find((l) => l.status === "in_progress")?.detailKo ??
+      stageProgressKo("UNDERSTAND_INTENT"),
+    payload: initialPayload,
   });
 
   let stopped = false;
@@ -62,31 +129,36 @@ export function startIntentExecutionTimelineWalk(input: {
     if (stopped) {
       return;
     }
-    const next = nextStageInPipeline(pipeline, stage);
-    if (!next) {
+    const nextIndex = phaseIndex + 1;
+    if (nextIndex >= pipeline.length) {
       return;
     }
-    stage = next;
-    input.onStage?.(stage);
-    const nextSnap = buildIntentExecutionTimeline({ currentStage: stage, profile });
-    const waiting = stage === AUTO_ADVANCE_UNTIL_STAGE;
+    phaseIndex = nextIndex;
+    phase = pipeline[phaseIndex]!;
+    input.onPhase?.(phase);
+
+    const payload = timelinePayloadFromResolution({
+      profile,
+      phase,
+      text: sourceText,
+      contextEventId: eventId,
+    });
+
     patchContextAgentComposeTurn(eventId, turn.id, {
       kind: "execution_timeline",
-      text: stageProgressKo(stage),
-      payload: {
-        profile,
-        currentStage: stage,
-        lanes: nextSnap.lanes,
-        status: waiting ? "waiting_approval" : "running",
-      },
+      text:
+        payload.lanes.find((l) => l.status === "in_progress" || l.status === "waiting")
+          ?.detailKo ?? payload.currentStage,
+      payload,
     });
-    if (waiting) {
+
+    if (phase === "execution") {
       return;
     }
     timer = setTimeout(tick, stepMs);
   };
 
-  input.onStage?.(stage);
+  input.onPhase?.(phase);
   timer = setTimeout(tick, stepMs);
 
   return {
@@ -124,18 +196,40 @@ export function completeIntentExecutionTimeline(
   if (!target || target.role !== "assistant" || target.kind !== "execution_timeline") {
     return;
   }
-  const snap = buildIntentExecutionTimeline({
-    currentStage: "COMPLETE",
-    profile: target.payload.profile,
+
+  const event = findEventCandidate(eventId);
+  const sourceText =
+    (typeof event?.metadata?.sourceMessage === "string"
+      ? event.metadata.sourceMessage
+      : "") ||
+    event?.title ||
+    target.text;
+
+  const payload = timelinePayloadFromResolution({
+    profile:
+      target.payload.profile === "research"
+        ? "generic"
+        : target.payload.profile,
+    phase: "execution",
+    text: sourceText,
+    contextEventId: eventId,
   });
+
+  const doneLanes = payload.lanes.map((lane) => ({
+    ...lane,
+    status: "done" as const,
+    detailKo: lane.status === "waiting" ? "승인 후 반영 준비가 끝났습니다." : lane.detailKo,
+    activeStage: null,
+  }));
+
   patchContextAgentComposeTurn(eventId, target.id, {
     kind: "execution_timeline",
-    text: stageProgressKo("COMPLETE"),
+    text: "완료",
     payload: {
-      ...target.payload,
-      currentStage: "COMPLETE",
-      lanes: snap.lanes,
+      ...payload,
+      lanes: doneLanes,
       status: "complete",
-    } satisfies IntentExecutionTimelinePayload,
+      currentStage: "COMPLETE",
+    },
   });
 }
