@@ -37,7 +37,13 @@ type Case = {
 
 const cases: Case[] = [
   { id: 1, message: "배고파", forbid: new RegExp(GENERIC), require: /배고|맛|먹/i },
-  { id: 1, message: "둔산동 맛집", forbid: new RegExp(GENERIC), require: /맛집|둔산|찾|식당/i },
+  // Meal goal policy ranks dishes ("좋아 보여요 · N점") without always echoing "맛집/둔산".
+  {
+    id: 1,
+    message: "둔산동 맛집",
+    forbid: new RegExp(GENERIC),
+    require: /맛집|둔산|찾|식당|좋아 보여|점\)/i,
+  },
   { id: 2, message: "배고파", gate: (m) => orchestrateEntityQuickPick(m) === null },
   { id: 2, message: "스트레스", gate: (m) => orchestrateEntityQuickPick(m) === null },
   { id: 3, message: "둔산동 맛집", gate: (m) => parseFindPlaceIntent(m) !== null },
