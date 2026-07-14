@@ -195,38 +195,35 @@ export function useRealitySurfaceProjection(): UseRealitySurfaceProjectionResult
     setSession(null);
   }, []);
 
-  const approveExecutionPlan = useCallback(() => {
-    let advanced: RealitySurfaceSession | null = null;
-    let didApprove = false;
-    let wasPlanGate = false;
-    let wasStepGate = false;
-    setSession((current) => {
-      if (!current?.executionPlan) {
-        return current;
-      }
-      // Event may already be prepared from engine MAIN — merge before approve.
-      const merged = mergeSessionPlanFromEvent(current);
-      wasPlanGate = needsContextExecutionPlanApproval(merged.executionPlan);
-      wasStepGate = needsContextExecutionStepApproval(merged.executionPlan);
-      const next = approveRealitySurfaceExecutionPlan(merged);
+  const approveExecutionPlan = useCallback((): RealitySurfaceSession | null => {
+    if (!session?.executionPlan) {
+      return null;
+    }
+    // Event may already be prepared from engine MAIN — merge before approve.
+    const merged = mergeSessionPlanFromEvent(session);
+    if (!merged.executionPlan) {
+      return null;
+    }
+    const wasPlanGate = needsContextExecutionPlanApproval(merged.executionPlan);
+    const wasStepGate = needsContextExecutionStepApproval(merged.executionPlan);
+    const next = approveRealitySurfaceExecutionPlan(merged);
+    if (
+      next.executionPlan?.updatedAtIso === merged.executionPlan.updatedAtIso
+    ) {
       if (
-        next.executionPlan?.updatedAtIso === merged.executionPlan?.updatedAtIso
+        merged.executionPlan.updatedAtIso !== session.executionPlan.updatedAtIso
       ) {
-        return merged.executionPlan?.updatedAtIso ===
-          current.executionPlan.updatedAtIso
-          ? current
-          : merged;
+        setSession(merged);
       }
-      advanced = next;
-      didApprove = true;
-      persistExecutionPlanSync(next);
-      persistBlueprintEngineSync(next);
-      return next;
-    });
-    if (didApprove && advanced?.executionPlan) {
+      return null;
+    }
+    setSession(next);
+    persistExecutionPlanSync(next);
+    persistBlueprintEngineSync(next);
+    if (next.executionPlan) {
       offerPlanStepHandoffAfterAdvance({
-        contextEventId: advanced.eventId,
-        plan: advanced.executionPlan,
+        contextEventId: next.eventId,
+        plan: next.executionPlan,
       });
       toast.success(
         wasPlanGate && !wasStepGate
@@ -234,8 +231,8 @@ export function useRealitySurfaceProjection(): UseRealitySurfaceProjectionResult
           : copy.globe.executionPlanPreview.stepApprovedToast,
       );
     }
-    return advanced;
-  }, []);
+    return next;
+  }, [session]);
 
   const gateOperatorMessage = useCallback(
     (message: string) => {

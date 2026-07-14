@@ -4845,6 +4845,9 @@ function GlobeHomeBody() {
           onWorkQueueChanged: refreshWorkQueue,
           onKnowledgePlacementPending,
           onGlobeIngressCompiled,
+          onIngressConvergeAttachFocus: (eventId) => {
+            openContextByEventId(eventId);
+          },
           gateOperatorBeforeDispatch,
           tryAdvanceDestinationFromMessage: handleTryAdvanceDestinationFromMessage,
           onOperatorDestinationChoice,
@@ -4924,6 +4927,9 @@ function GlobeHomeBody() {
           onWorkQueueChanged: refreshWorkQueue,
           onKnowledgePlacementPending,
           onGlobeIngressCompiled,
+          onIngressConvergeAttachFocus: (eventId) => {
+            openContextByEventId(eventId);
+          },
           gateOperatorBeforeDispatch,
           tryAdvanceDestinationFromMessage: handleTryAdvanceDestinationFromMessage,
           onOperatorDestinationChoice,

@@ -25,7 +25,22 @@ function testTravelIngress() {
   assert.equal(compiled.blueprint.runtimeId, compiled.runtime.runtimeId);
   assert.equal(compiled.blueprint.containerKind, "travel");
   assert.ok(compiled.blueprint.executionGraph?.nodes.length > 0);
-  console.log("✓ travel ingress compile");
+
+  const region = compiled.context.slots.find((s) => s.key === "region");
+  const destination = compiled.context.slots.find((s) => s.key === "destination");
+  assert.equal(region?.resolution, "hypothesis");
+  assert.ok(
+    region?.value === "일본" || region?.value === "Japan",
+    `expected Japan region, got ${String(region?.value)}`,
+  );
+  assert.equal(destination?.value, "unresolved");
+  assert.equal(destination?.resolution, "unresolved");
+  assert.equal(compiled.blueprint.spatialTargets?.byNodeId?.stay?.resolution, "unresolved");
+  assert.notEqual(compiled.bridge.pathLabels[2], "오사카");
+  assert.ok(
+    compiled.blueprint.resourcePlan.nextQuestion?.promptKo?.includes("오사카"),
+  );
+  console.log("✓ travel ingress compile (Japan region hypothesis)");
 }
 
 function testLodgingOnlyExcluded() {

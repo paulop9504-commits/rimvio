@@ -8,7 +8,8 @@ export type OperatorAskChipDomain =
   | "flight_prep"
   | "transit_prep"
   | "finance_prep"
-  | "plan_handoff";
+  | "plan_handoff"
+  | "ingress_converge";
 
 export function resolveOperatorAskChipDomain(input: {
   pendingTrigger: string;

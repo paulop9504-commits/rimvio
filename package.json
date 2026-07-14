@@ -64,6 +64,7 @@
     "test:market-execution-feed": "npx tsx scripts/test-market-execution-feed.ts",
     "test:surface-tiers": "npx tsx scripts/test-surface-tiers.ts",
     "test:experience-run": "npx tsx scripts/test-experience-run.ts",
+    "test:ingress-converge": "npx tsx scripts/test-ingress-context-converge.ts && npx tsx scripts/test-globe-ingress.ts",
     "test:field-discovery-bridge": "npx tsx scripts/test-field-discovery-bridge.ts",
     "test:self-learning-summary": "npx tsx scripts/test-self-learning-summary.ts",
     "test:feed-composer-touch": "npx tsx scripts/test-feed-composer-touch-boundary.ts",

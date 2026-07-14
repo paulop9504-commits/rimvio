@@ -212,6 +212,9 @@ import {
 import { resolveOperatorAskChipDomain } from "@/lib/globe/operator-turn/resolve-operator-ask-chip-domain";
 import { recordEngineScoutFailureClient } from "@/lib/engine/record-engine-lifecycle";
 import { resolveDiscoveryEngineId } from "@/lib/engine/resolve-discovery-engine-id";
+import { dispatchContextRun } from "@/lib/context-run/dispatch-context-run";
+import { INGRESS_CONVERGE_NEW_VALUE } from "@/lib/globe-ingress/offer-ingress-converge-chips-client";
+import { requestGlobeAskBridgeFocus } from "@/lib/globe/globe-ask-bridge-focus";
 
 export type IntakeSlotsSubmitInput = {
   turnId: string;
@@ -1633,6 +1636,52 @@ export const GlobeContextConditionPinBar = forwardRef<
             chipId: input.chipId,
             summaryKo: copy.globe.planHandoffAskChipApplied(input.labelKo),
           });
+        } else if (chipDomain === "ingress_converge") {
+          const pickValue = input.value.trim();
+          const forceNew = pickValue === INGRESS_CONVERGE_NEW_VALUE;
+          const attachEventId = forceNew ? null : pickValue;
+          markOperatorAskChipsTurnSubmitted(contextEventId, input.turnId, {
+            chipId: input.chipId,
+            summaryKo: forceNew
+              ? copy.globe.tripSituationRouter.convergeNewChip
+              : copy.globe.tripSituationRouter.convergeAttachChip(
+                  input.labelKo.slice(0, 18),
+                ),
+          });
+          const result = await dispatchContextRun(
+            {
+              kind: "text",
+              text: pendingTrigger,
+              surface: "composer",
+              layerMode: "personal",
+              contextEventId: attachEventId,
+              forceNewContext: forceNew,
+              lat: userLat ?? null,
+              lng: userLng ?? null,
+            },
+            {
+              openPortal: async () => {},
+              openFieldDiscovery: () => {},
+              tryQuickListMarket: async () => false,
+              navigateUrl: (url, label) => {
+                window.location.assign(url);
+                toast.success(`${label} 여는 중…`);
+              },
+              toastSuccess: (line) => {
+                toast.success(line);
+              },
+              onAttached: (eventId) => {
+                requestGlobeAskBridgeFocus(eventId, "bridge");
+              },
+              onGlobeIngressCompiled: ({ eventId }) => {
+                requestGlobeAskBridgeFocus(eventId, "bridge");
+              },
+            },
+          );
+          if (result.status === "error") {
+            toast.error(result.errorMessage ?? copy.globe.ingestAttachFail);
+          }
+          return;
         } else {
           applyTripIntakeAskChip({
             contextEventId,

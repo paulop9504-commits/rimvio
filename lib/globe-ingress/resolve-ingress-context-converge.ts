@@ -76,15 +76,22 @@ export function resolveIngressContextConverge(input: {
 
   const hits: IngressConvergeHit[] = ranked.map((row) => {
     const event = input.events.find((e) => e.id === row.eventId) ?? null;
+    const peer =
+      (typeof event?.metadata?.planPeerDisplayName === "string"
+        ? event.metadata.planPeerDisplayName.trim()
+        : "") || "";
+    const place = row.place?.trim() || event?.place?.trim() || "";
+    const fallbackWhy = [peer, place].filter(Boolean).join(" · ") || null;
     return {
       eventId: row.eventId,
       headline: row.headline,
       score: row.score,
-      meaningWhy: resolveContextMeaningWhyLine({
-        event,
-        events: input.events,
-      }),
-      place: row.place?.trim() || null,
+      meaningWhy:
+        resolveContextMeaningWhyLine({
+          event,
+          events: input.events,
+        }) ?? fallbackWhy,
+      place: place || null,
     };
   });
 
