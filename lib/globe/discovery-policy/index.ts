@@ -22,6 +22,11 @@ export {
 export { explorationScoreBias } from "@/lib/globe/discovery-policy/exploration-score-bias";
 
 export {
+  diversifyScoredRecommendations,
+  lodgingChainScorePenalty,
+} from "@/lib/globe/discovery-policy/diversify-scored-recommendations";
+
+export {
   computeScoreDistribution,
   type ScoreDistributionTelemetry,
 } from "@/lib/globe/discovery-policy/compute-score-distribution";
