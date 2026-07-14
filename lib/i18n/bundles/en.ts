@@ -1817,6 +1817,7 @@ export const copyEn: Copy = {
     lodgingReasonTopPick: "Top pick for this context",
     lodgingReasonFallback: "Picked to fit your context",
     lodgingReasonCardTitle: "Why this stay",
+    lodgingVerifiedEvidenceReason: "Photos and rate signals look solid",
     lodgingOpportunitySaveWalkNear: (walkLabel: string, fareLabel: string) =>
       `Walk ${walkLabel} to the hub · saves about ${fareLabel} vs a farther stay`,
     lodgingOpportunitySaveWalkOnly: (walkLabel: string) =>

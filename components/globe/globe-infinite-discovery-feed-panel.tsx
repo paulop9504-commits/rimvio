@@ -22,7 +22,9 @@ import {
   inferDiscoveryFeedScrollIntent,
   recordDiscoveryFeedScrollSignal,
 } from "@/lib/globe/intelligent-pin/record-discovery-feed-scroll-signal";
+import { maybeOfferRejectRescout } from "@/lib/globe/operator-turn/offer-scout-fail-recovery-client";
 import type { InfiniteDiscoveryFeedCard } from "@/lib/globe/intelligent-pin/types";
+import type { RimvioEngineId } from "@/lib/engine/engine-types";
 import type { EateryRankMode } from "@/lib/globe/eatery/eatery-rank-profile";
 import {
   resolveEateryRankMode,
@@ -187,18 +189,33 @@ export function GlobeInfiniteDiscoveryFeedPanel({
 
   const recordCardScrollSignal = useCallback(
     (card: InfiniteDiscoveryFeedCard, dwellMs: number) => {
+      const intent = inferDiscoveryFeedScrollIntent({
+        dwellMs,
+        pinned: pinnedPlaceIds.has(card.placeId),
+      });
       recordDiscoveryFeedScrollSignal({
         contextEventId,
         resourceId: card.resourceId,
         placeId: card.placeId,
         kind: card.kind,
-        intent: inferDiscoveryFeedScrollIntent({
-          dwellMs,
-          pinned: pinnedPlaceIds.has(card.placeId),
-        }),
+        intent,
         dwellMs,
         atIso: new Date().toISOString(),
       });
+      if (intent === "reject_candidates") {
+        const engineId: RimvioEngineId =
+          card.kind === "eatery"
+            ? "eatery_search"
+            : card.kind === "activity"
+              ? "activity_search"
+              : card.kind === "amenity"
+                ? "local_amenity_search"
+                : "lodging_search";
+        maybeOfferRejectRescout({
+          contextEventId,
+          engineId,
+        });
+      }
     },
     [contextEventId, pinnedPlaceIds],
   );

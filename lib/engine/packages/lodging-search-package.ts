@@ -112,8 +112,17 @@ export const lodgingSearchEnginePackage: RimvioEnginePackage<OneShotLodgingPrepP
     },
     toOperatorPlan(plan) {
       const domain = plan.domainPlan;
-      if (domain.intakeGaps.length > 0 && !domain.readyForScout) {
-        const chips = buildTripIntakeAskChips(domain.intakeGaps);
+      if (domain.readyForScout) {
+        return { tool: "scout", reason: "instant_lodging_search" };
+      }
+      if (domain.intakeGaps.length > 0) {
+        // Soft gaps (budget · origin · guests) do not block scout when express-ready.
+        const hardGaps = domain.intakeGaps.filter(
+          (gap) => gap === "destination" || gap === "dates",
+        );
+        const chips = buildTripIntakeAskChips(
+          hardGaps.length > 0 ? hardGaps : domain.intakeGaps,
+        );
         if (chips.length > 0) {
           return {
             tool: "ask_chips",
@@ -121,9 +130,6 @@ export const lodgingSearchEnginePackage: RimvioEnginePackage<OneShotLodgingPrepP
             chips,
           };
         }
-      }
-      if (domain.readyForScout) {
-        return { tool: "scout", reason: "instant_lodging_search" };
       }
       return null;
     },

@@ -161,6 +161,11 @@ import {
   readOperatorTurnSsot,
 } from "@/lib/globe/operator-turn";
 import {
+  claimOperatorAutoRun,
+  subscribeOperatorAutoRun,
+} from "@/lib/globe/operator-turn/operator-auto-run-bridge";
+import { offerScoutFailRecovery } from "@/lib/globe/operator-turn/offer-scout-fail-recovery-client";
+import {
   evaluateOnboardingParallelException,
   runOnboardingParallelMapScouts,
 } from "@/lib/container-ai";
@@ -387,6 +392,8 @@ export const GlobeContextConditionPinBar = forwardRef<
 ) {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  busyRef.current = busy;
   const [, setLensSession] = useState<DiscoveryLensSession | null>(
     () => readDiscoveryLensSession(contextEventId),
   );
@@ -690,6 +697,15 @@ export const GlobeContextConditionPinBar = forwardRef<
           lastError: "parallel_scout_empty",
           payload: { triggerMessage: text },
         });
+        if (
+          offerScoutFailRecovery({
+            contextEventId,
+            engineId: "trip_experience_search",
+            lastError: "parallel_scout_empty",
+          })
+        ) {
+          return null;
+        }
         appendContextAgentComposeTurn(contextEventId, {
           role: "assistant",
           kind: "text",
@@ -857,6 +873,14 @@ export const GlobeContextConditionPinBar = forwardRef<
               category: nextCategory,
             },
           });
+          const retried = offerScoutFailRecovery({
+            contextEventId,
+            engineId: failedEngineId,
+            lastError: "scout_empty",
+          });
+          if (retried) {
+            return null;
+          }
         }
         if (!input.suppressEmptyMessage) {
           appendContextAgentComposeTurn(contextEventId, {
@@ -2223,6 +2247,26 @@ export const GlobeContextConditionPinBar = forwardRef<
       userLng,
     ],
   );
+
+  /** Gap 1 — system sequencer auto-scout → same Act path as user compose. */
+  useEffect(() => {
+    return subscribeOperatorAutoRun((detail) => {
+      if (detail.contextEventId !== contextEventId.trim()) {
+        return;
+      }
+      if (!claimOperatorAutoRun(detail)) {
+        return;
+      }
+      const runWhenIdle = () => {
+        if (busyRef.current) {
+          window.setTimeout(runWhenIdle, 48);
+          return;
+        }
+        void submitTrigger(detail.text);
+      };
+      window.setTimeout(runWhenIdle, 0);
+    });
+  }, [contextEventId, submitTrigger]);
 
   const submitRefinement = useCallback(
     async (refineMessage: string) => {

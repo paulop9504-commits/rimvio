@@ -74,7 +74,8 @@ Code: `lib/context-blueprint/context-run-state.ts`
 
 - One Reality approval completes the **prepared** step only (does not collapse later pending legs).
 - Next pending step by `order` starts as `running`.
-- `offerPlanStepHandoffAfterAdvance` surfaces next-engine **ask_chips** (chips-first, not auto-scout).
+- `offerPlanStepHandoffAfterAdvance` → **auto-scout** when engine package resolves `scout` (expressReady soft fill); else chips-first handoff.
+- Pin-bar claims `requestOperatorAutoRun` (one system Act); compose seed is fallback when pin-bar is not mounted.
 - Destination jump marks skipped early legs (`departure`/`arrival`) `done` so stay → explore → return can walk cleanly.
 
 **MEANING why-line** (`resolveContextMeaningWhyLine`):

@@ -76,7 +76,11 @@ Forbidden:
 
 LLM must **not** invent tools outside this table (no ReAct toolbox).
 
----
+### System sequencer carve-out (post Plan approve)
+
+User turn law still holds: **one Act**. After Plan / step approval, the **system** may fire **one** Operator Act via `requestOperatorAutoRun` (`plan_step_auto_scout` · `ingress_domain_entry` · `scout_retry` · `reject_rescout`).
+
+This is **not** free ReAct multi-tool. It is a single seeded compose Act on the same whitelist (`scout` / `ask_chips`). Reality Commit remains human-gated.
 
 ## 4. Gate algorithm (deterministic first)
 

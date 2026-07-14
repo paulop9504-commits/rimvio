@@ -67,11 +67,22 @@ export function planOneShotLodgingPrep(input: {
     now: input.now,
   });
   const intakeGaps = assessTripIntakeGaps(intakeState);
+  const destinationOk =
+    spatialTarget != null || Boolean(intakeState.destinationLabel?.trim());
+  const softFill = input.expressReady === true;
+  const softGapOnly =
+    intakeGaps.length > 0 &&
+    intakeGaps.every(
+      (gap) => gap === "budget" || gap === "origin" || (softFill && gap === "guests"),
+    );
 
   const readyForScout =
-    spatialTarget != null &&
-    hasLodgingTemporalSlots(intakeState) &&
-    (hasCompleteTripIntake(intakeState) || intakeGaps.every((gap) => gap === "budget"));
+    destinationOk &&
+    (hasLodgingTemporalSlots(intakeState) ||
+      (softFill && Boolean(intakeState.destinationLabel))) &&
+    (hasCompleteTripIntake(intakeState) ||
+      softGapOnly ||
+      intakeGaps.every((gap) => gap === "budget"));
 
   const steps: OneShotLodgingPrepStep[] = ["parse_spatial", "merge_intake"];
   if (readyForScout) {

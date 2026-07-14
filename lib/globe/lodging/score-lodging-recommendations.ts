@@ -10,6 +10,14 @@ import {
   medianLodgingPriceKrw,
 } from "@/lib/globe/lodging/build-lodging-opportunity-insight";
 import {
+  filterVerifiedLodgingRows,
+  lodgingVerificationModeFromExploration,
+  type LodgingVerificationMode,
+  verifyLodgingCandidate,
+} from "@/lib/globe/lodging/verify-lodging-candidate";
+import { copy } from "@/lib/copy/human-ko";
+import type { ExplorationPolicyKnobs } from "@/lib/globe/discovery-policy/apply-exploration-mode";
+import {
   explainLodgingRecommendationKo,
   type LodgingRecommendReasonInput,
 } from "@/lib/globe/lodging/explain-lodging-recommendation-ko";
@@ -149,7 +157,18 @@ export function scoreLodgingRecommendations(input: {
   event?: EventCandidate | null;
   travelBrain?: TravelBrainState | null;
   rankProfile?: LodgingRankProfile | null;
+  /** Hard verification gate — default strict; diffuse → relaxed. */
+  verificationMode?: LodgingVerificationMode | null;
+  exploration?: ExplorationPolicyKnobs | null;
 }): ScoredLodgingRecommendation[] {
+  const verificationMode =
+    input.verificationMode ??
+    lodgingVerificationModeFromExploration(input.exploration?.mode);
+  const verifiedPool = filterVerifiedLodgingRows({
+    rows: input.rows,
+    mode: verificationMode,
+  });
+  const rows = verifiedPool.kept;
   const lat = input.lat ?? null;
   const lng = input.lng ?? null;
   const event =
@@ -210,10 +229,10 @@ export function scoreLodgingRecommendations(input: {
       )?.isOverseas === true
     : false;
   const cohortMedianPriceKrw = medianLodgingPriceKrw(
-    input.rows.map((row) => row.priceKrw),
+    rows.map((row) => row.priceKrw),
   );
 
-  const scored = input.rows.map((row) => {
+  const scored = rows.map((row) => {
     const peoplePlaceMatch = findPeoplePlaceMatch(row, input.unifiedContext);
     const { dimensions, distanceKm } = scoreLodgingRowDimensions({
       row,
@@ -236,7 +255,14 @@ export function scoreLodgingRecommendations(input: {
       travelTrajectory,
       businessDelta: businessBias.delta,
     });
-    const score = coreScore + overlay;
+    const verification = verifyLodgingCandidate({
+      row,
+      mode: verifiedPool.modeApplied === "off" ? "off" : verifiedPool.modeApplied,
+    });
+    const score =
+      coreScore +
+      overlay +
+      (verification.score100 >= 72 ? 6 : verification.score100 >= 58 ? 3 : 0);
 
     const opportunity =
       hub != null
@@ -262,11 +288,16 @@ export function scoreLodgingRecommendations(input: {
     };
 
     const explained = explainLodgingRecommendationKo(reasonInput);
+    const verifiedLine =
+      verification.score100 >= 70 && !verifiedPool.usedRawFallback
+        ? copy.globe.lodgingVerifiedEvidenceReason
+        : null;
     const reasonKo =
       businessBias.reasons[0] ??
       titleReasons[0] ??
       (valueLeaning ? opportunity?.primaryLineKo : null) ??
       opportunity?.experienceLineKo ??
+      verifiedLine ??
       explained.reasonKo;
 
     return {
@@ -276,6 +307,7 @@ export function scoreLodgingRecommendations(input: {
       matchReasons: [
         ...businessBias.reasons,
         ...titleReasons,
+        ...(verifiedLine ? [verifiedLine] : []),
         ...(opportunity?.lines ?? []),
         ...explained.matchReasons,
       ].slice(0, 3),

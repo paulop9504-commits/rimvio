@@ -80,6 +80,7 @@ export const flightBookingEnginePackage: RimvioEnginePackage<OneShotFlightPrepPl
         userLat: input.userLat,
         userLng: input.userLng,
         now: input.now,
+        expressReady: input.expressReady,
       });
       if (!domainPlan) {
         return null;
@@ -97,8 +98,26 @@ export const flightBookingEnginePackage: RimvioEnginePackage<OneShotFlightPrepPl
     },
     toOperatorPlan(plan) {
       const domain = plan.domainPlan;
-      if (domain.intakeGaps.length > 0 && !domain.readyForHub) {
-        const chips = buildTripIntakeAskChips(domain.intakeGaps);
+      if (domain.readyForHub) {
+        return { tool: "scout", reason: "instant_flight_search" };
+      }
+      if (domain.intakeGaps.length > 0) {
+        const hardGaps = domain.intakeGaps.filter(
+          (gap) =>
+            gap === "destination" ||
+            gap === "origin" ||
+            gap === "dates",
+        );
+        // Soft: with destination+origin, still allow scout even if dates soft-gap.
+        if (
+          Boolean(domain.intakeState.destinationLabel?.trim()) &&
+          Boolean(domain.intakeState.originLabel?.trim())
+        ) {
+          return { tool: "scout", reason: "instant_flight_search" };
+        }
+        const chips = buildTripIntakeAskChips(
+          hardGaps.length > 0 ? hardGaps : domain.intakeGaps,
+        );
         if (chips.length > 0) {
           return {
             tool: "ask_chips",
@@ -106,9 +125,6 @@ export const flightBookingEnginePackage: RimvioEnginePackage<OneShotFlightPrepPl
             chips,
           };
         }
-      }
-      if (domain.readyForHub) {
-        return { tool: "scout", reason: "instant_flight_search" };
       }
       return null;
     },

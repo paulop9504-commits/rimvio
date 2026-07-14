@@ -35,6 +35,7 @@ import { useWorkQueue } from "@/hooks/use-work-queue";
 import { usePriorityStrip } from "@/hooks/use-priority-strip";
 import { useRealitySurfaceProjection } from "@/hooks/use-reality-surface-projection";
 import { blueprintNeedsDestination, projectBridgeMapArcs } from "@/lib/reality-surface";
+import { tryEnterDomainRuntimeAfterIngress } from "@/lib/globe-ingress/try-enter-domain-runtime-after-ingress-client";
 import { resolveTripContextAnchor } from "@/lib/experience-run/resolve-trip-context-anchor";
 import {
   canCommitBridgePlanningTruth,
@@ -1774,6 +1775,8 @@ function GlobeHomeBody() {
       eventId: string;
     }) => {
       setFromGlobeIngress(input);
+      // Gap 2 — structure alone is not enough: enter domain Runtime / soft scout when safe.
+      tryEnterDomainRuntimeAfterIngress(input);
       if (
         !activeContextEvent?.id ||
         activeContextEvent.id !== input.eventId ||

@@ -408,6 +408,7 @@ export async function runContextConditionAnchorPin(
       context: contextInstance,
       event,
       travelBrain,
+      exploration,
     }).slice(0, lodgingFilterMax);
     lodgingRows = lodgingScored.map((row) => row.row);
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { copy } from "@/lib/copy/human-ko";
 import {
   buildContextHubPlanPreviewRows,
@@ -8,7 +8,10 @@ import {
   needsContextExecutionAnyApproval,
   needsContextExecutionPlanApproval,
   needsContextExecutionStepApproval,
+  readPlanSequencerProgress,
+  subscribePlanSequencerProgress,
   type ContextExecutionPlanV1,
+  type PlanSequencerProgressWire,
 } from "@/lib/context-execution";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +19,8 @@ export type GlobeContextHubPlanStripProps = {
   plan: ContextExecutionPlanV1;
   /** MEANING why-line — e.g. "민수 = 제주". */
   meaningWhyLine?: string | null;
+  /** When set, live sequencer trail ("지금 무엇을 하는지") binds to this Context. */
+  contextEventId?: string | null;
   compact?: boolean;
   className?: string;
   onApprove?: () => void | Promise<void>;
@@ -41,17 +46,35 @@ function stepStatusClass(status: ContextExecutionPlanV1["steps"][number]["status
 export function GlobeContextHubPlanStrip({
   plan,
   meaningWhyLine = null,
+  contextEventId = null,
   compact = false,
   className,
   onApprove,
 }: GlobeContextHubPlanStripProps) {
   const [busy, setBusy] = useState(false);
+  const [liveTrail, setLiveTrail] = useState<PlanSequencerProgressWire | null>(
+    null,
+  );
   const rows = buildContextHubPlanPreviewRows(plan, compact ? 4 : 6);
   const currentLabel = formatContextExecutionPlanCurrentStepKo(plan);
   const planGate = needsContextExecutionPlanApproval(plan);
   const stepGate = needsContextExecutionStepApproval(plan);
   const showApproval = needsContextExecutionAnyApproval(plan) && Boolean(onApprove);
   const why = meaningWhyLine?.trim() || null;
+
+  useEffect(() => {
+    const id = contextEventId?.trim() ?? "";
+    if (!id) {
+      setLiveTrail(null);
+      return;
+    }
+    setLiveTrail(readPlanSequencerProgress(id));
+    return subscribePlanSequencerProgress((eventId, wire) => {
+      if (eventId === id) {
+        setLiveTrail(wire);
+      }
+    });
+  }, [contextEventId]);
 
   const handleApprove = useCallback(async () => {
     if (!onApprove || busy) {
@@ -69,6 +92,8 @@ export function GlobeContextHubPlanStrip({
     return null;
   }
 
+  const trailKo = liveTrail?.detailKo?.trim() || null;
+
   return (
     <div
       className={cn(
@@ -80,6 +105,7 @@ export function GlobeContextHubPlanStrip({
       data-plan-approval={plan.approval}
       data-plan-step-gate={stepGate ? "true" : "false"}
       data-plan-meaning-why={why ? "true" : "false"}
+      data-plan-sequencer-trail={trailKo ? "true" : "false"}
     >
       <div className="flex items-baseline justify-between gap-2">
         <p className="text-[10px] font-semibold uppercase tracking-wide text-[#8e8e93]">
@@ -91,6 +117,14 @@ export function GlobeContextHubPlanStrip({
           </p>
         ) : null}
       </div>
+      {trailKo && !showApproval ? (
+        <p
+          className="mt-1 truncate text-[11px] font-medium text-[#0071e3]"
+          data-plan-sequencer-progress
+        >
+          {trailKo}
+        </p>
+      ) : null}
       {why ? (
         <p
           className="mt-1 truncate text-[12px] font-semibold tracking-tight text-[#1d1d1f]"
@@ -109,7 +143,7 @@ export function GlobeContextHubPlanStrip({
             : copy.globe.executionPlanPreview.stepApprovalHint}
         </p>
       ) : null}
-      <ul className={cn("space-y-1", why || showApproval ? "mt-1.5" : compact ? "mt-1" : "mt-1.5")}>
+      <ul className={cn("space-y-1", why || showApproval || trailKo ? "mt-1.5" : compact ? "mt-1" : "mt-1.5")}>
         {rows.map((row) => (
           <li
             key={row.stepId}

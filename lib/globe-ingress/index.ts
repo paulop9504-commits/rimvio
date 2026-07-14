@@ -18,3 +18,5 @@ export {
   type IngressConvergeHit,
   type IngressContextConvergeResult,
 } from "@/lib/globe-ingress/resolve-ingress-context-converge";
+
+export { tryEnterDomainRuntimeAfterIngress } from "@/lib/globe-ingress/try-enter-domain-runtime-after-ingress-client";

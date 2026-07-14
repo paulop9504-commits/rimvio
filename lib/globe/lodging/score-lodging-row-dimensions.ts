@@ -6,6 +6,7 @@ import type {
   LodgingRankProfile,
 } from "@/lib/globe/lodging/lodging-rank-profile";
 import { weightLodgingRankDimensionScore } from "@/lib/globe/lodging/lodging-rank-profile";
+import { computeLodgingVerificationScore } from "@/lib/globe/lodging/verify-lodging-candidate";
 import type {
   TravelBudgetBand,
   TravelLodgingPriority,
@@ -206,6 +207,12 @@ function scoreLodgingPopularityDimension(row: ContextLodgingInventoryRow): numbe
   return clampScore(score);
 }
 
+function scoreLodgingVerificationBoost(row: ContextLodgingInventoryRow): number {
+  const verification = computeLodgingVerificationScore(row);
+  // Map 28..100 evidence → 0..18 soft boost on quality axis.
+  return clampScore(Math.round(((verification - 40) / 60) * 18));
+}
+
 export function scoreLodgingRowDimensions(input: {
   row: ContextLodgingInventoryRow;
   lat?: number | null;
@@ -242,15 +249,20 @@ export function scoreLodgingRowDimensions(input: {
     distanceKm,
     dimensions: {
       price,
-      quality: scoreLodgingQualityDimension({
-        row: input.row,
-        lodgingPriority: input.lodgingPriority,
-        budgetBand: input.budgetBand,
-        context: input.context,
-        distanceKm,
-      }),
+      quality: clampScore(
+        scoreLodgingQualityDimension({
+          row: input.row,
+          lodgingPriority: input.lodgingPriority,
+          budgetBand: input.budgetBand,
+          context: input.context,
+          distanceKm,
+        }) + scoreLodgingVerificationBoost(input.row),
+      ),
       distance,
-      popularity: scoreLodgingPopularityDimension(input.row),
+      popularity: clampScore(
+        scoreLodgingPopularityDimension(input.row) +
+          Math.round(scoreLodgingVerificationBoost(input.row) * 0.6),
+      ),
     },
   };
 }

@@ -18,6 +18,18 @@ export {
   medianLodgingPriceKrw,
 } from "@/lib/globe/lodging/build-lodging-opportunity-insight";
 export type {
+  FilterVerifiedLodgingRowsResult,
+  LodgingVerificationFailReason,
+  LodgingVerificationMode,
+  LodgingVerificationResult,
+} from "@/lib/globe/lodging/verify-lodging-candidate";
+export {
+  computeLodgingVerificationScore,
+  filterVerifiedLodgingRows,
+  lodgingVerificationModeFromExploration,
+  verifyLodgingCandidate,
+} from "@/lib/globe/lodging/verify-lodging-candidate";
+export type {
   LodgingRankContextHints,
   LodgingRankDimension,
   LodgingRankMode,

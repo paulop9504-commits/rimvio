@@ -803,6 +803,7 @@ export function GlobeContextHubRail({
             <GlobeContextHubPlanStrip
               plan={executionPlan}
               meaningWhyLine={planMeaningWhyLine}
+              contextEventId={activeEventId}
               compact={variant === "compact"}
               onApprove={onApproveExecutionPlan}
             />
@@ -914,6 +915,7 @@ export function GlobeContextHubRail({
           <GlobeContextHubPlanStrip
             plan={executionPlan}
             meaningWhyLine={planMeaningWhyLine}
+            contextEventId={activeEventId}
             compact={variant === "compact"}
             onApprove={onApproveExecutionPlan}
           />

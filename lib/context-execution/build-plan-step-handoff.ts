@@ -1,6 +1,6 @@
 /**
- * Cursor-style plan handoff — after a step advances, offer the next engine
- * as ask_chips (chips-first, not auto-scout).
+ * Cursor-style plan handoff — after a step advances, offer the next engine.
+ * Auto-scout vs chips is decided by resolvePlanStepAutoAdvance.
  */
 
 import type { ContextExecutionPlanV1 } from "@/lib/context-execution/types";
@@ -135,7 +135,7 @@ function buildHandoffForEngine(
   }
 }
 
-/** Pure — active running step with a known engine → chips-first handoff. */
+/** Pure — active running step with a known engine → handoff offer (seed + chips). */
 export function resolvePlanStepHandoffOffer(
   plan: ContextExecutionPlanV1,
 ): PlanStepHandoffOffer | null {

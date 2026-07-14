@@ -41,6 +41,19 @@ export {
 export { offerPlanStepHandoffAfterAdvance } from "@/lib/context-execution/offer-plan-step-handoff-client";
 
 export {
+  resolvePlanStepAutoAdvance,
+  type PlanStepAutoAdvanceDecision,
+} from "@/lib/context-execution/resolve-plan-step-auto-advance";
+
+export {
+  recordPlanSequencerProgress,
+  readPlanSequencerProgress,
+  subscribePlanSequencerProgress,
+  type PlanSequencerProgressWire,
+  type PlanSequencerProgressPhase,
+} from "@/lib/context-execution/record-plan-sequencer-progress";
+
+export {
   blueprintRequiresExecutionPlanApproval,
   gateContextExecutionPlanForUserApproval,
   needsContextExecutionAnyApproval,

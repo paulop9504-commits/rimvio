@@ -1780,6 +1780,7 @@ export const copy = {
     lodgingReasonTopPick: "맥락·위치 기준 1순위예요",
     lodgingReasonFallback: "맥락에 맞게 골랐어요",
     lodgingReasonCardTitle: "왜 추천했는지",
+    lodgingVerifiedEvidenceReason: "사진·요금 신호가 갖춰진 후보예요",
     /** Soft savings / tradeoff / experience — approximate, not ledger math. */
     lodgingOpportunitySaveWalkNear: (walkLabel: string, fareLabel: string) =>
       `거점까지 도보 ${walkLabel} · 외곽 대비 이동비 ${fareLabel} 아낄 동선이에요`,

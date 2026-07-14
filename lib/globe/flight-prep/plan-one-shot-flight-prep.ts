@@ -29,12 +29,22 @@ function flightPrepGaps(state: TripIntakeState): readonly TripIntakeGapId[] {
   return assessTripIntakeGaps(state).filter((gap) => gap !== "budget" && gap !== "guests");
 }
 
-function isReadyForFlightHub(state: TripIntakeState, gaps: readonly TripIntakeGapId[]): boolean {
-  return (
-    Boolean(state.destinationLabel?.trim() && state.originLabel?.trim()) &&
-    hasFlightDepartDate(state) &&
-    gaps.length === 0
-  );
+function isReadyForFlightHub(
+  state: TripIntakeState,
+  gaps: readonly TripIntakeGapId[],
+  expressReady?: boolean,
+): boolean {
+  const destOk = Boolean(state.destinationLabel?.trim());
+  const originOk = Boolean(state.originLabel?.trim());
+  const dateOk = hasFlightDepartDate(state);
+  if (destOk && originOk && dateOk && gaps.length === 0) {
+    return true;
+  }
+  // Soft express: destination + origin only — open hub; dates can refine later.
+  if (expressReady === true && destOk && originOk) {
+    return true;
+  }
+  return false;
 }
 
 /** Pure plan — flight utterance → intake merge → departure hub readiness. */
@@ -44,6 +54,7 @@ export function planOneShotFlightPrep(input: {
   userLat?: number | null;
   userLng?: number | null;
   now?: Date;
+  expressReady?: boolean;
 }): OneShotFlightPrepPlan | null {
   const message = input.message.trim();
   if (!message || !isFlightPrepUtterance(message)) {
@@ -58,7 +69,11 @@ export function planOneShotFlightPrep(input: {
     now: input.now,
   });
   const intakeGaps = flightPrepGaps(intakeState);
-  const readyForHub = isReadyForFlightHub(intakeState, intakeGaps);
+  const readyForHub = isReadyForFlightHub(
+    intakeState,
+    intakeGaps,
+    input.expressReady,
+  );
 
   const steps: OneShotFlightPrepStep[] = ["merge_intake"];
   if (readyForHub) {
