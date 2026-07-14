@@ -466,9 +466,9 @@ export function resolveLocalDiscoveryAction(
   const cuisineCandidates = parseCuisineCandidates(text);
   const resourceFocus = answers.resourceFocus;
   const focusWants = resolveWantsFromResourceFocus(resourceFocus);
-  let wantsLodging =
+  const wantsLodging =
     focusWants?.wantsLodging ?? input.wantsLodging ?? intent.lodgingSimilar;
-  let wantsEatery =
+  const wantsEatery =
     focusWants?.wantsEatery ??
     input.wantsEatery ??
     intent.eateryNearby ??

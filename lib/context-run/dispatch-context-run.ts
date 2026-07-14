@@ -979,7 +979,7 @@ async function executeContextRunPlan(
       return { graphId, status: "done", planKind: plan.kind };
     }
     case "globe_ingress": {
-      let compiled = plan.globeIngress;
+      const compiled = plan.globeIngress;
       if (!compiled) {
         return executeContextRunPlan(
           bound,
