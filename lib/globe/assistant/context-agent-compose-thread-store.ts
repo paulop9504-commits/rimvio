@@ -284,11 +284,11 @@ export function appendContextAgentComposeTurn(
 export function patchContextAgentComposeTurn(
   eventId: string,
   turnId: string,
-  patch: Partial<{
-    text: string;
-    kind: ContextAgentComposeTurn extends { kind: infer K } ? K : never;
-    payload: IntentExecutionTimelinePayload;
-  }>,
+  patch: {
+    text?: string;
+    kind?: Extract<ContextAgentComposeTurn, { role: "assistant" }>["kind"];
+    payload?: IntentExecutionTimelinePayload;
+  },
 ): ContextAgentComposeTurn | null {
   const id = eventId.trim();
   const tid = turnId.trim();
