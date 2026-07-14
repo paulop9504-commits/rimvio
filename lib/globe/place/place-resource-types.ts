@@ -7,6 +7,8 @@ export type PlaceResourcePayload = {
   cuisineHint?: string | null;
   priceLevel?: number | null;
   rating?: number | null;
+  /** Review volume — thin stacks filtered at inventory / rank gates. */
+  reviewCount?: number | null;
   openNow?: boolean | null;
   mapsUrl?: string | null;
   provider?: "google_places" | "naver_local" | "mock" | "multi_provider" | null;

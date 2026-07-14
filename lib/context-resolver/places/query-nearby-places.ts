@@ -6,6 +6,11 @@ import { googlePlacesApiKey, isGooglePlacesConfigured } from "@/lib/locate/googl
 import { isCoordInKorea } from "@/lib/ontology/geo-region-from-coords";
 import { isNaverSearchConfigured } from "@/lib/naver/config";
 import { fetchNaverLocalPlaceCandidates } from "@/lib/naver/local-to-place-candidate";
+import {
+  DEFAULT_MIN_PLACE_REVIEW_COUNT,
+  passesMinReviewCountGate,
+  readGoogleUserRatingsTotal,
+} from "@/lib/places/min-review-count-gate";
 import type { PlaceCandidate, PlaceDiscoveryCriteria } from "@/lib/context-resolver/places/types";
 
 const client = new Client({});
@@ -216,6 +221,7 @@ function mapGooglePlaceResult(
     formatted_address?: string;
     geometry?: { location?: { lat?: number; lng?: number } };
     rating?: number;
+    user_ratings_total?: number;
     opening_hours?: { open_now?: boolean };
     types?: string[];
     photos?: Array<{ photo_reference?: string }>;
@@ -241,6 +247,7 @@ function mapGooglePlaceResult(
     lat,
     lng,
     rating: result.rating ?? 0,
+    review_count: readGoogleUserRatingsTotal(result.user_ratings_total),
     open_now: result.opening_hours?.open_now ?? true,
     vibes: inferVibesFromName(result.name ?? ""),
     phone: null as string | null,
@@ -352,8 +359,23 @@ export function filterPlaceCandidates(
   candidates: PlaceCandidate[],
   criteria: PlaceDiscoveryCriteria
 ): PlaceCandidate[] {
+  const minReview =
+    criteria.min_review_count ?? DEFAULT_MIN_PLACE_REVIEW_COUNT;
   return candidates
     .filter((place) => place.rating >= criteria.min_rating)
+    .filter((place) =>
+      passesMinReviewCountGate({
+        reviewCount: place.review_count,
+        source: place.place_id.startsWith("mock-")
+          ? "mock"
+          : place.naver_category
+            ? "naver_local"
+            : place.google_types?.length
+              ? "google_places"
+              : null,
+        minCount: minReview,
+      }),
+    )
     .filter((place) => (criteria.only_open_now ? place.open_now : true))
     .filter((place) => {
       if (criteria.vibe === "unknown") {

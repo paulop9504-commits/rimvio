@@ -58,19 +58,14 @@ import {
 import { assessIntentConvergence } from "@/lib/globe/context-condition-ai/intent-convergence/assess-intent-convergence";
 import { detectConvergenceIntent } from "@/lib/globe/context-condition-ai/intent-convergence/intent-convergence-schema";
 import {
-  INSTANT_POI_DEBOUNCE_MS,
   isInstantPoiSearch,
-  matchesInstantPoiTyping,
-  resolveInstantPoiFocus,
 } from "@/lib/globe/context-condition-ai/instant-poi-search";
 import {
   isInstantLodgingSearch,
   requiresLodgingBookingSlots,
 } from "@/lib/globe/context-condition-ai/instant-lodging-search";
 import {
-  INSTANT_EATERY_DEBOUNCE_MS,
   isInstantEaterySearch,
-  matchesInstantEateryTyping,
 } from "@/lib/globe/context-condition-ai/instant-eatery-search";
 import { buildConvergenceQuestion } from "@/lib/globe/context-condition-ai/intent-convergence/build-convergence-question";
 import { buildActivityNextHopQuestion } from "@/lib/globe/context-condition-ai/intent-convergence/build-next-hop-question";
@@ -422,8 +417,6 @@ export const GlobeContextConditionPinBar = forwardRef<
   >([]);
   const lastSpecRef = useRef<ContextConditionAnchorPinOutcome["spec"] | null>(null);
   lastSpecRef.current = lastSpec;
-  const lastInstantPoiSearchRef = useRef<string>("");
-  const handleSubmitRef = useRef<() => Promise<void>>(async () => {});
 
   useEffect(() => {
     return subscribeDiscoveryLensSession((session) => {
@@ -2166,51 +2159,6 @@ export const GlobeContextConditionPinBar = forwardRef<
     userLng,
   ]);
 
-  handleSubmitRef.current = handleSubmit;
-
-  /** Google Maps–like: debounced auto-search for instant POI / ready lodging while typing. */
-  useEffect(() => {
-    const trimmed = message.trim();
-    const currentEvent = findLifeEventCandidate(contextEventId);
-    const allowLodgingAutoSearch =
-      isInstantLodgingSearch(trimmed) ||
-      (isLodgingBookingQuery(trimmed) &&
-        hasCompleteLodgingBookingSlots(readLodgingBookingSlots(currentEvent)));
-    const allowEateryAutoSearch = isInstantEaterySearch(trimmed);
-    if (
-      busy ||
-      !trimmed ||
-      (!matchesInstantPoiTyping(message) &&
-        !allowLodgingAutoSearch &&
-        !matchesInstantEateryTyping(message))
-    ) {
-      return;
-    }
-    if (
-      !resolveInstantPoiFocus(trimmed) &&
-      !allowLodgingAutoSearch &&
-      !allowEateryAutoSearch
-    ) {
-      return;
-    }
-    if (
-      typeof anchorLat !== "number" ||
-      typeof anchorLng !== "number" ||
-      !Number.isFinite(anchorLat) ||
-      !Number.isFinite(anchorLng)
-    ) {
-      return;
-    }
-    const timer = window.setTimeout(() => {
-      if (lastInstantPoiSearchRef.current === trimmed) {
-        return;
-      }
-      lastInstantPoiSearchRef.current = trimmed;
-      void handleSubmitRef.current();
-    }, INSTANT_POI_DEBOUNCE_MS);
-    return () => window.clearTimeout(timer);
-  }, [message, busy, anchorLat, anchorLng, contextEventId]);
-
   const submitTrigger = useCallback(
     async (
       triggerMessage: string,
@@ -2626,17 +2574,18 @@ export const GlobeContextConditionPinBar = forwardRef<
           type="text"
           value={message}
           onChange={(event) => {
-            const next = event.target.value;
-            setMessage(next);
-            if (!next.trim()) {
-              lastInstantPoiSearchRef.current = "";
-            }
+            setMessage(event.target.value);
           }}
           onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              void handleSubmit();
+            if (event.key !== "Enter") {
+              return;
             }
+            // Ignore Enter while IME composition is active (KO/JA mid-syllable).
+            if (event.nativeEvent.isComposing || event.keyCode === 229) {
+              return;
+            }
+            event.preventDefault();
+            void handleSubmit();
           }}
           placeholder={copy.globe.contextConditionPinPlaceholder}
           disabled={busy}

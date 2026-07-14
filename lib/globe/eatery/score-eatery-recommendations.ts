@@ -34,6 +34,7 @@ import type {
 } from "@/lib/situation-projection/travel-brain-personalization";
 import { buildTravelBrainState } from "@/lib/situation-projection/travel-brain-personalization";
 import { foodBrandMatchAliases } from "@/lib/globe/context-condition-ai/parse-food-brand-focus";
+import { passesMinReviewCountGate } from "@/lib/places/min-review-count-gate";
 
 export type ScoredEateryRecommendation = {
   row: ContextEateryInventoryRow;
@@ -239,6 +240,13 @@ export function scoreEateryRecommendations(input: {
   const distanceWeight = input.distanceWeight ?? 1;
   const focusLabel = input.focusMatch?.trim() || null;
   const focusTokens = expandEateryFocusTokens(focusLabel);
+  const supplyRows = input.rows.filter((row) =>
+    passesMinReviewCountGate({
+      reviewCount: row.reviewCount,
+      source: row.provider ?? null,
+      knownOnly: true,
+    }),
+  );
   const event =
     input.event ??
     (input.context?.eventId
@@ -309,7 +317,7 @@ export function scoreEateryRecommendations(input: {
     trajectory.dominant_cluster === "travel" && trajectory.strength >= 0.15;
   const genericPreference = findLatestPersonaSignal("generic.preference");
 
-  const scored = input.rows.map((row) => {
+  const scored = supplyRows.map((row) => {
     const peoplePlaceMatch = findPeoplePlaceMatch(row, input.unifiedContext);
     const { dimensions, distanceKm } = scoreEateryRowDimensions({
       row,

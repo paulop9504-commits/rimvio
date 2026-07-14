@@ -54,6 +54,7 @@ export async function GET(request: NextRequest) {
     cuisineHint: candidate.cuisineHint ?? null,
     priceLevel: candidate.priceLevel ?? null,
     rating: candidate.rating ?? null,
+    reviewCount: candidate.reviewCount ?? null,
     openNow: candidate.openNow ?? null,
     mapsUrl: candidate.mapsUrl ?? null,
     provider: candidate.source,

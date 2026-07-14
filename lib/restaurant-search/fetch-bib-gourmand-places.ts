@@ -8,6 +8,7 @@ import {
   bibGourmandQueryForBias,
   markBibGourmandCandidate,
 } from "@/lib/restaurant-search/bib-gourmand";
+import { readGoogleUserRatingsTotal } from "@/lib/places/min-review-count-gate";
 import type {
   RestaurantSearchCandidate,
   RestaurantSearchCountryBias,
@@ -105,6 +106,9 @@ export async function fetchBibGourmandPlaces(input: {
           lat,
           lng,
           rating: typeof result.rating === "number" ? result.rating : null,
+          reviewCount: readGoogleUserRatingsTotal(
+            (result as { user_ratings_total?: number }).user_ratings_total,
+          ),
           openNow:
             typeof result.opening_hours?.open_now === "boolean"
               ? result.opening_hours.open_now

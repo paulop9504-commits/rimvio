@@ -19,6 +19,10 @@ import type {
   RestaurantSearchIntent,
   RestaurantSearchResult,
 } from "@/lib/restaurant-search/types";
+import {
+  passesMinReviewCountGate,
+  readGoogleUserRatingsTotal,
+} from "@/lib/places/min-review-count-gate";
 
 const client = new Client({});
 const GOOGLE_RESTAURANT_TYPES = ["restaurant", "cafe", "meal_takeaway", "bakery"] as const;
@@ -360,6 +364,7 @@ function mergeDuplicateCandidate(input: {
     categoryLabel: primary.categoryLabel ?? secondary.categoryLabel,
     description: primary.description ?? secondary.description,
     rating: primary.rating ?? secondary.rating,
+    reviewCount: primary.reviewCount ?? secondary.reviewCount,
     openNow: primary.openNow ?? secondary.openNow,
     priceLevel: primary.priceLevel ?? secondary.priceLevel,
   };
@@ -484,6 +489,7 @@ async function searchNaverLocal(input: {
       lat: hit.lat,
       lng: hit.lng,
       rating: hit.rating > 0 ? hit.rating : null,
+      reviewCount: null,
       openNow: hit.open_now,
       phone: hit.phone ?? null,
       mapsUrl: hit.maps_url ?? null,
@@ -541,6 +547,9 @@ async function searchGoogleTextQuery(input: {
         lat,
         lng,
         rating: typeof result.rating === "number" ? result.rating : null,
+        reviewCount: readGoogleUserRatingsTotal(
+          (result as { user_ratings_total?: number }).user_ratings_total,
+        ),
         openNow:
           typeof result.opening_hours?.open_now === "boolean"
             ? result.opening_hours.open_now
@@ -625,6 +634,9 @@ async function searchGooglePlaces(input: {
           lat,
           lng,
           rating: typeof result.rating === "number" ? result.rating : null,
+          reviewCount: readGoogleUserRatingsTotal(
+            (result as { user_ratings_total?: number }).user_ratings_total,
+          ),
           openNow:
             typeof result.opening_hours?.open_now === "boolean"
               ? result.opening_hours.open_now
@@ -758,6 +770,14 @@ export async function searchRestaurants(
     placeProfile,
   }).filter((candidate) => passesExcludes(candidate, intent.excludeKeywords));
   candidates = candidates.filter((candidate) => {
+    if (
+      !passesMinReviewCountGate({
+        reviewCount: candidate.reviewCount,
+        source: candidate.source,
+      })
+    ) {
+      return false;
+    }
     if (!isCanonicalPlaceCountryCompatible(placeProfile, candidate.address ?? candidate.name)) {
       return false;
     }
@@ -775,6 +795,14 @@ export async function searchRestaurants(
 
   const bibInRadius = bibCandidates.filter((candidate) => {
     if (!passesExcludes(candidate, intent.excludeKeywords)) {
+      return false;
+    }
+    if (
+      !passesMinReviewCountGate({
+        reviewCount: candidate.reviewCount,
+        source: candidate.source,
+      })
+    ) {
       return false;
     }
     if (!isCanonicalPlaceCountryCompatible(placeProfile, candidate.address ?? candidate.name)) {

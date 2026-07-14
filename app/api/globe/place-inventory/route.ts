@@ -37,6 +37,7 @@ function buildCriteria(input: {
     vibe: "unknown",
     only_open_now: false,
     min_rating: 0,
+    min_review_count: 50,
     max_results: input.maxResults,
     radius_m: input.radiusM,
   };
@@ -92,6 +93,7 @@ export async function GET(request: NextRequest) {
     cuisineHint: null,
     priceLevel: null,
     rating: candidate.rating ?? null,
+    reviewCount: candidate.review_count ?? null,
     openNow: candidate.open_now ?? null,
     mapsUrl: candidate.maps_url ?? null,
     provider: null,

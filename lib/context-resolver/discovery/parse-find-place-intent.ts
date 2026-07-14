@@ -247,6 +247,7 @@ export function buildCafeDiscoveryCriteria(event: FindCafeEvent): PlaceDiscovery
     vibe: event.vibe,
     only_open_now: true,
     min_rating: 4.0,
+    min_review_count: 50,
     max_results: 3,
     radius_m: 1500,
   };
@@ -261,6 +262,7 @@ export function buildPlaceDiscoveryCriteria(event: FindPlaceEvent): PlaceDiscove
     vibe: event.vibe,
     only_open_now: false,
     min_rating: 0,
+    min_review_count: 50,
     max_results: 5,
     radius_m: 3000,
   };

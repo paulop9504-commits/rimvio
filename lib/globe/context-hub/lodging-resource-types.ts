@@ -48,6 +48,8 @@ export type LodgingResourcePayload = {
   partnerLabel?: string | null;
   address?: string | null;
   mapsUrl?: string | null;
+  rating?: number | null;
+  reviewCount?: number | null;
   provider?: LodgingProviderId | null;
   photoSource?: LodgingPhotoSource | null;
   photoConfidence?: LodgingPhotoConfidence | null;

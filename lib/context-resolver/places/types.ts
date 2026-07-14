@@ -10,6 +10,8 @@ export type PlaceDiscoveryCriteria = {
   vibe: PlaceVibe;
   only_open_now: boolean;
   min_rating: number;
+  /** Default 50 — see `DEFAULT_MIN_PLACE_REVIEW_COUNT`. */
+  min_review_count?: number;
   max_results: number;
   radius_m: number;
 };
@@ -21,6 +23,8 @@ export type PlaceCandidate = {
   lat: number;
   lng: number;
   rating: number;
+  /** Google user_ratings_total when available. */
+  review_count?: number | null;
   open_now: boolean;
   vibes: PlaceVibe[];
   phone: string | null;

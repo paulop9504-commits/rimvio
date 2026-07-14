@@ -50,7 +50,7 @@
     "test:context-run-decision-surface": "npx tsx scripts/test-context-run-decision-surface.ts",
     "test:dispatch-context-run-composer": "npx tsx scripts/test-dispatch-context-run-composer.ts",
     "test:small-talk": "npx tsx scripts/test-resolve-small-talk.ts && npx tsx scripts/test-small-talk-context.ts && npx tsx scripts/test-slang-small-talk.ts",
-    "test:discovery-guard": "npx tsx scripts/test-discovery-category-guard.ts && npx tsx scripts/test-query-nearby-places-overseas-guard.ts && npx tsx scripts/test-discovery-video-hero.ts && npx tsx scripts/test-place-map-youtube-bridge.ts && npx tsx scripts/test-play-place-review-video-on-map.ts",
+    "test:discovery-guard": "npx tsx scripts/test-discovery-category-guard.ts && npx tsx scripts/test-query-nearby-places-overseas-guard.ts && npx tsx scripts/test-discovery-video-hero.ts && npx tsx scripts/test-place-map-youtube-bridge.ts && npx tsx scripts/test-play-place-review-video-on-map.ts && npx tsx scripts/test-min-review-count-gate.ts",
     "test:day2-recall": "npx tsx scripts/test-day2-recall-pin-badge.ts && npx tsx scripts/test-hub-action-timeline.ts && npx tsx scripts/test-context-recall-ui.ts && npx tsx scripts/test-instant-carry-feed.ts",
     "test:lodging-hub": "npx tsx scripts/test-lodging-room-offers.ts && npx tsx scripts/test-lodging-price-consistency.ts && npx tsx scripts/test-liteapi-room-offer-images.ts && npx tsx scripts/test-lodging-opportunity-insight.ts && npx tsx scripts/test-lodging-verify-candidate.ts && npm run test:day2-recall",
     "test:mention-context-run": "npx tsx scripts/test-mention-context-run.ts",

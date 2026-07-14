@@ -8,6 +8,10 @@ import {
 import { googlePlacesApiKey, isGooglePlacesConfigured } from "@/lib/locate/google-places-config";
 import type { ContextLodgingInventoryRow } from "@/lib/globe/context-hub/lodging-resource-types";
 import { buildGoogleMapsPlaceHref } from "@/lib/resolvers/deep-links";
+import {
+  passesMinReviewCountGate,
+  readGoogleUserRatingsTotal,
+} from "@/lib/places/min-review-count-gate";
 
 const client = new Client({});
 
@@ -173,6 +177,17 @@ export async function fetchPlacesLodgingNearby(
         ) {
           return null;
         }
+        const reviewCount = readGoogleUserRatingsTotal(
+          (result as { user_ratings_total?: number }).user_ratings_total,
+        );
+        if (
+          !passesMinReviewCountGate({
+            reviewCount,
+            source: "google_places",
+          })
+        ) {
+          return null;
+        }
         return {
           placeId,
           name,
@@ -189,6 +204,8 @@ export async function fetchPlacesLodgingNearby(
             placeLabel: name,
           }),
           provider: "google_places" as const,
+          rating: typeof result.rating === "number" ? result.rating : null,
+          reviewCount,
           videoUrl: null,
           photoSource: null,
           photoConfidence: null,

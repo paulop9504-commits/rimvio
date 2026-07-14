@@ -36,6 +36,8 @@ export type RestaurantSearchCandidate = {
   lat: number;
   lng: number;
   rating: number | null;
+  /** Google user_ratings_total — thin stacks (&lt; 50) are filtered by default. */
+  reviewCount?: number | null;
   openNow: boolean | null;
   phone: string | null;
   mapsUrl: string | null;

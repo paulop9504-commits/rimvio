@@ -27,6 +27,7 @@ import {
   type LodgingRecommendReasonInput,
 } from "@/lib/globe/lodging/explain-lodging-recommendation-ko";
 import type { LodgingRankProfile } from "@/lib/globe/lodging/lodging-rank-profile";
+import { passesMinReviewCountGate } from "@/lib/places/min-review-count-gate";
 import {
   applyLodgingRankContextHints,
   DEFAULT_LODGING_RANK_WEIGHTS,
@@ -173,7 +174,13 @@ export function scoreLodgingRecommendations(input: {
     rows: input.rows,
     mode: verificationMode,
   });
-  const rows = verifiedPool.kept;
+  const rows = verifiedPool.kept.filter((row) =>
+    passesMinReviewCountGate({
+      reviewCount: row.reviewCount,
+      source: row.provider ?? row.partnerLabel ?? null,
+      knownOnly: true,
+    }),
+  );
   const lat = input.lat ?? null;
   const lng = input.lng ?? null;
   const event =
