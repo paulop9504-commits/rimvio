@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Play, X } from "lucide-react";
 import type { PlaceReviewKind, PlaceReviewVideo } from "@/lib/globe/place-review-video";
-import { dispatchPlaceMapYoutubeOpen } from "@/lib/globe/place-map-youtube-bridge";
+import { playPlaceReviewVideoOnMap } from "@/lib/globe/play-place-review-video-on-map";
 import { useAppLocale } from "@/hooks/use-copy";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
@@ -177,26 +177,15 @@ export function GlobeResourceVideoBranch(props: GlobeResourceVideoBranchProps) {
                   key={video.videoId}
                   type="button"
                   onClick={() => {
-                    if (
-                      lat != null &&
-                      lng != null &&
-                      Number.isFinite(lat) &&
-                      Number.isFinite(lng) &&
-                      video.embedUrl.trim()
-                    ) {
-                      dispatchPlaceMapYoutubeOpen({
-                        embedUrl: video.embedUrl,
-                        videoId: video.videoId,
-                        title: video.title,
-                        channelTitle: video.channelTitle,
-                        thumbnailUrl: video.thumbnailUrl,
-                        lat,
-                        lng,
-                        placeLabel: name,
-                      });
-                      return;
+                    const played = playPlaceReviewVideoOnMap({
+                      video,
+                      lat,
+                      lng,
+                      placeLabel: name,
+                    });
+                    if (!played) {
+                      setPlayer(video);
                     }
-                    setPlayer(video);
                   }}
                   className="pointer-events-auto absolute overflow-hidden rounded-2xl bg-black shadow-[0_6px_18px_rgba(0,0,0,0.18)] ring-2 ring-[#ef4444] active:scale-95"
                   style={{ left: NODE_X, top, width: NODE_SIZE, height: NODE_SIZE }}

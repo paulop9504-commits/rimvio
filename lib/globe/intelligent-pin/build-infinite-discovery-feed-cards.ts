@@ -167,14 +167,12 @@ export function buildInfiniteDiscoveryFeedCards(input: {
       input.event.place?.trim() ||
       input.event.title?.trim() ||
       item.title;
-    const videoContext =
-      item.kind === "activity" || item.kind === "amenity"
-        ? resolveResourceReviewVideoContext({
-            event: input.event,
-            item,
-            areaFallback,
-          })
-        : null;
+    // Lodging · eatery · activity · amenity — all open pin-anchored YouTube.
+    const videoContext = resolveResourceReviewVideoContext({
+      event: input.event,
+      item,
+      areaFallback,
+    });
     return {
       resourceId: item.resourceId,
       kind: item.kind,

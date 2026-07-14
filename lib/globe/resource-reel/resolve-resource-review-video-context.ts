@@ -53,16 +53,12 @@ export function resolveResourceReviewVideoContext(input: {
     (input.item.kind === "activity" || input.item.kind === "amenity") &&
     input.event
   ) {
-    const row = readEateryInventoryRows(input.event).find(
-      (entry) => entry.placeId === input.item.placeId,
-    );
-    const address = row?.address?.trim() ?? null;
     return {
-      name: row?.name?.trim() || input.item.title.trim(),
-      place: address || areaFallback,
+      name: input.item.title.trim(),
+      place: areaFallback,
       kind: "place",
-      lat: row?.lat ?? input.item.lat,
-      lng: row?.lng ?? input.item.lng,
+      lat: input.item.lat,
+      lng: input.item.lng,
     };
   }
 

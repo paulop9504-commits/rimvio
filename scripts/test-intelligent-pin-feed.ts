@@ -62,5 +62,10 @@ assert.equal(cards[1]?.kind, "eatery");
 assert.equal(cards[2]?.kind, "activity");
 assert.equal(cards[0]?.transaction.canCheckout, false);
 assert.equal(cards[0]?.state.capsuleState, "exploring");
+assert.equal(cards[0]?.media.videoContext?.kind, "lodging");
+assert.equal(cards[0]?.media.videoContext?.lat, 34.7);
+assert.equal(cards[1]?.media.videoContext?.kind, "eatery");
+assert.equal(cards[2]?.media.videoContext?.kind, "place");
+assert.ok(cards.every((card) => card.media.videoContext != null));
 
 console.log("test-intelligent-pin-feed: ok");

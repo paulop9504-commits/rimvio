@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Play } from "lucide-react";
 import type { ScoutFeedGateVideoContextWire } from "@/lib/globe/assistant/context-agent-compose-thread-store";
 import type { PlaceReviewVideo } from "@/lib/globe/place-review-video";
-import { dispatchPlaceMapYoutubeOpen } from "@/lib/globe/place-map-youtube-bridge";
+import { playPlaceReviewVideoOnMap } from "@/lib/globe/play-place-review-video-on-map";
 import { useAppLocale } from "@/hooks/use-copy";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
@@ -131,24 +131,15 @@ export function GlobeFeedVideoHeroFallback({
           <button
             type="button"
             onClick={() => {
-              if (
-                Number.isFinite(videoContext.lat) &&
-                Number.isFinite(videoContext.lng) &&
-                primary.embedUrl.trim()
-              ) {
-                dispatchPlaceMapYoutubeOpen({
-                  embedUrl: primary.embedUrl,
-                  videoId: primary.videoId,
-                  title: primary.title,
-                  channelTitle: primary.channelTitle,
-                  thumbnailUrl: primary.thumbnailUrl,
-                  lat: videoContext.lat,
-                  lng: videoContext.lng,
-                  placeLabel: videoContext.name,
-                });
-                return;
+              const played = playPlaceReviewVideoOnMap({
+                video: primary,
+                lat: videoContext.lat,
+                lng: videoContext.lng,
+                placeLabel: videoContext.name,
+              });
+              if (!played) {
+                setPlayer(primary);
               }
-              setPlayer(primary);
             }}
             className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/25 active:bg-black/35"
             aria-label={copy.globe.videoBranchPlayAria(primary.title ?? videoContext.name)}
