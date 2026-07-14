@@ -11,7 +11,7 @@ export function projectWorldGeoToPlaceFields(text: string): {
   label: string;
   lat: number;
   lng: number;
-  countryCode: "JP" | null;
+  countryCode: "JP" | "CN" | "KR" | null;
   countryName: string | null;
   region: string | null;
   city: string | null;
@@ -44,7 +44,14 @@ export function projectWorldGeoToPlaceFields(text: string): {
     label: hit.node.labels.ko,
     lat: hit.node.centroid.lat,
     lng: hit.node.centroid.lng,
-    countryCode: country?.id === "geo:jp" ? "JP" : null,
+    countryCode:
+      country?.id === "geo:jp"
+        ? "JP"
+        : country?.id === "geo:cn"
+          ? "CN"
+          : country?.id === "geo:kr"
+            ? "KR"
+            : null,
     countryName: country?.labels.ko ?? null,
     region: region?.labels.ko ?? null,
     city: city?.labels.ko ?? null,
@@ -80,7 +87,12 @@ export function enrichCanonicalPlaceProfileFromRealityGraph(
     confidence: Math.max(profile.confidence, fields.confidence),
     searchHints: {
       ...profile.searchHints,
-      countryBias: fields.countryCode === "JP" ? "jp" : profile.searchHints.countryBias,
+      countryBias:
+        fields.countryCode === "JP"
+          ? "jp"
+          : fields.countryCode === "KR"
+            ? "kr"
+            : profile.searchHints.countryBias,
       areaLabel: fields.hierarchyKo,
       localityQuery: fields.district || fields.city || profile.searchHints.localityQuery,
     },

@@ -87,5 +87,12 @@ export {
   getWorldGeoNode,
   listWorldGeoChildren,
 };
-
 export type { WorldGeoEntityId, RealityGraphResolveHit, RealitySyncSlice, WorldEngineId };
+
+/** Async Location Engine — Preference: Reality Graph → registry → Nominatim. */
+export {
+  resolveLocationFromText,
+  resolveLocationFromCoords,
+  suggestLocationsFromText,
+} from "@/lib/location-engine";
+export type { LocationEntity, LocationResolveResult } from "@/lib/location-engine";

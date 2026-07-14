@@ -95,4 +95,15 @@ import { resolveSpatialTargetFromText } from "../lib/globe/spatial/resolve-spati
   assert.equal(fields!.timezone, "Asia/Tokyo");
 }
 
-console.log("✓ reality graph (tokyo · shinjuku · sync · spatial)");
+// China / Korea seed
+{
+  const shanghai = resolveWorldGeoEntity("상하이");
+  assert.ok(shanghai);
+  assert.equal(shanghai!.node.id, "geo:cn:shanghai");
+  const pudong = projectWorldGeoToPlaceFields("푸동");
+  assert.ok(pudong);
+  assert.equal(pudong!.zoneId, "geo:cn:shanghai:pudong");
+  assert.equal(pudong!.countryCode, "CN");
+}
+
+console.log("✓ reality graph (tokyo · shinjuku · sync · spatial · shanghai)");

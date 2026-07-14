@@ -8,6 +8,8 @@ import { inferCountryCodeFromCoords, isCoordInKorea } from "@/lib/globe/geo-regi
 import { googlePlacesApiKey, isGooglePlacesConfigured } from "@/lib/locate/google-places-config";
 import { isNaverSearchConfigured } from "@/lib/naver/config";
 import { fetchNaverLocalPlaceCandidates } from "@/lib/naver/local-to-place-candidate";
+import { mixBibGourmandIntoCandidates } from "@/lib/restaurant-search/bib-gourmand";
+import { fetchBibGourmandPlaces } from "@/lib/restaurant-search/fetch-bib-gourmand-places";
 import { requestRestaurantSpecialness } from "@/lib/restaurant-search/request-llm-restaurant-specialness";
 import type {
   RestaurantSearchCandidate,
@@ -625,7 +627,7 @@ export async function searchRestaurants(
     originInKorea &&
     (providerBias === "naver_local" || providerBias === "global");
 
-  const [naverCandidates, googleCandidates] = await Promise.all([
+  const [naverCandidates, googleCandidates, bibCandidates] = await Promise.all([
     shouldUseNaver ? searchNaverLocal({
       query: naverQuery,
       maxResults,
@@ -640,6 +642,20 @@ export async function searchRestaurants(
           language,
           countryBias,
           intent,
+        })
+      : Promise.resolve<RestaurantSearchCandidate[]>([]),
+    origin
+      ? fetchBibGourmandPlaces({
+          origin,
+          countryBias,
+          areaLabel:
+            placeProfile?.searchHints.areaLabel ??
+            placeProfile?.city ??
+            input.anchorLabel ??
+            null,
+          radiusM: Math.max(radiusM, 8000),
+          maxResults: 4,
+          language,
         })
       : Promise.resolve<RestaurantSearchCandidate[]>([]),
   ]);
@@ -665,6 +681,26 @@ export async function searchRestaurants(
   if (intent.openNowOnly) {
     candidates = candidates.filter((candidate) => candidate.openNow !== false);
   }
+
+  const bibInRadius = bibCandidates.filter((candidate) => {
+    if (!passesExcludes(candidate, intent.excludeKeywords)) {
+      return false;
+    }
+    if (!isCanonicalPlaceCountryCompatible(placeProfile, candidate.address ?? candidate.name)) {
+      return false;
+    }
+    if (isCandidateRegionMismatch(candidate, countryBias)) {
+      return false;
+    }
+    // Bib density is sparse — allow a wider band than the local nearby radius.
+    if (isCandidateTooFar(candidate, origin, Math.max(radiusM, 12000))) {
+      return false;
+    }
+    if (intent.openNowOnly && candidate.openNow === false) {
+      return false;
+    }
+    return true;
+  });
 
   candidates = candidates
     .map((candidate) => ({
@@ -706,8 +742,13 @@ export async function searchRestaurants(
       (left, right) =>
         (right.searchScore ?? 0) - (left.searchScore ?? 0) ||
         left.name.localeCompare(right.name, "ko"),
-    )
-    .slice(0, maxResults);
+    );
+
+  candidates = mixBibGourmandIntoCandidates({
+    ranked: candidates,
+    bibHits: bibInRadius,
+    maxResults,
+  });
 
   const providerBreakdown: RestaurantSearchResult["providerBreakdown"] = {};
   for (const candidate of candidates) {

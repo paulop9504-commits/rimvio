@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { toast } from "sonner";
 import { GlobeContextQuickPinButton } from "@/components/globe/globe-context-quick-pin-button";
 import { GlobeEateryRankModeChips } from "@/components/globe/globe-eatery-rank-mode-chips";
+import { GlobeFeedVideoHeroFallback } from "@/components/globe/globe-feed-video-hero-fallback";
 import { GlobeLodgingRankModeChips } from "@/components/globe/globe-lodging-rank-mode-chips";
 import { GlobeScoutFeedGateVideoStrip } from "@/components/globe/globe-scout-feed-gate-video-strip";
 import { copy } from "@/lib/copy/human-ko";
@@ -15,6 +16,7 @@ import {
   resolveGlobeDiscoveryFeedStatus,
 } from "@/lib/globe/discovery/globe-discovery-feed";
 import { getInfiniteDiscoveryFeedStatusCopy } from "@/lib/globe/intelligent-pin/get-infinite-feed-status-copy";
+import { shouldUseDiscoveryVideoHero } from "@/lib/globe/intelligent-pin/should-use-discovery-video-hero";
 import {
   dispatchIntelligentDiscoveryActiveCard,
 } from "@/lib/globe/intelligent-pin/intelligent-pin-bridge";
@@ -24,6 +26,7 @@ import {
 } from "@/lib/globe/intelligent-pin/record-discovery-feed-scroll-signal";
 import { maybeOfferRejectRescout } from "@/lib/globe/operator-turn/offer-scout-fail-recovery-client";
 import type { InfiniteDiscoveryFeedCard } from "@/lib/globe/intelligent-pin/types";
+import type { ScoutFeedGateVideoContextWire } from "@/lib/globe/assistant/context-agent-compose-thread-store";
 import type { RimvioEngineId } from "@/lib/engine/engine-types";
 import type { EateryRankMode } from "@/lib/globe/eatery/eatery-rank-profile";
 import {
@@ -77,6 +80,25 @@ function FeedImageSlider({ urls }: { urls: readonly string[] }) {
       ))}
     </div>
   );
+}
+
+function FeedHeroMedia({
+  urls,
+  videoContext,
+}: {
+  urls: readonly string[];
+  videoContext?: ScoutFeedGateVideoContextWire | null;
+}) {
+  if (
+    shouldUseDiscoveryVideoHero({
+      imageUrls: urls,
+      hasVideoContext: Boolean(videoContext),
+    }) &&
+    videoContext
+  ) {
+    return <GlobeFeedVideoHeroFallback videoContext={videoContext} />;
+  }
+  return <FeedImageSlider urls={urls} />;
 }
 
 export function GlobeInfiniteDiscoveryFeedPanel({
@@ -402,7 +424,10 @@ export function GlobeInfiniteDiscoveryFeedPanel({
                     ) : null}
                   </div>
 
-                  <FeedImageSlider urls={card.media.imageUrls} />
+                  <FeedHeroMedia
+                    urls={card.media.imageUrls}
+                    videoContext={card.media.videoContext}
+                  />
 
                   <div className="flex items-center justify-between gap-2 px-3 py-2.5">
                     <GlobeContextQuickPinButton
@@ -449,7 +474,11 @@ export function GlobeInfiniteDiscoveryFeedPanel({
                       {card.media.detailReasonLine}
                     </p>
 
-                    {card.media.videoContext ? (
+                    {card.media.videoContext &&
+                    !shouldUseDiscoveryVideoHero({
+                      imageUrls: card.media.imageUrls,
+                      hasVideoContext: true,
+                    }) ? (
                       <div className="pt-1" data-globe-infinite-feed-video>
                         <GlobeScoutFeedGateVideoStrip
                           videoContext={card.media.videoContext}

@@ -57,6 +57,7 @@ function buildAttractionPhotoQueries(input: {
   anchor: string | null;
 }): string[] {
   const { name, anchor } = input;
+  const latinHeavy = /[A-Za-z]{3,}/.test(name) || (anchor ? /[A-Za-z]{3,}/.test(anchor) : false);
   return [
     ...new Set(
       [
@@ -65,6 +66,11 @@ function buildAttractionPhotoQueries(input: {
         `${name} 야경`,
         `${name} 풍경`,
         `${name} 여행`,
+        latinHeavy ? `${name} park` : null,
+        latinHeavy ? `${name} travel` : null,
+        latinHeavy ? `${name} visit` : null,
+        latinHeavy && anchor ? `${name} ${anchor}` : null,
+        latinHeavy && anchor ? `${anchor} ${name} park` : null,
         anchor ? `${anchor} ${name}` : null,
         anchor ? `${name} ${anchor} 관광` : null,
         `${name}`,

@@ -1927,6 +1927,7 @@ export const copyEn: Copy = {
     intelligentPinFixPinToast: (name: string) => `Fixed ${name} to this context`,
     intelligentPinAiInsightPrefix: "Context",
     intelligentPinSwipePhotos: "Swipe for more photos",
+    intelligentPinVideoHeroHint: "Field video instead of photos",
     scoutFeedGateIntro: (count: number) => `Found ${count} places.`,
     scoutFeedGateConfirmCta: "View results",
     scoutFeedGateArchiveCta: "View prior run",

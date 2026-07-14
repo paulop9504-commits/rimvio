@@ -1893,6 +1893,7 @@ export const copy = {
     intelligentPinFixPinToast: (name: string) => `${name}을 이 맥락에 고정했어요`,
     intelligentPinAiInsightPrefix: "맥락",
     intelligentPinSwipePhotos: "옆으로 넘겨 사진 더 보기",
+    intelligentPinVideoHeroHint: "사진 대신 현장 영상",
     scoutFeedGateIntro: (count: number) => `${count}곳을 찾았어요.`,
     scoutFeedGateConfirmCta: "확인하기",
     scoutFeedGateArchiveCta: "이전 결과 보기",
