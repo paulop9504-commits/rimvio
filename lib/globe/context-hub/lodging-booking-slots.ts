@@ -1,5 +1,6 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { buildLodgingStayWindow } from "@/lib/globe/context-hub/lodging-stay-window";
+import { hasLodgingDomainCue } from "@/lib/globe/domain-cues/lodging-domain-cues";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 import { commitEventUpsert } from "@/lib/source-of-truth/commit-truth";
 
@@ -15,7 +16,8 @@ export type LodgingBookingSlots = {
 };
 
 export function isLodgingBookingQuery(text: string): boolean {
-  return /숙소|호텔|숙박|stay|lodging|hotel|room/iu.test(text.trim());
+  const trimmed = text.trim();
+  return hasLodgingDomainCue(trimmed) || /room\b/iu.test(trimmed);
 }
 
 function coercePositiveInt(value: unknown): number | null {

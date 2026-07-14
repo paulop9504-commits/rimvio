@@ -214,6 +214,7 @@ export function GlobeInfiniteDiscoveryFeedPanel({
         maybeOfferRejectRescout({
           contextEventId,
           engineId,
+          seedUtterance: null,
         });
       }
     },

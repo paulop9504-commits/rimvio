@@ -33,7 +33,7 @@ const baseSpec = {
 };
 
 assert.equal(LOCAL_DISCOVERY_PIN_CAP, 3);
-assert.equal(LOCAL_DISCOVERY_RECOMMEND_CAP, 6);
+assert.equal(LOCAL_DISCOVERY_RECOMMEND_CAP, 8);
 
 const picked = pickTopLocalDiscoveryRows({
   lodgingScored: [

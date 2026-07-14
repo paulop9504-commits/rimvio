@@ -1,4 +1,6 @@
 import type { ContextLodgingInventoryRow } from "@/lib/globe/context-hub/lodging-resource-types";
+import { hasEateryDomainCue } from "@/lib/globe/domain-cues/eatery-domain-cues";
+import { hasLodgingDomainCue } from "@/lib/globe/domain-cues/lodging-domain-cues";
 
 export type ContextConditionAnchorPinIntent = {
   lodgingSimilar: boolean;
@@ -7,13 +9,9 @@ export type ContextConditionAnchorPinIntent = {
   lodgingMode: "nearby" | "similar_price" | null;
 };
 
-const LODGING_HINT =
-  /비슷한|같은\s*가격|비슷한\s*가격|숙소|호텔|게스트\s*하우스|게스트하우스|호스텔|료칸|민박|펜션|stay|hotel|lodging|hostel|guesthouse|guest\s*house|ryokan|宿|ホテル/iu;
 const LODGING_NEARBY_HINT =
   /주변|근처|nearby|찾|검색|추천|배치|꽂|pin|探|近く/iu;
 const LODGING_SIMILAR_PRICE_HINT = /비슷한|같은\s*가격|비슷한\s*가격|similar\s*price/iu;
-const EATERY_HINT =
-  /맛집|먹을|식당|밥|brunch|lunch|dinner|food|eatery|restaurant|카페|ラーメン|食|음료|음료수|드링크|drink|beverage|커피|coffee|주스|juice|스무디|smoothie|티하우스|tea\s*house|디저트|dessert|베이커리|bakery|목말|갈증/iu;
 const BOTH_HINT = /꽂|배치|찾|추천|주변|nearby|pin/iu;
 /** Short food-adjacent nouns after small talk — never route to lodging. */
 const FOOD_ADJACENT_HINT =
@@ -27,8 +25,9 @@ export function classifyContextConditionAnchorRequest(
   if (!text) {
     return { lodgingSimilar: true, eateryNearby: true, lodgingMode: "nearby" };
   }
-  const lodgingSimilar = LODGING_HINT.test(text);
-  const eateryNearby = EATERY_HINT.test(text);
+  const lodgingSimilar =
+    hasLodgingDomainCue(text) || LODGING_SIMILAR_PRICE_HINT.test(text);
+  const eateryNearby = hasEateryDomainCue(text);
   const lodgingMode = LODGING_SIMILAR_PRICE_HINT.test(text)
     ? "similar_price"
     : lodgingSimilar && LODGING_NEARBY_HINT.test(text)

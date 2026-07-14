@@ -1,5 +1,7 @@
 import type { GlobeResourceReelKind } from "@/lib/globe/resource-reel/types";
 import type { ResourceReelKindFilter } from "@/lib/globe/resource-reel/resource-reel-kind-filter";
+import { hasEateryDomainCue } from "@/lib/globe/domain-cues/eatery-domain-cues";
+import { hasLodgingDomainCue } from "@/lib/globe/domain-cues/lodging-domain-cues";
 
 const FILTER_CUE =
   /(?:만|only|필터|골라\s*서\s*보|으로\s*만|로\s*만|만\s*보|만\s*볼)/iu;
@@ -14,10 +16,10 @@ function matchKind(text: string): GlobeResourceReelKind | "all" | null {
   if (/전체|모두|다\s*보|all\b/iu.test(text)) {
     return "all";
   }
-  if (/맛집|식당|레스토랑|카페|먹|eatery|restaurant|food|cafe/iu.test(text)) {
+  if (hasEateryDomainCue(text)) {
     return "eatery";
   }
-  if (/숙소|호텔|숙박|lodging|hotel|stay/iu.test(text)) {
+  if (hasLodgingDomainCue(text)) {
     return "lodging";
   }
   if (

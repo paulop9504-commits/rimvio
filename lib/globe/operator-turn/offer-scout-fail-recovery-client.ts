@@ -3,11 +3,13 @@
 /**
  * Gap 6 — scout fail → one soft retry; reject streak → one re-scout.
  * Does not auto-Commit. Still one Act per system fire (Operator bridge).
+ * Seeds preserve last user intent (hostel · price) via domain-cue recovery.
  */
 
 import { appendContextAgentComposeTurn } from "@/lib/globe/assistant";
 import { recordPlanSequencerProgress } from "@/lib/context-execution/record-plan-sequencer-progress";
 import type { RimvioEngineId } from "@/lib/engine/engine-types";
+import { resolveScoutRecoverySeed } from "@/lib/globe/domain-cues/resolve-scout-recovery-seed";
 import { requestOperatorAutoRun } from "@/lib/globe/operator-turn/operator-auto-run-bridge";
 import { countDiscoveryFeedRejectSignals } from "@/lib/globe/intelligent-pin/record-discovery-feed-scroll-signal";
 
@@ -20,25 +22,8 @@ function failKey(contextEventId: string, engineId: RimvioEngineId): string {
   return `${contextEventId.trim()}::${engineId}`;
 }
 
-function seedForEngine(engineId: RimvioEngineId): string {
-  switch (engineId) {
-    case "lodging_search":
-      return "주변 호텔 더 넓게 찾아줘";
-    case "eatery_search":
-      return "주변 맛집 더 찾아줘";
-    case "activity_search":
-      return "주변 놀거리 더 찾아줘";
-    case "local_amenity_search":
-      return "근처 편의시설 더 찾아줘";
-    case "trip_experience_search":
-      return "숙소 맛집 놀거리 같이 더 찾아줘";
-    default:
-      return "비슷한 후보 다시 찾아줘";
-  }
-}
-
 /**
- * After scout_failed — one auto retry with wider seed; then chips stay on compose.
+ * After scout_failed — one auto retry with widened prior intent; then chips stay on compose.
  */
 export function offerScoutFailRecovery(input: {
   contextEventId: string;
@@ -66,7 +51,11 @@ export function offerScoutFailRecovery(input: {
     return false;
   }
   scoutFailRetried.add(key);
-  const seed = input.seedUtterance?.trim() || seedForEngine(input.engineId);
+  const seed = resolveScoutRecoverySeed({
+    contextEventId,
+    engineId: input.engineId,
+    seedUtterance: input.seedUtterance,
+  });
   const progressKo = "범위를 넓혀 다시 맞추는 중이에요…";
   appendContextAgentComposeTurn(contextEventId, {
     role: "assistant",
@@ -110,8 +99,11 @@ export function maybeOfferRejectRescout(input: {
   }
   rejectRescouted.add(contextEventId);
   const engineId = input.engineId ?? "lodging_search";
-  const seed =
-    input.seedUtterance?.trim() || seedForEngine(engineId);
+  const seed = resolveScoutRecoverySeed({
+    contextEventId,
+    engineId,
+    seedUtterance: input.seedUtterance,
+  });
   const progressKo = "넘겨 보신 쪽으로 맞춰 다시 찾는 중이에요…";
   appendContextAgentComposeTurn(contextEventId, {
     role: "assistant",
@@ -138,4 +130,3 @@ export function resetScoutRecoveryMemoryForTests(): void {
   scoutFailRetried.clear();
   rejectRescouted.clear();
 }
-

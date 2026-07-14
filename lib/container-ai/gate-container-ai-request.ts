@@ -12,11 +12,11 @@ import type { ContainerAIGateOutcome } from "@/lib/container-ai/types";
 import { readContainerAIContext } from "@/lib/container-ai/read-container-ai-context";
 import { evaluateOnboardingParallelException } from "@/lib/container-ai/evaluate-onboarding-parallel-exception";
 
-const LODGING_HINT =
-  /주변|호텔|숙소|hotel|lodging|stay|숙박|宿|ホテル/iu;
+import { hasEateryDomainCue } from "@/lib/globe/domain-cues/eatery-domain-cues";
+import { hasLodgingDomainCue } from "@/lib/globe/domain-cues/lodging-domain-cues";
+
 const SIMILAR_PRICE_HINT = /비슷한|같은\s*가격|similar\s*price/iu;
 const WALK_DISTANCE_HINT = /걸어|도보|walk|분\s*이내/iu;
-const EATERY_HINT = /맛집|식당|먹을|restaurant|eatery/iu;
 
 const DEFAULT_DESTINATION_CHOICES = [
   { id: "osaka", label: "오사카" },
@@ -28,11 +28,11 @@ const LODGING_READY_NODE_KINDS = new Set(["stay", "allocate"]);
 const LODGING_READY_NODE_IDS = new Set(["stay", "exec-lodging"]);
 
 function isLodgingRequest(message: string): boolean {
-  return LODGING_HINT.test(message);
+  return hasLodgingDomainCue(message);
 }
 
 function isEateryRequest(message: string): boolean {
-  return EATERY_HINT.test(message);
+  return hasEateryDomainCue(message);
 }
 
 function nodeAllowsLodging(

@@ -8,7 +8,10 @@
  */
 import { isInstantPoiSearch } from "@/lib/globe/context-condition-ai/instant-poi-search";
 import { isInstantEaterySearch } from "@/lib/globe/context-condition-ai/instant-eatery-search";
+import { isInstantLodgingSearch } from "@/lib/globe/context-condition-ai/instant-lodging-search";
 import { isLodgingBookingQuery } from "@/lib/globe/context-hub/lodging-booking-slots";
+import { hasEateryDomainCue } from "@/lib/globe/domain-cues/eatery-domain-cues";
+import { hasLodgingDomainCue } from "@/lib/globe/domain-cues/lodging-domain-cues";
 import { resolveSmallTalk } from "@/lib/globe/context-condition-ai/resolve-small-talk";
 
 export type DispatchCategory = "chat" | "search" | "task";
@@ -31,6 +34,21 @@ const BEVERAGE_SEARCH =
 const WEATHER_CHAT =
   /(기온|온도|체감\s*온도|몇\s*도|temperature|temp\b|날씨\s*어때|날씨\s*알려|지금\s*날씨|현재\s*날씨|현재\s*기온)/iu;
 
+/** Explicit find / place-search cue — without domain noun still needs this for search fallback. */
+const SEARCH_VERB =
+  /찾|검색|추천|보여|알려|근처|주변|nearby|search|recommend|핀|꽂/iu;
+
+function hasDomainSearchCue(text: string): boolean {
+  return (
+    isInstantLodgingSearch(text) ||
+    isLodgingBookingQuery(text) ||
+    hasLodgingDomainCue(text) ||
+    isInstantEaterySearch(text) ||
+    hasEateryDomainCue(text) ||
+    isInstantPoiSearch(text)
+  );
+}
+
 function deterministicClassify(
   text: string,
   region?: string | null,
@@ -47,28 +65,22 @@ function deterministicClassify(
   if (TASK_CUE.test(text)) {
     return { category: "task", reasoning: "결정론: 작업 지시어", source: "deterministic" };
   }
-  if (isLodgingBookingQuery(text)) {
+  if (hasDomainSearchCue(text)) {
     return {
       category: "search",
-      reasoning: "결정론: 숙소 즉시 검색",
+      reasoning: "결정론: 도메인 검색 큐",
       source: "deterministic",
     };
   }
-  if (isInstantEaterySearch(text)) {
+  // No lodging/eatery/POI cue and no search verb → chat (do not default-scout).
+  if (!SEARCH_VERB.test(text)) {
     return {
-      category: "search",
-      reasoning: "결정론: 즉시 맛집(음식점)",
+      category: "chat",
+      reasoning: "결정론: 도메인·검색 큐 없음 → 채팅",
       source: "deterministic",
     };
   }
-  if (isInstantPoiSearch(text)) {
-    return {
-      category: "search",
-      reasoning: "결정론: 즉시 POI(편의·약국 등)",
-      source: "deterministic",
-    };
-  }
-  return { category: "search", reasoning: "결정론: 기본 검색", source: "deterministic" };
+  return { category: "search", reasoning: "결정론: 검색 동사", source: "deterministic" };
 }
 
 export async function classifyInput(input: {
@@ -95,7 +107,7 @@ export async function classifyInput(input: {
       source: "deterministic",
     };
   }
-  if (isLodgingBookingQuery(text)) {
+  if (isInstantLodgingSearch(text) || isLodgingBookingQuery(text)) {
     return {
       category: "search",
       reasoning: "결정론: 숙소 즉시 검색",

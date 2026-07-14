@@ -8,7 +8,7 @@ export type TravelRequestScope = "broad" | "narrow";
 
 /** Explicit single-category asks — forces narrow even on first utterance. */
 const NARROW_CATEGORY =
-  /(?:항공권|항공|비행기|숙소|호텔|맛집|식당|카페|놀거리|관광|명소|렌터카|렌트카|택시|약국|편의점)(?:\s*만|\s*만\s*좀|\s*하나만)?|(?:만|하나만)\s*(?:찾아|보여|알려)|일단\s*(?:항공|숙소|호텔|맛집)/iu;
+  /(?:항공권|항공|비행기|숙소|호텔|게스트\s*하우스|게스트하우스|호스텔|료칸|민박|펜션|맛집|식당|카페|놀거리|관광|명소|렌터카|렌트카|택시|약국|편의점|hostel|hotel|lodging)(?:\s*만|\s*만\s*좀|\s*하나만)?|(?:만|하나만)\s*(?:찾아|보여|알려)|일단\s*(?:항공|숙소|호텔|게스트\s*하우스|게스트하우스|맛집)/iu;
 
 const DELEGATION_SIGNAL =
   /다\s*알아서|알아서\s*(?:찾아|해|준비)|잘\s*부탁|초행|처음\s*(?:가|와|옴|입니다|이에요)|전부\s*(?:다\s*)?찾아|한꺼번에|다\s*찾아|전반\s*적으로|다\s*준비|전부\s*부탁|first\s*time|never\s*been|take\s*care\s*of\s*(?:it|everything)/iu;

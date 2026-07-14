@@ -18,6 +18,8 @@ import {
   readScoutSelectedAnchor,
   writeScoutSelectedAnchor,
 } from "@/lib/globe/contracts";
+import { hasEateryDomainCue } from "@/lib/globe/domain-cues/eatery-domain-cues";
+import { hasLodgingDomainCue } from "@/lib/globe/domain-cues/lodging-domain-cues";
 
 export function resolveDiscoveryOriginForContext(
   contextEventId: string,
@@ -122,9 +124,9 @@ export async function maybeSpawnDiscoveryLensesFromChoice(input: {
 }
 
 export function isLodgingDiscoveryMessage(text: string): boolean {
-  return /숙소|호텔|숙박|lodging|hotel|stay/iu.test(text.trim());
+  return hasLodgingDomainCue(text);
 }
 
 export function isEateryDiscoveryMessage(text: string): boolean {
-  return /맛집|식당|카페|커피|먹|restaurant|cafe|food/iu.test(text.trim());
+  return hasEateryDomainCue(text);
 }

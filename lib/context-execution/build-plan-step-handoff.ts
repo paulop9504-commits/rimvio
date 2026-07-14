@@ -107,13 +107,13 @@ function buildHandoffForEngine(
     case "lodging_search":
       return {
         hintKo: "숙소를 이어서 찾아볼까요?",
-        seedUtterance: "주변 호텔 찾아줘",
+        seedUtterance: "주변 숙소 찾아줘",
         chips: [
           {
             id: "plan_handoff_lodging",
             labelKo: "숙소 찾기",
             gapId: "plan_handoff",
-            value: "주변 호텔 찾아줘",
+            value: "주변 숙소 찾아줘",
           },
         ],
       };

@@ -7,6 +7,7 @@ import {
   isInstantLodgingSearch,
 } from "@/lib/globe/context-condition-ai/instant-lodging-search";
 import { parseMaxNightlyPriceKrw } from "@/lib/globe/context-condition-ai/filter-lodging-for-intent";
+import { parseLodgingKindFromText } from "@/lib/globe/domain-cues/lodging-domain-cues";
 import {
   isInstantEaterySearch,
   resolveInstantEateryFocus,
@@ -103,20 +104,8 @@ function parseVibe(text: string): LocalDiscoveryVibe | null {
 }
 
 function parseLodgingKind(text: string): LocalDiscoveryLodgingKind | null {
-  if (/에어비|bnb|airbnb|민박/iu.test(text)) {
-    return "airbnb";
-  }
-  if (
-    /게스트\s*하우스|게스트하우스|호스텔|hostel|guesthouse|guest\s*house|캡슐\s*호텔|capsule/iu.test(
-      text,
-    )
-  ) {
-    return "hostel";
-  }
-  if (/호텔|hotel|료칸|ryokan|펜션/iu.test(text)) {
-    return "hotel";
-  }
-  return null;
+  const kind = parseLodgingKindFromText(text);
+  return kind === "any" ? null : kind;
 }
 
 function buildTransportQuestion(): LocalDiscoveryQuestion {

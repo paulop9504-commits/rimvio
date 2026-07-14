@@ -707,6 +707,7 @@ export const GlobeContextConditionPinBar = forwardRef<
             contextEventId,
             engineId: "trip_experience_search",
             lastError: "parallel_scout_empty",
+            seedUtterance: text,
           })
         ) {
           return null;
@@ -882,6 +883,7 @@ export const GlobeContextConditionPinBar = forwardRef<
             contextEventId,
             engineId: failedEngineId,
             lastError: "scout_empty",
+            seedUtterance: input.triggerMessage,
           });
           if (retried) {
             return null;
