@@ -37,12 +37,12 @@ export type LodgingRankProfile = {
   readonly reasonKo?: string | null;
 };
 
-/** Cold-start vector when user says nothing — value-ish but not a fixed sort rule. */
+/** Cold-start — balanced value (cheap dump loses to good mid-tier near hub). */
 export const DEFAULT_LODGING_RANK_WEIGHTS: LodgingRankWeights = {
-  price: 0.4,
-  quality: 0.35,
-  distance: 0.15,
-  popularity: 0.1,
+  price: 0.28,
+  quality: 0.36,
+  distance: 0.24,
+  popularity: 0.12,
 } as const;
 
 export const DEFAULT_LODGING_RANK_PROFILE: LodgingRankProfile = {
@@ -58,9 +58,10 @@ export const LODGING_RANK_MODE_PRESETS: Readonly<
 > = {
   value: {
     mode: "value",
-    weights: { price: 0.55, quality: 0.2, distance: 0.15, popularity: 0.1 },
+    // True 가성비 = not cheapest dump — quality + location must stay first-class.
+    weights: { price: 0.28, quality: 0.34, distance: 0.26, popularity: 0.12 },
     source: "preset",
-    reasonKo: "가성비 우선",
+    reasonKo: "값 대비 품질·위치",
   },
   distance: {
     mode: "distance",
@@ -175,8 +176,8 @@ export function applyLodgingRankContextHints(
       reasons.push("역·터미널 동선");
       break;
     case "price":
-      weights = blendLodgingRankWeights(weights, LODGING_RANK_MODE_PRESETS.value.weights, 0.4);
-      reasons.push("예산 압박");
+      weights = blendLodgingRankWeights(weights, LODGING_RANK_MODE_PRESETS.value.weights, 0.55);
+      reasons.push("값 대비 품질");
       break;
     case "aesthetic":
       weights = blendLodgingRankWeights(weights, LODGING_RANK_MODE_PRESETS.premium.weights, 0.35);

@@ -17,6 +17,11 @@ import {
 } from "@/lib/globe/lodging/verify-lodging-candidate";
 import { copy } from "@/lib/copy/human-ko";
 import type { ExplorationPolicyKnobs } from "@/lib/globe/discovery-policy/apply-exploration-mode";
+import { explorationScoreBias } from "@/lib/globe/discovery-policy/exploration-score-bias";
+import {
+  diversifyScoredRecommendations,
+  lodgingChainScorePenalty,
+} from "@/lib/globe/discovery-policy/diversify-scored-recommendations";
 import {
   explainLodgingRecommendationKo,
   type LodgingRecommendReasonInput,
@@ -241,6 +246,8 @@ export function scoreLodgingRecommendations(input: {
       lodgingPriority,
       budgetBand,
       context: input.context,
+      valueForMoney: valueLeaning,
+      cohortMedianPriceKrw,
     });
     const coreScore = computeWeightedLodgingRankScore(dimensions, profile);
     const businessBias = scoreBusinessTripLodgingBias({
@@ -259,9 +266,18 @@ export function scoreLodgingRecommendations(input: {
       row,
       mode: verifiedPool.modeApplied === "off" ? "off" : verifiedPool.modeApplied,
     });
+    const explorationDelta = input.exploration
+      ? explorationScoreBias({
+          knobs: input.exploration,
+          rating: null,
+          labels: [row.name, row.partnerLabel, row.address],
+        })
+      : 0;
     const score =
       coreScore +
       overlay +
+      explorationDelta -
+      lodgingChainScorePenalty(row.name) +
       (verification.score100 >= 72 ? 6 : verification.score100 >= 58 ? 3 : 0);
 
     const opportunity =
@@ -322,7 +338,13 @@ export function scoreLodgingRecommendations(input: {
     return left.row.name.localeCompare(right.row.name, "ko");
   });
 
-  return scored.map((entry, index) => {
+  const diversified = diversifyScoredRecommendations(scored, {
+    originLat: lat,
+    originLng: lng,
+    lambda: input.exploration?.mode === "diffuse" ? 0.5 : 0.62,
+  });
+
+  return diversified.map((entry, index) => {
     if (index === 0 && entry.matchReasons.length === 0) {
       const distanceKm =
         lat != null && lng != null

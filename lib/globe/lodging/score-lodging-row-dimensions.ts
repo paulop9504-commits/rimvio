@@ -100,7 +100,7 @@ export function scoreLodgingDistanceDimension(
   return 12;
 }
 
-/** Lower nightly rate → higher value score. */
+/** Lower nightly rate → higher score (raw cheapness — not true 가성비). */
 export function scoreLodgingPriceDimension(
   priceKrw: number | null | undefined,
 ): number {
@@ -120,6 +120,61 @@ export function scoreLodgingPriceDimension(
     return 40;
   }
   return 18;
+}
+
+/**
+ * True 가성비 axis: goods (quality · location · evidence) per relative price.
+ * Cheap far dumps lose; mid-price near hub with photos wins.
+ */
+export function scoreLodgingValueForMoneyDimension(input: {
+  priceKrw: number | null | undefined;
+  qualityScore: number;
+  distanceScore: number;
+  popularityScore: number;
+  verificationScore100?: number | null;
+  cohortMedianPriceKrw?: number | null;
+}): number {
+  const verification =
+    input.verificationScore100 != null &&
+    Number.isFinite(input.verificationScore100)
+      ? clampScore(input.verificationScore100)
+      : 50;
+  const goods = clampScore(
+    0.42 * input.qualityScore +
+      0.38 * input.distanceScore +
+      0.12 * input.popularityScore +
+      0.08 * verification,
+  );
+
+  const price = input.priceKrw;
+  if (price == null || !Number.isFinite(price) || price <= 0) {
+    return clampScore(goods * 0.78);
+  }
+
+  const median =
+    input.cohortMedianPriceKrw != null &&
+    Number.isFinite(input.cohortMedianPriceKrw) &&
+    input.cohortMedianPriceKrw > 0
+      ? input.cohortMedianPriceKrw
+      : 100_000;
+  const relative = price / median;
+  const costFactor = Math.max(0.4, Math.min(2.4, relative));
+  let score = goods / costFactor;
+
+  // Dirt-cheap + thin goods → not "가성비", just "싸기만".
+  if (goods < 42 && relative < 0.55) {
+    score *= 0.72;
+  }
+  // Mid-band with strong goods → sweet spot.
+  if (goods >= 58 && relative >= 0.55 && relative <= 1.15) {
+    score *= 1.12;
+  }
+  // Premium ticket without exceptional goods should not top value.
+  if (relative > 1.7 && goods < 72) {
+    score *= 0.65;
+  }
+
+  return clampScore(score);
 }
 
 function scoreLodgingQualityDimension(input: {
@@ -220,6 +275,9 @@ export function scoreLodgingRowDimensions(input: {
   lodgingPriority?: TravelLodgingPriority | null;
   budgetBand?: TravelBudgetBand | null;
   context?: ContextInstance;
+  /** When true, `price` axis becomes value-for-money (가성비) not raw cheapness. */
+  valueForMoney?: boolean;
+  cohortMedianPriceKrw?: number | null;
 }): { dimensions: LodgingRowDimensionScores; distanceKm: number | null } {
   const lat = input.lat ?? null;
   const lng = input.lng ?? null;
@@ -237,32 +295,55 @@ export function scoreLodgingRowDimensions(input: {
     distance = clampScore(distance + 12);
   }
 
+  const verificationBoost = scoreLodgingVerificationBoost(input.row);
+  const quality = clampScore(
+    scoreLodgingQualityDimension({
+      row: input.row,
+      lodgingPriority: input.lodgingPriority,
+      budgetBand: input.budgetBand,
+      context: input.context,
+      distanceKm,
+    }) + verificationBoost,
+  );
+  const popularity = clampScore(
+    scoreLodgingPopularityDimension(input.row) +
+      Math.round(verificationBoost * 0.6),
+  );
+
   let price = scoreLodgingPriceDimension(input.row.priceKrw);
-  if (input.lodgingPriority === "price" && input.row.priceKrw != null && input.row.priceKrw <= 100_000) {
-    price = clampScore(price + 14);
-  }
-  if (input.budgetBand === "value" && input.row.priceKrw != null && input.row.priceKrw <= 120_000) {
-    price = clampScore(price + 10);
+  if (input.valueForMoney) {
+    price = scoreLodgingValueForMoneyDimension({
+      priceKrw: input.row.priceKrw,
+      qualityScore: quality,
+      distanceScore: distance,
+      popularityScore: popularity,
+      verificationScore100: computeLodgingVerificationScore(input.row),
+      cohortMedianPriceKrw: input.cohortMedianPriceKrw,
+    });
+  } else {
+    if (
+      input.lodgingPriority === "price" &&
+      input.row.priceKrw != null &&
+      input.row.priceKrw <= 100_000
+    ) {
+      price = clampScore(price + 14);
+    }
+    if (
+      input.budgetBand === "value" &&
+      input.row.priceKrw != null &&
+      input.row.priceKrw <= 120_000
+    ) {
+      price = clampScore(price + 10);
+    }
   }
 
   return {
     distanceKm,
     dimensions: {
       price,
-      quality: clampScore(
-        scoreLodgingQualityDimension({
-          row: input.row,
-          lodgingPriority: input.lodgingPriority,
-          budgetBand: input.budgetBand,
-          context: input.context,
-          distanceKm,
-        }) + scoreLodgingVerificationBoost(input.row),
-      ),
+      quality,
       distance,
-      popularity: clampScore(
-        scoreLodgingPopularityDimension(input.row) +
-          Math.round(scoreLodgingVerificationBoost(input.row) * 0.6),
-      ),
+      popularity,
     },
   };
 }

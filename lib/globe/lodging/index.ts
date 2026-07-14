@@ -63,6 +63,7 @@ export {
   inferLodgingPriorityFromContext,
   scoreLodgingDistanceDimension,
   scoreLodgingPriceDimension,
+  scoreLodgingValueForMoneyDimension,
   scoreLodgingRowDimensions,
 } from "@/lib/globe/lodging/score-lodging-row-dimensions";
 export { computeLodgingResourceRankWeight } from "@/lib/globe/lodging/compute-lodging-resource-rank-weight";
