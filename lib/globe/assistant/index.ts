@@ -18,6 +18,7 @@ export {
   markOperatorAskChipsTurnSubmitted,
   clearContextAgentComposeThread,
   readContextAgentComposeThread,
+  patchContextAgentComposeTurn,
   subscribeContextAgentComposeThread,
   type ContextAgentComposeTurn,
   type ContextAgentComposeTurnInput,
@@ -25,5 +26,6 @@ export {
   type ScoutCardsComposePayload,
   type IntakeSlotsComposePayload,
   type OperatorAskChipsComposePayload,
+  type IntentExecutionTimelinePayload,
 } from "@/lib/globe/assistant/context-agent-compose-thread-store";
 export { CONTEXT_AGENT_ASK_FIRST } from "@/lib/globe/assistant/context-agent-ask-first";

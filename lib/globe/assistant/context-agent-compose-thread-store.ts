@@ -80,6 +80,21 @@ export type OperatorAskChipsComposePayload = {
   readonly selectedSummaryKo?: string;
 };
 
+export type IntentExecutionTimelineLaneWire = {
+  readonly id: string;
+  readonly titleKo: string;
+  readonly status: "pending" | "in_progress" | "done" | "waiting";
+  readonly detailKo: string;
+  readonly activeStage: string | null;
+};
+
+export type IntentExecutionTimelinePayload = {
+  readonly profile: "trip_revise" | "generic";
+  readonly currentStage: string;
+  readonly lanes: readonly IntentExecutionTimelineLaneWire[];
+  readonly status: "running" | "waiting_approval" | "complete";
+};
+
 export type ContextAgentComposeTurnInput =
   | {
       role: "user";
@@ -89,6 +104,12 @@ export type ContextAgentComposeTurnInput =
       role: "assistant";
       kind: "text" | "globe_apply" | "build_log";
       text: string;
+    }
+  | {
+      role: "assistant";
+      kind: "execution_timeline";
+      text: string;
+      payload: IntentExecutionTimelinePayload;
     }
   | {
       role: "assistant";
@@ -133,6 +154,14 @@ export type ContextAgentComposeTurn =
       role: "assistant";
       kind: "text" | "globe_apply" | "build_log";
       text: string;
+      atIso: string;
+    }
+  | {
+      id: string;
+      role: "assistant";
+      kind: "execution_timeline";
+      text: string;
+      payload: IntentExecutionTimelinePayload;
       atIso: string;
     }
   | {
@@ -241,6 +270,7 @@ export function appendContextAgentComposeTurn(
     last.kind !== "scout_feed_gate" &&
     last.kind !== "intake_slots" &&
     last.kind !== "ask_chips" &&
+    last.kind !== "execution_timeline" &&
     last.text === row.text
   ) {
     return last;
@@ -249,6 +279,43 @@ export function appendContextAgentComposeTurn(
   threads.set(id, [...existing, row].slice(-MAX_TURNS));
   emit(id);
   return row;
+}
+
+export function patchContextAgentComposeTurn(
+  eventId: string,
+  turnId: string,
+  patch: Partial<{
+    text: string;
+    kind: ContextAgentComposeTurn extends { kind: infer K } ? K : never;
+    payload: IntentExecutionTimelinePayload;
+  }>,
+): ContextAgentComposeTurn | null {
+  const id = eventId.trim();
+  const tid = turnId.trim();
+  if (!id || !tid) {
+    return null;
+  }
+  const existing = threads.get(id) ?? [];
+  const idx = existing.findIndex((row) => row.id === tid);
+  if (idx < 0) {
+    return null;
+  }
+  const prev = existing[idx]!;
+  if (prev.role !== "assistant") {
+    return null;
+  }
+  const next = {
+    ...prev,
+    ...patch,
+    id: prev.id,
+    atIso: prev.atIso,
+    role: "assistant" as const,
+  } as ContextAgentComposeTurn;
+  const copy = [...existing];
+  copy[idx] = next;
+  threads.set(id, copy);
+  emit(id);
+  return next;
 }
 
 export function appendScoutCardsComposeTurn(

@@ -223,8 +223,19 @@ export function applyEateryRankContextHints(
     weights = blendEateryRankWeights(weights, EATERY_RANK_MODE_PRESETS.popular.weights, 0.28);
     reasons.push("가족 동행");
   } else if (hints.companionMode === "couple") {
-    weights = blendEateryRankWeights(weights, EATERY_RANK_MODE_PRESETS.local.weights, 0.2);
-    reasons.push("둘만의 식사");
+    weights = blendEateryRankWeights(weights, EATERY_RANK_MODE_PRESETS.popular.weights, 0.28);
+    weights = blendEateryRankWeights(
+      weights,
+      { cuisineFit: 0.35, price: 0.15, distance: 0.15, vibe: 0.35 },
+      0.4,
+    );
+    reasons.push("둘만의 분위기");
+  } else if (hints.companionMode === "friends") {
+    weights = blendEateryRankWeights(weights, EATERY_RANK_MODE_PRESETS.local.weights, 0.3);
+    reasons.push("친구 동행");
+  } else if (hints.companionMode === "solo") {
+    weights = blendEateryRankWeights(weights, EATERY_RANK_MODE_PRESETS.local.weights, 0.15);
+    reasons.push("혼자 식사");
   }
 
   if (hints.budgetBand === "value") {

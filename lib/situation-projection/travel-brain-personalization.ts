@@ -4,6 +4,11 @@ import type { EventCandidate } from "@/lib/events/event-candidate";
 import { readContextTicketArtifact } from "@/lib/globe/context-hub/read-context-ticket-artifact";
 import { isLodgingHubEnabled } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import { isEateryHubEnabled } from "@/lib/globe/eatery/read-eatery-resource-inventory";
+import {
+  compileIntentBlueprint,
+  projectIntentBlueprintToTravel,
+  type TravelIntentProjection,
+} from "@/lib/intent-engine";
 import { findLatestPersonaSignal, type PersonaAxisId } from "@/lib/persona";
 import type { PersonaLearnChoice } from "@/lib/persona/types";
 import { findBrainQuestionFamilyAnswer } from "@/lib/situation-projection/brain-question-memory";
@@ -145,6 +150,29 @@ function buildSlot<T extends TravelBrainSlotId>(
   };
 }
 
+/** Intent Engine projection wins when confidence is at least as strong as regex infer. */
+function mergeTravelIntentSuggestion<T extends TravelBrainSlotId>(
+  slotId: T,
+  inferred: TravelBrainSlot<T>,
+  suggestion: {
+    value: TravelBrainSlotValueMap[T];
+    confidence: number;
+    reasonKo: string;
+  } | null,
+): TravelBrainSlot<T> {
+  if (!suggestion) {
+    return inferred;
+  }
+  if (suggestion.confidence + 0.02 < inferred.confidence) {
+    return inferred;
+  }
+  return buildSlot(slotId, suggestion.value, "inferred", suggestion.confidence, suggestion.reasonKo);
+}
+
+function readTravelIntentProjection(blob: string): TravelIntentProjection {
+  return projectIntentBlueprintToTravel(compileIntentBlueprint({ text: blob }));
+}
+
 function normalizeText(value: string): string {
   return value.replace(/\s+/gu, " ").trim();
 }
@@ -284,6 +312,9 @@ function inferCompanionMode(
   }
   if (/(연인|커플|남친|여친|신혼|허니문)/u.test(blob)) {
     return buildSlot("companion_mode", "couple", "inferred", 0.9, "연인 동행으로 읽었어요");
+  }
+  if (/(혼자|솔플|solo|나홀로)/u.test(blob)) {
+    return buildSlot("companion_mode", "solo", "inferred", 0.88, "혼자 여행으로 읽었어요");
   }
   if (/(친구|우정|친구들과|같이 가자)/u.test(blob) || (plan?.planMode === "group" && plan.peerDisplayName)) {
     return buildSlot("companion_mode", "friends", "inferred", 0.82, "친구 동행 가능성이 높아요");
@@ -457,8 +488,26 @@ function inferLodgingPriority(input: {
   if (/(조용|휴식|숙면)/u.test(input.blob)) {
     return buildSlot("lodging_priority", "quiet", "inferred", 0.88, "조용한 숙소 선호가 보여요");
   }
-  if (/(감성|분위기|뷰|예쁜 숙소|호캉스)/u.test(input.blob) || input.contentIntent === "photo") {
+  if (/(감성|분위기|뷰|예쁜 숙소|호캉스|신혼|허니문)/u.test(input.blob) || input.contentIntent === "photo") {
     return buildSlot("lodging_priority", "aesthetic", "inferred", 0.82, "사진·감성 기준이 중요해 보여요");
+  }
+  if (input.companionMode === "couple") {
+    return buildSlot(
+      "lodging_priority",
+      "aesthetic",
+      "inferred",
+      0.84,
+      "둘만의 여행이라 분위기·뷰 숙소를 먼저 봐요",
+    );
+  }
+  if (input.companionMode === "friends") {
+    return buildSlot(
+      "lodging_priority",
+      "price",
+      "inferred",
+      0.72,
+      "친구 동행이라 가성비·공유 편한 숙소를 먼저 봐요",
+    );
   }
   if (input.companionMode === "parents" || input.companionMode === "family") {
     return buildSlot("lodging_priority", "family", "inferred", 0.9, "동행자 편의를 최우선으로 봐야 해요");
@@ -478,6 +527,7 @@ function inferFoodBias(input: {
   weekdayBucket: "weekday" | "friday" | "weekend" | "unknown";
   budgetBand: TravelBudgetBand;
   contentIntent: TravelContentIntent;
+  companionMode: TravelCompanionMode;
   learned: TravelFoodBias | null;
   fallbackLocality: "local" | "landmark" | "balanced" | null;
 }): TravelBrainSlot<"food_bias"> {
@@ -495,6 +545,33 @@ function inferFoodBias(input: {
   }
   if (/(로컬|현지|골목)/u.test(input.blob) || input.fallbackLocality === "local") {
     return buildSlot("food_bias", "local", "inferred", 0.85, "현지 느낌을 더 중요하게 봐요");
+  }
+  if (input.companionMode === "couple") {
+    return buildSlot(
+      "food_bias",
+      "landmark",
+      "inferred",
+      0.78,
+      "둘만의 식사라 분위기 좋은 검증된 곳을 먼저 봐요",
+    );
+  }
+  if (input.companionMode === "friends") {
+    return buildSlot(
+      "food_bias",
+      "local",
+      "inferred",
+      0.76,
+      "친구 동행이라 현지·나눠 먹기 좋은 곳을 열어 둬요",
+    );
+  }
+  if (input.companionMode === "parents" || input.companionMode === "family") {
+    return buildSlot(
+      "food_bias",
+      "landmark",
+      "inferred",
+      0.8,
+      "가족 동행이라 실패 확률 낮은 곳부터 봐요",
+    );
   }
   if (input.budgetBand === "value") {
     return buildSlot("food_bias", "value", "inferred", 0.78, "식사도 가성비 축이 잘 맞아 보여요");
@@ -642,6 +719,7 @@ export function buildTravelBrainState(
 ): TravelBrainState {
   const context = buildContextInstance({ event });
   const blob = buildTravelTextBlob(event);
+  const intentTravel = readTravelIntentProjection(blob);
   const destinationLabel = context.travel.destinationLabel || event.place?.trim() || "여행";
   const nights = context.travel.nights;
   const startIso = context.time.startIso;
@@ -654,33 +732,49 @@ export function buildTravelBrainState(
 
   const companionMode = resolveScopedTravelLearnedSlot({
     slotId: "companion_mode",
-    inferred: inferCompanionMode(blob, event),
+    inferred: mergeTravelIntentSuggestion(
+      "companion_mode",
+      inferCompanionMode(blob, event),
+      intentTravel.companionMode,
+    ),
     explicit: (learned.companion_mode as TravelCompanionMode | undefined) ?? null,
     familyValue: familyMemory.companionMode,
     reasonKo: "비슷한 여행에서 맞았던 동행 기준을 먼저 써요",
     conflictReasonKo: "이번 맥락의 동행 신호가 달라 보여서 다시 확인할게요",
   });
-  const tripStyle = inferTripStyle({
-    blob,
-    nights,
-    companionMode: companionMode.value,
-    learned: (learned.trip_style as TravelTripStyle | undefined) ?? persona.tripStyle,
-  });
+  const tripStyle = mergeTravelIntentSuggestion(
+    "trip_style",
+    inferTripStyle({
+      blob,
+      nights,
+      companionMode: companionMode.value,
+      learned: (learned.trip_style as TravelTripStyle | undefined) ?? persona.tripStyle,
+    }),
+    intentTravel.tripStyle,
+  );
   const contentIntent = resolveScopedTravelLearnedSlot({
     slotId: "content_intent",
-    inferred: inferContentIntent(blob),
+    inferred: mergeTravelIntentSuggestion(
+      "content_intent",
+      inferContentIntent(blob),
+      intentTravel.contentIntent,
+    ),
     explicit: (learned.content_intent as TravelContentIntent | undefined) ?? null,
     familyValue: familyMemory.contentIntent,
     reasonKo: "비슷한 여행에서 자주 고른 우선순위를 먼저 써요",
     conflictReasonKo: "이번 맥락의 목적 신호가 달라 보여서 다시 맞출게요",
   });
-  const budgetBand = inferBudgetBand({
-    blob,
-    nights,
-    overseas,
-    companionMode: companionMode.value,
-    learned: null,
-  });
+  const budgetBand = mergeTravelIntentSuggestion(
+    "budget_band",
+    inferBudgetBand({
+      blob,
+      nights,
+      overseas,
+      companionMode: companionMode.value,
+      learned: null,
+    }),
+    intentTravel.budgetBand,
+  );
   const resolvedBudgetBand = resolveScopedTravelLearnedSlot({
     slotId: "budget_band",
     inferred: budgetBand,
@@ -704,15 +798,20 @@ export function buildTravelBrainState(
     nights,
     airportTransferRisk: airportTransferRisk.value,
   });
-  const foodBias = inferFoodBias({
-    blob,
-    nights,
-    weekdayBucket,
-    budgetBand: resolvedBudgetBand.value,
-    contentIntent: contentIntent.value,
-    learned: (learned.food_bias as TravelFoodBias | undefined) ?? persona.foodBias,
-    fallbackLocality: persona.localityStyle,
-  });
+  const foodBias = mergeTravelIntentSuggestion(
+    "food_bias",
+    inferFoodBias({
+      blob,
+      nights,
+      weekdayBucket,
+      budgetBand: resolvedBudgetBand.value,
+      contentIntent: contentIntent.value,
+      companionMode: companionMode.value,
+      learned: (learned.food_bias as TravelFoodBias | undefined) ?? persona.foodBias,
+      fallbackLocality: persona.localityStyle,
+    }),
+    intentTravel.foodBias,
+  );
   const mobilityStyle = inferMobilityStyle({
     blob,
     companionMode: companionMode.value,
@@ -737,17 +836,25 @@ export function buildTravelBrainState(
     companionMode: companionMode.value,
     contentIntent: contentIntent.value,
   });
-  const lodgingPriority = inferLodgingPriority({
-    blob,
-    budgetBand: resolvedBudgetBand.value,
-    companionMode: companionMode.value,
-    arrivalEnergy: arrivalEnergy.value,
-    departurePressure: departurePressure.value,
-    contentIntent: contentIntent.value,
-    learned:
-      (learned.lodging_priority as TravelLodgingPriority | undefined) ?? persona.lodgingPriority,
-  });
-  const shoppingIntent = inferShoppingIntent(blob);
+  const lodgingPriority = mergeTravelIntentSuggestion(
+    "lodging_priority",
+    inferLodgingPriority({
+      blob,
+      budgetBand: resolvedBudgetBand.value,
+      companionMode: companionMode.value,
+      arrivalEnergy: arrivalEnergy.value,
+      departurePressure: departurePressure.value,
+      contentIntent: contentIntent.value,
+      learned:
+        (learned.lodging_priority as TravelLodgingPriority | undefined) ?? persona.lodgingPriority,
+    }),
+    intentTravel.lodgingPriority,
+  );
+  const shoppingIntent = mergeTravelIntentSuggestion(
+    "shopping_intent",
+    inferShoppingIntent(blob),
+    intentTravel.shoppingIntent,
+  );
   const mealTimingPattern = inferMealTimingPattern({
     blob,
     foodBias: foodBias.value,

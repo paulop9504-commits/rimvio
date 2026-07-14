@@ -87,6 +87,7 @@
     "test:action-spawn-lifecycle": "npx tsx scripts/test-action-spawn-lifecycle.ts",
     "test:integrations": "npx tsx scripts/test-integrations.ts && npx tsx scripts/test-google-calendar-ingest.ts && npx tsx scripts/test-calendar-schedule-origin.ts && npx tsx scripts/test-google-calendar-sync-throttle.ts && npx tsx scripts/test-google-calendar-oauth-config.ts",
     "test:intent-context-extractor": "npx tsx scripts/test-intent-context-extractor.ts",
+    "test:intent-engine": "npx tsx scripts/test-intent-engine.ts && npx tsx scripts/test-companion-trip-intents.ts && npx tsx scripts/test-intent-execution-timeline.ts",
     "test:context-understanding": "npx tsx scripts/test-context-understanding.ts",
     "test:llm-action-candidate-generator": "npx tsx scripts/test-llm-action-candidate-generator.ts",
     "test:travel-trip-announcement": "npx tsx scripts/test-travel-trip-announcement.ts",

@@ -6,6 +6,7 @@ import { GlobeContextScoutResultCard } from "@/components/globe/globe-context-sc
 import { GlobeLodgingRoomCardList } from "@/components/globe/globe-lodging-room-card-list";
 import { GlobeIntakeSlotsComposeCard } from "@/components/globe/intake/globe-intake-slots-compose-card";
 import { GlobeOperatorAskChipsComposeCard } from "@/components/globe/globe-operator-ask-chips-compose-card";
+import { GlobeIntentExecutionTimeline } from "@/components/globe/globe-intent-execution-timeline";
 import type { ContextAgentComposeTurn } from "@/lib/globe/assistant";
 import type { ContextConditionRecommendation } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
 import type { ContextConditionPinnedByKind } from "@/lib/globe/context-condition-ai/pin-context-condition-recommendation";
@@ -108,6 +109,14 @@ export function GlobeAssistantComposeThread({
               >
                 <span className="text-[#0071e3]">&gt;</span> {turn.text}
               </p>
+            </div>
+          );
+        }
+
+        if (turn.kind === "execution_timeline") {
+          return (
+            <div key={turn.id} className="flex justify-start">
+              <GlobeIntentExecutionTimeline payload={turn.payload} />
             </div>
           );
         }

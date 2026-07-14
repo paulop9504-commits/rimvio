@@ -52,4 +52,25 @@ assert.ok(
     valueBrain.slots.food_bias.value === "value",
 );
 
+const honeymoonEvent = {
+  id: "evt-honeymoon-food",
+  title: "오사카 여행",
+  place: "오사카",
+  description: "",
+  datetime: "2026-09-01T00:00:00.000Z",
+  createdAt: "2026-07-01T00:00:00.000Z",
+  updatedAt: "2026-07-01T00:00:00.000Z",
+  metadata: {
+    sourceMessage: "신혼 여행가려고",
+  },
+} as unknown as EventCandidate;
+
+const honeymoonBrain = buildTravelBrainState(honeymoonEvent);
+const honeymoonProfile = resolveEateryRankProfileFromTravelBrain({
+  travelBrain: honeymoonBrain,
+});
+assert.equal(honeymoonBrain.slots.companion_mode.value, "couple");
+assert.ok(honeymoonProfile.weights.vibe > DEFAULT_EATERY_RANK_WEIGHTS.vibe);
+assert.ok(honeymoonProfile.reasonKo?.includes("분위기") || honeymoonProfile.reasonKo?.includes("둘"));
+
 console.log("test-eatery-rank-profile-travel-brain: ok");

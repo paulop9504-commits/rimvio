@@ -101,7 +101,8 @@ type InferContextTitleMeaningInput = {
 const PARENT_PATTERN = /(?:엄마|아빠|어머니|아버지|부모님)/u;
 const FAMILY_PATTERN =
   /(?:가족|엄마|아빠|어머니|아버지|부모님|형|누나|오빠|언니|동생|할머니|할아버지)/u;
-const PARTNER_PATTERN = /(?:남친|여친|연인|데이트|아내|남편|wife|husband|partner)/iu;
+const PARTNER_PATTERN =
+  /(?:남친|여친|연인|데이트|아내|남편|신혼|허니문|wife|husband|partner|honeymoon)/iu;
 const COLLEAGUE_PATTERN =
   /(?:동료|팀원|팀|회사|사수|후배|선배|고객|클라이언트|대표|임원|파트너사)/u;
 const GROUP_PATTERN = /(?:우리\s*팀|단체|같이|함께|모임|회식|전체)/u;

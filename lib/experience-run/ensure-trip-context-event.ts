@@ -71,6 +71,8 @@ export function ensureTripContextEvent(input: {
     feedPlanEnabled: true,
     globeManualContext: true,
     targetingSource: "experience_run",
+    /** Preserve original utterance so TravelBrain companion/aesthetic survive city confirm. */
+    sourceMessage: message,
     executionProfileId:
       profile === "lodging_search"
         ? "lodging_search"
@@ -104,6 +106,8 @@ export function ensureTripContextEvent(input: {
     ? stampCanonicalPlaceProfile(metadataSeed, destinationAnchor.profile)
     : metadataSeed;
 
+  const companionGroup =
+    /(?:연인|커플|남친|여친|신혼|허니문|친구|가족|부모님|엄마|아빠)/u.test(message);
   const metadata = stampPlanContextMetadata(
     baseMetadata,
     {
@@ -117,7 +121,7 @@ export function ensureTripContextEvent(input: {
       peerDisplayName: null,
       peerThreadId: null,
       attachMode: "new",
-      planMode: "solo",
+      planMode: companionGroup ? "group" : "solo",
     },
   );
 

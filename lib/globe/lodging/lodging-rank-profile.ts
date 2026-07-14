@@ -200,8 +200,19 @@ export function applyLodgingRankContextHints(
     weights = blendLodgingRankWeights(weights, LODGING_RANK_MODE_PRESETS.premium.weights, 0.25);
     reasons.push("가족 동행");
   } else if (hints.companionMode === "couple") {
-    weights = blendLodgingRankWeights(weights, LODGING_RANK_MODE_PRESETS.premium.weights, 0.2);
+    weights = blendLodgingRankWeights(weights, LODGING_RANK_MODE_PRESETS.premium.weights, 0.35);
+    weights = {
+      ...weights,
+      quality: Math.min(0.6, weights.quality + 0.08),
+      popularity: Math.min(0.25, weights.popularity + 0.04),
+    };
     reasons.push("둘만의 여행");
+  } else if (hints.companionMode === "friends") {
+    weights = blendLodgingRankWeights(weights, LODGING_RANK_MODE_PRESETS.value.weights, 0.3);
+    reasons.push("친구 동행");
+  } else if (hints.companionMode === "solo") {
+    weights = blendLodgingRankWeights(weights, LODGING_RANK_MODE_PRESETS.distance.weights, 0.15);
+    reasons.push("혼자 여행");
   }
 
   if (hints.budgetBand === "value") {

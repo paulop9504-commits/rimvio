@@ -102,6 +102,10 @@ import {
   subscribeContextAgentComposeThread,
   type ContextAgentComposeTurn,
 } from "@/lib/globe/assistant";
+import {
+  isTripReviseUtterance,
+  startIntentExecutionTimelineWalk,
+} from "@/lib/intent-engine";
 import { applyScoutDomainCorrection } from "@/lib/globe/context-condition-ai/apply-scout-domain-correction";
 import {
   resolveCicadaAgentPhase,
@@ -208,6 +212,7 @@ export function GlobeContextConditionPromptFrame({
   );
   const pinBarRef = useRef<GlobeContextConditionPinBarHandle>(null);
   const prefetchStartedRef = useRef(false);
+  const intentTimelineWalkRef = useRef<{ stop: () => void } | null>(null);
   const [refineBusy, setRefineBusy] = useState(false);
   const [commitBusy, setCommitBusy] = useState(false);
   const [pickBusyPlaceId, setPickBusyPlaceId] = useState<string | null>(null);
@@ -884,6 +889,13 @@ export function GlobeContextConditionPromptFrame({
       });
     }
     appendContextAgentComposeTurn(event.id, { role: "user", text: line });
+    if (isTripReviseUtterance(line)) {
+      intentTimelineWalkRef.current?.stop();
+      intentTimelineWalkRef.current = startIntentExecutionTimelineWalk({
+        contextEventId: event.id,
+        profile: "trip_revise",
+      });
+    }
     setComposeThread(readContextAgentComposeThread(event.id));
   };
 

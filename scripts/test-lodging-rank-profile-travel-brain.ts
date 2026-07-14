@@ -48,4 +48,26 @@ assert.ok(
     businessBrain.slots.lodging_priority.value === "station",
 );
 
+const honeymoonEvent = {
+  id: "evt-honeymoon-osaka",
+  title: "오사카 여행",
+  place: "오사카",
+  description: "",
+  datetime: "2026-09-01T00:00:00.000Z",
+  createdAt: "2026-07-01T00:00:00.000Z",
+  updatedAt: "2026-07-01T00:00:00.000Z",
+  metadata: {
+    sourceMessage: "신혼 여행가려고",
+  },
+} as unknown as EventCandidate;
+
+const honeymoonBrain = buildTravelBrainState(honeymoonEvent);
+const honeymoonProfile = resolveLodgingRankProfileFromTravelBrain({
+  travelBrain: honeymoonBrain,
+});
+assert.equal(honeymoonBrain.slots.companion_mode.value, "couple");
+assert.equal(honeymoonBrain.slots.lodging_priority.value, "aesthetic");
+assert.equal(honeymoonProfile.source, "context");
+assert.ok(honeymoonProfile.weights.quality >= DEFAULT_LODGING_RANK_WEIGHTS.quality);
+
 console.log("test-lodging-rank-profile-travel-brain: ok");
