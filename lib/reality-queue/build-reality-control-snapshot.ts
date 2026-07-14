@@ -1,5 +1,5 @@
 /**
- * Compose Reality Control snapshot from Execution Plan + active trades.
+ * Compose Reality Control snapshot from Execution Plan + trades + prepared Operations.
  * Does not Commit — read-only Pending Reality projection.
  */
 
@@ -7,13 +7,24 @@ import { readContextExecutionPlanFromEvent } from "@/lib/context-execution/conte
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { listLifeEventCandidates } from "@/lib/life-read-model";
 import type { MarketTradeSessionView } from "@/lib/globe/market/market-trade-types";
+import {
+  domainFolderLabelKo,
+  engineIdToQueueKind,
+  kindLabelKo,
+  queueKindToDomain,
+  queueKindToOperationType,
+} from "@/lib/reality-queue/operation-taxonomy";
+import { preparedOperationsAsQueueItems } from "@/lib/reality-queue/prepared-operations-store";
 import { readRealityQueueHeldItemIds } from "@/lib/reality-queue/reality-queue-hold-store";
 import type {
   RealityAgentChipV1,
   RealityControlSnapshotV1,
+  RealityOperationDomain,
+  RealityOperationFolderV1,
   RealityQueueItemStatus,
   RealityQueueItemV1,
 } from "@/lib/reality-queue/types";
+import { asQueueItem } from "@/lib/reality-queue/types";
 
 const PLAN_PHASES_PENDING = new Set([
   "execution_planned",
@@ -23,9 +34,15 @@ const PLAN_PHASES_PENDING = new Set([
   "waiting_approval",
 ]);
 
-function stepStatusToQueue(
-  status: string,
-): RealityQueueItemStatus {
+const DOMAIN_ORDER: readonly RealityOperationDomain[] = [
+  "travel",
+  "shopping",
+  "finance",
+  "work",
+  "other",
+];
+
+function stepStatusToQueue(status: string): RealityQueueItemStatus {
   if (status === "prepared" || status === "ready" || status === "done") {
     return "ready";
   }
@@ -35,27 +52,14 @@ function stepStatusToQueue(
   if (status === "blocked" || status === "failed") {
     return "blocked";
   }
-  if (status === "waiting_approval") {
-    return "needs_review";
+  if (status === "waiting_approval" || status === "pending") {
+    return status === "pending" ? "pending" : "needs_review";
   }
   return "needs_review";
 }
 
 function engineIdToAgentLabel(engineId: string | null): string {
-  switch (engineId) {
-    case "flight_booking":
-      return "항공";
-    case "lodging_search":
-      return "숙소";
-    case "transit_navigate":
-      return "이동";
-    case "finance_prep":
-      return "결제";
-    case "trip_experience_search":
-      return "경험";
-    default:
-      return "준비";
-  }
+  return kindLabelKo(engineIdToQueueKind(engineId));
 }
 
 function buildItemsFromPlans(
@@ -71,22 +75,42 @@ function buildItemsFromPlans(
       if (step.status === "done") {
         continue;
       }
-      // Executing: only surface Commit-ready (or blocked) steps — hide running/
-      // pending so the queue is a step approval loop, not a full graph dump.
       if (plan.osPhase === "executing") {
         if (step.status === "pending" || step.status === "running") {
           continue;
         }
       }
-      items.push({
-        itemId: `plan:${event.id}:${step.stepId}`,
-        kind: "execution_step",
-        labelKo: step.labelKo.trim() || "실행 단계",
-        status: stepStatusToQueue(step.status),
-        contextEventId: event.id,
-        detailKo: plan.goalKo,
-        sourceRef: step.stepId,
-      });
+      const kind = engineIdToQueueKind(step.engineId);
+      const labelKo = step.labelKo.trim() || "실행 단계";
+      const operationId = `plan:${event.id}:${step.stepId}`;
+      items.push(
+        asQueueItem({
+          operationId,
+          type: queueKindToOperationType(kind),
+          domain: queueKindToDomain(kind),
+          status: stepStatusToQueue(step.status),
+          contextEventId: event.id,
+          contextLabelKo: plan.goalKo,
+          labelKo,
+          createdBy: "ai_assistant",
+          preview: {
+            titleKo: labelKo,
+            summaryKo: plan.goalKo,
+            diffFromKo: "준비 전",
+            diffToKo: `${labelKo} 반영`,
+            confidencePct: step.status === "prepared" ? 90 : 75,
+          },
+          needApproval: true,
+          dependsOnItemIds: [],
+          dependencyNoteKo: null,
+          undoAllowed: true,
+          expiresAtIso: null,
+          sourceRef: step.stepId,
+          engineId: step.engineId,
+          kind,
+          detailKo: plan.goalKo,
+        }),
+      );
     }
   }
   return items;
@@ -111,45 +135,70 @@ function buildItemsFromTrades(
       session.tradeStatus === "confirmed" ||
       session.tradeStatus === "en_route" ||
       session.tradeStatus === "meeting";
-    return {
-      itemId: `trade:${session.handshakeId}`,
-      kind: "trade" as const,
-      labelKo: label,
-      status: (needsReview
-        ? "needs_review"
-        : ready
-          ? "ready"
-          : "needs_review") as RealityQueueItemStatus,
+    const status = (needsReview
+      ? "needs_review"
+      : ready
+        ? "ready"
+        : "needs_review") as RealityQueueItemStatus;
+    const operationId = `trade:${session.handshakeId}`;
+    return asQueueItem({
+      operationId,
+      type: "trade",
+      domain: "shopping",
+      status,
       contextEventId: null,
+      contextLabelKo: null,
+      labelKo: label,
+      createdBy: "system",
+      preview: {
+        titleKo: label,
+        summaryKo: session.statusHeadlineKo?.trim() || "거래 확정 준비",
+        amountLabel: session.priceLine?.trim() || null,
+      },
+      needApproval: true,
+      dependsOnItemIds: [],
+      dependencyNoteKo: null,
+      undoAllowed: false,
+      expiresAtIso: null,
+      sourceRef: session.handshakeId,
+      engineId: null,
+      kind: "trade",
       detailKo: session.statusHeadlineKo?.trim() || null,
       amountLabel: session.priceLine?.trim() || null,
-      sourceRef: session.handshakeId,
-    };
+    });
   });
+}
+
+function buildFolders(
+  items: readonly RealityQueueItemV1[],
+): RealityOperationFolderV1[] {
+  const byDomain = new Map<RealityOperationDomain, RealityQueueItemV1[]>();
+  for (const item of items) {
+    const domain = item.domain ?? "other";
+    const list = byDomain.get(domain) ?? [];
+    list.push(item);
+    byDomain.set(domain, list);
+  }
+  return DOMAIN_ORDER.filter((domain) => (byDomain.get(domain)?.length ?? 0) > 0).map(
+    (domain) => ({
+      domain,
+      labelKo: domainFolderLabelKo(domain),
+      items: byDomain.get(domain) ?? [],
+    }),
+  );
 }
 
 function buildAgentChips(items: readonly RealityQueueItemV1[]): RealityAgentChipV1[] {
   const byLabel = new Map<string, RealityAgentChipV1>();
   for (const item of items) {
-    if (item.kind === "trade") {
-      const prev = byLabel.get("거래");
-      const status =
-        item.status === "running"
-          ? "running"
-          : item.status === "needs_review" || item.status === "blocked"
-            ? "needs_review"
-            : "ready";
-      if (!prev || status === "running" || (status === "needs_review" && prev.status === "ready")) {
-        byLabel.set("거래", { agentId: "trade", labelKo: "거래", status });
-      }
-      continue;
-    }
-    const label = item.labelKo.slice(0, 4);
-    const agentId = item.sourceRef ?? item.itemId;
+    const label = kindLabelKo(item.kind);
+    const agentId = item.kind;
     const status =
       item.status === "running"
         ? "running"
-        : item.status === "needs_review" || item.status === "blocked"
+        : item.status === "needs_review" ||
+            item.status === "blocked" ||
+            item.status === "pending"
           ? "needs_review"
           : "ready";
     const prev = byLabel.get(label);
@@ -158,9 +207,7 @@ function buildAgentChips(items: readonly RealityQueueItemV1[]): RealityAgentChip
     }
   }
   if (byLabel.size === 0) {
-    return [
-      { agentId: "idle", labelKo: "대기", status: "idle" },
-    ];
+    return [{ agentId: "idle", labelKo: "대기", status: "idle" }];
   }
   return [...byLabel.values()].slice(0, 6);
 }
@@ -171,7 +218,11 @@ function resolveRisk(
   if (items.some((item) => item.status === "blocked")) {
     return "high";
   }
-  if (items.some((item) => item.status === "needs_review")) {
+  if (
+    items.some(
+      (item) => item.status === "needs_review" || item.status === "pending",
+    )
+  ) {
     return "medium";
   }
   return "low";
@@ -179,7 +230,7 @@ function resolveRisk(
 
 function sumAmountLabels(items: readonly RealityQueueItemV1[]): string | null {
   const labels = items
-    .map((item) => item.amountLabel?.trim())
+    .map((item) => item.amountLabel?.trim() || item.preview?.amountLabel?.trim())
     .filter((value): value is string => Boolean(value));
   if (labels.length === 0) {
     return null;
@@ -188,6 +239,14 @@ function sumAmountLabels(items: readonly RealityQueueItemV1[]): string | null {
     return labels[0]!;
   }
   return labels.slice(0, 3).join(" · ");
+}
+
+function dedupeItems(items: readonly RealityQueueItemV1[]): RealityQueueItemV1[] {
+  const byId = new Map<string, RealityQueueItemV1>();
+  for (const item of items) {
+    byId.set(item.itemId, item);
+  }
+  return [...byId.values()];
 }
 
 export function buildRealityControlSnapshot(input: {
@@ -201,40 +260,53 @@ export function buildRealityControlSnapshot(input: {
   const events = input.events ?? listLifeEventCandidates();
   const planItems = buildItemsFromPlans(events);
   const tradeItems = buildItemsFromTrades(input.tradeSessions ?? []);
+  const preparedItems = preparedOperationsAsQueueItems();
   const held =
     input.applyHolds === false
       ? new Set<string>()
       : readRealityQueueHeldItemIds();
-  const items = [...planItems, ...tradeItems].filter(
+  const items = dedupeItems([...preparedItems, ...planItems, ...tradeItems]).filter(
     (item) => !held.has(item.itemId),
   );
   const needsReview = items.some(
-    (item) => item.status === "needs_review" || item.status === "blocked",
+    (item) =>
+      item.status === "needs_review" ||
+      item.status === "blocked" ||
+      (item.status === "pending" && item.needApproval),
   );
+  // Pending Operations still need Reflect — treat as review for batch Commit gate
+  // unless status is ready.
   const hasReady = items.some((item) => item.status === "ready");
   const running = items.some((item) => item.status === "running");
   const primaryContextEventId =
     items.find((item) => item.contextEventId)?.contextEventId ?? null;
-  const planCount = items.filter((item) => item.kind === "execution_step").length;
+  const travelCount = items.filter((item) => item.domain === "travel").length;
+
+  // Prepared ops in pending: allow commit when user marked them ready via Reflect,
+  // OR when all are pending-only pack — gate opens if every item is ready.
+  // For demo pending pack, enable commit when no blocked/running and at least one item
+  // (user Accepts whole folder) — pending status alone with needApproval still blocks.
+  // Product: Reflect promotes pending → ready. Until then canCommit false for pending-only.
+  const canCommit = hasReady && !needsReview && !running && items.length > 0;
 
   return {
     version: 1,
-    titleKo: input.titleKo ?? "반영 대기",
+    titleKo: input.titleKo ?? "Pending Reality",
     subtitleKo:
       input.subtitleKo ??
       (items.length > 0
-        ? "AI가 준비했어요 · 아직 현실은 그대로예요"
-        : "지구에서 맥락을 만들면 여기에 쌓여요"),
+        ? "AI가 결과물을 준비했어요 · 아직 Reality는 그대로예요"
+        : "지구에서 맥락을 만들면 Reality Queue에 쌓여요"),
     agents: buildAgentChips(items),
     items,
+    folders: buildFolders(items),
     impact: {
-      timeSavedLabel:
-        planCount > 0 ? `단계 ${planCount}` : null,
+      timeSavedLabel: travelCount > 0 ? `Travel ${travelCount}` : null,
       costLabel: sumAmountLabels(items),
       risk: resolveRisk(items),
       pendingCount: items.length,
     },
-    canCommit: hasReady && !needsReview && !running && items.length > 0,
+    canCommit,
     primaryContextEventId,
   };
 }

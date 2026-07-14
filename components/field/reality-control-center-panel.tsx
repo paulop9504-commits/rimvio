@@ -15,8 +15,10 @@ import {
   clearRealityCommitReceipt,
   commitRealityQueueClient,
   dispatchRealityCommitPulse,
+  enqueueTravelPrepareOperations,
   readRealityCommitReceipt,
   rejectRealityQueueClient,
+  subscribePreparedRealityOperations,
   subscribeRealityCommitReceipt,
   subscribeRealityQueueHold,
   writeRealityCommitReceipt,
@@ -24,6 +26,8 @@ import {
   type RealityQueueItemStatus,
   type RealityQueueItemV1,
 } from "@/lib/reality-queue";
+import { RealityOperationPreviewCard } from "@/components/field/reality-operation-preview-card";
+import { ensureTripContextEvent } from "@/lib/experience-run/ensure-trip-context-event";
 import { EVENT_CANDIDATES_UPDATED, listLifeEventCandidates } from "@/lib/life-read-model";
 import { cn } from "@/lib/utils";
 
@@ -46,6 +50,9 @@ function statusLabel(
   }
   if (status === "blocked") {
     return field.realityQueueStatusBlocked;
+  }
+  if (status === "pending") {
+    return field.realityQueueStatusPending;
   }
   return field.realityQueueStatusNeedsReview;
 }
@@ -110,10 +117,12 @@ function QueueRow({
   item,
   field,
   index,
+  onSelect,
 }: {
   item: RealityQueueItemV1;
   field: ReturnType<typeof useCopy>["globe"]["field"];
   index: number;
+  onSelect: (item: RealityQueueItemV1) => void;
 }) {
   const tone = statusTone(item.status);
   return (
@@ -121,38 +130,47 @@ function QueueRow({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: Math.min(index * 0.04, 0.24), duration: 0.28, ease: "easeOut" }}
-      className="relative flex items-start gap-3 px-3.5 py-3.5"
+      className="relative"
       data-reality-queue-item={item.itemId}
       data-reality-queue-status={item.status}
+      data-reality-operation-type={item.type}
     >
-      <span
-        className={cn("mt-1.5 h-8 w-[3px] shrink-0 rounded-full", tone.bar)}
-        aria-hidden
-      />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-start justify-between gap-3">
-          <p className="truncate text-[14px] font-semibold tracking-tight text-[#191f28]">
-            {item.labelKo}
-          </p>
-          <span
-            className={cn(
-              "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ring-1",
-              tone.pill,
-            )}
-          >
-            <span className={cn("size-1.5 rounded-full", tone.dot)} aria-hidden />
-            {statusLabel(item.status, field)}
-          </span>
+      <button
+        type="button"
+        onClick={() => onSelect(item)}
+        className="flex w-full items-start gap-3 px-3.5 py-3.5 text-left active:bg-black/[0.02]"
+      >
+        <span
+          className={cn("mt-1.5 h-8 w-[3px] shrink-0 rounded-full", tone.bar)}
+          aria-hidden
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-3">
+            <p className="truncate text-[14px] font-semibold tracking-tight text-[#191f28]">
+              {item.labelKo}
+            </p>
+            <span
+              className={cn(
+                "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ring-1",
+                tone.pill,
+              )}
+            >
+              <span className={cn("size-1.5 rounded-full", tone.dot)} aria-hidden />
+              {statusLabel(item.status, field)}
+            </span>
+          </div>
+          {item.detailKo || item.contextLabelKo ? (
+            <p className="mt-0.5 truncate text-[12px] text-[#8b95a1]">
+              {item.detailKo || item.contextLabelKo}
+            </p>
+          ) : null}
+          {item.amountLabel ? (
+            <p className="mt-1 text-[12px] font-medium tabular-nums text-[#4e5968]">
+              {item.amountLabel}
+            </p>
+          ) : null}
         </div>
-        {item.detailKo ? (
-          <p className="mt-0.5 truncate text-[12px] text-[#8b95a1]">{item.detailKo}</p>
-        ) : null}
-        {item.amountLabel ? (
-          <p className="mt-1 text-[12px] font-medium tabular-nums text-[#4e5968]">
-            {item.amountLabel}
-          </p>
-        ) : null}
-      </div>
+      </button>
     </motion.li>
   );
 }
@@ -246,6 +264,7 @@ export function RealityControlCenterPanel({
   const { closeFieldSheet } = useFieldSheet();
   const [revision, setRevision] = useState(0);
   const [committing, setCommitting] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<RealityQueueItemV1 | null>(null);
   const [receipt, setReceipt] = useState<RealityCommitReceiptV1 | null>(() =>
     readRealityCommitReceipt(),
   );
@@ -254,12 +273,14 @@ export function RealityControlCenterPanel({
     const bump = () => setRevision((value) => value + 1);
     window.addEventListener(EVENT_CANDIDATES_UPDATED, bump);
     const unsubHold = subscribeRealityQueueHold(bump);
+    const unsubOps = subscribePreparedRealityOperations(bump);
     const unsubReceipt = subscribeRealityCommitReceipt(() => {
       setReceipt(readRealityCommitReceipt());
     });
     return () => {
       window.removeEventListener(EVENT_CANDIDATES_UPDATED, bump);
       unsubHold();
+      unsubOps();
       unsubReceipt();
     };
   }, []);
@@ -344,9 +365,24 @@ export function RealityControlCenterPanel({
   };
 
   const handleExampleChip = (chip: {
+    id: string;
     labelKo: string;
     submitKo?: string;
   }) => {
+    if (chip.id === "shanghai-3d") {
+      const event = ensureTripContextEvent({
+        message: chip.submitKo ?? "상하이 2박3일 여행 만들어줘",
+        profile: "leisure_travel",
+      });
+      enqueueTravelPrepareOperations({
+        contextEventId: event.id,
+        contextLabelKo: "상하이 여행",
+        destinationLabelKo: "상하이",
+      });
+      setRevision((value) => value + 1);
+      toast.message(field.realityOperationSeedToast);
+      return;
+    }
     const text = (chip.submitKo ?? chip.labelKo).trim();
     if (!text) {
       return;
@@ -497,11 +533,49 @@ export function RealityControlCenterPanel({
                 </div>
               </div>
             ) : (
-              <ul className="overflow-hidden rounded-[1.35rem] bg-white shadow-[0_8px_28px_rgba(15,23,42,0.06)] ring-1 ring-black/[0.04] divide-y divide-[#eef1f4]">
-                {snapshot.items.map((item, index) => (
-                  <QueueRow key={item.itemId} item={item} field={field} index={index} />
+              <div className="space-y-3">
+                {selectedItem ? (
+                  <RealityOperationPreviewCard
+                    item={selectedItem}
+                    onClose={() => setSelectedItem(null)}
+                    onChanged={() => {
+                      setRevision((value) => value + 1);
+                      setSelectedItem(null);
+                    }}
+                  />
+                ) : null}
+                {(snapshot.folders.length > 0 ? snapshot.folders : [
+                  {
+                    domain: "other" as const,
+                    labelKo: "Pending",
+                    items: snapshot.items,
+                  },
+                ]).map((folder) => (
+                  <div
+                    key={folder.domain}
+                    className="overflow-hidden rounded-[1.35rem] bg-white shadow-[0_8px_28px_rgba(15,23,42,0.06)] ring-1 ring-black/[0.04]"
+                    data-reality-queue-folder={folder.domain}
+                  >
+                    <p className="border-b border-[#eef1f4] px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#8b95a1]">
+                      {folder.labelKo}
+                      {folder.items[0]?.contextLabelKo
+                        ? ` · ${folder.items[0].contextLabelKo}`
+                        : ""}
+                    </p>
+                    <ul className="divide-y divide-[#eef1f4]">
+                      {folder.items.map((item, index) => (
+                        <QueueRow
+                          key={item.itemId}
+                          item={item}
+                          field={field}
+                          index={index}
+                          onSelect={setSelectedItem}
+                        />
+                      ))}
+                    </ul>
+                  </div>
                 ))}
-              </ul>
+              </div>
             )}
           </section>
         ) : null}

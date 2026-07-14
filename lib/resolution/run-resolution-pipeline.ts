@@ -354,20 +354,24 @@ export function projectResolutionBundleAtPhase(
   phase: ResolutionPhase,
 ): ResolutionBundle {
   const idx = RESOLUTION_PHASES.indexOf(phase);
-  const phases = { ...bundle.phases };
+  const nextPhases = { ...bundle.phases };
+  const write = nextPhases as Record<
+    ResolutionPhase,
+    ResolutionBundle["phases"][ResolutionPhase]
+  >;
 
   for (let i = 0; i < RESOLUTION_PHASES.length; i++) {
     const id = RESOLUTION_PHASES[i]!;
-    const row = phases[id];
+    const row = write[id];
     if (i < idx) {
-      phases[id] = {
+      write[id] = {
         ...row,
         status: "done",
         progressKo: RESOLUTION_PHASE_DONE_KO[id],
       };
     } else if (i === idx) {
       const waiting = id === "execution" && bundle.waitingApproval;
-      phases[id] = {
+      write[id] = {
         ...row,
         status: waiting ? "waiting" : "in_progress",
         progressKo: waiting
@@ -378,7 +382,7 @@ export function projectResolutionBundleAtPhase(
           : RESOLUTION_PHASE_PROGRESS_KO[id],
       };
     } else {
-      phases[id] = {
+      write[id] = {
         ...row,
         status: "pending",
         progressKo: "대기 중",
@@ -389,6 +393,6 @@ export function projectResolutionBundleAtPhase(
   return {
     ...bundle,
     currentPhase: phase,
-    phases,
+    phases: nextPhases,
   };
 }

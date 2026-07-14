@@ -142,9 +142,9 @@ export async function dispatchContextRun(
 
   /** Context Anchor — pending create / move replies before planner. */
   if (
-    isComposerTextIngress(ingress) &&
-    ingress.layerMode === "personal" &&
-    ingress.kind === "text"
+    ingress.kind === "text" &&
+    ingress.surface === "composer" &&
+    ingress.layerMode === "personal"
   ) {
     const replyText = ingress.text.trim();
     const replyGraphId = resolveActiveComposerGraphId(
