@@ -73,7 +73,10 @@ export function planOneShotLodgingPrep(input: {
   const softGapOnly =
     intakeGaps.length > 0 &&
     intakeGaps.every(
-      (gap) => gap === "budget" || gap === "origin" || (softFill && gap === "guests"),
+      (gap) =>
+        gap === "budget" ||
+        gap === "origin" ||
+        (softFill && (gap === "guests" || gap === "dates")),
     );
 
   const readyForScout =

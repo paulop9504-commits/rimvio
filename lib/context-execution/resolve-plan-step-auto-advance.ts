@@ -29,6 +29,8 @@ const SOFT_AUTO_SCOUT_ENGINES = new Set<RimvioEngineId>([
   "activity_search",
   "local_amenity_search",
   "trip_experience_search",
+  /** Stay-step lodging — after human destination+departure, skip second chip tap. */
+  "lodging_search",
 ]);
 
 function progressLineForEngine(engineId: RimvioEngineId): string {

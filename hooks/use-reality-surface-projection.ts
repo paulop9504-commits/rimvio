@@ -162,6 +162,19 @@ export function useRealitySurfaceProjection(): UseRealitySurfaceProjectionResult
         });
         if (advanced) {
           persistBlueprintEngineSync(advanced);
+          // Keep Execution Plan through departure confirm — then Auto enter domain.
+          if (advanced.executionPlan) {
+            void persistContextExecutionPlanClientAsync({
+              contextEventId: advanced.eventId,
+              plan: advanced.executionPlan,
+            });
+            offerPlanStepHandoffAfterAdvance({
+              contextEventId: advanced.eventId,
+              plan: advanced.executionPlan,
+              userLat: input.homeLat,
+              userLng: input.homeLng,
+            });
+          }
         }
         return advanced;
       });

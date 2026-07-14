@@ -332,6 +332,7 @@ export function advanceRealitySurfaceDepartureHub(input: {
     bridgePathLabels,
     blueprint,
     runtimeId: input.session.projection.runtime?.runtimeId ?? blueprint.runtimeId,
+    executionPlan: input.session.executionPlan ?? null,
   });
 }
 

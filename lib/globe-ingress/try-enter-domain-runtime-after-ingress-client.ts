@@ -102,6 +102,7 @@ export function tryEnterDomainRuntimeAfterIngress(input: {
       text: seed,
       source: "ingress_domain_entry",
       progressKo: "숙소 후보를 맞추는 중이에요…",
+      expressReady: true,
     });
     return "seeded";
   }
