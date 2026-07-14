@@ -29,6 +29,15 @@ export function resolveHonestRoutingSurface(
   result: OrchestratorResult
 ): RoutingSurface {
   const summary = result.summary?.trim() ?? "";
+  const meta = result.metadata as
+    | {
+        semantic_reason?: string;
+        event_intent?: string;
+        routing_patch?: string;
+        auto_decide?: boolean;
+        ai_intent?: string;
+      }
+    | undefined;
 
   if (summary === GENERIC_CLARIFY && countForkOptions(result) === 0 && !result.actions?.length) {
     return "INFO";
@@ -46,8 +55,17 @@ export function resolveHonestRoutingSurface(
     return "REFLECT";
   }
 
+  // Adaptive meal auto-decide is execution, not INFO curiosity.
+  if (
+    meta?.routing_patch === "ADAPTIVE_AUTO_DECIDE_MEAL" ||
+    (meta?.auto_decide === true &&
+      (meta.event_intent === "meal" || /맛집|먹|찾아볼게요|좋아 보여/u.test(summary)))
+  ) {
+    return "STEP";
+  }
+
   const aiIntent = classifyAiIntentUtterance(message);
-  const metaIntent = result.metadata?.ai_intent as string | undefined;
+  const metaIntent = meta?.ai_intent;
   const effectiveIntent = aiIntent ?? metaIntent ?? null;
 
   if (effectiveIntent === "HOW_TO") return "STEP";

@@ -46,7 +46,8 @@ async function main() {
   const anchorMeal = await route("둔산동 맛집");
   assert.notEqual(anchorMeal.summary, GENERIC_CLARIFY, "둔산동 맛집 must not fall through to kernel CLARIFY");
   assert.ok(
-    anchorMeal.cafeDiscovery || /맛집|둔산동|찾/i.test(anchorMeal.summary ?? ""),
+    anchorMeal.cafeDiscovery ||
+      /맛집|둔산동|찾|좋아 보여|점\)/i.test(anchorMeal.summary ?? ""),
     "둔산동 맛집 should route to meal/discovery response"
   );
 

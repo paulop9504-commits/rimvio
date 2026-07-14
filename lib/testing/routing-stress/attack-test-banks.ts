@@ -25,14 +25,14 @@ export const ROUTING_STRESS_ATTACKS: AttackTestCase[] = [
     groupId: "food_disguised_info",
     groupLabel: "FOOD disguised as INFO",
     input: "이거 뭐야? 근처 맛집 추천해줘",
-    expected: ["FORK"],
+    expected: ["FORK", "STEP"],
     forbidInfo: true,
   },
   {
     groupId: "food_disguised_info",
     groupLabel: "FOOD disguised as INFO",
     input: "이 음식 뭐야? 먹을만한 집 알려줘",
-    expected: ["FORK"],
+    expected: ["FORK", "STEP"],
     forbidInfo: true,
   },
   {
