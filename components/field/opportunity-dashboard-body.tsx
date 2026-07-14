@@ -3,19 +3,20 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { FieldExternalMinePanel } from "@/components/field/field-external-mine-panel";
-import { OpportunityDiscoveryFloor } from "@/components/field/opportunity-discovery-floor";
 import {
   FIELD_DASHBOARD_CANVAS,
   FIELD_DASHBOARD_INSET,
 } from "@/components/field/field-dashboard-layout";
 import { OpportunityDashboardTabBar } from "@/components/field/opportunity-dashboard-tab-bar";
+import { RealityControlCenterPanel } from "@/components/field/reality-control-center-panel";
 import type { FieldDashboardTab } from "@/lib/nav/field-dashboard-types";
 import { MarketActiveTradesSection } from "@/components/field/market-active-trades-section";
 import { useCopy } from "@/hooks/use-copy";
 import type { OpportunityPill, OpportunityRow } from "@/lib/globe/opportunity-field";
 import type { MarketIntentRecord } from "@/lib/globe/market/market-intent-types";
 import type { MarketTradeSessionView } from "@/lib/globe/market/market-trade-types";
-import { runStagedFieldDiscoveryPinReveal } from "@/lib/globe/opportunity-field/globe-field-discovery-bridge";
+import { buildRealityControlSnapshot } from "@/lib/reality-queue";
+import { listLifeEventCandidates } from "@/lib/life-read-model";
 import { cn } from "@/lib/utils";
 
 export type OpportunityDashboardBodyProps = {
@@ -35,7 +36,7 @@ export type OpportunityDashboardBodyProps = {
   initialTab?: FieldDashboardTab | null;
   highlightTradeId?: string | null;
   ingressGeneration?: number;
-  /** Globe pin staging — off in sheet (globe suspended, saves iOS memory). */
+  /** @deprecated discovery pin reveal removed from primary Field surface */
   enableGlobePinReveal?: boolean;
   mineCount?: number;
   headerRight?: ReactNode;
@@ -53,28 +54,18 @@ function tabHint(
   if (tab === "mine") {
     return field.dashboardTabMineHint;
   }
-  return field.dashboardTabDiscoveryHint;
+  return field.dashboardTabQueueHint;
 }
 
-/** 밖 지구 통로 — 진행 중 거래 · 자원 찾기 · 내가 올린 맥락. */
+/** Reality Control Center — queue · trades · mine. */
 export function OpportunityDashboardBody({
-  loading,
-  pills,
-  matchedRows,
-  browseRows,
   tradeSessions,
-  selectedPill,
-  selectedContextId,
-  onSelectContext,
-  listeningLabel,
-  onRowPress,
   onSessionUpdated,
   onFlyToMineIntent,
   focusTradesToken = 0,
   initialTab = null,
   highlightTradeId = null,
   ingressGeneration = 0,
-  enableGlobePinReveal = true,
   mineCount = 0,
   headerRight,
   headerClassName,
@@ -82,14 +73,16 @@ export function OpportunityDashboardBody({
 }: OpportunityDashboardBodyProps) {
   const copy = useCopy();
   const field = copy.globe.field;
-  const [tab, setTab] = useState<FieldDashboardTab>(() =>
-    tradeSessions.length > 0 ? "trades" : "discovery",
-  );
+  const [tab, setTab] = useState<FieldDashboardTab>(() => initialTab ?? "queue");
   const prevTradeCountRef = useRef(tradeSessions.length);
 
-  const discoveryRows = useMemo(
-    () => (selectedPill ? matchedRows : browseRows),
-    [browseRows, matchedRows, selectedPill],
+  const queueCount = useMemo(
+    () =>
+      buildRealityControlSnapshot({
+        tradeSessions,
+        events: listLifeEventCandidates(),
+      }).items.length,
+    [tradeSessions],
   );
 
   useEffect(() => {
@@ -106,54 +99,37 @@ export function OpportunityDashboardBody({
       setTab(initialTab);
       return;
     }
-    setTab(tradeSessions.length > 0 ? "trades" : "discovery");
+    setTab("queue");
   }, [ingressGeneration, initialTab]);
 
   useEffect(() => {
     const prev = prevTradeCountRef.current;
     prevTradeCountRef.current = tradeSessions.length;
-    if (prev === 0 && tradeSessions.length > 0) {
-      setTab("trades");
-    }
-    if (tradeSessions.length === 0 && tab === "trades") {
-      setTab("discovery");
+    if (prev === 0 && tradeSessions.length > 0 && tab === "queue") {
+      /* stay on queue — trades appear as queue items too */
     }
   }, [tab, tradeSessions.length]);
-
-  const discoveryRevealKey = useMemo(
-    () => discoveryRows.map((row) => row.listingId).join("|"),
-    [discoveryRows],
-  );
-
-  useEffect(() => {
-    if (!enableGlobePinReveal || tab !== "discovery" || discoveryRows.length === 0) {
-      return;
-    }
-    return runStagedFieldDiscoveryPinReveal({
-      rows: discoveryRows,
-      contextId: selectedContextId,
-    });
-  }, [discoveryRevealKey, discoveryRows, enableGlobePinReveal, selectedContextId, tab]);
 
   return (
     <div
       className={cn("flex min-h-0 flex-1 flex-col bg-white", className)}
       data-opportunity-dashboard-body
       data-field-dashboard-tab={tab}
+      data-reality-control-surface="true"
     >
       <header
         className={cn(
-          "shrink-0 border-b border-[#eef1f4] bg-white pb-0 pt-2",
+          "shrink-0 border-b border-[#eef1f4] bg-white/95 pb-0 pt-2 backdrop-blur-xl",
           FIELD_DASHBOARD_INSET,
           headerClassName,
         )}
       >
         <div className="flex items-start justify-between gap-3 pb-2.5">
           <div className="min-w-0 flex-1">
-            <h1 className="text-[20px] font-bold leading-tight tracking-tight text-[#191f28]">
+            <h1 className="text-[22px] font-bold leading-tight tracking-tight text-[#191f28]">
               {field.sheetTitle}
             </h1>
-            <p className="mt-0.5 text-[13px] leading-snug text-[#8b95a1]">
+            <p className="mt-1 text-[13px] leading-snug text-[#8b95a1]">
               {tabHint(tab, field)}
             </p>
           </div>
@@ -165,6 +141,7 @@ export function OpportunityDashboardBody({
         <OpportunityDashboardTabBar
           value={tab}
           onChange={setTab}
+          queueCount={queueCount}
           tradeCount={tradeSessions.length}
           mineCount={mineCount}
           className="px-0 pb-3 pt-0"
@@ -173,7 +150,24 @@ export function OpportunityDashboardBody({
 
       <div className={cn("relative min-h-0 flex-1 overflow-hidden", FIELD_DASHBOARD_CANVAS)}>
         <AnimatePresence mode="sync" initial={false}>
-          {tab === "trades" ? (
+          {tab === "queue" ? (
+            <motion.div
+              key="queue-panel"
+              role="tabpanel"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="absolute inset-0 flex min-h-0 flex-col"
+            >
+              <RealityControlCenterPanel
+                tradeSessions={tradeSessions}
+                onOpenTrades={() => setTab("trades")}
+                onOpenMine={() => setTab("mine")}
+                className="h-full"
+              />
+            </motion.div>
+          ) : tab === "trades" ? (
             <motion.div
               key="trades-panel"
               role="tabpanel"
@@ -191,7 +185,7 @@ export function OpportunityDashboardBody({
                 embedded
               />
             </motion.div>
-          ) : tab === "mine" ? (
+          ) : (
             <motion.div
               key="mine-panel"
               role="tabpanel"
@@ -204,29 +198,6 @@ export function OpportunityDashboardBody({
               <FieldExternalMinePanel
                 enabled
                 onFlyToIntent={onFlyToMineIntent}
-                className="h-full"
-              />
-            </motion.div>
-          ) : (
-            <motion.div
-              key="discovery-panel"
-              role="tabpanel"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.18, ease: "easeOut" }}
-              className="absolute inset-0 flex min-h-0 flex-col"
-            >
-              <OpportunityDiscoveryFloor
-                loading={loading}
-                pills={pills}
-                rows={discoveryRows}
-                browseMode={!selectedPill}
-                selectedContextId={selectedContextId}
-                onSelectContext={onSelectContext}
-                listeningLabel={listeningLabel}
-                onRowPress={onRowPress}
-                embedded
                 className="h-full"
               />
             </motion.div>

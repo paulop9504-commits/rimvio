@@ -57,6 +57,11 @@ assert.ok(
   "field tab must open global sheet via bottom-nav ingress — never navigate to /field route",
 );
 assert.ok(
+  appNav.includes("useFieldNavBadge") &&
+    appNav.includes("fieldNavBadge > 0 ? fieldNavBadge : undefined"),
+  "field tab badge must hide when queueCount is 0",
+);
+assert.ok(
   appNav.includes("createPortal(bar, document.body)"),
   "bottom nav must portal directly to document.body",
 );

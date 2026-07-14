@@ -364,6 +364,18 @@ export const copy = {
     localDiscoveryVibeHot: "핫플",
     explorationModeConvergentChip: "검증된 곳",
     explorationModeDiffuseChip: "새로운 곳",
+    lodgingRankModeAutoChip: "맞춤 자동",
+    lodgingRankModeValueChip: "가성비",
+    lodgingRankModeDistanceChip: "거리",
+    lodgingRankModePopularChip: "인기",
+    lodgingRankModePremiumChip: "프리미엄",
+    lodgingRankModeGroupAria: "숙소 정렬",
+    eateryRankModeAutoChip: "맞춤 자동",
+    eateryRankModeLocalChip: "로컬",
+    eateryRankModeValueChip: "가성비",
+    eateryRankModeDistanceChip: "거리",
+    eateryRankModePopularChip: "검증된 곳",
+    eateryRankModeGroupAria: "맛집 정렬",
     localDiscoveryAskLodgingKind: "숙소는 어떤 형태가 좋을까요?",
     localDiscoveryAskResourceFocus: "무엇을 찾아볼까요?",
     localDiscoveryResourceRestaurant: "맛집",
@@ -1329,6 +1341,12 @@ export const copy = {
       spawnTripSubmit: "다음 주 여행",
       needsDestination: "어디부터 시작할까요?",
       contextCreated: (title: string) => `「${title}」 맥락을 지구에 붙였어요`,
+      contextResumed: (title: string) => `「${title}」 맥락으로 이어갈게요`,
+      convergeHint: "비슷한 여행 맥락이 있어요 — 한 번만 골라 주세요",
+      convergeAttachChip: (label: string) => label,
+      convergeAttachChipDefault: "이어서 하기",
+      convergeNewChip: "새로 시작",
+      convergeWhyPrefix: "연결",
       nextStepPickDestination:
         "다음 · 목적지를 골라 주세요 (오사카 · 도쿄 · 후쿠오카)",
       nextStepConfirmDeparture: (airport: string) =>
@@ -1762,6 +1780,25 @@ export const copy = {
     lodgingReasonTopPick: "맥락·위치 기준 1순위예요",
     lodgingReasonFallback: "맥락에 맞게 골랐어요",
     lodgingReasonCardTitle: "왜 추천했는지",
+    /** Soft savings / tradeoff / experience — approximate, not ledger math. */
+    lodgingOpportunitySaveWalkNear: (walkLabel: string, fareLabel: string) =>
+      `거점까지 도보 ${walkLabel} · 외곽 대비 이동비 ${fareLabel} 아낄 동선이에요`,
+    lodgingOpportunitySaveWalkOnly: (walkLabel: string) =>
+      `거점까지 도보 ${walkLabel} · 이동을 줄여 쉬는 시간을 남겨 둬요`,
+    lodgingOpportunitySaveShortHop: (walkLabel: string, fareLabel: string) =>
+      `거점까지 약 ${walkLabel} · 외곽보다 왕복 이동비 ${fareLabel} 아끼는 편이에요`,
+    lodgingOpportunityPriceVsArea: "이 근처 비슷한 조건보다 가격 부담이 가벼운 편이에요",
+    lodgingOpportunityCostFar: (roundTripMinutes: number) =>
+      `외곽 동선이면 왕복 이동이 대략 ${roundTripMinutes}분 더 붙고 · 저녁 한 끼 루트가 짧아질 수 있어요`,
+    lodgingOpportunityExperienceStation: "첫날 체크인·이동이 덜 피곤한 동선이에요",
+    lodgingOpportunityExperienceFamily: "동행 이동 부담을 줄여 일정 여유를 남겨 둬요",
+    lodgingOpportunityExperienceAesthetic: "분위기 좋은 저녁·카페권에 바로 붙어요",
+    lodgingOpportunityExperienceQuiet: "이동을 줄이고 휴식에 시간을 남겨 둬 보세요",
+    lodgingOpportunityExperienceNearby: "중심권에서 저녁·산책 경험을 바로 이어갈 수 있어요",
+    lodgingOpportunityExperienceKeepBudget:
+      "이동비를 아낀 만큼 식사·작은 경험에 예산을 남겨 둘 수 있어요",
+    lodgingOpportunityExperienceValueTradeoff:
+      "방값은 아껴도 · 이동 시간·저녁 동선은 조금 양보하게 돼요",
     predictedExperienceTitle: "예상 경험",
     predictedExperienceExpandCta: "왜 이렇게 봤는지",
     predictedExperienceCollapseCta: "근거 접기",
@@ -1801,6 +1838,10 @@ export const copy = {
     discoveryFeedDismissCta: "닫기",
     intelligentPinFeedTitle: "AI가 골라둔 곳",
     intelligentPinFeedSubtitle: "내려보며 고르기 · 지도와 함께",
+    intelligentPinFeedLoadingMore: "숙소 더 불러오는 중…",
+    intelligentPinFeedMore: (shown: number, total: number) =>
+      `${shown}곳 봤어요 · ${total}곳 중 · 더 내리면 이어서`,
+    intelligentPinFeedComplete: (total: number) => `${total}곳까지 봤어요`,
     intelligentPinFeedCloseAria: "탐색 피드 닫기",
     intelligentPinCategoryLodging: "숙소",
     intelligentPinCategoryEatery: "맛집",
@@ -1817,12 +1858,36 @@ export const copy = {
     intelligentPinSwipePhotos: "옆으로 넘겨 사진 더 보기",
     scoutFeedGateIntro: (count: number) => `${count}곳을 찾았어요.`,
     scoutFeedGateConfirmCta: "확인하기",
+    scoutFeedGateArchiveCta: "이전 결과 보기",
     scoutFeedGateOpened: "피드에서 둘러보는 중",
     scoutFeedGateAreaFallback: "이 근처",
     scoutFeedGateAiLabel: "맥락",
     scoutFeedGateTipsLabel: "꿀팁",
     scoutFeedGateVideosLabel: "관련 영상",
     scoutFeedGateHighlightsLabel: "추천",
+    scoutFeedGateCorrectionHint: "원하는 것만 남길까요?",
+    scoutFeedGateCorrectionKeepOnly: (focus: string) => `${focus}만 볼까요?`,
+    scoutFeedGateCorrectionStrip: (focus: string) => `${focus}는 빼둘게요`,
+    scoutFeedGateCorrectionApplied: (focus: string) => `${focus}만 남겼어요`,
+    scoutFeedGateCorrectionEmpty: "그 조건으로는 남을 곳이 없어요",
+    scoutFeedGateCorrectionSummary: (input: {
+      count: number;
+      kind: "lodging" | "eatery" | "activity" | "amenity" | "mixed";
+    }) => {
+      if (input.kind === "lodging") {
+        return `숙소 ${input.count}곳만 남겼어요`;
+      }
+      if (input.kind === "eatery") {
+        return `맛집 ${input.count}곳만 남겼어요`;
+      }
+      if (input.kind === "activity") {
+        return `놀거리 ${input.count}곳만 남겼어요`;
+      }
+      if (input.kind === "amenity") {
+        return `편의 ${input.count}곳만 남겼어요`;
+      }
+      return `${input.count}곳만 남겼어요`;
+    },
     scoutFeedGateVideoQuery: (area: string) => `${area} 놀거리`,
     scoutFeedGateAiInsight: (input: {
       scoutKind: "lodging" | "eatery" | "activity" | "amenity" | "mixed";
@@ -1885,6 +1950,7 @@ export const copy = {
     feedEntityPhotoCount: (count: number) => `사진 ${count}장`,
     feedEntityNearMapPin: "지도 핀 기준 위치",
     feedEntityOpenNow: "지금 영업 중",
+    feedEntityHoursCheck: "영업 시간 확인",
     feedEntityClosedNow: "영업 종료",
     feedEntityVideoReady: "관련 영상 있음",
     feedEntityVideoPending: "영상 수집 중",
@@ -2138,12 +2204,43 @@ export const copy = {
       `${destination} 여행 조건을 맞췄어요. 이제 항공·숙소·놀거리를 같이 볼게요.`,
     tripIntakeAskHint: "한 가지만 골라 주세요 — 바로 숙소를 맞출게요.",
     tripIntakeAskChipApplied: (label: string) => `${label}으로 맞출게요.`,
+    flightPrepAskHint: "한 가지만 골라 주세요 — 항공 예약을 맞출게요.",
+    flightPrepReady: "출발 허브를 연결했어요. 항공권을 열었어요.",
+    transitPrepAskHint: "어디로 갈지 골라 주세요 — 길을 열어 드릴게요.",
+    transitPrepReady: "이동 경로를 열었어요.",
+    financePrepAskHint: "예산만 골라 주세요 — 결제를 맞출게요.",
+    financePrepReady: "결제 준비 화면을 열었어요.",
+    planHandoffAskHint: "다음 단계만 골라 주세요 — 이어서 준비할게요.",
+    planHandoffAskChipApplied: (label: string) => `${label}으로 이어갈게요.`,
     tripExperienceAskHint: "방향만 골라 주세요 — 맞춰 볼게요.",
     tripExperienceAskChipApplied: (label: string) => `${label} 쪽으로 맞출게요.`,
+    tripExperienceParallelStart: (label: string) =>
+      `${label} — 숙소·맛집·놀거리를 같이 볼게요.`,
+    tripExperienceMainReady:
+      "숙소·맛집·놀거리 후보를 골라 뒀어요. 확인하고 이어가면 돼요.",
     lodgingOneShotMainReady: "맞춘 조건으로 숙소를 골랐어요. 객실만 확인하면 바로 이어갈게요.",
     contextRecallBadge: (count: number) => `확정 ${count}건`,
     contextRecallLodgingLeg: "숙소 확정",
     contextRecallFlightLeg: "항공 확정",
+    executionPlanScoutFailed: {
+      lodging: "숙소 후보를 찾지 못했어요",
+      tripExperience: "체험 후보를 찾지 못했어요",
+      flight: "항공 조건을 맞추지 못했어요",
+      transit: "이동 목적지를 확정하지 못했어요",
+      finance: "결제 준비를 마치지 못했어요",
+    },
+    executionPlanPreview: {
+      title: "예상 실행",
+      currentStep: (label: string) => `지금 · ${label}`,
+      moreSteps: (count: number) => `외 ${count}단계`,
+      approvalHint: "순서를 확인한 뒤 실행할 수 있어요",
+      approveCta: "좋아, 실행",
+      approvedToast: "실행을 시작할게요",
+      stepApprovalHint: "준비된 단계를 확정하면 다음으로 넘어가요",
+      stepApproveCta: "이 단계 확정",
+      stepApprovedToast: "다음 단계로 넘어갈게요",
+      meaningWhyPrefix: "연결",
+    },
     hubActionLog: {
       title: "맥락 기록",
       hubLodging: "숙소",
@@ -2154,6 +2251,87 @@ export const copy = {
       reserve: (hub: string) => `${hub} 확보`,
       purchase: (hub: string) => `${hub} 결제`,
       cancel: (hub: string) => `${hub} 취소`,
+    },
+    engineEventTimeline: {
+      flight_booking: {
+        scout_complete: "항공 찾기",
+        scout_failed: "항공 찾기 실패",
+        main_selected: "항공 연결",
+      },
+      lodging_search: {
+        scout_complete: "숙소 찾기",
+        scout_failed: "숙소 찾기 실패",
+        main_selected: "숙소 고정",
+      },
+      local_amenity_search: {
+        scout_complete: "편의 찾기",
+        scout_failed: "편의 찾기 실패",
+        main_selected: "편의 고정",
+      },
+      eatery_search: {
+        scout_complete: "맛집 찾기",
+        scout_failed: "맛집 찾기 실패",
+        main_selected: "맛집 고정",
+      },
+      activity_search: {
+        scout_complete: "놀거리 찾기",
+        scout_failed: "놀거리 찾기 실패",
+        main_selected: "놀거리 고정",
+      },
+      trip_experience_search: {
+        scout_complete: "체험 찾기",
+        scout_failed: "체험 찾기 실패",
+        main_selected: "체험 고정",
+      },
+      transit_navigate: {
+        scout_complete: "경로 찾기",
+        scout_failed: "경로 찾기 실패",
+        main_selected: "이동 준비",
+      },
+      finance_prep: {
+        scout_complete: "예산 맞춤",
+        scout_failed: "예산 맞춤 실패",
+        main_selected: "결제 준비",
+      },
+    },
+    capabilityInvocationTimeline: {
+      BOOK_HOTEL: "숙소 예약",
+      BOOK_FLIGHT: "항공 예약",
+      NAVIGATE: "길찾기",
+      CHECK_IN: "체크인",
+      CONFIRM_PLACE: "장소 확인",
+      "PLUGIN:payment:charge": "결제",
+    },
+    capabilityInvocationFailed: (action: string) => `${action} 실패`,
+    engineStore: {
+      title: "프로젝트 능력",
+      add: "추가",
+      empty: "아직 맞춘 능력이 없어요.",
+      installOffer: (label: string) => `${label} 맞추기`,
+      installDone: (label: string) => `${label}을(를) 이 맥락에 맞췄어요.`,
+      filterAll: "전체",
+      filterPartner: "파트너",
+      chip: {
+        flight_booking: "항공",
+        lodging_search: "숙소",
+        local_amenity_search: "편의",
+        eatery_search: "맛집",
+        activity_search: "놀거리",
+        trip_experience_search: "체험",
+        transit_navigate: "이동",
+        finance_prep: "결제",
+      },
+      providerKind: {
+        producer: "상품",
+        worker: "작업",
+        organization: "파트너",
+        ai_agent: "자동",
+      },
+      providerMember: {
+        rimvio: "림비오",
+        acme_hotels: "ACME 호텔",
+        "kakao-corp": "카카오",
+      },
     },
     lodgingRoomCardTitle: "객실 선택",
     lodgingRoomCardHint: "맞춘 조건 기준 실시간 요금 · 바로 예약까지 이어져요.",
@@ -2313,7 +2491,7 @@ export const copy = {
     utilityMenuSettings: "설정",
     utilityMenuField: "밖 지구 맞춤",
     field: {
-      sheetTitle: "밖 지구 맞춤",
+      sheetTitle: "반영 대기",
       listening: (title: string) => `${title} 맞춤 보는 중…`,
       discoveryBrowseListening: "밖 지구 자원 · 실시간",
       browseAllPill: "전체",
@@ -2378,13 +2556,90 @@ export const copy = {
       externalResourcesHint: "중고 · 모임 · 이웃 맥락",
       discoveryFloorTitle: "밖 지구 찾기",
       discoveryFloorHint: "실시간 · 근처 자원",
+      dashboardTabQueue: "반영 대기",
       dashboardTabTrades: "진행 중",
       dashboardTabDiscovery: "찾기",
-      dashboardTabMine: "내 밖 지구",
-      dashboardTabAria: "밖 지구 맞춤 탭",
+      dashboardTabMine: "내 게시",
+      dashboardTabAria: "맞춤 · 반영 대기 탭",
+      dashboardTabQueueHint: "AI가 준비한 변경 · 승인하면 현실이 바뀌어요",
       dashboardTabTradesHint: "외부 사람과 약속 · 대화 · 이동",
       dashboardTabDiscoveryHint: "이웃이 올린 자원 실시간 탐색",
       dashboardTabMineHint: "내가 뿌린 구하기·내놓기 모니터",
+      realityControlTitle: "반영 대기",
+      realityControlSubtitle: "AI가 준비했어요 · 아직 현실은 그대로예요",
+      realityAgentsEyebrow: "준비 중",
+      realityAgentsAria: "준비 중인 작업",
+      realityQueueEyebrow: "반영 대기열",
+      realityQueueAria: "현실 변경 대기열",
+      realityQueueCount: (count: number) => `${count}건`,
+      realityQueueStatusReady: "준비됨",
+      realityQueueStatusNeedsReview: "확인 필요",
+      realityQueueStatusRunning: "진행 중",
+      realityQueueStatusBlocked: "막힘",
+      realityQueueEmptyTitle: "반영할 준비가 없어요",
+      realityQueueEmptyBody: "지구에서 맥락을 만들면 여기에 쌓여요",
+      realityQueueEmptyScope: "지금은 여행 준비를 끝까지 도와줘요",
+      realityQueueEmptyExamplesAria: "여행 시작 예시",
+      realityQueueEmptyExampleChips: [
+        {
+          id: "osaka-weekend",
+          labelKo: "오사카 주말",
+          submitKo: "다음 주말 오사카 여행 준비해줘",
+        },
+        {
+          id: "nearby-lodging",
+          labelKo: "근처 숙소",
+          submitKo: "근처 숙소 찾아줘",
+        },
+        {
+          id: "food-first",
+          labelKo: "맛집 위주",
+          submitKo: "맛집 위주로 여행 준비해줘",
+        },
+      ],
+      realityQueueEmptyGlobeCta: "지구로",
+      realityQueueEmptyTradesCta: (count: number) => `진행 중 거래 ${count}`,
+      realityImpactEyebrow: "영향",
+      realityImpactAria: "반영 영향 요약",
+      realityImpactPendingLabel: "대기",
+      realityImpactRiskLabel: "위험",
+      realityImpactCostLabel: "비용",
+      realityImpactCostHint: "예상",
+      realityImpactLine: (input: {
+        count: number;
+        risk: string;
+        cost?: string | null;
+        timeSaved?: string | null;
+      }) => {
+        const parts = [`대기 ${input.count}건`, `위험 ${input.risk}`];
+        if (input.cost?.trim()) {
+          parts.push(input.cost.trim());
+        }
+        if (input.timeSaved?.trim()) {
+          parts.push(input.timeSaved.trim());
+        }
+        return parts.join(" · ");
+      },
+      realityImpactRiskLow: "낮음",
+      realityImpactRiskMedium: "보통",
+      realityImpactRiskHigh: "높음",
+      realityCommitAria: "현실 반영 승인",
+      realityCommitCta: "이대로 반영",
+      realityCommitPendingCta: "반영 중…",
+      realityRejectCta: "보류",
+      realityEditCta: "계획 수정",
+      realityCommitBlockedToast: "확인이 필요한 항목이 있어요",
+      realityCommitSuccessToast: "반영을 시작했어요",
+      realityCommitTradeOnlyToast: "거래는 진행 중 탭에서 이어가요",
+      realityCommitFailedToast: "반영에 실패했어요 · 다시 시도해 주세요",
+      realityReceiptTitle: "현실이 바뀌었어요",
+      realityReceiptAria: "반영 영수증",
+      realityReceiptDisclaimer: "결제·예약은 아직 안 했어요",
+      realityReceiptGlobeCta: "지구에서 보기",
+      realityReceiptDismissCta: "닫기",
+      realityReceiptEmptyLine: "준비한 단계를 반영했어요",
+      realityCommitPulseBadge: "반영됨",
+      realityRejectToast: "반영을 보류했어요",
       resourceStatusEyebrow: "AI 활동 현황",
       resourceStatusViews: (count: number) => `👀 조회수 ${count}명`,
       resourceStatusInquiries: (count: number) =>
@@ -2921,6 +3176,7 @@ export const copy = {
         prefix: "관련 · ",
         peoplePrefix: "사람",
         experiencePrefix: "경험",
+        meaningPrefix: "연결",
         peopleButton: (n: number) => `사람 ${n}`,
         experienceButton: (n: number) => `경험 ${n}`,
         buttonLabel: (n: number) => (n > 0 ? `관련 ${n}` : "관련"),

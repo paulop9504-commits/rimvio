@@ -1,14 +1,40 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { toast } from "sonner";
 import { GlobeContextQuickPinButton } from "@/components/globe/globe-context-quick-pin-button";
+import { GlobeEateryRankModeChips } from "@/components/globe/globe-eatery-rank-mode-chips";
+import { GlobeLodgingRankModeChips } from "@/components/globe/globe-lodging-rank-mode-chips";
+import { GlobeScoutFeedGateVideoStrip } from "@/components/globe/globe-scout-feed-gate-video-strip";
 import { copy } from "@/lib/copy/human-ko";
+import {
+  getInitialGlobeDiscoveryRevealCount,
+  getNextGlobeDiscoveryRevealCount,
+  hasMoreGlobeDiscoveryItems,
+  resolveGlobeDiscoveryFeedStatus,
+} from "@/lib/globe/discovery/globe-discovery-feed";
+import { getInfiniteDiscoveryFeedStatusCopy } from "@/lib/globe/intelligent-pin/get-infinite-feed-status-copy";
 import {
   dispatchIntelligentDiscoveryActiveCard,
 } from "@/lib/globe/intelligent-pin/intelligent-pin-bridge";
+import {
+  inferDiscoveryFeedScrollIntent,
+  recordDiscoveryFeedScrollSignal,
+} from "@/lib/globe/intelligent-pin/record-discovery-feed-scroll-signal";
 import type { InfiniteDiscoveryFeedCard } from "@/lib/globe/intelligent-pin/types";
+import type { EateryRankMode } from "@/lib/globe/eatery/eatery-rank-profile";
+import {
+  resolveEateryRankMode,
+  subscribeEateryRankModeOverride,
+  writeEateryRankModeOverride,
+} from "@/lib/globe/eatery/eatery-rank-mode-session-store";
+import type { LodgingRankMode } from "@/lib/globe/lodging/lodging-rank-profile";
+import {
+  resolveLodgingRankMode,
+  subscribeLodgingRankModeOverride,
+  writeLodgingRankModeOverride,
+} from "@/lib/globe/lodging/lodging-rank-mode-session-store";
 import { cn } from "@/lib/utils";
 
 export type GlobeInfiniteDiscoveryFeedPanelProps = {
@@ -64,7 +90,118 @@ export function GlobeInfiniteDiscoveryFeedPanel({
   className,
 }: GlobeInfiniteDiscoveryFeedPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const loadMoreTimerRef = useRef<number | null>(null);
   const cardRefs = useRef<Map<string, HTMLElement>>(new Map());
+  const [rankModeRevision, setRankModeRevision] = useState(0);
+
+  const hasLodgingCards = useMemo(
+    () => cards.some((card) => card.kind === "lodging"),
+    [cards],
+  );
+  const hasEateryCards = useMemo(
+    () => cards.some((card) => card.kind === "eatery"),
+    [cards],
+  );
+
+  const lodgingRankMode = useMemo((): LodgingRankMode => {
+    void rankModeRevision;
+    return resolveLodgingRankMode(contextEventId);
+  }, [contextEventId, rankModeRevision]);
+
+  const eateryRankMode = useMemo((): EateryRankMode => {
+    void rankModeRevision;
+    return resolveEateryRankMode(contextEventId);
+  }, [contextEventId, rankModeRevision]);
+
+  useEffect(() => {
+    const unsubLodging = subscribeLodgingRankModeOverride((eventId) => {
+      if (eventId === contextEventId.trim()) {
+        setRankModeRevision((value) => value + 1);
+      }
+    });
+    const unsubEatery = subscribeEateryRankModeOverride((eventId) => {
+      if (eventId === contextEventId.trim()) {
+        setRankModeRevision((value) => value + 1);
+      }
+    });
+    return () => {
+      unsubLodging();
+      unsubEatery();
+    };
+  }, [contextEventId]);
+
+  const handleLodgingRankMode = useCallback(
+    (mode: LodgingRankMode) => {
+      writeLodgingRankModeOverride(contextEventId, mode);
+    },
+    [contextEventId],
+  );
+
+  const handleEateryRankMode = useCallback(
+    (mode: EateryRankMode) => {
+      writeEateryRankModeOverride(contextEventId, mode);
+    },
+    [contextEventId],
+  );
+  const cardSeenAtRef = useRef<Map<string, number>>(new Map());
+  const [visibleCount, setVisibleCount] = useState(() =>
+    getInitialGlobeDiscoveryRevealCount(cards.length),
+  );
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  useEffect(() => {
+    setVisibleCount(getInitialGlobeDiscoveryRevealCount(cards.length));
+  }, [cards]);
+
+  useEffect(() => {
+    return () => {
+      if (loadMoreTimerRef.current != null) {
+        window.clearTimeout(loadMoreTimerRef.current);
+      }
+    };
+  }, []);
+
+  const visibleCards = useMemo(
+    () => cards.slice(0, visibleCount),
+    [cards, visibleCount],
+  );
+  const hasMore = hasMoreGlobeDiscoveryItems(visibleCount, cards.length);
+  const feedStatus = resolveGlobeDiscoveryFeedStatus({
+    visibleCount,
+    totalCount: cards.length,
+    loadingMore,
+  });
+
+  const requestMore = useCallback(() => {
+    if (!hasMore || loadingMore) {
+      return;
+    }
+    setLoadingMore(true);
+    loadMoreTimerRef.current = window.setTimeout(() => {
+      setVisibleCount((current) => getNextGlobeDiscoveryRevealCount(current, cards.length));
+      setLoadingMore(false);
+      loadMoreTimerRef.current = null;
+    }, 140);
+  }, [cards.length, hasMore, loadingMore]);
+
+  const recordCardScrollSignal = useCallback(
+    (card: InfiniteDiscoveryFeedCard, dwellMs: number) => {
+      recordDiscoveryFeedScrollSignal({
+        contextEventId,
+        resourceId: card.resourceId,
+        placeId: card.placeId,
+        kind: card.kind,
+        intent: inferDiscoveryFeedScrollIntent({
+          dwellMs,
+          pinned: pinnedPlaceIds.has(card.placeId),
+        }),
+        dwellMs,
+        atIso: new Date().toISOString(),
+      });
+    },
+    [contextEventId, pinnedPlaceIds],
+  );
 
   const notifyActive = useCallback(
     (card: InfiniteDiscoveryFeedCard) => {
@@ -81,7 +218,7 @@ export function GlobeInfiniteDiscoveryFeedPanel({
   );
 
   useEffect(() => {
-    if (cards.length === 0) {
+    if (visibleCards.length === 0) {
       return;
     }
     const root = scrollRef.current;
@@ -90,6 +227,26 @@ export function GlobeInfiniteDiscoveryFeedPanel({
     }
     const observer = new IntersectionObserver(
       (entries) => {
+        for (const entry of entries) {
+          const resourceId = entry.target.getAttribute("data-resource-id");
+          if (!resourceId) {
+            continue;
+          }
+          const card = cards.find((row) => row.resourceId === resourceId);
+          if (!card) {
+            continue;
+          }
+          if (entry.isIntersecting) {
+            cardSeenAtRef.current.set(resourceId, Date.now());
+            continue;
+          }
+          const seenAt = cardSeenAtRef.current.get(resourceId);
+          if (seenAt != null) {
+            recordCardScrollSignal(card, Date.now() - seenAt);
+            cardSeenAtRef.current.delete(resourceId);
+          }
+        }
+
         const visible = entries
           .filter((entry) => entry.isIntersecting)
           .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
@@ -97,10 +254,10 @@ export function GlobeInfiniteDiscoveryFeedPanel({
         if (!top?.target) {
           return;
         }
-        const resourceId = top.target.getAttribute("data-resource-id");
-        const card = cards.find((row) => row.resourceId === resourceId);
-        if (card) {
-          notifyActive(card);
+        const activeId = top.target.getAttribute("data-resource-id");
+        const activeCard = cards.find((row) => row.resourceId === activeId);
+        if (activeCard) {
+          notifyActive(activeCard);
         }
       },
       { root, threshold: [0.45, 0.6, 0.75] },
@@ -109,13 +266,36 @@ export function GlobeInfiniteDiscoveryFeedPanel({
       observer.observe(node);
     }
     return () => observer.disconnect();
-  }, [cards, notifyActive]);
+  }, [cards, notifyActive, recordCardScrollSignal, visibleCards.length]);
 
   useEffect(() => {
-    if (cards.length > 0) {
-      notifyActive(cards[0]!);
+    const root = scrollRef.current;
+    const sentinel = sentinelRef.current;
+    if (!root || !sentinel || !hasMore || typeof IntersectionObserver === "undefined") {
+      return;
     }
-  }, [cards, notifyActive]);
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          requestMore();
+        }
+      },
+      {
+        root,
+        rootMargin: "0px 0px 240px 0px",
+        threshold: 0.08,
+      },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, requestMore, visibleCards.length]);
+
+  useEffect(() => {
+    const first = visibleCards[0];
+    if (first) {
+      notifyActive(first);
+    }
+  }, [notifyActive, visibleCards[0]?.resourceId]);
 
   return (
     <div
@@ -143,13 +323,31 @@ export function GlobeInfiniteDiscoveryFeedPanel({
           </button>
         </div>
 
+        {hasLodgingCards ? (
+          <div className="shrink-0 border-b border-black/[0.06] px-3.5 py-2">
+            <GlobeLodgingRankModeChips
+              mode={lodgingRankMode}
+              onSelect={handleLodgingRankMode}
+            />
+          </div>
+        ) : null}
+
+        {hasEateryCards && !hasLodgingCards ? (
+          <div className="shrink-0 border-b border-black/[0.06] px-3.5 py-2">
+            <GlobeEateryRankModeChips
+              mode={eateryRankMode}
+              onSelect={handleEateryRankMode}
+            />
+          </div>
+        ) : null}
+
         <div
           ref={scrollRef}
           className="min-h-0 flex-1 overflow-y-auto overscroll-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           data-globe-infinite-feed-scroll
         >
           <div className="space-y-0 pb-6">
-            {cards.map((card) => {
+            {visibleCards.map((card) => {
               const pinned = pinnedPlaceIds.has(card.placeId);
               const active = card.resourceId === activeResourceId;
               const pinBusy = pinBusyPlaceId === card.placeId;
@@ -233,6 +431,14 @@ export function GlobeInfiniteDiscoveryFeedPanel({
                       {card.media.detailReasonLine}
                     </p>
 
+                    {card.media.videoContext ? (
+                      <div className="pt-1" data-globe-infinite-feed-video>
+                        <GlobeScoutFeedGateVideoStrip
+                          videoContext={card.media.videoContext}
+                        />
+                      </div>
+                    ) : null}
+
                     {card.profile ? (
                       <div
                         className="mt-2.5 space-y-2 rounded-xl bg-[#f5f5f7] px-2.5 py-2 ring-1 ring-black/[0.04]"
@@ -249,7 +455,10 @@ export function GlobeInfiniteDiscoveryFeedPanel({
                           </span>
                         </div>
                         <div className="flex flex-wrap gap-1">
-                          {card.profile.prioritySlots.slice(0, 4).map((slot) => (
+                          {card.profile.prioritySlots
+                            .filter((slot) => slot.filled)
+                            .slice(0, 4)
+                            .map((slot) => (
                             <span
                               key={slot.slotId}
                               className={cn(
@@ -279,11 +488,24 @@ export function GlobeInfiniteDiscoveryFeedPanel({
                             ))}
                           </div>
                         ) : null}
-                        {card.profile.practicalTipsKo[0] ? (
-                          <p className="text-[10px] leading-relaxed text-[#636366]">
-                            {copy.globe.feedEntityPracticalTipsLabel}:{" "}
-                            {card.profile.practicalTipsKo[0]}
-                          </p>
+                        {card.profile.practicalTipsKo.length > 0 ? (
+                          <div className="space-y-1">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[#86868b]">
+                              {copy.globe.feedEntityPracticalTipsLabel}
+                            </p>
+                            <ul className="space-y-0.5">
+                              {card.profile.practicalTipsKo
+                                .slice(0, card.kind === "activity" ? 4 : 1)
+                                .map((tip) => (
+                                  <li
+                                    key={tip}
+                                    className="text-[10px] leading-relaxed text-[#636366] before:mr-1 before:text-[#0071e3] before:content-['·']"
+                                  >
+                                    {tip}
+                                  </li>
+                                ))}
+                            </ul>
+                          </div>
                         ) : null}
                       </div>
                     ) : null}
@@ -291,6 +513,24 @@ export function GlobeInfiniteDiscoveryFeedPanel({
                 </article>
               );
             })}
+            <div
+              ref={sentinelRef}
+              className="flex min-h-12 items-center justify-center px-3 py-4 text-center text-[11px] font-medium text-[#86868b]"
+              data-globe-infinite-feed-sentinel
+            >
+              <span
+                className={cn(
+                  "rounded-full px-2.5 py-1",
+                  loadingMore ? "bg-[#f5f5f7]" : "bg-transparent",
+                )}
+              >
+                {getInfiniteDiscoveryFeedStatusCopy(
+                  feedStatus,
+                  visibleCards.length,
+                  cards.length,
+                )}
+              </span>
+            </div>
           </div>
         </div>
       </div>

@@ -7,6 +7,9 @@ import type { ExecutionGraphNode } from "@/lib/context-blueprint/execution-graph
 import { composeExecutionGraph } from "@/lib/context-blueprint/execution-graph";
 import { composePhysicalSpatialTarget } from "@/lib/context-blueprint/spatial-target";
 import type { ContextBlueprint } from "@/lib/context-blueprint/types";
+import {
+  patchTravelExecutionPlanForDestination,
+} from "@/lib/context-execution";
 import type { DepartureHubAirport } from "@/lib/globe/departure-hub-airports";
 import { resolveTripContextAnchor } from "@/lib/experience-run/resolve-trip-context-anchor";
 import type { RealitySurfaceSession } from "@/lib/reality-surface/project-globe-ingress";
@@ -44,17 +47,10 @@ function patchExecutionNode(
   node: ExecutionGraphNode,
   _destinationLabel: string,
 ): ExecutionGraphNode {
-  if (node.id === "trip" || node.id === "prepare") {
-    return { ...node, status: "done" };
-  }
-  if (node.id === "departure" || node.id === "arrival") {
-    return { ...node, status: "pending" };
-  }
   if (node.id === "stay") {
     return {
       ...node,
       resolution: "hypothesis",
-      status: "running",
       label: "Stay",
     };
   }
@@ -189,10 +185,15 @@ export function advanceRealitySurfaceDestination(input: {
   destinationLabel: string;
 }): RealitySurfaceSession {
   const destinationLabel = normalizeDestinationLabel(input.destinationLabel);
-  const blueprint = patchTravelBlueprintForDestination(
+  let blueprint = patchTravelBlueprintForDestination(
     input.session.operatorBlueprint,
     destinationLabel,
   );
+  const executionPlan = patchTravelExecutionPlanForDestination({
+    blueprint,
+    plan: input.session.executionPlan ?? null,
+    contextId: input.session.eventId,
+  });
   const bridgePathLabels = patchBridgePathLabels(
     input.session.projection.bridge?.pathLabels ?? [],
     destinationLabel,
@@ -204,6 +205,7 @@ export function advanceRealitySurfaceDestination(input: {
     bridgePathLabels,
     blueprint,
     runtimeId: input.session.projection.runtime?.runtimeId ?? blueprint.runtimeId,
+    executionPlan,
   });
 }
 

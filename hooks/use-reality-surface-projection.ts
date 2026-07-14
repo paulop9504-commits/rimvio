@@ -1,11 +1,27 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { gateOperatorRequest } from "@/lib/operator";
+import {
+  needsContextExecutionPlanApproval,
+  needsContextExecutionStepApproval,
+  offerPlanStepHandoffAfterAdvance,
+  persistContextExecutionPlanClientAsync,
+  preferFresherExecutionPlan,
+  readContextExecutionPlanFromEvent,
+} from "@/lib/context-execution";
+import { syncContextInstalledEnginesFromBlueprintClient } from "@/lib/engine/sync-installed-engines-from-blueprint-client";
+import { copy } from "@/lib/copy/human-ko";
 import type { GlobeIngressCompileResult } from "@/lib/globe-ingress/types";
+import {
+  EVENT_CANDIDATES_UPDATED,
+  findLifeEventCandidate,
+} from "@/lib/life-read-model";
 import {
   advanceRealitySurfaceDepartureHub,
   advanceRealitySurfaceDestination,
+  approveRealitySurfaceExecutionPlan,
   blueprintNeedsDepartureConfirm,
   blueprintNeedsDestination,
   composeRealitySurfaceFromGlobeIngress,
@@ -14,6 +30,42 @@ import {
   type RealitySurfaceSession,
 } from "@/lib/reality-surface";
 import type { DepartureHubAirport } from "@/lib/globe/departure-hub-airports";
+
+function persistBlueprintEngineSync(session: RealitySurfaceSession): void {
+  void syncContextInstalledEnginesFromBlueprintClient({
+    contextEventId: session.eventId,
+    blueprint: session.operatorBlueprint,
+  });
+}
+
+function persistExecutionPlanSync(session: RealitySurfaceSession): void {
+  if (!session.executionPlan) {
+    return;
+  }
+  void persistContextExecutionPlanClientAsync({
+    contextEventId: session.eventId,
+    plan: session.executionPlan,
+  });
+}
+
+/** Merge Event SSOT plan (engine turns → prepared) into session. */
+function mergeSessionPlanFromEvent(
+  session: RealitySurfaceSession,
+): RealitySurfaceSession {
+  const event = findLifeEventCandidate(session.eventId);
+  const fromEvent = readContextExecutionPlanFromEvent(event);
+  const executionPlan = preferFresherExecutionPlan(
+    session.executionPlan,
+    fromEvent,
+  );
+  if (
+    !executionPlan ||
+    executionPlan.updatedAtIso === session.executionPlan?.updatedAtIso
+  ) {
+    return session;
+  }
+  return { ...session, executionPlan };
+}
 
 export type UseRealitySurfaceProjectionResult = {
   session: RealitySurfaceSession | null;
@@ -34,15 +86,32 @@ export type UseRealitySurfaceProjectionResult = {
     message: string,
   ) => { destination: string; session: RealitySurfaceSession } | null;
   clearSession: () => void;
+  approveExecutionPlan: () => RealitySurfaceSession | null;
   gateOperatorMessage: (message: string) => ReturnType<typeof gateOperatorRequest> | null;
 };
 
 export function useRealitySurfaceProjection(): UseRealitySurfaceProjectionResult {
   const [session, setSession] = useState<RealitySurfaceSession | null>(null);
 
+  useEffect(() => {
+    const sync = () => {
+      setSession((current) => {
+        if (!current) {
+          return current;
+        }
+        return mergeSessionPlanFromEvent(current);
+      });
+    };
+    window.addEventListener(EVENT_CANDIDATES_UPDATED, sync);
+    return () => window.removeEventListener(EVENT_CANDIDATES_UPDATED, sync);
+  }, []);
+
   const setFromGlobeIngress = useCallback(
     (input: { compiled: GlobeIngressCompileResult; eventId: string }) => {
-      setSession(composeRealitySurfaceFromGlobeIngress(input));
+      const next = composeRealitySurfaceFromGlobeIngress(input);
+      setSession(next);
+      persistBlueprintEngineSync(next);
+      persistExecutionPlanSync(next);
     },
     [],
   );
@@ -60,6 +129,10 @@ export function useRealitySurfaceProjection(): UseRealitySurfaceProjectionResult
         session: current,
         destinationLabel,
       });
+      if (advanced) {
+        persistBlueprintEngineSync(advanced);
+        persistExecutionPlanSync(advanced);
+      }
       return advanced;
     });
     return advanced;
@@ -87,6 +160,9 @@ export function useRealitySurfaceProjection(): UseRealitySurfaceProjectionResult
           homeLat: input.homeLat,
           homeLng: input.homeLng,
         });
+        if (advanced) {
+          persistBlueprintEngineSync(advanced);
+        }
         return advanced;
       });
       return advanced;
@@ -108,6 +184,8 @@ export function useRealitySurfaceProjection(): UseRealitySurfaceProjectionResult
         destinationLabel: destination,
       });
       setSession(advanced);
+      persistBlueprintEngineSync(advanced);
+      persistExecutionPlanSync(advanced);
       return { destination, session: advanced };
     },
     [session],
@@ -115,6 +193,48 @@ export function useRealitySurfaceProjection(): UseRealitySurfaceProjectionResult
 
   const clearSession = useCallback(() => {
     setSession(null);
+  }, []);
+
+  const approveExecutionPlan = useCallback(() => {
+    let advanced: RealitySurfaceSession | null = null;
+    let didApprove = false;
+    let wasPlanGate = false;
+    let wasStepGate = false;
+    setSession((current) => {
+      if (!current?.executionPlan) {
+        return current;
+      }
+      // Event may already be prepared from engine MAIN — merge before approve.
+      const merged = mergeSessionPlanFromEvent(current);
+      wasPlanGate = needsContextExecutionPlanApproval(merged.executionPlan);
+      wasStepGate = needsContextExecutionStepApproval(merged.executionPlan);
+      const next = approveRealitySurfaceExecutionPlan(merged);
+      if (
+        next.executionPlan?.updatedAtIso === merged.executionPlan?.updatedAtIso
+      ) {
+        return merged.executionPlan?.updatedAtIso ===
+          current.executionPlan.updatedAtIso
+          ? current
+          : merged;
+      }
+      advanced = next;
+      didApprove = true;
+      persistExecutionPlanSync(next);
+      persistBlueprintEngineSync(next);
+      return next;
+    });
+    if (didApprove && advanced?.executionPlan) {
+      offerPlanStepHandoffAfterAdvance({
+        contextEventId: advanced.eventId,
+        plan: advanced.executionPlan,
+      });
+      toast.success(
+        wasPlanGate && !wasStepGate
+          ? copy.globe.executionPlanPreview.approvedToast
+          : copy.globe.executionPlanPreview.stepApprovedToast,
+      );
+    }
+    return advanced;
   }, []);
 
   const gateOperatorMessage = useCallback(
@@ -126,6 +246,7 @@ export function useRealitySurfaceProjection(): UseRealitySurfaceProjectionResult
         blueprint: session.operatorBlueprint,
         userMessage: message,
         activeNodeId: session.projection.runtime?.activeFlowNodeId ?? null,
+        executionPlan: session.executionPlan ?? null,
       });
     },
     [session],
@@ -142,6 +263,7 @@ export function useRealitySurfaceProjection(): UseRealitySurfaceProjectionResult
     confirmDepartureHub,
     tryAdvanceDestinationFromMessage,
     clearSession,
+    approveExecutionPlan,
     gateOperatorMessage,
   };
 }

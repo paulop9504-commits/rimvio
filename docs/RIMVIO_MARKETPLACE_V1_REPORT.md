@@ -6,8 +6,12 @@ Extend the behavioral OS **platform** into an **ecosystem economy**: published c
 
 ## Architecture
 
+**Concept canon:** `docs/RIMVIO_STACK_ALIGNMENT.md`
+
 ```
 Platform Layer
+    ↓
+Provider Network (supply-side identity)     ← docs/RIMVIO_PROVIDER_NETWORK.md
     ↓
 Marketplace Layer (`lib/marketplace/`)
     ↓ (internal bridge only)
@@ -34,11 +38,12 @@ Core Engines + Stability
 
 ## Principles
 
-1. **Capability is the product** — NAVIGATE, BOOK_FLIGHT, etc.
-2. **Surfaces are distributable packs** — templates + context rules
-3. **Providers compete** — fair selection on cost/speed/reliability
-4. **Neutral core** — marketplace optional; providers replaceable
-5. **Usage is value** — action execution count, not installs
+1. **Capability is the dispatch contract** — NAVIGATE, BOOK_FLIGHT, etc. (runtime `@` registry)
+2. **Engine is the consumer install surface** — Engine Store installs Engine SKUs; see `docs/RIMVIO_STACK_ALIGNMENT.md`
+3. **Surfaces are distributable packs** — templates + context rules
+4. **Providers compete** — fair selection on cost/speed/reliability
+5. **Neutral core** — marketplace optional; providers replaceable
+6. **Usage is value** — action execution count, not installs
 
 ## API highlights
 

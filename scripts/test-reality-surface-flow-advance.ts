@@ -62,6 +62,7 @@ function testOperatorGateAfterAdvance() {
     blueprint: session.operatorBlueprint,
     userMessage: "주변 호텔",
     activeNodeId: session.projection.runtime?.activeFlowNodeId,
+    executionPlan: session.executionPlan ?? null,
   });
   assert.equal(allowed.allowed, true);
   console.log("✓ operator gate opens after destination advance");

@@ -62,6 +62,11 @@ import { syncGlobeIngressCompileToFeed } from "@/lib/context-run/sync-globe-ingr
 import { buildTripIngressCreatedChatAssistantLine } from "@/lib/globe/trip-situation-router/build-trip-flow-chat-lines";
 import { classifyExperienceRunIntent } from "@/lib/experience-run/classify-experience-run-intent";
 import {
+  compileGlobeIngress,
+  resolveIngressContextConverge,
+} from "@/lib/globe-ingress";
+import { copy } from "@/lib/copy/human-ko";
+import {
   syncComposeDraftToFeed,
   syncComposeIntentToFeed,
 } from "@/lib/context-run/sync-compose-draft-to-feed";
@@ -862,7 +867,7 @@ async function executeContextRunPlan(
       return { graphId, status: "done", planKind: plan.kind };
     }
     case "globe_ingress": {
-      const compiled = plan.globeIngress;
+      let compiled = plan.globeIngress;
       if (!compiled) {
         return executeContextRunPlan(
           bound,
@@ -873,6 +878,71 @@ async function executeContextRunPlan(
       const ingressText = bound.ingress;
       const existingContextId =
         ingressText.kind === "text" ? ingressText.contextEventId : null;
+      const forceNew =
+        ingressText.kind === "text" && ingressText.forceNewContext === true;
+
+      // Cursor magic — Find before mint when hub is null.
+      if (!existingContextId?.trim() && !forceNew) {
+        const converge = resolveIngressContextConverge({
+          utterance: bound.goalKo,
+          events: listLifeEventCandidates(),
+        });
+
+        if (converge.decision === "ask_chips") {
+          handlers.onIngressConvergeChips?.(converge);
+          syncPortalComposeTurnToChat({
+            graphId,
+            userText: bound.goalKo,
+            assistantText: copy.globe.tripSituationRouter.convergeHint,
+          });
+          return {
+            graphId,
+            status: "done",
+            planKind: plan.kind,
+          };
+        }
+
+        if (
+          converge.decision === "auto_attach" &&
+          converge.attachEventId
+        ) {
+          compiled = compileGlobeIngress({
+            text: bound.goalKo,
+            existingContextId: converge.attachEventId,
+          });
+          const classifiedAttach = classifyExperienceRunIntent(bound.goalKo);
+          const event = ensureTripContextEvent({
+            message: bound.goalKo,
+            existingEventId: converge.attachEventId,
+            profile: classifiedAttach?.profile,
+          });
+          syncGlobeIngressCompileToFeed(compiled, bound.goalKo);
+          const why = converge.hits[0]?.meaningWhy?.trim();
+          const assistantText = why
+            ? `${copy.globe.tripSituationRouter.contextResumed(event.title)}\n${copy.globe.tripSituationRouter.convergeWhyPrefix} ${why}`
+            : copy.globe.tripSituationRouter.contextResumed(event.title);
+          syncPortalComposeTurnToChat({
+            graphId,
+            userText: bound.goalKo,
+            assistantText,
+          });
+          handlers.onGlobeIngressCompiled?.({ compiled, eventId: event.id });
+          handlers.onAttached?.(event.id);
+          handlers.toastSuccess?.(
+            why
+              ? `${copy.globe.tripSituationRouter.convergeWhyPrefix} ${why}`
+              : copy.globe.tripSituationRouter.contextResumed(event.title),
+          );
+          refreshWorkQueue(handlers);
+          return {
+            graphId,
+            status: "done",
+            planKind: plan.kind,
+            globeIngress: compiled,
+          };
+        }
+      }
+
       const classified = classifyExperienceRunIntent(bound.goalKo);
       const event = ensureTripContextEvent({
         message: bound.goalKo,

@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { RefObject } from "react";
-import { GlobeHubCheckoutSheet } from "@/components/globe/globe-hub-checkout-sheet";
 import { GlobeInfiniteDiscoveryFeedPanel } from "@/components/globe/globe-infinite-discovery-feed-panel";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { MAP_FOCUS_PIN_VIEWPORT_Y } from "@/lib/globe/map-anchored-overlay-layout";
@@ -20,18 +19,17 @@ import {
   subscribeIntelligentDiscoveryFeedOpen,
   type InfiniteDiscoveryFeedCard,
 } from "@/lib/globe/intelligent-pin";
+import { readActiveDiscoveryExecution } from "@/lib/globe/discovery-execution/read-active-discovery-execution";
 import { readContextAgentComposeThread } from "@/lib/globe/assistant";
 import { openLodgingHubCheckout } from "@/lib/globe/hub-checkout/open-lodging-hub-checkout-bridge";
-import {
-  subscribeLodgingHubCheckoutOpen,
-  type LodgingHubCheckoutOpenEventDetail,
-} from "@/lib/globe/hub-checkout/open-lodging-hub-checkout-bridge";
 import { dispatchGlobeEateryFocus } from "@/lib/globe/eatery/globe-eatery-focus-bridge";
 import {
   EVENT_CANDIDATES_UPDATED,
   findLifeEventCandidate,
 } from "@/lib/life-read-model";
+import { subscribeEateryRankModeOverride } from "@/lib/globe/eatery/eatery-rank-mode-session-store";
 import { copy } from "@/lib/copy/human-ko";
+import { subscribeLodgingRankModeOverride } from "@/lib/globe/lodging/lodging-rank-mode-session-store";
 import { cn } from "@/lib/utils";
 
 export type GlobeIntelligentDiscoveryStageProps = {
@@ -49,15 +47,31 @@ export function GlobeIntelligentDiscoveryStage({
   const [revision, setRevision] = useState(0);
   const [activeResourceId, setActiveResourceId] = useState<string | null>(null);
   const [pinBusyPlaceId, setPinBusyPlaceId] = useState<string | null>(null);
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [checkoutSession, setCheckoutSession] =
-    useState<LodgingHubCheckoutOpenEventDetail["session"] | null>(null);
 
   useEffect(() => {
     const bump = () => setRevision((value) => value + 1);
     window.addEventListener(EVENT_CANDIDATES_UPDATED, bump);
     return () => window.removeEventListener(EVENT_CANDIDATES_UPDATED, bump);
   }, []);
+
+  useEffect(() => {
+    const unsubLodging = subscribeLodgingRankModeOverride((contextEventId) => {
+      setRevision((value) => value + 1);
+      if (openEventId === contextEventId) {
+        setActiveResourceId(null);
+      }
+    });
+    const unsubEatery = subscribeEateryRankModeOverride((contextEventId) => {
+      setRevision((value) => value + 1);
+      if (openEventId === contextEventId) {
+        setActiveResourceId(null);
+      }
+    });
+    return () => {
+      unsubLodging();
+      unsubEatery();
+    };
+  }, [openEventId]);
 
   useEffect(() => {
     return subscribeIntelligentDiscoveryFeedOpen((detail) => {
@@ -90,12 +104,17 @@ export function GlobeIntelligentDiscoveryStage({
     });
   }, [globeRef, openEventId]);
 
+  const [liveNowTick, setLiveNowTick] = useState(0);
+
   useEffect(() => {
-    return subscribeLodgingHubCheckoutOpen((detail) => {
-      setCheckoutSession(detail.session);
-      setCheckoutOpen(true);
-    });
-  }, []);
+    if (!openEventId) {
+      return;
+    }
+    const timer = window.setInterval(() => {
+      setLiveNowTick((value) => value + 1);
+    }, 60_000);
+    return () => window.clearInterval(timer);
+  }, [openEventId]);
 
   const activeEvent = useMemo(() => {
     void revision;
@@ -116,16 +135,17 @@ export function GlobeIntelligentDiscoveryStage({
       if (!activeEvent || reelItems.length === 0) {
         return [];
       }
+      const batch = readActiveDiscoveryExecution(activeEvent.id);
       const lastUserLine = [...readContextAgentComposeThread(activeEvent.id)]
         .reverse()
         .find((turn) => turn.role === "user")?.text;
       return buildInfiniteDiscoveryFeedCards({
         event: activeEvent,
         items: reelItems,
-        triggerMessage: lastUserLine ?? null,
+        triggerMessage: batch?.triggerMessage?.trim() || lastUserLine || null,
       });
     },
-    [activeEvent, reelItems],
+    [activeEvent, reelItems, liveNowTick],
   );
 
   const pinned = useMemo(() => {
@@ -209,18 +229,6 @@ export function GlobeIntelligentDiscoveryStage({
         onCheckout={handleCheckout}
         pinBusyPlaceId={pinBusyPlaceId}
       />
-      {checkoutSession ? (
-        <GlobeHubCheckoutSheet
-          open={checkoutOpen}
-          session={checkoutSession}
-          onOpenChange={(open) => {
-            setCheckoutOpen(open);
-            if (!open) {
-              setCheckoutSession(null);
-            }
-          }}
-        />
-      ) : null}
     </>
   );
 }

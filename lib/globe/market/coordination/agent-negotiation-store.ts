@@ -60,6 +60,13 @@ let remoteRoomsSnapshot: Record<string, AgentNegotiationRoomRecord> = {};
 let coordinationContextSnapshot: CoordinationContextSnapshot | null = null;
 const coordinationContextListeners = new Set<() => void>();
 
+/** Stable refs for useSyncExternalStore — never allocate a fresh [] on each getSnapshot. */
+const EMPTY_ROOMS: AgentNegotiationRoomRecord[] = [];
+const EMPTY_BUSY: CalendarBusyInterval[] = [];
+let roomsListSnapshot: AgentNegotiationRoomRecord[] = EMPTY_ROOMS;
+let roomsListSnapshotDirty = true;
+let activeRoomsCountSnapshot = 0;
+
 function wireToBusyIntervals(
   wire: CoordinationPatchContext["calendarBusyIntervals"],
 ): CalendarBusyInterval[] {
@@ -70,10 +77,13 @@ function emitCoordinationContextUpdate(): void {
   if (typeof window === "undefined") {
     return;
   }
+  markRoomsListSnapshotDirty();
+  recomputeRoomsListSnapshot();
   for (const listener of coordinationContextListeners) {
     listener();
   }
   window.dispatchEvent(new CustomEvent(CONTEXT_UPDATE_EVENT));
+  window.dispatchEvent(new CustomEvent(UPDATE_EVENT));
 }
 
 function setCoordinationContextSnapshot(
@@ -90,7 +100,7 @@ function setCoordinationContextSnapshot(
 }
 
 export function getCoordinationCalendarBusySnapshot(): CalendarBusyInterval[] {
-  return coordinationContextSnapshot?.calendarBusyIntervals ?? [];
+  return coordinationContextSnapshot?.calendarBusyIntervals ?? EMPTY_BUSY;
 }
 
 export function subscribeCoordinationCalendarBusy(listener: () => void): () => void {
@@ -116,11 +126,42 @@ function readMap(): RoomMap {
   }
 }
 
+function recomputeRoomsListSnapshot(): void {
+  const source =
+    remoteListCache && remoteListCache.length > 0
+      ? remoteListCache
+      : Object.values(readMap());
+  if (source.length === 0) {
+    roomsListSnapshot = EMPTY_ROOMS;
+    activeRoomsCountSnapshot = 0;
+    roomsListSnapshotDirty = false;
+    return;
+  }
+  roomsListSnapshot = source
+    .map((room) =>
+      refreshAgentNegotiationPauseState(applyLocalCoordinationContext(room)),
+    )
+    .sort(
+      (a, b) =>
+        new Date(b.updatedAtIso).getTime() - new Date(a.updatedAtIso).getTime(),
+    );
+  activeRoomsCountSnapshot = roomsListSnapshot.filter(
+    (room) => room.state !== "APPROVED" && room.state !== "STUCK",
+  ).length;
+  roomsListSnapshotDirty = false;
+}
+
+function markRoomsListSnapshotDirty(): void {
+  roomsListSnapshotDirty = true;
+}
+
 function writeMap(map: RoomMap): void {
   if (typeof window === "undefined") {
     return;
   }
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+  markRoomsListSnapshotDirty();
+  recomputeRoomsListSnapshot();
   window.dispatchEvent(new CustomEvent(UPDATE_EVENT));
 }
 
@@ -176,24 +217,22 @@ export function isAgentCoordinationMigrationPending(): boolean {
 }
 
 export function listAgentNegotiationRooms(): AgentNegotiationRoomRecord[] {
-  if (remoteListCache && remoteListCache.length > 0) {
-    return [...remoteListCache]
-      .map((room) =>
-        refreshAgentNegotiationPauseState(applyLocalCoordinationContext(room)),
-      )
-      .sort(
-        (a, b) =>
-          new Date(b.updatedAtIso).getTime() - new Date(a.updatedAtIso).getTime(),
-      );
+  if (roomsListSnapshotDirty) {
+    recomputeRoomsListSnapshot();
   }
-  return Object.values(readMap())
-    .map((room) =>
-      refreshAgentNegotiationPauseState(applyLocalCoordinationContext(room)),
-    )
-    .sort(
-      (a, b) =>
-        new Date(b.updatedAtIso).getTime() - new Date(a.updatedAtIso).getTime(),
-    );
+  return roomsListSnapshot;
+}
+
+/** useSyncExternalStore getSnapshot — same reference until store mutates. */
+export function getAgentNegotiationRoomsSnapshot(): readonly AgentNegotiationRoomRecord[] {
+  return listAgentNegotiationRooms();
+}
+
+export function getActiveAgentNegotiationRoomsCountSnapshot(): number {
+  if (roomsListSnapshotDirty) {
+    recomputeRoomsListSnapshot();
+  }
+  return activeRoomsCountSnapshot;
 }
 
 export function getAgentNegotiationRoom(
@@ -231,6 +270,11 @@ export async function refreshAgentNegotiationRoomsFromRemote(): Promise<void> {
   if (!isRemoteCoordinationEnabled()) {
     remoteListCache = null;
     remoteRoomsSnapshot = {};
+    markRoomsListSnapshotDirty();
+    recomputeRoomsListSnapshot();
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent(UPDATE_EVENT));
+    }
     return;
   }
   try {
@@ -239,10 +283,15 @@ export async function refreshAgentNegotiationRoomsFromRemote(): Promise<void> {
     remoteMigrationPending = result.migrationPending === true;
     emitCoordinationAttention(result.rooms);
     remoteListCache = result.rooms;
+    markRoomsListSnapshotDirty();
     cacheRooms(result.rooms);
-    window.dispatchEvent(new CustomEvent(UPDATE_EVENT));
   } catch {
     remoteListCache = null;
+    markRoomsListSnapshotDirty();
+    recomputeRoomsListSnapshot();
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent(UPDATE_EVENT));
+    }
   }
 }
 
@@ -501,9 +550,7 @@ export async function approveAgentNegotiationRoom(
 }
 
 export function countActiveAgentNegotiationRooms(): number {
-  return listAgentNegotiationRooms().filter(
-    (room) => room.state !== "APPROVED" && room.state !== "STUCK",
-  ).length;
+  return getActiveAgentNegotiationRoomsCountSnapshot();
 }
 
 export function subscribeAgentNegotiationRooms(

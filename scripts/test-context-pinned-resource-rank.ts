@@ -78,6 +78,7 @@ const beforeLodging = rankLodgingResources({
   resources: listLodgingResourcesForEvent(event),
   lat: viewerLat,
   lng: viewerLng,
+  lodgingRankMode: "distance",
 });
 assert.equal(beforeLodging[0]?.resource.label, "긴자 워크업 호텔");
 
@@ -102,6 +103,7 @@ const afterLodging = rankLodgingResources({
   resources: listLodgingResourcesForEvent(lodgingPinned),
   lat: viewerLat,
   lng: viewerLng,
+  lodgingRankMode: "distance",
 });
 assert.equal(afterLodging[0]?.resource.label, "도쿄역 미팅 스테이");
 
@@ -110,6 +112,7 @@ const beforeEatery = rankEateryResources({
   resources: listEateryResourcesForEvent(event),
   lat: viewerLat,
   lng: viewerLng,
+  eateryRankMode: "distance",
 });
 assert.equal(beforeEatery[0]?.resource.label, "긴자 브런치");
 
@@ -134,6 +137,7 @@ const afterEatery = rankEateryResources({
   resources: listEateryResourcesForEvent(eateryPinned),
   lat: viewerLat,
   lng: viewerLng,
+  eateryRankMode: "distance",
 });
 assert.equal(afterEatery[0]?.resource.label, "도쿄역 회의 점심");
 

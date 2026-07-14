@@ -40,7 +40,7 @@ assert.equal(
   capabilityGraph.capabilities.find((row) => row.kind === "lodging")?.resolution,
   "unresolved",
 );
-assert.equal(executionGraph.nodes.find((row) => row.id === "exec-lodging")?.status, "blocked");
+assert.equal(executionGraph.nodes.find((row) => row.id === "exec-lodging")?.kind, "allocate");
 
 const hypothesisSpace = composeJapanTravelExecutionSpaceHypothesis({
   originLabel: "Home (대한민국 대전)",

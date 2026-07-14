@@ -1,3 +1,8 @@
-/** Map placement + overlay caps — MVP top-3 decision fatigue law. */
+/** Globe map pins — keep sparse (decision fatigue). */
 export const LOCAL_DISCOVERY_PIN_CAP = 3;
-export const LOCAL_DISCOVERY_RECOMMEND_CAP = 3;
+/** First batch wire + overlay headline count. */
+export const LOCAL_DISCOVERY_RECOMMEND_CAP = 6;
+/** Persisted scout inventory for infinite feed scroll. */
+export const LOCAL_DISCOVERY_FEED_INVENTORY_CAP = 18;
+/** Places API fetch ceiling per lodging scout. */
+export const LOCAL_DISCOVERY_LODGING_SCOUT_MAX = 18;

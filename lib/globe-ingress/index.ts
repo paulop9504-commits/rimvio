@@ -11,3 +11,10 @@ export {
   compileGlobeIngress,
   isGlobeIngressEligible,
 } from "@/lib/globe-ingress/compile-globe-ingress";
+export { isCountryOrRegionDestinationLabel } from "@/lib/globe-ingress/is-country-or-region-destination";
+export {
+  resolveIngressContextConverge,
+  type IngressConvergeDecision,
+  type IngressConvergeHit,
+  type IngressContextConvergeResult,
+} from "@/lib/globe-ingress/resolve-ingress-context-converge";

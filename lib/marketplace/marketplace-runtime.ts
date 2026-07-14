@@ -4,6 +4,8 @@ import {
   recordProviderOutcome,
 } from "@/lib/marketplace/capability-market-registry";
 import { recordCapabilityInvocation } from "@/lib/marketplace/capability-monetization-layer";
+import { readProviderMemberId } from "@/lib/marketplace/normalize-provider-member-ref";
+import { recordContextCapabilityInvocation } from "@/lib/marketplace/record-context-capability-invocation";
 import type {
   InstalledMarketplaceModule,
   PublishedCapabilityPackage,
@@ -173,13 +175,26 @@ export function marketplaceDispatch(
     providerId: (providerId as PlatformCapabilityRequest["providerId"]) ?? input.providerId,
   });
 
+  const memberRef = {
+    publisherId: input.publisherId ?? published?.publisherId ?? "core",
+    providerMemberId: published?.providerMemberId,
+  };
+
   const invocation = recordCapabilityInvocation({
     capabilityId: input.capabilityId,
     providerId: providerId ?? "unknown",
-    publisherId: input.publisherId ?? published?.publisherId ?? "core",
+    publisherId: memberRef.publisherId,
+    providerMemberId: readProviderMemberId(memberRef),
     success: result.ok,
     version: input.capabilityVersion,
   });
+
+  if (input.eventId?.trim()) {
+    recordContextCapabilityInvocation({
+      contextEventId: input.eventId.trim(),
+      record: invocation,
+    });
+  }
 
   if (providerId) {
     recordProviderOutcome(providerId, {

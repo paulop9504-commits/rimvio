@@ -1,10 +1,14 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { haversineKm } from "@/lib/feed/spacetime-fit";
 import { readPinnedLodgingResourceId } from "@/lib/globe/context-hub/pin-lodging-selection-to-context";
+import { readLodgingInventoryRows } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import {
   CONTEXT_LODGING_RECOMMEND_SCORES_META_KEY,
   type LodgingRecommendScoreWire,
 } from "@/lib/globe/context-hub/lodging-resource-types";
+import { computeLodgingResourceRankWeight } from "@/lib/globe/lodging/compute-lodging-resource-rank-weight";
+import type { LodgingRankMode } from "@/lib/globe/lodging/lodging-rank-profile";
+import { readLodgingRankModeOverride } from "@/lib/globe/lodging/lodging-rank-mode-session-store";
 import type { ContextHubServiceRow } from "@/lib/globe/context-hub/context-hub-service-catalog";
 import type { ContextResource } from "@/lib/globe/resource/types";
 import type { RankedContextResource } from "@/lib/globe/resource/map-hub-service-to-resource";
@@ -93,17 +97,23 @@ function scoreLodgingByGps(input: {
   return score;
 }
 
-/** JIT rank for lodging inventory — GPS distance primary. */
+/** JIT rank for lodging inventory — profile-weighted when inventory row exists. */
 export function rankLodgingResources(input: {
   event: EventCandidate;
   resources: readonly ContextResource[];
   lat?: number | null;
   lng?: number | null;
+  lodgingRankMode?: LodgingRankMode | null;
 }): RankedContextResource[] {
   const lat = input.lat ?? null;
   const lng = input.lng ?? null;
   const recommendScores = readRecommendScores(input.event);
   const pinnedResourceId = readPinnedLodgingResourceId(input.event);
+  const lodgingRankMode =
+    input.lodgingRankMode ?? readLodgingRankModeOverride(input.event.id);
+  const inventoryByPlaceId = new Map(
+    readLodgingInventoryRows(input.event).map((row) => [row.placeId, row]),
+  );
 
   return input.resources
     .map((resource) => {
@@ -113,13 +123,26 @@ export function rankLodgingResources(input: {
         lodgingMeta && typeof lodgingMeta === "object" && "placeId" in lodgingMeta
           ? String((lodgingMeta as { placeId?: string }).placeId ?? "")
           : "";
-      const recommendBonus = placeId ? (recommendScores[placeId]?.score ?? 0) : 0;
+      const inventoryRow = placeId ? inventoryByPlaceId.get(placeId) : undefined;
+      const rankScoreBase = inventoryRow
+        ? computeLodgingResourceRankWeight({
+            event: input.event,
+            row: inventoryRow,
+            lat,
+            lng,
+            mode: lodgingRankMode,
+          })
+        : scoreLodgingByGps({
+            resource,
+            lat,
+            lng,
+            recommendBonus: placeId ? (recommendScores[placeId]?.score ?? 0) : 0,
+          });
       return {
         resource,
         hubRow,
         rankScore:
-          scoreLodgingByGps({ resource, lat, lng, recommendBonus }) +
-          (pinnedResourceId === resource.resourceId ? 220 : 0),
+          rankScoreBase + (pinnedResourceId === resource.resourceId ? 220 : 0),
       };
     })
     .sort((left, right) => {

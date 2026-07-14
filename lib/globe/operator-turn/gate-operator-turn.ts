@@ -8,8 +8,7 @@ import { isInstantEaterySearch } from "@/lib/globe/context-condition-ai/instant-
 import { isLodgingBookingQuery } from "@/lib/globe/context-hub/lodging-booking-slots";
 import { parseLensCommand } from "@/lib/globe/discovery-lens/parse-lens-command";
 import { parseResourceReelKindFilter } from "@/lib/globe/resource-reel/parse-resource-reel-kind-filter";
-import { gateTripIntakeAskChips } from "@/lib/globe/operator-turn/gate-trip-intake-ask-chips";
-import { gateTripExperienceAskChips } from "@/lib/globe/operator-turn/gate-trip-experience-ask-chips";
+import { resolveEngineOperatorTurn } from "@/lib/engine/resolve-engine-operator-turn";
 import {
   reelHasKindSlice,
 } from "@/lib/globe/operator-turn/read-operator-turn-ssot";
@@ -29,6 +28,7 @@ export function gateOperatorTurnSync(input: {
   /** When true, skip lens parse (already tried / not handled). */
   skipLens?: boolean;
   event?: import("@/lib/events/event-candidate").EventCandidate | null;
+  blueprint?: import("@/lib/context-blueprint/types").ContextBlueprint | null;
   userLat?: number | null;
   userLng?: number | null;
 }): OperatorTurnPlan {
@@ -37,24 +37,16 @@ export function gateOperatorTurnSync(input: {
     return { tool: "noop", reason: "empty_input" };
   }
 
-  const intakeAsk = gateTripIntakeAskChips({
+  const engineTurn = resolveEngineOperatorTurn({
     text,
+    message: text,
     event: input.event,
+    blueprint: input.blueprint,
     userLat: input.userLat,
     userLng: input.userLng,
   });
-  if (intakeAsk) {
-    return intakeAsk;
-  }
-
-  const experienceAsk = gateTripExperienceAskChips({
-    text,
-    event: input.event,
-    userLat: input.userLat,
-    userLng: input.userLng,
-  });
-  if (experienceAsk) {
-    return experienceAsk;
+  if (engineTurn) {
+    return engineTurn;
   }
 
   if (!text) {

@@ -16,6 +16,7 @@ import type {
 import type { PlaceReviewKind } from "@/lib/globe/place-review-video";
 import type { GlobeResourceReelItem } from "@/lib/globe/resource-reel/types";
 import { copy } from "@/lib/copy/human-ko";
+import { isDeepLocalNight } from "@/lib/globe/feed-entity/refresh-live-place-feed-copy";
 
 type InventoryContext = {
   lodgingRow: ContextLodgingInventoryRow | null;
@@ -108,7 +109,9 @@ function resolveSlot(
           openNow == null
             ? null
             : openNow
-              ? copy.globe.feedEntityOpenNow
+              ? isDeepLocalNight(new Date())
+                ? copy.globe.feedEntityHoursCheck
+                : copy.globe.feedEntityOpenNow
               : copy.globe.feedEntityClosedNow,
         confidence: openNow != null ? 75 : 0,
       };
@@ -207,7 +210,10 @@ function readInventoryContext(input: {
           (row) => row.placeId === input.item.placeId,
         ) ?? null
       : null;
-  const hasVideo = Boolean(lodgingRow?.videoUrl?.trim());
+  const hasVideo =
+    Boolean(lodgingRow?.videoUrl?.trim()) ||
+    input.item.kind === "activity" ||
+    input.item.kind === "amenity";
   return {
     lodgingRow,
     eateryRow,

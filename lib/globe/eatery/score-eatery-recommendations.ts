@@ -6,9 +6,32 @@ import {
   explainEateryRecommendationKo,
   type EateryRecommendReasonInput,
 } from "@/lib/globe/eatery/explain-eatery-recommendation-ko";
+import type { EateryRankProfile } from "@/lib/globe/eatery/eatery-rank-profile";
+import {
+  applyEateryRankContextHints,
+  DEFAULT_EATERY_RANK_WEIGHTS,
+} from "@/lib/globe/eatery/eatery-rank-profile";
+import {
+  describeEateryRankTravelBrainAxes,
+  resolveEateryRankProfileForEvent,
+} from "@/lib/globe/eatery/resolve-eatery-rank-profile-from-travel-brain";
+import {
+  computeWeightedEateryRankScore,
+  inferFoodBiasFromContext,
+  scoreEateryRowDimensions,
+} from "@/lib/globe/eatery/score-eatery-row-dimensions";
 import { findLatestPersonaSignal } from "@/lib/persona/persona-inference-store";
+import type { EventCandidate } from "@/lib/events/event-candidate";
+import { findLifeEventCandidate } from "@/lib/life-read-model";
 import type { ExplorationPolicyKnobs } from "@/lib/globe/discovery-policy/apply-exploration-mode";
 import { explorationScoreBias } from "@/lib/globe/discovery-policy/exploration-score-bias";
+import type {
+  TravelBrainState,
+  TravelBudgetBand,
+  TravelFoodBias,
+  TravelMealTimingPattern,
+} from "@/lib/situation-projection/travel-brain-personalization";
+import { buildTravelBrainState } from "@/lib/situation-projection/travel-brain-personalization";
 
 export type ScoredEateryRecommendation = {
   row: ContextEateryInventoryRow;
@@ -52,37 +75,14 @@ function findPeoplePlaceMatch(
   return null;
 }
 
-function scoreDistance(lat: number | null, lng: number | null, row: ContextEateryInventoryRow): {
-  bonus: number;
-  distanceKm: number | null;
-} {
-  if (lat == null || lng == null) {
-    return { bonus: 0, distanceKm: null };
-  }
-  const distanceKm = haversineKm(lat, lng, row.lat, row.lng);
-  if (distanceKm <= 0.5) {
-    return { bonus: 130, distanceKm };
-  }
-  if (distanceKm <= 1) {
-    return { bonus: 100, distanceKm };
-  }
-  if (distanceKm <= 3) {
-    return { bonus: 60, distanceKm };
-  }
-  if (distanceKm <= 8) {
-    return { bonus: 25, distanceKm };
-  }
-  return { bonus: 0, distanceKm };
-}
-
-function scoreTitleBias(input: {
+function titleMatchReasons(input: {
   row: ContextEateryInventoryRow;
   context?: ContextInstance;
   distanceKm: number | null;
-}): { delta: number; reasons: string[] } {
+}): string[] {
   const title = input.context?.title;
   if (!title) {
-    return { delta: 0, reasons: [] };
+    return [];
   }
 
   const blob = [
@@ -96,32 +96,27 @@ function scoreTitleBias(input: {
     .filter(Boolean)
     .join(" ");
 
-  let delta = 0;
   const reasons: string[] = [];
 
   if (
     title.searchBias.mealMoment === "late_night" &&
     (input.row.openNow === true || /야식|심야|24시|24시간|술집|포차|우동|라멘/u.test(blob))
   ) {
-    delta += 30;
     reasons.push("제목의 야식 흐름에 맞아요");
   } else if (
     title.searchBias.mealMoment === "dinner" &&
     /저녁|고기|이자카야|술집|다이닝|정식/u.test(blob)
   ) {
-    delta += 16;
     reasons.push("제목의 저녁 흐름과 맞아요");
   } else if (
     title.searchBias.mealMoment === "lunch" &&
     /점심|국밥|백반|정식|분식|면/u.test(blob)
   ) {
-    delta += 14;
     reasons.push("제목의 점심 흐름과 맞아요");
   } else if (
     title.searchBias.mealMoment === "breakfast" &&
     /조식|아침|브런치|샌드위치|커피/u.test(blob)
   ) {
-    delta += 14;
     reasons.push("제목의 아침 흐름과 맞아요");
   }
 
@@ -130,7 +125,6 @@ function scoreTitleBias(input: {
     (/가정식|한식|정식|샤브|죽|quiet|조용|룸|family/u.test(blob) ||
       (input.row.rating ?? 0) >= 4.4)
   ) {
-    delta += 18;
     reasons.push("부모님과 가기 편한 흐름이에요");
   }
 
@@ -139,29 +133,57 @@ function scoreTitleBias(input: {
     (/조용|quiet|룸|정식|브런치|station|역/u.test(blob) ||
       (input.distanceKm != null && input.distanceKm <= 1.5))
   ) {
-    delta += 16;
     reasons.push("외근/만남 흐름에 실용적이에요");
   }
 
   if (title.searchBias.proximityBias === "anchor_tight" && input.distanceKm != null) {
     if (input.distanceKm <= 1.2) {
-      delta += 18;
       reasons.push("제목 동선에서 크게 벗어나지 않아요");
-    } else if (input.distanceKm > 6) {
-      delta -= 12;
     }
   }
 
-  return { delta, reasons: reasons.slice(0, 2) };
+  return reasons.slice(0, 2);
 }
 
-/** Unified context + GPS — ranked eatery rows with L1 reason copy. */
+/** Strong contextual overlays outside the four profile dimensions. */
+function scoreEateryContextualOverlay(input: {
+  peoplePlaceMatch: { displayName: string; placeLabel: string } | null;
+  travelTrajectory: boolean;
+  focusHit: boolean;
+  specialScore: number;
+  explorationDelta: number;
+  genericAgain: boolean;
+}): number {
+  let overlay = 0;
+  if (input.peoplePlaceMatch) {
+    overlay += 34;
+  }
+  if (input.travelTrajectory) {
+    overlay += 8;
+  }
+  if (input.focusHit) {
+    overlay += 40;
+  }
+  if (input.specialScore > 0) {
+    overlay += Math.min(12, Math.round(input.specialScore * 0.35));
+  }
+  overlay += input.explorationDelta;
+  if (input.genericAgain) {
+    overlay += 4;
+  }
+  return Math.round(overlay);
+}
+
+/** Unified context + GPS + profile — weighted dimension rank with L1 copy. */
 export function scoreEateryRecommendations(input: {
   rows: readonly ContextEateryInventoryRow[];
   unifiedContext: UnifiedExperienceContext;
   lat?: number | null;
   lng?: number | null;
   context?: ContextInstance;
+  event?: EventCandidate | null;
+  travelBrain?: TravelBrainState | null;
+  rankProfile?: EateryRankProfile | null;
   /**
    * Scale the proximity bonus. Activity/landmark discovery ("유니버설 스튜디오")
    * is city-wide, so distance must not bury a far but exact match — pass a small
@@ -180,93 +202,119 @@ export function scoreEateryRecommendations(input: {
     .split(/[\s·,]+/u)
     .map((token) => token.trim())
     .filter((token) => token.length >= 2);
+  const event =
+    input.event ??
+    (input.context?.eventId
+      ? findLifeEventCandidate(input.context.eventId)
+      : null);
+  const travelBrain =
+    input.travelBrain ?? (event ? buildTravelBrainState(event) : null);
+  const rankProfile =
+    input.rankProfile ??
+    (event
+      ? resolveEateryRankProfileForEvent({
+          event,
+          travelBrain,
+        })
+      : null);
+  let profile = rankProfile ?? {
+    mode: "auto" as const,
+    weights: DEFAULT_EATERY_RANK_WEIGHTS,
+    source: "default" as const,
+  };
+  const brainAxes = travelBrain
+    ? describeEateryRankTravelBrainAxes(travelBrain)
+    : null;
+  const contextFoodBias = inferFoodBiasFromContext(input.context);
+  const foodBias: TravelFoodBias | null =
+    brainAxes?.foodBias ??
+    contextFoodBias ??
+    ((findLatestPersonaSignal("travel.food_bias")?.value as
+      | TravelFoodBias
+      | undefined) ??
+      null);
+  const dimensionFoodBias: TravelFoodBias | null =
+    foodBias ??
+    (profile.mode === "popular"
+      ? "landmark"
+      : profile.mode === "local"
+        ? "local"
+        : profile.mode === "value"
+          ? "value"
+          : null);
+  const mealTiming: TravelMealTimingPattern | null =
+    brainAxes?.mealTiming ??
+    (input.context?.title.searchBias.mealMoment as TravelMealTimingPattern | null) ??
+    null;
+  const budgetBand: TravelBudgetBand | null =
+    brainAxes?.budgetBand ??
+    ((findLatestPersonaSignal("travel.budget_band")?.value as
+      | TravelBudgetBand
+      | undefined) ??
+      null);
+  if (!event && contextFoodBias && profile.mode === "auto") {
+    profile = applyEateryRankContextHints(profile, {
+      foodBias: contextFoodBias,
+      mealTiming,
+    });
+  }
   const trajectory = input.unifiedContext.behaviorKernel.state.trajectory;
   const travelTrajectory =
     trajectory.dominant_cluster === "travel" && trajectory.strength >= 0.15;
-  const localityPreference = findLatestPersonaSignal("travel.local_vs_landmark");
-  const foodBias = findLatestPersonaSignal("travel.food_bias");
   const genericPreference = findLatestPersonaSignal("generic.preference");
 
   const scored = input.rows.map((row) => {
-    let score = 60;
     const peoplePlaceMatch = findPeoplePlaceMatch(row, input.unifiedContext);
-    if (peoplePlaceMatch) {
-      score += 140;
-    }
-    if (travelTrajectory) {
-      score += 35;
-    }
-    const { bonus, distanceKm } = scoreDistance(lat, lng, row);
-    score += bonus * distanceWeight;
-    if (focusTokens.length > 0) {
-      const focusBlob = [row.name, row.categoryLabel, row.cuisineHint, row.address]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      if (focusTokens.some((token) => focusBlob.includes(token))) {
-        score += 200;
-      }
-    }
-    const titleBias = scoreTitleBias({
+    const { dimensions, distanceKm } = scoreEateryRowDimensions({
+      row,
+      lat,
+      lng,
+      foodBias: dimensionFoodBias,
+      mealTiming,
+      budgetBand,
+      context: input.context,
+      distanceWeight,
+    });
+    const coreScore = computeWeightedEateryRankScore(dimensions, profile);
+    const focusBlob = [row.name, row.categoryLabel, row.cuisineHint, row.address]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    const focusHit =
+      focusTokens.length > 0 &&
+      focusTokens.some((token) => focusBlob.includes(token));
+    const explorationDelta = input.exploration
+      ? explorationScoreBias({
+          knobs: input.exploration,
+          rating: row.rating,
+          labels: [
+            row.name,
+            row.categoryLabel,
+            row.cuisineHint,
+            row.specialReasonKo,
+            row.providerLabel,
+          ],
+        })
+      : 0;
+    const titleReasons = titleMatchReasons({
       row,
       context: input.context,
       distanceKm,
     });
-    score += titleBias.delta;
-    if (row.specialScore != null && Number.isFinite(row.specialScore)) {
-      score += Math.max(0, row.specialScore);
-    }
-    const localityBlob = [
-      row.specialReasonKo,
-      row.categoryLabel,
-      row.cuisineHint,
-      row.providerLabel,
-    ]
-      .filter(Boolean)
-      .join(" ");
-    if (localityPreference?.value === "local" && /로컬|현지|골목/u.test(localityBlob)) {
-      score += 18;
-    }
-    if (foodBias?.value === "local" && /로컬|현지|골목/u.test(localityBlob)) {
-      score += 22;
-    }
-    if (
-      localityPreference?.value === "landmark" &&
-      ((row.rating ?? 0) >= 4.4 || /인기|관광|유명/u.test(localityBlob))
-    ) {
-      score += 14;
-    }
-    if (
-      foodBias?.value === "landmark" &&
-      ((row.rating ?? 0) >= 4.4 || /인기|관광|유명/u.test(localityBlob))
-    ) {
-      score += 18;
-    }
-    if (foodBias?.value === "cafe" && /카페|coffee|dessert|디저트/u.test(localityBlob)) {
-      score += 20;
-    }
-    if (foodBias?.value === "late_night" && (row.openNow === true || /야식|심야/u.test(localityBlob))) {
-      score += 18;
-    }
-    if (foodBias?.value === "value" && (row.priceLevel ?? 9) <= 2) {
-      score += 16;
-    }
-    if (genericPreference?.value === "again" && row.specialReasonKo?.trim()) {
-      score += 10;
-    }
-    if (input.exploration) {
-      score += explorationScoreBias({
-        knobs: input.exploration,
-        rating: row.rating,
-        labels: [
-          row.name,
-          row.categoryLabel,
-          row.cuisineHint,
-          row.specialReasonKo,
-          row.providerLabel,
-        ],
-      });
-    }
+    const overlay = scoreEateryContextualOverlay({
+      peoplePlaceMatch,
+      travelTrajectory,
+      focusHit,
+      specialScore:
+        row.specialScore != null && Number.isFinite(row.specialScore)
+          ? Math.max(0, row.specialScore)
+          : 0,
+      explorationDelta,
+      genericAgain: Boolean(
+        genericPreference?.value === "again" && row.specialReasonKo?.trim(),
+      ),
+    });
+    const score = coreScore + overlay;
 
     const reasonInput: EateryRecommendReasonInput = {
       peoplePlaceMatch,
@@ -276,14 +324,22 @@ export function scoreEateryRecommendations(input: {
     };
 
     const explained = explainEateryRecommendationKo(reasonInput);
-    const matchReasons = [...titleBias.reasons, ...explained.matchReasons];
+    const matchReasons = [...titleReasons, ...explained.matchReasons];
     if (row.specialReasonKo?.trim()) {
       matchReasons.unshift(row.specialReasonKo.trim());
     }
+    if (profile.reasonKo?.trim() && profile.source === "context") {
+      matchReasons.push(profile.reasonKo.trim());
+    }
+
     return {
       row,
       score,
-      reasonKo: row.specialReasonKo?.trim() || titleBias.reasons[0] || explained.reasonKo,
+      reasonKo:
+        row.specialReasonKo?.trim() ||
+        titleReasons[0] ||
+        profile.reasonKo?.trim() ||
+        explained.reasonKo,
       matchReasons: matchReasons.slice(0, 3),
     };
   });
@@ -298,9 +354,13 @@ export function scoreEateryRecommendations(input: {
 
   return scored.map((entry, index) => {
     if (index === 0 && entry.matchReasons.length === 0) {
+      const distanceKm =
+        lat != null && lng != null
+          ? haversineKm(lat, lng, entry.row.lat, entry.row.lng)
+          : null;
       const explained = explainEateryRecommendationKo({
         rankIndex: 0,
-        distanceKm: scoreDistance(lat, lng, entry.row).distanceKm,
+        distanceKm,
         cuisineHint: entry.row.cuisineHint ?? null,
       });
       return { ...entry, reasonKo: explained.reasonKo, matchReasons: explained.matchReasons };

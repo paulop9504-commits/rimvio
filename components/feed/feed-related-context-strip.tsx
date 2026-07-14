@@ -86,6 +86,19 @@ export const FeedRelatedContextStrip = memo(function FeedRelatedContextStrip({
       data-feed-related-axes={axes.map((axis) => axis.kind).join(",")}
     >
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        {bundle.meaningLabel ? (
+          <p
+            className="inline-flex min-w-0 items-center gap-1 truncate text-[11px] text-foreground/80"
+            data-feed-meaning-label
+          >
+            <span className="font-medium text-muted-foreground/80">
+              {relatedCopy.meaningPrefix}
+            </span>
+            <span className="truncate font-semibold tracking-tight">
+              {bundle.meaningLabel}
+            </span>
+          </p>
+        ) : null}
         {bundle.people.labels.length > 0 ? (
           <p className="inline-flex min-w-0 items-center gap-1 truncate text-[11px] text-muted-foreground">
             <Users className="size-3 shrink-0 text-muted-foreground/70" aria-hidden />

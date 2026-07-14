@@ -4,7 +4,7 @@ import { appendLodgingRoomCardsComposeTurn } from "@/lib/globe/assistant";
 import type { ContextConditionAnchorPinOutcome } from "@/lib/globe/context-condition-ai";
 import { pinContextConditionRecommendation } from "@/lib/globe/context-condition-ai/pin-context-condition-recommendation";
 import type { EventCandidate } from "@/lib/events/event-candidate";
-import { findLifeEventCandidate } from "@/lib/life-read-model";
+import { recordEngineLifecycleClient, recordEngineScoutFailureClient } from "@/lib/engine/record-engine-lifecycle";
 import { resolveLodgingRoomCardStep } from "@/lib/globe/hub-checkout/resolve-lodging-hub-checkout-session";
 import { planOneShotLodgingPrep } from "@/lib/globe/lodging-prep/plan-one-shot-lodging-prep";
 import { resolveLodgingPrepMainRecommendation } from "@/lib/globe/lodging-prep/resolve-lodging-prep-main-recommendation";
@@ -13,6 +13,7 @@ import {
   type RunOneShotLodgingPrepResult,
 } from "@/lib/globe/lodging-prep/run-one-shot-lodging-prep-client";
 import { prepareLodgingHubCheckout } from "@/lib/globe/hub-checkout/prepare-lodging-hub-checkout";
+import { findLifeEventCandidate } from "@/lib/life-read-model";
 
 export type CommitOneShotLodgingMainOfferResult = {
   readonly committed: boolean;
@@ -46,12 +47,19 @@ export function commitOneShotLodgingMainOfferClient(input: {
 
   const main = resolveLodgingPrepMainRecommendation(input.outcome.recommendations);
   if (!main?.placeId) {
+    recordEngineScoutFailureClient({
+      contextEventId: input.contextEventId,
+      engineId: "lodging_search",
+      lastError: "no_main_recommendation",
+      payload: { batchId: input.outcome.batchId },
+    });
     return { committed: false, placeId: null, expressOpened: false };
   }
 
   pinContextConditionRecommendation({
     eventId: input.contextEventId,
     recommendation: main,
+    recordEngineMainSelected: false,
   });
 
   const refreshedEvent =
@@ -94,6 +102,17 @@ export function commitOneShotLodgingMainOfferClient(input: {
       expressOpened = true;
     }
   }
+
+  recordEngineLifecycleClient({
+    contextEventId: input.contextEventId,
+    engineId: "lodging_search",
+    kind: "main_selected",
+    payload: {
+      placeId: main.placeId,
+      batchId: input.outcome.batchId,
+      expressOpened,
+    },
+  });
 
   return {
     committed: true,

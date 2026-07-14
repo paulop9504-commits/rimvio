@@ -3,6 +3,8 @@ import type {
   ProviderReputation,
   PublishedCapabilityPackage,
 } from "@/lib/marketplace/marketplace-contract";
+import { normalizePublishedCapabilityPackage } from "@/lib/marketplace/normalize-provider-member-ref";
+import { indexProviderMemberFromCapabilityPackage } from "@/lib/marketplace/provider-member-registry";
 
 const packages = new Map<string, PublishedCapabilityPackage>();
 const reputationByProvider = new Map<string, ProviderReputation>();
@@ -29,8 +31,10 @@ export function publishCapabilityPackage(
   if (packages.has(key)) {
     return { ok: false, reason: "capability_version_conflict" };
   }
-  packages.set(key, pkg);
-  reputationByProvider.set(pkg.providerId, pkg.reputation);
+  const normalized = normalizePublishedCapabilityPackage(pkg);
+  packages.set(key, normalized);
+  reputationByProvider.set(normalized.providerId, normalized.reputation);
+  indexProviderMemberFromCapabilityPackage(normalized);
   return { ok: true };
 }
 

@@ -55,7 +55,12 @@ export type OperatorTurnPlan =
         | "classify_search"
         | "instant_poi_search"
         | "instant_eatery_search"
-        | "instant_lodging_search";
+        | "instant_activity_search"
+        | "instant_lodging_search"
+        | "instant_flight_search"
+        | "instant_transit_navigate"
+        | "instant_finance_payment"
+        | "trip_experience_parallel";
     }
   | {
       readonly tool: "defer_classify";
@@ -71,7 +76,12 @@ export type OperatorTurnPlan =
     }
   | {
       readonly tool: "ask_chips";
-      readonly reason: "trip_intake_gap" | "trip_experience_gap" | "convergence_or_clarify";
+      readonly reason:
+        | "trip_intake_gap"
+        | "trip_experience_gap"
+        | "transit_prep_gap"
+        | "finance_prep_gap"
+        | "convergence_or_clarify";
       readonly chips: readonly {
         readonly id: string;
         readonly labelKo: string;

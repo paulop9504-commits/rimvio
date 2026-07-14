@@ -1,5 +1,8 @@
 export const MARKETPLACE_CONTRACT_VERSION = 1 as const;
 
+import type { ProviderKind } from "@/lib/marketplace/provider-network-types";
+export type { ProviderKind } from "@/lib/marketplace/provider-network-types";
+
 export type MarketplaceDomain =
   | "travel"
   | "finance"
@@ -26,12 +29,35 @@ export type ProviderReputation = {
   successCount: number;
 };
 
+export type PublishedEngineManifest = {
+  manifestId: string;
+  engineId: string;
+  version: string;
+  /** Execution adapter SKU — fair selection · API routing. */
+  providerId: string;
+  /** Provider Network member id (SSOT). */
+  providerMemberId?: string;
+  /** @deprecated Alias for providerMemberId — v1 wire compat. */
+  publisherId: string;
+  /** Optional supply-side classification. */
+  providerKind?: ProviderKind;
+  description: string;
+  capabilityIds: readonly string[];
+  executionNodeIds: readonly string[];
+  pricing: CapabilityPricing;
+  reputation: ProviderReputation;
+  publishedAt: string;
+};
+
 export type PublishedCapabilityPackage = {
   packageId: string;
   capabilityId: string;
   version: string;
   providerId: string;
+  providerMemberId?: string;
+  /** @deprecated Alias for providerMemberId — v1 wire compat. */
   publisherId: string;
+  providerKind?: ProviderKind;
   description: string;
   pricing: CapabilityPricing;
   reputation: ProviderReputation;
@@ -71,6 +97,8 @@ export type CapabilityInvocationRecord = {
   invocationId: string;
   capabilityId: string;
   providerId: string;
+  providerMemberId?: string;
+  /** @deprecated Alias for providerMemberId — v1 wire compat. */
   publisherId: string;
   costUnits: number;
   success: boolean;

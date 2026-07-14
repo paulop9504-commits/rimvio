@@ -119,6 +119,7 @@ export async function prefetchDiscoveryLensBundle(input: {
     lat,
     lng,
     context,
+    event: input.event,
   }).slice(0, 3);
 
   const lodgingScored = scoreLodgingRecommendations({
@@ -127,6 +128,7 @@ export async function prefetchDiscoveryLensBundle(input: {
     lat,
     lng,
     context,
+    event: input.event,
   }).slice(0, 2);
 
   const items: LensPrefetchItem[] = [];

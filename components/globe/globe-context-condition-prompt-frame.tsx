@@ -15,12 +15,12 @@ import { GlobeContextAgentProcessStrip } from "@/components/globe/globe-context-
 import { GlobeContextAgentRefineChips } from "@/components/globe/globe-context-agent-refine-chips";
 import { GlobeContextExplorationModeChips } from "@/components/globe/globe-context-exploration-mode-chips";
 import { GlobeContextActionInjectionCard } from "@/components/globe/globe-context-action-injection-card";
-import { GlobeHubCheckoutSheet } from "@/components/globe/globe-hub-checkout-sheet";
 import { GlobeContextConditionPinBar, type GlobeContextConditionPinBarHandle, type IntakeSlotsSubmitInput, type AskChipPickInput } from "@/components/globe/globe-context-condition-pin-bar";
 import { GlobeDiscoveryLensBar } from "@/components/globe/globe-discovery-lens-bar";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import type { ContextBlueprint } from "@/lib/context-blueprint/types";
+import { activateDiscoveryExecutionSnapshot } from "@/lib/globe/discovery-execution/discovery-execution-archive";
 import { copy } from "@/lib/copy/human-ko";
 import { MAP_FOCUS_PIN_VIEWPORT_Y } from "@/lib/globe/map-anchored-overlay-layout";
 import { hasScoutRevealPending } from "@/lib/globe/context-condition-ai/context-condition-scout-reveal-pending-store";
@@ -34,7 +34,13 @@ import {
   clearContextConditionPending,
   type ContextConditionAnchorPinOutcome,
 } from "@/lib/globe/context-condition-ai";
+import { recordEngineLifecycleClient } from "@/lib/engine/record-engine-lifecycle";
+import { resolveDiscoveryEngineId } from "@/lib/engine/resolve-discovery-engine-id";
 import { commitOneShotLodgingMainOfferClient } from "@/lib/globe/lodging-prep";
+import {
+  commitOneShotTripExperienceMainClient,
+  isTripExperienceScoutBatchId,
+} from "@/lib/globe/trip-experience";
 import { dispatchIntelligentDiscoveryFeedOpen } from "@/lib/globe/intelligent-pin";
 import { useIntelligentDiscoveryFeedFocus } from "@/lib/globe/intelligent-pin/use-intelligent-discovery-feed-focus";
 import { isAlternatePlaceSearch } from "@/lib/globe/context-condition-ai/is-alternate-place-search";
@@ -81,10 +87,6 @@ import {
 import type { ContextActionInjection } from "@/lib/globe/context-action-injection/types";
 import { prefetchContextAgentSurroundings } from "@/lib/globe/context-agent";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
-import {
-  subscribeLodgingHubCheckoutOpen,
-  type HubLodgingCheckoutSession,
-} from "@/lib/globe/hub-checkout";
 import { resolveLodgingRoomCardStep } from "@/lib/globe/hub-checkout/resolve-lodging-hub-checkout-session";
 import { openIdentityVaultSettings } from "@/lib/identity-vault/open-identity-vault-settings-bridge";
 import {
@@ -93,12 +95,14 @@ import {
   clearContextAgentComposeThread,
   CONTEXT_AGENT_ASK_FIRST,
   markScoutFeedGateOpened,
+  patchScoutFeedGateAfterCorrection,
   readContextAgentComposeThread,
   resolveContextAgentPipelinePhase,
   resolveGlobeComposePipelineLabel,
   subscribeContextAgentComposeThread,
   type ContextAgentComposeTurn,
 } from "@/lib/globe/assistant";
+import { applyScoutDomainCorrection } from "@/lib/globe/context-condition-ai/apply-scout-domain-correction";
 import {
   resolveCicadaAgentPhase,
   resolveCicadaAgentPhaseLabel,
@@ -223,9 +227,6 @@ export function GlobeContextConditionPromptFrame({
   const [ontologyExpanded, setOntologyExpanded] = useState(false);
   const [composeThread, setComposeThread] = useState<readonly ContextAgentComposeTurn[]>([]);
   const [typewriterTurnId, setTypewriterTurnId] = useState<string | null>(null);
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [checkoutSession, setCheckoutSession] =
-    useState<HubLodgingCheckoutSession | null>(null);
   const lastFlownPlaceRef = useRef<string | null>(null);
   const lastInterpretationRef = useRef<string | null>(null);
   const ontologyDevSurface = isPalantirOntologyDevSurfaceEnabled();
@@ -531,13 +532,6 @@ export function GlobeContextConditionPromptFrame({
     return readContextConditionPinnedPlaceIds(freshEvent);
   }, [event, pinnedRevision]);
 
-  useEffect(() => {
-    return subscribeLodgingHubCheckoutOpen(({ session }) => {
-      setCheckoutSession(session);
-      setCheckoutOpen(true);
-    });
-  }, []);
-
   const handlePickRecommendation = useCallback(
     async (item: ContextConditionRecommendation) => {
       if (!event) {
@@ -606,20 +600,53 @@ export function GlobeContextConditionPromptFrame({
         .reverse()
         .find((turn) => turn.role === "user")?.text ?? "";
 
-    const oneShotMain = commitOneShotLodgingMainOfferClient({
-      contextEventId: event.id,
-      triggerMessage,
-      outcome,
+    const engineId = resolveDiscoveryEngineId({
+      message: triggerMessage,
       event: findLifeEventCandidate(event.id) ?? event,
+      spec: outcome.spec,
+      recommendationKinds: outcome.recommendations.map((row) => row.kind),
       userLat,
       userLng,
     });
+    if (engineId) {
+      recordEngineLifecycleClient({
+        contextEventId: event.id,
+        engineId,
+        kind: "scout_complete",
+        payload: {
+          batchId: outcome.batchId,
+          recommendationCount: outcome.recommendations.length,
+        },
+      });
+    }
+
+    const oneShotMain = isTripExperienceScoutBatchId(outcome.batchId)
+      ? commitOneShotTripExperienceMainClient({
+          contextEventId: event.id,
+          triggerMessage,
+          outcome,
+          event: findLifeEventCandidate(event.id) ?? event,
+          userLat,
+          userLng,
+        })
+      : commitOneShotLodgingMainOfferClient({
+          contextEventId: event.id,
+          triggerMessage,
+          outcome,
+          event: findLifeEventCandidate(event.id) ?? event,
+          userLat,
+          userLng,
+        });
     if (oneShotMain.committed) {
       setPinnedRevision((value) => value + 1);
-      setContextAgentSessionPhase(oneShotMain.expressOpened ? "awaiting_human" : "pinned");
+      const expressOpened =
+        "expressOpened" in oneShotMain ? oneShotMain.expressOpened : false;
+      setContextAgentSessionPhase(expressOpened ? "awaiting_human" : "pinned");
       setComposeThread(readContextAgentComposeThread(event.id));
-      if (oneShotMain.expressOpened) {
+      if (expressOpened) {
         toast.message(copy.hubCheckout.expressTitle);
+      } else if (isTripExperienceScoutBatchId(outcome.batchId)) {
+        toast.success(copy.globe.tripExperienceMainReady);
       } else {
         toast.success(copy.globe.lodgingOneShotMainReady);
       }
@@ -658,11 +685,28 @@ export function GlobeContextConditionPromptFrame({
       }
       setScoutFeedGateBusy(true);
       try {
-        const lastBatch = readContextConditionLastBatch(event.id);
-        if (!lastBatch || lastBatch.batchId !== input.batchId) {
+        const activated = activateDiscoveryExecutionSnapshot(event.id, input.batchId);
+        if (!activated) {
           toast.message(copy.globe.contextConditionPinEmpty);
           return;
         }
+        const lastBatch = readContextConditionLastBatch(event.id);
+        if (!lastBatch) {
+          toast.message(copy.globe.contextConditionPinEmpty);
+          return;
+        }
+        setRecommendations(
+          (lastBatch.recommendations ?? []).map((row, index) => ({
+            kind: row.kind,
+            title: row.title,
+            reasonKo: row.reasonKo,
+            rank: index + 1,
+            placeId: row.placeId ?? `${row.kind}-${index}`,
+            lat: row.lat ?? anchorLat,
+            lng: row.lng ?? anchorLng,
+          })),
+        );
+        setActiveSpec(lastBatch.spec ?? null);
         revealContextConditionScout(event.id);
         markScoutFeedGateOpened(event.id, input.turnId);
         setComposeThread(readContextAgentComposeThread(event.id));
@@ -693,6 +737,69 @@ export function GlobeContextConditionPromptFrame({
       }
     },
     [anchorLat, anchorLng, event, globeRef],
+  );
+
+  const handleScoutDomainCorrection = useCallback(
+    (input: { turnId: string; batchId: string; chipId: string }) => {
+      if (!event) {
+        return;
+      }
+      const gate = readContextAgentComposeThread(event.id).find(
+        (row) =>
+          row.id === input.turnId &&
+          row.role === "assistant" &&
+          row.kind === "scout_feed_gate",
+      );
+      const chips =
+        gate && gate.role === "assistant" && gate.kind === "scout_feed_gate"
+          ? (gate.payload.correctionChips ?? [])
+          : [];
+      const result = applyScoutDomainCorrection({
+        contextEventId: event.id,
+        batchId: input.batchId,
+        chipId: input.chipId,
+        chips,
+        summaryForCount: (count, kind) =>
+          copy.globe.scoutFeedGateCorrectionSummary({ count, kind }),
+      });
+      if (!result.ok) {
+        toast.message(copy.globe.scoutFeedGateCorrectionEmpty);
+        return;
+      }
+      const highlightTitles = (result.batch.recommendations ?? [])
+        .slice(0, 3)
+        .map((row) => row.title.trim())
+        .filter(Boolean);
+      const kinds = new Set(
+        (result.batch.recommendations ?? []).map((row) => row.kind),
+      );
+      const scoutKind =
+        kinds.size === 1
+          ? ([...kinds][0] as "lodging" | "eatery" | "activity" | "amenity")
+          : "mixed";
+      patchScoutFeedGateAfterCorrection(event.id, {
+        turnId: input.turnId,
+        summaryKo: result.summaryKo,
+        count: result.batch.count,
+        scoutKind,
+        highlightTitles,
+      });
+      setRecommendations(
+        (result.batch.recommendations ?? []).map((row, index) => ({
+          kind: row.kind,
+          title: row.title,
+          reasonKo: row.reasonKo,
+          rank: index + 1,
+          placeId: row.placeId ?? `${row.kind}-${index}`,
+          lat: row.lat ?? anchorLat,
+          lng: row.lng ?? anchorLng,
+        })),
+      );
+      setActiveSpec(result.batch.spec ?? null);
+      setComposeThread(readContextAgentComposeThread(event.id));
+      toast.message(result.summaryKo);
+    },
+    [anchorLat, anchorLng, event],
   );
 
   const handleRefine = (message: string) => {
@@ -1166,6 +1273,7 @@ export function GlobeContextConditionPromptFrame({
               onIntakeSubmit={(input) => void intakeSubmitRef.current?.(input)}
               onAskChipPick={(input) => void askChipPickRef.current?.(input)}
               onOpenScoutFeed={(input) => void handleOpenScoutFeed(input)}
+              onScoutDomainCorrection={handleScoutDomainCorrection}
               scoutFeedGateBusy={scoutFeedGateBusy}
             />
           {composeThread.length === 0 && recommendations.length === 0 ? (
@@ -1251,15 +1359,6 @@ export function GlobeContextConditionPromptFrame({
           />
         </div>
       </div>
-      <GlobeHubCheckoutSheet
-        open={checkoutOpen}
-        session={checkoutSession}
-        onOpenChange={setCheckoutOpen}
-        onOpenIdentitySettings={openIdentityVaultSettings}
-        onComplete={() => {
-          toast.success(copy.globe.lodgingRoomCardReserveDone);
-        }}
-      />
     </GlobeBrainSurfaceFloatingFrame>
   );
 }

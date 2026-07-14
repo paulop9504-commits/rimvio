@@ -1,14 +1,42 @@
 import type { ContextInstance } from "@/lib/context-instance/build-context-instance";
 import { haversineKm } from "@/lib/feed/spacetime-fit";
 import type { UnifiedExperienceContext } from "@/lib/experience-context/unified-experience-context-types";
+import { classifyOverseasManualPlace } from "@/lib/globe/classify-overseas-manual-place";
+import { resolveContextLodgingDestinationAnchor } from "@/lib/globe/context-hub/resolve-context-lodging-search-coords";
 import type { ContextLodgingInventoryRow } from "@/lib/globe/context-hub/lodging-resource-types";
+import {
+  buildLodgingOpportunityInsight,
+  isLodgingValueLeaning,
+  medianLodgingPriceKrw,
+} from "@/lib/globe/lodging/build-lodging-opportunity-insight";
 import {
   explainLodgingRecommendationKo,
   type LodgingRecommendReasonInput,
 } from "@/lib/globe/lodging/explain-lodging-recommendation-ko";
+import type { LodgingRankProfile } from "@/lib/globe/lodging/lodging-rank-profile";
+import {
+  applyLodgingRankContextHints,
+  DEFAULT_LODGING_RANK_WEIGHTS,
+} from "@/lib/globe/lodging/lodging-rank-profile";
+import {
+  describeLodgingRankTravelBrainAxes,
+  resolveLodgingRankProfileForEvent,
+} from "@/lib/globe/lodging/resolve-lodging-rank-profile-from-travel-brain";
+import { scoreBusinessTripLodgingBias } from "@/lib/globe/lodging/score-business-trip-lodging-bias";
+import {
+  computeWeightedLodgingRankScore,
+  inferLodgingPriorityFromContext,
+  scoreLodgingRowDimensions,
+} from "@/lib/globe/lodging/score-lodging-row-dimensions";
 import { findLatestPersonaSignal } from "@/lib/persona/persona-inference-store";
 import type { EventCandidate } from "@/lib/events/event-candidate";
-import { scoreBusinessTripLodgingBias } from "@/lib/globe/lodging/score-business-trip-lodging-bias";
+import { findLifeEventCandidate } from "@/lib/life-read-model";
+import type {
+  TravelBrainState,
+  TravelBudgetBand,
+  TravelLodgingPriority,
+} from "@/lib/situation-projection/travel-brain-personalization";
+import { buildTravelBrainState } from "@/lib/situation-projection/travel-brain-personalization";
 
 export type ScoredLodgingRecommendation = {
   row: ContextLodgingInventoryRow;
@@ -52,102 +80,66 @@ function findPeoplePlaceMatch(
   return null;
 }
 
-function scoreDistance(lat: number | null, lng: number | null, row: ContextLodgingInventoryRow): {
-  bonus: number;
-  distanceKm: number | null;
-} {
-  if (lat == null || lng == null) {
-    return { bonus: 0, distanceKm: null };
-  }
-  const distanceKm = haversineKm(lat, lng, row.lat, row.lng);
-  if (distanceKm <= 1) {
-    return { bonus: 120, distanceKm };
-  }
-  if (distanceKm <= 3) {
-    return { bonus: 95, distanceKm };
-  }
-  if (distanceKm <= 8) {
-    return { bonus: 55, distanceKm };
-  }
-  if (distanceKm <= 15) {
-    return { bonus: 20, distanceKm };
-  }
-  return { bonus: 0, distanceKm };
-}
-
-function scorePrice(priceKrw: number | null | undefined): number {
-  if (priceKrw == null || !Number.isFinite(priceKrw)) {
-    return 0;
-  }
-  if (priceKrw <= 60_000) {
-    return 35;
-  }
-  if (priceKrw <= 90_000) {
-    return 22;
-  }
-  if (priceKrw <= 130_000) {
-    return 10;
-  }
-  return 0;
-}
-
-function scoreTitleBias(input: {
+function titleMatchReasons(input: {
   row: ContextLodgingInventoryRow;
   context?: ContextInstance;
   distanceKm: number | null;
-}): { delta: number; reasons: string[] } {
+}): string[] {
   const title = input.context?.title;
   if (!title) {
-    return { delta: 0, reasons: [] };
+    return [];
   }
-
   const blob = [input.row.name, input.row.partnerLabel, input.row.address]
     .filter(Boolean)
     .join(" ");
-
-  let delta = 0;
   const reasons: string[] = [];
 
   if (
     title.searchBias.comfortBias === "comfort" &&
     /suite|family|residence|kids|quiet|garden|stay|조용|패밀리|스위트|레지던스/u.test(blob)
   ) {
-    delta += 28;
     reasons.push("가족 동선에 편한 숙소예요");
   }
-
   if (
     title.searchBias.comfortBias === "practical" &&
     /station|terminal|business|quiet|역|터미널|비즈니스|조용/u.test(blob)
   ) {
-    delta += 24;
     reasons.push("외근 흐름에 실용적인 숙소예요");
   }
-
   if (
-    title.timeCues.includes("first_day") ||
-    title.timeCues.includes("arrival") ||
-    title.timeCues.includes("late_night")
+    (title.timeCues.includes("first_day") ||
+      title.timeCues.includes("arrival") ||
+      title.timeCues.includes("late_night")) &&
+    /station|airport|terminal|check-?in|역|공항|터미널/u.test(blob)
   ) {
-    if (/station|airport|terminal|check-?in|역|공항|터미널/u.test(blob)) {
-      delta += 18;
-      reasons.push("첫날 이동 동선에 무리가 적어요");
-    }
+    reasons.push("첫날 이동 동선에 무리가 적어요");
   }
-
   if (title.searchBias.proximityBias === "anchor_tight" && input.distanceKm != null) {
     if (input.distanceKm <= 1.5) {
-      delta += 16;
       reasons.push("제목이 가리키는 중심 동선에 가까워요");
-    } else if (input.distanceKm > 8) {
-      delta -= 12;
     }
   }
-
-  return { delta, reasons: reasons.slice(0, 2) };
+  return reasons.slice(0, 2);
 }
 
-/** Unified context + GPS + price — ranked lodging rows with L1 reason copy. */
+/** Strong contextual overlays outside the four profile dimensions. */
+function scoreLodgingContextualOverlay(input: {
+  peoplePlaceMatch: { displayName: string; placeLabel: string } | null;
+  travelTrajectory: boolean;
+  businessDelta: number;
+}): number {
+  let overlay = 0;
+  if (input.peoplePlaceMatch) {
+    overlay += 34;
+  }
+  if (input.travelTrajectory) {
+    overlay += 8;
+  }
+  overlay += input.businessDelta * 0.55;
+  return Math.round(overlay);
+}
+
+/** Unified context + GPS + profile — weighted dimension rank with L1 copy. */
 export function scoreLodgingRecommendations(input: {
   rows: readonly ContextLodgingInventoryRow[];
   unifiedContext: UnifiedExperienceContext;
@@ -155,62 +147,112 @@ export function scoreLodgingRecommendations(input: {
   lng?: number | null;
   context?: ContextInstance;
   event?: EventCandidate | null;
+  travelBrain?: TravelBrainState | null;
+  rankProfile?: LodgingRankProfile | null;
 }): ScoredLodgingRecommendation[] {
   const lat = input.lat ?? null;
   const lng = input.lng ?? null;
+  const event =
+    input.event ??
+    (input.context?.eventId
+      ? findLifeEventCandidate(input.context.eventId)
+      : null);
+  const travelBrain =
+    input.travelBrain ?? (event ? buildTravelBrainState(event) : null);
+  const rankProfile =
+    input.rankProfile ??
+    (event
+      ? resolveLodgingRankProfileForEvent({
+          event,
+          travelBrain,
+        })
+      : null);
+  let profile = rankProfile ?? {
+    mode: "auto" as const,
+    weights: DEFAULT_LODGING_RANK_WEIGHTS,
+    source: "default" as const,
+  };
+  const brainAxes = travelBrain
+    ? describeLodgingRankTravelBrainAxes(travelBrain)
+    : null;
+  const contextPriority = inferLodgingPriorityFromContext(input.context);
+  const lodgingPriority: TravelLodgingPriority | null =
+    brainAxes?.lodgingPriority ??
+    contextPriority ??
+    ((findLatestPersonaSignal("travel.lodging_priority")?.value as
+      | TravelLodgingPriority
+      | undefined) ??
+      null);
+  const budgetBand: TravelBudgetBand | null =
+    brainAxes?.budgetBand ??
+    ((findLatestPersonaSignal("travel.budget_band")?.value as
+      | TravelBudgetBand
+      | undefined) ??
+      null);
+  if (!event && contextPriority && profile.mode === "auto") {
+    profile = applyLodgingRankContextHints(profile, {
+      lodgingPriority: contextPriority,
+    });
+  }
   const trajectory = input.unifiedContext.behaviorKernel.state.trajectory;
   const travelTrajectory =
     trajectory.dominant_cluster === "travel" && trajectory.strength >= 0.15;
-  const budgetBand = findLatestPersonaSignal("travel.budget_band");
-  const lodgingPriority = findLatestPersonaSignal("travel.lodging_priority");
+  const valueLeaning = isLodgingValueLeaning({
+    mode: profile.mode,
+    budgetBand,
+    lodgingPriority,
+    priceWeight: profile.weights.price,
+  });
+  const hub = event ? resolveContextLodgingDestinationAnchor(event) : null;
+  const overseas = event
+    ? classifyOverseasManualPlace(
+        event.place?.trim() || event.title.trim(),
+      )?.isOverseas === true
+    : false;
+  const cohortMedianPriceKrw = medianLodgingPriceKrw(
+    input.rows.map((row) => row.priceKrw),
+  );
 
   const scored = input.rows.map((row) => {
-    let score = 60;
     const peoplePlaceMatch = findPeoplePlaceMatch(row, input.unifiedContext);
-    if (peoplePlaceMatch) {
-      score += 140;
-    }
-    if (travelTrajectory) {
-      score += 45;
-    }
-    const { bonus, distanceKm } = scoreDistance(lat, lng, row);
-    score += bonus;
-    const titleBias = scoreTitleBias({
+    const { dimensions, distanceKm } = scoreLodgingRowDimensions({
       row,
+      lat,
+      lng,
+      lodgingPriority,
+      budgetBand,
       context: input.context,
-      distanceKm,
     });
-    score += titleBias.delta;
-    score += scorePrice(row.priceKrw);
+    const coreScore = computeWeightedLodgingRankScore(dimensions, profile);
     const businessBias = scoreBusinessTripLodgingBias({
       row,
       event: input.event,
       povLat: lat,
       povLng: lng,
     });
-    score += businessBias.delta;
-    const lodgingBlob = [row.name, row.partnerLabel].filter(Boolean).join(" ");
-    if (budgetBand?.value === "value" && row.priceKrw != null && row.priceKrw <= 120_000) {
-      score += 18;
-    }
-    if (budgetBand?.value === "premium" && row.priceKrw != null && row.priceKrw >= 180_000) {
-      score += 10;
-    }
-    if (lodgingPriority?.value === "station" && /역|station|terminal|난바|우메다/u.test(lodgingBlob)) {
-      score += 22;
-    }
-    if (lodgingPriority?.value === "quiet" && /quiet|garden|stay|forest|조용/u.test(lodgingBlob)) {
-      score += 18;
-    }
-    if (lodgingPriority?.value === "aesthetic" && /design|boutique|view|감성|뷰/u.test(lodgingBlob)) {
-      score += 18;
-    }
-    if (lodgingPriority?.value === "family" && /suite|family|residence|kids/u.test(lodgingBlob)) {
-      score += 20;
-    }
-    if (lodgingPriority?.value === "price" && row.priceKrw != null && row.priceKrw <= 100_000) {
-      score += 18;
-    }
+    const titleReasons = titleMatchReasons({ row, context: input.context, distanceKm });
+    const overlay = scoreLodgingContextualOverlay({
+      peoplePlaceMatch,
+      travelTrajectory,
+      businessDelta: businessBias.delta,
+    });
+    const score = coreScore + overlay;
+
+    const opportunity =
+      hub != null
+        ? buildLodgingOpportunityInsight({
+            lodgingLat: row.lat,
+            lodgingLng: row.lng,
+            hubLat: hub.lat,
+            hubLng: hub.lng,
+            priceKrw: row.priceKrw ?? null,
+            cohortMedianPriceKrw,
+            lodgingPriority,
+            budgetBand,
+            rankMode: profile.mode,
+            overseas,
+          })
+        : null;
 
     const reasonInput: LodgingRecommendReasonInput = {
       peoplePlaceMatch,
@@ -220,11 +262,23 @@ export function scoreLodgingRecommendations(input: {
     };
 
     const explained = explainLodgingRecommendationKo(reasonInput);
+    const reasonKo =
+      businessBias.reasons[0] ??
+      titleReasons[0] ??
+      (valueLeaning ? opportunity?.primaryLineKo : null) ??
+      opportunity?.experienceLineKo ??
+      explained.reasonKo;
+
     return {
       row,
       score,
-      reasonKo: businessBias.reasons[0] ?? titleBias.reasons[0] ?? explained.reasonKo,
-      matchReasons: [...businessBias.reasons, ...titleBias.reasons, ...explained.matchReasons].slice(0, 3),
+      reasonKo,
+      matchReasons: [
+        ...businessBias.reasons,
+        ...titleReasons,
+        ...(opportunity?.lines ?? []),
+        ...explained.matchReasons,
+      ].slice(0, 3),
     };
   });
 
@@ -238,9 +292,13 @@ export function scoreLodgingRecommendations(input: {
 
   return scored.map((entry, index) => {
     if (index === 0 && entry.matchReasons.length === 0) {
+      const distanceKm =
+        lat != null && lng != null
+          ? haversineKm(lat, lng, entry.row.lat, entry.row.lng)
+          : null;
       const explained = explainLodgingRecommendationKo({
         rankIndex: 0,
-        distanceKm: scoreDistance(lat, lng, entry.row).distanceKm,
+        distanceKm,
         priceKrw: entry.row.priceKrw ?? null,
       });
       return { ...entry, reasonKo: explained.reasonKo, matchReasons: explained.matchReasons };

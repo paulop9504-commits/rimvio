@@ -25,6 +25,11 @@ export {
   type ContextConditionLastBatchWire,
 } from "@/lib/globe/context-condition-ai/context-condition-last-batch-store";
 export {
+  discoverySurfaceIncludesLodging,
+  discoverySurfaceIncludesLodgingForEvent,
+  resolveDiscoverySurfaceIncludesLodgingFromBatch,
+} from "@/lib/globe/context-condition-ai/discovery-surface-includes-lodging";
+export {
   commitContextConditionHubBatch,
 } from "@/lib/globe/context-condition-ai/commit-context-condition-hub-batch";
 export {
@@ -95,6 +100,8 @@ export type {
 export {
   LOCAL_DISCOVERY_PIN_CAP,
   LOCAL_DISCOVERY_RECOMMEND_CAP,
+  LOCAL_DISCOVERY_FEED_INVENTORY_CAP,
+  LOCAL_DISCOVERY_LODGING_SCOUT_MAX,
 } from "@/lib/globe/context-condition-ai/local-discovery-limits";
 export {
   clearScoutRevealPending,

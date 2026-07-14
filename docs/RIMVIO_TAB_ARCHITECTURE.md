@@ -6,7 +6,7 @@
 | Tab | Route / action | Layer | UI |
 |-----|----------------|-------|-----|
 | **지구** | `/` (`/feed` → redirect) | RECALL | Globe pins · recall · compose dock |
-| **맞춤** | Field sheet ingress (`/field` opens sheet) | ACTION | trades · discovery · mine |
+| **맞춤** | Field sheet — Reality Control Center | ACTION | queue (반영 대기) · trades · mine |
 | **친구** | `/peers` | H2H ROOM | DM · AI 렌즈 |
 | **기록** | Capture sheet (bottom-nav ＋) | SENSE | 사진 · 링크 · 메모 |
 

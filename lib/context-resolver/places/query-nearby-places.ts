@@ -9,6 +9,15 @@ import type { PlaceCandidate, PlaceDiscoveryCriteria } from "@/lib/context-resol
 
 const client = new Client({});
 
+function buildPlacePhotoUrl(photoReference: string, key: string): string {
+  const params = new URLSearchParams({
+    maxwidth: "800",
+    photo_reference: photoReference,
+    key,
+  });
+  return `https://maps.googleapis.com/maps/api/place/photo?${params.toString()}`;
+}
+
 function mockActivityCandidates(input: {
   lat: number;
   lng: number;
@@ -205,6 +214,12 @@ async function queryGooglePlaces(input: {
           return null;
         }
 
+        const photoUrls = (result.photos ?? [])
+          .map((photo) => photo.photo_reference)
+          .filter((ref): ref is string => Boolean(ref?.trim()))
+          .slice(0, 6)
+          .map((ref) => buildPlacePhotoUrl(ref, key));
+
         return {
           place_id: result.place_id ?? `place-${result.name}`,
           name: result.name ?? "장소",
@@ -219,6 +234,8 @@ async function queryGooglePlaces(input: {
             ? `https://www.google.com/maps/place/?q=place_id:${result.place_id}`
             : null,
           google_types: result.types?.map((type) => String(type)) ?? null,
+          thumbnail_url: photoUrls[0] ?? null,
+          photo_urls: photoUrls,
         } satisfies PlaceCandidate;
       })
       .filter((item): item is NonNullable<typeof item> => item !== null);

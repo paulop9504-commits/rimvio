@@ -5,11 +5,16 @@ const STORAGE_PREFIX = "rimvio.context-condition-last-batch.";
 
 const BATCH_ANCHOR_TOLERANCE_KM = 40;
 
+/** Node / test fallback when sessionStorage is unavailable. */
+const memoryBatches = new Map<string, ContextConditionLastBatchWire>();
+
 export type ContextConditionLastBatchWire = {
   batchId: string;
   count: number;
   summaryKo: string;
   atIso: string;
+  /** User prompt that produced this scout run — feed copy SSOT. */
+  triggerMessage?: string;
   radiusM?: number;
   spec?: LocalDiscoveryActionSpec | null;
   recommendations?: readonly {
@@ -45,12 +50,12 @@ export function isContextConditionLastBatchMisanchored(
 export function readContextConditionLastBatch(
   contextEventId: string,
 ): ContextConditionLastBatchWire | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
   const key = contextEventId.trim();
   if (!key) {
     return null;
+  }
+  if (typeof window === "undefined") {
+    return memoryBatches.get(key) ?? null;
   }
   try {
     const raw = sessionStorage.getItem(`${STORAGE_PREFIX}${key}`);
@@ -71,11 +76,12 @@ export function writeContextConditionLastBatch(
   contextEventId: string,
   batch: ContextConditionLastBatchWire,
 ): void {
-  if (typeof window === "undefined") {
-    return;
-  }
   const key = contextEventId.trim();
   if (!key) {
+    return;
+  }
+  if (typeof window === "undefined") {
+    memoryBatches.set(key, batch);
     return;
   }
   try {
@@ -86,11 +92,12 @@ export function writeContextConditionLastBatch(
 }
 
 export function clearContextConditionLastBatch(contextEventId: string): void {
-  if (typeof window === "undefined") {
-    return;
-  }
   const key = contextEventId.trim();
   if (!key) {
+    return;
+  }
+  if (typeof window === "undefined") {
+    memoryBatches.delete(key);
     return;
   }
   try {

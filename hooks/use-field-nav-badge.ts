@@ -2,53 +2,75 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useActiveMarketTrades } from "@/hooks/use-active-market-trades";
-import { useOpportunityFieldBadge } from "@/hooks/use-opportunity-field-badge";
 import {
   listActiveMarketIntents,
   subscribeMarketIntents,
 } from "@/lib/globe/market/market-alignment-store";
 import { filterPublishedMarketIntents } from "@/lib/globe/market/filter-published-market-intents";
+import {
+  resolveFieldNavBadgeCount,
+  resolveFieldNavSuggestedTab,
+} from "@/lib/nav/resolve-field-nav-badge";
 import type { FieldDashboardTab } from "@/lib/nav/field-dashboard-types";
+import {
+  buildRealityControlSnapshot,
+  subscribeRealityQueueHold,
+} from "@/lib/reality-queue";
+import {
+  EVENT_CANDIDATES_UPDATED,
+  listLifeEventCandidates,
+} from "@/lib/life-read-model";
 
-/** Passive counts for bottom-nav 맞춤 tab — opens dashboard SSOT, not a second store. */
+/**
+ * Bottom-nav 맞춤 badge — Reality Queue pending count only (0 = hidden).
+ * Not mine posts · not discovery browse signals.
+ */
 export function useFieldNavBadge() {
   const { sessions } = useActiveMarketTrades({ enabled: true });
-  const { matchedCount, browseCount } = useOpportunityFieldBadge({
-    enabled: true,
-    primaryEventId: null,
-  });
-  const [mineRevision, setMineRevision] = useState(0);
+  const [revision, setRevision] = useState(0);
 
-  useEffect(() => subscribeMarketIntents(() => setMineRevision((value) => value + 1)), []);
+  useEffect(() => {
+    const bump = () => setRevision((value) => value + 1);
+    window.addEventListener(EVENT_CANDIDATES_UPDATED, bump);
+    const unsubHold = subscribeRealityQueueHold(bump);
+    const unsubMine = subscribeMarketIntents(bump);
+    return () => {
+      window.removeEventListener(EVENT_CANDIDATES_UPDATED, bump);
+      unsubHold();
+      unsubMine();
+    };
+  }, []);
 
-  const mineCount = useMemo(() => {
-    void mineRevision;
-    return filterPublishedMarketIntents(listActiveMarketIntents()).length;
-  }, [mineRevision]);
+  const snapshot = useMemo(() => {
+    void revision;
+    return buildRealityControlSnapshot({
+      tradeSessions: sessions,
+      events: listLifeEventCandidates(),
+    });
+  }, [revision, sessions]);
 
+  const queueCount = snapshot.impact.pendingCount;
   const tradeCount = sessions.length;
-  const discoverySignal = matchedCount > 0 ? matchedCount : browseCount;
-  const total = tradeCount + discoverySignal + mineCount;
+  const mineCount = useMemo(() => {
+    void revision;
+    return filterPublishedMarketIntents(listActiveMarketIntents()).length;
+  }, [revision]);
 
-  const suggestedTab = useMemo<FieldDashboardTab>(() => {
-    if (tradeCount > 0) {
-      return "trades";
-    }
-    if (discoverySignal > 0) {
-      return "discovery";
-    }
-    if (mineCount > 0) {
-      return "mine";
-    }
-    return "discovery";
-  }, [discoverySignal, mineCount, tradeCount]);
+  const total = resolveFieldNavBadgeCount(queueCount);
+  const suggestedTab = useMemo<FieldDashboardTab>(
+    () =>
+      resolveFieldNavSuggestedTab({
+        queueCount,
+        tradeCount,
+        mineCount,
+      }),
+    [mineCount, queueCount, tradeCount],
+  );
 
   return {
+    queueCount,
     tradeCount,
-    matchedCount,
-    browseCount,
     mineCount,
-    discoverySignal,
     total,
     suggestedTab,
   };

@@ -43,16 +43,31 @@ export type ScoutFeedGateComposePayload = {
   readonly summaryKo: string;
   readonly count: number;
   readonly batchId: string;
-  readonly status: "open" | "opened";
+  readonly status: "open" | "opened" | "superseded";
+  readonly triggerMessage?: string;
   readonly scoutKind?: "lodging" | "eatery" | "activity" | "amenity" | "mixed";
   readonly aiInsightKo?: string;
   readonly tipsKo?: readonly string[];
   readonly highlightTitles?: readonly string[];
   readonly videoContext?: ScoutFeedGateVideoContextWire | null;
+  /** Inline domain correction — shown when scout results bleed across kinds. */
+  readonly correctionChips?: readonly {
+    readonly id: string;
+    readonly labelKo: string;
+    readonly action: "keep_kind" | "strip_kind";
+    readonly kind: "lodging" | "eatery" | "activity" | "amenity";
+  }[];
 };
 
 export type OperatorAskChipsComposePayload = {
-  readonly chipDomain: "trip_intake" | "trip_experience";
+  readonly chipDomain:
+    | "trip_intake"
+    | "trip_experience"
+    | "flight_prep"
+    | "transit_prep"
+    | "finance_prep"
+    | "plan_handoff"
+    | "ingress_converge";
   readonly pendingTrigger: string;
   readonly chips: readonly {
     readonly id: string;
@@ -391,11 +406,13 @@ export function appendScoutFeedGateTurn(
     summaryKo: string;
     count: number;
     batchId: string;
+    triggerMessage?: string;
     scoutKind?: ScoutFeedGateComposePayload["scoutKind"];
     aiInsightKo?: string;
     tipsKo?: readonly string[];
     highlightTitles?: readonly string[];
     videoContext?: ScoutFeedGateVideoContextWire | null;
+    correctionChips?: ScoutFeedGateComposePayload["correctionChips"];
   },
 ): ContextAgentComposeTurn {
   return appendContextAgentComposeTurn(eventId, {
@@ -407,13 +424,46 @@ export function appendScoutFeedGateTurn(
       count: input.count,
       batchId: input.batchId,
       status: "open",
+      triggerMessage: input.triggerMessage?.trim() || undefined,
       scoutKind: input.scoutKind,
       aiInsightKo: input.aiInsightKo,
       tipsKo: input.tipsKo,
       highlightTitles: input.highlightTitles,
       videoContext: input.videoContext ?? null,
+      correctionChips: input.correctionChips,
     },
   });
+}
+
+/** Prior scout gates stay in chat but no longer claim the active discovery surface. */
+export function supersedePriorScoutFeedGates(
+  eventId: string,
+  activeBatchId: string,
+): void {
+  const id = eventId.trim();
+  const batchId = activeBatchId.trim();
+  if (!id || !batchId) {
+    return;
+  }
+  const rows = threads.get(id) ?? [];
+  const next = rows.map((row) => {
+    if (
+      row.role !== "assistant" ||
+      row.kind !== "scout_feed_gate" ||
+      row.payload.batchId === batchId
+    ) {
+      return row;
+    }
+    return {
+      ...row,
+      payload: {
+        ...row.payload,
+        status: "superseded" as const,
+      },
+    };
+  });
+  threads.set(id, next);
+  emit(id);
 }
 
 export function markScoutFeedGateOpened(eventId: string, turnId: string): void {
@@ -428,6 +478,44 @@ export function markScoutFeedGateOpened(eventId: string, turnId: string): void {
       payload: {
         ...row.payload,
         status: "opened" as const,
+      },
+    };
+  });
+  threads.set(id, next);
+  emit(id);
+}
+
+/** After domain correction chip — refresh gate summary and clear chips. */
+export function patchScoutFeedGateAfterCorrection(
+  eventId: string,
+  input: {
+    turnId: string;
+    summaryKo: string;
+    count: number;
+    scoutKind?: ScoutFeedGateComposePayload["scoutKind"];
+    highlightTitles?: readonly string[];
+  },
+): void {
+  const id = eventId.trim();
+  const turnId = input.turnId.trim();
+  if (!id || !turnId) {
+    return;
+  }
+  const rows = threads.get(id) ?? [];
+  const next = rows.map((row) => {
+    if (row.id !== turnId || row.role !== "assistant" || row.kind !== "scout_feed_gate") {
+      return row;
+    }
+    return {
+      ...row,
+      text: input.summaryKo,
+      payload: {
+        ...row.payload,
+        summaryKo: input.summaryKo,
+        count: input.count,
+        scoutKind: input.scoutKind ?? row.payload.scoutKind,
+        highlightTitles: input.highlightTitles ?? row.payload.highlightTitles,
+        correctionChips: [],
       },
     };
   });

@@ -3,21 +3,14 @@
 import { useSyncExternalStore, useEffect } from "react";
 import { subscribeAgentCoordinationListRealtime } from "@/lib/globe/market/coordination/client/agent-coordination-realtime";
 import {
-  countActiveAgentNegotiationRooms,
-  listAgentNegotiationRooms,
+  getActiveAgentNegotiationRoomsCountSnapshot,
+  getAgentNegotiationRoomsSnapshot,
   refreshAgentNegotiationRoomsFromRemote,
   subscribeAgentNegotiationRooms,
 } from "@/lib/globe/market/coordination/agent-negotiation-store";
 
 const REMOTE_FALLBACK_POLL_MS = 60_000;
-
-function getRoomsSnapshot() {
-  return listAgentNegotiationRooms();
-}
-
-function getActiveCountSnapshot() {
-  return countActiveAgentNegotiationRooms();
-}
+const EMPTY_ROOMS = getAgentNegotiationRoomsSnapshot();
 
 export function useAgentNegotiationRooms(input?: { pollRemote?: boolean }) {
   const pollRemote = input?.pollRemote !== false;
@@ -41,12 +34,12 @@ export function useAgentNegotiationRooms(input?: { pollRemote?: boolean }) {
 
   const rooms = useSyncExternalStore(
     subscribeAgentNegotiationRooms,
-    getRoomsSnapshot,
-    () => [],
+    getAgentNegotiationRoomsSnapshot,
+    () => EMPTY_ROOMS,
   );
   const activeCount = useSyncExternalStore(
     subscribeAgentNegotiationRooms,
-    getActiveCountSnapshot,
+    getActiveAgentNegotiationRoomsCountSnapshot,
     () => 0,
   );
   return { rooms, activeCount, refresh: refreshAgentNegotiationRoomsFromRemote };

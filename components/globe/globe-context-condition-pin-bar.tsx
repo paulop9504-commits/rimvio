@@ -88,7 +88,10 @@ import {
   markIntakeSlotsComposeTurnSubmitted,
   markOperatorAskChipsTurnSubmitted,
   readContextAgentComposeThread,
+  supersedePriorScoutFeedGates,
 } from "@/lib/globe/assistant";
+import { writeActiveDiscoveryExecution } from "@/lib/globe/discovery-execution/read-active-discovery-execution";
+import { clearDiscoveryLensSession } from "@/lib/globe/discovery-lens/lens-session-bridge";
 import {
   applyPalantirOperatorFacetRefine,
   buildClarifyingOntologyGraph,
@@ -181,9 +184,34 @@ import {
 import {
   applyTripExperienceAskChip,
   isTripExperienceUtterance,
+  planOneShotTripExperiencePrep,
+  runOneShotTripExperiencePrepClient,
+  runTripExperienceParallelScouts,
   type TripExperienceGapId,
 } from "@/lib/globe/trip-experience";
-import { runOneShotLodgingPrepClient, isLodgingPrepUtterance } from "@/lib/globe/lodging-prep";
+import {
+  isLodgingPrepUtterance,
+  runOneShotLodgingPrepClient,
+} from "@/lib/globe/lodging-prep";
+import {
+  isFlightPrepUtterance,
+  tryCompleteFlightPrepClient,
+} from "@/lib/globe/flight-prep";
+import {
+  applyTransitPrepAskChip,
+  isTransitPrepUtterance,
+  tryCompleteTransitPrepClient,
+  type TransitPrepGapId,
+} from "@/lib/globe/transit-prep";
+import {
+  applyFinancePrepAskChip,
+  isFinancePrepUtterance,
+  tryCompleteFinancePrepClient,
+  type FinancePrepGapId,
+} from "@/lib/globe/finance-prep";
+import { resolveOperatorAskChipDomain } from "@/lib/globe/operator-turn/resolve-operator-ask-chip-domain";
+import { recordEngineScoutFailureClient } from "@/lib/engine/record-engine-lifecycle";
+import { resolveDiscoveryEngineId } from "@/lib/engine/resolve-discovery-engine-id";
 
 export type IntakeSlotsSubmitInput = {
   turnId: string;
@@ -298,11 +326,13 @@ function publishScoutFeedGateTurn(input: {
     summaryKo: input.outcome.summaryKo,
     count: input.outcome.recommendations.length,
     batchId: input.outcome.batchId,
+    triggerMessage: input.triggerMessage,
     scoutKind: enrichment.scoutKind,
     aiInsightKo: enrichment.aiInsightKo,
     tipsKo: enrichment.tipsKo,
     highlightTitles: enrichment.highlightTitles,
     videoContext: enrichment.videoContext,
+    correctionChips: enrichment.correctionChips,
   });
 }
 
@@ -597,6 +627,137 @@ export const GlobeContextConditionPinBar = forwardRef<
     ],
   );
 
+  const executeTripExperienceParallelScout = useCallback(
+    async (input: { triggerMessage: string }): Promise<ContextConditionAnchorPinOutcome | null> => {
+      const text = input.triggerMessage.trim();
+      if (!text || !isTripExperienceUtterance(text)) {
+        return null;
+      }
+      const prep = runOneShotTripExperiencePrepClient({
+        message: text,
+        contextEventId,
+        event: findLifeEventCandidate(contextEventId),
+        userLat,
+        userLng,
+      });
+      if (!prep?.plan.readyForScout) {
+        return null;
+      }
+
+      dispatchGlobeLodgingDiscoveryClose();
+      if (lastBatch) {
+        dismissContextConditionPinBatch({
+          contextEventId,
+          batchId: lastBatch.batchId,
+        });
+        clearContextConditionLastBatch(contextEventId);
+        clearScoutRevealPending(contextEventId);
+      }
+      writeExplorationModeOverride(contextEventId, "diffuse");
+
+      const destLabel =
+        prep.plan.experienceState.destinationLabel?.trim() ||
+        anchorPlaceName.trim() ||
+        "여행";
+      setContextAgentSessionPhase("scouting");
+      beginContextAgentWork("exploring");
+      appendContextAgentComposeTurn(contextEventId, {
+        role: "assistant",
+        kind: "text",
+        text: copy.globe.tripExperienceParallelStart(destLabel),
+      });
+
+      const result = await runTripExperienceParallelScouts({
+        contextEventId,
+        triggerMessage: text,
+        plan: prep.plan,
+        anchorPlaceId,
+        anchorPlaceName,
+        anchorLat,
+        anchorLng,
+        anchorPriceKrw,
+        discoveryOrigin: resolveDiscoveryOriginForContext(contextEventId),
+      });
+
+      const outcome = result.merged;
+      if (!outcome) {
+        recordEngineScoutFailureClient({
+          contextEventId,
+          engineId: "trip_experience_search",
+          lastError: "parallel_scout_empty",
+          payload: { triggerMessage: text },
+        });
+        appendContextAgentComposeTurn(contextEventId, {
+          role: "assistant",
+          kind: "text",
+          text: copy.globe.contextConditionPinEmpty,
+        });
+        toast.message(copy.globe.contextConditionPinEmpty);
+        return null;
+      }
+
+      const wire: ContextConditionLastBatchWire = {
+        batchId: outcome.batchId,
+        count: outcome.lodgingCount + outcome.eateryCount,
+        summaryKo: outcome.summaryKo,
+        atIso: new Date().toISOString(),
+        radiusM: outcome.radiusM,
+        spec: outcome.spec,
+        recommendations: outcome.recommendations.map((row) => ({
+          kind: row.kind,
+          activitySubtype: row.activitySubtype ?? null,
+          title: row.title,
+          reasonKo: row.reasonKo,
+          placeId: row.placeId,
+          lat: row.lat,
+          lng: row.lng,
+        })),
+      };
+      writeContextConditionLastBatch(contextEventId, wire);
+      setLastBatch(wire);
+      setLastSpec(outcome.spec);
+      setLastRecommendations(outcome.recommendations);
+      setMessage("");
+      onQuestionsChange?.([]);
+      onRecommendationsChange?.(outcome.recommendations);
+      clearContextConditionPending(contextEventId);
+      setContextAgentSessionSpec(outcome.spec);
+      setContextAgentSessionPhase("deciding");
+      onPinned?.(outcome);
+      publishScoutFeedGateTurn({
+        contextEventId,
+        outcome,
+        anchorPlaceName,
+        anchorLat,
+        anchorLng,
+        triggerMessage: text,
+      });
+      return outcome;
+    },
+    [
+      anchorLat,
+      anchorLng,
+      anchorPlaceId,
+      anchorPlaceName,
+      anchorPriceKrw,
+      contextEventId,
+      lastBatch,
+      onPinned,
+      onQuestionsChange,
+      onRecommendationsChange,
+      userLat,
+      userLng,
+    ],
+  );
+
+  const tryExecuteTripExperienceParallelScout = useCallback(
+    async (triggerMessage: string): Promise<boolean> => {
+      const outcome = await executeTripExperienceParallelScout({ triggerMessage });
+      return outcome != null;
+    },
+    [executeTripExperienceParallelScout],
+  );
+
   const executeWithSpec = useCallback(
     async (input: {
       triggerMessage: string;
@@ -611,16 +772,23 @@ export const GlobeContextConditionPinBar = forwardRef<
       // hotel pins behind. Close the separate lodging discovery session and drop
       // the previous batch when the resource category changes (fresh scout only).
       const nextCategory = specResourceCategory(input.spec);
+      const priorCategory = lastSpec ? specResourceCategory(lastSpec) : null;
       if (nextCategory !== "lodging") {
         dispatchGlobeLodgingDiscoveryClose();
+      }
+      if (priorCategory && priorCategory !== nextCategory) {
+        clearDiscoveryLensSession(contextEventId);
       }
       if (!input.patchPlan && lastBatch) {
         dismissContextConditionPinBatch({
           contextEventId,
           batchId: lastBatch.batchId,
         });
-        clearContextConditionLastBatch(contextEventId);
+        // Keep lastBatch wire until writeActiveDiscoveryExecution archives it.
         clearScoutRevealPending(contextEventId);
+        setLastBatch(null);
+        setLastRecommendations([]);
+        onRecommendationsChange?.([]);
       }
       if (nextCategory === "activity" || nextCategory === "amenity") {
         publishContextOnlyGlobeProjection(contextEventId);
@@ -671,6 +839,22 @@ export const GlobeContextConditionPinBar = forwardRef<
         ) {
           publishContextOnlyGlobeProjection(contextEventId);
         }
+        const failedEngineId = resolveDiscoveryEngineId({
+          message: input.triggerMessage,
+          event: findLifeEventCandidate(contextEventId),
+          spec: input.spec,
+        });
+        if (failedEngineId) {
+          recordEngineScoutFailureClient({
+            contextEventId,
+            engineId: failedEngineId,
+            lastError: "scout_empty",
+            payload: {
+              triggerMessage: input.triggerMessage,
+              category: nextCategory,
+            },
+          });
+        }
         if (!input.suppressEmptyMessage) {
           appendContextAgentComposeTurn(contextEventId, {
             role: "assistant",
@@ -698,6 +882,20 @@ export const GlobeContextConditionPinBar = forwardRef<
           const messageKo =
             primaryScoutViolationMessage(gate) ??
             copy.globe.contextConditionPinEmpty;
+          const failedEngineId = resolveDiscoveryEngineId({
+            message: input.triggerMessage,
+            event: findLifeEventCandidate(contextEventId),
+            spec: outcome.spec,
+            recommendationKinds: outcome.recommendations.map((row) => row.kind),
+          });
+          if (failedEngineId) {
+            recordEngineScoutFailureClient({
+              contextEventId,
+              engineId: failedEngineId,
+              lastError: "scout_contract_violation",
+              payload: { batchId: outcome.batchId },
+            });
+          }
           dismissContextConditionPinBatch({
             contextEventId,
             batchId: outcome.batchId,
@@ -723,6 +921,7 @@ export const GlobeContextConditionPinBar = forwardRef<
         count: outcome.lodgingCount + outcome.eateryCount,
         summaryKo: outcome.summaryKo,
         atIso: new Date().toISOString(),
+        triggerMessage: input.triggerMessage.trim() || undefined,
         radiusM: outcome.radiusM,
         spec: outcome.spec,
         recommendations: outcome.recommendations.map((row) => ({
@@ -734,6 +933,10 @@ export const GlobeContextConditionPinBar = forwardRef<
           lng: row.lng,
         })),
       };
+      writeActiveDiscoveryExecution(contextEventId, wire, {
+        archivePrior: true,
+      });
+      supersedePriorScoutFeedGates(contextEventId, outcome.batchId);
       setLastBatch(wire);
       setLastSpec(outcome.spec);
       setLastRecommendations(outcome.recommendations);
@@ -1351,6 +1554,85 @@ export const GlobeContextConditionPinBar = forwardRef<
             chipId: input.chipId,
             summaryKo: copy.globe.tripExperienceAskChipApplied(input.labelKo),
           });
+          runOneShotTripExperiencePrepClient({
+            message: pendingTrigger,
+            contextEventId,
+            event: findLifeEventCandidate(contextEventId),
+            userLat,
+            userLng,
+          });
+          if (await tryExecuteTripExperienceParallelScout(pendingTrigger)) {
+            return;
+          }
+        } else if (chipDomain === "flight_prep") {
+          applyTripIntakeAskChip({
+            contextEventId,
+            event: priorEvent,
+            message: pendingTrigger,
+            chip: { gapId: input.gapId as TripIntakeGapId, value: input.value },
+            userLat,
+            userLng,
+          });
+          markOperatorAskChipsTurnSubmitted(contextEventId, input.turnId, {
+            chipId: input.chipId,
+            summaryKo: copy.globe.tripIntakeAskChipApplied(input.labelKo),
+          });
+          const completed = tryCompleteFlightPrepClient({
+            message: pendingTrigger,
+            contextEventId,
+            event: findLifeEventCandidate(contextEventId),
+            userLat,
+            userLng,
+          });
+          if (completed.committed) {
+            toast.success(copy.globe.flightPrepReady);
+            return;
+          }
+        } else if (chipDomain === "transit_prep") {
+          applyTransitPrepAskChip({
+            contextEventId,
+            event: priorEvent,
+            message: pendingTrigger,
+            chip: { gapId: input.gapId as TransitPrepGapId, value: input.value },
+          });
+          markOperatorAskChipsTurnSubmitted(contextEventId, input.turnId, {
+            chipId: input.chipId,
+            summaryKo: copy.globe.tripIntakeAskChipApplied(input.labelKo),
+          });
+          const completed = tryCompleteTransitPrepClient({
+            message: pendingTrigger,
+            contextEventId,
+            event: findLifeEventCandidate(contextEventId),
+          });
+          if (completed.committed) {
+            toast.success(copy.globe.transitPrepReady);
+            return;
+          }
+        } else if (chipDomain === "finance_prep") {
+          applyFinancePrepAskChip({
+            contextEventId,
+            event: priorEvent,
+            message: pendingTrigger,
+            chip: { gapId: input.gapId as FinancePrepGapId, value: input.value },
+          });
+          markOperatorAskChipsTurnSubmitted(contextEventId, input.turnId, {
+            chipId: input.chipId,
+            summaryKo: copy.globe.tripIntakeAskChipApplied(input.labelKo),
+          });
+          const completed = tryCompleteFinancePrepClient({
+            message: pendingTrigger,
+            contextEventId,
+            event: findLifeEventCandidate(contextEventId),
+          });
+          if (completed.committed) {
+            toast.success(copy.globe.financePrepReady);
+            return;
+          }
+        } else if (chipDomain === "plan_handoff") {
+          markOperatorAskChipsTurnSubmitted(contextEventId, input.turnId, {
+            chipId: input.chipId,
+            summaryKo: copy.globe.planHandoffAskChipApplied(input.labelKo),
+          });
         } else {
           applyTripIntakeAskChip({
             contextEventId,
@@ -1372,13 +1654,17 @@ export const GlobeContextConditionPinBar = forwardRef<
             userLng,
           });
         }
-        await resolveAndMaybeExecute(pendingTrigger);
+        await resolveAndMaybeExecute(
+          chipDomain === "plan_handoff" && input.value.trim()
+            ? input.value.trim()
+            : pendingTrigger,
+        );
       } finally {
         setBusy(false);
         finishContextAgentWork();
       }
     },
-    [busy, contextEventId, resolveAndMaybeExecute, userLat, userLng],
+    [busy, contextEventId, resolveAndMaybeExecute, tryExecuteTripExperienceParallelScout, userLat, userLng],
   );
 
   const handleIntakeSlotsSubmit = useCallback(
@@ -1459,7 +1745,7 @@ export const GlobeContextConditionPinBar = forwardRef<
     if (text) {
       onUserCompose?.(text);
     }
-    if (text && !isLodgingPrepUtterance(text) && !isTripExperienceUtterance(text) && tryOpenIntakeForMessage(text)) {
+    if (text && !isLodgingPrepUtterance(text) && !isFlightPrepUtterance(text) && !isTransitPrepUtterance(text) && !isFinancePrepUtterance(text) && !isTripExperienceUtterance(text) && tryOpenIntakeForMessage(text)) {
       setMessage("");
       return;
     }
@@ -1481,18 +1767,28 @@ export const GlobeContextConditionPinBar = forwardRef<
           text,
           ssot,
           event: operatorEvent,
+          blueprint: operatorBlueprint,
           userLat,
           userLng,
         });
 
         if (plan.tool === "ask_chips") {
+          const chipDomain = resolveOperatorAskChipDomain({
+            pendingTrigger: text,
+            planReason: plan.reason,
+          });
           appendOperatorAskChipsComposeTurn(contextEventId, {
-            chipDomain:
-              plan.reason === "trip_experience_gap" ? "trip_experience" : "trip_intake",
+            chipDomain,
             hint:
-              plan.reason === "trip_experience_gap"
+              chipDomain === "trip_experience"
                 ? copy.globe.tripExperienceAskHint
-                : copy.globe.tripIntakeAskHint,
+                : chipDomain === "flight_prep"
+                  ? copy.globe.flightPrepAskHint
+                  : chipDomain === "transit_prep"
+                    ? copy.globe.transitPrepAskHint
+                    : chipDomain === "finance_prep"
+                      ? copy.globe.financePrepAskHint
+                      : copy.globe.tripIntakeAskHint,
             pendingTrigger: text,
             chips: plan.chips,
           });
@@ -1529,6 +1825,7 @@ export const GlobeContextConditionPinBar = forwardRef<
             ssot,
             skipLens: true,
             event: operatorEvent,
+            blueprint: operatorBlueprint,
             userLat,
             userLng,
           });
@@ -1567,14 +1864,29 @@ export const GlobeContextConditionPinBar = forwardRef<
           }
         }
 
-        if (plan.tool === "scout") {
-          runOneShotLodgingPrepClient({
+        if (plan.tool === "scout" && plan.reason === "trip_experience_parallel") {
+          runOneShotTripExperiencePrepClient({
             message: text,
             contextEventId,
             event: operatorEvent,
             userLat,
             userLng,
           });
+          if (await tryExecuteTripExperienceParallelScout(text)) {
+            return;
+          }
+        }
+
+        if (plan.tool === "scout") {
+          if (plan.reason !== "trip_experience_parallel") {
+            runOneShotLodgingPrepClient({
+              message: text,
+              contextEventId,
+              event: operatorEvent,
+              userLat,
+              userLng,
+            });
+          }
           // fall through to scout / refine / resolve below
         } else if (plan.tool === "defer_classify") {
           const history = composeTail.map((turn) => `${turn.role}: ${turn.text}`);
@@ -1642,6 +1954,7 @@ export const GlobeContextConditionPinBar = forwardRef<
     contextEventId,
     destinationConfirmed,
     executeParallelOnboarding,
+    tryExecuteTripExperienceParallelScout,
     lastSpec,
     lastRecommendations,
     message,
@@ -1722,17 +2035,27 @@ export const GlobeContextConditionPinBar = forwardRef<
           text,
           ssot,
           event: operatorEvent,
+          blueprint: operatorBlueprint,
           userLat,
           userLng,
         });
         if (plan.tool === "ask_chips") {
+          const chipDomain = resolveOperatorAskChipDomain({
+            pendingTrigger: text,
+            planReason: plan.reason,
+          });
           appendOperatorAskChipsComposeTurn(contextEventId, {
-            chipDomain:
-              plan.reason === "trip_experience_gap" ? "trip_experience" : "trip_intake",
+            chipDomain,
             hint:
-              plan.reason === "trip_experience_gap"
+              chipDomain === "trip_experience"
                 ? copy.globe.tripExperienceAskHint
-                : copy.globe.tripIntakeAskHint,
+                : chipDomain === "flight_prep"
+                  ? copy.globe.flightPrepAskHint
+                  : chipDomain === "transit_prep"
+                    ? copy.globe.transitPrepAskHint
+                    : chipDomain === "finance_prep"
+                      ? copy.globe.financePrepAskHint
+                      : copy.globe.tripIntakeAskHint,
             pendingTrigger: text,
             chips: plan.chips,
           });
@@ -1740,6 +2063,9 @@ export const GlobeContextConditionPinBar = forwardRef<
         }
         if (
           !isLodgingPrepUtterance(text) &&
+          !isFlightPrepUtterance(text) &&
+          !isTransitPrepUtterance(text) &&
+          !isFinancePrepUtterance(text) &&
           !isTripExperienceUtterance(text) &&
           tryOpenIntakeForMessage(text)
         ) {
@@ -1763,7 +2089,61 @@ export const GlobeContextConditionPinBar = forwardRef<
         if (await tryPublishActionInjection(text)) {
           return;
         }
-        if (plan.tool === "scout" || isLodgingPrepUtterance(text)) {
+        if (plan.tool === "scout" && plan.reason === "trip_experience_parallel") {
+          runOneShotTripExperiencePrepClient({
+            message: text,
+            contextEventId,
+            event: operatorEvent,
+            userLat,
+            userLng,
+          });
+          if (await tryExecuteTripExperienceParallelScout(text)) {
+            return;
+          }
+        }
+        if (plan.tool === "scout" && plan.reason === "instant_transit_navigate") {
+          const completed = tryCompleteTransitPrepClient({
+            message: text,
+            contextEventId,
+            event: operatorEvent,
+          });
+          if (completed.committed) {
+            toast.success(copy.globe.transitPrepReady);
+            return;
+          }
+        }
+        if (plan.tool === "scout" && plan.reason === "instant_flight_search") {
+          const completed = tryCompleteFlightPrepClient({
+            message: text,
+            contextEventId,
+            event: operatorEvent,
+            userLat,
+            userLng,
+          });
+          if (completed.committed) {
+            toast.success(copy.globe.flightPrepReady);
+            return;
+          }
+        }
+        if (plan.tool === "scout" && plan.reason === "instant_finance_payment") {
+          const completed = tryCompleteFinancePrepClient({
+            message: text,
+            contextEventId,
+            event: operatorEvent,
+          });
+          if (completed.committed) {
+            toast.success(copy.globe.financePrepReady);
+            return;
+          }
+        }
+        if (
+          (plan.tool === "scout" &&
+            plan.reason !== "trip_experience_parallel" &&
+            plan.reason !== "instant_flight_search" &&
+            plan.reason !== "instant_transit_navigate" &&
+            plan.reason !== "instant_finance_payment") ||
+          isLodgingPrepUtterance(text)
+        ) {
           runOneShotLodgingPrepClient({
             message: text,
             contextEventId,
@@ -1783,6 +2163,7 @@ export const GlobeContextConditionPinBar = forwardRef<
       contextEventId,
       destinationConfirmed,
       executeParallelOnboarding,
+      tryExecuteTripExperienceParallelScout,
       lastSpec,
       onUserCompose,
       operatorBlueprint,

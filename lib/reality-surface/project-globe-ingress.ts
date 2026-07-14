@@ -3,27 +3,16 @@
  * Blueprint stays off-surface — only flow/runtime/bridge/context projection.
  */
 
-import type { ExecutionGraph } from "@/lib/context-blueprint/execution-graph";
 import type { ContextBlueprint } from "@/lib/context-blueprint/types";
+import { buildContextExecutionPlanFromBlueprint } from "@/lib/context-execution/build-context-execution-plan";
+import { resolveContextExecutionPlanApprovalGate } from "@/lib/context-execution/resolve-plan-approval-gate";
+import type { ContextExecutionPlanV1 } from "@/lib/context-execution/types";
+import { readActiveExecutionGraphNode } from "@/lib/context-execution/read-active-plan-step";
 import type { GlobeIngressCompileResult } from "@/lib/globe-ingress/types";
 import {
   composeRealitySurfaceProjectionBundle,
   type RealitySurfaceProjectionBundle,
 } from "@/lib/reality-surface/types";
-
-function readActiveFlowNode(graph: ExecutionGraph | null | undefined) {
-  if (!graph?.nodes.length) {
-    return null;
-  }
-  return (
-    graph.nodes.find(
-      (node) => node.status === "running" || node.status === "ready",
-    ) ??
-    graph.nodes.find((node) => node.status === "pending") ??
-    graph.nodes[0] ??
-    null
-  );
-}
 
 function resolveBridgeActiveLegIndex(input: {
   pathLabels: readonly string[];
@@ -55,6 +44,8 @@ export type RealitySurfaceSession = {
   readonly projection: RealitySurfaceProjectionBundle;
   /** Operator gate only — never render on globe */
   readonly operatorBlueprint: ContextBlueprint;
+  /** L3 Execution Plan instance — Runtime step state (off globe hero). */
+  readonly executionPlan?: ContextExecutionPlanV1 | null;
 };
 
 export function composeRealitySurfaceFromBlueprint(input: {
@@ -63,9 +54,13 @@ export function composeRealitySurfaceFromBlueprint(input: {
   bridgePathLabels: readonly string[];
   blueprint: ContextBlueprint;
   runtimeId: string;
+  executionPlan?: ContextExecutionPlanV1 | null;
 }): RealitySurfaceSession {
   const graph = input.blueprint.executionGraph;
-  const activeNode = readActiveFlowNode(graph);
+  const activeNode = readActiveExecutionGraphNode({
+    graph,
+    plan: input.executionPlan ?? null,
+  });
   const flowNodeIds = graph?.nodes.map((node) => node.id) ?? [];
   const activePhaseLabel = activeNode?.label ?? null;
   const destinationConfirmed = !input.blueprint.resourcePlan.emptySlots.includes(
@@ -105,6 +100,7 @@ export function composeRealitySurfaceFromBlueprint(input: {
     eventId: input.eventId,
     projection,
     operatorBlueprint: input.blueprint,
+    executionPlan: input.executionPlan ?? null,
   };
 }
 
@@ -113,11 +109,24 @@ export function composeRealitySurfaceFromGlobeIngress(input: {
   eventId: string;
 }): RealitySurfaceSession {
   const { compiled, eventId } = input;
+  const executionPlan = resolveContextExecutionPlanApprovalGate({
+    plan: buildContextExecutionPlanFromBlueprint({
+      blueprint: compiled.blueprint,
+      build: {
+        contextId: eventId,
+        goalKo: compiled.context.goal,
+        osPhase: "execution_planned",
+        approval: "auto",
+      },
+    }),
+    blueprint: compiled.blueprint,
+  });
   return composeRealitySurfaceFromBlueprint({
     eventId,
     goalKo: compiled.context.goal,
     bridgePathLabels: compiled.bridge.pathLabels,
     blueprint: compiled.blueprint,
     runtimeId: compiled.runtime.runtimeId,
+    executionPlan,
   });
 }

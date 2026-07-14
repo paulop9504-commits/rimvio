@@ -3,10 +3,20 @@ import { readLodgingInventoryRows } from "@/lib/globe/context-hub/read-lodging-r
 import { readEateryInventoryRows } from "@/lib/globe/eatery/read-eatery-resource-inventory";
 import { selectPreferredLodgingImage } from "@/lib/globe/lodging/lodging-photo-fidelity";
 import { buildFeedEntityProfile } from "@/lib/globe/feed-entity/build-feed-entity-profile";
+import {
+  refreshLivePlaceMetaLine,
+  refreshLivePlaceReasonKo,
+} from "@/lib/globe/feed-entity/refresh-live-place-feed-copy";
 import { classifyDiscoveryEntityQuery } from "@/lib/globe/feed-entity/classify-discovery-entity-query";
 import type { InfiniteDiscoveryFeedCard } from "@/lib/globe/intelligent-pin/types";
 import { activitySubtypeNoun } from "@/lib/globe/place/activity-subtype-presentation";
+import { resolveResourceReviewVideoContext } from "@/lib/globe/resource-reel/resolve-resource-review-video-context";
 import type { GlobeResourceReelItem } from "@/lib/globe/resource-reel/types";
+import {
+  decorateReasonWithMeaningWhy,
+  resolveContextMeaningWhyLine,
+} from "@/lib/meaning/resolve-context-meaning-why-line";
+import { listLifeEventCandidates } from "@/lib/life-read-model";
 import { copy } from "@/lib/copy/human-ko";
 
 function formatScoreLabel(score100: number): string | null {
@@ -95,10 +105,18 @@ export function buildInfiniteDiscoveryFeedCards(input: {
   event: EventCandidate;
   items: readonly GlobeResourceReelItem[];
   triggerMessage?: string | null;
+  viewerLat?: number | null;
+  viewerLng?: number | null;
+  now?: Date;
 }): InfiniteDiscoveryFeedCard[] {
+  const now = input.now ?? new Date();
   const classified = input.triggerMessage?.trim()
     ? classifyDiscoveryEntityQuery(input.triggerMessage)
     : null;
+  const meaningWhy = resolveContextMeaningWhyLine({
+    event: input.event,
+    events: listLifeEventCandidates(),
+  });
   const mixed = interleaveMixedKinds(input.items);
   return mixed.map((item, index) => {
     const images = imageUrlsForItem(input.event, item);
@@ -108,10 +126,35 @@ export function buildInfiniteDiscoveryFeedCards(input: {
             (entry) => entry.placeId === item.placeId,
           )
         : null;
+    const eateryRow =
+      item.kind !== "lodging"
+        ? readEateryInventoryRows(input.event).find(
+            (entry) => entry.placeId === item.placeId,
+          )
+        : null;
     const secondaryLine =
-      item.secondaryLine ??
+      refreshLivePlaceMetaLine({
+        metaLine:
+          item.secondaryLine ??
+          formatPriceKrw(lodgingRow?.priceKrw ?? null) ??
+          null,
+        openNow: eateryRow?.openNow,
+        now,
+      }) ??
       formatPriceKrw(lodgingRow?.priceKrw ?? null) ??
       null;
+    const detailReasonLine = decorateReasonWithMeaningWhy(
+      meaningWhy,
+      refreshLivePlaceReasonKo({
+        reasonKo: item.detailReasonLine,
+        openNow: eateryRow?.openNow,
+        viewerLat: input.viewerLat,
+        viewerLng: input.viewerLng,
+        placeLat: item.lat,
+        placeLng: item.lng,
+        now,
+      }),
+    );
     const canCheckout = item.kind === "lodging" && lodgingRow != null;
     const profile = buildFeedEntityProfile({
       event: input.event,
@@ -120,6 +163,18 @@ export function buildInfiniteDiscoveryFeedCards(input: {
       userIntentKo: classified?.userIntentKo ?? null,
       triggerMessage: input.triggerMessage,
     });
+    const areaFallback =
+      input.event.place?.trim() ||
+      input.event.title?.trim() ||
+      item.title;
+    const videoContext =
+      item.kind === "activity" || item.kind === "amenity"
+        ? resolveResourceReviewVideoContext({
+            event: input.event,
+            item,
+            areaFallback,
+          })
+        : null;
     return {
       resourceId: item.resourceId,
       kind: item.kind,
@@ -131,10 +186,11 @@ export function buildInfiniteDiscoveryFeedCards(input: {
       media: {
         title: item.title,
         categoryLabelKo: categoryLabelKo(item.kind, item.activitySubtype),
-        detailReasonLine: item.detailReasonLine,
+        detailReasonLine,
         secondaryLine,
         imageUrls: images,
         scoreLabel: formatScoreLabel(item.score100),
+        videoContext,
       },
       profile,
       state: {

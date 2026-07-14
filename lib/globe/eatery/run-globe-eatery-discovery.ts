@@ -118,6 +118,7 @@ export async function runGlobeEateryDiscovery(
     lat: origin.lat,
     lng: origin.lng,
     context,
+    event,
   });
 
   const resourceIdByPlaceId: Record<string, string> = {};

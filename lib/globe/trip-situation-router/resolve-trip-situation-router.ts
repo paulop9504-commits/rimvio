@@ -1,4 +1,6 @@
 import type { ContextBlueprint } from "@/lib/context-blueprint/types";
+import { readPlanStepByNodeId } from "@/lib/context-execution/read-active-plan-step";
+import type { ContextExecutionPlanV1 } from "@/lib/context-execution/types";
 import { copy } from "@/lib/copy/human-ko";
 import type { GlobeLayerMode } from "@/lib/globe/globe-layer-mode";
 import {
@@ -16,19 +18,22 @@ import type {
   TripSituationRouterState,
 } from "@/lib/globe/trip-situation-router/types";
 
-function isStayReadyForDomain(blueprint: ContextBlueprint): boolean {
+function isStayReadyForDomain(
+  blueprint: ContextBlueprint,
+  executionPlan?: ContextExecutionPlanV1 | null,
+): boolean {
   if (blueprintNeedsDestination(blueprint) || blueprintNeedsDepartureConfirm(blueprint)) {
     return false;
   }
-  const stay = blueprint.executionGraph?.nodes.find((node) => node.id === "stay");
-  if (!stay) {
-    return false;
+  const stayStep = readPlanStepByNodeId(executionPlan ?? null, "stay");
+  if (stayStep) {
+    return (
+      stayStep.status === "running" ||
+      stayStep.status === "ready" ||
+      stayStep.status === "prepared"
+    );
   }
-  return (
-    stay.status === "running" ||
-    stay.status === "ready" ||
-    stay.status === "prepared"
-  );
+  return blueprint.executionGraph?.nodes.some((node) => node.id === "stay") ?? false;
 }
 
 function readDestinationLabel(blueprint: ContextBlueprint): string | null {
@@ -206,7 +211,7 @@ export function resolveTripSituationRouter(input: {
     });
   }
 
-  if (isStayReadyForDomain(blueprint)) {
+  if (isStayReadyForDomain(blueprint, input.session?.executionPlan ?? null)) {
     return {
       stage: "ready_for_domain",
       reasonKo: destinationLabel

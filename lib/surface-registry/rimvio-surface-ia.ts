@@ -62,7 +62,7 @@ export const RIMVIO_PRIMARY_SURFACES: readonly RimvioPrimarySurface[] = [
     id: "field",
     route: "/field",
     navLabelKey: "nav.field",
-    role: "Field sheet ingress — trades, discovery, mine (no full-page nav)",
+    role: "Field sheet — Reality Control Center (queue · trades · mine)",
     experienceLayer: "ACTION",
     ingress: ["bottom nav sheet", "Globe continuity portal"],
     egress: ["Globe home", "external execute"],

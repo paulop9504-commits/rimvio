@@ -6,6 +6,7 @@
 import type { DiscoveryGuardDomain } from "@/lib/globe/context-condition-ai/discovery-guard/verify-discovery-results";
 import { DISCOVERY_GUARD_THRESHOLD } from "@/lib/globe/context-condition-ai/discovery-guard/verify-discovery-results";
 import {
+  LOCAL_DISCOVERY_FEED_INVENTORY_CAP,
   LOCAL_DISCOVERY_PIN_CAP,
   LOCAL_DISCOVERY_RECOMMEND_CAP,
 } from "@/lib/globe/context-condition-ai/local-discovery-limits";
@@ -15,6 +16,7 @@ export type ExplorationPolicyKnobs = {
   readonly mode: ExplorationMode;
   readonly pinCap: number;
   readonly recommendCap: number;
+  readonly feedInventoryCap: number;
   readonly guardThresholdByDomain: Readonly<
     Record<DiscoveryGuardDomain, number>
   >;
@@ -54,7 +56,8 @@ export function applyExplorationMode(mode: ExplorationMode): ExplorationPolicyKn
   return {
     mode,
     pinCap: convergent ? LOCAL_DISCOVERY_PIN_CAP : 5,
-    recommendCap: convergent ? LOCAL_DISCOVERY_RECOMMEND_CAP : 5,
+    recommendCap: convergent ? LOCAL_DISCOVERY_RECOMMEND_CAP : 8,
+    feedInventoryCap: LOCAL_DISCOVERY_FEED_INVENTORY_CAP,
     guardThresholdByDomain: {
       lodging: guardThreshold("lodging", mode),
       eatery: guardThreshold("eatery", mode),

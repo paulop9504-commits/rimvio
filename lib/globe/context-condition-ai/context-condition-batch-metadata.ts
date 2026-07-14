@@ -119,6 +119,44 @@ export function findContextConditionPinBatch(
   return readContextConditionPinBatches(event).find((row) => row.batchId === key) ?? null;
 }
 
+/** Place ids for the active scout run only — not historical pin batches. */
+export function readActiveContextConditionPlaceIds(input: {
+  event: EventCandidate | null | undefined;
+  activeBatchId?: string | null;
+}): {
+  lodging: Set<string>;
+  eatery: Set<string>;
+  activity: Set<string>;
+  amenity: Set<string>;
+} {
+  const empty = {
+    lodging: new Set<string>(),
+    eatery: new Set<string>(),
+    activity: new Set<string>(),
+    amenity: new Set<string>(),
+  };
+  const batchId = input.activeBatchId?.trim();
+  if (!batchId) {
+    return empty;
+  }
+  const batch = findContextConditionPinBatch(input.event, batchId);
+  if (!batch) {
+    return empty;
+  }
+  for (const placeId of batch.lodgingPlaceIds) {
+    empty.lodging.add(placeId);
+  }
+  for (const placeId of batch.eateryPlaceIds) {
+    empty.eatery.add(placeId);
+    if (batch.eateryKind === "activity") {
+      empty.activity.add(placeId);
+    } else if (batch.eateryKind === "amenity") {
+      empty.amenity.add(placeId);
+    }
+  }
+  return empty;
+}
+
 export function listContextConditionPlaceIdsForContext(
   event: EventCandidate | null | undefined,
 ): {

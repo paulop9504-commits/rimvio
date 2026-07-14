@@ -11,8 +11,8 @@ import type {
  */
 
 const FIELD_DASHBOARD_TABS = new Set<FieldDashboardTab>([
+  "queue",
   "trades",
-  "discovery",
   "mine",
 ]);
 
@@ -29,21 +29,21 @@ export function openFieldTradesIngress(highlightTradeId?: string | null): void {
   });
 }
 
-/** Pill: “맞는 매물” → discovery tab, optional context event scope. */
+/** Pill: “맞는 매물” → queue (discovery demoted; browse via Globe). */
 export function openFieldDiscoveryIngress(primaryEventId?: string | null): void {
   openFieldDashboardIngress({
-    tab: "discovery",
+    tab: "queue",
     primaryEventId: primaryEventId ?? null,
   });
 }
 
-/** Bottom-nav 맞춤 — external globe dashboard SSOT. */
+/** Bottom-nav 맞춤 — Reality Control Center (queue) SSOT. */
 export function openFieldDashboardFromBottomNav(input?: {
   tab?: FieldDashboardTab;
   highlightTradeId?: string | null;
 }): void {
   openFieldDashboardIngress({
-    tab: input?.tab,
+    tab: input?.tab ?? "queue",
     highlightTradeId: input?.highlightTradeId ?? null,
   });
 }
@@ -59,8 +59,13 @@ export function parseFieldDashboardTab(
   if (!raw) {
     return undefined;
   }
-  const trimmed = raw.trim() as FieldDashboardTab;
-  return FIELD_DASHBOARD_TABS.has(trimmed) ? trimmed : undefined;
+  const trimmed = raw.trim();
+  if (trimmed === "discovery") {
+    return "queue";
+  }
+  return FIELD_DASHBOARD_TABS.has(trimmed as FieldDashboardTab)
+    ? (trimmed as FieldDashboardTab)
+    : undefined;
 }
 
 /**

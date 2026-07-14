@@ -356,6 +356,12 @@ export const copyEn: Copy = {
     localDiscoveryVibeHot: "Trendy",
     explorationModeConvergentChip: "Verified picks",
     explorationModeDiffuseChip: "Something new",
+    lodgingRankModeAutoChip: "Custom auto",
+    lodgingRankModeValueChip: "Value",
+    lodgingRankModeDistanceChip: "Distance",
+    lodgingRankModePopularChip: "Popular",
+    lodgingRankModePremiumChip: "Premium",
+    lodgingRankModeGroupAria: "Lodging sort",
     localDiscoveryAskLodgingKind: "What kind of stay?",
     localDiscoveryAskResourceFocus: "What should we look for?",
     localDiscoveryResourceRestaurant: "Restaurants",
@@ -1838,6 +1844,10 @@ export const copyEn: Copy = {
     discoveryFeedDismissCta: "Close",
     intelligentPinFeedTitle: "AI picks nearby",
     intelligentPinFeedSubtitle: "Scroll to explore · synced with map",
+    intelligentPinFeedLoadingMore: "Loading more stays…",
+    intelligentPinFeedMore: (shown: number, total: number) =>
+      `${shown} of ${total} · scroll for more`,
+    intelligentPinFeedComplete: (total: number) => `All ${total} shown`,
     intelligentPinFeedCloseAria: "Close discovery feed",
     intelligentPinCategoryLodging: "Stay",
     intelligentPinCategoryEatery: "Food",
@@ -1854,12 +1864,36 @@ export const copyEn: Copy = {
     intelligentPinSwipePhotos: "Swipe for more photos",
     scoutFeedGateIntro: (count: number) => `Found ${count} places.`,
     scoutFeedGateConfirmCta: "View results",
+    scoutFeedGateArchiveCta: "View prior run",
     scoutFeedGateOpened: "Browsing in feed",
     scoutFeedGateAreaFallback: "Nearby",
     scoutFeedGateAiLabel: "Context",
     scoutFeedGateTipsLabel: "Tips",
     scoutFeedGateVideosLabel: "Related videos",
     scoutFeedGateHighlightsLabel: "Picks",
+    scoutFeedGateCorrectionHint: "Keep only what you meant?",
+    scoutFeedGateCorrectionKeepOnly: (focus: string) => `Only ${focus}?`,
+    scoutFeedGateCorrectionStrip: (focus: string) => `Drop ${focus}`,
+    scoutFeedGateCorrectionApplied: (focus: string) => `Kept only ${focus}`,
+    scoutFeedGateCorrectionEmpty: "Nothing left with that filter",
+    scoutFeedGateCorrectionSummary: (input: {
+      count: number;
+      kind: "lodging" | "eatery" | "activity" | "amenity" | "mixed";
+    }) => {
+      if (input.kind === "lodging") {
+        return `Kept ${input.count} stays`;
+      }
+      if (input.kind === "eatery") {
+        return `Kept ${input.count} eateries`;
+      }
+      if (input.kind === "activity") {
+        return `Kept ${input.count} activities`;
+      }
+      if (input.kind === "amenity") {
+        return `Kept ${input.count} amenities`;
+      }
+      return `Kept ${input.count} places`;
+    },
     scoutFeedGateVideoQuery: (area: string) => `${area} things to do`,
     scoutFeedGateAiInsight: (input: {
       scoutKind: "lodging" | "eatery" | "activity" | "amenity" | "mixed";
@@ -1922,6 +1956,7 @@ export const copyEn: Copy = {
     feedEntityPhotoCount: (count: number) => `${count} photos`,
     feedEntityNearMapPin: "Near map pin",
     feedEntityOpenNow: "Open now",
+    feedEntityHoursCheck: "Check hours",
     feedEntityClosedNow: "Closed now",
     feedEntityVideoReady: "Videos available",
     feedEntityVideoPending: "Fetching videos",
@@ -2123,14 +2158,39 @@ export const copyEn: Copy = {
     tripIntakeComposeLine: (destination: string) =>
       `Trip details set for ${destination}. Prepping flights, stays, and things to do.`,
     tripIntakeAskHint: "Pick one — we'll match a stay right away.",
+    flightPrepAskHint: "Pick one — we'll line up your flight booking.",
+    flightPrepReady: "Departure hub connected. Opening flights.",
+    transitPrepAskHint: "Pick where you're headed — we'll open directions.",
+    transitPrepReady: "Directions are open.",
+    financePrepAskHint: "Pick a budget — we'll prep payment.",
+    financePrepReady: "Payment prep is open.",
     tripIntakeAskChipApplied: (label: string) => `Got it — ${label}.`,
     tripExperienceAskHint: "Pick a direction — we'll shape the trip from there.",
     tripExperienceAskChipApplied: (label: string) => `Shaping it around ${label}.`,
+    tripExperienceParallelStart: (label: string) =>
+      `${label} — scouting stays, food, and things to do together.`,
+    tripExperienceMainReady:
+      "Picked a stay, food spot, and thing to do — review and continue when ready.",
     lodgingOneShotMainReady: "Picked a stay for your trip — confirm the room to continue.",
     contextRecallBadge: (count: number) =>
       `Confirmed ${count} item${count === 1 ? "" : "s"}`,
     contextRecallLodgingLeg: "Stay confirmed",
     contextRecallFlightLeg: "Flight confirmed",
+    executionPlanScoutFailed: {
+      lodging: "Couldn't find stay options",
+      tripExperience: "Couldn't find experience options",
+      flight: "Couldn't match flight conditions",
+      transit: "Couldn't confirm a destination to navigate",
+      finance: "Couldn't finish payment prep",
+    },
+    executionPlanPreview: {
+      title: "Up next",
+      currentStep: (label: string) => `Now · ${label}`,
+      moreSteps: (count: number) => `+${count} more step${count === 1 ? "" : "s"}`,
+      approvalHint: "Review the order, then run when ready",
+      approveCta: "Run it",
+      approvedToast: "Starting execution",
+    },
     hubActionLog: {
       title: "Context log",
       hubLodging: "Stay",
@@ -2141,6 +2201,87 @@ export const copyEn: Copy = {
       reserve: (hub: string) => `Hold ${hub}`,
       purchase: (hub: string) => `Pay ${hub}`,
       cancel: (hub: string) => `Cancel ${hub}`,
+    },
+    engineEventTimeline: {
+      flight_booking: {
+        scout_complete: "Flight search",
+        scout_failed: "Flight search failed",
+        main_selected: "Flight linked",
+      },
+      lodging_search: {
+        scout_complete: "Stay search",
+        scout_failed: "Stay search failed",
+        main_selected: "Stay pinned",
+      },
+      local_amenity_search: {
+        scout_complete: "Amenity search",
+        scout_failed: "Amenity search failed",
+        main_selected: "Amenity pinned",
+      },
+      eatery_search: {
+        scout_complete: "Eatery search",
+        scout_failed: "Eatery search failed",
+        main_selected: "Eatery pinned",
+      },
+      activity_search: {
+        scout_complete: "Activity search",
+        scout_failed: "Activity search failed",
+        main_selected: "Activity pinned",
+      },
+      trip_experience_search: {
+        scout_complete: "Experience search",
+        scout_failed: "Experience search failed",
+        main_selected: "Experience pinned",
+      },
+      transit_navigate: {
+        scout_complete: "Route search",
+        scout_failed: "Route search failed",
+        main_selected: "Transit ready",
+      },
+      finance_prep: {
+        scout_complete: "Budget set",
+        scout_failed: "Budget prep failed",
+        main_selected: "Payment ready",
+      },
+    },
+    capabilityInvocationTimeline: {
+      BOOK_HOTEL: "Book stay",
+      BOOK_FLIGHT: "Book flight",
+      NAVIGATE: "Navigate",
+      CHECK_IN: "Check in",
+      CONFIRM_PLACE: "Confirm place",
+      "PLUGIN:payment:charge": "Payment",
+    },
+    capabilityInvocationFailed: (action: string) => `${action} failed`,
+    engineStore: {
+      title: "Project capabilities",
+      add: "Add",
+      empty: "No capabilities tuned yet.",
+      installOffer: (label: string) => `Add ${label}`,
+      installDone: (label: string) => `${label} is tuned for this context.`,
+      filterAll: "All",
+      filterPartner: "Partners",
+      chip: {
+        flight_booking: "Flight",
+        lodging_search: "Stay",
+        local_amenity_search: "Amenity",
+        eatery_search: "Eatery",
+        activity_search: "Activity",
+        trip_experience_search: "Experience",
+        transit_navigate: "Transit",
+        finance_prep: "Payment",
+      },
+      providerKind: {
+        producer: "Goods",
+        worker: "Labor",
+        organization: "Partner",
+        ai_agent: "Auto",
+      },
+      providerMember: {
+        rimvio: "Rimvio",
+        acme_hotels: "ACME Hotels",
+        "kakao-corp": "Kakao",
+      },
     },
     lodgingRoomCardTitle: "Pick a room",
     lodgingRoomCardHint:
@@ -2301,7 +2442,7 @@ export const copyEn: Copy = {
     utilityMenuSettings: "Settings",
     utilityMenuField: "Matches now",
     field: {
-      sheetTitle: "Matches now",
+      sheetTitle: "Pending reality",
       listening: (title: string) => `Watching ${title}…`,
       discoveryBrowseListening: "Outer globe resources · live",
       browseAllPill: "All",
@@ -2368,13 +2509,90 @@ export const copyEn: Copy = {
       externalResourcesHint: "Used goods · meetups · neighbors",
       discoveryFloorTitle: "Matching listings",
       discoveryFloorHint: "Live · based on your seeking",
+      dashboardTabQueue: "Pending",
       dashboardTabTrades: "In progress",
       dashboardTabDiscovery: "Matches",
-      dashboardTabMine: "My outer globe",
-      dashboardTabAria: "Field dashboard tabs",
+      dashboardTabMine: "My posts",
+      dashboardTabAria: "Field · pending reality tabs",
+      dashboardTabQueueHint: "AI prepared changes · approve to change reality",
       dashboardTabTradesHint: "Schedule · meet · en route",
       dashboardTabDiscoveryHint: "Live neighbor listings for you",
       dashboardTabMineHint: "Monitor what you posted to seek or offer",
+      realityControlTitle: "Pending reality",
+      realityControlSubtitle: "AI prepared this · reality is unchanged until you approve",
+      realityAgentsEyebrow: "Preparing",
+      realityAgentsAria: "Preparing work",
+      realityQueueEyebrow: "Reality queue",
+      realityQueueAria: "Pending reality changes",
+      realityQueueCount: (count: number) => `${count}`,
+      realityQueueStatusReady: "Ready",
+      realityQueueStatusNeedsReview: "Needs review",
+      realityQueueStatusRunning: "Running",
+      realityQueueStatusBlocked: "Blocked",
+      realityQueueEmptyTitle: "Nothing ready to commit",
+      realityQueueEmptyBody: "Create context on the globe — it shows up here",
+      realityQueueEmptyScope: "Right now we take trip prep all the way",
+      realityQueueEmptyExamplesAria: "Trip starter examples",
+      realityQueueEmptyExampleChips: [
+        {
+          id: "osaka-weekend",
+          labelKo: "Osaka weekend",
+          submitKo: "Prep a weekend trip to Osaka",
+        },
+        {
+          id: "nearby-lodging",
+          labelKo: "Nearby stays",
+          submitKo: "Find nearby lodging",
+        },
+        {
+          id: "food-first",
+          labelKo: "Food first",
+          submitKo: "Prep a trip around great food",
+        },
+      ],
+      realityQueueEmptyGlobeCta: "Open globe",
+      realityQueueEmptyTradesCta: (count: number) => `Trades in progress ${count}`,
+      realityImpactEyebrow: "Impact",
+      realityImpactAria: "Commit impact summary",
+      realityImpactPendingLabel: "Pending",
+      realityImpactRiskLabel: "Risk",
+      realityImpactCostLabel: "Cost",
+      realityImpactCostHint: "Est.",
+      realityImpactLine: (input: {
+        count: number;
+        risk: string;
+        cost?: string | null;
+        timeSaved?: string | null;
+      }) => {
+        const parts = [`${input.count} pending`, `risk ${input.risk}`];
+        if (input.cost?.trim()) {
+          parts.push(input.cost.trim());
+        }
+        if (input.timeSaved?.trim()) {
+          parts.push(input.timeSaved.trim());
+        }
+        return parts.join(" · ");
+      },
+      realityImpactRiskLow: "low",
+      realityImpactRiskMedium: "medium",
+      realityImpactRiskHigh: "high",
+      realityCommitAria: "Approve reality commit",
+      realityCommitCta: "Commit changes",
+      realityCommitPendingCta: "Committing…",
+      realityRejectCta: "Hold",
+      realityEditCta: "Edit plan",
+      realityCommitBlockedToast: "Some items still need review",
+      realityCommitSuccessToast: "Commit started",
+      realityCommitTradeOnlyToast: "Continue the trade in Progress",
+      realityCommitFailedToast: "Commit failed · try again",
+      realityReceiptTitle: "Reality changed",
+      realityReceiptAria: "Commit receipt",
+      realityReceiptDisclaimer: "Payment and booking are not done yet",
+      realityReceiptGlobeCta: "View on globe",
+      realityReceiptDismissCta: "Dismiss",
+      realityReceiptEmptyLine: "Prepared steps were committed",
+      realityCommitPulseBadge: "Committed",
+      realityRejectToast: "Commit held",
       resourceStatusEyebrow: "AI activity",
       resourceStatusViews: (count: number) => `👀 ${count} views`,
       resourceStatusInquiries: (count: number) =>

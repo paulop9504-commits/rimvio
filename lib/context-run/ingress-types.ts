@@ -18,6 +18,8 @@ export type ContextRunIngress =
       surface: "composer" | "capture_sheet";
       layerMode: "personal" | "discovery";
       contextEventId?: string | null;
+      /** Skip Find converge — always mint a new Container. */
+      forceNewContext?: boolean;
       lat?: number | null;
       lng?: number | null;
     }
@@ -149,6 +151,8 @@ export type ContextRunEffectHandlers = {
     compiled: GlobeIngressCompileResult;
     eventId: string;
   }) => void;
+  /** Ambiguous existing contexts — chips-first (rare; auto_attach preferred). */
+  onIngressConvergeChips?: (result: import("@/lib/globe-ingress").IngressContextConvergeResult) => void;
   onPersonalContextAsk?: (result: PersonalContextAskResult) => void;
   onExternalContextAsk?: (result: ExternalContextAskResult) => void;
   onExternalContextAskError?: () => void;

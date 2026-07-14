@@ -44,6 +44,11 @@ export type GlobeAssistantComposeThreadProps = {
     pendingTrigger: string;
   }) => void;
   onOpenScoutFeed?: (input: { turnId: string; batchId: string }) => void;
+  onScoutDomainCorrection?: (input: {
+    turnId: string;
+    batchId: string;
+    chipId: string;
+  }) => void;
   scoutFeedGateBusy?: boolean;
 };
 
@@ -66,6 +71,7 @@ export function GlobeAssistantComposeThread({
   onIntakeSubmit,
   onAskChipPick,
   onOpenScoutFeed,
+  onScoutDomainCorrection,
   scoutFeedGateBusy = false,
 }: GlobeAssistantComposeThreadProps) {
   if (turns.length === 0) {
@@ -130,16 +136,28 @@ export function GlobeAssistantComposeThread({
                 summaryKo={turn.payload.summaryKo}
                 count={turn.payload.count}
                 opened={turn.payload.status === "opened"}
+                superseded={turn.payload.status === "superseded"}
                 busy={scoutFeedGateBusy}
                 aiInsightKo={turn.payload.aiInsightKo}
                 tipsKo={turn.payload.tipsKo}
                 highlightTitles={turn.payload.highlightTitles}
                 videoContext={turn.payload.videoContext}
+                correctionChips={turn.payload.correctionChips}
                 onConfirm={() =>
                   onOpenScoutFeed?.({
                     turnId: turn.id,
                     batchId: turn.payload.batchId,
                   })
+                }
+                onCorrectionChip={
+                  onScoutDomainCorrection
+                    ? (chipId) =>
+                        onScoutDomainCorrection({
+                          turnId: turn.id,
+                          batchId: turn.payload.batchId,
+                          chipId,
+                        })
+                    : undefined
                 }
               />
             </div>

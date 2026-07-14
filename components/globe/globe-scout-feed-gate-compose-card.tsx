@@ -5,16 +5,24 @@ import type { ScoutFeedGateVideoContextWire } from "@/lib/globe/assistant/contex
 import { GlobeScoutFeedGateVideoStrip } from "@/components/globe/globe-scout-feed-gate-video-strip";
 import { cn } from "@/lib/utils";
 
+export type ScoutDomainCorrectionChipView = {
+  readonly id: string;
+  readonly labelKo: string;
+};
+
 export type GlobeScoutFeedGateComposeCardProps = {
   summaryKo: string;
   count: number;
   opened?: boolean;
+  superseded?: boolean;
   busy?: boolean;
   aiInsightKo?: string;
   tipsKo?: readonly string[];
   highlightTitles?: readonly string[];
   videoContext?: ScoutFeedGateVideoContextWire | null;
+  correctionChips?: readonly ScoutDomainCorrectionChipView[];
   onConfirm: () => void;
+  onCorrectionChip?: (chipId: string) => void;
   className?: string;
 };
 
@@ -23,16 +31,22 @@ export function GlobeScoutFeedGateComposeCard({
   summaryKo,
   count,
   opened = false,
+  superseded = false,
   busy = false,
   aiInsightKo,
   tipsKo = [],
   highlightTitles = [],
   videoContext = null,
+  correctionChips = [],
   onConfirm,
+  onCorrectionChip,
   className,
 }: GlobeScoutFeedGateComposeCardProps) {
   const tips = tipsKo.filter((row) => row.trim().length > 0);
   const highlights = highlightTitles.filter((row) => row.trim().length > 0);
+  const corrections = correctionChips.filter((row) => row.labelKo.trim().length > 0);
+  const showCorrections =
+    !opened && !superseded && corrections.length > 0 && Boolean(onCorrectionChip);
 
   return (
     <div
@@ -95,6 +109,31 @@ export function GlobeScoutFeedGateComposeCard({
         {videoContext ? (
           <GlobeScoutFeedGateVideoStrip videoContext={videoContext} />
         ) : null}
+
+        {showCorrections ? (
+          <div
+            className="space-y-1.5 border-t border-black/[0.04] pt-2.5"
+            data-globe-scout-domain-correction
+          >
+            <p className="text-[11px] font-medium text-[#86868b]">
+              {copy.globe.scoutFeedGateCorrectionHint}
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {corrections.map((chip) => (
+                <button
+                  key={chip.id}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => onCorrectionChip?.(chip.id)}
+                  className="rounded-full bg-[#f5f5f7] px-2.5 py-1.5 text-[12px] font-semibold text-[#1d1d1f] ring-1 ring-black/[0.06] active:scale-[0.98] disabled:opacity-60"
+                  data-globe-scout-domain-correction-chip={chip.id}
+                >
+                  {chip.labelKo}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {opened ? (
@@ -106,10 +145,17 @@ export function GlobeScoutFeedGateComposeCard({
           type="button"
           disabled={busy}
           onClick={onConfirm}
-          className="w-full rounded-full bg-[#0071e3] px-4 py-3 text-[14px] font-semibold text-white shadow-sm active:scale-[0.99] disabled:opacity-60"
+          className={cn(
+            "w-full rounded-full px-4 py-3 text-[14px] font-semibold shadow-sm active:scale-[0.99] disabled:opacity-60",
+            superseded
+              ? "bg-[#f5f5f7] text-[#1d1d1f] ring-1 ring-black/[0.06]"
+              : "bg-[#0071e3] text-white",
+          )}
           data-globe-scout-feed-gate-confirm
         >
-          {copy.globe.scoutFeedGateConfirmCta}
+          {superseded
+            ? copy.globe.scoutFeedGateArchiveCta
+            : copy.globe.scoutFeedGateConfirmCta}
         </button>
       )}
     </div>

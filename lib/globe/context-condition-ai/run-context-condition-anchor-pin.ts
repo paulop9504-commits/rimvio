@@ -39,7 +39,11 @@ import type { ContextPlaceInventoryRow } from "@/lib/globe/place/place-resource-
 import { scorePlaceRecommendations } from "@/lib/globe/place/score-place-recommendations";
 import { scoreEateryRecommendations } from "@/lib/globe/eatery/score-eatery-recommendations";
 import { scoreLodgingRecommendations } from "@/lib/globe/lodging/score-lodging-recommendations";
-import { LOCAL_DISCOVERY_RECOMMEND_CAP } from "@/lib/globe/context-condition-ai/local-discovery-limits";
+import {
+  LOCAL_DISCOVERY_FEED_INVENTORY_CAP,
+  LOCAL_DISCOVERY_LODGING_SCOUT_MAX,
+  LOCAL_DISCOVERY_RECOMMEND_CAP,
+} from "@/lib/globe/context-condition-ai/local-discovery-limits";
 import { pickTopLocalDiscoveryRows } from "@/lib/globe/context-condition-ai/pick-top-local-discovery-rows";
 import {
   isExplicitActivityLandmarkQuery,
@@ -314,7 +318,7 @@ export async function runContextConditionAnchorPin(
   });
   const intent = classifyContextConditionAnchorRequest(input.message);
   input.onProcessPhase?.("exploring");
-  buildTravelBrainState(event);
+  const travelBrain = buildTravelBrainState(event);
   const batchId = `ctxcond-${Date.now()}`;
   const radiusM = input.discoveryOrigin?.radiusM ?? spec.radiusM;
 
@@ -381,16 +385,20 @@ export async function runContextConditionAnchorPin(
       event,
       lat: searchOrigin.lat,
       lng: searchOrigin.lng,
-      maxResults: 14,
+      maxResults: LOCAL_DISCOVERY_LODGING_SCOUT_MAX,
       radiusM,
     });
     lodgingSource = loaded.source;
+    const lodgingFilterMax =
+      intent.lodgingMode === "similar_price"
+        ? 6
+        : exploration.feedInventoryCap;
     const filtered = filterLodgingRowsForContextCondition({
       rows: filterLodgingByBudget(loaded.rows, spec.budget),
       anchorPlaceId: input.anchorPlaceId,
       anchorPriceKrw: input.anchorPriceKrw,
       lodgingMode: intent.lodgingMode,
-      max: intent.lodgingMode === "similar_price" ? 3 : 4,
+      max: lodgingFilterMax,
     });
     lodgingScored = scoreLodgingRecommendations({
       rows: filtered,
@@ -399,7 +407,8 @@ export async function runContextConditionAnchorPin(
       lng: searchOrigin.lng,
       context: contextInstance,
       event,
-    }).slice(0, intent.lodgingMode === "similar_price" ? 3 : 4);
+      travelBrain,
+    }).slice(0, lodgingFilterMax);
     lodgingRows = lodgingScored.map((row) => row.row);
   }
 
@@ -426,6 +435,8 @@ export async function runContextConditionAnchorPin(
       lat: searchOrigin.lat,
       lng: searchOrigin.lng,
       context: contextInstance,
+      event,
+      travelBrain,
       exploration: exploration,
     });
     // Category integrity (flexible): drop clearly off-domain rows (a hotel in a
@@ -650,12 +661,24 @@ export async function runContextConditionAnchorPin(
     spec.resourceTypes.includes("activity") &&
     isExplicitActivityLandmarkQuery(spec.activityFocus ?? input.message);
 
+  const combinedLodgingScored = [
+    ...(keptRows?.lodgingScored ?? []),
+    ...lodgingScored,
+  ];
+  const combinedEateryScored = [...(keptRows?.eateryScored ?? []), ...eateryScored];
+
+  const feedLodgingScored = combinedLodgingScored.slice(
+    0,
+    exploration.feedInventoryCap ?? LOCAL_DISCOVERY_FEED_INVENTORY_CAP,
+  );
+  const feedEateryScored = combinedEateryScored.slice(
+    0,
+    Math.max(exploration.eateryPresentCap * 2, exploration.recommendCap),
+  );
+
   const picked = pickTopLocalDiscoveryRows({
-    lodgingScored: [
-      ...(keptRows?.lodgingScored ?? []),
-      ...lodgingScored,
-    ],
-    eateryScored: [...(keptRows?.eateryScored ?? []), ...eateryScored],
+    lodgingScored: feedLodgingScored,
+    eateryScored: feedEateryScored,
     cap:
       activityKind === "amenity"
         ? INSTANT_POI_PIN_CAP
@@ -663,25 +686,25 @@ export async function runContextConditionAnchorPin(
           ? exploration.activityLandmarkPinCap
           : exploration.pinCap,
   });
-  lodgingScored = picked.lodgingScored;
-  eateryScored = picked.eateryScored;
-  lodgingRows = picked.lodgingRows;
-  eateryRows = picked.eateryRows;
+  const mapPinLodgingRows = picked.lodgingRows;
+  const mapPinEateryRows = picked.eateryRows;
+  const feedLodgingRows = feedLodgingScored.map((row) => row.row);
+  const feedEateryRows = feedEateryScored.map((row) => row.row);
 
-  if (lodgingRows.length === 0 && eateryRows.length === 0) {
+  if (feedLodgingRows.length === 0 && feedEateryRows.length === 0) {
     return null;
   }
 
   input.onProcessPhase?.("optimizing");
 
   const pinPoints = [
-    ...lodgingRows.map((row) => ({ lat: row.lat, lng: row.lng })),
-    ...eateryRows.map((row) => ({ lat: row.lat, lng: row.lng })),
+    ...mapPinLodgingRows.map((row) => ({ lat: row.lat, lng: row.lng })),
+    ...mapPinEateryRows.map((row) => ({ lat: row.lat, lng: row.lng })),
   ];
 
   const recommendations = buildRecommendations({
-    lodgingScored,
-    eateryScored,
+    lodgingScored: feedLodgingScored,
+    eateryScored: feedEateryScored,
     activityKind,
     activitySubtype: activityKind === "activity" ? activitySubtype : null,
     recommendCap: exploration.recommendCap,
@@ -689,11 +712,11 @@ export async function runContextConditionAnchorPin(
 
   const outcome: ContextConditionAnchorPinOutcome = {
     batchId,
-    lodgingCount: lodgingRows.length,
-    eateryCount: eateryRows.length,
+    lodgingCount: feedLodgingRows.length,
+    eateryCount: feedEateryRows.length,
     summaryKo: buildSummaryKo({
-      lodgingCount: lodgingRows.length,
-      eateryCount: eateryRows.length,
+      lodgingCount: feedLodgingRows.length,
+      eateryCount: feedEateryRows.length,
       radiusM,
       eateryFocus: spec.eateryFocus,
       activityLabelKo,
@@ -707,10 +730,10 @@ export async function runContextConditionAnchorPin(
   const committedEvent = commitContextConditionHubBatch({
     event,
     batchId,
-    lodgingRows,
-    eateryRows,
-    lodgingScored,
-    eateryScored,
+    lodgingRows: feedLodgingRows,
+    eateryRows: feedEateryRows,
+    lodgingScored: feedLodgingScored,
+    eateryScored: feedEateryScored,
     lodgingSource,
     eaterySource,
     eateryKind: activityKind ?? "eatery",
@@ -723,8 +746,8 @@ export async function runContextConditionAnchorPin(
     writeScoutRevealPending(contextEventId, {
       batch: {
         batchId,
-        lodgingPlaceIds: lodgingRows.map((row) => row.placeId),
-        eateryPlaceIds: eateryRows.map((row) => row.placeId),
+        lodgingPlaceIds: mapPinLodgingRows.map((row) => row.placeId),
+        eateryPlaceIds: mapPinEateryRows.map((row) => row.placeId),
         eateryKind: activityKind ?? "eatery",
         activitySubtype: activityKind === "activity" ? activitySubtype : null,
         atIso: new Date().toISOString(),
@@ -738,8 +761,8 @@ export async function runContextConditionAnchorPin(
     syncContextConditionPins({
       contextEvent: committedEvent,
       batchId,
-      lodgingRows,
-      eateryRows,
+      lodgingRows: mapPinLodgingRows,
+      eateryRows: mapPinEateryRows,
       eateryKind: activityKind ?? "eatery",
       activitySubtype: activityKind === "activity" ? activitySubtype : null,
     });
@@ -750,12 +773,12 @@ export async function runContextConditionAnchorPin(
         anchorLng: searchOrigin.lng,
         outcome,
         pinRows: [
-          ...lodgingRows.map((row) => ({
+          ...mapPinLodgingRows.map((row) => ({
             lat: row.lat,
             lng: row.lng,
             placeId: row.placeId,
           })),
-          ...eateryRows.map((row) => ({
+          ...mapPinEateryRows.map((row) => ({
             lat: row.lat,
             lng: row.lng,
             placeId: row.placeId,
@@ -767,9 +790,10 @@ export async function runContextConditionAnchorPin(
 
   writeContextConditionLastBatch(contextEventId, {
     batchId,
-    count: lodgingRows.length + eateryRows.length,
+    count: feedLodgingRows.length + feedEateryRows.length,
     summaryKo: outcome.summaryKo,
     atIso: new Date().toISOString(),
+    triggerMessage: input.message?.trim() || undefined,
     recommendations: recommendations.map((row) => ({
       kind: row.kind,
       activitySubtype: row.activitySubtype ?? null,
@@ -787,10 +811,10 @@ export async function runContextConditionAnchorPin(
     contextEventId,
     explorationMode,
     batchId,
-    lodgingScores: lodgingScored.map((row) => row.score),
+    lodgingScores: feedLodgingScored.map((row) => row.score),
     eateryScores: wantsActivity
       ? undefined
-      : eateryScored.map((row) => row.score),
+      : feedEateryScored.map((row) => row.score),
     activityScores: wantsActivity ? activityScoresForTelemetry : undefined,
   });
 

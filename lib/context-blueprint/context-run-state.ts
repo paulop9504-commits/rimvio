@@ -6,6 +6,8 @@
 export const CONTEXT_RUN_STATES = [
   "intent",
   "blueprint_created",
+  "execution_planned",
+  "plan_waiting_approval",
   "executing",
   "execution_prepared",
   "waiting_approval",
@@ -20,9 +22,11 @@ export type ContextRunState = (typeof CONTEXT_RUN_STATES)[number];
 export const CONTEXT_RUN_STATE_OWNER: Record<ContextRunState, string> = {
   intent: "L1",
   blueprint_created: "L1→L2 handoff complete; L3 may start",
-  executing: "L3",
+  execution_planned: "L3 — Execution Plan (preview · order)",
+  plan_waiting_approval: "L3→user — plan gate before Runtime",
+  executing: "L3 — Execution Runtime",
   execution_prepared: "L3",
-  waiting_approval: "L5 gate (user)",
+  waiting_approval: "L5 gate (user) — Commit approval",
   committed: "L5",
   observed: "L4 watch",
   reacted: "L4",
@@ -42,9 +46,39 @@ export const CONTEXT_RUN_TRANSITIONS: ReadonlyArray<{
   },
   {
     from: "blueprint_created",
+    to: "execution_planned",
+    owner: "L3",
+    action: "compose Execution Plan from Blueprint",
+  },
+  {
+    from: "blueprint_created",
     to: "executing",
     owner: "L3",
-    action: "read Blueprint · start domain execution",
+    action: "legacy direct runtime (skip plan preview)",
+  },
+  {
+    from: "execution_planned",
+    to: "plan_waiting_approval",
+    owner: "L3→user",
+    action: "surface plan preview · await user confirm",
+  },
+  {
+    from: "execution_planned",
+    to: "executing",
+    owner: "L3",
+    action: "auto-start Runtime (approval: auto)",
+  },
+  {
+    from: "plan_waiting_approval",
+    to: "executing",
+    owner: "L3",
+    action: "user approved plan · start Runtime",
+  },
+  {
+    from: "execution_planned",
+    to: "execution_prepared",
+    owner: "L3",
+    action: "fast-path prep without long runtime loop",
   },
   {
     from: "executing",

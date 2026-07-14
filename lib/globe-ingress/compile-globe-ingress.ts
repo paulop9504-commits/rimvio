@@ -12,6 +12,7 @@ import { composeContextBlueprint } from "@/lib/context-blueprint/types";
 import { composeDefaultBridgeId } from "@/lib/context-os/vocabulary-v2";
 import { classifyExperienceRunIntent } from "@/lib/experience-run/classify-experience-run-intent";
 import { extractRunDestination } from "@/lib/experience-run/classify-experience-run-intent";
+import { isCountryOrRegionDestinationLabel } from "@/lib/globe-ingress/is-country-or-region-destination";
 import type {
   GlobeIngressBridgeDraft,
   GlobeIngressCompileResult,
@@ -70,12 +71,17 @@ function resolveRuntimeKind(intent: string): ContextContainerKind {
   return "generic";
 }
 
+function isJapanRegionIntent(intent: string): boolean {
+  return /일본|japan/iu.test(intent);
+}
+
 function composeContextDraft(input: {
   intent: string;
   contextId: string;
   runtimeKind: ContextContainerKind;
 }): GlobeIngressContextDraft {
-  const destination = extractRunDestination(input.intent);
+  const rawDestination = extractRunDestination(input.intent);
+  const countryScale = isCountryOrRegionDestinationLabel(rawDestination);
   const slots: GlobeIngressContextSlot[] = [
     {
       key: "domain",
@@ -83,10 +89,23 @@ function composeContextDraft(input: {
       resolution: "confirmed",
     },
   ];
-  if (destination) {
+
+  if (rawDestination && countryScale) {
+    // Country ≠ city — keep destination unresolved (Execution Space law).
+    slots.push({
+      key: "region",
+      value: rawDestination,
+      resolution: "hypothesis",
+    });
     slots.push({
       key: "destination",
-      value: destination,
+      value: "unresolved",
+      resolution: "unresolved",
+    });
+  } else if (rawDestination) {
+    slots.push({
+      key: "destination",
+      value: rawDestination,
       resolution: "hypothesis",
     });
   } else if (input.runtimeKind === "travel") {
@@ -96,7 +115,8 @@ function composeContextDraft(input: {
       resolution: "unresolved",
     });
   }
-  if (/일본|japan|오사카|osaka|tokyo|도쿄|후쿠오카/u.test(input.intent)) {
+
+  if (isJapanRegionIntent(input.intent) && !slots.some((s) => s.key === "region")) {
     slots.push({ key: "region", value: "Japan", resolution: "hypothesis" });
   }
   if (/여행|trip|travel/u.test(input.intent)) {
@@ -115,9 +135,13 @@ function composeBridgeDraft(input: {
   bridgeId: string;
   runtimeKind: ContextContainerKind;
   destination: string | null;
+  regionLabel: string | null;
 }): GlobeIngressBridgeDraft {
   if (input.runtimeKind === "travel") {
-    const stay = input.destination ?? "Stay region";
+    const stay =
+      input.destination && input.destination !== "unresolved"
+        ? input.destination
+        : input.regionLabel?.trim() || "Stay region";
     return {
       bridgeId: input.bridgeId,
       pathLabels: ["집", "공항", stay, "호텔"],
@@ -150,13 +174,21 @@ export function compileGlobeIngress(input: GlobeIngressIntent): GlobeIngressComp
   const bridgeId = composeDefaultBridgeId(contextId);
 
   const context = composeContextDraft({ intent, contextId, runtimeKind });
+  const destinationSlot = context.slots.find((row) => row.key === "destination");
+  const regionSlot = context.slots.find((row) => row.key === "region");
   const destination =
-    context.slots.find((row) => row.key === "destination")?.value ?? null;
+    destinationSlot?.resolution === "unresolved"
+      ? null
+      : (destinationSlot?.value ?? null);
+  const regionLabel =
+    typeof regionSlot?.value === "string" ? regionSlot.value : null;
+
   const bridge = composeBridgeDraft({
     contextId,
     bridgeId,
     runtimeKind,
-    destination: destination === "unresolved" ? null : destination,
+    destination,
+    regionLabel,
   });
 
   const runtime = composeRuntime({
@@ -165,6 +197,10 @@ export function compileGlobeIngress(input: GlobeIngressIntent): GlobeIngressComp
     runtimeKind,
   });
 
+  const japanFrame =
+    runtimeKind === "travel" &&
+    (isJapanRegionIntent(intent) || isCountryOrRegionDestinationLabel(regionLabel));
+
   const blueprint =
     runtimeKind === "travel"
       ? composeTravelTripBlueprint({
@@ -172,6 +208,7 @@ export function compileGlobeIngress(input: GlobeIngressIntent): GlobeIngressComp
           bridgeId,
           runtimeId: runtime.runtimeId,
           goal: context.goal,
+          regionFrame: japanFrame ? "japan" : null,
         })
       : runtimeKind === "trade"
         ? composeTradeBlueprint({

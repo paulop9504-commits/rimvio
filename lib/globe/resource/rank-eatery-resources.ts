@@ -1,11 +1,15 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { haversineKm } from "@/lib/feed/spacetime-fit";
 import type { ContextHubServiceRow } from "@/lib/globe/context-hub/context-hub-service-catalog";
+import { computeEateryResourceRankWeight } from "@/lib/globe/eatery/compute-eatery-resource-rank-weight";
+import type { EateryRankMode } from "@/lib/globe/eatery/eatery-rank-profile";
+import { readEateryRankModeOverride } from "@/lib/globe/eatery/eatery-rank-mode-session-store";
 import {
   CONTEXT_EATERY_RECOMMEND_SCORES_META_KEY,
   type EateryRecommendScoreWire,
 } from "@/lib/globe/eatery/eatery-resource-types";
 import { readPinnedEateryResourceId } from "@/lib/globe/eatery/pin-eatery-selection-to-context";
+import { readEateryInventoryRows } from "@/lib/globe/eatery/read-eatery-resource-inventory";
 import type { ContextResource } from "@/lib/globe/resource/types";
 import type { RankedContextResource } from "@/lib/globe/resource/map-hub-service-to-resource";
 
@@ -78,17 +82,23 @@ function scoreEateryByGps(input: {
   return score;
 }
 
-/** JIT rank for eatery inventory — GPS distance + composer scores. */
+/** JIT rank for eatery inventory — profile-weighted when inventory row exists. */
 export function rankEateryResources(input: {
   event: EventCandidate;
   resources: readonly ContextResource[];
   lat?: number | null;
   lng?: number | null;
+  eateryRankMode?: EateryRankMode | null;
 }): RankedContextResource[] {
   const lat = input.lat ?? null;
   const lng = input.lng ?? null;
   const recommendScores = readRecommendScores(input.event);
   const pinnedResourceId = readPinnedEateryResourceId(input.event);
+  const eateryRankMode =
+    input.eateryRankMode ?? readEateryRankModeOverride(input.event.id);
+  const inventoryByPlaceId = new Map(
+    readEateryInventoryRows(input.event).map((row) => [row.placeId, row]),
+  );
 
   return input.resources
     .map((resource) => {
@@ -98,13 +108,26 @@ export function rankEateryResources(input: {
         eateryMeta && typeof eateryMeta === "object" && "placeId" in eateryMeta
           ? String((eateryMeta as { placeId?: string }).placeId ?? "")
           : "";
-      const recommendBonus = placeId ? (recommendScores[placeId]?.score ?? 0) : 0;
+      const inventoryRow = placeId ? inventoryByPlaceId.get(placeId) : undefined;
+      const rankScoreBase = inventoryRow
+        ? computeEateryResourceRankWeight({
+            event: input.event,
+            row: inventoryRow,
+            lat,
+            lng,
+            mode: eateryRankMode,
+          })
+        : scoreEateryByGps({
+            resource,
+            lat,
+            lng,
+            recommendBonus: placeId ? (recommendScores[placeId]?.score ?? 0) : 0,
+          });
       return {
         resource,
         hubRow,
         rankScore:
-          scoreEateryByGps({ resource, lat, lng, recommendBonus }) +
-          (pinnedResourceId === resource.resourceId ? 220 : 0),
+          rankScoreBase + (pinnedResourceId === resource.resourceId ? 220 : 0),
       };
     })
     .sort((left, right) => {

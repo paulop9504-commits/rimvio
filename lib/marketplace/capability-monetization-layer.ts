@@ -3,6 +3,7 @@ import {
   estimatePackagePricing,
   getPublishedCapabilityPackage,
 } from "@/lib/marketplace/capability-market-registry";
+import { normalizeCapabilityInvocationRecord } from "@/lib/marketplace/normalize-provider-member-ref";
 
 const invocations: CapabilityInvocationRecord[] = [];
 const revenueByProvider = new Map<string, number>();
@@ -16,7 +17,8 @@ function nextInvocationId(timestamp: string): string {
 export function recordCapabilityInvocation(input: {
   capabilityId: string;
   providerId: string;
-  publisherId: string;
+  publisherId?: string;
+  providerMemberId?: string;
   success: boolean;
   timestamp?: string;
   version?: string;
@@ -27,15 +29,16 @@ export function recordCapabilityInvocation(input: {
     : null;
   const costUnits = pkg ? (input.success ? pkg.pricing.unitCost : 0) : 0;
 
-  const record: CapabilityInvocationRecord = {
+  const record = normalizeCapabilityInvocationRecord({
     invocationId: nextInvocationId(timestamp),
     capabilityId: input.capabilityId,
     providerId: input.providerId,
-    publisherId: input.publisherId,
+    publisherId: input.publisherId ?? pkg?.publisherId ?? "core",
+    providerMemberId: input.providerMemberId ?? pkg?.providerMemberId,
     costUnits,
     success: input.success,
     timestamp,
-  };
+  });
   invocations.push(record);
 
   if (input.success && costUnits > 0) {

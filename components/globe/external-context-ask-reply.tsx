@@ -55,7 +55,7 @@ export function ExternalContextAskReply({
 
   const openField = () => {
     openFieldDashboardIngress({
-      tab: "discovery",
+      tab: "queue",
       primaryEventId: featured?.eventId ?? null,
     });
     onFocus?.();

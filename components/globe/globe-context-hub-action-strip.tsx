@@ -1,21 +1,19 @@
 "use client";
 
-import { buildHubActionTimelineRows } from "@/lib/globe/resource/format-hub-action-timeline";
-import type { HubAction } from "@/lib/globe/resource/hub-action-record";
 import { copy } from "@/lib/copy/human-ko";
+import type { ContextHubTimelineRow } from "@/lib/globe/context-hub/build-context-hub-timeline-rows";
 import { cn } from "@/lib/utils";
 
 export type GlobeContextHubActionStripProps = {
-  log: readonly HubAction[];
+  rows: readonly ContextHubTimelineRow[];
   className?: string;
 };
 
-/** Compact append-only action timeline for active Context. */
+/** Compact append-only Context timeline — Hub commits + Engine milestones. */
 export function GlobeContextHubActionStrip({
-  log,
+  rows,
   className,
 }: GlobeContextHubActionStripProps) {
-  const rows = buildHubActionTimelineRows(log);
   if (rows.length === 0) {
     return null;
   }
@@ -34,8 +32,10 @@ export function GlobeContextHubActionStrip({
       <ul className="mt-1.5 space-y-1">
         {rows.map((row) => (
           <li
-            key={row.actionId}
+            key={row.id}
             className="flex items-center gap-2 text-[12px] leading-snug text-[#3a3a3c]"
+            data-timeline-kind={row.kind}
+            data-provider-member={row.providerMemberId}
           >
             <span
               className={cn(

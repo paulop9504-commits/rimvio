@@ -30,6 +30,7 @@ export {
   resolveDestinationFromMessage,
   DESTINATION_CHOICE_LABELS,
 } from "@/lib/reality-surface/advance-ingress-flow";
+export { approveRealitySurfaceExecutionPlan } from "@/lib/reality-surface/approve-reality-surface-execution-plan";
 export { projectBridgeMapArcs } from "@/lib/reality-surface/project-bridge-map-arcs";
 export {
   resolveBridgeLegCoord,

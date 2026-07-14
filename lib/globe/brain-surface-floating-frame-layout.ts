@@ -36,7 +36,7 @@ export type GlobeInfoFramePreset = {
 
 const STORAGE_PREFIX = "rimvio-globe-info-frame";
 
-export const GLOBE_INFO_FRAME_BOTTOM_INSET_PX = 104;
+export const GLOBE_INFO_FRAME_BOTTOM_INSET_PX = 120;
 
 export const GLOBE_INFO_FRAME_PRESETS: Record<GlobeInfoFrameId, GlobeInfoFramePreset> = {
   "brain-surface-video": {

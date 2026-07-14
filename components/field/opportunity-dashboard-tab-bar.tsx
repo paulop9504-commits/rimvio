@@ -11,6 +11,7 @@ export type { FieldDashboardTab };
 export type OpportunityDashboardTabBarProps = {
   value: FieldDashboardTab;
   onChange: (tab: FieldDashboardTab) => void;
+  queueCount: number;
   tradeCount: number;
   mineCount?: number;
   className?: string;
@@ -19,6 +20,7 @@ export type OpportunityDashboardTabBarProps = {
 export function OpportunityDashboardTabBar({
   value,
   onChange,
+  queueCount,
   tradeCount,
   mineCount = 0,
   className,
@@ -31,8 +33,8 @@ export function OpportunityDashboardTabBar({
     label: string;
     count: number | null;
   }[] = [
+    { id: "queue", label: field.dashboardTabQueue, count: queueCount },
     { id: "trades", label: field.dashboardTabTrades, count: tradeCount },
-    { id: "discovery", label: field.dashboardTabDiscovery, count: null },
     { id: "mine", label: field.dashboardTabMine, count: mineCount },
   ];
 
@@ -41,7 +43,7 @@ export function OpportunityDashboardTabBar({
       <div
         role="tablist"
         aria-label={field.dashboardTabAria}
-        className="grid grid-cols-3 gap-1 rounded-xl bg-[#eef1f4] p-1 touch-manipulation"
+        className="grid grid-cols-3 gap-1 rounded-2xl bg-[#eef1f4] p-1 touch-manipulation"
       >
         {tabs.map((tab) => {
           const active = value === tab.id;
@@ -57,14 +59,14 @@ export function OpportunityDashboardTabBar({
                 onChange(tab.id);
               }}
               className={cn(
-                "relative z-[1] min-h-[44px] rounded-[10px] transition-colors duration-200",
+                "relative z-[1] min-h-[44px] rounded-[14px] transition-colors duration-200",
                 active ? "text-[#191f28]" : "text-[#6b7684] active:opacity-80",
               )}
             >
               {active ? (
                 <motion.span
                   layoutId="field-dashboard-tab-indicator"
-                  className="pointer-events-none absolute inset-0 rounded-[10px] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
+                  className="pointer-events-none absolute inset-0 rounded-[14px] bg-white shadow-[0_2px_8px_rgba(15,23,42,0.08)] ring-1 ring-black/[0.04]"
                   transition={{ type: "spring", stiffness: 440, damping: 36 }}
                 />
               ) : null}
@@ -76,7 +78,9 @@ export function OpportunityDashboardTabBar({
                   <span
                     className={cn(
                       "min-w-[18px] shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none tabular-nums",
-                      active ? "bg-[#3182f6] text-white" : "bg-white text-[#3182f6]",
+                      active
+                        ? "bg-[#0071e3] text-white shadow-[0_4px_10px_rgba(0,113,227,0.28)]"
+                        : "bg-white text-[#0071e3]",
                     )}
                   >
                     {tab.count > 9 ? "9+" : tab.count}

@@ -5,6 +5,12 @@
  */
 
 import type { ContextBlueprint } from "@/lib/context-blueprint/types";
+import type { ContextExecutionPlanV1 } from "@/lib/context-execution/types";
+import {
+  readActiveExecutionGraphNode,
+  readBlockedNodeIdsFromPlan,
+  resolveEffectiveNodeStatus,
+} from "@/lib/context-execution/read-active-plan-step";
 import {
   CONTAINER_AI_USER_LABELS,
   type ContainerAICapabilityOffer,
@@ -19,22 +25,13 @@ const DESTINATION_NODE_IDS = ["stay", "arrival", "exec-destination"] as const;
 function pickActiveExecutionNode(
   blueprint: ContextBlueprint,
   activeNodeId?: string | null,
+  executionPlan?: ContextExecutionPlanV1 | null,
 ): ExecutionGraphNode | null {
-  const graph = blueprint.executionGraph;
-  if (!graph) {
-    return null;
-  }
-  if (activeNodeId) {
-    return graph.nodes.find((row) => row.id === activeNodeId) ?? null;
-  }
-  const priority = ["running", "ready", "prepared", "waiting_approval", "pending"];
-  for (const status of priority) {
-    const hit = graph.nodes.find((row) => row.status === status);
-    if (hit) {
-      return hit;
-    }
-  }
-  return graph.nodes[0] ?? null;
+  return readActiveExecutionGraphNode({
+    graph: blueprint.executionGraph,
+    plan: executionPlan ?? null,
+    activeNodeId,
+  });
 }
 
 function readDestinationFromBlueprint(
@@ -78,6 +75,7 @@ function readDestinationFromBlueprint(
 function toNodeSummary(
   node: ExecutionGraphNode,
   blueprint: ContextBlueprint,
+  executionPlan?: ContextExecutionPlanV1 | null,
 ): ContainerAINodeSummary {
   const spatial = blueprint.spatialTargets
     ? readSpatialTargetForNode(blueprint.spatialTargets, node.id)
@@ -86,7 +84,7 @@ function toNodeSummary(
     nodeId: node.id,
     kind: node.kind,
     label: node.label,
-    status: node.status,
+    status: resolveEffectiveNodeStatus({ node, plan: executionPlan ?? null }),
     resolution: node.resolution,
     spatialLabel: spatial?.label ?? null,
   };
@@ -105,16 +103,20 @@ function buildCapabilityOffers(node: ExecutionGraphNode): ContainerAICapabilityO
 export function readContainerAIContext(input: {
   blueprint: ContextBlueprint;
   activeNodeId?: string | null;
+  executionPlan?: ContextExecutionPlanV1 | null;
 }): ContainerAIContext | null {
-  const activeNode = pickActiveExecutionNode(input.blueprint, input.activeNodeId);
+  const executionPlan = input.executionPlan ?? null;
+  const activeNode = pickActiveExecutionNode(
+    input.blueprint,
+    input.activeNodeId,
+    executionPlan,
+  );
   if (!activeNode) {
     return null;
   }
   const destination = readDestinationFromBlueprint(input.blueprint);
   const graph = input.blueprint.executionGraph!;
-  const blockedNodeIds = graph.nodes
-    .filter((row) => row.status === "blocked")
-    .map((row) => row.id);
+  const blockedNodeIds = readBlockedNodeIdsFromPlan(executionPlan);
 
   return {
     contextId: input.blueprint.contextId,
@@ -122,7 +124,7 @@ export function readContainerAIContext(input: {
     runtimeId: input.blueprint.runtimeId,
     containerEventId: input.blueprint.contextId,
     goal: input.blueprint.goal,
-    activeNode: toNodeSummary(activeNode, input.blueprint),
+    activeNode: toNodeSummary(activeNode, input.blueprint, executionPlan),
     destinationLabel: destination.label,
     destinationResolution: destination.resolution,
     availableCapabilities: buildCapabilityOffers(activeNode),

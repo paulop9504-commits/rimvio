@@ -1,5 +1,9 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { readFeedCaptureFragments } from "@/lib/feed/feed-capture-metadata";
+import { CONTEXT_CAPABILITY_INVOCATIONS_META_KEY } from "@/lib/marketplace/context-capability-invocation-metadata";
+import { CONTEXT_INSTALLED_ENGINES_META_KEY } from "@/lib/engine/context-installed-engines-metadata";
+import { CONTEXT_ENGINE_EVENTS_META_KEY } from "@/lib/engine/engine-event-metadata";
+import { CONTEXT_EXECUTION_PLAN_META_KEY } from "@/lib/context-execution/context-execution-plan-metadata";
 
 /** Encrypted vault mirror — EventCandidate SSOT remains authoritative on device. */
 export type LifeEventVaultSnapshot = {
@@ -29,6 +33,10 @@ const METADATA_ALLOWLIST = new Set([
   "archiveFoldPending",
   "sourceMessageId",
   "sourceRef",
+  CONTEXT_EXECUTION_PLAN_META_KEY,
+  CONTEXT_INSTALLED_ENGINES_META_KEY,
+  CONTEXT_ENGINE_EVENTS_META_KEY,
+  CONTEXT_CAPABILITY_INVOCATIONS_META_KEY,
 ]);
 
 function pickMirrorMetadata(

@@ -7,6 +7,7 @@
  */
 
 import type { ContextBlueprint } from "@/lib/context-blueprint/types";
+import type { ContextExecutionPlanV1 } from "@/lib/context-execution/types";
 import type { ContainerAIGateOutcome } from "@/lib/container-ai/types";
 import { readContainerAIContext } from "@/lib/container-ai/read-container-ai-context";
 import { evaluateOnboardingParallelException } from "@/lib/container-ai/evaluate-onboarding-parallel-exception";
@@ -62,6 +63,7 @@ export function gateContainerAIRequest(input: {
   blueprint: ContextBlueprint;
   userMessage: string;
   activeNodeId?: string | null;
+  executionPlan?: ContextExecutionPlanV1 | null;
   /** Explicit destination commit (not Ingress hypothesis). */
   destinationConfirmed?: boolean;
 }): ContainerAIGateOutcome {
@@ -73,6 +75,7 @@ export function gateContainerAIRequest(input: {
   const ctx = readContainerAIContext({
     blueprint: input.blueprint,
     activeNodeId: input.activeNodeId,
+    executionPlan: input.executionPlan ?? null,
   });
   if (!ctx) {
     return { allowed: true, routeModule: "context_condition_ai", domainExecutor: "lodging" };

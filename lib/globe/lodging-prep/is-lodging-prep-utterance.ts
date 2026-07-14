@@ -9,6 +9,9 @@ export function isLodgingPrepUtterance(text: string): boolean {
   if (!trimmed) {
     return false;
   }
+  if (/(?:항공|비행|flight|airline|항공권)/iu.test(trimmed)) {
+    return false;
+  }
   return (
     requiresLodgingBookingSlots(trimmed) ||
     isInstantLodgingSearch(trimmed) ||

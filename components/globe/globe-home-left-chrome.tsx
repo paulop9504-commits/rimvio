@@ -55,6 +55,9 @@ export type GlobeHomeLeftChromeProps = {
   suppressBrainStrip?: boolean;
   globeRenderSuspended: boolean;
   authUserId: string | null;
+  operatorBlueprint?: import("@/lib/context-blueprint/types").ContextBlueprint | null;
+  executionPlan?: import("@/lib/context-execution").ContextExecutionPlanV1 | null;
+  onApproveExecutionPlan?: () => void | Promise<void>;
   trendBridge: {
     enabled: boolean;
     activeBridgeId: string | null;
@@ -104,6 +107,9 @@ export function GlobeHomeLeftChrome({
   suppressBrainStrip = false,
   globeRenderSuspended,
   authUserId,
+  operatorBlueprint = null,
+  executionPlan = null,
+  onApproveExecutionPlan,
   trendBridge,
 }: GlobeHomeLeftChromeProps) {
   const [containerSpaceOpen, setContainerSpaceOpen] = useState(false);
@@ -206,6 +212,9 @@ export function GlobeHomeLeftChrome({
               className="pointer-events-auto"
               visible={!globeRenderSuspended}
               activeEventId={hubEventId}
+              operatorBlueprint={operatorBlueprint}
+              executionPlan={executionPlan}
+              onApproveExecutionPlan={onApproveExecutionPlan}
               lat={liveLat}
               lng={liveLng}
               authUserId={authUserId}

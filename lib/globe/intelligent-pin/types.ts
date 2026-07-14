@@ -1,5 +1,6 @@
 import type { FeedEntityProfileLayer } from "@/lib/globe/feed-entity/types";
 import type { LocalDiscoveryActivitySubtype } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
+import type { ScoutFeedGateVideoContextWire } from "@/lib/globe/assistant/context-agent-compose-thread-store";
 import type { GlobeResourceReelKind } from "@/lib/globe/resource-reel/types";
 
 /** Capsule FSM — one virtual coordinate, no page redirect. */
@@ -17,6 +18,8 @@ export type IntelligentPinMediaLayer = {
   readonly secondaryLine: string | null;
   readonly imageUrls: readonly string[];
   readonly scoreLabel: string | null;
+  /** Activity / attraction — YouTube + related clips on the feed card. */
+  readonly videoContext?: ScoutFeedGateVideoContextWire | null;
 };
 
 export type IntelligentPinStateLayer = {

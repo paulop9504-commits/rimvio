@@ -36,6 +36,11 @@ export { formatMeaningLabel } from "@/lib/meaning/format-meaning-label";
 export { buildMeaningGraph } from "@/lib/meaning/build-meaning-graph";
 
 export {
+  decorateReasonWithMeaningWhy,
+  resolveContextMeaningWhyLine,
+} from "@/lib/meaning/resolve-context-meaning-why-line";
+
+export {
   findMeaningEdge,
   topMeaningEdges,
   topMeaningNodes,

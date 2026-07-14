@@ -7,8 +7,10 @@ export {
 export {
   appendContextAgentComposeTurn,
   appendScoutFeedGateTurn,
+  supersedePriorScoutFeedGates,
   appendScoutCardsComposeTurn,
   markScoutFeedGateOpened,
+  patchScoutFeedGateAfterCorrection,
   appendLodgingRoomCardsComposeTurn,
   appendIntakeSlotsComposeTurn,
   appendOperatorAskChipsComposeTurn,

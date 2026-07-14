@@ -3,6 +3,7 @@ import { scoreSpacetimeFit } from "@/lib/feed/spacetime-fit";
 import { readContextGardenArchivedResourceIds } from "@/lib/globe/context-gardener/read-context-garden";
 import { isResourceExpiredForGarden } from "@/lib/globe/context-gardener/sanitize-context-resources";
 import { listLodgingResourcesForEvent } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
+import { discoverySurfaceIncludesLodgingForEvent } from "@/lib/globe/context-condition-ai/discovery-surface-includes-lodging";
 import { listEateryResourcesForEvent } from "@/lib/globe/eatery/read-eatery-resource-inventory";
 import { rankEateryResources } from "@/lib/globe/resource/rank-eatery-resources";
 import type { ContextHubServiceRow } from "@/lib/globe/context-hub/context-hub-service-catalog";
@@ -125,7 +126,9 @@ export function rankContextResources(input: {
       };
     });
 
-  const lodgingResources = listLodgingResourcesForEvent(input.event);
+  const lodgingResources = discoverySurfaceIncludesLodgingForEvent(input.event)
+    ? listLodgingResourcesForEvent(input.event)
+    : [];
   const lodgingRanked =
     lodgingResources.length > 0
       ? rankLodgingResources({

@@ -124,5 +124,10 @@ assert.match(bundle!.summaryLine, /민수/u);
 assert.equal(bundle!.people.related.length, 1);
 assert.equal(bundle!.experience.related.length, 1);
 assert.equal(bundle!.people.related[0]!.eventId, "evt-jeju-2");
+assert.equal(typeof bundle!.meaningLabel === "string" || bundle!.meaningLabel === null, true);
+if (bundle!.meaningLabel) {
+  assert.match(bundle!.meaningLabel, /민수/u);
+  assert.match(bundle!.meaningLabel, /제주/u);
+}
 
 console.log("✓ resolve-slot-related-context");

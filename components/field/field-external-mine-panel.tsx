@@ -14,7 +14,7 @@ import {
   FIELD_DASHBOARD_CANVAS,
   FIELD_DASHBOARD_INSET,
 } from "@/components/field/field-dashboard-layout";
-import { RIMVIO_TYPE, rimvioEmptyStateClass, rimvioGhostCtaClass } from "@/lib/design/rimvio-ontology";
+import { rimvioGhostCtaClass } from "@/lib/design/rimvio-ontology";
 import { marketCategoryLabelKo } from "@/lib/globe/market/market-category-registry";
 import {
   readMarketIntentExposureMode,
@@ -201,7 +201,7 @@ function RoleBlock({
         <span className="text-[12px] text-[#8b95a1]">{rows.length}</span>
       </div>
       {rows.length === 0 ? (
-        <p className="rounded-2xl bg-[#f8f9fb] px-3 py-4 text-center text-[13px] text-[#8b95a1]">
+        <p className="rounded-2xl bg-[#f8f9fb] px-3 py-4 text-center text-[13px] text-[#8b95a1] ring-1 ring-black/[0.03]">
           {emptyLabel}
         </p>
       ) : (
@@ -275,11 +275,17 @@ export function FieldExternalMinePanel({
   if (all.length === 0) {
     return (
       <div
-        className={cn(rimvioEmptyStateClass(), "flex flex-1 flex-col justify-center px-8 py-12 text-center", className)}
+        className={cn(
+          "flex flex-1 flex-col items-center justify-center px-8 py-12 text-center",
+          FIELD_DASHBOARD_CANVAS,
+          className,
+        )}
         data-field-mine-empty
       >
-        <p className={RIMVIO_TYPE.headline}>{field.mineEmptyTitle}</p>
-        <p className={cn("mt-1.5", RIMVIO_TYPE.caption)}>{field.mineEmptyBody}</p>
+        <p className="text-[17px] font-semibold tracking-tight text-[#191f28]">{field.mineEmptyTitle}</p>
+        <p className="mt-1.5 max-w-[260px] text-[13px] leading-snug text-[#8b95a1]">
+          {field.mineEmptyBody}
+        </p>
       </div>
     );
   }

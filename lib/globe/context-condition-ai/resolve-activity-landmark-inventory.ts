@@ -64,12 +64,19 @@ export async function resolveActivityLandmarkInventoryRow(input: {
       resolved.mapsUrl?.trim() ||
       `landmark:${name.replace(/\s+/gu, "-").toLowerCase()}:${resolved.lat.toFixed(5)},${resolved.lng.toFixed(5)}`;
 
+    const images = await hydrateAttractionImages({
+      name,
+      lat: resolved.lat,
+      lng: resolved.lng,
+      placeId,
+    });
+
     return {
       placeId,
       name,
       lat: resolved.lat,
       lng: resolved.lng,
-      images: [],
+      images,
       address: resolved.formattedAddress ?? null,
       categoryLabel: landmarkCategoryLabel(name),
       provider: "google_places",
@@ -100,12 +107,19 @@ export async function resolveActivityLandmarkInventoryRow(input: {
     picked.google_place_id?.trim() ||
     `landmark:${name.replace(/\s+/gu, "-").toLowerCase()}:${picked.lat.toFixed(5)},${picked.lng.toFixed(5)}`;
 
+  const images = await hydrateAttractionImages({
+    name,
+    lat: picked.lat,
+    lng: picked.lng,
+    placeId: picked.google_place_id?.trim() || placeId,
+  });
+
   return {
     placeId,
     name,
     lat: picked.lat,
     lng: picked.lng,
-    images: [],
+    images,
     address: picked.formatted_address ?? null,
     categoryLabel: landmarkCategoryLabel(name),
     provider: "google_places",
@@ -115,4 +129,30 @@ export async function resolveActivityLandmarkInventoryRow(input: {
     specialReasonKo: "명소로 찾았어요",
     virtualCandidate: true,
   };
+}
+
+async function hydrateAttractionImages(input: {
+  name: string;
+  lat: number;
+  lng: number;
+  placeId: string;
+}): Promise<string[]> {
+  try {
+    const params = new URLSearchParams({
+      name: input.name,
+      lat: String(input.lat),
+      lng: String(input.lng),
+      placeId: input.placeId,
+    });
+    const response = await fetch(`/api/globe/attraction-media?${params.toString()}`);
+    if (!response.ok) {
+      return [];
+    }
+    const body = (await response.json()) as { images?: string[] };
+    return Array.isArray(body.images)
+      ? body.images.filter((url) => typeof url === "string" && url.trim())
+      : [];
+  } catch {
+    return [];
+  }
 }

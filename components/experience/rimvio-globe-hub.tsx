@@ -72,6 +72,7 @@ import {
   projectContextConditionLodgingGlobeMarkers,
 } from "@/lib/globe/context-condition-ai/project-context-condition-globe-markers";
 import { readContextConditionPinBatches } from "@/lib/globe/context-condition-ai/context-condition-batch-metadata";
+import { readContextConditionLastBatch } from "@/lib/globe/context-condition-ai/context-condition-last-batch-store";
 import { applyFocusedHubGlobePins } from "@/lib/globe/context-hub/apply-focused-hub-globe-visuals";
 import { enrichGlobePinRecallBadges } from "@/lib/globe/enrich-globe-pin-recall-badge";
 import {
@@ -536,6 +537,7 @@ const RimvioGlobeHubBody = memo(
         (typeof meta?.globePlaceLng === "number" ? meta.globePlaceLng : null) ??
         liveLocation?.lng ??
         null;
+      const activeBatchId = readContextConditionLastBatch(eventId)?.batchId ?? null;
       const contextConditionMarkers = shouldProjectContextConditionMarkers(
         layerPolicy,
         eventId,
@@ -543,15 +545,18 @@ const RimvioGlobeHubBody = memo(
         ? filterContextConditionMarkersByPlaceIds(
             projectContextConditionLodgingGlobeMarkers({
               event,
+              batchId: activeBatchId,
             }),
             layerPolicy,
           )
         : [];
       const hasContextConditionLodging =
         contextConditionMarkers.length > 0 ||
-        readContextConditionPinBatches(event).some(
-          (batch) => batch.lodgingPlaceIds.length > 0,
-        );
+        (activeBatchId != null &&
+          readContextConditionPinBatches(event).some(
+            (batch) =>
+              batch.batchId === activeBatchId && batch.lodgingPlaceIds.length > 0,
+          ));
 
       if (!isLodgingHubEnabled(event) && !hasContextConditionLodging) {
         return [];
@@ -649,12 +654,16 @@ const RimvioGlobeHubBody = memo(
       }
       const effectiveActiveEateryResourceId =
         activeEateryResourceId ?? readPinnedEateryResourceId(event);
+      const activeBatchId = readContextConditionLastBatch(eventId)?.batchId ?? null;
       const contextConditionEateryMarkers = shouldProjectContextConditionMarkers(
         layerPolicy,
         eventId,
       )
         ? filterContextConditionMarkersByPlaceIds(
-            projectContextConditionEateryGlobeMarkers({ event }),
+            projectContextConditionEateryGlobeMarkers({
+              event,
+              batchId: activeBatchId,
+            }),
             layerPolicy,
           )
         : [];

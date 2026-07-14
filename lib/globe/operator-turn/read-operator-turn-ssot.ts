@@ -3,7 +3,7 @@
  * @see docs/RIMVIO_OPERATOR_TURN.md
  */
 
-import { readContextConditionLastBatch } from "@/lib/globe/context-condition-ai/context-condition-last-batch-store";
+import { readActiveDiscoveryExecution } from "@/lib/globe/discovery-execution/read-active-discovery-execution";
 import {
   readScoutContract,
   readScoutSelectedAnchor,
@@ -29,7 +29,8 @@ export function readOperatorTurnSsot(input: {
   const lastUserLine = [...(input.composeTail ?? [])]
     .reverse()
     .find((turn) => turn.role === "user")?.text;
-  const lastSpec = readContextConditionLastBatch(contextEventId)?.spec ?? null;
+  const activeExecution = readActiveDiscoveryExecution(contextEventId);
+  const lastSpec = activeExecution?.spec ?? null;
   const explorationMode = resolveExplorationMode({
     message: lastUserLine,
     spec: lastSpec,
@@ -41,7 +42,7 @@ export function readOperatorTurnSsot(input: {
     scoutContract: readScoutContract(contextEventId),
     selectedAnchor: readScoutSelectedAnchor(contextEventId),
     lensSession: readDiscoveryLensSession(contextEventId),
-    lastBatch: readContextConditionLastBatch(contextEventId),
+    lastBatch: activeExecution,
     reelKinds,
     reelItemCount: reelItems.length,
     composeTail: input.composeTail ?? [],

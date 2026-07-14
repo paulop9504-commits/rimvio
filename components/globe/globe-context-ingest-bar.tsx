@@ -21,6 +21,7 @@ import { GLOBE_CONTEXT_MEDIA_ACCEPT } from "@/lib/feed/ingest-globe-context-capt
 import { validateIngestMediaFiles } from "@/lib/globe/validate-ingest-media-files";
 import { canQuickListMarketCompose } from "@/lib/globe/market/build-market-quick-list-draft";
 import { dispatchContextRun } from "@/lib/context-run/dispatch-context-run";
+import { offerIngressConvergeChipsClient } from "@/lib/globe-ingress/offer-ingress-converge-chips-client";
 import { interpretMessyForGlobeComposer } from "@/lib/messy-prompt-interpreter/adapters/globe-composer-adapter";
 import { readActiveRunState } from "@/lib/context-run/run-state-store";
 import { ensureGlobeChatGraphId } from "@/lib/globe/chat/ensure-globe-chat-graph-id";
@@ -119,6 +120,8 @@ export type GlobeContextIngestBarProps = {
     compiled: import("@/lib/globe-ingress/types").GlobeIngressCompileResult;
     eventId: string;
   }) => void;
+  /** Rare ambiguous converge — chips hosted on top hit. */
+  onIngressConvergeAttachFocus?: (eventId: string) => void;
   /** Operator gate — block dispatch when phase forbids request (Blueprint stays off UI). */
   gateOperatorBeforeDispatch?: (
     message: string,
@@ -167,6 +170,7 @@ export const GlobeContextIngestBar = forwardRef<
     onWorkQueueChanged,
     onKnowledgePlacementPending,
     onGlobeIngressCompiled,
+    onIngressConvergeAttachFocus,
     gateOperatorBeforeDispatch,
     tryAdvanceDestinationFromMessage,
     onOperatorDestinationChoice,
@@ -312,6 +316,14 @@ export const GlobeContextIngestBar = forwardRef<
           durationMs: 4000,
         });
       },
+      onIngressConvergeChips: (result) => {
+        offerIngressConvergeChipsClient(result);
+        const topId = result.hits[0]?.eventId?.trim();
+        if (topId) {
+          onIngressConvergeAttachFocus?.(topId);
+          onAttached?.(topId);
+        }
+      },
     }),
     [
       finish,
@@ -319,6 +331,7 @@ export const GlobeContextIngestBar = forwardRef<
       onDiscoveryMarketBrowse,
       onEateryDiscovery,
       onGlobeIngressCompiled,
+      onIngressConvergeAttachFocus,
       onKnowledgePlacementPending,
       onLodgingDiscovery,
       onLaunchMarketProjection,

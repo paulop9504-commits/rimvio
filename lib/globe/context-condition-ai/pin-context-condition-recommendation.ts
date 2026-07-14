@@ -1,6 +1,9 @@
 "use client";
 
 import type { EventCandidate } from "@/lib/events/event-candidate";
+import { resolveEngineIdFromDiscoveryKind } from "@/lib/engine/resolve-discovery-engine-id";
+import { recordEngineLifecycleClient } from "@/lib/engine/record-engine-lifecycle";
+import { readTripExperienceMainLegPlaceIds } from "@/lib/globe/trip-experience/read-trip-experience-main-legs";
 import { pinLodgingSelectionToContext } from "@/lib/globe/context-hub/pin-lodging-selection-to-context";
 import { readLodgingInventoryRows } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import { pinEaterySelectionToContext } from "@/lib/globe/eatery/pin-eatery-selection-to-context";
@@ -9,6 +12,7 @@ import type { ContextConditionRecommendation } from "@/lib/globe/context-conditi
 import { readPinnedContextItem } from "@/lib/globe/context-pinned-item";
 import { pinPlaceSelectionToContext } from "@/lib/globe/place/pin-place-selection-to-context";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
+import { readActiveDiscoveryExecution } from "@/lib/globe/discovery-execution/read-active-discovery-execution";
 
 export type ContextConditionPinnedByKind = {
   lodging: string | null;
@@ -27,6 +31,15 @@ const EMPTY_PINNED: ContextConditionPinnedByKind = {
 export function readContextConditionPinnedPlaceIds(
   event: EventCandidate | null | undefined,
 ): ContextConditionPinnedByKind {
+  const tripLegs = readTripExperienceMainLegPlaceIds(event);
+  if (tripLegs.lodging || tripLegs.eatery || tripLegs.activity) {
+    return {
+      lodging: tripLegs.lodging,
+      eatery: tripLegs.eatery,
+      activity: tripLegs.activity,
+      amenity: null,
+    };
+  }
   const pinned = readPinnedContextItem(event);
   if (!pinned) {
     return { ...EMPTY_PINNED };
@@ -44,12 +57,16 @@ export function pinContextConditionRecommendation(input: {
     ContextConditionRecommendation,
     "kind" | "placeId" | "title"
   >;
+  /** When false, caller records Engine main_selected (lodging / trip one-shot). */
+  recordEngineMainSelected?: boolean;
 }): EventCandidate {
   const eventId = input.eventId.trim();
   const event = findLifeEventCandidate(eventId);
   if (!event) {
     throw new Error("event_not_found");
   }
+
+  let next: EventCandidate;
 
   if (input.recommendation.kind === "lodging") {
     const row = readLodgingInventoryRows(event).find(
@@ -58,10 +75,8 @@ export function pinContextConditionRecommendation(input: {
     if (!row) {
       throw new Error("lodging_row_not_found");
     }
-    return pinLodgingSelectionToContext({ eventId, row });
-  }
-
-  if (
+    next = pinLodgingSelectionToContext({ eventId, row });
+  } else if (
     input.recommendation.kind === "activity" ||
     input.recommendation.kind === "amenity"
   ) {
@@ -71,18 +86,35 @@ export function pinContextConditionRecommendation(input: {
     if (!row) {
       throw new Error("place_row_not_found");
     }
-    return pinPlaceSelectionToContext({
+    next = pinPlaceSelectionToContext({
       eventId,
       kind: input.recommendation.kind,
       row,
     });
+  } else {
+    const row = readEateryInventoryRows(event).find(
+      (entry) => entry.placeId === input.recommendation.placeId,
+    );
+    if (!row) {
+      throw new Error("eatery_row_not_found");
+    }
+    next = pinEaterySelectionToContext({ eventId, row });
   }
 
-  const row = readEateryInventoryRows(event).find(
-    (entry) => entry.placeId === input.recommendation.placeId,
-  );
-  if (!row) {
-    throw new Error("eatery_row_not_found");
+  const shouldRecord = input.recordEngineMainSelected !== false;
+  if (shouldRecord) {
+    const batchId = readActiveDiscoveryExecution(eventId)?.batchId ?? null;
+    recordEngineLifecycleClient({
+      contextEventId: eventId,
+      engineId: resolveEngineIdFromDiscoveryKind(input.recommendation.kind),
+      kind: "main_selected",
+      payload: {
+        placeId: input.recommendation.placeId,
+        title: input.recommendation.title,
+        ...(batchId ? { batchId } : {}),
+      },
+    });
   }
-  return pinEaterySelectionToContext({ eventId, row });
+
+  return next;
 }

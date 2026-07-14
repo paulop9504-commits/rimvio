@@ -8,6 +8,7 @@ import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-
 import { RimvioGlobeHubClient } from "@/components/experience/rimvio-globe-hub-client";
 import { GlobeContextHubDetailSheet } from "@/components/globe/globe-context-hub-detail-sheet";
 import { GlobeHomeLeftChrome } from "@/components/globe/globe-home-left-chrome";
+import { GlobeRealityCommitPulseBadge } from "@/components/globe/globe-reality-commit-pulse-badge";
 import { GlobeContextMapVideoStage } from "@/components/globe/globe-context-map-video-stage";
 import { GlobeContextBrainMapOverlay } from "@/components/globe/globe-context-brain-map-overlay";
 import { GlobeContextBrainNodeCard } from "@/components/globe/globe-context-brain-node-card";
@@ -320,6 +321,7 @@ import type { MarketWizardStepId } from "@/lib/globe/market/market-intent-wizard
 import { submitTrendBridgeContributionFromEvent } from "@/lib/globe/trend-bridge/client/submit-trend-bridge-contribution";
 import { subscribeGlobeContextHubOpen } from "@/lib/globe/context-hub/globe-context-hub-open-bridge";
 import { subscribeGlobeAskBridgeFocus } from "@/lib/globe/globe-ask-bridge-focus";
+import { subscribeRealityCommitPulse } from "@/lib/reality-queue";
 import {
   subscribeGlobeBrainContextRunRequest,
 } from "@/lib/globe/brain/globe-brain-context-run-bridge";
@@ -331,6 +333,10 @@ import type { EventCandidate } from "@/lib/events/event-candidate";
 import type { PortalOpenSource } from "@/lib/portal/portal-types";
 import type { PortalIntentId } from "@/lib/portal/portal-types";
 import { subscribeGlobePortalOpen } from "@/lib/portal/globe-portal-open-bridge";
+import {
+  peekGlobeComposeSeedText,
+  subscribeGlobeComposeSeed,
+} from "@/lib/globe/globe-compose-seed-bridge";
 import { finalizeLodgingHubCheckoutFromPgReturn, finalizeLodgingHubCheckoutFromLiteApiReturn } from "@/lib/globe/hub-checkout";
 import {
   clearHubPgPendingFinalize,
@@ -387,6 +393,9 @@ function GlobeHomeBody() {
   const [marketPortalLaunch, setMarketPortalLaunch] = useState(false);
   const [portalOpen, setPortalOpen] = useState(false);
   const [globeChatOpen, setGlobeChatOpen] = useState(false);
+  const [realityCommitPulseEventId, setRealityCommitPulseEventId] = useState<
+    string | null
+  >(null);
   const [workQueueOpen, setWorkQueueOpen] = useState(false);
   const { items: workQueueItems, refresh: refreshWorkQueue } = useWorkQueue();
   const [priorityQrOpen, setPriorityQrOpen] = useState(false);
@@ -1455,6 +1464,7 @@ function GlobeHomeBody() {
     advanceDestination,
     confirmDepartureHub,
     tryAdvanceDestinationFromMessage,
+    approveExecutionPlan,
   } = useRealitySurfaceProjection();
 
   const [departureHubPickerOpen, setDepartureHubPickerOpen] = useState(false);
@@ -2889,6 +2899,36 @@ function GlobeHomeBody() {
   }, []);
 
   useEffect(() => {
+    let clearTimer: number | null = null;
+    const unsub = subscribeRealityCommitPulse((detail) => {
+      const eventId = detail.contextEventId.trim();
+      if (!eventId) {
+        return;
+      }
+      void focusContextByEventIdRef.current(eventId, {
+        openSheet: false,
+        mapTap: true,
+      });
+      setRealityCommitPulseEventId(eventId);
+      if (clearTimer != null) {
+        window.clearTimeout(clearTimer);
+      }
+      clearTimer = window.setTimeout(() => {
+        setRealityCommitPulseEventId((current) =>
+          current === eventId ? null : current,
+        );
+        clearTimer = null;
+      }, 2000);
+    });
+    return () => {
+      unsub();
+      if (clearTimer != null) {
+        window.clearTimeout(clearTimer);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     return subscribeGlobeBrainProjectionRequest((detail) => {
       const eventId = detail.anchorEventId.trim();
       if (!eventId) {
@@ -3349,7 +3389,7 @@ function GlobeHomeBody() {
   );
 
   const onDiscoveryMarketBrowse = useCallback(() => {
-    openFieldDashboardIngress({ tab: "discovery" });
+    openFieldDashboardIngress({ tab: "queue" });
     const marketPin = clustersRef.current.find(
       (cluster) => cluster.marketRole && cluster.origin === "external",
     );
@@ -3934,6 +3974,16 @@ function GlobeHomeBody() {
   }, [openPortal]);
 
   useEffect(() => {
+    const unsub = subscribeGlobeComposeSeed(() => {
+      openGlobeChat();
+    });
+    if (peekGlobeComposeSeedText()) {
+      openGlobeChat();
+    }
+    return unsub;
+  }, [openGlobeChat]);
+
+  useEffect(() => {
     return subscribeGlobeMarketProjectionLaunch(({ draft, eventId, composeText }) => {
       launchMarketProjection({ draft, eventId });
       if (composeText) {
@@ -4172,6 +4222,10 @@ function GlobeHomeBody() {
           </p>
         </div>
       ) : null}
+      <GlobeRealityCommitPulseBadge
+        visible={Boolean(realityCommitPulseEventId)}
+        label={copy.globe.field.realityCommitPulseBadge}
+      />
       {/* —— L1 Globe stage (pins · recall) —— */}
       <div
         className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden"
@@ -4543,6 +4597,23 @@ function GlobeHomeBody() {
         suppressBrainStrip={brainSurfaceVisible}
         globeRenderSuspended={globeRenderSuspended}
         authUserId={user?.id ?? null}
+        operatorBlueprint={
+          realitySurfaceSession?.eventId === hubEventId
+            ? realitySurfaceSession.operatorBlueprint
+            : null
+        }
+        executionPlan={
+          realitySurfaceSession?.eventId === hubEventId
+            ? realitySurfaceSession.executionPlan ?? null
+            : null
+        }
+        onApproveExecutionPlan={
+          realitySurfaceSession?.eventId === hubEventId
+            ? () => {
+                approveExecutionPlan();
+              }
+            : undefined
+        }
         trendBridge={{
           enabled: trendBridgeSettings.enabled,
           activeBridgeId: trendBridgeSettings.activeBridgeId,
@@ -4560,6 +4631,23 @@ function GlobeHomeBody() {
         lng={liveLocation?.lng ?? null}
         authUserId={user?.id ?? null}
         visible={Boolean(hubEventId)}
+        operatorBlueprint={
+          realitySurfaceSession?.eventId === hubEventId
+            ? realitySurfaceSession.operatorBlueprint
+            : null
+        }
+        executionPlan={
+          realitySurfaceSession?.eventId === hubEventId
+            ? realitySurfaceSession.executionPlan ?? null
+            : null
+        }
+        onApproveExecutionPlan={
+          realitySurfaceSession?.eventId === hubEventId
+            ? () => {
+                approveExecutionPlan();
+              }
+            : undefined
+        }
         globeRef={globeRef}
       />
       {/* —— Overlay chrome (priority strip) —— */}

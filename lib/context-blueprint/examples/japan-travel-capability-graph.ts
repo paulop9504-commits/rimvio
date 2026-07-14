@@ -129,7 +129,6 @@ export function composeJapanTravelExecutionGraph(
         resourceKinds: ["flight", "lodging", "schedule"],
         actions: [],
         assignedExecutor: "travel",
-        status: "ready",
         capabilityIds: ["cap-mobility", "cap-lodging", "cap-schedule"],
       },
       {
@@ -140,7 +139,6 @@ export function composeJapanTravelExecutionGraph(
         resourceKinds: ["lodging"],
         actions: [],
         assignedExecutor: "travel",
-        status: "blocked",
         capabilityIds: ["cap-lodging"],
       },
       {
@@ -151,7 +149,6 @@ export function composeJapanTravelExecutionGraph(
         resourceKinds: ["lodging"],
         actions: [],
         assignedExecutor: "lodging",
-        status: "blocked",
         capabilityIds: ["cap-lodging"],
       },
       {
@@ -162,7 +159,6 @@ export function composeJapanTravelExecutionGraph(
         resourceKinds: ["flight", "transit"],
         actions: [],
         assignedExecutor: "transit",
-        status: "blocked",
         capabilityIds: ["cap-mobility"],
       },
       {
@@ -173,7 +169,6 @@ export function composeJapanTravelExecutionGraph(
         resourceKinds: ["lodging", "flight", "payment"],
         actions: [],
         assignedExecutor: "travel",
-        status: "blocked",
         capabilityIds: ["cap-lodging", "cap-mobility", "cap-payment"],
       },
     ],

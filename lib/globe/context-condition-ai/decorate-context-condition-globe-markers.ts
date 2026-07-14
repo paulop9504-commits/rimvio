@@ -1,9 +1,11 @@
 import { copy } from "@/lib/copy/human-ko";
 import type { GlobeLodgingMapMarker } from "@/lib/globe/context-hub/lodging-globe-marker-types";
 import {
-  listContextConditionPlaceIdsForContext,
+  findContextConditionPinBatch,
+  readActiveContextConditionPlaceIds,
   readContextConditionPinBatches,
 } from "@/lib/globe/context-condition-ai/context-condition-batch-metadata";
+import { readContextConditionLastBatch } from "@/lib/globe/context-condition-ai/context-condition-last-batch-store";
 import type { GlobeEateryMapMarker } from "@/lib/globe/eatery/eatery-globe-marker-types";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { readGeoOntologyFacetState } from "@/lib/globe/spatial-semantic/geo-ontology-graph-store";
@@ -37,11 +39,13 @@ function eateryPlaceIdFromResourceId(resourceId: string): string | null {
 function activitySubtypeForPlace(
   event: EventCandidate,
   placeId: string,
+  activeBatchId: string | null,
 ): LocalDiscoveryActivitySubtype | null {
-  for (const batch of readContextConditionPinBatches(event)) {
-    if (batch.eateryKind === "activity" && batch.eateryPlaceIds.includes(placeId)) {
-      return batch.activitySubtype ?? null;
-    }
+  const batch = activeBatchId
+    ? findContextConditionPinBatch(event, activeBatchId)
+    : null;
+  if (batch?.eateryKind === "activity" && batch.eateryPlaceIds.includes(placeId)) {
+    return batch.activitySubtype ?? null;
   }
   return null;
 }
@@ -53,7 +57,11 @@ export function decorateLodgingMarkersWithContextCondition(
   if (!event) {
     return [...markers];
   }
-  const placeIds = listContextConditionPlaceIdsForContext(event).lodging;
+  const activeBatchId = readContextConditionLastBatch(event.id)?.batchId ?? null;
+  const placeIds = readActiveContextConditionPlaceIds({
+    event,
+    activeBatchId,
+  }).lodging;
   if (placeIds.size === 0) {
     return [...markers];
   }
@@ -105,7 +113,11 @@ export function decorateEateryMarkersWithContextCondition(
   if (!event) {
     return [...markers];
   }
-  const placeIdsForContext = listContextConditionPlaceIdsForContext(event);
+  const activeBatchId = readContextConditionLastBatch(event.id)?.batchId ?? null;
+  const placeIdsForContext = readActiveContextConditionPlaceIds({
+    event,
+    activeBatchId,
+  });
   const placeIds = placeIdsForContext.eatery;
   if (placeIds.size === 0) {
     return [...markers];
@@ -133,7 +145,7 @@ export function decorateEateryMarkersWithContextCondition(
       discoveryAccent: emphasized ? "orange" : muted ? "blue" : "orange",
       discoveryShortLabel: marker.discoveryShortLabel ?? marker.label,
       ontologyBadgeLabel: isActivity
-        ? activitySubtypeBadgeLabel(activitySubtypeForPlace(event, placeId))
+        ? activitySubtypeBadgeLabel(activitySubtypeForPlace(event, placeId, activeBatchId))
         : copy.globe.contextConditionPinBadge,
       popInDelayMs: marker.popInDelayMs ?? 0,
       isMain: rank === 0 || marker.isMain,

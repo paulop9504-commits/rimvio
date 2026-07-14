@@ -1,6 +1,7 @@
 import type {
   MarketplacePluginListing,
   PublishedCapabilityPackage,
+  PublishedEngineManifest,
   SurfaceTemplatePack,
 } from "@/lib/marketplace/marketplace-contract";
 import type { RegisteredPlugin } from "@/lib/platform/plugin-contract";
@@ -40,6 +41,29 @@ export const FIXTURE_NAVIGATE_NAVER_PACKAGE: PublishedCapabilityPackage = {
     invocationCount: 8,
     successCount: 7,
   },
+};
+
+/** 3rd-party organization lodging engine — partner catalog for Engine Store filter tests. */
+export const FIXTURE_ACME_LODGING_ENGINE_MANIFEST: PublishedEngineManifest = {
+  manifestId: "eng-lodging-search-acme-1",
+  engineId: "lodging_search",
+  version: "1.0.0",
+  providerId: "acme_lodging_api",
+  publisherId: "acme_hotels",
+  providerKind: "organization",
+  description: "ACME Hotels lodging engine — partner catalog",
+  capabilityIds: ["BOOK_HOTEL", "NAVIGATE"],
+  executionNodeIds: ["stay"],
+  pricing: { model: "per_action", unitCost: 0.035, currency: "KRW" },
+  reputation: {
+    providerId: "acme_lodging_api",
+    reliabilityScore: 0.89,
+    speedScore: 0.84,
+    costScore: 0.86,
+    invocationCount: 0,
+    successCount: 0,
+  },
+  publishedAt: "2026-07-10T00:00:00.000Z",
 };
 
 export const FIXTURE_TRAVEL_SURFACE_PACK: SurfaceTemplatePack = {

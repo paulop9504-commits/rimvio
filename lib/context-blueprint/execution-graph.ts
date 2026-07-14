@@ -61,7 +61,6 @@ export type ExecutionGraphNode = {
   readonly resourceKinds: readonly ContextResourceKind[];
   readonly actions: readonly ExecutionNodeAction[];
   readonly assignedExecutor: DomainExecutorId | null;
-  readonly status: ExecutionNodeStatus;
   /**
    * Travel resource scout FSM (departure / stay / explore).
    * Optional — trade/medical graphs omit this.
@@ -106,14 +105,6 @@ export function composeExecutionGraph(
     nodes: [...input.nodes],
     edges: [...(input.edges ?? [])],
   };
-}
-
-export function readReadyExecutionNodes(
-  graph: ExecutionGraph,
-): ExecutionGraphNode[] {
-  return graph.nodes.filter(
-    (row) => row.status === "ready" || row.status === "pending",
-  );
 }
 
 export function readExecutionNodesForExecutor(

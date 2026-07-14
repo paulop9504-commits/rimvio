@@ -2,6 +2,7 @@ import type { EventCandidate } from "@/lib/events/event-candidate";
 import type { FeedTodaySlot } from "@/lib/feed/feed-today-slot-types";
 import { resolveFeedSlotPeerContexts } from "@/lib/feed/resolve-feed-slot-peer-context";
 import type { FeedSlotPeerLookup } from "@/lib/feed/feed-slot-peer-context-types";
+import { resolveSlotMeaningLabel } from "@/lib/feed/resolve-slot-meaning-label";
 import { resolvePlanContextForCalendarRow } from "@/lib/plan-context/project-plan-to-feed-slot";
 import { readPlanContextFromEvent } from "@/lib/plan-context/plan-context-metadata";
 import type { PlanContext } from "@/lib/plan-context/plan-context-types";
@@ -26,6 +27,8 @@ export type SlotRelatedContextBundle = {
   related: readonly RelatedContextHit[];
   people: RelatedContextAxis;
   experience: RelatedContextAxis;
+  /** Phase 2 MEANING one-liner — e.g. "민수 = 제주". */
+  meaningLabel: string | null;
 };
 
 const SLOT_TYPE_LABEL: Partial<Record<SurfaceType, string>> = {
@@ -169,12 +172,22 @@ export function resolveSlotRelatedContextBundle(input: {
 
   const related = mergeRelatedHits(peopleHits, experienceHits, perAxisLimit * 2);
 
+  const placeLabels = experienceLabels.filter(
+    (label) => label !== SLOT_TYPE_LABEL[slotType],
+  );
+  const meaningLabel = resolveSlotMeaningLabel({
+    events: input.events,
+    peopleLabels,
+    placeLabels,
+  });
+
   return {
     summaryLine: labels.join(" · "),
     labels,
     related,
     people,
     experience,
+    meaningLabel,
   };
 }
 

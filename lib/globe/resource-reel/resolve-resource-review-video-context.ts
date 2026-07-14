@@ -49,10 +49,32 @@ export function resolveResourceReviewVideoContext(input: {
     };
   }
 
+  if (
+    (input.item.kind === "activity" || input.item.kind === "amenity") &&
+    input.event
+  ) {
+    const row = readEateryInventoryRows(input.event).find(
+      (entry) => entry.placeId === input.item.placeId,
+    );
+    const address = row?.address?.trim() ?? null;
+    return {
+      name: row?.name?.trim() || input.item.title.trim(),
+      place: address || areaFallback,
+      kind: "place",
+      lat: row?.lat ?? input.item.lat,
+      lng: row?.lng ?? input.item.lng,
+    };
+  }
+
   return {
     name: input.item.title.trim(),
     place: areaFallback,
-    kind: input.item.kind === "lodging" ? "lodging" : "eatery",
+    kind:
+      input.item.kind === "lodging"
+        ? "lodging"
+        : input.item.kind === "activity" || input.item.kind === "amenity"
+          ? "place"
+          : "eatery",
     lat: input.item.lat,
     lng: input.item.lng,
   };

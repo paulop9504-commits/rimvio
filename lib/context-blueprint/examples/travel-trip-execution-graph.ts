@@ -34,7 +34,6 @@ export function composeTravelTripExecutionGraph(): ExecutionGraph {
         resourceKinds: ["schedule"],
         actions: [],
         assignedExecutor: "travel",
-        status: "ready",
       },
       {
         id: "prepare",
@@ -63,7 +62,6 @@ export function composeTravelTripExecutionGraph(): ExecutionGraph {
           }),
         ],
         assignedExecutor: "travel",
-        status: "ready",
       },
       {
         id: "departure",
@@ -92,7 +90,6 @@ export function composeTravelTripExecutionGraph(): ExecutionGraph {
           }),
         ],
         assignedExecutor: "transit",
-        status: "pending",
         resourceState: composeEmptyNodeResourceState({
           dateDependent: true,
           anchorRef: null,
@@ -113,7 +110,6 @@ export function composeTravelTripExecutionGraph(): ExecutionGraph {
           }),
         ],
         assignedExecutor: "transit",
-        status: "blocked",
       },
       {
         id: "stay",
@@ -136,7 +132,6 @@ export function composeTravelTripExecutionGraph(): ExecutionGraph {
           }),
         ],
         assignedExecutor: "lodging",
-        status: "blocked",
         resourceState: composeEmptyNodeResourceState({
           dateDependent: true,
           anchorRef: "destination",
@@ -157,7 +152,6 @@ export function composeTravelTripExecutionGraph(): ExecutionGraph {
           }),
         ],
         assignedExecutor: "eatery",
-        status: "blocked",
         resourceState: composeEmptyNodeResourceState({
           dateDependent: false,
           anchorRef: "destination",
@@ -184,7 +178,6 @@ export function composeTravelTripExecutionGraph(): ExecutionGraph {
           }),
         ],
         assignedExecutor: "transit",
-        status: "blocked",
       },
     ],
     edges: [
@@ -234,6 +227,44 @@ export function composeTravelTripSpatialTargets(): SpatialTargets {
   });
 }
 
+/** Country-scale Japan — stay/city unresolved until user picks Osaka/Tokyo/Fukuoka. */
+export function composeJapanTravelTripSpatialTargets(): SpatialTargets {
+  return composeSpatialTargets({
+    byNodeId: {
+      prepare: composePhysicalSpatialTarget({
+        label: "집",
+        resolution: "confirmed",
+      }),
+      departure: composePhysicalSpatialTarget({
+        label: "인천공항",
+        resolution: "confirmed",
+        zoneId: "incheon-airport",
+      }),
+      arrival: composePhysicalSpatialTarget({
+        label: "일본 도착",
+        resolution: "unresolved",
+        linkedSlotId: "destination",
+        zoneId: "japan-arrival",
+      }),
+      stay: composePhysicalSpatialTarget({
+        label: "일본 숙소 권역",
+        resolution: "unresolved",
+        linkedSlotId: "destination",
+      }),
+      explore: composePhysicalSpatialTarget({
+        label: "일본",
+        resolution: "hypothesis",
+        linkedSlotId: "destination",
+      }),
+      return: composePhysicalSpatialTarget({
+        label: "인천공항",
+        resolution: "hypothesis",
+        zoneId: "incheon-airport",
+      }),
+    },
+  });
+}
+
 export function composeTravelTripTemporalTargets(): TemporalTargets {
   return composeTemporalTargets({
     byNodeId: {
@@ -261,16 +292,21 @@ export function composeTravelTripBlueprint(input: {
   bridgeId?: string;
   runtimeId?: string;
   goal?: string;
+  /** Country-scale frame — do not pin Osaka as stay until city pick. */
+  regionFrame?: "japan" | null;
 }): ContextBlueprint {
   const executionGraph = composeTravelTripExecutionGraph();
+  const japan = input.regionFrame === "japan";
   return composeContextBlueprint({
     containerKind: "travel",
     contextId: input.contextId,
     bridgeId: input.bridgeId,
     runtimeId: input.runtimeId,
-    goal: input.goal ?? "일본 여행",
+    goal: input.goal ?? (japan ? "일본 여행" : "여행"),
     executionGraph,
-    spatialTargets: composeTravelTripSpatialTargets(),
+    spatialTargets: japan
+      ? composeJapanTravelTripSpatialTargets()
+      : composeTravelTripSpatialTargets(),
     temporalTargets: composeTravelTripTemporalTargets(),
     resourcePlan: {
       requiredResources: ["flight", "lodging", "transit", "eatery", "documents", "payment"],
@@ -278,7 +314,9 @@ export function composeTravelTripBlueprint(input: {
       emptySlots: ["destination", "lodging_place"],
       nextQuestion: {
         slotId: "destination",
-        promptKo: "어디부터 시작할까요? 오사카 · 도쿄 · 후쿠오카",
+        promptKo: japan
+          ? "어디부터 시작할까요? 오사카 · 도쿄 · 후쿠오카"
+          : "어디로 갈까요?",
       },
     },
     assignedExecutors: ["travel", "lodging", "transit", "eatery", "finance"],
@@ -305,7 +343,6 @@ export function composeTradeExecutionGraph(): ExecutionGraph {
           }),
         ],
         assignedExecutor: "trade",
-        status: "ready",
       },
       {
         id: "negotiation",
@@ -322,7 +359,6 @@ export function composeTradeExecutionGraph(): ExecutionGraph {
           }),
         ],
         assignedExecutor: "trade",
-        status: "pending",
       },
       {
         id: "meeting",
@@ -339,7 +375,6 @@ export function composeTradeExecutionGraph(): ExecutionGraph {
           }),
         ],
         assignedExecutor: "trade",
-        status: "blocked",
       },
       {
         id: "payment",
@@ -356,7 +391,6 @@ export function composeTradeExecutionGraph(): ExecutionGraph {
           }),
         ],
         assignedExecutor: "finance",
-        status: "blocked",
       },
       {
         id: "complete",
@@ -366,7 +400,6 @@ export function composeTradeExecutionGraph(): ExecutionGraph {
         resourceKinds: [],
         actions: [],
         assignedExecutor: "trade",
-        status: "blocked",
       },
     ],
     edges: [
@@ -436,7 +469,6 @@ export function composeMedicalExecutionGraph(): ExecutionGraph {
           }),
         ],
         assignedExecutor: "medical",
-        status: "ready",
       },
       {
         id: "visit",
@@ -453,7 +485,6 @@ export function composeMedicalExecutionGraph(): ExecutionGraph {
           }),
         ],
         assignedExecutor: "medical",
-        status: "pending",
       },
       {
         id: "treatment",
@@ -470,7 +501,6 @@ export function composeMedicalExecutionGraph(): ExecutionGraph {
           }),
         ],
         assignedExecutor: "medical",
-        status: "blocked",
       },
     ],
     edges: [

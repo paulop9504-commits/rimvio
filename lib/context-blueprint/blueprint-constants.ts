@@ -42,6 +42,8 @@ export const DOMAIN_EXECUTOR_IDS = [
   "smart_home",
   "lodging",
   "eatery",
+  "amenity",
+  "activity",
   "schedule",
   "transit",
 ] as const;

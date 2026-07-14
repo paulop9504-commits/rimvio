@@ -9,9 +9,26 @@ import { GlobePrepChecklistCard } from "@/components/globe/globe-prep-checklist-
 import { GlobeHubServiceList } from "@/components/globe/globe-hub-service-list";
 import { GlobeHubResourceCarousel } from "@/components/globe/globe-hub-resource-carousel";
 import { GlobeLodgingMapStrip } from "@/components/globe/globe-lodging-map-strip";
+import { GlobeLodgingRankModeChips } from "@/components/globe/globe-lodging-rank-mode-chips";
 import { GlobeLodgingRoomCardList } from "@/components/globe/globe-lodging-room-card-list";
 import { GlobeContextRecallBadge } from "@/components/globe/globe-context-recall-badge";
 import { GlobeContextHubActionStrip } from "@/components/globe/globe-context-hub-action-strip";
+import { GlobeContextHubEngineStrip } from "@/components/globe/globe-context-hub-engine-strip";
+import { GlobeContextHubPlanStrip } from "@/components/globe/globe-context-hub-plan-strip";
+import { buildContextHubTimelineRows } from "@/lib/globe/context-hub/build-context-hub-timeline-rows";
+import {
+  buildContextExecutionPlanFromBlueprint,
+  preferFresherExecutionPlan,
+  readContextExecutionPlanFromEvent,
+  resolveContextExecutionPlanApprovalGate,
+  type ContextExecutionPlanV1,
+} from "@/lib/context-execution";
+import { resolveContextMeaningWhyLine } from "@/lib/meaning/resolve-context-meaning-why-line";
+import { listLifeEventCandidates } from "@/lib/life-read-model";
+import { readContextCapabilityInvocationsFromMetadata } from "@/lib/marketplace/context-capability-invocation-metadata";
+import { buildContextEngineStoreRows } from "@/lib/globe/context-hub/build-context-engine-store-rows";
+import { readEngineEventsFromMetadata } from "@/lib/engine/engine-event-metadata";
+import type { ContextBlueprint } from "@/lib/context-blueprint/types";
 import { readPinnedLodgingResourceId } from "@/lib/globe/context-hub/pin-lodging-selection-to-context";
 import { readLodgingPayloadFromResource } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import { summarizeContextRecall } from "@/lib/globe/context-hub/summarize-context-recall";
@@ -70,6 +87,12 @@ import { useMainNativeSurfaceSync } from "@/hooks/use-main-native-surface-sync";
 import { isTicketQrViewerHref } from "@/lib/globe/ticket-scan-surface";
 import { dispatchGlobeMarketHubConnect } from "@/lib/globe/context-hub/globe-market-hub-bridge";
 import { MARKET_INTENTS_UPDATED } from "@/lib/globe/market/market-alignment-store";
+import type { LodgingRankMode } from "@/lib/globe/lodging/lodging-rank-profile";
+import {
+  resolveLodgingRankMode,
+  subscribeLodgingRankModeOverride,
+  writeLodgingRankModeOverride,
+} from "@/lib/globe/lodging/lodging-rank-mode-session-store";
 
 export type GlobeContextHubRailProps = {
   /** Active context — hub inventory for this event only. */
@@ -85,6 +108,11 @@ export type GlobeContextHubRailProps = {
   visible?: boolean;
   /** compact = slim vertical dock chip; default = standard rail width. */
   variant?: "default" | "compact";
+  /** Operator blueprint — graph sync + engine store offers filter. */
+  operatorBlueprint?: ContextBlueprint | null;
+  /** L3 Execution Plan — preview strip; falls back to event metadata · blueprint. */
+  executionPlan?: ContextExecutionPlanV1 | null;
+  onApproveExecutionPlan?: () => void | Promise<void>;
   className?: string;
   globeRef?: RefObject<RimvioGlobeHubHandle | null>;
 };
@@ -111,6 +139,9 @@ export function GlobeContextHubRail({
   onDismiss,
   visible = true,
   variant = "default",
+  operatorBlueprint = null,
+  executionPlan: executionPlanProp = null,
+  onApproveExecutionPlan,
   className,
   globeRef,
 }: GlobeContextHubRailProps) {
@@ -157,6 +188,15 @@ export function GlobeContextHubRail({
       window.removeEventListener(HUB_ACTION_LOG_EVENT, bump);
     };
   }, []);
+
+  useEffect(() => {
+    return subscribeLodgingRankModeOverride((contextEventId) => {
+      if (contextEventId === activeEventId?.trim()) {
+        setRevision((value) => value + 1);
+        setCarouselIndex(0);
+      }
+    });
+  }, [activeEventId]);
 
   const panel = useMemo(() => {
     void revision;
@@ -433,6 +473,26 @@ export function GlobeContextHubRail({
     (entry) => entry.resource.kind === "lodging_voucher",
   );
 
+  const lodgingRankMode = useMemo((): LodgingRankMode => {
+    void revision;
+    const eventId = activeEventId?.trim();
+    if (!eventId) {
+      return "auto";
+    }
+    return resolveLodgingRankMode(eventId);
+  }, [activeEventId, revision]);
+
+  const handleLodgingRankMode = useCallback(
+    (mode: LodgingRankMode) => {
+      const eventId = activeEventId?.trim();
+      if (!eventId) {
+        return;
+      }
+      writeLodgingRankModeOverride(eventId, mode);
+    },
+    [activeEventId],
+  );
+
   const pinnedDetailLodgingRoomStep = useMemo(() => {
     if (presentation !== "detail" || !activeEvent) {
       return null;
@@ -465,6 +525,67 @@ export function GlobeContextHubRail({
     const eventId = activeEventId?.trim();
     return eventId ? readHubActionLog(eventId) : [];
   }, [activeEventId, revision]);
+
+  const executionPlan = useMemo((): ContextExecutionPlanV1 | null => {
+    void revision;
+    const fromEvent = readContextExecutionPlanFromEvent(activeEvent);
+    let plan: ContextExecutionPlanV1 | null = preferFresherExecutionPlan(
+      executionPlanProp,
+      fromEvent,
+    );
+    if (!plan) {
+      const eventId = activeEventId?.trim();
+      if (operatorBlueprint?.executionGraph && eventId) {
+        plan = buildContextExecutionPlanFromBlueprint({
+          blueprint: operatorBlueprint,
+          build: {
+            contextId: eventId,
+            goalKo: operatorBlueprint.goal,
+            osPhase: "execution_planned",
+            approval: "auto",
+          },
+        });
+      }
+    }
+    return resolveContextExecutionPlanApprovalGate({
+      plan,
+      blueprint: operatorBlueprint,
+    });
+  }, [activeEvent, activeEventId, executionPlanProp, operatorBlueprint, revision]);
+
+  const showExecutionPlan =
+    Boolean(executionPlan?.steps.length) && Boolean(operatorBlueprint?.executionGraph);
+
+  const planMeaningWhyLine = useMemo(() => {
+    void revision;
+    if (!activeEvent) {
+      return null;
+    }
+    return resolveContextMeaningWhyLine({
+      event: activeEvent,
+      events: listLifeEventCandidates(),
+    });
+  }, [activeEvent, revision]);
+
+  const contextHubTimelineRows = useMemo(() => {
+    void revision;
+    const engineEvents = readEngineEventsFromMetadata(activeEvent?.metadata);
+    const capabilityInvocations = readContextCapabilityInvocationsFromMetadata(
+      activeEvent?.metadata,
+    );
+    return buildContextHubTimelineRows(hubActionLog, engineEvents, capabilityInvocations);
+  }, [activeEvent, hubActionLog, revision]);
+
+  const engineStoreRows = useMemo(() => {
+    void revision;
+    return buildContextEngineStoreRows({
+      event: activeEvent,
+      blueprint: operatorBlueprint,
+    });
+  }, [activeEvent, operatorBlueprint, revision]);
+
+  const showEngineStore =
+    engineStoreRows.installed.length > 0 || engineStoreRows.offers.length > 0;
 
   const contextRecallSummary = useMemo(() => {
     return summarizeContextRecall(activeEvent, hubActionLog);
@@ -678,8 +799,33 @@ export function GlobeContextHubRail({
           {contextRecallSummary.confirmedCount > 0 ? (
             <GlobeContextRecallBadge summary={contextRecallSummary} />
           ) : null}
-          {hubActionLog.length > 0 ? (
-            <GlobeContextHubActionStrip log={hubActionLog} />
+          {showExecutionPlan && executionPlan ? (
+            <GlobeContextHubPlanStrip
+              plan={executionPlan}
+              meaningWhyLine={planMeaningWhyLine}
+              compact={variant === "compact"}
+              onApprove={onApproveExecutionPlan}
+            />
+          ) : null}
+          {contextHubTimelineRows.length > 0 ? (
+            <GlobeContextHubActionStrip rows={contextHubTimelineRows} />
+          ) : null}
+          {showEngineStore && activeEventId && activeEvent ? (
+            <GlobeContextHubEngineStrip
+              contextEventId={activeEventId}
+              event={activeEvent}
+              blueprint={operatorBlueprint}
+              compact={variant === "compact"}
+              onChanged={() => setRevision((value) => value + 1)}
+            />
+          ) : null}
+          {hasLodgingResources && !mapMediaFocusOpen && variant === "default" ? (
+            <GlobeLodgingRankModeChips
+              mode={lodgingRankMode}
+              disabled={busy}
+              onSelect={handleLodgingRankMode}
+              className="px-0.5"
+            />
           ) : null}
           <GlobeHubResourceCarousel
             ranked={rankedResources}
@@ -764,8 +910,25 @@ export function GlobeContextHubRail({
         {contextRecallSummary.confirmedCount > 0 ? (
           <GlobeContextRecallBadge summary={contextRecallSummary} />
         ) : null}
-        {hubActionLog.length > 0 ? (
-          <GlobeContextHubActionStrip log={hubActionLog} />
+        {showExecutionPlan && executionPlan ? (
+          <GlobeContextHubPlanStrip
+            plan={executionPlan}
+            meaningWhyLine={planMeaningWhyLine}
+            compact={variant === "compact"}
+            onApprove={onApproveExecutionPlan}
+          />
+        ) : null}
+        {contextHubTimelineRows.length > 0 ? (
+          <GlobeContextHubActionStrip rows={contextHubTimelineRows} />
+        ) : null}
+        {showEngineStore && activeEventId && activeEvent ? (
+          <GlobeContextHubEngineStrip
+            contextEventId={activeEventId}
+            event={activeEvent}
+            blueprint={operatorBlueprint}
+            compact={variant === "compact"}
+            onChanged={() => setRevision((value) => value + 1)}
+          />
         ) : null}
         {presentation !== "detail" ? (
           <GlobePlacePrefillCard activeEventId={activeEventId} lat={lat} lng={lng} />
@@ -776,6 +939,14 @@ export function GlobeContextHubRail({
         {gardenSummary ? <GlobeContextGardenSummary summary={gardenSummary} /> : null}
         {weatherPrepLine && !showCarousel ? (
           <p className="px-0.5 text-[11px] font-medium text-muted-foreground">{weatherPrepLine}</p>
+        ) : null}
+        {hasLodgingResources && showCarousel && !mapMediaFocusOpen ? (
+          <GlobeLodgingRankModeChips
+            mode={lodgingRankMode}
+            disabled={busy}
+            onSelect={handleLodgingRankMode}
+            className="px-3 pb-1"
+          />
         ) : null}
         {showCarousel ? (
           <GlobeHubResourceCarousel

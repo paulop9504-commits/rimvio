@@ -37,6 +37,10 @@ import {
   resolveGlobeComposePipelineLabel,
 } from "@/lib/globe/assistant";
 import { readGlobeChatGraphId } from "@/lib/globe/chat/ensure-globe-chat-graph-id";
+import {
+  consumeGlobeComposeSeedText,
+  subscribeGlobeComposeSeed,
+} from "@/lib/globe/globe-compose-seed-bridge";
 import { resetGlobeComposeChatSession } from "@/lib/portal/reset-globe-compose-chat";
 import { globeChatLight } from "@/lib/design/globe-chat-light-theme";
 import { cn } from "@/lib/utils";
@@ -195,6 +199,26 @@ export function GlobeChatScreen({
     }
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages.length, open, showDraftCard]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    const trySeed = () => {
+      const seed = consumeGlobeComposeSeedText();
+      if (seed) {
+        void ingestRef.current?.submitComposerText(seed);
+      }
+    };
+    const timer = window.setTimeout(trySeed, 80);
+    const unsub = subscribeGlobeComposeSeed(() => {
+      window.setTimeout(trySeed, 80);
+    });
+    return () => {
+      window.clearTimeout(timer);
+      unsub();
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!composeState?.composeDraft?.status || composeState.composeDraft.status !== "submitted") {

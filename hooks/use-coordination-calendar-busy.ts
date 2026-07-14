@@ -22,12 +22,14 @@ function ensureCoordinationContextRefresh(): void {
   });
 }
 
+const EMPTY_BUSY: CalendarBusyInterval[] = [];
+
 /** Field UI — reads calendar busy from the coordination store snapshot. */
 export function useCoordinationCalendarBusy(): CalendarBusyInterval[] {
   ensureCoordinationContextRefresh();
   return useSyncExternalStore(
     subscribeCoordinationCalendarBusy,
     getCoordinationCalendarBusySnapshot,
-    () => [],
+    () => EMPTY_BUSY,
   );
 }

@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { attachPlaceThumbnails } from "@/lib/places/fetch-place-thumbnails";
+import { attachPlaceThumbnailsForDomain } from "@/lib/places/fetch-attraction-photo-urls";
 import { enrichPlaceCandidates } from "@/lib/context-resolver/places/rank-place-candidates";
 import { queryNearbyPlaces } from "@/lib/context-resolver/places/query-nearby-places";
 import { resolvePlacePreference } from "@/lib/context-resolver/places/place-preference";
@@ -68,9 +68,10 @@ export async function GET(request: NextRequest) {
     criteria,
   });
   const preference = await resolvePlacePreference({ vibe: "unknown" });
-  const withThumbnails = await attachPlaceThumbnails(raw, {
+  const withThumbnails = await attachPlaceThumbnailsForDomain(raw, {
     anchor: null,
     cuisine: query,
+    domain,
   });
   const ranked = enrichPlaceCandidates({
     candidates: withThumbnails,

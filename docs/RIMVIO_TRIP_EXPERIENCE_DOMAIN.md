@@ -55,8 +55,9 @@ planOneShotTripExperiencePrep
   → readyForScout when fun_axis + destination_scope + dates
   → scout legs: lodging | eatery | activity (exploration mode = diffuse until MAIN)
 
-commitOneShotTripExperienceMainClient (Phase 2)
-  → pin rank-1 per active leg · no auto-pay until user taps
+**Phase B (shipped):** `runTripExperienceParallelScouts` — `Promise.all` on lodging · eatery · activity via `buildTripExperienceParallelScouts` → `mergeTripExperienceScoutOutcomes` → single reel batch (`hub.trip_experience_parallel`). Operator gate: `trip_experience_parallel` when slots complete. Pin-bar: `executeTripExperienceParallelScout` after ask_chips or direct submit.
+
+**Phase C (shipped):** `commitOneShotTripExperienceMainClient` — rank-1 per scout leg (`lodging` · `eatery` · `activity`) via `pinTripExperienceMainLegsToContext` (atomic multi-leg metadata). Lodging leg gets room cards; **no auto express** until user taps.
 ```
 
 ## 5. Operator `ask_chips` (one screen)
@@ -92,6 +93,8 @@ See `docs/RIMVIO_GROCERY_COMMERCE_DOMAIN.md`.
 
 ```bash
 npx tsx scripts/test-trip-experience-domain.ts
+npx tsx scripts/test-trip-experience-parallel-scout.ts
+npx tsx scripts/test-trip-experience-main-commit.ts
 npx tsx scripts/test-grocery-prep-plan.ts
 ```
 
@@ -100,6 +103,6 @@ npx tsx scripts/test-grocery-prep-plan.ts
 | Phase | Scope |
 |-------|--------|
 | **A (now)** | Pure plan + ask_chips gate + metadata partial write |
-| **B** | Parallel scout (lodging + eatery + activity) after readyForScout |
-| **C** | commit MAIN per leg + feed entity profile |
+| **B (shipped)** | Parallel scout (lodging + eatery + activity) after readyForScout |
+| **C (shipped)** | commit MAIN per leg + lodging room cards (no auto-pay) |
 | **D** | grocery-prep child leg + live commerce Hub |

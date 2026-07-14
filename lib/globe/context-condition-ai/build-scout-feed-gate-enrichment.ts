@@ -1,5 +1,9 @@
 import type { ContextConditionAnchorPinOutcome } from "@/lib/globe/context-condition-ai/run-context-condition-anchor-pin";
 import type { ContextConditionRecommendation } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
+import {
+  buildScoutDomainCorrectionChips,
+  type ScoutDomainCorrectionChipV1,
+} from "@/lib/globe/context-condition-ai/build-scout-domain-correction-chips";
 import type { PlaceReviewKind } from "@/lib/globe/place-review-video";
 import { copy } from "@/lib/copy/human-ko";
 
@@ -17,6 +21,7 @@ export type ScoutFeedGateEnrichment = {
   readonly tipsKo: readonly string[];
   readonly highlightTitles: readonly string[];
   readonly videoContext: ScoutFeedGateVideoContext | null;
+  readonly correctionChips: readonly ScoutDomainCorrectionChipV1[];
 };
 
 function dominantScoutKind(
@@ -126,5 +131,12 @@ export function buildScoutFeedGateEnrichment(input: {
     }),
     highlightTitles,
     videoContext,
+    correctionChips: buildScoutDomainCorrectionChips({
+      triggerMessage: input.triggerMessage,
+      resourceTypes: input.outcome.spec?.resourceTypes,
+      recommendations,
+      keepOnlyLabel: copy.globe.scoutFeedGateCorrectionKeepOnly,
+      stripLabel: copy.globe.scoutFeedGateCorrectionStrip,
+    }),
   };
 }

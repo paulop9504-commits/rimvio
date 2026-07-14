@@ -1,5 +1,5 @@
 const EXPERIENCE_TOKEN =
-  /^(?:제주|오사카|부산|서울|강남|홍대|여행|추억|경험|카페|등산|맛집|방문|여름|겨울|봄|가을)$/iu;
+  /^(?:제주|오사카|도쿄|후쿠오카|부산|서울|강남|홍대|여행|출장|추억|경험|카페|등산|맛집|방문|여름|겨울|봄|가을|일본|japan|한국|korea|미국|usa|중국|china|대만|taiwan|태국|thailand|베트남|vietnam|프랑스|france|영국|uk|싱가포르|singapore|홍콩|hongkong)$/iu;
 
 const PEOPLE_SUFFIX = /(?:이랑|랑|와|과|님)$/u;
 

@@ -1,10 +1,12 @@
 /**
- * Field dashboard — **밖 지구 통로** (external resource find + external people trades).
+ * Field dashboard — **Reality Control Center** (Pending Reality · Commit Gate).
+ * Secondary lenses: trades (execution FSM) · mine (outer posts).
  *
  * Surface tier: **Field = product**. Do not mount from `/metrics` (Context Ops).
  * @see lib/dev/rimvio-surface-tiers.ts
+ * @see lib/reality-queue/
  */
-export type FieldDashboardTab = "trades" | "discovery" | "mine";
+export type FieldDashboardTab = "queue" | "trades" | "mine";
 
 /**
  * Opens the global Field dashboard sheet at a specific tab / trade row.
@@ -12,7 +14,7 @@ export type FieldDashboardTab = "trades" | "discovery" | "mine";
  */
 export type FieldDashboardIngress = {
   primaryEventId?: string | null;
-  /** Omit → trades if sessions exist, else discovery (browse). */
+  /** Omit → queue (Reality Control Center). */
   tab?: FieldDashboardTab;
   /** `MarketTradeSessionView.handshakeId` — scroll + highlight in trades tab. */
   highlightTradeId?: string | null;

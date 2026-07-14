@@ -8,7 +8,6 @@ import {
 } from "@/components/field/field-dashboard-layout";
 import { MarketTradeProgressCard } from "@/components/market/market-trade-progress-card";
 import { useCopy } from "@/hooks/use-copy";
-import { RIMVIO_TYPE, rimvioEmptyStateClass } from "@/lib/design/rimvio-ontology";
 import type { MarketTradeSessionView } from "@/lib/globe/market/market-trade-types";
 import { cn } from "@/lib/utils";
 
@@ -65,11 +64,13 @@ export function MarketActiveTradesSection({
         )}
         data-market-active-trades-empty
       >
-        <div className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-black/[0.04]">
+        <div className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-white shadow-[0_4px_16px_rgba(15,23,42,0.06)] ring-1 ring-black/[0.04]">
           <Clock3 className="size-7 text-[#b0b8c1]" aria-hidden />
         </div>
-        <p className={RIMVIO_TYPE.headline}>{copy.globe.field.tradesEmptyTitle}</p>
-        <p className={cn("mt-2 max-w-[240px]", RIMVIO_TYPE.caption)}>
+        <p className="text-[17px] font-semibold tracking-tight text-[#191f28]">
+          {copy.globe.field.tradesEmptyTitle}
+        </p>
+        <p className="mt-2 max-w-[240px] text-[13px] leading-snug text-[#8b95a1]">
           {copy.globe.field.tradesEmptyBody}
         </p>
       </div>
@@ -97,7 +98,7 @@ export function MarketActiveTradesSection({
                 data-market-trade-id={session.handshakeId}
                 className={cn(
                   highlighted &&
-                    "rounded-2xl ring-2 ring-[#3182f6]/40 ring-offset-2 ring-offset-[#fafbfc]",
+                    "rounded-2xl ring-2 ring-[#0071e3]/40 ring-offset-2 ring-offset-[#f2f4f6]",
                 )}
               >
                 <MarketTradeProgressCard

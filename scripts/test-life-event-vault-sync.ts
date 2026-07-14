@@ -60,6 +60,43 @@ async function main() {
   assert.equal(snapshot.metadata?.secretRawHtml, undefined);
   assert.ok(Array.isArray(snapshot.metadata?.[FEED_CAPTURES_META_KEY]));
 
+  const planEvent = commitEventUpsert({
+    id: "ec-vault-plan-test",
+    title: "오사카",
+    category: "travel",
+    source: "message",
+    lifecycle: "active",
+    confidence: 0.9,
+    metadata: {
+      contextExecutionPlanV1: {
+        version: 1,
+        contextId: "ec-vault-plan-test",
+        goalKo: "오사카",
+        osPhase: "plan_waiting_approval",
+        approval: "pending",
+        steps: [
+          {
+            stepId: "trip:0",
+            nodeId: "trip",
+            order: 0,
+            labelKo: "Trip",
+            engineId: "trip_experience_search",
+            status: "ready",
+            lastError: null,
+            updatedAtIso: "2026-07-11T00:00:00.000Z",
+          },
+        ],
+        currentStepId: "trip:0",
+        createdAtIso: "2026-07-11T00:00:00.000Z",
+        updatedAtIso: "2026-07-11T00:00:00.000Z",
+      },
+      secretPlanSideChannel: "strip-me",
+    },
+  });
+  const planSnapshot = buildLifeEventVaultSnapshot(planEvent);
+  assert.ok(planSnapshot.metadata?.contextExecutionPlanV1);
+  assert.equal(planSnapshot.metadata?.secretPlanSideChannel, undefined);
+
   console.log("test-life-event-vault-sync: ok");
 }
 
