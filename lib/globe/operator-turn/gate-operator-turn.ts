@@ -31,6 +31,8 @@ export function gateOperatorTurnSync(input: {
   blueprint?: import("@/lib/context-blueprint/types").ContextBlueprint | null;
   userLat?: number | null;
   userLng?: number | null;
+  /** Sequencer / ingress Act — soft-fill soft intake gaps. */
+  expressReady?: boolean;
 }): OperatorTurnPlan {
   const text = input.text.trim();
   if (!text && !input.ssot.hasActiveSpec) {
@@ -44,6 +46,7 @@ export function gateOperatorTurnSync(input: {
     blueprint: input.blueprint,
     userLat: input.userLat,
     userLng: input.userLng,
+    expressReady: input.expressReady === true,
   });
   if (engineTurn) {
     return engineTurn;
