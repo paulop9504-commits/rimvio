@@ -1,4 +1,4 @@
-import { extractTravelDestination } from "@/lib/action-chat/try-travel-trip-announcement";
+import { extractTravelDestination } from "@/lib/experience-run/extract-travel-destination";
 import type { ContextBlueprint } from "@/lib/context-blueprint/types";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { readLodgingBookingSlots } from "@/lib/globe/context-hub/lodging-booking-slots";

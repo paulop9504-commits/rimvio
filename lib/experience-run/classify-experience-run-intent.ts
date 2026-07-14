@@ -4,7 +4,7 @@ import { copy } from "@/lib/copy/human-ko";
 import {
   extractTravelDestination,
   isTravelTripAnnouncement,
-} from "@/lib/action-chat/try-travel-trip-announcement";
+} from "@/lib/experience-run/extract-travel-destination";
 import type { ExperienceRunProfile } from "@/lib/experience-run/experience-run-types";
 import { resolveRunPlaceFromText } from "@/lib/experience-run/resolve-run-place-from-text";
 import { classifyOverseasManualPlace } from "@/lib/globe/classify-overseas-manual-place";

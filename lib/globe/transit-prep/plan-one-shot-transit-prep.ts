@@ -1,4 +1,4 @@
-import { extractTravelDestination } from "@/lib/action-chat/try-travel-trip-announcement";
+import { extractTravelDestination } from "@/lib/experience-run/extract-travel-destination";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { isTransitPrepUtterance } from "@/lib/globe/transit-prep/is-transit-prep-utterance";
 import { readTripIntakeState } from "@/lib/globe/trip-intake/read-trip-intake-state";

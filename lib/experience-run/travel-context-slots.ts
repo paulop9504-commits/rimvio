@@ -1,5 +1,5 @@
 import { parseRelativeDateTimeFromText } from "@/lib/action-chat/action-agent-normalize";
-import { isTravelTripAnnouncement } from "@/lib/action-chat/try-travel-trip-announcement";
+import { isTravelTripAnnouncement } from "@/lib/experience-run/extract-travel-destination";
 import { extractRunDestination } from "@/lib/experience-run/classify-experience-run-intent";
 import {
   normalizeNaturalPlaceReply,
