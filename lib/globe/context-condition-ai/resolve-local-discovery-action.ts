@@ -51,7 +51,10 @@ import {
 import {
   parseUtteranceIntentSlots,
 } from "@/lib/globe/context-condition-ai/utterance-intent-slots";
-import { resolveAccumulatedEateryFocus } from "@/lib/globe/context-condition-ai/scout-turn-constraints";
+import {
+  resolveAccumulatedEateryFocus,
+  shouldCarryPriorEateryFocus,
+} from "@/lib/globe/context-condition-ai/scout-turn-constraints";
 import { resolveEntities } from "@/lib/entity-resolver";
 import { copy } from "@/lib/copy/human-ko";
 
@@ -586,18 +589,26 @@ export function resolveLocalDiscoveryAction(
 
   const resourceTypes = resolveResourceTypes({ wantsLodging, wantsEatery });
 
-  const menuFocusId =
-    answers.menuFocus ??
-    (cuisineCandidates.length === 1 ? cuisineCandidates[0]?.id : null) ??
-    input.priorConstraints?.menuFocusId ??
-    null;
-  const menuFocusQuery = resolveCuisineFocusQuery(menuFocusId);
   const utteranceSlots = parseUtteranceIntentSlots(text, entityBag);
+  // Intent Convergence: this-turn dish wins; prior menuFocus never revives on re-search.
+  const utteranceCuisineId =
+    utteranceSlots.cuisineId?.trim() ||
+    (cuisineCandidates.length === 1 ? (cuisineCandidates[0]?.id ?? null) : null);
+  const answerMenuFocus = answers.menuFocus?.trim() || null;
+  const carryPriorDish = shouldCarryPriorEateryFocus(text);
+  // Chip menuFocus only for this-turn disambiguation; never revive prior on re-search.
+  const menuFocusId =
+    utteranceCuisineId ??
+    (cuisineCandidates.length > 1 ? answerMenuFocus : null) ??
+    (carryPriorDish
+      ? (answerMenuFocus ?? input.priorConstraints?.menuFocusId ?? null)
+      : null);
+  const menuFocusQuery = resolveCuisineFocusQuery(menuFocusId);
   const eateryFocus =
     resolveAccumulatedEateryFocus({
       message: text,
-      prior: input.priorConstraints ?? null,
-      previousSpec: followUpTurn ? previousSpec : null,
+      prior: carryPriorDish ? (input.priorConstraints ?? null) : null,
+      previousSpec: carryPriorDish && followUpTurn ? previousSpec : null,
       menuFocusQuery,
     }) ??
     utteranceSlots.dishFocus ??

@@ -1,4 +1,7 @@
+import { isInstantEaterySearch } from "@/lib/globe/context-condition-ai/instant-eatery-search";
+import { isInstantLodgingSearch } from "@/lib/globe/context-condition-ai/instant-lodging-search";
 import { isInstantPoiSearch } from "@/lib/globe/context-condition-ai/instant-poi-search";
+import { utteranceHasConcreteDishSlot } from "@/lib/globe/context-condition-ai/utterance-intent-slots";
 import { normalizeMessyInput } from "@/lib/messy-prompt-interpreter/normalize-messy-input";
 
 const MENTION_PREFIX = /^@\S/u;
@@ -11,7 +14,14 @@ export function shouldInterpretMessyInput(raw: string): boolean {
   if (!trimmed) {
     return false;
   }
-  if (isInstantPoiSearch(trimmed)) {
+  // Concrete dish/POI/lodging scouts must keep the original noun (초밥·말차…).
+  // Messy refine collapses them to task labels and reuses prior eateryFocus.
+  if (
+    isInstantPoiSearch(trimmed) ||
+    isInstantEaterySearch(trimmed) ||
+    isInstantLodgingSearch(trimmed) ||
+    utteranceHasConcreteDishSlot(trimmed)
+  ) {
     return false;
   }
   if (trimmed.length < 8) {

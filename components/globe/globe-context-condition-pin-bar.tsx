@@ -42,6 +42,7 @@ import {
   clearScoutTurnConstraints,
   mergeScoutTurnConstraints,
   readScoutTurnConstraints,
+  shouldCarryPriorEateryFocus,
   writeScoutTurnConstraints,
 } from "@/lib/globe/context-condition-ai/scout-turn-constraints";
 import type {
@@ -67,6 +68,7 @@ import {
 import {
   isInstantEaterySearch,
 } from "@/lib/globe/context-condition-ai/instant-eatery-search";
+import { parseUtteranceIntentSlots } from "@/lib/globe/context-condition-ai/utterance-intent-slots";
 import { buildConvergenceQuestion } from "@/lib/globe/context-condition-ai/intent-convergence/build-convergence-question";
 import { buildActivityNextHopQuestion } from "@/lib/globe/context-condition-ai/intent-convergence/build-next-hop-question";
 import { generateSmallTalkReply } from "@/lib/globe/context-condition-ai/small-talk/generate-small-talk-reply";
@@ -106,6 +108,13 @@ import {
 import { dispatchGlobeLodgingDiscoveryClose } from "@/lib/globe/lodging/globe-lodging-discovery-bridge";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 import { interpretMessyForContextAgent } from "@/lib/messy-prompt-interpreter/adapters/context-agent-adapter";
+import {
+  buildScoutNarrationPlan,
+  narrateScoutPlan,
+  publishScoutNarration,
+  publishScoutNarrationProgress,
+  type ScoutNarration,
+} from "@/lib/globe/narrator-engine";
 import { buildTravelBrainState } from "@/lib/situation-projection/travel-brain-personalization";
 import {
   writeExplorationModeOverride,
@@ -814,6 +823,8 @@ export const GlobeContextConditionPinBar = forwardRef<
       excludePlaceIds?: readonly string[];
       /** Strict domains handle empty results conversationally — skip generic toast. */
       suppressEmptyMessage?: boolean;
+      /** Pre-built Narrator output (Intent→Planner→Narrator). */
+      narration?: ScoutNarration | null;
     }) => {
       // Category-switch cleanup: an activity/eatery search must not leave stale
       // hotel pins behind. Close the separate lodging discovery session and drop
@@ -842,24 +853,52 @@ export const GlobeContextConditionPinBar = forwardRef<
       }
       setContextAgentSessionPhase("scouting");
       beginContextAgentWork("exploring");
-      const instantScout =
-        isInstantPoiSearch(input.triggerMessage) ||
-        isInstantEaterySearch(input.triggerMessage) ||
-        isInstantLodgingSearch(input.triggerMessage) ||
-        isLodgingBookingQuery(input.triggerMessage);
-      if (!instantScout) {
-        appendContextAgentComposeTurn(contextEventId, {
-          role: "assistant",
-          kind: "build_log",
-          text: copy.globe.geoOntologyBuildMapping,
+
+      // Narrator Engine — structured plan → understanding + gray progress logs.
+      // Prior constraints are read BEFORE merge so Replace can name what was dropped.
+      const narration =
+        input.narration ??
+        narrateScoutPlan(
+          buildScoutNarrationPlan({
+            message: input.triggerMessage,
+            spec: input.spec,
+            priorConstraints: readScoutTurnConstraints(contextEventId),
+            previousSpec: lastSpec,
+            anchorLabelKo: anchorPlaceName,
+          }),
+        );
+      const collectAt = narration.progressSteps.findIndex(
+        (step) => step.id === "collect",
+      );
+      const midSplit =
+        collectAt >= 0
+          ? collectAt
+          : Math.min(3, narration.progressSteps.length);
+      publishScoutNarration({
+        contextEventId,
+        narration,
+        understandingOnly: true,
+      });
+      publishScoutNarrationProgress({
+        contextEventId,
+        narration,
+        fromIndex: 0,
+        toIndexExclusive: midSplit,
+      });
+      let progressTailPublished = false;
+      const publishProgressTail = () => {
+        if (progressTailPublished) {
+          return;
+        }
+        progressTailPublished = true;
+        publishScoutNarrationProgress({
+          contextEventId,
+          narration,
+          fromIndex: midSplit,
+          toIndexExclusive: narration.progressSteps.length,
         });
-      } else {
-        appendContextAgentComposeTurn(contextEventId, {
-          role: "assistant",
-          kind: "build_log",
-          text: copy.globe.contextAgentStatusExplore,
-        });
-      }
+      };
+
       const outcome = await runContextConditionAnchorPin({
         contextEventId,
         anchorPlaceId,
@@ -879,16 +918,13 @@ export const GlobeContextConditionPinBar = forwardRef<
         deferMapReveal: true,
         onProcessPhase: (phase) => {
           setContextAgentProcessPhase(phase);
-          if (phase === "optimizing" && !instantScout) {
-            appendContextAgentComposeTurn(contextEventId, {
-              role: "assistant",
-              kind: "build_log",
-              text: copy.globe.geoOntologyBuildSpatial,
-            });
+          if (phase === "optimizing") {
+            publishProgressTail();
           }
         },
       });
       if (!outcome) {
+        publishProgressTail();
         if (
           nextCategory === "activity" ||
           nextCategory === "amenity"
@@ -930,13 +966,8 @@ export const GlobeContextConditionPinBar = forwardRef<
         }
         return null;
       }
-      if (!instantScout) {
-        appendContextAgentComposeTurn(contextEventId, {
-          role: "assistant",
-          kind: "build_log",
-          text: copy.globe.geoOntologyBuildResolve,
-        });
-      }
+      // If optimizing never fired, flush remaining progress steps.
+      publishProgressTail();
       const activeContract = readScoutContract(contextEventId);
       let outcomeWorking = outcome;
       if (activeContract) {
@@ -1287,6 +1318,9 @@ export const GlobeContextConditionPinBar = forwardRef<
         lastRecommendations.length > 0 &&
         isFollowUpDiscoveryTurn(pipelineMessage, lastRecommendations);
       const priorConstraints = readScoutTurnConstraints(contextEventId);
+      const utteranceSlots = parseUtteranceIntentSlots(pipelineMessage);
+      const nextDishLocked = Boolean(utteranceSlots.dishFocus?.trim());
+      const carryPriorDish = shouldCarryPriorEateryFocus(pipelineMessage);
       const mergedAnswers: Record<string, string> = {
         ...(followUpTurn && lastSpec
           ? {
@@ -1296,15 +1330,22 @@ export const GlobeContextConditionPinBar = forwardRef<
               ...(lastSpec.lodgingKind !== "any"
                 ? { lodgingKind: lastSpec.lodgingKind }
                 : {}),
-              ...(priorConstraints?.menuFocusId
+              // Prefs carry; dish/menu never revives on re-search.
+              ...(carryPriorDish && priorConstraints?.menuFocusId
                 ? { menuFocus: priorConstraints.menuFocusId }
                 : {}),
             }
-          : priorConstraints?.menuFocusId
+          : carryPriorDish && priorConstraints?.menuFocusId
             ? { menuFocus: priorConstraints.menuFocusId }
             : {}),
         ...(answers ?? {}),
       };
+      // Explicit dish turn converges menuFocus over any leftover chip.
+      if (nextDishLocked && utteranceSlots.cuisineId) {
+        mergedAnswers.menuFocus = utteranceSlots.cuisineId;
+      } else if (nextDishLocked) {
+        delete mergedAnswers.menuFocus;
+      }
 
       // Intent Convergence Engine — before searching, converge an ambiguous
       // request ("놀거리"·"카페"·"데이트") into a concrete intent with the fewest

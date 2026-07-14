@@ -74,6 +74,7 @@ export {
   mergeScoutTurnConstraints,
   readScoutTurnConstraints,
   resolveAccumulatedEateryFocus,
+  shouldCarryPriorEateryFocus,
   writeScoutTurnConstraints,
   type ScoutTurnConstraints,
 } from "@/lib/globe/context-condition-ai/scout-turn-constraints";
