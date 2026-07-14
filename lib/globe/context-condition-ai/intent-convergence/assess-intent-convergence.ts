@@ -10,6 +10,7 @@ import { isInstantLodgingSearch } from "@/lib/globe/context-condition-ai/instant
 import { isInstantPoiSearch } from "@/lib/globe/context-condition-ai/instant-poi-search";
 import { isInstantEaterySearch } from "@/lib/globe/context-condition-ai/instant-eatery-search";
 import { isBroadActivityQuery } from "@/lib/globe/context-condition-ai/resolve-local-discovery-domain";
+import { utteranceHasConcreteDishSlot } from "@/lib/globe/context-condition-ai/utterance-intent-slots";
 import {
   convergenceSchemaFor,
   detectConvergenceIntent,
@@ -18,8 +19,8 @@ import {
 } from "@/lib/globe/context-condition-ai/intent-convergence/intent-convergence-schema";
 import type { LocalDiscoveryPendingAnswers } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
 
-/** Never fatigue the user — 0~1 questions typical, 2 max. */
-export const CONVERGENCE_QUESTION_CAP = 2;
+/** Never fatigue the user — 0 questions typical, 1 max when ambiguous. */
+export const CONVERGENCE_QUESTION_CAP = 1;
 
 export type IntentConvergenceAssessment =
   | { readonly shouldAsk: false; readonly intentType: ConvergenceIntentType | null }
@@ -44,6 +45,10 @@ export function assessIntentConvergence(input: {
     return { shouldAsk: false, intentType: null };
   }
   if (isInstantEaterySearch(input.message)) {
+    return { shouldAsk: false, intentType: null };
+  }
+  // Concrete dish/menu already in the utterance — do not chip-ask over it.
+  if (utteranceHasConcreteDishSlot(input.message) || input.answers.menuFocus) {
     return { shouldAsk: false, intentType: null };
   }
   // Broad "놀거리" / "갈만한 곳" — scout the default cluster immediately; do not

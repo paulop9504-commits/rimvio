@@ -38,6 +38,12 @@ import {
   readContextConditionPending,
   writeContextConditionPending,
 } from "@/lib/globe/context-condition-ai/context-condition-pending-spec-store";
+import {
+  clearScoutTurnConstraints,
+  mergeScoutTurnConstraints,
+  readScoutTurnConstraints,
+  writeScoutTurnConstraints,
+} from "@/lib/globe/context-condition-ai/scout-turn-constraints";
 import type {
   ContextConditionRecommendation,
   LocalDiscoveryPendingAnswers,
@@ -615,6 +621,14 @@ export const GlobeContextConditionPinBar = forwardRef<
       onQuestionsChange?.([]);
       onRecommendationsChange?.(outcome.recommendations);
       clearContextConditionPending(contextEventId);
+      writeScoutTurnConstraints(
+        contextEventId,
+        mergeScoutTurnConstraints({
+          prior: readScoutTurnConstraints(contextEventId),
+          message: input.triggerMessage,
+          spec: outcome.spec,
+        }),
+      );
       setContextAgentSessionSpec(outcome.spec);
       setContextAgentSessionPhase("deciding");
       onPinned?.(outcome);
@@ -746,6 +760,14 @@ export const GlobeContextConditionPinBar = forwardRef<
       onQuestionsChange?.([]);
       onRecommendationsChange?.(outcome.recommendations);
       clearContextConditionPending(contextEventId);
+      writeScoutTurnConstraints(
+        contextEventId,
+        mergeScoutTurnConstraints({
+          prior: readScoutTurnConstraints(contextEventId),
+          message: input.triggerMessage,
+          spec: outcome.spec,
+        }),
+      );
       setContextAgentSessionSpec(outcome.spec);
       setContextAgentSessionPhase("deciding");
       onPinned?.(outcome);
@@ -1038,6 +1060,14 @@ export const GlobeContextConditionPinBar = forwardRef<
       onQuestionsChange?.([]);
       onRecommendationsChange?.(outcomeWorking.recommendations);
       clearContextConditionPending(contextEventId);
+      writeScoutTurnConstraints(
+        contextEventId,
+        mergeScoutTurnConstraints({
+          prior: readScoutTurnConstraints(contextEventId),
+          message: input.triggerMessage,
+          spec: outcomeWorking.spec,
+        }),
+      );
       setContextAgentSessionSpec(outcomeWorking.spec);
       setContextAgentSessionPhase("deciding");
       onPinned?.(outcomeWorking);
@@ -1253,6 +1283,7 @@ export const GlobeContextConditionPinBar = forwardRef<
       const followUpTurn =
         lastRecommendations.length > 0 &&
         isFollowUpDiscoveryTurn(pipelineMessage, lastRecommendations);
+      const priorConstraints = readScoutTurnConstraints(contextEventId);
       const mergedAnswers: Record<string, string> = {
         ...(followUpTurn && lastSpec
           ? {
@@ -1262,8 +1293,13 @@ export const GlobeContextConditionPinBar = forwardRef<
               ...(lastSpec.lodgingKind !== "any"
                 ? { lodgingKind: lastSpec.lodgingKind }
                 : {}),
+              ...(priorConstraints?.menuFocusId
+                ? { menuFocus: priorConstraints.menuFocusId }
+                : {}),
             }
-          : {}),
+          : priorConstraints?.menuFocusId
+            ? { menuFocus: priorConstraints.menuFocusId }
+            : {}),
         ...(answers ?? {}),
       };
 
@@ -1316,6 +1352,7 @@ export const GlobeContextConditionPinBar = forwardRef<
         answers: mergedAnswers,
         followUpTurn,
         previousSpec: lastSpec,
+        priorConstraints,
         previousTriggerMessage:
           readActiveDiscoveryExecution(contextEventId)?.triggerMessage ??
           lastBatch?.triggerMessage ??
@@ -2533,6 +2570,7 @@ export const GlobeContextConditionPinBar = forwardRef<
     });
     clearContextConditionLastBatch(contextEventId);
     clearScoutRevealPending(contextEventId);
+    clearScoutTurnConstraints(contextEventId);
     setLastBatch(null);
     setLastSpec(null);
     setLastRecommendations([]);

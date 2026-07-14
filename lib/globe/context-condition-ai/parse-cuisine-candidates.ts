@@ -11,7 +11,17 @@ const CUISINE_CATALOG: readonly {
   labelKo: string;
   queryKo: string;
   pattern: RegExp;
+  /** Drop these when this specialty hits (avoid menuFocus pause). */
+  suppresses?: readonly string[];
 }[] = [
+  {
+    id: "matcha_icecream",
+    labelKo: "말차 아이스크림",
+    queryKo: "말차 아이스크림",
+    pattern:
+      /(?:말차|녹차|matcha|抹茶).{0,20}(?:아이스\s*크림|아이스크림|소프트|젤라토|ice\s*cream|ソフトクリーム)|(?:아이스\s*크림|아이스크림|소프트\s*크림|젤라토|ice\s*cream).{0,16}(?:말차|녹차|matcha|抹茶)/iu,
+    suppresses: ["dessert", "cafe", "beverage", "juice"],
+  },
   { id: "pizza", labelKo: "피자", queryKo: "피자", pattern: /피자|pizza/iu },
   {
     id: "chicken",
@@ -21,6 +31,14 @@ const CUISINE_CATALOG: readonly {
   },
   { id: "sushi", labelKo: "스시", queryKo: "스시 초밥", pattern: /스시|초밥|sushi/iu },
   { id: "ramen", labelKo: "라멘", queryKo: "라멘", pattern: /라멘|ramen/iu },
+  {
+    id: "kakigori",
+    labelKo: "빙수",
+    queryKo: "말차 빙수",
+    pattern:
+      /(?:말차|녹차|matcha|抹茶).{0,12}(?:빙수|かき氷|kakigori)|(?:빙수|かき氷).{0,12}(?:말차|녹차|matcha)/iu,
+    suppresses: ["dessert", "cafe", "beverage", "juice"],
+  },
   { id: "cafe", labelKo: "카페", queryKo: "카페", pattern: /카페|coffee|cafe/iu },
   {
     id: "beverage",
@@ -43,12 +61,20 @@ export function parseCuisineCandidates(message: string): CuisineCandidate[] {
     return [];
   }
   const found: CuisineCandidate[] = [];
+  const suppressed = new Set<string>();
   for (const row of CUISINE_CATALOG) {
-    if (row.pattern.test(text)) {
-      found.push({ id: row.id, labelKo: row.labelKo, queryKo: row.queryKo });
+    if (!row.pattern.test(text)) {
+      continue;
+    }
+    found.push({ id: row.id, labelKo: row.labelKo, queryKo: row.queryKo });
+    for (const id of row.suppresses ?? []) {
+      suppressed.add(id);
     }
   }
-  return found;
+  if (suppressed.size === 0) {
+    return found;
+  }
+  return found.filter((row) => !suppressed.has(row.id));
 }
 
 export function resolveCuisineFocusQuery(focusId: string | null | undefined): string | null {
@@ -65,4 +91,17 @@ export function parseSingleCuisineFocus(message: string): string | null {
     return null;
   }
   return candidates[0]?.queryKo ?? null;
+}
+
+/** True when search should stay on specialty dessert (skip Bib / generic bakery mix). */
+export function isSpecialtyDessertEateryFocus(
+  focus: string | null | undefined,
+): boolean {
+  const text = focus?.trim() ?? "";
+  if (!text) {
+    return false;
+  }
+  return /말차|녹차|matcha|抹茶|아이스\s*크림|아이스크림|소프트|젤라토|ice\s*cream/iu.test(
+    text,
+  );
 }

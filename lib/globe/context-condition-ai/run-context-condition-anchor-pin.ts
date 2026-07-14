@@ -30,6 +30,10 @@ import {
   INSTANT_POI_PIN_CAP,
 } from "@/lib/globe/context-condition-ai/instant-poi-search";
 import { writeContextConditionLastBatch } from "@/lib/globe/context-condition-ai/context-condition-last-batch-store";
+import {
+  isSpecialtyDessertEateryFocus,
+  parseSingleCuisineFocus,
+} from "@/lib/globe/context-condition-ai/parse-cuisine-candidates";
 import { syncContextConditionPins } from "@/lib/globe/context-condition-ai/sync-context-condition-pins";
 import { writeScoutRevealPending } from "@/lib/globe/context-condition-ai/context-condition-scout-reveal-pending-store";
 import { emitSearchHubAction } from "@/lib/globe/resource/hub-action-record-store";
@@ -185,6 +189,11 @@ function resolveContextConditionEateryQuery(input: {
   }
   const raw = input.userMessage?.trim();
   if (raw) {
+    // Specialty dish before broad cafe/restaurant fallback.
+    const specialty = parseSingleCuisineFocus(raw);
+    if (specialty) {
+      return `${area} ${specialty}`;
+    }
     // Cafe / beverage intent must search cafes, not generic restaurants or hotels.
     if (/카페|커피|coffee|cafe/iu.test(raw)) {
       return `${area} 카페`;
@@ -196,7 +205,18 @@ function resolveContextConditionEateryQuery(input: {
       return `${area} 주스 카페`;
     }
     const cleaned = stripSearchCommandNoise(raw);
-    if (cleaned.length >= 2) {
+    // Drop preference preamble — keep the dish noun when present.
+    const dishTail = cleaned
+      .replace(/^.*?(?=(?:말차|녹차|matcha|아이스크림|소프트|젤라토))/iu, "")
+      .replace(/(?:맛집|식당|가게).*$/iu, "")
+      .trim();
+    if (
+      dishTail.length >= 2 &&
+      /말차|녹차|아이스크림|소프트|젤라토|matcha/iu.test(dishTail)
+    ) {
+      return `${area} ${dishTail}`.trim();
+    }
+    if (cleaned.length >= 2 && cleaned.length <= 40) {
       return cleaned;
     }
   }
@@ -438,23 +458,57 @@ export async function runContextConditionAnchorPin(
 
   if (wantsEatery) {
     input.onProcessPhase?.("analyzing");
+    const eateryFocus =
+      spec.eateryFocus?.trim() ||
+      parseSingleCuisineFocus(input.message ?? "") ||
+      null;
     const eateryQuery = resolveContextConditionEateryQuery({
       userMessage: input.message,
       anchorName: searchOrigin.regionLabel,
       vibe: spec.vibe,
-      eateryFocus: spec.eateryFocus,
+      eateryFocus,
     });
-    const loaded = await loadEateryInventoryRows({
-      event,
-      message: eateryQuery,
-      lat: searchOrigin.lat,
-      lng: searchOrigin.lng,
-      maxResults: exploration.eateryMaxResults,
-      radiusM,
-    });
-    eaterySource = loaded.source;
+    const area = searchOrigin.regionLabel.trim() || "근처";
+    const specialtyDessert = isSpecialtyDessertEateryFocus(eateryFocus);
+    const eateryQueries = specialtyDessert
+      ? Array.from(
+          new Set([
+            eateryQuery,
+            `${area} matcha ice cream`,
+            `${area} 抹茶 ソフトクリーム`,
+            `${area} 말차 소프트크림`,
+          ]),
+        ).slice(0, 4)
+      : [eateryQuery];
+
+    const loadedBatches = await Promise.all(
+      eateryQueries.map((query) =>
+        loadEateryInventoryRows({
+          event,
+          message: query,
+          lat: searchOrigin.lat,
+          lng: searchOrigin.lng,
+          maxResults: exploration.eateryMaxResults,
+          radiusM,
+        }),
+      ),
+    );
+    const mergedByPlace = new Map<
+      string,
+      (typeof loadedBatches)[number]["rows"][number]
+    >();
+    for (const batch of loadedBatches) {
+      for (const row of batch.rows) {
+        const key = row.placeId?.trim() || `${row.name}:${row.lat}:${row.lng}`;
+        if (!mergedByPlace.has(key)) {
+          mergedByPlace.set(key, row);
+        }
+      }
+    }
+    const loadedRows = [...mergedByPlace.values()];
+    eaterySource = loadedBatches[0]?.source ?? "mock";
     const scored = scoreEateryRecommendations({
-      rows: loaded.rows,
+      rows: loadedRows,
       unifiedContext,
       lat: searchOrigin.lat,
       lng: searchOrigin.lng,
@@ -462,13 +516,27 @@ export async function runContextConditionAnchorPin(
       event,
       travelBrain,
       exploration: exploration,
+      focusMatch: eateryFocus,
     });
     // Category integrity (flexible): drop clearly off-domain rows (a hotel in a
     // food search) but keep adjacent picks so results stay rich.
     const guarded = verifyDiscoveryResults({
       domain: "eatery",
       items: scored,
-      focusTokens: (spec.eateryFocus ?? "").split(/[\s·,]+/u),
+      focusTokens: specialtyDessert
+        ? Array.from(
+            new Set([
+              ...(eateryFocus ?? "").split(/[\s·,]+/u),
+              "말차",
+              "녹차",
+              "matcha",
+              "抹茶",
+              "ソフト",
+              "아이스크림",
+              "젤라토",
+            ]),
+          )
+        : (eateryFocus ?? "").split(/[\s·,]+/u),
       guardThreshold: guardThresholdForDomain(exploration, "eatery"),
     });
     eateryScored = (guarded.kept.length > 0 ? guarded.kept : scored).slice(

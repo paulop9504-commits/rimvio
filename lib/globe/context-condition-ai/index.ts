@@ -68,6 +68,20 @@ export {
   writeContextConditionPending,
 } from "@/lib/globe/context-condition-ai/context-condition-pending-spec-store";
 export {
+  clearScoutTurnConstraints,
+  emptyScoutTurnConstraints,
+  mergeScoutTurnConstraints,
+  readScoutTurnConstraints,
+  resolveAccumulatedEateryFocus,
+  writeScoutTurnConstraints,
+  type ScoutTurnConstraints,
+} from "@/lib/globe/context-condition-ai/scout-turn-constraints";
+export {
+  parseUtteranceIntentSlots,
+  utteranceHasConcreteDishSlot,
+  type UtteranceIntentSlots,
+} from "@/lib/globe/context-condition-ai/utterance-intent-slots";
+export {
   buildContextConditionDiscoveryOverlay,
   resolveLocalDiscoveryRouteArcAltitude,
 } from "@/lib/globe/context-condition-ai/build-context-condition-discovery-overlay";

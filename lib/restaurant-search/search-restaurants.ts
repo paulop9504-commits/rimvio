@@ -33,7 +33,10 @@ const LOCAL_PATTERN = /로컬|현지인|숨겨|골목|동네/u;
 const LANDMARK_PATTERN = /인기|유명|핫플|검증|관광/u;
 const EXCLUDE_PATTERN = /([가-힣A-Za-z]{2,20})\s*(?:빼고|제외|말고)/gu;
 const CUISINE_PATTERN =
-  /(라멘|스시|초밥|우동|이자카야|오마카세|카페|브런치|디저트|한식|양식|중식|일식|해산물|고기|야키니쿠|오코노미야키|타코야키|돈카츠|규카츠|파스타|피자|치킨|국밥|분식)/u;
+  /(라멘|스시|초밥|우동|이자카야|오마카세|카페|브런치|디저트|말차|녹차|아이스크림|소프트크림|젤라토|matcha|한식|양식|중식|일식|해산물|고기|야키니쿠|오코노미야키|타코야키|돈카츠|규카츠|파스타|피자|치킨|국밥|분식)/u;
+
+const SPECIALTY_DESSERT_PATTERN =
+  /말차|녹차|matcha|抹茶|아이스\s*크림|아이스크림|소프트|젤라토|ice\s*cream|ソフトクリーム/iu;
 
 function buildPlacePhotoUrl(photoReference: string, key: string): string {
   const params = new URLSearchParams({
@@ -492,6 +495,72 @@ async function searchNaverLocal(input: {
   }
 }
 
+async function searchGoogleTextQuery(input: {
+  query: string;
+  origin: { lat: number; lng: number };
+  maxResults: number;
+  radiusM: number;
+  language: Language;
+}): Promise<RestaurantSearchCandidate[]> {
+  if (!isGooglePlacesConfigured()) {
+    return [];
+  }
+  const key = googlePlacesApiKey();
+  if (!key) {
+    return [];
+  }
+  try {
+    const response = await client.textSearch({
+      params: {
+        query: input.query,
+        location: input.origin,
+        radius: Math.min(Math.max(input.radiusM, 2500), 25000),
+        language: input.language,
+        key,
+      },
+    });
+    const rows: RestaurantSearchCandidate[] = [];
+    for (const result of response.data.results ?? []) {
+      const placeId = result.place_id?.trim();
+      const name = result.name?.trim();
+      const lat = result.geometry?.location?.lat;
+      const lng = result.geometry?.location?.lng;
+      if (!placeId || !name || typeof lat !== "number" || typeof lng !== "number") {
+        continue;
+      }
+      const photoReference = result.photos?.[0]?.photo_reference;
+      rows.push({
+        source: "google_places",
+        sourceLabel: "Google Places",
+        placeId,
+        name,
+        address: result.formatted_address ?? result.vicinity ?? null,
+        lat,
+        lng,
+        rating: typeof result.rating === "number" ? result.rating : null,
+        openNow:
+          typeof result.opening_hours?.open_now === "boolean"
+            ? result.opening_hours.open_now
+            : null,
+        phone: null,
+        mapsUrl: `https://www.google.com/maps/place/?q=place_id:${placeId}`,
+        images: photoReference ? [buildPlacePhotoUrl(photoReference, key)] : [],
+        cuisineHint: null,
+        priceLevel:
+          typeof result.price_level === "number" ? result.price_level : null,
+        categoryLabel: null,
+        description: null,
+      });
+      if (rows.length >= input.maxResults) {
+        break;
+      }
+    }
+    return rows;
+  } catch {
+    return [];
+  }
+}
+
 async function searchGooglePlaces(input: {
   query: string;
   origin: { lat: number; lng: number };
@@ -514,8 +583,12 @@ async function searchGooglePlaces(input: {
     input.countryBias === "kr"
       ? input.query
       : input.query.trim() || input.intent.cuisine?.trim() || undefined;
+  const specialtyDessert = SPECIALTY_DESSERT_PATTERN.test(input.query);
+  const placeTypes = specialtyDessert
+    ? (["cafe", "restaurant"] as const)
+    : GOOGLE_RESTAURANT_TYPES;
 
-  for (const type of GOOGLE_RESTAURANT_TYPES) {
+  for (const type of placeTypes) {
     try {
       const response = await client.placesNearby({
         params: {
@@ -627,7 +700,9 @@ export async function searchRestaurants(
     originInKorea &&
     (providerBias === "naver_local" || providerBias === "global");
 
-  const [naverCandidates, googleCandidates, bibCandidates] = await Promise.all([
+  const specialtyDessertQuery = SPECIALTY_DESSERT_PATTERN.test(providerQuery);
+  const [naverCandidates, googleCandidates, bibCandidates, textCandidates] =
+    await Promise.all([
     shouldUseNaver ? searchNaverLocal({
       query: naverQuery,
       maxResults,
@@ -644,7 +719,7 @@ export async function searchRestaurants(
           intent,
         })
       : Promise.resolve<RestaurantSearchCandidate[]>([]),
-    origin
+    origin && !specialtyDessertQuery
       ? fetchBibGourmandPlaces({
           origin,
           countryBias,
@@ -658,10 +733,19 @@ export async function searchRestaurants(
           language,
         })
       : Promise.resolve<RestaurantSearchCandidate[]>([]),
+    origin && specialtyDessertQuery
+      ? searchGoogleTextQuery({
+          query: providerQuery,
+          origin,
+          maxResults: Math.max(maxResults, 8),
+          radiusM: Math.max(radiusM, 8000),
+          language,
+        })
+      : Promise.resolve<RestaurantSearchCandidate[]>([]),
   ]);
 
   let candidates = dedupeCandidates({
-    candidates: [...naverCandidates, ...googleCandidates],
+    candidates: [...textCandidates, ...naverCandidates, ...googleCandidates],
     preferredSource,
     origin,
     placeProfile,

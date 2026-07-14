@@ -48,6 +48,41 @@ function normalizePlaceToken(value: string): string {
     .replace(/\s+/gu, "");
 }
 
+/** Expand dish focus so JP/EN place names can still score a focus hit. */
+function expandEateryFocusTokens(focusMatch: string | null | undefined): string[] {
+  const base = (focusMatch ?? "")
+    .toLowerCase()
+    .split(/[\s·,]+/u)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 2);
+  const expanded = new Set(base);
+  const blob = [...expanded].join(" ");
+  if (
+    /말차|녹차|matcha|抹茶|아이스\s*크림|아이스크림|소프트|젤라토|ice\s*cream/iu.test(
+      blob,
+    )
+  ) {
+    for (const token of [
+      "말차",
+      "녹차",
+      "matcha",
+      "抹茶",
+      "ソフト",
+      "soft",
+      "아이스크림",
+      "ice cream",
+      "icecream",
+      "젤라토",
+      "gelato",
+      "green tea",
+      "greentea",
+    ]) {
+      expanded.add(token.toLowerCase());
+    }
+  }
+  return [...expanded];
+}
+
 function findPeoplePlaceMatch(
   row: ContextEateryInventoryRow,
   unified: UnifiedExperienceContext,
@@ -198,11 +233,8 @@ export function scoreEateryRecommendations(input: {
   const lat = input.lat ?? null;
   const lng = input.lng ?? null;
   const distanceWeight = input.distanceWeight ?? 1;
-  const focusTokens = (input.focusMatch ?? "")
-    .toLowerCase()
-    .split(/[\s·,]+/u)
-    .map((token) => token.trim())
-    .filter((token) => token.length >= 2);
+  const focusLabel = input.focusMatch?.trim() || null;
+  const focusTokens = expandEateryFocusTokens(focusLabel);
   const event =
     input.event ??
     (input.context?.eventId
@@ -223,6 +255,14 @@ export function scoreEateryRecommendations(input: {
     weights: DEFAULT_EATERY_RANK_WEIGHTS,
     source: "default" as const,
   };
+  // Explicit dish slot owns rank — TravelBrain 가성비 weights stay auxiliary only.
+  if (focusLabel && !input.rankProfile) {
+    profile = {
+      mode: "auto",
+      weights: DEFAULT_EATERY_RANK_WEIGHTS,
+      source: "default",
+    };
+  }
   const brainAxes = travelBrain
     ? describeEateryRankTravelBrainAxes(travelBrain)
     : null;
@@ -234,15 +274,16 @@ export function scoreEateryRecommendations(input: {
       | TravelFoodBias
       | undefined) ??
       null);
-  const dimensionFoodBias: TravelFoodBias | null =
-    foodBias ??
-    (profile.mode === "popular"
-      ? "landmark"
-      : profile.mode === "local"
-        ? "local"
-        : profile.mode === "value"
-          ? "value"
-          : null);
+  const dimensionFoodBias: TravelFoodBias | null = focusLabel
+    ? null
+    : foodBias ??
+      (profile.mode === "popular"
+        ? "landmark"
+        : profile.mode === "local"
+          ? "local"
+          : profile.mode === "value"
+            ? "value"
+            : null);
   const mealTiming: TravelMealTimingPattern | null =
     brainAxes?.mealTiming ??
     (input.context?.title.searchBias.mealMoment as TravelMealTimingPattern | null) ??
@@ -325,11 +366,25 @@ export function scoreEateryRecommendations(input: {
     };
 
     const explained = explainEateryRecommendationKo(reasonInput);
+    const focusReason =
+      focusHit && focusLabel
+        ? `${focusLabel}에 가까운 후보예요`
+        : focusLabel
+          ? `${focusLabel} 검색 후보예요`
+          : null;
     const matchReasons = [...titleReasons, ...explained.matchReasons];
+    if (focusReason) {
+      matchReasons.unshift(focusReason);
+    }
     if (row.specialReasonKo?.trim()) {
       matchReasons.unshift(row.specialReasonKo.trim());
     }
-    if (profile.reasonKo?.trim() && profile.source === "context") {
+    // Explicit dish focus owns the lead reason — don't bury it under TravelBrain 가성비.
+    if (
+      !focusLabel &&
+      profile.reasonKo?.trim() &&
+      profile.source === "context"
+    ) {
       matchReasons.push(profile.reasonKo.trim());
     }
 
@@ -337,9 +392,10 @@ export function scoreEateryRecommendations(input: {
       row,
       score,
       reasonKo:
+        focusReason ||
         row.specialReasonKo?.trim() ||
         titleReasons[0] ||
-        profile.reasonKo?.trim() ||
+        (!focusLabel ? profile.reasonKo?.trim() : null) ||
         explained.reasonKo,
       matchReasons: matchReasons.slice(0, 3),
     };

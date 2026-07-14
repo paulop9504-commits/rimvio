@@ -48,6 +48,10 @@ import {
   resolveCuisineFocusQuery,
   type CuisineCandidate,
 } from "@/lib/globe/context-condition-ai/parse-cuisine-candidates";
+import {
+  parseUtteranceIntentSlots,
+} from "@/lib/globe/context-condition-ai/utterance-intent-slots";
+import { resolveAccumulatedEateryFocus } from "@/lib/globe/context-condition-ai/scout-turn-constraints";
 import { copy } from "@/lib/copy/human-ko";
 
 const CONFIDENCE_SKIP = 0.58;
@@ -581,9 +585,19 @@ export function resolveLocalDiscoveryAction(
   const menuFocusId =
     answers.menuFocus ??
     (cuisineCandidates.length === 1 ? cuisineCandidates[0]?.id : null) ??
+    input.priorConstraints?.menuFocusId ??
     null;
+  const menuFocusQuery = resolveCuisineFocusQuery(menuFocusId);
+  const utteranceSlots = parseUtteranceIntentSlots(text);
   const eateryFocus =
-    resolveCuisineFocusQuery(menuFocusId) ?? parseSingleCuisineFocus(text);
+    resolveAccumulatedEateryFocus({
+      message: text,
+      prior: input.priorConstraints ?? null,
+      previousSpec: followUpTurn ? previousSpec : null,
+      menuFocusQuery,
+    }) ??
+    utteranceSlots.dishFocus ??
+    parseSingleCuisineFocus(text);
   const hasNarrowEateryFocus = Boolean(eateryFocus?.trim());
 
   const partial: Partial<LocalDiscoveryActionSpec> = {
@@ -678,6 +692,7 @@ export function refineLocalDiscoverySpec(
   if (!text) {
     return spec;
   }
+  const slots = parseUtteranceIntentSlots(text);
   const wantsCloser = /더\s*가까|더\s*근처|가까운|closer|nearer/iu.test(text);
   const transport = parseTransport(text);
   const budget = parseBudget(text);
@@ -687,6 +702,10 @@ export function refineLocalDiscoverySpec(
     parseMaxNightlyPriceKrw(text) ?? spec.maxNightlyPriceKrw ?? null;
   const nextTransport = wantsCloser ? "walk" : (transport ?? spec.transport);
   const nextLodgingKind = lodgingKind ?? spec.lodgingKind;
+  const nextEateryFocus =
+    slots.dishFocus?.trim() ||
+    (slots.dessertOnly ? "디저트" : null) ||
+    spec.eateryFocus;
   return composeSpec({
     resourceTypes: spec.resourceTypes,
     transport: nextTransport,
@@ -699,7 +718,7 @@ export function refineLocalDiscoverySpec(
     vibe: vibe ?? spec.vibe,
     lodgingKind: nextLodgingKind,
     maxNightlyPriceKrw,
-    eateryFocus: spec.eateryFocus,
+    eateryFocus: nextEateryFocus,
     activityFocus: spec.activityFocus,
     activitySubtype: spec.activitySubtype,
     activityCluster: spec.activityCluster,
@@ -727,6 +746,7 @@ export function isLocalDiscoveryRefinement(message: string): boolean {
   if (isAmbiguousDiscoveryIntent(text)) {
     return false;
   }
+  const refineSlots = parseUtteranceIntentSlots(text);
   return Boolean(
     isAlternatePlaceSearch(text) ||
       parseTransport(text) ||
@@ -734,7 +754,9 @@ export function isLocalDiscoveryRefinement(message: string): boolean {
       parseMaxNightlyPriceKrw(text) ||
       parseVibe(text) ||
       isLodgingKindRefinement(text) ||
-      /더\s*싸|더\s*조용|더\s*가까|더\s*근처|가까운/iu.test(text),
+      refineSlots.dishFocus != null ||
+      refineSlots.dessertOnly ||
+      /더\s*싸|더\s*조용|더\s*가까|더\s*근처|가까운|디저트\s*만/iu.test(text),
   );
 }
 

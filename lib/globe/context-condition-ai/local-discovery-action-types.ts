@@ -102,6 +102,8 @@ export type ResolveLocalDiscoveryActionInput = {
   /** Prior scout in this session — inherit transport/budget on follow-up. */
   previousSpec?: LocalDiscoveryActionSpec | null;
   followUpTurn?: boolean;
+  /** Turn-accumulated scout constraints (dish / excludes across free-text). */
+  priorConstraints?: import("@/lib/globe/context-condition-ai/scout-turn-constraints").ScoutTurnConstraints | null;
   /** Last user scout trigger — Intent Relationship (Replace vs Continue). */
   previousTriggerMessage?: string | null;
 };
