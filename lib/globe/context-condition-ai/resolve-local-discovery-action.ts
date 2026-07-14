@@ -52,6 +52,7 @@ import {
   parseUtteranceIntentSlots,
 } from "@/lib/globe/context-condition-ai/utterance-intent-slots";
 import { resolveAccumulatedEateryFocus } from "@/lib/globe/context-condition-ai/scout-turn-constraints";
+import { resolveEntities } from "@/lib/entity-resolver";
 import { copy } from "@/lib/copy/human-ko";
 
 const CONFIDENCE_SKIP = 0.58;
@@ -457,6 +458,9 @@ export function resolveLocalDiscoveryAction(
   const text = input.message.trim();
   const answers: LocalDiscoveryPendingAnswers = { ...(input.answers ?? {}) };
 
+  // Entity Resolver before Intent axes (classify / slot questions).
+  const entityBag = resolveEntities(text);
+
   const domainSpec = resolveDiscoveryDomainSpec({
     text,
     answers,
@@ -588,7 +592,7 @@ export function resolveLocalDiscoveryAction(
     input.priorConstraints?.menuFocusId ??
     null;
   const menuFocusQuery = resolveCuisineFocusQuery(menuFocusId);
-  const utteranceSlots = parseUtteranceIntentSlots(text);
+  const utteranceSlots = parseUtteranceIntentSlots(text, entityBag);
   const eateryFocus =
     resolveAccumulatedEateryFocus({
       message: text,

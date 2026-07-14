@@ -8,6 +8,7 @@
  */
 export {
   classifyContextConditionAnchorRequest,
+  classifyContextConditionAnchorRequestFromEntities,
   filterLodgingRowsForContextCondition,
   filterLodgingRowsSimilarToAnchor,
   type ContextConditionAnchorPinIntent,

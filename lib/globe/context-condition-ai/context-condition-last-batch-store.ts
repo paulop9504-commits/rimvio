@@ -1,4 +1,5 @@
 import type { LocalDiscoveryActionSpec } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
+import { recordInstantCarryAnchorsFromUtterance } from "@/lib/globe/instant-carry/instant-carry-entity-anchor-store";
 import { haversineKm } from "@/lib/feed/spacetime-fit";
 
 const STORAGE_PREFIX = "rimvio.context-condition-last-batch.";
@@ -82,12 +83,21 @@ export function writeContextConditionLastBatch(
   }
   if (typeof window === "undefined") {
     memoryBatches.set(key, batch);
-    return;
+  } else {
+    try {
+      sessionStorage.setItem(`${STORAGE_PREFIX}${key}`, JSON.stringify(batch));
+    } catch {
+      // ignore quota
+    }
   }
-  try {
-    sessionStorage.setItem(`${STORAGE_PREFIX}${key}`, JSON.stringify(batch));
-  } catch {
-    // ignore quota
+  const trigger = batch.triggerMessage?.trim();
+  if (trigger) {
+    // Instant Carry S3 — Entity Resolver →「근처」anchors (personal dock, not discovery rail).
+    try {
+      recordInstantCarryAnchorsFromUtterance(trigger);
+    } catch {
+      // Non-blocking.
+    }
   }
 }
 

@@ -1,0 +1,55 @@
+import type { EntityCatalogEntry } from "@/lib/entity-resolver/catalogs/catalog-types";
+
+/** P2 — Local amenities. */
+export const AMENITY_CATALOG: readonly EntityCatalogEntry[] = [
+  {
+    id: "amenity:convenience",
+    labelKo: "편의점",
+    queryKo: "편의점",
+    kind: "Product",
+    pattern: /편의점|convenience\s*store|コンビニ|세븐일레븐|로손|familymart|ファミマ/iu,
+    aliases: ["コンビニ", "convenience"],
+    semanticPath: ["Amenity", "ConvenienceStore", "Local"],
+    confidence: 0.9,
+  },
+  {
+    id: "amenity:pharmacy",
+    labelKo: "약국",
+    queryKo: "약국",
+    kind: "Product",
+    pattern: /약국|pharmacy|ドラッグストア|마쓰모토|matsumoto\s*kiyoshi|マツキヨ/iu,
+    aliases: ["薬局", "drugstore"],
+    semanticPath: ["Amenity", "Pharmacy", "Local"],
+    confidence: 0.9,
+  },
+  {
+    id: "amenity:atm",
+    labelKo: "ATM",
+    queryKo: "ATM",
+    kind: "Product",
+    pattern: /\batm\b|현금인출|cash\s*machine/iu,
+    aliases: ["ATM"],
+    semanticPath: ["Amenity", "ATM", "Local"],
+    confidence: 0.88,
+  },
+  {
+    id: "amenity:onsen",
+    labelKo: "온천",
+    queryKo: "온천",
+    kind: "Location",
+    pattern: /온천|onsen|温泉|센토|sento|銭湯/iu,
+    aliases: ["onsen", "温泉"],
+    semanticPath: ["Amenity", "Onsen", "Leisure"],
+    confidence: 0.9,
+  },
+  {
+    id: "amenity:laundry",
+    labelKo: "코인세탁",
+    queryKo: "코인세탁",
+    kind: "Product",
+    pattern: /코인\s*세탁|laundry|コインランドリー/iu,
+    aliases: ["コインランドリー"],
+    semanticPath: ["Amenity", "Laundry", "Local"],
+    confidence: 0.88,
+  },
+];

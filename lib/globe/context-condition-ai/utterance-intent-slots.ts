@@ -1,6 +1,6 @@
 /**
  * Utterance → Intent slots SSOT (scout search / rank / reason).
- * TravelBrain axes stay auxiliary only when dish/brand slots are empty.
+ * Prefers Entity Resolver bag when provided; else resolves inline.
  */
 import {
   parseCuisineCandidates,
@@ -9,6 +9,18 @@ import {
 } from "@/lib/globe/context-condition-ai/parse-cuisine-candidates";
 import { parseFoodBrandFocus } from "@/lib/globe/context-condition-ai/parse-food-brand-focus";
 import { lockEntities } from "@/lib/search-intent/entity-lock";
+import { normalizeScoutUtterance } from "@/lib/entity-resolver/normalize-scout-utterance";
+import {
+  findBrandEntity,
+  findDishEntity,
+  findStationEntity,
+  queryFocusFromEntities,
+  resolveEntities,
+  type EntityResolveResult,
+  type ResolvedEntity,
+} from "@/lib/entity-resolver";
+
+export { normalizeScoutUtterance };
 
 export type UtteranceIntentSlots = {
   /** Catalog id when exactly one cuisine matched, else null. */
@@ -40,48 +52,73 @@ const DESSERT_ONLY_PATTERN =
 const REPLACE_DISH_PATTERN =
   /아니|아니라|말고|대신에|대신|from\s+now|only\s+(?:want|looking)/iu;
 
-/** Scout typos — 찾어줘 → 찾아줘. */
-export function normalizeScoutUtterance(message: string): string {
-  return message
-    .trim()
-    .replace(/찾어\s*줘/giu, "찾아줘")
-    .replace(/찾어줘/giu, "찾아줘")
-    .replace(/\s+/gu, " ");
+function slotsFromEntities(
+  text: string,
+  entities: readonly ResolvedEntity[],
+): Partial<UtteranceIntentSlots> {
+  const brand = findBrandEntity(entities);
+  const dish = findDishEntity(entities);
+  const station = findStationEntity(entities);
+  const focus = queryFocusFromEntities(entities);
+  const cuisineId =
+    brand?.id.replace(/^brand:/, "") ??
+    dish?.id.replace(/^cuisine:/, "") ??
+    null;
+  return {
+    cuisineId,
+    dishFocus: focus,
+    brandFocus: brand?.queryFocus ?? null,
+    stationHint: station?.label ?? station?.queryFocus ?? null,
+    areaHint: station?.label ?? null,
+  };
 }
 
 export function parseUtteranceIntentSlots(
   message: string,
+  entityBag?: EntityResolveResult | null,
 ): UtteranceIntentSlots {
   const text = normalizeScoutUtterance(message);
+  const empty: UtteranceIntentSlots = {
+    cuisineId: null,
+    dishFocus: null,
+    areaHint: null,
+    stationHint: null,
+    excludeKeywords: [],
+    dessertOnly: false,
+    replaceDish: false,
+    brandFocus: null,
+  };
   if (!text) {
-    return {
-      cuisineId: null,
-      dishFocus: null,
-      areaHint: null,
-      stationHint: null,
-      excludeKeywords: [],
-      dessertOnly: false,
-      replaceDish: false,
-      brandFocus: null,
-    };
+    return empty;
   }
+
+  const resolved = entityBag ?? resolveEntities(text);
+  const fromEntities = slotsFromEntities(text, resolved.entities);
 
   const brand = parseFoodBrandFocus(text);
   const candidates = parseCuisineCandidates(text);
-  const cuisineId = candidates.length === 1 ? (candidates[0]?.id ?? null) : null;
+  const cuisineId =
+    fromEntities.cuisineId ??
+    (candidates.length === 1 ? (candidates[0]?.id ?? null) : null) ??
+    (brand ? brand.id : null);
   const dessertOnly = DESSERT_ONLY_PATTERN.test(text);
-  const dishFocus = brand
-    ? brand.queryKo
-    : dessertOnly
-      ? "디저트"
-      : resolveCuisineFocusQuery(cuisineId) ??
-        parseSingleCuisineFocus(text) ??
-        null;
+  const dishFocus = dessertOnly
+    ? "디저트"
+    : fromEntities.dishFocus ??
+      (brand
+        ? brand.queryKo
+        : resolveCuisineFocusQuery(cuisineId) ??
+          parseSingleCuisineFocus(text) ??
+          null);
 
   const areaMatch = text.match(AREA_HINT_PATTERN);
-  const areaHint = areaMatch?.[1]?.trim() || null;
+  const areaHint =
+    fromEntities.areaHint || areaMatch?.[1]?.trim() || null;
   const transit = lockEntities(text).find((row) => row.kind === "transit");
-  const stationHint = transit?.value ?? (/[가-힣]{2,12}역/u.exec(text)?.[0] ?? null);
+  const stationHint =
+    fromEntities.stationHint ||
+    transit?.value ||
+    (/[가-힣]{2,12}역/u.exec(text)?.[0] ?? null);
 
   const excludeKeywords: string[] = [];
   for (const match of text.matchAll(EXCLUDE_PATTERN)) {
@@ -92,14 +129,14 @@ export function parseUtteranceIntentSlots(
   }
 
   return {
-    cuisineId: brand ? brand.id : cuisineId,
+    cuisineId,
     dishFocus,
     areaHint,
     stationHint,
     excludeKeywords,
     dessertOnly,
     replaceDish: REPLACE_DISH_PATTERN.test(text),
-    brandFocus: brand?.queryKo ?? null,
+    brandFocus: fromEntities.brandFocus ?? brand?.queryKo ?? null,
   };
 }
 

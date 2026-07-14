@@ -45,6 +45,8 @@ Rimvio's moat is not `@길찾기`. It is **life replay + context exploration** t
 
 **Law:** User must **feel Floor 1 before Floor 3**. Action without replay = generic assistant ("박명수").
 
+**Instant Carry (2026-07):** Netflix continuity × IG density on the Floor 1 memory dock — see `docs/RIMVIO_INSTANT_CARRY_FEED.md`. Not a recommendation home; not the scout discovery rail.
+
 ---
 
 ## Floor 1 — Replay (Globe)

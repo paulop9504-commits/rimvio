@@ -34,8 +34,12 @@ import {
   isSpecialtyDessertEateryFocus,
   parseSingleCuisineFocus,
 } from "@/lib/globe/context-condition-ai/parse-cuisine-candidates";
-import { parseFoodBrandFocus } from "@/lib/globe/context-condition-ai/parse-food-brand-focus";
 import { parseUtteranceIntentSlots } from "@/lib/globe/context-condition-ai/utterance-intent-slots";
+import {
+  findBrandEntity,
+  resolveEntities,
+} from "@/lib/entity-resolver";
+import { foodBrandMatchAliases } from "@/lib/globe/context-condition-ai/parse-food-brand-focus";
 import { syncContextConditionPins } from "@/lib/globe/context-condition-ai/sync-context-condition-pins";
 import { writeScoutRevealPending } from "@/lib/globe/context-condition-ai/context-condition-scout-reveal-pending-store";
 import { emitSearchHubAction } from "@/lib/globe/resource/hub-action-record-store";
@@ -460,12 +464,16 @@ export async function runContextConditionAnchorPin(
 
   if (wantsEatery) {
     input.onProcessPhase?.("analyzing");
-    const utteranceSlots = parseUtteranceIntentSlots(input.message ?? "");
-    const brand = parseFoodBrandFocus(input.message ?? "");
+    const entityBag = resolveEntities(input.message ?? "");
+    const utteranceSlots = parseUtteranceIntentSlots(
+      input.message ?? "",
+      entityBag,
+    );
+    const brandEntity = findBrandEntity(entityBag.entities);
     const eateryFocus =
       spec.eateryFocus?.trim() ||
       utteranceSlots.dishFocus?.trim() ||
-      brand?.queryKo ||
+      brandEntity?.queryFocus ||
       parseSingleCuisineFocus(input.message ?? "") ||
       null;
     const eateryQuery = resolveContextConditionEateryQuery({
@@ -476,12 +484,15 @@ export async function runContextConditionAnchorPin(
     });
     const area = searchOrigin.regionLabel.trim() || "근처";
     const specialtyDessert = isSpecialtyDessertEateryFocus(eateryFocus);
-    const eateryQueries = brand
+    const brandAliases = brandEntity
+      ? foodBrandMatchAliases(brandEntity.queryFocus)
+      : [];
+    const eateryQueries = brandEntity
       ? Array.from(
           new Set([
             eateryQuery,
-            `${area} ${brand.queryKo}`,
-            ...brand.matchAliases.slice(0, 2).map((alias) => `${area} ${alias}`),
+            `${area} ${brandEntity.queryFocus}`,
+            ...brandAliases.slice(0, 2).map((alias) => `${area} ${alias}`),
           ]),
         ).slice(0, 4)
       : specialtyDessert
@@ -533,8 +544,8 @@ export async function runContextConditionAnchorPin(
       exploration: exploration,
       focusMatch: eateryFocus,
     });
-    const brandTokens = brand
-      ? [brand.queryKo, brand.labelKo, ...brand.matchAliases]
+    const brandTokens = brandEntity
+      ? [brandEntity.queryFocus ?? brandEntity.label, ...brandAliases]
       : [];
     const focusTokens = specialtyDessert
       ? Array.from(

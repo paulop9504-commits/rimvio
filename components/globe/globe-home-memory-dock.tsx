@@ -10,9 +10,8 @@ import {
   type ReactNode,
 } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CaptureSheetMemoryTriggerStage } from "@/components/globe/capture-sheet-memory-trigger-stage";
+import { GlobeInstantCarryFeed } from "@/components/globe/globe-instant-carry-feed";
 import { GlobeMemoryRecallToggle } from "@/components/globe/globe-memory-recall-toggle";
-import { GlobeResumeContextCard } from "@/components/globe/globe-resume-context-card";
 import { copy } from "@/lib/copy/human-ko";
 import type { GlobeContextTrigger } from "@/lib/globe/context-triggers/globe-context-trigger-types";
 import { resolveGlobeContextTriggers } from "@/lib/globe/context-triggers/resolve-globe-context-triggers";
@@ -121,7 +120,7 @@ export function GlobeHomeMemoryRecallProvider({
     return resolveGlobeContextTriggers({
       events: listLifeEventCandidates(),
       layerMode,
-      limit: 4,
+      limit: 12,
     }).filter((row) => row.mediaPreviews?.length || row.kind === "time_recall");
   }, [enabled, layerMode, revision]);
 
@@ -203,28 +202,14 @@ export function GlobeHomeMemoryRecallPanel({ className }: { className?: string }
             transition={{ duration: 0.2, ease: "easeOut" }}
             className="overflow-hidden"
           >
-            <div className="flex w-full flex-col gap-2">
-              {ctx.showResume && ctx.resume ? (
-                <GlobeResumeContextCard
-                  session={ctx.resume}
-                  onResume={() => ctx.onResumeSession(ctx.resume!)}
-                  onDismiss={ctx.dismissResume}
-                />
-              ) : null}
-              {ctx.recallTriggers.length > 0 ? (
-                <div className="rounded-[1.1rem] bg-white/90 px-1 py-1.5 shadow-[0_6px_20px_rgba(2,32,71,0.08)] ring-1 ring-black/[0.05] backdrop-blur-xl">
-                  <p className="mb-0.5 px-2.5 text-[10px] font-semibold text-muted-foreground">
-                    {copy.globe.memoryRecallEyebrow}
-                  </p>
-                  <CaptureSheetMemoryTriggerStage
-                    triggers={ctx.recallTriggers}
-                    onTriggerPress={ctx.onActivateTrigger}
-                    compact
-                    className="-mx-1"
-                  />
-                </div>
-              ) : null}
-            </div>
+            <GlobeInstantCarryFeed
+              showResume={ctx.showResume}
+              resume={ctx.resume}
+              triggers={ctx.recallTriggers}
+              onResumeSession={ctx.onResumeSession}
+              onDismissResume={ctx.dismissResume}
+              onActivateTrigger={ctx.onActivateTrigger}
+            />
           </motion.div>
         ) : null}
       </AnimatePresence>
@@ -239,19 +224,22 @@ export function GlobeHomeRecallOneLiner({ className }: { className?: string }) {
     return null;
   }
 
-  const line =
-    ctx.showResume && ctx.resume
-      ? ctx.resume.title?.trim() || ctx.resume.placeLabel?.trim() || copy.globe.resumeContextCta
-      : ctx.recallTriggers[0]?.body?.trim() ||
-        ctx.recallTriggers[0]?.title?.trim() ||
-        null;
+  const isContinuity = Boolean(ctx.showResume && ctx.resume);
+  const line = isContinuity
+    ? ctx.resume!.title?.trim() || ctx.resume!.placeLabel?.trim() || copy.globe.resumeContextCta
+    : ctx.recallTriggers[0]?.body?.trim() ||
+      ctx.recallTriggers[0]?.title?.trim() ||
+      null;
+  const eyebrow = isContinuity
+    ? copy.globe.instantCarryContinuityEyebrow
+    : copy.globe.memoryRecallEyebrow;
 
   if (!line) {
     return null;
   }
 
   const activate = () => {
-    if (ctx.showResume && ctx.resume) {
+    if (isContinuity && ctx.resume) {
       ctx.onResumeSession(ctx.resume);
       return;
     }
@@ -270,10 +258,10 @@ export function GlobeHomeRecallOneLiner({ className }: { className?: string }) {
         className,
       )}
       data-globe-home-recall-one-liner
-      aria-label={`${copy.globe.memoryRecallEyebrow}: ${line}`}
+      aria-label={`${eyebrow}: ${line}`}
     >
       <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-        {copy.globe.memoryRecallEyebrow}
+        {eyebrow}
       </span>
       <span className="ml-1.5 text-foreground">{copy.globe.homeRecallOneLiner(line)}</span>
     </button>
