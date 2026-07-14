@@ -40,6 +40,8 @@ import { loadEateryInventoryRows } from "@/lib/globe/eatery/load-eatery-inventor
 import type { ContextEateryInventoryRow } from "@/lib/globe/eatery/eatery-resource-types";
 import { loadPlaceInventoryRows } from "@/lib/globe/place/load-place-inventory-rows";
 import type { ContextPlaceInventoryRow } from "@/lib/globe/place/place-resource-types";
+import { isDemoPlaceInventoryRow } from "@/lib/globe/place/is-demo-place-inventory-row";
+import { isCoordInKorea } from "@/lib/globe/geo-region-from-coords";
 import { scorePlaceRecommendations } from "@/lib/globe/place/score-place-recommendations";
 import { scoreEateryRecommendations } from "@/lib/globe/eatery/score-eatery-recommendations";
 import { scoreLodgingRecommendations } from "@/lib/globe/lodging/score-lodging-recommendations";
@@ -577,12 +579,29 @@ export async function runContextConditionAnchorPin(
       mergedById.set(resolvedLandmark.placeId, resolvedLandmark);
     }
 
-    const mergedRows = [...mergedById.values()];
+    // Multi-query clusters used to glue Korea demo mocks onto Tokyo Google hits
+    // whenever one keyword missed Nearby. Prefer real rows; drop demo placeholders.
+    const allMerged = [...mergedById.values()];
+    const originOverseas = !isCoordInKorea(searchOrigin.lat, searchOrigin.lng);
+    const withoutDemo = allMerged.filter((row) => !isDemoPlaceInventoryRow(row));
+    const regionFit = originOverseas
+      ? withoutDemo.filter((row) => !isCoordInKorea(row.lat, row.lng))
+      : withoutDemo;
+    const mergedRows =
+      regionFit.length > 0
+        ? regionFit
+        : originOverseas
+          ? []
+          : withoutDemo.length > 0
+            ? withoutDemo
+            : allMerged;
     eaterySource =
       loadedBatches.find((batch) => batch.source && batch.source !== "mock")
         ?.source ??
       (resolvedLandmark ? "google_places" : null) ??
-      loadedBatches[0]?.source ??
+      (mergedRows.length > 0 && mergedRows.every((row) => !isDemoPlaceInventoryRow(row))
+        ? "google_places"
+        : loadedBatches[0]?.source) ??
       null;
 
     // Focus tokens minus the region word (so "오사카" doesn't match every row),

@@ -106,9 +106,10 @@ export async function GET(request: NextRequest) {
     virtualCandidate: true as const,
   }));
 
+  const usedMock = ranked.some((candidate) => candidate.place_id.startsWith("mock-"));
   return NextResponse.json({
     ok: true,
     inventory,
-    source: "google_places",
+    source: usedMock ? "mock" : "google_places",
   });
 }

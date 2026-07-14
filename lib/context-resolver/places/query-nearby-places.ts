@@ -3,11 +3,17 @@ import {
   Language,
 } from "@googlemaps/google-maps-services-js";
 import { googlePlacesApiKey, isGooglePlacesConfigured } from "@/lib/locate/google-places-config";
+import { isCoordInKorea } from "@/lib/ontology/geo-region-from-coords";
 import { isNaverSearchConfigured } from "@/lib/naver/config";
 import { fetchNaverLocalPlaceCandidates } from "@/lib/naver/local-to-place-candidate";
 import type { PlaceCandidate, PlaceDiscoveryCriteria } from "@/lib/context-resolver/places/types";
 
 const client = new Client({});
+
+/** Demo placeholder ids — never mix into overseas discovery feeds. */
+export function isMockPlaceCandidateId(placeId: string): boolean {
+  return placeId.startsWith("mock-");
+}
 
 function buildPlacePhotoUrl(photoReference: string, key: string): string {
   const params = new URLSearchParams({
@@ -18,10 +24,14 @@ function buildPlacePhotoUrl(photoReference: string, key: string): string {
   return `https://maps.googleapis.com/maps/api/place/photo?${params.toString()}`;
 }
 
+/** Korea-only demo activities — overseas must stay empty (Google is SSOT abroad). */
 function mockActivityCandidates(input: {
   lat: number;
   lng: number;
 }): PlaceCandidate[] {
+  if (!isCoordInKorea(input.lat, input.lng)) {
+    return [];
+  }
   return [
     {
       place_id: "mock-park",
@@ -85,6 +95,9 @@ function mockCandidates(input: {
   lng: number;
   criteria: PlaceDiscoveryCriteria;
 }): PlaceCandidate[] {
+  if (!isCoordInKorea(input.lat, input.lng)) {
+    return [];
+  }
   const quiet = input.criteria.vibe === "quiet";
   const base: PlaceCandidate[] = [
     {
@@ -145,13 +158,25 @@ export async function queryNearbyPlaces(input: {
   lng: number;
   criteria: PlaceDiscoveryCriteria;
 }): Promise<PlaceCandidate[]> {
+  const originInKorea = isCoordInKorea(input.lat, input.lng);
   let candidates: PlaceCandidate[] = [];
 
   if (isGooglePlacesConfigured()) {
     candidates = await queryGooglePlaces(input);
+    if (
+      candidates.length === 0 &&
+      !originInKorea &&
+      (input.criteria.category === "activity" ||
+        input.criteria.category === "amenity")
+    ) {
+      // Nearby keyword miss abroad → text search biased to the context anchor.
+      candidates = await queryGoogleTextPlaces(input);
+    }
   }
 
-  if (candidates.length === 0 && isNaverSearchConfigured()) {
+  // Naver Local is Korea-index only — never query it from a Tokyo/Osaka anchor
+  // or Korean POIs bleed into overseas discovery clusters.
+  if (candidates.length === 0 && originInKorea && isNaverSearchConfigured()) {
     candidates = await queryNaverLocalPlaces(input);
   }
 
@@ -183,6 +208,51 @@ async function queryNaverLocalPlaces(input: {
   }
 }
 
+function mapGooglePlaceResult(
+  result: {
+    place_id?: string;
+    name?: string;
+    vicinity?: string;
+    formatted_address?: string;
+    geometry?: { location?: { lat?: number; lng?: number } };
+    rating?: number;
+    opening_hours?: { open_now?: boolean };
+    types?: string[];
+    photos?: Array<{ photo_reference?: string }>;
+  },
+  key: string,
+): PlaceCandidate | null {
+  const lat = result.geometry?.location?.lat;
+  const lng = result.geometry?.location?.lng;
+  if (typeof lat !== "number" || typeof lng !== "number") {
+    return null;
+  }
+
+  const photoUrls = (result.photos ?? [])
+    .map((photo) => photo.photo_reference)
+    .filter((ref): ref is string => Boolean(ref?.trim()))
+    .slice(0, 6)
+    .map((ref) => buildPlacePhotoUrl(ref, key));
+
+  return {
+    place_id: result.place_id ?? `place-${result.name}`,
+    name: result.name ?? "장소",
+    address: result.vicinity ?? result.formatted_address ?? null,
+    lat,
+    lng,
+    rating: result.rating ?? 0,
+    open_now: result.opening_hours?.open_now ?? true,
+    vibes: inferVibesFromName(result.name ?? ""),
+    phone: null as string | null,
+    maps_url: result.place_id
+      ? `https://www.google.com/maps/place/?q=place_id:${result.place_id}`
+      : null,
+    google_types: result.types?.map((type) => String(type)) ?? null,
+    thumbnail_url: photoUrls[0] ?? null,
+    photo_urls: photoUrls,
+  };
+}
+
 async function queryGooglePlaces(input: {
   lat: number;
   lng: number;
@@ -207,41 +277,61 @@ async function queryGooglePlaces(input: {
     });
 
     return (response.data.results ?? [])
-      .map((result) => {
-        const lat = result.geometry?.location?.lat;
-        const lng = result.geometry?.location?.lng;
-        if (typeof lat !== "number" || typeof lng !== "number") {
-          return null;
-        }
-
-        const photoUrls = (result.photos ?? [])
-          .map((photo) => photo.photo_reference)
-          .filter((ref): ref is string => Boolean(ref?.trim()))
-          .slice(0, 6)
-          .map((ref) => buildPlacePhotoUrl(ref, key));
-
-        return {
-          place_id: result.place_id ?? `place-${result.name}`,
-          name: result.name ?? "장소",
-          address: result.vicinity ?? null,
-          lat,
-          lng,
-          rating: result.rating ?? 0,
-          open_now: result.opening_hours?.open_now ?? true,
-          vibes: inferVibesFromName(result.name ?? ""),
-          phone: null as string | null,
-          maps_url: result.place_id
-            ? `https://www.google.com/maps/place/?q=place_id:${result.place_id}`
-            : null,
-          google_types: result.types?.map((type) => String(type)) ?? null,
-          thumbnail_url: photoUrls[0] ?? null,
-          photo_urls: photoUrls,
-        } satisfies PlaceCandidate;
-      })
-      .filter((item): item is NonNullable<typeof item> => item !== null);
+      .map((result) => mapGooglePlaceResult(result, key))
+      .filter((item): item is PlaceCandidate => item !== null);
   } catch {
     return [];
   }
+}
+
+async function queryGoogleTextPlaces(input: {
+  lat: number;
+  lng: number;
+  criteria: PlaceDiscoveryCriteria;
+}): Promise<PlaceCandidate[]> {
+  const key = googlePlacesApiKey();
+  const query = resolveGooglePlacesKeyword(input.criteria) ?? input.criteria.query.trim();
+  if (!key || !query) {
+    return [];
+  }
+
+  try {
+    const response = await client.textSearch({
+      params: {
+        query,
+        location: { lat: input.lat, lng: input.lng },
+        radius: Math.min(Math.max(input.criteria.radius_m, 3000), 50000),
+        language: Language.ko,
+        key,
+      },
+    });
+
+    const originLat = input.lat;
+    const originLng = input.lng;
+    const maxM = Math.min(Math.max(input.criteria.radius_m, 3000), 50000);
+
+    return (response.data.results ?? [])
+      .map((result) => mapGooglePlaceResult(result, key))
+      .filter((item): item is PlaceCandidate => item !== null)
+      .filter((item) => haversineMeters(originLat, originLng, item.lat, item.lng) <= maxM);
+  } catch {
+    return [];
+  }
+}
+
+function haversineMeters(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number,
+): number {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6_371_000 * Math.asin(Math.sqrt(a));
 }
 
 function inferVibesFromName(name: string): PlaceCandidate["vibes"] {
