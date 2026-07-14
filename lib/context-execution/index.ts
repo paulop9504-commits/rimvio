@@ -24,6 +24,7 @@ export {
 export { commitContextExecutionPlanFromApproval } from "@/lib/context-execution/commit-plan-from-approval";
 
 export {
+  resolveEngineHandoffSeed,
   resolvePlanStepHandoffOffer,
   type PlanStepHandoffChip,
   type PlanStepHandoffOffer,

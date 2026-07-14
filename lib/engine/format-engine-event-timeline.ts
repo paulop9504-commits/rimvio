@@ -13,23 +13,42 @@ export type EngineEventTimelineRow = {
 };
 
 function engineEventLabel(event: RimvioEngineEventV1): string | null {
+  if (event.kind === "pass") {
+    const to =
+      typeof event.payload?.toEngineId === "string"
+        ? event.payload.toEngineId
+        : "";
+    return to ? `패스 → ${to}` : "팀 패스";
+  }
+  if (event.kind === "assist") {
+    return "어시스트";
+  }
+  if (event.kind === "field_ready") {
+    return "맞춤으로 패스";
+  }
   const byEngine = copy.globe.engineEventTimeline[event.engineId];
   if (!byEngine) {
     return null;
   }
-  return byEngine[event.kind] ?? null;
+  return (byEngine as Record<string, string | undefined>)[event.kind] ?? null;
 }
 
 export function engineEventPriority(event: RimvioEngineEventV1): number {
   switch (event.kind) {
     case "main_selected":
       return 0;
-    case "scout_failed":
+    case "field_ready":
       return 1;
-    case "scout_complete":
+    case "assist":
       return 2;
-    default:
+    case "scout_failed":
+      return 3;
+    case "scout_complete":
+      return 4;
+    case "pass":
       return 5;
+    default:
+      return 6;
   }
 }
 

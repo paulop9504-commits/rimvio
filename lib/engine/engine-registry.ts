@@ -11,6 +11,10 @@ import { readContextInstalledEngineIds } from "@/lib/engine/resolve-context-inst
 import { resolveScheduledEngineIdFromEvent } from "@/lib/context-execution/resolve-scheduled-engine-from-plan";
 import { resolvePlanStepHandoffOffer } from "@/lib/context-execution/build-plan-step-handoff";
 import { readContextExecutionPlanFromEvent } from "@/lib/context-execution/context-execution-plan-metadata";
+import {
+  clearPendingEnginePass,
+  readPendingEnginePass,
+} from "@/lib/engine/team-collab/engine-pass-queue";
 import type { ContextBlueprint } from "@/lib/context-blueprint/types";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 
@@ -96,8 +100,8 @@ function tryEnginePlan(
 /**
  * First matching installed engine plan.
  * Prefer Execution Plan scheduled Engine (active running step) when it detects
- * the utterance; otherwise priority order. Soft continue ("다음" 등) uses
- * handoff seed so Plan can schedule without a fresh domain phrase.
+ * the utterance; else pending team pass; otherwise priority order. Soft continue
+ * ("다음" 등) uses handoff / pass seed so Plan can schedule without a fresh domain phrase.
  */
 export function planRimvioEngineTurn(
   input: RimvioEngineTurnInput & {
@@ -146,8 +150,35 @@ export function planRimvioEngineTurn(
     }
   }
 
+  const pendingPass = readPendingEnginePass(input.event?.metadata ?? null);
+  if (pendingPass) {
+    const receiver = packages.find((pkg) => pkg.id === pendingPass.toEngineId);
+    if (receiver) {
+      const direct = tryEnginePlan(receiver, input, message);
+      if (direct) {
+        return direct;
+      }
+      const otherMatch = packages.some(
+        (pkg) => pkg.id !== pendingPass.toEngineId && pkg.detect(message),
+      );
+      if (!otherMatch && pendingPass.seedUtterance.trim()) {
+        const viaSeed = tryEnginePlan(
+          receiver,
+          input,
+          pendingPass.seedUtterance.trim(),
+        );
+        if (viaSeed) {
+          return viaSeed;
+        }
+      }
+    }
+  }
+
   for (const engine of packages) {
     if (scheduledId && engine.id === scheduledId) {
+      continue;
+    }
+    if (pendingPass && engine.id === pendingPass.toEngineId) {
       continue;
     }
     const plan = tryEnginePlan(engine, input, message);
@@ -157,4 +188,21 @@ export function planRimvioEngineTurn(
   }
 
   return null;
+}
+
+/** Clear pending team pass after the receiver successfully took the ball (tests / Actor). */
+export function consumePendingEnginePassOnEvent(
+  event: EventCandidate | null | undefined,
+): EventCandidate | null {
+  if (!event?.metadata) {
+    return event ?? null;
+  }
+  const pending = readPendingEnginePass(event.metadata);
+  if (!pending) {
+    return event;
+  }
+  return {
+    ...event,
+    metadata: clearPendingEnginePass(event.metadata),
+  };
 }

@@ -6,6 +6,12 @@ export const RIMVIO_ENGINE_EVENT_KINDS = [
   "scout_complete",
   "scout_failed",
   "main_selected",
+  /** Ball to teammate — routes next soft turn; never Commits Reality. */
+  "pass",
+  /** Stronger pass after MAIN pin — assist into next engine prep. */
+  "assist",
+  /** Ball to Field FSM (Reality queue / trades) — human Commit still required. */
+  "field_ready",
 ] as const;
 
 export type RimvioEngineEventKind = (typeof RIMVIO_ENGINE_EVENT_KINDS)[number];

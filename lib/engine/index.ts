@@ -28,6 +28,7 @@ export {
 } from "@/lib/engine/engine-package";
 
 export {
+  consumePendingEnginePassOnEvent,
   detectRimvioEnginesForMessage,
   getRimvioEngineById,
   getRimvioEnginePackageById,
@@ -36,6 +37,43 @@ export {
   planRimvioEngineTurn,
   readRimvioEngineRunState,
 } from "@/lib/engine/engine-registry";
+
+export {
+  CONTEXT_ENGINE_PASS_QUEUE_META_KEY,
+  clearPendingEnginePass,
+  queueEngineTeamPassAfterTouch,
+  readPendingEnginePass,
+  type EngineTeamPassPendingV1,
+} from "@/lib/engine/team-collab/engine-pass-queue";
+export {
+  CONTEXT_FIELD_HANDOFF_META_KEY,
+  clearPendingFieldHandoff,
+  queueEngineFieldHandoffAfterMain,
+  readPendingFieldHandoff,
+  type EngineFieldHandoffPendingV1,
+} from "@/lib/engine/team-collab/field-handoff-queue";
+export {
+  CONTEXT_MULTI_OPERATOR_APPROVAL_META_KEY,
+  isOperatorPreparedForHumanCommit,
+  isTradeDualApproved,
+  readMultiOperatorApproval,
+  stampMultiOperatorRole,
+  MULTI_OPERATOR_ROLES,
+  type MultiOperatorRole,
+  type MultiOperatorApprovalWireV1,
+} from "@/lib/engine/team-collab/multi-operator-approval";
+export {
+  readTeamPitchStatus,
+  type TeamPitchStatusV1,
+} from "@/lib/engine/team-collab/read-team-pitch-status";
+export {
+  appendEngineEventWithTeamPass,
+} from "@/lib/engine/team-collab/append-engine-event-with-team-pass";
+export {
+  DEFAULT_TRAVEL_ENGINE_PASS_GRAPH,
+  resolveDefaultPassReceiver,
+} from "@/lib/engine/team-collab/default-pass-graph";
+export { openPendingFieldHandoffClient } from "@/lib/engine/team-collab/open-field-handoff-client";
 
 export { resolveEngineOperatorTurn } from "@/lib/engine/resolve-engine-operator-turn";
 

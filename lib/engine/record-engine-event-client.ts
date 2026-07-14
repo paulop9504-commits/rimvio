@@ -1,7 +1,7 @@
 "use client";
 
 import { applyEngineTurnToExecutionPlanMetadata } from "@/lib/context-execution/apply-engine-turn-to-plan";
-import { appendEngineEventToMetadata } from "@/lib/engine/engine-event-metadata";
+import { appendEngineEventWithTeamPass } from "@/lib/engine/team-collab/append-engine-event-with-team-pass";
 import type { RimvioEngineEventKind } from "@/lib/engine/engine-event-metadata";
 import type { RimvioEngineId } from "@/lib/engine/engine-types";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
@@ -20,13 +20,13 @@ export function recordEngineEventClient(input: {
     return;
   }
 
-  let metadata = appendEngineEventToMetadata({
+  let metadata = appendEngineEventWithTeamPass({
     metadata: event.metadata ?? {},
     engineId: input.engineId,
     kind: input.kind,
     executionNodeId: input.executionNodeId,
     payload: input.payload,
-  });
+  }).metadata;
 
   const lastError =
     input.lastError ??

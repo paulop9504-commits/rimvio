@@ -12,6 +12,7 @@ import { writeTripIntakePartial } from "@/lib/globe/trip-intake/write-trip-intak
 import { writeTripIntakeSlots } from "@/lib/globe/trip-intake/write-trip-intake-slots";
 import type { TripIntakeState } from "@/lib/globe/trip-intake/types";
 import { recordEngineLifecycleClient } from "@/lib/engine/record-engine-lifecycle";
+import { openPendingFieldHandoffClient } from "@/lib/engine/team-collab/open-field-handoff-client";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 
 export type RunOneShotFlightPrepResult = {
@@ -148,6 +149,7 @@ export function commitOneShotFlightMainClient(input: {
       provider: booking.provider,
     },
   });
+  openPendingFieldHandoffClient(input.contextEventId);
 
   return {
     committed: true,

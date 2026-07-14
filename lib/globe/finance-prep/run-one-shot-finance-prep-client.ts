@@ -2,6 +2,7 @@
 
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { recordEngineLifecycleClient } from "@/lib/engine/record-engine-lifecycle";
+import { openPendingFieldHandoffClient } from "@/lib/engine/team-collab/open-field-handoff-client";
 import {
   planOneShotFinancePrep,
   type OneShotFinancePrepPlan,
@@ -89,6 +90,7 @@ export function commitOneShotFinanceMainClient(input: {
       paymentIntent: prep.financeState.paymentIntent,
     },
   });
+  openPendingFieldHandoffClient(input.contextEventId);
 
   return { committed: true, budgetBand };
 }

@@ -4,6 +4,7 @@
 
 import { buildEngineEventTimelineRows, engineEventPriority } from "@/lib/engine/format-engine-event-timeline";
 import type { RimvioEngineEventV1 } from "@/lib/engine/engine-event-metadata";
+import { readTeamPitchStatus } from "@/lib/engine/team-collab/read-team-pitch-status";
 import type { ContextCapabilityInvocationV1 } from "@/lib/marketplace/context-capability-invocation-metadata";
 import {
   buildCapabilityInvocationTimelineRows,
@@ -12,7 +13,7 @@ import {
 import { buildHubActionTimelineRows } from "@/lib/globe/resource/format-hub-action-timeline";
 import type { HubAction } from "@/lib/globe/resource/hub-action-record";
 
-export type ContextHubTimelineRowKind = "hub" | "engine" | "capability";
+export type ContextHubTimelineRowKind = "hub" | "engine" | "capability" | "pitch";
 
 export type ContextHubTimelineRow = {
   id: string;
@@ -49,6 +50,7 @@ export function buildContextHubTimelineRows(
   engineEvents: readonly RimvioEngineEventV1[],
   capabilityInvocations: readonly ContextCapabilityInvocationV1[] = [],
   max = 5,
+  metadata?: Record<string, unknown> | null,
 ): ContextHubTimelineRow[] {
   const hubById = new Map(hubLog.map((action) => [action.actionId, action]));
 
@@ -94,7 +96,22 @@ export function buildContextHubTimelineRows(
     priority: capabilityInvocationPriority(invocationById.get(row.id)!),
   }));
 
-  return [...hubRows, ...engineRows, ...capabilityRows]
+  const pitch = metadata ? readTeamPitchStatus(metadata) : null;
+  const pitchRows: TimelineCandidate[] =
+    pitch && pitch.labelKo !== "볼: 지구"
+      ? [
+          {
+            id: "pitch:ball",
+            labelKo: pitch.labelKo,
+            status: "success" as const,
+            atIso: new Date().toISOString(),
+            kind: "pitch" as const,
+            priority: -1,
+          },
+        ]
+      : [];
+
+  return [...pitchRows, ...hubRows, ...engineRows, ...capabilityRows]
     .sort((left, right) => {
       const priority = left.priority - right.priority;
       if (priority !== 0) {

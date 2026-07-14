@@ -44,7 +44,7 @@ const reserve = createReserveAction({
 
 const merged = buildContextHubTimelineRows([reserve], events);
 assert.ok(merged.length >= 2);
-assert.ok(merged.every((row) => row.kind === "hub" || row.kind === "engine"));
+assert.ok(merged.every((row) => row.kind === "hub" || row.kind === "engine" || row.kind === "pitch"));
 assert.ok(
   merged.some((row) => row.labelKo === "숙소 확보"),
   "hub reserve row present",

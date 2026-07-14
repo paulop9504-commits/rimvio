@@ -2,6 +2,7 @@
 
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { recordEngineLifecycleClient } from "@/lib/engine/record-engine-lifecycle";
+import { openPendingFieldHandoffClient } from "@/lib/engine/team-collab/open-field-handoff-client";
 import {
   planOneShotTransitPrep,
   type OneShotTransitPrepPlan,
@@ -86,6 +87,7 @@ export function commitOneShotTransitMainClient(input: {
     kind: "main_selected",
     payload: { destination },
   });
+  openPendingFieldHandoffClient(input.contextEventId);
 
   return { committed: true, destination };
 }

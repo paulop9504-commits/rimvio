@@ -157,3 +157,17 @@ export function resolvePlanStepHandoffOffer(
     ...built,
   };
 }
+
+/** Team pass / assist — seed + hint for a known receiver engine (no Plan required). */
+export function resolveEngineHandoffSeed(
+  engineId: RimvioEngineId,
+): { seedUtterance: string; hintKo: string } | null {
+  const built = buildHandoffForEngine(engineId);
+  if (!built) {
+    return null;
+  }
+  return {
+    seedUtterance: built.seedUtterance,
+    hintKo: built.hintKo,
+  };
+}

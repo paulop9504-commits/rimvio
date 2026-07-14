@@ -5,6 +5,7 @@ import type { ContextConditionAnchorPinOutcome } from "@/lib/globe/context-condi
 import { pinContextConditionRecommendation } from "@/lib/globe/context-condition-ai/pin-context-condition-recommendation";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { recordEngineLifecycleClient, recordEngineScoutFailureClient } from "@/lib/engine/record-engine-lifecycle";
+import { openPendingFieldHandoffClient } from "@/lib/engine/team-collab/open-field-handoff-client";
 import { resolveLodgingRoomCardStep } from "@/lib/globe/hub-checkout/resolve-lodging-hub-checkout-session";
 import { planOneShotLodgingPrep } from "@/lib/globe/lodging-prep/plan-one-shot-lodging-prep";
 import { resolveLodgingPrepMainRecommendation } from "@/lib/globe/lodging-prep/resolve-lodging-prep-main-recommendation";
@@ -113,6 +114,11 @@ export function commitOneShotLodgingMainOfferClient(input: {
       expressOpened,
     },
   });
+
+  // Globe express checkout already owns one-answer UX; else pass ball to Field queue.
+  if (!expressOpened) {
+    openPendingFieldHandoffClient(input.contextEventId);
+  }
 
   return {
     committed: true,

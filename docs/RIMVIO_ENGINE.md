@@ -3,7 +3,7 @@
 **Status:** v0 · L3 Domain Executor packages  
 **Wire SSOT:** `lib/engine/`  
 **Concept canon:** `docs/RIMVIO_STACK_ALIGNMENT.md`  
-**Related:** `docs/RIMVIO_CONTEXT_OS_ARCHITECTURE.md` · `docs/RIMVIO_CONTAINER_AI.md`
+**Related:** `docs/RIMVIO_CONTEXT_OS_ARCHITECTURE.md` · `docs/RIMVIO_CONTAINER_AI.md` · [`docs/RIMVIO_TEAM_COLLABORATION.md`](./RIMVIO_TEAM_COLLABORATION.md) (pass / assist)
 
 ---
 

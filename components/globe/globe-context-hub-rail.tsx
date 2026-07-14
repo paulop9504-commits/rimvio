@@ -573,7 +573,13 @@ export function GlobeContextHubRail({
     const capabilityInvocations = readContextCapabilityInvocationsFromMetadata(
       activeEvent?.metadata,
     );
-    return buildContextHubTimelineRows(hubActionLog, engineEvents, capabilityInvocations);
+    return buildContextHubTimelineRows(
+      hubActionLog,
+      engineEvents,
+      capabilityInvocations,
+      5,
+      activeEvent?.metadata,
+    );
   }, [activeEvent, hubActionLog, revision]);
 
   const engineStoreRows = useMemo(() => {

@@ -10,9 +10,11 @@ import { commitContextExecutionPlanFromApproval } from "@/lib/context-execution/
 import { readContextExecutionPlanFromEvent } from "@/lib/context-execution/context-execution-plan-metadata";
 import { offerPlanStepHandoffAfterAdvance } from "@/lib/context-execution/offer-plan-step-handoff-client";
 import { persistContextExecutionPlanClientAsync } from "@/lib/context-execution/persist-context-execution-plan-client";
+import { stampMultiOperatorRole } from "@/lib/engine/team-collab/multi-operator-approval";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 import type { RealityQueueItemV1 } from "@/lib/reality-queue/types";
 import { holdAllRealityQueueItems } from "@/lib/reality-queue/reality-queue-hold-store";
+import { commitEventUpsert } from "@/lib/source-of-truth/commit-truth";
 
 export type CommitRealityQueueResult =
   | {
@@ -75,6 +77,17 @@ export async function commitRealityQueueClient(input: {
     });
     if (!persisted.ok) {
       return { ok: false, reason: "persist_failed" };
+    }
+    const stampedEvent = findLifeEventCandidate(eventId);
+    if (stampedEvent?.metadata) {
+      commitEventUpsert({
+        ...stampedEvent,
+        metadata: stampMultiOperatorRole({
+          metadata: stampedEvent.metadata,
+          role: "human",
+        }),
+        updatedAt: new Date().toISOString(),
+      });
     }
     offerPlanStepHandoffAfterAdvance({
       contextEventId: eventId,
