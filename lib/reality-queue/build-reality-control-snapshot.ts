@@ -108,7 +108,7 @@ function buildItemsFromPlans(
           sourceRef: step.stepId,
           engineId: step.engineId,
           kind,
-          detailKo: plan.goalKo,
+          detailKo: null,
         }),
       );
     }

@@ -183,6 +183,123 @@ function QueueRow({
   );
 }
 
+function folderAggregateStatus(
+  items: readonly RealityQueueItemV1[],
+): RealityQueueItemStatus {
+  if (items.some((item) => item.status === "blocked")) {
+    return "blocked";
+  }
+  if (items.some((item) => item.status === "running")) {
+    return "running";
+  }
+  if (items.some((item) => item.status === "needs_review")) {
+    return "needs_review";
+  }
+  if (items.some((item) => item.status === "pending")) {
+    return "pending";
+  }
+  if (items.every((item) => item.status === "ready")) {
+    return "ready";
+  }
+  return "pending";
+}
+
+function ContextFolderCard({
+  folder,
+  field,
+  expanded,
+  onToggle,
+  onSelectItem,
+}: {
+  folder: {
+    folderId: string;
+    domain: string;
+    labelKo: string;
+    domainLabelKo: string;
+    items: readonly RealityQueueItemV1[];
+  };
+  field: ReturnType<typeof useCopy>["globe"]["field"];
+  expanded: boolean;
+  onToggle: () => void;
+  onSelectItem: (item: RealityQueueItemV1) => void;
+}) {
+  const aggregate = folderAggregateStatus(folder.items);
+  const tone = statusTone(aggregate);
+  const stepPreview = folder.items
+    .slice(0, 3)
+    .map((item) => item.labelKo)
+    .join(" · ");
+  const more =
+    folder.items.length > 3 ? ` +${folder.items.length - 3}` : "";
+
+  return (
+    <div
+      className="overflow-hidden rounded-[1.35rem] bg-white shadow-[0_8px_28px_rgba(15,23,42,0.06)] ring-1 ring-black/[0.04]"
+      data-reality-queue-folder={folder.folderId}
+      data-reality-queue-folder-domain={folder.domain}
+      data-reality-queue-folder-expanded={expanded ? "1" : "0"}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-start gap-3 px-3.5 py-3.5 text-left active:bg-black/[0.02]"
+        aria-expanded={expanded}
+        aria-label={
+          expanded
+            ? field.realityQueueFolderCollapse
+            : field.realityQueueFolderExpand
+        }
+      >
+        <span
+          className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#f5f7fa] ring-1 ring-black/[0.06]"
+          aria-hidden
+        >
+          <span className="text-[14px] leading-none text-[#4e5968]">
+            {expanded ? "▾" : "▸"}
+          </span>
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#8b95a1]">
+            {folder.domainLabelKo}
+          </p>
+          <div className="mt-0.5 flex items-start justify-between gap-3">
+            <p className="truncate text-[15px] font-semibold tracking-tight text-[#191f28]">
+              {folder.labelKo}
+            </p>
+            <span
+              className={cn(
+                "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ring-1",
+                tone.pill,
+              )}
+            >
+              <span className={cn("size-1.5 rounded-full", tone.dot)} aria-hidden />
+              {statusLabel(aggregate, field)}
+            </span>
+          </div>
+          <p className="mt-1 truncate text-[12px] text-[#8b95a1]">
+            {field.realityQueueFolderSteps(folder.items.length)}
+            {stepPreview ? ` · ${stepPreview}${more}` : ""}
+          </p>
+        </div>
+      </button>
+      {expanded ? (
+        <ul className="ml-3 divide-y divide-[#eef1f4] border-l-2 border-l-[#e8ecf0] border-t border-t-[#eef1f4]">
+          {folder.items.map((item, index) => (
+            <QueueRow
+              key={item.itemId}
+              item={item}
+              field={field}
+              index={index}
+              hideContextLabel
+              onSelect={onSelectItem}
+            />
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
 function CommitReceiptCard({
   receipt,
   field,
@@ -273,6 +390,9 @@ export function RealityControlCenterPanel({
   const [revision, setRevision] = useState(0);
   const [committing, setCommitting] = useState(false);
   const [selectedItem, setSelectedItem] = useState<RealityQueueItemV1 | null>(null);
+  const [expandedFolderIds, setExpandedFolderIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   const [receipt, setReceipt] = useState<RealityCommitReceiptV1 | null>(() =>
     readRealityCommitReceipt(),
   );
@@ -562,36 +682,24 @@ export function RealityControlCenterPanel({
                     items: snapshot.items,
                   },
                 ]).map((folder) => (
-                  <div
+                  <ContextFolderCard
                     key={folder.folderId}
-                    className="overflow-hidden rounded-[1.35rem] bg-white shadow-[0_8px_28px_rgba(15,23,42,0.06)] ring-1 ring-black/[0.04]"
-                    data-reality-queue-folder={folder.folderId}
-                    data-reality-queue-folder-domain={folder.domain}
-                  >
-                    <div className="border-b border-[#eef1f4] px-3.5 py-2.5">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#8b95a1]">
-                        {folder.domainLabelKo}
-                        <span className="ml-1.5 font-medium normal-case tracking-normal text-[#b0b8c1]">
-                          {folder.items.length}
-                        </span>
-                      </p>
-                      <p className="mt-0.5 truncate text-[14px] font-semibold tracking-tight text-[#191f28]">
-                        {folder.labelKo}
-                      </p>
-                    </div>
-                    <ul className="divide-y divide-[#eef1f4] border-l-2 border-[#e8ecf0] ml-3">
-                      {folder.items.map((item, index) => (
-                        <QueueRow
-                          key={item.itemId}
-                          item={item}
-                          field={field}
-                          index={index}
-                          hideContextLabel
-                          onSelect={setSelectedItem}
-                        />
-                      ))}
-                    </ul>
-                  </div>
+                    folder={folder}
+                    field={field}
+                    expanded={expandedFolderIds.has(folder.folderId)}
+                    onToggle={() => {
+                      setExpandedFolderIds((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(folder.folderId)) {
+                          next.delete(folder.folderId);
+                        } else {
+                          next.add(folder.folderId);
+                        }
+                        return next;
+                      });
+                    }}
+                    onSelectItem={setSelectedItem}
+                  />
                 ))}
               </div>
             )}
