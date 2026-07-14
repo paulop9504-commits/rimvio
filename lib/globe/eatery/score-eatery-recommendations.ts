@@ -82,6 +82,16 @@ function expandEateryFocusTokens(focusMatch: string | null | undefined): string[
       expanded.add(token.toLowerCase());
     }
   }
+  if (/스시|초밥|sushi|寿司|すし/iu.test(blob)) {
+    for (const token of ["스시", "초밥", "sushi", "寿司", "すし", "おまかせ", "omakase"]) {
+      expanded.add(token.toLowerCase());
+    }
+  }
+  if (/라멘|ramen|ラーメン/iu.test(blob)) {
+    for (const token of ["라멘", "ramen", "ラーメン"]) {
+      expanded.add(token.toLowerCase());
+    }
+  }
   for (const token of foodBrandMatchAliases(focusMatch)) {
     expanded.add(token.toLowerCase());
   }

@@ -8,6 +8,7 @@ import { isNaverSearchConfigured } from "@/lib/naver/config";
 import { fetchNaverLocalPlaceCandidates } from "@/lib/naver/local-to-place-candidate";
 import {
   DEFAULT_MIN_PLACE_REVIEW_COUNT,
+  filterByMinReviewCountProgressive,
   passesMinReviewCountGate,
   readGoogleUserRatingsTotal,
 } from "@/lib/places/min-review-count-gate";
@@ -361,28 +362,37 @@ export function filterPlaceCandidates(
 ): PlaceCandidate[] {
   const minReview =
     criteria.min_review_count ?? DEFAULT_MIN_PLACE_REVIEW_COUNT;
-  return candidates
+  const rated = candidates
     .filter((place) => place.rating >= criteria.min_rating)
-    .filter((place) =>
-      passesMinReviewCountGate({
-        reviewCount: place.review_count,
-        source: place.place_id.startsWith("mock-")
-          ? "mock"
-          : place.naver_category
-            ? "naver_local"
-            : place.google_types?.length
-              ? "google_places"
-              : null,
-        minCount: minReview,
-      }),
-    )
     .filter((place) => (criteria.only_open_now ? place.open_now : true))
     .filter((place) => {
       if (criteria.vibe === "unknown") {
         return true;
       }
       return place.vibes.includes(criteria.vibe) || place.vibes.includes("unknown");
-    })
+    });
+  const reviewFiltered = filterByMinReviewCountProgressive(rated, (place) => ({
+    reviewCount: place.review_count,
+    source: place.place_id.startsWith("mock-")
+      ? "mock"
+      : place.naver_category
+        ? "naver_local"
+        : place.google_types?.length
+          ? "google_places"
+          : null,
+  })).filter((place) => {
+    // Honor explicit higher floor when caller set min_review_count > default soft.
+    if (minReview > DEFAULT_MIN_PLACE_REVIEW_COUNT) {
+      return passesMinReviewCountGate({
+        reviewCount: place.review_count,
+        source: place.google_types?.length ? "google_places" : "naver_local",
+        minCount: minReview,
+        allowUnknown: false,
+      });
+    }
+    return true;
+  });
+  return reviewFiltered
     .sort((a, b) => b.rating - a.rating)
     .slice(0, criteria.max_results);
 }

@@ -20,7 +20,7 @@ import type {
   RestaurantSearchResult,
 } from "@/lib/restaurant-search/types";
 import {
-  passesMinReviewCountGate,
+  filterByMinReviewCountProgressive,
   readGoogleUserRatingsTotal,
 } from "@/lib/places/min-review-count-gate";
 
@@ -719,7 +719,10 @@ export async function searchRestaurants(
 
   const specialtyDessertQuery = SPECIALTY_DESSERT_PATTERN.test(providerQuery);
   const foodBrandQuery = FOOD_BRAND_QUERY_PATTERN.test(providerQuery);
-  const preferTextSearch = specialtyDessertQuery || foodBrandQuery;
+  /** Cuisine keywords (초밥·라멘…) need Text Search — Nearby alone returns generic 맛집. */
+  const cuisineTextSearch = Boolean(intent.cuisine?.trim());
+  const preferTextSearch =
+    specialtyDessertQuery || foodBrandQuery || cuisineTextSearch;
   const [naverCandidates, googleCandidates, bibCandidates, textCandidates] =
     await Promise.all([
     shouldUseNaver ? searchNaverLocal({
@@ -757,7 +760,7 @@ export async function searchRestaurants(
           query: providerQuery,
           origin,
           maxResults: Math.max(maxResults, 8),
-          radiusM: Math.max(radiusM, 8000),
+          radiusM: Math.max(radiusM, cuisineTextSearch ? 12000 : 8000),
           language,
         })
       : Promise.resolve<RestaurantSearchCandidate[]>([]),
@@ -770,56 +773,53 @@ export async function searchRestaurants(
     placeProfile,
   }).filter((candidate) => passesExcludes(candidate, intent.excludeKeywords));
   candidates = candidates.filter((candidate) => {
-    if (
-      !passesMinReviewCountGate({
-        reviewCount: candidate.reviewCount,
-        source: candidate.source,
-      })
-    ) {
-      return false;
-    }
     if (!isCanonicalPlaceCountryCompatible(placeProfile, candidate.address ?? candidate.name)) {
       return false;
     }
     if (isCandidateRegionMismatch(candidate, countryBias)) {
       return false;
     }
-    if (isCandidateTooFar(candidate, origin, radiusM)) {
+    const distanceCapM = cuisineTextSearch
+      ? Math.max(radiusM, 12_000)
+      : radiusM;
+    if (isCandidateTooFar(candidate, origin, distanceCapM)) {
       return false;
     }
     return true;
   });
+  candidates = filterByMinReviewCountProgressive(candidates, (candidate) => ({
+    reviewCount: candidate.reviewCount,
+    source: candidate.source,
+  }));
   if (intent.openNowOnly) {
     candidates = candidates.filter((candidate) => candidate.openNow !== false);
   }
 
-  const bibInRadius = bibCandidates.filter((candidate) => {
-    if (!passesExcludes(candidate, intent.excludeKeywords)) {
-      return false;
-    }
-    if (
-      !passesMinReviewCountGate({
-        reviewCount: candidate.reviewCount,
-        source: candidate.source,
-      })
-    ) {
-      return false;
-    }
-    if (!isCanonicalPlaceCountryCompatible(placeProfile, candidate.address ?? candidate.name)) {
-      return false;
-    }
-    if (isCandidateRegionMismatch(candidate, countryBias)) {
-      return false;
-    }
-    // Bib density is sparse — allow a wider band than the local nearby radius.
-    if (isCandidateTooFar(candidate, origin, Math.max(radiusM, 12000))) {
-      return false;
-    }
-    if (intent.openNowOnly && candidate.openNow === false) {
-      return false;
-    }
-    return true;
-  });
+  const bibInRadius = filterByMinReviewCountProgressive(
+    bibCandidates.filter((candidate) => {
+      if (!passesExcludes(candidate, intent.excludeKeywords)) {
+        return false;
+      }
+      if (!isCanonicalPlaceCountryCompatible(placeProfile, candidate.address ?? candidate.name)) {
+        return false;
+      }
+      if (isCandidateRegionMismatch(candidate, countryBias)) {
+        return false;
+      }
+      // Bib density is sparse — allow a wider band than the local nearby radius.
+      if (isCandidateTooFar(candidate, origin, Math.max(radiusM, 12000))) {
+        return false;
+      }
+      if (intent.openNowOnly && candidate.openNow === false) {
+        return false;
+      }
+      return true;
+    }),
+    (candidate) => ({
+      reviewCount: candidate.reviewCount,
+      source: candidate.source,
+    }),
+  );
 
   candidates = candidates
     .map((candidate) => ({

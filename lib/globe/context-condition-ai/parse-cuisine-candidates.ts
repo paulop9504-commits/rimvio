@@ -160,3 +160,43 @@ export function isSpecialtyDessertEateryFocus(
     text,
   );
 }
+
+/** Concrete dish/cuisine focus — needs Text Search + locale query variants. */
+export function isConcreteCuisineEateryFocus(
+  focus: string | null | undefined,
+): boolean {
+  const text = focus?.trim() ?? "";
+  if (!text) {
+    return false;
+  }
+  return CUISINE_CATALOG.some((row) => row.pattern.test(text));
+}
+
+/** JP/EN locale aliases for Google Text search (초밥 → 寿司). */
+export function cuisineLocaleQueryHints(
+  focus: string | null | undefined,
+): readonly string[] {
+  const text = (focus ?? "").toLowerCase();
+  if (/스시|초밥|sushi/iu.test(text)) {
+    return ["寿司", "sushi", "すし", "초밥"];
+  }
+  if (/라멘|ramen|ラーメン/iu.test(text)) {
+    return ["ラーメン", "ramen", "라멘"];
+  }
+  if (/야키토리|yakitori|焼き鳥/iu.test(text)) {
+    return ["焼き鳥", "yakitori"];
+  }
+  if (/야키니쿠|yakiniku|焼肉/iu.test(text)) {
+    return ["焼肉", "yakiniku"];
+  }
+  if (/우동|udon|うどん/iu.test(text)) {
+    return ["うどん", "udon"];
+  }
+  if (/오코노미야키|okonomiyaki/iu.test(text)) {
+    return ["お好み焼き", "okonomiyaki"];
+  }
+  if (/타코야키|takoyaki/iu.test(text)) {
+    return ["たこ焼き", "takoyaki"];
+  }
+  return [];
+}

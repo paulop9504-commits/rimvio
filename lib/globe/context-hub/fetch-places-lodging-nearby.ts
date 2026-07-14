@@ -9,7 +9,7 @@ import { googlePlacesApiKey, isGooglePlacesConfigured } from "@/lib/locate/googl
 import type { ContextLodgingInventoryRow } from "@/lib/globe/context-hub/lodging-resource-types";
 import { buildGoogleMapsPlaceHref } from "@/lib/resolvers/deep-links";
 import {
-  passesMinReviewCountGate,
+  filterByMinReviewCountProgressive,
   readGoogleUserRatingsTotal,
 } from "@/lib/places/min-review-count-gate";
 
@@ -161,7 +161,7 @@ export async function fetchPlacesLodgingNearby(
           },
         });
 
-    const candidates = (response.data.results ?? [])
+    const mapped = (response.data.results ?? [])
       .map((result) => {
         const lat = result.geometry?.location?.lat;
         const lng = result.geometry?.location?.lng;
@@ -180,14 +180,6 @@ export async function fetchPlacesLodgingNearby(
         const reviewCount = readGoogleUserRatingsTotal(
           (result as { user_ratings_total?: number }).user_ratings_total,
         );
-        if (
-          !passesMinReviewCountGate({
-            reviewCount,
-            source: "google_places",
-          })
-        ) {
-          return null;
-        }
         return {
           placeId,
           name,
@@ -211,8 +203,15 @@ export async function fetchPlacesLodgingNearby(
           photoConfidence: null,
         } as ContextLodgingInventoryRow;
       })
-      .filter((row): row is ContextLodgingInventoryRow => row !== null)
-      .slice(0, maxResults);
+      .filter((row): row is ContextLodgingInventoryRow => row !== null);
+
+    const candidates = filterByMinReviewCountProgressive(
+      mapped,
+      (row) => ({
+        reviewCount: row.reviewCount,
+        source: row.provider ?? "google_places",
+      }),
+    ).slice(0, maxResults);
 
     if (candidates.length === 0) {
       return [];

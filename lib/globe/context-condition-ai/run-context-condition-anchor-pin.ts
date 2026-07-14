@@ -32,6 +32,8 @@ import {
 import { writeContextConditionLastBatch } from "@/lib/globe/context-condition-ai/context-condition-last-batch-store";
 import {
   isSpecialtyDessertEateryFocus,
+  isConcreteCuisineEateryFocus,
+  cuisineLocaleQueryHints,
   parseSingleCuisineFocus,
 } from "@/lib/globe/context-condition-ai/parse-cuisine-candidates";
 import { parseUtteranceIntentSlots } from "@/lib/globe/context-condition-ai/utterance-intent-slots";
@@ -484,9 +486,11 @@ export async function runContextConditionAnchorPin(
     });
     const area = searchOrigin.regionLabel.trim() || "근처";
     const specialtyDessert = isSpecialtyDessertEateryFocus(eateryFocus);
+    const concreteCuisine = isConcreteCuisineEateryFocus(eateryFocus);
     const brandAliases = brandEntity
       ? foodBrandMatchAliases(brandEntity.queryFocus)
       : [];
+    const localeHints = cuisineLocaleQueryHints(eateryFocus);
     const eateryQueries = brandEntity
       ? Array.from(
           new Set([
@@ -505,7 +509,19 @@ export async function runContextConditionAnchorPin(
               `${area} 抹茶 ソフトクリーム`,
             ]),
           ).slice(0, 4)
-        : [eateryQuery];
+        : concreteCuisine
+          ? Array.from(
+              new Set([
+                eateryQuery,
+                `${area} ${eateryFocus}`,
+                ...localeHints.map((hint) => `${area} ${hint}`),
+              ]),
+            ).slice(0, 5)
+          : [eateryQuery];
+
+    const eaterySearchRadiusM = concreteCuisine || specialtyDessert || brandEntity
+      ? Math.max(radiusM, 3500)
+      : radiusM;
 
     const loadedBatches = await Promise.all(
       eateryQueries.map((query) =>
@@ -515,7 +531,7 @@ export async function runContextConditionAnchorPin(
           lat: searchOrigin.lat,
           lng: searchOrigin.lng,
           maxResults: exploration.eateryMaxResults,
-          radiusM,
+          radiusM: eaterySearchRadiusM,
         }),
       ),
     );
