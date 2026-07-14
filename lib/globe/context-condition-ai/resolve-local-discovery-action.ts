@@ -353,6 +353,11 @@ function resolveDiscoveryDomainSpec(input: {
   }
 
   if (isInstantEaterySearch(input.text)) {
+    const cuisineCandidates = parseCuisineCandidates(input.text);
+    // Multiple cuisines → ask menuFocus; do not one-shot broad restaurant scout.
+    if (cuisineCandidates.length > 1 && !input.answers.menuFocus) {
+      return null;
+    }
     const transport =
       (input.answers.transport as LocalDiscoveryTransport | undefined) ??
       parseTransport(input.text) ??
