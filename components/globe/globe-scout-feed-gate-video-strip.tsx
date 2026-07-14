@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Play } from "lucide-react";
 import type { PlaceReviewVideo } from "@/lib/globe/place-review-video";
 import type { ScoutFeedGateVideoContextWire } from "@/lib/globe/assistant/context-agent-compose-thread-store";
+import { dispatchPlaceMapYoutubeOpen } from "@/lib/globe/place-map-youtube-bridge";
 import { useAppLocale } from "@/hooks/use-copy";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
@@ -27,6 +28,32 @@ function apiUrl(
     params.set("locale", input.locale.trim());
   }
   return `/api/globe/place-review-video?${params.toString()}`;
+}
+
+function playOnMapOrInline(input: {
+  video: PlaceReviewVideo;
+  videoContext: ScoutFeedGateVideoContextWire;
+  fallback: () => void;
+}): void {
+  const { video, videoContext, fallback } = input;
+  if (
+    Number.isFinite(videoContext.lat) &&
+    Number.isFinite(videoContext.lng) &&
+    video.embedUrl.trim()
+  ) {
+    dispatchPlaceMapYoutubeOpen({
+      embedUrl: video.embedUrl,
+      videoId: video.videoId,
+      title: video.title,
+      channelTitle: video.channelTitle,
+      thumbnailUrl: video.thumbnailUrl,
+      lat: videoContext.lat,
+      lng: videoContext.lng,
+      placeLabel: videoContext.name,
+    });
+    return;
+  }
+  fallback();
 }
 
 export function GlobeScoutFeedGateVideoStrip({
@@ -101,7 +128,13 @@ export function GlobeScoutFeedGateVideoStrip({
                 <button
                   key={video.videoId}
                   type="button"
-                  onClick={() => setPlayer(video)}
+                  onClick={() =>
+                    playOnMapOrInline({
+                      video,
+                      videoContext,
+                      fallback: () => setPlayer(video),
+                    })
+                  }
                   className="relative h-16 w-24 shrink-0 overflow-hidden rounded-xl bg-[#e8e8ed] ring-1 ring-black/[0.06] active:scale-[0.98]"
                   aria-label={copy.globe.videoBranchPlayAria(video.title ?? "")}
                 >

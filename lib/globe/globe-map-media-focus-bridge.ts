@@ -2,7 +2,11 @@
 
 export const GLOBE_MAP_MEDIA_FOCUS = "rimvio:globe-map-media-focus";
 
-export type GlobeMapMediaFocusSource = "lodging" | "video" | "resource_reel";
+export type GlobeMapMediaFocusSource =
+  | "lodging"
+  | "video"
+  | "resource_reel"
+  | "place_youtube";
 
 export type GlobeMapMediaFocusDetail = {
   open: boolean;

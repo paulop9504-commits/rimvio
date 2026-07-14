@@ -20,6 +20,7 @@ import { GlobeContextConditionPromptFrame } from "@/components/globe/globe-conte
 import { GlobeContextAgentConnector } from "@/components/globe/globe-context-agent-connector";
 import { GlobeResourceReelStage } from "@/components/globe/globe-resource-reel-stage";
 import { GlobeIntelligentDiscoveryStage } from "@/components/globe/globe-intelligent-discovery-stage";
+import { GlobePlaceMapYoutubeStage } from "@/components/globe/globe-place-map-youtube-stage";
 import { useIntelligentDiscoveryFeedFocus } from "@/lib/globe/intelligent-pin/use-intelligent-discovery-feed-focus";
 import { dispatchGlobeResourceReelFocus } from "@/lib/globe/resource-reel";
 import { subscribeGlobePlaceOntologyFocus } from "@/lib/globe/place-ontology/globe-place-ontology-focus-bridge";
@@ -4376,6 +4377,7 @@ function GlobeHomeBody() {
         globeRef={globeRef}
         contextEventId={hubEventId}
       />
+      <GlobePlaceMapYoutubeStage globeRef={globeRef} />
       <GlobeTrendBridgeLayer
         visible={trendBridgeLayerActive && !globeRenderSuspended}
         bridgeId={trendBridgeSettings.activeBridgeId}
