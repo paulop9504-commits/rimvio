@@ -79,8 +79,14 @@ export {
 export {
   parseUtteranceIntentSlots,
   utteranceHasConcreteDishSlot,
+  normalizeScoutUtterance,
   type UtteranceIntentSlots,
 } from "@/lib/globe/context-condition-ai/utterance-intent-slots";
+export {
+  parseFoodBrandFocus,
+  hasFoodBrandCue,
+} from "@/lib/globe/context-condition-ai/parse-food-brand-focus";
+export { resolveDiscoveryOriginFromUtterance } from "@/lib/globe/context-condition-ai/resolve-discovery-origin-from-utterance";
 export {
   buildContextConditionDiscoveryOverlay,
   resolveLocalDiscoveryRouteArcAltitude,

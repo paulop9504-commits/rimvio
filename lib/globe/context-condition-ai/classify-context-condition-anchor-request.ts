@@ -1,6 +1,9 @@
 import type { ContextLodgingInventoryRow } from "@/lib/globe/context-hub/lodging-resource-types";
 import { hasEateryDomainCue } from "@/lib/globe/domain-cues/eatery-domain-cues";
 import { hasLodgingDomainCue } from "@/lib/globe/domain-cues/lodging-domain-cues";
+import { hasFoodBrandCue } from "@/lib/globe/context-condition-ai/parse-food-brand-focus";
+import { utteranceHasConcreteDishSlot } from "@/lib/globe/context-condition-ai/utterance-intent-slots";
+import { parseCuisineCandidates } from "@/lib/globe/context-condition-ai/parse-cuisine-candidates";
 
 export type ContextConditionAnchorPinIntent = {
   lodgingSimilar: boolean;
@@ -17,6 +20,15 @@ const BOTH_HINT = /꽂|배치|찾|추천|주변|nearby|pin/iu;
 const FOOD_ADJACENT_HINT =
   /^(?:음료|음료수|드링크|drink|beverage|커피|coffee|카페|cafe|차|주스|juice|스무디|smoothie|디저트|dessert|베이커리|bakery|간식|snack)$/iu;
 
+function hasConcreteEateryIntent(text: string): boolean {
+  return (
+    hasFoodBrandCue(text) ||
+    utteranceHasConcreteDishSlot(text) ||
+    parseCuisineCandidates(text).length > 0 ||
+    hasEateryDomainCue(text)
+  );
+}
+
 /** Parse anchor prompt into lodging/eatery condition axes — no Globe composer routing. */
 export function classifyContextConditionAnchorRequest(
   message: string | null | undefined,
@@ -27,7 +39,7 @@ export function classifyContextConditionAnchorRequest(
   }
   const lodgingSimilar =
     hasLodgingDomainCue(text) || LODGING_SIMILAR_PRICE_HINT.test(text);
-  const eateryNearby = hasEateryDomainCue(text);
+  const eateryNearby = hasConcreteEateryIntent(text);
   const lodgingMode = LODGING_SIMILAR_PRICE_HINT.test(text)
     ? "similar_price"
     : lodgingSimilar && LODGING_NEARBY_HINT.test(text)
@@ -35,6 +47,10 @@ export function classifyContextConditionAnchorRequest(
       : lodgingSimilar
         ? "nearby"
         : null;
+  // Brand / dish named — eatery only (never Hilton mix on "맥도날드").
+  if (eateryNearby && !lodgingSimilar) {
+    return { lodgingSimilar: false, eateryNearby: true, lodgingMode: null };
+  }
   if (!lodgingSimilar && !eateryNearby) {
     if (BOTH_HINT.test(text)) {
       return { lodgingSimilar: true, eateryNearby: true, lodgingMode: "nearby" };

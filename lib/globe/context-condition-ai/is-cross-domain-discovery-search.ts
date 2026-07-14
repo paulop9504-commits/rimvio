@@ -1,5 +1,7 @@
 import { classifyContextConditionAnchorRequest } from "@/lib/globe/context-condition-ai/classify-context-condition-anchor-request";
 import { parseCuisineCandidates } from "@/lib/globe/context-condition-ai/parse-cuisine-candidates";
+import { hasFoodBrandCue } from "@/lib/globe/context-condition-ai/parse-food-brand-focus";
+import { utteranceHasConcreteDishSlot } from "@/lib/globe/context-condition-ai/utterance-intent-slots";
 import { resolveLocalDiscoveryDomain } from "@/lib/globe/context-condition-ai/resolve-local-discovery-domain";
 import type { ContextConditionRecommendation } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
 import { hasEateryDomainCue } from "@/lib/globe/domain-cues/eatery-domain-cues";
@@ -13,6 +15,9 @@ export function isAmbiguousDiscoveryIntent(message: string): boolean {
   const text = message.trim();
   if (!text) {
     return true;
+  }
+  if (hasFoodBrandCue(text) || utteranceHasConcreteDishSlot(text)) {
+    return false;
   }
   if (parseCuisineCandidates(text).length > 0) {
     return false;

@@ -33,10 +33,13 @@ const LOCAL_PATTERN = /로컬|현지인|숨겨|골목|동네/u;
 const LANDMARK_PATTERN = /인기|유명|핫플|검증|관광/u;
 const EXCLUDE_PATTERN = /([가-힣A-Za-z]{2,20})\s*(?:빼고|제외|말고)/gu;
 const CUISINE_PATTERN =
-  /(라멘|스시|초밥|우동|이자카야|오마카세|카페|브런치|디저트|말차|녹차|아이스크림|소프트크림|젤라토|matcha|한식|양식|중식|일식|해산물|고기|야키니쿠|오코노미야키|타코야키|돈카츠|규카츠|파스타|피자|치킨|국밥|분식)/u;
+  /(라멘|스시|초밥|우동|이자카야|오마카세|카페|브런치|디저트|말차|녹차|아이스크림|소프트크림|젤라토|matcha|맥도날드|맥날|mcdonald|버거킹|스타벅스|한식|양식|중식|일식|해산물|고기|야키니쿠|오코노미야키|타코야키|돈카츠|규카츠|파스타|피자|치킨|국밥|분식)/u;
 
 const SPECIALTY_DESSERT_PATTERN =
   /말차|녹차|matcha|抹茶|아이스\s*크림|아이스크림|소프트|젤라토|ice\s*cream|ソフトクリーム/iu;
+
+const FOOD_BRAND_QUERY_PATTERN =
+  /맥도날드|맥날|mcdonald|버거킹|burger\s*king|kfc|스타벅스|starbucks|롯데리아|マクドナルド/iu;
 
 function buildPlacePhotoUrl(photoReference: string, key: string): string {
   const params = new URLSearchParams({
@@ -584,9 +587,11 @@ async function searchGooglePlaces(input: {
       ? input.query
       : input.query.trim() || input.intent.cuisine?.trim() || undefined;
   const specialtyDessert = SPECIALTY_DESSERT_PATTERN.test(input.query);
-  const placeTypes = specialtyDessert
-    ? (["cafe", "restaurant"] as const)
-    : GOOGLE_RESTAURANT_TYPES;
+  const foodBrand = FOOD_BRAND_QUERY_PATTERN.test(input.query);
+  const placeTypes =
+    specialtyDessert || foodBrand
+      ? (["cafe", "restaurant"] as const)
+      : GOOGLE_RESTAURANT_TYPES;
 
   for (const type of placeTypes) {
     try {
@@ -701,6 +706,8 @@ export async function searchRestaurants(
     (providerBias === "naver_local" || providerBias === "global");
 
   const specialtyDessertQuery = SPECIALTY_DESSERT_PATTERN.test(providerQuery);
+  const foodBrandQuery = FOOD_BRAND_QUERY_PATTERN.test(providerQuery);
+  const preferTextSearch = specialtyDessertQuery || foodBrandQuery;
   const [naverCandidates, googleCandidates, bibCandidates, textCandidates] =
     await Promise.all([
     shouldUseNaver ? searchNaverLocal({
@@ -719,7 +726,7 @@ export async function searchRestaurants(
           intent,
         })
       : Promise.resolve<RestaurantSearchCandidate[]>([]),
-    origin && !specialtyDessertQuery
+    origin && !preferTextSearch
       ? fetchBibGourmandPlaces({
           origin,
           countryBias,
@@ -733,7 +740,7 @@ export async function searchRestaurants(
           language,
         })
       : Promise.resolve<RestaurantSearchCandidate[]>([]),
-    origin && specialtyDessertQuery
+    origin && preferTextSearch
       ? searchGoogleTextQuery({
           query: providerQuery,
           origin,

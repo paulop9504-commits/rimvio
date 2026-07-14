@@ -109,6 +109,8 @@ export function walkHierarchyPath(id: WorldGeoEntityId): WorldGeoNode[] {
 
 function kindBias(node: WorldGeoNode): number {
   switch (node.kind) {
+    case "poi":
+      return 60;
     case "neighborhood":
       return 50;
     case "district":

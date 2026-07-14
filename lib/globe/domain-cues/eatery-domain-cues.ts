@@ -3,7 +3,7 @@
  */
 
 export const EATERY_ENTITY_SOURCE =
-  String.raw`맛집|먹을|식당|밥|레스토랑|카페|커피|brunch|lunch|dinner|food|eatery|restaurant|cafe|coffee|ラーメン|食|음료|드링크|drink|beverage|주스|juice|스무디|smoothie|디저트|dessert|베이커리|bakery`;
+  String.raw`맛집|먹을|식당|밥|레스토랑|카페|커피|brunch|lunch|dinner|food|eatery|restaurant|cafe|coffee|ラーメン|食|음료|드링크|drink|beverage|주스|juice|스무디|smoothie|디저트|dessert|베이커리|bakery|맥도날드|맥날|mcdonald|버거킹|스타벅스|starbucks|롯데리아|말차|matcha|抹茶`;
 
 export const EATERY_ENTITY_RE = new RegExp(`(?:${EATERY_ENTITY_SOURCE})`, "iu");
 

@@ -136,6 +136,7 @@ import {
   maybeSpawnDiscoveryLensesFromChoice,
   resolveDiscoveryOriginForContext,
 } from "@/lib/globe/discovery-lens/integrate-context-agent-lens";
+import { resolveDiscoveryOriginFromUtterance } from "@/lib/globe/context-condition-ai/resolve-discovery-origin-from-utterance";
 import {
   hasCompleteLodgingBookingSlots,
   isLodgingBookingQuery,
@@ -582,7 +583,10 @@ export const GlobeContextConditionPinBar = forwardRef<
         anchorLat,
         anchorLng,
         anchorPriceKrw,
-        discoveryOrigin: resolveDiscoveryOriginForContext(contextEventId),
+        discoveryOrigin: resolveDiscoveryOriginFromUtterance(
+          input.triggerMessage,
+          resolveDiscoveryOriginForContext(contextEventId),
+        ),
       });
 
       const outcome = result.merged;
@@ -705,7 +709,10 @@ export const GlobeContextConditionPinBar = forwardRef<
         anchorLat,
         anchorLng,
         anchorPriceKrw,
-        discoveryOrigin: resolveDiscoveryOriginForContext(contextEventId),
+        discoveryOrigin: resolveDiscoveryOriginFromUtterance(
+          text,
+          resolveDiscoveryOriginForContext(contextEventId),
+        ),
       });
 
       const outcome = result.merged;
@@ -872,7 +879,10 @@ export const GlobeContextConditionPinBar = forwardRef<
         patchPlan: input.patchPlan ?? null,
         keptRecommendations: input.keptRecommendations,
         excludePlaceIds: input.excludePlaceIds,
-        discoveryOrigin: resolveDiscoveryOriginForContext(contextEventId),
+        discoveryOrigin: resolveDiscoveryOriginFromUtterance(
+          input.triggerMessage,
+          resolveDiscoveryOriginForContext(contextEventId),
+        ),
         deferMapReveal: true,
         onProcessPhase: (phase) => {
           setContextAgentProcessPhase(phase);
@@ -1450,7 +1460,11 @@ export const GlobeContextConditionPinBar = forwardRef<
       }
       writeScoutContract(contextEventId, scoutContract);
 
-      const nearbyPov = resolveDiscoveryOriginForContext(contextEventId);
+      const nearbyPov =
+        resolveDiscoveryOriginFromUtterance(
+          pipelineMessage,
+          resolveDiscoveryOriginForContext(contextEventId),
+        ) ?? resolveDiscoveryOriginForContext(contextEventId);
       if (
         nearbyPov &&
         (nextCategory === "activity" || nextCategory === "amenity")

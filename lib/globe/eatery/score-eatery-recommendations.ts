@@ -33,6 +33,7 @@ import type {
   TravelMealTimingPattern,
 } from "@/lib/situation-projection/travel-brain-personalization";
 import { buildTravelBrainState } from "@/lib/situation-projection/travel-brain-personalization";
+import { foodBrandMatchAliases } from "@/lib/globe/context-condition-ai/parse-food-brand-focus";
 
 export type ScoredEateryRecommendation = {
   row: ContextEateryInventoryRow;
@@ -79,6 +80,9 @@ function expandEateryFocusTokens(focusMatch: string | null | undefined): string[
     ]) {
       expanded.add(token.toLowerCase());
     }
+  }
+  for (const token of foodBrandMatchAliases(focusMatch)) {
+    expanded.add(token.toLowerCase());
   }
   return [...expanded];
 }

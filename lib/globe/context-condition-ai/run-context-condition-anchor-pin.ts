@@ -34,6 +34,8 @@ import {
   isSpecialtyDessertEateryFocus,
   parseSingleCuisineFocus,
 } from "@/lib/globe/context-condition-ai/parse-cuisine-candidates";
+import { parseFoodBrandFocus } from "@/lib/globe/context-condition-ai/parse-food-brand-focus";
+import { parseUtteranceIntentSlots } from "@/lib/globe/context-condition-ai/utterance-intent-slots";
 import { syncContextConditionPins } from "@/lib/globe/context-condition-ai/sync-context-condition-pins";
 import { writeScoutRevealPending } from "@/lib/globe/context-condition-ai/context-condition-scout-reveal-pending-store";
 import { emitSearchHubAction } from "@/lib/globe/resource/hub-action-record-store";
@@ -458,8 +460,12 @@ export async function runContextConditionAnchorPin(
 
   if (wantsEatery) {
     input.onProcessPhase?.("analyzing");
+    const utteranceSlots = parseUtteranceIntentSlots(input.message ?? "");
+    const brand = parseFoodBrandFocus(input.message ?? "");
     const eateryFocus =
       spec.eateryFocus?.trim() ||
+      utteranceSlots.dishFocus?.trim() ||
+      brand?.queryKo ||
       parseSingleCuisineFocus(input.message ?? "") ||
       null;
     const eateryQuery = resolveContextConditionEateryQuery({
@@ -470,16 +476,25 @@ export async function runContextConditionAnchorPin(
     });
     const area = searchOrigin.regionLabel.trim() || "근처";
     const specialtyDessert = isSpecialtyDessertEateryFocus(eateryFocus);
-    const eateryQueries = specialtyDessert
+    const eateryQueries = brand
       ? Array.from(
           new Set([
             eateryQuery,
-            `${area} matcha ice cream`,
-            `${area} 抹茶 ソフトクリーム`,
-            `${area} 말차 소프트크림`,
+            `${area} ${brand.queryKo}`,
+            ...brand.matchAliases.slice(0, 2).map((alias) => `${area} ${alias}`),
           ]),
         ).slice(0, 4)
-      : [eateryQuery];
+      : specialtyDessert
+        ? Array.from(
+            new Set([
+              eateryQuery,
+              `${area} ${eateryFocus}`,
+              `${area} matcha`,
+              `${area} 抹茶`,
+              `${area} 抹茶 ソフトクリーム`,
+            ]),
+          ).slice(0, 4)
+        : [eateryQuery];
 
     const loadedBatches = await Promise.all(
       eateryQueries.map((query) =>
@@ -518,31 +533,53 @@ export async function runContextConditionAnchorPin(
       exploration: exploration,
       focusMatch: eateryFocus,
     });
+    const brandTokens = brand
+      ? [brand.queryKo, brand.labelKo, ...brand.matchAliases]
+      : [];
+    const focusTokens = specialtyDessert
+      ? Array.from(
+          new Set([
+            ...(eateryFocus ?? "").split(/[\s·,]+/u),
+            "말차",
+            "녹차",
+            "matcha",
+            "抹茶",
+            "ソフト",
+            "아이스크림",
+            "젤라토",
+          ]),
+        )
+      : brandTokens.length > 0
+        ? brandTokens
+        : (eateryFocus ?? "").split(/[\s·,]+/u);
     // Category integrity (flexible): drop clearly off-domain rows (a hotel in a
     // food search) but keep adjacent picks so results stay rich.
     const guarded = verifyDiscoveryResults({
       domain: "eatery",
       items: scored,
-      focusTokens: specialtyDessert
-        ? Array.from(
-            new Set([
-              ...(eateryFocus ?? "").split(/[\s·,]+/u),
-              "말차",
-              "녹차",
-              "matcha",
-              "抹茶",
-              "ソフト",
-              "아이스크림",
-              "젤라토",
-            ]),
-          )
-        : (eateryFocus ?? "").split(/[\s·,]+/u),
+      focusTokens,
       guardThreshold: guardThresholdForDomain(exploration, "eatery"),
     });
-    eateryScored = (guarded.kept.length > 0 ? guarded.kept : scored).slice(
+    let nextScored = (guarded.kept.length > 0 ? guarded.kept : scored).slice(
       0,
       exploration.eateryPresentCap,
     );
+    // Hard brand lock — if any McDonald's-like hit exists, drop unrelated cafes/hotels.
+    if (brandTokens.length > 0) {
+      const brandHits = nextScored.filter((entry) => {
+        const blob = [entry.row.name, entry.row.categoryLabel, entry.row.cuisineHint]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return brandTokens.some((token) =>
+          blob.includes(token.toLowerCase()),
+        );
+      });
+      if (brandHits.length > 0) {
+        nextScored = brandHits;
+      }
+    }
+    eateryScored = nextScored;
     eateryRows = eateryScored.map((row) => row.row);
   }
 

@@ -20,6 +20,13 @@ const CUISINE_CATALOG: readonly {
     queryKo: "말차 아이스크림",
     pattern:
       /(?:말차|녹차|matcha|抹茶).{0,20}(?:아이스\s*크림|아이스크림|소프트|젤라토|ice\s*cream|ソフトクリーム)|(?:아이스\s*크림|아이스크림|소프트\s*크림|젤라토|ice\s*cream).{0,16}(?:말차|녹차|matcha|抹茶)/iu,
+    suppresses: ["matcha", "dessert", "cafe", "beverage", "juice"],
+  },
+  {
+    id: "matcha",
+    labelKo: "말차",
+    queryKo: "말차",
+    pattern: /말차|matcha|抹茶/iu,
     suppresses: ["dessert", "cafe", "beverage", "juice"],
   },
   { id: "pizza", labelKo: "피자", queryKo: "피자", pattern: /피자|pizza/iu },
