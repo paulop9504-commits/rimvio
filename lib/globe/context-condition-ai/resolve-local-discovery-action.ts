@@ -105,7 +105,14 @@ function parseLodgingKind(text: string): LocalDiscoveryLodgingKind | null {
   if (/에어비|bnb|airbnb|민박/iu.test(text)) {
     return "airbnb";
   }
-  if (/호텔|hotel/iu.test(text)) {
+  if (
+    /게스트\s*하우스|게스트하우스|호스텔|hostel|guesthouse|guest\s*house/iu.test(
+      text,
+    )
+  ) {
+    return "hotel";
+  }
+  if (/호텔|hotel|료칸|ryokan|펜션/iu.test(text)) {
     return "hotel";
   }
   return null;

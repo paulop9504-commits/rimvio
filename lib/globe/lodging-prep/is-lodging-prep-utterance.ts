@@ -15,6 +15,8 @@ export function isLodgingPrepUtterance(text: string): boolean {
   return (
     requiresLodgingBookingSlots(trimmed) ||
     isInstantLodgingSearch(trimmed) ||
-    /(?:숙소|호텔|lodging|hotel).{0,24}(?:준비|예약|잡|찾)/iu.test(trimmed)
+    /(?:숙소|호텔|게스트\s*하우스|게스트하우스|호스텔|lodging|hotel|hostel).{0,24}(?:준비|예약|잡|찾)/iu.test(
+      trimmed,
+    )
   );
 }

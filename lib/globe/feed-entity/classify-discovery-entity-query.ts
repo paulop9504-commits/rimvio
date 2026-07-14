@@ -1,7 +1,7 @@
 import type { DiscoveryEntityClassifyResult, DiscoveryEntityKind } from "@/lib/globe/feed-entity/types";
 
 const HOTEL_RE =
-  /호텔|숙소|게스트하우스|료칸|ryokan|hotel|hostel|motel|inn\b|stay\b|lodging|accommodation/iu;
+  /호텔|숙소|게스트\s*하우스|게스트하우스|호스텔|료칸|ryokan|hotel|hostel|motel|inn\b|stay\b|lodging|accommodation|guesthouse|guest\s*house/iu;
 const CAFE_RE =
   /카페|커피|브런치|베이커리|디저트\s*카페|tea\s*house|coffee|cafe|bakery|brunch/iu;
 const RESTAURANT_RE =

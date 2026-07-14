@@ -147,9 +147,11 @@ import { resourceReelKindFilterReplyKo } from "@/lib/globe/resource-reel/resourc
 import { markDiscoveryLensPickPending } from "@/lib/globe/discovery-lens/spawn-discovery-lenses";
 import {
   assertScoutContractGate,
+  clearScoutContract,
   primaryScoutViolationMessage,
   readScoutContract,
   readScoutSelectedAnchor,
+  reelKindAllowedForContract,
   scoutCategoryFromSpec,
   withScoutOutputRef,
   wrapScoutContract,
@@ -237,7 +239,10 @@ export type AskChipPickInput = {
 };
 
 export type GlobeContextConditionPinBarHandle = {
-  submitTrigger: (message: string) => Promise<void>;
+  submitTrigger: (
+    message: string,
+    options?: { expressReady?: boolean },
+  ) => Promise<void>;
   submitRefinement: (message: string) => Promise<void>;
   applyExplorationMode: (mode: ExplorationMode) => Promise<void>;
   hasLastBatch: () => boolean;
@@ -900,11 +905,52 @@ export const GlobeContextConditionPinBar = forwardRef<
         });
       }
       const activeContract = readScoutContract(contextEventId);
+      let outcomeWorking = outcome;
       if (activeContract) {
-        const gate = assertScoutContractGate({
+        let gate = assertScoutContractGate({
           contract: activeContract,
-          outputKinds: outcome.recommendations.map((row) => row.kind),
+          outputKinds: outcomeWorking.recommendations.map((row) => row.kind),
         });
+        if (!gate.ok) {
+          const isContamination = gate.violations.some(
+            (row) => row.code === "category_contamination",
+          );
+          if (isContamination) {
+            const filtered = outcomeWorking.recommendations.filter((row) =>
+              reelKindAllowedForContract(activeContract, row.kind),
+            );
+            if (filtered.length > 0) {
+              const lodgingCount = filtered.filter(
+                (row) => row.kind === "lodging",
+              ).length;
+              const eateryCount = filtered.filter(
+                (row) => row.kind === "eatery",
+              ).length;
+              outcomeWorking = {
+                ...outcomeWorking,
+                recommendations: filtered,
+                lodgingCount,
+                eateryCount,
+                summaryKo:
+                  lodgingCount > 0 && eateryCount === 0
+                    ? copy.globe.contextConditionPinLodgingDone.replace(
+                        "{n}",
+                        String(lodgingCount),
+                      )
+                    : eateryCount > 0 && lodgingCount === 0
+                      ? copy.globe.contextConditionPinEateryDone.replace(
+                          "{n}",
+                          String(eateryCount),
+                        )
+                      : copy.globe.contextConditionPinDone.replace(
+                          "{n}",
+                          String(filtered.length),
+                        ),
+              };
+              gate = { ok: true };
+            }
+          }
+        }
         if (!gate.ok) {
           const messageKo =
             primaryScoutViolationMessage(gate) ??
@@ -912,46 +958,59 @@ export const GlobeContextConditionPinBar = forwardRef<
           const failedEngineId = resolveDiscoveryEngineId({
             message: input.triggerMessage,
             event: findLifeEventCandidate(contextEventId),
-            spec: outcome.spec,
-            recommendationKinds: outcome.recommendations.map((row) => row.kind),
+            spec: outcomeWorking.spec,
+            recommendationKinds: outcomeWorking.recommendations.map(
+              (row) => row.kind,
+            ),
           });
           if (failedEngineId) {
             recordEngineScoutFailureClient({
               contextEventId,
               engineId: failedEngineId,
               lastError: "scout_contract_violation",
-              payload: { batchId: outcome.batchId },
+              payload: { batchId: outcomeWorking.batchId },
             });
           }
           dismissContextConditionPinBatch({
             contextEventId,
-            batchId: outcome.batchId,
+            batchId: outcomeWorking.batchId,
           });
           clearContextConditionLastBatch(contextEventId);
           clearScoutRevealPending(contextEventId);
-          appendContextAgentComposeTurn(contextEventId, {
-            role: "assistant",
-            kind: "text",
-            text: messageKo,
-          });
-          toast.message(messageKo);
+          clearScoutContract(contextEventId);
+          const retried =
+            failedEngineId != null &&
+            offerScoutFailRecovery({
+              contextEventId,
+              engineId: failedEngineId,
+              lastError: "scout_contract_violation",
+              seedUtterance: input.triggerMessage,
+            });
+          if (!retried) {
+            appendContextAgentComposeTurn(contextEventId, {
+              role: "assistant",
+              kind: "text",
+              text: messageKo,
+            });
+            toast.message(messageKo);
+          }
           return null;
         }
         writeScoutContract(
           contextEventId,
-          withScoutOutputRef(activeContract, outcome.batchId),
+          withScoutOutputRef(activeContract, outcomeWorking.batchId),
         );
       }
 
       const wire: ContextConditionLastBatchWire = {
-        batchId: outcome.batchId,
-        count: outcome.lodgingCount + outcome.eateryCount,
-        summaryKo: outcome.summaryKo,
+        batchId: outcomeWorking.batchId,
+        count: outcomeWorking.lodgingCount + outcomeWorking.eateryCount,
+        summaryKo: outcomeWorking.summaryKo,
         atIso: new Date().toISOString(),
         triggerMessage: input.triggerMessage.trim() || undefined,
-        radiusM: outcome.radiusM,
-        spec: outcome.spec,
-        recommendations: outcome.recommendations.map((row) => ({
+        radiusM: outcomeWorking.radiusM,
+        spec: outcomeWorking.spec,
+        recommendations: outcomeWorking.recommendations.map((row) => ({
           kind: row.kind,
           title: row.title,
           reasonKo: row.reasonKo,
@@ -963,26 +1022,26 @@ export const GlobeContextConditionPinBar = forwardRef<
       writeActiveDiscoveryExecution(contextEventId, wire, {
         archivePrior: true,
       });
-      supersedePriorScoutFeedGates(contextEventId, outcome.batchId);
+      supersedePriorScoutFeedGates(contextEventId, outcomeWorking.batchId);
       setLastBatch(wire);
-      setLastSpec(outcome.spec);
-      setLastRecommendations(outcome.recommendations);
+      setLastSpec(outcomeWorking.spec);
+      setLastRecommendations(outcomeWorking.recommendations);
       setMessage("");
       onQuestionsChange?.([]);
-      onRecommendationsChange?.(outcome.recommendations);
+      onRecommendationsChange?.(outcomeWorking.recommendations);
       clearContextConditionPending(contextEventId);
-      setContextAgentSessionSpec(outcome.spec);
+      setContextAgentSessionSpec(outcomeWorking.spec);
       setContextAgentSessionPhase("deciding");
-      onPinned?.(outcome);
+      onPinned?.(outcomeWorking);
       publishScoutFeedGateTurn({
         contextEventId,
-        outcome,
+        outcome: outcomeWorking,
         anchorPlaceName,
         anchorLat,
         anchorLng,
         triggerMessage: input.triggerMessage,
       });
-      return outcome;
+      return outcomeWorking;
     },
     [
       anchorLat,
@@ -2087,7 +2146,10 @@ export const GlobeContextConditionPinBar = forwardRef<
   }, [message, busy, anchorLat, anchorLng, contextEventId]);
 
   const submitTrigger = useCallback(
-    async (triggerMessage: string) => {
+    async (
+      triggerMessage: string,
+      options?: { expressReady?: boolean },
+    ) => {
       const text = triggerMessage.trim();
       if (!text || busy) {
         return;
@@ -2111,6 +2173,7 @@ export const GlobeContextConditionPinBar = forwardRef<
           blueprint: operatorBlueprint,
           userLat,
           userLng,
+          expressReady: options?.expressReady === true,
         });
         if (plan.tool === "ask_chips") {
           const chipDomain = resolveOperatorAskChipDomain({
@@ -2257,12 +2320,13 @@ export const GlobeContextConditionPinBar = forwardRef<
       if (!claimOperatorAutoRun(detail)) {
         return;
       }
+      const expressReady = detail.expressReady === true;
       const runWhenIdle = () => {
         if (busyRef.current) {
           window.setTimeout(runWhenIdle, 48);
           return;
         }
-        void submitTrigger(detail.text);
+        void submitTrigger(detail.text, { expressReady });
       };
       window.setTimeout(runWhenIdle, 0);
     });

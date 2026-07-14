@@ -4,7 +4,11 @@
  */
 
 import type { ScoutContract } from "@/lib/globe/contracts/scout-contract";
-import { reelKindAllowedForCategory } from "@/lib/globe/contracts/scout-contract";
+import {
+  reelKindAllowedForCategory,
+  scoutCategoryFromSpec,
+  scoutCategoryToReelKind,
+} from "@/lib/globe/contracts/scout-contract";
 import type { GlobeResourceReelKind } from "@/lib/globe/resource-reel/types";
 
 export type ScoutContractViolationCode =
@@ -28,12 +32,32 @@ const DANGLING_ANCHOR_KO =
 const SSOT_FORK_KO =
   "목록이 방금 찾은 결과와 어긋났어요. 다시 맞춰 볼게요.";
 
+/** Allow kinds that match any resourceType on the contract spec (not only primary category). */
+export function reelKindAllowedForContract(
+  contract: ScoutContract,
+  kind: GlobeResourceReelKind,
+): boolean {
+  const types = contract.spec.resourceTypes;
+  if (types.length > 1) {
+    return types.some((resourceType) => {
+      const category =
+        resourceType === "hotel" ||
+        resourceType === "activity" ||
+        resourceType === "amenity"
+          ? resourceType
+          : "restaurant";
+      return scoutCategoryToReelKind(category) === kind;
+    });
+  }
+  return reelKindAllowedForCategory(contract.category, kind);
+}
+
 export function assertScoutOutputKinds(input: {
   contract: ScoutContract;
   kinds: readonly GlobeResourceReelKind[];
 }): ScoutContractAssertResult {
   const bad = input.kinds.filter(
-    (kind) => !reelKindAllowedForCategory(input.contract.category, kind),
+    (kind) => !reelKindAllowedForContract(input.contract, kind),
   );
   if (bad.length === 0) {
     return { ok: true };
@@ -157,4 +181,11 @@ export function primaryScoutViolationMessage(
     return null;
   }
   return result.violations[0]?.messageKo ?? null;
+}
+
+/** Prefer realigning primary category when outcome.spec drifted from stale contract. */
+export function shouldRealignScoutContractCategory(
+  contract: ScoutContract,
+): boolean {
+  return scoutCategoryFromSpec(contract.spec) !== contract.category;
 }

@@ -32,6 +32,8 @@ export {
   assertScoutOutputKinds,
   assertScoutReelSource,
   primaryScoutViolationMessage,
+  reelKindAllowedForContract,
+  shouldRealignScoutContractCategory,
   type ScoutContractAssertResult,
   type ScoutContractViolation,
   type ScoutContractViolationCode,

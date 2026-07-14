@@ -8,7 +8,7 @@ export type ContextConditionAnchorPinIntent = {
 };
 
 const LODGING_HINT =
-  /비슷한|같은\s*가격|비슷한\s*가격|숙소|호텔|stay|hotel|lodging|宿|ホテル/iu;
+  /비슷한|같은\s*가격|비슷한\s*가격|숙소|호텔|게스트\s*하우스|게스트하우스|호스텔|료칸|민박|펜션|stay|hotel|lodging|hostel|guesthouse|guest\s*house|ryokan|宿|ホテル/iu;
 const LODGING_NEARBY_HINT =
   /주변|근처|nearby|찾|검색|추천|배치|꽂|pin|探|近く/iu;
 const LODGING_SIMILAR_PRICE_HINT = /비슷한|같은\s*가격|비슷한\s*가격|similar\s*price/iu;

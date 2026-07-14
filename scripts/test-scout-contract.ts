@@ -47,6 +47,23 @@ if (!contaminated.ok) {
   assert.equal(contaminated.violations[0]?.code, "category_contamination");
 }
 
+const dualSpec = wrapScoutContract({
+  contextEventId: "evt-osaka",
+  spec: {
+    ...baseSpec,
+    resourceTypes: ["restaurant", "hotel"],
+  },
+  chainIndex: 0,
+});
+assert.equal(
+  assertScoutOutputKinds({
+    contract: dualSpec,
+    kinds: ["eatery", "lodging"],
+  }).ok,
+  true,
+  "multi resourceTypes must allow lodging + eatery",
+);
+
 assert.equal(assertScoutAnchorRef(wrapped).ok, true);
 const chained = wrapScoutContract({
   contextEventId: "evt-osaka",
