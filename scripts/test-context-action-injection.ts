@@ -44,7 +44,8 @@ const handoff = buildContextLodgingBookingHandoff({
     confidence: 1,
   },
 });
-assert.match(handoff.href, /maps\.google\.com/);
+assert.match(handoff.href, /google\.com\/travel\/hotels/);
+assert.ok(!handoff.href.includes("maps.google.com"));
 assert.match(handoff.labelKo, /예약/);
 
 const hubHandoff = buildContextLodgingHubCheckoutHandoff({

@@ -22,6 +22,7 @@ import { useActiveContextWeather } from "@/hooks/use-active-context-weather";
 import { listContextHubServicesForEvent } from "@/lib/globe/context-hub/context-hub-service-catalog";
 import { pinLodgingSelectionToContext, readPinnedLodgingResourceId } from "@/lib/globe/context-hub/pin-lodging-selection-to-context";
 import { listLodgingResourcesForEvent } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
+import { openLodgingHubCheckout } from "@/lib/globe/hub-checkout/open-lodging-hub-checkout-bridge";
 import { resolveLodgingSituationalLabel } from "@/lib/globe/context-hub/resolve-lodging-situational-label";
 import { formatLodgingStayWindowLabel } from "@/lib/globe/context-hub/lodging-stay-window";
 import { buildLodgingDynamicTags } from "@/lib/globe/lodging/build-lodging-dynamic-tags";
@@ -391,12 +392,37 @@ export function GlobeLodgingFocusStage({
   );
 
   const handleBook = useCallback(() => {
+    const placeId = payload?.placeId?.trim() ?? "";
+    if (eventId && placeId) {
+      const opened = openLodgingHubCheckout({
+        contextEventId: eventId,
+        placeId,
+      });
+      if (opened) {
+        return;
+      }
+    }
+    // Fallback: hotel search for this property (not Google Maps place view).
     const href = entry?.resource.action?.href?.trim();
-    if (!href) {
+    if (href && !/google\.com\/maps/iu.test(href)) {
+      window.open(href, "_blank", "noopener,noreferrer");
       return;
     }
-    window.open(href, "_blank", "noopener,noreferrer");
-  }, [entry?.resource.action?.href]);
+    const name = payload?.name?.trim() || entry?.resource.label?.trim();
+    if (name) {
+      window.open(
+        `https://www.google.com/travel/hotels?q=${encodeURIComponent(name)}`,
+        "_blank",
+        "noopener,noreferrer",
+      );
+    }
+  }, [
+    entry?.resource.action?.href,
+    entry?.resource.label,
+    eventId,
+    payload?.name,
+    payload?.placeId,
+  ]);
 
   const handleDetails = useCallback(() => {
     if (!eventId || !entry) {
@@ -543,7 +569,7 @@ export function GlobeLodgingFocusStage({
             primaryAction={{
               label: copy.globe.lodgingFocusBook,
               onClick: handleBook,
-              disabled: !entry.resource.action?.href,
+              disabled: !payload?.placeId && !entry.resource.action?.href,
             }}
             secondaryAction={{
               label: copy.globe.lodgingFocusDetails,

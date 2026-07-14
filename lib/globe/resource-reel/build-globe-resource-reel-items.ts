@@ -105,12 +105,8 @@ function pushLodgingItem(input: {
     lng: row.lng,
     carouselIndex: input.index,
     secondaryLine: formatPriceKrw(row.priceKrw),
-    actionHref: buildGoogleMapsPlaceHref({
-      lat: row.lat,
-      lng: row.lng,
-      placeId: row.placeId,
-      placeLabel: row.name,
-    }),
+    actionHref:
+      `rimvio://hub/lodging-checkout?placeId=${encodeURIComponent(row.placeId)}`,
     actionLabel: copy.globe.lodgingFocusBook,
     contractSource: {
       sourceKind: "batch",

@@ -25,6 +25,7 @@ import type { EventCandidate } from "@/lib/events/event-candidate";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 import type { ExplorationPolicyKnobs } from "@/lib/globe/discovery-policy/apply-exploration-mode";
 import { explorationScoreBias } from "@/lib/globe/discovery-policy/exploration-score-bias";
+import { diversifyScoredRecommendations } from "@/lib/globe/discovery-policy/diversify-scored-recommendations";
 import type {
   TravelBrainState,
   TravelBudgetBand,
@@ -352,7 +353,25 @@ export function scoreEateryRecommendations(input: {
     return left.row.name.localeCompare(right.row.name, "ko");
   });
 
-  return scored.map((entry, index) => {
+  const diversified = diversifyScoredRecommendations(
+    scored.map((entry) => ({
+      score: entry.score,
+      row: {
+        name: entry.row.name,
+        lat: entry.row.lat,
+        lng: entry.row.lng,
+        categoryHint: entry.row.cuisineHint ?? entry.row.categoryLabel ?? null,
+      },
+      entry,
+    })),
+    {
+      originLat: lat,
+      originLng: lng,
+      lambda: input.exploration?.mode === "diffuse" ? 0.48 : 0.58,
+    },
+  ).map((row) => row.entry);
+
+  return diversified.map((entry, index) => {
     if (index === 0 && entry.matchReasons.length === 0) {
       const distanceKm =
         lat != null && lng != null

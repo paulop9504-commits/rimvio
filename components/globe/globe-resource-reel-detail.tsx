@@ -31,6 +31,7 @@ import {
 } from "@/lib/globe/resource/rank-context-resources";
 import { rankLodgingResources } from "@/lib/globe/resource/rank-lodging-resources";
 import { listLodgingResourcesForEvent } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
+import { openLodgingHubCheckout } from "@/lib/globe/hub-checkout/open-lodging-hub-checkout-bridge";
 import type { GlobeResourceReelItem } from "@/lib/globe/resource-reel/types";
 import { activitySubtypeActionLabel } from "@/lib/globe/place/activity-subtype-presentation";
 import { MAP_FOCUS_PIN_VIEWPORT_Y } from "@/lib/globe/map-anchored-overlay-layout";
@@ -486,8 +487,26 @@ export function GlobeResourceReelDetail({
         onClose={onDismiss}
         closeAriaLabel={copy.globe.resourceReelCloseAria}
         onPrimaryAction={() => {
+          if (item.kind === "lodging" && item.placeId.trim()) {
+            const opened = openLodgingHubCheckout({
+              contextEventId,
+              placeId: item.placeId,
+            });
+            if (opened) {
+              return;
+            }
+            const name = item.title.trim();
+            if (name) {
+              window.open(
+                `https://www.google.com/travel/hotels?q=${encodeURIComponent(name)}`,
+                "_blank",
+                "noopener,noreferrer",
+              );
+            }
+            return;
+          }
           const href = primaryAction?.href ?? item.actionHref;
-          if (!href) {
+          if (!href || href.startsWith("rimvio://")) {
             return;
           }
           window.open(href, "_blank", "noopener,noreferrer");

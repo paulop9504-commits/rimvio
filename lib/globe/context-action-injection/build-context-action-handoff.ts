@@ -62,7 +62,6 @@ export function buildContextLodgingBookingHandoff(input: {
   const checkOut =
     ymdFromIso(input.row.checkOutIso) ?? ymdFromIso(stayWindow?.checkOutIso);
   const name = input.row.name.trim() || "숙소";
-  const mapsUrl = input.row.mapsUrl?.trim();
   const bookingProvider = resolveLodgingBookingProvider({
     lodgingKind: input.lodgingKind,
     contextEventId: input.contextEventId ?? input.event?.id ?? null,
@@ -90,15 +89,8 @@ export function buildContextLodgingBookingHandoff(input: {
     };
   }
 
-  if (mapsUrl) {
-    return {
-      actionTypeId: "field.lodging_book",
-      labelKo,
-      href: mapsUrl,
-      internalRoute: false,
-    };
-  }
-
+  // Book = hotel search with this property name (+ dates), never raw Maps place URL.
+  // Maps is navigation; 예매 must match a booking/search intent.
   const query = [name, checkIn ? `check in ${checkIn}` : null, checkOut ? `check out ${checkOut}` : null]
     .filter(Boolean)
     .join(" ");

@@ -64,12 +64,12 @@ export function applyExplorationMode(mode: ExplorationMode): ExplorationPolicyKn
       activity: guardThreshold("activity", mode),
       amenity: guardThreshold("amenity", mode),
     },
-    eateryMaxResults: convergent ? 10 : 14,
-    eateryPresentCap: convergent ? 4 : 6,
+    eateryMaxResults: convergent ? 14 : 18,
+    eateryPresentCap: convergent ? 6 : 8,
     activityPresentCap: convergent ? 4 : 6,
     activityLandmarkPinCap: convergent ? 1 : 3,
-    ratingWeight: convergent ? 1.2 : 0.85,
-    noveltyWeight: convergent ? 0.7 : 1.25,
+    ratingWeight: convergent ? 1.05 : 0.85,
+    noveltyWeight: convergent ? 1.05 : 1.35,
   };
 }
 

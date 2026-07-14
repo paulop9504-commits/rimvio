@@ -81,13 +81,15 @@ export function buildGlobeResourceReelItemsFromLensPrefetch(input: {
       carouselIndex: index,
       secondaryLine: meta || input.lensLabel,
       actionHref:
-        row.mapsUrl?.trim() ||
-        buildGoogleMapsPlaceHref({
-          lat: row.lat,
-          lng: row.lng,
-          placeId: row.placeId,
-          placeLabel: row.title,
-        }),
+        row.kind === "lodging"
+          ? `rimvio://hub/lodging-checkout?placeId=${encodeURIComponent(row.placeId)}`
+          : row.mapsUrl?.trim() ||
+            buildGoogleMapsPlaceHref({
+              lat: row.lat,
+              lng: row.lng,
+              placeId: row.placeId,
+              placeLabel: row.title,
+            }),
       actionLabel:
         row.kind === "lodging"
           ? copy.globe.lodgingFocusBook
