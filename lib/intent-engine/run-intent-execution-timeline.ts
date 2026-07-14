@@ -17,7 +17,7 @@ import {
   readContextAgentComposeThread,
   type IntentExecutionTimelinePayload,
 } from "@/lib/globe/assistant/context-agent-compose-thread-store";
-import { findEventCandidate } from "@/lib/events/event-store";
+import { findLifeEventCandidate } from "@/lib/life-read-model";
 import { readIntentBlueprintFromEvent } from "@/lib/intent-engine/intent-blueprint-metadata";
 import { buildTravelBrainState } from "@/lib/situation-projection/travel-brain-personalization";
 
@@ -34,7 +34,7 @@ function timelinePayloadFromResolution(input: {
   text: string;
   contextEventId: string;
 }): IntentExecutionTimelinePayload {
-  const event = findEventCandidate(input.contextEventId);
+  const event = findLifeEventCandidate(input.contextEventId);
   const brain = event ? buildTravelBrainState(event) : null;
   const blueprint = event ? readIntentBlueprintFromEvent(event) : null;
 
@@ -94,7 +94,7 @@ export function startIntentExecutionTimelineWalk(input: {
 
   const profile = input.profile ?? "trip_revise";
   const stepMs = input.stepMs ?? DEFAULT_STEP_MS;
-  const event = findEventCandidate(eventId);
+  const event = findLifeEventCandidate(eventId);
   const sourceText =
     input.sourceText?.trim() ||
     (typeof event?.metadata?.sourceMessage === "string"
@@ -197,7 +197,7 @@ export function completeIntentExecutionTimeline(
     return;
   }
 
-  const event = findEventCandidate(eventId);
+  const event = findLifeEventCandidate(eventId);
   const sourceText =
     (typeof event?.metadata?.sourceMessage === "string"
       ? event.metadata.sourceMessage

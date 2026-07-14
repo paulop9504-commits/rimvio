@@ -1,10 +1,11 @@
+import { findLifeEventCandidate } from "@/lib/life-read-model";
+import { commitEventUpsert } from "@/lib/source-of-truth/commit-truth";
 import { compileIntentBlueprintViaLlm } from "@/lib/intent-engine/compile-intent-blueprint";
 import { needsIntentSlotLlmFill } from "@/lib/intent-engine/fill-intent-slots-llm";
 import {
   INTENT_BLUEPRINT_META_KEY,
 } from "@/lib/intent-engine/intent-blueprint-metadata";
 import type { IntentBlueprint } from "@/lib/intent-engine/types";
-import { findEventCandidate, upsertEventCandidate } from "@/lib/events/event-store";
 
 export type EnrichIntentBlueprintClientResult = {
   blueprint: IntentBlueprint;
@@ -25,7 +26,7 @@ export async function enrichContextIntentBlueprintClient(input: {
   if (!eventId) {
     return null;
   }
-  const event = findEventCandidate(eventId);
+  const event = findLifeEventCandidate(eventId);
   if (!event) {
     return null;
   }
@@ -96,7 +97,7 @@ export async function enrichContextIntentBlueprintClient(input: {
     return { blueprint, source, stamped: false };
   }
 
-  upsertEventCandidate({
+  commitEventUpsert({
     id: eventId,
     title: event.title,
     category: event.category,
