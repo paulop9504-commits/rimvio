@@ -11,6 +11,10 @@ import {
   classifyContextConditionAnchorRequest,
   filterLodgingRowsForContextCondition,
 } from "@/lib/globe/context-condition-ai/classify-context-condition-anchor-request";
+import {
+  filterLodgingRowsForIntent,
+  resolveLodgingSearchKeyword,
+} from "@/lib/globe/context-condition-ai/filter-lodging-for-intent";
 import type {
   ContextConditionAnchorPinOutcome,
   ContextConditionRecommendation,
@@ -381,20 +385,35 @@ export async function runContextConditionAnchorPin(
 
   if (wantsLodging) {
     input.onProcessPhase?.("analyzing");
+    const lodgingKeyword = resolveLodgingSearchKeyword({
+      lodgingKind: spec.lodgingKind,
+      message: input.message,
+    });
     const loaded = await loadLodgingInventoryRows({
       event,
       lat: searchOrigin.lat,
       lng: searchOrigin.lng,
       maxResults: LOCAL_DISCOVERY_LODGING_SCOUT_MAX,
       radiusM,
+      keyword: lodgingKeyword,
     });
     lodgingSource = loaded.source;
     const lodgingFilterMax =
       intent.lodgingMode === "similar_price"
         ? 6
         : exploration.feedInventoryCap;
+    const intentFiltered = filterLodgingRowsForIntent({
+      rows: loaded.rows,
+      lodgingKind: spec.lodgingKind,
+      budget: spec.budget,
+      maxNightlyPriceKrw: spec.maxNightlyPriceKrw ?? null,
+    });
+    const budgetFiltered = filterLodgingByBudget(
+      intentFiltered.length > 0 ? intentFiltered : loaded.rows,
+      spec.budget,
+    );
     const filtered = filterLodgingRowsForContextCondition({
-      rows: filterLodgingByBudget(loaded.rows, spec.budget),
+      rows: budgetFiltered,
       anchorPlaceId: input.anchorPlaceId,
       anchorPriceKrw: input.anchorPriceKrw,
       lodgingMode: intent.lodgingMode,

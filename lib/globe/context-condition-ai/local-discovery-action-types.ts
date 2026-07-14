@@ -12,7 +12,7 @@ export type LocalDiscoveryBudget = "low" | "medium" | "high";
 
 export type LocalDiscoveryVibe = "quiet" | "popular" | "local" | "hot";
 
-export type LocalDiscoveryLodgingKind = "hotel" | "airbnb" | "any";
+export type LocalDiscoveryLodgingKind = "hotel" | "airbnb" | "hostel" | "any";
 
 export type LocalDiscoveryActivitySubtype =
   | "general"
@@ -29,6 +29,11 @@ export type LocalDiscoveryActionSpec = {
   readonly budget: LocalDiscoveryBudget;
   readonly vibe: LocalDiscoveryVibe;
   readonly lodgingKind: LocalDiscoveryLodgingKind;
+  /**
+   * Hard nightly price ceiling (KRW) — e.g. "하루 3만원 미만" → 30000.
+   * Applied after inventory load; never invents destinations.
+   */
+  readonly maxNightlyPriceKrw?: number | null;
   /** Search radius in meters — derived from transport. */
   readonly radiusM: number;
   /** Eatery cuisine focus — e.g. 피자, 스시 (from menu disambiguation). */

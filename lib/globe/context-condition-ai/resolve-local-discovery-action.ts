@@ -6,6 +6,7 @@ import {
 import {
   isInstantLodgingSearch,
 } from "@/lib/globe/context-condition-ai/instant-lodging-search";
+import { parseMaxNightlyPriceKrw } from "@/lib/globe/context-condition-ai/filter-lodging-for-intent";
 import {
   isInstantEaterySearch,
   resolveInstantEateryFocus,
@@ -106,11 +107,11 @@ function parseLodgingKind(text: string): LocalDiscoveryLodgingKind | null {
     return "airbnb";
   }
   if (
-    /게스트\s*하우스|게스트하우스|호스텔|hostel|guesthouse|guest\s*house/iu.test(
+    /게스트\s*하우스|게스트하우스|호스텔|hostel|guesthouse|guest\s*house|캡슐\s*호텔|capsule/iu.test(
       text,
     )
   ) {
-    return "hotel";
+    return "hostel";
   }
   if (/호텔|hotel|료칸|ryokan|펜션/iu.test(text)) {
     return "hotel";
@@ -161,6 +162,7 @@ function buildLodgingKindQuestion(): LocalDiscoveryQuestion {
     promptKo: copy.globe.localDiscoveryAskLodgingKind,
     choices: [
       { id: "lodging-hotel", label: copy.globe.localDiscoveryLodgingHotel, slot: "lodgingKind", value: "hotel" },
+      { id: "lodging-hostel", label: "게스트하우스", slot: "lodgingKind", value: "hostel" },
       { id: "lodging-airbnb", label: copy.globe.localDiscoveryLodgingAirbnb, slot: "lodgingKind", value: "airbnb" },
       { id: "lodging-any", label: copy.globe.localDiscoveryLodgingAny, slot: "lodgingKind", value: "any" },
     ],
@@ -266,6 +268,7 @@ function composeSpec(input: {
   budget: LocalDiscoveryBudget;
   vibe: LocalDiscoveryVibe;
   lodgingKind: LocalDiscoveryLodgingKind;
+  maxNightlyPriceKrw?: number | null;
   eateryFocus?: string | null;
   activityFocus?: string | null;
   activitySubtype?: LocalDiscoveryActivitySubtype | null;
@@ -282,6 +285,9 @@ function composeSpec(input: {
     vibe: input.vibe,
     lodgingKind: input.lodgingKind,
     radiusM: amenityOnly ? INSTANT_POI_RADIUS_M : radiusForTransport(input.transport),
+    ...(input.maxNightlyPriceKrw != null && input.maxNightlyPriceKrw > 0
+      ? { maxNightlyPriceKrw: Math.round(input.maxNightlyPriceKrw) }
+      : {}),
     ...(input.eateryFocus?.trim() ? { eateryFocus: input.eateryFocus.trim() } : {}),
     ...(input.activityFocus?.trim()
       ? { activityFocus: input.activityFocus.trim() }
@@ -325,6 +331,15 @@ function resolveDiscoveryDomainSpec(input: {
   }
 
   if (isInstantLodgingSearch(input.text)) {
+    const lodgingKind =
+      (input.answers.lodgingKind as LocalDiscoveryLodgingKind | undefined) ??
+      parseLodgingKind(input.text) ??
+      input.previousSpec?.lodgingKind ??
+      "any";
+    const maxNightlyPriceKrw =
+      parseMaxNightlyPriceKrw(input.text) ??
+      input.previousSpec?.maxNightlyPriceKrw ??
+      null;
     const transport =
       (input.answers.transport as LocalDiscoveryTransport | undefined) ??
       parseTransport(input.text) ??
@@ -333,19 +348,18 @@ function resolveDiscoveryDomainSpec(input: {
     const budget =
       (input.answers.budget as LocalDiscoveryBudget | undefined) ??
       parseBudget(input.text) ??
+      (lodgingKind === "hostel" || maxNightlyPriceKrw != null
+        ? "low"
+        : null) ??
       input.previousSpec?.budget ??
       "medium";
-    const lodgingKind =
-      (input.answers.lodgingKind as LocalDiscoveryLodgingKind | undefined) ??
-      parseLodgingKind(input.text) ??
-      input.previousSpec?.lodgingKind ??
-      "any";
     return composeSpec({
       resourceTypes: ["hotel"],
       transport,
       budget,
       vibe: parseVibe(input.text) ?? input.previousSpec?.vibe ?? "popular",
       lodgingKind,
+      maxNightlyPriceKrw,
     });
   }
 
@@ -476,6 +490,9 @@ export function resolveLocalDiscoveryAction(
     input.inferredLodgingKind ??
     (wantsLodging ? "any" : "any");
 
+  const maxNightlyPriceKrw =
+    parseMaxNightlyPriceKrw(text) ?? previousSpec?.maxNightlyPriceKrw ?? null;
+
   if (followUpTurn && previousSpec) {
     transport = transport ?? previousSpec.transport;
     budget = budget ?? previousSpec.budget;
@@ -483,6 +500,13 @@ export function resolveLocalDiscoveryAction(
     if (!parseLodgingKind(text) && !answers.lodgingKind) {
       lodgingKind = previousSpec.lodgingKind;
     }
+  }
+
+  if (
+    budget == null &&
+    (lodgingKind === "hostel" || maxNightlyPriceKrw != null)
+  ) {
+    budget = "low";
   }
 
   const resourceTypes = resolveResourceTypes({ wantsLodging, wantsEatery });
@@ -498,6 +522,7 @@ export function resolveLocalDiscoveryAction(
   const partial: Partial<LocalDiscoveryActionSpec> = {
     resourceTypes,
     lodgingKind,
+    ...(maxNightlyPriceKrw != null ? { maxNightlyPriceKrw } : {}),
     ...(eateryFocus ? { eateryFocus } : {}),
     ...(transport != null ? { transport } : {}),
     ...(budget != null ? { budget } : {}),
@@ -568,6 +593,7 @@ export function resolveLocalDiscoveryAction(
       budget: budget ?? "medium",
       vibe: vibe ?? "popular",
       lodgingKind: lodgingKind ?? "any",
+      maxNightlyPriceKrw,
       eateryFocus,
     }),
     answers,
@@ -588,13 +614,26 @@ export function refineLocalDiscoverySpec(
   const budget = parseBudget(text);
   const vibe = parseVibe(text);
   const lodgingKind = parseLodgingKind(text);
+  const maxNightlyPriceKrw =
+    parseMaxNightlyPriceKrw(text) ?? spec.maxNightlyPriceKrw ?? null;
   const nextTransport = wantsCloser ? "walk" : (transport ?? spec.transport);
+  const nextLodgingKind = lodgingKind ?? spec.lodgingKind;
   return composeSpec({
     resourceTypes: spec.resourceTypes,
     transport: nextTransport,
-    budget: budget ?? spec.budget,
+    budget:
+      budget ??
+      (maxNightlyPriceKrw != null || nextLodgingKind === "hostel"
+        ? "low"
+        : null) ??
+      spec.budget,
     vibe: vibe ?? spec.vibe,
-    lodgingKind: lodgingKind ?? spec.lodgingKind,
+    lodgingKind: nextLodgingKind,
+    maxNightlyPriceKrw,
+    eateryFocus: spec.eateryFocus,
+    activityFocus: spec.activityFocus,
+    activitySubtype: spec.activitySubtype,
+    activityCluster: spec.activityCluster,
   });
 }
 
@@ -623,6 +662,7 @@ export function isLocalDiscoveryRefinement(message: string): boolean {
     isAlternatePlaceSearch(text) ||
       parseTransport(text) ||
       parseBudget(text) ||
+      parseMaxNightlyPriceKrw(text) ||
       parseVibe(text) ||
       isLodgingKindRefinement(text) ||
       /더\s*싸|더\s*조용|더\s*가까|더\s*근처|가까운/iu.test(text),

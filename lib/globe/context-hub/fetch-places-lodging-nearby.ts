@@ -116,6 +116,8 @@ export type FetchPlacesLodgingNearbyInput = {
   lat: number;
   lng: number;
   maxResults?: number;
+  /** Prefer text search (게스트하우스 / hostel) over generic Nearby lodging. */
+  keyword?: string | null;
 };
 
 /** Google Places Nearby (lodging) — server-side only. */
@@ -132,17 +134,28 @@ export async function fetchPlacesLodgingNearby(
   }
 
   const maxResults = input.maxResults ?? DEFAULT_MAX_RESULTS;
+  const keyword = input.keyword?.trim() || null;
 
   try {
-    const response = await client.placesNearby({
-      params: {
-        location: { lat: input.lat, lng: input.lng },
-        radius: LODGING_SEARCH_RADIUS_M,
-        type: "lodging",
-        language: Language.ko,
-        key,
-      },
-    });
+    const response = keyword
+      ? await client.textSearch({
+          params: {
+            query: keyword,
+            location: { lat: input.lat, lng: input.lng },
+            radius: LODGING_SEARCH_RADIUS_M,
+            language: Language.ko,
+            key,
+          },
+        })
+      : await client.placesNearby({
+          params: {
+            location: { lat: input.lat, lng: input.lng },
+            radius: LODGING_SEARCH_RADIUS_M,
+            type: "lodging",
+            language: Language.ko,
+            key,
+          },
+        });
 
     const candidates = (response.data.results ?? [])
       .map((result) => {

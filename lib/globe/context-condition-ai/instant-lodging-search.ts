@@ -3,6 +3,8 @@
  * Booking slot collection is separate (`requiresLodgingBookingSlots`).
  */
 
+import { parseMaxNightlyPriceKrw } from "@/lib/globe/context-condition-ai/filter-lodging-for-intent";
+
 const LODGING_NOUN =
   /(?:호텔|숙소|숙박|게스트\s*하우스|게스트하우스|호스텔|료칸|민박|펜션|motel|hostel|ryokan|hotel|lodging)/iu;
 const MAP_CUE =
@@ -29,6 +31,10 @@ export function isInstantLodgingSearch(text: string): boolean {
     return true;
   }
   if (LODGING_NOUN.test(trimmed) && MAP_CUE.test(trimmed)) {
+    return true;
+  }
+  // Price ceiling + find cue → lodging scout (e.g. "하루 3만원 미만으로 찾아줘").
+  if (parseMaxNightlyPriceKrw(trimmed) && MAP_CUE.test(trimmed)) {
     return true;
   }
   return false;

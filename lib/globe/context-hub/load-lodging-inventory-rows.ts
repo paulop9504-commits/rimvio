@@ -41,6 +41,7 @@ async function fetchLodgingInventoryFromApi(input: {
   lng: number;
   maxResults?: number;
   event: EventCandidate;
+  keyword?: string | null;
 }): Promise<ContextLodgingInventoryRow[]> {
   const plan = readPlanContextFromEvent(input.event);
   const slots = readLodgingBookingSlots(input.event);
@@ -60,6 +61,9 @@ async function fetchLodgingInventoryFromApi(input: {
   if (slots.guestCount != null && slots.guestCount > 0) {
     params.set("guests", String(Math.round(slots.guestCount)));
   }
+  if (input.keyword?.trim()) {
+    params.set("keyword", input.keyword.trim());
+  }
   const response = await fetch(`/api/globe/lodging-inventory?${params.toString()}`);
   if (!response.ok) {
     return [];
@@ -78,6 +82,7 @@ export async function loadLodgingInventoryRows(input: {
   maxResults?: number;
   preferUserLocation?: boolean;
   radiusM?: number;
+  keyword?: string | null;
 }): Promise<LoadedLodgingInventory> {
   const radiusM = input.radiusM ?? LODGING_DISCOVERY_RADIUS_M;
   const context = buildContextInstance({
@@ -96,9 +101,10 @@ export async function loadLodgingInventoryRows(input: {
         lng: searchOrigin.lng,
         maxResults: input.maxResults,
         event: input.event,
+        keyword: input.keyword,
       });
     } else {
-      if (isLiteApiConfigured()) {
+      if (isLiteApiConfigured() && !input.keyword?.trim()) {
         rows = await searchLiteApiLodgingNearby({
           lat: searchOrigin.lat,
           lng: searchOrigin.lng,
@@ -123,6 +129,7 @@ export async function loadLodgingInventoryRows(input: {
         lat: searchOrigin.lat,
         lng: searchOrigin.lng,
         maxResults: input.maxResults,
+        keyword: input.keyword,
       });
     }
   }

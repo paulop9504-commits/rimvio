@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
   const checkInIso = params.get("checkIn")?.trim() || null;
   const checkOutIso = params.get("checkOut")?.trim() || null;
   const guestCount = parseCoord(params.get("guests"));
+  const keyword = params.get("keyword")?.trim() || null;
   const maxResults =
     maxRaw != null
       ? Math.min(Math.max(Math.round(maxRaw), 1), GLOBE_DISCOVERY_FETCH_LIMIT)
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "lat_lng_required" }, { status: 400 });
   }
 
-  if (isLiteApiConfigured()) {
+  if (isLiteApiConfigured() && !keyword) {
     const inventory = await searchLiteApiLodgingNearby({
       lat,
       lng,
@@ -53,7 +54,12 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const inventory = await fetchPlacesLodgingNearby({ lat, lng, maxResults });
+  const inventory = await fetchPlacesLodgingNearby({
+    lat,
+    lng,
+    maxResults,
+    keyword,
+  });
 
   return NextResponse.json({
     ok: true,
