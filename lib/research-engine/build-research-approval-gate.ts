@@ -58,7 +58,12 @@ export function buildResearchApprovalGate(input: {
       ? `납득도 ${confPct} · 신호는 적지만 「${bestTitle}」로 진행할까요?`
       : `납득도 ${confPct} · 근거가 약합니다. 다시 조사할까요?`;
 
-  const chips: OperatorAskChipsComposePayload["chips"] = [];
+  const chips: Array<{
+    id: string;
+    labelKo: string;
+    gapId: string;
+    value: string;
+  }> = [];
 
   if (offerApply || softApply) {
     chips.push({
