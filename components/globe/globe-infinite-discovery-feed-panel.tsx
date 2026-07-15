@@ -42,6 +42,7 @@ import {
   subscribeLodgingRankModeOverride,
   writeLodgingRankModeOverride,
 } from "@/lib/globe/lodging/lodging-rank-mode-session-store";
+import type { GlobeResourceReelKind } from "@/lib/globe/resource-reel/types";
 import { cn } from "@/lib/utils";
 
 export type GlobeInfiniteDiscoveryFeedPanelProps = {
@@ -56,6 +57,27 @@ export type GlobeInfiniteDiscoveryFeedPanelProps = {
   pinBusyPlaceId?: string | null;
   className?: string;
 };
+
+type FeedSectorFilter = "all" | GlobeResourceReelKind;
+
+function sectorFilterLabel(kind: FeedSectorFilter): string {
+  switch (kind) {
+    case "all":
+      return copy.globe.intelligentPinSectorAll;
+    case "eatery":
+      return copy.globe.intelligentPinSectorEatery;
+    case "lodging":
+      return copy.globe.intelligentPinSectorLodging;
+    case "activity":
+      return copy.globe.intelligentPinSectorActivity;
+    case "amenity":
+      return copy.globe.intelligentPinSectorAmenity;
+  }
+}
+
+function sectorHeaderLabel(kind: GlobeResourceReelKind): string {
+  return sectorFilterLabel(kind);
+}
 
 function FeedImageSlider({ urls }: { urls: readonly string[] }) {
   if (urls.length === 0) {
@@ -129,6 +151,38 @@ export function GlobeInfiniteDiscoveryFeedPanel({
     () => cards.some((card) => card.kind === "eatery"),
     [cards],
   );
+  const sectorKinds = useMemo(() => {
+    const kinds: GlobeResourceReelKind[] = [];
+    const seen = new Set<GlobeResourceReelKind>();
+    for (const card of cards) {
+      if (seen.has(card.kind)) {
+        continue;
+      }
+      seen.add(card.kind);
+      kinds.push(card.kind);
+    }
+    return kinds;
+  }, [cards]);
+  const multiSector = sectorKinds.length > 1;
+  const [sectorFilter, setSectorFilter] = useState<FeedSectorFilter>("all");
+
+  useEffect(() => {
+    setSectorFilter("all");
+  }, [cards]);
+
+  const filteredCards = useMemo(() => {
+    if (sectorFilter === "all") {
+      return cards;
+    }
+    return cards.filter((card) => card.kind === sectorFilter);
+  }, [cards, sectorFilter]);
+
+  const showLodgingRank =
+    hasLodgingCards &&
+    (sectorFilter === "all" || sectorFilter === "lodging");
+  const showEateryRank =
+    hasEateryCards &&
+    (sectorFilter === "all" || sectorFilter === "eatery");
 
   const lodgingRankMode = useMemo((): LodgingRankMode => {
     void rankModeRevision;
@@ -176,9 +230,9 @@ export function GlobeInfiniteDiscoveryFeedPanel({
     return isScoutIntentConverged({
       message: batch?.triggerMessage ?? null,
     });
-  }, [contextEventId, cards]);
+  }, [contextEventId, filteredCards]);
   const [visibleCount, setVisibleCount] = useState(() =>
-    getInitialGlobeDiscoveryRevealCount(cards.length, {
+    getInitialGlobeDiscoveryRevealCount(filteredCards.length, {
       intentConverged: isScoutIntentConverged({
         message: readContextConditionLastBatch(contextEventId)?.triggerMessage,
       }),
@@ -188,9 +242,11 @@ export function GlobeInfiniteDiscoveryFeedPanel({
 
   useEffect(() => {
     setVisibleCount(
-      getInitialGlobeDiscoveryRevealCount(cards.length, { intentConverged }),
+      getInitialGlobeDiscoveryRevealCount(filteredCards.length, {
+        intentConverged,
+      }),
     );
-  }, [cards, intentConverged]);
+  }, [filteredCards, intentConverged, sectorFilter]);
 
   useEffect(() => {
     return () => {
@@ -201,13 +257,13 @@ export function GlobeInfiniteDiscoveryFeedPanel({
   }, []);
 
   const visibleCards = useMemo(
-    () => cards.slice(0, visibleCount),
-    [cards, visibleCount],
+    () => filteredCards.slice(0, visibleCount),
+    [filteredCards, visibleCount],
   );
-  const hasMore = hasMoreGlobeDiscoveryItems(visibleCount, cards.length);
+  const hasMore = hasMoreGlobeDiscoveryItems(visibleCount, filteredCards.length);
   const feedStatus = resolveGlobeDiscoveryFeedStatus({
     visibleCount,
-    totalCount: cards.length,
+    totalCount: filteredCards.length,
     loadingMore,
   });
 
@@ -218,14 +274,14 @@ export function GlobeInfiniteDiscoveryFeedPanel({
     setLoadingMore(true);
     loadMoreTimerRef.current = window.setTimeout(() => {
       setVisibleCount((current) =>
-        getNextGlobeDiscoveryRevealCount(current, cards.length, {
+        getNextGlobeDiscoveryRevealCount(current, filteredCards.length, {
           intentConverged,
         }),
       );
       setLoadingMore(false);
       loadMoreTimerRef.current = null;
     }, 140);
-  }, [cards.length, hasMore, intentConverged, loadingMore]);
+  }, [filteredCards.length, hasMore, intentConverged, loadingMore]);
 
   const recordCardScrollSignal = useCallback(
     (card: InfiniteDiscoveryFeedCard, dwellMs: number) => {
@@ -368,7 +424,9 @@ export function GlobeInfiniteDiscoveryFeedPanel({
           <div className="min-w-0">
             <p className="truncate text-[15px] font-semibold text-[#1d1d1f]">{areaLabel}</p>
             <p className="truncate text-[11px] text-[#86868b]">
-              {copy.globe.intelligentPinFeedSubtitle}
+              {multiSector
+                ? copy.globe.intelligentPinMixedSubtitle
+                : copy.globe.intelligentPinFeedSubtitle}
             </p>
           </div>
           <button
@@ -381,7 +439,44 @@ export function GlobeInfiniteDiscoveryFeedPanel({
           </button>
         </div>
 
-        {hasLodgingCards ? (
+        {multiSector ? (
+          <div
+            className="flex shrink-0 gap-1.5 overflow-x-auto border-b border-black/[0.06] px-3.5 py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            data-globe-infinite-feed-sectors
+          >
+            {(
+              [
+                "all",
+                ...sectorKinds,
+              ] as const satisfies readonly FeedSectorFilter[]
+            ).map((kind) => {
+              const active = sectorFilter === kind;
+              const count =
+                kind === "all"
+                  ? cards.length
+                  : cards.filter((card) => card.kind === kind).length;
+              return (
+                <button
+                  key={kind}
+                  type="button"
+                  onClick={() => setSectorFilter(kind)}
+                  className={cn(
+                    "shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 transition active:scale-[0.98]",
+                    active
+                      ? "bg-[#1d1d1f] text-white ring-[#1d1d1f]"
+                      : "bg-[#f5f5f7] text-[#515154] ring-black/[0.05]",
+                  )}
+                  data-globe-infinite-feed-sector={kind}
+                >
+                  {sectorFilterLabel(kind)}
+                  <span className="ml-1 tabular-nums opacity-70">{count}</span>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+
+        {showLodgingRank ? (
           <div className="shrink-0 border-b border-black/[0.06] px-3.5 py-2">
             <GlobeLodgingRankModeChips
               mode={lodgingRankMode}
@@ -390,7 +485,7 @@ export function GlobeInfiniteDiscoveryFeedPanel({
           </div>
         ) : null}
 
-        {hasEateryCards && !hasLodgingCards ? (
+        {showEateryRank ? (
           <div className="shrink-0 border-b border-black/[0.06] px-3.5 py-2">
             <GlobeEateryRankModeChips
               mode={eateryRankMode}
@@ -405,13 +500,31 @@ export function GlobeInfiniteDiscoveryFeedPanel({
           data-globe-infinite-feed-scroll
         >
           <div className="space-y-0 pb-6">
-            {visibleCards.map((card) => {
+            {visibleCards.map((card, index) => {
               const pinned = pinnedPlaceIds.has(card.placeId);
               const active = card.resourceId === activeResourceId;
               const pinBusy = pinBusyPlaceId === card.placeId;
+              const prevKind = visibleCards[index - 1]?.kind;
+              const showSectorHeader =
+                multiSector &&
+                sectorFilter === "all" &&
+                card.kind !== prevKind;
               return (
+                <div key={card.resourceId}>
+                  {showSectorHeader ? (
+                    <div
+                      className="sticky top-0 z-[1] flex items-center justify-between gap-2 border-b border-black/[0.06] bg-[#f5f5f7]/95 px-3.5 py-2 backdrop-blur-md"
+                      data-globe-infinite-feed-sector-header={card.kind}
+                    >
+                      <p className="text-[12px] font-semibold text-[#1d1d1f]">
+                        {sectorHeaderLabel(card.kind)}
+                      </p>
+                      <span className="text-[10px] font-medium tabular-nums text-[#86868b]">
+                        {cards.filter((row) => row.kind === card.kind).length}
+                      </span>
+                    </div>
+                  ) : null}
                 <article
-                  key={card.resourceId}
                   ref={(node) => {
                     if (node) {
                       cardRefs.current.set(card.resourceId, node);
@@ -576,6 +689,7 @@ export function GlobeInfiniteDiscoveryFeedPanel({
                     ) : null}
                   </div>
                 </article>
+                </div>
               );
             })}
             <div
@@ -592,7 +706,7 @@ export function GlobeInfiniteDiscoveryFeedPanel({
                 {getInfiniteDiscoveryFeedStatusCopy(
                   feedStatus,
                   visibleCards.length,
-                  cards.length,
+                  filteredCards.length,
                 )}
               </span>
             </div>

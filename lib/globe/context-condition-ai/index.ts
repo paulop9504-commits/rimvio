@@ -140,6 +140,13 @@ export {
   resolveLocalDiscoveryAction,
 } from "@/lib/globe/context-condition-ai/resolve-local-discovery-action";
 export {
+  hasConcurrentLodgingAndEaterySearchCues,
+  hasConcurrentMultiDomainSearchCues,
+  hasConcreteConcurrentEateryCue,
+  detectConcurrentDiscoveryDomains,
+  concurrentDiscoveryResourceTypes,
+} from "@/lib/globe/context-condition-ai/concurrent-lodging-eatery-cues";
+export {
   buildSpatialPatchPreview,
   planSpatialPatch,
 } from "@/lib/globe/context-condition-ai/plan-spatial-patch";

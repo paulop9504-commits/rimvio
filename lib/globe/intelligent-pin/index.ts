@@ -7,7 +7,7 @@ export type {
   IntelligentPinStateLayer,
   IntelligentPinTransactionLayer,
 } from "@/lib/globe/intelligent-pin/types";
-export { buildInfiniteDiscoveryFeedCards } from "@/lib/globe/intelligent-pin/build-infinite-discovery-feed-cards";
+export { buildInfiniteDiscoveryFeedCards, groupDiscoveryItemsBySector } from "@/lib/globe/intelligent-pin/build-infinite-discovery-feed-cards";
 export { useIntelligentDiscoveryFeedFocus } from "@/lib/globe/intelligent-pin/use-intelligent-discovery-feed-focus";
 export {
   dispatchIntelligentDiscoveryActiveCard,

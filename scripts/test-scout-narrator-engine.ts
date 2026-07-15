@@ -41,7 +41,7 @@ assert.equal(plan.intent, "Search");
 assert.equal(plan.mode, "Replace");
 assert.equal(plan.domain, "Eatery");
 assert.equal(plan.entityLabelKo, "초밥");
-assert.deepEqual([...plan.dropLabelsKo], ["말차"]);
+assert.deepEqual([...plan.dropLabelsKo], ["말차 아이스크림"]);
 assert.equal(plan.anchorLabelKo, "도쿄");
 
 const narration = narrateScoutPlan(plan);

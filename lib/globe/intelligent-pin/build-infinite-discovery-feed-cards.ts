@@ -1,4 +1,5 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
+import { detectConcurrentDiscoveryDomains } from "@/lib/globe/context-condition-ai/concurrent-lodging-eatery-cues";
 import { readLodgingInventoryRows } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import { readEateryInventoryRows } from "@/lib/globe/eatery/read-eatery-resource-inventory";
 import { selectPreferredLodgingImage } from "@/lib/globe/lodging/lodging-photo-fidelity";
@@ -75,28 +76,80 @@ function imageUrlsForItem(
   return [...new Set(urls)].slice(0, 6);
 }
 
-function interleaveMixedKinds(
+function resolveDiscoveryFeedKindOrder(
+  triggerMessage?: string | null,
+): readonly GlobeResourceReelItem["kind"][] {
+  const defaultOrder: GlobeResourceReelItem["kind"][] = [
+    "eatery",
+    "activity",
+    "amenity",
+    "lodging",
+  ];
+  const msg = triggerMessage?.trim() ?? "";
+  if (!msg) {
+    return defaultOrder;
+  }
+  const resourceToKind: Record<string, GlobeResourceReelItem["kind"]> = {
+    restaurant: "eatery",
+    hotel: "lodging",
+    activity: "activity",
+    amenity: "amenity",
+  };
+  const mentioned = detectConcurrentDiscoveryDomains(msg)
+    .map((hit) => resourceToKind[hit.resourceType])
+    .filter((kind): kind is GlobeResourceReelItem["kind"] => Boolean(kind));
+  if (mentioned.length === 0) {
+    return defaultOrder;
+  }
+  const order: GlobeResourceReelItem["kind"][] = [];
+  const used = new Set<GlobeResourceReelItem["kind"]>();
+  for (const kind of mentioned) {
+    if (used.has(kind)) {
+      continue;
+    }
+    order.push(kind);
+    used.add(kind);
+  }
+  for (const kind of defaultOrder) {
+    if (used.has(kind)) {
+      continue;
+    }
+    order.push(kind);
+  }
+  return order;
+}
+
+/** Group by kind into contiguous sectors (not interleaved). */
+export function groupDiscoveryItemsBySector(
   items: readonly GlobeResourceReelItem[],
+  triggerMessage?: string | null,
 ): GlobeResourceReelItem[] {
-  const buckets = new Map<string, GlobeResourceReelItem[]>();
+  const buckets = new Map<GlobeResourceReelItem["kind"], GlobeResourceReelItem[]>();
   for (const item of items) {
     const bucket = buckets.get(item.kind) ?? [];
     bucket.push(item);
     buckets.set(item.kind, bucket);
   }
-  const kinds = [...buckets.keys()];
-  if (kinds.length <= 1) {
+  const kindsPresent = [...buckets.keys()];
+  if (kindsPresent.length <= 1) {
     return [...items];
   }
-  const maxLen = Math.max(...kinds.map((kind) => buckets.get(kind)!.length));
+  const order = resolveDiscoveryFeedKindOrder(triggerMessage);
   const mixed: GlobeResourceReelItem[] = [];
-  for (let index = 0; index < maxLen; index += 1) {
-    for (const kind of kinds) {
-      const row = buckets.get(kind)?.[index];
-      if (row) {
-        mixed.push(row);
-      }
+  const used = new Set<GlobeResourceReelItem["kind"]>();
+  for (const kind of order) {
+    const rows = buckets.get(kind);
+    if (!rows?.length) {
+      continue;
     }
+    mixed.push(...rows);
+    used.add(kind);
+  }
+  for (const kind of kindsPresent) {
+    if (used.has(kind)) {
+      continue;
+    }
+    mixed.push(...(buckets.get(kind) ?? []));
   }
   return mixed;
 }
@@ -117,7 +170,7 @@ export function buildInfiniteDiscoveryFeedCards(input: {
     event: input.event,
     events: listLifeEventCandidates(),
   });
-  const mixed = interleaveMixedKinds(input.items);
+  const mixed = groupDiscoveryItemsBySector(input.items, input.triggerMessage);
   return mixed.map((item, index) => {
     const images = imageUrlsForItem(input.event, item);
     const lodgingRow =

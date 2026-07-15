@@ -15,10 +15,30 @@ function domainNounKo(plan: ScoutNarrationPlan): string {
     case "Amenity":
       return "편의시설";
     case "Mixed":
-      return "주변";
+      return "맛집·숙소";
     default:
       return "검색";
   }
+}
+
+/** 을/를 — last hangul batchim (받침) → 을, else 를. ASCII/digits → 를. */
+export function objectParticleKo(noun: string): "을" | "를" {
+  const trimmed = noun.trim();
+  if (!trimmed) {
+    return "를";
+  }
+  const last = trimmed[trimmed.length - 1]!;
+  const code = last.codePointAt(0) ?? 0;
+  // Hangul syllables AC00–D7A3
+  if (code < 0xac00 || code > 0xd7a3) {
+    return "를";
+  }
+  const hasBatchim = (code - 0xac00) % 28 !== 0;
+  return hasBatchim ? "을" : "를";
+}
+
+function withObjectParticle(noun: string): string {
+  return `${noun}${objectParticleKo(noun)}`;
 }
 
 function entitySearchTail(plan: ScoutNarrationPlan): string {
@@ -27,7 +47,14 @@ function entitySearchTail(plan: ScoutNarrationPlan): string {
     return entity ? `${entity} 맛집` : "맛집";
   }
   if (plan.domain === "Lodging") {
-    return entity ? `${entity} 숙소` : "숙소";
+    // Entity is already lodging kind (캡슐 호텔) — don't append 숙소 again.
+    return entity ?? "숙소";
+  }
+  if (plan.domain === "Mixed") {
+    if (entity) {
+      return entity;
+    }
+    return "맛집과 숙소";
   }
   if (entity) {
     return entity;
@@ -41,21 +68,28 @@ function buildUnderstandingKo(plan: ScoutNarrationPlan): string {
   const drop = plan.dropLabelsKo[0]?.trim();
   const anchor = plan.anchorLabelKo?.trim();
   const target = entitySearchTail(plan);
+  const targetObj = withObjectParticle(target);
 
   if (plan.mode === "Replace") {
-    lines.push(
-      `이번 요청은 새로운 ${domainNounKo(plan)} 검색으로 판단했습니다.`,
-    );
-    if (drop && entity && drop !== entity) {
+    if (plan.domain === "Mixed") {
+      lines.push(
+        "이번 요청은 맛집과 숙소를 함께 찾는 검색으로 판단했습니다.",
+      );
+    } else {
+      lines.push(
+        `이번 요청은 새로운 ${domainNounKo(plan)} 검색으로 판단했습니다.`,
+      );
+    }
+    if (drop && entity && drop !== entity && plan.domain !== "Lodging") {
       lines.push(
         [
           `이전 ${drop} 검색은 검색 조건에서 제외하고,`,
           anchor
-            ? `${anchor}를 기준으로 ${target}을 다시 찾겠습니다.`
-            : `현재 위치를 기준으로 ${target}을 다시 찾겠습니다.`,
+            ? `${anchor}를 기준으로 ${targetObj} 다시 찾겠습니다.`
+            : `현재 위치를 기준으로 ${targetObj} 다시 찾겠습니다.`,
         ].join("\n"),
       );
-    } else if (drop) {
+    } else if (drop && plan.domain !== "Lodging") {
       lines.push(
         `이전 ${drop} 검색은 제외하고, ${
           anchor ? `${anchor} 기준` : "현재 위치 기준"
@@ -64,8 +98,8 @@ function buildUnderstandingKo(plan: ScoutNarrationPlan): string {
     } else {
       lines.push(
         anchor
-          ? `${anchor}를 기준으로 ${target}을 찾겠습니다.`
-          : `현재 위치를 기준으로 ${target}을 찾겠습니다.`,
+          ? `${anchor}를 기준으로 ${targetObj} 찾겠습니다.`
+          : `현재 위치를 기준으로 ${targetObj} 찾겠습니다.`,
       );
     }
   } else if (plan.intent === "Refine") {
@@ -94,13 +128,13 @@ function entityEmoji(plan: ScoutNarrationPlan): string {
   if (/라멘|ramen/iu.test(label)) {
     return "🍜";
   }
-  if (plan.domain === "Lodging") {
+  if (plan.domain === "Lodging" || /캡슐|호텔|숙소/iu.test(label)) {
     return "🏨";
   }
   if (plan.domain === "Activity") {
     return "🎯";
   }
-  if (plan.domain === "Eatery") {
+  if (plan.domain === "Eatery" || plan.domain === "Mixed") {
     return "🍽️";
   }
   return "🔍";
@@ -125,7 +159,12 @@ function buildProgressSteps(plan: ScoutNarrationPlan): ScoutNarrationProgressSte
   }
 
   const entity = plan.entityLabelKo?.trim();
-  if (entity) {
+  if (plan.domain === "Mixed" && entity) {
+    steps.push({
+      id: "switch_entity",
+      textKo: `🍽️🏨 ${entity} 병렬 검색으로 전환…`,
+    });
+  } else if (entity) {
     steps.push({
       id: "switch_entity",
       textKo: `${entityEmoji(plan)} ${entity} 검색으로 전환…`,

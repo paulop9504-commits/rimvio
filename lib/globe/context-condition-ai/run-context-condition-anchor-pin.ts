@@ -274,13 +274,29 @@ function buildSummaryKo(input: {
 function buildRecommendations(input: {
   lodgingScored: ReturnType<typeof scoreLodgingRecommendations>;
   eateryScored: ReturnType<typeof scoreEateryRecommendations>;
+  /** Extra place-channel rows (activity/amenity) when also searching restaurants. */
+  placeScored?: ReturnType<typeof scoreEateryRecommendations>;
   /** When set, eatery-channel rows are activity/amenity places, not restaurants. */
   activityKind?: "activity" | "amenity" | null;
+  /** Kind for placeScored rows (when restaurants also present). */
+  placeKind?: "activity" | "amenity" | null;
   activitySubtype?: LocalDiscoveryActionSpec["activitySubtype"];
   recommendCap?: number;
 }): ContextConditionRecommendation[] {
+  const baseCap = input.recommendCap ?? LOCAL_DISCOVERY_RECOMMEND_CAP;
+  const lodgingPresent = input.lodgingScored.length > 0;
+  const eateryPresent = input.eateryScored.length > 0;
+  const placePresent = (input.placeScored?.length ?? 0) > 0;
+  const sectorCount =
+    Number(lodgingPresent) + Number(eateryPresent) + Number(placePresent);
+  // Per-sector budget — never truncate away a whole user-requested sector.
+  const perSectorCap =
+    sectorCount <= 1 ? baseCap : Math.max(baseCap, 4);
+
   const rows: ContextConditionRecommendation[] = [];
-  for (const [index, row] of input.lodgingScored.entries()) {
+  for (const [index, row] of input.lodgingScored
+    .slice(0, perSectorCap)
+    .entries()) {
     rows.push({
       kind: "lodging",
       title: toReadablePlaceLabel(row.row.name) || row.row.placeId,
@@ -292,10 +308,13 @@ function buildRecommendations(input: {
     });
   }
   const eateryKind = input.activityKind ?? "eatery";
-  for (const [index, row] of input.eateryScored.entries()) {
+  for (const [index, row] of input.eateryScored
+    .slice(0, perSectorCap)
+    .entries()) {
     rows.push({
       kind: eateryKind,
-      activitySubtype: eateryKind === "activity" ? (input.activitySubtype ?? null) : null,
+      activitySubtype:
+        eateryKind === "activity" ? (input.activitySubtype ?? null) : null,
       title: toReadablePlaceLabel(row.row.name) || row.row.placeId,
       reasonKo: row.reasonKo,
       rank: index + 1,
@@ -304,7 +323,25 @@ function buildRecommendations(input: {
       lng: row.row.lng,
     });
   }
-  return rows.slice(0, input.recommendCap ?? LOCAL_DISCOVERY_RECOMMEND_CAP);
+  const placeKind = input.placeKind ?? null;
+  if (placeKind && input.placeScored) {
+    for (const [index, row] of input.placeScored
+      .slice(0, perSectorCap)
+      .entries()) {
+      rows.push({
+        kind: placeKind,
+        activitySubtype:
+          placeKind === "activity" ? (input.activitySubtype ?? null) : null,
+        title: toReadablePlaceLabel(row.row.name) || row.row.placeId,
+        reasonKo: row.reasonKo,
+        rank: index + 1,
+        placeId: row.row.placeId,
+        lat: row.row.lat,
+        lng: row.row.lng,
+      });
+    }
+  }
+  return rows;
 }
 
 /** Structured spec → map placement (pins + ranked overlay reasons). */
@@ -383,25 +420,41 @@ export async function runContextConditionAnchorPin(
   });
 
   const patchScope = input.patchPlan?.scope ?? "all";
-  const activityKind: "activity" | "amenity" | null =
-    spec.resourceTypes.includes("amenity")
-      ? "amenity"
-      : spec.resourceTypes.includes("activity")
-        ? "activity"
+  const hasRestaurant = spec.resourceTypes.includes("restaurant");
+  const hasHotel = spec.resourceTypes.includes("hotel");
+  const hasActivity = spec.resourceTypes.includes("activity");
+  const hasAmenity = spec.resourceTypes.includes("amenity");
+  // Place-domain kind used when restaurant is NOT also requested (single channel).
+  const activityKind: "activity" | "amenity" | null = hasRestaurant
+    ? null
+    : hasActivity
+      ? "activity"
+      : hasAmenity
+        ? "amenity"
         : null;
-  const wantsActivity = activityKind !== null && patchScope !== "lodging_only";
+  // Extra place channel when restaurants + activity/amenity are requested together.
+  const placeKindAlongsideEatery: "activity" | "amenity" | null =
+    hasRestaurant && hasActivity
+      ? "activity"
+      : hasRestaurant && hasAmenity
+        ? "amenity"
+        : null;
+  const wantsActivity =
+    (activityKind !== null || placeKindAlongsideEatery !== null) &&
+    patchScope !== "lodging_only";
   const wantsLodging =
-    !wantsActivity &&
+    hasHotel &&
     patchScope !== "eatery_only" &&
-    spec.resourceTypes.includes("hotel") &&
     intent.lodgingSimilar !== false;
   const wantsEatery =
-    !wantsActivity &&
+    hasRestaurant &&
     patchScope !== "lodging_only" &&
-    spec.resourceTypes.includes("restaurant") &&
     intent.eateryNearby !== false;
   const activityLabelKo = wantsActivity
-    ? spec.activityFocus?.trim() || (activityKind === "amenity" ? "장소" : "놀거리")
+    ? spec.activityFocus?.trim() ||
+      (activityKind === "amenity" || placeKindAlongsideEatery === "amenity"
+        ? "장소"
+        : "놀거리")
     : null;
   const activitySubtype = spec.activitySubtype ?? "general";
 
@@ -422,6 +475,7 @@ export async function runContextConditionAnchorPin(
     [];
   let eateryScored: ReturnType<typeof scoreEateryRecommendations> = [];
   let eaterySource: string | null = null;
+  let placeScoredAlongside: ReturnType<typeof scoreEateryRecommendations> = [];
   let activityScoresForTelemetry: readonly number[] | undefined;
 
   if (wantsLodging) {
@@ -623,6 +677,7 @@ export async function runContextConditionAnchorPin(
 
   if (wantsActivity) {
     input.onProcessPhase?.("analyzing");
+    const placeDomainKind = placeKindAlongsideEatery ?? activityKind;
     const area = searchOrigin.regionLabel;
     // Lens / hotel POV — keep Naver queries city-scoped; coords carry the radius.
     const queryArea =
@@ -636,8 +691,8 @@ export async function runContextConditionAnchorPin(
       term.includes(queryArea) ? term : `${queryArea} ${term}`.trim();
     const activityQuery = focus
       ? withArea(focus)
-      : `${queryArea} ${activityKind === "amenity" ? "장소" : "놀거리"}`;
-    const isAmenity = activityKind === "amenity";
+      : `${queryArea} ${placeDomainKind === "amenity" ? "장소" : "놀거리"}`;
+    const isAmenity = placeDomainKind === "amenity";
     const activityRadiusM = input.discoveryOrigin
       ? searchOrigin.radiusM
       : isAmenity
@@ -685,28 +740,19 @@ export async function runContextConditionAnchorPin(
       ? []
       : await Promise.all(
           queries.map((query) =>
-            wantsActivity
-              ? loadPlaceInventoryRows({
-                  event,
-                  domain: activityKind ?? "activity",
-                  query,
-                  lat: searchOrigin.lat,
-                  lng: searchOrigin.lng,
-                  maxResults: isAmenity
-                    ? amenityMaxResults
-                    : isLandmarkScout
-                      ? 4
-                      : 12,
-                  radiusM: activityRadiusM,
-                })
-              : loadEateryInventoryRows({
-                  event,
-                  message: query,
-                  lat: searchOrigin.lat,
-                  lng: searchOrigin.lng,
-                  maxResults: isLandmarkScout ? 4 : 12,
-                  radiusM: activityRadiusM,
-                }),
+            loadPlaceInventoryRows({
+              event,
+              domain: placeDomainKind ?? "activity",
+              query,
+              lat: searchOrigin.lat,
+              lng: searchOrigin.lng,
+              maxResults: isAmenity
+                ? amenityMaxResults
+                : isLandmarkScout
+                  ? 4
+                  : 12,
+              radiusM: activityRadiusM,
+            }),
           ),
         );
     const mergedById = new Map<string, ContextPlaceInventoryRow>();
@@ -738,7 +784,7 @@ export async function runContextConditionAnchorPin(
           : withoutDemo.length > 0
             ? withoutDemo
             : allMerged;
-    eaterySource =
+    const placeLoadSource =
       loadedBatches.find((batch) => batch.source && batch.source !== "mock")
         ?.source ??
       (resolvedLandmark ? "google_places" : null) ??
@@ -746,6 +792,9 @@ export async function runContextConditionAnchorPin(
         ? "google_places"
         : loadedBatches[0]?.source) ??
       null;
+    if (!placeKindAlongsideEatery) {
+      eaterySource = placeLoadSource;
+    }
 
     // Focus tokens minus the region word (so "오사카" doesn't match every row),
     // plus cluster nodes — any related node in the name boosts relevance.
@@ -784,15 +833,15 @@ export async function runContextConditionAnchorPin(
       focusTokens,
       guardThreshold: guardThresholdForDomain(exploration, guardDomain),
     });
-    eateryScored = guarded.kept;
-    if (eateryScored.length === 0 && activityScored.length > 0) {
+    let nextPlaceScored = guarded.kept;
+    if (nextPlaceScored.length === 0 && activityScored.length > 0) {
       const relaxed = verifyDiscoveryResults({
         domain: guardDomain,
         items: activityScored,
         focusTokens,
         guardThreshold: 0.52,
       });
-      eateryScored =
+      nextPlaceScored =
         relaxed.kept.length > 0
           ? relaxed.kept
           : activityScored
@@ -806,9 +855,8 @@ export async function runContextConditionAnchorPin(
               })
               .slice(0, exploration.activityPresentCap);
     }
-    activityScoresForTelemetry = eateryScored.map((row) => row.score);
-    if (eateryScored.length === 0 && resolvedLandmark) {
-      eateryScored = scorePlaceRecommendations({
+    if (nextPlaceScored.length === 0 && resolvedLandmark) {
+      nextPlaceScored = scorePlaceRecommendations({
         domain: isAmenity ? "amenity" : "activity",
         rows: [resolvedLandmark],
         lat: searchOrigin.lat,
@@ -818,10 +866,21 @@ export async function runContextConditionAnchorPin(
         exploration,
       });
     }
-    eateryRows = eateryScored.map((row) => row.row);
+    activityScoresForTelemetry = nextPlaceScored.map((row) => row.score);
+    if (placeKindAlongsideEatery) {
+      // Keep restaurant channel intact — place domain is a parallel sector.
+      placeScoredAlongside = nextPlaceScored;
+    } else {
+      eateryScored = nextPlaceScored;
+      eateryRows = eateryScored.map((row) => row.row);
+    }
   }
 
-  if (lodgingRows.length === 0 && eateryRows.length === 0) {
+  if (
+    lodgingRows.length === 0 &&
+    eateryRows.length === 0 &&
+    placeScoredAlongside.length === 0
+  ) {
     return null;
   }
 
@@ -833,11 +892,18 @@ export async function runContextConditionAnchorPin(
   if (exclude.size > 0) {
     lodgingScored = lodgingScored.filter((row) => !exclude.has(row.row.placeId));
     eateryScored = eateryScored.filter((row) => !exclude.has(row.row.placeId));
+    placeScoredAlongside = placeScoredAlongside.filter(
+      (row) => !exclude.has(row.row.placeId),
+    );
     lodgingRows = lodgingScored.map((row) => row.row);
     eateryRows = eateryScored.map((row) => row.row);
   }
 
-  if (lodgingRows.length === 0 && eateryRows.length === 0) {
+  if (
+    lodgingRows.length === 0 &&
+    eateryRows.length === 0 &&
+    placeScoredAlongside.length === 0
+  ) {
     return null;
   }
 
@@ -850,21 +916,24 @@ export async function runContextConditionAnchorPin(
     ...lodgingScored,
   ];
   const combinedEateryScored = [...(keptRows?.eateryScored ?? []), ...eateryScored];
-
+  const feedPlaceCap = Math.max(
+    exploration.eateryPresentCap * 2,
+    exploration.recommendCap,
+  );
   const feedLodgingScored = combinedLodgingScored.slice(
     0,
     exploration.feedInventoryCap ?? LOCAL_DISCOVERY_FEED_INVENTORY_CAP,
   );
-  const feedEateryScored = combinedEateryScored.slice(
-    0,
-    Math.max(exploration.eateryPresentCap * 2, exploration.recommendCap),
-  );
+  const feedEateryScored = combinedEateryScored.slice(0, feedPlaceCap);
+  const feedPlaceScored = placeScoredAlongside.slice(0, feedPlaceCap);
+  // Inventory wire is lodging + eatery tables — place sectors merge into eatery rows.
+  const feedInventoryEateryScored = [...feedEateryScored, ...feedPlaceScored];
 
   const picked = pickTopLocalDiscoveryRows({
     lodgingScored: feedLodgingScored,
-    eateryScored: feedEateryScored,
+    eateryScored: feedInventoryEateryScored,
     cap:
-      activityKind === "amenity"
+      activityKind === "amenity" || placeKindAlongsideEatery === "amenity"
         ? INSTANT_POI_PIN_CAP
         : activityLandmarkFocus
           ? exploration.activityLandmarkPinCap
@@ -873,7 +942,7 @@ export async function runContextConditionAnchorPin(
   const mapPinLodgingRows = picked.lodgingRows;
   const mapPinEateryRows = picked.eateryRows;
   const feedLodgingRows = feedLodgingScored.map((row) => row.row);
-  const feedEateryRows = feedEateryScored.map((row) => row.row);
+  const feedEateryRows = feedInventoryEateryScored.map((row) => row.row);
 
   if (feedLodgingRows.length === 0 && feedEateryRows.length === 0) {
     return null;
@@ -889,8 +958,13 @@ export async function runContextConditionAnchorPin(
   const recommendations = buildRecommendations({
     lodgingScored: feedLodgingScored,
     eateryScored: feedEateryScored,
+    placeScored: feedPlaceScored,
     activityKind,
-    activitySubtype: activityKind === "activity" ? activitySubtype : null,
+    placeKind: placeKindAlongsideEatery,
+    activitySubtype:
+      activityKind === "activity" || placeKindAlongsideEatery === "activity"
+        ? activitySubtype
+        : null,
     recommendCap: exploration.recommendCap,
   });
 
@@ -917,11 +991,14 @@ export async function runContextConditionAnchorPin(
     lodgingRows: feedLodgingRows,
     eateryRows: feedEateryRows,
     lodgingScored: feedLodgingScored,
-    eateryScored: feedEateryScored,
+    eateryScored: feedInventoryEateryScored,
     lodgingSource,
     eaterySource,
     eateryKind: activityKind ?? "eatery",
-    activitySubtype: activityKind === "activity" ? activitySubtype : null,
+    activitySubtype:
+      activityKind === "activity" || placeKindAlongsideEatery === "activity"
+        ? activitySubtype
+        : null,
     deferMapReveal: input.deferMapReveal,
   });
 
@@ -996,9 +1073,10 @@ export async function runContextConditionAnchorPin(
     explorationMode,
     batchId,
     lodgingScores: feedLodgingScored.map((row) => row.score),
-    eateryScores: wantsActivity
-      ? undefined
-      : feedEateryScored.map((row) => row.score),
+    eateryScores:
+      feedEateryScored.length > 0
+        ? feedEateryScored.map((row) => row.score)
+        : undefined,
     activityScores: wantsActivity ? activityScoresForTelemetry : undefined,
   });
 

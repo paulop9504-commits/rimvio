@@ -2,6 +2,7 @@ import type { LocalDiscoveryActionSpec } from "@/lib/globe/context-condition-ai/
 import type { ScoutTurnConstraints } from "@/lib/globe/context-condition-ai/scout-turn-constraints";
 import { shouldCarryPriorEateryFocus } from "@/lib/globe/context-condition-ai/scout-turn-constraints";
 import { parseUtteranceIntentSlots } from "@/lib/globe/context-condition-ai/utterance-intent-slots";
+import { parseLodgingStayTypeFromText } from "@/lib/globe/lodging/lodging-stay-types";
 import type {
   ScoutNarrationDomain,
   ScoutNarrationMode,
@@ -43,6 +44,9 @@ function normalizeFocusLabel(raw: string | null | undefined): string | null {
   if (/초밥|스시|sushi/iu.test(trimmed)) {
     return "초밥";
   }
+  if (/말차\s*아이스|말차아이스|matcha.{0,12}ice/iu.test(trimmed)) {
+    return "말차 아이스크림";
+  }
   if (/말차|matcha|抹茶/iu.test(trimmed)) {
     return "말차";
   }
@@ -50,6 +54,59 @@ function normalizeFocusLabel(raw: string | null | undefined): string | null {
     return "라멘";
   }
   return trimmed;
+}
+
+function lodgingEntityLabelKo(
+  message: string,
+  spec: LocalDiscoveryActionSpec,
+): string | null {
+  const stay =
+    spec.lodgingStayType ?? parseLodgingStayTypeFromText(message);
+  if (stay === "capsule") {
+    return "캡슐 호텔";
+  }
+  if (stay === "guesthouse" || stay === "hostel") {
+    return "게스트하우스";
+  }
+  if (stay === "airbnb") {
+    return "에어비앤비";
+  }
+  if (stay === "hotel" || spec.lodgingKind === "hotel") {
+    return "호텔";
+  }
+  if (spec.lodgingKind === "hostel") {
+    return "호스텔";
+  }
+  return null;
+}
+
+function resolveEntityLabelKo(input: {
+  message: string;
+  spec: LocalDiscoveryActionSpec;
+  dishFocus: string | null;
+}): string | null {
+  const domain = domainFromSpec(input.spec);
+  const dish = input.dishFocus;
+  const lodging = lodgingEntityLabelKo(input.message, input.spec);
+
+  if (domain === "Eatery") {
+    return dish;
+  }
+  if (domain === "Lodging") {
+    // Never narrate dish as lodging entity (「말차 숙소」).
+    return lodging;
+  }
+  if (domain === "Mixed") {
+    if (dish && lodging) {
+      return `${dish} · ${lodging}`;
+    }
+    return dish || lodging;
+  }
+  return (
+    normalizeFocusLabel(input.spec.activityFocus) ||
+    dish ||
+    lodging
+  );
 }
 
 function focusChanged(
@@ -72,37 +129,50 @@ export function buildScoutNarrationPlan(input: {
   anchorLabelKo?: string | null;
 }): ScoutNarrationPlan {
   const slots = parseUtteranceIntentSlots(input.message);
-  const nextFocus =
+  const dishFocus =
     normalizeFocusLabel(input.spec.eateryFocus) ||
     normalizeFocusLabel(slots.dishFocus) ||
-    normalizeFocusLabel(input.spec.activityFocus) ||
     null;
+  const nextFocus = resolveEntityLabelKo({
+    message: input.message,
+    spec: input.spec,
+    dishFocus,
+  });
   const priorFocus =
     normalizeFocusLabel(input.priorConstraints?.eateryFocus) ||
     normalizeFocusLabel(input.previousSpec?.eateryFocus) ||
     null;
 
   const carryDish = shouldCarryPriorEateryFocus(input.message);
+  const domain = domainFromSpec(input.spec);
   const dropped =
-    !carryDish && priorFocus && focusChanged(priorFocus, nextFocus)
+    domain !== "Lodging" &&
+    !carryDish &&
+    priorFocus &&
+    focusChanged(priorFocus, dishFocus)
       ? [priorFocus]
-      : !carryDish && priorFocus && !nextFocus
+      : domain !== "Lodging" && !carryDish && priorFocus && !dishFocus
         ? [priorFocus]
         : [];
 
   let mode: ScoutNarrationMode = "Continue";
-  if (dropped.length > 0 || (slots.replaceDish && nextFocus)) {
+  if (dropped.length > 0 || (slots.replaceDish && dishFocus)) {
     mode = "Replace";
-  } else if (carryDish && nextFocus && priorFocus && !focusChanged(priorFocus, nextFocus)) {
+  } else if (carryDish && dishFocus && priorFocus && !focusChanged(priorFocus, dishFocus)) {
     mode = "Continue";
   } else if (nextFocus && !priorFocus) {
     mode = "Replace";
-  } else if (!carryDish && (nextFocus || input.spec.resourceTypes.includes("restaurant"))) {
+  } else if (
+    !carryDish &&
+    (dishFocus ||
+      input.spec.resourceTypes.includes("restaurant") ||
+      input.spec.resourceTypes.includes("hotel"))
+  ) {
     mode = "Replace";
   }
 
   const keepLabelsKo: string[] = [];
-  if (carryDish && priorFocus && nextFocus && !focusChanged(priorFocus, nextFocus)) {
+  if (carryDish && priorFocus && dishFocus && !focusChanged(priorFocus, dishFocus)) {
     keepLabelsKo.push(priorFocus);
   }
   if (input.spec.transport) {
@@ -124,7 +194,7 @@ export function buildScoutNarrationPlan(input: {
     version: 1,
     intent,
     mode,
-    domain: domainFromSpec(input.spec),
+    domain,
     entityLabelKo: nextFocus,
     dropLabelsKo: dropped,
     keepLabelsKo,

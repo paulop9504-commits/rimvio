@@ -10,6 +10,7 @@ export { buildScoutNarrationPlan } from "@/lib/globe/narrator-engine/build-scout
 export {
   narrateFromScoutContext,
   narrateScoutPlan,
+  objectParticleKo,
 } from "@/lib/globe/narrator-engine/narrate-scout-plan";
 export {
   publishScoutNarration,

@@ -6,7 +6,12 @@ import {
 import {
   isInstantLodgingSearch,
 } from "@/lib/globe/context-condition-ai/instant-lodging-search";
+import { hasConcurrentMultiDomainSearchCues, concurrentDiscoveryResourceTypes } from "@/lib/globe/context-condition-ai/concurrent-lodging-eatery-cues";
 import { parseMaxNightlyPriceKrw } from "@/lib/globe/context-condition-ai/filter-lodging-for-intent";
+import {
+  parseActivityFocusDetail,
+  parseAmenityFocus,
+} from "@/lib/globe/context-condition-ai/resolve-local-discovery-domain";
 import { parseLodgingKindFromText } from "@/lib/globe/domain-cues/lodging-domain-cues";
 import { parseLodgingStayTypeFromText } from "@/lib/globe/lodging/lodging-stay-types";
 import type { LodgingStayType } from "@/lib/globe/lodging/lodging-stay-types";
@@ -315,7 +320,11 @@ function resolveDiscoveryDomainSpec(input: {
   previousSpec: LocalDiscoveryActionSpec | null;
 }): LocalDiscoveryActionSpec | null {
   const instantFocus = resolveInstantPoiFocus(input.text);
-  if (instantFocus) {
+  // Amenity-only instant — never when the user also asked for other sectors.
+  if (
+    instantFocus &&
+    !hasConcurrentMultiDomainSearchCues(input.text)
+  ) {
     const transport =
       (input.answers.transport as LocalDiscoveryTransport | undefined) ??
       parseTransport(input.text) ??
@@ -335,6 +344,64 @@ function resolveDiscoveryDomainSpec(input: {
       activityFocus: instantFocus,
       activitySubtype: null,
       activityCluster: null,
+    });
+  }
+
+  // Any 2+ domains in one turn — open every requested sector (no count cap).
+  if (hasConcurrentMultiDomainSearchCues(input.text)) {
+    const resourceTypes = concurrentDiscoveryResourceTypes(input.text);
+    const stayType =
+      parseLodgingStayTypeFromText(input.text) ??
+      input.previousSpec?.lodgingStayType ??
+      null;
+    const lodgingKind =
+      (input.answers.lodgingKind as LocalDiscoveryLodgingKind | undefined) ??
+      parseLodgingKind(input.text) ??
+      input.previousSpec?.lodgingKind ??
+      "any";
+    const maxNightlyPriceKrw =
+      parseMaxNightlyPriceKrw(input.text) ??
+      input.previousSpec?.maxNightlyPriceKrw ??
+      null;
+    const transport =
+      (input.answers.transport as LocalDiscoveryTransport | undefined) ??
+      parseTransport(input.text) ??
+      input.previousSpec?.transport ??
+      "walk";
+    const budget =
+      (input.answers.budget as LocalDiscoveryBudget | undefined) ??
+      parseBudget(input.text) ??
+      (lodgingKind === "hostel" || maxNightlyPriceKrw != null
+        ? "low"
+        : null) ??
+      input.previousSpec?.budget ??
+      "medium";
+    const eateryFocus = resourceTypes.includes("restaurant")
+      ? resolveInstantEateryFocus(input.text)
+      : null;
+    const activityDetail = resourceTypes.includes("activity")
+      ? parseActivityFocusDetail(input.text)
+      : null;
+    const amenityFocus = resourceTypes.includes("amenity")
+      ? parseAmenityFocus(input.text)
+      : null;
+    const activityFocus =
+      activityDetail?.focus ??
+      amenityFocus ??
+      (resourceTypes.includes("activity") ? "놀거리" : null);
+    return composeSpec({
+      resourceTypes,
+      transport,
+      budget,
+      vibe: parseVibe(input.text) ?? input.previousSpec?.vibe ?? "popular",
+      lodgingKind,
+      lodgingStayType: stayType,
+      maxNightlyPriceKrw,
+      ...(eateryFocus ? { eateryFocus } : {}),
+      ...(activityFocus ? { activityFocus } : {}),
+      ...(activityDetail?.subtype
+        ? { activitySubtype: activityDetail.subtype }
+        : {}),
     });
   }
 

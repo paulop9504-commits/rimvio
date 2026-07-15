@@ -8,7 +8,7 @@ const EATERY_NOUN =
   /(?:맛집|식당|음식점|레스토랑|먹을\s*곳|먹고\s*싶|dining|restaurant)/iu;
 const MAP_CUE = /(?:지도|표시|꽂|찾아|찾기|찾어|보여|nearby|show\s+on)/iu;
 const CUISINE_SHOP =
-  /^(?:초밥|스시|피자|치킨|라멘|카페|말차|sushi|pizza|ramen|chicken|matcha)(?:집| 가게)?/iu;
+  /^(?:초밥|스시|피자|치킨|라멘|카페|말차(?:아이스(?:크림)?)?|sushi|pizza|ramen|chicken|matcha)(?:집| 가게)?/iu;
 
 /** Resolved cuisine focus — null means broad nearby eatery scout. */
 export function resolveInstantEateryFocus(text: string): string | null {
