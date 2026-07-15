@@ -1,5 +1,8 @@
 import { computeLodgingYouTubeConfidence } from "@/lib/globe/lodging/compute-lodging-youtube-confidence";
-import type { ResearchTool } from "@/lib/research-engine/tools/types";
+import type {
+  ResearchTool,
+  ResearchToolCall,
+} from "@/lib/research-engine/tools/types";
 
 function readMeta(
   metadata: Record<string, string | number | boolean | null> | undefined,
@@ -13,7 +16,7 @@ function readMeta(
 export const ytPreviewTool: ResearchTool = {
   id: "yt_preview",
   labelKo: "영상 근거",
-  async run({ candidate, context }) {
+  async run({ candidate, context }): Promise<ResearchToolCall> {
     const lat = readMeta(
       candidate.metadata as Record<string, string | number | boolean | null> | undefined,
       "lat",
@@ -115,7 +118,7 @@ export const ytPreviewTool: ResearchTool = {
         args: calledArgs,
         got: {
           confidence: Math.round(confidence * 1000) / 1000,
-          videoTitle,
+          videoTitle: videoTitle ?? null,
         },
         gotLine: videoTitle
           ? `confidence=${pct}% · 「${videoTitle.slice(0, 24)}」`

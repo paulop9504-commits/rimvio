@@ -1,4 +1,7 @@
-import type { ResearchTool } from "@/lib/research-engine/tools/types";
+import type {
+  ResearchTool,
+  ResearchToolCall,
+} from "@/lib/research-engine/tools/types";
 
 const PRICE_RE =
   /(?:₩|원|KRW)?\s*([\d,.]+)\s*(?:만원|만\s*원|원)|([\d,.]+)\s*만/iu;
@@ -35,7 +38,7 @@ function parsePriceFromSnippet(snippet: string): number | null {
 export const rateLookupTool: ResearchTool = {
   id: "rate_lookup",
   labelKo: "요금 조회",
-  async run({ candidate, context }) {
+  async run({ candidate, context }): Promise<ResearchToolCall> {
     const lat = readMeta(
       candidate.metadata as Record<string, string | number | boolean | null> | undefined,
       "lat",

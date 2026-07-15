@@ -1,4 +1,7 @@
-import type { ResearchTool } from "@/lib/research-engine/tools/types";
+import type {
+  ResearchTool,
+  ResearchToolCall,
+} from "@/lib/research-engine/tools/types";
 
 function readMeta(
   metadata: Record<string, string | number | boolean | null> | undefined,
@@ -15,7 +18,7 @@ const REVIEW_RE = /리뷰\s*([\d,]+)|([\d,]+)\s*reviews?/iu;
 export const placesDetailsTool: ResearchTool = {
   id: "places_details",
   labelKo: "장소 상세",
-  async run({ candidate, ranked, context }) {
+  async run({ candidate, ranked, context }): Promise<ResearchToolCall> {
     let rating: number | null =
       candidate.popularity != null && candidate.popularity >= 0.6
         ? candidate.popularity * 5
@@ -112,10 +115,10 @@ export const placesDetailsTool: ResearchTool = {
       }
     }
 
-    const filled = [];
-    if (reviewCount != null && reviewCount > 0) filled.push("observation" as const);
-    if (lat != null && lng != null) filled.push("distance" as const);
-    if (priceKrw != null && priceKrw > 0) filled.push("priceFit" as const);
+    const filled: Array<"observation" | "distance" | "priceFit"> = [];
+    if (reviewCount != null && reviewCount > 0) filled.push("observation");
+    if (lat != null && lng != null) filled.push("distance");
+    if (priceKrw != null && priceKrw > 0) filled.push("priceFit");
 
     const hadImprovement =
       (reviewCount != null &&
@@ -224,11 +227,11 @@ export const placesDetailsTool: ResearchTool = {
         called: "places.reviews",
         args: calledArgs,
         got: {
-          reviews: reviewCount,
+          reviews: reviewCount ?? null,
           rating: rating != null ? Math.round(rating * 10) / 10 : null,
-          lat,
-          lng,
-          priceKrw,
+          lat: lat ?? null,
+          lng: lng ?? null,
+          priceKrw: priceKrw ?? null,
         },
         gotLine: parts.join(" · ") || "meta",
       },

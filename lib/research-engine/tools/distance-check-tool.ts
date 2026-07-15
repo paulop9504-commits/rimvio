@@ -1,5 +1,8 @@
 import { haversineKm } from "@/lib/feed/spacetime-fit";
-import type { ResearchTool } from "@/lib/research-engine/tools/types";
+import type {
+  ResearchTool,
+  ResearchToolCall,
+} from "@/lib/research-engine/tools/types";
 
 function readMeta(
   metadata: Record<string, string | number | boolean | null> | undefined,
@@ -13,7 +16,7 @@ function readMeta(
 export const distanceCheckTool: ResearchTool = {
   id: "distance_check",
   labelKo: "동선 확인",
-  async run({ candidate, context }) {
+  async run({ candidate, context }): Promise<ResearchToolCall> {
     const lat = readMeta(
       candidate.metadata as Record<string, string | number | boolean | null> | undefined,
       "lat",
