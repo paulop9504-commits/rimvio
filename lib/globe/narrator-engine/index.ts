@@ -14,5 +14,6 @@ export {
 export {
   publishScoutNarration,
   publishScoutNarrationProgress,
+  publishScoutNarrationLiveStep,
   completeScoutNarration,
 } from "@/lib/globe/narrator-engine/publish-scout-narration";

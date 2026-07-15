@@ -4796,10 +4796,96 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   }
 }
 
-/* Ticket QR scan surface — wake lock companion; boosts perceived luminance on white UI */
-html.rimvio-ticket-scan-surface {
-  color-scheme: light;
+@keyframes rimvio-scout-narration-glow {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
+
+@keyframes rimvio-scout-narration-scan {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.18;
+  }
+  100% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes rimvio-scout-narration-border {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+.rimvio-scout-narration {
+  isolation: isolate;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 16px 48px rgba(15, 23, 42, 0.28);
+}
+
+.rimvio-scout-narration--running {
+  box-shadow:
+    0 0 0 1px rgba(50, 215, 75, 0.22),
+    0 0 28px rgba(50, 215, 75, 0.12),
+    0 16px 48px rgba(15, 23, 42, 0.32);
+}
+
+.rimvio-scout-narration__glow {
+  background:
+    radial-gradient(90% 60% at 10% 0%, rgba(50, 215, 75, 0.16), transparent 55%),
+    radial-gradient(70% 50% at 90% 0%, rgba(90, 200, 250, 0.1), transparent 50%);
+  opacity: 0.45;
+}
+
+.rimvio-scout-narration--running .rimvio-scout-narration__glow {
+  animation: rimvio-scout-narration-glow 2.4s ease-in-out infinite;
+}
+
+.rimvio-scout-narration__scan {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(50, 215, 75, 0.08) 45%,
+    transparent 100%
+  );
+  opacity: 0;
+}
+
+.rimvio-scout-narration--running .rimvio-scout-narration__scan {
+  animation: rimvio-scout-narration-scan 2.8s ease-in-out infinite;
+}
+
+.rimvio-scout-narration__terminal {
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.03),
+    transparent 40%
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rimvio-scout-narration--running .rimvio-scout-narration__glow,
+  .rimvio-scout-narration--running .rimvio-scout-narration__scan {
+    animation: none;
+  }
+}
+
 
 .rimvio-ticket-qr-card {
   filter: brightness(1.08) contrast(1.05);

@@ -1,5 +1,6 @@
 import {
   appendScoutNarrationComposeTurn,
+  appendScoutNarrationLiveStep,
   markScoutNarrationComposeDone,
 } from "@/lib/globe/assistant";
 import type { ScoutNarration } from "@/lib/globe/narrator-engine/types";
@@ -42,14 +43,52 @@ export function completeScoutNarration(input: {
 }
 
 /**
- * @deprecated Kept for call-site compatibility — no-op.
- * Progress cascade lives in GlobeScoutNarrationStream.
+ * Push a live system log into the running Narrator stream.
+ * Falls back to false when no running stream (caller may use build_log).
  */
-export function publishScoutNarrationProgress(_input: {
+export function publishScoutNarrationLiveStep(input: {
+  contextEventId: string;
+  textKo: string;
+  stepId?: string;
+  turnId?: string | null;
+}): boolean {
+  const textKo = input.textKo.trim();
+  if (!textKo) {
+    return false;
+  }
+  const stepId =
+    input.stepId?.trim() ||
+    `live_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+  return appendScoutNarrationLiveStep(
+    input.contextEventId,
+    { id: stepId, textKo },
+    input.turnId,
+  );
+}
+
+/**
+ * @deprecated Prefer publishScoutNarrationLiveStep — streams animate in UI.
+ */
+export function publishScoutNarrationProgress(input: {
   contextEventId: string;
   narration: ScoutNarration;
   fromIndex?: number;
   toIndexExclusive?: number;
 }): void {
-  /* animated in UI */
+  const from = Math.max(0, input.fromIndex ?? 0);
+  const to = Math.min(
+    input.narration.progressSteps.length,
+    input.toIndexExclusive ?? input.narration.progressSteps.length,
+  );
+  for (let i = from; i < to; i += 1) {
+    const step = input.narration.progressSteps[i];
+    if (!step) {
+      continue;
+    }
+    publishScoutNarrationLiveStep({
+      contextEventId: input.contextEventId,
+      textKo: step.textKo,
+      stepId: step.id,
+    });
+  }
 }

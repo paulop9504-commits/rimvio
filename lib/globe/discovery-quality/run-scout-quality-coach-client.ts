@@ -19,6 +19,7 @@ import type { ContextConditionAnchorPinOutcome } from "@/lib/globe/context-condi
 import { evaluateScoutQualityGate } from "@/lib/globe/discovery-quality/evaluate-scout-quality-gate";
 import { mergeDiscoveryRetryIntoActiveFeed } from "@/lib/globe/discovery-quality/merge-discovery-retry-batch";
 import { resolveQualityReplanFormation } from "@/lib/globe/discovery-quality/resolve-quality-replan-formation";
+import { publishScoutNarrationLiveStep } from "@/lib/globe/narrator-engine";
 import {
   bumpScoutQualityAttempt,
   CONTEXT_SCOUT_QUALITY_BUDGET_META_KEY,
@@ -241,11 +242,18 @@ export function runScoutQualityCoachAfterScout(input: {
     });
   }
 
-  appendContextAgentComposeTurn(contextEventId, {
-    role: "assistant",
-    kind: "text",
-    text: replan.hintKo,
+  const streamed = publishScoutNarrationLiveStep({
+    contextEventId,
+    textKo: `🔄 ${replan.hintKo}`,
+    stepId: `quality_replan_${Date.now().toString(36)}`,
   });
+  if (!streamed) {
+    appendContextAgentComposeTurn(contextEventId, {
+      role: "assistant",
+      kind: "text",
+      text: replan.hintKo,
+    });
+  }
   recordPlanSequencerProgress({
     contextEventId,
     engineId: replan.toEngineId,

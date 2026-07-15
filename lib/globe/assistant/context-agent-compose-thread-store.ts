@@ -663,6 +663,96 @@ export function markScoutNarrationComposeDone(
   emit(id);
 }
 
+/** Latest Narrator stream turn (running preferred, else most recent). */
+export function readLatestScoutNarrationTurnId(
+  eventId: string,
+): string | null {
+  const rows = threads.get(eventId.trim()) ?? [];
+  let latest: string | null = null;
+  for (let i = rows.length - 1; i >= 0; i -= 1) {
+    const row = rows[i];
+    if (row?.role !== "assistant" || row.kind !== "scout_narration") {
+      continue;
+    }
+    if (row.payload.status === "running") {
+      return row.id;
+    }
+    if (!latest) {
+      latest = row.id;
+    }
+  }
+  return latest;
+}
+
+/** @deprecated Prefer readLatestScoutNarrationTurnId. */
+export function readRunningScoutNarrationTurnId(
+  eventId: string,
+): string | null {
+  const rows = threads.get(eventId.trim()) ?? [];
+  for (let i = rows.length - 1; i >= 0; i -= 1) {
+    const row = rows[i];
+    if (
+      row?.role === "assistant" &&
+      row.kind === "scout_narration" &&
+      row.payload.status === "running"
+    ) {
+      return row.id;
+    }
+  }
+  return null;
+}
+
+/**
+ * Append a live progress line into the Narrator stream
+ * (Cursor agent log — not a new chat bubble). Revives the latest done
+ * stream briefly so widen/replan logs stay in the same terminal.
+ */
+export function appendScoutNarrationLiveStep(
+  eventId: string,
+  step: { readonly id: string; readonly textKo: string },
+  turnId?: string | null,
+): boolean {
+  const id = eventId.trim();
+  const textKo = step.textKo.trim();
+  const stepId = step.id.trim();
+  if (!id || !textKo || !stepId) {
+    return false;
+  }
+  const targetId = turnId?.trim() || readLatestScoutNarrationTurnId(id);
+  if (!targetId) {
+    return false;
+  }
+  const rows = threads.get(id) ?? [];
+  let changed = false;
+  const next = rows.map((row) => {
+    if (
+      row.id !== targetId ||
+      row.role !== "assistant" ||
+      row.kind !== "scout_narration"
+    ) {
+      return row;
+    }
+    if (row.payload.steps.some((existing) => existing.id === stepId)) {
+      return row;
+    }
+    changed = true;
+    return {
+      ...row,
+      payload: {
+        ...row.payload,
+        status: "running" as const,
+        steps: [...row.payload.steps, { id: stepId, textKo }],
+      },
+    };
+  });
+  if (!changed) {
+    return false;
+  }
+  threads.set(id, next);
+  emit(id);
+  return true;
+}
+
 export function subscribeContextAgentComposeThread(
   listener: (eventId: string) => void,
 ): () => void {

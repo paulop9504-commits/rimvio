@@ -113,6 +113,7 @@ import {
   narrateScoutPlan,
   publishScoutNarration,
   completeScoutNarration,
+  publishScoutNarrationLiveStep,
   type ScoutNarration,
 } from "@/lib/globe/narrator-engine";
 import { buildTravelBrainState } from "@/lib/situation-projection/travel-brain-personalization";
@@ -311,7 +312,7 @@ function mapMobility(value: string | undefined): "walk" | "car" | "transit" | nu
   return null;
 }
 
-/** Coarse resource category of a spec — used to purge stale off-category pins. */
+/** Coarse resource category of a spec ??used to purge stale off-category pins. */
 function specResourceCategory(
   spec: ContextConditionAnchorPinOutcome["spec"],
 ): "lodging" | "eatery" | "activity" | "amenity" {
@@ -373,7 +374,7 @@ function mapBudget(value: string | undefined): "low" | "medium" | "high" | null 
   return null;
 }
 
-/** Local action trigger → questions → structured spec → map placement. */
+/** Local action trigger ??questions ??structured spec ??map placement. */
 export const GlobeContextConditionPinBar = forwardRef<
   GlobeContextConditionPinBarHandle,
   GlobeContextConditionPinBarProps
@@ -516,7 +517,7 @@ export const GlobeContextConditionPinBar = forwardRef<
             });
             event = findLifeEventCandidate(contextEventId) ?? event;
           } catch {
-            // fall through — build may still fail with pin-first hint
+            // fall through ??build may still fail with pin-first hint
           }
         }
       }
@@ -693,7 +694,7 @@ export const GlobeContextConditionPinBar = forwardRef<
       const destLabel =
         prep.plan.experienceState.destinationLabel?.trim() ||
         anchorPlaceName.trim() ||
-        "여행";
+        "?�행";
       setContextAgentSessionPhase("scouting");
       beginContextAgentWork("exploring");
       appendContextAgentComposeTurn(contextEventId, {
@@ -821,9 +822,9 @@ export const GlobeContextConditionPinBar = forwardRef<
       patchPlan?: ReturnType<typeof planSpatialPatch> | null;
       keptRecommendations?: readonly ContextConditionRecommendation[];
       excludePlaceIds?: readonly string[];
-      /** Strict domains handle empty results conversationally — skip generic toast. */
+      /** Strict domains handle empty results conversationally ??skip generic toast. */
       suppressEmptyMessage?: boolean;
-      /** Pre-built Narrator output (Intent→Planner→Narrator). */
+      /** Pre-built Narrator output (Intent?�Planner?�Narrator). */
       narration?: ScoutNarration | null;
     }) => {
       // Category-switch cleanup: an activity/eatery search must not leave stale
@@ -854,7 +855,7 @@ export const GlobeContextConditionPinBar = forwardRef<
       setContextAgentSessionPhase("scouting");
       beginContextAgentWork("exploring");
 
-      // Narrator Engine — one live stream turn (Cursor-style).
+      // Narrator Engine ??one live stream turn (Cursor-style).
       const narration =
         input.narration ??
         narrateScoutPlan(
@@ -890,6 +891,28 @@ export const GlobeContextConditionPinBar = forwardRef<
         deferMapReveal: true,
         onProcessPhase: (phase) => {
           setContextAgentProcessPhase(phase);
+          if (phase === "exploring") {
+            publishScoutNarrationLiveStep({
+              contextEventId,
+              turnId: narrationTurnId,
+              stepId: "phase_exploring",
+              textKo: "📡 탐색 엔진 호출 중…",
+            });
+          } else if (phase === "analyzing") {
+            publishScoutNarrationLiveStep({
+              contextEventId,
+              turnId: narrationTurnId,
+              stepId: "phase_analyzing",
+              textKo: "🧬 후보 신호 분석 중…",
+            });
+          } else if (phase === "optimizing") {
+            publishScoutNarrationLiveStep({
+              contextEventId,
+              turnId: narrationTurnId,
+              stepId: "phase_optimizing",
+              textKo: "⚙️ 추천 순위를 맞추는 중…",
+            });
+          }
         },
       });
       if (!outcome) {
@@ -1321,9 +1344,9 @@ export const GlobeContextConditionPinBar = forwardRef<
         delete mergedAnswers.menuFocus;
       }
 
-      // Intent Convergence Engine — before searching, converge an ambiguous
-      // request ("놀거리"·"카페"·"데이트") into a concrete intent with the fewest
-      // questions. High confidence (qualifier present / already answered) → skip.
+      // Intent Convergence Engine ??before searching, converge an ambiguous
+      // request ("?�거리"·"카페"·"?�이??) into a concrete intent with the fewest
+      // questions. High confidence (qualifier present / already answered) ??skip.
       // The LLM only authors chip copy; chips reuse the existing question channel.
       const convergenceIntent = detectConvergenceIntent(pipelineMessage);
       const skipConvergenceForBroadActivity =
@@ -1520,7 +1543,7 @@ export const GlobeContextConditionPinBar = forwardRef<
       setContextAgentSessionPhase("scouting");
       // Strict domains (activity/amenity) may come back empty because the
       // Category Integrity Guard rejected off-domain junk. Don't dead-end with a
-      // generic "no fit" — answer conversationally and offer convergence chips.
+      // generic "no fit" ??answer conversationally and offer convergence chips.
       const strictDomain =
         resolved.spec.resourceTypes.includes("activity") ||
         resolved.spec.resourceTypes.includes("amenity");
@@ -1540,8 +1563,8 @@ export const GlobeContextConditionPinBar = forwardRef<
       }
 
       // Deepen once: results become the next trigger. After a cluster activity
-      // search, offer ONE tidy row of deeper facets (테마파크 · 포토스팟 · 야경).
-      // Capped at a single hop so the chat stays clean — no runaway drill-down.
+      // search, offer ONE tidy row of deeper facets (?�마?�크 · ?�토?�팟 · ?�경).
+      // Capped at a single hop so the chat stays clean ??no runaway drill-down.
       const activityCluster = resolved.spec.activityCluster ?? [];
       if (
         outcome &&
@@ -1650,7 +1673,7 @@ export const GlobeContextConditionPinBar = forwardRef<
       domainId: sheet.domainId,
       hint: sheet.hint,
       submitLabel: sheet.submitLabel,
-      pendingTrigger: message.trim() || "숙소",
+      pendingTrigger: message.trim() || "?�소",
       fields: sheet.fields,
     });
   }, [contextEventId, message]);
@@ -1821,7 +1844,7 @@ export const GlobeContextConditionPinBar = forwardRef<
               tryQuickListMarket: async () => false,
               navigateUrl: (url, label) => {
                 window.location.assign(url);
-                toast.success(`${label} 여는 중…`);
+                toast.success(`${label} ?�는 중�?);
               },
               toastSuccess: (line) => {
                 toast.success(line);
@@ -1919,7 +1942,7 @@ export const GlobeContextConditionPinBar = forwardRef<
           pendingTrigger ||
           message.trim() ||
           updated.place?.trim() ||
-          "숙소";
+          "?�소";
         await runLodgingTriggerAfterSlotSave(nextTrigger);
       }
     },
@@ -1957,7 +1980,7 @@ export const GlobeContextConditionPinBar = forwardRef<
     setBusy(true);
     beginContextAgentWork("analyzing", copy.globe.contextAgentStatusBusy);
     try {
-      // Operator turn: READ SSOT → GATE fixed tool → ACT (one tool).
+      // Operator turn: READ SSOT ??GATE fixed tool ??ACT (one tool).
       // @see docs/RIMVIO_OPERATOR_TURN.md
       if (text) {
         const composeTail = readContextAgentComposeThread(contextEventId)
@@ -2052,7 +2075,7 @@ export const GlobeContextConditionPinBar = forwardRef<
         }
 
         if (plan.tool === "scout" || plan.tool === "defer_classify") {
-          // Broad travel onboarding → stay+explore (and departure announce) in parallel.
+          // Broad travel onboarding ??stay+explore (and departure announce) in parallel.
           if (operatorBlueprint && text) {
             const parallelGate = evaluateOnboardingParallelException({
               blueprint: operatorBlueprint,
@@ -2341,7 +2364,7 @@ export const GlobeContextConditionPinBar = forwardRef<
     ],
   );
 
-  /** Gap 1 — system sequencer auto-scout → same Act path as user compose. */
+  /** Gap 1 ??system sequencer auto-scout ??same Act path as user compose. */
   useEffect(() => {
     return subscribeOperatorAutoRun((detail) => {
       if (detail.contextEventId !== contextEventId.trim()) {
@@ -2354,11 +2377,21 @@ export const GlobeContextConditionPinBar = forwardRef<
       const progressKo =
         detail.progressKo?.trim() || copy.globe.contextAgentStatusExplore;
       beginContextAgentWork("exploring", progressKo);
-      appendContextAgentComposeTurn(detail.contextEventId, {
-        role: "assistant",
-        kind: "build_log",
-        text: progressKo,
-      });
+      // scout_retry already pushed the widen hint into the Narrator stream.
+      if (detail.source !== "scout_retry") {
+        const streamed = publishScoutNarrationLiveStep({
+          contextEventId: detail.contextEventId,
+          textKo: `› ${progressKo}`,
+          stepId: `auto_${Date.now().toString(36)}`,
+        });
+        if (!streamed) {
+          appendContextAgentComposeTurn(detail.contextEventId, {
+            role: "assistant",
+            kind: "build_log",
+            text: progressKo,
+          });
+        }
+      }
       const runWhenIdle = () => {
         if (busyRef.current) {
           window.setTimeout(runWhenIdle, 48);
@@ -2462,7 +2495,7 @@ export const GlobeContextConditionPinBar = forwardRef<
       setBusy(true);
       beginContextAgentWork("exploring", copy.globe.contextAgentStatusExplore);
       try {
-        // Natural path: choice → lens rings → scout activities immediately.
+        // Natural path: choice ??lens rings ??scout activities immediately.
         // Prefetch fills the reel in parallel; do not block map pins on it.
         const spawned = await maybeSpawnDiscoveryLensesFromChoice({
           contextEventId,
@@ -2613,7 +2646,7 @@ export const GlobeContextConditionPinBar = forwardRef<
           disabled={busy || !message.trim()}
           className="shrink-0 rounded-lg bg-[#1d1d1f] px-2.5 py-1 text-[11px] font-semibold text-white active:scale-[0.98] disabled:opacity-40"
         >
-          {busy ? "…" : copy.globe.contextConditionPinSubmit}
+          {busy ? "?? : copy.globe.contextConditionPinSubmit}
         </button>
       </div>
 
