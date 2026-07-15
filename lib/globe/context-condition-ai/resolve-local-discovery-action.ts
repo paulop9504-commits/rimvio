@@ -599,7 +599,12 @@ export function resolveLocalDiscoveryAction(
                   ? "airbnb"
                   : previousSpec.lodgingKind === "hotel"
                     ? "hotel"
-                    : null),
+                    : null) ??
+              (previousSpec.resourceTypes.includes("restaurant")
+                ? parseCuisineCandidates(
+                    previousSpec.eateryFocus ?? priorTrigger ?? "",
+                  )[0]?.id ?? null
+                : null),
             destinationLabel: null,
           }
         : null,

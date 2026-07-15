@@ -93,7 +93,8 @@ import {
   readContextAgentComposeThread,
   supersedePriorScoutFeedGates,
 } from "@/lib/globe/assistant";
-import { readActiveDiscoveryExecution, writeActiveDiscoveryExecution } from "@/lib/globe/discovery-execution/read-active-discovery-execution";
+import { readActiveDiscoveryExecution, writeActiveDiscoveryExecution, clearActiveDiscoveryExecution } from "@/lib/globe/discovery-execution/read-active-discovery-execution";
+import { isConcreteCuisineEateryFocus } from "@/lib/globe/context-condition-ai/parse-cuisine-candidates";
 import { clearDiscoveryLensSession } from "@/lib/globe/discovery-lens/lens-session-bridge";
 import {
   applyPalantirOperatorFacetRefine,
@@ -839,24 +840,8 @@ export const GlobeContextConditionPinBar = forwardRef<
       if (priorCategory && priorCategory !== nextCategory) {
         clearDiscoveryLensSession(contextEventId);
       }
-      if (!input.patchPlan && lastBatch) {
-        dismissContextConditionPinBatch({
-          contextEventId,
-          batchId: lastBatch.batchId,
-        });
-        // Keep lastBatch wire until writeActiveDiscoveryExecution archives it.
-        clearScoutRevealPending(contextEventId);
-        setLastBatch(null);
-        setLastRecommendations([]);
-        onRecommendationsChange?.([]);
-      }
-      if (nextCategory === "activity" || nextCategory === "amenity") {
-        publishContextOnlyGlobeProjection(contextEventId);
-      }
-      setContextAgentSessionPhase("scouting");
-      beginContextAgentWork("exploring");
 
-      // Narrator Engine — one live stream turn (Cursor-style).
+      // Narrator plan first — Replace mode drives SSOT wipe (Cursor task switch).
       const narration =
         input.narration ??
         narrateScoutPlan(
@@ -868,6 +853,38 @@ export const GlobeContextConditionPinBar = forwardRef<
             anchorLabelKo: anchorPlaceName,
           }),
         );
+
+      if (!input.patchPlan && lastBatch) {
+        dismissContextConditionPinBatch({
+          contextEventId,
+          batchId: lastBatch.batchId,
+        });
+        clearScoutRevealPending(contextEventId);
+        setLastBatch(null);
+        setLastRecommendations([]);
+        onRecommendationsChange?.([]);
+      }
+
+      const priorFocus = lastSpec?.eateryFocus?.trim() || null;
+      const nextFocus = input.spec.eateryFocus?.trim() || null;
+      const cuisineReplaced =
+        Boolean(nextFocus) &&
+        isConcreteCuisineEateryFocus(nextFocus) &&
+        priorFocus != null &&
+        priorFocus !== nextFocus;
+      if (
+        !input.patchPlan &&
+        (narration.plan.mode === "Replace" || cuisineReplaced)
+      ) {
+        clearActiveDiscoveryExecution(contextEventId);
+        clearContextConditionLastBatch(contextEventId);
+      }
+      if (nextCategory === "activity" || nextCategory === "amenity") {
+        publishContextOnlyGlobeProjection(contextEventId);
+      }
+      setContextAgentSessionPhase("scouting");
+      beginContextAgentWork("exploring");
+
       const narrationTurnId = publishScoutNarration({
         contextEventId,
         narration,

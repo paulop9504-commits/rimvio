@@ -670,6 +670,46 @@ export async function runContextConditionAnchorPin(
       if (brandHits.length > 0) {
         nextScored = brandHits;
       }
+    } else if (concreteCuisine && !specialtyDessert) {
+      // Hard cuisine lock — same as brand: keep focus hits only when any match.
+      // Prevents 말차/그린티 leftovers labeled as 「돈카츠 검색 후보」.
+      const cuisineTokens = Array.from(
+        new Set(
+          [
+            ...focusTokens.map((t) => t.trim()).filter((t) => t.length >= 2),
+            ...localeHints,
+          ].map((t) => t.toLowerCase()),
+        ),
+      );
+      const cuisineHits = nextScored.filter((entry) => {
+        const blob = [
+          entry.row.name,
+          entry.row.categoryLabel,
+          entry.row.cuisineHint,
+          entry.row.address,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return cuisineTokens.some((token) => blob.includes(token));
+      });
+      if (cuisineHits.length > 0) {
+        nextScored = cuisineHits;
+      } else {
+        // No cuisine hit — drop dessert/tea cafes so briefing cannot relabel them.
+        nextScored = nextScored.filter((entry) => {
+          const blob = [
+            entry.row.name,
+            entry.row.categoryLabel,
+            entry.row.cuisineHint,
+          ]
+            .filter(Boolean)
+            .join(" ");
+          return !/(?:green\s*tea|nana'?s|harbs|말차|녹차|matcha|抹茶|디저트|케이크|cake|소프트|젤라토|아이스크림|카페|cafe|ティー|紅茶)/iu.test(
+            blob,
+          );
+        });
+      }
     }
     eateryScored = nextScored;
     eateryRows = eateryScored.map((row) => row.row);

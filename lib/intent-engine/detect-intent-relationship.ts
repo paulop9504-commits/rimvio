@@ -13,6 +13,7 @@ import {
   parseLodgingStayTypeFromText,
   type LodgingStayType,
 } from "@/lib/globe/lodging/lodging-stay-types";
+import { parseCuisineCandidates } from "@/lib/globe/context-condition-ai/parse-cuisine-candidates";
 
 export const INTENT_RELATIONSHIPS = [
   "continue",
@@ -72,10 +73,15 @@ function detectDomain(text: string): IntentDomainSlice {
       destinationLabel: extractDestination(trimmed),
     };
   }
-  if (/맛집|식당|카페|먹을|레스토랑|eatery|restaurant|food/iu.test(trimmed)) {
+  if (
+    /맛집|식당|카페|먹을|레스토랑|eatery|restaurant|food/iu.test(trimmed) ||
+    parseCuisineCandidates(trimmed).length > 0
+  ) {
+    const cuisine = parseCuisineCandidates(trimmed)[0] ?? null;
     return {
       domain: "eatery",
-      kind: null,
+      /** Cuisine / dish id — Cursor-like Replace target (말차 → 돈카츠). */
+      kind: cuisine?.id ?? null,
       destinationLabel: extractDestination(trimmed),
     };
   }
@@ -175,9 +181,10 @@ export function detectIntentRelationship(input: {
     };
   }
 
-  // Additive same domain ("료칸도") before exclusive Replace
+  // Additive same-domain lodging only ("료칸도") — not cuisine "도 찾아".
   if (
-    previous.domain === next.domain &&
+    previous.domain === "lodging" &&
+    next.domain === "lodging" &&
     MERGE_ALSO.test(input.nextText) &&
     next.kind &&
     previous.kind &&
@@ -190,6 +197,24 @@ export function detectIntentRelationship(input: {
       next,
       clearPriorDomainKinds: false,
       mergeKinds: true,
+    };
+  }
+
+  // Eatery cuisine / dish switch → Replace (말차 → 돈카츠), even with "도 찾아".
+  if (
+    previous.domain === "eatery" &&
+    next.domain === "eatery" &&
+    previous.kind &&
+    next.kind &&
+    previous.kind !== next.kind
+  ) {
+    return {
+      relationship: "replace",
+      reason: "eatery_cuisine_conflict",
+      previous,
+      next,
+      clearPriorDomainKinds: true,
+      mergeKinds: false,
     };
   }
 

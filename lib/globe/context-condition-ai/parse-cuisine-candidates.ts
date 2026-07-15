@@ -198,5 +198,14 @@ export function cuisineLocaleQueryHints(
   if (/타코야키|takoyaki/iu.test(text)) {
     return ["たこ焼き", "takoyaki"];
   }
+  if (/돈카츠|tonkatsu|豚カツ|돈가스|とんかつ|トンカツ/iu.test(text)) {
+    return ["とんかつ", "トンカツ", "tonkatsu", "カツ", "돈카츠", "돈가스"];
+  }
+  if (/덴푸라|tempura|天ぷら/iu.test(text)) {
+    return ["天ぷら", "tempura", "덴푸라"];
+  }
+  if (/이자카야|izakaya|居酒屋/iu.test(text)) {
+    return ["居酒屋", "izakaya", "이자카야"];
+  }
   return [];
 }

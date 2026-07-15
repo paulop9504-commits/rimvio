@@ -388,12 +388,11 @@ export function scoreEateryRecommendations(input: {
     };
 
     const explained = explainEateryRecommendationKo(reasonInput);
+    // Only stamp focus copy on actual hits — never 「돈카츠 검색 후보」 on leftover cafes.
     const focusReason =
       focusHit && focusLabel
         ? `${focusLabel}에 가까운 후보예요`
-        : focusLabel
-          ? `${focusLabel} 검색 후보예요`
-          : null;
+        : null;
     const matchReasons = [...titleReasons, ...explained.matchReasons];
     if (focusReason) {
       matchReasons.unshift(focusReason);

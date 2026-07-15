@@ -46,6 +46,24 @@ import { CONTEXT_LODGING_INVENTORY_META_KEY, CONTEXT_LODGING_HUB_ENABLED_META_KE
   });
   assert.equal(weather.relationship, "replace");
   assert.equal(weather.next.domain, "weather");
+
+  // Eatery cuisine switch — Cursor Replace (말차 → 돈카츠), even with 「도 찾아」
+  const cuisineReplace = detectIntentRelationship({
+    previousText: "말차 아이스크림 맛집 찾아줘",
+    nextText: "돈카츠 맛집도 찾아줘",
+  });
+  assert.equal(cuisineReplace.relationship, "replace");
+  assert.equal(cuisineReplace.clearPriorDomainKinds, true);
+  assert.equal(cuisineReplace.reason, "eatery_cuisine_conflict");
+  assert.equal(cuisineReplace.previous?.kind, "matcha_icecream");
+  assert.equal(cuisineReplace.next.kind, "tonkatsu");
+
+  const cuisineSlot = detectIntentRelationship({
+    previousText: "돈카츠 맛집 찾아줘",
+    nextText: "가격은?",
+  });
+  assert.equal(cuisineSlot.relationship, "continue");
+  assert.equal(cuisineSlot.clearPriorDomainKinds, false);
 }
 
 // --- Capsule keyword wins ---
