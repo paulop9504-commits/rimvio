@@ -8,10 +8,6 @@ import {
 } from "@/lib/globe/context-condition-ai/instant-lodging-search";
 import { hasConcurrentMultiDomainSearchCues, concurrentDiscoveryResourceTypes } from "@/lib/globe/context-condition-ai/concurrent-lodging-eatery-cues";
 import { parseMaxNightlyPriceKrw } from "@/lib/globe/context-condition-ai/filter-lodging-for-intent";
-import {
-  parseActivityFocusDetail,
-  parseAmenityFocus,
-} from "@/lib/globe/context-condition-ai/resolve-local-discovery-domain";
 import { parseLodgingKindFromText } from "@/lib/globe/domain-cues/lodging-domain-cues";
 import { parseLodgingStayTypeFromText } from "@/lib/globe/lodging/lodging-stay-types";
 import type { LodgingStayType } from "@/lib/globe/lodging/lodging-stay-types";
