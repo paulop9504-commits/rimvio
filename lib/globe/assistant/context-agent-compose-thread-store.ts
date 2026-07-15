@@ -77,7 +77,8 @@ export type OperatorAskChipsComposePayload = {
     | "transit_prep"
     | "finance_prep"
     | "plan_handoff"
-    | "ingress_converge";
+    | "ingress_converge"
+    | "research_approval";
   readonly pendingTrigger: string;
   readonly chips: readonly {
     readonly id: string;

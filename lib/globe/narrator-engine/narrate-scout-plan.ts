@@ -15,7 +15,7 @@ function domainNounKo(plan: ScoutNarrationPlan): string {
     case "Amenity":
       return "편의시설";
     case "Mixed":
-      return "맛집·숙소";
+      return plan.entityLabelKo?.trim() || "요청한 섹터";
     default:
       return "검색";
   }
@@ -54,7 +54,7 @@ function entitySearchTail(plan: ScoutNarrationPlan): string {
     if (entity) {
       return entity;
     }
-    return "맛집과 숙소";
+    return "요청한 섹터";
   }
   if (entity) {
     return entity;
@@ -73,7 +73,7 @@ function buildUnderstandingKo(plan: ScoutNarrationPlan): string {
   if (plan.mode === "Replace") {
     if (plan.domain === "Mixed") {
       lines.push(
-        "이번 요청은 맛집과 숙소를 함께 찾는 검색으로 판단했습니다.",
+        "이번 요청은 말한 섹터를 함께 찾는 검색으로 판단했습니다.",
       );
     } else {
       lines.push(
@@ -162,7 +162,7 @@ function buildProgressSteps(plan: ScoutNarrationPlan): ScoutNarrationProgressSte
   if (plan.domain === "Mixed" && entity) {
     steps.push({
       id: "switch_entity",
-      textKo: `🍽️🏨 ${entity} 병렬 검색으로 전환…`,
+      textKo: `🔀 ${entity} 병렬 검색으로 전환…`,
     });
   } else if (entity) {
     steps.push({

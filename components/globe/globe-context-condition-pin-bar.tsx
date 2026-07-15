@@ -228,6 +228,7 @@ import {
   tryCompleteFinancePrepClient,
   type FinancePrepGapId,
 } from "@/lib/globe/finance-prep";
+import { applyResearchApprovalChip } from "@/lib/research-engine/apply-research-approval-chip";
 import { resolveOperatorAskChipDomain } from "@/lib/globe/operator-turn/resolve-operator-ask-chip-domain";
 import { recordEngineScoutFailureClient } from "@/lib/engine/record-engine-lifecycle";
 import { resolveDiscoveryEngineId } from "@/lib/engine/resolve-discovery-engine-id";
@@ -1719,6 +1720,22 @@ export const GlobeContextConditionPinBar = forwardRef<
           turn.payload.chipDomain
             ? turn.payload.chipDomain
             : "trip_intake";
+
+        if (chipDomain === "research_approval") {
+          const applied = applyResearchApprovalChip({
+            contextEventId,
+            turnId: input.turnId,
+            chipId: input.chipId,
+            value: input.value,
+            labelKo: input.labelKo,
+          });
+          if (applied.decision === "apply") {
+            toast.success(applied.summaryKo);
+          } else if (applied.decision === "revise" || applied.decision === "reject") {
+            toast.message(applied.summaryKo);
+          }
+          return;
+        }
 
         if (chipDomain === "trip_experience") {
           applyTripExperienceAskChip({

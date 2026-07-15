@@ -46,8 +46,8 @@ function authorityScore(domain: string, mediaType: FastScanCandidate["mediaType"
   ) {
     score += 0.25;
   }
-  if (/inventory\.rimvio/iu.test(d)) {
-    score += 0.1;
+  if (/inventory\.rimvio|discovery\..+\.rimvio/iu.test(d)) {
+    score += 0.22;
   }
   return Math.min(1, score);
 }

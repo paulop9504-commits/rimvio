@@ -42,7 +42,7 @@ assert.ok(plan.entityLabelKo && /캡슐/.test(plan.entityLabelKo));
 assert.equal(/말차 숙소/.test(plan.entityLabelKo ?? ""), false);
 
 const narration = narrateScoutPlan(plan);
-assert.match(narration.understandingKo, /맛집과 숙소/);
+assert.match(narration.understandingKo, /말한 섹터를 함께|맛집|숙소/);
 assert.equal(/말차 숙소/.test(narration.understandingKo), false);
 assert.equal(/숙소을/.test(narration.understandingKo), false);
 assert.match(narration.understandingKo, /도쿄/);

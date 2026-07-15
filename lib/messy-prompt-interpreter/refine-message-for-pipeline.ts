@@ -1,3 +1,4 @@
+import { hasConcurrentMultiDomainSearchCues } from "@/lib/globe/context-condition-ai/concurrent-lodging-eatery-cues";
 import { isInstantEaterySearch } from "@/lib/globe/context-condition-ai/instant-eatery-search";
 import { isInstantLodgingSearch } from "@/lib/globe/context-condition-ai/instant-lodging-search";
 import { isInstantPoiSearch } from "@/lib/globe/context-condition-ai/instant-poi-search";
@@ -21,11 +22,13 @@ export function refineMessageForPipeline(
 
   // Never replace a concrete scout noun with abstract task IR
   // ("식사·맛집 맞추기 — …") — that drops dish focus and revives prior thread.
+  // Never collapse multi-sector asks into a single lodging task label.
   if (
     utteranceHasConcreteDishSlot(original) ||
     isInstantEaterySearch(original) ||
     isInstantLodgingSearch(original) ||
-    isInstantPoiSearch(original)
+    isInstantPoiSearch(original) ||
+    hasConcurrentMultiDomainSearchCues(original)
   ) {
     return original;
   }

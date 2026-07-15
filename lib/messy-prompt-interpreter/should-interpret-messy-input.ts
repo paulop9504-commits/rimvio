@@ -1,3 +1,4 @@
+import { hasConcurrentMultiDomainSearchCues } from "@/lib/globe/context-condition-ai/concurrent-lodging-eatery-cues";
 import { isInstantEaterySearch } from "@/lib/globe/context-condition-ai/instant-eatery-search";
 import { isInstantLodgingSearch } from "@/lib/globe/context-condition-ai/instant-lodging-search";
 import { isInstantPoiSearch } from "@/lib/globe/context-condition-ai/instant-poi-search";
@@ -16,11 +17,13 @@ export function shouldInterpretMessyInput(raw: string): boolean {
   }
   // Concrete dish/POI/lodging scouts must keep the original noun (초밥·말차…).
   // Messy refine collapses them to task labels and reuses prior eateryFocus.
+  // Multi-sector asks ("호텔 + 놀거리 + 맛집") must not collapse to 「숙소 맞추기」.
   if (
     isInstantPoiSearch(trimmed) ||
     isInstantEaterySearch(trimmed) ||
     isInstantLodgingSearch(trimmed) ||
-    utteranceHasConcreteDishSlot(trimmed)
+    utteranceHasConcreteDishSlot(trimmed) ||
+    hasConcurrentMultiDomainSearchCues(trimmed)
   ) {
     return false;
   }

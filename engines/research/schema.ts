@@ -142,6 +142,65 @@ export type ResearchResult = {
   readonly ranked: readonly RankedCandidate[];
   readonly deepExtracts: readonly DeepResearchExtract[];
   readonly expandedQueries: readonly string[];
+  /** Surgical tool loop — Cursor-like instrument trace. */
+  readonly toolTrace?: readonly {
+    readonly toolId: string;
+    readonly candidateId: string;
+    readonly status: "ok" | "skip" | "error";
+    readonly summaryKo: string;
+    readonly evidence?: {
+      readonly called: string;
+      readonly args: Readonly<Record<string, string | number | boolean | null>>;
+      readonly got: Readonly<Record<string, string | number | boolean | null>> | null;
+      readonly gotLine: string;
+    } | null;
+  }[];
+  /** Called X → got Y evidence cards for compose transparency. */
+  readonly evidenceCards?: readonly {
+    readonly toolId: string;
+    readonly status: "ok" | "skip" | "error";
+    readonly called: string;
+    readonly gotLine: string;
+    readonly lineKo: string;
+  }[];
+  /** Gap-based retry: missing:reviewCount → places_details → axis rescore. */
+  readonly gapRetryTrace?: readonly {
+    readonly missing: string;
+    readonly missingKey: string;
+    readonly toolId: string;
+    readonly status: "ok" | "skip" | "error";
+    readonly closedFields: readonly string[];
+    readonly persuasionBefore: number;
+    readonly persuasionAfter: number;
+    readonly summaryKo: string;
+  }[];
+  /** Strategy lens switches (budget / distance / review). */
+  readonly strategyTrace?: readonly {
+    readonly strategy: string;
+    readonly reasonKo: string;
+  }[];
+  /** Multi-sector mini-surgery outcomes (lodging · eatery · activity). */
+  readonly sectorResults?: readonly {
+    readonly sector: string;
+    readonly labelKo: string;
+    readonly bestTitle: string;
+    readonly bestCandidateId: string | null;
+    readonly confidence: number;
+    readonly headlineKo: string;
+    readonly summaryKo: string;
+  }[];
+  /** Cursor-like apply/reject gate after 납득. */
+  readonly approvalGate?: {
+    readonly status: "waiting_approval";
+    readonly promptKo: string;
+    readonly offerApply: boolean;
+    readonly chips: readonly {
+      readonly id: string;
+      readonly labelKo: string;
+      readonly gapId: string;
+      readonly value: string;
+    }[];
+  };
 };
 
 export type ResearchProgressKo = string;

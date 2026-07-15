@@ -59,7 +59,9 @@ export function deepResearchTopCandidates(
     }
 
     const weakExtract =
-      facts.length + numbers.length + evidence.length < 2 || snippet.length < 20;
+      facts.length + numbers.length + evidence.length < 2 &&
+      snippet.length < 28 &&
+      (c.reviewCount == null || c.reviewCount < 5);
 
     return {
       candidateId: c.id,

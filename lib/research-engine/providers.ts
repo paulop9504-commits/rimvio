@@ -46,6 +46,8 @@ export function candidatesFromInventorySnippets(
     rating?: number | null;
     reviewCount?: number | null;
     kind?: string | null;
+    lat?: number | null;
+    lng?: number | null;
   }[],
 ): FastScanCandidate[] {
   return rows.map((row) => ({
@@ -63,6 +65,8 @@ export function candidatesFromInventorySnippets(
     metadata: {
       priceKrw: row.priceKrw ?? null,
       kind: row.kind ?? null,
+      lat: row.lat ?? null,
+      lng: row.lng ?? null,
     },
   }));
 }

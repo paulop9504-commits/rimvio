@@ -113,7 +113,7 @@
     "test:situation-projection": "npx tsx scripts/test-situation-projection.ts",
     "test:situation-projection-brain": "npx tsx scripts/test-situation-projection-brain-pills.ts && npx tsx scripts/test-llm-mind-map-layout.ts",
     "test:brain-surface": "npx tsx scripts/test-brain-surface-batch.ts && npx tsx scripts/test-brain-surface-memo-commit.ts && npx tsx scripts/test-media-spatial-trace.ts && npx tsx scripts/test-brain-surface-marker-visibility.ts && npx tsx scripts/test-resolve-brain-surface-map-markers.ts && npx tsx scripts/test-brain-surface-callout-layout.ts && npx tsx scripts/test-ontology-non-overlap-layout.ts",
-    "test:globe-eatery": "npx tsx scripts/test-overseas-eatery-region.ts && npx tsx scripts/test-context-eatery-discovery-origin.ts && npx tsx scripts/test-restaurant-search-contract.ts && npx tsx scripts/test-bib-gourmand-mix.ts && npx tsx scripts/test-travel-brain-micro-eatery-ghosts.ts && npx tsx scripts/test-travel-brain-overseas-eatery-fallback.ts && npx tsx scripts/test-eatery-rank-profile.ts && npx tsx scripts/test-eatery-rank-profile-travel-brain.ts && npx tsx scripts/test-eatery-rank-mode-store.ts && npx tsx scripts/test-eatery-rank-reorder-smoke.ts && npx tsx scripts/test-context-title-discovery-bias.ts && npx tsx scripts/test-matcha-eatery-focus.ts && npx tsx scripts/test-utterance-intent-slots.ts && npx tsx scripts/test-station-brand-eatery-focus.ts && npx tsx scripts/test-entity-resolver.ts && npx tsx scripts/test-entity-dictionary-catalogs.ts && npx tsx scripts/test-eatery-focus-replace-stale.ts && npx tsx scripts/test-instant-eatery-search.ts && npx tsx scripts/test-scout-narrator-engine.ts && npx tsx scripts/test-concurrent-lodging-eatery-cues.ts",
+    "test:globe-eatery": "npx tsx scripts/test-overseas-eatery-region.ts && npx tsx scripts/test-context-eatery-discovery-origin.ts && npx tsx scripts/test-restaurant-search-contract.ts && npx tsx scripts/test-bib-gourmand-mix.ts && npx tsx scripts/test-travel-brain-micro-eatery-ghosts.ts && npx tsx scripts/test-travel-brain-overseas-eatery-fallback.ts && npx tsx scripts/test-eatery-rank-profile.ts && npx tsx scripts/test-eatery-rank-profile-travel-brain.ts && npx tsx scripts/test-eatery-rank-mode-store.ts && npx tsx scripts/test-eatery-rank-reorder-smoke.ts && npx tsx scripts/test-context-title-discovery-bias.ts && npx tsx scripts/test-matcha-eatery-focus.ts && npx tsx scripts/test-utterance-intent-slots.ts && npx tsx scripts/test-station-brand-eatery-focus.ts && npx tsx scripts/test-entity-resolver.ts && npx tsx scripts/test-entity-dictionary-catalogs.ts && npx tsx scripts/test-eatery-focus-replace-stale.ts && npx tsx scripts/test-instant-eatery-search.ts && npx tsx scripts/test-scout-narrator-engine.ts && npx tsx scripts/test-concurrent-lodging-eatery-cues.ts && npx tsx scripts/test-triple-domain-hotel-activity-eatery.ts",
     "test:auto-surface-ontology": "npx tsx scripts/test-auto-surface-ontology.ts",
     "test:predicted-experience": "npx tsx scripts/test-predicted-experience-card.ts",
     "test:travel-context-voice": "npx tsx scripts/test-travel-context-voice-flow.ts",
@@ -252,7 +252,15 @@
     "test:auth": "npx tsx scripts/test-auth-setup.ts && npx tsx scripts/test-auth-policy.ts",
     "test:peer-chat": "npx tsx scripts/test-peer-chat-mapper.ts && npx tsx scripts/test-peer-chat-phone.ts && npx tsx scripts/test-parse-ai-invoke.ts",
     "test:native-bridge": "npx tsx scripts/test-native-bridge.ts",
-    "test:mention-focus": "npx tsx scripts/test-mention-focus.ts"
+    "test:mention-focus": "npx tsx scripts/test-mention-focus.ts",
+    "test:research-surgical": "npx tsx scripts/test-research-surgical-tools.ts",
+    "test:research-strategy": "npx tsx scripts/test-research-strategy.ts",
+    "test:research-named-tools": "npx tsx scripts/test-research-named-tools.ts",
+    "test:research-gap-retry": "npx tsx scripts/test-research-gap-retry.ts",
+    "test:research-live-external": "npx tsx scripts/test-research-live-external.ts",
+    "test:research-evidence-cards": "npx tsx scripts/test-research-evidence-cards.ts",
+    "test:research-multi-sector": "npx tsx scripts/test-research-multi-sector.ts",
+    "test:research-approval-gate": "npx tsx scripts/test-research-approval-gate.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

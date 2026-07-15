@@ -43,6 +43,8 @@ export function GlobeOperatorAskChipsComposeCard({
       >
         {payload.chips.map((chip) => {
           const selected = payload.selectedChipId === chip.id;
+          const isApply =
+            payload.chipDomain === "research_approval" && chip.value === "apply";
           return (
             <button
               key={chip.id}
@@ -62,7 +64,9 @@ export function GlobeOperatorAskChipsComposeCard({
                 "rounded-full px-3 py-1.5 text-[12px] font-semibold transition active:scale-[0.98]",
                 selected
                   ? "bg-[#0071e3] text-white shadow-sm"
-                  : "bg-white text-[#1d1d1f] ring-1 ring-black/[0.06] hover:bg-[#eef3ff] hover:text-[#0071e3]",
+                  : isApply
+                    ? "bg-[#0071e3] text-white shadow-sm hover:bg-[#0077ed]"
+                    : "bg-white text-[#1d1d1f] ring-1 ring-black/[0.06] hover:bg-[#eef3ff] hover:text-[#0071e3]",
                 submitted && !selected && "pointer-events-none",
               )}
               data-globe-operator-ask-chip={chip.id}

@@ -4,33 +4,42 @@ import type {
   ResearchDecision,
 } from "@/engines/research/schema";
 import type { DeepResearchExtract } from "@/engines/research/schema";
+import {
+  scoreResearchPersuasion,
+  type PersuasionContext,
+} from "@/lib/research-engine/score-persuasion";
 
-/** Stage 9 — confidence from multi-source agreement, freshness proxy, conflicts. */
+/**
+ * Stage 9 — 납득도 = 5-axis persuasion (primary) + light consistency blend.
+ * Missing axes do not tank the score (renormalized in persuasion).
+ */
 export function scoreResearchConfidence(input: {
   evidence: EvidenceMerge;
   ranked: readonly RankedCandidate[];
   extracts: readonly DeepResearchExtract[];
+  persuasionContext?: PersuasionContext;
 }): number {
   const kept = input.ranked.filter((r) => !r.rejected);
-  const domains = new Set(kept.map((r) => r.candidate.domain));
-  let score = input.evidence.consistencyScore * 0.55;
-  if (domains.size >= 3) {
-    score += 0.2;
-  } else if (domains.size >= 2) {
-    score += 0.12;
-  } else {
-    score -= 0.15;
-  }
-  const weakRatio =
-    input.extracts.length === 0
-      ? 1
-      : input.extracts.filter((e) => e.weakExtract).length / input.extracts.length;
-  score -= weakRatio * 0.2;
-  score -= Math.min(0.3, input.evidence.conflictingFacts.length * 0.1);
   if (kept.length === 0) {
-    score = Math.min(score, 0.15);
+    return 0.08;
   }
-  return Math.max(0.05, Math.min(0.95, score));
+  const persuasion = scoreResearchPersuasion(
+    input.ranked,
+    input.persuasionContext,
+  ).score;
+  // Light consistency spice only — never dominate (fixtures used to crush this).
+  const consistencyBoost = Math.min(
+    0.08,
+    Math.max(0, input.evidence.consistencyScore - 0.35) * 0.2,
+  );
+  const conflictCut = Math.min(
+    0.08,
+    input.evidence.conflictingFacts.length * 0.04,
+  );
+  return Math.max(
+    0.08,
+    Math.min(0.95, persuasion + consistencyBoost - conflictCut),
+  );
 }
 
 /** Stage 10 — prepared recommendation only (no Reality Commit). */
@@ -39,19 +48,27 @@ export function generateResearchDecision(input: {
   extracts: readonly DeepResearchExtract[];
   evidence: EvidenceMerge;
   confidence: number;
+  persuasionContext?: PersuasionContext;
 }): ResearchDecision {
   const kept = input.ranked.filter((r) => !r.rejected);
   const best = kept[0] ?? null;
   const alt = kept[1] ?? null;
+  const persuasion = scoreResearchPersuasion(
+    input.ranked,
+    input.persuasionContext,
+  );
+  const strongAxes = persuasion.axes.filter(
+    (axis) => axis.available && axis.score >= 0.4,
+  );
   const evidenceWeak =
-    input.confidence < 0.45 ||
-    input.evidence.consistencyScore < 0.35 ||
-    kept.length < 2;
+    input.confidence < 0.42 && strongAxes.length < 2;
 
-  const bestExtract = input.extracts.find((e) => e.candidateId === best?.candidate.id);
-  const whyParts: string[] = [];
-  if (best) {
-    whyParts.push(`독립 스캔·순위 기준으로 「${best.candidate.title}」이(가) 앞섰습니다`);
+  const bestExtract = input.extracts.find(
+    (e) => e.candidateId === best?.candidate.id,
+  );
+  const whyParts: string[] = [...persuasion.bulletsKo];
+  if (best && whyParts.length === 0) {
+    whyParts.push(`순위 기준으로 「${best.candidate.title}」이(가) 앞섰습니다`);
   }
   if (input.evidence.commonFacts.length > 0) {
     whyParts.push(
@@ -59,13 +76,13 @@ export function generateResearchDecision(input: {
     );
   }
   if (evidenceWeak) {
-    whyParts.push("증거가 약해 추천 확신은 낮습니다");
+    whyParts.push("관측 신호가 적어, 아래 있는 근거만 우선 보세요");
   }
 
   const tradeoffsKo: string[] = [];
   if (alt) {
     tradeoffsKo.push(
-      `대안 「${alt.candidate.title}」은 순위·축에서 차순위입니다`,
+      `대안 「${alt.candidate.title}」— ${alt.candidate.snippet.slice(0, 60) || "차순위"}`,
     );
   }
   if (bestExtract?.cons[0]) {
@@ -73,25 +90,24 @@ export function generateResearchDecision(input: {
   }
   if (input.evidence.conflictingFacts[0]) {
     const c = input.evidence.conflictingFacts[0];
-    tradeoffsKo.push(`충돌: ${c.claimA} vs ${c.claimB}`);
+    tradeoffsKo.push(`같은 장소 가격 표기 충돌: ${c.claimA} vs ${c.claimB}`);
   }
 
   const risksKo: string[] = [...input.evidence.missingFacts];
   for (const w of bestExtract?.warnings ?? []) {
     risksKo.push(w);
   }
-  if (evidenceWeak) {
-    risksKo.push("단일·약한 증거에 의존하면 환각 위험이 큽니다");
-  }
 
   return {
     best: {
       title: best?.candidate.title ?? "추천 후보 없음",
       candidateId: best?.candidate.id ?? null,
-      summaryKo: evidenceWeak
-        ? "증거 부족 — 아래 후보를 준비만 했습니다. Reality Commit은 하지 않습니다."
-        : `${best?.candidate.snippet.slice(0, 120) ?? ""}`.trim() ||
-          "다출처 순위에서 1위 후보입니다.",
+      summaryKo:
+        persuasion.headlineKo ||
+        best?.candidate.snippet.slice(0, 140).trim() ||
+        (evidenceWeak
+          ? "후보를 준비했습니다. Reality Commit은 하지 않습니다."
+          : "납득 신호 기준으로 1위 후보입니다."),
     },
     alternative: alt
       ? {

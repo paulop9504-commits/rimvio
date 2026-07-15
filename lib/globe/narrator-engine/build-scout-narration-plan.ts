@@ -88,6 +88,13 @@ function resolveEntityLabelKo(input: {
   const domain = domainFromSpec(input.spec);
   const dish = input.dishFocus;
   const lodging = lodgingEntityLabelKo(input.message, input.spec);
+  const activity =
+    normalizeFocusLabel(input.spec.activityFocus) ||
+    (input.spec.resourceTypes.includes("activity") ? "놀거리" : null) ||
+    (input.spec.resourceTypes.includes("amenity") ? "편의" : null);
+  const eatery =
+    dish ||
+    (input.spec.resourceTypes.includes("restaurant") ? "맛집" : null);
 
   if (domain === "Eatery") {
     return dish;
@@ -97,16 +104,27 @@ function resolveEntityLabelKo(input: {
     return lodging;
   }
   if (domain === "Mixed") {
-    if (dish && lodging) {
-      return `${dish} · ${lodging}`;
+    // Mention-order sectors from resourceTypes (lodging · activity · eatery…).
+    const parts: string[] = [];
+    for (const type of input.spec.resourceTypes) {
+      if (type === "hotel" && lodging) {
+        parts.push(lodging);
+      } else if (type === "hotel") {
+        parts.push("숙소");
+      } else if (type === "activity" && activity) {
+        parts.push(activity === "놀거리" ? "놀거리" : activity);
+      } else if (type === "amenity") {
+        parts.push("편의");
+      } else if (type === "restaurant" && eatery) {
+        parts.push(eatery);
+      }
     }
-    return dish || lodging;
+    if (parts.length > 0) {
+      return parts.join(" · ");
+    }
+    return dish || lodging || activity;
   }
-  return (
-    normalizeFocusLabel(input.spec.activityFocus) ||
-    dish ||
-    lodging
-  );
+  return activity || dish || lodging;
 }
 
 function focusChanged(

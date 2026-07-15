@@ -33,6 +33,81 @@ export {
 } from "@/lib/research-engine/providers";
 
 export { createDiscoveryBatchCandidateProvider } from "@/lib/research-engine/discovery-batch-provider";
+export { createContextInventoryCandidateProvider } from "@/lib/research-engine/context-inventory-provider";
+export { createLiveExternalCandidateProvider } from "@/lib/research-engine/live-external-provider";
+export {
+  fetchLiveResearchInventory,
+  resolveResearchLiveSurfaces,
+  mergeLodgingPlacesWithRates,
+  readLiveInventory,
+} from "@/lib/research-engine/live-external-ssot";
+export {
+  resolveResearchSectors,
+  runMultiSectorResearchSurgery,
+  isMultiSectorResearch,
+  formatMultiSectorResultsKo,
+  researchSectorLabelKo,
+  sectorOfRankedCandidate,
+  type ResearchSectorId,
+  type ResearchSectorResult,
+} from "@/lib/research-engine/multi-sector-surgery";
+export {
+  buildResearchApprovalGate,
+  formatResearchApprovalPromptKo,
+  RESEARCH_APPROVAL_APPLY_MIN_CONFIDENCE,
+} from "@/lib/research-engine/build-research-approval-gate";
+export { applyResearchApprovalChip } from "@/lib/research-engine/apply-research-approval-chip";
+export {
+  writeResearchApprovalGate,
+  readResearchApprovalGate,
+  markResearchApprovalGateDecision,
+  clearResearchApprovalGate,
+} from "@/lib/research-engine/research-approval-store";
+export { scoreResearchPersuasion } from "@/lib/research-engine/score-persuasion";
+export type {
+  PersuasionBreakdown,
+  PersuasionContext,
+  PersuasionAxisScore,
+} from "@/lib/research-engine/score-persuasion";
+
+export {
+  detectResearchGaps,
+  detectResearchMissingFields,
+  pickResearchTool,
+  pickResearchToolForMissing,
+  toolForMissingField,
+  runResearchSurgicalLoop,
+  DEFAULT_RESEARCH_TOOLS,
+  createBrowserResearchToolRuntime,
+  RESEARCH_TOOL_REGISTRY,
+  getResearchTool,
+  listResearchToolIds,
+  matchInventoryHit,
+  resolveResearchToolSurface,
+  buildResearchEvidenceCards,
+  formatResearchEvidenceCardsKo,
+  formatCalledGotLine,
+  type ResearchTool,
+  type ResearchToolCall,
+  type ResearchToolId,
+  type ResearchToolRuntime,
+  type ResearchMissingField,
+  type ResearchGapRetryStep,
+  type ResearchEvidenceCard,
+} from "@/lib/research-engine/tools";
+
+export {
+  resolveInitialResearchStrategy,
+  resolveNextResearchStrategy,
+  shouldSwitchResearchStrategy,
+  researchStrategyLabelKo,
+  reorderGapsForStrategy,
+  reorderRankedForStrategy,
+  RESEARCH_STRATEGY_SWITCH_CONFIDENCE,
+  RESEARCH_STRATEGY_MAX_SWITCHES,
+  type ResearchStrategyId,
+  type ResearchStrategyStep,
+} from "@/lib/research-engine/research-strategy";
 
 export {
   runResearchEngine,
