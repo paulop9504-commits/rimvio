@@ -20,10 +20,23 @@ import type {
   ResearchToolId,
   ResearchToolRuntime,
 } from "@/lib/research-engine/tools/types";
+import { throwIfResearchAborted } from "@/lib/research-engine/research-run-controller";
 
 /** Named instrument set — same ids Cursor would list. */
 export const DEFAULT_RESEARCH_TOOLS: readonly ResearchTool[] =
   RESEARCH_TOOL_REGISTRY.map((e) => e.tool);
+
+/** Stop remaining rounds when 납득 is already strong and only soft gaps left. */
+export const RESEARCH_SURGICAL_EARLY_EXIT_CONFIDENCE = 0.72;
+
+function onlySoftGapsLeft(
+  remaining: readonly ResearchMissingField[],
+): boolean {
+  return (
+    remaining.length === 0 ||
+    remaining.every((f) => f === "youtubeConfidence" || f === "rating")
+  );
+}
 
 function readMetaNumber(
   metadata: RankedCandidate["candidate"]["metadata"],
@@ -64,10 +77,15 @@ export async function runResearchSurgicalLoop(input: {
   runtime?: ResearchToolRuntime;
   onTool?: (call: ResearchToolCall) => void;
   onGapRetry?: (step: ResearchGapRetryStep) => void;
+  onRescore?: (input: {
+    confidence: number;
+    rankTitle: string;
+  }) => void;
   strategy?: ResearchStrategyId;
   /** Clear tried set when switching lenses. */
   resetTried?: boolean;
   priorTried?: ReadonlySet<ResearchToolId>;
+  signal?: AbortSignal | null;
 }): Promise<RunResearchSurgicalLoopResult> {
   const strategy = input.strategy ?? "balanced";
   const tools = input.tools ?? DEFAULT_RESEARCH_TOOLS;
@@ -88,6 +106,12 @@ export async function runResearchSurgicalLoop(input: {
   const maxRounds = Math.max(1, Math.min(8, input.maxRounds ?? 5));
 
   for (let round = 0; round < maxRounds; round += 1) {
+    throwIfResearchAborted(input.signal);
+    // Yield between rounds so compose can paint streamed tool lines.
+    if (round > 0) {
+      await Promise.resolve();
+    }
+
     const missingBefore = detectResearchMissingFields({
       ranked,
       persuasionContext: input.persuasionContext,
@@ -189,6 +213,20 @@ export async function runResearchSurgicalLoop(input: {
     };
     gapRetryTrace.push(step);
     input.onGapRetry?.(step);
+
+    const bestTitle =
+      ranked.find((r) => !r.rejected)?.candidate.title ?? best.title;
+    input.onRescore?.({
+      confidence: persuasionAfter,
+      rankTitle: bestTitle,
+    });
+
+    if (
+      persuasionAfter >= RESEARCH_SURGICAL_EARLY_EXIT_CONFIDENCE &&
+      onlySoftGapsLeft(missingAfter.map((m) => m.field))
+    ) {
+      break;
+    }
   }
 
   return { ranked, toolTrace, gapRetryTrace, strategy };

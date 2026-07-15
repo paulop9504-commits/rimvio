@@ -43,6 +43,13 @@ import {
   runMultiSectorResearchSurgery,
   type ResearchSectorResult,
 } from "@/lib/research-engine/multi-sector-surgery";
+import {
+  formatResearchGapStreamLine,
+  formatResearchLensStreamLine,
+  formatResearchRescoreStreamLine,
+  formatResearchToolStreamLine,
+} from "@/lib/research-engine/format-research-stream-event";
+import { throwIfResearchAborted } from "@/lib/research-engine/research-run-controller";
 import { buildResearchApprovalGate } from "@/lib/research-engine/build-research-approval-gate";
 
 export type RunResearchEngineInput = {
@@ -60,9 +67,12 @@ export type RunResearchEngineInput = {
   toolRuntime?: ResearchToolRuntime;
   /** Max surgical rounds (default 4). */
   surgicalMaxRounds?: number;
+  /** Live tool / gap / lens / rescore lines (compose stream). */
   onTool?: (summaryKo: string) => void;
   /** Force starting lens (tests). */
   strategy?: ResearchStrategyId;
+  /** Cancel mid-run when user re-sends / revise. */
+  signal?: AbortSignal | null;
 };
 
 function emit(
@@ -80,6 +90,9 @@ export async function runResearchEngine(
   const text = input.text.trim();
   const stageTrace: ResearchStage[] = [];
   const onStage = input.onStage;
+  const signal = input.signal ?? null;
+
+  throwIfResearchAborted(signal);
 
   // Stage 1
   emit(onStage, "UNDERSTAND_INTENT", stageTrace);
@@ -101,6 +114,7 @@ export async function runResearchEngine(
 
   // Stage 4
   emit(onStage, "FAST_SCAN", stageTrace);
+  throwIfResearchAborted(signal);
   const raw = await Promise.resolve(
     input.provider.listCandidates({
       queries: expandedQueries,
@@ -115,6 +129,17 @@ export async function runResearchEngine(
     candidates: scanned,
     blueprint,
   });
+
+  // TTFT: flush live SSOT / inventory provenance before surgical rounds.
+  const earlyCards = buildResearchEvidenceCards({
+    toolTrace: [],
+    ranked,
+  }).slice(0, 3);
+  for (const card of earlyCards) {
+    input.onTool?.(card.lineKo);
+    onStage?.("FAST_SCAN", `› ${card.lineKo}`);
+  }
+  await Promise.resolve();
 
   // Stage 6
   emit(onStage, "DEEP_RESEARCH", stageTrace);
@@ -143,21 +168,27 @@ export async function runResearchEngine(
     },
   ];
   const triedStrategies = new Set<ResearchStrategyId>([strategy]);
+  const lensLine = formatResearchLensStreamLine(strategy);
+  input.onTool?.(lensLine);
   onStage?.(
     "DEEP_RESEARCH",
-    `› 수술 렌즈 «${researchStrategyLabelKo(strategy)}»`,
+    `› ${lensLine} · ${researchStrategyLabelKo(strategy)}`,
   );
 
   const onSurgicalTool = (call: ResearchToolCall) => {
-    const evidenceLine = call.evidence
-      ? `Called ${call.evidence.called} → ${call.status === "ok" ? `got ${call.evidence.gotLine}` : `skip (${call.evidence.gotLine})`}`
-      : `${call.toolId} ${call.status === "ok" ? "✓" : call.status === "skip" ? "–" : "!"} ${call.summaryKo}`;
+    const evidenceLine = formatResearchToolStreamLine(call);
     input.onTool?.(evidenceLine);
     onStage?.("DEEP_RESEARCH", `› ${evidenceLine}`);
   };
   const onGapRetry = (step: ResearchGapRetryStep) => {
-    input.onTool?.(step.summaryKo);
-    onStage?.("DEEP_RESEARCH", `› ${step.summaryKo}`);
+    const gapLine = formatResearchGapStreamLine(step);
+    input.onTool?.(gapLine);
+    onStage?.("DEEP_RESEARCH", `› ${gapLine}`);
+  };
+  const onRescore = (payload: { confidence: number; rankTitle: string }) => {
+    const line = formatResearchRescoreStreamLine(payload);
+    input.onTool?.(line);
+    onStage?.("DEEP_RESEARCH", `› ${line}`);
   };
 
   let toolTrace: ResearchToolCall[] = [];
@@ -189,6 +220,7 @@ export async function runResearchEngine(
     pass <= RESEARCH_STRATEGY_MAX_SWITCHES;
     pass += 1
   ) {
+    throwIfResearchAborted(signal);
     const sectors = resolveResearchSectors({ message: text, ranked });
     const useMulti = sectors.length >= 2;
 
@@ -202,10 +234,12 @@ export async function runResearchEngine(
         maxRoundsPerSector: Math.min(3, input.surgicalMaxRounds ?? 3),
         onTool: onSurgicalTool,
         onGapRetry,
+        onRescore,
         onSector: (_sector, summaryKo) => {
           input.onTool?.(summaryKo);
           onStage?.("DEEP_RESEARCH", summaryKo);
         },
+        signal,
       });
       ranked = [...multi.ranked];
       toolTrace = [...toolTrace, ...multi.toolTrace];
@@ -237,6 +271,8 @@ export async function runResearchEngine(
         resetTried: pass > 0,
         onTool: onSurgicalTool,
         onGapRetry,
+        onRescore,
+        signal,
       });
       ranked = [...surgical.ranked];
       toolTrace = [...toolTrace, ...surgical.toolTrace];
@@ -282,7 +318,9 @@ export async function runResearchEngine(
     strategy = nextLens.strategy;
     triedStrategies.add(strategy);
     strategyTrace.push(nextLens);
-    onStage?.("DEEP_RESEARCH", `› ${nextLens.reasonKo}`);
+    const switchLine = formatResearchLensStreamLine(strategy);
+    input.onTool?.(switchLine);
+    onStage?.("DEEP_RESEARCH", `› ${switchLine} · ${nextLens.reasonKo}`);
   }
 
   // Stage 7–9 already reflected above; emit for timeline completeness.
@@ -364,12 +402,43 @@ export async function runResearchEngine(
     ranked,
   });
 
+  const toolOkCount = toolTrace.filter((t) => t.status === "ok").length;
+  const ssotCount =
+    sourcesUsed.filter((s) => /live\./iu.test(s.domain)).length ||
+    earlyCards.length;
+  const filledAxesKo = Array.from(
+    new Set(
+      toolTrace.flatMap((t) =>
+        t.filledAxes.map((axis) => {
+          switch (axis) {
+            case "observation":
+              return "리뷰";
+            case "priceFit":
+              return "요금";
+            case "distance":
+              return "거리";
+            case "crossCheck":
+              return "영상";
+            case "context":
+              return "맥락";
+            default:
+              return axis;
+          }
+        }),
+      ),
+    ),
+  );
+
   const approvalBuilt = buildResearchApprovalGate({
     confidence,
     evidenceWeak: decision.evidenceWeak,
     bestTitle: decision.best.title,
     bestCandidateId: decision.best.candidateId,
     sectorSummariesKo: sectorResults.map((s) => s.summaryKo),
+    toolOkCount,
+    ssotCount,
+    filledAxesKo,
+    whyKo: decision.whyKo,
   });
 
   return {

@@ -1,6 +1,6 @@
 /**
  * Multi-sector Research surgery — lodging · eatery · activity mini-ops then merge.
- * Cursor-like: operate per sector, then compose one turn.
+ * Cursor-like: operate per sector (parallel when safe), then compose one turn.
  */
 
 import type { RankedCandidate } from "@/engines/research/schema";
@@ -26,6 +26,8 @@ import type {
   ResearchToolRuntime,
 } from "@/lib/research-engine/tools/types";
 import { buildResearchEvidenceCards } from "@/lib/research-engine/tools/build-evidence-cards";
+import { throwIfResearchAborted } from "@/lib/research-engine/research-run-controller";
+import { formatResearchSectorStreamLine } from "@/lib/research-engine/format-research-stream-event";
 
 export type ResearchSectorId = ResearchLiveSurface;
 
@@ -160,8 +162,17 @@ export type RunMultiSectorSurgeryResult = {
   readonly evidenceCardsLineKo: readonly string[];
 };
 
+type SectorOpResult = {
+  readonly sector: ResearchSectorId;
+  readonly sectorResult: ResearchSectorResult;
+  readonly ranked: readonly RankedCandidate[];
+  readonly toolTrace: readonly ResearchToolCall[];
+  readonly gapRetryTrace: readonly ResearchGapRetryStep[];
+  readonly evidenceLines: readonly string[];
+};
+
 /**
- * Mini surgical loop per sector → merge winners to top of ranked list.
+ * Mini surgical loop per sector (parallel) → merge winners in sector order.
  */
 export async function runMultiSectorResearchSurgery(input: {
   ranked: readonly RankedCandidate[];
@@ -172,9 +183,125 @@ export async function runMultiSectorResearchSurgery(input: {
   maxRoundsPerSector?: number;
   onTool?: (call: ResearchToolCall) => void;
   onGapRetry?: (step: ResearchGapRetryStep) => void;
+  onRescore?: (input: { confidence: number; rankTitle: string }) => void;
   onSector?: (sector: ResearchSectorId, summaryKo: string) => void;
+  signal?: AbortSignal | null;
 }): Promise<RunMultiSectorSurgeryResult> {
   const bySector = partitionRankedBySector(input.ranked);
+  const maxRounds = Math.max(1, Math.min(4, input.maxRoundsPerSector ?? 3));
+
+  throwIfResearchAborted(input.signal);
+
+  const ops = await Promise.all(
+    input.sectors.map(async (sector): Promise<SectorOpResult> => {
+      throwIfResearchAborted(input.signal);
+      const pool = bySector.get(sector) ?? [];
+      if (pool.length === 0) {
+        const emptyResult: ResearchSectorResult = {
+          sector,
+          labelKo: researchSectorLabelKo(sector),
+          bestTitle: "(후보 없음)",
+          bestCandidateId: null,
+          confidence: 0,
+          headlineKo: "",
+          toolCount: 0,
+          summaryKo: `${researchSectorLabelKo(sector)}: 후보 풀 없음`,
+        };
+        input.onSector?.(
+          sector,
+          formatResearchSectorStreamLine(sector, "empty"),
+        );
+        return {
+          sector,
+          sectorResult: emptyResult,
+          ranked: [],
+          toolTrace: [],
+          gapRetryTrace: [],
+          evidenceLines: [],
+        };
+      }
+
+      input.onSector?.(
+        sector,
+        formatResearchSectorStreamLine(sector, "start"),
+      );
+      // Keep a human-readable sector line for compose timelines.
+      input.onSector?.(
+        sector,
+        `› 섹터 수술 «${researchSectorLabelKo(sector)}» · ${researchStrategyLabelKo(input.strategy)}`,
+      );
+
+      const sectorPersuasion: PersuasionContext = {
+        ...input.persuasionContext,
+        maxNightlyPriceKrw:
+          sector === "lodging"
+            ? input.persuasionContext.maxNightlyPriceKrw
+            : null,
+      };
+
+      const surgical = await runResearchSurgicalLoop({
+        ranked: pool,
+        persuasionContext: sectorPersuasion,
+        maxRounds,
+        runtime: input.runtime,
+        strategy: input.strategy,
+        resetTried: true,
+        onTool: input.onTool,
+        onGapRetry: input.onGapRetry,
+        onRescore: input.onRescore,
+        signal: input.signal,
+      });
+
+      const best = surgical.ranked.find((r) => !r.rejected) ?? null;
+      const persuasion = scoreResearchPersuasion(
+        surgical.ranked,
+        sectorPersuasion,
+      );
+      const conf = Math.round(persuasion.score * 1000) / 1000;
+      const title = best?.candidate.title ?? "(없음)";
+      const okTools = surgical.toolTrace.filter((t) => t.status === "ok").length;
+
+      const evidenceLines: string[] = [];
+      for (const card of buildResearchEvidenceCards({
+        toolTrace: surgical.toolTrace,
+        ranked: surgical.ranked,
+      })) {
+        evidenceLines.push(
+          `[${researchSectorLabelKo(sector)}] ${card.lineKo}`,
+        );
+      }
+
+      input.onSector?.(
+        sector,
+        formatResearchSectorStreamLine(sector, "merge"),
+      );
+
+      return {
+        sector,
+        sectorResult: {
+          sector,
+          labelKo: researchSectorLabelKo(sector),
+          bestTitle: title,
+          bestCandidateId: best?.candidate.id ?? null,
+          confidence: conf,
+          headlineKo: persuasion.headlineKo,
+          toolCount: okTools,
+          summaryKo: `${researchSectorLabelKo(sector)}: ${title} · 납득 ${(conf * 100).toFixed(0)}%${
+            persuasion.headlineKo ? ` · ${persuasion.headlineKo}` : ""
+          }`,
+        },
+        ranked: surgical.ranked,
+        toolTrace: surgical.toolTrace,
+        gapRetryTrace: surgical.gapRetryTrace.map((step) => ({
+          ...step,
+          summaryKo: `[${researchSectorLabelKo(sector)}] ${step.summaryKo}`,
+        })),
+        evidenceLines,
+      };
+    }),
+  );
+
+  // Merge in declared sector order (SSOT) — parallel ops don't scramble winners.
   const toolTrace: ResearchToolCall[] = [];
   const gapRetryTrace: ResearchGapRetryStep[] = [];
   const sectorResults: ResearchSectorResult[] = [];
@@ -182,94 +309,12 @@ export async function runMultiSectorResearchSurgery(input: {
   const usedIds = new Set<string>();
   const evidenceLines: string[] = [];
 
-  const maxRounds = Math.max(1, Math.min(4, input.maxRoundsPerSector ?? 3));
-
-  // Sector-aware persuasion: lodging keeps budget; eatery/activity drop price gate noise.
-  for (const sector of input.sectors) {
-    const pool = bySector.get(sector) ?? [];
-    if (pool.length === 0) {
-      sectorResults.push({
-        sector,
-        labelKo: researchSectorLabelKo(sector),
-        bestTitle: "(후보 없음)",
-        bestCandidateId: null,
-        confidence: 0,
-        headlineKo: "",
-        toolCount: 0,
-        summaryKo: `${researchSectorLabelKo(sector)}: 후보 풀 없음`,
-      });
-      input.onSector?.(
-        sector,
-        `› 섹터 수술 «${researchSectorLabelKo(sector)}» — 풀 없음`,
-      );
-      continue;
-    }
-
-    input.onSector?.(
-      sector,
-      `› 섹터 수술 «${researchSectorLabelKo(sector)}» · ${researchStrategyLabelKo(input.strategy)}`,
-    );
-
-    const sectorPersuasion: PersuasionContext = {
-      ...input.persuasionContext,
-      maxNightlyPriceKrw:
-        sector === "lodging"
-          ? input.persuasionContext.maxNightlyPriceKrw
-          : null,
-    };
-
-    const surgical = await runResearchSurgicalLoop({
-      ranked: pool,
-      persuasionContext: sectorPersuasion,
-      maxRounds,
-      runtime: input.runtime,
-      strategy: input.strategy,
-      resetTried: true,
-      onTool: input.onTool,
-      onGapRetry: input.onGapRetry,
-    });
-
-    toolTrace.push(...surgical.toolTrace);
-    gapRetryTrace.push(
-      ...surgical.gapRetryTrace.map((step) => ({
-        ...step,
-        summaryKo: `[${researchSectorLabelKo(sector)}] ${step.summaryKo}`,
-      })),
-    );
-
-    const best = surgical.ranked.find((r) => !r.rejected) ?? null;
-    const persuasion = scoreResearchPersuasion(
-      surgical.ranked,
-      sectorPersuasion,
-    );
-    const conf = Math.round(persuasion.score * 1000) / 1000;
-    const title = best?.candidate.title ?? "(없음)";
-    const okTools = surgical.toolTrace.filter((t) => t.status === "ok").length;
-
-    for (const card of buildResearchEvidenceCards({
-      toolTrace: surgical.toolTrace,
-      ranked: surgical.ranked,
-    })) {
-      evidenceLines.push(
-        `[${researchSectorLabelKo(sector)}] ${card.lineKo}`,
-      );
-    }
-
-    sectorResults.push({
-      sector,
-      labelKo: researchSectorLabelKo(sector),
-      bestTitle: title,
-      bestCandidateId: best?.candidate.id ?? null,
-      confidence: conf,
-      headlineKo: persuasion.headlineKo,
-      toolCount: okTools,
-      summaryKo: `${researchSectorLabelKo(sector)}: ${title} · 납득 ${(conf * 100).toFixed(0)}%${
-        persuasion.headlineKo ? ` · ${persuasion.headlineKo}` : ""
-      }`,
-    });
-
-    // Prefer surgically updated ordering within sector.
-    for (const row of surgical.ranked) {
+  for (const op of ops) {
+    sectorResults.push(op.sectorResult);
+    toolTrace.push(...op.toolTrace);
+    gapRetryTrace.push(...op.gapRetryTrace);
+    evidenceLines.push(...op.evidenceLines);
+    for (const row of op.ranked) {
       if (row.rejected) continue;
       if (usedIds.has(row.candidate.id)) continue;
       winnerRows.push(row);
@@ -277,7 +322,6 @@ export async function runMultiSectorResearchSurgery(input: {
     }
   }
 
-  // Append leftover candidates (other sectors / rejected) without dupes.
   const leftovers = input.ranked.filter(
     (r) => !usedIds.has(r.candidate.id),
   );

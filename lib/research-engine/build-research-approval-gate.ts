@@ -12,6 +12,8 @@ export type ResearchApprovalChipId = "apply" | "reject" | "revise";
 
 export type ResearchApprovalGateBuilt = {
   readonly promptKo: string;
+  /** Fixed 3-line trust block before chips (Cursor “review before apply”). */
+  readonly trustSummaryKo: readonly string[];
   readonly offerApply: boolean;
   readonly chips: OperatorAskChipsComposePayload["chips"];
   readonly snapshot: {
@@ -21,6 +23,24 @@ export type ResearchApprovalGateBuilt = {
     readonly sectorSummariesKo: readonly string[];
   };
 };
+
+/** Build the deterministic 3-line summary shown before apply chips. */
+export function buildResearchApprovalTrustSummary(input: {
+  toolOkCount: number;
+  ssotCount: number;
+  filledAxesKo: readonly string[];
+  bestTitle: string;
+  whyKo: string;
+}): readonly string[] {
+  const axes =
+    input.filledAxesKo.filter(Boolean).slice(0, 4).join(" · ") || "—";
+  const why = input.whyKo.trim().split(/[.。]/u)[0]?.trim() || "근거 수치 위주";
+  return [
+    `부른 도구 ${input.toolOkCount} · SSOT ${input.ssotCount}`,
+    `채운 축: ${axes}`,
+    `왜 「${input.bestTitle}」: ${why}`,
+  ];
+}
 
 /**
  * Build apply/reject chips like Cursor. Weak 납득 still shows gate,
@@ -32,6 +52,10 @@ export function buildResearchApprovalGate(input: {
   bestTitle: string;
   bestCandidateId: string | null;
   sectorSummariesKo?: readonly string[];
+  toolOkCount?: number;
+  ssotCount?: number;
+  filledAxesKo?: readonly string[];
+  whyKo?: string;
 }): ResearchApprovalGateBuilt | null {
   const bestId = input.bestCandidateId?.trim() || null;
   const bestTitle = input.bestTitle?.trim() || "";
@@ -57,6 +81,14 @@ export function buildResearchApprovalGate(input: {
     : softApply
       ? `납득도 ${confPct} · 신호는 적지만 「${bestTitle}」로 진행할까요?`
       : `납득도 ${confPct} · 근거가 약합니다. 다시 조사할까요?`;
+
+  const trustSummaryKo = buildResearchApprovalTrustSummary({
+    toolOkCount: input.toolOkCount ?? 0,
+    ssotCount: input.ssotCount ?? 0,
+    filledAxesKo: input.filledAxesKo ?? [],
+    bestTitle,
+    whyKo: input.whyKo ?? "",
+  });
 
   const chips: Array<{
     id: string;
@@ -90,6 +122,7 @@ export function buildResearchApprovalGate(input: {
 
   return {
     promptKo,
+    trustSummaryKo,
     offerApply: offerApply || softApply,
     chips,
     snapshot: {
@@ -101,10 +134,14 @@ export function buildResearchApprovalGate(input: {
   };
 }
 
-/** Compose one-liner under Research text when chips also append. */
+/** Compose block under Research text when chips also append. */
 export function formatResearchApprovalPromptKo(
   gate: ResearchApprovalGateBuilt,
 ): string {
   const labels = gate.chips.map((c) => c.labelKo).join(" · ");
-  return `${gate.promptKo}\n→ ${labels}`;
+  return [
+    ...gate.trustSummaryKo,
+    gate.promptKo,
+    `→ ${labels}`,
+  ].join("\n");
 }

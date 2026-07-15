@@ -7,6 +7,7 @@ import {
   buildResearchApprovalGate,
   clearResearchApprovalGate,
   createFixtureCandidateProvider,
+  formatResearchApprovalPromptKo,
   formatResearchResultComposeKo,
   readResearchApprovalGate,
   runResearchEngine,
@@ -23,9 +24,10 @@ async function main() {
   assert.ok(strong);
   assert.equal(strong!.offerApply, true);
   assert.match(strong!.promptKo, /이 근거로 진행할까요/);
-  assert.ok(strong!.chips.some((c) => c.value === "apply"));
-  assert.ok(strong!.chips.some((c) => c.value === "reject"));
-  assert.ok(strong!.chips.some((c) => c.value === "revise"));
+  assert.ok(strong!.trustSummaryKo.length === 3);
+  assert.match(strong!.trustSummaryKo[0]!, /부른 도구/);
+  assert.match(formatResearchApprovalPromptKo(strong!), /채운 축/);
+
 
   const weak = buildResearchApprovalGate({
     confidence: 0.2,

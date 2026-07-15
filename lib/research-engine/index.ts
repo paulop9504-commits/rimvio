@@ -77,6 +77,7 @@ export {
   pickResearchToolForMissing,
   toolForMissingField,
   runResearchSurgicalLoop,
+  RESEARCH_SURGICAL_EARLY_EXIT_CONFIDENCE,
   DEFAULT_RESEARCH_TOOLS,
   createBrowserResearchToolRuntime,
   RESEARCH_TOOL_REGISTRY,
@@ -114,6 +115,17 @@ export {
   formatResearchResultComposeKo,
   type RunResearchEngineInput,
 } from "@/lib/research-engine/run-research-engine";
+
+export {
+  formatResearchToolStreamLine,
+  formatResearchGapStreamLine,
+  formatResearchLensStreamLine,
+  formatResearchSectorStreamLine,
+  formatResearchRescoreStreamLine,
+  formatResearchLiveSsotStreamLine,
+} from "@/lib/research-engine/format-research-stream-event";
+
+export { beginResearchRun } from "@/lib/research-engine/research-run-controller";
 
 export { isResearchUtterance } from "@/lib/research-engine/is-research-utterance";
 

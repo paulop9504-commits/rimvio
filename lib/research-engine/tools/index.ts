@@ -31,6 +31,7 @@ export { applyResearchToolPatch } from "@/lib/research-engine/tools/apply-tool-p
 export {
   DEFAULT_RESEARCH_TOOLS,
   runResearchSurgicalLoop,
+  RESEARCH_SURGICAL_EARLY_EXIT_CONFIDENCE,
   type ResearchGapRetryStep,
 } from "@/lib/research-engine/tools/run-research-surgical-loop";
 export { placesDetailsTool } from "@/lib/research-engine/tools/places-details-tool";
