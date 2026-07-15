@@ -7,6 +7,7 @@ import { GlobeLodgingRoomCardList } from "@/components/globe/globe-lodging-room-
 import { GlobeIntakeSlotsComposeCard } from "@/components/globe/intake/globe-intake-slots-compose-card";
 import { GlobeOperatorAskChipsComposeCard } from "@/components/globe/globe-operator-ask-chips-compose-card";
 import { GlobeIntentExecutionTimeline } from "@/components/globe/globe-intent-execution-timeline";
+import { GlobeScoutNarrationStream } from "@/components/globe/globe-scout-narration-stream";
 import type { ContextAgentComposeTurn } from "@/lib/globe/assistant";
 import type { ContextConditionRecommendation } from "@/lib/globe/context-condition-ai/local-discovery-action-types";
 import type { ContextConditionPinnedByKind } from "@/lib/globe/context-condition-ai/pin-context-condition-recommendation";
@@ -104,11 +105,19 @@ export function GlobeAssistantComposeThread({
           return (
             <div key={turn.id} className="flex justify-start">
               <p
-                className="max-w-[88%] font-mono text-[11px] leading-relaxed text-[#515154]"
+                className="max-w-[88%] rounded-lg bg-[#0b0b0f]/[0.05] px-2.5 py-1 font-mono text-[11px] leading-relaxed text-[#515154] ring-1 ring-black/[0.04]"
                 data-globe-assistant-build-log
               >
                 <span className="text-[#0071e3]">&gt;</span> {turn.text}
               </p>
+            </div>
+          );
+        }
+
+        if (turn.kind === "scout_narration") {
+          return (
+            <div key={turn.id} className="flex justify-start">
+              <GlobeScoutNarrationStream payload={turn.payload} />
             </div>
           );
         }

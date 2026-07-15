@@ -22,6 +22,7 @@ import {
 import { readActiveDiscoveryExecution } from "@/lib/globe/discovery-execution/read-active-discovery-execution";
 import { readContextAgentComposeThread } from "@/lib/globe/assistant";
 import { openLodgingHubCheckout } from "@/lib/globe/hub-checkout/open-lodging-hub-checkout-bridge";
+import { dispatchGlobeLodgingFocus } from "@/lib/globe/context-hub/globe-lodging-marker-bridge";
 import { dispatchGlobeEateryFocus } from "@/lib/globe/eatery/globe-eatery-focus-bridge";
 import {
   EVENT_CANDIDATES_UPDATED,
@@ -31,6 +32,26 @@ import { subscribeEateryRankModeOverride } from "@/lib/globe/eatery/eatery-rank-
 import { copy } from "@/lib/copy/human-ko";
 import { subscribeLodgingRankModeOverride } from "@/lib/globe/lodging/lodging-rank-mode-session-store";
 import { cn } from "@/lib/utils";
+
+function focusDiscoveryCardOnMap(input: {
+  resourceId: string;
+  kind: InfiniteDiscoveryFeedCard["kind"];
+  carouselIndex: number;
+}): void {
+  if (input.kind === "lodging") {
+    dispatchGlobeLodgingFocus({
+      resourceId: input.resourceId,
+      carouselIndex: input.carouselIndex,
+      source: "discovery_card",
+    });
+    return;
+  }
+  dispatchGlobeEateryFocus({
+    resourceId: input.resourceId,
+    carouselIndex: input.carouselIndex,
+    source: "discovery_card",
+  });
+}
 
 export type GlobeIntelligentDiscoveryStageProps = {
   contextEventId: string | null | undefined;
@@ -93,14 +114,19 @@ export function GlobeIntelligentDiscoveryStage({
         return;
       }
       setActiveResourceId(detail.resourceId);
-      dispatchGlobeEateryFocus({
+      focusDiscoveryCardOnMap({
         resourceId: detail.resourceId,
+        kind: detail.kind,
         carouselIndex: 0,
-        source: "discovery_card",
       });
-      globeRef?.current?.flyToPin(detail.lat, detail.lng, "street", {
-        pinViewportY: MAP_FOCUS_PIN_VIEWPORT_Y,
-      });
+      if (
+        Number.isFinite(detail.lat) &&
+        Number.isFinite(detail.lng)
+      ) {
+        globeRef?.current?.flyToPin(detail.lat, detail.lng, "street", {
+          pinViewportY: MAP_FOCUS_PIN_VIEWPORT_Y,
+        });
+      }
     });
   }, [globeRef, openEventId]);
 
@@ -181,11 +207,23 @@ export function GlobeIntelligentDiscoveryStage({
           },
         });
         setRevision((value) => value + 1);
+        focusDiscoveryCardOnMap({
+          resourceId: card.resourceId,
+          kind: card.kind,
+          carouselIndex: card.carouselIndex,
+        });
+        if (Number.isFinite(card.lat) && Number.isFinite(card.lng)) {
+          globeRef?.current?.flyToPin(card.lat, card.lng, "street", {
+            pinViewportY: MAP_FOCUS_PIN_VIEWPORT_Y,
+          });
+        }
+        // Land on the map pin — dismiss feed so left chrome / map stay readable.
+        dismiss();
       } finally {
         setPinBusyPlaceId(null);
       }
     },
-    [activeEvent, pinned],
+    [activeEvent, dismiss, globeRef, pinned],
   );
 
   const handleCheckout = useCallback(

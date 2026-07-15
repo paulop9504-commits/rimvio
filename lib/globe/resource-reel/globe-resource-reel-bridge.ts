@@ -97,7 +97,9 @@ export function forwardLodgingFocusToResourceReel(
     return;
   }
   const source = detail.source ?? "map_marker";
-  if (source === "carousel" || source === "strip") {
+  // Discovery feed scroll/preview — map marker + flyTo only. Opening the left
+  // detail panel also flips mapMediaFocus and clears HTML pins (stuck card).
+  if (source === "carousel" || source === "strip" || source === "discovery_card") {
     return;
   }
   dispatchGlobeResourceReelFocus({
@@ -113,6 +115,10 @@ export function forwardLodgingFocusToResourceReel(
 export function forwardEateryFocusToResourceReel(
   detail: GlobeEateryFocusDetail,
 ): void {
+  // Discovery feed scroll/preview — highlight map pin only; do not open left reel.
+  if (detail.source === "discovery_card") {
+    return;
+  }
   const contextEventId = extractEventIdFromResourceId(detail.resourceId);
   if (!contextEventId) {
     return;

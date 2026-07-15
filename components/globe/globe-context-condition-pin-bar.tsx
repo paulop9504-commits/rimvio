@@ -112,7 +112,7 @@ import {
   buildScoutNarrationPlan,
   narrateScoutPlan,
   publishScoutNarration,
-  publishScoutNarrationProgress,
+  completeScoutNarration,
   type ScoutNarration,
 } from "@/lib/globe/narrator-engine";
 import { buildTravelBrainState } from "@/lib/situation-projection/travel-brain-personalization";
@@ -854,8 +854,7 @@ export const GlobeContextConditionPinBar = forwardRef<
       setContextAgentSessionPhase("scouting");
       beginContextAgentWork("exploring");
 
-      // Narrator Engine — structured plan → understanding + gray progress logs.
-      // Prior constraints are read BEFORE merge so Replace can name what was dropped.
+      // Narrator Engine — one live stream turn (Cursor-style).
       const narration =
         input.narration ??
         narrateScoutPlan(
@@ -867,37 +866,10 @@ export const GlobeContextConditionPinBar = forwardRef<
             anchorLabelKo: anchorPlaceName,
           }),
         );
-      const collectAt = narration.progressSteps.findIndex(
-        (step) => step.id === "collect",
-      );
-      const midSplit =
-        collectAt >= 0
-          ? collectAt
-          : Math.min(3, narration.progressSteps.length);
-      publishScoutNarration({
+      const narrationTurnId = publishScoutNarration({
         contextEventId,
         narration,
-        understandingOnly: true,
       });
-      publishScoutNarrationProgress({
-        contextEventId,
-        narration,
-        fromIndex: 0,
-        toIndexExclusive: midSplit,
-      });
-      let progressTailPublished = false;
-      const publishProgressTail = () => {
-        if (progressTailPublished) {
-          return;
-        }
-        progressTailPublished = true;
-        publishScoutNarrationProgress({
-          contextEventId,
-          narration,
-          fromIndex: midSplit,
-          toIndexExclusive: narration.progressSteps.length,
-        });
-      };
 
       const outcome = await runContextConditionAnchorPin({
         contextEventId,
@@ -918,13 +890,13 @@ export const GlobeContextConditionPinBar = forwardRef<
         deferMapReveal: true,
         onProcessPhase: (phase) => {
           setContextAgentProcessPhase(phase);
-          if (phase === "optimizing") {
-            publishProgressTail();
-          }
         },
       });
       if (!outcome) {
-        publishProgressTail();
+        completeScoutNarration({
+          contextEventId,
+          turnId: narrationTurnId,
+        });
         if (
           nextCategory === "activity" ||
           nextCategory === "amenity"
@@ -966,8 +938,10 @@ export const GlobeContextConditionPinBar = forwardRef<
         }
         return null;
       }
-      // If optimizing never fired, flush remaining progress steps.
-      publishProgressTail();
+      completeScoutNarration({
+        contextEventId,
+        turnId: narrationTurnId,
+      });
       const activeContract = readScoutContract(contextEventId);
       let outcomeWorking = outcome;
       if (activeContract) {

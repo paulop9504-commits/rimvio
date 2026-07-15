@@ -59,6 +59,16 @@ export type ScoutFeedGateComposePayload = {
   }[];
 };
 
+/** Cursor-style scout Narrator stream — one turn, live progress animation. */
+export type ScoutNarrationComposePayload = {
+  readonly understandingKo: string;
+  readonly steps: readonly { readonly id: string; readonly textKo: string }[];
+  readonly status: "running" | "done";
+  readonly mode?: "Replace" | "Continue" | "Merge";
+  readonly entityLabelKo?: string | null;
+  readonly domain?: string | null;
+};
+
 export type OperatorAskChipsComposePayload = {
   readonly chipDomain:
     | "trip_intake"
@@ -137,6 +147,12 @@ export type ContextAgentComposeTurnInput =
     }
   | {
       role: "assistant";
+      kind: "scout_narration";
+      text: string;
+      payload: ScoutNarrationComposePayload;
+    }
+  | {
+      role: "assistant";
       kind: "ask_chips";
       text: string;
       payload: OperatorAskChipsComposePayload;
@@ -194,6 +210,14 @@ export type ContextAgentComposeTurn =
       kind: "scout_feed_gate";
       text: string;
       payload: ScoutFeedGateComposePayload;
+      atIso: string;
+    }
+  | {
+      id: string;
+      role: "assistant";
+      kind: "scout_narration";
+      text: string;
+      payload: ScoutNarrationComposePayload;
       atIso: string;
     }
   | {
@@ -268,6 +292,7 @@ export function appendContextAgentComposeTurn(
     last.kind === row.kind &&
     last.kind !== "scout_cards" &&
     last.kind !== "scout_feed_gate" &&
+    last.kind !== "scout_narration" &&
     last.kind !== "intake_slots" &&
     last.kind !== "ask_chips" &&
     last.kind !== "execution_timeline" &&
@@ -287,7 +312,14 @@ export function patchContextAgentComposeTurn(
   patch: {
     text?: string;
     kind?: Extract<ContextAgentComposeTurn, { role: "assistant" }>["kind"];
-    payload?: IntentExecutionTimelinePayload;
+    payload?:
+      | IntentExecutionTimelinePayload
+      | ScoutNarrationComposePayload
+      | ScoutFeedGateComposePayload
+      | ScoutCardsComposePayload
+      | IntakeSlotsComposePayload
+      | OperatorAskChipsComposePayload
+      | LodgingRoomCardsComposePayload;
   },
 ): ContextAgentComposeTurn | null {
   const id = eventId.trim();
@@ -583,6 +615,47 @@ export function patchScoutFeedGateAfterCorrection(
         scoutKind: input.scoutKind ?? row.payload.scoutKind,
         highlightTitles: input.highlightTitles ?? row.payload.highlightTitles,
         correctionChips: [],
+      },
+    };
+  });
+  threads.set(id, next);
+  emit(id);
+}
+
+export function appendScoutNarrationComposeTurn(
+  eventId: string,
+  payload: ScoutNarrationComposePayload,
+): ContextAgentComposeTurn {
+  return appendContextAgentComposeTurn(eventId, {
+    role: "assistant",
+    kind: "scout_narration",
+    text: payload.understandingKo,
+    payload: {
+      ...payload,
+      status: payload.status ?? "running",
+    },
+  });
+}
+
+export function markScoutNarrationComposeDone(
+  eventId: string,
+  turnId: string,
+): void {
+  const id = eventId.trim();
+  const tid = turnId.trim();
+  if (!id || !tid) {
+    return;
+  }
+  const rows = threads.get(id) ?? [];
+  const next = rows.map((row) => {
+    if (row.id !== tid || row.role !== "assistant" || row.kind !== "scout_narration") {
+      return row;
+    }
+    return {
+      ...row,
+      payload: {
+        ...row.payload,
+        status: "done" as const,
       },
     };
   });
