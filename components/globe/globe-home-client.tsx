@@ -202,6 +202,7 @@ import {
 } from "@/lib/globe/globe-context-card-coords";
 import {
   closeGlobeContextConditionPanel,
+  isGlobeContextConditionPanelOpen,
   openGlobeContextConditionPanel,
   publishGlobeTouchedContext,
   subscribeGlobeContextConditionPanel,
@@ -4010,6 +4011,30 @@ function GlobeHomeBody() {
     resetContextAgentRuntime();
   }, []);
 
+  const openGlobeChat = useCallback(() => {
+    // Hard exclusion — 맞춤 대화 and 맥락 어시스턴트 must not stack.
+    if (
+      isGlobeContextConditionPanelOpen() ||
+      readGlobeContextAgentSession().phase === "bound" ||
+      readGlobeContextAgentSession().phase === "arming"
+    ) {
+      closeGlobeContextConditionPanel();
+      clearGlobeContextAgent();
+      resetContextAgentRuntime();
+      cancelGlobeContextAgentArm();
+      setStackClusters(null);
+    }
+    ensureGlobeChatGraphId();
+    setGlobeChatOpen(true);
+  }, []);
+
+  useEffect(() => {
+    if (!contextConditionPromptOpen) {
+      return;
+    }
+    // Bind/recall path already dismisses chat; keep the invariant if chat re-opens.
+    setGlobeChatOpen(false);
+  }, [contextConditionPromptOpen]);
   const toggleContextAgentArm = useCallback(() => {
     if (readGlobeContextAgentSession().phase === "arming") {
       cancelGlobeContextAgentArm();
@@ -4563,11 +4588,6 @@ function GlobeHomeBody() {
     launchMarketProjection({ draft, eventId: pending.eventId });
     pendingMarketComposeRef.current = null;
   }, [launchMarketProjection, liveLocation?.lat, liveLocation?.lng]);
-
-  const openGlobeChat = useCallback(() => {
-    ensureGlobeChatGraphId();
-    setGlobeChatOpen(true);
-  }, []);
 
   const handleWorkSurfaceClassified = useCallback(
     (_classification: import("@/lib/work-queue/classify-globe-work-surface").GlobeWorkSurfaceClassification) => {
@@ -5450,7 +5470,13 @@ function GlobeHomeBody() {
       {/* —— L2 Capture dock (compose · ingest) —— */}
       <GlobeCaptureDock
         ref={ingestBarRef}
-        composeHidden={portalOpen || marketConfirmOpen || brainProjectionVisible}
+        composeHidden={
+          portalOpen ||
+          marketConfirmOpen ||
+          brainProjectionVisible ||
+          contextConditionPromptOpen ||
+          globeChatOpen
+        }
         suppressMapIntentPills={Boolean(tripSituationRouter)}
         stackAboveCompose={
           <>
@@ -5634,7 +5660,12 @@ function GlobeHomeBody() {
         title={priorityQrTitle}
       />
       <GlobeChatScreen
-        open={globeChatOpen && !portalOpen && !marketConfirmOpen}
+        open={
+          globeChatOpen &&
+          !portalOpen &&
+          !marketConfirmOpen &&
+          !contextConditionPromptOpen
+        }
         onClose={() => setGlobeChatOpen(false)}
         onArtifactPrimaryAction={() => void runPendingMarketComposeAction()}
         onArtifactSecondaryAction={() => void runComposeDetailSlotFill()}
