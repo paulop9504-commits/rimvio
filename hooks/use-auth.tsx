@@ -47,18 +47,41 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     let active = true;
 
+    // Edge Tracking Prevention / hung network must not leave AuthGate forever.
     const loadingTimeout = window.setTimeout(() => {
       if (active) {
         setLoading(false);
       }
-    }, 8_000);
+    }, 2_500);
 
-    void supabase.auth.getUser().then((result) => {
-      if (active) {
+    void supabase.auth
+      .getSession()
+      .then((result) => {
+        if (!active) {
+          return;
+        }
+        setUser(result?.data?.session?.user ?? null);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (active) {
+          setLoading(false);
+        }
+      });
+
+    // Validate with server in the background (may hang on some Edge policies).
+    void supabase.auth
+      .getUser()
+      .then((result) => {
+        if (!active) {
+          return;
+        }
         setUser(result?.data?.user ?? null);
         setLoading(false);
-      }
-    });
+      })
+      .catch(() => {
+        /* keep session user if any */
+      });
 
     const listener = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);

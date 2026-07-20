@@ -35,6 +35,11 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  await supabase.auth.getUser();
+  await Promise.race([
+    supabase.auth.getUser(),
+    new Promise<void>((resolve) => {
+      setTimeout(resolve, 2_500);
+    }),
+  ]);
   return supabaseResponse;
 }

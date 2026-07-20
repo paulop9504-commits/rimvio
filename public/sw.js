@@ -1,6 +1,6 @@
-/* Rimvio service worker v2 — push + background reminders. */
+/* Rimvio service worker v4 — push + reminders. Never intercept navigations. */
 
-const RIMVIO_SW_VERSION = 3;
+const RIMVIO_SW_VERSION = 4;
 
 const REMINDER_CACHE = "rimvio-reminders-v1";
 const REMINDER_JSON_KEY = "/reminders.json";
@@ -15,10 +15,28 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
+      // Drop legacy caches from older SW builds that may have hung navigations.
+      const keys = await caches.keys();
+      await Promise.all(
+        keys
+          .filter((key) => key !== REMINDER_CACHE)
+          .map((key) => caches.delete(key)),
+      );
       await self.clients.claim();
       await startReminderLoop();
-    })()
+    })(),
   );
+});
+
+/**
+ * Never cache HTML/document — a stale/hung SW fetch is the #1 Edge-only
+ * "tab spinner forever" failure mode when Chrome already has a healthy SW.
+ */
+self.addEventListener("fetch", (event) => {
+  const request = event.request;
+  if (request.mode === "navigate" || request.destination === "document") {
+    event.respondWith(fetch(request));
+  }
 });
 
 async function readReminders() {
@@ -42,7 +60,7 @@ async function writeReminders(reminders) {
     REMINDER_JSON_KEY,
     new Response(JSON.stringify(reminders), {
       headers: { "Content-Type": "application/json" },
-    })
+    }),
   );
 }
 
@@ -65,7 +83,7 @@ async function checkDueReminders() {
   const now = Date.now();
   const reminders = await readReminders();
   const due = reminders.filter(
-    (item) => new Date(item.fireAt).getTime() <= now
+    (item) => new Date(item.fireAt).getTime() <= now,
   );
 
   if (due.length === 0) {
@@ -73,7 +91,7 @@ async function checkDueReminders() {
   }
 
   const remaining = reminders.filter(
-    (item) => new Date(item.fireAt).getTime() > now
+    (item) => new Date(item.fireAt).getTime() > now,
   );
 
   await writeReminders(remaining);
@@ -117,6 +135,13 @@ self.addEventListener("message", (event) => {
   if (data.type === "SKIP_WAITING") {
     void self.skipWaiting();
   }
+
+  if (data.type === "PING_VERSION") {
+    event.source?.postMessage?.({
+      type: "SW_VERSION",
+      version: RIMVIO_SW_VERSION,
+    });
+  }
 });
 
 self.addEventListener("push", (event) => {
@@ -142,7 +167,7 @@ self.addEventListener("push", (event) => {
         badge: "/icons/icon-192.png",
         data: { url: payload.url },
       });
-    })()
+    })(),
   );
 });
 
@@ -168,6 +193,6 @@ self.addEventListener("notificationclick", (event) => {
       }
 
       await self.clients.openWindow(url);
-    })()
+    })(),
   );
 });
