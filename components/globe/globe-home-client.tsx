@@ -656,6 +656,9 @@ function GlobeHomeBody() {
   const [projectionRevision, setProjectionRevision] = useState(0);
   const [hubDetailOpen, setHubDetailOpen] = useState(false);
   const [contextConditionPanelOpen, setContextConditionPanelOpen] = useState(false);
+  const [contextConditionPanelEventId, setContextConditionPanelEventId] = useState<
+    string | null
+  >(null);
   const contextConditionPanelOpenRef = useRef(false);
   contextConditionPanelOpenRef.current = contextConditionPanelOpen;
   const [contextAgentSession, setContextAgentSession] = useState<GlobeContextAgentDetail>(
@@ -800,6 +803,8 @@ function GlobeHomeBody() {
     return subscribeGlobeContextConditionPanel((detail) => {
       // Open/close only — bind + dismiss already ran in bindContextAgentToEventId.
       setContextConditionPanelOpen(detail.open);
+      const nextId = detail.eventId?.trim() || null;
+      setContextConditionPanelEventId(detail.open ? nextId : null);
       if (!detail.open) {
         // Flush snapshots skipped while the assistant panel owned the main thread.
         setGlobeClusters(clustersRef.current);
@@ -1127,19 +1132,25 @@ function GlobeHomeBody() {
   }, [eventsHydrated, peerOptionsRevision]);
 
   const activeContextEvent = useMemo(() => {
-    if (!eventsHydrated) {
-      return null;
-    }
     const eventId =
-      contextAgentBoundEventId ?? activeCluster?.eventId?.trim() ?? null;
+      contextConditionPanelEventId ??
+      contextAgentBoundEventId ??
+      activeCluster?.eventId?.trim() ??
+      null;
     if (!eventId) {
       return null;
     }
-    // Never commitEventUpsert during render — recover in an effect below.
+    // Panel open is client-only — allow store read immediately so PromptFrame
+    // does not wait a frame on eventsHydrated and stay missing.
+    if (!eventsHydrated && !contextConditionPanelOpen) {
+      return null;
+    }
     return findLifeEventCandidate(eventId);
   }, [
     activeCluster?.eventId,
     contextAgentBoundEventId,
+    contextConditionPanelEventId,
+    contextConditionPanelOpen,
     eventsHydrated,
     mediaStoreRevision,
   ]);
@@ -1149,7 +1160,10 @@ function GlobeHomeBody() {
       return;
     }
     const eventId =
-      contextAgentBoundEventId ?? activeCluster?.eventId?.trim() ?? null;
+      contextConditionPanelEventId ??
+      contextAgentBoundEventId ??
+      activeCluster?.eventId?.trim() ??
+      null;
     if (!eventId || findLifeEventCandidate(eventId)) {
       return;
     }
@@ -1160,6 +1174,7 @@ function GlobeHomeBody() {
   }, [
     activeCluster?.eventId,
     contextAgentBoundEventId,
+    contextConditionPanelEventId,
     eventsHydrated,
     mediaStoreRevision,
   ]);
@@ -3756,16 +3771,18 @@ function GlobeHomeBody() {
 
   const onRecallEventId = useCallback(
     (eventId: string) => {
-      if (readGlobeContextAgentSession().phase === "arming") {
-        bindContextAgentToEventIdRef.current(eventId);
+      const key = eventId.trim();
+      if (!key) {
         return;
       }
       setListOpen(false);
       setManageOpen(false);
       setBrainProjectionEventId(null);
-      focusContextByEventId(eventId);
+      // Deep-link / recall must open Context AI PromptFrame — focus alone
+      // only highlights the pin and leaves the assistant missing.
+      void bindContextAgentToEventIdRef.current(key);
     },
-    [focusContextByEventId],
+    [],
   );
 
   useEffect(() => {

@@ -1382,20 +1382,24 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
     if (!ready || recallOpenedRef.current) {
       return;
     }
-    if (!onPinPress && !onRecallEventId) {
-      return;
-    }
     const eventId = initialRecallEventId?.trim();
     if (!eventId) {
       return;
     }
-    const cluster = findPinClusterByEventId(displayClusters, eventId);
     recallOpenedRef.current = true;
-    if (cluster && onPinPress) {
-      onPinPress(cluster);
+    // Prefer recall handler so Context AI PromptFrame opens (onPinPress alone
+    // only focuses the cluster and leaves the assistant closed).
+    if (onRecallEventId) {
+      onRecallEventId(eventId);
       return;
     }
-    onRecallEventId?.(eventId);
+    if (!onPinPress) {
+      return;
+    }
+    const cluster = findPinClusterByEventId(displayClusters, eventId);
+    if (cluster) {
+      onPinPress(cluster);
+    }
   }, [ready, displayClusters, initialRecallEventId, onPinPress, onRecallEventId]);
 
   if (!ready) {
