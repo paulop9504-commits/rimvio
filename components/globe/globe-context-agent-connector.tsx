@@ -56,7 +56,6 @@ function isComposeInputFocused(): boolean {
   }
   return Boolean(
     active.closest("[data-globe-context-condition-compose-input]") ||
-      active.closest("[data-globe-compose-island-host]") ||
       active.closest("[data-globe-context-condition-pin-bar]"),
   );
 }
