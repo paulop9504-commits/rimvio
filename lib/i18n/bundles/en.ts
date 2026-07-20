@@ -2538,6 +2538,7 @@ export const copyEn: Copy = {
     contextConditionPanelHint: "Say similar stays, food, or nearby places — they pin on the map right away.",
     contextConditionPanelCloseAria: "Close context assistant",
     contextConditionPanelDragLabel: "Move context assistant",
+    contextConditionPanelOpacityAria: "Chat window opacity",
     contextConditionPanelRequiresContext: "Select a context on the globe first",
     lodgingAgentHint: "Ask this stay guide for nearby cafés, food, and places.",
     lodgingAgentPlaceholder: "Find a café nearby",

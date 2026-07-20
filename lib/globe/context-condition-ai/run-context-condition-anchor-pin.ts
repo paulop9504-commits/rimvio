@@ -555,12 +555,22 @@ export async function runContextConditionAnchorPin(
       const seen = new Set(
         loaded.rows.map((row) => row.name.trim().toLowerCase()),
       );
-      const extras = mockRows.filter((row) => {
-        if (seen.has(row.name.trim().toLowerCase())) {
-          return false;
-        }
-        return lodgingRowMatchesStayType(row, stay);
-      });
+      const extras = mockRows
+        .filter((row) => {
+          if (seen.has(row.name.trim().toLowerCase())) {
+            return false;
+          }
+          return lodgingRowMatchesStayType(row, stay);
+        })
+        .map((row) => ({
+          ...row,
+          // Demo top-up must never paint tropical/stock heroes on named capsules.
+          images: [] as const,
+          videoUrl: null,
+          provider: "mock" as const,
+          photoSource: "mock" as const,
+          photoConfidence: "mock" as const,
+        }));
       if (extras.length > 0) {
         loaded = {
           rows: [...loaded.rows, ...extras].slice(0, lodgingMaxResults),

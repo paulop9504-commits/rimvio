@@ -1,11 +1,11 @@
 import type { ContextLodgingInventoryRow } from "@/lib/globe/context-hub/lodging-resource-types";
 
-// Verified-good Unsplash lodging shots (already shipped in this repo). Rotated per
-// hotel so every listing shows a real multi-photo gallery without broken-image risk.
-const LODGING_SHOT_HOTEL = "photo-1566073771259-6a8506099945";
+// Urban hotel Unsplash shots only — never tropical resort stock (mismatched
+// 「캡슐호텔」 cards with pool/palm photos look like a broken API).
+const LODGING_SHOT_EXTERIOR = "photo-1551882547-ff40c63fe5fa";
 const LODGING_SHOT_ROOM = "photo-1611892440504-42a792e24d32";
 const LODGING_SHOT_SUITE = "photo-1582719478250-c89cae4dc85b";
-const LODGING_SHOT_VIEW = "photo-1520250497591-112f2f40a3f4";
+const LODGING_SHOT_LOBBY = "photo-1564501049412-61c2a3083791";
 const LODGING_SHOT_LOUNGE = "photo-1578683010236-d716f9a3f461";
 
 // Stable public sample MP4s (Google demo bucket) — guaranteed to autoplay as a
@@ -31,44 +31,47 @@ function buildLodgingGallery(order: readonly string[]): readonly string[] {
 }
 
 const LODGING_GALLERY_A = buildLodgingGallery([
-  LODGING_SHOT_HOTEL,
+  LODGING_SHOT_EXTERIOR,
   LODGING_SHOT_ROOM,
   LODGING_SHOT_SUITE,
-  LODGING_SHOT_VIEW,
+  LODGING_SHOT_LOBBY,
   LODGING_SHOT_LOUNGE,
 ]);
 
 const LODGING_GALLERY_B = buildLodgingGallery([
   LODGING_SHOT_ROOM,
   LODGING_SHOT_LOUNGE,
-  LODGING_SHOT_HOTEL,
+  LODGING_SHOT_EXTERIOR,
   LODGING_SHOT_SUITE,
-  LODGING_SHOT_VIEW,
+  LODGING_SHOT_LOBBY,
 ]);
 
 const LODGING_GALLERY_C = buildLodgingGallery([
-  LODGING_SHOT_VIEW,
+  LODGING_SHOT_LOBBY,
   LODGING_SHOT_SUITE,
   LODGING_SHOT_ROOM,
-  LODGING_SHOT_HOTEL,
+  LODGING_SHOT_EXTERIOR,
   LODGING_SHOT_LOUNGE,
 ]);
 
 const LODGING_GALLERY_D = buildLodgingGallery([
   LODGING_SHOT_SUITE,
-  LODGING_SHOT_HOTEL,
-  LODGING_SHOT_VIEW,
+  LODGING_SHOT_EXTERIOR,
+  LODGING_SHOT_LOBBY,
   LODGING_SHOT_LOUNGE,
   LODGING_SHOT_ROOM,
 ]);
 
 const LODGING_GALLERY_E = buildLodgingGallery([
   LODGING_SHOT_LOUNGE,
-  LODGING_SHOT_VIEW,
-  LODGING_SHOT_HOTEL,
+  LODGING_SHOT_LOBBY,
+  LODGING_SHOT_EXTERIOR,
   LODGING_SHOT_ROOM,
   LODGING_SHOT_SUITE,
 ]);
+
+/** Capsule / hostel demo — no stock photo (feed shows honest empty placeholder). */
+const LODGING_GALLERY_NONE: readonly string[] = [];
 
 /** Demo inventory — Hongdae / Mapo regression + screenshot parity. */
 export function resolveLodgingMockNearUser(input: {
@@ -85,17 +88,17 @@ export function resolveLodgingMockNearUser(input: {
     const mLat = (m: number) => m / 111_320;
     const mLng = (m: number) => m / (111_320 * Math.cos((input.lat * Math.PI) / 180));
     return [
-      {
+      stampMockProvider({
         placeId: "hh-guesthouse",
         name: "홍대 게스트하우스",
         lat: input.lat + mLat(120),
         lng: input.lng + mLng(85),
         priceKrw: 65_000,
         partnerLabel: "demo",
-        images: [...LODGING_GALLERY_C],
-        videoUrl: lodgingTourVideo(0),
-      },
-      {
+        images: [],
+        videoUrl: null,
+      }),
+      stampMockProvider({
         placeId: "hh-han-river",
         name: "한강뷰 레지던스",
         lat: input.lat + mLat(290),
@@ -104,8 +107,8 @@ export function resolveLodgingMockNearUser(input: {
         partnerLabel: "demo",
         images: [...LODGING_GALLERY_D],
         videoUrl: lodgingTourVideo(1),
-      },
-      {
+      }),
+      stampMockProvider({
         placeId: "hh-myeongdong",
         name: "명동 시티호텔",
         lat: input.lat - mLat(180),
@@ -114,8 +117,8 @@ export function resolveLodgingMockNearUser(input: {
         partnerLabel: "demo",
         images: [...LODGING_GALLERY_A],
         videoUrl: lodgingTourVideo(2),
-      },
-      {
+      }),
+      stampMockProvider({
         placeId: "hh-gangnam",
         name: "강남 비즈니스",
         lat: input.lat - mLat(350),
@@ -124,7 +127,7 @@ export function resolveLodgingMockNearUser(input: {
         partnerLabel: "demo",
         images: [...LODGING_GALLERY_B],
         videoUrl: lodgingTourVideo(3),
-      },
+      }),
     ];
   }
 
@@ -284,7 +287,7 @@ const JAPAN_LODGING_TEMPLATES: readonly LodgingMockTemplate[] = [
     dLat: 0.004,
     dLng: 0.003,
     priceKrw: 22_000,
-    images: LODGING_GALLERY_C,
+    images: LODGING_GALLERY_NONE,
   },
   {
     id: "jp-osaka-capsule-inn",
@@ -292,7 +295,7 @@ const JAPAN_LODGING_TEMPLATES: readonly LodgingMockTemplate[] = [
     dLat: 0.002,
     dLng: -0.002,
     priceKrw: 24_000,
-    images: LODGING_GALLERY_A,
+    images: LODGING_GALLERY_NONE,
   },
   {
     id: "jp-osaka-capsule-daitoyo",
@@ -300,7 +303,7 @@ const JAPAN_LODGING_TEMPLATES: readonly LodgingMockTemplate[] = [
     dLat: -0.003,
     dLng: 0.004,
     priceKrw: 26_000,
-    images: LODGING_GALLERY_B,
+    images: LODGING_GALLERY_NONE,
   },
   {
     id: "jp-osaka-capsule-dotonbori",
@@ -308,7 +311,7 @@ const JAPAN_LODGING_TEMPLATES: readonly LodgingMockTemplate[] = [
     dLat: -0.005,
     dLng: 0.006,
     priceKrw: 23_000,
-    images: LODGING_GALLERY_D,
+    images: LODGING_GALLERY_NONE,
   },
   {
     id: "jp-osaka-capsule-shinsaibashi",
@@ -316,7 +319,7 @@ const JAPAN_LODGING_TEMPLATES: readonly LodgingMockTemplate[] = [
     dLat: 0.001,
     dLng: 0.008,
     priceKrw: 27_000,
-    images: LODGING_GALLERY_E,
+    images: LODGING_GALLERY_NONE,
   },
   {
     id: "jp-osaka-capsule-umeda",
@@ -324,7 +327,7 @@ const JAPAN_LODGING_TEMPLATES: readonly LodgingMockTemplate[] = [
     dLat: 0.011,
     dLng: -0.005,
     priceKrw: 28_000,
-    images: LODGING_GALLERY_A,
+    images: LODGING_GALLERY_NONE,
   },
   {
     id: "jp-osaka-hostel",
@@ -332,7 +335,7 @@ const JAPAN_LODGING_TEMPLATES: readonly LodgingMockTemplate[] = [
     dLat: -0.006,
     dLng: 0.007,
     priceKrw: 25_000,
-    images: LODGING_GALLERY_D,
+    images: LODGING_GALLERY_NONE,
   },
 ];
 
@@ -352,21 +355,42 @@ function isJapanTravelPlace(placeLabel: string, anchor: { lat: number; lng: numb
   );
 }
 
+function stampMockProvider(
+  row: Omit<ContextLodgingInventoryRow, "provider" | "photoSource" | "photoConfidence"> &
+    Partial<
+      Pick<ContextLodgingInventoryRow, "provider" | "photoSource" | "photoConfidence">
+    >,
+): ContextLodgingInventoryRow {
+  return {
+    ...row,
+    provider: "mock",
+    photoSource: "mock",
+    photoConfidence: "mock",
+  };
+}
+
 function mapLodgingMockTemplates(
   templates: readonly LodgingMockTemplate[],
   anchor: { lat: number; lng: number },
   placeIdPrefix: string,
 ): readonly ContextLodgingInventoryRow[] {
-  return templates.map((template, index) => ({
-    placeId: `${placeIdPrefix}:${template.id}:${anchor.lat.toFixed(3)}:${index}`,
-    name: template.name,
-    lat: anchor.lat + template.dLat,
-    lng: anchor.lng + template.dLng,
-    priceKrw: template.priceKrw,
-    partnerLabel: "demo",
-    images: [...template.images],
-    videoUrl: lodgingTourVideo(index),
-  }));
+  return templates.map((template, index) => {
+    const isCapsuleOrHostel =
+      /capsule|캡슐|hostel|게스트하우스/iu.test(template.id) ||
+      /캡슐|capsule|게스트하우스|hostel/iu.test(template.name);
+    const images = isCapsuleOrHostel ? [] : [...template.images];
+    return stampMockProvider({
+      placeId: `${placeIdPrefix}:${template.id}:${anchor.lat.toFixed(3)}:${index}`,
+      name: template.name,
+      lat: anchor.lat + template.dLat,
+      lng: anchor.lng + template.dLng,
+      priceKrw: template.priceKrw,
+      partnerLabel: "demo",
+      images,
+      // Fake tour clips on demo capsules look like a broken media API.
+      videoUrl: images.length > 0 ? lodgingTourVideo(index) : null,
+    });
+  });
 }
 
 /** Hub factory mock — spread around context destination, not hardcoded 대전. */
@@ -387,14 +411,16 @@ export function resolveLodgingMockForPlace(
   }
 
   const prefix = place.slice(0, 12) || "숙소";
-  return LODGING_MOCK_TEMPLATES.map((template, index) => ({
-    placeId: `${template.id}:${anchor.lat.toFixed(3)}:${index}`,
-    name: `${prefix} ${template.name}`,
-    lat: anchor.lat + template.dLat,
-    lng: anchor.lng + template.dLng,
-    priceKrw: template.priceKrw,
-    partnerLabel: "demo",
-    images: [...template.images],
-    videoUrl: lodgingTourVideo(index),
-  }));
+  return LODGING_MOCK_TEMPLATES.map((template, index) =>
+    stampMockProvider({
+      placeId: `${template.id}:${anchor.lat.toFixed(3)}:${index}`,
+      name: `${prefix} ${template.name}`,
+      lat: anchor.lat + template.dLat,
+      lng: anchor.lng + template.dLng,
+      priceKrw: template.priceKrw,
+      partnerLabel: "demo",
+      images: [...template.images],
+      videoUrl: lodgingTourVideo(index),
+    }),
+  );
 }

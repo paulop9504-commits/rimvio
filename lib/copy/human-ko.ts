@@ -2556,6 +2556,7 @@ export const copy = {
     contextConditionPanelHint: "주변 맛집·숙소부터 약국·편의점·놀거리까지 말하면 지도에 바로 꽂아요.",
     contextConditionPanelCloseAria: "맥락 어시스턴트 닫기",
     contextConditionPanelDragLabel: "맥락 어시스턴트 창 이동",
+    contextConditionPanelOpacityAria: "채팅창 투명도",
     contextConditionPanelRequiresContext: "먼저 지구에서 맥락을 선택해 주세요",
     lodgingAgentHint: "이 숙소 가이드에게 근처 카페·맛집·시설을 물어보세요.",
     lodgingAgentPlaceholder: "근처 카페 찾아줘",

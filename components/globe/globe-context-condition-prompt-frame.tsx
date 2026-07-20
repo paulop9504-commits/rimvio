@@ -151,6 +151,11 @@ import {
   isGlobeComposeInputFocused,
   subscribeGlobeComposeInputFocus,
 } from "@/lib/globe/compose-input-focus";
+import {
+  CONTEXT_ASSISTANT_OPACITY_MAX,
+  CONTEXT_ASSISTANT_OPACITY_MIN,
+  useContextAssistantShellOpacity,
+} from "@/hooks/use-context-assistant-shell-opacity";
 import { cn } from "@/lib/utils";
 import {
   RIMVIO_ASSISTANT_FEED_BACKDROP_Z_INDEX,
@@ -251,6 +256,8 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
   const [pickBusyPlaceId, setPickBusyPlaceId] = useState<string | null>(null);
   const [scoutFeedGateBusy, setScoutFeedGateBusy] = useState(false);
   const discoveryFeedFocus = useIntelligentDiscoveryFeedFocus(event?.id);
+  const { opacity: shellOpacity, setOpacity: setShellOpacity } =
+    useContextAssistantShellOpacity();
   const [pinnedRevision, setPinnedRevision] = useState(0);
   const [explorationRevision, setExplorationRevision] = useState(0);
   const [activeSpec, setActiveSpec] = useState<
@@ -1322,10 +1329,13 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
           : RIMVIO_ASSISTANT_FRAME_Z_INDEX
       }
       dragLabel={copy.globe.contextConditionPanelDragLabel}
-      className={cn(
-        className,
-        discoveryFeedFocus && "opacity-40 transition-opacity duration-200",
-      )}
+      className={cn(className)}
+      style={{
+        opacity: discoveryFeedFocus
+          ? Math.min(0.4, shellOpacity)
+          : shellOpacity,
+        transition: "opacity 160ms ease",
+      }}
       shellClassName={rimvioAssistantFrameShellClass()}
       bodyClassName="flex h-full min-h-0 flex-col overflow-hidden"
     >
@@ -1336,22 +1346,50 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
         data-cicada-assistant-surface={cicadaSurfaceMode}
       >
         <div className="flex items-center justify-between gap-2 border-b border-black/[0.05] px-3 py-2">
-          <div
-            className="min-w-0"
-            data-globe-context-agent-connected={
-              isGlobeContextAgentBound(event.id) ? "true" : undefined
-            }
-          >
-            <p className={cn("truncate", rimvioAssistantTitleClass())}>
-              {anchorPlaceName}
-            </p>
-            <p
-              className="mt-0.5 truncate text-[11px] text-[#86868b]"
-              data-globe-context-agent-status
-              data-globe-context-agent-lifecycle={runtime.lifecycle}
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <label
+              className="flex shrink-0 items-center gap-1"
+              data-globe-context-assistant-opacity
             >
-              {pipelineLabel}
-            </p>
+              <span className="sr-only">
+                {copy.globe.contextConditionPanelOpacityAria}
+              </span>
+              <input
+                type="range"
+                min={Math.round(CONTEXT_ASSISTANT_OPACITY_MIN * 100)}
+                max={Math.round(CONTEXT_ASSISTANT_OPACITY_MAX * 100)}
+                step={5}
+                value={Math.round(shellOpacity * 100)}
+                onChange={(event) => {
+                  setShellOpacity(Number(event.currentTarget.value) / 100);
+                }}
+                onPointerDown={(event) => {
+                  event.stopPropagation();
+                }}
+                className="h-1.5 w-14 cursor-pointer appearance-none rounded-full bg-black/[0.08] accent-[#1d1d1f] [&::-webkit-slider-thumb]:size-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#1d1d1f]"
+                aria-label={copy.globe.contextConditionPanelOpacityAria}
+                aria-valuemin={Math.round(CONTEXT_ASSISTANT_OPACITY_MIN * 100)}
+                aria-valuemax={Math.round(CONTEXT_ASSISTANT_OPACITY_MAX * 100)}
+                aria-valuenow={Math.round(shellOpacity * 100)}
+              />
+            </label>
+            <div
+              className="min-w-0"
+              data-globe-context-agent-connected={
+                isGlobeContextAgentBound(event.id) ? "true" : undefined
+              }
+            >
+              <p className={cn("truncate", rimvioAssistantTitleClass())}>
+                {anchorPlaceName}
+              </p>
+              <p
+                className="mt-0.5 truncate text-[11px] text-[#86868b]"
+                data-globe-context-agent-status
+                data-globe-context-agent-lifecycle={runtime.lifecycle}
+              >
+                {pipelineLabel}
+              </p>
+            </div>
           </div>
           <button
             type="button"
