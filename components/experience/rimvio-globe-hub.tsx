@@ -394,7 +394,7 @@ const RimvioGlobeHubBody = memo(
     }, [focusedContextEventId]);
     const handleDetailLevelChange = useCallback(
       (level: GlobeDetailLevel) => {
-        setDetailLevel(level);
+        setDetailLevel((prev) => (prev === level ? prev : level));
         onDetailLevelChange?.(level);
       },
       [onDetailLevelChange],

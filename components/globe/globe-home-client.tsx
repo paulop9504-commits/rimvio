@@ -1462,6 +1462,22 @@ function GlobeHomeBody() {
       markers: osakaDemoGraphMarkers,
     });
 
+  const hubBrainSurfaceMarkers = useMemo(() => {
+    if (osakaDemoTheaterActive) {
+      return osakaDemoRevealedMarkers;
+    }
+    if (brainSurfaceVisible) {
+      return [...projectedBrainSurfaceCandidates, ...graphCommandMarkers];
+    }
+    return graphCommandMarkers;
+  }, [
+    brainSurfaceVisible,
+    graphCommandMarkers,
+    osakaDemoRevealedMarkers,
+    osakaDemoTheaterActive,
+    projectedBrainSurfaceCandidates,
+  ]);
+
   const osakaDemoCompareArcs = useMemo(() => {
     if (!osakaDemoTheaterActive || !osakaDemoTheater.showCompareArcs) {
       return [];
@@ -2226,9 +2242,34 @@ function GlobeHomeBody() {
   }, [activeContextEvent?.place, activeContextEvent?.title, launchBrainSurfaceProjection]);
 
   useEffect(() => {
-    return subscribeSessionGraph(() => {
-      setGraphCommandRevision((value) => value + 1);
+    let frame = 0;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const unsub = subscribeSessionGraph(() => {
+      // Coalesce write+bump storms so Globe home doesn't double-commit mid-touch.
+      if (frame) {
+        cancelAnimationFrame(frame);
+      }
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        timer = setTimeout(() => {
+          timer = null;
+          setGraphCommandRevision((value) => value + 1);
+        }, 48);
+      });
     });
+    return () => {
+      unsub();
+      if (frame) {
+        cancelAnimationFrame(frame);
+      }
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
   }, []);
 
   // NL Action Plan wait_commit → Field queue handoff (one-shot).
@@ -4797,13 +4838,7 @@ function GlobeHomeBody() {
         layerMode={layerMode}
         lodgingDiscoveryCards={lodgingDiscovery.cardByResourceId}
         eateryDiscoveryCards={eateryDiscovery.cardByResourceId}
-        brainSurfaceMarkers={
-          osakaDemoTheaterActive
-            ? osakaDemoRevealedMarkers
-            : brainSurfaceVisible
-              ? [...projectedBrainSurfaceCandidates, ...graphCommandMarkers]
-              : graphCommandMarkers
-        }
+        brainSurfaceMarkers={hubBrainSurfaceMarkers}
         brainSurfaceTraceArcs={brainSurfaceTraceArcs}
         onBrainSurfaceMarkerPress={handleBrainSurfaceMarkerPress}
         contextConditionDiscoveryOverlay={contextConditionDiscoveryOverlay}

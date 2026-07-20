@@ -45,19 +45,34 @@ export async function stampPaymentPrepPreviewFromVault(
   const providerLabelKo = methodLabelKo
     ? `결제 수단 · ${methodLabelKo}`
     : "결제 수단 · 없음 (설정에서 저장)";
+  const summaryKo = methodLabelKo
+    ? `${op.preview.placeLabelKo ?? op.labelKo} · ${methodLabelKo}`
+    : op.preview.summaryKo;
+  const detailKo = methodLabelKo
+    ? `vault · ${methodLabelKo}`
+    : "vault · 결제 수단 미저장";
+
+  if (
+    op.preview.providerLabelKo === providerLabelKo &&
+    op.preview.summaryKo === summaryKo &&
+    op.detailKo === detailKo
+  ) {
+    return {
+      stamped: false,
+      methodLabelKo,
+      needsVaultSettings: !resolved,
+      operation: op,
+    };
+  }
 
   const next: RealityOperationV1 = {
     ...op,
     preview: {
       ...op.preview,
       providerLabelKo,
-      summaryKo: methodLabelKo
-        ? `${op.preview.placeLabelKo ?? op.labelKo} · ${methodLabelKo}`
-        : op.preview.summaryKo,
+      summaryKo,
     },
-    detailKo: methodLabelKo
-      ? `vault · ${methodLabelKo}`
-      : "vault · 결제 수단 미저장",
+    detailKo,
   };
   upsertPreparedRealityOperation(next);
   return {

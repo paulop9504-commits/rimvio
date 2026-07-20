@@ -19,6 +19,11 @@ function emit(): void {
   window.dispatchEvent(new CustomEvent(EVENT_NAME));
 }
 
+/** Globe subscribe wake — no persist (use after writeSessionGraph already saved). */
+export function notifySessionGraphListeners(): void {
+  emit();
+}
+
 function persist(): void {
   if (typeof window === "undefined") {
     return;
@@ -91,6 +96,20 @@ export function writeSessionGraph(graph: SessionGraphV1): void {
   hydrateFromStorage();
   const id = graph.contextEventId.trim();
   if (!id) {
+    return;
+  }
+  const prev = byContextEventId.get(id);
+  if (
+    prev &&
+    prev.nodes === graph.nodes &&
+    prev.edges === graph.edges &&
+    prev.selectionIds === graph.selectionIds &&
+    prev.compareClusterId === graph.compareClusterId &&
+    prev.activeFilters === graph.activeFilters &&
+    prev.anchorLat === graph.anchorLat &&
+    prev.anchorLng === graph.anchorLng &&
+    prev.updatedAtIso === graph.updatedAtIso
+  ) {
     return;
   }
   byContextEventId.set(id, graph);

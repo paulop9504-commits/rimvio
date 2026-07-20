@@ -22,6 +22,7 @@ export {
   deleteSessionGraph,
   listSessionGraphContextIds,
   subscribeSessionGraph,
+  notifySessionGraphListeners,
   resetGraphCommandStoreForTests,
 } from "@/lib/graph-command/session-graph-store";
 export {
