@@ -140,6 +140,7 @@ import { PinOpenSheet } from "@/components/globe/pin-open-sheet";
 import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
 import { subscribeGlobeMapMediaFocus } from "@/lib/globe/globe-map-media-focus-bridge";
 import { subscribeGlobePhotoIngest } from "@/lib/globe/globe-photo-ingest-bridge";
+import { isGlobeComposeInputFocused } from "@/lib/globe/compose-input-focus";
 import { setLiveLocationPowerMode } from "@/lib/location-ping/live-location-service";
 import { usePersonalGlobePinSync } from "@/hooks/use-personal-globe-pin-sync";
 import { findPersonalGlobePinByEventId } from "@/lib/globe/personal-globe-pin-store";
@@ -687,11 +688,21 @@ function GlobeHomeBody() {
   const brainSurfaceLaunchInFlightRef = useRef<string | null>(null);
 
   useEffect(() => {
-    return subscribeContextConditionDiscoveryOverlay(setContextConditionDiscoveryOverlay);
+    return subscribeContextConditionDiscoveryOverlay((next) => {
+      if (contextConditionPanelOpenRef.current || isGlobeComposeInputFocused()) {
+        return;
+      }
+      setContextConditionDiscoveryOverlay(next);
+    });
   }, []);
 
   useEffect(() => {
-    return subscribeDiscoveryLensSession(setDiscoveryLensSession);
+    return subscribeDiscoveryLensSession((next) => {
+      if (contextConditionPanelOpenRef.current || isGlobeComposeInputFocused()) {
+        return;
+      }
+      setDiscoveryLensSession(next);
+    });
   }, []);
 
   useEffect(() => {
@@ -704,6 +715,9 @@ function GlobeHomeBody() {
 
   useEffect(() => {
     return subscribeProjectionStore(() => {
+      if (contextConditionPanelOpenRef.current || isGlobeComposeInputFocused()) {
+        return;
+      }
       setProjectionRevision((value) => value + 1);
     });
   }, []);
@@ -3052,7 +3066,12 @@ function GlobeHomeBody() {
   }, []);
 
   useEffect(() => {
-    const bump = () => setMediaStoreRevision((value) => value + 1);
+    const bump = () => {
+      if (contextConditionPanelOpenRef.current || isGlobeComposeInputFocused()) {
+        return;
+      }
+      setMediaStoreRevision((value) => value + 1);
+    };
     void hydrateMediaContextStore().then(bump);
     window.addEventListener(MEDIA_SPACETIME_UPDATED, bump);
     window.addEventListener(EVENT_CANDIDATES_UPDATED, bump);

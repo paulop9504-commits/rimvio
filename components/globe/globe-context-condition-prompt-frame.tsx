@@ -274,6 +274,9 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
       return;
     }
     return subscribeDiscoveryLensSession((session) => {
+      if (isGlobeComposeInputFocused()) {
+        return;
+      }
       if (session && session.contextEventId !== event.id) {
         return;
       }
@@ -603,7 +606,12 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
   }, [event, open]);
 
   useEffect(() => {
-    return subscribeContextActionInjection(setActionInjection);
+    return subscribeContextActionInjection((next) => {
+      if (isGlobeComposeInputFocused()) {
+        return;
+      }
+      setActionInjection(next);
+    });
   }, []);
 
   const pinnedByKind = useMemo(() => {
@@ -659,12 +667,12 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
     [composeThread],
   );
 
-  const handlePalantirOperatorUpdate = () => {
+  const handlePalantirOperatorUpdate = useCallback(() => {
     setOntologyHistoryResumeLabel(null);
     lastFlownPlaceRef.current = null;
-  };
+  }, []);
 
-  const handlePinned = (outcome: ContextConditionAnchorPinOutcome) => {
+  const handlePinned = useCallback((outcome: ContextConditionAnchorPinOutcome) => {
     setRecommendations(outcome.recommendations);
     setActiveSpec(outcome.spec);
     setContextAgentSessionPhase("awaiting_human");
@@ -753,7 +761,7 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
         radiusM: outcome.radiusM,
       });
     }
-  };
+  }, [event, anchorPlaceName, anchorLat, anchorLng, userLat, userLng, globeRef]);
 
   const handleOpenScoutFeed = useCallback(
     async (input: { turnId: string; batchId: string }) => {
@@ -904,6 +912,9 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
       return;
     }
     return subscribeExplorationModeOverride((eventId) => {
+      if (isGlobeComposeInputFocused()) {
+        return;
+      }
       if (eventId === event.id) {
         setExplorationRevision((value) => value + 1);
       }
@@ -948,7 +959,7 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
     toast.success(copy.globe.contextActionInjectedEyebrow);
   };
 
-  const handleUserCompose = (text: string): boolean => {
+  const handleUserCompose = useCallback((text: string): boolean => {
     if (!event) {
       return false;
     }
@@ -1047,7 +1058,15 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
     }
     setComposeThread(readContextAgentComposeThread(event.id));
     return false;
-  };
+  }, [
+    event,
+    anchorLat,
+    anchorLng,
+    userLat,
+    userLng,
+    globeRef,
+    handleOpenScoutFeed,
+  ]);
 
   const ontologyFacet = useMemo(() => {
     void ontologyFacetRevision;

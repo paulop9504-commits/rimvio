@@ -923,10 +923,9 @@ export const RimvioGlobe3D = memo(
           pendingDetailLevelRef.current = null;
         }
         syncOverviewTexture(globe.pointOfView().altitude);
-        if (pendingPinSyncRef.current) {
-          pendingPinSyncRef.current = false;
-          syncHtmlElementsRef.current();
-        }
+        // Always rebuild pins once after coast — detail crossings defer here.
+        pendingPinSyncRef.current = false;
+        syncHtmlElementsRef.current();
         applyGlobePinUiScale(root, pinUiScaleRef.current);
         syncContextWarmthRef.current();
         scheduleTileTextureFiltering();
@@ -943,12 +942,10 @@ export const RimvioGlobe3D = memo(
         if (flushAfterGestureTimer != null) {
           clearTimeout(flushAfterGestureTimer);
         }
-        // Wait out orbit damping so HTML pin rebuilds don't hitch mid-coast.
+        // Keep interacting=true through damping coast; clear + heavy sync here.
         flushAfterGestureTimer = setTimeout(() => {
           flushAfterGestureTimer = null;
-          if (gestureActiveRef.current) {
-            return;
-          }
+          setGlobeInteracting(false);
           flushDeferredGlobeVisuals();
         }, GLOBE_POST_GESTURE_FLUSH_MS);
       };
@@ -963,7 +960,8 @@ export const RimvioGlobe3D = memo(
         setGlobeInteracting(true);
       });
       controls.addEventListener("end", () => {
-        setGlobeInteracting(false);
+        // Do NOT clear interacting here — OrbitControls fires end while damping
+        // still coasts; heavy pin/detail sync would hitch every zoom frame.
         scheduleFlushDeferredGlobeVisuals();
       });
 
@@ -1017,6 +1015,7 @@ export const RimvioGlobe3D = memo(
           if (interacting) {
             // Texture URL swaps mid-gesture hitch the main thread — defer.
             pendingDetailLevelRef.current = detailLevel;
+            pendingPinSyncRef.current = true;
           } else {
             syncOverviewTexture(altitude);
             onDetailLevelChangeRef.current?.(detailLevel);
@@ -1162,14 +1161,13 @@ export const RimvioGlobe3D = memo(
       controlsBlockedRef,
       onAfterFocalZoom: (pov) => applyZoomPovRef.current(pov),
       onInteractingChange: (active) => {
-        gestureActiveRef.current = active;
-        shellRef.current?.setAttribute(
-          "data-globe-interacting",
-          active ? "true" : "false",
-        );
-        if (!active) {
-          flushDeferredGlobeVisualsRef.current?.();
+        if (active) {
+          gestureActiveRef.current = true;
+          shellRef.current?.setAttribute("data-globe-interacting", "true");
+          return;
         }
+        // Coast window — keep interacting until scheduled flush clears it.
+        flushDeferredGlobeVisualsRef.current?.();
       },
     });
 

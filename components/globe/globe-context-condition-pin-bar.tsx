@@ -159,6 +159,7 @@ import {
 } from "@/lib/globe/discovery-lens/integrate-context-agent-lens";
 import { resolveDiscoveryOriginFromUtterance } from "@/lib/globe/context-condition-ai/resolve-discovery-origin-from-utterance";
 import { observeScoutSeedLearning } from "@/lib/seed-learning";
+import { isGlobeComposeInputFocused } from "@/lib/globe/compose-input-focus";
 import {
   hasCompleteLodgingBookingSlots,
   isLodgingBookingQuery,
@@ -473,9 +474,8 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
     stepId: "",
     textKo: "",
   });
-  const [, setLensSession] = useState<DiscoveryLensSession | null>(
-    () => readDiscoveryLensSession(contextEventId),
-  );
+  const onLensSessionChangeRef = useRef(onLensSessionChange);
+  onLensSessionChangeRef.current = onLensSessionChange;
   const lastTriggerRef = useRef<string>("");
   const [lastBatch, setLastBatch] = useState<ContextConditionLastBatchWire | null>(
     null,
@@ -492,13 +492,15 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
 
   useEffect(() => {
     return subscribeDiscoveryLensSession((session) => {
+      if (isGlobeComposeInputFocused()) {
+        return;
+      }
       if (session && session.contextEventId !== contextEventId) {
         return;
       }
-      setLensSession(session);
-      onLensSessionChange?.(session);
+      onLensSessionChangeRef.current?.(session);
     });
-  }, [contextEventId, onLensSessionChange]);
+  }, [contextEventId]);
 
   function wireRecommendations(
     batch: ContextConditionLastBatchWire | null,

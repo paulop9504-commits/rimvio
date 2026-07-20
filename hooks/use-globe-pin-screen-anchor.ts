@@ -58,6 +58,13 @@ export function useGlobePinScreenAnchor(input: {
     let lastLayout: GlobeContextVideoScreenLayout | null = null;
 
     const tick = () => {
+      // Skip React setState while the globe is zooming/coasting.
+      if (
+        typeof document !== "undefined" &&
+        document.querySelector('[data-globe-interacting="true"]')
+      ) {
+        return;
+      }
       const globe = input.globeRef.current;
       const container = input.containerRef?.current;
       const viewportWidth = container?.clientWidth ?? window.innerWidth;

@@ -479,6 +479,12 @@ export function GlobeContextBrainMapOverlay({
     let lastLayouts: Record<string, GlobeContextVideoScreenLayout> = {};
 
     const updateAnchors = () => {
+      if (
+        typeof document !== "undefined" &&
+        document.querySelector('[data-globe-interacting="true"]')
+      ) {
+        return;
+      }
       const globe = globeRef.current;
       const container = containerRef.current;
       const viewportWidth = container?.clientWidth ?? window.innerWidth;

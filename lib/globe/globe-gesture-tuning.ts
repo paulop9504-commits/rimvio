@@ -28,4 +28,4 @@ export const GLOBE_ORBIT_TOUCH = {
 export const GLOBE_PINCH_ZOOM_EXPONENT = 0.96;
 
 /** Wait after controls "end" before HTML pin rebuild (orbit damping still coasts). */
-export const GLOBE_POST_GESTURE_FLUSH_MS = 240;
+export const GLOBE_POST_GESTURE_FLUSH_MS = 320;
