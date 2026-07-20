@@ -13,7 +13,7 @@ const event = {
   category: "travel",
   source: "manual",
   lifecycle: "active",
-  datetime: "2026-07-18T15:00:00.000Z",
+  datetime: "2026-08-18T15:00:00.000Z",
   place: "도쿄",
   description: null,
   confidence: 1,
@@ -21,7 +21,7 @@ const event = {
   updatedAt: "2026-07-01T00:00:00.000Z",
   metadata: {
     feedPlanEnabled: true,
-    planWindowEndIso: "2026-07-21T11:00:00.000Z",
+    planWindowEndIso: "2026-08-21T11:00:00.000Z",
     planWindowConfidence: "confirmed",
     planNights: 3,
     contextLodgingGuestCount: 2,
@@ -39,8 +39,8 @@ const offers = deriveLodgingRoomOffers({
     priceKrw: 140314,
     partnerLabel: "현재 맞춘 조건 기준",
     stayWindow: {
-      checkInIso: "2026-07-18T15:00:00.000Z",
-      checkOutIso: "2026-07-21T11:00:00.000Z",
+      checkInIso: "2026-08-18T15:00:00.000Z",
+      checkOutIso: "2026-08-21T11:00:00.000Z",
       nights: 3,
       confidence: "confirmed",
     },
@@ -67,13 +67,13 @@ const resource = mapLodgingRowToContextResource(event, {
   photoSource: "mock",
   photoConfidence: "mock",
   stayWindow: {
-    checkInIso: "2026-07-18T15:00:00.000Z",
-    checkOutIso: "2026-07-21T11:00:00.000Z",
+    checkInIso: "2026-08-18T15:00:00.000Z",
+    checkOutIso: "2026-08-21T11:00:00.000Z",
     nights: 3,
     confidence: "confirmed",
   },
-  checkInIso: "2026-07-18T15:00:00.000Z",
-  checkOutIso: "2026-07-21T11:00:00.000Z",
+  checkInIso: "2026-08-18T15:00:00.000Z",
+  checkOutIso: "2026-08-21T11:00:00.000Z",
 });
 const payload = readLodgingPayloadFromResource(resource);
 assert.equal(payload?.roomOffers?.length, 3);

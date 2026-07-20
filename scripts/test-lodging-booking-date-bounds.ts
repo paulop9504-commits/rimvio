@@ -43,4 +43,15 @@ assert.deepEqual(normalized, {
   checkOutYmd: "2026-07-19",
 });
 
+// Multi-night past window — keep nights when shifting to today.
+const shifted = normalizeLodgingStayYmdPair({
+  checkInYmd: "2026-07-10",
+  checkOutYmd: "2026-07-13",
+  today: "2026-07-21",
+});
+assert.deepEqual(shifted, {
+  checkInYmd: "2026-07-21",
+  checkOutYmd: "2026-07-24",
+});
+
 console.log("test-lodging-booking-date-bounds: ok");

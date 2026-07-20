@@ -68,17 +68,36 @@ export function areLodgingStayDatesValid(input: {
   return isYmd(co) && co > ci;
 }
 
-/** Normalize stay YMD pair for sheet open / submit (never past check-in). */
+/** Normalize stay YMD pair for sheet open / submit (never past check-in).
+ *  When the whole window is in the past, shift forward while keeping nights. */
 export function normalizeLodgingStayYmdPair(input: {
   checkInYmd: string | null | undefined;
   checkOutYmd: string | null | undefined;
   today?: string;
 }): { checkInYmd: string; checkOutYmd: string } {
   const today = input.today ?? localYmdToday();
-  const checkInYmd =
-    clampLodgingCheckInYmd(input.checkInYmd, today) || today;
-  const minOut = lodgingCheckOutMinYmd(checkInYmd, today);
+  const rawIn = input.checkInYmd?.slice(0, 10) ?? "";
   const rawOut = input.checkOutYmd?.slice(0, 10) ?? "";
-  const checkOutYmd = isYmd(rawOut) && rawOut >= minOut ? rawOut : minOut;
+
+  let nights = 1;
+  if (isYmd(rawIn) && isYmd(rawOut) && rawOut > rawIn) {
+    const start = new Date(`${rawIn}T12:00:00`);
+    const end = new Date(`${rawOut}T12:00:00`);
+    nights = Math.max(
+      1,
+      Math.round((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)),
+    );
+  }
+
+  const checkInYmd = clampLodgingCheckInYmd(rawIn, today) || today;
+  const minOut = lodgingCheckOutMinYmd(checkInYmd, today);
+  // Prefer night-preserving checkout when we had to clamp check-in forward.
+  const shiftedOut = addDaysYmd(checkInYmd, nights);
+  const checkOutYmd =
+    isYmd(rawOut) && rawOut >= minOut && rawIn >= today
+      ? rawOut
+      : shiftedOut >= minOut
+        ? shiftedOut
+        : minOut;
   return { checkInYmd, checkOutYmd };
 }

@@ -2354,10 +2354,16 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
 
       if (input.domainId === LODGING_INTAKE_DOMAIN_ID) {
         const parsed = parseLodgingIntakeSubmitValues(input.values);
-        const updated = writeLodgingBookingSlots({
-          contextEventId,
-          ...parsed,
-        });
+        let updated;
+        try {
+          updated = writeLodgingBookingSlots({
+            contextEventId,
+            ...parsed,
+          });
+        } catch {
+          toast.error(copy.globe.lodgingSlotMissingToast);
+          return;
+        }
         const slots = readLodgingBookingSlots(updated);
         const chipLabels = buildLodgingBookingSlotChipLabels(slots, updated);
         const summaryKo = chipLabels.join(" · ");

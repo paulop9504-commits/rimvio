@@ -1,5 +1,8 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
-import { areLodgingStayDatesValid } from "@/lib/globe/context-hub/lodging-booking-date-bounds";
+import {
+  areLodgingStayDatesValid,
+  normalizeLodgingStayYmdPair,
+} from "@/lib/globe/context-hub/lodging-booking-date-bounds";
 import { buildLodgingStayWindow } from "@/lib/globe/context-hub/lodging-stay-window";
 import { hasLodgingDomainCue } from "@/lib/globe/domain-cues/lodging-domain-cues";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
@@ -29,6 +32,22 @@ function coercePositiveInt(value: unknown): number | null {
   return rounded > 0 ? rounded : null;
 }
 
+function toYmd(iso: string): string {
+  return iso.trim().slice(0, 10);
+}
+
+/** Keep time-of-day from a prior ISO when only the calendar day shifts. */
+function rebaseIsoDate(iso: string, ymd: string): string {
+  const trimmed = iso.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return ymd;
+  }
+  if (trimmed.length >= 10 && /^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+    return `${ymd}${trimmed.slice(10)}`;
+  }
+  return ymd;
+}
+
 export function readLodgingBookingSlots(
   event: EventCandidate | null | undefined,
 ): LodgingBookingSlots {
@@ -45,16 +64,29 @@ export function readLodgingBookingSlots(
 export function hasCompleteLodgingBookingSlots(
   slots: LodgingBookingSlots,
 ): boolean {
-  return Boolean(
-    slots.checkInIso &&
+  if (
+    !(
+      slots.checkInIso &&
       slots.checkOutIso &&
       slots.guestCount &&
       slots.guestCount > 0 &&
       slots.roomCount &&
-      slots.roomCount > 0,
-  );
+      slots.roomCount > 0
+    )
+  ) {
+    return false;
+  }
+  // Past stay windows are not bookable — treat as incomplete so scout asks/heals.
+  return areLodgingStayDatesValid({
+    checkInYmd: toYmd(slots.checkInIso),
+    checkOutYmd: toYmd(slots.checkOutIso),
+  });
 }
 
+/**
+ * Persist lodging stay slots. Past check-in is auto-shifted forward
+ * (nights preserved) — never throw lodging_dates_in_past (that froze Context AI).
+ */
 export function writeLodgingBookingSlots(input: {
   contextEventId: string;
   checkInIso: string;
@@ -62,14 +94,13 @@ export function writeLodgingBookingSlots(input: {
   guestCount: number;
   roomCount: number;
 }): EventCandidate {
-  if (
-    !areLodgingStayDatesValid({
-      checkInYmd: input.checkInIso,
-      checkOutYmd: input.checkOutIso,
-    })
-  ) {
-    throw new Error("lodging_dates_in_past");
-  }
+  const stay = normalizeLodgingStayYmdPair({
+    checkInYmd: toYmd(input.checkInIso),
+    checkOutYmd: toYmd(input.checkOutIso),
+  });
+  const checkInIso = rebaseIsoDate(input.checkInIso, stay.checkInYmd);
+  const checkOutIso = rebaseIsoDate(input.checkOutIso, stay.checkOutYmd);
+
   const event = findLifeEventCandidate(input.contextEventId.trim());
   if (!event) {
     throw new Error("event_not_found");
@@ -78,7 +109,9 @@ export function writeLodgingBookingSlots(input: {
   const nights = Math.max(
     1,
     Math.round(
-      (new Date(input.checkOutIso).getTime() - new Date(input.checkInIso).getTime()) / DAY_MS,
+      (new Date(`${stay.checkOutYmd}T12:00:00`).getTime() -
+        new Date(`${stay.checkInYmd}T12:00:00`).getTime()) /
+        DAY_MS,
     ) || 1,
   );
   return commitEventUpsert({
@@ -87,7 +120,7 @@ export function writeLodgingBookingSlots(input: {
     category: event.category,
     source: event.source,
     lifecycle: event.lifecycle,
-    datetime: input.checkInIso,
+    datetime: checkInIso,
     place: event.place,
     description: event.description,
     confidence: event.confidence,
@@ -95,7 +128,7 @@ export function writeLodgingBookingSlots(input: {
     updatedAt,
     metadata: {
       ...(event.metadata ?? {}),
-      planWindowEndIso: input.checkOutIso,
+      planWindowEndIso: checkOutIso,
       planWindowConfidence: "confirmed",
       planNights: nights,
       [LODGING_GUEST_COUNT_META_KEY]: Math.max(1, Math.round(input.guestCount)),

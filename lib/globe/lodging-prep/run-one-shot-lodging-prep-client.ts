@@ -55,33 +55,39 @@ export function runOneShotLodgingPrepClient(input: {
     return { plan, event };
   }
 
-  const spatialWrite = writeContextSpatialTargetFromText({
-    contextEventId,
-    text: input.message,
-  });
-  if (spatialWrite.event) {
-    event = spatialWrite.event;
-  }
+  try {
+    const spatialWrite = writeContextSpatialTargetFromText({
+      contextEventId,
+      text: input.message,
+    });
+    if (spatialWrite.event) {
+      event = spatialWrite.event;
+    }
 
-  if (canWriteTripIntake(plan.intakeState)) {
-    event = writeTripIntakeSlots({
-      contextEventId,
-      destinationLabel: plan.intakeState.destinationLabel!,
-      originLabel: plan.intakeState.originLabel!,
-      checkInIso: plan.intakeState.checkInIso!,
-      checkOutIso: plan.intakeState.checkOutIso!,
-      guestCount: plan.intakeState.guestCount!,
-      budgetBand: plan.intakeState.budgetBand ?? "balanced",
-    });
-  } else {
-    event = writeTripIntakePartial({
-      contextEventId,
-      state: {
-        ...plan.intakeState,
-        guestCount: plan.intakeState.guestCount ?? 1,
+    if (canWriteTripIntake(plan.intakeState)) {
+      event = writeTripIntakeSlots({
+        contextEventId,
+        destinationLabel: plan.intakeState.destinationLabel!,
+        originLabel: plan.intakeState.originLabel!,
+        checkInIso: plan.intakeState.checkInIso!,
+        checkOutIso: plan.intakeState.checkOutIso!,
+        guestCount: plan.intakeState.guestCount!,
         budgetBand: plan.intakeState.budgetBand ?? "balanced",
-      },
-    });
+      });
+    } else {
+      event = writeTripIntakePartial({
+        contextEventId,
+        state: {
+          ...plan.intakeState,
+          guestCount: plan.intakeState.guestCount ?? 1,
+          budgetBand: plan.intakeState.budgetBand ?? "balanced",
+        },
+      });
+    }
+  } catch {
+    // Never block scout/compose on intake write — past dates are normalized
+    // in writeLodgingBookingSlots; other failures still allow resolve to run.
+    return { plan, event };
   }
 
   return { plan, event };
