@@ -3,6 +3,7 @@
 import type { RefObject } from "react";
 import {
   forwardRef,
+  memo,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -415,7 +416,7 @@ function mapBudget(value: string | undefined): "low" | "medium" | "high" | null 
 }
 
 /** Local action trigger → questions → structured spec → map placement. */
-export const GlobeContextConditionPinBar = forwardRef<
+export const GlobeContextConditionPinBar = memo(forwardRef<
   GlobeContextConditionPinBarHandle,
   GlobeContextConditionPinBarProps
 >(function GlobeContextConditionPinBar(
@@ -3361,4 +3362,4 @@ export const GlobeContextConditionPinBar = forwardRef<
       ) : null}
     </div>
   );
-});
+}));

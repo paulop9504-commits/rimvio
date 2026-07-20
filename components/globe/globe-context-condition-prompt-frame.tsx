@@ -147,6 +147,10 @@ import {
   type DiscoveryLensId,
   type DiscoveryLensSession,
 } from "@/lib/globe/discovery-lens";
+import {
+  isGlobeComposeInputFocused,
+  subscribeGlobeComposeInputFocus,
+} from "@/lib/globe/compose-input-focus";
 import { cn } from "@/lib/utils";
 import {
   RIMVIO_ASSISTANT_FEED_BACKDROP_Z_INDEX,
@@ -374,11 +378,21 @@ export function GlobeContextConditionPromptFrame({
   }, [openEventId]);
 
   useEffect(() => {
-    return subscribeContextAgentRuntime(setRuntime);
+    return subscribeContextAgentRuntime((next) => {
+      if (isGlobeComposeInputFocused()) {
+        return;
+      }
+      setRuntime(next);
+    });
   }, []);
 
   useEffect(() => {
-    return subscribeContextAgentSession(setAgentSession);
+    return subscribeContextAgentSession((next) => {
+      if (isGlobeComposeInputFocused()) {
+        return;
+      }
+      setAgentSession(next);
+    });
   }, []);
 
   useEffect(() => {
@@ -398,6 +412,9 @@ export function GlobeContextConditionPromptFrame({
 
   useEffect(() => {
     return subscribePalantirWorkspaceSnapshot((eventId) => {
+      if (isGlobeComposeInputFocused()) {
+        return;
+      }
       if (event?.id === eventId) {
         setPalantirWorkspaceRevision((value) => value + 1);
       }
@@ -409,6 +426,9 @@ export function GlobeContextConditionPromptFrame({
       return;
     }
     return subscribeGeoOntologyFacetState((eventId) => {
+      if (isGlobeComposeInputFocused()) {
+        return;
+      }
       if (eventId === event.id) {
         setOntologyFacetRevision((value) => value + 1);
       }
@@ -519,7 +539,9 @@ export function GlobeContextConditionPromptFrame({
         kind: "text",
         text: line,
       });
-      setComposeThread(readContextAgentComposeThread(event.id));
+      if (!isGlobeComposeInputFocused()) {
+        setComposeThread(readContextAgentComposeThread(event.id));
+      }
     };
     syncInterpretation();
     return subscribeContextAgentInterpretation(syncInterpretation);
@@ -530,14 +552,28 @@ export function GlobeContextConditionPromptFrame({
       return;
     }
     const syncThread = () => {
+      if (isGlobeComposeInputFocused()) {
+        return;
+      }
       setComposeThread(readContextAgentComposeThread(event.id));
     };
     syncThread();
-    return subscribeContextAgentComposeThread((eventId) => {
+    const unsubThread = subscribeContextAgentComposeThread((eventId) => {
       if (eventId === event.id) {
         syncThread();
       }
     });
+    const unsubFocus = subscribeGlobeComposeInputFocus((focused) => {
+      if (!focused) {
+        setComposeThread(readContextAgentComposeThread(event.id));
+        setRuntime(readContextAgentRuntimeState());
+        setAgentSession(readContextAgentSessionState());
+      }
+    });
+    return () => {
+      unsubThread();
+      unsubFocus();
+    };
   }, [event, open]);
 
   useEffect(() => {
