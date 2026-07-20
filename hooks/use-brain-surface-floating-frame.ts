@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getGlobeInfoFramePreset,
+  measureSafeAreaTopPx,
   normalizeGlobeInfoFrameLayout,
   readGlobeInfoFrameLayout,
   resolveDefaultGlobeInfoFrameLayout,
@@ -46,12 +47,13 @@ function readViewport(): GlobeInfoFrameViewport {
 
 function resolveInitialLayout(frameId: GlobeInfoFrameId): GlobeInfoFrameLayout {
   const viewport = readViewport();
+  const safeTop = measureSafeAreaTopPx();
   const stored = readGlobeInfoFrameLayout(frameId);
-  const fallback = resolveDefaultGlobeInfoFrameLayout(frameId, viewport);
+  const fallback = resolveDefaultGlobeInfoFrameLayout(frameId, viewport, safeTop);
   if (!stored) {
     return fallback;
   }
-  return normalizeGlobeInfoFrameLayout(frameId, stored, viewport);
+  return normalizeGlobeInfoFrameLayout(frameId, stored, viewport, safeTop);
 }
 
 export function useBrainSurfaceFloatingFrame(frameId: GlobeInfoFrameId) {
@@ -82,7 +84,13 @@ export function useBrainSurfaceFloatingFrame(frameId: GlobeInfoFrameId) {
 
   const persistLayout = useCallback(
     (next: GlobeInfoFrameLayout) => {
-      const normalized = normalizeGlobeInfoFrameLayout(frameId, next, readViewport());
+      const safeTop = measureSafeAreaTopPx();
+      const normalized = normalizeGlobeInfoFrameLayout(
+        frameId,
+        next,
+        readViewport(),
+        safeTop,
+      );
       layoutRef.current = normalized;
       setLayoutState(normalized);
       writeGlobeInfoFrameLayout(frameId, normalized);
@@ -266,7 +274,13 @@ export function useBrainSurfaceFloatingFrame(frameId: GlobeInfoFrameId) {
   );
 
   const resetLayout = useCallback(() => {
-    persistLayout(resolveDefaultGlobeInfoFrameLayout(frameId, readViewport()));
+    persistLayout(
+      resolveDefaultGlobeInfoFrameLayout(
+        frameId,
+        readViewport(),
+        measureSafeAreaTopPx(),
+      ),
+    );
   }, [frameId, persistLayout]);
 
   return {

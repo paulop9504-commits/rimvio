@@ -28,6 +28,12 @@ import {
 export function useFieldNavBadge() {
   const { sessions } = useActiveMarketTrades({ enabled: true });
   const [revision, setRevision] = useState(0);
+  // localStorage-backed events — never read on first paint (#418 badge DOM).
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   useEffect(() => {
     const bump = () => setRevision((value) => value + 1);
@@ -43,33 +49,42 @@ export function useFieldNavBadge() {
 
   const snapshot = useMemo(() => {
     void revision;
+    if (!hydrated) {
+      return buildRealityControlSnapshot({
+        tradeSessions: sessions,
+        events: [],
+      });
+    }
     return buildRealityControlSnapshot({
       tradeSessions: sessions,
       events: listLifeEventCandidates(),
     });
-  }, [revision, sessions]);
+  }, [hydrated, revision, sessions]);
 
   const queueCount = snapshot.impact.pendingCount;
   const tradeCount = sessions.length;
   const mineCount = useMemo(() => {
     void revision;
+    if (!hydrated) {
+      return 0;
+    }
     return filterPublishedMarketIntents(listActiveMarketIntents()).length;
-  }, [revision]);
+  }, [hydrated, revision]);
 
-  const total = resolveFieldNavBadgeCount(queueCount);
+  const total = hydrated ? resolveFieldNavBadgeCount(queueCount) : 0;
   const suggestedTab = useMemo<FieldDashboardTab>(
     () =>
       resolveFieldNavSuggestedTab({
-        queueCount,
-        tradeCount,
+        queueCount: hydrated ? queueCount : 0,
+        tradeCount: hydrated ? tradeCount : 0,
         mineCount,
       }),
-    [mineCount, queueCount, tradeCount],
+    [hydrated, mineCount, queueCount, tradeCount],
   );
 
   return {
-    queueCount,
-    tradeCount,
+    queueCount: hydrated ? queueCount : 0,
+    tradeCount: hydrated ? tradeCount : 0,
     mineCount,
     total,
     suggestedTab,

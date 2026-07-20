@@ -1308,10 +1308,10 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
         discoveryFeedFocus && "opacity-40 transition-opacity duration-200",
       )}
       shellClassName={rimvioAssistantFrameShellClass()}
-      bodyClassName="flex min-h-0 flex-col"
+      bodyClassName="flex h-full min-h-0 flex-col overflow-hidden"
     >
       <div
-        className="flex min-h-0 flex-1 flex-col"
+        className="flex h-full min-h-0 flex-1 flex-col"
         data-globe-assistant-feed-backdrop={discoveryFeedFocus ? "true" : undefined}
         data-cicada-agent-phase={cicadaPhase}
         data-cicada-assistant-surface={cicadaSurfaceMode}

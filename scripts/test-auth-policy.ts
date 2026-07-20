@@ -13,6 +13,7 @@ import {
   PROTECTED_ROUTES,
 } from "../lib/auth/protected-routes";
 
+process.env.NEXT_PUBLIC_AUTH_REQUIRED = "true";
 process.env.AUTH_REQUIRED = "true";
 assert.equal(isAuthRequired(), true);
 

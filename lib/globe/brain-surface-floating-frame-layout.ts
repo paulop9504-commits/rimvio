@@ -114,10 +114,11 @@ export const GLOBE_INFO_FRAME_PRESETS: Record<GlobeInfoFrameId, GlobeInfoFramePr
   "context-condition-prompt": {
     minWidth: 260,
     maxWidth: 420,
-    minHeight: 168,
+    // Header + hint + compose footer — never allow clip to empty white body.
+    minHeight: 280,
     maxHeight: 620,
     defaultWidth: 300,
-    defaultHeight: 360,
+    defaultHeight: 420,
     defaultBand: "center-left",
     tone: "light",
   },
@@ -151,9 +152,13 @@ export const BRAIN_SURFACE_INFO_WIDTH_MIN =
 export const BRAIN_SURFACE_INFO_WIDTH_MAX =
   GLOBE_INFO_FRAME_PRESETS["brain-surface-info"].maxWidth;
 
-function readSafeAreaTopPx(): number {
-  if (typeof window === "undefined") {
-    return 8;
+/** SSR + first client paint must stay identical (#418). Live inset only after mount. */
+const SAFE_AREA_TOP_FALLBACK_PX = 8;
+
+/** Call from effects / pointer handlers only — never during render or useState init. */
+export function measureSafeAreaTopPx(): number {
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    return SAFE_AREA_TOP_FALLBACK_PX;
   }
   const probe = document.createElement("div");
   probe.style.paddingTop = "env(safe-area-inset-top)";
@@ -182,12 +187,13 @@ export function clampGlobeInfoFrameHeight(
   heightPx: number,
   preset: GlobeInfoFramePreset,
   viewportHeight?: number,
+  safeAreaTopPx: number = SAFE_AREA_TOP_FALLBACK_PX,
 ): number {
   const viewport =
     viewportHeight ?? (typeof window !== "undefined" ? window.innerHeight : 844);
   const cappedMax = Math.min(
     preset.maxHeight,
-    viewport - GLOBE_INFO_FRAME_BOTTOM_INSET_PX - readSafeAreaTopPx(),
+    viewport - GLOBE_INFO_FRAME_BOTTOM_INSET_PX - safeAreaTopPx,
   );
   return Math.round(Math.max(preset.minHeight, Math.min(cappedMax, heightPx)));
 }
@@ -197,22 +203,35 @@ export function resolveHeightFromAspect(
   aspectRatio: number,
   preset: GlobeInfoFramePreset,
   viewportHeight?: number,
+  safeAreaTopPx?: number,
 ): number {
   const raw = Math.round(width / aspectRatio);
-  return clampGlobeInfoFrameHeight(raw, preset, viewportHeight);
+  return clampGlobeInfoFrameHeight(raw, preset, viewportHeight, safeAreaTopPx);
 }
 
 export function resolveDefaultGlobeInfoFrameLayout(
   frameId: GlobeInfoFrameId,
   viewport: GlobeInfoFrameViewport,
+  safeAreaTopPx: number = SAFE_AREA_TOP_FALLBACK_PX,
 ): GlobeInfoFrameLayout {
   const preset = getGlobeInfoFramePreset(frameId);
   const width = clampGlobeInfoFrameWidth(preset.defaultWidth, preset, viewport.width);
   const height = preset.aspectRatio
-    ? resolveHeightFromAspect(width, preset.aspectRatio, preset, viewport.height)
-    : clampGlobeInfoFrameHeight(preset.defaultHeight, preset, viewport.height);
+    ? resolveHeightFromAspect(
+        width,
+        preset.aspectRatio,
+        preset,
+        viewport.height,
+        safeAreaTopPx,
+      )
+    : clampGlobeInfoFrameHeight(
+        preset.defaultHeight,
+        preset,
+        viewport.height,
+        safeAreaTopPx,
+      );
 
-  let top = readSafeAreaTopPx();
+  let top = safeAreaTopPx;
   let left = Math.round((viewport.width - width) / 2);
   if (preset.defaultBand === "bottom") {
     top = Math.round(viewport.height - GLOBE_INFO_FRAME_BOTTOM_INSET_PX - height);
@@ -325,8 +344,9 @@ export function clampGlobeInfoFramePosition(input: {
   width: number;
   height: number;
   viewport: GlobeInfoFrameViewport;
+  safeAreaTopPx?: number;
 }): { left: number; top: number } {
-  const topInset = readSafeAreaTopPx();
+  const topInset = input.safeAreaTopPx ?? SAFE_AREA_TOP_FALLBACK_PX;
   const maxLeft = Math.max(8, input.viewport.width - input.width - 8);
   const maxTop = Math.max(
     topInset,
@@ -345,18 +365,31 @@ export function normalizeGlobeInfoFrameLayout(
   frameId: GlobeInfoFrameId,
   layout: GlobeInfoFrameLayout,
   viewport: GlobeInfoFrameViewport,
+  safeAreaTopPx: number = SAFE_AREA_TOP_FALLBACK_PX,
 ): GlobeInfoFrameLayout {
   const preset = getGlobeInfoFramePreset(frameId);
   const width = clampGlobeInfoFrameWidth(layout.width, preset, viewport.width);
   const height = preset.aspectRatio
-    ? resolveHeightFromAspect(width, preset.aspectRatio, preset, viewport.height)
-    : clampGlobeInfoFrameHeight(layout.height, preset, viewport.height);
+    ? resolveHeightFromAspect(
+        width,
+        preset.aspectRatio,
+        preset,
+        viewport.height,
+        safeAreaTopPx,
+      )
+    : clampGlobeInfoFrameHeight(
+        layout.height,
+        preset,
+        viewport.height,
+        safeAreaTopPx,
+      );
   const clamped = clampGlobeInfoFramePosition({
     left: layout.left,
     top: layout.top,
     width,
     height,
     viewport,
+    safeAreaTopPx,
   });
   return { ...clamped, width, height };
 }

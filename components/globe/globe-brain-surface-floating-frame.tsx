@@ -69,7 +69,7 @@ export function GlobeBrainSurfaceFloatingFrame({
         type="button"
         aria-label={dragLabel}
         className={cn(
-          "flex shrink-0 cursor-grab items-center justify-center gap-1 border-b py-1 active:cursor-grabbing",
+          "flex shrink-0 cursor-grab touch-none items-center justify-center gap-1 border-b py-1 active:cursor-grabbing",
           isDark
             ? "border-white/10 bg-black/55 text-white/70"
             : "border-slate-200/70 bg-slate-50/95 text-slate-400",
@@ -93,8 +93,10 @@ export function GlobeBrainSurfaceFloatingFrame({
 
       <div
         className={cn(
-          "min-h-0 flex-1 overflow-y-auto overscroll-contain",
-          bodyClassName,
+          "min-h-0 flex-1 overscroll-contain",
+          // Default scroll; hosts (e.g. Context AI) pass overflow-hidden + flex
+          // so the compose footer stays pinned and never clips away.
+          bodyClassName ?? "overflow-y-auto",
         )}
         data-globe-brain-surface-frame-body
       >
@@ -105,7 +107,7 @@ export function GlobeBrainSurfaceFloatingFrame({
         type="button"
         aria-label="크기 조절"
         className={cn(
-          "absolute bottom-1 right-1 z-[3] flex size-6 items-center justify-center rounded-full active:scale-95",
+          "absolute bottom-1 right-1 z-[3] flex size-6 touch-none items-center justify-center rounded-full active:scale-95",
           isDark
             ? "bg-black/45 text-white/75 ring-1 ring-white/12"
             : "bg-white/90 text-slate-500 ring-1 ring-slate-200/80 shadow-sm",
@@ -125,7 +127,7 @@ export function GlobeBrainSurfaceFloatingFrame({
     return (
       <div
         ref={frameRef}
-        className={cn("pointer-events-auto touch-none", className)}
+        className={cn("pointer-events-auto", className)}
         style={{ width: layout.width, height: layout.height, ...style }}
         data-globe-brain-surface-floating-frame={frameId}
         onTouchStart={onShellTouchStart}
@@ -140,7 +142,7 @@ export function GlobeBrainSurfaceFloatingFrame({
   return (
     <div
       ref={frameRef}
-      className={cn("pointer-events-auto absolute touch-none", className)}
+      className={cn("pointer-events-auto absolute", className)}
       style={{
         left: layout.left,
         top: layout.top,

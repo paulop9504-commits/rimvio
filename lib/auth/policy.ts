@@ -3,9 +3,11 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 
 /** When true, pages and APIs require a signed-in Supabase user. */
 export function isAuthRequired(): boolean {
+  // Prefer NEXT_PUBLIC so AuthGate SSR HTML and client hydrate agree (#418).
+  // AUTH_REQUIRED remains a server/middleware fallback when public flag is unset.
   const raw =
-    process.env.AUTH_REQUIRED ??
     process.env.NEXT_PUBLIC_AUTH_REQUIRED ??
+    process.env.AUTH_REQUIRED ??
     "";
   const normalized = raw.trim().toLowerCase();
   if (normalized === "false" || normalized === "0" || normalized === "no") {
