@@ -20,6 +20,7 @@ import {
   resetGraphCommandStoreForTests,
   writeSessionGraph,
   type SessionGraphV1,
+  readSessionGraph,
 } from "../lib/graph-command";
 import { clearPreparedRealityOperations } from "../lib/reality-queue";
 import { classifyIntentFamily } from "../lib/rule-engine";
@@ -106,7 +107,7 @@ function seedGraph(id: string): SessionGraphV1 {
   assert.equal(bareCompare[0]?.op, "compare");
 }
 
-// 2 — Analyze → reason_pick
+// 2 — Analyze → reason_pick → Diff 실제 고르기 (selection 1개여도 visible pool)
 {
   const g = seedGraph("evt-analyze");
   assert.equal(classifyIntentFamily("그거 어때?"), "Analyze");
@@ -118,6 +119,20 @@ function seedGraph(id: string): SessionGraphV1 {
     contextEventId: "evt-analyze",
   });
   assert.equal(run.result?.via, "graph_command");
+  if (run.result?.via === "graph_command") {
+    assert.match(run.result.assistantReplyKo, /골랐어요|골라/);
+  }
+
+  const after = readSessionGraph("evt-analyze");
+  assert.ok(after);
+  const winner = after!.nodes.find((n) => n.attrs.reasonPick === true);
+  assert.ok(winner);
+  assert.equal(after!.selectionIds[0], winner!.id);
+  // Pool pick among A/B — not stuck on sole selection when asking 어때
+  assert.ok(
+    typeof winner!.attrs.reasonSummaryKo === "string" &&
+      String(winner!.attrs.reasonSummaryKo).includes("골랐어요"),
+  );
 }
 
 // 3 — compounds +2

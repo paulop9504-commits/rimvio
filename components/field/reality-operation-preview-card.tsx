@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useCopy } from "@/hooks/use-copy";
 import {
@@ -8,6 +9,7 @@ import {
 } from "@/lib/reality-queue/operation-actions";
 import type { RealityQueueItemV1 } from "@/lib/reality-queue/types";
 import { openPaymentVaultSettings } from "@/lib/payment-vault/open-payment-vault-settings-bridge";
+import { stampPaymentPrepPreviewFromVault } from "@/lib/payment-vault/stamp-payment-prep-preview-from-vault";
 import { cn } from "@/lib/utils";
 
 export type RealityOperationPreviewCardProps = {
@@ -25,7 +27,32 @@ export function RealityOperationPreviewCard({
   className,
 }: RealityOperationPreviewCardProps) {
   const field = useCopy().globe.field;
-  const preview = item.preview;
+  const [liveItem, setLiveItem] = useState(item);
+  const preview = liveItem.preview;
+
+  useEffect(() => {
+    setLiveItem(item);
+  }, [item]);
+
+  useEffect(() => {
+    if (item.type !== "payment_prep" && item.kind !== "finance") {
+      return;
+    }
+    let cancelled = false;
+    void stampPaymentPrepPreviewFromVault(item.operationId).then((result) => {
+      if (cancelled || !result.stamped || !result.operation) {
+        return;
+      }
+      setLiveItem((prev) => ({
+        ...prev,
+        ...result.operation!,
+        itemId: prev.itemId,
+      }));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [item.operationId, item.type, item.kind]);
 
   const handleReflect = () => {
     reflectRealityOperation(item);

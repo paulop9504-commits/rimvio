@@ -1034,25 +1034,36 @@ function applyReasonPick(
   graph: SessionGraphV1,
   command: Extract<GraphCommand, { op: "reason_pick" }>,
 ): SessionGraphV1 {
+  const placeKinds = (n: SessionGraphNode) =>
+    n.kind === "lodging" || n.kind === "eatery" || n.kind === "poi";
+
+  const visible = graph.nodes.filter((n) => n.visible && placeKinds(n));
   const selected = graph.selectionIds
     .map((id) => graph.nodes.find((n) => n.id === id))
-    .filter((n): n is SessionGraphNode => Boolean(n));
-  const pool =
-    selected.length > 0
-      ? selected.filter(
-          (n) =>
-            n.kind === "lodging" ||
-            n.kind === "eatery" ||
-            n.kind === "poi",
-        )
-      : graph.nodes.filter(
-          (n) =>
-            n.visible &&
-            (n.kind === "lodging" || n.kind === "eatery"),
-        );
+    .filter((n): n is SessionGraphNode => Boolean(n))
+    .filter(placeKinds);
+
+  // Analyze / 「어느 게」「추천」→ Diff visible pool (not just the 1 selected pin).
+  const wantPoolPick =
+    /어때|어느|낫|추천|골라|고르|분석|그냥\s*해|뭐가/iu.test(command.promptKo);
+
+  let pool: SessionGraphNode[];
+  if (wantPoolPick && visible.length >= 2) {
+    pool = visible;
+  } else if (selected.length >= 2) {
+    pool = selected;
+  } else if (selected.length === 1 && visible.length >= 2 && wantPoolPick) {
+    pool = visible;
+  } else if (selected.length > 0) {
+    pool = selected;
+  } else {
+    pool = visible;
+  }
+
   if (pool.length === 0) {
     return graph;
   }
+
   const picked = invokeRimvioTool("ranking.pick", {
     query: command.promptKo,
     candidates: pool.map((n) => ({
@@ -1062,6 +1073,7 @@ function applyReasonPick(
       walkMinutes: n.walkMinutes,
       priceBand: n.priceBand,
       reservable: n.reservable,
+      localFavorite: n.localFavorite,
     })),
   });
   const winnerId = picked.pickedId;
@@ -1070,20 +1082,31 @@ function applyReasonPick(
   }
   return {
     ...graph,
-    nodes: graph.nodes.map((n) =>
-      n.id === winnerId
-        ? {
-            ...n,
-            pinned: true,
-            visible: true,
-            attrs: {
-              ...n.attrs,
-              reasonPick: true,
-              reasonSummaryKo: picked.summaryKo,
-            },
-          }
-        : n,
-    ),
+    nodes: graph.nodes.map((n) => {
+      if (n.id === winnerId) {
+        return {
+          ...n,
+          pinned: true,
+          visible: true,
+          attrs: {
+            ...n.attrs,
+            reasonPick: true,
+            reasonSummaryKo: picked.summaryKo,
+          },
+        };
+      }
+      if (n.attrs.reasonPick === true) {
+        return {
+          ...n,
+          attrs: {
+            ...n.attrs,
+            reasonPick: false,
+            reasonSummaryKo: null,
+          },
+        };
+      }
+      return n;
+    }),
     selectionIds: [winnerId],
     updatedAtIso: new Date().toISOString(),
   };
@@ -1171,9 +1194,14 @@ function replyFor(
   }
   if (op === "reason_pick") {
     const winner = graph.nodes.find((n) => n.attrs.reasonPick === true);
-    return winner
-      ? `${winner.labelKo}을 골라 고정했어요`
-      : "고를 곳이 없어요";
+    if (!winner) {
+      return "고를 곳이 없어요";
+    }
+    const why =
+      typeof winner.attrs.reasonSummaryKo === "string"
+        ? winner.attrs.reasonSummaryKo.trim()
+        : "";
+    return why || `${winner.labelKo}을 골라 고정했어요`;
   }
   if (op === "simulate") {
     return "가정을 그려 봤어요 · 아직 반영하지 않았어요";

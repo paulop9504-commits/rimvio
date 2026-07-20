@@ -12,6 +12,8 @@ export { savePaymentPreferenceClient } from "@/lib/payment-vault/save-payment-pr
 export { upsertPaymentVaultObjectClient } from "@/lib/payment-vault/write-payment-vault-object-client";
 export { resolvePaymentPrepMethodFromPreference } from "@/lib/payment-vault/resolve-payment-prep-method";
 export type { ResolvedPaymentPrepMethod } from "@/lib/payment-vault/resolve-payment-prep-method";
+export { stampPaymentPrepPreviewFromVault } from "@/lib/payment-vault/stamp-payment-prep-preview-from-vault";
+export type { StampPaymentPrepPreviewResult } from "@/lib/payment-vault/stamp-payment-prep-preview-from-vault";
 export {
   openPaymentVaultSettings,
   subscribeOpenPaymentVaultSettings,

@@ -258,14 +258,44 @@ function rankingPickResult(
     });
   }
   const picked = list.find((row) => row.reservable !== false) ?? list[0] ?? null;
+  if (!picked) {
+    return {
+      ok: true,
+      toolId,
+      summaryKo: "고를 후보가 없어요",
+      pickedId: null,
+      pickedLabelKo: null,
+      candidates: list,
+      ...(plane
+        ? { meta: bookingControlToToolMeta(plane.booking) }
+        : {}),
+    };
+  }
+
+  const whyParts: string[] = [];
+  if (typeof picked.rating === "number" && picked.rating > 0) {
+    whyParts.push(`평점 ${picked.rating.toFixed(1)}`);
+  }
+  if (typeof picked.walkMinutes === "number" && picked.walkMinutes >= 0) {
+    whyParts.push(`도보 ${picked.walkMinutes}분`);
+  }
+  if (typeof picked.priceBand === "number" && picked.priceBand > 0) {
+    whyParts.push(`가격대 ${picked.priceBand}`);
+  }
+  if (picked.localFavorite === true) {
+    whyParts.push("현지 추천");
+  }
+  if (picked.reservable !== false && list.some((r) => r.reservable === false)) {
+    whyParts.push("예약 가능");
+  }
+  const why = whyParts.length > 0 ? ` (${whyParts.join(" · ")})` : "";
+
   return {
     ok: true,
     toolId,
-    summaryKo: picked
-      ? `${picked.labelKo}을 골랐어요`
-      : "고를 후보가 없어요",
-    pickedId: picked?.id ?? null,
-    pickedLabelKo: picked?.labelKo ?? null,
+    summaryKo: `${picked.labelKo}을 골랐어요${why}`,
+    pickedId: picked.id ?? null,
+    pickedLabelKo: picked.labelKo ?? null,
     candidates: list,
     ...(plane
       ? { meta: bookingControlToToolMeta(plane.booking) }
