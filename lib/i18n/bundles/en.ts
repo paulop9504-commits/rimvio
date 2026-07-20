@@ -2280,6 +2280,7 @@ export const copyEn: Copy = {
     softConfirmFilterSummary: "Narrow the conditions",
     softConfirmPinSummary: (label: string) => `Pin ${label} on the map`,
     softConfirmDeleteSummary: (label: string) => `Remove ${label}`,
+    softConfirmShareSummary: (label: string) => `Share ${label}`,
     softConfirmGenericSummary: "Apply this change",
     softConfirmApplied: (summary: string) => `Applied · ${summary}`,
     softConfirmCancelled: "Keeping it as is",

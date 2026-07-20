@@ -13,9 +13,6 @@ function pinKindFor(
   if (kind === "lodging" || kind === "eatery") {
     return kind;
   }
-  if (kind === "activity") {
-    return "activity";
-  }
   return "amenity";
 }
 

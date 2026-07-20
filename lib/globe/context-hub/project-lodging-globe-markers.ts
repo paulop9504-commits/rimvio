@@ -125,8 +125,8 @@ export function projectLodgingGlobeMarkers(input: {
         event: input.event,
         row: payload
           ? {
-              checkInIso: payload.checkInIso ?? null,
-              checkOutIso: payload.checkOutIso ?? null,
+              checkInIso: payload.stayWindow?.checkInIso ?? null,
+              checkOutIso: payload.stayWindow?.checkOutIso ?? null,
               stayWindow: payload.stayWindow ?? null,
             }
           : null,

@@ -26,7 +26,10 @@ import {
   tryRunGraphCommandOsAsync,
 } from "@/lib/graph-command/apply-graph-commands";
 import { parseGraphCommands } from "@/lib/graph-command/parse-graph-commands";
-import { readSessionGraph } from "@/lib/graph-command/session-graph-store";
+import {
+  ensureSessionGraph,
+  readSessionGraph,
+} from "@/lib/graph-command/session-graph-store";
 import { tryRunMoveContextCommand } from "@/lib/context-engine/project-context";
 import { tryRunReviseCommand } from "@/lib/globe/context-hub/try-run-revise-command";
 import { tryRunSoftConfirmCommand } from "@/lib/globe/soft-confirm/try-run-soft-confirm-command";
@@ -171,18 +174,21 @@ function buildTurnPack(input: NlPipelineInput): ContextPackV1 {
 function rebuildPackAfterGraph(input: {
   utterance: string;
   contextEventId: string;
-  graph: NonNullable<ReturnType<typeof readSessionGraph>>;
+  graph: ReturnType<typeof readSessionGraph>;
 }): ContextPackV1 {
   const contextEventId = input.contextEventId.trim();
+  const graph =
+    input.graph ??
+    ensureSessionGraph({ contextEventId });
   const previous = readLastContextPack(contextEventId)?.lodgingDiff ?? null;
   const lodgingDiff = resolveLodgingDiffForPack({
     contextEventId,
-    graph: input.graph,
+    graph,
     previous,
   });
   const nextPack = buildContextPack({
     utterance: input.utterance,
-    graph: input.graph,
+    graph,
     discoveryPlaceIds: resolveDiscoveryPlaceIds(contextEventId),
     lodgingDiff,
   });

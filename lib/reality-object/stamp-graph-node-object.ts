@@ -11,7 +11,7 @@ import type { SessionGraphNode } from "@/lib/graph-command/types";
 function pinKindForNode(
   kind: SessionGraphNode["kind"],
 ): RealityPinCompatKind | null {
-  if (kind === "lodging" || kind === "eatery" || kind === "activity") {
+  if (kind === "lodging" || kind === "eatery") {
     return kind;
   }
   if (kind === "poi") {

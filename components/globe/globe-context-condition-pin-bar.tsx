@@ -174,6 +174,10 @@ import {
   applySoftConfirmPending,
   cancelSoftConfirmPending,
 } from "@/lib/globe/soft-confirm/apply-soft-confirm-pending";
+import {
+  isSoftConfirmAffirmUtterance,
+  isSoftConfirmRejectUtterance,
+} from "@/lib/globe/soft-confirm/soft-confirm-affirm";
 import { readSoftConfirmPending } from "@/lib/globe/soft-confirm/soft-confirm-pending-store";
 import {
   clearClarifyLessPending,

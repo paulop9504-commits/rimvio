@@ -203,14 +203,20 @@ function resolveEntityToolArgs(
   const raw = step.entityLabelKo?.trim() || "";
   const resolved = resolvePlanEntityLabel(raw);
   const toolId = (step.toolId ?? resolved.toolId) as RimvioToolId;
+  const domain: "lodging" | "eatery" | "poi" =
+    resolved.domain === "amenity" || resolved.domain === "poi"
+      ? "poi"
+      : resolved.domain === "eatery"
+        ? "eatery"
+        : "lodging";
   return {
     toolId,
     pinLabelKo: resolved.labelKo,
-    domain: resolved.domain,
+    domain,
     invoke: {
       ...toolBaseInput({ utterance, ...anchors }),
       labels: [resolved.queryKo],
-      domain: resolved.domain === "poi" ? "poi" : resolved.domain,
+      domain,
       query: resolved.queryKo,
     },
   };

@@ -1484,25 +1484,7 @@ function GlobeHomeBody() {
   ]);
 
   // Session-graph compare arcs (Action Planner / Graph) — always when not Osaka-only.
-  const sessionGraphCompareArcs = useMemo(() => {
-    if (osakaDemoTheaterActive) {
-      return [];
-    }
-    const eventId =
-      activeCluster?.eventId?.trim() ||
-      realitySurfaceEventId?.trim() ||
-      null;
-    if (!eventId) {
-      return [];
-    }
-    void graphCommandRevision;
-    return [...projectSessionGraphCompareArcs(readSessionGraph(eventId))];
-  }, [
-    activeCluster?.eventId,
-    graphCommandRevision,
-    osakaDemoTheaterActive,
-    realitySurfaceEventId,
-  ]);
+  // (defined after useRealitySurfaceProjection — needs realitySurfaceEventId)
 
   const brainSurfaceTracePlaces = useMemo(
     () =>
@@ -1672,6 +1654,26 @@ function GlobeHomeBody() {
     tryAdvanceDestinationFromMessage,
     approveExecutionPlan,
   } = useRealitySurfaceProjection();
+
+  const sessionGraphCompareArcs = useMemo(() => {
+    if (osakaDemoTheaterActive) {
+      return [];
+    }
+    const eventId =
+      activeCluster?.eventId?.trim() ||
+      realitySurfaceEventId?.trim() ||
+      null;
+    if (!eventId) {
+      return [];
+    }
+    void graphCommandRevision;
+    return [...projectSessionGraphCompareArcs(readSessionGraph(eventId))];
+  }, [
+    activeCluster?.eventId,
+    graphCommandRevision,
+    osakaDemoTheaterActive,
+    realitySurfaceEventId,
+  ]);
 
   const [departureHubPickerOpen, setDepartureHubPickerOpen] = useState(false);
 
