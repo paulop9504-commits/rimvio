@@ -4,14 +4,11 @@ import {
   forwardRef,
   memo,
   useCallback,
-  useEffect,
   useImperativeHandle,
-  useLayoutEffect,
   useRef,
   useState,
   type KeyboardEvent,
 } from "react";
-import { createPortal } from "react-dom";
 import { setGlobeComposeInputFocused } from "@/lib/globe/compose-input-focus";
 import { cn } from "@/lib/utils";
 
@@ -28,13 +25,9 @@ type GlobeContextConditionComposeInputProps = {
   className?: string;
 };
 
-type AnchorBox = { left: number; top: number; width: number; height: number };
-
 /**
- * IME-safe composer:
- * - Uncontrolled DOM value (no keystroke → React)
- * - Portaled out of the PromptFrame/PinBar render tree so parent storms
- *   cannot stall Korean composition
+ * IME-safe composer — uncontrolled DOM value (no keystroke → React).
+ * Inline (no portal): parent PromptFrame freezes setState while focused.
  */
 export const GlobeContextConditionComposeInput = memo(
   forwardRef<
@@ -45,48 +38,11 @@ export const GlobeContextConditionComposeInput = memo(
     ref,
   ) {
     const inputRef = useRef<HTMLInputElement>(null);
-    const slotRef = useRef<HTMLDivElement>(null);
     const busyRef = useRef(busy);
     busyRef.current = busy;
     const onSubmitRef = useRef(onSubmit);
     onSubmitRef.current = onSubmit;
     const [hasText, setHasText] = useState(false);
-    const [mounted, setMounted] = useState(false);
-    const [box, setBox] = useState<AnchorBox | null>(null);
-
-    useEffect(() => {
-      setMounted(true);
-    }, []);
-
-    const syncBox = useCallback(() => {
-      const slot = slotRef.current;
-      if (!slot) {
-        return;
-      }
-      const rect = slot.getBoundingClientRect();
-      setBox({
-        left: rect.left,
-        top: rect.top,
-        width: rect.width,
-        height: Math.max(rect.height, 40),
-      });
-    }, []);
-
-    useLayoutEffect(() => {
-      syncBox();
-    }, [syncBox]);
-
-    useEffect(() => {
-      const onResize = () => syncBox();
-      window.addEventListener("resize", onResize);
-      window.visualViewport?.addEventListener("resize", onResize);
-      window.visualViewport?.addEventListener("scroll", onResize);
-      return () => {
-        window.removeEventListener("resize", onResize);
-        window.visualViewport?.removeEventListener("resize", onResize);
-        window.visualViewport?.removeEventListener("scroll", onResize);
-      };
-    }, [syncBox]);
 
     useImperativeHandle(
       ref,
@@ -116,26 +72,13 @@ export const GlobeContextConditionComposeInput = memo(
       onSubmitRef.current();
     }, []);
 
-    const composer = (
+    return (
       <div
         className={cn(
           "flex items-center gap-2 rounded-xl bg-[#f5f5f7] px-3 py-2 ring-1 ring-black/[0.04]",
           className,
         )}
         data-globe-context-condition-compose-input
-        style={
-          box
-            ? {
-                position: "fixed",
-                left: box.left,
-                top: box.top,
-                width: box.width,
-                height: box.height,
-                zIndex: 80,
-                boxSizing: "border-box",
-              }
-            : undefined
-        }
       >
         <input
           ref={inputRef}
@@ -148,13 +91,11 @@ export const GlobeContextConditionComposeInput = memo(
           enterKeyHint="search"
           onFocus={() => {
             setGlobeComposeInputFocused(true);
-            syncBox();
           }}
           onBlur={() => {
             setGlobeComposeInputFocused(false);
           }}
           onInput={(event) => {
-            // Prefer onInput over onChange for IME — still no parent lift.
             const next = event.currentTarget.value.trim().length > 0;
             setHasText((prev) => (prev === next ? prev : next));
           }}
@@ -166,7 +107,6 @@ export const GlobeContextConditionComposeInput = memo(
         <button
           type="button"
           onMouseDown={(event) => {
-            // Keep focus on input so blur does not race submit.
             event.preventDefault();
           }}
           onClick={() => {
@@ -181,18 +121,6 @@ export const GlobeContextConditionComposeInput = memo(
           {busy ? "…" : submitLabel}
         </button>
       </div>
-    );
-
-    return (
-      <>
-        <div
-          ref={slotRef}
-          className="h-10 w-full"
-          aria-hidden
-          data-globe-context-condition-compose-slot
-        />
-        {mounted && box ? createPortal(composer, document.body) : null}
-      </>
     );
   }),
 );

@@ -370,8 +370,9 @@ export function GlobeContextConditionPromptFrame({
         setOntologyGraph(null);
         setRecommendations([]);
         setPalantirWorkspaceRevision((value) => value + 1);
-        setContextAgentSessionPhase("idle");
       }
+      // Always leave briefing → idle so the header is not stuck on 「말하는 중…」
+      setContextAgentSessionPhase("idle");
     }
     // Intentionally omit anchorLat/Lng/Name — geocode must not re-open the panel.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- openEventId gates restore

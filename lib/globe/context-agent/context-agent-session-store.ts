@@ -53,9 +53,10 @@ export function bindContextAgentSession(eventId: string): void {
   if (!id) {
     return;
   }
+  // Ask-first: open ready to listen — never land on sticky 「말하는 중…」 (briefing→ingest).
   emit({
     eventId: id,
-    workPhase: "briefing",
+    workPhase: "idle",
     activeSpec: null,
     patchPreview: null,
   });

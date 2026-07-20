@@ -56,7 +56,8 @@ export function resolveContextAgentPipelinePhase(input: {
     return "interpret";
   }
 
-  if (input.workPhase === "briefing" || input.workPhase === "collecting_context") {
+  // briefing = ready to talk, not actively listening — never sticky 「말하는 중…」
+  if (input.workPhase === "collecting_context") {
     return "ingest";
   }
   if (input.workPhase === "awaiting_human" || input.workPhase === "deciding") {

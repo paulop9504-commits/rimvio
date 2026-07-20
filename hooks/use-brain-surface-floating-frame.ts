@@ -56,8 +56,10 @@ function resolveInitialLayout(frameId: GlobeInfoFrameId): GlobeInfoFrameLayout {
 
 export function useBrainSurfaceFloatingFrame(frameId: GlobeInfoFrameId) {
   const preset = getGlobeInfoFramePreset(frameId);
+  // Deterministic SSR/first client paint — never read localStorage in useState
+  // init (that caused React #418 and broke the prompt frame).
   const [layout, setLayoutState] = useState<GlobeInfoFrameLayout>(() =>
-    resolveInitialLayout(frameId),
+    resolveDefaultGlobeInfoFrameLayout(frameId, { width: 390, height: 844 }),
   );
   const [dragging, setDragging] = useState(false);
   const [resizing, setResizing] = useState(false);
@@ -67,6 +69,12 @@ export function useBrainSurfaceFloatingFrame(frameId: GlobeInfoFrameId) {
   const resizeRef = useRef<ResizeSession | null>(null);
   const pinchRef = useRef<PinchSession | null>(null);
   const pinchActiveRef = useRef(false);
+
+  useEffect(() => {
+    const restored = resolveInitialLayout(frameId);
+    layoutRef.current = restored;
+    setLayoutState(restored);
+  }, [frameId]);
 
   useEffect(() => {
     layoutRef.current = layout;
