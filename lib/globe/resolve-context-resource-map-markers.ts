@@ -12,18 +12,25 @@ export type GlobeMapCalloutMarker = {
 const INFRA_PARTNER_LABELS = new Set([
   "google_places",
   "mock",
+  "demo",
   "naver_local",
   "multi_provider",
+  "liteapi",
+  "nuitee",
+  "nuitee connect",
 ]);
 
 const COORD_GROUP_PRECISION = 3;
 
-/** Hide infra provider ids from map pill copy. */
+/** Hide infra provider ids / partner marketing from map pill copy. */
 export function sanitizeMapMarkerSupportLabel(
   label: string | null | undefined,
 ): string | null {
   const raw = label?.trim();
-  if (!raw || INFRA_PARTNER_LABELS.has(raw)) {
+  if (!raw) {
+    return null;
+  }
+  if (INFRA_PARTNER_LABELS.has(raw.toLowerCase())) {
     return null;
   }
   return raw;

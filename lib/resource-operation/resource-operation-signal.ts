@@ -28,6 +28,21 @@ export function shouldShowResourceOperationSignal(
   return stage !== "dismissed" && stage !== "committed";
 }
 
+/**
+ * Map pins — only action-critical stages.
+ * searching/comparing belong in Field/queue, not left-chrome clutter.
+ */
+export function shouldShowResourceOperationSignalOnMap(
+  stage: ResourceOperationStage,
+): boolean {
+  return (
+    stage === "selected" ||
+    stage === "booking" ||
+    stage === "awaiting_pay" ||
+    stage === "failed"
+  );
+}
+
 export function resolveResourceOperationSignal(
   operation: ResourceOperation | null | undefined,
 ): ResourceOperationSignal | null {

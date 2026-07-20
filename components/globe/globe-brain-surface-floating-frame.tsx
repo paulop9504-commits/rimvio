@@ -17,6 +17,8 @@ export type GlobeBrainSurfaceFloatingFrameProps = {
   bodyClassName?: string;
   zIndex?: number;
   dragLabel?: string;
+  /** Top-left chrome slot (opacity etc.) — sibling of grab handle, not inside it. */
+  dragLeading?: ReactNode;
   onDoubleReset?: boolean;
   /** When false, host controls position; frame still resizes. */
   floating?: boolean;
@@ -31,6 +33,7 @@ export function GlobeBrainSurfaceFloatingFrame({
   bodyClassName,
   zIndex = 31,
   dragLabel = "프레임 이동",
+  dragLeading,
   onDoubleReset = true,
   floating = true,
   style,
@@ -65,31 +68,45 @@ export function GlobeBrainSurfaceFloatingFrame({
       )}
       style={{ height: layout.height }}
     >
-      <button
-        type="button"
-        aria-label={dragLabel}
+      <div
         className={cn(
-          "flex shrink-0 cursor-grab touch-none items-center justify-center gap-1 border-b py-1 active:cursor-grabbing",
+          "flex shrink-0 items-center gap-1.5 border-b px-2 py-1",
           isDark
             ? "border-white/10 bg-black/55 text-white/70"
             : "border-slate-200/70 bg-slate-50/95 text-slate-400",
         )}
-        onPointerDown={onDragHandlePointerDown}
-        onPointerMove={onDragHandlePointerMove}
-        onPointerUp={onDragHandlePointerUp}
-        onPointerCancel={onDragHandlePointerCancel}
-        onDoubleClick={
-          onDoubleReset
-            ? (event) => {
-                event.stopPropagation();
-                resetLayout();
-              }
-            : undefined
-        }
-        data-globe-brain-surface-frame-drag-handle
+        data-globe-brain-surface-frame-drag-chrome
       >
-        <GripHorizontal className="size-3.5 shrink-0" aria-hidden />
-      </button>
+        {dragLeading ? (
+          <div
+            className="relative z-[2] flex shrink-0 items-center"
+            onPointerDown={(event) => event.stopPropagation()}
+            data-globe-brain-surface-frame-drag-leading
+          >
+            {dragLeading}
+          </div>
+        ) : null}
+        <button
+          type="button"
+          aria-label={dragLabel}
+          className="flex min-w-0 flex-1 cursor-grab touch-none items-center justify-center gap-1 py-0.5 active:cursor-grabbing"
+          onPointerDown={onDragHandlePointerDown}
+          onPointerMove={onDragHandlePointerMove}
+          onPointerUp={onDragHandlePointerUp}
+          onPointerCancel={onDragHandlePointerCancel}
+          onDoubleClick={
+            onDoubleReset
+              ? (event) => {
+                  event.stopPropagation();
+                  resetLayout();
+                }
+              : undefined
+          }
+          data-globe-brain-surface-frame-drag-handle
+        >
+          <GripHorizontal className="size-3.5 shrink-0" aria-hidden />
+        </button>
+      </div>
 
       <div
         className={cn(

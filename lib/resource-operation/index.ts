@@ -18,6 +18,7 @@ export {
   mergeResourceOperationStage,
   resolveResourceOperationSignal,
   shouldShowResourceOperationSignal,
+  shouldShowResourceOperationSignalOnMap,
   type ResourceOperationSignal,
 } from "@/lib/resource-operation/resource-operation-signal";
 export {

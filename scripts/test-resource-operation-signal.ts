@@ -70,4 +70,23 @@ assert.equal(resume?.contextEventId, "evt-1");
 
 assert.equal(mergeResourceOperationStage("booking", "searching"), "booking");
 
+const compareMarker: GlobeLodgingMapMarker = {
+  ...marker,
+  id: "lodging:test-compare",
+  resourceId: "evt-1:lodging:hotel-compare",
+};
+upsertResourceOperation({
+  contextEventId: "evt-1",
+  resourceId: compareMarker.resourceId,
+  domain: "lodging",
+  label: compareMarker.label,
+  stage: "comparing",
+});
+const comparingOnMap = applyLodgingOperationSignal(compareMarker);
+assert.equal(
+  comparingOnMap.operationSignalLabel,
+  null,
+  "comparing stays off the map (Field/queue only)",
+);
+
 console.log("test-resource-operation-signal: ok");

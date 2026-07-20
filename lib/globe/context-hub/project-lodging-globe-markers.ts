@@ -135,8 +135,12 @@ export function projectLodgingGlobeMarkers(input: {
         ghost?.stayWindow ??
         null,
     );
+    const priceLabel =
+      payload?.priceKrw != null && Number.isFinite(payload.priceKrw)
+        ? `₩${Math.round(payload.priceKrw).toLocaleString("ko-KR")}`
+        : null;
     const supportDetail = sanitizeMapMarkerSupportLabel(
-      payload?.partnerLabel?.trim() || entry.resource.shortLabel?.trim() || null,
+      priceLabel || entry.resource.shortLabel?.trim() || null,
     );
     const supportLabel = [stayBadgeLabel, supportDetail].filter(Boolean).join(" · ") || null;
     const explanation =

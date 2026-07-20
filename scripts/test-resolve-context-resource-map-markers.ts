@@ -8,6 +8,8 @@ import {
 } from "../lib/globe/resolve-context-resource-map-markers";
 
 assert.equal(sanitizeMapMarkerSupportLabel("google_places"), null);
+assert.equal(sanitizeMapMarkerSupportLabel("Nuitee Connect"), null);
+assert.equal(sanitizeMapMarkerSupportLabel("demo"), null);
 assert.equal(sanitizeMapMarkerSupportLabel("대전역 도보 5분"), "대전역 도보 5분");
 assert.equal(sanitizeOntologyMapBadgeLabel("숙소 노드"), "숙소");
 

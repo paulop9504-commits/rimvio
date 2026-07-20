@@ -109,7 +109,11 @@ function run() {
   assert.ok(projectedMarker, "daejeon lodging marker is decorated on the map");
   assert.equal(projectedMarker?.ontologyBadgeLabel, "숙소");
   assert.equal(projectedMarker?.virtualCandidate, true);
-  assert.match(projectedMarker?.discoveryPriceLabel ?? "", /대전역 도보/u);
+  assert.match(
+    projectedMarker?.discoveryPriceLabel ?? "",
+    /₩|대전역 도보/u,
+    "map support shows price or walk hint — never partner marketing",
+  );
   assert.match(
     projectedMarker?.stayBadgeLabel ?? "",
     /8월 20일-22일 · 2박/u,
