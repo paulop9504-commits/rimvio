@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
 import type { RefObject } from "react";
 import { toast } from "sonner";
@@ -177,8 +177,8 @@ export type GlobeContextConditionPromptFrameProps = {
   className?: string;
 };
 
-/** Context-bound execution layer ??talk thread + globe apply (Cursor-style). */
-export function GlobeContextConditionPromptFrame({
+/** Context-bound execution layer - talk thread + globe apply (Cursor-style). */
+export const GlobeContextConditionPromptFrame = memo(function GlobeContextConditionPromptFrame({
   open,
   event,
   anchorPlaceId,
@@ -1523,4 +1523,4 @@ export function GlobeContextConditionPromptFrame({
       </div>
     </GlobeBrainSurfaceFloatingFrame>
   );
-}
+});

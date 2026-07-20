@@ -1241,6 +1241,24 @@ function GlobeHomeBody() {
   );
   const contextConditionPromptLat = contextConditionPanelCoords?.lat ?? 34.6937;
   const contextConditionPromptLng = contextConditionPanelCoords?.lng ?? 135.5023;
+  // Freeze GPS props for PromptFrame — live ticks were re-rendering PinBar (~3k lines)
+  // and stalling Korean IME by ~3s per glyph.
+  const promptUserLatLngRef = useRef<{ lat: number | null; lng: number | null }>({
+    lat: null,
+    lng: null,
+  });
+  if (!contextConditionPromptOpen) {
+    promptUserLatLngRef.current = {
+      lat: liveLocation?.lat ?? null,
+      lng: liveLocation?.lng ?? null,
+    };
+  }
+  const promptUserLat = contextConditionPromptOpen
+    ? promptUserLatLngRef.current.lat
+    : (liveLocation?.lat ?? null);
+  const promptUserLng = contextConditionPromptOpen
+    ? promptUserLatLngRef.current.lng
+    : (liveLocation?.lng ?? null);
 
   const activeContextProjectionManifest = useMemo(() => {
     void projectionRevision;
@@ -5269,8 +5287,8 @@ function GlobeHomeBody() {
         }
         anchorLat={contextConditionPromptLat}
         anchorLng={contextConditionPromptLng}
-        userLat={liveLocation?.lat ?? null}
-        userLng={liveLocation?.lng ?? null}
+        userLat={promptUserLat}
+        userLng={promptUserLng}
         globeRef={globeRef}
         onClose={dismissContextAgentPanel}
       />

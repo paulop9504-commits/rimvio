@@ -6,6 +6,10 @@ import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-
 import { useGlobePinScreenAnchor } from "@/hooks/use-globe-pin-screen-anchor";
 import { RIMVIO_ACTION, RIMVIO_INK } from "@/lib/design/rimvio-ontology";
 import {
+  isGlobeComposeInputFocused,
+  subscribeGlobeComposeInputFocus,
+} from "@/lib/globe/compose-input-focus";
+import {
   readGlobeInfoFrameLayout,
   type GlobeInfoFrameLayout,
 } from "@/lib/globe/brain-surface-floating-frame-layout";
@@ -43,12 +47,16 @@ function frameLayoutEqual(
 }
 
 function isComposeInputFocused(): boolean {
+  if (isGlobeComposeInputFocused()) {
+    return true;
+  }
   const active = document.activeElement;
   if (!(active instanceof HTMLElement)) {
     return false;
   }
   return Boolean(
     active.closest("[data-globe-context-condition-compose-input]") ||
+      active.closest("[data-globe-compose-island-host]") ||
       active.closest("[data-globe-context-condition-pin-bar]"),
   );
 }
@@ -81,9 +89,11 @@ export function GlobeContextAgentConnector({
     syncFocus();
     document.addEventListener("focusin", syncFocus);
     document.addEventListener("focusout", syncFocus);
+    const unsub = subscribeGlobeComposeInputFocus(syncFocus);
     return () => {
       document.removeEventListener("focusin", syncFocus);
       document.removeEventListener("focusout", syncFocus);
+      unsub();
     };
   }, [visible]);
 

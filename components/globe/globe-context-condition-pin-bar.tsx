@@ -13,12 +13,12 @@ import {
   useState,
 } from "react";
 import { toast } from "sonner";
-import type { GlobeContextConditionComposeInputHandle } from "@/components/globe/globe-context-condition-compose-input";
 import {
   mountGlobeComposeIsland,
   readGlobeComposeIslandHandle,
   unmountGlobeComposeIsland,
   updateGlobeComposeIsland,
+  type GlobeComposeIslandHandle,
 } from "@/components/globe/globe-context-condition-compose-island";
 import { GlobeLodgingBookingSlotChips } from "@/components/globe/globe-lodging-booking-slot-chips";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
@@ -456,7 +456,7 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
   const busyRef = useRef(false);
   busyRef.current = busy;
   /** Leaf composer — keystrokes stay off this ~3k-line tree. */
-  const composeInputRef = useRef<GlobeContextConditionComposeInputHandle>(null);
+  const composeInputRef = useRef<GlobeComposeIslandHandle | null>(null);
   const readComposerMessage = useCallback(
     () => composeInputRef.current?.getValue() ?? "",
     [],

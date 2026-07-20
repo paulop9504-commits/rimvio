@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from "react";
 import {
+  isGlobeComposeInputFocused,
+  subscribeGlobeComposeInputFocus,
+} from "@/lib/globe/compose-input-focus";
+import {
   getLiveLocationSnapshot,
   subscribeLiveLocation,
 } from "@/lib/location-ping/live-location-service";
@@ -13,7 +17,23 @@ export function useLiveLocationSnapshot(): LiveLocationSnapshot | null {
     getLiveLocationSnapshot(),
   );
 
-  useEffect(() => subscribeLiveLocation(setSnapshot), []);
+  useEffect(() => {
+    return subscribeLiveLocation((next) => {
+      // GPS ticks must not re-render Globe home while Korean IME owns the thread.
+      if (isGlobeComposeInputFocused()) {
+        return;
+      }
+      setSnapshot(next);
+    });
+  }, []);
+
+  useEffect(() => {
+    return subscribeGlobeComposeInputFocus((focused) => {
+      if (!focused) {
+        setSnapshot(getLiveLocationSnapshot());
+      }
+    });
+  }, []);
 
   return snapshot;
 }

@@ -1,16 +1,11 @@
 "use client";
 
 /**
- * Detached compose island — own React root under document.body.
- * Parent PromptFrame/PinBar can storm-reconcile without touching IME.
+ * Pure-DOM compose island — zero React while typing.
+ * Parent PinBar/PromptFrame storms cannot stall Korean IME.
  */
 
-import { createRoot, type Root } from "react-dom/client";
-import {
-  GlobeContextConditionComposeInput,
-  type GlobeContextConditionComposeInputHandle,
-} from "@/components/globe/globe-context-condition-compose-input";
-import { createRef } from "react";
+import { setGlobeComposeInputFocused } from "@/lib/globe/compose-input-focus";
 
 type IslandProps = {
   busy: boolean;
@@ -19,12 +14,13 @@ type IslandProps = {
   onSubmit: () => void;
 };
 
-let root: Root | null = null;
 let host: HTMLDivElement | null = null;
 let slot: HTMLElement | null = null;
+let inputEl: HTMLInputElement | null = null;
+let buttonEl: HTMLButtonElement | null = null;
 let props: IslandProps | null = null;
 let resizeObserver: ResizeObserver | null = null;
-const handleRef = createRef<GlobeContextConditionComposeInputHandle>();
+let busy = false;
 
 function syncHostBox(): void {
   if (!host || !slot) {
@@ -39,31 +35,29 @@ function syncHostBox(): void {
   host.style.visibility = "visible";
   host.style.pointerEvents = "auto";
   host.style.position = "fixed";
-  host.style.left = `${rect.left}px`;
-  host.style.top = `${rect.top}px`;
-  host.style.width = `${rect.width}px`;
-  host.style.height = `${Math.max(rect.height, 40)}px`;
+  host.style.left = `${Math.round(rect.left)}px`;
+  host.style.top = `${Math.round(rect.top)}px`;
+  host.style.width = `${Math.round(rect.width)}px`;
+  host.style.height = `${Math.max(Math.round(rect.height), 40)}px`;
   host.style.zIndex = "90";
   host.style.boxSizing = "border-box";
 }
 
-function renderIsland(): void {
-  if (!root || !props) {
+function syncButtonEnabled(): void {
+  if (!buttonEl || !inputEl) {
     return;
   }
-  root.render(
-    <GlobeContextConditionComposeInput
-      ref={handleRef}
-      busy={props.busy}
-      placeholder={props.placeholder}
-      submitLabel={props.submitLabel}
-      onSubmit={props.onSubmit}
-      className="h-full"
-    />,
-  );
+  const hasText = inputEl.value.trim().length > 0;
+  buttonEl.disabled = busy || !hasText;
+  buttonEl.style.opacity = buttonEl.disabled ? "0.4" : "1";
+  buttonEl.textContent = busy ? "…" : (props?.submitLabel ?? "찾기");
 }
 
 function onViewportChange(): void {
+  // Never move the input while IME is composing — layout thrash stalls glyphs.
+  if (document.activeElement === inputEl) {
+    return;
+  }
   syncHostBox();
 }
 
@@ -73,65 +67,167 @@ function disposeIslandHost(): void {
   window.removeEventListener("resize", onViewportChange);
   window.visualViewport?.removeEventListener("resize", onViewportChange);
   window.visualViewport?.removeEventListener("scroll", onViewportChange);
-  try {
-    root?.unmount();
-  } catch {
-    // ignore double-unmount after hydration recovery
-  }
-  root = null;
+  setGlobeComposeInputFocused(false);
   host?.remove();
   host = null;
   slot = null;
+  inputEl = null;
+  buttonEl = null;
   props = null;
+  busy = false;
+}
+
+function buildIslandDom(next: IslandProps): void {
+  if (!host) {
+    return;
+  }
+  host.replaceChildren();
+  host.style.display = "flex";
+  host.style.alignItems = "center";
+  host.style.gap = "8px";
+  host.style.borderRadius = "12px";
+  host.style.background = "#f5f5f7";
+  host.style.padding = "8px 12px";
+  host.style.boxShadow = "inset 0 0 0 1px rgba(0,0,0,0.04)";
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.autocomplete = "off";
+  input.autocapitalize = "off";
+  input.spellcheck = false;
+  input.enterKeyHint = "search";
+  input.placeholder = next.placeholder;
+  input.setAttribute("aria-label", next.placeholder);
+  input.style.flex = "1";
+  input.style.minWidth = "0";
+  input.style.border = "0";
+  input.style.outline = "none";
+  input.style.background = "transparent";
+  input.style.fontSize = "13px";
+  input.style.color = "#1d1d1f";
+  input.dataset.globeContextConditionComposeInput = "true";
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = next.submitLabel;
+  button.style.flexShrink = "0";
+  button.style.borderRadius = "8px";
+  button.style.background = "#1d1d1f";
+  button.style.color = "#fff";
+  button.style.fontSize = "11px";
+  button.style.fontWeight = "600";
+  button.style.padding = "4px 10px";
+  button.style.border = "0";
+  button.style.cursor = "pointer";
+
+  input.addEventListener("focus", () => {
+    setGlobeComposeInputFocused(true);
+  });
+  input.addEventListener("blur", () => {
+    setGlobeComposeInputFocused(false);
+  });
+  input.addEventListener("input", () => {
+    syncButtonEnabled();
+  });
+  input.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") {
+      return;
+    }
+    if (event.isComposing || event.keyCode === 229) {
+      return;
+    }
+    event.preventDefault();
+    if (busy || !input.value.trim()) {
+      return;
+    }
+    props?.onSubmit();
+    input.blur();
+  });
+  button.addEventListener("mousedown", (event) => {
+    event.preventDefault();
+  });
+  button.addEventListener("click", () => {
+    if (busy || !input.value.trim()) {
+      return;
+    }
+    props?.onSubmit();
+    input.blur();
+  });
+
+  host.append(input, button);
+  inputEl = input;
+  buttonEl = button;
+  syncButtonEnabled();
 }
 
 export function mountGlobeComposeIsland(
   slotEl: HTMLElement,
   next: IslandProps,
 ): void {
-  // Always remount cleanly — orphan hosts after #418 remount broke the composer.
-  if (host || root) {
+  if (host) {
     disposeIslandHost();
   }
 
   slot = slotEl;
   props = next;
+  busy = next.busy;
 
   host = document.createElement("div");
   host.setAttribute("data-globe-compose-island-host", "true");
+  host.setAttribute("data-globe-context-condition-compose-input", "true");
   document.body.appendChild(host);
-  root = createRoot(host);
+
   window.addEventListener("resize", onViewportChange);
   window.visualViewport?.addEventListener("resize", onViewportChange);
   window.visualViewport?.addEventListener("scroll", onViewportChange);
 
-  resizeObserver = new ResizeObserver(() => syncHostBox());
+  resizeObserver = new ResizeObserver(() => {
+    if (document.activeElement === inputEl) {
+      return;
+    }
+    syncHostBox();
+  });
   resizeObserver.observe(slotEl);
 
+  buildIslandDom(next);
   syncHostBox();
-  renderIsland();
 }
 
 export function updateGlobeComposeIsland(partial: Partial<IslandProps>): void {
-  if (!props || !root) {
+  if (!props) {
     return;
   }
-  const next = { ...props, ...partial };
-  const busyChanged = next.busy !== props.busy;
-  const copyChanged =
-    next.placeholder !== props.placeholder ||
-    next.submitLabel !== props.submitLabel;
-  props = next;
-  if (busyChanged || copyChanged || partial.onSubmit) {
-    renderIsland();
+  props = { ...props, ...partial };
+  if (typeof partial.busy === "boolean") {
+    busy = partial.busy;
   }
-  syncHostBox();
+  if (partial.placeholder && inputEl) {
+    inputEl.placeholder = partial.placeholder;
+    inputEl.setAttribute("aria-label", partial.placeholder);
+  }
+  syncButtonEnabled();
 }
 
 export function unmountGlobeComposeIsland(): void {
   disposeIslandHost();
 }
 
-export function readGlobeComposeIslandHandle(): GlobeContextConditionComposeInputHandle | null {
-  return handleRef.current;
+export type GlobeComposeIslandHandle = {
+  clear: () => void;
+  getValue: () => string;
+};
+
+export function readGlobeComposeIslandHandle(): GlobeComposeIslandHandle | null {
+  if (!inputEl) {
+    return null;
+  }
+  return {
+    clear: () => {
+      if (inputEl) {
+        inputEl.value = "";
+      }
+      syncButtonEnabled();
+    },
+    getValue: () => inputEl?.value ?? "",
+  };
 }
