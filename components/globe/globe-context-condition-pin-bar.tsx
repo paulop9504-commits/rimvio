@@ -7,19 +7,15 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 import { toast } from "sonner";
 import {
-  mountGlobeComposeIsland,
-  readGlobeComposeIslandHandle,
-  unmountGlobeComposeIsland,
-  updateGlobeComposeIsland,
-  type GlobeComposeIslandHandle,
-} from "@/components/globe/globe-context-condition-compose-island";
+  GlobeContextConditionComposeInput,
+  type GlobeContextConditionComposeInputHandle,
+} from "@/components/globe/globe-context-condition-compose-input";
 import { GlobeLodgingBookingSlotChips } from "@/components/globe/globe-lodging-booking-slot-chips";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { copy } from "@/lib/copy/human-ko";
@@ -456,7 +452,7 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
   const busyRef = useRef(false);
   busyRef.current = busy;
   /** Leaf composer — keystrokes stay off this ~3k-line tree. */
-  const composeInputRef = useRef<GlobeComposeIslandHandle | null>(null);
+  const composeInputRef = useRef<GlobeContextConditionComposeInputHandle>(null);
   const readComposerMessage = useCallback(
     () => composeInputRef.current?.getValue() ?? "",
     [],
@@ -3335,42 +3331,6 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
     );
   }, [contextEventId, lodgingSlotDefaults]);
 
-  const composeSlotRef = useRef<HTMLDivElement>(null);
-  const onComposeSubmitRef = useRef(onComposeSubmit);
-  onComposeSubmitRef.current = onComposeSubmit;
-  const composeBusyRef = useRef(busy);
-  composeBusyRef.current = busy;
-
-  useLayoutEffect(() => {
-    const slotEl = composeSlotRef.current;
-    if (!slotEl) {
-      return;
-    }
-    mountGlobeComposeIsland(slotEl, {
-      busy: composeBusyRef.current,
-      placeholder: copy.globe.contextConditionPinPlaceholder,
-      submitLabel: copy.globe.contextConditionPinSubmit,
-      onSubmit: () => {
-        onComposeSubmitRef.current();
-      },
-    });
-    return () => {
-      unmountGlobeComposeIsland();
-    };
-  }, [contextEventId]);
-
-  useEffect(() => {
-    updateGlobeComposeIsland({ busy });
-  }, [busy]);
-
-  // Keep legacy ref API pointed at the detached island handle.
-  useEffect(() => {
-    composeInputRef.current = {
-      clear: () => readGlobeComposeIslandHandle()?.clear(),
-      getValue: () => readGlobeComposeIslandHandle()?.getValue() ?? "",
-    };
-  });
-
   return (
     <div
       className={cn(className)}
@@ -3383,11 +3343,12 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
           onEdit={openLodgingIntakeEditInThread}
         />
       ) : null}
-      <div
-        ref={composeSlotRef}
-        className="h-10 w-full"
-        aria-hidden
-        data-globe-context-condition-compose-slot
+      <GlobeContextConditionComposeInput
+        ref={composeInputRef}
+        busy={busy}
+        placeholder={copy.globe.contextConditionPinPlaceholder}
+        submitLabel={copy.globe.contextConditionPinSubmit}
+        onSubmit={onComposeSubmit}
       />
 
       {lastBatch ? (

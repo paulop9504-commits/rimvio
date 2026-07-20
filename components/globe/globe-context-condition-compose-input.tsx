@@ -27,7 +27,7 @@ type GlobeContextConditionComposeInputProps = {
 
 /**
  * IME-safe composer — uncontrolled DOM value (no keystroke → React).
- * Mounted via detached createRoot island so PinBar/PromptFrame storms cannot stall IME.
+ * Renders inside the Context AI PromptFrame (not a body portal).
  */
 export const GlobeContextConditionComposeInput = memo(
   forwardRef<
