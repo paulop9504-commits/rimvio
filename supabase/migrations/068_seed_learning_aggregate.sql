@@ -1,5 +1,7 @@
 -- Shared (anonymous) seed-learning aggregate — community hit/miss for Dictionary promote.
 -- No user_id / session_id / raw utterance — tokens + counts only.
+-- Idempotent: safe to re-run in SQL Editor.
+
 create table if not exists public.seed_learning_aggregate (
   id uuid primary key default gen_random_uuid(),
   sector_id text not null,
@@ -19,6 +21,9 @@ create index if not exists seed_learning_aggregate_sector_idx
   on public.seed_learning_aggregate (sector_id, miss_count desc);
 
 alter table public.seed_learning_aggregate enable row level security;
+
+drop policy if exists "Public read seed learning aggregate"
+  on public.seed_learning_aggregate;
 
 create policy "Public read seed learning aggregate"
   on public.seed_learning_aggregate for select to anon, authenticated using (true);
