@@ -70,6 +70,7 @@ export const GlobeContextConditionComposeInput = memo(
         return;
       }
       onSubmitRef.current();
+      inputRef.current?.blur();
     }, []);
 
     return (
@@ -114,6 +115,8 @@ export const GlobeContextConditionComposeInput = memo(
               return;
             }
             onSubmitRef.current();
+            // Release focus so Agent thread updates are never gated mid-scout.
+            inputRef.current?.blur();
           }}
           disabled={busy || !hasText}
           className="shrink-0 rounded-lg bg-[#1d1d1f] px-2.5 py-1 text-[11px] font-semibold text-white active:scale-[0.98] disabled:opacity-40"

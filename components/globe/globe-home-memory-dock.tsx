@@ -73,6 +73,7 @@ export function GlobeHomeMemoryRecallProvider({
   children,
 }: GlobeHomeMemoryRecallProviderProps) {
   const [revision, setRevision] = useState(0);
+  const [hydrated, setHydrated] = useState(false);
   const [resume, setResume] = useState<GlobeResumeSession | null>(null);
   const [pinnedOpen, setPinnedOpen] = useState(false);
   const [composeFocused, setComposeFocused] = useState(false);
@@ -82,6 +83,9 @@ export function GlobeHomeMemoryRecallProvider({
     if (!enabled || typeof window === "undefined") {
       return;
     }
+    // After mount only  listLifeEventCandidates() reads localStorage and
+    // caused React #418 when hasContent flipped SSR empty ? client filled.
+    setHydrated(true);
     const bump = () => {
       setRevision((value) => value + 1);
       setResume(readGlobeResumeSession());
@@ -113,7 +117,7 @@ export function GlobeHomeMemoryRecallProvider({
   }, [onComposeBlur, onComposeFocus, registerComposeHandlers]);
 
   const recallTriggers = useMemo(() => {
-    if (!enabled || layerMode === "discovery") {
+    if (!hydrated || !enabled || layerMode === "discovery") {
       return [];
     }
     void revision;
@@ -122,10 +126,10 @@ export function GlobeHomeMemoryRecallProvider({
       layerMode,
       limit: 12,
     }).filter((row) => row.mediaPreviews?.length || row.kind === "time_recall");
-  }, [enabled, layerMode, revision]);
+  }, [enabled, hydrated, layerMode, revision]);
 
   const showResume = useMemo(() => {
-    if (!resume?.eventId?.trim()) {
+    if (!hydrated || !resume?.eventId?.trim()) {
       return false;
     }
     if (resume.kind === "photo") {
@@ -135,7 +139,7 @@ export function GlobeHomeMemoryRecallProvider({
       return false;
     }
     return Boolean(findLifeEventCandidate(resume.eventId));
-  }, [activeEventId, resume]);
+  }, [activeEventId, hydrated, resume]);
 
   const dismissResume = useCallback(() => {
     clearGlobeResumeSession();
@@ -217,7 +221,7 @@ export function GlobeHomeMemoryRecallPanel({ className }: { className?: string }
   );
 }
 
-/** Floor 1 recall line â€” visible when panel collapsed (not buried behind toggle). */
+/** Floor 1 recall line — visible when panel collapsed (not buried behind toggle). */
 export function GlobeHomeRecallOneLiner({ className }: { className?: string }) {
   const ctx = useMemoryRecallContext();
   if (!ctx?.hasContent || ctx.panelOpen) {
@@ -268,7 +272,7 @@ export function GlobeHomeRecallOneLiner({ className }: { className?: string }) {
   );
 }
 
-/** Pill â€” left-aligned above prompt, same column as the + button. */
+/** Pill — left-aligned above prompt, same column as the + button. */
 export function GlobeHomeMemoryRecallToggleAnchor({
   className,
   embedded = false,
@@ -293,7 +297,7 @@ export function GlobeHomeMemoryRecallToggleAnchor({
   );
 }
 
-/** Back-compat wrapper â€” prefer Provider + Panel + ToggleAnchor. */
+/** Back-compat wrapper — prefer Provider + Panel + ToggleAnchor. */
 export type GlobeHomeMemoryDockProps = Omit<GlobeHomeMemoryRecallProviderProps, "children"> & {
   className?: string;
 };

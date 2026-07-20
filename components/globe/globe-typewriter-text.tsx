@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useTypewriterText } from "@/hooks/use-typewriter-text";
 import { rimvioAssistantTypewriterCursorClass } from "@/lib/design/globe-assistant-surface";
 import { cn } from "@/lib/utils";
@@ -27,13 +27,21 @@ export function GlobeTypewriterText({
 }: GlobeTypewriterTextProps) {
   const line = text.trim();
   const { displayed, complete } = useTypewriterText(line, { cps, enabled });
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+  const firedRef = useRef(false);
 
   useEffect(() => {
-    if (!line || !complete) {
+    firedRef.current = false;
+  }, [line]);
+
+  useEffect(() => {
+    if (!line || !complete || firedRef.current) {
       return;
     }
-    onComplete?.();
-  }, [complete, line, onComplete]);
+    firedRef.current = true;
+    onCompleteRef.current?.();
+  }, [complete, line]);
 
   if (!line) {
     return null;

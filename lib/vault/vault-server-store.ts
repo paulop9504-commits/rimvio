@@ -35,7 +35,24 @@ export async function ensureUserVault(
     p_user_id: userId,
   });
   if (rpcError) {
-    throw new Error(rpcError.message);
+    const message = rpcError.message ?? "";
+    // Service-role clients have no auth.uid() — RPC raises "forbidden".
+    // Direct upsert works when RLS is bypassed (service role) or owner session.
+    const canFallback =
+      /forbidden/i.test(message) || /permission|policy|jwt/i.test(message);
+    if (!canFallback) {
+      throw new Error(message);
+    }
+    const { error: upsertError } = await supabase.from("user_vaults").upsert(
+      {
+        user_id: userId,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id" },
+    );
+    if (upsertError) {
+      throw new Error(upsertError.message);
+    }
   }
 
   const { data, error } = await supabase

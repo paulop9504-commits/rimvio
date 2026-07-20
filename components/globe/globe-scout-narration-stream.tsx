@@ -147,6 +147,27 @@ export function GlobeScoutNarrationStream({
     setElapsedSec(0);
   }, [payload.understandingKo, reducedMotion]); // eslint-disable-line react-hooks/exhaustive-deps -- steps grow live
 
+  // Watchdog — if typewriter / remount stalls mid-line, flush so AGENT does not hang.
+  useEffect(() => {
+    if (reducedMotion || typedLineCount >= lines.length) {
+      return;
+    }
+    const id = window.setTimeout(() => {
+      setTypedLineCount(lines.length);
+    }, 4500);
+    return () => window.clearTimeout(id);
+  }, [typedLineCount, lines.length, reducedMotion, payload.understandingKo]);
+
+  // Scout finished while typing — show full understanding immediately.
+  useEffect(() => {
+    if (running || reducedMotion) {
+      return;
+    }
+    if (typedLineCount < lines.length) {
+      setTypedLineCount(lines.length);
+    }
+  }, [running, reducedMotion, typedLineCount, lines.length]);
+
   useEffect(() => {
     if (!running || reducedMotion) {
       return;

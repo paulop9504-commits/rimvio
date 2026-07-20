@@ -31,6 +31,26 @@ type VaultGetBody = {
   hint?: string;
 };
 
+/** Survives AuthGate remounts — once vault is down, stop hammering /api/vault. */
+const vaultDownByUser = new Map<string, number>();
+const VAULT_DOWN_TTL_MS = 5 * 60 * 1000;
+
+function isVaultLatchedDown(userId: string): boolean {
+  const until = vaultDownByUser.get(userId);
+  if (until == null) {
+    return false;
+  }
+  if (Date.now() > until) {
+    vaultDownByUser.delete(userId);
+    return false;
+  }
+  return true;
+}
+
+function latchVaultDown(userId: string): void {
+  vaultDownByUser.set(userId, Date.now() + VAULT_DOWN_TTL_MS);
+}
+
 /** Client hook — ensure encrypted personal vault after login. */
 export function usePersonalVault(enabled = true): PersonalVaultState {
   const { user } = useAuth();
@@ -44,17 +64,24 @@ export function usePersonalVault(enabled = true): PersonalVaultState {
   const inFlightRef = useRef(false);
 
   useEffect(() => {
-    setVaultAvailable(true);
     bootOnceRef.current = null;
+    if (user?.id && isVaultLatchedDown(user.id)) {
+      setVaultAvailable(false);
+      return;
+    }
+    setVaultAvailable(true);
   }, [user?.id]);
 
   const applyUnavailable = useCallback(() => {
+    if (user?.id) {
+      latchVaultDown(user.id);
+    }
     setPersisted(false);
     setVault(null);
     setObjects([]);
     setError(null);
     setVaultAvailable(false);
-  }, []);
+  }, [user?.id]);
 
   const refresh = useCallback(async () => {
     if (!enabled || !user?.id) {

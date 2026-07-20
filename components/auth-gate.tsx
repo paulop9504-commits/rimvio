@@ -34,11 +34,11 @@ export function AuthGate({ children }: AuthGateProps) {
   const { user, loading } = useAuth();
 
   if (!isAuthRequired()) {
-    return <div key={pathname}>{children}</div>;
+    return <>{children}</>;
   }
 
   if (isAuthGateBypass(pathname)) {
-    return <div key={pathname}>{children}</div>;
+    return <>{children}</>;
   }
 
   if (loading) {
@@ -54,9 +54,10 @@ export function AuthGate({ children }: AuthGateProps) {
   }
 
   return (
-    <div key={pathname}>
+    <>
+      {/* Outside pathname remount — vault boot circuit breaker must survive nav. */}
       <MaterializeVaultSyncMount />
-      {children}
-    </div>
+      <div key={pathname}>{children}</div>
+    </>
   );
 }

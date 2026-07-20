@@ -39,10 +39,8 @@ export async function GET(request: Request) {
   try {
     const db = resolveVaultClient(supabase);
     const payload = await readVaultObjectPayload(db, userId, objectKey);
-    if (payload == null) {
-      return NextResponse.json({ error: "not_found" }, { status: 404 });
-    }
-    return NextResponse.json({ objectKey, payload });
+    // Empty keys are normal — return 200 null so clients/DevTools don't storm 404s.
+    return NextResponse.json({ objectKey, payload: payload ?? null });
   } catch (error) {
     const message = error instanceof Error ? error.message : "vault_read_failed";
     if (isVaultMigrationMissingError(message)) {

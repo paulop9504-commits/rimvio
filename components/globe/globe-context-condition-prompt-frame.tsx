@@ -540,9 +540,8 @@ export function GlobeContextConditionPromptFrame({
         kind: "text",
         text: line,
       });
-      if (!isGlobeComposeInputFocused()) {
-        setComposeThread(readContextAgentComposeThread(event.id));
-      }
+      // Thread must always paint — freezing here left AGENT stuck on "working".
+      setComposeThread(readContextAgentComposeThread(event.id));
     };
     syncInterpretation();
     return subscribeContextAgentInterpretation(syncInterpretation);
@@ -553,9 +552,8 @@ export function GlobeContextConditionPromptFrame({
       return;
     }
     const syncThread = () => {
-      if (isGlobeComposeInputFocused()) {
-        return;
-      }
+      // Uncontrolled compose input tolerates parent re-renders; never gate the
+      // thread or Narration status stays "running" forever while focused.
       setComposeThread(readContextAgentComposeThread(event.id));
     };
     syncThread();
@@ -566,7 +564,6 @@ export function GlobeContextConditionPromptFrame({
     });
     const unsubFocus = subscribeGlobeComposeInputFocus((focused) => {
       if (!focused) {
-        setComposeThread(readContextAgentComposeThread(event.id));
         setRuntime(readContextAgentRuntimeState());
         setAgentSession(readContextAgentSessionState());
       }
