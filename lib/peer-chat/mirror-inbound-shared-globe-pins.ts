@@ -38,6 +38,47 @@ function writeMirroredPinIds(ids: ReadonlySet<string>): void {
   localStorage.setItem(MIRRORED_PIN_IDS_KEY, JSON.stringify(list));
 }
 
+/** Friend DM pin carries bridgeEventId → pull host shared media reel. */
+function scheduleBridgeMediaPull(input: {
+  bridgeEventId: string;
+  peerThreadId: string;
+  viewerUserId: string;
+}): void {
+  const bridgeEventId = input.bridgeEventId.trim();
+  if (!bridgeEventId) {
+    return;
+  }
+  void import("@/lib/experience-bridge/experience-bridge-client")
+    .then(async ({ fetchExperienceBridgeRemote, acceptExperienceBridgeRemote }) => {
+      let state = null as Awaited<
+        ReturnType<typeof fetchExperienceBridgeRemote>
+      >["state"];
+      try {
+        const accepted = await acceptExperienceBridgeRemote(bridgeEventId);
+        state = accepted.state;
+      } catch {
+        const fetched = await fetchExperienceBridgeRemote(bridgeEventId, {
+          fresh: true,
+        });
+        state = fetched.state;
+      }
+      if (!state) {
+        return;
+      }
+      const { completeBridgeInviteAccept } = await import(
+        "@/lib/experience-bridge/complete-bridge-invite-accept"
+      );
+      await completeBridgeInviteAccept({
+        state,
+        peerThreadId: input.peerThreadId,
+        viewerUserId: input.viewerUserId,
+      });
+    })
+    .catch(() => {
+      /* pin mirror still succeeded — bridge reel is best-effort */
+    });
+}
+
 /** Recipient — friend DM globe pin → private map pin (idempotent). */
 export function mirrorInboundSharedGlobePinIfNeeded(input: {
   pin: SharedGlobePin;
@@ -68,6 +109,16 @@ export function mirrorInboundSharedGlobePinIfNeeded(input: {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event(EVENT_CANDIDATES_UPDATED));
   }
+
+  const bridgeEventId = input.pin.payload.bridgeEventId?.trim();
+  if (bridgeEventId) {
+    scheduleBridgeMediaPull({
+      bridgeEventId,
+      peerThreadId: input.pin.peerThreadId,
+      viewerUserId: input.viewerUserId,
+    });
+  }
+
   return true;
 }
 

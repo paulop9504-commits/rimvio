@@ -42,7 +42,8 @@ import { buildPhotoIngestUndoPayload } from "@/lib/globe/globe-photo-ingest-undo
 import type { GlobePhotoIngestUndoPayload } from "@/lib/globe/globe-photo-ingest-undo";
 import type { GlobeKnowledgePlacementPending } from "@/lib/globe/globe-knowledge-placement-pending";
 import { maybeOfferKnowledgePlacementAfterCapture } from "@/lib/globe/offer-knowledge-placement-after-capture";
-import { findLifeEventCandidate } from "@/lib/life-read-model";
+import { findLifeEventCandidate, EVENT_CANDIDATES_UPDATED } from "@/lib/life-read-model";
+import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
 
 export type GlobePhotoPlaceWalkthroughProps = {
   visible: boolean;
@@ -215,13 +216,32 @@ export function GlobePhotoPlaceWalkthrough({
     timeHint && timeHint !== "날짜 미확인" && dateHint?.capturedAtIso,
   );
 
+  const [shareEventTick, setShareEventTick] = useState(0);
+
   const shareEvent = useMemo(() => {
     const eventId = committedShare?.eventId?.trim();
     if (!eventId) {
       return null;
     }
-    return findLifeEventCandidate(eventId);
-  }, [committedShare?.eventId]);
+    void shareEventTick;
+    return (
+      findLifeEventCandidate(eventId) ?? recoverGlobeContextEventFromPin(eventId)
+    );
+  }, [committedShare?.eventId, shareEventTick]);
+
+  // Re-resolve share event when candidates update after commit race.
+  useEffect(() => {
+    if (step !== "share_people" || !committedShare?.eventId || shareEvent) {
+      return;
+    }
+    const onUpdate = () => setShareEventTick((n) => n + 1);
+    window.addEventListener(EVENT_CANDIDATES_UPDATED, onUpdate);
+    const poll = window.setInterval(onUpdate, 400);
+    return () => {
+      window.removeEventListener(EVENT_CANDIDATES_UPDATED, onUpdate);
+      window.clearInterval(poll);
+    };
+  }, [committedShare?.eventId, shareEvent, step]);
 
   const finalizeAfterShare = useCallback(() => {
     if (!committedShare) {
@@ -272,13 +292,15 @@ export function GlobePhotoPlaceWalkthrough({
     setStep(nextBranch?.branch === "case_a" ? "case_a" : "case_b");
   }, [workingDraft]);
 
+  // Only auto-skip after a long wait — user can still tap 「건너뛰기」.
+  // Never dismiss at 1.2s while event store is still catching up.
   useEffect(() => {
     if (step !== "share_people" || !committedShare || shareEvent) {
       return;
     }
     const timer = window.setTimeout(() => {
       finalizeAfterShare();
-    }, 1200);
+    }, 12_000);
     return () => window.clearTimeout(timer);
   }, [committedShare, finalizeAfterShare, shareEvent, step]);
 

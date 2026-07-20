@@ -4266,6 +4266,219 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   background: #bf5af2;
 }
 
+/* Visual Projection Engine — floating Reality Objects + Object Halo */
+.rimvio-globe-reality-object {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  transform: translateY(-6px);
+  filter: drop-shadow(0 6px 14px rgba(15, 23, 42, 0.18));
+  pointer-events: auto;
+}
+
+.rimvio-globe-reality-object[data-projection-tier="background"] {
+  opacity: 0.38;
+  transform: translateY(-2px) scale(0.86);
+  filter: none;
+}
+
+.rimvio-globe-reality-object__halo {
+  position: absolute;
+  z-index: 0;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 999px;
+  background: var(--rimvio-object-halo, rgba(142, 142, 147, 0.28));
+  filter: blur(10px);
+  opacity: 0.85;
+  pointer-events: none;
+  transform: translateY(4px);
+}
+
+.rimvio-globe-reality-object[data-object-lod="image"] .rimvio-globe-reality-object__halo {
+  width: 3.4rem;
+  height: 3.4rem;
+}
+
+.rimvio-globe-reality-object__shell {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 9.5rem;
+  padding: 0.28rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
+  backdrop-filter: blur(8px);
+}
+
+.rimvio-globe-reality-object[data-object-lod="glyph"] .rimvio-globe-reality-object__shell {
+  padding: 0.35rem 0.4rem;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.rimvio-globe-reality-object__glyph {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.rimvio-globe-reality-object__label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #1d1d1f;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 6.5rem;
+}
+
+.rimvio-globe-reality-object__frame {
+  display: block;
+  overflow: hidden;
+  border-radius: 0.55rem;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.16);
+}
+
+.rimvio-globe-reality-object[data-object-aspect="1:1"] .rimvio-globe-reality-object__frame {
+  width: 2.35rem;
+  height: 2.35rem;
+}
+
+.rimvio-globe-reality-object[data-object-aspect="16:9"] .rimvio-globe-reality-object__frame {
+  width: 3.1rem;
+  height: 1.75rem;
+}
+
+.rimvio-globe-reality-object[data-object-aspect="4:3"] .rimvio-globe-reality-object__frame {
+  width: 2.7rem;
+  height: 2.05rem;
+}
+
+.rimvio-globe-reality-object__cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Selective segmentation — YES only soft cutout (never mandatory nukki) */
+.rimvio-globe-reality-object[data-object-cutout] .rimvio-globe-reality-object__shell {
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  padding: 0.12rem;
+}
+
+.rimvio-globe-reality-object__frame[data-object-cutout="soft_blob"] {
+  border-radius: 999px;
+  -webkit-mask-image: radial-gradient(
+    closest-side at 50% 48%,
+    #000 62%,
+    transparent 100%
+  );
+  mask-image: radial-gradient(
+    closest-side at 50% 48%,
+    #000 62%,
+    transparent 100%
+  );
+  box-shadow: none;
+}
+
+.rimvio-globe-reality-object__frame[data-object-cutout="soft_pill"] {
+  border-radius: 0.85rem;
+  -webkit-mask-image: radial-gradient(
+    85% 78% at 50% 50%,
+    #000 58%,
+    transparent 100%
+  );
+  mask-image: radial-gradient(
+    85% 78% at 50% 50%,
+    #000 58%,
+    transparent 100%
+  );
+  box-shadow: none;
+}
+
+.rimvio-globe-reality-object__frame[data-object-cutout="soft_ellipse"] {
+  border-radius: 1rem;
+  -webkit-mask-image: radial-gradient(
+    92% 88% at 50% 50%,
+    #000 64%,
+    transparent 100%
+  );
+  mask-image: radial-gradient(
+    92% 88% at 50% 50%,
+    #000 64%,
+    transparent 100%
+  );
+  box-shadow: none;
+}
+
+.rimvio-globe-reality-object[data-object-cutout] .rimvio-globe-reality-object__cover {
+  filter: saturate(1.05) contrast(1.02);
+}
+
+.rimvio-globe-reality-object__support {
+  font-size: 0.55rem;
+  font-weight: 600;
+  color: #475569;
+  white-space: nowrap;
+}
+
+/* Context Bloom — attention over permanent graph lines */
+.rimvio-globe-reality-object[data-context-bloom="selected"] {
+  transform: translateY(-8px) scale(1.14);
+  z-index: 5;
+  filter: drop-shadow(0 8px 18px rgba(15, 23, 42, 0.22));
+}
+
+.rimvio-globe-reality-object[data-context-bloom="selected"] .rimvio-globe-reality-object__halo {
+  width: 3.6rem;
+  height: 3.6rem;
+  opacity: 1;
+  filter: blur(12px);
+  animation: rimvio-context-bloom-pulse 900ms ease-in-out infinite;
+}
+
+.rimvio-globe-reality-object[data-context-bloom="related"] {
+  animation: rimvio-context-bloom-in 420ms cubic-bezier(0.19, 1, 0.22, 1) both;
+  animation-delay: var(--rimvio-bloom-delay, 0ms);
+  z-index: 3;
+}
+
+.rimvio-globe-reality-object[data-context-bloom="related"] .rimvio-globe-reality-object__halo {
+  opacity: 0.95;
+  filter: blur(11px);
+}
+
+@keyframes rimvio-context-bloom-pulse {
+  0%,
+  100% {
+    transform: translateY(4px) scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translateY(4px) scale(1.12);
+    opacity: 1;
+  }
+}
+
+@keyframes rimvio-context-bloom-in {
+  from {
+    opacity: 0.35;
+    transform: translateY(-2px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-6px) scale(1.06);
+  }
+}
+
 .rimvio-globe-lodging-marker--popin {
   animation: rimvio-globe-pin-popout 420ms cubic-bezier(0.19, 1, 0.22, 1) both;
   transform-origin: center bottom;

@@ -1,4 +1,8 @@
 import type { IdentityVaultKind } from "@/lib/identity-vault/types";
+import {
+  resolveVaultWriteClientResult,
+  type VaultWriteApiBody,
+} from "@/lib/vault/vault-api-errors";
 
 export async function upsertIdentityVaultObjectClient(input: {
   objectKey: string;
@@ -16,18 +20,12 @@ export async function upsertIdentityVaultObjectClient(input: {
     }),
   });
 
-  if (!response.ok) {
-    let error = "vault_write_failed";
-    try {
-      const body = (await response.json()) as { error?: string };
-      if (body.error?.trim()) {
-        error = body.error.trim();
-      }
-    } catch {
-      /* ignore */
-    }
-    return { ok: false, error };
+  let body: VaultWriteApiBody = {};
+  try {
+    body = (await response.json()) as VaultWriteApiBody;
+  } catch {
+    /* empty body */
   }
 
-  return { ok: true };
+  return resolveVaultWriteClientResult(response.status, body);
 }

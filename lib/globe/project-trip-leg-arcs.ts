@@ -13,6 +13,11 @@ export type GlobeTripArc = {
   color: string;
   /** Selected context — thicker stroke on globe. */
   emphasis?: "focused" | "default";
+  /**
+   * Palantir-style signal link — dashed flow along the arc.
+   * Default trip legs stay solid.
+   */
+  linkStyle?: "signal";
 };
 
 export type TripLegBarProjection = {

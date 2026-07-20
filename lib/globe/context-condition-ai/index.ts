@@ -60,6 +60,7 @@ export {
 } from "@/lib/globe/context-condition-ai/globe-context-condition-panel-bridge";
 export {
   dismissContextConditionPinBatch,
+  dismissPriorLodgingContextConditionPins,
   listContextConditionPins,
   syncContextConditionPins,
 } from "@/lib/globe/context-condition-ai/sync-context-condition-pins";
@@ -132,6 +133,7 @@ export {
   writeScoutRevealPending,
 } from "@/lib/globe/context-condition-ai/context-condition-scout-reveal-pending-store";
 export { revealContextConditionScout } from "@/lib/globe/context-condition-ai/reveal-context-condition-scout";
+export { isScoutMapRevealUtterance } from "@/lib/globe/context-condition-ai/is-scout-map-reveal-utterance";
 export { pickTopLocalDiscoveryRows } from "@/lib/globe/context-condition-ai/pick-top-local-discovery-rows";
 export {
   applyQuestionChoice,

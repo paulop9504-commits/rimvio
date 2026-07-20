@@ -15,6 +15,8 @@ export type PeerGlobePinPayload = {
   note?: string | null;
   imageUrl?: string | null;
   mediaKind?: PeerGlobePinMediaKind | null;
+  /** Host Experience Bridge event — friend pulls shared media reel. */
+  bridgeEventId?: string | null;
 };
 
 export type SharedGlobePin = {

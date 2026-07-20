@@ -1,8 +1,9 @@
 import type { WorldGeoEntityId, WorldGeoNode } from "@/lib/reality-graph/types";
+import { FREQUENT_TRAVEL_GEO_NODES } from "@/lib/reality-graph/frequent-travel-geo";
 
 /**
- * Seed World Graph (Japan MVP). Catalog SSOT — not LLM memory.
- * Expand via normalized external geo imports later; keep ids stable.
+ * Seed World Graph (Japan · Korea travel MVP). Catalog SSOT — not LLM memory.
+ * Frequent stations/landmarks: `frequent-travel-geo.ts`. Keep ids stable.
  */
 export const WORLD_GEO_SEED: readonly WorldGeoNode[] = [
   {
@@ -183,6 +184,58 @@ export const WORLD_GEO_SEED: readonly WorldGeoNode[] = [
       aliases: ["osaka", "오사카", "大阪", "osaka prefecture", "오사카부"],
     },
     centroid: { lat: 34.6937, lng: 135.5023 },
+    boundary: null,
+    ianaTimeZone: "Asia/Tokyo",
+    currencyCode: "JPY",
+    primaryLanguage: "ja",
+  },
+  {
+    id: "geo:jp:osaka:namba-station",
+    kind: "poi",
+    parentId: "geo:jp:osaka",
+    labels: {
+      ko: "난바역",
+      en: "Namba Station",
+      local: "難波駅",
+      aliases: [
+        "난바역",
+        "난바",
+        "namba",
+        "namba station",
+        "難波",
+        "難波駅",
+        "なんば",
+        "난바 역",
+      ],
+    },
+    // APA Namba / Nankai Namba area
+    centroid: { lat: 34.6654, lng: 135.5019 },
+    boundary: null,
+    ianaTimeZone: "Asia/Tokyo",
+    currencyCode: "JPY",
+    primaryLanguage: "ja",
+  },
+  {
+    id: "geo:jp:osaka:umeda-station",
+    kind: "poi",
+    parentId: "geo:jp:osaka",
+    labels: {
+      ko: "우메다역",
+      en: "Umeda Station",
+      local: "梅田駅",
+      aliases: [
+        "우메다역",
+        "우메다",
+        "umeda",
+        "umeda station",
+        "梅田",
+        "梅田駅",
+        "うめだ",
+        "오사카역",
+        "osaka station",
+      ],
+    },
+    centroid: { lat: 34.7055, lng: 135.4983 },
     boundary: null,
     ianaTimeZone: "Asia/Tokyo",
     currencyCode: "JPY",
@@ -508,6 +561,7 @@ export const WORLD_GEO_SEED: readonly WorldGeoNode[] = [
     currencyCode: "KRW",
     primaryLanguage: "ko",
   },
+  ...FREQUENT_TRAVEL_GEO_NODES,
 ] as const;
 
 const BY_ID = new Map<WorldGeoEntityId, WorldGeoNode>(

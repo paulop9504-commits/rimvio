@@ -26,6 +26,15 @@ export type LocalDiscoveryActivitySubtype =
   | "nightlife"
   | "photo_spot";
 
+export type LocalDiscoveryCompanion = "solo" | "date" | "family" | "group";
+
+/** Soft Context Field hints — opaque flags (not user-facing copy). */
+export type LocalDiscoveryFieldHints = {
+  readonly weather?: "rain";
+  readonly crowd?: "no_wait";
+  readonly timeScope?: "today";
+};
+
 export type LocalDiscoveryActionSpec = {
   readonly version: 1;
   readonly resourceTypes: readonly LocalDiscoveryResourceType[];
@@ -54,6 +63,10 @@ export type LocalDiscoveryActionSpec = {
    * and merges into one reconstructed context, instead of a single keyword.
    */
   readonly activityCluster?: readonly string[] | null;
+  /** Companion Context Field — solo / date / family / group. */
+  readonly companion?: LocalDiscoveryCompanion | null;
+  /** Soft field hints (weather / crowd / time) — ranking bias later. */
+  readonly fieldHints?: LocalDiscoveryFieldHints | null;
 };
 
 export type LocalDiscoveryQuestionChoice = {

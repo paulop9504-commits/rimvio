@@ -18,9 +18,11 @@ export type RealityQueueItemKind =
   | "lodging"
   | "flight"
   | "eatery"
+  | "rental"
   | "itinerary"
   | "transit"
   | "finance"
+  | "review"
   | "calendar"
   | "other";
 
@@ -41,6 +43,7 @@ export type RealityOperationType =
   | "payment_prep"
   | "trade"
   | "message_draft"
+  | "review_gate"
   | "other";
 
 export type RealityOperationPreviewV1 = {
@@ -129,7 +132,38 @@ export type RealityControlSnapshotV1 = {
   /** True when ≥1 ready item and zero needs_review/running blockers for gate. */
   readonly canCommit: boolean;
   readonly primaryContextEventId: string | null;
+  /** Execution Inbox (결재함) — checklist before CEO Sign → Execute → Reality Commit. */
+  readonly executionInbox: ExecutionInboxV1 | null;
 };
+
+/** Checklist row in Execution Inbox — Cursor Diff analog before Commit. */
+export type ExecutionInboxCheckV1 = {
+  readonly id: string;
+  readonly labelKo: string;
+  readonly checked: boolean;
+  readonly kind: RealityQueueItemKind | "meta";
+  readonly operationId: string | null;
+};
+
+export type ExecutionInboxV1 = {
+  readonly version: 1;
+  readonly eyebrowKo: string;
+  readonly titleKo: string;
+  readonly projectLabelKo: string | null;
+  readonly checks: readonly ExecutionInboxCheckV1[];
+  /** All checks ✓ and canCommit path open. */
+  readonly readyForSign: boolean;
+  readonly stage: ExecutionInboxStage;
+};
+
+export type ExecutionInboxStage =
+  | "project_created"
+  | "exploring"
+  | "prep_complete"
+  | "inbox_ready"
+  | "signed"
+  | "executing"
+  | "committed";
 
 export function asQueueItem(operation: RealityOperationV1): RealityQueueItemV1 {
   return {

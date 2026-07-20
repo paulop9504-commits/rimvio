@@ -1,6 +1,6 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import type { GlobeLodgingMapMarker } from "@/lib/globe/context-hub/lodging-globe-marker-types";
-import { formatLodgingStayBadgeLabel } from "@/lib/globe/context-hub/lodging-stay-window";
+import { formatLodgingStayBadgeLabel, buildLodgingStayWindow } from "@/lib/globe/context-hub/lodging-stay-window";
 import { readLodgingPayloadFromResource } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import { selectPreferredLodgingImage } from "@/lib/globe/lodging/lodging-photo-fidelity";
 import type { RankedContextResource } from "@/lib/globe/resource/map-hub-service-to-resource";
@@ -14,6 +14,8 @@ import {
   sanitizeOntologyMapBadgeLabel,
 } from "@/lib/globe/resolve-context-resource-map-markers";
 import { hasExplicitMarkerThumbnail } from "@/lib/globe/brain-surface-marker-media";
+import { resolveRealityObjectCoverForPlace } from "@/lib/reality-object";
+import { resolveProjectedObjectVisual } from "@/lib/visual-projection";
 
 const LODGING_MARKER_ZOOM_LEVELS = new Set<GlobeDetailLevel>([
   "city",
@@ -90,15 +92,48 @@ export function projectLodgingGlobeMarkers(input: {
     }
 
     const payload = readLodgingPayloadFromResource(entry.resource);
-    const imageUrl = payload ? selectPreferredLodgingImage(payload) : null;
-    if (!hasExplicitMarkerThumbnail(imageUrl)) {
+    const inventoryImage = payload ? selectPreferredLodgingImage(payload) : null;
+    const inventoryImages = [
+      ...(inventoryImage ? [inventoryImage] : []),
+      ...((payload?.images ?? []).filter((url) => url && url !== inventoryImage) as string[]),
+    ];
+    const preferred = resolveRealityObjectCoverForPlace({
+      event: input.event,
+      placeId: payload?.placeId,
+      fallback: inventoryImage,
+    });
+    const visual = resolveProjectedObjectVisual({
+      event: input.event,
+      placeId: payload?.placeId,
+      title: entry.resource.label,
+      pinKind: "lodging",
+      imageUrls: inventoryImages,
+      preferredUrl: preferred,
+    });
+    const imageUrl = visual.thumbnailUrl;
+    if (imageUrl && !hasExplicitMarkerThumbnail(imageUrl)) {
+      continue;
+    }
+    if (visual.projectionTier === "hidden") {
       continue;
     }
     const isMain = entry.resource.resourceId === activeId;
     const ghost = payload?.placeId ? ghostByPlaceId.get(payload.placeId.trim()) ?? null : null;
     const presentation = ghost ? resolveProjectionNodePresentation(ghost) : null;
     const stayBadgeLabel = formatLodgingStayBadgeLabel(
-      payload?.stayWindow ?? ghost?.stayWindow ?? null,
+      buildLodgingStayWindow({
+        event: input.event,
+        row: payload
+          ? {
+              checkInIso: payload.checkInIso ?? null,
+              checkOutIso: payload.checkOutIso ?? null,
+              stayWindow: payload.stayWindow ?? null,
+            }
+          : null,
+      }) ??
+        payload?.stayWindow ??
+        ghost?.stayWindow ??
+        null,
     );
     const supportDetail = sanitizeMapMarkerSupportLabel(
       payload?.partnerLabel?.trim() || entry.resource.shortLabel?.trim() || null,
@@ -128,7 +163,13 @@ export function projectLodgingGlobeMarkers(input: {
       discoveryShortLabel: extractMapPillLabel(entry.resource.label),
       discoveryPriceLabel: supportDetail,
       stayBadgeLabel,
-      discoveryAccent: presentation?.discoveryAccent ?? "blue",
+      discoveryAccent:
+        presentation?.discoveryAccent ?? visual.halo.discoveryAccent,
+      objectGlyph: visual.halo.glyph,
+      objectHaloFamily: visual.halo.family,
+      projectionTier: visual.projectionTier,
+      useSegmentation: visual.useSegmentation,
+      cutoutMode: visual.cutoutMode,
       virtualCandidate: ghost?.virtual === true || undefined,
       ontologyBadgeLabel: sanitizeOntologyMapBadgeLabel(
         presentation?.markerBadgeLabelKo ?? null,

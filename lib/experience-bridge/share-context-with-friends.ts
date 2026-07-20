@@ -61,10 +61,19 @@ export async function shareGlobeContextWithFriends(input: {
     hostDisplayName: input.hostDisplayName,
   });
 
-  await publishBridgeEventCaptureContributions({
-    event: shareEvent,
-    authorDisplayName: input.hostDisplayName,
-  });
+  // Media publish must not block invite + DM (match ingest fail-open).
+  try {
+    await publishBridgeEventCaptureContributions({
+      event: shareEvent,
+      authorDisplayName: input.hostDisplayName,
+    });
+  } catch (caught) {
+    toast.message(
+      caught instanceof Error && caught.message.trim()
+        ? caught.message
+        : "사진은 나중에 맞춰 넣을게요 · 친구 초대는 보냈어요",
+    );
+  }
 
   let invited = 0;
   for (const friend of friends) {

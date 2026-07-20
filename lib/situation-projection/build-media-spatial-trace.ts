@@ -1,5 +1,6 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { resolveBrainSurfaceMarkerMediaKind, resolveBrainSurfaceMarkerThumbnail } from "@/lib/globe/brain-surface-marker-media";
+import { resolveVideoMapAnchor } from "@/lib/globe/resolve-video-map-anchor";
 import type { MediaGuideNode } from "@/lib/ontology/media-guide-types";
 import type {
   BrainSurfaceCandidateFamily,
@@ -274,12 +275,21 @@ export function buildMediaSpatialTraceCandidates(input: {
     }
     const clusterId = `media:${guide.guideNodeId}`;
     const traceItems = buildMediaSpatialTraceItems(guide);
-    const videoCoords = buildOrbitCoords({
-      anchorLat: input.anchorLat,
-      anchorLng: input.anchorLng,
+    const placeFromVideo = resolveVideoMapAnchor({
+      title: guide.title,
+      placeLabel: guide.relatedPlaceLabel,
+      relatedPlaceLabel: guide.relatedPlaceLabel,
+    });
+    // Video about 오사카 → pin at Osaka, even if event orbit/hub is Seoul GPS.
+    const orbit = buildOrbitCoords({
+      anchorLat: placeFromVideo?.lat ?? input.anchorLat,
+      anchorLng: placeFromVideo?.lng ?? input.anchorLng,
       index: guideIndex,
       radiusKm: 0.42,
     });
+    const videoCoords = placeFromVideo
+      ? { lat: placeFromVideo.lat, lng: placeFromVideo.lng }
+      : orbit;
 
     candidates.push({
       id: `brain-surface:${input.event.id}:video:${guide.guideNodeId}`,
@@ -300,7 +310,10 @@ export function buildMediaSpatialTraceCandidates(input: {
       previewBody:
         normalizeText(guide.whyRelevantKo) ||
         "영상 기반으로 연결된 후보 공간이에요",
-      placeLabel: normalizeText(guide.relatedPlaceLabel) || "영상",
+      placeLabel:
+        placeFromVideo?.placeLabel ||
+        normalizeText(guide.relatedPlaceLabel) ||
+        "영상",
       lat: videoCoords.lat,
       lng: videoCoords.lng,
       accent: "purple",
@@ -329,19 +342,22 @@ export function buildMediaSpatialTraceCandidates(input: {
     for (const [placeIndex, place] of guide.inferredPlaceCandidates
       .slice(0, 4)
       .entries()) {
-      const placeThumbnail = normalizeText(
-        (place as { thumbnailUrl?: string | null }).thumbnailUrl,
-      );
-      if (!placeThumbnail) {
-        continue;
-      }
-      const family = familyForInferredPlace(place.semanticType);
-      const coords =
+      const placeThumbnail =
+        normalizeText(
+          (place as { thumbnailUrl?: string | null }).thumbnailUrl,
+        ) || normalizeText(guide.thumbnailUrl);
+      const hasCoords =
         typeof place.lat === "number" &&
         Number.isFinite(place.lat) &&
         typeof place.lng === "number" &&
-        Number.isFinite(place.lng)
-          ? { lat: place.lat, lng: place.lng }
+        Number.isFinite(place.lng);
+      // Keep map-anchored places even without a still — video place pins need coords.
+      if (!placeThumbnail && !hasCoords) {
+        continue;
+      }
+      const family = familyForInferredPlace(place.semanticType);
+      const coords = hasCoords
+          ? { lat: place.lat as number, lng: place.lng as number }
           : buildOrbitCoords({
               anchorLat: videoCoords.lat,
               anchorLng: videoCoords.lng,
@@ -387,8 +403,8 @@ export function buildMediaSpatialTraceCandidates(input: {
         searchQuery: place.searchProfile.query,
         sourceGuideNodeId: guide.guideNodeId,
         revealOrder,
-        markerThumbnailUrl: placeThumbnail,
-        markerMediaKind: "image" as const,
+        markerThumbnailUrl: placeThumbnail || null,
+        markerMediaKind: placeThumbnail ? ("image" as const) : null,
         virtualCandidate: true,
         memoCommitDraft: null,
       });

@@ -6,7 +6,10 @@ import {
   explainEateryRecommendationKo,
   type EateryRecommendReasonInput,
 } from "@/lib/globe/eatery/explain-eatery-recommendation-ko";
-import type { EateryRankProfile } from "@/lib/globe/eatery/eatery-rank-profile";
+import type {
+  EateryRankContextHints,
+  EateryRankProfile,
+} from "@/lib/globe/eatery/eatery-rank-profile";
 import {
   applyEateryRankContextHints,
   DEFAULT_EATERY_RANK_WEIGHTS,
@@ -244,6 +247,8 @@ export function scoreEateryRecommendations(input: {
   /** Boost rows whose name/category matches this focus (e.g. "유니버설 스튜디오"). */
   focusMatch?: string | null;
   exploration?: ExplorationPolicyKnobs;
+  /** Context Field rank hints — override / merge over TravelBrain when set. */
+  fieldRankHints?: EateryRankContextHints | null;
 }): ScoredEateryRecommendation[] {
   const lat = input.lat ?? null;
   const lng = input.lng ?? null;
@@ -290,6 +295,7 @@ export function scoreEateryRecommendations(input: {
     : null;
   const contextFoodBias = inferFoodBiasFromContext(input.context);
   const foodBias: TravelFoodBias | null =
+    input.fieldRankHints?.foodBias ??
     brainAxes?.foodBias ??
     contextFoodBias ??
     ((findLatestPersonaSignal("travel.food_bias")?.value as
@@ -307,10 +313,12 @@ export function scoreEateryRecommendations(input: {
             ? "value"
             : null);
   const mealTiming: TravelMealTimingPattern | null =
+    input.fieldRankHints?.mealTiming ??
     brainAxes?.mealTiming ??
     (input.context?.title.searchBias.mealMoment as TravelMealTimingPattern | null) ??
     null;
   const budgetBand: TravelBudgetBand | null =
+    input.fieldRankHints?.budgetBand ??
     brainAxes?.budgetBand ??
     ((findLatestPersonaSignal("travel.budget_band")?.value as
       | TravelBudgetBand
@@ -321,6 +329,9 @@ export function scoreEateryRecommendations(input: {
       foodBias: contextFoodBias,
       mealTiming,
     });
+  }
+  if (input.fieldRankHints) {
+    profile = applyEateryRankContextHints(profile, input.fieldRankHints);
   }
   const trajectory = input.unifiedContext.behaviorKernel.state.trajectory;
   const travelTrajectory =

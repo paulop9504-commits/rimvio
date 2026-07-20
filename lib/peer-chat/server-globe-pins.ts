@@ -48,6 +48,7 @@ export async function insertSharedGlobePin(
     capturedAtIso?: string;
     imageUrl?: string | null;
     mediaKind?: PeerGlobePinPayload["mediaKind"];
+    bridgeEventId?: string | null;
   },
 ): Promise<{ pin: SharedGlobePin; body: string }> {
   validateGlobePinCoords(input.lat, input.lng);
@@ -55,6 +56,7 @@ export async function insertSharedGlobePin(
   const placeLabel = input.placeLabel.trim() || "이곳";
   const senderDisplayName = input.senderDisplayName.trim() || "친구";
   const capturedAtIso = input.capturedAtIso ?? new Date().toISOString();
+  const bridgeEventId = input.bridgeEventId?.trim() || null;
 
   const payload: PeerGlobePinPayload = {
     kind: "globe_pin",
@@ -67,6 +69,7 @@ export async function insertSharedGlobePin(
     note: input.note?.trim() || null,
     imageUrl: input.imageUrl?.trim() || null,
     mediaKind: input.mediaKind ?? (input.imageUrl ? "photo" : null),
+    ...(bridgeEventId ? { bridgeEventId } : {}),
   };
 
   const body = buildGlobePinSystemBody({

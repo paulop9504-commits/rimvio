@@ -47,6 +47,18 @@ assert.equal(
   "insufficient",
 );
 
+assert.equal(
+  evaluateScoutQualityGate({
+    recommendationCount: 2,
+    lodgingCount: 2,
+    eateryCount: 0,
+    activityCount: 0,
+    amenityCount: 0,
+    attemptsUsed: 2,
+  }).verdict,
+  "sufficient",
+);
+
 let meta: Record<string, unknown> = {};
 meta = bumpScoutQualityAttempt({
   metadata: meta,

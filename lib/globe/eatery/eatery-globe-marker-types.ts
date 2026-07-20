@@ -21,6 +21,16 @@ export type GlobeEateryMapMarker = {
   calloutOffsetY?: number | null;
   /** Context Condition AI — emerald delegate pin. */
   contextConditionPin?: boolean;
+  /** Visual Projection Engine — floating object glyph. */
+  objectGlyph?: string | null;
+  objectHaloFamily?: "food" | "lodging" | "landmark" | "shopping" | "media" | "transit" | "generic" | null;
+  projectionTier?: "foreground" | "background" | "hidden";
+  /** Context Bloom — selected / related attention. */
+  bloomRole?: "selected" | "related" | "none";
+  bloomDelayMs?: number;
+  /** Selective segmentation — YES only soft cutout. */
+  useSegmentation?: boolean;
+  cutoutMode?: "none" | "soft_blob" | "soft_pill" | "soft_ellipse";
 };
 
 export function isGlobeEateryMapMarker(value: unknown): value is GlobeEateryMapMarker {

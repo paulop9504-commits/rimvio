@@ -5,6 +5,7 @@ export type GlobeInfoFrameId =
   | "brain-surface-info"
   | "brain-surface-preview"
   | "brain-surface-detail"
+  | "place-action-graph"
   | "brain-map-node"
   | "context-media-focus"
   | "context-condition-prompt";
@@ -78,6 +79,16 @@ export const GLOBE_INFO_FRAME_PRESETS: Record<GlobeInfoFrameId, GlobeInfoFramePr
     defaultWidth: 352,
     defaultHeight: 280,
     defaultBand: "bottom",
+    tone: "light",
+  },
+  "place-action-graph": {
+    minWidth: 260,
+    maxWidth: 400,
+    minHeight: 280,
+    maxHeight: 520,
+    defaultWidth: 320,
+    defaultHeight: 420,
+    defaultBand: "center-right",
     tone: "light",
   },
   "brain-map-node": {

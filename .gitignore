@@ -69,6 +69,9 @@ capacitor.config.local.ts
 
 # Agent / IDE local only
 .cursor/rules/local-*.mdc
+.cursor/rimvio-seed-learning-aggregate.json
+.cursor/rimvio-live-turns.jsonl
+data/seed-learning-aggregate.json
 
 # public mirror staging (scripts/push-public-github.ps1)
 .public-staging/

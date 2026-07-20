@@ -48,7 +48,7 @@ const CUISINE_CATALOG: readonly {
     id: "yakiniku",
     labelKo: "야키니쿠",
     queryKo: "야키니쿠",
-    pattern: /야키니쿠|yakiniku|焼肉|고기\s*구이/iu,
+    pattern: /야키니쿠|yakiniku|焼肉|고기\s*구이|고깃집|고기집|고기\s*집/iu,
   },
   {
     id: "okonomiyaki",

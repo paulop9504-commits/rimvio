@@ -10,6 +10,8 @@ export { assessExpressCheckoutReadiness } from "@/lib/payment-vault/assess-expre
 export { readPaymentVaultBundleClient } from "@/lib/payment-vault/read-payment-vault-bundle-client";
 export { savePaymentPreferenceClient } from "@/lib/payment-vault/save-payment-preference-client";
 export { upsertPaymentVaultObjectClient } from "@/lib/payment-vault/write-payment-vault-object-client";
+export { resolvePaymentPrepMethodFromPreference } from "@/lib/payment-vault/resolve-payment-prep-method";
+export type { ResolvedPaymentPrepMethod } from "@/lib/payment-vault/resolve-payment-prep-method";
 export {
   openPaymentVaultSettings,
   subscribeOpenPaymentVaultSettings,

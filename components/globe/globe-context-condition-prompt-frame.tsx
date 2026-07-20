@@ -23,7 +23,7 @@ import type { ContextBlueprint } from "@/lib/context-blueprint/types";
 import { activateDiscoveryExecutionSnapshot } from "@/lib/globe/discovery-execution/discovery-execution-archive";
 import { copy } from "@/lib/copy/human-ko";
 import { MAP_FOCUS_PIN_VIEWPORT_Y } from "@/lib/globe/map-anchored-overlay-layout";
-import { hasScoutRevealPending } from "@/lib/globe/context-condition-ai/context-condition-scout-reveal-pending-store";
+import { isScoutMapRevealUtterance } from "@/lib/globe/context-condition-ai/is-scout-map-reveal-utterance";
 import { revealContextConditionScout } from "@/lib/globe/context-condition-ai/reveal-context-condition-scout";
 import {
   readContextConditionLastBatch,
@@ -131,7 +131,6 @@ import {
   readGeoOntologyFacetState,
   readGeoOntologyGraph,
   readPalantirWorkspaceSnapshot,
-  resetGlobeProjectionLayerPolicy,
   isPalantirOntologyDevSurfaceEnabled,
   executePalantirCommit,
   resolvePalantirCommitAction,
@@ -174,7 +173,7 @@ export type GlobeContextConditionPromptFrameProps = {
   className?: string;
 };
 
-/** Context-bound execution layer — talk thread + globe apply (Cursor-style). */
+/** Context-bound execution layer ??talk thread + globe apply (Cursor-style). */
 export function GlobeContextConditionPromptFrame({
   open,
   event,
@@ -243,12 +242,6 @@ export function GlobeContextConditionPromptFrame({
   const ontologyDevSurface = isPalantirOntologyDevSurfaceEnabled();
 
   useEffect(() => {
-    if (!open) {
-      resetGlobeProjectionLayerPolicy();
-    }
-  }, [open]);
-
-  useEffect(() => {
     if (!open || !event) {
       return;
     }
@@ -276,8 +269,6 @@ export function GlobeContextConditionPromptFrame({
       setOntologyGraph(readGeoOntologyGraph(event.id));
       setPalantirWorkspaceRevision((value) => value + 1);
       setOntologyFacetRevision((value) => value + 1);
-    } else {
-      publishContextOnlyGlobeProjection(event.id);
     }
 
     const rawBatch = readContextConditionLastBatch(event.id);
@@ -286,6 +277,17 @@ export function GlobeContextConditionPromptFrame({
       isContextConditionLastBatchMisanchored(rawBatch, anchorLat, anchorLng)
         ? (clearContextConditionLastBatch(event.id), null)
         : rawBatch;
+
+    if (batch?.recommendations && batch.recommendations.length > 0) {
+      publishFocusGlobeProjection({
+        contextEventId: event.id,
+        visiblePlaceIds: batch.recommendations
+          .map((row) => row.placeId?.trim() ?? "")
+          .filter(Boolean),
+      });
+    } else if (!restored) {
+      publishContextOnlyGlobeProjection(event.id);
+    }
 
     if (!CONTEXT_AGENT_ASK_FIRST && (batch?.recommendations?.length ?? 0) > 0) {
       if (!restored) {
@@ -676,7 +678,7 @@ export function GlobeContextConditionPromptFrame({
       setComposeThread(readContextAgentComposeThread(event.id));
     }
 
-    if (globeRef && !hasScoutRevealPending(event.id)) {
+    if (globeRef) {
       snapGlobeToContextConditionScout(globeRef, {
         anchorLat,
         anchorLng,
@@ -717,6 +719,12 @@ export function GlobeContextConditionPromptFrame({
         setActiveSpec(lastBatch.spec ?? null);
         revealContextConditionScout(event.id);
         markScoutFeedGateOpened(event.id, input.turnId);
+        publishFocusGlobeProjection({
+          contextEventId: event.id,
+          visiblePlaceIds: (lastBatch.recommendations ?? [])
+            .map((row) => row.placeId?.trim() ?? "")
+            .filter(Boolean),
+        });
         setComposeThread(readContextAgentComposeThread(event.id));
         dispatchIntelligentDiscoveryFeedOpen({
           contextEventId: event.id,
@@ -873,13 +881,13 @@ export function GlobeContextConditionPromptFrame({
     toast.success(copy.globe.contextActionInjectedEyebrow);
   };
 
-  const handleUserCompose = (text: string) => {
+  const handleUserCompose = (text: string): boolean => {
     if (!event) {
-      return;
+      return false;
     }
     const line = text.trim();
     if (!line) {
-      return;
+      return false;
     }
     if (!prefetchStartedRef.current) {
       prefetchStartedRef.current = true;
@@ -892,6 +900,61 @@ export function GlobeContextConditionPromptFrame({
       });
     }
     appendContextAgentComposeTurn(event.id, { role: "user", text: line });
+
+    if (isScoutMapRevealUtterance(line)) {
+      const thread = readContextAgentComposeThread(event.id);
+      const openGate = [...thread]
+        .reverse()
+        .find(
+          (row) =>
+            row.role === "assistant" &&
+            row.kind === "scout_feed_gate" &&
+            row.payload.status === "open",
+        );
+      if (
+        openGate &&
+        openGate.role === "assistant" &&
+        openGate.kind === "scout_feed_gate"
+      ) {
+        void handleOpenScoutFeed({
+          turnId: openGate.id,
+          batchId: openGate.payload.batchId,
+        });
+        setComposeThread(readContextAgentComposeThread(event.id));
+        return true;
+      }
+      const lastBatch = readContextConditionLastBatch(event.id);
+      if (
+        globeRef &&
+        lastBatch?.recommendations &&
+        lastBatch.recommendations.length > 0
+      ) {
+        snapGlobeToContextConditionScout(globeRef, {
+          anchorLat,
+          anchorLng,
+          recommendations: lastBatch.recommendations.map((row, index) => ({
+            kind: row.kind,
+            activitySubtype: row.activitySubtype ?? null,
+            title: row.title,
+            reasonKo: row.reasonKo,
+            rank: index + 1,
+            placeId: row.placeId ?? "",
+            lat: row.lat ?? anchorLat,
+            lng: row.lng ?? anchorLng,
+          })),
+          radiusM: lastBatch.radiusM,
+        });
+        publishFocusGlobeProjection({
+          contextEventId: event.id,
+          visiblePlaceIds: (lastBatch.recommendations ?? [])
+            .map((row) => row.placeId?.trim() ?? "")
+            .filter(Boolean),
+        });
+        setComposeThread(readContextAgentComposeThread(event.id));
+        return true;
+      }
+    }
+
     if (isTripReviseUtterance(line)) {
       intentTimelineWalkRef.current?.stop();
       intentTimelineWalkRef.current = startIntentExecutionTimelineWalk({
@@ -916,6 +979,7 @@ export function GlobeContextConditionPromptFrame({
       });
     }
     setComposeThread(readContextAgentComposeThread(event.id));
+    return false;
   };
 
   const ontologyFacet = useMemo(() => {

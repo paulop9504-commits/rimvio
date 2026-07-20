@@ -22,6 +22,11 @@ import {
   type MediaContextIngestOutcome,
 } from "@/lib/ingest/context-match-media-gate";
 import { resolveTargetEventFromSpacetime } from "@/lib/feed/resolve-target-event-from-spacetime";
+import { attachMediaRealityObjectMetadata } from "@/lib/reality-object/attach-media-reality-object";
+import {
+  resolveMediaRealityObjectType,
+  type MediaRealityIngressKind,
+} from "@/lib/reality-object/resolve-media-object-type";
 
 export type { MediaContextIngestOutcome } from "@/lib/ingest/context-match-media-gate";
 
@@ -96,6 +101,28 @@ export function commitCaptureToEvent(input: {
   };
 
   let metadata = appendFeedCaptureFragment(input.target.metadata, fragment);
+  if (fragment.kind === "photo" || fragment.kind === "video") {
+    const objectType = resolveMediaRealityObjectType({
+      kind: fragment.kind,
+      sourceUrl: fragment.url,
+    });
+    const mediaKind: MediaRealityIngressKind =
+      objectType === "reel" ? "reel" : fragment.kind;
+    const attached = attachMediaRealityObjectMetadata({
+      metadata,
+      contextEventId: input.target.id,
+      mediaId: fragment.mediaContextId?.trim() || fragment.id,
+      mediaKind,
+      title: fragment.label ?? fragment.placeLabel ?? null,
+      placeLabel: fragment.placeLabel ?? null,
+      coverImageUrl: fragment.url ?? null,
+      sourceUrl: fragment.url ?? null,
+      lat: fragment.lat ?? null,
+      lng: fragment.lng ?? null,
+      capturedAtIso: fragment.capturedAtIso,
+    });
+    metadata = attached.metadata;
+  }
   const needsVerify = shouldRequireFeedCaptureVerify({
     userConfirmedTarget: input.userConfirmedTarget,
     score: input.match?.score ?? null,

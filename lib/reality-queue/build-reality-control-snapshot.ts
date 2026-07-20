@@ -7,6 +7,7 @@ import { readContextExecutionPlanFromEvent } from "@/lib/context-execution/conte
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { listLifeEventCandidates } from "@/lib/life-read-model";
 import type { MarketTradeSessionView } from "@/lib/globe/market/market-trade-types";
+import { buildExecutionInbox } from "@/lib/reality-queue/build-execution-inbox";
 import {
   domainFolderLabelKo,
   engineIdToQueueKind,
@@ -290,6 +291,8 @@ export function buildRealityControlSnapshot(input: {
   events?: readonly EventCandidate[];
   titleKo?: string;
   subtitleKo?: string;
+  /** Scope queue to one context (Globe → Field handoff). Trades stay global. */
+  primaryEventId?: string | null;
   /** When false, skip hold filter (tests). Default true on client. */
   applyHolds?: boolean;
 }): RealityControlSnapshotV1 {
@@ -301,9 +304,18 @@ export function buildRealityControlSnapshot(input: {
     input.applyHolds === false
       ? new Set<string>()
       : readRealityQueueHeldItemIds();
-  const items = dedupeItems([...preparedItems, ...planItems, ...tradeItems]).filter(
-    (item) => !held.has(item.itemId),
-  );
+  const focusEventId = input.primaryEventId?.trim() || null;
+  const items = dedupeItems([...preparedItems, ...planItems, ...tradeItems])
+    .filter((item) => !held.has(item.itemId))
+    .filter((item) => {
+      if (!focusEventId) {
+        return true;
+      }
+      if (item.kind === "trade") {
+        return false;
+      }
+      return item.contextEventId?.trim() === focusEventId;
+    });
   const needsReview = items.some(
     (item) =>
       item.status === "needs_review" ||
@@ -315,7 +327,9 @@ export function buildRealityControlSnapshot(input: {
   const hasReady = items.some((item) => item.status === "ready");
   const running = items.some((item) => item.status === "running");
   const primaryContextEventId =
-    items.find((item) => item.contextEventId)?.contextEventId ?? null;
+    focusEventId ??
+    items.find((item) => item.contextEventId)?.contextEventId ??
+    null;
   const travelCount = items.filter((item) => item.domain === "travel").length;
 
   // Prepared ops in pending: allow commit when user marked them ready via Reflect,
@@ -325,17 +339,25 @@ export function buildRealityControlSnapshot(input: {
   // Product: Reflect promotes pending → ready. Until then canCommit false for pending-only.
   const canCommit = hasReady && !needsReview && !running && items.length > 0;
 
+  const folders = buildFolders(items);
+  const primaryFolder = folders[0] ?? null;
+  const executionInbox = buildExecutionInbox({
+    items,
+    projectLabelKo: primaryFolder?.labelKo ?? null,
+    canCommit,
+  });
+
   return {
     version: 1,
-    titleKo: input.titleKo ?? "Pending Reality",
+    titleKo: input.titleKo ?? "결재함",
     subtitleKo:
       input.subtitleKo ??
       (items.length > 0
-        ? "AI가 결과물을 준비했어요 · 아직 Reality는 그대로예요"
-        : "지구에서 맥락을 만들면 Reality Queue에 쌓여요"),
+        ? "모든 예약 준비 완료 · CEO Sign 후 Reality Commit"
+        : "지구에서 맥락을 만들면 결재함에 쌓여요"),
     agents: buildAgentChips(items),
     items,
-    folders: buildFolders(items),
+    folders,
     impact: {
       timeSavedLabel: travelCount > 0 ? `Travel ${travelCount}` : null,
       costLabel: sumAmountLabels(items),
@@ -344,6 +366,7 @@ export function buildRealityControlSnapshot(input: {
     },
     canCommit,
     primaryContextEventId,
+    executionInbox,
   };
 }
 

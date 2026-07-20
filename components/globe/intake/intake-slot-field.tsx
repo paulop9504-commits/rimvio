@@ -70,6 +70,7 @@ export function IntakeSlotField({ field, value, onChange, disabled = false }: In
       <input
         type={field.kind === "date" ? "date" : "text"}
         value={String(value)}
+        min={field.kind === "date" ? field.dateMin : undefined}
         placeholder={field.placeholder}
         onChange={(event) => onChange(event.target.value)}
         disabled={disabled}

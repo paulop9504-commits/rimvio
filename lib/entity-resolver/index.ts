@@ -23,6 +23,10 @@ export {
   queryFocusFromEntities,
 } from "@/lib/entity-resolver/resolve-entities";
 export {
+  resolveGraphEntity,
+  resolveGraphEntityRef,
+} from "@/lib/graph-command/resolve-graph-entity";
+export {
   semanticPathForBrand,
   brandImpliesEatery,
   entityPathImpliesEatery,
@@ -35,6 +39,7 @@ export {
   MATCHA_CANDIDATES_BARE,
 } from "@/lib/entity-resolver/semantic-layer";
 export {
+  STATION_CATALOG,
   LANDMARK_CATALOG,
   AIRPORT_CATALOG,
   LODGING_BRAND_CATALOG,

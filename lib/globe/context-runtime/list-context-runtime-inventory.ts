@@ -9,6 +9,7 @@ import type {
   ContextRuntimeItem,
   ContextRuntimeSection,
 } from "@/lib/globe/context-runtime/types";
+import { resolveRealityObjectCoverUrl } from "@/lib/reality-object";
 
 function pinSubtitle(input: {
   source?: string | null;
@@ -41,7 +42,7 @@ function pinSubtitle(input: {
 }
 
 function buildPinnedItem(
-  eventId: string,
+  event: EventCandidate,
   pinned: NonNullable<ReturnType<typeof readPinnedContextItem>>,
 ): ContextRuntimeItem {
   const runtimeKind =
@@ -67,7 +68,7 @@ function buildPinnedItem(
     subtitle,
     lat: pinned.lat ?? null,
     lng: pinned.lng ?? null,
-    previewUrl: pinned.previewUrl ?? null,
+    previewUrl: resolveRealityObjectCoverUrl(event, pinned.previewUrl ?? null),
     pinned: true,
     actions: ["fly", "unpin"],
   };
@@ -152,7 +153,7 @@ export function listContextRuntimeInventory(
   const pinnedPlaceId = pinned?.placeId ?? null;
 
   const pinnedItems: ContextRuntimeItem[] = pinned
-    ? [buildPinnedItem(eventId, pinned)]
+    ? [buildPinnedItem(event, pinned)]
     : [];
 
   const pinItems: ContextRuntimeItem[] = [];

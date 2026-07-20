@@ -37,6 +37,16 @@ Catalog files: `lib/entity-resolver/catalogs/*`. Food fast-food brands remain in
 
 Dictionary-first — **no ML training**. New words = new catalog rows (aliases + semanticPath + optional `geoId`).
 
+**Seed Learning Engine** (`lib/seed-learning/`) observes frequent hit/miss mentions across sectors (stations · landmarks · lodging · cuisine · …).
+
+| Layer | Store | Role |
+|-------|--------|------|
+| Personal | `localStorage` | Fast local rollup |
+| **Shared community** | Supabase `seed_learning_aggregate` (anon token counts) · fallback memory/file | All users' deltas — no utterance / user id |
+| Promote | Codegen / PR candidates | Humans commit Dictionary seeds — never auto-mutate Reality |
+
+Scout wire: `observeScoutSeedLearning` → debounced `flushSeedLearningToSharedServer`. APIs: `POST /api/seed-learning/ingest`, `GET /api/seed-learning/promote`. Migration: `068_seed_learning_aggregate.sql`.
+
 Ambiguous foods keep `candidates[]` when top-two gap &lt; `ENTITY_AMBIGUITY_GAP`.
 
 ## Wire

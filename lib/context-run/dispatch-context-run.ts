@@ -24,6 +24,8 @@ import {
   readGlobeChatMessages,
 } from "@/lib/globe/chat/globe-chat-session-store";
 import { generateSmallTalkReply } from "@/lib/globe/context-condition-ai/small-talk/generate-small-talk-reply";
+import { applyGraphCommandsAsync } from "@/lib/graph-command";
+import { tryRunContextNlActionAsync } from "@/lib/action-planner";
 import { ensureGlobeChatGraphId } from "@/lib/globe/chat/ensure-globe-chat-graph-id";
 import {
   buildComposerGraphId,
@@ -77,6 +79,8 @@ import {
   isPendingContextCreateCancel,
 } from "@/lib/globe-ingress/detect-pending-context-create-reply";
 import { readPendingContextCreate } from "@/lib/globe-ingress/pending-context-create-store";
+import { runRealityIngressPipeline } from "@/lib/reality-pipeline";
+import { parseTravelSlotsFromMessage } from "@/lib/experience-run/travel-context-slots";
 import {
   proposeContextAnchorMoveFromNl,
   tryResolvePendingContextAnchorMoveReply,
@@ -330,6 +334,49 @@ async function executeContextRunPlan(
         role: "assistant",
         text: small.replyKo || plan.smallTalkReplyKo || "네, 편하게 말해줘요 🙂",
       });
+      return { graphId, status: "done", planKind: plan.kind };
+    }
+    case "graph_command": {
+      const commands = plan.graphCommands ?? [];
+      const ctx =
+        plan.graphCommandContextEventId?.trim() ||
+        (ingress.kind === "text" ? ingress.contextEventId?.trim() : null) ||
+        graphId;
+      const utterance =
+        ingress.kind === "text" ? ingress.text.trim() : bound.goalKo;
+      const nl = await tryRunContextNlActionAsync({
+        utterance,
+        contextEventId: ctx,
+        anchorLat: ingress.kind === "text" ? ingress.lat : null,
+        anchorLng: ingress.kind === "text" ? ingress.lng : null,
+        contextLabelKo: bound.goalKo,
+      });
+      if (nl) {
+        appendGlobeChatTextMessage({
+          graphId,
+          role: "assistant",
+          text: nl.assistantReplyKo,
+        });
+        handlers.toastMessage?.(nl.assistantReplyKo);
+        return { graphId, status: "done", planKind: plan.kind };
+      }
+      const applied = await applyGraphCommandsAsync({
+        contextEventId: ctx,
+        commands,
+        anchorLat: ingress.kind === "text" ? ingress.lat : null,
+        anchorLng: ingress.kind === "text" ? ingress.lng : null,
+        contextLabelKo: bound.goalKo,
+      });
+      const reply =
+        applied.ok
+          ? applied.assistantReplyKo
+          : copy.globe.graphCommandApplyFail;
+      appendGlobeChatTextMessage({
+        graphId,
+        role: "assistant",
+        text: reply,
+      });
+      handlers.toastMessage?.(reply);
       return { graphId, status: "done", planKind: plan.kind };
     }
     case "discovery_browse": {
@@ -1026,6 +1073,24 @@ async function executeContextRunPlan(
         });
 
         syncGlobeIngressCompileToFeed(compiled, bound.goalKo);
+
+        const travelSlots = parseTravelSlotsFromMessage(
+          bound.goalKo,
+          new Date().toISOString().slice(0, 10),
+        );
+        const destinationLabelKo =
+          travelSlots.destination?.trim() ||
+          event.place?.trim() ||
+          event.title.replace(/\s*여행$/u, "").trim() ||
+          null;
+        runRealityIngressPipeline({
+          contextEventId: event.id,
+          utterance: bound.goalKo,
+          contextLabelKo: event.title,
+          destinationLabelKo,
+          seedExecutionInbox: true,
+        });
+
         const assistantText = buildTripIngressCreatedChatAssistantLine({
           eventTitle: event.title,
           blueprint: compiled.blueprint,

@@ -59,6 +59,27 @@ export function dismissContextConditionPinBatch(input: {
   return pins.length;
 }
 
+/** Remove prior lodging ctxcond pins for this context (keep other batches' eatery if any). */
+export function dismissPriorLodgingContextConditionPins(input: {
+  contextEventId: string;
+  keepBatchId: string;
+}): number {
+  const contextKey = input.contextEventId.trim();
+  const keep = input.keepBatchId.trim();
+  if (!contextKey) {
+    return 0;
+  }
+  const stale = listContextConditionPins({ contextEventId: contextKey }).filter(
+    (pin) =>
+      pin.contextConditionKind === "lodging" &&
+      pin.contextConditionBatchId !== keep,
+  );
+  for (const pin of stale) {
+    removePersonalGlobePinByEventId(pin.eventId);
+  }
+  return stale.length;
+}
+
 export function syncContextConditionPins(input: {
   contextEvent: EventCandidate;
   batchId: string;
@@ -71,6 +92,13 @@ export function syncContextConditionPins(input: {
   const contextEventId = input.contextEvent.id.trim();
   const nowIso = (input.now ?? new Date()).toISOString();
   const pins: PersonalGlobePin[] = [];
+
+  if ((input.lodgingRows?.length ?? 0) > 0) {
+    dismissPriorLodgingContextConditionPins({
+      contextEventId,
+      keepBatchId: input.batchId,
+    });
+  }
 
   for (const row of input.lodgingRows ?? []) {
     const eventId = contextConditionPinEventId({

@@ -12,6 +12,7 @@ import type {
   PassportDocumentPayload,
   TravelerProfilePayload,
 } from "@/lib/identity-vault/types";
+import { mapVaultWriteErrorCopy } from "@/lib/vault/map-vault-write-error-copy";
 import { cn } from "@/lib/utils";
 
 const inputClass =
@@ -66,9 +67,21 @@ export function IdentityVaultSettingsPanel({
 
   useEffect(() => {
     void load()
-      .catch(() => {})
+      .catch(() => {
+        toast.error(iv.loadFailed);
+      })
       .finally(() => setLoading(false));
-  }, [load]);
+  }, [load, iv.loadFailed]);
+
+  const toastWriteError = (error: string) => {
+    toast.error(
+      mapVaultWriteErrorCopy(error, {
+        saveFailed: iv.saveFailed,
+        saveNeedLogin: iv.saveNeedLogin,
+        saveVaultUnavailable: iv.saveVaultUnavailable,
+      }),
+    );
+  };
 
   const save = async () => {
     if (
@@ -104,7 +117,7 @@ export function IdentityVaultSettingsPanel({
         payload: traveler,
       });
       if (!travelerResult.ok) {
-        toast.error(travelerResult.error);
+        toastWriteError(travelerResult.error);
         return;
       }
 
@@ -114,7 +127,7 @@ export function IdentityVaultSettingsPanel({
         payload: contact,
       });
       if (!contactResult.ok) {
-        toast.error(contactResult.error);
+        toastWriteError(contactResult.error);
         return;
       }
 
@@ -131,7 +144,7 @@ export function IdentityVaultSettingsPanel({
           payload: passport,
         });
         if (!passportResult.ok) {
-          toast.error(passportResult.error);
+          toastWriteError(passportResult.error);
           return;
         }
       }

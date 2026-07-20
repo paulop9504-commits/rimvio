@@ -34,6 +34,16 @@ export type GlobeLodgingMapMarker = {
   operationSignalLabel?: string | null;
   operationSignalTone?: "amber" | "blue" | "green" | "red" | "muted" | null;
   operationSignalPulse?: boolean;
+  /** Visual Projection Engine — floating object glyph. */
+  objectGlyph?: string | null;
+  objectHaloFamily?: "food" | "lodging" | "landmark" | "shopping" | "media" | "transit" | "generic" | null;
+  projectionTier?: "foreground" | "background" | "hidden";
+  /** Context Bloom — selected / related attention. */
+  bloomRole?: "selected" | "related" | "none";
+  bloomDelayMs?: number;
+  /** Selective segmentation — YES only soft cutout. */
+  useSegmentation?: boolean;
+  cutoutMode?: "none" | "soft_blob" | "soft_pill" | "soft_ellipse";
 };
 
 export function isGlobeLodgingMapMarker(

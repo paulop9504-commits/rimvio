@@ -180,31 +180,43 @@ assert.deepEqual(fallbackReceipt.lines, ["단계 2건 반영"]);
 assert.equal(fallbackReceipt.disclaimerKo, null);
 assert.equal(fallbackReceipt.contextEventId, null);
 
-// Shanghai prepare pack → Reality Queue Operations
+// Shanghai prepare pack → Execution Inbox Operations
 clearPreparedRealityOperations();
 const ops = enqueueTravelPrepareOperations({
   contextEventId: "evt-shanghai",
   contextLabelKo: "상하이 여행",
   destinationLabelKo: "상하이",
 });
-assert.equal(ops.length, 5);
+assert.equal(ops.length, 9);
 assert.ok(ops.some((op) => op.kind === "lodging"));
 assert.ok(ops.some((op) => op.kind === "flight"));
+assert.ok(ops.some((op) => op.kind === "rental"));
+assert.ok(ops.some((op) => op.kind === "eatery"));
+assert.ok(ops.some((op) => op.kind === "finance"));
+assert.ok(ops.some((op) => op.labelKo.includes("취소 정책")));
+assert.ok(ops.some((op) => op.labelKo.includes("일정 충돌")));
+assert.ok(ops.some((op) => op.labelKo.includes("AI 검토")));
 const lodging = ops.find((op) => op.kind === "lodging")!;
 assert.equal(lodging.preview.confidencePct, 93);
 assert.match(lodging.preview.diffToKo ?? "", /Hilton/u);
 assert.equal(lodging.status, "pending");
+const flight = ops.find((op) => op.kind === "flight")!;
+assert.match(flight.labelKo, /대한항공/);
 
 const pendingSnap = buildRealityControlSnapshot({
   events: [],
   tradeSessions: [],
   applyHolds: false,
 });
-assert.equal(pendingSnap.items.length, 5);
-assert.equal(pendingSnap.folders[0]?.domain, "travel");
-assert.equal(pendingSnap.folders.length, 1);
-assert.ok(pendingSnap.folders[0]?.labelKo);
-assert.equal(pendingSnap.folders[0]?.items.length, 5);
+assert.equal(pendingSnap.items.length, 9);
+assert.ok(pendingSnap.folders.some((f) => f.domain === "travel"));
+assert.ok(pendingSnap.executionInbox);
+assert.equal(pendingSnap.executionInbox!.titleKo, "결재함");
+assert.equal(pendingSnap.executionInbox!.checks.length, 8);
+assert.ok(
+  pendingSnap.executionInbox!.checks.every((c) => c.checked),
+  "pending pack counts as prepared for checklist",
+);
 assert.equal(pendingSnap.canCommit, false);
 
 const reflected = reflectRealityOperation(

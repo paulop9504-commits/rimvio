@@ -1,5 +1,6 @@
 import type { SlotDefinition } from "@/lib/intake/types";
 import type { LodgingBookingSlots } from "@/lib/globe/context-hub/lodging-booking-slots";
+import { areLodgingStayDatesValid } from "@/lib/globe/context-hub/lodging-booking-date-bounds";
 
 export type LodgingIntakeGapId = "dates" | "guests" | "rooms";
 
@@ -14,9 +15,10 @@ function validateLodgingDates(state: LodgingBookingSlots): boolean {
   if (!isValidIsoDate(state.checkInIso) || !isValidIsoDate(state.checkOutIso)) {
     return false;
   }
-  const checkIn = Date.parse(state.checkInIso!.slice(0, 10));
-  const checkOut = Date.parse(state.checkOutIso!.slice(0, 10));
-  return Number.isFinite(checkIn) && Number.isFinite(checkOut) && checkOut > checkIn;
+  return areLodgingStayDatesValid({
+    checkInYmd: state.checkInIso,
+    checkOutYmd: state.checkOutIso,
+  });
 }
 
 export const LODGING_INTAKE_SLOT_DEFS: readonly SlotDefinition<

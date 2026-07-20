@@ -1,24 +1,20 @@
 import type { GlobeEateryMapMarker } from "@/lib/globe/eatery/eatery-globe-marker-types";
-import {
-  mountGlobeMapCalloutPill,
-  prependGlobeDiscoveryPillThumbnail,
-  readGlobeMapCalloutOffset,
-} from "@/lib/globe/globe-map-callout-element";
-import { resolveBrainSurfaceMarkerThumbnail } from "@/lib/globe/brain-surface-marker-media";
-import { sanitizeMapMarkerSupportLabel } from "@/lib/globe/resolve-context-resource-map-markers";
+import type { GlobeDetailLevel } from "@/lib/globe/globe-zoom-levels";
+import { mountRealityObjectMarkerVisual } from "@/lib/visual-projection";
 
 export type GlobeEateryMarkerHandlers = {
   onPress: (resourceId: string, carouselIndex: number) => void;
+  detailLevel?: GlobeDetailLevel | null;
 };
 
-/** Reuses lodging discovery pill styles — eatery map pins. */
+/** Floating Reality Object pin — LOD glyph → label → cover + object halo. */
 export function createGlobeEateryMarkerElement(
   marker: GlobeEateryMapMarker,
   handlers: GlobeEateryMarkerHandlers,
 ): HTMLElement {
   const root = document.createElement("button");
   root.type = "button";
-  root.className = "rimvio-globe-lodging-marker";
+  root.className = "rimvio-globe-lodging-marker rimvio-globe-lodging-marker--discovery";
   root.dataset.globeEateryMarker = marker.resourceId;
   if (marker.virtualCandidate) {
     root.dataset.virtualCandidate = "true";
@@ -30,6 +26,9 @@ export function createGlobeEateryMarkerElement(
     root.classList.add("rimvio-globe-lodging-marker--popin");
     root.style.animationDelay = `${marker.popInDelayMs}ms`;
   }
+  if (marker.contextConditionPin) {
+    root.classList.add("rimvio-globe-lodging-marker--context-condition");
+  }
   root.setAttribute(
     "aria-label",
     marker.anchorLabel
@@ -37,96 +36,31 @@ export function createGlobeEateryMarkerElement(
       : marker.label,
   );
 
-  if (marker.contextConditionPin) {
-    root.classList.add("rimvio-globe-lodging-marker--context-condition");
-  }
-  if (marker.discoveryShortLabel) {
-    root.classList.add("rimvio-globe-lodging-marker--discovery");
-    if (marker.discoveryAccent) {
-      root.dataset.discoveryAccent = marker.discoveryAccent;
-    }
-    const pill = document.createElement("span");
-    pill.className = "rimvio-globe-lodging-marker__discovery-pill";
-    if (marker.virtualCandidate) {
-      pill.style.border = "1px dashed rgba(15, 23, 42, 0.28)";
-    }
-    const thumbUrl = marker.thumbnailUrl?.trim();
-    if (thumbUrl) {
-      const isActivity = marker.resourceId.includes(":activity:");
-      prependGlobeDiscoveryPillThumbnail(pill, {
-        thumbnailUrl: thumbUrl,
-        fallbackGlyph: isActivity ? "놀" : "맛",
-      });
-    }
-    const badgeLabel = marker.ontologyBadgeLabel?.trim();
-    if (
-      badgeLabel &&
-      badgeLabel !== "맛집" &&
-      !/노드$/u.test(badgeLabel)
-    ) {
-      const badge = document.createElement("span");
-      badge.className = "rimvio-globe-lodging-marker__ontology-badge";
-      badge.textContent = badgeLabel;
-      pill.appendChild(badge);
-    }
-    const name = document.createElement("span");
-    name.className = "rimvio-globe-lodging-marker__discovery-name";
-    name.textContent = marker.discoveryShortLabel ?? marker.label;
-    pill.appendChild(name);
-    const priceLabel = sanitizeMapMarkerSupportLabel(marker.discoveryPriceLabel);
-    if (priceLabel) {
-      const price = document.createElement("span");
-      price.className = "rimvio-globe-lodging-marker__discovery-price";
-      price.textContent = priceLabel;
-      pill.appendChild(price);
-    }
-    const callout = readGlobeMapCalloutOffset(marker);
-    if (callout) {
-      mountGlobeMapCalloutPill(root, pill, callout);
-    } else {
-      root.appendChild(pill);
-    }
-    const dot = document.createElement("span");
-    dot.className = "rimvio-globe-lodging-marker__dot";
-    root.appendChild(dot);
-    root.addEventListener("pointerdown", (event) => event.stopPropagation());
-    root.addEventListener("click", (event) => {
-      event.stopPropagation();
-      event.preventDefault();
-      handlers.onPress(marker.resourceId, marker.carouselIndex);
-    });
-    return root;
-  }
+  const isActivity = marker.resourceId.includes(":activity:");
+  mountRealityObjectMarkerVisual({
+    root,
+    detailLevel: handlers.detailLevel,
+    pinKind: isActivity ? "activity" : "eatery",
+    label: marker.label,
+    shortLabel: marker.discoveryShortLabel,
+    thumbnailUrl: marker.thumbnailUrl,
+    objectGlyph: marker.objectGlyph,
+    objectHaloFamily: marker.objectHaloFamily,
+    projectionTier: marker.projectionTier,
+    discoveryAccent: marker.discoveryAccent,
+    bloomRole: marker.bloomRole,
+    bloomDelayMs: marker.bloomDelayMs,
+    useSegmentation: marker.useSegmentation,
+    cutoutMode: marker.cutoutMode,
+  });
 
-  const card = document.createElement("span");
-  card.className = "rimvio-globe-lodging-marker__card";
-  if (marker.virtualCandidate) {
-    card.style.outline = "1px dashed rgba(255,255,255,0.42)";
+  const support = marker.discoveryPriceLabel?.trim();
+  if (support && (handlers.detailLevel === "street" || handlers.detailLevel === "pin")) {
+    const price = document.createElement("span");
+    price.className = "rimvio-globe-reality-object__support";
+    price.textContent = support;
+    root.querySelector(".rimvio-globe-reality-object__shell")?.appendChild(price);
   }
-
-  if (marker.thumbnailUrl) {
-    const image = document.createElement("img");
-    image.src = marker.thumbnailUrl;
-    image.alt = "";
-    image.className = "rimvio-globe-lodging-marker__thumb";
-    image.draggable = false;
-    card.appendChild(image);
-  } else {
-    const fallback = document.createElement("span");
-    fallback.className = "rimvio-globe-lodging-marker__fallback";
-    fallback.textContent = "맛";
-    card.appendChild(fallback);
-  }
-
-  const title = document.createElement("span");
-  title.className = "rimvio-globe-lodging-marker__title";
-  title.textContent = marker.label;
-
-  root.appendChild(card);
-  root.appendChild(title);
-  const dot = document.createElement("span");
-  dot.className = "rimvio-globe-lodging-marker__dot";
-  root.appendChild(dot);
 
   root.addEventListener("pointerdown", (event) => event.stopPropagation());
   root.addEventListener("click", (event) => {

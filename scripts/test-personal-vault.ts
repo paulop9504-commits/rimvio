@@ -5,6 +5,7 @@ import {
   hashVaultPlaintext,
   buildPersonalVaultStoragePath,
 } from "../lib/vault";
+import { resolveVaultWriteClientResult } from "../lib/vault/vault-api-errors";
 
 process.env.VAULT_ENCRYPTION_KEY = "test-vault-key-for-ci-only";
 
@@ -31,5 +32,28 @@ assert.equal(hashVaultPlaintext(payload), hashVaultPlaintext({ ...payload }));
 const path = buildPersonalVaultStoragePath(userA, "obj-1");
 assert.equal(path, `${userA}/obj-1`);
 assert.ok(!path.includes(".."));
+
+// Legacy false-success: HTTP 200 + error body must not look like a save.
+const legacyFail = resolveVaultWriteClientResult(200, {
+  error: "relation user_vault_objects does not exist",
+  hint: "vault_unavailable",
+});
+assert.equal(legacyFail.ok, false);
+assert.ok(legacyFail.ok === false && legacyFail.error.includes("user_vault_objects"));
+
+const migrationFail = resolveVaultWriteClientResult(200, {
+  hint: "vault_migration_required",
+});
+assert.equal(migrationFail.ok, false);
+
+const okWrite = resolveVaultWriteClientResult(200, { ok: true });
+assert.equal(okWrite.ok, true);
+
+const statusFail = resolveVaultWriteClientResult(503, {
+  ok: false,
+  error: "vault_write_failed",
+  hint: "vault_unavailable",
+});
+assert.equal(statusFail.ok, false);
 
 console.log("test-personal-vault: ok");

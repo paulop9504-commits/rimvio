@@ -49,7 +49,7 @@ function nightlyPriceKrw(row: ContextLodgingInventoryRow): number | null {
 }
 
 /**
- * Parse "하루 3만원 미만", "3만 이하", "30000원 아래" → nightly KRW cap.
+ * Parse "하루 3만원 미만", "하루에 3만원대", "3만 이하", "30000원 아래" → nightly KRW cap.
  */
 export function parseMaxNightlyPriceKrw(text: string): number | null {
   const trimmed = text.trim();
@@ -58,17 +58,26 @@ export function parseMaxNightlyPriceKrw(text: string): number | null {
   }
 
   const manUnder = trimmed.match(
-    /(\d+(?:\.\d+)?)\s*만\s*원?\s*(?:미만|이하|아래|안|이내|컷|까지)/iu,
+    /(\d+(?:\.\d+)?)\s*만\s*원?\s*(?:미만|이하|아래|안|이내|컷|까지|대)/iu,
   );
-  if (manUnder?.[1]) {
+  if (manUnder?.[1] && /미만|이하|아래|안|이내|컷|까지|대/iu.test(manUnder[0])) {
     return Math.round(Number(manUnder[1]) * 10_000);
   }
 
+  // 「하루 3만」·「하루에 3만원대」·「1박에 5만」
   const dayMan = trimmed.match(
-    /(?:하루|1\s*박|일\s*박|박당|night(?:ly)?)\s*(\d+(?:\.\d+)?)\s*만/iu,
+    /(?:하루(?:에)?|1\s*박(?:에)?|일\s*박(?:에)?|박당|night(?:ly)?)\s*(\d+(?:\.\d+)?)\s*만/iu,
   );
   if (dayMan?.[1]) {
     return Math.round(Number(dayMan[1]) * 10_000);
+  }
+
+  // 「3만원대」·「3만짜리」 alone = soft nightly ceiling
+  const manBand = trimmed.match(
+    /(\d+(?:\.\d+)?)\s*만\s*원?\s*(?:짜리|대)/iu,
+  );
+  if (manBand?.[1]) {
+    return Math.round(Number(manBand[1]) * 10_000);
   }
 
   const manBare = trimmed.match(
@@ -76,7 +85,9 @@ export function parseMaxNightlyPriceKrw(text: string): number | null {
   );
   if (
     manBare?.[1] &&
-    /미만|이하|아래|싸|저렴|저가|budget|cheap|게스트|호스텔|hostel/iu.test(trimmed)
+    /미만|이하|아래|싸|저렴|저가|budget|cheap|게스트|호스텔|hostel|다시\s*찾/iu.test(
+      trimmed,
+    )
   ) {
     return Math.round(Number(manBare[1]) * 10_000);
   }
@@ -102,11 +113,13 @@ export function resolveLodgingSearchKeyword(input: {
   lodgingKind: LocalDiscoveryLodgingKind;
   message?: string | null;
   lodgingStayType?: LodgingStayType | null;
+  areaHint?: string | null;
 }): string | null {
   return resolveLodgingStaySearchKeyword({
     stayType: input.lodgingStayType,
     lodgingKind: input.lodgingKind,
     message: input.message,
+    areaHint: input.areaHint,
   });
 }
 
@@ -160,7 +173,18 @@ export function filterLodgingRowsForIntent(input: {
     if (typedHits.length > 0) {
       rows = typedHits;
     } else if (input.lodgingKind === "hostel" || stayType === "capsule") {
-      rows = rows.filter((row) => !lodgingRowLooksLuxury(row));
+      // Never soft-keep business/APA hotels when user asked capsule/hostel.
+      const hostelHits = rows.filter(lodgingRowMatchesHostelSignal);
+      rows =
+        hostelHits.length > 0
+          ? hostelHits
+          : rows.filter(
+              (row) =>
+                !lodgingRowLooksLuxury(row) &&
+                !/apa\b|아파|アパ|hilton|hyatt|marriott|business\s*hotel|비즈니스/iu.test(
+                  `${row.name} ${row.address ?? ""}`,
+                ),
+            );
     }
   } else if (input.lodgingKind === "hostel") {
     const hostelHits = rows.filter(lodgingRowMatchesHostelSignal);
@@ -175,10 +199,24 @@ export function filterLodgingRowsForIntent(input: {
     const capped = filterByMaxPrice(rows, cap);
     if (capped.length > 0) {
       rows = capped;
-    } else if (input.lodgingKind === "hostel") {
-      // Still drop luxury even if every priced row exceeds cap.
+    } else if (
+      input.lodgingKind === "hostel" ||
+      stayType === "capsule" ||
+      stayType === "hostel" ||
+      stayType === "guesthouse"
+    ) {
+      // Hard Field: do not re-surface over-budget business hotels.
       rows = rows
-        .filter((row) => !lodgingRowLooksLuxury(row))
+        .filter((row) => {
+          const price = nightlyPriceKrw(row);
+          if (price != null && price > cap) {
+            return false;
+          }
+          return (
+            !lodgingRowLooksLuxury(row) &&
+            !/apa\b|아파|アパ/iu.test(`${row.name} ${row.address ?? ""}`)
+          );
+        })
         .sort((a, b) => (nightlyPriceKrw(a) ?? 1e12) - (nightlyPriceKrw(b) ?? 1e12));
     }
   } else if (input.budget === "low") {

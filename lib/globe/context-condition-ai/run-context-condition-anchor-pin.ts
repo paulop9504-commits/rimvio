@@ -43,11 +43,14 @@ import {
 } from "@/lib/entity-resolver";
 import { foodBrandMatchAliases } from "@/lib/globe/context-condition-ai/parse-food-brand-focus";
 import { syncContextConditionPins } from "@/lib/globe/context-condition-ai/sync-context-condition-pins";
+import { alignSessionGraphDiscoveryToScout } from "@/lib/graph-command/align-session-graph-lodging-to-scout";
 import { writeScoutRevealPending } from "@/lib/globe/context-condition-ai/context-condition-scout-reveal-pending-store";
 import { emitSearchHubAction } from "@/lib/globe/resource/hub-action-record-store";
 import { logExplorationScoutScoreTelemetry } from "@/lib/globe/discovery-policy/log-exploration-score-telemetry";
 import { loadLodgingInventoryRows } from "@/lib/globe/context-hub/load-lodging-inventory-rows";
+import { resolveLodgingMockForPlace } from "@/lib/globe/context-hub/lodging-mock-inventory";
 import type { ContextLodgingInventoryRow } from "@/lib/globe/context-hub/lodging-resource-types";
+import { lodgingRowMatchesStayType } from "@/lib/globe/lodging/lodging-stay-types";
 import { loadEateryInventoryRows } from "@/lib/globe/eatery/load-eatery-inventory-rows";
 import type { ContextEateryInventoryRow } from "@/lib/globe/eatery/eatery-resource-types";
 import { loadPlaceInventoryRows } from "@/lib/globe/place/load-place-inventory-rows";
@@ -57,6 +60,11 @@ import { isCoordInKorea } from "@/lib/globe/geo-region-from-coords";
 import { scorePlaceRecommendations } from "@/lib/globe/place/score-place-recommendations";
 import { scoreEateryRecommendations } from "@/lib/globe/eatery/score-eatery-recommendations";
 import { scoreLodgingRecommendations } from "@/lib/globe/lodging/score-lodging-recommendations";
+import {
+  compileContextFieldControl,
+  composeSearchQueryWithFieldControl,
+  writeContextFieldControl,
+} from "@/lib/context-field";
 import {
   LOCAL_DISCOVERY_FEED_INVENTORY_CAP,
   LOCAL_DISCOVERY_LODGING_SCOUT_MAX,
@@ -248,27 +256,49 @@ function buildSummaryKo(input: {
   radiusM: number;
   eateryFocus?: string | null;
   activityLabelKo?: string | null;
+  /** When true, pins stay off the map until the feed gate / map-reveal utterance. */
+  deferMapReveal?: boolean;
 }): string {
   const { lodgingCount, eateryCount, radiusM, eateryFocus } = input;
   const total = lodgingCount + eateryCount;
   if (total <= 0) {
     return copy.globe.contextConditionPinEmpty;
   }
+  const deferred = Boolean(input.deferMapReveal);
   // activity/amenity results ride the eatery channel — label them correctly.
   if (input.activityLabelKo?.trim() && eateryCount > 0 && lodgingCount === 0) {
-    return `${input.activityLabelKo.trim()} ${eateryCount}곳을 지도에 표시했어요`;
+    return deferred
+      ? `${input.activityLabelKo.trim()} ${eateryCount}곳을 찾았어요 · 확인하면 지도에 보여드려요`
+      : `${input.activityLabelKo.trim()} ${eateryCount}곳을 지도에 표시했어요`;
   }
   if (eateryCount > 0 && lodgingCount === 0 && eateryFocus?.trim()) {
     return copy.globe.cicadaAgentVisualizeSummary(eateryFocus.trim(), eateryCount);
   }
-  const radiusLine = copy.globe.localDiscoveryPlacedSummary(radiusM, total);
+  const radiusLine = deferred
+    ? copy.globe.localDiscoveryReadySummary(radiusM, total)
+    : copy.globe.localDiscoveryPlacedSummary(radiusM, total);
   if (lodgingCount > 0 && eateryCount === 0) {
-    return `${copy.globe.contextConditionPinLodgingDone.replace("{n}", String(lodgingCount))} · ${radiusLine}`;
+    const head = (
+      deferred
+        ? copy.globe.contextConditionPinLodgingReady
+        : copy.globe.contextConditionPinLodgingDone
+    ).replace("{n}", String(lodgingCount));
+    return `${head} · ${radiusLine}`;
   }
   if (eateryCount > 0 && lodgingCount === 0) {
-    return `${copy.globe.contextConditionPinEateryDone.replace("{n}", String(eateryCount))} · ${radiusLine}`;
+    const head = (
+      deferred
+        ? copy.globe.contextConditionPinEateryReady
+        : copy.globe.contextConditionPinEateryDone
+    ).replace("{n}", String(eateryCount));
+    return `${head} · ${radiusLine}`;
   }
-  return `${copy.globe.contextConditionPinDone.replace("{n}", String(total))} · ${radiusLine}`;
+  const head = (
+    deferred
+      ? copy.globe.contextConditionPinReady
+      : copy.globe.contextConditionPinDone
+  ).replace("{n}", String(total));
+  return `${head} · ${radiusLine}`;
 }
 
 function buildRecommendations(input: {
@@ -372,6 +402,8 @@ export async function runContextConditionAnchorPin(
   }
 
   const spec = input.spec;
+  const fieldPlane = compileContextFieldControl(input.message?.trim() ?? "");
+  writeContextFieldControl(contextEventId, fieldPlane);
   const explorationMode = resolveExplorationMode({
     message: input.message,
     spec,
@@ -480,19 +512,62 @@ export async function runContextConditionAnchorPin(
 
   if (wantsLodging) {
     input.onProcessPhase?.("analyzing");
+    const lodgingSlots = parseUtteranceIntentSlots(input.message ?? "");
+    const lodgingAreaHint =
+      lodgingSlots.stationHint ||
+      lodgingSlots.areaHint ||
+      searchOrigin.regionLabel ||
+      null;
     const lodgingKeyword = resolveLodgingSearchKeyword({
       lodgingKind: spec.lodgingKind,
       lodgingStayType: spec.lodgingStayType ?? null,
       message: input.message,
+      areaHint: lodgingAreaHint,
     });
-    const loaded = await loadLodgingInventoryRows({
+    const lodgingRadiusM = Math.max(
+      radiusM,
+      radiusM + (exploration.lodgingRadiusBoostM ?? 0),
+    );
+    const lodgingMaxResults = Math.max(
+      LOCAL_DISCOVERY_LODGING_SCOUT_MAX,
+      exploration.lodgingMaxResults ?? LOCAL_DISCOVERY_LODGING_SCOUT_MAX,
+    );
+    let loaded = await loadLodgingInventoryRows({
       event,
       lat: searchOrigin.lat,
       lng: searchOrigin.lng,
-      maxResults: LOCAL_DISCOVERY_LODGING_SCOUT_MAX,
-      radiusM,
+      maxResults: lodgingMaxResults,
+      radiusM: lodgingRadiusM,
       keyword: lodgingKeyword,
     });
+    // Google often returns only 1–2 capsule names; top up with Japan mock when thin.
+    if (
+      (spec.lodgingStayType === "capsule" ||
+        spec.lodgingKind === "hostel" ||
+        /캡슐|capsule/iu.test(input.message ?? "")) &&
+      loaded.rows.length < 4
+    ) {
+      const mockRows = resolveLodgingMockForPlace(
+        lodgingAreaHint || input.anchorPlaceName || "오사카",
+        { lat: searchOrigin.lat, lng: searchOrigin.lng },
+      );
+      const stay = spec.lodgingStayType ?? "capsule";
+      const seen = new Set(
+        loaded.rows.map((row) => row.name.trim().toLowerCase()),
+      );
+      const extras = mockRows.filter((row) => {
+        if (seen.has(row.name.trim().toLowerCase())) {
+          return false;
+        }
+        return lodgingRowMatchesStayType(row, stay);
+      });
+      if (extras.length > 0) {
+        loaded = {
+          rows: [...loaded.rows, ...extras].slice(0, lodgingMaxResults),
+          source: loaded.source === "mock" ? "mock" : loaded.source,
+        };
+      }
+    }
     lodgingSource = loaded.source;
     const lodgingFilterMax =
       intent.lodgingMode === "similar_price"
@@ -505,10 +580,18 @@ export async function runContextConditionAnchorPin(
       budget: spec.budget,
       maxNightlyPriceKrw: spec.maxNightlyPriceKrw ?? null,
     });
-    const budgetFiltered = filterLodgingByBudget(
-      intentFiltered.length > 0 ? intentFiltered : loaded.rows,
-      spec.budget,
-    );
+    // Never fall back to unfiltered inventory when Fields were applied (empty = empty).
+    const fieldConstrained =
+      spec.lodgingStayType != null ||
+      (spec.maxNightlyPriceKrw != null && spec.maxNightlyPriceKrw > 0) ||
+      spec.lodgingKind === "hostel";
+    const afterIntent =
+      intentFiltered.length > 0
+        ? intentFiltered
+        : fieldConstrained
+          ? []
+          : loaded.rows;
+    const budgetFiltered = filterLodgingByBudget(afterIntent, spec.budget);
     const filtered = filterLodgingRowsForContextCondition({
       rows: budgetFiltered,
       anchorPlaceId: input.anchorPlaceId,
@@ -525,6 +608,7 @@ export async function runContextConditionAnchorPin(
       event,
       travelBrain,
       exploration,
+      fieldRankHints: fieldPlane.lodgingRankHints,
     }).slice(0, lodgingFilterMax);
     lodgingRows = lodgingScored.map((row) => row.row);
   }
@@ -543,12 +627,15 @@ export async function runContextConditionAnchorPin(
       brandEntity?.queryFocus ||
       parseSingleCuisineFocus(input.message ?? "") ||
       null;
-    const eateryQuery = resolveContextConditionEateryQuery({
-      userMessage: input.message,
-      anchorName: searchOrigin.regionLabel,
-      vibe: spec.vibe,
-      eateryFocus,
-    });
+    const eateryQuery = composeSearchQueryWithFieldControl(
+      resolveContextConditionEateryQuery({
+        userMessage: input.message,
+        anchorName: searchOrigin.regionLabel,
+        vibe: spec.vibe,
+        eateryFocus,
+      }),
+      fieldPlane.search,
+    );
     const area = searchOrigin.regionLabel.trim() || "근처";
     const specialtyDessert = isSpecialtyDessertEateryFocus(eateryFocus);
     const concreteCuisine = isConcreteCuisineEateryFocus(eateryFocus);
@@ -624,6 +711,7 @@ export async function runContextConditionAnchorPin(
       travelBrain,
       exploration: exploration,
       focusMatch: eateryFocus,
+      fieldRankHints: fieldPlane.eateryRankHints,
     });
     const brandTokens = brandEntity
       ? [brandEntity.queryFocus ?? brandEntity.label, ...brandAliases]
@@ -1018,6 +1106,7 @@ export async function runContextConditionAnchorPin(
       radiusM,
       eateryFocus: spec.eateryFocus,
       activityLabelKo,
+      deferMapReveal: Boolean(input.deferMapReveal),
     }),
     pinPoints,
     radiusM,
@@ -1040,7 +1129,26 @@ export async function runContextConditionAnchorPin(
         ? activitySubtype
         : null,
     deferMapReveal: input.deferMapReveal,
+    replaceLodgingInventory: feedLodgingRows.length > 0,
   });
+
+  if (feedLodgingRows.length > 0 || feedEateryRows.length > 0) {
+    alignSessionGraphDiscoveryToScout({
+      contextEventId,
+      scoutPlaceIds: [
+        ...feedLodgingRows.map((row) => row.placeId),
+        ...feedEateryRows.map((row) => row.placeId),
+      ],
+      scoutLabelsKo: [
+        ...feedLodgingRows.map((row) => row.name),
+        ...feedEateryRows.map((row) => row.name),
+      ],
+      kinds: [
+        ...(feedLodgingRows.length > 0 ? (["lodging"] as const) : []),
+        ...(feedEateryRows.length > 0 ? (["eatery"] as const) : []),
+      ],
+    });
+  }
 
   const deferMapReveal = Boolean(input.deferMapReveal);
   if (deferMapReveal) {

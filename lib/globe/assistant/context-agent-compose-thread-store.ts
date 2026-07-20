@@ -76,6 +76,9 @@ export type OperatorAskChipsComposePayload = {
     | "flight_prep"
     | "transit_prep"
     | "finance_prep"
+    | "lodging_stay_revise"
+    | "soft_graph_confirm"
+    | "clarify_less"
     | "plan_handoff"
     | "ingress_converge"
     | "research_approval";

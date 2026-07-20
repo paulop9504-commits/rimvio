@@ -1,5 +1,6 @@
 export {
   DEFAULT_SCOUT_QUALITY_MAX_ATTEMPTS,
+  SCOUT_QUALITY_MIN_LODGING_ONLY,
   SCOUT_QUALITY_MIN_RECOMMENDATIONS,
   evaluateScoutQualityGate,
   type ScoutQualityGateInput,

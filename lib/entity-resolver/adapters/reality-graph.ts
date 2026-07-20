@@ -17,7 +17,7 @@ export function enrichGeoFromRealityGraph(
   text: string,
   entities: readonly ResolvedEntity[],
 ): ResolvedEntity[] {
-  let next = entities.map((row) => {
+  const next = entities.map((row) => {
     if (!row.geoId) {
       return row;
     }

@@ -96,7 +96,7 @@ export const LODGING_STAY_TYPE_CATALOG: readonly LodgingStayTypeEntry[] = [
     summaryKo: "캡슐형 개인 공간",
     searchKeywordKo: "캡슐호텔",
     cues: /캡슐\s*호텔|capsule\s*hotel|capsule/iu,
-    filterSignal: /캡슐|capsule/iu,
+    filterSignal: /캡슐|capsule|カプセル/iu,
     band: "hostel",
   },
   {
@@ -530,19 +530,27 @@ export function resolveLodgingStaySearchKeyword(input: {
   stayType?: LodgingStayType | null;
   lodgingKind?: LodgingStayBand | null;
   message?: string | null;
+  /** Station / area noun — e.g. 난바 → 「캡슐호텔 난바」 for Places textSearch. */
+  areaHint?: string | null;
 }): string | null {
   const fromMessage = parseLodgingStayTypeFromText(input.message ?? "");
   const stay = fromMessage ?? normalizeLodgingStayType(input.stayType) ?? null;
+  let base: string | null = null;
   if (stay) {
-    return BY_ID.get(stay)?.searchKeywordKo ?? null;
+    base = BY_ID.get(stay)?.searchKeywordKo ?? null;
+  } else if (input.lodgingKind === "hostel") {
+    base = "게스트하우스";
+  } else if (input.lodgingKind === "airbnb") {
+    base = "에어비앤비";
   }
-  if (input.lodgingKind === "hostel") {
-    return "게스트하우스";
+  if (!base) {
+    return null;
   }
-  if (input.lodgingKind === "airbnb") {
-    return "에어비앤비";
+  const area = input.areaHint?.trim().replace(/역$/u, "") ?? "";
+  if (area.length >= 2 && !base.includes(area)) {
+    return `${base} ${area}`;
   }
-  return null;
+  return base;
 }
 
 export function lodgingRowMatchesStayType(

@@ -27,4 +27,7 @@ export {
 export {
   isContextActionIntentMessage,
   resolveContextActionIntent,
+  extractBookingTargetLabel,
+  normalizePlaceMatchLabel,
+  placeLabelMatchesQuery,
 } from "@/lib/globe/context-action-injection/resolve-context-action-intent";

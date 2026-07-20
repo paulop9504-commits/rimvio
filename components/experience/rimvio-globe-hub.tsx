@@ -96,6 +96,22 @@ import {
   shouldShowContextConditionDiscoveryOverlay,
 } from "@/lib/globe/spatial-semantic/resolve-context-condition-marker-visibility";
 import {
+  clearContextBloom,
+  decorateEateryMarkersWithBloom,
+  decorateLodgingMarkersWithBloom,
+  eateryMarkersToBloomCandidates,
+  lodgingMarkersToBloomCandidates,
+  readContextBloomArcsVisible,
+  startContextBloom,
+  subscribeContextBloom,
+  resolveContextEventIdFromResourceId,
+} from "@/lib/visual-projection";
+import {
+  persistContextBloomRelationsOnEvent,
+  readPersistedBloomRelated,
+} from "@/lib/reality-object";
+import { GlobeRealityObjectCard } from "@/components/globe/globe-reality-object-card";
+import {
   publishContextAgentGlobeMarkerFocus,
   resolveContextAgentGlobeMarkerFocus,
 } from "@/lib/globe/context-agent/context-agent-globe-marker-focus";
@@ -331,6 +347,7 @@ const RimvioGlobeHubBody = memo(
     const [expandedPinId, setExpandedPinId] = useState<string | null>(null);
     const [ontologyFacetRevision, setOntologyFacetRevision] = useState(0);
     const [layerPolicyRevision, setLayerPolicyRevision] = useState(0);
+    const [contextBloomRevision, setContextBloomRevision] = useState(0);
     useEffect(() => {
       const bump = () => setBridgeRevision((value) => value + 1);
       window.addEventListener(EXPERIENCE_BRIDGE_UPDATED, bump);
@@ -344,6 +361,11 @@ const RimvioGlobeHubBody = memo(
     useEffect(() => {
       return subscribeGlobeProjectionLayerPolicy(() => {
         setLayerPolicyRevision((value) => value + 1);
+      });
+    }, []);
+    useEffect(() => {
+      return subscribeContextBloom(() => {
+        setContextBloomRevision((value) => value + 1);
       });
     }, []);
     useEffect(() => {
@@ -492,6 +514,7 @@ const RimvioGlobeHubBody = memo(
     }, [contextConditionDiscoveryOverlay, focusedContextEventId, layerPolicy]);
     const tripArcs = useMemo(
       () => {
+        void contextBloomRevision;
         const eventArcs = projectGlobeTripArcs({
           eventsById,
           clusters,
@@ -499,7 +522,13 @@ const RimvioGlobeHubBody = memo(
           showBackgroundTripArcs: false,
         });
         const discoveryArcs = gatedDiscoveryOverlay?.routeArcs ?? [];
-        const merged = [...brainSurfaceTraceArcs, ...discoveryArcs, ...eventArcs];
+        const bloomArcs = readContextBloomArcsVisible();
+        const merged = [
+          ...bloomArcs,
+          ...brainSurfaceTraceArcs,
+          ...discoveryArcs,
+          ...eventArcs,
+        ];
         if (realityBridgeArcs.length > 0) {
           return [...realityBridgeArcs, ...merged];
         }
@@ -512,6 +541,7 @@ const RimvioGlobeHubBody = memo(
         realityBridgeArcs,
         gatedDiscoveryOverlay,
         brainSurfaceTraceArcs,
+        contextBloomRevision,
       ],
     );
     const lodgingGlobeMarkers = useMemo(() => {
@@ -566,7 +596,11 @@ const RimvioGlobeHubBody = memo(
       }
 
       let hubMarkers: ReturnType<typeof projectLodgingGlobeMarkers> = [];
-      if (isLodgingHubEnabled(event)) {
+      // Active Field scout lodging batch owns the map — do not merge stale hub APA.
+      const scoutOwnsLodgingMap =
+        hasContextConditionLodging && contextConditionMarkers.length > 0;
+
+      if (isLodgingHubEnabled(event) && !scoutOwnsLodgingMap) {
         const panel = listContextHubServicesForEvent(event);
         if (panel) {
           const ranked = rankContextResources({
@@ -609,7 +643,12 @@ const RimvioGlobeHubBody = memo(
       }
 
       const withContextCondition = decorateLodgingMarkersWithContextCondition(
-        mergeContextConditionLodgingMarkers(hubMarkers, contextConditionMarkers),
+        scoutOwnsLodgingMap
+          ? [...contextConditionMarkers]
+          : mergeContextConditionLodgingMarkers(
+              hubMarkers,
+              contextConditionMarkers,
+            ),
         event,
       );
       const hubFiltered = filterHubMarkersByProjectionPolicy({
@@ -617,17 +656,19 @@ const RimvioGlobeHubBody = memo(
         policy: layerPolicy,
         contextEventId: eventId,
       });
-      return resolveContextResourceMapMarkers({
+      const resolved = resolveContextResourceMapMarkers({
         markers: hubFiltered,
         hubLat,
         hubLng,
         layoutAtHub: contextConditionMarkers.length === 0,
         stagedDiscoveryCount: lodgingDiscoveryReveal.visibleResourceIds.size,
       }).map(applyLodgingOperationSignal);
+      return decorateLodgingMarkersWithBloom(resolved);
     }, [
       activeLodgingResourceId,
       bridgeRevision,
       clusters,
+      contextBloomRevision,
       eventsById,
       focusedContextEventId,
       liveLocation?.lat,
@@ -756,21 +797,24 @@ const RimvioGlobeHubBody = memo(
           policy: layerPolicy,
           contextEventId: eventId,
         });
-        return resolveContextResourceMapMarkers({
-          markers: hubFiltered,
-          hubLat,
-          hubLng,
-          // Scout results keep inventory lat/lng (same as lodging) — don't
-          // collapse every activity/eatery pill onto the context hub.
-          layoutAtHub: contextConditionEateryMarkers.length === 0,
-          stagedDiscoveryCount: eateryDiscoveryReveal.visibleResourceIds.size,
-        });
+        return decorateEateryMarkersWithBloom(
+          resolveContextResourceMapMarkers({
+            markers: hubFiltered,
+            hubLat,
+            hubLng,
+            // Scout results keep inventory lat/lng (same as lodging) — don't
+            // collapse every activity/eatery pill onto the context hub.
+            layoutAtHub: contextConditionEateryMarkers.length === 0,
+            stagedDiscoveryCount: eateryDiscoveryReveal.visibleResourceIds.size,
+          }),
+        );
       }
       return [];
     }, [
       activeEateryResourceId,
       bridgeRevision,
       clusters,
+      contextBloomRevision,
       projectionRevision,
       eventsById,
       focusedContextEventId,
@@ -784,6 +828,54 @@ const RimvioGlobeHubBody = memo(
       layerPolicy,
       layerPolicyRevision,
     ]);
+    const beginContextBloom = useCallback(
+      (input: {
+        selected: {
+          id: string;
+          resourceId: string;
+          label: string;
+          lat: number;
+          lng: number;
+          pinKind: "eatery" | "lodging" | "activity" | "amenity";
+        };
+        contextEventId?: string | null;
+      }) => {
+        const candidates = [
+          ...lodgingMarkersToBloomCandidates(lodgingGlobeMarkers),
+          ...eateryMarkersToBloomCandidates(eateryGlobeMarkers),
+        ];
+        const eventId =
+          input.contextEventId?.trim() ||
+          resolveContextEventIdFromResourceId(input.selected.resourceId) ||
+          focusedContextEventId?.trim() ||
+          "";
+        const event = eventId ? eventsById.get(eventId) ?? null : null;
+        const preferredRelated = readPersistedBloomRelated({
+          event,
+          selected: input.selected,
+          candidates,
+        });
+        const session = startContextBloom({
+          selected: input.selected,
+          candidates,
+          preferredRelated,
+        });
+        if (eventId && session.related.length > 0) {
+          persistContextBloomRelationsOnEvent({
+            contextEventId: eventId,
+            selected: input.selected,
+            related: session.related,
+            event,
+          });
+        }
+      },
+      [
+        eateryGlobeMarkers,
+        eventsById,
+        focusedContextEventId,
+        lodgingGlobeMarkers,
+      ],
+    );
     const contextHubAnchor = useMemo(() => {
       const eventId = focusedContextEventId?.trim();
       if (!eventId) {
@@ -935,6 +1027,7 @@ const RimvioGlobeHubBody = memo(
     const handleGlobePress = useCallback(
       (coords: { lat: number; lng: number }) => {
         setExpandedPinId(null);
+        clearContextBloom();
         onGlobePress?.(coords);
       },
       [onGlobePress],
@@ -1001,6 +1094,19 @@ const RimvioGlobeHubBody = memo(
                 lng: marker?.lng,
               });
             }
+            if (marker) {
+              beginContextBloom({
+                selected: {
+                  id: marker.id,
+                  resourceId: marker.resourceId,
+                  label: marker.label,
+                  lat: marker.lat,
+                  lng: marker.lng,
+                  pinKind: "lodging",
+                },
+                contextEventId,
+              });
+            }
             const scoutFocus = resolveContextAgentGlobeMarkerFocus({ resourceId });
             dispatchGlobeLodgingFocus({
               resourceId,
@@ -1013,6 +1119,27 @@ const RimvioGlobeHubBody = memo(
           }}
           eateryMarkers={eateryGlobeMarkers}
           onEateryMarkerPress={(resourceId, carouselIndex) => {
+            const marker = eateryGlobeMarkers.find((row) => row.resourceId === resourceId);
+            if (marker) {
+              const pinKind = marker.resourceId.includes(":activity:")
+                ? ("activity" as const)
+                : marker.resourceId.includes(":amenity:")
+                  ? ("amenity" as const)
+                  : ("eatery" as const);
+              beginContextBloom({
+                selected: {
+                  id: marker.id,
+                  resourceId: marker.resourceId,
+                  label: marker.label,
+                  lat: marker.lat,
+                  lng: marker.lng,
+                  pinKind,
+                },
+                contextEventId:
+                  resolveContextEventIdFromResourceId(marker.resourceId) ??
+                  focusedContextEventId,
+              });
+            }
             const scoutFocus = resolveContextAgentGlobeMarkerFocus({ resourceId });
             dispatchGlobeEateryFocus({
               resourceId,
@@ -1044,6 +1171,20 @@ const RimvioGlobeHubBody = memo(
           showInteractionHint={showInteractionHint}
           contextAgentPickMode={contextAgentPickMode}
         />
+
+        <div
+          className="pointer-events-none absolute inset-x-3 bottom-[max(5.5rem,calc(env(safe-area-inset-bottom)+4.75rem))] z-20 flex justify-end"
+          data-globe-reality-object-card-slot
+        >
+          <GlobeRealityObjectCard
+            fallbackContextEventId={focusedContextEventId}
+            event={
+              focusedContextEventId
+                ? (eventsById.get(focusedContextEventId) ?? null)
+                : null
+            }
+          />
+        </div>
 
         {clusters.length === 0 ? (
           layerMode === "discovery" ? (

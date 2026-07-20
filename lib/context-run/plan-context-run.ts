@@ -17,6 +17,11 @@ import {
   compileGlobeIngress,
   isGlobeIngressEligible,
 } from "@/lib/globe-ingress";
+import {
+  parseGraphCommands,
+  readSessionGraph,
+} from "@/lib/graph-command";
+import { isCompoundActionUtterance } from "@/lib/action-planner";
 
 function planPortalComposeIfEligible(
   bound: BoundSituation,
@@ -140,6 +145,26 @@ export function planContextRun(bound: BoundSituation): ContextRunPlan {
       return {
         kind: "small_talk",
         smallTalkReplyKo: smallTalk.replyKo,
+        composeAmbientChat: true,
+        ...base,
+      };
+    }
+  }
+
+  // Graph Command OS — NL → graph edit (before map_intent / discovery scout).
+  if (
+    ingress.surface === "composer" &&
+    ingress.layerMode === "personal"
+  ) {
+    const contextEventId =
+      ingress.contextEventId?.trim() || bound.graphId;
+    const session = readSessionGraph(contextEventId);
+    const graphCommands = parseGraphCommands(text, session);
+    if (graphCommands.length > 0 || isCompoundActionUtterance(text)) {
+      return {
+        kind: "graph_command",
+        graphCommands,
+        graphCommandContextEventId: contextEventId,
         composeAmbientChat: true,
         ...base,
       };

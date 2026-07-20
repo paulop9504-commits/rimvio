@@ -1,4 +1,9 @@
 import { copy } from "@/lib/copy/human-ko";
+import {
+  localYmdToday,
+  lodgingCheckOutMinYmd,
+  normalizeLodgingStayYmdPair,
+} from "@/lib/globe/context-hub/lodging-booking-date-bounds";
 import type { LodgingBookingSlots } from "@/lib/globe/context-hub/lodging-booking-slots";
 import type { LodgingIntakeGapId } from "@/lib/intake/domains/lodging/lodging-intake-slots";
 import type { IntakeSheetField } from "@/lib/intake/intake-sheet-field-types";
@@ -16,6 +21,12 @@ export function buildLodgingIntakeSheetFields(input: {
     gaps.includes(gapId) || !filled;
 
   const fields: IntakeSheetField[] = [];
+  const today = localYmdToday();
+  const stay = normalizeLodgingStayYmdPair({
+    checkInYmd: dateInputValue(state.checkInIso),
+    checkOutYmd: dateInputValue(state.checkOutIso),
+    today,
+  });
 
   if (
     show(
@@ -29,14 +40,19 @@ export function buildLodgingIntakeSheetFields(input: {
         gapId: "dates",
         kind: "date",
         label: copy.globe.lodgingSlotCheckIn,
-        value: dateInputValue(state.checkInIso),
+        value: dateInputValue(state.checkInIso) || stay.checkInYmd,
+        dateMin: today,
       },
       {
         id: "checkOutIso",
         gapId: "dates",
         kind: "date",
         label: copy.globe.lodgingSlotCheckOut,
-        value: dateInputValue(state.checkOutIso),
+        value: dateInputValue(state.checkOutIso) || stay.checkOutYmd,
+        dateMin: lodgingCheckOutMinYmd(
+          dateInputValue(state.checkInIso) || stay.checkInYmd,
+          today,
+        ),
       },
     );
   }
@@ -76,11 +92,13 @@ export function parseLodgingIntakeSubmitValues(
   guestCount: number;
   roomCount: number;
 } {
-  const checkIn = String(values.checkInIso ?? "").slice(0, 10);
-  const checkOut = String(values.checkOutIso ?? "").slice(0, 10);
+  const stay = normalizeLodgingStayYmdPair({
+    checkInYmd: String(values.checkInIso ?? "").slice(0, 10),
+    checkOutYmd: String(values.checkOutIso ?? "").slice(0, 10),
+  });
   return {
-    checkInIso: `${checkIn}T15:00:00.000Z`,
-    checkOutIso: `${checkOut}T11:00:00.000Z`,
+    checkInIso: `${stay.checkInYmd}T15:00:00.000Z`,
+    checkOutIso: `${stay.checkOutYmd}T11:00:00.000Z`,
     guestCount: Math.max(1, Math.round(Number(values.guestCount) || 1)),
     roomCount: Math.max(1, Math.round(Number(values.roomCount) || 1)),
   };

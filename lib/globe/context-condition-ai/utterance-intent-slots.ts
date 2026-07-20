@@ -42,7 +42,7 @@ export type UtteranceIntentSlots = {
 };
 
 const AREA_HINT_PATTERN =
-  /(도쿄역|신주쿠역|시부야역|우에노역|오사카역|난바|도쿄|오사카|교토|후쿠오카|나고야|삿포로|요코하마|신주쿠|시부야|아사쿠사|우에노|긴자|하라주쿠|이케부쿠로|도톤보리|서울|부산|제주|강남|홍대|이태원|tokyo\s*station|tokyo|osaka|kyoto|seoul|busan)/iu;
+  /(도쿄역|신주쿠역|시부야역|우에노역|아사쿠사역|이케부쿠로역|시나가와역|하라주쿠역|롯폰기역|오사카역|신오사카역|난바역|난바|우메다역|우메다|텐노지역|교토역|하카타역|나고야역|삿포로역|나라역|서울역|강남역|강남|홍대|홍대입구|명동|잠실|이태원|동대문|여의도|신촌|압구정|서면|해운대|부산역|광화문|도쿄|오사카|교토|후쿠오카|나고야|삿포로|요코하마|신주쿠|시부야|아사쿠사|우에노|긴자|하라주쿠|이케부쿠로|도톤보리|신사이바시|서울|부산|제주|대전|홍대|이태원|tokyo\s*station|namba|umeda|shinjuku|shibuya|gangnam|hongdae|tokyo|osaka|kyoto|seoul|busan|jeju)/iu;
 
 const EXCLUDE_PATTERN = /([가-힣A-Za-z]{2,20})\s*(?:빼고|제외)/gu;
 

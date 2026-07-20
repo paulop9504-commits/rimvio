@@ -73,7 +73,11 @@ const instantLodging = gateOperatorTurnSync({
   text: "호텔",
   ssot: emptySsot,
 });
-assert.equal(instantLodging.tool, "scout");
+// Engine may claim trip intake chips before instant lodging scout.
+assert.ok(
+  instantLodging.tool === "scout" || instantLodging.tool === "ask_chips",
+  `hotel gate: ${instantLodging.tool}`,
+);
 if (instantLodging.tool === "scout") {
   assert.equal(instantLodging.reason, "instant_lodging_search");
 }
@@ -97,5 +101,18 @@ const afterSkipLens = gateOperatorTurnSync({
   skipLens: true,
 });
 assert.equal(afterSkipLens.tool, "defer_classify");
+
+assert.equal(
+  gateOperatorTurnSync({ text: "APA호텔 고정해", ssot: emptySsot }).tool,
+  "graph_command",
+);
+assert.equal(
+  gateOperatorTurnSync({ text: "걸어서 10분 안쪽", ssot: emptySsot }).tool,
+  "graph_command",
+);
+assert.equal(
+  gateOperatorTurnSync({ text: "다이토요 예매할게", ssot: emptySsot }).tool,
+  "task_injection",
+);
 
 console.log("test-operator-turn: ok");

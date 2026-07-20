@@ -41,6 +41,17 @@ if (!blocked.allowed) {
   assert.equal(blocked.destinationChoices.length, 3);
 }
 
+const prepareWithDest = gateContainerAIRequest({
+  blueprint,
+  userMessage: "주변 호텔 찾아줘",
+  activeNodeId: "prepare",
+  destinationConfirmed: true,
+});
+assert.equal(prepareWithDest.allowed, true);
+if (prepareWithDest.allowed) {
+  assert.equal(prepareWithDest.domainExecutor, "lodging");
+}
+
 const stayBlocked = gateContainerAIRequest({
   blueprint,
   userMessage: "주변 호텔",

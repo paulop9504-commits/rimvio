@@ -24,6 +24,7 @@ type GlobePinPostBody = {
   displayName?: string;
   note?: string;
   capturedAtIso?: string;
+  bridgeEventId?: string;
 };
 
 type GlobePinPatchBody = {
@@ -120,6 +121,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         displayName: readStringField(form.get("displayName")),
         note: readStringField(form.get("note")),
         capturedAtIso: readStringField(form.get("capturedAtIso")),
+        bridgeEventId: readStringField(form.get("bridgeEventId")),
       };
       const file = form.get("file");
       imageFile = file instanceof File ? file : null;
@@ -172,6 +174,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       capturedAtIso: body.capturedAtIso,
       imageUrl,
       mediaKind: imageUrl ? "photo" : null,
+      bridgeEventId: body.bridgeEventId?.trim() || null,
     });
 
     return NextResponse.json({ pin, threadId: resolvedThreadId });

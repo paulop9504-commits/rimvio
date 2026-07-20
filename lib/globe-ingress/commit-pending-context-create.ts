@@ -14,6 +14,7 @@ import {
 } from "@/lib/globe-ingress/pending-context-create-store";
 import { buildContextCreateProgressLines } from "@/lib/globe-ingress/format-pending-context-create-preview";
 import { syncGlobeIngressCreatingProgressToFeed } from "@/lib/context-run/sync-globe-ingress-to-feed";
+import { runRealityIngressPipeline } from "@/lib/reality-pipeline";
 import { copy } from "@/lib/copy/human-ko";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import type { GlobeIngressCompileResult } from "@/lib/globe-ingress/types";
@@ -48,6 +49,20 @@ export function commitPendingContextCreate(input: {
     message: draft.utterance,
     travelSlots: draft.travelSlots,
     profile: draft.profile,
+  });
+
+  // Seed Execution Inbox (결재함) — prepare only; human CEO Sign later.
+  const destination =
+    draft.travelSlots?.destination?.trim() ||
+    event.place?.trim() ||
+    event.title.replace(/\s*여행$/u, "").trim() ||
+    "여행지";
+  runRealityIngressPipeline({
+    contextEventId: event.id,
+    utterance: draft.utterance,
+    contextLabelKo: event.title,
+    destinationLabelKo: destination,
+    seedExecutionInbox: true,
   });
 
   syncGlobeIngressCompileToFeed(draft.compiled, draft.utterance);

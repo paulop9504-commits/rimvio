@@ -8,6 +8,7 @@ import {
 } from "@/lib/ontology/media-guide-store";
 import type { MediaGuideNode } from "@/lib/ontology/media-guide-types";
 import { filterPlayableMediaGuides } from "@/lib/ontology/playable-youtube-media-guide";
+import { syncMediaGuideRealityObjects } from "@/lib/reality-object/attach-media-reality-object";
 
 type MediaGuideRouteResponse = {
   ok?: boolean;
@@ -23,6 +24,10 @@ export async function refreshContextMediaGuidesForEvent(
   const cached = filterPlayableMediaGuides(queryMediaGuidesForEvent(event.id));
   const cachedYoutube = cached.filter((guide) => guide.sourceKind === "youtube");
   if (cachedYoutube.length >= MIN_YOUTUBE_GUIDES_BEFORE_SKIP) {
+    syncMediaGuideRealityObjects({
+      experienceEntityId: asRimvioEntityId("experience", event.id),
+      guides: cached,
+    });
     return cached;
   }
 
@@ -43,8 +48,13 @@ export async function refreshContextMediaGuidesForEvent(
     const guides = filterPlayableMediaGuides(
       Array.isArray(payload.guides) ? payload.guides : [],
     );
+    const experienceEntityId = asRimvioEntityId("experience", event.id);
     replaceMediaGuidesForExperience({
-      experienceEntityId: asRimvioEntityId("experience", event.id),
+      experienceEntityId,
+      guides,
+    });
+    syncMediaGuideRealityObjects({
+      experienceEntityId,
       guides,
     });
     return guides;

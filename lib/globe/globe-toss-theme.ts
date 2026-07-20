@@ -37,4 +37,10 @@ export const GLOBE_TOSS_THEME = {
   /** Great-circle trip leg connector on 3D globe (globe.gl arcStroke). */
   tripArcStroke: 0.085,
   tripArcFocusedStroke: 0.14,
+  /** Graph signal links (compare / demo) — hairline, low-opacity, view stays clear. */
+  signalArc: "rgba(90, 200, 250, 0.55)",
+  signalArcStroke: 0.035,
+  signalArcDashLength: 0.14,
+  signalArcDashGap: 0.72,
+  signalArcDashAnimateMs: 2200,
 } as const;

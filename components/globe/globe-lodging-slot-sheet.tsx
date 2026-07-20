@@ -8,6 +8,13 @@ import {
   SlotCounterRow,
 } from "@/components/globe/globe-lodging-booking-slot-chips";
 import { copy } from "@/lib/copy/human-ko";
+import {
+  areLodgingStayDatesValid,
+  clampLodgingCheckInYmd,
+  localYmdToday,
+  lodgingCheckOutMinYmd,
+  normalizeLodgingStayYmdPair,
+} from "@/lib/globe/context-hub/lodging-booking-date-bounds";
 import type { LodgingBookingSlots } from "@/lib/globe/context-hub/lodging-booking-slots";
 import { cn } from "@/lib/utils";
 
@@ -47,6 +54,9 @@ export function GlobeLodgingSlotSheet({
   const [guestCount, setGuestCount] = useState(initialSlots.guestCount ?? 1);
   const [roomCount, setRoomCount] = useState(initialSlots.roomCount ?? 1);
 
+  const today = localYmdToday();
+  const checkOutMin = lodgingCheckOutMinYmd(checkIn || today, today);
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -55,15 +65,26 @@ export function GlobeLodgingSlotSheet({
     if (!open) {
       return;
     }
-    setCheckIn(inputDateValue(initialSlots.checkInIso));
-    setCheckOut(inputDateValue(initialSlots.checkOutIso));
+    const stay = normalizeLodgingStayYmdPair({
+      checkInYmd: inputDateValue(initialSlots.checkInIso),
+      checkOutYmd: inputDateValue(initialSlots.checkOutIso),
+    });
+    setCheckIn(stay.checkInYmd);
+    setCheckOut(stay.checkOutYmd);
     setGuestCount(initialSlots.guestCount ?? 1);
     setRoomCount(initialSlots.roomCount ?? 1);
   }, [initialSlots, open]);
 
   const canSubmit = useMemo(
-    () => Boolean(checkIn && checkOut && guestCount > 0 && roomCount > 0),
-    [checkIn, checkOut, guestCount, roomCount],
+    () =>
+      areLodgingStayDatesValid({
+        checkInYmd: checkIn,
+        checkOutYmd: checkOut,
+        today,
+      }) &&
+      guestCount > 0 &&
+      roomCount > 0,
+    [checkIn, checkOut, guestCount, roomCount, today],
   );
 
   if (!mounted) {
@@ -133,7 +154,18 @@ export function GlobeLodgingSlotSheet({
                   <input
                     type="date"
                     value={checkIn}
-                    onChange={(event) => setCheckIn(event.target.value)}
+                    min={today}
+                    onChange={(event) => {
+                      const next = clampLodgingCheckInYmd(
+                        event.target.value,
+                        today,
+                      );
+                      setCheckIn(next);
+                      const minOut = lodgingCheckOutMinYmd(next, today);
+                      setCheckOut((prev) =>
+                        !prev || prev < minOut ? minOut : prev,
+                      );
+                    }}
                     className={dateFieldClassName()}
                   />
                 </label>
@@ -144,7 +176,11 @@ export function GlobeLodgingSlotSheet({
                   <input
                     type="date"
                     value={checkOut}
-                    onChange={(event) => setCheckOut(event.target.value)}
+                    min={checkOutMin}
+                    onChange={(event) => {
+                      const next = event.target.value;
+                      setCheckOut(next < checkOutMin ? checkOutMin : next);
+                    }}
                     className={dateFieldClassName()}
                   />
                 </label>
@@ -172,14 +208,19 @@ export function GlobeLodgingSlotSheet({
               <button
                 type="button"
                 disabled={!canSubmit}
-                onClick={() =>
+                onClick={() => {
+                  const stay = normalizeLodgingStayYmdPair({
+                    checkInYmd: checkIn,
+                    checkOutYmd: checkOut,
+                    today,
+                  });
                   onSubmit({
-                    checkInIso: `${checkIn}T15:00:00.000Z`,
-                    checkOutIso: `${checkOut}T11:00:00.000Z`,
+                    checkInIso: `${stay.checkInYmd}T15:00:00.000Z`,
+                    checkOutIso: `${stay.checkOutYmd}T11:00:00.000Z`,
                     guestCount,
                     roomCount,
-                  })
-                }
+                  });
+                }}
                 className="w-full rounded-2xl bg-[#0071e3] px-4 py-3.5 text-[15px] font-semibold text-white shadow-[0_10px_24px_rgba(0,113,227,0.28)] disabled:opacity-40 active:scale-[0.99]"
               >
                 {copy.globe.lodgingSlotApply}

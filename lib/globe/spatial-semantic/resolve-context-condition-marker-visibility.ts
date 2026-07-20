@@ -27,7 +27,7 @@ function placeIdFromHubResourceId(resourceId: string): string | null {
 
 /** Hub discovery markers — hide clutter when chat/scout focuses the map. */
 export function filterHubMarkersByProjectionPolicy<
-  T extends { resourceId: string },
+  T extends { resourceId: string; projectionTier?: string },
 >(input: {
   markers: readonly T[];
   policy: GlobeProjectionLayerPolicy;
@@ -39,6 +39,15 @@ export function filterHubMarkersByProjectionPolicy<
     return [...input.markers];
   }
   if (input.policy.mode === "context_only") {
+    // Context workspace: keep Reality Object foreground only (hierarchical projection).
+    const foreground = input.markers.filter(
+      (marker) => marker.projectionTier !== "background",
+    );
+    if (foreground.some((marker) => marker.projectionTier === "foreground")) {
+      return foreground.filter(
+        (marker) => marker.projectionTier === "foreground",
+      );
+    }
     return [];
   }
   if (input.policy.mode !== "focus") {

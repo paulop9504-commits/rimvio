@@ -7,6 +7,8 @@ import { GlobeContextQuickPinButton } from "@/components/globe/globe-context-qui
 import { GlobeEateryRankModeChips } from "@/components/globe/globe-eatery-rank-mode-chips";
 import { GlobeFeedVideoHeroFallback } from "@/components/globe/globe-feed-video-hero-fallback";
 import { GlobeLodgingRankModeChips } from "@/components/globe/globe-lodging-rank-mode-chips";
+import { GlobePlaceInfoCard, buildPlaceInfoFromFeedLines } from "@/components/globe/globe-place-info-card";
+import { capabilitiesForDiscoveryCard } from "@/lib/reality-object";
 import { GlobeScoutFeedGateVideoStrip } from "@/components/globe/globe-scout-feed-gate-video-strip";
 import { copy } from "@/lib/copy/human-ko";
 import {
@@ -54,6 +56,8 @@ export type GlobeInfiniteDiscoveryFeedPanelProps = {
   onDismiss: () => void;
   onFixPin: (card: InfiniteDiscoveryFeedCard) => void;
   onCheckout: (card: InfiniteDiscoveryFeedCard) => void;
+  /** Add place to Execution Inbox (prepare only). */
+  onAddToExecutionInbox?: (card: InfiniteDiscoveryFeedCard) => void;
   pinBusyPlaceId?: string | null;
   className?: string;
 };
@@ -134,6 +138,7 @@ export function GlobeInfiniteDiscoveryFeedPanel({
   onDismiss,
   onFixPin,
   onCheckout,
+  onAddToExecutionInbox,
   pinBusyPlaceId = null,
   className,
 }: GlobeInfiniteDiscoveryFeedPanelProps) {
@@ -587,30 +592,60 @@ export function GlobeInfiniteDiscoveryFeedPanel({
                       >
                         {card.transaction.payLabelKo}
                       </button>
-                    ) : card.transaction.payLabelKo ? (
-                      <span className="text-[10px] text-[#86868b]">{card.media.secondaryLine}</span>
                     ) : null}
                   </div>
 
-                  <div className="space-y-1 px-3 pb-4">
-                    {card.media.secondaryLine ? (
-                      <p className="text-[11px] font-medium text-[#0071e3]">
-                        {card.media.secondaryLine}
-                      </p>
-                    ) : null}
-                    <p className="text-[12px] leading-relaxed text-[#515154]">
-                      <span className="font-semibold text-[#1d1d1f]">
-                        {copy.globe.intelligentPinAiInsightPrefix}
-                      </span>{" "}
-                      {card.media.detailReasonLine}
-                    </p>
+                  <div className="px-3 pb-4">
+                    {(() => {
+                      const info = buildPlaceInfoFromFeedLines({
+                        secondaryLine: card.media.secondaryLine,
+                        detailReasonLine: card.media.detailReasonLine,
+                        reservable: card.kind === "eatery" || card.kind === "lodging",
+                        payable: card.transaction.canCheckout,
+                      });
+                      const executionCapabilities = capabilitiesForDiscoveryCard({
+                        kind: card.kind,
+                        title: card.media.title,
+                      });
+                      return (
+                        <GlobePlaceInfoCard
+                          title={card.media.title}
+                          ratingLabel={card.media.scoreLabel}
+                          facts={info.facts}
+                          reasons={info.reasons}
+                          executionCapabilities={executionCapabilities}
+                          onDirections={() => {
+                            window.open(
+                              `https://www.google.com/maps/dir/?api=1&destination=${card.lat},${card.lng}`,
+                              "_blank",
+                              "noopener,noreferrer",
+                            );
+                          }}
+                          onReservePrep={
+                            card.kind === "eatery" || card.kind === "lodging"
+                              ? () => onCheckout(card)
+                              : null
+                          }
+                          onBookNow={
+                            card.transaction.canCheckout
+                              ? () => onCheckout(card)
+                              : null
+                          }
+                          onAddToExecutionInbox={
+                            onAddToExecutionInbox
+                              ? () => onAddToExecutionInbox(card)
+                              : null
+                          }
+                        />
+                      );
+                    })()}
 
                     {card.media.videoContext &&
                     !shouldUseDiscoveryVideoHero({
                       imageUrls: card.media.imageUrls,
                       hasVideoContext: true,
                     }) ? (
-                      <div className="pt-1" data-globe-infinite-feed-video>
+                      <div className="pt-2" data-globe-infinite-feed-video>
                         <GlobeScoutFeedGateVideoStrip
                           videoContext={card.media.videoContext}
                         />

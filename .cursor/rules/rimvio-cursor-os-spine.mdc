@@ -1,0 +1,30 @@
+---
+description: Cursor OS Spine SSOT — Intent→Tool→Diff→approval (ADR-021)
+alwaysApply: true
+---
+
+# Cursor OS Spine (locked)
+
+**Canonical:** `docs/adr/021-cursor-os-spine-ssot.md` · `lib/context-run/cursor-os-spine.ts`
+
+> Intent routes Tools; Tools stamp Graph Diff; stages stay ordered; only dangerous Actions Field-Commit.
+
+| Axis | SSOT |
+|------|------|
+| Intent → ToolId | `lib/rule-engine/resolve-tool-id.ts` |
+| Tool → Diff | `stamp-search-tool-results-to-diff` · RO · brain markers |
+| Stage order | Search: `tool_router` → `graph_command_ir` → `graph_engine` |
+| Approval | Field = Reserve/Purchase + ops · soft chip = Filter/Pin/Delete/Revise |
+
+`booking.prepare` = prepare only (Commit 전). No chat dump of Search inventory.
+
+Compound plan: soft IR (`pin`×N + `compare`) = **one Diff bundle**; Field once for reserve.
+
+Search Diff order: `rankByValueConsensus` (가성비 · 표본 중앙 · bland/비싼-평범 후순위).
+
+## PR reject
+
+- Parallel result stores bypassing session graph / lastBatch
+- Search results only in assistant text
+- Inverted Search stages
+- Soft condition edits opening Field Commit

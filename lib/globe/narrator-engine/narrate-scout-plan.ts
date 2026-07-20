@@ -186,7 +186,7 @@ function buildProgressSteps(plan: ScoutNarrationPlan): ScoutNarrationProgressSte
 
   steps.push({
     id: "collect",
-    textKo: "🔍 후보를 수집하는 중…",
+    textKo: "🔎 검색 중…",
   });
 
   if (plan.sortHint === "rating") {
@@ -200,6 +200,15 @@ function buildProgressSteps(plan: ScoutNarrationPlan): ScoutNarrationProgressSte
       textKo: "🚶 가까운 순으로 정렬…",
     });
   }
+
+  steps.push({
+    id: "project_globe",
+    textKo: "🗺 Globe에 결과를 투영하는 중…",
+  });
+  steps.push({
+    id: "projected",
+    textKo: "📍 후보 위치를 표시했습니다.",
+  });
 
   return steps;
 }

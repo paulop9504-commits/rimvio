@@ -55,7 +55,14 @@ export function canTransitionContextAgentWorkPhase(
     case "deciding":
       return to === "awaiting_human" || to === "replanning" || to === "scouting";
     case "awaiting_human":
-      return to === "pinned" || to === "replanning" || to === "deciding";
+      // Continuous prompt→map: next Act may re-scout / edit without pinned first.
+      return (
+        to === "pinned" ||
+        to === "replanning" ||
+        to === "deciding" ||
+        to === "scouting" ||
+        to === "collecting_context"
+      );
     case "pinned":
       return to === "replanning" || to === "scouting" || to === "deciding";
     case "replanning":

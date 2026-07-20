@@ -9,6 +9,7 @@ import type { HubCheckoutPaymentMethod } from "@/lib/globe/hub-checkout/types";
 import { buildPaymentDisplayLabel } from "@/lib/payment-vault/build-payment-display-label";
 import { readPaymentVaultBundleClient } from "@/lib/payment-vault/read-payment-vault-bundle-client";
 import { savePaymentPreferenceClient } from "@/lib/payment-vault/save-payment-preference-client";
+import { mapVaultWriteErrorCopy } from "@/lib/vault/map-vault-write-error-copy";
 import { cn } from "@/lib/utils";
 
 const METHODS: readonly {
@@ -58,7 +59,13 @@ export function PaymentVaultSettingsPanel({
         cardLast4: method === "in_app_card" ? cardLast4 : null,
       });
       if (!result.ok) {
-        toast.error(pv.saveFailed);
+        toast.error(
+          mapVaultWriteErrorCopy(result.error, {
+            saveFailed: pv.saveFailed,
+            saveNeedLogin: pv.saveNeedLogin,
+            saveVaultUnavailable: pv.saveVaultUnavailable,
+          }),
+        );
         return;
       }
       toast.success(pv.saveDone);

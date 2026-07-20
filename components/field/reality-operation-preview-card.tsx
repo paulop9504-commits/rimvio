@@ -7,6 +7,7 @@ import {
   reflectRealityOperation,
 } from "@/lib/reality-queue/operation-actions";
 import type { RealityQueueItemV1 } from "@/lib/reality-queue/types";
+import { openPaymentVaultSettings } from "@/lib/payment-vault/open-payment-vault-settings-bridge";
 import { cn } from "@/lib/utils";
 
 export type RealityOperationPreviewCardProps = {
@@ -34,6 +35,11 @@ export function RealityOperationPreviewCard({
   };
 
   const handleEdit = () => {
+    if (item.type === "payment_prep" || item.kind === "finance") {
+      openPaymentVaultSettings();
+      toast.message("결제 수단을 확인해 주세요");
+      return;
+    }
     toast.message(field.realityOperationEditToast);
   };
 

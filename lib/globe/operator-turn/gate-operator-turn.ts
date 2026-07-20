@@ -6,6 +6,7 @@
 import { isInstantPoiSearch } from "@/lib/globe/context-condition-ai/instant-poi-search";
 import { isInstantEaterySearch } from "@/lib/globe/context-condition-ai/instant-eatery-search";
 import { isLodgingBookingQuery } from "@/lib/globe/context-hub/lodging-booking-slots";
+import { isContextActionIntentMessage } from "@/lib/globe/context-action-injection/resolve-context-action-intent";
 import { parseLensCommand } from "@/lib/globe/discovery-lens/parse-lens-command";
 import { parseResourceReelKindFilter } from "@/lib/globe/resource-reel/parse-resource-reel-kind-filter";
 import { resolveEngineOperatorTurn } from "@/lib/engine/resolve-engine-operator-turn";
@@ -17,6 +18,85 @@ import type {
   OperatorTurnPlan,
   OperatorTurnSsot,
 } from "@/lib/globe/operator-turn/types";
+import { isActionFirstUtterance } from "@/lib/rule-engine/is-action-first-utterance";
+import { classifyIntentFamily } from "@/lib/rule-engine/classify-intent-family";
+import { readSessionGraph } from "@/lib/graph-command/session-graph-store";
+import { parseGraphCommands } from "@/lib/graph-command/parse-graph-commands";
+import { isLocalDiscoveryRefinement } from "@/lib/globe/context-condition-ai/resolve-local-discovery-action";
+import { gateLodgingStayReviseAskChips } from "@/lib/globe/operator-turn/gate-lodging-stay-revise-ask-chips";
+import { gateSoftConfirmAskChips } from "@/lib/globe/operator-turn/gate-soft-confirm-ask-chips";
+
+function isRichGraphFilter(text: string): boolean {
+  const cmd = parseGraphCommands(text, null)[0];
+  if (!cmd || cmd.op !== "filter") {
+    return false;
+  }
+  const p = cmd.predicate;
+  return Boolean(
+    p.maxWalkMinutes != null ||
+      p.minRating != null ||
+      p.reservableOnly ||
+      p.localFavoriteOnly ||
+      p.sortBy != null,
+  );
+}
+
+/** Open discovery surface — prefer edit over cold-start scout / ask_chips. */
+export function hasOpenDiscoverySurface(ssot: OperatorTurnSsot): boolean {
+  return (
+    Boolean(ssot.lastBatch?.recommendations?.length) ||
+    ssot.reelItemCount > 0 ||
+    ssot.hasActiveSpec
+  );
+}
+
+function tryEditBeforeScout(input: {
+  text: string;
+  ssot: OperatorTurnSsot;
+  skipLens?: boolean;
+}): OperatorTurnPlan | null {
+  const text = input.text.trim();
+  if (!text || !hasOpenDiscoverySurface(input.ssot)) {
+    return null;
+  }
+
+  if (!input.skipLens) {
+    const lens = parseLensCommand(text);
+    if (lens) {
+      return { tool: "lens_command", reason: "nl_lens_candidate" };
+    }
+  }
+
+  if (isContextActionIntentMessage(text)) {
+    return { tool: "task_injection", reason: "classify_task" };
+  }
+
+  const kindFilter = parseResourceReelKindFilter(text);
+  if (kindFilter !== null && !isRichGraphFilter(text)) {
+    if (reelHasKindSlice(input.ssot, kindFilter)) {
+      return {
+        tool: "filter_inventory",
+        kindFilter,
+        reason: "narrow_cue_with_slice",
+      };
+    }
+    return { tool: "scout", reason: "narrow_cue_without_slice" };
+  }
+
+  const sessionGraph = readSessionGraph(input.ssot.contextEventId);
+  if (
+    isActionFirstUtterance(text, sessionGraph) ||
+    isLocalDiscoveryRefinement(text)
+  ) {
+    const intent = classifyIntentFamily(text);
+    if (intent === "Navigate" || intent === "Calendar") {
+      return { tool: "graph_command", reason: "soft_surface_command" };
+    }
+    return { tool: "graph_command", reason: "action_first_graph" };
+  }
+
+  return null;
+}
 
 /**
  * Sync stage: lens candidate · filter vs scout · else defer classify.
@@ -39,6 +119,39 @@ export function gateOperatorTurnSync(input: {
     return { tool: "noop", reason: "empty_input" };
   }
 
+  // Condition revise (4박5일 → 5박6일) — confirm chips before Reality write.
+  if (text && input.event) {
+    const stayRevise = gateLodgingStayReviseAskChips({
+      text,
+      contextEventId: input.ssot.contextEventId,
+      event: input.event,
+    });
+    if (stayRevise) {
+      return stayRevise;
+    }
+  }
+
+  // Filter / Pin / Delete — soft confirm chips (not Field Commit).
+  if (text) {
+    const soft = gateSoftConfirmAskChips({
+      text,
+      contextEventId: input.ssot.contextEventId,
+    });
+    if (soft) {
+      return soft;
+    }
+  }
+
+  // Mid-thread: open pins / lastBatch → filter · pin · compare before engine scout.
+  const editFirst = tryEditBeforeScout({
+    text,
+    ssot: input.ssot,
+    skipLens: input.skipLens,
+  });
+  if (editFirst) {
+    return editFirst;
+  }
+
   const engineTurn = resolveEngineOperatorTurn({
     text,
     message: text,
@@ -49,6 +162,15 @@ export function gateOperatorTurnSync(input: {
     expressReady: input.expressReady === true,
   });
   if (engineTurn) {
+    // Cold-start chips only — destination + open results → Act (scout) immediately.
+    if (
+      engineTurn.tool === "ask_chips" &&
+      Boolean(input.ssot.lastBatch) &&
+      (engineTurn.reason === "trip_intake_gap" ||
+        engineTurn.reason === "trip_experience_gap")
+    ) {
+      return { tool: "scout", reason: "search_or_bare_domain" };
+    }
     return engineTurn;
   }
 
@@ -63,6 +185,35 @@ export function gateOperatorTurnSync(input: {
     }
   }
 
+  // Book / pay / refund — Field handoff (never Continue scout).
+  if (isContextActionIntentMessage(text)) {
+    return { tool: "task_injection", reason: "classify_task" };
+  }
+
+  // Reel kind narrow (맛집만) before Graph filter — inventory surface.
+  // Rich filters (현지인 · 걸어서 N분 · 싼 것만) stay on Graph Command OS.
+  const kindFilter = parseResourceReelKindFilter(text);
+  if (kindFilter !== null && !isRichGraphFilter(text)) {
+    if (reelHasKindSlice(input.ssot, kindFilter)) {
+      return {
+        tool: "filter_inventory",
+        kindFilter,
+        reason: "narrow_cue_with_slice",
+      };
+    }
+    return { tool: "scout", reason: "narrow_cue_without_slice" };
+  }
+
+  // Pin · delete · compare · walk filter · navigate · calendar · …
+  const sessionGraph = readSessionGraph(input.ssot.contextEventId);
+  if (isActionFirstUtterance(text, sessionGraph)) {
+    const intent = classifyIntentFamily(text);
+    if (intent === "Navigate" || intent === "Calendar") {
+      return { tool: "graph_command", reason: "soft_surface_command" };
+    }
+    return { tool: "graph_command", reason: "action_first_graph" };
+  }
+
   if (isInstantPoiSearch(text)) {
     return { tool: "scout", reason: "instant_poi_search" };
   }
@@ -73,18 +224,6 @@ export function gateOperatorTurnSync(input: {
 
   if (isLodgingBookingQuery(text)) {
     return { tool: "scout", reason: "instant_lodging_search" };
-  }
-
-  const kindFilter = parseResourceReelKindFilter(text);
-  if (kindFilter !== null) {
-    if (reelHasKindSlice(input.ssot, kindFilter)) {
-      return {
-        tool: "filter_inventory",
-        kindFilter,
-        reason: "narrow_cue_with_slice",
-      };
-    }
-    return { tool: "scout", reason: "narrow_cue_without_slice" };
   }
 
   return { tool: "defer_classify", reason: "needs_chat_task_search_split" };
@@ -112,6 +251,7 @@ export function isOperatorWhitelistTool(
     tool === "filter_inventory" ||
     tool === "small_talk" ||
     tool === "task_injection" ||
+    tool === "graph_command" ||
     tool === "scout" ||
     tool === "ask_chips"
   );

@@ -11,8 +11,26 @@ import { resolveLocalDiscoveryAction } from "../lib/globe/context-condition-ai/r
 import type { ContextLodgingInventoryRow } from "../lib/globe/context-hub/lodging-resource-types";
 
 assert.equal(parseMaxNightlyPriceKrw("하루 3만원 미만으로 찾아줘"), 30_000);
+assert.equal(parseMaxNightlyPriceKrw("하루에 3만원대로 다시 찾아"), 30_000);
+assert.equal(parseMaxNightlyPriceKrw("하루 3만원대로 다시 찾아"), 30_000);
+assert.equal(parseMaxNightlyPriceKrw("3만원대"), 30_000);
 assert.equal(parseMaxNightlyPriceKrw("3만 이하"), 30_000);
 assert.equal(parseMaxNightlyPriceKrw("25000원 미만"), 25_000);
+
+{
+  const priceOnly = resolveLocalDiscoveryAction({
+    message: "하루에 3만원대로 다시 찾아",
+    lodgingConfidence: 0.9,
+    budgetConfidence: 0.9,
+    mobilityConfidence: 0.9,
+  });
+  assert.equal(priceOnly.status, "ready");
+  if (priceOnly.status === "ready") {
+    assert.equal(priceOnly.spec.maxNightlyPriceKrw, 30_000);
+    assert.ok(priceOnly.spec.resourceTypes.includes("hotel"));
+    assert.equal(priceOnly.spec.budget, "low");
+  }
+}
 
 const hostel = resolveLocalDiscoveryAction({
   message: "게스트하우스 찾아줘",

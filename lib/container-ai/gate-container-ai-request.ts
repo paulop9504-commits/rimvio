@@ -24,34 +24,12 @@ const DEFAULT_DESTINATION_CHOICES = [
   { id: "fukuoka", label: "후쿠오카" },
 ] as const;
 
-const LODGING_READY_NODE_KINDS = new Set(["stay", "allocate"]);
-const LODGING_READY_NODE_IDS = new Set(["stay", "exec-lodging"]);
-
 function isLodgingRequest(message: string): boolean {
   return hasLodgingDomainCue(message);
 }
 
 function isEateryRequest(message: string): boolean {
   return hasEateryDomainCue(message);
-}
-
-function nodeAllowsLodging(
-  ctx: NonNullable<ReturnType<typeof readContainerAIContext>>,
-): boolean {
-  const { activeNode } = ctx;
-  if (activeNode.status === "blocked") {
-    return false;
-  }
-  if (activeNode.resolution === "unresolved") {
-    return false;
-  }
-  if (LODGING_READY_NODE_KINDS.has(activeNode.kind)) {
-    return activeNode.status === "ready" || activeNode.status === "running" || activeNode.status === "prepared";
-  }
-  if (LODGING_READY_NODE_IDS.has(activeNode.nodeId)) {
-    return activeNode.status !== "blocked" && activeNode.status !== "pending";
-  }
-  return false;
 }
 
 function destinationIsReady(ctx: NonNullable<ReturnType<typeof readContainerAIContext>>): boolean {
@@ -108,8 +86,10 @@ export function gateContainerAIRequest(input: {
   const wantsSimilarPrice = SIMILAR_PRICE_HINT.test(message);
 
   if (wantsLodging || wantsEatery) {
-    const earlyPhase = ["prepare", "trip", "discover"].includes(ctx.activeNode.kind);
-    if (earlyPhase || !nodeAllowsLodging(ctx) || !destinationIsReady(ctx)) {
+    const destReady =
+      destinationIsReady(ctx) || input.destinationConfirmed === true;
+    // Unresolved destination → chips only (Article 0).
+    if (!destReady) {
       return {
         allowed: false,
         reasonKo:
@@ -122,6 +102,19 @@ export function gateContainerAIRequest(input: {
         })),
       };
     }
+    // Destination known — allow lodging/eatery even during Prepare (Operator scout).
+    if (wantsLodging) {
+      return {
+        allowed: true,
+        routeModule: "domain_ai_router",
+        domainExecutor: "lodging",
+      };
+    }
+    return {
+      allowed: true,
+      routeModule: "domain_ai_router",
+      domainExecutor: "eatery",
+    };
   }
 
   if (wantsSimilarPrice) {
@@ -137,22 +130,6 @@ export function gateContainerAIRequest(input: {
       allowed: true,
       routeModule: "context_condition_ai",
       domainExecutor: "lodging",
-    };
-  }
-
-  if (wantsLodging) {
-    return {
-      allowed: true,
-      routeModule: "domain_ai_router",
-      domainExecutor: "lodging",
-    };
-  }
-
-  if (wantsEatery) {
-    return {
-      allowed: true,
-      routeModule: "domain_ai_router",
-      domainExecutor: "eatery",
     };
   }
 

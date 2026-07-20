@@ -100,3 +100,17 @@ export type {
   ContextRunPlanKind,
   ContextRunTurnResult,
 } from "@/lib/context-run/ingress-types";
+
+export {
+  CURSOR_OS_SPINE_LAW,
+  CURSOR_OS_SPINE_VERSION,
+  CURSOR_OS_SPINE_AXES,
+  SEARCH_DIFF_STAGE_ORDER,
+  SPINE_FIELD_COMMIT_INTENTS,
+  SPINE_SOFT_CONFIRM_INTENTS,
+  SPINE_PREPARE_ONLY_TOOL_IDS,
+  assertSearchDiffStageOrder,
+  spineUsesCanonicalNlStages,
+  type CursorOsSpineAxisId,
+  type CursorOsSpineAxis,
+} from "@/lib/context-run/cursor-os-spine";

@@ -2,6 +2,7 @@ import { haversineKm } from "@/lib/feed/spacetime-fit";
 import { GLOBE_TOSS_THEME } from "@/lib/globe/globe-toss-theme";
 import type { GlobeTripArc } from "@/lib/globe/project-trip-leg-arcs";
 import { resolveLocalDiscoveryRouteArcAltitude } from "@/lib/globe/context-condition-ai/build-context-condition-discovery-overlay";
+import { pickVideoPlaybackCoords } from "@/lib/globe/resolve-video-map-anchor";
 import type { BrainSurfaceProjectionCandidate } from "@/lib/situation-projection/brain-surface-types";
 
 const MIN_SEPARATION_KM = 0.08;
@@ -65,19 +66,24 @@ export function resolveBrainSurfaceSpatialTraceRoot(
     hubLng?: number | null;
   },
 ): BrainSurfaceProjectionCandidate {
-  const hubLat = input.hubLat;
-  const hubLng = input.hubLng;
-  if (Number.isFinite(hubLat) && Number.isFinite(hubLng)) {
+  if (!Number.isFinite(input.root.lat) || !Number.isFinite(input.root.lng)) {
     return {
       ...input.root,
-      lat: hubLat as number,
-      lng: hubLng as number,
       calloutOffsetX: null,
       calloutOffsetY: null,
     };
   }
+  // Keep Osaka video at Osaka — never snap to distant Seoul GPS hub.
+  const playback = pickVideoPlaybackCoords({
+    videoLat: input.root.lat,
+    videoLng: input.root.lng,
+    hubLat: input.hubLat,
+    hubLng: input.hubLng,
+  });
   return {
     ...input.root,
+    lat: playback.lat,
+    lng: playback.lng,
     calloutOffsetX: null,
     calloutOffsetY: null,
   };

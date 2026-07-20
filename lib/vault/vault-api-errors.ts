@@ -35,9 +35,46 @@ export function isVaultUnavailableStatus(
 
 export function vaultMigrationRequiredResponse() {
   return {
+    ok: false as const,
     persisted: false,
     vault: null,
     objects: [] as [],
+    error: "vault_migration_required",
     hint: "vault_migration_required" as const,
   };
+}
+
+/** HTTP status for soft vault outages (migration missing / store down). */
+export const VAULT_UNAVAILABLE_HTTP_STATUS = 503;
+
+export type VaultWriteApiBody = {
+  ok?: boolean;
+  error?: string;
+  hint?: string;
+};
+
+/**
+ * PUT /api/vault/objects may historically return 200 + `{ error, hint }`.
+ * Treat that as failure so settings never toast “saved” on empty vault.
+ */
+export function resolveVaultWriteClientResult(
+  status: number,
+  body: VaultWriteApiBody,
+): { ok: true } | { ok: false; error: string } {
+  if (isVaultUnavailableStatus(status, body.hint, body.error)) {
+    return {
+      ok: false,
+      error: body.error?.trim() || body.hint || "vault_unavailable",
+    };
+  }
+  if (!status || status < 200 || status >= 300 || body.ok === false) {
+    return {
+      ok: false,
+      error: body.error?.trim() || "vault_write_failed",
+    };
+  }
+  if (body.error?.trim()) {
+    return { ok: false, error: body.error.trim() };
+  }
+  return { ok: true };
 }

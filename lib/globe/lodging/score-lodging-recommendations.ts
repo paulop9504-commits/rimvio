@@ -26,12 +26,15 @@ import {
   explainLodgingRecommendationKo,
   type LodgingRecommendReasonInput,
 } from "@/lib/globe/lodging/explain-lodging-recommendation-ko";
-import type { LodgingRankProfile } from "@/lib/globe/lodging/lodging-rank-profile";
-import { passesMinReviewCountGate } from "@/lib/places/min-review-count-gate";
+import type {
+  LodgingRankContextHints,
+  LodgingRankProfile,
+} from "@/lib/globe/lodging/lodging-rank-profile";
 import {
   applyLodgingRankContextHints,
   DEFAULT_LODGING_RANK_WEIGHTS,
 } from "@/lib/globe/lodging/lodging-rank-profile";
+import { passesMinReviewCountGate } from "@/lib/places/min-review-count-gate";
 import {
   describeLodgingRankTravelBrainAxes,
   resolveLodgingRankProfileForEvent,
@@ -51,6 +54,7 @@ import type {
   TravelLodgingPriority,
 } from "@/lib/situation-projection/travel-brain-personalization";
 import { buildTravelBrainState } from "@/lib/situation-projection/travel-brain-personalization";
+import { scoreValueConsensusCandidate } from "@/lib/search-engine/score-value-consensus";
 
 export type ScoredLodgingRecommendation = {
   row: ContextLodgingInventoryRow;
@@ -166,6 +170,8 @@ export function scoreLodgingRecommendations(input: {
   /** Hard verification gate — default strict; diffuse → relaxed. */
   verificationMode?: LodgingVerificationMode | null;
   exploration?: ExplorationPolicyKnobs | null;
+  /** Context Field rank hints — override / merge over TravelBrain when set. */
+  fieldRankHints?: LodgingRankContextHints | null;
 }): ScoredLodgingRecommendation[] {
   const verificationMode =
     input.verificationMode ??
@@ -215,6 +221,7 @@ export function scoreLodgingRecommendations(input: {
       | undefined) ??
       null);
   const budgetBand: TravelBudgetBand | null =
+    input.fieldRankHints?.budgetBand ??
     brainAxes?.budgetBand ??
     ((findLatestPersonaSignal("travel.budget_band")?.value as
       | TravelBudgetBand
@@ -224,6 +231,9 @@ export function scoreLodgingRecommendations(input: {
     profile = applyLodgingRankContextHints(profile, {
       lodgingPriority: contextPriority,
     });
+  }
+  if (input.fieldRankHints) {
+    profile = applyLodgingRankContextHints(profile, input.fieldRankHints);
   }
   const trajectory = input.unifiedContext.behaviorKernel.state.trajectory;
   const travelTrajectory =
@@ -339,8 +349,43 @@ export function scoreLodgingRecommendations(input: {
 
   scored.sort((left, right) => {
     const delta = right.score - left.score;
-    if (delta !== 0) {
+    if (Math.abs(delta) > 0.35) {
       return delta;
+    }
+    // Soft Tool Diff consensus tie-break (ADR-021 alignment).
+    const cohort = {
+      ratingCenter: 4.2,
+      priceMedian: 2 as number | null,
+      walkCenter: 10 as number | null,
+      reviewMedian: 40 as number | null,
+      priceKrwMedian: null as number | null,
+    };
+    const leftV = scoreValueConsensusCandidate(
+      {
+        rating: left.row.rating,
+        priceBand: null,
+        walkMinutes: null,
+        priceKrw: left.row.priceKrw,
+        reviewCount: left.row.reviewCount,
+        localFavorite: false,
+        reservable: true,
+      },
+      cohort,
+    ).total;
+    const rightV = scoreValueConsensusCandidate(
+      {
+        rating: right.row.rating,
+        priceBand: null,
+        walkMinutes: null,
+        priceKrw: right.row.priceKrw,
+        reviewCount: right.row.reviewCount,
+        localFavorite: false,
+        reservable: true,
+      },
+      cohort,
+    ).total;
+    if (rightV !== leftV) {
+      return rightV - leftV;
     }
     return left.row.name.localeCompare(right.row.name, "ko");
   });

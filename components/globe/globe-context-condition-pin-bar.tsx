@@ -14,6 +14,8 @@ import { toast } from "sonner";
 import { GlobeLodgingBookingSlotChips } from "@/components/globe/globe-lodging-booking-slot-chips";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { copy } from "@/lib/copy/human-ko";
+import { tryRunContextNlActionAsync } from "@/lib/action-planner";
+import { openFieldDashboardIngress } from "@/lib/nav/field-dashboard-ingress";
 import { flyGlobeToDiscoveryLenses } from "@/lib/globe/context-agent/snap-globe-to-context-agent-anchor";
 import {
   readContextConditionPinnedPlaceIds,
@@ -29,10 +31,18 @@ import {
 } from "@/lib/globe/context-condition-ai";
 import {
   buildContextActionInjection,
+  extractBookingTargetLabel,
+  placeLabelMatchesQuery,
   publishContextActionInjection,
   resolveContextActionIntent,
 } from "@/lib/globe/context-action-injection";
 import type { ContextActionInjection } from "@/lib/globe/context-action-injection/types";
+import {
+  dispatchGlobeLodgingFocus,
+  dispatchGlobeLodgingFocusStage,
+} from "@/lib/globe/context-hub/globe-lodging-marker-bridge";
+import { readLodgingInventoryRows } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
+import { readEateryInventoryRows } from "@/lib/globe/eatery/read-eatery-resource-inventory";
 import {
   clearContextConditionPending,
   readContextConditionPending,
@@ -143,6 +153,7 @@ import {
   resolveDiscoveryOriginForContext,
 } from "@/lib/globe/discovery-lens/integrate-context-agent-lens";
 import { resolveDiscoveryOriginFromUtterance } from "@/lib/globe/context-condition-ai/resolve-discovery-origin-from-utterance";
+import { observeScoutSeedLearning } from "@/lib/seed-learning";
 import {
   hasCompleteLodgingBookingSlots,
   isLodgingBookingQuery,
@@ -150,6 +161,25 @@ import {
   writeLodgingBookingSlots,
 } from "@/lib/globe/context-hub/lodging-booking-slots";
 import { buildLodgingBookingSlotChipLabels } from "@/lib/globe/context-hub/build-lodging-booking-slot-chip-labels";
+import {
+  applyLodgingStayRevisePending,
+  cancelLodgingStayRevisePending,
+} from "@/lib/globe/context-hub/apply-lodging-stay-revise";
+import { readLodgingStayRevisePending } from "@/lib/globe/context-hub/lodging-stay-revise-pending-store";
+import {
+  isLodgingStayReviseAffirmUtterance,
+  isLodgingStayReviseRejectUtterance,
+} from "@/lib/globe/context-hub/lodging-stay-revise-affirm";
+import {
+  applySoftConfirmPending,
+  cancelSoftConfirmPending,
+} from "@/lib/globe/soft-confirm/apply-soft-confirm-pending";
+import { readSoftConfirmPending } from "@/lib/globe/soft-confirm/soft-confirm-pending-store";
+import {
+  clearClarifyLessPending,
+  buildClarifyResumeUtterance,
+  readClarifyLessPending,
+} from "@/lib/rule-engine/clarify-less-pending-store";
 import { prefetchAllDiscoveryLenses, prefetchDiscoveryLensById } from "@/lib/globe/discovery-lens/prefetch-all-discovery-lenses";
 import {
   dispatchGlobeResourceReelKindFilter,
@@ -279,7 +309,7 @@ export type GlobeContextConditionPinBarProps = {
   globeRef?: RefObject<RimvioGlobeHubHandle | null>;
   onPinned?: (outcome: ContextConditionAnchorPinOutcome) => void;
   onPalantirOperatorUpdate?: () => void;
-  onUserCompose?: (message: string) => void;
+  onUserCompose?: (message: string) => boolean | void;
   /** When false, opening the frame does not restore last pin batch into the UI. */
   hydrateFromBatch?: boolean;
   onQuestionsChange?: (questions: readonly LocalDiscoveryQuestion[]) => void;
@@ -491,7 +521,7 @@ export const GlobeContextConditionPinBar = forwardRef<
         : pinned.eatery
           ? "eatery"
           : null;
-      const intent = resolveContextActionIntent({
+      let intent = resolveContextActionIntent({
         message: triggerMessage,
         pinnedResourceKind,
       });
@@ -499,14 +529,43 @@ export const GlobeContextConditionPinBar = forwardRef<
         return false;
       }
 
+      const batch = readContextConditionLastBatch(contextEventId);
+      const namedLabel = extractBookingTargetLabel(triggerMessage);
+      const namedCandidate =
+        namedLabel && batch?.recommendations
+          ? batch.recommendations.find(
+              (row) =>
+                (row.kind === "lodging" || row.kind === "eatery") &&
+                placeLabelMatchesQuery(row.title, namedLabel),
+            )
+          : null;
+
+      // Named place wins over default lodging/eatery kind.
+      if (namedCandidate) {
+        intent = {
+          ...intent,
+          resourceKind: namedCandidate.kind === "eatery" ? "eatery" : "lodging",
+          kind:
+            namedCandidate.kind === "eatery"
+              ? intent.kind.startsWith("pay")
+                ? "pay_eatery"
+                : "book_eatery"
+              : intent.kind.startsWith("pay")
+                ? "pay_lodging"
+                : "book_lodging",
+        };
+      }
+
       const needsPin =
         (intent.resourceKind === "lodging" && !pinned.lodging) ||
-        (intent.resourceKind === "eatery" && !pinned.eatery);
+        (intent.resourceKind === "eatery" && !pinned.eatery) ||
+        Boolean(namedCandidate);
       if (needsPin) {
-        const batch = readContextConditionLastBatch(contextEventId);
-        const candidate = batch?.recommendations?.find(
-          (row) => row.kind === intent.resourceKind,
-        );
+        const candidate =
+          namedCandidate ??
+          batch?.recommendations?.find(
+            (row) => row.kind === intent!.resourceKind,
+          );
         if (candidate?.placeId) {
           try {
             pinContextConditionRecommendation({
@@ -519,7 +578,66 @@ export const GlobeContextConditionPinBar = forwardRef<
             });
             event = findLifeEventCandidate(contextEventId) ?? event;
           } catch {
-            // fall through — build may still fail with pin-first hint
+            // Named lodging may only exist in inventory — try pin via inventory match.
+            if (namedLabel && intent.resourceKind === "lodging") {
+              const lodgingRow = readLodgingInventoryRows(event).find((row) =>
+                placeLabelMatchesQuery(row.name ?? "", namedLabel),
+              );
+              if (lodgingRow?.placeId) {
+                try {
+                  pinContextConditionRecommendation({
+                    eventId: contextEventId,
+                    recommendation: {
+                      kind: "lodging",
+                      placeId: lodgingRow.placeId,
+                      title: lodgingRow.name ?? namedLabel,
+                    },
+                  });
+                  event = findLifeEventCandidate(contextEventId) ?? event;
+                } catch {
+                  // fall through
+                }
+              }
+            }
+            if (namedLabel && intent.resourceKind === "eatery") {
+              const eateryRow = readEateryInventoryRows(event).find((row) =>
+                placeLabelMatchesQuery(row.name ?? "", namedLabel),
+              );
+              if (eateryRow?.placeId) {
+                try {
+                  pinContextConditionRecommendation({
+                    eventId: contextEventId,
+                    recommendation: {
+                      kind: "eatery",
+                      placeId: eateryRow.placeId,
+                      title: eateryRow.name ?? namedLabel,
+                    },
+                  });
+                  event = findLifeEventCandidate(contextEventId) ?? event;
+                } catch {
+                  // fall through
+                }
+              }
+            }
+          }
+        } else if (namedLabel && intent.resourceKind === "lodging") {
+          const lodgingRow = readLodgingInventoryRows(event).find((row) =>
+            placeLabelMatchesQuery(row.name ?? "", namedLabel),
+          );
+          if (lodgingRow?.placeId) {
+            try {
+              pinContextConditionRecommendation({
+                eventId: contextEventId,
+                recommendation: {
+                  kind: "lodging",
+                  placeId: lodgingRow.placeId,
+                  title: lodgingRow.name ?? namedLabel,
+                },
+              });
+              event = findLifeEventCandidate(contextEventId) ?? event;
+            } catch {
+              // fall through
+            }
           }
         }
       }
@@ -536,6 +654,17 @@ export const GlobeContextConditionPinBar = forwardRef<
       }
       publishContextActionInjection(built);
       onActionInjectionChange?.(built);
+
+      // Open reservation surface for lodging book/pay — don't keep scouting.
+      if (intent.resourceKind === "lodging" && built.target.placeId) {
+        dispatchGlobeLodgingFocus({
+          resourceId: `${contextEventId}:lodging:${built.target.placeId}`,
+          carouselIndex: 0,
+          source: "discovery_card",
+        });
+        dispatchGlobeLodgingFocusStage(true);
+      }
+
       appendContextAgentComposeTurn(contextEventId, {
         role: "assistant",
         kind: "text",
@@ -828,6 +957,8 @@ export const GlobeContextConditionPinBar = forwardRef<
       suppressEmptyMessage?: boolean;
       /** Pre-built Narrator output (Intent→Planner→Narrator). */
       narration?: ScoutNarration | null;
+      /** Cursor Diff — map markers only; skip Feed compose hero. */
+      skipFeedGate?: boolean;
     }) => {
       // Category-switch cleanup: an activity/eatery search must not leave stale
       // hotel pins behind. Close the separate lodging discovery session and drop
@@ -842,6 +973,20 @@ export const GlobeContextConditionPinBar = forwardRef<
       }
 
       // Narrator plan first — Replace mode drives SSOT wipe (Cursor task switch).
+      const discoveryOriginForNarration = resolveDiscoveryOriginFromUtterance(
+        input.triggerMessage,
+        resolveDiscoveryOriginForContext(contextEventId),
+      );
+      // Seed learning — frequent hit/miss → promote candidates (never mutates Reality).
+      try {
+        observeScoutSeedLearning({
+          message: input.triggerMessage,
+          discoveryOriginHit: discoveryOriginForNarration != null,
+          discoveryRegionLabel: discoveryOriginForNarration?.regionLabel ?? null,
+        });
+      } catch {
+        /* learning must never break scout */
+      }
       const narration =
         input.narration ??
         narrateScoutPlan(
@@ -850,7 +995,8 @@ export const GlobeContextConditionPinBar = forwardRef<
             spec: input.spec,
             priorConstraints: readScoutTurnConstraints(contextEventId),
             previousSpec: lastSpec,
-            anchorLabelKo: anchorPlaceName,
+            anchorLabelKo:
+              discoveryOriginForNarration?.regionLabel ?? anchorPlaceName,
           }),
         );
 
@@ -879,9 +1025,6 @@ export const GlobeContextConditionPinBar = forwardRef<
         clearActiveDiscoveryExecution(contextEventId);
         clearContextConditionLastBatch(contextEventId);
       }
-      if (nextCategory === "activity" || nextCategory === "amenity") {
-        publishContextOnlyGlobeProjection(contextEventId);
-      }
       setContextAgentSessionPhase("scouting");
       beginContextAgentWork("exploring");
 
@@ -906,7 +1049,8 @@ export const GlobeContextConditionPinBar = forwardRef<
           input.triggerMessage,
           resolveDiscoveryOriginForContext(contextEventId),
         ),
-        deferMapReveal: true,
+        // Map pins land immediately — feed gate stays optional archive, not a blocker.
+        deferMapReveal: false,
         onProcessPhase: (phase) => {
           setContextAgentProcessPhase(phase);
           if (phase === "exploring") {
@@ -1120,14 +1264,16 @@ export const GlobeContextConditionPinBar = forwardRef<
       setContextAgentSessionSpec(outcomeWorking.spec);
       setContextAgentSessionPhase("deciding");
       onPinned?.(outcomeWorking);
-      publishScoutFeedGateTurn({
-        contextEventId,
-        outcome: outcomeWorking,
-        anchorPlaceName,
-        anchorLat,
-        anchorLng,
-        triggerMessage: input.triggerMessage,
-      });
+      if (!input.skipFeedGate) {
+        publishScoutFeedGateTurn({
+          contextEventId,
+          outcome: outcomeWorking,
+          anchorPlaceName,
+          anchorLat,
+          anchorLng,
+          triggerMessage: input.triggerMessage,
+        });
+      }
       return outcomeWorking;
     },
     [
@@ -1311,7 +1457,11 @@ export const GlobeContextConditionPinBar = forwardRef<
   );
 
   const resolveAndMaybeExecute = useCallback(
-    async (triggerMessage: string, answers?: Record<string, string>) => {
+    async (
+      triggerMessage: string,
+      answers?: Record<string, string>,
+      options?: { skipFeedGate?: boolean },
+    ) => {
       const interpreted = await interpretMessyForContextAgent({
         messyInput: triggerMessage,
         contextEventId,
@@ -1320,6 +1470,93 @@ export const GlobeContextConditionPinBar = forwardRef<
         anchorLng,
       });
       const pipelineMessage = interpreted.refinedMessage;
+
+      // Graph Command OS / Action Planner gate — freeze free-NL scout when matched.
+      {
+        const graphResult = await tryRunContextNlActionAsync({
+          utterance: pipelineMessage,
+          contextEventId,
+          anchorLat,
+          anchorLng,
+          contextLabelKo: anchorPlaceName,
+        });
+        if (graphResult) {
+          if (graphResult.via === "revise_confirm") {
+            appendOperatorAskChipsComposeTurn(contextEventId, {
+              chipDomain: "lodging_stay_revise",
+              hint: graphResult.assistantReplyKo,
+              pendingTrigger: pipelineMessage,
+              chips: graphResult.reviseChips,
+            });
+            setContextAgentSessionPhase("awaiting_human");
+            onQuestionsChange?.([]);
+            return null;
+          }
+          if (graphResult.via === "revise_applied") {
+            appendContextAgentComposeTurn(contextEventId, {
+              role: "assistant",
+              kind: "text",
+              text: graphResult.assistantReplyKo,
+            });
+            if (graphResult.requestDiffRescout && graphResult.skipFeedGate) {
+              await resolveAndMaybeExecute(
+                `${anchorPlaceName.trim() || "숙소"} 숙소`,
+                undefined,
+                { skipFeedGate: true },
+              );
+            }
+            setContextAgentSessionPhase("awaiting_human");
+            onQuestionsChange?.([]);
+            return null;
+          }
+          if (
+            (graphResult.via === "clarify" || graphResult.via === "reason") &&
+            graphResult.clarifyChips &&
+            graphResult.clarifyChips.length > 0
+          ) {
+            appendOperatorAskChipsComposeTurn(contextEventId, {
+              chipDomain: "clarify_less",
+              hint: graphResult.assistantReplyKo,
+              pendingTrigger: pipelineMessage,
+              chips: graphResult.clarifyChips,
+            });
+            setContextAgentSessionPhase("awaiting_human");
+            onQuestionsChange?.([]);
+            return null;
+          }
+          if (graphResult.via === "soft_confirm") {
+            appendOperatorAskChipsComposeTurn(contextEventId, {
+              chipDomain: "soft_graph_confirm",
+              hint: graphResult.assistantReplyKo,
+              pendingTrigger: pipelineMessage,
+              chips: graphResult.softConfirmChips,
+            });
+            setContextAgentSessionPhase("awaiting_human");
+            onQuestionsChange?.([]);
+            return null;
+          }
+          // Scout handoff — Operator owns Field discovery (must continue below).
+          if (graphResult.via !== "scout_handoff") {
+            appendContextAgentComposeTurn(contextEventId, {
+              role: "assistant",
+              kind: "text",
+              text: graphResult.assistantReplyKo,
+            });
+            if (
+              graphResult.waitingCommit &&
+              (graphResult.reservedOpIds?.length ?? 0) > 0
+            ) {
+              openFieldDashboardIngress({
+                tab: "queue",
+                primaryEventId: contextEventId,
+              });
+            }
+            setContextAgentSessionPhase("awaiting_human");
+            onQuestionsChange?.([]);
+            return null;
+          }
+        }
+      }
 
       const event = findLifeEventCandidate(contextEventId);
       const travelBrain = event ? buildTravelBrainState(event) : null;
@@ -1569,6 +1806,7 @@ export const GlobeContextConditionPinBar = forwardRef<
         triggerMessage: pipelineMessage,
         spec: resolved.spec,
         suppressEmptyMessage: strictDomain,
+        skipFeedGate: options?.skipFeedGate === true,
       });
       if (!outcome && strictDomain) {
         await emitStrictDomainEmptyFollowup(
@@ -1715,6 +1953,21 @@ export const GlobeContextConditionPinBar = forwardRef<
     [resolveAndMaybeExecute],
   );
 
+  /** Stay revise Confirm → Tool Diff re-search (same project, no Field scout). */
+  const runLodgingStayDiffRescout = useCallback(async () => {
+    setBusy(true);
+    beginContextAgentWork("exploring", copy.globe.contextAgentStatusBusy);
+    try {
+      await resolveAndMaybeExecute("다시 찾아줘", undefined, {
+        skipFeedGate: true,
+      });
+      setMessage("");
+    } finally {
+      setBusy(false);
+      finishContextAgentWork();
+    }
+  }, [resolveAndMaybeExecute]);
+
   const handleAskChipPick = useCallback(
     async (input: AskChipPickInput) => {
       if (busy) {
@@ -1751,6 +2004,113 @@ export const GlobeContextConditionPinBar = forwardRef<
           } else if (applied.decision === "revise" || applied.decision === "reject") {
             toast.message(applied.summaryKo);
           }
+          return;
+        }
+
+        if (chipDomain === "lodging_stay_revise") {
+          if (input.gapId === "cancel" || input.value === "cancel") {
+            const summaryKo = cancelLodgingStayRevisePending(contextEventId);
+            markOperatorAskChipsTurnSubmitted(contextEventId, input.turnId, {
+              chipId: input.chipId,
+              summaryKo,
+            });
+            toast.message(summaryKo);
+            return;
+          }
+          if (input.gapId === "edit" || input.value === "edit") {
+            cancelLodgingStayRevisePending(contextEventId);
+            markOperatorAskChipsTurnSubmitted(contextEventId, input.turnId, {
+              chipId: input.chipId,
+              summaryKo: copy.globe.lodgingSlotChipsEdit,
+            });
+            openLodgingIntakeEditInThread();
+            return;
+          }
+          // NL one-line: soft affirm → revise_applied → skipFeedGate Diff.
+          const nlApply = await tryRunContextNlActionAsync({
+            utterance: "응",
+            contextEventId,
+            anchorLat,
+            anchorLng,
+            contextLabelKo: anchorPlaceName,
+          });
+          if (nlApply?.via === "revise_applied") {
+            markOperatorAskChipsTurnSubmitted(contextEventId, input.turnId, {
+              chipId: input.chipId,
+              summaryKo: nlApply.assistantReplyKo,
+            });
+            toast.success(nlApply.assistantReplyKo);
+            if (nlApply.requestDiffRescout && nlApply.skipFeedGate) {
+              await resolveAndMaybeExecute(
+                `${anchorPlaceName.trim() || "숙소"} 숙소`,
+                undefined,
+                { skipFeedGate: true },
+              );
+            }
+            return;
+          }
+          const applied = applyLodgingStayRevisePending({ contextEventId });
+          if (!applied.ok) {
+            toast.message(applied.messageKo);
+            return;
+          }
+          markOperatorAskChipsTurnSubmitted(contextEventId, input.turnId, {
+            chipId: input.chipId,
+            summaryKo: applied.summaryKo,
+          });
+          toast.success(copy.globe.lodgingStayReviseApplied(applied.summaryKo));
+          await runLodgingStayDiffRescout();
+          return;
+        }
+
+        if (chipDomain === "clarify_less") {
+          const pending = readClarifyLessPending(contextEventId);
+          const pickedLabel = input.labelKo.trim();
+          const chipValue = input.value.trim();
+          // Recovery chips embed full re-entry utterances in `value`.
+          const resume =
+            chipValue.length >= 2 &&
+            /(?:찾아|옮겨|예약|준비|비교|다시|주변)/u.test(chipValue)
+              ? chipValue
+              : buildClarifyResumeUtterance({
+                  originalUtterance:
+                    pending?.originalUtterance ?? pendingTrigger,
+                  pickedLabelKo: pickedLabel,
+                });
+          clearClarifyLessPending(contextEventId);
+          markOperatorAskChipsTurnSubmitted(contextEventId, input.turnId, {
+            chipId: input.chipId,
+            summaryKo: pickedLabel,
+          });
+          await resolveAndMaybeExecute(resume);
+          return;
+        }
+
+        if (chipDomain === "soft_graph_confirm") {
+          if (input.gapId === "cancel" || input.value === "cancel") {
+            const summaryKo = cancelSoftConfirmPending(contextEventId);
+            markOperatorAskChipsTurnSubmitted(contextEventId, input.turnId, {
+              chipId: input.chipId,
+              summaryKo,
+            });
+            toast.message(summaryKo);
+            return;
+          }
+          const applied = applySoftConfirmPending({
+            contextEventId,
+            anchorLat,
+            anchorLng,
+            contextLabelKo: anchorPlaceName,
+          });
+          if (!applied.ok) {
+            toast.message(applied.messageKo);
+            return;
+          }
+          markOperatorAskChipsTurnSubmitted(contextEventId, input.turnId, {
+            chipId: input.chipId,
+            summaryKo: applied.summaryKo,
+          });
+          toast.success(copy.globe.softConfirmApplied(applied.summaryKo));
           return;
         }
 
@@ -1926,7 +2286,7 @@ export const GlobeContextConditionPinBar = forwardRef<
         finishContextAgentWork();
       }
     },
-    [busy, contextEventId, resolveAndMaybeExecute, tryExecuteTripExperienceParallelScout, userLat, userLng],
+    [busy, contextEventId, openLodgingIntakeEditInThread, resolveAndMaybeExecute, runLodgingStayDiffRescout, tryExecuteTripExperienceParallelScout, userLat, userLng],
   );
 
   const handleIntakeSlotsSubmit = useCallback(
@@ -2005,7 +2365,96 @@ export const GlobeContextConditionPinBar = forwardRef<
       return;
     }
     if (text) {
-      onUserCompose?.(text);
+      const composeHandled = onUserCompose?.(text) === true;
+      if (composeHandled) {
+        setMessage("");
+        return;
+      }
+    }
+    // Soft yes/no after 「5박6일로 바꿀까요?」 ask chips.
+    if (text && readLodgingStayRevisePending(contextEventId)) {
+      if (isLodgingStayReviseRejectUtterance(text)) {
+        const summaryKo = cancelLodgingStayRevisePending(contextEventId);
+        appendContextAgentComposeTurn(contextEventId, {
+          role: "assistant",
+          kind: "text",
+          text: summaryKo,
+        });
+        setMessage("");
+        return;
+      }
+      if (isLodgingStayReviseAffirmUtterance(text)) {
+        const nlApply = await tryRunContextNlActionAsync({
+          utterance: text,
+          contextEventId,
+          anchorLat,
+          anchorLng,
+          contextLabelKo: anchorPlaceName,
+        });
+        if (nlApply?.via === "revise_applied") {
+          appendContextAgentComposeTurn(contextEventId, {
+            role: "assistant",
+            kind: "text",
+            text: nlApply.assistantReplyKo,
+          });
+          setMessage("");
+          if (nlApply.requestDiffRescout && nlApply.skipFeedGate) {
+            await resolveAndMaybeExecute(
+              `${anchorPlaceName.trim() || "숙소"} 숙소`,
+              undefined,
+              { skipFeedGate: true },
+            );
+          }
+          return;
+        }
+        const applied = applyLodgingStayRevisePending({ contextEventId });
+        if (!applied.ok) {
+          appendContextAgentComposeTurn(contextEventId, {
+            role: "assistant",
+            kind: "text",
+            text: applied.messageKo,
+          });
+          setMessage("");
+          return;
+        }
+        appendContextAgentComposeTurn(contextEventId, {
+          role: "assistant",
+          kind: "text",
+          text: copy.globe.lodgingStayReviseApplied(applied.summaryKo),
+        });
+        setMessage("");
+        await runLodgingStayDiffRescout();
+        return;
+      }
+    }
+    if (readSoftConfirmPending(contextEventId)) {
+      if (isSoftConfirmRejectUtterance(text)) {
+        const summaryKo = cancelSoftConfirmPending(contextEventId);
+        appendContextAgentComposeTurn(contextEventId, {
+          role: "assistant",
+          kind: "text",
+          text: summaryKo,
+        });
+        setMessage("");
+        return;
+      }
+      if (isSoftConfirmAffirmUtterance(text)) {
+        const applied = applySoftConfirmPending({
+          contextEventId,
+          anchorLat,
+          anchorLng,
+          contextLabelKo: anchorPlaceName,
+        });
+        appendContextAgentComposeTurn(contextEventId, {
+          role: "assistant",
+          kind: "text",
+          text: applied.ok
+            ? copy.globe.softConfirmApplied(applied.summaryKo)
+            : applied.messageKo,
+        });
+        setMessage("");
+        return;
+      }
     }
     if (text && !isLodgingPrepUtterance(text) && !isFlightPrepUtterance(text) && !isTransitPrepUtterance(text) && !isFinancePrepUtterance(text) && !isTripExperienceUtterance(text) && tryOpenIntakeForMessage(text)) {
       setMessage("");
@@ -2040,10 +2489,16 @@ export const GlobeContextConditionPinBar = forwardRef<
             pendingTrigger: text,
             planReason: plan.reason,
           });
+          const stayHint =
+            chipDomain === "lodging_stay_revise"
+              ? readLodgingStayRevisePending(contextEventId)?.confirmHintKo ??
+                copy.globe.lodgingStayReviseAskHint
+              : null;
           appendOperatorAskChipsComposeTurn(contextEventId, {
             chipDomain,
             hint:
-              chipDomain === "trip_experience"
+              stayHint ??
+              (chipDomain === "trip_experience"
                 ? copy.globe.tripExperienceAskHint
                 : chipDomain === "flight_prep"
                   ? copy.globe.flightPrepAskHint
@@ -2051,7 +2506,7 @@ export const GlobeContextConditionPinBar = forwardRef<
                     ? copy.globe.transitPrepAskHint
                     : chipDomain === "finance_prep"
                       ? copy.globe.financePrepAskHint
-                      : copy.globe.tripIntakeAskHint,
+                      : copy.globe.tripIntakeAskHint),
             pendingTrigger: text,
             chips: plan.chips,
           });
@@ -2105,6 +2560,111 @@ export const GlobeContextConditionPinBar = forwardRef<
             text: resourceReelKindFilterReplyKo(plan.kindFilter),
           });
           setMessage("");
+          return;
+        }
+
+        if (plan.tool === "task_injection") {
+          if (await tryPublishActionInjection(text)) {
+            return;
+          }
+          // Intent matched but handoff failed — still stop Continue scout.
+          appendContextAgentComposeTurn(contextEventId, {
+            role: "assistant",
+            kind: "text",
+            text: copy.globe.contextActionPinFirstHint,
+          });
+          setMessage("");
+          setContextAgentSessionPhase("awaiting_human");
+          return;
+        }
+
+        if (plan.tool === "graph_command") {
+          const graphResult = await tryRunContextNlActionAsync({
+            utterance: text,
+            contextEventId,
+            anchorLat,
+            anchorLng,
+            contextLabelKo: anchorPlaceName,
+          });
+          if (graphResult) {
+            if (graphResult.via === "revise_confirm") {
+              appendOperatorAskChipsComposeTurn(contextEventId, {
+                chipDomain: "lodging_stay_revise",
+                hint: graphResult.assistantReplyKo,
+                pendingTrigger: text,
+                chips: graphResult.reviseChips,
+              });
+              setMessage("");
+              setContextAgentSessionPhase("awaiting_human");
+              onQuestionsChange?.([]);
+              return;
+            }
+            if (graphResult.via === "soft_confirm") {
+              appendOperatorAskChipsComposeTurn(contextEventId, {
+                chipDomain: "soft_graph_confirm",
+                hint: graphResult.assistantReplyKo,
+                pendingTrigger: text,
+                chips: graphResult.softConfirmChips,
+              });
+              setMessage("");
+              setContextAgentSessionPhase("awaiting_human");
+              onQuestionsChange?.([]);
+              return;
+            }
+            if (
+              (graphResult.via === "clarify" || graphResult.via === "reason") &&
+              graphResult.clarifyChips &&
+              graphResult.clarifyChips.length > 0
+            ) {
+              appendOperatorAskChipsComposeTurn(contextEventId, {
+                chipDomain: "clarify_less",
+                hint: graphResult.assistantReplyKo,
+                pendingTrigger: text,
+                chips: graphResult.clarifyChips,
+              });
+              setMessage("");
+              setContextAgentSessionPhase("awaiting_human");
+              onQuestionsChange?.([]);
+              return;
+            }
+            if (graphResult.via === "scout_handoff") {
+              await resolveAndMaybeExecute(text);
+              setMessage("");
+              return;
+            }
+            appendContextAgentComposeTurn(contextEventId, {
+              role: "assistant",
+              kind: "text",
+              text: graphResult.assistantReplyKo,
+            });
+            if (
+              graphResult.via === "soft_command" &&
+              graphResult.mapsUrl &&
+              typeof window !== "undefined"
+            ) {
+              window.open(graphResult.mapsUrl, "_blank", "noopener,noreferrer");
+            }
+            if (
+              graphResult.waitingCommit &&
+              (graphResult.reservedOpIds?.length ?? 0) > 0
+            ) {
+              openFieldDashboardIngress({
+                tab: "queue",
+                primaryEventId: contextEventId,
+              });
+            }
+            setMessage("");
+            setContextAgentSessionPhase("awaiting_human");
+            onQuestionsChange?.([]);
+            return;
+          }
+          appendContextAgentComposeTurn(contextEventId, {
+            role: "assistant",
+            kind: "text",
+            text: copy.globe.contextActionPinFirstHint,
+          });
+          setMessage("");
+          setContextAgentSessionPhase("awaiting_human");
           return;
         }
 
@@ -2267,10 +2827,16 @@ export const GlobeContextConditionPinBar = forwardRef<
             pendingTrigger: text,
             planReason: plan.reason,
           });
+          const stayHint =
+            chipDomain === "lodging_stay_revise"
+              ? readLodgingStayRevisePending(contextEventId)?.confirmHintKo ??
+                copy.globe.lodgingStayReviseAskHint
+              : null;
           appendOperatorAskChipsComposeTurn(contextEventId, {
             chipDomain,
             hint:
-              chipDomain === "trip_experience"
+              stayHint ??
+              (chipDomain === "trip_experience"
                 ? copy.globe.tripExperienceAskHint
                 : chipDomain === "flight_prep"
                   ? copy.globe.flightPrepAskHint
@@ -2278,7 +2844,7 @@ export const GlobeContextConditionPinBar = forwardRef<
                     ? copy.globe.transitPrepAskHint
                     : chipDomain === "finance_prep"
                       ? copy.globe.financePrepAskHint
-                      : copy.globe.tripIntakeAskHint,
+                      : copy.globe.tripIntakeAskHint),
             pendingTrigger: text,
             chips: plan.chips,
           });
@@ -2310,6 +2876,89 @@ export const GlobeContextConditionPinBar = forwardRef<
           }
         }
         if (await tryPublishActionInjection(text)) {
+          return;
+        }
+        if (plan.tool === "graph_command") {
+          const graphResult = await tryRunContextNlActionAsync({
+            utterance: text,
+            contextEventId,
+            anchorLat,
+            anchorLng,
+            contextLabelKo: anchorPlaceName,
+          });
+          if (graphResult) {
+            if (graphResult.via === "revise_confirm") {
+              appendOperatorAskChipsComposeTurn(contextEventId, {
+                chipDomain: "lodging_stay_revise",
+                hint: graphResult.assistantReplyKo,
+                pendingTrigger: text,
+                chips: graphResult.reviseChips,
+              });
+              setContextAgentSessionPhase("awaiting_human");
+              onQuestionsChange?.([]);
+              return;
+            }
+            if (graphResult.via === "soft_confirm") {
+              appendOperatorAskChipsComposeTurn(contextEventId, {
+                chipDomain: "soft_graph_confirm",
+                hint: graphResult.assistantReplyKo,
+                pendingTrigger: text,
+                chips: graphResult.softConfirmChips,
+              });
+              setContextAgentSessionPhase("awaiting_human");
+              onQuestionsChange?.([]);
+              return;
+            }
+            if (
+              (graphResult.via === "clarify" || graphResult.via === "reason") &&
+              graphResult.clarifyChips &&
+              graphResult.clarifyChips.length > 0
+            ) {
+              appendOperatorAskChipsComposeTurn(contextEventId, {
+                chipDomain: "clarify_less",
+                hint: graphResult.assistantReplyKo,
+                pendingTrigger: text,
+                chips: graphResult.clarifyChips,
+              });
+              setContextAgentSessionPhase("awaiting_human");
+              onQuestionsChange?.([]);
+              return;
+            }
+            if (graphResult.via === "scout_handoff") {
+              await resolveAndMaybeExecute(text);
+              return;
+            }
+            appendContextAgentComposeTurn(contextEventId, {
+              role: "assistant",
+              kind: "text",
+              text: graphResult.assistantReplyKo,
+            });
+            if (
+              graphResult.via === "soft_command" &&
+              graphResult.mapsUrl &&
+              typeof window !== "undefined"
+            ) {
+              window.open(graphResult.mapsUrl, "_blank", "noopener,noreferrer");
+            }
+            if (
+              graphResult.waitingCommit &&
+              (graphResult.reservedOpIds?.length ?? 0) > 0
+            ) {
+              openFieldDashboardIngress({
+                tab: "queue",
+                primaryEventId: contextEventId,
+              });
+            }
+            setContextAgentSessionPhase("awaiting_human");
+            onQuestionsChange?.([]);
+            return;
+          }
+          appendContextAgentComposeTurn(contextEventId, {
+            role: "assistant",
+            kind: "text",
+            text: copy.globe.contextActionPinFirstHint,
+          });
+          setContextAgentSessionPhase("awaiting_human");
           return;
         }
         if (plan.tool === "scout" && plan.reason === "trip_experience_parallel") {
@@ -2391,8 +3040,13 @@ export const GlobeContextConditionPinBar = forwardRef<
       onUserCompose,
       operatorBlueprint,
       resolveAndMaybeExecute,
+      runLodgingStayDiffRescout,
       tryOpenIntakeForMessage,
       tryPublishActionInjection,
+      anchorLat,
+      anchorLng,
+      anchorPlaceName,
+      onQuestionsChange,
       userLat,
       userLng,
     ],

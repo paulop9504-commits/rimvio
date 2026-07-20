@@ -69,5 +69,6 @@ export async function deliverGlobeContextToPeerChat(input: {
     note: note || undefined,
     capturedAtIso,
     file,
+    bridgeEventId: input.event.id.trim() || undefined,
   });
 }

@@ -61,10 +61,9 @@ export function computeLodgingDiscoveryBounds(input: {
     altitude = GLOBE_ALTITUDE.street;
   } else if (spanDeg <= 0.012) {
     altitude = GLOBE_ALTITUDE.neighborhood;
-  } else if (spanDeg <= 0.06) {
-    altitude = GLOBE_ALTITUDE.city;
   } else {
-    altitude = GLOBE_ALTITUDE.region;
+    // Cap at city — lodging/eatery HTML markers are hidden at region/space.
+    altitude = GLOBE_ALTITUDE.city;
   }
 
   return {

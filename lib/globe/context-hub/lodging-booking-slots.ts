@@ -1,4 +1,5 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
+import { areLodgingStayDatesValid } from "@/lib/globe/context-hub/lodging-booking-date-bounds";
 import { buildLodgingStayWindow } from "@/lib/globe/context-hub/lodging-stay-window";
 import { hasLodgingDomainCue } from "@/lib/globe/domain-cues/lodging-domain-cues";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
@@ -61,6 +62,14 @@ export function writeLodgingBookingSlots(input: {
   guestCount: number;
   roomCount: number;
 }): EventCandidate {
+  if (
+    !areLodgingStayDatesValid({
+      checkInYmd: input.checkInIso,
+      checkOutYmd: input.checkOutIso,
+    })
+  ) {
+    throw new Error("lodging_dates_in_past");
+  }
   const event = findLifeEventCandidate(input.contextEventId.trim());
   if (!event) {
     throw new Error("event_not_found");

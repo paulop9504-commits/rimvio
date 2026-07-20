@@ -20,10 +20,20 @@ import {
   isInstantEaterySearch,
   resolveInstantEateryFocus,
 } from "@/lib/globe/context-condition-ai/instant-eatery-search";
+import { isActionFirstUtterance } from "@/lib/rule-engine/is-action-first-utterance";
+import {
+  applyFieldsToDiscoverySpec,
+  parseBudgetField,
+  parseContextFields,
+  parseTransportField,
+  parseVibeField,
+} from "@/lib/context-field";
 import type {
   LocalDiscoveryActionSpec,
   LocalDiscoveryActivitySubtype,
   LocalDiscoveryBudget,
+  LocalDiscoveryCompanion,
+  LocalDiscoveryFieldHints,
   LocalDiscoveryLodgingKind,
   LocalDiscoveryPendingAnswers,
   LocalDiscoveryQuestion,
@@ -77,47 +87,9 @@ function radiusForTransport(transport: LocalDiscoveryTransport): number {
   }
 }
 
-function parseTransport(text: string): LocalDiscoveryTransport | null {
-  if (/도보|걸어|walking|walk|on foot/iu.test(text)) {
-    return "walk";
-  }
-  if (/차량|차로|운전|drive|car/iu.test(text)) {
-    return "car";
-  }
-  if (/대중|지하철|버스|transit|metro/iu.test(text)) {
-    return "transit";
-  }
-  return null;
-}
-
-function parseBudget(text: string): LocalDiscoveryBudget | null {
-  if (/싸|가성|저렴|budget|cheap|low/iu.test(text)) {
-    return "low";
-  }
-  if (/고급|프리미엄|luxury|premium|high/iu.test(text)) {
-    return "high";
-  }
-  if (/중간|medium|보통/iu.test(text)) {
-    return "medium";
-  }
-  return null;
-}
-
-function parseVibe(text: string): LocalDiscoveryVibe | null {
-  if (/조용|한적|quiet/iu.test(text)) {
-    return "quiet";
-  }
-  if (/핫플|핫|hot|trendy/iu.test(text)) {
-    return "hot";
-  }
-  if (/로컬|현지|local/iu.test(text)) {
-    return "local";
-  }
-  if (/인기|유명|popular|rating/iu.test(text)) {
-    return "popular";
-  }
-  return null;
-}
+const parseTransport = parseTransportField;
+const parseBudget = parseBudgetField;
+const parseVibe = parseVibeField;
 
 function parseLodgingKind(text: string): LocalDiscoveryLodgingKind | null {
   const kind = parseLodgingKindFromText(text);
@@ -279,6 +251,8 @@ function composeSpec(input: {
   activityFocus?: string | null;
   activitySubtype?: LocalDiscoveryActivitySubtype | null;
   activityCluster?: readonly string[] | null;
+  companion?: LocalDiscoveryCompanion | null;
+  fieldHints?: LocalDiscoveryFieldHints | null;
 }): LocalDiscoveryActionSpec {
   const cluster = input.activityCluster?.filter((node) => node.trim().length > 0);
   const amenityOnly =
@@ -303,6 +277,46 @@ function composeSpec(input: {
       : {}),
     ...(input.activitySubtype ? { activitySubtype: input.activitySubtype } : {}),
     ...(cluster && cluster.length > 0 ? { activityCluster: cluster } : {}),
+    ...(input.companion ? { companion: input.companion } : {}),
+    ...(input.fieldHints ? { fieldHints: input.fieldHints } : {}),
+  };
+}
+
+/** Attach companion / soft fieldHints (and fill vibe/transport gaps) from Field pack. */
+function attachContextFields(
+  spec: LocalDiscoveryActionSpec,
+  text: string,
+  previous?: LocalDiscoveryActionSpec | null,
+): LocalDiscoveryActionSpec {
+  const pack = parseContextFields(text);
+  const patch = applyFieldsToDiscoverySpec({ pack, previous: previous ?? null });
+  return {
+    ...spec,
+    ...(pack.location?.nearHotel && patch.transport
+      ? {
+          transport: patch.transport,
+          radiusM: radiusForTransport(patch.transport),
+        }
+      : {}),
+    vibe: patch.vibe ?? spec.vibe,
+    budget: patch.budget ?? spec.budget,
+    ...(patch.maxNightlyPriceKrw != null &&
+    patch.maxNightlyPriceKrw > 0 &&
+    spec.maxNightlyPriceKrw == null
+      ? { maxNightlyPriceKrw: Math.round(patch.maxNightlyPriceKrw) }
+      : {}),
+    ...(patch.eateryFocus?.trim() && !spec.eateryFocus?.trim()
+      ? { eateryFocus: patch.eateryFocus.trim() }
+      : {}),
+    ...(patch.companion ? { companion: patch.companion } : {}),
+    ...(patch.fieldHints
+      ? {
+          fieldHints: {
+            ...(spec.fieldHints ?? {}),
+            ...patch.fieldHints,
+          },
+        }
+      : {}),
   };
 }
 
@@ -533,15 +547,24 @@ export function resolveLocalDiscoveryAction(
     previousSpec: input.previousSpec ?? null,
   });
   if (domainSpec) {
-    return { status: "ready", spec: domainSpec, answers };
+    return {
+      status: "ready",
+      spec: attachContextFields(domainSpec, text, input.previousSpec ?? null),
+      answers,
+    };
   }
 
   const intent = classifyContextConditionAnchorRequest(text);
   const cuisineCandidates = parseCuisineCandidates(text);
   const resourceFocus = answers.resourceFocus;
   const focusWants = resolveWantsFromResourceFocus(resourceFocus);
+  const priceCapHint = parseMaxNightlyPriceKrw(text);
   const wantsLodging =
-    focusWants?.wantsLodging ?? input.wantsLodging ?? intent.lodgingSimilar;
+    focusWants?.wantsLodging ??
+    input.wantsLodging ??
+    intent.lodgingSimilar ??
+    // 「하루에 3만원대」 alone → lodging budget scout, not resource chips.
+    (priceCapHint != null && !intent.eateryNearby && cuisineCandidates.length === 0);
   const wantsEatery =
     focusWants?.wantsEatery ??
     input.wantsEatery ??
@@ -549,22 +572,30 @@ export function resolveLocalDiscoveryAction(
     cuisineCandidates.length > 0;
   const followUpTurn = input.followUpTurn === true;
   const previousSpec = input.previousSpec ?? null;
+  const fieldPack = parseContextFields(text);
+  const fieldPatch = applyFieldsToDiscoverySpec({
+    pack: fieldPack,
+    previous: previousSpec,
+  });
 
   let transport =
     (answers.transport as LocalDiscoveryTransport | undefined) ??
     parseTransport(text) ??
+    fieldPatch.transport ??
     input.inferredTransport ??
     null;
 
   let budget =
     (answers.budget as LocalDiscoveryBudget | undefined) ??
     parseBudget(text) ??
+    fieldPatch.budget ??
     input.inferredBudget ??
     null;
 
   let vibe =
     (answers.vibe as LocalDiscoveryVibe | undefined) ??
     parseVibe(text) ??
+    fieldPatch.vibe ??
     input.inferredVibe ??
     null;
 
@@ -706,7 +737,8 @@ export function resolveLocalDiscoveryAction(
 
   const skipMobilityBudgetQuestions =
     (followUpTurn && !parseTransport(text) && !parseBudget(text)) ||
-    hasNarrowEateryFocus;
+    hasNarrowEateryFocus ||
+    maxNightlyPriceKrw != null;
 
   if (
     !skipMobilityBudgetQuestions &&
@@ -734,6 +766,7 @@ export function resolveLocalDiscoveryAction(
     wantsLodging &&
     !answers.lodgingKind &&
     !parseLodgingKind(text) &&
+    maxNightlyPriceKrw == null &&
     (input.lodgingConfidence ?? 0) < CONFIDENCE_SKIP &&
     lodgingKind === "any"
   ) {
@@ -752,16 +785,20 @@ export function resolveLocalDiscoveryAction(
 
   return {
     status: "ready",
-    spec: composeSpec({
-      resourceTypes,
-      transport: transport ?? "walk",
-      budget: budget ?? "medium",
-      vibe: vibe ?? "popular",
-      lodgingKind: lodgingKind ?? "any",
-      lodgingStayType,
-      maxNightlyPriceKrw,
-      eateryFocus,
-    }),
+    spec: attachContextFields(
+      composeSpec({
+        resourceTypes,
+        transport: transport ?? "walk",
+        budget: budget ?? "medium",
+        vibe: vibe ?? "popular",
+        lodgingKind: lodgingKind ?? "any",
+        lodgingStayType,
+        maxNightlyPriceKrw,
+        eateryFocus,
+      }),
+      text,
+      previousSpec,
+    ),
     answers,
   };
 }
@@ -776,35 +813,45 @@ export function refineLocalDiscoverySpec(
     return spec;
   }
   const slots = parseUtteranceIntentSlots(text);
-  const wantsCloser = /더\s*가까|더\s*근처|가까운|closer|nearer/iu.test(text);
-  const transport = parseTransport(text);
-  const budget = parseBudget(text);
-  const vibe = parseVibe(text);
+  const pack = parseContextFields(text);
+  const patch = applyFieldsToDiscoverySpec({ pack, previous: spec });
   const lodgingKind = parseLodgingKind(text);
   const maxNightlyPriceKrw =
-    parseMaxNightlyPriceKrw(text) ?? spec.maxNightlyPriceKrw ?? null;
-  const nextTransport = wantsCloser ? "walk" : (transport ?? spec.transport);
+    patch.maxNightlyPriceKrw ??
+    parseMaxNightlyPriceKrw(text) ??
+    spec.maxNightlyPriceKrw ??
+    null;
+  const nextTransport =
+    patch.transport ??
+    (pack.distance?.closer ? "walk" : null) ??
+    spec.transport;
   const nextLodgingKind = lodgingKind ?? spec.lodgingKind;
   const nextEateryFocus =
+    patch.eateryFocus?.trim() ||
     slots.dishFocus?.trim() ||
     (slots.dessertOnly ? "디저트" : null) ||
     spec.eateryFocus;
+  const nextBudget =
+    patch.budget ??
+    (maxNightlyPriceKrw != null || nextLodgingKind === "hostel"
+      ? "low"
+      : null) ??
+    spec.budget;
   return composeSpec({
     resourceTypes: spec.resourceTypes,
     transport: nextTransport,
-    budget:
-      budget ??
-      (maxNightlyPriceKrw != null || nextLodgingKind === "hostel"
-        ? "low"
-        : null) ??
-      spec.budget,
-    vibe: vibe ?? spec.vibe,
+    budget: nextBudget,
+    vibe: patch.vibe ?? spec.vibe,
     lodgingKind: nextLodgingKind,
     maxNightlyPriceKrw,
     eateryFocus: nextEateryFocus,
     activityFocus: spec.activityFocus,
     activitySubtype: spec.activitySubtype,
     activityCluster: spec.activityCluster,
+    companion: patch.companion ?? spec.companion ?? null,
+    fieldHints: patch.fieldHints
+      ? { ...(spec.fieldHints ?? {}), ...patch.fieldHints }
+      : (spec.fieldHints ?? null),
   });
 }
 
@@ -821,25 +868,44 @@ export function isLocalDiscoveryRefinement(message: string): boolean {
   if (!text) {
     return false;
   }
+  // 「예매/예약할게」· Action-First graph cmds — never Continue refine.
+  if (isActionFirstUtterance(text)) {
+    return false;
+  }
   const intent = classifyContextConditionAnchorRequest(text);
   const hasNewSearchCue = /주변|근처|찾|검색|추천|배치|nearby|search/iu.test(text);
-  if (hasNewSearchCue && (intent.lodgingSimilar || intent.eateryNearby)) {
+  const hardNightlyCap = parseMaxNightlyPriceKrw(text);
+  // Fresh domain scout — except hard price / budget refine (「3만원대로 다시 찾아」).
+  if (
+    hasNewSearchCue &&
+    (intent.lodgingSimilar || intent.eateryNearby) &&
+    hardNightlyCap == null &&
+    !parseBudget(text)
+  ) {
     return false;
   }
   if (isAmbiguousDiscoveryIntent(text)) {
     return false;
   }
   const refineSlots = parseUtteranceIntentSlots(text);
+  const pack = parseContextFields(text);
   return Boolean(
     isAlternatePlaceSearch(text) ||
       parseTransport(text) ||
       parseBudget(text) ||
-      parseMaxNightlyPriceKrw(text) ||
+      hardNightlyCap != null ||
       parseVibe(text) ||
       isLodgingKindRefinement(text) ||
       refineSlots.dishFocus != null ||
       refineSlots.dessertOnly ||
-      /더\s*싸|더\s*조용|더\s*가까|더\s*근처|가까운|디저트\s*만/iu.test(text),
+      pack.companion != null ||
+      pack.crowd != null ||
+      pack.weather != null ||
+      pack.location != null ||
+      pack.distance != null ||
+      /더\s*싸|더\s*조용|더\s*가까|더\s*근처|가까운|디저트\s*만|다시\s*찾/iu.test(
+        text,
+      ),
   );
 }
 

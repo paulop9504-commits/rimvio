@@ -72,7 +72,8 @@ export type ContextRunPlanKind =
   | "share_ingest"
   | "gps_dwell_confirm_open"
   | "mention_contract"
-  | "portal_compose_run";
+  | "portal_compose_run"
+  | "graph_command";
 
 export type ContextRunPlan = {
   kind: ContextRunPlanKind;
@@ -112,6 +113,9 @@ export type ContextRunPlan = {
   globeIngress?: GlobeIngressCompileResult;
   /** Small talk (greeting/thanks/chit-chat) — short conversational reply, no search. */
   smallTalkReplyKo?: string;
+  /** Graph Command OS — NL → graph edit IR (prepare-only). */
+  graphCommands?: readonly import("@/lib/graph-command").GraphCommand[];
+  graphCommandContextEventId?: string;
 };
 
 export type ContextRunEffectHandlers = {

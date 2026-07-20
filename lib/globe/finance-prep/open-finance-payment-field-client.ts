@@ -20,10 +20,12 @@ export function openFinancePaymentFieldClient(input: {
   event?: EventCandidate | null;
   budgetBand?: string | null;
   title?: string | null;
+  placeId?: string | null;
 }): OpenFinancePaymentFieldResult {
   const event =
     input.event ?? findLifeEventCandidate(input.contextEventId) ?? null;
-  const placeId = readPinnedLodgingPlaceId(event);
+  const placeId =
+    input.placeId?.trim() || readPinnedLodgingPlaceId(event);
   const title = input.title?.trim() || event?.title?.trim() || "결제 준비";
 
   const capability = dispatchCapability({

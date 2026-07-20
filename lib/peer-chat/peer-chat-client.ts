@@ -401,6 +401,7 @@ export async function sendSharedGlobePinRemote(input: {
   note?: string;
   capturedAtIso?: string;
   file?: File;
+  bridgeEventId?: string;
 }): Promise<{
   pin: import("@/lib/peer-chat/globe-pin-types").SharedGlobePin;
   threadId: string;
@@ -429,6 +430,9 @@ export async function sendSharedGlobePinRemote(input: {
       if (input.capturedAtIso?.trim()) {
         form.append("capturedAtIso", input.capturedAtIso.trim());
       }
+      if (input.bridgeEventId?.trim()) {
+        form.append("bridgeEventId", input.bridgeEventId.trim());
+      }
       form.append("file", input.file);
       const response = await fetch(endpoint, {
         method: "POST",
@@ -449,6 +453,7 @@ export async function sendSharedGlobePinRemote(input: {
         displayName: input.displayName,
         note: input.note,
         capturedAtIso: input.capturedAtIso,
+        bridgeEventId: input.bridgeEventId,
       }),
     });
     return parseJson<GlobePinPostResult>(response);

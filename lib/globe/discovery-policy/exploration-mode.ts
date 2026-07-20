@@ -10,9 +10,9 @@ export const EXPLORATION_MODES = ["convergent", "diffuse"] as const;
 
 export type ExplorationMode = (typeof EXPLORATION_MODES)[number];
 
-/** NL cues for tail / hidden-gem exploration — deterministic only. */
+/** NL cues for tail / hidden-gem / sweep exploration — deterministic only. */
 const DIFFUSE_NL =
-  /(?:숨은|골목|새로운|새\s*로운|덜\s*유명|니치|힙한|힙\s*플|hidden|off[\s-]?the[\s-]?beaten|secret|local\s*gem|underground)/iu;
+  /(?:숨은|골목|새로운|새\s*로운|덜\s*유명|니치|힙한|힙\s*플|싹\s*찾|전부\s*찾|다\s*찾|넓게\s*찾|모조리|as\s*many|all\s*around|hidden|off[\s-]?the[\s-]?beaten|secret|local\s*gem|underground)/iu;
 
 export type ResolveExplorationModeInput = {
   message?: string | null;

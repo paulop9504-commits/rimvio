@@ -13,6 +13,8 @@ import {
   sanitizeOntologyMapBadgeLabel,
 } from "@/lib/globe/resolve-context-resource-map-markers";
 import { hasExplicitMarkerThumbnail } from "@/lib/globe/brain-surface-marker-media";
+import { resolveRealityObjectCoverForPlace } from "@/lib/reality-object";
+import { resolveProjectedObjectVisual } from "@/lib/visual-projection";
 
 function extractMapPillLabel(label: string): string {
   const trimmed = label.trim().replace(/\s+/gu, " ");
@@ -78,8 +80,26 @@ export function projectEateryGlobeMarkers(input: {
       }
 
       const payload = readEateryPayloadFromResource(entry.resource);
-      const imageUrl = payload?.images[0] ?? null;
-      if (!hasExplicitMarkerThumbnail(imageUrl)) {
+      const inventoryImages = payload?.images ?? [];
+      const preferred = resolveRealityObjectCoverForPlace({
+        event: input.event,
+        placeId: payload?.placeId,
+        fallback: inventoryImages[0] ?? null,
+      });
+      const visual = resolveProjectedObjectVisual({
+        event: input.event,
+        placeId: payload?.placeId,
+        title: entry.resource.label,
+        pinKind: "eatery",
+        imageUrls: inventoryImages,
+        preferredUrl: preferred,
+      });
+      const imageUrl = visual.thumbnailUrl;
+      // Glyph LOD can show without a photo; only drop empty stock placeholders when we had a URL.
+      if (imageUrl && !hasExplicitMarkerThumbnail(imageUrl)) {
+        return null;
+      }
+      if (visual.projectionTier === "hidden") {
         return null;
       }
       const isMain = entry.resource.resourceId === activeId;
@@ -113,7 +133,13 @@ export function projectEateryGlobeMarkers(input: {
         thumbnailUrl: imageUrl,
         discoveryShortLabel: extractMapPillLabel(entry.resource.label),
         discoveryPriceLabel: supportDetail,
-        discoveryAccent: presentation?.discoveryAccent ?? "orange",
+        discoveryAccent:
+          presentation?.discoveryAccent ?? visual.halo.discoveryAccent,
+        objectGlyph: visual.halo.glyph,
+        objectHaloFamily: visual.halo.family,
+        projectionTier: visual.projectionTier,
+        useSegmentation: visual.useSegmentation,
+        cutoutMode: visual.cutoutMode,
         ...(payload?.virtualCandidate === true || ghost?.virtual === true
           ? { virtualCandidate: true }
           : {}),

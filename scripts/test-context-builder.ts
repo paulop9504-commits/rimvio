@@ -1,109 +1,71 @@
 #!/usr/bin/env npx tsx
+/**
+ * Context Builder — packs relevant nodes only (Cursor-style), never full graph.
+ */
+
 import assert from "node:assert/strict";
-import { buildContext } from "../lib/context-builder/build-context";
-import type { CognitiveEvent } from "../lib/context-builder/types";
+import {
+  buildContextPack,
+  clearLastContextPack,
+  formatContextPackHintKo,
+  readLastContextPack,
+  resolveDeicticFromLastPack,
+  writeLastContextPack,
+} from "../lib/context-builder";
+import {
+  clearSessionGraphs,
+  readSessionGraph,
+  resetGraphCommandStoreForTests,
+  tryRunGraphCommandOs,
+} from "../lib/graph-command";
+import { clearPreparedRealityOperations } from "../lib/reality-queue";
 
-const NOW = 1_700_000_000_000;
-const HALF_HOUR = 30 * 60 * 1000;
+resetGraphCommandStoreForTests();
+clearPreparedRealityOperations();
+clearSessionGraphs();
+clearLastContextPack();
 
-function embed(values: number[]): number[] {
-  return values;
+tryRunGraphCommandOs({
+  utterance: "APA호텔 고정",
+  contextEventId: "evt-ctx-builder",
+  anchorLat: 34.6654,
+  anchorLng: 135.5019,
+});
+tryRunGraphCommandOs({
+  utterance: "주변 맛집 찾아줘",
+  contextEventId: "evt-ctx-builder",
+});
+
+const graph = readSessionGraph("evt-ctx-builder");
+assert.ok(graph);
+assert.ok(graph!.nodes.length >= 4);
+
+const pack = buildContextPack({
+  utterance: "첫 번째 예약",
+  graph,
+  intent: "Reserve",
+  maxNodes: 8,
+});
+
+assert.equal(pack.version, 1);
+assert.ok(pack.stats.graphNodeTotal >= pack.stats.packedNodeCount);
+assert.ok(pack.nodes.length <= 8);
+assert.ok(pack.nodes.length >= 1);
+assert.ok(pack.nodes.every((n) => n.whyIncludedKo.length > 0));
+// Must not equal dumping everything if graph is larger than cap with low scores —
+// at minimum truncated flag is honest when graph > packed
+if (graph!.nodes.length > pack.nodes.length) {
+  assert.equal(pack.stats.truncated, true);
 }
 
-const focusedStream: CognitiveEvent[] = [
-  {
-    id: "e1",
-    type: "Event",
-    timestamp: NOW - 5 * 60 * 1000,
-    tags: ["schedule", "dentist"],
-    embedding: embed([1, 0, 0]),
-    engaged: true,
-  },
-  {
-    id: "e2",
-    type: "Opportunity",
-    timestamp: NOW - 8 * 60 * 1000,
-    tags: ["schedule", "imminent"],
-    embedding: embed([0.9, 0.1, 0]),
-    engaged: true,
-  },
-];
+writeLastContextPack(pack);
+assert.equal(readLastContextPack("evt-ctx-builder")?.nodes.length, pack.nodes.length);
 
-const focused = buildContext(focusedStream, { now: NOW });
-assert.equal(focused.attentionState, "FOCUSED");
-assert.ok(focused.activeIntents.includes("schedule"));
-assert.equal(focused.userIntentVector.length, 3);
-assert.ok(focused.recentTopSignals.length >= 2);
-assert.equal(focused.suppressionMap.e1, undefined);
+const deictic = resolveDeicticFromLastPack("evt-ctx-builder", "여기 예약해");
+assert.ok(deictic);
+assert.ok(deictic!.labelKo.length > 0);
 
-const scatteredStream: CognitiveEvent[] = [
-  ...focusedStream,
-  {
-    id: "e3",
-    type: "Notification",
-    timestamp: NOW - 2 * 60 * 1000,
-    tags: ["finance", "receipt"],
-    embedding: embed([0, 1, 0]),
-    engaged: false,
-  },
-  {
-    id: "e4",
-    type: "Container",
-    timestamp: NOW - 3 * 60 * 1000,
-    tags: ["travel", "flight"],
-    embedding: embed([0, 0, 1]),
-    engaged: false,
-  },
-  {
-    id: "e5",
-    type: "Behavior",
-    timestamp: NOW - 4 * 60 * 1000,
-    tags: ["food", "lunch"],
-    embedding: embed([0.2, 0.2, 0.6]),
-    engaged: false,
-  },
-  {
-    id: "e6",
-    type: "Event",
-    timestamp: NOW - 6 * 60 * 1000,
-    tags: ["social", "party"],
-    embedding: embed([0.1, 0.3, 0.6]),
-    engaged: false,
-  },
-];
+const hint = formatContextPackHintKo(pack);
+assert.ok(hint.includes("맥락") || hint.includes("비어"));
 
-const scattered = buildContext(scatteredStream, { now: NOW });
-assert.equal(scattered.attentionState, "SCATTERED");
-
-const idle = buildContext([], { now: NOW });
-assert.equal(idle.attentionState, "IDLE");
-assert.deepEqual(idle.userIntentVector, []);
-
-const ignored: CognitiveEvent[] = [
-  {
-    id: "n1",
-    type: "Notification",
-    timestamp: NOW - HALF_HOUR * 3,
-    tags: ["promo", "ignored"],
-    embedding: embed([0, 0, 1]),
-    engaged: false,
-  },
-  {
-    id: "n2",
-    type: "Notification",
-    timestamp: NOW - HALF_HOUR * 2.5,
-    tags: ["promo"],
-    embedding: embed([0, 0, 1]),
-    engaged: false,
-  },
-];
-
-const suppressed = buildContext(ignored, { now: NOW });
-assert.ok((suppressed.suppressionMap.n1 ?? 0) >= 0.9);
-assert.ok((suppressed.suppressionMap.n2 ?? 0) >= 0.45);
-
-const deterministicA = buildContext(focusedStream, { now: NOW });
-const deterministicB = buildContext(focusedStream, { now: NOW });
-assert.deepEqual(deterministicA, deterministicB);
-
-console.log("test-context-builder: ok");
+console.log("ok — context-builder");

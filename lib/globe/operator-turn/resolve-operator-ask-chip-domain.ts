@@ -8,6 +8,9 @@ export type OperatorAskChipDomain =
   | "flight_prep"
   | "transit_prep"
   | "finance_prep"
+  | "lodging_stay_revise"
+  | "soft_graph_confirm"
+  | "clarify_less"
   | "plan_handoff"
   | "ingress_converge";
 
@@ -18,8 +21,16 @@ export function resolveOperatorAskChipDomain(input: {
     | "trip_experience_gap"
     | "transit_prep_gap"
     | "finance_prep_gap"
+    | "lodging_stay_revise"
+    | "soft_graph_confirm"
     | "convergence_or_clarify";
 }): OperatorAskChipDomain {
+  if (input.planReason === "lodging_stay_revise") {
+    return "lodging_stay_revise";
+  }
+  if (input.planReason === "soft_graph_confirm") {
+    return "soft_graph_confirm";
+  }
   if (input.planReason === "trip_experience_gap") {
     return "trip_experience";
   }

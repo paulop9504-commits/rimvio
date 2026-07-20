@@ -35,6 +35,7 @@ export type OpportunityDashboardBodyProps = {
   focusTradesToken?: number;
   initialTab?: FieldDashboardTab | null;
   highlightTradeId?: string | null;
+  primaryEventId?: string | null;
   ingressGeneration?: number;
   /** @deprecated discovery pin reveal removed from primary Field surface */
   enableGlobePinReveal?: boolean;
@@ -65,6 +66,7 @@ export function OpportunityDashboardBody({
   focusTradesToken = 0,
   initialTab = null,
   highlightTradeId = null,
+  primaryEventId = null,
   ingressGeneration = 0,
   mineCount = 0,
   headerRight,
@@ -81,8 +83,9 @@ export function OpportunityDashboardBody({
       buildRealityControlSnapshot({
         tradeSessions,
         events: listLifeEventCandidates(),
+        primaryEventId,
       }).items.length,
-    [tradeSessions],
+    [primaryEventId, tradeSessions],
   );
 
   useEffect(() => {
@@ -162,6 +165,7 @@ export function OpportunityDashboardBody({
             >
               <RealityControlCenterPanel
                 tradeSessions={tradeSessions}
+                primaryEventId={primaryEventId}
                 onOpenTrades={() => setTab("trades")}
                 onOpenMine={() => setTab("mine")}
                 className="h-full"

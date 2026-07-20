@@ -14,5 +14,7 @@ export type IntakeSheetField = {
   readonly value: string | number;
   readonly min?: number;
   readonly max?: number;
+  /** HTML date input `min` (yyyy-mm-dd). */
+  readonly dateMin?: string;
   readonly enumOptions?: readonly IntakeSheetEnumOption[];
 };

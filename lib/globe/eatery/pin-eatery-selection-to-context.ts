@@ -9,6 +9,7 @@ import {
 import { upsertMirrorProvenanceMetadata } from "@/lib/globe/mirror-provenance";
 import { mapEateryRowToContextResource } from "@/lib/globe/eatery/read-eatery-resource-inventory";
 import { emitCommittedContextResource } from "@/lib/globe/resource/emit-committed-context-resource";
+import { attachRealityObjectToPinMetadata } from "@/lib/reality-object/attach-on-pin";
 import { commitEventUpsert } from "@/lib/source-of-truth/commit-truth";
 import type { ContextEateryInventoryRow } from "@/lib/globe/eatery/eatery-resource-types";
 import {
@@ -40,6 +41,27 @@ export function pinEaterySelectionToContext(input: {
   }
   const resourceId = buildEateryResourceId(event.id, input.row.placeId);
   const stamp = new Date().toISOString();
+  const coverImageUrl =
+    input.previewUrl ?? input.row.images[0] ?? null;
+  const { metadata: withObject, object } = attachRealityObjectToPinMetadata({
+    metadata: event.metadata,
+    build: {
+      contextEventId: event.id,
+      title: input.row.name,
+      placeId: input.row.placeId,
+      resourceId,
+      pinKind: "eatery",
+      categoryLabel: input.row.categoryLabel ?? null,
+      cuisineHint: input.row.cuisineHint ?? null,
+      coverImageUrl,
+      images: input.row.images,
+      lat: input.row.lat,
+      lng: input.row.lng,
+      rating: input.row.rating ?? null,
+      reservationSupport: true,
+      pinnedAtIso: stamp,
+    },
+  });
   const pinnedItem = buildContextPinnedItem({
     kind: "eatery",
     resourceId,
@@ -48,11 +70,11 @@ export function pinEaterySelectionToContext(input: {
     lat: input.row.lat,
     lng: input.row.lng,
     mapsUrl: input.row.mapsUrl ?? null,
-    previewUrl: input.previewUrl ?? input.row.images[0] ?? null,
+    previewUrl: object.coverImageUrl ?? coverImageUrl,
     pinnedAtIso: stamp,
   });
   const baseMetadata = applyPinnedContextItemMetadata({
-    metadata: event.metadata,
+    metadata: withObject,
     item: pinnedItem,
   });
   const metadata = upsertMirrorProvenanceMetadata({

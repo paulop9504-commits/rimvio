@@ -213,6 +213,7 @@ export function OpportunityDashboardSheet({
         focusTradesToken={focusTradesToken}
         initialTab={dashboardTab}
         highlightTradeId={highlightTradeId}
+        primaryEventId={primaryEventId}
         ingressGeneration={ingressGeneration}
         enableGlobePinReveal={false}
         mineCount={mineCount}

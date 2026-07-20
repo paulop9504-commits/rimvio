@@ -711,12 +711,14 @@ export const RimvioGlobe3D = memo(
             return createGlobeLodgingMarkerElement(row, {
               onPress: (resourceId, carouselIndex) =>
                 onLodgingMarkerPressRef.current?.(resourceId, carouselIndex),
+              detailLevel: warmthDetailRef.current,
             });
           }
           if (isGlobeEateryMapMarker(row)) {
             return createGlobeEateryMarkerElement(row, {
               onPress: (resourceId, carouselIndex) =>
                 onEateryMarkerPressRef.current?.(resourceId, carouselIndex),
+              detailLevel: warmthDetailRef.current,
             });
           }
           if (isBrainSurfaceProjectionCandidate(row)) {
@@ -791,6 +793,10 @@ export const RimvioGlobe3D = memo(
         .arcColor((arc: object) => (arc as GlobeTripArc).color)
         .arcAltitude((arc: object) => {
           const row = arc as GlobeTripArc;
+          if (row.linkStyle === "signal" || row.id.startsWith("gcmd-compare")) {
+            // Flat hairline — never vault over pins / UI.
+            return resolveLocalDiscoveryRouteArcAltitude(row) * 0.35;
+          }
           if (
             row.id.startsWith("ctxcond-route:") ||
             row.id.startsWith("brain-trace:")
@@ -799,10 +805,30 @@ export const RimvioGlobe3D = memo(
           }
           return resolveTripArcAltitude(row);
         })
-        .arcStroke((arc: object) =>
-          (arc as GlobeTripArc).emphasis === "focused"
+        .arcStroke((arc: object) => {
+          const row = arc as GlobeTripArc;
+          if (row.linkStyle === "signal") {
+            return GLOBE_TOSS_THEME.signalArcStroke;
+          }
+          return row.emphasis === "focused"
             ? GLOBE_TOSS_THEME.tripArcFocusedStroke
-            : GLOBE_TOSS_THEME.tripArcStroke,
+            : GLOBE_TOSS_THEME.tripArcStroke;
+        })
+        .arcDashLength((arc: object) =>
+          (arc as GlobeTripArc).linkStyle === "signal"
+            ? GLOBE_TOSS_THEME.signalArcDashLength
+            : 1,
+        )
+        .arcDashGap((arc: object) =>
+          (arc as GlobeTripArc).linkStyle === "signal"
+            ? GLOBE_TOSS_THEME.signalArcDashGap
+            : 0,
+        )
+        .arcDashInitialGap(() => 0)
+        .arcDashAnimateTime((arc: object) =>
+          (arc as GlobeTripArc).linkStyle === "signal"
+            ? GLOBE_TOSS_THEME.signalArcDashAnimateMs
+            : 0,
         )
         .arcsTransitionDuration(0)
         .ringsData([])

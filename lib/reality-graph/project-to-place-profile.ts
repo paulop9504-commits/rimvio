@@ -1,7 +1,45 @@
 import type { CanonicalPlaceProfile } from "@/lib/globe/canonical-place-profile";
 import { formatWorldGeoHierarchyKo } from "@/lib/reality-graph/answer-admin-division";
 import { resolveWorldGeoEntity } from "@/lib/reality-graph/resolve-world-geo";
-import type { WorldGeoEntityId } from "@/lib/reality-graph/types";
+import type { WorldGeoEntityId, WorldGeoNode } from "@/lib/reality-graph/types";
+
+function normalizeGeoAlias(value: string): string {
+  return value
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, "")
+    .trim();
+}
+
+/**
+ * User-facing place string — prefer colloquial alias matched in the query
+ * (오사카) over official admin label (오사카부). Hierarchy strings keep official names.
+ */
+export function userFacingWorldGeoLabel(
+  node: WorldGeoNode,
+  queryText: string,
+): string {
+  const aliases = node.labels.aliases ?? [];
+  const nq = normalizeGeoAlias(queryText);
+  const matched = aliases
+    .filter((alias) => {
+      const na = normalizeGeoAlias(alias);
+      return na.length >= 2 && (nq === na || nq.includes(na));
+    })
+    .sort(
+      (a, b) => normalizeGeoAlias(b).length - normalizeGeoAlias(a).length,
+    );
+  if (matched.length === 0) {
+    return node.labels.ko;
+  }
+  const hangulColloquial = matched.find(
+    (alias) => /^[가-힣]+$/u.test(alias) && !/[도부현]$/u.test(alias),
+  );
+  if (hangulColloquial) {
+    return hangulColloquial;
+  }
+  return matched[0]!;
+}
 
 /**
  * Map Reality Graph hit → fields for CanonicalPlaceProfile / SpatialTarget.zoneId.
@@ -32,16 +70,20 @@ export function projectWorldGeoToPlaceFields(text: string): {
       (n) => n.kind === "prefecture" || n.kind === "metropolis",
     ) ?? null;
   const city =
-    hit.node.kind === "metropolis" || hit.node.kind === "city"
+    hit.node.kind === "metropolis" ||
+    hit.node.kind === "city" ||
+    hit.node.kind === "prefecture"
       ? hit.node
       : region;
   const district =
     hit.node.kind === "ward" || hit.node.kind === "district" ? hit.node : null;
   const neighborhood = hit.node.kind === "neighborhood" ? hit.node : null;
+  const facing = userFacingWorldGeoLabel(hit.node, text);
+  const cityFacing = city ? userFacingWorldGeoLabel(city, text) : null;
 
   return {
     zoneId: hit.node.id,
-    label: hit.node.labels.ko,
+    label: facing,
     lat: hit.node.centroid.lat,
     lng: hit.node.centroid.lng,
     countryCode:
@@ -53,8 +95,8 @@ export function projectWorldGeoToPlaceFields(text: string): {
             ? "KR"
             : null,
     countryName: country?.labels.ko ?? null,
-    region: region?.labels.ko ?? null,
-    city: city?.labels.ko ?? null,
+    region: region ? userFacingWorldGeoLabel(region, text) : null,
+    city: cityFacing,
     district: district?.labels.ko ?? neighborhood?.labels.ko ?? null,
     neighborhood: neighborhood?.labels.ko ?? null,
     timezone: hit.node.ianaTimeZone,

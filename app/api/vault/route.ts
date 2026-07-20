@@ -9,6 +9,7 @@ import {
 import { resolveVaultClient } from "@/lib/vault/resolve-vault-client";
 import {
   isVaultMigrationMissingError,
+  VAULT_UNAVAILABLE_HTTP_STATUS,
   vaultMigrationRequiredResponse,
 } from "@/lib/vault/vault-api-errors";
 
@@ -47,12 +48,21 @@ export async function GET(request: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "vault_read_failed";
     if (isVaultMigrationMissingError(message)) {
-      return NextResponse.json(vaultMigrationRequiredResponse());
+      return NextResponse.json(vaultMigrationRequiredResponse(), {
+        status: VAULT_UNAVAILABLE_HTTP_STATUS,
+      });
     }
     console.error("[vault] GET failed:", message);
     return NextResponse.json(
-      { error: message, hint: "vault_unavailable", persisted: false, vault: null, objects: [] },
-      { status: 200 },
+      {
+        ok: false,
+        error: message,
+        hint: "vault_unavailable",
+        persisted: false,
+        vault: null,
+        objects: [],
+      },
+      { status: VAULT_UNAVAILABLE_HTTP_STATUS },
     );
   }
 }
@@ -79,12 +89,14 @@ export async function POST() {
   } catch (error) {
     const message = error instanceof Error ? error.message : "vault_provision_failed";
     if (isVaultMigrationMissingError(message)) {
-      return NextResponse.json(vaultMigrationRequiredResponse());
+      return NextResponse.json(vaultMigrationRequiredResponse(), {
+        status: VAULT_UNAVAILABLE_HTTP_STATUS,
+      });
     }
     console.error("[vault] POST failed:", message);
     return NextResponse.json(
       { ok: false, error: message, hint: "vault_unavailable" },
-      { status: 200 },
+      { status: VAULT_UNAVAILABLE_HTTP_STATUS },
     );
   }
 }

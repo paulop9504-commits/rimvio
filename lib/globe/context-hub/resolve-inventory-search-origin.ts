@@ -1,11 +1,10 @@
 import { buildContextInstance } from "@/lib/context-instance/build-context-instance";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 
-function readFiniteCoord(value: unknown): number | null {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
-/** Pin anchor wins for discovery — viewer GPS must not hijack overseas context. */
+/**
+ * Inventory Nearby Search origin — same gate as lodging/discovery coords.
+ * Viewer GPS must not hijack overseas context (25 km anchor rule in ContextInstance).
+ */
 export function resolveInventorySearchOrigin(input: {
   event: EventCandidate;
   lat?: number | null;
@@ -13,12 +12,6 @@ export function resolveInventorySearchOrigin(input: {
   preferUserLocation?: boolean;
   message?: string | null;
 }): { lat: number; lng: number } | null {
-  const pinLat = readFiniteCoord(input.lat);
-  const pinLng = readFiniteCoord(input.lng);
-  if (pinLat != null && pinLng != null) {
-    return { lat: pinLat, lng: pinLng };
-  }
-
   const context = buildContextInstance({
     event: input.event,
     message: input.message,

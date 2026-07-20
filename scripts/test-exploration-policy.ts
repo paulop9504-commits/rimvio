@@ -23,6 +23,10 @@ assert.equal(
 assert.equal(resolveExplorationMode({ message: "다른 곳 보여줘" }), "diffuse");
 assert.equal(resolveExplorationMode({ message: "숨은 카페" }), "diffuse");
 assert.equal(
+  resolveExplorationMode({ message: "주변 캡슐호텔 싹 찾아줘" }),
+  "diffuse",
+);
+assert.equal(
   resolveExplorationMode({
     message: "도쿄 디즈니",
     explicitLandmark: true,
@@ -53,6 +57,8 @@ assert.ok(
 );
 assert.equal(convergent.activityLandmarkPinCap, 1);
 assert.equal(diffuse.activityLandmarkPinCap, 3);
+assert.ok(diffuse.lodgingMaxResults >= convergent.lodgingMaxResults);
+assert.ok(diffuse.lodgingRadiusBoostM > convergent.lodgingRadiusBoostM);
 assert.ok(convergent.ratingWeight > diffuse.ratingWeight);
 assert.ok(diffuse.noveltyWeight > convergent.noveltyWeight);
 

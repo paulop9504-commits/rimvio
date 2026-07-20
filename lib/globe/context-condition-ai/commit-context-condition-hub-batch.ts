@@ -39,6 +39,11 @@ export type CommitContextConditionHubBatchInput = {
   now?: Date;
   /** Inventory only — defer map pin batch until user opens the discovery feed. */
   deferMapReveal?: boolean;
+  /**
+   * When true (default for lodging scout), replace hub lodging inventory with
+   * this batch so map hub markers match the discovery feed.
+   */
+  replaceLodgingInventory?: boolean;
 };
 
 /** Merge hub inventory + batch metadata so map markers and focus cards resolve. */
@@ -49,10 +54,13 @@ export function commitContextConditionHubBatch(
   let event = input.event;
 
   if (input.lodgingRows.length > 0) {
-    const mergedLodging = mergeLodgingInventoryRows(
-      readLodgingInventoryRows(event),
-      input.lodgingRows,
-    );
+    const replace = input.replaceLodgingInventory !== false;
+    const mergedLodging = replace
+      ? [...input.lodgingRows]
+      : mergeLodgingInventoryRows(
+          readLodgingInventoryRows(event),
+          input.lodgingRows,
+        );
     const lodgingScoreWire: Record<string, LodgingRecommendScoreWire> = {};
     for (const entry of input.lodgingScored) {
       lodgingScoreWire[entry.row.placeId] = {

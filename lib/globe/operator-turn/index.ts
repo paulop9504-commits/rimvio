@@ -15,6 +15,7 @@ export {
 
 export {
   gateOperatorTurnSync,
+  hasOpenDiscoverySurface,
   isOperatorWhitelistTool,
   mapClassifyToOperatorTool,
 } from "@/lib/globe/operator-turn/gate-operator-turn";

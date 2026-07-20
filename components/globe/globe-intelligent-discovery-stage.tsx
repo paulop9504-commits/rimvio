@@ -24,6 +24,9 @@ import { readContextAgentComposeThread } from "@/lib/globe/assistant";
 import { openLodgingHubCheckout } from "@/lib/globe/hub-checkout/open-lodging-hub-checkout-bridge";
 import { dispatchGlobeLodgingFocus } from "@/lib/globe/context-hub/globe-lodging-marker-bridge";
 import { dispatchGlobeEateryFocus } from "@/lib/globe/eatery/globe-eatery-focus-bridge";
+import { enqueuePlacePrepToExecutionInbox } from "@/lib/reality-queue";
+import { openFieldDashboardIngress } from "@/lib/nav/field-dashboard-ingress";
+import { toast } from "sonner";
 import {
   EVENT_CANDIDATES_UPDATED,
   findLifeEventCandidate,
@@ -239,6 +242,43 @@ export function GlobeIntelligentDiscoveryStage({
     [activeEvent],
   );
 
+  const handleAddToExecutionInbox = useCallback(
+    (card: InfiniteDiscoveryFeedCard) => {
+      if (!activeEvent) {
+        return;
+      }
+      const kind =
+        card.kind === "lodging"
+          ? "lodging"
+          : card.kind === "activity"
+            ? "activity"
+            : "eatery";
+      const reasonLines = card.media.detailReasonLine
+        ? card.media.detailReasonLine
+            .split(/[·|,]/u)
+            .map((part) => part.trim())
+            .filter(Boolean)
+            .slice(0, 4)
+        : [];
+      enqueuePlacePrepToExecutionInbox({
+        contextEventId: activeEvent.id,
+        contextLabelKo: activeEvent.title?.trim() || activeEvent.place?.trim() || null,
+        placeId: card.placeId,
+        placeName: card.media.title,
+        kind,
+        partySize: 2,
+        reserveAtLabelKo: "19:00",
+        budgetWon: kind === "eatery" ? 15_000 : null,
+        reasonLinesKo: reasonLines,
+        lat: card.lat,
+        lng: card.lng,
+      });
+      toast.message(copy.globe.intelligentPinAddInboxToast(card.media.title));
+      openFieldDashboardIngress({ tab: "queue", primaryEventId: activeEvent.id });
+    },
+    [activeEvent],
+  );
+
   if (!openEventId || cards.length === 0) {
     return (
       <div
@@ -265,6 +305,7 @@ export function GlobeIntelligentDiscoveryStage({
         onDismiss={dismiss}
         onFixPin={handleFixPin}
         onCheckout={handleCheckout}
+        onAddToExecutionInbox={handleAddToExecutionInbox}
         pinBusyPlaceId={pinBusyPlaceId}
       />
     </>

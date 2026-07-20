@@ -1,0 +1,441 @@
+/**
+ * Tool Registry — Intent/Planner know tool ids; implementations live here.
+ * Adding a tool does not retrain the model.
+ */
+
+import { runPlaceSearch, runPlaceSearchAsync } from "@/lib/search-engine";
+import {
+  applyFieldControlToPlaceHits,
+  bookingControlToToolMeta,
+  compileContextFieldControl,
+  type ContextFieldControlPlane,
+} from "@/lib/context-field";
+import { mergeLodgingStayForToolInvoke } from "@/lib/context-builder/resolve-lodging-stay-for-tools";
+import { rankByValueConsensus } from "@/lib/search-engine/score-value-consensus";
+import { composeAmenityLookupQuery } from "@/lib/tool-registry/amenity-lookup-cue";
+
+export const RIMVIO_TOOL_IDS = [
+  "maps.search",
+  "hotel.lookup",
+  "restaurant.lookup",
+  "pharmacy.lookup",
+  "ranking.pick",
+  "booking.prepare",
+] as const;
+
+export type RimvioToolId = (typeof RIMVIO_TOOL_IDS)[number];
+
+export type RimvioToolDefinition = {
+  readonly id: RimvioToolId;
+  readonly labelKo: string;
+  /** Skill packs that may load this tool. */
+  readonly skills: readonly ("travel" | "restaurant" | "finance" | "maps")[];
+};
+
+export type ToolInvokeInput = {
+  readonly query?: string;
+  readonly labels?: readonly string[];
+  readonly domain?: "lodging" | "eatery" | "poi";
+  readonly candidates?: readonly {
+    readonly id: string;
+    readonly labelKo: string;
+    readonly rating?: number | null;
+    readonly walkMinutes?: number | null;
+    readonly priceBand?: number | null;
+    readonly reservable?: boolean | null;
+    readonly localFavorite?: boolean | null;
+    readonly lat?: number | null;
+    readonly lng?: number | null;
+    readonly source?: string | null;
+    readonly liteapiOfferId?: string | null;
+    readonly liteapiHotelId?: string | null;
+    readonly amountLabel?: string | null;
+    /** Live review volume — consensus quality signal. */
+    readonly reviewCount?: number | null;
+    /** Nightly / ticket price KRW when known. */
+    readonly priceKrw?: number | null;
+  }[];
+  readonly contextEventId?: string;
+  readonly placeId?: string;
+  readonly placeName?: string;
+  readonly lat?: number | null;
+  readonly lng?: number | null;
+  /** Utterance for Context Field compile (search / rank / booking control). */
+  readonly utterance?: string | null;
+  /** Precompiled control plane — wins over utterance when both set. */
+  readonly fieldControl?: ContextFieldControlPlane | null;
+  /** Open lodging Diff stay — forwarded to LiteAPI / booking.prepare. */
+  readonly checkInIso?: string | null;
+  readonly checkOutIso?: string | null;
+  readonly guestCount?: number | null;
+};
+
+export type ToolInvokeResult = {
+  readonly ok: true;
+  readonly toolId: RimvioToolId;
+  readonly summaryKo: string;
+  readonly pickedId?: string | null;
+  readonly pickedLabelKo?: string | null;
+  readonly candidates?: ToolInvokeInput["candidates"];
+  readonly meta?: Readonly<Record<string, string | number | boolean | null>>;
+};
+
+const TOOLS: readonly RimvioToolDefinition[] = [
+  {
+    id: "maps.search",
+    labelKo: "지도 검색",
+    skills: ["maps", "travel"],
+  },
+  {
+    id: "hotel.lookup",
+    labelKo: "숙소 조회",
+    skills: ["travel"],
+  },
+  {
+    id: "restaurant.lookup",
+    labelKo: "맛집 조회",
+    skills: ["restaurant", "travel"],
+  },
+  {
+    id: "pharmacy.lookup",
+    labelKo: "약국·편의 조회",
+    skills: ["maps", "travel"],
+  },
+  {
+    id: "ranking.pick",
+    labelKo: "순위 고르기",
+    skills: ["travel", "restaurant"],
+  },
+  {
+    id: "booking.prepare",
+    labelKo: "예약 준비",
+    skills: ["travel", "finance"],
+  },
+];
+
+export function listRimvioTools(): readonly RimvioToolDefinition[] {
+  return TOOLS;
+}
+
+export function getRimvioTool(id: string): RimvioToolDefinition | null {
+  return TOOLS.find((row) => row.id === id) ?? null;
+}
+
+export function listToolsForSkill(
+  skill: RimvioToolDefinition["skills"][number],
+): readonly RimvioToolDefinition[] {
+  return TOOLS.filter((row) => row.skills.includes(skill));
+}
+
+function hitsToCandidates(
+  hits: readonly {
+    id: string;
+    labelKo: string;
+    rating: number | null;
+    walkMinutes: number | null;
+    priceBand: number | null;
+    reservable: boolean;
+    localFavorite: boolean;
+    lat: number;
+    lng: number;
+    source: string;
+    liteapiOfferId?: string | null;
+    liteapiHotelId?: string | null;
+    amountLabel?: string | null;
+    reviewCount?: number | null;
+    priceKrw?: number | null;
+  }[],
+): NonNullable<ToolInvokeInput["candidates"]> {
+  return hits.map((hit) => ({
+    id: hit.id,
+    labelKo: hit.labelKo,
+    rating: hit.rating,
+    walkMinutes: hit.walkMinutes,
+    priceBand: hit.priceBand,
+    reservable: hit.reservable,
+    localFavorite: hit.localFavorite,
+    lat: hit.lat,
+    lng: hit.lng,
+    source: hit.source,
+    liteapiOfferId: hit.liteapiOfferId ?? null,
+    liteapiHotelId: hit.liteapiHotelId ?? null,
+    amountLabel: hit.amountLabel ?? null,
+    reviewCount: hit.reviewCount ?? null,
+    priceKrw: hit.priceKrw ?? null,
+  }));
+}
+
+function resolveFieldControl(
+  input: ToolInvokeInput,
+): ContextFieldControlPlane | null {
+  if (input.fieldControl) {
+    return input.fieldControl;
+  }
+  const utterance = input.utterance?.trim() || input.query?.trim() || "";
+  if (!utterance) {
+    return null;
+  }
+  return compileContextFieldControl(utterance);
+}
+
+function placeSearchCandidates(
+  domain: "lodging" | "eatery" | "poi",
+  input: ToolInvokeInput,
+): NonNullable<ToolInvokeInput["candidates"]> {
+  const plane = resolveFieldControl(input);
+  const stay =
+    domain === "lodging"
+      ? mergeLodgingStayForToolInvoke({
+          contextEventId: input.contextEventId,
+          checkInIso: input.checkInIso,
+          checkOutIso: input.checkOutIso,
+          guestCount: input.guestCount,
+        })
+      : null;
+  const hits = runPlaceSearch({
+    query: input.query?.trim() || input.labels?.[0] || domain,
+    domain,
+    labels: input.labels,
+    anchorLat: input.lat,
+    anchorLng: input.lng,
+    fieldSearch: plane?.search ?? null,
+    checkInIso: stay?.checkInIso,
+    checkOutIso: stay?.checkOutIso,
+    guestCount: stay?.guestCount,
+  });
+  return hitsToCandidates(rankByValueConsensus(hits));
+}
+
+async function placeSearchCandidatesAsync(
+  domain: "lodging" | "eatery" | "poi",
+  input: ToolInvokeInput,
+): Promise<NonNullable<ToolInvokeInput["candidates"]>> {
+  const plane = resolveFieldControl(input);
+  const stay =
+    domain === "lodging"
+      ? mergeLodgingStayForToolInvoke({
+          contextEventId: input.contextEventId,
+          checkInIso: input.checkInIso,
+          checkOutIso: input.checkOutIso,
+          guestCount: input.guestCount,
+        })
+      : null;
+  const hits = await runPlaceSearchAsync({
+    query: input.query?.trim() || input.labels?.[0] || domain,
+    domain,
+    labels: input.labels,
+    anchorLat: input.lat,
+    anchorLng: input.lng,
+    fieldSearch: plane?.search ?? null,
+    checkInIso: stay?.checkInIso,
+    checkOutIso: stay?.checkOutIso,
+    guestCount: stay?.guestCount,
+  });
+  return hitsToCandidates(rankByValueConsensus(hits));
+}
+
+function rankingPickResult(
+  toolId: RimvioToolId,
+  input: ToolInvokeInput,
+): ToolInvokeResult {
+  const plane = resolveFieldControl(input);
+  let list = [...(input.candidates ?? [])];
+  if (plane) {
+    const filtered = applyFieldControlToPlaceHits(list, plane.search);
+    // Soft budget (가성비) must not wipe the working set — consensus ranks value.
+    list = filtered.length > 0 ? filtered : list;
+  }
+  // Consensus 가성비 — not localFavorite-first / seed-index order.
+  list = rankByValueConsensus(list);
+  if (plane?.booking.preferReservable) {
+    list = [...list].sort((a, b) => {
+      const reservable =
+        Number(b.reservable !== false) - Number(a.reservable !== false);
+      if (reservable !== 0) {
+        return reservable;
+      }
+      return 0;
+    });
+  }
+  const picked = list.find((row) => row.reservable !== false) ?? list[0] ?? null;
+  return {
+    ok: true,
+    toolId,
+    summaryKo: picked
+      ? `${picked.labelKo}을 골랐어요`
+      : "고를 후보가 없어요",
+    pickedId: picked?.id ?? null,
+    pickedLabelKo: picked?.labelKo ?? null,
+    candidates: list,
+    ...(plane
+      ? { meta: bookingControlToToolMeta(plane.booking) }
+      : {}),
+  };
+}
+
+/**
+ * Deterministic tool invoke — no LLM. booking.prepare is prepare-only (caller commits).
+ * Sync path uses seed/catalog; prefer invokeRimvioToolAsync for live Maps/LiteAPI.
+ */
+export function invokeRimvioTool(
+  toolId: RimvioToolId,
+  input: ToolInvokeInput = {},
+): ToolInvokeResult {
+  const def = getRimvioTool(toolId);
+  if (!def) {
+    return {
+      ok: true,
+      toolId,
+      summaryKo: "도구를 찾지 못했어요",
+    };
+  }
+
+  if (toolId === "maps.search") {
+    const domain = input.domain ?? "poi";
+    const candidates = placeSearchCandidates(domain, input);
+    return {
+      ok: true,
+      toolId,
+      summaryKo: `${candidates.length}곳을 지도에서 찾았어요`,
+      candidates,
+    };
+  }
+
+  if (toolId === "hotel.lookup") {
+    const candidates = placeSearchCandidates("lodging", input);
+    return {
+      ok: true,
+      toolId,
+      summaryKo: `숙소 ${candidates.length}곳을 확인했어요`,
+      candidates,
+    };
+  }
+
+  if (toolId === "restaurant.lookup") {
+    const candidates = placeSearchCandidates("eatery", input);
+    return {
+      ok: true,
+      toolId,
+      summaryKo: `맛집 ${candidates.length}곳을 확인했어요`,
+      candidates,
+    };
+  }
+
+  if (toolId === "pharmacy.lookup") {
+    const query = composeAmenityLookupQuery(
+      input.query?.trim() || input.labels?.[0] || input.utterance || "약국",
+    );
+    const candidates = placeSearchCandidates("poi", { ...input, query });
+    return {
+      ok: true,
+      toolId,
+      summaryKo: `약국·편의 ${candidates.length}곳을 확인했어요`,
+      candidates,
+    };
+  }
+
+  if (toolId === "ranking.pick") {
+    return rankingPickResult(toolId, input);
+  }
+
+  const stay = mergeLodgingStayForToolInvoke({
+    contextEventId: input.contextEventId,
+    checkInIso: input.checkInIso,
+    checkOutIso: input.checkOutIso,
+    guestCount: input.guestCount,
+  });
+  return {
+    ok: true,
+    toolId,
+    summaryKo: input.placeName
+      ? `${input.placeName} 예약 준비를 연결해요`
+      : "예약 준비를 연결해요",
+    meta: {
+      placeId: input.placeId ?? null,
+      placeName: input.placeName ?? null,
+      guestCount: stay.guestCount,
+      checkInIso: stay.checkInIso,
+      checkOutIso: stay.checkOutIso,
+      ...bookingControlToToolMeta(
+        resolveFieldControl(input)?.booking ?? {
+          maxPriceKrw: null,
+          companion: null,
+          preferReservable: false,
+          weather: null,
+          crowd: null,
+          timeScope: null,
+        },
+      ),
+    },
+  };
+}
+
+/**
+ * Live tool invoke — LiteAPI lodging + Google/Naver eatery when keys exist.
+ */
+export async function invokeRimvioToolAsync(
+  toolId: RimvioToolId,
+  input: ToolInvokeInput = {},
+): Promise<ToolInvokeResult> {
+  const def = getRimvioTool(toolId);
+  if (!def) {
+    return {
+      ok: true,
+      toolId,
+      summaryKo: "도구를 찾지 못했어요",
+    };
+  }
+
+  if (toolId === "maps.search") {
+    const domain = input.domain ?? "poi";
+    const candidates = await placeSearchCandidatesAsync(domain, input);
+    return {
+      ok: true,
+      toolId,
+      summaryKo: `${candidates.length}곳을 지도에서 찾았어요`,
+      candidates,
+    };
+  }
+
+  if (toolId === "hotel.lookup") {
+    const candidates = await placeSearchCandidatesAsync("lodging", input);
+    return {
+      ok: true,
+      toolId,
+      summaryKo: `숙소 ${candidates.length}곳을 확인했어요`,
+      candidates,
+    };
+  }
+
+  if (toolId === "restaurant.lookup") {
+    const candidates = await placeSearchCandidatesAsync("eatery", input);
+    return {
+      ok: true,
+      toolId,
+      summaryKo: `맛집 ${candidates.length}곳을 확인했어요`,
+      candidates,
+    };
+  }
+
+  if (toolId === "pharmacy.lookup") {
+    const query = composeAmenityLookupQuery(
+      input.query?.trim() || input.labels?.[0] || input.utterance || "약국",
+    );
+    const candidates = await placeSearchCandidatesAsync("poi", {
+      ...input,
+      query,
+    });
+    return {
+      ok: true,
+      toolId,
+      summaryKo: `약국·편의 ${candidates.length}곳을 확인했어요`,
+      candidates,
+    };
+  }
+
+  if (toolId === "ranking.pick") {
+    return rankingPickResult(toolId, input);
+  }
+
+  return invokeRimvioTool(toolId, input);
+}

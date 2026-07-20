@@ -44,23 +44,44 @@ export function buildLodgingStayWindow(input: {
 }): LodgingStayWindow | null {
   const plan = input.event ? readPlanContextFromEvent(input.event) : null;
   const rowWindow = input.row?.stayWindow ?? null;
+  // Confirmed/estimated trip slots beat stale inventory stayWindow (Cursor Diff).
+  // Explicit row checkIn/Out still win (1-night offer inside a longer trip).
+  const planStayWins = Boolean(
+    plan?.windowStartIso &&
+      plan?.windowEndIso &&
+      (plan.windowConfidence === "confirmed" ||
+        plan.windowConfidence === "estimated"),
+  );
+
   const checkInIso = normalizeIso(
-    rowWindow?.checkInIso ??
-      input.row?.checkInIso ??
+    input.row?.checkInIso ??
+      (planStayWins ? plan?.windowStartIso : null) ??
+      rowWindow?.checkInIso ??
       plan?.windowStartIso ??
       input.event?.datetime ??
       null,
   );
   const checkOutIso = normalizeIso(
-    rowWindow?.checkOutIso ?? input.row?.checkOutIso ?? plan?.windowEndIso ?? null,
+    input.row?.checkOutIso ??
+      (planStayWins ? plan?.windowEndIso : null) ??
+      rowWindow?.checkOutIso ??
+      plan?.windowEndIso ??
+      null,
   );
   const confidence =
-    rowWindow?.confidence ?? plan?.windowConfidence ?? (checkOutIso ? "confirmed" : "open");
-  // Lodging checkout dates win over trip-wide planNights (e.g. 1-night book inside a 2-night trip).
+    (input.row?.checkInIso && input.row?.checkOutIso
+      ? rowWindow?.confidence
+      : null) ??
+    (planStayWins ? plan?.windowConfidence : null) ??
+    rowWindow?.confidence ??
+    plan?.windowConfidence ??
+    (checkOutIso ? "confirmed" : "open");
   const nights =
-    rowWindow?.nights ??
     deriveNights(checkInIso, checkOutIso) ??
-    plan?.nights;
+    (planStayWins ? plan?.nights : null) ??
+    rowWindow?.nights ??
+    plan?.nights ??
+    null;
 
   if (!checkInIso && !checkOutIso) {
     return null;

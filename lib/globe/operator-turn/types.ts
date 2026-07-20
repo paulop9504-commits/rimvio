@@ -17,6 +17,7 @@ export const OPERATOR_FIXED_TOOLS = [
   "filter_inventory",
   "small_talk",
   "task_injection",
+  "graph_command",
   "scout",
   "ask_chips",
 ] as const;
@@ -75,12 +76,18 @@ export type OperatorTurnPlan =
       readonly reason: "classify_task";
     }
   | {
+      readonly tool: "graph_command";
+      readonly reason: "action_first_graph" | "soft_surface_command";
+    }
+  | {
       readonly tool: "ask_chips";
       readonly reason:
         | "trip_intake_gap"
         | "trip_experience_gap"
         | "transit_prep_gap"
         | "finance_prep_gap"
+        | "lodging_stay_revise"
+        | "soft_graph_confirm"
         | "convergence_or_clarify";
       readonly chips: readonly {
         readonly id: string;

@@ -13,9 +13,12 @@ import {
 import { getWorldGeoNode } from "@/lib/reality-graph/world-geo-seed";
 import { parseUtteranceIntentSlots } from "@/lib/globe/context-condition-ai/utterance-intent-slots";
 
-const STATION_NEAR_RADIUS_M = 1200;
+/** Capsule / lodging near a station needs ~2.5km — 1.2km was too tight for Namba. */
+const STATION_NEAR_RADIUS_M = 2500;
 const LANDMARK_NEAR_RADIUS_M = 2500;
 const AIRPORT_NEAR_RADIUS_M = 5000;
+/** 「싹 찾아」 / diffuse sweep around a named station. */
+export const STATION_SWEEP_RADIUS_M = 5000;
 
 function radiusForOrigin(entity: {
   kind: string;

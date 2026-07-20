@@ -16,6 +16,10 @@ import { readLodgingRecommendReason } from "@/lib/globe/lodging/lodging-recommen
 import { resolveStableContextPlaceAnchor } from "@/lib/context-instance/build-context-instance";
 import { haversineKm } from "@/lib/feed/spacetime-fit";
 import { activitySubtypeBadgeLabel } from "@/lib/globe/place/activity-subtype-presentation";
+import {
+  buildLodgingStayWindow,
+  formatLodgingStayBadgeLabel,
+} from "@/lib/globe/context-hub/lodging-stay-window";
 
 function extractMapPillLabel(label: string): string {
   const trimmed = label.trim().replace(/\s+/gu, " ");
@@ -80,6 +84,9 @@ export function projectContextConditionLodgingGlobeMarkers(input: {
       distanceKm,
       rankIndex: index,
     });
+    const stayBadgeLabel = formatLodgingStayBadgeLabel(
+      buildLodgingStayWindow({ event: input.event, row }),
+    );
     return {
       markerKind: "lodging" as const,
       id: `ctxcond:lodging:${batch.batchId}:${row.placeId}`,
@@ -93,6 +100,7 @@ export function projectContextConditionLodgingGlobeMarkers(input: {
       displayVariant: presentation.displayVariant,
       mapHintLine: presentation.mapHintLine,
       discoveryPriceLabel: presentation.discoveryPriceLabel,
+      stayBadgeLabel,
       discoveryAccent: "green" as const,
       contextConditionPin: true,
       popInDelayMs: index * 140,

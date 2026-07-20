@@ -7,6 +7,7 @@ import type { DiscoveryGuardDomain } from "@/lib/globe/context-condition-ai/disc
 import { DISCOVERY_GUARD_THRESHOLD } from "@/lib/globe/context-condition-ai/discovery-guard/verify-discovery-results";
 import {
   LOCAL_DISCOVERY_FEED_INVENTORY_CAP,
+  LOCAL_DISCOVERY_LODGING_SCOUT_MAX,
   LOCAL_DISCOVERY_PIN_CAP,
   LOCAL_DISCOVERY_RECOMMEND_CAP,
 } from "@/lib/globe/context-condition-ai/local-discovery-limits";
@@ -24,6 +25,10 @@ export type ExplorationPolicyKnobs = {
   readonly eateryPresentCap: number;
   readonly activityPresentCap: number;
   readonly activityLandmarkPinCap: number;
+  /** Lodging Places fetch ceiling override (diffuse / 싹 찾아). */
+  readonly lodgingMaxResults: number;
+  /** Extra radius meters for lodging when diffuse. */
+  readonly lodgingRadiusBoostM: number;
   /** Reserved for scorer injection (Phase 2). */
   readonly ratingWeight: number;
   readonly noveltyWeight: number;
@@ -57,7 +62,9 @@ export function applyExplorationMode(mode: ExplorationMode): ExplorationPolicyKn
     mode,
     pinCap: convergent ? LOCAL_DISCOVERY_PIN_CAP : 5,
     recommendCap: convergent ? LOCAL_DISCOVERY_RECOMMEND_CAP : 8,
-    feedInventoryCap: LOCAL_DISCOVERY_FEED_INVENTORY_CAP,
+    feedInventoryCap: convergent
+      ? LOCAL_DISCOVERY_FEED_INVENTORY_CAP
+      : Math.max(LOCAL_DISCOVERY_FEED_INVENTORY_CAP, 36),
     guardThresholdByDomain: {
       lodging: guardThreshold("lodging", mode),
       eatery: guardThreshold("eatery", mode),
@@ -68,6 +75,10 @@ export function applyExplorationMode(mode: ExplorationMode): ExplorationPolicyKn
     eateryPresentCap: convergent ? 6 : 8,
     activityPresentCap: convergent ? 4 : 6,
     activityLandmarkPinCap: convergent ? 1 : 3,
+    lodgingMaxResults: convergent
+      ? LOCAL_DISCOVERY_LODGING_SCOUT_MAX
+      : Math.max(LOCAL_DISCOVERY_LODGING_SCOUT_MAX, 36),
+    lodgingRadiusBoostM: convergent ? 0 : 2500,
     ratingWeight: convergent ? 1.05 : 0.85,
     noveltyWeight: convergent ? 1.05 : 1.35,
   };

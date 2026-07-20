@@ -1,6 +1,7 @@
 import type { RefObject } from "react";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { computeLodgingDiscoveryBounds } from "@/lib/globe/lodging/compute-lodging-discovery-bounds";
+import { GLOBE_ALTITUDE } from "@/lib/globe/globe-zoom-levels";
 import { MAP_FOCUS_PIN_VIEWPORT_Y } from "@/lib/globe/map-anchored-overlay-layout";
 
 /** 1:1 context assistant — street-scale, pin biased for chat frame. */
@@ -86,7 +87,8 @@ export function snapGlobeToContextConditionScout(
   globeRef.current?.snapToDiscoveryBounds({
     centerLat: bounds.centerLat,
     centerLng: bounds.centerLng,
-    altitude: bounds.altitude,
+    // Never leave lodging pins invisible behind a region/space altitude.
+    altitude: Math.min(bounds.altitude, GLOBE_ALTITUDE.city),
     pinViewportY: MAP_FOCUS_PIN_VIEWPORT_Y,
   });
 }

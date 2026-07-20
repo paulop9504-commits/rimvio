@@ -10,6 +10,7 @@ import type { ContextLodgingInventoryRow } from "@/lib/globe/context-hub/lodging
 import { upsertMirrorProvenanceMetadata } from "@/lib/globe/mirror-provenance";
 import { mapLodgingRowToContextResource } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import { emitCommittedContextResource } from "@/lib/globe/resource/emit-committed-context-resource";
+import { attachRealityObjectToPinMetadata } from "@/lib/reality-object/attach-on-pin";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 import { commitEventUpsert } from "@/lib/source-of-truth/commit-truth";
 import { markLodgingResourceSelected } from "@/lib/resource-operation";
@@ -44,6 +45,27 @@ export function pinLodgingSelectionToContext(input: {
     label: input.row.name,
   });
   const stamp = new Date().toISOString();
+  const coverImageUrl =
+    input.previewUrl ?? input.row.images[0] ?? input.row.videoUrl ?? null;
+  const { metadata: withObject, object } = attachRealityObjectToPinMetadata({
+    metadata: event.metadata,
+    build: {
+      contextEventId: event.id,
+      title: input.row.name,
+      placeId: input.row.placeId,
+      resourceId,
+      pinKind: "lodging",
+      categoryLabel: input.row.partnerLabel ?? null,
+      coverImageUrl,
+      images: input.row.images,
+      lat: input.row.lat,
+      lng: input.row.lng,
+      price: input.row.priceKrw ?? null,
+      reservationSupport: true,
+      paymentSupport: true,
+      pinnedAtIso: stamp,
+    },
+  });
   const pinnedItem = buildContextPinnedItem({
     kind: "lodging",
     resourceId,
@@ -52,11 +74,11 @@ export function pinLodgingSelectionToContext(input: {
     lat: input.row.lat,
     lng: input.row.lng,
     mapsUrl: input.row.mapsUrl ?? null,
-    previewUrl: input.previewUrl ?? input.row.images[0] ?? input.row.videoUrl ?? null,
+    previewUrl: object.coverImageUrl ?? coverImageUrl,
     pinnedAtIso: stamp,
   });
   const baseMetadata = applyPinnedContextItemMetadata({
-    metadata: event.metadata,
+    metadata: withObject,
     item: pinnedItem,
   });
   const metadata = upsertMirrorProvenanceMetadata({
