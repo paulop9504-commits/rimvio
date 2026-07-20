@@ -2268,6 +2268,7 @@ export const copyEn: Copy = {
     lodgingSlotRoomChip: (count: number) => `Rooms ${count}`,
     lodgingSlotChipsEdit: "Edit conditions",
     lodgingSlotChipsEditAria: "Edit stay dates and guest conditions",
+    contextAiFieldDeferToast: "Approvals stay in Field — open 맞춤 when ready",
     lodgingStayReviseAskHint: "Update stay dates or guests?",
     lodgingStayReviseApplyChip: "Yes, apply",
     lodgingStayReviseCancelChip: "No thanks",

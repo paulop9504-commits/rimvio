@@ -2288,6 +2288,7 @@ export const copy = {
     lodgingSlotRoomChip: (count: number) => `객실 ${count}`,
     lodgingSlotChipsEdit: "조건 수정",
     lodgingSlotChipsEditAria: "숙소 날짜와 인원 조건 수정",
+    contextAiFieldDeferToast: "결재 준비가 있으면 맞춤에서 확인할게요",
     lodgingStayReviseAskHint: "일정·인원을 이렇게 바꿀까요?",
     lodgingStayReviseApplyChip: "응, 반영해",
     lodgingStayReviseCancelChip: "아니야",

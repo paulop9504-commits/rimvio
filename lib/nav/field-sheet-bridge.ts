@@ -41,6 +41,27 @@ export function publishFieldSheetOpen(open: boolean): void {
   );
 }
 
+export const FIELD_SHEET_CLOSE_EVENT = "rimvio:field-sheet-close";
+
+/** Close Field sheet from Globe / Context AI without importing the React provider. */
+export function dispatchCloseFieldSheet(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.dispatchEvent(new CustomEvent(FIELD_SHEET_CLOSE_EVENT));
+}
+
+export function subscribeCloseFieldSheet(listener: () => void): () => void {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+  const handler = () => {
+    listener();
+  };
+  window.addEventListener(FIELD_SHEET_CLOSE_EVENT, handler);
+  return () => window.removeEventListener(FIELD_SHEET_CLOSE_EVENT, handler);
+}
+
 export function subscribeFieldSheetOpenState(
   listener: (open: boolean) => void,
 ): () => void {

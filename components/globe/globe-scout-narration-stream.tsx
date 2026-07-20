@@ -154,7 +154,7 @@ export function GlobeScoutNarrationStream({
     }
     const id = window.setTimeout(() => {
       setTypedLineCount(lines.length);
-    }, 4500);
+    }, 2200);
     return () => window.clearTimeout(id);
   }, [typedLineCount, lines.length, reducedMotion, payload.understandingKo]);
 

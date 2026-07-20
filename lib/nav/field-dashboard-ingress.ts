@@ -3,6 +3,7 @@ import type {
   FieldDashboardIngress,
   FieldDashboardTab,
 } from "@/lib/nav/field-dashboard-types";
+import { isGlobeContextConditionPanelOpen } from "@/lib/globe/context-condition-ai/globe-context-condition-panel-bridge";
 
 /**
  * Field product ingress — 밖 지구 통로 (중고·모임 등 자원 찾기 · 외부 대화).
@@ -16,9 +17,32 @@ const FIELD_DASHBOARD_TABS = new Set<FieldDashboardTab>([
   "mine",
 ]);
 
-/** Canonical opener — globe pills, hub handoffs, bottom nav all land here. */
-export function openFieldDashboardIngress(request?: FieldDashboardIngress): void {
-  dispatchOpenFieldSheet(request);
+/**
+ * Canonical opener — globe pills, hub handoffs, bottom nav all land here.
+ * When 맥락 AI PromptFrame is open, skip auto-open so surfaces do not stack
+ * (caller should toast / in-thread CTA instead). Pass `force: true` for
+ * explicit user taps (bottom nav).
+ */
+export function openFieldDashboardIngress(
+  request?: FieldDashboardIngress & { force?: boolean },
+): void {
+  if (
+    request?.force !== true &&
+    typeof window !== "undefined" &&
+    isGlobeContextConditionPanelOpen()
+  ) {
+    return;
+  }
+  const { force: _force, ...ingress } = request ?? {};
+  void _force;
+  dispatchOpenFieldSheet(ingress);
+}
+
+/** Explicit user ingress — always opens even if Context AI is visible. */
+export function openFieldDashboardIngressForced(
+  request?: FieldDashboardIngress,
+): void {
+  openFieldDashboardIngress({ ...(request ?? {}), force: true });
 }
 
 /** Pill: “진행 중 N” → trades tab, optional handshake focus. */
@@ -42,7 +66,7 @@ export function openFieldDashboardFromBottomNav(input?: {
   tab?: FieldDashboardTab;
   highlightTradeId?: string | null;
 }): void {
-  openFieldDashboardIngress({
+  openFieldDashboardIngressForced({
     tab: input?.tab ?? "queue",
     highlightTradeId: input?.highlightTradeId ?? null,
   });
@@ -50,7 +74,7 @@ export function openFieldDashboardFromBottomNav(input?: {
 
 /** Globe utility · legacy manage entry — same sheet, mine tab. */
 export function openFieldMineIngress(): void {
-  openFieldDashboardIngress({ tab: "mine" });
+  openFieldDashboardIngressForced({ tab: "mine" });
 }
 
 export function parseFieldDashboardTab(

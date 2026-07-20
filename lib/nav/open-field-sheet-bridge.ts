@@ -1,5 +1,7 @@
 export {
   dispatchOpenFieldSheet,
+  dispatchCloseFieldSheet,
+  subscribeCloseFieldSheet,
   subscribeOpenFieldSheet,
   publishFieldSheetOpen,
   subscribeFieldSheetOpenState,
@@ -12,8 +14,10 @@ export {
   buildFieldDashboardSearchParams,
   clearFieldDashboardSearchParams,
   openFieldDashboardIngress,
+  openFieldDashboardIngressForced,
   openFieldDashboardFromBottomNav,
   openFieldDiscoveryIngress,
+  openFieldMineIngress,
   openFieldTradesIngress,
   parseFieldDashboardIngressFromSearchParams,
   parseFieldDashboardTab,

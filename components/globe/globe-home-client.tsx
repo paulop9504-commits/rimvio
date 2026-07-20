@@ -145,7 +145,7 @@ import { setLiveLocationPowerMode } from "@/lib/location-ping/live-location-serv
 import { usePersonalGlobePinSync } from "@/hooks/use-personal-globe-pin-sync";
 import { findPersonalGlobePinByEventId } from "@/lib/globe/personal-globe-pin-store";
 import { useGlobeLayerMode } from "@/hooks/use-globe-layer-mode";
-import { subscribeFieldFlyToIntent, subscribeFieldSheetOpenState } from "@/lib/nav/field-sheet-bridge";
+import { subscribeFieldFlyToIntent, subscribeFieldSheetOpenState, dispatchCloseFieldSheet } from "@/lib/nav/field-sheet-bridge";
 import {
   clearFieldDashboardSearchParams,
   openFieldDashboardIngress,
@@ -4054,6 +4054,29 @@ function GlobeHomeBody() {
     // Bind/recall path already dismisses chat; keep the invariant if chat re-opens.
     setGlobeChatOpen(false);
   }, [contextConditionPromptOpen]);
+
+  // Hard exclusion — Pending Reality and 맥락 어시스턴트 must not stack.
+  useEffect(() => {
+    if (!fieldSheetOpen) {
+      return;
+    }
+    if (
+      contextConditionPanelOpenRef.current ||
+      isGlobeContextConditionPanelOpen()
+    ) {
+      dismissContextAgentPanel();
+      cancelGlobeContextAgentArm();
+      setStackClusters(null);
+    }
+  }, [dismissContextAgentPanel, fieldSheetOpen]);
+
+  useEffect(() => {
+    if (!contextConditionPromptOpen) {
+      return;
+    }
+    dispatchCloseFieldSheet();
+  }, [contextConditionPromptOpen]);
+
   const toggleContextAgentArm = useCallback(() => {
     if (readGlobeContextAgentSession().phase === "arming") {
       cancelGlobeContextAgentArm();
@@ -5310,7 +5333,7 @@ function GlobeHomeBody() {
         </p>
       ) : null}
       <GlobeContextConditionPromptFrame
-        open={contextConditionPromptOpen}
+        open={contextConditionPromptOpen && !fieldSheetOpen}
         event={contextConditionPanelEvent}
         operatorBlueprint={realitySurfaceSession?.operatorBlueprint ?? null}
         destinationConfirmed={Boolean(

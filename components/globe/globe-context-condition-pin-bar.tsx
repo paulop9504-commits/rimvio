@@ -21,6 +21,7 @@ import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-
 import { copy } from "@/lib/copy/human-ko";
 import { tryRunContextNlActionAsync } from "@/lib/action-planner";
 import { openFieldDashboardIngress } from "@/lib/nav/field-dashboard-ingress";
+import { isGlobeContextConditionPanelOpen } from "@/lib/globe/context-condition-ai/globe-context-condition-panel-bridge";
 import { flyGlobeToDiscoveryLenses } from "@/lib/globe/context-agent/snap-globe-to-context-agent-anchor";
 import {
   readContextConditionPinnedPlaceIds,
@@ -276,6 +277,18 @@ import { resolveDiscoveryEngineId } from "@/lib/engine/resolve-discovery-engine-
 import { dispatchContextRun } from "@/lib/context-run/dispatch-context-run";
 import { INGRESS_CONVERGE_NEW_VALUE } from "@/lib/globe-ingress/offer-ingress-converge-chips-client";
 import { requestGlobeAskBridgeFocus } from "@/lib/globe/globe-ask-bridge-focus";
+
+/** Prefer toast over stacking Pending Reality on Context AI. */
+function openFieldQueueOrDefer(contextEventId: string): void {
+  if (isGlobeContextConditionPanelOpen()) {
+    toast.message(copy.globe.contextAiFieldDeferToast);
+    return;
+  }
+  openFieldDashboardIngress({
+    tab: "queue",
+    primaryEventId: contextEventId,
+  });
+}
 
 export type IntakeSlotsSubmitInput = {
   turnId: string;
@@ -1582,10 +1595,7 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
               graphResult.waitingCommit &&
               (graphResult.reservedOpIds?.length ?? 0) > 0
             ) {
-              openFieldDashboardIngress({
-                tab: "queue",
-                primaryEventId: contextEventId,
-              });
+              openFieldQueueOrDefer(contextEventId);
             }
             setContextAgentSessionPhase("awaiting_human");
             onQuestionsChange?.([]);
@@ -2690,10 +2700,7 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
               graphResult.waitingCommit &&
               (graphResult.reservedOpIds?.length ?? 0) > 0
             ) {
-              openFieldDashboardIngress({
-                tab: "queue",
-                primaryEventId: contextEventId,
-              });
+              openFieldQueueOrDefer(contextEventId);
             }
             clearComposerMessage();
             setContextAgentSessionPhase("awaiting_human");
@@ -2993,10 +3000,7 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
               graphResult.waitingCommit &&
               (graphResult.reservedOpIds?.length ?? 0) > 0
             ) {
-              openFieldDashboardIngress({
-                tab: "queue",
-                primaryEventId: contextEventId,
-              });
+              openFieldQueueOrDefer(contextEventId);
             }
             setContextAgentSessionPhase("awaiting_human");
             onQuestionsChange?.([]);

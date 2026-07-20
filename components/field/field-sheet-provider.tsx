@@ -16,6 +16,7 @@ import {
 } from "@/lib/nav/open-field-sheet-request";
 import {
   publishFieldSheetOpen,
+  subscribeCloseFieldSheet,
   type FieldSheetOpenRequest,
 } from "@/lib/nav/field-sheet-bridge";
 import type { FieldDashboardTab } from "@/lib/nav/field-dashboard-types";
@@ -111,6 +112,12 @@ export function FieldSheetProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     return bindLegacyOpenFieldSheet(applyOpen);
   }, [applyOpen]);
+
+  useEffect(() => {
+    return subscribeCloseFieldSheet(() => {
+      closeFieldSheet();
+    });
+  }, [closeFieldSheet]);
 
   const value = useMemo(
     () => ({
