@@ -790,13 +790,10 @@ function GlobeHomeBody() {
 
   useEffect(() => {
     return subscribeGlobeContextConditionPanel((detail) => {
+      // Open/close only — bind + dismiss already ran in bindContextAgentToEventId.
       setContextConditionPanelOpen(detail.open);
-      if (detail.open && detail.eventId?.trim()) {
-        bindGlobeContextAgent(detail.eventId.trim());
-        dismissCompetingGlobeSurfaces();
-      }
     });
-  }, [dismissCompetingGlobeSurfaces]);
+  }, []);
 
   useEffect(() => {
     if (!contextAgentSurfacesActive) {
@@ -3397,10 +3394,14 @@ function GlobeHomeBody() {
       if (previewCluster) {
         snapGlobeToContextAgentAnchor(globeRef, previewCluster);
       }
+      // Paint the assistant first — geocode / URL / resume must not block open.
       openGlobeContextConditionPanel(key);
       if (event && isLodgingInventoryMisanchored(event)) {
         clearContextConditionLastBatch(key);
       }
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => resolve());
+      });
       await anchorContextForAgentBind(key);
     },
     [anchorContextForAgentBind, dismissCompetingGlobeSurfaces],

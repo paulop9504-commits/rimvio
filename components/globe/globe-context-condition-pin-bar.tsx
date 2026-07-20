@@ -443,10 +443,35 @@ export const GlobeContextConditionPinBar = forwardRef<
   },
   ref,
 ) {
-  const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   busyRef.current = busy;
+  /** Uncontrolled composer — keystrokes must not re-render this ~3k-line tree. */
+  const messageInputRef = useRef<HTMLInputElement>(null);
+  const [composerHasText, setComposerHasText] = useState(false);
+  const readComposerMessage = useCallback(
+    () => messageInputRef.current?.value ?? "",
+    [],
+  );
+  const clearComposerMessage = useCallback(() => {
+    if (messageInputRef.current) {
+      messageInputRef.current.value = "";
+    }
+    setComposerHasText(false);
+  }, []);
+  const processPhaseNarrationRef = useRef<{
+    raf: number | null;
+    contextEventId: string;
+    turnId: string | null;
+    stepId: string;
+    textKo: string;
+  }>({
+    raf: null,
+    contextEventId: "",
+    turnId: null,
+    stepId: "",
+    textKo: "",
+  });
   const [, setLensSession] = useState<DiscoveryLensSession | null>(
     () => readDiscoveryLensSession(contextEventId),
   );
@@ -674,7 +699,7 @@ export const GlobeContextConditionPinBar = forwardRef<
         kind: "text",
         text: copy.globe.contextActionInjectionAssistLine(built.target.title),
       });
-      setMessage("");
+      clearComposerMessage();
       setContextAgentSessionPhase("awaiting_human");
       return true;
     },
@@ -759,7 +784,7 @@ export const GlobeContextConditionPinBar = forwardRef<
       setLastBatch(wire);
       setLastSpec(outcome.spec);
       setLastRecommendations(outcome.recommendations);
-      setMessage("");
+      clearComposerMessage();
       onQuestionsChange?.([]);
       onRecommendationsChange?.(outcome.recommendations);
       clearContextConditionPending(contextEventId);
@@ -901,7 +926,7 @@ export const GlobeContextConditionPinBar = forwardRef<
       setLastBatch(wire);
       setLastSpec(outcome.spec);
       setLastRecommendations(outcome.recommendations);
-      setMessage("");
+      clearComposerMessage();
       onQuestionsChange?.([]);
       onRecommendationsChange?.(outcome.recommendations);
       clearContextConditionPending(contextEventId);
@@ -1057,28 +1082,37 @@ export const GlobeContextConditionPinBar = forwardRef<
         deferMapReveal: false,
         onProcessPhase: (phase) => {
           setContextAgentProcessPhase(phase);
-          if (phase === "exploring") {
-            publishScoutNarrationLiveStep({
-              contextEventId,
-              turnId: narrationTurnId,
-              stepId: "phase_exploring",
-              textKo: "📡 탐색 엔진 호출 중…",
-            });
-          } else if (phase === "analyzing") {
-            publishScoutNarrationLiveStep({
-              contextEventId,
-              turnId: narrationTurnId,
-              stepId: "phase_analyzing",
-              textKo: "🧬 후보 신호 분석 중…",
-            });
-          } else if (phase === "optimizing") {
-            publishScoutNarrationLiveStep({
-              contextEventId,
-              turnId: narrationTurnId,
-              stepId: "phase_optimizing",
-              textKo: "⚙️ 추천 순위를 맞추는 중…",
-            });
+          // Coalesce live narration to one publish per frame — phase bursts
+          // were re-rendering the whole compose thread while the input felt stuck.
+          const textKo =
+            phase === "exploring"
+              ? "📡 탐색 엔진 호출 중…"
+              : phase === "analyzing"
+                ? "🧬 후보 신호 분석 중…"
+                : phase === "optimizing"
+                  ? "⚙️ 추천 순위를 맞추는 중…"
+                  : null;
+          if (!textKo) {
+            return;
           }
+          const stepId = `phase_${phase}`;
+          const pending = processPhaseNarrationRef.current;
+          pending.contextEventId = contextEventId;
+          pending.turnId = narrationTurnId;
+          pending.stepId = stepId;
+          pending.textKo = textKo;
+          if (pending.raf != null) {
+            return;
+          }
+          pending.raf = requestAnimationFrame(() => {
+            pending.raf = null;
+            publishScoutNarrationLiveStep({
+              contextEventId: pending.contextEventId,
+              turnId: pending.turnId,
+              stepId: pending.stepId,
+              textKo: pending.textKo,
+            });
+          });
         },
       });
       if (!outcome) {
@@ -1253,7 +1287,7 @@ export const GlobeContextConditionPinBar = forwardRef<
       setLastBatch(wire);
       setLastSpec(outcomeWorking.spec);
       setLastRecommendations(outcomeWorking.recommendations);
-      setMessage("");
+      clearComposerMessage();
       onQuestionsChange?.([]);
       onRecommendationsChange?.(outcomeWorking.recommendations);
       clearContextConditionPending(contextEventId);
@@ -1933,10 +1967,10 @@ export const GlobeContextConditionPinBar = forwardRef<
       domainId: sheet.domainId,
       hint: sheet.hint,
       submitLabel: sheet.submitLabel,
-      pendingTrigger: message.trim() || "숙소",
+      pendingTrigger: readComposerMessage().trim() || "숙소",
       fields: sheet.fields,
     });
-  }, [contextEventId, message]);
+  }, [contextEventId, readComposerMessage]);
 
   const runLodgingTriggerAfterSlotSave = useCallback(
     async (triggerMessage: string) => {
@@ -1948,7 +1982,7 @@ export const GlobeContextConditionPinBar = forwardRef<
       beginContextAgentWork("analyzing", copy.globe.contextAgentStatusBusy);
       try {
         await resolveAndMaybeExecute(text);
-        setMessage("");
+        clearComposerMessage();
       } finally {
         setBusy(false);
         finishContextAgentWork();
@@ -1965,7 +1999,7 @@ export const GlobeContextConditionPinBar = forwardRef<
       await resolveAndMaybeExecute("다시 찾아줘", undefined, {
         skipFeedGate: true,
       });
-      setMessage("");
+      clearComposerMessage();
     } finally {
       setBusy(false);
       finishContextAgentWork();
@@ -2314,7 +2348,7 @@ export const GlobeContextConditionPinBar = forwardRef<
         const summaryKo = copy.globe.tripIntakeComposeLine(parsed.destinationLabel);
         markIntakeSlotsComposeTurnSubmitted(contextEventId, input.turnId, summaryKo);
         const nextTrigger =
-          pendingTrigger || message.trim() || parsed.destinationLabel;
+          pendingTrigger || readComposerMessage().trim() || parsed.destinationLabel;
         await runTripTriggerAfterIntake({
           triggerMessage: nextTrigger,
           destinationLabel: parsed.destinationLabel,
@@ -2338,7 +2372,7 @@ export const GlobeContextConditionPinBar = forwardRef<
         );
         const nextTrigger =
           pendingTrigger ||
-          message.trim() ||
+          readComposerMessage().trim() ||
           updated.place?.trim() ||
           "숙소";
         await runLodgingTriggerAfterSlotSave(nextTrigger);
@@ -2346,7 +2380,7 @@ export const GlobeContextConditionPinBar = forwardRef<
     },
     [
       contextEventId,
-      message,
+      readComposerMessage,
       runLodgingTriggerAfterSlotSave,
       runTripTriggerAfterIntake,
     ],
@@ -2364,14 +2398,14 @@ export const GlobeContextConditionPinBar = forwardRef<
     if (busy) {
       return;
     }
-    const text = message.trim();
+    const text = readComposerMessage().trim();
     if (!text && !lastSpec) {
       return;
     }
     if (text) {
       const composeHandled = onUserCompose?.(text) === true;
       if (composeHandled) {
-        setMessage("");
+        clearComposerMessage();
         return;
       }
     }
@@ -2384,7 +2418,7 @@ export const GlobeContextConditionPinBar = forwardRef<
           kind: "text",
           text: summaryKo,
         });
-        setMessage("");
+        clearComposerMessage();
         return;
       }
       if (isLodgingStayReviseAffirmUtterance(text)) {
@@ -2401,7 +2435,7 @@ export const GlobeContextConditionPinBar = forwardRef<
             kind: "text",
             text: nlApply.assistantReplyKo,
           });
-          setMessage("");
+          clearComposerMessage();
           if (nlApply.requestDiffRescout && nlApply.skipFeedGate) {
             await resolveAndMaybeExecute(
               `${anchorPlaceName.trim() || "숙소"} 숙소`,
@@ -2418,7 +2452,7 @@ export const GlobeContextConditionPinBar = forwardRef<
             kind: "text",
             text: applied.messageKo,
           });
-          setMessage("");
+          clearComposerMessage();
           return;
         }
         appendContextAgentComposeTurn(contextEventId, {
@@ -2426,7 +2460,7 @@ export const GlobeContextConditionPinBar = forwardRef<
           kind: "text",
           text: copy.globe.lodgingStayReviseApplied(applied.summaryKo),
         });
-        setMessage("");
+        clearComposerMessage();
         await runLodgingStayDiffRescout();
         return;
       }
@@ -2439,7 +2473,7 @@ export const GlobeContextConditionPinBar = forwardRef<
           kind: "text",
           text: summaryKo,
         });
-        setMessage("");
+        clearComposerMessage();
         return;
       }
       if (isSoftConfirmAffirmUtterance(text)) {
@@ -2456,12 +2490,12 @@ export const GlobeContextConditionPinBar = forwardRef<
             ? copy.globe.softConfirmApplied(applied.summaryKo)
             : applied.messageKo,
         });
-        setMessage("");
+        clearComposerMessage();
         return;
       }
     }
     if (text && !isLodgingPrepUtterance(text) && !isFlightPrepUtterance(text) && !isTransitPrepUtterance(text) && !isFinancePrepUtterance(text) && !isTripExperienceUtterance(text) && tryOpenIntakeForMessage(text)) {
-      setMessage("");
+      clearComposerMessage();
       return;
     }
     setBusy(true);
@@ -2514,7 +2548,7 @@ export const GlobeContextConditionPinBar = forwardRef<
             pendingTrigger: text,
             chips: plan.chips,
           });
-          setMessage("");
+          clearComposerMessage();
           return;
         }
 
@@ -2539,7 +2573,7 @@ export const GlobeContextConditionPinBar = forwardRef<
                 text: lensResult.replyKo,
               });
             }
-            setMessage("");
+            clearComposerMessage();
             return;
           }
           plan = gateOperatorTurnSync({
@@ -2563,7 +2597,7 @@ export const GlobeContextConditionPinBar = forwardRef<
             kind: "text",
             text: resourceReelKindFilterReplyKo(plan.kindFilter),
           });
-          setMessage("");
+          clearComposerMessage();
           return;
         }
 
@@ -2577,7 +2611,7 @@ export const GlobeContextConditionPinBar = forwardRef<
             kind: "text",
             text: copy.globe.contextActionPinFirstHint,
           });
-          setMessage("");
+          clearComposerMessage();
           setContextAgentSessionPhase("awaiting_human");
           return;
         }
@@ -2598,7 +2632,7 @@ export const GlobeContextConditionPinBar = forwardRef<
                 pendingTrigger: text,
                 chips: graphResult.reviseChips,
               });
-              setMessage("");
+              clearComposerMessage();
               setContextAgentSessionPhase("awaiting_human");
               onQuestionsChange?.([]);
               return;
@@ -2610,7 +2644,7 @@ export const GlobeContextConditionPinBar = forwardRef<
                 pendingTrigger: text,
                 chips: graphResult.softConfirmChips,
               });
-              setMessage("");
+              clearComposerMessage();
               setContextAgentSessionPhase("awaiting_human");
               onQuestionsChange?.([]);
               return;
@@ -2626,14 +2660,14 @@ export const GlobeContextConditionPinBar = forwardRef<
                 pendingTrigger: text,
                 chips: graphResult.clarifyChips,
               });
-              setMessage("");
+              clearComposerMessage();
               setContextAgentSessionPhase("awaiting_human");
               onQuestionsChange?.([]);
               return;
             }
             if (graphResult.via === "scout_handoff") {
               await resolveAndMaybeExecute(text);
-              setMessage("");
+              clearComposerMessage();
               return;
             }
             appendContextAgentComposeTurn(contextEventId, {
@@ -2657,7 +2691,7 @@ export const GlobeContextConditionPinBar = forwardRef<
                 primaryEventId: contextEventId,
               });
             }
-            setMessage("");
+            clearComposerMessage();
             setContextAgentSessionPhase("awaiting_human");
             onQuestionsChange?.([]);
             return;
@@ -2667,7 +2701,7 @@ export const GlobeContextConditionPinBar = forwardRef<
             kind: "text",
             text: copy.globe.contextActionPinFirstHint,
           });
-          setMessage("");
+          clearComposerMessage();
           setContextAgentSessionPhase("awaiting_human");
           return;
         }
@@ -2737,7 +2771,7 @@ export const GlobeContextConditionPinBar = forwardRef<
               kind: "text",
               text: small.replyKo,
             });
-            setMessage("");
+            clearComposerMessage();
             setContextAgentSessionPhase("awaiting_human");
             return;
           }
@@ -2748,7 +2782,7 @@ export const GlobeContextConditionPinBar = forwardRef<
             // fall through to scout rather than dead-ending
           }
         } else if (plan.tool === "noop") {
-          setMessage("");
+          clearComposerMessage();
           return;
         }
       }
@@ -2784,7 +2818,6 @@ export const GlobeContextConditionPinBar = forwardRef<
     tryExecuteTripExperienceParallelScout,
     lastSpec,
     lastRecommendations,
-    message,
     onUserCompose,
     operatorBlueprint,
     resolveAndMaybeExecute,
@@ -3176,7 +3209,7 @@ export const GlobeContextConditionPinBar = forwardRef<
       }
       const pending = readContextConditionPending(contextEventId);
       const triggerMessage =
-        choice.slot === "activityFocus" ? choice.value : pending?.triggerMessage ?? message.trim();
+        choice.slot === "activityFocus" ? choice.value : pending?.triggerMessage ?? readComposerMessage().trim();
       if (!triggerMessage) {
         return;
       }
@@ -3233,7 +3266,7 @@ export const GlobeContextConditionPinBar = forwardRef<
       busy,
       contextEventId,
       globeRef,
-      message,
+      readComposerMessage,
       resolveAndMaybeExecute,
     ],
   );
@@ -3280,7 +3313,10 @@ export const GlobeContextConditionPinBar = forwardRef<
     setContextAgentSessionPhase("briefing");
   }, [contextEventId, lastBatch, onRecommendationsChange]);
 
-  const lodgingSlotDefaults = readLodgingBookingSlots(findLifeEventCandidate(contextEventId));
+  const lodgingSlotDefaults = useMemo(
+    () => readLodgingBookingSlots(findLifeEventCandidate(contextEventId)),
+    [contextEventId],
+  );
   const lodgingSlotChipLabels = useMemo(() => {
     if (!lodgingSlotDefaults.checkInIso || !lodgingSlotDefaults.checkOutIso) {
       return [];
@@ -3289,13 +3325,7 @@ export const GlobeContextConditionPinBar = forwardRef<
       lodgingSlotDefaults,
       findLifeEventCandidate(contextEventId),
     );
-  }, [
-    contextEventId,
-    lodgingSlotDefaults.checkInIso,
-    lodgingSlotDefaults.checkOutIso,
-    lodgingSlotDefaults.guestCount,
-    lodgingSlotDefaults.roomCount,
-  ]);
+  }, [contextEventId, lodgingSlotDefaults]);
 
   return (
     <div
@@ -3311,10 +3341,12 @@ export const GlobeContextConditionPinBar = forwardRef<
       ) : null}
       <div className="flex items-center gap-2 rounded-xl bg-[#f5f5f7] px-3 py-2 ring-1 ring-black/[0.04]">
         <input
+          ref={messageInputRef}
           type="text"
-          value={message}
+          defaultValue=""
           onChange={(event) => {
-            setMessage(event.target.value);
+            const hasText = event.target.value.trim().length > 0;
+            setComposerHasText((prev) => (prev === hasText ? prev : hasText));
           }}
           onKeyDown={(event) => {
             if (event.key !== "Enter") {
@@ -3325,17 +3357,19 @@ export const GlobeContextConditionPinBar = forwardRef<
               return;
             }
             event.preventDefault();
+            if (busy || !readComposerMessage().trim()) {
+              return;
+            }
             void handleSubmit();
           }}
           placeholder={copy.globe.contextConditionPinPlaceholder}
-          disabled={busy}
-          className="min-w-0 flex-1 bg-transparent text-[13px] text-[#1d1d1f] placeholder:text-[#86868b] focus:outline-none disabled:opacity-60"
+          className="min-w-0 flex-1 bg-transparent text-[13px] text-[#1d1d1f] placeholder:text-[#86868b] focus:outline-none"
           aria-label={copy.globe.contextConditionPinPlaceholder}
         />
         <button
           type="button"
           onClick={() => void handleSubmit()}
-          disabled={busy || !message.trim()}
+          disabled={busy || !composerHasText}
           className="shrink-0 rounded-lg bg-[#1d1d1f] px-2.5 py-1 text-[11px] font-semibold text-white active:scale-[0.98] disabled:opacity-40"
         >
           {busy ? "…" : copy.globe.contextConditionPinSubmit}

@@ -253,8 +253,11 @@ export function GlobeContextConditionPromptFrame({
     });
   }, [event, open]);
 
+  // Open once per event — do not re-run when geocode fills lat/lng (that
+  // re-cleared the thread and republished projections mid-open).
+  const openEventId = open && event ? event.id : null;
   useEffect(() => {
-    if (!open || !event) {
+    if (!openEventId || !event || event.id !== openEventId) {
       return;
     }
     prefetchStartedRef.current = false;
@@ -366,7 +369,9 @@ export function GlobeContextConditionPromptFrame({
         setContextAgentSessionPhase("idle");
       }
     }
-  }, [anchorLat, anchorLng, anchorPlaceName, event, open]);
+    // Intentionally omit anchorLat/Lng/Name — geocode must not re-open the panel.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- openEventId gates restore
+  }, [openEventId]);
 
   useEffect(() => {
     return subscribeContextAgentRuntime(setRuntime);
