@@ -7,15 +7,19 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 import { toast } from "sonner";
+import type { GlobeContextConditionComposeInputHandle } from "@/components/globe/globe-context-condition-compose-input";
 import {
-  GlobeContextConditionComposeInput,
-  type GlobeContextConditionComposeInputHandle,
-} from "@/components/globe/globe-context-condition-compose-input";
+  mountGlobeComposeIsland,
+  readGlobeComposeIslandHandle,
+  unmountGlobeComposeIsland,
+  updateGlobeComposeIsland,
+} from "@/components/globe/globe-context-condition-compose-island";
 import { GlobeLodgingBookingSlotChips } from "@/components/globe/globe-lodging-booking-slot-chips";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { copy } from "@/lib/copy/human-ko";
@@ -3331,6 +3335,42 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
     );
   }, [contextEventId, lodgingSlotDefaults]);
 
+  const composeSlotRef = useRef<HTMLDivElement>(null);
+  const onComposeSubmitRef = useRef(onComposeSubmit);
+  onComposeSubmitRef.current = onComposeSubmit;
+  const composeBusyRef = useRef(busy);
+  composeBusyRef.current = busy;
+
+  useLayoutEffect(() => {
+    const slotEl = composeSlotRef.current;
+    if (!slotEl) {
+      return;
+    }
+    mountGlobeComposeIsland(slotEl, {
+      busy: composeBusyRef.current,
+      placeholder: copy.globe.contextConditionPinPlaceholder,
+      submitLabel: copy.globe.contextConditionPinSubmit,
+      onSubmit: () => {
+        onComposeSubmitRef.current();
+      },
+    });
+    return () => {
+      unmountGlobeComposeIsland();
+    };
+  }, [contextEventId]);
+
+  useEffect(() => {
+    updateGlobeComposeIsland({ busy });
+  }, [busy]);
+
+  // Keep legacy ref API pointed at the detached island handle.
+  useEffect(() => {
+    composeInputRef.current = {
+      clear: () => readGlobeComposeIslandHandle()?.clear(),
+      getValue: () => readGlobeComposeIslandHandle()?.getValue() ?? "",
+    };
+  });
+
   return (
     <div
       className={cn(className)}
@@ -3343,12 +3383,11 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
           onEdit={openLodgingIntakeEditInThread}
         />
       ) : null}
-      <GlobeContextConditionComposeInput
-        ref={composeInputRef}
-        busy={busy}
-        placeholder={copy.globe.contextConditionPinPlaceholder}
-        submitLabel={copy.globe.contextConditionPinSubmit}
-        onSubmit={onComposeSubmit}
+      <div
+        ref={composeSlotRef}
+        className="h-10 w-full"
+        aria-hidden
+        data-globe-context-condition-compose-slot
       />
 
       {lastBatch ? (
@@ -3363,3 +3402,4 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
     </div>
   );
 }));
+

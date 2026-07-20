@@ -216,6 +216,30 @@ export function GlobeContextConditionPromptFrame({
   const askChipPickRef = useRef<
     ((input: AskChipPickInput) => Promise<void>) | null
   >(null);
+  const registerQuestionHandler = useCallback(
+    (handler: (choice: LocalDiscoveryQuestionChoice) => void) => {
+      questionHandlerRef.current = handler;
+    },
+    [],
+  );
+  const registerLensHandler = useCallback(
+    (handler: (lensId: DiscoveryLensId) => void) => {
+      lensHandlerRef.current = handler;
+    },
+    [],
+  );
+  const registerIntakeSubmitHandler = useCallback(
+    (handler: (input: IntakeSlotsSubmitInput) => Promise<void>) => {
+      intakeSubmitRef.current = handler;
+    },
+    [],
+  );
+  const registerAskChipPickHandler = useCallback(
+    (handler: (input: AskChipPickInput) => Promise<void>) => {
+      askChipPickRef.current = handler;
+    },
+    [],
+  );
   const [lensSession, setLensSession] = useState<DiscoveryLensSession | null>(
     () => (event ? readDiscoveryLensSession(event.id) : null),
   );
@@ -540,8 +564,9 @@ export function GlobeContextConditionPromptFrame({
         kind: "text",
         text: line,
       });
-      // Thread must always paint — freezing here left AGENT stuck on "working".
-      setComposeThread(readContextAgentComposeThread(event.id));
+      if (!isGlobeComposeInputFocused()) {
+        setComposeThread(readContextAgentComposeThread(event.id));
+      }
     };
     syncInterpretation();
     return subscribeContextAgentInterpretation(syncInterpretation);
@@ -552,8 +577,10 @@ export function GlobeContextConditionPromptFrame({
       return;
     }
     const syncThread = () => {
-      // Uncontrolled compose input tolerates parent re-renders; never gate the
-      // thread or Narration status stays "running" forever while focused.
+      // IME owns the main thread while focused — coalesce until blur.
+      if (isGlobeComposeInputFocused()) {
+        return;
+      }
       setComposeThread(readContextAgentComposeThread(event.id));
     };
     syncThread();
@@ -564,6 +591,7 @@ export function GlobeContextConditionPromptFrame({
     });
     const unsubFocus = subscribeGlobeComposeInputFocus((focused) => {
       if (!focused) {
+        setComposeThread(readContextAgentComposeThread(event.id));
         setRuntime(readContextAgentRuntimeState());
         setAgentSession(readContextAgentSessionState());
       }
@@ -1486,18 +1514,10 @@ export function GlobeContextConditionPromptFrame({
             onQuestionsChange={setQuestions}
             onRecommendationsChange={setRecommendations}
             onActionInjectionChange={setActionInjection}
-            registerQuestionHandler={(handler) => {
-              questionHandlerRef.current = handler;
-            }}
-            registerLensHandler={(handler) => {
-              lensHandlerRef.current = handler;
-            }}
-            registerIntakeSubmitHandler={(handler) => {
-              intakeSubmitRef.current = handler;
-            }}
-            registerAskChipPickHandler={(handler) => {
-              askChipPickRef.current = handler;
-            }}
+            registerQuestionHandler={registerQuestionHandler}
+            registerLensHandler={registerLensHandler}
+            registerIntakeSubmitHandler={registerIntakeSubmitHandler}
+            registerAskChipPickHandler={registerAskChipPickHandler}
             onLensSessionChange={setLensSession}
           />
         </div>
