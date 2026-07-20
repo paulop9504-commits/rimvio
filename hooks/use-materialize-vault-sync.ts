@@ -24,7 +24,10 @@ export function useMaterializeVaultSync(enabled = true): void {
 
     flushingRef.current = true;
     try {
-      await ensure();
+      const ok = await ensure();
+      if (!ok) {
+        return;
+      }
       await flushVaultSyncQueue({ limit: 6 });
       await refresh();
     } catch {
@@ -35,7 +38,7 @@ export function useMaterializeVaultSync(enabled = true): void {
   }, [enabled, ensure, refresh, user?.id, vaultAvailable]);
 
   useEffect(() => {
-    if (!enabled || !user?.id) {
+    if (!enabled || !user?.id || !vaultAvailable) {
       return;
     }
     void flush();
@@ -55,5 +58,5 @@ export function useMaterializeVaultSync(enabled = true): void {
       window.removeEventListener("online", onOnline);
       window.removeEventListener(MATERIALIZE_UPDATED, onMaterialize);
     };
-  }, [enabled, flush, user?.id]);
+  }, [enabled, flush, user?.id, vaultAvailable]);
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { isVaultUnavailableStatus } from "@/lib/vault/vault-api-errors";
 import type { VaultObjectSummary } from "@/lib/vault/types";
@@ -23,19 +23,38 @@ export type PersonalVaultState = {
   refresh: () => Promise<void>;
 };
 
+type VaultGetBody = {
+  persisted?: boolean;
+  vault?: PersonalVaultState["vault"];
+  objects?: VaultObjectSummary[];
+  error?: string;
+  hint?: string;
+};
+
 /** Client hook — ensure encrypted personal vault after login. */
 export function usePersonalVault(enabled = true): PersonalVaultState {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [persisted, setPersisted] = useState(false);
   const [vaultAvailable, setVaultAvailable] = useState(true);
-
-  useEffect(() => {
-    setVaultAvailable(true);
-  }, [user?.id]);
   const [vault, setVault] = useState<PersonalVaultState["vault"]>(null);
   const [objects, setObjects] = useState<VaultObjectSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const bootOnceRef = useRef<string | null>(null);
+  const inFlightRef = useRef(false);
+
+  useEffect(() => {
+    setVaultAvailable(true);
+    bootOnceRef.current = null;
+  }, [user?.id]);
+
+  const applyUnavailable = useCallback(() => {
+    setPersisted(false);
+    setVault(null);
+    setObjects([]);
+    setError(null);
+    setVaultAvailable(false);
+  }, []);
 
   const refresh = useCallback(async () => {
     if (!enabled || !user?.id) {
@@ -47,20 +66,15 @@ export function usePersonalVault(enabled = true): PersonalVaultState {
       return;
     }
 
-    if (!vaultAvailable) {
+    if (!vaultAvailable || inFlightRef.current) {
       return;
     }
 
+    inFlightRef.current = true;
     setLoading(true);
     try {
       const response = await fetch("/api/vault", { credentials: "include" });
-      const data = (await response.json()) as {
-        persisted?: boolean;
-        vault?: PersonalVaultState["vault"];
-        objects?: VaultObjectSummary[];
-        error?: string;
-        hint?: string;
-      };
+      const data = (await response.json()) as VaultGetBody;
       if (response.status === 401) {
         setPersisted(false);
         setVault(null);
@@ -69,11 +83,7 @@ export function usePersonalVault(enabled = true): PersonalVaultState {
         return;
       }
       if (isVaultUnavailableStatus(response.status, data.hint, data.error)) {
-        setPersisted(false);
-        setVault(null);
-        setObjects([]);
-        setError(null);
-        setVaultAvailable(false);
+        applyUnavailable();
         return;
       }
       if (!response.ok) {
@@ -86,14 +96,16 @@ export function usePersonalVault(enabled = true): PersonalVaultState {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "vault_fetch_failed");
     } finally {
+      inFlightRef.current = false;
       setLoading(false);
     }
-  }, [enabled, user?.id, vaultAvailable]);
+  }, [applyUnavailable, enabled, user?.id, vaultAvailable]);
 
   const ensure = useCallback(async (): Promise<boolean> => {
-    if (!enabled || !user?.id || !vaultAvailable) {
+    if (!enabled || !user?.id || !vaultAvailable || inFlightRef.current) {
       return false;
     }
+    inFlightRef.current = true;
     setLoading(true);
     try {
       const response = await fetch("/api/vault", {
@@ -102,38 +114,118 @@ export function usePersonalVault(enabled = true): PersonalVaultState {
       });
       const data = (await response.json()) as { error?: string; hint?: string };
       if (isVaultUnavailableStatus(response.status, data.hint, data.error)) {
-        setVaultAvailable(false);
+        applyUnavailable();
         return false;
       }
       if (!response.ok) {
         throw new Error(data.error ?? "vault_ensure_failed");
       }
+      inFlightRef.current = false;
       await refresh();
       return true;
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "vault_ensure_failed");
       return false;
     } finally {
+      inFlightRef.current = false;
       setLoading(false);
     }
-  }, [enabled, refresh, user?.id, vaultAvailable]);
+  }, [applyUnavailable, enabled, refresh, user?.id, vaultAvailable]);
 
+  // One boot sequence per user — GET, then POST only if empty (no dual storm).
   useEffect(() => {
     if (!enabled || !user?.id || !vaultAvailable) {
       return;
     }
-    void refresh();
-  }, [enabled, refresh, user?.id, vaultAvailable]);
+    if (bootOnceRef.current === user.id) {
+      return;
+    }
+    bootOnceRef.current = user.id;
 
-  useEffect(() => {
-    if (!enabled || !user?.id || !vaultAvailable) {
-      return;
-    }
-    if (vault) {
-      return;
-    }
-    void ensure();
-  }, [enabled, ensure, user?.id, vault, vaultAvailable]);
+    let cancelled = false;
+    void (async () => {
+      if (inFlightRef.current) {
+        return;
+      }
+      inFlightRef.current = true;
+      setLoading(true);
+      try {
+        const getResponse = await fetch("/api/vault", { credentials: "include" });
+        const getData = (await getResponse.json()) as VaultGetBody;
+        if (cancelled) {
+          return;
+        }
+        if (getResponse.status === 401) {
+          setPersisted(false);
+          setVault(null);
+          setObjects([]);
+          return;
+        }
+        if (isVaultUnavailableStatus(getResponse.status, getData.hint, getData.error)) {
+          applyUnavailable();
+          return;
+        }
+        if (!getResponse.ok) {
+          setError(getData.error ?? "vault_fetch_failed");
+          return;
+        }
+        if (getData.vault) {
+          setPersisted(Boolean(getData.persisted));
+          setVault(getData.vault);
+          setObjects(getData.objects ?? []);
+          setError(null);
+          return;
+        }
+
+        const postResponse = await fetch("/api/vault", {
+          method: "POST",
+          credentials: "include",
+        });
+        const postData = (await postResponse.json()) as {
+          error?: string;
+          hint?: string;
+        };
+        if (cancelled) {
+          return;
+        }
+        if (isVaultUnavailableStatus(postResponse.status, postData.hint, postData.error)) {
+          applyUnavailable();
+          return;
+        }
+        if (!postResponse.ok) {
+          setError(postData.error ?? "vault_ensure_failed");
+          return;
+        }
+
+        const again = await fetch("/api/vault", { credentials: "include" });
+        const againData = (await again.json()) as VaultGetBody;
+        if (cancelled) {
+          return;
+        }
+        if (isVaultUnavailableStatus(again.status, againData.hint, againData.error)) {
+          applyUnavailable();
+          return;
+        }
+        setPersisted(Boolean(againData.persisted));
+        setVault(againData.vault ?? null);
+        setObjects(againData.objects ?? []);
+        setError(null);
+      } catch (caught) {
+        if (!cancelled) {
+          setError(caught instanceof Error ? caught.message : "vault_boot_failed");
+        }
+      } finally {
+        inFlightRef.current = false;
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [applyUnavailable, enabled, user?.id, vaultAvailable]);
 
   return {
     ready: Boolean(user?.id && vault),

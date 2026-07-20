@@ -31,12 +31,16 @@ export function GoogleCalendarSyncBootstrap() {
 
     void syncGoogleCalendarToEventStore()
       .then((count) => {
-        if (!cancelled && count >= 0) {
+        if (!cancelled) {
+          // Mark even on soft skip so we do not re-hit the API every mount.
           markGoogleCalendarAutoSynced();
+          void count;
         }
       })
       .catch(() => {
-        /* silent — user can sync manually from settings */
+        if (!cancelled) {
+          markGoogleCalendarAutoSynced();
+        }
       });
 
     return () => {

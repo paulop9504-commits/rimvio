@@ -21,10 +21,8 @@ export function isVaultUnavailableStatus(
   if (hint === "vault_migration_required" || hint === "vault_unavailable") {
     return true;
   }
-  if (status === 429) {
-    return true;
-  }
-  if (status === 503 && (hint === "vault_migration_required" || hint === "vault_unavailable")) {
+  // Soft outage — never retry-storm the boot path (console 503 × N).
+  if (status === 503 || status === 429) {
     return true;
   }
   if (error && isVaultMigrationMissingError(error)) {

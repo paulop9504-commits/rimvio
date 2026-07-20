@@ -60,13 +60,14 @@ async function resolveAccessToken(userId: string): Promise<string | null> {
 
 export async function POST() {
   if (!isOAuthProviderConfigured("google_calendar")) {
-    return NextResponse.json(
-      {
-        error: "Google Calendar OAuth is not configured.",
-        code: "oauth_not_configured",
-      },
-      { status: 503 },
-    );
+    // Soft skip — do not 503 the boot console when OAuth env is absent.
+    return NextResponse.json({
+      synced: 0,
+      wires: [],
+      calendarId: "primary",
+      skipped: true,
+      code: "oauth_not_configured",
+    });
   }
 
   const userId = await getAuthUserId();

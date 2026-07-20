@@ -896,6 +896,27 @@ export const RimvioGlobe3D = memo(
         );
       };
 
+      const syncOverviewTexture = (altitude: number) => {
+        const overviewUrl = overviewTextureUrlRef.current;
+        if (shouldApplyGlobeOverviewTexture(altitude) && overviewUrl) {
+          globe.globeImageUrl(overviewUrl);
+          return;
+        }
+        // Stale equirect mosaic blocks slippy tiles on some Android GPUs.
+        globe.globeImageUrl(undefined as unknown as string);
+      };
+
+      let textureFilterTimer: ReturnType<typeof setTimeout> | null = null;
+      const syncTileTextureFiltering = () => {
+        applyRimvioGlobeTileTextureFiltering(globe.scene());
+      };
+      const scheduleTileTextureFiltering = () => {
+        if (textureFilterTimer != null) {
+          clearTimeout(textureFilterTimer);
+        }
+        textureFilterTimer = setTimeout(syncTileTextureFiltering, 280);
+      };
+
       const flushDeferredGlobeVisuals = () => {
         if (pendingDetailLevelRef.current) {
           onDetailLevelChangeRef.current?.(pendingDetailLevelRef.current);
@@ -968,16 +989,6 @@ export const RimvioGlobe3D = memo(
         }, 48);
       };
 
-      const syncOverviewTexture = (altitude: number) => {
-        const overviewUrl = overviewTextureUrlRef.current;
-        if (shouldApplyGlobeOverviewTexture(altitude) && overviewUrl) {
-          globe.globeImageUrl(overviewUrl);
-          return;
-        }
-        // Stale equirect mosaic blocks slippy tiles on some Android GPUs.
-        globe.globeImageUrl(undefined as unknown as string);
-      };
-
       const emitPointOfView = (
         pov: { lat: number; lng: number; altitude: number },
         altitude = pov.altitude,
@@ -1040,24 +1051,12 @@ export const RimvioGlobe3D = memo(
         }
       };
 
-      const syncTileTextureFiltering = () => {
-        applyRimvioGlobeTileTextureFiltering(globe.scene());
-      };
-
-      let textureFilterTimer: ReturnType<typeof setTimeout> | null = null;
       let zoomRaf: number | null = null;
       let pendingZoomPov: {
         lat: number;
         lng: number;
         altitude: number;
       } | null = null;
-
-      const scheduleTileTextureFiltering = () => {
-        if (textureFilterTimer != null) {
-          clearTimeout(textureFilterTimer);
-        }
-        textureFilterTimer = setTimeout(syncTileTextureFiltering, 280);
-      };
 
       const applyZoomPov = (pov: { lat: number; lng: number; altitude: number }) => {
         let altitude = pov.altitude;
