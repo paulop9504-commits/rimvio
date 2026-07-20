@@ -83,8 +83,8 @@ export function GlobeHomeMemoryRecallProvider({
     if (!enabled || typeof window === "undefined") {
       return;
     }
-    // After mount only  listLifeEventCandidates() reads localStorage and
-    // caused React #418 when hasContent flipped SSR empty ? client filled.
+    // After mount only - listLifeEventCandidates() reads localStorage and
+    // caused React #418 when hasContent flipped SSR empty -> client filled.
     setHydrated(true);
     const bump = () => {
       setRevision((value) => value + 1);
@@ -221,7 +221,7 @@ export function GlobeHomeMemoryRecallPanel({ className }: { className?: string }
   );
 }
 
-/** Floor 1 recall line — visible when panel collapsed (not buried behind toggle). */
+/** Floor 1 recall line - visible when panel collapsed (not buried behind toggle). */
 export function GlobeHomeRecallOneLiner({ className }: { className?: string }) {
   const ctx = useMemoryRecallContext();
   if (!ctx?.hasContent || ctx.panelOpen) {
@@ -272,7 +272,7 @@ export function GlobeHomeRecallOneLiner({ className }: { className?: string }) {
   );
 }
 
-/** Pill — left-aligned above prompt, same column as the + button. */
+/** Pill - left-aligned above prompt, same column as the + button. */
 export function GlobeHomeMemoryRecallToggleAnchor({
   className,
   embedded = false,
@@ -297,7 +297,7 @@ export function GlobeHomeMemoryRecallToggleAnchor({
   );
 }
 
-/** Back-compat wrapper — prefer Provider + Panel + ToggleAnchor. */
+/** Back-compat wrapper - prefer Provider + Panel + ToggleAnchor. */
 export type GlobeHomeMemoryDockProps = Omit<GlobeHomeMemoryRecallProviderProps, "children"> & {
   className?: string;
 };
